@@ -11,6 +11,45 @@
 
 CCL_NAMESPACE_BEGIN
 
+/* Compute fresnel reflectance. Also return the dot product of the refracted ray and the normal as
+ * `cos_theta_t`, as it is used when computing the direction of the refracted ray. */
+ccl_device float fresnel(float cos_theta_i, float eta, ccl_private float *r_cos_theta_t)
+{
+  kernel_assert(!isnan_safe(cos_theta_i));
+
+  /* Using Snell's law, calculate the squared cosine of the angle between the surface normal and
+   * the transmitted ray. */
+  const float cos_theta_t_sq = 1.0f - (1.0f - sqr(cos_theta_i)) / sqr(eta);
+  if (cos_theta_t_sq <= 0) {
+    /* Total internal reflection. */
+    return 1.0f;
+  }
+
+  cos_theta_i = fabsf(cos_theta_i);
+  /* Relative to the surface normal. */
+  const float cos_theta_t = -safe_sqrtf(cos_theta_t_sq);
+
+  if (r_cos_theta_t) {
+    *r_cos_theta_t = cos_theta_t;
+  }
+
+  /* Amplitudes of reflected waves. */
+  const float r_s = (cos_theta_i + eta * cos_theta_t) / (cos_theta_i - eta * cos_theta_t);
+  const float r_p = (cos_theta_t + eta * cos_theta_i) / (cos_theta_t - eta * cos_theta_i);
+
+  return 0.5f * (sqr(r_s) + sqr(r_p));
+}
+
+/* Refract the incident ray, given the cosine of the refraction angle and the relative refractive
+ * index of the incoming medium w.r.t. the outgoing medium. */
+ccl_device_inline float3 refract_angle(const float3 incident,
+                                       const float3 normal,
+                                       const float cos_theta_t,
+                                       const float inv_eta)
+{
+  return (inv_eta * dot(normal, incident) + cos_theta_t) * normal - inv_eta * incident;
+}
+
 ccl_device float fresnel_dielectric(
     float eta, const float3 N, const float3 I, ccl_private float3 *T, ccl_private bool *is_inside)
 {

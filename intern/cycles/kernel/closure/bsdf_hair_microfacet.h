@@ -277,51 +277,6 @@ ccl_device_inline float bsdf_Go(float alpha2, float cos_NI, float cos_NO)
   return (1.0f + lambdaI) / (1.0f + lambdaI + lambdaO);
 }
 
-/* Compute fresnel reflection. Also return the dot product of the refracted ray and the normal as
- * `cos_theta_t`, as it is used when computing the direction of the refracted ray. */
-ccl_device float fresnel(float cos_theta_i, float eta, ccl_private float *cos_theta_t)
-{
-  kernel_assert(!isnan_safe(cos_theta_i));
-
-  /* Special cases. */
-  if (eta == 1.0f) {
-    return 0.0f;
-  }
-  if (cos_theta_i == 0.0f) {
-    return 1.0f;
-  }
-
-  cos_theta_i = fabsf(cos_theta_i);
-
-  /* Using Snell's law, calculate the squared cosine of the angle between the surface normal and
-   * the transmitted ray. */
-  const float cos_theta_t_sqr = 1.0f - (1.0f - cos_theta_i * cos_theta_i) / (eta * eta);
-  *cos_theta_t = safe_sqrtf(cos_theta_t_sqr);
-
-  if (cos_theta_t_sqr <= 0) {
-    /* Total internal reflection. */
-    return 1.0f;
-  }
-
-  /* Amplitudes of reflected waves. */
-  const float a_s = (cos_theta_i - eta * (*cos_theta_t)) / (cos_theta_i + eta * (*cos_theta_t));
-  const float a_p = (*cos_theta_t - eta * cos_theta_i) / (*cos_theta_t + eta * cos_theta_i);
-
-  /* Adjust the sign of the transmitted direction to be relative to the surface normal. */
-  *cos_theta_t = -(*cos_theta_t);
-
-  return 0.5f * (sqr(a_s) + sqr(a_p));
-}
-
-/* Refract the incident ray, given the cosine of the refraction angle and the inverse IOR. */
-ccl_device_inline float3 refract_angle(const float3 incident,
-                                       const float3 normal,
-                                       const float cos_theta_t,
-                                       const float inv_eta)
-{
-  return (inv_eta * dot(normal, incident) + cos_theta_t) * normal - inv_eta * incident;
-}
-
 ccl_device Spectrum bsdf_microfacet_hair_eval_r(KernelGlobals kg,
                                                 ccl_private const ShaderClosure *sc,
                                                 const float3 wi,
