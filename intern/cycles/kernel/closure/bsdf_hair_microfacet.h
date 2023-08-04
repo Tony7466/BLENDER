@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2018-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 /* This code implements the paper [A Microfacet-based Hair Scattering
  * Model](https://onlinelibrary.wiley.com/doi/full/10.1111/cgf.14588) by Weizhen Huang, Matthias B.
@@ -17,7 +18,7 @@ typedef struct MicrofacetHairExtra {
   /* Optional modulation factors. */
   float R, TT, TRT;
 
-  /* Local coordinate system. X is stored is `bsdf->N`.*/
+  /* Local coordinate system. X is stored as `bsdf->N`.*/
   float3 Y, Z;
 
   /* Incident direction in local coordinate system. */
@@ -64,25 +65,25 @@ static_assert(sizeof(ShaderClosure) >= sizeof(MicrofacetHairExtra),
 /** \name Hair coordinate system utils.
  * \{ */
 
-/* Returns sin(theta) of the given direction. */
+/* Returns `sin(theta)` of the given direction. */
 ccl_device_inline float sin_theta(const float3 w)
 {
   return w.y;
 }
 
-/* Returns cos(theta) of the given direction. */
+/* Returns `cos(theta)` of the given direction. */
 ccl_device_inline float cos_theta(const float3 w)
 {
   return safe_sqrtf(sqr(w.x) + sqr(w.z));
 }
 
-/* Returns tan(theta) of the given direction. */
+/* Returns `tan(theta)` of the given direction. */
 ccl_device_inline float tan_theta(const float3 w)
 {
   return sin_theta(w) / cos_theta(w);
 }
 
-/* Returns sin(phi) and cos(phi) of the given direction. */
+/* Returns `sin(phi)` and `cos(phi)` of the given direction. */
 ccl_device float sin_phi(const float3 w)
 {
   return w.x / cos_theta(w);
@@ -101,21 +102,21 @@ ccl_device_inline float dir_theta(const float3 w)
   return atan2f(sin_theta(w), cos_theta(w));
 }
 
-/* Extract the phi coordinate from the given direction, assuming phi(wi) = 0.
+/* Extract the phi coordinate from the given direction, assuming `phi(wi) == 0`.
  * -pi < phi < pi */
 ccl_device_inline float dir_phi(const float3 w)
 {
   return atan2f(w.x, w.z);
 }
 
-/* Extract theta and phi coordinates from the given direction, assuming phi(wi) = 0.
+/* Extract theta and phi coordinates from the given direction, assuming `phi(wi) == 0`.
  * -pi/2 < theta < pi/2, -pi < phi < pi */
 ccl_device_inline float2 dir_sph(const float3 w)
 {
   return make_float2(dir_theta(w), dir_phi(w));
 }
 
-/* Conversion between gamma and phi. Notations see Figure 5 in the paper. */
+/* Conversion between `gamma` and `phi`. Notations see Figure 5 in the paper. */
 ccl_device_inline float to_phi(float gamma, float b)
 {
   if (b == 1.0f) {
@@ -136,7 +137,7 @@ ccl_device_inline float to_gamma(float phi, float b)
   return atan2f(sin_phi, b * cos_phi);
 }
 
-/* Compute the coordinate on the ellipse, given gamma and the aspect ratio between the minor axis
+/* Compute the coordinate on the ellipse, given `gamma` and the aspect ratio between the minor axis
  * and the major axis. */
 ccl_device_inline float2 to_point(float gamma, float b)
 {
@@ -145,7 +146,7 @@ ccl_device_inline float2 to_point(float gamma, float b)
   return make_float2(sin_gamma, b * cos_gamma);
 }
 
-/* Compute the vector direction given by theta and gamma. */
+/* Compute the vector direction given by `theta` and `gamma`. */
 ccl_device_inline float3 sphg_dir(float theta, float gamma, float b)
 {
   float sin_theta, cos_theta, sin_gamma, cos_gamma, sin_phi, cos_phi;
@@ -191,8 +192,8 @@ ccl_device int bsdf_microfacet_hair_setup(ccl_private ShaderData *sd,
   const float3 Y = safe_normalize(sd->dPdu);
   const float3 X = safe_normalize(cross(Y, sd->wi));
 
-  /* h -1..0..1 means the rays goes from grazing the hair, to hitting it at the center, to grazing
-   * the other edge. This is the cosine of the angle between sd->N and X. */
+  /* h from -1..0..1 means the rays goes from grazing the hair, to hitting it at the center, to
+   * grazing the other edge. This is the cosine of the angle between `sd->N` and `X`. */
   bsdf->h = (sd->type & PRIMITIVE_CURVE_RIBBON) ? -sd->v : -dot(X, sd->N);
 
   kernel_assert(fabsf(bsdf->h) < 1.0f + 1e-4f);
@@ -255,13 +256,13 @@ ccl_device_inline float3 sample_wh(
   return wh;
 }
 
-/* Check micronormal/mesonormal direct visiblity from direction v. */
+/* Check micronormal/mesonormal direct visiblity from direction `v`. */
 ccl_device_inline bool microfacet_visible(const float3 v, const float3 m, const float3 h)
 {
   return (dot(v, h) > 0.0f && dot(v, m) > 0.0f);
 }
 
-/* Check micronormal/mesonormal direct visiblity from directinos wi and wo. */
+/* Check micronormal/mesonormal direct visiblity from directions `wi` and `wo`. */
 ccl_device_inline bool microfacet_visible(const float3 wi,
                                           const float3 wo,
                                           const float3 m,
@@ -270,6 +271,7 @@ ccl_device_inline bool microfacet_visible(const float3 wi,
   return microfacet_visible(wi, m, h) && microfacet_visible(wo, m, h);
 }
 
+/* Combined shadowing-masking term divided by the shadowing-masking in the incoming direction. */
 ccl_device_inline float bsdf_Go(float alpha2, float cos_NI, float cos_NO)
 {
   const float lambdaI = bsdf_lambda<MicrofacetType::GGX>(alpha2, cos_NI);
@@ -296,7 +298,7 @@ ccl_device Spectrum bsdf_microfacet_hair_eval_r(KernelGlobals kg,
   const float phi_o = dir_phi(wo);
 
   /* Compute visible azimuthal range from incoming and outgoing directions. */
-  /* dot(wi, wmi) > 0 */
+  /* `dot(wi, wmi) > 0` */
   const float tan_tilt = tanf(bsdf->tilt);
   float phi_m_max1 = acosf(fmaxf(-tan_tilt * tan_theta(wi), 0.0f)) + phi_i;
   if (isnan_safe(phi_m_max1)) {
@@ -304,7 +306,7 @@ ccl_device Spectrum bsdf_microfacet_hair_eval_r(KernelGlobals kg,
   }
   float phi_m_min1 = -phi_m_max1 + 2.0f * phi_i;
 
-  /* dot(wo, wmi) > 0 */
+  /* `dot(wo, wmi) > 0` */
   float phi_m_max2 = acosf(fmaxf(-tan_tilt * tan_theta(wo), 0.0f)) + phi_o;
   if (isnan_safe(phi_m_max2)) {
     return zero_spectrum();
@@ -405,13 +407,13 @@ ccl_device Spectrum bsdf_microfacet_hair_eval_residual(KernelGlobals kg,
   const float tan_tilt = tanf(bsdf->tilt);
   const float phi_m_max = acosf(fmaxf(-tan_tilt * tan_theta(wi), 0.0f)) + phi_i;
   if (isnan_safe(phi_m_max)) {
-    /* Early detection of dot(wi, wmi) < 0. */
+    /* Early detection of `dot(wi, wmi) < 0`. */
     return zero_spectrum();
   }
   const float phi_m_min = -phi_m_max + 2.0f * phi_i;
 
   if (tan_tilt * tan_theta(wo) < -1.0f) {
-    /* Early detection of dot(wo, wmo) < 0. */
+    /* Early detection of `dot(wo, wmo) < 0`. */
     return zero_spectrum();
   }
 
@@ -443,7 +445,7 @@ ccl_device Spectrum bsdf_microfacet_hair_eval_residual(KernelGlobals kg,
     const float3 wmi = sphg_dir(bsdf->tilt, gamma_mi, b);
     const float3 wmi_ = sphg_dir(0.0f, gamma_mi, b);
 
-    /* Sample wh1. */
+    /* Sample `wh1`. */
     const float2 sample1 = make_float2(lcg_step_float(&rng_quadrature),
                                        lcg_step_float(&rng_quadrature));
 
@@ -509,7 +511,7 @@ ccl_device Spectrum bsdf_microfacet_hair_eval_residual(KernelGlobals kg,
 
     /* TRT and beyond. */
     if (bsdf->extra->TRT > 0.0f) {
-      /* Sample wh2. */
+      /* Sample `wh2`. */
       const float2 sample2 = make_float2(lcg_step_float(&rng_quadrature),
                                          lcg_step_float(&rng_quadrature));
       const float3 wh2 = sample_wh(kg, roughness, -wt, wmt, sample2);
@@ -847,7 +849,7 @@ ccl_device Spectrum bsdf_microfacet_hair_eval(KernelGlobals kg,
   const float3 Y = bsdf->extra->Y;
   const float3 Z = bsdf->extra->Z;
 
-  /* Transform wi/wo from global coordinate system to local. */
+  /* Transform `wi`/`wo` from global coordinate system to local. */
   const float3 local_I = bsdf->extra->wi;
   const float3 local_O = make_float3(dot(wo, X), dot(wo, Y), dot(wo, Z));
 
