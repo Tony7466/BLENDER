@@ -80,6 +80,8 @@ typedef struct NodeTreeUpdateExtraParams {
    * This can be used to tag the depsgraph if necessary.
    */
   void (*tree_output_changed_fn)(struct ID *, struct bNodeTree *, void *user_data);
+
+  bool avoid_making_previews_dirty = false;
 } NodeTreeUpdateExtraParams;
 
 /**

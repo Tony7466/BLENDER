@@ -723,6 +723,9 @@ class NodeTreeMainUpdater {
 
   void shader_node_previews_mark_dirty()
   {
+    if (params_ && params_->avoid_making_previews_dirty) {
+      return;
+    }
     for (const bNodeTree *ntree : update_result_by_tree_.keys()) {
       ntree->runtime->any_node_dirtystate.make_dirty();
       LISTBASE_FOREACH (bNode *, node_iter, &ntree->nodes) {
@@ -736,7 +739,7 @@ class NodeTreeMainUpdater {
 
   void nodes_preview_mark_dirty(bNodeTree &ntree, Stack<bNode *> nodes_to_visit)
   {
-    if (ntree.type != NTREE_SHADER) {
+    if (ntree.type != NTREE_SHADER || (params_ && params_->avoid_making_previews_dirty)) {
       /* Those preview dirty states are only used for shader previews. */
       return;
     }
