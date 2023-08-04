@@ -56,7 +56,7 @@
 #include "BKE_idtype.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_linestyle.h"
 #include "BKE_main.h"
 #include "BKE_modifier.h"
@@ -2307,7 +2307,7 @@ void uiTemplateModifiers(uiLayout * /*layout*/, bContext *C)
 
   if (!panels_match) {
     UI_panels_free_instanced(C, region);
-    for (ModifierData *md = static_cast<ModifierData *>(modifiers->first); md; md = md->next) {
+    LISTBASE_FOREACH (ModifierData *, md, modifiers) {
       const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(md->type));
       if (mti->panel_register == nullptr) {
         continue;
@@ -2556,9 +2556,7 @@ void uiTemplateGpencilModifiers(uiLayout * /*layout*/, bContext *C)
 
   if (!panels_match) {
     UI_panels_free_instanced(C, region);
-    for (GpencilModifierData *md = static_cast<GpencilModifierData *>(modifiers->first); md;
-         md = md->next)
-    {
+    LISTBASE_FOREACH (GpencilModifierData *, md, modifiers) {
       const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(
           GpencilModifierType(md->type));
       if (mti->panel_register == nullptr) {
@@ -2631,7 +2629,7 @@ void uiTemplateShaderFx(uiLayout * /*layout*/, bContext *C)
 
   if (!panels_match) {
     UI_panels_free_instanced(C, region);
-    for (ShaderFxData *fx = static_cast<ShaderFxData *>(shaderfx->first); fx; fx = fx->next) {
+    LISTBASE_FOREACH (ShaderFxData *, fx, shaderfx) {
       char panel_idname[MAX_NAME];
       shaderfx_panel_id(fx, panel_idname);
 
@@ -4637,23 +4635,35 @@ static void curvemap_buttons_layout(uiLayout *layout,
     uiLayoutSetAlignment(sub, UI_LAYOUT_ALIGN_LEFT);
 
     if (cumap->cm[3].curve) {
-      bt = uiDefButI(
-          block, UI_BTYPE_ROW, 0, "C", 0, 0, dx, dx, &cumap->cur, 0.0, 3.0, 0.0, 0.0, "");
+      bt = uiDefButI(block,
+                     UI_BTYPE_ROW,
+                     0,
+                     CTX_IFACE_(BLT_I18NCONTEXT_COLOR, "C"),
+                     0,
+                     0,
+                     dx,
+                     dx,
+                     &cumap->cur,
+                     0.0,
+                     3.0,
+                     0.0,
+                     0.0,
+                     "");
       UI_but_func_set(bt, curvemap_buttons_redraw, nullptr, nullptr);
     }
     if (cumap->cm[0].curve) {
       bt = uiDefButI(
-          block, UI_BTYPE_ROW, 0, "R", 0, 0, dx, dx, &cumap->cur, 0.0, 0.0, 0.0, 0.0, "");
+          block, UI_BTYPE_ROW, 0, IFACE_("R"), 0, 0, dx, dx, &cumap->cur, 0.0, 0.0, 0.0, 0.0, "");
       UI_but_func_set(bt, curvemap_buttons_redraw, nullptr, nullptr);
     }
     if (cumap->cm[1].curve) {
       bt = uiDefButI(
-          block, UI_BTYPE_ROW, 0, "G", 0, 0, dx, dx, &cumap->cur, 0.0, 1.0, 0.0, 0.0, "");
+          block, UI_BTYPE_ROW, 0, IFACE_("G"), 0, 0, dx, dx, &cumap->cur, 0.0, 1.0, 0.0, 0.0, "");
       UI_but_func_set(bt, curvemap_buttons_redraw, nullptr, nullptr);
     }
     if (cumap->cm[2].curve) {
       bt = uiDefButI(
-          block, UI_BTYPE_ROW, 0, "B", 0, 0, dx, dx, &cumap->cur, 0.0, 2.0, 0.0, 0.0, "");
+          block, UI_BTYPE_ROW, 0, IFACE_("B"), 0, 0, dx, dx, &cumap->cur, 0.0, 2.0, 0.0, 0.0, "");
       UI_but_func_set(bt, curvemap_buttons_redraw, nullptr, nullptr);
     }
   }
@@ -4664,17 +4674,17 @@ static void curvemap_buttons_layout(uiLayout *layout,
 
     if (cumap->cm[0].curve) {
       bt = uiDefButI(
-          block, UI_BTYPE_ROW, 0, "H", 0, 0, dx, dx, &cumap->cur, 0.0, 0.0, 0.0, 0.0, "");
+          block, UI_BTYPE_ROW, 0, IFACE_("H"), 0, 0, dx, dx, &cumap->cur, 0.0, 0.0, 0.0, 0.0, "");
       UI_but_func_set(bt, curvemap_buttons_redraw, nullptr, nullptr);
     }
     if (cumap->cm[1].curve) {
       bt = uiDefButI(
-          block, UI_BTYPE_ROW, 0, "S", 0, 0, dx, dx, &cumap->cur, 0.0, 1.0, 0.0, 0.0, "");
+          block, UI_BTYPE_ROW, 0, IFACE_("S"), 0, 0, dx, dx, &cumap->cur, 0.0, 1.0, 0.0, 0.0, "");
       UI_but_func_set(bt, curvemap_buttons_redraw, nullptr, nullptr);
     }
     if (cumap->cm[2].curve) {
       bt = uiDefButI(
-          block, UI_BTYPE_ROW, 0, "V", 0, 0, dx, dx, &cumap->cur, 0.0, 2.0, 0.0, 0.0, "");
+          block, UI_BTYPE_ROW, 0, IFACE_("V"), 0, 0, dx, dx, &cumap->cur, 0.0, 2.0, 0.0, 0.0, "");
       UI_but_func_set(bt, curvemap_buttons_redraw, nullptr, nullptr);
     }
   }
@@ -6876,7 +6886,7 @@ void uiTemplateComponentMenu(uiLayout *layout,
 /** \name Node Socket Icon Template
  * \{ */
 
-void uiTemplateNodeSocket(uiLayout *layout, bContext * /*C*/, float color[4])
+void uiTemplateNodeSocket(uiLayout *layout, bContext * /*C*/, const float color[4])
 {
   uiBlock *block = uiLayoutGetBlock(layout);
   UI_block_align_begin(block);

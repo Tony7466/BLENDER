@@ -2684,14 +2684,20 @@ static int area_max_regionsize(ScrArea *area, ARegion *scale_region, AZEdge edge
         dist -= region->winx;
       }
       else if (scale_region->alignment == RGN_ALIGN_TOP &&
-               (region->alignment == RGN_ALIGN_BOTTOM ||
-                ELEM(region->regiontype, RGN_TYPE_HEADER, RGN_TYPE_TOOL_HEADER, RGN_TYPE_FOOTER)))
+               (region->alignment == RGN_ALIGN_BOTTOM || ELEM(region->regiontype,
+                                                              RGN_TYPE_HEADER,
+                                                              RGN_TYPE_TOOL_HEADER,
+                                                              RGN_TYPE_FOOTER,
+                                                              RGN_TYPE_ASSET_SHELF_HEADER)))
       {
         dist -= region->winy;
       }
       else if (scale_region->alignment == RGN_ALIGN_BOTTOM &&
-               (region->alignment == RGN_ALIGN_TOP ||
-                ELEM(region->regiontype, RGN_TYPE_HEADER, RGN_TYPE_TOOL_HEADER, RGN_TYPE_FOOTER)))
+               (region->alignment == RGN_ALIGN_TOP || ELEM(region->regiontype,
+                                                           RGN_TYPE_HEADER,
+                                                           RGN_TYPE_TOOL_HEADER,
+                                                           RGN_TYPE_FOOTER,
+                                                           RGN_TYPE_ASSET_SHELF_HEADER)))
       {
         dist -= region->winy;
       }
@@ -4939,6 +4945,7 @@ int ED_screen_animation_play(bContext *C, int sync, int mode)
      * playback. */
     WM_event_add_notifier(C, NC_SPACE | ND_SPACE_SEQUENCER, scene);
     WM_event_add_notifier(C, NC_SPACE | ND_SPACE_SPREADSHEET, scene);
+    WM_event_add_notifier(C, NC_SCENE | ND_TRANSFORM, scene);
   }
   else {
     BKE_callback_exec_id_depsgraph(

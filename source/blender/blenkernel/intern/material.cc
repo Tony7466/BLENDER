@@ -46,7 +46,7 @@
 
 #include "BKE_anim_data.h"
 #include "BKE_attribute.h"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_curve.h"
 #include "BKE_displist.h"
 #include "BKE_editmesh.h"
@@ -1398,12 +1398,9 @@ bool BKE_object_material_slot_remove(Main *bmain, Object *ob)
 
 static bNode *nodetree_uv_node_recursive(bNode *node)
 {
-  bNode *inode;
-  bNodeSocket *sock;
-
-  for (sock = static_cast<bNodeSocket *>(node->inputs.first); sock; sock = sock->next) {
+  LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
     if (sock->link) {
-      inode = sock->link->fromnode;
+      bNode *inode = sock->link->fromnode;
       if (inode->typeinfo->nclass == NODE_CLASS_INPUT && inode->typeinfo->type == SH_NODE_UVMAP) {
         return inode;
       }

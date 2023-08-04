@@ -76,7 +76,7 @@ typedef struct SpaceNode_Runtime SpaceNode_Runtime;
 typedef struct SpaceOutliner_Runtime SpaceOutliner_Runtime;
 #endif
 
-/** Defined in `file_intern.h`. */
+/** Defined in `file_intern.hh`. */
 typedef struct SpaceFile_Runtime SpaceFile_Runtime;
 
 /** Defined in `spreadsheet_intern.hh`. */
@@ -1670,7 +1670,7 @@ typedef enum eSpaceNode_ShaderFrom {
 /** #SpaceNode.geometry_nodes_type */
 typedef enum SpaceNodeGeometryNodesType {
   SNODE_GEOMETRY_MODIFIER = 0,
-  SNODE_GEOMETRY_OPERATOR = 1,
+  SNODE_GEOMETRY_TOOL = 1,
 } SpaceNodeGeometryNodesType;
 
 /** #SpaceNode.insert_ofs_dir */
