@@ -277,7 +277,7 @@ class NODE_OT_interface_item_new(NodeInterfaceOperator, Operator):
     bl_label = "New Item"
     bl_options = {'REGISTER', 'UNDO'}
 
-    item_type : EnumProperty(
+    item_type: EnumProperty(
         name="Item Type",
         description="Type of the item to create",
         items=[('SOCKET', "Socket", ""), ('PANEL', "Panel", "")],

@@ -551,6 +551,21 @@ static void rna_NodeTreeInterfaceItems_move(
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
 
+static void rna_NodeTreeInterfaceItems_move_to_parent(ID *id,
+                                                      bNodeTreeInterface *interface,
+                                                      Main *bmain,
+                                                      bNodeTreeInterfaceItem *item,
+                                                      bNodeTreeInterfacePanel *parent,
+                                                      int to_index)
+{
+  interface->move_item_to_parent(*item, parent, to_index);
+
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+  BKE_ntree_update_tag_interface(ntree);
+  ED_node_tree_propagate_change(nullptr, bmain, ntree);
+  WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
+}
+
 /* ******** Node Socket Subtypes ******** */
 
 void rna_NodeTreeInterfaceSocketFloat_default_value_range(
@@ -948,6 +963,18 @@ static void rna_def_node_tree_interface_items_api(StructRNA *srna)
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
   parm = RNA_def_pointer(func, "item", "NodeTreeInterfaceItem", "Item", "The item to remove");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+  parm = RNA_def_int(
+      func, "to_index", -1, 0, INT_MAX, "To Index", "Target index for the item", 0, 10000);
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  func = RNA_def_function(srna, "move_to_parent", "rna_NodeTreeInterfaceItems_move_to_parent");
+  RNA_def_function_ui_description(func, "Move an item to a new panel and/or position.");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
+  parm = RNA_def_pointer(func, "item", "NodeTreeInterfaceItem", "Item", "The item to remove");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
+  parm = RNA_def_pointer(
+      func, "parent", "NodeTreeInterfacePanel", "Parent", "New parent of the item");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_int(
       func, "to_index", -1, 0, INT_MAX, "To Index", "Target index for the item", 0, 10000);
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);

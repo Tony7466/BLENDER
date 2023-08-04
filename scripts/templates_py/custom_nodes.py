@@ -59,7 +59,7 @@ class MyCustomInterfaceSocket(NodeTreeInterfaceSocket):
 
     mean_value: bpy.props.FloatProperty(default=10.0)
     randomize: bpy.props.BoolProperty(default=False)
-    
+
     def draw(self, context, layout):
         layout.label(text="Here we can display properties of the socket")
         layout.prop(self, "mean_value")
