@@ -69,11 +69,14 @@ static PyObject *bpy_rna_context_temp_override_enter(BPyContextTempOverride *sel
   CTX_py_state_push(C, &self->py_state, self->py_state_context_dict);
 
   self->ctx_init.win = CTX_wm_window(C);
-  self->ctx_init.win_is_set = (self->ctx_init.win != self->ctx_temp.win);
+  self->ctx_init.win_is_set = (self->ctx_init.win != self->ctx_temp.win ||
+                               self->ctx_temp.win_is_set);
   self->ctx_init.area = CTX_wm_area(C);
-  self->ctx_init.area_is_set = (self->ctx_init.area != self->ctx_temp.area);
+  self->ctx_init.area_is_set = (self->ctx_init.area != self->ctx_temp.area ||
+                                self->ctx_temp.area_is_set);
   self->ctx_init.region = CTX_wm_region(C);
-  self->ctx_init.region_is_set = (self->ctx_init.region != self->ctx_temp.region);
+  self->ctx_init.region_is_set = (self->ctx_init.region != self->ctx_temp.region ||
+                                  self->ctx_temp.region_is_set);
 
   wmWindow *win = self->ctx_temp.win_is_set ? self->ctx_temp.win : self->ctx_init.win;
   bScreen *screen = win ? WM_window_get_active_screen(win) : nullptr;
