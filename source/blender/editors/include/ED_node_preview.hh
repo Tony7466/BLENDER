@@ -22,7 +22,8 @@ struct NestedTreePreviews {
   int preview_size;
   bool rendering = false;
   bool restart_needed = false;
-  uint32_t previews_refresh_state = 0;
+  uint32_t cached_previews_refresh_state = 0;
+  uint32_t rendering_previews_refresh_state = 0;
   NestedTreePreviews(const int size) : preview_size(size) {}
   ~NestedTreePreviews()
   {

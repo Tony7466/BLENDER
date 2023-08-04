@@ -562,10 +562,21 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
 
 static void update_needed_flag(const bNodeTree &nt, NestedTreePreviews &tree_previews)
 {
-  if (nt.runtime->previews_refresh_state != tree_previews.previews_refresh_state ||
-      tree_previews.preview_size != U.node_preview_res)
-  {
+  if (tree_previews.rendering) {
+    if (nt.runtime->previews_refresh_state != tree_previews.rendering_previews_refresh_state) {
+      tree_previews.restart_needed = true;
+      return;
+    }
+  }
+  else {
+    if (nt.runtime->previews_refresh_state != tree_previews.cached_previews_refresh_state) {
+      tree_previews.restart_needed = true;
+      return;
+    }
+  }
+  if (tree_previews.preview_size != U.node_preview_res) {
     tree_previews.restart_needed = true;
+    return;
   }
 }
 
@@ -622,6 +633,8 @@ static void shader_preview_free(void *customdata)
   }
   job_data->treepath_copy.clear();
   job_data->tree_previews->rendering = false;
+  job_data->tree_previews->cached_previews_refresh_state =
+      job_data->tree_previews->rendering_previews_refresh_state;
   if (job_data->mat_copy != nullptr) {
     BLI_remlink(&G.pr_main->materials, job_data->mat_copy);
     BKE_id_free(G.pr_main, &job_data->mat_copy->id);
@@ -653,7 +666,8 @@ static void ensure_nodetree_previews(const bContext &C,
   }
   tree_previews.rendering = true;
   tree_previews.restart_needed = false;
-  tree_previews.previews_refresh_state = displayed_nodetree->runtime->previews_refresh_state;
+  tree_previews.rendering_previews_refresh_state =
+      displayed_nodetree->runtime->previews_refresh_state;
 
   ED_preview_ensure_dbase(false);
 
