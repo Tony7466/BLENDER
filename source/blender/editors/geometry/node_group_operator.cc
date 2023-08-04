@@ -381,10 +381,14 @@ static char *run_node_group_get_description(bContext *C, wmOperatorType * /*ot*/
 
 static void add_attribute_search_or_value_buttons(uiLayout *layout,
                                                   PointerRNA *md_ptr,
-                                                  const bNodeSocket &socket)
+                                                  const bNodeTreeInterfaceSocket &socket)
 {
-  char socket_id_esc[sizeof(socket.identifier) * 2];
-  BLI_str_escape(socket_id_esc, socket.identifier, sizeof(socket_id_esc));
+  const std::string socket_identifier = socket.socket_identifier();
+  bNodeSocketType *typeinfo = nodeSocketTypeFind(socket.socket_type);
+  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(typeinfo->type);
+
+  char socket_id_esc[MAX_NAME * 2];
+  BLI_str_escape(socket_id_esc, socket_identifier.c_str(), sizeof(socket_id_esc));
   const std::string rna_path = "[\"" + std::string(socket_id_esc) + "\"]";
   const std::string rna_path_use_attribute = "[\"" + std::string(socket_id_esc) +
                                              nodes::input_use_attribute_suffix() + "\"]";
@@ -399,7 +403,7 @@ static void add_attribute_search_or_value_buttons(uiLayout *layout,
   uiLayoutSetAlignment(name_row, UI_LAYOUT_ALIGN_RIGHT);
 
   const bool use_attribute = RNA_boolean_get(md_ptr, rna_path_use_attribute.c_str());
-  if (socket.type == SOCK_BOOLEAN && !use_attribute) {
+  if (socket_type == SOCK_BOOLEAN && !use_attribute) {
     uiItemL(name_row, "", ICON_NONE);
   }
   else {
@@ -407,7 +411,7 @@ static void add_attribute_search_or_value_buttons(uiLayout *layout,
   }
 
   uiLayout *prop_row = uiLayoutRow(split, true);
-  if (socket.type == SOCK_BOOLEAN) {
+  if (socket_type == SOCK_BOOLEAN) {
     uiLayoutSetPropSep(prop_row, false);
     uiLayoutSetAlignment(prop_row, UI_LAYOUT_ALIGN_EXPAND);
   }
@@ -417,7 +421,7 @@ static void add_attribute_search_or_value_buttons(uiLayout *layout,
     uiItemR(prop_row, md_ptr, rna_path_attribute_name.c_str(), UI_ITEM_NONE, "", ICON_NONE);
   }
   else {
-    const char *name = socket.type == SOCK_BOOLEAN ? socket.name : "";
+    const char *name = socket_type == SOCK_BOOLEAN ? socket.name : "";
     uiItemR(prop_row, md_ptr, rna_path.c_str(), UI_ITEM_NONE, name, ICON_NONE);
   }
 
@@ -430,11 +434,15 @@ static void draw_property_for_socket(const bNodeTree &node_tree,
                                      IDProperty *op_properties,
                                      PointerRNA *bmain_ptr,
                                      PointerRNA *op_ptr,
-                                     const bNodeSocket &socket,
+                                     const bNodeTreeInterfaceSocket &socket,
                                      const int socket_index)
 {
+  const std::string socket_identifier = socket.socket_identifier();
+  bNodeSocketType *typeinfo = nodeSocketTypeFind(socket.socket_type);
+  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(typeinfo->type);
+
   /* The property should be created in #MOD_nodes_update_interface with the correct type. */
-  IDProperty *property = IDP_GetPropertyFromGroup(op_properties, socket.identifier);
+  IDProperty *property = IDP_GetPropertyFromGroup(op_properties, socket_identifier.c_str());
 
   /* IDProperties can be removed with python, so there could be a situation where
    * there isn't a property for a socket or it doesn't have the correct type. */
@@ -442,8 +450,8 @@ static void draw_property_for_socket(const bNodeTree &node_tree,
     return;
   }
 
-  char socket_id_esc[sizeof(socket.identifier) * 2];
-  BLI_str_escape(socket_id_esc, socket.identifier, sizeof(socket_id_esc));
+  char socket_id_esc[MAX_NAME * 2];
+  BLI_str_escape(socket_id_esc, socket_identifier.c_str(), sizeof(socket_id_esc));
 
   char rna_path[sizeof(socket_id_esc) + 4];
   SNPRINTF(rna_path, "[\"%s\"]", socket_id_esc);
@@ -454,7 +462,7 @@ static void draw_property_for_socket(const bNodeTree &node_tree,
   /* Use #uiItemPointerR to draw pointer properties because #uiItemR would not have enough
    * information about what type of ID to select for editing the values. This is because
    * pointer IDProperties contain no information about their type. */
-  switch (socket.type) {
+  switch (socket_type) {
     case SOCK_OBJECT:
       uiItemPointerR(row, op_ptr, rna_path, bmain_ptr, "objects", socket.name, ICON_OBJECT_DATA);
       break;
@@ -498,10 +506,12 @@ static void run_node_group_ui(bContext *C, wmOperator *op)
     return;
   }
 
-  int input_index;
-  LISTBASE_FOREACH_INDEX (bNodeSocket *, io_socket, &node_tree->inputs, input_index) {
+  node_tree->ensure_topology_cache();
+  int input_index = 0;
+  for (bNodeTreeInterfaceSocket *io_socket : node_tree->interface_cache().inputs) {
     draw_property_for_socket(
         *node_tree, layout, op->properties, &bmain_ptr, op->ptr, *io_socket, input_index);
+    ++input_index;
   }
 }
 
