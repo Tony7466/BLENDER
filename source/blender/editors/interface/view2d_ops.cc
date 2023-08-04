@@ -1014,6 +1014,7 @@ static void view_zoomdrag_apply(bContext *C, wmOperator *op)
 {
   v2dViewZoomData *vzd = static_cast<v2dViewZoomData *>(op->customdata);
   View2D *v2d = vzd->v2d;
+  const rctf cur_old = v2d->cur;
   const int snap_test = ED_region_snap_size_test(vzd->region);
 
   const bool use_cursor_init = RNA_boolean_get(op->ptr, "use_cursor_init");
@@ -1041,17 +1042,19 @@ static void view_zoomdrag_apply(bContext *C, wmOperator *op)
       v2d->cur.xmax -= 2 * dx;
     }
     else {
+      v2d->cur.xmin += dx;
+      v2d->cur.xmax -= dx;
       if (zoom_to_pos) {
-        const float mval_fac = (vzd->mx_2d - v2d->cur.xmin) / BLI_rctf_size_x(&v2d->cur);
-        const float mval_faci = 1.0f - mval_fac;
-        const float ofs = (mval_fac * dx) - (mval_faci * dx);
+        const float zoomx = (float)(BLI_rcti_size_x(&v2d->mask) + 1) / BLI_rctf_size_x(&v2d->cur);
 
-        v2d->cur.xmin += ofs + dx;
-        v2d->cur.xmax += ofs - dx;
-      }
-      else {
-        v2d->cur.xmin += dx;
-        v2d->cur.xmax -= dx;
+        if (IN_RANGE_INCL(zoomx, v2d->minzoom, v2d->maxzoom)) {
+          float mval_fac = (vzd->mx_2d - cur_old.xmin) / BLI_rctf_size_x(&cur_old);
+          float mval_faci = 1.0f - mval_fac;
+          float ofs = (mval_fac * dx) - (mval_faci * dx);
+
+          v2d->cur.xmin += ofs;
+          v2d->cur.xmax += ofs;
+        }
       }
     }
   }
@@ -1060,17 +1063,19 @@ static void view_zoomdrag_apply(bContext *C, wmOperator *op)
       v2d->cur.ymax -= 2 * dy;
     }
     else {
+      v2d->cur.ymin += dy;
+      v2d->cur.ymax -= dy;
       if (zoom_to_pos) {
-        const float mval_fac = (vzd->my_2d - v2d->cur.ymin) / BLI_rctf_size_y(&v2d->cur);
-        const float mval_faci = 1.0f - mval_fac;
-        const float ofs = (mval_fac * dy) - (mval_faci * dy);
+        const float zoomy = (float)(BLI_rcti_size_y(&v2d->mask) + 1) / BLI_rctf_size_y(&v2d->cur);
 
-        v2d->cur.ymin += ofs + dy;
-        v2d->cur.ymax += ofs - dy;
-      }
-      else {
-        v2d->cur.ymin += dy;
-        v2d->cur.ymax -= dy;
+        if (IN_RANGE_INCL(zoomy, v2d->minzoom, v2d->maxzoom)) {
+          float mval_fac = (vzd->my_2d - cur_old.ymin) / BLI_rctf_size_y(&cur_old);
+          float mval_faci = 1.0f - mval_fac;
+          float ofs = (mval_fac * dy) - (mval_faci * dy);
+
+          v2d->cur.ymin += ofs;
+          v2d->cur.ymax += ofs;
+        }
       }
     }
   }
