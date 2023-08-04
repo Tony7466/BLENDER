@@ -94,7 +94,7 @@ set(SRC
   gizmo/wm_gizmo_fn.h
   gizmo/wm_gizmo_wmapi.h
   gizmo/intern/wm_gizmo_intern.h
-  message_bus/intern/wm_message_bus_intern.h
+  message_bus/intern/wm_message_bus_intern.hh
   message_bus/wm_message_bus.hh
 )
 

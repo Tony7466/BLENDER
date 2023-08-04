@@ -19,7 +19,7 @@
 
 #include "WM_message.hh"
 #include "WM_types.hh"
-#include "message_bus/intern/wm_message_bus_intern.h"
+#include "message_bus/intern/wm_message_bus_intern.hh"
 
 #include "RNA_access.h"
 #include "RNA_path.h"
