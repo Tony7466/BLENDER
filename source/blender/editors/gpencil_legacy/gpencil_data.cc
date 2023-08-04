@@ -8,11 +8,11 @@
  * Operators for dealing with GP data-blocks and layers.
  */
 
-#include <math.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -38,7 +38,7 @@
 
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_fcurve_driver.h"
@@ -49,7 +49,7 @@
 #include "BKE_material.h"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
@@ -472,7 +472,7 @@ static int gpencil_layer_copy_exec(bContext *C, wmOperator *op)
   bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
   bGPDlayer *new_layer;
   const int mode = RNA_enum_get(op->ptr, "mode");
-  const bool dup_strokes = (bool)(mode == GP_LAYER_DUPLICATE_ALL);
+  const bool dup_strokes = bool(mode == GP_LAYER_DUPLICATE_ALL);
   /* sanity checks */
   if (ELEM(nullptr, gpd, gpl)) {
     return OPERATOR_CANCELLED;
@@ -805,7 +805,7 @@ static int gpencil_frame_clean_loose_exec(bContext *C, wmOperator *op)
   bool changed = false;
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   int limit = RNA_int_get(op->ptr, "limit");
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
 
   CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
     bGPDframe *init_gpf = static_cast<bGPDframe *>((is_multiedit) ? gpl->frames.first :
@@ -1085,7 +1085,7 @@ void GPENCIL_OT_hide(wmOperatorType *ot)
 
   /* props */
   RNA_def_boolean(
-      ot->srna, "unselected", 0, "Unselected", "Hide unselected rather than selected layers");
+      ot->srna, "unselected", false, "Unselected", "Hide unselected rather than selected layers");
 }
 
 /* ********************** Show All Layers ***************************** */
@@ -1098,8 +1098,7 @@ static bool gpencil_reveal_poll(bContext *C)
 
 static void gpencil_reveal_select_frame(bContext *C, bGPDframe *frame, bool select)
 {
-  bGPDstroke *gps;
-  for (gps = static_cast<bGPDstroke *>(frame->strokes.first); gps; gps = gps->next) {
+  LISTBASE_FOREACH (bGPDstroke *, gps, &frame->strokes) {
 
     /* only deselect strokes that are valid in this view */
     if (ED_gpencil_stroke_can_use(C, gps)) {
@@ -1141,8 +1140,7 @@ static int gpencil_reveal_exec(bContext *C, wmOperator *op)
         }
         else {
           /* deselect strokes on all frames (same as deselect all operator) */
-          bGPDframe *gpf;
-          for (gpf = static_cast<bGPDframe *>(gpl->frames.first); gpf; gpf = gpf->next) {
+          LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
             gpencil_reveal_select_frame(C, gpf, false);
           }
         }
@@ -1349,8 +1347,8 @@ static void apply_layer_settings(bGPDlayer *gpl)
       gps->vert_color_fill[3] *= gpl->opacity;
       for (int p = 0; p < gps->totpoints; p++) {
         bGPDspoint *pt = &gps->points[p];
-        float factor = (((float)gps->thickness * pt->pressure) + (float)gpl->line_change) /
-                       ((float)gps->thickness * pt->pressure);
+        float factor = ((float(gps->thickness) * pt->pressure) + float(gpl->line_change)) /
+                       (float(gps->thickness) * pt->pressure);
         pt->pressure *= factor;
         pt->strength *= gpl->opacity;
 
@@ -1603,7 +1601,7 @@ static int gpencil_stroke_arrange_exec(bContext *C, wmOperator *op)
   }
 
   const int direction = RNA_enum_get(op->ptr, "direction");
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
   bGPDstroke *gps_target = nullptr;
 
   bool changed = false;
@@ -1621,7 +1619,7 @@ static int gpencil_stroke_arrange_exec(bContext *C, wmOperator *op)
           continue;
         }
         /* verify if any selected stroke is in the extreme of the stack and select to move */
-        for (gps = static_cast<bGPDstroke *>(gpf->strokes.first); gps; gps = gps->next) {
+        LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
           /* only if selected */
           if (gps->flag & GP_STROKE_SELECT) {
             /* skip strokes that are invalid for current view */
@@ -1798,7 +1796,7 @@ static int gpencil_stroke_change_color_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
   if (ELEM(nullptr, ma)) {
     return OPERATOR_CANCELLED;
   }
@@ -1896,9 +1894,7 @@ static int gpencil_material_lock_unsused_exec(bContext *C, wmOperator * /*op*/)
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* only editable and visible layers are considered */
     if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != nullptr)) {
-      for (bGPDstroke *gps = static_cast<bGPDstroke *>(gpl->actframe->strokes.last); gps;
-           gps = gps->prev)
-      {
+      LISTBASE_FOREACH_BACKWARD (bGPDstroke *, gps, &gpl->actframe->strokes) {
         /* only if selected */
         if (gps->flag & GP_STROKE_SELECT) {
           /* skip strokes that are invalid for current view */
@@ -2063,7 +2059,7 @@ static void gpencil_brush_delete_mode_brushes(Main *bmain,
     }
 
     short preset = (brush->gpencil_settings) ? brush->gpencil_settings->preset_type :
-                                               GP_BRUSH_PRESET_UNKNOWN;
+                                               short(GP_BRUSH_PRESET_UNKNOWN);
 
     if (preset != GP_BRUSH_PRESET_UNKNOWN) {
       /* Verify to delete only the brushes of the current mode. */
@@ -2912,8 +2908,8 @@ int ED_gpencil_join_objects_exec(bContext *C, wmOperator *op)
         LISTBASE_FOREACH (GpencilModifierData *, md, &ob_iter->greasepencil_modifiers) {
           const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(
               GpencilModifierType(md->type));
-          if (mti->bakeModifier) {
-            mti->bakeModifier(bmain, depsgraph, md, ob_iter);
+          if (mti->bake_modifier) {
+            mti->bake_modifier(bmain, depsgraph, md, ob_iter);
           }
         }
 
@@ -2958,7 +2954,7 @@ int ED_gpencil_join_objects_exec(bContext *C, wmOperator *op)
         }
 
         /* Duplicate #bGPDlayers. */
-        tJoinGPencil_AdtFixData afd = {0};
+        tJoinGPencil_AdtFixData afd = {nullptr};
         afd.src_gpd = gpd_src;
         afd.tar_gpd = gpd_dst;
         afd.names_map = BLI_ghash_str_new("joined_gp_layers_map");
@@ -3095,7 +3091,7 @@ static int gpencil_lock_layer_exec(bContext *C, wmOperator * /*op*/)
   /* first lock and hide all colors */
   Material *ma = nullptr;
   short *totcol = BKE_object_material_len_p(ob);
-  if (totcol == 0) {
+  if (totcol == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
@@ -3115,9 +3111,7 @@ static int gpencil_lock_layer_exec(bContext *C, wmOperator * /*op*/)
     if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != nullptr) &&
         (gpl->flag & GP_LAYER_ACTIVE))
     {
-      for (bGPDstroke *gps = static_cast<bGPDstroke *>(gpl->actframe->strokes.last); gps;
-           gps = gps->prev)
-      {
+      LISTBASE_FOREACH_BACKWARD (bGPDstroke *, gps, &gpl->actframe->strokes) {
         /* skip strokes that are invalid for current view */
         if (ED_gpencil_stroke_can_use(C, gps) == false) {
           continue;
@@ -3278,7 +3272,7 @@ static int gpencil_material_hide_exec(bContext *C, wmOperator *op)
 
   Material *ma = nullptr;
   short *totcol = BKE_object_material_len_p(ob);
-  if (totcol == 0) {
+  if (totcol == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
@@ -3329,7 +3323,7 @@ void GPENCIL_OT_material_hide(wmOperatorType *ot)
 
   /* props */
   RNA_def_boolean(
-      ot->srna, "unselected", 0, "Unselected", "Hide unselected rather than selected colors");
+      ot->srna, "unselected", false, "Unselected", "Hide unselected rather than selected colors");
 }
 
 /* ********************** Show All Colors ***************************** */
@@ -3341,7 +3335,7 @@ static int gpencil_material_reveal_exec(bContext *C, wmOperator * /*op*/)
   Material *ma = nullptr;
   short *totcol = BKE_object_material_len_p(ob);
 
-  if (totcol == 0) {
+  if (totcol == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
@@ -3394,7 +3388,7 @@ static int gpencil_material_lock_all_exec(bContext *C, wmOperator * /*op*/)
   Material *ma = nullptr;
   short *totcol = BKE_object_material_len_p(ob);
 
-  if (totcol == 0) {
+  if (totcol == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
@@ -3447,7 +3441,7 @@ static int gpencil_material_unlock_all_exec(bContext *C, wmOperator * /*op*/)
   Material *ma = nullptr;
   short *totcol = BKE_object_material_len_p(ob);
 
-  if (totcol == 0) {
+  if (totcol == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
@@ -3497,7 +3491,7 @@ static int gpencil_material_select_exec(bContext *C, wmOperator *op)
   bGPdata *gpd = ED_gpencil_data_get_active(C);
   Object *ob = CTX_data_active_object(C);
   MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, ob->actcol);
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
   const bool deselected = RNA_boolean_get(op->ptr, "deselect");
 
   /* sanity checks */
@@ -3580,7 +3574,7 @@ void GPENCIL_OT_material_select(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* props */
-  ot->prop = RNA_def_boolean(ot->srna, "deselect", 0, "Deselect", "Unselect strokes");
+  ot->prop = RNA_def_boolean(ot->srna, "deselect", false, "Deselect", "Unselect strokes");
   RNA_def_property_flag(ot->prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 

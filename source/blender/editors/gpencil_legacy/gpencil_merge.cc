@@ -7,7 +7,7 @@
  * Operators for merge Grease Pencil strokes.
  */
 
-#include <stdio.h>
+#include <cstdio>
 
 #include "MEM_guardedalloc.h"
 
@@ -18,7 +18,7 @@
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_material_types.h"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_context.h"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
@@ -371,7 +371,7 @@ static int gpencil_analyze_strokes(tGPencilPointCache *src_array,
   BLI_ghash_insert(all_strokes, sort_pt->gps, sort_pt->gps);
 
   /* look for near stroke */
-  bool loop = (bool)(totstrokes > 1);
+  bool loop = bool(totstrokes > 1);
   while (loop) {
     bGPDstroke *gps_next = nullptr;
     GHash *strokes = BLI_ghash_ptr_new(__func__);
@@ -551,11 +551,13 @@ void GPENCIL_OT_stroke_merge(wmOperatorType *ot)
   /* properties */
   ot->prop = RNA_def_enum(ot->srna, "mode", mode_type, GP_MERGE_STROKE, "Mode", "");
   RNA_def_boolean(
-      ot->srna, "back", 0, "Draw on Back", "Draw new stroke below all previous strokes");
-  RNA_def_boolean(ot->srna, "additive", 0, "Additive Drawing", "Add to previous drawing");
-  RNA_def_boolean(ot->srna, "cyclic", 0, "Cyclic", "Close new stroke");
-  RNA_def_boolean(ot->srna, "clear_point", 0, "Dissolve Points", "Dissolve old selected points");
-  RNA_def_boolean(ot->srna, "clear_stroke", 0, "Delete Strokes", "Delete old selected strokes");
+      ot->srna, "back", false, "Draw on Back", "Draw new stroke below all previous strokes");
+  RNA_def_boolean(ot->srna, "additive", false, "Additive Drawing", "Add to previous drawing");
+  RNA_def_boolean(ot->srna, "cyclic", false, "Cyclic", "Close new stroke");
+  RNA_def_boolean(
+      ot->srna, "clear_point", false, "Dissolve Points", "Dissolve old selected points");
+  RNA_def_boolean(
+      ot->srna, "clear_stroke", false, "Delete Strokes", "Delete old selected strokes");
 }
 
 /* Merge similar materials. */
@@ -580,7 +582,7 @@ static int gpencil_stroke_merge_material_exec(bContext *C, wmOperator *op)
 
   /* Review materials. */
   short *totcol = BKE_object_material_len_p(ob);
-  if (totcol == 0) {
+  if (totcol == nullptr) {
     return OPERATOR_CANCELLED;
   }
 

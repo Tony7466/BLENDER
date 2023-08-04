@@ -15,7 +15,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_bvhutils.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_sample.hh"
 #include "BKE_pointcloud.h"
 
@@ -63,12 +63,12 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "distribute_method", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "distribute_method", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_layout_ex(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "use_legacy_normal", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_legacy_normal", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void node_point_distribute_points_on_faces_update(bNodeTree *ntree, bNode *node)
@@ -518,7 +518,7 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
     return;
   }
 
-  const Mesh &mesh = *geometry_set.get_mesh_for_read();
+  const Mesh &mesh = *geometry_set.get_mesh();
 
   Vector<float3> positions;
   Vector<float3> bary_coords;

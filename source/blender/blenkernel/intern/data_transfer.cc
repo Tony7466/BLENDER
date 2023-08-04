@@ -24,10 +24,10 @@
 #include "BKE_data_transfer.h"
 #include "BKE_deform.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
-#include "BKE_mesh_remap.h"
-#include "BKE_mesh_runtime.h"
-#include "BKE_mesh_wrapper.h"
+#include "BKE_mesh_mapping.hh"
+#include "BKE_mesh_remap.hh"
+#include "BKE_mesh_runtime.hh"
+#include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_object_deform.h"
@@ -1451,13 +1451,9 @@ bool BKE_object_data_transfer_ex(Depsgraph *depsgraph,
                                                tolayers,
                                                space_transform))
       {
-        CustomDataTransferLayerMap *lay_mapit;
-
         changed |= (lay_map.first != nullptr);
 
-        for (lay_mapit = static_cast<CustomDataTransferLayerMap *>(lay_map.first); lay_mapit;
-             lay_mapit = lay_mapit->next)
-        {
+        LISTBASE_FOREACH (CustomDataTransferLayerMap *, lay_mapit, &lay_map) {
           CustomData_data_transfer(&geom_map[VDATA], lay_mapit);
         }
 
@@ -1539,13 +1535,9 @@ bool BKE_object_data_transfer_ex(Depsgraph *depsgraph,
                                                tolayers,
                                                space_transform))
       {
-        CustomDataTransferLayerMap *lay_mapit;
-
         changed |= (lay_map.first != nullptr);
 
-        for (lay_mapit = static_cast<CustomDataTransferLayerMap *>(lay_map.first); lay_mapit;
-             lay_mapit = lay_mapit->next)
-        {
+        LISTBASE_FOREACH (CustomDataTransferLayerMap *, lay_mapit, &lay_map) {
           CustomData_data_transfer(&geom_map[EDATA], lay_mapit);
         }
 
@@ -1633,13 +1625,9 @@ bool BKE_object_data_transfer_ex(Depsgraph *depsgraph,
                                                tolayers,
                                                space_transform))
       {
-        CustomDataTransferLayerMap *lay_mapit;
-
         changed |= (lay_map.first != nullptr);
 
-        for (lay_mapit = static_cast<CustomDataTransferLayerMap *>(lay_map.first); lay_mapit;
-             lay_mapit = lay_mapit->next)
-        {
+        LISTBASE_FOREACH (CustomDataTransferLayerMap *, lay_mapit, &lay_map) {
           CustomData_data_transfer(&geom_map[LDATA], lay_mapit);
         }
 
@@ -1722,13 +1710,9 @@ bool BKE_object_data_transfer_ex(Depsgraph *depsgraph,
                                                tolayers,
                                                space_transform))
       {
-        CustomDataTransferLayerMap *lay_mapit;
-
         changed |= (lay_map.first != nullptr);
 
-        for (lay_mapit = static_cast<CustomDataTransferLayerMap *>(lay_map.first); lay_mapit;
-             lay_mapit = lay_mapit->next)
-        {
+        LISTBASE_FOREACH (CustomDataTransferLayerMap *, lay_mapit, &lay_map) {
           CustomData_data_transfer(&geom_map[PDATA], lay_mapit);
         }
 

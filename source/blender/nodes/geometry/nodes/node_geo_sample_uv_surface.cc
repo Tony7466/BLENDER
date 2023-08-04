@@ -53,7 +53,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "data_type", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -170,7 +170,7 @@ class ReverseUVSampleFunction : public mf::MultiFunction {
  private:
   void evaluate_source()
   {
-    const Mesh &mesh = *source_.get_mesh_for_read();
+    const Mesh &mesh = *source_.get_mesh();
     source_context_.emplace(bke::MeshFieldContext{mesh, ATTR_DOMAIN_CORNER});
     source_evaluator_ = std::make_unique<FieldEvaluator>(*source_context_, mesh.totloop);
     source_evaluator_->add(src_uv_map_field_);
@@ -238,7 +238,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry = params.extract_input<GeometrySet>("Mesh");
   const eCustomDataType data_type = eCustomDataType(params.node().custom1);
-  const Mesh *mesh = geometry.get_mesh_for_read();
+  const Mesh *mesh = geometry.get_mesh();
   if (mesh == nullptr) {
     params.set_default_remaining_outputs();
     return;

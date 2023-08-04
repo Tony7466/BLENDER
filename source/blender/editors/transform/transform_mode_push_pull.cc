@@ -102,7 +102,7 @@ static void transdata_elem_push_pull_fn(void *__restrict iter_data_v,
 /** \name Transform (Push/Pull)
  * \{ */
 
-static void applyPushPull(TransInfo *t, const int[2] /*mval*/)
+static void applyPushPull(TransInfo *t)
 {
   float axis_global[3];
   float distance;
@@ -162,7 +162,7 @@ static void applyPushPull(TransInfo *t, const int[2] /*mval*/)
     }
   }
 
-  recalcData(t);
+  recalc_data(t);
 
   ED_area_status_text(t->area, str);
 }

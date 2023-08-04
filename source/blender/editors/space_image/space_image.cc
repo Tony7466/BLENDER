@@ -63,10 +63,9 @@
 static void image_scopes_tag_refresh(ScrArea *area)
 {
   SpaceImage *sima = (SpaceImage *)area->spacedata.first;
-  ARegion *region;
 
   /* only while histogram is visible */
-  for (region = static_cast<ARegion *>(area->regionbase.first); region; region = region->next) {
+  LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
     if (region->regiontype == RGN_TYPE_TOOL_PROPS && region->flag & RGN_FLAG_HIDDEN) {
       return;
     }
@@ -678,8 +677,8 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
       BLI_rctf_init(&frame, 0.0f, ibuf->x, 0.0f, ibuf->y);
       UI_view2d_view_to_region(&region->v2d, 0.0f, 0.0f, &x, &y);
       ED_region_image_metadata_draw(x, y, ibuf, &frame, zoomx, zoomy);
-      ED_space_image_release_buffer(sima, ibuf, lock);
     }
+    ED_space_image_release_buffer(sima, ibuf, lock);
   }
 
   /* sample line */

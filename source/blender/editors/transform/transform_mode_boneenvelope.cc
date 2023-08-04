@@ -30,7 +30,7 @@
 /** \name Transform (Bone Envelope)
  * \{ */
 
-static void applyBoneEnvelope(TransInfo *t, const int[2] /*mval*/)
+static void applyBoneEnvelope(TransInfo *t)
 {
   float ratio;
   int i;
@@ -74,7 +74,7 @@ static void applyBoneEnvelope(TransInfo *t, const int[2] /*mval*/)
     }
   }
 
-  recalcData(t);
+  recalc_data(t);
 
   ED_area_status_text(t->area, str);
 }

@@ -21,7 +21,7 @@
 #include "bmesh_edgeloop.h" /* own include */
 
 struct BMEdgeLoopStore {
-  struct BMEdgeLoopStore *next, *prev;
+  BMEdgeLoopStore *next, *prev;
   ListBase verts;
   int flag;
   int len;
@@ -178,14 +178,14 @@ int BM_mesh_edgeloops_find(BMesh *bm,
  * Add to
  */
 struct VertStep {
-  struct VertStep *next, *prev;
+  VertStep *next, *prev;
   BMVert *v;
 };
 
 static void vs_add(
     BLI_mempool *vs_pool, ListBase *lb, BMVert *v, BMEdge *e_prev, const int iter_tot)
 {
-  struct VertStep *vs_new = static_cast<VertStep *>(BLI_mempool_alloc(vs_pool));
+  VertStep *vs_new = static_cast<VertStep *>(BLI_mempool_alloc(vs_pool));
   vs_new->v = v;
 
   BM_elem_index_set(v, iter_tot); /* set_dirty */
@@ -206,7 +206,7 @@ static bool bm_loop_path_build_step(BLI_mempool *vs_pool,
                                     BMVert *v_match[2])
 {
   ListBase lb_tmp = {nullptr, nullptr};
-  struct VertStep *vs, *vs_next;
+  VertStep *vs, *vs_next;
   BLI_assert(abs(dir) == 1);
 
   for (vs = static_cast<VertStep *>(lb->first); vs; vs = vs_next) {
@@ -321,7 +321,7 @@ bool BM_mesh_edgeloops_find_path(BMesh *bm,
     BMVert *v_match[2] = {nullptr, nullptr};
     ListBase lb_src = {nullptr, nullptr};
     ListBase lb_dst = {nullptr, nullptr};
-    BLI_mempool *vs_pool = BLI_mempool_create(sizeof(struct VertStep), 0, 512, BLI_MEMPOOL_NOP);
+    BLI_mempool *vs_pool = BLI_mempool_create(sizeof(VertStep), 0, 512, BLI_MEMPOOL_NOP);
 
     /* edge args are dummy */
     vs_add(vs_pool, &lb_src, v_src, v_src->e, 1);
@@ -391,35 +391,28 @@ bool BM_mesh_edgeloops_find_path(BMesh *bm,
 
 void BM_mesh_edgeloops_free(ListBase *eloops)
 {
-  BMEdgeLoopStore *el_store;
-  while ((el_store = static_cast<BMEdgeLoopStore *>(BLI_pophead(eloops)))) {
+  while (BMEdgeLoopStore *el_store = static_cast<BMEdgeLoopStore *>(BLI_pophead(eloops))) {
     BM_edgeloop_free(el_store);
   }
 }
 
 void BM_mesh_edgeloops_calc_center(BMesh *bm, ListBase *eloops)
 {
-  BMEdgeLoopStore *el_store;
-  for (el_store = static_cast<BMEdgeLoopStore *>(eloops->first); el_store;
-       el_store = el_store->next) {
+  LISTBASE_FOREACH (BMEdgeLoopStore *, el_store, eloops) {
     BM_edgeloop_calc_center(bm, el_store);
   }
 }
 
 void BM_mesh_edgeloops_calc_normal(BMesh *bm, ListBase *eloops)
 {
-  BMEdgeLoopStore *el_store;
-  for (el_store = static_cast<BMEdgeLoopStore *>(eloops->first); el_store;
-       el_store = el_store->next) {
+  LISTBASE_FOREACH (BMEdgeLoopStore *, el_store, eloops) {
     BM_edgeloop_calc_normal(bm, el_store);
   }
 }
 
 void BM_mesh_edgeloops_calc_normal_aligned(BMesh *bm, ListBase *eloops, const float no_align[3])
 {
-  BMEdgeLoopStore *el_store;
-  for (el_store = static_cast<BMEdgeLoopStore *>(eloops->first); el_store;
-       el_store = el_store->next) {
+  LISTBASE_FOREACH (BMEdgeLoopStore *, el_store, eloops) {
     BM_edgeloop_calc_normal_aligned(bm, el_store, no_align);
   }
 }
@@ -437,14 +430,13 @@ void BM_mesh_edgeloops_calc_order(BMesh * /*bm*/, ListBase *eloops, const bool u
   {
     add_v3_v3(cent, el_store->co);
   }
-  mul_v3_fl(cent, 1.0f / (float)tot);
+  mul_v3_fl(cent, 1.0f / float(tot));
 
   /* Find the furthest out loop. */
   {
     BMEdgeLoopStore *el_store_best = nullptr;
     float len_best_sq = -1.0f;
-    for (el_store = static_cast<BMEdgeLoopStore *>(eloops->first); el_store;
-         el_store = el_store->next) {
+    LISTBASE_FOREACH (BMEdgeLoopStore *, el_store, eloops) {
       const float len_sq = len_squared_v3v3(cent, el_store->co);
       if (len_sq > len_best_sq) {
         len_best_sq = len_sq;
@@ -467,8 +459,7 @@ void BM_mesh_edgeloops_calc_order(BMesh * /*bm*/, ListBase *eloops, const bool u
       BLI_ASSERT_UNIT_V3(no);
     }
 
-    for (el_store = static_cast<BMEdgeLoopStore *>(eloops->first); el_store;
-         el_store = el_store->next) {
+    LISTBASE_FOREACH (BMEdgeLoopStore *, el_store, eloops) {
       float len_sq;
       if (use_normals) {
         /* Scale the length by how close the loops are to pointing at each other. */
@@ -609,10 +600,10 @@ void BM_edgeloop_calc_center(BMesh * /*bm*/, BMEdgeLoopStore *el_store)
     v_prev = v_curr;
     v_curr = v_next;
     v_next = NODE_AS_CO(node_next);
-  } while (1);
+  } while (true);
 
   if (totw != 0.0f) {
-    mul_v3_fl(el_store->co, 1.0f / (float)totw);
+    mul_v3_fl(el_store->co, 1.0f / float(totw));
   }
 }
 
@@ -777,23 +768,21 @@ void BM_edgeloop_expand(
 
 bool BM_edgeloop_overlap_check(BMEdgeLoopStore *el_store_a, BMEdgeLoopStore *el_store_b)
 {
-  LinkData *node;
-
   /* A little more efficient if 'a' as smaller. */
   if (el_store_a->len > el_store_b->len) {
     SWAP(BMEdgeLoopStore *, el_store_a, el_store_b);
   }
 
   /* init */
-  for (node = static_cast<LinkData *>(el_store_a->verts.first); node; node = node->next) {
+  LISTBASE_FOREACH (LinkData *, node, &el_store_a->verts) {
     BM_elem_flag_enable((BMVert *)node->data, BM_ELEM_INTERNAL_TAG);
   }
-  for (node = static_cast<LinkData *>(el_store_b->verts.first); node; node = node->next) {
+  LISTBASE_FOREACH (LinkData *, node, &el_store_b->verts) {
     BM_elem_flag_disable((BMVert *)node->data, BM_ELEM_INTERNAL_TAG);
   }
 
   /* Check 'a' (clear as we go). */
-  for (node = static_cast<LinkData *>(el_store_a->verts.first); node; node = node->next) {
+  LISTBASE_FOREACH (LinkData *, node, &el_store_a->verts) {
     if (!BM_elem_flag_test((BMVert *)node->data, BM_ELEM_INTERNAL_TAG)) {
       /* Finish clearing 'a', leave tag clean. */
       while ((node = node->next)) {

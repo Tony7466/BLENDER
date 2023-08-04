@@ -22,10 +22,10 @@
 #include "BKE_ccg.h"
 #include "BKE_context.h"
 #include "BKE_mesh.hh"
-#include "BKE_multires.h"
-#include "BKE_paint.h"
+#include "BKE_multires.hh"
+#include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
-#include "BKE_subsurf.h"
+#include "BKE_subsurf.hh"
 
 #include "DEG_depsgraph.h"
 
@@ -122,7 +122,8 @@ static void partialvis_update_grids(Depsgraph *depsgraph,
 {
   CCGElem **grids;
   BLI_bitmap **grid_hidden;
-  int *grid_indices, totgrid;
+  const int *grid_indices;
+  int totgrid;
   bool any_changed = false, any_visible = false;
 
   /* Get PBVH data. */

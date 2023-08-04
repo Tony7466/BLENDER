@@ -691,7 +691,7 @@ static int action_unlink_exec(bContext *C, wmOperator *op)
 static int action_unlink_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   /* NOTE: this is hardcoded to match the behavior for the unlink button
-   * (in interface_templates.c). */
+   * (in `interface_templates.cc`). */
   RNA_boolean_set(op->ptr, "force_delete", event->modifier & KM_SHIFT);
   return action_unlink_exec(C, op);
 }
@@ -732,9 +732,7 @@ void ACTION_OT_unlink(wmOperatorType *ot)
 /* Try to find NLA Strip to use for action layer up/down tool */
 static NlaStrip *action_layer_get_nlastrip(ListBase *strips, float ctime)
 {
-  NlaStrip *strip;
-
-  for (strip = static_cast<NlaStrip *>(strips->first); strip; strip = strip->next) {
+  LISTBASE_FOREACH (NlaStrip *, strip, strips) {
     /* Can we use this? */
     if (IN_RANGE_INCL(ctime, strip->start, strip->end)) {
       /* in range - use this one */

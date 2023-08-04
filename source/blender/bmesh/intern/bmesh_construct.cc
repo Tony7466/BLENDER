@@ -296,7 +296,7 @@ BMFace *BM_face_create_ngon_verts(BMesh *bm,
 
 void BM_verts_sort_radial_plane(BMVert **vert_arr, int len)
 {
-  struct SortIntByFloat *vang = BLI_array_alloca(vang, len);
+  SortIntByFloat *vang = BLI_array_alloca(vang, len);
   BMVert **vert_arr_map = BLI_array_alloca(vert_arr_map, len);
 
   float nor[3], cent[3];
@@ -607,7 +607,6 @@ BMesh *BM_mesh_copy(BMesh *bm_old)
   BMEdge *e, *e_new, **etable = nullptr;
   BMFace *f, *f_new, **ftable = nullptr;
   BMElem **eletable;
-  BMEditSelection *ese;
   BMIter iter;
   int i;
   const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_BM(bm_old);
@@ -683,7 +682,7 @@ BMesh *BM_mesh_copy(BMesh *bm_old)
   BLI_assert(i == bm_old->totface);
 
   /* copy over edit selection history */
-  for (ese = static_cast<BMEditSelection *>(bm_old->selected.first); ese; ese = ese->next) {
+  LISTBASE_FOREACH (BMEditSelection *, ese, &bm_old->selected) {
     BMElem *ele = nullptr;
 
     switch (ese->htype) {

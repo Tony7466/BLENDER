@@ -8,7 +8,7 @@
  * Used for vertex color & weight paint and mode switching.
  *
  * \note This file is already big,
- * use `paint_vertex_color_ops.c` & `paint_vertex_weight_ops.c` for general purpose operators.
+ * use `paint_vertex_color_ops.cc` & `paint_vertex_weight_ops.cc` for general purpose operators.
  */
 
 #include "MEM_guardedalloc.h"
@@ -34,17 +34,17 @@
 
 #include "BKE_attribute.h"
 #include "BKE_attribute.hh"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
+#include "BKE_mesh_mapping.hh"
 #include "BKE_object.h"
 #include "BKE_object_deform.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_report.h"
 
 #include "DEG_depsgraph.h"
@@ -1540,6 +1540,11 @@ bool weight_paint_mode_poll(bContext *C)
   return ob && ob->mode == OB_MODE_WEIGHT_PAINT && ((const Mesh *)ob->data)->faces_num;
 }
 
+bool weight_paint_mode_region_view3d_poll(bContext *C)
+{
+  return weight_paint_mode_poll(C) && ED_operator_region_view3d_active(C);
+}
+
 static bool weight_paint_poll_ex(bContext *C, bool check_tool)
 {
   const Object *ob = CTX_data_active_object(C);
@@ -1870,11 +1875,8 @@ static void wpaint_stroke_done(const bContext *C, PaintStroke *stroke)
 
   /* and particles too */
   if (ob->particlesystem.first) {
-    ParticleSystem *psys;
-    int i;
-
-    for (psys = (ParticleSystem *)ob->particlesystem.first; psys; psys = psys->next) {
-      for (i = 0; i < PSYS_TOT_VG; i++) {
+    LISTBASE_FOREACH (ParticleSystem *, psys, &ob->particlesystem) {
+      for (int i = 0; i < PSYS_TOT_VG; i++) {
         if (psys->vgroup[i] == BKE_object_defgroup_active_index_get(ob)) {
           psys->recalc |= ID_RECALC_PSYS_RESET;
           break;

@@ -7,7 +7,7 @@
  *
  * Mesh normal calculation functions.
  *
- * \see bmesh_mesh_normals.c for the equivalent #BMesh functionality.
+ * \see `bmesh_mesh_normals.cc` for the equivalent #BMesh functionality.
  */
 
 #include <climits>
@@ -33,7 +33,7 @@
 #include "BKE_editmesh_cache.hh"
 #include "BKE_global.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
+#include "BKE_mesh_mapping.hh"
 
 #include "atomic_ops.h"
 
@@ -89,17 +89,22 @@ static void add_v3_v3_atomic(float r[3], const float a[3])
  * Related to managing normals but not directly related to calculating normals.
  * \{ */
 
-float (*BKE_mesh_vert_normals_for_write(Mesh *mesh))[3]
+namespace blender::bke {
+
+void mesh_vert_normals_assign(Mesh &mesh, Span<float3> vert_normals)
 {
-  mesh->runtime->vert_normals.reinitialize(mesh->totvert);
-  return reinterpret_cast<float(*)[3]>(mesh->runtime->vert_normals.data());
+  mesh.runtime->vert_normals.clear();
+  mesh.runtime->vert_normals.extend(vert_normals);
+  mesh.runtime->vert_normals_dirty = false;
 }
 
-void BKE_mesh_vert_normals_clear_dirty(Mesh *mesh)
+void mesh_vert_normals_assign(Mesh &mesh, Vector<float3> vert_normals)
 {
-  mesh->runtime->vert_normals_dirty = false;
-  BLI_assert(mesh->runtime->vert_normals.size() == mesh->totvert);
+  mesh.runtime->vert_normals = std::move(vert_normals);
+  mesh.runtime->vert_normals_dirty = false;
 }
+
+}  // namespace blender::bke
 
 bool BKE_mesh_vert_normals_are_dirty(const Mesh *mesh)
 {
@@ -139,7 +144,8 @@ static float3 normal_calc_ngon(const Span<float3> vert_positions, const Span<int
   }
 
   if (UNLIKELY(normalize_v3(normal) == 0.0f)) {
-    normal[2] = 1.0f; /* other axis set to 0.0 */
+    /* Other axis are already set to zero. */
+    normal[2] = 1.0f;
   }
 
   return normal;
@@ -147,25 +153,30 @@ static float3 normal_calc_ngon(const Span<float3> vert_positions, const Span<int
 
 float3 face_normal_calc(const Span<float3> vert_positions, const Span<int> face_verts)
 {
-  if (face_verts.size() > 4) {
-    return normal_calc_ngon(vert_positions, face_verts);
-  }
-  if (face_verts.size() == 3) {
-    return math::normal_tri(vert_positions[face_verts[0]],
-                            vert_positions[face_verts[1]],
-                            vert_positions[face_verts[2]]);
-  }
+  float3 normal;
   if (face_verts.size() == 4) {
-    float3 normal;
     normal_quad_v3(normal,
                    vert_positions[face_verts[0]],
                    vert_positions[face_verts[1]],
                    vert_positions[face_verts[2]],
                    vert_positions[face_verts[3]]);
-    return normal;
   }
-  /* horrible, two sided face! */
-  return float3(0);
+  else if (face_verts.size() == 3) {
+    normal = math::normal_tri(vert_positions[face_verts[0]],
+                              vert_positions[face_verts[1]],
+                              vert_positions[face_verts[2]]);
+  }
+  else {
+    BLI_assert(face_verts.size() > 4);
+    normal = normal_calc_ngon(vert_positions, face_verts);
+  }
+
+  if (UNLIKELY(math::is_zero(normal))) {
+    normal.z = 1.0f;
+  }
+
+  BLI_ASSERT_UNIT_V3(normal);
+  return normal;
 }
 
 /** \} */

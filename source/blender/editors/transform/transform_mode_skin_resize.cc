@@ -81,7 +81,7 @@ static void transdata_elem_skin_resize_fn(void *__restrict iter_data_v,
 /** \name Transform (Skin)
  * \{ */
 
-static void applySkinResize(TransInfo *t, const int[2] /*mval*/)
+static void applySkinResize(TransInfo *t)
 {
   float mat_final[3][3];
   int i;
@@ -128,7 +128,7 @@ static void applySkinResize(TransInfo *t, const int[2] /*mval*/)
     }
   }
 
-  recalcData(t);
+  recalc_data(t);
 
   ED_area_status_text(t->area, str);
 }
