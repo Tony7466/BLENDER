@@ -182,7 +182,10 @@ void VolumeModule::begin_sync()
   enabled_ = inst_.world.has_volume();
 }
 
-void VolumeModule::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, ResourceHandle res_handle)
+void VolumeModule::sync_object(Object *ob,
+                               ObjectHandle & /*ob_handle*/,
+                               ResourceHandle res_handle,
+                               MaterialPass *material_pass /*= nullptr*/)
 {
   float3 size = math::to_scale(float4x4(ob->object_to_world));
   /* Check if any of the axes have 0 length. (see #69070) */
@@ -191,16 +194,18 @@ void VolumeModule::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, Resourc
     return;
   }
 
-  Material material = inst_.materials.material_get(
-      ob, false, VOLUME_MATERIAL_NR, MAT_GEOM_VOLUME_OBJECT);
-  MaterialPass &material_pass = material.volume;
+  if (material_pass == nullptr) {
+    Material material = inst_.materials.material_get(
+        ob, false, VOLUME_MATERIAL_NR, MAT_GEOM_VOLUME_OBJECT);
+    material_pass = &material.volume;
+  }
 
   /* If shader failed to compile or is currently compiling. */
-  if (material_pass.gpumat == nullptr) {
+  if (material_pass->gpumat == nullptr) {
     return;
   }
 
-  GPUShader *shader = GPU_material_get_shader(material_pass.gpumat);
+  GPUShader *shader = GPU_material_get_shader(material_pass->gpumat);
   if (shader == nullptr) {
     return;
   }
@@ -211,7 +216,7 @@ void VolumeModule::sync_object(Object *ob, ObjectHandle & /*ob_handle*/, Resourc
   }
 
   PassMain::Sub *object_pass = volume_sub_pass(
-      *material_pass.sub_pass, inst_.scene, ob, material_pass.gpumat);
+      *material_pass->sub_pass, inst_.scene, ob, material_pass->gpumat);
   if (object_pass) {
     enabled_ = true;
 

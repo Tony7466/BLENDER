@@ -126,7 +126,10 @@ class VolumeModule {
   void begin_sync();
 
   void sync_world();
-  void sync_object(Object *ob, ObjectHandle &ob_handle, ResourceHandle res_handle);
+  void sync_object(Object *ob,
+                   ObjectHandle &ob_handle,
+                   ResourceHandle res_handle,
+                   MaterialPass *material_pass = nullptr);
 
   void end_sync();
 

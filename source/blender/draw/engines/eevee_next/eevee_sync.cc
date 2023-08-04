@@ -124,13 +124,6 @@ void SyncModule::sync_mesh(Object *ob,
     return;
   }
 
-  /* Only support single volume material for now. */
-  bool use_volume_material = material_array.gpu_materials[0] &&
-                             GPU_material_has_volume_output(material_array.gpu_materials[0]);
-  if (use_volume_material) {
-    inst_.volume.sync_object(ob, ob_handle, res_handle);
-  }
-
   if ((ob->dt < OB_SOLID) && !DRW_state_is_scene_render()) {
     /** NOTE:
      * EEVEE doesn't render meshes with bounds or wire display type in the viewport,
@@ -147,14 +140,19 @@ void SyncModule::sync_mesh(Object *ob,
       continue;
     }
 
+    Material &material = material_array.materials[i];
     GPUMaterial *gpu_material = material_array.gpu_materials[i];
-    /* Do not render surface if we are rendering a volume object
-     * and do not have a surface closure. */
-    if (use_volume_material && gpu_material && !GPU_material_has_surface_output(gpu_material)) {
-      continue;
+
+    if (material.volume.gpumat && i == 0) {
+      /* Only support single volume material for now. */
+      inst_.volume.sync_object(ob, ob_handle, res_handle, &material.volume);
+      /* Do not render surface if we are rendering a volume object
+       * and do not have a surface closure. */
+      if (gpu_material && !GPU_material_has_surface_output(gpu_material)) {
+        continue;
+      }
     }
 
-    Material &material = material_array.materials[i];
     geometry_call(material.shading.sub_pass, geom, res_handle);
     geometry_call(material.prepass.sub_pass, geom, res_handle);
     geometry_call(material.shadow.sub_pass, geom, res_handle);
