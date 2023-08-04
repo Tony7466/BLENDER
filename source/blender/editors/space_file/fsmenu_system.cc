@@ -203,13 +203,11 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
           IShellFolder *desktop;
           if (SHGetDesktopFolder(&desktop) == S_OK) {
             PIDLIST_RELATIVE volume;
-            if (desktop->lpVtbl->ParseDisplayName(
-                    desktop, nullptr, nullptr, wline, nullptr, &volume, nullptr) == S_OK)
-            {
+            if (desktop->ParseDisplayName(nullptr, nullptr, wline, nullptr, &volume, nullptr) ==
+                S_OK) {
               STRRET volume_name;
               volume_name.uType = STRRET_WSTR;
-              if (desktop->lpVtbl->GetDisplayNameOf(
-                      desktop, volume, SHGDN_FORADDRESSBAR, &volume_name) == S_OK) {
+              if (desktop->GetDisplayNameOf(volume, SHGDN_FORADDRESSBAR, &volume_name) == S_OK) {
                 wchar_t *volume_name_wchar;
                 if (StrRetToStrW(&volume_name, volume, &volume_name_wchar) == S_OK) {
                   BLI_strncpy_wchar_as_utf8(line, volume_name_wchar, FILE_MAXDIR);
@@ -219,7 +217,7 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
               }
               CoTaskMemFree(volume);
             }
-            desktop->lpVtbl->Release(desktop);
+            desktop->Release();
           }
         }
         if (name == nullptr) {
@@ -248,7 +246,7 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
                             tmps,
                             name,
                             icon,
-                            FS_INSERT_SORTED | FS_INSERT_NO_VALIDATE);
+                            FSMenuInsert(FS_INSERT_SORTED | FS_INSERT_NO_VALIDATE));
       }
     }
 
@@ -258,55 +256,55 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
       /* These items are shown in System List. */
       fsmenu_add_windows_folder(fsmenu,
                                 FS_CATEGORY_SYSTEM_BOOKMARKS,
-                                &FOLDERID_Profile,
+                                FOLDERID_Profile,
                                 N_("Home"),
                                 ICON_HOME,
                                 FS_INSERT_LAST);
       fsmenu_add_windows_folder(fsmenu,
                                 FS_CATEGORY_SYSTEM_BOOKMARKS,
-                                &FOLDERID_Desktop,
+                                FOLDERID_Desktop,
                                 N_("Desktop"),
                                 ICON_DESKTOP,
                                 FS_INSERT_LAST);
       fsmenu_add_windows_folder(fsmenu,
                                 FS_CATEGORY_SYSTEM_BOOKMARKS,
-                                &FOLDERID_Documents,
+                                FOLDERID_Documents,
                                 N_("Documents"),
                                 ICON_DOCUMENTS,
                                 FS_INSERT_LAST);
       fsmenu_add_windows_folder(fsmenu,
                                 FS_CATEGORY_SYSTEM_BOOKMARKS,
-                                &FOLDERID_Downloads,
+                                FOLDERID_Downloads,
                                 N_("Downloads"),
                                 ICON_IMPORT,
                                 FS_INSERT_LAST);
       fsmenu_add_windows_folder(fsmenu,
                                 FS_CATEGORY_SYSTEM_BOOKMARKS,
-                                &FOLDERID_Music,
+                                FOLDERID_Music,
                                 N_("Music"),
                                 ICON_FILE_SOUND,
                                 FS_INSERT_LAST);
       fsmenu_add_windows_folder(fsmenu,
                                 FS_CATEGORY_SYSTEM_BOOKMARKS,
-                                &FOLDERID_Pictures,
+                                FOLDERID_Pictures,
                                 N_("Pictures"),
                                 ICON_FILE_IMAGE,
                                 FS_INSERT_LAST);
       fsmenu_add_windows_folder(fsmenu,
                                 FS_CATEGORY_SYSTEM_BOOKMARKS,
-                                &FOLDERID_Videos,
+                                FOLDERID_Videos,
                                 N_("Videos"),
                                 ICON_FILE_MOVIE,
                                 FS_INSERT_LAST);
       fsmenu_add_windows_folder(fsmenu,
                                 FS_CATEGORY_SYSTEM_BOOKMARKS,
-                                &FOLDERID_Fonts,
+                                FOLDERID_Fonts,
                                 N_("Fonts"),
                                 ICON_FILE_FONT,
                                 FS_INSERT_LAST);
       fsmenu_add_windows_folder(fsmenu,
                                 FS_CATEGORY_SYSTEM_BOOKMARKS,
-                                &FOLDERID_SkyDrive,
+                                FOLDERID_SkyDrive,
                                 N_("OneDrive"),
                                 ICON_URL,
                                 FS_INSERT_LAST);
@@ -315,7 +313,7 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
 
       fsmenu_add_windows_folder(fsmenu,
                                 FS_CATEGORY_OTHER,
-                                &FOLDERID_UserProfiles,
+                                FOLDERID_UserProfiles,
                                 nullptr,
                                 ICON_COMMUNITY,
                                 FS_INSERT_LAST);
@@ -589,7 +587,7 @@ void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
   }
 #endif
 
-#if defined(WIN32) || defined(__APPLE__)
+#if defined(__APPLE__)
   /* Quiet warnings. */
   UNUSED_VARS(fsmenu_xdg_insert_entry, fsmenu_xdg_user_dirs_parse, fsmenu_xdg_user_dirs_free);
 #endif
