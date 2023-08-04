@@ -281,17 +281,26 @@ ccl_device_inline ccl_private Bssrdf *bssrdf_alloc(ccl_private ShaderData *sd, S
 
 ccl_device int bssrdf_setup(ccl_private ShaderData *sd,
                             ccl_private Bssrdf *bssrdf,
+                            int path_flag,
                             ClosureType type,
-                            const float ior)
+                            float ior)
 {
+  /* Clamps protecting against bad/extreme and non physical values. */
+  bssrdf->anisotropy = clamp(bssrdf->anisotropy, 0.0f, 0.9f);
+  ior = clamp(ior, 1.01f, 3.8f);
+
   int flag = 0;
 
   /* Verify if the radii are large enough to sample without precision issues. */
   int bssrdf_channels = SPECTRUM_CHANNELS;
   Spectrum diffuse_weight = zero_spectrum();
 
+  /* Fall back to diffuse in case of diffuse ancestor, can't see it well then and adds considerable
+   * noise due to probabilities of continuing the path getting lower and lower. */
+  const bool is_diffuse_ancestor = (path_flag & PATH_RAY_DIFFUSE_ANCESTOR);
+
   FOREACH_SPECTRUM_CHANNEL (i) {
-    if (GET_SPECTRUM_CHANNEL(bssrdf->radius, i) < BSSRDF_MIN_RADIUS) {
+    if (is_diffuse_ancestor || GET_SPECTRUM_CHANNEL(bssrdf->radius, i) < BSSRDF_MIN_RADIUS) {
       GET_SPECTRUM_CHANNEL(diffuse_weight, i) = GET_SPECTRUM_CHANNEL(bssrdf->weight, i);
       GET_SPECTRUM_CHANNEL(bssrdf->weight, i) = 0.0f;
       GET_SPECTRUM_CHANNEL(bssrdf->radius, i) = 0.0f;
@@ -320,7 +329,7 @@ ccl_device int bssrdf_setup(ccl_private ShaderData *sd,
     flag |= SD_BSSRDF;
   }
   else {
-    bssrdf->type = type;
+    bssrdf->type = CLOSURE_NONE_ID;
     bssrdf->sample_weight = 0.0f;
   }
 

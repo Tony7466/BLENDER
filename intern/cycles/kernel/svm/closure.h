@@ -125,8 +125,9 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       float3 subsurface_radius = stack_valid(data_cn_ssr.y) ?
                                      stack_load_float3(stack, data_cn_ssr.y) :
                                      one_float3();
-      float subsurface_ior = stack_valid(data_cn_ssr.z) ? stack_load_float(stack, data_cn_ssr.z) :
-                                                          1.4f;
+      float subsurface_scale = stack_valid(data_cn_ssr.z) ?
+                                   stack_load_float(stack, data_cn_ssr.z) :
+                                   1.0f;
       float subsurface_anisotropy = stack_valid(data_cn_ssr.w) ?
                                         stack_load_float(stack, data_cn_ssr.w) :
                                         0.0f;
@@ -299,44 +300,31 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         }
       }
 
-      /* Diffuse component */
-      float3 diffuse_color = mix(base_color, subsurface_color, subsurface);
+      /* Diffuse/Subsurface component */
 #ifdef __SUBSURFACE__
-      /* disable in case of diffuse ancestor, can't see it well then and
-       * adds considerably noise due to probabilities of continuing path
-       * getting lower and lower */
-      if ((subsurface > CLOSURE_WEIGHT_CUTOFF) && !(path_flag & PATH_RAY_DIFFUSE_ANCESTOR)) {
-        /* Skip in case of extremely low albedo. */
-        if (fabsf(average(diffuse_color)) > CLOSURE_WEIGHT_CUTOFF) {
-          ccl_private Bssrdf *bssrdf = bssrdf_alloc(sd, rgb_to_spectrum(diffuse_color) * weight);
+      ccl_private Bssrdf *bssrdf = bssrdf_alloc(
+          sd, rgb_to_spectrum(subsurface_color) * subsurface * weight);
+      if (bssrdf) {
+        bssrdf->radius = rgb_to_spectrum(subsurface_radius * subsurface_scale);
+        bssrdf->albedo = rgb_to_spectrum(subsurface_color);
+        bssrdf->N = N;
+        bssrdf->roughness = sqr(roughness);
+        bssrdf->anisotropy = subsurface_anisotropy;
 
-          if (bssrdf) {
-            bssrdf->radius = rgb_to_spectrum(subsurface_radius * subsurface);
-            bssrdf->albedo = rgb_to_spectrum(diffuse_color);
-            bssrdf->N = N;
-            bssrdf->roughness = roughness;
-
-            /* Clamps protecting against bad/extreme and non physical values. */
-            subsurface_ior = clamp(subsurface_ior, 1.01f, 3.8f);
-            bssrdf->anisotropy = clamp(subsurface_anisotropy, 0.0f, 0.9f);
-
-            /* setup bsdf */
-            sd->flag |= bssrdf_setup(sd, bssrdf, subsurface_method, subsurface_ior);
-          }
-        }
+        /* setup bsdf */
+        sd->flag |= bssrdf_setup(sd, bssrdf, path_flag, subsurface_method, eta);
       }
-      else
+#else
+      subsurface = 0.0f;
 #endif
-      {
-        ccl_private DiffuseBsdf *bsdf = (ccl_private DiffuseBsdf *)bsdf_alloc(
-            sd, sizeof(DiffuseBsdf), rgb_to_spectrum(diffuse_color) * weight);
 
-        if (bsdf) {
-          bsdf->N = N;
+      ccl_private DiffuseBsdf *bsdf = (ccl_private DiffuseBsdf *)bsdf_alloc(
+          sd, sizeof(DiffuseBsdf), rgb_to_spectrum(base_color) * (1.0f - subsurface) * weight);
+      if (bsdf) {
+        bsdf->N = N;
 
-          /* setup bsdf */
-          sd->flag |= bsdf_diffuse_setup(bsdf);
-        }
+        /* setup bsdf */
+        sd->flag |= bsdf_diffuse_setup(bsdf);
       }
 
       break;
@@ -721,22 +709,13 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       ccl_private Bssrdf *bssrdf = bssrdf_alloc(sd, weight);
 
       if (bssrdf) {
-        /* disable in case of diffuse ancestor, can't see it well then and
-         * adds considerably noise due to probabilities of continuing path
-         * getting lower and lower */
-        if (path_flag & PATH_RAY_DIFFUSE_ANCESTOR)
-          param1 = 0.0f;
-
         bssrdf->radius = rgb_to_spectrum(stack_load_float3(stack, data_node.z) * param1);
         bssrdf->albedo = closure_weight;
         bssrdf->N = N;
         bssrdf->roughness = FLT_MAX;
+        bssrdf->anisotropy = stack_load_float(stack, data_node.w);
 
-        const float subsurface_ior = clamp(param2, 1.01f, 3.8f);
-        const float subsurface_anisotropy = stack_load_float(stack, data_node.w);
-        bssrdf->anisotropy = clamp(subsurface_anisotropy, 0.0f, 0.9f);
-
-        sd->flag |= bssrdf_setup(sd, bssrdf, (ClosureType)type, subsurface_ior);
+        sd->flag |= bssrdf_setup(sd, bssrdf, path_flag, (ClosureType)type, param2);
       }
 
       break;

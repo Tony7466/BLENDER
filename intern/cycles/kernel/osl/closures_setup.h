@@ -758,9 +758,9 @@ ccl_device void osl_closure_bssrdf_setup(KernelGlobals kg,
   bssrdf->albedo = closure->albedo;
   bssrdf->N = closure->N;
   bssrdf->roughness = closure->roughness;
-  bssrdf->anisotropy = clamp(closure->anisotropy, 0.0f, 0.9f);
+  bssrdf->anisotropy = closure->anisotropy;
 
-  sd->flag |= bssrdf_setup(sd, bssrdf, type, clamp(closure->ior, 1.01f, 3.8f));
+  sd->flag |= bssrdf_setup(sd, bssrdf, path_flag, type, closure->ior);
 }
 
 /* Hair */

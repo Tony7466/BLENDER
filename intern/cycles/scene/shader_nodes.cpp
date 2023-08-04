@@ -2653,8 +2653,8 @@ NODE_DEFINE(PrincipledBsdfNode)
   SOCKET_IN_COLOR(subsurface_color, "Subsurface Color", make_float3(0.8f, 0.8f, 0.8f));
   SOCKET_IN_FLOAT(metallic, "Metallic", 0.0f);
   SOCKET_IN_FLOAT(subsurface, "Subsurface", 0.0f);
+  SOCKET_IN_FLOAT(subsurface_scale, "Subsurface Scale", 0.1f);
   SOCKET_IN_VECTOR(subsurface_radius, "Subsurface Radius", make_float3(0.1f, 0.1f, 0.1f));
-  SOCKET_IN_FLOAT(subsurface_ior, "Subsurface IOR", 1.4f);
   SOCKET_IN_FLOAT(subsurface_anisotropy, "Subsurface Anisotropy", 0.0f);
   SOCKET_IN_FLOAT(specular, "Specular", 0.0f);
   SOCKET_IN_FLOAT(roughness, "Roughness", 0.5f);
@@ -2764,8 +2764,8 @@ void PrincipledBsdfNode::attributes(Shader *shader, AttributeRequestSet *attribu
 void PrincipledBsdfNode::compile(SVMCompiler &compiler,
                                  ShaderInput *p_metallic,
                                  ShaderInput *p_subsurface,
+                                 ShaderInput *p_subsurface_scale,
                                  ShaderInput *p_subsurface_radius,
-                                 ShaderInput *p_subsurface_ior,
                                  ShaderInput *p_subsurface_anisotropy,
                                  ShaderInput *p_specular,
                                  ShaderInput *p_roughness,
@@ -2806,7 +2806,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
   int transmission_offset = compiler.stack_assign(p_transmission);
   int anisotropic_rotation_offset = compiler.stack_assign(p_anisotropic_rotation);
   int subsurface_radius_offset = compiler.stack_assign(p_subsurface_radius);
-  int subsurface_ior_offset = compiler.stack_assign(p_subsurface_ior);
+  int subsurface_scale_offset = compiler.stack_assign(p_subsurface_scale);
   int subsurface_anisotropy_offset = compiler.stack_assign(p_subsurface_anisotropy);
 
   compiler.add_node(NODE_CLOSURE_BSDF,
@@ -2842,7 +2842,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
 
   compiler.add_node(clearcoat_normal_offset,
                     subsurface_radius_offset,
-                    subsurface_ior_offset,
+                    subsurface_scale_offset,
                     subsurface_anisotropy_offset);
 
   float3 ss_default = get_float3(subsurface_color_in->socket_type);
@@ -2859,8 +2859,8 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler)
   compile(compiler,
           input("Metallic"),
           input("Subsurface"),
+          input("Subsurface Scale"),
           input("Subsurface Radius"),
-          input("Subsurface IOR"),
           input("Subsurface Anisotropy"),
           input("Specular"),
           input("Roughness"),

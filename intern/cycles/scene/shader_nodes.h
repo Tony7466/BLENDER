@@ -518,8 +518,8 @@ class PrincipledBsdfNode : public BsdfBaseNode {
   void compile(SVMCompiler &compiler,
                ShaderInput *metallic,
                ShaderInput *subsurface,
+               ShaderInput *subsurface_scale,
                ShaderInput *subsurface_radius,
-               ShaderInput *subsurface_ior,
                ShaderInput *subsurface_anisotropy,
                ShaderInput *specular,
                ShaderInput *roughness,
@@ -537,7 +537,7 @@ class PrincipledBsdfNode : public BsdfBaseNode {
   NODE_SOCKET_API(float3, base_color)
   NODE_SOCKET_API(float3, subsurface_color)
   NODE_SOCKET_API(float3, subsurface_radius)
-  NODE_SOCKET_API(float, subsurface_ior)
+  NODE_SOCKET_API(float, subsurface_scale)
   NODE_SOCKET_API(float, subsurface_anisotropy)
   NODE_SOCKET_API(float, metallic)
   NODE_SOCKET_API(float, subsurface)
