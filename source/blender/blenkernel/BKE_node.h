@@ -237,6 +237,7 @@ typedef struct bNodeType {
 
   char ui_name[64]; /* MAX_NAME */
   char ui_description[256];
+  const char *enum_name_legacy;
   int ui_icon;
 
   float width, minwidth, maxwidth;
