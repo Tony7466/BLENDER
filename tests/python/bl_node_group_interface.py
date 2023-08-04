@@ -86,6 +86,7 @@ class NodeGroupInterfaceTests:
     def make_socket_value_comparator(socket_type):
         def cmp_default(test, value, expected):
             test.assertEqual(value, expected, f"Value {value} does not match expected value {expected}")
+
         def cmp_array(test, value, expected):
             test.assertSequenceEqual(value[:], expected[:], f"Value {value} does not match expected value {expected}")
         if (socket_type in {"NodeSocketBool",
@@ -101,7 +102,6 @@ class NodeGroupInterfaceTests:
         elif (socket_type in {"NodeSocketColor",
                               "NodeSocketVector"}):
             return cmp_array
-
 
     def test_empty_nodegroup(self):
         tree, group_node = self.make_group_and_instance()
@@ -142,16 +142,16 @@ class NodeGroupInterfaceTests:
             ("Input 0", socket_type),
             ("Input 1", socket_type),
             ("Input/Output 0", socket_type),
-            ])
+        ])
         self.assertSequenceEqual([(s.name, s.bl_idname) for s in group_node.outputs], [
             ("Output 0", socket_type),
             ("Output 1", socket_type),
             ("Input/Output 0", socket_type),
-            ])
+        ])
 
     def do_test_socket_type(self, socket_type):
-        default_value=self.make_default_socket_value(socket_type)
-        compare_value=self.make_socket_value_comparator(socket_type)
+        default_value = self.make_default_socket_value(socket_type)
+        compare_value = self.make_socket_value_comparator(socket_type)
 
         # Create the tree first, add sockets, then create a group instance.
         # That way the new instance should reflect the expected default values.
@@ -179,13 +179,13 @@ class NodeGroupInterfaceTests:
         self.assertSequenceEqual([(s.name, s.item_type) for s in tree.interface.ui_items], [
             ("Output 0", 'SOCKET'),
             ("Input 0", 'SOCKET'),
-            ])
+        ])
         self.assertSequenceEqual([s.name for s in group_node.inputs], [
             "Input 0",
-            ])
+        ])
         self.assertSequenceEqual([s.name for s in group_node.outputs], [
             "Output 0",
-            ])
+        ])
         # XXX currently no panel state access on node instances.
         # self.assertFalse(group_node.panels)
 
@@ -211,15 +211,15 @@ class NodeGroupInterfaceTests:
             ("Panel 2", 'PANEL'),
             ("Output 1", 'SOCKET'),
             ("Panel 3", 'PANEL'),
-            ])
+        ])
         self.assertSequenceEqual([s.name for s in group_node.inputs], [
             "Input 0",
             "Input 1",
-            ])
+        ])
         self.assertSequenceEqual([s.name for s in group_node.outputs], [
             "Output 0",
             "Output 1",
-            ])
+        ])
         # XXX currently no panel state access on node instances.
         # self.assertSequenceEqual([p.name for p in group_node.panels], [
         #     "Panel 0",
@@ -228,6 +228,91 @@ class NodeGroupInterfaceTests:
         #     "Panel 3",
         #     ])
 
+    def do_test_add(self, socket_type):
+        tree, group_node = self.make_group_and_instance()
+
+        in0 = tree.interface.new_socket("Input 0", socket_type=socket_type, is_input=True)
+        self.assertSequenceEqual(tree.interface.ui_items, [in0])
+        self.assertSequenceEqual([s.name for s in group_node.inputs], ["Input 0"])
+        self.assertSequenceEqual([s.name for s in group_node.outputs], [])
+
+        out0 = tree.interface.new_socket("Output 0", socket_type=socket_type, is_output=True)
+        self.assertSequenceEqual(tree.interface.ui_items, [in0, out0])
+        self.assertSequenceEqual([s.name for s in group_node.inputs], ["Input 0"])
+        self.assertSequenceEqual([s.name for s in group_node.outputs], ["Output 0"])
+
+        panel0 = tree.interface.new_panel("Panel 0")
+        self.assertSequenceEqual(tree.interface.ui_items, [in0, out0, panel0])
+        self.assertSequenceEqual([s.name for s in group_node.inputs], ["Input 0"])
+        self.assertSequenceEqual([s.name for s in group_node.outputs], ["Output 0"])
+
+        # Add items to the panel.
+        in1 = tree.interface.new_socket("Input 1", socket_type=socket_type, is_input=True, parent=panel0)
+        self.assertSequenceEqual(tree.interface.ui_items, [in0, out0, panel0, in1])
+        self.assertSequenceEqual([s.name for s in group_node.inputs], ["Input 0", "Input 1"])
+        self.assertSequenceEqual([s.name for s in group_node.outputs], ["Output 0"])
+
+        out1 = tree.interface.new_socket("Output 1", socket_type=socket_type, is_output=True, parent=panel0)
+        self.assertSequenceEqual(tree.interface.ui_items, [in0, out0, panel0, in1, out1])
+        self.assertSequenceEqual([s.name for s in group_node.inputs], ["Input 0", "Input 1"])
+        self.assertSequenceEqual([s.name for s in group_node.outputs], ["Output 0", "Output 1"])
+
+        panel1 = tree.interface.new_panel("Panel 1", parent=panel0)
+        self.assertSequenceEqual(tree.interface.ui_items, [in0, out0, panel0, in1, out1, panel1])
+        self.assertSequenceEqual([s.name for s in group_node.inputs], ["Input 0", "Input 1"])
+        self.assertSequenceEqual([s.name for s in group_node.outputs], ["Output 0", "Output 1"])
+
+    def do_test_remove(self, socket_type):
+        tree, group_node = self.make_group_and_instance()
+
+        in0 = tree.interface.new_socket("Input 0", socket_type=socket_type, is_input=True)
+        out0 = tree.interface.new_socket("Output 0", socket_type=socket_type, is_output=True)
+        panel0 = tree.interface.new_panel("Panel 0")
+        in1 = tree.interface.new_socket("Input 1", socket_type=socket_type, is_input=True, parent=panel0)
+        out1 = tree.interface.new_socket("Output 1", socket_type=socket_type, is_output=True, parent=panel0)
+        panel1 = tree.interface.new_panel("Panel 1")
+        in2 = tree.interface.new_socket("Input 2", socket_type=socket_type, is_input=True, parent=panel1)
+        out2 = tree.interface.new_socket("Output 2", socket_type=socket_type, is_output=True, parent=panel1)
+        panel2 = tree.interface.new_panel("Panel 2")
+
+        self.assertSequenceEqual(tree.interface.ui_items, [in0, out0, panel0, in1, out1, panel1, in2, out2, panel2])
+        self.assertSequenceEqual([s.name for s in group_node.inputs], ["Input 0", "Input 1", "Input 2"])
+        self.assertSequenceEqual([s.name for s in group_node.outputs], ["Output 0", "Output 1", "Output 2"])
+
+        # Remove from root panel.
+        tree.interface.remove(in0)
+        self.assertSequenceEqual(tree.interface.ui_items, [out0, panel0, in1, out1, panel1, in2, out2, panel2])
+        self.assertSequenceEqual([s.name for s in group_node.inputs], ["Input 1", "Input 2"])
+        self.assertSequenceEqual([s.name for s in group_node.outputs], ["Output 0", "Output 1", "Output 2"])
+
+        # Removing a panel should move content to the parent.
+        tree.interface.remove(panel0)
+        self.assertSequenceEqual(tree.interface.ui_items, [out0, in1, out1, panel1, in2, out2, panel2])
+        self.assertSequenceEqual([s.name for s in group_node.inputs], ["Input 1", "Input 2"])
+        self.assertSequenceEqual([s.name for s in group_node.outputs], ["Output 0", "Output 1", "Output 2"])
+
+        tree.interface.remove(out0)
+        self.assertSequenceEqual(tree.interface.ui_items, [in1, out1, panel1, in2, out2, panel2])
+        self.assertSequenceEqual([s.name for s in group_node.inputs], ["Input 1", "Input 2"])
+        self.assertSequenceEqual([s.name for s in group_node.outputs], ["Output 1", "Output 2"])
+
+        # Remove content from panel
+        tree.interface.remove(out2)
+        self.assertSequenceEqual(tree.interface.ui_items, [in1, out1, panel1, in2, panel2])
+        self.assertSequenceEqual([s.name for s in group_node.inputs], ["Input 1", "Input 2"])
+        self.assertSequenceEqual([s.name for s in group_node.outputs], ["Output 1"])
+
+        # Remove a panel and its content
+        tree.interface.remove(panel1, move_content_to_parent=False)
+        self.assertSequenceEqual(tree.interface.ui_items, [in1, out1, panel2])
+        self.assertSequenceEqual([s.name for s in group_node.inputs], ["Input 1"])
+        self.assertSequenceEqual([s.name for s in group_node.outputs], ["Output 1"])
+
+        # Remove empty panel
+        tree.interface.remove(panel2)
+        self.assertSequenceEqual(tree.interface.ui_items, [in1, out1])
+        self.assertSequenceEqual([s.name for s in group_node.inputs], ["Input 1"])
+        self.assertSequenceEqual([s.name for s in group_node.outputs], ["Output 1"])
 
 
 class GeometryNodeGroupInterfaceTest(AbstractNodeGroupInterfaceTest, NodeGroupInterfaceTests):
@@ -264,6 +349,13 @@ class GeometryNodeGroupInterfaceTest(AbstractNodeGroupInterfaceTest, NodeGroupIn
 
     def test_items_order_mixed_with_panels(self):
         self.do_test_items_order_mixed_with_panels("NodeSocketFloat")
+
+    def test_add(self):
+        self.do_test_add("NodeSocketFloat")
+
+    def test_remove(self):
+        self.do_test_remove("NodeSocketFloat")
+
 
 class ShaderNodeGroupInterfaceTest(AbstractNodeGroupInterfaceTest, NodeGroupInterfaceTests):
     tree_type = "ShaderNodeTree"
@@ -304,6 +396,12 @@ class ShaderNodeGroupInterfaceTest(AbstractNodeGroupInterfaceTest, NodeGroupInte
     def test_items_order_mixed_with_panels(self):
         self.do_test_items_order_mixed_with_panels("NodeSocketFloat")
 
+    def test_add(self):
+        self.do_test_add("NodeSocketFloat")
+
+    def test_remove(self):
+        self.do_test_remove("NodeSocketFloat")
+
 
 class CompositorNodeGroupInterfaceTest(AbstractNodeGroupInterfaceTest, NodeGroupInterfaceTests):
     tree_type = "CompositorNodeTree"
@@ -343,6 +441,12 @@ class CompositorNodeGroupInterfaceTest(AbstractNodeGroupInterfaceTest, NodeGroup
 
     def test_items_order_mixed_with_panels(self):
         self.do_test_items_order_mixed_with_panels("NodeSocketFloat")
+
+    def test_add(self):
+        self.do_test_add("NodeSocketFloat")
+
+    def test_remove(self):
+        self.do_test_remove("NodeSocketFloat")
 
 
 def main():
