@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "../wm_message_bus.h"
+#include "../wm_message_bus.hh"
 
 #ifdef __cplusplus
 extern "C" {

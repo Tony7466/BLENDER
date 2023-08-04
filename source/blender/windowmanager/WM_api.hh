@@ -17,8 +17,8 @@
 #include "BLI_compiler_attrs.h"
 #include "BLI_sys_types.h"
 #include "DNA_windowmanager_types.h"
-#include "WM_keymap.h"
-#include "WM_types.h"
+#include "WM_keymap.hh"
+#include "WM_types.hh"
 
 #ifdef __cplusplus
 extern "C" {
