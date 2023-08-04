@@ -447,12 +447,12 @@ static void preview_sync_exposure(World *dst, const World *src)
 }
 
 World *ED_preview_prepare_world(Main *pr_main,
-                                const Scene *sce,
+                                const Scene *scene,
                                 const World *world,
                                 const ID_Type id_type,
                                 const ePreviewRenderMethod pr_method)
 {
-  World *result = preview_get_world(pr_main, sce, id_type, pr_method);
+  World *result = preview_get_world(pr_main, scene, id_type, pr_method);
   if (world) {
     preview_sync_exposure(result, world);
   }

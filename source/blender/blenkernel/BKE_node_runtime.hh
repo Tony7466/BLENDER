@@ -96,8 +96,7 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
 
   /**
    * Contains a number increased for each nodetree update.
-   * The idea here to to store a state var in the `NestedTreePreviews` structure to compare if they
-   * differ.
+   * Store a state variable in the `NestedTreePreviews` structure to compare if they differ.
    */
   uint32_t previews_refresh_state = 0;
 

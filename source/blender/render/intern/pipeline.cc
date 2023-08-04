@@ -928,7 +928,7 @@ void RE_prepare_viewlayer_cb(Render *re,
                              bool (*f)(void *handle, ViewLayer *vl, Depsgraph *depsgraph))
 {
   re->prepare_viewlayer = f;
-  re->pvh = handle;
+  re->prepare_vl_handle = handle;
 }
 
 /** \} */

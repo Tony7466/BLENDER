@@ -731,8 +731,7 @@ class NodeTreeMainUpdater {
       if (node->type != NODE_GROUP) {
         continue;
       }
-      bNodeTree *nested_tree = reinterpret_cast<bNodeTree *>(node->id);
-      if (nested_tree) {
+      if (bNodeTree *nested_tree = reinterpret_cast<bNodeTree *>(node->id)) {
         this->make_node_previews_dirty(*nested_tree);
       }
     }

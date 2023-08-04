@@ -91,7 +91,7 @@ void ED_preview_set_visibility(struct Main *pr_main,
                                ePreviewType pr_type,
                                ePreviewRenderMethod pr_method);
 struct World *ED_preview_prepare_world(struct Main *pr_main,
-                                       const struct Scene *sce,
+                                       const struct Scene *scene,
                                        const struct World *world,
                                        ID_Type id_type,
                                        ePreviewRenderMethod pr_method);

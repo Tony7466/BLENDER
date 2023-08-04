@@ -2250,9 +2250,9 @@ static void node_draw_basis(const bContext &C,
       NestedTreePreviews *previews_shader = tree_draw_ctx.nested_group_infos;
 
       if (previews_shader) {
-        ImBuf *preview = ED_node_preview_acquire_ibuf(&ntree, previews_shader, &node);
+        ImBuf *preview = ED_node_preview_acquire_ibuf(ntree, *previews_shader, node);
         node_draw_extra_info_panel(CTX_data_scene(&C), tree_draw_ctx, snode, node, preview, block);
-        ED_node_release_preview_ibuf(tree_draw_ctx.nested_group_infos);
+        ED_node_release_preview_ibuf(*previews_shader);
         drawn_with_previews = true;
       }
       else if (previews_compo) {
@@ -3506,7 +3506,7 @@ static void draw_nodetree(const bContext &C,
     tree_draw_ctx.used_by_realtime_compositor = realtime_compositor_is_in_use(C);
   }
   else if (ntree.type == NTREE_SHADER && BKE_scene_uses_shader_previews(CTX_data_scene(&C))) {
-    tree_draw_ctx.nested_group_infos = ED_spacenode_get_nested_previews(&C, snode);
+    tree_draw_ctx.nested_group_infos = ED_spacenode_get_nested_previews(C, *snode);
   }
 
   node_update_nodetree(C, tree_draw_ctx, ntree, nodes, blocks);

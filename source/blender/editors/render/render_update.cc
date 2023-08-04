@@ -179,7 +179,7 @@ void ED_render_engine_changed(Main *bmain, const bool update_scene_data)
     }
   }
   /* Invalidate all shader previews. */
-  ED_spacenode_stop_preview_job(static_cast<wmWindowManager *>(bmain->wm.first));
+  ED_spacenode_stop_preview_job(*static_cast<wmWindowManager *>(bmain->wm.first));
   LISTBASE_FOREACH (Material *, ma, &bmain->materials) {
     BKE_material_make_node_previews_dirty(ma);
   }
