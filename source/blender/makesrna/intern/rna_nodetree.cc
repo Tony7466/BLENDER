@@ -784,7 +784,6 @@ static const EnumPropertyItem *rna_node_static_type_itemf(bContext * /*C*/,
     category = "FunctionNode";
   }
 
-  bNodeType *ntype;
   NODE_TYPES_BEGIN (ntype) {
     if (BLI_str_startswith(ntype->idname, "Node") || BLI_str_startswith(ntype->idname, category)) {
       tmp.value = ntype->type;
