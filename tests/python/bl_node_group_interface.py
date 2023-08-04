@@ -12,17 +12,6 @@ import bpy
 args = None
 
 
-# Utility functions for comparing default values.
-# Not all socket value types are trivially comparable, e.g. colors.
-
-def cmp_default(test, a, b):
-    test.assertEqual(a, b)
-
-def cmp_array(test, a, b):
-    test.assertSequenceEqual(a[:], b[:])
-
-
-
 class AbstractNodeGroupInterfaceTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -51,11 +40,68 @@ class NodeGroupInterfaceTests:
     # Tree instance where node groups can be added
     main_tree = None
 
-    def make_group_and_instance(self):
+    def make_group(self):
         tree = bpy.data.node_groups.new("test", self.tree_type)
+        return tree
+
+    def make_instance(self, tree):
         group_node = self.main_tree.nodes.new(self.group_node_type)
         group_node.node_tree = tree
+        return group_node
+
+    def make_group_and_instance(self):
+        tree = self.make_group()
+        group_node = self.make_instance(tree)
         return tree, group_node
+
+    # Utility method for generating a non-zero default value.
+    @staticmethod
+    def make_default_socket_value(socket_type):
+        if (socket_type == "NodeSocketBool"):
+            return True
+        elif (socket_type == "NodeSocketColor"):
+            return (.5, 1.0, .3, .7)
+        elif (socket_type == "NodeSocketFloat"):
+            return 1.23
+        elif (socket_type == "NodeSocketImage"):
+            return bpy.data.images.new("test", 4, 4)
+        elif (socket_type == "NodeSocketInt"):
+            return -6
+        elif (socket_type == "NodeSocketMaterial"):
+            return bpy.data.materials.new("test")
+        elif (socket_type == "NodeSocketObject"):
+            return bpy.data.objects.new("test", bpy.data.meshes.new("test"))
+        elif (socket_type == "NodeSocketRotation"):
+            return (0.3, 5.0, -42)
+        elif (socket_type == "NodeSocketString"):
+            return "Hello World!"
+        elif (socket_type == "NodeSocketTexture"):
+            return bpy.data.textures.new("test", 'MAGIC')
+        elif (socket_type == "NodeSocketVector"):
+            return (4.0, -1.0, 0.0)
+
+    # Utility method returning a comparator for socket values.
+    # Not all socket value types are trivially comparable, e.g. colors.
+    @staticmethod
+    def make_socket_value_comparator(socket_type):
+        def cmp_default(test, value, expected):
+            test.assertEqual(value, expected, f"Value {value} does not match expected value {expected}")
+        def cmp_array(test, value, expected):
+            test.assertSequenceEqual(value[:], expected[:], f"Value {value} does not match expected value {expected}")
+        if (socket_type in {"NodeSocketBool",
+                            "NodeSocketFloat",
+                            "NodeSocketImage",
+                            "NodeSocketInt",
+                            "NodeSocketMaterial",
+                            "NodeSocketObject",
+                            "NodeSocketRotation",
+                            "NodeSocketString",
+                            "NodeSocketTexture"}):
+            return cmp_default
+        elif (socket_type in {"NodeSocketColor",
+                              "NodeSocketVector"}):
+            return cmp_array
+
 
     def test_empty_nodegroup(self):
         tree, group_node = self.make_group_and_instance()
@@ -65,7 +111,7 @@ class NodeGroupInterfaceTests:
         self.assertFalse(group_node.outputs)
 
     def do_test_invalid_socket_type(self, socket_type):
-        tree, group_node = self.make_group_and_instance()
+        tree = self.make_group()
 
         with self.assertRaises(TypeError):
             in0 = tree.interface.new_socket("Input 0", socket_type=socket_type, is_input=True)
@@ -103,16 +149,25 @@ class NodeGroupInterfaceTests:
             ("Input/Output 0", socket_type),
             ])
 
-    def do_test_socket_type(self, socket_type, compare_value=None):
-        tree, group_node = self.make_group_and_instance()
+    def do_test_socket_type(self, socket_type):
+        default_value=self.make_default_socket_value(socket_type)
+        compare_value=self.make_socket_value_comparator(socket_type)
+
+        # Create the tree first, add sockets, then create a group instance.
+        # That way the new instance should reflect the expected default values.
+        tree = self.make_group()
 
         in0 = tree.interface.new_socket("Input 0", socket_type=socket_type, is_input=True)
+        if default_value is not None:
+            in0.default_value = default_value
         out0 = tree.interface.new_socket("Output 0", socket_type=socket_type, is_output=True)
         self.assertIsNotNone(in0, f"Could not create socket of type {socket_type}")
         self.assertIsNotNone(out0, f"Could not create socket of type {socket_type}")
 
+        # Now make a node group instance to check default values.
+        group_node = self.make_instance(tree)
         if compare_value:
-            compare_value(self, in0.default_value, group_node.inputs[0].default_value)
+            compare_value(self, group_node.inputs[0].default_value, in0.default_value)
 
     # Classic outputs..inputs socket layout
     def do_test_items_order_classic(self, socket_type):
@@ -188,20 +243,20 @@ class GeometryNodeGroupInterfaceTest(AbstractNodeGroupInterfaceTest, NodeGroupIn
 
     def test_all_socket_types(self):
         self.do_test_invalid_socket_type("INVALID_SOCKET_TYPE_11!1")
-        self.do_test_socket_type("NodeSocketBool", compare_value=cmp_default)
+        self.do_test_socket_type("NodeSocketBool")
         self.do_test_socket_type("NodeSocketCollection")
-        self.do_test_socket_type("NodeSocketColor", compare_value=cmp_array)
-        self.do_test_socket_type("NodeSocketFloat", compare_value=cmp_default)
+        self.do_test_socket_type("NodeSocketColor")
+        self.do_test_socket_type("NodeSocketFloat")
         self.do_test_socket_type("NodeSocketGeometry")
-        self.do_test_socket_type("NodeSocketImage", compare_value=cmp_default)
-        self.do_test_socket_type("NodeSocketInt", compare_value=cmp_default)
-        self.do_test_socket_type("NodeSocketMaterial", compare_value=cmp_default)
-        self.do_test_socket_type("NodeSocketObject", compare_value=cmp_default)
-        self.do_test_socket_type("NodeSocketRotation", compare_value=cmp_default)
+        self.do_test_socket_type("NodeSocketImage")
+        self.do_test_socket_type("NodeSocketInt")
+        self.do_test_socket_type("NodeSocketMaterial")
+        self.do_test_socket_type("NodeSocketObject")
+        self.do_test_socket_type("NodeSocketRotation")
         self.do_test_invalid_socket_type("NodeSocketShader")
-        self.do_test_socket_type("NodeSocketString", compare_value=cmp_default)
-        self.do_test_socket_type("NodeSocketTexture", compare_value=cmp_default)
-        self.do_test_socket_type("NodeSocketVector", compare_value=cmp_array)
+        self.do_test_socket_type("NodeSocketString")
+        self.do_test_socket_type("NodeSocketTexture")
+        self.do_test_socket_type("NodeSocketVector")
         self.do_test_invalid_socket_type("NodeSocketVirtual")
 
     def test_items_order_classic(self):
@@ -229,8 +284,8 @@ class ShaderNodeGroupInterfaceTest(AbstractNodeGroupInterfaceTest, NodeGroupInte
     def test_all_socket_types(self):
         self.do_test_invalid_socket_type("NodeSocketBool")
         self.do_test_invalid_socket_type("NodeSocketCollection")
-        self.do_test_socket_type("NodeSocketColor", compare_value=cmp_array)
-        self.do_test_socket_type("NodeSocketFloat", compare_value=cmp_default)
+        self.do_test_socket_type("NodeSocketColor")
+        self.do_test_socket_type("NodeSocketFloat")
         self.do_test_invalid_socket_type("NodeSocketGeometry")
         self.do_test_invalid_socket_type("NodeSocketImage")
         self.do_test_invalid_socket_type("NodeSocketInt")
@@ -240,7 +295,7 @@ class ShaderNodeGroupInterfaceTest(AbstractNodeGroupInterfaceTest, NodeGroupInte
         self.do_test_socket_type("NodeSocketShader")
         self.do_test_invalid_socket_type("NodeSocketString")
         self.do_test_invalid_socket_type("NodeSocketTexture")
-        self.do_test_socket_type("NodeSocketVector", compare_value=cmp_array)
+        self.do_test_socket_type("NodeSocketVector")
         self.do_test_invalid_socket_type("NodeSocketVirtual")
 
     def test_items_order_classic(self):
@@ -269,8 +324,8 @@ class CompositorNodeGroupInterfaceTest(AbstractNodeGroupInterfaceTest, NodeGroup
     def test_all_socket_types(self):
         self.do_test_invalid_socket_type("NodeSocketBool")
         self.do_test_invalid_socket_type("NodeSocketCollection")
-        self.do_test_socket_type("NodeSocketColor", compare_value=cmp_array)
-        self.do_test_socket_type("NodeSocketFloat", compare_value=cmp_default)
+        self.do_test_socket_type("NodeSocketColor")
+        self.do_test_socket_type("NodeSocketFloat")
         self.do_test_invalid_socket_type("NodeSocketGeometry")
         self.do_test_invalid_socket_type("NodeSocketImage")
         self.do_test_invalid_socket_type("NodeSocketInt")
@@ -280,7 +335,7 @@ class CompositorNodeGroupInterfaceTest(AbstractNodeGroupInterfaceTest, NodeGroup
         self.do_test_invalid_socket_type("NodeSocketShader")
         self.do_test_invalid_socket_type("NodeSocketString")
         self.do_test_invalid_socket_type("NodeSocketTexture")
-        self.do_test_socket_type("NodeSocketVector", compare_value=cmp_array)
+        self.do_test_socket_type("NodeSocketVector")
         self.do_test_invalid_socket_type("NodeSocketVirtual")
 
     def test_items_order_classic(self):
