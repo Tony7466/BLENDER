@@ -18,6 +18,7 @@
 #include "BLI_listbase.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
+#include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_userdef_types.h"
@@ -156,6 +157,25 @@ static void fsmenu_xdg_insert_entry(GHash *xdg_map,
 }
 
 /** \} */
+
+#ifdef WIN32
+/* Add a Windows known folder path to the System list. */
+static void fsmenu_add_windows_folder(struct FSMenu *fsmenu,
+                                      FSMenuCategory category,
+                                      REFKNOWNFOLDERID rfid,
+                                      const char *name,
+                                      const int icon,
+                                      FSMenuInsert flag)
+{
+  LPWSTR pPath;
+  char line[FILE_MAXDIR];
+  if (SHGetKnownFolderPath(rfid, 0, NULL, &pPath) == S_OK) {
+    BLI_strncpy_wchar_as_utf8(line, pPath, FILE_MAXDIR);
+    CoTaskMemFree(pPath);
+    fsmenu_insert_entry(fsmenu, category, line, name, icon, flag);
+  }
+}
+#endif
 
 void fsmenu_read_system(FSMenu *fsmenu, int read_bookmarks)
 {
