@@ -30,6 +30,7 @@
 #include "tree_element_nla.hh"
 #include "tree_element_overrides.hh"
 #include "tree_element_particle_system.hh"
+#include "tree_element_pose.hh"
 #include "tree_element_rna.hh"
 #include "tree_element_scene_objects.hh"
 #include "tree_element_seq.hh"
@@ -140,6 +141,8 @@ std::unique_ptr<AbstractTreeElement> AbstractTreeElement::createFromType(const i
       return std::make_unique<TreeElementParticleSystem>(
           legacy_te, *psys_data->object, *psys_data->psys);
     }
+    case TSE_POSE_BASE:
+      return std::make_unique<TreeElementPoseBase>(legacy_te, *static_cast<Object *>(idv));
     default:
       break;
   }
