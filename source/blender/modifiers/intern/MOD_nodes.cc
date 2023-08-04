@@ -770,7 +770,7 @@ static void prepare_simulation_states_for_evaluation(const NodesModifierData &nm
         /* Reset the cache when going backwards in time. */
         simulation_cache.reset();
       }
-      if (realtime_cache.prev_frame == current_frame && realtime_cache.current_state) {
+      if (realtime_cache.current_frame == current_frame && realtime_cache.current_state) {
         /* Don't simulate in the same frame again. */
         exec_data.current_simulation_state = realtime_cache.current_state.get();
         return;
