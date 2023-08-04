@@ -995,9 +995,9 @@ Mesh *USDMeshReader::read_mesh(Mesh *existing_mesh,
 std::string USDMeshReader::get_skeleton_path() const
 {
   /* Make sure we can apply UsdSkelBindingAPI to the prim.
-   * Attempting to apply the API to instance proxies or
-   * prototypes generates an error. */
-  if (!prim_ || prim_.IsInstanceProxy() || prim_.IsInPrototype()) {
+   * Attempting to apply the API to instance proxies generates
+   * a USD error. */
+  if (!prim_ || prim_.IsInstanceProxy()) {
     return "";
   }
 
@@ -1022,9 +1022,10 @@ bool USDMeshReader::get_local_usd_xform(const float time,
     return false;
   }
 
-  if (!import_params_.import_skeletons || prim_.IsInstanceProxy() || prim_.IsInPrototype()) {
+  if (!import_params_.import_skeletons || prim_.IsInstanceProxy()) {
     /* Use the standard transform computation, since we are ignoring
-     * skinning data. */
+     * skinning data. Note that applying theUsdSkelBindingAPI to an
+     * instance proxy generates a USD error. */
     return USDXformReader::get_local_usd_xform(time, r_xform, r_is_constant);
   }
 

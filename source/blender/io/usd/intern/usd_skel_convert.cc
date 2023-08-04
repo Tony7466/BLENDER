@@ -82,36 +82,15 @@ void add_bezt(FCurve *fcu,
 
 namespace blender::io::usd {
 
-//pxr::GfMatrix4d get_world_matrix(const pxr::UsdPrim &prim, pxr::UsdTimeCode time)
-//{
-//  pxr::GfMatrix4d local_xf(1.0f);
-//
-//  if (!prim) {
-//    return local_xf;
-//  }
-//
-//  pxr::UsdGeomXformable xformable(prim);
-//
-//  if (xformable) {
-//    bool reset_xform_stack = false;
-//    if (!xformable.GetLocalTransformation(&local_xf, &reset_xform_stack, time)) {
-//      std::cout << "WARNING: couldn't get local xform for prim " << prim.GetPath() << std::endl;
-//      return local_xf;
-//    }
-//  }
-//
-//  return local_xf * get_world_matrix(prim.GetParent(), time);
-//}
-
 void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
 {
   if (!(obj && obj->data && obj->type == OB_MESH && prim)) {
     return;
   }
 
-  if (prim.IsInstanceProxy() || prim.IsInPrototype()) {
+  if (prim.IsInstanceProxy()) {
     /* Attempting to create a UsdSkelBindingAPI for
-     * instance proxies and prototypes generates USD errors. */
+     * instance proxies generates USD errors. */
     return;
   }
 
@@ -535,9 +514,9 @@ void import_skel_bindings(Main *bmain, Object *mesh_obj, pxr::UsdPrim prim)
     return;
   }
 
-  if (prim.IsInstanceProxy() || prim.IsInPrototype()) {
+  if (prim.IsInstanceProxy()) {
     /* Attempting to create a UsdSkelBindingAPI for
-     * instance proxies and prototypes generates USD errors. */
+     * instance proxies generates USD errors. */
     return;
   }
 
