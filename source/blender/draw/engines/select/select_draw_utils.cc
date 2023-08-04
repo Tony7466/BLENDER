@@ -9,7 +9,7 @@
  */
 
 #include "BKE_editmesh.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_object.h"
 
 #include "DNA_mesh_types.h"
@@ -22,7 +22,7 @@
 
 #include "DRW_select_buffer.h"
 
-#include "draw_cache_impl.h"
+#include "draw_cache_impl.hh"
 
 #include "select_private.h"
 
