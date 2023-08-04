@@ -7,7 +7,6 @@
  */
 
 #include <cfloat>
-#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -1504,24 +1503,13 @@ void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, shor
    * the data will be layered correctly
    */
   bAnimListElem *ale_active_fcurve = nullptr;
-  using namespace std;
-  double sum = 0.0;
-  int count = 0;
   for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
-    auto start = chrono::high_resolution_clock::now();
     const FCurve *fcu = (FCurve *)ale->key_data;
     if (fcu->flag & FCURVE_ACTIVE) {
       ale_active_fcurve = ale;
       continue;
     }
     draw_fcurve(ac, sipo, region, ale);
-    auto end = chrono::high_resolution_clock::now();
-    auto duration = chrono::duration_cast<chrono::microseconds>(end - start);
-    sum += duration.count();
-    count++;
-  }
-  if (count > 0) {
-    cout << sum / count << endl;
   }
 
   /* Draw the active FCurve last so that it (especially the active keyframe)
