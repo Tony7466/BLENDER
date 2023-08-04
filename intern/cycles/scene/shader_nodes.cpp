@@ -3513,32 +3513,35 @@ void PrincipledHairBsdfNode::compile(SVMCompiler &compiler)
       __float_as_uint(random_roughness));
 
   /* data node */
-  compiler.add_node(model,
+  compiler.add_node(SVM_STACK_INVALID,
                     compiler.encode_uchar4(offset_ofs, ior_ofs, color_ofs, parametrization),
                     __float_as_uint(offset),
                     __float_as_uint(ior));
 
   /* data node 2 */
-  compiler.add_node(compiler.encode_uchar4(model == NODE_PRINCIPLED_HAIR_HUANG ?
-                                               compiler.stack_assign_if_linked(aspect_ratio_in) :
-                                               coat_ofs,
-                                           melanin_ofs,
-                                           melanin_redness_ofs,
-                                           absorption_coefficient_ofs),
-                    __float_as_uint(model == NODE_PRINCIPLED_HAIR_HUANG ? aspect_ratio : coat),
+  compiler.add_node(compiler.encode_uchar4(
+                        tint_ofs, melanin_ofs, melanin_redness_ofs, absorption_coefficient_ofs),
+                    attr_random,
                     __float_as_uint(melanin),
                     __float_as_uint(melanin_redness));
 
   /* data node 3 */
-  compiler.add_node(compiler.encode_uchar4(tint_ofs,
-                                           random_in_ofs,
-                                           random_color_ofs,
-                                           model == NODE_PRINCIPLED_HAIR_HUANG ?
-                                               compiler.attribute(ATTR_STD_VERTEX_NORMAL) :
-                                               radial_roughness_ofs),
-                    __float_as_uint(random),
-                    __float_as_uint(random_color),
-                    attr_random);
+  if (model == NODE_PRINCIPLED_HAIR_HUANG) {
+    compiler.add_node(compiler.encode_uchar4(compiler.stack_assign_if_linked(aspect_ratio_in),
+                                             random_in_ofs,
+                                             random_color_ofs,
+                                             compiler.attribute(ATTR_STD_VERTEX_NORMAL)),
+                      __float_as_uint(random),
+                      __float_as_uint(random_color),
+                      __float_as_uint(aspect_ratio));
+  }
+  else {
+    compiler.add_node(
+        compiler.encode_uchar4(coat_ofs, random_in_ofs, random_color_ofs, radial_roughness_ofs),
+        __float_as_uint(random),
+        __float_as_uint(random_color),
+        __float_as_uint(coat));
+  }
 
   /* data node 4 */
   compiler.add_node(compiler.encode_uchar4(compiler.stack_assign_if_linked(R_in),

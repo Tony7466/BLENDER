@@ -586,18 +586,18 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       float alpha = stack_load_float_default(stack, offset_ofs, data_node.z);
       float ior = stack_load_float_default(stack, ior_ofs, data_node.w);
 
-      uint shared_ofs1, melanin_ofs, melanin_redness_ofs, absorption_coefficient_ofs;
+      uint tint_ofs, melanin_ofs, melanin_redness_ofs, absorption_coefficient_ofs;
       svm_unpack_node_uchar4(data_node2.x,
-                             &shared_ofs1,
+                             &tint_ofs,
                              &melanin_ofs,
                              &melanin_redness_ofs,
                              &absorption_coefficient_ofs);
 
-      uint tint_ofs, random_ofs, random_color_ofs, shared_ofs2;
+      uint shared_ofs1, random_ofs, random_color_ofs, shared_ofs2;
       svm_unpack_node_uchar4(
-          data_node3.x, &tint_ofs, &random_ofs, &random_color_ofs, &shared_ofs2);
+          data_node3.x, &shared_ofs1, &random_ofs, &random_color_ofs, &shared_ofs2);
 
-      const AttributeDescriptor attr_descr_random = find_attribute(kg, sd, data_node3.w);
+      const AttributeDescriptor attr_descr_random = find_attribute(kg, sd, data_node2.y);
       float random = 0.0f;
       if (attr_descr_random.offset != ATTR_STD_NOT_FOUND) {
         random = primitive_surface_attribute_float(kg, sd, attr_descr_random, NULL, NULL);
@@ -676,10 +676,9 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           }
 
           /* Remap Coat value to [0, 100]% of Roughness. */
-          float coat = stack_load_float_default(stack, shared_ofs1, data_node2.y);
+          float coat = stack_load_float_default(stack, shared_ofs1, data_node3.w);
           float m0_roughness = 1.0f - clamp(coat, 0.0f, 1.0f);
 
-          bsdf->N = maybe_ensure_valid_specular_reflection(sd, N);
           bsdf->v = roughness;
           bsdf->s = radial_roughness;
           bsdf->m0_roughness = m0_roughness;
@@ -703,8 +702,8 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
             break;
           }
 
-          uint R_ofs, TT_ofs, TRT_ofs, temp;
-          svm_unpack_node_uchar4(data_node4.x, &R_ofs, &TT_ofs, &TRT_ofs, &temp);
+          uint R_ofs, TT_ofs, TRT_ofs, unused;
+          svm_unpack_node_uchar4(data_node4.x, &R_ofs, &TT_ofs, &TRT_ofs, &unused);
           float R = stack_load_float_default(stack, R_ofs, data_node4.y);
           float TT = stack_load_float_default(stack, TT_ofs, data_node4.z);
           float TRT = stack_load_float_default(stack, TRT_ofs, data_node4.w);
@@ -714,7 +713,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           bsdf->extra->TT = fmaxf(0.0f, TT);
           bsdf->extra->TRT = fmaxf(0.0f, TRT);
 
-          bsdf->aspect_ratio = stack_load_float_default(stack, shared_ofs1, data_node2.y);
+          bsdf->aspect_ratio = stack_load_float_default(stack, shared_ofs1, data_node3.w);
           if (bsdf->aspect_ratio != 1.0f) {
             /* Align ellipse major axis with the curve normal direction. */
             const AttributeDescriptor attr_descr_normal = find_attribute(kg, sd, shared_ofs2);
