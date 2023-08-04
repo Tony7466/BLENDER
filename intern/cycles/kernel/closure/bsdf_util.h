@@ -13,7 +13,7 @@ CCL_NAMESPACE_BEGIN
 
 /* Compute fresnel reflectance. Also return the dot product of the refracted ray and the normal as
  * `cos_theta_t`, as it is used when computing the direction of the refracted ray. */
-ccl_device float fresnel(float cos_theta_i, float eta, ccl_private float *r_cos_theta_t)
+ccl_device float fresnel_dielectric(float cos_theta_i, float eta, ccl_private float *r_cos_theta_t)
 {
   kernel_assert(!isnan_safe(cos_theta_i));
 
