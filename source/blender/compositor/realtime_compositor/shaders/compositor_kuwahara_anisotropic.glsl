@@ -10,6 +10,11 @@
  *
  *   Kyprianidis, Jan Eric, et al. "Anisotropic Kuwahara Filtering with Polynomial Weighting
  *   Functions." 2010.
+ *
+ * And the sector weight function described in the paper:
+ *
+ *  Kyprianidis, Jan Eric. "Image and video abstraction by multi-scale anisotropic Kuwahara
+ *  filtering." 2011.
  */
 void main()
 {
@@ -186,8 +191,8 @@ void main()
     }
   }
 
-  /* Compute the weighted sum of mean of sectors, such that sectors with lower variance gets more
-   * significant weight than sectors with higher variance. */
+  /* Compute the weighted sum of mean of sectors, such that sectors with lower standard deviation
+   * gets more significant weight than sectors with higher standard deviation. */
   float sum_of_weights = 0.0;
   vec4 weighted_sum = vec4(0.0);
   for (int i = 0; i < number_of_sectors; i++) {
@@ -196,14 +201,14 @@ void main()
 
     vec4 color_mean = weighted_mean_of_color_of_sectors[i];
     vec4 squared_color_mean = weighted_mean_of_squared_color_of_sectors[i];
-    vec4 color_variance = squared_color_mean - color_mean * color_mean;
+    vec4 color_variance = abs(squared_color_mean - color_mean * color_mean);
 
-    float variance = dot(color_variance.rgb, vec3(1.0));
+    float standard_deviation = dot(sqrt(color_variance.rgb), vec3(1.0));
 
-    /* Compute the sector weight based on the weight function introduced in section "3.2
-     * Anisotropic Kuwahara Filtering" of the paper. The weighting function assumes an 8-bit
-     * integer image, so we need to scale the variance by 255. */
-    float weight = 1.0 / (1.0 + pow(255.0 * variance, sharpness));
+    /* Compute the sector weight based on the weight function introduced in section "3.3.1
+     * Single-scale Filtering" of the multi-scale paper. Use a threshold of 0.02 to avoid zero
+     * division and avoid artifacts in homogeneous regions as demonstrated in the paper. */
+    float weight = 1.0 / pow(max(0.02, standard_deviation), sharpness);
 
     sum_of_weights += weight;
     weighted_sum += color_mean * weight;
