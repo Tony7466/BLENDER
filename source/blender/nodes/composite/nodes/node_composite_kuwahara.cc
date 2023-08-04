@@ -15,6 +15,7 @@
 #include "COM_utilities.hh"
 
 #include "COM_algorithm_summed_area_table.hh"
+#include "COM_algorithm_symmetric_separable_blur.hh"
 
 #include "node_composite_util.hh"
 
@@ -142,10 +143,69 @@ class ConvertKuwaharaOperation : public NodeOperation {
     squared_table.release();
   }
 
+  /* An implementation of the Anisotropic Kuwahara filter described in the paper:
+   *
+   *   Kyprianidis, Jan Eric, Henry Kang, and Jurgen Dollner. "Image and video abstraction by
+   *   anisotropic Kuwahara filtering." 2009.
+   */
   void execute_anisotropic()
   {
-    get_input("Image").pass_through(get_result("Image"));
-    context().set_info_message("Viewport compositor setup not fully supported");
+    Result structure_tensor = compute_structure_tensor();
+    Result smoothed_structure_tensor = Result::Temporary(ResultType::Color, texture_pool());
+    symmetric_separable_blur(context(),
+                             structure_tensor,
+                             smoothed_structure_tensor,
+                             float2(node_storage(bnode()).smoothing));
+    structure_tensor.release();
+
+    GPUShader *shader = shader_manager().get("compositor_kuwahara_anisotropic");
+    GPU_shader_bind(shader);
+
+    GPU_shader_uniform_1i(shader, "radius", node_storage(bnode()).size);
+    GPU_shader_uniform_1f(shader, "eccentricity", 1.0);
+    GPU_shader_uniform_1f(shader, "sharpness", 8.0);
+
+    Result &input = get_input("Image");
+    input.bind_as_texture(shader, "input_tx");
+
+    smoothed_structure_tensor.bind_as_texture(shader, "structure_tensor_tx");
+
+    const Domain domain = compute_domain();
+    Result &output_image = get_result("Image");
+    output_image.allocate_texture(domain);
+    output_image.bind_as_image(shader, "output_img");
+
+    compute_dispatch_threads_at_least(shader, domain.size);
+
+    input.unbind_as_texture();
+    smoothed_structure_tensor.unbind_as_texture();
+    output_image.unbind_as_image();
+    GPU_shader_unbind();
+
+    smoothed_structure_tensor.release();
+  }
+
+  Result compute_structure_tensor()
+  {
+    GPUShader *shader = shader_manager().get(
+        "compositor_kuwahara_anisotropic_compute_structure_tensor");
+    GPU_shader_bind(shader);
+
+    Result &input = get_input("Image");
+    input.bind_as_texture(shader, "input_tx");
+
+    const Domain domain = compute_domain();
+    Result structure_tensor = Result::Temporary(ResultType::Color, texture_pool());
+    structure_tensor.allocate_texture(domain);
+    structure_tensor.bind_as_image(shader, "structure_tensor_img");
+
+    compute_dispatch_threads_at_least(shader, domain.size);
+
+    input.unbind_as_texture();
+    structure_tensor.unbind_as_image();
+    GPU_shader_unbind();
+
+    return structure_tensor;
   }
 };
 
