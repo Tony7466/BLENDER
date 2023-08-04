@@ -1594,19 +1594,18 @@ static int nlaedit_swap_exec(bContext *C, wmOperator *op)
     /* Make temporary meta-strips so that entire islands of selections can be moved around. */
     BKE_nlastrips_make_metas(&nlt->strips, true);
 
-    /* special case: if there is only 1 island
-     * (i.e. temp meta BUT NOT unselected/normal/normal-meta strips) left after this,
-     * and this island has two strips inside it, then we should be able to just swap these still...
+    /* Removes all temporary meta strips if they are not exactly 2 selected.
+     * The swap can be successful if there are only 2 temporary meta strips selected or only 2
+     * strips selected.
      */
-    if (BLI_listbase_is_empty(&nlt->strips) == false) {
-      NlaStrip *mstrip = static_cast<NlaStrip *>(nlt->strips.first);
-
-      if ((mstrip->flag & NLASTRIP_FLAG_TEMP_META) &&
-          (BLI_listbase_count_at_most(&mstrip->strips, 3) == 2))
-      {
-        /* remove this temp meta, so that we can see the strips inside */
-        BKE_nlastrips_clear_metas(&nlt->strips, false, true);
+    int temp_meta_stips_count = 0;
+    for (strip = static_cast<NlaStrip *>(nlt->strips.first); strip; strip = strip->next) {
+      if (strip->flag & NLASTRIP_FLAG_TEMP_META) {
+        temp_meta_stips_count++;
       }
+    }
+    if (temp_meta_stips_count != 2) {
+      BKE_nlastrips_clear_metas(&nlt->strips, false, true);
     }
 
     /* get two selected strips only (these will be metas due to prev step) to operate on
@@ -1632,13 +1631,20 @@ static int nlaedit_swap_exec(bContext *C, wmOperator *op)
       }
     }
 
-    if (strip) {
-      /* too many selected warning */
+    if (temp_meta_stips_count > 2) {
+      /* too many clusters of strips selected warning */
       BKE_reportf(
           op->reports,
           RPT_WARNING,
           "Too many clusters of strips selected in NLA Track (%s): needs exactly 2 to be selected",
           nlt->name);
+    }
+    else if (strip) {
+      /* too many strips selected warning */
+      BKE_reportf(op->reports,
+                  RPT_WARNING,
+                  "Too many strips selected in NLA Track (%s): needs exactly 2 to be selected",
+                  nlt->name);
     }
     else if (area == nullptr) {
       /* no warning as this is just a common case,
