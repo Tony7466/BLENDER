@@ -7,6 +7,7 @@
  */
 
 #include <cfloat>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -861,18 +862,18 @@ static bool fcurve_can_use_simple_bezt_drawing(FCurve *fcu)
   return true;
 }
 
-static int calculate_bezt_draw_resolution(BezTriple *bezt,
-                                          BezTriple *prevbezt,
-                                          const blender::float2 resolution_scale)
+static float calculate_bezt_draw_resolution(BezTriple *bezt,
+                                            BezTriple *prevbezt,
+                                            const blender::float2 resolution_scale)
 {
-  const int resolution_x = (int)((bezt->vec[1][0] - prevbezt->vec[1][0]) * resolution_scale[0]);
+  const float resolution_x = (bezt->vec[1][0] - prevbezt->vec[1][0]) * resolution_scale[0];
   /* Include the handles in the resolution calculation to cover the case where keys have the same
    * y-value, but their handles are offset to create an arc. */
   const float min_y = min_ffff(
       bezt->vec[1][1], bezt->vec[2][1], prevbezt->vec[1][1], prevbezt->vec[0][1]);
   const float max_y = max_ffff(
       bezt->vec[1][1], bezt->vec[2][1], prevbezt->vec[1][1], prevbezt->vec[0][1]);
-  const int resolution_y = (int)((max_y - min_y) * resolution_scale[1]);
+  const float resolution_y = (max_y - min_y) * resolution_scale[1];
   /* Using a simple sum instead of calculating the diagonal. This gives a slightly higher
    * resolution but it does compensate for the fact that bezier curves can create long arcs between
    * keys. */
@@ -1073,11 +1074,32 @@ static void draw_fcurve_curve_bezts(
     curve_vertices.append({bezt->vec[1][0], bezt->vec[1][1]});
   }
 
-  const blender::float2 resolution_scale = calculate_resolution_scale(v2d);
+  const blender::float2 points_per_unit = calculate_resolution_scale(v2d);
   /* Draw curve between first and last keyframe (if there are enough to do so). */
+  BezTriple *prevbezt = &fcu->bezt[bounding_indices[0]];
+  float2 key_sum = {0, 0};
+  int key_count = 0;
+  const float min_pixel_distance = 1.5f;
   for (int i = bounding_indices[0] + 1; i <= bounding_indices[1]; i++) {
-    BezTriple *prevbezt = &fcu->bezt[i - 1];
     BezTriple *bezt = &fcu->bezt[i];
+    float pixel_distance = ((bezt->vec[1][0] - prevbezt->vec[1][0]) * points_per_unit[0]) +
+                           (fabs(bezt->vec[1][1] - prevbezt->vec[1][1]) * points_per_unit[1]);
+
+    if (pixel_distance >= min_pixel_distance && key_count > 0) {
+      curve_vertices.append(key_sum / key_count);
+      key_sum = {0, 0};
+      key_count = 0;
+      prevbezt = &fcu->bezt[i - 1];
+      /* Calculate again based on the new prevbezt. */
+      pixel_distance = ((bezt->vec[1][0] - prevbezt->vec[1][0]) * points_per_unit[0]) +
+                       (fabs(bezt->vec[1][1] - prevbezt->vec[1][1]) * points_per_unit[1]);
+    }
+
+    if (pixel_distance < min_pixel_distance) {
+      key_sum += {bezt->vec[1][0], bezt->vec[1][1]};
+      key_count++;
+      continue;
+    }
 
     if (prevbezt->ipo == BEZT_IPO_CONST) {
       /* Constant-Interpolation: draw segment between previous keyframe and next,
@@ -1090,7 +1112,7 @@ static void draw_fcurve_curve_bezts(
       curve_vertices.append({prevbezt->vec[1][0], prevbezt->vec[1][1]});
     }
     else if (prevbezt->ipo == BEZT_IPO_BEZ) {
-      const int resolution = calculate_bezt_draw_resolution(bezt, prevbezt, resolution_scale);
+      const int resolution = (int)calculate_bezt_draw_resolution(bezt, prevbezt, points_per_unit);
       add_bezt_vertices(bezt, prevbezt, resolution, curve_vertices);
     }
 
@@ -1098,6 +1120,7 @@ static void draw_fcurve_curve_bezts(
     if (i == bounding_indices[1]) {
       curve_vertices.append({bezt->vec[1][0], bezt->vec[1][1]});
     }
+    prevbezt = bezt;
   }
 
   /* Extrapolate to the right? (see code for left-extrapolation above too) */
@@ -1481,13 +1504,24 @@ void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, shor
    * the data will be layered correctly
    */
   bAnimListElem *ale_active_fcurve = nullptr;
+  using namespace std;
+  double sum = 0.0;
+  int count = 0;
   for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+    auto start = chrono::high_resolution_clock::now();
     const FCurve *fcu = (FCurve *)ale->key_data;
     if (fcu->flag & FCURVE_ACTIVE) {
       ale_active_fcurve = ale;
       continue;
     }
     draw_fcurve(ac, sipo, region, ale);
+    auto end = chrono::high_resolution_clock::now();
+    auto duration = chrono::duration_cast<chrono::microseconds>(end - start);
+    sum += duration.count();
+    count++;
+  }
+  if (count > 0) {
+    cout << sum / count << endl;
   }
 
   /* Draw the active FCurve last so that it (especially the active keyframe)
