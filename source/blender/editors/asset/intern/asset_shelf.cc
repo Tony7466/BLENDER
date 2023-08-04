@@ -20,7 +20,7 @@
 #include "DNA_screen_types.h"
 
 #include "ED_asset_list.h"
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "RNA_prototypes.h"
 
@@ -30,7 +30,7 @@
 #include "UI_tree_view.hh"
 #include "UI_view2d.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "ED_asset_shelf.h"
 #include "asset_shelf.hh"
@@ -361,7 +361,7 @@ static void asset_shelf_region_snap_height_to_closest(ScrArea *area,
 
   if (region->sizey != new_size_y) {
     region->sizey = new_size_y;
-    area->flag |= AREA_FLAG_REGION_SIZE_UPDATE;
+    ED_area_tag_region_size_update(area, region);
   }
 }
 

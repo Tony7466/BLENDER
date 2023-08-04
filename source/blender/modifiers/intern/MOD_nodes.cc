@@ -67,7 +67,7 @@
 
 #include "BLT_translation.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 #include "RNA_access.h"
 #include "RNA_enum_types.h"
@@ -81,7 +81,7 @@
 #include "MOD_ui_common.hh"
 
 #include "ED_object.h"
-#include "ED_screen.h"
+#include "ED_screen.hh"
 #include "ED_spreadsheet.h"
 #include "ED_undo.h"
 #include "ED_viewer_path.hh"
@@ -766,9 +766,14 @@ static void prepare_simulation_states_for_evaluation(const NodesModifierData &nm
     if (DEG_is_active(ctx.depsgraph)) {
       bke::sim::ModifierSimulationCacheRealtime &realtime_cache = simulation_cache.realtime_cache;
 
-      /* Reset the cache when going backwards in time. */
-      if (realtime_cache.prev_frame >= current_frame) {
+      if (current_frame < realtime_cache.prev_frame) {
+        /* Reset the cache when going backwards in time. */
         simulation_cache.reset();
+      }
+      if (realtime_cache.current_frame == current_frame && realtime_cache.current_state) {
+        /* Don't simulate in the same frame again. */
+        exec_data.current_simulation_state = realtime_cache.current_state.get();
+        return;
       }
 
       /* Advance in time, making the last "current" state the new "previous" state. */
