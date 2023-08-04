@@ -15,7 +15,6 @@
 #include "DNA_meshdata_types.h"
 
 #include "BKE_customdata.h"
-#include "BKE_mesh_types.h"
 
 struct BMesh;
 struct BMeshCreateParams;
@@ -41,6 +40,16 @@ struct Scene;
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* TODO: Move to `BKE_mesh_types.hh` when possible. */
+typedef enum eMeshBatchDirtyMode {
+  BKE_MESH_BATCH_DIRTY_ALL = 0,
+  BKE_MESH_BATCH_DIRTY_SELECT,
+  BKE_MESH_BATCH_DIRTY_SELECT_PAINT,
+  BKE_MESH_BATCH_DIRTY_SHADING,
+  BKE_MESH_BATCH_DIRTY_UVEDIT_ALL,
+  BKE_MESH_BATCH_DIRTY_UVEDIT_SELECT,
+} eMeshBatchDirtyMode;
 
 /*  mesh_runtime.cc  */
 
@@ -311,25 +320,6 @@ void BKE_mesh_recalc_looptri(const int *corner_verts,
  * \warning May return null if the mesh is empty.
  */
 const float (*BKE_mesh_vert_normals_ensure(const struct Mesh *mesh))[3];
-
-/**
- * Retrieve write access to the cached vertex normals, ensuring that they are allocated but *not*
- * that they are calculated. The provided vertex normals should be the same as if they were
- * calculated automatically.
- *
- * \note In order to clear the dirty flag, this function should be followed by a call to
- * #BKE_mesh_vert_normals_clear_dirty. This is separate so that normals are still tagged dirty
- * while they are being assigned.
- *
- * \warning The memory returned by this function is not initialized if it was not previously
- * allocated.
- */
-float (*BKE_mesh_vert_normals_for_write(struct Mesh *mesh))[3];
-
-/**
- * Mark the mesh's vertex normals non-dirty, for when they are calculated or assigned manually.
- */
-void BKE_mesh_vert_normals_clear_dirty(struct Mesh *mesh);
 
 /**
  * Return true if the mesh vertex normals either are not stored or are dirty.

@@ -151,6 +151,7 @@ set(SRC
   engines/eevee_next/eevee_material.cc
   engines/eevee_next/eevee_motion_blur.cc
   engines/eevee_next/eevee_pipeline.cc
+  engines/eevee_next/eevee_raytrace.cc
   engines/eevee_next/eevee_reflection_probes.cc
   engines/eevee_next/eevee_renderbuffers.cc
   engines/eevee_next/eevee_sampling.cc
@@ -241,7 +242,7 @@ set(SRC
   intern/draw_attributes.hh
   intern/draw_cache.h
   intern/draw_cache_extract.hh
-  intern/draw_cache_impl.h
+  intern/draw_cache_impl.hh
   intern/draw_cache_inline.h
   intern/draw_color_management.h
   intern/draw_command.hh
@@ -464,12 +465,16 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_ambient_occlusion_lib.glsl
   engines/eevee_next/shaders/eevee_ambient_occlusion_pass_comp.glsl
   engines/eevee_next/shaders/eevee_attributes_lib.glsl
+  engines/eevee_next/shaders/eevee_bxdf_lib.glsl
+  engines/eevee_next/shaders/eevee_bxdf_sampling_lib.glsl
   engines/eevee_next/shaders/eevee_camera_lib.glsl
   engines/eevee_next/shaders/eevee_colorspace_lib.glsl
   engines/eevee_next/shaders/eevee_cryptomatte_lib.glsl
   engines/eevee_next/shaders/eevee_cubemap_lib.glsl
   engines/eevee_next/shaders/eevee_debug_surfels_vert.glsl
   engines/eevee_next/shaders/eevee_debug_surfels_frag.glsl
+  engines/eevee_next/shaders/eevee_debug_irradiance_grid_vert.glsl
+  engines/eevee_next/shaders/eevee_debug_irradiance_grid_frag.glsl
   engines/eevee_next/shaders/eevee_deferred_light_frag.glsl
   engines/eevee_next/shaders/eevee_depth_of_field_accumulator_lib.glsl
   engines/eevee_next/shaders/eevee_depth_of_field_bokeh_lut_comp.glsl
@@ -511,6 +516,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_lightprobe_eval_lib.glsl
   engines/eevee_next/shaders/eevee_lightprobe_irradiance_bounds_comp.glsl
   engines/eevee_next/shaders/eevee_lightprobe_irradiance_ray_comp.glsl
+  engines/eevee_next/shaders/eevee_lightprobe_irradiance_offset_comp.glsl
   engines/eevee_next/shaders/eevee_lightprobe_irradiance_load_comp.glsl
   engines/eevee_next/shaders/eevee_lightprobe_lib.glsl
   engines/eevee_next/shaders/eevee_ltc_lib.glsl
@@ -519,6 +525,15 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_motion_blur_gather_comp.glsl
   engines/eevee_next/shaders/eevee_motion_blur_lib.glsl
   engines/eevee_next/shaders/eevee_nodetree_lib.glsl
+  engines/eevee_next/shaders/eevee_ray_denoise_bilateral_comp.glsl
+  engines/eevee_next/shaders/eevee_ray_denoise_spatial_comp.glsl
+  engines/eevee_next/shaders/eevee_ray_denoise_temporal_comp.glsl
+  engines/eevee_next/shaders/eevee_ray_generate_comp.glsl
+  engines/eevee_next/shaders/eevee_ray_generate_lib.glsl
+  engines/eevee_next/shaders/eevee_ray_tile_classify_comp.glsl
+  engines/eevee_next/shaders/eevee_ray_tile_compact_comp.glsl
+  engines/eevee_next/shaders/eevee_ray_trace_screen_comp.glsl
+  engines/eevee_next/shaders/eevee_ray_trace_screen_lib.glsl
   engines/eevee_next/shaders/eevee_octahedron_lib.glsl
   engines/eevee_next/shaders/eevee_ray_types_lib.glsl
   engines/eevee_next/shaders/eevee_reflection_probe_eval_lib.glsl
@@ -555,6 +570,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_surf_lib.glsl
   engines/eevee_next/shaders/eevee_surf_shadow_frag.glsl
   engines/eevee_next/shaders/eevee_surf_world_frag.glsl
+  engines/eevee_next/shaders/eevee_surfel_cluster_build_comp.glsl
   engines/eevee_next/shaders/eevee_surfel_light_comp.glsl
   engines/eevee_next/shaders/eevee_surfel_list_build_comp.glsl
   engines/eevee_next/shaders/eevee_surfel_list_lib.glsl

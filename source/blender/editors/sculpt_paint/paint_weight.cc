@@ -34,17 +34,17 @@
 
 #include "BKE_attribute.h"
 #include "BKE_attribute.hh"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
+#include "BKE_mesh_mapping.hh"
 #include "BKE_object.h"
 #include "BKE_object_deform.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_report.h"
 
 #include "DEG_depsgraph.h"
@@ -1875,11 +1875,8 @@ static void wpaint_stroke_done(const bContext *C, PaintStroke *stroke)
 
   /* and particles too */
   if (ob->particlesystem.first) {
-    ParticleSystem *psys;
-    int i;
-
-    for (psys = (ParticleSystem *)ob->particlesystem.first; psys; psys = psys->next) {
-      for (i = 0; i < PSYS_TOT_VG; i++) {
+    LISTBASE_FOREACH (ParticleSystem *, psys, &ob->particlesystem) {
+      for (int i = 0; i < PSYS_TOT_VG; i++) {
         if (psys->vgroup[i] == BKE_object_defgroup_active_index_get(ob)) {
           psys->recalc |= ID_RECALC_PSYS_RESET;
           break;
