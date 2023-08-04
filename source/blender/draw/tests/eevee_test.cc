@@ -9,7 +9,7 @@
 #include "BKE_main.h"
 #include "BKE_node.hh"
 #include "BKE_object.h"
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 #include "RNA_define.h"
 
 #include "GPU_batch.h"

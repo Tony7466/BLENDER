@@ -24,7 +24,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_sound.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"

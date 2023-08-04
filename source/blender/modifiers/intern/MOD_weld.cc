@@ -40,7 +40,7 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"

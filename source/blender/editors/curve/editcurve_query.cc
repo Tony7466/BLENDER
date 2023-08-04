@@ -18,8 +18,8 @@
 #include "BKE_fcurve.h"
 #include "BKE_layer.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "ED_curve.h"
 #include "ED_view3d.h"

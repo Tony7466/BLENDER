@@ -49,7 +49,7 @@
 
 #include "WM_api.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 static void init_data(GpencilModifierData *md)
 {

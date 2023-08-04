@@ -9,7 +9,7 @@
 
 #include "BKE_appdir.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "usd.h"
 #include "usd.hh"

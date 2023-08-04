@@ -9,8 +9,8 @@
 #include "BLI_math.h"
 #include "BLI_path_util.h"
 #include "BLO_readfile.h"
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 #include "DNA_object_types.h"
 
 #include <map>

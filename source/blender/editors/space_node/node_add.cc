@@ -31,7 +31,7 @@
 #include "BKE_scene.h"
 #include "BKE_texture.h"
 
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_build.hh"
 
 #include "ED_asset.h"
 #include "ED_node.h" /* own include */

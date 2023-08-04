@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later
  * SPDX-FileCopyrightText: 2011-2022 Blender Foundation */
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "curves.h"
 #include "hydra_scene_delegate.h"

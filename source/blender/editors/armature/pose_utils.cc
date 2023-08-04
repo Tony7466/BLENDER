@@ -24,7 +24,7 @@
 
 #include "BKE_context.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "RNA_access.h"
 #include "RNA_path.h"

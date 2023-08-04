@@ -27,7 +27,7 @@
 #include "BKE_mesh_mapping.hh"
 #include "BKE_paint.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "ED_image.h"
 #include "ED_mesh.h"

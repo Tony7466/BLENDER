@@ -49,7 +49,7 @@
 #include "BKE_subdiv_mesh.hh"
 #include "BKE_subdiv_modifier.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "GEO_uv_pack.hh"
 #include "GEO_uv_parametrizer.hh"

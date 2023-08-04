@@ -26,7 +26,7 @@
 #include "BKE_screen.h"
 #include "BKE_vfont.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_mesh.h"
 #include "ED_particle.h"

@@ -39,7 +39,7 @@
 
 #include "IMB_colormanagement.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "RNA_access.h"
 #include "RNA_define.h"

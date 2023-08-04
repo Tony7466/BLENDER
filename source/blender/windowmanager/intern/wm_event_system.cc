@@ -79,8 +79,8 @@
 #include "wm_window.h"
 #include "wm_window_private.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "RE_pipeline.h"
 

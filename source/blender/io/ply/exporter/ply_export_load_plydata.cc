@@ -17,7 +17,7 @@
 #include "BLI_hash.hh"
 #include "BLI_math.h"
 #include "BLI_vector.hh"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 #include "DNA_layer_types.h"
 
 #include "bmesh.h"

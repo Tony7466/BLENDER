@@ -26,7 +26,7 @@
 #include "BKE_armature.h"
 #include "BKE_fcurve.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Flip the Action (Armature/Pose Objects)

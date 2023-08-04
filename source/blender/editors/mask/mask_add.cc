@@ -14,7 +14,7 @@
 #include "BKE_curve.h"
 #include "BKE_mask.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "DNA_mask_types.h"
 #include "DNA_scene_types.h"

@@ -27,7 +27,7 @@
 #include "BKE_mesh_mapping.hh" /* UvElementMap */
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "ED_mesh.h"
 #include "ED_screen.hh"

@@ -34,7 +34,7 @@
 #include "ED_sequencer.h"
 #include "ED_time_scrub_ui.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "SEQ_iterator.h"
 #include "SEQ_sequencer.h"

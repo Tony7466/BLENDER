@@ -28,7 +28,7 @@
 
 #include "BIK_api.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 /* ********************** SPLINE IK SOLVER ******************* */
 

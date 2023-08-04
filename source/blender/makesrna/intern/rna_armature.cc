@@ -38,8 +38,8 @@
 #  include "BKE_armature.h"
 #  include "ED_armature.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 static void rna_Armature_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {

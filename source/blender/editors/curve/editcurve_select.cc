@@ -38,7 +38,7 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Utilities

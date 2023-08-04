@@ -18,7 +18,7 @@
 #include "UI_interface.h"
 #include "UI_resources.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "node_geometry_util.hh"
 

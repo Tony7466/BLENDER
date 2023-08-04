@@ -11,7 +11,7 @@
 #include "DNA_camera_types.h"
 #include "DNA_screen_types.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_image.h"
 #include "ED_view3d.h"

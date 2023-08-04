@@ -44,7 +44,7 @@
 #include "ED_image.h"
 #include "ED_view3d.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"

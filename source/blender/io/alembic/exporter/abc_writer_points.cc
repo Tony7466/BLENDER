@@ -16,7 +16,7 @@
 
 #include "BLI_math.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "CLG_log.h"
 static CLG_LogRef LOG = {"io.alembic"};

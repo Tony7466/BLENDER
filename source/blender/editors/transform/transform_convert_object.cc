@@ -25,7 +25,7 @@
 #include "ED_keyframing.h"
 #include "ED_object.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "transform.hh"
 #include "transform_orientations.hh"

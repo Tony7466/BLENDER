@@ -59,7 +59,7 @@ static const EnumPropertyItem rna_enum_mesh_remesh_mode_items[] = {
 #  include "BKE_mesh_runtime.hh"
 #  include "BKE_report.h"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
 #  include "ED_mesh.h" /* XXX Bad level call */
 

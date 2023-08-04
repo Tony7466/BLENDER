@@ -33,7 +33,7 @@
 #include "UI_interface.h"
 #include "UI_view2d.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 /* Own include. */
 #include "sequencer_intern.h"

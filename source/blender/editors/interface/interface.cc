@@ -73,7 +73,7 @@
 
 #include "IMB_colormanagement.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "interface_intern.hh"
 

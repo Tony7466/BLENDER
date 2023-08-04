@@ -23,7 +23,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "ED_armature.h"
 #include "ED_util.hh"

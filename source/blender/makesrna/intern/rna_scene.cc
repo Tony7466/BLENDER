@@ -65,7 +65,7 @@
 
 #include "BLI_threads.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #ifdef WITH_OPENEXR
 const EnumPropertyItem rna_enum_exr_codec_items[] = {
@@ -744,8 +744,8 @@ const EnumPropertyItem rna_enum_grease_pencil_selectmode_items[] = {
 #  include "ED_scene.h"
 #  include "ED_view3d.h"
 
-#  include "DEG_depsgraph_build.h"
-#  include "DEG_depsgraph_query.h"
+#  include "DEG_depsgraph_build.hh"
+#  include "DEG_depsgraph_query.hh"
 
 #  include "SEQ_relations.h"
 #  include "SEQ_sequencer.h"

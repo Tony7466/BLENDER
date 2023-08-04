@@ -117,7 +117,7 @@ const EnumPropertyItem rna_enum_linestyle_geometry_modifier_type_items[] = {
 #  include "BKE_linestyle.h"
 #  include "BKE_texture.h"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
 #  include "ED_node.h"
 

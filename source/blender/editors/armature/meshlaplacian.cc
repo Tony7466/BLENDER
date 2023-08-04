@@ -30,7 +30,7 @@
 #include "ED_armature.h"
 #include "ED_mesh.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "eigen_capi.h"
 

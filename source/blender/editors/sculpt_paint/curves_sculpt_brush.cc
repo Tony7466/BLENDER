@@ -20,7 +20,7 @@
 #include "BLI_length_parameterize.hh"
 #include "BLI_task.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "BLT_translation.h"
 

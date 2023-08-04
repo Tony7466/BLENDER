@@ -43,7 +43,7 @@
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #ifdef WITH_CXX_GUARDEDALLOC
 #  include "MEM_guardedalloc.h"

@@ -27,7 +27,7 @@
 
 #include "draw_cache_impl.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Object

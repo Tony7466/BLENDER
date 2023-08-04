@@ -561,8 +561,8 @@ static const EnumPropertyItem rna_enum_curve_display_handle_items[] = {
 #  include "BKE_screen.h"
 #  include "BKE_workspace.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 #  include "ED_anim_api.h"
 #  include "ED_asset.h"

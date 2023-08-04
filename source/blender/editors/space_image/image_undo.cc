@@ -43,7 +43,7 @@
 #include "BKE_paint.hh"
 #include "BKE_undo_system.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "ED_object.h"
 #include "ED_paint.h"

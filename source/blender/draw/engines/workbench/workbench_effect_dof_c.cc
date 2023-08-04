@@ -20,7 +20,7 @@
 #include "workbench_private.h"
 
 #include "BKE_camera.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "DNA_camera_types.h"
 

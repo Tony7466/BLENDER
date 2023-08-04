@@ -8,7 +8,7 @@
 
 #include "DNA_customdata_types.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "UI_interface.h"
 #include "UI_resources.h"

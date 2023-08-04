@@ -31,7 +31,7 @@
 #include "BKE_main.h"
 #include "BKE_node.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "RNA_access.h"
 #include "RNA_path.h"

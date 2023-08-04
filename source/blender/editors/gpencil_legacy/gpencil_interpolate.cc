@@ -51,7 +51,7 @@
 #include "ED_gpencil_legacy.h"
 #include "ED_screen.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "gpencil_intern.h"
 

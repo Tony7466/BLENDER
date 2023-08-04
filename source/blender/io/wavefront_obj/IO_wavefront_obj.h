@@ -10,7 +10,7 @@
 
 #include "BKE_context.h"
 #include "BLI_path_util.h"
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 #include "IO_orientation.h"
 #include "IO_path_util_types.h"
 

@@ -45,8 +45,8 @@
 #include "BKE_object.h"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "BIK_api.h"
 

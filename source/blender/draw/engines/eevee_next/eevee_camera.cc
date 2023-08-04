@@ -14,7 +14,7 @@
 #include "DNA_view3d_types.h"
 
 #include "BKE_camera.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 #include "ED_view3d.h"
 #include "RE_pipeline.h"
 #include "render_types.h"

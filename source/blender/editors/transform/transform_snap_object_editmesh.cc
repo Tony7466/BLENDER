@@ -15,7 +15,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_object.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_transform_snap_object_context.h"
 #include "ED_view3d.h"

@@ -17,7 +17,7 @@
 #include "BKE_material.h"
 #include "BKE_object.h"
 #include "BKE_scene.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 #include "DNA_collection_types.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_light_types.h"

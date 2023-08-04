@@ -38,7 +38,7 @@
 #include "ED_select_utils.h"
 #include "ED_view3d.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "GPU_select.h"
 

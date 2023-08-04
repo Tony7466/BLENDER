@@ -29,7 +29,7 @@
 #include "BKE_object.h"
 #include "BKE_undo_system.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "ED_mball.h"
 #include "ED_object.h"

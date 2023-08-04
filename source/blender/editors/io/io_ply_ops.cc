@@ -30,7 +30,7 @@
 #  include "UI_interface.h"
 #  include "UI_resources.h"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
 #  include "IO_orientation.h"
 #  include "IO_path_util_types.h"

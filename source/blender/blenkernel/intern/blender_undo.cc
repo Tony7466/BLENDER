@@ -42,7 +42,7 @@
 #include "BLO_undofile.h"
 #include "BLO_writefile.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Global Undo

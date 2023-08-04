@@ -28,8 +28,8 @@
 #include "ED_space_api.h"
 #include "ED_view3d.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_curves_types.h"

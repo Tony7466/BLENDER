@@ -138,7 +138,7 @@ const EnumPropertyItem rna_enum_attribute_curves_domain_items[] = {
 
 #  include "BLI_math.h"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
 #  include "BLT_translation.h"
 

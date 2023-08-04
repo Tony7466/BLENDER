@@ -9,7 +9,7 @@
 
 #include "BLI_set.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 namespace blender::io::hydra {
 

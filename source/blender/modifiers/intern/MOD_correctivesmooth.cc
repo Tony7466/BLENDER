@@ -43,7 +43,7 @@
 
 #include "BLO_read_write.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 // #define DEBUG_TIME
 

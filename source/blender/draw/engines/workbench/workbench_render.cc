@@ -21,8 +21,8 @@
 #include "GPU_context.h"
 #include "GPU_shader.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "IMB_imbuf_types.h"
 

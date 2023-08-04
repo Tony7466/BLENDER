@@ -30,7 +30,7 @@
 #include "BKE_deform.h"
 #include "BKE_mesh.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "MEM_guardedalloc.h"
 

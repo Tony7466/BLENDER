@@ -13,7 +13,7 @@
 
 #include "PIL_time.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "BKE_attribute_math.hh"
 #include "BKE_brush.hh"
@@ -46,7 +46,7 @@
 
 #include "WM_api.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 /**
  * The code below uses a suffix naming convention to indicate the coordinate space:

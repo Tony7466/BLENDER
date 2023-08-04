@@ -39,8 +39,8 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_armature.h"
 #include "ED_gpencil_legacy.h"

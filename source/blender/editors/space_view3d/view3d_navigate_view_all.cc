@@ -18,7 +18,7 @@
 #include "BKE_paint.hh"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "ED_mesh.h"
 #include "ED_particle.h"

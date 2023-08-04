@@ -7,7 +7,7 @@
 #include "BKE_context.h"
 #include "BKE_node_runtime.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "UI_interface.h"
 #include "UI_resources.h"

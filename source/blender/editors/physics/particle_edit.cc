@@ -43,7 +43,7 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "ED_mesh.h"
 #include "ED_object.h"
@@ -67,7 +67,7 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "PIL_time_utildefines.h"
 
