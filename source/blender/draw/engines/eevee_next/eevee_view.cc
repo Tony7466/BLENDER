@@ -130,12 +130,7 @@ void ShadingView::render()
 
   // inst_.lookdev.render_overlay(view_fb_);
 
-  inst_.pipelines.forward.render_opaque(
-      render_view_new_, prepass_fb_, combined_fb_, rbufs.combined_tx);
-
-  inst_.volume.draw_resolve(render_view_new_);
-
-  inst_.pipelines.forward.render_transparent(render_view_new_, combined_fb_, rbufs.combined_tx);
+  inst_.pipelines.forward.render(render_view_new_, prepass_fb_, combined_fb_, rbufs.combined_tx);
 
   inst_.lights.debug_draw(render_view_new_, combined_fb_);
   inst_.hiz_buffer.debug_draw(render_view_new_, combined_fb_);

@@ -322,10 +322,10 @@ PassMain::Sub *ForwardPipeline::material_transparent_add(const Object *ob,
   return pass;
 }
 
-void ForwardPipeline::render_opaque(View &view,
-                                    Framebuffer &prepass_fb,
-                                    Framebuffer &combined_fb,
-                                    GPUTexture * /*combined_tx*/)
+void ForwardPipeline::render(View &view,
+                             Framebuffer &prepass_fb,
+                             Framebuffer &combined_fb,
+                             GPUTexture * /*combined_tx*/)
 {
   DRW_stats_group_start("Forward.Opaque");
 
@@ -348,15 +348,9 @@ void ForwardPipeline::render_opaque(View &view,
   inst_.manager->submit(opaque_ps_, view);
 
   DRW_stats_group_end();
-}
 
-void ForwardPipeline::render_transparent(View &view,
-                                         Framebuffer &combined_fb,
-                                         GPUTexture * /*combined_tx*/)
-{
-  inst_.shadows.set_view(view);
+  inst_.volume.draw_resolve(view);
 
-  combined_fb.bind();
   inst_.manager->submit(transparent_ps_, view);
 
   // if (inst_.raytracing.enabled()) {
