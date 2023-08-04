@@ -197,8 +197,14 @@ static void recent_files_menu_draw(const bContext * /*C*/, Menu *menu)
       const char *file = BLI_path_basename(recent->filepath);
       const int icon = BKE_blendfile_extension_check(file) ? ICON_FILE_BLEND : ICON_FILE_BACKUP;
       PointerRNA ptr;
-      uiItemFullO(
-          layout, "WM_OT_open_mainfile", file, icon, nullptr, WM_OP_INVOKE_DEFAULT, 0, &ptr);
+      uiItemFullO(layout,
+                  "WM_OT_open_mainfile",
+                  file,
+                  icon,
+                  nullptr,
+                  WM_OP_INVOKE_DEFAULT,
+                  UI_ITEM_NONE,
+                  &ptr);
       RNA_string_set(&ptr, "filepath", recent->filepath);
       RNA_boolean_set(&ptr, "display_file_selector", false);
     }
@@ -229,7 +235,7 @@ static void undo_history_draw_menu(const bContext *C, Menu *menu)
 
   int undo_step_count = 0;
   int undo_step_count_all = 0;
-  for (UndoStep *us = static_cast<UndoStep *>(wm->undo_stack->steps.last); us; us = us->prev) {
+  LISTBASE_FOREACH_BACKWARD (UndoStep *, us, &wm->undo_stack->steps) {
     undo_step_count_all += 1;
     if (us->skip) {
       continue;

@@ -57,6 +57,8 @@
 #include "ED_object.h"
 #include "ED_screen.h"
 
+#include "ANIM_bone_collections.h"
+
 #include "UI_interface.h"
 #include "UI_resources.h"
 
@@ -2436,7 +2438,7 @@ static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
             bArmature *arm = (bArmature *)ob->data;
 
             /* skipping - not visible on currently visible layers */
-            if ((arm->layer & pchan->bone->layer) == 0) {
+            if (!ANIM_bonecoll_is_visible_pchan(arm, pchan)) {
               continue;
             }
             /* skipping - is currently hidden */
@@ -2971,8 +2973,6 @@ bool fcurve_is_changed(PointerRNA ptr,
  */
 static bool action_frame_has_keyframe(bAction *act, float frame)
 {
-  FCurve *fcu;
-
   /* can only find if there is data */
   if (act == nullptr) {
     return false;
@@ -2985,7 +2985,7 @@ static bool action_frame_has_keyframe(bAction *act, float frame)
   /* loop over F-Curves, using binary-search to try to find matches
    * - this assumes that keyframes are only beztriples
    */
-  for (fcu = static_cast<FCurve *>(act->curves.first); fcu; fcu = fcu->next) {
+  LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
     /* only check if there are keyframes (currently only of type BezTriple) */
     if (fcu->bezt && fcu->totvert) {
       if (fcurve_frame_has_keyframe(fcu, frame)) {

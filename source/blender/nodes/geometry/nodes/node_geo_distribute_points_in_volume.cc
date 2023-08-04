@@ -54,7 +54,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "mode", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "mode", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -209,8 +209,8 @@ static void node_geo_exec(GeoNodeExecParams params)
       geometry_set.keep_only_during_modify({GeometryComponent::Type::PointCloud});
       return;
     }
-    const VolumeComponent *component = geometry_set.get_component_for_read<VolumeComponent>();
-    const Volume *volume = component->get_for_read();
+    const VolumeComponent *component = geometry_set.get_component<VolumeComponent>();
+    const Volume *volume = component->get();
     BKE_volume_load(volume, DEG_get_bmain(params.depsgraph()));
 
     Vector<float3> positions;

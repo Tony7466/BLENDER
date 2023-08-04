@@ -28,7 +28,7 @@
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_scene.h"
 #include "BKE_studiolight.h"
 #include "BKE_unit.h"
@@ -57,6 +57,8 @@
 #include "ED_transform.h"
 #include "ED_view3d_offscreen.h"
 #include "ED_viewer_path.hh"
+
+#include "ANIM_bone_collections.h"
 
 #include "DEG_depsgraph_query.h"
 
@@ -1371,7 +1373,7 @@ static void draw_selected_name(
       else if (ob->mode & OB_MODE_POSE) {
         if (arm->act_bone) {
 
-          if (arm->act_bone->layer & arm->layer) {
+          if (ANIM_bonecoll_is_visible_actbone(arm)) {
             info_array[i++] = msg_sep;
             info_array[i++] = arm->act_bone->name;
           }
@@ -1386,7 +1388,7 @@ static void draw_selected_name(
         if (armobj && armobj->mode & OB_MODE_POSE) {
           bArmature *arm = static_cast<bArmature *>(armobj->data);
           if (arm->act_bone) {
-            if (arm->act_bone->layer & arm->layer) {
+            if (ANIM_bonecoll_is_visible_actbone(arm)) {
               info_array[i++] = msg_sep;
               info_array[i++] = arm->act_bone->name;
             }

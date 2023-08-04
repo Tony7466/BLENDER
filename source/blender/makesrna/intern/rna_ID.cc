@@ -216,7 +216,7 @@ const IDFilterEnumPropertyItem rna_enum_id_type_filter_items[] = {
 #  include "BKE_global.h" /* XXX, remove me */
 #  include "BKE_idprop.h"
 #  include "BKE_idtype.h"
-#  include "BKE_lib_override.h"
+#  include "BKE_lib_override.hh"
 #  include "BKE_lib_query.h"
 #  include "BKE_lib_remap.h"
 #  include "BKE_library.h"
@@ -1748,7 +1748,8 @@ static void rna_def_ID_override_library_property_operation(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE); /* For now. */
 
   prop = RNA_def_enum(
-      srna, "flag", override_library_property_flag_items, 0, "Flags", "Optional flags (NOT USED)");
+      srna, "flag", override_library_property_flag_items, 0, "Flags", "Status flags");
+  RNA_def_property_flag(prop, PROP_ENUM_FLAG);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE); /* For now. */
 
   prop = RNA_def_string(srna,

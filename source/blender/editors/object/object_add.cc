@@ -67,7 +67,7 @@
 #include "BKE_lattice.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_light.h"
@@ -76,7 +76,7 @@
 #include "BKE_material.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_nla.h"
 #include "BKE_node.hh"
 #include "BKE_object.h"
@@ -1497,21 +1497,21 @@ static void object_add_ui(bContext * /*C*/, wmOperator *op)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, op->ptr, "radius", 0, nullptr, ICON_NONE);
-  uiItemR(layout, op->ptr, "align", 0, nullptr, ICON_NONE);
-  uiItemR(layout, op->ptr, "location", 0, nullptr, ICON_NONE);
-  uiItemR(layout, op->ptr, "rotation", 0, nullptr, ICON_NONE);
-  uiItemR(layout, op->ptr, "type", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "radius", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "align", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "location", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "rotation", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "type", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   int type = RNA_enum_get(op->ptr, "type");
   if (ELEM(type, GP_LRT_COLLECTION, GP_LRT_OBJECT, GP_LRT_SCENE)) {
-    uiItemR(layout, op->ptr, "use_lights", 0, nullptr, ICON_NONE);
-    uiItemR(layout, op->ptr, "use_in_front", 0, nullptr, ICON_NONE);
+    uiItemR(layout, op->ptr, "use_lights", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(layout, op->ptr, "use_in_front", UI_ITEM_NONE, nullptr, ICON_NONE);
     bool in_front = RNA_boolean_get(op->ptr, "use_in_front");
     uiLayout *col = uiLayoutColumn(layout, false);
     uiLayoutSetActive(col, !in_front);
-    uiItemR(col, op->ptr, "stroke_depth_offset", 0, nullptr, ICON_NONE);
-    uiItemR(col, op->ptr, "stroke_depth_order", 0, nullptr, ICON_NONE);
+    uiItemR(col, op->ptr, "stroke_depth_offset", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, op->ptr, "stroke_depth_order", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 }
 
@@ -3268,7 +3268,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
           newob = ob;
         }
 
-        const Curves *curves_eval = geometry.get_curves_for_read();
+        const Curves *curves_eval = geometry.get_curves();
         Curves *new_curves = static_cast<Curves *>(BKE_id_new(bmain, ID_CV, newob->id.name + 2));
 
         newob->data = new_curves;
@@ -3567,12 +3567,12 @@ static int object_convert_exec(bContext *C, wmOperator *op)
       newob->data = new_mesh;
       newob->type = OB_MESH;
 
-      if (const Mesh *mesh_eval = geometry.get_mesh_for_read()) {
+      if (const Mesh *mesh_eval = geometry.get_mesh()) {
         BKE_mesh_nomain_to_mesh(BKE_mesh_copy_for_eval(mesh_eval), new_mesh, newob);
         BKE_object_material_from_eval_data(bmain, newob, &mesh_eval->id);
         new_mesh->attributes_for_write().remove_anonymous();
       }
-      else if (const Curves *curves_eval = geometry.get_curves_for_read()) {
+      else if (const Curves *curves_eval = geometry.get_curves()) {
         bke::AnonymousAttributePropagationInfo propagation_info;
         propagation_info.propagate_all = false;
         Mesh *mesh = bke::curve_to_wire_mesh(curves_eval->geometry.wrap(), propagation_info);
@@ -3707,19 +3707,19 @@ static void object_convert_ui(bContext * /*C*/, wmOperator *op)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, op->ptr, "target", 0, nullptr, ICON_NONE);
-  uiItemR(layout, op->ptr, "keep_original", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "target", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "keep_original", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   const int target = RNA_enum_get(op->ptr, "target");
   if (target == OB_MESH) {
-    uiItemR(layout, op->ptr, "merge_customdata", 0, nullptr, ICON_NONE);
+    uiItemR(layout, op->ptr, "merge_customdata", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   else if (target == OB_GPENCIL_LEGACY) {
-    uiItemR(layout, op->ptr, "thickness", 0, nullptr, ICON_NONE);
-    uiItemR(layout, op->ptr, "angle", 0, nullptr, ICON_NONE);
-    uiItemR(layout, op->ptr, "offset", 0, nullptr, ICON_NONE);
-    uiItemR(layout, op->ptr, "seams", 0, nullptr, ICON_NONE);
-    uiItemR(layout, op->ptr, "faces", 0, nullptr, ICON_NONE);
+    uiItemR(layout, op->ptr, "thickness", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(layout, op->ptr, "angle", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(layout, op->ptr, "offset", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(layout, op->ptr, "seams", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(layout, op->ptr, "faces", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 }
 

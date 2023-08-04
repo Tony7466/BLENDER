@@ -23,7 +23,7 @@
 #include "DNA_gpencil_modifier_types.h"
 
 #include "BKE_action.h"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_deform.h"
@@ -299,7 +299,7 @@ static bool *gpencil_vgroup_bone_deformed_map_get(Object *ob, const int defbase_
 
   /* Add all vertex group names to a hash table. */
   gh = BLI_ghash_str_new_ex(__func__, defbase_tot);
-  for (dg = static_cast<bDeformGroup *>(defbase->first); dg; dg = dg->next) {
+  LISTBASE_FOREACH (bDeformGroup *, dg, defbase) {
     BLI_ghash_insert(gh, dg->name, nullptr);
   }
   BLI_assert(BLI_ghash_len(gh) == defbase_tot);
@@ -314,9 +314,8 @@ static bool *gpencil_vgroup_bone_deformed_map_get(Object *ob, const int defbase_
 
     if (amd->object && amd->object->pose) {
       bPose *pose = amd->object->pose;
-      bPoseChannel *chan;
 
-      for (chan = static_cast<bPoseChannel *>(pose->chanbase.first); chan; chan = chan->next) {
+      LISTBASE_FOREACH (bPoseChannel *, chan, &pose->chanbase) {
         void **val_p;
         if (chan->bone->flag & BONE_NO_DEFORM) {
           continue;
@@ -1450,7 +1449,7 @@ static int gpencil_weightpaint_brush_modal(bContext *C, wmOperator *op, const wm
         return OPERATOR_PASS_THROUGH;
 
       /* Camera/View Gizmo's - Allowed. */
-      /* (See rationale in gpencil_paint.c -> gpencil_draw_modal()) */
+      /* See rationale in `gpencil_paint.cc`, #gpencil_draw_modal(). */
       case EVT_PAD0:
       case EVT_PAD1:
       case EVT_PAD2:
@@ -1679,5 +1678,5 @@ void GPENCIL_OT_weight_sample(wmOperatorType *ot)
   ot->poll = gpencil_weightpaint_brush_poll;
 
   /* flags */
-  ot->flag = OPTYPE_UNDO;
+  ot->flag = OPTYPE_UNDO | OPTYPE_DEPENDS_ON_CURSOR;
 }

@@ -89,6 +89,8 @@
 #include "SEQ_sequencer.h"
 #include "SEQ_utils.h"
 
+#include "ANIM_bone_collections.h"
+
 #include "UI_resources.h" /* for TH_KEYFRAME_SCALE lookup */
 
 /* ************************************************************ */
@@ -97,7 +99,7 @@
 /* ----------- Private Stuff - Action Editor ------------- */
 
 /* Get shapekey data being edited (for Action Editor -> ShapeKey mode) */
-/* NOTE: there's a similar function in key.c #BKE_key_from_object. */
+/* NOTE: there's a similar function in `key.cc` #BKE_key_from_object. */
 static Key *actedit_get_shapekeys(bAnimContext *ac)
 {
   Scene *scene = ac->scene;
@@ -1038,7 +1040,7 @@ static bool skip_fcurve_selected_data(bDopeSheet *ads, FCurve *fcu, ID *owner_id
           bArmature *arm = (bArmature *)ob->data;
 
           /* skipping - not visible on currently visible layers */
-          if ((arm->layer & pchan->bone->layer) == 0) {
+          if (!ANIM_bonecoll_is_visible_pchan(arm, pchan)) {
             return true;
           }
           /* skipping - is currently hidden */

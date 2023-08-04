@@ -1587,7 +1587,7 @@ ImBuf *sequencer_ibuf_get(Main *bmain,
                           int frame_ofs,
                           const char *viewname)
 {
-  SeqRenderData context = {0};
+  SeqRenderData context = {nullptr};
   ImBuf *ibuf;
   int rectx, recty;
   double render_size;

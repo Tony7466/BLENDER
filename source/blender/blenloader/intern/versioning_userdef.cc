@@ -8,7 +8,7 @@
  * Version patch user preferences.
  */
 #define DNA_DEPRECATED_ALLOW
-#include <string.h>
+#include <cstring>
 
 #include "BLI_listbase.h"
 #include "BLI_math.h"
@@ -105,6 +105,16 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(space_node.node_zone_simulation);
     FROM_DEFAULT_V4_UCHAR(space_action.simulated_frames);
   }
+
+  if (!USER_VERSION_ATLEAST(400, 12)) {
+    FROM_DEFAULT_V4_UCHAR(space_node.node_zone_repeat);
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 14)) {
+    FROM_DEFAULT_V4_UCHAR(space_view3d.asset_shelf.back);
+    FROM_DEFAULT_V4_UCHAR(space_view3d.asset_shelf.header_back);
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -116,7 +126,6 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
    */
   {
     /* Keep this block, even when empty. */
-    FROM_DEFAULT_V4_UCHAR(space_node.node_zone_repeat);
     FROM_DEFAULT_V4_UCHAR(space_sequencer.transition);
   }
 
@@ -311,9 +320,7 @@ void blo_do_versions_userdef(UserDef *userdef)
   }
 
   if (!USER_VERSION_ATLEAST(250, 8)) {
-    wmKeyMap *km;
-
-    for (km = static_cast<wmKeyMap *>(userdef->user_keymaps.first); km; km = km->next) {
+    LISTBASE_FOREACH (wmKeyMap *, km, &userdef->user_keymaps) {
       if (STREQ(km->idname, "Armature_Sketch")) {
         STRNCPY(km->idname, "Armature Sketch");
       }
@@ -831,6 +838,15 @@ void blo_do_versions_userdef(UserDef *userdef)
     BKE_addon_remove_safe(&userdef->addons, "io_scene_obj");
   }
 
+  if (!USER_VERSION_ATLEAST(400, 12)) {
+#ifdef __APPLE__
+    /* Drop OpenGL support on MAC devices as they don't support OpenGL 4.3. */
+    if (userdef->gpu_backend == GPU_BACKEND_OPENGL) {
+      userdef->gpu_backend = GPU_BACKEND_METAL;
+    }
+#endif
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -842,13 +858,6 @@ void blo_do_versions_userdef(UserDef *userdef)
    */
   {
     /* Keep this block, even when empty. */
-
-#ifdef __APPLE__
-    /* Drop OpenGL support on MAC devices as they don't support OpenGL 4.3. */
-    if (userdef->gpu_backend == GPU_BACKEND_OPENGL) {
-      userdef->gpu_backend = GPU_BACKEND_METAL;
-    }
-#endif
   }
 
   LISTBASE_FOREACH (bTheme *, btheme, &userdef->themes) {

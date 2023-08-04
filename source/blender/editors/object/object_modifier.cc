@@ -57,14 +57,14 @@
 #include "BKE_material.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_mapping.hh"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.h"
-#include "BKE_multires.h"
+#include "BKE_multires.hh"
 #include "BKE_object.h"
 #include "BKE_object_deform.h"
 #include "BKE_ocean.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcloud.h"
 #include "BKE_report.h"
@@ -88,6 +88,8 @@
 #include "ED_object.h"
 #include "ED_screen.h"
 #include "ED_sculpt.h"
+
+#include "ANIM_bone_collections.h"
 
 #include "UI_interface.h"
 
@@ -828,7 +830,7 @@ static Mesh *create_applied_mesh_for_modifier(Depsgraph *depsgraph,
     }
 
     if (mti->modify_geometry_set) {
-      bke::GeometrySet geometry_set = bke::GeometrySet::create_with_mesh(
+      bke::GeometrySet geometry_set = bke::GeometrySet::from_mesh(
           mesh_temp, bke::GeometryOwnershipType::Owned);
       mti->modify_geometry_set(md_eval, &mectx, &geometry_set);
       if (!geometry_set.has_mesh()) {
@@ -1066,7 +1068,7 @@ static bool modifier_apply_obdata(
       return false;
     }
 
-    bke::GeometrySet geometry_set = bke::GeometrySet::create_with_curves(
+    bke::GeometrySet geometry_set = bke::GeometrySet::from_curves(
         &curves, bke::GeometryOwnershipType::ReadOnly);
 
     ModifierEvalContext mectx = {depsgraph, ob, ModifierApplyFlag(0)};
@@ -1091,7 +1093,7 @@ static bool modifier_apply_obdata(
       return false;
     }
 
-    bke::GeometrySet geometry_set = bke::GeometrySet::create_with_pointcloud(
+    bke::GeometrySet geometry_set = bke::GeometrySet::from_pointcloud(
         &points, bke::GeometryOwnershipType::ReadOnly);
 
     ModifierEvalContext mectx = {depsgraph, ob, ModifierApplyFlag(0)};
@@ -2957,7 +2959,7 @@ static Object *modifier_skin_armature_create(Depsgraph *depsgraph, Main *bmain, 
   Object *arm_ob = BKE_object_add(bmain, scene, view_layer, OB_ARMATURE, nullptr);
   BKE_object_transform_copy(arm_ob, skin_ob);
   bArmature *arm = static_cast<bArmature *>(arm_ob->data);
-  arm->layer = 1;
+  ANIM_armature_ensure_first_layer_enabled(arm);
   arm_ob->dtx |= OB_DRAW_IN_FRONT;
   arm->drawtype = ARM_LINE;
   arm->edbo = MEM_cnew<ListBase>("edbo armature");

@@ -34,7 +34,7 @@
 #include "DNA_space_types.h"
 #include "DNA_view3d_types.h"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_context.h"
 #include "BKE_deform.h"
 #include "BKE_global.h"
@@ -47,7 +47,7 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_workspace.h"
@@ -935,14 +935,13 @@ static int gpencil_duplicate_exec(bContext *C, wmOperator *op)
     CTX_DATA_BEGIN (C, bGPDlayer *, gpl, editable_gpencil_layers) {
       ListBase new_strokes = {nullptr, nullptr};
       bGPDframe *gpf = gpl->actframe;
-      bGPDstroke *gps;
 
       if (gpf == nullptr) {
         continue;
       }
 
       /* make copies of selected strokes, and deselect these once we're done */
-      for (gps = static_cast<bGPDstroke *>(gpf->strokes.first); gps; gps = gps->next) {
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
         /* skip strokes that are invalid for current view */
         if (ED_gpencil_stroke_can_use(C, gps) == false) {
           continue;
@@ -1284,7 +1283,6 @@ static int gpencil_extrude_exec(bContext *C, wmOperator *op)
   bGPdata *gpd = (bGPdata *)obact->data;
   const bool is_curve_edit = bool(GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd));
   const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
-  bGPDstroke *gps = nullptr;
 
   if (gpd == nullptr) {
     BKE_report(op->reports, RPT_ERROR, "No Grease Pencil data");
@@ -1302,7 +1300,7 @@ static int gpencil_extrude_exec(bContext *C, wmOperator *op)
           continue;
         }
 
-        for (gps = static_cast<bGPDstroke *>(gpf->strokes.first); gps; gps = gps->next) {
+        LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
           /* skip strokes that are invalid for current view */
           if (ED_gpencil_stroke_can_use(C, gps) == false) {
             continue;
@@ -1520,8 +1518,7 @@ static int gpencil_strokes_copy_exec(bContext *C, wmOperator *op)
           }
 
           /* make copies of selected strokes, and deselect these once we're done */
-          for (bGPDstroke *gps = static_cast<bGPDstroke *>(gpf->strokes.first); gps;
-               gps = gps->next) {
+          LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
             /* skip strokes that are invalid for current view */
             if (ED_gpencil_stroke_can_use(C, gps) == false) {
               continue;
@@ -1671,11 +1668,9 @@ static int gpencil_strokes_paste_exec(bContext *C, wmOperator *op)
   }
   else {
     /* Check that some of the strokes in the buffer can be used */
-    bGPDstroke *gps;
     bool ok = false;
 
-    for (gps = static_cast<bGPDstroke *>(gpencil_strokes_copypastebuf.first); gps; gps = gps->next)
-    {
+    LISTBASE_FOREACH (bGPDstroke *, gps, &gpencil_strokes_copypastebuf) {
       if (ED_gpencil_stroke_can_use(C, gps)) {
         ok = true;
         break;
@@ -3279,7 +3274,6 @@ static int gpencil_stroke_cyclical_set_exec(bContext *C, wmOperator *op)
   const bool geometry = RNA_boolean_get(op->ptr, "geometry");
   const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
   const bool is_curve_edit = bool(GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd));
-  bGPDstroke *gps = nullptr;
 
   /* sanity checks */
   if (ELEM(nullptr, gpd)) {
@@ -3298,7 +3292,7 @@ static int gpencil_stroke_cyclical_set_exec(bContext *C, wmOperator *op)
           continue;
         }
 
-        for (gps = static_cast<bGPDstroke *>(gpf->strokes.first); gps; gps = gps->next) {
+        LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
           MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
           /* skip strokes that are not selected or invalid for current view */
           if (((gps->flag & GP_STROKE_SELECT) == 0) || ED_gpencil_stroke_can_use(C, gps) == false)
@@ -3311,7 +3305,7 @@ static int gpencil_stroke_cyclical_set_exec(bContext *C, wmOperator *op)
             continue;
           }
 
-          bool before = bool(gps->flag & GP_STROKE_CYCLIC);
+          eGPDstroke_Flag before = eGPDstroke_Flag(gps->flag & GP_STROKE_CYCLIC);
           switch (type) {
             case GP_STROKE_CYCLIC_CLOSE:
               /* Close all (enable) */
@@ -3330,7 +3324,7 @@ static int gpencil_stroke_cyclical_set_exec(bContext *C, wmOperator *op)
               break;
           }
 
-          if (before != (gps->flag & GP_STROKE_CYCLIC)) {
+          if (before != eGPDstroke_Flag(gps->flag & GP_STROKE_CYCLIC)) {
             /* Create new geometry. */
             if (is_curve_edit) {
               BKE_gpencil_editcurve_recalculate_handles(gps);
@@ -3448,8 +3442,7 @@ static int gpencil_stroke_caps_set_exec(bContext *C, wmOperator *op)
           continue;
         }
 
-        for (bGPDstroke *gps = static_cast<bGPDstroke *>(gpf->strokes.first); gps; gps = gps->next)
-        {
+        LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
           MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(ob, gps->mat_nr + 1);
 
           /* skip strokes that are not selected or invalid for current view */
@@ -3965,8 +3958,7 @@ static int gpencil_strokes_reproject_exec(bContext *C, wmOperator *op)
         if (gpf == nullptr) {
           continue;
         }
-        for (bGPDstroke *gps = static_cast<bGPDstroke *>(gpf->strokes.first); gps; gps = gps->next)
-        {
+        LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
           /* skip strokes that are invalid for current view */
           if (ED_gpencil_stroke_can_use(C, gps) == false) {
             continue;
@@ -4036,14 +4028,14 @@ static void gpencil_strokes_reproject_ui(bContext * /*C*/, wmOperator *op)
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
   row = uiLayoutRow(layout, true);
-  uiItemR(row, op->ptr, "type", 0, nullptr, ICON_NONE);
+  uiItemR(row, op->ptr, "type", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   if (type == GP_REPROJECT_SURFACE) {
     row = uiLayoutRow(layout, true);
-    uiItemR(row, op->ptr, "offset", 0, nullptr, ICON_NONE);
+    uiItemR(row, op->ptr, "offset", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   row = uiLayoutRow(layout, true);
-  uiItemR(row, op->ptr, "keep_original", 0, nullptr, ICON_NONE);
+  uiItemR(row, op->ptr, "keep_original", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 void GPENCIL_OT_reproject(wmOperatorType *ot)
@@ -4240,8 +4232,7 @@ static int gpencil_stroke_outline_exec(bContext *C, wmOperator *op)
           continue;
         }
 
-        for (bGPDstroke *gps = static_cast<bGPDstroke *>(gpf->strokes.first); gps; gps = gps->next)
-        {
+        LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
           if ((gps->flag & GP_STROKE_SELECT) == 0) {
             continue;
           }
@@ -5085,7 +5076,7 @@ static int gpencil_stroke_separate_exec(bContext *C, wmOperator *op)
 
   /* Create a new object. */
   /* Take into account user preferences for duplicating actions. */
-  const eDupli_ID_Flags dupflag = eDupli_ID_Flags((U.dupflag & USER_DUP_ACT));
+  const eDupli_ID_Flags dupflag = eDupli_ID_Flags(U.dupflag & USER_DUP_ACT);
 
   base_new = ED_object_add_duplicate(bmain, scene, view_layer, base_prev, dupflag);
   ob_dst = base_new->object;
@@ -5938,15 +5929,15 @@ static void gpencil_stroke_normalize_ui(bContext * /*C*/, wmOperator *op)
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
   row = uiLayoutRow(layout, true);
-  uiItemR(row, op->ptr, "mode", 0, nullptr, ICON_NONE);
+  uiItemR(row, op->ptr, "mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   if (mode == GP_NORMALIZE_THICKNESS) {
     row = uiLayoutRow(layout, true);
-    uiItemR(row, op->ptr, "value", 0, nullptr, ICON_NONE);
+    uiItemR(row, op->ptr, "value", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   else if (mode == GP_NORMALIZE_OPACITY) {
     row = uiLayoutRow(layout, true);
-    uiItemR(row, op->ptr, "factor", 0, nullptr, ICON_NONE);
+    uiItemR(row, op->ptr, "factor", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 }
 

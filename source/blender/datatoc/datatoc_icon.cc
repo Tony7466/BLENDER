@@ -6,11 +6,11 @@
  * \ingroup datatoc
  */
 
-#include <assert.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cassert>
+#include <cerrno>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 /* for bool */
 #include "../blenlib/BLI_sys_types.h"
@@ -34,7 +34,22 @@
 #endif
 
 /* -------------------------------------------------------------------- */
-/* Utility functions */
+/** \name Endian Defines
+ * \{ */
+
+#define L_ENDIAN 1
+#define B_ENDIAN 0
+#ifdef __BIG_ENDIAN__
+#  define ENDIAN_ORDER B_ENDIAN
+#else
+#  define ENDIAN_ORDER L_ENDIAN
+#endif
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Utility Functions
+ * \{ */
 
 static bool path_test_extension(const char *filepath, const char *ext)
 {
@@ -89,8 +104,11 @@ static bool path_join(char *filepath,
   return true;
 }
 
+/** \} */
+
 /* -------------------------------------------------------------------- */
-/* Write a PNG from RGBA pixels */
+/** \name Write a PNG from RGBA Pixels
+ * \{ */
 
 static bool write_png(const char *filepath, const uint *pixels, const int width, const int height)
 {
@@ -151,9 +169,9 @@ static bool write_png(const char *filepath, const uint *pixels, const int width,
   /* write the file header information */
   png_write_info(png_ptr, info_ptr);
 
-#ifdef __LITTLE_ENDIAN__
-  png_set_swap(png_ptr);
-#endif
+  if (ENDIAN_ORDER == L_ENDIAN) {
+    png_set_swap(png_ptr);
+  }
 
   /* allocate memory for an array of row-pointers */
   row_pointers = (png_bytepp)malloc(height * sizeof(png_bytep));
@@ -188,8 +206,11 @@ static bool write_png(const char *filepath, const uint *pixels, const int width,
   return true;
 }
 
+/** \} */
+
 /* -------------------------------------------------------------------- */
-/* Merge icon-data from files */
+/** \name Merge Icon-Data from Files
+ * \{ */
 
 struct IconHead {
   uint icon_w, icon_h;
@@ -198,7 +219,7 @@ struct IconHead {
 };
 
 struct IconInfo {
-  struct IconHead head;
+  IconHead head;
   char *file_name;
 };
 
@@ -207,10 +228,10 @@ struct IconMergeContext {
    * Is used for sanity checks like prevention of two files defining icon for
    * the same position on canvas. */
   int num_read_icons;
-  struct IconInfo *read_icons;
+  IconInfo *read_icons;
 };
 
-static void icon_merge_context_init(struct IconMergeContext *context)
+static void icon_merge_context_init(IconMergeContext *context)
 {
   context->num_read_icons = 0;
   context->read_icons = nullptr;
@@ -219,16 +240,16 @@ static void icon_merge_context_init(struct IconMergeContext *context)
 /* Get icon information from the context which matches given icon head.
  * Is used to check whether icon is re-defined, and to provide useful information about which
  * files are conflicting. */
-static struct IconInfo *icon_merge_context_info_for_icon_head(struct IconMergeContext *context,
-                                                              struct IconHead *icon_head)
+static IconInfo *icon_merge_context_info_for_icon_head(IconMergeContext *context,
+                                                       IconHead *icon_head)
 {
   if (context->read_icons == nullptr) {
     return nullptr;
   }
 
   for (int i = 0; i < context->num_read_icons; i++) {
-    struct IconInfo *read_icon_info = &context->read_icons[i];
-    const struct IconHead *read_icon_head = &read_icon_info->head;
+    IconInfo *read_icon_info = &context->read_icons[i];
+    const IconHead *read_icon_head = &read_icon_info->head;
     if (read_icon_head->orig_x == icon_head->orig_x && read_icon_head->orig_y == icon_head->orig_y)
     {
       return read_icon_info;
@@ -238,21 +259,21 @@ static struct IconInfo *icon_merge_context_info_for_icon_head(struct IconMergeCo
   return nullptr;
 }
 
-static void icon_merge_context_register_icon(struct IconMergeContext *context,
+static void icon_merge_context_register_icon(IconMergeContext *context,
                                              const char *file_name,
-                                             const struct IconHead *icon_head)
+                                             const IconHead *icon_head)
 {
   context->read_icons = static_cast<IconInfo *>(
-      realloc(context->read_icons, sizeof(struct IconInfo) * (context->num_read_icons + 1)));
+      realloc(context->read_icons, sizeof(IconInfo) * (context->num_read_icons + 1)));
 
-  struct IconInfo *icon_info = &context->read_icons[context->num_read_icons];
+  IconInfo *icon_info = &context->read_icons[context->num_read_icons];
   icon_info->head = *icon_head;
   icon_info->file_name = strdup(path_basename(file_name));
 
   context->num_read_icons++;
 }
 
-static void icon_merge_context_free(struct IconMergeContext *context)
+static void icon_merge_context_free(IconMergeContext *context)
 {
   if (context->read_icons != nullptr) {
     for (int i = 0; i < context->num_read_icons; i++) {
@@ -262,27 +283,24 @@ static void icon_merge_context_free(struct IconMergeContext *context)
   }
 }
 
-static bool icon_decode_head(FILE *f_src, struct IconHead *r_head)
+static bool icon_decode_head(FILE *f_src, IconHead *r_head)
 {
   if (fread(r_head, 1, sizeof(*r_head), f_src) == sizeof(*r_head)) {
-#ifndef __LITTLE_ENDIAN__
-    endian_switch_uint32(&r_head->icon_w);
-    endian_switch_uint32(&r_head->icon_h);
-    endian_switch_uint32(&r_head->orig_x);
-    endian_switch_uint32(&r_head->orig_y);
-    endian_switch_uint32(&r_head->canvas_w);
-    endian_switch_uint32(&r_head->canvas_h);
-#endif
+    if (ENDIAN_ORDER == B_ENDIAN) {
+      endian_switch_uint32(&r_head->icon_w);
+      endian_switch_uint32(&r_head->icon_h);
+      endian_switch_uint32(&r_head->orig_x);
+      endian_switch_uint32(&r_head->orig_y);
+      endian_switch_uint32(&r_head->canvas_w);
+      endian_switch_uint32(&r_head->canvas_h);
+    }
     return true;
   }
-
-  /* quiet warning */
-  (void)endian_switch_uint32;
 
   return false;
 }
 
-static bool icon_decode(FILE *f_src, struct IconHead *r_head, uint **r_pixels)
+static bool icon_decode(FILE *f_src, IconHead *r_head, uint **r_pixels)
 {
   uint *pixels;
   uint pixels_size;
@@ -309,7 +327,7 @@ static bool icon_decode(FILE *f_src, struct IconHead *r_head, uint **r_pixels)
   return true;
 }
 
-static bool icon_read(const char *file_src, struct IconHead *r_head, uint **r_pixels)
+static bool icon_read(const char *file_src, IconHead *r_head, uint **r_pixels)
 {
   FILE *f_src;
   bool success;
@@ -326,13 +344,13 @@ static bool icon_read(const char *file_src, struct IconHead *r_head, uint **r_pi
   return success;
 }
 
-static bool icon_merge(struct IconMergeContext *context,
+static bool icon_merge(IconMergeContext *context,
                        const char *file_src,
                        uint32_t **r_pixels_canvas,
                        uint *r_canvas_w,
                        uint *r_canvas_h)
 {
-  struct IconHead head;
+  IconHead head;
   uint *pixels;
 
   uint x, y;
@@ -345,7 +363,7 @@ static bool icon_merge(struct IconMergeContext *context,
     return false;
   }
 
-  const struct IconInfo *read_icon_info = icon_merge_context_info_for_icon_head(context, &head);
+  const IconInfo *read_icon_info = icon_merge_context_info_for_icon_head(context, &head);
   if (read_icon_info != nullptr) {
     printf(
         "Conflicting icon files %s and %s\n", path_basename(file_src), read_icon_info->file_name);
@@ -399,11 +417,11 @@ static bool icondir_to_png(const char *path_src, const char *file_dst)
 {
   /* Takes a path full of 'dat' files and writes out */
   DIR *dir;
-  const struct dirent *fname;
+  const dirent *fname;
   char filepath[1024];
   int found = 0, fail = 0;
 
-  struct IconMergeContext context;
+  IconMergeContext context;
 
   uint32_t *pixels_canvas = nullptr;
   uint canvas_w = 0, canvas_h = 0;
@@ -453,8 +471,11 @@ static bool icondir_to_png(const char *path_src, const char *file_dst)
   return (fail == 0);
 }
 
+/** \} */
+
 /* -------------------------------------------------------------------- */
-/* Main and parse args */
+/** \name Main & Parse Arguments
+ * \{ */
 
 int main(int argc, char **argv)
 {
@@ -471,3 +492,5 @@ int main(int argc, char **argv)
 
   return (icondir_to_png(path_src, file_dst) == true) ? 0 : 1;
 }
+
+/** \} */
