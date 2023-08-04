@@ -114,6 +114,7 @@ class NODE_HT_header(Header):
                     row = layout.row()
                     row.enabled = not snode.pin
                     row.template_ID(lineset, "linestyle", new="scene.freestyle_linestyle_new")
+            layout.prop(snode, "pin", text="", emboss=False)
 
         elif snode.tree_type == 'TextureNodeTree':
             layout.prop(snode, "texture_type", text="")
@@ -130,6 +131,7 @@ class NODE_HT_header(Header):
                     layout.template_ID(id_from, "texture", new="texture.new")
                 else:
                     layout.template_ID(id_from, "active_texture", new="texture.new")
+            layout.prop(snode, "pin", text="", emboss=False)
 
         elif snode.tree_type == 'CompositorNodeTree':
 
@@ -160,10 +162,24 @@ class NODE_HT_header(Header):
                             row.template_ID(active_modifier, "node_group", new="node.new_geometry_node_group_assign")
                     else:
                         row.template_ID(snode, "node_tree", new="node.new_geometry_nodes_modifier")
+                layout.prop(snode, "pin", text="", emboss=False)
             else:
                 layout.template_ID(snode, "node_tree", new="node.new_geometry_node_group_tool")
-                if snode.node_tree and snode.node_tree.asset_data:
-                    layout.popover(panel="NODE_PT_geometry_node_asset_traits")
+                node_tree = snode.node_tree
+                if node_tree:
+                    if node_tree.asset_data:
+                        layout.popover(panel="NODE_PT_geometry_node_asset_traits")
+                    else:
+                        row = layout.row()
+                        row.context_pointer_set("id", node_tree)
+                        row.operator("asset.mark", text="Mark as Asset")
+                layout.prop(snode, "pin", text="", emboss=False)
+                if node_tree:
+                    if node_tree.asset_data:
+                        if not node_tree.is_tool:
+                            layout.label(text="Node group is not marked as tool", icon='ERROR')
+                        elif len(node_tree.asset_data.catalog_simple_name) == 0:
+                            layout.label(text="Add asset to catalog to show in menus", icon='ERROR')
         else:
             # Custom node tree is edited as independent ID block
             NODE_MT_editor_menus.draw_collapsible(context, layout)
@@ -171,9 +187,6 @@ class NODE_HT_header(Header):
             layout.separator_spacer()
 
             layout.template_ID(snode, "node_tree", new="node.new_node_tree")
-
-        # Put pin next to ID block
-        if not is_compositor:
             layout.prop(snode, "pin", text="", emboss=False)
 
         layout.separator_spacer()
