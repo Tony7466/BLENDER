@@ -237,8 +237,9 @@ typedef struct bNodeType {
 
   char ui_name[64]; /* MAX_NAME */
   char ui_description[256];
-  const char *enum_name_legacy;
   int ui_icon;
+  /** Should usually use the idname instead, but this enum type is still exposed in Python. */
+  const char *enum_name_legacy;
 
   float width, minwidth, maxwidth;
   float height, minheight, maxheight;
