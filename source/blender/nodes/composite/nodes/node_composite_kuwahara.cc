@@ -42,7 +42,7 @@ static void node_composit_init_kuwahara(bNodeTree * /*ntree*/, bNode *node)
   data->size = 4;
   data->smoothing = 2;
   data->eccentricity = 1.0;
-  data->sharpness = 8;
+  data->sharpness = 0.5;
 }
 
 static void node_composit_buts_kuwahara(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -167,7 +167,7 @@ class ConvertKuwaharaOperation : public NodeOperation {
 
     GPU_shader_uniform_1i(shader, "radius", node_storage(bnode()).size);
     GPU_shader_uniform_1f(shader, "eccentricity", node_storage(bnode()).eccentricity);
-    GPU_shader_uniform_1f(shader, "sharpness", node_storage(bnode()).sharpness);
+    GPU_shader_uniform_1f(shader, "sharpness", get_sharpness());
 
     Result &input = get_input("Image");
     input.bind_as_texture(shader, "input_tx");
@@ -210,6 +210,21 @@ class ConvertKuwaharaOperation : public NodeOperation {
     GPU_shader_unbind();
 
     return structure_tensor;
+  }
+
+  /* The sharpness controls the sharpness of the transitions between the kuwahara sectors, which is
+   * controlled by the weighting function pow(standard_deviation, -sharpness) as can be seen in the
+   * shader. The transition is completely smooth when the sharpness is zero and completely sharp
+   * when it is infinity. But realistically, the sharpness doesn't change much beyond the value of
+   * 16 due to its exponential nature, so we just assume a maximum sharpness of 16.
+   *
+   * The stored sharpness is in the range [0, 1], so we multiply by 16 to get it in the range
+   * [0, 16], however, we also square it before multiplication to slow down the rate of change near
+   * zero to counter its exponential nature for more intuitive user control. */
+  float get_sharpness()
+  {
+    const float sharpness_factor = node_storage(bnode()).sharpness;
+    return sharpness_factor * sharpness_factor * 16.0;
   }
 };
 
