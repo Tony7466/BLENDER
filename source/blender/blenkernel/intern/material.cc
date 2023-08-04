@@ -310,7 +310,7 @@ static void nodetree_mark_previews_dirty_reccursive(bNodeTree *tree)
     return;
   }
   tree->runtime->whole_tree_dirtystate.make_dirty();
-  for (bNode *node : tree->group_nodes()) {
+  for (bNode *node : tree->runtime->group_nodes) {
     bNodeTree *nested_tree = reinterpret_cast<bNodeTree *>(node->id);
     nodetree_mark_previews_dirty_reccursive(nested_tree);
   }
