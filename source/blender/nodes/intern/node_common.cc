@@ -558,8 +558,7 @@ bool blender::bke::node_is_connected_to_output(const bNodeTree *ntree, const bNo
 
 bNodeSocket *node_group_input_find_socket(bNode *node, const char *identifier)
 {
-  bNodeSocket *sock;
-  for (sock = (bNodeSocket *)node->outputs.first; sock; sock = sock->next) {
+  LISTBASE_FOREACH (bNodeSocket *, sock, &node->outputs) {
     if (STREQ(sock->identifier, identifier)) {
       return sock;
     }
@@ -680,8 +679,7 @@ void register_node_type_group_input()
 
 bNodeSocket *node_group_output_find_socket(bNode *node, const char *identifier)
 {
-  bNodeSocket *sock;
-  for (sock = (bNodeSocket *)node->inputs.first; sock; sock = sock->next) {
+  LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
     if (STREQ(sock->identifier, identifier)) {
       return sock;
     }
