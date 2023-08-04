@@ -308,11 +308,12 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         bssrdf->radius = rgb_to_spectrum(subsurface_radius * subsurface_scale);
         bssrdf->albedo = rgb_to_spectrum(subsurface_color);
         bssrdf->N = N;
-        bssrdf->roughness = sqr(roughness);
+        bssrdf->alpha = sqr(roughness);
+        bssrdf->ior = eta;
         bssrdf->anisotropy = subsurface_anisotropy;
 
         /* setup bsdf */
-        sd->flag |= bssrdf_setup(sd, bssrdf, path_flag, subsurface_method, eta);
+        sd->flag |= bssrdf_setup(sd, bssrdf, path_flag, subsurface_method);
       }
 #else
       subsurface = 0.0f;
@@ -712,10 +713,12 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         bssrdf->radius = rgb_to_spectrum(stack_load_float3(stack, data_node.z) * param1);
         bssrdf->albedo = closure_weight;
         bssrdf->N = N;
-        bssrdf->roughness = FLT_MAX;
+        bssrdf->ior = param2;
+        /* TODO */
+        bssrdf->alpha = 1.0f;
         bssrdf->anisotropy = stack_load_float(stack, data_node.w);
 
-        sd->flag |= bssrdf_setup(sd, bssrdf, path_flag, (ClosureType)type, param2);
+        sd->flag |= bssrdf_setup(sd, bssrdf, path_flag, (ClosureType)type);
       }
 
       break;

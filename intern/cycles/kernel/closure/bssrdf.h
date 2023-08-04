@@ -11,8 +11,11 @@ typedef struct Bssrdf {
 
   Spectrum radius;
   Spectrum albedo;
-  float roughness;
   float anisotropy;
+
+  /* Parameters for refractive entry bounce. */
+  float ior;
+  float alpha;
 } Bssrdf;
 
 static_assert(sizeof(ShaderClosure) >= sizeof(Bssrdf), "Bssrdf is too large!");
@@ -55,8 +58,7 @@ ccl_device float bssrdf_dipole_compute_alpha_prime(float rd, float fourthirdA)
 }
 
 ccl_device void bssrdf_setup_radius(ccl_private Bssrdf *bssrdf,
-                                    const ClosureType type,
-                                    const float eta)
+                                    const ClosureType type)
 {
   if (type == CLOSURE_BSSRDF_BURLEY_ID || type == CLOSURE_BSSRDF_RANDOM_WALK_FIXED_RADIUS_ID) {
     /* Scale mean free path length so it gives similar looking result to older
@@ -65,8 +67,8 @@ ccl_device void bssrdf_setup_radius(ccl_private Bssrdf *bssrdf,
   }
   else {
     /* Adjust radius based on IOR and albedo. */
-    const float inv_eta = 1.0f / eta;
-    const float F_dr = inv_eta * (-1.440f * inv_eta + 0.710f) + 0.668f + 0.0636f * eta;
+    const float inv_eta = 1.0f / bssrdf->ior;
+    const float F_dr = inv_eta * (-1.440f * inv_eta + 0.710f) + 0.668f + 0.0636f * bssrdf->ior;
     const float fourthirdA = (4.0f / 3.0f) * (1.0f + F_dr) /
                              (1.0f - F_dr); /* From Jensen's `Fdr` ratio formula. */
 
@@ -282,14 +284,18 @@ ccl_device_inline ccl_private Bssrdf *bssrdf_alloc(ccl_private ShaderData *sd, S
 ccl_device int bssrdf_setup(ccl_private ShaderData *sd,
                             ccl_private Bssrdf *bssrdf,
                             int path_flag,
-                            ClosureType type,
-                            float ior)
+                            ClosureType type)
 {
   /* Clamps protecting against bad/extreme and non physical values. */
   bssrdf->anisotropy = clamp(bssrdf->anisotropy, 0.0f, 0.9f);
-  ior = clamp(ior, 1.01f, 3.8f);
+  bssrdf->ior = clamp(bssrdf->ior, 1.01f, 3.8f);
 
   int flag = 0;
+
+  if (type == CLOSURE_BSSRDF_RANDOM_WALK_ID) {
+    /* CLOSURE_BSSRDF_RANDOM_WALK_ID uses a fixed roughness. */
+    bssrdf->alpha = 1.0f;
+  }
 
   /* Verify if the radii are large enough to sample without precision issues. */
   int bssrdf_channels = SPECTRUM_CHANNELS;
@@ -324,7 +330,7 @@ ccl_device int bssrdf_setup(ccl_private ShaderData *sd,
     bssrdf->type = type;
     bssrdf->sample_weight = fabsf(average(bssrdf->weight)) * bssrdf_channels;
 
-    bssrdf_setup_radius(bssrdf, type, ior);
+    bssrdf_setup_radius(bssrdf, type);
 
     flag |= SD_BSSRDF;
   }

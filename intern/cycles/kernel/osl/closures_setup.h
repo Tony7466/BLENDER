@@ -744,23 +744,16 @@ ccl_device void osl_closure_bssrdf_setup(KernelGlobals kg,
     return;
   }
 
-  /* disable in case of diffuse ancestor, can't see it well then and
-   * adds considerably noise due to probabilities of continuing path
-   * getting lower and lower */
-  if (path_flag & PATH_RAY_DIFFUSE_ANCESTOR) {
-    bssrdf->radius = zero_spectrum();
-  }
-  else {
-    bssrdf->radius = closure->radius;
-  }
+  bssrdf->radius = closure->radius;
 
   /* create one closure per color channel */
   bssrdf->albedo = closure->albedo;
   bssrdf->N = closure->N;
-  bssrdf->roughness = closure->roughness;
+  bssrdf->alpha = sqr(closure->roughness);
+  bssrdf->ior = closure->ior;
   bssrdf->anisotropy = closure->anisotropy;
 
-  sd->flag |= bssrdf_setup(sd, bssrdf, path_flag, type, closure->ior);
+  sd->flag |= bssrdf_setup(sd, bssrdf, path_flag, type);
 }
 
 /* Hair */

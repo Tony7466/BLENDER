@@ -168,23 +168,13 @@ ccl_device_inline bool subsurface_random_walk(KernelGlobals kg,
                                               ccl_private Ray &ray,
                                               ccl_private LocalIntersection &ss_isect)
 {
-  const float2 rand_bsdf = path_state_rng_2D(kg, &rng_state, PRNG_SUBSURFACE_BSDF);
-
   const float3 P = INTEGRATOR_STATE(state, ray, P);
-  const float3 N = INTEGRATOR_STATE(state, ray, D);
+  const float3 D = INTEGRATOR_STATE(state, ray, D);
   const float ray_dP = INTEGRATOR_STATE(state, ray, dP);
   const float time = INTEGRATOR_STATE(state, ray, time);
-  const float3 Ng = INTEGRATOR_STATE(state, subsurface, Ng);
+  const float3 N = INTEGRATOR_STATE(state, subsurface, N);
   const int object = INTEGRATOR_STATE(state, isect, object);
   const int prim = INTEGRATOR_STATE(state, isect, prim);
-
-  /* Sample diffuse surface scatter into the object. */
-  float3 D;
-  float pdf;
-  sample_cos_hemisphere(-N, rand_bsdf, &D, &pdf);
-  if (dot(-Ng, D) <= 0.0f) {
-    return false;
-  }
 
   /* Setup ray. */
   ray.P = P;
@@ -439,7 +429,7 @@ ccl_device_inline bool subsurface_random_walk(KernelGlobals kg,
     guiding_record_bssrdf_bounce(
         kg,
         state,
-        pdf,
+        1.0f,
         N,
         D,
         safe_divide_color(throughput, INTEGRATOR_STATE(state, path, throughput)),

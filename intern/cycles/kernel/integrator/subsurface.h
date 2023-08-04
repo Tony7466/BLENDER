@@ -23,6 +23,58 @@ CCL_NAMESPACE_BEGIN
 
 #ifdef __SUBSURFACE__
 
+ccl_device_inline float subsurface_entry_bounce(KernelGlobals kg,
+                                                ccl_private const Bssrdf *bssrdf,
+                                                ccl_private ShaderData *sd,
+                                                ccl_private RNGState *rng_state,
+                                                ccl_private float3 *wo)
+{
+  float2 rand_bsdf = path_state_rng_2D(kg, rng_state, PRNG_SUBSURFACE_BSDF);
+
+  if (bssrdf->type == CLOSURE_BSSRDF_RANDOM_WALK_ID) {
+    /* CLOSURE_BSSRDF_RANDOM_WALK_ID has a 50% chance to sample a diffuse entry bounce.
+     * Also, for the refractive entry, it uses a fixed roughness of 1.0. */
+    if (rand_bsdf.x < 0.5f) {
+      rand_bsdf.x *= 2.0f;
+      float pdf;
+      sample_cos_hemisphere(-bssrdf->N, rand_bsdf, wo, &pdf);
+      return 1.0f;
+    }
+    rand_bsdf.x = 2.0f * (rand_bsdf.x - 0.5f);
+  }
+
+  const float cos_NI = dot(bssrdf->N, sd->wi);
+  if (cos_NI <= 0.0f) {
+    return 0.0f;
+  }
+
+  float3 X, Y, Z = bssrdf->N;
+  make_orthonormals(Z, &X, &Y);
+
+  const float alpha = bssrdf->alpha;
+  const float alpha2 = sqr(alpha);
+  const float neta = 1.0f / bssrdf->ior;
+
+  /* Sample microfacet normal by transforming to/from local coordinates. */
+  const float3 local_I = make_float3(dot(X, sd->wi), dot(Y, sd->wi), cos_NI);
+  const float3 local_H = microfacet_ggx_sample_vndf(local_I, alpha, alpha, rand_bsdf);
+  const float3 H = X * local_H.x + Y * local_H.y + Z * local_H.z;
+
+  const float cos_HI = dot(H, sd->wi);
+  const float arg = 1.0f - (sqr(neta) * (1.0f - sqr(cos_HI)));
+  /* We clamp subsurface IOR to be above 1, so there should never be TIR. */
+  kernel_assert(arg >= 0.0f);
+
+  const float dnp = max(sqrtf(arg), 1e-7f);
+  const float nK = (neta * cos_HI) - dnp;
+  *wo = -(neta * sd->wi) + (nK * H);
+  const float cos_NO = dot(Z, *wo);
+
+  const float lambdaI = bsdf_lambda<MicrofacetType::GGX>(alpha2, cos_NI);
+  const float lambdaO = bsdf_lambda<MicrofacetType::GGX>(alpha2, cos_NO);
+  return (1.0f + lambdaI) / (1.0f + lambdaI + lambdaO);
+}
+
 ccl_device int subsurface_bounce(KernelGlobals kg,
                                  IntegratorState state,
                                  ccl_private ShaderData *sd,
@@ -37,21 +89,38 @@ ccl_device int subsurface_bounce(KernelGlobals kg,
 
   /* Setup ray into surface. */
   INTEGRATOR_STATE_WRITE(state, ray, P) = sd->P;
-  INTEGRATOR_STATE_WRITE(state, ray, D) = bssrdf->N;
   INTEGRATOR_STATE_WRITE(state, ray, tmin) = 0.0f;
   INTEGRATOR_STATE_WRITE(state, ray, tmax) = FLT_MAX;
   INTEGRATOR_STATE_WRITE(state, ray, dP) = differential_make_compact(sd->dP);
   INTEGRATOR_STATE_WRITE(state, ray, dD) = differential_zero_compact();
 
-  /* Pass along object info, reusing isect to save memory. */
-  INTEGRATOR_STATE_WRITE(state, subsurface, Ng) = sd->Ng;
-
-  uint32_t path_flag = (INTEGRATOR_STATE(state, path, flag) & ~PATH_RAY_CAMERA) |
-                       ((sc->type == CLOSURE_BSSRDF_BURLEY_ID) ? PATH_RAY_SUBSURFACE_DISK :
-                                                                 PATH_RAY_SUBSURFACE_RANDOM_WALK);
+  /* Advance random number offset for bounce. */
+  INTEGRATOR_STATE_WRITE(state, path, rng_offset) += PRNG_BOUNCE_NUM;
 
   /* Compute weight, optionally including Fresnel from entry point. */
   Spectrum weight = surface_shader_bssrdf_sample_weight(sd, sc);
+
+  uint32_t path_flag = (INTEGRATOR_STATE(state, path, flag) & ~PATH_RAY_CAMERA);
+  if (sc->type == CLOSURE_BSSRDF_BURLEY_ID)
+  {
+    path_flag |= PATH_RAY_SUBSURFACE_DISK;
+    INTEGRATOR_STATE_WRITE(state, subsurface, N) = sd->Ng;
+  }
+  else {
+    path_flag |= PATH_RAY_SUBSURFACE_RANDOM_WALK;
+
+    /* Sample entry bounce into the material. */
+    RNGState rng_state;
+    path_state_rng_load(state, &rng_state);
+    float3 wo;
+    weight *= subsurface_entry_bounce(kg, bssrdf, sd, &rng_state, &wo);
+    if (is_zero(weight) || dot(sd->Ng, wo) >= 0.0f) {
+      /* Sampling failed, give up on this bounce. */
+      return LABEL_NONE;
+    }
+    INTEGRATOR_STATE_WRITE(state, ray, D) = wo;
+    INTEGRATOR_STATE_WRITE(state, subsurface, N) = sd->N;
+  }
 
   if (sd->flag & SD_BACKFACING) {
     path_flag |= PATH_RAY_SUBSURFACE_BACKFACING;
@@ -59,9 +128,6 @@ ccl_device int subsurface_bounce(KernelGlobals kg,
 
   INTEGRATOR_STATE_WRITE(state, path, throughput) *= weight;
   INTEGRATOR_STATE_WRITE(state, path, flag) = path_flag;
-
-  /* Advance random number offset for bounce. */
-  INTEGRATOR_STATE_WRITE(state, path, rng_offset) += PRNG_BOUNCE_NUM;
 
   if (kernel_data.kernel_features & KERNEL_FEATURE_LIGHT_PASSES) {
     if (INTEGRATOR_STATE(state, path, bounce) == 0) {
