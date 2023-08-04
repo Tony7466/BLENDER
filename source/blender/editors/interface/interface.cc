@@ -3513,8 +3513,7 @@ void UI_block_free(const bContext *C, uiBlock *block)
 {
   UI_butstore_clear(block);
 
-  uiBut *but;
-  while ((but = static_cast<uiBut *>(BLI_pophead(&block->buttons)))) {
+  while (uiBut *but = static_cast<uiBut *>(BLI_pophead(&block->buttons))) {
     ui_but_free(C, but);
   }
 
@@ -3584,8 +3583,7 @@ void UI_blocklist_draw(const bContext *C, const ListBase *lb)
 void UI_blocklist_free(const bContext *C, ARegion *region)
 {
   ListBase *lb = &region->uiblocks;
-  uiBlock *block;
-  while ((block = static_cast<uiBlock *>(BLI_pophead(lb)))) {
+  while (uiBlock *block = static_cast<uiBlock *>(BLI_pophead(lb))) {
     UI_block_free(C, block);
   }
   if (region->runtime.block_name_map != nullptr) {
@@ -5013,26 +5011,26 @@ int UI_autocomplete_end(AutoComplete *autocpl, char *autoname)
 
 #define PREVIEW_TILE_PAD (0.15f * UI_UNIT_X)
 
-int UI_preview_tile_size_x()
+int UI_preview_tile_size_x(const int size_px)
 {
   const float pad = PREVIEW_TILE_PAD;
-  return round_fl_to_int((96.0f / 20.0f) * UI_UNIT_X + 2.0f * pad);
+  return round_fl_to_int((size_px / 20.0f) * UI_UNIT_X + 2.0f * pad);
 }
 
-int UI_preview_tile_size_y()
+int UI_preview_tile_size_y(const int size_px)
 {
   const uiStyle *style = UI_style_get();
   const float font_height = style->widget.points * UI_SCALE_FAC;
   /* Add some extra padding to make things less tight vertically. */
   const float pad = PREVIEW_TILE_PAD;
 
-  return round_fl_to_int(UI_preview_tile_size_y_no_label() + font_height + pad);
+  return round_fl_to_int(UI_preview_tile_size_y_no_label(size_px) + font_height + pad);
 }
 
-int UI_preview_tile_size_y_no_label()
+int UI_preview_tile_size_y_no_label(const int size_px)
 {
   const float pad = PREVIEW_TILE_PAD;
-  return round_fl_to_int((96.0f / 20.0f) * UI_UNIT_Y + 2.0f * pad);
+  return round_fl_to_int((size_px / 20.0f) * UI_UNIT_Y + 2.0f * pad);
 }
 
 #undef PREVIEW_TILE_PAD
@@ -6471,7 +6469,7 @@ static void operator_enum_search_exec_fn(bContext * /*C*/, void *but, void *arg2
     if (ot->prop) {
       RNA_property_enum_set(opptr, ot->prop, POINTER_AS_INT(arg2));
       /* We do not call op from here, will be called by button code.
-       * ui_apply_but_funcs_after() (in interface_handlers.c)
+       * ui_apply_but_funcs_after() (in `interface_handlers.cc`)
        * called this func before checking operators,
        * because one of its parameters is the button itself! */
     }

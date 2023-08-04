@@ -32,7 +32,7 @@
 /** \name Transform (GPencil Strokes Opacity)
  * \{ */
 
-static void applyGPOpacity(TransInfo *t, const int[2] /*mval*/)
+static void applyGPOpacity(TransInfo *t)
 {
   float ratio;
   int i;
@@ -82,7 +82,7 @@ static void applyGPOpacity(TransInfo *t, const int[2] /*mval*/)
   }
 
   if (recalc) {
-    recalcData(t);
+    recalc_data(t);
   }
 
   ED_area_status_text(t->area, str);

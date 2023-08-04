@@ -42,6 +42,18 @@ void irradiance_capture_surfel(Surfel surfel, vec3 P, inout SphericalHarmonicL1 
   irradiance_capture(L, irradiance, 0.0, sh);
 }
 
+void validity_capture_surfel(Surfel surfel, vec3 P, inout float validity)
+{
+  vec3 L = safe_normalize(surfel.position - P);
+  bool facing = dot(-L, surfel.normal) > 0.0;
+  validity += float(facing);
+}
+
+void validity_capture_world(vec3 L, inout float validity)
+{
+  validity += 1.0;
+}
+
 void irradiance_capture_world(vec3 L, inout SphericalHarmonicL1 sh)
 {
   vec3 radiance = vec3(0.0);
@@ -66,9 +78,13 @@ void main()
       capture_info_buf.irradiance_grid_size,
       grid_coord);
 
+  /* Add virtual offset to avoid baking inside of geometry as much as possible. */
+  P += imageLoad(virtual_offset_img, grid_coord).xyz;
+
   /* Project to get ray linked list. */
   float irradiance_sample_ray_distance;
-  int list_index = surfel_list_index_get(P, irradiance_sample_ray_distance);
+  int list_index = surfel_list_index_get(
+      list_info_buf.ray_grid_size, P, irradiance_sample_ray_distance);
 
   /* Walk the ray to get which surfels the irradiance sample is between. */
   int surfel_prev = -1;
@@ -88,6 +104,7 @@ void main()
   sh.L1.Mn1 = imageLoad(irradiance_L1_a_img, grid_coord);
   sh.L1.M0 = imageLoad(irradiance_L1_b_img, grid_coord);
   sh.L1.Mp1 = imageLoad(irradiance_L1_c_img, grid_coord);
+  float validity = imageLoad(validity_img, grid_coord).r;
 
   /* Un-normalize for accumulation. */
   float weight_captured = capture_info_buf.sample_index * 2.0;
@@ -95,21 +112,26 @@ void main()
   sh.L1.Mn1 *= weight_captured;
   sh.L1.M0 *= weight_captured;
   sh.L1.Mp1 *= weight_captured;
+  validity *= weight_captured;
 
   if (surfel_next > -1) {
     Surfel surfel = surfel_buf[surfel_next];
     irradiance_capture_surfel(surfel, P, sh);
+    validity_capture_surfel(surfel, P, validity);
   }
   else {
     irradiance_capture_world(-sky_L, sh);
+    validity_capture_world(-sky_L, validity);
   }
 
   if (surfel_prev > -1) {
     Surfel surfel = surfel_buf[surfel_prev];
     irradiance_capture_surfel(surfel, P, sh);
+    validity_capture_surfel(surfel, P, validity);
   }
   else {
     irradiance_capture_world(sky_L, sh);
+    validity_capture_world(sky_L, validity);
   }
 
   /* Normalize for storage. We accumulated 2 samples. */
@@ -118,9 +140,11 @@ void main()
   sh.L1.Mn1 /= weight_captured;
   sh.L1.M0 /= weight_captured;
   sh.L1.Mp1 /= weight_captured;
+  validity /= weight_captured;
 
   imageStore(irradiance_L0_img, grid_coord, sh.L0.M0);
   imageStore(irradiance_L1_a_img, grid_coord, sh.L1.Mn1);
   imageStore(irradiance_L1_b_img, grid_coord, sh.L1.M0);
   imageStore(irradiance_L1_c_img, grid_coord, sh.L1.Mp1);
+  imageStore(validity_img, grid_coord, vec4(validity));
 }

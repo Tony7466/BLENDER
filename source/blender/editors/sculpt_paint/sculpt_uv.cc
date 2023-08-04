@@ -18,14 +18,14 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_customdata.h"
 #include "BKE_editmesh.h"
 #include "BKE_image.h"
-#include "BKE_mesh_mapping.h"
-#include "BKE_paint.h"
+#include "BKE_mesh_mapping.hh"
+#include "BKE_paint.hh"
 
 #include "DEG_depsgraph.h"
 
@@ -1005,5 +1005,9 @@ void SCULPT_OT_uv_sculpt_stroke(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* props */
-  RNA_def_enum(ot->srna, "mode", stroke_mode_items, BRUSH_STROKE_NORMAL, "Mode", "Stroke Mode");
+  PropertyRNA *prop;
+
+  prop = RNA_def_enum(
+      ot->srna, "mode", stroke_mode_items, BRUSH_STROKE_NORMAL, "Mode", "Stroke Mode");
+  RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE));
 }

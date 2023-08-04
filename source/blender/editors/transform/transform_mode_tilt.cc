@@ -30,7 +30,7 @@
 /** \name Transform (Tilt)
  * \{ */
 
-static void applyTilt(TransInfo *t, const int[2] /*mval*/)
+static void applyTilt(TransInfo *t)
 {
   int i;
   char str[UI_MAX_DRAW_STR];
@@ -72,7 +72,7 @@ static void applyTilt(TransInfo *t, const int[2] /*mval*/)
     }
   }
 
-  recalcData(t);
+  recalc_data(t);
 
   ED_area_status_text(t->area, str);
 }

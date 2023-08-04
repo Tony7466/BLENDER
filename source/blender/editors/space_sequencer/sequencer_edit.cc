@@ -1519,14 +1519,14 @@ static void sequencer_split_ui(bContext * /*C*/, wmOperator *op)
 
   uiLayout *row = uiLayoutRow(layout, false);
   uiItemR(row, op->ptr, "type", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
-  uiItemR(layout, op->ptr, "frame", 0, nullptr, ICON_NONE);
-  uiItemR(layout, op->ptr, "side", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "frame", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "side", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   uiItemS(layout);
 
-  uiItemR(layout, op->ptr, "use_cursor_position", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "use_cursor_position", UI_ITEM_NONE, nullptr, ICON_NONE);
   if (RNA_boolean_get(op->ptr, "use_cursor_position")) {
-    uiItemR(layout, op->ptr, "channel", 0, nullptr, ICON_NONE);
+    uiItemR(layout, op->ptr, "channel", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 }
 
@@ -1853,9 +1853,6 @@ static int sequencer_separate_images_exec(bContext *C, wmOperator *op)
     if ((seq->flag & SELECT) && (seq->type == SEQ_TYPE_IMAGE) && (seq->len > 1)) {
       Sequence *seq_next;
 
-      /* Remove seq so overlap tests don't conflict,
-       * see seq_free_sequence below for the real freeing. */
-      BLI_remlink(seqbase, seq);
       /* TODO: remove f-curve and assign to split image strips.
        * The old animation system would remove the user of `seq->ipo`. */
 
@@ -3175,7 +3172,7 @@ static int sequencer_export_subtitles_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   Sequence *seq, *seq_next;
   Editing *ed = SEQ_editing_get(scene);
-  ListBase text_seq = {0};
+  ListBase text_seq = {nullptr};
   int iter = 1; /* Sequence numbers in .srt files are 1-indexed. */
   FILE *file;
   char filepath[FILE_MAX];

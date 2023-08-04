@@ -24,10 +24,10 @@
 #include "BKE_data_transfer.h"
 #include "BKE_deform.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
-#include "BKE_mesh_remap.h"
-#include "BKE_mesh_runtime.h"
-#include "BKE_mesh_wrapper.h"
+#include "BKE_mesh_mapping.hh"
+#include "BKE_mesh_remap.hh"
+#include "BKE_mesh_runtime.hh"
+#include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_object_deform.h"
@@ -371,8 +371,8 @@ static void data_transfer_dtdata_type_preprocess(const Mesh *me_src,
     BLI_assert(CustomData_get_layer(&me_src->loop_data, CD_NORMAL) != nullptr);
     (void)me_src;
 
-    blender::short2 *custom_nors_dst = static_cast<blender::short2 *>(
-        CustomData_get_layer_for_write(ldata_dst, CD_CUSTOMLOOPNORMAL, me_dst->totloop));
+    const blender::short2 *custom_nors_dst = static_cast<const blender::short2 *>(
+        CustomData_get_layer(ldata_dst, CD_CUSTOMLOOPNORMAL));
 
     /* Cache loop nors into a temp CDLayer. */
     blender::float3 *loop_nors_dst = static_cast<blender::float3 *>(
@@ -398,9 +398,9 @@ static void data_transfer_dtdata_type_preprocess(const Mesh *me_src,
                                             me_dst->face_normals(),
                                             sharp_edges,
                                             sharp_faces,
+                                            custom_nors_dst,
                                             use_split_nors_dst,
                                             split_angle_dst,
-                                            custom_nors_dst,
                                             nullptr,
                                             {loop_nors_dst, me_dst->totloop});
     }

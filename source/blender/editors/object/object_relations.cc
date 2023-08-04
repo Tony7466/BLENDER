@@ -58,7 +58,7 @@
 #include "BKE_lattice.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_light.h"
@@ -66,7 +66,7 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mball.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_node.h"
 #include "BKE_object.h"
@@ -928,7 +928,8 @@ static int parent_set_invoke_menu(bContext *C, wmOperatorType *ot)
 #if 0
   uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_OBJECT);
 #else
-  uiItemFullO_ptr(layout, ot, IFACE_("Object"), ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, 0, &opptr);
+  uiItemFullO_ptr(
+      layout, ot, IFACE_("Object"), ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, UI_ITEM_NONE, &opptr);
   RNA_enum_set(&opptr, "type", PAR_OBJECT);
   RNA_boolean_set(&opptr, "keep_transform", false);
 
@@ -938,7 +939,7 @@ static int parent_set_invoke_menu(bContext *C, wmOperatorType *ot)
                   ICON_NONE,
                   nullptr,
                   WM_OP_EXEC_DEFAULT,
-                  0,
+                  UI_ITEM_NONE,
                   &opptr);
   RNA_enum_set(&opptr, "type", PAR_OBJECT);
   RNA_boolean_set(&opptr, "keep_transform", true);

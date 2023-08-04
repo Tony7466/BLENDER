@@ -58,7 +58,7 @@
 #  include "BKE_customdata.h"
 #  include "BKE_deform.h"
 #  include "BKE_mesh.hh"
-#  include "BKE_mesh_runtime.h"
+#  include "BKE_mesh_runtime.hh"
 #  include "BKE_object.h"
 #  include "BKE_particle.h"
 #  include "BKE_scene.h"
@@ -608,8 +608,8 @@ static void clamp_bounds_in_domain(FluidDomainSettings *fds,
 static bool is_static_object(Object *ob)
 {
   /* Check if the object has modifiers that might make the object "dynamic". */
-  VirtualModifierData virtualModifierData;
-  ModifierData *md = BKE_modifiers_get_virtual_modifierlist(ob, &virtualModifierData);
+  VirtualModifierData virtual_modifier_data;
+  ModifierData *md = BKE_modifiers_get_virtual_modifierlist(ob, &virtual_modifier_data);
   for (; md; md = md->next) {
     if (ELEM(md->type,
              eModifierType_Cloth,
@@ -859,7 +859,7 @@ static void update_velocities(FluidEffectorSettings *fes,
   nearest.index = -1;
 
   /* Distance between two opposing vertices in a unit cube.
-   * I.e. the unit cube diagonal or sqrt(3).
+   * I.e. the unit cube diagonal or `sqrt(3)`.
    * This value is our nearest neighbor search distance. */
   const float surface_distance = 1.732;
   /* find_nearest uses squared distance */
@@ -1703,7 +1703,7 @@ static void update_distances(int index,
     BVHTreeNearest nearest = {0};
     nearest.index = -1;
     /* Distance between two opposing vertices in a unit cube.
-     * I.e. the unit cube diagonal or sqrt(3).
+     * I.e. the unit cube diagonal or `sqrt(3)`.
      * This value is our nearest neighbor search distance. */
     const float surface_distance = 1.732;
     /* find_nearest uses squared distance. */
@@ -1825,7 +1825,7 @@ static void sample_mesh(FluidFlowSettings *ffs,
   nearest.index = -1;
 
   /* Distance between two opposing vertices in a unit cube.
-   * I.e. the unit cube diagonal or sqrt(3).
+   * I.e. the unit cube diagonal or `sqrt(3)`.
    * This value is our nearest neighbor search distance. */
   const float surface_distance = 1.732;
   /* find_nearest uses squared distance. */

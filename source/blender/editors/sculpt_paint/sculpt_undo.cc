@@ -57,17 +57,17 @@
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
-#include "BKE_multires.h"
+#include "BKE_mesh_runtime.hh"
+#include "BKE_multires.hh"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_scene.h"
-#include "BKE_subdiv_ccg.h"
-#include "BKE_subsurf.h"
+#include "BKE_subdiv_ccg.hh"
+#include "BKE_subsurf.hh"
 #include "BKE_undo_system.h"
 
 /* TODO(sergey): Ideally should be no direct call to such low level things. */
-#include "BKE_subdiv_eval.h"
+#include "BKE_subdiv_eval.hh"
 
 #include "DEG_depsgraph.h"
 
@@ -303,7 +303,7 @@ static void update_cb_partial(PBVHNode *node, void *userdata)
 {
   PartialUpdateData *data = static_cast<PartialUpdateData *>(userdata);
   if (BKE_pbvh_type(data->pbvh) == PBVH_GRIDS) {
-    int *node_grid_indices;
+    const int *node_grid_indices;
     int totgrid;
     bool update = false;
     BKE_pbvh_node_get_grids(
@@ -1229,7 +1229,8 @@ static size_t sculpt_undo_alloc_and_store_hidden(PBVH *pbvh, SculptUndoNode *uno
   PBVHNode *node = static_cast<PBVHNode *>(unode->node);
   BLI_bitmap **grid_hidden = BKE_pbvh_grid_hidden(pbvh);
 
-  int *grid_indices, totgrid;
+  const int *grid_indices;
+  int totgrid;
   BKE_pbvh_node_get_grids(pbvh, node, &grid_indices, &totgrid, nullptr, nullptr, nullptr);
 
   size_t alloc_size = sizeof(*unode->grid_hidden) * size_t(totgrid);
@@ -1308,7 +1309,7 @@ static SculptUndoNode *sculpt_undo_alloc_node(Object *ob, PBVHNode *node, Sculpt
   int totgrid = 0;
   int maxgrid = 0;
   int gridsize = 0;
-  int *grids = nullptr;
+  const int *grids = nullptr;
 
   SculptUndoNode *unode = sculpt_undo_alloc_node_type(ob, type);
   unode->node = node;
@@ -1652,7 +1653,8 @@ SculptUndoNode *SCULPT_undo_push_node(Object *ob, PBVHNode *node, SculptUndoType
    */
 
   if (unode->grids) {
-    int totgrid, *grids;
+    int totgrid;
+    const int *grids;
     BKE_pbvh_node_get_grids(ss->pbvh, node, &grids, &totgrid, nullptr, nullptr, nullptr);
     memcpy(unode->grids, grids, sizeof(int) * totgrid);
   }

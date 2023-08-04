@@ -495,6 +495,8 @@ typedef struct wmNotifier {
 #define ND_SPACE_CLIP (20 << 16)
 #define ND_SPACE_FILE_PREVIEW (21 << 16)
 #define ND_SPACE_SPREADSHEET (22 << 16)
+/* Not a space itself, but a part of another space. */
+#define ND_REGIONS_ASSET_SHELF (23 << 16)
 
 /* NC_ASSET */
 /* Denotes that the AssetList is done reading some previews. NOT that the preview generation of
@@ -1109,13 +1111,6 @@ typedef struct wmDragID {
 typedef struct wmDragAsset {
   int import_method; /* eAssetImportType */
   const AssetRepresentationHandle *asset;
-
-  /* FIXME: This is temporary evil solution to get scene/view-layer/etc in the copy callback of the
-   * #wmDropBox.
-   * TODO: Handle link/append in operator called at the end of the drop process, and NOT in its
-   * copy callback.
-   * */
-  struct bContext *evil_C;
 } wmDragAsset;
 
 typedef struct wmDragAssetCatalog {

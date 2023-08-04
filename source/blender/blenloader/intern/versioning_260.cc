@@ -45,9 +45,9 @@
 
 #include "BKE_anim_visualization.h"
 #include "BKE_image.h"
-#include "BKE_main.h" /* for Main */
-#include "BKE_mesh.h" /* for ME_ defines (patching) */
-#include "BKE_mesh_legacy_convert.h"
+#include "BKE_main.h"  /* for Main */
+#include "BKE_mesh.hh" /* for ME_ defines (patching) */
+#include "BKE_mesh_legacy_convert.hh"
 #include "BKE_modifier.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_particle.h"
@@ -76,7 +76,7 @@
 
 #include "readfile.h"
 
-/* Make preferences read-only, use versioning_userdef.c. */
+/* Make preferences read-only, use `versioning_userdef.cc`. */
 #define U (*((const UserDef *)&U))
 
 static void do_versions_nodetree_image_default_alpha_output(bNodeTree *ntree)

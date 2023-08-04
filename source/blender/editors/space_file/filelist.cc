@@ -80,9 +80,9 @@
 
 #include "atomic_ops.h"
 
-#include "file_indexer.h"
-#include "file_intern.h"
-#include "filelist.h"
+#include "file_indexer.hh"
+#include "file_intern.hh"
+#include "filelist.hh"
 
 using namespace blender;
 
@@ -1160,6 +1160,14 @@ void filelist_file_get_full_path(const FileList *filelist,
   BLI_path_join(r_filepath, FILE_MAX_LIBEXTRA, root, file->relpath);
 }
 
+bool filelist_file_is_preview_pending(const FileList *filelist, const FileDirEntry *file)
+{
+  /* Actual preview loading is only started after the filelist is loaded, so the file isn't flagged
+   * with #FILE_ENTRY_PREVIEW_LOADING yet. */
+  const bool filelist_ready = filelist_is_ready(filelist);
+  return !filelist_ready || file->flags & FILE_ENTRY_PREVIEW_LOADING;
+}
+
 static FileDirEntry *filelist_geticon_get_file(FileList *filelist, const int index)
 {
   BLI_assert(G.background == false);
@@ -1959,6 +1967,11 @@ void filelist_freelib(FileList *filelist)
 BlendHandle *filelist_lib(FileList *filelist)
 {
   return filelist->libfiledata;
+}
+
+int filelist_files_num_entries(FileList *filelist)
+{
+  return filelist->filelist.entries_num;
 }
 
 static const char *fileentry_uiname(const char *root, FileListInternEntry *entry, char *buff)

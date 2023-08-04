@@ -547,7 +547,7 @@ static const EnumPropertyItem rna_enum_curve_display_handle_items[] = {
 #  include "BLI_string.h"
 
 #  include "BKE_anim_data.h"
-#  include "BKE_brush.h"
+#  include "BKE_brush.hh"
 #  include "BKE_colortools.h"
 #  include "BKE_context.h"
 #  include "BKE_global.h"
@@ -555,7 +555,7 @@ static const EnumPropertyItem rna_enum_curve_display_handle_items[] = {
 #  include "BKE_idprop.h"
 #  include "BKE_layer.h"
 #  include "BKE_nla.h"
-#  include "BKE_paint.h"
+#  include "BKE_paint.hh"
 #  include "BKE_preferences.h"
 #  include "BKE_scene.h"
 #  include "BKE_screen.h"
@@ -857,6 +857,22 @@ static void rna_Space_show_region_hud_set(PointerRNA *ptr, bool value)
 static void rna_Space_show_region_hud_update(bContext *C, PointerRNA *ptr)
 {
   rna_Space_bool_from_region_flag_update_by_type(C, ptr, RGN_TYPE_HUD, RGN_FLAG_HIDDEN_BY_USER);
+}
+
+/* Asset Shelf Regions */
+static bool rna_Space_show_region_asset_shelf_get(PointerRNA *ptr)
+{
+  return !rna_Space_bool_from_region_flag_get_by_type(ptr, RGN_TYPE_ASSET_SHELF, RGN_FLAG_HIDDEN);
+}
+static void rna_Space_show_region_asset_shelf_set(PointerRNA *ptr, bool value)
+{
+  rna_Space_bool_from_region_flag_set_by_type(ptr, RGN_TYPE_ASSET_SHELF, RGN_FLAG_HIDDEN, !value);
+  rna_Space_bool_from_region_flag_set_by_type(
+      ptr, RGN_TYPE_ASSET_SHELF_HEADER, RGN_FLAG_HIDDEN, !value);
+}
+static void rna_Space_show_region_asset_shelf_update(bContext *C, PointerRNA *ptr)
+{
+  rna_Space_bool_from_region_flag_update_by_type(C, ptr, RGN_TYPE_ASSET_SHELF, RGN_FLAG_HIDDEN);
 }
 
 /** \} */
@@ -3477,6 +3493,10 @@ static void rna_def_space_generic_show_region_toggles(StructRNA *srna, int regio
     region_type_mask &= ~(1 << RGN_TYPE_HUD);
     DEF_SHOW_REGION_PROPERTY(show_region_hud, "Adjust Last Operation", "");
   }
+  if (region_type_mask & ((1 << RGN_TYPE_ASSET_SHELF) | (1 << RGN_TYPE_ASSET_SHELF_HEADER))) {
+    region_type_mask &= ~((1 << RGN_TYPE_ASSET_SHELF) | (1 << RGN_TYPE_ASSET_SHELF_HEADER));
+    DEF_SHOW_REGION_PROPERTY(show_region_asset_shelf, "Asset Shelf", "");
+  }
   BLI_assert(region_type_mask == 0);
 }
 
@@ -4935,7 +4955,8 @@ static void rna_def_space_view3d(BlenderRNA *brna)
 
   rna_def_space_generic_show_region_toggles(srna,
                                             ((1 << RGN_TYPE_TOOL_HEADER) | (1 << RGN_TYPE_TOOLS) |
-                                             (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD)));
+                                             (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD) |
+                                             (1 << RGN_TYPE_ASSET_SHELF)));
 
   prop = RNA_def_property(srna, "camera", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_EDITABLE);
@@ -6177,7 +6198,8 @@ static void rna_def_space_dopesheet(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "SpaceAction");
   RNA_def_struct_ui_text(srna, "Space Dope Sheet Editor", "Dope Sheet space data");
 
-  rna_def_space_generic_show_region_toggles(srna, (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD));
+  rna_def_space_generic_show_region_toggles(
+      srna, (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD) | (1 << RGN_TYPE_CHANNELS));
 
   /* data */
   prop = RNA_def_property(srna, "action", PROP_POINTER, PROP_NONE);
@@ -6353,7 +6375,8 @@ static void rna_def_space_graph(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "SpaceGraph");
   RNA_def_struct_ui_text(srna, "Space Graph Editor", "Graph Editor space data");
 
-  rna_def_space_generic_show_region_toggles(srna, (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD));
+  rna_def_space_generic_show_region_toggles(
+      srna, (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD) | (1 << RGN_TYPE_CHANNELS));
 
   /* mode */
   prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
@@ -6486,7 +6509,8 @@ static void rna_def_space_nla(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "SpaceNla");
   RNA_def_struct_ui_text(srna, "Space Nla Editor", "NLA editor space data");
 
-  rna_def_space_generic_show_region_toggles(srna, (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD));
+  rna_def_space_generic_show_region_toggles(
+      srna, (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_HUD) | (1 << RGN_TYPE_CHANNELS));
 
   /* display */
   prop = RNA_def_property(srna, "show_seconds", PROP_BOOLEAN, PROP_NONE);
@@ -7455,10 +7479,10 @@ static void rna_def_space_node(BlenderRNA *brna)
        0,
        "Modifier",
        "Edit node group from active object's active modifier"},
-      {SNODE_GEOMETRY_OPERATOR,
-       "OPERATOR",
+      {SNODE_GEOMETRY_TOOL,
+       "TOOL",
        0,
-       "Operator",
+       "Tool",
        "Edit any geometry node group for use as an operator"},
       {0, nullptr, 0, nullptr, nullptr},
   };
@@ -8235,8 +8259,9 @@ static void rna_def_space_spreadsheet(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "SpaceSpreadsheet", "Space");
   RNA_def_struct_ui_text(srna, "Space Spreadsheet", "Spreadsheet space data");
 
-  rna_def_space_generic_show_region_toggles(
-      srna, (1 << RGN_TYPE_UI) | (1 << RGN_TYPE_CHANNELS) | (1 << RGN_TYPE_FOOTER));
+  rna_def_space_generic_show_region_toggles(srna,
+                                            (1 << RGN_TYPE_TOOLS) | (1 << RGN_TYPE_UI) |
+                                                (1 << RGN_TYPE_CHANNELS) | (1 << RGN_TYPE_FOOTER));
 
   prop = RNA_def_property(srna, "is_pinned", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SPREADSHEET_FLAG_PINNED);

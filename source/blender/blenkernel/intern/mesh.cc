@@ -53,11 +53,11 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_legacy_convert.h"
-#include "BKE_mesh_runtime.h"
-#include "BKE_mesh_wrapper.h"
+#include "BKE_mesh_legacy_convert.hh"
+#include "BKE_mesh_runtime.hh"
+#include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.h"
-#include "BKE_multires.h"
+#include "BKE_multires.hh"
 #include "BKE_object.h"
 
 #include "PIL_time.h"
@@ -1789,9 +1789,8 @@ void BKE_mesh_calc_normals_split_ex(Mesh *mesh,
                                  ((mesh->flag & ME_AUTOSMOOTH) != 0);
   const float split_angle = (mesh->flag & ME_AUTOSMOOTH) != 0 ? mesh->smoothresh : float(M_PI);
 
-  /* may be nullptr */
-  blender::short2 *clnors = (blender::short2 *)CustomData_get_layer_for_write(
-      &mesh->loop_data, CD_CUSTOMLOOPNORMAL, mesh->totloop);
+  const blender::short2 *clnors = static_cast<const blender::short2 *>(
+      CustomData_get_layer(&mesh->loop_data, CD_CUSTOMLOOPNORMAL));
   const bool *sharp_edges = static_cast<const bool *>(
       CustomData_get_layer_named(&mesh->edge_data, CD_PROP_BOOL, "sharp_edge"));
   const bool *sharp_faces = static_cast<const bool *>(
@@ -1808,9 +1807,9 @@ void BKE_mesh_calc_normals_split_ex(Mesh *mesh,
       mesh->face_normals(),
       sharp_edges,
       sharp_faces,
+      clnors,
       use_split_normals,
       split_angle,
-      clnors,
       nullptr,
       {reinterpret_cast<float3 *>(r_corner_normals), mesh->totloop});
 }

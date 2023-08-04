@@ -17,7 +17,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mirror.h"
+#include "BKE_mesh_mirror.hh"
 #include "BKE_modifier.h"
 
 #include "bmesh.h"
@@ -417,9 +417,9 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
                                           result->face_normals(),
                                           sharp_edges,
                                           sharp_faces,
+                                          clnors,
                                           true,
                                           result->smoothresh,
-                                          clnors,
                                           &lnors_spacearr,
                                           loop_normals);
 

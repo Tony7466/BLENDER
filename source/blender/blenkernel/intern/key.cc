@@ -76,9 +76,7 @@ static void shapekey_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, c
 static void shapekey_free_data(ID *id)
 {
   Key *key = (Key *)id;
-  KeyBlock *kb;
-
-  while ((kb = static_cast<KeyBlock *>(BLI_pophead(&key->block)))) {
+  while (KeyBlock *kb = static_cast<KeyBlock *>(BLI_pophead(&key->block))) {
     if (kb->data) {
       MEM_freeN(kb->data);
     }
@@ -245,9 +243,7 @@ void BKE_key_free_data(Key *key)
 
 void BKE_key_free_nolib(Key *key)
 {
-  KeyBlock *kb;
-
-  while ((kb = static_cast<KeyBlock *>(BLI_pophead(&key->block)))) {
+  while (KeyBlock *kb = static_cast<KeyBlock *>(BLI_pophead(&key->block))) {
     if (kb->data) {
       MEM_freeN(kb->data);
     }
@@ -2281,8 +2277,8 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         {reinterpret_cast<blender::float3 *>(vert_normals), mesh->totvert});
   }
   if (loop_normals_needed) {
-    blender::short2 *clnors = static_cast<blender::short2 *>(CustomData_get_layer_for_write(
-        &mesh->loop_data, CD_CUSTOMLOOPNORMAL, corner_verts.size()));
+    const blender::short2 *clnors = static_cast<const blender::short2 *>(
+        CustomData_get_layer(&mesh->loop_data, CD_CUSTOMLOOPNORMAL));
     const bool *sharp_edges = static_cast<const bool *>(
         CustomData_get_layer_named(&mesh->edge_data, CD_PROP_BOOL, "sharp_edge"));
     const bool *sharp_faces = static_cast<const bool *>(
@@ -2298,9 +2294,9 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         {reinterpret_cast<blender::float3 *>(face_normals), faces.size()},
         sharp_edges,
         sharp_faces,
+        clnors,
         (mesh->flag & ME_AUTOSMOOTH) != 0,
         mesh->smoothresh,
-        clnors,
         nullptr,
         {reinterpret_cast<blender::float3 *>(r_loop_normals), corner_verts.size()});
   }

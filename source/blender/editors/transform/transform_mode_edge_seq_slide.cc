@@ -71,7 +71,7 @@ static void applySeqSlideValue(TransInfo *t, const float val[2])
   }
 }
 
-static void applySeqSlide(TransInfo *t, const int[2] /*mval*/)
+static void applySeqSlide(TransInfo *t)
 {
   char str[UI_MAX_DRAW_STR];
   float values_final[3] = {0.0f};
@@ -103,7 +103,7 @@ static void applySeqSlide(TransInfo *t, const int[2] /*mval*/)
   headerSeqSlide(t, t->values_final, str);
   applySeqSlideValue(t, t->values_final);
 
-  recalcData(t);
+  recalc_data(t);
 
   ED_area_status_text(t->area, str);
 }

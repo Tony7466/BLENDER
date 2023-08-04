@@ -765,6 +765,11 @@ class VIEW3D_HT_header(Header):
                     depress=(tool_settings.gpencil_selectmode_edit == 'STROKE'),
                 ).mode = 'STROKE'
 
+            if object_mode == 'PAINT_GREASE_PENCIL':
+                row = layout.row()
+                sub = row.row(align=True)
+                sub.prop(tool_settings, "use_gpencil_draw_additive", text="", icon='FREEZE')
+
         # Grease Pencil (legacy)
         if obj and obj.type == 'GPENCIL' and context.gpencil_data:
             gpd = context.gpencil_data
@@ -1264,10 +1269,13 @@ class VIEW3D_MT_view(Menu):
     def draw(self, context):
         layout = self.layout
         view = context.space_data
+        prefs = context.preferences
 
         layout.prop(view, "show_region_toolbar")
         layout.prop(view, "show_region_ui")
         layout.prop(view, "show_region_tool_header")
+        if prefs.experimental.use_asset_shelf:
+            layout.prop(view, "show_region_asset_shelf")
         layout.prop(view, "show_region_hud")
 
         layout.separator()
@@ -3160,7 +3168,6 @@ class VIEW3D_MT_paint_vertex(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        layout.operator("paint.vertex_color_set")
         layout.operator("paint.vertex_color_smooth")
         layout.operator("paint.vertex_color_dirt")
         layout.operator("paint.vertex_color_from_weight")
@@ -3171,6 +3178,11 @@ class VIEW3D_MT_paint_vertex(Menu):
         layout.operator("paint.vertex_color_levels", text="Levels")
         layout.operator("paint.vertex_color_hsv", text="Hue/Saturation/Value")
         layout.operator("paint.vertex_color_brightness_contrast", text="Brightness/Contrast")
+
+        layout.separator()
+
+        layout.operator("paint.vertex_color_set")
+        layout.operator("paint.sample_color")
 
 
 class VIEW3D_MT_hook(Menu):
@@ -3322,7 +3334,18 @@ class VIEW3D_MT_paint_weight(Menu):
         if not is_editmode:
             layout.separator()
 
+            # Primarily for shortcut discoverability.
             layout.operator("paint.weight_set")
+            layout.operator("paint.weight_sample", text="Sample Weight")
+            layout.operator("paint.weight_sample_group", text="Sample Group")
+
+            layout.separator()
+
+            # Primarily for shortcut discoverability.
+            layout.operator("paint.weight_gradient", text="Gradient (Linear)").type = 'LINEAR'
+            layout.operator("paint.weight_gradient", text="Gradient (Radial)").type = 'RADIAL'
+
+        layout.separator()
 
         layout.menu("VIEW3D_MT_paint_weight_lock", text="Locks")
 
@@ -3412,6 +3435,10 @@ class VIEW3D_MT_sculpt(Menu):
         for filter_type, ui_name in sculpt_filters_types:
             props = layout.operator("sculpt.mesh_filter", text=ui_name)
             props.type = filter_type
+
+        layout.separator()
+
+        layout.operator("sculpt.sample_color", text="Sample Color")
 
         layout.separator()
 
@@ -5442,6 +5469,10 @@ class VIEW3D_MT_weight_gpencil(Menu):
 
     def draw(self, _context):
         layout = self.layout
+
+        layout.operator("gpencil.weight_sample", text="Sample Weight")
+
+        layout.separator()
 
         layout.operator("gpencil.vertex_group_normalize_all", text="Normalize All")
         layout.operator("gpencil.vertex_group_normalize", text="Normalize")
@@ -8255,6 +8286,26 @@ class VIEW3D_PT_viewport_debug(Panel):
         layout.prop(overlay, "use_debug_freeze_view_culling")
 
 
+class VIEW3D_AST_sculpt_brushes(bpy.types.AssetShelf):
+    # Experimental: Asset shelf for sculpt brushes, only shows up if both the
+    # "Asset Shelf" and the "Extended Asset Browser" experimental features are
+    # enabled.
+
+    bl_space_type = "VIEW_3D"
+
+    @classmethod
+    def poll(cls, context):
+        prefs = context.preferences
+        if not prefs.experimental.use_extended_asset_browser:
+            return False
+
+        return bool(context.object and context.object.mode == 'SCULPT')
+
+    @classmethod
+    def asset_poll(cls, asset):
+        return asset.file_data.id_type == 'BRUSH'
+
+
 classes = (
     VIEW3D_HT_header,
     VIEW3D_HT_tool_header,
@@ -8504,6 +8555,7 @@ classes = (
     VIEW3D_PT_curves_sculpt_parameter_falloff,
     VIEW3D_PT_curves_sculpt_grow_shrink_scaling,
     VIEW3D_PT_viewport_debug,
+    VIEW3D_AST_sculpt_brushes,
 )
 
 
