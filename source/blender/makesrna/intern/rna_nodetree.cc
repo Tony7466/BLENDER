@@ -785,7 +785,9 @@ static const EnumPropertyItem *rna_node_static_type_itemf(bContext * /*C*/,
   }
 
   NODE_TYPES_BEGIN (ntype) {
-    if (BLI_str_startswith(ntype->idname, "Node") || BLI_str_startswith(ntype->idname, category)) {
+    if (ntype->enum_name_legacy &&
+        (BLI_str_startswith(ntype->idname, "Node") || BLI_str_startswith(ntype->idname, category)))
+    {
       tmp.value = ntype->type;
       tmp.identifier = ntype->enum_name_legacy;
       tmp.name = ntype->ui_name;
