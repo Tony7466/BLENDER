@@ -232,6 +232,7 @@ set(INC
   ../../modifiers
   ../../nodes
   ../../sequencer
+  ../../python
   ../../simulation
   ../../windowmanager
   ../../editors/include
@@ -252,13 +253,6 @@ set(INC_SYS
 
 if(WITH_CYCLES)
   add_definitions(-DWITH_CYCLES)
-endif()
-
-if(WITH_PYTHON)
-  add_definitions(-DWITH_PYTHON)
-  list(APPEND INC
-    ../../python
-  )
 endif()
 
 if(WITH_IMAGE_OPENEXR)

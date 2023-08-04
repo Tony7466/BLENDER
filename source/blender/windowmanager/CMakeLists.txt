@@ -19,6 +19,7 @@ set(INC
   ../imbuf
   ../makesrna
   ../nodes
+  ../python
   ../render
   ../sequencer
   ../../../intern/clog
@@ -155,14 +156,8 @@ elseif(WITH_GHOST_X11)
   add_definitions(-DWITH_GHOST_X11)
 endif()
 
-if(WITH_PYTHON)
-  list(APPEND INC
-    ../python
-  )
-  add_definitions(-DWITH_PYTHON)
-  if(WITH_PYTHON_MODULE)
-    add_definitions(-DWITH_PYTHON_MODULE)
-  endif()
+if(WITH_PYTHON_MODULE)
+  add_definitions(-DWITH_PYTHON_MODULE)
 endif()
 
 if(WITH_BUILDINFO)

@@ -65,7 +65,7 @@ endif()
 set(CMAKE_FIND_FRAMEWORK NEVER)
 
 # Optionally use system Python if PYTHON_ROOT_DIR is specified.
-if(WITH_PYTHON AND (WITH_PYTHON_MODULE AND PYTHON_ROOT_DIR))
+if(WITH_PYTHON_MODULE AND PYTHON_ROOT_DIR)
   find_package(PythonLibsUnix REQUIRED)
 endif()
 
@@ -127,7 +127,7 @@ if(WITH_CODEC_SNDFILE)
   unset(_sndfile_VORBISENC_LIBRARY)
 endif()
 
-if(WITH_PYTHON AND NOT (WITH_PYTHON_MODULE AND PYTHON_ROOT_DIR))
+if(NOT (WITH_PYTHON_MODULE AND PYTHON_ROOT_DIR))
   find_package(PythonLibsUnix REQUIRED)
 endif()
 

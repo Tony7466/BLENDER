@@ -40,9 +40,7 @@
 #  include "ED_transform_snap_object_context.h"
 #  include "ED_uvedit.h"
 
-#  ifdef WITH_PYTHON
-#    include "BPY_extern.h"
-#  endif
+#  include "BPY_extern.h"
 
 static void rna_Scene_frame_set(Scene *scene, Main *bmain, int frame, float subframe)
 {
@@ -51,9 +49,7 @@ static void rna_Scene_frame_set(Scene *scene, Main *bmain, int frame, float subf
   CLAMP(cfra, MINAFRAME, MAXFRAME);
   BKE_scene_frame_set(scene, cfra);
 
-#  ifdef WITH_PYTHON
   BPy_BEGIN_ALLOW_THREADS;
-#  endif
 
   for (ViewLayer *view_layer = static_cast<ViewLayer *>(scene->view_layers.first);
        view_layer != nullptr;
@@ -63,9 +59,7 @@ static void rna_Scene_frame_set(Scene *scene, Main *bmain, int frame, float subf
     BKE_scene_graph_update_for_newframe(depsgraph);
   }
 
-#  ifdef WITH_PYTHON
   BPy_END_ALLOW_THREADS;
-#  endif
 
   if (BKE_scene_camera_switch_update(scene)) {
     for (bScreen *screen = static_cast<bScreen *>(bmain->screens.first); screen;
@@ -209,11 +203,9 @@ static void rna_Scene_alembic_export(Scene *scene,
                                      int quad_method,
                                      int ngon_method)
 {
-/* We have to enable allow_threads, because we may change scene frame number
- * during export. */
-#    ifdef WITH_PYTHON
+  /* We have to enable allow_threads, because we may change scene frame number
+   * during export. */
   BPy_BEGIN_ALLOW_THREADS;
-#    endif
 
   AlembicExportParams params{};
   params.frame_start = frame_start;
@@ -245,9 +237,7 @@ static void rna_Scene_alembic_export(Scene *scene,
 
   ABC_export(scene, C, filepath, &params, true);
 
-#    ifdef WITH_PYTHON
   BPy_END_ALLOW_THREADS;
-#    endif
 }
 
 #  endif

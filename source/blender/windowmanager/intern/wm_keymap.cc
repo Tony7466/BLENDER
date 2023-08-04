@@ -1377,12 +1377,10 @@ static wmKeyMapItem *wm_keymap_item_find_in_keymap(wmKeyMap *keymap,
                   opname);
               printf("\tkm: '%s', kmi: '%s'\n", keymap->idname, kmi_str);
 #ifndef NDEBUG
-#  ifdef WITH_PYTHON
               printf("OPERATOR\n");
               IDP_print(properties);
               printf("KEYMAP\n");
               IDP_print(static_cast<IDProperty *>(kmi->ptr->data));
-#  endif
 #endif
               printf("\n");
             }
@@ -1630,12 +1628,10 @@ static wmKeyMapItem *wm_keymap_item_find(const bContext *C,
               opname);
           printf("\tkm: '%s', kmi: '%s'\n", km->idname, kmi_str);
 #ifndef NDEBUG
-#  ifdef WITH_PYTHON
           printf("OPERATOR\n");
           IDP_print(properties);
           printf("KEYMAP\n");
           IDP_print(static_cast<IDProperty *>(kmi->ptr->data));
-#  endif
 #endif
           printf("\n");
         }

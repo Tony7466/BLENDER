@@ -6927,9 +6927,7 @@ bool RNA_property_assign_default(PointerRNA *ptr, PropertyRNA *prop)
   }
 }
 
-#ifdef WITH_PYTHON
 extern "C" void PyC_LineSpit(void);
-#endif
 
 void _RNA_warning(const char *format, ...)
 {
@@ -6944,11 +6942,7 @@ void _RNA_warning(const char *format, ...)
   fputc('\n', stdout);
 #endif
 
-#ifdef WITH_PYTHON
-  {
-    PyC_LineSpit();
-  }
-#endif
+  PyC_LineSpit();
 }
 
 bool RNA_path_resolved_create(PointerRNA *ptr,

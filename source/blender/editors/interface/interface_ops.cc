@@ -1639,8 +1639,6 @@ static void UI_OT_jump_to_target_button(wmOperatorType *ot)
 /** \name Edit Python Source Operator
  * \{ */
 
-#ifdef WITH_PYTHON
-
 /* ------------------------------------------------------------------------- */
 /* EditSource Utility functions and operator,
  * NOTE: this includes utility functions and button matching checks. */
@@ -1682,9 +1680,9 @@ static void ui_editsource_active_but_clear()
 
 static bool ui_editsource_uibut_match(uiBut *but_a, uiBut *but_b)
 {
-#  if 0
+#if 0
   printf("matching buttons: '%s' == '%s'\n", but_a->drawstr, but_b->drawstr);
-#  endif
+#endif
 
   /* this just needs to be a 'good-enough' comparison so we can know beyond
    * reasonable doubt that these buttons are the same between redraws.
@@ -1711,9 +1709,9 @@ void UI_editsource_active_but_test(uiBut *but)
   const char *fn;
   int line_number = -1;
 
-#  if 0
+#if 0
   printf("comparing buttons: '%s' == '%s'\n", but->drawstr, ui_editsource_info->but_orig.drawstr);
-#  endif
+#endif
 
   PyC_FileAndNum_Safe(&fn, &line_number);
 
@@ -2010,8 +2008,6 @@ static void UI_OT_edittranslation_init(wmOperatorType *ot)
   /* callbacks */
   ot->exec = edittranslation_exec;
 }
-
-#endif /* WITH_PYTHON */
 
 /** \} */
 
@@ -2563,10 +2559,8 @@ void ED_operatortypes_ui()
   WM_operatortype_append(UI_OT_drop_color);
   WM_operatortype_append(UI_OT_drop_name);
   WM_operatortype_append(UI_OT_drop_material);
-#ifdef WITH_PYTHON
   WM_operatortype_append(UI_OT_editsource);
   WM_operatortype_append(UI_OT_edittranslation_init);
-#endif
   WM_operatortype_append(UI_OT_reloadtranslation);
   WM_operatortype_append(UI_OT_button_execute);
   WM_operatortype_append(UI_OT_button_string_clear);

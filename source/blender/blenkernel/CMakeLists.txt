@@ -19,6 +19,7 @@ set(INC
   ../makesrna
   ../modifiers
   ../nodes
+  ../python
   ../render
   ../sequencer
   ../shader_fx
@@ -555,6 +556,8 @@ set(LIB
   bf_intern_opensubdiv  # Uses stub when disabled.
   bf_modifiers
   bf_nodes
+  bf_python
+  bf_python_bmesh
   bf_rna
   bf_shader_fx
   bf_simulation
@@ -649,34 +652,22 @@ if(WITH_CODEC_FFMPEG)
   add_definitions(-DWITH_FFMPEG)
 endif()
 
-if(WITH_PYTHON)
-  list(APPEND INC
-    ../python
-  )
-  list(APPEND LIB
-    bf_python
-    bf_python_bmesh
-  )
-  add_definitions(-DWITH_PYTHON)
+if(WITH_PYTHON_MODULE)
+  add_definitions(-DWITH_PYTHON_MODULE)
+endif()
 
-  if(WITH_PYTHON_MODULE)
-    add_definitions(-DWITH_PYTHON_MODULE)
-  endif()
+if(WITH_PYTHON_SAFETY)
+  add_definitions(-DWITH_PYTHON_SAFETY)
+endif()
 
-  if(WITH_PYTHON_SAFETY)
-    add_definitions(-DWITH_PYTHON_SAFETY)
-  endif()
+if(WITH_PYTHON_SECURITY)
+  add_definitions(-DWITH_PYTHON_SECURITY)
+endif()
 
-  if(WITH_PYTHON_SECURITY)
-    add_definitions(-DWITH_PYTHON_SECURITY)
-  endif()
-
-
-  if(PYTHON_EXECUTABLE)
-    get_filename_component(_python_exe_name ${PYTHON_EXECUTABLE} NAME)
-    add_definitions(-DPYTHON_EXECUTABLE_NAME=${_python_exe_name})
-    unset(_python_exe_name)
-  endif()
+if(PYTHON_EXECUTABLE)
+  get_filename_component(_python_exe_name ${PYTHON_EXECUTABLE} NAME)
+  add_definitions(-DPYTHON_EXECUTABLE_NAME=${_python_exe_name})
+  unset(_python_exe_name)
 endif()
 
 if(WITH_MOD_FLUID)

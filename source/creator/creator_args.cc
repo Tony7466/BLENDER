@@ -51,10 +51,8 @@
 #    include "IMB_imbuf.h"
 #  endif
 
-#  ifdef WITH_PYTHON
-#    include "BPY_extern_python.h"
-#    include "BPY_extern_run.h"
-#  endif
+#  include "BPY_extern_python.h"
+#  include "BPY_extern_run.h"
 
 #  include "RE_engine.h"
 #  include "RE_pipeline.h"
@@ -429,8 +427,6 @@ fail:
 /** \name Utilities Python Context Macro (#BPY_CTX_SETUP)
  * \{ */
 
-#  ifdef WITH_PYTHON
-
 struct BlendePyContextStore {
   wmWindowManager *wm;
   Scene *scene;
@@ -473,18 +469,16 @@ static void arg_py_context_restore(bContext *C, BlendePyContextStore *c_py)
 }
 
 /* macro for context setup/reset */
-#    define BPY_CTX_SETUP(_cmd) \
+#  define BPY_CTX_SETUP(_cmd) \
+    { \
+      BlendePyContextStore py_c; \
+      arg_py_context_backup(C, &py_c, argv[1]); \
       { \
-        BlendePyContextStore py_c; \
-        arg_py_context_backup(C, &py_c, argv[1]); \
-        { \
-          _cmd; \
-        } \
-        arg_py_context_restore(C, &py_c); \
+        _cmd; \
       } \
-      ((void)0)
-
-#  endif /* WITH_PYTHON */
+      arg_py_context_restore(C, &py_c); \
+    } \
+    ((void)0)
 
 /** \} */
 
@@ -1983,7 +1977,6 @@ static const char arg_handle_python_file_run_doc[] =
     "\tRun the given Python script file.";
 static int arg_handle_python_file_run(int argc, const char **argv, void *data)
 {
-#  ifdef WITH_PYTHON
   bContext *C = static_cast<bContext *>(data);
 
   /* workaround for scripts not getting a bpy.context.scene, causes internal errors elsewhere */
@@ -2003,12 +1996,6 @@ static int arg_handle_python_file_run(int argc, const char **argv, void *data)
   }
   fprintf(stderr, "\nError: you must specify a filepath after '%s'.\n", argv[0]);
   return 0;
-
-#  else
-  UNUSED_VARS(argc, argv, data);
-  fprintf(stderr, "This Blender was built without Python support\n");
-  return 0;
-#  endif /* WITH_PYTHON */
 }
 
 static const char arg_handle_python_text_run_doc[] =
@@ -2016,7 +2003,6 @@ static const char arg_handle_python_text_run_doc[] =
     "\tRun the given Python script text block.";
 static int arg_handle_python_text_run(int argc, const char **argv, void *data)
 {
-#  ifdef WITH_PYTHON
   bContext *C = static_cast<bContext *>(data);
 
   /* workaround for scripts not getting a bpy.context.scene, causes internal errors elsewhere */
@@ -2043,12 +2029,6 @@ static int arg_handle_python_text_run(int argc, const char **argv, void *data)
   }
   fprintf(stderr, "\nError: you must specify a text block after '%s'.\n", argv[0]);
   return 0;
-
-#  else
-  UNUSED_VARS(argc, argv, data);
-  fprintf(stderr, "This Blender was built without Python support\n");
-  return 0;
-#  endif /* WITH_PYTHON */
 }
 
 static const char arg_handle_python_expr_run_doc[] =
@@ -2056,7 +2036,6 @@ static const char arg_handle_python_expr_run_doc[] =
     "\tRun the given expression as a Python script.";
 static int arg_handle_python_expr_run(int argc, const char **argv, void *data)
 {
-#  ifdef WITH_PYTHON
   bContext *C = static_cast<bContext *>(data);
 
   /* workaround for scripts not getting a bpy.context.scene, causes internal errors elsewhere */
@@ -2071,12 +2050,6 @@ static int arg_handle_python_expr_run(int argc, const char **argv, void *data)
   }
   fprintf(stderr, "\nError: you must specify a Python expression after '%s'.\n", argv[0]);
   return 0;
-
-#  else
-  UNUSED_VARS(argc, argv, data);
-  fprintf(stderr, "This Blender was built without Python support\n");
-  return 0;
-#  endif /* WITH_PYTHON */
 }
 
 static const char arg_handle_python_console_run_doc[] =
@@ -2084,18 +2057,12 @@ static const char arg_handle_python_console_run_doc[] =
     "Run Blender with an interactive console.";
 static int arg_handle_python_console_run(int /*argc*/, const char **argv, void *data)
 {
-#  ifdef WITH_PYTHON
   bContext *C = static_cast<bContext *>(data);
 
   const char *imports[] = {"code", nullptr};
   BPY_CTX_SETUP(BPY_run_string_eval(C, imports, "code.interact()"));
 
   return 0;
-#  else
-  UNUSED_VARS(argv, data);
-  fprintf(stderr, "This Blender was built without python support\n");
-  return 0;
-#  endif /* WITH_PYTHON */
 }
 
 static const char arg_handle_python_exit_code_set_doc[] =
@@ -2135,9 +2102,7 @@ static int arg_handle_python_use_system_env_set(int /*argc*/,
                                                 const char ** /*argv*/,
                                                 void * /*data*/)
 {
-#  ifdef WITH_PYTHON
   BPY_python_use_system_env();
-#  endif
   return 0;
 }
 
@@ -2148,7 +2113,6 @@ static int arg_handle_addons_set(int argc, const char **argv, void *data)
 {
   /* workaround for scripts not getting a bpy.context.scene, causes internal errors elsewhere */
   if (argc > 1) {
-#  ifdef WITH_PYTHON
     const char script_str[] =
         "from addon_utils import check, enable\n"
         "for m in '%s'.split(','):\n"
@@ -2162,9 +2126,6 @@ static int arg_handle_addons_set(int argc, const char **argv, void *data)
     BLI_assert(strlen(str) + 1 == slen);
     BPY_CTX_SETUP(BPY_run_string_exec(C, nullptr, str));
     free(str);
-#  else
-    UNUSED_VARS(argv, data);
-#  endif /* WITH_PYTHON */
     return 1;
   }
   fprintf(stderr, "\nError: you must specify a comma separated list after '--addons'.\n");
@@ -2543,10 +2504,8 @@ void main_args_setup(bContext *C, bArgs *ba, bool all)
 #  undef CB_EX
 #  undef CB_ALL
 
-#  ifdef WITH_PYTHON
   /* Use for Python to extract help text (Python can't call directly - bad-level call). */
   BPY_python_app_help_text_fn = main_args_help_as_string;
-#  endif
 }
 
 /** \} */

@@ -12,6 +12,7 @@ set(INC
   ../blender/io/usd
   ../blender/bmesh
   ../blender/makesrna
+  ../blender/python
   ../blender/render
   ../blender/windowmanager
 )
@@ -99,13 +100,8 @@ if(WITH_USD)
   endif()
 endif()
 
-if(WITH_PYTHON)
-  list(APPEND INC ../blender/python)
-  add_definitions(-DWITH_PYTHON)
-
-  if(WITH_PYTHON_SECURITY)
-    add_definitions(-DWITH_PYTHON_SECURITY)
-  endif()
+if(WITH_PYTHON_SECURITY)
+  add_definitions(-DWITH_PYTHON_SECURITY)
 endif()
 
 if(WITH_HEADLESS)
@@ -428,55 +424,54 @@ install(
   "file(REMOVE_RECURSE ${TARGETDIR_VER})"
 )
 
-if(WITH_PYTHON)
-  # install(CODE "message(\"copying blender scripts...\")")
+# install(CODE "message(\"copying blender scripts...\")")
 
-  # exclude addons_contrib if release branch
-  if("${BLENDER_VERSION_CYCLE}" STREQUAL "release" OR
-     "${BLENDER_VERSION_CYCLE}" STREQUAL "rc" OR
-     "${BLENDER_VERSION_CYCLE}" STREQUAL "beta")
-    set(ADDON_EXCLUDE_CONDITIONAL "addons_contrib/*")
-  else()
-    set(ADDON_EXCLUDE_CONDITIONAL "_addons_contrib/*")  # Dummy, won't do anything.
-  endif()
-
-  # do not install freestyle dir if disabled
-  if(NOT WITH_FREESTYLE)
-    set(FREESTYLE_EXCLUDE_CONDITIONAL "freestyle/*")
-  else()
-    set(FREESTYLE_EXCLUDE_CONDITIONAL "_freestyle/*")  # Dummy, won't do anything.
-  endif()
-
-  install(
-    DIRECTORY ${CMAKE_SOURCE_DIR}/scripts
-    DESTINATION ${TARGETDIR_VER}
-    PATTERN ".git" EXCLUDE
-    PATTERN ".gitignore" EXCLUDE
-    PATTERN ".gitea" EXCLUDE
-    PATTERN ".github" EXCLUDE
-    PATTERN ".arcconfig" EXCLUDE
-    PATTERN "__pycache__" EXCLUDE
-    PATTERN "site" EXCLUDE
-    PATTERN "${ADDON_EXCLUDE_CONDITIONAL}" EXCLUDE
-    PATTERN "${FREESTYLE_EXCLUDE_CONDITIONAL}" EXCLUDE
-  )
-
-  if(WITH_PYTHON_INSTALL)
-    if(WIN32)
-      install(
-        FILES ${CMAKE_SOURCE_DIR}/scripts/site/sitecustomize.py
-        DESTINATION ${TARGETDIR_VER}/python/lib/site-packages
-      )
-    else()
-      install(
-        FILES ${CMAKE_SOURCE_DIR}/scripts/site/sitecustomize.py
-        DESTINATION ${TARGETDIR_VER}/python/lib/python${PYTHON_VERSION}/site-packages
-      )
-    endif()
-  endif()
-  unset(ADDON_EXCLUDE_CONDITIONAL)
-  unset(FREESTYLE_EXCLUDE_CONDITIONAL)
+# exclude addons_contrib if release branch
+if("${BLENDER_VERSION_CYCLE}" STREQUAL "release" OR
+    "${BLENDER_VERSION_CYCLE}" STREQUAL "rc" OR
+    "${BLENDER_VERSION_CYCLE}" STREQUAL "beta")
+  set(ADDON_EXCLUDE_CONDITIONAL "addons_contrib/*")
+else()
+  set(ADDON_EXCLUDE_CONDITIONAL "_addons_contrib/*")  # Dummy, won't do anything.
 endif()
+
+# do not install freestyle dir if disabled
+if(NOT WITH_FREESTYLE)
+  set(FREESTYLE_EXCLUDE_CONDITIONAL "freestyle/*")
+else()
+  set(FREESTYLE_EXCLUDE_CONDITIONAL "_freestyle/*")  # Dummy, won't do anything.
+endif()
+
+install(
+  DIRECTORY ${CMAKE_SOURCE_DIR}/scripts
+  DESTINATION ${TARGETDIR_VER}
+  PATTERN ".git" EXCLUDE
+  PATTERN ".gitignore" EXCLUDE
+  PATTERN ".gitea" EXCLUDE
+  PATTERN ".github" EXCLUDE
+  PATTERN ".arcconfig" EXCLUDE
+  PATTERN "__pycache__" EXCLUDE
+  PATTERN "site" EXCLUDE
+  PATTERN "${ADDON_EXCLUDE_CONDITIONAL}" EXCLUDE
+  PATTERN "${FREESTYLE_EXCLUDE_CONDITIONAL}" EXCLUDE
+)
+
+if(WITH_PYTHON_INSTALL)
+  if(WIN32)
+    install(
+      FILES ${CMAKE_SOURCE_DIR}/scripts/site/sitecustomize.py
+      DESTINATION ${TARGETDIR_VER}/python/lib/site-packages
+    )
+  else()
+    install(
+      FILES ${CMAKE_SOURCE_DIR}/scripts/site/sitecustomize.py
+      DESTINATION ${TARGETDIR_VER}/python/lib/python${PYTHON_VERSION}/site-packages
+    )
+  endif()
+endif()
+unset(ADDON_EXCLUDE_CONDITIONAL)
+unset(FREESTYLE_EXCLUDE_CONDITIONAL)
+
 
 # fonts
 install(
@@ -711,7 +706,7 @@ if(UNIX AND NOT APPLE)
     endif()
   endif()
 
-  if(WITH_PYTHON AND WITH_PYTHON_INSTALL)
+  if(WITH_PYTHON_INSTALL)
     # Install executable
     install(
       PROGRAMS ${PYTHON_EXECUTABLE}
@@ -1087,27 +1082,25 @@ elseif(WIN32)
     DEBUG
   )
 
-  if(WITH_PYTHON)
-    string(REPLACE "." "" _PYTHON_VERSION_NO_DOTS ${PYTHON_VERSION})
+  string(REPLACE "." "" _PYTHON_VERSION_NO_DOTS ${PYTHON_VERSION})
 
-    if(NOT WITH_PYTHON_MODULE)
-      if(NOT CMAKE_COMPILER_IS_GNUCC)
-        install(
-          FILES
-            ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS}/bin/python${_PYTHON_VERSION_NO_DOTS}.dll
-            ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS}/bin/python3.dll
-          DESTINATION ${TARGETDIR_EXE}
-          CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
-        )
+  if(NOT WITH_PYTHON_MODULE)
+    if(NOT CMAKE_COMPILER_IS_GNUCC)
+      install(
+        FILES
+          ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS}/bin/python${_PYTHON_VERSION_NO_DOTS}.dll
+          ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS}/bin/python3.dll
+        DESTINATION ${TARGETDIR_EXE}
+        CONFIGURATIONS Release;RelWithDebInfo;MinSizeRel
+      )
 
-        install(
-          FILES
-            ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS}/bin/python${_PYTHON_VERSION_NO_DOTS}_d.dll
-            ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS}/bin/python3_d.dll
-          DESTINATION ${TARGETDIR_EXE}
-          CONFIGURATIONS Debug
-        )
-      endif()
+      install(
+        FILES
+          ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS}/bin/python${_PYTHON_VERSION_NO_DOTS}_d.dll
+          ${LIBDIR}/python/${_PYTHON_VERSION_NO_DOTS}/bin/python3_d.dll
+        DESTINATION ${TARGETDIR_EXE}
+        CONFIGURATIONS Debug
+      )
     endif()
 
     if(WITH_PYTHON_INSTALL)
@@ -1462,7 +1455,7 @@ elseif(APPLE)
   endif()
 
   # Python.
-  if(WITH_PYTHON AND NOT WITH_PYTHON_MODULE AND NOT WITH_PYTHON_FRAMEWORK)
+  if(NOT WITH_PYTHON_MODULE AND NOT WITH_PYTHON_FRAMEWORK)
     # Copy the python libraries into the install directory.
     install_dir(
       ${PYTHON_LIBPATH}/python${PYTHON_VERSION}

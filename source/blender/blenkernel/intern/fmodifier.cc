@@ -879,13 +879,11 @@ static void fcm_python_evaluate(FCurve * /*fcu*/,
                                 float /*evaltime*/,
                                 void * /*storage*/)
 {
-#ifdef WITH_PYTHON
-// FMod_Python *data = (FMod_Python *)fcm->data;
+  // FMod_Python *data = (FMod_Python *)fcm->data;
 
-/* FIXME... need to implement this modifier...
- * It will need it execute a script using the custom properties
- */
-#endif /* WITH_PYTHON */
+  /* FIXME... need to implement this modifier...
+   * It will need it execute a script using the custom properties
+   */
 }
 
 static FModifierTypeInfo FMI_PYTHON = {

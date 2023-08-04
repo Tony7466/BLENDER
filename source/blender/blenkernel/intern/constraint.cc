@@ -74,9 +74,7 @@
 
 #include "CLG_log.h"
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern.h"
-#endif
+#include "BPY_extern.h"
 
 #ifdef WITH_ALEMBIC
 #  include "ABC_alembic.h"
@@ -2442,9 +2440,7 @@ static void pycon_get_tarmat(Depsgraph * /*depsgraph*/,
                              bConstraintTarget *ct,
                              float /*ctime*/)
 {
-#ifdef WITH_PYTHON
   bPythonConstraint *data = static_cast<bPythonConstraint *>(con->data);
-#endif
 
   if (VALID_CONS_TARGET(ct)) {
     if (ct->tar->type == OB_CURVES_LEGACY && ct->tar->runtime.curve_cache == nullptr) {
@@ -2464,12 +2460,10 @@ static void pycon_get_tarmat(Depsgraph * /*depsgraph*/,
                               con->flag,
                               con->headtail);
 
-/* only execute target calculation if allowed */
-#ifdef WITH_PYTHON
+    /* only execute target calculation if allowed */
     if (G.f & G_FLAG_SCRIPT_AUTOEXEC) {
       BPY_pyconstraint_target(data, ct);
     }
-#endif
   }
   else if (ct) {
     unit_m4(ct->matrix);
@@ -2478,10 +2472,6 @@ static void pycon_get_tarmat(Depsgraph * /*depsgraph*/,
 
 static void pycon_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targets)
 {
-#ifndef WITH_PYTHON
-  UNUSED_VARS(con, cob, targets);
-  return;
-#else
   bPythonConstraint *data = static_cast<bPythonConstraint *>(con->data);
 
   /* only evaluate in python if we're allowed to do so */
@@ -2491,7 +2481,6 @@ static void pycon_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *targe
 
   /* Now, run the actual 'constraint' function, which should only access the matrices */
   BPY_pyconstraint_exec(data, cob, targets);
-#endif /* WITH_PYTHON */
 }
 
 static bConstraintTypeInfo CTI_PYTHON = {

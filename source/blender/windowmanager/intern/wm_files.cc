@@ -117,10 +117,8 @@
 /* only to report a missing engine */
 #include "RE_engine.h"
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern_python.h"
-#  include "BPY_extern_run.h"
-#endif
+#include "BPY_extern_python.h"
+#include "BPY_extern_run.h"
 
 #include "DEG_depsgraph.h"
 
@@ -691,7 +689,6 @@ static void wm_file_read_post(bContext *C,
     CTX_wm_window_set(C, static_cast<wmWindow *>(wm->windows.first));
   }
 
-#ifdef WITH_PYTHON
   if (is_startup_file) {
     /* On startup (by default), Python won't have been initialized.
      *
@@ -733,9 +730,6 @@ static void wm_file_read_post(bContext *C,
     }
     addons_loaded = true;
   }
-#else
-  UNUSED_VARS(is_startup_file, reset_app_template);
-#endif /* WITH_PYTHON */
 
   Main *bmain = CTX_data_main(C);
 
@@ -1225,7 +1219,6 @@ void wm_homefile_read_ex(bContext *C,
   }
 
   if (use_userdef || reset_app_template) {
-#ifdef WITH_PYTHON
     /* This only runs once Blender has already started. */
     if (CTX_py_init_get(C)) {
       /* This is restored by 'wm_file_read_post', disable before loading any preferences
@@ -1237,7 +1230,6 @@ void wm_homefile_read_ex(bContext *C,
       const char *imports[] = {"addon_utils", nullptr};
       BPY_run_string_eval(C, imports, "addon_utils.disable_all()");
     }
-#endif /* WITH_PYTHON */
   }
 
   if (use_data) {

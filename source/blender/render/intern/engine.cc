@@ -39,9 +39,7 @@
 
 #include "RNA_access.h"
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern.h"
-#endif
+#include "BPY_extern.h"
 
 #include "IMB_imbuf_types.h"
 
@@ -163,11 +161,9 @@ static void engine_depsgraph_free(RenderEngine *engine)
 
 void RE_engine_free(RenderEngine *engine)
 {
-#ifdef WITH_PYTHON
   if (engine->py_instance) {
     BPY_DECREF_RNA_INVALIDATE(engine->py_instance);
   }
-#endif
 
   engine_depsgraph_free(engine);
 

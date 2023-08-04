@@ -28,15 +28,12 @@
 
 #include "script_intern.h" /* own include */
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern_run.h"
-#endif
+#include "BPY_extern_run.h"
 
 static int run_pyfile_exec(bContext *C, wmOperator *op)
 {
   char filepath[FILE_MAX];
   RNA_string_get(op->ptr, "filepath", filepath);
-#ifdef WITH_PYTHON
   if (BPY_run_filepath(C, filepath, op->reports)) {
     ARegion *region = CTX_wm_region(C);
     if (region != nullptr) {
@@ -44,9 +41,6 @@ static int run_pyfile_exec(bContext *C, wmOperator *op)
     }
     return OPERATOR_FINISHED;
   }
-#else
-  (void)C; /* unused */
-#endif
   return OPERATOR_CANCELLED; /* FAIL */
 }
 
@@ -69,7 +63,6 @@ void SCRIPT_OT_python_file_run(wmOperatorType *ot)
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_EDITOR_FILEBROWSER);
 }
 
-#ifdef WITH_PYTHON
 static bool script_test_modal_operators(bContext *C)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -89,12 +82,9 @@ static bool script_test_modal_operators(bContext *C)
 
   return false;
 }
-#endif
 
 static int script_reload_exec(bContext *C, wmOperator *op)
 {
-
-#ifdef WITH_PYTHON
 
   /* clear running operators */
   if (script_test_modal_operators(C)) {
@@ -130,10 +120,6 @@ static int script_reload_exec(bContext *C, wmOperator *op)
    * any additional updates required by this operator should go there. */
 
   return OPERATOR_FINISHED;
-#else
-  UNUSED_VARS(C, op);
-  return OPERATOR_CANCELLED;
-#endif
 }
 
 void SCRIPT_OT_reload(wmOperatorType *ot)

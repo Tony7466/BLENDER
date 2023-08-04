@@ -81,9 +81,7 @@
 
 #include "BLO_read_write.h"
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern.h"
-#endif
+#include "BPY_extern.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -218,15 +216,11 @@ void ED_view3d_stop_render_preview(wmWindowManager *wm, ARegion *region)
   RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
 
   if (rv3d->view_render) {
-#ifdef WITH_PYTHON
     BPy_BEGIN_ALLOW_THREADS;
-#endif
 
     WM_jobs_kill_type(wm, region, WM_JOB_TYPE_RENDER_PREVIEW);
 
-#ifdef WITH_PYTHON
     BPy_END_ALLOW_THREADS;
-#endif
 
     RE_FreeViewRender(rv3d->view_render);
     rv3d->view_render = nullptr;

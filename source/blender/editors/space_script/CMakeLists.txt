@@ -9,6 +9,7 @@ set(INC
   ../../blentranslation
   ../../gpu
   ../../makesrna
+  ../../python
   ../../windowmanager
 
 )
@@ -29,13 +30,5 @@ set(LIB
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
 )
-
-if(WITH_PYTHON)
-  list(APPEND INC
-    ../../python
-  )
-  add_definitions(-DWITH_PYTHON)
-endif()
-
 
 blender_add_lib(bf_editor_space_script "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

@@ -42,9 +42,7 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern.h"
-#endif
+#include "BPY_extern.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -151,8 +149,6 @@ bConstraint *ED_object_constraint_active_get(Object *ob)
 /** \name PyConstraints (Unused)
  * \{ */
 
-#ifdef WITH_PYTHON
-
 /* this callback sets the text-file to be used for selected menu item */
 static void validate_pyconstraint_cb(Main *bmain, void *arg1, void *arg2)
 {
@@ -219,22 +215,16 @@ static char *buildmenu_pyconstraints(Main *bmain, Text *con_text, int *pyconinde
 
   return str;
 }
-#endif /* WITH_PYTHON */
 
-#if 0 /* UNUSED, until pyconstraints are added back. */
+#if 0  /* UNUSED, until pyconstraints are added back. */
 /* this callback gets called when the 'refresh' button of a pyconstraint gets pressed */
 static void update_pyconstraint_cb(void *arg1, void *arg2)
 {
-#  ifndef WITH_PYTHON
-  (void)arg1; /* unused */
-  (void)arg2; /* unused */
-#  else
   Object *owner = (Object *)arg1;
   bConstraint *con = (bConstraint *)arg2;
   if (owner && con) {
     BPY_pyconstraint_update(owner, con);
   }
-#  endif
 }
 #endif /* UNUSED */
 
@@ -2408,7 +2398,6 @@ static int constraint_add_exec(
   switch (type) {
     case CONSTRAINT_TYPE_PYTHON: /* FIXME: this code is not really valid anymore */
     {
-#ifdef WITH_PYTHON
       char *menustr;
       int scriptint = 0;
       /* popup a list of usable scripts */
@@ -2424,7 +2413,6 @@ static int constraint_add_exec(
         /* make sure target allowance is set correctly */
         BPY_pyconstraint_update(ob, con);
       }
-#endif
       break;
     }
 

@@ -47,9 +47,7 @@
 #include "BLF_api.h"
 #include "BLT_translation.h"
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern_run.h"
-#endif
+#include "BPY_extern_run.h"
 
 #include "ED_screen.h"
 
@@ -319,8 +317,6 @@ static char *ui_tooltip_text_python_from_op(bContext *C, wmOperatorType *ot, Poi
 /** \name ToolTip Creation
  * \{ */
 
-#ifdef WITH_PYTHON
-
 static bool ui_tooltip_data_append_from_keymap(bContext *C, uiTooltipData *data, wmKeyMap *keymap)
 {
   const int fields_len_init = data->fields_len;
@@ -359,8 +355,6 @@ static bool ui_tooltip_data_append_from_keymap(bContext *C, uiTooltipData *data,
 
   return (fields_len_init != data->fields_len);
 }
-
-#endif /* WITH_PYTHON */
 
 /**
  * Special tool-system exception.
@@ -409,7 +403,6 @@ static uiTooltipData *ui_tooltip_data_from_tool(bContext *C, uiBut *but, bool is
   /* We have a tool, now extract the info. */
   uiTooltipData *data = MEM_cnew<uiTooltipData>(__func__);
 
-#ifdef WITH_PYTHON
   /* It turns out to be most simple to do this via Python since C
    * doesn't have access to information about non-active tools. */
 
@@ -734,9 +727,6 @@ static uiTooltipData *ui_tooltip_data_from_tool(bContext *C, uiBut *but, bool is
       BLI_assert(0);
     }
   }
-#else
-  UNUSED_VARS(is_label, has_valid_context, has_valid_context_error);
-#endif /* WITH_PYTHON */
 
   if (data->fields_len == 0) {
     MEM_freeN(data);

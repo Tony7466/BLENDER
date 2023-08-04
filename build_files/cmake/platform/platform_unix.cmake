@@ -148,23 +148,22 @@ if(NOT WITH_SYSTEM_FREETYPE)
   check_freetype_for_brotli()
 endif()
 
-if(WITH_PYTHON)
-  # This could be used, see: D14954 for details.
-  # `find_package(PythonLibs)`
+# This could be used, see: D14954 for details.
+# `find_package(PythonLibs)`
 
-  # Use our own instead, since without Python is such a rare case,
-  # require this package.
-  # XXX: Linking errors with Debian static Python (sigh).
-  # find_package_wrapper(PythonLibsUnix REQUIRED)
-  find_package(PythonLibsUnix REQUIRED)
+# Use our own instead, since without Python is such a rare case,
+# require this package.
+# XXX: Linking errors with Debian static Python (sigh).
+# find_package_wrapper(PythonLibsUnix REQUIRED)
+find_package(PythonLibsUnix REQUIRED)
 
-  if(WITH_PYTHON_MODULE AND NOT WITH_INSTALL_PORTABLE)
-    # Installing into `site-packages`, warn when installing into `./../lib/`
-    # which script authors almost certainly don't want.
-    if(DEFINED LIBDIR)
-      path_is_prefix(LIBDIR PYTHON_SITE_PACKAGES _is_prefix)
-      if(_is_prefix)
-        message(WARNING "
+if(WITH_PYTHON_MODULE AND NOT WITH_INSTALL_PORTABLE)
+  # Installing into `site-packages`, warn when installing into `./../lib/`
+  # which script authors almost certainly don't want.
+  if(DEFINED LIBDIR)
+    path_is_prefix(LIBDIR PYTHON_SITE_PACKAGES _is_prefix)
+    if(_is_prefix)
+      message(WARNING "
 Building Blender with the following configuration:
   - WITH_PYTHON_MODULE=ON
   - WITH_INSTALL_PORTABLE=OFF
@@ -176,10 +175,9 @@ In this case you may want to either:
   - Set WITH_INSTALL_PORTABLE=ON to create a stand-alone \"bpy\" module
     which you will need to ensure is in Python's module search path.
 Proceeding with PYTHON_SITE_PACKAGES install target, you have been warned!"
-        )
-      endif()
-      unset(_is_prefix)
+      )
     endif()
+    unset(_is_prefix)
   endif()
 endif()
 

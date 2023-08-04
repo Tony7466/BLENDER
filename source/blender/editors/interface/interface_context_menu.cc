@@ -39,10 +39,8 @@
 #include "RNA_path.h"
 #include "RNA_prototypes.h"
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern.h"
-#  include "BPY_extern_run.h"
-#endif
+#include "BPY_extern.h"
+#include "BPY_extern_run.h"
 
 #include "WM_api.h"
 #include "WM_types.h"
@@ -375,7 +373,6 @@ static void ui_but_user_menu_add(bContext *C, uiBut *but, bUserMenu *um)
       if (UI_but_is_tool(but)) {
         char idname[64];
         RNA_string_get(but->opptr, "name", idname);
-#ifdef WITH_PYTHON
         {
           const char *expr_imports[] = {"bpy", "bl_ui", nullptr};
           char expr[256];
@@ -395,9 +392,6 @@ static void ui_but_user_menu_add(bContext *C, uiBut *but, bUserMenu *um)
             STRNCPY(drawstr, idname);
           }
         }
-#else
-        STRNCPY(drawstr, idname);
-#endif
       }
     }
     ED_screen_user_menu_item_add_operator(

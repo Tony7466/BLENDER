@@ -16,6 +16,7 @@ set(INC
   ../../gpu
   ../../imbuf
   ../../makesrna
+  ../../python
   ../../render
   ../../windowmanager
   ../../../../intern/mantaflow/extern
@@ -87,11 +88,6 @@ set(LIB
   bf_editor_mesh
   PRIVATE bf::intern::guardedalloc
 )
-
-if(WITH_PYTHON)
-  list(APPEND INC ../../python)
-  add_definitions(-DWITH_PYTHON)
-endif()
 
 if(WITH_FREESTYLE)
   add_definitions(-DWITH_FREESTYLE)

@@ -96,9 +96,7 @@
 
 #  include "BLT_translation.h"
 
-#  ifdef WITH_PYTHON
-#    include "BPY_extern.h"
-#  endif
+#  include "BPY_extern.h"
 
 #  include "WM_api.h"
 #  include "WM_types.h"
@@ -186,15 +184,11 @@ static void rna_Main_scenes_remove(
 
       if (WM_window_get_active_scene(win) == scene) {
 
-#  ifdef WITH_PYTHON
         BPy_BEGIN_ALLOW_THREADS;
-#  endif
 
         WM_window_set_active_scene(bmain, C, win, scene_new);
 
-#  ifdef WITH_PYTHON
         BPy_END_ALLOW_THREADS;
-#  endif
       }
     }
     rna_Main_ID_remove(bmain, reports, scene_ptr, do_unlink, true, true);

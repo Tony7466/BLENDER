@@ -57,9 +57,7 @@ const EnumPropertyItem rna_enum_region_type_items[] = {
 
 #  include "UI_view2d.h"
 
-#  ifdef WITH_PYTHON
-#    include "BPY_extern.h"
-#  endif
+#  include "BPY_extern.h"
 
 static void rna_Screen_bar_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {

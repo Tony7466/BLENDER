@@ -65,9 +65,7 @@
 
 #include "RE_pipeline.h"
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern.h"
-#endif
+#include "BPY_extern.h"
 
 /* -------------------------------------------------------------------- */
 /** \name Blend/Library Paths
@@ -880,12 +878,10 @@ static void setup_app_data(bContext *C,
 
   G.f = bfd->globalf;
 
-#ifdef WITH_PYTHON
   /* let python know about new main */
   if (CTX_py_init_get(C)) {
     BPY_context_update(C);
   }
-#endif
 
   /* FIXME: this version patching should really be part of the file-reading code,
    * but we still get too many unrelated data-corruption crashes otherwise... */

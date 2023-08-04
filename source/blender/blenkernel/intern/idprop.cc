@@ -817,7 +817,7 @@ bool IDP_EqualsProperties_ex(const IDProperty *prop1,
     case IDP_INT:
       return (IDP_Int(prop1) == IDP_Int(prop2));
     case IDP_FLOAT:
-#if !defined(NDEBUG) && defined(WITH_PYTHON)
+#if !defined(NDEBUG)
     {
       float p1 = IDP_Float(prop1);
       float p2 = IDP_Float(prop2);

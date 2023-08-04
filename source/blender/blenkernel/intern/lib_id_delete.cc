@@ -37,9 +37,7 @@
 
 #include "DEG_depsgraph.h"
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern.h"
-#endif
+#include "BPY_extern.h"
 
 static CLG_LogRef LOG = {"bke.lib_id_delete"};
 
@@ -400,16 +398,12 @@ size_t BKE_id_multi_tagged_delete(Main *bmain)
 
 void BKE_libblock_free_data_py(ID *id)
 {
-#ifdef WITH_PYTHON
-#  ifdef WITH_PYTHON_SAFETY
+#ifdef WITH_PYTHON_SAFETY
   BPY_id_release(id);
-#  endif
+#endif
   if (id->py_instance) {
     BPY_DECREF_RNA_INVALIDATE(id->py_instance);
   }
-#else
-  UNUSED_VARS(id);
-#endif
 }
 
 /** \} */

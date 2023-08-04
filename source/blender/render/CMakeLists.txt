@@ -17,6 +17,7 @@ set(INC
   ../imbuf
   ../makesrna
   ../nodes
+  ../python
   ../sequencer
   ../simulation
   ../windowmanager
@@ -66,13 +67,6 @@ set(LIB
   bf_realtime_compositor
   PRIVATE bf::intern::atomic
 )
-
-if(WITH_PYTHON)
-  add_definitions(-DWITH_PYTHON)
-  list(APPEND INC
-    ../python
-  )
-endif()
 
 if(WITH_IMAGE_OPENEXR)
   list(APPEND LIB

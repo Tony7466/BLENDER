@@ -231,9 +231,7 @@ const IDFilterEnumPropertyItem rna_enum_id_type_filter_items[] = {
 
 #  include "WM_api.h"
 
-#  ifdef WITH_PYTHON
-#    include "BPY_extern.h"
-#  endif
+#  include "BPY_extern.h"
 
 void rna_ID_override_library_property_operation_refname_get(PointerRNA *ptr, char *value)
 {
@@ -755,15 +753,11 @@ static ID *rna_ID_override_create(ID *id, Main *bmain, bool remap_local_usages)
   }
 
   ID *local_id = nullptr;
-#  ifdef WITH_PYTHON
   BPy_BEGIN_ALLOW_THREADS;
-#  endif
 
   local_id = BKE_lib_override_library_create_from_id(bmain, id, remap_local_usages);
 
-#  ifdef WITH_PYTHON
   BPy_END_ALLOW_THREADS;
-#  endif
 
   if (remap_local_usages) {
     BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, false);
@@ -790,9 +784,7 @@ static ID *rna_ID_override_hierarchy_create(ID *id,
 
   ID *id_root_override = nullptr;
 
-#  ifdef WITH_PYTHON
   BPy_BEGIN_ALLOW_THREADS;
-#  endif
 
   BKE_lib_override_library_create(bmain,
                                   scene,
@@ -804,9 +796,7 @@ static ID *rna_ID_override_hierarchy_create(ID *id,
                                   &id_root_override,
                                   do_fully_editable);
 
-#  ifdef WITH_PYTHON
   BPy_END_ALLOW_THREADS;
-#  endif
 
   WM_main_add_notifier(NC_ID | NA_ADDED, nullptr);
   WM_main_add_notifier(NC_WM | ND_LIB_OVERRIDE_CHANGED, nullptr);
@@ -1069,13 +1059,11 @@ static void rna_ID_animation_data_free(ID *id, Main *bmain)
   DEG_relations_tag_update(bmain);
 }
 
-#  ifdef WITH_PYTHON
 void **rna_ID_instance(PointerRNA *ptr)
 {
   ID *id = (ID *)ptr->data;
   return &id->py_instance;
 }
-#  endif
 
 static void rna_IDPArray_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
@@ -1469,15 +1457,11 @@ static void rna_Library_version_get(PointerRNA *ptr, int *value)
 
 static void rna_Library_reload(Library *lib, bContext *C, ReportList *reports)
 {
-#  ifdef WITH_PYTHON
   BPy_BEGIN_ALLOW_THREADS;
-#  endif
 
   WM_lib_reload(lib, C, reports);
 
-#  ifdef WITH_PYTHON
   BPy_END_ALLOW_THREADS;
-#  endif
 }
 
 #else
@@ -2324,9 +2308,7 @@ static void rna_def_ID(BlenderRNA *brna)
       func, "preview_image", "ImagePreview", "", "The existing or created preview");
   RNA_def_function_return(func, parm);
 
-#  ifdef WITH_PYTHON
   RNA_def_struct_register_funcs(srna, nullptr, nullptr, "rna_ID_instance");
-#  endif
 }
 
 static void rna_def_library(BlenderRNA *brna)

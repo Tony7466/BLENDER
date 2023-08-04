@@ -559,9 +559,7 @@ const EnumPropertyItem rna_enum_wm_report_items[] = {
 
 #  include "MEM_guardedalloc.h"
 
-#  ifdef WITH_PYTHON
-#    include "BPY_extern.h"
-#  endif
+#  include "BPY_extern.h"
 
 static wmOperator *rna_OperatorProperties_find_operator(PointerRNA *ptr)
 {
@@ -775,15 +773,11 @@ static void rna_Window_scene_update(bContext *C, PointerRNA *ptr)
 
   /* Exception: must use context so notifier gets to the right window. */
   if (win->new_scene) {
-#  ifdef WITH_PYTHON
     BPy_BEGIN_ALLOW_THREADS;
-#  endif
 
     WM_window_set_active_scene(bmain, C, win, win->new_scene);
 
-#  ifdef WITH_PYTHON
     BPy_END_ALLOW_THREADS;
-#  endif
 
     wmWindowManager *wm = CTX_wm_manager(C);
     WM_event_add_notifier_ex(wm, win, NC_SCENE | ND_SCENEBROWSE, win->new_scene);
@@ -1297,8 +1291,6 @@ static PointerRNA rna_WindowManager_xr_session_state_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_XrSessionState, state);
 }
 
-#  ifdef WITH_PYTHON
-
 static bool rna_operator_poll_cb(bContext *C, wmOperatorType *ot)
 {
   extern FunctionRNA rna_Operator_poll_func;
@@ -1790,7 +1782,6 @@ static StructRNA *rna_MacroOperator_register(Main *bmain,
 
   return dummy_ot.rna_ext.srna;
 }
-#  endif /* WITH_PYTHON */
 
 static StructRNA *rna_Operator_refine(PointerRNA *opr)
 {
@@ -2011,10 +2002,8 @@ static void rna_def_operator(BlenderRNA *brna)
       srna, "Operator", "Storage of an operator being executed, or registered after execution");
   RNA_def_struct_sdna(srna, "wmOperator");
   RNA_def_struct_refine_func(srna, "rna_Operator_refine");
-#  ifdef WITH_PYTHON
   RNA_def_struct_register_funcs(
       srna, "rna_Operator_register", "rna_Operator_unregister", "rna_Operator_instance");
-#  endif
   RNA_def_struct_translation_context(srna, BLT_I18NCONTEXT_OPERATOR_DEFAULT);
   RNA_def_struct_flag(srna, STRUCT_PUBLIC_NAMESPACE_INHERIT);
 
@@ -2056,10 +2045,8 @@ static void rna_def_macro_operator(BlenderRNA *brna)
       "Storage of a macro operator being executed, or registered after execution");
   RNA_def_struct_sdna(srna, "wmOperator");
   RNA_def_struct_refine_func(srna, "rna_MacroOperator_refine");
-#  ifdef WITH_PYTHON
   RNA_def_struct_register_funcs(
       srna, "rna_MacroOperator_register", "rna_Operator_unregister", "rna_Operator_instance");
-#  endif
   RNA_def_struct_translation_context(srna, BLT_I18NCONTEXT_OPERATOR_DEFAULT);
   RNA_def_struct_flag(srna, STRUCT_PUBLIC_NAMESPACE_INHERIT);
 

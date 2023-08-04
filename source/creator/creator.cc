@@ -539,12 +539,6 @@ int main(int argc,
   /* Need to be after WM init so that userpref are loaded. */
   RE_engines_init_experimental();
 
-#ifndef WITH_PYTHON
-  printf(
-      "\n* WARNING * - Blender compiled without Python!\n"
-      "this is not intended for typical usage\n\n");
-#endif
-
   CTX_py_init_set(C, true);
   WM_keyconfig_init(C);
 

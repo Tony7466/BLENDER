@@ -27,9 +27,6 @@
 
 #include "BLO_read_write.h"
 
-#ifdef WITH_PYTHON
-#endif
-
 #include "script_intern.h" /* own include */
 
 // static script_run_python(char *funcname, )
@@ -67,12 +64,10 @@ static void script_free(SpaceLink *sl)
 {
   SpaceScript *sscript = (SpaceScript *)sl;
 
-#ifdef WITH_PYTHON
   /* Free buttons references. */
   if (sscript->but_refs) {
     sscript->but_refs = nullptr;
   }
-#endif
   sscript->script = nullptr;
 }
 
@@ -114,13 +109,9 @@ static void script_main_region_draw(const bContext *C, ARegion *region)
   /* data... */
   // BPY_script_exec(C, "/root/blender-svn/blender25/test.py", nullptr);
 
-#ifdef WITH_PYTHON
   if (sscript->script) {
     // BPY_run_script_space_draw(C, sscript);
   }
-#else
-  (void)sscript;
-#endif
 
   /* reset view matrix */
   UI_view2d_view_restore(C);

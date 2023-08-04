@@ -24,9 +24,7 @@
 
 #ifdef RNA_RUNTIME
 
-#  ifdef WITH_PYTHON
-#    include "BPY_extern.h"
-#  endif
+#  include "BPY_extern.h"
 
 #  include "BLI_iterator.h"
 #  include "BLI_math.h"
@@ -47,21 +45,17 @@
 
 struct RNA_DepsgraphIterator {
   BLI_Iterator iter;
-#  ifdef WITH_PYTHON
   /**
    * Store the Python instance so the #BPy_StructRNA can be set as invalid iteration is completed.
    * Otherwise accessing from Python (console auto-complete for e.g.) crashes, see: #100286. */
   void *py_instance;
-#  endif
 };
 
-#  ifdef WITH_PYTHON
 void **rna_DepsgraphIterator_instance(PointerRNA *ptr)
 {
   RNA_DepsgraphIterator *di = static_cast<RNA_DepsgraphIterator *>(ptr->data);
   return &di->py_instance;
 }
-#  endif
 
 /* Temporary hack for Cycles until it is changed to work with the C API directly. */
 extern "C" DupliObject *rna_hack_DepsgraphObjectInstance_dupli_object_get(PointerRNA *ptr)
@@ -294,16 +288,12 @@ static void rna_Depsgraph_update(Depsgraph *depsgraph, Main *bmain, ReportList *
     return;
   }
 
-#  ifdef WITH_PYTHON
   /* Allow drivers to be evaluated */
   BPy_BEGIN_ALLOW_THREADS;
-#  endif
 
   BKE_scene_graph_update_tagged(depsgraph, bmain);
 
-#  ifdef WITH_PYTHON
   BPy_END_ALLOW_THREADS;
-#  endif
 }
 
 /* Iteration over objects, simple version */
@@ -428,11 +418,9 @@ static void rna_Depsgraph_object_instances_end(CollectionPropertyIterator *iter)
     }
     DEG_iterator_objects_end(&di->iter);
 
-#  ifdef WITH_PYTHON
     if (di->py_instance) {
       BPY_DECREF_RNA_INVALIDATE(di->py_instance);
     }
-#  endif
   }
 
   MEM_freeN(di_it);
@@ -559,9 +547,7 @@ static void rna_def_depsgraph_instance(BlenderRNA *brna)
                          "Extended information about dependency graph object iterator "
                          "(Warning: All data here is 'evaluated' one, not original .blend IDs)");
 
-#  ifdef WITH_PYTHON
   RNA_def_struct_register_funcs(srna, nullptr, nullptr, "rna_DepsgraphIterator_instance");
-#  endif
 
   prop = RNA_def_property(srna, "object", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "Object");

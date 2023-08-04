@@ -7,6 +7,7 @@ set(INC
   ../blenkernel
   ../imbuf
   ../makesrna
+  ../python
   ../../../intern/locale
 )
 
@@ -32,13 +33,6 @@ if(WITH_INTERNATIONAL)
   add_definitions(-DWITH_INTERNATIONAL)
   list(APPEND LIB
     bf_intern_locale
-  )
-endif()
-
-if(WITH_PYTHON)
-  add_definitions(-DWITH_PYTHON)
-  list(APPEND INC
-    ../python
   )
 endif()
 

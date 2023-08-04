@@ -751,13 +751,6 @@ static void layerCopy_bmesh_elem_py_ptr(const void * /*source*/, void *dest, con
   }
 }
 
-#ifndef WITH_PYTHON
-void bpy_bm_generic_invalidate(struct BPy_BMGeneric * /*self*/)
-{
-  /* dummy */
-}
-#endif
-
 static void layerFree_bmesh_elem_py_ptr(void *data, const int count, const int size)
 {
   for (int i = 0; i < count; i++) {

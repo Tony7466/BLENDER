@@ -42,13 +42,9 @@
 
 #include "DEG_depsgraph_query.h"
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern.h"
-#endif
+#include "BPY_extern.h"
 
-#ifdef WITH_PYTHON
 static ThreadMutex python_driver_lock = BLI_MUTEX_INITIALIZER;
-#endif
 
 static CLG_LogRef LOG = {"bke.fcurve"};
 
@@ -921,15 +917,13 @@ void driver_variable_name_validate(DriverVar *dvar)
     }
   }
 
-/* 4) Check if the name is a reserved keyword
- * NOTE: These won't confuse Python, but it will be impossible to use the variable
- *       in an expression without Python misinterpreting what these are for
- */
-#ifdef WITH_PYTHON
+  /* 4) Check if the name is a reserved keyword
+   * NOTE: These won't confuse Python, but it will be impossible to use the variable
+   *       in an expression without Python misinterpreting what these are for
+   */
   if (BPY_string_is_keyword(dvar->name)) {
     dvar->flag |= DVAR_FLAG_INVALID_PY_KEYWORD;
   }
-#endif
 
   /* If any these conditions match, the name is invalid */
   if (dvar->flag & DVAR_ALL_INVALID_FLAGS) {
@@ -992,12 +986,10 @@ void fcurve_free_driver(FCurve *fcu)
     driver_free_variable_ex(driver, dvar);
   }
 
-#ifdef WITH_PYTHON
   /* Free compiled driver expression. */
   if (driver->expr_comp) {
     BPY_DECREF(driver->expr_comp);
   }
-#endif
 
   BLI_expr_pylike_free(driver->expr_simple);
 
@@ -1203,7 +1195,6 @@ void BKE_driver_invalidate_expression(ChannelDriver *driver,
     driver->expr_simple = nullptr;
   }
 
-#ifdef WITH_PYTHON
   if (expr_changed) {
     driver->flag |= DRIVER_FLAG_RECOMPILE;
   }
@@ -1211,7 +1202,6 @@ void BKE_driver_invalidate_expression(ChannelDriver *driver,
   if (varname_changed) {
     driver->flag |= DRIVER_FLAG_RENAMEVAR;
   }
-#endif
 }
 
 /** \} */
@@ -1329,7 +1319,6 @@ static void evaluate_driver_python(PathResolvedRNA *anim_rna,
                                             &driver->curval,
                                             anim_eval_context->eval_time))
   {
-#ifdef WITH_PYTHON
     /* This evaluates the expression using Python, and returns its result:
      * - on errors it reports, then returns 0.0f. */
     BLI_mutex_lock(&python_driver_lock);
@@ -1337,9 +1326,6 @@ static void evaluate_driver_python(PathResolvedRNA *anim_rna,
     driver->curval = BPY_driver_exec(anim_rna, driver, driver_orig, anim_eval_context);
 
     BLI_mutex_unlock(&python_driver_lock);
-#else  /* WITH_PYTHON */
-    UNUSED_VARS(anim_rna, anim_eval_context);
-#endif /* WITH_PYTHON */
   }
 }
 

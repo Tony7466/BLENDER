@@ -43,9 +43,7 @@
 
 #include "BLO_read_write.h"
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern.h"
-#endif
+#include "BPY_extern.h"
 
 /* -------------------------------------------------------------------- */
 /** \name Prototypes
@@ -147,9 +145,7 @@ static void text_free_data(ID *id)
   BKE_text_free_lines(text);
 
   MEM_SAFE_FREE(text->filepath);
-#ifdef WITH_PYTHON
   BPY_text_free_code(text);
-#endif
 }
 
 static void text_foreach_path(ID *id, BPathForeachPathData *bpath_data)
@@ -715,11 +711,9 @@ int txt_get_span(TextLine *from, TextLine *to)
 static void txt_make_dirty(Text *text)
 {
   text->flags |= TXT_ISDIRTY;
-#ifdef WITH_PYTHON
   if (text->compiled) {
     BPY_text_free_code(text);
   }
-#endif
 }
 
 /** \} */
@@ -2353,18 +2347,6 @@ bool text_check_identifier_nodigit(const char ch)
   }
   return false;
 }
-
-#ifndef WITH_PYTHON
-int text_check_identifier_unicode(const uint ch)
-{
-  return (ch < 255 && text_check_identifier(uint(ch)));
-}
-
-int text_check_identifier_nodigit_unicode(const uint ch)
-{
-  return (ch < 255 && text_check_identifier_nodigit(char(ch)));
-}
-#endif /* WITH_PYTHON */
 
 bool text_check_whitespace(const char ch)
 {

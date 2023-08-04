@@ -208,10 +208,7 @@ endif()
 
 option(WITH_INTERNATIONAL "Enable I18N (International fonts and text)" ON)
 
-option(WITH_PYTHON        "Enable Embedded Python API  (only disable for development)" ON)
 option(WITH_PYTHON_SECURITY "Disables execution of scripts within blend files by default" ON)
-# Don't want people disabling this unless they really know what they are doing.
-mark_as_advanced(WITH_PYTHON)
 # Some distributions see this as a security issue, rather than have them patch it,
 # make a build option.
 mark_as_advanced(WITH_PYTHON_SECURITY)
@@ -898,10 +895,6 @@ if(WITH_PYTHON_MODULE AND WITH_PYTHON_INSTALL)
   message(FATAL_ERROR "WITH_PYTHON_MODULE requires WITH_PYTHON_INSTALL to be OFF")
 endif()
 
-set_and_warn_dependency(WITH_PYTHON WITH_CYCLES        OFF)
-set_and_warn_dependency(WITH_PYTHON WITH_DRACO         OFF)
-set_and_warn_dependency(WITH_PYTHON WITH_MOD_FLUID     OFF)
-
 if(WITH_DRACO AND NOT WITH_PYTHON_INSTALL)
   message(STATUS "WITH_DRACO requires WITH_PYTHON_INSTALL to be ON, disabling WITH_DRACO for now")
   set(WITH_DRACO OFF)
@@ -994,31 +987,29 @@ endif()
 # -----------------------------------------------------------------------------
 # Check if Sub-modules are Cloned
 
-if(WITH_PYTHON)
-  # While we have this as an '#error' in 'bpy_capi_utils.h',
-  # upgrading Python tends to cause confusion for users who build.
-  # Give the error message early to make this more obvious.
-  #
-  # Do this before main 'platform_*' checks,
-  # because UNIX will search for the old Python paths which may not exist.
-  # giving errors about missing paths before this case is met.
-  if(DEFINED PYTHON_VERSION AND "${PYTHON_VERSION}" VERSION_LESS "3.10")
-    message(
-      FATAL_ERROR
-      "At least Python 3.10 is required to build, but found Python ${PYTHON_VERSION}"
-    )
-  endif()
+# While we have this as an '#error' in 'bpy_capi_utils.h',
+# upgrading Python tends to cause confusion for users who build.
+# Give the error message early to make this more obvious.
+#
+# Do this before main 'platform_*' checks,
+# because UNIX will search for the old Python paths which may not exist.
+# giving errors about missing paths before this case is met.
+if(DEFINED PYTHON_VERSION AND "${PYTHON_VERSION}" VERSION_LESS "3.10")
+  message(
+    FATAL_ERROR
+    "At least Python 3.10 is required to build, but found Python ${PYTHON_VERSION}"
+  )
+endif()
 
-  file(GLOB RESULT "${CMAKE_SOURCE_DIR}/scripts/addons")
-  list(LENGTH RESULT DIR_LEN)
-  if(DIR_LEN EQUAL 0)
-    message(
-      WARNING
-      "Addons path '${CMAKE_SOURCE_DIR}/scripts/addons' is missing. "
-      "This is an external repository which needs to be checked out. Use `make update` to do so. "
-      "* CONTINUING WITHOUT ADDONS *"
-    )
-  endif()
+file(GLOB RESULT "${CMAKE_SOURCE_DIR}/scripts/addons")
+list(LENGTH RESULT DIR_LEN)
+if(DIR_LEN EQUAL 0)
+  message(
+    WARNING
+    "Addons path '${CMAKE_SOURCE_DIR}/scripts/addons' is missing. "
+    "This is an external repository which needs to be checked out. Use `make update` to do so. "
+    "* CONTINUING WITHOUT ADDONS *"
+  )
 endif()
 
 
@@ -1696,36 +1687,34 @@ endif()
 # ensure python header is found since detection can fail, this could happen
 # with _any_ library but since we used a fixed python version this tends to
 # be most problematic.
-if(WITH_PYTHON)
-  if(NOT EXISTS "${PYTHON_INCLUDE_DIR}/Python.h")
-    message(
-      FATAL_ERROR
-      "Missing: \"${PYTHON_INCLUDE_DIR}/Python.h\",\n"
-      "Set the cache entry 'PYTHON_INCLUDE_DIR' to point "
-      "to a valid python include path. Containing "
-      "Python.h for python version \"${PYTHON_VERSION}\""
-    )
-  endif()
+if(NOT EXISTS "${PYTHON_INCLUDE_DIR}/Python.h")
+  message(
+    FATAL_ERROR
+    "Missing: \"${PYTHON_INCLUDE_DIR}/Python.h\",\n"
+    "Set the cache entry 'PYTHON_INCLUDE_DIR' to point "
+    "to a valid python include path. Containing "
+    "Python.h for python version \"${PYTHON_VERSION}\""
+  )
+endif()
 
-  if(WIN32)
-    # Always use numpy bundled in precompiled libs.
-  elseif((WITH_PYTHON_INSTALL AND WITH_PYTHON_INSTALL_NUMPY) OR WITH_PYTHON_NUMPY)
-    if(("${PYTHON_NUMPY_PATH}" STREQUAL "") OR (${PYTHON_NUMPY_PATH} MATCHES NOTFOUND))
-      find_python_package(numpy "core/include")
-    endif()
+if(WIN32)
+  # Always use numpy bundled in precompiled libs.
+elseif((WITH_PYTHON_INSTALL AND WITH_PYTHON_INSTALL_NUMPY) OR WITH_PYTHON_NUMPY)
+  if(("${PYTHON_NUMPY_PATH}" STREQUAL "") OR (${PYTHON_NUMPY_PATH} MATCHES NOTFOUND))
+    find_python_package(numpy "core/include")
   endif()
+endif()
 
-  if(WIN32 OR APPLE)
-    # Always copy from precompiled libs.
-  elseif(WITH_PYTHON_INSTALL_REQUESTS)
-    find_python_package(requests "")
-  endif()
+if(WIN32 OR APPLE)
+  # Always copy from precompiled libs.
+elseif(WITH_PYTHON_INSTALL_REQUESTS)
+  find_python_package(requests "")
+endif()
 
-  if(WIN32 OR APPLE)
-    # Always copy from precompiled libs.
-  elseif(WITH_PYTHON_INSTALL_ZSTANDARD)
-    find_python_package(zstandard "")
-  endif()
+if(WIN32 OR APPLE)
+  # Always copy from precompiled libs.
+elseif(WITH_PYTHON_INSTALL_ZSTANDARD)
+  find_python_package(zstandard "")
 endif()
 
 # Select C++17 as the standard for C++ projects.

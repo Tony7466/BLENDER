@@ -40,9 +40,7 @@
 #include "wm_gizmo_intern.h"
 #include "wm_gizmo_wmapi.h"
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern.h"
-#endif
+#include "BPY_extern.h"
 
 /* -------------------------------------------------------------------- */
 /** \name wmGizmoGroup
@@ -93,13 +91,11 @@ void wm_gizmogroup_free(bContext *C, wmGizmoGroup *gzgroup)
   }
   BLI_listbase_clear(&gzgroup->gizmos);
 
-#ifdef WITH_PYTHON
   if (gzgroup->py_instance) {
     /* do this first in case there are any __del__ functions or
      * similar that use properties */
     BPY_DECREF_RNA_INVALIDATE(gzgroup->py_instance);
   }
-#endif
 
   if (gzgroup->reports && (gzgroup->reports->flag & RPT_FREE)) {
     BKE_reports_clear(gzgroup->reports);

@@ -64,9 +64,7 @@
 
 #include "RNA_access.h"
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern_run.h"
-#endif
+#include "BPY_extern_run.h"
 
 #include "ED_numinput.h"
 #include "ED_screen.h"
@@ -3051,16 +3049,10 @@ static bool ui_number_from_string_units_with_but(bContext *C,
 static bool ui_number_from_string(bContext *C, const char *str, double *r_value)
 {
   bool ok;
-#ifdef WITH_PYTHON
   BPy_RunErrInfo err_info = {};
   err_info.reports = CTX_wm_reports(C);
   err_info.report_prefix = UI_NUMBER_EVAL_ERROR_PREFIX;
   ok = BPY_run_string_as_number(C, nullptr, str, &err_info, r_value);
-#else
-  UNUSED_VARS(C);
-  *r_value = atof(str);
-  ok = true;
-#endif
   return ok;
 }
 
@@ -4084,11 +4076,9 @@ uiBut *ui_but_change_type(uiBut *but, eButType new_type)
     UNUSED_VARS_NDEBUG(found_layout);
     ui_button_group_replace_but_ptr(uiLayoutGetBlock(but->layout), old_but_ptr, but);
   }
-#ifdef WITH_PYTHON
   if (UI_editsource_enable_check()) {
     UI_editsource_but_replace(old_but_ptr, but);
   }
-#endif
 
   MEM_delete(old_but_ptr);
 
@@ -4255,12 +4245,10 @@ static uiBut *ui_def_but(uiBlock *block,
     ui_layout_add_but(block->curlayout, but);
   }
 
-#ifdef WITH_PYTHON
   /* If the 'UI_OT_editsource' is running, extract the source info from the button. */
   if (UI_editsource_enable_check()) {
     UI_editsource_active_but_test(but);
   }
-#endif
 
   return but;
 }

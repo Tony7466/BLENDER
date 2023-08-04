@@ -32,9 +32,7 @@
 
 #include "UI_interface.h"
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern.h"
-#endif
+#include "BPY_extern.h"
 
 /* only for own init/exit calls (wm_gizmotype_init/wm_gizmotype_free) */
 #include "wm.h"
@@ -130,13 +128,11 @@ void WM_gizmo_free(wmGizmo *gz)
     gz->type->free(gz);
   }
 
-#ifdef WITH_PYTHON
   if (gz->py_instance) {
     /* do this first in case there are any __del__ functions or
      * similar that use properties */
     BPY_DECREF_RNA_INVALIDATE(gz->py_instance);
   }
-#endif
 
   if (gz->op_data) {
     for (int i = 0; i < gz->op_data_len; i++) {

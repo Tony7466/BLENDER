@@ -158,6 +158,7 @@ add_subdirectory(functions)
 add_subdirectory(makesdna)
 add_subdirectory(makesrna)
 add_subdirectory(compositor)
+add_subdirectory(python)
 
 if(WITH_BLENDER_THUMBNAILER)
   add_subdirectory(blendthumb)
@@ -170,10 +171,6 @@ endif()
 
 if(WITH_IMAGE_CINEON)
   add_subdirectory(imbuf/intern/cineon)
-endif()
-
-if(WITH_PYTHON)
-  add_subdirectory(python)
 endif()
 
 if(WITH_FREESTYLE)

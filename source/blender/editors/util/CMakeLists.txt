@@ -14,6 +14,7 @@ set(INC
   ../../gpu
   ../../imbuf
   ../../makesrna
+  ../../python
   ../../sequencer
   ../../windowmanager
   ../../../../intern/clog
@@ -112,14 +113,6 @@ set(LIB
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
 )
-
-
-if(WITH_PYTHON)
-  add_definitions(-DWITH_PYTHON)
-  list(APPEND INC
-    ../../python
-  )
-endif()
 
 blender_add_lib(bf_editor_util "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 

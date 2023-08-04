@@ -51,15 +51,12 @@
 
 #  include "GPU_state.h"
 
-#  ifdef WITH_PYTHON
-#    include "BPY_extern.h"
-#  endif
+#  include "BPY_extern.h"
 
 /* -------------------------------------------------------------------- */
 /** \name Gizmo API
  * \{ */
 
-#  ifdef WITH_PYTHON
 static void rna_gizmo_draw_cb(const bContext *C, wmGizmo *gz)
 {
   extern FunctionRNA rna_Gizmo_draw_func;
@@ -220,8 +217,6 @@ static void rna_gizmo_select_refresh_cb(wmGizmo *gz)
   gzgroup->type->rna_ext.call((bContext *)nullptr, &gz_ptr, func, &list);
   RNA_parameter_list_free(&list);
 }
-
-#  endif /* WITH_PYTHON */
 
 /* just to work around 'const char *' warning and to ensure this is a python op */
 static void rna_Gizmo_bl_idname_set(PointerRNA *ptr, const char *value)
@@ -417,8 +412,6 @@ static PointerRNA rna_Gizmo_group_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_GizmoGroup, gz->parent_gzgroup);
 }
 
-#  ifdef WITH_PYTHON
-
 static bool rna_Gizmo_unregister(Main *bmain, StructRNA *type);
 extern "C" void BPY_RNA_gizmo_wrapper(wmGizmoType *gzgt, void *userdata);
 
@@ -550,8 +543,6 @@ static void **rna_Gizmo_instance(PointerRNA *ptr)
   return &gz->py_instance;
 }
 
-#  endif /* WITH_PYTHON */
-
 static StructRNA *rna_Gizmo_refine(PointerRNA *gz_ptr)
 {
   wmGizmo *gz = static_cast<wmGizmo *>(gz_ptr->data);
@@ -668,8 +659,6 @@ static bool rna_GizmoGroup_has_reports_get(PointerRNA *ptr)
   wmGizmoGroup *gzgroup = static_cast<wmGizmoGroup *>(ptr->data);
   return (gzgroup->reports && gzgroup->reports->list.first);
 }
-
-#  ifdef WITH_PYTHON
 
 static bool rna_gizmogroup_poll_cb(const bContext *C, wmGizmoGroupType *gzgt)
 {
@@ -962,8 +951,6 @@ static void **rna_GizmoGroup_instance(PointerRNA *ptr)
   return &gzgroup->py_instance;
 }
 
-#  endif /* WITH_PYTHON */
-
 static StructRNA *rna_GizmoGroup_refine(PointerRNA *gzgroup_ptr)
 {
   wmGizmoGroup *gzgroup = static_cast<wmGizmoGroup *>(gzgroup_ptr->data);
@@ -1028,10 +1015,8 @@ static void rna_def_gizmo(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_struct_ui_text(srna, "Gizmo", "Collection of gizmos");
   RNA_def_struct_refine_func(srna, "rna_Gizmo_refine");
 
-#  ifdef WITH_PYTHON
   RNA_def_struct_register_funcs(
       srna, "rna_Gizmo_register", "rna_Gizmo_unregister", "rna_Gizmo_instance");
-#  endif
   RNA_def_struct_translation_context(srna, BLT_I18NCONTEXT_OPERATOR_DEFAULT);
 
   prop = RNA_def_property(srna, "properties", PROP_POINTER, PROP_NONE);
@@ -1357,10 +1342,8 @@ static void rna_def_gizmogroup(BlenderRNA *brna)
       srna, "GizmoGroup", "Storage of an operator being executed, or registered after execution");
   RNA_def_struct_sdna(srna, "wmGizmoGroup");
   RNA_def_struct_refine_func(srna, "rna_GizmoGroup_refine");
-#  ifdef WITH_PYTHON
   RNA_def_struct_register_funcs(
       srna, "rna_GizmoGroup_register", "rna_GizmoGroup_unregister", "rna_GizmoGroup_instance");
-#  endif
   RNA_def_struct_translation_context(srna, BLT_I18NCONTEXT_OPERATOR_DEFAULT);
 
   /* -------------------------------------------------------------------- */

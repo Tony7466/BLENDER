@@ -9,6 +9,7 @@ set(INC
   ../gpu
   ../imbuf
   ../makesrna
+  ../python
 )
 
 set(INC_SYS
@@ -44,13 +45,5 @@ if(WIN32)
     intern/blf_font_win32_compat.cc
   )
 endif()
-
-if(WITH_PYTHON)
-  add_definitions(-DWITH_PYTHON)
-  list(APPEND INC
-    ../python
-  )
-endif()
-
 
 blender_add_lib(bf_blenfont "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

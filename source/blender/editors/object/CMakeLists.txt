@@ -72,11 +72,6 @@ set(LIB
   bf_windowmanager
 )
 
-
-if(WITH_PYTHON)
-  add_definitions(-DWITH_PYTHON)
-endif()
-
 if(WITH_EXPERIMENTAL_FEATURES)
   add_definitions(-DWITH_SIMULATION_DATABLOCK)
   add_definitions(-DWITH_POINT_CLOUD)

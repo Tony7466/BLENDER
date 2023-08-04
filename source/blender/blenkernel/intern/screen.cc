@@ -56,9 +56,7 @@
  * a #ARegionType callback. */
 #include "../editors/asset/ED_asset_shelf.h"
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern.h"
-#endif
+#include "BPY_extern.h"
 
 static void screen_free_data(ID *id)
 {
@@ -425,9 +423,7 @@ static ListBase spacetypes = {nullptr, nullptr};
 static void spacetype_free(SpaceType *st)
 {
   LISTBASE_FOREACH (ARegionType *, art, &st->regiontypes) {
-#ifdef WITH_PYTHON
     BPY_callback_screen_free(art);
-#endif
     BLI_freelistN(&art->drawcalls);
 
     LISTBASE_FOREACH (PanelType *, pt, &art->paneltypes) {

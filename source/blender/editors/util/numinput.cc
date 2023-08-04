@@ -26,9 +26,7 @@
 #include "WM_api.h"
 #include "WM_types.h"
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern_run.h"
-#endif
+#include "BPY_extern_run.h"
 
 #include "ED_numinput.h"
 #include "UI_interface.h"
@@ -270,7 +268,6 @@ bool user_string_to_number(bContext *C,
                            const bool use_single_line_error,
                            char **r_error)
 {
-#ifdef WITH_PYTHON
   BPy_RunErrInfo err_info{};
   err_info.use_single_line_error = use_single_line_error;
   err_info.r_string = r_error;
@@ -289,12 +286,6 @@ bool user_string_to_number(bContext *C,
   *r_value = BKE_unit_apply_preferred_unit(unit, type, *r_value);
   *r_value /= unit_scale;
   return success;
-
-#else
-  UNUSED_VARS(C, unit, type, use_single_line_error, r_error);
-  *r_value = atof(str);
-  return true;
-#endif
 }
 
 static bool editstr_is_simple_numinput(const char ascii)

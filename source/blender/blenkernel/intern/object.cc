@@ -140,9 +140,7 @@
 
 #include "SEQ_sequencer.h"
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern.h"
-#endif
+#include "BPY_extern.h"
 
 #include "CCGSubSurf.h"
 #include "atomic_ops.h"

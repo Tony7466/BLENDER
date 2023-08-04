@@ -71,11 +71,9 @@
 
 #include "IMB_thumbs.h"
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern.h"
-#  include "BPY_extern_python.h"
-#  include "BPY_extern_run.h"
-#endif
+#include "BPY_extern.h"
+#include "BPY_extern_python.h"
+#include "BPY_extern_run.h"
 
 #include "GHOST_C-api.h"
 #include "GHOST_Path-api.hh"
@@ -334,12 +332,8 @@ void WM_init(bContext *C, int argc, const char **argv)
 
   ED_spacemacros_init();
 
-#ifdef WITH_PYTHON
   BPY_python_start(C, argc, argv);
   BPY_python_reset(C);
-#else
-  UNUSED_VARS(argc, argv);
-#endif
 
   if (!G.background) {
     if (wm_start_with_console) {
@@ -533,7 +527,7 @@ void WM_exit_ex(bContext *C, const bool do_python, const bool do_user_exit_actio
     }
   }
 
-#if defined(WITH_PYTHON) && !defined(WITH_PYTHON_MODULE)
+#if !defined(WITH_PYTHON_MODULE)
   /* Without this, we there isn't a good way to manage false-positive resource leaks
    * where a #PyObject references memory allocated with guarded-alloc, #71362.
    *
@@ -644,7 +638,6 @@ void WM_exit_ex(bContext *C, const bool do_python, const bool do_user_exit_actio
 
   //  free_txt_data();
 
-#ifdef WITH_PYTHON
   /* option not to close python so we can use 'atexit' */
   if (do_python && ((C == nullptr) || CTX_py_init_get(C))) {
     /* NOTE: (old note)
@@ -656,9 +649,6 @@ void WM_exit_ex(bContext *C, const bool do_python, const bool do_user_exit_actio
      * the python-driver bug can be fixed if it happens again we can deal with it then. */
     BPY_python_end();
   }
-#else
-  (void)do_python;
-#endif
 
   ED_file_exit(); /* For file-selector menu data. */
 

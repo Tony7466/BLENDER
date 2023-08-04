@@ -53,10 +53,8 @@
 #include "BKE_undo_system.h"
 #include "ED_screen.h"
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern.h"
-#  include "BPY_extern_run.h"
-#endif
+#include "BPY_extern.h"
+#include "BPY_extern_run.h"
 
 #include "BLO_read_write.h"
 
@@ -299,12 +297,10 @@ IDTypeInfo IDType_ID_WM = {
 void WM_operator_free(wmOperator *op)
 {
 
-#ifdef WITH_PYTHON
   if (op->py_instance) {
     /* Do this first in case there are any __del__ functions or similar that use properties. */
     BPY_DECREF_RNA_INVALIDATE(op->py_instance);
   }
-#endif
 
   if (op->ptr) {
     op->properties = static_cast<IDProperty *>(op->ptr->data);
@@ -431,10 +427,8 @@ void WM_operator_handlers_clear(wmWindowManager *wm, wmOperatorType *ot)
 void WM_keyconfig_reload(bContext *C)
 {
   if (CTX_py_init_get(C) && !G.background) {
-#ifdef WITH_PYTHON
     const char *imports[] = {"bpy", nullptr};
     BPY_run_string_eval(C, imports, "bpy.utils.keyconfig_init()");
-#endif
   }
 }
 
@@ -595,9 +589,7 @@ void wm_close_and_free(bContext *C, wmWindowManager *wm)
     WM_msgbus_destroy(wm->message_bus);
   }
 
-#ifdef WITH_PYTHON
   BPY_callback_wm_free(wm);
-#endif
   BLI_freelistN(&wm->paintcursors);
 
   WM_drag_free_list(&wm->drags);

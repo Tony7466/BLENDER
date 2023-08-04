@@ -53,9 +53,7 @@ const EnumPropertyItem rna_enum_context_mode_items[] = {
 
 #  include "DNA_asset_types.h"
 
-#  ifdef WITH_PYTHON
-#    include "BPY_extern.h"
-#  endif
+#  include "BPY_extern.h"
 
 #  include "RE_engine.h"
 
@@ -218,16 +216,12 @@ static Depsgraph *rna_Context_evaluated_depsgraph_get(bContext *C)
 {
   Depsgraph *depsgraph;
 
-#  ifdef WITH_PYTHON
   /* Allow drivers to be evaluated */
   BPy_BEGIN_ALLOW_THREADS;
-#  endif
 
   depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
 
-#  ifdef WITH_PYTHON
   BPy_END_ALLOW_THREADS;
-#  endif
 
   return depsgraph;
 }

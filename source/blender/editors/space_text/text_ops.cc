@@ -40,10 +40,8 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern.h"
-#  include "BPY_extern_run.h"
-#endif
+#include "BPY_extern.h"
+#include "BPY_extern_run.h"
 
 #include "text_format.hh"
 #include "text_intern.hh"
@@ -471,11 +469,9 @@ static int text_reload_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-#ifdef WITH_PYTHON
   if (text->compiled) {
     BPY_text_free_code(text);
   }
-#endif
 
   text_update_edited(text);
   text_update_cursor_moved(C);
@@ -780,7 +776,6 @@ void TEXT_OT_save_as(wmOperatorType *ot)
 
 static int text_run_script(bContext *C, ReportList *reports)
 {
-#ifdef WITH_PYTHON
   Text *text = CTX_data_edit_text(C);
   const bool is_live = (reports == nullptr);
 
@@ -809,24 +804,12 @@ static int text_run_script(bContext *C, ReportList *reports)
     /* No need to report the error, this has already been handled by #BPY_run_text. */
     return OPERATOR_FINISHED;
   }
-#else
-  (void)C;
-  (void)reports;
-#endif /* !WITH_PYTHON */
   return OPERATOR_CANCELLED;
 }
 
 static int text_run_script_exec(bContext *C, wmOperator *op)
 {
-#ifndef WITH_PYTHON
-  (void)C; /* unused */
-
-  BKE_report(op->reports, RPT_ERROR, "Python disabled in this build");
-
-  return OPERATOR_CANCELLED;
-#else
   return text_run_script(C, op->reports);
-#endif
 }
 
 void TEXT_OT_run_script(wmOperatorType *ot)
@@ -852,8 +835,7 @@ void TEXT_OT_run_script(wmOperatorType *ot)
 
 static int text_refresh_pyconstraints_exec(bContext * /*C*/, wmOperator * /*op*/)
 {
-#ifdef WITH_PYTHON
-#  if 0
+#if 0
   Main *bmain = CTX_data_main(C);
   Text *text = CTX_data_edit_text(C);
   Object *ob;
@@ -891,7 +873,6 @@ static int text_refresh_pyconstraints_exec(bContext * /*C*/, wmOperator * /*op*/
       DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
     }
   }
-#  endif
 #endif
 
   return OPERATOR_FINISHED;

@@ -49,9 +49,7 @@
 
 #  include <csignal>
 
-#  ifdef WITH_PYTHON
-#    include "BPY_extern_python.h" /* BPY_python_backtrace */
-#  endif
+#  include "BPY_extern_python.h" /* BPY_python_backtrace */
 
 #  include "creator_intern.h" /* own include */
 
@@ -164,10 +162,8 @@ static void sig_handle_crash(int signum)
 
     sig_handle_crash_backtrace(fp);
 
-#  ifdef WITH_PYTHON
     /* Generate python back-trace if Python is currently active. */
     BPY_python_backtrace(fp);
-#  endif
 
     fclose(fp);
   }

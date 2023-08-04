@@ -26,9 +26,7 @@
 
 #ifdef RNA_RUNTIME
 
-#  ifdef WITH_PYTHON
-#    include "BPY_extern.h"
-#  endif
+#  include "BPY_extern.h"
 
 #  include "DNA_collection_types.h"
 #  include "DNA_object_types.h"
@@ -231,10 +229,8 @@ static void rna_ViewLayer_update_tagged(ID *id_ptr,
     return;
   }
 
-#  ifdef WITH_PYTHON
   /* Allow drivers to be evaluated */
   BPy_BEGIN_ALLOW_THREADS;
-#  endif
 
   /* NOTE: This is similar to CTX_data_depsgraph_pointer(). Ideally such access would be
    * de-duplicated across all possible cases, but for now this is safest and easiest way to go.
@@ -245,9 +241,7 @@ static void rna_ViewLayer_update_tagged(ID *id_ptr,
   DEG_make_active(depsgraph);
   BKE_scene_graph_update_tagged(depsgraph, bmain);
 
-#  ifdef WITH_PYTHON
   BPy_END_ALLOW_THREADS;
-#  endif
 }
 
 static void rna_ObjectBase_select_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)

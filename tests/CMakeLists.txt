@@ -54,7 +54,7 @@ endif()
 set(TEST_BLENDER_EXE_PARAMS --background -noaudio --factory-startup --debug-memory --debug-exit-on-error --python-exit-code 1)
 
 # Python CTests
-if(WITH_BLENDER AND WITH_PYTHON AND NOT WITH_PYTHON_MODULE)
+if(WITH_BLENDER AND NOT WITH_PYTHON_MODULE)
   add_subdirectory(python)
 endif()
 

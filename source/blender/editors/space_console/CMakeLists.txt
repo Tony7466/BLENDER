@@ -31,10 +31,4 @@ set(LIB
   PRIVATE bf::intern::guardedalloc
 )
 
-if(WITH_PYTHON)
-  add_definitions(-DWITH_PYTHON)
-endif()
-
-
 blender_add_lib(bf_editor_space_console "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
-

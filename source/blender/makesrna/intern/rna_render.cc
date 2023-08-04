@@ -15,9 +15,7 @@
 #include "BLI_path_util.h"
 #include "BLI_utildefines.h"
 
-#ifdef WITH_PYTHON
-#  include "BPY_extern.h"
-#endif
+#include "BPY_extern.h"
 
 #include "DEG_depsgraph.h"
 
@@ -450,15 +448,11 @@ static PointerRNA rna_RenderEngine_camera_override_get(PointerRNA *ptr)
 
 static void rna_RenderEngine_engine_frame_set(RenderEngine *engine, int frame, float subframe)
 {
-#  ifdef WITH_PYTHON
   BPy_BEGIN_ALLOW_THREADS;
-#  endif
 
   RE_engine_frame_set(engine, frame, subframe);
 
-#  ifdef WITH_PYTHON
   BPy_END_ALLOW_THREADS;
-#  endif
 }
 
 static void rna_RenderResult_views_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)

@@ -10,6 +10,7 @@ set(INC
   ../functions
   ../makesrna
   ../modifiers
+  ../python
   ../sequencer
   ../windowmanager
   # RNA_prototypes.h
@@ -157,13 +158,6 @@ set(LIB
   PRIVATE bf::intern::atomic
   PRIVATE bf::intern::guardedalloc
 )
-
-if(WITH_PYTHON)
-  add_definitions(-DWITH_PYTHON)
-  list(APPEND INC
-    ../python
-  )
-endif()
 
 blender_add_lib(bf_depsgraph "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
