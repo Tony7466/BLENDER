@@ -6,8 +6,7 @@
  *   Kyprianidis, Jan Eric. "Image and video abstraction by multi-scale anisotropic Kuwahara
  *   filtering." 2011.
  *
- * Except we compute the derivatives from the image luminance to enhance perceptual edges in the
- * image. The structure tensor should then be smoothed using a Gaussian function to eliminate high
+ * The structure tensor should then be smoothed using a Gaussian function to eliminate high
  * frequency details. */
 void main()
 {
