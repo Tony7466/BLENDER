@@ -9,47 +9,15 @@
  *
  */
 
-#include "DRW_render.h"
-
-#include "BLI_listbase.h"
-#include "BLI_rand.h"
-#include "BLI_string_utils.h"
-
-#include "DNA_fluid_types.h"
-#include "DNA_object_force_types.h"
 #include "DNA_volume_types.h"
-#include "DNA_world_types.h"
-
-#include "BKE_attribute_math.hh"
-#include "BKE_fluid.h"
-#include "BKE_global.h"
-#include "BKE_mesh.h"
-#include "BKE_modifier.h"
-#include "BKE_volume.h"
-#include "BKE_volume_render.h"
-
-#include "ED_screen.h"
-
-#include "DEG_depsgraph_query.h"
-
 #include "GPU_capabilities.h"
-#include "GPU_context.h"
-#include "GPU_material.h"
-#include "GPU_texture.h"
 
 #include "draw_common.hh"
 
 #include "eevee_instance.hh"
 #include "eevee_pipeline.hh"
-#include "eevee_shader.hh"
 
 #include "eevee_volume.hh"
-
-#define LOOK_DEV_STUDIO_LIGHT_ENABLED(v3d) \
-  ((v3d) && (((v3d->shading.type == OB_MATERIAL) && \
-              ((v3d->shading.flag & V3D_SHADING_SCENE_WORLD) == 0)) || \
-             ((v3d->shading.type == OB_RENDER) && \
-              ((v3d->shading.flag & V3D_SHADING_SCENE_WORLD_RENDER) == 0))))
 
 namespace blender::eevee {
 
