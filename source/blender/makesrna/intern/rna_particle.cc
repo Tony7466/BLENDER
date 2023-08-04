@@ -26,7 +26,7 @@
 #include "RNA_enum_types.h"
 
 #include "BKE_mesh.hh"
-#include "BKE_mesh_legacy_convert.h"
+#include "BKE_mesh_legacy_convert.hh"
 
 #include "BLI_listbase.h"
 
@@ -345,7 +345,7 @@ static void rna_ParticleHairKey_co_object_set(ID *id,
                                               Object *object,
                                               ParticleSystemModifierData *modifier,
                                               ParticleData *particle,
-                                              float co[3])
+                                              const float co[3])
 {
 
   if (particle == nullptr) {

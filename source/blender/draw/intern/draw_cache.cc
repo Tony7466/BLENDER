@@ -25,7 +25,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 
 #include "GPU_batch.h"
 #include "GPU_batch_utils.h"
@@ -34,7 +34,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "draw_cache.h"
-#include "draw_cache_impl.h"
+#include "draw_cache_impl.hh"
 #include "draw_manager.h"
 
 /* -------------------------------------------------------------------- */
