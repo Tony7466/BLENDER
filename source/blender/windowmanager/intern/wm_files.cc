@@ -93,7 +93,7 @@
 #include "IMB_thumbs.h"
 
 #include "ED_asset.hh"
-#include "ED_datafiles.hh"
+#include "ED_datafiles.h"
 #include "ED_fileselect.hh"
 #include "ED_image.hh"
 #include "ED_outliner.hh"

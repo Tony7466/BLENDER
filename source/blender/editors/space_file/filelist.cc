@@ -62,7 +62,7 @@
 #include "DNA_asset_types.h"
 #include "DNA_space_types.h"
 
-#include "ED_datafiles.hh"
+#include "ED_datafiles.h"
 #include "ED_fileselect.hh"
 #include "ED_screen.hh"
 

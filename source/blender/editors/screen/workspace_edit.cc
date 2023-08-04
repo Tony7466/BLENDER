@@ -28,7 +28,7 @@
 #include "DNA_windowmanager_types.h"
 #include "DNA_workspace_types.h"
 
-#include "ED_datafiles.hh"
+#include "ED_datafiles.h"
 #include "ED_object.hh"
 #include "ED_screen.hh"
 

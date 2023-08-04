@@ -59,7 +59,7 @@
 
 #include "BLF_api.h"
 #include "DNA_scene_types.h"
-#include "ED_datafiles.hh" /* for fonts */
+#include "ED_datafiles.h" /* for fonts */
 #include "GHOST_C-api.h"
 
 #include "DEG_depsgraph.h"

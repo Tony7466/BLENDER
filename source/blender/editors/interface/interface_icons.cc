@@ -52,7 +52,7 @@
 
 #include "BIF_glutil.hh"
 
-#include "ED_datafiles.hh"
+#include "ED_datafiles.h"
 #include "ED_keyframes_draw.hh"
 #include "ED_keyframes_keylist.hh"
 #include "ED_render.hh"

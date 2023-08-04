@@ -62,7 +62,7 @@
 
 #include "IMB_colormanagement.h"
 
-#include "ED_datafiles.hh"
+#include "ED_datafiles.h"
 #include "ED_screen.hh"
 
 #include "RNA_access.h"

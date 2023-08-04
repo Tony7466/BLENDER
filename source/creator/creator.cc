@@ -68,7 +68,7 @@
 #include "RE_engine.h"
 #include "RE_texture.h"
 
-#include "ED_datafiles.hh"
+#include "ED_datafiles.h"
 
 #include "WM_api.hh"
 #include "WM_toolsystem.h"

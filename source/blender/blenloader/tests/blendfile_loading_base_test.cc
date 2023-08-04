@@ -33,7 +33,7 @@
 
 #include "IMB_imbuf.h"
 
-#include "ED_datafiles.hh"
+#include "ED_datafiles.h"
 
 #include "RNA_define.h"
 

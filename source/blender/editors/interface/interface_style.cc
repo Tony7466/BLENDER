@@ -29,7 +29,7 @@
 
 #include "UI_interface.hh"
 
-#include "ED_datafiles.hh"
+#include "ED_datafiles.h"
 
 #include "interface_intern.hh"
 

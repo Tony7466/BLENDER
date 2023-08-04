@@ -40,7 +40,7 @@
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
-#include "ED_datafiles.hh"
+#include "ED_datafiles.h"
 #include "ED_screen.hh"
 
 #include "UI_interface.hh"
