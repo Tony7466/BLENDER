@@ -452,11 +452,6 @@ static void do_versions_affine_tracker_track(MovieTrackingTrack *track)
 
 static const char *node_get_static_idname(int type, int treetype)
 {
-  /* use static type info header to map static int type to identifier string */
-#define DefNode(Category, ID, DefFunc, EnumName, StructName, UIName, UIDesc) \
-  case ID: \
-    return #Category #StructName;
-
   /* XXX hack, group types share a single static integer identifier,
    * but are registered as separate types */
   if (type == NODE_GROUP) {
