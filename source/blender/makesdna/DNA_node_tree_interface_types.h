@@ -131,7 +131,7 @@ typedef struct bNodeTreeInterfacePanel {
   bool find_item_parent(const bNodeTreeInterfaceItem &item, bNodeTreeInterfacePanel *&r_parent);
 
   void copy_items(blender::Span<const bNodeTreeInterfaceItem *> items_src, int flag);
-  void clear_items();
+  void clear_items(bool do_id_user);
 
   void add_item(bNodeTreeInterfaceItem &item);
   void insert_item(bNodeTreeInterfaceItem &item, int index);

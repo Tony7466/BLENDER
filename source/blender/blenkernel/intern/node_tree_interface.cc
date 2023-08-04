@@ -562,7 +562,7 @@ static void item_free(bNodeTreeInterfaceItem &item, const bool do_id_user)
     case NODE_INTERFACE_PANEL: {
       bNodeTreeInterfacePanel &panel = reinterpret_cast<bNodeTreeInterfacePanel &>(item);
 
-      panel.clear_items();
+      panel.clear_items(do_id_user);
       MEM_SAFE_FREE(panel.name);
       break;
     }
@@ -951,10 +951,10 @@ bool bNodeTreeInterfacePanel::remove_item(bNodeTreeInterfaceItem &item, bool fre
   return true;
 }
 
-void bNodeTreeInterfacePanel::clear_items()
+void bNodeTreeInterfacePanel::clear_items(bool do_id_user)
 {
   for (bNodeTreeInterfaceItem *item : items()) {
-    item_types::item_free(*item, true);
+    item_types::item_free(*item, do_id_user);
   }
   MEM_SAFE_FREE(items_array);
   items_array = nullptr;
@@ -1125,7 +1125,8 @@ void bNodeTreeInterface::copy_data(const bNodeTreeInterface &src, int flag)
 
 void bNodeTreeInterface::free_data()
 {
-  root_panel.clear_items();
+  /* Called when freeing the main database, don't do user refcount here. */
+  root_panel.clear_items(false);
 }
 
 bNodeTreeInterfaceSocket *bNodeTreeInterface::add_socket(blender::StringRef name,
@@ -1250,7 +1251,7 @@ bool bNodeTreeInterface::remove_item(bNodeTreeInterfaceItem &item)
 
 void bNodeTreeInterface::clear_items()
 {
-  root_panel.clear_items();
+  root_panel.clear_items(true);
 }
 
 bool bNodeTreeInterface::move_item(bNodeTreeInterfaceItem &item, const int new_index)
