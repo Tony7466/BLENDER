@@ -12,8 +12,13 @@ namespace blender::nodes::node_geo_tool_3d_cursor_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Vector>("Location").subtype(PROP_TRANSLATION);
-  b.add_output<decl::Rotation>("Rotation");
+  b.add_output<decl::Vector>("Location")
+      .subtype(PROP_TRANSLATION)
+      .description(
+          "The location of the scene's 3D cursor, in the local space of the modified object");
+  b.add_output<decl::Rotation>("Rotation")
+      .description(
+          "The rotation of the scene's 3D cursor, in the local space of the modified object");
 }
 
 static void node_update(bNodeTree *tree, bNode *node)
