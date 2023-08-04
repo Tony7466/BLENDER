@@ -51,6 +51,8 @@
 #include "ED_screen.h"
 #include "node_intern.hh"
 
+using namespace blender;
+namespace blender::ed::space_node {
 /* -------------------------------------------------------------------- */
 /** \name Local Structs
  * \{ */
@@ -85,7 +87,6 @@ struct ShaderNodesPreviewJob {
 /** \name Compute Context functions
  * \{ */
 
-using namespace blender;
 static void ensure_nodetree_previews(const bContext &C,
                                      NestedTreePreviews &tree_previews,
                                      Material &material,
@@ -122,7 +123,7 @@ static std::optional<ComputeContextHash> get_compute_context_hash_for_node_edito
  * This function returns the `NestedTreePreviews *` for the nodetree shown in the SpaceNode.
  * This is the first function in charge of the previews by calling `ensure_nodetree_previews`.
  */
-NestedTreePreviews *ED_spacenode_get_nested_previews(const bContext &C, SpaceNode &sn)
+NestedTreePreviews *spacenode_get_nested_previews(const bContext &C, SpaceNode &sn)
 {
   if (sn.id == nullptr || GS(sn.id->name) != ID_MA) {
     return nullptr;
@@ -279,10 +280,10 @@ static ImBuf *get_image_from_viewlayer_and_pass(RenderResult &rr,
   return ibuf;
 }
 
-/* `ED_node_release_preview_ibuf` should be called after this. */
-ImBuf *ED_node_preview_acquire_ibuf(bNodeTree &ntree,
-                                    NestedTreePreviews &tree_previews,
-                                    const bNode &node)
+/* `node_release_preview_ibuf` should be called after this. */
+ImBuf *node_preview_acquire_ibuf(bNodeTree &ntree,
+                                 NestedTreePreviews &tree_previews,
+                                 const bNode &node)
 {
   if (tree_previews.previews_render == nullptr) {
     return nullptr;
@@ -314,7 +315,7 @@ ImBuf *ED_node_preview_acquire_ibuf(bNodeTree &ntree,
   return image_latest;
 }
 
-void ED_node_release_preview_ibuf(NestedTreePreviews &tree_previews)
+void node_release_preview_ibuf(NestedTreePreviews &tree_previews)
 {
   if (tree_previews.previews_render == nullptr) {
     return;
@@ -692,12 +693,12 @@ static void ensure_nodetree_previews(const bContext &C,
   WM_jobs_start(CTX_wm_manager(&C), wm_job);
 }
 
-void ED_spacenode_stop_preview_job(wmWindowManager &wm)
+void spacenode_stop_preview_job(wmWindowManager &wm)
 {
   WM_jobs_stop(&wm, nullptr, reinterpret_cast<void *>(shader_preview_startjob));
 }
 
-void ED_spacenode_free_previews(wmWindowManager &wm, SpaceNode &snode)
+void spacenode_free_previews(wmWindowManager &wm, SpaceNode &snode)
 {
   /* This should not be called from the drawing pass, because it will result in a deadlock. */
   WM_jobs_kill(&wm, &snode, shader_preview_startjob);
@@ -705,3 +706,5 @@ void ED_spacenode_free_previews(wmWindowManager &wm, SpaceNode &snode)
 }
 
 /** \} */
+
+}  // namespace blender::ed::space_node
