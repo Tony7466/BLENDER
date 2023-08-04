@@ -9168,6 +9168,20 @@ static void def_cmp_kuwahara(StructRNA *srna)
                            "Smoothing degree before applying filter. Higher values remove details "
                            "and give smoother edges");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "eccentricity", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, nullptr, "eccentricity");
+  RNA_def_property_range(prop, 0.0, 2.0);
+  RNA_def_property_ui_range(prop, 0.0, 2.0, 1, -1);
+  RNA_def_property_ui_text(prop, "Eccentricity", "Eccentricity");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "sharpness", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, nullptr, "sharpness");
+  RNA_def_property_range(prop, 0.0, 16.0);
+  RNA_def_property_ui_range(prop, 0.0, 16.0, 1, -1);
+  RNA_def_property_ui_text(prop, "Sharpeness", "Sharpeness");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
 static void def_cmp_antialiasing(StructRNA *srna)

@@ -41,6 +41,8 @@ static void node_composit_init_kuwahara(bNodeTree * /*ntree*/, bNode *node)
   /* Set defaults. */
   data->size = 4;
   data->smoothing = 2;
+  data->eccentricity = 1.0;
+  data->sharpness = 8;
 }
 
 static void node_composit_buts_kuwahara(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -56,6 +58,8 @@ static void node_composit_buts_kuwahara(uiLayout *layout, bContext * /*C*/, Poin
 
   if (variation == CMP_NODE_KUWAHARA_ANISOTROPIC) {
     uiItemR(col, ptr, "smoothing", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "eccentricity", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "sharpness", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 }
 
@@ -162,8 +166,8 @@ class ConvertKuwaharaOperation : public NodeOperation {
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1i(shader, "radius", node_storage(bnode()).size);
-    GPU_shader_uniform_1f(shader, "eccentricity", 1.0);
-    GPU_shader_uniform_1f(shader, "sharpness", 8.0);
+    GPU_shader_uniform_1f(shader, "eccentricity", node_storage(bnode()).eccentricity);
+    GPU_shader_uniform_1f(shader, "sharpness", node_storage(bnode()).sharpness);
 
     Result &input = get_input("Image");
     input.bind_as_texture(shader, "input_tx");
