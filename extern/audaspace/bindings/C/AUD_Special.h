@@ -58,6 +58,8 @@ extern AUD_API AUD_Handle* AUD_pauseAfter(AUD_Handle* handle, double seconds);
  */
 extern AUD_API int AUD_readSound(AUD_Sound* sound, float* buffer, int length, int samples_per_second, short* interrupt);
 
+extern AUD_API int AUD_readSoundAt(AUD_Sound* sound, int at, float* buffer, int length, int samples_per_second, short* interrupt);
+
 /**
  * Mixes a sound down into a file.
  * \param sound The sound scene to mix down.

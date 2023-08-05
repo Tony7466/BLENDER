@@ -84,6 +84,9 @@ typedef struct bSound {
 
   int samplerate;
 
+  int length;
+
+  char _pad2[4];
 } bSound;
 
 /* XXX unused currently */
@@ -111,6 +114,7 @@ enum {
   /* Do not free/reset waveform on sound load, only used by undo code. */
   SOUND_TAGS_WAVEFORM_NO_RELOAD = 1 << 0,
   SOUND_TAGS_WAVEFORM_LOADING = (1 << 6),
+  SOUND_TAGS_WAVEFORM_LOADED = (1 << 7)
 };
 
 #ifdef __cplusplus

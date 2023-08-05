@@ -23,10 +23,22 @@ struct Sequence;
 struct bSound;
 struct SoundInfo;
 
+struct SoundWaveformSegment;
+
 typedef struct SoundWaveform {
-  int length;
+  struct SoundWaveformSegment *segments;
   float *data;
+  int length;
 } SoundWaveform;
+
+typedef struct SoundWaveformSegment {
+  struct SoundWaveformSegment *parent;
+  struct SoundWaveformSegment *left;
+  struct SoundWaveformSegment *right;
+  int low;
+  int high;
+  unsigned int tags;
+} SoundWaveformSegment;
 
 void BKE_sound_init_once(void);
 void BKE_sound_exit_once(void);
@@ -176,9 +188,24 @@ double BKE_sound_sync_scene(struct Scene *scene);
 
 int BKE_sound_scene_playing(struct Scene *scene);
 
+void BKE_sound_init_waveform(struct Main *bmain, struct bSound *sound);
+
+bool BKE_sound_is_waveform_segment_loaded(struct bSound *sound,
+                                          float segment_start,
+                                          float segment_end);
+
 void BKE_sound_free_waveform(struct bSound *sound);
 
 void BKE_sound_read_waveform(struct Main *bmain, struct bSound *sound, bool *stop);
+
+void BKE_sound_read_waveform_segment(struct Main *bmain,
+                                     struct bSound *sound,
+                                     SoundWaveformSegment *segment,
+                                     bool *stop);
+
+SoundWaveformSegment *BKE_sound_get_containing_waveform_segment(struct bSound *sound,
+                                                                float range_start,
+                                                                float range_end);
 
 void BKE_sound_update_scene(struct Depsgraph *depsgraph, struct Scene *scene);
 

@@ -40,6 +40,7 @@ struct PreviewJobAudio {
   PreviewJobAudio *next, *prev;
   Main *bmain;
   bSound *sound;
+  SoundWaveformSegment *segment;
   int lr; /* Sample left or right. */
   int startframe;
   bool waveform; /* Reload sound or waveform. */
@@ -96,7 +97,8 @@ static void execute_read_sound_waveform_task(TaskPool *__restrict task_pool, voi
   }
 
   PreviewJobAudio *audio_job = task->preview_job_audio;
-  BKE_sound_read_waveform(audio_job->bmain, audio_job->sound, task->stop);
+  BKE_sound_read_waveform_segment(
+      audio_job->bmain, audio_job->sound, audio_job->segment, task->stop);
 }
 
 static void push_preview_job_audio_task(TaskPool *__restrict task_pool,
@@ -145,7 +147,8 @@ static void preview_startjob(void *data, bool *stop, bool *do_update, float *pro
     if (*stop || G.is_break) {
       BLI_task_pool_cancel(task_pool);
 
-      LISTBASE_FOREACH (PreviewJobAudio *, previewjb, &pj->previews) {
+      LISTBASE_FOREACH (PreviewJobAudio *, previewjb, &pj->previews)
+      {
         clear_sound_waveform_loading_tag(previewjb->sound);
       }
 
@@ -158,7 +161,8 @@ static void preview_startjob(void *data, bool *stop, bool *do_update, float *pro
       break;
     }
 
-    LISTBASE_FOREACH_MUTABLE (PreviewJobAudio *, previewjb, &pj->previews) {
+    LISTBASE_FOREACH_MUTABLE (PreviewJobAudio *, previewjb, &pj->previews)
+    {
       push_preview_job_audio_task(task_pool, pj, previewjb, stop);
 
       BLI_remlink(&pj->previews, previewjb);
@@ -223,6 +227,69 @@ void sequencer_preview_add_sound(const bContext *C, Sequence *seq)
 
   audiojob->bmain = CTX_data_main(C);
   audiojob->sound = seq->sound;
+
+  BLI_addtail(&pj->previews, audiojob);
+  pj->total++;
+  BLI_mutex_unlock(pj->mutex);
+
+  BLI_condition_notify_one(&pj->preview_suspend_cond);
+
+  if (!WM_jobs_is_running(wm_job)) {
+    G.is_break = false;
+    WM_jobs_start(CTX_wm_manager(C), wm_job);
+  }
+
+  ED_area_tag_redraw(area);
+}
+
+void sequencer_preview_add_sound_segment(const bContext *C,
+                                         Sequence *seq,
+                                         SoundWaveformSegment *segment_to_load)
+{
+  wmJob *wm_job;
+  PreviewJob *pj;
+  ScrArea *area = CTX_wm_area(C);
+  PreviewJobAudio *audiojob = MEM_cnew<PreviewJobAudio>("preview_audio");
+  wm_job = WM_jobs_get(CTX_wm_manager(C),
+                       CTX_wm_window(C),
+                       CTX_data_scene(C),
+                       "Strip Previews",
+                       WM_JOB_PROGRESS,
+                       WM_JOB_TYPE_SEQ_BUILD_PREVIEW);
+
+  /* Get the preview job if it exists. */
+  pj = static_cast<PreviewJob *>(WM_jobs_customdata_get(wm_job));
+
+  if (pj) {
+    BLI_mutex_lock(pj->mutex);
+
+    /* If the job exists but is not running, bail and try again on the next draw call. */
+    if (!pj->running) {
+      BLI_mutex_unlock(pj->mutex);
+
+      /* Clear the sound loading tag to that it can be reattempted. */
+      clear_sound_waveform_loading_tag(seq->sound);
+      WM_event_add_notifier(C, NC_SCENE | ND_SPACE_SEQUENCER, CTX_data_scene(C));
+      return;
+    }
+  }
+  else { /* There's no existing preview job. */
+    pj = MEM_cnew<PreviewJob>("preview rebuild job");
+
+    pj->mutex = BLI_mutex_alloc();
+    BLI_condition_init(&pj->preview_suspend_cond);
+    pj->scene = CTX_data_scene(C);
+    pj->running = true;
+    BLI_mutex_lock(pj->mutex);
+
+    WM_jobs_customdata_set(wm_job, pj, free_preview_job);
+    WM_jobs_timer(wm_job, 0.1, NC_SCENE | ND_SEQUENCER, NC_SCENE | ND_SEQUENCER);
+    WM_jobs_callbacks(wm_job, preview_startjob, nullptr, nullptr, preview_endjob);
+  }
+
+  audiojob->bmain = CTX_data_main(C);
+  audiojob->sound = seq->sound;
+  audiojob->segment = segment_to_load;
 
   BLI_addtail(&pj->previews, audiojob);
   pj->total++;

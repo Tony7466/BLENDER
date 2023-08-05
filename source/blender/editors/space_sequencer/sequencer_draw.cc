@@ -265,24 +265,73 @@ static bool seq_draw_waveforms_poll(const bContext * /*C*/, SpaceSeq *sseq, Sequ
   return false;
 }
 
-static void waveform_job_start_if_needed(const bContext *C, Sequence *seq)
+static bool waveform_segment_is_loaded(Sequence *seq, float range_start, float range_end)
 {
   bSound *sound = seq->sound;
 
   BLI_spin_lock(static_cast<SpinLock *>(sound->spinlock));
-  if (!sound->waveform) {
-    /* Load the waveform data if it hasn't been loaded and cached already. */
-    if (!(sound->tags & SOUND_TAGS_WAVEFORM_LOADING)) {
-      /* Prevent sounds from reloading. */
-      sound->tags |= SOUND_TAGS_WAVEFORM_LOADING;
-      BLI_spin_unlock(static_cast<SpinLock *>(sound->spinlock));
-      sequencer_preview_add_sound(C, seq);
+  bool is_loaded = BKE_sound_is_waveform_segment_loaded(sound, range_start, range_end);
+  BLI_spin_unlock(static_cast<SpinLock *>(sound->spinlock));
+
+  return is_loaded;
+}
+
+static void waveform_job_start_all_needed_segments(const bContext *C,
+                                                   Sequence *seq,
+                                                   SoundWaveformSegment *segment)
+{
+  if (!segment) {
+    return;
+  }
+
+  constexpr unsigned int loaded_or_loading = SOUND_TAGS_WAVEFORM_LOADED |
+                                             SOUND_TAGS_WAVEFORM_LOADING;
+
+  if (!(segment->tags & loaded_or_loading)) {
+    if (!segment->left && !segment->right) {
+      segment->tags |= SOUND_TAGS_WAVEFORM_LOADING;
+      sequencer_preview_add_sound_segment(C, seq, segment);
     }
     else {
-      BLI_spin_unlock(static_cast<SpinLock *>(sound->spinlock));
+      waveform_job_start_all_needed_segments(C, seq, segment->left);
+      waveform_job_start_all_needed_segments(C, seq, segment->right);
     }
   }
+}
+
+static void waveform_job_start_if_needed(const bContext *C,
+                                         Sequence *seq,
+                                         float range_start,
+                                         float range_end)
+{
+  bSound *sound = seq->sound;
+
+  BLI_spin_lock(static_cast<SpinLock *>(sound->spinlock));
+
+  if (!sound->waveform) {
+    BKE_sound_init_waveform(CTX_data_main(C), sound);
+  }
+
+  SoundWaveformSegment *segment = BKE_sound_get_containing_waveform_segment(
+      sound, range_start, range_end);
+  if (!segment) {
+    BLI_spin_unlock(static_cast<SpinLock *>(sound->spinlock));
+    return;
+  }
+
+  waveform_job_start_all_needed_segments(C, seq, segment);
   BLI_spin_unlock(static_cast<SpinLock *>(sound->spinlock));
+#if 0
+  const unsigned int loaded_or_loading = SOUND_TAGS_WAVEFORM_LOADING | SOUND_TAGS_WAVEFORM_LOADED;
+  if (segment && !(segment->tags & loaded_or_loading)) {
+    segment->tags |= SOUND_TAGS_WAVEFORM_LOADING;
+    BLI_spin_unlock(static_cast<SpinLock *>(sound->spinlock));
+    sequencer_preview_add_sound_segment(C, seq, segment);
+  }
+  else {
+    BLI_spin_unlock(static_cast<SpinLock *>(sound->spinlock));
+  }
+#endif
 }
 
 static size_t get_vertex_count(WaveVizData *waveform_data)
@@ -427,12 +476,17 @@ static void draw_seq_waveform_overlay(
     return; /* Not much to draw, exit before running job. */
   }
 
-  waveform_job_start_if_needed(C, seq);
+  const float strip_length = x2 - x1_aligned;
+  const float visible_range_start = (frame_start - x1_aligned) / strip_length;
+  const float visible_range_end = (frame_end - x1_aligned) / strip_length;
+
+  waveform_job_start_if_needed(C, seq, visible_range_start, visible_range_end);
+
+  if (!waveform_segment_is_loaded(seq, visible_range_start, visible_range_end)) {
+    return;
+  }
 
   SoundWaveform *waveform = static_cast<SoundWaveform *>(seq->sound->waveform);
-  if (waveform == nullptr || waveform->length == 0) {
-    return; /* Waveform was not built. */
-  }
 
   /* F-Curve lookup is quite expensive, so do this after precondition. */
   FCurve *fcu = id_data_find_fcurve(&scene->id, seq, &RNA_Sequence, "volume", 0, nullptr);
@@ -561,7 +615,8 @@ static void drawmeta_contents(Scene *scene,
 
   GPU_blend(GPU_BLEND_ALPHA);
 
-  LISTBASE_FOREACH (Sequence *, seq, meta_seqbase) {
+  LISTBASE_FOREACH (Sequence *, seq, meta_seqbase)
+  {
     chan_min = min_ii(chan_min, seq->machine);
     chan_max = max_ii(chan_max, seq->machine);
   }
@@ -575,7 +630,8 @@ static void drawmeta_contents(Scene *scene,
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
   /* Draw only immediate children (1 level depth). */
-  LISTBASE_FOREACH (Sequence *, seq, meta_seqbase) {
+  LISTBASE_FOREACH (Sequence *, seq, meta_seqbase)
+  {
     const int startdisp = SEQ_time_left_handle_frame_get(scene, seq) + offset;
     const int enddisp = SEQ_time_right_handle_frame_get(scene, seq) + offset;
 
@@ -2212,7 +2268,8 @@ void sequencer_draw_preview(const bContext *C,
         scene, channels, ed->seqbasep, timeline_frame, 0);
     Sequence *seq;
     Sequence *active_seq = SEQ_select_active_get(scene);
-    SEQ_ITERATOR_FOREACH (seq, collection) {
+    SEQ_ITERATOR_FOREACH (seq, collection)
+    {
       seq_draw_image_origin_and_outline(C, seq, seq == active_seq);
     }
     SEQ_collection_free(collection);
@@ -2272,7 +2329,8 @@ static void draw_seq_strips(const bContext *C, Editing *ed, ARegion *region)
   /* Loop through twice, first unselected, then selected. */
   for (j = 0; j < 2; j++) {
     /* Loop through strips, checking for those that are visible. */
-    LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
+    LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep)
+    {
       /* Bound-box and selection tests for NOT drawing the strip. */
       if ((seq->flag & SELECT) != sel) {
         continue;
@@ -2568,7 +2626,8 @@ static void draw_cache_view(const bContext *C)
     immRectf(pos, scene->r.sfra, stripe_bot, scene->r.efra, stripe_top);
   }
 
-  LISTBASE_FOREACH (Sequence *, seq, scene->ed->seqbasep) {
+  LISTBASE_FOREACH (Sequence *, seq, scene->ed->seqbasep)
+  {
     if (seq->type == SEQ_TYPE_SOUND_RAM) {
       continue;
     }

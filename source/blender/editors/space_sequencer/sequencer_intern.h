@@ -35,6 +35,7 @@ struct wmOperator;
 struct ScrArea;
 struct Editing;
 struct ListBase;
+struct SegmentTree;
 
 #define DEFAULT_IMG_STRIP_LENGTH 25 /* XXX arbitrary but ok for now. */
 #define OVERLAP_ALPHA 180
@@ -297,6 +298,9 @@ void SEQUENCER_OT_rename_channel(struct wmOperatorType *ot);
 /* `sequencer_preview.cc` */
 
 void sequencer_preview_add_sound(const struct bContext *C, struct Sequence *seq);
+void sequencer_preview_add_sound_segment(const struct bContext *C,
+                                         struct Sequence *seq,
+                                         struct SoundWaveformSegment *segment);
 
 /* `sequencer_add.cc` */
 

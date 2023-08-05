@@ -14,6 +14,7 @@
 #include "BLI_blenlib.h"
 #include "BLI_iterator.h"
 #include "BLI_math.h"
+#include "BLI_range.h"
 #include "BLI_threads.h"
 
 #include "BLT_translation.h"
@@ -56,6 +57,9 @@
 #include "SEQ_sequencer.h"
 #include "SEQ_sound.h"
 #include "SEQ_time.h"
+
+#define DEFAULT_MAX_SEGMENT_SIZE 100
+#define SOUND_WAVEFORM_ENTRIES_PER_SAMPLE 3
 
 static void sound_free_audio(bSound *sound);
 
@@ -188,6 +192,64 @@ static void sound_blend_read_expand(BlendExpander *expander, ID *id)
 {
   bSound *snd = (bSound *)id;
   BLO_expand(expander, snd->ipo); /* XXX deprecated - old animation system */
+}
+
+static SoundWaveformSegment *sound_waveform_segment_build_tree(SoundWaveformSegment *parent,
+                                                               int low,
+                                                               int high,
+                                                               int max_segment_size)
+{
+  BLI_assert(low <= high);
+
+  SoundWaveformSegment *segment = MEM_cnew<SoundWaveformSegment>(
+      "SoundWaveformSegment.build_segment_tree");
+  segment->parent = parent;
+  segment->low = low;
+  segment->high = high;
+  segment->tags = 0;
+
+  const int size = segment->high - segment->low;
+  const int half = segment->low + size / 2;
+
+  if (size > max_segment_size) {
+    segment->left = sound_waveform_segment_build_tree(
+        segment, segment->low, half, max_segment_size);
+    segment->right = sound_waveform_segment_build_tree(
+        segment, half + 1, segment->high, max_segment_size);
+  }
+  else {
+    segment->left = nullptr;
+    segment->right = nullptr;
+  }
+
+  return segment;
+}
+
+static SoundWaveformSegment *sound_waveform_get_lowest_containing_node(
+    SoundWaveformSegment *segment, int low, int high)
+{
+  BLI_assert(low <= high);
+
+  if (!segment) {
+    return nullptr;
+  }
+
+  const int size = segment->high - segment->low;
+  const int half = segment->low + size / 2;
+
+  if (low >= segment->low && high <= half && segment->left) {
+    return sound_waveform_get_lowest_containing_node(segment->left, low, high);
+  }
+
+  if (low > half && high <= segment->high && segment->right) {
+    return sound_waveform_get_lowest_containing_node(segment->right, low, high);
+  }
+
+  if (low >= segment->low && high <= segment->high) {
+    return segment;
+  }
+
+  return nullptr;
 }
 
 IDTypeInfo IDType_ID_SO = {
@@ -1058,6 +1120,49 @@ int BKE_sound_scene_playing(Scene *scene)
   return -1;
 }
 
+SoundWaveformSegment *BKE_sound_get_containing_waveform_segment(struct bSound *sound,
+                                                                float range_start,
+                                                                float range_end)
+{
+  SoundWaveform *waveform = static_cast<SoundWaveform *>(sound->waveform);
+  if (!waveform) {
+    return nullptr;
+  }
+
+  int start_sample_index = round_fl_to_int(sound->length * range_start);
+  int end_sample_index = round_fl_to_int(sound->length * range_end);
+  return sound_waveform_get_lowest_containing_node(
+      waveform->segments, start_sample_index, end_sample_index);
+}
+
+void BKE_sound_init_waveform(Main *bmain, bSound *sound)
+{
+  if (sound->playback_handle == nullptr) {
+    sound_load_audio(bmain, sound, true);
+  }
+
+  sound->waveform = MEM_cnew<SoundWaveform>(__func__);
+  SoundWaveform *waveform = static_cast<SoundWaveform *>(sound->waveform);
+
+  AUD_SoundInfo info = AUD_getInfo(sound->playback_handle);
+  sound->length = info.length;
+
+  if (info.length > 0) {
+    int data_length = sizeof(float[SOUND_WAVEFORM_ENTRIES_PER_SAMPLE]) * info.length *
+                      SOUND_WAVE_SAMPLES_PER_SECOND;
+
+    waveform->data = static_cast<float *>(MEM_mallocN(data_length, "SoundWaveform.samples"));
+    waveform->length = data_length;
+    waveform->segments = sound_waveform_segment_build_tree(
+        nullptr, 0, sound->length, DEFAULT_MAX_SEGMENT_SIZE);
+  }
+  else {
+    waveform->data = nullptr;
+    waveform->length = 0;
+    waveform->segments = nullptr;
+  }
+}
+
 void BKE_sound_free_waveform(bSound *sound)
 {
   if ((sound->tags & SOUND_TAGS_WAVEFORM_NO_RELOAD) == 0) {
@@ -1073,6 +1178,27 @@ void BKE_sound_free_waveform(bSound *sound)
   }
   /* This tag is only valid once. */
   sound->tags &= ~SOUND_TAGS_WAVEFORM_NO_RELOAD;
+}
+
+bool BKE_sound_is_waveform_segment_loaded(bSound *sound, float segment_start, float segment_end)
+{
+  SoundWaveform *waveform = static_cast<SoundWaveform *>(sound->waveform);
+
+  if (!waveform) {
+    return false;
+  }
+
+  int start_sample_index = round_fl_to_int(sound->length * segment_start);
+  int end_sample_index = round_fl_to_int(sound->length * segment_end);
+
+  SoundWaveformSegment *node = sound_waveform_get_lowest_containing_node(
+      waveform->segments, start_sample_index, end_sample_index);
+
+  if (!node) {
+    return false;
+  }
+
+  return (node->tags & SOUND_TAGS_WAVEFORM_LOADED);
 }
 
 void BKE_sound_read_waveform(Main *bmain, bSound *sound, bool *stop)
@@ -1129,6 +1255,68 @@ void BKE_sound_read_waveform(Main *bmain, bSound *sound, bool *stop)
   if (need_close_audio_handles) {
     sound_free_audio(sound);
   }
+}
+
+static void mark_waveform_segment_children_as_loaded(SoundWaveformSegment *segment)
+{
+  if (!segment) {
+    return;
+  }
+
+  if (segment->tags & SOUND_TAGS_WAVEFORM_LOADED) {
+    return;
+  }
+
+  segment->tags |= SOUND_TAGS_WAVEFORM_LOADED;
+  segment->tags &= ~SOUND_TAGS_WAVEFORM_LOADING;
+
+  mark_waveform_segment_children_as_loaded(segment->left);
+  mark_waveform_segment_children_as_loaded(segment->right);
+}
+
+static void mark_waveform_segment_parents_as_loaded(SoundWaveformSegment *segment)
+{
+  if (!segment) {
+    return;
+  }
+
+  bool left_is_loaded = segment->left->tags & SOUND_TAGS_WAVEFORM_LOADED;
+  bool right_is_loaded = segment->right->tags & SOUND_TAGS_WAVEFORM_LOADED;
+
+  if (left_is_loaded && right_is_loaded) {
+    segment->tags |= SOUND_TAGS_WAVEFORM_LOADED;
+    segment->tags &= ~SOUND_TAGS_WAVEFORM_LOADING;
+    mark_waveform_segment_parents_as_loaded(segment->parent);
+  }
+}
+
+void BKE_sound_read_waveform_segment(struct Main *bmain,
+                                     struct bSound *sound,
+                                     SoundWaveformSegment *segment,
+                                     bool *stop)
+{
+  SoundWaveform *waveform = static_cast<SoundWaveform *>(sound->waveform);
+  BLI_assert_msg(waveform,
+                 "cannot be called before initializing the waveform with BKE_sound_init_waveform");
+
+  float *data = waveform->data + segment->low * 3 * SOUND_WAVE_SAMPLES_PER_SECOND;
+  int length = (segment->high - segment->low) * SOUND_WAVE_SAMPLES_PER_SECOND;
+  int at = segment->low * SOUND_WAVE_SAMPLES_PER_SECOND;
+
+  short stop_i16 = *stop;
+  AUD_readSoundAt(
+      sound->playback_handle, at, data, length, SOUND_WAVE_SAMPLES_PER_SECOND, &stop_i16);
+
+  *stop = stop_i16 != 0;
+
+  BLI_spin_lock(static_cast<SpinLock *>(sound->spinlock));
+  segment->tags |= SOUND_TAGS_WAVEFORM_LOADED;
+  segment->tags &= ~SOUND_TAGS_WAVEFORM_LOADING;
+
+  mark_waveform_segment_children_as_loaded(segment->left);
+  mark_waveform_segment_children_as_loaded(segment->right);
+  mark_waveform_segment_parents_as_loaded(segment->parent);
+  BLI_spin_unlock(static_cast<SpinLock *>(sound->spinlock));
 }
 
 static void sound_update_base(Scene *scene, Object *object, void *new_set)
@@ -1216,7 +1404,8 @@ void BKE_sound_update_scene(Depsgraph *depsgraph, Scene *scene)
     deg_iter_settings.flags = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
                               DEG_ITER_OBJECT_FLAG_LINKED_INDIRECTLY |
                               DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET;
-    DEG_OBJECT_ITER_BEGIN (&deg_iter_settings, object) {
+    DEG_OBJECT_ITER_BEGIN (&deg_iter_settings, object)
+    {
       sound_update_base(scene, object, new_set);
     }
     DEG_OBJECT_ITER_END;

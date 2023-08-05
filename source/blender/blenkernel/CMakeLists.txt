@@ -482,6 +482,7 @@ set(SRC
   BKE_simulation_state_serialize.hh
   BKE_softbody.h
   BKE_sound.h
+  BKE_segment_tree.h
   BKE_speaker.h
   BKE_studiolight.h
   BKE_subdiv.h

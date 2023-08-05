@@ -270,6 +270,78 @@ AUD_API int AUD_readSound(AUD_Sound* sound, float* buffer, int length, int sampl
 	return length;
 }
 
+AUD_API int AUD_readSoundAt(AUD_Sound* sound, int start, float* buffer, int length, int samples_per_second, short* interrupt)
+{
+	DeviceSpecs specs;
+	float* buf;
+	Buffer aBuffer;
+
+	specs.rate = RATE_INVALID;
+	specs.channels = CHANNELS_MONO;
+	specs.format = FORMAT_INVALID;
+
+	std::shared_ptr<IReader> reader = ChannelMapper(*sound, specs).createReader();
+
+	specs.specs = reader->getSpecs();
+	int len;
+	float samplejump = specs.rate / samples_per_second;
+	float min, max, power, overallmax;
+	bool eos;
+
+	reader->seek(start);
+
+	overallmax = 0;
+
+	for(int i = 0; i < length; i++)
+	{
+		len = floor(samplejump * (i+1)) - floor(samplejump * i);
+
+		if(*interrupt)
+			return 0;
+
+		aBuffer.assureSize(len * AUD_SAMPLE_SIZE(specs));
+		buf = aBuffer.getBuffer();
+
+		reader->read(len, eos, buf);
+
+		max = min = *buf;
+		power = *buf * *buf;
+		for(int j = 1; j < len; j++)
+		{
+			if(buf[j] < min)
+				min = buf[j];
+			if(buf[j] > max)
+				max = buf[j];
+			power += buf[j] * buf[j];
+		}
+
+		buffer[i * 3] = min;
+		buffer[i * 3 + 1] = max;
+		buffer[i * 3 + 2] = std::sqrt(power / len);
+
+		if(overallmax < max)
+			overallmax = max;
+		if(overallmax < -min)
+			overallmax = -min;
+
+		if(eos)
+		{
+			length = i;
+			break;
+		}
+	}
+
+	if(overallmax > 1.0f)
+	{
+		for(int i = 0; i < length * 3; i++)
+		{
+			buffer[i] /= overallmax;
+		}
+	}
+
+	return length;
+}
+
 AUD_API int AUD_mixdown(AUD_Sound* sound, unsigned int start, unsigned int length, unsigned int buffersize, const char* filename, AUD_DeviceSpecs specs, AUD_Container format, AUD_Codec codec, unsigned int bitrate, void(*callback)(float, void*), void* data, char* error, size_t errorsize)
 {
 	try
