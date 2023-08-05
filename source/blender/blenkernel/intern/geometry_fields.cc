@@ -81,7 +81,7 @@ GeometryFieldContext::GeometryFieldContext(const GeometryComponent &component,
     }
     case GeometryComponent::Type::Volume: {
       const VolumeComponent &volume_component = static_cast<const VolumeComponent &>(component);
-      const Volume *volume = volume_component.get_for_read();
+      const Volume *volume = volume_component.get();
       geometry_ = volume ? volume->runtime.grids : nullptr;
       break;
     }

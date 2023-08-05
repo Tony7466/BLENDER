@@ -22,10 +22,6 @@
 
 #if 0
 
-#  ifdef WITH_OPENVDB
-#    include <openvdb/openvdb.h>
-#  endif
-
 namespace blender::bke {
 
 #  if 0

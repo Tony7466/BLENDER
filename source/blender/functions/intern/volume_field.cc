@@ -8,7 +8,7 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_resource_scope.hh"
 #include "BLI_virtual_array.hh"
-#include "BLI_volume.hh"
+#include "BLI_volume_openvdb.hh"
 
 #include "FN_field.hh"
 #include "FN_multi_function_builder.hh"
