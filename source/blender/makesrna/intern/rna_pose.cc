@@ -25,9 +25,9 @@
 
 #include "BLT_translation.h"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 /* Bone and Group Color Sets */
 const EnumPropertyItem rna_enum_color_sets_items[] = {
@@ -77,10 +77,10 @@ const EnumPropertyItem rna_enum_color_sets_items[] = {
 #  include "DEG_depsgraph.h"
 #  include "DEG_depsgraph_build.h"
 
-#  include "ED_armature.h"
-#  include "ED_object.h"
+#  include "ED_armature.hh"
+#  include "ED_object.hh"
 
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
 #  include "RNA_access.h"
 

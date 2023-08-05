@@ -24,7 +24,7 @@
 #include "BKE_modifier.h"
 #include "BKE_scene.h"
 
-#include "ED_mesh.h"
+#include "ED_mesh.hh"
 
 #include "DEG_depsgraph_query.h"
 
@@ -1658,7 +1658,6 @@ static void createTransEditVerts(bContext * /*C*/, TransInfo *t)
             tob->dist = dists[a];
           }
           else {
-            tob->flag |= TD_NOTCONNECTED;
             tob->dist = FLT_MAX;
           }
         }
