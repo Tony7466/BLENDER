@@ -71,6 +71,7 @@ static void node_rna(StructRNA *srna)
   RNA_def_property_enum_items(prop, rna_enum_curve_normal_modes);
   RNA_def_property_ui_text(prop, "Mode", "Mode for curve normal evaluation");
   RNA_def_property_update_runtime(prop, (void *)rna_Node_update);
+  RNA_def_property_update_notifier(prop, NC_NODE | NA_EDITED);
 }
 
 }  // namespace blender::nodes::node_geo_set_curve_normal_cc

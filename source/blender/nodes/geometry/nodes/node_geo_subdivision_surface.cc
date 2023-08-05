@@ -204,6 +204,7 @@ static void node_rna(StructRNA *srna)
   RNA_def_property_enum_default(prop, SUBSURF_UV_SMOOTH_PRESERVE_BOUNDARIES);
   RNA_def_property_ui_text(prop, "UV Smooth", "Controls how smoothing is applied to UVs");
   RNA_def_property_update_runtime(prop, (void *)rna_Node_update);
+  RNA_def_property_update_notifier(prop, NC_NODE | NA_EDITED);
 
   prop = RNA_def_property(srna, "boundary_smooth", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_node_storage(prop, boundary_smooth);
@@ -211,6 +212,7 @@ static void node_rna(StructRNA *srna)
   RNA_def_property_enum_default(prop, SUBSURF_BOUNDARY_SMOOTH_ALL);
   RNA_def_property_ui_text(prop, "Boundary Smooth", "Controls how open boundaries are smoothed");
   RNA_def_property_update_runtime(prop, (void *)rna_Node_update);
+  RNA_def_property_update_notifier(prop, NC_NODE | NA_EDITED);
 }
 
 }  // namespace blender::nodes::node_geo_subdivision_surface_cc
