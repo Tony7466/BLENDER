@@ -6,6 +6,10 @@
 
 #include "RNA_define.h"
 
+/**
+ * Generates accessor methods for a property stored in `bNode->storage`. This is expected to be
+ * used in a node file that uses #NODE_STORAGE_FUNCS.
+ */
 #define RNA_def_property_enum_node_storage(prop, member) \
   RNA_def_property_enum_funcs_runtime( \
       prop, \
@@ -19,6 +23,10 @@
       }, \
       nullptr)
 
+/**
+ * Generates accessor methods for a property stored directly in the `bNode`, typically
+ * `bNode->custom1` or similar.
+ */
 #define RNA_def_property_enum_node(prop, member) \
   RNA_def_property_enum_funcs_runtime( \
       prop, \
