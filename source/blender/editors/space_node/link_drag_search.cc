@@ -344,7 +344,7 @@ static void link_drag_search_update_fn(
     storage.update_items_tag = false;
   }
 
-  string_search::StringSearchNew<SocketLinkOperation *> search;
+  string_search::StringSearchNew<SocketLinkOperation> search;
 
   for (SocketLinkOperation &op : storage.search_link_ops) {
     search.add(op.name, &op, op.weight);

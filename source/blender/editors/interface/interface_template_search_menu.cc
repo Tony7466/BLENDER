@@ -1005,7 +1005,7 @@ static void menu_search_update_fn(const bContext * /*C*/,
 {
   MenuSearch_Data *data = (MenuSearch_Data *)arg;
 
-  blender::string_search::StringSearchNew<MenuSearch_Item *> search;
+  blender::string_search::StringSearchNew<MenuSearch_Item> search;
 
   LISTBASE_FOREACH (MenuSearch_Item *, item, &data->items) {
     search.add(item->drawwstr_full, item);

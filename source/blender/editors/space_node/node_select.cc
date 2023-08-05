@@ -1356,7 +1356,7 @@ static void node_find_update_fn(const bContext *C,
 {
   SpaceNode *snode = CTX_wm_space_node(C);
 
-  string_search::StringSearchNew<bNode *> search;
+  string_search::StringSearchNew<bNode> search;
 
   for (bNode *node : snode->edittree->all_nodes()) {
     char name[256];

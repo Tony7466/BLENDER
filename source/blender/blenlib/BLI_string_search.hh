@@ -9,56 +9,47 @@
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 
-struct StringSearch;
-
-StringSearch *BLI_string_search_new();
-/**
- * Add a new possible result to the search.
- * The caller keeps ownership of all parameters.
- *
- * \param weight: Can be used to customize the order when multiple items have the same match score.
- */
-void BLI_string_search_add(StringSearch *search, const char *str, void *user_data, int weight);
-
-/**
- * Filter and sort all previously added search items.
- * Returns an array containing the filtered user data.
- * The caller has to free the returned array.
- */
-int BLI_string_search_query(StringSearch *search, const char *query, void ***r_data);
-void BLI_string_search_free(StringSearch *search);
-
 namespace blender::string_search {
 
-template<typename T> class StringSearchNew {
- private:
-  StringSearch *string_search_;
+struct SearchItem {
+  Span<blender::StringRef> normalized_words;
+  int length;
+  void *user_data;
+  int weight;
+};
 
-  static_assert(std::is_pointer_v<T>);
+class StringSearchBase {
+ protected:
+  LinearAllocator<> allocator_;
+  Vector<SearchItem> items_;
 
+ protected:
+  void add_impl(StringRef str, void *user_data, int weight);
+  Vector<void *> query_impl(StringRef query) const;
+};
+
+template<typename T> class StringSearchNew : private StringSearchBase {
  public:
-  StringSearchNew()
+  /**
+   * Add a new possible result to the search.
+   *
+   * \param weight: Can be used to customize the order when multiple items have the same match
+   * score.
+   */
+  void add(const StringRefNull str, T *user_data, const int weight = 0)
   {
-    string_search_ = BLI_string_search_new();
+    this->add_impl(str, (void *)user_data, weight);
   }
 
-  ~StringSearchNew()
+  /**
+   * Filter and sort all previously added search items.
+   * Returns an array containing the filtered user data.
+   */
+  Vector<T *> query(const StringRef query) const
   {
-    BLI_string_search_free(string_search_);
-  }
-
-  void add(const StringRefNull str, T user_data, const int weight = 0)
-  {
-    BLI_string_search_add(string_search_, str.c_str(), (void *)user_data, weight);
-  }
-
-  Vector<T> query(const StringRefNull query) const
-  {
-    T *results;
-    const int amount = BLI_string_search_query(string_search_, query.c_str(), (void ***)&results);
-    Vector<T> results_vec = Span(results, amount);
-    MEM_freeN(results);
-    return results_vec;
+    Vector<void *> result = this->query_impl(query);
+    Vector<T *> result_typed = result.as_span().cast<T *>();
+    return result_typed;
   }
 };
 
