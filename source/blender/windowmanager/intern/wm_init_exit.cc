@@ -54,6 +54,7 @@
 #include "BKE_scene.h"
 #include "BKE_screen.h"
 #include "BKE_sound.h"
+#include "BKE_string_search.hh"
 #include "BKE_vfont.h"
 
 #include "BKE_addon.h"
@@ -353,6 +354,7 @@ void WM_init(bContext *C, int argc, const char **argv)
   ED_render_clear_mtex_copybuf();
 
   wm_history_file_read();
+  blender::bke::string_search::read_recent_searches_file();
 
   STRNCPY(G.lib, BKE_main_blendfile_path_from_global());
 
@@ -519,6 +521,10 @@ void WM_exit_ex(bContext *C, const bool do_python, const bool do_user_exit_actio
       WM_event_remove_handlers(C, &win->handlers);
       WM_event_remove_handlers(C, &win->modalhandlers);
       ED_screen_exit(C, win, WM_window_get_active_screen(win));
+    }
+
+    if (!G.background) {
+      blender::bke::string_search::write_recent_searches_file();
     }
 
     if (do_user_exit_actions) {

@@ -12,6 +12,9 @@ void add_recent_search(StringRef choosen_str);
 
 const blender::string_search::RecentCache *get_recent_cache();
 
+void write_recent_searches_file();
+void read_recent_searches_file();
+
 template<typename T> class StringSearch : public blender::string_search::StringSearch<T> {
  public:
   StringSearch() : blender::string_search::StringSearch<T>(get_recent_cache()) {}
