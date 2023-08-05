@@ -439,7 +439,7 @@ DefNode(GeometryNode, GEO_NODE_STRING_JOIN, 0, "STRING_JOIN", StringJoin, "Join 
 DefNode(GeometryNode, GEO_NODE_STRING_TO_CURVES, def_geo_string_to_curves, "STRING_TO_CURVES", StringToCurves, "String to Curves", "Generate a paragraph of text with a specific font, using a curve instance to store each character")
 DefNode(GeometryNode, GEO_NODE_SUBDIVIDE_CURVE, 0, "SUBDIVIDE_CURVE", SubdivideCurve, "Subdivide Curve", "Dividing each curve segment into a specified number of pieces")
 DefNode(GeometryNode, GEO_NODE_SUBDIVIDE_MESH, 0, "SUBDIVIDE_MESH", SubdivideMesh, "Subdivide Mesh", "Divide mesh faces into smaller ones without changing the shape or volume, using linear interpolation to place the new vertices")
-DefNode(GeometryNode, GEO_NODE_SUBDIVISION_SURFACE, def_geo_subdivision_surface, "SUBDIVISION_SURFACE",SubdivisionSurface, "Subdivision Surface", "Divide mesh faces to form a smooth surface, using the Catmull-Clark subdivision method")
+DefNode(GeometryNode, GEO_NODE_SUBDIVISION_SURFACE, 0, "SUBDIVISION_SURFACE",SubdivisionSurface, "Subdivision Surface", "Divide mesh faces to form a smooth surface, using the Catmull-Clark subdivision method")
 DefNode(GeometryNode, GEO_NODE_SWITCH, def_geo_switch, "SWITCH", Switch, "Switch", "Switch between two inputs")
 DefNode(GeometryNode, GEO_NODE_TRANSFORM_GEOMETRY, 0, "TRANSFORM_GEOMETRY", Transform, "Transform Geometry", "Translate, rotate or scale the geometry")
 DefNode(GeometryNode, GEO_NODE_TRANSLATE_INSTANCES, 0, "TRANSLATE_INSTANCES",TranslateInstances, "Translate Instances", "Move top-level geometry instances in local or global space")

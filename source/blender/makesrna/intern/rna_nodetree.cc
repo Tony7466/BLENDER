@@ -9338,13 +9338,6 @@ static void def_geo_triangulate(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
-static void def_geo_subdivision_surface(StructRNA *srna)
-{
-  PropertyRNA *prop;
-
-  RNA_def_struct_sdna_from(srna, "NodeGeometrySubdivisionSurface", "storage");
-}
-
 static void def_geo_accumulate_field(StructRNA *srna)
 {
   PropertyRNA *prop;
