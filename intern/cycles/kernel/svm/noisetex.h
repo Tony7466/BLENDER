@@ -135,22 +135,24 @@ ccl_device void noise_texture_4d(float4 co,
 ccl_device_noinline int svm_node_tex_noise(KernelGlobals kg,
                                            ccl_private ShaderData *sd,
                                            ccl_private float *stack,
-                                           uint dimensions,
                                            uint offsets1,
                                            uint offsets2,
+                                           uint offsets3,
                                            int offset)
 {
-  uint vector_stack_offset, w_stack_offset, scale_stack_offset;
-  uint detail_stack_offset, roughness_stack_offset, distortion_stack_offset;
-  uint value_stack_offset, color_stack_offset;
+  uint vector_stack_offset, w_stack_offset, scale_stack_offset, detail_stack_offset;
+  uint roughness_stack_offset, lacunarity_stack_offset, distortion_stack_offset,
+      value_stack_offset;
+  uint color_stack_offset, dimensions, normalize;
 
   svm_unpack_node_uchar4(
       offsets1, &vector_stack_offset, &w_stack_offset, &scale_stack_offset, &detail_stack_offset);
   svm_unpack_node_uchar4(offsets2,
                          &roughness_stack_offset,
+                         &lacunarity_stack_offset,
                          &distortion_stack_offset,
-                         &value_stack_offset,
-                         &color_stack_offset);
+                         &value_stack_offset);
+  svm_unpack_node_uchar3(offsets3, &color_stack_offset, &dimensions, &normalize);
 
   uint4 defaults1 = read_node(kg, &offset);
   uint4 defaults2 = read_node(kg, &offset);
@@ -160,7 +162,8 @@ ccl_device_noinline int svm_node_tex_noise(KernelGlobals kg,
   float scale = stack_load_float_default(stack, scale_stack_offset, defaults1.y);
   float detail = stack_load_float_default(stack, detail_stack_offset, defaults1.z);
   float roughness = stack_load_float_default(stack, roughness_stack_offset, defaults1.w);
-  float distortion = stack_load_float_default(stack, distortion_stack_offset, defaults2.x);
+  float lacunarity = stack_load_float_default(stack, lacunarity_stack_offset, defaults2.x);
+  float distortion = stack_load_float_default(stack, distortion_stack_offset, defaults2.y);
 
   vector *= scale;
   w *= scale;

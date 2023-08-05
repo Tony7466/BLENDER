@@ -41,7 +41,9 @@ void node_noise_texture_1d(vec3 co,
                            float scale,
                            float detail,
                            float roughness,
+                           float lacunarity,
                            float distortion,
+                           float normalize,
                            out float value,
                            out vec4 color)
 {
@@ -62,7 +64,9 @@ void node_noise_texture_2d(vec3 co,
                            float scale,
                            float detail,
                            float roughness,
+                           float lacunarity,
                            float distortion,
+                           float normalize,
                            out float value,
                            out vec4 color)
 {
@@ -84,7 +88,9 @@ void node_noise_texture_3d(vec3 co,
                            float scale,
                            float detail,
                            float roughness,
+                           float lacunarity,
                            float distortion,
+                           float normalize,
                            out float value,
                            out vec4 color)
 {
@@ -107,7 +113,9 @@ void node_noise_texture_4d(vec3 co,
                            float scale,
                            float detail,
                            float roughness,
+                           float lacunarity,
                            float distortion,
+                           float normalize,
                            out float value,
                            out vec4 color)
 {
