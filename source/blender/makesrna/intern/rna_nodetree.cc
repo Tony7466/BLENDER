@@ -9537,17 +9537,6 @@ static void def_geo_curve_set_handle_positions(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
-static void def_geo_set_curve_normal(StructRNA *srna)
-{
-  PropertyRNA *prop;
-
-  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
-  RNA_def_property_enum_items(prop, rna_enum_curve_normal_modes);
-  RNA_def_property_ui_text(prop, "Mode", "Mode for curve normal evaluation");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
-}
-
 static void def_geo_simulation_input(StructRNA *srna)
 {
   PropertyRNA *prop;
