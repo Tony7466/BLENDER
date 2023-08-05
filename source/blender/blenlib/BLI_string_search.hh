@@ -30,6 +30,38 @@ void BLI_string_search_free(StringSearch *search);
 
 namespace blender::string_search {
 
+template<typename T> class StringSearchNew {
+ private:
+  StringSearch *string_search_;
+
+  static_assert(std::is_pointer_v<T>);
+
+ public:
+  StringSearchNew()
+  {
+    string_search_ = BLI_string_search_new();
+  }
+
+  ~StringSearchNew()
+  {
+    BLI_string_search_free(string_search_);
+  }
+
+  void add(const StringRefNull str, T user_data, const int weight = 0)
+  {
+    BLI_string_search_add(string_search_, str.c_str(), (void *)user_data, weight);
+  }
+
+  Vector<T> query(const StringRefNull query) const
+  {
+    T *results;
+    const int amount = BLI_string_search_query(string_search_, query.c_str(), (void ***)&results);
+    Vector<T> results_vec = Span(results, amount);
+    MEM_freeN(results);
+    return results_vec;
+  }
+};
+
 /**
  * Computes the cost of transforming string a into b. The cost/distance is the minimal number of
  * operations that need to be executed. Valid operations are deletion, insertion, substitution and
