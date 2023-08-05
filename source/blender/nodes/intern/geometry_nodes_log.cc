@@ -129,10 +129,10 @@ GeometryInfoLog::GeometryInfoLog(const bke::GeometrySet &geometry_set)
         }
         break;
       }
-        break;
-      }
       case bke::GeometryComponent::Type::GreasePencil: {
         /* TODO. Do nothing for now. */
+        break;
+      }
     }
   }
 }
