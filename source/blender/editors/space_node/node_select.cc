@@ -16,7 +16,6 @@
 #include "BLI_listbase.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
-#include "BLI_string_search.hh"
 #include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
 
@@ -25,6 +24,7 @@
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
+#include "BKE_string_search.hh"
 #include "BKE_workspace.h"
 
 #include "ED_node.hh" /* own include */

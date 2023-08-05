@@ -8,23 +8,31 @@
 
 namespace blender::bke::string_search {
 
-struct RecentSearches {
+using blender::string_search::RecentCache;
+
+struct RecentCacheStorage {
   int logical_clock = 0;
-  Map<std::string, int> map;
+  Map<std::string, RecentCache> map;
 };
 
-RecentSearches &get_recent_searches()
+static RecentCacheStorage &get_recent_cache_storage()
 {
-  static RecentSearches recent_searches;
-  return recent_searches;
+  static RecentCacheStorage storage;
+  return storage;
 }
 
 void add_recent_search(const StringRef search_id, const StringRef choosen_str)
 {
-  std::string key = search_id + choosen_str;
-  RecentSearches &searches = get_recent_searches();
-  searches.map.add_overwrite(std::move(key), searches.logical_clock);
-  searches.logical_clock++;
+  RecentCacheStorage &storage = get_recent_cache_storage();
+  RecentCache &cache = storage.map.lookup_or_add_default_as(search_id);
+  cache.logical_time_by_str.add_overwrite(choosen_str, storage.logical_clock);
+  storage.logical_clock++;
+}
+
+const RecentCache *get_recent_cache(const StringRef search_id)
+{
+  RecentCacheStorage &storage = get_recent_cache_storage();
+  return storage.map.lookup_ptr_as(search_id);
 }
 
 }  // namespace blender::bke::string_search

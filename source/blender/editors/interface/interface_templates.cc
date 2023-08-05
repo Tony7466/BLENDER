@@ -33,7 +33,6 @@
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
-#include "BLI_string_search.hh"
 #include "BLI_string_utils.h"
 #include "BLI_timecode.h"
 #include "BLI_utildefines.h"
@@ -67,6 +66,7 @@
 #include "BKE_scene.h"
 #include "BKE_screen.h"
 #include "BKE_shader_fx.h"
+#include "BKE_string_search.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"

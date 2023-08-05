@@ -5,6 +5,7 @@
 #pragma once
 
 #include "BLI_linear_allocator.hh"
+#include "BLI_map.hh"
 #include "BLI_span.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
@@ -12,10 +13,15 @@
 namespace blender::string_search {
 
 struct SearchItem {
+  void *user_data;
   Span<blender::StringRef> normalized_words;
   int length;
-  void *user_data;
   int weight;
+  int recent_time;
+};
+
+struct RecentCache {
+  Map<std::string, int> logical_time_by_str;
 };
 
 /**
@@ -25,6 +31,7 @@ class StringSearchBase {
  protected:
   LinearAllocator<> allocator_;
   Vector<SearchItem> items_;
+  const RecentCache *recent_cache_ = nullptr;
 
  protected:
   void add_impl(StringRef str, void *user_data, int weight);
@@ -43,6 +50,11 @@ class StringSearchBase {
  */
 template<typename T> class StringSearch : private StringSearchBase {
  public:
+  StringSearch(const RecentCache *recent_cache = nullptr)
+  {
+    this->recent_cache_ = recent_cache;
+  }
+
   /**
    * Add a new possible result to the search.
    *

@@ -19,7 +19,6 @@
 #include "BLI_path_util.h"
 #include "BLI_set.hh"
 #include "BLI_string.h"
-#include "BLI_string_search.hh"
 #include "BLI_utildefines.h"
 
 #include "DNA_collection_types.h"
@@ -57,6 +56,7 @@
 #include "BKE_screen.h"
 #include "BKE_simulation_state.hh"
 #include "BKE_simulation_state_serialize.hh"
+#include "BKE_string_search.hh"
 #include "BKE_workspace.h"
 
 #include "BLO_read_write.h"

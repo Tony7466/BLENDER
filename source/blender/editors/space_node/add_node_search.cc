@@ -9,7 +9,6 @@
 #include "AS_asset_representation.hh"
 
 #include "BLI_listbase.h"
-#include "BLI_string_search.hh"
 
 #include "DNA_space_types.h"
 
@@ -20,6 +19,7 @@
 #include "BKE_main.h"
 #include "BKE_node_tree_update.h"
 #include "BKE_screen.h"
+#include "BKE_string_search.hh"
 
 #include "DEG_depsgraph_build.h"
 
@@ -185,7 +185,7 @@ static void add_node_search_update_fn(
     storage.update_items_tag = false;
   }
 
-  string_search::StringSearch<nodes::AddNodeItem> search;
+  string_search::StringSearch<nodes::AddNodeItem> search(bke::string_search::get_recent_cache(""));
 
   for (nodes::AddNodeItem &item : storage.search_add_items) {
     search.add(item.ui_name, &item, item.weight);

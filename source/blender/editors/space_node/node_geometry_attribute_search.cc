@@ -8,7 +8,6 @@
 #include "BLI_rect.h"
 #include "BLI_set.hh"
 #include "BLI_string_ref.hh"
-#include "BLI_string_search.hh"
 
 #include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
@@ -20,6 +19,7 @@
 #include "BKE_node_tree_update.h"
 #include "BKE_node_tree_zones.hh"
 #include "BKE_object.h"
+#include "BKE_string_search.hh"
 
 #include "RNA_access.h"
 #include "RNA_enum_types.h"

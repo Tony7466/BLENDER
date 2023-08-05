@@ -26,7 +26,6 @@
 #include "BLI_math.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
-#include "BLI_string_search.hh"
 #include "BLI_string_utf8.h"
 #include "BLI_vector.hh"
 
@@ -41,6 +40,7 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
+#include "BKE_string_search.hh"
 #include "BKE_unit.h"
 
 #include "ED_asset.hh"

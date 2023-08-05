@@ -30,7 +30,6 @@
 #include "BLI_math_matrix.h"
 #include "BLI_memarena.h"
 #include "BLI_string.h"
-#include "BLI_string_search.hh"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
@@ -39,6 +38,7 @@
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_screen.h"
+#include "BKE_string_search.hh"
 
 #include "ED_screen.hh"
 

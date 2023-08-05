@@ -19,7 +19,6 @@
 #include "BLI_listbase.h"
 #include "BLI_math.h"
 #include "BLI_string.h"
-#include "BLI_string_search.hh"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -30,6 +29,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_report.h"
 #include "BKE_screen.h"
+#include "BKE_string_search.hh"
 
 #include "MEM_guardedalloc.h"
 
