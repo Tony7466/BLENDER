@@ -959,10 +959,6 @@ StructRNA *RNA_def_struct_ptr(BlenderRNA *brna, const char *identifier, StructRN
     srna->flag |= STRUCT_UNDO;
   }
 
-  if (STREQ(identifier, "HelloWorld")) {
-    srna->flag |= STRUCT_PUBLIC_NAMESPACE;
-  }
-
   if (DefRNA.preprocess) {
     srna->flag |= STRUCT_PUBLIC_NAMESPACE;
   }

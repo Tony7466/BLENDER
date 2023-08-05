@@ -16,9 +16,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "RNA_define.h"
 #include "RNA_enum_types.h"
-#include "RNA_prototypes.h"
 
 #include "NOD_rna_define.hh"
 
