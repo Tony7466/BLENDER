@@ -10,6 +10,10 @@
 #include "BLI_math_base.hh"
 #include "BLI_volume_openvdb.hh"
 
+#ifdef WITH_OPENVDB
+#  include <openvdb/tools/ValueTransformer.h>
+#endif
+
 namespace blender::volume {
 
 #ifdef WITH_OPENVDB
@@ -19,11 +23,27 @@ GridMask::GridPtr GridMask::empty_grid()
   return grid;
 }
 
+struct BoolGridToMask {
+  volume::Grid<bool>::GridType::ConstAccessor accessor;
+
+  inline void operator()(const openvdb::MaskGrid::ValueOnIter &iter) const
+  {
+    const openvdb::Coord coord = iter.getCoord();
+    if (!accessor.isValueOn(coord)) {
+      iter.setActiveState(false);
+    }
+  }
+};
+
 GridMask GridMask::from_bools(const volume::GridMask &full_mask,
                               const volume::Grid<bool> &selection)
 {
-  BLI_assert_unreachable();
-  return {};
+  volume::GridMask result = {full_mask.grid()->copy()};
+  if (selection) {
+    BoolGridToMask op{selection.grid_->getConstAccessor()};
+    openvdb::tools::foreach (result.grid_->beginValueOn(), op);
+  }
+  return result;
 }
 
 bool GridMask::is_empty() const
