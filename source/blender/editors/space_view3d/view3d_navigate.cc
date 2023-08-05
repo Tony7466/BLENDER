@@ -726,7 +726,7 @@ static void viewops_data_init_navigation(bContext *C,
   copy_v2_v2_int(vod->init.event_xy, event->xy);
   copy_v2_v2_int(vod->prev.event_xy, event->xy);
 
-  if (viewops_flag & VIEWOPS_FLAG_USE_MOUSE_INIT) {
+  if (!(viewops_flag & VIEWOPS_FLAG_USE_MOUSE_INIT)) {
     zero_v2_int(vod->init.event_xy_offset);
   }
   else {

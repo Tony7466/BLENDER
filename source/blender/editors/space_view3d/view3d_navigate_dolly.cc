@@ -72,6 +72,7 @@ static void view_dolly_to_vector_3d(ARegion *region,
                                     float dfac)
 {
   RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
+  
   madd_v3_v3v3fl(rv3d->ofs, orig_ofs, dvec, -dfac);
 }
 
@@ -90,7 +91,6 @@ static void viewdolly_apply(ViewOpsData *vod, const int move_xy[2], const bool d
 
   view_dolly_to_vector_3d(vod->region, vod->init.ofs, vod->init.mousevec, delta);
   
-
   if (RV3D_LOCK_FLAGS(vod->rv3d) & RV3D_BOXVIEW) {
     view3d_boxview_sync(vod->area, vod->region);
   }
@@ -189,7 +189,6 @@ static int viewdolly_exec(bContext *C, wmOperator *op)
   float mousevec[3];
 
   const int delta = RNA_int_get(op->ptr, "delta");
-  const bool use_cursor_init = RNA_boolean_get(op->ptr, "use_cursor_init");
 
   if (op->customdata) {
     ViewOpsData *vod = static_cast<ViewOpsData *>(op->customdata);
@@ -203,7 +202,8 @@ static int viewdolly_exec(bContext *C, wmOperator *op)
     region = CTX_wm_region(C);
     float xy[2];
     
-    /* recompute direction vector for given zoom direction */
+    /* compute direction vector for given zoom direction */
+    const bool use_cursor_init = RNA_boolean_get(op->ptr, "use_cursor_init");
     if (use_cursor_init) {
       xy[0] = (float)RNA_int_get(op->ptr, "mx");
       xy[1] = (float)RNA_int_get(op->ptr, "my");
@@ -225,6 +225,8 @@ static int viewdolly_exec(bContext *C, wmOperator *op)
   }
 
   ED_view3d_camera_lock_sync(CTX_data_ensure_evaluated_depsgraph(C), v3d, rv3d);
+  ED_view3d_camera_lock_autokey(v3d, rv3d, C, false, true);
+  ED_view3d_camera_lock_undo_grouped_push(op->type->name, v3d, rv3d, C);
 
   ED_region_tag_redraw(region);
 
@@ -243,7 +245,7 @@ static int viewdolly_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     return OPERATOR_CANCELLED;
   }
 
-  /* true by default */
+  /* use_cursor_init is true by default */
   const bool use_cursor_init = RNA_boolean_get(op->ptr, "use_cursor_init");
   vod = viewops_data_create(C, event, V3D_OP_MODE_DOLLY, use_cursor_init);
   op->customdata = vod;
@@ -279,8 +281,8 @@ static int viewdolly_invoke(bContext *C, wmOperator *op, const wmEvent *event)
       xy[1] = vod->region->winy / 2;
     }
     
-    RNA_int_set(op->ptr, "mx", (int)xy[0]);
-    RNA_int_set(op->ptr, "my", (int)xy[1]);
+    RNA_int_set(op->ptr, "mx", xy[0]);
+    RNA_int_set(op->ptr, "my", xy[1]);
   }
   else {
     /* recompute direction vector for given zoom direction */
