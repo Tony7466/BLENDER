@@ -19,4 +19,5 @@
       }, \
       nullptr)
 
-void rna_Node_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr);
+void rna_Node_update(Main *bmain, Scene *scene, PointerRNA *ptr);
+void rna_Node_socket_update(Main *bmain, Scene *scene, PointerRNA *ptr);
