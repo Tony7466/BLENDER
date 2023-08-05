@@ -221,8 +221,8 @@ static void node_geo_exec(GeoNodeExecParams params)
         continue;
       }
 
-      openvdb::GridBase::ConstPtr base_grid = BKE_volume_grid_openvdb_for_read(volume,
-                                                                               volume_grid);
+      openvdb::GridBase::ConstPtr base_grid =
+          BKE_volume_grid_openvdb_for_read(volume, volume_grid).grid_;
       if (!base_grid) {
         continue;
       }

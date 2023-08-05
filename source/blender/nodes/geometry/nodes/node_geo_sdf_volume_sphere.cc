@@ -77,7 +77,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
   Volume *volume = reinterpret_cast<Volume *>(BKE_id_new_nomain(ID_VO, nullptr));
-  BKE_volume_grid_add_vdb(*volume, "distance", std::move(grid));
+  BKE_volume_grid_add_vdb(*volume, "distance", {std::move(grid)});
 
   GeometrySet r_geometry_set = GeometrySet::from_volume(volume);
   params.set_output("Volume", r_geometry_set);

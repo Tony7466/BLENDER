@@ -17,6 +17,7 @@
  * OpenVDB headers should be included here, especially openvdb.h, to avoid affecting other
  * compilation units. */
 #ifdef WITH_OPENVDB
+#  include <openvdb/Types.h>
 #  include <openvdb/version.h>
 #endif
 
@@ -26,11 +27,12 @@ namespace openvdb {
 OPENVDB_USE_VERSION_NAMESPACE
 namespace OPENVDB_VERSION_NAME {
 
-using Index = uint32_t;
+// using Index = uint32_t;
+// using Index32 = uint32_t;
 class GridBase;
 template<typename TreeType> class Grid;
-class ValueMask;
-template<typename... Types> class TypeList;
+// class ValueMask;
+// template<typename... Types> class TypeList;
 class MetaMap;
 
 namespace tree {
@@ -47,6 +49,14 @@ template<typename T, Index N1 = 5, Index N2 = 4, Index N3 = 3> struct Tree4Fwd {
                                   N1>>>;
 };
 }  // namespace tree
+namespace points {
+// template<typename IntType_, Index Kind> struct PointIndex;
+// using PointDataIndex32 = PointIndex<Index32, 1>;
+template<typename T, Index Log2Dim> class PointDataLeafNode;
+using PointDataTree = tree::Tree<tree::RootNode<
+    tree::InternalNode<tree::InternalNode<PointDataLeafNode<PointDataIndex32, 3>, 4>, 5>>>;
+using PointDataGrid = Grid<PointDataTree>;
+}  // namespace points
 }  // namespace OPENVDB_VERSION_NAME
 }  // namespace openvdb
 #endif
@@ -87,9 +97,11 @@ using FloatTree = TreeCommon<float>;
 using Float2Tree = TreeCommon<float2>;
 using Float3Tree = TreeCommon<float3>;
 // using Float4Tree = TreeCommon<float4>;
+using DoubleTree = TreeCommon<double>;
+using Double3Tree = TreeCommon<double3>;
 using IntTree = TreeCommon<int32_t>;
 using Int2Tree = TreeCommon<int2>;
-// using Int3Tree = TreeCommon<int3>;
+using Int3Tree = TreeCommon<int3>;
 // using Int4Tree = TreeCommon<int4>;
 using UIntTree = TreeCommon<uint32_t>;
 // using UInt2Tree = TreeCommon<uint2>;
@@ -104,9 +116,11 @@ using FloatGrid = openvdb::Grid<FloatTree>;
 using Float2Grid = openvdb::Grid<Float2Tree>;
 using Float3Grid = openvdb::Grid<Float3Tree>;
 // using Float4Grid = openvdb::Grid<Float4Tree>;
+using DoubleGrid = openvdb::Grid<DoubleTree>;
+using Double3Grid = openvdb::Grid<Double3Tree>;
 using IntGrid = openvdb::Grid<IntTree>;
 using Int2Grid = openvdb::Grid<Int2Tree>;
-// using Int3Grid = openvdb::Grid<Int3Tree>;
+using Int3Grid = openvdb::Grid<Int3Tree>;
 // using Int4Grid = openvdb::Grid<Int4Tree>;
 using UIntGrid = openvdb::Grid<UIntTree>;
 // using UInt2Grid = openvdb::Grid<UInt2Tree>;
@@ -114,6 +128,7 @@ using UIntGrid = openvdb::Grid<UIntTree>;
 // using UInt4Grid = openvdb::Grid<UInt4Tree>;
 using ScalarGrid = openvdb::Grid<ScalarTree>;
 using TopologyGrid = openvdb::Grid<TopologyTree>;
+using PointDataGrid = openvdb::points::PointDataGrid;
 
 using SupportedGridValueTypes = std::tuple<bool,
                                            float,

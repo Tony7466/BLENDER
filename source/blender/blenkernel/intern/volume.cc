@@ -544,7 +544,7 @@ bool BKE_volume_save(const Volume *volume,
   openvdb::GridCPtrVec vdb_grids;
 
   for (VolumeGrid &grid : grids) {
-    vdb_grids.push_back(BKE_volume_grid_openvdb_for_read(volume, &grid));
+    vdb_grids.push_back(BKE_volume_grid_openvdb_for_read(volume, &grid).grid_);
   }
 
   try {
@@ -578,7 +578,7 @@ bool BKE_volume_min_max(const Volume *volume, float3 &r_min, float3 &r_max)
   if (BKE_volume_load(const_cast<Volume *>(volume), G.main)) {
     for (const int i : IndexRange(BKE_volume_num_grids(volume))) {
       const VolumeGrid *volume_grid = BKE_volume_grid_get_for_read(volume, i);
-      openvdb::GridBase::ConstPtr grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid);
+      blender::volume::GGrid grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid);
       float3 grid_min;
       float3 grid_max;
       if (BKE_volume_grid_bounds(grid, grid_min, grid_max)) {
@@ -988,8 +988,9 @@ void BKE_volume_grid_clear_tree(openvdb::GridBase &grid)
 }
 void BKE_volume_grid_clear_tree(Volume &volume, VolumeGrid &volume_grid)
 {
-  openvdb::GridBase::Ptr grid = BKE_volume_grid_openvdb_for_write(&volume, &volume_grid, false);
-  BKE_volume_grid_clear_tree(*grid);
+  blender::volume::GMutableGrid grid = BKE_volume_grid_openvdb_for_write(
+      &volume, &volume_grid, false);
+  BKE_volume_grid_clear_tree(*grid.grid_);
 }
 
 VolumeGridType BKE_volume_grid_type_openvdb(const openvdb::GridBase &grid)
@@ -1093,7 +1094,8 @@ void BKE_volume_grid_transform_matrix_set(const Volume *volume,
       mat_openvdb(col, row) = mat[col][row];
     }
   }
-  openvdb::GridBase::Ptr grid = BKE_volume_grid_openvdb_for_write(volume, volume_grid, false);
+  openvdb::GridBase::Ptr grid =
+      BKE_volume_grid_openvdb_for_write(volume, volume_grid, false).grid_;
   grid->setTransform(std::make_shared<openvdb::math::Transform>(
       std::make_shared<openvdb::math::AffineMap>(mat_openvdb)));
 #else
@@ -1162,14 +1164,14 @@ VolumeGrid *BKE_volume_grid_add(Volume *volume, const char *name, VolumeGridType
 #ifdef WITH_OPENVDB
 VolumeGrid *BKE_volume_grid_add_vdb(Volume &volume,
                                     const StringRef name,
-                                    openvdb::GridBase::Ptr vdb_grid)
+                                    blender::volume::GMutableGrid vdb_grid)
 {
   VolumeGridVector &grids = *volume.runtime.grids;
   BLI_assert(BKE_volume_grid_find_for_read(&volume, name.data()) == nullptr);
-  BLI_assert(BKE_volume_grid_type_openvdb(*vdb_grid) != VOLUME_GRID_UNKNOWN);
+  BLI_assert(BKE_volume_grid_type_openvdb(*vdb_grid.grid_) != VOLUME_GRID_UNKNOWN);
 
-  vdb_grid->setName(name);
-  grids.emplace_back(vdb_grid);
+  vdb_grid.grid_->setName(name);
+  grids.emplace_back(vdb_grid.grid_);
   return &grids.back();
 }
 #endif
@@ -1231,15 +1233,15 @@ float BKE_volume_simplify_factor(const Depsgraph *depsgraph)
 
 #ifdef WITH_OPENVDB
 
-bool BKE_volume_grid_bounds(openvdb::GridBase::ConstPtr grid, float3 &r_min, float3 &r_max)
+bool BKE_volume_grid_bounds(blender::volume::GGrid grid, float3 &r_min, float3 &r_max)
 {
   /* TODO: we can get this from grid metadata in some cases? */
   openvdb::CoordBBox coordbbox;
-  if (!grid->baseTree().evalLeafBoundingBox(coordbbox)) {
+  if (!grid.grid_->baseTree().evalLeafBoundingBox(coordbbox)) {
     return false;
   }
 
-  openvdb::BBoxd bbox = grid->transform().indexToWorld(coordbbox);
+  openvdb::BBoxd bbox = grid.grid_->transform().indexToWorld(coordbbox);
 
   r_min = float3(float(bbox.min().x()), float(bbox.min().y()), float(bbox.min().z()));
   r_max = float3(float(bbox.max().x()), float(bbox.max().y()), float(bbox.max().z()));
@@ -1247,31 +1249,31 @@ bool BKE_volume_grid_bounds(openvdb::GridBase::ConstPtr grid, float3 &r_min, flo
   return true;
 }
 
-openvdb::GridBase::ConstPtr BKE_volume_grid_shallow_transform(openvdb::GridBase::ConstPtr grid,
-                                                              const blender::float4x4 &transform)
+blender::volume::GGrid BKE_volume_grid_shallow_transform(blender::volume::GGrid grid,
+                                                         const blender::float4x4 &transform)
 {
-  openvdb::math::Transform::Ptr grid_transform = grid->transform().copy();
+  openvdb::math::Transform::Ptr grid_transform = grid.grid_->transform().copy();
   grid_transform->postMult(openvdb::Mat4d((float *)transform.ptr()));
 
   /* Create a transformed grid. The underlying tree is shared. */
-  return grid->copyGridReplacingTransform(grid_transform);
+  return blender::volume::GGrid{grid.grid_->copyGridReplacingTransform(grid_transform)};
 }
 
-openvdb::GridBase::ConstPtr BKE_volume_grid_openvdb_for_metadata(const VolumeGrid *grid)
+blender::volume::GGrid BKE_volume_grid_openvdb_for_metadata(const VolumeGrid *grid)
 {
-  return grid->grid();
+  return blender::volume::GGrid{grid->grid()};
 }
 
-openvdb::GridBase::ConstPtr BKE_volume_grid_openvdb_for_read(const Volume *volume,
-                                                             const VolumeGrid *grid)
+blender::volume::GGrid BKE_volume_grid_openvdb_for_read(const Volume *volume,
+                                                        const VolumeGrid *grid)
 {
   BKE_volume_grid_load(volume, grid);
-  return grid->grid();
+  return blender::volume::GGrid{grid->grid()};
 }
 
-openvdb::GridBase::Ptr BKE_volume_grid_openvdb_for_write(const Volume *volume,
-                                                         VolumeGrid *grid,
-                                                         const bool clear)
+blender::volume::GMutableGrid BKE_volume_grid_openvdb_for_write(const Volume *volume,
+                                                                VolumeGrid *grid,
+                                                                const bool clear)
 {
   const char *volume_name = volume->id.name + 2;
   if (clear) {
@@ -1282,7 +1284,7 @@ openvdb::GridBase::Ptr BKE_volume_grid_openvdb_for_write(const Volume *volume,
     grid->duplicate_reference(volume_name, grids.filepath);
   }
 
-  return grid->grid();
+  return blender::volume::GMutableGrid{grid->grid()};
 }
 
 /* Changing the resolution of a grid. */
@@ -1313,14 +1315,14 @@ struct CreateGridWithChangedResolutionOp {
   const openvdb::GridBase &grid;
   const float resolution_factor;
 
-  template<typename GridType> typename openvdb::GridBase::Ptr operator()()
+  template<typename GridType> blender::volume::GMutableGrid operator()()
   {
-    return create_grid_with_changed_resolution(static_cast<const GridType &>(grid),
-                                               resolution_factor);
+    return {create_grid_with_changed_resolution(static_cast<const GridType &>(grid),
+                                                resolution_factor)};
   }
 };
 
-openvdb::GridBase::Ptr BKE_volume_grid_create_with_changed_resolution(
+blender::volume::GMutableGrid BKE_volume_grid_create_with_changed_resolution(
     const VolumeGridType grid_type,
     const openvdb::GridBase &old_grid,
     const float resolution_factor)

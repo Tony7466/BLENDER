@@ -343,7 +343,8 @@ static void node_geo_exec(GeoNodeExecParams params)
     params.set_default_remaining_outputs();
     return;
   }
-  openvdb::GridBase::ConstPtr base_grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid);
+  openvdb::GridBase::ConstPtr base_grid =
+      BKE_volume_grid_openvdb_for_read(volume, volume_grid).grid_;
   const VolumeGridType grid_type = BKE_volume_grid_type_openvdb(*base_grid);
 
   /* Check that the grid type is supported. */

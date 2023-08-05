@@ -6,8 +6,7 @@
 
 #ifdef WITH_OPENVDB
 
-#  include <openvdb/openvdb.h>
-#  include <openvdb/points/PointDataGrid.h>
+#  include "BLI_volume.hh"
 
 #  include "BKE_volume.h"
 
@@ -19,9 +18,9 @@ struct VolumeGrid;
 
 VolumeGrid *BKE_volume_grid_add_vdb(Volume &volume,
                                     blender::StringRef name,
-                                    openvdb::GridBase::Ptr vdb_grid);
+                                    blender::volume::GMutableGrid vdb_grid);
 
-bool BKE_volume_grid_bounds(openvdb::GridBase::ConstPtr grid,
+bool BKE_volume_grid_bounds(blender::volume::GGrid grid,
                             blender::float3 &r_min,
                             blender::float3 &r_max);
 
@@ -30,15 +29,15 @@ bool BKE_volume_grid_bounds(openvdb::GridBase::ConstPtr grid,
  * This is useful for instances, where there is a separate transform on top of the original
  * grid transform that must be applied for some operations that only take a grid argument.
  */
-openvdb::GridBase::ConstPtr BKE_volume_grid_shallow_transform(openvdb::GridBase::ConstPtr grid,
-                                                              const blender::float4x4 &transform);
+blender::volume::GGrid BKE_volume_grid_shallow_transform(blender::volume::GGrid grid,
+                                                         const blender::float4x4 &transform);
 
-openvdb::GridBase::ConstPtr BKE_volume_grid_openvdb_for_metadata(const VolumeGrid *grid);
-openvdb::GridBase::ConstPtr BKE_volume_grid_openvdb_for_read(const Volume *volume,
-                                                             const VolumeGrid *grid);
-openvdb::GridBase::Ptr BKE_volume_grid_openvdb_for_write(const Volume *volume,
-                                                         VolumeGrid *grid,
-                                                         bool clear);
+blender::volume::GGrid BKE_volume_grid_openvdb_for_metadata(const VolumeGrid *grid);
+blender::volume::GGrid BKE_volume_grid_openvdb_for_read(const Volume *volume,
+                                                        const VolumeGrid *grid);
+blender::volume::GMutableGrid BKE_volume_grid_openvdb_for_write(const Volume *volume,
+                                                                VolumeGrid *grid,
+                                                                bool clear);
 
 void BKE_volume_grid_clear_tree(Volume &volume, VolumeGrid &volume_grid);
 void BKE_volume_grid_clear_tree(openvdb::GridBase &grid);
@@ -48,37 +47,38 @@ VolumeGridType BKE_volume_grid_type_openvdb(const openvdb::GridBase &grid);
 template<typename OpType>
 auto BKE_volume_grid_type_operation(const VolumeGridType grid_type, OpType &&op)
 {
+  namespace grid_types = blender::volume::grid_types;
   switch (grid_type) {
     case VOLUME_GRID_FLOAT:
-      return op.template operator()<openvdb::FloatGrid>();
+      return op.template operator()<grid_types::FloatGrid>();
     case VOLUME_GRID_VECTOR_FLOAT:
-      return op.template operator()<openvdb::Vec3fGrid>();
+      return op.template operator()<grid_types::Float3Grid>();
     case VOLUME_GRID_BOOLEAN:
-      return op.template operator()<openvdb::BoolGrid>();
+      return op.template operator()<grid_types::BoolGrid>();
     case VOLUME_GRID_DOUBLE:
-      return op.template operator()<openvdb::DoubleGrid>();
+      return op.template operator()<grid_types::DoubleGrid>();
     case VOLUME_GRID_INT:
-      return op.template operator()<openvdb::Int32Grid>();
+      return op.template operator()<grid_types::IntGrid>();
     case VOLUME_GRID_INT64:
-      return op.template operator()<openvdb::Int64Grid>();
+      return op.template operator()<grid_types::GridCommon<int64_t>>();
     case VOLUME_GRID_VECTOR_INT:
-      return op.template operator()<openvdb::Vec3IGrid>();
+      return op.template operator()<grid_types::Int3Grid>();
     case VOLUME_GRID_VECTOR_DOUBLE:
-      return op.template operator()<openvdb::Vec3dGrid>();
+      return op.template operator()<grid_types::Double3Grid>();
     case VOLUME_GRID_MASK:
-      return op.template operator()<openvdb::MaskGrid>();
+      return op.template operator()<grid_types::MaskGrid>();
     case VOLUME_GRID_POINTS:
-      return op.template operator()<openvdb::points::PointDataGrid>();
+      return op.template operator()<grid_types::PointDataGrid>();
     case VOLUME_GRID_UNKNOWN:
       break;
   }
 
   /* Should never be called. */
   BLI_assert_msg(0, "should never be reached");
-  return op.template operator()<openvdb::FloatGrid>();
+  return op.template operator()<grid_types::FloatGrid>();
 }
 
-openvdb::GridBase::Ptr BKE_volume_grid_create_with_changed_resolution(
+blender::volume::GMutableGrid BKE_volume_grid_create_with_changed_resolution(
     const VolumeGridType grid_type, const openvdb::GridBase &old_grid, float resolution_factor);
 
 #endif

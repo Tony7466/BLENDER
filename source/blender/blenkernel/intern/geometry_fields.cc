@@ -554,6 +554,7 @@ static bool try_add_shared_field_attribute(MutableAttributeAccessor attributes,
     const AttributeInitConstruct init;
     return attributes.add(id_to_create, domain, data_type, init);
   }
+  return false;
 }
 
 bool try_capture_field_on_geometry(GeometryComponent &component,
@@ -680,6 +681,7 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
      * it's required, and adding the attribute might fail if the domain or type is incorrect. */
     return false;
   }
+  return false;
 }
 
 bool try_capture_field_on_geometry(GeometryComponent &component,

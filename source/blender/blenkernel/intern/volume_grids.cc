@@ -53,7 +53,8 @@ openvdb::GridBase::Ptr VolumeFileCache::Entry::simplified_grid(const int simplif
     simple_grid = simplified_grids.lookup_or_add_cb(simplify_level, [&]() {
       const float resolution_factor = 1.0f / (1 << simplify_level);
       const VolumeGridType grid_type = BKE_volume_grid_type_openvdb(*grid);
-      return BKE_volume_grid_create_with_changed_resolution(grid_type, *grid, resolution_factor);
+      return BKE_volume_grid_create_with_changed_resolution(grid_type, *grid, resolution_factor)
+          .grid_;
     });
   });
   return simple_grid;
