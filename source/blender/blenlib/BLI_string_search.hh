@@ -18,6 +18,9 @@ struct SearchItem {
   int weight;
 };
 
+/**
+ * Non templated base class so that its methods can be implemented outside of this header.
+ */
 class StringSearchBase {
  protected:
   LinearAllocator<> allocator_;
@@ -28,6 +31,16 @@ class StringSearchBase {
   Vector<void *> query_impl(StringRef query) const;
 };
 
+/**
+ * #StringSearch filters and sorts search items based on a string query. Every search item has data
+ * of type T attached that is used to identify it.
+ *
+ * When querying, the a match score is computed between the query string and each item. Items that
+ * don't match are fitered out, the rest is sorted by the score. Elements with the same score are
+ * further sorted based on the optionally provided weight and other heuristics.
+ *
+ * The usage is simple. First #add all the search items and then use the #query method.
+ */
 template<typename T> class StringSearch : private StringSearchBase {
  public:
   /**
