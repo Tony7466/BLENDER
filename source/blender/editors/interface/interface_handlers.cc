@@ -45,6 +45,7 @@
 #include "BKE_paint.hh"
 #include "BKE_report.h"
 #include "BKE_screen.h"
+#include "BKE_string_search.hh"
 #include "BKE_tracking.h"
 #include "BKE_unit.h"
 
@@ -1253,6 +1254,8 @@ static void ui_apply_but_TEX(bContext *C, uiBut *but, uiHandleButtonData *data)
   if ((but->func_arg2 == nullptr) && (but->type == UI_BTYPE_SEARCH_MENU)) {
     uiButSearch *search_but = (uiButSearch *)but;
     but->func_arg2 = search_but->item_active;
+
+    blender::bke::string_search::add_recent_search("", search_but->item_active_str);
   }
 
   ui_apply_but_func(C, but);

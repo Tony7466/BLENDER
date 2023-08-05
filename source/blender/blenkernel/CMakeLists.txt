@@ -273,6 +273,7 @@ set(SRC
   intern/softbody.c
   intern/sound.cc
   intern/speaker.cc
+  intern/string_search.cc
   intern/studiolight.cc
   intern/subdiv.cc
   intern/subdiv_ccg.cc
@@ -482,6 +483,7 @@ set(SRC
   BKE_softbody.h
   BKE_sound.h
   BKE_speaker.h
+  BKE_string_search.hh
   BKE_studiolight.h
   BKE_subdiv.hh
   BKE_subdiv_ccg.hh
