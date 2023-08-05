@@ -275,6 +275,7 @@ list(APPEND LIB
 )
 
 blender_add_lib(bf_nodes_geometry "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+target_link_libraries(bf_nodes_geometry_generated bf_nodes_geometry)
 
 if(WITH_UNITY_BUILD)
   set_target_properties(bf_nodes_geometry PROPERTIES UNITY_BUILD ON)
