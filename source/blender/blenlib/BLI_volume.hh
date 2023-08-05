@@ -31,6 +31,7 @@ class GridBase;
 template<typename TreeType> class Grid;
 class ValueMask;
 template<typename... Types> class TypeList;
+class MetaMap;
 
 namespace tree {
 template<typename T, Index Log2Dim> class LeafNode;

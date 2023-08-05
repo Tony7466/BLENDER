@@ -9,6 +9,7 @@
 #include "intern/volume_grids.hh"
 
 #include "BLI_task.hh"
+#include "BLI_volume_openvdb.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_volume.h"

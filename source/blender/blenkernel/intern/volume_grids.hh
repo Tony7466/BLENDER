@@ -11,6 +11,7 @@
 #include "BLI_ghash.h"
 #include "BLI_map.hh"
 #include "BLI_path_util.h"
+#include "BLI_volume.hh"
 
 #include "BKE_attribute.h"
 #include "BKE_volume.h"
@@ -18,11 +19,8 @@
 #include "DNA_volume_types.h"
 
 #include <list>
+#include <mutex>
 #include <unordered_set>
-
-#ifdef WITH_OPENVDB
-#  include <openvdb/openvdb.h>
-#endif
 
 #ifdef WITH_OPENVDB
 
@@ -56,21 +54,23 @@ class AttributeIDRef;
 static struct VolumeFileCache {
   /* Cache Entry */
   struct Entry {
-    Entry(const std::string &filepath, const openvdb::GridBase::Ptr &grid);
+    using GridPtr = std::shared_ptr<openvdb::GridBase>;
+
+    Entry(const std::string &filepath, const GridPtr &grid);
     Entry(const Entry &other);
 
     /* Returns the original grid or a simplified version depending on the given #simplify_level. */
-    openvdb::GridBase::Ptr simplified_grid(const int simplify_level);
+    GridPtr simplified_grid(const int simplify_level);
 
     /* Unique key: filename + grid name. */
     std::string filepath;
     std::string grid_name;
 
     /* OpenVDB grid. */
-    openvdb::GridBase::Ptr grid;
+    GridPtr grid;
 
     /* Simplified versions of #grid. The integer key is the simplification level. */
-    blender::Map<int, openvdb::GridBase::Ptr> simplified_grids;
+    blender::Map<int, GridPtr> simplified_grids;
 
     /* Has the grid tree been loaded? */
     mutable bool is_loaded = false;
@@ -125,8 +125,10 @@ static struct VolumeFileCache {
  * stored in the global cache. Procedurally generated grids are not. */
 
 struct VolumeGrid {
+  using GridPtr = std::shared_ptr<openvdb::GridBase>;
+
   VolumeGrid(const VolumeFileCache::Entry &template_entry, const int simplify_level);
-  VolumeGrid(const openvdb::GridBase::Ptr &grid);
+  VolumeGrid(const GridPtr &grid);
   VolumeGrid(const VolumeGrid &other);
   ~VolumeGrid();
 
@@ -140,12 +142,12 @@ struct VolumeGrid {
   const char *error_message() const;
   bool grid_is_loaded() const;
   VolumeGridType grid_type() const;
-  openvdb::GridBase::Ptr grid() const;
+  GridPtr grid() const;
 
   void set_simplify_level(const int simplify_level);
 
  private:
-  const openvdb::GridBase::Ptr &main_grid() const;
+  const GridPtr &main_grid() const;
 
  protected:
   /* File cache entry when grid comes directly from a file and may be shared
@@ -155,7 +157,7 @@ struct VolumeGrid {
    * instead of the original high resolution grid. */
   int simplify_level = 0;
   /* OpenVDB grid if it's not shared through the file cache. */
-  openvdb::GridBase::Ptr local_grid;
+  GridPtr local_grid;
   /**
    * Indicates if the tree has been loaded for this grid. Note that vdb.tree()
    * may actually be loaded by another user while this is false. But only after
@@ -172,6 +174,8 @@ struct VolumeGrid {
  * the actual grids are always saved in a VDB file. */
 
 struct VolumeGridVector : public std::list<VolumeGrid> {
+  using MetaMapPtr = std::shared_ptr<openvdb::MetaMap>;
+
   VolumeGridVector();
   VolumeGridVector(const VolumeGridVector &other);
 
@@ -194,7 +198,7 @@ struct VolumeGridVector : public std::list<VolumeGrid> {
   /* File loading error message. */
   std::string error_msg;
   /* File Metadata. */
-  openvdb::MetaMap::Ptr metadata;
+  MetaMapPtr metadata;
 };
 
 #endif

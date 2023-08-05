@@ -9,10 +9,6 @@
 
 #include "attribute_access_intern.hh"
 
-#ifdef WITH_OPENVDB
-#  include <openvdb/openvdb.h>
-#endif
-
 namespace blender::bke {
 
 /**

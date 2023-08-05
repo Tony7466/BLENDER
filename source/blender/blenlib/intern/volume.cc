@@ -10,10 +10,6 @@
 #include "BLI_math_base.hh"
 #include "BLI_volume_openvdb.hh"
 
-#ifdef WITH_OPENVDB
-#  include <openvdb/openvdb.h>
-#endif
-
 namespace blender::volume {
 
 #ifdef WITH_OPENVDB
