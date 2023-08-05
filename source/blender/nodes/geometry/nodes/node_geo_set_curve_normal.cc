@@ -62,7 +62,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Curve", std::move(geometry_set));
 }
 
-void node_rna(StructRNA *srna)
+static void node_rna(StructRNA *srna)
 {
   PropertyRNA *prop;
 
