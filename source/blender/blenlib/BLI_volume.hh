@@ -13,16 +13,44 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_parameter_pack_utils.hh"
 
+/* Note: version header included here to enable correct forward declaration of some types. No other
+ * OpenVDB headers should be included here, especially openvdb.h, to avoid affecting other
+ * compilation units. */
 #ifdef WITH_OPENVDB
-#  include <openvdb/openvdb.h>
+#  include <openvdb/version.h>
+#endif
+
+#ifdef WITH_OPENVDB
+/* Forward declaration for basic OpenVDB types. */
+namespace openvdb {
+OPENVDB_USE_VERSION_NAMESPACE
+namespace OPENVDB_VERSION_NAME {
+
+using Index = uint32_t;
+class GridBase;
+template<typename TreeType> class Grid;
+class ValueMask;
+template<typename... Types> class TypeList;
+
+namespace tree {
+template<typename T, Index Log2Dim> class LeafNode;
+template<typename ChildNodeType, Index Log2Dim> class InternalNode;
+template<typename ChildNodeType> class RootNode;
+template<typename RootNodeType> class Tree;
+
+/* Forward-declared version of Tree4, can't use the actual Tree4 alias because it can't be
+ * forward-declared. */
+template<typename T, Index N1 = 5, Index N2 = 4, Index N3 = 3> struct Tree4Fwd {
+  using Type = openvdb::tree::Tree<openvdb::tree::RootNode<
+      openvdb::tree::InternalNode<openvdb::tree::InternalNode<openvdb::tree::LeafNode<T, N3>, N2>,
+                                  N1>>>;
+};
+}  // namespace tree
+}  // namespace OPENVDB_VERSION_NAME
+}  // namespace openvdb
 #endif
 
 namespace blender {
-
-namespace volume {
-template<typename T> class Grid;
-template<typename T> class MutableGrid;
-}  // namespace volume
 
 /* XXX OpenVDB expects some math functions on vector types. */
 template<typename T, int Size> inline VecBase<T, Size> Abs(VecBase<T, Size> v)
@@ -41,17 +69,12 @@ template<int Size> inline VecBase<uint32_t, Size> Abs(VecBase<uint32_t, Size> v)
 
 namespace volume {
 
-/* -------------------------------------------------------------------- */
-/** \name Tree and Grid types for Blender CPP types
- * \{ */
-
 #ifdef WITH_OPENVDB
-
 namespace grid_types {
 
 template<typename ValueType>
-using TreeCommon = typename openvdb::tree::Tree4<ValueType, 5, 4, 3>::Type;
-template<typename ValueType> using GridCommon = typename openvdb::Grid<TreeCommon<ValueType>>;
+using TreeCommon = typename openvdb::tree::Tree4Fwd<ValueType, 5, 4, 3>::Type;
+template<typename ValueType> using GridCommon = openvdb::Grid<TreeCommon<ValueType>>;
 
 /* TODO add more as needed. */
 /* TODO could use template magic to generate all from 1 list, but not worth it for now. */
@@ -121,22 +144,18 @@ using SupportedGridTypes = openvdb::TypeList<BoolGrid,
                                              TopologyGrid>;
 
 }  // namespace grid_types
-
 #endif
 
-/** \} */
+template<typename T> class Grid;
+template<typename T> class MutableGrid;
 
 /* Mask defined by active voxels of the grid. */
 class GridMask {
 #ifdef WITH_OPENVDB
-  openvdb::MaskGrid::ConstPtr grid_;
+  using GridPtr = std::shared_ptr<grid_types::MaskGrid>;
+  GridPtr grid_;
 
-  static const openvdb::MaskGrid::ConstPtr empty_grid()
-  {
-    static openvdb::MaskGrid::ConstPtr grid = openvdb::MaskGrid::create();
-    return grid;
-  }
-
+  static GridPtr empty_grid();
 #endif
 
  public:
@@ -159,7 +178,7 @@ class GridMask {
   }
 
 #ifdef WITH_OPENVDB
-  GridMask(const openvdb::MaskGrid::ConstPtr &grid) : grid_(grid) {}
+  GridMask(const GridPtr &grid) : grid_(grid) {}
 #endif
 
   static GridMask from_bools(const volume::GridMask &full_mask,
@@ -169,7 +188,7 @@ class GridMask {
   int64_t min_voxel_count() const;
 
 #ifdef WITH_OPENVDB
-  const openvdb::MaskGrid::ConstPtr &grid() const
+  const GridPtr &grid() const
   {
     return grid_;
   }
@@ -185,7 +204,8 @@ class GridMask {
 class GGrid {
  public:
 #ifdef WITH_OPENVDB
-  openvdb::GridBase::ConstPtr grid_ = nullptr;
+  using GridPtr = std::shared_ptr<const openvdb::GridBase>;
+  GridPtr grid_ = nullptr;
 #endif
 
   int64_t voxel_count() const;
@@ -201,7 +221,8 @@ class GGrid {
 class GMutableGrid {
  public:
 #ifdef WITH_OPENVDB
-  openvdb::GridBase::Ptr grid_ = nullptr;
+  using GridPtr = std::shared_ptr<openvdb::GridBase>;
+  GridPtr grid_ = nullptr;
 #endif
 
   operator GGrid() const
@@ -356,14 +377,15 @@ template<typename Func> void field_to_static_type(const CPPType &type, Func func
 }
 
 /* Helper function to evaluate a function with a static field type. */
-template<typename Func> void grid_to_static_type(const openvdb::GridBase::Ptr &grid, Func func)
+template<typename Func>
+void grid_to_static_type(const std::shared_ptr<openvdb::GridBase> &grid, Func func)
 {
   grid->apply<grid_types::SupportedGridTypes>(func);
 }
 
 /* Helper function to evaluate a function with a static field type. */
 template<typename Func>
-void grid_to_static_type(const openvdb::GridBase::ConstPtr &grid, Func func)
+void grid_to_static_type(const std::shared_ptr<const openvdb::GridBase> &grid, Func func)
 {
   grid->apply<grid_types::SupportedGridTypes>(func);
 }

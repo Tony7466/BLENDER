@@ -121,7 +121,8 @@ static Vector<GGrid> get_volume_field_context_inputs(
     if (!grid) {
       const CPPType &type = field_input.cpp_type();
       const void *default_value = type.default_value();
-      grid = GMutableGrid::create(scope, type, default_value);
+      grid = GMutableGrid::create(type, default_value);
+      scope.add_value<GGrid::GridPtr>(std::move(grid.grid_));
     }
     field_context_inputs.append(grid);
   }
@@ -573,7 +574,8 @@ Vector<GGrid> evaluate_volume_fields(ResourceScope &scope,
   if (mask.is_empty()) {
     for (const int i : fields_to_evaluate.index_range()) {
       const CPPType &type = fields_to_evaluate[i].cpp_type();
-      r_grids[i] = GMutableGrid::create(scope, type);
+      r_grids[i] = GMutableGrid::create(type);
+      scope.add_value<GGrid::GridPtr>(std::move(r_grids[i].grid_));
     }
     return r_grids;
   }
@@ -613,8 +615,9 @@ Vector<GGrid> evaluate_volume_fields(ResourceScope &scope,
       }
       case FieldNodeType::Constant: {
         const FieldConstant &field_constant = static_cast<const FieldConstant &>(field.node());
-        r_grids[out_index] = GMutableGrid::create(
-            scope, field_constant.type(), field_constant.value().get());
+        r_grids[out_index] = GMutableGrid::create(field_constant.type(),
+                                                  field_constant.value().get());
+        scope.add_value<GGrid::GridPtr>(std::move(r_grids[out_index].grid_));
         break;
       }
       case FieldNodeType::Operation: {

@@ -314,8 +314,8 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
     GMutableGrid dst_grid = get_dst_grid(out_index);
     if (!dst_grid) {
       /* Create a destination grid for the computed result. */
-      dst_grid = GMutableGrid::create(
-          scope, type, mask, type.default_value(), type.default_value());
+      dst_grid = GMutableGrid::create(type, mask, type.default_value(), type.default_value());
+      scope.add_value<GMutableGrid::GridPtr>(std::move(dst_grid.grid_));
       r_grids[out_index] = dst_grid;
     }
     else {

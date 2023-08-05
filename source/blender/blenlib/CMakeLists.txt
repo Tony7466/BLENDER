@@ -377,6 +377,7 @@ set(SRC
   BLI_virtual_array.hh
   BLI_virtual_vector_array.hh
   BLI_volume.hh
+  BLI_volume_openvdb.hh
   BLI_voronoi_2d.h
   BLI_voxel.h
   BLI_winstuff.h

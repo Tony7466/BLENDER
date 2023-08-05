@@ -661,14 +661,14 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
     }
 
     attributes.remove(attribute_id);
-    if (attributes.add(attribute_id, domain, data_type, bke::AttributeInitMoveGrid(grid))) {
+    if (attributes.add(
+            attribute_id, domain, data_type, bke::AttributeInitMoveGrid(grid.grid_.get())))
+    {
       return true;
     }
 
     /* If the name corresponds to a builtin attribute, removing the attribute might fail if
      * it's required, and adding the attribute might fail if the domain or type is incorrect. */
-    type.destruct_n(buffer, domain_size);
-    MEM_freeN(buffer);
     return false;
   }
 }

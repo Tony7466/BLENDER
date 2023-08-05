@@ -232,6 +232,10 @@ static bool add_builtin_type_custom_data_layer_from_init(CustomData &custom_data
           &custom_data, data_type, const_cast<void *>(init.data), domain_num, init.sharing_info);
       return stored_data != nullptr;
     }
+    case AttributeInit::Type::Grid:
+    case AttributeInit::Type::MoveGrid:
+    case AttributeInit::Type::SharedGrid:
+      return false;
   }
 
   BLI_assert_unreachable();
@@ -317,6 +321,10 @@ static bool add_custom_data_layer_from_attribute_init(const AttributeIDRef &attr
                                                        init.sharing_info);
       break;
     }
+    case AttributeInit::Type::Grid:
+    case AttributeInit::Type::MoveGrid:
+    case AttributeInit::Type::SharedGrid:
+      break;
   }
   return old_layer_num < custom_data.totlayer;
 }

@@ -8,11 +8,20 @@
 
 #include "BLI_cpp_type.hh"
 #include "BLI_math_base.hh"
-#include "BLI_volume.hh"
+#include "BLI_volume_openvdb.hh"
+
+#ifdef WITH_OPENVDB
+#  include <openvdb/openvdb.h>
+#endif
 
 namespace blender::volume {
 
 #ifdef WITH_OPENVDB
+GridMask::GridPtr GridMask::empty_grid()
+{
+  static GridPtr grid = grid_types::MaskGrid::create();
+  return grid;
+}
 
 GridMask GridMask::from_bools(const volume::GridMask &full_mask,
                               const volume::Grid<bool> &selection)
