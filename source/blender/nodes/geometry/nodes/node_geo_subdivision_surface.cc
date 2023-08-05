@@ -16,6 +16,10 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "RNA_define.h"
+#include "RNA_enum_types.h"
+#include "RNA_prototypes.h"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_subdivision_surface_cc {
@@ -192,6 +196,55 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_subdivision_surface_cc
 
+void rna_Node_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr);
+
+static void register_subdiv_rna_props()
+{
+  StructRNA *srna = &RNA_GeometryNodeSubdivisionSurface;
+  PropertyRNA *prop;
+  prop = RNA_def_property(srna, "qwe", PROP_INT, PROP_NONE);
+  RNA_def_property_int_funcs_runtime(
+      prop, [](PointerRNA * /*ptr*/, PropertyRNA * /*prop*/) { return 123; }, nullptr, nullptr);
+
+  prop = RNA_def_property(srna, "uv_smooth", PROP_ENUM, PROP_NONE);
+  // RNA_def_property_enum_sdna(prop, nullptr, "uv_smooth");
+  RNA_def_property_enum_funcs_runtime(
+      prop,
+      [](PointerRNA *ptr, PropertyRNA * /*prop*/) -> int {
+        return static_cast<NodeGeometrySubdivisionSurface *>(
+                   static_cast<bNode *>(ptr->data)->storage)
+            ->uv_smooth;
+      },
+      [](PointerRNA *ptr, PropertyRNA * /*prop*/, int value) {
+        static_cast<NodeGeometrySubdivisionSurface *>(static_cast<bNode *>(ptr->data)->storage)
+            ->uv_smooth = value;
+      },
+      nullptr);
+  RNA_def_property_enum_items(prop, rna_enum_subdivision_uv_smooth_items);
+  RNA_def_property_enum_default(prop, SUBSURF_UV_SMOOTH_PRESERVE_BOUNDARIES);
+  RNA_def_property_ui_text(prop, "UV Smooth", "Controls how smoothing is applied to UVs");
+  RNA_def_property_update_runtime(prop, (void *)rna_Node_update);
+
+  prop = RNA_def_property(srna, "boundary_smooth", PROP_ENUM, PROP_NONE);
+  // RNA_def_property_enum_sdna(prop, nullptr, "boundary_smooth");
+  RNA_def_property_enum_funcs_runtime(
+      prop,
+      [](PointerRNA *ptr, PropertyRNA * /*prop*/) -> int {
+        return static_cast<NodeGeometrySubdivisionSurface *>(
+                   static_cast<bNode *>(ptr->data)->storage)
+            ->boundary_smooth;
+      },
+      [](PointerRNA *ptr, PropertyRNA * /*prop*/, int value) {
+        static_cast<NodeGeometrySubdivisionSurface *>(static_cast<bNode *>(ptr->data)->storage)
+            ->boundary_smooth = value;
+      },
+      nullptr);
+  RNA_def_property_enum_items(prop, rna_enum_subdivision_boundary_smooth_items);
+  RNA_def_property_enum_default(prop, SUBSURF_BOUNDARY_SMOOTH_ALL);
+  RNA_def_property_ui_text(prop, "Boundary Smooth", "Controls how open boundaries are smoothed");
+  RNA_def_property_update_runtime(prop, (void *)rna_Node_update);
+}
+
 void register_node_type_geo_subdivision_surface()
 {
   namespace file_ns = blender::nodes::node_geo_subdivision_surface_cc;
@@ -210,4 +263,6 @@ void register_node_type_geo_subdivision_surface()
                     node_free_standard_storage,
                     node_copy_standard_storage);
   nodeRegisterType(&ntype);
+
+  register_subdiv_rna_props();
 }

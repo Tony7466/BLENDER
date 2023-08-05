@@ -17,7 +17,7 @@
 
 #ifdef RNA_RUNTIME
 
-static int get_my_value(PointerRNA *ptr)
+static int get_my_value(PointerRNA * /*ptr*/)
 {
   return 55;
 }
