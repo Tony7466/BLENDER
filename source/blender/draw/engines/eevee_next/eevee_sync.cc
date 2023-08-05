@@ -196,8 +196,8 @@ bool SyncModule::sync_sculpt(Object *ob,
     return false;
   }
 
-  /* Use a valid bounding box. The PBVH module already does its own culling,
-   * but a valid bounding box is still needed for directional shadow tilemap bounds computation. */
+  /* Use a valid bounding box. The PBVH module already does its own culling, but a valid */
+  /* bounding box is still needed for directional shadow tile-map bounds computation. */
   float3 min, max;
   BKE_pbvh_bounding_box(ob_ref.object->sculpt->pbvh, min, max);
   float3 center = (min + max) * 0.5;
@@ -512,7 +512,7 @@ void foreach_hair_particle_handle(Object *ob, ObjectHandle ob_handle, HairHandle
         continue;
       }
 
-      ObjectHandle particle_sys_handle = {nullptr};
+      ObjectHandle particle_sys_handle = {{nullptr}};
       particle_sys_handle.object_key = ObjectKey(ob_handle.object_key.ob, sub_key++);
       particle_sys_handle.recalc = particle_sys->recalc;
 
