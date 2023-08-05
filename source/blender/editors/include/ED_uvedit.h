@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -33,7 +34,7 @@ struct bNode;
 struct bNodeTree;
 struct wmKeyConfig;
 
-/* uvedit_ops.c */
+/* `uvedit_ops.cc` */
 
 void ED_operatortypes_uvedit(void);
 void ED_operatormacros_uvedit(void);
@@ -203,6 +204,13 @@ void uvedit_face_select_shared_vert(const struct Scene *scene,
                                     const bool select,
                                     const bool do_history,
                                     BMUVOffsets offsets);
+/**
+ * Selects UV edges and shared vertices according to sticky_flag.
+ *
+ * \param sticky_flag:
+ * - #SI_STICKY_LOC: selects all UV edges that share the same mesh vertices and UV coordinates.
+ * - #SI_STICKY_VERTEX: selects all UV edges sharing the same mesh vertices.
+ */
 void uvedit_edge_select_shared_vert(const struct Scene *scene,
                                     struct BMEditMesh *em,
                                     struct BMLoop *l,
@@ -210,6 +218,13 @@ void uvedit_edge_select_shared_vert(const struct Scene *scene,
                                     const int sticky_flag,
                                     const bool do_history,
                                     BMUVOffsets offsets);
+/**
+ * Selects shared UVs based on #sticky_flag.
+ *
+ * \param sticky_flag: Type of sticky selection :
+ * - #SI_STICKY_LOC: selects all UVs sharing same mesh vertex and UV coordinates.
+ * - #SI_STICKY_VERTEX: selects all UVs sharing same mesh vertex.
+ */
 void uvedit_uv_select_shared_vert(const struct Scene *scene,
                                   struct BMEditMesh *em,
                                   struct BMLoop *l,
@@ -218,7 +233,9 @@ void uvedit_uv_select_shared_vert(const struct Scene *scene,
                                   const bool do_history,
                                   BMUVOffsets offsets);
 
-/* Sets required UV edge flags as specified by the sticky_flag. */
+/**
+ * Sets required UV edge flags as specified by the `sticky_flag`.
+ */
 void uvedit_edge_select_set_noflush(const struct Scene *scene,
                                     struct BMLoop *l,
                                     const bool select,
@@ -254,7 +271,7 @@ bool ED_uvedit_nearest_uv_multi(const struct View2D *v2d,
                                 const struct Scene *scene,
                                 struct Object **objects,
                                 uint objects_len,
-                                const int mval[2],
+                                const float mval_fl[2],
                                 const bool ignore_selected,
                                 float *dist_sq,
                                 float r_uv[2]);
@@ -300,7 +317,7 @@ void ED_uvedit_select_sync_flush(const struct ToolSettings *ts,
                                  struct BMEditMesh *em,
                                  bool select);
 
-/* uvedit_unwrap_ops.c */
+/* `uvedit_unwrap_ops.cc` */
 
 void ED_uvedit_live_unwrap_begin(struct Scene *scene, struct Object *obedit);
 void ED_uvedit_live_unwrap_re_solve(void);
@@ -309,22 +326,21 @@ void ED_uvedit_live_unwrap_end(short cancel);
 void ED_uvedit_live_unwrap(const struct Scene *scene, struct Object **objects, int objects_len);
 void ED_uvedit_add_simple_uvs(struct Main *bmain, const struct Scene *scene, struct Object *ob);
 
-/* uvedit_draw.c */
+/* `uvedit_draw.cc` */
 
 void ED_image_draw_cursor(struct ARegion *region, const float cursor[2]);
 
-/* uvedit_buttons.c */
+/* `uvedit_buttons.cc` */
 
 void ED_uvedit_buttons_register(struct ARegionType *art);
 
-/* uvedit_islands.c */
+/* `uvedit_islands.cc` */
 
 struct FaceIsland {
   struct FaceIsland *next;
   struct FaceIsland *prev;
   struct BMFace **faces;
   int faces_len;
-  rctf bounds_rect;
   /**
    * \note While this is duplicate information,
    * it allows islands from multiple meshes to be stored in the same list.
@@ -333,6 +349,9 @@ struct FaceIsland {
   float aspect_y;
 };
 
+/**
+ * Calculate islands and add them to \a island_list returning the number of items added.
+ */
 int bm_mesh_calc_uv_islands(const Scene *scene,
                             struct BMesh *bm,
                             ListBase *island_list,
@@ -342,58 +361,12 @@ int bm_mesh_calc_uv_islands(const Scene *scene,
                             const float aspect_y,
                             BMUVOffsets offsets);
 
-struct UVMapUDIM_Params {
-  const struct Image *image;
-  /** Copied from #SpaceImage.tile_grid_shape */
-  int grid_shape[2];
-};
-
-typedef enum {
-  ED_UVPACK_MARGIN_SCALED = 0, /* Use scale of existing UVs to multiply margin. */
-  ED_UVPACK_MARGIN_ADD,        /* Just add the margin, ignoring any UV scale. */
-  ED_UVPACK_MARGIN_FRACTION,   /* Specify a precise fraction of final UV output. */
-} eUVPackIsland_MarginMethod;
-
-/** See also #UnwrapOptions. */
-struct UVPackIsland_Params {
-  uint rotate : 1;
-  uint only_selected_uvs : 1;
-  uint only_selected_faces : 1;
-  uint use_seams : 1;
-  uint correct_aspect : 1;
-  bool ignore_pinned;                       /* Ignore islands which have any pinned UVs. */
-  bool pin_unselected;                      /* Treat unselected UVs as if they were pinned. */
-  eUVPackIsland_MarginMethod margin_method; /* Which formula to use when scaling island margin. */
-  float margin;                             /* Additional space to add around each island. */
-  float udim_base_offset[2];                /* Additional translation for bottom left corner. */
-};
-
 /**
  * Returns true if UV coordinates lie on a valid tile in UDIM grid or tiled image.
  */
 bool uv_coords_isect_udim(const struct Image *image,
                           const int udim_grid[2],
                           const float coords[2]);
-
-/**
- * Pack UV islands from multiple objects.
- *
- * \param scene: Scene containing the objects to be packed.
- * \param objects: Array of Objects to pack.
- * \param objects_len: Length of `objects` array.
- * \param bmesh_override: BMesh array aligned with `objects`.
- * Optional, when non-null this overrides object's BMesh.
- * This is needed to perform UV packing on objects that aren't in edit-mode.
- * \param udim_params: Parameters to specify UDIM target and UDIM source image.
- * \param params: Parameters and options to pass to the packing engine.
- *
- */
-void ED_uvedit_pack_islands_multi(const struct Scene *scene,
-                                  Object **objects,
-                                  uint objects_len,
-                                  struct BMesh **bmesh_override,
-                                  const struct UVMapUDIM_Params *closest_udim,
-                                  const struct UVPackIsland_Params *params);
 
 #ifdef __cplusplus
 }

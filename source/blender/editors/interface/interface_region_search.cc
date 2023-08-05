@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -27,8 +28,8 @@
 #include "BKE_context.h"
 #include "BKE_screen.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "RNA_access.h"
 
@@ -38,7 +39,7 @@
 
 #include "BLT_translation.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "GPU_state.h"
 #include "interface_intern.hh"
@@ -308,11 +309,8 @@ bool ui_searchbox_apply(uiBut *but, ARegion *region)
   return false;
 }
 
-static struct ARegion *wm_searchbox_tooltip_init(struct bContext *C,
-                                                 struct ARegion *region,
-                                                 int * /*r_pass*/,
-                                                 double * /*pass_delay*/,
-                                                 bool *r_exit_on_event)
+static ARegion *wm_searchbox_tooltip_init(
+    bContext *C, ARegion *region, int * /*r_pass*/, double * /*pass_delay*/, bool *r_exit_on_event)
 {
   *r_exit_on_event = true;
 
@@ -376,9 +374,9 @@ bool ui_searchbox_event(
              * (a little confusing if this isn't the case, although it does work). */
             rcti rect;
             ui_searchbox_butrect(&rect, data, data->active);
-            if (BLI_rcti_isect_pt(&rect,
-                                  event->xy[0] - region->winrct.xmin,
-                                  event->xy[1] - region->winrct.ymin)) {
+            if (BLI_rcti_isect_pt(
+                    &rect, event->xy[0] - region->winrct.xmin, event->xy[1] - region->winrct.ymin))
+            {
 
               void *active = data->items.pointers[data->active];
               if (search_but->item_context_menu_fn(C, search_but->arg, active, event)) {
@@ -399,7 +397,8 @@ bool ui_searchbox_event(
         for (a = 0; a < data->items.totitem; a++) {
           ui_searchbox_butrect(&rect, data, a);
           if (BLI_rcti_isect_pt(
-                  &rect, event->xy[0] - region->winrct.xmin, event->xy[1] - region->winrct.ymin)) {
+                  &rect, event->xy[0] - region->winrct.xmin, event->xy[1] - region->winrct.ymin))
+          {
             is_inside = true;
             if (data->active != a) {
               data->active = a;
@@ -536,7 +535,7 @@ int ui_searchbox_autocomplete(bContext *C, ARegion *region, uiBut *but, char *st
   BLI_assert(but->type == UI_BTYPE_SEARCH_MENU);
 
   if (str[0]) {
-    data->items.autocpl = UI_autocomplete_begin(str, ui_but_string_get_max_length(but));
+    data->items.autocpl = UI_autocomplete_begin(str, ui_but_string_get_maxncpy(but));
 
     ui_searchbox_update_fn(C, search_but, but->editstr, &data->items);
 
@@ -651,7 +650,7 @@ static void ui_searchbox_region_draw_fn(const bContext *C, ARegion *region)
 
           if (icon == ICON_BLANK1) {
             icon = ICON_NONE;
-            rect.xmin -= UI_DPI_ICON_SIZE / 4;
+            rect.xmin -= UI_ICON_SIZE / 4;
           }
 
           /* The previous menu item draws the active selection. */
@@ -721,7 +720,7 @@ static uiMenuItemSeparatorType ui_searchbox_item_separator(uiSearchboxData *data
   return separator_type;
 }
 
-static void ui_searchbox_region_layout_fn(const struct bContext *C, struct ARegion *region)
+static void ui_searchbox_region_layout_fn(const bContext *C, ARegion *region)
 {
   uiSearchboxData *data = (uiSearchboxData *)region->regiondata;
 
@@ -762,7 +761,7 @@ static void ui_searchbox_region_layout_fn(const struct bContext *C, struct ARegi
 
     /* We should make this wider if there is a path or hint on the right. */
     if (ui_searchbox_item_separator(data) != UI_MENU_ITEM_SEPARATOR_NONE) {
-      searchbox_width += 12 * data->fstyle.points * U.dpi_fac;
+      searchbox_width += 12 * data->fstyle.points * UI_SCALE_FAC;
     }
 
     rctf rect_fl;
@@ -833,8 +832,8 @@ static void ui_searchbox_region_layout_fn(const struct bContext *C, struct ARegi
     region->winrct.ymax = rect_i.ymax;
   }
 
-  region->winx = region->winrct.xmax - region->winrct.xmin;
-  region->winy = region->winrct.ymax - region->winrct.ymin;
+  region->winx = region->winrct.xmax - region->winrct.xmin + 1;
+  region->winy = region->winrct.ymax - region->winrct.ymin + 1;
 
   data->size_set = true;
 }
@@ -891,7 +890,7 @@ static ARegion *ui_searchbox_create_generic_ex(bContext *C,
   }
   data->sep_string = but->item_sep_string;
 
-  /* adds subwindow */
+  /* Adds sub-window. */
   ED_region_floating_init(region);
 
   /* notify change and redraw */

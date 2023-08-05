@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2012-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # panels get subclassed (not registered directly)
@@ -190,7 +192,7 @@ class MASK_PT_point:
         col = layout.column()
         # Currently only parenting the movie-clip is allowed,
         # so do not over-complicate things for now by using single template_ID
-        #col.template_any_ID(parent, "id", "id_type", text="")
+        # col.template_any_ID(parent, "id", "id_type", text="")
 
         col.label(text="Parent:")
         col.prop(parent, "id", text="")

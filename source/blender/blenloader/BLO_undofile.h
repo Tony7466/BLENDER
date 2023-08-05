@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2004 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2004 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -65,7 +66,7 @@ typedef struct {
 extern "C" {
 #endif
 
-/* Actually only used `writefile.c`. */
+/* Actually only used `writefile.cc`. */
 
 void BLO_memfile_write_init(MemFileWriteData *mem_data,
                             MemFile *written_memfile,

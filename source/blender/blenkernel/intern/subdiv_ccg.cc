@@ -1,11 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2018 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2018 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
  */
 
-#include "BKE_subdiv_ccg.h"
+#include "BKE_subdiv_ccg.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -20,9 +21,9 @@
 #include "BKE_DerivedMesh.h"
 #include "BKE_ccg.h"
 #include "BKE_global.h"
-#include "BKE_mesh.h"
-#include "BKE_subdiv.h"
-#include "BKE_subdiv_eval.h"
+#include "BKE_mesh.hh"
+#include "BKE_subdiv.hh"
+#include "BKE_subdiv_eval.hh"
 
 #include "opensubdiv_topology_refiner_capi.h"
 
@@ -595,8 +596,9 @@ Mesh *BKE_subdiv_to_ccg_mesh(Subdiv *subdiv,
   /* Make sure evaluator is ready. */
   BKE_subdiv_stats_begin(&subdiv->stats, SUBDIV_STATS_SUBDIV_TO_CCG);
   if (!BKE_subdiv_eval_begin_from_mesh(
-          subdiv, coarse_mesh, nullptr, SUBDIV_EVALUATOR_TYPE_CPU, nullptr)) {
-    if (coarse_mesh->totpoly) {
+          subdiv, coarse_mesh, nullptr, SUBDIV_EVALUATOR_TYPE_CPU, nullptr))
+  {
+    if (coarse_mesh->faces_num) {
       return nullptr;
     }
   }
@@ -614,7 +616,7 @@ Mesh *BKE_subdiv_to_ccg_mesh(Subdiv *subdiv,
   if (subdiv_ccg == nullptr) {
     return nullptr;
   }
-  Mesh *result = BKE_mesh_new_nomain_from_template(coarse_mesh, 0, 0, 0, 0, 0);
+  Mesh *result = BKE_mesh_new_nomain_from_template(coarse_mesh, 0, 0, 0, 0);
   result->runtime->subdiv_ccg = subdiv_ccg;
   return result;
 }
@@ -1984,57 +1986,59 @@ const int *BKE_subdiv_ccg_start_face_grid_index_get(const SubdivCCG *subdiv_ccg)
   return subdiv_ccg->cache_.start_face_grid_index;
 }
 
-static void adjacet_vertices_index_from_adjacent_edge(const SubdivCCG *subdiv_ccg,
-                                                      const SubdivCCGCoord *coord,
-                                                      const MLoop *mloop,
-                                                      const MPoly *mpoly,
-                                                      int *r_v1,
-                                                      int *r_v2)
+static void adjacent_vertices_index_from_adjacent_edge(const SubdivCCG *subdiv_ccg,
+                                                       const SubdivCCGCoord *coord,
+                                                       const blender::Span<int> corner_verts,
+                                                       const blender::OffsetIndices<int> faces,
+                                                       int *r_v1,
+                                                       int *r_v2)
 {
   const int grid_size_1 = subdiv_ccg->grid_size - 1;
-  const int poly_index = BKE_subdiv_ccg_grid_to_face_index(subdiv_ccg, coord->grid_index);
-  const MPoly *p = &mpoly[poly_index];
-  *r_v1 = mloop[coord->grid_index].v;
+  const int face_index = BKE_subdiv_ccg_grid_to_face_index(subdiv_ccg, coord->grid_index);
+  const blender::IndexRange face = faces[face_index];
+  *r_v1 = corner_verts[coord->grid_index];
 
-  const int corner = poly_find_loop_from_vert(p, &mloop[p->loopstart], *r_v1);
+  const int corner = blender::bke::mesh::face_find_corner_from_vert(face, corner_verts, *r_v1);
   if (coord->x == grid_size_1) {
-    const MLoop *next = ME_POLY_LOOP_NEXT(mloop, p, corner);
-    *r_v2 = next->v;
+    const int next = blender::bke::mesh::face_corner_next(face, corner);
+    *r_v2 = corner_verts[next];
   }
   if (coord->y == grid_size_1) {
-    const MLoop *prev = ME_POLY_LOOP_PREV(mloop, p, corner);
-    *r_v2 = prev->v;
+    const int prev = blender::bke::mesh::face_corner_prev(face, corner);
+    *r_v2 = corner_verts[prev];
   }
 }
 
-SubdivCCGAdjacencyType BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(const SubdivCCG *subdiv_ccg,
-                                                                     const SubdivCCGCoord *coord,
-                                                                     const MLoop *mloop,
-                                                                     const MPoly *mpoly,
-                                                                     int *r_v1,
-                                                                     int *r_v2)
+SubdivCCGAdjacencyType BKE_subdiv_ccg_coarse_mesh_adjacency_info_get(
+    const SubdivCCG *subdiv_ccg,
+    const SubdivCCGCoord *coord,
+    const blender::Span<int> corner_verts,
+    const blender::OffsetIndices<int> faces,
+    int *r_v1,
+    int *r_v2)
 {
 
   const int grid_size_1 = subdiv_ccg->grid_size - 1;
   if (is_corner_grid_coord(subdiv_ccg, coord)) {
     if (coord->x == 0 && coord->y == 0) {
-      /* Grid corner in the center of a poly. */
+      /* Grid corner in the center of a face. */
       return SUBDIV_CCG_ADJACENT_NONE;
     }
     if (coord->x == grid_size_1 && coord->y == grid_size_1) {
       /* Grid corner adjacent to a coarse mesh vertex. */
-      *r_v1 = *r_v2 = mloop[coord->grid_index].v;
+      *r_v1 = *r_v2 = corner_verts[coord->grid_index];
       return SUBDIV_CCG_ADJACENT_VERTEX;
     }
     /* Grid corner adjacent to the middle of a coarse mesh edge. */
-    adjacet_vertices_index_from_adjacent_edge(subdiv_ccg, coord, mloop, mpoly, r_v1, r_v2);
+    adjacent_vertices_index_from_adjacent_edge(subdiv_ccg, coord, corner_verts, faces, r_v1, r_v2);
     return SUBDIV_CCG_ADJACENT_EDGE;
   }
 
   if (is_boundary_grid_coord(subdiv_ccg, coord)) {
     if (!is_inner_edge_grid_coordinate(subdiv_ccg, coord)) {
       /* Grid boundary adjacent to a coarse mesh edge. */
-      adjacet_vertices_index_from_adjacent_edge(subdiv_ccg, coord, mloop, mpoly, r_v1, r_v2);
+      adjacent_vertices_index_from_adjacent_edge(
+          subdiv_ccg, coord, corner_verts, faces, r_v1, r_v2);
       return SUBDIV_CCG_ADJACENT_EDGE;
     }
   }

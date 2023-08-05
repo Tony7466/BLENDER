@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -93,11 +94,11 @@ struct TimeMarker *ED_markers_get_first_selected(ListBase *markers);
  * \{ */
 
 /**
- * Called in screen_ops.c:ED_operatortypes_screen().
+ * Called in `screen_ops.cc`, #ED_operatortypes_screen().
  */
 void ED_operatortypes_marker(void);
 /**
- * Called in screen_ops.c:ED_keymap_screen().
+ * Called in `screen_ops.cc`, #ED_keymap_screen().
  */
 void ED_keymap_marker(struct wmKeyConfig *keyconf);
 

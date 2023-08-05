@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2011-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup collada
@@ -46,7 +48,7 @@ void SceneExporter::exportHierarchy()
         case OB_CAMERA:
         case OB_LAMP:
         case OB_EMPTY:
-        case OB_GPENCIL:
+        case OB_GPENCIL_LEGACY:
         case OB_ARMATURE:
           base_objects.add(ob);
           break;
@@ -199,7 +201,7 @@ void SceneExporter::writeNode(Object *ob)
             bConstraintTarget *ct;
             Object *obtar;
 
-            for (ct = (bConstraintTarget *)targets.first; ct; ct = ct->next) {
+            LISTBASE_FOREACH (bConstraintTarget *, ct, &targets) {
               obtar = ct->tar;
               std::string tar_id((obtar) ? id_name(obtar) : "");
               colladaNode.addExtraTechniqueChildParameter("blender", con_tag, "target_id", tar_id);

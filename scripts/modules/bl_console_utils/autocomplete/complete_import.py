@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # Copyright (c) 2009 Fernando Perez, www.stani.be
@@ -62,10 +64,9 @@ def get_root_modules():
     # needed for modules defined in C
     modules += sys.modules.keys()
 
-    modules = list(set(modules))
-    if '__init__' in modules:
-        modules.remove('__init__')
-    modules = sorted(modules)
+    modules = set(modules)
+    modules.discard("__init__")
+    modules = sorted(list(modules))
     if store:
         ROOT_MODULES = modules
     return modules
@@ -92,7 +93,7 @@ def module_list(path):
             folder_list = []
     else:
         folder_list = []
-    #folder_list = glob.glob(os.path.join(path,'*'))
+    # folder_list = glob.glob(os.path.join(path,'*'))
     folder_list = [
         p for p in folder_list
         if (os.path.exists(os.path.join(path, p, '__init__.py')) or

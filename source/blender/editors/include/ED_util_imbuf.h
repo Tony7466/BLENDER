@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup editors
@@ -19,7 +20,7 @@ struct bContext;
 struct wmEvent;
 struct wmOperator;
 
-/* ed_util_imbuf.c */
+/* `ed_util_imbuf.cc` */
 
 void ED_imbuf_sample_draw(const struct bContext *C, struct ARegion *region, void *arg_info);
 void ED_imbuf_sample_exit(struct bContext *C, struct wmOperator *op);

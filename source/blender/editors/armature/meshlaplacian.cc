@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edarmature
@@ -20,9 +22,9 @@
 #include "BLT_translation.h"
 
 #include "BKE_bvhutils.h"
-#include "BKE_mesh.h"
-#include "BKE_mesh_runtime.h"
-#include "BKE_mesh_wrapper.h"
+#include "BKE_mesh.hh"
+#include "BKE_mesh_runtime.hh"
+#include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.h"
 
 #include "ED_armature.h"
@@ -35,18 +37,10 @@
 #include "meshlaplacian.h"
 
 /* ************* XXX *************** */
-static void waitcursor(int /*val*/)
-{
-}
-static void progress_bar(int /*dummy_val*/, const char * /*dummy*/)
-{
-}
-static void start_progress_bar(void)
-{
-}
-static void end_progress_bar(void)
-{
-}
+static void waitcursor(int /*val*/) {}
+static void progress_bar(int /*dummy_val*/, const char * /*dummy*/) {}
+static void start_progress_bar() {}
+static void end_progress_bar() {}
 static void error(const char *str)
 {
   printf("error: %s\n", str);
@@ -74,7 +68,7 @@ struct LaplacianSystem {
 
   struct HeatWeighting {
     const MLoopTri *mlooptri;
-    blender::Span<MLoop> loops; /* needed to find vertices by index */
+    blender::Span<int> corner_verts; /* needed to find vertices by index */
     int verts_num;
     int tris_num;
     float (*verts)[3];        /* vertex coordinates */
@@ -257,7 +251,7 @@ static void laplacian_system_construct_end(LaplacianSystem *sys)
       MEM_callocN(sizeof(float) * verts_num, "LaplacianSystemVarea"));
 
   sys->edgehash = BLI_edgehash_new_ex(__func__,
-                                      BLI_EDGEHASH_SIZE_GUESS_FROM_POLYS(sys->faces_num));
+                                      BLI_EDGEHASH_SIZE_GUESS_FROM_FACES(sys->faces_num));
   for (a = 0, face = sys->faces; a < sys->faces_num; a++, face++) {
     laplacian_increase_edge_count(sys->edgehash, (*face)[0], (*face)[1]);
     laplacian_increase_edge_count(sys->edgehash, (*face)[1], (*face)[2]);
@@ -372,24 +366,24 @@ float laplacian_system_get_solution(LaplacianSystem *sys, int v)
 #define WEIGHT_LIMIT_END 0.025f
 #define DISTANCE_EPSILON 1e-4f
 
-typedef struct BVHCallbackUserData {
+struct BVHCallbackUserData {
   float start[3];
   float vec[3];
   LaplacianSystem *sys;
-} BVHCallbackUserData;
+};
 
 static void bvh_callback(void *userdata, int index, const BVHTreeRay *ray, BVHTreeRayHit *hit)
 {
-  BVHCallbackUserData *data = (struct BVHCallbackUserData *)userdata;
+  BVHCallbackUserData *data = (BVHCallbackUserData *)userdata;
   const MLoopTri *lt = &data->sys->heat.mlooptri[index];
-  const blender::Span<MLoop> loops = data->sys->heat.loops;
+  const blender::Span<int> corner_verts = data->sys->heat.corner_verts;
   float(*verts)[3] = data->sys->heat.verts;
   const float *vtri_co[3];
   float dist_test;
 
-  vtri_co[0] = verts[loops[lt->tri[0]].v];
-  vtri_co[1] = verts[loops[lt->tri[1]].v];
-  vtri_co[2] = verts[loops[lt->tri[2]].v];
+  vtri_co[0] = verts[corner_verts[lt->tri[0]]];
+  vtri_co[1] = verts[corner_verts[lt->tri[1]]];
+  vtri_co[2] = verts[corner_verts[lt->tri[2]]];
 
 #ifdef USE_KDOPBVH_WATERTIGHT
   if (isect_ray_tri_watertight_v3(
@@ -414,7 +408,7 @@ static void bvh_callback(void *userdata, int index, const BVHTreeRay *ray, BVHTr
 static void heat_ray_tree_create(LaplacianSystem *sys)
 {
   const MLoopTri *looptri = sys->heat.mlooptri;
-  const blender::Span<MLoop> loops = sys->heat.loops;
+  const blender::Span<int> corner_verts = sys->heat.corner_verts;
   float(*verts)[3] = sys->heat.verts;
   int tris_num = sys->heat.tris_num;
   int verts_num = sys->heat.verts_num;
@@ -429,9 +423,9 @@ static void heat_ray_tree_create(LaplacianSystem *sys)
     float bb[6];
     int vtri[3];
 
-    vtri[0] = loops[lt->tri[0]].v;
-    vtri[1] = loops[lt->tri[1]].v;
-    vtri[2] = loops[lt->tri[2]].v;
+    vtri[0] = corner_verts[lt->tri[0]];
+    vtri[1] = corner_verts[lt->tri[1]];
+    vtri[2] = corner_verts[lt->tri[2]];
 
     INIT_MINMAX(bb, bb + 3);
     minmax_v3v3_v3(bb, bb + 3, verts[vtri[0]]);
@@ -581,7 +575,7 @@ static void heat_calc_vnormals(LaplacianSystem *sys)
 static void heat_laplacian_create(LaplacianSystem *sys)
 {
   const MLoopTri *mlooptri = sys->heat.mlooptri, *lt;
-  const blender::Span<MLoop> loops = sys->heat.loops;
+  const blender::Span<int> corner_verts = sys->heat.corner_verts;
   int tris_num = sys->heat.tris_num;
   int verts_num = sys->heat.verts_num;
   int a;
@@ -598,9 +592,9 @@ static void heat_laplacian_create(LaplacianSystem *sys)
 
   for (a = 0, lt = mlooptri; a < tris_num; a++, lt++) {
     int vtri[3];
-    vtri[0] = loops[lt->tri[0]].v;
-    vtri[1] = loops[lt->tri[1]].v;
-    vtri[2] = loops[lt->tri[2]].v;
+    vtri[0] = corner_verts[lt->tri[0]];
+    vtri[1] = corner_verts[lt->tri[1]];
+    vtri[2] = corner_verts[lt->tri[2]];
     laplacian_add_triangle(sys, UNPACK3(vtri));
   }
 
@@ -656,16 +650,16 @@ void heat_bone_weighting(Object *ob,
   int a, tris_num, j, bbone, firstsegment, lastsegment;
   bool use_topology = (me->editflag & ME_EDIT_MIRROR_TOPO) != 0;
 
-  const float(*vert_positions)[3] = BKE_mesh_vert_positions(me);
-  const blender::Span<MPoly> polys = me->polys();
-  const blender::Span<MLoop> loops = me->loops();
+  const blender::Span<blender::float3> vert_positions = me->vert_positions();
+  const blender::OffsetIndices faces = me->faces();
+  const blender::Span<int> corner_verts = me->corner_verts();
   bool use_vert_sel = (me->editflag & ME_EDIT_PAINT_VERT_SEL) != 0;
   bool use_face_sel = (me->editflag & ME_EDIT_PAINT_FACE_SEL) != 0;
 
   *error_str = nullptr;
 
   /* bone heat needs triangulated faces */
-  tris_num = poly_to_tri_count(me->totpoly, me->totloop);
+  tris_num = poly_to_tri_count(me->faces_num, me->totloop);
 
   /* count triangles and create mask */
   if (ob->mode & OB_MODE_WEIGHT_PAINT && (use_face_sel || use_vert_sel)) {
@@ -674,23 +668,23 @@ void heat_bone_weighting(Object *ob,
     /*  (added selectedVerts content for vertex mask, they used to just equal 1) */
     if (use_vert_sel) {
       const bool *select_vert = (const bool *)CustomData_get_layer_named(
-          &me->vdata, CD_PROP_BOOL, ".select_vert");
+          &me->vert_data, CD_PROP_BOOL, ".select_vert");
       if (select_vert) {
-        for (const int i : polys.index_range()) {
-          for (const MLoop &loop : loops.slice(polys[i].loopstart, polys[i].totloop)) {
-            mask[loop.v] = select_vert[loop.v];
+        for (const int i : faces.index_range()) {
+          for (const int vert : corner_verts.slice(faces[i])) {
+            mask[vert] = select_vert[vert];
           }
         }
       }
     }
     else if (use_face_sel) {
       const bool *select_poly = (const bool *)CustomData_get_layer_named(
-          &me->pdata, CD_PROP_BOOL, ".select_poly");
+          &me->face_data, CD_PROP_BOOL, ".select_poly");
       if (select_poly) {
-        for (const int i : polys.index_range()) {
+        for (const int i : faces.index_range()) {
           if (select_poly[i]) {
-            for (const MLoop &loop : loops.slice(polys[i].loopstart, polys[i].totloop)) {
-              mask[loop.v] = 1;
+            for (const int vert : corner_verts.slice(faces[i])) {
+              mask[vert] = 1;
             }
           }
         }
@@ -701,15 +695,15 @@ void heat_bone_weighting(Object *ob,
   /* create laplacian */
   sys = laplacian_system_construct_begin(me->totvert, tris_num, 1);
 
-  sys->heat.tris_num = poly_to_tri_count(me->totpoly, me->totloop);
+  sys->heat.tris_num = poly_to_tri_count(me->faces_num, me->totloop);
   mlooptri = static_cast<MLoopTri *>(
       MEM_mallocN(sizeof(*sys->heat.mlooptri) * sys->heat.tris_num, __func__));
 
-  BKE_mesh_recalc_looptri(
-      loops.data(), polys.data(), vert_positions, me->totloop, me->totpoly, mlooptri);
+  blender::bke::mesh::looptris_calc(
+      vert_positions, faces, corner_verts, {mlooptri, sys->heat.tris_num});
 
   sys->heat.mlooptri = mlooptri;
-  sys->heat.loops = loops;
+  sys->heat.corner_verts = corner_verts;
   sys->heat.verts_num = me->totvert;
   sys->heat.verts = verts;
   sys->heat.root = root;
@@ -874,26 +868,26 @@ static const int MESHDEFORM_OFFSET[7][3] = {
     {0, 0, -1},
 };
 
-typedef struct MDefBoundIsect {
+struct MDefBoundIsect {
   /* intersection on the cage 'cagecos' */
   float co[3];
   /* non-facing intersections are considered interior */
   bool facing;
-  /* ray-cast index aligned with MPoly (ray-hit-triangle isn't needed) */
-  int poly_index;
+  /* ray-cast index aligned with polygons (ray-hit-triangle isn't needed) */
+  int face_index;
   /* distance from 'co' to the ray-cast start (clamped to avoid zero division) */
   float len;
-  /* weights aligned with the MPoly's loop indices */
+  /* weights aligned with the polygons's loop indices */
   float poly_weights[0];
-} MDefBoundIsect;
+};
 
-typedef struct MDefBindInfluence {
-  struct MDefBindInfluence *next;
+struct MDefBindInfluence {
+  MDefBindInfluence *next;
   float weight;
   int vertex;
-} MDefBindInfluence;
+};
 
-typedef struct MeshDeformBind {
+struct MeshDeformBind {
   /* grid dimensions */
   float min[3], max[3];
   float width[3], halfwidth[3];
@@ -926,14 +920,15 @@ typedef struct MeshDeformBind {
 
   /* avoid DM function calls during intersections */
   struct {
-    blender::Span<MPoly> polys;
-    blender::Span<MLoop> loops;
-    const MLoopTri *looptri;
-    const float (*poly_nors)[3];
+    blender::OffsetIndices<int> faces;
+    blender::Span<int> corner_verts;
+    blender::Span<MLoopTri> looptris;
+    blender::Span<int> looptri_faces;
+    blender::Span<blender::float3> face_normals;
   } cagemesh_cache;
-} MeshDeformBind;
+};
 
-typedef struct MeshDeformIsect {
+struct MeshDeformIsect {
   float start[3];
   float vec[3];
   float vec_length;
@@ -941,8 +936,7 @@ typedef struct MeshDeformIsect {
 
   bool isect;
   float u, v;
-
-} MeshDeformIsect;
+};
 
 /* ray intersection */
 
@@ -958,18 +952,18 @@ static void harmonic_ray_callback(void *userdata,
 {
   MeshRayCallbackData *data = static_cast<MeshRayCallbackData *>(userdata);
   MeshDeformBind *mdb = data->mdb;
-  const blender::Span<MLoop> loops = mdb->cagemesh_cache.loops;
-  const MLoopTri *looptri = mdb->cagemesh_cache.looptri, *lt;
-  const float(*poly_nors)[3] = mdb->cagemesh_cache.poly_nors;
+  const blender::Span<int> corner_verts = mdb->cagemesh_cache.corner_verts;
+  const blender::Span<int> looptri_faces = mdb->cagemesh_cache.looptri_faces;
+  const blender::Span<blender::float3> face_normals = mdb->cagemesh_cache.face_normals;
   MeshDeformIsect *isec = data->isec;
   float no[3], co[3], dist;
   float *face[3];
 
-  lt = &looptri[index];
+  const MLoopTri *lt = &mdb->cagemesh_cache.looptris[index];
 
-  face[0] = mdb->cagecos[loops[lt->tri[0]].v];
-  face[1] = mdb->cagecos[loops[lt->tri[1]].v];
-  face[2] = mdb->cagecos[loops[lt->tri[2]].v];
+  face[0] = mdb->cagecos[corner_verts[lt->tri[0]]];
+  face[1] = mdb->cagecos[corner_verts[lt->tri[1]]];
+  face[2] = mdb->cagecos[corner_verts[lt->tri[2]]];
 
   bool isect_ray_tri = isect_ray_tri_watertight_v3(
       ray->origin, ray->isect_precalc, UNPACK3(face), &dist, nullptr);
@@ -978,8 +972,8 @@ static void harmonic_ray_callback(void *userdata,
     return;
   }
 
-  if (poly_nors) {
-    copy_v3_v3(no, poly_nors[lt->poly]);
+  if (!face_normals.is_empty()) {
+    copy_v3_v3(no, face_normals[looptri_faces[index]]);
   }
   else {
     normal_tri_v3(no, UNPACK3(face));
@@ -1003,7 +997,7 @@ static MDefBoundIsect *meshdeform_ray_tree_intersect(MeshDeformBind *mdb,
 {
   BVHTreeRayHit hit;
   MeshDeformIsect isect_mdef;
-  struct MeshRayCallbackData data = {
+  MeshRayCallbackData data = {
       mdb,
       &isect_mdef,
   };
@@ -1032,37 +1026,38 @@ static MDefBoundIsect *meshdeform_ray_tree_intersect(MeshDeformBind *mdb,
                               &hit,
                               harmonic_ray_callback,
                               &data,
-                              BVH_RAYCAST_WATERTIGHT) != -1) {
-    const blender::Span<MLoop> loops = mdb->cagemesh_cache.loops;
-    const MLoopTri *lt = &mdb->cagemesh_cache.looptri[hit.index];
-    const MPoly *mp = &mdb->cagemesh_cache.polys[lt->poly];
+                              BVH_RAYCAST_WATERTIGHT) != -1)
+  {
+    const blender::Span<int> corner_verts = mdb->cagemesh_cache.corner_verts;
+    const int face_i = mdb->cagemesh_cache.looptri_faces[hit.index];
+    const blender::IndexRange face = mdb->cagemesh_cache.faces[face_i];
     const float(*cagecos)[3] = mdb->cagecos;
     const float len = isect_mdef.lambda;
     MDefBoundIsect *isect;
 
-    blender::Array<blender::float3, 64> mp_cagecos(mp->totloop);
+    blender::Array<blender::float3, 64> mp_cagecos(face.size());
 
     /* create MDefBoundIsect, and extra for 'poly_weights[]' */
     isect = static_cast<MDefBoundIsect *>(
-        BLI_memarena_alloc(mdb->memarena, sizeof(*isect) + (sizeof(float) * mp->totloop)));
+        BLI_memarena_alloc(mdb->memarena, sizeof(*isect) + (sizeof(float) * face.size())));
 
     /* compute intersection coordinate */
     madd_v3_v3v3fl(isect->co, co1, isect_mdef.vec, len);
 
     isect->facing = isect_mdef.isect;
 
-    isect->poly_index = lt->poly;
+    isect->face_index = face_i;
 
     isect->len = max_ff(len_v3v3(co1, isect->co), MESHDEFORM_LEN_THRESHOLD);
 
     /* compute mean value coordinates for interpolation */
-    for (int i = 0; i < mp->totloop; i++) {
-      copy_v3_v3(mp_cagecos[i], cagecos[loops[mp->loopstart + i].v]);
+    for (int i = 0; i < face.size(); i++) {
+      copy_v3_v3(mp_cagecos[i], cagecos[corner_verts[face[i]]]);
     }
 
     interp_weights_poly_v3(isect->poly_weights,
                            reinterpret_cast<float(*)[3]>(mp_cagecos.data()),
-                           mp->totloop,
+                           face.size(),
                            isect->co);
 
     return isect;
@@ -1180,7 +1175,8 @@ static void meshdeform_bind_floodfill(MeshDeformBind *mdb)
 
       if (b != -1) {
         if (tag[b] == MESHDEFORM_TAG_UNTYPED ||
-            (tag[b] == MESHDEFORM_TAG_BOUNDARY && !mdb->boundisect[a][i - 1])) {
+            (tag[b] == MESHDEFORM_TAG_BOUNDARY && !mdb->boundisect[a][i - 1]))
+        {
           tag[b] = MESHDEFORM_TAG_EXTERIOR;
           stack[stacksize++] = b;
         }
@@ -1226,11 +1222,11 @@ static float meshdeform_boundary_phi(const MeshDeformBind *mdb,
                                      const MDefBoundIsect *isect,
                                      int cagevert)
 {
-  const blender::Span<MLoop> loops = mdb->cagemesh_cache.loops;
-  const MPoly *mp = &mdb->cagemesh_cache.polys[isect->poly_index];
+  const blender::IndexRange face = mdb->cagemesh_cache.faces[isect->face_index];
+  const blender::Span<int> corner_verts = mdb->cagemesh_cache.corner_verts;
 
-  for (int i = 0; i < mp->totloop; i++) {
-    if (loops[mp->loopstart + i].v == cagevert) {
+  for (int i = 0; i < face.size(); i++) {
+    if (corner_verts[face[i]] == cagevert) {
       return isect->poly_weights[i];
     }
   }
@@ -1558,11 +1554,7 @@ static void meshdeform_matrix_solve(MeshDeformModifierData *mmd, MeshDeformBind 
       break;
     }
 
-    BLI_snprintf(message,
-                 sizeof(message),
-                 "Mesh deform solve %d / %d       |||",
-                 a + 1,
-                 mdb->cage_verts_num);
+    SNPRINTF(message, "Mesh deform solve %d / %d       |||", a + 1, mdb->cage_verts_num);
     progress_bar(float(a + 1) / float(mdb->cage_verts_num), message);
   }
 
@@ -1630,10 +1622,11 @@ static void harmonic_coordinates_bind(MeshDeformModifierData *mmd, MeshDeformBin
   /* initialize data from 'cagedm' for reuse */
   {
     Mesh *me = mdb->cagemesh;
-    mdb->cagemesh_cache.polys = me->polys();
-    mdb->cagemesh_cache.loops = me->loops();
-    mdb->cagemesh_cache.looptri = BKE_mesh_runtime_looptri_ensure(me);
-    mdb->cagemesh_cache.poly_nors = BKE_mesh_poly_normals_ensure(me);
+    mdb->cagemesh_cache.faces = me->faces();
+    mdb->cagemesh_cache.corner_verts = me->corner_verts();
+    mdb->cagemesh_cache.looptris = me->looptris();
+    mdb->cagemesh_cache.looptri_faces = me->looptri_faces();
+    mdb->cagemesh_cache.face_normals = me->face_normals();
   }
 
   /* make bounding box equal size in all directions, add padding, and compute
@@ -1668,6 +1661,7 @@ static void harmonic_coordinates_bind(MeshDeformModifierData *mmd, MeshDeformBin
       totinside++;
     }
   }
+  (void)totinside; /* Quiet set-but-unused warning (may be removed). */
 
   /* free temporary MDefBoundIsects */
   BLI_memarena_free(mdb->memarena);
@@ -1788,7 +1782,7 @@ void ED_mesh_deform_bind_callback(Object *object,
       MEM_callocN(sizeof(*mdb.cagecos) * mdb.cage_verts_num, "MeshDeformBindCos"));
   copy_m4_m4(mdb.cagemat, cagemat);
 
-  const float(*positions)[3] = BKE_mesh_vert_positions(mdb.cagemesh);
+  const blender::Span<blender::float3> positions = mdb.cagemesh->vert_positions();
   for (a = 0; a < mdb.cage_verts_num; a++) {
     copy_v3_v3(mdb.cagecos[a], positions[a]);
   }

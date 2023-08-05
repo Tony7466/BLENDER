@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import sys
 import bpy
 
@@ -329,8 +332,11 @@ def banner(context):
         "",
     )
 
+    # NOTE: Using `OUTPUT` style (intended for the `stdout` is also valid).
+    # Using `INFO` has a slight advantage that it's excluded by the "Copy as Script" operator.
+    # As the banner isn't useful to include in a script - leave it out.
     for line in message:
-        add_scrollback(line, 'OUTPUT')
+        add_scrollback(line, 'INFO')
 
     sc.prompt = PROMPT
 

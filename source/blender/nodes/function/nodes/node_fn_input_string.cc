@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_function_util.hh"
 
@@ -10,12 +12,12 @@ namespace blender::nodes::node_fn_input_string_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_output<decl::String>(N_("String"));
+  b.add_output<decl::String>("String");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "string", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "string", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)

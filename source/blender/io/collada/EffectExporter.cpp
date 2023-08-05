@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2010-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup collada
@@ -23,15 +25,15 @@
 #include "BKE_collection.h"
 #include "BKE_customdata.h"
 #include "BKE_material.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 
 static std::string getActiveUVLayerName(Object *ob)
 {
   Mesh *me = (Mesh *)ob->data;
 
-  int num_layers = CustomData_number_of_layers(&me->ldata, CD_PROP_FLOAT2);
+  int num_layers = CustomData_number_of_layers(&me->loop_data, CD_PROP_FLOAT2);
   if (num_layers) {
-    return std::string(bc_CustomData_get_active_layer_name(&me->ldata, CD_PROP_FLOAT2));
+    return std::string(bc_CustomData_get_active_layer_name(&me->loop_data, CD_PROP_FLOAT2));
   }
 
   return "";
@@ -208,9 +210,11 @@ void EffectsExporter::operator()(Material *ma, Object *ob)
   set_transparency(ep, ma);
 
   /* TODO: */
-  // set_shininess(ep, ma); shininess not supported for lambert
-  // set_ambient(ep, ma);
-  // set_specular(ep, ma);
+#if 0
+  set_shininess(ep, ma); /* Shininess not supported for lambert. */
+  set_ambient(ep, ma);
+  set_specular(ep, ma);
+#endif
 
   get_images(ma, material_image_map);
   std::string active_uv(getActiveUVLayerName(ob));

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -38,13 +40,13 @@
 #include "BKE_global.h"
 #include "BKE_screen.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "UI_interface.h"
 #include "interface_intern.hh"
@@ -158,7 +160,7 @@ static const char *strdup_memarena_from_dynstr(MemArena *memarena, DynStr *dyn_s
 
 static bool menu_items_from_ui_create_item_from_button(MenuSearch_Data *data,
                                                        MemArena *memarena,
-                                                       struct MenuType *mt,
+                                                       MenuType *mt,
                                                        const char *drawstr_submenu,
                                                        uiBut *but,
                                                        MenuSearch_Context *wm_context)
@@ -197,7 +199,8 @@ static bool menu_items_from_ui_create_item_from_button(MenuSearch_Data *data,
                                                         &but->rnapoin,
                                                         but->rnaprop,
                                                         value_enum,
-                                                        &enum_item)) {
+                                                        &enum_item))
+        {
           drawstr_override = enum_item.name;
         }
         else {
@@ -378,8 +381,8 @@ static void menu_items_from_all_operators(bContext *C, MenuSearch_Data *data)
 
   MemArena *memarena = data->memarena;
   GHashIterator iter;
-  for (WM_operatortype_iter(&iter); !BLI_ghashIterator_done(&iter);
-       BLI_ghashIterator_step(&iter)) {
+  for (WM_operatortype_iter(&iter); !BLI_ghashIterator_done(&iter); BLI_ghashIterator_step(&iter))
+  {
     wmOperatorType *ot = (wmOperatorType *)BLI_ghashIterator_getValue(&iter);
 
     if ((ot->flag & OPTYPE_INTERNAL) && (G.debug & G_DEBUG_WM) == 0) {
@@ -508,7 +511,7 @@ static MenuSearch_Data *menu_items_from_ui_create(
     PropertyRNA *prop_ui_type = nullptr;
     {
       /* This must be a valid pointer, with only it's type checked. */
-      ScrArea area_dummy = {nullptr};
+      ScrArea area_dummy{};
       /* Anything besides #SPACE_EMPTY is fine,
        * as this value is only included in the enum when set. */
       area_dummy.spacetype = SPACE_TOPBAR;
@@ -562,7 +565,8 @@ static MenuSearch_Data *menu_items_from_ui_create(
   GHashIterator iter;
 
   for (int space_type_ui_index = -1; space_type_ui_index < space_type_ui_items_len;
-       space_type_ui_index += 1) {
+       space_type_ui_index += 1)
+  {
 
     ScrArea *area = nullptr;
     ARegion *region = nullptr;
@@ -1031,10 +1035,10 @@ static void menu_search_update_fn(const bContext * /*C*/,
  * a separate context menu just for the search, however this is fairly involved.
  * \{ */
 
-static bool ui_search_menu_create_context_menu(struct bContext *C,
+static bool ui_search_menu_create_context_menu(bContext *C,
                                                void *arg,
                                                void *active,
-                                               const struct wmEvent *event)
+                                               const wmEvent *event)
 {
   MenuSearch_Data *data = (MenuSearch_Data *)arg;
   MenuSearch_Item *item = (MenuSearch_Item *)active;
@@ -1075,11 +1079,8 @@ static bool ui_search_menu_create_context_menu(struct bContext *C,
 /** \name Tooltip
  * \{ */
 
-static struct ARegion *ui_search_menu_create_tooltip(struct bContext *C,
-                                                     struct ARegion *region,
-                                                     const rcti * /*item_rect*/,
-                                                     void *arg,
-                                                     void *active)
+static ARegion *ui_search_menu_create_tooltip(
+    bContext *C, ARegion *region, const rcti * /*item_rect*/, void *arg, void *active)
 {
   MenuSearch_Data *data = (MenuSearch_Data *)arg;
   MenuSearch_Item *item = (MenuSearch_Item *)active;

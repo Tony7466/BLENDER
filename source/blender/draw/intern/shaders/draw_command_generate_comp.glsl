@@ -45,7 +45,7 @@ void write_draw_call(DrawGroup group, uint group_id)
 
 void main()
 {
-  uint proto_id = gl_GlobalInvocationID.x;
+  int proto_id = int(gl_GlobalInvocationID.x);
   if (proto_id >= prototype_len) {
     return;
   }
@@ -59,7 +59,7 @@ void main()
   uint visible_instance_len = 0;
   if (visibility_word_per_draw > 0) {
     uint visibility_word = resource_index * visibility_word_per_draw;
-    for (uint i = 0; i < visibility_word_per_draw; i++, visibility_word++) {
+    for (int i = 0; i < visibility_word_per_draw; i++, visibility_word++) {
       /* NOTE: This assumes `proto.instance_len` is 1. */
       /* TODO: Assert. */
       visible_instance_len += bitCount(visibility_buf[visibility_word]);
@@ -103,12 +103,19 @@ void main()
   /* Fill resource_id buffer for each instance of this draw. */
   if (visibility_word_per_draw > 0) {
     uint visibility_word = resource_index * visibility_word_per_draw;
-    for (uint i = 0; i < visibility_word_per_draw; i++, visibility_word++) {
+    for (int i = 0; i < visibility_word_per_draw; i++, visibility_word++) {
       uint word = visibility_buf[visibility_word];
       uint view_index = i * 32u;
       while (word != 0u) {
         if ((word & 1u) != 0u) {
-          resource_id_buf[dst_index++] = view_index | (resource_index << view_shift);
+          if (use_custom_ids) {
+            resource_id_buf[dst_index * 2] = view_index | (resource_index << view_shift);
+            resource_id_buf[dst_index * 2 + 1] = proto.custom_id;
+          }
+          else {
+            resource_id_buf[dst_index] = view_index | (resource_index << view_shift);
+          }
+          dst_index++;
         }
         view_index++;
         word >>= 1u;
@@ -117,7 +124,13 @@ void main()
   }
   else {
     for (uint i = dst_index; i < dst_index + visible_instance_len; i++) {
-      resource_id_buf[i] = resource_index;
+      if (use_custom_ids) {
+        resource_id_buf[i * 2] = resource_index;
+        resource_id_buf[i * 2 + 1] = proto.custom_id;
+      }
+      else {
+        resource_id_buf[i] = resource_index;
+      }
     }
   }
 }

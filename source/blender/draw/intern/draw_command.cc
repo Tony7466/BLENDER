@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -262,8 +263,7 @@ std::string ResourceBind::serialize() const
   switch (type) {
     case Type::Sampler:
       return std::string(".bind_texture") + (is_reference ? "_ref" : "") + "(" +
-             std::to_string(slot) +
-             (sampler != GPU_SAMPLER_MAX ? ", sampler=" + std::to_string(sampler) : "") + ")";
+             std::to_string(slot) + ", sampler=" + sampler.to_string() + ")";
     case Type::BufferSampler:
       return std::string(".bind_vertbuf_as_texture") + (is_reference ? "_ref" : "") + "(" +
              std::to_string(slot) + ")";
@@ -600,14 +600,13 @@ void DrawCommandBuf::bind(RecordingState &state,
 }
 
 void DrawMultiBuf::bind(RecordingState &state,
-                        Vector<Header, 0> &headers,
-                        Vector<Undetermined, 0> &commands,
+                        Vector<Header, 0> & /*headers*/,
+                        Vector<Undetermined, 0> & /*commands*/,
                         VisibilityBuf &visibility_buf,
                         int visibility_word_per_draw,
-                        int view_len)
+                        int view_len,
+                        bool use_custom_ids)
 {
-  UNUSED_VARS(headers, commands);
-
   GPU_debug_group_begin("DrawMultiBuf.bind");
 
   resource_id_count_ = 0u;
@@ -616,13 +615,14 @@ void DrawMultiBuf::bind(RecordingState &state,
     group.start = resource_id_count_;
     resource_id_count_ += group.len * view_len;
 
-    int batch_inst_len;
+    int batch_vert_len, batch_vert_first, batch_base_index, batch_inst_len;
     /* Now that GPUBatches are guaranteed to be finished, extract their parameters. */
-    GPU_batch_draw_parameter_get(group.gpu_batch,
-                                 &group.vertex_len,
-                                 &group.vertex_first,
-                                 &group.base_index,
-                                 &batch_inst_len);
+    GPU_batch_draw_parameter_get(
+        group.gpu_batch, &batch_vert_len, &batch_vert_first, &batch_base_index, &batch_inst_len);
+
+    group.vertex_len = group.vertex_len == -1 ? batch_vert_len : group.vertex_len;
+    group.vertex_first = group.vertex_first == -1 ? batch_vert_first : group.vertex_first;
+    group.base_index = batch_base_index;
 
     /* Instancing attributes are not supported using the new pipeline since we use the base
      * instance to set the correct resource_id. Workaround is a storage_buf + gl_InstanceID. */
@@ -636,7 +636,7 @@ void DrawMultiBuf::bind(RecordingState &state,
   group_buf_.push_update();
   prototype_buf_.push_update();
   /* Allocate enough for the expansion pass. */
-  resource_id_buf_.get_or_resize(resource_id_count_);
+  resource_id_buf_.get_or_resize(resource_id_count_ * (use_custom_ids ? 2 : 1));
   /* Two command per group. */
   command_buf_.get_or_resize(group_count_ * 2);
 
@@ -646,6 +646,7 @@ void DrawMultiBuf::bind(RecordingState &state,
     GPU_shader_uniform_1i(shader, "prototype_len", prototype_count_);
     GPU_shader_uniform_1i(shader, "visibility_word_per_draw", visibility_word_per_draw);
     GPU_shader_uniform_1i(shader, "view_shift", log2_ceil_u(view_len));
+    GPU_shader_uniform_1b(shader, "use_custom_ids", use_custom_ids);
     GPU_storagebuf_bind(group_buf_, GPU_shader_get_ssbo_binding(shader, "group_buf"));
     GPU_storagebuf_bind(visibility_buf, GPU_shader_get_ssbo_binding(shader, "visibility_buf"));
     GPU_storagebuf_bind(prototype_buf_, GPU_shader_get_ssbo_binding(shader, "prototype_buf"));

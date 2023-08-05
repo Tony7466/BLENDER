@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spnode
@@ -20,7 +21,7 @@
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "UI_interface.h"
 #include "UI_interface.hh"
@@ -127,7 +128,7 @@ static void get_context_path_node_geometry(const bContext &C,
                                            SpaceNode &snode,
                                            Vector<ui::ContextPathItem> &path)
 {
-  if (snode.flag & SNODE_PIN) {
+  if (snode.flag & SNODE_PIN || snode.geometry_nodes_type == SNODE_GEOMETRY_TOOL) {
     context_path_add_node_tree_and_node_groups(snode, path);
   }
   else {

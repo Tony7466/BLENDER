@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2006 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2006 Blender Foundation. All rights reserved.
 
 # -----------------------------------------------------------------------------
 # Early Initialization
@@ -159,12 +160,28 @@ endif()
 
 get_blender_version()
 
+if(WIN32)
+  add_definitions(
+    # This is the app ID used for file registration, given it's used from several modules
+    # there really is no nice way to get this information consistent without a global define.
+    -DBLENDER_WIN_APPID="blender.${BLENDER_VERSION_MAJOR}.${BLENDER_VERSION_MINOR}"
+    # This is the name that will be shown in the taskbar and OpenWith windows UI
+    -DBLENDER_WIN_APPID_FRIENDLY_NAME="Blender ${BLENDER_VERSION_MAJOR}.${BLENDER_VERSION_MINOR}"
+  )
+endif()
+
+
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.19")
+  # This changes the default value from Off to On, but will still allow people to manually change
+  # this setting through their CMakeCache.txt if they desire to do so.
+  set(CMAKE_OPTIMIZE_DEPENDENCIES ON CACHE INTERNAL "")
+endif()
 
 # -----------------------------------------------------------------------------
 # Declare Options
 
 # Blender internal features
-option(WITH_BLENDER "Build blender (disable to build only the blender player)" ON)
+option(WITH_BLENDER "Build blender (disable to build only Cycles stand-alone)." ON)
 mark_as_advanced(WITH_BLENDER)
 
 if(WIN32)
@@ -331,13 +348,9 @@ option(WITH_MOD_REMESH          "Enable Remesh Modifier" ON)
 option(WITH_MOD_OCEANSIM        "Enable Ocean Modifier" ON)
 
 # Image format support
-option(WITH_OPENIMAGEIO         "Enable OpenImageIO Support (http://www.openimageio.org)" ON)
 option(WITH_IMAGE_OPENEXR       "Enable OpenEXR Support (http://www.openexr.com)" ON)
 option(WITH_IMAGE_OPENJPEG      "Enable OpenJpeg Support (http://www.openjpeg.org)" ON)
-option(WITH_IMAGE_TIFF          "Enable LibTIFF Support" ON)
-option(WITH_IMAGE_DDS           "Enable DDS Image Support" ON)
 option(WITH_IMAGE_CINEON        "Enable CINEON and DPX Image Support" ON)
-option(WITH_IMAGE_HDR           "Enable HDR Image Support" ON)
 option(WITH_IMAGE_WEBP          "Enable WebP Image Support" ON)
 
 # Audio/Video format support
@@ -352,12 +365,16 @@ option(WITH_ALEMBIC             "Enable Alembic Support" ON)
 option(WITH_USD                 "Enable Universal Scene Description (USD) Support" ON)
 
 # MaterialX
-option(WITH_MATERIALX           "Enable MaterialX Support" OFF)
+option(WITH_MATERIALX           "Enable MaterialX Support" ON)
+
+# Hydra render engine
+option(WITH_HYDRA               "Enable Hydra render engine" ON)
 
 # 3D format support
 # Disable opencollada when we don't have precompiled libs
 option(WITH_OPENCOLLADA   "Enable OpenCollada Support (http://www.opencollada.org)" ON)
 option(WITH_IO_WAVEFRONT_OBJ  "Enable Wavefront-OBJ 3D file format support (*.obj)" ON)
+option(WITH_IO_PLY            "Enable PLY 3D file format support (*.ply)" ON)
 option(WITH_IO_STL            "Enable STL 3D file format support (*.stl)" ON)
 option(WITH_IO_GPENCIL        "Enable grease-pencil file format IO (*.svg, *.pdf)" ON)
 
@@ -448,6 +465,9 @@ endif()
 
 option(WITH_PYTHON_INSTALL       "Copy system python into the blender install folder" ON)
 
+option(WITH_INSTALL_COPYRIGHT    "Copy the official Blender Foundation's copyright.txt into the Blender install folder" OFF)
+mark_as_advanced(WITH_INSTALL_COPYRIGHT)
+
 if((WITH_AUDASPACE AND NOT WITH_SYSTEM_AUDASPACE) OR WITH_MOD_FLUID)
   option(WITH_PYTHON_NUMPY "Include NumPy in Blender (used by Audaspace and Mantaflow)"  ON)
 endif()
@@ -487,6 +507,7 @@ option(WITH_CYCLES_DEBUG             "Build Cycles with options useful for debug
 
 option(WITH_CYCLES_STANDALONE        "Build Cycles standalone application" OFF)
 option(WITH_CYCLES_STANDALONE_GUI    "Build Cycles standalone with GUI" OFF)
+option(WITH_CYCLES_PRECOMPUTE        "Build Cycles data precomputation tool" OFF)
 
 option(WITH_CYCLES_HYDRA_RENDER_DELEGATE "Build Cycles Hydra render delegate" OFF)
 
@@ -498,6 +519,8 @@ mark_as_advanced(WITH_CYCLES_KERNEL_ASAN)
 mark_as_advanced(WITH_CYCLES_LOGGING)
 mark_as_advanced(WITH_CYCLES_DEBUG_NAN)
 mark_as_advanced(WITH_CYCLES_NATIVE_ONLY)
+mark_as_advanced(WITH_CYCLES_PRECOMPUTE)
+mark_as_advanced(CYCLES_TEST_DEVICES)
 
 # NVIDIA CUDA & OptiX
 if(NOT APPLE)
@@ -506,7 +529,7 @@ if(NOT APPLE)
   mark_as_advanced(WITH_CYCLES_DEVICE_CUDA)
 
   option(WITH_CYCLES_CUDA_BINARIES     "Build Cycles NVIDIA CUDA binaries" OFF)
-  set(CYCLES_CUDA_BINARIES_ARCH sm_30 sm_35 sm_37 sm_50 sm_52 sm_60 sm_61 sm_70 sm_75 sm_86 compute_75 CACHE STRING "CUDA architectures to build binaries for")
+  set(CYCLES_CUDA_BINARIES_ARCH sm_30 sm_35 sm_37 sm_50 sm_52 sm_60 sm_61 sm_70 sm_75 sm_86 sm_89 compute_75 CACHE STRING "CUDA architectures to build binaries for")
   option(WITH_CYCLES_CUDA_BUILD_SERIAL "Build cubins one after another (useful on machines with limited RAM)" OFF)
   option(WITH_CUDA_DYNLOAD             "Dynamically load CUDA libraries at runtime (for developers, makes cuda-gdb work)" ON)
 
@@ -524,9 +547,16 @@ endif()
 if(NOT APPLE)
   option(WITH_CYCLES_DEVICE_HIP        "Enable Cycles AMD HIP support" ON)
   option(WITH_CYCLES_HIP_BINARIES      "Build Cycles AMD HIP binaries" OFF)
-  set(CYCLES_HIP_BINARIES_ARCH gfx900 gfx906 gfx90c gfx902 gfx1010 gfx1011 gfx1012 gfx1030 gfx1031 gfx1032 gfx1034 gfx1035 gfx1100 gfx1101 gfx1102 CACHE STRING "AMD HIP architectures to build binaries for")
+  # Radeon VII (gfx906) not currently working with HIP SDK, so left out of the list.
+  set(CYCLES_HIP_BINARIES_ARCH gfx900 gfx90c gfx902 gfx1010 gfx1011 gfx1012 gfx1030 gfx1031 gfx1032 gfx1034 gfx1035 gfx1100 gfx1101 gfx1102 CACHE STRING "AMD HIP architectures to build binaries for")
   mark_as_advanced(WITH_CYCLES_DEVICE_HIP)
   mark_as_advanced(CYCLES_HIP_BINARIES_ARCH)
+
+  # HIPRT is only available on Windows for now.
+  if(WIN32)
+    option(WITH_CYCLES_DEVICE_HIPRT      "Enable Cycles AMD HIPRT support" OFF)
+    mark_as_advanced(WITH_CYCLES_DEVICE_HIPRT)
+  endif()
 endif()
 
 # Apple Metal
@@ -613,15 +643,22 @@ if(UNIX AND NOT APPLE)
 endif()
 
 
-# OpenGL
-
-option(WITH_OPENGL "When off limits visibility of the opengl headers to just bf_gpu and gawain (temporary option for development purposes)" ON)
+# GPU Module
 option(WITH_GPU_BUILDTIME_SHADER_BUILDER "Shader builder is a developer option enabling linting on GLSL during compilation" OFF)
+option(WITH_RENDERDOC "Use Renderdoc API to capture frames" OFF)
 
 mark_as_advanced(
-  WITH_OPENGL
   WITH_GPU_BUILDTIME_SHADER_BUILDER
+  WITH_RENDERDOC
 )
+
+# OpenGL
+if(NOT APPLE)
+  option(WITH_OPENGL_BACKEND "Enable OpenGL support as graphic backend" ON)
+  mark_as_advanced(WITH_OPENGL_BACKEND)
+else()
+  set(WITH_OPENGL_BACKEND OFF)
+endif()
 
 # Vulkan
 option(WITH_VULKAN_BACKEND "Enable Vulkan as graphics backend (only for development)" OFF)
@@ -632,7 +669,6 @@ mark_as_advanced(
 )
 
 # Metal
-
 if(APPLE)
   option(WITH_METAL_BACKEND "Use Metal for graphics instead of (or as well as) OpenGL on macOS." ON)
   mark_as_advanced(WITH_METAL_BACKEND)
@@ -645,16 +681,22 @@ if(WIN32)
   set(CPACK_INSTALL_PREFIX ${CMAKE_GENERIC_PROGRAM_FILES}/${})
 endif()
 
+option(WITH_STRSIZE_DEBUG "\
+Ensure string operations on fixed size buffers \
+(works well with with \"WITH_COMPILER_ASAN\" & valgrind to detect incorrect buffer size arguments)"
+  OFF)
+mark_as_advanced(WITH_STRSIZE_DEBUG)
+
 # Compiler tool-chain.
-if(UNIX AND NOT APPLE)
+if(UNIX)
   if(CMAKE_COMPILER_IS_GNUCC)
     option(WITH_LINKER_GOLD "Use ld.gold linker which is usually faster than ld.bfd" ON)
     mark_as_advanced(WITH_LINKER_GOLD)
-    option(WITH_LINKER_LLD "Use ld.lld linker which is usually faster than ld.gold" OFF)
-    mark_as_advanced(WITH_LINKER_LLD)
   endif()
   if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
-    option(WITH_LINKER_MOLD "Use ld.mold linker which is usually faster than ld.gold & ld.lld." OFF)
+    option(WITH_LINKER_LLD "Use ld.lld linker which is usually faster than ld.gold" OFF)
+    mark_as_advanced(WITH_LINKER_LLD)
+    option(WITH_LINKER_MOLD "Use ld.mold linker which is usually faster than ld.gold & ld.lld" OFF)
     mark_as_advanced(WITH_LINKER_MOLD)
   endif()
 endif()
@@ -691,8 +733,10 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
       else()
         string(APPEND _asan_defaults " -fsanitize=object-size")
       endif()
-    else()
+    elseif(CMAKE_COMPILER_IS_GNUCC)
       string(APPEND _asan_defaults " -fsanitize=leak -fsanitize=object-size")
+    else()
+      string(APPEND _asan_defaults " -fsanitize=leak")
     endif()
 
     set(COMPILER_ASAN_CFLAGS "${_asan_defaults}" CACHE STRING "C flags for address sanitizer")
@@ -709,6 +753,7 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
         [HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\LLVM\\LLVM;]/lib/clang/7.0.0/lib/windows
         [HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\LLVM\\LLVM;]/lib/clang/6.0.0/lib/windows
       )
+      mark_as_advanced(COMPILER_ASAN_LIBRARY)
     elseif(APPLE)
       execute_process(COMMAND ${CMAKE_CXX_COMPILER}
         -print-file-name=lib
@@ -723,13 +768,14 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID MATCHES "Clang")
           "${CLANG_LIB_DIR}/darwin/"
       )
       unset(CLANG_LIB_DIR)
-    else()
+      mark_as_advanced(COMPILER_ASAN_LIBRARY)
+    elseif(CMAKE_COMPILER_IS_GNUCC)
       find_library(
         COMPILER_ASAN_LIBRARY asan ${CMAKE_C_IMPLICIT_LINK_DIRECTORIES}
       )
+      mark_as_advanced(COMPILER_ASAN_LIBRARY)
     endif()
 
-    mark_as_advanced(COMPILER_ASAN_LIBRARY)
   endif()
 endif()
 
@@ -884,16 +930,16 @@ set_and_warn_dependency(WITH_TBB WITH_MOD_FLUID         OFF)
 # NanoVDB requires OpenVDB to convert the data structure
 set_and_warn_dependency(WITH_OPENVDB WITH_NANOVDB       OFF)
 
-# OpenVDB and OpenColorIO uses 'half' type from OpenEXR
+# OpenVDB, Alembic and OSL uses 'half' or 'imath' from OpenEXR
 set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_OPENVDB OFF)
+set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_ALEMBIC OFF)
+set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_CYCLES_OSL OFF)
 
-# Haru needs `TIFFFaxBlackCodes` & `TIFFFaxWhiteCodes` symbols from TIFF.
-set_and_warn_dependency(WITH_IMAGE_TIFF WITH_HARU       OFF)
+# Hydra requires USD.
+set_and_warn_dependency(WITH_USD WITH_HYDRA OFF)
 
 # auto enable openimageio for cycles
 if(WITH_CYCLES)
-  set(WITH_OPENIMAGEIO ON)
-
   # auto enable llvm for cycles_osl
   if(WITH_CYCLES_OSL)
     set(WITH_LLVM ON CACHE BOOL "" FORCE)
@@ -1085,13 +1131,6 @@ if(NOT WITH_FFTW3 AND WITH_MOD_OCEANSIM)
 endif()
 
 if(WITH_CYCLES)
-  if(NOT WITH_OPENIMAGEIO)
-    message(
-      FATAL_ERROR
-      "Cycles requires WITH_OPENIMAGEIO, the library may not have been found. "
-      "Configure OIIO or disable WITH_CYCLES"
-    )
-  endif()
   if(WITH_CYCLES_OSL)
     if(NOT WITH_LLVM)
       message(
@@ -1220,14 +1259,6 @@ if(WITH_OPENVDB)
   list(APPEND OPENVDB_LIBRARIES ${BOOST_LIBRARIES} ${TBB_LIBRARIES})
 endif()
 
-
-# -----------------------------------------------------------------------------
-# Configure OpenGL
-
-if(WITH_OPENGL)
-  add_definitions(-DWITH_OPENGL)
-endif()
-
 # -----------------------------------------------------------------------------
 # Configure Metal
 
@@ -1264,6 +1295,9 @@ if(WITH_OPENMP)
       add_definitions("${OpenMP_C_FLAGS}")
 
       find_library_static(OpenMP_LIBRARIES gomp ${CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES})
+      mark_as_advanced(
+        OpenMP_LIBRARIES
+      )
     endif()
   endif()
 
@@ -1546,6 +1580,8 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
   add_check_c_compiler_flag(C_WARNINGS C_WARN_STRICT_PROTOTYPES  -Wstrict-prototypes)
   add_check_c_compiler_flag(C_WARNINGS C_WARN_MISSING_PROTOTYPES -Wmissing-prototypes)
   add_check_c_compiler_flag(C_WARNINGS C_WARN_UNUSED_PARAMETER -Wunused-parameter)
+  add_check_c_compiler_flag(C_WARNINGS C_WARN_UNDEF -Wundef)
+  add_check_c_compiler_flag(C_WARNINGS C_WARN_UNDEF_PREFIX -Wundef-prefix)
 
   add_check_cxx_compiler_flag(CXX_WARNINGS CXX_WARN_ALL -Wall)
   # Using C++20 features while having C++17 as the project language isn't allowed by MSVC.
@@ -1560,9 +1596,16 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
   # Apple Clang (tested on version 12) doesn't support this flag while LLVM Clang 11 does.
   add_check_cxx_compiler_flag(CXX_WARNINGS CXX_WARN_NO_SUGGEST_OVERRIDE    -Wno-suggest-override)
 
+  add_check_cxx_compiler_flag(CXX_WARNINGS CXX_WARN_UNDEF -Wundef)
+  add_check_cxx_compiler_flag(CXX_WARNINGS CXX_WARN_UNDEF_PREFIX -Wundef-prefix)
+  add_check_cxx_compiler_flag(CXX_WARNINGS CXX_WARN_UNUSED_PARAMETER -Wunused-parameter)
+
   # gives too many unfixable warnings
   # add_check_c_compiler_flag(C_WARNINGS C_WARN_UNUSED_MACROS      -Wunused-macros)
   # add_check_cxx_compiler_flag(CXX_WARNINGS CXX_WARN_UNUSED_MACROS          -Wunused-macros)
+
+  add_check_c_compiler_flag(C_WARNINGS C_WARN_ERROR_UNGUARDED_AVAILABILITY_NEW -Werror=unguarded-availability-new)
+  add_check_c_compiler_flag(CXX_WARNINGS CXX_WARN_ERROR_UNGUARDED_AVAILABILITY_NEW -Werror=unguarded-availability-new)
 
   # ---------------------
   # Suppress Strict Flags
@@ -1583,6 +1626,9 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
   add_check_c_compiler_flag(C_REMOVE_STRICT_FLAGS C_WARN_NO_MISSING_NORETURN -Wno-missing-noreturn)
   add_check_c_compiler_flag(C_REMOVE_STRICT_FLAGS C_WARN_NO_UNUSED_BUT_SET_VARIABLE -Wno-unused-but-set-variable)
   add_check_c_compiler_flag(C_REMOVE_STRICT_FLAGS C_WARN_NO_DEPRECATED_DECLARATIONS -Wno-deprecated-declarations)
+  add_check_c_compiler_flag(C_REMOVE_STRICT_FLAGS C_WARN_NO_STRICT_PROTOTYPES -Wno-strict-prototypes)
+  add_check_c_compiler_flag(C_REMOVE_STRICT_FLAGS C_WARN_NO_BITWISE_INSTEAD_OF_LOGICAL -Wno-bitwise-instead-of-logical)
+  add_check_c_compiler_flag(C_REMOVE_STRICT_FLAGS C_WARN_NO_IMPLICIT_CONST_INT_FLOAT_CONVERSION -Wno-implicit-const-int-float-conversion)
 
   add_check_cxx_compiler_flag(CXX_REMOVE_STRICT_FLAGS CXX_WARN_NO_UNUSED_PARAMETER -Wno-unused-parameter)
   add_check_cxx_compiler_flag(CXX_REMOVE_STRICT_FLAGS CXX_WARN_NO_UNUSED_PRIVATE_FIELD -Wno-unused-private-field)
@@ -1596,6 +1642,10 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
   add_check_cxx_compiler_flag(CXX_REMOVE_STRICT_FLAGS CXX_WARN_NO_UNDEFINED_VAR_TEMPLATE -Wno-undefined-var-template)
   add_check_cxx_compiler_flag(CXX_REMOVE_STRICT_FLAGS CXX_WARN_NO_INSTANTIATION_AFTER_SPECIALIZATION -Wno-instantiation-after-specialization)
   add_check_cxx_compiler_flag(CXX_REMOVE_STRICT_FLAGS CXX_WARN_NO_MISLEADING_INDENTATION    -Wno-misleading-indentation)
+  add_check_cxx_compiler_flag(CXX_REMOVE_STRICT_FLAGS CXX_WARN_NO_BITWISE_INSTEAD_OF_LOGICAL -Wno-bitwise-instead-of-logical)
+  add_check_cxx_compiler_flag(CXX_REMOVE_STRICT_FLAGS CXX_WARN_NO_IMPLICIT_CONST_INT_FLOAT_CONVERSION -Wno-implicit-const-int-float-conversion)
+  add_check_cxx_compiler_flag(CXX_REMOVE_STRICT_FLAGS CXX_WARN_NO_UNDEF -Wno-undef)
+  add_check_cxx_compiler_flag(CXX_REMOVE_STRICT_FLAGS CXX_WARN_NO_UNDEF_PREFIX -Wno-undef-prefix)
 
 elseif(CMAKE_C_COMPILER_ID MATCHES "Intel")
 
@@ -1616,6 +1666,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
     # warning level:
     "/W3"
     "/w34062"  # switch statement contains 'default' but no 'case' labels
+    "/w34100"  # 'identifier' : unreferenced formal parameter
     "/w34115"  # 'type' : named type definition in parentheses
     "/w34189"  # local variable is initialized but not referenced
     # see https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/c5038?view=vs-2017
@@ -1710,6 +1761,8 @@ endif()
 
 if(WITH_COMPILER_SHORT_FILE_MACRO)
   # Use '-fmacro-prefix-map' for Clang and GCC (MSVC doesn't support this).
+  set(C_PREFIX_MAP_FLAGS "")
+  set(CXX_PREFIX_MAP_FLAGS "")
   add_check_c_compiler_flag(C_PREFIX_MAP_FLAGS C_MACRO_PREFIX_MAP -fmacro-prefix-map=foo=bar)
   add_check_cxx_compiler_flag(CXX_PREFIX_MAP_FLAGS CXX_MACRO_PREFIX_MAP -fmacro-prefix-map=foo=bar)
   if(C_MACRO_PREFIX_MAP AND CXX_MACRO_PREFIX_MAP)
@@ -1744,6 +1797,8 @@ if(WITH_COMPILER_SHORT_FILE_MACRO)
     )
     set(WITH_COMPILER_SHORT_FILE_MACRO OFF)
   endif()
+  unset(C_PREFIX_MAP_FLAGS)
+  unset(CXX_PREFIX_MAP_FLAGS)
 endif()
 
 # Include warnings first, so its possible to disable them with user defined flags
@@ -1937,12 +1992,8 @@ if(FIRST_RUN)
 
   info_cfg_text("Image Formats:")
   info_cfg_option(WITH_IMAGE_CINEON)
-  info_cfg_option(WITH_IMAGE_DDS)
-  info_cfg_option(WITH_IMAGE_HDR)
   info_cfg_option(WITH_IMAGE_OPENEXR)
   info_cfg_option(WITH_IMAGE_OPENJPEG)
-  info_cfg_option(WITH_IMAGE_TIFF)
-  info_cfg_option(WITH_OPENIMAGEIO)
 
   info_cfg_text("Audio:")
   info_cfg_option(WITH_CODEC_AVI)
@@ -1983,10 +2034,13 @@ if(FIRST_RUN)
       info_cfg_option(WITH_CYCLES_DEVICE_OPTIX)
       info_cfg_option(WITH_CYCLES_DEVICE_CUDA)
       info_cfg_option(WITH_CYCLES_CUDA_BINARIES)
-      info_cfg_option(WITH_CYCLES_DEVICE_HIP)
-      info_cfg_option(WITH_CYCLES_HIP_BINARIES)
       info_cfg_option(WITH_CYCLES_DEVICE_ONEAPI)
       info_cfg_option(WITH_CYCLES_ONEAPI_BINARIES)
+      info_cfg_option(WITH_CYCLES_DEVICE_HIP)
+      info_cfg_option(WITH_CYCLES_HIP_BINARIES)
+    endif()
+    if(WIN32)
+      info_cfg_option(WITH_CYCLES_DEVICE_HIPRT)
     endif()
   endif()
 

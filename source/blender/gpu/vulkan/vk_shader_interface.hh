@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -12,7 +13,9 @@
 #include "gpu_shader_create_info.hh"
 #include "gpu_shader_interface.hh"
 
-#include "vk_descriptor_set.hh"
+#include "BLI_array.hh"
+
+#include "vk_push_constants.hh"
 
 namespace blender::gpu {
 class VKShaderInterface : public ShaderInterface {
@@ -27,6 +30,8 @@ class VKShaderInterface : public ShaderInterface {
   uint32_t image_offset_ = 0;
   Array<VKDescriptorSet::Location> descriptor_set_locations_;
 
+  VKPushConstants::Layout push_constants_layout_;
+
  public:
   VKShaderInterface() = default;
 
@@ -34,8 +39,14 @@ class VKShaderInterface : public ShaderInterface {
 
   const VKDescriptorSet::Location descriptor_set_location(
       const shader::ShaderCreateInfo::Resource &resource) const;
-  const VKDescriptorSet::Location descriptor_set_location(
+  const std::optional<VKDescriptorSet::Location> descriptor_set_location(
       const shader::ShaderCreateInfo::Resource::BindType &bind_type, int binding) const;
+
+  /** Get the Layout of the shader. */
+  const VKPushConstants::Layout &push_constants_layout_get() const
+  {
+    return push_constants_layout_;
+  }
 
  private:
   /**

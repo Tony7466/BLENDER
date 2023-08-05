@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edrend
@@ -24,13 +25,13 @@
 
 #include "BLT_translation.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 #include "UI_interface.h"
 
-#include "wm_window.h"
+#include "wm_window.hh"
 
 #include "render_intern.hh"
 
@@ -44,11 +45,11 @@
 static ScrArea *biggest_non_image_area(bContext *C)
 {
   bScreen *screen = CTX_wm_screen(C);
-  ScrArea *area, *big = nullptr;
+  ScrArea *big = nullptr;
   int size, maxsize = 0, bwmaxsize = 0;
   short foundwin = 0;
 
-  for (area = static_cast<ScrArea *>(screen->areabase.first); area; area = area->next) {
+  LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
     if (area->winx > 30 && area->winy > 30) {
       size = area->winx * area->winy;
       if (!area->full && area->spacetype == SPACE_PROPERTIES) {
@@ -134,8 +135,8 @@ ScrArea *render_view_open(bContext *C, int mx, int my, ReportList *reports)
     int sizex, sizey;
     BKE_render_resolution(&scene->r, false, &sizex, &sizey);
 
-    sizex += 30 * UI_DPI_FAC;
-    sizey += 60 * UI_DPI_FAC;
+    sizex += 30 * UI_SCALE_FAC;
+    sizey += 60 * UI_SCALE_FAC;
 
     /* arbitrary... miniature image window views don't make much sense */
     if (sizex < 320) {
@@ -145,18 +146,25 @@ ScrArea *render_view_open(bContext *C, int mx, int my, ReportList *reports)
       sizey = 256;
     }
 
+    const rcti window_rect = {
+        /*xmin*/ mx,
+        /*xmax*/ mx + sizex,
+        /*ymin*/ my,
+        /*ymax*/ my + sizey,
+    };
+
     /* changes context! */
     if (WM_window_open(C,
                        IFACE_("Blender Render"),
-                       mx,
-                       my,
-                       sizex,
-                       sizey,
+                       &window_rect,
                        SPACE_IMAGE,
                        true,
                        false,
                        true,
-                       WIN_ALIGN_LOCATION_CENTER) == nullptr) {
+                       WIN_ALIGN_LOCATION_CENTER,
+                       nullptr,
+                       nullptr) == nullptr)
+    {
       BKE_report(reports, RPT_ERROR, "Failed to open window!");
       return nullptr;
     }
@@ -294,7 +302,7 @@ static int render_view_cancel_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_PASS_THROUGH;
 }
 
-void RENDER_OT_view_cancel(struct wmOperatorType *ot)
+void RENDER_OT_view_cancel(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Cancel Render View";
@@ -317,16 +325,17 @@ static int render_view_show_invoke(bContext *C, wmOperator *op, const wmEvent *e
     wm_window_lower(wincur);
   }
   else {
-    wmWindow *win, *winshow;
+    wmWindow *winshow;
     ScrArea *area = find_area_showing_r_result(C, CTX_data_scene(C), &winshow);
 
     /* is there another window on current scene showing result? */
-    for (win = static_cast<wmWindow *>(CTX_wm_manager(C)->windows.first); win; win = win->next) {
+    LISTBASE_FOREACH (wmWindow *, win, &CTX_wm_manager(C)->windows) {
       const bScreen *screen = WM_window_get_active_screen(win);
 
       if ((WM_window_is_temp_screen(win) &&
            ((ScrArea *)screen->areabase.first)->spacetype == SPACE_IMAGE) ||
-          (win == winshow && winshow != wincur)) {
+          (win == winshow && winshow != wincur))
+      {
         wm_window_raise(win);
         return OPERATOR_FINISHED;
       }
@@ -359,7 +368,7 @@ static int render_view_show_invoke(bContext *C, wmOperator *op, const wmEvent *e
   return OPERATOR_FINISHED;
 }
 
-void RENDER_OT_view_show(struct wmOperatorType *ot)
+void RENDER_OT_view_show(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Show/Hide Render View";

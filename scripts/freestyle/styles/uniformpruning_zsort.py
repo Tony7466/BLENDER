@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2008-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 #  Filename : uniformpruning_zsort.py
@@ -20,7 +22,7 @@ from freestyle.types import IntegrationType, Operators, Stroke
 
 Operators.select(QuantitativeInvisibilityUP1D(0))
 Operators.bidirectional_chain(ChainSilhouetteIterator())
-#Operators.sequential_split(pyVertexNatureUP0D(Nature.VIEW_VERTEX), 2)
+# Operators.sequential_split(pyVertexNatureUP0D(Nature.VIEW_VERTEX), 2)
 Operators.sort(pyZBP1D())
 shaders_list = [
     ConstantThicknessShader(3),

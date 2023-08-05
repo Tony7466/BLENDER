@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -8,6 +10,8 @@
 
 #include "DNA_freestyle_types.h"
 #include "DNA_listBase.h"
+
+#include "BLI_utildefines.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,8 +48,10 @@ typedef enum eViewLayerEEVEEPassType {
   EEVEE_RENDER_PASS_CRYPTOMATTE_ASSET = (1 << 17),
   EEVEE_RENDER_PASS_CRYPTOMATTE_MATERIAL = (1 << 18),
   EEVEE_RENDER_PASS_VECTOR = (1 << 19),
+  EEVEE_RENDER_PASS_TRANSPARENT = (1 << 20),
 } eViewLayerEEVEEPassType;
 #define EEVEE_RENDER_PASS_MAX_BIT 20
+ENUM_OPERATORS(eViewLayerEEVEEPassType, 1 << EEVEE_RENDER_PASS_MAX_BIT)
 
 /* #ViewLayerAOV.type */
 typedef enum eViewLayerAOVType {
@@ -65,6 +71,7 @@ typedef enum eViewLayerCryptomatteFlags {
   VIEW_LAYER_CRYPTOMATTE_ASSET = (1 << 2),
   VIEW_LAYER_CRYPTOMATTE_ACCURATE = (1 << 3),
 } eViewLayerCryptomatteFlags;
+ENUM_OPERATORS(eViewLayerCryptomatteFlags, VIEW_LAYER_CRYPTOMATTE_ACCURATE)
 #define VIEW_LAYER_CRYPTOMATTE_ALL \
   (VIEW_LAYER_CRYPTOMATTE_OBJECT | VIEW_LAYER_CRYPTOMATTE_MATERIAL | VIEW_LAYER_CRYPTOMATTE_ASSET)
 

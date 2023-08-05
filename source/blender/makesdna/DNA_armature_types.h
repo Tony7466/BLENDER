@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -10,6 +11,8 @@
 #include "DNA_ID.h"
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
+
+#include "BLI_utildefines.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -153,10 +156,13 @@ typedef enum eArmature_Flag {
   ARM_FLAG_UNUSED_1 = (1 << 1), /* cleared */
   ARM_DRAWAXES = (1 << 2),
   ARM_DRAWNAMES = (1 << 3),
-  ARM_POSEMODE = (1 << 4),
-  ARM_FLAG_UNUSED_5 = (1 << 5), /* cleared */
-  ARM_FLAG_UNUSED_6 = (1 << 6), /* cleared */
-  ARM_FLAG_UNUSED_7 = (1 << 7),
+  /* ARM_POSEMODE = (1 << 4), Deprecated. */
+  /** Position of the parent-child relation lines on the bone (cleared = drawn
+   * from the tail, set = drawn from the head). Only controls the parent side of
+   * the line; the child side is always drawn to the head of the bone. */
+  ARM_DRAW_RELATION_FROM_HEAD = (1 << 5), /* Cleared in versioning of pre-2.80 files. */
+  ARM_FLAG_UNUSED_6 = (1 << 6),           /* cleared */
+  ARM_FLAG_UNUSED_7 = (1 << 7),           /* cleared */
   ARM_MIRROR_EDIT = (1 << 8),
   ARM_FLAG_UNUSED_9 = (1 << 9),
   /** Made option negative, for backwards compatibility. */
@@ -261,6 +267,7 @@ typedef enum eBone_Flag {
   /** this bone is associated with a locked vertex group, ONLY USE FOR DRAWING */
   BONE_DRAW_LOCKED_WEIGHT = (1 << 26),
 } eBone_Flag;
+ENUM_OPERATORS(eBone_Flag, BONE_DRAW_LOCKED_WEIGHT)
 
 /* bone->inherit_scale_mode */
 typedef enum eBone_InheritScaleMode {

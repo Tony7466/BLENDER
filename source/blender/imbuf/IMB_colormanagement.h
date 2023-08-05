@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2012 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -43,7 +44,7 @@ const char *IMB_colormanagement_role_colorspace_name_get(int role);
 void IMB_colormanagement_check_is_data(struct ImBuf *ibuf, const char *name);
 void IMB_colormanagegent_copy_settings(struct ImBuf *ibuf_src, struct ImBuf *ibuf_dst);
 void IMB_colormanagement_assign_float_colorspace(struct ImBuf *ibuf, const char *name);
-void IMB_colormanagement_assign_rect_colorspace(struct ImBuf *ibuf, const char *name);
+void IMB_colormanagement_assign_byte_colorspace(struct ImBuf *ibuf, const char *name);
 
 const char *IMB_colormanagement_get_float_colorspace(struct ImBuf *ibuf);
 const char *IMB_colormanagement_get_rect_colorspace(struct ImBuf *ibuf);
@@ -344,6 +345,7 @@ int IMB_colormanagement_colorspace_get_named_index(const char *name);
 const char *IMB_colormanagement_colorspace_get_indexed_name(int index);
 const char *IMB_colormanagement_colorspace_get_name(const struct ColorSpace *colorspace);
 const char *IMB_colormanagement_view_get_default_name(const char *display_name);
+const char *IMB_colormanagement_view_get_raw_or_default_name(const char *display_name);
 
 void IMB_colormanagement_colorspace_from_ibuf_ftype(
     struct ColorManagedColorspaceSettings *colorspace_settings, struct ImBuf *ibuf);
@@ -531,4 +533,4 @@ void IMB_colormanagement_wavelength_to_rgb_table(float *r_table, int width);
 }
 #endif
 
-#include "intern/colormanagement_inline.c"
+#include "intern/colormanagement_inline.h"

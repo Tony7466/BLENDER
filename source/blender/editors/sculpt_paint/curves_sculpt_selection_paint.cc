@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <algorithm>
 #include <numeric>
@@ -10,16 +12,16 @@
 #include "DNA_brush_types.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_context.h"
 #include "BKE_curves.hh"
 
 #include "DEG_depsgraph.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 #include "ED_view3d.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "curves_sculpt_intern.hh"
 
@@ -72,9 +74,7 @@ struct SelectionPaintOperationExecutor {
 
   CurvesSurfaceTransforms transforms_;
 
-  SelectionPaintOperationExecutor(const bContext &C) : ctx_(C)
-  {
-  }
+  SelectionPaintOperationExecutor(const bContext &C) : ctx_(C) {}
 
   void execute(SelectionPaintOperation &self,
                const bContext &C,

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -48,6 +49,7 @@ struct GlobalsUboStorage {
   float4 color_edge_freestyle;
   float4 color_face;
   float4 color_face_select;
+  float4 color_face_retopology;
   float4 color_face_freestyle;
   float4 color_gpencil_vertex;
   float4 color_gpencil_vertex_select;
@@ -164,6 +166,7 @@ BLI_STATIC_ASSERT_ALIGN(GlobalsUboStorage, 16)
 #  define colorEdgeFreestyle globalsBlock.color_edge_freestyle
 #  define colorFace globalsBlock.color_face
 #  define colorFaceSelect globalsBlock.color_face_select
+#  define colorFaceRetopology globalsBlock.color_face_retopology
 #  define colorFaceFreestyle globalsBlock.color_face_freestyle
 #  define colorGpencilVertex globalsBlock.color_gpencil_vertex
 #  define colorGpencilVertexSelect globalsBlock.color_gpencil_vertex_select
@@ -243,7 +246,7 @@ BLI_STATIC_ASSERT_ALIGN(GlobalsUboStorage, 16)
 #  define sizeVertexGpencil globalsBlock.size_vertex_gpencil
 #endif
 
-/* See: 'draw_cache_impl.h' for matching includes. */
+/* See: 'draw_cache_impl.hh' for matching includes. */
 #define VERT_GPENCIL_BEZT_HANDLE (1u << 30)
 /* data[0] (1st byte flags) */
 #define FACE_ACTIVE (1u << 0)

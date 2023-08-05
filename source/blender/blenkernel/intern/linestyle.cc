@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2010 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2010 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -33,7 +34,7 @@
 #include "BKE_lib_query.h"
 #include "BKE_linestyle.h"
 #include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_texture.h"
 
@@ -75,32 +76,23 @@ static void linestyle_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const
     linestyle_dst->nodetree->owner_id = &linestyle_dst->id;
   }
 
-  LineStyleModifier *linestyle_modifier;
   BLI_listbase_clear(&linestyle_dst->color_modifiers);
-  for (linestyle_modifier = (LineStyleModifier *)linestyle_src->color_modifiers.first;
-       linestyle_modifier;
-       linestyle_modifier = linestyle_modifier->next) {
+  LISTBASE_FOREACH (LineStyleModifier *, linestyle_modifier, &linestyle_src->color_modifiers) {
     BKE_linestyle_color_modifier_copy(linestyle_dst, linestyle_modifier, flag_subdata);
   }
 
   BLI_listbase_clear(&linestyle_dst->alpha_modifiers);
-  for (linestyle_modifier = (LineStyleModifier *)linestyle_src->alpha_modifiers.first;
-       linestyle_modifier;
-       linestyle_modifier = linestyle_modifier->next) {
+  LISTBASE_FOREACH (LineStyleModifier *, linestyle_modifier, &linestyle_src->alpha_modifiers) {
     BKE_linestyle_alpha_modifier_copy(linestyle_dst, linestyle_modifier, flag_subdata);
   }
 
   BLI_listbase_clear(&linestyle_dst->thickness_modifiers);
-  for (linestyle_modifier = (LineStyleModifier *)linestyle_src->thickness_modifiers.first;
-       linestyle_modifier;
-       linestyle_modifier = linestyle_modifier->next) {
+  LISTBASE_FOREACH (LineStyleModifier *, linestyle_modifier, &linestyle_src->thickness_modifiers) {
     BKE_linestyle_thickness_modifier_copy(linestyle_dst, linestyle_modifier, flag_subdata);
   }
 
   BLI_listbase_clear(&linestyle_dst->geometry_modifiers);
-  for (linestyle_modifier = (LineStyleModifier *)linestyle_src->geometry_modifiers.first;
-       linestyle_modifier;
-       linestyle_modifier = linestyle_modifier->next) {
+  LISTBASE_FOREACH (LineStyleModifier *, linestyle_modifier, &linestyle_src->geometry_modifiers) {
     BKE_linestyle_geometry_modifier_copy(linestyle_dst, linestyle_modifier, flag_subdata);
   }
 }
@@ -182,9 +174,7 @@ static void linestyle_foreach_id(ID *id, LibraryForeachIDData *data)
 
 static void write_linestyle_color_modifiers(BlendWriter *writer, ListBase *modifiers)
 {
-  LineStyleModifier *m;
-
-  for (m = static_cast<LineStyleModifier *>(modifiers->first); m; m = m->next) {
+  LISTBASE_FOREACH (LineStyleModifier *, m, modifiers) {
     int struct_nr;
     switch (m->type) {
       case LS_MODIFIER_ALONG_STROKE:
@@ -216,7 +206,7 @@ static void write_linestyle_color_modifiers(BlendWriter *writer, ListBase *modif
     }
     BLO_write_struct_by_id(writer, struct_nr, m);
   }
-  for (m = static_cast<LineStyleModifier *>(modifiers->first); m; m = m->next) {
+  LISTBASE_FOREACH (LineStyleModifier *, m, modifiers) {
     switch (m->type) {
       case LS_MODIFIER_ALONG_STROKE:
         BLO_write_struct(writer, ColorBand, ((LineStyleColorModifier_AlongStroke *)m)->color_ramp);
@@ -251,9 +241,7 @@ static void write_linestyle_color_modifiers(BlendWriter *writer, ListBase *modif
 
 static void write_linestyle_alpha_modifiers(BlendWriter *writer, ListBase *modifiers)
 {
-  LineStyleModifier *m;
-
-  for (m = static_cast<LineStyleModifier *>(modifiers->first); m; m = m->next) {
+  LISTBASE_FOREACH (LineStyleModifier *, m, modifiers) {
     int struct_nr;
     switch (m->type) {
       case LS_MODIFIER_ALONG_STROKE:
@@ -285,7 +273,7 @@ static void write_linestyle_alpha_modifiers(BlendWriter *writer, ListBase *modif
     }
     BLO_write_struct_by_id(writer, struct_nr, m);
   }
-  for (m = static_cast<LineStyleModifier *>(modifiers->first); m; m = m->next) {
+  LISTBASE_FOREACH (LineStyleModifier *, m, modifiers) {
     switch (m->type) {
       case LS_MODIFIER_ALONG_STROKE:
         BKE_curvemapping_blend_write(writer, ((LineStyleAlphaModifier_AlongStroke *)m)->curve);
@@ -319,9 +307,7 @@ static void write_linestyle_alpha_modifiers(BlendWriter *writer, ListBase *modif
 
 static void write_linestyle_thickness_modifiers(BlendWriter *writer, ListBase *modifiers)
 {
-  LineStyleModifier *m;
-
-  for (m = static_cast<LineStyleModifier *>(modifiers->first); m; m = m->next) {
+  LISTBASE_FOREACH (LineStyleModifier *, m, modifiers) {
     int struct_nr;
     switch (m->type) {
       case LS_MODIFIER_ALONG_STROKE:
@@ -356,7 +342,7 @@ static void write_linestyle_thickness_modifiers(BlendWriter *writer, ListBase *m
     }
     BLO_write_struct_by_id(writer, struct_nr, m);
   }
-  for (m = static_cast<LineStyleModifier *>(modifiers->first); m; m = m->next) {
+  LISTBASE_FOREACH (LineStyleModifier *, m, modifiers) {
     switch (m->type) {
       case LS_MODIFIER_ALONG_STROKE:
         BKE_curvemapping_blend_write(writer, ((LineStyleThicknessModifier_AlongStroke *)m)->curve);
@@ -388,9 +374,7 @@ static void write_linestyle_thickness_modifiers(BlendWriter *writer, ListBase *m
 
 static void write_linestyle_geometry_modifiers(BlendWriter *writer, ListBase *modifiers)
 {
-  LineStyleModifier *m;
-
-  for (m = static_cast<LineStyleModifier *>(modifiers->first); m; m = m->next) {
+  LISTBASE_FOREACH (LineStyleModifier *, m, modifiers) {
     int struct_nr;
     switch (m->type) {
       case LS_MODIFIER_SAMPLING:
@@ -463,8 +447,17 @@ static void linestyle_blend_write(BlendWriter *writer, ID *id, const void *id_ad
     }
   }
   if (linestyle->nodetree) {
-    BLO_write_struct(writer, bNodeTree, linestyle->nodetree);
-    ntreeBlendWrite(writer, linestyle->nodetree);
+    BLO_Write_IDBuffer *temp_embedded_id_buffer = BLO_write_allocate_id_buffer();
+    BLO_write_init_id_buffer_from_id(
+        temp_embedded_id_buffer, &linestyle->nodetree->id, BLO_write_is_undo(writer));
+    BLO_write_struct_at_address(writer,
+                                bNodeTree,
+                                linestyle->nodetree,
+                                BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer));
+    ntreeBlendWrite(
+        writer,
+        reinterpret_cast<bNodeTree *>(BLO_write_get_id_buffer_temp_id(temp_embedded_id_buffer)));
+    BLO_write_destroy_id_buffer(&temp_embedded_id_buffer);
   }
 }
 
@@ -669,7 +662,7 @@ static void linestyle_blend_read_lib(BlendLibReader *reader, ID *id)
       case LS_MODIFIER_DISTANCE_FROM_OBJECT: {
         LineStyleColorModifier_DistanceFromObject *cm =
             (LineStyleColorModifier_DistanceFromObject *)m;
-        BLO_read_id_address(reader, linestyle->id.lib, &cm->target);
+        BLO_read_id_address(reader, id, &cm->target);
         break;
       }
     }
@@ -679,7 +672,7 @@ static void linestyle_blend_read_lib(BlendLibReader *reader, ID *id)
       case LS_MODIFIER_DISTANCE_FROM_OBJECT: {
         LineStyleAlphaModifier_DistanceFromObject *am =
             (LineStyleAlphaModifier_DistanceFromObject *)m;
-        BLO_read_id_address(reader, linestyle->id.lib, &am->target);
+        BLO_read_id_address(reader, id, &am->target);
         break;
       }
     }
@@ -689,7 +682,7 @@ static void linestyle_blend_read_lib(BlendLibReader *reader, ID *id)
       case LS_MODIFIER_DISTANCE_FROM_OBJECT: {
         LineStyleThicknessModifier_DistanceFromObject *tm =
             (LineStyleThicknessModifier_DistanceFromObject *)m;
-        BLO_read_id_address(reader, linestyle->id.lib, &tm->target);
+        BLO_read_id_address(reader, id, &tm->target);
         break;
       }
     }
@@ -697,8 +690,8 @@ static void linestyle_blend_read_lib(BlendLibReader *reader, ID *id)
   for (int a = 0; a < MAX_MTEX; a++) {
     MTex *mtex = linestyle->mtex[a];
     if (mtex) {
-      BLO_read_id_address(reader, linestyle->id.lib, &mtex->tex);
-      BLO_read_id_address(reader, linestyle->id.lib, &mtex->object);
+      BLO_read_id_address(reader, id, &mtex->tex);
+      BLO_read_id_address(reader, id, &mtex->object);
     }
   }
 }
@@ -775,7 +768,7 @@ void BKE_linestyle_init(FreestyleLineStyle *linestyle)
   linestyle_init_data(&linestyle->id);
 }
 
-FreestyleLineStyle *BKE_linestyle_new(struct Main *bmain, const char *name)
+FreestyleLineStyle *BKE_linestyle_new(Main *bmain, const char *name)
 {
   FreestyleLineStyle *linestyle;
 
@@ -802,7 +795,7 @@ static LineStyleModifier *new_modifier(const char *name, int type, size_t size)
   }
   m = (LineStyleModifier *)MEM_callocN(size, "line style modifier");
   m->type = type;
-  BLI_strncpy(m->name, name, sizeof(m->name));
+  STRNCPY(m->name, name);
   m->influence = 1.0f;
   m->flags = LS_MODIFIER_ENABLED | LS_MODIFIER_EXPANDED;
 
@@ -1907,13 +1900,12 @@ bool BKE_linestyle_geometry_modifier_move(FreestyleLineStyle *linestyle,
 
 void BKE_linestyle_modifier_list_color_ramps(FreestyleLineStyle *linestyle, ListBase *listbase)
 {
-  LineStyleModifier *m;
   ColorBand *color_ramp;
   LinkData *link;
 
   BLI_listbase_clear(listbase);
 
-  for (m = (LineStyleModifier *)linestyle->color_modifiers.first; m; m = m->next) {
+  LISTBASE_FOREACH (LineStyleModifier *, m, &linestyle->color_modifiers) {
     switch (m->type) {
       case LS_MODIFIER_ALONG_STROKE:
         color_ramp = ((LineStyleColorModifier_AlongStroke *)m)->color_ramp;
@@ -1938,10 +1930,9 @@ void BKE_linestyle_modifier_list_color_ramps(FreestyleLineStyle *linestyle, List
 
 char *BKE_linestyle_path_to_color_ramp(FreestyleLineStyle *linestyle, ColorBand *color_ramp)
 {
-  LineStyleModifier *m;
   bool found = false;
 
-  for (m = (LineStyleModifier *)linestyle->color_modifiers.first; m; m = m->next) {
+  LISTBASE_FOREACH (LineStyleModifier *, m, &linestyle->color_modifiers) {
     switch (m->type) {
       case LS_MODIFIER_ALONG_STROKE:
         if (color_ramp == ((LineStyleColorModifier_AlongStroke *)m)->color_ramp) {
@@ -1999,10 +1990,7 @@ bool BKE_linestyle_use_textures(FreestyleLineStyle *linestyle, const bool use_sh
 {
   if (use_shading_nodes) {
     if (linestyle && linestyle->use_nodes && linestyle->nodetree) {
-      bNode *node;
-
-      for (node = static_cast<bNode *>(linestyle->nodetree->nodes.first); node;
-           node = node->next) {
+      LISTBASE_FOREACH (bNode *, node, &linestyle->nodetree->nodes) {
         if (node->typeinfo->nclass == NODE_CLASS_TEXTURE) {
           return true;
         }
@@ -2025,7 +2013,8 @@ void BKE_linestyle_default_shader(const bContext *C, FreestyleLineStyle *linesty
 
   BLI_assert(linestyle->nodetree == nullptr);
 
-  ntree = ntreeAddTreeEmbedded(nullptr, &linestyle->id, "stroke_shader", "ShaderNodeTree");
+  ntree = blender::bke::ntreeAddTreeEmbedded(
+      nullptr, &linestyle->id, "stroke_shader", "ShaderNodeTree");
 
   uv_along_stroke = nodeAddStaticNode(C, ntree, SH_NODE_UVALONGSTROKE);
   uv_along_stroke->locx = 0.0f;

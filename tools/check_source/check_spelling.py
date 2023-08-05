@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """
@@ -64,7 +66,7 @@ from check_spelling_c_config import (
 )
 
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
-ROOTDIR = os.path.normpath(os.path.join(BASEDIR, "..", "..", ".."))
+ROOTDIR = os.path.normpath(os.path.join(BASEDIR, "..", ".."))
 
 # Ensure native slashes.
 files_ignore = {

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_curves.hh"
 
@@ -13,32 +15,32 @@ NODE_STORAGE_FUNCS(NodeGeometryCurvePrimitiveBezierSegment)
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Int>(N_("Resolution"))
+  b.add_input<decl::Int>("Resolution")
       .default_value(16)
       .min(1)
       .max(256)
       .subtype(PROP_UNSIGNED)
-      .description(N_("The number of evaluated points on the curve"));
-  b.add_input<decl::Vector>(N_("Start"))
+      .description("The number of evaluated points on the curve");
+  b.add_input<decl::Vector>("Start")
       .default_value({-1.0f, 0.0f, 0.0f})
       .subtype(PROP_TRANSLATION)
-      .description(N_("Position of the start control point of the curve"));
-  b.add_input<decl::Vector>(N_("Start Handle"))
+      .description("Position of the start control point of the curve");
+  b.add_input<decl::Vector>("Start Handle")
       .default_value({-0.5f, 0.5f, 0.0f})
       .subtype(PROP_TRANSLATION)
       .description(
-          N_("Position of the start handle used to define the shape of the curve. In Offset mode, "
-             "relative to Start point"));
-  b.add_input<decl::Vector>(N_("End Handle"))
+          "Position of the start handle used to define the shape of the curve. In Offset mode, "
+          "relative to Start point");
+  b.add_input<decl::Vector>("End Handle")
       .subtype(PROP_TRANSLATION)
       .description(
-          N_("Position of the end handle used to define the shape of the curve. In Offset mode, "
-             "relative to End point"));
-  b.add_input<decl::Vector>(N_("End"))
+          "Position of the end handle used to define the shape of the curve. In Offset mode, "
+          "relative to End point");
+  b.add_input<decl::Vector>("End")
       .default_value({1.0f, 0.0f, 0.0f})
       .subtype(PROP_TRANSLATION)
-      .description(N_("Position of the end control point of the curve"));
-  b.add_output<decl::Geometry>(N_("Curve"));
+      .description("Position of the end control point of the curve");
+  b.add_output<decl::Geometry>("Curve");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -107,7 +109,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       params.extract_input<float3>("End Handle"),
       std::max(params.extract_input<int>("Resolution"), 1),
       mode);
-  params.set_output("Curve", GeometrySet::create_with_curves(curves));
+  params.set_output("Curve", GeometrySet::from_curves(curves));
 }
 
 }  // namespace blender::nodes::node_geo_curve_primitive_bezier_segment_cc

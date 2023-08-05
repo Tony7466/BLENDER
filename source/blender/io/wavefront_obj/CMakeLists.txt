@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
@@ -6,22 +8,18 @@ set(INC
   importer
   ../common
   ../../blenkernel
-  ../../blenlib
   ../../bmesh
   ../../bmesh/intern
   ../../depsgraph
   ../../editors/include
-  ../../makesdna
   ../../makesrna
   ../../nodes
   ../../windowmanager
-  ../../../../extern/fast_float
-  ../../../../extern/fmtlib/include
-  ../../../../intern/guardedalloc
 )
 
 set(INC_SYS
-
+  ../../../../extern/fast_float
+  ../../../../extern/fmtlib/include
 )
 
 set(SRC
@@ -58,7 +56,11 @@ set(SRC
 
 set(LIB
   bf_blenkernel
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
   bf_io_common
+  extern_fmtlib
 )
 
 if(WITH_TBB)

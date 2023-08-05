@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2019-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """
@@ -54,15 +56,26 @@ def check_output(cmd: Sequence[str], exit_on_error: bool = True) -> str:
     return output.strip()
 
 
-def git_branch_exists(git_command: str, branch: str) -> bool:
+def git_local_branch_exists(git_command: str, branch: str) -> bool:
     return (
-        call([git_command, "rev-parse", "--verify", branch], exit_on_error=False, silent=True) == 0 or
-        call([git_command, "rev-parse", "--verify", "remotes/upstream/" + branch], exit_on_error=False, silent=True) == 0 or
-        call([git_command, "rev-parse", "--verify", "remotes/origin/" + branch], exit_on_error=False, silent=True) == 0
+        call([git_command, "rev-parse", "--verify", branch], exit_on_error=False, silent=True) == 0
     )
 
 
-def git_get_remote_url(git_command: str, remote_name: str) -> bool:
+def git_remote_branch_exists(git_command: str, remote: str, branch: str) -> bool:
+    return call([git_command, "rev-parse", "--verify", f"remotes/{remote}/{branch}"],
+                exit_on_error=False, silent=True) == 0
+
+
+def git_branch_exists(git_command: str, branch: str) -> bool:
+    return (
+        git_local_branch_exists(git_command, branch) or
+        git_remote_branch_exists(git_command, "upstream", branch) or
+        git_remote_branch_exists(git_command, "origin", branch)
+    )
+
+
+def git_get_remote_url(git_command: str, remote_name: str) -> str:
     return check_output((git_command, "ls-remote", "--get-url", remote_name))
 
 

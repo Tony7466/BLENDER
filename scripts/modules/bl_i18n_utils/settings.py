@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2012-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # Global settings used by all scripts in this dir.
@@ -34,7 +36,7 @@ LANGUAGES = (
     (0, "Automatic (Automatic)", "DEFAULT"),
     (1, "English (English)", "en_US"),
     (2, "Japanese (日本語)", "ja_JP"),
-    (3, "Dutch (Nederlandse taal)", "nl_NL"),
+    (3, "Dutch (Nederlands)", "nl_NL"),
     (4, "Italian (Italiano)", "it_IT"),
     (5, "German (Deutsch)", "de_DE"),
     (6, "Finnish (Suomi)", "fi_FI"),
@@ -68,17 +70,17 @@ LANGUAGES = (
     (32, "Brazilian Portuguese (Português do Brasil)", "pt_BR"),
     # Using the utf8 flipped form of Hebrew (עִבְרִית)).
     (33, "Hebrew (תירִבְעִ)", "he_IL"),
-    (34, "Estonian (Eestlane)", "et_EE"),
+    (34, "Estonian (Eesti keel)", "et_EE"),
     (35, "Esperanto (Esperanto)", "eo"),
     (36, "Spanish from Spain (Español de España)", "es_ES"),
     (37, "Amharic (አማርኛ)", "am_ET"),
     (38, "Uzbek (Oʻzbek)", "uz_UZ"),
     (39, "Uzbek Cyrillic (Ўзбек)", "uz_UZ@cyrillic"),
-    (40, "Hindi (मानक हिन्दी)", "hi_IN"),
-    (41, "Vietnamese (tiếng Việt)", "vi_VN"),
+    (40, "Hindi (हिन्दी)", "hi_IN"),
+    (41, "Vietnamese (Tiếng Việt)", "vi_VN"),
     (42, "Basque (Euskara)", "eu_EU"),
     (43, "Hausa (Hausa)", "ha"),
-    (44, "Kazakh (қазақша)", "kk_KZ"),
+    (44, "Kazakh (Қазақша)", "kk_KZ"),
     (45, "Abkhaz (Аԥсуа бызшәа)", "ab"),
     (46, "Thai (ภาษาไทย)", "th_TH"),
     (47, "Slovak (Slovenčina)", "sk_SK"),
@@ -206,7 +208,7 @@ _str_base = (
             r"(?:(?!<\\)(?:\\\\)*\\(?=(?P={_}2)))|"
             # The most common case.
             ".(?!(?P={_}2))"
-        ")+.)"  # Don't forget the last char!
+        ")*.)"  # Don't forget the last char!
     "(?P={_}2)"  # And closing quote.
 )
 str_clean_re = _str_base.format(_="g", capt="P<clean>")
@@ -243,7 +245,7 @@ PYGETTEXT_KEYWORDS = (() +
 
     tuple(("{}\\((?:[^\"',]+,){{1,2}}\\s*" + _msg_re + r"\s*(?:\)|,)").format(it)
           for it in ("BKE_report", "BKE_reportf", "BKE_reports_prepend", "BKE_reports_prependf",
-                     "CTX_wm_operator_poll_msg_set")) +
+                     "CTX_wm_operator_poll_msg_set", "WM_report", "WM_reportf")) +
 
     tuple(("{}\\((?:[^\"',]+,){{3}}\\s*" + _msg_re + r"\s*\)").format(it)
           for it in ("BMO_error_raise",)) +
@@ -256,12 +258,32 @@ PYGETTEXT_KEYWORDS = (() +
     tuple(("{}\\((?:[^,]+,){{2}}\\s*" + _msg_re + r"\s*(?:\)|,)").format(it)
           for it in ("modifier_subpanel_register", "gpencil_modifier_subpanel_register")) +
 
+    # Node socket declarations: contextless names
+    tuple((r"\.{}<decl::.*?>\(\s*" + _msg_re + r"(?:,[^),]+)*\s*\)"
+           r"(?![^;]*\.translation_context\()").format(it)
+          for it in ("add_input", "add_output")) +
+
+    # Node socket declarations: names with contexts
+    tuple((r"\.{}<decl::.*?>\(\s*" + _msg_re + r"[^;]*\.translation_context\(\s*" + _ctxt_re + r"\s*\)").format(it)
+          for it in ("add_input", "add_output")) +
+
+    # Node socket declarations: description and error messages
+    tuple((r"\.{}\(\s*" + _msg_re + r"\s*\)").format(it)
+          for it in ("description", "error_message_add")) +
+
+    # Node socket labels
+    tuple((r"{}\(\s*[^,]+,\s*" + _msg_re + r"\s*\)").format(it)
+          for it in ("node_sock_label",)) +
+
+    # Geometry Nodes field inputs
+    ((r"FieldInput\(CPPType::get<.*?>\(\),\s*" + _msg_re + r"\s*\)"),) +
+
     # bUnitDef unit names.
     # NOTE: regex is a bit more complex than it would need too. Since the actual
     # identifier (`B_UNIT_DEF_`) is at the end, if it's simpler/too general it
     # becomes extremely slow to process some (unrelated) source files.
-    ((r"\{(?:(?:\s*\"[^\",]+\"\s*,)|(?:\s*\"\\\"\",)|(?:\s*NULL\s*,)){4}\s*" +
-      _msg_re + r"\s*,(?:(?:\s*\"[^\"',]+\"\s*,)|(?:\s*NULL\s*,))(?:[^,]+,){2}"
+    ((r"\{(?:(?:\s*\"[^\",]+\"\s*,)|(?:\s*\"\\\"\",)|(?:\s*nullptr\s*,)){4}\s*" +
+      _msg_re + r"\s*,(?:(?:\s*\"[^\"',]+\"\s*,)|(?:\s*nullptr\s*,))(?:[^,]+,){2}"
       + "(?:\|?\s*B_UNIT_DEF_[_A-Z]+\s*)+\}"),) +
 
     tuple((r"{}\(\s*" + _msg_re + r"\s*,\s*(?:" +
@@ -365,11 +387,10 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     # Sub-strings.
     "all",
     "all and invert unselected",
-    "and AMD driver version 22.10 or newer",
-    "and AMD Radeon Pro 21.Q4 driver or newer",
-    "and Linux driver version xx.xx.23904 or newer",
-    "and NVIDIA driver version 470 or newer",
-    "and Windows driver version 101.3430 or newer",
+    "and AMD driver version %s or newer",
+    "and AMD Radeon Pro %s driver or newer",
+    "and NVIDIA driver version %s or newer",
+    "and Windows driver version %s or newer",
     "available with",
     "brown fox",
     "can't save image while rendering",
@@ -379,6 +400,7 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "custom",
     "custom matrix",
     "custom orientation",
+    "drag-",
     "edge data",
     "exp(A)",
     "expected a timeline/animation area to be active",
@@ -392,6 +414,9 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "image file not found",
     "image format is read-only",
     "image path can't be written to",
+    "in %i days",
+    "in %i hours",
+    "in %i minutes",
     "in memory to enable editing!",
     "insufficient content",
     "into",
@@ -403,7 +428,9 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "name",
     "non-triangle face",
     "normal",
-    "or AMD with macOS 12.3 or newer",
+    "on {:%Y-%m-%d}",
+    "or AMD with macOS %s or newer",
+    "parent",
     "performance impact!",
     "positions", "no positions",
     "read",
@@ -420,7 +447,7 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "unable to load text",
     "unable to open the file",
     "unknown error reading file",
-    "unknown error stating file",
+    "unknown error statting file",
     "unknown error writing file",
     "unselected",
     "unsupported font format",
@@ -433,6 +460,7 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "view",
     "virtual parents",
     "which was replaced by the Asset Browser",
+    "within seconds",
     "write",
 }
 WARN_MSGID_NOT_CAPITALIZED_ALLOWED |= set(lng[2] for lng in LANGUAGES)
@@ -526,6 +554,9 @@ REL_PRESETS_DIR = os.path.join("scripts", "presets")
 
 # Where to search for templates (relative to SOURCE_DIR).
 REL_TEMPLATES_DIR = os.path.join("scripts", "startup", "bl_app_templates_system")
+
+# Name of the built-in asset catalog file.
+ASSET_CATALOG_FILE = "blender_assets.cats.txt"
 
 # The template messages file (relative to I18N_DIR).
 REL_FILE_NAME_POT = os.path.join(REL_BRANCHES_DIR, DOMAIN + ".pot")
