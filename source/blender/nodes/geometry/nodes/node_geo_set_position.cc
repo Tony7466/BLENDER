@@ -12,7 +12,11 @@
 #include "BKE_curves.hh"
 #include "BKE_mesh.hh"
 
+#include "RNA_define.h"
+
 #include "node_geometry_util.hh"
+
+#include "RNA_prototypes.h"
 
 namespace blender::nodes::node_geo_set_position_cc {
 
@@ -163,6 +167,151 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 }  // namespace blender::nodes::node_geo_set_position_cc
 
+#include "intern/rna_internal.h"
+#include "intern/rna_internal_types.h"
+
+StructRNA *hello_world_srna;
+extern CollectionPropertyRNA HelloWorld_rna_properties;
+
+static PointerRNA HelloWorld_rna_properties_get(CollectionPropertyIterator *iter)
+{
+  return rna_builtin_properties_get(iter);
+}
+
+static void HelloWorld_rna_properties_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+{
+  memset(iter, 0, sizeof(*iter));
+  iter->parent = *ptr;
+  iter->prop = (PropertyRNA *)&HelloWorld_rna_properties;
+
+  rna_builtin_properties_begin(iter, ptr);
+
+  if (iter->valid) {
+    iter->ptr = HelloWorld_rna_properties_get(iter);
+  }
+}
+
+static void HelloWorld_rna_properties_next(CollectionPropertyIterator *iter)
+{
+  rna_builtin_properties_next(iter);
+
+  if (iter->valid) {
+    iter->ptr = HelloWorld_rna_properties_get(iter);
+  }
+}
+
+static void HelloWorld_rna_properties_end(CollectionPropertyIterator *iter)
+{
+  rna_iterator_listbase_end(iter);
+}
+
+static int HelloWorld_rna_properties_lookup_string(PointerRNA *ptr,
+                                                   const char *key,
+                                                   PointerRNA *r_ptr)
+{
+  return rna_builtin_properties_lookup_string(ptr, key, r_ptr);
+}
+
+static int HelloWorld_value_get(PointerRNA *ptr)
+{
+  return *(int *)ptr->data;
+}
+
+IntPropertyRNA HelloWorld_my_value = {{nullptr,
+                                       nullptr,
+                                       -1,
+                                       "my_value",
+                                       2,
+                                       0,
+                                       0,
+                                       0,
+                                       0,
+                                       "my_value",
+                                       "",
+                                       0,
+                                       "*",
+                                       PROP_INT,
+                                       (PropertySubType)((int)PROP_NONE | (int)PROP_UNIT_NONE),
+                                       nullptr,
+                                       0,
+                                       {0, 0, 0},
+                                       0,
+                                       nullptr,
+                                       0,
+                                       nullptr,
+                                       nullptr,
+                                       rna_property_override_diff_default,
+                                       rna_property_override_store_default,
+                                       rna_property_override_apply_default,
+                                       0,
+                                       PROP_RAW_UNSET,
+                                       nullptr},
+                                      HelloWorld_value_get,
+                                      nullptr,
+                                      nullptr,
+                                      nullptr,
+                                      nullptr,
+                                      nullptr,
+                                      nullptr,
+                                      nullptr,
+                                      nullptr,
+                                      nullptr,
+                                      PROP_SCALE_LINEAR,
+                                      -10000,
+                                      10000,
+                                      INT_MIN,
+                                      INT_MAX,
+                                      1,
+                                      0,
+                                      nullptr};
+
+CollectionPropertyRNA HelloWorld_rna_properties = {
+    {nullptr,
+     nullptr,
+     -1,
+     "rna_properties",
+     0,
+     0,
+     0,
+     1,
+     0,
+     "Properties",
+     "RNA property collection",
+     0,
+     "*",
+     PROP_COLLECTION,
+     (PropertySubType)((int)PROP_NONE | (int)PROP_UNIT_NONE),
+     nullptr,
+     0,
+     {0, 0, 0},
+     0,
+     nullptr,
+     0,
+     nullptr,
+     nullptr,
+     rna_property_override_diff_default,
+     rna_property_override_store_default,
+     rna_property_override_apply_default,
+     0,
+     PROP_RAW_UNSET,
+     nullptr},
+    HelloWorld_rna_properties_begin,
+    HelloWorld_rna_properties_next,
+    HelloWorld_rna_properties_end,
+    HelloWorld_rna_properties_get,
+    nullptr,
+    nullptr,
+    HelloWorld_rna_properties_lookup_string,
+    nullptr,
+    &RNA_Property};
+
+static void register_some_rna_type()
+{
+  hello_world_srna = RNA_def_struct_ptr(&BLENDER_RNA, "HelloWorld", nullptr);
+  hello_world_srna->iteratorproperty = (PropertyRNA *)&HelloWorld_rna_properties;
+  BLI_addtail(&hello_world_srna->cont.properties, &HelloWorld_my_value);
+}
+
 void register_node_type_geo_set_position()
 {
   namespace file_ns = blender::nodes::node_geo_set_position_cc;
@@ -173,4 +322,6 @@ void register_node_type_geo_set_position()
   ntype.geometry_node_execute = file_ns::node_geo_exec;
   ntype.declare = file_ns::node_declare;
   nodeRegisterType(&ntype);
+
+  register_some_rna_type();
 }

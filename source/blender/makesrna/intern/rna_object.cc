@@ -1562,6 +1562,16 @@ static PointerRNA rna_Object_active_shape_key_get(PointerRNA *ptr)
   return keyptr;
 }
 
+extern StructRNA *hello_world_srna;
+
+static PointerRNA rna_Object_hello_world_get(PointerRNA *ptr)
+{
+  static int my_int = 42;
+  PointerRNA value;
+  RNA_pointer_create(ptr->owner_id, hello_world_srna, &my_int, &value);
+  return value;
+}
+
 static PointerRNA rna_Object_field_get(PointerRNA *ptr)
 {
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
@@ -3268,6 +3278,10 @@ static void rna_def_object(BlenderRNA *brna)
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 1, 3);
   RNA_def_property_ui_text(prop, "Delta Scale", "Extra scaling added to the scale of the object");
   RNA_def_property_update(prop, NC_OBJECT | ND_TRANSFORM, "rna_Object_internal_update");
+
+  prop = RNA_def_property(srna, "hello_world", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "FieldSettings");
+  RNA_def_property_pointer_funcs(prop, "rna_Object_hello_world_get", nullptr, nullptr, nullptr);
 
   /* transform locks */
   prop = RNA_def_property(srna, "lock_location", PROP_BOOLEAN, PROP_NONE);

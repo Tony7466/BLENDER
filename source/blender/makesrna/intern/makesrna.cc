@@ -4761,6 +4761,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_tracking.cc", nullptr, RNA_def_tracking},
     {"rna_mask.cc", nullptr, RNA_def_mask},
     {"rna_xr.cc", nullptr, RNA_def_xr},
+    {"rna_dummy.cc", nullptr, RNA_def_dummy},
     {nullptr, nullptr},
 };
 
