@@ -520,7 +520,7 @@ void ui_rna_collection_search_update_fn(
   char *name;
   bool has_id_icon = false;
 
-  blender::string_search::StringSearchNew<CollItemSearch> search;
+  blender::string_search::StringSearch<CollItemSearch> search;
 
   if (data->search_prop != nullptr) {
     /* build a temporary list of relevant items first */
@@ -596,7 +596,7 @@ void ui_rna_collection_search_update_fn(
     BLI_assert(search_flag & PROP_STRING_SEARCH_SUPPORTED);
 
     struct SearchVisitUserData {
-      blender::string_search::StringSearchNew<CollItemSearch> *search;
+      blender::string_search::StringSearch<CollItemSearch> *search;
       bool skip_filter;
       int item_index;
       ListBase *items_list;

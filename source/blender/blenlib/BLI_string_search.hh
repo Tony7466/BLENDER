@@ -28,7 +28,7 @@ class StringSearchBase {
   Vector<void *> query_impl(StringRef query) const;
 };
 
-template<typename T> class StringSearchNew : private StringSearchBase {
+template<typename T> class StringSearch : private StringSearchBase {
  public:
   /**
    * Add a new possible result to the search.

@@ -91,7 +91,7 @@ void attribute_search_add_items(StringRefNull str,
    * so the items are in the same order they will appear in while searching. */
   const char *string = is_first ? "" : str.c_str();
 
-  string_search::StringSearchNew<const GeometryAttributeInfo> search;
+  string_search::StringSearch<const GeometryAttributeInfo> search;
   for (const GeometryAttributeInfo *item : infos) {
     if (!bke::allow_procedural_attribute_access(item->name)) {
       continue;
