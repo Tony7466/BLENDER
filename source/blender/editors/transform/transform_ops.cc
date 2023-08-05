@@ -26,20 +26,22 @@
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
 
-#include "WM_api.h"
-#include "WM_message.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
 #include "WM_toolsystem.h"
-#include "WM_types.h"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 /* for USE_LOOPSLIDE_HACK only */
-#include "ED_mesh.h"
+#include "ED_mesh.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
+
+using namespace blender;
 
 struct TransformModeItem {
   const char *idname;
@@ -446,13 +448,11 @@ static int transform_modal(bContext *C, wmOperator *op, const wmEvent *event)
       {
         /* Navigation has ended. */
 
-        /* Make sure `t->mval` is up to date before calling #transformViewUpdate. */
-        copy_v2_v2_int(t->mval, event->mval);
-
         /* Call before #applyMouseInput. */
         tranformViewUpdate(t);
 
         /* Mouse input is outdated. */
+        t->mval = float2(event->mval);
         applyMouseInput(t, &t->mouse, t->mval, t->values);
         t->redraw |= TREDRAW_HARD;
       }

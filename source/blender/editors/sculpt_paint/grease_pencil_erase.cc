@@ -10,7 +10,7 @@
 #include "BLI_math_geom.h"
 #include "BLI_task.hh"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_crazyspace.hh"
@@ -23,10 +23,10 @@
 #include "DEG_depsgraph_query.h"
 #include "DNA_brush_enums.h"
 
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "grease_pencil_intern.hh"
 
