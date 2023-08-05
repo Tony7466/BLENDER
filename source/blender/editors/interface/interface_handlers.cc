@@ -1255,7 +1255,7 @@ static void ui_apply_but_TEX(bContext *C, uiBut *but, uiHandleButtonData *data)
     uiButSearch *search_but = (uiButSearch *)but;
     but->func_arg2 = search_but->item_active;
 
-    blender::bke::string_search::add_recent_search("", search_but->item_active_str);
+    blender::bke::string_search::add_recent_search(search_but->item_active_str);
   }
 
   ui_apply_but_func(C, but);

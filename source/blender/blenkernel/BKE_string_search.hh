@@ -8,8 +8,13 @@
 
 namespace blender::bke::string_search {
 
-void add_recent_search(StringRef search_id, StringRef choosen_str);
+void add_recent_search(StringRef choosen_str);
 
-const blender::string_search::RecentCache *get_recent_cache(StringRef search_id);
+const blender::string_search::RecentCache *get_recent_cache();
+
+template<typename T> class StringSearch : public blender::string_search::StringSearch<T> {
+ public:
+  StringSearch() : blender::string_search::StringSearch<T>(get_recent_cache()) {}
+};
 
 }  // namespace blender::bke::string_search

@@ -56,7 +56,6 @@
 #include "BKE_screen.h"
 #include "BKE_simulation_state.hh"
 #include "BKE_simulation_state_serialize.hh"
-#include "BKE_string_search.hh"
 #include "BKE_workspace.h"
 
 #include "BLO_read_write.h"

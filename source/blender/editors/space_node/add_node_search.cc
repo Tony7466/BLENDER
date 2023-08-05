@@ -185,7 +185,7 @@ static void add_node_search_update_fn(
     storage.update_items_tag = false;
   }
 
-  string_search::StringSearch<nodes::AddNodeItem> search(bke::string_search::get_recent_cache(""));
+  bke::string_search::StringSearch<nodes::AddNodeItem> search;
 
   for (nodes::AddNodeItem &item : storage.search_add_items) {
     search.add(item.ui_name, &item, item.weight);

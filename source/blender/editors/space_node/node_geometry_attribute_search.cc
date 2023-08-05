@@ -19,7 +19,6 @@
 #include "BKE_node_tree_update.h"
 #include "BKE_node_tree_zones.hh"
 #include "BKE_object.h"
-#include "BKE_string_search.hh"
 
 #include "RNA_access.h"
 #include "RNA_enum_types.h"
