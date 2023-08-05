@@ -72,24 +72,24 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
-#include "ED_fileselect.h"
-#include "ED_info.h"
-#include "ED_object.h"
-#include "ED_render.h"
-#include "ED_screen.h"
-#include "ED_undo.h"
+#include "ED_fileselect.hh"
+#include "ED_info.hh"
+#include "ED_object.hh"
+#include "ED_render.hh"
+#include "ED_screen.hh"
+#include "ED_undo.hh"
 
 #include "RE_engine.h"
 
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
+#include "UI_view2d.hh"
 #include "interface_intern.hh"
 
 #include "PIL_time.h"
@@ -2307,7 +2307,7 @@ void uiTemplateModifiers(uiLayout * /*layout*/, bContext *C)
 
   if (!panels_match) {
     UI_panels_free_instanced(C, region);
-    for (ModifierData *md = static_cast<ModifierData *>(modifiers->first); md; md = md->next) {
+    LISTBASE_FOREACH (ModifierData *, md, modifiers) {
       const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(md->type));
       if (mti->panel_register == nullptr) {
         continue;
@@ -2556,9 +2556,7 @@ void uiTemplateGpencilModifiers(uiLayout * /*layout*/, bContext *C)
 
   if (!panels_match) {
     UI_panels_free_instanced(C, region);
-    for (GpencilModifierData *md = static_cast<GpencilModifierData *>(modifiers->first); md;
-         md = md->next)
-    {
+    LISTBASE_FOREACH (GpencilModifierData *, md, modifiers) {
       const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(
           GpencilModifierType(md->type));
       if (mti->panel_register == nullptr) {
@@ -2631,7 +2629,7 @@ void uiTemplateShaderFx(uiLayout * /*layout*/, bContext *C)
 
   if (!panels_match) {
     UI_panels_free_instanced(C, region);
-    for (ShaderFxData *fx = static_cast<ShaderFxData *>(shaderfx->first); fx; fx = fx->next) {
+    LISTBASE_FOREACH (ShaderFxData *, fx, shaderfx) {
       char panel_idname[MAX_NAME];
       shaderfx_panel_id(fx, panel_idname);
 

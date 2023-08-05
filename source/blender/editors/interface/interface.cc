@@ -43,7 +43,7 @@
 #include "BKE_screen.h"
 #include "BKE_unit.h"
 
-#include "ED_asset.h"
+#include "ED_asset.hh"
 
 #include "GPU_matrix.h"
 #include "GPU_state.h"
@@ -51,16 +51,15 @@
 #include "BLF_api.h"
 #include "BLT_translation.h"
 
-#include "UI_interface.h"
 #include "UI_interface.hh"
-#include "UI_interface_icons.h"
-#include "UI_view2d.h"
+#include "UI_interface_icons.hh"
+#include "UI_view2d.hh"
 
 #include "IMB_imbuf.h"
 
-#include "WM_api.h"
-#include "WM_message.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
+#include "WM_types.hh"
 
 #include "RNA_access.h"
 
@@ -68,8 +67,8 @@
 #  include "BPY_extern_run.h"
 #endif
 
-#include "ED_numinput.h"
-#include "ED_screen.h"
+#include "ED_numinput.hh"
+#include "ED_screen.hh"
 
 #include "IMB_colormanagement.h"
 
@@ -4222,7 +4221,7 @@ static uiBut *ui_def_but(uiBlock *block,
     but->flag |= UI_BUT_DISABLED;
   }
 
-  /* keep track of UI_interface.h */
+  /* keep track of UI_interface.hh */
   if (ELEM(but->type,
            UI_BTYPE_BLOCK,
            UI_BTYPE_BUT,
@@ -5011,26 +5010,26 @@ int UI_autocomplete_end(AutoComplete *autocpl, char *autoname)
 
 #define PREVIEW_TILE_PAD (0.15f * UI_UNIT_X)
 
-int UI_preview_tile_size_x()
+int UI_preview_tile_size_x(const int size_px)
 {
   const float pad = PREVIEW_TILE_PAD;
-  return round_fl_to_int((96.0f / 20.0f) * UI_UNIT_X + 2.0f * pad);
+  return round_fl_to_int((size_px / 20.0f) * UI_UNIT_X + 2.0f * pad);
 }
 
-int UI_preview_tile_size_y()
+int UI_preview_tile_size_y(const int size_px)
 {
   const uiStyle *style = UI_style_get();
   const float font_height = style->widget.points * UI_SCALE_FAC;
   /* Add some extra padding to make things less tight vertically. */
   const float pad = PREVIEW_TILE_PAD;
 
-  return round_fl_to_int(UI_preview_tile_size_y_no_label() + font_height + pad);
+  return round_fl_to_int(UI_preview_tile_size_y_no_label(size_px) + font_height + pad);
 }
 
-int UI_preview_tile_size_y_no_label()
+int UI_preview_tile_size_y_no_label(const int size_px)
 {
   const float pad = PREVIEW_TILE_PAD;
-  return round_fl_to_int((96.0f / 20.0f) * UI_UNIT_Y + 2.0f * pad);
+  return round_fl_to_int((size_px / 20.0f) * UI_UNIT_Y + 2.0f * pad);
 }
 
 #undef PREVIEW_TILE_PAD

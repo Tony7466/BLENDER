@@ -69,6 +69,7 @@ void Instance::init(const int2 &output_res,
   film.init(output_res, output_rect);
   ambient_occlusion.init();
   velocity.init();
+  raytracing.init();
   depth_of_field.init();
   shadows.init();
   motion_blur.init();
@@ -76,6 +77,7 @@ void Instance::init(const int2 &output_res,
   /* Irradiance Cache needs reflection probes to be initialized. */
   reflection_probes.init();
   irradiance_cache.init();
+  volume.init();
 }
 
 void Instance::init_light_bake(Depsgraph *depsgraph, draw::Manager *manager)
@@ -141,6 +143,7 @@ void Instance::begin_sync()
   velocity.begin_sync(); /* NOTE: Also syncs camera. */
   lights.begin_sync();
   shadows.begin_sync();
+  volume.begin_sync();
   pipelines.begin_sync();
   cryptomatte.begin_sync();
   reflection_probes.begin_sync();
@@ -151,6 +154,7 @@ void Instance::begin_sync()
   scene_sync();
 
   depth_of_field.sync();
+  raytracing.sync();
   motion_blur.sync();
   hiz_buffer.sync();
   main_view.sync();
@@ -178,8 +182,14 @@ void Instance::scene_sync()
 
 void Instance::object_sync(Object *ob)
 {
-  const bool is_renderable_type = ELEM(
-      ob->type, OB_CURVES, OB_GPENCIL_LEGACY, OB_MESH, OB_POINTCLOUD, OB_LAMP, OB_LIGHTPROBE);
+  const bool is_renderable_type = ELEM(ob->type,
+                                       OB_CURVES,
+                                       OB_GPENCIL_LEGACY,
+                                       OB_MESH,
+                                       OB_POINTCLOUD,
+                                       OB_VOLUME,
+                                       OB_LAMP,
+                                       OB_LIGHTPROBE);
   const int ob_visibility = DRW_object_visibility_in_active_context(ob);
   const bool partsys_is_visible = (ob_visibility & OB_VISIBLE_PARTICLES) != 0 &&
                                   (ob->type == OB_MESH);
@@ -211,11 +221,15 @@ void Instance::object_sync(Object *ob)
         lights.sync_light(ob, ob_handle);
         break;
       case OB_MESH:
-        sync.sync_mesh(ob, ob_handle, res_handle, ob_ref);
+        if (!sync.sync_sculpt(ob, ob_handle, res_handle, ob_ref)) {
+          sync.sync_mesh(ob, ob_handle, res_handle, ob_ref);
+        }
         break;
       case OB_POINTCLOUD:
         sync.sync_point_cloud(ob, ob_handle, res_handle, ob_ref);
+        break;
       case OB_VOLUME:
+        volume.sync_object(ob, ob_handle, res_handle);
         break;
       case OB_CURVES:
         sync.sync_curves(ob, ob_handle, res_handle);
@@ -257,6 +271,7 @@ void Instance::end_sync()
   pipelines.end_sync();
   light_probes.end_sync();
   reflection_probes.end_sync();
+  volume.end_sync();
 }
 
 void Instance::render_sync()
@@ -552,6 +567,9 @@ void Instance::light_bake_irradiance(
 
     irradiance_cache.bake.surfels_create(probe);
     irradiance_cache.bake.surfels_lights_eval();
+
+    irradiance_cache.bake.clusters_build();
+    irradiance_cache.bake.irradiance_offset();
   });
 
   sampling.init(probe);
