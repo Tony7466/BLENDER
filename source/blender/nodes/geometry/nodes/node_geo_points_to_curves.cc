@@ -14,6 +14,7 @@
 #include "BLI_sort.hh"
 #include "BLI_task.hh"
 
+#include "BLI_threads.h"
 #include "BLI_timeit.hh"
 
 #include "BKE_geometry_set.hh"
@@ -101,6 +102,105 @@ static void correct_check(const OffsetIndices<int> offsets,
     std::cout << "STOOOOOOOOOOOOOOOOPPPPPPPPPPPPPPPPPPPPPPPPPPPP" << std::endl;
   }
 }
+
+static void correct_check_offsets(const Span<int> group_indices,
+                                  const MutableSpan<int> accumulated)
+{
+  Array<int> correct_accumulated(accumulated.size(), 0);
+  offset_indices::build_reverse_offsets(group_indices, correct_accumulated);
+  if (accumulated != correct_accumulated.as_span()) {
+    std::cout << "STOOOOOOOOOOOOOOOOPPPPPPPPPPPPPPPPPPPPPPPPPPPP x 2!!!!!!!" << std::endl;
+  }
+}
+
+namespace offsets_building {
+
+static void count_indices_sorted(const Span<int> indices, MutableSpan<int> counts)
+{
+  SCOPED_TIMER_AVERAGED(__func__);
+  Array<int> indices_to(indices.size());
+  std::iota(indices_to.begin(), indices_to.end(), 0);
+
+  parallel_sort(indices_to.begin(), indices_to.end(), [&](const int a, const int b) {
+    return indices[a] < indices[b];
+  });
+
+  for (const int index : indices_to) {
+    counts[indices[index]]++;
+  }
+}
+
+static void count_indices_sorted_parallel(const Span<int> indices, MutableSpan<int> counts)
+{
+  SCOPED_TIMER_AVERAGED(__func__);
+  Array<int> indices_to(indices.size());
+  std::iota(indices_to.begin(), indices_to.end(), 0);
+
+  parallel_sort(indices_to.begin(), indices_to.end(), [&](const int a, const int b) {
+    return indices[a] < indices[b];
+  });
+
+  threading::parallel_for(indices_to.index_range(), 4096, [&](const IndexRange range) {
+    for (const int index : indices_to.as_span().slice(range)) {
+      atomic_add_and_fetch_int32(&counts[indices[index]], 1);
+    }
+  });
+}
+
+static void count_indices_parallel_segments(const Span<int> indices, MutableSpan<int> counts)
+{
+  SCOPED_TIMER_AVERAGED(__func__);
+  Array<int> indices_to(indices.size());
+  std::iota(indices_to.begin(), indices_to.end(), 0);
+
+  threading::parallel_for(indices_to.index_range(), 1024, [&](const IndexRange range) {
+    MutableSpan<int> r_indices = indices_to.as_mutable_span().slice(range);
+    parallel_sort(r_indices.begin(), r_indices.end(), [&](const int a, const int b) {
+      return indices[a] < indices[b];
+    });
+
+    int start = 0;
+    while (true) {
+      const Span<int> local = r_indices.drop_front(start);
+      if (local.is_empty()) {
+        break;
+      }
+      const int group = indices[local.first()];
+      const int *first_other = std::find_if(
+          local.begin(), local.end(), [&](const int index) { return indices[index] != group; });
+      const int current_size = int(std::distance(local.begin(), first_other));
+      start += current_size;
+      atomic_add_and_fetch_int32(&counts[group], current_size);
+    }
+  });
+}
+
+static void build_reverse_offsets_sorted(const Span<int> indices, MutableSpan<int> offsets)
+{
+  BLI_assert(std::all_of(offsets.begin(), offsets.end(), [](int value) { return value == 0; }));
+  count_indices_sorted(indices, offsets);
+  offset_indices::accumulate_counts_to_offsets(offsets);
+}
+
+static void build_reverse_offsets_sorted_parallel(const Span<int> indices,
+                                                  MutableSpan<int> offsets)
+{
+  BLI_assert(std::all_of(offsets.begin(), offsets.end(), [](int value) { return value == 0; }));
+  count_indices_sorted_parallel(indices, offsets);
+  offset_indices::accumulate_counts_to_offsets(offsets);
+}
+
+static void build_reverse_offsets_parallel_segments(const Span<int> indices,
+                                                    MutableSpan<int> offsets)
+{
+  BLI_assert(std::all_of(offsets.begin(), offsets.end(), [](int value) { return value == 0; }));
+  count_indices_parallel_segments(indices, offsets);
+  offset_indices::accumulate_counts_to_offsets(offsets);
+}
+
+}  // namespace offsets_building
+
+namespace indices_building {
 
 static Array<int> vector_of_vector_of_ints(const OffsetIndices<int> offsets,
                                            const Span<int> group_indices)
@@ -266,6 +366,8 @@ static Array<int> reverse_indices_in_groups_complex_sort(const OffsetIndices<int
   return results;
 }
 
+}  // namespace indices_building
+
 static Curves *curves_from_points(const PointCloud *points,
                                   const Field<int> &group_id_field,
                                   const Field<float> &weight_field,
@@ -300,17 +402,31 @@ static Curves *curves_from_points(const PointCloud *points,
   curves.cyclic_for_write().fill(false);
   MutableSpan<int> accumulated_curves = curves.offsets_for_write();
   accumulated_curves.fill(0);
-  {
-    // SCOPED_TIMER_AVERAGED("build_reverse_offsets");
-    if (type == 0) {
-      std::cout << 0 << ". ";
-      SCOPED_TIMER_AVERAGED("build_reverse_offsets");
+  switch (type) {
+    case 0:
+      std::cout << -3 << ". ";
+      offsets_building::build_reverse_offsets_sorted(indices_of_curves, accumulated_curves);
+      break;
+    case 1:
+      std::cout << -2 << ". ";
+      offsets_building::build_reverse_offsets_sorted_parallel(indices_of_curves,
+                                                              accumulated_curves);
+      break;
+    case 2:
+      std::cout << -1 << ". ";
+      offsets_building::build_reverse_offsets_parallel_segments(indices_of_curves,
+                                                                accumulated_curves);
+      break;
+    case 3: {
+      std::cout << "-" << 0 << ". ";
+      SCOPED_TIMER_AVERAGED("offset_indices::build_reverse_offsets");
       offset_indices::build_reverse_offsets(indices_of_curves, accumulated_curves);
-    }
-    else {
+    } break;
+    default:
       offset_indices::build_reverse_offsets(indices_of_curves, accumulated_curves);
-    }
   }
+  correct_check_offsets(indices_of_curves, accumulated_curves);
+
   const OffsetIndices<int> curves_offsets(accumulated_curves);
 
   Array<int> src_indices_of_curve_points(group_ids.size());
@@ -318,33 +434,37 @@ static Curves *curves_from_points(const PointCloud *points,
   switch (type) {
     case 0:
       std::cout << 1 << ". ";
-      src_indices_of_curve_points = vector_of_vector_of_ints(curves_offsets, group_ids);
+      src_indices_of_curve_points = indices_building::vector_of_vector_of_ints(curves_offsets,
+                                                                               group_ids);
       break;
     case 1:
       std::cout << 2 << ". ";
-      src_indices_of_curve_points = accumulate_and_writ(curves_offsets, group_ids);
+      src_indices_of_curve_points = indices_building::accumulate_and_writ(curves_offsets,
+                                                                          group_ids);
       break;
     case 2:
       std::cout << 3 << ". ";
-      src_indices_of_curve_points = reverse_indices_in_small_groups(curves_offsets, group_ids);
+      src_indices_of_curve_points = indices_building::reverse_indices_in_small_groups(
+          curves_offsets, group_ids);
       break;
     case 3:
       std::cout << 4 << ". ";
-      src_indices_of_curve_points = reverse_indices_in_groups(curves_offsets, group_ids);
+      src_indices_of_curve_points = indices_building::reverse_indices_in_groups(curves_offsets,
+                                                                                group_ids);
       break;
     case 4:
       std::cout << 5 << ". ";
-      src_indices_of_curve_points = gather_reverse(curves_offsets, group_ids);
+      src_indices_of_curve_points = indices_building::gather_reverse(curves_offsets, group_ids);
       break;
     case 5:
       std::cout << 6 << ". ";
-      src_indices_of_curve_points = reverse_indices_in_groups_simple_sort(curves_offsets,
-                                                                          group_ids);
+      src_indices_of_curve_points = indices_building::reverse_indices_in_groups_simple_sort(
+          curves_offsets, group_ids);
       break;
     case 6:
       std::cout << 7 << ". ";
-      src_indices_of_curve_points = reverse_indices_in_groups_complex_sort(curves_offsets,
-                                                                           group_ids);
+      src_indices_of_curve_points = indices_building::reverse_indices_in_groups_complex_sort(
+          curves_offsets, group_ids);
       std::cout << std::endl;
       break;
     default:
