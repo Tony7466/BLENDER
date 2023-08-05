@@ -16,6 +16,10 @@ namespace blender::bke::string_search {
 using blender::string_search::RecentCache;
 
 struct RecentCacheStorage {
+  /**
+   * Is incremented every time a search item has been selected. This is used to keep track of the
+   * order of recent searches.
+   */
   int logical_clock = 0;
   RecentCache cache;
 };

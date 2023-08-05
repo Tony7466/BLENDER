@@ -8,6 +8,10 @@
 
 namespace blender::bke::string_search {
 
+/**
+ * Remember the string that the user chose. This allows us to put it higher up in the search items
+ * later on.
+ */
 void add_recent_search(StringRef choosen_str);
 
 const blender::string_search::RecentCache *get_recent_cache();
@@ -15,6 +19,10 @@ const blender::string_search::RecentCache *get_recent_cache();
 void write_recent_searches_file();
 void read_recent_searches_file();
 
+/**
+ * Wrapper for the lower level #StringSearch in blenlib, that takes recent searches into account
+ * automatically.
+ */
 template<typename T> class StringSearch : public blender::string_search::StringSearch<T> {
  public:
   StringSearch() : blender::string_search::StringSearch<T>(get_recent_cache()) {}
