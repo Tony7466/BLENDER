@@ -5,7 +5,6 @@
 #include "DEG_depsgraph_query.h"
 
 #include "BKE_type_conversions.hh"
-#include "BKE_volume.h"
 #include "BKE_volume_openvdb.hh"
 
 #include "BLI_virtual_array.hh"
@@ -15,8 +14,8 @@
 
 #include "node_geometry_util.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #ifdef WITH_OPENVDB
 #  include <openvdb/openvdb.h>
