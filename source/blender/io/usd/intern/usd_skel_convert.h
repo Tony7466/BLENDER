@@ -19,6 +19,8 @@ struct ImportSettings;
 
 void import_blendshapes(Main *bmain, Object *shape_obj, pxr::UsdPrim prim);
 
+void import_skeleton(Main *bmain, Object *obj, const pxr::UsdSkelSkeleton &skel);
+
 void create_skeleton_curves(Main *bmain,
                             Object *obj,
                             const pxr::UsdSkelSkeletonQuery &skel_query,
