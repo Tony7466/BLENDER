@@ -385,6 +385,9 @@ void IrradianceCache::debug_pass_draw(View &view, GPUFrameBuffer *view_fb)
     case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_IRRADIANCE:
       inst_.info = "Debug Mode: Surfels Irradiance";
       break;
+    case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_VISIBILITY:
+      inst_.info = "Debug Mode: Surfels Visibility";
+      break;
     case eDebugMode::DEBUG_IRRADIANCE_CACHE_VIRTUAL_OFFSET:
       inst_.info = "Debug Mode: Virtual Offset";
       break;
@@ -403,6 +406,7 @@ void IrradianceCache::debug_pass_draw(View &view, GPUFrameBuffer *view_fb)
     switch (inst_.debug_mode) {
       case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_NORMAL:
       case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_CLUSTER:
+      case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_VISIBILITY:
       case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_IRRADIANCE: {
         if (cache->surfels == nullptr || cache->surfels_len == 0) {
           continue;
@@ -567,6 +571,9 @@ void IrradianceBake::init(const Object &probe_object)
   surfel_density_ = lightprobe->surfel_density;
   min_distance_to_surface_ = lightprobe->grid_surface_bias;
   max_virtual_offset_ = lightprobe->grid_escape_bias;
+  capture_world_ = (lightprobe->grid_flag & LIGHTPROBE_GRID_CAPTURE_WORLD);
+  capture_indirect_ = (lightprobe->grid_flag & LIGHTPROBE_GRID_CAPTURE_INDIRECT);
+  capture_emission_ = (lightprobe->grid_flag & LIGHTPROBE_GRID_CAPTURE_EMISSION);
 }
 
 void IrradianceBake::sync()
@@ -709,6 +716,14 @@ void IrradianceBake::surfels_create(const Object &probe_object)
   int3 grid_resolution = int3(&lightprobe->grid_resolution_x);
   float4x4 grid_local_to_world = invert(float4x4(probe_object.world_to_object));
 
+  /* TODO(fclem): Options. */
+  capture_info_buf_.capture_world_direct = capture_world_;
+  capture_info_buf_.capture_world_indirect = capture_world_ && capture_indirect_;
+  capture_info_buf_.capture_visibility_direct = !capture_world_;
+  capture_info_buf_.capture_visibility_indirect = !(capture_world_ && capture_indirect_);
+  capture_info_buf_.capture_indirect = capture_indirect_;
+  capture_info_buf_.capture_emission = capture_emission_;
+
   dispatch_per_grid_sample_ = math::divide_ceil(grid_resolution, int3(IRRADIANCE_GRID_GROUP_SIZE));
   capture_info_buf_.irradiance_grid_size = grid_resolution;
   capture_info_buf_.irradiance_grid_local_to_world = grid_local_to_world;
@@ -770,10 +785,6 @@ void IrradianceBake::surfels_create(const Object &probe_object)
   capture_info_buf_.scene_bound_x_max = neg_flt_max;
   capture_info_buf_.scene_bound_y_max = neg_flt_max;
   capture_info_buf_.scene_bound_z_max = neg_flt_max;
-
-  /* TODO(fclem): Options. */
-  capture_info_buf_.capture_world_direct = false;
-  capture_info_buf_.capture_world_indirect = false;
 
   capture_info_buf_.push_update();
 
@@ -986,7 +997,8 @@ void IrradianceBake::read_surfels(LightProbeGridCacheFrame *cache_frame)
   if (!ELEM(inst_.debug_mode,
             eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_CLUSTER,
             eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_NORMAL,
-            eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_IRRADIANCE))
+            eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_IRRADIANCE,
+            eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_VISIBILITY))
   {
     return;
   }

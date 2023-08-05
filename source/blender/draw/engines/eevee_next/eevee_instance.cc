@@ -545,6 +545,7 @@ void Instance::light_bake_irradiance(
   irradiance_cache.bake.init(probe);
 
   custom_pipeline_wrapper([&]() {
+    GPU_debug_capture_begin();
     /* TODO: lightprobe visibility group option. */
     manager->begin_sync();
     render_sync();
@@ -557,11 +558,13 @@ void Instance::light_bake_irradiance(
 
     irradiance_cache.bake.clusters_build();
     irradiance_cache.bake.irradiance_offset();
+    GPU_debug_capture_end();
   });
 
   sampling.init(probe);
   while (!sampling.finished()) {
     context_wrapper([&]() {
+      GPU_debug_capture_begin();
       /* Batch ray cast by pack of 16. Avoids too much overhead of the update function & context
        * switch. */
       /* TODO(fclem): Could make the number of iteration depend on the computation time. */
@@ -589,6 +592,7 @@ void Instance::light_bake_irradiance(
 
       float progress = sampling.sample_index() / float(sampling.sample_count());
       result_update(cache_frame, progress);
+      GPU_debug_capture_end();
     });
 
     if (stop()) {

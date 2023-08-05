@@ -32,14 +32,14 @@ void irradiance_capture_surfel(Surfel surfel, vec3 P, inout SphericalHarmonicL1 
   bool facing = dot(-L, surfel.normal) > 0.0;
   SurfelRadiance surfel_radiance_indirect = surfel.radiance_indirect[radiance_src];
 
-  vec3 irradiance = vec3(0.0);
-  irradiance += facing ? surfel.radiance_direct.front.rgb : surfel.radiance_direct.back.rgb;
+  vec4 irradiance_vis = vec4(0.0);
+  irradiance_vis += facing ? surfel.radiance_direct.front : surfel.radiance_direct.back;
   /* NOTE: The indirect radiance is already normalized and this is wanted, because we are not
    * integrating the same signal and we would have the SH lagging behind the surfel integration
    * otherwise. */
-  irradiance += facing ? surfel_radiance_indirect.front.rgb : surfel_radiance_indirect.back.rgb;
+  irradiance_vis += facing ? surfel_radiance_indirect.front : surfel_radiance_indirect.back;
 
-  irradiance_capture(L, irradiance, 0.0, sh);
+  irradiance_capture(L, irradiance_vis.rgb, irradiance_vis.a, sh);
 }
 
 void validity_capture_surfel(Surfel surfel, vec3 P, inout float validity)
@@ -57,11 +57,16 @@ void validity_capture_world(vec3 L, inout float validity)
 void irradiance_capture_world(vec3 L, inout SphericalHarmonicL1 sh)
 {
   vec3 radiance = vec3(0.0);
-  float visibility = 1.0;
+  float visibility = 0.0;
+
   if (capture_info_buf.capture_world_direct) {
     radiance = reflection_probes_world_sample(L, 0.0).rgb;
-    visibility = 0.0;
   }
+
+  if (capture_info_buf.capture_visibility_direct) {
+    visibility = 1.0;
+  }
+
   irradiance_capture(L, radiance, visibility, sh);
 }
 

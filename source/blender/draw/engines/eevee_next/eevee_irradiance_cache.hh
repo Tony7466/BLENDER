@@ -119,6 +119,13 @@ class IrradianceBake {
    */
   float max_virtual_offset_ = 0.1f;
 
+  /** True if world lighting is recorded during irradiance capture. */
+  bool capture_world_ = false;
+  /** True if indirect lighting is recorded during the light propagation. */
+  bool capture_indirect_ = false;
+  /** True if emission is recorded during the light propagation. */
+  bool capture_emission_ = false;
+
  public:
   IrradianceBake(Instance &inst) : inst_(inst){};
 

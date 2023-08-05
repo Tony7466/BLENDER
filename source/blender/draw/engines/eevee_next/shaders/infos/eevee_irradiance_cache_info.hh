@@ -80,7 +80,6 @@ GPU_SHADER_CREATE_INFO(eevee_surfel_light)
 GPU_SHADER_CREATE_INFO(eevee_surfel_cluster_build)
     .local_group_size(SURFEL_GROUP_SIZE)
     .additional_info("eevee_shared", "eevee_surfel_common", "draw_view")
-    .storage_buf(CAPTURE_BUF_SLOT, Qualifier::READ, "CaptureInfoData", "capture_info_buf")
     .image(0, GPU_R32I, Qualifier::READ_WRITE, ImageType::INT_3D, "cluster_list_img")
     .compute_source("eevee_surfel_cluster_build_comp.glsl")
     .do_static_compilation(true);
