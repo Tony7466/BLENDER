@@ -181,18 +181,18 @@ void IrradianceCache::set_view(View & /*view*/)
     std::sort(grid_loaded.begin(),
               grid_loaded.end(),
               [](const IrradianceGrid *a, const IrradianceGrid *b) {
-                float volume_a = math::determinant(float3x3(a->world_to_grid_transposed));
-                float volume_b = math::determinant(float3x3(b->world_to_grid_transposed));
+                float volume_a = math::determinant(float3x3(a->object_to_world));
+                float volume_b = math::determinant(float3x3(b->object_to_world));
                 if (volume_a != volume_b) {
                   /* Smallest first. */
-                  return volume_a > volume_b;
+                  return volume_a < volume_b;
                 }
                 /* Volumes are identical. Any arbitrary criteria can be used to sort them.
                  * Use position to avoid unstable result caused by depsgraph non deterministic eval
                  * order. This could also become a priority parameter. */
-                return a->world_to_grid_transposed[0][0] < b->world_to_grid_transposed[0][0] ||
-                       a->world_to_grid_transposed[0][1] < b->world_to_grid_transposed[0][1] ||
-                       a->world_to_grid_transposed[0][2] < b->world_to_grid_transposed[0][2];
+                return a->object_to_world.location()[0] < b->object_to_world.location()[0] ||
+                       a->object_to_world.location()[1] < b->object_to_world.location()[1] ||
+                       a->object_to_world.location()[2] < b->object_to_world.location()[2];
               });
 
     /* Insert grids in UBO in sorted order. */
@@ -417,7 +417,7 @@ void IrradianceCache::debug_pass_draw(View &view, GPUFrameBuffer *view_fb)
         debug_ps_.framebuffer_set(&view_fb);
         debug_ps_.shader_set(inst_.shaders.static_shader_get(DEBUG_SURFELS));
         debug_ps_.push_constant("surfel_radius", 0.5f / grid.surfel_density);
-        debug_ps_.push_constant("debug_mode", static_cast<int>(inst_.debug_mode));
+        debug_ps_.push_constant("debug_mode", int(inst_.debug_mode));
 
         debug_surfels_buf_.resize(cache->surfels_len);
         /* TODO(fclem): Cleanup: Could have a function in draw::StorageArrayBuffer that takes an
@@ -443,7 +443,7 @@ void IrradianceCache::debug_pass_draw(View &view, GPUFrameBuffer *view_fb)
                             DRW_STATE_DEPTH_LESS_EQUAL);
         debug_ps_.framebuffer_set(&view_fb);
         debug_ps_.shader_set(inst_.shaders.static_shader_get(DEBUG_IRRADIANCE_GRID));
-        debug_ps_.push_constant("debug_mode", static_cast<int>(inst_.debug_mode));
+        debug_ps_.push_constant("debug_mode", int(inst_.debug_mode));
         debug_ps_.push_constant("grid_mat", grid.object_to_world);
 
         float4 *data = (float4 *)cache->baking.virtual_offset;

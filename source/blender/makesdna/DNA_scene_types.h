@@ -1810,7 +1810,7 @@ typedef struct SceneDisplay {
 } SceneDisplay;
 
 /**
- * Raytracing parameters.
+ * Ray-tracing parameters.
  */
 typedef struct RaytraceEEVEE {
   /** Higher values will take lower strides and have less blurry intersections. */
@@ -1907,6 +1907,11 @@ typedef struct SceneGpencil {
   float smaa_threshold;
   char _pad[4];
 } SceneGpencil;
+
+typedef struct SceneHydra {
+  int export_method;
+  int _pad0;
+} SceneHydra;
 
 /** \} */
 
@@ -2054,6 +2059,7 @@ typedef struct Scene {
   struct SceneDisplay display;
   struct SceneEEVEE eevee;
   struct SceneGpencil grease_pencil_settings;
+  struct SceneHydra hydra;
 } Scene;
 
 /** \} */
@@ -2841,7 +2847,7 @@ typedef enum RaytraceEEVEE_DenoiseStages {
 typedef enum RaytraceEEVEE_Method {
   RAYTRACE_EEVEE_METHOD_NONE = 0,
   RAYTRACE_EEVEE_METHOD_SCREEN = 1,
-  /* TODO(fclem): Hardware raytracing. */
+  /* TODO(fclem): Hardware ray-tracing. */
   // RAYTRACE_EEVEE_METHOD_HARDWARE = 2,
 } RaytraceEEVEE_Method;
 
@@ -2868,6 +2874,13 @@ enum {
   SCE_DISPLAY_AA_SAMPLES_11 = 11,
   SCE_DISPLAY_AA_SAMPLES_16 = 16,
   SCE_DISPLAY_AA_SAMPLES_32 = 32,
+};
+
+/** #SceneHydra->export_method */
+
+enum {
+  SCE_HYDRA_EXPORT_HYDRA = 0,
+  SCE_HYDRA_EXPORT_USD = 1,
 };
 
 /** \} */
