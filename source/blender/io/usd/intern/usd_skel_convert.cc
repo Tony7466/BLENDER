@@ -102,16 +102,23 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
   pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(prim);
 
   if (!skel_api) {
+    /* No skel binding. */
     return;
   }
 
+  /* Get the blend shape targets, which are the USD paths to the
+   * blend shape primitives. */
+
   if (!skel_api.GetBlendShapeTargetsRel().HasAuthoredTargets()) {
+    /* No targets. */
     return;
   }
 
   pxr::SdfPathVector targets;
   if (!skel_api.GetBlendShapeTargetsRel().GetTargets(&targets)) {
-    std::cout << "Couldn't get blendshape targets for prim " << prim.GetPath() << std::endl;
+    WM_reportf(RPT_WARNING,
+               "%s: Couldn't get blendshape targets for prim %s",
+               __func__, prim.GetPath().GetAsString().c_str());
     return;
   }
 
@@ -123,6 +130,7 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
     return;
   }
 
+  /* Get the blend shape name tokens. */
   pxr::VtTokenArray blendshapes;
   if (!skel_api.GetBlendShapesAttr().Get(&blendshapes)) {
     return;
@@ -132,28 +140,36 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
     return;
   }
 
+  /* Sanity check. */
   if (targets.size() != blendshapes.size()) {
-    std::cout << "Number of blendshapes doesn't match number of blendshape targets for prim " << prim.GetPath() << std::endl;
+    WM_reportf(RPT_WARNING,
+               "%s: Number of blendshapes doesn't match number of blendshape targets for prim %s",
+               __func__,
+               prim.GetPath().GetAsString().c_str());
+    return;
+  }
+
+  pxr::UsdStageRefPtr stage = prim.GetStage();
+
+  if (!stage) {
+    WM_reportf(RPT_WARNING,
+               "%s: Couldn't get stage for prim %s",
+               __func__,
+               prim.GetPath().GetAsString().c_str());
     return;
   }
 
   Mesh *mesh = static_cast<Mesh *>(obj->data);
 
-  /* insert key to source mesh */
+  /* Insert key to source mesh. */
   Key *key = BKE_key_add(bmain, (ID *)mesh);
   key->type = KEY_RELATIVE;
 
   mesh->key = key;
 
-  /* insert basis key */
+  /* Insert basis key. */
   KeyBlock *kb = BKE_keyblock_add(key, "Basis");
   BKE_keyblock_convert_from_mesh(mesh, key, kb);
-
-  pxr::UsdStageRefPtr stage = prim.GetStage();
-
-  if (!stage) {
-    return;
-  }
 
   /* Keep track of the shapkeys we're adding, for
    * validation when creating curves later. */
@@ -161,34 +177,45 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
 
   for (int i = 0; i < targets.size(); ++i) {
 
+    /* Get USD path to blend shape. */
     const pxr::SdfPath &path = targets[i];
-
     pxr::UsdSkelBlendShape blendshape(stage->GetPrimAtPath(path));
 
     if (!blendshape) {
       continue;
     }
 
+    /* Get the blend shape offests. */
     if (!blendshape.GetOffsetsAttr().HasAuthoredValue()) {
+      /* Blend shape has no authored offsets. */
       continue;
     }
 
     pxr::VtVec3fArray offsets;
     if (!blendshape.GetOffsetsAttr().Get(&offsets)) {
-      std::cout << "Couldn't get offsets for blendshape " << path << std::endl;
+      WM_reportf(RPT_WARNING,
+                 "%s: Couldn't get offsets for blend shape %s",
+                 __func__,
+                 path.GetAsString().c_str());
       continue;
     }
 
     if (offsets.empty()) {
-      std::cout << "No offsets for blendshape " << path << std::endl;
+      WM_reportf(RPT_WARNING,
+                 "%s: No offsets for blend shape %s",
+                 __func__,
+                 path.GetAsString().c_str());
       continue;
     }
 
     shapekey_names.insert(blendshapes[i]);
 
+    /* Add the key block. */
     kb = BKE_keyblock_add(key, blendshapes[i].GetString().c_str());
     BKE_keyblock_convert_from_mesh(mesh, key, kb);
 
+    /* if authored, point indices are indices into the original mesh
+     * that correspond to the values in the offsets array. */
     pxr::VtArray<int> point_indices;
     if (blendshape.GetPointIndicesAttr().HasAuthoredValue()) {
       blendshape.GetPointIndicesAttr().Get(&point_indices);
@@ -197,25 +224,35 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
     float *fp = static_cast<float *>(kb->data);
 
     if (point_indices.empty()) {
+      /* Iterate over all key block elements and add the corresponding
+       * offset to the key block point. */
       for (int a = 0; a < kb->totelem; ++a, fp += 3) {
         if (a >= offsets.size()) {
-          std::cout << "Number of offsets greater than number of mesh vertices for blendshape "
-                    << path << std::endl;
+          WM_reportf(RPT_WARNING,
+                     "%s: Number of offsets greater than number of mesh vertices for blend shape %s",
+                     __func__,
+                     path.GetAsString().c_str());
           break;
         }
         add_v3_v3(fp, offsets[a].data());
       }
     }
     else {
+      /* Iterate over the point indices and add the offset to the corresponding
+       * key block point. */
       int a = 0;
       for (int i : point_indices) {
         if (i < 0 || i > kb->totelem) {
-          std::cout << "Out of bounds point index " << i << " for blendshape " << path << std::endl;
+          std::cerr << "Out of bounds point index " << i << " for blendshape " << path << std::endl;
           ++a;
           continue;
         }
         if (a >= offsets.size()) {
-          std::cout << "Number of offsets greater than number of mesh vertices for blendshape " << path << std::endl;
+          WM_reportf(
+              RPT_WARNING,
+              "%s: Number of offsets greater than number of mesh vertices for blend shape %s",
+              __func__,
+              path.GetAsString().c_str());
           break;
         }
         add_v3_v3(&fp[3 * i], offsets[a].data());
@@ -223,6 +260,8 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
       }
     }
   }
+
+  /* Get the blend animation source from the skeleton. */
 
   pxr::UsdSkelSkeleton skel_prim = skel_api.GetInheritedSkeleton();
 
@@ -248,6 +287,7 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
     return;
   }
 
+  /* Check if a blend shape weight animation was authored. */
   if (!skel_anim.GetBlendShapesAttr().HasAuthoredValue()) {
     return;
   }
@@ -258,6 +298,7 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
     return;
   }
 
+  /* Get the animation time samples. */
   std::vector<double> times;
   if (!weights_attr.GetTimeSamples(&times)) {
     return;
@@ -267,6 +308,7 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
     return;
   }
 
+  /* Get the blend shape name tokens. */
   if (!skel_anim.GetBlendShapesAttr().Get(&blendshapes)) {
     return;
   }
@@ -290,6 +332,7 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
       continue;
     }
 
+    /* Create the curve for this shape key. */
     std::string rna_path = "key_blocks[\"" + blendshape_name.GetString() + "\"].value";
     FCurve *fcu = create_fcurve(0, rna_path.c_str());
     fcu->totvert = num_samples;
@@ -297,15 +340,17 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
     BLI_addtail(&act->curves, fcu);
   }
 
+  /* Add the weight time samples to the curves. */
   for (double frame : times) {
     pxr::VtFloatArray weights;
     if (!weights_attr.Get(&weights, frame)) {
-      std::cout << "Couldn't get blendshape weights for time " << frame << std::endl;
+      std::cerr << "Couldn't get blendshape weights for time " << frame << std::endl;
       continue;
     }
 
     if (weights.size() != curves.size()) {
-      std::cout << "Programmer error: number of weight samples doesn't match number of shapekey curve entries for frame " << frame << std::endl;
+      std::cerr << "Programmer error: number of weight samples doesn't match number of shapekey curve entries for frame "
+                << frame << std::endl;
       continue;
     }
 
