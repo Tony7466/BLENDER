@@ -335,8 +335,16 @@ void ViewOpsData::init_navigation(bContext *C,
     }
 
     /* For dolly */
-    const float mval[2] = {float(event->mval[0]), float(event->mval[1])};
-    ED_view3d_win_to_vector(region, mval, this->init.mousevec);
+    {
+      float mval[2];
+      if (viewops_flag & VIEWOPS_FLAG_ZOOM_TO_MOUSE) {
+        copy_v2fl_v2i(mval, event->mval);
+      }
+      else {
+        copy_v2_fl2(mval, (float)(region->winx / 2), (float)(region->winy / 2));
+      }
+      ED_view3d_win_to_vector(region, mval, this->init.mousevec);
+    }
 
     {
       int event_xy_offset[2];

@@ -200,19 +200,18 @@ static int viewdolly_exec(bContext *C, wmOperator *op)
   else {
     area = CTX_wm_area(C);
     region = CTX_wm_region(C);
-    float xy[2];
+    float reg_xy[2];
     
-    /* compute direction vector for given zoom direction */
     const bool use_cursor_init = RNA_boolean_get(op->ptr, "use_cursor_init");
     if (use_cursor_init) {
-      xy[0] = (float)RNA_int_get(op->ptr, "mx");
-      xy[1] = (float)RNA_int_get(op->ptr, "my");
+      reg_xy[0] = (float)RNA_int_get(op->ptr, "mx");
+      reg_xy[1] = (float)RNA_int_get(op->ptr, "my");
     }
     else {
-      xy[0] = (float)region->winx / 2.0f;
-      xy[1] = (float)region->winy / 2.0f;
+      reg_xy[0] = (float)(region->winx / 2);
+      reg_xy[1] = (float)(region->winy / 2);
     }
-    ED_view3d_win_to_vector(region, xy, mousevec);
+    ED_view3d_win_to_vector(region, reg_xy, mousevec);
   }
 
   v3d = static_cast<View3D *>(area->spacedata.first);
@@ -240,19 +239,19 @@ static int viewdolly_exec(bContext *C, wmOperator *op)
 static int viewdolly_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   ViewOpsData *vod;
-
+  
   if (viewdolly_offset_lock_check(C, op)) {
     return OPERATOR_CANCELLED;
   }
-
+  
   /* use_cursor_init is true by default */
   const bool use_cursor_init = RNA_boolean_get(op->ptr, "use_cursor_init");
-
+  
   vod = viewops_data_create(C, event, &ViewOpsType_dolly, use_cursor_init);
   op->customdata = vod;
-
+  
   ED_view3d_smooth_view_force_finish(C, vod->v3d, vod->region);
-
+  
   /* needs to run before 'viewops_data_create' so the backup 'rv3d->ofs' is correct */
   /* switch from camera view when: */
   if (vod->rv3d->persp != RV3D_PERSP) {
@@ -267,59 +266,50 @@ static int viewdolly_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     
     ED_region_tag_redraw(vod->region);
   }
-  
-  /* if one or the other zoom direction is not set */
-  if (!RNA_struct_property_is_set(op->ptr, "mx") || !RNA_struct_property_is_set(op->ptr, "my")) {
-    /* set xy to region local coordinates */
-    int xy[2];
-    
-    if (use_cursor_init) {
-      xy[0] = event->mval[0];
-      xy[1] = event->mval[1];
-    }
-    else {
-      xy[0] = vod->region->winx / 2;
-      xy[1] = vod->region->winy / 2;
-    }
-    
-    RNA_int_set(op->ptr, "mx", xy[0]);
-    RNA_int_set(op->ptr, "my", xy[1]);
+
+  if (!use_cursor_init) {
+    RNA_int_set(op->ptr, "mx", vod->region->winx / 2);
+    RNA_int_set(op->ptr, "my", vod->region->winy / 2);
   }
   else {
-    /* recompute direction vector for given zoom direction */
-    const float xy[2] = {(float)RNA_int_get(op->ptr, "mx"),
-                         (float)RNA_int_get(op->ptr, "my")};
-    ED_view3d_win_to_vector(vod->region, xy, vod->init.mousevec);
+    /* if one or the other zoom direction is not set */
+    if (!RNA_struct_property_is_set(op->ptr, "mx") || !RNA_struct_property_is_set(op->ptr, "my")) {
+      RNA_int_set(op->ptr, "mx", event->mval[0]);
+      RNA_int_set(op->ptr, "my", event->mval[1]);
+    }
+    else {
+      const float reg_xy[2] = {(float)RNA_int_get(op->ptr, "mx"), (float)RNA_int_get(op->ptr, "my")};
+      /* recompute movement direction for dolly */
+      ED_view3d_win_to_vector(vod->region, reg_xy, vod->init.mousevec);
+    }
   }
 
   if (RNA_struct_property_is_set(op->ptr, "delta")) {
     return viewdolly_exec(C, op);
   }
-  else {
-    /* we do not set the delta property. It is an int, so usually would be
-     * 0 if rounded from a float */
-    if (ELEM(event->type, MOUSEZOOM, MOUSEPAN)) {
-      int move_xy[2];
-      sub_v2_v2v2_int(move_xy, event->prev_xy, event->xy);
-      if (event->type == MOUSEZOOM) {
-        /* Set y move = x move as MOUSEZOOM uses only x axis to pass magnification value */
-        move_xy[1] = move_xy[0];
-      }
-      
-      viewdolly_apply(vod, move_xy, ((U.uiflag & USER_ZOOM_INVERT) != 0)
-                      ^ ((event->flag & WM_EVENT_SCROLL_INVERT) !=0));
-      
-      viewops_data_free(C, static_cast<ViewOpsData *>(op->customdata));
-      op->customdata = nullptr;
-      
-      return OPERATOR_FINISHED;
+  
+  /* do not set the delta property, as an integer it would be 0 here */
+  if (ELEM(event->type, MOUSEZOOM, MOUSEPAN)) {
+    int move_xy[2];
+    sub_v2_v2v2_int(move_xy, event->prev_xy, event->xy);
+    if (event->type == MOUSEZOOM) {
+      /* Set y move = x move as MOUSEZOOM uses only x axis to pass magnification value */
+      move_xy[1] = move_xy[0];
     }
-
-    /* add temp handler */
-    WM_event_add_modal_handler(C, op);
     
-    return OPERATOR_RUNNING_MODAL;
+    viewdolly_apply(vod, move_xy, ((U.uiflag & USER_ZOOM_INVERT) != 0)
+                    ^ ((event->flag & WM_EVENT_SCROLL_INVERT) !=0));
+    
+    viewops_data_free(C, static_cast<ViewOpsData *>(op->customdata));
+    op->customdata = nullptr;
+    
+    return OPERATOR_FINISHED;
   }
+  
+  /* add temp handler */
+  WM_event_add_modal_handler(C, op);
+  
+  return OPERATOR_RUNNING_MODAL;
 }
 
 void VIEW3D_OT_dolly(wmOperatorType *ot)
