@@ -1745,6 +1745,7 @@ enum SearchType {
 struct SearchPopupInit_Data {
   SearchType search_type;
   int size[2];
+  std::string single_menu_idname;
 };
 
 static uiBlock *wm_block_search_menu(bContext *C, ARegion *region, void *userdata)
@@ -1773,7 +1774,10 @@ static uiBlock *wm_block_search_menu(bContext *C, ARegion *region, void *userdat
     UI_but_func_operator_search(but);
   }
   else if (init_data->search_type == SEARCH_TYPE_MENU) {
-    UI_but_func_menu_search(but);
+    UI_but_func_menu_search(but, nullptr);
+  }
+  else if (init_data->search_type == SEARCH_TYPE_SINGLE_MENU) {
+    UI_but_func_menu_search(but, init_data->single_menu_idname.c_str());
   }
   else {
     BLI_assert_unreachable();
@@ -1836,7 +1840,7 @@ static int wm_search_menu_invoke(bContext *C, wmOperator *op, const wmEvent *eve
     }
   }
 
-  int search_type;
+  SearchType search_type;
   if (STREQ(op->type->idname, "WM_OT_search_menu")) {
     search_type = SEARCH_TYPE_MENU;
   }
@@ -1847,15 +1851,15 @@ static int wm_search_menu_invoke(bContext *C, wmOperator *op, const wmEvent *eve
     search_type = SEARCH_TYPE_OPERATOR;
   }
 
+  static SearchPopupInit_Data data{};
+
   if (search_type == SEARCH_TYPE_SINGLE_MENU) {
-    char buffer[MAX_NAME + 1];
-    RNA_string_get(op->ptr, "menu_idname", buffer);
-    std::cout << buffer << "\n";
-    return OPERATOR_FINISHED;
+    char *buffer = RNA_string_get_alloc(op->ptr, "menu_idname", nullptr, 0, nullptr);
+    data.single_menu_idname = buffer;
+    MEM_freeN(buffer);
   }
 
-  static SearchPopupInit_Data data{};
-  data.search_type = SearchType(search_type);
+  data.search_type = search_type;
   data.size[0] = UI_searchbox_size_x() * 2;
   data.size[1] = UI_searchbox_size_y();
 
