@@ -30,6 +30,7 @@
 
 #include "ED_screen.hh"
 #include "ED_select_utils.hh"
+#include "ED_view3d.hh"
 
 #include "UI_interface.hh"
 
