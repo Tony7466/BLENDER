@@ -10721,8 +10721,16 @@ static int ui_handle_menu_event(bContext *C,
               }
             }
 
-            if (retval == WM_UI_HANDLER_CONTINUE) {
-              std::cout << menu->menu_idname << "\n";
+            if (menu->menu_idname[0] && retval == WM_UI_HANDLER_CONTINUE) {
+              uiAfterFunc *after = ui_afterfunc_new();
+              wmOperatorType *ot = WM_operatortype_find("WM_OT_search_single_menu", false);
+              after->optype = ot;
+              after->opcontext = WM_OP_INVOKE_DEFAULT;
+              after->opptr = MEM_cnew<PointerRNA>(__func__);
+              WM_operator_properties_create_ptr(after->opptr, ot);
+              RNA_string_set(after->opptr, "menu_idname", menu->menu_idname);
+              menu->menuretval = UI_RETURN_OK;
+              retval = WM_UI_HANDLER_BREAK;
             }
           }
           break;

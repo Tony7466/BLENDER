@@ -1739,6 +1739,7 @@ static void WM_OT_operator_defaults(wmOperatorType *ot)
 enum SearchType {
   SEARCH_TYPE_OPERATOR = 0,
   SEARCH_TYPE_MENU = 1,
+  SEARCH_TYPE_SINGLE_MENU = 2,
 };
 
 struct SearchPopupInit_Data {
@@ -1839,8 +1840,18 @@ static int wm_search_menu_invoke(bContext *C, wmOperator *op, const wmEvent *eve
   if (STREQ(op->type->idname, "WM_OT_search_menu")) {
     search_type = SEARCH_TYPE_MENU;
   }
+  else if (STREQ(op->type->idname, "WM_OT_search_single_menu")) {
+    search_type = SEARCH_TYPE_SINGLE_MENU;
+  }
   else {
     search_type = SEARCH_TYPE_OPERATOR;
+  }
+
+  if (search_type == SEARCH_TYPE_SINGLE_MENU) {
+    char buffer[MAX_NAME + 1];
+    RNA_string_get(op->ptr, "menu_idname", buffer);
+    std::cout << buffer << "\n";
+    return OPERATOR_FINISHED;
   }
 
   static SearchPopupInit_Data data{};
@@ -1873,6 +1884,19 @@ static void WM_OT_search_operator(wmOperatorType *ot)
   ot->invoke = wm_search_menu_invoke;
   ot->exec = wm_search_menu_exec;
   ot->poll = WM_operator_winactive;
+}
+
+static void WM_OT_search_single_menu(wmOperatorType *ot)
+{
+  ot->name = "Search Single Menu";
+  ot->idname = __func__;
+  ot->description = "Pop-up a search for a menu in current context";
+
+  ot->invoke = wm_search_menu_invoke;
+  ot->exec = wm_search_menu_exec;
+  ot->poll = WM_operator_winactive;
+
+  RNA_def_string(ot->srna, "menu_idname", nullptr, MAX_NAME, "Menu Name", "Menu to search in");
 }
 
 static int wm_call_menu_exec(bContext *C, wmOperator *op)
@@ -3832,6 +3856,7 @@ void wm_operatortypes_register()
   WM_operatortype_append(WM_OT_splash_about);
   WM_operatortype_append(WM_OT_search_menu);
   WM_operatortype_append(WM_OT_search_operator);
+  WM_operatortype_append(WM_OT_search_single_menu);
   WM_operatortype_append(WM_OT_call_menu);
   WM_operatortype_append(WM_OT_call_menu_pie);
   WM_operatortype_append(WM_OT_call_panel);
