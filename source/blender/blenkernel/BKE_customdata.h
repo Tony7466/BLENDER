@@ -172,7 +172,7 @@ void CustomData_copy_layout(const struct CustomData *source,
                             eCDAllocType alloctype,
                             int totelem);
 
-/* BMESH_TODO, not really a public function but readfile.c needs it */
+/* BMESH_TODO, not really a public function but `readfile.cc` needs it. */
 void CustomData_update_typemap(struct CustomData *data);
 
 /**
@@ -698,7 +698,7 @@ enum {
   /* Multiple types of mesh elements... */
   CD_FAKE_UV =
       CD_FAKE |
-      CD_PROP_FLOAT2, /* UV flag, because we handle both loop's UVs and poly's textures. */
+      CD_PROP_FLOAT2, /* UV flag, because we handle both loop's UVs and face's textures. */
 
   CD_FAKE_LNOR = CD_FAKE |
                  CD_CUSTOMLOOPNORMAL, /* Because we play with clnor and temp lnor layers here. */

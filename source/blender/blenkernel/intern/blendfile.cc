@@ -142,6 +142,18 @@ bool BKE_blendfile_library_path_explode(const char *path,
   return true;
 }
 
+bool BKE_blendfile_is_readable(const char *path, ReportList *reports)
+{
+  BlendFileReadReport readfile_reports;
+  readfile_reports.reports = reports;
+  BlendHandle *bh = BLO_blendhandle_from_file(path, &readfile_reports);
+  if (bh != nullptr) {
+    BLO_blendhandle_close(bh);
+    return true;
+  }
+  return false;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -536,7 +548,8 @@ static int reuse_bmain_data_invalid_local_usages_fix_cb(LibraryIDLinkCallbackDat
   return IDWALK_RET_NOP;
 }
 
-/** Detect and fix invalid usages of locale IDs by linked ones (or as reference of liboverrides).
+/**
+ * Detect and fix invalid usages of locale IDs by linked ones (or as reference of liboverrides).
  */
 static void reuse_bmain_data_invalid_local_usages_fix(ReuseOldBMainData *reuse_data)
 {
