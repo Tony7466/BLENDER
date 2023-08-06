@@ -1059,6 +1059,8 @@ static volume::GridMask grid_mask_from_selection(const volume::GridMask full_mas
   return volume::GridMask::from_bools(full_mask, selection);
 }
 
+const volume::GridMask VolumeFieldEvaluator::empty_mask_ = volume::GridMask();
+
 int VolumeFieldEvaluator::add_with_destination(GField field, GMutableGrid dst)
 {
   const int field_index = fields_to_evaluate_.append_and_get_index(std::move(field));

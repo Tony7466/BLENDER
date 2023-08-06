@@ -795,6 +795,17 @@ class MutableAttributeAccessor : public AttributeAccessor {
       const AttributeInit &initializer = AttributeInitDefaultValue());
 
   /**
+   * Find an attribute with the given id, domain and data type. If it does not exist, create a new
+   * attribute. If the attribute does not exist and can't be created (e.g. because it already
+   * exists on a different domain or with a different type), none is returned.
+   */
+  GAttributeGridWriter lookup_or_add_grid_for_write(
+      const AttributeIDRef &attribute_id,
+      const eAttrDomain domain,
+      const eCustomDataType data_type,
+      const AttributeInit &initializer = AttributeInitDefaultValue());
+
+  /**
    * Same as above, but returns a type that makes it easier to work with the attribute as a span.
    * If the caller newly initializes the attribute, it's better to use
    * #lookup_or_add_for_write_only_span.

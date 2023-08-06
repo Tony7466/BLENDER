@@ -959,6 +959,25 @@ GAttributeWriter MutableAttributeAccessor::lookup_or_add_for_write(
   return {};
 }
 
+GAttributeGridWriter MutableAttributeAccessor::lookup_or_add_grid_for_write(
+    const AttributeIDRef &attribute_id,
+    const eAttrDomain domain,
+    const eCustomDataType data_type,
+    const AttributeInit &initializer)
+{
+  std::optional<AttributeMetaData> meta_data = this->lookup_meta_data(attribute_id);
+  if (meta_data.has_value()) {
+    if (meta_data->domain == domain && meta_data->data_type == data_type) {
+      return this->lookup_grid_for_write(attribute_id);
+    }
+    return {};
+  }
+  if (this->add(attribute_id, domain, data_type, initializer)) {
+    return this->lookup_grid_for_write(attribute_id);
+  }
+  return {};
+}
+
 GSpanAttributeWriter MutableAttributeAccessor::lookup_or_add_for_write_span(
     const AttributeIDRef &attribute_id,
     const eAttrDomain domain,

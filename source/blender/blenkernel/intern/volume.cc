@@ -919,6 +919,19 @@ VolumeGrid *BKE_volume_grid_find_for_write(Volume *volume, const char *name)
   return nullptr;
 }
 
+bool BKE_volume_grid_set_active(Volume *volume, const VolumeGrid *grid)
+{
+  int num_grids = BKE_volume_num_grids(volume);
+  for (int i = 0; i < num_grids; i++) {
+    if (grid == BKE_volume_grid_get_for_read(volume, i)) {
+      volume->active_grid = i;
+      return true;
+    }
+  }
+  volume->active_grid = -1;
+  return false;
+}
+
 /* Grid Loading */
 
 bool BKE_volume_grid_load(const Volume *volume, const VolumeGrid *grid)

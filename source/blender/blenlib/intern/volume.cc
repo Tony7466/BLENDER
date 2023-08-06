@@ -156,6 +156,16 @@ GMutableGrid::operator bool() const
   return grid_ != nullptr;
 }
 
+const CPPType *GMutableGrid::value_type() const
+{
+  const CPPType *type = nullptr;
+  grid_to_static_type(grid_, [&](auto &grid) {
+    using GridType = typename std::decay<decltype(grid)>::type;
+    type = &CPPType::get<typename GridType::ValueType>();
+  });
+  return type;
+}
+
 template<typename T> MutableGrid<T> MutableGrid<T>::create(const T &background_value)
 {
   typename GridType::Ptr grid = grid_types::GridCommon<ValueType>::create(background_value);

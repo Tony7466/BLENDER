@@ -6,6 +6,8 @@
  * \ingroup nodes
  */
 
+#include "DNA_volume_types.h"
+
 #include "BLI_math_euler.hh"
 #include "BLI_math_quaternion.hh"
 
@@ -19,9 +21,11 @@
 #include "BKE_idprop.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_type_conversions.hh"
+#include "BKE_volume.h"
 
 #include "FN_field_cpp_type.hh"
 #include "FN_lazy_function_execute.hh"
+#include "FN_volume_field.hh"
 
 namespace lf = blender::fn::lazy_function;
 namespace geo_log = blender::nodes::geo_eval_log;
@@ -385,6 +389,7 @@ struct OutputAttributeToStore {
   eAttrDomain domain;
   StringRefNull name;
   GMutableSpan data;
+  volume::GMutableGrid grid_data;
 };
 
 /**
@@ -442,7 +447,8 @@ static Vector<OutputAttributeToStore> compute_attributes_to_store(
   for (const auto component_type : {bke::GeometryComponent::Type::Mesh,
                                     bke::GeometryComponent::Type::PointCloud,
                                     bke::GeometryComponent::Type::Curve,
-                                    bke::GeometryComponent::Type::Instance})
+                                    bke::GeometryComponent::Type::Instance,
+                                    bke::GeometryComponent::Type::Volume})
   {
     if (!geometry.has(component_type)) {
       continue;
@@ -458,20 +464,28 @@ static Vector<OutputAttributeToStore> compute_attributes_to_store(
       const int domain_size = attributes.domain_size(domain);
       bke::GeometryFieldContext field_context{component, domain};
       fn::FieldEvaluator field_evaluator{field_context, domain_size};
+      fn::VolumeFieldEvaluator volume_field_evaluator{field_context};
       for (const OutputAttributeInfo &output_info : outputs_info) {
         const CPPType &type = output_info.field.cpp_type();
         const bke::AttributeValidator validator = attributes.lookup_validator(output_info.name);
-        OutputAttributeToStore store{
-            component_type,
-            domain,
-            output_info.name,
-            GMutableSpan{
-                type, MEM_malloc_arrayN(domain_size, type.size(), __func__), domain_size}};
         fn::GField field = validator.validate_field_if_necessary(output_info.field);
-        field_evaluator.add_with_destination(std::move(field), store.data);
+        OutputAttributeToStore store{component_type, domain, output_info.name};
+        switch (component.attribute_type()) {
+          case bke::GeometryComponent::AttributeType::Array:
+            store.data = GMutableSpan{
+                type, MEM_malloc_arrayN(domain_size, type.size(), __func__), domain_size};
+            field_evaluator.add_with_destination(std::move(field), store.data);
+            break;
+          case bke::GeometryComponent::AttributeType::Grid:
+            store.grid_data = volume::GMutableGrid::create(type);
+            volume_field_evaluator.add_with_destination(std::move(field), store.grid_data);
+            break;
+        }
+
         attributes_to_store.append(store);
       }
       field_evaluator.evaluate();
+      volume_field_evaluator.evaluate();
     }
   }
   return attributes_to_store;
@@ -484,38 +498,73 @@ static void store_computed_output_attributes(
     bke::GeometryComponent &component = geometry.get_component_for_write(store.component_type);
     bke::MutableAttributeAccessor attributes = *component.attributes_for_write();
 
-    const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(store.data.type());
-    const std::optional<bke::AttributeMetaData> meta_data = attributes.lookup_meta_data(
-        store.name);
-
-    /* Attempt to remove the attribute if it already exists but the domain and type don't match.
-     * Removing the attribute won't succeed if it is built in and non-removable. */
-    if (meta_data.has_value() &&
-        (meta_data->domain != store.domain || meta_data->data_type != data_type))
-    {
-      attributes.remove(store.name);
-    }
-
     /* Try to create the attribute reusing the stored buffer. This will only succeed if the
      * attribute didn't exist before, or if it existed but was removed above. */
-    if (attributes.add(store.name,
-                       store.domain,
-                       bke::cpp_type_to_custom_data_type(store.data.type()),
-                       bke::AttributeInitMoveArray(store.data.data())))
-    {
-      continue;
-    }
+    switch (component.attribute_type()) {
+      case bke::GeometryComponent::AttributeType::Array: {
+        const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(store.data.type());
+        const std::optional<bke::AttributeMetaData> meta_data = attributes.lookup_meta_data(
+            store.name);
 
-    bke::GAttributeWriter attribute = attributes.lookup_or_add_for_write(
-        store.name, store.domain, data_type);
-    if (attribute) {
-      attribute.varray.set_all(store.data.data());
-      attribute.finish();
-    }
+        /* Attempt to remove the attribute if it already exists but the domain and type don't
+         * match. Removing the attribute won't succeed if it is built in and non-removable. */
+        if (meta_data.has_value() &&
+            (meta_data->domain != store.domain || meta_data->data_type != data_type))
+        {
+          attributes.remove(store.name);
+        }
 
-    /* We were unable to reuse the data, so it must be destructed and freed. */
-    store.data.type().destruct_n(store.data.data(), store.data.size());
-    MEM_freeN(store.data.data());
+        if (attributes.add(store.name,
+                           store.domain,
+                           bke::cpp_type_to_custom_data_type(store.data.type()),
+                           bke::AttributeInitMoveArray(store.data.data())))
+        {
+          continue;
+        }
+
+        bke::GAttributeWriter attribute = attributes.lookup_or_add_for_write(
+            store.name, store.domain, data_type);
+        if (attribute) {
+          attribute.varray.set_all(store.data.data());
+          attribute.finish();
+        }
+
+        /* We were unable to reuse the data, so it must be destructed and freed. */
+        store.data.type().destruct_n(store.data.data(), store.data.size());
+        MEM_freeN(store.data.data());
+        break;
+      }
+      case bke::GeometryComponent::AttributeType::Grid: {
+        const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(
+            *store.grid_data.value_type());
+        const std::optional<bke::AttributeMetaData> meta_data = attributes.lookup_meta_data(
+            store.name);
+
+        /* Attempt to remove the attribute if it already exists but the domain and type don't
+         * match. Removing the attribute won't succeed if it is built in and non-removable. */
+        if (meta_data.has_value() &&
+            (meta_data->domain != store.domain || meta_data->data_type != data_type))
+        {
+          attributes.remove(store.name);
+        }
+
+        if (attributes.add(store.name,
+                           store.domain,
+                           bke::cpp_type_to_custom_data_type(*store.grid_data.value_type()),
+                           bke::AttributeInitMoveGrid(store.grid_data)))
+        {
+          continue;
+        }
+
+        bke::GAttributeGridWriter attribute = attributes.lookup_or_add_grid_for_write(
+            store.name, store.domain, data_type);
+        if (attribute) {
+          attribute.grid.try_assign(store.grid_data);
+          attribute.finish();
+        }
+        break;
+      }
+    }
   }
 }
 
@@ -531,6 +580,54 @@ static void store_output_attributes(bke::GeometrySet &geometry,
   Vector<OutputAttributeToStore> attributes_to_store = compute_attributes_to_store(
       geometry, outputs_by_domain);
   store_computed_output_attributes(geometry, attributes_to_store);
+}
+
+static bool set_active_volume_grid(bke::GeometrySet &geometry,
+                                   const bNodeTree &tree,
+                                   const IDProperty *properties)
+{
+  if (!geometry.has_volume()) {
+    return false;
+  }
+  Volume *volume = geometry.get_volume_for_write();
+
+  const bNode &output_node = *tree.group_output_node();
+  MultiValueMap<eAttrDomain, OutputAttributeInfo> outputs_by_domain;
+  for (const bNodeSocket *socket : output_node.input_sockets().drop_front(1).drop_back(1)) {
+    if (!socket_type_has_attribute_toggle(*socket)) {
+      continue;
+    }
+
+    const std::string prop_name = socket->identifier + input_attribute_name_suffix();
+    const IDProperty *prop = IDP_GetPropertyFromGroup(properties, prop_name.c_str());
+    if (prop == nullptr) {
+      continue;
+    }
+    const StringRefNull attribute_name = IDP_String(prop);
+    if (attribute_name.is_empty()) {
+      continue;
+    }
+    if (!bke::allow_procedural_attribute_access(attribute_name)) {
+      continue;
+    }
+
+    const int index = socket->index();
+    const bNodeSocket *interface_socket = (const bNodeSocket *)BLI_findlink(&tree.outputs, index);
+    const eAttrDomain domain = (eAttrDomain)interface_socket->attribute_domain;
+    switch (domain) {
+      case ATTR_DOMAIN_VOXEL: {
+        const VolumeGrid *grid = BKE_volume_grid_find_for_read(volume, attribute_name.c_str());
+        if (grid) {
+          /* First attribute in a volume domain becomes active. */
+          return BKE_volume_grid_set_active(volume, grid);
+        }
+        break;
+      }
+      default:
+        break;
+    }
+  }
+  return false;
 }
 
 bke::GeometrySet execute_geometry_nodes_on_geometry(
@@ -625,6 +722,7 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
 
   bke::GeometrySet output_geometry = std::move(*param_outputs[0].get<bke::GeometrySet>());
   store_output_attributes(output_geometry, btree, properties, param_outputs);
+  set_active_volume_grid(output_geometry, btree, properties);
 
   for (GMutablePointer &ptr : param_outputs) {
     ptr.destruct();

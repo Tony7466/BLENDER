@@ -505,6 +505,8 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
     void (*set)(void *dst, const GGrid &grid, ResourceScope &scope) = nullptr;
   };
 
+  static const GridMask empty_mask_;
+
   ResourceScope scope_;
   const FieldContext &context_;
   const GridMask &mask_;
@@ -524,7 +526,7 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
   {
   }
 
-  VolumeFieldEvaluator(const FieldContext &context) : context_(context), mask_(GridMask()) {}
+  VolumeFieldEvaluator(const FieldContext &context) : context_(context), mask_(empty_mask_) {}
 
   ~VolumeFieldEvaluator()
   {

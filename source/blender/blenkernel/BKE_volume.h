@@ -79,6 +79,7 @@ const VolumeGrid *BKE_volume_grid_active_get_for_read(const struct Volume *volum
 /* Tries to find a grid with the given name. Make sure that the volume has been loaded. */
 const VolumeGrid *BKE_volume_grid_find_for_read(const struct Volume *volume, const char *name);
 VolumeGrid *BKE_volume_grid_find_for_write(struct Volume *volume, const char *name);
+bool BKE_volume_grid_set_active(struct Volume *volume, const struct VolumeGrid *grid);
 
 /* Tries to set the name of the velocity field. If no such grid exists with the given base name,
  * this will try common post-fixes in order to detect velocity fields split into multiple grids.
