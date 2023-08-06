@@ -660,8 +660,6 @@ static MenuSearch_Data *menu_items_from_ui_create(bContext *C,
           SPACE_MENU_NOP(SPACE_SPREADSHEET);
         }
       }
-#undef SPACE_MENU_MAP
-#undef SPACE_MENU_NOP
       for (int i = 0; i < idname_array_len; i++) {
         MenuType *mt = WM_menutype_find(idname_array[i], false);
         if (mt != nullptr) {
@@ -672,6 +670,8 @@ static MenuSearch_Data *menu_items_from_ui_create(bContext *C,
         }
       }
     }
+#undef SPACE_MENU_MAP
+#undef SPACE_MENU_NOP
 
     bool has_keymap_menu_items = false;
 
@@ -805,8 +805,7 @@ static MenuSearch_Data *menu_items_from_ui_create(bContext *C,
 
       if (single_menu_idname == nullptr) {
         /* Add key-map items as a second pass, so all menus are accessed from the header & top-bar
-         * before key shortcuts are expanded.
-         */
+         * before key shortcuts are expanded. */
         if ((menu_stack == nullptr) && (has_keymap_menu_items == false)) {
           has_keymap_menu_items = true;
           menu_types_add_from_keymap_items(
