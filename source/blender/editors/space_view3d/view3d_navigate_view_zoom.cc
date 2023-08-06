@@ -88,7 +88,7 @@ static void view_zoom_to_window_xy_3d(const View3D *v3d,
 }
 
 static void viewzoom_apply(ViewOpsData *vod, const int move_xy[2],
-                           const eViewZoom_Style zoomstyle, const bool delta_invert, const float mval[2])
+                           const eViewZoom_Style zoomstyle, const bool delta_invert, const int zoomctr_xy[2])
 {
   const int sgn = 1 - 2 * delta_invert;
   
@@ -148,7 +148,8 @@ static void viewzoom_apply(ViewOpsData *vod, const int move_xy[2],
       }
     }
     
-    view_zoom_to_window_xy_3d(vod->v3d, vod->region, vod->init.ofs, vod->init.dist, mval, delta);
+    const float zoomctr_f_xy[2] = {(float)zoomctr_xy[0], (float)zoomctr_xy[1]};
+    view_zoom_to_window_xy_3d(vod->v3d, vod->region, vod->init.ofs, vod->init.dist, zoomctr_f_xy, delta);
     
     if (RV3D_LOCK_FLAGS(vod->rv3d) & RV3D_BOXVIEW) {
       view3d_boxview_sync(vod->area, vod->region);
@@ -168,7 +169,7 @@ static int viewzoom_modal_impl(bContext *C,
   bool use_autokey = false;
   int ret = OPERATOR_RUNNING_MODAL;
   int move_xy[2];
-  float mval[2];
+  int zoomctr_xy[2];
 
   switch (event_code) {
     case VIEW_APPLY: {
@@ -178,11 +179,11 @@ static int viewzoom_modal_impl(bContext *C,
       }
       else {
         sub_v2_v2v2_int(move_xy, xy, vod->init.event_xy);
-        mval[0] = vod->region->winx / 2.0f + vod->init.event_xy_offset[0];
-        mval[1] = vod->region->winy / 2.0f + vod->init.event_xy_offset[1];
+        zoomctr_xy[0] = vod->region->winx / 2 + vod->init.event_xy_offset[0];
+        zoomctr_xy[1] = vod->region->winy / 2 + vod->init.event_xy_offset[1];
       }
       viewzoom_apply(vod, move_xy, (eViewZoom_Style)U.viewzoom,
-                     (U.uiflag & USER_ZOOM_INVERT) != 0, mval);
+                     (U.uiflag & USER_ZOOM_INVERT) != 0, zoomctr_xy);
       
       if (ED_screen_animation_playing(CTX_wm_manager(C))) {
         use_autokey = true;
@@ -210,7 +211,7 @@ static int viewzoom_modal_impl(bContext *C,
   return ret;
 }
 
-static int viewzoom_apply_step(bContext *C, PointerRNA *ptr, ViewOpsData *vod, const float mval[2])
+static int viewzoom_apply_step(bContext *C, PointerRNA *ptr, ViewOpsData *vod, const int zoomctr_xy[2])
 {
   View3D *v3d;
   RegionView3D *rv3d;
@@ -219,20 +220,19 @@ static int viewzoom_apply_step(bContext *C, PointerRNA *ptr, ViewOpsData *vod, c
 
   const int delta = RNA_int_get(ptr, "delta");
 
-  /* based on input device event */
+  /* execution always based on input device event */
   area = vod->area;
   region = vod->region;
   v3d = static_cast<View3D *>(area->spacedata.first);
   rv3d = static_cast<RegionView3D *>(region->regiondata);
   
   if ((rv3d->persp == RV3D_CAMOB) && !ED_view3d_camera_lock_check(v3d, rv3d)) {
-    float scale;
-    
-    scale = 1.0f + 0.1f * delta;
+    const float scale = 1.0f + 0.1f * delta;
     ED_view3d_camera_view_zoom_scale(rv3d, scale);
   }
   else {
-    view_zoom_to_window_xy_3d(v3d, region, rv3d->ofs, rv3d->dist, mval, delta);
+    const float zoomctr_f_xy[2] = {(float)zoomctr_xy[0], (float)zoomctr_xy[1]};
+    view_zoom_to_window_xy_3d(v3d, region, rv3d->ofs, rv3d->dist, zoomctr_f_xy, delta);
     
     if (RV3D_LOCK_FLAGS(rv3d) & RV3D_BOXVIEW) {
       view3d_boxview_sync(area, region);
@@ -240,6 +240,7 @@ static int viewzoom_apply_step(bContext *C, PointerRNA *ptr, ViewOpsData *vod, c
   }
   
   ED_view3d_camera_lock_sync(CTX_data_ensure_evaluated_depsgraph(C), v3d, rv3d);
+  ED_view3d_camera_lock_autokey(v3d, rv3d, C, false, true);
 
   ED_region_tag_redraw(region);
 
@@ -257,23 +258,22 @@ static int viewzoom_exec(bContext *C, wmOperator *op)
 
   area = CTX_wm_area(C);
   region = CTX_wm_region(C);
-  float xy[2];
+  float zoomctr_f_xy[2];
     
-  /* compute direction vector for given zoom direction */
   const bool use_cursor_init = RNA_boolean_get(op->ptr, "use_cursor_init");
   if (use_cursor_init) {
-    xy[0] = (float)RNA_int_get(op->ptr, "mx");
-    xy[1] = (float)RNA_int_get(op->ptr, "my");
+    zoomctr_f_xy[0] = (float)RNA_int_get(op->ptr, "mx");
+    zoomctr_f_xy[1] = (float)RNA_int_get(op->ptr, "my");
   }
   else {
-    xy[0] = (float)region->winx / 2.0f;
-    xy[1] = (float)region->winy / 2.0f;
+    zoomctr_f_xy[0] = (float)(region->winx / 2);
+    zoomctr_f_xy[1] = (float)(region->winy / 2);
   }
 
   v3d = static_cast<View3D *>(area->spacedata.first);
   rv3d = static_cast<RegionView3D *>(region->regiondata);
 
-  view_zoom_to_window_xy_3d(v3d, region, rv3d->ofs, rv3d->dist, xy, delta);
+  view_zoom_to_window_xy_3d(v3d, region, rv3d->ofs, rv3d->dist, zoomctr_f_xy, delta);
 
   if (RV3D_LOCK_FLAGS(rv3d) & RV3D_BOXVIEW) {
     view3d_boxview_sync(area, region);
@@ -292,46 +292,51 @@ static int viewzoom_invoke_impl(bContext *C,
                                 const wmEvent *event,
                                 PointerRNA *ptr)
 {
-  float xy[2];
-
-  /* Set to false to avoid contradiction with VIEWOPS_FLAG_ZOOM_TO_MOUSE */
-  RNA_boolean_set(ptr, "use_cursor_init", false);
+  int zoomctr_xy[2];
   
-  /* if one or the other zoom direction is not set */
-  if (!RNA_struct_property_is_set(ptr, "mx") || !RNA_struct_property_is_set(ptr, "my")) {
-    /* set xy to region local coordinates */
-    if (vod->viewops_flag & VIEWOPS_FLAG_ZOOM_TO_MOUSE) {
-      xy[0] = (float)event->mval[0];
-      xy[1] = (float)event->mval[1];
-    }
-    else {
-      xy[0] = (float)vod->region->winx / 2.0f;
-      xy[1] = (float)vod->region->winy / 2.0f;
-    }
-    
-    RNA_int_set(ptr, "mx", (int)xy[0]);
-    RNA_int_set(ptr, "my", (int)xy[1]);
+  /* use_cursor_init is true by default */
+  const bool use_cursor_init = RNA_boolean_get(ptr, "use_cursor_init");
+  
+  if (!use_cursor_init) {
+    RNA_int_set(ptr, "mx", zoomctr_xy[0] = vod->region->winx / 2);
+    RNA_int_set(ptr, "my", zoomctr_xy[1] = vod->region->winy / 2);
   }
   else {
-    copy_v2_fl2(xy, (float)RNA_int_get(ptr, "mx"), (float)RNA_int_get(ptr, "my"));
+    /* if one or the other zoom direction is not set */
+    if (!RNA_struct_property_is_set(ptr, "mx") || !RNA_struct_property_is_set(ptr, "my")) {
+      if (U.uiflag & USER_ZOOM_TO_MOUSEPOS) {
+        copy_v2_v2_int(zoomctr_xy, event->mval);
+      }
+      else {
+        zoomctr_xy[0] = vod->region->winx / 2;
+        zoomctr_xy[1] = vod->region->winy / 2;
+      }
+      RNA_int_set(ptr, "mx", zoomctr_xy[0]);
+      RNA_int_set(ptr, "my", zoomctr_xy[1]);
+    }
+    else {
+      zoomctr_xy[0] = RNA_int_get(ptr, "mx");
+      zoomctr_xy[1] = RNA_int_get(ptr, "my");
+    }
   }
   
   if (RNA_struct_property_is_set(ptr, "delta")) {
-    return viewzoom_apply_step(C, ptr, vod, xy);
+    return viewzoom_apply_step(C, ptr, vod, zoomctr_xy);
   }
   else {
-    /* we do not set the delta property. It is an int, so usually would be
-     * 0 if rounded from a float */
+    /* do not set the delta property, as an integer it would be 0 here */
     if (ELEM(event->type, MOUSEZOOM, MOUSEPAN)) {
       int move_xy[2];
-      sub_v2_v2v2_int(move_xy, event->prev_xy, event->xy);
+      
+      move_xy[0] = WM_event_absolute_delta_x(event);
+      move_xy[1] = WM_event_absolute_delta_y(event);
+
       if (event->type == MOUSEZOOM) {
         /* Set y move = x move as MOUSEZOOM uses only x axis to pass magnification value */
         move_xy[1] = move_xy[0];
       }
-
-      viewzoom_apply(vod, move_xy, USER_ZOOM_DOLLY,((U.uiflag & USER_ZOOM_INVERT) != 0)
-                     ^ ((event->flag & WM_EVENT_SCROLL_INVERT) !=0), xy);
+      viewzoom_apply(vod, move_xy, USER_ZOOM_DOLLY,(U.uiflag & USER_ZOOM_INVERT) != 0, zoomctr_xy);
+      ED_view3d_camera_lock_autokey(vod->v3d, vod->rv3d, C, false, true);
       
       return OPERATOR_FINISHED;
     }
@@ -343,8 +348,8 @@ static int viewzoom_invoke_impl(bContext *C,
     vod->timer = WM_event_timer_add(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.01f);
   }
   
-  vod->init.event_xy_offset[0] = xy[0] - (float)vod->region->winx / 2.0f;
-  vod->init.event_xy_offset[1] = xy[1] - (float)vod->region->winy / 2.0f;
+  vod->init.event_xy_offset[0] = zoomctr_xy[0] - (float)vod->region->winx / 2.0f;
+  vod->init.event_xy_offset[1] = zoomctr_xy[1] - (float)vod->region->winy / 2.0f;
   vod->init.zfac = 0.0f;
   copy_v2_v2_int(vod->prev.event_xy, event->xy);
 
