@@ -4309,6 +4309,9 @@ static void ui_block_open_begin(bContext *C, uiBut *but, uiHandleButtonData *dat
   }
   else if (menufunc) {
     data->menu = ui_popup_menu_create(C, data->region, but, menufunc, arg);
+    if (MenuType *mt = UI_but_menutype_get(but)) {
+      STRNCPY(data->menu->menu_idname, mt->idname);
+    }
     if (but->block->handle) {
       data->menu->popup = but->block->handle->popup;
     }
@@ -10713,11 +10716,14 @@ static int ui_handle_menu_event(bContext *C,
                 else {
                   ui_handle_button_activate_by_type(C, region, but);
                 }
+                retval = WM_UI_HANDLER_BREAK;
                 break;
               }
             }
 
-            retval = WM_UI_HANDLER_BREAK;
+            if (retval == WM_UI_HANDLER_CONTINUE) {
+              std::cout << menu->menu_idname << "\n";
+            }
           }
           break;
         }

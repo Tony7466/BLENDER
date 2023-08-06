@@ -628,6 +628,7 @@ static void ui_popup_menu_create_from_menutype(bContext *C,
         ui_item_menutype_func(C, layout, mt);
       });
 
+  STRNCPY(handle->menu_idname, mt->idname);
   handle->can_refresh = true;
 }
 
