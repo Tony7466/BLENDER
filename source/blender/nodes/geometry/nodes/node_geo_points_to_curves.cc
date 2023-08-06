@@ -377,7 +377,6 @@ static void group_build(const Span<int> group_indices,
   SCOPED_TIMER_AVERAGED(__func__);
 
   Array<int> indices(group_indices.size());
-  std::iota(indices.begin(), indices.end(), 0);
 
   constexpr int segment_size = 1024;
   const bool last_small_segmet = bool(group_indices.size() % segment_size);
@@ -388,6 +387,7 @@ static void group_build(const Span<int> group_indices,
     MutableSpan<int> &local_indices = thread_local_indices[segment_index];
     local_indices = indices.as_mutable_span().slice_safe(segment_index * segment_size,
                                                          segment_size);
+    std::iota(local_indices.begin(), local_indices.end(), segment_index * segment_size);
     parallel_sort(local_indices.begin(), local_indices.end(), [&](const int a, const int b) {
       return group_indices[a] < group_indices[b];
     });
