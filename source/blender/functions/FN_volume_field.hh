@@ -19,7 +19,7 @@ class GFieldRef;
 namespace blender::fn {
 
 void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
-                                                 const volume::GridMask &mask,
+                                                 const volume::GGrid &mask,
                                                  const multi_function::Procedure &procedure,
                                                  Span<volume::GGrid> field_context_inputs,
                                                  Span<GFieldRef> fields_to_evaluate,

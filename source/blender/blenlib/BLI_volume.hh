@@ -27,12 +27,8 @@ namespace openvdb {
 OPENVDB_USE_VERSION_NAMESPACE
 namespace OPENVDB_VERSION_NAME {
 
-// using Index = uint32_t;
-// using Index32 = uint32_t;
 class GridBase;
 template<typename TreeType> class Grid;
-// class ValueMask;
-// template<typename... Types> class TypeList;
 class MetaMap;
 
 namespace tree {
@@ -162,6 +158,8 @@ using SupportedGridTypes = openvdb::TypeList<BoolGrid,
 }  // namespace grid_types
 #endif
 
+class GGrid;
+class GMutableGrid;
 template<typename T> class Grid;
 template<typename T> class MutableGrid;
 
@@ -197,8 +195,7 @@ class GridMask {
   GridMask(const GridPtr &grid) : grid_(grid) {}
 #endif
 
-  static GridMask from_bools(const volume::GridMask &full_mask,
-                             const volume::Grid<bool> &selection);
+  static GridMask from_bools(const GGrid &full_mask, const Grid<bool> &selection);
 
   bool is_empty() const;
   int64_t min_voxel_count() const;
@@ -254,12 +251,12 @@ class GMutableGrid {
   static GMutableGrid create(const CPPType &type);
   /* Create a grid with the active volume mask voxels. */
   static GMutableGrid create(const CPPType &type,
-                             const GridMask &mask,
+                             const GGrid &mask,
                              const void *inactive_value,
                              const void *active_value);
 
   bool try_assign(const GGrid &other);
-  bool try_copy_masked(const GGrid &other, const GridMask &selection);
+  bool try_copy_masked(const GGrid &other, const GGrid &selection);
 
   int64_t voxel_count() const;
   bool is_empty() const;
@@ -309,9 +306,7 @@ template<typename T> class MutableGrid {
   /* Create an empty grid with the type default as background value. */
   static MutableGrid<T> create();
   /* Create a grid with the active volume mask voxels. */
-  static MutableGrid<T> create(const GridMask &mask,
-                               const T &inactive_value,
-                               const T &active_value);
+  static MutableGrid<T> create(const GGrid &mask, const T &inactive_value, const T &active_value);
 
   operator GMutableGrid();
   operator GMutableGrid const() const;

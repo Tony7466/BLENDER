@@ -443,6 +443,7 @@ struct AttributeAccessorFunctions {
                                                        const AttributeIDRef &attribute_id);
   bool (*domain_supported)(const void *owner, eAttrDomain domain);
   int (*domain_size)(const void *owner, eAttrDomain domain);
+  volume::GGrid (*domain_grid_mask)(const void *owner, eAttrDomain domain, int main_grid);
   bool (*is_builtin)(const void *owner, const AttributeIDRef &attribute_id);
   GAttributeReader (*lookup)(const void *owner, const AttributeIDRef &attribute_id);
   GAttributeGridReader (*lookup_grid)(const void *owner, const AttributeIDRef &attribute_id);
@@ -523,6 +524,14 @@ class AttributeAccessor {
   int domain_size(const eAttrDomain domain) const
   {
     return fn_->domain_size(owner_, domain);
+  }
+
+  /**
+   * \return Topology grid that defines the default extent of a volume.
+   */
+  volume::GGrid domain_grid_mask(const eAttrDomain domain, int main_grid) const
+  {
+    return fn_->domain_grid_mask(owner_, domain, main_grid);
   }
 
   /**

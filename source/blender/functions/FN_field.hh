@@ -291,7 +291,7 @@ class FieldInput : public FieldNode {
    * at least as long as the passed in #scope. May return null.
    */
   virtual GGrid get_volume_grid_for_context(const FieldContext & /*context*/,
-                                            const GridMask & /*mask*/,
+                                            const GGrid & /*mask*/,
                                             ResourceScope & /*scope*/) const
   {
     return {};
@@ -347,7 +347,7 @@ class FieldContext {
                                        ResourceScope &scope) const;
 
   virtual GGrid get_volume_grid_for_input(const FieldInput &field_input,
-                                          const GridMask &mask,
+                                          const GGrid &mask,
                                           ResourceScope &scope) const;
 };
 
@@ -505,11 +505,9 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
     void (*set)(void *dst, const GGrid &grid, ResourceScope &scope) = nullptr;
   };
 
-  static const GridMask empty_mask_;
-
   ResourceScope scope_;
   const FieldContext &context_;
-  const GridMask &mask_;
+  const GGrid &domain_mask_;
   Vector<GField> fields_to_evaluate_;
   Vector<GMutableGrid> dst_grids_;
   Vector<GGrid> evaluated_grids_;
@@ -517,16 +515,16 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
   bool is_evaluated_ = false;
 
   Field<bool> selection_field_;
-  GridMask selection_mask_;
+  GGrid selection_mask_;
 
  public:
   /** Takes #mask by pointer because the mask has to live longer than the evaluator. */
-  VolumeFieldEvaluator(const FieldContext &context, const GridMask *mask)
-      : context_(context), mask_(*mask)
+  VolumeFieldEvaluator(const FieldContext &context, const GGrid &domain_mask)
+      : context_(context), domain_mask_(domain_mask)
   {
   }
 
-  VolumeFieldEvaluator(const FieldContext &context) : context_(context), mask_(empty_mask_) {}
+  VolumeFieldEvaluator(const FieldContext &context) : context_(context), domain_mask_({}) {}
 
   ~VolumeFieldEvaluator()
   {
@@ -599,14 +597,14 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
     return this->get_evaluated(field_index).typed<T>();
   }
 
-  GridMask get_evaluated_selection_as_mask();
+  GGrid get_evaluated_selection_as_mask();
 
   /**
    * Retrieve the output of an evaluated boolean field and convert it to a mask, which can be used
    * to avoid calculations for unnecessary elements later on. The evaluator will own the indices in
    * some cases, so it must live at least as long as the returned mask.
    */
-  GridMask get_evaluated_as_mask(int field_index);
+  GGrid get_evaluated_as_mask(int field_index);
 };
 
 /**
@@ -653,7 +651,7 @@ Vector<GVArray> evaluate_fields(ResourceScope &scope,
  */
 Vector<volume::GGrid> evaluate_volume_fields(ResourceScope &scope,
                                              Span<GFieldRef> fields_to_evaluate,
-                                             const volume::GridMask &mask,
+                                             const volume::GGrid &mask,
                                              const FieldContext &context,
                                              Span<volume::GMutableGrid> dst_grids = {});
 

@@ -178,7 +178,7 @@ struct TypedAccessorWrapper : public AccessorWrapper<LeafNodeType> {
   // }
 };
 
-template<typename GridType> struct EvalPerLeafOp {
+template<typename GridType, typename MaskGridType> struct EvalPerLeafOp {
   using GGrid = volume::GGrid;
   using GMutableGrid = volume::GMutableGrid;
   using GridMask = volume::GridMask;
@@ -188,7 +188,6 @@ template<typename GridType> struct EvalPerLeafOp {
   using LeafNode = typename TreeType::LeafNodeType;
   using AccessorWrapperType = AccessorWrapper<LeafNode>;
 
-  using MaskGrid = openvdb::MaskGrid;
   using Coord = openvdb::Coord;
   const int32_t leaf_size = LeafNode::size();
 
@@ -196,7 +195,7 @@ template<typename GridType> struct EvalPerLeafOp {
 
   /* Each thread gets its own copy of the functor,
    * so the accessor and context don't have to be thread-safe. */
-  mutable MaskGrid::ConstAccessor mask_accessor_;
+  mutable typename MaskGridType::ConstAccessor mask_accessor_;
   mutable IndexMaskMemory index_mask_memory_;
   mutable mf::ContextBuilder mf_context_;
 
@@ -225,7 +224,7 @@ template<typename GridType> struct EvalPerLeafOp {
 
   EvalPerLeafOp(Span<GGrid> field_context_inputs,
                 const mf::ProcedureExecutor &procedure_executor,
-                const MaskGrid &mask)
+                const MaskGridType &mask)
       : procedure_executor_(procedure_executor), mask_accessor_(mask.getAccessor())
   {
     make_input_accessors(field_context_inputs);
@@ -269,7 +268,7 @@ template<typename GridType> struct EvalPerLeafOp {
 };
 
 void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
-                                                 const volume::GridMask &mask,
+                                                 const volume::GGrid &mask,
                                                  const mf::Procedure &procedure,
                                                  Span<volume::GGrid> field_context_inputs,
                                                  Span<GFieldRef> fields_to_evaluate,
@@ -299,7 +298,7 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
     if (!grid) {
       return {};
     }
-    BLI_assert(grid.voxel_count() >= mask.min_voxel_count());
+    BLI_assert(grid.voxel_count() >= (mask.grid_ ? mask.grid_->activeVoxelCount() : 0));
     return grid;
   };
 
@@ -331,11 +330,16 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
     volume::grid_to_static_type(dst_grid.grid_, [&](auto &dst_grid) {
       using GridType = typename std::decay<decltype(dst_grid)>::type;
 
-      EvalPerLeafOp<GridType> func(field_context_inputs, procedure_executor, *mask.grid());
-      openvdb::tools::foreach (dst_grid.tree().beginLeaf(),
-                               func,
-                               /*threaded=*/true,
-                               /*shareOp=*/false);
+      volume::grid_to_static_type(mask.grid_, [&](auto &mask_grid) {
+        using MaskGridType = typename std::decay<decltype(mask_grid)>::type;
+
+        EvalPerLeafOp<GridType, MaskGridType> func(
+            field_context_inputs, procedure_executor, mask_grid);
+        openvdb::tools::foreach (dst_grid.tree().beginLeaf(),
+                                 func,
+                                 /*threaded=*/true,
+                                 /*shareOp=*/false);
+      });
     });
   }
 }

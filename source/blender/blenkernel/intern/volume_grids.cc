@@ -358,7 +358,8 @@ static ComponentAttributeProviders create_attribute_providers_for_volume()
 
   static auto update_on_change = [](void * /*owner*/) {};
 
-  static VolumeCustomAttributeGridProvider grid_custom_data(ATTR_DOMAIN_VOXEL, grid_access, update_on_change);
+  static VolumeCustomAttributeGridProvider grid_custom_data(
+      ATTR_DOMAIN_VOXEL, grid_access, update_on_change);
 
   // static VolumeGridPositionAttributeProvider position(
   //     "position", ATTR_DOMAIN_VOXEL, grid_access, update_on_change);
@@ -385,6 +386,24 @@ static AttributeAccessorFunctions get_volume_accessor_functions()
     }
     const VolumeGridVector &grids = *static_cast<const VolumeGridVector *>(owner);
     return grids.domain_size(domain);
+  };
+  fn.domain_grid_mask =
+      [](const void *owner, const eAttrDomain domain, const int main_grid) -> volume::GGrid {
+    if (owner == nullptr || main_grid < 0) {
+      return {nullptr};
+    }
+    const VolumeGridVector &grids = *static_cast<const VolumeGridVector *>(owner);
+    if (grids.empty()) {
+      return {nullptr};
+    }
+    for (const VolumeGrid &grid : grids) {
+      int index = main_grid;
+      if (index-- == 0) {
+        return {grid.grid()};
+      }
+    }
+    /* Default if main_grid is invalid. */
+    return {grids.front().grid()};
   };
   fn.domain_supported = [](const void * /*owner*/, const eAttrDomain domain) {
     return ELEM(domain, ATTR_DOMAIN_VOXEL);

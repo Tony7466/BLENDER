@@ -35,10 +35,10 @@ struct BoolGridToMask {
   }
 };
 
-GridMask GridMask::from_bools(const volume::GridMask &full_mask,
-                              const volume::Grid<bool> &selection)
+GridMask GridMask::from_bools(const GGrid &full_mask, const Grid<bool> &selection)
 {
-  volume::GridMask result = {full_mask.grid()->copy()};
+  volume::GridMask result = {full_mask.grid_ ? openvdb::MaskGrid::create(*full_mask.grid_) :
+                                               nullptr};
   if (selection) {
     BoolGridToMask op{selection.grid_->getConstAccessor()};
     openvdb::tools::foreach (result.grid_->beginValueOn(), op);
@@ -107,11 +107,11 @@ GMutableGrid GMutableGrid::create(const CPPType &type)
 }
 
 GMutableGrid GMutableGrid::create(const CPPType &type,
-                                  const GridMask &mask,
+                                  const GGrid &mask,
                                   const void *inactive_value,
                                   const void *active_value)
 {
-  openvdb::GridBase::Ptr grid;
+  openvdb::GridBase::Ptr grid = nullptr;
   volume::field_to_static_type(type, [&](auto type_tag) {
     using ValueType = typename decltype(type_tag)::type;
     using TreeType = grid_types::TreeCommon<ValueType>;
@@ -119,12 +119,17 @@ GMutableGrid GMutableGrid::create(const CPPType &type,
 
     if (mask.is_empty()) {
       grid = grid_types::GridCommon<ValueType>::create();
+      return;
     }
 
     const ValueType &typed_inactive_value = *static_cast<const ValueType *>(inactive_value);
     const ValueType &typed_active_value = *static_cast<const ValueType *>(active_value);
-    const typename TreeType::Ptr tree = typename TreeType::Ptr(new TreeType(
-        mask.grid()->tree(), typed_inactive_value, typed_active_value, openvdb::TopologyCopy{}));
+    typename TreeType::Ptr tree = nullptr;
+    volume::grid_to_static_type(mask.grid_, [&](auto &typed_mask) {
+      using MaskGridType = typename std::decay<decltype(typed_mask)>::type;
+      tree = typename TreeType::Ptr(new TreeType(
+          typed_mask.tree(), typed_inactive_value, typed_active_value, openvdb::TopologyCopy{}));
+    });
     grid = typename GridType::Ptr(new GridType(tree));
   });
 
@@ -136,7 +141,7 @@ bool GMutableGrid::try_assign(const GGrid & /*other*/)
   return false;
 }
 
-bool GMutableGrid::try_copy_masked(const GGrid & /*other*/, const GridMask & /*mask*/)
+bool GMutableGrid::try_copy_masked(const GGrid & /*other*/, const GGrid & /*mask*/)
 {
   return false;
 }
@@ -180,7 +185,7 @@ template<typename T> MutableGrid<T> MutableGrid<T>::create()
 }
 
 template<typename T>
-MutableGrid<T> MutableGrid<T>::create(const GridMask &mask,
+MutableGrid<T> MutableGrid<T>::create(const GGrid &mask,
                                       const T &inactive_value,
                                       const T &active_value)
 {
@@ -189,8 +194,12 @@ MutableGrid<T> MutableGrid<T>::create(const GridMask &mask,
     return MutableGrid<T>{std::move(grid)};
   }
 
-  const typename TreeType::Ptr tree = TreeType::Ptr(
-      new TreeType(mask.grid()->tree(), inactive_value, active_value, openvdb::TopologyCopy{}));
+  const typename TreeType::Ptr tree = nullptr;
+  volume::grid_to_static_type(mask.grid_, [&](auto &typed_mask) {
+    using MaskGridType = typename std::decay<decltype(typed_mask)>::type;
+    tree = typename TreeType::Ptr(new TreeType(
+        typed_mask.grid_->tree(), inactive_value, active_value, openvdb::TopologyCopy{}));
+  });
   typename GridType::Ptr grid(new GridType(tree));
   return MutableGrid<T>{std::move(grid)};
 }
@@ -241,7 +250,7 @@ template<typename T> Grid<T>::operator bool() const
 
 #else
 
-GridMask GridMask::from_bools(const volume::GridMask & /*full_mask*/,
+GridMask GridMask::from_bools(const volume::GGrid & /*full_mask*/,
                               const volume::Grid<bool> & /*selection*/)
 {
   return {nullptr};

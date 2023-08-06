@@ -169,10 +169,10 @@ class GeometryFieldInput : public fn::FieldInput {
   virtual GVArray get_varray_for_context(const GeometryFieldContext &context,
                                          const IndexMask &mask) const = 0;
   virtual volume::GGrid get_volume_grid_for_context(const fn::FieldContext &context,
-                                                    const volume::GridMask &mask,
+                                                    const volume::GGrid &mask,
                                                     ResourceScope &scope) const override;
   virtual volume::GGrid get_volume_grid_for_context(const GeometryFieldContext & /*context*/,
-                                                    const volume::GridMask & /*mask*/) const
+                                                    const volume::GGrid & /*mask*/) const
   {
     return {};
   }
@@ -236,10 +236,10 @@ class VolumeFieldInput : public fn::FieldInput {
     return {};
   }
   virtual GGrid get_volume_grid_for_context(const fn::FieldContext &context,
-                                            const GridMask &mask,
+                                            const GGrid &mask,
                                             ResourceScope &scope) const override;
   virtual GGrid get_volume_grid_for_context(const VolumeGridVector &grids,
-                                            const GridMask &mask) const = 0;
+                                            const GGrid &mask) const = 0;
 };
 
 class AttributeFieldInput : public GeometryFieldInput {

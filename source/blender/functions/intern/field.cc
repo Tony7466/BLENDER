@@ -111,7 +111,7 @@ static Vector<GVArray> get_field_context_inputs(
  */
 static Vector<GGrid> get_volume_field_context_inputs(
     ResourceScope &scope,
-    const GridMask &mask,
+    const GGrid &mask,
     const FieldContext &context,
     const Span<std::reference_wrapper<const FieldInput>> field_inputs)
 {
@@ -564,7 +564,7 @@ Vector<GVArray> evaluate_fields(ResourceScope &scope,
 
 Vector<GGrid> evaluate_volume_fields(ResourceScope &scope,
                                      Span<GFieldRef> fields_to_evaluate,
-                                     const GridMask &mask,
+                                     const GGrid &mask,
                                      const FieldContext &context,
                                      Span<GMutableGrid> dst_grids)
 {
@@ -580,7 +580,7 @@ Vector<GGrid> evaluate_volume_fields(ResourceScope &scope,
     return r_grids;
   }
 
-  /* Destination arrays are optional. Create a small utility method to access them. */
+  /* Destination grids are optional. Create a small utility method to access them. */
   auto get_dst_grid = [&](int index) -> GGrid {
     if (dst_grids.is_empty()) {
       return {};
@@ -589,7 +589,7 @@ Vector<GGrid> evaluate_volume_fields(ResourceScope &scope,
     if (!grid) {
       return {};
     }
-    BLI_assert(grid.voxel_count() >= mask.min_voxel_count());
+    BLI_assert(grid.voxel_count() >= mask.grid_->activeVoxelCount());
     return grid;
   };
 
@@ -758,7 +758,7 @@ GVArray FieldContext::get_varray_for_input(const FieldInput &field_input,
 }
 
 GGrid FieldContext::get_volume_grid_for_input(const FieldInput &field_input,
-                                              const GridMask &mask,
+                                              const GGrid &mask,
                                               ResourceScope &scope) const
 {
   /* By default ask the field input to create the varray. Another field context might overwrite
@@ -1052,14 +1052,12 @@ IndexMask FieldEvaluator::get_evaluated_selection_as_mask()
 /** \name #VolumeFieldEvaluator
  * \{ */
 
-static volume::GridMask grid_mask_from_selection(const volume::GridMask full_mask,
+static volume::GridMask grid_mask_from_selection(const volume::GGrid &full_mask,
                                                  const volume::Grid<bool> &selection,
                                                  ResourceScope & /*scope*/)
 {
   return volume::GridMask::from_bools(full_mask, selection);
 }
-
-const volume::GridMask VolumeFieldEvaluator::empty_mask_ = volume::GridMask();
 
 int VolumeFieldEvaluator::add_with_destination(GField field, GMutableGrid dst)
 {
@@ -1088,24 +1086,24 @@ int VolumeFieldEvaluator::add(GField field)
   return field_index;
 }
 
-static volume::GridMask evaluate_selection(const Field<bool> &selection_field,
-                                           const FieldContext &context,
-                                           volume::GridMask full_mask,
-                                           ResourceScope &scope)
+static volume::GGrid evaluate_selection(const Field<bool> &selection_field,
+                                        const FieldContext &context,
+                                        const volume::GGrid &domain_mask,
+                                        ResourceScope &scope)
 {
   if (selection_field) {
     volume::Grid<bool> selection =
-        evaluate_volume_fields(scope, {selection_field}, full_mask, context)[0].typed<bool>();
-    return grid_mask_from_selection(full_mask, selection, scope);
+        evaluate_volume_fields(scope, {selection_field}, domain_mask, context)[0].typed<bool>();
+    return GGrid{grid_mask_from_selection(domain_mask, selection, scope).grid()};
   }
-  return full_mask;
+  return domain_mask;
 }
 
 void VolumeFieldEvaluator::evaluate()
 {
   BLI_assert_msg(!is_evaluated_, "Cannot evaluate fields twice.");
 
-  selection_mask_ = evaluate_selection(selection_field_, context_, mask_, scope_);
+  selection_mask_ = evaluate_selection(selection_field_, context_, domain_mask_, scope_);
 
   Array<GFieldRef> fields(fields_to_evaluate_.size());
   for (const int i : fields_to_evaluate_.index_range()) {
@@ -1122,13 +1120,13 @@ void VolumeFieldEvaluator::evaluate()
   is_evaluated_ = true;
 }
 
-volume::GridMask VolumeFieldEvaluator::get_evaluated_as_mask(const int field_index)
+volume::GGrid VolumeFieldEvaluator::get_evaluated_as_mask(const int field_index)
 {
   volume::Grid<bool> grid = this->get_evaluated(field_index).typed<bool>();
-  return grid_mask_from_selection(mask_, grid, scope_);
+  return GGrid{grid_mask_from_selection(domain_mask_, grid, scope_).grid()};
 }
 
-volume::GridMask VolumeFieldEvaluator::get_evaluated_selection_as_mask()
+volume::GGrid VolumeFieldEvaluator::get_evaluated_selection_as_mask()
 {
   BLI_assert(is_evaluated_);
   return selection_mask_;
