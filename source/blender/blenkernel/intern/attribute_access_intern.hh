@@ -70,6 +70,14 @@ class BuiltinAttributeProvider {
 
   virtual GAttributeReader try_get_for_read(const void *owner) const = 0;
   virtual GAttributeWriter try_get_for_write(void *owner) const = 0;
+  virtual GAttributeGridReader try_get_grid_for_read(const void * /*owner*/) const
+  {
+    return {};
+  }
+  virtual GAttributeGridWriter try_get_grid_for_write(void * /*owner*/) const
+  {
+    return {};
+  }
   virtual bool try_delete(void *owner) const = 0;
   virtual bool try_create(void *onwer, const AttributeInit &initializer) const = 0;
   virtual bool exists(const void *owner) const = 0;
@@ -105,6 +113,16 @@ class DynamicAttributesProvider {
                                             const AttributeIDRef &attribute_id) const = 0;
   virtual GAttributeWriter try_get_for_write(void *owner,
                                              const AttributeIDRef &attribute_id) const = 0;
+  virtual GAttributeGridReader try_get_grid_for_read(const void */*owner*/,
+                                                     const AttributeIDRef &/*attribute_id*/) const
+  {
+    return {};
+  }
+  virtual GAttributeGridWriter try_get_grid_for_write(void */*owner*/,
+                                                      const AttributeIDRef &/*attribute_id*/) const
+  {
+    return {};
+  }
   virtual bool try_delete(void *owner, const AttributeIDRef &attribute_id) const = 0;
   virtual bool try_create(void *owner,
                           const AttributeIDRef &attribute_id,
@@ -295,6 +313,26 @@ inline GAttributeReader lookup(const void *owner, const AttributeIDRef &attribut
 }
 
 template<const ComponentAttributeProviders &providers>
+inline GAttributeGridReader lookup_grid(const void *owner, const AttributeIDRef &attribute_id)
+{
+  if (!attribute_id.is_anonymous()) {
+    const StringRef name = attribute_id.name();
+    if (const BuiltinAttributeProvider *provider =
+            providers.builtin_attribute_providers().lookup_default_as(name, nullptr))
+    {
+      return provider->try_get_grid_for_read(owner);
+    }
+  }
+  for (const DynamicAttributesProvider *provider : providers.dynamic_attribute_providers()) {
+    GAttributeGridReader attribute = provider->try_get_grid_for_read(owner, attribute_id);
+    if (attribute) {
+      return attribute;
+    }
+  }
+  return {};
+}
+
+template<const ComponentAttributeProviders &providers>
 inline bool for_all(const void *owner,
                     FunctionRef<bool(const AttributeIDRef &, const AttributeMetaData &)> fn)
 {
@@ -393,6 +431,26 @@ inline GAttributeWriter lookup_for_write(void *owner, const AttributeIDRef &attr
 }
 
 template<const ComponentAttributeProviders &providers>
+inline GAttributeGridWriter lookup_grid_for_write(void *owner, const AttributeIDRef &attribute_id)
+{
+  if (!attribute_id.is_anonymous()) {
+    const StringRef name = attribute_id.name();
+    if (const BuiltinAttributeProvider *provider =
+            providers.builtin_attribute_providers().lookup_default_as(name, nullptr))
+    {
+      return provider->try_get_grid_for_write(owner);
+    }
+  }
+  for (const DynamicAttributesProvider *provider : providers.dynamic_attribute_providers()) {
+    GAttributeGridWriter attribute = provider->try_get_grid_for_write(owner, attribute_id);
+    if (attribute) {
+      return attribute;
+    }
+  }
+  return {};
+}
+
+template<const ComponentAttributeProviders &providers>
 inline bool remove(void *owner, const AttributeIDRef &attribute_id)
 {
   if (!attribute_id.is_anonymous()) {
@@ -452,12 +510,12 @@ inline AttributeAccessorFunctions accessor_functions_for_providers()
                                     nullptr,
                                     is_builtin<providers>,
                                     lookup<providers>,
-                                    nullptr,
+                                    lookup_grid<providers>,
                                     nullptr,
                                     for_all<providers>,
                                     lookup_validator<providers>,
                                     lookup_for_write<providers>,
-                                    nullptr,
+                                    lookup_grid_for_write<providers>,
                                     remove<providers>,
                                     add<providers>};
 }

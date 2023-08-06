@@ -671,9 +671,7 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
     }
 
     attributes.remove(attribute_id);
-    if (attributes.add(
-            attribute_id, domain, data_type, bke::AttributeInitMoveGrid(grid.grid_.get())))
-    {
+    if (attributes.add(attribute_id, domain, data_type, bke::AttributeInitMoveGrid(grid))) {
       return true;
     }
 

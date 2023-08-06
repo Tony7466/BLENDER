@@ -165,7 +165,7 @@ struct AttributeInitShared : public AttributeInit {
 struct AttributeInitGrid : public AttributeInit {
   volume::GGrid grid;
 
-  AttributeInitGrid(GVArray varray) : AttributeInit(Type::Grid), grid(std::move(grid)) {}
+  AttributeInitGrid(volume::GGrid grid) : AttributeInit(Type::Grid), grid(std::move(grid)) {}
 };
 
 /**
@@ -174,9 +174,12 @@ struct AttributeInitGrid : public AttributeInit {
  * preferable to move data directly to the created attribute to avoid a new allocation and a copy.
  */
 struct AttributeInitMoveGrid : public AttributeInit {
-  void *data = nullptr;
+  volume::GMutableGrid grid;
 
-  AttributeInitMoveGrid(void *data) : AttributeInit(Type::MoveGrid), data(data) {}
+  AttributeInitMoveGrid(volume::GMutableGrid grid)
+      : AttributeInit(Type::MoveGrid), grid(std::move(grid))
+  {
+  }
 };
 
 /**
@@ -184,11 +187,11 @@ struct AttributeInitMoveGrid : public AttributeInit {
  * The sharing info has ownership of the provided contiguous array.
  */
 struct AttributeInitSharedGrid : public AttributeInit {
-  const void *data = nullptr;
+  const volume::GMutableGrid grid;
   const ImplicitSharingInfo *sharing_info = nullptr;
 
-  AttributeInitSharedGrid(const void *data, const ImplicitSharingInfo &sharing_info)
-      : AttributeInit(Type::SharedGrid), data(data), sharing_info(&sharing_info)
+  AttributeInitSharedGrid(const volume::GMutableGrid grid, const ImplicitSharingInfo &sharing_info)
+      : AttributeInit(Type::SharedGrid), grid(grid), sharing_info(&sharing_info)
   {
   }
 };

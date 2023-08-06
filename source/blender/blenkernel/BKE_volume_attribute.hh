@@ -117,7 +117,7 @@ struct GAttributeGridReader {
  * A generic version of #AttributeWriter.
  */
 struct GAttributeGridWriter {
-  volume::GMutableGrid &grid;
+  volume::GMutableGrid grid;
   eAttrDomain domain;
   std::function<void()> tag_modified_fn;
 

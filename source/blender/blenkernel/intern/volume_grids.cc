@@ -358,6 +358,8 @@ static ComponentAttributeProviders create_attribute_providers_for_volume()
 
   static auto update_on_change = [](void * /*owner*/) {};
 
+  static VolumeCustomAttributeGridProvider grid_custom_data(ATTR_DOMAIN_VOXEL, grid_access, update_on_change);
+
   // static VolumeGridPositionAttributeProvider position(
   //     "position", ATTR_DOMAIN_VOXEL, grid_access, update_on_change);
 
@@ -368,7 +370,7 @@ static ComponentAttributeProviders create_attribute_providers_for_volume()
   //     ATTR_DOMAIN_VOXEL, grid_access, update_on_change);
 
   // return ComponentAttributeProviders({&position}, {&voxel_custom_data});
-  return ComponentAttributeProviders({}, {});
+  return ComponentAttributeProviders({}, {&grid_custom_data});
 }
 
 static AttributeAccessorFunctions get_volume_accessor_functions()

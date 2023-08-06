@@ -6,6 +6,8 @@
  * \ingroup bke
  */
 
+#include "BLI_volume_openvdb.hh"
+
 #include "BKE_attribute.hh"
 #include "BKE_volume_attribute.hh"
 #include "BKE_volume_openvdb.hh"
@@ -13,6 +15,302 @@
 #include "attribute_access_volume.hh"
 
 #include "intern/volume_grids.hh"
+
+namespace blender::bke {
+
+GAttributeGridReader VolumeCustomAttributeGridProvider::try_get_grid_for_read(
+    const void *owner, const AttributeIDRef &attribute_id) const
+{
+  const VolumeGridVector &grids = grid_access_.get_const_grids(owner);
+  const VolumeGrid *grid = grids.find_grid(attribute_id);
+  return {grid ? grid->grid() : nullptr, domain_, nullptr};
+}
+
+GAttributeGridWriter VolumeCustomAttributeGridProvider::try_get_grid_for_write(
+    void *owner, const AttributeIDRef &attribute_id) const
+{
+  VolumeGridVector &grids = grid_access_.get_grids(owner);
+  VolumeGrid *grid = grids.find_grid(attribute_id);
+  return {grid ? grid->grid() : nullptr, domain_, nullptr};
+}
+
+bool VolumeCustomAttributeGridProvider::try_delete(void *owner,
+                                                   const AttributeIDRef &attribute_id) const
+{
+  if (!attribute_id) {
+    return false;
+  }
+  VolumeGridVector &grids = grid_access_.get_grids(owner);
+  bool result = false;
+  grids.remove_if([attribute_id, &result](VolumeGrid &grid) {
+    result = true;
+    return grid.name() == attribute_id.name();
+  });
+  if (result && update_on_change_ != nullptr) {
+    update_on_change_(owner);
+  }
+  return false;
+}
+
+static openvdb::GridBase::Ptr add_generic_grid(const CPPType &value_type,
+                                               const eCDAllocType /*alloctype*/,
+                                               const openvdb::GridBase::Ptr &grid_template)
+{
+  openvdb::GridBase::Ptr result = nullptr;
+  volume::field_to_static_type(value_type, [&](auto tag) {
+    using ValueType = typename decltype(tag)::type;
+    using GridType = volume::grid_types::GridCommon<ValueType>;
+    using TreeType = typename GridType::TreeType;
+
+    const ValueType &background_value = *static_cast<const ValueType *>(
+        value_type.default_value());
+
+    if (grid_template) {
+      volume::grid_to_static_type(grid_template, [&](auto &typed_template) {
+        /* Make a topology copy of the template tree for the result type. */
+        typename TreeType::Ptr tree = std::make_shared<TreeType>(
+            typed_template.tree(), background_value, openvdb::TopologyCopy{});
+        result = GridType::create(tree);
+      });
+    }
+    else {
+      result = GridType::create(background_value);
+    }
+  });
+  return result;
+}
+
+template<typename ToTreeType, typename FromTreeType, bool is_convertible> struct ConvertGridOp {
+  typename openvdb::Grid<ToTreeType>::Ptr operator()(const FromTreeType & /*from_tree*/)
+  {
+    return openvdb::Grid<ToTreeType>::create();
+  }
+};
+
+template<typename ToTreeType, typename FromTreeType>
+struct ConvertGridOp<ToTreeType, FromTreeType, true> {
+  typename openvdb::Grid<ToTreeType>::Ptr operator()(const FromTreeType &from_tree)
+  {
+    /* Make a deep copy of the data with value casting. */
+    typename ToTreeType::Ptr tree = std::make_shared<ToTreeType>(from_tree);
+    return openvdb::Grid<ToTreeType>::create(tree);
+  }
+};
+
+template<typename ToTreeType, typename FromTreeType>
+struct ConvertGridOp<ToTreeType, FromTreeType, false> {
+  typename openvdb::Grid<ToTreeType>::Ptr operator()(const FromTreeType & /*from_tree*/)
+  {
+    return openvdb::Grid<ToTreeType>::create();
+  }
+};
+
+template<typename ToTreeType>
+struct ConvertGridOp<ToTreeType, volume::grid_types::MaskTree, true> {
+  typename openvdb::Grid<ToTreeType>::Ptr operator()(
+      const volume::grid_types::MaskTree & /*from_tree*/)
+  {
+    return openvdb::Grid<ToTreeType>::create();
+  }
+};
+
+static openvdb::GridBase::Ptr add_generic_grid_copy(const CPPType &value_type,
+                                                    const volume::GGrid &data)
+{
+  openvdb::GridBase::Ptr result = nullptr;
+  volume::field_to_static_type(value_type, [&](auto tag) {
+    using ValueType = typename decltype(tag)::type;
+    using GridType = volume::grid_types::GridCommon<ValueType>;
+    using TreeType = typename GridType::TreeType;
+
+    const ValueType &background_value = *static_cast<const ValueType *>(
+        value_type.default_value());
+
+    if (data) {
+      volume::grid_to_static_type(data.grid_, [&](auto &typed_data) {
+        using FromGridType = typename std::decay<decltype(typed_data)>::type;
+        using FromTreeType = typename FromGridType::TreeType;
+        using FromValueType = typename FromTreeType::ValueType;
+        ConvertGridOp<TreeType, FromTreeType, std::is_convertible_v<FromValueType, ValueType>>
+            convert;
+        result = convert(typed_data.tree());
+      });
+    }
+    else {
+      result = GridType::create(background_value);
+    }
+  });
+  return result;
+}
+
+static openvdb::GridBase::Ptr add_generic_grid_move(const CPPType &value_type,
+                                                    const volume::GMutableGrid &data)
+{
+  openvdb::GridBase::Ptr result = nullptr;
+  volume::field_to_static_type(value_type, [&](auto tag) {
+    using ValueType = typename decltype(tag)::type;
+    using GridType = volume::grid_types::GridCommon<ValueType>;
+    using TreeType = typename GridType::TreeType;
+
+    const ValueType &background_value = *static_cast<const ValueType *>(
+        value_type.default_value());
+    /* Empty result grid, data gets moved into here. */
+    typename GridType::Ptr typed_result = GridType::create(background_value);
+
+    if (data) {
+      /* Data must be same grid type */
+      BLI_assert(data.grid_->isType<GridType>());
+      typename GridType::Ptr typed_data = openvdb::GridBase::grid<GridType>(data.grid_);
+      BLI_assert(typed_data != nullptr);
+
+      /* Move data into the result, data grid is empty after this. */
+      typed_result->tree().merge(typed_data->tree(), openvdb::MERGE_ACTIVE_STATES);
+    }
+    result = typed_result;
+  });
+  return result;
+}
+
+static openvdb::GridBase::Ptr add_generic_grid_shared(const CPPType &value_type,
+                                                      const volume::GMutableGrid &data,
+                                                      const ImplicitSharingInfo *sharing_info)
+{
+  /* XXX May eventually use this, for now just rely on shared_ptr. */
+  UNUSED_VARS(sharing_info);
+
+  openvdb::GridBase::Ptr result = nullptr;
+  volume::field_to_static_type(value_type, [&](auto tag) {
+    using ValueType = typename decltype(tag)::type;
+    using GridType = volume::grid_types::GridCommon<ValueType>;
+    using TreeType = typename GridType::TreeType;
+
+    if (data) {
+      /* Data must be same grid type */
+      BLI_assert(data.grid_->isType<GridType>());
+      typename GridType::Ptr typed_data = openvdb::GridBase::grid<GridType>(data.grid_);
+      BLI_assert(typed_data != nullptr);
+
+      /* Create grid that shares the tree. */
+      result = std::make_shared<GridType>(typed_data->treePtr());
+    }
+  });
+  return result;
+}
+
+static bool add_grid_from_attribute_init(const AttributeIDRef &attribute_id,
+                                         VolumeGridVector &grids,
+                                         const CPPType &value_type,
+                                         const openvdb::GridBase::Ptr &grid_template,
+                                         const AttributeInit &initializer)
+{
+  openvdb::GridBase::Ptr result = nullptr;
+  switch (initializer.type) {
+    case AttributeInit::Type::Construct:
+      result = add_generic_grid(value_type, CD_CONSTRUCT, grid_template);
+      break;
+    case AttributeInit::Type::DefaultValue:
+      result = add_generic_grid(value_type, CD_SET_DEFAULT, grid_template);
+      break;
+    case AttributeInit::Type::VArray:
+    case AttributeInit::Type::MoveArray:
+    case AttributeInit::Type::Shared:
+      break;
+    case AttributeInit::Type::Grid: {
+      const volume::GGrid &data =
+          static_cast<const blender::bke::AttributeInitGrid &>(initializer).grid;
+      result = add_generic_grid_copy(value_type, data);
+      break;
+    }
+    case AttributeInit::Type::MoveGrid: {
+      const volume::GMutableGrid &data =
+          static_cast<const blender::bke::AttributeInitMoveGrid &>(initializer).grid;
+      result = add_generic_grid_move(value_type, data);
+      break;
+    }
+    case AttributeInit::Type::SharedGrid: {
+      const AttributeInitSharedGrid &init =
+          static_cast<const blender::bke::AttributeInitSharedGrid &>(initializer);
+      const openvdb::GridBase::ConstPtr result = add_generic_grid_shared(
+          value_type, init.grid, init.sharing_info);
+      break;
+    }
+  }
+  if (result == nullptr) {
+    return false;
+  }
+
+  if (attribute_id.is_anonymous()) {
+    const AnonymousAttributeID &anonymous_id = attribute_id.anonymous_id();
+    result->setName(anonymous_id.name());
+  }
+  else {
+    result->setName(attribute_id.name());
+  }
+  grids.emplace_back(VolumeGrid{result});
+  return true;
+}
+
+bool VolumeCustomAttributeGridProvider::try_create(void *owner,
+                                                   const AttributeIDRef &attribute_id,
+                                                   const eAttrDomain domain,
+                                                   const eCustomDataType data_type,
+                                                   const AttributeInit &initializer) const
+{
+  if (!attribute_id) {
+    return false;
+  }
+  if (domain_ != domain) {
+    return false;
+  }
+  if (!this->type_is_supported(data_type)) {
+    return false;
+  }
+  VolumeGridVector &grids = grid_access_.get_grids(owner);
+  if (grids.find_grid(attribute_id)) {
+    return false;
+  }
+
+  const VolumeGrid *grid_template = grids.empty() ? nullptr : &grids.front();
+  const CPPType *value_type = custom_data_type_to_cpp_type(data_type);
+  if (value_type == nullptr) {
+    return false;
+  }
+  if (!add_grid_from_attribute_init(attribute_id,
+                                    grids,
+                                    *value_type,
+                                    grid_template ? grid_template->grid() : nullptr,
+                                    initializer))
+  {
+    return false;
+  }
+  if (update_on_change_ != nullptr) {
+    update_on_change_(owner);
+  }
+  return true;
+}
+
+bool VolumeCustomAttributeGridProvider::foreach_attribute(
+    const void *owner, const AttributeForeachCallback callback) const
+{
+  const VolumeGridVector &grids = grid_access_.get_const_grids(owner);
+
+  for (const VolumeGrid &grid : grids) {
+    const AttributeIDRef attribute_id{grid.name()};
+    const CPPType *type = volume::GGrid{grid.grid()}.value_type();
+    if (type == nullptr) {
+      continue;
+    }
+    const eCustomDataType data_type = cpp_type_to_custom_data_type(*type);
+    if (data_type == CD_NUMTYPES) {
+      continue;
+    }
+    const AttributeMetaData meta_data{ATTR_DOMAIN_VOXEL, data_type};
+    callback(attribute_id, meta_data);
+  }
+  return true;
+}
+
+}  // namespace blender::bke
 
 #if 0
 /* -------------------------------------------------------------------- */
