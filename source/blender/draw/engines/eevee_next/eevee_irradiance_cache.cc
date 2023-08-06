@@ -113,6 +113,7 @@ void IrradianceCache::set_view(View & /*view*/)
 {
   Vector<IrradianceGrid *> grid_loaded;
 
+  bool any_update = false;
   /* First allocate the needed bricks and populate the brick buffer. */
   bricks_infos_buf_.clear();
   for (IrradianceGrid &grid : inst_.light_probes.grid_map_.values()) {
@@ -157,9 +158,10 @@ void IrradianceCache::set_view(View & /*view*/)
 
     if (do_update_world_) {
       /* Update grid composition if world changed. */
-      /* TODO(fclem): Also update grids when a grid moves. */
       grid.do_update = true;
     }
+
+    any_update = any_update || grid.do_update;
 
     grid.brick_offset = bricks_infos_buf_.size();
     bricks_infos_buf_.extend(grid.bricks);
@@ -176,6 +178,15 @@ void IrradianceCache::set_view(View & /*view*/)
     grid.world_to_grid_transposed = float3x4(math::transpose(math::invert(grid_to_world)));
     grid.grid_size = grid_size;
     grid_loaded.append(&grid);
+  }
+
+  /* TODO: This is greedy update detection. We should check if a change can influence each grid
+   * before tagging update. But this is a bit too complex and update is quite cheap. So we update
+   * everything if there is any update on any grid. */
+  if (any_update) {
+    for (IrradianceGrid *grid : grid_loaded) {
+      grid->do_update = true;
+    }
   }
 
   /* Then create brick & grid infos UBOs content. */

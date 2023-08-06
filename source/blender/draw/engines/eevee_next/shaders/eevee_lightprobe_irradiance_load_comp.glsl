@@ -1,6 +1,7 @@
 
 /**
  * Load an input lightgrid cache texture into the atlas.
+ * Takes care of dilating valid lighting into invalid samples and composite lightprobes.
  *
  * Each thread group will load a brick worth of data and add the needed padding texels.
  */
