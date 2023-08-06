@@ -368,6 +368,77 @@ static Array<int> reverse_indices_in_groups_complex_sort(const OffsetIndices<int
 
 }  // namespace indices_building
 
+namespace best_way {
+
+static void group_build(const Span<int> group_indices,
+                        MutableSpan<int> counts_to_offsets,
+                        MutableSpan<int> results)
+{
+  SCOPED_TIMER_AVERAGED(__func__);
+
+  Array<int> indices(group_indices.size());
+  std::iota(indices.begin(), indices.end(), 0);
+
+  constexpr int segment_size = 1024;
+  const bool last_small_segmet = bool(group_indices.size() % segment_size);
+  const int total_segments = group_indices.size() / segment_size + int(last_small_segmet);
+  Array<MutableSpan<int>> thread_local_indices(total_segments);
+
+  threading::parallel_for_each(IndexRange(total_segments), [&](const int segment_index) {
+    MutableSpan<int> &local_indices = thread_local_indices[segment_index];
+    local_indices = indices.as_mutable_span().slice_safe(segment_index * segment_size,
+                                                         segment_size);
+    parallel_sort(local_indices.begin(), local_indices.end(), [&](const int a, const int b) {
+      return group_indices[a] < group_indices[b];
+    });
+
+    int start = 0;
+    while (true) {
+      const Span<int> local = local_indices.drop_front(start);
+      if (local.is_empty()) {
+        break;
+      }
+      const int group = group_indices[local.first()];
+      const int *first_other = std::find_if(local.begin(), local.end(), [&](const int index) {
+        return group_indices[index] != group;
+      });
+      const int current_size = int(std::distance(local.begin(), first_other));
+      start += current_size;
+      atomic_add_and_fetch_int32(&counts_to_offsets[group], current_size);
+    }
+  });
+
+  OffsetIndices<int> offsets = offset_indices::accumulate_counts_to_offsets(counts_to_offsets);
+
+  Array<int> counts(offsets.size(), 0);
+
+  threading::parallel_for_each(IndexRange(total_segments), [&](const int segment_index) {
+    int start = 0;
+    while (true) {
+      const Span<int> local = thread_local_indices[segment_index].drop_front(start);
+      if (local.is_empty()) {
+        break;
+      }
+      const int group = group_indices[local.first()];
+      const int *first_other = std::find_if(local.begin(), local.end(), [&](const int index) {
+        return group_indices[index] != group;
+      });
+      const int current_size = int(std::distance(local.begin(), first_other));
+      start += current_size;
+      const int current_start = atomic_add_and_fetch_int32(&counts[group], current_size) -
+                                current_size;
+      const IndexRange finall = offsets[group].slice(current_start, current_size);
+      MutableSpan<int> dst = results.slice(finall);
+      const Span<int> src = local.take_front(current_size);
+      std::copy(src.begin(), src.end(), dst.begin());
+    }
+  });
+
+  make_stabil_order_in_groups(offsets, results);
+}
+
+}  // namespace best_way
+
 static Curves *curves_from_points(const PointCloud *points,
                                   const Field<int> &group_id_field,
                                   const Field<float> &weight_field,
@@ -402,76 +473,88 @@ static Curves *curves_from_points(const PointCloud *points,
   curves.cyclic_for_write().fill(false);
   MutableSpan<int> accumulated_curves = curves.offsets_for_write();
   accumulated_curves.fill(0);
-  switch (type) {
-    case 0:
-      std::cout << -3 << ". ";
-      offsets_building::build_reverse_offsets_sorted(indices_of_curves, accumulated_curves);
-      break;
-    case 1:
-      std::cout << -2 << ". ";
-      offsets_building::build_reverse_offsets_sorted_parallel(indices_of_curves,
-                                                              accumulated_curves);
-      break;
-    case 2:
-      std::cout << -1 << ". ";
-      offsets_building::build_reverse_offsets_parallel_segments(indices_of_curves,
-                                                                accumulated_curves);
-      break;
-    case 3: {
-      std::cout << "-" << 0 << ". ";
-      SCOPED_TIMER_AVERAGED("offset_indices::build_reverse_offsets");
-      offset_indices::build_reverse_offsets(indices_of_curves, accumulated_curves);
-    } break;
-    default:
-      offset_indices::build_reverse_offsets(indices_of_curves, accumulated_curves);
-  }
-  correct_check_offsets(indices_of_curves, accumulated_curves);
-
-  const OffsetIndices<int> curves_offsets(accumulated_curves);
 
   Array<int> src_indices_of_curve_points(group_ids.size());
 
-  switch (type) {
-    case 0:
-      std::cout << 1 << ". ";
-      src_indices_of_curve_points = indices_building::vector_of_vector_of_ints(curves_offsets,
-                                                                               group_ids);
-      break;
-    case 1:
-      std::cout << 2 << ". ";
-      src_indices_of_curve_points = indices_building::accumulate_and_writ(curves_offsets,
-                                                                          group_ids);
-      break;
-    case 2:
-      std::cout << 3 << ". ";
-      src_indices_of_curve_points = indices_building::reverse_indices_in_small_groups(
-          curves_offsets, group_ids);
-      break;
-    case 3:
-      std::cout << 4 << ". ";
-      src_indices_of_curve_points = indices_building::reverse_indices_in_groups(curves_offsets,
-                                                                                group_ids);
-      break;
-    case 4:
-      std::cout << 5 << ". ";
-      src_indices_of_curve_points = indices_building::gather_reverse(curves_offsets, group_ids);
-      break;
-    case 5:
-      std::cout << 6 << ". ";
-      src_indices_of_curve_points = indices_building::reverse_indices_in_groups_simple_sort(
-          curves_offsets, group_ids);
-      break;
-    case 6:
-      std::cout << 7 << ". ";
-      src_indices_of_curve_points = indices_building::reverse_indices_in_groups_complex_sort(
-          curves_offsets, group_ids);
-      std::cout << std::endl;
-      break;
-    default:
-      std::cout << "WTF?" << std::endl;
+  if (type == 16) {
+    best_way::group_build(indices_of_curves, accumulated_curves, src_indices_of_curve_points);
+
+    const OffsetIndices<int> curves_offsets(accumulated_curves);
+    correct_check_offsets(indices_of_curves, accumulated_curves);
+    correct_check(curves_offsets, src_indices_of_curve_points, indices_of_curves);
+  }
+  else {
+    switch (type) {
+      case 0:
+        std::cout << -3 << ". ";
+        offsets_building::build_reverse_offsets_sorted(indices_of_curves, accumulated_curves);
+        break;
+      case 1:
+        std::cout << -2 << ". ";
+        offsets_building::build_reverse_offsets_sorted_parallel(indices_of_curves,
+                                                                accumulated_curves);
+        break;
+      case 2:
+        std::cout << -1 << ". ";
+        offsets_building::build_reverse_offsets_parallel_segments(indices_of_curves,
+                                                                  accumulated_curves);
+        break;
+      case 3: {
+        std::cout << "-" << 0 << ". ";
+        SCOPED_TIMER_AVERAGED("offset_indices::build_reverse_offsets");
+        offset_indices::build_reverse_offsets(indices_of_curves, accumulated_curves);
+        break;
+      }
+      default:
+        offset_indices::build_reverse_offsets(indices_of_curves, accumulated_curves);
+    }
+
+    correct_check_offsets(indices_of_curves, accumulated_curves);
+    const OffsetIndices<int> curves_offsets(accumulated_curves);
+    switch (type) {
+      case 0:
+        std::cout << 1 << ". ";
+        src_indices_of_curve_points = indices_building::vector_of_vector_of_ints(curves_offsets,
+                                                                                 group_ids);
+        break;
+      case 1:
+        std::cout << 2 << ". ";
+        src_indices_of_curve_points = indices_building::accumulate_and_writ(curves_offsets,
+                                                                            group_ids);
+        break;
+      case 2:
+        std::cout << 3 << ". ";
+        src_indices_of_curve_points = indices_building::reverse_indices_in_small_groups(
+            curves_offsets, group_ids);
+        break;
+      case 3:
+        std::cout << 4 << ". ";
+        src_indices_of_curve_points = indices_building::reverse_indices_in_groups(curves_offsets,
+                                                                                  group_ids);
+        break;
+      case 4:
+        std::cout << 5 << ". ";
+        src_indices_of_curve_points = indices_building::gather_reverse(curves_offsets, group_ids);
+        break;
+      case 5:
+        std::cout << 6 << ". ";
+        src_indices_of_curve_points = indices_building::reverse_indices_in_groups_simple_sort(
+            curves_offsets, group_ids);
+        break;
+      case 6:
+        std::cout << 7 << ". ";
+        src_indices_of_curve_points = indices_building::reverse_indices_in_groups_complex_sort(
+            curves_offsets, group_ids);
+        std::cout << std::endl;
+        break;
+      default:
+        std::cout << "WTF?" << std::endl;
+    }
+
+    correct_check(curves_offsets, src_indices_of_curve_points, group_ids);
   }
 
-  correct_check(curves_offsets, src_indices_of_curve_points, group_ids);
+  const OffsetIndices<int> curves_offsets(accumulated_curves);
 
   {
     // SCOPED_TIMER_AVERAGED("grouped_sort");
