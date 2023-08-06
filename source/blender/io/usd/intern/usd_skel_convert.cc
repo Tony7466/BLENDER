@@ -87,9 +87,9 @@ void add_bezt(FCurve *fcu,
 
 namespace blender::io::usd {
 
-void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
+void import_blendshapes(Main *bmain, Object *mesh_obj, const pxr::UsdPrim &prim, const bool import_anim)
 {
-  if (!(obj && obj->data && obj->type == OB_MESH && prim)) {
+  if (!(mesh_obj && mesh_obj->data && mesh_obj->type == OB_MESH && prim)) {
     return;
   }
 
@@ -159,7 +159,7 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
     return;
   }
 
-  Mesh *mesh = static_cast<Mesh *>(obj->data);
+  Mesh *mesh = static_cast<Mesh *>(mesh_obj->data);
 
   /* Insert key to source mesh. */
   Key *key = BKE_key_add(bmain, (ID *)mesh);
@@ -259,6 +259,11 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
         ++a;
       }
     }
+  }
+
+  if (!import_anim) {
+    /* We're not importing animation, so we are done. */
+    return;
   }
 
   /* Get the blend animation source from the skeleton. */
@@ -363,8 +368,12 @@ void import_blendshapes(Main *bmain, Object *obj, pxr::UsdPrim prim)
 
 }
 
-void import_skeleton(Main *bmain, Object *obj, const pxr::UsdSkelSkeleton &skel)
+void import_skeleton(Main *bmain, Object *arm_obj, const pxr::UsdSkelSkeleton &skel, const bool import_anim)
 {
+  if (!(arm_obj && arm_obj->data && arm_obj->type == OB_ARMATURE)) {
+    return;
+  }
+
   pxr::UsdSkelCache skel_cache;
   pxr::UsdSkelSkeletonQuery skel_query = skel_cache.GetSkelQuery(skel);
 
@@ -382,7 +391,7 @@ void import_skeleton(Main *bmain, Object *obj, const pxr::UsdSkelSkeleton &skel)
     return;
   }
 
-  bArmature *arm = static_cast<bArmature *>(obj->data);
+  bArmature *arm = static_cast<bArmature *>(arm_obj->data);
 
   ED_armature_to_edit(arm);
 
@@ -567,18 +576,18 @@ void import_skeleton(Main *bmain, Object *obj, const pxr::UsdSkelSkeleton &skel)
   ED_armature_from_edit(bmain, arm);
   ED_armature_edit_free(arm);
 
-  if (valid_skeleton) {
-    create_skeleton_curves(bmain, obj, skel_query, joint_to_bone_map);
+  if (import_anim && valid_skeleton) {
+    create_skeleton_curves(bmain, arm_obj, skel_query, joint_to_bone_map);
   }
 }
 
 void create_skeleton_curves(Main *bmain,
-                            Object *obj,
+                            Object *arm_obj,
                             const pxr::UsdSkelSkeletonQuery &skel_query,
                             const std::map<pxr::TfToken, std::string> &joint_to_bone_map)
 
 {
-  if (!(bmain && obj && skel_query)) {
+  if (!(bmain && arm_obj && skel_query)) {
     return;
   }
 
@@ -601,7 +610,7 @@ void create_skeleton_curves(Main *bmain,
 
   size_t num_samples = samples.size();
 
-  bAction *act = ED_id_action_ensure(bmain, (ID *)&obj->id);
+  bAction *act = ED_id_action_ensure(bmain, (ID *)&arm_obj->id);
 
   pxr::VtTokenArray joint_order = skel_query.GetJointOrder();
 
@@ -767,7 +776,7 @@ void create_skeleton_curves(Main *bmain,
   }
 }
 
-void import_skel_bindings(Main *bmain, Object *mesh_obj, pxr::UsdPrim prim)
+void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim &prim)
 {
   if (!(bmain && mesh_obj && prim)) {
     return;

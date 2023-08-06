@@ -235,7 +235,7 @@ void USDMeshReader::read_object_data(Main *bmain, const double motionSampleTime)
   }
 
   if (import_params_.import_skeletons) {
-    import_skel_bindings(bmain, object_, prim_);
+    import_mesh_skel_bindings(bmain, object_, prim_);
   }
 
   USDXformReader::read_object_data(bmain, motionSampleTime);
