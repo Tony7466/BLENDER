@@ -3473,7 +3473,12 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
   /* set cursor pos to the end of the text */
   but->editstr = data->str;
   but->pos = len;
-  but->selsta = 0;
+  if (bool(but->flag2 & UIButFlag2::ACTIVATE_ON_INIT_SKIP_SELECT)) {
+    but->selsta = len;
+  }
+  else {
+    but->selsta = 0;
+  }
   but->selend = len;
 
   /* Initialize undo history tracking. */
@@ -10729,6 +10734,7 @@ static int ui_handle_menu_event(bContext *C,
               after->opptr = MEM_cnew<PointerRNA>(__func__);
               WM_operator_properties_create_ptr(after->opptr, ot);
               RNA_string_set(after->opptr, "menu_idname", menu->menu_idname);
+              RNA_string_set(after->opptr, "initial_query", event->utf8_buf);
               menu->menuretval = UI_RETURN_OK;
               retval = WM_UI_HANDLER_BREAK;
             }

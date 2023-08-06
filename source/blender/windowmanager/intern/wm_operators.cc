@@ -1748,20 +1748,21 @@ struct SearchPopupInit_Data {
   std::string single_menu_idname;
 };
 
+static char g_search_text[256] = "";
+
 static uiBlock *wm_block_search_menu(bContext *C, ARegion *region, void *userdata)
 {
   const SearchPopupInit_Data *init_data = static_cast<const SearchPopupInit_Data *>(userdata);
-  static char search[256] = "";
 
   uiBlock *block = UI_block_begin(C, region, "_popup", UI_EMBOSS);
   UI_block_flag_enable(block, UI_BLOCK_LOOP | UI_BLOCK_MOVEMOUSE_QUIT | UI_BLOCK_SEARCH_MENU);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 
   uiBut *but = uiDefSearchBut(block,
-                              search,
+                              g_search_text,
                               0,
                               ICON_VIEWZOOM,
-                              sizeof(search),
+                              sizeof(g_search_text),
                               10,
                               10,
                               init_data->size[0],
@@ -1784,6 +1785,7 @@ static uiBlock *wm_block_search_menu(bContext *C, ARegion *region, void *userdat
   }
 
   UI_but_flag_enable(but, UI_BUT_ACTIVATE_ON_INIT);
+  UI_but_flag2_enable(but, UIButFlag2::ACTIVATE_ON_INIT_SKIP_SELECT);
 
   /* fake button, it holds space for search items */
   uiDefBut(block,
@@ -1854,9 +1856,16 @@ static int wm_search_menu_invoke(bContext *C, wmOperator *op, const wmEvent *eve
   static SearchPopupInit_Data data{};
 
   if (search_type == SEARCH_TYPE_SINGLE_MENU) {
-    char *buffer = RNA_string_get_alloc(op->ptr, "menu_idname", nullptr, 0, nullptr);
-    data.single_menu_idname = buffer;
-    MEM_freeN(buffer);
+    {
+      char *buffer = RNA_string_get_alloc(op->ptr, "menu_idname", nullptr, 0, nullptr);
+      data.single_menu_idname = buffer;
+      MEM_SAFE_FREE(buffer);
+    }
+    {
+      char *buffer = RNA_string_get_alloc(op->ptr, "initial_query", nullptr, 0, nullptr);
+      STRNCPY(g_search_text, buffer);
+      MEM_SAFE_FREE(buffer);
+    }
   }
 
   data.search_type = search_type;
@@ -1900,7 +1909,13 @@ static void WM_OT_search_single_menu(wmOperatorType *ot)
   ot->exec = wm_search_menu_exec;
   ot->poll = WM_operator_winactive;
 
-  RNA_def_string(ot->srna, "menu_idname", nullptr, MAX_NAME, "Menu Name", "Menu to search in");
+  RNA_def_string(ot->srna, "menu_idname", nullptr, 0, "Menu Name", "Menu to search in");
+  RNA_def_string(ot->srna,
+                 "initial_query",
+                 nullptr,
+                 0,
+                 "Initial Query",
+                 "Query to insert into the search box");
 }
 
 static int wm_call_menu_exec(bContext *C, wmOperator *op)
