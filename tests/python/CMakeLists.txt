@@ -699,7 +699,28 @@ if(WITH_COMPOSITOR_CPU)
       )
     endforeach()
 
-    if(WITH_COMPOSITOR_REALTIME_TEST)
+  endif()
+endif()
+
+# XXX WITH_COMPOSITOR_CPU is needed for rendering. 
+if(WITH_COMPOSITOR_REALTIME_TEST AND WITH_COMPOSITOR_CPU)
+  if(NOT OPENIMAGEIO_IDIFF)
+      message(WARNING "Disabling realtime compositor tests because OIIO idiff does not exist")
+    else()
+      set(compositor_tests
+          color
+          converter
+          filter
+          input
+          output
+          vector
+
+          distort
+          matte
+
+          multiple_node_setups
+        )
+
       foreach(comp_test ${compositor_tests})
         add_python_test(
           compositor_${comp_test}_realtime_test
@@ -710,8 +731,6 @@ if(WITH_COMPOSITOR_CPU)
           -outdir "${TEST_OUT_DIR}/compositor_realtime"
         )
       endforeach()
-    endif()
-
   endif()
 endif()
 

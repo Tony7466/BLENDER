@@ -15,6 +15,18 @@ try:
 except ImportError:
     inside_blender = False
 
+BLACKLIST_UNSUPPORTED_RENDER_TESTS = [
+    'node_cryptomatte.blend',
+    'node_cryptomatte_legacy.blend',
+    'node_keying_screen.blend'
+]
+
+BLACKLIST_CRASHING_TESTS = [
+    'node_keying.blend',
+    'node_keying_edge.blend',
+    'node_keying_matte.blend'
+]
+
 ENABLE_REALTIME_COMPOSITOR_SCRIPT = "import bpy; " \
     "bpy.context.preferences.experimental.use_experimental_compositors = True; " \
     "bpy.data.scenes[0].node_tree.execution_mode = 'REALTIME'"
@@ -55,8 +67,9 @@ def main():
     idiff = args.idiff[0]
     output_dir = args.outdir[0]
 
+    blacklist_all = BLACKLIST_CRASHING_TESTS + BLACKLIST_UNSUPPORTED_RENDER_TESTS
     from modules import render_report
-    report = render_report.Report("Compositor Realtime", output_dir, idiff)
+    report = render_report.Report("Compositor Realtime", output_dir, idiff, blacklist=blacklist_all)
     report.set_reference_dir("compositor_realtime_renders")
 
     ok = report.run(test_dir, blender, get_arguments, batch=True)
