@@ -232,15 +232,8 @@ class NODE_MT_add(bpy.types.Menu):
 
         snode = context.space_data
         if snode.tree_type == 'GeometryNodeTree':
-            props = layout.operator("node.add_search", text="Search...", icon='VIEWZOOM')
-            layout.separator()
             layout.menu_contents("NODE_MT_geometry_node_add_all")
         elif nodeitems_utils.has_node_categories(context):
-            props = layout.operator("node.add_search", text="Search...", icon='VIEWZOOM')
-            props.use_transform = True
-
-            layout.separator()
-
             # actual node submenus are defined by draw functions from node categories
             nodeitems_utils.draw_node_categories_menu(self, context)
 
