@@ -2002,8 +2002,8 @@ void UI_block_end_ex(const bContext *C, uiBlock *block, const int xy[2], int r_x
     UI_block_layout_resolve(block, nullptr, nullptr);
   }
   ui_block_align_calc(block, CTX_wm_region(C));
-  if ((block->flag & UI_BLOCK_LOOP) && (block->flag & UI_BLOCK_NUMSELECT)) {
-    // ui_menu_block_set_keyaccels(block); /* could use a different flag to check */
+  if (block->flag & UI_BLOCK_ACCELERATOR_KEYS) {
+    ui_menu_block_set_keyaccels(block); /* could use a different flag to check */
   }
 
   if (block->flag & (UI_BLOCK_LOOP | UI_BLOCK_SHOW_SHORTCUT_ALWAYS)) {
