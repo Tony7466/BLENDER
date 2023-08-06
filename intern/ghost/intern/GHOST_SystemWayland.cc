@@ -20,7 +20,9 @@
 #include "GHOST_WindowManager.hh"
 #include "GHOST_utildefines.hh"
 
-#include "GHOST_ContextEGL.hh"
+#ifdef WITH_OPENGL_BACKEND
+#  include "GHOST_ContextEGL.hh"
+#endif
 
 #ifdef WITH_VULKAN_BACKEND
 #  include "GHOST_ContextVK.hh"
@@ -734,12 +736,12 @@ struct GWL_Seat {
 
   /**
    * Keep a state with shift enabled, use to access predictable number access for AZERTY keymaps.
-   * If shift is not supported by the key-map, this is set to NULL.
+   * If shift is not supported by the key-map, this is set to nullptr.
    */
   struct xkb_state *xkb_state_empty_with_shift = nullptr;
   /**
    * Keep a state with number-lock enabled, use to access predictable key-pad symbols.
-   * If number-lock is not supported by the key-map, this is set to NULL.
+   * If number-lock is not supported by the key-map, this is set to nullptr.
    */
   struct xkb_state *xkb_state_empty_with_numlock = nullptr;
 
@@ -1787,7 +1789,7 @@ static size_t ghost_wl_shm_format_as_size(enum wl_shm_format format)
 }
 
 /**
- * Return a #wl_buffer, ready to have it's data filled in or NULL in case of failure.
+ * Return a #wl_buffer, ready to have it's data filled in or nullptr in case of failure.
  * The caller is responsible for calling `unmap(buffer_data, buffer_size)`.
  *
  * \param r_buffer_data: The buffer to be filled.
@@ -4272,7 +4274,9 @@ static void gwl_seat_capability_pointer_enable(GWL_Seat *seat)
 
   zwp_pointer_gestures_v1 *pointer_gestures = seat->system->wp_pointer_gestures();
   if (pointer_gestures) {
+    const uint pointer_gestures_version = zwp_pointer_gestures_v1_get_version(pointer_gestures);
 #ifdef ZWP_POINTER_GESTURE_HOLD_V1_INTERFACE
+    if (pointer_gestures_version >= ZWP_POINTER_GESTURES_V1_GET_HOLD_GESTURE_SINCE_VERSION)
     { /* Hold gesture. */
       zwp_pointer_gesture_hold_v1 *gesture = zwp_pointer_gestures_v1_get_hold_gesture(
           pointer_gestures, seat->wl_pointer);
@@ -4989,7 +4993,7 @@ static void gwl_registry_wl_seat_remove(GWL_Display *display, void *user_data, c
   gwl_seat_capability_keyboard_disable(seat);
   gwl_seat_capability_touch_disable(seat);
 
-  /* Un-referencing checks for NULL case. */
+  /* Un-referencing checks for nullptr case. */
   xkb_state_unref(seat->xkb_state);
   xkb_state_unref(seat->xkb_state_empty);
   xkb_state_unref(seat->xkb_state_empty_with_shift);
@@ -5111,7 +5115,10 @@ static void gwl_registry_wp_pointer_gestures_add(GWL_Display *display,
                                                  const GWL_RegisteryAdd_Params *params)
 {
   display->wp_pointer_gestures = static_cast<zwp_pointer_gestures_v1 *>(
-      wl_registry_bind(display->wl_registry, params->name, &zwp_pointer_gestures_v1_interface, 3));
+      wl_registry_bind(display->wl_registry,
+                       params->name,
+                       &zwp_pointer_gestures_v1_interface,
+                       std::min(params->version, 3u)));
   gwl_registry_entry_add(display, params, nullptr);
 }
 static void gwl_registry_wp_pointer_gestures_remove(GWL_Display *display,
@@ -6243,86 +6250,88 @@ void GHOST_SystemWayland::getAllDisplayDimensions(uint32_t &width, uint32_t &hei
   height = xy_max[1] - xy_min[1];
 }
 
-static GHOST_Context *createOffscreenContext_impl(GHOST_SystemWayland *system,
-                                                  wl_display *wl_display,
-                                                  wl_egl_window *egl_window)
-{
-  /* Caller must lock `system->server_mutex`. */
-  GHOST_Context *context;
-
-  for (int minor = 6; minor >= 3; --minor) {
-    context = new GHOST_ContextEGL(system,
-                                   false,
-                                   EGLNativeWindowType(egl_window),
-                                   EGLNativeDisplayType(wl_display),
-                                   EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
-                                   4,
-                                   minor,
-                                   GHOST_OPENGL_EGL_CONTEXT_FLAGS,
-                                   GHOST_OPENGL_EGL_RESET_NOTIFICATION_STRATEGY,
-                                   EGL_OPENGL_API);
-
-    if (context->initializeDrawingContext()) {
-      return context;
-    }
-    delete context;
-  }
-  return nullptr;
-}
-
 GHOST_IContext *GHOST_SystemWayland::createOffscreenContext(GHOST_GPUSettings gpuSettings)
 {
 #ifdef USE_EVENT_BACKGROUND_THREAD
   std::lock_guard lock_server_guard{*server_mutex};
 #endif
 
-  /* Create new off-screen window. */
-  wl_surface *wl_surface = wl_compositor_create_surface(wl_compositor());
-
 #ifdef WITH_VULKAN_BACKEND
   const bool debug_context = (gpuSettings.flags & GHOST_gpuDebugContext) != 0;
-
-  if (gpuSettings.context_type == GHOST_kDrawingContextTypeVulkan) {
-    GHOST_Context *context = new GHOST_ContextVK(false,
-                                                 GHOST_kVulkanPlatformWayland,
-                                                 0,
-                                                 NULL,
-                                                 wl_surface,
-                                                 display_->wl_display,
-                                                 1,
-                                                 2,
-                                                 debug_context);
-
-    if (!context->initializeDrawingContext()) {
-      delete context;
-      return nullptr;
-    }
-    context->setUserData(wl_surface);
-    return context;
-  }
-#else
-  (void)gpuSettings;
 #endif
 
-  wl_egl_window *egl_window = wl_surface ? wl_egl_window_create(wl_surface, 1, 1) : nullptr;
+  switch (gpuSettings.context_type) {
 
-  GHOST_Context *context = createOffscreenContext_impl(this, display_->wl_display, egl_window);
+#ifdef WITH_VULKAN_BACKEND
+    case GHOST_kDrawingContextTypeVulkan: {
+      /* Create new off-screen surface only for vulkan. */
+      wl_surface *wl_surface = wl_compositor_create_surface(wl_compositor());
 
-  if (!context) {
-    GHOST_PRINT("Cannot create off-screen EGL context" << std::endl);
-    if (wl_surface) {
-      wl_surface_destroy(wl_surface);
+      GHOST_Context *context = new GHOST_ContextVK(false,
+                                                   GHOST_kVulkanPlatformWayland,
+                                                   0,
+                                                   nullptr,
+                                                   wl_surface,
+                                                   display_->wl_display,
+                                                   1,
+                                                   2,
+                                                   debug_context);
+
+      if (context->initializeDrawingContext()) {
+        context->setUserData(wl_surface);
+        return context;
+      }
+      delete context;
+
+      if (wl_surface) {
+        wl_surface_destroy(wl_surface);
+      }
+      return nullptr;
     }
-    if (egl_window) {
-      wl_egl_window_destroy(egl_window);
+#endif /* WITH_VULKAN_BACKEND */
+
+#ifdef WITH_OPENGL_BACKEND
+    case GHOST_kDrawingContextTypeOpenGL: {
+      /* Create new off-screen window. */
+      wl_surface *wl_surface = wl_compositor_create_surface(wl_compositor());
+      wl_egl_window *egl_window = wl_surface ? wl_egl_window_create(wl_surface, 1, 1) : nullptr;
+
+      for (int minor = 6; minor >= 3; --minor) {
+        /* Caller must lock `system->server_mutex`. */
+        GHOST_Context *context = new GHOST_ContextEGL(this,
+                                                      false,
+                                                      EGLNativeWindowType(egl_window),
+                                                      EGLNativeDisplayType(display_->wl_display),
+                                                      EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT,
+                                                      4,
+                                                      minor,
+                                                      GHOST_OPENGL_EGL_CONTEXT_FLAGS,
+                                                      GHOST_OPENGL_EGL_RESET_NOTIFICATION_STRATEGY,
+                                                      EGL_OPENGL_API);
+
+        if (context->initializeDrawingContext()) {
+          wl_surface_set_user_data(wl_surface, egl_window);
+          context->setUserData(wl_surface);
+          return context;
+        }
+        delete context;
+      }
+
+      GHOST_PRINT("Cannot create off-screen EGL context" << std::endl);
+      if (wl_surface) {
+        wl_surface_destroy(wl_surface);
+      }
+      if (egl_window) {
+        wl_egl_window_destroy(egl_window);
+      }
+      return nullptr;
     }
-    return nullptr;
+#endif /* WITH_OPENGL_BACKEND */
+
+    default:
+      /* Unsupported backend. */
+      return nullptr;
   }
-
-  wl_surface_set_user_data(wl_surface, egl_window);
-  context->setUserData(wl_surface);
-
-  return context;
 }
 
 GHOST_TSuccess GHOST_SystemWayland::disposeContext(GHOST_IContext *context)
@@ -6988,7 +6997,7 @@ GHOST_TimerManager *GHOST_SystemWayland::ghost_timer_manager()
 
 GWL_Output *ghost_wl_output_user_data(wl_output *wl_output)
 {
-  GHOST_ASSERT(wl_output, "output must not be NULL");
+  GHOST_ASSERT(wl_output, "output must not be nullptr");
   GHOST_ASSERT(ghost_wl_output_own(wl_output), "output is not owned by GHOST");
   GWL_Output *output = static_cast<GWL_Output *>(wl_output_get_user_data(wl_output));
   return output;
@@ -6996,7 +7005,7 @@ GWL_Output *ghost_wl_output_user_data(wl_output *wl_output)
 
 GHOST_WindowWayland *ghost_wl_surface_user_data(wl_surface *wl_surface)
 {
-  GHOST_ASSERT(wl_surface, "wl_surface must not be NULL");
+  GHOST_ASSERT(wl_surface, "wl_surface must not be nullptr");
   GHOST_ASSERT(ghost_wl_surface_own(wl_surface), "wl_surface is not owned by GHOST");
   GHOST_WindowWayland *win = static_cast<GHOST_WindowWayland *>(
       wl_surface_get_user_data(wl_surface));

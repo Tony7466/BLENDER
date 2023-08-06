@@ -20,11 +20,11 @@
 #include "BKE_movieclip.h"
 #include "BKE_tracking.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_clip.h"
-#include "ED_screen.h"
+#include "ED_clip.hh"
+#include "ED_screen.hh"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -431,10 +431,10 @@ void CLIP_OT_track_markers(wmOperatorType *ot)
   ot->flag = OPTYPE_UNDO;
 
   /* properties */
-  RNA_def_boolean(ot->srna, "backwards", 0, "Backwards", "Do backwards tracking");
+  RNA_def_boolean(ot->srna, "backwards", false, "Backwards", "Do backwards tracking");
   RNA_def_boolean(ot->srna,
                   "sequence",
-                  0,
+                  false,
                   "Track Sequence",
                   "Track marker during image sequence rather than "
                   "single image");
@@ -481,5 +481,5 @@ void CLIP_OT_refine_markers(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  RNA_def_boolean(ot->srna, "backwards", 0, "Backwards", "Do backwards tracking");
+  RNA_def_boolean(ot->srna, "backwards", false, "Backwards", "Do backwards tracking");
 }

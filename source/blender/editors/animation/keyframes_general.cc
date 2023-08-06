@@ -6,10 +6,10 @@
  * \ingroup edanimation
  */
 
-#include <float.h>
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cfloat>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -34,9 +34,9 @@
 #include "RNA_enum_types.h"
 #include "RNA_path.h"
 
-#include "ED_anim_api.h"
-#include "ED_keyframes_edit.h"
-#include "ED_keyframing.h"
+#include "ED_anim_api.hh"
+#include "ED_keyframes_edit.hh"
+#include "ED_keyframing.hh"
 
 /* This file contains code for various keyframe-editing tools which are 'destructive'
  * (i.e. they will modify the order of the keyframes, and change the size of the array).
@@ -491,8 +491,8 @@ static float butterworth_calculate_blend_value(float *samples,
 }
 
 /**
- * \param samples are expected to start at the first frame of the segment with a buffer of size
- * segment->filter_order at the left.
+ * \param samples: Are expected to start at the first frame of the segment with a buffer of size
+ * `segment->filter_order` at the left.
  */
 void butterworth_smooth_fcurve_segment(FCurve *fcu,
                                        FCurveSegment *segment,
@@ -1049,7 +1049,7 @@ static float animcopy_cfra = 0.0;
 
 /* datatype for use in copy/paste buffer */
 struct tAnimCopybufItem {
-  struct tAnimCopybufItem *next, *prev;
+  tAnimCopybufItem *next, *prev;
 
   ID *id;            /* ID which owns the curve */
   bActionGroup *grp; /* Action Group */
@@ -1095,14 +1095,13 @@ void ANIM_fcurves_copybuf_free()
 
 short copy_animedit_keys(bAnimContext *ac, ListBase *anim_data)
 {
-  bAnimListElem *ale;
   Scene *scene = ac->scene;
 
   /* clear buffer first */
   ANIM_fcurves_copybuf_free();
 
   /* assume that each of these is an F-Curve */
-  for (ale = static_cast<bAnimListElem *>(anim_data->first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
     tAnimCopybufItem *aci;
     BezTriple *bezt, *nbezt, *newbuf;
@@ -1630,7 +1629,7 @@ eKeyPasteError paste_animedit_keys(bAnimContext *ac,
     for (pass = 0; pass < 3; pass++) {
       uint totmatch = 0;
 
-      for (ale = static_cast<bAnimListElem *>(anim_data->first); ale; ale = ale->next) {
+      LISTBASE_FOREACH (bAnimListElem *, ale, anim_data) {
         /* Find buffer item to paste from:
          * - If names don't matter (i.e. only 1 channel in buffer), don't check id/group
          * - If names do matter, only check if id-type is ok for now
@@ -1664,9 +1663,9 @@ eKeyPasteError paste_animedit_keys(bAnimContext *ac,
 
           offset[1] = paste_get_y_offset(ac, aci, ale, value_offset_mode);
           if (adt) {
-            ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 0, 0);
+            ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), false, false);
             paste_animedit_keys_fcurve(fcu, aci, offset, merge_mode, flip);
-            ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), 1, 0);
+            ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), true, false);
           }
           else {
             paste_animedit_keys_fcurve(fcu, aci, offset, merge_mode, flip);

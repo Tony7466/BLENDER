@@ -26,34 +26,34 @@
 #  include "BLI_winstuff.h"
 #endif
 
-#include "ED_asset.h"
-#include "ED_fileselect.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
+#include "ED_asset.hh"
+#include "ED_fileselect.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
+#include "UI_resources.hh"
 
 #include "MEM_guardedalloc.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "file_intern.h"
-#include "filelist.h"
+#include "file_intern.hh"
+#include "filelist.hh"
 #include "fsmenu.h"
 
-#include <ctype.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cctype>
+#include <cerrno>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 /* -------------------------------------------------------------------- */
 /** \name File Selection Utilities
@@ -90,11 +90,11 @@ static FileSelection find_file_mouse_rect(SpaceFile *sfile,
   return sel;
 }
 
-typedef enum FileSelect {
+enum FileSelect {
   FILE_SELECT_NOTHING = 0,
   FILE_SELECT_DIR = 1,
   FILE_SELECT_FILE = 2,
-} FileSelect;
+};
 
 static void clamp_to_filelist(int numfiles, FileSelection *sel)
 {
@@ -224,7 +224,7 @@ static FileSelect file_select_do(bContext *C, int selected_idx, bool do_diropen)
 /**
  * \warning Loops over all files so better use cautiously.
  */
-static bool file_is_any_selected(struct FileList *files)
+static bool file_is_any_selected(FileList *files)
 {
   const int numfiles = filelist_files_ensure(files);
   int i;
@@ -239,7 +239,7 @@ static bool file_is_any_selected(struct FileList *files)
   return false;
 }
 
-static FileSelection file_current_selection_range_get(struct FileList *files)
+static FileSelection file_current_selection_range_get(FileList *files)
 {
   const int numfiles = filelist_files_ensure(files);
   FileSelection selection = {-1, -1};
@@ -377,7 +377,7 @@ static FileSelect file_select(
 /**
  * Local utility to write #BLENDER_BOOKMARK_FILE, reporting an error on failure.
  */
-static bool fsmenu_write_file_and_refresh_or_report_error(struct FSMenu *fsmenu,
+static bool fsmenu_write_file_and_refresh_or_report_error(FSMenu *fsmenu,
                                                           ScrArea *area,
                                                           ReportList *reports)
 {
@@ -458,7 +458,7 @@ static int file_box_select_modal(bContext *C, wmOperator *op, const wmEvent *eve
 
     ED_fileselect_layout_isect_rect(sfile->layout, &region->v2d, &rect, &rect);
 
-    sel = file_selection_get(C, &rect, 0);
+    sel = file_selection_get(C, &rect, false);
     if ((sel.first != params->sel_first) || (sel.last != params->sel_last)) {
       int idx;
 
@@ -721,7 +721,7 @@ static bool file_walk_select_selection_set(bContext *C,
                                            const bool fill)
 {
   FileSelectParams *params = ED_fileselect_get_active_params(sfile);
-  struct FileList *files = sfile->files;
+  FileList *files = sfile->files;
   const int last_sel = params->active_file; /* store old value */
   int active = active_old; /* could use active_old instead, just for readability */
   bool deselect = false;
@@ -836,7 +836,7 @@ static bool file_walk_select_do(bContext *C,
 {
   wmWindow *win = CTX_wm_window(C);
   ARegion *region = CTX_wm_region(C);
-  struct FileList *files = sfile->files;
+  FileList *files = sfile->files;
   const int numfiles = filelist_files_ensure(files);
   const bool has_selection = file_is_any_selected(files);
   const int active_old = params->active_file;
@@ -1143,7 +1143,7 @@ static int bookmark_add_exec(bContext *C, wmOperator *op)
 {
   ScrArea *area = CTX_wm_area(C);
   SpaceFile *sfile = CTX_wm_space_file(C);
-  struct FSMenu *fsmenu = ED_fsmenu_get();
+  FSMenu *fsmenu = ED_fsmenu_get();
   FileSelectParams *params = ED_fileselect_get_active_params(sfile);
 
   if (params->dir[0] != '\0') {
@@ -1178,7 +1178,7 @@ static int bookmark_delete_exec(bContext *C, wmOperator *op)
 {
   ScrArea *area = CTX_wm_area(C);
   SpaceFile *sfile = CTX_wm_space_file(C);
-  struct FSMenu *fsmenu = ED_fsmenu_get();
+  FSMenu *fsmenu = ED_fsmenu_get();
   int nentries = ED_fsmenu_get_nentries(fsmenu, FS_CATEGORY_BOOKMARKS);
 
   PropertyRNA *prop = RNA_struct_find_property(op->ptr, "index");
@@ -1220,7 +1220,7 @@ void FILE_OT_bookmark_delete(wmOperatorType *ot)
 static int bookmark_cleanup_exec(bContext *C, wmOperator *op)
 {
   ScrArea *area = CTX_wm_area(C);
-  struct FSMenu *fsmenu = ED_fsmenu_get();
+  FSMenu *fsmenu = ED_fsmenu_get();
   FSMenuEntry *fsme_next, *fsme = ED_fsmenu_get_category(fsmenu, FS_CATEGORY_BOOKMARKS);
   int index;
   bool changed = false;
@@ -1277,7 +1277,7 @@ static int bookmark_move_exec(bContext *C, wmOperator *op)
 {
   ScrArea *area = CTX_wm_area(C);
   SpaceFile *sfile = CTX_wm_space_file(C);
-  struct FSMenu *fsmenu = ED_fsmenu_get();
+  FSMenu *fsmenu = ED_fsmenu_get();
   FSMenuEntry *fsmentry = ED_fsmenu_get_category(fsmenu, FS_CATEGORY_BOOKMARKS);
   const FSMenuEntry *fsmentry_org = fsmentry;
 
@@ -1371,7 +1371,7 @@ void FILE_OT_bookmark_move(wmOperatorType *ot)
 static int reset_recent_exec(bContext *C, wmOperator *op)
 {
   ScrArea *area = CTX_wm_area(C);
-  struct FSMenu *fsmenu = ED_fsmenu_get();
+  FSMenu *fsmenu = ED_fsmenu_get();
 
   while (ED_fsmenu_get_entry(fsmenu, FS_CATEGORY_RECENT, 0) != nullptr) {
     fsmenu_remove_entry(fsmenu, FS_CATEGORY_RECENT, 0);
@@ -1543,7 +1543,7 @@ static bool file_operator_poll(bContext *C)
   SpaceFile *sfile = CTX_wm_space_file(C);
 
   if (!sfile || !sfile->op) {
-    poll = 0;
+    poll = false;
   }
 
   return poll;
@@ -1906,7 +1906,8 @@ static void file_os_operations_menu_item(uiLayout *layout,
   RNA_enum_name(file_external_operation, operation, &title);
 
   PointerRNA props_ptr;
-  uiItemFullO_ptr(layout, ot, title, ICON_NONE, nullptr, WM_OP_INVOKE_DEFAULT, 0, &props_ptr);
+  uiItemFullO_ptr(
+      layout, ot, title, ICON_NONE, nullptr, WM_OP_INVOKE_DEFAULT, UI_ITEM_NONE, &props_ptr);
   RNA_string_set(&props_ptr, "filepath", path);
   if (operation) {
     RNA_enum_set(&props_ptr, "operation", operation);
@@ -2081,7 +2082,7 @@ static bool file_execute(bContext *C, SpaceFile *sfile)
   /* Opening file, sends events now, so things get handled on window-queue level. */
   else if (sfile->op) {
     ScrArea *area = CTX_wm_area(C);
-    struct FSMenu *fsmenu = ED_fsmenu_get();
+    FSMenu *fsmenu = ED_fsmenu_get();
     wmOperator *op = sfile->op;
     char filepath[FILE_MAX];
 
@@ -2197,7 +2198,7 @@ static int file_refresh_exec(bContext *C, wmOperator * /*unused*/)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   SpaceFile *sfile = CTX_wm_space_file(C);
-  struct FSMenu *fsmenu = ED_fsmenu_get();
+  FSMenu *fsmenu = ED_fsmenu_get();
 
   ED_fileselect_clear(wm, sfile);
 
@@ -2361,7 +2362,7 @@ static int file_smoothscroll_invoke(bContext *C, wmOperator * /*op*/, const wmEv
 
   const int numfiles = filelist_files_ensure(sfile->files);
 
-  /* Due to async nature of file listing, we may execute this code before `file_refresh()`
+  /* Due to asynchronous nature of file listing, we may execute this code before `file_refresh()`
    * editing entry is available in our listing,
    * so we also have to handle switching to rename mode here. */
   FileSelectParams *params = ED_fileselect_get_active_params(sfile);
@@ -2437,7 +2438,7 @@ static int file_smoothscroll_invoke(bContext *C, wmOperator * /*op*/, const wmEv
   const float max_curr_scroll = is_horizontal ? region->v2d.cur.xmax : -region->v2d.cur.ymin;
 
   /* Check if we have reached our final scroll position. */
-  /* Filelist has to be ready, otherwise it makes no sense to stop scrolling yet. */
+  /* File-list has to be ready, otherwise it makes no sense to stop scrolling yet. */
   const bool is_ready = filelist_is_ready(sfile->files);
   /* Edited item must be in the 'middle' of shown area (kind of approximated).
    * Note that we have to do the check in 'block space', not in 'item space' here. */
@@ -3138,7 +3139,7 @@ static bool file_delete_poll(bContext *C)
   return false;
 }
 
-static bool file_delete_single(const struct FileList *files,
+static bool file_delete_single(const FileList *files,
                                FileDirEntry *file,
                                const char **r_error_message)
 {

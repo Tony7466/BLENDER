@@ -611,27 +611,6 @@ class USERPREF_PT_system_cycles_devices(SystemPanel, CenterAlignMixIn, Panel):
             del addon
 
 
-class USERPREF_PT_system_gpu_backend(SystemPanel, CenterAlignMixIn, Panel):
-    bl_label = "GPU Backend"
-
-    @classmethod
-    def poll(cls, _context):
-        # Only for Apple so far
-        import sys
-        return sys.platform == "darwin"
-
-    def draw_centered(self, context, layout):
-        import gpu
-        prefs = context.preferences
-        system = prefs.system
-
-        col = layout.column()
-        col.prop(system, "gpu_backend")
-
-        if system.gpu_backend != gpu.platform.backend_type_get():
-            layout.label(text="Requires a restart of Blender to take effect", icon='INFO')
-
-
 class USERPREF_PT_system_os_settings(SystemPanel, CenterAlignMixIn, Panel):
     bl_label = "Operating System Settings"
 
@@ -1166,6 +1145,14 @@ class PreferenceThemeSpacePanel:
             "handle_vertex_select",
         },
     }
+
+    @classmethod
+    def poll(cls, context):
+        # Special exception: Hide asset shelf theme settings depending on experimental "Asset Shelf" option.
+        if cls.datapath.endswith(".asset_shelf"):
+            prefs = context.preferences
+            return prefs.experimental.use_asset_shelf
+        return True
 
     # TODO theme_area should be deprecated
     @staticmethod
@@ -2175,7 +2162,7 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
                                 addon_preferences_class.layout = box_prefs
                                 try:
                                     draw(context)
-                                except:
+                                except BaseException:
                                     import traceback
                                     traceback.print_exc()
                                     box_prefs.label(text="Error (see console)", icon='ERROR')
@@ -2415,6 +2402,7 @@ class USERPREF_PT_experimental_new_features(ExperimentalPanel, Panel):
                 ({"property": "use_sculpt_tools_tilt"}, ("blender/blender/issues/82877", "#82877")),
                 ({"property": "use_extended_asset_browser"},
                  ("blender/blender/projects/10", "Pipeline, Assets & IO Project Page")),
+                ({"property": "use_asset_shelf"}, ("blender/blender/issues/102879", "#102879")),
                 ({"property": "use_override_templates"}, ("blender/blender/issues/73318", "Milestone 4")),
                 ({"property": "use_new_volume_nodes"}, ("blender/blender/issues/103248", "#103248")),
                 ({"property": "use_node_panels"}, ("blender/blender/issues/105248", "#105248")),
@@ -2475,6 +2463,7 @@ class USERPREF_PT_experimental_debugging(ExperimentalPanel, Panel):
                 ({"property": "show_asset_debug_info"}, None),
                 ({"property": "use_asset_indexing"}, None),
                 ({"property": "use_viewport_debug"}, None),
+                ({"property": "use_eevee_debug"}, None),
             ),
         )
 
@@ -2525,7 +2514,6 @@ classes = (
     USERPREF_PT_animation_fcurves,
 
     USERPREF_PT_system_cycles_devices,
-    USERPREF_PT_system_gpu_backend,
     USERPREF_PT_system_os_settings,
     USERPREF_PT_system_memory,
     USERPREF_PT_system_video_sequencer,

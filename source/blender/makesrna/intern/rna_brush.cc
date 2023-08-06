@@ -6,7 +6,7 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "DNA_brush_types.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -19,6 +19,7 @@
 #include "BKE_layer.h"
 
 #include "BLI_math.h"
+#include "BLI_string_utf8_symbols.h"
 
 #include "BLT_translation.h"
 
@@ -29,7 +30,7 @@
 
 #include "IMB_imbuf.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 static const EnumPropertyItem prop_direction_items[] = {
     {0, "ADD", ICON_ADD, "Add", "Add effect of brush"},
@@ -451,14 +452,14 @@ static EnumPropertyItem rna_enum_gpencil_brush_vertex_icons_items[] = {
 
 #  include "RNA_access.h"
 
-#  include "BKE_brush.h"
+#  include "BKE_brush.hh"
 #  include "BKE_colorband.h"
 #  include "BKE_gpencil_legacy.h"
 #  include "BKE_icons.h"
 #  include "BKE_material.h"
-#  include "BKE_paint.h"
+#  include "BKE_paint.hh"
 
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
 static bool rna_BrushCapabilitiesSculpt_has_accumulate_get(PointerRNA *ptr)
 {
@@ -1488,7 +1489,7 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Angle",
                            "Direction of the stroke at which brush gives maximal thickness "
-                           "(0° for horizontal)");
+                           "(0" BLI_STR_UTF8_DEGREE_SIGN " for horizontal)");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, nullptr);
 
@@ -2098,6 +2099,17 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_occlude_eraser", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_BRUSH_OCCLUDE_ERASER);
   RNA_def_property_ui_text(prop, "Occlude Eraser", "Erase only strokes visible and not occluded");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+
+  prop = RNA_def_property(srna, "use_keep_caps_eraser", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_BRUSH_ERASER_KEEP_CAPS);
+  RNA_def_property_ui_text(
+      prop, "Keep caps", "Keep the caps as they are and don't flatten them when erasing");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+
+  prop = RNA_def_property(srna, "use_active_layer_only", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_BRUSH_ACTIVE_LAYER_ONLY);
+  RNA_def_property_ui_text(prop, "Active Layer", "Only edit the active layer of the object");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 }
 

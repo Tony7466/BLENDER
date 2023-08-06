@@ -12,8 +12,8 @@
  * to modify the operator.
  */
 
-#include <float.h>
-#include <string.h>
+#include <cfloat>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -31,16 +31,16 @@
 
 #include "BKE_context.h"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "ED_anim_api.h"
-#include "ED_keyframes_edit.h"
-#include "ED_numinput.h"
-#include "ED_screen.h"
-#include "ED_util.h"
+#include "ED_anim_api.hh"
+#include "ED_keyframes_edit.hh"
+#include "ED_numinput.hh"
+#include "ED_screen.hh"
+#include "ED_util.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "graph_intern.h"
 
@@ -66,7 +66,7 @@ struct tGraphSliderOp {
   /** The original bezt curve data (used for restoring fcurves). */
   ListBase bezt_arr_list;
 
-  struct tSlider *slider;
+  tSlider *slider;
 
   /* Each operator has a specific update function. */
   void (*modal_update)(bContext *, wmOperator *);
@@ -151,13 +151,12 @@ static void store_original_bezt_arrays(tGraphSliderOp *gso)
 {
   ListBase anim_data = {nullptr, nullptr};
   bAnimContext *ac = &gso->ac;
-  bAnimListElem *ale;
 
   ANIM_animdata_filter(
       ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, eAnimCont_Types(ac->datatype));
 
   /* Loop through filtered data and copy the curves. */
-  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
 
     if (fcu->bezt == nullptr) {
@@ -407,14 +406,13 @@ enum tDecimModes {
 static void decimate_graph_keys(bAnimContext *ac, float factor, float error_sq_max)
 {
   ListBase anim_data = {nullptr, nullptr};
-  bAnimListElem *ale;
 
   /* Filter data. */
   ANIM_animdata_filter(
       ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, eAnimCont_Types(ac->datatype));
 
   /* Loop through filtered data and clean curves. */
-  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     if (!decimate_fcurve(ale, factor, error_sq_max)) {
       /* The selection contains unsupported keyframe types! */
       WM_report(RPT_WARNING, "Decimate: Skipping non linear/bezier keyframes!");
@@ -1001,7 +999,7 @@ struct tGaussOperatorData {
 
 /* Store data to smooth an FCurve segment. */
 struct tFCurveSegmentLink {
-  struct tFCurveSegmentLink *next, *prev;
+  tFCurveSegmentLink *next, *prev;
   FCurve *fcu;
   FCurveSegment *segment;
   float *samples; /* Array of y-values of the FCurve segment. */
@@ -1230,11 +1228,11 @@ void GRAPH_OT_gaussian_smooth(wmOperatorType *ot)
 /** \name Butterworth Smooth Operator
  * \{ */
 
-typedef struct tBtwOperatorData {
+struct tBtwOperatorData {
   ButterworthCoefficients *coefficients;
   ListBase segment_links; /* tFCurveSegmentLink */
   ListBase anim_data;     /* bAnimListElem */
-} tBtwOperatorData;
+};
 
 static int btw_calculate_sample_count(BezTriple *right_bezt,
                                       BezTriple *left_bezt,
@@ -1259,11 +1257,11 @@ static void btw_smooth_allocate_operator_data(tGraphSliderOp *gso,
 
   operator_data->coefficients = ED_anim_allocate_butterworth_coefficients(filter_order);
 
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   ANIM_animdata_filter(
       &gso->ac, &anim_data, OPERATOR_DATA_FILTER, gso->ac.data, eAnimCont_Types(gso->ac.datatype));
 
-  ListBase segment_links = {NULL, NULL};
+  ListBase segment_links = {nullptr, nullptr};
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
     ListBase fcu_segments = find_fcurve_segments(fcu);
@@ -1346,7 +1344,7 @@ static void btw_smooth_modal_update(bContext *C, wmOperator *op)
   }
 
   ANIM_animdata_update(&ac, &operator_data->anim_data);
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 }
 
 static int btw_smooth_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -1386,7 +1384,7 @@ static void btw_smooth_graph_keys(bAnimContext *ac,
                                   const int filter_order,
                                   const int samples_per_frame)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
   ANIM_animdata_filter(
       ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, eAnimCont_Types(ac->datatype));
 
@@ -1441,7 +1439,7 @@ static int btw_smooth_exec(bContext *C, wmOperator *op)
       &ac, blend, blend_in_out, cutoff_frequency, filter_order, samples_per_frame);
 
   /* Set notifier that keyframes have changed. */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -1467,7 +1465,7 @@ void GRAPH_OT_butterworth_smooth(wmOperatorType *ot)
                 3.0f,
                 0.0f,
                 FLT_MAX,
-                "Frquency Cutoff (Hz)",
+                "Frequency Cutoff (Hz)",
                 "Lower values give a smoother curve",
                 0.0f,
                 FLT_MAX);
