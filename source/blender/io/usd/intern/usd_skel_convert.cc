@@ -46,6 +46,7 @@
 
 namespace {
 
+/* Utility: create curve at the given array index. */
 FCurve *create_fcurve(int array_index, const char *rna_path)
 {
   FCurve *fcu = BKE_fcurve_create();
@@ -55,6 +56,8 @@ FCurve *create_fcurve(int array_index, const char *rna_path)
   return fcu;
 }
 
+/* Utility: create curve at the given array index and
+ * adds it as a channel to a group. */
 FCurve *create_chan_fcurve(bAction *act,
                            bActionGroup *grp,
                            int array_index,
@@ -67,6 +70,7 @@ FCurve *create_chan_fcurve(bAction *act,
   return fcu;
 }
 
+/* Utility: add curve sample. */
 void add_bezt(FCurve *fcu,
               float frame,
               float value,
@@ -81,6 +85,191 @@ void add_bezt(FCurve *fcu,
   bez.h1 = bez.h2 = HD_AUTO;
   insert_bezt_fcurve(fcu, &bez, INSERTKEY_NOFLAGS);
   BKE_fcurve_handles_recalc(fcu);
+}
+
+/**
+ * Import a USD skeleton animation as an action on the given armature object.
+ * This assumes bones have already been created on the armature.
+ *
+ * \param bmain: Main pointer
+ * \param arm_obj: Armature object to which the action will be added
+ * \param skel_query: The USD skeleton query for reading the animation
+ * \param joint_to_bone_map: Map a USD skeleton joint name to a bone name
+ */
+void import_skeleton_curves(Main *bmain,
+                            Object *arm_obj,
+                            const pxr::UsdSkelSkeletonQuery &skel_query,
+                            const std::map<pxr::TfToken, std::string> &joint_to_bone_map)
+
+{
+  if (!(bmain && arm_obj && skel_query)) {
+    return;
+  }
+
+  if (joint_to_bone_map.empty()) {
+    return;
+  }
+
+  const pxr::UsdSkelAnimQuery &anim_query = skel_query.GetAnimQuery();
+
+  if (!anim_query) {
+    /* No animation is defined. */
+    return;
+  }
+
+  std::vector<double> samples;
+  anim_query.GetJointTransformTimeSamples(&samples);
+
+  if (samples.empty()) {
+    return;
+  }
+
+  size_t num_samples = samples.size();
+
+  /* Create the action on the armature. */
+  bAction *act = ED_id_action_ensure(bmain, (ID *)&arm_obj->id);
+
+  /* Create the curves. */
+
+  /* Get the joint paths. */
+  pxr::VtTokenArray joint_order = skel_query.GetJointOrder();
+
+  std::vector<FCurve *> loc_curves;
+  std::vector<FCurve *> rot_curves;
+  std::vector<FCurve *> scale_curves;
+
+  /* Iterate over the joints and create the corresponding curves for the bones. */
+  for (const pxr::TfToken &joint : joint_order) {
+    std::map<pxr::TfToken, std::string>::const_iterator it = joint_to_bone_map.find(joint);
+
+    if (it == joint_to_bone_map.end()) {
+      /* This joint doesn't correspond to any bone we created.
+       * Add null placeholders for the channel curves. */
+      loc_curves.push_back(nullptr);
+      loc_curves.push_back(nullptr);
+      loc_curves.push_back(nullptr);
+      rot_curves.push_back(nullptr);
+      rot_curves.push_back(nullptr);
+      rot_curves.push_back(nullptr);
+      rot_curves.push_back(nullptr);
+      scale_curves.push_back(nullptr);
+      scale_curves.push_back(nullptr);
+      scale_curves.push_back(nullptr);
+      continue;
+    }
+
+    bActionGroup *grp = action_groups_add_new(act, it->second.c_str());
+
+    /* Add translation curves. */
+    std::string rna_path = "pose.bones[\"" + it->second + "\"].location";
+    loc_curves.push_back(create_chan_fcurve(act, grp, 0, rna_path.c_str(), num_samples));
+    loc_curves.push_back(create_chan_fcurve(act, grp, 1, rna_path.c_str(), num_samples));
+    loc_curves.push_back(create_chan_fcurve(act, grp, 2, rna_path.c_str(), num_samples));
+
+    /* Add rotation curves. */
+    rna_path = "pose.bones[\"" + it->second + "\"].rotation_quaternion";
+    rot_curves.push_back(create_chan_fcurve(act, grp, 0, rna_path.c_str(), num_samples));
+    rot_curves.push_back(create_chan_fcurve(act, grp, 1, rna_path.c_str(), num_samples));
+    rot_curves.push_back(create_chan_fcurve(act, grp, 2, rna_path.c_str(), num_samples));
+    rot_curves.push_back(create_chan_fcurve(act, grp, 3, rna_path.c_str(), num_samples));
+
+    /* Add scale curves. */
+    rna_path = "pose.bones[\"" + it->second + "\"].scale";
+    scale_curves.push_back(create_chan_fcurve(act, grp, 0, rna_path.c_str(), num_samples));
+    scale_curves.push_back(create_chan_fcurve(act, grp, 1, rna_path.c_str(), num_samples));
+    scale_curves.push_back(create_chan_fcurve(act, grp, 2, rna_path.c_str(), num_samples));
+  }
+
+  /* Sanity checks: make sure we have a curve entry for each joint. */
+  if (loc_curves.size() != joint_order.size() * 3) {
+    std::cout << "PROGRAMMER ERROR: location curve count mismatch\n";
+    return;
+  }
+
+  if (rot_curves.size() != joint_order.size() * 4) {
+    std::cout << "PROGRAMMER ERROR: rotation curve count mismatch\n";
+    return;
+  }
+
+  if (scale_curves.size() != joint_order.size() * 3) {
+    std::cout << "PROGRAMMER ERROR: scale curve count mismatch\n";
+    return;
+  }
+
+  /* Set the curve samples. */
+
+  for (double frame : samples) {
+    /* Compute joint transforms which, when concatenated against the rest pose,
+     * produce joint transforms in joint-local space. More specifically, this
+     * computes restRelativeTransform in:
+     *    restRelativeTransform * restTransform = jointLocalTransform
+     */
+    pxr::VtMatrix4dArray rest_relative_xforms;
+    if (!skel_query.ComputeJointRestRelativeTransforms(&rest_relative_xforms, frame)) {
+      std::cout << "WARNING: couldn't compute joint rest relative transforms on frame " << frame
+                << std::endl;
+      continue;
+    }
+
+    if (rest_relative_xforms.size() != joint_order.size()) {
+      std::cout << "WARNING: number of joint rest relative transform entries " << rest_relative_xforms.size()
+                << " doesn't match the number of joints " << joint_order.size() << std::endl;
+      continue;
+    }
+
+    for (int i = 0; i < rest_relative_xforms.size(); ++i) {
+
+      pxr::GfVec3f t;
+      pxr::GfQuatf qrot;
+      pxr::GfVec3h s;
+
+      if (!pxr::UsdSkelDecomposeTransform(rest_relative_xforms[i], &t, &qrot, &s)) {
+        std::cout << "WARNING: error decomposing matrix on frame " << frame << std::endl;
+        continue;
+      }
+
+      float re = qrot.GetReal();
+      pxr::GfVec3f im = qrot.GetImaginary();
+
+      for (int j = 0; j < 3; ++j) {
+        int k = 3 * i + j;
+        if (k >= loc_curves.size()) {
+          std::cout << "PROGRAMMER ERROR: out of bounds translation curve index." << std::endl;
+          break;
+        }
+        if (FCurve *fcu = loc_curves[k]) {
+          add_bezt(fcu, frame, t[j]);
+        }
+      }
+
+      for (int j = 0; j < 4; ++j) {
+        int k = 4 * i + j;
+        if (k >= rot_curves.size()) {
+          std::cout << "PROGRAMMER ERROR: out of bounds rotation curve index." << std::endl;
+          break;
+        }
+        if (FCurve *fcu = rot_curves[k]) {
+          if (j == 0) {
+            add_bezt(fcu, frame, re);
+          }
+          else {
+            add_bezt(fcu, frame, im[j - 1]);
+          }
+        }
+      }
+
+      for (int j = 0; j < 3; ++j) {
+        int k = 3 * i + j;
+        if (k >= scale_curves.size()) {
+          std::cout << "PROGRAMMER ERROR: out of bounds scale curve index." << std::endl;
+          break;
+        }
+        if (FCurve *fcu = scale_curves[k]) {
+          add_bezt(fcu, frame, s[j]);
+        }
+      }
+    }
+  }
 }
 
 }  // End anonymous namespace.
@@ -577,204 +766,11 @@ void import_skeleton(Main *bmain, Object *arm_obj, const pxr::UsdSkelSkeleton &s
   ED_armature_edit_free(arm);
 
   if (import_anim && valid_skeleton) {
-    create_skeleton_curves(bmain, arm_obj, skel_query, joint_to_bone_map);
+    import_skeleton_curves(bmain, arm_obj, skel_query, joint_to_bone_map);
   }
 }
 
-void create_skeleton_curves(Main *bmain,
-                            Object *arm_obj,
-                            const pxr::UsdSkelSkeletonQuery &skel_query,
-                            const std::map<pxr::TfToken, std::string> &joint_to_bone_map)
 
-{
-  if (!(bmain && arm_obj && skel_query)) {
-    return;
-  }
-
-  if (joint_to_bone_map.empty()) {
-    return;
-  }
-
-  const pxr::UsdSkelAnimQuery &anim_query = skel_query.GetAnimQuery();
-
-  if (!anim_query) {
-    return;
-  }
-
-  std::vector<double> samples;
-  anim_query.GetJointTransformTimeSamples(&samples);
-
-  if (samples.empty()) {
-    return;
-  }
-
-  size_t num_samples = samples.size();
-
-  bAction *act = ED_id_action_ensure(bmain, (ID *)&arm_obj->id);
-
-  pxr::VtTokenArray joint_order = skel_query.GetJointOrder();
-
-  std::vector<FCurve *> loc_curves;
-  std::vector<FCurve *> rot_curves;
-  std::vector<FCurve *> scale_curves;
-
-  for (const pxr::TfToken &joint : joint_order) {
-    std::map<pxr::TfToken, std::string>::const_iterator it = joint_to_bone_map.find(joint);
-
-    if (it == joint_to_bone_map.end()) {
-      /* This joint doesn't correspond to any bone we created.
-       * Add null placeholders for the channel curves. */
-      loc_curves.push_back(nullptr);
-      loc_curves.push_back(nullptr);
-      loc_curves.push_back(nullptr);
-      rot_curves.push_back(nullptr);
-      rot_curves.push_back(nullptr);
-      rot_curves.push_back(nullptr);
-      rot_curves.push_back(nullptr);
-      scale_curves.push_back(nullptr);
-      scale_curves.push_back(nullptr);
-      scale_curves.push_back(nullptr);
-      continue;
-    }
-
-    bActionGroup *grp = action_groups_add_new(act, it->second.c_str());
-
-    /* Add translation curves. */
-    std::string rna_path = "pose.bones[\"" + it->second + "\"].location";
-    loc_curves.push_back(create_chan_fcurve(act, grp, 0, rna_path.c_str(), num_samples));
-    loc_curves.push_back(create_chan_fcurve(act, grp, 1, rna_path.c_str(), num_samples));
-    loc_curves.push_back(create_chan_fcurve(act, grp, 2, rna_path.c_str(), num_samples));
-
-    /* Add rotation curves. */
-    rna_path = "pose.bones[\"" + it->second + "\"].rotation_quaternion";
-    rot_curves.push_back(create_chan_fcurve(act, grp, 0, rna_path.c_str(), num_samples));
-    rot_curves.push_back(create_chan_fcurve(act, grp, 1, rna_path.c_str(), num_samples));
-    rot_curves.push_back(create_chan_fcurve(act, grp, 2, rna_path.c_str(), num_samples));
-    rot_curves.push_back(create_chan_fcurve(act, grp, 3, rna_path.c_str(), num_samples));
-
-    /* Add scale curves. */
-    rna_path = "pose.bones[\"" + it->second + "\"].scale";
-    scale_curves.push_back(create_chan_fcurve(act, grp, 0, rna_path.c_str(), num_samples));
-    scale_curves.push_back(create_chan_fcurve(act, grp, 1, rna_path.c_str(), num_samples));
-    scale_curves.push_back(create_chan_fcurve(act, grp, 2, rna_path.c_str(), num_samples));
-  }
-
-  if (loc_curves.size() != joint_order.size() * 3) {
-    std::cout << "PROGRAMMER ERROR: location curve count mismatch\n";
-    return;
-  }
-
-  if (rot_curves.size() != joint_order.size() * 4) {
-    std::cout << "PROGRAMMER ERROR: rotation curve count mismatch\n";
-    return;
-  }
-
-  if (scale_curves.size() != joint_order.size() * 3) {
-    std::cout << "PROGRAMMER ERROR: scale curve count mismatch\n";
-    return;
-  }
-
-  /* Joint bind transforms. */
-  pxr::VtMatrix4dArray bind_xforms;
-  if (!skel_query.GetJointWorldBindTransforms(&bind_xforms)) {
-    std::cout << "WARNING: couldn't get world bind transforms for skeleton "
-              << skel_query.GetSkeleton().GetPrim().GetPath() << std::endl;
-    return;
-  }
-
-  if (bind_xforms.size() != joint_order.size()) {
-    std::cout << "WARNING: number of bind transforms doesn't match the number of joints\n";
-    return;
-  }
-
-  const pxr::UsdSkelTopology &skel_topology = skel_query.GetTopology();
-
-  /* This will store the inverse of the parent-relative bind xforms. */
-  pxr::VtMatrix4dArray inv_bind_xforms(bind_xforms.size());
-
-  for (int i = 0; i < bind_xforms.size(); ++i) {
-    int parent_id = skel_topology.GetParent(i);
-
-    if (parent_id >= 0) {
-      /* This is a non-root bone.  Compute the transform of the joint
-       * relative to its parent. */
-      pxr::GfMatrix4d parent_relative_xf = bind_xforms[i] * bind_xforms[parent_id].GetInverse();
-      inv_bind_xforms[i] = parent_relative_xf.GetInverse();
-    } else {
-      inv_bind_xforms[i] = bind_xforms[i].GetInverse();
-    }
-  }
-
-  for (double frame : samples) {
-    pxr::VtMatrix4dArray joint_local_xforms;
-
-    if (!skel_query.ComputeJointLocalTransforms(&joint_local_xforms, frame)) {
-      std::cout << "WARNING: couldn't compute joint local transforms on frame " << frame << std::endl;
-      continue;
-    }
-
-    if (joint_local_xforms.size() != joint_order.size()) {
-      std::cout << "WARNING: number of joint local transform entries " << joint_local_xforms.size()
-                << " doesn't match the number of joints " << joint_order.size() << std::endl;
-      continue;
-    }
-
-    for (int i = 0; i < joint_local_xforms.size(); ++i) {
-
-      pxr::GfMatrix4d bind_relative_xf = joint_local_xforms[i] * inv_bind_xforms[i];
-
-      pxr::GfVec3f t;
-      pxr::GfQuatf qrot;
-      pxr::GfVec3h s;
-
-      if (!pxr::UsdSkelDecomposeTransform(bind_relative_xf, &t, &qrot, &s)) {
-        std::cout << "WARNING: error decomposing matrix on frame " << frame << std::endl;
-        continue;
-      }
-
-      float re = qrot.GetReal();
-      pxr::GfVec3f im = qrot.GetImaginary();
-
-      for (int j = 0; j < 3; ++j) {
-        int k = 3 * i + j;
-        if (k >= loc_curves.size()) {
-          std::cout << "PROGRAMMER ERROR: out of bounds translation curve index." << std::endl;
-          break;
-        }
-        if (FCurve *fcu = loc_curves[k]) {
-          add_bezt(fcu, frame, t[j]);
-        }
-      }
-
-      for (int j = 0; j < 4; ++j) {
-        int k = 4 * i + j;
-        if (k >= rot_curves.size()) {
-          std::cout << "PROGRAMMER ERROR: out of bounds rotation curve index." << std::endl;
-          break;
-        }
-        if (FCurve *fcu = rot_curves[k]) {
-          if (j == 0) {
-            add_bezt(fcu, frame, re);
-          }
-          else {
-            add_bezt(fcu, frame, im[j - 1]);
-          }
-        }
-      }
-
-      for (int j = 0; j < 3; ++j) {
-        int k = 3 * i + j;
-        if (k >= scale_curves.size()) {
-          std::cout << "PROGRAMMER ERROR: out of bounds scale curve index." << std::endl;
-          break;
-        }
-        if (FCurve *fcu = scale_curves[k]) {
-          add_bezt(fcu, frame, s[j]);
-        }
-      }
-    }
-  }
-}
 
 void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim &prim)
 {

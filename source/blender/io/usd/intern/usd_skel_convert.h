@@ -58,12 +58,6 @@ void import_skeleton(Main *bmain,
                      Object *arm_obj,
                      const pxr::UsdSkelSkeleton &skel,
                      bool import_anim=true);
-
-void create_skeleton_curves(Main *bmain,
-                            Object *arm_obj,
-                            const pxr::UsdSkelSkeletonQuery &skel_query,
-                            const std::map<pxr::TfToken, std::string> &joint_to_bone_map);
-
 /**
  * Import skinning data from a source USD prim as deform groups and an armature
  * modifier on the given mesh object. If the USD prim does not have a skeleton
