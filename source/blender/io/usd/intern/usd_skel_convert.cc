@@ -28,18 +28,18 @@
 #include "BKE_key.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.h"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_object_deform.h"
 
 #include "BLI_math_vector.h"
 
-#include "ED_armature.h"
-#include "ED_keyframing.h"
-#include "ED_mesh.h"
+#include "ED_armature.hh"
+#include "ED_keyframing.hh"
+#include "ED_mesh.hh"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include <string>
 #include <vector>
