@@ -452,6 +452,12 @@ static void detect_workarounds()
     GCaps.clear_viewport_workaround = true;
   }
 
+  /* There is an issue in AMD official driver where we cannot use multi bind. AMD is
+   * aware of the issue, but hasn't released a fix. */
+  if (GPU_type_matches(GPU_DEVICE_ATI, GPU_OS_ANY, GPU_DRIVER_OFFICIAL)) {
+    GLContext::multi_bind_support = false;
+  }
+
   /* Metal-related Workarounds. */
 
   /* Minimum Per-Vertex stride is 1 byte for OpenGL. */
