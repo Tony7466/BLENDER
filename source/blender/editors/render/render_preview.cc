@@ -74,7 +74,6 @@
 
 #include "BIF_glutil.h"
 
-#include "GPU_capabilities.h"
 #include "GPU_shader.h"
 
 #include "RE_engine.h"
