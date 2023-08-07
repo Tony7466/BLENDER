@@ -8,6 +8,7 @@
 #include "BLI_set.hh"
 #include "BLI_stack.hh"
 #include "BLI_vector_set.hh"
+#include "BLI_volume_openvdb.hh"
 
 #include "FN_field.hh"
 #include "FN_multi_function_builder.hh"

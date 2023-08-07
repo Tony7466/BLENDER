@@ -31,7 +31,6 @@ class VArrayImpl_For_GridLeaf final : public VArrayImpl<typename AccessorType::V
  public:
   using ValueType = typename AccessorType::ValueType;
   using Coord = openvdb::Coord;
-  const int32_t leaf_size = LeafNodeType::size();
 
  protected:
   const AccessorType &accessor_;
@@ -39,11 +38,13 @@ class VArrayImpl_For_GridLeaf final : public VArrayImpl<typename AccessorType::V
 
  public:
   VArrayImpl_For_GridLeaf(const AccessorType &accessor, const Coord &leaf_origin)
-      : VArrayImpl<ValueType>(leaf_size), accessor_(accessor), leaf_origin_(leaf_origin)
+      : VArrayImpl<ValueType>(LeafNodeType::size()), accessor_(accessor), leaf_origin_(leaf_origin)
   {
   }
   VArrayImpl_For_GridLeaf(const AccessorType &accessor, const LeafNodeType &leaf)
-      : VArrayImpl<ValueType>(leaf_size), accessor_(accessor), leaf_origin_(leaf.origin())
+      : VArrayImpl<ValueType>(LeafNodeType::size()),
+        accessor_(accessor),
+        leaf_origin_(leaf.origin())
   {
   }
 

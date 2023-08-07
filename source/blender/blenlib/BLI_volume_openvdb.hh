@@ -29,6 +29,44 @@ namespace volume {
 
 #ifdef WITH_OPENVDB
 
+template<typename T> Grid<T> GGrid::typed() const
+{
+#  ifdef WITH_OPENVDB
+  using GridType = typename Grid<T>::GridType;
+  using GridPtr = typename Grid<T>::GridConstPtr;
+
+  if (!grid_) {
+    return {};
+  }
+  GridPtr typed_grid = openvdb::GridBase::grid<GridType>(grid_);
+  if (!typed_grid) {
+    return {};
+  }
+  return {typed_grid};
+#  else
+  return {};
+#  endif
+}
+
+template<typename T> MutableGrid<T> GMutableGrid::typed() const
+{
+#  ifdef WITH_OPENVDB
+  using TypedGrid = typename MutableGrid<T>::GridType;
+  using TypedGridPtr = typename MutableGrid<T>::GridPtr;
+
+  if (!grid_) {
+    return {};
+  }
+  TypedGridPtr typed_grid = openvdb::GridBase::grid<TypedGrid>(grid_);
+  if (!typed_grid) {
+    return {};
+  }
+  return {typed_grid};
+#  else
+  return {};
+#  endif
+}
+
 namespace detail {
 
 template<typename Func> struct FilterVoidOp {
