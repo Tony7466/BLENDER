@@ -344,19 +344,18 @@ static int viewrotate_invoke_impl(bContext * /*C*/,
   eV3D_OpEvent event_code = ELEM(event->type, MOUSEROTATE, MOUSEPAN) ? VIEW_CONFIRM : VIEW_PASS;
 
   if (event_code == VIEW_CONFIRM) {
-    /* MOUSEROTATE performs orbital rotation, so y axis delta is set to 0 */
-    const bool is_inverted = (event->flag & WM_EVENT_SCROLL_INVERT) &&
-                             (event->type != MOUSEROTATE);
-
     int m_xy[2];
-    if (is_inverted) {
-      m_xy[0] = 2 * event->xy[0] - event->prev_xy[0];
-      m_xy[1] = 2 * event->xy[1] - event->prev_xy[1];
+    
+    if (event->type == MOUSEPAN) {
+      m_xy[0] = event->xy[0] + WM_event_absolute_delta_x(event);
+      m_xy[1] = event->xy[1] + WM_event_absolute_delta_y(event);
     }
     else {
+      /* MOUSEROTATE performs orbital rotation, so y axis delta is set to 0 */
       copy_v2_v2_int(m_xy, event->prev_xy);
     }
     viewrotate_apply(vod, m_xy);
+    
     return OPERATOR_FINISHED;
   }
 
