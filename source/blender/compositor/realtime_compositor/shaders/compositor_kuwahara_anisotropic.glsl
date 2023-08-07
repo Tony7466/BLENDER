@@ -52,12 +52,10 @@ void main()
    * and more circular for low anisotropy, controlled using the eccentricity factor. Since the
    * anisotropy is in the [0, 1] range, the width factor tends to 1 as the eccentricity tends to
    * infinity and tends to infinity when the eccentricity tends to zero. This is based on the
-   * equations in section "3.2. Anisotropic Kuwahara Filtering" of the paper. We make sure the
-   * height is at least 1.5 such that the ellipse bounds doesn't get round to zero as will be seen
-   * later in the code. */
+   * equations in section "3.2. Anisotropic Kuwahara Filtering" of the paper. */
   float ellipse_width_factor = (eccentricity + anisotropy) / eccentricity;
   float ellipse_width = ellipse_width_factor * radius;
-  float ellipse_height = max(1.5, radius / ellipse_width_factor);
+  float ellipse_height = radius / ellipse_width_factor;
 
   /* Compute the cosine and sine of the angle that the eigenvector makes with the x axis. Since the
    * eigenvector is normalized, its x and y components are the cosine and sine of the angle it
@@ -79,11 +77,12 @@ void main()
    *   https://iquilezles.org/articles/ellipses/
    *
    * Notice that we only compute the upper bound, the lower bound is just negative that since the
-   * ellipse is zero centered. */
+   * ellipse is zero centered. Also notice that we take the ceiling of the bounding box, just to
+   * ensure the filter window is at least 1x1. */
   vec2 ellipse_major_axis = ellipse_width * unit_eigenvector;
   vec2 ellipse_minor_axis = ellipse_height * unit_eigenvector.yx * vec2(-1, 1);
   ivec2 ellipse_bounds = ivec2(
-      sqrt(pow(ellipse_major_axis, vec2(2.0)) + pow(ellipse_minor_axis, vec2(2.0))));
+      ceil(sqrt(pow(ellipse_major_axis, vec2(2.0)) + pow(ellipse_minor_axis, vec2(2.0)))));
 
   /* Compute the overlap polynomial parameters for 8-sector ellipse based on the equations in
    * section "3 Alternative Weighting Functions" of the polynomial weights paper. More on this
@@ -96,12 +95,27 @@ void main()
                                          pow(sin(sector_envelope_angle), 2.0);
 
   /* We need to compute the weighted mean of color and squared color of each of the 8 sectors of
-   * the ellipse, so we initialize zero arrays for accumulating that. */
-  vec4 weighted_mean_of_squared_color_of_sectors[8] = vec4[](
-      vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0));
-  vec4 weighted_mean_of_color_of_sectors[8] = vec4[](
-      vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0));
-  float sum_of_weights_of_sectors[8] = float[](0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+   * the ellipse, so we declare arrays for accumulating those and initialize them in the next code
+   * section. */
+  vec4 weighted_mean_of_squared_color_of_sectors[8];
+  vec4 weighted_mean_of_color_of_sectors[8];
+  float sum_of_weights_of_sectors[8];
+
+  /* The center pixel (0, 0) is exempt from the main loop below for reasons that are explained in
+   * the first if statement in the loop, so we need to accumulate its color, squared color, and
+   * weight separately first. Luckily, the zero coordinates of the center pixel zeros out most of
+   * the complex computations below, and it can easily be shown that the weight for the center
+   * pixel in all sectors is simply (1 / number_of_sectors). */
+  vec4 center_color = texture_load(input_tx, texel);
+  vec4 center_color_squared = center_color * center_color;
+  float center_weight = 1.0 / number_of_sectors;
+  vec4 weighted_center_color = center_color * center_weight;
+  vec4 weighted_center_color_squared = center_color_squared * center_weight;
+  for (int i = 0; i < number_of_sectors; i++) {
+    weighted_mean_of_squared_color_of_sectors[i] = weighted_center_color_squared;
+    weighted_mean_of_color_of_sectors[i] = weighted_center_color;
+    sum_of_weights_of_sectors[i] = center_weight;
+  }
 
   /* Loop over the window of pixels inside the bounding box of the ellipse. However, we utilize the
    * fact that ellipses are mirror symmetric along the horizontal axis, so we reduce the window to
@@ -112,7 +126,10 @@ void main()
       /* Since we compute each two mirrored pixels at the same time, we need to also exempt the
        * pixels whose x coordinates are negative and their y coordinates are zero, that's because
        * those are mirrored versions of the pixels whose x coordinates are positive and their y
-       * coordinates are zero, and we don't want to compute and accumulate them twice. */
+       * coordinates are zero, and we don't want to compute and accumulate them twice. Moreover, we
+       * also need to exempt the center pixel with zero coordinates for the same reason, however,
+       * since the mirror of the center pixel is itself, it need to be accumulated separately,
+       * hence why we did that in the code section just before this loop. */
       if (j == 0 && i <= 0) {
         continue;
       }
@@ -137,7 +154,7 @@ void main()
        * are simply swapping of the coordinates and negating the x component. We also note that
        * since the y term of the weighting polynomial is squared, it is not affected by the sign
        * and can be computed once for the x and once for the y coordinates. So we compute every
-       * other 4 weights by successive 90 degree rotations as discussed. */
+       * other even-indexed 4 weights by successive 90 degree rotations as discussed. */
       vec2 polynomial = sector_center_overlap_parameter -
                         cross_sector_overlap_parameter * pow(disk_point, vec2(2.0));
       sector_weights[0] = pow(max(0.0, disk_point.y + polynomial.x), 2.0);
@@ -150,7 +167,7 @@ void main()
       vec2 rotated_disk_point = M_SQRT1_2 *
                                 vec2(disk_point.x - disk_point.y, disk_point.x + disk_point.y);
 
-      /* Finally, we compute the other every other 4 weights starting from the 45 degreed rotated
+      /* Finally, we compute every other odd-index 4 weights starting from the 45 degreed rotated
        * disk point. */
       vec2 rotated_polynomial = sector_center_overlap_parameter -
                                 cross_sector_overlap_parameter *

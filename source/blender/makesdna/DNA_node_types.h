@@ -1012,7 +1012,7 @@ typedef struct NodeBilateralBlurData {
 typedef struct NodeKuwaharaData {
   short size;
   short variation;
-  int smoothing;
+  int uniformity;
   float sharpness;
   float eccentricity;
 } NodeKuwaharaData;
