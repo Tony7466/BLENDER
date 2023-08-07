@@ -317,9 +317,12 @@ struct PaintOperationExecutor {
     if (num_converged > 0) {
       self.active_smooth_index_ = math::min(self.active_smooth_index_ + num_converged,
                                             self.stroke_cache_->size() - 1);
-      self.screen_space_smoothed_coordinates_.remove(
-          0,
-          math::min(self.screen_space_smoothed_coordinates_.size() - num_converged, int64_t(0)));
+      if (self.screen_space_smoothed_coordinates_.size() - num_converged > 0) {
+        self.screen_space_smoothed_coordinates_.remove(0, num_converged);
+      }
+      else {
+        self.screen_space_smoothed_coordinates_.clear();
+      }
     }
 
 #ifdef DEBUG
