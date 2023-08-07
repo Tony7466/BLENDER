@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * SPDX-FileCopyrightText: 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -16,7 +17,9 @@ class VolumeData : public ObjectData {
   MaterialData *mat_data_ = nullptr;
 
  public:
-  VolumeData(HydraSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
+  VolumeData(HydraSceneDelegate *scene_delegate,
+             const Object *object,
+             pxr::SdfPath const &prim_id);
 
   void init() override;
   void insert() override;

@@ -37,12 +37,12 @@
 
 #include "GPU_platform.h"
 
-#include "UI_interface_icons.h"
+#include "UI_interface_icons.hh"
 
 #include "rna_internal.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "BLT_lang.h"
 
@@ -185,7 +185,7 @@ static const EnumPropertyItem rna_enum_preference_gpu_backend_items[] = {
 #  include "MEM_CacheLimiterC-Api.h"
 #  include "MEM_guardedalloc.h"
 
-#  include "UI_interface.h"
+#  include "UI_interface.hh"
 
 #  ifdef WITH_SDL_DYNLOAD
 #    include "sdlew.h"
@@ -6779,10 +6779,6 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_new_volume_nodes", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(
       prop, "New Volume Nodes", "Enables visibility of the new Volume nodes in the UI");
-
-  prop = RNA_def_property(srna, "use_node_panels", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_text(
-      prop, "Node Panels", "Enable node panels UI for grouping sockets in node groups");
 
   prop = RNA_def_property(srna, "use_rotation_socket", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(prop, "Rotation Socket", "Enable the new rotation node socket type");
