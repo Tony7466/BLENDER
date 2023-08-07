@@ -55,11 +55,13 @@ enum eDebugMode : uint32_t {
    */
   DEBUG_IRRADIANCE_CACHE_SURFELS_NORMAL = 3u,
   DEBUG_IRRADIANCE_CACHE_SURFELS_IRRADIANCE = 4u,
-  DEBUG_IRRADIANCE_CACHE_SURFELS_CLUSTER = 5u,
+  DEBUG_IRRADIANCE_CACHE_SURFELS_VISIBILITY = 5u,
+  DEBUG_IRRADIANCE_CACHE_SURFELS_CLUSTER = 6u,
   /**
    * Display IrradianceCache virtual offset.
    */
-  DEBUG_IRRADIANCE_CACHE_VIRTUAL_OFFSET = 6u,
+  DEBUG_IRRADIANCE_CACHE_VIRTUAL_OFFSET = 7u,
+  DEBUG_IRRADIANCE_CACHE_VALIDITY = 8u,
   /**
    * Show tiles depending on their status.
    */
@@ -107,13 +109,16 @@ enum eSamplingDimension : uint32_t {
   SAMPLING_AO_U = 19u,
   SAMPLING_AO_V = 20u,
   SAMPLING_CURVES_U = 21u,
+  SAMPLING_VOLUME_U = 22u,
+  SAMPLING_VOLUME_V = 23u,
+  SAMPLING_VOLUME_W = 24u
 };
 
 /**
  * IMPORTANT: Make sure the array can contain all sampling dimensions.
  * Also note that it needs to be multiple of 4.
  */
-#define SAMPLING_DIMENSION_COUNT 24
+#define SAMPLING_DIMENSION_COUNT 28
 
 /* NOTE(@fclem): Needs to be used in #StorageBuffer because of arrays of scalar. */
 struct SamplingData {
@@ -441,6 +446,81 @@ struct MotionBlurTileIndirection {
 };
 BLI_STATIC_ASSERT_ALIGN(MotionBlurTileIndirection, 16)
 #endif
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Volumes
+ * \{ */
+
+struct VolumesInfoData {
+  float2 coord_scale;
+  float2 viewport_size_inv;
+  packed_int3 tex_size;
+  float light_clamp;
+  packed_float3 inv_tex_size;
+  float shadow_steps;
+  bool1 use_lights;
+  bool1 use_soft_shadows;
+  float depth_near;
+  float depth_far;
+  float depth_distribution;
+  float _pad0;
+  float _pad1;
+  float _pad2;
+};
+BLI_STATIC_ASSERT_ALIGN(VolumesInfoData, 16)
+
+/* Volume slice to view space depth. */
+static inline float volume_z_to_view_z(
+    float near, float far, float distribution, bool is_persp, float z)
+{
+  if (is_persp) {
+    /* Exponential distribution. */
+    return (exp2(z / distribution) - near) / far;
+  }
+  else {
+    /* Linear distribution. */
+    return near + (far - near) * z;
+  }
+}
+
+static inline float view_z_to_volume_z(
+    float near, float far, float distribution, bool is_persp, float depth)
+{
+  if (is_persp) {
+    /* Exponential distribution. */
+    return distribution * log2(depth * far + near);
+  }
+  else {
+    /* Linear distribution. */
+    return (depth - near) * distribution;
+  }
+}
+
+static inline float3 ndc_to_volume(float4x4 projection_matrix,
+                                   float near,
+                                   float far,
+                                   float distribution,
+                                   float2 coord_scale,
+                                   float3 coord)
+{
+  bool is_persp = projection_matrix[3][3] == 0.0;
+
+  /* get_view_z_from_depth */
+  float d = 2.0 * coord.z - 1.0;
+  if (is_persp) {
+    coord.z = -projection_matrix[3][2] / (d + projection_matrix[2][2]);
+  }
+  else {
+    coord.z = (d - projection_matrix[3][2]) / projection_matrix[2][2];
+  }
+
+  coord.z = view_z_to_volume_z(near, far, distribution, is_persp, coord.z);
+  coord.x *= coord_scale.x;
+  coord.y *= coord_scale.y;
+  return coord;
+}
 
 /** \} */
 
@@ -851,8 +931,14 @@ static inline ShadowTileDataPacked shadow_tile_pack(ShadowTileData tile)
  * \{ */
 
 struct SurfelRadiance {
+  /* Actually stores radiance and world (sky) visibility. Stored normalized. */
   float4 front;
   float4 back;
+  /* Accumulated weights per face. */
+  float front_weight;
+  float back_weight;
+  float _pad0;
+  float _pad1;
 };
 BLI_STATIC_ASSERT_ALIGN(SurfelRadiance, 16)
 
@@ -913,6 +999,14 @@ struct CaptureInfoData {
   float max_virtual_offset;
   /** Radius of surfels. */
   float surfel_radius;
+  /** Capture options. */
+  bool1 capture_world_direct;
+  bool1 capture_world_indirect;
+  bool1 capture_visibility_direct;
+  bool1 capture_visibility_indirect;
+  bool1 capture_indirect;
+  bool1 capture_emission;
+  int _pad0;
 };
 BLI_STATIC_ASSERT_ALIGN(CaptureInfoData, 16)
 
@@ -1004,7 +1098,7 @@ struct RayTraceData {
   int2 full_resolution;
   /** Inverse of input resolution to get screen UVs. */
   float2 full_resolution_inv;
-  /** Scale and bias to go from raytrace resolution to input resolution. */
+  /** Scale and bias to go from ray-trace resolution to input resolution. */
   int2 resolution_bias;
   int resolution_scale;
   /** View space thickness the objects. */
@@ -1189,6 +1283,7 @@ using SurfelListInfoBuf = draw::StorageBuffer<SurfelListInfoData>;
 using VelocityGeometryBuf = draw::StorageArrayBuffer<float4, 16, true>;
 using VelocityIndexBuf = draw::StorageArrayBuffer<VelocityIndex, 16>;
 using VelocityObjectBuf = draw::StorageArrayBuffer<float4x4, 16>;
+using VolumesInfoDataBuf = draw::UniformBuffer<VolumesInfoData>;
 using CryptomatteObjectBuf = draw::StorageArrayBuffer<float2, 16>;
 using AODataBuf = draw::UniformBuffer<AOData>;
 

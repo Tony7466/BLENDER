@@ -203,7 +203,6 @@ static void ntree_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, cons
   /* Legacy inputs/outputs lists may contain unmanaged pointers, don't copy these. */
   BLI_listbase_clear(&ntree_dst->inputs_legacy);
   BLI_listbase_clear(&ntree_dst->outputs_legacy);
-
   /* copy preview hash */
   if (ntree_src->previews && (flag & LIB_ID_COPY_NO_PREVIEW) == 0) {
     bNodeInstanceHashIterator iter;
@@ -244,6 +243,11 @@ static void ntree_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, cons
         socket_geometry_source->socket = socket_map.lookup(socket_geometry_source->socket);
       }
     }
+  }
+
+  if (ntree_src->geometry_node_asset_traits) {
+    ntree_dst->geometry_node_asset_traits = MEM_new<GeometryNodeAssetTraits>(
+        __func__, *ntree_src->geometry_node_asset_traits);
   }
 
   if (ntree_src->nested_node_refs) {
@@ -311,6 +315,8 @@ static void ntree_free_data(ID *id)
   if (ntree->id.tag & LIB_TAG_LOCALIZED) {
     BKE_libblock_free_data(&ntree->id, true);
   }
+
+  MEM_delete(ntree->geometry_node_asset_traits);
 
   if (ntree->nested_node_refs) {
     MEM_freeN(ntree->nested_node_refs);
@@ -1014,6 +1020,7 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
     BLO_read_data_address(reader, &link->tosock);
   }
 
+  BLO_read_data_address(reader, &ntree->geometry_node_asset_traits);
   BLO_read_data_address(reader, &ntree->nested_node_refs);
 
   /* TODO: should be dealt by new generic cache handling of IDs... */
@@ -1227,6 +1234,11 @@ static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData *asset_data)
   }
   BKE_asset_metadata_idprop_ensure(asset_data, inputs.release());
   BKE_asset_metadata_idprop_ensure(asset_data, outputs.release());
+  if (node_tree.geometry_node_asset_traits) {
+    auto property = idprop::create("geometry_node_asset_traits_flag",
+                                   node_tree.geometry_node_asset_traits->flag);
+    BKE_asset_metadata_idprop_ensure(asset_data, property.release());
+  }
 }
 
 }  // namespace blender::bke
@@ -4197,12 +4209,17 @@ void node_type_base(bNodeType *ntype, const int type, const char *name, const sh
    * since bNodeTypes are registered afterward ...
    */
 #define DefNode(Category, ID, DefFunc, EnumName, StructName, UIName, UIDesc) \
-  case ID: \
+  case ID: { \
     STRNCPY(ntype->idname, #Category #StructName); \
-    ntype->rna_ext.srna = RNA_struct_find(#Category #StructName); \
-    BLI_assert(ntype->rna_ext.srna != nullptr); \
-    RNA_struct_blender_type_set(ntype->rna_ext.srna, ntype); \
-    break;
+    StructRNA *srna = RNA_struct_find(#Category #StructName); \
+    BLI_assert(srna != nullptr); \
+    ntype->rna_ext.srna = srna; \
+    RNA_struct_blender_type_set(srna, ntype); \
+    RNA_def_struct_ui_text(srna, UIName, UIDesc); \
+    ntype->enum_name_legacy = EnumName; \
+    STRNCPY(ntype->ui_description, UIDesc); \
+    break; \
+  }
 
   switch (type) {
 #include "NOD_static_types.h"

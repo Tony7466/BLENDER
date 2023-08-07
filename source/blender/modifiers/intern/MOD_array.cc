@@ -37,8 +37,8 @@
 #include "BKE_object_deform.h"
 #include "BKE_screen.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
@@ -800,7 +800,9 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
   }
   /* done capping */
 
-  blender::bke::mesh_vert_normals_assign(*result, std::move(dst_vert_normals));
+  if (!dst_vert_normals.is_empty()) {
+    blender::bke::mesh_vert_normals_assign(*result, std::move(dst_vert_normals));
+  }
 
   /* Handle merging */
   tot_doubles = 0;

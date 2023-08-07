@@ -6,8 +6,6 @@
  * \ingroup edinterface
  */
 
-#include "UI_interface.h"
-
 #include "BKE_context.h"
 #include "BKE_node_tree_interface.hh"
 #include "BKE_node_tree_update.h"
@@ -19,17 +17,16 @@
 
 #include "DNA_node_tree_interface_types.h"
 
-#include "ED_node.h"
+#include "ED_node.hh"
 
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
 
-#include "UI_interface.h"
 #include "UI_interface.hh"
-#include "UI_resources.h"
+#include "UI_resources.hh"
 #include "UI_tree_view.hh"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 namespace node_interface = blender::bke::node_interface;
 

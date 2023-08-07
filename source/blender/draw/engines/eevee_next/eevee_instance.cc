@@ -77,6 +77,7 @@ void Instance::init(const int2 &output_res,
   /* Irradiance Cache needs reflection probes to be initialized. */
   reflection_probes.init();
   irradiance_cache.init();
+  volume.init();
 }
 
 void Instance::init_light_bake(Depsgraph *depsgraph, draw::Manager *manager)
@@ -142,6 +143,7 @@ void Instance::begin_sync()
   velocity.begin_sync(); /* NOTE: Also syncs camera. */
   lights.begin_sync();
   shadows.begin_sync();
+  volume.begin_sync();
   pipelines.begin_sync();
   cryptomatte.begin_sync();
   reflection_probes.begin_sync();
@@ -180,8 +182,14 @@ void Instance::scene_sync()
 
 void Instance::object_sync(Object *ob)
 {
-  const bool is_renderable_type = ELEM(
-      ob->type, OB_CURVES, OB_GPENCIL_LEGACY, OB_MESH, OB_POINTCLOUD, OB_LAMP, OB_LIGHTPROBE);
+  const bool is_renderable_type = ELEM(ob->type,
+                                       OB_CURVES,
+                                       OB_GPENCIL_LEGACY,
+                                       OB_MESH,
+                                       OB_POINTCLOUD,
+                                       OB_VOLUME,
+                                       OB_LAMP,
+                                       OB_LIGHTPROBE);
   const int ob_visibility = DRW_object_visibility_in_active_context(ob);
   const bool partsys_is_visible = (ob_visibility & OB_VISIBLE_PARTICLES) != 0 &&
                                   (ob->type == OB_MESH);
@@ -213,11 +221,15 @@ void Instance::object_sync(Object *ob)
         lights.sync_light(ob, ob_handle);
         break;
       case OB_MESH:
-        sync.sync_mesh(ob, ob_handle, res_handle, ob_ref);
+        if (!sync.sync_sculpt(ob, ob_handle, res_handle, ob_ref)) {
+          sync.sync_mesh(ob, ob_handle, res_handle, ob_ref);
+        }
         break;
       case OB_POINTCLOUD:
         sync.sync_point_cloud(ob, ob_handle, res_handle, ob_ref);
+        break;
       case OB_VOLUME:
+        volume.sync_object(ob, ob_handle, res_handle);
         break;
       case OB_CURVES:
         sync.sync_curves(ob, ob_handle, res_handle);
@@ -244,6 +256,13 @@ void Instance::object_sync_render(void *instance_,
 {
   UNUSED_VARS(engine, depsgraph);
   Instance &inst = *reinterpret_cast<Instance *>(instance_);
+
+  if (inst.visibility_collection != nullptr) {
+    bool object_part_of_group = BKE_collection_has_object(inst.visibility_collection, ob);
+    if (object_part_of_group == inst.visibility_collection_invert) {
+      return;
+    }
+  }
   inst.object_sync(ob);
 }
 
@@ -259,6 +278,7 @@ void Instance::end_sync()
   pipelines.end_sync();
   light_probes.end_sync();
   reflection_probes.end_sync();
+  volume.end_sync();
 }
 
 void Instance::render_sync()
@@ -545,7 +565,11 @@ void Instance::light_bake_irradiance(
   irradiance_cache.bake.init(probe);
 
   custom_pipeline_wrapper([&]() {
-    /* TODO: lightprobe visibility group option. */
+    const ::LightProbe *light_probe = static_cast<const ::LightProbe *>(probe.data);
+
+    visibility_collection = light_probe->visibility_grp;
+    visibility_collection_invert = (light_probe->flag & LIGHTPROBE_FLAG_INVERT_GROUP) != 0;
+
     manager->begin_sync();
     render_sync();
     manager->end_sync();
@@ -562,6 +586,7 @@ void Instance::light_bake_irradiance(
   sampling.init(probe);
   while (!sampling.finished()) {
     context_wrapper([&]() {
+      GPU_debug_capture_begin();
       /* Batch ray cast by pack of 16. Avoids too much overhead of the update function & context
        * switch. */
       /* TODO(fclem): Could make the number of iteration depend on the computation time. */
@@ -589,6 +614,7 @@ void Instance::light_bake_irradiance(
 
       float progress = sampling.sample_index() / float(sampling.sample_count());
       result_update(cache_frame, progress);
+      GPU_debug_capture_end();
     });
 
     if (stop()) {

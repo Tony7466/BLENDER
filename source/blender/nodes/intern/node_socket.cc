@@ -660,7 +660,7 @@ static void standard_node_socket_interface_from_socket(ID * /*id*/,
   iosock->init_from_socket_instance(sock);
 }
 
-extern "C" void ED_init_standard_node_socket_type(bNodeSocketType *);
+void ED_init_standard_node_socket_type(bNodeSocketType *);
 
 static bNodeSocketType *make_standard_socket_type(int type, int subtype)
 {
@@ -707,7 +707,7 @@ static bNodeSocketType *make_standard_socket_type(int type, int subtype)
   return stype;
 }
 
-extern "C" void ED_init_node_socket_type_virtual(bNodeSocketType *);
+void ED_init_node_socket_type_virtual(bNodeSocketType *);
 
 static bNodeSocketType *make_socket_type_virtual()
 {

@@ -14,7 +14,7 @@
 
 #include "rna_internal.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 const EnumPropertyItem rna_enum_node_tree_interface_item_type_items[] = {
     {NODE_INTERFACE_SOCKET, "SOCKET", 0, "Socket", ""},
@@ -29,8 +29,8 @@ const EnumPropertyItem rna_enum_node_tree_interface_item_type_items[] = {
 #  include "BKE_node_tree_update.h"
 #  include "BLI_math.h"
 #  include "DNA_material_types.h"
-#  include "ED_node.h"
-#  include "WM_api.h"
+#  include "ED_node.hh"
+#  include "WM_api.hh"
 
 /* Internal RNA function declarations, used to invoke registered callbacks. */
 extern "C" {
