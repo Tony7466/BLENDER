@@ -306,7 +306,7 @@ void WM_OT_usd_export(wmOperatorType *ot)
       "Animation",
       "Export all frames in the render frame range, rather than only the current frame");
   RNA_def_boolean(
-      ot->srna, "export_hair", false, "Hair", "Export hair particle systems as USD curves");
+      ot->srna, "export_hair", true, "Hair", "Export hair particle systems as USD curves");
   RNA_def_boolean(
       ot->srna, "export_uvmaps", true, "UV Maps", "Include all mesh UV maps in the export");
   RNA_def_boolean(ot->srna,
