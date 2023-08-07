@@ -355,7 +355,7 @@ bool ANIM_is_active_channel(bAnimListElem *ale)
     }
     case ANIMTYPE_GREASE_PENCIL_LAYER: {
       GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
-      return grease_pencil->active_layer == ale->data;
+      return grease_pencil->get_active_layer() == ale->data;
     }
     /* These channel types do not have active flags. */
     case ANIMTYPE_MASKLAYER:
@@ -3639,7 +3639,8 @@ static int click_select_channel_grease_pencil_layer(bContext *C,
                                                     const short selectmode,
                                                     const int /*filter*/)
 {
-  GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(ale->data);
+  using namespace blender::bke::greasepencil;
+  Layer *layer = static_cast<Layer *>(ale->data);
   GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
 
   if (selectmode == SELECT_INVERT) {
@@ -3655,8 +3656,8 @@ static int click_select_channel_grease_pencil_layer(bContext *C,
   }
 
   /* Active channel is not changed during range select. */
-  if (selectmode != SELECT_EXTEND_RANGE) {
-    grease_pencil->active_layer = layer;
+  if (layer->is_selected() && (selectmode != SELECT_EXTEND_RANGE)) {
+    grease_pencil->set_active_layer(layer);
   }
 
   WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
