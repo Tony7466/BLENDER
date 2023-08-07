@@ -43,12 +43,12 @@
 
 #include "IMB_imbuf.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "ED_datafiles.h"
 #include "ED_node_preview.hh"
-#include "ED_render.h"
-#include "ED_screen.h"
+#include "ED_render.hh"
+#include "ED_screen.hh"
 #include "node_intern.hh"
 
 namespace blender::ed::space_node {

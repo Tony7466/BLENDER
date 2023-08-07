@@ -23,10 +23,10 @@
 #include "DEG_depsgraph_query.h"
 #include "DNA_brush_enums.h"
 
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "grease_pencil_intern.hh"
 
