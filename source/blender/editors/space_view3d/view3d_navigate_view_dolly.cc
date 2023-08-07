@@ -291,15 +291,21 @@ static int viewdolly_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   /* do not set the delta property, as an integer it would be 0 here */
   if (ELEM(event->type, MOUSEZOOM, MOUSEPAN)) {
     int move_xy[2];
+    bool zoominv;
     
-    move_xy[0] = WM_event_absolute_delta_x(event);
-    move_xy[1] = WM_event_absolute_delta_y(event);
-    
-    if (event->type == MOUSEZOOM) {
-      /* Set y move = x move as MOUSEZOOM uses only x axis to pass magnification value */
-      move_xy[1] = move_xy[0];
+    if (event->type == MOUSEPAN) {
+      move_xy[0] = WM_event_absolute_delta_x(event);
+      move_xy[1] = WM_event_absolute_delta_y(event);
+      
+      zoominv = (U.uiflag & USER_ZOOM_INVERT) != 0;
     }
-    viewdolly_apply(vod, move_xy, (U.uiflag & USER_ZOOM_INVERT) != 0);
+    else { /* MOUSEZOOM */
+      /* Set y move = x move as MOUSEZOOM uses only x axis to pass magnification value */
+      move_xy[1] = move_xy[0] = WM_event_absolute_delta_x(event);
+      zoominv = false;
+    }
+    
+    viewdolly_apply(vod, move_xy, zoominv);
     ED_view3d_camera_lock_autokey(vod->v3d, vod->rv3d, C, false, true);
     
     viewops_data_free(C, static_cast<ViewOpsData *>(op->customdata));
