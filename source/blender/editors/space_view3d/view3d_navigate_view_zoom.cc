@@ -59,7 +59,7 @@ void viewzoom_modal_keymap(wmKeyConfig *keyconf)
  * \param zoom_xy: Optionally zoom to window location
  * (coords compatible w/ #wmEvent.mval).
  */
-static void view_zoom_to_window_xy_3d(const View3D *v3d,
+static void view_zoom_to_vector_3d(const View3D *v3d,
                                       ARegion *region,
                                       const float orig_ofs[3],
                                       const float orig_dist,
@@ -149,7 +149,7 @@ static void viewzoom_apply(ViewOpsData *vod, const int move_xy[2],
     }
     
     const float zoomctr_f_xy[2] = {(float)zoomctr_xy[0], (float)zoomctr_xy[1]};
-    view_zoom_to_window_xy_3d(vod->v3d, vod->region, vod->init.ofs, vod->init.dist, zoomctr_f_xy, delta);
+    view_zoom_to_vector_3d(vod->v3d, vod->region, vod->init.ofs, vod->init.dist, zoomctr_f_xy, delta);
     
     if (RV3D_LOCK_FLAGS(vod->rv3d) & RV3D_BOXVIEW) {
       view3d_boxview_sync(vod->area, vod->region);
@@ -179,8 +179,7 @@ static int viewzoom_modal_impl(bContext *C,
       }
       else {
         sub_v2_v2v2_int(move_xy, xy, vod->init.event_xy);
-        zoomctr_xy[0] = vod->region->winx / 2 + vod->init.event_xy_offset[0];
-        zoomctr_xy[1] = vod->region->winy / 2 + vod->init.event_xy_offset[1];
+        copy_v2_v2_int(zoomctr_xy, vod->init.event_xy_offset);
       }
       viewzoom_apply(vod, move_xy, (eViewZoom_Style)U.viewzoom,
                      (U.uiflag & USER_ZOOM_INVERT) != 0, zoomctr_xy);
@@ -232,7 +231,7 @@ static int viewzoom_apply_step(bContext *C, PointerRNA *ptr, ViewOpsData *vod, c
   }
   else {
     const float zoomctr_f_xy[2] = {(float)zoomctr_xy[0], (float)zoomctr_xy[1]};
-    view_zoom_to_window_xy_3d(v3d, region, rv3d->ofs, rv3d->dist, zoomctr_f_xy, delta);
+    view_zoom_to_vector_3d(v3d, region, rv3d->ofs, rv3d->dist, zoomctr_f_xy, delta);
     
     if (RV3D_LOCK_FLAGS(rv3d) & RV3D_BOXVIEW) {
       view3d_boxview_sync(area, region);
@@ -273,7 +272,7 @@ static int viewzoom_exec(bContext *C, wmOperator *op)
   v3d = static_cast<View3D *>(area->spacedata.first);
   rv3d = static_cast<RegionView3D *>(region->regiondata);
 
-  view_zoom_to_window_xy_3d(v3d, region, rv3d->ofs, rv3d->dist, zoomctr_f_xy, delta);
+  view_zoom_to_vector_3d(v3d, region, rv3d->ofs, rv3d->dist, zoomctr_f_xy, delta);
 
   if (RV3D_LOCK_FLAGS(rv3d) & RV3D_BOXVIEW) {
     view3d_boxview_sync(area, region);
@@ -348,8 +347,8 @@ static int viewzoom_invoke_impl(bContext *C,
     vod->timer = WM_event_timer_add(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.01f);
   }
   
-  vod->init.event_xy_offset[0] = zoomctr_xy[0] - (float)vod->region->winx / 2.0f;
-  vod->init.event_xy_offset[1] = zoomctr_xy[1] - (float)vod->region->winy / 2.0f;
+  vod->init.event_xy_offset[0] = zoomctr_xy[0];
+  vod->init.event_xy_offset[1] = zoomctr_xy[1];
   vod->init.zfac = 0.0f;
   copy_v2_v2_int(vod->prev.event_xy, event->xy);
 
