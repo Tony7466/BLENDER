@@ -180,7 +180,9 @@ typedef struct bNodeTreeInterface {
 
 #ifdef __cplusplus
 
-  /** Copy data from another interface. */
+  /** Copy data from another interface.
+   *  \param flag: ID creation/copying flags, e.g. LIB_ID_CREATE_NO_MAIN.
+   */
   void copy_data(const bNodeTreeInterface &src, int flag);
   /** Free data before the owning data block is freed.
    * \note Does not decrement ID user counts, this has to be done by the caller.
