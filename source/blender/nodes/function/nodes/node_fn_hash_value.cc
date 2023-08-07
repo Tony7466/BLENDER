@@ -44,6 +44,8 @@ static eCustomDataType hash_socket_to_type(const eNodeSocketDatatype socket_type
       return CD_PROP_FLOAT;
     case SOCK_INT:
       return CD_PROP_INT32;
+    case SOCK_BOOLEAN:
+      return CD_PROP_INT32;
     case SOCK_VECTOR:
       return CD_PROP_FLOAT3;
     case SOCK_RGBA:
@@ -142,8 +144,14 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
     else if (type == CD_PROP_STRING) {
       params.add_item(IFACE_("String"), SocketSearchOp{"String", type});
     }
+    else if (type == CD_PROP_QUATERNION) {
+      params.add_item(IFACE_("Rotation"), SocketSearchOp{"Rotation", type});
+    }
   }
   else {
+    if (ELEM(type, CD_PROP_STRING, CD_PROP_QUATERNION)) {
+      return;
+    }
     params.add_item(IFACE_("Hash"), SocketSearchOp{"Hash", CD_PROP_INT32});
   }
 }
