@@ -170,5 +170,4 @@ bool BKE_volume_save(const struct Volume *volume,
 
 bool BKE_volume_min_max(const Volume *volume, blender::float3 &r_min, blender::float3 &r_max);
 
-
 #endif

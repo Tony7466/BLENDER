@@ -113,13 +113,13 @@ class DynamicAttributesProvider {
                                             const AttributeIDRef &attribute_id) const = 0;
   virtual GAttributeWriter try_get_for_write(void *owner,
                                              const AttributeIDRef &attribute_id) const = 0;
-  virtual GAttributeGridReader try_get_grid_for_read(const void */*owner*/,
-                                                     const AttributeIDRef &/*attribute_id*/) const
+  virtual GAttributeGridReader try_get_grid_for_read(const void * /*owner*/,
+                                                     const AttributeIDRef & /*attribute_id*/) const
   {
     return {};
   }
-  virtual GAttributeGridWriter try_get_grid_for_write(void */*owner*/,
-                                                      const AttributeIDRef &/*attribute_id*/) const
+  virtual GAttributeGridWriter try_get_grid_for_write(
+      void * /*owner*/, const AttributeIDRef & /*attribute_id*/) const
   {
     return {};
   }

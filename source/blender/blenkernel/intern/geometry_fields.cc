@@ -205,8 +205,7 @@ volume::GGrid GeometryFieldInput::get_volume_grid_for_context(const fn::FieldCon
     return this->get_volume_grid_for_context(*geometry_context, mask);
   }
   if (const VolumeFieldContext *volume_context = dynamic_cast<const VolumeFieldContext *>(
-          &context))
-  {
+          &context)) {
     return this->get_volume_grid_for_context(GeometryFieldContext{volume_context->grids()}, mask);
   }
   return {};
@@ -252,8 +251,7 @@ GVArray CurvesFieldInput::get_varray_for_context(const fn::FieldContext &context
     }
   }
   if (const CurvesFieldContext *curves_context = dynamic_cast<const CurvesFieldContext *>(
-          &context))
-  {
+          &context)) {
     return this->get_varray_for_context(curves_context->curves(), curves_context->domain(), mask);
   }
   return {};
@@ -315,8 +313,7 @@ volume::GGrid VolumeFieldInput::get_volume_grid_for_context(const fn::FieldConte
     }
   }
   if (const VolumeFieldContext *volume_context = dynamic_cast<const VolumeFieldContext *>(
-          &context))
-  {
+          &context)) {
     return this->get_volume_grid_for_context(volume_context->grids(), mask);
   }
   return {};
@@ -741,8 +738,7 @@ std::optional<eAttrDomain> try_detect_field_domain(const GeometryComponent &comp
     }
     for (const fn::FieldInput &field_input : field_inputs->deduplicated_nodes) {
       if (const auto *geometry_field_input = dynamic_cast<const GeometryFieldInput *>(
-              &field_input))
-      {
+              &field_input)) {
         if (!handle_domain(geometry_field_input->preferred_domain(component))) {
           return std::nullopt;
         }
@@ -765,15 +761,13 @@ std::optional<eAttrDomain> try_detect_field_domain(const GeometryComponent &comp
     }
     for (const fn::FieldInput &field_input : field_inputs->deduplicated_nodes) {
       if (const auto *geometry_field_input = dynamic_cast<const GeometryFieldInput *>(
-              &field_input))
-      {
+              &field_input)) {
         if (!handle_domain(geometry_field_input->preferred_domain(component))) {
           return std::nullopt;
         }
       }
       else if (const auto *curves_field_input = dynamic_cast<const CurvesFieldInput *>(
-                   &field_input))
-      {
+                   &field_input)) {
         if (!handle_domain(curves_field_input->preferred_domain(curves->geometry.wrap()))) {
           return std::nullopt;
         }

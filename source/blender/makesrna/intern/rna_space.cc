@@ -1555,8 +1555,7 @@ static void rna_3DViewShading_render_pass_set(PointerRNA *ptr, int value)
     STRNCPY(shading->aov_name, aov->name);
   }
   else if (value == EEVEE_RENDER_PASS_BLOOM &&
-           ((scene->eevee.flag & SCE_EEVEE_BLOOM_ENABLED) == 0))
-  {
+           ((scene->eevee.flag & SCE_EEVEE_BLOOM_ENABLED) == 0)) {
     shading->render_pass = EEVEE_RENDER_PASS_COMBINED;
   }
   else {
@@ -3317,8 +3316,7 @@ const EnumPropertyItem *rna_SpaceSpreadsheet_attribute_domain_itemf(bContext * /
                 ATTR_DOMAIN_CORNER,
                 ATTR_DOMAIN_EDGE,
                 ATTR_DOMAIN_POINT,
-                ATTR_DOMAIN_FACE))
-      {
+                ATTR_DOMAIN_FACE)) {
         continue;
       }
     }
