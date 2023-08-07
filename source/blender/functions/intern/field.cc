@@ -589,7 +589,6 @@ Vector<GGrid> evaluate_volume_fields(ResourceScope &scope,
     if (!grid) {
       return {};
     }
-    BLI_assert(grid.voxel_count() >= mask.grid_->activeVoxelCount());
     return grid;
   };
 
