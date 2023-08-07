@@ -195,7 +195,6 @@ MutableGrid<T> MutableGrid<T>::create(const GGrid &mask,
 
   const typename TreeType::Ptr tree = nullptr;
   volume::grid_to_static_type(mask.grid_, [&](auto &typed_mask) {
-    using MaskGridType = typename std::decay<decltype(typed_mask)>::type;
     tree = typename TreeType::Ptr(new TreeType(
         typed_mask.grid_->tree(), inactive_value, active_value, openvdb::TopologyCopy{}));
   });
