@@ -23,7 +23,7 @@ GAttributeGridReader VolumeCustomAttributeGridProvider::try_get_grid_for_read(
 {
   const VolumeGridVector &grids = grid_access_.get_const_grids(owner);
   const VolumeGrid *grid = grids.find_grid(attribute_id);
-  return {grid ? grid->grid() : nullptr, domain_, nullptr};
+  return {{grid ? grid->grid() : nullptr}, domain_, nullptr};
 }
 
 GAttributeGridWriter VolumeCustomAttributeGridProvider::try_get_grid_for_write(
@@ -31,7 +31,7 @@ GAttributeGridWriter VolumeCustomAttributeGridProvider::try_get_grid_for_write(
 {
   VolumeGridVector &grids = grid_access_.get_grids(owner);
   VolumeGrid *grid = grids.find_grid(attribute_id);
-  return {grid ? grid->grid() : nullptr, domain_, nullptr};
+  return {{grid ? grid->grid() : nullptr}, domain_, nullptr};
 }
 
 bool VolumeCustomAttributeGridProvider::try_delete(void *owner,
@@ -54,9 +54,14 @@ bool VolumeCustomAttributeGridProvider::try_delete(void *owner,
 
 static openvdb::GridBase::Ptr add_generic_grid(const CPPType &value_type,
                                                const eCDAllocType /*alloctype*/,
-                                               const openvdb::GridBase::Ptr &grid_template)
+                                               const openvdb::GridBase::ConstPtr &grid_template)
 {
-  openvdb::GridBase::Ptr result = nullptr;
+  /* Template build sanitization: nested static type dispatch creates a lot of code, which can
+   * easily make builds run out of memory. Capturing a functor allows doing the 2nd type dispatch
+   * for the grid template separately, avoiding combinatorial explosion. */
+  std::function<openvdb::GridBase::Ptr(const openvdb::GridBase::ConstPtr &template_grid)>
+      apply_template_fn = nullptr;
+
   volume::field_to_static_type(value_type, [&](auto tag) {
     using ValueType = typename decltype(tag)::type;
     using GridType = volume::grid_types::GridCommon<ValueType>;
@@ -65,19 +70,29 @@ static openvdb::GridBase::Ptr add_generic_grid(const CPPType &value_type,
     const ValueType &background_value = *static_cast<const ValueType *>(
         value_type.default_value());
 
-    if (grid_template) {
-      volume::grid_to_static_type(grid_template, [&](auto &typed_template) {
-        /* Make a topology copy of the template tree for the result type. */
-        typename TreeType::Ptr tree = std::make_shared<TreeType>(
-            typed_template.tree(), background_value, openvdb::TopologyCopy{});
-        result = GridType::create(tree);
-      });
-    }
-    else {
-      result = GridType::create(background_value);
-    }
+    apply_template_fn =
+        [background_value](
+            const openvdb::GridBase::ConstPtr &grid_template) -> openvdb::GridBase::Ptr {
+      if (grid_template) {
+        openvdb::GridBase::Ptr result = nullptr;
+        volume::grid_to_static_type(grid_template, [&](auto &typed_template) {
+          /* Make a topology copy of the template tree for the result type. */
+          typename TreeType::Ptr tree = std::make_shared<TreeType>(
+              typed_template.tree(), background_value, openvdb::TopologyCopy{});
+          result = GridType::create(tree);
+        });
+        return result;
+      }
+      else {
+        return GridType::create(background_value);
+      }
+    };
   });
-  return result;
+
+  if (apply_template_fn) {
+    return apply_template_fn(grid_template);
+  }
+  return nullptr;
 }
 
 template<typename ToTreeType, typename FromTreeType, bool is_convertible> struct ConvertGridOp {
@@ -117,7 +132,12 @@ struct ConvertGridOp<ToTreeType, volume::grid_types::MaskTree, true> {
 static openvdb::GridBase::Ptr add_generic_grid_copy(const CPPType &value_type,
                                                     const volume::GGrid &data)
 {
-  openvdb::GridBase::Ptr result = nullptr;
+  /* Template build sanitization: nested static type dispatch creates a lot of code, which can
+   * easily make builds run out of memory. Capturing a functor allows doing the 2nd type dispatch
+   * for the grid template separately, avoiding combinatorial explosion. */
+  std::function<openvdb::GridBase::Ptr(const openvdb::GridBase::ConstPtr &from_grid)> copy_fn =
+      nullptr;
+
   volume::field_to_static_type(value_type, [&](auto tag) {
     using ValueType = typename decltype(tag)::type;
     using GridType = volume::grid_types::GridCommon<ValueType>;
@@ -126,21 +146,30 @@ static openvdb::GridBase::Ptr add_generic_grid_copy(const CPPType &value_type,
     const ValueType &background_value = *static_cast<const ValueType *>(
         value_type.default_value());
 
-    if (data) {
-      volume::grid_to_static_type(data.grid_, [&](auto &typed_data) {
-        using FromGridType = typename std::decay<decltype(typed_data)>::type;
-        using FromTreeType = typename FromGridType::TreeType;
-        using FromValueType = typename FromTreeType::ValueType;
-        ConvertGridOp<TreeType, FromTreeType, std::is_convertible_v<FromValueType, ValueType>>
-            convert;
-        result = convert(typed_data.tree());
-      });
-    }
-    else {
-      result = GridType::create(background_value);
-    }
+    copy_fn = [background_value](
+                  const openvdb::GridBase::ConstPtr &from_grid) -> openvdb::GridBase::Ptr {
+      openvdb::GridBase::Ptr result = nullptr;
+      if (from_grid) {
+        volume::grid_to_static_type(from_grid, [&](auto &typed_data) {
+          using FromGridType = typename std::decay<decltype(typed_data)>::type;
+          using FromTreeType = typename FromGridType::TreeType;
+          using FromValueType = typename FromTreeType::ValueType;
+          ConvertGridOp<TreeType, FromTreeType, std::is_convertible_v<FromValueType, ValueType>>
+              convert;
+          result = convert(typed_data.tree());
+        });
+      }
+      else {
+        result = GridType::create(background_value);
+      }
+      return result;
+    };
   });
-  return result;
+
+  if (copy_fn) {
+    return copy_fn(data.grid_);
+  }
+  return nullptr;
 }
 
 static openvdb::GridBase::Ptr add_generic_grid_move(const CPPType &value_type,
@@ -150,7 +179,6 @@ static openvdb::GridBase::Ptr add_generic_grid_move(const CPPType &value_type,
   volume::field_to_static_type(value_type, [&](auto tag) {
     using ValueType = typename decltype(tag)::type;
     using GridType = volume::grid_types::GridCommon<ValueType>;
-    using TreeType = typename GridType::TreeType;
 
     const ValueType &background_value = *static_cast<const ValueType *>(
         value_type.default_value());
@@ -182,7 +210,6 @@ static openvdb::GridBase::Ptr add_generic_grid_shared(const CPPType &value_type,
   volume::field_to_static_type(value_type, [&](auto tag) {
     using ValueType = typename decltype(tag)::type;
     using GridType = volume::grid_types::GridCommon<ValueType>;
-    using TreeType = typename GridType::TreeType;
 
     if (data) {
       /* Data must be same grid type */
