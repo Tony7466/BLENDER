@@ -815,14 +815,14 @@ static void recalcData_actedit(TransInfo *t)
           &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
       using namespace blender::bke::greasepencil;
-      for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+      LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
         if (ale->type != ANIMTYPE_GREASE_PENCIL_LAYER) {
           continue;
         }
 
         /* If the layer frame map was affected by the transformation, tag it for changes. We also
-         * set its status to initialized so that the frames map gets reset the next time this modal
-         * function is called.
+         * set its status to initialized so that the frames map gets reset the next time this
+         * modal function is called.
          */
         Layer *layer = static_cast<Layer *>(ale->data);
         if (layer->runtime->trans_frame_status == LayerRuntime::FrameTransformationOngoing) {
@@ -1077,31 +1077,31 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
       else if (ale->datatype == ALE_GREASE_PENCIL_CELS) {
         using namespace blender;
         using namespace bke::greasepencil;
-        Layer *layer = static_cast<Layer *>(ale->data);
+        Layer &layer = (static_cast<GreasePencilLayer *>(ale->data))->wrap();
 
-        if (layer->runtime->trans_frame_status == LayerRuntime::FrameTransformationUntouched) {
+        if (layer.runtime->trans_frame_status == LayerRuntime::FrameTransformationUntouched) {
           /* The layer was not affected by the transformation, so do nothing. */
           continue;
         }
 
         /* First, reset the frames to their initial state. */
-        layer->runtime->frames_ = layer->runtime->trans_frames_copy_;
-        layer->tag_frames_map_keys_changed();
+        layer.runtime->frames_ = layer.runtime->trans_frames_copy_;
+        layer.tag_frames_map_keys_changed();
 
         if (!canceled) {
           GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
 
           /* Apply the frame transformation. */
           for (const auto [src_frame_number, dst_frame_number] :
-               layer->runtime->trans_frame_data_.items()) {
+               layer.runtime->trans_frame_data_.items()) {
             grease_pencil->move_frame_at(layer, src_frame_number, dst_frame_number);
           }
         }
 
         /* Clear the frames copy. */
-        layer->runtime->trans_frames_copy_.clear();
-        layer->runtime->trans_frame_data_.clear();
-        layer->runtime->trans_frame_status = LayerRuntime::FrameTransformationUntouched;
+        layer.runtime->trans_frames_copy_.clear();
+        layer.runtime->trans_frame_data_.clear();
+        layer.runtime->trans_frame_status = LayerRuntime::FrameTransformationUntouched;
       }
     }
     ANIM_animdata_freelist(&anim_data);
