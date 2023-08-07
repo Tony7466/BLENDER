@@ -498,6 +498,8 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
   using GMutableGrid = volume::GMutableGrid;
 
  private:
+  static const GGrid empty_grid_;
+
   struct OutputPointerInfo {
     void *dst = nullptr;
     /* When a destination grid is provided for an input, this is
@@ -524,7 +526,9 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
   {
   }
 
-  VolumeFieldEvaluator(const FieldContext &context) : context_(context), domain_mask_({}) {}
+  VolumeFieldEvaluator(const FieldContext &context) : context_(context), domain_mask_(empty_grid_)
+  {
+  }
 
   ~VolumeFieldEvaluator()
   {

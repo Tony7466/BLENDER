@@ -1052,6 +1052,8 @@ IndexMask FieldEvaluator::get_evaluated_selection_as_mask()
 /** \name #VolumeFieldEvaluator
  * \{ */
 
+const volume::GGrid VolumeFieldEvaluator::empty_grid_ = {};
+
 static volume::GridMask grid_mask_from_selection(const volume::GGrid &full_mask,
                                                  const volume::Grid<bool> &selection,
                                                  ResourceScope & /*scope*/)
