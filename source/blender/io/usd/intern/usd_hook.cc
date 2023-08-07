@@ -243,7 +243,7 @@ class OnExportInvoker : public USDHookInvoker {
 
   void call_hook(PyObject *hook_obj) const override
   {
-    python::call_method<void>(hook_obj, function_name(), hook_context_);
+    python::call_method<bool>(hook_obj, function_name(), hook_context_);
   }
 };
 
@@ -270,7 +270,7 @@ class OnMaterialExportInvoker : public USDHookInvoker {
 
   void call_hook(PyObject *hook_obj) const override
   {
-    python::call_method<void>(
+    python::call_method<bool>(
         hook_obj, function_name(), hook_context_, material_ptr_, usd_material_);
   }
 };

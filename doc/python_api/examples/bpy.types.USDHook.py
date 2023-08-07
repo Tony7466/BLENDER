@@ -31,6 +31,10 @@ USD stage to be saved.
 Note that the target USD material might already have connected shaders created by the USD exporter or
 by other material export hooks.
 
+The hook functions should return ``True`` on success or ``False`` if the operation was bypasssed or
+otherwise failed to complete.  Exceptions raised by these functions will be reported in Blender, with
+the exception details printed to the console.
+
 The ``USDHookExample`` class in this example impements an ``on_export()`` function to add custom data to
 the stage's root layer and an ``on_material_export()`` function to create a simple ``MaterialX`` shader
 on the USD material.
@@ -68,6 +72,8 @@ class USDHookExample(bpy.types.USDHook):
         customData["blenderFilepath"] = data.filepath
         rootLayer.customLayerData = customData
 
+        return True
+
     @staticmethod
     def on_material_export(export_context, bl_material, usd_material):
         """ Create a simple MaterialX shader on the exported material.
@@ -86,6 +92,8 @@ class USDHookExample(bpy.types.USDHook):
         # Set the color to the Blender material's viewport display color.
         col = bl_material.diffuse_color
         shader.CreateInput("base_color", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(col[0], col[1], col[2]))
+
+        return True
 
 
 def register():
