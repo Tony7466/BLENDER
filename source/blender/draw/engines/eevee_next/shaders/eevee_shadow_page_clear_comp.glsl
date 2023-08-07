@@ -11,7 +11,8 @@ void main()
 {
   uvec2 page_co = unpackUvec2x16(clear_page_buf[gl_GlobalInvocationID.z]);
   uvec2 page_texel = page_co * pages_infos_buf.page_size + gl_GlobalInvocationID.xy;
+  int page_layer = 0;
 
   /* Clear to FLT_MAX instead of 1 so the far plane doesn't cast shadows onto farther objects. */
-  imageStore(atlas_img, ivec2(page_texel), uvec4(floatBitsToUint(FLT_MAX)));
+  imageStore(atlas_img, ivec3(page_texel, 0), uvec4(floatBitsToUint(FLT_MAX)));
 }

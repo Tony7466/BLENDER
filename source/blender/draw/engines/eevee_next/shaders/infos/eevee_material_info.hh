@@ -190,7 +190,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
     .image(SHADOW_ATLAS_SLOT,
            GPU_R32UI,
            Qualifier::READ_WRITE,
-           ImageType::UINT_2D,
+           ImageType::UINT_2D_ARRAY,
            "shadow_atlas_img")
     .storage_buf(SHADOW_PAGE_INFO_SLOT, Qualifier::READ, "ShadowPagesInfoData", "pages_infos_buf")
     .fragment_source("eevee_surf_shadow_frag.glsl")

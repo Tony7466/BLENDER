@@ -181,7 +181,7 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear)
     .local_group_size(SHADOW_PAGE_CLEAR_GROUP_SIZE, SHADOW_PAGE_CLEAR_GROUP_SIZE)
     .storage_buf(2, Qualifier::READ, "ShadowPagesInfoData", "pages_infos_buf")
     .storage_buf(6, Qualifier::READ, "uint", "clear_page_buf[]")
-    .image(0, GPU_R32UI, Qualifier::WRITE, ImageType::UINT_2D, "atlas_img")
+    .image(0, GPU_R32UI, Qualifier::WRITE, ImageType::UINT_2D_ARRAY, "atlas_img")
     .additional_info("eevee_shared")
     .compute_source("eevee_shadow_page_clear_comp.glsl");
 
@@ -192,7 +192,7 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear)
  * \{ */
 
 GPU_SHADER_CREATE_INFO(eevee_shadow_data)
-    .sampler(SHADOW_ATLAS_TEX_SLOT, ImageType::UINT_2D, "shadow_atlas_tx")
+    .sampler(SHADOW_ATLAS_TEX_SLOT, ImageType::UINT_2D_ARRAY, "shadow_atlas_tx")
     .sampler(SHADOW_TILEMAPS_TEX_SLOT, ImageType::UINT_2D, "shadow_tilemaps_tx");
 
 /** \} */

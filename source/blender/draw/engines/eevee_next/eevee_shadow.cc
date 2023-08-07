@@ -643,6 +643,7 @@ void ShadowModule::init()
     }
   }
 
+  /* Pool size is in MBytes. */
   int pool_size = enabled_ ? scene.eevee.shadow_pool_size : 0;
   shadow_page_len_ = clamp_i(pool_size * 4, SHADOW_PAGE_PER_ROW, SHADOW_MAX_PAGE);
 
@@ -656,15 +657,17 @@ void ShadowModule::init()
   int2 atlas_extent = shadow_page_size_ *
                       int2(SHADOW_PAGE_PER_ROW, shadow_page_len_ / SHADOW_PAGE_PER_ROW);
 
+  int atlas_layers = divide_ceil_u(shadow_page_len_, SHADOW_PAGE_PER_LAYER);
+
   eGPUTextureUsage tex_usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
-  if (atlas_tx_.ensure_2d(atlas_type, atlas_extent, tex_usage)) {
+  if (atlas_tx_.ensure_2d_array(atlas_type, atlas_extent, atlas_layers, tex_usage)) {
     /* Global update. */
     do_full_update = true;
   }
 
   /* Make allocation safe. Avoids crash later on. */
   if (!atlas_tx_.is_valid()) {
-    atlas_tx_.ensure_2d(atlas_type, int2(1));
+    atlas_tx_.ensure_2d_array(atlas_type, int2(1), 1);
     inst_.info = "Error: Could not allocate shadow atlas. Most likely out of GPU memory.";
   }
 

@@ -47,7 +47,7 @@ void write_depth(ivec2 texel_co, const int lod, ivec2 tile_co, float depth)
 
   /* TOOD(Metal): For Metal, textures will need to be viewed as buffers to workaround missing image
    * atomics support. */
-  imageAtomicMin(shadow_atlas_img, out_texel, u_depth);
+  imageAtomicMin(shadow_atlas_img, ivec3(out_texel, 0), u_depth);
 }
 
 void main()

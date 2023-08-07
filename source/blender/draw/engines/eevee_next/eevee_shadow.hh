@@ -260,7 +260,7 @@ class ShadowModule {
                             GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
                                 GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
                             int2(SHADOW_TILEMAP_RES),
-                            64,
+                            SHADOW_VIEW_MAX,
                             nullptr,
                             SHADOW_TILEMAP_LOD + 1};
   /** An empty frame-buffer (no attachment) the size of a whole tile-map. */
