@@ -134,7 +134,8 @@ struct ScreenSpacePoint {
 class PaintOperation : public GreasePencilStrokeOperation {
  private:
   Vector<float2> screen_space_coordinates_;
-  Vector<Vector<float2>> screen_space_smoothed_coordinates_;
+  Vector<Vector<float2>> screen_space_curve_fitted_coordinates_;
+  Vector<float2> screen_space_smoothed_coordinates_;
   int64_t active_smooth_index_ = 0;
 
   bke::greasepencil::StrokeCache *stroke_cache_;
@@ -147,7 +148,7 @@ class PaintOperation : public GreasePencilStrokeOperation {
   void on_stroke_done(const bContext &C) override;
 
  private:
-  void simplify_stroke_cache(const float epsilon);
+  void simplify_stroke_cache(const float epsilon_px);
   void create_stroke_from_stroke_cache(bke::greasepencil::Drawing &drawing_orig);
 };
 
@@ -223,7 +224,8 @@ struct PaintOperationExecutor {
     ScreenSpacePoint start_point = this->point_from_input_sample(start_sample);
 
     self.screen_space_coordinates_.append(start_point.co);
-    self.screen_space_smoothed_coordinates_.append(Vector<float2>({start_point.co}));
+    self.screen_space_curve_fitted_coordinates_.append(Vector<float2>({start_point.co}));
+    self.screen_space_smoothed_coordinates_.append(start_point.co);
 
     self.stroke_cache_->resize(1);
     self.stroke_cache_->positions_for_write().last() = screen_space_to_object_space(
@@ -281,14 +283,16 @@ struct PaintOperationExecutor {
     Array<float2> coords_smoothed(screen_space_coords_smooth_slice);
     interp_polyline_to_polyline(sampled_curve_points, coords_smoothed.as_mutable_span());
 
+    MutableSpan<float2> smoothed_coordinates_slice =
+        self.screen_space_smoothed_coordinates_.as_mutable_span().slice(smooth_window);
     MutableSpan<float3> positions_slice = self.stroke_cache_->positions_for_write().slice(
         smooth_window);
     bool stop_counting_converged = false;
     int num_converged = 0;
     for (const int64_t i : smooth_window.index_range()) {
       /* Record the curve fitting of this point. */
-      self.screen_space_smoothed_coordinates_[i].append(coords_smoothed[i]);
-      Span<float2> smoothed_coords_point = self.screen_space_smoothed_coordinates_[i];
+      self.screen_space_curve_fitted_coordinates_[i].append(coords_smoothed[i]);
+      Span<float2> smoothed_coords_point = self.screen_space_curve_fitted_coordinates_[i];
 
       /* Get the arithmetic mean of all the curve fittings of this point. */
       float2 mean = smoothed_coords_point[0];
@@ -310,6 +314,7 @@ struct PaintOperationExecutor {
       }
 
       /* Update the positions in the current cache. */
+      smoothed_coordinates_slice[i] = new_pos;
       positions_slice[i] = screen_space_to_object_space(new_pos);
     }
 
@@ -317,11 +322,11 @@ struct PaintOperationExecutor {
     if (num_converged > 0) {
       self.active_smooth_index_ = math::min(self.active_smooth_index_ + num_converged,
                                             self.stroke_cache_->size() - 1);
-      if (self.screen_space_smoothed_coordinates_.size() - num_converged > 0) {
-        self.screen_space_smoothed_coordinates_.remove(0, num_converged);
+      if (self.screen_space_curve_fitted_coordinates_.size() - num_converged > 0) {
+        self.screen_space_curve_fitted_coordinates_.remove(0, num_converged);
       }
       else {
-        self.screen_space_smoothed_coordinates_.clear();
+        self.screen_space_curve_fitted_coordinates_.clear();
       }
     }
 
@@ -380,8 +385,9 @@ struct PaintOperationExecutor {
     }
 
     self.screen_space_coordinates_.extend(new_coordinates);
+    self.screen_space_smoothed_coordinates_.extend(new_coordinates);
     for (float2 new_co : new_coordinates) {
-      self.screen_space_smoothed_coordinates_.append(Vector<float2>({new_co}));
+      self.screen_space_curve_fitted_coordinates_.append(Vector<float2>({new_co}));
     }
 
     self.stroke_cache_->resize(self.stroke_cache_->size() + new_points_num);
@@ -459,20 +465,20 @@ void PaintOperation::on_stroke_extended(const bContext &C, const InputSample &ex
   executor.execute(*this, C, extension_sample);
 }
 
-static float dist_to_interpolated(
-    float3 pos, float3 posA, float3 posB, float val, float valA, float valB)
+static float dist_to_interpolated_2d(
+    float2 pos, float2 posA, float2 posB, float val, float valA, float valB)
 {
-  float dist1 = math::distance_squared(posA, pos);
-  float dist2 = math::distance_squared(posB, pos);
+  const float dist1 = math::distance_squared(posA, pos);
+  const float dist2 = math::distance_squared(posB, pos);
 
-  if (dist1 + dist2 > 0) {
-    float interpolated_val = interpf(valB, valA, dist1 / (dist1 + dist2));
+  if (dist1 + dist2 > 0.0f) {
+    const float interpolated_val = interpf(valB, valA, dist1 / (dist1 + dist2));
     return math::distance(interpolated_val, val);
   }
   return 0.0f;
 }
 
-void PaintOperation::simplify_stroke_cache(const float epsilon)
+void PaintOperation::simplify_stroke_cache(const float epsilon_px)
 {
   const Span<float3> positions = stroke_cache_->positions();
   const Span<float> radii = stroke_cache_->radii();
@@ -480,31 +486,29 @@ void PaintOperation::simplify_stroke_cache(const float epsilon)
   const Span<ColorGeometry4f> vertex_colors = stroke_cache_->vertex_colors();
 
   /* Distance function for `ramer_douglas_peucker_simplify`. */
-  const auto dist_function = [positions,
+  const Span<float2> positions_2d = this->screen_space_smoothed_coordinates_.as_span();
+  const auto dist_function = [positions_2d,
                               radii](int64_t first_index, int64_t last_index, int64_t index) {
-    const float dist_position = dist_to_line_v3(
-        positions[index], positions[first_index], positions[last_index]);
-    /* We devide the distance by 2000.0f to convert from "pixels" to an actual distance.
-     * For some reason, grease pencil storkes the thickness of strokes in pixels rather
-     * than object space distance. */
-    const float dist_radii = dist_to_interpolated(positions[index],
-                                                  positions[first_index],
-                                                  positions[last_index],
-                                                  radii[index],
-                                                  radii[first_index],
-                                                  radii[last_index]) /
-                             2000.0f;
-    return math::max(dist_position, dist_radii);
+    const float dist_position_px = dist_to_line_segment_v2(
+        positions_2d[index], positions_2d[first_index], positions_2d[last_index]);
+    const float dist_radii_px = dist_to_interpolated_2d(positions_2d[index],
+                                                        positions_2d[first_index],
+                                                        positions_2d[last_index],
+                                                        radii[index],
+                                                        radii[first_index],
+                                                        radii[last_index]);
+    return math::max(dist_position_px, dist_radii_px);
   };
 
   Array<bool> points_to_delete(stroke_cache_->size(), false);
   int64_t total_points_to_remove = ed::greasepencil::ramer_douglas_peucker_simplify(
       IndexRange(stroke_cache_->size()),
-      epsilon,
+      epsilon_px,
       dist_function,
       points_to_delete.as_mutable_span());
 
   int64_t new_size = stroke_cache_->size() - total_points_to_remove;
+  BLI_assert(new_size > 0);
 
   Array<int64_t> old_indices(new_size);
   int64_t i = 0;
@@ -612,8 +616,8 @@ void PaintOperation::on_stroke_done(const bContext &C)
     return;
   }
 
-  const float simplifiy_threashold = 0.001f;
-  this->simplify_stroke_cache(simplifiy_threashold);
+  const float simplifiy_threashold_px = 0.5f;
+  this->simplify_stroke_cache(simplifiy_threashold_px);
 
   /* The object should have an active layer. */
   BLI_assert(grease_pencil.has_active_layer());
