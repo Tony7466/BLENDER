@@ -37,9 +37,9 @@ void write_depth(ivec2 texel_co, const int lod, ivec2 tile_co, float depth)
   if (page_packed == 0xFFFFFFFFu) {
     return;
   }
-  ivec2 page = ivec2(unpackUvec2x16(page_packed));
+  ivec3 page = ivec3(shadow_page_unpack(page_packed));
   ivec2 texel_in_page = texel_co_lod % pages_infos_buf.page_size;
-  ivec2 out_texel = page * pages_infos_buf.page_size + texel_in_page;
+  ivec2 out_texel = page.xy * pages_infos_buf.page_size + texel_in_page;
 
   uint u_depth = floatBitsToUint(depth);
   /* Quantization bias. Equivalent to nextafter in C without all the safety. 1 is not enough. */
@@ -47,7 +47,7 @@ void write_depth(ivec2 texel_co, const int lod, ivec2 tile_co, float depth)
 
   /* TOOD(Metal): For Metal, textures will need to be viewed as buffers to workaround missing image
    * atomics support. */
-  imageAtomicMin(shadow_atlas_img, ivec3(out_texel, 0), u_depth);
+  imageAtomicMin(shadow_atlas_img, ivec3(out_texel, page.z), u_depth);
 }
 
 void main()

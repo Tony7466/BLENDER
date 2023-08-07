@@ -48,7 +48,7 @@ void main()
   int do_lod_update = 0;
   /* Packed page (packUvec2x16) to render per LOD. */
   uint updated_lod_page[SHADOW_TILEMAP_LOD + 1];
-  uvec2 page_valid;
+  uvec3 page_valid;
   /* With all threads (LOD0 size dispatch) load each lod tile from the highest lod
    * to the lowest, keeping track of the lowest one allocated which will be use for shadowing.
    * Also save which page are to be updated. */
@@ -64,7 +64,7 @@ void main()
 
     if (tile.is_used && tile.do_update) {
       do_lod_update = 1 << lod;
-      updated_lod_page[lod] = packUvec2x16(tile.page);
+      updated_lod_page[lod] = shadow_page_pack(tile.page);
     }
     else {
       updated_lod_page[lod] = 0xFFFFFFFFu;

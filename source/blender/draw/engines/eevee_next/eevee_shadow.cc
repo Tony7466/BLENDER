@@ -644,8 +644,10 @@ void ShadowModule::init()
   }
 
   /* Pool size is in MBytes. */
-  int pool_size = enabled_ ? scene.eevee.shadow_pool_size : 0;
-  shadow_page_len_ = clamp_i(pool_size * 4, SHADOW_PAGE_PER_ROW, SHADOW_MAX_PAGE);
+  const size_t pool_byte_size = enabled_ ? scene.eevee.shadow_pool_size * square_i(1024) : 1;
+  const size_t page_byte_size = square_i(shadow_page_size_) * sizeof(int);
+  shadow_page_len_ = int(divide_ceil_ul(pool_byte_size, page_byte_size));
+  shadow_page_len_ = min_ii(shadow_page_len_, SHADOW_MAX_PAGE);
 
   float simplify_shadows = 1.0f;
   if (scene.r.mode & R_SIMPLIFY) {
@@ -654,10 +656,8 @@ void ShadowModule::init()
   }
   lod_bias_ = math::interpolate(float(SHADOW_TILEMAP_LOD), 0.0f, simplify_shadows);
 
-  int2 atlas_extent = shadow_page_size_ *
-                      int2(SHADOW_PAGE_PER_ROW, shadow_page_len_ / SHADOW_PAGE_PER_ROW);
-
-  int atlas_layers = divide_ceil_u(shadow_page_len_, SHADOW_PAGE_PER_LAYER);
+  const int2 atlas_extent = shadow_page_size_ * int2(SHADOW_PAGE_PER_ROW);
+  const int atlas_layers = divide_ceil_u(shadow_page_len_, SHADOW_PAGE_PER_LAYER);
 
   eGPUTextureUsage tex_usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
   if (atlas_tx_.ensure_2d_array(atlas_type, atlas_extent, atlas_layers, tex_usage)) {
@@ -858,8 +858,10 @@ void ShadowModule::end_sync()
     do_full_update = false;
     /* Put all pages in the free heap. */
     for (uint i : IndexRange(shadow_page_len_)) {
-      uint2 page = {i % SHADOW_PAGE_PER_ROW, i / SHADOW_PAGE_PER_ROW};
-      pages_free_data_[i] = page.x | (page.y << 16u);
+      uint3 page = {i % SHADOW_PAGE_PER_ROW,
+                    (i / SHADOW_PAGE_PER_ROW) % SHADOW_PAGE_PER_COL,
+                    i / SHADOW_PAGE_PER_LAYER};
+      pages_free_data_[i] = shadow_page_pack(page);
     }
     pages_free_data_.push_update();
 

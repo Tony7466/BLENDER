@@ -3,7 +3,7 @@
 
 /** \a unormalized_uv is the uv coordinates for the whole tilemap [0..SHADOW_TILEMAP_RES]. */
 vec2 shadow_page_uv_transform(
-    vec2 atlas_size, uvec2 page, uint lod, vec2 unormalized_uv, ivec2 tile_lod0_coord)
+    vec2 atlas_size, uvec3 page, uint lod, vec2 unormalized_uv, ivec2 tile_lod0_coord)
 {
   /* Bias uv sample for LODs since custom raster aligns LOD pixels instead of centering them. */
   if (lod != 0) {
@@ -13,7 +13,7 @@ vec2 shadow_page_uv_transform(
   vec2 target_tile = vec2(tile_lod0_coord >> lod);
   vec2 page_uv = unormalized_uv * lod_scaling - target_tile;
   /* Assumes atlas is squared. */
-  vec2 atlas_uv = (vec2(page) + min(page_uv, 0.99999)) * float(SHADOW_PAGE_RES) / atlas_size;
+  vec2 atlas_uv = (vec2(page.xy) + min(page_uv, 0.99999)) * float(SHADOW_PAGE_RES) / atlas_size;
   return atlas_uv;
 }
 
@@ -124,12 +124,7 @@ float shadow_tile_depth_get(usampler2DArray atlas_tx, ShadowTileData tile, vec2 
      * But also not FLT_MAX since it can cause issue with projection. */
     return 1.1;
   }
-#if SHADOW_ATOMIC
-  int layer = 0;
-#else
-  int layer = tile.layer;
-#endif
-  return uintBitsToFloat(texture(atlas_tx, vec3(atlas_uv, layer)).r);
+  return uintBitsToFloat(texture(atlas_tx, vec3(atlas_uv, float(tile.page.z))).r);
 }
 
 vec2 shadow_punctual_linear_depth(vec2 z, float near, float far)
