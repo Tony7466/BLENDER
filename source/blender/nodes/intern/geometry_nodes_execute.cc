@@ -455,6 +455,12 @@ static Vector<OutputAttributeToStore> compute_attributes_to_store(
     }
     const bke::GeometryComponent &component = *geometry.get_component(component_type);
     const bke::AttributeAccessor attributes = *component.attributes();
+    int main_grid = -1;
+    if (component.type() == bke::GeometryComponent::Type::Volume) {
+      const bke::VolumeComponent &volume_component = static_cast<const bke::VolumeComponent &>(
+          component);
+      main_grid = volume_component.get()->active_grid;
+    }
     for (const auto item : outputs_by_domain.items()) {
       const eAttrDomain domain = item.key;
       const Span<OutputAttributeInfo> outputs_info = item.value;
@@ -462,9 +468,10 @@ static Vector<OutputAttributeToStore> compute_attributes_to_store(
         continue;
       }
       const int domain_size = attributes.domain_size(domain);
+      const volume::GGrid domain_mask = attributes.domain_grid_mask(domain, main_grid);
       bke::GeometryFieldContext field_context{component, domain};
       fn::FieldEvaluator field_evaluator{field_context, domain_size};
-      fn::VolumeFieldEvaluator volume_field_evaluator{field_context};
+      fn::VolumeFieldEvaluator volume_field_evaluator{field_context, domain_mask};
       for (const OutputAttributeInfo &output_info : outputs_info) {
         const CPPType &type = output_info.field.cpp_type();
         const bke::AttributeValidator validator = attributes.lookup_validator(output_info.name);
