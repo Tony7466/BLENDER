@@ -165,7 +165,7 @@ template<typename T> bool socket_data_is_type(const char *socket_type)
   bool match = false;
   socket_types::socket_data_to_static_type_tag(socket_type, [&match](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    match |= std::is_same<T, SocketDataType>::value;
+    match |= std::is_same_v<T, SocketDataType>;
   });
   return match;
 }
