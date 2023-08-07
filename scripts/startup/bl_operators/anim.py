@@ -252,11 +252,27 @@ class NLA_OT_bake(Operator):
         ),
         default={'POSE'},
     )
+    channel_types: EnumProperty(
+        name="Channels",
+        description="Which channels to bake",
+        options={'ENUM_FLAG'},
+        items=(
+            ('LOCATION', "Location", "Bake location channels"),
+            ('ROTATION', "Rotation", "Bake rotation channels"),
+            ('SCALE', "Scale", "Bake scale channels"),
+            ('BBONE', "B-Bone", "Bake b-bone channels"),
+        ),
+        default={'LOCATION', 'ROTATION', 'SCALE', 'BBONE'},
+    )
 
     def execute(self, context):
         from bpy_extras import anim_utils
         do_pose = 'POSE' in self.bake_types
         do_object = 'OBJECT' in self.bake_types
+        do_location = 'LOCATION' in self.channel_types
+        do_rotation = 'ROTATION' in self.channel_types
+        do_scale = 'SCALE' in self.channel_types
+        do_bbone = 'BBONE' in self.channel_types
 
         if do_pose and self.only_selected:
             pose_bones = context.selected_pose_bones or []
@@ -283,6 +299,10 @@ class NLA_OT_bake(Operator):
             do_constraint_clear=self.clear_constraints,
             do_parents_clear=self.clear_parents,
             do_clean=self.clean_curves,
+            do_location=do_location,
+            do_rotation=do_rotation,
+            do_scale=do_scale,
+            do_bbone=do_bbone,
         )
 
         if not any(actions):
