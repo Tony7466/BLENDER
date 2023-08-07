@@ -160,13 +160,7 @@ typedef struct bNodeTreeInterfacePanel {
    */
   void foreach_item(blender::FunctionRef<bool(bNodeTreeInterfaceItem &item)> fn,
                     bool include_self = false);
-  /**
-   * Apply a function to every item in the panel, including child panels.
-   * \note: The items are visited in drawing order from top to bottom.
-   *
-   * \param fn: Function to execute for each item, iterations stops if false is returned.
-   * \param include_root: Include the panel itself in the iteration.
-   */
+  /** Same as above but for a const interface. */
   void foreach_item(blender::FunctionRef<bool(const bNodeTreeInterfaceItem &item)> fn,
                     bool include_self = false) const;
 #endif
