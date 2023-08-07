@@ -77,6 +77,9 @@ struct ShaderNodesPreviewJob {
   Vector<bNode *> AOV_nodes;
   Vector<bNode *> shader_nodes;
 
+  bNode *rendering_node;
+  bool rendering_AOVs;
+
   Main *bmain;
 };
 
@@ -289,29 +292,30 @@ ImBuf *node_preview_acquire_ibuf(bNodeTree &ntree,
   }
 
   RenderResult *rr = RE_AcquireResultRead(tree_previews.previews_render);
-  ImBuf *&image_cached = tree_previews.previews_map.lookup_or_add(&node, nullptr);
+  ImBuf *&image_cached = tree_previews.previews_map.lookup_or_add(node.identifier, nullptr);
   if (rr == nullptr) {
     return image_cached;
   }
-  ImBuf *image_latest = nullptr;
-  if (node_use_aov(node)) {
-    image_latest = get_image_from_viewlayer_and_pass(*rr, nullptr, node.name);
-  }
-  else {
-    image_latest = get_image_from_viewlayer_and_pass(*rr, node.name, nullptr);
-  }
-  if (image_latest == nullptr) {
-    ntree.runtime->previews_refresh_state++;
-    return image_cached;
-  }
-  if (image_cached != image_latest) {
-    if (image_cached != nullptr) {
-      IMB_freeImBuf(image_cached);
+  if (image_cached == nullptr) {
+    if (tree_previews.rendering == false) {
+      ntree.runtime->previews_refresh_state++;
     }
-    IMB_refImBuf(image_latest);
-    image_cached = image_latest;
+    else {
+      /* When the render process is started, the user must see that the preview area is open. */
+      ImBuf *image_latest = nullptr;
+      if (node_use_aov(node)) {
+        image_latest = get_image_from_viewlayer_and_pass(*rr, nullptr, node.name);
+      }
+      else {
+        image_latest = get_image_from_viewlayer_and_pass(*rr, node.name, nullptr);
+      }
+      if (image_latest) {
+        IMB_refImBuf(image_latest);
+        image_cached = image_latest;
+      }
+    }
   }
-  return image_latest;
+  return image_cached;
 }
 
 void node_release_preview_ibuf(NestedTreePreviews &tree_previews)
@@ -439,10 +443,14 @@ static bool prepare_viewlayer_update(void *pvl_data, ViewLayer *vl, Depsgraph *d
   for (bNode *node_iter : job_data->shader_nodes) {
     if (STREQ(vl->name, node_iter->name)) {
       node = node_iter;
+      job_data->rendering_node = node_iter;
+      job_data->rendering_AOVs = false;
       break;
     }
   }
   if (node == nullptr) {
+    job_data->rendering_node = nullptr;
+    job_data->rendering_AOVs = true;
     /* The AOV layer is the default `ViewLayer` of the scene(which should be the first one). */
     return job_data->AOV_nodes.size() > 0 && !vl->prev;
   }
@@ -469,10 +477,42 @@ static bool prepare_viewlayer_update(void *pvl_data, ViewLayer *vl, Depsgraph *d
 }
 
 /* Called by renderer, refresh the UI. */
-static void all_nodes_preview_update(void *npv, RenderResult * /*rr*/, struct rcti * /*rect*/)
+static void all_nodes_preview_update(void *npv, RenderResult *rr, struct rcti * /*rect*/)
 {
   ShaderNodesPreviewJob *job_data = static_cast<ShaderNodesPreviewJob *>(npv);
   *job_data->do_update = true;
+  if (bNode *node = job_data->rendering_node) {
+    ImBuf *&image_cached = job_data->tree_previews->previews_map.lookup_or_add(node->identifier,
+                                                                               nullptr);
+    ImBuf *image_latest = get_image_from_viewlayer_and_pass(*rr, node->name, nullptr);
+    if (image_latest == nullptr) {
+      return;
+    }
+    if (image_cached != image_latest) {
+      if (image_cached != nullptr) {
+        IMB_freeImBuf(image_cached);
+      }
+      IMB_refImBuf(image_latest);
+      image_cached = image_latest;
+    }
+  }
+  if (job_data->rendering_AOVs) {
+    for (bNode *node : job_data->AOV_nodes) {
+      ImBuf *&image_cached = job_data->tree_previews->previews_map.lookup_or_add(node->identifier,
+                                                                                 nullptr);
+      ImBuf *image_latest = get_image_from_viewlayer_and_pass(*rr, nullptr, node->name);
+      if (image_latest == nullptr) {
+        continue;
+      }
+      if (image_cached != image_latest) {
+        if (image_cached != nullptr) {
+          IMB_freeImBuf(image_cached);
+        }
+        IMB_refImBuf(image_latest);
+        image_cached = image_latest;
+      }
+    }
+  }
 }
 
 static void preview_render(ShaderNodesPreviewJob &job_data)
@@ -607,6 +647,12 @@ static void shader_preview_startjob(void *customdata,
   bNodeTree *active_nodetree = job_data->treepath_copy.last()->nodetree;
   for (bNode *node : active_nodetree->all_nodes()) {
     if (!(node->flag & NODE_PREVIEW)) {
+      /* Clear the cached preview for this node to be sure that the preview is rerendered if
+       * needed. */
+      if (ImBuf **ibuf = job_data->tree_previews->previews_map.lookup_ptr(node->identifier)) {
+        IMB_freeImBuf(*ibuf);
+        *ibuf = nullptr;
+      }
       continue;
     }
     if (node_use_aov(*node)) {
@@ -680,6 +726,8 @@ static void ensure_nodetree_previews(const bContext &C,
   job_data->tree_previews = &tree_previews;
   job_data->bmain = CTX_data_main(&C);
   job_data->mat_copy = duplicate_material(material);
+  job_data->rendering_node = nullptr;
+  job_data->rendering_AOVs = false;
 
   /* Update the treepath copied to fit the structure of the nodetree copied. */
   bNodeTreePath *root_path = MEM_cnew<bNodeTreePath>(__func__);
