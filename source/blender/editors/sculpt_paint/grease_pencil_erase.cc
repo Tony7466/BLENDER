@@ -380,7 +380,7 @@ struct EraseOperationExecutor {
      * numbers for which the integer is the index of the corresponding segment in the source
      * curves, and the float part is the (0,1) factor representing its position in the segment.
      */
-    Array<std::pair<int, float>> dst_points_parameters(dst_points_num);
+    Array<std::pair<int64_t, float>> dst_points_parameters(dst_points_num);
     Array<bool> is_cut(dst_points_num, false);
     Array<int64_t> src_pivot_point(src_curves_num, -1);
     Array<int64_t> dst_interm_curves_offsets(src_curves_num + 1, 0);
