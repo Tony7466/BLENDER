@@ -114,7 +114,7 @@ struct EraseOperationExecutor {
     }
 
     /* Two intersections. */
-    const float i_sqrt = sqrtf(i);
+    const float i_sqrt = sqrtf(float(i));
     const float mu0_f = (-b + i_sqrt) / (2.0f * a);
     const float mu1_f = (-b - i_sqrt) / (2.0f * a);
 
@@ -357,7 +357,7 @@ struct EraseOperationExecutor {
     /* Compute total points inside. */
     int64_t total_points_inside = 0;
     for (const int src_point : src.points_range()) {
-      total_points_inside += int(is_point_inside[src_point]);
+      total_points_inside += is_point_inside[src_point] ? 1 : 0;
     }
 
     /* Compute total points that are cuts, meaning points that lie in the boundary of the eraser.
@@ -365,7 +365,7 @@ struct EraseOperationExecutor {
      */
     int64_t total_points_cut = 0;
     for (const int src_point : src.points_range()) {
-      total_points_cut += int(is_point_cut[src_point]);
+      total_points_cut += is_point_cut[src_point] ? 1 : 0;
     }
 
     /* Total number of points in the destination :
