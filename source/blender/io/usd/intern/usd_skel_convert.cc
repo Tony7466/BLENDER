@@ -610,7 +610,10 @@ void import_skeleton(Main *bmain, Object *arm_obj, const pxr::UsdSkelSkeleton &s
   pxr::UsdSkelSkeletonQuery skel_query = skel_cache.GetSkelQuery(skel);
 
   if (!skel_query.IsValid()) {
-    std::cout << "WARNING: couldn't query skeleton " << skel.GetPath() << std::endl;
+    WM_reportf(RPT_WARNING,
+               "%s: Couldn't query skeleton %s",
+               __func__,
+               skel.GetPath().GetAsString().c_str());
     return;
   }
 
@@ -619,20 +622,24 @@ void import_skeleton(Main *bmain, Object *arm_obj, const pxr::UsdSkelSkeleton &s
   pxr::VtTokenArray joint_order = skel_query.GetJointOrder();
 
   if (joint_order.size() != skel_topology.size()) {
-    std::cout << "WARNING: skel topology and joint order size mismatch\n";
+    WM_reportf(RPT_WARNING,
+               "%s: Topology and joint order size mismatch for skeleton %s",
+               __func__,
+               skel.GetPath().GetAsString().c_str());
     return;
   }
 
   bArmature *arm = static_cast<bArmature *>(arm_obj->data);
 
+  /* Set the armature to edit mode when creating the bones. */
   ED_armature_to_edit(arm);
 
   /* The bones we create, stored in the skeleton's joint order. */
   std::vector<EditBone *> edit_bones;
 
-  size_t num_joints = skel_topology.GetNumJoints();
-
-  /* Keep track of the bones we create for each joint. */
+  /* Keep track of the bones we create for each joint.
+   * We'll need this when creating animation curves
+   * later. */
   std::map<pxr::TfToken, std::string> joint_to_bone_map;
 
   /* Create the bones. */
@@ -640,7 +647,10 @@ void import_skeleton(Main *bmain, Object *arm_obj, const pxr::UsdSkelSkeleton &s
     std::string name = pxr::SdfPath(joint).GetName();
     EditBone *bone = ED_armature_ebone_add(arm, name.c_str());
     if (!bone) {
-      std::cout << "WARNING: couldn't add bone for joint " << joint << std::endl;
+      WM_reportf(RPT_WARNING,
+                 "%s: Couldn't add bone for joint %s",
+                 __func__,
+                 joint.GetString().c_str());
       edit_bones.push_back(nullptr);
       continue;
     }
@@ -649,45 +659,30 @@ void import_skeleton(Main *bmain, Object *arm_obj, const pxr::UsdSkelSkeleton &s
   }
 
   /* Sanity check: we should have created a bone for each joint. */
-
+  size_t num_joints = skel_topology.GetNumJoints();
   if (edit_bones.size() != num_joints) {
-    std::cout << "WARNING: mismatch in bone and joint counts for skeleton " << skel.GetPath()
-              << std::endl;
+    WM_reportf(RPT_WARNING,
+               "%s: Mismatch in bone and joint counts for skeleton %s",
+               __func__,
+               skel.GetPath().GetAsString().c_str());
     return;
   }
 
-  /* Record the child bone indices per parent bone. */
-  std::vector<std::vector<int>> child_bones(num_joints);
-
-  /* Set bone parenting. */
-  for (size_t i = 0; i < num_joints; ++i) {
-    int parent_idx = skel_topology.GetParent(i);
-    if (parent_idx < 0) {
-      continue;
-    }
-    if (parent_idx >= edit_bones.size()) {
-      std::cout << "WARNING: out of bounds parent index for bone " << pxr::SdfPath(joint_order[i])
-                << " for skeleton " << skel.GetPath() << std::endl;
-      continue;
-    }
-
-    child_bones[parent_idx].push_back(i);
-    if (edit_bones[i] && edit_bones[parent_idx]) {
-      edit_bones[i]->parent = edit_bones[parent_idx];
-    }
-  }
-
-  /* Joint bind transforms. */
+  /* Get the world space joint transforms at bind time. */
   pxr::VtMatrix4dArray bind_xforms;
   if (!skel_query.GetJointWorldBindTransforms(&bind_xforms)) {
-    std::cout << "WARNING: couldn't get world bind transforms for skeleton "
-              << skel_query.GetSkeleton().GetPrim().GetPath() << std::endl;
+    WM_reportf(RPT_WARNING,
+               "%s: Couldn't get world bind transforms for skeleton %s",
+               __func__,
+               skel.GetPath().GetAsString().c_str());
     return;
   }
 
   if (bind_xforms.size() != num_joints) {
-    std::cout << "WARNING: mismatch in local space rest xforms and joint counts for skeleton "
-              << skel.GetPath() << std::endl;
+    WM_reportf(RPT_WARNING,
+               "%s:  Mismatch in bind xforms and joint counts for skeleton %s",
+               __func__,
+               skel.GetPath().GetAsString().c_str());
     return;
   }
 
@@ -744,6 +739,27 @@ void import_skeleton(Main *bmain, Object *arm_obj, const pxr::UsdSkelSkeleton &s
    * children, so that the bone size is in proportion with the
    * overall skeleton hierarchy.  USD skeletons are composed of
    * joints which we imperfectly represent as bones. */
+
+  /* First, record the child bone indices per parent bone,
+   * to simplify accessing children when computing lengths. */
+  std::vector<std::vector<int>> child_bones(num_joints);
+
+  for (size_t i = 0; i < num_joints; ++i) {
+    int parent_idx = skel_topology.GetParent(i);
+    if (parent_idx < 0) {
+      continue;
+    }
+    if (parent_idx >= edit_bones.size()) {
+      std::cout << "WARNING: out of bounds parent index for bone " << pxr::SdfPath(joint_order[i])
+                << " for skeleton " << skel.GetPath() << std::endl;
+      continue;
+    }
+
+    child_bones[parent_idx].push_back(i);
+    if (edit_bones[i] && edit_bones[parent_idx]) {
+      edit_bones[i]->parent = edit_bones[parent_idx];
+    }
+  }
 
   float avg_len_scale = 0;
   for (size_t i = 0; i < num_joints; ++i) {
@@ -805,6 +821,7 @@ void import_skeleton(Main *bmain, Object *arm_obj, const pxr::UsdSkelSkeleton &s
     }
   }
 
+  /* Get out of edit mode. */
   ED_armature_from_edit(bmain, arm);
   ED_armature_edit_free(arm);
 
