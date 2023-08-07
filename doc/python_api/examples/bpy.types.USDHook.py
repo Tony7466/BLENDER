@@ -61,10 +61,10 @@ class USDHookExample(bpy.types.USDHook):
         stage = export_context.get_stage()
 
         if stage is None:
-            return
+            return False
         data = bpy.data
         if data is None:
-            return
+            return False
 
         # Set the custom data.
         rootLayer = stage.GetRootLayer()
