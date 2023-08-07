@@ -18,8 +18,8 @@
 #include "RNA_types.h"
 #include "bpy_rna.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include <list>
 

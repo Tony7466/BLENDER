@@ -12,14 +12,14 @@
 
 #include "rna_internal.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 #include "usd.h"
 
 #ifdef RNA_RUNTIME
 
 #  include "DNA_object_types.h"
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
 static StructRNA *rna_USDHook_refine(PointerRNA *ptr)
 {
