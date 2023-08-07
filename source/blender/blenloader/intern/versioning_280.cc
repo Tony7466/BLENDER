@@ -108,7 +108,7 @@
 
 #include "MEM_guardedalloc.h"
 
-/* Make preferences read-only, use versioning_userdef.c. */
+/* Make preferences read-only, use `versioning_userdef.cc`. */
 #define U (*((const UserDef *)&U))
 
 static bScreen *screen_parent_find(const bScreen *screen)
@@ -1228,43 +1228,23 @@ static void displacement_principled_nodes(bNode *node)
   }
 }
 
-static bool node_has_roughness(const bNode *node)
-{
-  return ELEM(node->type,
-              SH_NODE_BSDF_GLASS,
-              SH_NODE_BSDF_GLOSSY_LEGACY,
-              SH_NODE_BSDF_GLOSSY,
-              SH_NODE_BSDF_REFRACTION);
-}
-
 static void square_roughness_node_insert(bNodeTree *ntree)
 {
-  bool need_update = false;
-
-  /* Update default values */
-  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-    if (node_has_roughness(node)) {
-      bNodeSocket *roughness_input = nodeFindSocket(node, SOCK_IN, "Roughness");
-      float *roughness_value = version_cycles_node_socket_float_value(roughness_input);
-      *roughness_value = sqrtf(max_ff(*roughness_value, 0.0f));
-    }
-  }
-
-  /* Iterate backwards from end so we don't encounter newly added links. */
-  LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
-    /* Detect link to replace. */
-    bNode *fromnode = link->fromnode;
-    bNodeSocket *fromsock = link->fromsock;
-    bNode *tonode = link->tonode;
-    bNodeSocket *tosock = link->tosock;
-
-    if (!(node_has_roughness(tonode) && STREQ(tosock->identifier, "Roughness"))) {
-      continue;
-    }
-
-    /* Replace links with sqrt node */
-    nodeRemLink(ntree, link);
-
+  auto check_node = [](const bNode *node) {
+    return ELEM(node->type,
+                SH_NODE_BSDF_GLASS,
+                SH_NODE_BSDF_GLOSSY_LEGACY,
+                SH_NODE_BSDF_GLOSSY,
+                SH_NODE_BSDF_REFRACTION);
+  };
+  auto update_input = [](const bNode *, bNodeSocket *input) {
+    float *value = version_cycles_node_socket_float_value(input);
+    *value = sqrtf(max_ff(*value, 0.0f));
+  };
+  auto update_input_link = [ntree](bNode *fromnode,
+                                   bNodeSocket *fromsock,
+                                   bNode *tonode,
+                                   bNodeSocket *tosock) {
     /* Add sqrt node. */
     bNode *node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
     node->custom1 = NODE_MATH_POWER;
@@ -1275,13 +1255,9 @@ static void square_roughness_node_insert(bNodeTree *ntree)
     *version_cycles_node_socket_float_value(static_cast<bNodeSocket *>(node->inputs.last)) = 0.5f;
     nodeAddLink(ntree, fromnode, fromsock, node, static_cast<bNodeSocket *>(node->inputs.first));
     nodeAddLink(ntree, node, static_cast<bNodeSocket *>(node->outputs.first), tonode, tosock);
+  };
 
-    need_update = true;
-  }
-
-  if (need_update) {
-    version_socket_update_is_used(ntree);
-  }
+  version_update_node_input(ntree, check_node, "Roughness", update_input, update_input_link);
 }
 
 static void mapping_node_order_flip(bNode *node)
@@ -2459,7 +2435,7 @@ void do_versions_after_linking_280(FileData *fd, Main *bmain)
               }
 
               /* Create a tree store element for the collection. This is normally
-               * done in check_persistent (outliner_tree.c), but we need to access
+               * done in check_persistent `outliner_tree.cc`, but we need to access
                * it here :/ (expand element if it's the only one) */
               TreeStoreElem *tselem = static_cast<TreeStoreElem *>(
                   BLI_mempool_calloc(space_outliner->treestore));
@@ -3122,8 +3098,8 @@ void do_versions_after_linking_280(FileData *fd, Main *bmain)
    *
    * \note Be sure to check when bumping the version:
    * - #blo_do_versions_280 in this file.
-   * - "versioning_userdef.c", #blo_do_versions_userdef
-   * - "versioning_userdef.c", #do_versions_theme
+   * - `versioning_userdef.cc`, #blo_do_versions_userdef
+   * - `versioning_userdef.cc`, #do_versions_theme
    *
    * \note Keep this message at the bottom of the function.
    */
@@ -6551,8 +6527,8 @@ void blo_do_versions_280(FileData *fd, Library * /*lib*/, Main *bmain)
    *
    * \note Be sure to check when bumping the version:
    * - #do_versions_after_linking_280 in this file.
-   * - "versioning_userdef.c", #blo_do_versions_userdef
-   * - "versioning_userdef.c", #do_versions_theme
+   * - `versioning_userdef.cc`, #blo_do_versions_userdef
+   * - `versioning_userdef.cc`, #do_versions_theme
    *
    * \note Keep this message at the bottom of the function.
    */

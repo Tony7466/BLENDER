@@ -149,6 +149,11 @@ class MultiDevice : public Device {
       return BVH_LAYOUT_MULTI_EMBREEGPU_EMBREE;
     }
 
+    const BVHLayoutMask BVH_LAYOUT_HIPRT_EMBREE = (BVH_LAYOUT_HIPRT | BVH_LAYOUT_EMBREE);
+    if ((bvh_layout_mask_all & BVH_LAYOUT_HIPRT_EMBREE) == BVH_LAYOUT_HIPRT_EMBREE) {
+      return BVH_LAYOUT_MULTI_HIPRT_EMBREE;
+    }
+
     return bvh_layout_mask;
   }
 
