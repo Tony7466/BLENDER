@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * SPDX-FileCopyrightText: 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -18,7 +19,7 @@ namespace blender::io::hydra {
 class MaterialData : public IdData {
  public:
   MaterialData(HydraSceneDelegate *scene_delegate,
-               Material *material,
+               const Material *material,
                pxr::SdfPath const &prim_id);
 
   void init() override;

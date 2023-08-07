@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * SPDX-FileCopyrightText: 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "instancer.h"
 
@@ -161,7 +162,7 @@ void InstancerData::update_instance(DupliObject *dupli)
 
 void InstancerData::post_update()
 {
-  /* Remove mesh intances without indices */
+  /* Remove mesh instances without indices. */
   mesh_instances_.remove_if([&](auto item) {
     bool res = item.value.indices.empty();
     if (res) {
@@ -170,13 +171,13 @@ void InstancerData::post_update()
     return res;
   });
 
-  /* Update light intances and remove instances without transforms */
+  /* Update light instances and remove instances without transforms. */
   for (auto &l_inst : nonmesh_instances_.values()) {
     update_nonmesh_instance(l_inst);
   }
   nonmesh_instances_.remove_if([&](auto item) { return item.value.transforms.empty(); });
 
-  /* Insert/remove/update instancer in RenderIndex */
+  /* Insert/remove/update instancer in RenderIndex. */
   pxr::HdRenderIndex &index = scene_delegate_->GetRenderIndex();
   if (mesh_instances_.is_empty()) {
     /* Important: removing instancer when nonmesh_instances_ are empty too */

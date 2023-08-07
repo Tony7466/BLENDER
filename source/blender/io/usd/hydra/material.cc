@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * SPDX-FileCopyrightText: 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "material.h"
 
@@ -26,9 +27,9 @@
 namespace blender::io::hydra {
 
 MaterialData::MaterialData(HydraSceneDelegate *scene_delegate,
-                           Material *material,
+                           const Material *material,
                            pxr::SdfPath const &prim_id)
-    : IdData(scene_delegate, (ID *)material, prim_id)
+    : IdData(scene_delegate, (const ID *)material, prim_id)
 {
 }
 

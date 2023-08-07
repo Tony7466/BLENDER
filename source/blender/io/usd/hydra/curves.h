@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * SPDX-FileCopyrightText: 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -27,7 +28,9 @@ class CurvesData : public ObjectData {
   MaterialData *mat_data_ = nullptr;
 
  public:
-  CurvesData(HydraSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
+  CurvesData(HydraSceneDelegate *scene_delegate,
+             const Object *object,
+             pxr::SdfPath const &prim_id);
 
   void init() override;
   void insert() override;
@@ -45,8 +48,8 @@ class CurvesData : public ObjectData {
   void write_materials() override;
 
  private:
-  void write_curves(Curves *curves);
-  void write_uv_maps(Curves *curves);
+  void write_curves(const Curves *curves_id);
+  void write_uv_maps(const Curves *curves_id);
 };
 
 }  // namespace blender::io::hydra
