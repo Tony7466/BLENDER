@@ -406,59 +406,6 @@ static float dist_to_interpolated(
   return 0.0f;
 }
 
-/**
- * An implementation of the Ramer-Douglas-Peucker algorithm.
- *
- * \param range: The range to simplify.
- * \param epsilon: The threshold distance from the coord between two points for when a point
- * in-between needs to be kept.
- * \param dist_function: A function that computes the distance to a point at an index in the range.
- * The IndexRange is a subrange of \a range and the index is an index relative to the subrange.
- * \param points_to_delete: Writes true to the indecies for which the points should be removed.
- * \returns the total number of points to remove.
- */
-int64_t ramer_douglas_peucker_simplify(
-    const IndexRange range,
-    const float epsilon,
-    const FunctionRef<float(int64_t, int64_t, int64_t)> dist_function,
-    MutableSpan<bool> points_to_delete)
-{
-  /* Mark all points to not be removed. */
-  points_to_delete.slice(range).fill(false);
-  int64_t total_points_to_remove = 0;
-
-  Stack<IndexRange> stack;
-  stack.push(range);
-  while (!stack.is_empty()) {
-    const IndexRange sub_range = stack.pop();
-
-    /* Compute the maximum distance and the corresponding distance. */
-    float max_dist = -1.0f;
-    int max_index = -1;
-    for (const int64_t index : sub_range.drop_front(1).drop_back(1)) {
-      const float dist = dist_function(sub_range.first(), sub_range.last(), index);
-      if (dist > max_dist) {
-        max_dist = dist;
-        max_index = index - sub_range.first();
-      }
-    }
-
-    if (max_dist > epsilon) {
-      /* Found point outside the epsilon-sized strip. Repeat the search on the left & right side.
-       */
-      stack.push(sub_range.slice(IndexRange(max_index + 1)));
-      stack.push(sub_range.slice(IndexRange(max_index, sub_range.size() - max_index)));
-    }
-    else {
-      /* Points in `sub_range` are inside the epsilon-sized strip. Mark them to be deleted. */
-      const IndexRange inside_range = sub_range.drop_front(1).drop_back(1);
-      total_points_to_remove += inside_range.size();
-      points_to_delete.slice(inside_range).fill(true);
-    }
-  }
-  return total_points_to_remove;
-}
-
 static int64_t stroke_simplify(const IndexRange points,
                                const bool cyclic,
                                const float epsilon,
