@@ -270,13 +270,8 @@ struct PaintOperationExecutor {
 
     /* Curve fitting. The output will be a set of handles (float2 triplets) in a flat array. */
     const float max_error_threshold_px = 5.0f;
-    const float angle_threshold = 0.6f;
     Array<float2> curve_points = blender::ed::greasepencil::fit_curve_polyline_2d(
-        coords_pre_blur,
-        max_error_threshold_px * settings_->active_smooth,
-        false,
-        angle_threshold,
-        corner_mask);
+        coords_pre_blur, max_error_threshold_px * settings_->active_smooth, corner_mask);
 
     /* Sampling the curve at a fixed resolution. */
     const int64_t sample_resolution = 32;
@@ -326,6 +321,15 @@ struct PaintOperationExecutor {
           0,
           math::min(self.screen_space_smoothed_coordinates_.size() - num_converged, int64_t(0)));
     }
+
+#ifdef DEBUG
+    /* Visualize active window. */
+    self.stroke_cache_->vertex_colors_for_write().fill(ColorGeometry4f(float4(0.0f)));
+    for (const int64_t i : smooth_window.index_range()) {
+      self.stroke_cache_->vertex_colors_for_write().slice(smooth_window)[i] = ColorGeometry4f(
+          float4(1.0f, 0.1f, 0.1f, 1.0f));
+    }
+#endif
   }
 
   void process_extension_sample(PaintOperation &self, const InputSample &extension_sample)
@@ -383,7 +387,7 @@ struct PaintOperationExecutor {
     self.stroke_cache_->vertex_colors_for_write().slice(new_range).copy_from(new_vertex_colors);
 
     const int64_t min_active_smoothing_points_num = 8;
-    if (self.stroke_cache_->size() >= 8) {
+    if (self.stroke_cache_->size() >= min_active_smoothing_points_num) {
       this->active_smoothing(self);
     }
     else {
@@ -394,15 +398,6 @@ struct PaintOperationExecutor {
       }
       return;
     }
-
-#ifdef DEBUG
-    /* Visualize active window. */
-    self.stroke_cache_->vertex_colors_for_write().fill(ColorGeometry4f(float4(0.0f)));
-    for (const int64_t i : smooth_window.index_range()) {
-      self.stroke_cache_->vertex_colors_for_write().slice(smooth_window)[i] = ColorGeometry4f(
-          float4(1.0f, 0.1f, 0.1f, 1.0f));
-    }
-#endif
   }
 
   void execute(PaintOperation &self, const bContext &C, const InputSample &extension_sample)

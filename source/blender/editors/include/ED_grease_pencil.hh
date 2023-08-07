@@ -128,8 +128,6 @@ int64_t ramer_douglas_peucker_simplify(IndexRange range,
 
 Array<float2> fit_curve_polyline_2d(Span<float2> points,
                                     float error_threshold,
-                                    bool use_refit,
-                                    float angle_threshold,
                                     const IndexMask &corner_mask);
 
 IndexMask polyline_detect_corners(Span<float2> points,

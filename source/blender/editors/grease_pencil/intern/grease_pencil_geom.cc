@@ -10,7 +10,7 @@
 
 #include "BKE_grease_pencil.hh"
 
-#include "ED_grease_pencil.h"
+#include "ED_grease_pencil.hh"
 
 extern "C" {
 #include "curve_fit_nd.h"
@@ -20,8 +20,6 @@ namespace blender::ed::greasepencil {
 
 Array<float2> fit_curve_polyline_2d(Span<float2> points,
                                     const float error_threshold,
-                                    const bool use_refit,
-                                    const float angle_threshold,
                                     const IndexMask &corner_mask)
 {
   Array<int32_t> indices(corner_mask.size());
@@ -30,38 +28,20 @@ Array<float2> fit_curve_polyline_2d(Span<float2> points,
                                                   nullptr;
 
   float *r_cubic_array;
-  uint *r_corner_index_array;
-  uint r_cubic_array_len, r_corner_index_array_len;
-  int error;
-  if (use_refit) {
-    error = curve_fit_cubic_to_points_refit_fl(*points.data(),
-                                               points.size(),
-                                               2,
-                                               error_threshold,
-                                               CURVE_FIT_CALC_HIGH_QUALIY,
-                                               indicies_ptr,
-                                               indices.size(),
-                                               angle_threshold,
-                                               &r_cubic_array,
-                                               &r_cubic_array_len,
-                                               nullptr,
-                                               &r_corner_index_array,
-                                               &r_corner_index_array_len);
-  }
-  else {
-    error = curve_fit_cubic_to_points_fl(*points.data(),
-                                         points.size(),
-                                         2,
-                                         error_threshold,
-                                         CURVE_FIT_CALC_HIGH_QUALIY,
-                                         indicies_ptr,
-                                         indices.size(),
-                                         &r_cubic_array,
-                                         &r_cubic_array_len,
-                                         nullptr,
-                                         nullptr,
-                                         nullptr);
-  }
+  uint r_cubic_array_len;
+  int error = curve_fit_cubic_to_points_fl(*points.data(),
+                                           points.size(),
+                                           2,
+                                           error_threshold,
+                                           CURVE_FIT_CALC_HIGH_QUALIY,
+                                           indicies_ptr,
+                                           indices.size(),
+                                           &r_cubic_array,
+                                           &r_cubic_array_len,
+                                           nullptr,
+                                           nullptr,
+                                           nullptr);
+
   if (error != 0) {
     /* Some error occured. Return. */
     return {};
