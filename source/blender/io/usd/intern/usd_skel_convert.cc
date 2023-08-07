@@ -196,34 +196,77 @@ void import_skeleton_curves(Main *bmain,
     return;
   }
 
-  /* Set the curve samples. */
+  /* The curve for each joint represents the transform relative
+   * to the bind transform in joint-local space. I.e.,
+   *
+   * jointLocalTransform * inv(jointLocalBindTransform)
+   *
+   * There doesn't appear to be a way to query the joint-local
+   * bind transform through the API, so we have to compute it
+   * ourselves from the world bind transforms and the skeleton
+   * topology.
+   */
 
+  /* Get the world space joint transforms at bind time. */
+  pxr::VtMatrix4dArray bind_xforms;
+  if (!skel_query.GetJointWorldBindTransforms(&bind_xforms)) {
+    WM_reportf(RPT_WARNING,
+               "%s: Couldn't get world bind transforms for skeleton %s",
+               __func__,
+               skel_query.GetSkeleton().GetPrim().GetPath().GetAsString().c_str());
+    return;
+  }
+
+  if (bind_xforms.size() != joint_order.size()) {
+    WM_reportf(RPT_WARNING,
+               "%s: Number of bind transforms doesn't match the number of joints for skeleton %s",
+               __func__,
+               skel_query.GetSkeleton().GetPrim().GetPath().GetAsString().c_str());
+    return;
+  }
+
+  const pxr::UsdSkelTopology &skel_topology = skel_query.GetTopology();
+
+  pxr::VtMatrix4dArray joint_local_bind_xforms(bind_xforms.size());
+  for (int i = 0; i < bind_xforms.size(); ++i) {
+    int parent_id = skel_topology.GetParent(i);
+
+    if (parent_id >= 0) {
+      /* This is a non-root joint.  Compute the bind transform of the joint
+       * relative to its parent. */
+      joint_local_bind_xforms[i] = bind_xforms[i] * bind_xforms[parent_id].GetInverse();
+    }
+    else {
+      /* This is the root joint. */
+      joint_local_bind_xforms[i] = bind_xforms[i];
+    }
+  }
+
+  /* Set the curve samples. */
   for (double frame : samples) {
-    /* Compute joint transforms which, when concatenated against the rest pose,
-     * produce joint transforms in joint-local space. More specifically, this
-     * computes restRelativeTransform in:
-     *    restRelativeTransform * restTransform = jointLocalTransform
-     */
-    pxr::VtMatrix4dArray rest_relative_xforms;
-    if (!skel_query.ComputeJointRestRelativeTransforms(&rest_relative_xforms, frame)) {
-      std::cout << "WARNING: couldn't compute joint rest relative transforms on frame " << frame
+
+    pxr::VtMatrix4dArray joint_local_xforms;
+    if (!skel_query.ComputeJointLocalTransforms(&joint_local_xforms, frame)) {
+      std::cout << "WARNING: couldn't compute joint local transforms on frame " << frame
                 << std::endl;
       continue;
     }
 
-    if (rest_relative_xforms.size() != joint_order.size()) {
-      std::cout << "WARNING: number of joint rest relative transform entries " << rest_relative_xforms.size()
+    if (joint_local_xforms.size() != joint_order.size()) {
+      std::cout << "WARNING: number of joint local transform entries " << joint_local_xforms.size()
                 << " doesn't match the number of joints " << joint_order.size() << std::endl;
       continue;
     }
 
-    for (int i = 0; i < rest_relative_xforms.size(); ++i) {
+    for (int i = 0; i < joint_local_xforms.size(); ++i) {
+
+      pxr::GfMatrix4d bone_xform = joint_local_xforms[i] * joint_local_bind_xforms[i].GetInverse();
 
       pxr::GfVec3f t;
       pxr::GfQuatf qrot;
       pxr::GfVec3h s;
 
-      if (!pxr::UsdSkelDecomposeTransform(rest_relative_xforms[i], &t, &qrot, &s)) {
+      if (!pxr::UsdSkelDecomposeTransform(bone_xform, &t, &qrot, &s)) {
         std::cout << "WARNING: error decomposing matrix on frame " << frame << std::endl;
         continue;
       }
