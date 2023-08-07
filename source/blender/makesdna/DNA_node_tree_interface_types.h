@@ -29,10 +29,15 @@ struct bNodeSocketType;
 struct bNodeTreeInterfaceItem;
 struct bNodeTreeInterfacePanel;
 struct bNodeTreeInterfaceSocket;
+struct ID;
 struct IDProperty;
 struct LibraryForeachIDData;
 struct PointerRNA;
 struct uiLayout;
+struct BlendWriter;
+struct BlendDataReader;
+struct BlendLibReader;
+struct BlendExpander;
 
 /** Type of interface item. */
 typedef enum eNodeTreeInterfaceItemType {
@@ -174,8 +179,19 @@ typedef struct bNodeTreeInterface {
   int next_uid;
 
 #ifdef __cplusplus
+
+  /** Copy data from another interface. */
   void copy_data(const bNodeTreeInterface &src, int flag);
+  /** Free data before the owning data block is freed.
+   * \note Does not decrement ID user counts, this has to be done by the caller.
+   */
   void free_data();
+
+  /** Read/write blend file data. */
+  void write(BlendWriter *writer);
+  void read_data(BlendDataReader *reader);
+  void read_lib(BlendLibReader *reader, ID *id);
+  void read_expand(BlendExpander *expander);
 
   bNodeTreeInterfaceItem *active_item();
   const bNodeTreeInterfaceItem *active_item() const;

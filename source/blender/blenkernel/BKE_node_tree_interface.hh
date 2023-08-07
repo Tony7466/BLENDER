@@ -271,29 +271,3 @@ inline bNodeTreeInterfaceSocket *add_interface_socket_from_node(bNodeTree &ntree
 }  // namespace blender::bke::node_interface
 
 #endif
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void BKE_nodetree_interface_init(struct bNodeTreeInterface *tree_interface);
-void BKE_nodetree_interface_copy(struct bNodeTreeInterface *tree_interface_dst,
-                                 const struct bNodeTreeInterface *tree_interface_src,
-                                 int flag);
-void BKE_nodetree_interface_free(struct bNodeTreeInterface *tree_interface);
-
-/* .blend file I/O */
-
-void BKE_nodetree_interface_write(struct BlendWriter *writer,
-                                  struct bNodeTreeInterface *tree_interface);
-void BKE_nodetree_interface_read_data(struct BlendDataReader *reader,
-                                      struct bNodeTreeInterface *tree_interface);
-void BKE_nodetree_interface_read_lib(struct BlendLibReader *reader,
-                                     struct ID *id,
-                                     struct bNodeTreeInterface *tree_interface) ATTR_NONNULL(1);
-void BKE_nodetree_interface_read_expand(struct BlendExpander *expander,
-                                        struct bNodeTreeInterface *tree_interface);
-
-#ifdef __cplusplus
-}
-#endif

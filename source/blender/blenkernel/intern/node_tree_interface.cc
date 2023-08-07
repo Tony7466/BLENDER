@@ -1135,14 +1135,36 @@ void bNodeTreeInterfacePanel::copy_items(
 
 void bNodeTreeInterface::copy_data(const bNodeTreeInterface &src, int flag)
 {
-  root_panel.copy_items(src.root_panel.items(), flag);
+  this->root_panel.copy_items(src.root_panel.items(), flag);
   this->active_index = src.active_index;
 }
 
 void bNodeTreeInterface::free_data()
 {
   /* Called when freeing the main database, don't do user refcount here. */
-  root_panel.clear_items(false);
+  this->root_panel.clear_items(false);
+}
+
+void bNodeTreeInterface::write(BlendWriter *writer)
+{
+  BLO_write_struct(writer, bNodeTreeInterface, this);
+  /* Don't write the root panel struct itself, it's nested in the interface struct. */
+  item_types::item_write_data(writer, this->root_panel.item);
+}
+
+void bNodeTreeInterface::read_data(BlendDataReader *reader)
+{
+  item_types::item_read_data(reader, this->root_panel.item);
+}
+
+void bNodeTreeInterface::read_lib(BlendLibReader *reader, ID *id)
+{
+  item_types::item_read_lib(reader, id, this->root_panel.item);
+}
+
+void bNodeTreeInterface::read_expand(BlendExpander *expander)
+{
+  item_types::item_read_expand(expander, this->root_panel.item);
 }
 
 bNodeTreeInterfaceSocket *bNodeTreeInterface::add_socket(blender::StringRef name,
@@ -1331,39 +1353,3 @@ void bNodeTreeInterfaceCache::rebuild(bNodeTreeInterface &interface)
 }
 
 }  // namespace blender::bke
-
-void BKE_nodetree_interface_init(bNodeTreeInterface * /*interface*/) {}
-
-void BKE_nodetree_interface_copy(bNodeTreeInterface *interface_dst,
-                                 const bNodeTreeInterface *interface_src,
-                                 int flag)
-{
-  interface_dst->copy_data(*interface_src, flag);
-}
-
-void BKE_nodetree_interface_free(bNodeTreeInterface *interface)
-{
-  interface->free_data();
-}
-
-void BKE_nodetree_interface_write(BlendWriter *writer, bNodeTreeInterface *interface)
-{
-  BLO_write_struct(writer, bNodeTreeInterface, interface);
-  /* Don't write the root panel struct itself, it's nested in the interface struct. */
-  item_types::item_write_data(writer, interface->root_panel.item);
-}
-
-void BKE_nodetree_interface_read_data(BlendDataReader *reader, bNodeTreeInterface *interface)
-{
-  item_types::item_read_data(reader, interface->root_panel.item);
-}
-
-void BKE_nodetree_interface_read_lib(BlendLibReader *reader, ID *id, bNodeTreeInterface *interface)
-{
-  item_types::item_read_lib(reader, id, interface->root_panel.item);
-}
-
-void BKE_nodetree_interface_read_expand(BlendExpander *expander, bNodeTreeInterface *interface)
-{
-  item_types::item_read_expand(expander, interface->root_panel.item);
-}
