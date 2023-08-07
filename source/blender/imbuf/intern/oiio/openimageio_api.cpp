@@ -8,11 +8,8 @@
 
 #include "openimageio_api.h"
 
-#include <string>
-
 #include <OpenImageIO/imageio.h>
 
-#include "BLI_path_util.h"
 #include "BLI_threads.h"
 
 OIIO_NAMESPACE_USING
