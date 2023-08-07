@@ -12,6 +12,7 @@
 #include "BKE_grease_pencil.hh"
 
 #include "BLI_generic_span.hh"
+#include "BLI_index_mask.hh"
 #include "BLI_math_matrix_types.hh"
 
 #include "ED_keyframes_edit.hh"
@@ -124,5 +125,18 @@ int64_t ramer_douglas_peucker_simplify(IndexRange range,
                                        float epsilon,
                                        FunctionRef<float(int64_t, int64_t, int64_t)> dist_function,
                                        MutableSpan<bool> dst);
+
+Array<float2> fit_curve_polyline_2d(Span<float2> points,
+                                    float error_threshold,
+                                    bool use_refit,
+                                    float angle_threshold,
+                                    const IndexMask &corner_mask);
+
+IndexMask polyline_detect_corners(Span<float2> points,
+                                  float radius_min,
+                                  float radius_max,
+                                  int64_t samples_max,
+                                  float angle_threshold,
+                                  IndexMaskMemory &memory);
 
 }  // namespace blender::ed::greasepencil
