@@ -20,8 +20,8 @@
 #include "NOD_add_node_search.hh"
 #include "NOD_socket_search_link.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 namespace blender::nodes::node_geo_mesh_to_sdf_volume_cc {
 
@@ -147,7 +147,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   GeometrySet geometry_set(params.extract_input<GeometrySet>("Mesh"));
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     if (geometry_set.has_mesh()) {
-      Volume *volume = create_volume_from_mesh(*geometry_set.get_mesh_for_read(), params);
+      Volume *volume = create_volume_from_mesh(*geometry_set.get_mesh(), params);
       geometry_set.replace_volume(volume);
       geometry_set.keep_only_during_modify({GeometryComponent::Type::Volume});
     }

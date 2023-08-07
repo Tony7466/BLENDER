@@ -25,8 +25,8 @@
 
 #include "rna_internal.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 static const EnumPropertyItem effector_shape_items[] = {
     {PFIELD_SHAPE_POINT, "POINT", 0, "Point", "Field originates from the object center"},
@@ -113,7 +113,7 @@ static const EnumPropertyItem empty_vortex_shape_items[] = {
 #  include "DEG_depsgraph.h"
 #  include "DEG_depsgraph_build.h"
 
-#  include "ED_object.h"
+#  include "ED_object.hh"
 
 static bool rna_Cache_get_valid_owner_ID(PointerRNA *ptr, Object **ob, Scene **scene)
 {
@@ -1048,8 +1048,7 @@ static void rna_def_pointcache_common(StructRNA *srna)
   /* Note that we do not actually need a getter here, `rna_Cache_info_length` will update the info
    * string just as well. */
   RNA_def_property_string_funcs(prop, nullptr, "rna_Cache_info_length", nullptr);
-  RNA_def_property_string_maxlength(
-      prop, sizeof(((PointCache *)nullptr)->info) / sizeof(*(((PointCache *)nullptr)->info)));
+  RNA_def_property_string_maxlength(prop, sizeof(PointCache::info) / sizeof(*PointCache::info));
   RNA_def_property_ui_text(prop, "Cache Info", "Info on current cache status");
 
   prop = RNA_def_property(srna, "use_external", PROP_BOOLEAN, PROP_NONE);

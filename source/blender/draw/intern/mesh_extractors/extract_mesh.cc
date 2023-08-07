@@ -12,11 +12,11 @@
 
 #include "DNA_object_types.h"
 
-#include "ED_uvedit.h"
+#include "ED_uvedit.hh"
 
 #include "extract_mesh.hh"
 
-#include "draw_cache_impl.h"
+#include "draw_cache_impl.hh"
 
 void *mesh_extract_buffer_get(const MeshExtract *extractor, MeshBufferList *mbuflist)
 {

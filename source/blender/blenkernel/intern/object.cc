@@ -280,8 +280,11 @@ static void object_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const in
     }
   }
   else {
-    /* Do not copy lightprobe's cache. */
-    ob_dst->lightprobe_cache = nullptr;
+    if (ob_src->lightprobe_cache) {
+      /* Duplicate the original object data. */
+      ob_dst->lightprobe_cache = BKE_lightprobe_cache_copy(ob_src->lightprobe_cache);
+      ob_dst->lightprobe_cache->shared = false;
+    }
   }
 }
 
@@ -4491,7 +4494,7 @@ Mesh *BKE_object_get_evaluated_mesh_no_subsurf(const Object *object)
      * this should be avoided, or at least protected with a lock, so a const mesh could be returned
      * from this function. We use a const_cast instead of #get_mesh_for_write, because that might
      * result in a copy of the mesh when it is shared. */
-    Mesh *mesh = const_cast<Mesh *>(geometry_set_eval->get_mesh_for_read());
+    Mesh *mesh = const_cast<Mesh *>(geometry_set_eval->get_mesh());
     if (mesh) {
       return mesh;
     }
@@ -5250,8 +5253,7 @@ static Object *obrel_armature_find(Object *ob)
     ob_arm = ob->parent;
   }
   else {
-    ModifierData *mod;
-    for (mod = (ModifierData *)ob->modifiers.first; mod; mod = mod->next) {
+    LISTBASE_FOREACH (ModifierData *, mod, &ob->modifiers) {
       if (mod->type == eModifierType_Armature) {
         ob_arm = ((ArmatureModifierData *)mod)->object;
       }

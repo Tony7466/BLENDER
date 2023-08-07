@@ -33,18 +33,18 @@
 
 #include "SEQ_transform.h"
 
-#include "ED_clip.h"
-#include "ED_image.h"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_uvedit.h"
+#include "ED_clip.hh"
+#include "ED_image.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_uvedit.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
 #include "SEQ_sequencer.h"
 
@@ -1256,9 +1256,7 @@ void calculatePropRatio(TransInfo *t)
         if (td->flag & TD_SELECTED) {
           td->factor = 1.0f;
         }
-        else if ((connected && (td->flag & TD_NOTCONNECTED || td->dist > t->prop_size)) ||
-                 (connected == 0 && td->rdist > t->prop_size))
-        {
+        else if ((connected ? td->dist : td->rdist) > t->prop_size) {
           td->factor = 0.0f;
           restoreElement(td);
         }
