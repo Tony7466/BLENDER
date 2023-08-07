@@ -30,6 +30,100 @@ static constexpr float POINT_RESAMPLE_MIN_DISTANCE_PX = 10.0f;
 
 static constexpr int64_t STOKE_CACHE_ALLOCATION_CHUNK_SIZE = 1024;
 
+static void forward_diff_bezier_2d(
+    float2 q0, float2 q1, float2 q2, float2 q3, MutableSpan<float2> r_p)
+{
+  float f = static_cast<float>(r_p.size());
+  float2 rt0 = q0;
+  float2 rt1 = 3.0f * (q1 - q0) / f;
+  f = f * f;
+  float2 rt2 = 3.0f * (q0 - 2.0f * q1 + q2) / f;
+  f = f * static_cast<float>(r_p.size());
+  float2 rt3 = (q3 - q0 + 3.0f * (q1 - q2)) / f;
+
+  q0 = rt0;
+  q1 = rt1 + rt2 + rt3;
+  q2 = 2 * rt2 + 6 * rt3;
+  q3 = 6 * rt3;
+
+  for (float2 &r : r_p) {
+    r = q0;
+    q0 += q1;
+    q1 += q2;
+    q2 += q3;
+  }
+}
+
+/** Sample a bezier curve at a fixed resolution and return the sampled points in an array. */
+static Array<float2> sample_curve_2d(Span<float2> curve_points, const int64_t resolution)
+{
+  BLI_assert(curve_points.size() % 3 == 0);
+  const int64_t num_handles = curve_points.size() / 3;
+  const int64_t num_segments = num_handles - 1;
+  const int64_t num_points = num_segments * resolution;
+
+  Array<float2> points(num_points);
+  const Span<float2> curve_segments = curve_points.drop_front(1).drop_back(1);
+  for (const int64_t segment_i : IndexRange(num_segments)) {
+    IndexRange segment_range(segment_i * resolution, resolution);
+    forward_diff_bezier_2d(curve_segments[segment_i * 3 + 0],
+                           curve_segments[segment_i * 3 + 1],
+                           curve_segments[segment_i * 3 + 2],
+                           curve_segments[segment_i * 3 + 3],
+                           points.as_mutable_span().slice(segment_range));
+  }
+  return points;
+}
+
+/** Interpolate \a dst such that the points in \a dst lie evenly distributed on \a src. */
+static void interp_polyline_to_polyline(Span<float2> src, MutableSpan<float2> dst)
+{
+  using ParamIt = double *;
+  BLI_assert(src.size() > 1);
+  Array<double> normalized_parameters_src(src.size(), 0.0f);
+  double total_dist_src = 0.0f;
+  for (const int64_t i : src.index_range().drop_front(1)) {
+    total_dist_src += math::distance(src[i], src[i - 1]);
+    normalized_parameters_src[i] = total_dist_src;
+  }
+  if (total_dist_src < 1e-6f) {
+    normalized_parameters_src.fill(0.0f);
+  }
+  else {
+    for (const int64_t i : src.index_range()) {
+      normalized_parameters_src[i] /= total_dist_src;
+    }
+  }
+
+  Array<double> accumulated_lengths_dst(dst.size(), 0.0f);
+  double total_dist_dst = 0.0f;
+  for (const int64_t i : dst.index_range().drop_front(1)) {
+    total_dist_dst += math::distance(dst[i], dst[i - 1]);
+    accumulated_lengths_dst[i] = total_dist_dst;
+  }
+
+  ParamIt start_it = normalized_parameters_src.begin();
+  for (const int64_t i : dst.index_range().drop_front(1)) {
+    const double target = accumulated_lengths_dst[i] / total_dist_dst;
+    ParamIt it = std::lower_bound(start_it, normalized_parameters_src.end(), target);
+    const int64_t index = std::distance(normalized_parameters_src.begin(), it);
+    start_it = it;
+    if (index + 1 >= normalized_parameters_src.size()) {
+      break;
+    }
+    if (math::distance_squared(src[index], dst[i]) < 1e-6 ||
+        math::abs(normalized_parameters_src[index + 1] - normalized_parameters_src[index]) < 1e-8)
+    {
+      dst[i] = src[index];
+      continue;
+    }
+    const double t = (target - normalized_parameters_src[index]) /
+                     (normalized_parameters_src[index + 1] - normalized_parameters_src[index]);
+
+    dst[i] = math::interpolate(src[index], src[index + 1], t);
+  }
+}
+
 struct ScreenSpacePoint {
   float2 co;
   float radius;
@@ -40,15 +134,10 @@ struct ScreenSpacePoint {
 class PaintOperation : public GreasePencilStrokeOperation {
  private:
   Vector<float2> screen_space_coordinates_;
+  Vector<Vector<float2>> screen_space_smoothed_coordinates_;
+  int64_t active_smooth_index_ = 0;
 
   bke::greasepencil::StrokeCache *stroke_cache_;
-  int64_t active_index_ = 0;
-
-  Vector<float3> sampled_positions_;
-  Vector<float> sampled_radii_;
-
-  Vector<float3> smoothed_positions_;
-  Vector<float> smoothed_radii_;
 
   friend struct PaintOperationExecutor;
 
@@ -129,32 +218,12 @@ struct PaintOperationExecutor {
     return point;
   }
 
-  void update_stroke_cache(PaintOperation &self,
-                           const int64_t new_points_num,
-                           Span<float2> new_coordinates,
-                           Span<float> new_radii,
-                           Span<float> new_opacities,
-                           Span<ColorGeometry4f> new_vertex_colors)
-  {
-    const int64_t old_size = self.stroke_cache_->size();
-    self.stroke_cache_->resize(self.stroke_cache_->size() + new_points_num);
-
-    IndexRange new_range(old_size, new_points_num);
-    MutableSpan<float3> positions_slice = self.stroke_cache_->positions_for_write().slice(
-        new_range);
-    for (const int64_t i : new_coordinates.index_range()) {
-      positions_slice[i] = screen_space_to_object_space(new_coordinates[i]);
-    }
-    self.stroke_cache_->radii_for_write().slice(new_range).copy_from(new_radii);
-    self.stroke_cache_->opacities_for_write().slice(new_range).copy_from(new_opacities);
-    self.stroke_cache_->vertex_colors_for_write().slice(new_range).copy_from(new_vertex_colors);
-  }
-
   void process_start_sample(PaintOperation &self, const InputSample &start_sample)
   {
     ScreenSpacePoint start_point = this->point_from_input_sample(start_sample);
 
     self.screen_space_coordinates_.append(start_point.co);
+    self.screen_space_smoothed_coordinates_.append(Vector<float2>({start_point.co}));
 
     self.stroke_cache_->resize(1);
     self.stroke_cache_->positions_for_write().last() = screen_space_to_object_space(
@@ -163,6 +232,100 @@ struct PaintOperationExecutor {
     self.stroke_cache_->opacities_for_write().last() = start_point.opacity;
     self.stroke_cache_->vertex_colors_for_write().last() = ColorGeometry4f(
         start_point.vertex_color);
+  }
+
+  void active_smoothing(PaintOperation &self)
+  {
+    /* Active smoothing is only done on a slice of the points (from the active index to the current
+     * end of the stroke). */
+    const int64_t smooth_window_size = self.stroke_cache_->size() - self.active_smooth_index_;
+    IndexRange smooth_window(self.active_smooth_index_, smooth_window_size);
+
+    Span<float2> screen_space_coords_smooth_slice = self.screen_space_coordinates_.as_span().slice(
+        smooth_window);
+
+    /* Detect corners in the current slice of coordinates. */
+    IndexMaskMemory memory;
+    const float min_radius_px = 5.0f;
+    const float max_radius_px = 30.0f;
+    const int64_t max_samples = 64;
+    const float angle_threshold = 0.6f;
+    IndexMask corner_mask = blender::ed::greasepencil::polyline_detect_corners(
+        screen_space_coords_smooth_slice,
+        min_radius_px,
+        max_radius_px,
+        max_samples,
+        angle_threshold,
+        memory);
+
+    /* Pre-blur the coordinates for the curve fitting. This generally leads to a better fit. */
+    Array<float2> coords_pre_blur(smooth_window.size());
+    ed::greasepencil::gaussian_blur_1D(screen_space_coords_smooth_slice,
+                                       3,
+                                       1.0f,
+                                       true,
+                                       true,
+                                       false,
+                                       coords_pre_blur.as_mutable_span());
+
+    /* Curve fitting. The output will be a set of handles (float2 triplets) in a flat array. */
+    const float max_error_threshold_px = 5.0f;
+    const float angle_threshold = 0.6f;
+    Array<float2> curve_points = blender::ed::greasepencil::fit_curve_polyline_2d(
+        coords_pre_blur,
+        max_error_threshold_px * settings_->active_smooth,
+        false,
+        angle_threshold,
+        corner_mask);
+
+    /* Sampling the curve at a fixed resolution. */
+    const int64_t sample_resolution = 32;
+    Array<float2> sampled_curve_points = sample_curve_2d(curve_points, sample_resolution);
+
+    /* Morphing the coordinates onto the curve. Result is stored in a temporary array. */
+    Array<float2> coords_smoothed(screen_space_coords_smooth_slice);
+    interp_polyline_to_polyline(sampled_curve_points, coords_smoothed.as_mutable_span());
+
+    MutableSpan<float3> positions_slice = self.stroke_cache_->positions_for_write().slice(
+        smooth_window);
+    bool stop_counting_converged = false;
+    int num_converged = 0;
+    for (const int64_t i : smooth_window.index_range()) {
+      /* Record the curve fitting of this point. */
+      self.screen_space_smoothed_coordinates_[i].append(coords_smoothed[i]);
+      Span<float2> smoothed_coords_point = self.screen_space_smoothed_coordinates_[i];
+
+      /* Get the arithmetic mean of all the curve fittings of this point. */
+      float2 mean = smoothed_coords_point[0];
+      for (const float2 v : smoothed_coords_point.drop_front(1).drop_back(1)) {
+        mean += v;
+      }
+
+      /* We compare the previous arithmetic mean to the current. Going from the back to the front,
+       * if a point hasn't moved by a minimum threashold, it counts as converged. */
+      float2 new_pos = (mean + smoothed_coords_point.last()) / smoothed_coords_point.size();
+      if (!stop_counting_converged) {
+        float2 prev_pos = mean / (smoothed_coords_point.size() - 1);
+        if (math::distance(new_pos, prev_pos) < 0.05f) {
+          num_converged++;
+        }
+        else {
+          stop_counting_converged = true;
+        }
+      }
+
+      /* Update the positions in the current cache. */
+      positions_slice[i] = screen_space_to_object_space(new_pos);
+    }
+
+    /* Remove all the converged points from the active window and shrink the window accordingly. */
+    if (num_converged > 0) {
+      self.active_smooth_index_ = math::min(self.active_smooth_index_ + num_converged,
+                                            self.stroke_cache_->size() - 1);
+      self.screen_space_smoothed_coordinates_.remove(
+          0,
+          math::min(self.screen_space_smoothed_coordinates_.size() - num_converged, int64_t(0)));
+    }
   }
 
   void process_extension_sample(PaintOperation &self, const InputSample &extension_sample)
@@ -192,13 +355,15 @@ struct PaintOperationExecutor {
       new_points_num += subdivisions;
     }
 
+    /* Subdivide stroke in new_range. */
+    IndexRange new_range(self.stroke_cache_->size(), new_points_num);
     Array<float2> new_coordinates(new_points_num);
     Array<float> new_radii(new_points_num);
     Array<float> new_opacities(new_points_num);
     Array<ColorGeometry4f> new_vertex_colors(new_points_num);
     const float step = 1.0f / static_cast<float>(new_points_num);
     float factor = step;
-    for (const int i : IndexRange(new_points_num)) {
+    for (const int64_t i : new_range.index_range()) {
       new_coordinates[i] = bke::attribute_math::mix2<float2>(factor, prev_co, point.co);
       new_radii[i] = bke::attribute_math::mix2<float>(factor, prev_radius, point.radius);
       new_opacities[i] = bke::attribute_math::mix2<float>(factor, prev_opacity, point.opacity);
@@ -207,58 +372,36 @@ struct PaintOperationExecutor {
       factor += step;
     }
 
-    for (float2 co : new_coordinates) {
-      self.screen_space_coordinates_.append(co);
+    self.screen_space_coordinates_.extend(new_coordinates);
+    for (float2 new_co : new_coordinates) {
+      self.screen_space_smoothed_coordinates_.append(Vector<float2>({new_co}));
     }
 
-    this->update_stroke_cache(
-        self, new_points_num, new_coordinates, new_radii, new_opacities, new_vertex_colors);
+    self.stroke_cache_->resize(self.stroke_cache_->size() + new_points_num);
+    self.stroke_cache_->radii_for_write().slice(new_range).copy_from(new_radii);
+    self.stroke_cache_->opacities_for_write().slice(new_range).copy_from(new_opacities);
+    self.stroke_cache_->vertex_colors_for_write().slice(new_range).copy_from(new_vertex_colors);
 
-    // const float active_smooth_factor = settings_->active_smooth;
-
-    // self.sampled_positions_.append(proj_pos);
-    // self.sampled_radii_.append(radius);
-
-    // self.smoothed_positions_.append(proj_pos);
-    // self.smoothed_radii_.append(radius);
-
-    // const int64_t smooth_window_size = 16;
-    // const int64_t inverted_copy_window_size = math::max(
-    //     self.stroke_cache_->size() - smooth_window_size, int64_t(0));
-
-    // const int64_t smooth_radius = 16;
-
-    // const int64_t inverted_smooth_window_size = math::max(
-    //     self.stroke_cache_->size() - smooth_window_size - smooth_radius, int64_t(0));
-
-    // Span<float3> src_positions = self.sampled_positions_.as_span().drop_front(
-    //     inverted_smooth_window_size);
-    // MutableSpan<float3> dst_positions = self.smoothed_positions_.as_mutable_span().drop_front(
-    //     inverted_smooth_window_size);
-
-    // Span<float> src_radii =
-    // self.sampled_radii_.as_span().drop_front(inverted_smooth_window_size); MutableSpan<float>
-    // dst_radii = self.smoothed_radii_.as_mutable_span().drop_front(
-    //     inverted_smooth_window_size);
-
-    // ed::greasepencil::gaussian_blur_1D(
-    //     src_positions, smooth_radius, active_smooth_factor, false, true, false, dst_positions);
-    // ed::greasepencil::gaussian_blur_1D(
-    //     src_radii, smooth_radius, active_smooth_factor, false, false, false, dst_radii);
-
-    // self.stroke_cache_->positions_for_write()
-    //     .drop_front(inverted_copy_window_size)
-    //     .copy_from(self.smoothed_positions_.as_span().drop_front(inverted_copy_window_size));
-    // self.stroke_cache_->radii_for_write()
-    //     .drop_front(inverted_copy_window_size)
-    //     .copy_from(self.smoothed_radii_.as_span().drop_front(inverted_copy_window_size));
+    const int64_t min_active_smoothing_points_num = 8;
+    if (self.stroke_cache_->size() >= 8) {
+      this->active_smoothing(self);
+    }
+    else {
+      MutableSpan<float3> positions_slice = self.stroke_cache_->positions_for_write().slice(
+          new_range);
+      for (const int64_t i : new_coordinates.index_range()) {
+        positions_slice[i] = screen_space_to_object_space(new_coordinates[i]);
+      }
+      return;
+    }
 
 #ifdef DEBUG
-    // /* Visualize active window. */
-    // self.stroke_cache_->vertex_colors.fill(ColorGeometry4f(float4(0.0f)));
-    // self.stroke_cache_->vertex_colors.as_mutable_span()
-    //     .drop_front(inverted_active_window_size)
-    //     .fill(ColorGeometry4f(float4(1.0f, 0.1f, 0.1f, 1.0f)));
+    /* Visualize active window. */
+    self.stroke_cache_->vertex_colors_for_write().fill(ColorGeometry4f(float4(0.0f)));
+    for (const int64_t i : smooth_window.index_range()) {
+      self.stroke_cache_->vertex_colors_for_write().slice(smooth_window)[i] = ColorGeometry4f(
+          float4(1.0f, 0.1f, 0.1f, 1.0f));
+    }
 #endif
   }
 
@@ -471,7 +614,8 @@ void PaintOperation::on_stroke_done(const bContext &C)
     return;
   }
 
-  // this->simplify_stroke_cache(0.0005f);
+  const float simplifiy_threashold = 0.001f;
+  this->simplify_stroke_cache(simplifiy_threashold);
 
   /* The object should have an active layer. */
   BLI_assert(grease_pencil.has_active_layer());
