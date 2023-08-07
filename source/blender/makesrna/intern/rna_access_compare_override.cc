@@ -35,7 +35,7 @@
 #include "BKE_armature.h"
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_main.h"
 
 #include "RNA_access.h"
@@ -1271,7 +1271,21 @@ static void rna_property_override_check_resync(Main *bmain,
     if (ID_IS_LINKED(id_owner_src)) {
       id_owner_src->lib->tag |= LIBRARY_TAG_RESYNC_REQUIRED;
     }
-    CLOG_INFO(&LOG, 3, "Local override %s detected as needing resync", id_owner_dst->name);
+    CLOG_INFO(&LOG,
+              3,
+              "Local override %s detected as needing resync due to mismatch in its used IDs",
+              id_owner_dst->name);
+  }
+  if ((id_owner_src->override_library->reference->tag & LIB_TAG_LIBOVERRIDE_NEED_RESYNC) != 0) {
+    id_owner_dst->tag |= LIB_TAG_LIBOVERRIDE_NEED_RESYNC;
+    if (ID_IS_LINKED(id_owner_src)) {
+      id_owner_src->lib->tag |= LIBRARY_TAG_RESYNC_REQUIRED;
+    }
+    CLOG_INFO(&LOG,
+              3,
+              "Local override %s detected as needing resync as its liboverride reference is "
+              "already tagged for resync",
+              id_owner_dst->name);
   }
 }
 
@@ -1311,8 +1325,10 @@ static void rna_property_override_apply_ex(Main *bmain,
   rnaapply_ctx.liboverride_operation = nullptr;
 }
 
-/* Workaround for broken overrides, non-matching ID pointers override operations that replace a
- * non-NULL value are then assumed as 'mistakes', and ignored (not applied). */
+/**
+ * Workaround for broken overrides, non-matching ID pointers override operations that replace a
+ * non-null value are then assumed as 'mistakes', and ignored (not applied).
+ */
 static bool override_apply_property_check_skip(Main *bmain,
                                                PointerRNA *id_ptr_dst,
                                                PointerRNA *id_ptr_src,
@@ -1349,9 +1365,9 @@ static bool override_apply_property_check_skip(Main *bmain,
            LIBOVERRIDE_OP_FLAG_IDPOINTER_MATCH_REFERENCE) == 0)
       {
         BLI_assert(id_ptr_src->owner_id == rna_property_override_property_real_id_owner(
-                                               bmain, &rnaapply_ctx.ptr_src, NULL, NULL));
+                                               bmain, &rnaapply_ctx.ptr_src, nullptr, nullptr));
         BLI_assert(id_ptr_dst->owner_id == rna_property_override_property_real_id_owner(
-                                               bmain, &rnaapply_ctx.ptr_dst, NULL, NULL));
+                                               bmain, &rnaapply_ctx.ptr_dst, nullptr, nullptr));
 
         CLOG_INFO(&LOG,
                   2,
