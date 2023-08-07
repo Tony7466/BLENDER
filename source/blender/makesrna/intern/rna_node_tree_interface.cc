@@ -57,8 +57,8 @@ static StructRNA *rna_NodeTreeInterfaceItem_refine(PointerRNA *ptr)
       bNodeTreeInterfaceSocket &socket = node_interface::get_item_as<bNodeTreeInterfaceSocket>(
           *item);
       bNodeSocketType *socket_typeinfo = nodeSocketTypeFind(socket.socket_type);
-      if (socket_typeinfo && socket_typeinfo->ext_interface_new.srna) {
-        return socket_typeinfo->ext_interface_new.srna;
+      if (socket_typeinfo && socket_typeinfo->ext_interface.srna) {
+        return socket_typeinfo->ext_interface.srna;
       }
       else {
         return &RNA_NodeTreeInterfaceSocket;
@@ -96,7 +96,7 @@ static bool rna_NodeTreeInterfaceSocket_unregister(Main * /*bmain*/, StructRNA *
     return false;
   }
 
-  RNA_struct_free_extension(type, &st->ext_interface_new);
+  RNA_struct_free_extension(type, &st->ext_interface);
 
   RNA_struct_free(&BLENDER_RNA, type);
 
@@ -135,7 +135,7 @@ static void rna_NodeTreeInterfaceSocket_draw_custom(ID *id,
   RNA_parameter_list_create(&list, &ptr, func);
   RNA_parameter_set_lookup(&list, "context", &C);
   RNA_parameter_set_lookup(&list, "layout", &layout);
-  typeinfo->ext_interface_new.call(C, &ptr, func, &list);
+  typeinfo->ext_interface.call(C, &ptr, func, &list);
 
   RNA_parameter_list_free(&list);
 }
@@ -180,7 +180,7 @@ static void rna_NodeTreeInterfaceSocket_init_socket_custom(
   RNA_parameter_set_lookup(&list, "node", &node_ptr);
   RNA_parameter_set_lookup(&list, "socket", &socket_ptr);
   RNA_parameter_set_lookup(&list, "data_path", &data_path);
-  typeinfo->ext_interface_new.call(nullptr, &ptr, func, &list);
+  typeinfo->ext_interface.call(nullptr, &ptr, func, &list);
 
   RNA_parameter_list_free(&list);
 }
@@ -216,7 +216,7 @@ static void rna_NodeTreeInterfaceSocket_from_socket_custom(
   RNA_parameter_list_create(&list, &ptr, func);
   RNA_parameter_set_lookup(&list, "node", &node_ptr);
   RNA_parameter_set_lookup(&list, "socket", &socket_ptr);
-  typeinfo->ext_interface_new.call(nullptr, &ptr, func, &list);
+  typeinfo->ext_interface.call(nullptr, &ptr, func, &list);
 
   RNA_parameter_list_free(&list);
 }
@@ -259,17 +259,17 @@ static StructRNA *rna_NodeTreeInterfaceSocket_register(Main * /*bmain*/,
   st->free_self = (void (*)(bNodeSocketType * stype)) MEM_freeN;
 
   /* if RNA type is already registered, unregister first */
-  if (st->ext_interface_new.srna) {
-    StructRNA *srna = st->ext_interface_new.srna;
-    RNA_struct_free_extension(srna, &st->ext_interface_new);
+  if (st->ext_interface.srna) {
+    StructRNA *srna = st->ext_interface.srna;
+    RNA_struct_free_extension(srna, &st->ext_interface);
     RNA_struct_free(&BLENDER_RNA, srna);
   }
-  st->ext_interface_new.srna = RNA_def_struct_ptr(
+  st->ext_interface.srna = RNA_def_struct_ptr(
       &BLENDER_RNA, identifier, &RNA_NodeTreeInterfaceSocket);
-  st->ext_interface_new.data = data;
-  st->ext_interface_new.call = call;
-  st->ext_interface_new.free = free;
-  RNA_struct_blender_type_set(st->ext_interface_new.srna, st);
+  st->ext_interface.data = data;
+  st->ext_interface.call = call;
+  st->ext_interface.free = free;
+  RNA_struct_blender_type_set(st->ext_interface.srna, st);
 
   st->interface_draw = (have_function[0]) ? rna_NodeTreeInterfaceSocket_draw_custom : nullptr;
   st->interface_init_socket = (have_function[1]) ? rna_NodeTreeInterfaceSocket_init_socket_custom :
@@ -283,7 +283,7 @@ static StructRNA *rna_NodeTreeInterfaceSocket_register(Main * /*bmain*/,
   /* Update while blender is running */
   WM_main_add_notifier(NC_NODE | NA_EDITED, nullptr);
 
-  return st->ext_interface_new.srna;
+  return st->ext_interface.srna;
 }
 
 static IDProperty **rna_NodeTreeInterfaceSocket_idprops(PointerRNA *ptr)
@@ -1021,7 +1021,7 @@ void RNA_def_node_tree_interface(BlenderRNA *brna)
   rna_def_node_interface_panel(brna);
   rna_def_node_tree_interface(brna);
 
-  rna_def_node_socket_interface_subtypes_new(brna);
+  rna_def_node_socket_interface_subtypes(brna);
 }
 
 #endif

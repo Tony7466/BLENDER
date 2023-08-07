@@ -404,7 +404,7 @@ char *rna_Node_ImageUser_path(const struct PointerRNA *ptr);
 char *rna_CameraBackgroundImage_image_or_movieclip_user_path(const struct PointerRNA *ptr);
 
 /* Node socket subtypes for group interface. */
-void rna_def_node_socket_interface_subtypes_new(BlenderRNA *brna);
+void rna_def_node_socket_interface_subtypes(BlenderRNA *brna);
 
 /* Set U.is_dirty and redraw. */
 

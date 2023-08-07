@@ -188,7 +188,7 @@ typedef struct bNodeSocketType {
 
   /* RNA integration */
   ExtensionRNA ext_socket;
-  ExtensionRNA ext_interface_new;
+  ExtensionRNA ext_interface;
 
   /* for standard socket types in C */
   int type, subtype;

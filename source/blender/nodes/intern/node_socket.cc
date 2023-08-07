@@ -685,7 +685,7 @@ static bNodeSocketType *make_standard_socket_type(int type, int subtype)
   RNA_struct_blender_type_set(srna, stype);
 
   /* set the interface RNA type */
-  srna = stype->ext_interface_new.srna = RNA_struct_find(interface_idname);
+  srna = stype->ext_interface.srna = RNA_struct_find(interface_idname);
   BLI_assert(srna != nullptr);
   /* associate the RNA type with the socket type */
   RNA_struct_blender_type_set(srna, stype);

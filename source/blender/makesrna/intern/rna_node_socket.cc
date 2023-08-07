@@ -673,9 +673,9 @@ static void rna_def_node_socket_float(BlenderRNA *brna,
   RNA_def_struct_sdna_from(srna, "bNodeSocket", nullptr);
 }
 
-static void rna_def_node_socket_interface_new_float(BlenderRNA *brna,
-                                                    const char *identifier,
-                                                    PropertySubType subtype)
+static void rna_def_node_socket_interface_float(BlenderRNA *brna,
+                                                const char *identifier,
+                                                PropertySubType subtype)
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -765,9 +765,9 @@ static void rna_def_node_socket_int(BlenderRNA *brna,
   RNA_def_struct_sdna_from(srna, "bNodeSocket", nullptr);
 }
 
-static void rna_def_node_socket_interface_new_int(BlenderRNA *brna,
-                                                  const char *identifier,
-                                                  PropertySubType subtype)
+static void rna_def_node_socket_interface_int(BlenderRNA *brna,
+                                              const char *identifier,
+                                              PropertySubType subtype)
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -823,7 +823,7 @@ static void rna_def_node_socket_bool(BlenderRNA *brna, const char *identifier)
   RNA_def_struct_sdna_from(srna, "bNodeSocket", nullptr);
 }
 
-static void rna_def_node_socket_interface_new_bool(BlenderRNA *brna, const char *identifier)
+static void rna_def_node_socket_interface_bool(BlenderRNA *brna, const char *identifier)
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -866,7 +866,7 @@ static void rna_def_node_socket_rotation(BlenderRNA *brna, const char *identifie
   RNA_def_struct_sdna_from(srna, "bNodeSocket", nullptr);
 }
 
-static void rna_def_node_socket_interface_new_rotation(BlenderRNA *brna, const char *identifier)
+static void rna_def_node_socket_interface_rotation(BlenderRNA *brna, const char *identifier)
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -928,9 +928,9 @@ static void rna_def_node_socket_vector(BlenderRNA *brna,
   RNA_def_struct_sdna_from(srna, "bNodeSocket", nullptr);
 }
 
-static void rna_def_node_socket_interface_new_vector(BlenderRNA *brna,
-                                                     const char *identifier,
-                                                     PropertySubType subtype)
+static void rna_def_node_socket_interface_vector(BlenderRNA *brna,
+                                                 const char *identifier,
+                                                 PropertySubType subtype)
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -986,7 +986,7 @@ static void rna_def_node_socket_color(BlenderRNA *brna, const char *identifier)
   RNA_def_struct_sdna_from(srna, "bNodeSocket", nullptr);
 }
 
-static void rna_def_node_socket_interface_new_color(BlenderRNA *brna, const char *identifier)
+static void rna_def_node_socket_interface_color(BlenderRNA *brna, const char *identifier)
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -1028,7 +1028,7 @@ static void rna_def_node_socket_string(BlenderRNA *brna, const char *identifier)
   RNA_def_struct_sdna_from(srna, "bNodeSocket", nullptr);
 }
 
-static void rna_def_node_socket_interface_new_string(BlenderRNA *brna, const char *identifier)
+static void rna_def_node_socket_interface_string(BlenderRNA *brna, const char *identifier)
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -1059,7 +1059,7 @@ static void rna_def_node_socket_shader(BlenderRNA *brna, const char *identifier)
   RNA_def_struct_sdna(srna, "bNodeSocket");
 }
 
-static void rna_def_node_socket_interface_new_shader(BlenderRNA *brna, const char *identifier)
+static void rna_def_node_socket_interface_shader(BlenderRNA *brna, const char *identifier)
 {
   StructRNA *srna;
 
@@ -1091,7 +1091,7 @@ static void rna_def_node_socket_object(BlenderRNA *brna, const char *identifier)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
 }
 
-static void rna_def_node_socket_interface_new_object(BlenderRNA *brna, const char *identifier)
+static void rna_def_node_socket_interface_object(BlenderRNA *brna, const char *identifier)
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -1134,7 +1134,7 @@ static void rna_def_node_socket_image(BlenderRNA *brna, const char *identifier)
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
 }
 
-static void rna_def_node_socket_interface_new_image(BlenderRNA *brna, const char *identifier)
+static void rna_def_node_socket_interface_image(BlenderRNA *brna, const char *identifier)
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -1165,7 +1165,7 @@ static void rna_def_node_socket_geometry(BlenderRNA *brna, const char *identifie
   RNA_def_struct_sdna(srna, "bNodeSocket");
 }
 
-static void rna_def_node_socket_interface_new_geometry(BlenderRNA *brna, const char *identifier)
+static void rna_def_node_socket_interface_geometry(BlenderRNA *brna, const char *identifier)
 {
   StructRNA *srna;
 
@@ -1197,7 +1197,7 @@ static void rna_def_node_socket_collection(BlenderRNA *brna, const char *identif
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
 }
 
-static void rna_def_node_socket_interface_new_collection(BlenderRNA *brna, const char *identifier)
+static void rna_def_node_socket_interface_collection(BlenderRNA *brna, const char *identifier)
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -1240,7 +1240,7 @@ static void rna_def_node_socket_texture(BlenderRNA *brna, const char *identifier
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
 }
 
-static void rna_def_node_socket_interface_new_texture(BlenderRNA *brna, const char *identifier)
+static void rna_def_node_socket_interface_texture(BlenderRNA *brna, const char *identifier)
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -1285,7 +1285,7 @@ static void rna_def_node_socket_material(BlenderRNA *brna, const char *identifie
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
 }
 
-static void rna_def_node_socket_interface_new_material(BlenderRNA *brna, const char *identifier)
+static void rna_def_node_socket_interface_material(BlenderRNA *brna, const char *identifier)
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -1321,9 +1321,7 @@ static void rna_def_node_socket_virtual(BlenderRNA *brna, const char *identifier
 /* Info for generating static subtypes. */
 struct bNodeSocketStaticTypeInfo {
   const char *socket_identifier;
-  //  const char *interface_identifier;
-  /* XXX remove when deprecated. */
-  const char *interface_identifier_new;
+  const char *interface_identifier;
   eNodeSocketDatatype type;
   PropertySubType subtype;
   const char *label;
@@ -1458,53 +1456,53 @@ static void rna_def_node_socket_subtypes(BlenderRNA *brna)
 /* Note: interface items are defined outside this file.
  * The subtypes must be defined after the base type, so this function
  * is called from the interface rna file to ensure correct order. */
-void rna_def_node_socket_interface_subtypes_new(BlenderRNA *brna)
+void rna_def_node_socket_interface_subtypes(BlenderRNA *brna)
 {
   for (const bNodeSocketStaticTypeInfo &info : nodeSocketStaticTypeInfo()) {
-    const char *identifier = info.interface_identifier_new;
+    const char *identifier = info.interface_identifier;
 
     switch (info.type) {
       case SOCK_FLOAT:
-        rna_def_node_socket_interface_new_float(brna, identifier, info.subtype);
+        rna_def_node_socket_interface_float(brna, identifier, info.subtype);
         break;
       case SOCK_INT:
-        rna_def_node_socket_interface_new_int(brna, identifier, info.subtype);
+        rna_def_node_socket_interface_int(brna, identifier, info.subtype);
         break;
       case SOCK_BOOLEAN:
-        rna_def_node_socket_interface_new_bool(brna, identifier);
+        rna_def_node_socket_interface_bool(brna, identifier);
         break;
       case SOCK_ROTATION:
-        rna_def_node_socket_interface_new_rotation(brna, identifier);
+        rna_def_node_socket_interface_rotation(brna, identifier);
         break;
       case SOCK_VECTOR:
-        rna_def_node_socket_interface_new_vector(brna, identifier, info.subtype);
+        rna_def_node_socket_interface_vector(brna, identifier, info.subtype);
         break;
       case SOCK_RGBA:
-        rna_def_node_socket_interface_new_color(brna, identifier);
+        rna_def_node_socket_interface_color(brna, identifier);
         break;
       case SOCK_STRING:
-        rna_def_node_socket_interface_new_string(brna, identifier);
+        rna_def_node_socket_interface_string(brna, identifier);
         break;
       case SOCK_SHADER:
-        rna_def_node_socket_interface_new_shader(brna, identifier);
+        rna_def_node_socket_interface_shader(brna, identifier);
         break;
       case SOCK_OBJECT:
-        rna_def_node_socket_interface_new_object(brna, identifier);
+        rna_def_node_socket_interface_object(brna, identifier);
         break;
       case SOCK_IMAGE:
-        rna_def_node_socket_interface_new_image(brna, identifier);
+        rna_def_node_socket_interface_image(brna, identifier);
         break;
       case SOCK_GEOMETRY:
-        rna_def_node_socket_interface_new_geometry(brna, identifier);
+        rna_def_node_socket_interface_geometry(brna, identifier);
         break;
       case SOCK_COLLECTION:
-        rna_def_node_socket_interface_new_collection(brna, identifier);
+        rna_def_node_socket_interface_collection(brna, identifier);
         break;
       case SOCK_TEXTURE:
-        rna_def_node_socket_interface_new_texture(brna, identifier);
+        rna_def_node_socket_interface_texture(brna, identifier);
         break;
       case SOCK_MATERIAL:
-        rna_def_node_socket_interface_new_material(brna, identifier);
+        rna_def_node_socket_interface_material(brna, identifier);
         break;
 
       case SOCK_CUSTOM:
