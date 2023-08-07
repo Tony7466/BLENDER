@@ -62,16 +62,6 @@ struct EraseOperationExecutor {
   EraseOperationExecutor(const bContext & /*C*/) {}
 
   /**
-   * Checks if a point is inside the eraser or not.
-   */
-  inline bool contains_point(const float2 &point) const
-  {
-    const float radius_2 = this->eraser_radius * this->eraser_radius;
-    const float dist_2 = math::distance_squared(point, this->mouse_position);
-    return (dist_2 < radius_2);
-  }
-
-  /**
    * Computes the intersections between a 2D line segment and a circle with integer values.
    *
    * \param s0, s1 : endpoints of the segment.
@@ -283,8 +273,9 @@ struct EraseOperationExecutor {
         if (src_curve_points.size() == 1) {
           /* One-point stroke : just check if the point is inside the eraser. */
           const int src_point = src_curve_points.first();
-          const float2 pos = screen_space_positions[src_point];
-          r_is_point_inside[src_point] = contains_point(pos);
+          const int64_t squared_distance = math::distance_squared(
+              this->mouse_position_pixels, screen_space_positions_pixel[src_point]);
+          r_is_point_inside[src_point] = (squared_distance < this->eraser_squared_radius_pixels);
           continue;
         }
 
