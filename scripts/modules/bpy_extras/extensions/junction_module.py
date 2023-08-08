@@ -3,12 +3,16 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """
-Standalone module which creates a module factory whos sub-modules
-can reference other directories on the file-system.
+JunctionModuleHandle creates a module whose sub-modules are not located
+in the same directory on the file-system as usual. Instead the sub-modules are
+added into the package from different locations on the file-system.
+
+The ``JunctionModuleHandle`` class is used to manipulate sub-modules at run-time.
+This is needed to implement package management functionality, repositories can be added/removed at run-time.
 """
 
 __all__ = (
-    "JunctionModuleFactory",
+    "JunctionModuleHandle",
 )
 
 import sys
@@ -47,7 +51,7 @@ def _module_create(
     return module
 
 
-class JunctionModuleFactory:
+class JunctionModuleHandle:
     __slots__ = (
         "_module_name",
         "_module",

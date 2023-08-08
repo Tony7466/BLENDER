@@ -6447,9 +6447,15 @@ static void rna_def_userdef_filepaths_extension_repo(BlenderRNA *brna)
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_EDITOR_FILEBROWSER);
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 
+  /* NOTE(@ideasman42): this is intended to be used by a package manger component
+   * which is not yet integrated. */
   prop = RNA_def_property(srna, "use_cache", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, nullptr, "flag", USER_EXTENSION_FLAG_NO_CACHE);
-  RNA_def_property_ui_text(prop, "Local Cache", "Store packages in local cache");
+  RNA_def_property_ui_text(
+      prop,
+      "Local Cache",
+      "Store packages in local cache, "
+      "otherwise downloaded package files are immediately deleted after installation");
 }
 
 static void rna_def_userdef_script_directory(BlenderRNA *brna)

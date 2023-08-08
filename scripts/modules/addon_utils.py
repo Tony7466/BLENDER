@@ -49,7 +49,18 @@ def paths():
 
 def paths_with_extension_repos():
     """
-    A version of ``paths`` that includes extension repositories returning a list (path, package) pairs.
+    A version of ``paths`` that includes extension repositories returning a list ``(path, package)`` pairs.
+
+    Notes on the ``package`` value.
+
+    - For top-level modules (the "addons" directories, the value is an empty string)
+      because those add-ons can be imported directly.
+    - For extension repositories the value is a module string (which can be imported for example)
+      where any modules within the ``path`` can be imported as a sub-module.
+      So for example, given a list value of: ``("/tmp/repo", "bl_ext.temp_repo")``
+
+      An add-on located at ``/tmp/repo/my_handy_addon.py`` will have a unique module path of:
+      ``bl_ext.temp_repo.my_handy_addon``, which can be imported and will be the value of it's :class:`Addon.module`.
     """
     import os
     addon_paths = [(path, "") for path in paths()]
@@ -571,7 +582,7 @@ class _ext_global:
     # Only needed to detect renaming between `bpy.app.handlers.extension_repos_update_{pre & post}` events.
     idmap = {}
 
-    # The base package created by `JunctionModuleFactory`.
+    # The base package created by `JunctionModuleHandle`.
     module_handle = None
 
 
@@ -704,8 +715,8 @@ def _initialize_extension_repos_post(*_):
 
 
 def _initialize_extensions_repos_once():
-    from bpy_extras.extensions.junction_module import JunctionModuleFactory
-    module_handle = JunctionModuleFactory(_ext_base_pkg_idname)
+    from bpy_extras.extensions.junction_module import JunctionModuleHandle
+    module_handle = JunctionModuleHandle(_ext_base_pkg_idname)
     module_handle.register_module()
     _ext_global.module_handle = module_handle
 
