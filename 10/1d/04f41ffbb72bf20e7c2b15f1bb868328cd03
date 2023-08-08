@@ -3,3 +3,4 @@ Referenced by issue #103564, Scripting: creating a corner-domain color attribute
 Referenced by pull request #105020, Fix #103761: creating a color attribute doesn't make it active
 Referenced by commit acfafeed88ee5439519ad6b60b56dc2bac9a6202, Fix #103761: creating a color attribute doesn't make it active
 Referenced by pull request #109910, Fix #103410: name collisions between vertex groups and attributes
+Referenced by commit 12ef20990b35efbf8358a501d52119cd9f6197ed, Fix #103410: name collisions between vertex groups and attributes
