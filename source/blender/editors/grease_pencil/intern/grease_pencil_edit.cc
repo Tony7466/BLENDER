@@ -15,6 +15,7 @@
 
 #include "BKE_context.h"
 #include "BKE_grease_pencil.hh"
+#include "BKE_report.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -557,6 +558,95 @@ static void GREASE_PENCIL_OT_stroke_simplify(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Delete Frame Operator
+ * \{ */
+
+enum eGREASEPENCIL_DeleteFrameMode {
+  /* delete active frame for the current layer */
+  GREASEPENCIL_DELETEFRAMEOP_ACTIVE_FRAME = 0,
+  /* delete active frames for all layers */
+  GREASEPENCIL_DELETEFRAMEOP_ALL_FRAMES = 1,
+};
+
+static int grease_pencil_delete_frame_exec(bContext *C, wmOperator *op)
+{
+  using namespace blender;
+  const Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+  const int current_frame = scene->r.cfra;
+
+  eGREASEPENCIL_DeleteFrameMode mode = eGREASEPENCIL_DeleteFrameMode(
+      RNA_enum_get(op->ptr, "type"));
+
+  bool changed = false;
+  if (mode == GREASEPENCIL_DELETEFRAMEOP_ACTIVE_FRAME) {
+    bke::greasepencil::Layer &layer = *grease_pencil.get_active_layer_for_write();
+    if (layer.is_editable()) {
+      changed |= layer.remove_frame(layer.frame_key_at(current_frame));
+    }
+  }
+  else if (mode == GREASEPENCIL_DELETEFRAMEOP_ALL_FRAMES) {
+    for (bke::greasepencil::Layer *layer : grease_pencil.layers_for_write()) {
+      if (layer->is_editable()) {
+        changed |= layer->remove_frame(layer->frame_key_at(current_frame));
+      }
+    }
+  }
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA | NA_EDITED, &grease_pencil);
+  }
+  else {
+    BKE_report(op->reports, RPT_ERROR, "No editable frame(s) to delete");
+  }
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_delete_frame(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  static const EnumPropertyItem prop_greasepencil_delete_types[] = {
+      {GREASEPENCIL_DELETEFRAMEOP_ACTIVE_FRAME,
+       "ACTIVE_FRAME",
+       0,
+       "Active Frame",
+       "Deletes current frame in the active layer"},
+      {GREASEPENCIL_DELETEFRAMEOP_ALL_FRAMES,
+       "ALL_FRAMES",
+       0,
+       "All Active Frames",
+       "Delete active frames for all layers"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  /* Identifiers. */
+  ot->name = "Delete Frame";
+  ot->idname = "GREASE_PENCIL_OT_delete_frame";
+  ot->description = "Delete Grease Pencil Frame(s)";
+
+  /* Callbacks. */
+  ot->invoke = WM_menu_invoke;
+  ot->exec = grease_pencil_delete_frame_exec;
+  ot->poll = editable_grease_pencil_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* Simplify parameters. */
+  ot->prop = prop = RNA_def_enum(ot->srna,
+                                 "type",
+                                 prop_greasepencil_delete_types,
+                                 0,
+                                 "Type",
+                                 "Method used for deleting Grease Pencil Frames");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+}
+
+/** \} */
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_edit()
@@ -564,6 +654,7 @@ void ED_operatortypes_grease_pencil_edit()
   using namespace blender::ed::greasepencil;
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_smooth);
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_simplify);
+  WM_operatortype_append(GREASE_PENCIL_OT_delete_frame);
 }
 
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
