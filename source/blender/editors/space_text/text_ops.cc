@@ -2658,9 +2658,7 @@ static void text_scroll_apply(bContext *C, wmOperator *op, const wmEvent *event)
     tsc->is_first = false;
   }
 
-  if (event->type != MOUSEPAN) {
-    sub_v2_v2v2_int(tsc->mval_delta, mval, tsc->mval_prev);
-  }
+  sub_v2_v2v2_int(tsc->mval_delta, mval, tsc->mval_prev);
 
   /* accumulate scroll, in float values for events that give less than one
    * line offset but taken together should still scroll */
@@ -2799,6 +2797,40 @@ static int text_scroll_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     return text_scroll_exec(C, op);
   }
 
+  if (event->type == MOUSEPAN) {
+    int mval_delta[2];
+    sub_v2_v2v2_int(mval_delta, event->xy, event->prev_xy);
+
+    const int i = abs(mval_delta[0]) > abs(mval_delta[1]) ? 0 : 1;
+    const int size_px[2] = {st->runtime.cwidth_px, TXT_LINE_HEIGHT(st)};
+    static int ofs_delta_px[2] = {0, 0};
+    int ofs_delta[2] = {0, 0};
+
+    ofs_delta_px[i] += mval_delta[i];
+    ofs_delta[i] = ofs_delta_px[i] / size_px[i];
+    ofs_delta_px[i] -= ofs_delta[i] * size_px[i];
+
+    if (ofs_delta[i] == 0) {
+      return OPERATOR_CANCELLED;
+    }
+
+    if (i) {
+      st->top += ofs_delta[1];
+      txt_screen_clamp(st, region);
+    }
+    else {
+      st->left -= ofs_delta[0];
+
+      if (st->left < 0) {
+        st->left = 0;
+      }
+    }
+
+    ED_area_tag_redraw(CTX_wm_area(C));
+
+    return OPERATOR_FINISHED;
+  }
+
   tsc = static_cast<TextScroll *>(MEM_callocN(sizeof(TextScroll), "TextScroll"));
   tsc->is_first = true;
   tsc->zone = SCROLLHANDLE_BAR;
@@ -2808,20 +2840,6 @@ static int text_scroll_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   op->customdata = tsc;
 
   st->flags |= ST_SCROLL_SELECT;
-
-  if (event->type == MOUSEPAN) {
-    text_update_character_width(st);
-
-    copy_v2_v2_int(tsc->mval_prev, event->xy);
-    /* Sensitivity of scroll set to 4pix per line/char */
-    tsc->mval_delta[0] = (event->xy[0] - event->prev_xy[0]) * st->runtime.cwidth_px / 4;
-    tsc->mval_delta[1] = (event->xy[1] - event->prev_xy[1]) * st->runtime.lheight_px / 4;
-    tsc->is_first = false;
-    tsc->is_scrollbar = false;
-    text_scroll_apply(C, op, event);
-    scroll_exit(C, op);
-    return OPERATOR_FINISHED;
-  }
 
   WM_event_add_modal_handler(C, op);
 
