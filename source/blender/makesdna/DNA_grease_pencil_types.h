@@ -504,10 +504,6 @@ typedef struct GreasePencil {
    */
   void remove_drawings_with_no_users();
 
-  bool move_frame_at(blender::bke::greasepencil::Layer &layer,
-                     int src_frame_number,
-                     int dst_frame_number);
-
   void move_frames(blender::bke::greasepencil::Layer &layer,
                    const blender::Map<int, int> &trans_frame_numbers);
 

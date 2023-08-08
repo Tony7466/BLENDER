@@ -717,31 +717,6 @@ static int get_frame_duration(const blender::bke::greasepencil::Layer &layer,
   return next_frame_number - frame_number;
 }
 
-bool Layer::move_frame(const FramesMapKey src_key, const FramesMapKey dst_key)
-{
-  if (!this->frames().contains(src_key)) {
-    return false;
-  }
-
-  if (src_key == dst_key) {
-    return false;
-  }
-
-  const GreasePencilFrame src_frame = this->frames().lookup(src_key);
-  const int duration = src_frame.is_implicit_hold() ? 0 : get_frame_duration(*this, src_key);
-
-  if (!this->remove_frame(src_key)) {
-    return false;
-  }
-
-  GreasePencilFrame *dst_frame = this->add_frame(dst_key, src_frame.drawing_index, duration);
-  if (dst_frame == nullptr) {
-    return false;
-  }
-  dst_frame->type = src_frame.type;
-  return true;
-}
-
 bool Layer::initialize_trans_data()
 {
   LayerTransData &trans_data = this->runtime->trans_data_;
@@ -1734,21 +1709,6 @@ void GreasePencil::remove_drawings_with_no_users()
     }
   }
   remove_drawings_unchecked(*this, drawings_to_be_removed.as_span());
-}
-
-bool GreasePencil::move_frame_at(blender::bke::greasepencil::Layer &layer,
-                                 const int src_frame_number,
-                                 const int dst_frame_number)
-{
-  if ((src_frame_number == dst_frame_number) || (!layer.frames().contains(src_frame_number))) {
-    return false;
-  }
-
-  if (layer.frames().contains(dst_frame_number)) {
-    this->remove_frame_at(layer, dst_frame_number);
-  }
-
-  return layer.move_frame(src_frame_number, dst_frame_number);
 }
 
 void GreasePencil::move_frames(blender::bke::greasepencil::Layer &layer,
