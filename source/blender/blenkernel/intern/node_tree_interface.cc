@@ -33,9 +33,9 @@ namespace socket_types {
  * `NodeSocketFloatUnsigned`, `NodeSocketFloatFactor`. Only the "base type" (`NodeSocketFloat`)
  * is considered valid for interface sockets.
  */
-static const char *try_get_supported_socket_type(StringRef socket_type)
+static const char *try_get_supported_socket_type(StringRefNull socket_type)
 {
-  const bNodeSocketType *typeinfo = nodeSocketTypeFind(socket_type.data());
+  const bNodeSocketType *typeinfo = nodeSocketTypeFind(socket_type.c_str());
   if (typeinfo == nullptr) {
     return nullptr;
   }
@@ -1042,15 +1042,15 @@ void bNodeTreeInterfacePanel::foreach_item(
 }
 
 static bNodeTreeInterfaceSocket *make_socket(const int uid,
-                                             blender::StringRef name,
-                                             blender::StringRef description,
-                                             blender::StringRef socket_type,
+                                             blender::StringRefNull name,
+                                             blender::StringRefNull description,
+                                             blender::StringRefNull socket_type,
                                              const eNodeTreeInterfaceSocketFlag flag)
 {
-  BLI_assert(name.data() != nullptr);
-  BLI_assert(socket_type.data() != nullptr);
+  BLI_assert(name.c_str() != nullptr);
+  BLI_assert(socket_type.c_str() != nullptr);
 
-  const char *idname = socket_types::try_get_supported_socket_type(socket_type.data());
+  const char *idname = socket_types::try_get_supported_socket_type(socket_type.c_str());
   if (idname == nullptr) {
     return nullptr;
   }
@@ -1061,23 +1061,23 @@ static bNodeTreeInterfaceSocket *make_socket(const int uid,
   /* Init common socket properties. */
   new_socket->uid = uid;
   new_socket->item.item_type = NODE_INTERFACE_SOCKET;
-  new_socket->name = BLI_strdup(name.data());
-  new_socket->description = BLI_strdup_null(description.data());
-  new_socket->socket_type = BLI_strdup(socket_type.data());
+  new_socket->name = BLI_strdup(name.c_str());
+  new_socket->description = BLI_strdup_null(description.c_str());
+  new_socket->socket_type = BLI_strdup(socket_type.c_str());
   new_socket->flag = flag;
 
-  new_socket->socket_data = socket_types::make_socket_data(socket_type.data());
+  new_socket->socket_data = socket_types::make_socket_data(socket_type.c_str());
 
   return new_socket;
 }
 
-static bNodeTreeInterfacePanel *make_panel(const int uid, blender::StringRef name)
+static bNodeTreeInterfacePanel *make_panel(const int uid, blender::StringRefNull name)
 {
-  BLI_assert(name.data() != nullptr);
+  BLI_assert(name.c_str() != nullptr);
 
   bNodeTreeInterfacePanel *new_panel = MEM_cnew<bNodeTreeInterfacePanel>(__func__);
   new_panel->item.item_type = NODE_INTERFACE_PANEL;
-  new_panel->name = BLI_strdup(name.data());
+  new_panel->name = BLI_strdup(name.c_str());
   new_panel->uid = uid;
   return new_panel;
 }
@@ -1174,9 +1174,9 @@ void bNodeTreeInterface::active_item_set(bNodeTreeInterfaceItem *item)
   });
 }
 
-bNodeTreeInterfaceSocket *bNodeTreeInterface::add_socket(blender::StringRef name,
-                                                         blender::StringRef description,
-                                                         blender::StringRef socket_type,
+bNodeTreeInterfaceSocket *bNodeTreeInterface::add_socket(blender::StringRefNull name,
+                                                         blender::StringRefNull description,
+                                                         blender::StringRefNull socket_type,
                                                          const eNodeTreeInterfaceSocketFlag flag,
                                                          bNodeTreeInterfacePanel *parent)
 {
@@ -1194,9 +1194,9 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::add_socket(blender::StringRef name
 }
 
 bNodeTreeInterfaceSocket *bNodeTreeInterface::insert_socket(
-    blender::StringRef name,
-    blender::StringRef description,
-    blender::StringRef socket_type,
+    blender::StringRefNull name,
+    blender::StringRefNull description,
+    blender::StringRefNull socket_type,
     const eNodeTreeInterfaceSocketFlag flag,
     bNodeTreeInterfacePanel *parent,
     const int position)
@@ -1214,7 +1214,7 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::insert_socket(
   return new_socket;
 }
 
-bNodeTreeInterfacePanel *bNodeTreeInterface::add_panel(blender::StringRef name,
+bNodeTreeInterfacePanel *bNodeTreeInterface::add_panel(blender::StringRefNull name,
                                                        bNodeTreeInterfacePanel *parent)
 {
   if (parent == nullptr) {
@@ -1229,7 +1229,7 @@ bNodeTreeInterfacePanel *bNodeTreeInterface::add_panel(blender::StringRef name,
   return new_panel;
 }
 
-bNodeTreeInterfacePanel *bNodeTreeInterface::insert_panel(blender::StringRef name,
+bNodeTreeInterfacePanel *bNodeTreeInterface::insert_panel(blender::StringRefNull name,
                                                           bNodeTreeInterfacePanel *parent,
                                                           const int position)
 {

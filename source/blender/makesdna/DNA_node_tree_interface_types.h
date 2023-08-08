@@ -231,9 +231,9 @@ typedef struct bNodeTreeInterface {
    * \param parent: Panel in which to add the socket. If parent is null the socket is added in the
    * root panel.
    */
-  bNodeTreeInterfaceSocket *add_socket(blender::StringRef name,
-                                       blender::StringRef description,
-                                       blender::StringRef socket_type,
+  bNodeTreeInterfaceSocket *add_socket(blender::StringRefNull name,
+                                       blender::StringRefNull description,
+                                       blender::StringRefNull socket_type,
                                        eNodeTreeInterfaceSocketFlag flag,
                                        bNodeTreeInterfacePanel *parent);
   /**
@@ -242,9 +242,9 @@ typedef struct bNodeTreeInterface {
    * root panel.
    * \param position: Position of the socket within the parent panel.
    */
-  bNodeTreeInterfaceSocket *insert_socket(blender::StringRef name,
-                                          blender::StringRef description,
-                                          blender::StringRef socket_type,
+  bNodeTreeInterfaceSocket *insert_socket(blender::StringRefNull name,
+                                          blender::StringRefNull description,
+                                          blender::StringRefNull socket_type,
                                           eNodeTreeInterfaceSocketFlag flag,
                                           bNodeTreeInterfacePanel *parent,
                                           int position);
@@ -254,14 +254,14 @@ typedef struct bNodeTreeInterface {
    * \param parent: Panel in which the new panel is aded as a child. If parent is null the new
    * panel is made a child of the root panel.
    */
-  bNodeTreeInterfacePanel *add_panel(blender::StringRef name, bNodeTreeInterfacePanel *parent);
+  bNodeTreeInterfacePanel *add_panel(blender::StringRefNull name, bNodeTreeInterfacePanel *parent);
   /**
    * Insert a new panel.
    * \param parent: Panel in which the new panel is aded as a child. If parent is null the new
    * panel is made a child of the root panel.
    * \param position: Position of the child panel within the parent panel.
    */
-  bNodeTreeInterfacePanel *insert_panel(blender::StringRef name,
+  bNodeTreeInterfacePanel *insert_panel(blender::StringRefNull name,
                                         bNodeTreeInterfacePanel *parent,
                                         int position);
 
