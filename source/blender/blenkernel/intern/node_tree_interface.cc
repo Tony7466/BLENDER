@@ -473,17 +473,13 @@ static void item_copy(bNodeTreeInterfaceItem &dst,
       BLI_assert(src_socket.socket_type != nullptr);
 
       dst_socket.name = BLI_strdup(src_socket.name);
-      dst_socket.description = src_socket.description ? BLI_strdup(src_socket.description) :
-                                                        nullptr;
+      dst_socket.description = BLI_strdup_null(src_socket.description);
       dst_socket.socket_type = BLI_strdup(src_socket.socket_type);
-      dst_socket.default_attribute_name = src_socket.default_attribute_name ?
-                                              BLI_strdup(src_socket.default_attribute_name) :
-                                              nullptr;
-      dst_socket.uid_compat = src_socket.uid_compat ? BLI_strdup(src_socket.uid_compat) : nullptr;
+      dst_socket.default_attribute_name = BLI_strdup_null(src_socket.default_attribute_name);
+      dst_socket.uid_compat = BLI_strdup_null(src_socket.uid_compat);
       if (src_socket.prop) {
         dst_socket.prop = IDP_CopyProperty_ex(src_socket.prop, flag);
       }
-
       if (src_socket.socket_data != nullptr) {
         socket_types::socket_data_copy(dst_socket, src_socket, flag);
       }
@@ -981,7 +977,7 @@ void bNodeTreeInterfacePanel::foreach_item(
   if (include_self && fn(this->item) == false) {
     return;
   }
-  stack.push(items());
+  stack.push(this->items());
 
   while (!stack.is_empty()) {
     const ItemSpan current_items = stack.pop();
@@ -1064,7 +1060,7 @@ static bNodeTreeInterfaceSocket *make_socket(const int uid,
   new_socket->uid = uid;
   new_socket->item.item_type = NODE_INTERFACE_SOCKET;
   new_socket->name = BLI_strdup(name.data());
-  new_socket->description = description.data() ? BLI_strdup(description.data()) : nullptr;
+  new_socket->description = BLI_strdup_null(description.data());
   new_socket->socket_type = BLI_strdup(socket_type.data());
   new_socket->flag = flag;
 
