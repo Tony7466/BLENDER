@@ -32,6 +32,7 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_action.h"
+#include "BKE_curves.hh"
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
 #include "BKE_gpencil_legacy.h"
@@ -111,14 +112,22 @@ bDeformGroup *BKE_object_defgroup_add(Object *ob)
 
 MDeformVert *BKE_object_defgroup_data_create(ID *id)
 {
-  if (GS(id->name) == ID_ME) {
-    return BKE_mesh_deform_verts_for_write((Mesh *)id);
-  }
-  if (GS(id->name) == ID_LT) {
-    Lattice *lt = (Lattice *)id;
-    lt->dvert = static_cast<MDeformVert *>(MEM_callocN(
-        sizeof(MDeformVert) * lt->pntsu * lt->pntsv * lt->pntsw, "lattice deformVert"));
-    return lt->dvert;
+  switch (GS(id->name)) {
+    case ID_ME: {
+      return BKE_mesh_deform_verts_for_write((Mesh *)id);
+    }
+    case ID_LT: {
+      Lattice *lt = (Lattice *)id;
+      lt->dvert = static_cast<MDeformVert *>(MEM_callocN(
+          sizeof(MDeformVert) * lt->pntsu * lt->pntsv * lt->pntsw, "lattice deformVert"));
+      return lt->dvert;
+    }
+    case ID_CV: {
+      Curves *curves_id = reinterpret_cast<Curves *>(id);
+      return curves_id->geometry.wrap().deform_verts_for_write().data();
+    }
+    default:
+      BLI_assert_unreachable();
   }
 
   return nullptr;
@@ -197,6 +206,25 @@ bool BKE_object_defgroup_clear(Object *ob, bDeformGroup *dg, const bool use_sele
       }
     }
   }
+  else if (ob->type == OB_CURVES) {
+    using namespace blender;
+    Curves *curves_id = static_cast<Curves *>(ob->data);
+    bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+    const Span<MDeformVert> dverts = curves.deform_verts();
+    if (!dverts.is_empty()) {
+      const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
+          ".selection", ATTR_DOMAIN_POINT, true);
+
+      MutableSpan<MDeformVert> dverts = curves.deform_verts_for_write();
+      for (const int64_t index : curves.points_range()) {
+        if (&dverts[index] && (!use_selection || selection[index])) {
+          MDeformWeight *dw = BKE_defvert_find_index(&dverts[index], def_nr);
+          BKE_defvert_remove_group(&dverts[index], dw); /* dw can be nullptr */
+          changed = true;
+        }
+      }
+    }
+  }
 
   return changed;
 }
@@ -263,6 +291,11 @@ static void object_defgroup_remove_common(Object *ob, bDeformGroup *dg, const in
     else if (ob->type == OB_LATTICE) {
       Lattice *lt = object_defgroup_lattice_get((ID *)(ob->data));
       MEM_SAFE_FREE(lt->dvert);
+    }
+    else if (ob->type == OB_CURVES) {
+      Curves *curves_id = static_cast<Curves *>(ob->data);
+      CustomData_free_layer_active(
+          &curves_id->geometry.point_data, CD_MDEFORMVERT, curves_id->geometry.point_num);
     }
   }
   else if (BKE_object_defgroup_active_index_get(ob) < 1) {
@@ -357,6 +390,25 @@ static void object_defgroup_remove_edit_mode(Object *ob, bDeformGroup *dg)
       }
     }
   }
+  else if (ob->type == OB_CURVES) {
+    using namespace blender;
+    Curves *curves_id = static_cast<Curves *>(ob->data);
+    bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+
+    MutableSpan<MDeformVert> dverts = curves.deform_verts_for_write();
+    threading::parallel_for(curves.points_range(), 4096, [&](const IndexRange range) {
+      for (const int64_t index : range) {
+        MDeformVert *dvert = &dverts[index];
+        if (dvert) {
+          for (int64_t i = 0; i < dvert->totweight; i++) {
+            if (dvert->dw[i].def_nr > def_nr) {
+              dvert->dw[i].def_nr--;
+            }
+          }
+        }
+      }
+    });
+  }
 
   object_defgroup_remove_common(ob, dg, def_nr);
 }
@@ -410,6 +462,11 @@ void BKE_object_defgroup_remove_all_ex(Object *ob, bool only_unlocked)
     else if (ob->type == OB_LATTICE) {
       Lattice *lt = object_defgroup_lattice_get((ID *)(ob->data));
       MEM_SAFE_FREE(lt->dvert);
+    }
+    else if (ob->type == OB_CURVES) {
+      Curves *curves_id = static_cast<Curves *>(ob->data);
+      CustomData_free_layer_active(
+          &curves_id->geometry.point_data, CD_MDEFORMVERT, curves_id->geometry.point_num);
     }
     /* Fix counters/indices */
     BKE_object_defgroup_active_index_set(ob, 0);
@@ -505,6 +562,11 @@ bool BKE_object_defgroup_array_get(ID *id, MDeformVert **dvert_arr, int *dvert_t
         *dvert_arr = lt->dvert;
         *dvert_tot = lt->pntsu * lt->pntsv * lt->pntsw;
         return true;
+      }
+      case ID_CV: {
+        Curves *curves_id = reinterpret_cast<Curves *>(id);
+        *dvert_arr = const_cast<MDeformVert *>(curves_id->geometry.wrap().deform_verts().data());
+        *dvert_tot = curves_id->geometry.point_num;
       }
       default:
         break;

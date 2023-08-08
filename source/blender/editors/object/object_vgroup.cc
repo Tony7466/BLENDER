@@ -33,6 +33,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_context.h"
+#include "BKE_curves.hh"
 #include "BKE_customdata.h"
 #include "BKE_deform.h"
 #include "BKE_editmesh.h"
@@ -60,6 +61,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "ED_curves.hh"
 #include "ED_mesh.hh"
 #include "ED_object.hh"
 #include "ED_screen.hh"
@@ -254,7 +256,34 @@ bool ED_vgroup_parray_alloc(ID *id,
         }
         return false;
       }
+      case ID_CV: {
+        Curves *curves_id = reinterpret_cast<Curves *>(id);
+        bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+        if (!curves.deform_verts().is_empty()) {
+          MutableSpan<MDeformVert> dverts = curves.deform_verts_for_write();
 
+          *dvert_tot = curves.points_num();
+          *dvert_arr = static_cast<MDeformVert **>(
+              MEM_mallocN(sizeof(void *) * curves.points_num(), __func__));
+
+          if (use_vert_sel) {
+            const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
+                ".selection", ATTR_DOMAIN_POINT, true);
+
+            for (int64_t i = 0; i < curves.points_num(); i++) {
+              (*dvert_arr)[i] = selection[i] ? &dverts[i] : nullptr;
+            }
+          }
+          else {
+            for (int64_t i = 0; i < curves.points_num(); i++) {
+              (*dvert_arr)[i] = &dverts[i];
+            }
+          }
+
+          return true;
+        }
+        return false;
+      }
       default:
         break;
     }
@@ -1104,6 +1133,24 @@ static void vgroup_select_verts(Object *ob, int select)
           }
         }
       }
+    }
+  }
+  else if (ob->type == OB_CURVES) {
+    Curves *curves_id = static_cast<Curves *>(ob->data);
+    bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+    const Span<MDeformVert> dverts = curves.deform_verts();
+    if (!dverts.is_empty()) {
+      bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
+          curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
+      MutableSpan<bool> selection_typed = selection.span.typed<bool>();
+      threading::parallel_for(curves.points_range(), 4096, [&](const IndexRange range) {
+        for (const int64_t index : range) {
+          if (BKE_defvert_find_index(&dverts[index], def_nr)) {
+            selection_typed[index] = bool(select);
+          }
+        }
+      });
+      selection.finish();
     }
   }
 }
@@ -2307,6 +2354,23 @@ static void vgroup_assign_verts(Object *ob, const float weight)
         }
       }
     }
+  }
+  else if (ob->type == OB_CURVES) {
+    Curves *curves_id = static_cast<Curves *>(ob->data);
+    bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+    const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
+        ".selection", ATTR_DOMAIN_POINT, true);
+
+    MutableSpan<MDeformVert> dverts = curves.deform_verts_for_write();
+    threading::parallel_for(curves.points_range(), 4096, [&](const IndexRange range) {
+      for (const int64_t index : range) {
+        if (selection[index]) {
+          if (MDeformWeight *dw = BKE_defvert_ensure_index(&dverts[index], def_nr)) {
+            dw->weight = weight;
+          }
+        }
+      }
+    });
   }
 }
 
