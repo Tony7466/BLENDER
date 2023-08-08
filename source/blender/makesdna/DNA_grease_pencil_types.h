@@ -508,7 +508,7 @@ typedef struct GreasePencil {
    * Move a set of frames in a \a layer.
    *
    * \param trans_frame_numbers describes all transformations that should be applied on the frame
-   * keys. Note that any key that is not in this map will not appear in the resulting frame map.
+   * keys.
    *
    * If a transformation overlaps another frames, the frame will be overwritten, and the
    * corresponding drawing may be removed, if it no longer has users.

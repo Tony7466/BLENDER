@@ -70,8 +70,6 @@ static bool grease_pencil_layer_initialize_trans_data(blender::bke::greasepencil
     if (frame.is_null()) {
       continue;
     }
-    /* Set the transformation to the identity. */
-    trans_data.trans_map.add(frame_number, frame_number);
 
     /* Store frames' duration to keep them visually correct while moving the frames */
     if (!frame.is_implicit_hold()) {

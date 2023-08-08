@@ -1612,13 +1612,20 @@ void GreasePencil::move_frames(blender::bke::greasepencil::Layer &layer,
 
   /* Clear the frames' data. */
   Map<int, GreasePencilFrame> layer_frames_copy = layer.frames();
-  layer.frames_for_write().clear();
   layer.tag_frames_map_keys_changed();
+
+  /* Remove all frames that have a mapping. */
+  for (const auto [src_frame_number, dst_frame_number] : trans_frame_numbers.items()) {
+    if (src_frame_number == dst_frame_number) {
+      continue;
+    }
+    layer.remove_frame(src_frame_number);
+  }
 
   /* Insert all frames of the transformation. */
   Vector<int> drawings_to_remove;
   for (const auto [src_frame_number, dst_frame_number] : trans_frame_numbers.items()) {
-    if (!layer_frames_copy.contains(src_frame_number)) {
+    if ((src_frame_number == dst_frame_number) || !layer_frames_copy.contains(src_frame_number)) {
       continue;
     }
 
@@ -1628,37 +1635,18 @@ void GreasePencil::move_frames(blender::bke::greasepencil::Layer &layer,
                              0 :
                              layer.get_frame_duration_at(src_frame_number);
 
-    if (src_frame_number == dst_frame_number) {
-      /* This frame was not directly affected by the transformation.
-       * Add it only if it was not overwritten by the transformation. */
-      if (!layer.frames().contains(src_frame_number)) {
-        GreasePencilFrame *frame = layer.add_frame(src_frame_number, drawing_index, duration);
-        *frame = src_frame;
+    /* Add and overwrite the frame at the destination number. */
+    if (layer.frames().contains(dst_frame_number)) {
+      GreasePencilFrame frame_to_overwrite = layer.frames().lookup(dst_frame_number);
+      GreasePencilDrawingBase *drawing_base = this->drawings(frame_to_overwrite.drawing_index);
+      if (drawing_base->type == GP_DRAWING) {
+        reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap().remove_user();
+        drawings_to_remove.append(frame_to_overwrite.drawing_index);
       }
-      else {
-        /* This frame was overwritten by another one, so we decrease its user count. */
-        GreasePencilDrawingBase *drawing_base = this->drawings(src_frame.drawing_index);
-        if (drawing_base->type == GP_DRAWING) {
-          reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap().remove_user();
-          drawings_to_remove.append(drawing_index);
-        }
-      }
+      layer.remove_frame(dst_frame_number);
     }
-    else {
-      /* This frame was directly affected by the transformation.
-       * Add it, and overwrite the frame at the destination number, if there is one. */
-      if (layer.frames().contains(dst_frame_number)) {
-        GreasePencilFrame frame_to_overwrite = layer.frames().lookup(dst_frame_number);
-        GreasePencilDrawingBase *drawing_base = this->drawings(frame_to_overwrite.drawing_index);
-        if (drawing_base->type == GP_DRAWING) {
-          reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap().remove_user();
-          drawings_to_remove.append(frame_to_overwrite.drawing_index);
-        }
-        layer.remove_frame(dst_frame_number);
-      }
-      GreasePencilFrame *frame = layer.add_frame(dst_frame_number, drawing_index, duration);
-      *frame = src_frame;
-    }
+    GreasePencilFrame *frame = layer.add_frame(dst_frame_number, drawing_index, duration);
+    *frame = src_frame;
   }
 
   /* Remove drawings if they have no more users. */
