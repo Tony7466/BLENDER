@@ -424,8 +424,11 @@ static bNodeTreeInterfaceSocket *rna_NodeTreeInterfaceItems_new_socket(
   SET_FLAG_FROM_TEST(flag, is_input, NODE_INTERFACE_SOCKET_INPUT);
   SET_FLAG_FROM_TEST(flag, is_output, NODE_INTERFACE_SOCKET_OUTPUT);
 
-  bNodeTreeInterfaceSocket *socket = interface->add_socket(
-      name, description, socket_type, flag, parent);
+  bNodeTreeInterfaceSocket *socket = interface->add_socket(name ? name : "",
+                                                           description ? description : "",
+                                                           socket_type ? socket_type : "",
+                                                           flag,
+                                                           parent);
 
   if (socket == nullptr) {
     BKE_report(reports, RPT_ERROR, "Unable to create socket");
@@ -452,7 +455,7 @@ static bNodeTreeInterfacePanel *rna_NodeTreeInterfaceItems_new_panel(
     return nullptr;
   }
 
-  bNodeTreeInterfacePanel *panel = interface->add_panel(name, parent);
+  bNodeTreeInterfacePanel *panel = interface->add_panel(name ? name : "", parent);
 
   if (panel == nullptr) {
     BKE_report(reports, RPT_ERROR, "Unable to create panel");
