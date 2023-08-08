@@ -157,6 +157,71 @@ class DATA_PT_CURVES_attributes(DataButtonsPanel, Panel):
         col.operator("geometry.attribute_remove", icon='REMOVE', text="")
 
 
+class DATA_PT_curves_vertex_groups(DataButtonsPanel, Panel):
+    bl_label = "Vertex Groups"
+    COMPAT_ENGINES = {
+        'BLENDER_RENDER',
+        'BLENDER_EEVEE',
+        'BLENDER_EEVEE_NEXT',
+        'BLENDER_WORKBENCH',
+        'BLENDER_WORKBENCH_NEXT'}
+
+    def draw(self, context):
+        layout = self.layout
+
+        ob = context.object
+        group = ob.vertex_groups.active
+
+        rows = 3
+        if group:
+            rows = 5
+
+        row = layout.row()
+        row.template_list("CURVES_UL_vgroups", "", ob, "vertex_groups", ob.vertex_groups, "active_index", rows=rows)
+
+        col = row.column(align=True)
+
+        col.operator("object.vertex_group_add", icon='ADD', text="")
+        props = col.operator("object.vertex_group_remove", icon='REMOVE', text="")
+        props.all_unlocked = props.all = False
+
+        col.separator()
+
+        if group:
+            col.separator()
+            col.operator("object.vertex_group_move", icon='TRIA_UP', text="").direction = 'UP'
+            col.operator("object.vertex_group_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
+
+        if (
+                ob.vertex_groups and
+                (ob.mode == 'EDIT' or
+                 (ob.mode == 'WEIGHT_PAINT' and ob.type == 'CURVES' and ob.data.use_paint_mask_vertex))
+        ):
+            row = layout.row()
+
+            sub = row.row(align=True)
+            sub.operator("object.vertex_group_assign", text="Assign")
+            sub.operator("object.vertex_group_remove_from", text="Remove")
+
+            sub = row.row(align=True)
+            sub.operator("object.vertex_group_select", text="Select")
+            sub.operator("object.vertex_group_deselect", text="Deselect")
+
+            layout.prop(context.tool_settings, "vertex_group_weight", text="Weight")
+
+
+class CURVES_UL_vgroups(UIList):
+    def draw_item(self, _context, layout, _data, item, icon, _active_data_, _active_propname, _index):
+        vgroup = item
+        if self.layout_type in {'DEFAULT', 'COMPACT'}:
+            layout.prop(vgroup, "name", text="", emboss=False, icon_value=icon)
+            icon = 'LOCKED' if vgroup.lock_weight else 'UNLOCKED'
+            layout.prop(vgroup, "lock_weight", text="", icon=icon, emboss=False)
+        elif self.layout_type == 'GRID':
+            layout.alignment = 'CENTER'
+            layout.label(text="", icon_value=icon)
+
+
 class DATA_PT_custom_props_curves(DataButtonsPanel, PropertyPanel, Panel):
     COMPAT_ENGINES = {
         'BLENDER_RENDER',
@@ -172,8 +237,10 @@ classes = (
     DATA_PT_CURVES_attributes,
     DATA_PT_curves_surface,
     DATA_PT_custom_props_curves,
+    DATA_PT_curves_vertex_groups,
     CURVES_MT_add_attribute,
     CURVES_UL_attributes,
+    CURVES_UL_vgroups,
 )
 
 if __name__ == "__main__":  # only for live edit.
