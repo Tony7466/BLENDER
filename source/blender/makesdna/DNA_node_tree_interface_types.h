@@ -193,6 +193,7 @@ typedef struct bNodeTreeInterfacePanel {
 typedef struct bNodeTreeInterface {
   bNodeTreeInterfacePanel root_panel;
 
+  /* Global index of the active item. */
   int active_index;
   int next_uid;
 
