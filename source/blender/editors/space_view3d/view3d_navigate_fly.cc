@@ -119,6 +119,7 @@ void fly_modal_keymap(wmKeyConfig *keyconf)
       {FLY_MODAL_FREELOOK_ENABLE, "FREELOOK_ENABLE", 0, "Rotation", ""},
       {FLY_MODAL_FREELOOK_DISABLE, "FREELOOK_DISABLE", 0, "Rotation (Off)", ""},
 
+      {FLY_MODAL_SPEED, "SPEED", 0, "Speed", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -532,7 +533,7 @@ static void flyEvent(FlyInfo *fly, const wmEvent *event)
 
       /* Speed adjusting with mouse-pan (track-pad). */
       case FLY_MODAL_SPEED: {
-        float fac = 0.02f * (event->prev_xy[1] - event->xy[1]);
+        float fac = 0.02f * WM_event_absolute_delta_y(event) / U.dpi_fac;
 
         /* allowing to brake immediate */
         if (fac > 0.0f && fly->speed < 0.0f) {
@@ -1098,10 +1099,9 @@ static int fly_modal(bContext *C, wmOperator *op, const wmEvent *event)
   }
   else
 #endif /* WITH_INPUT_NDOF */
-      if (event->type == TIMER && event->customdata == fly->timer)
-  {
-    flyApply(C, fly, false);
-  }
+    if (event->type == TIMER && event->customdata == fly->timer) {
+      flyApply(C, fly, false);
+    }
 
   do_draw |= fly->redraw;
 

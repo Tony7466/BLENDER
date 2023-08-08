@@ -6356,7 +6356,7 @@ def km_view3d_fly_modal(_params):
         ("DECELERATE", {"type": 'NUMPAD_MINUS', "value": 'PRESS', "any": True, "repeat": True}, None),
         ("ACCELERATE", {"type": 'WHEELUPMOUSE', "value": 'PRESS', "any": True}, None),
         ("DECELERATE", {"type": 'WHEELDOWNMOUSE', "value": 'PRESS', "any": True}, None),
-        ("CONFIRM", {"type": 'TRACKPADPAN', "value": 'ANY'}, None),
+        ("SPEED", {"type": 'TRACKPADPAN', "value": 'ANY'}, None),
         ("PAN_ENABLE", {"type": 'MIDDLEMOUSE', "value": 'PRESS', "any": True}, None),
         ("PAN_DISABLE", {"type": 'MIDDLEMOUSE', "value": 'RELEASE', "any": True}, None),
         ("FORWARD", {"type": 'W', "value": 'PRESS', "repeat": True}, None),
