@@ -765,7 +765,8 @@ wmDragPath *WM_drag_create_path_data(blender::Span<const char *> _paths)
   const char *ext = BLI_path_extension(_paths[0]);
   blender::Vector<std::string> paths;
   for (auto path : _paths) {
-    if (STREQ(ext, BLI_path_extension(path))) {
+    const char *test_ext = BLI_path_extension(path);
+    if (ext == test_ext || (ext && test_ext && STREQ(ext, test_ext))) {
       paths.append(path);
     }
   }
