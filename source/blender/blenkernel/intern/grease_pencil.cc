@@ -1612,20 +1612,16 @@ void GreasePencil::move_frames(blender::bke::greasepencil::Layer &layer,
 
   /* Clear the frames' data. */
   Map<int, GreasePencilFrame> layer_frames_copy = layer.frames();
-  layer.tag_frames_map_keys_changed();
 
   /* Remove all frames that have a mapping. */
-  for (const auto [src_frame_number, dst_frame_number] : trans_frame_numbers.items()) {
-    if (src_frame_number == dst_frame_number) {
-      continue;
-    }
-    layer.remove_frame(src_frame_number);
+  for (const int frame_number : trans_frame_numbers.keys()) {
+    layer.remove_frame(frame_number);
   }
 
   /* Insert all frames of the transformation. */
   Vector<int> drawings_to_remove;
   for (const auto [src_frame_number, dst_frame_number] : trans_frame_numbers.items()) {
-    if ((src_frame_number == dst_frame_number) || !layer_frames_copy.contains(src_frame_number)) {
+    if (!layer_frames_copy.contains(src_frame_number)) {
       continue;
     }
 
