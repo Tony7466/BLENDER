@@ -508,6 +508,9 @@ typedef struct GreasePencil {
                      int src_frame_number,
                      int dst_frame_number);
 
+  void move_frames(blender::bke::greasepencil::Layer &layer,
+                   const blender::Map<int, int> &trans_frame_numbers);
+
   /**
    * Returns an editable drawing on \a layer at frame \a frame_number or `nullptr` if no such
    * drawing exists.

@@ -1643,6 +1643,76 @@ bool GreasePencil::move_frame_at(blender::bke::greasepencil::Layer &layer,
   return layer.move_frame(src_frame_number, dst_frame_number);
 }
 
+void GreasePencil::move_frames(blender::bke::greasepencil::Layer &layer,
+                               const blender::Map<int, int> &trans_frame_numbers)
+{
+  using namespace blender;
+
+  /* Clear the frames' data. */
+  Map<int, GreasePencilFrame> layer_frames_copy = layer.frames();
+  layer.frames_for_write().clear();
+  layer.tag_frames_map_keys_changed();
+
+  /* Insert all frames of the transformation. */
+  Vector<int> drawings_to_remove;
+  for (const auto [src_frame_number, dst_frame_number] : trans_frame_numbers.items()) {
+    if (!layer_frames_copy.contains(src_frame_number)) {
+      continue;
+    }
+
+    const GreasePencilFrame src_frame = layer_frames_copy.lookup(src_frame_number);
+    const int drawing_index = src_frame.drawing_index;
+    const int duration = src_frame.is_implicit_hold() ?
+                             0 :
+                             get_frame_duration(layer, src_frame_number);
+
+    if (src_frame_number == dst_frame_number) {
+      /* This frame was not directly affected by the transformation.
+       * Add it only if it was not overwritten by the transformation. */
+      if (!layer.frames().contains(src_frame_number)) {
+        GreasePencilFrame *frame = layer.add_frame(src_frame_number, drawing_index, duration);
+        *frame = src_frame;
+      }
+      else {
+        /* This frame was overwritten by another one, so we decrease its user count. */
+        GreasePencilDrawingBase *drawing_base = this->drawings(src_frame.drawing_index);
+        if (drawing_base->type == GP_DRAWING) {
+          reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap().remove_user();
+          drawings_to_remove.append(drawing_index);
+        }
+      }
+    }
+    else {
+      /* This frame was directly affected by the transformation.
+       * Add it, and overwrite the frame at the destination number, if there is one. */
+      if (layer.frames().contains(dst_frame_number)) {
+        GreasePencilFrame frame_to_overwrite = layer.frames().lookup(dst_frame_number);
+        GreasePencilDrawingBase *drawing_base = this->drawings(frame_to_overwrite.drawing_index);
+        if (drawing_base->type == GP_DRAWING) {
+          reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap().remove_user();
+          drawings_to_remove.append(frame_to_overwrite.drawing_index);
+        }
+        layer.remove_frame(dst_frame_number);
+      }
+      GreasePencilFrame *frame = layer.add_frame(dst_frame_number, drawing_index, duration);
+      *frame = src_frame;
+    }
+  }
+
+  /* Remove drawings if they have no more users. */
+  for (const int drawing_index : drawings_to_remove) {
+    GreasePencilDrawingBase *drawing_base = this->drawings(drawing_index);
+    if (drawing_base->type != GP_DRAWING) {
+      continue;
+    }
+    bke::greasepencil::Drawing &drawing =
+        reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
+    if (!drawing.has_users()) {
+      this->remove_drawing(drawing_index);
+    }
+  }
+}
+
 blender::bke::greasepencil::Drawing *GreasePencil::get_editable_drawing_at(
     const blender::bke::greasepencil::Layer *layer, const int frame_number) const
 {
