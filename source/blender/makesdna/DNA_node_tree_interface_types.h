@@ -180,7 +180,7 @@ typedef struct bNodeTreeInterfacePanel {
    * \note: The items are visited in drawing order from top to bottom.
    *
    * \param fn: Function to execute for each item, iterations stops if false is returned.
-   * \param include_root: Include the panel itself in the iteration.
+   * \param include_self: Include the panel itself in the iteration.
    */
   void foreach_item(blender::FunctionRef<bool(bNodeTreeInterfaceItem &item)> fn,
                     bool include_self = false);
