@@ -149,6 +149,7 @@ class PaintOperation : public GreasePencilStrokeOperation {
 
  private:
   void simplify_stroke_cache(const float epsilon_px);
+  void process_stroke_end();
   void create_stroke_from_stroke_cache(bke::greasepencil::Drawing &drawing_orig);
 };
 
@@ -540,6 +541,21 @@ void PaintOperation::simplify_stroke_cache(const float epsilon_px)
   // stroke_cache_->triangles.clear_and_shrink();
 }
 
+void PaintOperation::process_stroke_end()
+{
+  /* Remove points at the end that have a radius close to 0. */
+  int64_t points_to_remove = 0;
+  for (int64_t index = this->stroke_cache_->size() - 1; index >= 0; index--) {
+    if (this->stroke_cache_->radii()[index] < 1e-5f) {
+      points_to_remove++;
+    }
+    else {
+      break;
+    }
+  }
+  stroke_cache_->resize(math::max(stroke_cache_->size() - points_to_remove, int64_t(0)));
+}
+
 void PaintOperation::create_stroke_from_stroke_cache(bke::greasepencil::Drawing &drawing_orig)
 {
   using namespace blender::bke;
@@ -619,6 +635,8 @@ void PaintOperation::on_stroke_done(const bContext &C)
 
   const float simplifiy_threashold_px = 0.5f;
   this->simplify_stroke_cache(simplifiy_threashold_px);
+
+  this->process_stroke_end();
 
   /* The object should have an active layer. */
   BLI_assert(grease_pencil.has_active_layer());
