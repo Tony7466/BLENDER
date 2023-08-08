@@ -18,13 +18,13 @@
 namespace blender::bke {
 
 /* Runtime topology cache for linear access to items. */
-typedef struct bNodeTreeInterfaceCache {
+struct bNodeTreeInterfaceCache {
   Vector<bNodeTreeInterfaceItem *> items;
   Vector<bNodeTreeInterfaceSocket *> inputs;
   Vector<bNodeTreeInterfaceSocket *> outputs;
 
   void rebuild(bNodeTreeInterface &tree_interface);
-} bNodeTreeInterfaceCache;
+};
 
 }  // namespace blender::bke
 
