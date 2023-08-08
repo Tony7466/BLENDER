@@ -1730,6 +1730,9 @@ void GreasePencil::set_active_layer(const blender::bke::greasepencil::Layer *lay
 
 const bool GreasePencil::is_layer_active(const blender::bke::greasepencil::Layer *layer) const
 {
+  if (layer == nullptr) {
+    return false;
+  }
   return this->get_active_layer() == layer;
 }
 
