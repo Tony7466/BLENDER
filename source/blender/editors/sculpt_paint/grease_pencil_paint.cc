@@ -165,7 +165,7 @@ struct PaintOperationExecutor {
   float brush_alpha_;
 
   BrushGpencilSettings *settings_;
-  bool use_vertex_color_stroke_;
+  float4 vertex_color_;
 
   PaintOperationExecutor(const bContext &C)
   {
@@ -180,9 +180,15 @@ struct PaintOperationExecutor {
 
     const bool use_vertex_color = (scene->toolsettings->gp_paint->mode ==
                                    GPPAINT_FLAG_USE_VERTEXCOLOR);
-    use_vertex_color_stroke_ = use_vertex_color && ELEM(settings_->vertex_mode,
-                                                        GPPAINT_MODE_STROKE,
-                                                        GPPAINT_MODE_BOTH);
+    const bool use_vertex_color_stroke = use_vertex_color && ELEM(settings_->vertex_mode,
+                                                                  GPPAINT_MODE_STROKE,
+                                                                  GPPAINT_MODE_BOTH);
+    vertex_color_ = use_vertex_color_stroke ? float4(brush_->rgb[0],
+                                                     brush_->rgb[1],
+                                                     brush_->rgb[2],
+                                                     settings_->vertex_factor) :
+                                              float4(0.0f);
+
     // const bool use_vertex_color_fill = use_vertex_color && ELEM(
     //     brush->gpencil_settings->vertex_mode, GPPAINT_MODE_STROKE, GPPAINT_MODE_BOTH);
   }
@@ -211,11 +217,7 @@ struct PaintOperationExecutor {
     if (BKE_brush_use_alpha_pressure(brush_)) {
       point.opacity *= BKE_curvemapping_evaluateF(settings_->curve_strength, 0, sample.pressure);
     }
-    point.vertex_color = use_vertex_color_stroke_ ? float4(brush_->rgb[0],
-                                                           brush_->rgb[1],
-                                                           brush_->rgb[2],
-                                                           settings_->vertex_factor) :
-                                                    float4(0.0f);
+    point.vertex_color = vertex_color_;
     /* TODO: Get fill vertex color. */
     return point;
   }
