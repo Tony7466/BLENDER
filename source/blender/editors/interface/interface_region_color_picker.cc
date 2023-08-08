@@ -23,6 +23,7 @@
 
 #include "BKE_context.h"
 
+#include "WM_api.h"
 #include "WM_types.hh"
 
 #include "RNA_access.h"
@@ -832,6 +833,9 @@ static int ui_colorpicker_small_wheel_cb(const bContext * /*C*/,
   }
   else if (event->type == WHEELDOWNMOUSE) {
     add = -0.05f;
+  }
+  else if (event->type == MOUSEPAN) {
+    add = 0.005f * WM_event_absolute_delta_y(event) / U.dpi_fac;
   }
 
   if (add != 0.0f) {

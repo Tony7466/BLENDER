@@ -6286,7 +6286,7 @@ static int ui_do_but_COLOR(bContext *C, uiBut *but, uiHandleButtonData *data, co
         hsv[2] = clamp_f(hsv[2] + 0.05f, 0.0f, 1.0f);
       }
       else {
-        const float fac = 0.005 * (event->xy[1] - event->prev_xy[1]);
+        const float fac = 0.005 * WM_event_absolute_delta_y(event) / U.dpi_fac;
         hsv[2] = clamp_f(hsv[2] + fac, 0.0f, 1.0f);
       }
 
