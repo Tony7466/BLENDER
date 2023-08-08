@@ -684,9 +684,7 @@ int BKE_object_defgroup_flip_index(const Object *ob, int index, const bool use_d
 
 static bool defgroup_find_name_dupe(const char *name, bDeformGroup *dg, ID *id)
 {
-  const ListBase *defbase = (GS(id->name) == ID_OB) ?
-                                BKE_object_defgroup_list((const Object *)id) :
-                                BKE_id_defgroup_list_get(id);
+  const ListBase *defbase = BKE_id_defgroup_list_get(id);
 
   LISTBASE_FOREACH (bDeformGroup *, curdef, defbase) {
     if (dg != curdef) {
@@ -720,7 +718,7 @@ void BKE_object_defgroup_unique_name(bDeformGroup *dg, Object *ob)
                       sizeof(dg->name));
   }
   else {
-    AttributeAndDefgroupUniqueNameData data{&ob->id, dg};
+    AttributeAndDefgroupUniqueNameData data{static_cast<ID *>(ob->data), dg};
     BLI_uniquename_cb(
         BKE_defgroup_unique_name_check, &data, DATA_("Group"), '.', dg->name, sizeof(dg->name));
   }
