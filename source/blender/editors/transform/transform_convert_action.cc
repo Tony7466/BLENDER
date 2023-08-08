@@ -348,8 +348,7 @@ static int GreasePencilLayerToTransData(TransData *td,
   /* If it was not previously done, initialize the transform data in the layer, and if some frames
    * are actually concerned by the transform. */
   if (layer->runtime->trans_frame_status == LayerRuntime::FrameTransformationUntouched) {
-    layer->runtime->trans_frames_copy_ = layer->frames();
-    layer->runtime->trans_frame_status = LayerRuntime::FrameTransformationInitialized;
+    layer->initialize_trans_data();
   }
 
   return total_trans_frames;
@@ -729,6 +728,7 @@ static void transform_convert_greasepencil_data(TransData *td,
      * The frame mapping is always defined relatively to the initial frame map, so we first need to
      * set the frames back to its initial state before applying any frame transformation. */
     layer->runtime->frames_ = layer->runtime->trans_frames_copy_;
+    layer->tag_frames_map_keys_changed();
     layer_trans_status = LayerRuntime::FrameTransformationOngoing;
   }
   layer->runtime->trans_frame_data_.add_overwrite(src_frame_nb, dst_frame_nb);
@@ -736,8 +736,12 @@ static void transform_convert_greasepencil_data(TransData *td,
   /* Apply the transformation directly in the frame map, so that we display the transformed frame
    * numbers. We don't want to edit the frames or remove any drawing here. This will be done at
    * once at the end of the transformation. */
-  const GreasePencilFrame frame = layer->runtime->frames_.pop(src_frame_nb);
-  layer->runtime->frames_.add_overwrite(dst_frame_nb, frame);
+  const GreasePencilFrame src_frame = layer->runtime->trans_frames_copy_.lookup(src_frame_nb);
+  const int src_duration = layer->runtime->trans_frame_duration_.lookup_default(src_frame_nb, 0);
+  layer->remove_frame(src_frame_nb);
+  layer->remove_frame(dst_frame_nb);
+  GreasePencilFrame *frame = layer->add_frame(dst_frame_nb, src_frame.drawing_index, src_duration);
+  *frame = src_frame;
 }
 
 static void recalcData_actedit(TransInfo *t)

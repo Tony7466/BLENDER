@@ -742,6 +742,19 @@ bool Layer::move_frame(const FramesMapKey src_key, const FramesMapKey dst_key)
   return true;
 }
 
+void Layer::initialize_trans_data()
+{
+  this->runtime->trans_frames_copy_ = this->frames();
+  this->runtime->trans_frame_duration_.clear();
+  for (const auto [frame_number, frame] : this->frames().items()) {
+    if (!frame.is_null() && !frame.is_implicit_hold()) {
+      this->runtime->trans_frame_duration_.add(frame_number,
+                                               get_frame_duration(*this, frame_number));
+    }
+  }
+  this->runtime->trans_frame_status = LayerRuntime::FrameTransformationInitialized;
+}
+
 Span<FramesMapKey> Layer::sorted_keys() const
 {
   this->runtime->sorted_keys_cache_.ensure([&](Vector<FramesMapKey> &r_data) {

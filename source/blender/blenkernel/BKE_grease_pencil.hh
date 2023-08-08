@@ -242,6 +242,7 @@ class LayerRuntime {
   };
   Map<int, int> trans_frame_data_;
   Map<int, GreasePencilFrame> trans_frames_copy_;
+  Map<int, int> trans_frame_duration_;
   FrameTransformationStatus trans_frame_status{FrameTransformationUntouched};
 };
 
@@ -317,6 +318,8 @@ class Layer : public ::GreasePencilLayer {
    */
   bool move_frame(FramesMapKey src_key, FramesMapKey dst_key);
 
+  bool move_frame(FramesMapKey dst_key, const GreasePencilFrame &frame);
+
   /**
    * Returns the sorted keys (start frame numbers) of the frames of this layer.
    * \note This will cache the keys lazily.
@@ -346,6 +349,8 @@ class Layer : public ::GreasePencilLayer {
    * added, removed or updated.
    */
   void tag_frames_map_keys_changed();
+
+  void initialize_trans_data();
 
  private:
   using SortedKeysIterator = const int *;
