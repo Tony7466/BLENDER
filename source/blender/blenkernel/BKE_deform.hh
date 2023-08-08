@@ -73,24 +73,24 @@ class VArrayImpl_For_VertexWeights final : public VMutableArrayImpl<float> {
     });
   }
 
-  void materialize(IndexMask mask, float *dst) const override
+  void materialize(const IndexMask &mask, float *dst) const override
   {
     if (dverts_ == nullptr) {
       mask.foreach_index([&](const int i) { dst[i] = 0.0f; });
     }
     threading::parallel_for(mask.index_range(), 4096, [&](const IndexRange range) {
-      for (const int64_t i : mask.slice(range)) {
-        if (const MDeformWeight *weight = this->find_weight_at_index(i)) {
-          dst[i] = weight->weight;
+      mask.slice(range).foreach_index_optimized<int64_t>([&](const int64_t index) {
+        if (const MDeformWeight *weight = this->find_weight_at_index(index)) {
+          dst[index] = weight->weight;
         }
         else {
-          dst[i] = 0.0f;
+          dst[index] = 0.0f;
         }
-      }
+      });
     });
   }
 
-  void materialize_to_uninitialized(IndexMask mask, float *dst) const override
+  void materialize_to_uninitialized(const IndexMask &mask, float *dst) const override
   {
     this->materialize(mask, dst);
   }

@@ -858,109 +858,6 @@ static void tag_component_positions_changed(void *owner)
   }
 }
 
-class VArrayImpl_For_VertexWeights final : public VMutableArrayImpl<float> {
- private:
-  MDeformVert *dverts_;
-  const int dvert_index_;
-
- public:
-  VArrayImpl_For_VertexWeights(MutableSpan<MDeformVert> dverts, const int dvert_index)
-      : VMutableArrayImpl<float>(dverts.size()), dverts_(dverts.data()), dvert_index_(dvert_index)
-  {
-  }
-
-  VArrayImpl_For_VertexWeights(Span<MDeformVert> dverts, const int dvert_index)
-      : VMutableArrayImpl<float>(dverts.size()),
-        dverts_(const_cast<MDeformVert *>(dverts.data())),
-        dvert_index_(dvert_index)
-  {
-  }
-
-  float get(const int64_t index) const override
-  {
-    if (dverts_ == nullptr) {
-      return 0.0f;
-    }
-    if (const MDeformWeight *weight = this->find_weight_at_index(index)) {
-      return weight->weight;
-    }
-    return 0.0f;
-  }
-
-  void set(const int64_t index, const float value) override
-  {
-    MDeformVert &dvert = dverts_[index];
-    if (value == 0.0f) {
-      if (MDeformWeight *weight = this->find_weight_at_index(index)) {
-        weight->weight = 0.0f;
-      }
-    }
-    else {
-      MDeformWeight *weight = BKE_defvert_ensure_index(&dvert, dvert_index_);
-      weight->weight = value;
-    }
-  }
-
-  void set_all(Span<float> src) override
-  {
-    threading::parallel_for(src.index_range(), 4096, [&](const IndexRange range) {
-      for (const int64_t i : range) {
-        this->set(i, src[i]);
-      }
-    });
-  }
-
-  void materialize(const IndexMask &mask, float *dst) const override
-  {
-    if (dverts_ == nullptr) {
-      mask.foreach_index([&](const int i) { dst[i] = 0.0f; });
-    }
-    mask.foreach_index(GrainSize(4096), [&](const int64_t i) {
-      if (const MDeformWeight *weight = this->find_weight_at_index(i)) {
-        dst[i] = weight->weight;
-      }
-      else {
-        dst[i] = 0.0f;
-      }
-    });
-  }
-
-  void materialize_to_uninitialized(const IndexMask &mask, float *dst) const override
-  {
-    this->materialize(mask, dst);
-  }
-
- private:
-  MDeformWeight *find_weight_at_index(const int64_t index)
-  {
-    for (MDeformWeight &weight : MutableSpan(dverts_[index].dw, dverts_[index].totweight)) {
-      if (weight.def_nr == dvert_index_) {
-        return &weight;
-      }
-    }
-    return nullptr;
-  }
-  const MDeformWeight *find_weight_at_index(const int64_t index) const
-  {
-    for (const MDeformWeight &weight : Span(dverts_[index].dw, dverts_[index].totweight)) {
-      if (weight.def_nr == dvert_index_) {
-        return &weight;
-      }
-    }
-    return nullptr;
-  }
-};
-
-static float get_crease(const float &crease)
-{
-  return crease;
-}
-
-static void set_crease(float &crease, const float value)
-{
-  crease = std::clamp(value, 0.0f, 1.0f);
-}
-
 /**
  * This provider makes vertex groups available as float attributes.
  */
@@ -1201,19 +1098,7 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                                    edge_access,
                                                    nullptr);
 
-  static BuiltinCustomDataLayerProvider crease(
-      "crease",
-      ATTR_DOMAIN_EDGE,
-      CD_PROP_FLOAT,
-      CD_CREASE,
-      BuiltinAttributeProvider::Creatable,
-      BuiltinAttributeProvider::Deletable,
-      edge_access,
-      make_array_read_attribute<float>,
-      make_derived_write_attribute<float, float, get_crease, set_crease>,
-      nullptr);
-
-  static VertexGroupsAttributeProvider vertex_groups;
+  static MeshVertexGroupsAttributeProvider vertex_groups;
   static CustomDataAttributeProvider corner_custom_data(ATTR_DOMAIN_CORNER, corner_access);
   static CustomDataAttributeProvider point_custom_data(ATTR_DOMAIN_POINT, point_access);
   static CustomDataAttributeProvider edge_custom_data(ATTR_DOMAIN_EDGE, edge_access);
