@@ -64,8 +64,10 @@ ENUM_OPERATORS(eNodeTreeInterfaceSocketFlag, NODE_INTERFACE_SOCKET_HIDE_IN_MODIF
 typedef struct bNodeTreeInterfaceSocket {
   bNodeTreeInterfaceItem item;
 
+  /* UI name of the socket. */
   char *name;
   char *description;
+  /* Type idname of the socket to generate, e.g. "NodeSocketFloat". */
   char *socket_type;
   /* eNodeTreeInterfaceSocketFlag */
   int flag;
@@ -76,17 +78,25 @@ typedef struct bNodeTreeInterfaceSocket {
 
   /* Unique identifier for generated sockets. */
   char *identifier;
-
+  /* Socket default value and associated data, e.g. bNodeSocketValueFloat. */
   void *socket_data;
 
-  IDProperty *prop;
+  IDProperty *properties;
 
 #ifdef __cplusplus
   bNodeSocketType *socket_typeinfo() const;
   blender::ColorGeometry4f socket_color() const;
 
+  /**
+   * Set the \a socket_type and replace the \a socket_data.
+   * \param new_socket_type: Socket type idname, e.g. "NodeSocketFloat"
+   */
   bool set_socket_type(const char *new_socket_type);
 
+  /**
+   * Use an existing socket to define an interface socket.
+   * Replaces the current \a socket_type and any existing \a socket data if called again.
+   */
   void init_from_socket_instance(const bNodeSocket *socket);
 #endif
 } bNodeTreeInterfaceSocket;
@@ -94,6 +104,7 @@ typedef struct bNodeTreeInterfaceSocket {
 typedef struct bNodeTreeInterfacePanel {
   bNodeTreeInterfaceItem item;
 
+  /* UI name of the panel. */
   char *name;
 
   bNodeTreeInterfaceItem **items_array;
@@ -108,43 +119,60 @@ typedef struct bNodeTreeInterfacePanel {
   blender::MutableSpan<bNodeTreeInterfaceItem *> items();
 
   /**
+   * Check if the item is a direct child of the panel.
+   */
+  bool contains(const bNodeTreeInterfaceItem &item) const;
+  /**
+   * Search for an item in the interface.
+   * \return True if the item was found.
+   */
+  bool contains_recursive(const bNodeTreeInterfaceItem &item) const;
+  /**
    * Get the position of an item in this panel.
    * \return Position relative to the start of the panel items or -1 if the item is not in the
    * panel.
    */
   int item_position(const bNodeTreeInterfaceItem &item) const;
   /**
-   * Check if the item is a direct child of the panel.
-   */
-  bool contains_item(const bNodeTreeInterfaceItem &item) const;
-
-  /**
-   * Search for an item in the interface.
-   * \return True if the item was found.
-   */
-  bool find_item(const bNodeTreeInterfaceItem &item) const;
-  /**
    * Get the index of the item in the interface.
    * \return Index if the item was found or -1 otherwise.
    */
-  int find_item_index(const bNodeTreeInterfaceItem &item) const;
+  int item_index(const bNodeTreeInterfaceItem &item) const;
   /**
    * Get the item at the given index of the interface draw list.
    */
-  const bNodeTreeInterfaceItem *get_item_at_index(int index) const;
+  const bNodeTreeInterfaceItem *item_at_index(int index) const;
   /**
-   * Search for an item and its parent in the interface.
-   * \param r_parent: Parent containing the item.
-   * \return True if the item was found in any panel.
+   * Find the panel containing the item among this panel and all children.
+   * \return Parent panel containing the item.
    */
-  bool find_item_parent(const bNodeTreeInterfaceItem &item, bNodeTreeInterfacePanel *&r_parent);
+  bNodeTreeInterfacePanel *find_parent_recursive(const bNodeTreeInterfaceItem &item);
 
-  void copy_items(blender::Span<const bNodeTreeInterfaceItem *> items_src, int flag);
-  void clear_items(bool do_id_user);
+  /** Create a copy of items in the span and add them to the interface. */
+  void copy_from(blender::Span<const bNodeTreeInterfaceItem *> items_src, int flag);
+  /** Remove all items from the panel. */
+  void clear(bool do_id_user);
 
+  /**
+   * Add item at the end of the panel.
+   * \note Takes ownership of the item.
+   */
   void add_item(bNodeTreeInterfaceItem &item);
+  /**
+   * Insert an item at the given position.
+   * \note Takes ownership of the item.
+   */
   void insert_item(bNodeTreeInterfaceItem &item, int position);
+  /**
+   * Remove item from the panel.
+   * \param free: Destruct and deallocate the item.
+   * \return True if the item was found.
+   */
   bool remove_item(bNodeTreeInterfaceItem &item, bool free);
+  /**
+   * Move item to a new position within the panel.
+   * \return True if the item was found.
+   */
   bool move_item(bNodeTreeInterfaceItem &item, int new_position);
 
   /**
@@ -195,7 +223,7 @@ typedef struct bNodeTreeInterface {
    */
   int find_item_index(const bNodeTreeInterfaceItem &item) const
   {
-    return root_panel.find_item_index(item);
+    return root_panel.item_index(item);
   }
   /**
    * Search for an item in the interface.
@@ -203,23 +231,22 @@ typedef struct bNodeTreeInterface {
    */
   bool find_item(const bNodeTreeInterfaceItem &item) const
   {
-    return root_panel.find_item(item);
+    return root_panel.contains_recursive(item);
   }
   /**
    * Get the item at the given index of the interface draw list.
    */
   const bNodeTreeInterfaceItem *get_item_at_index(int index) const
   {
-    return root_panel.get_item_at_index(index);
+    return root_panel.item_at_index(index);
   }
   /**
-   * Search for an item and its parent in the interface.
-   * \param r_parent: Parent containing the item.
-   * \return True if the item was found in any panel.
+   * Find the panel containing the item.
+   * \return Parent panel containing the item.
    */
-  bool find_item_parent(const bNodeTreeInterfaceItem &item, bNodeTreeInterfacePanel *&r_parent)
+  bNodeTreeInterfacePanel *find_item_parent(const bNodeTreeInterfaceItem &item)
   {
-    return root_panel.find_item_parent(item, r_parent);
+    return root_panel.find_parent_recursive(item);
   }
 
   /**
