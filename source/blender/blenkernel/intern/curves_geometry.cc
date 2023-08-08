@@ -61,6 +61,10 @@ CurvesGeometry::CurvesGeometry(const int point_num, const int curve_num)
   CustomData_reset(&this->point_data);
   CustomData_reset(&this->curve_data);
 
+  /* Make sure to clear this before using the attributes API. Otherwise the vertex group accessor
+   * might try to read from invalid memory. */
+  BLI_listbase_clear(&this->vertex_group_names);
+
   this->attributes_for_write().add<float3>(
       "position", ATTR_DOMAIN_POINT, AttributeInitConstruct());
 
@@ -81,8 +85,6 @@ CurvesGeometry::CurvesGeometry(const int point_num, const int curve_num)
   else {
     this->curve_offsets = nullptr;
   }
-
-  BLI_listbase_clear(&this->vertex_group_names);
 
   /* Fill the type counts with the default so they're in a valid state. */
   this->runtime->type_counts[CURVE_TYPE_CATMULL_ROM] = curve_num;
