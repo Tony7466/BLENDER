@@ -305,8 +305,12 @@ static int GreasePencilLayerToTransData(TransData *td,
   using namespace blender;
   using namespace bke::greasepencil;
 
+  layer->runtime->trans_frame_data_.clear();
+
   int total_trans_frames = 0;
   for (auto [frame_number, frame] : layer->frames().items()) {
+    layer->runtime->trans_frame_data_.add(frame_number, frame_number);
+
     /* We only add transform data for selected frames that are on the right side of current frame.
      * If proportional edit is set, then we should also account for non selected frames.
      */
@@ -1092,10 +1096,23 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
           GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
 
           /* Apply the frame transformation. */
+          Map<int, GreasePencilFrame> transformed_map;
           for (const auto [src_frame_number, dst_frame_number] :
                layer.runtime->trans_frame_data_.items()) {
-            grease_pencil->move_frame_at(layer, src_frame_number, dst_frame_number);
+
+            if (!layer.frames().contains(src_frame_number)) {
+              continue;
+            }
+            GreasePencilFrame frame = layer.frames(src_frame_number);
+
+            if (src_frame_number == dst_frame_number) {
+              transformed_map.add(src_frame_number, frame);
+            }
+            else {
+              transformed_map.add_overwrite(dst_frame_number, frame);
+            }
           }
+          layer.runtime->frames_ = transformed_map;
         }
 
         /* Clear the frames copy. */
