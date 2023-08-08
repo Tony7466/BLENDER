@@ -21,14 +21,14 @@ roles:
   reference: Linear CIE-XYZ E
 
   # Internal scene linear space
-  scene_linear: Linear
-  rendering: Linear
+  scene_linear: Linear BT.709 D65
+  rendering: Linear BT.709 D65
 
   # Default color space for byte image
   default_byte: sRGB
 
   # Default color space for float images
-  default_float: Linear
+  default_float: Linear BT.709 D65
 
   # Default color space sequencer is working in
   default_sequencer: sRGB
@@ -40,15 +40,15 @@ roles:
   data: Non-Color
 
   # For interop between configs, and to determine XYZ for rendering
-  aces_interchange: Linear ACES
+  aces_interchange: ACES2065-1
   cie_xyz_d65_interchange: Linear CIE-XYZ D65
 
   # Specified by OCIO, not used in Blender
   color_timing: Filmic Log
   compositing_log: Filmic Log
-  default: Linear
-  matte_paint: Linear
-  texture_paint: Linear
+  default: Linear BT.709 D65
+  matte_paint: Linear BT.709 D65
+  texture_paint: Linear BT.709 D65
 
 displays:
   sRGB:
@@ -60,6 +60,7 @@ displays:
 
 active_displays: [sRGB]
 active_views: [Standard, Filmic, Filmic Log, False Color, Raw]
+inactive_colorspaces: [False Color]
 
 colorspaces:
   - !<ColorSpace>
@@ -84,12 +85,13 @@ colorspaces:
     from_scene_reference: !<FileTransform> {src: xyz_E_to_D65.spimtx, interpolation: linear}
 
   - !<ColorSpace>
-    name: Linear
+    name: Linear BT.709 D65
+    aliases: [Linear, Linear BT.709, Linear BT.709 I-D65, Linear Tristimulus, Linear Rec.709, linrec709, Utility - Linear - sRGB, Utility - Linear - Rec.709, lin_srgb, Linear Rec.709 (sRGB), lin_rec709_srgb, lin_rec709, lin_srgb, "CGI: Linear - Rec.709"]
     family: linear
     equalitygroup:
     bitdepth: 32f
     description: |
-      Rec. 709 (Full Range), Blender native linear space
+      Open Domain (unbounded) Linear BT.709 Tristimulus with illuminant D65 white point
     isdata: false
     from_scene_reference: !<GroupTransform>
       children:
@@ -97,12 +99,80 @@ colorspaces:
         - !<MatrixTransform> {matrix: [ 3.2410032329763587, -1.5373989694887855, -0.4986158819963629, 0, -0.9692242522025164, 1.8759299836951759, 0.0415542263400847, 0, 0.0556394198519755, -0.2040112061239099, 1.0571489771875333, 0, 0, 0, 0, 1]}
 
   - !<ColorSpace>
-    name: Linear ACES
+    name: Linear BT.709 E
+    aliases: [Linear BT.709 I-E]
     family: linear
     equalitygroup:
     bitdepth: 32f
     description: |
-      ACES2065-1 linear space
+      Open Domain (unbounded) Linear BT.709 Tristimulus with illuminant E white point
+    isdata: false
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<MatrixTransform> {matrix: [2.6896551724137931, -1.2758620689655173, -0.4137931034482757, 0, -1.0221081721279115, 1.9782866166600865, 0.0438215554678247, 0, 0.0612244897959184, -0.2244897959183672, 1.1632653061224481, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: Linear DCI-P3 D65
+    aliases: [Linear DCI-P3 I-D65, Linear P3-D65, lin_p3d65, Utility - Linear - P3-D65, Apple DCI-P3 D65]
+    family: linear
+    equalitygroup:
+    bitdepth: 32f
+    description: |
+      Open Domain (unbounded) Linear DCI-P3 Tristimulus with illuminant D65 white point
+    isdata: false
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear CIE-XYZ D65}
+        - !<MatrixTransform> {matrix: [2.4935091239346101, -0.9313881794047790, -0.4027127567416516, 0, -0.8294732139295544, 1.7626305796003032, 0.0236242371055886, 0, 0.0358512644339181, -0.0761839369220759, 0.9570295866943110, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: Linear DCI-P3 E
+    aliases: [Linear DCI-P3 I-E]
+    family: linear
+    equalitygroup:
+    bitdepth: 32f
+    description: |
+      Open Domain (unbounded) Linear DCI-P3 Tristimulus with illuminant E white point
+    isdata: false
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<MatrixTransform> {matrix: [2.1506740681998422, -0.8033306899286285, -0.3473433782712135, 0, -0.8669410150891632, 1.8422496570644722, 0.0246913580246913, 0, 0.0391091797935906, -0.0831070070613798, 1.0439978272677890, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: Linear BT.2020 D65
+    aliases: [Linear BT.2020 I-D65, Linear Rec.2020, lin_rec2020, Utility - Linear - Rec.2020]
+    family: linear
+    equalitygroup:
+    bitdepth: 32f
+    description: |
+      Open Domain (unbounded) Linear BT.2020 Tristimulus with illuminant D65 white point
+    isdata: false
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear CIE-XYZ D65}
+        - !<MatrixTransform> {matrix: [ 1.7166634277958805, -0.3556733197301399, -0.2533680878902478, 0, -0.6666738361988869, 1.6164557398246981, 0.0157682970961337, 0, 0.0176424817849772, -0.0427769763827532, 0.9422432810184308, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: Linear BT.2020 E
+    aliases: [Linear BT.2020 I-E]
+    family: linear
+    equalitygroup:
+    bitdepth: 32f
+    description: |
+      Open Domain (unbounded) Linear BT.2020 Tristimulus with illuminant E white point
+    isdata: false
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<MatrixTransform> {matrix: [1.5498639396171363, -0.3211143451931252, -0.2287495944240111, 0, -0.6904600461999933, 1.6741291531150519, 0.0163308930849413, 0,  0.0192370654890717, -0.0466432957748727, 1.0274062302858002, 0, 0, 0, 0, 1]}
+
+  - !<ColorSpace>
+    name: ACES2065-1
+    aliases: [Linear ACES, aces2065_1, ACES - ACES2065-1, lin_ap0, "ACES: Linear - AP0"]
+    family: linear
+    equalitygroup:
+    bitdepth: 32f
+    description: |
+      Open Domain (unbounded) Linear AP0 Tristimulus with ACES white point
     isdata: false
     from_reference: !<GroupTransform>
       children:
@@ -110,12 +180,13 @@ colorspaces:
         - !<BuiltinTransform> {style: "UTILITY - ACES-AP0_to_CIE-XYZ-D65_BFD", direction: inverse}
 
   - !<ColorSpace>
-    name: Linear ACEScg
+    name: ACEScg
+    aliases: [Linear ACEScg, lin_ap1, ACES - ACEScg, "ACEScg: Linear - AP1"]
     family: linear
     equalitygroup:
     bitdepth: 32f
     description: |
-      ACEScg linear space
+      Open Domain (unbounded) Linear AP1 Tristimulus with ACES white point
     isdata: false
     from_reference: !<GroupTransform>
       children:
@@ -123,22 +194,79 @@ colorspaces:
         - !<BuiltinTransform> {style: "UTILITY - ACES-AP1_to_CIE-XYZ-D65_BFD", direction: inverse}
 
   - !<ColorSpace>
-    name: sRGB
-    family:
+    name: Linear E-Gamut D65
+    aliases: [Linear E-Gamut I-D65, "FilmLight: Linear - E-Gamut"]
+    family: linear
     equalitygroup:
     bitdepth: 32f
     description: |
-      sRGB display space
+      Open Domain (unbounded) Linear E Gamut Tristimulus with illuminant D65 white point
     isdata: false
     from_scene_reference: !<GroupTransform>
       children:
-        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear}
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ I-E, dst: Linear CIE-XYZ I-D65}
+        - !<MatrixTransform> {matrix: [ 0.7053968501, 0.1640413283, 0.08101774865, 0, 0.2801307241, 0.8202066415, -0.1003373656, 0, -0.1037815116, -0.07290725703, 1.265746519, 0, 0, 0, 0, 1], direction: inverse}
+
+  - !<ColorSpace>
+    name: sRGB
+    aliases: [sRGB 2.2, sRGB I-D65, srgb_display, sRGB - Display, g22_rec709, Utility - Gamma 2.2 - Rec.709 - Texture, Utility - sRGB - Texture, sRGB - Texture, srgb_tx, srgb_texture, Input - Generic - sRGB - Texture, "sRGB Display: 2.2 Gamma - Rec.709"]
+    family: Displays/SDR
+    equalitygroup:
+    bitdepth: 32f
+    description: |
+      sRGB IEC 61966-2-1 compound (piece-wise) encoding
+    isdata: false
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear BT.709 D65}
         - !<ExponentWithLinearTransform> {gamma: 2.4, offset: 0.055, direction: inverse}
+
+  - !<ColorSpace>
+    name: Display P3
+    aliases: [Display P3 2.2, Display P3 I-D65, P3-D65 - Display, p3_d65_display, p3d65_display, AppleP3 sRGB OETF]
+    family: Displays/SDR
+    equalitygroup:
+    bitdepth: 32f
+    description: |
+      Display P3 with sRGB compound (piece-wise) encoding transfer function
+    isdata: false
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear DCI-P3 D65}
+        - !<ExponentWithLinearTransform> {gamma: 2.4, offset: 0.055, direction: inverse}
+
+  - !<ColorSpace>
+    name: BT.1886
+    aliases: [BT.1886 2.4, BT.1886 EOTF, BT.1886 I-D65, Rec.1886 / Rec.709 Video - Display, rec1886_rec709_video_display, Rec.1886 Rec.709 - Display, rec1886_rec709_display, "Rec1886: 2.4 Gamma - Rec.709"]
+    family: Displays/SDR
+    equalitygroup:
+    bitdepth: 32f
+    description: |
+      BT.1886 2.4 Exponent EOTF Display
+    isdata: false
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear BT.709 D65}
+        - !<ExponentWithLinearTransform> {gamma: 2.4, offset: 0, direction: inverse}
+
+  - !<ColorSpace>
+    name: BT.2020
+    aliases: [BT.2020 2.4, BT.2020 I-D65, Rec.1886 / Rec.2020 Video - Display, rec1886_rec2020_video_display, Rec.1886 Rec.2020 - Display, rec1886_rec2020_display, "Rec1886: 2.4 Gamma - Rec.2020"]
+    family: Displays/SDR
+    equalitygroup:
+    bitdepth: 32f
+    description: |
+      BT.2020 2.4 Exponent EOTF Display
+    isdata: false
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear BT.2020 D65}
+        - !<ExponentWithLinearTransform> {gamma: 2.4, offset: 0, direction: inverse}
 
   - !<ColorSpace>
     name: Non-Color
     aliases: [Generic Data, Non-Colour Data, Raw, Utility - Raw]
-    family: raw
+    family: Data/Generic Data
     description: |
         Generic data that is not color, will not apply any color transform (e.g. normal maps)
     equalitygroup:
@@ -147,7 +275,7 @@ colorspaces:
 
   - !<ColorSpace>
     name: Filmic Log
-    family: log
+    family: Log Encodings
     equalitygroup:
     bitdepth: 32f
     description: |
@@ -155,18 +283,18 @@ colorspaces:
     isdata: false
     from_reference: !<GroupTransform>
       children:
-        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear}
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear BT.709 D65}
         - !<AllocationTransform> {allocation: lg2, vars: [-12.473931188, 12.526068812]}
         - !<FileTransform> {src: filmic_desat65cube.spi3d, interpolation: best}
         - !<AllocationTransform> {allocation: uniform, vars: [0, 0.66]}
     to_scene_reference: !<GroupTransform>
       children:
         - !<AllocationTransform> {allocation: lg2, vars: [-12.473931188, 4.026068812], direction: inverse}
-        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear, direction: inverse}
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear BT.709 D65, direction: inverse}
 
   - !<ColorSpace>
     name: Filmic sRGB
-    family:
+    family: Imagery
     equalitygroup:
     bitdepth: 32f
     description: |
@@ -179,7 +307,7 @@ colorspaces:
 
   - !<ColorSpace>
     name: False Color
-    family: display
+    family: Imagery
     equalitygroup:
     bitdepth: 32f
     description: |
