@@ -43,9 +43,7 @@ static const char *try_get_supported_socket_type(StringRefNull socket_type)
   if (nodeIsStaticSocketType(typeinfo)) {
     return nodeStaticSocketType(typeinfo->type, PROP_NONE);
   }
-  else {
-    return typeinfo->idname;
-  }
+  return typeinfo->idname;
 }
 
 /* -------------------------------------------------------------------- */
