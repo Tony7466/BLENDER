@@ -614,7 +614,7 @@ static int image_view_zoom_invoke(bContext *C, wmOperator *op, const wmEvent *ev
       delta = WM_event_absolute_delta_x(event);
     }
 
-    factor = 1.0f + delta / 300.0f;
+    factor = 1.0f + delta / UI_SCALE_FAC / 300.0f;
     RNA_float_set(op->ptr, "factor", factor);
     const bool use_cursor_init = RNA_boolean_get(op->ptr, "use_cursor_init");
     sima_zoom_set(sima,
@@ -654,7 +654,7 @@ static void image_zoom_apply(ViewZoomData *vpd,
     delta = x - vpd->origx + y - vpd->origy;
   }
 
-  delta /= U.pixelsize;
+  delta /= U.pixelsize * UI_SCALE_FAC;
 
   if (zoom_invert) {
     delta = -delta;

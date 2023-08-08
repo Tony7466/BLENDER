@@ -621,7 +621,7 @@ static int view_zoom_invoke(bContext *C, wmOperator *op, const wmEvent *event)
       delta = WM_event_absolute_delta_x(event);
     }
 
-    factor = 1.0f + delta / 300.0f;
+    factor = 1.0f + delta / UI_SCALE_FAC / 300.0f;
     RNA_float_set(op->ptr, "factor", factor);
 
     sclip_zoom_set_factor_exec(C, event, factor);
@@ -652,7 +652,7 @@ static void view_zoom_apply(
     delta = event->xy[0] - vpd->x + event->xy[1] - vpd->y;
   }
 
-  delta /= U.pixelsize;
+  delta /= U.pixelsize * UI_SCALE_FAC;
 
   if (U.uiflag & USER_ZOOM_INVERT) {
     delta = -delta;
