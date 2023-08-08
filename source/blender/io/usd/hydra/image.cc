@@ -13,6 +13,7 @@
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_image_save.h"
+#include "BKE_packedFile.h"
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
@@ -76,21 +77,27 @@ static std::string cache_image_file(
 
 std::string cache_or_get_image_file(Main *bmain, Scene *scene, Image *image, ImageUser *iuser)
 {
+  char str[FILE_MAX];
   std::string file_path;
+  bool do_check_extension = false;
   if (image->source == IMA_SRC_GENERATED) {
     file_path = cache_image_file(bmain, scene, image, iuser, false);
   }
   else if (BKE_image_has_packedfile(image)) {
-    file_path = cache_image_file(bmain, scene, image, iuser, true);
-  }
-  else {
-    char str[FILE_MAX];
+    do_check_extension = true;
+    BKE_packedfile_unpack_image(bmain, nullptr, image, PF_WRITE_LOCAL);
     BKE_image_user_file_path_ex(bmain, iuser, image, str, false, true);
     file_path = str;
+  }
+  else {
+    do_check_extension = true;
+    BKE_image_user_file_path_ex(bmain, iuser, image, str, false, true);
+    file_path = str;
+  }
 
-    if (!pxr::HioImageRegistry::GetInstance().IsSupportedImageFile(file_path)) {
-      file_path = cache_image_file(bmain, scene, image, iuser, true);
-    }
+  if (do_check_extension && !pxr::HioImageRegistry::GetInstance().IsSupportedImageFile(file_path))
+  {
+    file_path = cache_image_file(bmain, scene, image, iuser, true);
   }
 
   CLOG_INFO(LOG_HYDRA_SCENE, 1, "%s -> %s", image->id.name, file_path.c_str());
