@@ -11,18 +11,18 @@
 
 #include "DNA_space_types.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_sequencer.h"
+#include "ED_sequencer.hh"
 
 #include "sequencer_intern.h"
 
 /* ************************** registration **********************************/
 
-void sequencer_operatortypes(void)
+void sequencer_operatortypes()
 {
-  /* sequencer_edit.c */
+  /* `sequencer_edit.cc` */
   WM_operatortype_append(SEQUENCER_OT_split);
   WM_operatortype_append(SEQUENCER_OT_slip);
   WM_operatortype_append(SEQUENCER_OT_mute);
@@ -69,7 +69,7 @@ void sequencer_operatortypes(void)
   WM_operatortype_append(SEQUENCER_OT_cursor_set);
   WM_operatortype_append(SEQUENCER_OT_scene_frame_range_update);
 
-  /* sequencer_retiming.c */
+  /* `sequencer_retiming.cc` */
   WM_operatortype_append(SEQUENCER_OT_retiming_reset);
   WM_operatortype_append(SEQUENCER_OT_retiming_handle_add);
   WM_operatortype_append(SEQUENCER_OT_retiming_freeze_frame_add);
@@ -79,7 +79,7 @@ void sequencer_operatortypes(void)
   WM_operatortype_append(SEQUENCER_OT_retiming_handle_select);
   WM_operatortype_append(SEQUENCER_OT_retiming_select_box);
 
-  /* sequencer_select.c */
+  /* `sequencer_select.cc` */
   WM_operatortype_append(SEQUENCER_OT_select_all);
   WM_operatortype_append(SEQUENCER_OT_select);
   WM_operatortype_append(SEQUENCER_OT_select_more);
@@ -92,7 +92,7 @@ void sequencer_operatortypes(void)
   WM_operatortype_append(SEQUENCER_OT_select_box);
   WM_operatortype_append(SEQUENCER_OT_select_grouped);
 
-  /* sequencer_add.c */
+  /* `sequencer_add.cc` */
   WM_operatortype_append(SEQUENCER_OT_scene_strip_add);
   WM_operatortype_append(SEQUENCER_OT_scene_strip_add_new);
   WM_operatortype_append(SEQUENCER_OT_movieclip_strip_add);
@@ -117,7 +117,7 @@ void sequencer_operatortypes(void)
   WM_operatortype_append(SEQUENCER_OT_view_selected);
   WM_operatortype_append(SEQUENCER_OT_view_ghost_border);
 
-  /* sequencer_channels_edit.c */
+  /* `sequencer_channels_edit.cc` */
   WM_operatortype_append(SEQUENCER_OT_rename_channel);
 }
 
@@ -136,7 +136,7 @@ void sequencer_keymap(wmKeyConfig *keyconf)
   WM_keymap_ensure(keyconf, "Sequencer Channels", SPACE_SEQ, 0);
 }
 
-void ED_operatormacros_sequencer(void)
+void ED_operatormacros_sequencer()
 {
   wmOperatorType *ot;
 

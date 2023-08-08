@@ -8,7 +8,7 @@
 /* get_image */
 #include "BKE_node.hh"
 #include "DNA_node_types.h"
-#include "ED_uvedit.h"
+#include "ED_uvedit.hh"
 /* get_image */
 
 namespace blender::workbench {
@@ -60,14 +60,14 @@ uint32_t Material::pack_data(float metallic, float roughness, float alpha)
 }
 
 void get_material_image(Object *ob,
-                        int material_index,
+                        int material_slot,
                         ::Image *&image,
                         ImageUser *&iuser,
                         GPUSamplerState &sampler_state)
 {
   const ::bNode *node = nullptr;
 
-  ED_object_get_active_image(ob, material_index, &image, &iuser, &node, nullptr);
+  ED_object_get_active_image(ob, material_slot, &image, &iuser, &node, nullptr);
   if (node && image) {
     switch (node->type) {
       case SH_NODE_TEX_IMAGE: {

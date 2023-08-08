@@ -26,6 +26,16 @@
 #define CULLING_ZBIN_GROUP_SIZE 1024
 #define CULLING_TILE_GROUP_SIZE 256
 
+/* Reflection Probes. */
+#define REFLECTION_PROBES_MAX 256
+#define REFLECTION_PROBE_GROUP_SIZE 16
+/* Number of additional pixels on the border of an octahedral map to reserve for fixing seams.
+ * Border size requires depends on the max number of mipmap levels. */
+#define REFLECTION_PROBE_MIPMAP_LEVELS 5
+#define REFLECTION_PROBE_BORDER_SIZE float(1 << (REFLECTION_PROBE_MIPMAP_LEVELS - 1))
+#define REFLECTION_PROBE_SH_GROUP_SIZE 512
+#define REFLECTION_PROBE_SH_SAMPLES_PER_GROUP 64
+
 /**
  * IMPORTANT: Some data packing are tweaked for these values.
  * Be sure to update them accordingly.
@@ -58,8 +68,11 @@
 #define SHADOW_VIEW_MAX 64 /* Must match DRW_VIEW_MAX. */
 
 /* Ray-tracing. */
-#define RAYTRACE_GROUP_SIZE 16
-#define RAYTRACE_MAX_TILES (16384 / RAYTRACE_GROUP_SIZE) * (16384 / RAYTRACE_GROUP_SIZE)
+#define RAYTRACE_GROUP_SIZE 8
+/* Keep this as a define to avoid shader variations. */
+#define RAYTRACE_RADIANCE_FORMAT GPU_R11F_G11F_B10F
+#define RAYTRACE_VARIANCE_FORMAT GPU_R16F
+#define RAYTRACE_TILEMASK_FORMAT GPU_R8UI
 
 /* Minimum visibility size. */
 #define LIGHTPROBE_FILTER_VIS_GROUP_SIZE 16
@@ -90,12 +103,19 @@
 #define DOF_GATHER_GROUP_SIZE DOF_TILES_SIZE
 #define DOF_RESOLVE_GROUP_SIZE (DOF_TILES_SIZE * 2)
 
+/* Ambient Occlusion. */
+#define AMBIENT_OCCLUSION_PASS_TILE_SIZE 16
+
 /* IrradianceBake. */
 #define SURFEL_GROUP_SIZE 256
 #define SURFEL_LIST_GROUP_SIZE 256
 #define IRRADIANCE_GRID_GROUP_SIZE 4 /* In each dimension, so 4x4x4 workgroup size. */
 #define IRRADIANCE_GRID_BRICK_SIZE 4 /* In each dimension, so 4x4x4 brick size. */
 #define IRRADIANCE_BOUNDS_GROUP_SIZE 64
+
+/* Volumes. */
+#define VOLUME_GROUP_SIZE 4
+#define VOLUME_INTEGRATION_GROUP_SIZE 8
 
 /* Resource bindings. */
 
@@ -108,6 +128,9 @@
 #define SHADOW_ATLAS_TEX_SLOT 5
 #define SSS_TRANSMITTANCE_TEX_SLOT 6
 #define IRRADIANCE_ATLAS_TEX_SLOT 7
+#define REFLECTION_PROBE_TEX_SLOT 8
+#define VOLUME_SCATTERING_TEX_SLOT 9
+#define VOLUME_TRANSMITTANCE_TEX_SLOT 10
 /* Only during shadow rendering. */
 #define SHADOW_RENDER_MAP_SLOT 4
 
@@ -117,17 +140,28 @@
 #define RBUFS_CRYPTOMATTE_SLOT 2
 #define GBUF_CLOSURE_SLOT 3
 #define GBUF_COLOR_SLOT 4
+/* Volume properties pass do not write to `rbufs`. Reuse the same bind points. */
+#define VOLUME_PROP_SCATTERING_IMG_SLOT 0
+#define VOLUME_PROP_EXTINCTION_IMG_SLOT 1
+#define VOLUME_PROP_EMISSION_IMG_SLOT 2
+#define VOLUME_PROP_PHASE_IMG_SLOT 3
 
 /* Uniform Buffers. */
-#define IRRADIANCE_GRID_BUF_SLOT 3
-#define HIZ_BUF_SLOT 5
+/* Slot 0 is GPU_NODE_TREE_UBO_SLOT. */
+#define CAMERA_BUF_SLOT 1
+#define RBUFS_BUF_SLOT 2
+/* Only during surface shading (forward and deferred eval). */
+#define HIZ_BUF_SLOT 3
+#define IRRADIANCE_GRID_BUF_SLOT 4
+#define AO_BUF_SLOT 5
+#define VOLUMES_INFO_BUF_SLOT 6
+/* SLOT 6 is used by render shaders (Film, DoF and Motion Blur). Need to check if it should be
+ * assigned a different slot. */
+#define REFLECTION_PROBE_BUF_SLOT 7
 /* Only during pre-pass. */
 #define VELOCITY_CAMERA_PREV_BUF 3
 #define VELOCITY_CAMERA_CURR_BUF 4
 #define VELOCITY_CAMERA_NEXT_BUF 5
-
-#define CAMERA_BUF_SLOT 6
-#define RBUFS_BUF_SLOT 7
 
 /* Storage Buffers. */
 #define LIGHT_CULL_BUF_SLOT 0

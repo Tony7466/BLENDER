@@ -19,7 +19,7 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
-#include "ED_select_utils.h"
+#include "ED_select_utils.hh"
 
 #include "SEQ_iterator.h"
 #include "SEQ_relations.h"
@@ -29,13 +29,13 @@
 #include "SEQ_time.h"
 #include "SEQ_transform.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 #include "WM_toolsystem.h"
 
 #include "RNA_define.h"
 
-#include "UI_interface.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_view2d.hh"
 
 #include "DEG_depsgraph.h"
 

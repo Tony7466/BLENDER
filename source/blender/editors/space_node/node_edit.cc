@@ -43,12 +43,11 @@
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
-#include "ED_image.h"
-#include "ED_node.h"  /* own include */
+#include "ED_image.hh"
 #include "ED_node.hh" /* own include */
-#include "ED_render.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
+#include "ED_render.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
 #include "ED_viewer_path.hh"
 
 #include "RNA_access.h"
@@ -56,10 +55,10 @@
 #include "RNA_enum_types.h"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
 #include "GPU_material.h"
 
@@ -68,7 +67,7 @@
 #include "NOD_composite.h"
 #include "NOD_geometry.hh"
 #include "NOD_shader.h"
-#include "NOD_socket.h"
+#include "NOD_socket.hh"
 #include "NOD_texture.h"
 #include "node_intern.hh" /* own include */
 
@@ -501,6 +500,11 @@ bool ED_node_is_texture(SpaceNode *snode)
 bool ED_node_is_geometry(SpaceNode *snode)
 {
   return STREQ(snode->tree_idname, ntreeType_Geometry->idname);
+}
+
+bool ED_node_supports_preview(SpaceNode *snode)
+{
+  return ED_node_is_compositor(snode);
 }
 
 void ED_node_shader_default(const bContext *C, ID *id)
@@ -1273,22 +1277,37 @@ void remap_node_pairing(bNodeTree &dst_tree, const Map<const bNode *, bNode *> &
    * so we have to build a map first to find copied output nodes in the new tree. */
   Map<int32_t, bNode *> dst_output_node_map;
   for (const auto &item : node_map.items()) {
-    if (item.key->type == GEO_NODE_SIMULATION_OUTPUT) {
+    if (ELEM(item.key->type, GEO_NODE_SIMULATION_OUTPUT, GEO_NODE_REPEAT_OUTPUT)) {
       dst_output_node_map.add_new(item.key->identifier, item.value);
     }
   }
 
   for (bNode *dst_node : node_map.values()) {
-    if (dst_node->type == GEO_NODE_SIMULATION_INPUT) {
-      NodeGeometrySimulationInput *data = static_cast<NodeGeometrySimulationInput *>(
-          dst_node->storage);
-      if (const bNode *output_node = dst_output_node_map.lookup_default(data->output_node_id,
-                                                                        nullptr)) {
-        data->output_node_id = output_node->identifier;
+    switch (dst_node->type) {
+      case GEO_NODE_SIMULATION_INPUT: {
+        NodeGeometrySimulationInput *data = static_cast<NodeGeometrySimulationInput *>(
+            dst_node->storage);
+        if (const bNode *output_node = dst_output_node_map.lookup_default(data->output_node_id,
+                                                                          nullptr)) {
+          data->output_node_id = output_node->identifier;
+        }
+        else {
+          data->output_node_id = 0;
+          blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
+        }
+        break;
       }
-      else {
-        data->output_node_id = 0;
-        blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
+      case GEO_NODE_REPEAT_INPUT: {
+        NodeGeometryRepeatInput *data = static_cast<NodeGeometryRepeatInput *>(dst_node->storage);
+        if (const bNode *output_node = dst_output_node_map.lookup_default(data->output_node_id,
+                                                                          nullptr)) {
+          data->output_node_id = output_node->identifier;
+        }
+        else {
+          data->output_node_id = 0;
+          blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
+        }
+        break;
       }
     }
   }
@@ -2211,8 +2230,6 @@ static int ntree_socket_add_exec(bContext *C, wmOperator *op)
         ntree, in_out, active_sock->idname, active_sock->next, active_sock->name);
     /* XXX this only works for actual sockets, not interface templates! */
     // nodeSocketCopyValue(sock, &ntree_ptr, active_sock, &ntree_ptr);
-    /* Inherit socket panel from the active socket interface. */
-    sock->panel = active_sock->panel;
   }
   else {
     /* XXX TODO: define default socket type for a tree! */
@@ -2607,8 +2624,6 @@ static int ntree_socket_move_exec(bContext *C, wmOperator *op)
       break;
     }
   }
-
-  ntreeEnsureSocketInterfacePanelOrder(ntree);
 
   BKE_ntree_update_tag_interface(ntree);
   ED_node_tree_propagate_change(C, CTX_data_main(C), ntree);

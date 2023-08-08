@@ -6,9 +6,9 @@
  * \ingroup spclip
  */
 
-#include <errno.h>
+#include <cerrno>
+#include <cstddef>
 #include <fcntl.h>
-#include <stddef.h>
 #include <sys/types.h>
 
 #ifndef WIN32
@@ -41,15 +41,15 @@
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
-#include "ED_clip.h"
-#include "ED_mask.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
+#include "ED_clip.hh"
+#include "ED_mask.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
 #include "clip_intern.h" /* own include */
 
@@ -655,7 +655,7 @@ void ED_space_clip_set_mask(bContext *C, SpaceClip *sc, Mask *mask)
 /** \name Pre-Fetching Functions
  * \{ */
 
-typedef struct PrefetchJob {
+struct PrefetchJob {
   /** Clip into which cache the frames will be pre-fetched into. */
   MovieClip *clip;
 
@@ -668,9 +668,9 @@ typedef struct PrefetchJob {
 
   int start_frame, current_frame, end_frame;
   short render_size, render_flag;
-} PrefetchJob;
+};
 
-typedef struct PrefetchQueue {
+struct PrefetchQueue {
   int initial_frame, current_frame, start_frame, end_frame;
   short render_size, render_flag;
 
@@ -684,10 +684,10 @@ typedef struct PrefetchQueue {
   bool *stop;
   bool *do_update;
   float *progress;
-} PrefetchQueue;
+};
 
 /* check whether pre-fetching is allowed */
-static bool check_prefetch_break(void)
+static bool check_prefetch_break()
 {
   return G.is_break;
 }
@@ -902,7 +902,7 @@ static void start_prefetch_threads(MovieClip *clip,
   queue.end_frame = end_frame;
   queue.render_size = render_size;
   queue.render_flag = render_flag;
-  queue.forward = 1;
+  queue.forward = true;
 
   queue.stop = stop;
   queue.do_update = do_update;

@@ -8,7 +8,6 @@
 
 #include <numeric>
 
-#include "AS_asset_representation.h"
 #include "AS_asset_representation.hh"
 
 #include "MEM_guardedalloc.h"
@@ -34,20 +33,20 @@
 
 #include "DEG_depsgraph_build.h"
 
-#include "ED_asset.h"
-#include "ED_node.h" /* own include */
-#include "ED_render.h"
-#include "ED_screen.h"
+#include "ED_asset.hh"
+#include "ED_node.hh" /* own include */
+#include "ED_render.hh"
+#include "ED_screen.hh"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
 #include "node_intern.hh" /* own include */
 
@@ -380,16 +379,15 @@ void NODE_OT_add_group(wmOperatorType *ot)
  * \{ */
 
 static bool add_node_group_asset(const bContext &C,
-                                 const AssetRepresentation &asset_c_handle,
+                                 const asset_system::AssetRepresentation &asset,
                                  ReportList &reports)
 {
   Main &bmain = *CTX_data_main(&C);
   SpaceNode &snode = *CTX_wm_space_node(&C);
   bNodeTree &edit_tree = *snode.edittree;
 
-  auto &asset = reinterpret_cast<const asset_system::AssetRepresentation &>(asset_c_handle);
   bNodeTree *node_group = reinterpret_cast<bNodeTree *>(
-      ED_asset_get_local_id_from_asset_or_append_and_reuse(&bmain, asset, ID_NT));
+      asset::asset_local_id_ensure_imported(bmain, asset));
   if (!node_group) {
     return false;
   }
@@ -427,7 +425,7 @@ static int node_add_group_asset_invoke(bContext *C, wmOperator *op, const wmEven
   ARegion &region = *CTX_wm_region(C);
   SpaceNode &snode = *CTX_wm_space_node(C);
 
-  const AssetRepresentation *asset = CTX_wm_asset(C);
+  const asset_system::AssetRepresentation *asset = CTX_wm_asset(C);
   if (!asset) {
     return OPERATOR_CANCELLED;
   }
@@ -459,11 +457,11 @@ static char *node_add_group_asset_get_description(bContext *C,
                                                   wmOperatorType * /*op*/,
                                                   PointerRNA * /*values*/)
 {
-  const AssetRepresentation *asset = CTX_wm_asset(C);
+  const asset_system::AssetRepresentation *asset = CTX_wm_asset(C);
   if (!asset) {
     return nullptr;
   }
-  const AssetMetaData &asset_data = *AS_asset_representation_metadata_get(asset);
+  const AssetMetaData &asset_data = asset->get_metadata();
   if (!asset_data.description) {
     return nullptr;
   }

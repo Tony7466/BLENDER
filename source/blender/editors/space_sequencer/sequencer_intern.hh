@@ -21,3 +21,4 @@ const struct SeqRetimingHandle *mousover_handle_get(struct bContext *C,
                                                     const int mval[2],
                                                     Sequence **r_seq);
 bool sequencer_retiming_tool_is_active(const struct bContext *C);
+git a

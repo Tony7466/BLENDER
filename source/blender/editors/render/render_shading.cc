@@ -26,6 +26,7 @@
 #include "BLI_listbase.h"
 #include "BLI_math_vector.h"
 #include "BLI_path_util.h"
+#include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -34,7 +35,7 @@
 #include "BKE_animsys.h"
 #include "BKE_appdir.h"
 #include "BKE_blender_copybuffer.h"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_context.h"
 #include "BKE_curve.h"
 #include "BKE_editmesh.h"
@@ -71,22 +72,22 @@
 
 #include "RNA_access.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_curve.h"
-#include "ED_mesh.h"
-#include "ED_node.h"
-#include "ED_object.h"
-#include "ED_paint.h"
-#include "ED_render.h"
-#include "ED_scene.h"
-#include "ED_screen.h"
+#include "ED_curve.hh"
+#include "ED_mesh.hh"
+#include "ED_node.hh"
+#include "ED_object.hh"
+#include "ED_paint.hh"
+#include "ED_render.hh"
+#include "ED_scene.hh"
+#include "ED_screen.hh"
 
 #include "RNA_define.h"
 #include "RNA_prototypes.h"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "RE_engine.h"
 #include "RE_pipeline.h"
@@ -327,11 +328,10 @@ static int material_slot_assign_exec(bContext *C, wmOperator * /*op*/)
       }
     }
     else if (ELEM(ob->type, OB_CURVES_LEGACY, OB_SURF)) {
-      Nurb *nu;
       ListBase *nurbs = BKE_curve_editNurbs_get((Curve *)ob->data);
 
       if (nurbs) {
-        for (nu = static_cast<Nurb *>(nurbs->first); nu; nu = nu->next) {
+        LISTBASE_FOREACH (Nurb *, nu, nurbs) {
           if (ED_curve_nurb_select_check(v3d, nu)) {
             changed = true;
             nu->mat_nr = mat_nr_active;
@@ -429,13 +429,12 @@ static int material_slot_de_select(bContext *C, bool select)
     }
     else if (ELEM(ob->type, OB_CURVES_LEGACY, OB_SURF)) {
       ListBase *nurbs = BKE_curve_editNurbs_get((Curve *)ob->data);
-      Nurb *nu;
       BPoint *bp;
       BezTriple *bezt;
       int a;
 
       if (nurbs) {
-        for (nu = static_cast<Nurb *>(nurbs->first); nu; nu = nu->next) {
+        LISTBASE_FOREACH (Nurb *, nu, nurbs) {
           if (nu->mat_nr == mat_nr_active) {
             if (nu->bezt) {
               a = nu->pntsu;
@@ -1144,7 +1143,7 @@ static int view_layer_add_lightgroup_exec(bContext *C, wmOperator *op)
   if (RNA_struct_property_is_set(op->ptr, "name")) {
     RNA_string_get(op->ptr, "name", name);
     /* Ensure that there are no dots in the name. */
-    BLI_str_replace_char(name, '.', '_');
+    BLI_string_replace_char(name, '.', '_');
     LISTBASE_FOREACH (ViewLayerLightgroup *, lightgroup, &view_layer->lightgroups) {
       if (STREQ(lightgroup->name, name)) {
         return OPERATOR_CANCELLED;

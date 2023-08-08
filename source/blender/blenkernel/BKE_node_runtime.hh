@@ -111,7 +111,7 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
    * Execution data is generated from the tree once at execution start and can then be used
    * as long as necessary, even while the tree is being modified.
    */
-  struct bNodeTreeExec *execdata = nullptr;
+  bNodeTreeExec *execdata = nullptr;
 
   /* Callbacks. */
   void (*progress)(void *, float progress) = nullptr;
@@ -244,7 +244,7 @@ class bNodeRuntime : NonCopyable, NonMovable {
   uint8_t need_exec = 0;
 
   /** The original node in the tree (for localized tree). */
-  struct bNode *original = nullptr;
+  bNode *original = nullptr;
 
   /**
    * XXX TODO
@@ -259,8 +259,6 @@ class bNodeRuntime : NonCopyable, NonMovable {
   short preview_xsize, preview_ysize = 0;
   /** Entire bound-box (world-space). */
   rctf totr{};
-  /** Optional preview area. */
-  rctf prvr{};
 
   /** Used at runtime when going through the tree. Initialize before use. */
   short tmp_flag = 0;
@@ -530,14 +528,14 @@ inline blender::Span<const bNodeLink *> bNodeTree::all_links() const
   return this->runtime->links;
 }
 
-inline blender::Span<const bNodePanel *> bNodeTree::panels() const
+inline blender::MutableSpan<bNestedNodeRef> bNodeTree::nested_node_refs_span()
 {
-  return blender::Span(panels_array, panels_num);
+  return {this->nested_node_refs, this->nested_node_refs_num};
 }
 
-inline blender::MutableSpan<bNodePanel *> bNodeTree::panels_for_write()
+inline blender::Span<bNestedNodeRef> bNodeTree::nested_node_refs_span() const
 {
-  return blender::MutableSpan(panels_array, panels_num);
+  return {this->nested_node_refs, this->nested_node_refs_num};
 }
 
 /** \} */

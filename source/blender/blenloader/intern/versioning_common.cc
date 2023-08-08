@@ -354,13 +354,13 @@ float *version_cycles_node_socket_vector_value(bNodeSocket *socket)
 IDProperty *version_cycles_properties_from_ID(ID *id)
 {
   IDProperty *idprop = IDP_GetProperties(id, false);
-  return (idprop) ? IDP_GetPropertyTypeFromGroup(idprop, "cycles", IDP_GROUP) : NULL;
+  return (idprop) ? IDP_GetPropertyTypeFromGroup(idprop, "cycles", IDP_GROUP) : nullptr;
 }
 
 IDProperty *version_cycles_properties_from_view_layer(ViewLayer *view_layer)
 {
   IDProperty *idprop = view_layer->id_properties;
-  return (idprop) ? IDP_GetPropertyTypeFromGroup(idprop, "cycles", IDP_GROUP) : NULL;
+  return (idprop) ? IDP_GetPropertyTypeFromGroup(idprop, "cycles", IDP_GROUP) : nullptr;
 }
 
 float version_cycles_property_float(IDProperty *idprop, const char *name, float default_value)
@@ -401,5 +401,50 @@ void version_cycles_property_boolean_set(IDProperty *idprop, const char *name, b
 IDProperty *version_cycles_visibility_properties_from_ID(ID *id)
 {
   IDProperty *idprop = IDP_GetProperties(id, false);
-  return (idprop) ? IDP_GetPropertyTypeFromGroup(idprop, "cycles_visibility", IDP_GROUP) : NULL;
+  return (idprop) ? IDP_GetPropertyTypeFromGroup(idprop, "cycles_visibility", IDP_GROUP) : nullptr;
+}
+
+void version_update_node_input(
+    bNodeTree *ntree,
+    FunctionRef<bool(bNode *)> check_node,
+    const char *socket_identifier,
+    FunctionRef<void(bNode *, bNodeSocket *)> update_input,
+    FunctionRef<void(bNode *, bNodeSocket *, bNode *, bNodeSocket *)> update_input_link)
+{
+  bool need_update = false;
+
+  /* Iterate backwards from end so we don't encounter newly added links. */
+  LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
+    /* Detect link to replace. */
+    bNode *fromnode = link->fromnode;
+    bNodeSocket *fromsock = link->fromsock;
+    bNode *tonode = link->tonode;
+    bNodeSocket *tosock = link->tosock;
+
+    if (!(tonode != nullptr && check_node(tonode) && STREQ(tosock->identifier, socket_identifier)))
+    {
+      continue;
+    }
+
+    /* Replace links with updated equivalent */
+    nodeRemLink(ntree, link);
+    update_input_link(fromnode, fromsock, tonode, tosock);
+
+    need_update = true;
+  }
+
+  /* Update sockets and/or their default values.
+   * Do this after the link update in case it changes the identifier. */
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (check_node(node)) {
+      bNodeSocket *input = nodeFindSocket(node, SOCK_IN, socket_identifier);
+      if (input != nullptr) {
+        update_input(node, input);
+      }
+    }
+  }
+
+  if (need_update) {
+    version_socket_update_is_used(ntree);
+  }
 }

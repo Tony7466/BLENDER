@@ -26,24 +26,24 @@
 
 #include "GPU_state.h"
 
-#include "ED_markers.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_time_scrub_ui.h"
-#include "ED_transform.h"
-#include "ED_view3d.h"
-#include "ED_view3d_offscreen.h" /* Only for sequencer view3d drawing callback. */
+#include "ED_markers.hh"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_time_scrub_ui.hh"
+#include "ED_transform.hh"
+#include "ED_view3d.hh"
+#include "ED_view3d_offscreen.hh" /* Only for sequencer view3d drawing callback. */
 
-#include "WM_api.h"
-#include "WM_message.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
 
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
 #include "SEQ_transform.h"
 #include "SEQ_utils.h"
 
-#include "UI_interface.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_view2d.hh"
 
 #include "BLO_read_write.h"
 
@@ -264,8 +264,8 @@ static void sequencer_refresh(const bContext *C, ScrArea *area)
        * 'full window' views before, though... Better than nothing. */
       if (!(region_preview->v2d.flag & V2D_IS_INIT)) {
         region_preview->v2d.cur = region_preview->v2d.tot;
-        region_main->sizey = (int)(height - region_preview->sizey);
-        region_preview->sizey = (int)(height - region_main->sizey);
+        region_main->sizey = int(height - region_preview->sizey);
+        region_preview->sizey = int(height - region_main->sizey);
         view_changed = true;
       }
       if (region_preview->alignment != RGN_ALIGN_TOP) {
@@ -277,7 +277,7 @@ static void sequencer_refresh(const bContext *C, ScrArea *area)
           region_preview->sizey + region_main->sizey > height)
       {
         region_preview->sizey = roundf(height * 0.4f);
-        region_main->sizey = (int)(height - region_preview->sizey);
+        region_main->sizey = int(height - region_preview->sizey);
         view_changed = true;
       }
       break;
@@ -421,7 +421,7 @@ static void SEQUENCER_GGT_gizmo2d_rotate(wmGizmoGroupType *gzgt)
   ED_widgetgroup_gizmo2d_rotate_callbacks_set(gzgt);
 }
 
-static void sequencer_gizmos(void)
+static void sequencer_gizmos()
 {
   WM_gizmotype_append(GIZMO_GT_retime_handle);
   WM_gizmotype_append(GIZMO_GT_speed_set_remove);
@@ -661,7 +661,7 @@ static void sequencer_main_region_message_subscribe(const wmRegionMessageSubscri
         &RNA_SequenceModifier,
         &RNA_SequenceColorBalanceData,
     };
-    wmMsgParams_RNA msg_key_params = {{0}};
+    wmMsgParams_RNA msg_key_params = {{nullptr}};
     for (int i = 0; i < ARRAY_SIZE(type_array); i++) {
       msg_key_params.ptr.type = type_array[i];
       WM_msg_subscribe_rna_params(
@@ -964,10 +964,10 @@ static void sequencer_space_blend_read_data(BlendDataReader * /*reader*/, SpaceL
    * simple return nullptr here (sergey)
    */
 #if 0
-    if (sseq->gpd) {
-      sseq->gpd = newdataadr(fd, sseq->gpd);
-      BKE_gpencil_blend_read_data(fd, sseq->gpd);
-    }
+  if (sseq->gpd) {
+    sseq->gpd = newdataadr(fd, sseq->gpd);
+    BKE_gpencil_blend_read_data(fd, sseq->gpd);
+  }
 #endif
   sseq->scopes.reference_ibuf = nullptr;
   sseq->scopes.zebra_ibuf = nullptr;
@@ -993,7 +993,7 @@ static void sequencer_space_blend_write(BlendWriter *writer, SpaceLink *sl)
   BLO_write_struct(writer, SpaceSeq, sl);
 }
 
-void ED_spacetype_sequencer(void)
+void ED_spacetype_sequencer()
 {
   SpaceType *st = MEM_cnew<SpaceType>("spacetype sequencer");
   ARegionType *art;

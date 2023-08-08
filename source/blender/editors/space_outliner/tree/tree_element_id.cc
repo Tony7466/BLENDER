@@ -13,7 +13,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_anim_data.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 
 #include "BLT_translation.h"
 
@@ -85,7 +85,6 @@ std::unique_ptr<TreeElementID> TreeElementID::createFromID(TreeElement &legacy_t
     case ID_CV:
     case ID_PT:
     case ID_VO:
-    case ID_SIM:
     case ID_WM:
     case ID_IM:
     case ID_VF:

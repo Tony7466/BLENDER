@@ -10,14 +10,15 @@
 #include "node_geometry_util.hh"
 
 #include "BKE_volume.h"
+#include "BKE_volume_openvdb.hh"
 
 #include "DNA_node_types.h"
 
 #include "NOD_add_node_search.hh"
 #include "NOD_socket_search_link.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 namespace blender::nodes::node_geo_offset_sdf_volume_cc {
 

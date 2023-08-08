@@ -8,6 +8,8 @@
  * Contains everything about light baking.
  */
 
+#include <mutex>
+
 #include "DRW_render.h"
 
 #include "BKE_global.h"
@@ -25,10 +27,10 @@
 #include "GPU_capabilities.h"
 #include "GPU_context.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "wm_window.h"
+#include "wm_window.hh"
 
 #include "eevee_engine.h"
 #include "eevee_instance.hh"
@@ -63,7 +65,7 @@ class LightBake {
   /** Manager used for command submission. Created and freed in the worker thread. */
   draw::Manager *manager_ = nullptr;
 
-  /** Lightprobe original objects to bake. */
+  /** Light-probe original objects to bake. */
   Vector<Object *> original_probes_;
   /** Frame to copy to original objects during update. This is needed to avoid race conditions. */
   Vector<LightProbeGridCacheFrame *> bake_result_;
@@ -177,7 +179,7 @@ class LightBake {
             }
           });
 
-      if ((G.is_break == true) || ((stop != nullptr && *stop == true))) {
+      if ((G.is_break == true) || (stop != nullptr && *stop == true)) {
         break;
       }
     }
@@ -245,7 +247,7 @@ class LightBake {
     /* Bind context without GPU_render_begin(). */
     context_enable(false);
 
-    /* Free GPU data (Textures, Framebuffers, etc...).  */
+    /* Free GPU data (Textures, Frame-buffers, etc...). */
     delete instance_;
     delete manager_;
 

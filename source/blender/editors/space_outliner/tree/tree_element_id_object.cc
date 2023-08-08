@@ -40,24 +40,24 @@ void TreeElementIDObject::expand(SpaceOutliner &space_outliner) const
 
   expand_animation_data(space_outliner, object_.adt);
 
-  expandData(space_outliner);
-  expandPose(space_outliner);
-  expandMaterials(space_outliner);
-  expandConstraints(space_outliner);
-  expandModifiers(space_outliner);
-  expandGPencilModifiers(space_outliner);
-  expandGPencilEffects(space_outliner);
-  expandVertexGroups(space_outliner);
-  expandDuplicatedGroup(space_outliner);
+  expand_data(space_outliner);
+  expand_pose(space_outliner);
+  expand_materials(space_outliner);
+  expand_constraints(space_outliner);
+  expand_modifiers(space_outliner);
+  expand_gpencil_modifiers(space_outliner);
+  expand_gpencil_effects(space_outliner);
+  expand_vertex_groups(space_outliner);
+  expand_duplicated_group(space_outliner);
 }
 
-void TreeElementIDObject::expandData(SpaceOutliner &space_outliner) const
+void TreeElementIDObject::expand_data(SpaceOutliner &space_outliner) const
 {
   outliner_add_element(
       &space_outliner, &legacy_te_.subtree, object_.data, &legacy_te_, TSE_SOME_ID, 0);
 }
 
-void TreeElementIDObject::expandPose(SpaceOutliner &space_outliner) const
+void TreeElementIDObject::expand_pose(SpaceOutliner &space_outliner) const
 {
   if (!object_.pose) {
     return;
@@ -129,7 +129,7 @@ void TreeElementIDObject::expandPose(SpaceOutliner &space_outliner) const
   }
 }
 
-void TreeElementIDObject::expandMaterials(SpaceOutliner &space_outliner) const
+void TreeElementIDObject::expand_materials(SpaceOutliner &space_outliner) const
 {
   for (int a = 0; a < object_.totcol; a++) {
     outliner_add_element(
@@ -137,7 +137,7 @@ void TreeElementIDObject::expandMaterials(SpaceOutliner &space_outliner) const
   }
 }
 
-void TreeElementIDObject::expandConstraints(SpaceOutliner &space_outliner) const
+void TreeElementIDObject::expand_constraints(SpaceOutliner &space_outliner) const
 {
   if (BLI_listbase_is_empty(&object_.constraints)) {
     return;
@@ -156,7 +156,7 @@ void TreeElementIDObject::expandConstraints(SpaceOutliner &space_outliner) const
   }
 }
 
-void TreeElementIDObject::expandModifiers(SpaceOutliner &space_outliner) const
+void TreeElementIDObject::expand_modifiers(SpaceOutliner &space_outliner) const
 {
   if (BLI_listbase_is_empty(&object_.modifiers)) {
     return;
@@ -202,17 +202,16 @@ void TreeElementIDObject::expandModifiers(SpaceOutliner &space_outliner) const
     }
     else if (md->type == eModifierType_ParticleSystem) {
       ParticleSystem *psys = ((ParticleSystemModifierData *)md)->psys;
-      TreeElement *ten_psys;
 
-      ten_psys = outliner_add_element(
-          &space_outliner, &ten->subtree, &object_, &legacy_te_, TSE_LINKED_PSYS, 0);
-      ten_psys->directdata = psys;
-      ten_psys->name = psys->part->id.name + 2;
+      ParticleSystemElementCreateData psys_data = {&object_, psys};
+
+      outliner_add_element(
+          &space_outliner, &ten->subtree, &psys_data, &legacy_te_, TSE_LINKED_PSYS, 0);
     }
   }
 }
 
-void TreeElementIDObject::expandGPencilModifiers(SpaceOutliner &space_outliner) const
+void TreeElementIDObject::expand_gpencil_modifiers(SpaceOutliner &space_outliner) const
 {
   if (BLI_listbase_is_empty(&object_.greasepencil_modifiers)) {
     return;
@@ -255,34 +254,16 @@ void TreeElementIDObject::expandGPencilModifiers(SpaceOutliner &space_outliner) 
   }
 }
 
-void TreeElementIDObject::expandGPencilEffects(SpaceOutliner &space_outliner) const
+void TreeElementIDObject::expand_gpencil_effects(SpaceOutliner &space_outliner) const
 {
   if (BLI_listbase_is_empty(&object_.shader_fx)) {
     return;
   }
-  TreeElement *ten_fx = outliner_add_element(
+  outliner_add_element(
       &space_outliner, &legacy_te_.subtree, &object_, &legacy_te_, TSE_GPENCIL_EFFECT_BASE, 0);
-  ten_fx->name = IFACE_("Effects");
-
-  int index;
-  LISTBASE_FOREACH_INDEX (ShaderFxData *, fx, &object_.shader_fx, index) {
-    TreeElement *ten = outliner_add_element(
-        &space_outliner, &ten_fx->subtree, &object_, ten_fx, TSE_GPENCIL_EFFECT, index);
-    ten->name = fx->name;
-    ten->directdata = fx;
-
-    if (fx->type == eShaderFxType_Swirl) {
-      outliner_add_element(&space_outliner,
-                           &ten->subtree,
-                           ((SwirlShaderFxData *)fx)->object,
-                           ten,
-                           TSE_LINKED_OB,
-                           0);
-    }
-  }
 }
 
-void TreeElementIDObject::expandVertexGroups(SpaceOutliner &space_outliner) const
+void TreeElementIDObject::expand_vertex_groups(SpaceOutliner &space_outliner) const
 {
   if (!ELEM(object_.type, OB_MESH, OB_GPENCIL_LEGACY, OB_LATTICE)) {
     return;
@@ -291,20 +272,11 @@ void TreeElementIDObject::expandVertexGroups(SpaceOutliner &space_outliner) cons
   if (BLI_listbase_is_empty(defbase)) {
     return;
   }
-  TreeElement *tenla = outliner_add_element(
+  outliner_add_element(
       &space_outliner, &legacy_te_.subtree, &object_, &legacy_te_, TSE_DEFGROUP_BASE, 0);
-  tenla->name = IFACE_("Vertex Groups");
-
-  int index;
-  LISTBASE_FOREACH_INDEX (bDeformGroup *, defgroup, defbase, index) {
-    TreeElement *ten = outliner_add_element(
-        &space_outliner, &tenla->subtree, &object_, tenla, TSE_DEFGROUP, index);
-    ten->name = defgroup->name;
-    ten->directdata = defgroup;
-  }
 }
 
-void TreeElementIDObject::expandDuplicatedGroup(SpaceOutliner &space_outliner) const
+void TreeElementIDObject::expand_duplicated_group(SpaceOutliner &space_outliner) const
 {
   if (object_.instance_collection && (object_.transflag & OB_DUPLICOLLECTION)) {
     outliner_add_element(&space_outliner,

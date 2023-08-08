@@ -46,7 +46,7 @@
 
 #include "BKE_anim_data.h"
 #include "BKE_attribute.h"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_curve.h"
 #include "BKE_displist.h"
 #include "BKE_editmesh.h"
@@ -160,7 +160,7 @@ static void material_free_data(ID *id)
 static void material_foreach_id(ID *id, LibraryForeachIDData *data)
 {
   Material *material = (Material *)id;
-  /* Nodetrees **are owned by IDs**, treat them as mere sub-data and not real ID! */
+  /* Node-trees **are owned by IDs**, treat them as mere sub-data and not real ID! */
   BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
       data, BKE_library_foreach_ID_embedded(data, (ID **)&material->nodetree));
   if (material->texpaintslot != nullptr) {
@@ -773,15 +773,15 @@ Material *BKE_object_material_get_eval(Object *ob, short act)
   return nullptr;
 }
 
-int BKE_object_material_count_eval(Object *ob)
+int BKE_object_material_count_eval(const Object *ob)
 {
   BLI_assert(DEG_is_evaluated_object(ob));
   if (ob->type == OB_EMPTY) {
     return 0;
   }
   BLI_assert(ob->data != nullptr);
-  ID *id = get_evaluated_object_data_with_materials(ob);
-  const short *len_p = BKE_id_material_len_p(id);
+  const ID *id = get_evaluated_object_data_with_materials(const_cast<Object *>(ob));
+  const short *len_p = BKE_id_material_len_p(const_cast<ID *>(id));
   return len_p ? *len_p : 0;
 }
 
@@ -1377,12 +1377,9 @@ bool BKE_object_material_slot_remove(Main *bmain, Object *ob)
 
 static bNode *nodetree_uv_node_recursive(bNode *node)
 {
-  bNode *inode;
-  bNodeSocket *sock;
-
-  for (sock = static_cast<bNodeSocket *>(node->inputs.first); sock; sock = sock->next) {
+  LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
     if (sock->link) {
-      inode = sock->link->fromnode;
+      bNode *inode = sock->link->fromnode;
       if (inode->typeinfo->nclass == NODE_CLASS_INPUT && inode->typeinfo->type == SH_NODE_UVMAP) {
         return inode;
       }
@@ -2015,32 +2012,32 @@ static void material_default_holdout_init(Material *ma)
   nodeSetActive(ntree, output);
 }
 
-Material *BKE_material_default_empty(void)
+Material *BKE_material_default_empty()
 {
   return &default_material_empty;
 }
 
-Material *BKE_material_default_holdout(void)
+Material *BKE_material_default_holdout()
 {
   return &default_material_holdout;
 }
 
-Material *BKE_material_default_surface(void)
+Material *BKE_material_default_surface()
 {
   return &default_material_surface;
 }
 
-Material *BKE_material_default_volume(void)
+Material *BKE_material_default_volume()
 {
   return &default_material_volume;
 }
 
-Material *BKE_material_default_gpencil(void)
+Material *BKE_material_default_gpencil()
 {
   return &default_material_gpencil;
 }
 
-void BKE_material_defaults_free_gpu(void)
+void BKE_material_defaults_free_gpu()
 {
   for (int i = 0; default_materials[i]; i++) {
     Material *ma = default_materials[i];
@@ -2052,7 +2049,7 @@ void BKE_material_defaults_free_gpu(void)
 
 /* Module functions called on startup and exit. */
 
-void BKE_materials_init(void)
+void BKE_materials_init()
 {
   for (int i = 0; default_materials[i]; i++) {
     material_init_data(&default_materials[i]->id);
@@ -2064,7 +2061,7 @@ void BKE_materials_init(void)
   material_default_gpencil_init(&default_material_gpencil);
 }
 
-void BKE_materials_exit(void)
+void BKE_materials_exit()
 {
   for (int i = 0; default_materials[i]; i++) {
     material_free_data(&default_materials[i]->id);

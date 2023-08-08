@@ -865,10 +865,10 @@ static char *glsl_patch_default_get()
     STR_CONCAT(patch, slen, "uniform int gpu_BaseInstance;\n");
   }
 
-  /* Vulkan GLSL compat. */
+  /* Vulkan GLSL compatibility. */
   STR_CONCAT(patch, slen, "#define gpu_InstanceIndex (gl_InstanceID + gpu_BaseInstance)\n");
 
-  /* Array compat. */
+  /* Array compatibility. */
   STR_CONCAT(patch, slen, "#define gpu_Array(_type) _type[]\n");
 
   /* Derivative sign can change depending on implementation. */
@@ -895,7 +895,12 @@ static char *glsl_patch_compute_get()
   STR_CONCAT(patch, slen, "#version 430\n");
   STR_CONCAT(patch, slen, "#extension GL_ARB_compute_shader :enable\n");
 
-  /* Array compat. */
+  if (GLContext::texture_cube_map_array_support) {
+    STR_CONCAT(patch, slen, "#extension GL_ARB_texture_cube_map_array : enable\n");
+    STR_CONCAT(patch, slen, "#define GPU_ARB_texture_cube_map_array\n");
+  }
+
+  /* Array compatibility. */
   STR_CONCAT(patch, slen, "#define gpu_Array(_type) _type[]\n");
 
   STR_CONCAT(patch, slen, datatoc_glsl_shader_defines_glsl);

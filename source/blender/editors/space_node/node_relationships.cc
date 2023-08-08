@@ -25,10 +25,10 @@
 #include "BKE_screen.h"
 
 #include "ED_node.hh" /* own include */
-#include "ED_render.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_util.h"
+#include "ED_render.hh"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_util.hh"
 #include "ED_viewer_path.hh"
 
 #include "RNA_access.h"
@@ -37,14 +37,14 @@
 
 #include "DEG_depsgraph.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "GPU_state.h"
 
-#include "UI_interface_icons.h"
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_interface_icons.hh"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
 #include "BLT_translation.h"
 
@@ -2450,11 +2450,10 @@ static void node_link_insert_offset_ntree(NodeInsertOfsData *iofsd,
   if (!insert.parent ||
       (prev->parent && (prev->parent == next->parent) && (prev->parent != insert.parent)))
   {
-    bNode *frame;
     rctf totr_frame;
 
     /* check nodes front to back */
-    for (frame = (bNode *)ntree->nodes.last; frame; frame = frame->prev) {
+    LISTBASE_FOREACH_BACKWARD (bNode *, frame, &ntree->nodes) {
       /* skip selected, those are the nodes we want to attach */
       if ((frame->type != NODE_FRAME) || (frame->flag & NODE_SELECT)) {
         continue;
@@ -2578,7 +2577,7 @@ static int node_insert_offset_modal(bContext *C, wmOperator *op, const wmEvent *
 
   /* end timer + free insert offset data */
   if (duration > NODE_INSOFS_ANIM_DURATION) {
-    WM_event_remove_timer(CTX_wm_manager(C), nullptr, iofsd->anim_timer);
+    WM_event_timer_remove(CTX_wm_manager(C), nullptr, iofsd->anim_timer);
 
     for (bNode *node : snode->edittree->all_nodes()) {
       node->runtime->anim_init_locx = node->runtime->anim_ofsx = 0.0f;
@@ -2608,7 +2607,7 @@ static int node_insert_offset_invoke(bContext *C, wmOperator *op, const wmEvent 
   BLI_assert((snode->flag & SNODE_SKIP_INSOFFSET) == 0);
 
   iofsd->ntree = snode->edittree;
-  iofsd->anim_timer = WM_event_add_timer(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.02);
+  iofsd->anim_timer = WM_event_timer_add(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.02);
 
   node_link_insert_offset_ntree(
       iofsd, CTX_wm_region(C), event->mval, (snode->insert_ofs_dir == SNODE_INSERTOFS_DIR_RIGHT));

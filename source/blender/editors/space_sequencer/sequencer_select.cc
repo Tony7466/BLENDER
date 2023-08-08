@@ -21,9 +21,9 @@
 #include "BKE_context.h"
 #include "BKE_report.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 #include "WM_toolsystem.h"
-#include "WM_types.h"
+#include "WM_types.hh"
 
 #include "RNA_define.h"
 
@@ -39,12 +39,12 @@
 
 /* For menu, popup, icons, etc. */
 
-#include "ED_outliner.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
-#include "ED_sequencer.h"
+#include "ED_outliner.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
+#include "ED_sequencer.hh"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
 /* Own include. */
 #include "sequencer_intern.h"
@@ -86,7 +86,8 @@ SeqCollection *selected_strips_from_context(bContext *C)
   return SEQ_query_selected_strips(seqbase);
 }
 
-static void select_surrounding_handles(Scene *scene, Sequence *test) /* XXX BRING BACK */
+/* XXX BRING BACK */
+static void select_surrounding_handles(Scene *scene, Sequence *test)
 {
   Sequence *neighbor;
 
@@ -1053,7 +1054,7 @@ void SEQUENCER_OT_select(wmOperatorType *ot)
   prop = RNA_def_boolean(
       ot->srna,
       "center",
-      0,
+      false,
       "Center",
       "Use the object center when selecting, in edit mode used to extend object selection");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
@@ -1288,7 +1289,7 @@ void SEQUENCER_OT_select_linked_pick(wmOperatorType *ot)
 
   /* Properties. */
   PropertyRNA *prop;
-  prop = RNA_def_boolean(ot->srna, "extend", 0, "Extend", "Extend the selection");
+  prop = RNA_def_boolean(ot->srna, "extend", false, "Extend", "Extend the selection");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
@@ -1516,7 +1517,7 @@ void SEQUENCER_OT_select_side_of_frame(wmOperatorType *ot)
 
   /* Properties. */
   PropertyRNA *prop;
-  prop = RNA_def_boolean(ot->srna, "extend", 0, "Extend", "Extend the selection");
+  prop = RNA_def_boolean(ot->srna, "extend", false, "Extend", "Extend the selection");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   ot->prop = RNA_def_enum(ot->srna, "side", sequencer_select_left_right_types, 0, "Side", "");
 }
@@ -1791,10 +1792,10 @@ void SEQUENCER_OT_select_box(wmOperatorType *ot)
   WM_operator_properties_select_operation_simple(ot);
 
   prop = RNA_def_boolean(
-      ot->srna, "tweak", 0, "Tweak", "Operator has been activated using a click-drag event");
+      ot->srna, "tweak", false, "Tweak", "Operator has been activated using a click-drag event");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   prop = RNA_def_boolean(
-      ot->srna, "include_handles", 0, "Select Handles", "Select the strips and their handles");
+      ot->srna, "include_handles", false, "Select Handles", "Select the strips and their handles");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 

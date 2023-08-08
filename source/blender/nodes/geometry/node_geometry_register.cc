@@ -135,6 +135,8 @@ void register_geometry_nodes()
   register_node_type_geo_raycast();
   register_node_type_geo_realize_instances();
   register_node_type_geo_remove_attribute();
+  register_node_type_geo_repeat_input();
+  register_node_type_geo_repeat_output();
   register_node_type_geo_rotate_instances();
   register_node_type_geo_sample_index();
   register_node_type_geo_sample_nearest_surface();
@@ -166,6 +168,11 @@ void register_geometry_nodes()
   register_node_type_geo_string_to_curves();
   register_node_type_geo_subdivision_surface();
   register_node_type_geo_switch();
+  register_node_type_geo_tool_3d_cursor();
+  register_node_type_geo_tool_face_set();
+  register_node_type_geo_tool_selection();
+  register_node_type_geo_tool_set_face_set();
+  register_node_type_geo_tool_set_selection();
   register_node_type_geo_transform_geometry();
   register_node_type_geo_translate_instances();
   register_node_type_geo_triangulate();

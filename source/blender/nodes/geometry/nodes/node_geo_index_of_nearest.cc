@@ -32,7 +32,10 @@ static KDTree_3d *build_kdtree(const Span<float3> positions, const IndexMask &ma
 static int find_nearest_non_self(const KDTree_3d &tree, const float3 &position, const int index)
 {
   return BLI_kdtree_3d_find_nearest_cb_cpp(
-      &tree, position, 0, [index](const int other, const float * /*co*/, const float /*dist_sq*/) {
+      &tree,
+      position,
+      nullptr,
+      [index](const int other, const float * /*co*/, const float /*dist_sq*/) {
         return index == other ? 0 : 1;
       });
 }
@@ -106,9 +109,11 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
 
     if (mask.size() == domain_size) {
       lookup_indices_by_group_id = all_indices_by_group_id;
+      result.reinitialize(domain_size);
     }
     else {
-      IndexMask::from_groups<int>(mask, mask_memory, get_group_index, all_indices_by_group_id);
+      IndexMask::from_groups<int>(mask, mask_memory, get_group_index, lookup_indices_by_group_id);
+      result.reinitialize(mask.min_array_size());
     }
 
     /* The grain size should be larger as each tree gets smaller. */
