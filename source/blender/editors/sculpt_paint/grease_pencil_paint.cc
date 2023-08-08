@@ -287,6 +287,7 @@ struct PaintOperationExecutor {
         self.screen_space_smoothed_coordinates_.as_mutable_span().slice(smooth_window);
     MutableSpan<float3> positions_slice = self.stroke_cache_->positions_for_write().slice(
         smooth_window);
+    const float converging_threshold_px = 0.05f;
     bool stop_counting_converged = false;
     int num_converged = 0;
     for (const int64_t i : smooth_window.index_range()) {
@@ -305,7 +306,7 @@ struct PaintOperationExecutor {
       float2 new_pos = (mean + smoothed_coords_point.last()) / smoothed_coords_point.size();
       if (!stop_counting_converged) {
         float2 prev_pos = mean / (smoothed_coords_point.size() - 1);
-        if (math::distance(new_pos, prev_pos) < 0.05f) {
+        if (math::distance(new_pos, prev_pos) < converging_threshold_px) {
           num_converged++;
         }
         else {
