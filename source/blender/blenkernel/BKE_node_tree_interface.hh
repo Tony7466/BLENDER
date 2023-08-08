@@ -26,9 +26,9 @@ struct bNodeTreeInterfaceCache {
   void rebuild(bNodeTreeInterface &tree_interface);
 };
 
-}  // namespace blender::bke
+namespace node_interface {
 
-namespace blender::bke::node_interface::detail {
+namespace detail {
 
 template<typename T> static bool item_is_type(const bNodeTreeInterfaceItem &item)
 {
@@ -46,9 +46,7 @@ template<typename T> static bool item_is_type(const bNodeTreeInterfaceItem &item
   return match;
 }
 
-}  // namespace blender::bke::node_interface::detail
-
-namespace blender::bke::node_interface {
+}  // namespace detail
 
 template<typename T> T &get_item_as(bNodeTreeInterfaceItem &item)
 {
@@ -178,10 +176,6 @@ template<typename T> const T &get_socket_data_as(const bNodeTreeInterfaceSocket 
   return *static_cast<const T *>(item.socket_data);
 }
 
-}  // namespace blender::bke::node_interface
-
-namespace blender::bke::node_interface {
-
 inline bNodeTreeInterfaceSocket *add_interface_socket_from_node(bNodeTree &ntree,
                                                                 const bNode &from_node,
                                                                 const bNodeSocket &from_sock,
@@ -220,4 +214,6 @@ inline bNodeTreeInterfaceSocket *add_interface_socket_from_node(bNodeTree &ntree
       ntree, from_node, from_sock, from_sock.typeinfo->idname, from_sock.name);
 }
 
-}  // namespace blender::bke::node_interface
+}  // namespace node_interface
+
+}  // namespace blender::bke
