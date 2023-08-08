@@ -768,7 +768,7 @@ bool bNodeTreeInterfacePanel::contains_recursive(const bNodeTreeInterfaceItem &i
   /* Have to capture item address here instead of just a reference,
    * otherwise pointer comparison will not work. */
   this->foreach_item(
-      [&item, &is_child](const bNodeTreeInterfaceItem &titem) {
+      [&](const bNodeTreeInterfaceItem &titem) {
         if (&titem == &item) {
           is_child = true;
           return false;
@@ -790,7 +790,7 @@ int bNodeTreeInterfacePanel::item_index(const bNodeTreeInterfaceItem &item) cons
   bool found = false;
   /* Have to capture item address here instead of just a reference,
    * otherwise pointer comparison will not work. */
-  this->foreach_item([&item, &index, &found](const bNodeTreeInterfaceItem &titem) {
+  this->foreach_item([&](const bNodeTreeInterfaceItem &titem) {
     if (&titem == &item) {
       found = true;
       return false;
@@ -805,7 +805,7 @@ const bNodeTreeInterfaceItem *bNodeTreeInterfacePanel::item_at_index(int index) 
 {
   int i = 0;
   const bNodeTreeInterfaceItem *result = nullptr;
-  this->foreach_item([&i, index, &result](const bNodeTreeInterfaceItem &item) {
+  this->foreach_item([&](const bNodeTreeInterfaceItem &item) {
     if (i == index) {
       result = &item;
       return false;
@@ -1105,7 +1105,7 @@ bNodeTreeInterfaceItem *bNodeTreeInterface::active_item()
 {
   bNodeTreeInterfaceItem *active = nullptr;
   int count = active_index;
-  this->foreach_item([&active, &count](bNodeTreeInterfaceItem &item) {
+  this->foreach_item([&](bNodeTreeInterfaceItem &item) {
     if (count == 0) {
       active = &item;
       return false;
@@ -1120,7 +1120,7 @@ const bNodeTreeInterfaceItem *bNodeTreeInterface::active_item() const
 {
   const bNodeTreeInterfaceItem *active = nullptr;
   int count = active_index;
-  this->foreach_item([&active, &count](const bNodeTreeInterfaceItem &item) {
+  this->foreach_item([&](const bNodeTreeInterfaceItem &item) {
     if (count == 0) {
       active = &item;
       return false;
@@ -1135,7 +1135,7 @@ void bNodeTreeInterface::active_item_set(bNodeTreeInterfaceItem *item)
 {
   active_index = 0;
   int count = 0;
-  this->foreach_item([this, item, &count](bNodeTreeInterfaceItem &titem) {
+  this->foreach_item([&](bNodeTreeInterfaceItem &titem) {
     if (&titem == item) {
       active_index = count;
       return false;
