@@ -7,8 +7,8 @@
 #include "usd.h"
 
 #include <pxr/usd/usdSkel/animation.h>
-#include <pxr/usd/usdSkel/blendShape.h>
 #include <pxr/usd/usdSkel/bindingAPI.h>
+#include <pxr/usd/usdSkel/blendShape.h>
 #include <pxr/usd/usdSkel/cache.h>
 #include <pxr/usd/usdSkel/skeletonQuery.h>
 #include <pxr/usd/usdSkel/utils.h>
@@ -58,11 +58,8 @@ FCurve *create_fcurve(int array_index, const char *rna_path)
 
 /* Utility: create curve at the given array index and
  * adds it as a channel to a group. */
-FCurve *create_chan_fcurve(bAction *act,
-                           bActionGroup *grp,
-                           int array_index,
-                           const char *rna_path,
-                           int totvert)
+FCurve *create_chan_fcurve(
+    bAction *act, bActionGroup *grp, int array_index, const char *rna_path, int totvert)
 {
   FCurve *fcu = create_fcurve(array_index, rna_path);
   fcu->totvert = totvert;
@@ -71,10 +68,7 @@ FCurve *create_chan_fcurve(bAction *act,
 }
 
 /* Utility: add curve sample. */
-void add_bezt(FCurve *fcu,
-              float frame,
-              float value,
-              eBezTriple_Interpolation ipo = BEZT_IPO_LIN)
+void add_bezt(FCurve *fcu, float frame, float value, eBezTriple_Interpolation ipo = BEZT_IPO_LIN)
 {
   BezTriple bez;
   memset(&bez, 0, sizeof(BezTriple));
@@ -319,7 +313,10 @@ void import_skeleton_curves(Main *bmain,
 
 namespace blender::io::usd {
 
-void import_blendshapes(Main *bmain, Object *mesh_obj, const pxr::UsdPrim &prim, const bool import_anim)
+void import_blendshapes(Main *bmain,
+                        Object *mesh_obj,
+                        const pxr::UsdPrim &prim,
+                        const bool import_anim)
 {
   if (!(mesh_obj && mesh_obj->data && mesh_obj->type == OB_MESH && prim)) {
     return;
@@ -350,7 +347,8 @@ void import_blendshapes(Main *bmain, Object *mesh_obj, const pxr::UsdPrim &prim,
   if (!skel_api.GetBlendShapeTargetsRel().GetTargets(&targets)) {
     WM_reportf(RPT_WARNING,
                "%s: Couldn't get blendshape targets for prim %s",
-               __func__, prim.GetPath().GetAsString().c_str());
+               __func__,
+               prim.GetPath().GetAsString().c_str());
     return;
   }
 
@@ -433,10 +431,8 @@ void import_blendshapes(Main *bmain, Object *mesh_obj, const pxr::UsdPrim &prim,
     }
 
     if (offsets.empty()) {
-      WM_reportf(RPT_WARNING,
-                 "%s: No offsets for blend shape %s",
-                 __func__,
-                 path.GetAsString().c_str());
+      WM_reportf(
+          RPT_WARNING, "%s: No offsets for blend shape %s", __func__, path.GetAsString().c_str());
       continue;
     }
 
@@ -460,10 +456,11 @@ void import_blendshapes(Main *bmain, Object *mesh_obj, const pxr::UsdPrim &prim,
        * offset to the key block point. */
       for (int a = 0; a < kb->totelem; ++a, fp += 3) {
         if (a >= offsets.size()) {
-          WM_reportf(RPT_WARNING,
-                     "%s: Number of offsets greater than number of mesh vertices for blend shape %s",
-                     __func__,
-                     path.GetAsString().c_str());
+          WM_reportf(
+              RPT_WARNING,
+              "%s: Number of offsets greater than number of mesh vertices for blend shape %s",
+              __func__,
+              path.GetAsString().c_str());
           break;
         }
         add_v3_v3(fp, offsets[a].data());
@@ -475,7 +472,8 @@ void import_blendshapes(Main *bmain, Object *mesh_obj, const pxr::UsdPrim &prim,
       int a = 0;
       for (int i : point_indices) {
         if (i < 0 || i > kb->totelem) {
-          std::cerr << "Out of bounds point index " << i << " for blendshape " << path << std::endl;
+          std::cerr << "Out of bounds point index " << i << " for blendshape " << path
+                    << std::endl;
           ++a;
           continue;
         }
@@ -586,7 +584,8 @@ void import_blendshapes(Main *bmain, Object *mesh_obj, const pxr::UsdPrim &prim,
     }
 
     if (weights.size() != curves.size()) {
-      std::cerr << "Programmer error: number of weight samples doesn't match number of shapekey curve entries for frame "
+      std::cerr << "Programmer error: number of weight samples doesn't match number of shapekey "
+                   "curve entries for frame "
                 << frame << std::endl;
       continue;
     }
@@ -597,10 +596,12 @@ void import_blendshapes(Main *bmain, Object *mesh_obj, const pxr::UsdPrim &prim,
       }
     }
   }
-
 }
 
-void import_skeleton(Main *bmain, Object *arm_obj, const pxr::UsdSkelSkeleton &skel, const bool import_anim)
+void import_skeleton(Main *bmain,
+                     Object *arm_obj,
+                     const pxr::UsdSkelSkeleton &skel,
+                     const bool import_anim)
 {
   if (!(arm_obj && arm_obj->data && arm_obj->type == OB_ARMATURE)) {
     return;
@@ -647,10 +648,8 @@ void import_skeleton(Main *bmain, Object *arm_obj, const pxr::UsdSkelSkeleton &s
     std::string name = pxr::SdfPath(joint).GetName();
     EditBone *bone = ED_armature_ebone_add(arm, name.c_str());
     if (!bone) {
-      WM_reportf(RPT_WARNING,
-                 "%s: Couldn't add bone for joint %s",
-                 __func__,
-                 joint.GetString().c_str());
+      WM_reportf(
+          RPT_WARNING, "%s: Couldn't add bone for joint %s", __func__, joint.GetString().c_str());
       edit_bones.push_back(nullptr);
       continue;
     }
@@ -830,8 +829,6 @@ void import_skeleton(Main *bmain, Object *arm_obj, const pxr::UsdSkelSkeleton &s
   }
 }
 
-
-
 void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim &prim)
 {
   if (!(bmain && mesh_obj && mesh_obj->type == OB_MESH && prim)) {
@@ -932,7 +929,9 @@ void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim
   }
 
   /* Sanity check: make sure we have the expected number of values for the interpolation type. */
-  if (interp == pxr::UsdGeomTokens->vertex && joint_weights.size() != mesh->totvert * joint_weights_elem_size) {
+  if (interp == pxr::UsdGeomTokens->vertex &&
+      joint_weights.size() != mesh->totvert * joint_weights_elem_size)
+  {
     WM_reportf(RPT_WARNING,
                "%s: Joint weights of unexpected size for vertex interpolation for prim %s",
                __func__,

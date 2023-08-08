@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
+#include <map>
 #include <pxr/usd/usd/prim.h>
 #include <pxr/usd/usdSkel/skeletonQuery.h>
-#include <map>
 
 struct Main;
 struct Object;
@@ -41,7 +41,7 @@ struct ImportSettings;
 void import_blendshapes(Main *bmain,
                         Object *mesh_obj,
                         const pxr::UsdPrim &prim,
-                        bool import_anim=true);
+                        bool import_anim = true);
 
 /**
  * Import the given USD sekeleton as an armature object. Optionally, if the
@@ -57,7 +57,7 @@ void import_blendshapes(Main *bmain,
 void import_skeleton(Main *bmain,
                      Object *arm_obj,
                      const pxr::UsdSkelSkeleton &skel,
-                     bool import_anim=true);
+                     bool import_anim = true);
 /**
  * Import skinning data from a source USD prim as deform groups and an armature
  * modifier on the given mesh object. If the USD prim does not have a skeleton

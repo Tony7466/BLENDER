@@ -5,8 +5,8 @@
 #include "usd_reader_skeleton.h"
 #include "usd_skel_convert.h"
 
-#include "BKE_idprop.h"
 #include "BKE_armature.h"
+#include "BKE_idprop.h"
 #include "BKE_object.h"
 
 #include "BLI_math.h"

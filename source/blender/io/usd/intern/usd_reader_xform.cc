@@ -180,5 +180,4 @@ bool USDXformReader::get_local_usd_xform(const float time,
   return xformable.GetLocalTransformation(r_xform, &reset_xform_stack, time);
 }
 
-
 }  // namespace blender::io::usd
