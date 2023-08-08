@@ -35,6 +35,7 @@
 #ifdef WITH_METAL_BACKEND
 #  include "mtl_backend.hh"
 #endif
+#include "dummy/dummy_backend.hh"
 
 #include <mutex>
 #include <vector>
@@ -274,11 +275,11 @@ static bool gpu_backend_supported()
 {
   switch (g_backend_type) {
     case GPU_BACKEND_OPENGL:
-#ifdef WITH_OPENGL_BACKEND
-      return true;
-#else
+      //#ifdef WITH_OPENGL_BACKEND
+      //      return true;
+      //#else
       return false;
-#endif
+      //#endif
     case GPU_BACKEND_VULKAN:
 #ifdef WITH_VULKAN_BACKEND
       return true;
@@ -291,6 +292,8 @@ static bool gpu_backend_supported()
 #else
       return false;
 #endif
+    case GPU_BACKEND_NONE:
+      return true;
     default:
       BLI_assert(false && "No backend specified");
       return false;
@@ -326,6 +329,9 @@ static void gpu_backend_create()
       g_backend = new MTLBackend;
       break;
 #endif
+    case GPU_BACKEND_NONE:
+      g_backend = new DummyBackend;
+      break;
     default:
       BLI_assert(0);
       break;

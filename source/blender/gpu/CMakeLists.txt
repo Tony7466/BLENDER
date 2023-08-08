@@ -142,6 +142,8 @@ set(SRC
   intern/gpu_uniform_buffer_private.hh
   intern/gpu_vertex_buffer_private.hh
   intern/gpu_vertex_format_private.h
+
+  dummy/dummy_backend.hh
 )
 
 set(OPENGL_SRC

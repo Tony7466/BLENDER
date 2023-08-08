@@ -184,10 +184,16 @@ bool WM_platform_support_perform_checks()
       break;
     }
   }
-  wm_platform_support_create_link(link);
 
+  bool backend_detected = GPU_backend_get_type() != GPU_BACKEND_NONE;
   bool show_message = ELEM(
       support_level, GPU_SUPPORT_LEVEL_LIMITED, GPU_SUPPORT_LEVEL_UNSUPPORTED);
+  bool show_continue = backend_detected;
+  bool show_link = backend_detected;
+  link[0] = '\0';
+  if (show_link) {
+    wm_platform_support_create_link(link);
+  }
 
   /* We are running in the background print the message in the console. */
   if ((G.background || G.debug & G_DEBUG) && show_message) {
@@ -199,8 +205,12 @@ bool WM_platform_support_perform_checks()
     result = true;
   }
   else if (show_message) {
-    WM_ghost_show_message_box(
-        title, message, "Find Latest Drivers", "Continue Anyway", link, dialog_options);
+    WM_ghost_show_message_box(title,
+                              message,
+                              "Find Latest Drivers",
+                              show_continue ? "Continue Anyway" : "Exit",
+                              link,
+                              dialog_options);
   }
 
   return result;
