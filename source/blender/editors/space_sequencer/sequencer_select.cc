@@ -86,8 +86,7 @@ SeqCollection *selected_strips_from_context(bContext *C)
   return SEQ_query_selected_strips(seqbase);
 }
 
-/* XXX BRING BACK */
-static void select_surrounding_handles(Scene *scene, Sequence *test)
+static void select_surrounding_handles(Scene *scene, Sequence *test) /* XXX BRING BACK */
 {
   Sequence *neighbor;
 

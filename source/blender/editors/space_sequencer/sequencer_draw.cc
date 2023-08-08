@@ -2839,6 +2839,8 @@ void draw_timeline_seq(const bContext *C, ARegion *region)
 
   UI_view2d_view_restore(C);
   ED_time_scrub_draw(region, scene, !(sseq->flag & SEQ_DRAWFRAMES), true);
+
+  sequencer_draw_retiming(C);
 }
 
 void draw_timeline_seq_display(const bContext *C, ARegion *region)
