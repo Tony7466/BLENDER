@@ -333,7 +333,7 @@ bool NodeSocketDropTarget::can_drop(const wmDrag &drag, const char ** /*r_disabl
   if (const bNodeTreeInterfacePanel *panel = node_interface::get_item_as<bNodeTreeInterfacePanel>(
           drag_data->item))
   {
-    if (panel->contains_item(socket_.item)) {
+    if (panel->contains(socket_.item)) {
       return false;
     }
   }
@@ -363,11 +363,10 @@ bool NodeSocketDropTarget::on_drop(bContext *C, const DragInfo &drag_info) const
   bNodeTree &nodetree = get_view<NodeTreeInterfaceView>().nodetree();
   bNodeTreeInterface &interface = get_view<NodeTreeInterfaceView>().interface();
 
-  bNodeTreeInterfacePanel *parent = nullptr;
+  bNodeTreeInterfacePanel *parent = interface.find_item_parent(socket_.item);
   int index = -1;
 
   /* Insert into same panel as the target. */
-  interface.find_item_parent(socket_.item, parent);
   BLI_assert(parent != nullptr);
   switch (drag_info.drop_location) {
     case DropLocation::Before:
@@ -417,7 +416,7 @@ bool NodePanelDropTarget::can_drop(const wmDrag &drag, const char ** /*r_disable
   if (const bNodeTreeInterfacePanel *panel = node_interface::get_item_as<bNodeTreeInterfacePanel>(
           drag_data->item))
   {
-    if (panel->contains_item(panel_.item)) {
+    if (panel->contains(panel_.item)) {
       return false;
     }
   }
@@ -459,14 +458,14 @@ bool NodePanelDropTarget::on_drop(bContext *C, const DragInfo &drag_info) const
     }
     case DropLocation::Before: {
       /* Insert into same panel as the target. */
-      interface.find_item_parent(panel_.item, parent);
+      parent = interface.find_item_parent(panel_.item);
       BLI_assert(parent != nullptr);
       index = parent->items().as_span().first_index_try(&panel_.item);
       break;
     }
     case DropLocation::After: {
       /* Insert into same panel as the target. */
-      interface.find_item_parent(panel_.item, parent);
+      parent = interface.find_item_parent(panel_.item);
       BLI_assert(parent != nullptr);
       index = parent->items().as_span().first_index_try(&panel_.item) + 1;
       break;

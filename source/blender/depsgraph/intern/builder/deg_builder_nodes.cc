@@ -1957,10 +1957,10 @@ void DepsgraphNodeBuilder::build_nodetree(bNodeTree *ntree)
   }
 
   for (bNodeTreeInterfaceSocket *socket : ntree->interface_cache().inputs) {
-    build_idproperties(socket->prop);
+    build_idproperties(socket->properties);
   }
   for (bNodeTreeInterfaceSocket *socket : ntree->interface_cache().outputs) {
-    build_idproperties(socket->prop);
+    build_idproperties(socket->properties);
   }
 
   /* TODO: link from nodetree to owner_component? */

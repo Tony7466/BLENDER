@@ -289,7 +289,7 @@ static StructRNA *rna_NodeTreeInterfaceSocket_register(Main * /*bmain*/,
 static IDProperty **rna_NodeTreeInterfaceSocket_idprops(PointerRNA *ptr)
 {
   bNodeTreeInterfaceSocket *socket = static_cast<bNodeTreeInterfaceSocket *>(ptr->data);
-  return &socket->prop;
+  return &socket->properties;
 }
 
 static void rna_NodeTreeInterfaceSocket_identifier_get(PointerRNA *ptr, char *value)
@@ -510,8 +510,8 @@ static bNodeTreeInterfaceItem *rna_NodeTreeInterfaceItems_copy(ID *id,
                                                                bNodeTreeInterfaceItem *item)
 {
   /* Copy to same parent as the item. */
-  bNodeTreeInterfacePanel *parent;
-  if (!interface->find_item_parent(*item, parent)) {
+  bNodeTreeInterfacePanel *parent = interface->find_item_parent(*item);
+  if (parent == nullptr) {
     return nullptr;
   }
   return rna_NodeTreeInterfaceItems_copy_to_parent(id, interface, bmain, reports, item, parent);
