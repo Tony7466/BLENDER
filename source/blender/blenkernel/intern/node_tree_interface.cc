@@ -40,7 +40,7 @@ static const char *try_get_supported_socket_type(StringRefNull socket_type)
     return nullptr;
   }
   /* For builtin socket types only the base type is supported. */
-  if (blender::bke::nodeIsStaticSocketType(typeinfo)) {
+  if (nodeIsStaticSocketType(typeinfo)) {
     return nodeStaticSocketType(typeinfo->type, PROP_NONE);
   }
   else {
