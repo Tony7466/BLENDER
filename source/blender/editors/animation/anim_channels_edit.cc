@@ -355,7 +355,8 @@ bool ANIM_is_active_channel(bAnimListElem *ale)
     }
     case ANIMTYPE_GREASE_PENCIL_LAYER: {
       GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
-      return grease_pencil->get_active_layer() == ale->data;
+      return grease_pencil->is_layer_active(
+          static_cast<blender::bke::greasepencil::Layer *>(ale->data));
     }
     /* These channel types do not have active flags. */
     case ANIMTYPE_MASKLAYER:
