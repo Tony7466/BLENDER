@@ -208,9 +208,7 @@ struct PaintOperationExecutor {
   ScreenSpacePoint point_from_input_sample(const InputSample &sample)
   {
     ScreenSpacePoint point;
-
     point.co = sample.mouse_position;
-
     point.radius = brush_size_ / 2.0f;
     if (BKE_brush_use_size_pressure(brush_)) {
       point.radius *= BKE_curvemapping_evaluateF(settings_->curve_sensitivity, 0, sample.pressure);
@@ -300,17 +298,16 @@ struct PaintOperationExecutor {
       self.screen_space_curve_fitted_coordinates_[i].append(coords_smoothed[i]);
       Span<float2> smoothed_coords_point = self.screen_space_curve_fitted_coordinates_[i];
 
-      /* Get the arithmetic mean of all the curve fittings of this point. */
-      float2 mean = smoothed_coords_point[0];
+      /* Get the sum of all the curve fittings of this point. */
+      float2 sum = smoothed_coords_point[0];
       for (const float2 v : smoothed_coords_point.drop_front(1).drop_back(1)) {
-        mean += v;
+        sum += v;
       }
-
       /* We compare the previous arithmetic mean to the current. Going from the back to the front,
        * if a point hasn't moved by a minimum threashold, it counts as converged. */
-      float2 new_pos = (mean + smoothed_coords_point.last()) / smoothed_coords_point.size();
+      float2 new_pos = (sum + smoothed_coords_point.last()) / smoothed_coords_point.size();
       if (!stop_counting_converged) {
-        float2 prev_pos = mean / (smoothed_coords_point.size() - 1);
+        float2 prev_pos = sum / (smoothed_coords_point.size() - 1);
         if (math::distance(new_pos, prev_pos) < converging_threshold_px) {
           num_converged++;
         }
@@ -390,22 +387,23 @@ struct PaintOperationExecutor {
       factor += step;
     }
 
+    /* Update buffers with new points. */
     self.screen_space_coordinates_.extend(new_coordinates);
     self.screen_space_smoothed_coordinates_.extend(new_coordinates);
     for (float2 new_co : new_coordinates) {
       self.screen_space_curve_fitted_coordinates_.append(Vector<float2>({new_co}));
     }
 
+    /* Resize the stroke cache. */
     self.stroke_cache_->resize(self.stroke_cache_->size() + new_points_num);
+
+    /* Write new data to the attributes. */
     self.stroke_cache_->radii_for_write().slice(new_range).copy_from(new_radii);
     self.stroke_cache_->opacities_for_write().slice(new_range).copy_from(new_opacities);
     self.stroke_cache_->vertex_colors_for_write().slice(new_range).copy_from(new_vertex_colors);
 
     const int64_t min_active_smoothing_points_num = 8;
-    if (self.stroke_cache_->size() >= min_active_smoothing_points_num) {
-      this->active_smoothing(self);
-    }
-    else {
+    if (self.stroke_cache_->size() < min_active_smoothing_points_num) {
       MutableSpan<float3> positions_slice = self.stroke_cache_->positions_for_write().slice(
           new_range);
       for (const int64_t i : new_coordinates.index_range()) {
@@ -413,6 +411,8 @@ struct PaintOperationExecutor {
       }
       return;
     }
+
+    this->active_smoothing(self);
   }
 
   void execute(PaintOperation &self, const bContext &C, const InputSample &extension_sample)
