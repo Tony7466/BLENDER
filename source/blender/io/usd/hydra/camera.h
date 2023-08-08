@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * SPDX-FileCopyrightText: 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -26,8 +27,8 @@ class CameraData {
   std::tuple<float, float, int> dof_data_;
 
  public:
-  CameraData(View3D *v3d, ARegion *region);
-  CameraData(Object *camera_obj, pxr::GfVec2i res, pxr::GfVec4f tile);
+  CameraData(const View3D *v3d, const ARegion *region);
+  CameraData(const Object *camera_obj, pxr::GfVec2i res, pxr::GfVec4f tile);
 
   pxr::GfCamera gf_camera();
   pxr::GfCamera gf_camera(pxr::GfVec4f tile);

@@ -83,15 +83,15 @@
 #include "BKE_modifier.h"
 #include "BKE_node.h"
 
-#include "ED_anim_api.h"
-#include "ED_markers.h"
+#include "ED_anim_api.hh"
+#include "ED_markers.hh"
 
 #include "SEQ_sequencer.h"
 #include "SEQ_utils.h"
 
 #include "ANIM_bone_collections.h"
 
-#include "UI_resources.h" /* for TH_KEYFRAME_SCALE lookup */
+#include "UI_resources.hh" /* for TH_KEYFRAME_SCALE lookup */
 
 /* ************************************************************ */
 /* Blender Context <-> Animation Context mapping */
@@ -1767,7 +1767,7 @@ static size_t animdata_filter_grease_pencil_layers_data(ListBase *anim_data,
     }
 
     /* Only if the layer is active. */
-    if ((filter_mode & ANIMFILTER_ACTIVE) && (grease_pencil->active_layer == layer)) {
+    if ((filter_mode & ANIMFILTER_ACTIVE) && grease_pencil->is_layer_active(layer)) {
       continue;
     }
 
