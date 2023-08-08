@@ -63,26 +63,25 @@ active_views: [Standard, Filmic, Filmic Log, False Color, Raw]
 
 colorspaces:
   - !<ColorSpace>
-    name: Linear CIE-XYZ I-E
-    aliases: ["FilmLight: Linear - XYZ"]
+    name: Linear CIE-XYZ E
+    aliases: ["FilmLight: Linear - XYZ", Linear CIE-XYZ I-E]
     family: Chromaticity
     equalitygroup:
     bitdepth: 32f
     description: |
-      1931 CIE XYZ Standard with assumed I-E white point
+      1931 CIE XYZ standard with assumed illuminant E white point
     isdata: false
 
   - !<ColorSpace>
-    name: Linear CIE-XYZ I-D65
-    aliases: [cie_xyz_d65, CIE-XYZ-D65, XYZ]
+    name: Linear CIE-XYZ D65
+    aliases: [cie_xyz_d65, CIE-XYZ-D65, XYZ, Linear CIE-XYZ I-D65]
     family: Chromaticity
     equalitygroup:
     bitdepth: 32f
     description: |
-      1931 CIE XYZ with adapted I-D65 white point
+      1931 CIE XYZ with adapted illuminant D65 white point
     isdata: false
     from_scene_reference: !<FileTransform> {src: xyz_E_to_D65.spimtx, interpolation: linear}
-    to_scene_reference: !<FileTransform> {src: xyz_D65_to_E.spimtx, interpolation: linear}
 
   - !<ColorSpace>
     name: Linear
