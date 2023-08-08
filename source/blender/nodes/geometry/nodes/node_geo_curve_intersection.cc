@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <algorithm>
 
@@ -11,8 +13,8 @@
 #include "BLI_kdopbvh.h"
 #include "BLI_task.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "NOD_socket_search_link.hh"
 
@@ -49,6 +51,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Int>("Curve Index").field_on_all();
   b.add_output<decl::Float>("Factor").field_on_all();
   b.add_output<decl::Float>("Length").field_on_all();
+  b.add_output<decl::Vector>("Direction").field_on_all();
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -85,11 +88,13 @@ struct IntersectionData {
   Vector<int> curve_id;
   Vector<float> length;
   Vector<float> factor;
+  Vector<float3> direction;
 };
 using ThreadLocalData = threading::EnumerableThreadSpecific<IntersectionData>;
 
 static void add_intersection_data(IntersectionData &data,
                                   const float3 position,
+                                  const float3 direction,
                                   const int curve_id,
                                   const float length,
                                   const float curve_length)
@@ -98,6 +103,7 @@ static void add_intersection_data(IntersectionData &data,
   data.curve_id.append(curve_id);
   data.length.append(length);
   data.factor.append(math::safe_divide(length, curve_length));
+  data.direction.append(direction);
 }
 
 static void gather_thread_storage(ThreadLocalData &thread_storage, IntersectionData &r_data)
@@ -108,6 +114,7 @@ static void gather_thread_storage(ThreadLocalData &thread_storage, IntersectionD
     BLI_assert(local_data.curve_id.size() == local_size);
     BLI_assert(local_data.length.size() == local_size);
     BLI_assert(local_data.factor.size() == local_size);
+    BLI_assert(local_data.direction.size() == local_size);
     total_intersections += local_size;
   }
   const int64_t start_index = r_data.position.size();
@@ -116,6 +123,7 @@ static void gather_thread_storage(ThreadLocalData &thread_storage, IntersectionD
   r_data.curve_id.reserve(new_size);
   r_data.length.reserve(new_size);
   r_data.factor.reserve(new_size);
+  r_data.direction.reserve(new_size);
 
   for (IntersectionData &local_data : thread_storage) {
     const int64_t local_size = local_data.position.size();
@@ -123,6 +131,7 @@ static void gather_thread_storage(ThreadLocalData &thread_storage, IntersectionD
     r_data.curve_id.extend(local_data.curve_id);
     r_data.length.extend(local_data.length);
     r_data.factor.extend(local_data.factor);
+    r_data.direction.extend(local_data.direction);
   }
 }
 
@@ -252,17 +261,23 @@ static void offset_intersections(const Segment seg,
                                  const float3 closest,
                                  IntersectionData &r_data)
 {
-  const float3 dir = math::normalize(seg.end - seg.start) * offset;
+  const float3 dir_of_isect = math::normalize(seg.end - seg.start);
+  const float3 off = dir_of_isect * offset;
   const float len_at_isect = math::interpolate(seg.len_start, seg.len_end, lambda);
+
   if (lambda == 0.0f) {
-    add_intersection_data(r_data, closest + dir, seg.curve_index, len_at_isect, seg.curve_length);
+    add_intersection_data(
+        r_data, closest + off, dir_of_isect, seg.curve_index, len_at_isect, seg.curve_length);
   }
   else if (lambda < 1.0f) {
-    add_intersection_data(r_data, closest + dir, seg.curve_index, len_at_isect, seg.curve_length);
-    add_intersection_data(r_data, closest - dir, seg.curve_index, len_at_isect, seg.curve_length);
+    add_intersection_data(
+        r_data, closest + off, dir_of_isect, seg.curve_index, len_at_isect, seg.curve_length);
+    add_intersection_data(
+        r_data, closest - off, dir_of_isect, seg.curve_index, len_at_isect, seg.curve_length);
   }
   else if (lambda == 1.0f) {
-    add_intersection_data(r_data, closest - dir, seg.curve_index, len_at_isect, seg.curve_length);
+    add_intersection_data(
+        r_data, closest - off, dir_of_isect, seg.curve_index, len_at_isect, seg.curve_length);
   }
 };
 
@@ -295,13 +310,17 @@ static void set_curve_intersections_plane(const bke::CurvesGeometry &src_curves,
         float lambda = 0.0f;
         if (isect_line_plane_crossing(a, b, plane_offset, direction, closest, lambda)) {
           const float len_at_isect = math::interpolate(len_start, len_end, lambda);
+          const float3 dir_of_isect = math::normalize(b - a);
           if (offset != 0.0f) {
-            const float3 dir = math::normalize(b - a) * offset;
-            add_intersection_data(r_data, closest + dir, curve_i, len_at_isect, curve_length);
-            add_intersection_data(r_data, closest - dir, curve_i, len_at_isect, curve_length);
+            const float3 off = dir_of_isect * offset;
+            add_intersection_data(
+                r_data, closest + off, dir_of_isect, curve_i, len_at_isect, curve_length);
+            add_intersection_data(
+                r_data, closest - off, dir_of_isect, curve_i, len_at_isect, curve_length);
           }
           else {
-            add_intersection_data(r_data, closest, curve_i, len_at_isect, curve_length);
+            add_intersection_data(
+                r_data, closest, dir_of_isect, curve_i, len_at_isect, curve_length);
           }
         }
       };
@@ -374,12 +393,14 @@ static void set_curve_intersections(const bke::CurvesGeometry &src_curves,
                   add_intersection_data(
                       data,
                       isectinfo.closest_ab,
+                      math::normalize(ab.end - ab.start),
                       ab.curve_index,
                       math::interpolate(ab.len_start, ab.len_end, isectinfo.lambda_ab),
                       ab.curve_length);
                   add_intersection_data(
                       data,
                       isectinfo.closest_cd,
+                      math::normalize(cd.end - cd.start),
                       cd.curve_index,
                       math::interpolate(cd.len_start, cd.len_end, isectinfo.lambda_cd),
                       cd.curve_length);
@@ -406,7 +427,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     if (!geometry_set.has_curves()) {
       return;
     }
-    const Curves &src_curves_id = *geometry_set.get_curves_for_read();
+    const Curves &src_curves_id = *geometry_set.get_curves();
     const bke::CurvesGeometry &src_curves = src_curves_id.geometry.wrap();
 
     if (src_curves.curves_range().is_empty()) {
@@ -449,6 +470,8 @@ static void node_geo_exec(GeoNodeExecParams params)
         "Factor");
     AnonymousAttributeIDPtr length_attr_id = params.get_output_anonymous_attribute_id_if_needed(
         "Length");
+    AnonymousAttributeIDPtr direction_attr_id = params.get_output_anonymous_attribute_id_if_needed(
+        "Direction");
 
     geometry_set.replace_pointcloud(pointcloud);
 
@@ -468,6 +491,11 @@ static void node_geo_exec(GeoNodeExecParams params)
     point_attributes.add<float>(length_attr_id.get(),
                                 ATTR_DOMAIN_POINT,
                                 bke::AttributeInitVArray(VArray<float>::ForSpan(r_data.length)));
+
+    point_attributes.add<float3>(
+        direction_attr_id.get(),
+        ATTR_DOMAIN_POINT,
+        bke::AttributeInitVArray(VArray<float3>::ForSpan(r_data.direction)));
   });
 
   params.set_output("Points", std::move(geometry_set));
