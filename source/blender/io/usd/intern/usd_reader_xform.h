@@ -51,6 +51,14 @@ class USDXformReader : public USDPrimReader {
   /* Returns true if the contained USD prim is the root of a transform hierarchy. */
   bool is_root_xform_prim() const;
 
+  /**
+   * Return the USD prim's local transformation.
+   *
+   * \param time: Time code for evaluating the transform.
+   * \param r_xform: The transform matrix return value
+   * \param r_is_constant: Return value flag, set to false if the transform is
+   *                       time varying
+   */
   virtual bool get_local_usd_xform(const float time,
                                    pxr::GfMatrix4d *r_xform,
                                    bool *r_is_constant) const;
