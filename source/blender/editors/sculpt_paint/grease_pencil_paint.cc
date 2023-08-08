@@ -30,6 +30,8 @@ static constexpr float POINT_RESAMPLE_MIN_DISTANCE_PX = 10.0f;
 
 static constexpr int64_t STOKE_CACHE_ALLOCATION_CHUNK_SIZE = 1024;
 
+/** Forward differencing of a bezier curve segment (q0,q1,q2,q3). Steps are written to \a r_p.
+ * Implementation based on #BKE_curve_forward_diff_bezier. */
 static void forward_diff_bezier_2d(
     float2 q0, float2 q1, float2 q2, float2 q3, MutableSpan<float2> r_p)
 {
