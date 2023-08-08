@@ -81,7 +81,7 @@ class FrameBuffer {
   /** Debug name. */
   char name_[DEBUG_NAME_LEN];
   /** Frame-buffer state. */
-  int viewport_[GPU_MAX_VIEWPORTS][4] = {0};
+  int viewport_[GPU_MAX_VIEWPORTS][4] = {{0}};
   int scissor_[4] = {0};
   bool multi_viewport_ = false;
   bool scissor_test_ = false;
