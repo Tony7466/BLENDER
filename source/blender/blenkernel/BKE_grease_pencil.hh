@@ -345,7 +345,7 @@ class Layer : public ::GreasePencilLayer {
   bool initialize_trans_data();
   bool reset_trans_data();
   bool update_trans_data(const int src_frame_number, const int dst_frame_number);
-  bool apply_trans_data(GreasePencil &grease_pencil, const bool cancelled);
+  bool apply_trans_data(GreasePencil &grease_pencil, const bool canceled);
 
  private:
   using SortedKeysIterator = const int *;
