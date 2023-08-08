@@ -704,127 +704,6 @@ bool Layer::remove_frame(const FramesMapKey key)
   return true;
 }
 
-static int get_frame_duration(const blender::bke::greasepencil::Layer &layer,
-                              const int frame_number)
-{
-  Span<int> sorted_keys = layer.sorted_keys();
-  const int *frame_number_it = std::lower_bound(
-      sorted_keys.begin(), sorted_keys.end(), frame_number);
-  if (std::next(frame_number_it) == sorted_keys.end()) {
-    return 0;
-  }
-  const int next_frame_number = *(std::next(frame_number_it));
-  return next_frame_number - frame_number;
-}
-
-bool Layer::initialize_trans_data()
-{
-  LayerTransData &trans_data = this->runtime->trans_data_;
-
-  if (trans_data.status != LayerTransData::TRANS_CLEAR) {
-    return false;
-  }
-
-  /* Make a copy of the current frames in the layer. This map will be changed during the
-   * transformation, and we need to be able to reset it if the operation is cancelled. */
-  trans_data.frames_copy = this->frames();
-  trans_data.frames_duration.clear();
-  trans_data.trans_map.clear();
-
-  for (const auto [frame_number, frame] : this->frames().items()) {
-    if (frame.is_null()) {
-      continue;
-    }
-    /* Set the transformation to the identity. */
-    trans_data.trans_map.add(frame_number, frame_number);
-
-    /* Store frames' duration to keep them visually correct while moving the frames */
-    if (!frame.is_implicit_hold()) {
-      trans_data.frames_duration.add(frame_number, get_frame_duration(*this, frame_number));
-    }
-  }
-
-  trans_data.status = LayerTransData::TRANS_INIT;
-  return true;
-}
-
-bool Layer::reset_trans_data()
-{
-  LayerTransData &trans_data = this->runtime->trans_data_;
-
-  /* If the layer frame map was affected by the transformation, set its status to initialized so
-   * that the frames map gets reset the next time this modal function is called.
-   */
-  if (trans_data.status == LayerTransData::TRANS_CLEAR) {
-    return false;
-  }
-  trans_data.status = LayerTransData::TRANS_INIT;
-  return true;
-}
-
-bool Layer::update_trans_data(const int src_frame_number, const int dst_frame_number)
-{
-  LayerTransData &trans_data = this->runtime->trans_data_;
-
-  switch (trans_data.status) {
-    case LayerTransData::TRANS_INIT:
-      /* The transdata was only initialized. No transformation was applied yet.
-       * The frame mapping is always defined relatively to the initial frame map, so we first need
-       * to set the frames back to its initial state before applying any frame transformation. */
-      this->frames_for_write() = trans_data.frames_copy;
-      this->tag_frames_map_keys_changed();
-      trans_data.status = LayerTransData::TRANS_RUNNING;
-      ATTR_FALLTHROUGH;
-
-    case LayerTransData::TRANS_RUNNING: {
-      /* Apply the transformation directly in the frame map, so that we display the transformed
-       * frame numbers. We don't want to edit the frames or remove any drawing here. This will be
-       * done at once at the end of the transformation. */
-      const GreasePencilFrame src_frame = trans_data.frames_copy.lookup(src_frame_number);
-      const int src_duration = trans_data.frames_duration.lookup_default(src_frame_number, 0);
-      this->remove_frame(src_frame_number);
-      this->remove_frame(dst_frame_number);
-      GreasePencilFrame *frame = this->add_frame(
-          dst_frame_number, src_frame.drawing_index, src_duration);
-      *frame = src_frame;
-
-      trans_data.trans_map.add_overwrite(src_frame_number, dst_frame_number);
-      break;
-    }
-
-    default:
-      return false;
-  }
-
-  return true;
-}
-
-bool Layer::apply_trans_data(GreasePencil &grease_pencil, const bool canceled)
-{
-  LayerTransData &trans_data = this->runtime->trans_data_;
-
-  if (trans_data.status == LayerTransData::TRANS_CLEAR) {
-    /* The layer was not affected by the transformation, so do nothing. */
-    return false;
-  }
-
-  /* Reset the frames to their initial state. */
-  this->frames_for_write() = trans_data.frames_copy;
-  this->tag_frames_map_keys_changed();
-
-  if (!canceled) {
-    /* Apply the transformation. */
-    grease_pencil.move_frames(*this, trans_data.trans_map);
-  }
-
-  /* Clear the frames copy. */
-  trans_data.frames_copy.clear();
-  trans_data.trans_map.clear();
-  trans_data.status = LayerTransData::TRANS_CLEAR;
-
-  return true;
-}
-
 Span<FramesMapKey> Layer::sorted_keys() const
 {
   this->runtime->sorted_keys_cache_.ensure([&](Vector<FramesMapKey> &r_data) {
@@ -877,6 +756,20 @@ int Layer::drawing_index_at(const int frame_number) const
 {
   const GreasePencilFrame *frame = frame_at(frame_number);
   return (frame != nullptr) ? frame->drawing_index : -1;
+}
+
+int Layer::get_frame_duration_at(const int frame_number) const
+{
+  const FramesMapKey frame_key = this->frame_key_at(frame_number);
+  if (frame_key == -1) {
+    return -1;
+  }
+  SortedKeysIterator frame_number_it = std::next(this->sorted_keys().begin(), frame_key);
+  if (std::next(frame_number_it) == this->sorted_keys().end()) {
+    return -1;
+  }
+  const int next_frame_number = *(std::next(frame_number_it));
+  return next_frame_number - frame_number;
 }
 
 void Layer::tag_frames_map_changed()
@@ -1552,8 +1445,9 @@ bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &lay
    * If we want to make an instance of the source frame, the drawing index gets copied from the
    * source frame. Otherwise, we set the drawing index to the size of the drawings array, since we
    * are going to add a new drawing copied from the source drawing. */
-  const int duration = src_frame.is_implicit_hold() ? 0 :
-                                                      get_frame_duration(layer, src_frame_number);
+  const int duration = src_frame.is_implicit_hold() ?
+                           0 :
+                           layer.get_frame_duration_at(src_frame_number);
   const int drawing_index = do_instance ? src_frame.drawing_index : int(this->drawings().size());
   GreasePencilFrame *dst_frame = layer.add_frame(dst_frame_number, drawing_index, duration);
 
@@ -1732,7 +1626,7 @@ void GreasePencil::move_frames(blender::bke::greasepencil::Layer &layer,
     const int drawing_index = src_frame.drawing_index;
     const int duration = src_frame.is_implicit_hold() ?
                              0 :
-                             get_frame_duration(layer, src_frame_number);
+                             layer.get_frame_duration_at(src_frame_number);
 
     if (src_frame_number == dst_frame_number) {
       /* This frame was not directly affected by the transformation.

@@ -334,6 +334,12 @@ class Layer : public ::GreasePencilLayer {
   const GreasePencilFrame *frame_at(const int frame_number) const;
   GreasePencilFrame *frame_at(const int frame_number);
 
+  /**
+   * \returns the frame duration of the active frame at \a frame_number or -1 if there is no active
+   * frame or the active frame is the last frame.
+   */
+  int get_frame_duration_at(const int frame_number) const;
+
   void tag_frames_map_changed();
 
   /**
@@ -341,11 +347,6 @@ class Layer : public ::GreasePencilLayer {
    * added, removed or updated.
    */
   void tag_frames_map_keys_changed();
-
-  bool initialize_trans_data();
-  bool reset_trans_data();
-  bool update_trans_data(const int src_frame_number, const int dst_frame_number);
-  bool apply_trans_data(GreasePencil &grease_pencil, const bool canceled);
 
  private:
   using SortedKeysIterator = const int *;
