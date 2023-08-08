@@ -704,26 +704,8 @@ blender::ColorGeometry4f bNodeTreeInterfaceSocket::socket_color() const
     return blender::ColorGeometry4f(1.0f, 0.0f, 1.0f, 1.0f);
   }
 
-  /* XXX Warning! Color callbacks for sockets are overly general,
-   * using instance pointers for potential context-based colors.
-   * This is not used by the standard socket types, but might be used
-   * by python nodes.
-   *
-   * There should be a simplified "base color" callback that does not
-   * depend on context, for drawing socket type colors without any
-   * actual socket instance. We just set pointers to null here and
-   * hope for the best until the situation can be improved ...
-   */
-  //    bNode dummy_node{0};
-  bNodeSocket dummy_socket{0};
-  dummy_socket.typeinfo = typeinfo;
-  PointerRNA socket_ptr, node_ptr;
-  //    RNA_pointer_create(nullptr, &RNA_Node, &dummy_node, &node_ptr);
-  node_ptr = PointerRNA_NULL;
-  RNA_pointer_create(nullptr, &RNA_NodeSocket, &dummy_socket, &socket_ptr);
-  bContext *C = nullptr;
   float color[4];
-  typeinfo->draw_color(C, &socket_ptr, &node_ptr, color);
+  typeinfo->draw_color(nullptr, nullptr, nullptr, color);
   return blender::ColorGeometry4f(color);
 }
 
