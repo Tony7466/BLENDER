@@ -81,12 +81,12 @@ static void viewdolly_apply(ViewOpsData *vod, const int move_xy[2], const bool d
   float delta;
   const int sgn = 1 - 2 * delta_invert;
 
-  /* the factor 1.2 adjusts the input sensitivity */
+  /* the factor 1/300 adjusts the input sensitivity */
   if (U.uiflag & USER_ZOOM_HORIZ) {
-    delta = 1.2f * (float)(sgn * move_xy[0]) / vod->region->winx * vod->rv3d->dist;
+    delta = (float)(sgn * move_xy[0]) / UI_SCALE_FAC * vod->init.dist / 300.0f;
   }
   else {
-    delta = 1.2f * (float)(sgn * move_xy[1]) / vod->region->winy * vod->rv3d->dist;
+    delta = (float)(sgn * move_xy[1]) / UI_SCALE_FAC * vod->init.dist / 300.0f;
   }
 
   view_dolly_to_vector_3d(vod->region, vod->init.ofs, vod->init.mousevec, delta);
@@ -188,7 +188,7 @@ static int viewdolly_exec(bContext *C, wmOperator *op)
   ARegion *region;
   float mousevec[3];
 
-  const int delta = RNA_int_get(op->ptr, "delta");
+  float delta = (float)RNA_int_get(op->ptr, "delta");
 
   if (op->customdata) {
     ViewOpsData *vod = static_cast<ViewOpsData *>(op->customdata);
@@ -246,7 +246,6 @@ static int viewdolly_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   
   /* use_cursor_init is true by default */
   const bool use_cursor_init = RNA_boolean_get(op->ptr, "use_cursor_init");
-  
   vod = viewops_data_create(C, event, &ViewOpsType_dolly, use_cursor_init);
   op->customdata = vod;
   
@@ -296,7 +295,6 @@ static int viewdolly_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     if (event->type == MOUSEPAN) {
       move_xy[0] = WM_event_absolute_delta_x(event);
       move_xy[1] = WM_event_absolute_delta_y(event);
-      
       zoominv = (U.uiflag & USER_ZOOM_INVERT) != 0;
     }
     else { /* MOUSEZOOM */
