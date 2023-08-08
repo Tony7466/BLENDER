@@ -387,12 +387,11 @@ static void add_attribute_search_or_value_buttons(uiLayout *layout,
                                                   PointerRNA *md_ptr,
                                                   const bNodeTreeInterfaceSocket &socket)
 {
-  const std::string socket_identifier = socket.socket_identifier();
   bNodeSocketType *typeinfo = nodeSocketTypeFind(socket.socket_type);
   const eNodeSocketDatatype socket_type = eNodeSocketDatatype(typeinfo->type);
 
   char socket_id_esc[MAX_NAME * 2];
-  BLI_str_escape(socket_id_esc, socket_identifier.c_str(), sizeof(socket_id_esc));
+  BLI_str_escape(socket_id_esc, socket.identifier, sizeof(socket_id_esc));
   const std::string rna_path = "[\"" + std::string(socket_id_esc) + "\"]";
   const std::string rna_path_use_attribute = "[\"" + std::string(socket_id_esc) +
                                              nodes::input_use_attribute_suffix() + "\"]";
@@ -441,12 +440,11 @@ static void draw_property_for_socket(const bNodeTree &node_tree,
                                      const bNodeTreeInterfaceSocket &socket,
                                      const int socket_index)
 {
-  const std::string socket_identifier = socket.socket_identifier();
   bNodeSocketType *typeinfo = nodeSocketTypeFind(socket.socket_type);
   const eNodeSocketDatatype socket_type = eNodeSocketDatatype(typeinfo->type);
 
   /* The property should be created in #MOD_nodes_update_interface with the correct type. */
-  IDProperty *property = IDP_GetPropertyFromGroup(op_properties, socket_identifier.c_str());
+  IDProperty *property = IDP_GetPropertyFromGroup(op_properties, socket.identifier);
 
   /* IDProperties can be removed with python, so there could be a situation where
    * there isn't a property for a socket or it doesn't have the correct type. */
@@ -455,7 +453,7 @@ static void draw_property_for_socket(const bNodeTree &node_tree,
   }
 
   char socket_id_esc[MAX_NAME * 2];
-  BLI_str_escape(socket_id_esc, socket_identifier.c_str(), sizeof(socket_id_esc));
+  BLI_str_escape(socket_id_esc, socket.identifier, sizeof(socket_id_esc));
 
   char rna_path[sizeof(socket_id_esc) + 4];
   SNPRINTF(rna_path, "[\"%s\"]", socket_id_esc);

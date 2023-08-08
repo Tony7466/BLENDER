@@ -74,18 +74,14 @@ typedef struct bNodeTreeInterfaceSocket {
   int attribute_domain;
   char *default_attribute_name;
 
-  /* Unique id for constructing socket identifiers. */
-  int uid;
-  char _pad[4];
-  /* String identifier for backwards compatibility, not used for new sockets. */
-  char *uid_compat;
+  /* Unique identifier for generated sockets. */
+  char *identifier;
 
   void *socket_data;
 
   IDProperty *prop;
 
 #ifdef __cplusplus
-  std::string socket_identifier() const;
   bNodeSocketType *socket_typeinfo() const;
   blender::ColorGeometry4f socket_color() const;
 
@@ -104,7 +100,7 @@ typedef struct bNodeTreeInterfacePanel {
   int items_num;
 
   /* Internal unique identifier for validating panel states. */
-  int uid;
+  int identifier;
 
 #ifdef __cplusplus
   blender::IndexRange items_range() const;

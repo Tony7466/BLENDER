@@ -632,7 +632,7 @@ static void check_property_socket_sync(const Object *ob, ModifierData *md)
     }
 
     IDProperty *property = IDP_GetPropertyFromGroup(nmd->settings.properties,
-                                                    socket->socket_identifier().c_str());
+                                                    socket->identifier);
     if (property == nullptr) {
       if (type == SOCK_GEOMETRY) {
         geometry_socket_count++;
@@ -1094,7 +1094,7 @@ static void add_attribute_search_button(const bContext &C,
   AttributeSearchData *data = MEM_new<AttributeSearchData>(__func__);
   data->object_session_uid = object->id.session_uuid;
   STRNCPY(data->modifier_name, nmd.modifier.name);
-  STRNCPY(data->socket_identifier, socket.socket_identifier().c_str());
+  STRNCPY(data->socket_identifier, socket.identifier);
   data->is_output = is_output;
 
   UI_but_func_search_set_results_are_suggestions(but, true);
@@ -1123,7 +1123,7 @@ static void add_attribute_search_or_value_buttons(const bContext &C,
                                                   PointerRNA *md_ptr,
                                                   const bNodeTreeInterfaceSocket &socket)
 {
-  const std::string identifier = socket.socket_identifier();
+  const StringRefNull identifier = socket.identifier;
   const bNodeSocketType *typeinfo = socket.socket_typeinfo();
   const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
   char socket_id_esc[MAX_NAME * 2];
@@ -1189,7 +1189,7 @@ static void draw_property_for_socket(const bContext &C,
                                      const bNodeTreeInterfaceSocket &socket,
                                      const int socket_index)
 {
-  const std::string identifier = socket.socket_identifier();
+  const StringRefNull identifier = socket.identifier;
   /* The property should be created in #MOD_nodes_update_interface with the correct type. */
   IDProperty *property = IDP_GetPropertyFromGroup(nmd->settings.properties, identifier.c_str());
 
@@ -1255,7 +1255,7 @@ static void draw_property_for_output_socket(const bContext &C,
                                             PointerRNA *md_ptr,
                                             const bNodeTreeInterfaceSocket &socket)
 {
-  const std::string identifier = socket.socket_identifier();
+  const StringRefNull identifier = socket.identifier;
   char socket_id_esc[MAX_NAME * 2];
   BLI_str_escape(socket_id_esc, identifier.c_str(), sizeof(socket_id_esc));
   const std::string rna_path_attribute_name = "[\"" + StringRef(socket_id_esc) +

@@ -532,7 +532,7 @@ static void write_interface_as_sockets(BlendWriter *writer, bNodeTree *ntree)
     {
       if (socket->flag & NODE_INTERFACE_SOCKET_INPUT) {
         bNodeSocket *iosock = make_socket(
-            ntree, SOCK_IN, socket->socket_type, socket->name, socket->socket_identifier());
+            ntree, SOCK_IN, socket->socket_type, socket->name, socket->identifier);
         node_socket_copy_default_value_data(eNodeSocketDatatype(iosock->typeinfo->type),
                                             iosock->default_value,
                                             socket->socket_data);
@@ -540,7 +540,7 @@ static void write_interface_as_sockets(BlendWriter *writer, bNodeTree *ntree)
       }
       if (socket->flag & NODE_INTERFACE_SOCKET_OUTPUT) {
         bNodeSocket *iosock = make_socket(
-            ntree, SOCK_OUT, socket->socket_type, socket->name, socket->socket_identifier());
+            ntree, SOCK_OUT, socket->socket_type, socket->name, socket->identifier);
         node_socket_copy_default_value_data(eNodeSocketDatatype(iosock->typeinfo->type),
                                             iosock->default_value,
                                             socket->socket_data);

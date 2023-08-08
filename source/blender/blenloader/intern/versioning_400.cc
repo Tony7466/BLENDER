@@ -352,8 +352,7 @@ static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *nt
     bNodeTreeInterfaceSocket *new_socket = tree_interface.add_socket(
         socket->name, socket->description, socket->idname, flag, nullptr);
     BLI_assert(new_socket != nullptr);
-    /* Compatibility identifier string, only used for old sockets. */
-    new_socket->uid_compat = BLI_strdup(socket->identifier);
+    new_socket->identifier = BLI_strdup(socket->identifier);
   }
   LISTBASE_FOREACH (const bNodeSocket *, socket, &ntree->outputs_legacy) {
     eNodeTreeInterfaceSocketFlag flag = NODE_INTERFACE_SOCKET_OUTPUT;
@@ -363,8 +362,7 @@ static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *nt
     bNodeTreeInterfaceSocket *new_socket = tree_interface.add_socket(
         socket->name, socket->description, socket->idname, flag, nullptr);
     BLI_assert(new_socket != nullptr);
-    /* Compatibility identifier string, only used for old sockets. */
-    new_socket->uid_compat = BLI_strdup(socket->identifier);
+    new_socket->identifier = BLI_strdup(socket->identifier);
   }
 }
 

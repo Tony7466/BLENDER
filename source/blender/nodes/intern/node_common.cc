@@ -307,7 +307,7 @@ static SocketDeclarationPtr declaration_for_interface_socket(
       break;
   }
   dst->name = io_socket.name;
-  dst->identifier = io_socket.socket_identifier();
+  dst->identifier = io_socket.identifier;
   dst->in_out = in_out;
   dst->description = io_socket.description ? io_socket.description : "";
   dst->hide_value = io_socket.flag & SOCK_HIDE_VALUE;
@@ -319,7 +319,7 @@ static PanelDeclarationPtr declaration_for_interface_panel(const bNodeTree & /*n
                                                            const bNodeTreeInterfacePanel &io_panel)
 {
   PanelDeclarationPtr dst = std::make_unique<PanelDeclaration>();
-  dst->uid = io_panel.uid;
+  dst->uid = io_panel.identifier;
   dst->name = io_panel.name ? io_panel.name : "";
   dst->description = "";          /* TODO io_panel.description */
   dst->default_collapsed = false; /* TODO io_panel.default_collapsed */
@@ -635,7 +635,7 @@ static bool group_input_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *li
     return false;
   }
   update_node_declaration_and_sockets(*ntree, *node);
-  link->fromsock = node_group_input_find_socket(node, io_socket->socket_identifier().c_str());
+  link->fromsock = node_group_input_find_socket(node, io_socket->identifier);
   return true;
 }
 
@@ -656,7 +656,7 @@ static bool group_output_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *l
     return false;
   }
   update_node_declaration_and_sockets(*ntree, *node);
-  link->tosock = node_group_output_find_socket(node, io_socket->socket_identifier().c_str());
+  link->tosock = node_group_output_find_socket(node, io_socket->identifier);
   return true;
 }
 

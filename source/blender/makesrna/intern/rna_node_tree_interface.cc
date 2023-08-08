@@ -295,13 +295,13 @@ static IDProperty **rna_NodeTreeInterfaceSocket_idprops(PointerRNA *ptr)
 static void rna_NodeTreeInterfaceSocket_identifier_get(PointerRNA *ptr, char *value)
 {
   bNodeTreeInterfaceSocket *socket = static_cast<bNodeTreeInterfaceSocket *>(ptr->data);
-  strcpy(value, socket->socket_identifier().c_str());
+  strcpy(value, socket->identifier);
 }
 
 static int rna_NodeTreeInterfaceSocket_identifier_length(PointerRNA *ptr)
 {
   bNodeTreeInterfaceSocket *socket = static_cast<bNodeTreeInterfaceSocket *>(ptr->data);
-  return socket->socket_identifier().length();
+  return strlen(socket->identifier);
 }
 
 static int rna_NodeTreeInterfaceSocket_socket_type_get(PointerRNA *ptr)

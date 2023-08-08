@@ -1174,7 +1174,7 @@ static void node_group_make_insert_selected(const bContext &C,
 
   /* Handle links to the new group inputs. */
   for (const auto item : input_links.items()) {
-    const std::string interface_identifier = item.value.interface_socket->socket_identifier();
+    const StringRefNull interface_identifier = item.value.interface_socket->identifier;
     bNodeSocket *input_socket = node_group_input_find_socket(input_node,
                                                              interface_identifier.c_str());
 
@@ -1192,14 +1192,14 @@ static void node_group_make_insert_selected(const bContext &C,
   /* Handle links to new group outputs. */
   for (const OutputLinkInfo &info : output_links) {
     /* Create a new link inside of the group. */
-    const std::string io_identifier = info.interface_socket->socket_identifier();
+    const StringRefNull io_identifier = info.interface_socket->identifier;
     bNodeSocket *output_sock = node_group_output_find_socket(output_node, io_identifier.c_str());
     nodeAddLink(&group, info.link->fromnode, info.link->fromsock, output_node, output_sock);
   }
 
   /* Handle new links inside the group. */
   for (const NewInternalLinkInfo &info : new_internal_links) {
-    const std::string io_identifier = info.interface_socket->socket_identifier();
+    const StringRefNull io_identifier = info.interface_socket->identifier;
     if (info.socket->in_out == SOCK_IN) {
       bNodeSocket *input_socket = node_group_input_find_socket(input_node, io_identifier.c_str());
       nodeAddLink(&group, input_node, input_socket, info.node, info.socket);
@@ -1220,7 +1220,7 @@ static void node_group_make_insert_selected(const bContext &C,
 
   /* Add new links to inputs outside of the group. */
   for (const auto item : input_links.items()) {
-    const std::string interface_identifier = item.value.interface_socket->socket_identifier();
+    const StringRefNull interface_identifier = item.value.interface_socket->identifier;
     bNodeSocket *group_node_socket = node_group_find_input_socket(gnode,
                                                                   interface_identifier.c_str());
     nodeAddLink(&ntree, item.value.from_node, item.key, gnode, group_node_socket);
@@ -1230,8 +1230,8 @@ static void node_group_make_insert_selected(const bContext &C,
   for (const OutputLinkInfo &info : output_links) {
     /* Reconnect the link to the group node instead of the node now inside the group. */
     info.link->fromnode = gnode;
-    info.link->fromsock = node_group_find_output_socket(
-        gnode, info.interface_socket->socket_identifier().c_str());
+    info.link->fromsock = node_group_find_output_socket(gnode,
+                                                        info.interface_socket->identifier);
   }
 
   update_nested_node_refs_after_moving_nodes_into_group(ntree, group, *gnode, node_identifier_map);

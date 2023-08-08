@@ -54,7 +54,7 @@ bool input_has_attribute_toggle(const bNodeTree &node_tree, const int socket_ind
 std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_from_socket(
     const bNodeTreeInterfaceSocket &socket)
 {
-  const std::string identifier = socket.socket_identifier();
+  const StringRefNull identifier = socket.identifier;
   const bNodeSocketType *typeinfo = socket.socket_typeinfo();
   const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
   switch (type) {
@@ -346,8 +346,7 @@ static void initialize_group_input(const bNodeTree &tree,
     typeinfo->get_geometry_nodes_cpp_value(io_input.socket_data, r_value);
     return;
   }
-  const IDProperty *property = IDP_GetPropertyFromGroup(properties,
-                                                        io_input.socket_identifier().c_str());
+  const IDProperty *property = IDP_GetPropertyFromGroup(properties, io_input.identifier);
   if (property == nullptr) {
     typeinfo->get_geometry_nodes_cpp_value(io_input.socket_data, r_value);
     return;
@@ -363,9 +362,11 @@ static void initialize_group_input(const bNodeTree &tree,
   }
 
   const IDProperty *property_use_attribute = IDP_GetPropertyFromGroup(
-      properties, (io_input.socket_identifier() + input_use_attribute_suffix()).c_str());
+      properties,
+      (std::string(io_input.identifier) + input_use_attribute_suffix()).c_str());
   const IDProperty *property_attribute_name = IDP_GetPropertyFromGroup(
-      properties, (io_input.socket_identifier() + input_attribute_name_suffix()).c_str());
+      properties,
+      (std::string(io_input.identifier) + input_attribute_name_suffix()).c_str());
   if (property_use_attribute == nullptr || property_attribute_name == nullptr) {
     init_socket_cpp_value_from_property(*property, socket_data_type, r_value);
     return;
@@ -660,7 +661,7 @@ void update_input_properties_from_node_tree(const bNodeTree &tree,
   const Span<const bNodeTreeInterfaceSocket *> tree_inputs = tree.interface_cache().inputs;
   for (const int i : tree_inputs.index_range()) {
     const bNodeTreeInterfaceSocket &socket = *tree_inputs[i];
-    const std::string socket_identifier = socket.socket_identifier();
+    const StringRefNull socket_identifier = socket.identifier;
     const bNodeSocketType *typeinfo = socket.socket_typeinfo();
     const eNodeSocketDatatype socket_type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                        SOCK_CUSTOM;
@@ -745,7 +746,7 @@ void update_output_properties_from_node_tree(const bNodeTree &tree,
   const Span<const bNodeTreeInterfaceSocket *> tree_outputs = tree.interface_cache().outputs;
   for (const int i : tree_outputs.index_range()) {
     const bNodeTreeInterfaceSocket &socket = *tree_outputs[i];
-    const std::string socket_identifier = socket.socket_identifier();
+    const StringRefNull socket_identifier = socket.identifier;
     const bNodeSocketType *typeinfo = socket.socket_typeinfo();
     const eNodeSocketDatatype socket_type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                        SOCK_CUSTOM;

@@ -98,8 +98,6 @@ static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
       params.socket.typeinfo->idname,
       flag,
       nullptr);
-  const std::string socket_identifier = socket_iface->socket_identifier();
-
   bNode &group_input = params.add_node("NodeGroupInput");
 
   /* This is necessary to create the new sockets in the other input nodes. */
@@ -109,7 +107,7 @@ static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
   for (bNode *node : params.node_tree.all_nodes()) {
     if (node->type == NODE_GROUP_INPUT) {
       bNodeSocket *new_group_input_socket = nodeFindSocket(
-          node, in_out, socket_identifier.c_str());
+          node, in_out, socket_iface->identifier);
       if (new_group_input_socket) {
         new_group_input_socket->flag |= SOCK_HIDDEN;
       }
@@ -121,7 +119,7 @@ static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
     socket->flag |= SOCK_HIDDEN;
   }
 
-  bNodeSocket *socket = nodeFindSocket(&group_input, in_out, socket_identifier.c_str());
+  bNodeSocket *socket = nodeFindSocket(&group_input, in_out, socket_iface->identifier);
   if (socket) {
     /* Unhide the socket for the new input in the new node and make a connection to it. */
     socket->flag &= ~SOCK_HIDDEN;
@@ -139,7 +137,6 @@ static void add_existing_group_input_fn(nodes::LinkSearchOpParams &params,
   eNodeTreeInterfaceSocketFlag flag = eNodeTreeInterfaceSocketFlag(0);
   SET_FLAG_FROM_TEST(flag, in_out & SOCK_IN, NODE_INTERFACE_SOCKET_INPUT);
   SET_FLAG_FROM_TEST(flag, in_out & SOCK_OUT, NODE_INTERFACE_SOCKET_OUTPUT);
-  const std::string socket_identifier = interface_socket.socket_identifier();
 
   bNode &group_input = params.add_node("NodeGroupInput");
 
@@ -147,7 +144,7 @@ static void add_existing_group_input_fn(nodes::LinkSearchOpParams &params,
     socket->flag |= SOCK_HIDDEN;
   }
 
-  bNodeSocket *socket = nodeFindSocket(&group_input, in_out, socket_identifier.c_str());
+  bNodeSocket *socket = nodeFindSocket(&group_input, in_out, interface_socket.identifier);
   if (socket != nullptr) {
     socket->flag &= ~SOCK_HIDDEN;
     nodeAddLink(&params.node_tree, &group_input, socket, &params.node, &params.socket);
