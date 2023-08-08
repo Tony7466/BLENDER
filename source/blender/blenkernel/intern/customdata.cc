@@ -3505,6 +3505,7 @@ void CustomData_swap_corners(CustomData *data, const int index, const int *corne
   }
 }
 
+
 void *CustomData_get_for_write(CustomData *data,
                                const int index,
                                const eCustomDataType type,
