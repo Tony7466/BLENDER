@@ -40,7 +40,7 @@ struct BlendLibReader;
 struct BlendExpander;
 
 /** Type of interface item. */
-typedef enum eNodeTreeInterfaceItemType {
+typedef enum NodeTreeInterfaceItemType {
   NODE_INTERFACE_PANEL = 0,
   NODE_INTERFACE_SOCKET = 1,
 } eNodeTreeInterfaceItemType;
