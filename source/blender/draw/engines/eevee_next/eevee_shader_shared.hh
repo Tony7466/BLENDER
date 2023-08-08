@@ -797,7 +797,9 @@ static inline int2 shadow_cascade_grid_offset(int2 base_offset, int level_relati
  */
 struct ShadowTileMapData {
   /** Cached, used for rendering. */
-  float4x4 viewmat, winmat;
+  float4x4 viewmat;
+  /** Precomputed matrix, not used for rendering but for tagging. */
+  float4x4 winmat;
   /** Punctual : Corners of the frustum. (vec3 padded to vec4) */
   float4 corners[4];
   /** Integer offset of the center of the 16x16 tiles from the origin of the tile space. */
@@ -812,6 +814,16 @@ struct ShadowTileMapData {
   int clip_data_index;
   /** Bias LOD to tag for usage to lower the amount of tile used. */
   float lod_bias;
+  int _pad0;
+  int _pad1;
+  int _pad2;
+  /** Near and far clip distances for punctual. */
+  float clip_near;
+  float clip_far;
+  /** Half of the tilemap size in world units. Used to compute directional window matrix. */
+  float half_size;
+  /** Offset in local space to the tilemap center in world units. Used for directional winmat. */
+  float2 center_offset;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowTileMapData, 16)
 

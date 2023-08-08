@@ -71,8 +71,6 @@ struct ShadowTileMap : public ShadowTileMapData {
   eCubeFace cubeface = Z_NEG;
   /** Cached, used for detecting updates. */
   float4x4 object_mat;
-  /** Near and far clip distances. For clip-map, computed on the GPU using casters BBoxes. */
-  float near, far;
 
  public:
   ShadowTileMap(int tiles_index_)
@@ -210,8 +208,8 @@ class ShadowModule {
 
   /** Indirect arguments for page clearing. */
   StorageBuffer<DispatchCommand> clear_dispatch_buf_;
-  /** Pages to clear. */
-  StorageArrayBuffer<uint, SHADOW_MAX_PAGE> clear_page_buf_ = {"clear_page_buf"};
+  /** View to pages mapping. */
+  StorageArrayBuffer<uint, SHADOW_VIEW_MAX> render_map_buf_ = {"render_map_buf"};
 
   int3 dispatch_depth_scan_size_;
   /* Ratio between tile-map pixel world "radius" and film pixel world "radius". */
@@ -254,15 +252,6 @@ class ShadowModule {
 
   /** Multi-View containing a maximum of 64 view to be rendered with the shadow pipeline. */
   View shadow_multi_view_ = {"ShadowMultiView", SHADOW_VIEW_MAX, true};
-  /** Tile to physical page mapping. This is an array texture with one layer per view. */
-  Texture render_map_tx_ = {"ShadowRenderMap",
-                            GPU_R32UI,
-                            GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
-                                GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
-                            int2(SHADOW_TILEMAP_RES),
-                            SHADOW_VIEW_MAX,
-                            nullptr,
-                            SHADOW_TILEMAP_LOD + 1};
   /** An empty frame-buffer (no attachment) the size of a whole tile-map. */
   Framebuffer render_fb_;
 

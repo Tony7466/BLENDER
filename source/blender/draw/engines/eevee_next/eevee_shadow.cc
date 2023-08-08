@@ -53,13 +53,13 @@ void ShadowTileMap::sync_orthographic(const float4x4 &object_mat_,
    * inverse in this particular case. */
   viewmat = math::transpose(object_mat);
 
-  float half_size = ShadowDirectional::coverage_get(level) / 2.0f;
-  float2 win_offset = float2(grid_offset) * tile_size;
+  half_size = ShadowDirectional::coverage_get(level) / 2.0f;
+  center_offset = float2(grid_offset) * tile_size;
   orthographic_m4(winmat.ptr(),
-                  -half_size + win_offset.x,
-                  half_size + win_offset.x,
-                  -half_size + win_offset.y,
-                  half_size + win_offset.y,
+                  -half_size + center_offset.x,
+                  half_size + center_offset.x,
+                  -half_size + center_offset.y,
+                  half_size + center_offset.y,
                   /* Near/far is computed on GPU using casters bounds. */
                   -1.0,
                   1.0);
@@ -68,15 +68,15 @@ void ShadowTileMap::sync_orthographic(const float4x4 &object_mat_,
 void ShadowTileMap::sync_cubeface(
     const float4x4 &object_mat_, float near_, float far_, eCubeFace face, float lod_bias_)
 {
-  if (projection_type != SHADOW_PROJECTION_CUBEFACE || (cubeface != face) || (near != near_) ||
-      (far != far_))
+  if (projection_type != SHADOW_PROJECTION_CUBEFACE || (cubeface != face) ||
+      (clip_near != near_) || (clip_far != far_))
   {
     set_dirty();
   }
   projection_type = SHADOW_PROJECTION_CUBEFACE;
   cubeface = face;
-  near = near_;
-  far = far_;
+  clip_near = near_;
+  clip_far = far_;
   lod_bias = lod_bias_;
   grid_offset = int2(0);
 
@@ -85,11 +85,13 @@ void ShadowTileMap::sync_cubeface(
     set_dirty();
   }
 
-  perspective_m4(winmat.ptr(), -near, near, -near, near, near, far);
+  winmat = math::projection::perspective(
+      -clip_near, clip_near, -clip_near, clip_near, clip_near, clip_far);
   viewmat = float4x4(shadow_face_mat[cubeface]) * math::invert(object_mat);
 
   /* Update corners. */
   float4x4 viewinv = object_mat;
+  float far = clip_far;
   corners[0] = float4(viewinv.location(), 0.0f);
   corners[1] = float4(math::transform_point(viewinv, float3(-far, -far, -far)), 0.0f);
   corners[2] = float4(math::transform_point(viewinv, float3(far, -far, -far)), 0.0f);
@@ -694,8 +696,6 @@ void ShadowModule::init()
   }
 
   atlas_tx_.filter_mode(false);
-
-  render_map_tx_.ensure_mip_views();
 }
 
 void ShadowModule::begin_sync()
@@ -1016,15 +1016,9 @@ void ShadowModule::end_sync()
         sub.bind_ssbo("view_infos_buf", &shadow_multi_view_.matrices_ubo_get());
         sub.bind_ssbo("statistics_buf", statistics_buf_.current());
         sub.bind_ssbo("clear_dispatch_buf", clear_dispatch_buf_);
-        sub.bind_ssbo("clear_page_buf", clear_page_buf_);
+        sub.bind_ssbo("render_map_buf", render_map_buf_);
         sub.bind_ssbo("pages_infos_buf", pages_infos_data_);
         sub.bind_image("tilemaps_img", tilemap_pool.tilemap_tx);
-        sub.bind_image("render_map_lod0_img", render_map_tx_.mip_view(0));
-        sub.bind_image("render_map_lod1_img", render_map_tx_.mip_view(1));
-        sub.bind_image("render_map_lod2_img", render_map_tx_.mip_view(2));
-        sub.bind_image("render_map_lod3_img", render_map_tx_.mip_view(3));
-        sub.bind_image("render_map_lod4_img", render_map_tx_.mip_view(4));
-        sub.bind_image("render_map_lod5_img", render_map_tx_.mip_view(5));
         sub.dispatch(int3(1, 1, tilemap_pool.tilemaps_data.size()));
         sub.barrier(GPU_BARRIER_SHADER_STORAGE | GPU_BARRIER_UNIFORM | GPU_BARRIER_TEXTURE_FETCH |
                     GPU_BARRIER_SHADER_IMAGE_ACCESS);
@@ -1034,7 +1028,7 @@ void ShadowModule::end_sync()
         PassSimple::Sub &sub = pass.sub("RenderClear");
         sub.shader_set(inst_.shaders.static_shader_get(SHADOW_PAGE_CLEAR));
         sub.bind_ssbo("pages_infos_buf", pages_infos_data_);
-        sub.bind_ssbo("clear_dispatch_buf", clear_dispatch_buf_);
+        sub.bind_ssbo("render_map_buf", render_map_buf_);
         sub.bind_image("atlas_img", atlas_tx_);
         sub.dispatch(clear_dispatch_buf_);
         sub.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
@@ -1136,7 +1130,7 @@ void ShadowModule::set_view(View &view)
                                                int2(std::exp2(usage_tag_fb_lod_)));
   usage_tag_fb.ensure(usage_tag_fb_resolution_);
 
-  render_fb_.ensure(int2(SHADOW_TILEMAP_RES * shadow_page_size_));
+  render_fb_.ensure(int2(shadow_page_size_));
 
   inst_.hiz_buffer.update();
 

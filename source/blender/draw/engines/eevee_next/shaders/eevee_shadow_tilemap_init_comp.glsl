@@ -36,8 +36,8 @@ void main()
     /* Reset shift to not tag for update more than once per sync cycle. */
     tilemaps_buf[tilemap_index].grid_shift = ivec2(0);
 
+    int clip_index = tilemap.clip_data_index;
     if (tilemap.projection_type != SHADOW_PROJECTION_CUBEFACE) {
-      int clip_index = tilemap.clip_data_index;
       ShadowTileMapClip clip_data = tilemaps_clip_buf[clip_index];
       float clip_near_new = orderedIntBitsToFloat(clip_data.clip_near);
       float clip_far_new = orderedIntBitsToFloat(clip_data.clip_far);
@@ -50,6 +50,11 @@ void main()
       /* Reset for next update. */
       tilemaps_clip_buf[clip_index].clip_near = floatBitsToOrderedInt(-FLT_MAX);
       tilemaps_clip_buf[clip_index].clip_far = floatBitsToOrderedInt(FLT_MAX);
+    }
+    else {
+      /* For cubefaces, simply use the light near and far distances. */
+      tilemaps_clip_buf[clip_index].clip_near_stored = tilemap.clip_near;
+      tilemaps_clip_buf[clip_index].clip_far_stored = tilemap.clip_far;
     }
   }
 

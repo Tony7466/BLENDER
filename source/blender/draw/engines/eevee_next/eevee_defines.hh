@@ -134,8 +134,6 @@
 #define REFLECTION_PROBE_TEX_SLOT 8
 #define VOLUME_SCATTERING_TEX_SLOT 9
 #define VOLUME_TRANSMITTANCE_TEX_SLOT 10
-/* Only during shadow rendering. */
-#define SHADOW_RENDER_MAP_SLOT 4
 
 /* Images. */
 #define RBUFS_COLOR_SLOT 0
@@ -160,11 +158,14 @@
 #define VOLUMES_INFO_BUF_SLOT 6
 /* SLOT 6 is used by render shaders (Film, DoF and Motion Blur). Need to check if it should be
  * assigned a different slot. */
+/* TODO(fclem): This is above the limit of slot 6 for engines. Keep it lower by merging others. */
 #define REFLECTION_PROBE_BUF_SLOT 7
 /* Only during pre-pass. */
 #define VELOCITY_CAMERA_PREV_BUF 3
 #define VELOCITY_CAMERA_CURR_BUF 4
 #define VELOCITY_CAMERA_NEXT_BUF 5
+/* Only during shadow rendering. */
+#define SHADOW_RENDER_MAP_BUF_SLOT 3
 
 /* Storage Buffers. */
 #define LIGHT_CULL_BUF_SLOT 0

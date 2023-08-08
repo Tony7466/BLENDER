@@ -9,7 +9,7 @@
 
 void main()
 {
-  uint page_packed = clear_page_buf[gl_GlobalInvocationID.z];
+  uint page_packed = render_map_buf[gl_GlobalInvocationID.z];
   uvec3 page_co = shadow_page_unpack(page_packed);
   page_co.xy = page_co.xy * pages_infos_buf.page_size + gl_GlobalInvocationID.xy;
 
