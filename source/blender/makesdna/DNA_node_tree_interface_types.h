@@ -64,6 +64,7 @@ ENUM_OPERATORS(eNodeTreeInterfaceSocketFlag, NODE_INTERFACE_SOCKET_HIDE_IN_MODIF
 typedef struct bNodeTreeInterfaceSocket {
   bNodeTreeInterfaceItem item;
 
+  /* UI name of the socket. */
   char *name;
   char *description;
   /* Type idname of the socket to generate, e.g. "NodeSocketFloat". */
@@ -103,6 +104,7 @@ typedef struct bNodeTreeInterfaceSocket {
 typedef struct bNodeTreeInterfacePanel {
   bNodeTreeInterfaceItem item;
 
+  /* UI name of the panel. */
   char *name;
 
   bNodeTreeInterfaceItem **items_array;
