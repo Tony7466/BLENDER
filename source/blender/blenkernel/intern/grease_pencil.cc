@@ -744,73 +744,76 @@ bool Layer::move_frame(const FramesMapKey src_key, const FramesMapKey dst_key)
 
 bool Layer::initialize_trans_data()
 {
-  if (this->runtime->trans_frame_status != LayerRuntime::FrameTransformationUntouched) {
+  LayerTransData &trans_data = this->runtime->trans_data_;
+
+  if (trans_data.status != LayerTransData::TRANS_CLEAR) {
     return false;
   }
 
   /* Make a copy of the current frames in the layer. This map will be changed during the
    * transformation, and we need to be able to reset it if the operation is cancelled. */
-  this->runtime->trans_frames_copy_ = this->frames();
-  this->runtime->trans_frame_duration_.clear();
-  this->runtime->trans_frame_data_.clear();
+  trans_data.frames_copy = this->frames();
+  trans_data.frames_duration.clear();
+  trans_data.trans_map.clear();
 
   for (const auto [frame_number, frame] : this->frames().items()) {
     if (frame.is_null()) {
       continue;
     }
     /* Set the transformation to the identity. */
-    this->runtime->trans_frame_data_.add(frame_number, frame_number);
+    trans_data.trans_map.add(frame_number, frame_number);
 
     /* Store frames' duration to keep them visually correct while moving the frames */
     if (!frame.is_implicit_hold()) {
-      this->runtime->trans_frame_duration_.add(frame_number,
-                                               get_frame_duration(*this, frame_number));
+      trans_data.frames_duration.add(frame_number, get_frame_duration(*this, frame_number));
     }
   }
 
-  this->runtime->trans_frame_status = LayerRuntime::FrameTransformationInitialized;
+  trans_data.status = LayerTransData::TRANS_INIT;
   return true;
 }
 
 bool Layer::reset_trans_data()
 {
+  LayerTransData &trans_data = this->runtime->trans_data_;
+
   /* If the layer frame map was affected by the transformation, set its status to initialized so
    * that the frames map gets reset the next time this modal function is called.
    */
-  if (this->runtime->trans_frame_status == LayerRuntime::FrameTransformationUntouched) {
+  if (trans_data.status == LayerTransData::TRANS_CLEAR) {
     return false;
   }
-  this->runtime->trans_frame_status = LayerRuntime::FrameTransformationInitialized;
+  trans_data.status = LayerTransData::TRANS_INIT;
   return true;
 }
 
 bool Layer::update_trans_data(const int src_frame_number, const int dst_frame_number)
 {
-  switch (this->runtime->trans_frame_status) {
-    case LayerRuntime::FrameTransformationInitialized:
+  LayerTransData &trans_data = this->runtime->trans_data_;
+
+  switch (trans_data.status) {
+    case LayerTransData::TRANS_INIT:
       /* The transdata was only initialized. No transformation was applied yet.
        * The frame mapping is always defined relatively to the initial frame map, so we first need
        * to set the frames back to its initial state before applying any frame transformation. */
-      this->frames_for_write() = this->runtime->trans_frames_copy_;
+      this->frames_for_write() = trans_data.frames_copy;
       this->tag_frames_map_keys_changed();
-      this->runtime->trans_frame_status = LayerRuntime::FrameTransformationOngoing;
+      trans_data.status = LayerTransData::TRANS_RUNNING;
       ATTR_FALLTHROUGH;
 
-    case LayerRuntime::FrameTransformationOngoing: {
+    case LayerTransData::TRANS_RUNNING: {
       /* Apply the transformation directly in the frame map, so that we display the transformed
        * frame numbers. We don't want to edit the frames or remove any drawing here. This will be
        * done at once at the end of the transformation. */
-      const GreasePencilFrame src_frame = this->runtime->trans_frames_copy_.lookup(
-          src_frame_number);
-      const int src_duration = this->runtime->trans_frame_duration_.lookup_default(
-          src_frame_number, 0);
+      const GreasePencilFrame src_frame = trans_data.frames_copy.lookup(src_frame_number);
+      const int src_duration = trans_data.frames_duration.lookup_default(src_frame_number, 0);
       this->remove_frame(src_frame_number);
       this->remove_frame(dst_frame_number);
       GreasePencilFrame *frame = this->add_frame(
           dst_frame_number, src_frame.drawing_index, src_duration);
       *frame = src_frame;
 
-      this->runtime->trans_frame_data_.add_overwrite(src_frame_number, dst_frame_number);
+      trans_data.trans_map.add_overwrite(src_frame_number, dst_frame_number);
       break;
     }
 
@@ -823,24 +826,27 @@ bool Layer::update_trans_data(const int src_frame_number, const int dst_frame_nu
 
 bool Layer::apply_trans_data(GreasePencil &grease_pencil, const bool canceled)
 {
-  if (this->runtime->trans_frame_status == LayerRuntime::FrameTransformationUntouched) {
+  LayerTransData &trans_data = this->runtime->trans_data_;
+
+  if (trans_data.status == LayerTransData::TRANS_CLEAR) {
     /* The layer was not affected by the transformation, so do nothing. */
     return false;
   }
 
   /* Reset the frames to their initial state. */
-  this->frames_for_write() = this->runtime->trans_frames_copy_;
+  this->frames_for_write() = trans_data.frames_copy;
   this->tag_frames_map_keys_changed();
 
   if (!canceled) {
     /* Apply the transformation. */
-    grease_pencil.move_frames(*this, this->runtime->trans_frame_data_);
+    grease_pencil.move_frames(*this, trans_data.trans_map);
   }
 
   /* Clear the frames copy. */
-  this->runtime->trans_frames_copy_.clear();
-  this->runtime->trans_frame_data_.clear();
-  this->runtime->trans_frame_status = LayerRuntime::FrameTransformationUntouched;
+  trans_data.frames_copy.clear();
+  trans_data.trans_map.clear();
+  trans_data.status = LayerTransData::TRANS_CLEAR;
+
   return true;
 }
 

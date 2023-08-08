@@ -192,6 +192,16 @@ class LayerMask : public ::GreasePencilLayerMask {
   ~LayerMask();
 };
 
+struct LayerTransData {
+  enum FrameTransformationStatus { TRANS_CLEAR, TRANS_INIT, TRANS_RUNNING };
+
+  Map<int, int> trans_map;
+  Map<int, GreasePencilFrame> frames_copy;
+  Map<int, int> frames_duration;
+
+  FrameTransformationStatus status{TRANS_CLEAR};
+};
+
 /* The key of a GreasePencilFrame in the frames map is the starting scene frame number (int) of
  * that frame. */
 using FramesMapKey = int;
@@ -235,15 +245,7 @@ class LayerRuntime {
   Vector<LayerMask> masks_;
 
   /* Runtime data used for frame transformations.*/
-  enum FrameTransformationStatus {
-    FrameTransformationUntouched,
-    FrameTransformationInitialized,
-    FrameTransformationOngoing
-  };
-  Map<int, int> trans_frame_data_;
-  Map<int, GreasePencilFrame> trans_frames_copy_;
-  Map<int, int> trans_frame_duration_;
-  FrameTransformationStatus trans_frame_status{FrameTransformationUntouched};
+  LayerTransData trans_data_;
 };
 
 /**
