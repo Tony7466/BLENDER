@@ -504,7 +504,8 @@ bool ED_node_is_geometry(SpaceNode *snode)
 
 bool ED_node_supports_preview(SpaceNode *snode)
 {
-  return ED_node_is_compositor(snode) || ED_node_is_shader(snode);
+  return ED_node_is_compositor(snode) ||
+         (U.experimental.use_shader_node_previews && ED_node_is_shader(snode));
 }
 
 void ED_node_shader_default(const bContext *C, ID *id)
@@ -1126,7 +1127,8 @@ void node_set_hidden_sockets(bNode *node, int set)
 bool node_is_previewable(const bNodeTree &ntree, const bNode &node)
 {
   if (ntree.type == NTREE_SHADER) {
-    return !(node.is_frame() || node.is_group_input() || node.is_group_output() ||
+    return U.experimental.use_shader_node_previews &&
+           !(node.is_frame() || node.is_group_input() || node.is_group_output() ||
              node.type == SH_NODE_OUTPUT_MATERIAL);
   }
   return node.typeinfo->flag & NODE_PREVIEW;

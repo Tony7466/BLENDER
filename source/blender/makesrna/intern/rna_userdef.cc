@@ -6806,6 +6806,11 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
                            "Enables the asset shelf regions in the 3D view. Used by the Pose "
                            "Library add-on in Pose Mode only");
   RNA_def_property_update(prop, 0, "rna_userdef_ui_update");
+
+  prop = RNA_def_property(srna, "use_shader_node_previews", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop, "Shader Node Previews", "Enables previews in the shader node editor");
+  RNA_def_property_update(prop, 0, "rna_userdef_ui_update");
 }
 
 static void rna_def_userdef_addon_collection(BlenderRNA *brna, PropertyRNA *cprop)

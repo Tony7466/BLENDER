@@ -694,7 +694,8 @@ typedef struct UserDef_Experimental {
   char use_rotation_socket;
   char use_node_group_operators;
   char use_asset_shelf;
-  char _pad[7];
+  char use_shader_node_previews;
+  char _pad[6];
   /** `makesdna` does not allow empty structs. */
 } UserDef_Experimental;
 
