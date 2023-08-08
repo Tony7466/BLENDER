@@ -1132,6 +1132,50 @@ void bNodeTreeInterface::read_expand(BlendExpander *expander)
   item_types::item_read_expand(expander, this->root_panel.item);
 }
 
+bNodeTreeInterfaceItem *bNodeTreeInterface::active_item()
+{
+  bNodeTreeInterfaceItem *active = nullptr;
+  int count = active_index;
+  foreach_item([&active, &count](bNodeTreeInterfaceItem &item) {
+    if (count == 0) {
+      active = &item;
+      return false;
+    }
+    --count;
+    return true;
+  });
+  return active;
+}
+
+const bNodeTreeInterfaceItem *bNodeTreeInterface::active_item() const
+{
+  const bNodeTreeInterfaceItem *active = nullptr;
+  int count = active_index;
+  foreach_item([&active, &count](const bNodeTreeInterfaceItem &item) {
+    if (count == 0) {
+      active = &item;
+      return false;
+    }
+    --count;
+    return true;
+  });
+  return active;
+}
+
+void bNodeTreeInterface::active_item_set(bNodeTreeInterfaceItem *item)
+{
+  active_index = 0;
+  int count = 0;
+  foreach_item([this, item, &count](bNodeTreeInterfaceItem &titem) {
+    if (&titem == item) {
+      active_index = count;
+      return false;
+    }
+    ++count;
+    return true;
+  });
+}
+
 bNodeTreeInterfaceSocket *bNodeTreeInterface::add_socket(blender::StringRef name,
                                                          blender::StringRef description,
                                                          blender::StringRef socket_type,

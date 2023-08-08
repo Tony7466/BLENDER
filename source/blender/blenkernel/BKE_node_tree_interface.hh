@@ -32,50 +32,6 @@ typedef struct bNodeTreeInterfaceCache {
 
 }  // namespace blender::bke
 
-inline bNodeTreeInterfaceItem *bNodeTreeInterface::active_item()
-{
-  bNodeTreeInterfaceItem *active = nullptr;
-  int count = active_index;
-  foreach_item([&active, &count](bNodeTreeInterfaceItem &item) {
-    if (count == 0) {
-      active = &item;
-      return false;
-    }
-    --count;
-    return true;
-  });
-  return active;
-}
-
-inline const bNodeTreeInterfaceItem *bNodeTreeInterface::active_item() const
-{
-  const bNodeTreeInterfaceItem *active = nullptr;
-  int count = active_index;
-  foreach_item([&active, &count](const bNodeTreeInterfaceItem &item) {
-    if (count == 0) {
-      active = &item;
-      return false;
-    }
-    --count;
-    return true;
-  });
-  return active;
-}
-
-inline void bNodeTreeInterface::active_item_set(bNodeTreeInterfaceItem *item)
-{
-  active_index = 0;
-  int count = 0;
-  foreach_item([this, item, &count](bNodeTreeInterfaceItem &titem) {
-    if (&titem == item) {
-      active_index = count;
-      return false;
-    }
-    ++count;
-    return true;
-  });
-}
-
 namespace blender::bke::node_interface::detail {
 
 template<typename T> static bool item_is_type(const bNodeTreeInterfaceItem &item)
@@ -209,7 +165,7 @@ template<typename T> bool socket_data_is_type(const char *socket_type)
   bool match = false;
   socket_types::socket_data_to_static_type_tag(socket_type, [&match](auto type_tag) {
     using SocketDataType = typename decltype(type_tag)::type;
-    match |= std::is_same<T, SocketDataType>::value;
+    match |= std::is_same_v<T, SocketDataType>;
   });
   return match;
 }

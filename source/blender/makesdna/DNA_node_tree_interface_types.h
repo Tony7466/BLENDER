@@ -160,13 +160,7 @@ typedef struct bNodeTreeInterfacePanel {
    */
   void foreach_item(blender::FunctionRef<bool(bNodeTreeInterfaceItem &item)> fn,
                     bool include_self = false);
-  /**
-   * Apply a function to every item in the panel, including child panels.
-   * \note: The items are visited in drawing order from top to bottom.
-   *
-   * \param fn: Function to execute for each item, iterations stops if false is returned.
-   * \param include_root: Include the panel itself in the iteration.
-   */
+  /** Same as above but for a const interface. */
   void foreach_item(blender::FunctionRef<bool(const bNodeTreeInterfaceItem &item)> fn,
                     bool include_self = false) const;
 #endif
@@ -180,7 +174,9 @@ typedef struct bNodeTreeInterface {
 
 #ifdef __cplusplus
 
-  /** Copy data from another interface. */
+  /** Copy data from another interface.
+   *  \param flag: ID creation/copying flags, e.g. LIB_ID_CREATE_NO_MAIN.
+   */
   void copy_data(const bNodeTreeInterface &src, int flag);
   /** Free data before the owning data block is freed.
    * \note Does not decrement ID user counts, this has to be done by the caller.
