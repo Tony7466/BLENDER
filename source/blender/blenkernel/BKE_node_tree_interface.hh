@@ -9,15 +9,11 @@
 
 #include "BKE_node.h"
 
-#ifdef __cplusplus
-#  include <queue>
-#  include <type_traits>
+#include <queue>
+#include <type_traits>
 
-#  include "BLI_parameter_pack_utils.hh"
-#  include "BLI_vector.hh"
-#endif
-
-#ifdef __cplusplus
+#include "BLI_parameter_pack_utils.hh"
+#include "BLI_vector.hh"
 
 namespace blender::bke {
 
@@ -225,5 +221,3 @@ inline bNodeTreeInterfaceSocket *add_interface_socket_from_node(bNodeTree &ntree
 }
 
 }  // namespace blender::bke::node_interface
-
-#endif
