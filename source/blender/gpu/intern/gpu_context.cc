@@ -275,11 +275,11 @@ static bool gpu_backend_supported()
 {
   switch (g_backend_type) {
     case GPU_BACKEND_OPENGL:
-      //#ifdef WITH_OPENGL_BACKEND
-      //      return true;
-      //#else
+#ifdef WITH_OPENGL_BACKEND
+      return true;
+#else
       return false;
-      //#endif
+#endif
     case GPU_BACKEND_VULKAN:
 #ifdef WITH_VULKAN_BACKEND
       return true;
