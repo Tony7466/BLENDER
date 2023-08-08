@@ -1728,6 +1728,11 @@ void GreasePencil::set_active_layer(const blender::bke::greasepencil::Layer *lay
       reinterpret_cast<const GreasePencilLayer *>(layer));
 }
 
+const bool GreasePencil::is_layer_active(const blender::bke::greasepencil::Layer *layer) const
+{
+  return this->get_active_layer() == layer;
+}
+
 static blender::VectorSet<blender::StringRefNull> get_node_names(GreasePencil &grease_pencil)
 {
   using namespace blender;
