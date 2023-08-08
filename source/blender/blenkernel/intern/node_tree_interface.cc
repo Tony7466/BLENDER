@@ -47,7 +47,7 @@ static const char *try_get_supported_socket_type(StringRefNull socket_type)
 }
 
 /* -------------------------------------------------------------------- */
-/** \name ID user increment in socket data
+/** \name ID User Increment in Socket Data
  * \{ */
 
 template<typename T> void socket_data_id_user_increment(T & /*data*/) {}
@@ -75,7 +75,7 @@ template<> void socket_data_id_user_increment(bNodeSocketValueMaterial &data)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name ID user decrement in socket data
+/** \name ID User Decrement in Socket Data
  * \{ */
 
 template<typename T> void socket_data_id_user_decrement(T & /*data*/) {}
@@ -103,7 +103,7 @@ template<> void socket_data_id_user_decrement(bNodeSocketValueMaterial &data)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Initialize socket data
+/** \name Initialize Socket Data
  * \{ */
 
 template<typename T> void socket_data_init_impl(T & /*data*/) {}
@@ -180,7 +180,7 @@ static void *make_socket_data(const char *socket_type)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Free allocated socket data
+/** \name Free Allocated Socket Data
  * \{ */
 
 template<typename T> void socket_data_free_impl(T & /*data*/, const bool /*do_id_user*/) {}
@@ -199,7 +199,7 @@ static void socket_data_free(bNodeTreeInterfaceSocket &socket, const bool do_id_
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Copy allocated socket data
+/** \name Copy Allocated Socket Data
  * \{ */
 
 template<typename T> void socket_data_copy_impl(T & /*dst*/, const T & /*src*/) {}
@@ -244,7 +244,7 @@ static void socket_data_copy_ptr(bNodeTreeInterfaceSocket &dst,
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Write socket data to blend file
+/** \name Write Socket Data to Blend File
  * \{ */
 
 /* Note: no default implementation, every used type must write at least the base struct. */
@@ -309,7 +309,7 @@ static void socket_data_write(BlendWriter *writer, bNodeTreeInterfaceSocket &soc
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Read socket data from blend file
+/** \name Read Socket Data from Blend File
  * \{ */
 
 template<typename T> void socket_data_read_data_impl(BlendDataReader *reader, T **data)
@@ -328,7 +328,7 @@ static void socket_data_read_data(BlendDataReader *reader, bNodeTreeInterfaceSoc
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Read ID pointer data
+/** \name Read ID Pointer Data
  * \{ */
 
 template<typename T>
@@ -377,7 +377,7 @@ static void socket_data_read_lib(BlendLibReader *reader, ID *id, bNodeTreeInterf
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Expand socket data
+/** \name Expand Socket Data
  * \{ */
 
 template<typename T> void socket_data_expand_impl(BlendExpander * /*expander*/, T & /*data*/) {}
@@ -413,7 +413,7 @@ static void socket_data_expand(BlendExpander *expander, bNodeTreeInterfaceSocket
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Callback per ID pointer
+/** \name Callback per ID Pointer
  * \{ */
 
 template<typename T>
