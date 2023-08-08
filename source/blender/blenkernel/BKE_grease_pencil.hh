@@ -350,7 +350,10 @@ class Layer : public ::GreasePencilLayer {
    */
   void tag_frames_map_keys_changed();
 
-  void initialize_trans_data();
+  bool initialize_trans_data();
+  bool reset_trans_data();
+  bool update_trans_data(const int src_frame_number, const int dst_frame_number);
+  bool apply_trans_data(GreasePencil &grease_pencil, const bool cancelled);
 
  private:
   using SortedKeysIterator = const int *;

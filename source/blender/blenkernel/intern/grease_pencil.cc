@@ -742,17 +742,106 @@ bool Layer::move_frame(const FramesMapKey src_key, const FramesMapKey dst_key)
   return true;
 }
 
-void Layer::initialize_trans_data()
+bool Layer::initialize_trans_data()
 {
+  if (this->runtime->trans_frame_status != LayerRuntime::FrameTransformationUntouched) {
+    return false;
+  }
+
+  /* Make a copy of the current frames in the layer. This map will be changed during the
+   * transformation, and we need to be able to reset it if the operation is cancelled. */
   this->runtime->trans_frames_copy_ = this->frames();
   this->runtime->trans_frame_duration_.clear();
+  this->runtime->trans_frame_data_.clear();
+
   for (const auto [frame_number, frame] : this->frames().items()) {
-    if (!frame.is_null() && !frame.is_implicit_hold()) {
+    if (frame.is_null()) {
+      continue;
+    }
+    /* Set the transformation to the identity. */
+    this->runtime->trans_frame_data_.add(frame_number, frame_number);
+
+    /* Store frames' duration to keep them visually correct while moving the frames */
+    if (!frame.is_implicit_hold()) {
       this->runtime->trans_frame_duration_.add(frame_number,
                                                get_frame_duration(*this, frame_number));
     }
   }
+
   this->runtime->trans_frame_status = LayerRuntime::FrameTransformationInitialized;
+  return true;
+}
+
+bool Layer::reset_trans_data()
+{
+  /* If the layer frame map was affected by the transformation, set its status to initialized so
+   * that the frames map gets reset the next time this modal function is called.
+   */
+  if (this->runtime->trans_frame_status == LayerRuntime::FrameTransformationUntouched) {
+    return false;
+  }
+  this->runtime->trans_frame_status = LayerRuntime::FrameTransformationInitialized;
+  return true;
+}
+
+bool Layer::update_trans_data(const int src_frame_number, const int dst_frame_number)
+{
+  switch (this->runtime->trans_frame_status) {
+    case LayerRuntime::FrameTransformationInitialized:
+      /* The transdata was only initialized. No transformation was applied yet.
+       * The frame mapping is always defined relatively to the initial frame map, so we first need
+       * to set the frames back to its initial state before applying any frame transformation. */
+      this->frames_for_write() = this->runtime->trans_frames_copy_;
+      this->tag_frames_map_keys_changed();
+      this->runtime->trans_frame_status = LayerRuntime::FrameTransformationOngoing;
+      ATTR_FALLTHROUGH;
+
+    case LayerRuntime::FrameTransformationOngoing: {
+      /* Apply the transformation directly in the frame map, so that we display the transformed
+       * frame numbers. We don't want to edit the frames or remove any drawing here. This will be
+       * done at once at the end of the transformation. */
+      const GreasePencilFrame src_frame = this->runtime->trans_frames_copy_.lookup(
+          src_frame_number);
+      const int src_duration = this->runtime->trans_frame_duration_.lookup_default(
+          src_frame_number, 0);
+      this->remove_frame(src_frame_number);
+      this->remove_frame(dst_frame_number);
+      GreasePencilFrame *frame = this->add_frame(
+          dst_frame_number, src_frame.drawing_index, src_duration);
+      *frame = src_frame;
+
+      this->runtime->trans_frame_data_.add_overwrite(src_frame_number, dst_frame_number);
+      break;
+    }
+
+    default:
+      return false;
+  }
+
+  return true;
+}
+
+bool Layer::apply_trans_data(GreasePencil &grease_pencil, const bool canceled)
+{
+  if (this->runtime->trans_frame_status == LayerRuntime::FrameTransformationUntouched) {
+    /* The layer was not affected by the transformation, so do nothing. */
+    return false;
+  }
+
+  /* Reset the frames to their initial state. */
+  this->frames_for_write() = this->runtime->trans_frames_copy_;
+  this->tag_frames_map_keys_changed();
+
+  if (!canceled) {
+    /* Apply the transformation. */
+    grease_pencil.move_frames(*this, this->runtime->trans_frame_data_);
+  }
+
+  /* Clear the frames copy. */
+  this->runtime->trans_frames_copy_.clear();
+  this->runtime->trans_frame_data_.clear();
+  this->runtime->trans_frame_status = LayerRuntime::FrameTransformationUntouched;
+  return true;
 }
 
 Span<FramesMapKey> Layer::sorted_keys() const
