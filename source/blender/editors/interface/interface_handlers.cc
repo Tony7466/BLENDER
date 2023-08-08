@@ -559,7 +559,7 @@ void ui_pan_to_scroll(const wmEvent *event, int *type, int *val)
   static int lastdy = 0;
   const int dy = WM_event_absolute_delta_y(event);
 
-  /* This event should be originally from event->type,
+  /* This event should originally be from event->type,
    * converting wrong event into wheel is bad, see #33803. */
   BLI_assert(*type == MOUSEPAN);
 
@@ -6286,7 +6286,7 @@ static int ui_do_but_COLOR(bContext *C, uiBut *but, uiHandleButtonData *data, co
         hsv[2] = clamp_f(hsv[2] + 0.05f, 0.0f, 1.0f);
       }
       else {
-        const float fac = 0.005 * WM_event_absolute_delta_y(event);
+        const float fac = 0.005 / UI_SCALE_FAC * WM_event_absolute_delta_y(event);
         hsv[2] = clamp_f(hsv[2] + fac, 0.0f, 1.0f);
       }
 
