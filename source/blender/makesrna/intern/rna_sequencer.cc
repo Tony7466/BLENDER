@@ -54,7 +54,7 @@
 #include "SEQ_transform.h"
 #include "SEQ_utils.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 struct EffectInfo {
   const char *struct_name;
@@ -96,7 +96,7 @@ const EnumPropertyItem rna_enum_strip_color_items[] = {
 #  include "BKE_movieclip.h"
 #  include "BKE_report.h"
 
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
 #  include "DEG_depsgraph.h"
 #  include "DEG_depsgraph_build.h"
@@ -2066,7 +2066,7 @@ static void rna_def_sequence(BlenderRNA *brna)
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_property_string_funcs(
       prop, "rna_Sequence_name_get", "rna_Sequence_name_length", "rna_Sequence_name_set");
-  RNA_def_property_string_maxlength(prop, sizeof(((Sequence *)nullptr)->name) - 2);
+  RNA_def_property_string_maxlength(prop, sizeof(Sequence::name) - 2);
   RNA_def_property_ui_text(prop, "Name", "");
   RNA_def_struct_name_property(srna, prop);
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, nullptr);
@@ -2297,7 +2297,7 @@ static void rna_def_channel(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "Channel", "");
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_maxlength(prop, sizeof(((SeqTimelineChannel *)nullptr)->name));
+  RNA_def_property_string_maxlength(prop, sizeof(SeqTimelineChannel::name));
   RNA_def_property_ui_text(prop, "Name", "");
   RNA_def_struct_name_property(srna, prop);
   RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_SequenceTimelineChannel_name_set");

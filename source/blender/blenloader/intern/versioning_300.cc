@@ -62,7 +62,7 @@
 #include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_main.h"
 #include "BKE_main_namemap.h"
 #include "BKE_mesh.hh"
@@ -1764,7 +1764,12 @@ static bool version_seq_fix_broken_sound_strips(Sequence *seq, void * /*user_dat
 
   seq->speed_factor = 1.0f;
   SEQ_retiming_data_clear(seq);
-  seq->startofs = 0.0f;
+
+  /* Broken files do have negative start offset, which should not be present in sound strips. */
+  if (seq->startofs < 0) {
+    seq->startofs = 0.0f;
+  }
+
   return true;
 }
 

@@ -451,6 +451,7 @@ typedef struct GreasePencil {
   const blender::bke::greasepencil::Layer *get_active_layer() const;
   blender::bke::greasepencil::Layer *get_active_layer_for_write();
   void set_active_layer(const blender::bke::greasepencil::Layer *layer);
+  bool is_layer_active(const blender::bke::greasepencil::Layer *layer) const;
 
   blender::bke::greasepencil::Layer &add_layer(blender::bke::greasepencil::LayerGroup &group,
                                                blender::StringRefNull name);
@@ -481,10 +482,18 @@ typedef struct GreasePencil {
   void remove_layer(blender::bke::greasepencil::Layer &layer);
 
   void add_empty_drawings(int add_num);
+  void add_duplicate_drawings(int duplicate_num,
+                              const blender::bke::greasepencil::Drawing &drawing);
   bool insert_blank_frame(blender::bke::greasepencil::Layer &layer,
                           int frame_number,
                           int duration,
                           eBezTriple_KeyframeType keytype);
+  bool insert_duplicate_frame(blender::bke::greasepencil::Layer &layer,
+                              const int src_frame_number,
+                              const int dst_frame_number,
+                              const bool do_instance);
+
+  bool remove_frame_at(blender::bke::greasepencil::Layer &layer, int frame_number);
 
   void remove_drawing(int index);
 
