@@ -961,6 +961,11 @@ void summary_to_keylist(bAnimContext *ac, AnimKeylist *keylist, const int sactio
         case ALE_GPFRAME:
           gpl_to_keylist(ac->ads, static_cast<bGPDlayer *>(ale->data), keylist);
           break;
+        case ALE_GREASE_PENCIL_CELS:
+          using namespace blender::bke::greasepencil;
+          grease_pencil_cels_to_keylist(
+              ale->adt, static_cast<Layer *>(ale->data), keylist, saction_flag);
+          break;
         default:
           // printf("%s: datatype %d unhandled\n", __func__, ale->datatype);
           break;
