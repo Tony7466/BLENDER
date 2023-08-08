@@ -834,17 +834,13 @@ void import_skeleton(Main *bmain, Object *arm_obj, const pxr::UsdSkelSkeleton &s
 
 void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim &prim)
 {
-  if (!(bmain && mesh_obj && prim)) {
+  if (!(bmain && mesh_obj && mesh_obj->type == OB_MESH && prim)) {
     return;
   }
 
   if (prim.IsInstanceProxy()) {
     /* Attempting to create a UsdSkelBindingAPI for
      * instance proxies generates USD errors. */
-    return;
-  }
-
-  if (mesh_obj->type != OB_MESH) {
     return;
   }
 
@@ -860,6 +856,8 @@ void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim
     return;
   }
 
+  /* Get the joint identifiers from the skeleton. We will
+   * need these to construct deform groups. */
   pxr::VtArray<pxr::TfToken> joints;
 
   if (skel_api.GetJointsAttr().HasAuthoredValue()) {
@@ -873,28 +871,34 @@ void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim
     return;
   }
 
+  /* Get the joint indices, which specify which joints influence a given point. */
   pxr::UsdGeomPrimvar joint_indices_primvar = skel_api.GetJointIndicesPrimvar();
-
   if (!(joint_indices_primvar && joint_indices_primvar.HasAuthoredValue())) {
     return;
   }
 
+  /* Get the weights, which specify the weight of a joint on a given point. */
   pxr::UsdGeomPrimvar joint_weights_primvar = skel_api.GetJointWeightsPrimvar();
-
   if (!(joint_weights_primvar && joint_weights_primvar.HasAuthoredValue())) {
     return;
   }
 
+  /* Element size specifies the number of joints that might influece a given point.
+   * This is the stride we take when accessing the indices and weights for a
+   * given point. */
   int joint_indices_elem_size = joint_indices_primvar.GetElementSize();
   int joint_weights_elem_size = joint_weights_primvar.GetElementSize();
 
+  /* We expect the element counts to match. */
   if (joint_indices_elem_size != joint_weights_elem_size) {
-    std::cout << "WARNING: joint weights and joint indices element size mismatch." << std::endl;
+    WM_reportf(RPT_WARNING,
+               "%s: Joint weights and joint indices element size mismatch for prim %s",
+               __func__,
+               prim.GetPath().GetAsString().c_str());
     return;
   }
 
-  /* The set of unique joint indices referenced in the joint indices
-  *  attribute. */
+  /* Get the joint indices and weights. */
   pxr::VtIntArray joint_indices;
   joint_indices_primvar.ComputeFlattened(&joint_indices);
 
@@ -906,7 +910,10 @@ void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim
   }
 
   if (joint_indices.size() != joint_weights.size()) {
-    std::cout << "WARNING: joint weights and joint indices size mismatch." << std::endl;
+    WM_reportf(RPT_WARNING,
+               "%s: Joint weights and joint indices size mismatch size mismatch for prim %s",
+               __func__,
+               prim.GetPath().GetAsString().c_str());
     return;
   }
 
@@ -914,29 +921,40 @@ void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim
 
   pxr::TfToken interp = joint_weights_primvar.GetInterpolation();
 
+  /* Sanity check: we expect only vertex or constant interpolation. */
   if (interp != pxr::UsdGeomTokens->vertex && interp != pxr::UsdGeomTokens->constant) {
-    std::cout << "WARNING: unexpected joint weights interpolation type " << interp
-              << std::endl;
+    WM_reportf(RPT_WARNING,
+               "%s: Unexpected joint weights interpolation type %s for prim %s",
+               __func__,
+               interp.GetString().c_str(),
+               prim.GetPath().GetAsString().c_str());
     return;
   }
 
+  /* Sanity check: make sure we have the expected number of values for the interpolation type. */
   if (interp == pxr::UsdGeomTokens->vertex && joint_weights.size() != mesh->totvert * joint_weights_elem_size) {
-    std::cout << "WARNING: joint weights of unexpected size for vertex interpolation." << std::endl;
+    WM_reportf(RPT_WARNING,
+               "%s: Joint weights of unexpected size for vertex interpolation for prim %s",
+               __func__,
+               prim.GetPath().GetAsString().c_str());
     return;
   }
 
   if (interp == pxr::UsdGeomTokens->constant && joint_weights.size() != joint_weights_elem_size) {
-    std::cout << "WARNING: joint weights of unexpected size for constant interpolation."
-              << std::endl;
+    WM_reportf(RPT_WARNING,
+               "%s: Joint weights of unexpected size for constant interpolation for prim %s",
+               __func__,
+               prim.GetPath().GetAsString().c_str());
     return;
   }
 
+  /* Determine which joint indices are used for skinning this prim. */
   std::vector<int> used_indices;
   for (int index : joint_indices) {
     if (std::find(used_indices.begin(), used_indices.end(), index) == used_indices.end()) {
       /* We haven't accounted for this index yet. */
       if (index < 0 || index >= joints.size()) {
-        std::cout << "Out of bound joint index " << index << std::endl;
+        std::cerr << "Out of bound joint index " << index << std::endl;
         continue;
       }
       used_indices.push_back(index);
@@ -948,6 +966,10 @@ void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim
   }
 
   if (BKE_object_defgroup_data_create(static_cast<ID *>(mesh_obj->data)) == NULL) {
+    WM_reportf(RPT_WARNING,
+               "%s: Error creating deform group data for mesh %s",
+               __func__,
+               mesh_obj->id.name + 2);
     return;
   }
 
@@ -957,6 +979,7 @@ void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim
     BLI_addtail(&mesh_obj->modifiers, md);
   }
 
+  /* Create a deform group per joint. */
   std::vector<bDeformGroup *> joint_def_grps(joints.size(), nullptr);
 
   for (int idx : used_indices) {
@@ -967,6 +990,7 @@ void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim
     }
   }
 
+  /* Set the deform group verts and weights. */
   for (int i = 0; i < mesh->totvert; ++i) {
     /* Offset into the weights array, which is
      * always 0 for constant interpolation. */
