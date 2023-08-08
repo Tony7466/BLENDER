@@ -1623,7 +1623,7 @@ void WM_redraw_windows(bContext *C)
  *
  * \{ */
 
-void WM_draw_region_viewport_ensure(struct Scene *scene, ARegion *region, short space_type)
+void WM_draw_region_viewport_ensure(Scene *scene, ARegion *region, short space_type)
 {
   bool use_viewport = wm_region_use_viewport_by_type(space_type, region->regiontype);
   wm_draw_region_buffer_create(scene, region, false, use_viewport);
