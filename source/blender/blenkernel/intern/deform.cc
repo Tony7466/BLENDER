@@ -14,6 +14,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "DNA_curves_types.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_mesh_types.h"
@@ -440,7 +441,7 @@ bool BKE_id_supports_vertex_groups(const ID *id)
   if (id == nullptr) {
     return false;
   }
-  return ELEM(GS(id->name), ID_ME, ID_LT, ID_GD_LEGACY);
+  return ELEM(GS(id->name), ID_ME, ID_LT, ID_GD_LEGACY, ID_CV);
 }
 
 bool BKE_object_supports_vertex_groups(const Object *ob)
@@ -465,6 +466,10 @@ const ListBase *BKE_id_defgroup_list_get(const ID *id)
       const bGPdata *gpd = (const bGPdata *)id;
       return &gpd->vertex_group_names;
     }
+    case ID_CV: {
+      const Curves *curves_id = reinterpret_cast<const Curves *>(id);
+      return &curves_id->geometry.vertex_group_names;
+    }
     default: {
       BLI_assert_unreachable();
     }
@@ -487,6 +492,13 @@ static const int *object_defgroup_active_index_get_p(const Object *ob)
     case OB_GPENCIL_LEGACY: {
       const bGPdata *gpd = (const bGPdata *)ob->data;
       return &gpd->vertex_group_active_index;
+    }
+    case OB_CURVES: {
+      const Curves *curves_id = static_cast<const Curves *>(ob->data);
+      return &curves_id->geometry.vertex_group_active_index;
+    }
+    default: {
+      BLI_assert_unreachable();
     }
   }
   return nullptr;
