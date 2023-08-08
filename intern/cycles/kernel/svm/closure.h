@@ -692,6 +692,15 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       }
       else {
         kernel_assert(type == CLOSURE_BSDF_HAIR_MICROFACET_ID);
+        uint R_ofs, TT_ofs, TRT_ofs, unused;
+        svm_unpack_node_uchar4(data_node4.x, &R_ofs, &TT_ofs, &TRT_ofs, &unused);
+        float R = stack_load_float_default(stack, R_ofs, data_node4.y);
+        float TT = stack_load_float_default(stack, TT_ofs, data_node4.z);
+        float TRT = stack_load_float_default(stack, TRT_ofs, data_node4.w);
+        if (R <= 0.0f && TT <= 0.0f && TRT <= 0.0f) {
+          break;
+        }
+
         ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)bsdf_alloc(
             sd, sizeof(MicrofacetHairBSDF), weight);
         if (bsdf) {
@@ -701,12 +710,6 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           if (!extra) {
             break;
           }
-
-          uint R_ofs, TT_ofs, TRT_ofs, unused;
-          svm_unpack_node_uchar4(data_node4.x, &R_ofs, &TT_ofs, &TRT_ofs, &unused);
-          float R = stack_load_float_default(stack, R_ofs, data_node4.y);
-          float TT = stack_load_float_default(stack, TT_ofs, data_node4.z);
-          float TRT = stack_load_float_default(stack, TRT_ofs, data_node4.w);
 
           bsdf->extra = extra;
           bsdf->extra->R = fmaxf(0.0f, R);
@@ -725,7 +728,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           bsdf->eta = ior;
           bsdf->sigma = sigma;
 
-          sd->flag |= bsdf_microfacet_hair_setup(sd, bsdf);
+          sd->flag |= bsdf_microfacet_hair_setup(sd, bsdf, path_flag);
         }
       }
       break;

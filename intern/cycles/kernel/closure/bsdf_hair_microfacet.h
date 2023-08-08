@@ -177,7 +177,8 @@ ccl_device_inline float arc_length(float e2, float gamma)
 #ifdef __HAIR__
 /* Set up the hair closure. */
 ccl_device int bsdf_microfacet_hair_setup(ccl_private ShaderData *sd,
-                                          ccl_private MicrofacetHairBSDF *bsdf)
+                                          ccl_private MicrofacetHairBSDF *bsdf,
+                                          uint32_t path_flag)
 {
   bsdf->type = CLOSURE_BSDF_HAIR_MICROFACET_ID;
 
@@ -225,6 +226,14 @@ ccl_device int bsdf_microfacet_hair_setup(ccl_private ShaderData *sd,
   bsdf->extra->radius = bsdf->extra->e2 == 0 ?
                             1.0f :
                             sqrtf(1.0f - bsdf->extra->e2 * sqr(I.x) / (sqr(I.x) + sqr(I.z)));
+
+  /* Treat as transparent material if intersection lies outside of the projected radius. */
+  if (fabsf(bsdf->h) >= bsdf->extra->radius) {
+    bsdf_transparent_setup(sd, bsdf->weight, path_flag);
+    bsdf->type = CLOSURE_NONE_ID;
+    bsdf->sample_weight = 0.0f;
+    return 0;
+  }
 
   return SD_BSDF | SD_BSDF_HAS_EVAL | SD_BSDF_NEEDS_LCG | SD_BSDF_HAS_TRANSMISSION;
 }
@@ -607,19 +616,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   *sampled_roughness = make_float2(roughness, roughness);
   *eta = bsdf->eta;
 
-  /* Treat as transparent material if intersection lies outside of the projected radius. */
-  if (fabsf(bsdf->h) > bsdf->extra->radius) {
-    *wo = -sd->wi;
-    *pdf = 1.0f;
-    *eval = one_spectrum();
-    *eta = 1.0f;
-    return LABEL_TRANSMIT | LABEL_TRANSPARENT;
-  }
-
-  if (bsdf->extra->R <= 0.0f && bsdf->extra->TT <= 0.0f && bsdf->extra->TRT <= 0.0f) {
-    /* Early out for inactive lobe. */
-    return LABEL_NONE;
-  }
+  kernel_assert(fabsf(bsdf->h) < bsdf->extra->radius);
 
   /* Generate samples. */
   float sample_lobe = rand.x;
@@ -790,11 +787,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   const float trt = average(TRT);
   const float trrt = average(TRRT);
   const float total_energy = r + tt + trt + trrt;
-
-  if (total_energy == 0.0f) {
-    *pdf = 0.0f;
-    return LABEL_NONE;
-  }
+  kernel_assert(total_energy > 0.0f);
 
   float3 local_O;
 
@@ -839,10 +832,7 @@ ccl_device Spectrum bsdf_microfacet_hair_eval(KernelGlobals kg,
 {
   ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)sc;
 
-  /* Treat as transparent material if intersection lies outside of the projected radius. */
-  if (fabsf(bsdf->h) > bsdf->extra->radius) {
-    return zero_spectrum();
-  }
+  kernel_assert(fabsf(bsdf->h) < bsdf->extra->radius);
 
   /* Get local coordinate system. */
   const float3 X = bsdf->N;

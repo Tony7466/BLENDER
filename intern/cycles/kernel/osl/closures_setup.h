@@ -916,7 +916,7 @@ ccl_device void osl_closure_microfacet_hair_setup(KernelGlobals kg,
   bsdf->extra->TT = closure->tt_lobe;
   bsdf->extra->TRT = closure->trt_lobe;
 
-  sd->flag |= bsdf_microfacet_hair_setup(sd, bsdf);
+  sd->flag |= bsdf_microfacet_hair_setup(sd, bsdf, path_flag);
 #endif
 }
 
