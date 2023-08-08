@@ -6,8 +6,8 @@
  * \ingroup RNA
  */
 
-#include <limits.h>
-#include <stdlib.h>
+#include <climits>
+#include <cstdlib>
 
 #include "BKE_dynamicpaint.h"
 #include "BKE_modifier.h"
@@ -27,7 +27,7 @@
 
 #include "rna_internal.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 const EnumPropertyItem rna_enum_prop_dynamicpaint_type_items[] = {
     {MOD_DYNAMICPAINT_TYPE_CANVAS, "CANVAS", 0, "Canvas", ""},
@@ -633,7 +633,7 @@ static void rna_def_canvas_surface(BlenderRNA *brna)
   parm = RNA_def_int(func, "index", 0, 0, 1, "Index", "", 0, 1);
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   /* return type */
-  parm = RNA_def_boolean(func, "exists", 0, "", "");
+  parm = RNA_def_boolean(func, "exists", false, "", "");
   RNA_def_function_return(func, parm);
 
   prop = RNA_def_property(srna, "depth_clamp", PROP_FLOAT, PROP_NONE);

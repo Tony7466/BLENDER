@@ -6,7 +6,7 @@
  * \ingroup spuserpref
  */
 
-#include <string.h>
+#include <cstring>
 
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
@@ -27,12 +27,12 @@
 #include "RNA_define.h"
 #include "RNA_types.h"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_userpref.h"
+#include "ED_userpref.hh"
 
 #include "MEM_guardedalloc.h"
 

@@ -6,8 +6,8 @@
  * \ingroup edscr
  */
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include "DNA_userdef_types.h"
 #include "DNA_vec_types.h"
@@ -17,7 +17,7 @@
 
 #include "BKE_context.h"
 
-#include "BIF_glutil.h"
+#include "BIF_glutil.hh"
 
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf_types.h"
@@ -31,7 +31,7 @@
 #  include "GPU_state.h"
 #endif
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 /* ******************************************** */
 
@@ -418,8 +418,8 @@ void ED_draw_imbuf_clipping(ImBuf *ibuf,
                             float x,
                             float y,
                             bool use_filter,
-                            ColorManagedViewSettings *view_settings,
-                            ColorManagedDisplaySettings *display_settings,
+                            const ColorManagedViewSettings *view_settings,
+                            const ColorManagedDisplaySettings *display_settings,
                             float clip_min_x,
                             float clip_min_y,
                             float clip_max_x,
@@ -445,7 +445,7 @@ void ED_draw_imbuf_clipping(ImBuf *ibuf,
   if (force_fallback == false) {
     int ok;
 
-    IMMDrawPixelsTexState state = {0};
+    IMMDrawPixelsTexState state = {nullptr};
     /* We want GLSL state to be fully handled by OCIO. */
     state.do_shader_unbind = false;
     immDrawPixelsTexSetupAttributes(&state);
@@ -565,8 +565,8 @@ void ED_draw_imbuf(ImBuf *ibuf,
                    float x,
                    float y,
                    bool use_filter,
-                   ColorManagedViewSettings *view_settings,
-                   ColorManagedDisplaySettings *display_settings,
+                   const ColorManagedViewSettings *view_settings,
+                   const ColorManagedDisplaySettings *display_settings,
                    float zoom_x,
                    float zoom_y)
 {

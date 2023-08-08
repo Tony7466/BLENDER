@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'2f5245b4340a')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'd4d0daa934cd')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-07-10 12:34:48\n"
+"POT-Creation-Date: 2023-08-07 09:03:59\n"
 "PO-Revision-Date: 2021-12-05 20:05+0100\n"
 "Language: nl\n"
 "MIME-Version: 1.0\n"
@@ -276,6 +276,10 @@ msgstr "Auteur"
 
 msgid "Description"
 msgstr "Beschrijving"
+
+
+msgid "Options"
+msgstr "Opties"
 
 
 msgid "Data Type"
@@ -694,16 +698,16 @@ msgid "Show Lines"
 msgstr "Toon Lijnen"
 
 
+msgid "Active Layer"
+msgstr "Actieve Laag"
+
+
 msgid "Random Settings"
 msgstr "Willekeurige Instellingen"
 
 
 msgid "Mode Type"
 msgstr "Type Modus"
-
-
-msgid "Active Layer"
-msgstr "Actieve Laag"
 
 
 msgid "Object Path"
@@ -1062,11 +1066,6 @@ msgstr "Deeltje"
 msgctxt "ID"
 msgid "Scene"
 msgstr "Scene"
-
-
-msgctxt "ID"
-msgid "Simulation"
-msgstr "Simulatie"
 
 
 msgctxt "ID"
@@ -1675,10 +1674,6 @@ msgid "Select Background"
 msgstr "Selecteer Achtergrond"
 
 
-msgid "Options"
-msgstr "Opties"
-
-
 msgid "Window"
 msgstr "Scherm"
 
@@ -2244,6 +2239,18 @@ msgid "Undefined"
 msgstr "Niet Gedefinieerd"
 
 
+msgid "Edit"
+msgstr "Bewerken"
+
+
+msgid "Sculpt"
+msgstr "Beeldhouwen"
+
+
+msgid "Tool"
+msgstr "Gereedschap"
+
+
 msgid "Active Material"
 msgstr "Actieve Materiaal"
 
@@ -2705,10 +2712,6 @@ msgid "Add"
 msgstr "Toevoegen"
 
 
-msgid "Edit"
-msgstr "Bewerken"
-
-
 msgid "Converter"
 msgstr "Converteerder"
 
@@ -2812,10 +2815,6 @@ msgstr "Star Lichaam"
 
 msgid "Clear Transform"
 msgstr "Maak Transformatie Leeg"
-
-
-msgid "Sculpt"
-msgstr "Beeldhouwen"
 
 
 msgid "Local View"
@@ -3319,11 +3318,6 @@ msgstr "Verplaats Kanalen"
 
 
 msgctxt "Operator"
-msgid "Rename Channels"
-msgstr "Hernoem Kanalen"
-
-
-msgctxt "Operator"
 msgid "Disable Channel Setting"
 msgstr "Zet Kanaal Instellingen Uit"
 
@@ -3517,10 +3511,6 @@ msgstr "Rond"
 msgctxt "Operator"
 msgid "Reset Brush"
 msgstr "Reset Kwast"
-
-
-msgid "Tool"
-msgstr "Gereedschap"
 
 
 msgctxt "Operator"
@@ -6246,10 +6236,6 @@ msgstr "Herlaad Geschiedenis Bestand"
 msgctxt "Operator"
 msgid "Reload Start-Up File"
 msgstr "Herlaad Opstart Bestand"
-
-
-msgid "Open the default file (doesn't save the current file)"
-msgstr "Open Opstart Bestand (huidige bestand wordt niet opgelsagen)"
 
 
 msgctxt "Operator"
@@ -9068,11 +9054,6 @@ msgstr "Nieuw"
 
 
 msgctxt "Volume"
-msgid "New"
-msgstr "Nieuw"
-
-
-msgctxt "Simulation"
 msgid "New"
 msgstr "Nieuw"
 

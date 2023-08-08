@@ -7,6 +7,7 @@ set(INC
   ..
   ../intern
   ../../editors/include
+  ../../blenkernel
   ../../blentranslation
   ../../bmesh
   ../../depsgraph
@@ -181,6 +182,11 @@ set(SRC
   nodes/node_geo_string_to_curves.cc
   nodes/node_geo_subdivision_surface.cc
   nodes/node_geo_switch.cc
+  nodes/node_geo_tool_3d_cursor.cc
+  nodes/node_geo_tool_face_set.cc
+  nodes/node_geo_tool_selection.cc
+  nodes/node_geo_tool_set_face_set.cc
+  nodes/node_geo_tool_set_selection.cc
   nodes/node_geo_transform_geometry.cc
   nodes/node_geo_translate_instances.cc
   nodes/node_geo_triangulate.cc
@@ -199,7 +205,6 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
   bf_bmesh
   PRIVATE bf::dna

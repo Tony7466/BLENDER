@@ -6,7 +6,7 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "DNA_action_types.h"
 #include "DNA_anim_types.h"
@@ -21,7 +21,7 @@
 
 #include "rna_internal.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 /* Which part of bone(s) get baked */
 /* TODO: icons? */
