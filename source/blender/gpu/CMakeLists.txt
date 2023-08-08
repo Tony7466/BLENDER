@@ -5,6 +5,7 @@
 set(INC
   .
   intern
+  dummy
   metal
   opengl
   vulkan
@@ -144,6 +145,10 @@ set(SRC
   intern/gpu_vertex_format_private.h
 
   dummy/dummy_backend.hh
+  dummy/dummy_batch.hh
+  dummy/dummy_context.hh
+  dummy/dummy_framebuffer.hh
+  dummy/dummy_vertex_buffer.hh
 )
 
 set(OPENGL_SRC

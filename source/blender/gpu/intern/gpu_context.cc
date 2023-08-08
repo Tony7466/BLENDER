@@ -35,7 +35,7 @@
 #ifdef WITH_METAL_BACKEND
 #  include "mtl_backend.hh"
 #endif
-#include "dummy/dummy_backend.hh"
+#include "dummy_backend.hh"
 
 #include <mutex>
 #include <vector>
