@@ -47,7 +47,7 @@
 namespace {
 
 /* Utility: create curve at the given array index. */
-FCurve *create_fcurve(int array_index, const std::string &rna_path)
+FCurve *create_fcurve(const int array_index, const std::string &rna_path)
 {
   FCurve *fcu = BKE_fcurve_create();
   fcu->flag = (FCURVE_VISIBLE | FCURVE_SELECTED);
@@ -59,7 +59,7 @@ FCurve *create_fcurve(int array_index, const std::string &rna_path)
 /* Utility: create curve at the given array index and
  * adds it as a channel to a group. */
 FCurve *create_chan_fcurve(
-    bAction *act, bActionGroup *grp, int array_index, const std::string &rna_path, int totvert)
+    bAction *act, bActionGroup *grp, const int array_index, const std::string &rna_path, const int totvert)
 {
   FCurve *fcu = create_fcurve(array_index, rna_path);
   fcu->totvert = totvert;
@@ -68,7 +68,7 @@ FCurve *create_chan_fcurve(
 }
 
 /* Utility: add curve sample. */
-void add_bezt(FCurve *fcu, float frame, float value, eBezTriple_Interpolation ipo = BEZT_IPO_LIN)
+void add_bezt(FCurve *fcu, const float frame, const float value, const eBezTriple_Interpolation ipo = BEZT_IPO_LIN)
 {
   BezTriple bez;
   memset(&bez, 0, sizeof(BezTriple));
@@ -117,7 +117,7 @@ void import_skeleton_curves(Main *bmain,
     return;
   }
 
-  size_t num_samples = samples.size();
+  const size_t num_samples = samples.size();
 
   /* Create the action on the armature. */
   bAction *act = ED_id_action_ensure(bmain, (ID *)&arm_obj->id);
