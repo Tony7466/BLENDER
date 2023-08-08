@@ -27,19 +27,122 @@ def _initialize():
     path_list = paths()
     for path in path_list:
         _bpy.utils._sys_path_ensure_append(path)
+    # Original code:
+    # for addon in _preferences.addons:
+    #     enable(addon.module)
+
+    # NOTE(@ideasman42): package support, may be implemented add-on (temporary for extension development).
+    addon_submodules = []
     for addon in _preferences.addons:
-        enable(addon.module)
+        module = addon.module
+        if "." in module:
+            addon_submodules.append(module)
+            continue
+        enable(module)
+    for module in addon_submodules:
+        enable(module)
 
 
 def paths():
-    # RELEASE SCRIPTS: official scripts distributed in Blender releases
-    addon_paths = _bpy.utils.script_paths(subdir="addons")
+    return [
+        path for subdir in (
+            # RELEASE SCRIPTS: official scripts distributed in Blender releases.
+            "addons",
+            # CONTRIB SCRIPTS: good for testing but not official scripts yet
+            # if folder addons_contrib/ exists, scripts in there will be loaded too.
+            "addons_contrib",
+        )
+        for path in _bpy.utils.script_paths(subdir=subdir)
+    ]
 
-    # CONTRIB SCRIPTS: good for testing but not official scripts yet
-    # if folder addons_contrib/ exists, scripts in there will be loaded too
-    addon_paths += _bpy.utils.script_paths(subdir="addons_contrib")
 
-    return addon_paths
+def _fake_module(mod_name, mod_path, speedy=True, force_support=None):
+    global error_encoding
+    import os
+
+    if _bpy.app.debug_python:
+        print("fake_module", mod_path, mod_name)
+    import ast
+    ModuleType = type(ast)
+    try:
+        file_mod = open(mod_path, "r", encoding='UTF-8')
+    except OSError as ex:
+        print("Error opening file:", mod_path, ex)
+        return None
+
+    with file_mod:
+        if speedy:
+            lines = []
+            line_iter = iter(file_mod)
+            l = ""
+            while not l.startswith("bl_info"):
+                try:
+                    l = line_iter.readline()
+                except UnicodeDecodeError as ex:
+                    if not error_encoding:
+                        error_encoding = True
+                        print("Error reading file as UTF-8:", mod_path, ex)
+                    return None
+
+                if len(l) == 0:
+                    break
+            while l.rstrip():
+                lines.append(l)
+                try:
+                    l = line_iter.readline()
+                except UnicodeDecodeError as ex:
+                    if not error_encoding:
+                        error_encoding = True
+                        print("Error reading file as UTF-8:", mod_path, ex)
+                    return None
+
+            data = "".join(lines)
+
+        else:
+            data = file_mod.read()
+    del file_mod
+
+    try:
+        ast_data = ast.parse(data, filename=mod_path)
+    except BaseException:
+        print("Syntax error 'ast.parse' can't read:", repr(mod_path))
+        import traceback
+        traceback.print_exc()
+        ast_data = None
+
+    body_info = None
+
+    if ast_data:
+        for body in ast_data.body:
+            if body.__class__ == ast.Assign:
+                if len(body.targets) == 1:
+                    if getattr(body.targets[0], "id", "") == "bl_info":
+                        body_info = body
+                        break
+
+    if body_info:
+        try:
+            mod = ModuleType(mod_name)
+            mod.bl_info = ast.literal_eval(body.value)
+            mod.__file__ = mod_path
+            mod.__time__ = os.path.getmtime(mod_path)
+        except:
+            print("AST error parsing bl_info for:", repr(mod_path))
+            import traceback
+            traceback.print_exc()
+            return None
+
+        if force_support is not None:
+            mod.bl_info["support"] = force_support
+
+        return mod
+    else:
+        print(
+            "fake_module: addon missing 'bl_info' "
+            "gives bad performance!:",
+            repr(mod_path),
+        )
+        return None
 
 
 def modules_refresh(*, module_cache=addons_fake_modules):
@@ -51,103 +154,12 @@ def modules_refresh(*, module_cache=addons_fake_modules):
 
     path_list = paths()
 
-    # fake module importing
-    def fake_module(mod_name, mod_path, speedy=True, force_support=None):
-        global error_encoding
-
-        if _bpy.app.debug_python:
-            print("fake_module", mod_path, mod_name)
-        import ast
-        ModuleType = type(ast)
-        try:
-            file_mod = open(mod_path, "r", encoding='UTF-8')
-        except OSError as ex:
-            print("Error opening file:", mod_path, ex)
-            return None
-
-        with file_mod:
-            if speedy:
-                lines = []
-                line_iter = iter(file_mod)
-                l = ""
-                while not l.startswith("bl_info"):
-                    try:
-                        l = line_iter.readline()
-                    except UnicodeDecodeError as ex:
-                        if not error_encoding:
-                            error_encoding = True
-                            print("Error reading file as UTF-8:", mod_path, ex)
-                        return None
-
-                    if len(l) == 0:
-                        break
-                while l.rstrip():
-                    lines.append(l)
-                    try:
-                        l = line_iter.readline()
-                    except UnicodeDecodeError as ex:
-                        if not error_encoding:
-                            error_encoding = True
-                            print("Error reading file as UTF-8:", mod_path, ex)
-                        return None
-
-                data = "".join(lines)
-
-            else:
-                data = file_mod.read()
-        del file_mod
-
-        try:
-            ast_data = ast.parse(data, filename=mod_path)
-        except:
-            print("Syntax error 'ast.parse' can't read:", repr(mod_path))
-            import traceback
-            traceback.print_exc()
-            ast_data = None
-
-        body_info = None
-
-        if ast_data:
-            for body in ast_data.body:
-                if body.__class__ == ast.Assign:
-                    if len(body.targets) == 1:
-                        if getattr(body.targets[0], "id", "") == "bl_info":
-                            body_info = body
-                            break
-
-        if body_info:
-            try:
-                mod = ModuleType(mod_name)
-                mod.bl_info = ast.literal_eval(body.value)
-                mod.__file__ = mod_path
-                mod.__time__ = os.path.getmtime(mod_path)
-            except:
-                print("AST error parsing bl_info for:", repr(mod_path))
-                import traceback
-                traceback.print_exc()
-                return None
-
-            if force_support is not None:
-                mod.bl_info["support"] = force_support
-
-            return mod
-        else:
-            print(
-                "fake_module: addon missing 'bl_info' "
-                "gives bad performance!:",
-                repr(mod_path),
-            )
-            return None
-
     modules_stale = set(module_cache.keys())
 
     for path in path_list:
 
-        # force all contrib addons to be 'TESTING'
-        if path.endswith(("addons_contrib", )):
-            force_support = 'TESTING'
-        else:
-            force_support = None
+        # Force all user contributed add-ons to be 'TESTING'.
+        force_support = 'TESTING' if path.endswith("addons_contrib") else None
 
         for mod_name, mod_path in _bpy.path.module_names(path):
             modules_stale.discard(mod_name)
@@ -173,7 +185,7 @@ def modules_refresh(*, module_cache=addons_fake_modules):
                     mod = None
 
             if mod is None:
-                mod = fake_module(
+                mod = _fake_module(
                     mod_name,
                     mod_path,
                     force_support=force_support,
@@ -276,6 +288,7 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
 
     import os
     import sys
+    import importlib
     from bpy_restrict_state import RestrictBlend
 
     if handle_error is None:
@@ -295,7 +308,7 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
             # in most cases the caller should 'check()' first.
             try:
                 mod.unregister()
-            except Exception as ex:
+            except BaseException as ex:
                 print(
                     "Exception in module unregister():",
                     repr(getattr(mod, "__file__", module_name)),
@@ -307,12 +320,11 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
         mtime_orig = getattr(mod, "__time__", 0)
         mtime_new = os.path.getmtime(mod.__file__)
         if mtime_orig != mtime_new:
-            import importlib
             print("module changed on disk:", repr(mod.__file__), "reloading...")
 
             try:
                 importlib.reload(mod)
-            except Exception as ex:
+            except BaseException as ex:
                 handle_error(ex)
                 del sys.modules[module_name]
                 return None
@@ -332,14 +344,16 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
 
         # 1) try import
         try:
-            mod = __import__(module_name)
+            # Use instead of `__import__` so that sub-modules can eventually be supported.
+            # This is also documented to be the preferred way to import modules.
+            mod = importlib.import_module(module_name)
             if mod.__file__ is None:
                 # This can happen when the addon has been removed but there are
                 # residual `.pyc` files left behind.
                 raise ImportError(name=module_name)
             mod.__time__ = os.path.getmtime(mod.__file__)
             mod.__addon_enabled__ = False
-        except Exception as ex:
+        except BaseException as ex:
             # if the addon doesn't exist, don't print full traceback
             if type(ex) is ImportError and ex.name == module_name:
                 print("addon not loaded:", repr(module_name))
@@ -369,7 +383,7 @@ def enable(module_name, *, default_set=False, persistent=False, handle_error=Non
         # 3) Try run the modules register function.
         try:
             mod.register()
-        except Exception as ex:
+        except BaseException as ex:
             print(
                 "Exception in module register():",
                 getattr(mod, "__file__", module_name),
@@ -421,7 +435,7 @@ def disable(module_name, *, default_set=False, handle_error=None):
 
         try:
             mod.unregister()
-        except Exception as ex:
+        except BaseException as ex:
             mod_path = getattr(mod, "__file__", module_name)
             print("Exception in module unregister():", repr(mod_path))
             del mod_path

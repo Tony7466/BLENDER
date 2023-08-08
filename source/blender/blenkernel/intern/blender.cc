@@ -8,9 +8,9 @@
  * Application level startup/shutdown functionality.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -26,7 +26,7 @@
 #include "BKE_blender_user_menu.h"
 #include "BKE_blender_version.h" /* own include */
 #include "BKE_blendfile.h"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_cachefile.h"
 #include "BKE_callbacks.h"
 #include "BKE_global.h"
@@ -123,6 +123,26 @@ static void blender_version_init()
 const char *BKE_blender_version_string()
 {
   return blender_version_string;
+}
+
+void BKE_blender_version_blendfile_string_from_values(char *str_buff,
+                                                      const size_t str_buff_maxncpy,
+                                                      const short file_version,
+                                                      const short file_subversion)
+{
+  const short file_version_major = file_version / 100;
+  const short file_version_minor = file_version % 100;
+  if (file_subversion >= 0) {
+    BLI_snprintf(str_buff,
+                 str_buff_maxncpy,
+                 "%d.%d (sub %d)",
+                 file_version_major,
+                 file_version_minor,
+                 file_subversion);
+  }
+  else {
+    BLI_snprintf(str_buff, str_buff_maxncpy, "%d.%d", file_version_major, file_version_minor);
+  }
 }
 
 bool BKE_blender_version_is_alpha()
@@ -399,7 +419,7 @@ void BKE_blender_userdef_app_template_data_set_and_free(UserDef *userdef)
  * \{ */
 
 static struct AtExitData {
-  struct AtExitData *next;
+  AtExitData *next;
 
   void (*func)(void *user_data);
   void *user_data;
@@ -407,7 +427,7 @@ static struct AtExitData {
 
 void BKE_blender_atexit_register(void (*func)(void *user_data), void *user_data)
 {
-  struct AtExitData *ae = static_cast<AtExitData *>(malloc(sizeof(*ae)));
+  AtExitData *ae = static_cast<AtExitData *>(malloc(sizeof(*ae)));
   ae->next = g_atexit;
   ae->func = func;
   ae->user_data = user_data;
@@ -416,8 +436,8 @@ void BKE_blender_atexit_register(void (*func)(void *user_data), void *user_data)
 
 void BKE_blender_atexit_unregister(void (*func)(void *user_data), const void *user_data)
 {
-  struct AtExitData *ae = g_atexit;
-  struct AtExitData **ae_p = &g_atexit;
+  AtExitData *ae = g_atexit;
+  AtExitData **ae_p = &g_atexit;
 
   while (ae) {
     if ((ae->func == func) && (ae->user_data == user_data)) {
@@ -432,7 +452,7 @@ void BKE_blender_atexit_unregister(void (*func)(void *user_data), const void *us
 
 void BKE_blender_atexit()
 {
-  struct AtExitData *ae = g_atexit, *ae_next;
+  AtExitData *ae = g_atexit, *ae_next;
   while (ae) {
     ae_next = ae->next;
 

@@ -1213,7 +1213,7 @@ static void studiolight_add_files_from_datafolder(const int folder_id,
     return;
   }
 
-  struct direntry *dirs;
+  direntry *dirs;
   const uint dirs_num = BLI_filelist_dir_contents(folder, &dirs);
   int i;
   for (i = 0; i < dirs_num; i++) {
@@ -1472,8 +1472,7 @@ void BKE_studiolight_init()
 
 void BKE_studiolight_free()
 {
-  StudioLight *sl;
-  while ((sl = static_cast<StudioLight *>(BLI_pophead(&studiolights)))) {
+  while (StudioLight *sl = static_cast<StudioLight *>(BLI_pophead(&studiolights))) {
     studiolight_free(sl);
   }
 }
@@ -1636,7 +1635,7 @@ StudioLight *BKE_studiolight_create(const char *filepath,
 
 StudioLight *BKE_studiolight_studio_edit_get()
 {
-  static StudioLight sl = {0};
+  static StudioLight sl = {nullptr};
   sl.flag = STUDIOLIGHT_TYPE_STUDIO | STUDIOLIGHT_SPECULAR_HIGHLIGHT_PASS;
 
   memcpy(sl.light, U.light_param, sizeof(*sl.light) * 4);

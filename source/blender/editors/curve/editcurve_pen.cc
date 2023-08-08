@@ -19,12 +19,12 @@
 
 #include "DEG_depsgraph.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
-#include "ED_curve.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
-#include "ED_view3d.h"
+#include "ED_curve.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
+#include "ED_view3d.hh"
 
 #include "BKE_object.h"
 
@@ -33,7 +33,7 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#include "float.h"
+#include <cfloat>
 
 #define FOREACH_SELECTED_BEZT_BEGIN(bezt, nurbs) \
   LISTBASE_FOREACH (Nurb *, nu, nurbs) { \
@@ -1843,7 +1843,7 @@ void CURVE_OT_pen(wmOperatorType *ot)
   /* api callbacks */
   ot->invoke = curve_pen_invoke;
   ot->modal = curve_pen_modal;
-  ot->poll = ED_operator_view3d_active;
+  ot->poll = ED_operator_editcurve;
 
   /* flags */
   ot->flag = OPTYPE_UNDO;

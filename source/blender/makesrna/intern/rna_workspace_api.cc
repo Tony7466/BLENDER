@@ -6,10 +6,10 @@
  * \ingroup RNA
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
 
 #include "BLI_utildefines.h"
 
@@ -25,9 +25,9 @@
 
 #ifdef RNA_RUNTIME
 
-#  include "BKE_paint.h"
+#  include "BKE_paint.hh"
 
-#  include "ED_screen.h"
+#  include "ED_screen.hh"
 
 static void rna_WorkSpaceTool_setup(ID *id,
                                     bToolRef *tref,

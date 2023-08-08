@@ -86,8 +86,8 @@
 #include "SEQ_render.h"
 
 #include "GPU_context.h"
-#include "WM_api.h"
-#include "wm_window.h"
+#include "WM_api.hh"
+#include "wm_window.hh"
 
 #ifdef WITH_FREESTYLE
 #  include "FRS_freestyle.h"
@@ -170,6 +170,12 @@ static bool do_write_image_or_movie(Render *re,
 static void result_nothing(void * /*arg*/, RenderResult * /*rr*/) {}
 static void result_rcti_nothing(void * /*arg*/, RenderResult * /*rr*/, rcti * /*rect*/) {}
 static void current_scene_nothing(void * /*arg*/, Scene * /*scene*/) {}
+static bool prepare_viewlayer_nothing(void * /*arg*/,
+                                      ViewLayer * /*vl*/,
+                                      Depsgraph * /*depsgraph*/)
+{
+  return true;
+}
 static void stats_nothing(void * /*arg*/, RenderStats * /*rs*/) {}
 static void float_nothing(void * /*arg*/, float /*val*/) {}
 static bool default_break(void * /*arg*/)
@@ -548,6 +554,7 @@ void RE_InitRenderCB(Render *re)
   re->display_clear = result_nothing;
   re->display_update = result_rcti_nothing;
   re->current_scene_update = current_scene_nothing;
+  re->prepare_viewlayer = prepare_viewlayer_nothing;
   re->progress = float_nothing;
   re->test_break = default_break;
   if (G.background) {
@@ -914,6 +921,14 @@ void RE_test_break_cb(Render *re, void *handle, bool (*f)(void *handle))
 {
   re->test_break = f;
   re->tbh = handle;
+}
+
+void RE_prepare_viewlayer_cb(Render *re,
+                             void *handle,
+                             bool (*f)(void *handle, ViewLayer *vl, Depsgraph *depsgraph))
+{
+  re->prepare_viewlayer = f;
+  re->prepare_vl_handle = handle;
 }
 
 /** \} */
@@ -1820,21 +1835,6 @@ static void render_pipeline_free(Render *re)
   /* Destroy the opengl context in the correct thread. */
   RE_blender_gpu_context_free(re);
   RE_system_gpu_context_free(re);
-
-  /* In the case the engine did not mark tiles as finished (un-highlight, which could happen in
-   * the case of cancelled render) ensure the storage is empty. */
-  if (re->highlighted_tiles != nullptr) {
-    BLI_mutex_lock(&re->highlighted_tiles_mutex);
-
-    /* Rendering is supposed to be finished here, so no new tiles are expected to be written.
-     * Only make it so possible read-only access to the highlighted tiles is thread-safe. */
-    BLI_assert(re->highlighted_tiles);
-
-    BLI_gset_free(re->highlighted_tiles, MEM_freeN);
-    re->highlighted_tiles = nullptr;
-
-    BLI_mutex_unlock(&re->highlighted_tiles_mutex);
-  }
 }
 
 void RE_RenderFrame(Render *re,

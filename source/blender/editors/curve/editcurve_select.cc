@@ -24,14 +24,14 @@
 #include "BKE_layer.h"
 #include "BKE_report.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_curve.h"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
-#include "ED_view3d.h"
+#include "ED_curve.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
+#include "ED_view3d.hh"
 
 #include "curve_intern.h"
 
@@ -212,9 +212,8 @@ bool ED_curve_nurb_deselect_all(const Nurb *nu)
 int ED_curve_select_count(const View3D *v3d, const EditNurb *editnurb)
 {
   int sel = 0;
-  Nurb *nu;
 
-  for (nu = static_cast<Nurb *>(editnurb->nurbs.first); nu; nu = nu->next) {
+  LISTBASE_FOREACH (Nurb *, nu, &editnurb->nurbs) {
     sel += ED_curve_nurb_select_count(v3d, nu);
   }
 
@@ -744,7 +743,7 @@ void CURVE_OT_select_linked_pick(wmOperatorType *ot)
   /* properties */
   RNA_def_boolean(ot->srna,
                   "deselect",
-                  0,
+                  false,
                   "Deselect",
                   "Deselect linked control points rather than selecting them");
 }
@@ -833,7 +832,7 @@ static int select_next_exec(bContext *C, wmOperator * /*op*/)
     Object *obedit = objects[ob_index];
 
     ListBase *editnurb = object_editcurve_get(obedit);
-    select_adjacent_cp(editnurb, 1, 0, SELECT);
+    select_adjacent_cp(editnurb, 1, false, SELECT);
 
     DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
@@ -875,7 +874,7 @@ static int select_previous_exec(bContext *C, wmOperator * /*op*/)
     Object *obedit = objects[ob_index];
 
     ListBase *editnurb = object_editcurve_get(obedit);
-    select_adjacent_cp(editnurb, -1, 0, SELECT);
+    select_adjacent_cp(editnurb, -1, false, SELECT);
 
     DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
@@ -975,8 +974,8 @@ static void curve_select_more(Object *obedit)
     }
   }
   else {
-    select_adjacent_cp(editnurb, 1, 0, SELECT);
-    select_adjacent_cp(editnurb, -1, 0, SELECT);
+    select_adjacent_cp(editnurb, 1, false, SELECT);
+    select_adjacent_cp(editnurb, -1, false, SELECT);
   }
 }
 
@@ -1356,7 +1355,7 @@ void CURVE_OT_select_random(wmOperatorType *ot)
 /** \name Select Every Nth Number of Point Operator
  * \{ */
 
-static void select_nth_bezt(Nurb *nu, BezTriple *bezt, const struct CheckerIntervalParams *params)
+static void select_nth_bezt(Nurb *nu, BezTriple *bezt, const CheckerIntervalParams *params)
 {
   int a, start;
 
@@ -1374,7 +1373,7 @@ static void select_nth_bezt(Nurb *nu, BezTriple *bezt, const struct CheckerInter
   }
 }
 
-static void select_nth_bp(Nurb *nu, BPoint *bp, const struct CheckerIntervalParams *params)
+static void select_nth_bp(Nurb *nu, BPoint *bp, const CheckerIntervalParams *params)
 {
   int a, startrow, startpnt;
   int row, pnt;
@@ -1403,7 +1402,7 @@ static void select_nth_bp(Nurb *nu, BPoint *bp, const struct CheckerIntervalPara
   }
 }
 
-static bool ed_curve_select_nth(Curve *cu, const struct CheckerIntervalParams *params)
+static bool ed_curve_select_nth(Curve *cu, const CheckerIntervalParams *params)
 {
   Nurb *nu = nullptr;
   void *vert = nullptr;
@@ -1430,7 +1429,7 @@ static int select_nth_exec(bContext *C, wmOperator *op)
   View3D *v3d = CTX_wm_view3d(C);
   bool changed = false;
 
-  struct CheckerIntervalParams op_params;
+  CheckerIntervalParams op_params;
   WM_operator_properties_checker_interval_from_op(op, &op_params);
 
   uint objects_len = 0;
@@ -1612,7 +1611,7 @@ static bool curve_nurb_select_similar_type(Object *ob,
                                            const float thresh,
                                            const int compare)
 {
-  const float thresh_cos = cosf(thresh * (float)M_PI_2);
+  const float thresh_cos = cosf(thresh * float(M_PI_2));
   bool changed = false;
 
   if (nu->type == CU_BEZIER) {

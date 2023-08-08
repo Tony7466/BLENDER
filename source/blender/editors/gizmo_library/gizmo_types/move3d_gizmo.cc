@@ -32,13 +32,13 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_gizmo_library.h"
-#include "ED_screen.h"
-#include "ED_transform_snap_object_context.h"
-#include "ED_view3d.h"
+#include "ED_gizmo_library.hh"
+#include "ED_screen.hh"
+#include "ED_transform_snap_object_context.hh"
+#include "ED_view3d.hh"
 
 /* own includes */
 #include "../gizmo_geometry.h"
@@ -470,7 +470,7 @@ static void GIZMO_GT_move_3d(wmGizmoType *gzt)
   WM_gizmotype_target_property_def(gzt, "offset", PROP_FLOAT, 3);
 }
 
-void ED_gizmotypes_move_3d(void)
+void ED_gizmotypes_move_3d()
 {
   WM_gizmotype_append(GIZMO_GT_move_3d);
 }

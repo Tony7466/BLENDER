@@ -11,7 +11,7 @@
 
 #include "CLG_log.h"
 
-#include <string.h>
+#include <cstring>
 
 #include "BLI_blenlib.h"
 #include "BLI_iterator.h"
@@ -393,7 +393,6 @@ void BKE_collection_compat_blend_read_expand(BlendExpander *expander, SceneColle
 
 void BKE_collection_blend_read_expand(BlendExpander *expander, Collection *collection)
 {
-  BLI_assert(collection->runtime.gobject_hash == nullptr);
   LISTBASE_FOREACH (CollectionObject *, cob, &collection->gobject) {
     BLO_expand(expander, cob->ob);
   }
@@ -1938,7 +1937,7 @@ void BKE_main_collections_parent_relations_rebuild(Main *bmain)
   /* Scene's master collections will be 'root' parent of most of our collections, so start with
    * them. */
   LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-    /* This function can be called from readfile.c, when this pointer is not guaranteed to be
+    /* This function can be called from `readfile.cc`, when this pointer is not guaranteed to be
      * nullptr.
      */
     if (scene->master_collection != nullptr) {
@@ -1976,9 +1975,7 @@ bool BKE_collection_validate(Collection *collection)
 
   /* Check that children have each collection used/referenced only once. */
   GSet *processed_collections = BLI_gset_ptr_new(__func__);
-  for (CollectionChild *child = static_cast<CollectionChild *>(collection->children.first); child;
-       child = child->next)
-  {
+  LISTBASE_FOREACH (CollectionChild *, child, &collection->children) {
     void **r_key;
     if (BLI_gset_ensure_p_ex(processed_collections, child->collection, &r_key)) {
       is_ok = false;
@@ -1990,11 +1987,7 @@ bool BKE_collection_validate(Collection *collection)
 
   /* Check that parents have each collection used/referenced only once. */
   BLI_gset_clear(processed_collections, nullptr);
-  for (CollectionParent *parent =
-           static_cast<CollectionParent *>(collection->runtime.parents.first);
-       parent;
-       parent = parent->next)
-  {
+  LISTBASE_FOREACH (CollectionParent *, parent, &collection->runtime.parents) {
     void **r_key;
     if (BLI_gset_ensure_p_ex(processed_collections, parent->collection, &r_key)) {
       is_ok = false;

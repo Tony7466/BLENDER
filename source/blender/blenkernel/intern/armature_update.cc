@@ -34,7 +34,7 @@
 
 /* Temporary evaluation tree data used for Spline IK */
 struct tSplineIK_Tree {
-  struct tSplineIK_Tree *next, *prev;
+  tSplineIK_Tree *next, *prev;
 
   int type; /* type of IK that this serves (CONSTRAINT_TYPE_KINEMATIC or ..._SPLINEIK) */
 
@@ -182,11 +182,9 @@ static void splineik_init_tree_from_pchan(Scene * /*scene*/,
 /* Tag which bones are members of Spline IK chains. */
 static void splineik_init_tree(Scene *scene, Object *ob, float /*ctime*/)
 {
-  bPoseChannel *pchan;
-
   /* Find the tips of Spline IK chains,
    * which are simply the bones which have been tagged as such. */
-  for (pchan = static_cast<bPoseChannel *>(ob->pose->chanbase.first); pchan; pchan = pchan->next) {
+  LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
     if (pchan->constflag & PCHAN_HAS_SPLINEIK) {
       splineik_init_tree_from_pchan(scene, ob, pchan);
     }
@@ -750,7 +748,7 @@ static void splineik_execute_tree(
     /* Firstly, calculate the bone matrix the standard way,
      * since this is needed for roll control. */
     for (int i = tree->chainlen - 1; i >= 0; i--) {
-      BKE_pose_where_is_bone(depsgraph, scene, ob, tree->chain[i], ctime, 1);
+      BKE_pose_where_is_bone(depsgraph, scene, ob, tree->chain[i], ctime, true);
     }
 
     /* After that, evaluate the actual Spline IK, unless there are missing dependencies. */
@@ -891,7 +889,7 @@ void BKE_pose_eval_bone(Depsgraph *depsgraph, Scene *scene, Object *object, int 
         if ((pchan->flag & POSE_DONE) == 0) {
           /* TODO(sergey): Use time source node for time. */
           float ctime = BKE_scene_ctime_get(scene); /* not accurate... */
-          BKE_pose_where_is_bone(depsgraph, scene, object, pchan, ctime, 1);
+          BKE_pose_where_is_bone(depsgraph, scene, object, pchan, ctime, true);
         }
       }
     }
@@ -919,7 +917,7 @@ void BKE_pose_constraints_evaluate(Depsgraph *depsgraph,
   else {
     if ((pchan->flag & POSE_DONE) == 0) {
       float ctime = BKE_scene_ctime_get(scene); /* not accurate... */
-      BKE_pose_where_is_bone(depsgraph, scene, object, pchan, ctime, 1);
+      BKE_pose_where_is_bone(depsgraph, scene, object, pchan, ctime, true);
     }
   }
 }

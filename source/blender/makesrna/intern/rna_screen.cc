@@ -6,8 +6,8 @@
  * \ingroup RNA
  */
 
-#include <stddef.h>
-#include <stdlib.h>
+#include <cstddef>
+#include <cstdlib>
 
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
@@ -18,16 +18,18 @@
 #include "DNA_screen_types.h"
 #include "DNA_workspace_types.h"
 
-#include "ED_info.h"
+#include "ED_info.hh"
 
 const EnumPropertyItem rna_enum_region_type_items[] = {
     {RGN_TYPE_WINDOW, "WINDOW", 0, "Window", ""},
     {RGN_TYPE_HEADER, "HEADER", 0, "Header", ""},
     {RGN_TYPE_CHANNELS, "CHANNELS", 0, "Channels", ""},
     {RGN_TYPE_TEMPORARY, "TEMPORARY", 0, "Temporary", ""},
-    {RGN_TYPE_UI, "UI", 0, "UI", ""},
+    {RGN_TYPE_UI, "UI", 0, "Sidebar", ""},
     {RGN_TYPE_TOOLS, "TOOLS", 0, "Tools", ""},
     {RGN_TYPE_TOOL_PROPS, "TOOL_PROPS", 0, "Tool Properties", ""},
+    {RGN_TYPE_ASSET_SHELF, "ASSET_SHELF", 0, "Asset Shelf", ""},
+    {RGN_TYPE_ASSET_SHELF_HEADER, "ASSET_SHELF_HEADER", 0, "Asset Shelf Header", ""},
     {RGN_TYPE_PREVIEW, "PREVIEW", 0, "Preview", ""},
     {RGN_TYPE_HUD, "HUD", 0, "Floating Region", ""},
     {RGN_TYPE_NAV_BAR, "NAVIGATION_BAR", 0, "Navigation Bar", ""},
@@ -38,10 +40,10 @@ const EnumPropertyItem rna_enum_region_type_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #ifdef RNA_RUNTIME
 
@@ -53,7 +55,7 @@ const EnumPropertyItem rna_enum_region_type_items[] = {
 
 #  include "DEG_depsgraph.h"
 
-#  include "UI_view2d.h"
+#  include "UI_view2d.hh"
 
 #  ifdef WITH_PYTHON
 #    include "BPY_extern.h"
@@ -457,7 +459,7 @@ static void rna_def_view2d_api(StructRNA *srna)
   parm = RNA_def_float(
       func, "y", 0.0f, -FLT_MAX, FLT_MAX, "y", "2D View y coordinate", -10000.0f, 10000.0f);
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  RNA_def_boolean(func, "clip", 1, "Clip", "Clip coordinates to the visible region");
+  RNA_def_boolean(func, "clip", true, "Clip", "Clip coordinates to the visible region");
   parm = RNA_def_int_array(func,
                            "result",
                            2,

@@ -30,12 +30,12 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_gizmo_library.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_gizmo_library.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
 /* own includes */
 #include "../gizmo_library_intern.h"
@@ -47,7 +47,7 @@ static void gizmo_calc_matrix_final_no_offset(const wmGizmo *gz,
                                               bool use_space)
 {
   float mat_identity[4][4];
-  struct WM_GizmoMatrixParams params = {nullptr};
+  WM_GizmoMatrixParams params = {nullptr};
   unit_m4(mat_identity);
   if (use_space == false) {
     params.matrix_basis = mat_identity;
@@ -679,7 +679,7 @@ static void GIZMO_GT_cage_3d(wmGizmoType *gzt)
   WM_gizmotype_target_property_def(gzt, "matrix", PROP_FLOAT, 16);
 }
 
-void ED_gizmotypes_cage_3d(void)
+void ED_gizmotypes_cage_3d()
 {
   WM_gizmotype_append(GIZMO_GT_cage_3d);
 }

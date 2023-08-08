@@ -6,7 +6,7 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "DNA_action_types.h"
 #include "DNA_anim_types.h"
@@ -26,7 +26,7 @@
 
 #include "rna_internal.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 #ifdef RNA_RUNTIME
 
@@ -36,9 +36,9 @@
 
 #  include "DEG_depsgraph.h"
 
-#  include "ED_keyframing.h"
+#  include "ED_keyframing.hh"
 
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
 static void rna_ActionGroup_channels_next(CollectionPropertyIterator *iter)
 {

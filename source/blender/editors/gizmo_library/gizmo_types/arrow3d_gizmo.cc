@@ -36,20 +36,20 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_gizmo_library.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_gizmo_library.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 /* own includes */
 #include "../gizmo_geometry.h"
 #include "../gizmo_library_intern.h"
 
-/* to use custom arrows exported to geom_arrow_gizmo.c */
+// /** To use custom arrows exported to `geom_arrow_gizmo.cc`. */
 // #define USE_GIZMO_CUSTOM_ARROWS
 
 /* Margin to add when selecting the arrow. */
@@ -269,7 +269,7 @@ static void gizmo_arrow_draw(const bContext * /*C*/, wmGizmo *gz)
 static int gizmo_arrow_test_select(bContext * /*C*/, wmGizmo *gz, const int mval[2])
 {
   /* This following values are based on manual inspection of `verts[]` defined in
-   * geom_arrow_gizmo.c */
+   * `geom_arrow_gizmo.cc`. */
   const float head_center_z = (0.974306f + 1.268098f) / 2;
   const float head_geo_x = 0.051304f;
   const float stem_geo_x = 0.012320f;
@@ -336,7 +336,7 @@ static int gizmo_arrow_modal(bContext *C,
   float offset[3];
   float facdir = 1.0f;
 
-  /* (src, dst) */
+  /* A pair: (source, destination). */
   struct {
     blender::float2 mval;
     float ray_origin[3], ray_direction[3];
@@ -580,7 +580,7 @@ static void GIZMO_GT_arrow_3d(wmGizmoType *gzt)
   WM_gizmotype_target_property_def(gzt, "offset", PROP_FLOAT, 1);
 }
 
-void ED_gizmotypes_arrow_3d(void)
+void ED_gizmotypes_arrow_3d()
 {
   WM_gizmotype_append(GIZMO_GT_arrow_3d);
 }

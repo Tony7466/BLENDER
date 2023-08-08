@@ -12,9 +12,9 @@ if(HAVE_MALLOC_STATS_H)
   add_definitions(-DHAVE_MALLOC_STATS_H)
 endif()
 
-# files rna_access.cc rna_define.c makesrna.c intentionally excluded.
+# files rna_access.cc rna_define.cc makesrna.cc intentionally excluded.
 set(DEFSRC
-  rna_ID.c
+  rna_ID.cc
   rna_action.cc
   rna_animation.cc
   rna_animviz.cc
@@ -64,8 +64,8 @@ set(DEFSRC
   rna_pointcloud.cc
   rna_pose.cc
   rna_render.cc
-  rna_rigidbody.c
-  rna_rna.c
+  rna_rigidbody.cc
+  rna_rna.cc
   rna_scene.cc
   rna_screen.cc
   rna_sculpt_paint.cc
@@ -74,7 +74,7 @@ set(DEFSRC
   rna_sound.cc
   rna_space.cc
   rna_speaker.cc
-  rna_test.c
+  rna_test.cc
   rna_text.cc
   rna_texture.cc
   rna_timeline.cc
@@ -89,6 +89,13 @@ set(DEFSRC
   rna_world.cc
   rna_xr.cc
 )
+
+if(WITH_USD)
+  list(APPEND DEFSRC
+    rna_usd.cc
+  )
+  add_definitions(-DWITH_USD)
+endif()
 
 if(WITH_EXPERIMENTAL_FEATURES)
   add_definitions(-DWITH_SIMULATION_DATABLOCK)
@@ -198,8 +205,8 @@ set(SRC_RNA_INC
 )
 
 set(SRC
-  makesrna.c
-  rna_define.c
+  makesrna.cc
+  rna_define.cc
   ${DEFSRC}
   ${APISRC}
   ../../../../intern/clog/clog.c
@@ -229,6 +236,7 @@ set(INC
   ../../gpu
   ../../ikplugin
   ../../imbuf
+  ../../io/usd
   ../../modifiers
   ../../nodes
   ../../sequencer
@@ -490,4 +498,3 @@ set(LIB
 )
 
 blender_add_lib(bf_rna "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
-

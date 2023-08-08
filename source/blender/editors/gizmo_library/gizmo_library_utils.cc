@@ -21,11 +21,11 @@
 
 #include "RNA_access.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
 #include "CLG_log.h"
 
@@ -169,7 +169,7 @@ bool gizmo_window_project_2d(
   float mat[4][4], imat[4][4];
   {
     float mat_identity[4][4];
-    struct WM_GizmoMatrixParams params = {nullptr};
+    WM_GizmoMatrixParams params = {nullptr};
     if (use_offset == false) {
       unit_m4(mat_identity);
       params.matrix_offset = mat_identity;
@@ -214,7 +214,7 @@ bool gizmo_window_project_3d(
   float mat[4][4], imat[4][4];
   {
     float mat_identity[4][4];
-    struct WM_GizmoMatrixParams params = {nullptr};
+    WM_GizmoMatrixParams params = {nullptr};
     if (use_offset == false) {
       unit_m4(mat_identity);
       params.matrix_offset = mat_identity;
