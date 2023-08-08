@@ -1136,7 +1136,7 @@ int transformEvent(TransInfo *t, const wmEvent *event)
       case TFM_MODAL_PROPSIZE:
         /* MOUSEPAN usage... */
         if (t->flag & T_PROP_EDIT) {
-          float fac = 1.0f + 0.005f * WM_event_absolute_delta_y(event);
+          float fac = 1.0f + 0.005f / UI_SCALE_FAC * WM_event_absolute_delta_y(event);
           t->prop_size *= fac;
           if (t->spacetype == SPACE_VIEW3D && t->persp != RV3D_ORTHO) {
             t->prop_size = max_ff(min_ff(t->prop_size, ((View3D *)t->view)->clip_end),
