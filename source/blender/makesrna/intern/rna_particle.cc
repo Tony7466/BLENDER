@@ -26,7 +26,7 @@
 #include "RNA_enum_types.h"
 
 #include "BKE_mesh.hh"
-#include "BKE_mesh_legacy_convert.h"
+#include "BKE_mesh_legacy_convert.hh"
 
 #include "BLI_listbase.h"
 
@@ -34,8 +34,8 @@
 
 #include "rna_internal.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #ifdef RNA_RUNTIME
 static const EnumPropertyItem part_from_items[] = {
