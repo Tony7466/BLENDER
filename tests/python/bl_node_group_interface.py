@@ -86,9 +86,9 @@ class NodeGroupInterfaceTests:
     def make_socket_value_comparator(socket_type):
         def cmp_default(test, value, expected):
             test.assertEqual(value, expected, f"Value {value} does not match expected value {expected}")
-
         def cmp_array(test, value, expected):
             test.assertSequenceEqual(value[:], expected[:], f"Value {value} does not match expected value {expected}")
+
         if (socket_type in {"NodeSocketBool",
                             "NodeSocketFloat",
                             "NodeSocketImage",
@@ -149,6 +149,10 @@ class NodeGroupInterfaceTests:
             ("Input/Output 0", socket_type),
         ])
 
+    def do_test_user_count(self, value, expected_users):
+        if (isinstance(value, bpy.types.ID)):
+            self.assertEqual(value.users, expected_users, f"Socket default value has user count {value.users}, expected {expected_users}")
+
     def do_test_socket_type(self, socket_type):
         default_value = self.make_default_socket_value(socket_type)
         compare_value = self.make_socket_value_comparator(socket_type)
@@ -168,6 +172,21 @@ class NodeGroupInterfaceTests:
         group_node = self.make_instance(tree)
         if compare_value:
             compare_value(self, group_node.inputs[0].default_value, in0.default_value)
+
+        # Test ID user count after assigning.
+        if (hasattr(in0, "default_value")):
+            # The default value is stored in both the interface and node, it should have 2 users now.
+            self.do_test_user_count(in0.default_value, 2)
+
+        # Copy sockets
+        in1 = tree.interface.copy(in0)
+        out1 = tree.interface.copy(out0)
+        self.assertIsNotNone(in1, "Could not copy socket")
+        self.assertIsNotNone(out1, "Could not copy socket")
+        # User count on default values should increment by 2 after copy,
+        # one user for the interface and one for the group node instance.
+        if (hasattr(in1, "default_value")):
+            self.do_test_user_count(in1.default_value, 4)
 
     # Classic outputs..inputs socket layout
     def do_test_items_order_classic(self, socket_type):
