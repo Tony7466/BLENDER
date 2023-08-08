@@ -1023,7 +1023,7 @@ bool USDMeshReader::get_local_usd_xform(const float time,
 
   if (!import_params_.import_skeletons || prim_.IsInstanceProxy()) {
     /* Use the standard transform computation, since we are ignoring
-     * skinning data. Note that applying theUsdSkelBindingAPI to an
+     * skinning data. Note that applying the UsdSkelBinding API to an
      * instance proxy generates a USD error. */
     return USDXformReader::get_local_usd_xform(time, r_xform, r_is_constant);
   }
@@ -1041,8 +1041,10 @@ bool USDMeshReader::get_local_usd_xform(const float time,
         return true;
       }
       else {
-        std::cout << "WARNING: couldn't compute geom bind transform for " << prim_.GetPath()
-                  << std::endl;
+        WM_reportf(RPT_WARNING,
+                   "%s: Couldn't compute geom bind transform for %s",
+                   __func__,
+                   prim_.GetPath().GetAsString().c_str());
       }
     }
   }

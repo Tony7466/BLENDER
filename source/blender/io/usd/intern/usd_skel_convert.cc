@@ -47,11 +47,11 @@
 namespace {
 
 /* Utility: create curve at the given array index. */
-FCurve *create_fcurve(int array_index, const char *rna_path)
+FCurve *create_fcurve(int array_index, const std::string &rna_path)
 {
   FCurve *fcu = BKE_fcurve_create();
   fcu->flag = (FCURVE_VISIBLE | FCURVE_SELECTED);
-  fcu->rna_path = BLI_strdupn(rna_path, strlen(rna_path));
+  fcu->rna_path = BLI_strdup(rna_path.c_str());
   fcu->array_index = array_index;
   return fcu;
 }
@@ -59,7 +59,7 @@ FCurve *create_fcurve(int array_index, const char *rna_path)
 /* Utility: create curve at the given array index and
  * adds it as a channel to a group. */
 FCurve *create_chan_fcurve(
-    bAction *act, bActionGroup *grp, int array_index, const char *rna_path, int totvert)
+    bAction *act, bActionGroup *grp, int array_index, const std::string &rna_path, int totvert)
 {
   FCurve *fcu = create_fcurve(array_index, rna_path);
   fcu->totvert = totvert;
@@ -78,7 +78,6 @@ void add_bezt(FCurve *fcu, float frame, float value, eBezTriple_Interpolation ip
   bez.f1 = bez.f2 = bez.f3 = SELECT;
   bez.h1 = bez.h2 = HD_AUTO;
   insert_bezt_fcurve(fcu, &bez, INSERTKEY_NOFLAGS);
-  BKE_fcurve_handles_recalc(fcu);
 }
 
 /**
@@ -156,22 +155,22 @@ void import_skeleton_curves(Main *bmain,
 
     /* Add translation curves. */
     std::string rna_path = "pose.bones[\"" + it->second + "\"].location";
-    loc_curves.push_back(create_chan_fcurve(act, grp, 0, rna_path.c_str(), num_samples));
-    loc_curves.push_back(create_chan_fcurve(act, grp, 1, rna_path.c_str(), num_samples));
-    loc_curves.push_back(create_chan_fcurve(act, grp, 2, rna_path.c_str(), num_samples));
+    loc_curves.push_back(create_chan_fcurve(act, grp, 0, rna_path, num_samples));
+    loc_curves.push_back(create_chan_fcurve(act, grp, 1, rna_path, num_samples));
+    loc_curves.push_back(create_chan_fcurve(act, grp, 2, rna_path, num_samples));
 
     /* Add rotation curves. */
     rna_path = "pose.bones[\"" + it->second + "\"].rotation_quaternion";
-    rot_curves.push_back(create_chan_fcurve(act, grp, 0, rna_path.c_str(), num_samples));
-    rot_curves.push_back(create_chan_fcurve(act, grp, 1, rna_path.c_str(), num_samples));
-    rot_curves.push_back(create_chan_fcurve(act, grp, 2, rna_path.c_str(), num_samples));
-    rot_curves.push_back(create_chan_fcurve(act, grp, 3, rna_path.c_str(), num_samples));
+    rot_curves.push_back(create_chan_fcurve(act, grp, 0, rna_path, num_samples));
+    rot_curves.push_back(create_chan_fcurve(act, grp, 1, rna_path, num_samples));
+    rot_curves.push_back(create_chan_fcurve(act, grp, 2, rna_path, num_samples));
+    rot_curves.push_back(create_chan_fcurve(act, grp, 3, rna_path, num_samples));
 
     /* Add scale curves. */
     rna_path = "pose.bones[\"" + it->second + "\"].scale";
-    scale_curves.push_back(create_chan_fcurve(act, grp, 0, rna_path.c_str(), num_samples));
-    scale_curves.push_back(create_chan_fcurve(act, grp, 1, rna_path.c_str(), num_samples));
-    scale_curves.push_back(create_chan_fcurve(act, grp, 2, rna_path.c_str(), num_samples));
+    scale_curves.push_back(create_chan_fcurve(act, grp, 0, rna_path, num_samples));
+    scale_curves.push_back(create_chan_fcurve(act, grp, 1, rna_path, num_samples));
+    scale_curves.push_back(create_chan_fcurve(act, grp, 2, rna_path, num_samples));
   }
 
   /* Sanity checks: make sure we have a curve entry for each joint. */
@@ -237,8 +236,7 @@ void import_skeleton_curves(Main *bmain,
   }
 
   /* Set the curve samples. */
-  for (double frame : samples) {
-
+  for (const double frame : samples) {
     pxr::VtMatrix4dArray joint_local_xforms;
     if (!skel_query.ComputeJointLocalTransforms(&joint_local_xforms, frame)) {
       std::cout << "WARNING: couldn't compute joint local transforms on frame " << frame
@@ -253,7 +251,6 @@ void import_skeleton_curves(Main *bmain,
     }
 
     for (int i = 0; i < joint_local_xforms.size(); ++i) {
-
       pxr::GfMatrix4d bone_xform = joint_local_xforms[i] * joint_local_bind_xforms[i].GetInverse();
 
       pxr::GfVec3f t;
@@ -307,6 +304,12 @@ void import_skeleton_curves(Main *bmain,
       }
     }
   }
+
+  /* Recalculate curve handles. */
+  auto recalc_handles = [](FCurve *fcu) { BKE_fcurve_handles_recalc(fcu); };
+  std::for_each(loc_curves.begin(), loc_curves.end(), recalc_handles);
+  std::for_each(rot_curves.begin(), rot_curves.end(), recalc_handles);
+  std::for_each(scale_curves.begin(), scale_curves.end(), recalc_handles);
 }
 
 }  // End anonymous namespace.
@@ -406,7 +409,6 @@ void import_blendshapes(Main *bmain,
   std::set<pxr::TfToken> shapekey_names;
 
   for (int i = 0; i < targets.size(); ++i) {
-
     /* Get USD path to blend shape. */
     const pxr::SdfPath &path = targets[i];
     pxr::UsdSkelBlendShape blendshape(stage->GetPrimAtPath(path));
@@ -559,7 +561,6 @@ void import_blendshapes(Main *bmain,
   std::vector<FCurve *> curves;
 
   for (auto blendshape_name : blendshapes) {
-
     if (shapekey_names.find(blendshape_name) == shapekey_names.end()) {
       /* We didn't create a shapekey fo this blendshape, so we don't
        * create a curve and insert a null placeholder in the curve array. */
@@ -569,7 +570,7 @@ void import_blendshapes(Main *bmain,
 
     /* Create the curve for this shape key. */
     std::string rna_path = "key_blocks[\"" + blendshape_name.GetString() + "\"].value";
-    FCurve *fcu = create_fcurve(0, rna_path.c_str());
+    FCurve *fcu = create_fcurve(0, rna_path);
     fcu->totvert = num_samples;
     curves.push_back(fcu);
     BLI_addtail(&act->curves, fcu);
@@ -596,6 +597,10 @@ void import_blendshapes(Main *bmain,
       }
     }
   }
+
+  /* Recalculate curve handles. */
+  auto recalc_handles = [](FCurve *fcu) { BKE_fcurve_handles_recalc(fcu); };
+  std::for_each(curves.begin(), curves.end(), recalc_handles);
 }
 
 void import_skeleton(Main *bmain,
@@ -685,13 +690,13 @@ void import_skeleton(Main *bmain,
     return;
   }
 
-  /* Check if any bone natrices have negative determinants,
+  /* Check if any bone matrices have negative determinants,
    * indicating negative scales, possibly due to mirroring
    * operations.  Such matrices can't be propery converted
    * to Blender's axis/roll bone representation (see
-   * https://developer.blender.org/T82930).  If we detect
-   * such matrices, we will flag an error and won't try
-   * to import the animation, since the rotations would
+   * https://projects.blender.org/blender/blender/issues/82930).
+   * If we detect such matrices, we will flag an error and won't
+   * try to import the animation, since the rotations would
    * be incorrect in such cases.  Unfortunately, the Pixar
    * UsdSkel examples of the "HumanFemale" suffer from
    * this issue. */
