@@ -189,8 +189,8 @@ namespace blender::bke::node_interface {
 inline bNodeTreeInterfaceSocket *add_interface_socket_from_node(bNodeTree &ntree,
                                                                 const bNode &from_node,
                                                                 const bNodeSocket &from_sock,
-                                                                const StringRef socket_type,
-                                                                const StringRef name)
+                                                                const StringRefNull socket_type,
+                                                                const StringRefNull name)
 {
   eNodeTreeInterfaceSocketFlag flag = eNodeTreeInterfaceSocketFlag(0);
   SET_FLAG_FROM_TEST(flag, from_sock.in_out & SOCK_IN, NODE_INTERFACE_SOCKET_INPUT);
@@ -211,7 +211,7 @@ inline bNodeTreeInterfaceSocket *add_interface_socket_from_node(bNodeTree &ntree
 inline bNodeTreeInterfaceSocket *add_interface_socket_from_node(bNodeTree &ntree,
                                                                 const bNode &from_node,
                                                                 const bNodeSocket &from_sock,
-                                                                const StringRef socket_type)
+                                                                const StringRefNull socket_type)
 {
   return add_interface_socket_from_node(ntree, from_node, from_sock, socket_type, from_sock.name);
 }
