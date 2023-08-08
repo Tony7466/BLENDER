@@ -47,6 +47,8 @@
 
 #include "DNA_material_types.h"
 
+#include "WM_api.hh"
+
 namespace blender::io::usd {
 
 USDStageReader::USDStageReader(pxr::UsdStageRefPtr stage,
@@ -333,7 +335,9 @@ void USDStageReader::collect_readers(Main *bmain)
 
 void USDStageReader::process_armature_modifiers() const
 {
-  /* Create armature object map. */
+  /* Iteratate over the skeleton readers to create the
+   * armature object map, which maps a USD skeleton prim
+   * path to the corresponding armature object. */
   std::map<std::string, Object *> usd_path_to_armature;
   for (const USDPrimReader *reader : readers_) {
     if (dynamic_cast<const USDSkeletonReader *>(reader) && reader->object()) {
@@ -341,27 +345,29 @@ void USDStageReader::process_armature_modifiers() const
     }
   }
 
-  /* Set armature objects on armature modifiers. */
+  /* Iterate over the mesh readers and set armature objects on armature modifiers. */
   for (const USDPrimReader *reader : readers_) {
     if (!reader->object()) {
-      /* This should never happen. */
       continue;
     }
     if (const USDMeshReader *mesh_reader = dynamic_cast<const USDMeshReader *>(reader)) {
+      /* Check if the mesh object has an armature modifier. */
       ModifierData *md = BKE_modifiers_findby_type(reader->object(), eModifierType_Armature);
       if (!md) {
         continue;
       }
       ArmatureModifierData *amd = reinterpret_cast<ArmatureModifierData *>(md);
+
+      /* Assign the armature based on the bound USD skeleton path of the skinned mesh. */
       std::string skel_path = mesh_reader->get_skeleton_path();
       std::map<std::string, Object *>::const_iterator it = usd_path_to_armature.find(skel_path);
-      if (it != usd_path_to_armature.end()) {
-        amd->object = it->second;
+      if (it == usd_path_to_armature.end()) {
+        WM_reportf(RPT_WARNING,
+                   "%s: Couldn't find armature object corresponding to USD skeleton %s",
+                   __func__,
+                   skel_path.c_str());
       }
-      else {
-        std::cout << "WARNING: couldn't find armature object for armature modifier for USD prim "
-                  << reader->prim_path() << " bound to skeleton " << skel_path << std::endl;
-      }
+      amd->object = it->second;
     }
   }
 }
