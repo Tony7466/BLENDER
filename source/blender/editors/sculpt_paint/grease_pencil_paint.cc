@@ -229,7 +229,7 @@ struct PaintOperationExecutor {
     const float max_radius_px = 30.0f;
     const int64_t max_samples = 64;
     const float angle_threshold = 0.6f;
-    IndexMask corner_mask = blender::ed::greasepencil::polyline_detect_corners(
+    IndexMask corner_mask = ed::greasepencil::polyline_detect_corners(
         screen_space_coords_smooth_slice,
         min_radius_px,
         max_radius_px,
@@ -249,7 +249,7 @@ struct PaintOperationExecutor {
 
     /* Curve fitting. The output will be a set of handles (float2 triplets) in a flat array. */
     const float max_error_threshold_px = 5.0f;
-    Array<float2> curve_points = blender::ed::greasepencil::fit_curve_polyline_2d(
+    Array<float2> curve_points = ed::greasepencil::fit_curve_polyline_2d(
         coords_pre_blur, max_error_threshold_px * settings_->active_smooth, corner_mask);
 
     /* Sampling the curve at a fixed resolution. */
