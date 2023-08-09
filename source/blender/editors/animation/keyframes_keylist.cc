@@ -961,7 +961,7 @@ void summary_to_keylist(bAnimContext *ac, AnimKeylist *keylist, const int sactio
         case ALE_GPFRAME:
           gpl_to_keylist(ac->ads, static_cast<bGPDlayer *>(ale->data), keylist);
           break;
-        case ALE_GREASE_PENCIL_CELS:
+        case ALE_GREASE_PENCIL_CEL:
           grease_pencil_cels_to_keylist(
               ale->adt, static_cast<GreasePencilLayer *>(ale->data), keylist, saction_flag);
           break;

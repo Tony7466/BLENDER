@@ -431,7 +431,7 @@ static void draw_keyframes(bAnimContext *ac,
                             scale_factor,
                             action_flag);
         break;
-      case ALE_GREASE_PENCIL_CELS:
+      case ALE_GREASE_PENCIL_CEL:
         draw_grease_pencil_cels_channel(draw_list,
                                         ads,
                                         static_cast<GreasePencilLayer *>(ale->data),
