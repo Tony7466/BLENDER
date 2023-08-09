@@ -33,20 +33,20 @@
 
 #include "DEG_depsgraph_build.h"
 
-#include "ED_asset.h"
-#include "ED_node.h" /* own include */
-#include "ED_render.h"
-#include "ED_screen.h"
+#include "ED_asset.hh"
+#include "ED_node.hh" /* own include */
+#include "ED_render.hh"
+#include "ED_screen.hh"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
 #include "node_intern.hh" /* own include */
 
@@ -387,7 +387,7 @@ static bool add_node_group_asset(const bContext &C,
   bNodeTree &edit_tree = *snode.edittree;
 
   bNodeTree *node_group = reinterpret_cast<bNodeTree *>(
-      ED_asset_get_local_id_from_asset_or_append_and_reuse(&bmain, asset, ID_NT));
+      asset::asset_local_id_ensure_imported(bmain, asset));
   if (!node_group) {
     return false;
   }

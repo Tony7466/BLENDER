@@ -43,12 +43,11 @@
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
-#include "ED_image.h"
-#include "ED_node.h"  /* own include */
+#include "ED_image.hh"
 #include "ED_node.hh" /* own include */
-#include "ED_render.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
+#include "ED_render.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
 #include "ED_viewer_path.hh"
 
 #include "RNA_access.h"
@@ -56,10 +55,10 @@
 #include "RNA_enum_types.h"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
 #include "GPU_material.h"
 
@@ -507,6 +506,12 @@ bool ED_node_is_texture(SpaceNode *snode)
 bool ED_node_is_geometry(SpaceNode *snode)
 {
   return STREQ(snode->tree_idname, ntreeType_Geometry->idname);
+}
+
+bool ED_node_supports_preview(SpaceNode *snode)
+{
+  return ED_node_is_compositor(snode) ||
+         (U.experimental.use_shader_node_previews && ED_node_is_shader(snode));
 }
 
 void ED_node_shader_default(const bContext *C, ID *id)
@@ -1125,6 +1130,21 @@ void node_set_hidden_sockets(bNode *node, int set)
   }
 }
 
+bool node_is_previewable(const SpaceNode &snode, const bNodeTree &ntree, const bNode &node)
+{
+  if (!(snode.overlay.flag & SN_OVERLAY_SHOW_OVERLAYS) ||
+      !(snode.overlay.flag & SN_OVERLAY_SHOW_PREVIEWS))
+  {
+    return false;
+  }
+  if (ntree.type == NTREE_SHADER) {
+    return U.experimental.use_shader_node_previews &&
+           !(node.is_frame() || node.is_group_input() || node.is_group_output() ||
+             node.type == SH_NODE_OUTPUT_MATERIAL);
+  }
+  return node.typeinfo->flag & NODE_PREVIEW;
+}
+
 static bool cursor_isect_multi_input_socket(const float2 &cursor, const bNodeSocket &socket)
 {
   const float node_socket_height = node_socket_calculate_height(socket);
@@ -1279,22 +1299,37 @@ void remap_node_pairing(bNodeTree &dst_tree, const Map<const bNode *, bNode *> &
    * so we have to build a map first to find copied output nodes in the new tree. */
   Map<int32_t, bNode *> dst_output_node_map;
   for (const auto &item : node_map.items()) {
-    if (item.key->type == GEO_NODE_SIMULATION_OUTPUT) {
+    if (ELEM(item.key->type, GEO_NODE_SIMULATION_OUTPUT, GEO_NODE_REPEAT_OUTPUT)) {
       dst_output_node_map.add_new(item.key->identifier, item.value);
     }
   }
 
   for (bNode *dst_node : node_map.values()) {
-    if (dst_node->type == GEO_NODE_SIMULATION_INPUT) {
-      NodeGeometrySimulationInput *data = static_cast<NodeGeometrySimulationInput *>(
-          dst_node->storage);
-      if (const bNode *output_node = dst_output_node_map.lookup_default(data->output_node_id,
-                                                                        nullptr)) {
-        data->output_node_id = output_node->identifier;
+    switch (dst_node->type) {
+      case GEO_NODE_SIMULATION_INPUT: {
+        NodeGeometrySimulationInput *data = static_cast<NodeGeometrySimulationInput *>(
+            dst_node->storage);
+        if (const bNode *output_node = dst_output_node_map.lookup_default(data->output_node_id,
+                                                                          nullptr)) {
+          data->output_node_id = output_node->identifier;
+        }
+        else {
+          data->output_node_id = 0;
+          blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
+        }
+        break;
       }
-      else {
-        data->output_node_id = 0;
-        blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
+      case GEO_NODE_REPEAT_INPUT: {
+        NodeGeometryRepeatInput *data = static_cast<NodeGeometryRepeatInput *>(dst_node->storage);
+        if (const bNode *output_node = dst_output_node_map.lookup_default(data->output_node_id,
+                                                                          nullptr)) {
+          data->output_node_id = output_node->identifier;
+        }
+        else {
+          data->output_node_id = 0;
+          blender::nodes::update_node_declaration_and_sockets(dst_tree, *dst_node);
+        }
+        break;
       }
     }
   }
@@ -1554,7 +1589,7 @@ static void node_flag_toggle_exec(SpaceNode *snode, int toggle_flag)
   for (bNode *node : snode->edittree->all_nodes()) {
     if (node->flag & SELECT) {
 
-      if (toggle_flag == NODE_PREVIEW && (node->typeinfo->flag & NODE_PREVIEW) == 0) {
+      if (toggle_flag == NODE_PREVIEW && !node_is_previewable(*snode, *snode->edittree, *node)) {
         continue;
       }
       if (toggle_flag == NODE_OPTIONS &&
@@ -1574,7 +1609,7 @@ static void node_flag_toggle_exec(SpaceNode *snode, int toggle_flag)
   for (bNode *node : snode->edittree->all_nodes()) {
     if (node->flag & SELECT) {
 
-      if (toggle_flag == NODE_PREVIEW && (node->typeinfo->flag & NODE_PREVIEW) == 0) {
+      if (toggle_flag == NODE_PREVIEW && !node_is_previewable(*snode, *snode->edittree, *node)) {
         continue;
       }
       if (toggle_flag == NODE_OPTIONS &&
@@ -1633,13 +1668,22 @@ static int node_preview_toggle_exec(bContext *C, wmOperator * /*op*/)
     return OPERATOR_CANCELLED;
   }
 
-  ED_preview_kill_jobs(CTX_wm_manager(C), CTX_data_main(C));
-
   node_flag_toggle_exec(snode, NODE_PREVIEW);
 
   ED_node_tree_propagate_change(C, CTX_data_main(C), snode->edittree);
 
   return OPERATOR_FINISHED;
+}
+
+static bool node_previewable(bContext *C)
+{
+  if (ED_operator_node_active(C)) {
+    SpaceNode *snode = CTX_wm_space_node(C);
+    if (ED_node_supports_preview(snode)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void NODE_OT_preview_toggle(wmOperatorType *ot)
@@ -1651,7 +1695,7 @@ void NODE_OT_preview_toggle(wmOperatorType *ot)
 
   /* callbacks */
   ot->exec = node_preview_toggle_exec;
-  ot->poll = composite_node_active;
+  ot->poll = node_previewable;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -2217,8 +2261,6 @@ static int ntree_socket_add_exec(bContext *C, wmOperator *op)
         ntree, in_out, active_sock->idname, active_sock->next, active_sock->name);
     /* XXX this only works for actual sockets, not interface templates! */
     // nodeSocketCopyValue(sock, &ntree_ptr, active_sock, &ntree_ptr);
-    /* Inherit socket panel from the active socket interface. */
-    sock->panel = active_sock->panel;
   }
   else {
     /* XXX TODO: define default socket type for a tree! */
@@ -2613,8 +2655,6 @@ static int ntree_socket_move_exec(bContext *C, wmOperator *op)
       break;
     }
   }
-
-  ntreeEnsureSocketInterfacePanelOrder(ntree);
 
   BKE_ntree_update_tag_interface(ntree);
   ED_node_tree_propagate_change(C, CTX_data_main(C), ntree);

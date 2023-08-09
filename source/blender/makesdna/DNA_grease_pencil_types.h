@@ -156,6 +156,7 @@ typedef struct GreasePencilFrame {
   static GreasePencilFrame null();
   bool is_null() const;
   bool is_implicit_hold() const;
+  bool is_selected() const;
 #endif
 } GreasePencilFrame;
 
@@ -316,8 +317,7 @@ typedef struct GreasePencilLayerTreeGroup {
  * Flag for the grease pencil data-block. #GreasePencil.flag
  */
 typedef enum GreasePencilFlag {
-  /* TODO */
-  GreasePencilFlag_TODO
+  GREASE_PENCIL_ANIM_CHANNEL_EXPANDED = (1 << 0),
 } GreasePencilFlag;
 
 /**
@@ -401,7 +401,7 @@ typedef struct GreasePencil {
   char _pad[4];
 
   /* Root group of the layer tree. */
-  GreasePencilLayerTreeGroup root_group;
+  GreasePencilLayerTreeGroup *root_group_ptr;
 
   /**
    * Pointer to the active layer. Can be NULL.
@@ -428,18 +428,15 @@ typedef struct GreasePencil {
    */
   GreasePencilRuntimeHandle *runtime;
 #ifdef __cplusplus
-  /* GreasePencilDrawingBase array functions. */
-  void read_drawing_array(BlendDataReader *reader);
-  void write_drawing_array(BlendWriter *writer);
-  void free_drawing_array();
-
-  /* Layer tree read/write functions. */
-  void read_layer_tree(BlendDataReader *reader);
-  void write_layer_tree(BlendWriter *writer);
+  /* Root group. */
+  const blender::bke::greasepencil::LayerGroup &root_group() const;
+  blender::bke::greasepencil::LayerGroup &root_group();
 
   /* Drawings read/write access. */
   blender::Span<GreasePencilDrawingBase *> drawings() const;
-  blender::MutableSpan<GreasePencilDrawingBase *> drawings_for_write();
+  blender::MutableSpan<GreasePencilDrawingBase *> drawings();
+  GreasePencilDrawingBase *drawings(int64_t index) const;
+  GreasePencilDrawingBase *drawings(int64_t index);
 
   blender::Span<const blender::bke::greasepencil::TreeNode *> nodes() const;
 
@@ -454,12 +451,13 @@ typedef struct GreasePencil {
   const blender::bke::greasepencil::Layer *get_active_layer() const;
   blender::bke::greasepencil::Layer *get_active_layer_for_write();
   void set_active_layer(const blender::bke::greasepencil::Layer *layer);
+  bool is_layer_active(const blender::bke::greasepencil::Layer *layer) const;
 
   blender::bke::greasepencil::Layer &add_layer(blender::bke::greasepencil::LayerGroup &group,
                                                blender::StringRefNull name);
   blender::bke::greasepencil::Layer &add_layer(blender::StringRefNull name);
   blender::bke::greasepencil::Layer &add_layer_after(blender::bke::greasepencil::LayerGroup &group,
-                                                     blender::bke::greasepencil::Layer *layer,
+                                                     blender::bke::greasepencil::TreeNode *link,
                                                      blender::StringRefNull name);
 
   blender::bke::greasepencil::LayerGroup &add_layer_group(
@@ -484,12 +482,34 @@ typedef struct GreasePencil {
   void remove_layer(blender::bke::greasepencil::Layer &layer);
 
   void add_empty_drawings(int add_num);
+  void add_duplicate_drawings(int duplicate_num,
+                              const blender::bke::greasepencil::Drawing &drawing);
   bool insert_blank_frame(blender::bke::greasepencil::Layer &layer,
                           int frame_number,
                           int duration,
                           eBezTriple_KeyframeType keytype);
+  bool insert_duplicate_frame(blender::bke::greasepencil::Layer &layer,
+                              const int src_frame_number,
+                              const int dst_frame_number,
+                              const bool do_instance);
 
-  void remove_drawing(int index);
+  /**
+   * Removes all the frames with \a frame_numbers in the \a layer.
+   * \returns true if any frame was removed.
+   */
+  bool remove_frames(blender::bke::greasepencil::Layer &layer, blender::Span<int> frame_numbers);
+  /**
+   * Removes all the drawings that have no users. Will free the drawing data and shrink the
+   * drawings array.
+   */
+  void remove_drawings_with_no_users();
+
+  /**
+   * Returns an editable drawing on \a layer at frame \a frame_number or `nullptr` if no such
+   * drawing exists.
+   */
+  blender::bke::greasepencil::Drawing *get_editable_drawing_at(
+      const blender::bke::greasepencil::Layer *layer, int frame_number) const;
 
   void foreach_visible_drawing(
       int frame, blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function);

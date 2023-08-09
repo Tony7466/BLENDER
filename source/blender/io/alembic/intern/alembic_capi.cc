@@ -43,7 +43,7 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
 
-#include "ED_undo.h"
+#include "ED_undo.hh"
 
 #include "BLI_compiler_compat.h"
 #include "BLI_fileops.h"
@@ -54,8 +54,10 @@
 #include "BLI_string.h"
 #include "BLI_timeit.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "BLT_translation.h"
+
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 using Alembic::Abc::IV3fArrayProperty;
 using Alembic::Abc::ObjectHeader;
@@ -773,7 +775,7 @@ static AbcObjectReader *get_abc_reader(CacheReader *reader, Object *ob, const ch
   IObject iobject = abc_reader->iobject();
 
   if (!iobject.valid()) {
-    *err_str = "Invalid object: verify object path";
+    *err_str = TIP_("Invalid object: verify object path");
     return nullptr;
   }
 

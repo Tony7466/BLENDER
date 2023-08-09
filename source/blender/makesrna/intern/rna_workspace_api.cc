@@ -6,10 +6,10 @@
  * \ingroup RNA
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
 
 #include "BLI_utildefines.h"
 
@@ -25,9 +25,9 @@
 
 #ifdef RNA_RUNTIME
 
-#  include "BKE_paint.h"
+#  include "BKE_paint.hh"
 
-#  include "ED_screen.h"
+#  include "ED_screen.hh"
 
 static void rna_WorkSpaceTool_setup(ID *id,
                                     bToolRef *tref,
@@ -122,7 +122,7 @@ void RNA_api_workspace_tool(StructRNA *srna)
   PropertyRNA *parm;
   FunctionRNA *func;
 
-  static EnumPropertyItem options_items[] = {
+  static const EnumPropertyItem options_items[] = {
       {TOOLREF_FLAG_FALLBACK_KEYMAP, "KEYMAP_FALLBACK", 0, "Fallback", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };

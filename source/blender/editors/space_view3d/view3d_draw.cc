@@ -28,7 +28,7 @@
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_scene.h"
 #include "BKE_studiolight.h"
 #include "BKE_unit.h"
@@ -49,19 +49,22 @@
 #include "DRW_engine.h"
 #include "DRW_select_buffer.h"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_info.h"
-#include "ED_keyframing.h"
-#include "ED_screen.h"
-#include "ED_screen_types.h"
-#include "ED_transform.h"
-#include "ED_view3d_offscreen.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_info.hh"
+#include "ED_keyframing.hh"
+#include "ED_screen.hh"
+#include "ED_screen_types.hh"
+#include "ED_transform.hh"
+#include "ED_view3d_offscreen.hh"
 #include "ED_viewer_path.hh"
+
+#include "ANIM_bone_collections.h"
 
 #include "DEG_depsgraph_query.h"
 
 #include "GPU_batch.h"
 #include "GPU_batch_presets.h"
+#include "GPU_capabilities.h"
 #include "GPU_framebuffer.h"
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
@@ -72,13 +75,13 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "RE_engine.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "RNA_access.h"
 
@@ -1371,7 +1374,7 @@ static void draw_selected_name(
       else if (ob->mode & OB_MODE_POSE) {
         if (arm->act_bone) {
 
-          if (arm->act_bone->layer & arm->layer) {
+          if (ANIM_bonecoll_is_visible_actbone(arm)) {
             info_array[i++] = msg_sep;
             info_array[i++] = arm->act_bone->name;
           }
@@ -1386,7 +1389,7 @@ static void draw_selected_name(
         if (armobj && armobj->mode & OB_MODE_POSE) {
           bArmature *arm = static_cast<bArmature *>(armobj->data);
           if (arm->act_bone) {
-            if (arm->act_bone->layer & arm->layer) {
+            if (ANIM_bonecoll_is_visible_actbone(arm)) {
               info_array[i++] = msg_sep;
               info_array[i++] = arm->act_bone->name;
             }
@@ -1440,7 +1443,7 @@ static void draw_selected_name(
     }
   }
 
-  BLI_assert(i < (int)ARRAY_SIZE(info_array));
+  BLI_assert(i < int(ARRAY_SIZE(info_array)));
   char info[300];
   BLI_string_join_array(info, sizeof(info), info_array, i);
 
@@ -1900,7 +1903,16 @@ ImBuf *ED_view3d_draw_offscreen_imbuf(Depsgraph *depsgraph,
   bool is_ortho = false;
   float winmat[4][4];
 
-  if (ofs && ((GPU_offscreen_width(ofs) != sizex) || (GPU_offscreen_height(ofs) != sizey))) {
+  /* Determine desired offscreen format depending on HDR availability. */
+  bool use_hdr = false;
+  if (scene && ((scene->view_settings.flag & COLORMANAGE_VIEW_USE_HDR) != 0)) {
+    use_hdr = GPU_hdr_support();
+  }
+  eGPUTextureFormat desired_format = (use_hdr) ? GPU_RGBA16F : GPU_RGBA8;
+
+  if (ofs && ((GPU_offscreen_width(ofs) != sizex) || (GPU_offscreen_height(ofs) != sizey) ||
+              (GPU_offscreen_format(ofs) != desired_format)))
+  {
     /* sizes differ, can't reuse */
     ofs = nullptr;
   }
@@ -1919,7 +1931,7 @@ ImBuf *ED_view3d_draw_offscreen_imbuf(Depsgraph *depsgraph,
     ofs = GPU_offscreen_create(sizex,
                                sizey,
                                true,
-                               GPU_RGBA8,
+                               desired_format,
                                GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_HOST_READ,
                                err_out);
     if (ofs == nullptr) {
@@ -2219,8 +2231,8 @@ static void validate_object_select_id(Depsgraph *depsgraph,
   v3d->runtime.flag |= V3D_RUNTIME_DEPTHBUF_OVERRIDDEN;
 }
 
-/* TODO: Creating, attaching texture, and destroying a framebuffer is quite slow.
- *       Calling this function should be avoided during interactive drawing. */
+/* Avoid calling this function multiple times in sequence to prevent frequent CPU-GPU
+ * synchronization (which can be very slow). */
 static void view3d_opengl_read_Z_pixels(GPUViewport *viewport, rcti *rect, void *data)
 {
   GPUTexture *depth_tx = GPU_viewport_depth_texture(viewport);
@@ -2390,7 +2402,7 @@ void ED_view3d_depth_override(Depsgraph *depsgraph,
   rv3d->rflag |= RV3D_ZOFFSET_DISABLED;
 
   /* Needed in cases the 3D Viewport isn't already setup. */
-  WM_draw_region_viewport_ensure(region, SPACE_VIEW3D);
+  WM_draw_region_viewport_ensure(scene, region, SPACE_VIEW3D);
   WM_draw_region_viewport_bind(region);
 
   GPUViewport *viewport = WM_draw_region_get_viewport(region);
@@ -2562,7 +2574,8 @@ void ED_view3d_mats_rv3d_restore(RegionView3D *rv3d, RV3DMatrixStore *rv3dmat_pt
 void ED_scene_draw_fps(const Scene *scene, int xoffset, int *yoffset)
 {
   ScreenFrameRateInfo *fpsi = static_cast<ScreenFrameRateInfo *>(scene->fps_info);
-  char printable[16];
+  /* 8 4-bytes chars (complex writing systems like Devanagari in UTF8 encoding) */
+  char printable[32];
 
   if (!fpsi || !fpsi->lredrawtime || !fpsi->redrawtime) {
     return;

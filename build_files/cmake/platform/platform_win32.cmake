@@ -186,8 +186,6 @@ endif()
 # C++ standards conformace (/permissive-) is available on msvc 15.5 (1912) and up
 if(NOT MSVC_CLANG)
   string(APPEND CMAKE_CXX_FLAGS " /permissive-")
-  # Two-phase name lookup does not place nicely with OpenMP yet, so disable for now
-  string(APPEND CMAKE_CXX_FLAGS " /Zc:twoPhase-")
 endif()
 
 if(WITH_WINDOWS_SCCACHE AND CMAKE_VS_MSBUILD_COMMAND)
@@ -967,6 +965,10 @@ if(WITH_USD)
   endif()
 endif()
 
+if(WITH_MATERIALX)
+  include("${LIBDIR}/MaterialX/lib/cmake/MaterialX/MaterialXTargets.cmake")
+endif()
+
 if(WINDOWS_PYTHON_DEBUG)
   # Include the system scripts in the blender_python_system_scripts project.
   file(GLOB_RECURSE inFiles "${CMAKE_SOURCE_DIR}/scripts/*.*" )
@@ -1103,6 +1105,7 @@ set(ZSTD_LIBRARIES ${LIBDIR}/zstd/lib/zstd_static.lib)
 if(WITH_CYCLES AND (WITH_CYCLES_DEVICE_ONEAPI OR (WITH_CYCLES_EMBREE AND EMBREE_SYCL_SUPPORT)))
   set(LEVEL_ZERO_ROOT_DIR ${LIBDIR}/level_zero)
   set(CYCLES_SYCL ${LIBDIR}/dpcpp CACHE PATH "Path to oneAPI DPC++ compiler")
+  mark_as_advanced(CYCLES_SYCL)
   if(EXISTS ${CYCLES_SYCL} AND NOT SYCL_ROOT_DIR)
     set(SYCL_ROOT_DIR ${CYCLES_SYCL})
   endif()

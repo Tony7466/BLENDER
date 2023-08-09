@@ -6,8 +6,8 @@
  * \ingroup RNA
  */
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 
 #include "DNA_curve_types.h"
 #include "DNA_curveprofile_types.h"
@@ -17,8 +17,8 @@
 
 #include "BLT_translation.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #ifdef RNA_RUNTIME
 
@@ -110,7 +110,7 @@ static void rna_CurveProfile_evaluate(CurveProfile *profile,
 
 static void rna_CurveProfile_initialize(CurveProfile *profile, int segments_len)
 {
-  BKE_curveprofile_init(profile, (short)segments_len);
+  BKE_curveprofile_init(profile, short(segments_len));
 }
 
 static void rna_CurveProfile_update(CurveProfile *profile)

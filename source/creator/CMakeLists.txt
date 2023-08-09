@@ -4,22 +4,22 @@
 
 set(INC
   ../../intern/clog
-  ../../intern/guardedalloc
   ../blender/blenkernel
-  ../blender/blenlib
   ../blender/depsgraph
   ../blender/editors/include
   ../blender/gpu
   ../blender/imbuf
   ../blender/io/usd
   ../blender/bmesh
-  ../blender/makesdna
   ../blender/makesrna
   ../blender/render
   ../blender/windowmanager
 )
 
 set(LIB
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
   bf_windowmanager
 )
 
@@ -57,6 +57,10 @@ if(WITH_CYCLES)
   endif()
 endif()
 
+if(WITH_OPENGL_BACKEND)
+  add_definitions(-DWITH_OPENGL_BACKEND)
+endif()
+
 if(WITH_VULKAN_BACKEND)
   add_definitions(-DWITH_VULKAN_BACKEND)
 endif()
@@ -75,6 +79,11 @@ if(WITH_TBB)
     # For `pragma` that links `tbbmalloc_proxy.lib`.
     link_directories(${LIBDIR}/tbb/lib)
   endif()
+endif()
+
+if(WIN32)
+  # Windows.h will define min/max macros that will collide with the stl versions.
+  add_definitions(-DNOMINMAX)
 endif()
 
 if(WITH_USD)
@@ -136,9 +145,9 @@ endif()
 
 # Setup the EXE sources and `buildinfo`.
 set(SRC
-  creator.c
-  creator_args.c
-  creator_signals.c
+  creator.cc
+  creator_args.cc
+  creator_signals.cc
 
   creator_intern.h
 )
@@ -1614,15 +1623,31 @@ if((DEFINED LIBDIR) AND TARGETDIR_LIB)
         ${USD_LIBRARY_DIR}/usd
         DESTINATION ${TARGETDIR_LIB}
       )
+      install(DIRECTORY
+        ${LIBDIR}/usd/plugin/usd/hdStorm
+        ${LIBDIR}/usd/plugin/usd/usdShaders
+        ${LIBDIR}/usd/plugin/usd/hioOiio
+        DESTINATION "./blender.shared/usd"
+      )
     elseif(USD_PYTHON_SUPPORT)
       install(DIRECTORY
         ${USD_LIBRARY_DIR}/usd
         DESTINATION ${TARGETDIR_LIB}
       )
+      install(DIRECTORY
+        ${LIBDIR}/usd/plugin/usd/hdStorm
+        ${LIBDIR}/usd/plugin/usd/usdShaders
+        DESTINATION ${TARGETDIR_LIB}/usd
+      )
     else()
       install(DIRECTORY
         ${USD_LIBRARY_DIR}/usd
         DESTINATION "${TARGETDIR_VER}/datafiles"
+      )
+      install(DIRECTORY
+        ${LIBDIR}/usd/plugin/usd/hdStorm
+        ${LIBDIR}/usd/plugin/usd/usdShaders
+        DESTINATION "${TARGETDIR_VER}/datafiles/usd"
       )
     endif()
   endif()

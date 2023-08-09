@@ -5,15 +5,16 @@
 #include "BKE_editmesh.h"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_particle.h"
 #include "BKE_pbvh_api.hh"
 #include "BKE_report.h"
 #include "DEG_depsgraph_query.h"
 #include "DNA_fluid_types.h"
-#include "ED_paint.h"
-#include "ED_view3d.h"
+#include "ED_paint.hh"
+#include "ED_view3d.hh"
 #include "GPU_capabilities.h"
+#include "IMB_imbuf_types.h"
 
 #include "draw_common.hh"
 #include "draw_sculpt.hh"
@@ -204,30 +205,27 @@ class Instance {
     }
   }
 
-  MeshPass &get_mesh_pass(ObjectRef &ob_ref, bool is_transparent)
+  template<typename F>
+  void draw_to_mesh_pass(ObjectRef &ob_ref, bool is_transparent, F draw_callback)
   {
     const bool in_front = (ob_ref.object->dtx & OB_DRAW_IN_FRONT) != 0;
 
     if (scene_state.xray_mode || is_transparent) {
       if (in_front) {
-        return transparent_ps.accumulation_in_front_ps_;
-        if (scene_state.draw_transparent_depth) {
-          return transparent_depth_ps.in_front_ps_;
-        }
+        draw_callback(transparent_ps.accumulation_in_front_ps_);
+        draw_callback(transparent_depth_ps.in_front_ps_);
       }
       else {
-        return transparent_ps.accumulation_ps_;
-        if (scene_state.draw_transparent_depth) {
-          return transparent_depth_ps.main_ps_;
-        }
+        draw_callback(transparent_ps.accumulation_ps_);
+        draw_callback(transparent_depth_ps.main_ps_);
       }
     }
     else {
       if (in_front) {
-        return opaque_ps.gbuffer_in_front_ps_;
+        draw_callback(opaque_ps.gbuffer_in_front_ps_);
       }
       else {
-        return opaque_ps.gbuffer_ps_;
+        draw_callback(opaque_ps.gbuffer_ps_);
       }
     }
   }
@@ -243,9 +241,10 @@ class Instance {
     resources.material_buf.append(material);
     int material_index = resources.material_buf.size() - 1;
 
-    get_mesh_pass(ob_ref, material.is_transparent())
-        .get_subpass(eGeometryType::MESH, image, sampler_state, iuser)
-        .draw(batch, handle, material_index);
+    draw_to_mesh_pass(ob_ref, material.is_transparent(), [&](MeshPass &mesh_pass) {
+      mesh_pass.get_subpass(eGeometryType::MESH, image, sampler_state, iuser)
+          .draw(batch, handle, material_index);
+    });
   }
 
   void mesh_sync(ObjectRef &ob_ref, ResourceHandle handle, const ObjectState &object_state)
@@ -374,12 +373,12 @@ class Instance {
     resources.material_buf.append(mat);
     int material_index = resources.material_buf.size() - 1;
 
-    PassMain::Sub &pass = get_mesh_pass(ob_ref, mat.is_transparent())
-                              .get_subpass(eGeometryType::POINTCLOUD)
-                              .sub("Point Cloud SubPass");
-
-    GPUBatch *batch = point_cloud_sub_pass_setup(pass, ob_ref.object);
-    pass.draw(batch, handle, material_index);
+    draw_to_mesh_pass(ob_ref, mat.is_transparent(), [&](MeshPass &mesh_pass) {
+      PassMain::Sub &pass =
+          mesh_pass.get_subpass(eGeometryType::POINTCLOUD).sub("Point Cloud SubPass");
+      GPUBatch *batch = point_cloud_sub_pass_setup(pass, ob_ref.object);
+      pass.draw(batch, handle, material_index);
+    });
   }
 
   void hair_sync(Manager &manager,
@@ -402,13 +401,14 @@ class Instance {
     resources.material_buf.append(mat);
     int material_index = resources.material_buf.size() - 1;
 
-    PassMain::Sub &pass = get_mesh_pass(ob_ref, mat.is_transparent())
-                              .get_subpass(eGeometryType::CURVES, image, sampler_state, iuser)
-                              .sub("Hair SubPass");
-
-    pass.push_constant("emitter_object_id", int(emitter_handle.raw));
-    GPUBatch *batch = hair_sub_pass_setup(pass, scene_state.scene, ob_ref.object, psys, md);
-    pass.draw(batch, handle, material_index);
+    draw_to_mesh_pass(ob_ref, mat.is_transparent(), [&](MeshPass &mesh_pass) {
+      PassMain::Sub &pass = mesh_pass
+                                .get_subpass(eGeometryType::CURVES, image, sampler_state, iuser)
+                                .sub("Hair SubPass");
+      pass.push_constant("emitter_object_id", int(emitter_handle.raw));
+      GPUBatch *batch = hair_sub_pass_setup(pass, scene_state.scene, ob_ref.object, psys, md);
+      pass.draw(batch, handle, material_index);
+    });
   }
 
   void curves_sync(Manager &manager, ObjectRef &ob_ref, const ObjectState &object_state)
@@ -420,12 +420,11 @@ class Instance {
     resources.material_buf.append(mat);
     int material_index = resources.material_buf.size() - 1;
 
-    PassMain::Sub &pass = get_mesh_pass(ob_ref, mat.is_transparent())
-                              .get_subpass(eGeometryType::CURVES)
-                              .sub("Curves SubPass");
-
-    GPUBatch *batch = curves_sub_pass_setup(pass, scene_state.scene, ob_ref.object);
-    pass.draw(batch, handle, material_index);
+    draw_to_mesh_pass(ob_ref, mat.is_transparent(), [&](MeshPass &mesh_pass) {
+      PassMain::Sub &pass = mesh_pass.get_subpass(eGeometryType::CURVES).sub("Curves SubPass");
+      GPUBatch *batch = curves_sub_pass_setup(pass, scene_state.scene, ob_ref.object);
+      pass.draw(batch, handle, material_index);
+    });
   }
 
   void draw(Manager &manager, GPUTexture *depth_tx, GPUTexture *color_tx)
@@ -470,12 +469,8 @@ class Instance {
       }
     }
 
-    opaque_ps.draw(manager,
-                   view,
-                   resources,
-                   resolution,
-                   &shadow_ps,
-                   transparent_ps.accumulation_ps_.is_empty());
+    opaque_ps.draw(
+        manager, view, resources, resolution, scene_state.draw_shadows ? &shadow_ps : nullptr);
     transparent_ps.draw(manager, view, resources, resolution);
     transparent_depth_ps.draw(manager, view, resources);
 
@@ -662,7 +657,7 @@ static void write_render_color_output(RenderLayer *layer,
                                4,
                                0,
                                GPU_DATA_FLOAT,
-                               rp->buffer.data);
+                               rp->ibuf->float_buffer.data);
   }
 }
 
@@ -681,13 +676,13 @@ static void write_render_z_output(RenderLayer *layer,
                                BLI_rcti_size_x(rect),
                                BLI_rcti_size_y(rect),
                                GPU_DATA_FLOAT,
-                               rp->buffer.data);
+                               rp->ibuf->float_buffer.data);
 
     int pix_num = BLI_rcti_size_x(rect) * BLI_rcti_size_y(rect);
 
     /* Convert GPU depth [0..1] to view Z [near..far] */
     if (DRW_view_is_persp_get(nullptr)) {
-      for (float &z : MutableSpan(rp->buffer.data, pix_num)) {
+      for (float &z : MutableSpan(rp->ibuf->float_buffer.data, pix_num)) {
         if (z == 1.0f) {
           z = 1e10f; /* Background */
         }
@@ -703,7 +698,7 @@ static void write_render_z_output(RenderLayer *layer,
       float far = DRW_view_far_distance_get(nullptr);
       float range = fabsf(far - near);
 
-      for (float &z : MutableSpan(rp->buffer.data, pix_num)) {
+      for (float &z : MutableSpan(rp->ibuf->float_buffer.data, pix_num)) {
         if (z == 1.0f) {
           z = 1e10f; /* Background */
         }
@@ -810,40 +805,45 @@ extern "C" {
 static const DrawEngineDataSize workbench_data_size = DRW_VIEWPORT_DATA_SIZE(WORKBENCH_Data);
 
 DrawEngineType draw_engine_workbench_next = {
-    nullptr,
-    nullptr,
-    N_("Workbench"),
-    &workbench_data_size,
-    &workbench_engine_init,
-    nullptr,
-    &workbench_instance_free,
-    &workbench_cache_init,
-    &workbench_cache_populate,
-    &workbench_cache_finish,
-    &workbench_draw_scene,
-    &workbench_view_update,
-    &workbench_id_update,
-    &workbench_render_to_image,
-    nullptr,
+    /*next*/ nullptr,
+    /*prev*/ nullptr,
+    /*idname*/ N_("Workbench"),
+    /*vedata_size*/ &workbench_data_size,
+    /*engine_init*/ &workbench_engine_init,
+    /*engine_free*/ nullptr,
+    /*instance_free*/ &workbench_instance_free,
+    /*cache_init*/ &workbench_cache_init,
+    /*cache_populate*/ &workbench_cache_populate,
+    /*cache_finish*/ &workbench_cache_finish,
+    /*draw_scene*/ &workbench_draw_scene,
+    /*view_update*/ &workbench_view_update,
+    /*id_update*/ &workbench_id_update,
+    /*render_to_image*/ &workbench_render_to_image,
+    /*store_metadata*/ nullptr,
 };
 
 RenderEngineType DRW_engine_viewport_workbench_next_type = {
-    nullptr,
-    nullptr,
-    "BLENDER_WORKBENCH_NEXT",
-    N_("Workbench Next"),
-    RE_INTERNAL | RE_USE_STEREO_VIEWPORT | RE_USE_GPU_CONTEXT,
-    nullptr,
-    &DRW_render_to_image,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    &workbench_render_update_passes,
-    &draw_engine_workbench_next,
-    {nullptr, nullptr, nullptr},
+    /*next*/ nullptr,
+    /*prev*/ nullptr,
+    /*idname*/ "BLENDER_WORKBENCH_NEXT",
+    /*name*/ N_("Workbench Next"),
+    /*flag*/ RE_INTERNAL | RE_USE_STEREO_VIEWPORT | RE_USE_GPU_CONTEXT,
+    /*update*/ nullptr,
+    /*render*/ &DRW_render_to_image,
+    /*render_frame_finish*/ nullptr,
+    /*draw*/ nullptr,
+    /*bake*/ nullptr,
+    /*view_update*/ nullptr,
+    /*view_draw*/ nullptr,
+    /*update_script_node*/ nullptr,
+    /*update_render_passes*/ &workbench_render_update_passes,
+    /*draw_engine*/ &draw_engine_workbench_next,
+    /*rna_ext*/
+    {
+        /*data*/ nullptr,
+        /*srna*/ nullptr,
+        /*call*/ nullptr,
+    },
 };
 }
 

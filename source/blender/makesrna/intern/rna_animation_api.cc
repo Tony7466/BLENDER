@@ -6,8 +6,8 @@
  * \ingroup RNA
  */
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
@@ -24,7 +24,7 @@
 #  include "BKE_nla.h"
 #  include "BKE_report.h"
 
-#  include "ED_keyframing.h"
+#  include "ED_keyframing.hh"
 
 static void rna_KeyingSet_context_refresh(KeyingSet *ks, bContext *C, ReportList *reports)
 {

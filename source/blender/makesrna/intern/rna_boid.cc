@@ -6,9 +6,9 @@
  * \ingroup RNA
  */
 
-#include <float.h>
-#include <limits.h>
-#include <stdlib.h>
+#include <cfloat>
+#include <climits>
+#include <cstdlib>
 
 #include "DNA_boid_types.h"
 #include "DNA_object_types.h"
@@ -22,8 +22,8 @@
 
 #include "rna_internal.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 const EnumPropertyItem rna_enum_boidrule_type_items[] = {
     {eBoidRuleType_Goal,

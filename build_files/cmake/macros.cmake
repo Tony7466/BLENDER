@@ -33,6 +33,7 @@ function(list_assert_duplicates
 
   # message(STATUS "list data: ${list_id}")
 
+  list(REMOVE_ITEM list_id "PUBLIC" "PRIVATE" "INTERFACE")
   list(LENGTH list_id _len_before)
   list(REMOVE_DUPLICATES list_id)
   list(LENGTH list_id _len_after)
@@ -1113,8 +1114,8 @@ function(data_to_c_simple_icons
       ${_icon_files}
       datatoc_icon
       datatoc
-      # could be an arg but for now we only create icons depending on UI_icons.h
-      ${CMAKE_SOURCE_DIR}/source/blender/editors/include/UI_icons.h
+      # could be an arg but for now we only create icons depending on UI_icons.hh
+      ${CMAKE_SOURCE_DIR}/source/blender/editors/include/UI_icons.hh
     )
 
   set_source_files_properties(${_file_from} ${_file_to} PROPERTIES GENERATED TRUE)

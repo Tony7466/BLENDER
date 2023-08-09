@@ -12,6 +12,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
+#include <forward_list>
 
 #include "DNA_anim_types.h"
 #include "DNA_collection_types.h"
@@ -85,8 +86,8 @@
 #include "SEQ_render.h"
 
 #include "GPU_context.h"
-#include "WM_api.h"
-#include "wm_window.h"
+#include "WM_api.hh"
+#include "wm_window.hh"
 
 #ifdef WITH_FREESTYLE
 #  include "FRS_freestyle.h"
@@ -127,8 +128,8 @@
 
 /* here we store all renders */
 static struct {
-  ListBase renderlist;
-} RenderGlobal = {{nullptr, nullptr}};
+  std::forward_list<Render *> render_list;
+} RenderGlobal;
 
 /** \} */
 
@@ -169,6 +170,12 @@ static bool do_write_image_or_movie(Render *re,
 static void result_nothing(void * /*arg*/, RenderResult * /*rr*/) {}
 static void result_rcti_nothing(void * /*arg*/, RenderResult * /*rr*/, rcti * /*rect*/) {}
 static void current_scene_nothing(void * /*arg*/, Scene * /*scene*/) {}
+static bool prepare_viewlayer_nothing(void * /*arg*/,
+                                      ViewLayer * /*vl*/,
+                                      Depsgraph * /*depsgraph*/)
+{
+  return true;
+}
 static void stats_nothing(void * /*arg*/, RenderStats * /*rs*/) {}
 static void float_nothing(void * /*arg*/, float /*val*/) {}
 static bool default_break(void * /*arg*/)
@@ -228,16 +235,16 @@ void RE_FreeRenderResult(RenderResult *rr)
   render_result_free(rr);
 }
 
-RenderBuffer *RE_RenderLayerGetPassBuffer(RenderLayer *rl, const char *name, const char *viewname)
+ImBuf *RE_RenderLayerGetPassImBuf(RenderLayer *rl, const char *name, const char *viewname)
 {
   RenderPass *rpass = RE_pass_find_by_name(rl, name, viewname);
-  return rpass ? &rpass->buffer : nullptr;
+  return rpass ? rpass->ibuf : nullptr;
 }
 
 float *RE_RenderLayerGetPass(RenderLayer *rl, const char *name, const char *viewname)
 {
-  RenderPass *rpass = RE_pass_find_by_name(rl, name, viewname);
-  return rpass ? rpass->buffer.data : nullptr;
+  const ImBuf *ibuf = RE_RenderLayerGetPassImBuf(rl, name, viewname);
+  return ibuf ? ibuf->float_buffer.data : nullptr;
 }
 
 RenderLayer *RE_GetRenderLayer(RenderResult *rr, const char *name)
@@ -297,7 +304,7 @@ static bool render_scene_has_layers_to_render(Scene *scene, ViewLayer *single_la
 Render *RE_GetRender(const char *name)
 {
   /* search for existing renders */
-  LISTBASE_FOREACH (Render *, re, &RenderGlobal.renderlist) {
+  for (Render *re : RenderGlobal.render_list) {
     if (STREQLEN(re->name, name, RE_MAXNAME)) {
       return re;
     }
@@ -381,7 +388,7 @@ void RE_AcquireResultImageViews(Render *re, RenderResult *rr)
       render_result_views_shallowcopy(rr, re->result);
 
       RenderView *rv = static_cast<RenderView *>(rr->views.first);
-      rr->have_combined = (rv->combined_buffer.data != nullptr);
+      rr->have_combined = (rv->ibuf != nullptr);
 
       /* single layer */
       RenderLayer *rl = render_get_single_layer(re, re->result);
@@ -390,13 +397,9 @@ void RE_AcquireResultImageViews(Render *re, RenderResult *rr)
        * explicitly free it. So simply assign the buffers as a shallow copy here as well. */
 
       if (rl) {
-        if (rv->combined_buffer.data == nullptr) {
+        if (rv->ibuf == nullptr) {
           LISTBASE_FOREACH (RenderView *, rview, &rr->views) {
-            RenderBuffer *buffer = RE_RenderLayerGetPassBuffer(
-                rl, RE_PASSNAME_COMBINED, rview->name);
-            if (buffer) {
-              rview->combined_buffer = *buffer;
-            }
+            rview->ibuf = RE_RenderLayerGetPassImBuf(rl, RE_PASSNAME_COMBINED, rview->name);
           }
         }
       }
@@ -435,24 +438,20 @@ void RE_AcquireResultImage(Render *re, RenderResult *rr, const int view_id)
 
       /* `scene.rd.actview` view. */
       rv = RE_RenderViewGetById(re->result, view_id);
-      rr->have_combined = (rv->combined_buffer.data != nullptr);
+      rr->have_combined = (rv->ibuf != nullptr);
 
       /* The render result uses shallow initialization, and the caller is not expected to
        * explicitly free it. So simply assign the buffers as a shallow copy here as well.
        *
        * The thread safety is ensured via the  re->resultmutex. */
-      rr->combined_buffer = rv->combined_buffer;
-      rr->byte_buffer = rv->byte_buffer;
+      rr->ibuf = rv->ibuf;
 
       /* active layer */
       rl = render_get_single_layer(re, re->result);
 
       if (rl) {
-        if (rv->combined_buffer.data == nullptr) {
-          RenderBuffer *buffer = RE_RenderLayerGetPassBuffer(rl, RE_PASSNAME_COMBINED, rv->name);
-          if (buffer) {
-            rr->combined_buffer = *buffer;
-          }
+        if (rv->ibuf == nullptr) {
+          rr->ibuf = RE_RenderLayerGetPassImBuf(rl, RE_PASSNAME_COMBINED, rv->name);
         }
       }
 
@@ -504,18 +503,21 @@ Render *RE_NewRender(const char *name)
   if (re == nullptr) {
 
     /* new render data struct */
-    re = MEM_cnew<Render>("new render");
-    BLI_addtail(&RenderGlobal.renderlist, re);
+    re = MEM_new<Render>("new render");
+    RenderGlobal.render_list.push_front(re);
     STRNCPY(re->name, name);
-    BLI_rw_mutex_init(&re->resultmutex);
-    BLI_mutex_init(&re->engine_draw_mutex);
-    BLI_mutex_init(&re->highlighted_tiles_mutex);
-    BLI_mutex_init(&re->gpu_compositor_mutex);
   }
 
   RE_InitRenderCB(re);
 
   return re;
+}
+
+ViewRender *RE_NewViewRender(RenderEngineType *engine_type)
+{
+  ViewRender *view_render = MEM_new<ViewRender>("new view render");
+  view_render->engine = RE_engine_create(engine_type);
+  return view_render;
 }
 
 /* MAX_ID_NAME + sizeof(Library->name) + space + null-terminator. */
@@ -552,6 +554,7 @@ void RE_InitRenderCB(Render *re)
   re->display_clear = result_nothing;
   re->display_update = result_rcti_nothing;
   re->current_scene_update = current_scene_nothing;
+  re->prepare_viewlayer = prepare_viewlayer_nothing;
   re->progress = float_nothing;
   re->test_break = default_break;
   if (G.background) {
@@ -566,41 +569,20 @@ void RE_InitRenderCB(Render *re)
 
 void RE_FreeRender(Render *re)
 {
-  if (re->engine) {
-    RE_engine_free(re->engine);
-  }
+  RenderGlobal.render_list.remove(re);
 
-  RE_compositor_free(*re);
+  MEM_delete(re);
+}
 
-  RE_blender_gpu_context_free(re);
-  RE_system_gpu_context_free(re);
-
-  BLI_rw_mutex_end(&re->resultmutex);
-  BLI_mutex_end(&re->engine_draw_mutex);
-  BLI_mutex_end(&re->highlighted_tiles_mutex);
-  BLI_mutex_end(&re->gpu_compositor_mutex);
-
-  BKE_curvemapping_free_data(&re->r.mblur_shutter_curve);
-
-  if (re->highlighted_tiles != nullptr) {
-    BLI_gset_free(re->highlighted_tiles, MEM_freeN);
-  }
-
-  /* main dbase can already be invalid now, some database-free code checks it */
-  re->main = nullptr;
-  re->scene = nullptr;
-
-  render_result_free(re->result);
-  render_result_free(re->pushedresult);
-
-  BLI_remlink(&RenderGlobal.renderlist, re);
-  MEM_freeN(re);
+void RE_FreeViewRender(ViewRender *view_render)
+{
+  MEM_delete(view_render);
 }
 
 void RE_FreeAllRender()
 {
-  while (RenderGlobal.renderlist.first) {
-    RE_FreeRender(static_cast<Render *>(RenderGlobal.renderlist.first));
+  while (!RenderGlobal.render_list.empty()) {
+    RE_FreeRender(static_cast<Render *>(RenderGlobal.render_list.front()));
   }
 
 #ifdef WITH_FREESTYLE
@@ -611,7 +593,7 @@ void RE_FreeAllRender()
 
 void RE_FreeAllRenderResults()
 {
-  LISTBASE_FOREACH (Render *, re, &RenderGlobal.renderlist) {
+  for (Render *re : RenderGlobal.render_list) {
     render_result_free(re->result);
     render_result_free(re->pushedresult);
 
@@ -623,7 +605,7 @@ void RE_FreeAllRenderResults()
 
 void RE_FreeAllPersistentData()
 {
-  LISTBASE_FOREACH (Render *, re, &RenderGlobal.renderlist) {
+  for (Render *re : RenderGlobal.render_list) {
     if (re->engine != nullptr) {
       BLI_assert(!(re->engine->flag & RE_ENGINE_RENDERING));
       RE_engine_free(re->engine);
@@ -652,7 +634,7 @@ static void re_gpu_texture_caches_free(Render *re)
 
 void RE_FreeGPUTextureCaches()
 {
-  LISTBASE_FOREACH (Render *, re, &RenderGlobal.renderlist) {
+  for (Render *re : RenderGlobal.render_list) {
     re_gpu_texture_caches_free(re);
   }
 }
@@ -663,7 +645,7 @@ void RE_FreeUnusedGPUResources()
 
   wmWindowManager *wm = static_cast<wmWindowManager *>(G_MAIN->wm.first);
 
-  LISTBASE_FOREACH (Render *, re, &RenderGlobal.renderlist) {
+  for (Render *re : RenderGlobal.render_list) {
     bool do_free = true;
 
     LISTBASE_FOREACH (const wmWindow *, win, &wm->windows) {
@@ -736,7 +718,7 @@ void RE_FreePersistentData(const Scene *scene)
     }
   }
   else {
-    LISTBASE_FOREACH (Render *, re, &RenderGlobal.renderlist) {
+    for (Render *re : RenderGlobal.render_list) {
       re_free_persistent_data(re);
     }
   }
@@ -939,6 +921,14 @@ void RE_test_break_cb(Render *re, void *handle, bool (*f)(void *handle))
 {
   re->test_break = f;
   re->tbh = handle;
+}
+
+void RE_prepare_viewlayer_cb(Render *re,
+                             void *handle,
+                             bool (*f)(void *handle, ViewLayer *vl, Depsgraph *depsgraph))
+{
+  re->prepare_viewlayer = f;
+  re->prepare_vl_handle = handle;
 }
 
 /** \} */
@@ -1311,8 +1301,8 @@ static void renderresult_stampinfo(Render *re)
     BKE_image_stamp_buf(re->scene,
                         ob_camera_eval,
                         (re->r.stamp & R_STAMP_STRIPMETA) ? rres.stamp_data : nullptr,
-                        rres.byte_buffer.data,
-                        rres.combined_buffer.data,
+                        rres.ibuf->byte_buffer.data,
+                        rres.ibuf->float_buffer.data,
                         rres.rectx,
                         rres.recty,
                         4);
@@ -1845,21 +1835,6 @@ static void render_pipeline_free(Render *re)
   /* Destroy the opengl context in the correct thread. */
   RE_blender_gpu_context_free(re);
   RE_system_gpu_context_free(re);
-
-  /* In the case the engine did not mark tiles as finished (un-highlight, which could happen in
-   * the case of cancelled render) ensure the storage is empty. */
-  if (re->highlighted_tiles != nullptr) {
-    BLI_mutex_lock(&re->highlighted_tiles_mutex);
-
-    /* Rendering is supposed to be finished here, so no new tiles are expected to be written.
-     * Only make it so possible read-only access to the highlighted tiles is thread-safe. */
-    BLI_assert(re->highlighted_tiles);
-
-    BLI_gset_free(re->highlighted_tiles, MEM_freeN);
-    re->highlighted_tiles = nullptr;
-
-    BLI_mutex_unlock(&re->highlighted_tiles_mutex);
-  }
 }
 
 void RE_RenderFrame(Render *re,
@@ -1957,7 +1932,6 @@ static bool use_eevee_for_freestyle_render(Render *re)
 
 void RE_RenderFreestyleStrokes(Render *re, Main *bmain, Scene *scene, const bool render)
 {
-  re->result_ok = false;
   if (render_init_from_main(re, &scene->r, bmain, scene, nullptr, nullptr, false, false)) {
     if (render) {
       char scene_engine[32];
@@ -1971,7 +1945,6 @@ void RE_RenderFreestyleStrokes(Render *re, Main *bmain, Scene *scene, const bool
       change_renderdata_engine(re, scene_engine);
     }
   }
-  re->result_ok = true;
 }
 
 void RE_RenderFreestyleExternal(Render *re)
@@ -2594,7 +2567,7 @@ void RE_layer_load_from_file(
         IMB_float_from_rect(ibuf);
       }
 
-      memcpy(rpass->buffer.data,
+      memcpy(rpass->ibuf->float_buffer.data,
              ibuf->float_buffer.data,
              sizeof(float[4]) * layer->rectx * layer->recty);
     }
@@ -2610,7 +2583,7 @@ void RE_layer_load_from_file(
         if (ibuf_clip) {
           IMB_rectcpy(ibuf_clip, ibuf, 0, 0, x, y, layer->rectx, layer->recty);
 
-          memcpy(rpass->buffer.data,
+          memcpy(rpass->ibuf->float_buffer.data,
                  ibuf_clip->float_buffer.data,
                  sizeof(float[4]) * layer->rectx * layer->recty);
           IMB_freeImBuf(ibuf_clip);
@@ -2737,9 +2710,7 @@ RenderPass *RE_create_gp_pass(RenderResult *rr, const char *layername, const cha
   /* Clear previous pass if exist or the new image will be over previous one. */
   RenderPass *rp = RE_pass_find_by_name(rl, RE_PASSNAME_COMBINED, viewname);
   if (rp) {
-    rp->buffer.sharing_info->remove_user_and_delete_if_last();
-    rp->buffer.sharing_info = nullptr;
-
+    IMB_freeImBuf(rp->ibuf);
     BLI_freelinkN(&rl->passes, rp);
   }
   /* create a totally new pass */
