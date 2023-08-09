@@ -3302,6 +3302,12 @@ static void rna_def_userdef_theme_space_seq(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Effect Strip", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
+  prop = RNA_def_property(srna, "transition_strip", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, nullptr, "transition");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Transition Strip", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
   prop = RNA_def_property(srna, "color_strip", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Color Strip", "");
@@ -6789,10 +6795,6 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "New Volume Nodes", "Enables visibility of the new Volume nodes in the UI");
 
-  prop = RNA_def_property(srna, "use_node_panels", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_ui_text(
-      prop, "Node Panels", "Enable node panels UI for grouping sockets in node groups");
-
   prop = RNA_def_property(srna, "use_rotation_socket", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_ui_text(prop, "Rotation Socket", "Enable the new rotation node socket type");
 
@@ -6805,6 +6807,11 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
                            "Asset Shelf",
                            "Enables the asset shelf regions in the 3D view. Used by the Pose "
                            "Library add-on in Pose Mode only");
+  RNA_def_property_update(prop, 0, "rna_userdef_ui_update");
+
+  prop = RNA_def_property(srna, "use_shader_node_previews", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop, "Shader Node Previews", "Enables previews in the shader node editor");
   RNA_def_property_update(prop, 0, "rna_userdef_ui_update");
 }
 

@@ -480,6 +480,7 @@ class NodeTreeMainUpdater {
     this->update_internal_links(ntree);
     this->update_generic_callback(ntree);
     this->remove_unused_previews_when_necessary(ntree);
+    this->make_node_previews_dirty(ntree);
 
     this->propagate_runtime_flags(ntree);
     if (ntree.type == NTREE_GEOMETRY) {
