@@ -158,8 +158,6 @@ void ShadowPipeline::sync()
   surface_ps_.bind_ssbo(SHADOW_RENDER_MAP_BUF_SLOT, &inst_.shadows.render_map_buf_);
   surface_ps_.bind_ssbo(SHADOW_PAGE_INFO_SLOT, &inst_.shadows.pages_infos_data_);
   inst_.sampling.bind_resources(&surface_ps_);
-
-  surface_ps_.framebuffer_set(&inst_.shadows.render_fb_);
 }
 
 PassMain::Sub *ShadowPipeline::surface_material_add(GPUMaterial *gpumat)

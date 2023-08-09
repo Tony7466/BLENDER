@@ -124,3 +124,18 @@ void init_interface()
   drw_ResourceID_iface.resource_index = resource_id;
 #endif
 }
+
+#ifdef GPU_VERTEX_SHADER
+void shadow_viewport_layer_set(uvec3 page_co)
+{
+  gpu_Layer = int(page_co.z);
+  gpu_ViewportIndex = int(page_co.x + page_co.y * 4);
+}
+#endif
+
+#ifdef GPU_FRAGMENT_SHADER
+int shadow_view_id_get()
+{
+  return gpu_Layer * 16 + gpu_ViewportIndex;
+}
+#endif

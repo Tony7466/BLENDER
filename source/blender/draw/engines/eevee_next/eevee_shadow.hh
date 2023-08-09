@@ -254,6 +254,8 @@ class ShadowModule {
   View shadow_multi_view_ = {"ShadowMultiView", SHADOW_VIEW_MAX, true};
   /** An empty frame-buffer (no attachment) the size of a whole tile-map. */
   Framebuffer render_fb_;
+  /** Arrays of viewports to rendering each tile to. */
+  std::array<int4, 16> multi_viewports_;
 
   /** \} */
 

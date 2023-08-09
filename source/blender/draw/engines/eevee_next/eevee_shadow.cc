@@ -696,6 +696,13 @@ void ShadowModule::init()
   }
 
   atlas_tx_.filter_mode(false);
+
+  for (int i = 0; i < multi_viewports_.size(); i++) {
+    multi_viewports_[i][0] = (i % 4) * shadow_page_size_;
+    multi_viewports_[i][1] = (i / 4) * shadow_page_size_;
+    multi_viewports_[i][2] = shadow_page_size_;
+    multi_viewports_[i][3] = shadow_page_size_;
+  }
 }
 
 void ShadowModule::begin_sync()
@@ -1130,7 +1137,7 @@ void ShadowModule::set_view(View &view)
                                                int2(std::exp2(usage_tag_fb_lod_)));
   usage_tag_fb.ensure(usage_tag_fb_resolution_);
 
-  render_fb_.ensure(int2(shadow_page_size_));
+  render_fb_.ensure(int2(shadow_page_size_) * 4);
 
   inst_.hiz_buffer.update();
 
@@ -1147,6 +1154,10 @@ void ShadowModule::set_view(View &view)
       inst_.manager->submit(tilemap_update_ps_, view);
 
       shadow_multi_view_.compute_procedural_bounds();
+
+      GPU_framebuffer_bind(render_fb_);
+      GPU_framebuffer_multi_viewports_set(render_fb_,
+                                          reinterpret_cast<int(*)[4]>(multi_viewports_.data()));
 
       inst_.pipelines.shadow.render(shadow_multi_view_);
     }

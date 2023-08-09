@@ -11,7 +11,7 @@ void main()
 {
   DRW_VIEW_FROM_RESOURCE_ID;
 #ifdef MAT_SHADOW
-  shadow_interp.view_id = drw_view_id;
+  shadow_viewport_layer_set(shadow_page_unpack(render_map_buf[drw_view_id]));
 #endif
 
   init_interface();

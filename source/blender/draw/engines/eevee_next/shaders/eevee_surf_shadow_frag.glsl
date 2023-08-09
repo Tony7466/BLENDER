@@ -18,9 +18,11 @@
 
 void write_depth(ivec2 texel_co, float depth)
 {
-  uint page_packed = render_map_buf[shadow_interp.view_id];
+  int view_id = shadow_view_id_get();
+
+  uint page_packed = render_map_buf[view_id];
   ivec3 page = ivec3(shadow_page_unpack(page_packed));
-  ivec2 out_texel = page.xy * pages_infos_buf.page_size + texel_co;
+  ivec2 out_texel = page.xy * pages_infos_buf.page_size + texel_co % pages_infos_buf.page_size;
 
   uint u_depth = floatBitsToUint(depth);
   /* Quantization bias. Equivalent to nextafter in C without all the safety. 1 is not enough. */
@@ -47,8 +49,6 @@ void main()
     return;
   }
 #endif
-
-  drw_view_id = shadow_interp.view_id;
 
   ivec2 texel_co = ivec2(gl_FragCoord.xy);
 
