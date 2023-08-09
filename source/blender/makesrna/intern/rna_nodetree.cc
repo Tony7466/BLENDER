@@ -688,6 +688,20 @@ const EnumPropertyItem *rna_node_tree_type_itemf(void *data,
   return item;
 }
 
+int rna_node_socket_idname_to_enum(const char *idname)
+{
+  int i = 0, result = -1;
+  NODE_SOCKET_TYPES_BEGIN (stype) {
+    if (STREQ(stype->idname, idname)) {
+      result = i;
+      break;
+    }
+    i++;
+  }
+  NODE_SOCKET_TYPES_END;
+  return result;
+}
+
 bNodeSocketType *rna_node_socket_type_from_enum(int value)
 {
   int i = 0;
