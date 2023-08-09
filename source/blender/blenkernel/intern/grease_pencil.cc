@@ -765,7 +765,7 @@ int Layer::get_frame_duration_at(const int frame_number) const
     return -1;
   }
   SortedKeysIterator frame_number_it = std::next(this->sorted_keys().begin(), frame_key);
-  if (std::next(frame_number_it) == this->sorted_keys().end()) {
+  if (*frame_number_it == this->sorted_keys().last()) {
     return -1;
   }
   const int next_frame_number = *(std::next(frame_number_it));
