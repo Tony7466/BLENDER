@@ -639,8 +639,21 @@ static DirtyState get_treepath_dirty_state(const ListBase *treepath)
 static void update_needed_flag(const ListBase *treepath, NestedTreePreviews *tree_previews)
 {
   bNodeTree *nodetree = static_cast<bNodeTreePath *>(treepath->last)->nodetree;
+  DirtyState *compare_whole_tree_dirtystate = nullptr;
+  DirtyState *compare_any_node_dirtystate = nullptr;
+  DirtyState *compare_treepath_dirtystate = nullptr;
+  if (tree_previews->rendering == true) {
+    compare_whole_tree_dirtystate = &tree_previews->whole_tree_rendering_dirtystate;
+    compare_any_node_dirtystate = &tree_previews->any_node_rendering_dirtystate;
+    compare_treepath_dirtystate = &tree_previews->treepath_rendering_dirtystate;
+  }
+  else {
+    compare_whole_tree_dirtystate = &tree_previews->whole_tree_dirtystate;
+    compare_any_node_dirtystate = &tree_previews->any_node_dirtystate;
+    compare_treepath_dirtystate = &tree_previews->treepath_dirtystate;
+  }
   if (tree_previews->preview_size != U.node_preview_res ||
-      nodetree->runtime->whole_tree_dirtystate != tree_previews->whole_tree_dirtystate)
+      nodetree->runtime->whole_tree_dirtystate != *compare_whole_tree_dirtystate)
   {
     /* Force whole tree redraw. */
     tree_previews->restart_needed = true;
@@ -649,13 +662,13 @@ static void update_needed_flag(const ListBase *treepath, NestedTreePreviews *tre
   }
 
   DirtyState treepath_dirty_state = get_treepath_dirty_state(treepath);
-  if (treepath_dirty_state != tree_previews->treepath_dirtystate) {
+  if (treepath_dirty_state != *compare_treepath_dirtystate) {
     /* If the path is dirty, then we may need to redraw all the nodetree (excepted if we know which
      * nodes are dirty). */
     tree_previews->restart_needed = true;
     tree_previews->partial_tree_refresh = false;
   }
-  if (nodetree->runtime->any_node_dirtystate != tree_previews->any_node_dirtystate) {
+  if (nodetree->runtime->any_node_dirtystate != *compare_any_node_dirtystate) {
     /* If we know that only some node are dirty, then enable partial redraw. */
     tree_previews->restart_needed = true;
     tree_previews->partial_tree_refresh = true;
@@ -730,7 +743,11 @@ static void shader_preview_free(void *customdata)
     MEM_freeN(path);
   }
   job_data->treepath_copy.clear();
-  job_data->tree_previews->rendering = false;
+  NestedTreePreviews &tree_previews = *job_data->tree_previews;
+  tree_previews.rendering = false;
+  tree_previews.treepath_dirtystate = tree_previews.treepath_rendering_dirtystate;
+  tree_previews.any_node_dirtystate = tree_previews.any_node_rendering_dirtystate;
+  tree_previews.whole_tree_dirtystate = tree_previews.whole_tree_rendering_dirtystate;
   if (job_data->mat_copy != nullptr) {
     BLI_remlink(&G.pr_main->materials, job_data->mat_copy);
     BKE_id_free(G.pr_main, &job_data->mat_copy->id);
@@ -763,9 +780,10 @@ static void ensure_nodetree_previews(const bContext &C,
   tree_previews.rendering = true;
   tree_previews.restart_needed = false;
   DirtyState treepath_dirty_state = get_treepath_dirty_state(&treepath);
-  tree_previews.treepath_dirtystate = treepath_dirty_state;
-  tree_previews.any_node_dirtystate = displayed_nodetree->runtime->any_node_dirtystate;
-  tree_previews.whole_tree_dirtystate = displayed_nodetree->runtime->whole_tree_dirtystate;
+  tree_previews.treepath_rendering_dirtystate = treepath_dirty_state;
+  tree_previews.any_node_rendering_dirtystate = displayed_nodetree->runtime->any_node_dirtystate;
+  tree_previews.whole_tree_rendering_dirtystate =
+      displayed_nodetree->runtime->whole_tree_dirtystate;
 
   ED_preview_ensure_dbase(false);
 

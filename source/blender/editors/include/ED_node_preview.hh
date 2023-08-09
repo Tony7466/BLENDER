@@ -29,16 +29,27 @@ struct NestedTreePreviews {
   /**
    * Dirty state of the bNodeTreePath vector. It is the sum of the tree_dirty_state of all the
    * nodetrees plus the sum of all the dirty_state of the group nodes.
-   * If this state is dirty, it means that at least some nodes are dirty. */
+   * If this state is dirty, it means that at least some nodes are dirty.
+   */
   DirtyState treepath_dirtystate;
   /**
    * Dirty state of the current nodetree. If this flag is dirty, it means that all nodes are
-   * dirty. */
+   * dirty.
+   */
   DirtyState whole_tree_dirtystate;
   /**
    * Dirty state of the nodetree viewed, it is used to know if at least one node needs to be
-   * re-rendered. */
+   * re-rendered.
+   */
   DirtyState any_node_dirtystate;
+
+  /**
+   * When the rendering is happening, we compare the user dirty state with those rendering states
+   * Comparing the cached states would be wrong, because they are set at the end of the render.
+   */
+  DirtyState treepath_rendering_dirtystate;
+  DirtyState whole_tree_rendering_dirtystate;
+  DirtyState any_node_rendering_dirtystate;
 
   NestedTreePreviews(const int size) : preview_size(size) {}
   ~NestedTreePreviews()
