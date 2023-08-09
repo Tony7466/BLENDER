@@ -46,7 +46,7 @@ roles:
   # Specified by OCIO, not used in Blender
   color_timing: Filmic Log
   compositing_log: Filmic Log
-  default: Linear Rec.709 D65
+  default: Linear Rec.709
   matte_paint: Linear Rec.709
   texture_paint: Linear Rec.709
 
