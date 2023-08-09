@@ -21,14 +21,14 @@ roles:
   reference: Linear CIE-XYZ E
 
   # Internal scene linear space
-  scene_linear: Linear BT.709 D65
-  rendering: Linear BT.709 D65
+  scene_linear: Linear Rec.709
+  rendering: Linear Rec.709
 
   # Default color space for byte image
   default_byte: sRGB
 
   # Default color space for float images
-  default_float: Linear BT.709 D65
+  default_float: Linear Rec.709
 
   # Default color space sequencer is working in
   default_sequencer: sRGB
@@ -46,9 +46,9 @@ roles:
   # Specified by OCIO, not used in Blender
   color_timing: Filmic Log
   compositing_log: Filmic Log
-  default: Linear BT.709 D65
-  matte_paint: Linear BT.709 D65
-  texture_paint: Linear BT.709 D65
+  default: Linear Rec.709 D65
+  matte_paint: Linear Rec.709
+  texture_paint: Linear Rec.709
 
 displays:
   sRGB:
@@ -99,7 +99,7 @@ colorspaces:
         - !<MatrixTransform> {matrix: [ 3.2410032329763587, -1.5373989694887855, -0.4986158819963629, 0, -0.9692242522025164, 1.8759299836951759, 0.0415542263400847, 0, 0.0556394198519755, -0.2040112061239099, 1.0571489771875333, 0, 0, 0, 0, 1]}
 
   - !<ColorSpace>
-    name: Linear DCI-P3
+    name: Linear DCI-P3 D65
     aliases: [Linear DCI-P3 I-D65, Linear P3-D65, lin_p3d65, Utility - Linear - P3-D65, Apple DCI-P3 D65]
     family: linear
     equalitygroup:
@@ -179,7 +179,7 @@ colorspaces:
     isdata: false
     from_scene_reference: !<GroupTransform>
       children:
-        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear BT.709 D65}
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear Rec.709}
         - !<ExponentWithLinearTransform> {gamma: 2.4, offset: 0.055, direction: inverse}
 
   - !<ColorSpace>
@@ -207,7 +207,7 @@ colorspaces:
     isdata: false
     from_scene_reference: !<GroupTransform>
       children:
-        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear BT.709 D65}
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear Rec.709}
         - !<ExponentWithLinearTransform> {gamma: 2.4, offset: 0, direction: inverse}
 
   - !<ColorSpace>
@@ -221,7 +221,7 @@ colorspaces:
     isdata: false
     from_scene_reference: !<GroupTransform>
       children:
-        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear BT.2020 D65}
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear Rec.2020}
         - !<ExponentWithLinearTransform> {gamma: 2.4, offset: 0, direction: inverse}
 
   - !<ColorSpace>
@@ -244,14 +244,14 @@ colorspaces:
     isdata: false
     from_reference: !<GroupTransform>
       children:
-        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear BT.709 D65}
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear Rec.709}
         - !<AllocationTransform> {allocation: lg2, vars: [-12.473931188, 12.526068812]}
         - !<FileTransform> {src: filmic_desat65cube.spi3d, interpolation: best}
         - !<AllocationTransform> {allocation: uniform, vars: [0, 0.66]}
     to_scene_reference: !<GroupTransform>
       children:
         - !<AllocationTransform> {allocation: lg2, vars: [-12.473931188, 4.026068812], direction: inverse}
-        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear BT.709 D65, direction: inverse}
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear Rec.709, direction: inverse}
 
   - !<ColorSpace>
     name: Filmic sRGB
