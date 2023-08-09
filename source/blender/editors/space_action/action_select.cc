@@ -704,6 +704,21 @@ static void region_select_elem(RegionSelectData *sel_data, bAnimListElem *ale, b
       ale->update |= ANIM_UPDATE_DEPS;
       break;
     }
+    case ANIMTYPE_GREASE_PENCIL_DATABLOCK: {
+      ListBase anim_data = {nullptr, nullptr};
+      ANIM_animdata_filter(
+          ac, &anim_data, ANIMFILTER_DATA_VISIBLE, ac->data, eAnimCont_Types(ac->datatype));
+
+      LISTBASE_FOREACH (bAnimListElem *, ale2, &anim_data) {
+        if ((ale2->type == ANIMTYPE_GREASE_PENCIL_LAYER) && (ale2->id == ale->data)) {
+          region_select_elem(sel_data, ale2, true);
+        }
+      }
+
+      ANIM_animdata_update(ac, &anim_data);
+      ANIM_animdata_freelist(&anim_data);
+      break;
+    }
     case ANIMTYPE_MASKDATABLOCK: {
       Mask *mask = static_cast<Mask *>(ale->data);
       MaskLayer *masklay;
