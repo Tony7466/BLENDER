@@ -137,7 +137,8 @@ static void recalcData_sequencer_retiming(TransInfo *t)
     /* Calculate translation. */
 
     blender::MutableSpan handles = SEQ_retiming_handles_get(seq);
-    SeqRetimingHandle *handle = &handles[tdseq->handle_index];
+    // SeqRetimingHandle *handle = &handles[tdseq->handle_index];
+    SeqRetimingHandle *handle = seq->retiming_handles + tdseq->handle_index;
 
     if (SEQ_retiming_handle_is_transition_type(handle) &&
         !SEQ_retiming_selection_has_whole_transition(t->scene, handle))
@@ -152,26 +153,8 @@ static void recalcData_sequencer_retiming(TransInfo *t)
   }
 }
 
-static void special_aftertrans_update__sequencer_retiming(bContext * /*C*/, TransInfo *t)
-{
-
-  TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
-  TransData *td = NULL;
-  TransData2D *td2d = NULL;
-  int i;
-
-  for (i = 0, td = tc->data, td2d = tc->data_2d; i < tc->data_len; i++, td++, td2d++) {
-    TransDataSeq *tdseq = static_cast<TransDataSeq *>(td->extra);
-    Sequence *seq = tdseq->seq;
-    if (t->state == TRANS_CANCEL) {
-      // ??????
-    }
-  }
-}
-
 TransConvertTypeInfo TransConvertType_SequencerRetiming = {
     /*flags*/ (T_POINTS | T_2D_EDIT),
     /*createTransData*/ createTransSeqRetimingData,
     /*recalcData*/ recalcData_sequencer_retiming,
-    /*special_aftertrans_update*/ special_aftertrans_update__sequencer_retiming,
 };

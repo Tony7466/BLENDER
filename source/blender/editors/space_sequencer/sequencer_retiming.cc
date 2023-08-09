@@ -48,7 +48,6 @@ using blender::MutableSpan;
 bool sequencer_retiming_tool_is_active(const bContext *C)
 {
   ScrArea *area = CTX_wm_area(C);
-  // is this OK?
   if (area->runtime.is_tool_set) {
     return STREQ(area->runtime.tool->idname, "builtin.retime");
   }
@@ -144,7 +143,7 @@ static int sequencer_retiming_handle_add_exec(bContext *C, wmOperator *op)
     const int frame_index = BKE_scene_frame_get(scene) - SEQ_time_start_frame_get(seq);
     const SeqRetimingHandle *handle = SEQ_retiming_find_segment_start_handle(seq, frame_index);
 
-    if (SEQ_retiming_handle_is_transition_type(handle)) {
+    if (SEQ_retiming_handle_is_transition_start(handle)) {
       BKE_report(op->reports, RPT_WARNING, "Can not create handle inside of speed transition");
       continue;
     }
@@ -203,7 +202,7 @@ bool freeze_frame_add_new_for_seq(
     handle = SEQ_retiming_handle_get_by_timeline_frame(scene, seq, timeline_frame);
   }
 
-  if (SEQ_retiming_handle_is_transition_type(handle)) {
+  if (SEQ_retiming_handle_is_transition_start(handle)) {
     BKE_report(op->reports, RPT_WARNING, "Can not create handle inside of speed transition");
     return false;
   }
@@ -219,7 +218,7 @@ bool freeze_frame_add_new_for_seq(
     return false;
   }
 
-  // cache
+  SEQ_relations_invalidate_cache_raw(scene, seq);
   return true;
 }
 
@@ -334,11 +333,11 @@ bool transition_add_new_for_seq(
   SeqRetimingHandle *transition = SEQ_retiming_add_transition(scene, seq, handle, duration);
 
   if (transition == nullptr) {
-    BKE_report(op->reports, RPT_WARNING, "Can not create freeze frame");
+    BKE_report(op->reports, RPT_WARNING, "Can not create transition");
     return false;
   }
 
-  // cache
+  SEQ_relations_invalidate_cache_raw(scene, seq);
   return true;
 }
 
