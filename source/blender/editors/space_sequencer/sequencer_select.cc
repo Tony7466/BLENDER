@@ -971,13 +971,20 @@ static int sequencer_select_exec(bContext *C, wmOperator *op)
     return OPERATOR_RUNNING_MODAL;
   }
 
-  Sequence *handle_test_seq = nullptr;
-  bool retiming_handle_clicked = mousover_handle_get(C, mval, &handle_test_seq) != nullptr;
-  if (handle_test_seq != nullptr) {
-    retiming_handle_clicked |= last_handle_is_clicked(C, handle_test_seq, mval);
+  Sequence *seq_handle_test = nullptr;
+  const SeqRetimingHandle *handle = mousover_handle_get(C, mval, &seq_handle_test);
+  bool retiming_handle_clicked = (handle != nullptr);
+
+  /* Ensure handle selection even if data is not initialized yet. */
+  if (seq_handle_test != nullptr && last_handle_is_clicked(C, seq_handle_test, mval)) {
+    retiming_handle_clicked = true;
+    SEQ_retiming_data_ensure(scene, seq_handle_test);
+    handle = SEQ_retiming_last_handle_get(seq);
   }
 
-  if (handle_test_seq && retiming_handle_clicked && !wait_to_deselect_others) {
+  /* `&& !wait_to_deselect_others` will cause handle to be selected only if strip is already
+   * selected. */
+  if (seq_handle_test && retiming_handle_clicked) {
     WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
     WM_toolsystem_ref_set_by_id(C, "builtin.retime");
     /* Ensure retiming handles at strip handles before switching tool. */
@@ -985,7 +992,7 @@ static int sequencer_select_exec(bContext *C, wmOperator *op)
     SEQ_ITERATOR_FOREACH (seq, SEQ_query_all_strips(ed->seqbasep)) {
       SEQ_retiming_data_ensure(scene, seq);
     }
-
+    SEQ_retiming_selection_append(ed, seq_handle_test, handle);
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
 

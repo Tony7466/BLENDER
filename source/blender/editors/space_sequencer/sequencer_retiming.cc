@@ -617,15 +617,17 @@ static int sequencer_retiming_handle_select_exec(bContext *C, wmOperator *op)
     }
   }
 
-  if (seq_handle_owner == nullptr) {
+  if (seq_handle_owner == nullptr && !changed) {
     return OPERATOR_CANCELLED;
   }
 
-  if (toggle && SEQ_retiming_selection_contains(ed, seq_handle_owner, handle)) {
-    SEQ_retiming_selection_remove(ed, seq_handle_owner, handle);
-  }
-  else {
-    SEQ_retiming_selection_append(ed, seq_handle_owner, handle);
+  if (seq_handle_owner != nullptr) {
+    if (toggle && SEQ_retiming_selection_contains(ed, seq_handle_owner, handle)) {
+      SEQ_retiming_selection_remove(ed, seq_handle_owner, handle);
+    }
+    else {
+      SEQ_retiming_selection_append(ed, seq_handle_owner, handle);
+    }
   }
 
   WM_toolsystem_ref_set_by_id(C, "builtin.retime"); /* Switch to retiming tool. */
