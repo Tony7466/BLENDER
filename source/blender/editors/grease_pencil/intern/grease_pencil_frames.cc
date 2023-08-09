@@ -28,7 +28,6 @@ namespace blender::ed::greasepencil {
 
 bool remove_all_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::Layer &layer)
 {
-  bool changed = false;
   Vector<int> frames_to_remove;
   for (auto [frame_number, frame] : layer.frames().items()) {
     if (!frame.is_selected()) {
@@ -36,9 +35,7 @@ bool remove_all_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::
     }
     frames_to_remove.append(frame_number);
   }
-  grease_pencil.remove_frames(layer, frames_to_remove.as_span());
-
-  return changed;
+  return grease_pencil.remove_frames(layer, frames_to_remove.as_span());
 }
 
 static void select_frame(GreasePencilFrame &frame, const short select_mode)
