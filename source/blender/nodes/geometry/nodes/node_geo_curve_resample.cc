@@ -9,6 +9,8 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "NOD_rna_define.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_curve_resample_cc {
@@ -106,6 +108,39 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Curve", std::move(geometry_set));
 }
 
+static void node_rna(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  static EnumPropertyItem mode_items[] = {
+      {GEO_NODE_CURVE_RESAMPLE_EVALUATED,
+       "EVALUATED",
+       0,
+       "Evaluated",
+       "Output the input spline's evaluated points, based on the resolution attribute for NURBS "
+       "and Bezier splines. Poly splines are unchanged"},
+      {GEO_NODE_CURVE_RESAMPLE_COUNT,
+       "COUNT",
+       0,
+       "Count",
+       "Sample the specified number of points along each spline"},
+      {GEO_NODE_CURVE_RESAMPLE_LENGTH,
+       "LENGTH",
+       0,
+       "Length",
+       "Calculate the number of samples by splitting each spline into segments with the specified "
+       "length"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_node_storage(prop, mode);
+  RNA_def_property_enum_items(prop, mode_items);
+  RNA_def_property_ui_text(prop, "Mode", "How to specify the amount of samples");
+  RNA_def_property_update_runtime(prop, (void *)rna_Node_socket_update);
+  RNA_def_property_update_notifier(prop, NC_NODE | NA_EDITED);
+}
+
 static void node_register()
 {
   static bNodeType ntype;
@@ -119,6 +154,8 @@ static void node_register()
   ntype.updatefunc = node_update;
   ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 
