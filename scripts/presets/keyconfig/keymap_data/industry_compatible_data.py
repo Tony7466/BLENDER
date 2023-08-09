@@ -4072,6 +4072,7 @@ def km_sculpt_curves(params):
         ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
          {"properties": [("scalar", 1.0 / 0.9)]}),
         # Selection operators
+        ("curves.select_all", {"type": 'A', "value": 'PRESS', "ctrl": True}, {"properties": [("action", 'SELECT')]}),
         ("curves.select_all", {"type": 'A', "value": 'PRESS', "shift": True, "ctrl": True}, {"properties": [("action", 'DESELECT')]}),
         ("curves.select_all", {"type": 'I', "value": 'PRESS', "ctrl": True}, {"properties": [("action", 'INVERT')]}),
         ("sculpt_curves.select_grow", {"type": 'A', "value": 'PRESS', "shift": True}, {}),
