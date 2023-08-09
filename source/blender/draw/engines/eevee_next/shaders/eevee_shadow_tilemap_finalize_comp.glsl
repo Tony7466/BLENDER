@@ -38,8 +38,8 @@ void main()
       int view_index = atomicAdd(pages_infos_buf.view_count, 1);
       if (view_index < SHADOW_VIEW_MAX) {
         render_map_buf[view_index] = shadow_page_pack(tile.page);
-        /* Add page to clear list. */
-        atomicAdd(clear_dispatch_buf.num_groups_z, 1u);
+        /* Add page to clear list. Add one triangle for each page. */
+        atomicAdd(clear_draw_buf.vertex_len, 3u);
         /* Tag tile as rendered. */
         atomicOr(tiles_buf[tile_index], SHADOW_IS_RENDERED);
         /* Statistics. */

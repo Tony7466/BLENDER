@@ -207,7 +207,7 @@ class ShadowModule {
   StorageVectorBuffer<uint, 128> curr_casters_ = {"CurrCasters"};
 
   /** Indirect arguments for page clearing. */
-  StorageBuffer<DispatchCommand> clear_dispatch_buf_;
+  DrawIndirectBuf clear_draw_buf_;
   /** View to pages mapping. */
   StorageArrayBuffer<uint, SHADOW_VIEW_MAX> render_map_buf_ = {"render_map_buf"};
 
@@ -227,7 +227,7 @@ class ShadowModule {
   /** \name Page Management
    * \{ */
 
-  static constexpr eGPUTextureFormat atlas_type = GPU_R32UI;
+  static constexpr eGPUTextureFormat atlas_type = GPU_DEPTH_COMPONENT32F;
   /** Atlas containing all physical pages. */
   Texture atlas_tx_ = {"shadow_atlas_tx_"};
 
@@ -252,7 +252,7 @@ class ShadowModule {
 
   /** Multi-View containing a maximum of 64 view to be rendered with the shadow pipeline. */
   View shadow_multi_view_ = {"ShadowMultiView", SHADOW_VIEW_MAX, true};
-  /** An empty frame-buffer (no attachment) the size of a whole tile-map. */
+  /** Framebuffer with the atlas_tx attached. */
   Framebuffer render_fb_;
   /** Arrays of viewports to rendering each tile to. */
   std::array<int4, 16> multi_viewports_;

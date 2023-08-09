@@ -16,23 +16,6 @@
 #pragma BLENDER_REQUIRE(eevee_transparency_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 
-void write_depth(ivec2 texel_co, float depth)
-{
-  int view_id = shadow_view_id_get();
-
-  uint page_packed = render_map_buf[view_id];
-  ivec3 page = ivec3(shadow_page_unpack(page_packed));
-  ivec2 out_texel = page.xy * pages_infos_buf.page_size + texel_co % pages_infos_buf.page_size;
-
-  uint u_depth = floatBitsToUint(depth);
-  /* Quantization bias. Equivalent to nextafter in C without all the safety. 1 is not enough. */
-  u_depth += 2;
-
-  /* TOOD(Metal): For Metal, textures will need to be viewed as buffers to workaround missing image
-   * atomics support. */
-  imageAtomicMin(shadow_atlas_img, ivec3(out_texel, page.z), u_depth);
-}
-
 void main()
 {
 #ifdef MAT_TRANSPARENT
@@ -49,10 +32,4 @@ void main()
     return;
   }
 #endif
-
-  ivec2 texel_co = ivec2(gl_FragCoord.xy);
-
-  float depth = gl_FragCoord.z;
-  float slope_bias = fwidth(depth);
-  write_depth(texel_co, depth + slope_bias);
 }

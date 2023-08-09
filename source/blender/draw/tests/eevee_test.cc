@@ -475,7 +475,7 @@ class TestDefrag {
   ShadowPageHeapBuf pages_free_data = {"PagesFreeBuf"};
   ShadowPageCacheBuf pages_cached_data = {"PagesCachedBuf"};
   ShadowPagesInfoDataBuf pages_infos_data = {"PagesInfosBuf"};
-  StorageBuffer<DispatchCommand> clear_dispatch_buf;
+  StorageBuffer<DispatchCommand> clear_draw_buf;
   ShadowStatisticsBuf statistics_buf = {"statistics_buf"};
 
  public:
@@ -546,7 +546,7 @@ class TestDefrag {
     pass.bind_ssbo("pages_free_buf", pages_free_data);
     pass.bind_ssbo("pages_cached_buf", pages_cached_data);
     pass.bind_ssbo("statistics_buf", statistics_buf);
-    pass.bind_ssbo("clear_dispatch_buf", clear_dispatch_buf);
+    pass.bind_ssbo("clear_draw_buf", clear_draw_buf);
     pass.dispatch(int3(1, 1, 1));
 
     Manager manager;
@@ -802,7 +802,7 @@ static void test_eevee_shadow_finalize()
   render_map_tx.ensure_mip_views();
 
   View shadow_multi_view = {"ShadowMultiView", 64, true};
-  StorageBuffer<DispatchCommand> clear_dispatch_buf;
+  StorageBuffer<DispatchCommand> clear_draw_buf;
   StorageArrayBuffer<uint, SHADOW_MAX_PAGE> clear_page_buf = {"clear_page_buf"};
 
   GPUShader *sh = GPU_shader_create_from_info_name("eevee_shadow_tilemap_finalize");
@@ -814,7 +814,7 @@ static void test_eevee_shadow_finalize()
   pass.bind_ssbo("pages_infos_buf", pages_infos_data);
   pass.bind_image("tilemaps_img", tilemap_tx);
   pass.bind_ssbo("view_infos_buf", shadow_multi_view.matrices_ubo_get());
-  pass.bind_ssbo("clear_dispatch_buf", clear_dispatch_buf);
+  pass.bind_ssbo("clear_draw_buf", clear_draw_buf);
   pass.bind_ssbo("clear_page_buf", clear_page_buf);
   pass.bind_ssbo("statistics_buf", statistics_buf);
   pass.bind_ssbo("tilemaps_clip_buf", tilemaps_clip);

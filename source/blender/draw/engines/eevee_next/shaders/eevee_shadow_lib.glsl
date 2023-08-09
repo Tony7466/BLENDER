@@ -117,14 +117,14 @@ struct ShadowSample {
   ShadowTileData tile;
 };
 
-float shadow_tile_depth_get(usampler2DArray atlas_tx, ShadowTileData tile, vec2 atlas_uv)
+float shadow_tile_depth_get(depth2DArray atlas_tx, ShadowTileData tile, vec2 atlas_uv)
 {
   if (!tile.is_allocated) {
     /* Far plane distance but with a bias to make sure there will be no shadowing.
      * But also not FLT_MAX since it can cause issue with projection. */
     return 1.1;
   }
-  return uintBitsToFloat(texture(atlas_tx, vec3(atlas_uv, float(tile.page.z))).r);
+  return texture(atlas_tx, vec3(atlas_uv, float(tile.page.z))).r;
 }
 
 vec2 shadow_punctual_linear_depth(vec2 z, float near, float far)
@@ -141,7 +141,7 @@ float shadow_directional_linear_depth(float z, float near, float far)
 }
 
 ShadowSample shadow_punctual_sample_get(
-    usampler2DArray atlas_tx, usampler2D tilemaps_tx, LightData light, vec3 lP, vec3 lNg)
+    depth2DArray atlas_tx, usampler2D tilemaps_tx, LightData light, vec3 lP, vec3 lNg)
 {
   int face_id = shadow_punctual_face_index_get(lP);
   lNg = shadow_punctual_local_position_to_face_local(face_id, lNg);
@@ -176,7 +176,7 @@ ShadowSample shadow_punctual_sample_get(
 }
 
 ShadowSample shadow_directional_sample_get(
-    usampler2DArray atlas_tx, usampler2D tilemaps_tx, LightData light, vec3 P, vec3 lNg)
+    depth2DArray atlas_tx, usampler2D tilemaps_tx, LightData light, vec3 P, vec3 lNg)
 {
   vec3 lP = shadow_world_to_local(light, P);
   ShadowCoordinates coord = shadow_directional_coordinates(light, lP);
@@ -204,7 +204,7 @@ ShadowSample shadow_directional_sample_get(
 }
 
 ShadowSample shadow_sample(const bool is_directional,
-                           usampler2DArray atlas_tx,
+                           depth2DArray atlas_tx,
                            usampler2D tilemaps_tx,
                            LightData light,
                            vec3 lL,
