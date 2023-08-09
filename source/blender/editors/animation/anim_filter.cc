@@ -966,7 +966,7 @@ static bAnimListElem *make_new_animlistelem(void *data,
         break;
       }
       case ANIMTYPE_GREASE_PENCIL_LAYER: {
-        GreasePencilLayer *layer = (GreasePencilLayer *)data;
+        GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(data);
 
         ale->flag = layer->base.flag;
 
