@@ -356,6 +356,11 @@ void BKE_blender_userdef_app_template_data_swap(UserDef *userdef_a, UserDef *use
   } \
   ((void)0)
 
+/* Indirect includes cab pull 'sys/queue.h', which has defines for the list operations,
+ * including LIST_SWAP. */
+#ifdef LIST_SWAP
+#  undef LIST_SWAP
+#endif
 #define LIST_SWAP(id) \
   { \
     SWAP(ListBase, userdef_a->id, userdef_b->id); \
