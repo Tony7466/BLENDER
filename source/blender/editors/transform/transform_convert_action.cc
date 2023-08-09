@@ -1149,7 +1149,7 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
           }
           break;
 
-        case ALE_GREASE_PENCIL_CELS: {
+        case ALE_GREASE_PENCIL_CEL: {
           GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
           grease_pencil_layer_apply_trans_data(
               *grease_pencil,
