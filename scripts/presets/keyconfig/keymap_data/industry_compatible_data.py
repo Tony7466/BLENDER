@@ -4032,7 +4032,9 @@ def km_curves(params):
         ("curves.disable_selection", {"type": 'ONE', "value": 'PRESS', "alt": True}, None),
         ("curves.disable_selection", {"type": 'TWO', "value": 'PRESS', "alt": True}, None),
         # Selection Operators
-
+        ("curves.select_all", {"type": 'A', "value": 'PRESS', "ctrl": True}, {"properties": [("action", 'SELECT')]}),
+        ("curves.select_all", {"type": 'A', "value": 'PRESS', "shift": True, "ctrl": True}, {"properties": [("action", 'DESELECT')]}),
+        ("curves.select_all", {"type": 'I', "value": 'PRESS', "ctrl": True}, {"properties": [("action", 'INVERT')]}),
         ("curves.select_linked", {"type": 'L', "value": 'PRESS', "ctrl": True}, None),
         ("curves.select_more", {"type": 'PAGE_UP', "value": 'PRESS', "repeat": True}, None),
         ("curves.select_less", {"type": 'PAGE_DOWN', "value": 'PRESS', "repeat": True}, None),
@@ -4041,6 +4043,9 @@ def km_curves(params):
         # Proportional Editing
         ("wm.context_toggle", {"type": 'B', "value": 'PRESS'},
          {"properties": [("data_path", 'tool_settings.use_proportional_edit')]}),
+        # Tools
+        *_template_items_basic_tools(),
+        op_tool_cycle("builtin.annotate", {"type": 'D', "value": 'PRESS'}),
     ])
 
     return keymap
