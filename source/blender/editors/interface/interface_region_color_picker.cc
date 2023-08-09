@@ -835,7 +835,7 @@ static int ui_colorpicker_small_wheel_cb(const bContext * /*C*/,
     add = -0.05f;
   }
   else if (event->type == MOUSEPAN) {
-    add = 0.005f * WM_event_absolute_delta_y(event) / U.dpi_fac;
+    add = 0.005f * WM_event_absolute_delta_y(event) / (U.scale_factor / UI_SCALE_FAC);
   }
 
   if (add != 0.0f) {
