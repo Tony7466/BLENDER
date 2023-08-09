@@ -495,7 +495,7 @@ typedef struct GreasePencil {
 
   /**
    * Removes all the frames with \a frame_numbers in the \a layer.
-   * \retruns true if any frame was removed.
+   * \returns true if any frame was removed.
    */
   bool remove_frames(blender::bke::greasepencil::Layer &layer, blender::Span<int> frame_numbers);
   /**

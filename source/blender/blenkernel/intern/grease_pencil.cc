@@ -1533,7 +1533,7 @@ static void remove_drawings_unchecked(GreasePencil &grease_pencil,
    * skipping over drawings that are already in the range to be removed. */
   auto next_available_index = last_drawings_range.last();
   auto greatest_index_to_remove_it = std::rbegin(sorted_indices_to_remove);
-  auto get_next_availible_index = [&]() {
+  auto get_next_available_index = [&]() {
     while (next_available_index == *greatest_index_to_remove_it) {
       greatest_index_to_remove_it = std::prev(greatest_index_to_remove_it);
       next_available_index--;
@@ -1548,7 +1548,7 @@ static void remove_drawings_unchecked(GreasePencil &grease_pencil,
       /* This drawing and all the next drawings are already in the range to be removed. */
       break;
     }
-    const int swap_index = get_next_availible_index();
+    const int swap_index = get_next_available_index();
     /* Remap the drawing_index for frames that point to the drawing to be swapped with. */
     for (Layer *layer : grease_pencil.layers_for_write()) {
       blender::Map<int, GreasePencilFrame> &frames = layer->frames_for_write();
