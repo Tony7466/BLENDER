@@ -170,8 +170,6 @@ void grease_pencil_cels_to_keylist(AnimData *adt,
                                    AnimKeylist *keylist,
                                    int saction_flag);
 
-/* Grease Pencil Layer */
-void gpl_to_keylist(bDopeSheet *ads, bGPDlayer *gpl, AnimKeylist *keylist);
 /* Mask */
 void mask_to_keylist(bDopeSheet *ads, MaskLayer *masklay, AnimKeylist *keylist);
 
