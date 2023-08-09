@@ -1619,7 +1619,6 @@ void GreasePencil::move_frames(blender::bke::greasepencil::Layer &layer,
   }
 
   /* Insert all frames of the transformation. */
-  Vector<int> drawing_indices_to_check_for_deletion;
   for (const auto [src_frame_number, dst_frame_number] : trans_frame_numbers.items()) {
     if (!layer_frames_copy.contains(src_frame_number)) {
       continue;
@@ -1637,7 +1636,6 @@ void GreasePencil::move_frames(blender::bke::greasepencil::Layer &layer,
       GreasePencilDrawingBase *drawing_base = this->drawings(frame_to_overwrite.drawing_index);
       if (drawing_base->type == GP_DRAWING) {
         reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap().remove_user();
-        drawing_indices_to_check_for_deletion.append(frame_to_overwrite.drawing_index);
       }
       layer.remove_frame(dst_frame_number);
     }
@@ -1645,18 +1643,8 @@ void GreasePencil::move_frames(blender::bke::greasepencil::Layer &layer,
     *frame = src_frame;
   }
 
-  /* Remove drawings if they have no more users. */
-  for (const int drawing_index : drawing_indices_to_check_for_deletion) {
-    GreasePencilDrawingBase *drawing_base = this->drawings(drawing_index);
-    if (drawing_base->type != GP_DRAWING) {
-      continue;
-    }
-    bke::greasepencil::Drawing &drawing =
-        reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
-    if (!drawing.has_users()) {
-      this->remove_drawing(drawing_index);
-    }
-  }
+  /* Remove drawings if they no longer have users. */
+  this->remove_drawings_with_no_users();
 }
 
 blender::bke::greasepencil::Drawing *GreasePencil::get_editable_drawing_at(
