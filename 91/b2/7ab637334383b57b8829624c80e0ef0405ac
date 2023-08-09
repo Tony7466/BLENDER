@@ -1,2 +1,3 @@
 Referenced by issue #110001, Regression: Overlay -- Measurement display error when some modifiers are present in the object.
 Referenced by commit c126708d69afbb451534a66895c883c4a1403445, Fix #110001: Edit mesh overlay text uses final positions instead of cage
+Referenced by issue #110925, mirror modifier and subdivision surface.on_cage enabled crashes blender
