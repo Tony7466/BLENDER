@@ -135,6 +135,10 @@ static void actkeys_list_element_to_keylist(bAnimContext *ac,
     /* TODO: why don't we just give grease pencil layers key_data too? */
     grease_pencil_cels_to_keylist(adt, static_cast<GreasePencilLayer *>(ale->data), keylist, 0);
   }
+  else if (ale->type == ANIMTYPE_GREASE_PENCIL_DATABLOCK) {
+    /* TODO: why don't we just give grease pencil layers key_data too? */
+    grease_pencil_data_block_to_keylist(adt, static_cast<GreasePencil *>(ale->data), keylist, 0);
+  }
   else if (ale->type == ANIMTYPE_GPLAYER) {
     /* TODO: why don't we just give gplayers key_data too? */
     bGPDlayer *gpl = (bGPDlayer *)ale->data;
@@ -1668,6 +1672,23 @@ static void actkeys_mselect_single(bAnimContext *ac,
     blender::ed::greasepencil::select_frame_at(
         static_cast<GreasePencilLayer *>(ale->data)->wrap(), selx, select_mode);
     ale->update |= ANIM_UPDATE_DEPS;
+  }
+  else if (ale->type == ANIMTYPE_GREASE_PENCIL_DATABLOCK) {
+    ListBase anim_data = {nullptr, nullptr};
+    eAnimFilter_Flags filter;
+
+    filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_NODUPLIS);
+    ANIM_animdata_filter(ac, &anim_data, filter, ac->data, eAnimCont_Types(ac->datatype));
+
+    /* Loop over all keys that are represented by this data-block key. */
+    LISTBASE_FOREACH (bAnimListElem *, ale2, &anim_data) {
+      if ((ale2->type != ANIMTYPE_GREASE_PENCIL_LAYER) || (ale2->id != ale->data)) {
+        continue;
+      }
+      blender::ed::greasepencil::select_frame_at(
+          static_cast<GreasePencilLayer *>(ale2->data)->wrap(), selx, select_mode);
+      ale2->update |= ANIM_UPDATE_DEPS;
+    }
   }
   else if (ale->type == ANIMTYPE_MASKLAYER) {
     ED_mask_select_frame(static_cast<MaskLayer *>(ale->data), selx, select_mode);
