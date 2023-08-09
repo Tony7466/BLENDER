@@ -57,22 +57,44 @@ namespace blender::ed::space_node {
  * \{ */
 using NodeSocketPair = std::pair<bNode *, bNodeSocket *>;
 
+/**
+ * This structure keeps track of every properties of the previews being rendered.
+ * `NestedTreePreviews` instances must contain only really cached data.
+ * We differenciate those two structures, because we want to be sure that the previews cached are
+ * corresponding to the cached properties, and while the render is not completed (it could be
+ * stopped midway), the cached properties (size, dirtystate) should be outdated with the user side
+ * properties.
+ */
 struct ShaderNodesPreviewJob {
   NestedTreePreviews *tree_previews;
   Scene *scene;
-  /* Pointer to the job's stop variable which is used to know when the job is asked for finishing.
+  /**
+   * Pointer to the job's stop variable which is used to know when the job is asked for finishing.
    * The idea is that the renderer will read this value frequently and abort the render if it is
-   * true. */
+   * true.
+   */
   bool *stop;
-  /* Pointer to the job's update variable which is set to true to refresh the UI when the renderer
-   * is delivering a fresh result. It allows the job to give some UI refresh tags to the WM. */
+  /**
+   * Pointer to the job's update variable which is set to true to refresh the UI when the renderer
+   * is delivering a fresh result. It allows the job to give some UI refresh tags to the WM.
+   */
   bool *do_update;
+  bool partial_tree_refresh;
+  int preview_size;
 
   Material *mat_copy;
+  /**
+   * When the rendering is happening, we compare the user dirty state with those rendering states
+   * Comparing the cached states would be wrong, because they are set at the end of the render.
+   */
+  DirtyState treepath_dirtystate;
+  DirtyState whole_tree_dirtystate;
+  DirtyState any_node_dirtystate;
   bNode *mat_output_copy;
   NodeSocketPair mat_displacement_copy;
-  /* TreePath used to locate the nodetree.
-   * bNodeTreePath elements have some listbase pointers which should not be used. */
+  /** TreePath used to locate the nodetree.
+   * bNodeTreePath elements have some listbase pointers which should not be used.
+   */
   Vector<bNodeTreePath *> treepath_copy;
   Vector<bNode *> AOV_nodes;
   Vector<bNode *> shader_nodes;
@@ -296,7 +318,7 @@ ImBuf *node_preview_acquire_ibuf(NestedTreePreviews &tree_previews, const bNode 
     return image_cached;
   }
   if (image_cached == nullptr) {
-    if (tree_previews.rendering == true) {
+    if (tree_previews.running_job != nullptr) {
       /* When the render process is started, the user must see that the preview area is open. */
       ImBuf *image_latest = nullptr;
       if (node_use_aov(node)) {
@@ -575,8 +597,8 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
     ViewLayerAOV *aov = BKE_view_layer_add_aov(AOV_layer);
     strcpy(aov->name, node->name);
   }
-  scene->r.xsch = job_data.tree_previews->preview_size;
-  scene->r.ysch = job_data.tree_previews->preview_size;
+  scene->r.xsch = job_data.preview_size;
+  scene->r.ysch = job_data.preview_size;
   scene->r.size = 100;
 
   if (job_data.tree_previews->previews_render == nullptr) {
@@ -636,43 +658,49 @@ static DirtyState get_treepath_dirty_state(const ListBase *treepath)
   return treepath_dirty_state;
 }
 
-static void update_needed_flag(const ListBase *treepath, NestedTreePreviews *tree_previews)
+static bool update_needed(const ListBase *treepath,
+                          NestedTreePreviews *tree_previews,
+                          bool &partial_tree_refresh)
 {
   bNodeTree *nodetree = static_cast<bNodeTreePath *>(treepath->last)->nodetree;
   DirtyState *compare_whole_tree_dirtystate = nullptr;
   DirtyState *compare_any_node_dirtystate = nullptr;
   DirtyState *compare_treepath_dirtystate = nullptr;
-  if (tree_previews->rendering == true) {
-    compare_whole_tree_dirtystate = &tree_previews->whole_tree_rendering_dirtystate;
-    compare_any_node_dirtystate = &tree_previews->any_node_rendering_dirtystate;
-    compare_treepath_dirtystate = &tree_previews->treepath_rendering_dirtystate;
+  int *compare_preview_size = nullptr;
+  if (tree_previews->running_job) {
+    compare_whole_tree_dirtystate = &tree_previews->running_job->whole_tree_dirtystate;
+    compare_any_node_dirtystate = &tree_previews->running_job->any_node_dirtystate;
+    compare_treepath_dirtystate = &tree_previews->running_job->treepath_dirtystate;
+    compare_preview_size = &tree_previews->running_job->preview_size;
   }
   else {
     compare_whole_tree_dirtystate = &tree_previews->whole_tree_dirtystate;
     compare_any_node_dirtystate = &tree_previews->any_node_dirtystate;
     compare_treepath_dirtystate = &tree_previews->treepath_dirtystate;
+    compare_preview_size = &tree_previews->preview_size;
   }
-  if (tree_previews->preview_size != U.node_preview_res ||
+  if (*compare_preview_size != U.node_preview_res ||
       nodetree->runtime->whole_tree_dirtystate != *compare_whole_tree_dirtystate)
   {
     /* Force whole tree redraw. */
-    tree_previews->restart_needed = true;
-    tree_previews->partial_tree_refresh = false;
-    return;
+    partial_tree_refresh = false;
+    return true;
   }
 
   DirtyState treepath_dirty_state = get_treepath_dirty_state(treepath);
   if (treepath_dirty_state != *compare_treepath_dirtystate) {
     /* If the path is dirty, then we may need to redraw all the nodetree (excepted if we know which
      * nodes are dirty). */
-    tree_previews->restart_needed = true;
-    tree_previews->partial_tree_refresh = false;
+    partial_tree_refresh = false;
+    return nodetree->runtime->any_node_dirtystate != *compare_any_node_dirtystate;
   }
   if (nodetree->runtime->any_node_dirtystate != *compare_any_node_dirtystate) {
     /* If we know that only some node are dirty, then enable partial redraw. */
-    tree_previews->restart_needed = true;
-    tree_previews->partial_tree_refresh = true;
+    partial_tree_refresh = true;
+    return true;
   }
+
+  return false;
 }
 
 static void shader_preview_startjob(void *customdata,
@@ -681,15 +709,9 @@ static void shader_preview_startjob(void *customdata,
                                     float * /*progress*/)
 {
   ShaderNodesPreviewJob *job_data = static_cast<ShaderNodesPreviewJob *>(customdata);
-
   job_data->stop = stop;
   job_data->do_update = do_update;
   *do_update = true;
-  bool size_changed = job_data->tree_previews->preview_size != U.node_preview_res;
-  if (size_changed) {
-    job_data->tree_previews->preview_size = U.node_preview_res;
-    job_data->tree_previews->partial_tree_refresh = false;
-  }
 
   /* Find the shader output node. */
   for (bNode *node_iter : job_data->mat_copy->nodetree->all_nodes()) {
@@ -704,6 +726,7 @@ static void shader_preview_startjob(void *customdata,
   }
 
   bNodeTree *active_nodetree = job_data->treepath_copy.last()->nodetree;
+  bool render_needed = false;
   for (bNode *node : active_nodetree->all_nodes()) {
     if (!(node->flag & NODE_PREVIEW)) {
       /* Clear the cached preview for this node to be sure that the preview is re-rendered if
@@ -717,7 +740,7 @@ static void shader_preview_startjob(void *customdata,
 
     std::pair<ImBuf *, DirtyState> &cache = job_data->tree_previews->previews_map.lookup_or_add(
         node->identifier, {nullptr, DirtyState()});
-    if (job_data->tree_previews->partial_tree_refresh) {
+    if (job_data->partial_tree_refresh) {
       /* Check if the node preview is outdated or inexistent. */
       if (node->runtime->dirtystate == cache.second && cache.first != nullptr) {
         continue;
@@ -725,14 +748,27 @@ static void shader_preview_startjob(void *customdata,
     }
     if (node_use_aov(*node)) {
       job_data->AOV_nodes.append(node);
+      render_needed = true;
     }
     else {
       job_data->shader_nodes.append(node);
+      render_needed = true;
     }
   }
 
-  if (job_data->tree_previews->preview_size > 0) {
+  if (job_data->preview_size > 0 && render_needed == true) {
     preview_render(*job_data);
+  }
+  if (*job_data->stop == false) {
+    /**
+     * Only when the job is ending naturally (not stopped), copy the rendered previews properties
+     * in the cached structure `NestedTreePreviews`.
+     */
+    NestedTreePreviews &tree_previews = *job_data->tree_previews;
+    tree_previews.treepath_dirtystate = job_data->treepath_dirtystate;
+    tree_previews.any_node_dirtystate = job_data->any_node_dirtystate;
+    tree_previews.whole_tree_dirtystate = job_data->whole_tree_dirtystate;
+    tree_previews.preview_size = job_data->preview_size;
   }
 }
 
@@ -743,11 +779,7 @@ static void shader_preview_free(void *customdata)
     MEM_freeN(path);
   }
   job_data->treepath_copy.clear();
-  NestedTreePreviews &tree_previews = *job_data->tree_previews;
-  tree_previews.rendering = false;
-  tree_previews.treepath_dirtystate = tree_previews.treepath_rendering_dirtystate;
-  tree_previews.any_node_dirtystate = tree_previews.any_node_rendering_dirtystate;
-  tree_previews.whole_tree_dirtystate = tree_previews.whole_tree_rendering_dirtystate;
+  job_data->tree_previews->running_job = nullptr;
   if (job_data->mat_copy != nullptr) {
     BLI_remlink(&G.pr_main->materials, job_data->mat_copy);
     BKE_id_free(G.pr_main, &job_data->mat_copy->id);
@@ -767,23 +799,16 @@ static void ensure_nodetree_previews(const bContext &C,
   }
 
   bNodeTree *displayed_nodetree = static_cast<bNodeTreePath *>(treepath.last)->nodetree;
-  update_needed_flag(&treepath, &tree_previews);
-  if (!(tree_previews.restart_needed)) {
+  bool partial_tree_refresh = false;
+  if (!update_needed(&treepath, &tree_previews, partial_tree_refresh)) {
     return;
   }
-  if (tree_previews.rendering) {
+  if (tree_previews.running_job != nullptr) {
     WM_jobs_stop(CTX_wm_manager(&C),
                  CTX_wm_space_node(&C),
                  reinterpret_cast<void *>(shader_preview_startjob));
     return;
   }
-  tree_previews.rendering = true;
-  tree_previews.restart_needed = false;
-  DirtyState treepath_dirty_state = get_treepath_dirty_state(&treepath);
-  tree_previews.treepath_rendering_dirtystate = treepath_dirty_state;
-  tree_previews.any_node_rendering_dirtystate = displayed_nodetree->runtime->any_node_dirtystate;
-  tree_previews.whole_tree_rendering_dirtystate =
-      displayed_nodetree->runtime->whole_tree_dirtystate;
 
   ED_preview_ensure_dbase(false);
 
@@ -794,6 +819,7 @@ static void ensure_nodetree_previews(const bContext &C,
                               WM_JOB_EXCL_RENDER,
                               WM_JOB_TYPE_RENDER_PREVIEW);
   ShaderNodesPreviewJob *job_data = MEM_new<ShaderNodesPreviewJob>(__func__);
+  tree_previews.running_job = job_data;
 
   job_data->scene = scene;
   job_data->tree_previews = &tree_previews;
@@ -801,6 +827,13 @@ static void ensure_nodetree_previews(const bContext &C,
   job_data->mat_copy = duplicate_material(material);
   job_data->rendering_node = nullptr;
   job_data->rendering_AOVs = false;
+  job_data->partial_tree_refresh = partial_tree_refresh;
+  job_data->preview_size = U.node_preview_res;
+
+  DirtyState treepath_dirty_state = get_treepath_dirty_state(&treepath);
+  job_data->treepath_dirtystate = treepath_dirty_state;
+  job_data->any_node_dirtystate = displayed_nodetree->runtime->any_node_dirtystate;
+  job_data->whole_tree_dirtystate = displayed_nodetree->runtime->whole_tree_dirtystate;
 
   /* Update the treepath copied to fit the structure of the nodetree copied. */
   bNodeTreePath *root_path = MEM_cnew<bNodeTreePath>(__func__);

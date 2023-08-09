@@ -16,15 +16,21 @@ struct Render;
 
 namespace blender::ed::space_node {
 using bke::DirtyState;
+struct ShaderNodesPreviewJob;
 
+/**
+ * All properties of the previews present in this structure should always be corresponding to all
+ * the previews cached in the `previews_map`. The size/dirtystate properties should be modified
+ * only when all previews are corresponding to those properties. It may result in some more
+ * refreshes, but it is the only way to make sure that the system always detect when a preview is
+ * outdated.
+ */
 struct NestedTreePreviews {
   Render *previews_render = nullptr;
   /** Use this map to keep track of the latest #ImBuf used (after freeing the renderresult). */
   blender::Map<const int32_t, std::pair<ImBuf *, DirtyState>> previews_map;
   int preview_size;
-  bool rendering = false;
-  bool restart_needed = false;
-  bool partial_tree_refresh = false;
+  ShaderNodesPreviewJob *running_job = nullptr;
 
   /**
    * Dirty state of the bNodeTreePath vector. It is the sum of the tree_dirty_state of all the
@@ -42,14 +48,6 @@ struct NestedTreePreviews {
    * re-rendered.
    */
   DirtyState any_node_dirtystate;
-
-  /**
-   * When the rendering is happening, we compare the user dirty state with those rendering states
-   * Comparing the cached states would be wrong, because they are set at the end of the render.
-   */
-  DirtyState treepath_rendering_dirtystate;
-  DirtyState whole_tree_rendering_dirtystate;
-  DirtyState any_node_rendering_dirtystate;
 
   NestedTreePreviews(const int size) : preview_size(size) {}
   ~NestedTreePreviews()
