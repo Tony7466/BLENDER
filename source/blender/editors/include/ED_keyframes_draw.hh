@@ -22,6 +22,7 @@ struct bActionGroup;
 struct bAnimContext;
 struct bDopeSheet;
 struct bGPDlayer;
+struct GreasePencil;
 struct GreasePencilLayer;
 
 /* draw simple diamond-shape keyframe */
@@ -98,6 +99,14 @@ void draw_grease_pencil_cels_channel(AnimKeylistDrawList *draw_list,
                                      float ypos,
                                      float yscale_fac,
                                      int saction_flag);
+
+/* Grease Pencil data channels */
+void draw_grease_pencil_datablock_channel(AnimKeylistDrawList *draw_list,
+                                          bDopeSheet *ads,
+                                          GreasePencil *grease_pencil,
+                                          const float ypos,
+                                          const float yscale_fac,
+                                          int saction_flag);
 
 /* Grease Pencil Layer */
 void draw_gpl_channel(AnimKeylistDrawList *draw_list,

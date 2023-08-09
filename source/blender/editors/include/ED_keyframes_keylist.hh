@@ -13,6 +13,7 @@
 struct AnimData;
 struct CacheFile;
 struct FCurve;
+struct GreasePencil;
 struct GreasePencilLayer;
 struct ListBase;
 struct MaskLayer;
@@ -169,6 +170,12 @@ void grease_pencil_cels_to_keylist(AnimData *adt,
                                    GreasePencilLayer *layer,
                                    AnimKeylist *keylist,
                                    int saction_flag);
+
+/* Grease Pencil Data-Block. */
+void grease_pencil_data_block_to_keylist(AnimData *adt,
+                                         GreasePencil *grease_pencil,
+                                         AnimKeylist *keylist,
+                                         const int saction_flag);
 
 /* Mask */
 void mask_to_keylist(bDopeSheet *ads, MaskLayer *masklay, AnimKeylist *keylist);

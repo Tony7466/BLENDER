@@ -1178,6 +1178,19 @@ void gpl_to_keylist(bDopeSheet * /*ads*/, bGPDlayer *gpl, AnimKeylist *keylist)
   }
 }
 
+void grease_pencil_data_block_to_keylist(AnimData *adt,
+                                         GreasePencil *grease_pencil,
+                                         AnimKeylist *keylist,
+                                         const int saction_flag)
+{
+  if ((grease_pencil == nullptr) || (keylist == nullptr)) {
+    return;
+  }
+  for (blender::bke::greasepencil::Layer *layer : grease_pencil->layers_for_write()) {
+    grease_pencil_cels_to_keylist(adt, layer, keylist, saction_flag);
+  }
+}
+
 void grease_pencil_cels_to_keylist(AnimData * /*adt*/,
                                    GreasePencilLayer *gpl,
                                    AnimKeylist *keylist,

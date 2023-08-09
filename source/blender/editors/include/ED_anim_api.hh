@@ -260,7 +260,8 @@ enum eAnim_KeyType {
   ALE_ACT,   /* Action summary */
   ALE_GROUP, /* Action Group summary */
 
-  ALE_GREASE_PENCIL_CEL, /* Grease Pencil Cels */
+  ALE_GREASE_PENCIL_CEL,  /* Grease Pencil Cels. */
+  ALE_GREASE_PENCIL_DATA, /* Grease Pencil Cels summary. */
 };
 
 /**

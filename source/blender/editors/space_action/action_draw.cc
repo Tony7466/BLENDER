@@ -439,6 +439,14 @@ static void draw_keyframes(bAnimContext *ac,
                                         scale_factor,
                                         action_flag);
         break;
+      case ALE_GREASE_PENCIL_DATA:
+        draw_grease_pencil_datablock_channel(draw_list,
+                                             ads,
+                                             static_cast<GreasePencil *>(ale->data),
+                                             ycenter,
+                                             scale_factor,
+                                             action_flag);
+        break;
       case ALE_GPFRAME:
         draw_gpl_channel(draw_list,
                          ads,

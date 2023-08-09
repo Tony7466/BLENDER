@@ -383,6 +383,7 @@ enum eAnimKeylistDrawListElemType {
   ANIM_KEYLIST_ACTION,
   ANIM_KEYLIST_AGROUP,
   ANIM_KEYLIST_GREASE_PENCIL_CELS,
+  ANIM_KEYLIST_GREASE_PENCIL_DATA,
   ANIM_KEYLIST_GP_LAYER,
   ANIM_KEYLIST_MASK_LAYER,
 };
@@ -407,6 +408,7 @@ struct AnimKeylistDrawListElem {
   bActionGroup *agrp;
   bGPDlayer *gpl;
   GreasePencilLayer *grease_pencil_layer;
+  GreasePencil *grease_pencil;
   MaskLayer *masklay;
 };
 
@@ -440,6 +442,11 @@ static void ED_keylist_draw_list_elem_build_keylist(AnimKeylistDrawListElem *ele
     case ANIM_KEYLIST_GREASE_PENCIL_CELS: {
       grease_pencil_cels_to_keylist(
           elem->adt, elem->grease_pencil_layer, elem->keylist, elem->saction_flag);
+      break;
+    }
+    case ANIM_KEYLIST_GREASE_PENCIL_DATA: {
+      grease_pencil_data_block_to_keylist(
+          elem->adt, elem->grease_pencil, elem->keylist, elem->saction_flag);
       break;
     }
     case ANIM_KEYLIST_GP_LAYER: {
@@ -704,6 +711,18 @@ void draw_action_channel(AnimKeylistDrawList *draw_list,
   draw_elem->adt = adt;
   draw_elem->act = act;
   draw_elem->channel_locked = locked;
+}
+
+void draw_grease_pencil_datablock_channel(AnimKeylistDrawList *draw_list,
+                                          bDopeSheet * /*ads*/,
+                                          GreasePencil *grease_pencil,
+                                          const float ypos,
+                                          const float yscale_fac,
+                                          int saction_flag)
+{
+  AnimKeylistDrawListElem *draw_elem = ed_keylist_draw_list_add_elem(
+      draw_list, ANIM_KEYLIST_GREASE_PENCIL_DATA, ypos, yscale_fac, eSAction_Flag(saction_flag));
+  draw_elem->grease_pencil = grease_pencil;
 }
 
 void draw_grease_pencil_cels_channel(AnimKeylistDrawList *draw_list,
