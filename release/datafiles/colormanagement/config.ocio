@@ -189,7 +189,7 @@ colorspaces:
     equalitygroup:
     bitdepth: 32f
     description: |
-      Display P3 with sRGB compound (piece-wise) encoding transfer function
+      Apple's Display P3 with sRGB compound (piece-wise) encoding transfer function, common on Mac devices
     isdata: false
     from_scene_reference: !<GroupTransform>
       children:
