@@ -103,35 +103,31 @@ static bool grease_pencil_layer_update_trans_data(blender::bke::greasepencil::La
   using namespace blender::bke::greasepencil;
   LayerTransformData &trans_data = layer.runtime->trans_data_;
 
-  switch (trans_data.status) {
-    case LayerTransformData::TRANS_INIT:
-      /* The transdata was only initialized. No transformation was applied yet.
-       * The frame mapping is always defined relatively to the initial frame map, so we first need
-       * to set the frames back to its initial state before applying any frame transformation. */
-      layer.frames_for_write() = trans_data.frames_copy;
-      layer.tag_frames_map_keys_changed();
-      trans_data.status = LayerTransformData::TRANS_RUNNING;
-      ATTR_FALLTHROUGH;
-
-    case LayerTransformData::TRANS_RUNNING: {
-      /* Apply the transformation directly in the frame map, so that we display the transformed
-       * frame numbers. We don't want to edit the frames or remove any drawing here. This will be
-       * done at once at the end of the transformation. */
-      const GreasePencilFrame src_frame = trans_data.frames_copy.lookup(src_frame_number);
-      const int src_duration = trans_data.frames_duration.lookup_default(src_frame_number, 0);
-      layer.remove_frame(src_frame_number);
-      layer.remove_frame(dst_frame_number);
-      GreasePencilFrame *frame = layer.add_frame(
-          dst_frame_number, src_frame.drawing_index, src_duration);
-      *frame = src_frame;
-
-      trans_data.trans_map.add_overwrite(src_frame_number, dst_frame_number);
-      break;
-    }
-
-    default:
-      return false;
+  if (trans_data.status == LayerTransformData::TRANS_CLEAR) {
+    return false;
   }
+
+  if (trans_data.status == LayerTransformData::TRANS_INIT) {
+    /* The transdata was only initialized. No transformation was applied yet.
+     * The frame mapping is always defined relatively to the initial frame map, so we first need
+     * to set the frames back to its initial state before applying any frame transformation. */
+    layer.frames_for_write() = trans_data.frames_copy;
+    layer.tag_frames_map_keys_changed();
+    trans_data.status = LayerTransformData::TRANS_RUNNING;
+  }
+
+  /* Apply the transformation directly in the frame map, so that we display the transformed
+   * frame numbers. We don't want to edit the frames or remove any drawing here. This will be
+   * done at once at the end of the transformation. */
+  const GreasePencilFrame src_frame = trans_data.frames_copy.lookup(src_frame_number);
+  const int src_duration = trans_data.frames_duration.lookup_default(src_frame_number, 0);
+  layer.remove_frame(src_frame_number);
+  layer.remove_frame(dst_frame_number);
+  GreasePencilFrame *frame = layer.add_frame(
+      dst_frame_number, src_frame.drawing_index, src_duration);
+  *frame = src_frame;
+
+  trans_data.trans_map.add_overwrite(src_frame_number, dst_frame_number);
 
   return true;
 }
