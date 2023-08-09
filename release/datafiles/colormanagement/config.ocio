@@ -87,7 +87,7 @@ colorspaces:
   - !<ColorSpace>
     name: Linear Rec.709
     aliases: [Linear, Linear BT.709, Linear BT.709 I-D65, Linear Tristimulus, linrec709, Utility - Linear - sRGB, Utility - Linear - Rec.709, lin_srgb, Linear Rec.709 (sRGB), lin_rec709_srgb, lin_rec709, lin_srgb, "CGI: Linear - Rec.709"]
-    family: linear
+    family: Linear
     equalitygroup:
     bitdepth: 32f
     description: |
@@ -101,7 +101,7 @@ colorspaces:
   - !<ColorSpace>
     name: Linear DCI-P3 D65
     aliases: [Linear DCI-P3 I-D65, Linear P3-D65, lin_p3d65, Utility - Linear - P3-D65, Apple DCI-P3 D65]
-    family: linear
+    family: Linear
     equalitygroup:
     bitdepth: 32f
     description: |
@@ -115,7 +115,7 @@ colorspaces:
   - !<ColorSpace>
     name: Linear Rec.2020
     aliases: [Linear BT.2020 I-D65, Linear BT.2020, lin_rec2020, Utility - Linear - Rec.2020]
-    family: linear
+    family: Linear
     equalitygroup:
     bitdepth: 32f
     description: |
@@ -129,7 +129,7 @@ colorspaces:
   - !<ColorSpace>
     name: ACES2065-1
     aliases: [Linear ACES, aces2065_1, ACES - ACES2065-1, lin_ap0, "ACES: Linear - AP0"]
-    family: linear
+    family: Linear
     equalitygroup:
     bitdepth: 32f
     description: |
@@ -143,7 +143,7 @@ colorspaces:
   - !<ColorSpace>
     name: ACEScg
     aliases: [Linear ACEScg, lin_ap1, ACES - ACEScg, "ACEScg: Linear - AP1"]
-    family: linear
+    family: Linear
     equalitygroup:
     bitdepth: 32f
     description: |
@@ -157,7 +157,7 @@ colorspaces:
   - !<ColorSpace>
     name: Linear E-Gamut
     aliases: [Linear E-Gamut I-D65, "FilmLight: Linear - E-Gamut"]
-    family: linear
+    family: Linear
     equalitygroup:
     bitdepth: 32f
     description: |
