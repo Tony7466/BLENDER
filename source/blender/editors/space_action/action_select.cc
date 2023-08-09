@@ -1684,12 +1684,18 @@ static void actkeys_mselect_single(bAnimContext *ac,
       LISTBASE_FOREACH (bAnimListElem *, ale2, &anim_data) {
         switch (ale2->type) {
           case ANIMTYPE_GPLAYER:
-          ED_gpencil_select_frame(static_cast<bGPDlayer *>(ale2->data), selx, select_mode);
-          ale2->update |= ANIM_UPDATE_DEPS;
+            ED_gpencil_select_frame(static_cast<bGPDlayer *>(ale2->data), selx, select_mode);
+            ale2->update |= ANIM_UPDATE_DEPS;
             break;
 
           case ANIMTYPE_MASKLAYER:
-          ED_mask_select_frame(static_cast<MaskLayer *>(ale2->data), selx, select_mode);
+            ED_mask_select_frame(static_cast<MaskLayer *>(ale2->data), selx, select_mode);
+            break;
+
+          case ANIMTYPE_GREASE_PENCIL_LAYER:
+            blender::ed::greasepencil::select_frame_at(
+                static_cast<GreasePencilLayer *>(ale2->data)->wrap(), selx, select_mode);
+            ale2->update |= ANIM_UPDATE_DEPS;
             break;
 
           default:
