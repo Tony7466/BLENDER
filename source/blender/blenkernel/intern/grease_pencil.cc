@@ -1486,19 +1486,21 @@ bool GreasePencil::remove_frames(blender::bke::greasepencil::Layer &layer,
                                  blender::Span<int> frame_numbers)
 {
   using namespace blender::bke::greasepencil;
-  bool changed = false;
+  bool removed_any_drawing_user = false;
   for (const int frame_number : frame_numbers) {
     if (!layer.frames().contains(frame_number)) {
       continue;
     }
-    const GreasePencilFrame &frame_to_remove = layer.frames().lookup(frame_number);
+    const GreasePencilFrame frame_to_remove = layer.frames().lookup(frame_number);
     const int drawing_index_to_remove = frame_to_remove.drawing_index;
     if (!layer.remove_frame(frame_number)) {
       /* If removing the frame was not successful, continue. */
       continue;
     }
-    changed = true;
-
+    if (frame_to_remove.is_null()) {
+      /* Null frames don't reference a drawing, continue. */
+      continue;
+    }
     GreasePencilDrawingBase *drawing_base = this->drawings(drawing_index_to_remove);
     if (drawing_base->type != GP_DRAWING) {
       /* If the drawing is referenced from another object, we don't track it's users because we
@@ -1507,8 +1509,9 @@ bool GreasePencil::remove_frames(blender::bke::greasepencil::Layer &layer,
     }
     Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
     drawing.remove_user();
+    removed_any_drawing_user = true;
   }
-  if (changed) {
+  if (removed_any_drawing_user) {
     this->remove_drawings_with_no_users();
     return true;
   }
