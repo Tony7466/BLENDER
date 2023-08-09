@@ -161,7 +161,7 @@ colorspaces:
     equalitygroup:
     bitdepth: 32f
     description: |
-      Linear E Gamut with illuminant D65 white point
+      Linear E-Gamut with illuminant D65 white point
     isdata: false
     from_scene_reference: !<GroupTransform>
       children:
