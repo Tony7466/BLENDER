@@ -203,7 +203,7 @@ colorspaces:
     equalitygroup:
     bitdepth: 32f
     description: |
-      BT.1886 2.4 Exponent EOTF Display
+      BT.1886 2.4 Exponent EOTF Display, commonly used for TVs
     isdata: false
     from_scene_reference: !<GroupTransform>
       children:
