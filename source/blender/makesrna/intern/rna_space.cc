@@ -7440,6 +7440,13 @@ static void rna_def_space_node_overlay(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Show Node Previews", "Display each node's preview if node is toggled");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE, nullptr);
+
+  prop = RNA_def_property(srna, "show_previews_3d", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "overlay.flag", SN_OVERLAY_SHOW_PREVIEWS_3D);
+  RNA_def_property_boolean_default(prop, false);
+  RNA_def_property_ui_text(
+      prop, "3D Previews", "Use the scene used by the material preview as the node preview scene");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE, nullptr);
 }
 
 static void rna_def_space_node(BlenderRNA *brna)
