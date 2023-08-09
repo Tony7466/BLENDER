@@ -13,6 +13,7 @@
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_image_save.h"
+#include "BKE_main.h"
 #include "BKE_packedFile.h"
 
 #include "IMB_imbuf.h"
@@ -85,9 +86,23 @@ std::string cache_or_get_image_file(Main *bmain, Scene *scene, Image *image, Ima
   }
   else if (BKE_image_has_packedfile(image)) {
     do_check_extension = true;
-    BKE_packedfile_unpack_image(bmain, nullptr, image, PF_WRITE_LOCAL);
-    BKE_image_user_file_path_ex(bmain, iuser, image, str, false, true);
-    file_path = str;
+    char dirname[FILE_MAXDIR];
+    char filename[FILE_MAX];
+    LISTBASE_FOREACH (ImagePackedFile *, ipf, &image->packedfiles) {
+      BLI_path_split_dir_file(ipf->filepath, dirname, sizeof(dirname), filename, sizeof(filename));
+      strcpy(str,
+             BKE_packedfile_unpack_to_file(nullptr,
+                                           BKE_main_blendfile_path(bmain),
+                                           dirname,
+                                           get_cache_file(filename).c_str(),
+                                           ipf->packedfile,
+                                           PF_WRITE_LOCAL));
+
+      /* Take first succesfully unpacked image. */
+      if (strlen(str) != 0 && file_path.empty()) {
+        file_path = str;
+      }
+    }
   }
   else {
     do_check_extension = true;
