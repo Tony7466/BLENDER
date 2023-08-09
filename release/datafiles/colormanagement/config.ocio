@@ -155,7 +155,7 @@ colorspaces:
         - !<BuiltinTransform> {style: "UTILITY - ACES-AP1_to_CIE-XYZ-D65_BFD", direction: inverse}
 
   - !<ColorSpace>
-    name: Linear E-Gamut
+    name: Linear FilmLight E-Gamut
     aliases: [Linear E-Gamut I-D65, "FilmLight: Linear - E-Gamut"]
     family: Linear
     equalitygroup:
