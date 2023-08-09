@@ -227,7 +227,7 @@ colorspaces:
   - !<ColorSpace>
     name: Non-Color
     aliases: [Generic Data, Non-Colour Data, Raw, Utility - Raw]
-    family: Data/Generic Data
+    family: Data
     description: |
         Generic data that is not color, will not apply any color transform (e.g. normal maps)
     equalitygroup:
