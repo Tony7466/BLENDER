@@ -99,6 +99,7 @@ colorspaces:
 
   - !<ColorSpace>
     name: Linear ACEScg
+    aliases: [ACEScg]
     family: linear
     equalitygroup:
     bitdepth: 32f
