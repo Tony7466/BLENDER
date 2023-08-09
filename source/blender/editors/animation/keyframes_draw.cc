@@ -407,8 +407,8 @@ struct AnimKeylistDrawListElem {
   bAction *act;
   bActionGroup *agrp;
   bGPDlayer *gpl;
-  GreasePencilLayer *grease_pencil_layer;
-  GreasePencil *grease_pencil;
+  const GreasePencilLayer *grease_pencil_layer;
+  const GreasePencil *grease_pencil;
   MaskLayer *masklay;
 };
 
@@ -715,7 +715,7 @@ void draw_action_channel(AnimKeylistDrawList *draw_list,
 
 void draw_grease_pencil_datablock_channel(AnimKeylistDrawList *draw_list,
                                           bDopeSheet * /*ads*/,
-                                          GreasePencil *grease_pencil,
+                                          const GreasePencil *grease_pencil,
                                           const float ypos,
                                           const float yscale_fac,
                                           int saction_flag)
@@ -727,7 +727,7 @@ void draw_grease_pencil_datablock_channel(AnimKeylistDrawList *draw_list,
 
 void draw_grease_pencil_cels_channel(AnimKeylistDrawList *draw_list,
                                      bDopeSheet * /*ads*/,
-                                     GreasePencilLayer *layer,
+                                     const GreasePencilLayer *layer,
                                      const float ypos,
                                      const float yscale_fac,
                                      int saction_flag)

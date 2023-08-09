@@ -167,13 +167,13 @@ void gpl_to_keylist(bDopeSheet *ads, bGPDlayer *gpl, AnimKeylist *keylist);
 
 /* Grease Pencil Cels. */
 void grease_pencil_cels_to_keylist(AnimData *adt,
-                                   GreasePencilLayer *layer,
+                                   const GreasePencilLayer *layer,
                                    AnimKeylist *keylist,
                                    int saction_flag);
 
 /* Grease Pencil Data-Block. */
 void grease_pencil_data_block_to_keylist(AnimData *adt,
-                                         GreasePencil *grease_pencil,
+                                         const GreasePencil *grease_pencil,
                                          AnimKeylist *keylist,
                                          const int saction_flag);
 
