@@ -2,8 +2,8 @@
 
 #include "BLI_task.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include <fmt/format.h>
 
@@ -34,30 +34,44 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->custom1 = ATTR_DOMAIN_POINT;
 }
 
+using IndexMapKey = Span<int>;
+
 struct IndexMapHash {
-  Span<int> keys_;
-  int key_size_;
+  Span<int> keys;
+  int key_size;
+
+  uint64_t operator()(const IndexMapKey value) const
+  {
+    return value.hash();
+  }
 
   uint64_t operator()(const int index) const
   {
-    const Span<int> key = keys_.slice(index * key_size_, key_size_);
+    const IndexMapKey key = keys.slice(index * key_size, key_size);
     return key.hash();
   }
 };
 
 struct IndexMapEquality {
-  Span<int> keys_;
-  int key_size_;
+  Span<int> keys;
+  int key_size;
+  ;
+
+  bool operator()(const IndexMapKey value_a, const int index_b) const
+  {
+    const IndexMapKey key_b = keys.slice(index_b * key_size, key_size);
+    return value_a == key_b;
+  }
 
   bool operator()(const int index_a, const int index_b) const
   {
-    const Span<int> key_a = keys_.slice(index_a * key_size_, key_size_);
-    const Span<int> key_b = keys_.slice(index_b * key_size_, key_size_);
+    const IndexMapKey key_a = keys.slice(index_a * key_size, key_size);
+    const IndexMapKey key_b = keys.slice(index_b * key_size, key_size);
     return key_a == key_b;
   }
 };
 
-static Array<int> resegmentation(const Span<int> segments,
+static Array<int> resegmentation(const Span<Span<int>> segments,
                                  const int segment_size,
                                  const int element_size)
 {
@@ -66,8 +80,7 @@ static Array<int> resegmentation(const Span<int> segments,
   src_element.reserve(element_size);
   for (const int index_in_segment : IndexRange(segment_size)) {
     for (const int segment_index : IndexRange(element_size)) {
-      const int index = segment_index * segment_size + index_in_segment;
-      src_element.append(segments[index]);
+      src_element.append(segments[segment_index][index_in_segment]);
     }
     MutableSpan<int> dst_element = result.as_mutable_span().slice(index_in_segment * element_size,
                                                                   element_size);
@@ -112,22 +125,23 @@ class IndexMapFunction : public mf::MultiFunction {
   IndexSet set_;
 
   mf::Signature signature_;
-  Vector<std::string> signature_input_names_;
+  Array<std::string> signature_input_names_;
 
  public:
   IndexMapFunction(const GeometrySet &geometry,
                    const eAttrDomain source_domain,
                    Vector<Field<int>> store_keys)
   {
+    const int total_keys = store_keys.size();
     if (!this->create_map(geometry, source_domain, std::move(store_keys))) {
       throw std::runtime_error("cannot create map");
     }
 
     mf::SignatureBuilder builder{"Index Map", signature_};
-    for (const int index : store_keys.index_range()) {
-      std::string name = fmt::format("Key to Lookup {}", index + 1);
-      builder.single_input<int>(name.c_str());
-      signature_input_names_.append(std::move(name));
+    signature_input_names_.reinitialize(total_keys);
+    for (const int index : IndexRange(total_keys)) {
+      signature_input_names_[index] = fmt::format("Key to Lookup {}", index + 1);
+      builder.single_input<int>(signature_input_names_[index].c_str());
     }
 
     builder.single_output<int>("Index");
@@ -137,35 +151,25 @@ class IndexMapFunction : public mf::MultiFunction {
   }
 
   void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
-  { /*
-     Vector<VArraySpan<int>> search_keys;
-     search_keys.reserve(signature_input_names_.size());
-     for (const int i : signature_input_names_.index_range()) {
-       search_keys.append(params.readonly_single_input<int>(i, signature_input_names_[i].c_str()));
-     }
+  {
+    const int total_keys = signature_input_names_.size();
+    Array<VArraySpan<int>> search_key_arrays(total_keys);
+    Array<Span<int>> search_keys(total_keys);
+    for (const int index : IndexRange(total_keys)) {
+      const StringRef input_name(signature_input_names_[index]);
+      search_key_arrays[index] = params.readonly_single_input<int>(index, input_name);
+      search_keys[index] = search_key_arrays[index];
+    }
 
-     MutableSpan<int> indices = params.uninitialized_single_output<int>(total_key_, "Index");
-     MutableSpan<bool> is_valid = params.uninitialized_single_output<bool>(total_key_ + 1,
-                                                                           "Is Valid");
-     const int min_size = mask.min_array_size();
+    MutableSpan<int> indices = params.uninitialized_single_output<int>(total_keys, "Index");
+    MutableSpan<bool> is_valid = params.uninitialized_single_output<bool>(total_keys + 1,
+                                                                          "Is Valid");
 
-     Array<int> to_search_keys(min_size * total_key_);
-     Array<int64_t> to_search_hashs(min_size);
-     build_generic_keys(search_keys.as_span(),
-                        mask,
-                        total_key_,
-                        to_search_keys.as_mutable_span(),
-                        to_search_hashs.as_mutable_span());
-
-     mask.foreach_index([&](const int index){
-       indices[index] = set_map_.index_of_try_as(&to_search_keys[index * total_key_],
-     to_search_hashs[index]); if (indices[index] == -1) { indices[index] = 0; is_valid[index] =
-     false;
-       }
-       else {
-         is_valid[index] = true;
-       }
-     });*/
+    const Array<int> all_keys = resegmentation(search_keys, mask.min_array_size(), total_keys);
+    mask.foreach_index([&](const int index) {
+      const IndexMapKey key = all_keys.as_span().slice(index * total_keys, total_keys);
+      indices[index] = set_.lookup_key_default_as(key, -1);
+    });
   }
 
  protected:
@@ -183,14 +187,16 @@ class IndexMapFunction : public mf::MultiFunction {
 
     const int key_size = store_keys.size();
     Array<int> keys_in_segments(key_size * domain_size);
+    Array<Span<int>> segments(key_size);
     for (const int index : store_keys.index_range()) {
       MutableSpan<int> keys_segment = keys_in_segments.as_mutable_span().slice(index * domain_size,
                                                                                domain_size);
+      segments[index] = keys_segment;
       evaluator.add_with_destination(std::move(store_keys[index]), keys_segment);
     }
     evaluator.evaluate();
 
-    stored_keys_ = resegmentation(keys_in_segments, domain_size, key_size);
+    stored_keys_ = resegmentation(segments, domain_size, key_size);
 
     const IndexMapHash hash{stored_keys_.as_span(), key_size};
     const IndexMapEquality equal{stored_keys_.as_span(), key_size};
@@ -200,6 +206,7 @@ class IndexMapFunction : public mf::MultiFunction {
     Array<int> indices(domain_size);
     std::iota(indices.begin(), indices.end(), 0);
     set_.add_multiple(indices);
+    return true;
   }
 };
 
@@ -239,7 +246,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   std::shared_ptr<IndexMapFunction> fn;
   try {
-    fn = std::make_shared<IndexMapFunction>(geometry_set, domain, std::move(store_key_fields));
+    fn = std::make_shared<IndexMapFunction>(geometry_set, domain, store_key_fields);
   }
   catch (const std::runtime_error &) {
     params.set_default_remaining_outputs();
