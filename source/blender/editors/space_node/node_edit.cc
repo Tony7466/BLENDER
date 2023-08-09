@@ -108,7 +108,7 @@ float node_socket_calculate_height(const bNodeSocket &socket)
   float sock_height = NODE_SOCKSIZE * NODE_SOCKSIZE_DRAW_MULIPLIER;
   if (socket.flag & SOCK_MULTI_INPUT) {
     const bool align_to_grid = UI_GetThemeValueType(TH_NODE_ALIGN_TO_GRID, SPACE_NODE);
-    const float multi_input_gap = align_to_grid ? NODE_GRID_STEP_SIZE : NODE_MULTI_INPUT_LINK_GAP;
+    const float multi_input_gap = align_to_grid ? ED_node_grid_size() : NODE_MULTI_INPUT_LINK_GAP;
 
     sock_height += max_ii(multi_input_gap * 0.5f * socket.runtime->total_inputs - NODE_SOCKSIZE,
                           NODE_SOCKSIZE);
@@ -121,10 +121,9 @@ float2 node_link_calculate_multi_input_position(const float2 &socket_position,
                                                 const int total_inputs)
 {
   const bool align_to_grid = UI_GetThemeValueType(TH_NODE_ALIGN_TO_GRID, SPACE_NODE);
-  const float multi_input_gap = align_to_grid ? NODE_GRID_STEP_SIZE : NODE_MULTI_INPUT_LINK_GAP;
+  const float multi_input_gap = align_to_grid ? ED_node_grid_size() : NODE_MULTI_INPUT_LINK_GAP;
 
-  const float offset = (total_inputs * multi_input_gap - multi_input_gap) *
-                       0.5f;
+  const float offset = (total_inputs * multi_input_gap - multi_input_gap) * 0.5f;
   return {socket_position.x, socket_position.y - offset + index * multi_input_gap};
 }
 

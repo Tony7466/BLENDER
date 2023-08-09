@@ -351,7 +351,7 @@ float2 node_from_view(const bNode &node, const float2 &co)
 
 float grid_snap_floor(const float x, const float offset)
 {
-  const float grid_size = NODE_GRID_STEP_SIZE;
+  const float grid_size = ED_node_grid_size();
   return floor((x - offset) / grid_size) * grid_size + offset;
 }
 
@@ -504,7 +504,7 @@ static void node_update_basis(const bContext &C,
     if (socket->flag & SOCK_MULTI_INPUT) {
       if (align_to_grid) {
         if (socket->runtime->total_inputs > 1) {
-          multi_input_socket_offset = (socket->runtime->total_inputs - 1) * NODE_GRID_STEP_SIZE;
+          multi_input_socket_offset = (socket->runtime->total_inputs - 1) * ED_node_grid_size();
         }
       }
       else {
@@ -3613,7 +3613,7 @@ void node_draw_space(const bContext &C, ARegion &region)
   snode_set_context(C);
 
   const int grid_levels = UI_GetThemeValueType(TH_NODE_GRID_LEVELS, SPACE_NODE);
-  UI_view2d_dot_grid_draw(&v2d, TH_GRID, NODE_GRID_STEP_SIZE, grid_levels);
+  UI_view2d_dot_grid_draw(&v2d, TH_GRID, ED_node_grid_size(), grid_levels);
 
   /* Draw parent node trees. */
   if (snode.treepath.last) {
