@@ -865,10 +865,10 @@ static void recalcData_actedit(TransInfo *t)
     transform_convert_flush_handle2D(td, td2d, 0.0f);
 
     if ((t->state == TRANS_RUNNING) && ((td->flag & TD_GREASE_PENCIL_FRAME) != 0)) {
-      using namespace blender::bke::greasepencil;
-      grease_pencil_layer_update_trans_data(*static_cast<Layer *>(td->extra),
-                                            round_fl_to_int(td->ival),
-                                            round_fl_to_int(td2d->loc[0]));
+      grease_pencil_layer_update_trans_data(
+          *static_cast<blender::bke::greasepencil::Layer *>(td->extra),
+          round_fl_to_int(td->ival),
+          round_fl_to_int(td2d->loc[0]));
     }
   }
 
@@ -897,12 +897,12 @@ static void recalcData_actedit(TransInfo *t)
       ANIM_animdata_filter(
           &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
-      using namespace blender::bke::greasepencil;
       LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
         if (ale->type != ANIMTYPE_GREASE_PENCIL_LAYER) {
           continue;
         }
-        grease_pencil_layer_reset_trans_data(*static_cast<Layer *>(ale->data));
+        grease_pencil_layer_reset_trans_data(
+            *static_cast<blender::bke::greasepencil::Layer *>(ale->data));
       }
       ANIM_animdata_freelist(&anim_data);
     }
