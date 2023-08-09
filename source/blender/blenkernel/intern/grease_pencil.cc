@@ -1610,7 +1610,6 @@ void GreasePencil::move_frames(blender::bke::greasepencil::Layer &layer,
 {
   using namespace blender;
 
-  /* Clear the frames' data. */
   Map<int, GreasePencilFrame> layer_frames_copy = layer.frames();
 
   /* Remove all frames that have a mapping. */
