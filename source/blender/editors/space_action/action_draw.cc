@@ -314,6 +314,11 @@ static void draw_backdrops(bAnimContext *ac, ListBase &anim_data, View2D *v2d, u
           break;
         }
 
+        case ANIMTYPE_GREASE_PENCIL_DATABLOCK:
+          color = col2b;
+          color[3] = sel ? col1[3] : col2b[3];
+          break;
+
         default:
           color = sel ? col1 : col2;
           break;
