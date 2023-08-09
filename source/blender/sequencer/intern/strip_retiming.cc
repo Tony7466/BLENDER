@@ -877,6 +877,8 @@ static void seq_retiming_fix_transitions(const Scene *scene,
     return;
   }
 
+  const int handle_index = SEQ_retiming_handle_index_get(seq, handle);
+
   /* Store value, since handles array will be reallocated. */
   bool is_last_handle = SEQ_retiming_is_last_handle(seq, handle);
 
@@ -889,7 +891,7 @@ static void seq_retiming_fix_transitions(const Scene *scene,
     return;
   }
 
-  SeqRetimingHandle *next_handle = handle + 1;
+  SeqRetimingHandle *next_handle = &SEQ_retiming_handles_get(seq)[handle_index + 1];
   if (SEQ_retiming_handle_is_transition_start(next_handle)) {
     seq_retiming_fix_transition(scene, seq, next_handle);
   }
