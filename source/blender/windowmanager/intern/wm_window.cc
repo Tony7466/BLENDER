@@ -55,17 +55,17 @@
 #  include "wm_xr.h"
 #endif
 
-#include "ED_anim_api.h"
-#include "ED_fileselect.h"
-#include "ED_render.h"
-#include "ED_scene.h"
+#include "ED_anim_api.hh"
+#include "ED_fileselect.hh"
+#include "ED_render.hh"
+#include "ED_scene.hh"
 #include "ED_screen.hh"
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
 
 #include "PIL_time.h"
 
@@ -80,7 +80,7 @@
 #include "GPU_state.h"
 #include "GPU_texture.h"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 /* for assert */
 #ifndef NDEBUG
@@ -1355,9 +1355,9 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
 
         wm_window_make_drawable(wm, win);
 #if 0
-/* NOTE(@ideasman42): Ideally we could swap-buffers to avoid a full redraw.
-* however this causes window flickering on resize with LIBDECOR under WAYLAND. */
-wm_window_swap_buffers(win);
+        /* NOTE(@ideasman42): Ideally we could swap-buffers to avoid a full redraw.
+         * however this causes window flickering on resize with LIBDECOR under WAYLAND. */
+        wm_window_swap_buffers(win);
 #else
         WM_event_add_notifier(C, NC_WINDOW, nullptr);
 #endif

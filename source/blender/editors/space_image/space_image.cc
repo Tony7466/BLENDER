@@ -35,22 +35,22 @@
 
 #include "IMB_imbuf_types.h"
 
-#include "ED_image.h"
-#include "ED_mask.h"
-#include "ED_node.h"
-#include "ED_render.h"
+#include "ED_image.hh"
+#include "ED_mask.hh"
+#include "ED_node.hh"
+#include "ED_render.hh"
 #include "ED_screen.hh"
-#include "ED_space_api.h"
-#include "ED_transform.h"
+#include "ED_space_api.hh"
+#include "ED_transform.hh"
 #include "ED_util.hh"
-#include "ED_uvedit.h"
+#include "ED_uvedit.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
 #include "BLO_read_write.h"
 
@@ -720,8 +720,9 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
                         nullptr,
                         C);
   }
-
-  WM_gizmomap_draw(region->gizmo_map, C, WM_GIZMOMAP_DRAWSTEP_2D);
+  if ((sima->gizmo_flag & SI_GIZMO_HIDE) == 0) {
+    WM_gizmomap_draw(region->gizmo_map, C, WM_GIZMOMAP_DRAWSTEP_2D);
+  }
   draw_image_cache(C, region);
 }
 

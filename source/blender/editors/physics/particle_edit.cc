@@ -45,19 +45,19 @@
 
 #include "DEG_depsgraph.h"
 
-#include "ED_mesh.h"
-#include "ED_object.h"
-#include "ED_particle.h"
-#include "ED_physics.h"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
+#include "ED_particle.hh"
+#include "ED_physics.hh"
 #include "ED_screen.hh"
-#include "ED_select_utils.h"
-#include "ED_view3d.h"
+#include "ED_select_utils.hh"
+#include "ED_view3d.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_state.h"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
@@ -4001,49 +4001,19 @@ static void brush_puff(PEData *data, int point_index, float mouse_distance)
 /* NOLINTNEXTLINE: readability-redundant-preprocessor */
 #  if 0 /* Kind of works but looks worse than what's below. */
 
+            /* Move the unselected point on a vector based on the
+             * hair direction and the offset */
+            float c1[3], c2[3];
+            sub_v3_v3v3(dco, lastco, co);
+            mul_mat3_m4_v3(imat, dco); /* into particle space */
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* Move the unselected point on a vector based on the
-* hair direction and the offset */
-float c1[3], c2[3];
-sub_v3_v3v3(dco, lastco, co);
-mul_mat3_m4_v3(imat, dco); /* into particle space */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* move the point along a vector perpendicular to the
-* hairs direction, reduces odd kinks, */
-cross_v3_v3v3(c1, ofs, dco);
-cross_v3_v3v3(c2, c1, dco);
-normalize_v3(c2);
-mul_v3_fl(c2, len_v3(ofs));
-add_v3_v3(key->co, c2);
+            /* move the point along a vector perpendicular to the
+             * hairs direction, reduces odd kinks, */
+            cross_v3_v3v3(c1, ofs, dco);
+            cross_v3_v3v3(c2, c1, dco);
+            normalize_v3(c2);
+            mul_v3_fl(c2, len_v3(ofs));
+            add_v3_v3(key->co, c2);
 #  else
             /* Move the unselected point on a vector based on the
              * the normal of the closest geometry */

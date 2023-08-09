@@ -44,7 +44,6 @@ struct Image;
 struct MovieClip;
 struct Object;
 struct Scene;
-struct SceneCollection;
 struct World;
 struct bGPdata;
 struct bNodeTree;
@@ -1810,7 +1809,7 @@ typedef struct SceneDisplay {
 } SceneDisplay;
 
 /**
- * Raytracing parameters.
+ * Ray-tracing parameters.
  */
 typedef struct RaytraceEEVEE {
   /** Higher values will take lower strides and have less blurry intersections. */
@@ -1835,6 +1834,7 @@ typedef struct SceneEEVEE {
   float gi_irradiance_smoothing;
   float gi_glossy_clamp;
   float gi_filter_quality;
+  int gi_irradiance_pool_size;
 
   float gi_cubemap_draw_size;
   float gi_irradiance_draw_size;
@@ -1889,7 +1889,6 @@ typedef struct SceneEEVEE {
 
   int ray_split_settings;
   int ray_tracing_method;
-  char _pad0[4];
 
   struct RaytraceEEVEE reflection_options;
   struct RaytraceEEVEE refraction_options;
@@ -2050,11 +2049,9 @@ typedef struct Scene {
   ListBase view_layers;
   /** Not an actual data-block, but memory owned by scene. */
   struct Collection *master_collection;
-  struct SceneCollection *collection DNA_DEPRECATED;
 
   /** Settings to be override by work-spaces. */
   IDProperty *layer_properties;
-  void *_pad9;
 
   struct SceneDisplay display;
   struct SceneEEVEE eevee;
@@ -2847,7 +2844,7 @@ typedef enum RaytraceEEVEE_DenoiseStages {
 typedef enum RaytraceEEVEE_Method {
   RAYTRACE_EEVEE_METHOD_NONE = 0,
   RAYTRACE_EEVEE_METHOD_SCREEN = 1,
-  /* TODO(fclem): Hardware raytracing. */
+  /* TODO(fclem): Hardware ray-tracing. */
   // RAYTRACE_EEVEE_METHOD_HARDWARE = 2,
 } RaytraceEEVEE_Method;
 

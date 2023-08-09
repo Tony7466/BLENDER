@@ -26,7 +26,7 @@
 
 #include "BLT_translation.h"
 
-#include "UI_interface.h" /* For things like UI_PRECISION_FLOAT_MAX... */
+#include "UI_interface.hh" /* For things like UI_PRECISION_FLOAT_MAX... */
 
 #include "RNA_define.h"
 
@@ -2923,6 +2923,11 @@ void RNA_def_property_update(PropertyRNA *prop, int noteflag, const char *func)
 void RNA_def_property_update_runtime(PropertyRNA *prop, const void *func)
 {
   prop->update = (UpdateFunc)func;
+}
+
+void RNA_def_property_update_notifier(PropertyRNA *prop, const int noteflag)
+{
+  prop->noteflag = noteflag;
 }
 
 void RNA_def_property_poll_runtime(PropertyRNA *prop, const void *func)
