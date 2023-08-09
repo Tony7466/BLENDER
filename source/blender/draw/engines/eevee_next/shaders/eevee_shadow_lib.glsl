@@ -84,8 +84,6 @@ float shadow_slope_bias_get(vec2 atlas_size, LightData light, vec3 lNg, vec3 lP,
 {
   /* Compute coordinate inside the pixel we are sampling. */
   vec2 uv_subpixel_coord = fract(uv * atlas_size);
-  /* Bias uv sample for LODs since custom raster aligns LOD pixels instead of centering them. */
-  uv_subpixel_coord += (lod > 0) ? -exp2(-1.0 - float(lod)) : 0.0;
   /* Compute delta to the texel center (where the sample is). */
   vec2 ndc_texel_center_delta = uv_subpixel_coord * 2.0 - 1.0;
   /* Create a normal plane equation and go through the normal projection matrix. */
@@ -99,6 +97,7 @@ float shadow_slope_bias_get(vec2 atlas_size, LightData light, vec3 lNg, vec3 lP,
   float bias = dot(ndc_slope, ndc_texel_center_delta);
   /* Bias for 1 pixel of the sampled LOD. */
   bias /= ((SHADOW_TILEMAP_RES * SHADOW_PAGE_RES) >> lod);
+  bias += 1e-20;
   return bias;
 }
 
@@ -124,7 +123,10 @@ float shadow_tile_depth_get(depth2DArray atlas_tx, ShadowTileData tile, vec2 atl
      * But also not FLT_MAX since it can cause issue with projection. */
     return 1.1;
   }
-  return texture(atlas_tx, vec3(atlas_uv, float(tile.page.z))).r;
+  float depth = texture(atlas_tx, vec3(atlas_uv, float(tile.page.z))).r;
+  /* TODO(fclem): Replace this by an adaptive epsilon. */
+  depth = uintBitsToFloat(floatBitsToUint(depth) + 200u);
+  return depth;
 }
 
 vec2 shadow_punctual_linear_depth(vec2 z, float near, float far)
