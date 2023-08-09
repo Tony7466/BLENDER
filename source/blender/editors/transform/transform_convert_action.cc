@@ -44,7 +44,6 @@ struct tGPFtransdata {
     float loc[3]; /* #td->val and #td->loc share the same pointer. */
   };
   int *sdata; /* pointer to gpf->framenum */
-  void *extra{};
 };
 
 /* -------------------------------------------------------------------- */
