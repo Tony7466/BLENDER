@@ -1526,8 +1526,8 @@ static void remove_drawings_unchecked(GreasePencil &grease_pencil,
     return;
   }
   const int drawings_to_remove = sorted_indices_to_remove.size();
-  blender::IndexRange last_drawings_range(grease_pencil.drawings().size() - drawings_to_remove,
-                                          drawings_to_remove);
+  const blender::IndexRange last_drawings_range(
+      grease_pencil.drawings().size() - drawings_to_remove, drawings_to_remove);
 
   /* We keep track of the next available index (for swapping) by iterating from the end and
    * skipping over drawings that are already in the range to be removed. */
