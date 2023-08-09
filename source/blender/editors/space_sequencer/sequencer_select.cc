@@ -988,10 +988,12 @@ static int sequencer_select_exec(bContext *C, wmOperator *op)
     WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
     WM_toolsystem_ref_set_by_id(C, "builtin.retime");
     /* Ensure retiming handles at strip handles before switching tool. */
+    SeqCollection *strips = SEQ_query_all_strips(ed->seqbasep);
     Sequence *seq;
-    SEQ_ITERATOR_FOREACH (seq, SEQ_query_all_strips(ed->seqbasep)) {
+    SEQ_ITERATOR_FOREACH (seq, strips) {
       SEQ_retiming_data_ensure(scene, seq);
     }
+    SEQ_collection_free(strips);
     SEQ_retiming_selection_append(ed, seq_handle_test, handle);
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }

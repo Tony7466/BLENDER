@@ -154,6 +154,7 @@ static int sequencer_retiming_handle_add_exec(bContext *C, wmOperator *op)
       inserted = true;
     }
   }
+  SEQ_collection_free(strips);
 
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
 
@@ -233,7 +234,7 @@ static bool freeze_frame_add_from_strip_selection(bContext *C, wmOperator *op, c
   SEQ_ITERATOR_FOREACH (seq, strips) {
     success |= freeze_frame_add_new_for_seq(C, op, seq, timeline_frame, duration);
   }
-
+  SEQ_collection_free(strips);
   return success;
 }
 
@@ -244,10 +245,10 @@ static bool freeze_frame_add_from_retiming_selection(bContext *C,
   Scene *scene = CTX_data_scene(C);
   bool success = false;
 
-  for (const RetimingSelectionElem *elem : SEQ_retiming_selection_get(scene)) {
+  for (const RetimingSelectionElem elem : SEQ_retiming_selection_get(scene)) {
     const int timeline_frame = SEQ_retiming_handle_timeline_frame_get(
-        scene, elem->seq, elem->handle);
-    success |= freeze_frame_add_new_for_seq(C, op, elem->seq, timeline_frame, duration);
+        scene, elem.seq, elem.handle);
+    success |= freeze_frame_add_new_for_seq(C, op, elem.seq, timeline_frame, duration);
   }
   return success;
 }
@@ -346,10 +347,10 @@ static bool transition_add_from_retiming_selection(bContext *C, wmOperator *op, 
   Scene *scene = CTX_data_scene(C);
   bool success = false;
 
-  for (const RetimingSelectionElem *elem : SEQ_retiming_selection_get(scene)) {
+  for (const RetimingSelectionElem elem : SEQ_retiming_selection_get(scene)) {
     const int timeline_frame = SEQ_retiming_handle_timeline_frame_get(
-        scene, elem->seq, elem->handle);
-    success |= transition_add_new_for_seq(C, op, elem->seq, timeline_frame, duration);
+        scene, elem.seq, elem.handle);
+    success |= transition_add_new_for_seq(C, op, elem.seq, timeline_frame, duration);
   }
   return success;
 }
@@ -417,9 +418,9 @@ static int sequencer_retiming_handle_remove_exec(bContext *C, wmOperator * /* op
 
   blender::Vector<Sequence *> strips_to_handle;
 
-  for (const RetimingSelectionElem *elem : SEQ_retiming_selection_get(scene)) {
-    strips_to_handle.append_non_duplicates(elem->seq);
-    elem->handle->flag |= DELETE_HANDLE;
+  for (const RetimingSelectionElem elem : SEQ_retiming_selection_get(scene)) {
+    strips_to_handle.append_non_duplicates(elem.seq);
+    elem.handle->flag |= DELETE_HANDLE;
   }
 
   for (Sequence *seq : strips_to_handle) {
@@ -489,10 +490,9 @@ static int sequencer_retiming_segment_speed_set_exec(bContext *C, wmOperator *op
     SEQ_relations_invalidate_cache_raw(scene, seq);
   }
   else {
-    for (const RetimingSelectionElem *elem : SEQ_retiming_selection_get(scene)) {
-      SEQ_retiming_handle_speed_set(
-          scene, elem->seq, elem->handle, RNA_float_get(op->ptr, "speed"));
-      SEQ_relations_invalidate_cache_raw(scene, elem->seq);
+    for (const RetimingSelectionElem elem : SEQ_retiming_selection_get(scene)) {
+      SEQ_retiming_handle_speed_set(scene, elem.seq, elem.handle, RNA_float_get(op->ptr, "speed"));
+      SEQ_relations_invalidate_cache_raw(scene, elem.seq);
     }
   }
 

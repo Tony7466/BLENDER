@@ -299,7 +299,7 @@ typedef struct SeqTimelineChannel {
 
 typedef struct SeqRetimingHandleSelection {
   struct SeqRetimingHandleSelection *next, *prev;
-  char *strip_name;
+  char strip_name[64]; /* SEQ_NAME_MAXSTR */
   int index;
   int _pad0;
 } SeqRetimingHandleSelection;

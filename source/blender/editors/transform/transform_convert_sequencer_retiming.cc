@@ -102,8 +102,8 @@ static void createTransSeqRetimingData(bContext * /*C*/, TransInfo *t)
   TransData2D *td2d = tc->data_2d;
 
   /*for elem*/
-  for (const RetimingSelectionElem *elem : selection) {
-    SeqToTransData(t->scene, elem->seq, elem->handle, td++, td2d++, tdseq++);
+  for (const RetimingSelectionElem elem : selection) {
+    SeqToTransData(t->scene, elem.seq, elem.handle, td++, td2d++, tdseq++);
   }
 }
 

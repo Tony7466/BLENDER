@@ -356,6 +356,7 @@ static void scene_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int
                                       SEQ_DUPE_ALL,
                                       flag_subdata);
     BLI_duplicatelist(&scene_dst->ed->channels, &scene_src->ed->channels);
+    BLI_duplicatelist(&scene_dst->ed->retiming_selection, &scene_src->ed->retiming_selection);
     scene_dst->ed->displayed_channels = &scene_dst->ed->channels;
   }
 
