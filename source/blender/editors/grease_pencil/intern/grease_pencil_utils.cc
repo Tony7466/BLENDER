@@ -28,10 +28,8 @@ static float3 drawing_origin(const Scene *scene, const Object *object, char alig
     if (align_flag & GP_PROJECT_CURSOR) {
       return float3(scene->cursor.location);
     }
-    else {
-      /* Use the object location. */
-      return float3(object->object_to_world[3]);
-    }
+    /* Use the object location. */
+    return float3(object->object_to_world[3]);
   }
   return float3(scene->cursor.location);
 }
