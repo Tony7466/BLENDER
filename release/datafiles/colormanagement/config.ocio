@@ -91,7 +91,7 @@ colorspaces:
     equalitygroup:
     bitdepth: 32f
     description: |
-      Open Domain (unbounded) Linear BT.709 Tristimulus with illuminant D65 white point
+      Linear BT.709 Tristimulus with illuminant D65 white point
     isdata: false
     from_scene_reference: !<GroupTransform>
       children:
@@ -105,7 +105,7 @@ colorspaces:
     equalitygroup:
     bitdepth: 32f
     description: |
-      Open Domain (unbounded) Linear DCI-P3 Tristimulus with illuminant D65 white point
+      Linear DCI-P3 Tristimulus with illuminant D65 white point
     isdata: false
     from_scene_reference: !<GroupTransform>
       children:
@@ -119,7 +119,7 @@ colorspaces:
     equalitygroup:
     bitdepth: 32f
     description: |
-      Open Domain (unbounded) Linear BT.2020 Tristimulus with illuminant D65 white point
+      Linear BT.2020 Tristimulus with illuminant D65 white point
     isdata: false
     from_scene_reference: !<GroupTransform>
       children:
@@ -133,7 +133,7 @@ colorspaces:
     equalitygroup:
     bitdepth: 32f
     description: |
-      Open Domain (unbounded) Linear AP0 Tristimulus with ACES white point
+      Linear AP0 Tristimulus with ACES white point
     isdata: false
     from_reference: !<GroupTransform>
       children:
@@ -147,7 +147,7 @@ colorspaces:
     equalitygroup:
     bitdepth: 32f
     description: |
-      Open Domain (unbounded) Linear AP1 Tristimulus with ACES white point
+      Linear AP1 Tristimulus with ACES white point
     isdata: false
     from_reference: !<GroupTransform>
       children:
@@ -161,7 +161,7 @@ colorspaces:
     equalitygroup:
     bitdepth: 32f
     description: |
-      Open Domain (unbounded) Linear E Gamut Tristimulus with illuminant D65 white point
+      Linear E Gamut Tristimulus with illuminant D65 white point
     isdata: false
     from_scene_reference: !<GroupTransform>
       children:
