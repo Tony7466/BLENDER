@@ -192,7 +192,7 @@ class LayerMask : public ::GreasePencilLayerMask {
   ~LayerMask();
 };
 
-struct LayerTransData {
+struct LayerTransformData {
   enum FrameTransformationStatus { TRANS_CLEAR, TRANS_INIT, TRANS_RUNNING };
 
   Map<int, int> trans_map;
@@ -245,7 +245,7 @@ class LayerRuntime {
   Vector<LayerMask> masks_;
 
   /* Runtime data used for frame transformations.*/
-  LayerTransData trans_data_;
+  LayerTransformData trans_data_;
 };
 
 /**

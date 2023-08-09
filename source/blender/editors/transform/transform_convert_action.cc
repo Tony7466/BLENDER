@@ -54,9 +54,9 @@ struct tGPFtransdata {
 static bool grease_pencil_layer_initialize_trans_data(blender::bke::greasepencil::Layer &layer)
 {
   using namespace blender::bke::greasepencil;
-  LayerTransData &trans_data = layer.runtime->trans_data_;
+  LayerTransformData &trans_data = layer.runtime->trans_data_;
 
-  if (trans_data.status != LayerTransData::TRANS_CLEAR) {
+  if (trans_data.status != LayerTransformData::TRANS_CLEAR) {
     return false;
   }
 
@@ -77,22 +77,22 @@ static bool grease_pencil_layer_initialize_trans_data(blender::bke::greasepencil
     }
   }
 
-  trans_data.status = LayerTransData::TRANS_INIT;
+  trans_data.status = LayerTransformData::TRANS_INIT;
   return true;
 }
 
 static bool grease_pencil_layer_reset_trans_data(blender::bke::greasepencil::Layer &layer)
 {
   using namespace blender::bke::greasepencil;
-  LayerTransData &trans_data = layer.runtime->trans_data_;
+  LayerTransformData &trans_data = layer.runtime->trans_data_;
 
   /* If the layer frame map was affected by the transformation, set its status to initialized so
    * that the frames map gets reset the next time this modal function is called.
    */
-  if (trans_data.status == LayerTransData::TRANS_CLEAR) {
+  if (trans_data.status == LayerTransformData::TRANS_CLEAR) {
     return false;
   }
-  trans_data.status = LayerTransData::TRANS_INIT;
+  trans_data.status = LayerTransformData::TRANS_INIT;
   return true;
 }
 
@@ -101,19 +101,19 @@ static bool grease_pencil_layer_update_trans_data(blender::bke::greasepencil::La
                                                   const int dst_frame_number)
 {
   using namespace blender::bke::greasepencil;
-  LayerTransData &trans_data = layer.runtime->trans_data_;
+  LayerTransformData &trans_data = layer.runtime->trans_data_;
 
   switch (trans_data.status) {
-    case LayerTransData::TRANS_INIT:
+    case LayerTransformData::TRANS_INIT:
       /* The transdata was only initialized. No transformation was applied yet.
        * The frame mapping is always defined relatively to the initial frame map, so we first need
        * to set the frames back to its initial state before applying any frame transformation. */
       layer.frames_for_write() = trans_data.frames_copy;
       layer.tag_frames_map_keys_changed();
-      trans_data.status = LayerTransData::TRANS_RUNNING;
+      trans_data.status = LayerTransformData::TRANS_RUNNING;
       ATTR_FALLTHROUGH;
 
-    case LayerTransData::TRANS_RUNNING: {
+    case LayerTransformData::TRANS_RUNNING: {
       /* Apply the transformation directly in the frame map, so that we display the transformed
        * frame numbers. We don't want to edit the frames or remove any drawing here. This will be
        * done at once at the end of the transformation. */
@@ -141,9 +141,9 @@ static bool grease_pencil_layer_apply_trans_data(GreasePencil &grease_pencil,
                                                  const bool canceled)
 {
   using namespace blender::bke::greasepencil;
-  LayerTransData &trans_data = layer.runtime->trans_data_;
+  LayerTransformData &trans_data = layer.runtime->trans_data_;
 
-  if (trans_data.status == LayerTransData::TRANS_CLEAR) {
+  if (trans_data.status == LayerTransformData::TRANS_CLEAR) {
     /* The layer was not affected by the transformation, so do nothing. */
     return false;
   }
@@ -160,7 +160,7 @@ static bool grease_pencil_layer_apply_trans_data(GreasePencil &grease_pencil,
   /* Clear the frames copy. */
   trans_data.frames_copy.clear();
   trans_data.trans_map.clear();
-  trans_data.status = LayerTransData::TRANS_CLEAR;
+  trans_data.status = LayerTransformData::TRANS_CLEAR;
 
   return true;
 }

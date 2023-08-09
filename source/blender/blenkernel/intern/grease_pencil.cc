@@ -1619,7 +1619,7 @@ void GreasePencil::move_frames(blender::bke::greasepencil::Layer &layer,
   }
 
   /* Insert all frames of the transformation. */
-  Vector<int> drawings_to_remove;
+  Vector<int> drawing_indices_to_check_for_deletion;
   for (const auto [src_frame_number, dst_frame_number] : trans_frame_numbers.items()) {
     if (!layer_frames_copy.contains(src_frame_number)) {
       continue;
@@ -1637,7 +1637,7 @@ void GreasePencil::move_frames(blender::bke::greasepencil::Layer &layer,
       GreasePencilDrawingBase *drawing_base = this->drawings(frame_to_overwrite.drawing_index);
       if (drawing_base->type == GP_DRAWING) {
         reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap().remove_user();
-        drawings_to_remove.append(frame_to_overwrite.drawing_index);
+        drawing_indices_to_check_for_deletion.append(frame_to_overwrite.drawing_index);
       }
       layer.remove_frame(dst_frame_number);
     }
@@ -1646,7 +1646,7 @@ void GreasePencil::move_frames(blender::bke::greasepencil::Layer &layer,
   }
 
   /* Remove drawings if they have no more users. */
-  for (const int drawing_index : drawings_to_remove) {
+  for (const int drawing_index : drawing_indices_to_check_for_deletion) {
     GreasePencilDrawingBase *drawing_base = this->drawings(drawing_index);
     if (drawing_base->type != GP_DRAWING) {
       continue;
