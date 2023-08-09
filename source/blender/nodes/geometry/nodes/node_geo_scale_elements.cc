@@ -454,8 +454,6 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_rna(StructRNA *srna)
 {
-  PropertyRNA *prop;
-
   static const EnumPropertyItem domain_items[] = {
       {ATTR_DOMAIN_FACE,
        "FACE",
@@ -482,23 +480,18 @@ static void node_rna(StructRNA *srna)
        "Single Axis",
        "Scale elements in a single direction"},
       {0, nullptr, 0, nullptr, nullptr},
-
   };
 
-  prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_node(prop, custom1);
-  RNA_def_property_enum_items(prop, domain_items);
-  RNA_def_property_enum_default(prop, ATTR_DOMAIN_FACE);
-  RNA_def_property_ui_text(prop, "Domain", "Element type to transform");
-  RNA_def_property_update_runtime(prop, rna_Node_socket_update);
-  RNA_def_property_update_notifier(prop, NC_NODE | NA_EDITED);
+  RNA_def_node_enum(srna,
+                    "domain",
+                    "Domain",
+                    "Element type to transform",
+                    domain_items,
+                    NOD_inline_enum_accessors(custom1),
+                    ATTR_DOMAIN_FACE);
 
-  prop = RNA_def_property(srna, "scale_mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_node(prop, custom2);
-  RNA_def_property_enum_items(prop, scale_mode_items);
-  RNA_def_property_ui_text(prop, "Scale Mode", "");
-  RNA_def_property_update_runtime(prop, rna_Node_socket_update);
-  RNA_def_property_update_notifier(prop, NC_NODE | NA_EDITED);
+  RNA_def_node_enum(
+      srna, "scale_mode", "Scale Mode", "", scale_mode_items, NOD_inline_enum_accessors(custom2));
 }
 
 static void node_register()
