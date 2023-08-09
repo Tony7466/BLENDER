@@ -68,12 +68,18 @@ bool work_balance_do_rebalance(vector<WorkBalanceInfo> &work_balance_infos)
 
   for (const WorkBalanceInfo &info : work_balance_infos) {
     double work_time = (info.time_spent > time_average) ? time_average/2.0 : time_average;
-    const double time_target = mix(info.time_spent, time_average, lerp_weight);
+    /* Quickly reduce weight if device is taking too long otherwise slowly increase the weight */
+    double w = lerp_weight;
+    if(time_average < info.time_spent) {
+      w = 1.0f;
+    }
+    const double time_target = mix(info.time_spent, time_average, w);
     const double new_weight = info.weight * time_target / info.time_spent;
     new_weights.push_back(new_weight);
     total_weight += new_weight;
 
-    if (std::fabs(1.0 - time_target / time_average) > 0.02) {
+    double diff = time_target - time_average;
+    if ((diff < 0.0) || (diff > 0.5)) {
       has_big_difference = true;
     }
   }
