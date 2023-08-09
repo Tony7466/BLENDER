@@ -96,10 +96,10 @@ static void viewzoom_apply(ViewOpsData *vod, const int move_xy[2],
     float scale;
     
     if (U.uiflag & USER_ZOOM_HORIZ) {
-      scale = 1.0f + (float)(sgn * move_xy[0]) / UI_SCALE_FAC / 300.0f;
+      scale = 1.0f + float(sgn * move_xy[0]) / UI_SCALE_FAC / 300.0f;
     }
     else {
-      scale = 1.0f + (float)(sgn * move_xy[1]) / UI_SCALE_FAC / 300.0f;
+      scale = 1.0f + float(sgn * move_xy[1]) / UI_SCALE_FAC / 300.0f;
     }
     
     ED_view3d_camera_view_zoom_scale(vod->rv3d, scale);
@@ -109,14 +109,14 @@ static void viewzoom_apply(ViewOpsData *vod, const int move_xy[2],
     
     if (zoomstyle == USER_ZOOM_CONTINUE) {
       double time = PIL_check_seconds_timer();
-      float move_t = (float)(time - vod->prev.time);
+      float move_t = float(time - vod->prev.time);
       vod->prev.time = time;
       
       if (U.uiflag & USER_ZOOM_HORIZ) {
-        delta = (float)(sgn * move_xy[0]) / UI_SCALE_FAC / 300.0f;
+        delta = float(sgn * move_xy[0]) / UI_SCALE_FAC / 130.0f;
       }
       else {
-        delta = (float)(sgn * move_xy[1]) / UI_SCALE_FAC / 300.0f;
+        delta = float(sgn * move_xy[1]) / UI_SCALE_FAC / 130.0f;
       }
       delta *= move_t * vod->init.dist;
       delta = vod->init.zfac += delta;
@@ -133,25 +133,24 @@ static void viewzoom_apply(ViewOpsData *vod, const int move_xy[2],
       /* initial radius */
       radii[0] = max_ff(len_v2v2_int(vod->init.event_xy, ctr_xy), 2.0f);
       
-      delta_xy[0] = (float)(vod->init.event_xy[0] - ctr_xy[0] + move_xy[0]);
-      delta_xy[1] = (float)(vod->init.event_xy[1] - ctr_xy[1] + move_xy[1]);
+      delta_xy[0] = float(vod->init.event_xy[0] - ctr_xy[0] + move_xy[0]);
+      delta_xy[1] = float(vod->init.event_xy[1] - ctr_xy[1] + move_xy[1]);
       /* current radius */
       radii[1] = max_ff(len_v2(delta_xy), 2.0f);
       
-      delta = (radii[1] / radii[0] - 1.0f) * vod->init.dist;
+      delta = (radii[1] / radii[0] - 1.0f) * vod->init.dist * 2.0f;
     }
     else { /* USER_ZOOM_DOLLY */
-      /* the factor 1/300 adjusts the input sensitivity */
       if (U.uiflag & USER_ZOOM_HORIZ) {
-        delta = (float)(sgn * move_xy[0]) / UI_SCALE_FAC * vod->init.dist / 300.0f;
+        delta = float(sgn * move_xy[0]) / UI_SCALE_FAC * vod->init.dist / 130.0f;
       }
       else {
-        delta = (float)(sgn * move_xy[1]) / UI_SCALE_FAC * vod->init.dist / 300.0f;
+        delta = float(sgn * move_xy[1]) / UI_SCALE_FAC * vod->init.dist / 130.0f;
       }
     }
     
     {
-      const float zoomctr_f_xy[2] = {(float)zoomctr_xy[0], (float)zoomctr_xy[1]};
+      const float zoomctr_f_xy[2] = {float(zoomctr_xy[0]), float(zoomctr_xy[1])};
       view_zoom_to_vector_3d(vod->v3d, vod->region, vod->init.ofs, vod->init.dist, zoomctr_f_xy, delta);
     }
     
@@ -234,7 +233,7 @@ static int viewzoom_apply_step(bContext *C, PointerRNA *ptr, ViewOpsData *vod, c
     ED_view3d_camera_view_zoom_scale(rv3d, scale);
   }
   else {
-    const float zoomctr_f_xy[2] = {(float)zoomctr_xy[0], (float)zoomctr_xy[1]};
+    const float zoomctr_f_xy[2] = {float(zoomctr_xy[0]), float(zoomctr_xy[1])};
     view_zoom_to_vector_3d(v3d, region, rv3d->ofs, rv3d->dist, zoomctr_f_xy, delta);
     
     if (RV3D_LOCK_FLAGS(rv3d) & RV3D_BOXVIEW) {
@@ -265,12 +264,12 @@ static int viewzoom_exec(bContext *C, wmOperator *op)
     
   const bool use_cursor_init = RNA_boolean_get(op->ptr, "use_cursor_init");
   if (use_cursor_init) {
-    zoomctr_f_xy[0] = (float)RNA_int_get(op->ptr, "mx");
-    zoomctr_f_xy[1] = (float)RNA_int_get(op->ptr, "my");
+    zoomctr_f_xy[0] = float(RNA_int_get(op->ptr, "mx"));
+    zoomctr_f_xy[1] = float(RNA_int_get(op->ptr, "my"));
   }
   else {
-    zoomctr_f_xy[0] = (float)(region->winx / 2);
-    zoomctr_f_xy[1] = (float)(region->winy / 2);
+    zoomctr_f_xy[0] = float(region->winx / 2);
+    zoomctr_f_xy[1] = float(region->winy / 2);
   }
 
   v3d = static_cast<View3D *>(area->spacedata.first);

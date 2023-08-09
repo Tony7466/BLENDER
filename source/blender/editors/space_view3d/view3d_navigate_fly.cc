@@ -472,6 +472,20 @@ static void flyEvent(FlyInfo *fly, const wmEvent *event)
   else if (event->type == MOUSEMOVE) {
     copy_v2_v2_int(fly->mval, event->mval);
   }
+  else if (event->type == MOUSEPAN) {
+    float fac = -0.03f * WM_event_absolute_delta_y(event) / UI_SCALE_FAC;
+
+    /* allow to brake immediately */
+    if (fac > 0.0f && fly->speed < 0.0f) {
+      fly->speed = 0.0f;
+    }
+    else if (fac < 0.0f && fly->speed > 0.0f) {
+      fly->speed = 0.0f;
+    }
+    else {
+      fly->speed += fly->grid * fac;
+    }
+  }
 #ifdef WITH_INPUT_NDOF
   else if (event->type == NDOF_MOTION) {
     /* do these automagically get delivered? yes. */
@@ -529,28 +543,9 @@ static void flyEvent(FlyInfo *fly, const wmEvent *event)
       case FLY_MODAL_CONFIRM:
         fly->state = FLY_CONFIRM;
         break;
-
-      /* Speed adjusting with mouse-pan (track-pad). */
-      case FLY_MODAL_SPEED: {
-        float fac = 0.02f * (event->prev_xy[1] - event->xy[1]);
-
-        /* allowing to brake immediate */
-        if (fac > 0.0f && fly->speed < 0.0f) {
-          fly->speed = 0.0f;
-        }
-        else if (fac < 0.0f && fly->speed > 0.0f) {
-          fly->speed = 0.0f;
-        }
-        else {
-          fly->speed += fly->grid * fac;
-        }
-
-        break;
-      }
       case FLY_MODAL_ACCELERATE: {
         double time_currwheel;
         float time_wheel;
-
         /* not quite correct but avoids confusion WASD/arrow keys 'locking up' */
         if (fly->axis == -1) {
           fly->axis = 2;

@@ -81,12 +81,11 @@ static void viewdolly_apply(ViewOpsData *vod, const int move_xy[2], const bool d
   float delta;
   const int sgn = 1 - 2 * delta_invert;
 
-  /* the factor 1/300 adjusts the input sensitivity */
   if (U.uiflag & USER_ZOOM_HORIZ) {
-    delta = (float)(sgn * move_xy[0]) / UI_SCALE_FAC * vod->init.dist / 300.0f;
+    delta = float(sgn * move_xy[0]) / UI_SCALE_FAC * vod->init.dist / 130.0f;
   }
   else {
-    delta = (float)(sgn * move_xy[1]) / UI_SCALE_FAC * vod->init.dist / 300.0f;
+    delta = float(sgn * move_xy[1]) / UI_SCALE_FAC * vod->init.dist / 130.0f;
   }
 
   view_dolly_to_vector_3d(vod->region, vod->init.ofs, vod->init.mousevec, delta);
@@ -188,7 +187,7 @@ static int viewdolly_exec(bContext *C, wmOperator *op)
   ARegion *region;
   float mousevec[3];
 
-  float delta = (float)RNA_int_get(op->ptr, "delta");
+  float delta = float(RNA_int_get(op->ptr, "delta"));
 
   if (op->customdata) {
     ViewOpsData *vod = static_cast<ViewOpsData *>(op->customdata);
@@ -204,12 +203,12 @@ static int viewdolly_exec(bContext *C, wmOperator *op)
     
     const bool use_cursor_init = RNA_boolean_get(op->ptr, "use_cursor_init");
     if (use_cursor_init) {
-      reg_xy[0] = (float)RNA_int_get(op->ptr, "mx");
-      reg_xy[1] = (float)RNA_int_get(op->ptr, "my");
+      reg_xy[0] = float(RNA_int_get(op->ptr, "mx"));
+      reg_xy[1] = float(RNA_int_get(op->ptr, "my"));
     }
     else {
-      reg_xy[0] = (float)(region->winx / 2);
-      reg_xy[1] = (float)(region->winy / 2);
+      reg_xy[0] = float(region->winx / 2);
+      reg_xy[1] = float(region->winy / 2);
     }
     ED_view3d_win_to_vector(region, reg_xy, mousevec);
   }
@@ -277,7 +276,7 @@ static int viewdolly_invoke(bContext *C, wmOperator *op, const wmEvent *event)
       RNA_int_set(op->ptr, "my", event->mval[1]);
     }
     else {
-      const float reg_xy[2] = {(float)RNA_int_get(op->ptr, "mx"), (float)RNA_int_get(op->ptr, "my")};
+      const float reg_xy[2] = {float(RNA_int_get(op->ptr, "mx")), float(RNA_int_get(op->ptr, "my"))};
       /* recompute movement direction for dolly */
       ED_view3d_win_to_vector(vod->region, reg_xy, vod->init.mousevec);
     }
