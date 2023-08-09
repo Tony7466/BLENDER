@@ -428,6 +428,12 @@ static void box_select_elem(
       break;
     }
 #endif
+    case ANIMTYPE_GREASE_PENCIL_LAYER: {
+      blender::ed::greasepencil::select_frames_box(
+          static_cast<GreasePencilLayer *>(ale->data)->wrap(), xmin, xmax, sel_data->selectmode);
+      ale->update |= ANIM_UPDATE_DEPS;
+      break;
+    }
     case ANIMTYPE_GPLAYER: {
       ED_gpencil_layer_frames_select_box(
           static_cast<bGPDlayer *>(ale->data), xmin, xmax, sel_data->selectmode);
@@ -1031,7 +1037,9 @@ static void markers_selectkeys_between(bAnimContext *ac)
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     switch (ale->type) {
       case ANIMTYPE_GREASE_PENCIL_LAYER:
-        /* GPv3: To be implemented. */
+        blender::ed::greasepencil::select_frames_box(
+            static_cast<GreasePencilLayer *>(ale->data)->wrap(), min, max, SELECT_ADD);
+        ale->update |= ANIM_UPDATE_DEPS;
         break;
       case ANIMTYPE_GPLAYER:
         ED_gpencil_layer_frames_select_box(
@@ -1481,7 +1489,9 @@ static void actkeys_select_leftright(bAnimContext *ac, short leftright, short se
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     switch (ale->type) {
       case ANIMTYPE_GREASE_PENCIL_LAYER:
-        /* GPv3: To be implemented. */
+        blender::ed::greasepencil::select_frames_box(
+            static_cast<GreasePencilLayer *>(ale->data)->wrap(), ked.f1, ked.f2, select_mode);
+        ale->update |= ANIM_UPDATE_DEPS;
         break;
       case ANIMTYPE_GPLAYER:
         ED_gpencil_layer_frames_select_box(
