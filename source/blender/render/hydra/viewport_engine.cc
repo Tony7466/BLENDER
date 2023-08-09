@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * SPDX-FileCopyrightText: 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "viewport_engine.h"
 
@@ -137,10 +138,10 @@ int ViewSettings::height()
 
 pxr::GfCamera ViewSettings::gf_camera()
 {
-  return camera_data.gf_camera(pxr::GfVec4f((float)border[0] / screen_width,
-                                            (float)border[1] / screen_height,
-                                            (float)border[2] / screen_width,
-                                            (float)border[3] / screen_height));
+  return camera_data.gf_camera(pxr::GfVec4f(float(border[0]) / screen_width,
+                                            float(border[1]) / screen_height,
+                                            float(border[2]) / screen_width,
+                                            float(border[3]) / screen_height));
 }
 
 DrawTexture::DrawTexture()

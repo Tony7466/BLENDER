@@ -40,11 +40,14 @@ struct IrradianceGrid : public LightProbe, IrradianceGridData {
   const LightProbeObjectCache *cache = nullptr;
   /** List of associated atlas bricks that are used by this grid. */
   Vector<IrradianceBrickPacked> bricks;
+  /** True if the grid needs to be reuploaded & re-composited with other light-grids. */
+  bool do_update;
   /** Index of the grid inside the grid UBO. */
   int grid_index;
   /** Copy of surfel density for debugging purpose. */
   float surfel_density;
   /** Copy of DNA members. */
+  float validity_threshold;
   float dilation_threshold;
   float dilation_radius;
 };
