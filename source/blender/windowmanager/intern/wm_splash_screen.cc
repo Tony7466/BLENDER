@@ -175,7 +175,7 @@ static ImBuf *wm_block_splash_image(int width, int *r_height)
 static void new_manual_load_settings_fn(struct bContext *C, void *arg1, void *arg2)
 {
   PointerRNA ptr_props;
-  char buf[512] = "docs.blender.org/manual/en/latest/getting_started/installing/index.html";
+  char buf[512] = "wiki.blender.org/wiki/Reference/Release_Notes/4.0/Keymap";
   WM_operator_properties_create(&ptr_props, "WM_OT_url_open");
   RNA_string_set(&ptr_props, "url", buf);
   WM_operator_name_call_ptr(
@@ -241,7 +241,7 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void * /*ar
   if (!BLI_exists(userpref)) {
 
     const uiStyle *style = UI_style_get_dpi();
-    const short icon_size = 48 * UI_SCALE_FAC;
+    const short icon_size = 40 * UI_SCALE_FAC;
     const float icon_padding = 5.0f * UI_SCALE_FAC;
     /* Calculate the factor of the fixed icon column depending on the block width. */
     const float split_factor = (float(icon_size) + icon_padding) /
@@ -255,10 +255,12 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void * /*ar
     /* The rest of the content on the right. */
     uiLayout *right = uiLayoutColumn(split_block, false);
 
+    uiLayoutSetScaleY(right, 2.0f);
+
     uiBut *link = uiDefBut(block,
                            UI_BTYPE_BUT_MENU,
                            1,
-                           IFACE_("This new version of Blender contains new default shortcuts!"),
+                           IFACE_("Click here for important details about shortcut changes..."),
                            0,
                            0,
                            0,
@@ -269,22 +271,6 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void * /*ar
                            0,
                            0,
                            TIP_("Open browser with information about this topic."));
-    UI_but_func_set(link, new_manual_load_settings_fn, nullptr, nullptr);
-
-    link = uiDefBut(block,
-                    UI_BTYPE_BUT_MENU,
-                    1,
-                    IFACE_("Click here for more details..."),
-                    0,
-                    0,
-                    0,
-                    UI_UNIT_Y,
-                    nullptr,
-                    0,
-                    0,
-                    0,
-                    0,
-                    TIP_("Open browser with information about this topic."));
     UI_but_func_set(link, new_manual_load_settings_fn, nullptr, nullptr);
 
     mt = WM_menutype_find("WM_MT_splash_quick_setup", true);
