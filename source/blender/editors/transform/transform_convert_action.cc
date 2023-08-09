@@ -64,7 +64,7 @@ static bool grease_pencil_layer_initialize_trans_data(blender::bke::greasepencil
    * transformation, and we need to be able to reset it if the operation is cancelled. */
   trans_data.frames_copy = layer.frames();
   trans_data.frames_duration.clear();
-  trans_data.trans_map.clear();
+  trans_data.frames_destination.clear();
 
   for (const auto [frame_number, frame] : layer.frames().items()) {
     if (frame.is_null()) {
@@ -127,7 +127,7 @@ static bool grease_pencil_layer_update_trans_data(blender::bke::greasepencil::La
       dst_frame_number, src_frame.drawing_index, src_duration);
   *frame = src_frame;
 
-  trans_data.trans_map.add_overwrite(src_frame_number, dst_frame_number);
+  trans_data.frames_destination.add_overwrite(src_frame_number, dst_frame_number);
 
   return true;
 }
@@ -150,12 +150,12 @@ static bool grease_pencil_layer_apply_trans_data(GreasePencil &grease_pencil,
 
   if (!canceled) {
     /* Apply the transformation. */
-    grease_pencil.move_frames(layer, trans_data.trans_map);
+    grease_pencil.move_frames(layer, trans_data.frames_destination);
   }
 
   /* Clear the frames copy. */
   trans_data.frames_copy.clear();
-  trans_data.trans_map.clear();
+  trans_data.frames_destination.clear();
   trans_data.status = LayerTransformData::TRANS_CLEAR;
 
   return true;

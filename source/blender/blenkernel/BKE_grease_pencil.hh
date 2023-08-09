@@ -192,11 +192,21 @@ class LayerMask : public ::GreasePencilLayerMask {
   ~LayerMask();
 };
 
+/**
+ * Structure used to transform frames in a grease pencil layer.
+ */
 struct LayerTransformData {
   enum FrameTransformationStatus { TRANS_CLEAR, TRANS_INIT, TRANS_RUNNING };
 
-  Map<int, int> trans_map;
+  /* Map of frame keys describing the transformation of the frames. Keys of the map are the source
+   * frame indices, and the values of the map are the destination frame indices. */
+  Map<int, int> frames_destination;
+
+  /* Copy of the layer frames map. This allows to display the transformation while running, without
+   * removing any drawing. */
   Map<int, GreasePencilFrame> frames_copy;
+  /* Map containing the duration (in frames) for each frame in the layer that has a fixed duration,
+   * i.e. each frame that is not an implicit hold. */
   Map<int, int> frames_duration;
 
   FrameTransformationStatus status{TRANS_CLEAR};
