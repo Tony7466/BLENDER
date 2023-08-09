@@ -569,6 +569,20 @@ enum eGREASEPENCIL_DeleteFrameMode {
   GREASEPENCIL_DELETEFRAMEOP_ALL_FRAMES = 1,
 };
 
+static const EnumPropertyItem prop_greasepencil_deleteframe_types[] = {
+    {GREASEPENCIL_DELETEFRAMEOP_ACTIVE_FRAME,
+     "ACTIVE_FRAME",
+     0,
+     "Active Frame",
+     "Deletes current frame in the active layer"},
+    {GREASEPENCIL_DELETEFRAMEOP_ALL_FRAMES,
+     "ALL_FRAMES",
+     0,
+     "All Active Frames",
+     "Delete active frames for all layers"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 static int grease_pencil_delete_frame_exec(bContext *C, wmOperator *op)
 {
   using namespace blender;
@@ -609,20 +623,6 @@ static void GREASE_PENCIL_OT_delete_frame(wmOperatorType *ot)
 {
   PropertyRNA *prop;
 
-  static const EnumPropertyItem prop_greasepencil_delete_types[] = {
-      {GREASEPENCIL_DELETEFRAMEOP_ACTIVE_FRAME,
-       "ACTIVE_FRAME",
-       0,
-       "Active Frame",
-       "Deletes current frame in the active layer"},
-      {GREASEPENCIL_DELETEFRAMEOP_ALL_FRAMES,
-       "ALL_FRAMES",
-       0,
-       "All Active Frames",
-       "Delete active frames for all layers"},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
   /* Identifiers. */
   ot->name = "Delete Frame";
   ot->idname = "GREASE_PENCIL_OT_delete_frame";
@@ -638,7 +638,7 @@ static void GREASE_PENCIL_OT_delete_frame(wmOperatorType *ot)
   /* Simplify parameters. */
   ot->prop = prop = RNA_def_enum(ot->srna,
                                  "type",
-                                 prop_greasepencil_delete_types,
+                                 prop_greasepencil_deleteframe_types,
                                  0,
                                  "Type",
                                  "Method used for deleting Grease Pencil Frames");
