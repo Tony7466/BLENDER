@@ -59,7 +59,7 @@ ccl_device_forceinline void film_write_denoising_features_surface(KernelGlobals 
     normal += sc->N * sc->sample_weight;
     sum_weight += sc->sample_weight;
 
-    Spectrum closure_albedo = bsdf_albedo(sd, sc, true, true);
+    Spectrum closure_albedo = bsdf_albedo(kg, sd, sc, true, true);
     if (bsdf_get_specular_roughness_squared(sc) > sqr(0.075f)) {
       diffuse_albedo += closure_albedo;
       sum_nonspecular_weight += sc->sample_weight;

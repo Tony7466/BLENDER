@@ -1232,8 +1232,8 @@ typedef struct KernelTables {
   int ggx_glass_inv_E;
   int ggx_glass_inv_Eavg;
   int sheen_ltc;
-  int ggx_gen_schlick_ior_f0;
-  int ggx_gen_schlick_ior_f90;
+  int ggx_gen_schlick_ior_s;
+  int ggx_gen_schlick_s;
   int pad1;
   int pad2;
 } KernelTables;

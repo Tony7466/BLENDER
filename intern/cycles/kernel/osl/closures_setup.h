@@ -241,8 +241,7 @@ ccl_device void osl_closure_dielectric_bsdf_setup(KernelGlobals kg,
   bsdf_microfacet_setup_fresnel_dielectric_tint(kg, bsdf, sd, fresnel, preserve_energy);
 
   if (layer_albedo != NULL && has_reflection && !has_transmission) {
-    *layer_albedo = bsdf->energy_scale *
-                    bsdf_albedo(sd, (ccl_private ShaderClosure *)bsdf, true, false);
+    *layer_albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
   }
 }
 
@@ -375,24 +374,7 @@ ccl_device void osl_closure_generalized_schlick_bsdf_setup(
   bsdf_microfacet_setup_fresnel_generalized_schlick(kg, bsdf, sd, fresnel, preserve_energy);
 
   if (layer_albedo != NULL && has_reflection && !has_transmission) {
-    if (closure->exponent < 0.0f) {
-      float mu = dot(sd->wi, bsdf->N);
-      float rough = sqrtf(sqrtf(bsdf->alpha_x * bsdf->alpha_y));
-      float eta = -closure->exponent;
-      float z = sqrtf(fabsf((eta - 1.0f) / (eta + 1.0f)));
-
-      float f0_fac = lookup_table_read_3D(
-          kg, rough, mu, z, kernel_data.tables.ggx_gen_schlick_ior_f0, 16, 16, 16);
-      float f90_fac = lookup_table_read_3D(
-          kg, rough, mu, z, kernel_data.tables.ggx_gen_schlick_ior_f90, 16, 16, 16);
-      *layer_albedo = bsdf->weight * bsdf->energy_scale *
-                      (closure->f0 * f0_fac + closure->f90 * f90_fac) * closure->reflection_tint;
-    }
-    else {
-      /* TODO: Precomputed table for the general case. This approximation isn't very accurate... */
-      *layer_albedo = bsdf->energy_scale *
-                      bsdf_albedo(sd, (ccl_private ShaderClosure *)bsdf, true, false);
-    }
+    *layer_albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
   }
 }
 
@@ -440,7 +422,7 @@ ccl_device void osl_closure_microfacet_setup(KernelGlobals kg,
   }
   /* Clearcoat */
   else if (closure->distribution == make_string("clearcoat", 3490136178980547276ull)) {
-    sd->flag |= bsdf_microfacet_ggx_clearcoat_setup(bsdf, sd);
+    sd->flag |= bsdf_microfacet_ggx_clearcoat_setup(kg, bsdf, sd);
   }
   /* GGX (either single- or multi-scattering) */
   else {
@@ -461,8 +443,7 @@ ccl_device void osl_closure_microfacet_setup(KernelGlobals kg,
   }
 
   if (layer_albedo != NULL && closure->refract == 0) {
-    *layer_albedo = bsdf->energy_scale *
-                    bsdf_albedo(sd, (ccl_private ShaderClosure *)bsdf, true, false);
+    *layer_albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
   }
 }
 
@@ -529,8 +510,7 @@ ccl_device void osl_closure_microfacet_multi_ggx_aniso_setup(
   bsdf_microfacet_setup_fresnel_constant(kg, bsdf, sd, rgb_to_spectrum(closure->color));
 
   if (layer_albedo != NULL) {
-    *layer_albedo = bsdf->energy_scale *
-                    bsdf_albedo(sd, (ccl_private ShaderClosure *)bsdf, true, false);
+    *layer_albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
   }
 }
 
@@ -578,8 +558,7 @@ ccl_device void osl_closure_microfacet_aniso_fresnel_setup(
   bsdf_microfacet_setup_fresnel_generalized_schlick(kg, bsdf, sd, fresnel, preserve_energy);
 
   if (layer_albedo != NULL) {
-    *layer_albedo = bsdf->energy_scale *
-                    bsdf_albedo(sd, (ccl_private ShaderClosure *)bsdf, true, false);
+    *layer_albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
   }
 }
 

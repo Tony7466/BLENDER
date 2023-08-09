@@ -560,7 +560,8 @@ ccl_device void bsdf_blur(KernelGlobals kg, ccl_private ShaderClosure *sc, float
 #endif
 }
 
-ccl_device_inline Spectrum bsdf_albedo(ccl_private const ShaderData *sd,
+ccl_device_inline Spectrum bsdf_albedo(KernelGlobals kg,
+                                       ccl_private const ShaderData *sd,
                                        ccl_private const ShaderClosure *sc,
                                        const bool reflection,
                                        const bool transmission)
@@ -577,8 +578,8 @@ ccl_device_inline Spectrum bsdf_albedo(ccl_private const ShaderData *sd,
    * extra overhead though. */
 #if defined(__SVM__) || defined(__OSL__)
   if (CLOSURE_IS_BSDF_MICROFACET(sc->type)) {
-    albedo *= bsdf_microfacet_estimate_fresnel(
-        sd, (ccl_private const MicrofacetBsdf *)sc, reflection, transmission);
+    albedo *= bsdf_microfacet_estimate_albedo(
+        kg, sd, (ccl_private const MicrofacetBsdf *)sc, reflection, transmission);
   }
   else if (sc->type == CLOSURE_BSDF_HAIR_PRINCIPLED_ID) {
     /* TODO(lukas): Principled Hair could also be split into a glossy and a transmission component,

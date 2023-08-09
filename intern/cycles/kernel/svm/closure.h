@@ -174,7 +174,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           sd->flag |= bsdf_sheen_setup(kg, sd, bsdf);
 
           /* Attenuate lower layers */
-          Spectrum albedo = bsdf_albedo(sd, (ccl_private ShaderClosure *)bsdf, true, false);
+          Spectrum albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
           weight *= 1.0f - reduce_max(albedo / weight);
         }
       }
@@ -192,10 +192,10 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           bsdf->alpha_x = bsdf->alpha_y = sqr(clearcoat_roughness);
 
           /* setup bsdf */
-          sd->flag |= bsdf_microfacet_ggx_clearcoat_setup(bsdf, sd);
+          sd->flag |= bsdf_microfacet_ggx_clearcoat_setup(kg, bsdf, sd);
 
           /* Attenuate lower layers */
-          Spectrum albedo = bsdf_albedo(sd, (ccl_private ShaderClosure *)bsdf, true, false);
+          Spectrum albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
           weight *= 1.0f - reduce_max(albedo / weight);
         }
       }
@@ -293,17 +293,8 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           const bool is_multiggx = (distribution == CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID);
           bsdf_microfacet_setup_fresnel_generalized_schlick(kg, bsdf, sd, fresnel, is_multiggx);
 
-          /* Attenuate lower layer */
-          float mu = dot(sd->wi, bsdf->N);
-          float z = sqrtf(fabsf((eta - 1.0f) / (eta + 1.0f)));
-
-          float f0_fac = lookup_table_read_3D(
-              kg, roughness, mu, z, kernel_data.tables.ggx_gen_schlick_ior_f0, 16, 16, 16);
-          float f90_fac = lookup_table_read_3D(
-              kg, roughness, mu, z, kernel_data.tables.ggx_gen_schlick_ior_f90, 16, 16, 16);
-          Spectrum albedo = bsdf->weight * bsdf->energy_scale *
-                            (fresnel->f0 * f0_fac + fresnel->f90 * f90_fac) *
-                            fresnel->reflection_tint;
+          /* Attenuate lower layers */
+          Spectrum albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
           weight *= 1.0f - reduce_max(albedo / weight);
         }
       }
