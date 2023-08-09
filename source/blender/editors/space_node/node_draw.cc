@@ -2112,7 +2112,7 @@ static void node_draw_extra_info_panel(const Scene *scene,
     return;
   }
   if (preview && !(preview->x > 0 && preview->y > 0)) {
-    /* If the preview has an non-drawable size, just dont draw it. */
+    /* If the preview has an non-drawable size, just don't draw it. */
     preview = nullptr;
   }
   Vector<NodeExtraInfoRow> extra_info_rows = node_get_extra_info(tree_draw_ctx, snode, node);
@@ -2248,13 +2248,13 @@ static void node_draw_basis(const bContext &C,
   {
     bool drawn_with_previews = false;
 
-    if (node.flag & NODE_PREVIEW && snode.overlay.flag & SN_OVERLAY_SHOW_PREVIEWS) {
+    if (show_preview) {
       bNodeInstanceHash *previews_compo = static_cast<bNodeInstanceHash *>(
           CTX_data_pointer_get(&C, "node_previews").data);
       NestedTreePreviews *previews_shader = tree_draw_ctx.nested_group_infos;
 
       if (previews_shader) {
-        ImBuf *preview = ED_node_preview_acquire_ibuf(previews_shader, &node);
+        ImBuf *preview = node_preview_acquire_ibuf(*previews_shader, node);
         node_draw_extra_info_panel(CTX_data_scene(&C), tree_draw_ctx, snode, node, preview, block);
         node_release_preview_ibuf(*previews_shader);
         drawn_with_previews = true;
