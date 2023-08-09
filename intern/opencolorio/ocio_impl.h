@@ -63,6 +63,7 @@ class IOCIOImpl {
   virtual void processorRelease(OCIO_ConstProcessorRcPtr *processor) = 0;
 
   virtual OCIO_ConstCPUProcessorRcPtr *processorGetCPUProcessor(OCIO_ConstProcessorRcPtr *p) = 0;
+  virtual bool cpuProcessorIsNoOp(OCIO_ConstCPUProcessorRcPtr *cpu_processor) = 0;
   virtual void cpuProcessorApply(OCIO_ConstCPUProcessorRcPtr *cpu_processor,
                                  OCIO_PackedImageDesc *img) = 0;
   virtual void cpuProcessorApply_predivide(OCIO_ConstCPUProcessorRcPtr *cpu_processor,
@@ -176,6 +177,7 @@ class FallbackImpl : public IOCIOImpl {
   void processorRelease(OCIO_ConstProcessorRcPtr *processor);
 
   OCIO_ConstCPUProcessorRcPtr *processorGetCPUProcessor(OCIO_ConstProcessorRcPtr *processor);
+  bool cpuProcessorIsNoOp(OCIO_ConstCPUProcessorRcPtr *cpu_processor);
   void cpuProcessorApply(OCIO_ConstCPUProcessorRcPtr *cpu_processor, OCIO_PackedImageDesc *img);
   void cpuProcessorApply_predivide(OCIO_ConstCPUProcessorRcPtr *cpu_processor,
                                    OCIO_PackedImageDesc *img);
@@ -266,6 +268,7 @@ class OCIOImpl : public IOCIOImpl {
   void processorRelease(OCIO_ConstProcessorRcPtr *processor);
 
   OCIO_ConstCPUProcessorRcPtr *processorGetCPUProcessor(OCIO_ConstProcessorRcPtr *processor);
+  bool cpuProcessorIsNoOp(OCIO_ConstCPUProcessorRcPtr *cpu_processor);
   void cpuProcessorApply(OCIO_ConstCPUProcessorRcPtr *cpu_processor, OCIO_PackedImageDesc *img);
   void cpuProcessorApply_predivide(OCIO_ConstCPUProcessorRcPtr *cpu_processor,
                                    OCIO_PackedImageDesc *img);
