@@ -146,11 +146,9 @@ static int grease_pencil_stroke_invoke(bContext *C, wmOperator *op, const wmEven
       BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
       return OPERATOR_CANCELLED;
     }
-    else {
-      /* Create a new blank frame here. */
-      grease_pencil.insert_blank_frame(
-          *grease_pencil.get_active_layer_for_write(), current_frame, 1, BEZT_KEYTYPE_KEYFRAME);
-    }
+    /* Create a new blank frame here. */
+    grease_pencil.insert_blank_frame(
+        *grease_pencil.get_active_layer_for_write(), current_frame, 1, BEZT_KEYTYPE_KEYFRAME);
   }
 
   op->customdata = paint_stroke_new(C,
