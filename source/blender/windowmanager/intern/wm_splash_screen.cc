@@ -47,6 +47,8 @@
 #include "UI_interface_icons.h"
 #include "UI_resources.h"
 
+#include "RNA_access.h"
+
 #include "WM_api.h"
 #include "WM_types.h"
 
@@ -170,6 +172,17 @@ static ImBuf *wm_block_splash_image(int width, int *r_height)
   return ibuf;
 }
 
+static void new_manual_load_settings_fn(struct bContext *C, void *arg1, void *arg2)
+{
+  PointerRNA ptr_props;
+  char buf[512] = "docs.blender.org/manual/en/latest/getting_started/installing/index.html";
+  WM_operator_properties_create(&ptr_props, "WM_OT_url_open");
+  RNA_string_set(&ptr_props, "url", buf);
+  WM_operator_name_call_ptr(
+      C, WM_operatortype_find("WM_OT_url_open", false), WM_OP_EXEC_DEFAULT, &ptr_props, nullptr);
+  WM_operator_properties_free(&ptr_props);
+}
+
 static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void * /*arg*/)
 {
   const uiStyle *style = UI_style_get_dpi();
@@ -187,6 +200,14 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void * /*ar
   CLAMP_MAX(splash_width, CTX_wm_window(C)->sizex * 0.7f);
   int splash_height;
 
+  MenuType *mt;
+  char userpref[FILE_MAX];
+  const char *const cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, nullptr);
+
+  if (cfgdir) {
+    BLI_path_join(userpref, sizeof(userpref), cfgdir, BLENDER_USERPREF_FILE);
+  }
+
   /* Would be nice to support caching this, so it only has to be re-read (and likely resized) on
    * first draw or if the image changed. */
   ImBuf *ibuf = wm_block_splash_image(splash_width, &splash_height);
@@ -195,7 +216,9 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void * /*ar
     uiBut *but = uiDefButImage(
         block, ibuf, 0, 0.5f * U.widget_unit, splash_width, splash_height, nullptr);
 
-    UI_but_func_set(but, wm_block_close, block, nullptr);
+    if (BLI_exists(userpref)) {
+      UI_but_func_set(but, wm_block_close, block, nullptr);
+    }
 
     wm_block_splash_add_label(block,
                               BKE_blender_version_string(),
@@ -214,16 +237,56 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void * /*ar
                                      0,
                                      style);
 
-  MenuType *mt;
-  char userpref[FILE_MAX];
-  const char *const cfgdir = BKE_appdir_folder_id(BLENDER_USER_CONFIG, nullptr);
-
-  if (cfgdir) {
-    BLI_path_join(userpref, sizeof(userpref), cfgdir, BLENDER_USERPREF_FILE);
-  }
-
   /* Draw setup screen if no preferences have been saved yet. */
   if (!BLI_exists(userpref)) {
+
+    const uiStyle *style = UI_style_get_dpi();
+    const short icon_size = 48 * UI_SCALE_FAC;
+    const float icon_padding = 5.0f * UI_SCALE_FAC;
+    /* Calculate the factor of the fixed icon column depending on the block width. */
+    const float split_factor = (float(icon_size) + icon_padding) /
+                               float(splash_width - style->columnspace);
+
+    uiLayout *box = uiLayoutBox(layout);
+    uiLayout *split_block = uiLayoutSplit(box, split_factor, false);
+    uiLayoutSetAlignment(split_block, UI_LAYOUT_ALIGN_LEFT);
+    uiDefButAlert(block, ALERT_ICON_WARNING, 0, 0, icon_size, icon_size);
+
+    /* The rest of the content on the right. */
+    uiLayout *right = uiLayoutColumn(split_block, false);
+
+    uiBut *link = uiDefBut(block,
+                           UI_BTYPE_BUT_MENU,
+                           1,
+                           IFACE_("This new version of Blender contains new default shortcuts!"),
+                           0,
+                           0,
+                           0,
+                           UI_UNIT_Y,
+                           nullptr,
+                           0,
+                           0,
+                           0,
+                           0,
+                           TIP_("Open browser with information about this topic."));
+    UI_but_func_set(link, new_manual_load_settings_fn, nullptr, nullptr);
+
+    link = uiDefBut(block,
+                    UI_BTYPE_BUT_MENU,
+                    1,
+                    IFACE_("Click here for more details..."),
+                    0,
+                    0,
+                    0,
+                    UI_UNIT_Y,
+                    nullptr,
+                    0,
+                    0,
+                    0,
+                    0,
+                    TIP_("Open browser with information about this topic."));
+    UI_but_func_set(link, new_manual_load_settings_fn, nullptr, nullptr);
+
     mt = WM_menutype_find("WM_MT_splash_quick_setup", true);
 
     /* The #UI_BLOCK_QUICK_SETUP flag prevents the button text from being left-aligned,
