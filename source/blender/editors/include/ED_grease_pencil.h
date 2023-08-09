@@ -115,6 +115,8 @@ struct Curves2DSpace {
   Array<int> point_size;
   /* Cyclic flag for each curve. */
   Array<bool> is_cyclic;
+  /* Fill flag for each curve. */
+  Array<bool> is_filled;
   /* Index reference to `drawings` for each curve. */
   Array<int> drawing_index_2d;
   /* Contiguous array with all point positions in 2D space. */
@@ -124,55 +126,14 @@ struct Curves2DSpace {
 };
 
 /**
- * Intersecting segment in 2D space.
- */
-struct IntersectingSegment2D {
-  /* Curve index in `Curves2DSpace` struct. */
-  int curve_index_2d;
-  /* Start point of the intersection (relative index: 0..<curve_point_size>). */
-  int point_start;
-  /* End point of the intersection (relative index: 0..<curve_point_size>). */
-  int point_end;
-  /* Distance of the intersection on the intersected segment. */
-  float distance;
-};
-
-/**
  * Collect all editable strokes in a GP object and convert them to
  * viewport 2D space.
  *
  * \return A struct with the 2D representation of all editable strokes.
  */
-Curves2DSpace editable_strokes_in_2d_space_get(ViewContext *vc, Object *ob);
-
-/**
- * Get the intersections of a two point segment with all given 2D strokes.
- *
- * \param segment_a: Start coordinates of the segment.
- * \param segment_b: End coordinates of the segment.
- * \param segment_curve_index: Index of the segment curve in the `curves_2d` struct.
- * Used to avoid a false-positive self-intersecting result.
- * \param adj_a: Adjacent point of #segment_a, previous point on curve.
- * \param adj_b: Adjacent point of #segment_b, next point on curve.
- * \param curves_2d: A struct with the 2D representation of all editable strokes.
- * Obtained by #editable_strokes_in_2d_space_get.
- * \return: Vector of all intersections.
- */
-Vector<IntersectingSegment2D> intersections_segment_with_curves_get(
-    const float2 &segment_a,
-    const float2 &segment_b,
-    const int segment_curve_index,
-    const float2 &adj_a,
-    const float2 &adj_b,
-    const Curves2DSpace *curves_2d);
-
-/**
- * Get the intersection distance on vector v1-v2, intersected by v3-v4.
- */
-float intersection_distance_get(const float2 &v1,
-                                const float2 &v2,
-                                const float2 &v3,
-                                const float2 &v4);
+Curves2DSpace editable_strokes_in_2d_space_get(ViewContext *vc,
+                                               Object *ob,
+                                               const bool get_fill = false);
 
 }  // namespace blender::ed::greasepencil
 #endif
