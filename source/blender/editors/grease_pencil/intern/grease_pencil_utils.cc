@@ -60,7 +60,7 @@ float brush_radius_world_space(bContext &C, int x, int y)
 
   /* Use an (arbitrary) screen space offset in the x direction to measure the size. */
   const int x_offest = 64;
-  const float brush_size = static_cast<float>(BKE_brush_size_get(scene, brush));
+  const float brush_size = float(BKE_brush_size_get(scene, brush));
 
   /* Get two 3d coordinates to measure the distance from. */
   const float2 screen1(x, y);
