@@ -617,6 +617,13 @@ typedef struct bUserAssetLibrary {
 typedef struct bUserExtensionRepo {
   struct bUserExtensionRepo *next, *prev;
   /**
+   * Unique identifier, only for display in the UI list.
+   * The `module` is used for internal identifiers.
+   */
+  char name[64]; /* MAX_NAME */
+  /**
+   * The unique module name (sub-module) in fact.
+   *
    * Use a shorter name than #NAME_MAX to leave room for a base module prefix.
    * e.g. `bl_ext.{submodule}.{add_on}` to allow this string to fit into #bAddon::module.
    */

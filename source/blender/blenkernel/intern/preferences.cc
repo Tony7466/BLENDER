@@ -157,14 +157,17 @@ static size_t strncpy_py_module(char *dst, const char *src, const size_t dst_max
 }
 
 bUserExtensionRepo *BKE_preferences_extension_repo_add(UserDef *userdef,
-                                                       const char *module,
+                                                       const char *name,
                                                        const char *dirpath)
 {
   bUserExtensionRepo *repo = DNA_struct_default_alloc(bUserExtensionRepo);
   BLI_addtail(&userdef->extension_repos, repo);
 
-  /* Set the unique name. */
-  BKE_preferences_extension_repo_module_set(userdef, repo, module);
+  /* Set the unique ID-name. */
+  BKE_preferences_extension_repo_name_set(userdef, repo, name);
+
+  /* Set the unique module-name. */
+  BKE_preferences_extension_repo_module_set(userdef, repo, name);
 
   /* Set the directory. */
   STRNCPY(repo->dirpath, dirpath);
@@ -189,6 +192,23 @@ bUserExtensionRepo *BKE_preferences_extension_repo_add(UserDef *userdef,
 void BKE_preferences_extension_repo_remove(UserDef *userdef, bUserExtensionRepo *repo)
 {
   BLI_freelinkN(&userdef->extension_repos, repo);
+}
+
+void BKE_preferences_extension_repo_name_set(UserDef *userdef,
+                                             bUserExtensionRepo *repo,
+                                             const char *name)
+{
+  if (*name == '\0') {
+    name = "User Repository";
+  }
+  STRNCPY_UTF8(repo->name, name);
+
+  BLI_uniquename(&userdef->extension_repos,
+                 repo,
+                 name,
+                 '.',
+                 offsetof(bUserExtensionRepo, name),
+                 sizeof(repo->name));
 }
 
 void BKE_preferences_extension_repo_module_set(UserDef *userdef,

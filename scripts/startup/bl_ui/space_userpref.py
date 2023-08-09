@@ -1572,7 +1572,9 @@ class USERPREF_PT_file_paths_extension_repos(FilePathsPanel, Panel):
 
         layout.prop(active_repo, "directory")
         layout.prop(active_repo, "remote_path")
-        layout.prop(active_repo, "use_cache")
+        row = layout.row()
+        row.prop(active_repo, "use_cache")
+        row.prop(active_repo, "module")
 
 
 class USERPREF_UL_extension_repos(bpy.types.UIList):
@@ -1580,10 +1582,10 @@ class USERPREF_UL_extension_repos(bpy.types.UIList):
         repo = item
 
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            layout.prop(repo, "module", text="", emboss=False)
+            layout.prop(repo, "name", text="", emboss=False)
         elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
-            layout.prop(repo, "module", text="", emboss=False)
+            layout.prop(repo, "name", text="", emboss=False)
 
 
 # -----------------------------------------------------------------------------
