@@ -13,7 +13,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_shader_fx.h"
 
 #include "BKE_camera.h"
@@ -35,10 +35,10 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 /* *********** FUNCTIONS *********** */
 
@@ -181,7 +181,7 @@ void GPENCIL_cache_init(void *ved)
   DRWShadingGroup *grp;
 
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  pd->cfra = (int)DEG_get_ctime(draw_ctx->depsgraph);
+  pd->cfra = int(DEG_get_ctime(draw_ctx->depsgraph));
   pd->simplify_antialias = GPENCIL_SIMPLIFY_AA(draw_ctx->scene);
   pd->use_layer_fb = false;
   pd->use_object_fb = false;
@@ -539,7 +539,7 @@ static void gpencil_stroke_cache_populate(bGPDlayer *gpl,
   if (show_stroke) {
     int vfirst = gps->runtime.stroke_start * 3;
     bool is_cyclic = ((gps->flag & GP_STROKE_CYCLIC) != 0) && (gps->totpoints > 2);
-    int vcount = (gps->totpoints + (int)is_cyclic) * 2 * 3;
+    int vcount = (gps->totpoints + int(is_cyclic)) * 2 * 3;
     gpencil_drawcall_add(iter, geom, vfirst, vcount);
   }
 
@@ -600,7 +600,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
   }
 
   if (ob->data && (ob->type == OB_GPENCIL_LEGACY) && (ob->dt >= OB_SOLID)) {
-    gpIterPopulateData iter = {0};
+    gpIterPopulateData iter = {nullptr};
     iter.ob = ob;
     iter.pd = pd;
     iter.tgp_ob = gpencil_object_cache_add(pd, ob);
@@ -611,7 +611,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
     /* Special case for rendering onion skin. */
     bGPdata *gpd = (bGPdata *)ob->data;
     bool do_onion = (!pd->is_render) ? pd->do_onion : (gpd->onion_flag & GP_ONION_GHOST_ALWAYS);
-    gpd->runtime.playing = (short)pd->playing;
+    gpd->runtime.playing = short(pd->playing);
 
     /* When render in background the active frame could not be properly set due thread priority,
      * better set again. This is not required in viewport. */
@@ -972,7 +972,7 @@ void GPENCIL_draw_scene(void *ved)
   }
 }
 
-static void GPENCIL_engine_free(void)
+static void GPENCIL_engine_free()
 {
   GPENCIL_shader_free();
 }
@@ -986,7 +986,7 @@ DrawEngineType draw_engine_gpencil_type = {
     /*vedata_size*/ &GPENCIL_data_size,
     /*engine_init*/ &GPENCIL_engine_init,
     /*engine_free*/ &GPENCIL_engine_free,
-    /*instance_free*/ /*instance_free*/ nullptr,
+    /*instance_free*/ nullptr,
     /*cache_init*/ &GPENCIL_cache_init,
     /*cache_populate*/ &GPENCIL_cache_populate,
     /*cache_finish*/ &GPENCIL_cache_finish,

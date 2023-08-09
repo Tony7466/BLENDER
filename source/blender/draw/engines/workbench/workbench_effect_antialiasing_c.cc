@@ -17,7 +17,7 @@
  * to the scene buffer. We softly blend between SMAA and TAA to avoid really harsh transitions.
  */
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "BLI_jitter_2d.h"
 
@@ -84,7 +84,7 @@ static void workbench_taa_jitter_init_order(float (*table)[2], int num)
   }
 }
 
-static void workbench_taa_jitter_init(void)
+static void workbench_taa_jitter_init()
 {
   if (e_data.init == false) {
     e_data.init = true;

@@ -22,10 +22,10 @@
 #include "DEG_depsgraph.h"
 
 #include "ED_curves.hh"
-#include "ED_grease_pencil.h"
-#include "ED_screen.h"
+#include "ED_grease_pencil.hh"
+#include "ED_screen.hh"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 namespace blender::ed::greasepencil {
 
@@ -168,7 +168,7 @@ static void gaussian_blur_1D(const Span<T> src,
   const int64_t last_pt = total_points - 1;
 
   auto is_end_and_fixed = [smooth_ends, is_cyclic, last_pt](int index) {
-    return !smooth_ends && !is_cyclic && (ELEM(index, 0, last_pt));
+    return !smooth_ends && !is_cyclic && ELEM(index, 0, last_pt);
   };
 
   /* Initialize at zero. */

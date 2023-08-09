@@ -30,16 +30,16 @@
 
 #include "DEG_depsgraph.h"
 
-#include "ED_clip.h"
-#include "ED_screen.h"
+#include "ED_clip.hh"
+#include "ED_screen.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "RNA_access.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
@@ -135,7 +135,7 @@ void uiTemplateMovieClip(
     uiLayout *split = uiLayoutSplit(row, 0.0f, false);
     row = uiLayoutRow(split, true);
 
-    uiItemR(row, &clipptr, "filepath", 0, "", ICON_NONE);
+    uiItemR(row, &clipptr, "filepath", UI_ITEM_NONE, "", ICON_NONE);
     uiItemO(row, "", ICON_FILE_REFRESH, "clip.reload");
 
     uiLayout *col = uiLayoutColumn(layout, false);
