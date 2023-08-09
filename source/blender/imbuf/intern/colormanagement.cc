@@ -3832,15 +3832,11 @@ bool IMB_colormanagement_processor_is_noop(ColormanageProcessor *cm_processor)
   if (cm_processor->curve_mapping) {
     /* Consider processor which has curve mapping as a non no-op.
      * This is mainly for the simplicity of the check, since the current cases where this function
-     *is used the curve mapping is never assigned. */
+     * is used the curve mapping is never assigned. */
     return false;
   }
 
-  if (!OCIO_cpuProcessorIsNoOp(cm_processor->cpu_processor)) {
-    return false;
-  }
-
-  return true;
+  return OCIO_cpuProcessorIsNoOp(cm_processor->cpu_processor);
 }
 
 void IMB_colormanagement_processor_apply_v4(ColormanageProcessor *cm_processor, float pixel[4])
