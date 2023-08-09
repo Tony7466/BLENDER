@@ -1486,14 +1486,6 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
 
   BKE_curvemapping_blend_read(reader, &sce->r.mblur_shutter_curve);
 
-#ifdef USE_COLLECTION_COMPAT_28
-  /* this runs before the very first doversion */
-  if (sce->collection) {
-    BLO_read_data_address(reader, &sce->collection);
-    BKE_collection_compat_blend_read_data(reader, sce->collection);
-  }
-#endif
-
   /* insert into global old-new map for reading without UI (link_global accesses it again) */
   BLO_read_glob_list(reader, &sce->view_layers);
   LISTBASE_FOREACH (ViewLayer *, view_layer, &sce->view_layers) {
@@ -1651,12 +1643,6 @@ static void scene_blend_read_lib(BlendLibReader *reader, ID *id)
   /* Motion Tracking */
   BLO_read_id_address(reader, id, &sce->clip);
 
-#ifdef USE_COLLECTION_COMPAT_28
-  if (sce->collection) {
-    BKE_collection_compat_blend_read_lib(reader, id, sce->collection);
-  }
-#endif
-
   LISTBASE_FOREACH (ViewLayer *, view_layer, &sce->view_layers) {
     BKE_view_layer_blend_read_lib(reader, id, view_layer);
   }
@@ -1742,12 +1728,6 @@ static void scene_blend_read_expand(BlendExpander *expander, ID *id)
   }
 
   BLO_expand(expander, sce->clip);
-
-#ifdef USE_COLLECTION_COMPAT_28
-  if (sce->collection) {
-    BKE_collection_compat_blend_read_expand(expander, sce->collection);
-  }
-#endif
 
   if (sce->r.bake.cage_object) {
     BLO_expand(expander, sce->r.bake.cage_object);
@@ -3022,6 +3002,11 @@ bool BKE_scene_uses_blender_workbench(const Scene *scene)
 bool BKE_scene_uses_cycles(const Scene *scene)
 {
   return STREQ(scene->r.engine, RE_engine_id_CYCLES);
+}
+
+bool BKE_scene_uses_shader_previews(const Scene *scene)
+{
+  return BKE_scene_uses_blender_eevee(scene) || BKE_scene_uses_cycles(scene);
 }
 
 /* This enumeration has to match the one defined in the Cycles addon. */
