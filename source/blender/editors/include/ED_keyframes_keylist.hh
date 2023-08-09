@@ -158,10 +158,13 @@ void cachefile_to_keylist(bDopeSheet *ads,
 void scene_to_keylist(bDopeSheet *ads, Scene *sce, AnimKeylist *keylist, int saction_flag);
 /* DopeSheet Summary */
 void summary_to_keylist(bAnimContext *ac, AnimKeylist *keylist, int saction_flag);
-/* Grease Pencil datablock summary */
-void gpencil_to_keylist(bDopeSheet *ads, bGPdata *gpd, AnimKeylist *keylist, bool active);
 
-/* Grease Pencil Cels */
+/* Grease Pencil datablock summary (Legacy) */
+void gpencil_to_keylist(bDopeSheet *ads, bGPdata *gpd, AnimKeylist *keylist, bool active);
+/* Grease Pencil Layer (Legacy) */
+void gpl_to_keylist(bDopeSheet *ads, bGPDlayer *gpl, AnimKeylist *keylist);
+
+/* Grease Pencil Cels. */
 void grease_pencil_cels_to_keylist(AnimData *adt,
                                    GreasePencilLayer *layer,
                                    AnimKeylist *keylist,
