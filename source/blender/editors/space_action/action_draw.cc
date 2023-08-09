@@ -295,18 +295,28 @@ static void draw_backdrops(bAnimContext *ac, ListBase &anim_data, View2D *v2d, u
     else if (ac->datatype == ANIMCONT_GPENCIL) {
       uchar *color;
       uchar gpl_col[4];
-      if (ale->type == ANIMTYPE_SUMMARY) {
-        color = col_summary;
-      }
-      else if ((show_group_colors) && (ale->type == ANIMTYPE_GPLAYER)) {
-        bGPDlayer *gpl = (bGPDlayer *)ale->data;
-        rgb_float_to_uchar(gpl_col, gpl->color);
-        gpl_col[3] = col1[3];
+      switch (ale->type) {
+        case ANIMTYPE_SUMMARY:
+          color = col_summary;
+          break;
 
-        color = sel ? col1 : gpl_col;
-      }
-      else {
-        color = sel ? col1 : col2;
+        case ANIMTYPE_GPLAYER: {
+          if (show_group_colors) {
+            bGPDlayer *gpl = (bGPDlayer *)ale->data;
+            rgb_float_to_uchar(gpl_col, gpl->color);
+            gpl_col[3] = col1[3];
+
+            color = sel ? col1 : gpl_col;
+          }
+          else {
+            color = sel ? col1 : col2;
+          }
+          break;
+        }
+
+        default:
+          color = sel ? col1 : col2;
+          break;
       }
 
       /* Color overlay on frames between the start/end frames. */
