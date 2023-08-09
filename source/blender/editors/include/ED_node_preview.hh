@@ -14,10 +14,10 @@ struct bNodeTree;
 struct ImBuf;
 struct Render;
 
-using blender::bke::DirtyState;
+namespace blender::ed::space_node {
 
 struct NestedTreePreviews {
-  Render *previews_render;
+  Render *previews_render = nullptr;
   /* Use this map to keep track of the latest ImBuf used (after freeing the renderresult). */
   blender::Map<const int32_t, std::pair<ImBuf *, DirtyState>> previews_map;
   int preview_size;
@@ -56,8 +56,12 @@ struct NestedTreePreviews {
   }
 };
 
-void ED_spacenode_free_previews(wmWindowManager *wm, SpaceNode *snode);
-ImBuf *ED_node_preview_acquire_ibuf(NestedTreePreviews *tree_previews, const bNode *node);
-void ED_node_release_preview_ibuf(NestedTreePreviews *tree_previews);
-NestedTreePreviews *ED_spacenode_get_nested_previews(const bContext *ctx, SpaceNode *sn);
-void ED_spacenode_stop_preview_job(wmWindowManager *wm);
+void free_previews(wmWindowManager &wm, SpaceNode &snode);
+ImBuf *node_preview_acquire_ibuf(bNodeTree &ntree,
+                                 NestedTreePreviews &tree_previews,
+                                 const bNode &node);
+void node_release_preview_ibuf(NestedTreePreviews &tree_previews);
+NestedTreePreviews *get_nested_previews(const bContext &C, SpaceNode &snode);
+void stop_preview_job(wmWindowManager &wm);
+
+}  // namespace blender::ed::space_node

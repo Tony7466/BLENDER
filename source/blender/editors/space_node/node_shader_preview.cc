@@ -43,14 +43,15 @@
 
 #include "IMB_imbuf.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "ED_datafiles.h"
 #include "ED_node_preview.hh"
-#include "ED_render.h"
-#include "ED_screen.h"
+#include "ED_render.hh"
+#include "ED_screen.hh"
 #include "node_intern.hh"
 
+namespace blender::ed::space_node {
 /* -------------------------------------------------------------------- */
 /** \name Local Structs
  * \{ */
@@ -72,9 +73,12 @@ struct ShaderNodesPreviewJob {
   NodeSocketPair mat_displacement_copy;
   /* TreePath used to locate the nodetree.
    * bNodeTreePath elements have some listbase pointers which should not be used. */
-  blender::Vector<bNodeTreePath *> treepath_copy;
-  blender::Vector<bNode *> AOV_nodes;
-  blender::Vector<bNode *> shader_nodes;
+  Vector<bNodeTreePath *> treepath_copy;
+  Vector<bNode *> AOV_nodes;
+  Vector<bNode *> shader_nodes;
+
+  bNode *rendering_node;
+  bool rendering_AOVs;
 
   Main *bmain;
 };
@@ -85,11 +89,10 @@ struct ShaderNodesPreviewJob {
 /** \name Compute Context functions
  * \{ */
 
-using namespace blender;
-static void ensure_nodetree_previews(const bContext *C,
-                                     NestedTreePreviews *tree_previews,
-                                     Material *material,
-                                     ListBase *treepath);
+static void ensure_nodetree_previews(const bContext &C,
+                                     NestedTreePreviews &tree_previews,
+                                     Material &material,
+                                     ListBase &treepath);
 
 static std::optional<ComputeContextHash> get_compute_context_hash_for_node_editor(
     const SpaceNode &snode)
@@ -122,18 +125,22 @@ static std::optional<ComputeContextHash> get_compute_context_hash_for_node_edito
  * This function returns the `NestedTreePreviews *` for the nodetree shown in the SpaceNode.
  * This is the first function in charge of the previews by calling `ensure_nodetree_previews`.
  */
-NestedTreePreviews *ED_spacenode_get_nested_previews(const bContext *C, SpaceNode *sn)
+NestedTreePreviews *get_nested_previews(const bContext &C, SpaceNode &snode)
 {
-  if (GS(sn->id->name) != ID_MA) {
+  if (snode.id == nullptr || GS(snode.id->name) != ID_MA) {
     return nullptr;
   }
   NestedTreePreviews *tree_previews = nullptr;
-  if (auto hash = get_compute_context_hash_for_node_editor(*sn)) {
-    tree_previews = &*sn->runtime->tree_previews_per_context.lookup_or_add_cb(
-        *hash, [&]() { return std::make_unique<NestedTreePreviews>(U.node_preview_res); });
-    Material *ma = reinterpret_cast<Material *>(sn->id);
-
-    ensure_nodetree_previews(C, tree_previews, ma, &sn->treepath);
+  if (auto hash = get_compute_context_hash_for_node_editor(snode)) {
+    tree_previews = snode.runtime->tree_previews_per_context
+                        .lookup_or_add_cb(*hash,
+                                          [&]() {
+                                            return std::make_unique<NestedTreePreviews>(
+                                                U.node_preview_res);
+                                          })
+                        .get();
+    Material *ma = reinterpret_cast<Material *>(snode.id);
+    ensure_nodetree_previews(C, *tree_previews, *ma, snode.treepath);
   }
   return tree_previews;
 }
@@ -144,15 +151,11 @@ NestedTreePreviews *ED_spacenode_get_nested_previews(const bContext *C, SpaceNod
 /** \name Preview scene
  * \{ */
 
-static Material *duplicate_material(const Material *mat)
+static Material *duplicate_material(const Material &mat)
 {
-  if (mat == nullptr) {
-    return nullptr;
-  }
-
   Material *ma_copy = reinterpret_cast<Material *>(
       BKE_id_copy_ex(nullptr,
-                     &mat->id,
+                     &mat.id,
                      nullptr,
                      LIB_ID_CREATE_LOCAL | LIB_ID_COPY_LOCALIZE | LIB_ID_COPY_NO_ANIMDATA));
   return ma_copy;
@@ -207,11 +210,8 @@ static Scene *preview_prepare_scene(const Main *bmain,
   scene_preview->world->horg = 0.05f;
   scene_preview->world->horb = 0.05f;
 
-  ED_preview_set_visibility(pr_main,
-                            scene_preview,
-                            view_layer,
-                            static_cast<ePreviewType>(mat_copy->pr_type),
-                            PR_BUTS_RENDER);
+  ED_preview_set_visibility(
+      pr_main, scene_preview, view_layer, ePreviewType(mat_copy->pr_type), PR_BUTS_RENDER);
 
   BKE_view_layer_synced_ensure(scene_preview, view_layer);
   LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
@@ -241,9 +241,9 @@ static Scene *preview_prepare_scene(const Main *bmain,
  * \{ */
 
 /* Return the socket used for previewing the node (should probably follow more precise rules). */
-static bNodeSocket *node_find_preview_socket(const bNode *node)
+static const bNodeSocket *node_find_preview_socket(const bNode &node)
 {
-  LISTBASE_FOREACH (bNodeSocket *, socket, &node->outputs) {
+  LISTBASE_FOREACH (bNodeSocket *, socket, &node.outputs) {
     if (socket->is_visible()) {
       return socket;
     }
@@ -251,22 +251,22 @@ static bNodeSocket *node_find_preview_socket(const bNode *node)
   return nullptr;
 }
 
-static bool node_use_aov(const bNode *node)
+static bool node_use_aov(const bNode &node)
 {
-  bNodeSocket *socket = node_find_preview_socket(node);
+  const bNodeSocket *socket = node_find_preview_socket(node);
   return socket != nullptr && socket->type != SOCK_SHADER;
 }
 
-static ImBuf *get_image_from_viewlayer_and_pass(RenderResult *rr,
+static ImBuf *get_image_from_viewlayer_and_pass(RenderResult &rr,
                                                 const char *layer_name,
                                                 const char *pass_name)
 {
   RenderLayer *rl;
   if (layer_name) {
-    rl = RE_GetRenderLayer(rr, layer_name);
+    rl = RE_GetRenderLayer(&rr, layer_name);
   }
   else {
-    rl = static_cast<RenderLayer *>(rr->layers.first);
+    rl = static_cast<RenderLayer *>(rr.layers.first);
   }
   if (rl == nullptr) {
     return nullptr;
@@ -282,10 +282,12 @@ static ImBuf *get_image_from_viewlayer_and_pass(RenderResult *rr,
   return ibuf;
 }
 
-/* `ED_node_release_preview_ibuf` should be called after this. */
-ImBuf *ED_node_preview_acquire_ibuf(NestedTreePreviews *tree_previews, const bNode *node)
+/* `node_release_preview_ibuf` should be called after this. */
+ImBuf *node_preview_acquire_ibuf(bNodeTree &ntree,
+                                 NestedTreePreviews &tree_previews,
+                                 const bNode &node)
 {
-  if (tree_previews->previews_render == nullptr) {
+  if (tree_previews.previews_render == nullptr) {
     return nullptr;
   }
 
@@ -295,41 +297,45 @@ ImBuf *ED_node_preview_acquire_ibuf(NestedTreePreviews *tree_previews, const bNo
   if (rr == nullptr) {
     return image_cached;
   }
-  ImBuf *image_latest = nullptr;
-  if (node_use_aov(node)) {
-    image_latest = get_image_from_viewlayer_and_pass(rr, nullptr, node->name);
+  if (image_cached == nullptr) {
+    if (tree_previews.rendering == false) {
+      ntree.runtime->previews_refresh_state++;
+    }
+    else {
+      /* When the render process is started, the user must see that the preview area is open. */
+      ImBuf *image_latest = nullptr;
+      if (node_use_aov(node)) {
+        image_latest = get_image_from_viewlayer_and_pass(*rr, nullptr, node.name);
+      }
+      else {
+        image_latest = get_image_from_viewlayer_and_pass(*rr, node.name, nullptr);
+      }
+      if (image_latest) {
+        IMB_refImBuf(image_latest);
+        image_cached = image_latest;
+      }
+    }
   }
-  else {
-    image_latest = get_image_from_viewlayer_and_pass(rr, node->name, nullptr);
-  }
-  if (image_latest == nullptr) {
-    return image_cached;
-  }
-  if (image_cached != image_latest) {
-    IMB_freeImBuf(image_cached);
-    IMB_refImBuf(image_latest);
-    image_cached = image_latest;
-  }
-  return image_latest;
+  return image_cached;
 }
 
-void ED_node_release_preview_ibuf(NestedTreePreviews *tree_previews)
+void node_release_preview_ibuf(NestedTreePreviews &tree_previews)
 {
-  if (tree_previews == nullptr || tree_previews->previews_render == nullptr) {
+  if (tree_previews.previews_render == nullptr) {
     return;
   }
-  RE_ReleaseResult(tree_previews->previews_render);
+  RE_ReleaseResult(tree_previews.previews_render);
 }
 
 /* Get a link to the node outside the nested nodegroups by creating a new output socket for each
  * nested nodegroup. To do so we cover all nested nodetrees starting from the farthest, and
- * update the `nested_node` pointer to the current nodegroup instance used for linking. We stop
- * before getting to the main nodetree because the output type is different. */
+ * update the `nested_node_iter` pointer to the current nodegroup instance used for linking. We
+ * stop before getting to the main nodetree because the output type is different. */
 static void connect_nested_node_to_node(const Span<bNodeTreePath *> treepath,
-                                        bNode *nested_node,
-                                        bNodeSocket *nested_socket,
-                                        bNode *final_node,
-                                        bNodeSocket *final_socket)
+                                        bNode &nested_node,
+                                        bNodeSocket &nested_socket,
+                                        bNode &final_node,
+                                        bNodeSocket &final_socket)
 {
   NodeTreeUpdateExtraParams params = {nullptr};
   params.avoid_making_previews_dirty = true;
@@ -362,7 +368,7 @@ static void connect_nested_node_to_node(const Span<bNodeTreePath *> treepath,
 
     /* Change the `nested_node` pointer to the nested nodegroup instance node. The tree path
      * contains the name of the instance node but not its ID. */
-    nested_node = nodeFindNodebyName(path_prev->nodetree, path->node_name);
+    nested_node_iter = nodeFindNodebyName(path_prev->nodetree, path->node_name);
 
     /* Update the sockets of the node because we added a new interface. */
     BKE_ntree_update_tag_node_property(path_prev->nodetree, nested_node);
@@ -370,8 +376,7 @@ static void connect_nested_node_to_node(const Span<bNodeTreePath *> treepath,
 
     /* Now use the newly created socket of the nodegroup as previewing socket of the nodegroup
      * instance node. */
-    nested_socket = blender::bke::node_find_enabled_output_socket(*nested_node,
-                                                                  nested_node_orig->name);
+    nested_socket_iter = bke::node_find_enabled_output_socket(*nested_node_iter, nested_node.name);
   }
 
   nodeAddLink(treepath.first()->nodetree, nested_node, nested_socket, final_node, final_socket);
@@ -381,17 +386,17 @@ static void connect_nested_node_to_node(const Span<bNodeTreePath *> treepath,
 /* Connect the node to the output of the first nodetree from `treepath`. Last element of `treepath`
  * should be the path to the node's nodetree */
 static void connect_node_to_surface_output(const Span<bNodeTreePath *> treepath,
-                                           bNode *node,
-                                           bNode *output_node)
+                                           bNode &node,
+                                           bNode &output_node)
 {
   bNodeSocket *out_surface_socket = nullptr;
   bNodeTree *main_nt = treepath.first()->nodetree;
-  bNodeSocket *node_preview_socket = node_find_preview_socket(node);
+  bNodeSocket *node_preview_socket = const_cast<bNodeSocket *>(node_find_preview_socket(node));
   if (node_preview_socket == nullptr) {
     return;
   }
   /* Ensure output is usable. */
-  out_surface_socket = nodeFindSocket(output_node, SOCK_IN, "Surface");
+  out_surface_socket = nodeFindSocket(&output_node, SOCK_IN, "Surface");
   if (out_surface_socket->link) {
     /* Make sure no node is already wired to the output before wiring. */
     nodeRemLink(main_nt, out_surface_socket->link);
@@ -410,7 +415,7 @@ static void connect_nodes_to_aovs(const Span<bNodeTreePath *> treepath, const Sp
   }
   bNodeTree *main_nt = treepath.first()->nodetree;
   for (bNode *node : nodes) {
-    bNodeSocket *node_preview_socket = node_find_preview_socket(node);
+    bNodeSocket *node_preview_socket = const_cast<bNodeSocket *>(node_find_preview_socket(*node));
 
     bNode *aov_node = nodeAddStaticNode(nullptr, main_nt, SH_NODE_OUTPUT_AOV);
     strcpy(reinterpret_cast<NodeShaderOutputAOV *>(aov_node->storage)->name, node->name);
@@ -419,7 +424,7 @@ static void connect_nodes_to_aovs(const Span<bNodeTreePath *> treepath, const Sp
     }
     bNodeSocket *aov_socket = nodeFindSocket(aov_node, SOCK_IN, "Color");
 
-    connect_nested_node_to_node(treepath, node, node_preview_socket, aov_node, aov_socket);
+    connect_nested_node_to_node(treepath, *node, *node_preview_socket, *aov_node, *aov_socket);
   }
 }
 
@@ -438,10 +443,14 @@ static bool prepare_viewlayer_update(void *pvl_data, ViewLayer *vl, Depsgraph *d
   for (bNode *node_iter : job_data->shader_nodes) {
     if (STREQ(vl->name, node_iter->name)) {
       node = node_iter;
+      job_data->rendering_node = node_iter;
+      job_data->rendering_AOVs = false;
       break;
     }
   }
   if (node == nullptr) {
+    job_data->rendering_node = nullptr;
+    job_data->rendering_AOVs = true;
     /* The AOV layer is the default `ViewLayer` of the scene(which should be the first one). */
     return job_data->AOV_nodes.size() > 0 && !vl->prev;
   }
@@ -455,7 +464,7 @@ static bool prepare_viewlayer_update(void *pvl_data, ViewLayer *vl, Depsgraph *d
                 job_data->mat_output_copy,
                 displacement_socket);
   }
-  connect_node_to_surface_output(job_data->treepath_copy, node, job_data->mat_output_copy);
+  connect_node_to_surface_output(job_data->treepath_copy, *node, *job_data->mat_output_copy);
 
   if (depsgraph != nullptr) {
     /* Used to refresh the dependency graph so that the material can be updated. */
@@ -489,17 +498,50 @@ static void rendered_viewlayer_update(void *pvl_data, const ViewLayer *vl)
 }
 
 /* Called by renderer, refresh the UI. */
-static void all_nodes_preview_update(void *npv, RenderResult * /*rr*/, struct rcti * /*rect*/)
+static void all_nodes_preview_update(void *npv, RenderResult *rr, struct rcti * /*rect*/)
 {
   ShaderNodesPreviewJob *job_data = static_cast<ShaderNodesPreviewJob *>(npv);
   *job_data->do_update = true;
+  if (bNode *node = job_data->rendering_node) {
+    ImBuf *&image_cached = job_data->tree_previews->previews_map.lookup_or_add(node->identifier,
+                                                                               nullptr);
+    ImBuf *image_latest = get_image_from_viewlayer_and_pass(*rr, node->name, nullptr);
+    if (image_latest == nullptr) {
+      return;
+    }
+    if (image_cached != image_latest) {
+      if (image_cached != nullptr) {
+        IMB_freeImBuf(image_cached);
+      }
+      IMB_refImBuf(image_latest);
+      image_cached = image_latest;
+    }
+  }
+  if (job_data->rendering_AOVs) {
+    for (bNode *node : job_data->AOV_nodes) {
+      ImBuf *&image_cached = job_data->tree_previews->previews_map.lookup_or_add(node->identifier,
+                                                                                 nullptr);
+      ImBuf *image_latest = get_image_from_viewlayer_and_pass(*rr, nullptr, node->name);
+      if (image_latest == nullptr) {
+        continue;
+      }
+      if (image_cached != image_latest) {
+        if (image_cached != nullptr) {
+          IMB_freeImBuf(image_cached);
+        }
+        IMB_refImBuf(image_latest);
+        image_cached = image_latest;
+      }
+    }
+  }
 }
 
 static void preview_render(ShaderNodesPreviewJob &job_data)
 {
   /* Get the stuff from the builtin preview dbase. */
-  Scene *sce = preview_prepare_scene(job_data.bmain, job_data.scene, G.pr_main, job_data.mat_copy);
-  if (sce == nullptr) {
+  Scene *scene = preview_prepare_scene(
+      job_data.bmain, job_data.scene, G.pr_main, job_data.mat_copy);
+  if (scene == nullptr) {
     return;
   }
   Span<bNodeTreePath *> treepath = job_data.treepath_copy;
@@ -521,18 +563,18 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
   connect_nodes_to_aovs(treepath, job_data.AOV_nodes);
 
   /* Create the AOV passes for the viewlayer. */
-  ViewLayer *AOV_layer = static_cast<ViewLayer *>(sce->view_layers.first);
+  ViewLayer *AOV_layer = static_cast<ViewLayer *>(scene->view_layers.first);
   for (bNode *node : job_data.shader_nodes) {
-    ViewLayer *vl = BKE_view_layer_add(sce, node->name, AOV_layer, VIEWLAYER_ADD_COPY);
+    ViewLayer *vl = BKE_view_layer_add(scene, node->name, AOV_layer, VIEWLAYER_ADD_COPY);
     strcpy(vl->name, node->name);
   }
   for (bNode *node : job_data.AOV_nodes) {
     ViewLayerAOV *aov = BKE_view_layer_add_aov(AOV_layer);
     strcpy(aov->name, node->name);
   }
-  sce->r.xsch = job_data.tree_previews->preview_size;
-  sce->r.ysch = job_data.tree_previews->preview_size;
-  sce->r.size = 100;
+  scene->r.xsch = job_data.tree_previews->preview_size;
+  scene->r.ysch = job_data.tree_previews->preview_size;
+  scene->r.size = 100;
 
   if (job_data.tree_previews->previews_render == nullptr) {
     char name[32];
@@ -542,10 +584,10 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
   Render *re = job_data.tree_previews->previews_render;
 
   /* `sce->r` gets copied in RE_InitState. */
-  sce->r.scemode &= ~(R_MATNODE_PREVIEW | R_TEXNODE_PREVIEW);
-  sce->r.scemode &= ~R_NO_IMAGE_LOAD;
+  scene->r.scemode &= ~(R_MATNODE_PREVIEW | R_TEXNODE_PREVIEW);
+  scene->r.scemode &= ~R_NO_IMAGE_LOAD;
 
-  sce->display.render_aa = SCE_DISPLAY_AA_SAMPLES_8;
+  scene->display.render_aa = SCE_DISPLAY_AA_SAMPLES_8;
 
   RE_display_update_cb(re, &job_data, all_nodes_preview_update);
   RE_test_break_cb(re, &job_data, nodetree_previews_break);
@@ -553,12 +595,12 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
   RE_rendered_viewlayer_cb(re, &job_data, rendered_viewlayer_update);
 
   /* Lens adjust. */
-  float oldlens = reinterpret_cast<Camera *>(sce->camera->data)->lens;
+  float oldlens = reinterpret_cast<Camera *>(scene->camera->data)->lens;
 
   RE_ClearResult(re);
-  RE_PreviewRender(re, G.pr_main, sce);
+  RE_PreviewRender(re, G.pr_main, scene);
 
-  reinterpret_cast<Camera *>(sce->camera->data)->lens = oldlens;
+  reinterpret_cast<Camera *>(scene->camera->data)->lens = oldlens;
 
   /* Free the aov layers and the layers generated for each node. */
   BLI_freelistN(&AOV_layer->aovs);
@@ -566,7 +608,7 @@ static void preview_render(ShaderNodesPreviewJob &job_data)
   while (vl) {
     ViewLayer *vl_rem = vl;
     vl = vl->next;
-    BLI_remlink(&sce->view_layers, vl_rem);
+    BLI_remlink(&scene->view_layers, vl_rem);
     BKE_view_layer_free(vl_rem);
   }
 }
@@ -648,6 +690,12 @@ static void shader_preview_startjob(void *customdata,
   bNodeTree *active_nodetree = job_data->treepath_copy.last()->nodetree;
   for (bNode *node : active_nodetree->all_nodes()) {
     if (!(node->flag & NODE_PREVIEW)) {
+      /* Clear the cached preview for this node to be sure that the preview is rerendered if
+       * needed. */
+      if (ImBuf **ibuf = job_data->tree_previews->previews_map.lookup_ptr(node->identifier)) {
+        IMB_freeImBuf(*ibuf);
+        *ibuf = nullptr;
+      }
       continue;
     }
 
@@ -680,6 +728,8 @@ static void shader_preview_free(void *customdata)
   }
   job_data->treepath_copy.clear();
   job_data->tree_previews->rendering = false;
+  job_data->tree_previews->cached_previews_refresh_state =
+      job_data->tree_previews->rendering_previews_refresh_state;
   if (job_data->mat_copy != nullptr) {
     BLI_remlink(&G.pr_main->materials, job_data->mat_copy);
     BKE_id_free(G.pr_main, &job_data->mat_copy->id);
@@ -688,12 +738,12 @@ static void shader_preview_free(void *customdata)
   MEM_delete(job_data);
 }
 
-static void ensure_nodetree_previews(const bContext *C,
-                                     NestedTreePreviews *tree_previews,
-                                     Material *material,
-                                     ListBase *treepath)
+static void ensure_nodetree_previews(const bContext &C,
+                                     NestedTreePreviews &tree_previews,
+                                     Material &material,
+                                     ListBase &treepath)
 {
-  Scene *scene = CTX_data_scene(C);
+  Scene *scene = CTX_data_scene(&C);
   if (!ED_check_engine_supports_preview(scene)) {
     return;
   }
@@ -703,9 +753,9 @@ static void ensure_nodetree_previews(const bContext *C,
   if (!(tree_previews->restart_needed)) {
     return;
   }
-  if (tree_previews->rendering) {
-    WM_jobs_stop(CTX_wm_manager(C),
-                 CTX_wm_space_node(C),
+  if (tree_previews.rendering) {
+    WM_jobs_stop(CTX_wm_manager(&C),
+                 CTX_wm_space_node(&C),
                  reinterpret_cast<void *>(shader_preview_startjob));
     return;
   }
@@ -718,24 +768,26 @@ static void ensure_nodetree_previews(const bContext *C,
 
   ED_preview_ensure_dbase(false);
 
-  wmJob *wm_job = WM_jobs_get(CTX_wm_manager(C),
-                              CTX_wm_window(C),
-                              CTX_wm_space_node(C),
+  wmJob *wm_job = WM_jobs_get(CTX_wm_manager(&C),
+                              CTX_wm_window(&C),
+                              CTX_wm_space_node(&C),
                               "Shader Previews",
                               WM_JOB_EXCL_RENDER,
                               WM_JOB_TYPE_RENDER_PREVIEW);
   ShaderNodesPreviewJob *job_data = MEM_new<ShaderNodesPreviewJob>(__func__);
 
   job_data->scene = scene;
-  job_data->tree_previews = tree_previews;
-  job_data->bmain = CTX_data_main(C);
+  job_data->tree_previews = &tree_previews;
+  job_data->bmain = CTX_data_main(&C);
   job_data->mat_copy = duplicate_material(material);
+  job_data->rendering_node = nullptr;
+  job_data->rendering_AOVs = false;
 
   /* Update the treepath copied to fit the structure of the nodetree copied. */
   bNodeTreePath *root_path = MEM_cnew<bNodeTreePath>(__func__);
   root_path->nodetree = job_data->mat_copy->nodetree;
   job_data->treepath_copy.append(root_path);
-  for (bNodeTreePath *original_path = static_cast<bNodeTreePath *>(treepath->first)->next;
+  for (bNodeTreePath *original_path = static_cast<bNodeTreePath *>(treepath.first)->next;
        original_path;
        original_path = original_path->next)
   {
@@ -751,19 +803,21 @@ static void ensure_nodetree_previews(const bContext *C,
   WM_jobs_timer(wm_job, 0.2, NC_NODE, NC_NODE);
   WM_jobs_callbacks(wm_job, shader_preview_startjob, nullptr, nullptr, nullptr);
 
-  WM_jobs_start(CTX_wm_manager(C), wm_job);
+  WM_jobs_start(CTX_wm_manager(&C), wm_job);
 }
 
-void ED_spacenode_stop_preview_job(wmWindowManager *wm)
+void stop_preview_job(wmWindowManager &wm)
 {
-  WM_jobs_stop(wm, nullptr, reinterpret_cast<void *>(shader_preview_startjob));
+  WM_jobs_stop(&wm, nullptr, reinterpret_cast<void *>(shader_preview_startjob));
 }
 
-void ED_spacenode_free_previews(wmWindowManager *wm, SpaceNode *snode)
+void free_previews(wmWindowManager &wm, SpaceNode &snode)
 {
   /* This should not be called from the drawing pass, because it will result in a deadlock. */
-  WM_jobs_kill(wm, snode, shader_preview_startjob);
-  snode->runtime->tree_previews_per_context.clear_and_shrink();
+  WM_jobs_kill(&wm, &snode, shader_preview_startjob);
+  snode.runtime->tree_previews_per_context.clear_and_shrink();
 }
 
 /** \} */
+
+}  // namespace blender::ed::space_node

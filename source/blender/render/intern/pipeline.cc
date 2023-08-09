@@ -86,8 +86,8 @@
 #include "SEQ_render.h"
 
 #include "GPU_context.h"
-#include "WM_api.h"
-#include "wm_window.h"
+#include "WM_api.hh"
+#include "wm_window.hh"
 
 #ifdef WITH_FREESTYLE
 #  include "FRS_freestyle.h"
@@ -930,7 +930,7 @@ void RE_prepare_viewlayer_cb(Render *re,
                              bool (*f)(void *handle, ViewLayer *vl, Depsgraph *depsgraph))
 {
   re->prepare_viewlayer = f;
-  re->pvh = handle;
+  re->prepare_vl_handle = handle;
 }
 
 void RE_rendered_viewlayer_cb(Render *re,

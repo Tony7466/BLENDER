@@ -31,7 +31,7 @@ typedef struct Global {
   struct Main *main;
 
   /**
-   * Data for the preview scene to avoid loading in multiple scenarios.
+   * Preview main is stored to avoid loading the preview file in multiple scenarios.
    * It is actually shared between shader node previews and asset previews.
    */
   struct Main *pr_main;
