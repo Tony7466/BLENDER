@@ -30,32 +30,6 @@ static constexpr float POINT_RESAMPLE_MIN_DISTANCE_PX = 10.0f;
 
 static constexpr int64_t STOKE_CACHE_ALLOCATION_CHUNK_SIZE = 1024;
 
-/** Forward differencing of a bezier curve segment (q0,q1,q2,q3). Steps are written to \a r_p.
- * Implementation based on #BKE_curve_forward_diff_bezier. */
-static void forward_diff_bezier_2d(
-    float2 q0, float2 q1, float2 q2, float2 q3, MutableSpan<float2> r_p)
-{
-  float f = static_cast<float>(r_p.size());
-  float2 rt0 = q0;
-  float2 rt1 = 3.0f * (q1 - q0) / f;
-  f = f * f;
-  float2 rt2 = 3.0f * (q0 - 2.0f * q1 + q2) / f;
-  f = f * static_cast<float>(r_p.size());
-  float2 rt3 = (q3 - q0 + 3.0f * (q1 - q2)) / f;
-
-  q0 = rt0;
-  q1 = rt1 + rt2 + rt3;
-  q2 = 2 * rt2 + 6 * rt3;
-  q3 = 6 * rt3;
-
-  for (float2 &r : r_p) {
-    r = q0;
-    q0 += q1;
-    q1 += q2;
-    q2 += q3;
-  }
-}
-
 /** Sample a bezier curve at a fixed resolution and return the sampled points in an array. */
 static Array<float2> sample_curve_2d(Span<float2> curve_points, const int64_t resolution)
 {
@@ -68,11 +42,11 @@ static Array<float2> sample_curve_2d(Span<float2> curve_points, const int64_t re
   const Span<float2> curve_segments = curve_points.drop_front(1).drop_back(1);
   for (const int64_t segment_i : IndexRange(num_segments)) {
     IndexRange segment_range(segment_i * resolution, resolution);
-    forward_diff_bezier_2d(curve_segments[segment_i * 3 + 0],
-                           curve_segments[segment_i * 3 + 1],
-                           curve_segments[segment_i * 3 + 2],
-                           curve_segments[segment_i * 3 + 3],
-                           points.as_mutable_span().slice(segment_range));
+    bke::curves::bezier::evaluate_segment(curve_segments[segment_i * 3 + 0],
+                                          curve_segments[segment_i * 3 + 1],
+                                          curve_segments[segment_i * 3 + 2],
+                                          curve_segments[segment_i * 3 + 3],
+                                          points.as_mutable_span().slice(segment_range));
   }
   return points;
 }
