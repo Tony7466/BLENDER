@@ -1606,7 +1606,7 @@ void GreasePencil::remove_drawings_with_no_users()
 }
 
 void GreasePencil::move_frames(blender::bke::greasepencil::Layer &layer,
-                               const blender::Map<int, int> &trans_frame_numbers)
+                               const blender::Map<int, int> &frame_number_destinations)
 {
   using namespace blender;
 
@@ -1614,12 +1614,12 @@ void GreasePencil::move_frames(blender::bke::greasepencil::Layer &layer,
   Map<int, GreasePencilFrame> layer_frames_copy = layer.frames();
 
   /* Remove all frames that have a mapping. */
-  for (const int frame_number : trans_frame_numbers.keys()) {
+  for (const int frame_number : frame_number_destinations.keys()) {
     layer.remove_frame(frame_number);
   }
 
   /* Insert all frames of the transformation. */
-  for (const auto [src_frame_number, dst_frame_number] : trans_frame_numbers.items()) {
+  for (const auto [src_frame_number, dst_frame_number] : frame_number_destinations.items()) {
     if (!layer_frames_copy.contains(src_frame_number)) {
       continue;
     }

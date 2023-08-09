@@ -507,15 +507,15 @@ typedef struct GreasePencil {
   /**
    * Move a set of frames in a \a layer.
    *
-   * \param trans_frame_numbers describes all transformations that should be applied on the frame
-   * keys.
+   * \param frame_number_destinations describes all transformations that should be applied on the
+   * frame keys.
    *
    * If a transformation overlaps another frames, the frame will be overwritten, and the
    * corresponding drawing may be removed, if it no longer has users.
    *
    */
   void move_frames(blender::bke::greasepencil::Layer &layer,
-                   const blender::Map<int, int> &trans_frame_numbers);
+                   const blender::Map<int, int> &frame_number_destinations);
 
   /**
    * Returns an editable drawing on \a layer at frame \a frame_number or `nullptr` if no such
