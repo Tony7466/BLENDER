@@ -1173,8 +1173,10 @@ void NoiseTextureNode::compile(SVMCompiler &compiler)
   compiler.add_node(
       __float_as_int(w), __float_as_int(scale), __float_as_int(detail), __float_as_int(roughness));
 
-  compiler.add_node(
-      __float_as_int(distortion), SVM_STACK_INVALID, SVM_STACK_INVALID, SVM_STACK_INVALID);
+  compiler.add_node(__float_as_int(lacunarity),
+                    __float_as_int(distortion),
+                    SVM_STACK_INVALID,
+                    SVM_STACK_INVALID);
 
   tex_mapping.compile_end(compiler, vector_in, vector_stack_offset);
 }

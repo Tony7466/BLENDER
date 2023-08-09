@@ -52,11 +52,12 @@ void node_noise_texture_1d(vec3 co,
     p += snoise(p + random_float_offset(0.0)) * distortion;
   }
 
-  value = fractal_noise(p, detail, roughness);
-  color = vec4(value,
-               fractal_noise(p + random_float_offset(1.0), detail, roughness),
-               fractal_noise(p + random_float_offset(2.0), detail, roughness),
-               1.0);
+  value = fractal_noise(p, detail, roughness, lacunarity, normalize != 0.0);
+  color = vec4(
+      value,
+      fractal_noise(p + random_float_offset(1.0), detail, roughness, lacunarity, normalize != 0.0),
+      fractal_noise(p + random_float_offset(2.0), detail, roughness, lacunarity, normalize != 0.0),
+      1.0);
 }
 
 void node_noise_texture_2d(vec3 co,
@@ -76,11 +77,12 @@ void node_noise_texture_2d(vec3 co,
               snoise(p + random_vec2_offset(1.0)) * distortion);
   }
 
-  value = fractal_noise(p, detail, roughness);
-  color = vec4(value,
-               fractal_noise(p + random_vec2_offset(2.0), detail, roughness),
-               fractal_noise(p + random_vec2_offset(3.0), detail, roughness),
-               1.0);
+  value = fractal_noise(p, detail, roughness, lacunarity, normalize != 0.0);
+  color = vec4(
+      value,
+      fractal_noise(p + random_vec2_offset(2.0), detail, roughness, lacunarity, normalize != 0.0),
+      fractal_noise(p + random_vec2_offset(3.0), detail, roughness, lacunarity, normalize != 0.0),
+      1.0);
 }
 
 void node_noise_texture_3d(vec3 co,
@@ -101,11 +103,12 @@ void node_noise_texture_3d(vec3 co,
               snoise(p + random_vec3_offset(2.0)) * distortion);
   }
 
-  value = fractal_noise(p, detail, roughness);
-  color = vec4(value,
-               fractal_noise(p + random_vec3_offset(3.0), detail, roughness),
-               fractal_noise(p + random_vec3_offset(4.0), detail, roughness),
-               1.0);
+  value = fractal_noise(p, detail, roughness, lacunarity, normalize != 0.0);
+  color = vec4(
+      value,
+      fractal_noise(p + random_vec3_offset(3.0), detail, roughness, lacunarity, normalize != 0.0),
+      fractal_noise(p + random_vec3_offset(4.0), detail, roughness, lacunarity, normalize != 0.0),
+      1.0);
 }
 
 void node_noise_texture_4d(vec3 co,
@@ -127,9 +130,10 @@ void node_noise_texture_4d(vec3 co,
               snoise(p + random_vec4_offset(3.0)) * distortion);
   }
 
-  value = fractal_noise(p, detail, roughness);
-  color = vec4(value,
-               fractal_noise(p + random_vec4_offset(4.0), detail, roughness),
-               fractal_noise(p + random_vec4_offset(5.0), detail, roughness),
-               1.0);
+  value = fractal_noise(p, detail, roughness, lacunarity, normalize != 0.0);
+  color = vec4(
+      value,
+      fractal_noise(p + random_vec4_offset(4.0), detail, roughness, lacunarity, normalize != 0.0),
+      fractal_noise(p + random_vec4_offset(5.0), detail, roughness, lacunarity, normalize != 0.0),
+      1.0);
 }
