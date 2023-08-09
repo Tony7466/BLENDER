@@ -37,7 +37,10 @@ void main()
     tilemaps_buf[tilemap_index].grid_shift = ivec2(0);
 
     int clip_index = tilemap.clip_data_index;
-    if (tilemap.projection_type != SHADOW_PROJECTION_CUBEFACE) {
+    if (clip_index == -1) {
+      /* Noop. This is the case for unused tilemaps that are getting pushed to the free heap. */
+    }
+    else if (tilemap.projection_type != SHADOW_PROJECTION_CUBEFACE) {
       ShadowTileMapClip clip_data = tilemaps_clip_buf[clip_index];
       float clip_near_new = orderedIntBitsToFloat(clip_data.clip_near);
       float clip_far_new = orderedIntBitsToFloat(clip_data.clip_far);
