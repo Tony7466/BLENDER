@@ -255,7 +255,7 @@ colorspaces:
 
   - !<ColorSpace>
     name: Filmic sRGB
-    family: Imagery
+    family:
     equalitygroup:
     bitdepth: 32f
     description: |
@@ -268,7 +268,7 @@ colorspaces:
 
   - !<ColorSpace>
     name: False Color
-    family: Imagery
+    family:
     equalitygroup:
     bitdepth: 32f
     description: |
