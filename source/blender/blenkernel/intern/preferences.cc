@@ -157,14 +157,14 @@ static size_t strncpy_py_module(char *dst, const char *src, const size_t dst_max
 }
 
 bUserExtensionRepo *BKE_preferences_extension_repo_add(UserDef *userdef,
-                                                       const char *name,
+                                                       const char *module,
                                                        const char *dirpath)
 {
   bUserExtensionRepo *repo = DNA_struct_default_alloc(bUserExtensionRepo);
   BLI_addtail(&userdef->extension_repos, repo);
 
   /* Set the unique name. */
-  BKE_preferences_extension_repo_name_set(userdef, repo, name);
+  BKE_preferences_extension_repo_module_set(userdef, repo, module);
 
   /* Set the directory. */
   STRNCPY(repo->dirpath, dirpath);
@@ -191,20 +191,20 @@ void BKE_preferences_extension_repo_remove(UserDef *userdef, bUserExtensionRepo 
   BLI_freelinkN(&userdef->extension_repos, repo);
 }
 
-void BKE_preferences_extension_repo_name_set(UserDef *userdef,
-                                             bUserExtensionRepo *repo,
-                                             const char *name)
+void BKE_preferences_extension_repo_module_set(UserDef *userdef,
+                                               bUserExtensionRepo *repo,
+                                               const char *module)
 {
-  if (strncpy_py_module(repo->name, name, sizeof(repo->name)) == 0) {
-    STRNCPY(repo->name, "repository");
+  if (strncpy_py_module(repo->module, module, sizeof(repo->module)) == 0) {
+    STRNCPY(repo->module, "repository");
   }
 
   BLI_uniquename(&userdef->extension_repos,
                  repo,
-                 name,
+                 module,
                  '_',
-                 offsetof(bUserExtensionRepo, name),
-                 sizeof(repo->name));
+                 offsetof(bUserExtensionRepo, module),
+                 sizeof(repo->module));
 }
 
 void BKE_preferences_extension_repo_path_set(bUserExtensionRepo *repo, const char *path)
@@ -217,11 +217,11 @@ bUserExtensionRepo *BKE_preferences_extension_repo_find_index(const UserDef *use
   return static_cast<bUserExtensionRepo *>(BLI_findlink(&userdef->extension_repos, index));
 }
 
-bUserExtensionRepo *BKE_preferences_extension_repo_find_by_name(const UserDef *userdef,
-                                                                const char *name)
+bUserExtensionRepo *BKE_preferences_extension_repo_find_by_module(const UserDef *userdef,
+                                                                  const char *module)
 {
   return static_cast<bUserExtensionRepo *>(
-      BLI_findstring(&userdef->extension_repos, name, offsetof(bUserExtensionRepo, name)));
+      BLI_findstring(&userdef->extension_repos, module, offsetof(bUserExtensionRepo, module)));
 }
 
 int BKE_preferences_extension_repo_get_index(const UserDef *userdef,

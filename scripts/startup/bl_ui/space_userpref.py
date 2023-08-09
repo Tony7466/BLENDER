@@ -1580,10 +1580,10 @@ class USERPREF_UL_extension_repos(bpy.types.UIList):
         repo = item
 
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            layout.prop(repo, "name", text="", emboss=False)
+            layout.prop(repo, "module", text="", emboss=False)
         elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
-            layout.prop(repo, "name", text="", emboss=False)
+            layout.prop(repo, "module", text="", emboss=False)
 
 
 # -----------------------------------------------------------------------------

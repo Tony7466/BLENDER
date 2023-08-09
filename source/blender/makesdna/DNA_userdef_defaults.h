@@ -31,7 +31,7 @@
 
 #define _DNA_DEFAULT_bUserExtensionRepo \
   { \
-    .name = {'\0'}, \
+    .module = {'\0'}, \
     .dirpath = {'\0'}, \
     .remote_path = {'\0'}, \
     .flag = 0, \

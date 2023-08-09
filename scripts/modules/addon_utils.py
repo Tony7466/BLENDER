@@ -70,7 +70,7 @@ def paths_with_extension_repos():
             dirpath = repo.directory
             if not os.path.isdir(dirpath):
                 continue
-            addon_paths.append((dirpath, "%s.%s" % (_ext_base_pkg_idname, repo.name)))
+            addon_paths.append((dirpath, "%s.%s" % (_ext_base_pkg_idname, repo.module)))
 
     return addon_paths
 
@@ -594,7 +594,7 @@ def _extension_preferences_idmap():
     repos_idmap = {}
     if _preferences.experimental.use_extension_repos:
         for repo in _preferences.filepaths.extension_repos:
-            repos_idmap[repo.as_pointer()] = repo.name
+            repos_idmap[repo.as_pointer()] = repo.module
     return repos_idmap
 
 
@@ -602,7 +602,7 @@ def _extension_dirpath_from_preferences():
     repos_dict = {}
     if _preferences.experimental.use_extension_repos:
         for repo in _preferences.filepaths.extension_repos:
-            repos_dict[repo.name] = repo.directory
+            repos_dict[repo.module] = repo.directory
     return repos_dict
 
 

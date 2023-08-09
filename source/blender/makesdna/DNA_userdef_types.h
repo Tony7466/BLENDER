@@ -620,7 +620,7 @@ typedef struct bUserExtensionRepo {
    * Use a shorter name than #NAME_MAX to leave room for a base module prefix.
    * e.g. `bl_ext.{submodule}.{add_on}` to allow this string to fit into #bAddon::module.
    */
-  char name[48];
+  char module[48];
 
   char dirpath[1024];     /* FILE_MAX */
   char remote_path[1024]; /* FILE_MAX */

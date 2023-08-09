@@ -337,12 +337,12 @@ static void rna_userdef_asset_library_path_set(PointerRNA *ptr, const char *valu
   BKE_preferences_asset_library_path_set(library, value);
 }
 
-static void rna_userdef_extension_repo_name_set(PointerRNA *ptr, const char *value)
+static void rna_userdef_extension_repo_module_set(PointerRNA *ptr, const char *value)
 {
   Main *bmain = G.main;
   bUserExtensionRepo *repo = (bUserExtensionRepo *)ptr->data;
   BKE_callback_exec_null(bmain, BKE_CB_EVT_EXTENSION_REPOS_UPDATE_PRE);
-  BKE_preferences_extension_repo_name_set(&U, repo, value);
+  BKE_preferences_extension_repo_module_set(&U, repo, value);
   BKE_callback_exec_null(bmain, BKE_CB_EVT_EXTENSION_REPOS_UPDATE_POST);
 }
 
@@ -6426,10 +6426,9 @@ static void rna_def_userdef_filepaths_extension_repo(BlenderRNA *brna)
   RNA_def_struct_clear_flag(srna, STRUCT_UNDO);
   RNA_def_struct_ui_text(srna, "Extension Repo", "TODO");
 
-  prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
-  RNA_def_property_ui_text(
-      prop, "Name", "Unique identifier (must conform to Python's module name)");
-  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_userdef_extension_repo_name_set");
+  prop = RNA_def_property(srna, "module", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Module", "Unique module identifier");
+  RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_userdef_extension_repo_module_set");
   RNA_def_struct_name_property(srna, prop);
   RNA_def_property_update(prop, 0, "rna_userdef_update");
 

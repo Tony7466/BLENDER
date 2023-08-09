@@ -84,14 +84,14 @@ bUserExtensionRepo *BKE_preferences_extension_repo_add(UserDef *userdef,
                                                        const char *dirpath);
 void BKE_preferences_extension_repo_remove(UserDef *userdef, bUserExtensionRepo *repo);
 
-void BKE_preferences_extension_repo_name_set(UserDef *userdef,
-                                             bUserExtensionRepo *repo,
-                                             const char *name);
+void BKE_preferences_extension_repo_module_set(UserDef *userdef,
+                                               bUserExtensionRepo *repo,
+                                               const char *name);
 
 void BKE_preferences_extension_repo_path_set(bUserExtensionRepo *repo, const char *path);
 bUserExtensionRepo *BKE_preferences_extension_repo_find_index(const UserDef *userdef, int index);
-bUserExtensionRepo *BKE_preferences_extension_repo_find_by_name(const UserDef *userdef,
-                                                                const char *name);
+bUserExtensionRepo *BKE_preferences_extension_repo_find_by_module(const UserDef *userdef,
+                                                                  const char *module);
 int BKE_preferences_extension_repo_get_index(const UserDef *userdef,
                                              const bUserExtensionRepo *repo);
 
