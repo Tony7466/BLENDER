@@ -1682,12 +1682,18 @@ static void actkeys_mselect_single(bAnimContext *ac,
 
       /* Loop over all keys that are represented by this summary key. */
       LISTBASE_FOREACH (bAnimListElem *, ale2, &anim_data) {
-        if (ale2->type == ANIMTYPE_GPLAYER) {
+        switch (ale2->type) {
+          case ANIMTYPE_GPLAYER:
           ED_gpencil_select_frame(static_cast<bGPDlayer *>(ale2->data), selx, select_mode);
           ale2->update |= ANIM_UPDATE_DEPS;
-        }
-        else if (ale2->type == ANIMTYPE_MASKLAYER) {
+            break;
+
+          case ANIMTYPE_MASKLAYER:
           ED_mask_select_frame(static_cast<MaskLayer *>(ale2->data), selx, select_mode);
+            break;
+
+          default:
+            break;
         }
       }
 
