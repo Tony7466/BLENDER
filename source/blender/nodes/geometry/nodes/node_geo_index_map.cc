@@ -145,7 +145,6 @@ class IndexMapFunction : public mf::MultiFunction {
     }
 
     builder.single_output<int>("Index");
-    builder.single_output<bool>("Is Valid");
 
     this->set_signature(&signature_);
   }
@@ -162,8 +161,6 @@ class IndexMapFunction : public mf::MultiFunction {
     }
 
     MutableSpan<int> indices = params.uninitialized_single_output<int>(total_keys, "Index");
-    MutableSpan<bool> is_valid = params.uninitialized_single_output<bool>(total_keys + 1,
-                                                                          "Is Valid");
 
     const Array<int> all_keys = resegmentation(search_keys, mask.min_array_size(), total_keys);
     mask.foreach_index([&](const int index) {
@@ -244,19 +241,35 @@ static void node_geo_exec(GeoNodeExecParams params)
     search_key_fields.append(key_value_field.as_field());
   }
 
-  std::shared_ptr<IndexMapFunction> fn;
+  std::shared_ptr<IndexMapFunction> index_map_fn;
   try {
-    fn = std::make_shared<IndexMapFunction>(geometry_set, domain, store_key_fields);
+    index_map_fn = std::make_shared<IndexMapFunction>(geometry_set, domain, store_key_fields);
   }
   catch (const std::runtime_error &) {
     params.set_default_remaining_outputs();
     return;
   }
 
-  auto op = FieldOperation::Create(std::move(fn), std::move(search_key_fields));
+  auto index_map_op = FieldOperation::Create(std::move(index_map_fn),
+                                             std::move(search_key_fields));
 
-  params.set_output("Index", Field<int>(op, 0));
-  params.set_output("Is Valid", Field<bool>(std::move(op), 1));
+  if (params.output_is_required("Index")) {
+    static auto clamp_fn = mf::build::SI1_SO<int, int>(
+        "Index Clamping",
+        [](const int index) { return math::max(0, index); },
+        mf::build::exec_presets::Materialized());
+    auto clamp_op = FieldOperation::Create(std::move(clamp_fn), {Field<int>(index_map_op)});
+    params.set_output("Index", Field<int>(clamp_op, 0));
+  }
+
+  if (params.output_is_required("Is Valid")) {
+    static auto valid_fn = mf::build::SI1_SO<int, bool>(
+        "Index Validating",
+        [](const int index) { return index != -1; },
+        mf::build::exec_presets::Materialized());
+    auto valid_op = FieldOperation::Create(std::move(valid_fn), {Field<int>(index_map_op)});
+    params.set_output("Is Valid", Field<bool>(valid_op, 0));
+  }
 }
 
 }  // namespace blender::nodes::node_geo_index_map_cc
