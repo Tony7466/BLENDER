@@ -1164,20 +1164,6 @@ void gpencil_to_keylist(bDopeSheet *ads, bGPdata *gpd, AnimKeylist *keylist, con
   }
 }
 
-void gpl_to_keylist(bDopeSheet * /*ads*/, bGPDlayer *gpl, AnimKeylist *keylist)
-{
-  if (gpl && keylist) {
-    ED_keylist_reset_last_accessed(keylist);
-    /* Although the frames should already be in an ordered list,
-     * they are not suitable for displaying yet. */
-    LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
-      add_gpframe_to_keycolumns_list(keylist, gpf);
-    }
-
-    update_keyblocks(keylist, nullptr, 0);
-  }
-}
-
 void grease_pencil_data_block_to_keylist(AnimData *adt,
                                          const GreasePencil *grease_pencil,
                                          AnimKeylist *keylist,
@@ -1206,6 +1192,20 @@ void grease_pencil_cels_to_keylist(AnimData * /*adt*/,
     float cfra = float(item.key);
     ED_keylist_add_or_update_column(
         keylist, cfra, nalloc_ak_cel, nupdate_ak_cel, static_cast<void *>(&cel));
+  }
+}
+
+void gpl_to_keylist(bDopeSheet * /*ads*/, bGPDlayer *gpl, AnimKeylist *keylist)
+{
+  if (gpl && keylist) {
+    ED_keylist_reset_last_accessed(keylist);
+    /* Although the frames should already be in an ordered list,
+     * they are not suitable for displaying yet. */
+    LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
+      add_gpframe_to_keycolumns_list(keylist, gpf);
+    }
+
+    update_keyblocks(keylist, nullptr, 0);
   }
 }
 

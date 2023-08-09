@@ -162,8 +162,6 @@ void summary_to_keylist(bAnimContext *ac, AnimKeylist *keylist, int saction_flag
 
 /* Grease Pencil datablock summary (Legacy) */
 void gpencil_to_keylist(bDopeSheet *ads, bGPdata *gpd, AnimKeylist *keylist, bool active);
-/* Grease Pencil Layer (Legacy) */
-void gpl_to_keylist(bDopeSheet *ads, bGPDlayer *gpl, AnimKeylist *keylist);
 
 /* Grease Pencil Cels. */
 void grease_pencil_cels_to_keylist(AnimData *adt,
@@ -176,6 +174,8 @@ void grease_pencil_data_block_to_keylist(AnimData *adt,
                                          const GreasePencil *grease_pencil,
                                          AnimKeylist *keylist,
                                          const int saction_flag);
+/* Grease Pencil Layer (Legacy) */
+void gpl_to_keylist(bDopeSheet *ads, bGPDlayer *gpl, AnimKeylist *keylist);
 
 /* Mask */
 void mask_to_keylist(bDopeSheet *ads, MaskLayer *masklay, AnimKeylist *keylist);
