@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <iostream>
 #include <mutex>
 
 #include "BLI_array.hh"
@@ -11,6 +12,12 @@
 #include "BLI_vector.hh"
 
 namespace blender {
+
+std::ostream &operator<<(std::ostream &stream, IndexRange range)
+{
+  stream << "[" << range.start() << ", " << range.one_after_last() << ")";
+  return stream;
+}
 
 AlignedIndexRanges split_index_range_by_alignment(const IndexRange range, const int64_t alignment)
 {
