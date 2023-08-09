@@ -86,6 +86,7 @@ colorspaces:
 
   - !<ColorSpace>
     name: Linear ACES
+    aliases: [ACES]
     family: linear
     equalitygroup:
     bitdepth: 32f
