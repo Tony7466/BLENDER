@@ -490,14 +490,14 @@ static void node_rna(StructRNA *srna)
   RNA_def_property_enum_items(prop, domain_items);
   RNA_def_property_enum_default(prop, ATTR_DOMAIN_FACE);
   RNA_def_property_ui_text(prop, "Domain", "Element type to transform");
-  RNA_def_property_update_runtime(prop, (void *)rna_Node_socket_update);
+  RNA_def_property_update_runtime(prop, rna_Node_socket_update);
   RNA_def_property_update_notifier(prop, NC_NODE | NA_EDITED);
 
   prop = RNA_def_property(srna, "scale_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_node(prop, custom2);
   RNA_def_property_enum_items(prop, scale_mode_items);
   RNA_def_property_ui_text(prop, "Scale Mode", "");
-  RNA_def_property_update_runtime(prop, (void *)rna_Node_socket_update);
+  RNA_def_property_update_runtime(prop, rna_Node_socket_update);
   RNA_def_property_update_notifier(prop, NC_NODE | NA_EDITED);
 }
 
