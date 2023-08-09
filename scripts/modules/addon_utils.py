@@ -725,5 +725,6 @@ def _initialize_extensions_repos_once():
     # the previous state is not useful to read.
     _initialize_extension_repos_post()
 
-    _bpy.app.handlers.extension_repos_update_pre.append(_initialize_extension_repos_pre)
-    _bpy.app.handlers.extension_repos_update_post.append(_initialize_extension_repos_post)
+    # Internal handlers intended for Blender's own handling of repositories.
+    _bpy.app.handlers._extension_repos_update_pre.append(_initialize_extension_repos_pre)
+    _bpy.app.handlers._extension_repos_update_post.append(_initialize_extension_repos_post)
