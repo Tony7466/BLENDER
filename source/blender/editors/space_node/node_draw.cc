@@ -2213,7 +2213,8 @@ static void node_draw_basis(const bContext &C,
                             bNodeInstanceKey key)
 {
   const float iconbutw = NODE_HEADER_ICON_SIZE;
-  const bool show_preview = (snode.overlay.flag & SN_OVERLAY_SHOW_PREVIEWS) &&
+  const bool show_preview = (snode.overlay.flag & SN_OVERLAY_SHOW_OVERLAYS) &&
+                            (snode.overlay.flag & SN_OVERLAY_SHOW_PREVIEWS) &&
                             (node.flag & NODE_PREVIEW) &&
                             (U.experimental.use_shader_node_previews ||
                              ntree.type != NTREE_SHADER);
