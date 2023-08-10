@@ -1762,7 +1762,7 @@ static size_t animdata_filter_shapekey(bAnimContext *ac,
 /* Helper for Grease Pencil - layers within a data-block. */
 
 static size_t animdata_filter_grease_pencil_layer(ListBase *anim_data,
-                                                  bDopeSheet *ads,
+                                                  bDopeSheet * /*ads*/,
                                                   GreasePencil *grease_pencil,
                                                   blender::bke::greasepencil::Layer &layer,
                                                   int filter_mode)
