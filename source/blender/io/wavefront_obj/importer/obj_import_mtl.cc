@@ -324,10 +324,10 @@ static void set_bsdf_socket_values(bNode *bsdf, Material *mat, const MTLMaterial
     set_property_of_socket(SOCK_FLOAT, "Sheen", {mtl_mat.sheen}, bsdf);
   }
   if (mtl_mat.cc_thickness >= 0) {
-    set_property_of_socket(SOCK_FLOAT, "Clearcoat", {mtl_mat.cc_thickness}, bsdf);
+    set_property_of_socket(SOCK_FLOAT, "Coat", {mtl_mat.cc_thickness}, bsdf);
   }
   if (mtl_mat.cc_roughness >= 0) {
-    set_property_of_socket(SOCK_FLOAT, "Clearcoat Roughness", {mtl_mat.cc_roughness}, bsdf);
+    set_property_of_socket(SOCK_FLOAT, "Coat Roughness", {mtl_mat.cc_roughness}, bsdf);
   }
   if (mtl_mat.aniso >= 0) {
     set_property_of_socket(SOCK_FLOAT, "Anisotropic", {mtl_mat.aniso}, bsdf);

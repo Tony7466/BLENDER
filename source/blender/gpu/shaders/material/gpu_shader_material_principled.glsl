@@ -30,8 +30,8 @@ void node_bsdf_principled(vec4 base_color,
                           float sheen,
                           float sheen_roughness,
                           vec4 sheen_tint,
-                          float clearcoat,
-                          float clearcoat_roughness,
+                          float coat,
+                          float coat_roughness,
                           float ior,
                           float transmission,
                           vec4 emission,
@@ -42,7 +42,7 @@ void node_bsdf_principled(vec4 base_color,
                           vec3 T,
                           float weight,
                           const float do_diffuse,
-                          const float do_clearcoat,
+                          const float do_coat,
                           const float do_refraction,
                           const float do_multiscatter,
                           float do_sss,
@@ -53,7 +53,7 @@ void node_bsdf_principled(vec4 base_color,
   transmission = clamp(transmission, 0.0, 1.0) * (1.0 - metallic);
   float diffuse_weight = (1.0 - transmission) * (1.0 - metallic);
   float specular_weight = (1.0 - transmission);
-  float clearcoat_weight = max(clearcoat, 0.0) * 0.25;
+  float coat_weight = max(coat, 0.0) * 0.25;
   specular = max(0.0, specular);
 
   N = safe_normalize(N);
@@ -127,15 +127,15 @@ void node_bsdf_principled(vec4 base_color,
     reflection_data.color += glass_brdf * glass_reflection_weight;
   }
 
-  ClosureReflection clearcoat_data;
-  clearcoat_data.weight = clearcoat_weight * weight;
-  clearcoat_data.N = CN;
-  clearcoat_data.roughness = clearcoat_roughness;
+  ClosureReflection coat_data;
+  coat_data.weight = coat_weight * weight;
+  coat_data.N = CN;
+  coat_data.roughness = coat_roughness;
   if (true) {
-    float NV = dot(clearcoat_data.N, V);
-    vec2 split_sum = brdf_lut(NV, clearcoat_data.roughness);
+    float NV = dot(coat_data.N, V);
+    vec2 split_sum = brdf_lut(NV, coat_data.roughness);
     vec3 brdf = F_brdf_single_scatter(vec3(0.04), vec3(1.0), split_sum);
-    clearcoat_data.color = brdf;
+    coat_data.color = brdf;
   }
 
   /* Refraction. */
@@ -150,25 +150,25 @@ void node_bsdf_principled(vec4 base_color,
 
   /* Ref. #98190: Defines are optimizations for old compilers.
    * Might become unnecessary with EEVEE-Next. */
-  if (do_diffuse == 0.0 && do_refraction == 0.0 && do_clearcoat != 0.0) {
-#ifdef PRINCIPLED_CLEARCOAT
-    /* Metallic & Clearcoat case. */
-    result = closure_eval(reflection_data, clearcoat_data);
+  if (do_diffuse == 0.0 && do_refraction == 0.0 && do_coat != 0.0) {
+#ifdef PRINCIPLED_COAT
+    /* Metallic & Coat case. */
+    result = closure_eval(reflection_data, coat_data);
 #endif
   }
-  else if (do_diffuse == 0.0 && do_refraction == 0.0 && do_clearcoat == 0.0) {
+  else if (do_diffuse == 0.0 && do_refraction == 0.0 && do_coat == 0.0) {
 #ifdef PRINCIPLED_METALLIC
     /* Metallic case. */
     result = closure_eval(reflection_data);
 #endif
   }
-  else if (do_diffuse != 0.0 && do_refraction == 0.0 && do_clearcoat == 0.0) {
+  else if (do_diffuse != 0.0 && do_refraction == 0.0 && do_coat == 0.0) {
 #ifdef PRINCIPLED_DIELECTRIC
     /* Dielectric case. */
     result = closure_eval(diffuse_data, reflection_data);
 #endif
   }
-  else if (do_diffuse == 0.0 && do_refraction != 0.0 && do_clearcoat == 0.0) {
+  else if (do_diffuse == 0.0 && do_refraction != 0.0 && do_coat == 0.0) {
 #ifdef PRINCIPLED_GLASS
     /* Glass case. */
     result = closure_eval(reflection_data, refraction_data);
@@ -177,7 +177,7 @@ void node_bsdf_principled(vec4 base_color,
   else {
 #ifdef PRINCIPLED_ANY
     /* Un-optimized case. */
-    result = closure_eval(diffuse_data, reflection_data, clearcoat_data, refraction_data);
+    result = closure_eval(diffuse_data, reflection_data, coat_data, refraction_data);
 #endif
   }
   Closure emission_cl = closure_eval(emission_data);

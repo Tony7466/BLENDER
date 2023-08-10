@@ -22,13 +22,13 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
                             float Sheen = 0.0,
                             float SheenRoughness = 0.5,
                             color SheenTint = 0.5,
-                            float Clearcoat = 0.0,
-                            float ClearcoatRoughness = 0.03,
-                            color ClearcoatTint = color(1.0, 1.0, 1.0),
+                            float Coat = 0.0,
+                            float CoatRoughness = 0.03,
+                            color CoatTint = color(1.0, 1.0, 1.0),
                             float IOR = 1.45,
                             float Transmission = 0.0,
                             normal Normal = N,
-                            normal ClearcoatNormal = N,
+                            normal CoatNormal = N,
                             normal Tangent = normalize(dPdu),
                             output closure color BSDF = 0)
 {
@@ -98,16 +98,16 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     BSDF = mix(BSDF, MetallicBSDF, clamp(Metallic, 0.0, 1.0));
   }
 
-  if (ClearcoatTint != color(1.0)) {
-    float cosNI = dot(I, ClearcoatNormal);
+  if (CoatTint != color(1.0)) {
+    float cosNI = dot(I, CoatNormal);
     float cosNT = sqrt(1.0 - (1.0 / 1.5) * (1.0 / 1.5) * (1 - cosNI*cosNI));
-    BSDF *= pow(ClearcoatTint, 1.0 / cosNT);
+    BSDF *= pow(CoatTint, 1.0 / cosNT);
   }
 
-  if (Clearcoat > 1e-5) {
-    float clearcoat_r2 = ClearcoatRoughness * ClearcoatRoughness;
-    closure color ClearcoatBSDF = microfacet("clearcoat", ClearcoatNormal, clearcoat_r2, 1.5, 0);
-    BSDF = layer(0.25 * Clearcoat * ClearcoatBSDF, BSDF);
+  if (Coat > 1e-5) {
+    float coat_r2 = CoatRoughness * CoatRoughness;
+    closure color CoatBSDF = microfacet("clearcoat", CoatNormal, coat_r2, 1.5, 0);
+    BSDF = layer(0.25 * Coat * CoatBSDF, BSDF);
   }
 
   if (Sheen > 1e-5) {

@@ -35,8 +35,8 @@ namespace usdtokens {
 /* Parameter names. */
 static const pxr::TfToken a("a", pxr::TfToken::Immortal);
 static const pxr::TfToken b("b", pxr::TfToken::Immortal);
-static const pxr::TfToken clearcoat("clearcoat", pxr::TfToken::Immortal);
-static const pxr::TfToken clearcoatRoughness("clearcoatRoughness", pxr::TfToken::Immortal);
+static const pxr::TfToken coat("coat", pxr::TfToken::Immortal);
+static const pxr::TfToken coatRoughness("coatRoughness", pxr::TfToken::Immortal);
 static const pxr::TfToken diffuseColor("diffuseColor", pxr::TfToken::Immortal);
 static const pxr::TfToken emissiveColor("emissiveColor", pxr::TfToken::Immortal);
 static const pxr::TfToken file("file", pxr::TfToken::Immortal);
@@ -481,15 +481,15 @@ void USDMaterialReader::set_principled_node_inputs(bNode *principled,
     set_node_input(roughness_input, principled, "Roughness", ntree, column, &context);
   }
 
-  if (pxr::UsdShadeInput clearcoat_input = usd_shader.GetInput(usdtokens::clearcoat)) {
-    set_node_input(clearcoat_input, principled, "Clearcoat", ntree, column, &context);
+  if (pxr::UsdShadeInput coat_input = usd_shader.GetInput(usdtokens::coat)) {
+    set_node_input(coat_input, principled, "Coat", ntree, column, &context);
   }
 
-  if (pxr::UsdShadeInput clearcoat_roughness_input = usd_shader.GetInput(
-          usdtokens::clearcoatRoughness))
+  if (pxr::UsdShadeInput coat_roughness_input = usd_shader.GetInput(
+          usdtokens::coatRoughness))
   {
     set_node_input(
-        clearcoat_roughness_input, principled, "Clearcoat Roughness", ntree, column, &context);
+        coat_roughness_input, principled, "Coat Roughness", ntree, column, &context);
   }
 
   if (pxr::UsdShadeInput opacity_input = usd_shader.GetInput(usdtokens::opacity)) {

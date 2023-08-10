@@ -69,8 +69,8 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
   switch (type) {
     case CLOSURE_BSDF_PRINCIPLED_ID: {
       uint specular_offset, roughness_offset, specular_tint_offset, anisotropic_offset,
-          sheen_offset, sheen_tint_offset, clearcoat_offset, clearcoat_roughness_offset,
-          eta_offset, transmission_offset, anisotropic_rotation_offset, clearcoat_tint_offset;
+          sheen_offset, sheen_tint_offset, coat_offset, coat_roughness_offset,
+          eta_offset, transmission_offset, anisotropic_rotation_offset, coat_tint_offset;
       uint4 data_node2 = read_node(kg, &offset);
 
       float3 T = stack_load_float3(stack, data_node.y);
@@ -82,10 +82,10 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       svm_unpack_node_uchar4(data_node.w,
                              &sheen_offset,
                              &sheen_tint_offset,
-                             &clearcoat_offset,
-                             &clearcoat_roughness_offset);
+                             &coat_offset,
+                             &coat_roughness_offset);
       svm_unpack_node_uchar4(
-          data_node2.x, &eta_offset, &transmission_offset, &anisotropic_rotation_offset, &clearcoat_tint_offset);
+          data_node2.x, &eta_offset, &transmission_offset, &anisotropic_rotation_offset, &coat_tint_offset);
 
       // get Disney principled parameters
       float metallic = saturatef(param1);
@@ -97,9 +97,9 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       float sheen = stack_load_float(stack, sheen_offset);
       float3 sheen_tint = stack_load_float3(stack, sheen_tint_offset);
       float sheen_roughness = stack_load_float(stack, data_node2.w);
-      float clearcoat = stack_load_float(stack, clearcoat_offset);
-      float clearcoat_roughness = stack_load_float(stack, clearcoat_roughness_offset);
-      float3 clearcoat_tint = stack_load_float3(stack, clearcoat_tint_offset);
+      float coat = stack_load_float(stack, coat_offset);
+      float coat_roughness = stack_load_float(stack, coat_roughness_offset);
+      float3 coat_tint = stack_load_float3(stack, coat_tint_offset);
       float transmission = saturatef(stack_load_float(stack, transmission_offset));
       float anisotropic_rotation = stack_load_float(stack, anisotropic_rotation_offset);
       float eta = fmaxf(stack_load_float(stack, eta_offset), 1e-5f);
@@ -117,12 +117,12 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
                                           __uint_as_float(data_base_color.z),
                                           __uint_as_float(data_base_color.w));
 
-      // get the additional clearcoat normal and subsurface scattering radius
+      // get the additional coat normal and subsurface scattering radius
       uint4 data_cn_ssr = read_node(kg, &offset);
-      float3 clearcoat_normal = stack_valid(data_cn_ssr.x) ?
+      float3 coat_normal = stack_valid(data_cn_ssr.x) ?
                                     stack_load_float3(stack, data_cn_ssr.x) :
                                     sd->N;
-      clearcoat_normal = maybe_ensure_valid_specular_reflection(sd, clearcoat_normal);
+      coat_normal = maybe_ensure_valid_specular_reflection(sd, coat_normal);
       float3 subsurface_radius = stack_valid(data_cn_ssr.y) ?
                                      stack_load_float3(stack, data_cn_ssr.y) :
                                      one_float3();
@@ -180,17 +180,17 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         }
       }
 
-      /* Second layer: Clearcoat */
-      if (reflective_caustics && clearcoat > CLOSURE_WEIGHT_CUTOFF) {
+      /* Second layer: Coat */
+      if (reflective_caustics && coat > CLOSURE_WEIGHT_CUTOFF) {
         ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
-            sd, sizeof(MicrofacetBsdf), 0.25f * clearcoat * weight);
+            sd, sizeof(MicrofacetBsdf), 0.25f * coat * weight);
 
         if (bsdf) {
-          bsdf->N = clearcoat_normal;
+          bsdf->N = coat_normal;
           bsdf->T = zero_float3();
           bsdf->ior = 1.5f;
 
-          bsdf->alpha_x = bsdf->alpha_y = sqr(clearcoat_roughness);
+          bsdf->alpha_x = bsdf->alpha_y = sqr(coat_roughness);
 
           /* setup bsdf */
           sd->flag |= bsdf_microfacet_ggx_clearcoat_setup(kg, bsdf, sd);
@@ -201,7 +201,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         }
       }
 
-      if (clearcoat_tint != one_float3()) {
+      if (coat_tint != one_float3()) {
         /* Tint is normalized to perpendicular incidence.
          * Therefore, if we define the coat thickness as length 1, the length along the ray is
          * t = sqrt(1+tan^2(angle(N, I))) = sqrt(1+tan^2(acos(dotNI))) = 1 / dotNI.
@@ -212,12 +212,12 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
          * Note that this is only an approximation - in particular, this assumes that the exit
          * path follows the same angle, and that there aren't multiple internal bounces.
          */
-        float cosNI = dot(sd->wi, clearcoat_normal);
-        /* Refract incoming direction into clearcoat material, which has a fixed IOR of 1.5.
+        float cosNI = dot(sd->wi, coat_normal);
+        /* Refract incoming direction into coat material, which has a fixed IOR of 1.5.
          * TIR is no concern here since we're always coming from the outside. */
         float cosNT = sqrtf(1.0f - sqr(1.0f / 1.5f) * (1 - sqr(cosNI)));
         float optical_depth = 1.0f / cosNT;
-        weight *= power(rgb_to_spectrum(clearcoat_tint), optical_depth);
+        weight *= power(rgb_to_spectrum(coat_tint), optical_depth);
       }
 
       /* Metallic component */
