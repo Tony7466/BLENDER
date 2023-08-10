@@ -3557,6 +3557,17 @@ static bAnimChannelType ACF_GPL_LEGACY = {
 
 /* Grease Pencil Layer ------------------------------------------- */
 
+/* Offset of the channel, defined by its depth in the tree hierarchy. */
+static short acf_gpl_offset(bAnimContext *ac, bAnimListElem *ale)
+{
+  GreasePencilLayerTreeNode *node = static_cast<GreasePencilLayerTreeNode *>(ale->data);
+  const int depth = node->wrap().depth();
+  short offset = acf_generic_group_offset(ac, ale);
+  offset += depth * short(0.7f * U.widget_unit);
+
+  return offset;
+}
+
 /* Name for grease pencil layer entries. */
 static void acf_gpl_name(bAnimListElem *ale, char *name)
 {
@@ -3644,7 +3655,7 @@ static bAnimChannelType ACF_GPL = {
     /*get_backdrop_color*/ acf_gpencil_channel_color,
     /*draw_backdrop*/ acf_generic_channel_backdrop,
     /*get_indent_level*/ acf_generic_indentation_flexible,
-    /*get_offset*/ acf_generic_group_offset,
+    /*get_offset*/ acf_gpl_offset,
 
     /*name*/ acf_gpl_name,
     /*name_prop*/ acf_gpl_name_prop,
@@ -3711,7 +3722,7 @@ static bAnimChannelType ACF_GPLGROUP = {
     /*get_backdrop_color*/ acf_gplgroup_color,
     /*draw_backdrop*/ acf_group_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
-    /*get_offset*/ acf_generic_group_offset,
+    /*get_offset*/ acf_gpl_offset,
 
     /*name*/ acf_gplgroup_name,
     /*name_prop*/ acf_gpl_name_prop,
