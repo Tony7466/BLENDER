@@ -709,12 +709,12 @@ static float s_curve(float x, float slope, float width, float height, float xshi
   /* Formula for 'S' curve we use for the "ease" sliders. The shift values move the curve verticaly
    * or horizontaly. The range of the curve used is from 0 to 1 on "x" and "y" so we can scale it
    * (width and height) and move it (xshift and y yshift) to crop the part of the curve we need.
-   * Slope determins how curvy the shape is */
+   * Slope determins how curvy the shape is. */
   float y = height * pow((x - xshift), slope) /
                 (pow((x - xshift), slope) + pow((width - (x - xshift)), slope)) +
             yshift;
 
-  /* The curve has some noise beyond our margins so we clamp the values */
+  /* The curve doesn't do what we want beyond our margins so we clamp the values. */
   if (x > xshift + width) {
     y = height + yshift;
   }
