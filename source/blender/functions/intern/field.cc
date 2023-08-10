@@ -123,7 +123,8 @@ static Vector<GGrid> get_volume_field_context_inputs(
       const CPPType &type = field_input.cpp_type();
       const void *default_value = type.default_value();
       grid = GMutableGrid::create(type, default_value);
-      scope.add_value<GGrid::GridPtr>(std::move(grid.grid_));
+      /* Move ownership to the resource scope. */
+      grid = {scope.add_value<GGrid::GridPtr>(std::move(grid.grid_))};
     }
     field_context_inputs.append(grid);
   }
@@ -610,6 +611,9 @@ Vector<GGrid> evaluate_volume_fields(ResourceScope &scope,
         const int field_input_index = field_tree_info.deduplicated_field_inputs.index_of(
             field_input);
         const GGrid &grid = field_context_inputs[field_input_index];
+        /* Input grid needs to exist, otherwise evaluator will try
+         * computing the input and write into the same field. */
+        BLI_assert(grid);
         r_grids[out_index] = grid;
         break;
       }
