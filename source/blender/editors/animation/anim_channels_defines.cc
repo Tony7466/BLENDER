@@ -4912,6 +4912,11 @@ static void achannel_setting_flush_widget_cb(bContext *C, void *ale_npoin, void 
     return;
   }
 
+  /* Don't flush setting changes to grease pencil layers in a layer group. */
+  if (ale_setting->type == ANIMTYPE_GREASE_PENCIL_LAYER_GROUP) {
+    return;
+  }
+
   /* check if the setting is on... */
   on = ANIM_channel_setting_get(&ac, ale_setting, eAnimChannel_Settings(setting));
 
