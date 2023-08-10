@@ -24,7 +24,7 @@
 #include "BLI_math_vector.h"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"

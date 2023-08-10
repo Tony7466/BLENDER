@@ -33,7 +33,7 @@
 #include "ED_viewer_path.hh"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "DEG_depsgraph.h"

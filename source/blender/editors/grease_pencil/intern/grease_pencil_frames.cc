@@ -20,7 +20,7 @@
 #include "ED_keyframes_edit.hh"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "WM_api.hh"
 

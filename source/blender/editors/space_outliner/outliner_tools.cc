@@ -79,7 +79,7 @@
 #include "../../blender/blenloader/BLO_readfile.h"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 #include "RNA_enum_types.h"
 
 #include "SEQ_relations.h"

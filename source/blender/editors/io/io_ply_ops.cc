@@ -21,7 +21,7 @@
 #  include "ED_outliner.hh"
 
 #  include "RNA_access.h"
-#  include "RNA_define.h"
+#  include "RNA_define.hh"
 
 #  include "BLT_translation.h"
 

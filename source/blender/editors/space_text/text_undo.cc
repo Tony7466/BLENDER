@@ -38,7 +38,7 @@
 #include "UI_resources.hh"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "text_format.hh"
 #include "text_intern.hh"

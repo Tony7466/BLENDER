@@ -25,7 +25,7 @@
 
 #include "WM_api.hh"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 #include "RNA_enum_types.h"
 
 /* Own include. */

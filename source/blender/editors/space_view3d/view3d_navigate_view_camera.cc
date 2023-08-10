@@ -36,7 +36,7 @@
 #include "WM_message.hh"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "UI_resources.hh"
 

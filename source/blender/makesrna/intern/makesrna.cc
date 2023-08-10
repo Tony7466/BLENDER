@@ -22,7 +22,7 @@
 #include "BLI_system.h" /* for 'BLI_system_backtrace' stub. */
 #include "BLI_utildefines.h"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 #include "RNA_enum_types.h"
 #include "RNA_types.h"
 
@@ -4798,7 +4798,7 @@ static void rna_generate(BlenderRNA *brna, FILE *f, const char *filename, const 
   fprintf(f, "#include \"BKE_main.h\"\n");
   fprintf(f, "#include \"BKE_report.h\"\n");
 
-  fprintf(f, "#include \"RNA_define.h\"\n");
+  fprintf(f, "#include \"RNA_define.hh\"\n");
   fprintf(f, "#include \"RNA_types.h\"\n");
   fprintf(f, "#include \"rna_internal.h\"\n\n");
 

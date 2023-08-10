@@ -24,7 +24,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 #include "RNA_path.h"
 #include "RNA_prototypes.h"
 

@@ -35,7 +35,7 @@
 #include "UI_interface.hh"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Internal Gesture Utilities

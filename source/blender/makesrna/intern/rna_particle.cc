@@ -22,7 +22,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_texture_types.h"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 #include "RNA_enum_types.h"
 
 #include "BKE_mesh.hh"

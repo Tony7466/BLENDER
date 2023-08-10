@@ -24,7 +24,7 @@
 #include "DNA_scene_types.h"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "BLT_translation.h"
 

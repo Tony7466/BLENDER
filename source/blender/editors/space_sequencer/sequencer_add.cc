@@ -39,7 +39,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 #include "RNA_enum_types.h"
 #include "RNA_prototypes.h"
 

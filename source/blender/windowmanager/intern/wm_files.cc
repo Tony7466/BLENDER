@@ -86,7 +86,7 @@
 #include "BLO_writefile.h"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"

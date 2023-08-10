@@ -23,7 +23,7 @@
 #include "BKE_movieclip.h"
 #include "BKE_tracking.h"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 #include "RNA_enum_types.h"
 
 #include "rna_internal.h"

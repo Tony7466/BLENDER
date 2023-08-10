@@ -38,7 +38,7 @@
 #include "UI_resources.hh"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"

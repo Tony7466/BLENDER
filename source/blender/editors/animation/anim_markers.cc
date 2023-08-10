@@ -29,7 +29,7 @@
 #include "BKE_unit.h"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 #include "RNA_enum_types.h"
 
 #include "WM_api.hh"

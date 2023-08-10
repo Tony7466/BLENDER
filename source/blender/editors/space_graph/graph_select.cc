@@ -24,7 +24,7 @@
 #include "DNA_space_types.h"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "BKE_context.h"
 #include "BKE_fcurve.h"

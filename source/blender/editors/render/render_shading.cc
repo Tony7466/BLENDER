@@ -84,7 +84,7 @@
 #include "ED_scene.hh"
 #include "ED_screen.hh"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "UI_interface.hh"

@@ -48,7 +48,7 @@
 #include "UI_resources.hh"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 /* local module include */
 #include "transform.hh"

@@ -40,7 +40,7 @@
 #include "sculpt_intern.hh"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "UI_interface.hh"

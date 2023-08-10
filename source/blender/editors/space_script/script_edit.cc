@@ -22,7 +22,7 @@
 #include "wm_event_system.h"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "ED_screen.hh"
 

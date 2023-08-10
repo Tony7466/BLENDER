@@ -42,7 +42,7 @@
 #endif
 
 #include "RNA_access.h"
-#include "RNA_define.h" /* RNA_def_property_free_identifier */
+#include "RNA_define.hh" /* RNA_def_property_free_identifier */
 #include "RNA_enum_types.h"
 #include "RNA_prototypes.h"
 

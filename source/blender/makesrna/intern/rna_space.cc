@@ -48,7 +48,7 @@
 #include "DNA_workspace_types.h"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "rna_internal.h"
 

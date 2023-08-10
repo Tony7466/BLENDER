@@ -58,7 +58,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"

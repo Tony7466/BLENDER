@@ -45,7 +45,7 @@
 #include "DRW_engine.h"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "ED_node.hh"

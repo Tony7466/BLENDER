@@ -44,7 +44,7 @@
 #include "DRW_engine.h"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "view3d_intern.h" /* own include */
 #include "view3d_navigate.hh"

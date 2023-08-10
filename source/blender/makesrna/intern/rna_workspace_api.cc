@@ -13,7 +13,7 @@
 
 #include "BLI_utildefines.h"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "DNA_object_types.h"
 #include "DNA_windowmanager_types.h"

@@ -37,7 +37,7 @@
 #include "mesh_intern.h" /* own include */
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "WM_api.hh"
 

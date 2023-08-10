@@ -18,7 +18,7 @@
 #include "BLT_translation.h"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "rna_internal.h"
 

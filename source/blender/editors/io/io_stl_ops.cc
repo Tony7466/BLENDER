@@ -19,7 +19,7 @@
 #  include "ED_outliner.hh"
 
 #  include "RNA_access.h"
-#  include "RNA_define.h"
+#  include "RNA_define.hh"
 
 #  include "IO_stl.h"
 #  include "io_stl_ops.hh"

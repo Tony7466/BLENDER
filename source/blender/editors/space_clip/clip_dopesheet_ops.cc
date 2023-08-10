@@ -23,7 +23,7 @@
 #include "UI_interface.hh"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "UI_view2d.hh"
 

@@ -18,7 +18,7 @@
 #include "BKE_grease_pencil.hh"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "DEG_depsgraph.h"
 

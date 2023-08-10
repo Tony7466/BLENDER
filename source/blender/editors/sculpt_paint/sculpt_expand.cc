@@ -39,7 +39,7 @@
 #include "WM_types.hh"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "ED_screen.hh"
 #include "ED_sculpt.hh"

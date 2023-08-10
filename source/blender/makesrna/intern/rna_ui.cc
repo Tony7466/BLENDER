@@ -18,7 +18,7 @@
 
 #include "BLI_listbase.h"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "RNA_enum_types.h"
 #include "rna_internal.h"

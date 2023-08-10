@@ -32,7 +32,7 @@
 #include "UI_view2d.hh"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "console_intern.hh"
 

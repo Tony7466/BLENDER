@@ -37,7 +37,7 @@
 #include "sculpt_intern.hh"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include <cmath>
 #include <cstdlib>

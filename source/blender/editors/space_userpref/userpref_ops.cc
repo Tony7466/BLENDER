@@ -25,7 +25,7 @@
 #include "BKE_report.h"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 #include "RNA_types.h"
 
 #include "UI_interface.hh"

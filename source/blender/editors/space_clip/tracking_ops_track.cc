@@ -26,7 +26,7 @@
 #include "ED_screen.hh"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "PIL_time.h"
 

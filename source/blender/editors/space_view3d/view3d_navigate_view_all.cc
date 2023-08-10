@@ -29,7 +29,7 @@
 #include "WM_message.hh"
 
 #include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "view3d_intern.h"
 #include "view3d_navigate.hh" /* own include */
