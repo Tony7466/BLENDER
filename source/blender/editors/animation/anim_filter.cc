@@ -1802,6 +1802,7 @@ static size_t animdata_filter_grease_pencil_layer_node_recursive(
     blender::bke::greasepencil::TreeNode &node,
     int filter_mode)
 {
+  using namespace blender::bke::greasepencil;
   size_t items = 0;
 
   if (node.is_layer()) {
@@ -1809,11 +1810,35 @@ static size_t animdata_filter_grease_pencil_layer_node_recursive(
         anim_data, ads, grease_pencil, node.as_layer_for_write(), filter_mode);
   }
   else if (node.is_group()) {
-    /* TODO: Add layer group channel. */
-    LISTBASE_FOREACH_BACKWARD (GreasePencilLayerTreeNode *, node_, &node.as_group().children) {
-      items += animdata_filter_grease_pencil_layer_node_recursive(
-          anim_data, ads, grease_pencil, node_->wrap(), filter_mode);
+    const LayerGroup &layer_group = node.as_group();
+
+    ListBase tmp_data = {nullptr, nullptr};
+    size_t tmp_items = 0;
+
+    /* Add grease pencil layer channels. */
+    BEGIN_ANIMFILTER_SUBCHANNELS ((layer_group.base.flag & GP_LAYER_TREE_NODE_EXPANDED)) {
+      LISTBASE_FOREACH_BACKWARD (GreasePencilLayerTreeNode *, node_, &layer_group.children) {
+        tmp_items += animdata_filter_grease_pencil_layer_node_recursive(
+            &tmp_data, ads, grease_pencil, node_->wrap(), filter_mode);
+      }
     }
+    END_ANIMFILTER_SUBCHANNELS;
+
+    if (tmp_items == 0) {
+      /* If no sub-channels, return early. */
+      return items;
+    }
+
+    if (filter_mode & ANIMFILTER_LIST_CHANNELS) {
+      /* Add data block container (if for drawing, and it contains sub-channels). */
+      ANIMCHANNEL_NEW_CHANNEL(
+          static_cast<void *>(&node), ANIMTYPE_GREASE_PENCIL_LAYER_GROUP, grease_pencil, nullptr);
+    }
+
+    /* Add the list of collected channels. */
+    BLI_movelisttolist(anim_data, &tmp_data);
+    BLI_assert(BLI_listbase_is_empty(&tmp_data));
+    items += tmp_items;
   }
   return items;
 }
