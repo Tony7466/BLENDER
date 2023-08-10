@@ -183,7 +183,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       /* Second layer: Coat */
       if (reflective_caustics && coat > CLOSURE_WEIGHT_CUTOFF) {
         ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
-            sd, sizeof(MicrofacetBsdf), 0.25f * coat * weight);
+            sd, sizeof(MicrofacetBsdf), coat * weight);
 
         if (bsdf) {
           bsdf->N = coat_normal;

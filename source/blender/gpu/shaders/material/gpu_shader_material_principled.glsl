@@ -53,7 +53,7 @@ void node_bsdf_principled(vec4 base_color,
   transmission = clamp(transmission, 0.0, 1.0) * (1.0 - metallic);
   float diffuse_weight = (1.0 - transmission) * (1.0 - metallic);
   float specular_weight = (1.0 - transmission);
-  float coat_weight = max(coat, 0.0) * 0.25;
+  float coat_weight = max(coat, 0.0);
   specular = max(0.0, specular);
 
   N = safe_normalize(N);

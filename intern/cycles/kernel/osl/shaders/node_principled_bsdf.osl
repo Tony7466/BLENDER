@@ -107,7 +107,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
   if (Coat > 1e-5) {
     float coat_r2 = CoatRoughness * CoatRoughness;
     closure color CoatBSDF = dielectric_bsdf(CoatNormal, vector(0.0), color(1.0), color(0.0), coat_r2, coat_r2, 1.5, "ggx");
-    BSDF = layer(0.25 * Coat * CoatBSDF, BSDF);
+    BSDF = layer(Coat * CoatBSDF, BSDF);
   }
 
   if (Sheen > 1e-5) {
