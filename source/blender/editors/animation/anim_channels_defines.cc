@@ -5644,7 +5644,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
             using namespace blender::bke::greasepencil;
             Layer *layer = static_cast<Layer *>(ale->data);
 
-            /* Reset slider offset, in order to add special gp icons. */
+            /* Reset slider offset, in order to add special grease pencil icons. */
             offset += SLIDER_WIDTH;
 
             /* Create the RNA pointers. */
