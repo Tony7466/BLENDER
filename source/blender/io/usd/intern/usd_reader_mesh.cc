@@ -518,7 +518,8 @@ void USDMeshReader::read_uv_data_primvar(Mesh *mesh,
   }
 
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
-  bke::SpanAttributeWriter<float2> uv_data = attributes.lookup_or_add_for_write_only_span<float2>(primvar_name, ATTR_DOMAIN_CORNER);
+  bke::SpanAttributeWriter<float2> uv_data = attributes.lookup_or_add_for_write_only_span<float2>(
+      primvar_name, ATTR_DOMAIN_CORNER);
 
   if (!uv_data) {
     WM_reportf(RPT_WARNING,
@@ -900,8 +901,7 @@ void USDMeshReader::read_custom_data(const ImportSettings *settings,
     }
 
     /* Read Color primvars. */
-    if (convert_usd_type_to_blender(type) == CD_PROP_COLOR)
-    {
+    if (convert_usd_type_to_blender(type) == CD_PROP_COLOR) {
       if ((settings->read_flag & MOD_MESHSEQ_READ_COLOR) != 0) {
         /* Set the active color name to 'displayColor', if a color primvar
          * with this name exists.  Otherwise, use the name of the first
