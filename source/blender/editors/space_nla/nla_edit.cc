@@ -1683,10 +1683,10 @@ static int nlaedit_swap_exec(bContext *C, wmOperator *op)
       else {
         /* not enough room to swap, so show message */
         if (nsb[1] > nsa[0]) {
-          BKE_report(
-              op->reports,
-              RPT_WARNING,
-              "Cannot swap selected strips because they will overlap each other in their new places");
+          BKE_report(op->reports,
+                     RPT_WARNING,
+                     "Cannot swap selected strips because they will overlap each other in their "
+                     "new places");
         }
         else if ((area->flag & NLASTRIP_FLAG_TEMP_META) || (sb->flag & NLASTRIP_FLAG_TEMP_META)) {
           BKE_report(
@@ -2158,8 +2158,7 @@ static int nlaedit_apply_scale_exec(bContext *C, wmOperator * /*op*/)
        * (transitions don't have scale) */
       if ((strip->flag & NLASTRIP_FLAG_SELECT) && (strip->type == NLASTRIP_TYPE_CLIP)) {
         if (strip->act == nullptr || ID_IS_OVERRIDE_LIBRARY(strip->act) ||
-            ID_IS_LINKED(strip->act))
-        {
+            ID_IS_LINKED(strip->act)) {
           continue;
         }
         /* if the referenced action is used by other strips,
