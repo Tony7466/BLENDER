@@ -53,6 +53,23 @@ struct EnumRNAAccessors {
         node_storage(node).member = value; \
       })
 
+inline const EnumPropertyItem *enum_items_filter(
+    const EnumPropertyItem *original_item_array,
+    FunctionRef<bool(const EnumPropertyItem &item)> fn)
+{
+  EnumPropertyItem *item_array = nullptr;
+  int items_len = 0;
+
+  for (const EnumPropertyItem *item = original_item_array; item->identifier != nullptr; item++) {
+    if (fn(*item)) {
+      RNA_enum_item_add(&item_array, &items_len, item);
+    }
+  }
+
+  RNA_enum_item_end(&item_array, &items_len);
+  return item_array;
+}
+
 inline PropertyRNA *RNA_def_node_enum(StructRNA *srna,
                                       const char *identifier,
                                       const char *ui_name,
@@ -60,7 +77,8 @@ inline PropertyRNA *RNA_def_node_enum(StructRNA *srna,
                                       const EnumPropertyItem *static_items,
                                       const EnumRNAAccessors accessors,
                                       std::optional<int> default_value = std::nullopt,
-                                      const EnumPropertyItemFunc item_func = nullptr)
+                                      const EnumPropertyItemFunc item_func = nullptr,
+                                      const RNAPropertyUpdateFunc update_func = nullptr)
 {
   PropertyRNA *prop = RNA_def_property(srna, identifier, PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_funcs_runtime(prop, accessors.getter, accessors.setter, item_func);
