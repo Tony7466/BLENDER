@@ -1215,7 +1215,8 @@ typedef struct NodeTexGradient {
 typedef struct NodeTexNoise {
   NodeTexBase base;
   int dimensions;
-  int normalize;
+  uint8_t normalize;
+  char _pad[3];
 } NodeTexNoise;
 
 typedef struct NodeTexVoronoi {
