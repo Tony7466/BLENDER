@@ -136,6 +136,11 @@ static void actkeys_list_element_to_keylist(bAnimContext *ac,
     grease_pencil_cels_to_keylist(
         adt, static_cast<const GreasePencilLayer *>(ale->data), keylist, 0);
   }
+  else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER_GROUP) {
+    /* TODO: why don't we just give grease pencil layers key_data too? */
+    grease_pencil_layer_group_to_keylist(
+        adt, static_cast<const GreasePencilLayerTreeGroup *>(ale->data), keylist, 0);
+  }
   else if (ale->type == ANIMTYPE_GREASE_PENCIL_DATABLOCK) {
     /* TODO: why don't we just give grease pencil layers key_data too? */
     grease_pencil_data_block_to_keylist(
