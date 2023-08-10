@@ -20,8 +20,8 @@
 #include "NOD_add_node_search.hh"
 #include "NOD_socket_search_link.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 namespace blender::nodes::node_geo_mesh_to_sdf_volume_cc {
 
@@ -147,7 +147,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   GeometrySet geometry_set(params.extract_input<GeometrySet>("Mesh"));
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     if (geometry_set.has_mesh()) {
-      Volume *volume = create_volume_from_mesh(*geometry_set.get_mesh_for_read(), params);
+      Volume *volume = create_volume_from_mesh(*geometry_set.get_mesh(), params);
       geometry_set.replace_volume(volume);
       geometry_set.keep_only_during_modify({GeometryComponent::Type::Volume});
     }
@@ -161,25 +161,24 @@ static void node_geo_exec(GeoNodeExecParams params)
 #endif
 }
 
-}  // namespace blender::nodes::node_geo_mesh_to_sdf_volume_cc
-
-void register_node_type_geo_mesh_to_sdf_volume()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_mesh_to_sdf_volume_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_MESH_TO_SDF_VOLUME, "Mesh to SDF Volume", NODE_CLASS_GEOMETRY);
-  ntype.declare = file_ns::node_declare;
+  ntype.declare = node_declare;
   blender::bke::node_type_size(&ntype, 180, 120, 300);
-  ntype.initfunc = file_ns::node_init;
-  ntype.updatefunc = file_ns::node_update;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.draw_buttons = file_ns::node_layout;
-  ntype.gather_add_node_search_ops = file_ns::search_node_add_ops;
-  ntype.gather_link_search_ops = file_ns::search_link_ops;
+  ntype.initfunc = node_init;
+  ntype.updatefunc = node_update;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.draw_buttons = node_layout;
+  ntype.gather_add_node_search_ops = search_node_add_ops;
+  ntype.gather_link_search_ops = search_link_ops;
   node_type_storage(
       &ntype, "NodeGeometryMeshToVolume", node_free_standard_storage, node_copy_standard_storage);
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_mesh_to_sdf_volume_cc

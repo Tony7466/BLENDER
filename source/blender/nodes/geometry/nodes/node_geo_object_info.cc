@@ -9,8 +9,8 @@
 
 #include "DNA_object_types.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "node_geometry_util.hh"
 
@@ -83,7 +83,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       else {
         instances->add_instance(handle, float4x4::identity());
       }
-      geometry_set = GeometrySet::create_with_instances(instances.release());
+      geometry_set = GeometrySet::from_instances(instances.release());
     }
     else {
       geometry_set = bke::object_get_evaluated_geometry_set(*object);
@@ -103,20 +103,19 @@ static void node_node_init(bNodeTree * /*tree*/, bNode *node)
   node->storage = data;
 }
 
-}  // namespace blender::nodes::node_geo_object_info_cc
-
-void register_node_type_geo_object_info()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_object_info_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_OBJECT_INFO, "Object Info", NODE_CLASS_INPUT);
-  ntype.initfunc = file_ns::node_node_init;
+  ntype.initfunc = node_node_init;
   node_type_storage(
       &ntype, "NodeGeometryObjectInfo", node_free_standard_storage, node_copy_standard_storage);
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.draw_buttons = file_ns::node_layout;
-  ntype.declare = file_ns::node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.draw_buttons = node_layout;
+  ntype.declare = node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_object_info_cc

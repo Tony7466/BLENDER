@@ -8,8 +8,8 @@
 
 #include "BKE_curves.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "node_geometry_util.hh"
 
@@ -333,7 +333,7 @@ static void node_geo_exec(GeoNodeExecParams params)
           r_center,
           r_normal,
           r_radius);
-      params.set_output("Curve", GeometrySet::create_with_curves(curves));
+      params.set_output("Curve", GeometrySet::from_curves(curves));
       params.set_output("Center", r_center);
       params.set_output("Normal", r_normal);
       params.set_output("Radius", r_radius);
@@ -348,28 +348,27 @@ static void node_geo_exec(GeoNodeExecParams params)
           params.extract_input<bool>("Connect Center"),
           params.extract_input<bool>("Invert Arc"));
 
-      params.set_output("Curve", GeometrySet::create_with_curves(curves));
+      params.set_output("Curve", GeometrySet::from_curves(curves));
       break;
     }
   }
 }
 
-}  // namespace blender::nodes::node_geo_curve_primitive_arc_cc
-
-void register_node_type_geo_curve_primitive_arc()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_curve_primitive_arc_cc;
-
   static bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_CURVE_PRIMITIVE_ARC, "Arc", NODE_CLASS_GEOMETRY);
-  ntype.initfunc = file_ns::node_init;
-  ntype.updatefunc = file_ns::node_update;
+  ntype.initfunc = node_init;
+  ntype.updatefunc = node_update;
   node_type_storage(&ntype,
                     "NodeGeometryCurvePrimitiveArc",
                     node_free_standard_storage,
                     node_copy_standard_storage);
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.draw_buttons = file_ns::node_layout;
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_curve_primitive_arc_cc

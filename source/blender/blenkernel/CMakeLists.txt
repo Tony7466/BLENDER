@@ -32,7 +32,6 @@ set(INC
   ../../../intern/memutil
   ../../../intern/mikktspace
   ../../../intern/opensubdiv
-  ../../../extern/curve_fit_nd
   ../../../extern/fmtlib/include
 
   # RNA_prototypes.h
@@ -236,6 +235,7 @@ set(SRC
   intern/node_tree_anonymous_attributes.cc
   intern/node_tree_dot_export.cc
   intern/node_tree_field_inferencing.cc
+  intern/node_tree_interface.cc
   intern/node_tree_update.cc
   intern/node_tree_zones.cc
   intern/object.cc
@@ -455,6 +455,7 @@ set(SRC
   BKE_node_runtime.hh
   BKE_node_tree_anonymous_attributes.hh
   BKE_node_tree_dot_export.hh
+  BKE_node_tree_interface.hh
   BKE_node_tree_update.h
   BKE_node_tree_zones.hh
   BKE_object.h
@@ -542,6 +543,7 @@ set(LIB
   bf_depsgraph
   PRIVATE bf::dna
   bf_draw
+  PRIVATE bf::extern::curve_fit_nd
   bf_functions
   bf_gpencil_modifiers_legacy
   bf_gpu

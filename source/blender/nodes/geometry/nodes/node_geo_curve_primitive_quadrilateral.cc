@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_curves.hh"
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "NOD_socket_search_link.hh"
 
@@ -262,27 +262,26 @@ static void node_geo_exec(GeoNodeExecParams params)
       return;
   }
 
-  params.set_output("Curve", GeometrySet::create_with_curves(curves_id));
+  params.set_output("Curve", GeometrySet::from_curves(curves_id));
 }
 
-}  // namespace blender::nodes::node_geo_curve_primitive_quadrilateral_cc
-
-void register_node_type_geo_curve_primitive_quadrilateral()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_curve_primitive_quadrilateral_cc;
-
   static bNodeType ntype;
   geo_node_type_base(
       &ntype, GEO_NODE_CURVE_PRIMITIVE_QUADRILATERAL, "Quadrilateral", NODE_CLASS_GEOMETRY);
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.draw_buttons = file_ns::node_layout;
-  ntype.updatefunc = file_ns::node_update;
-  ntype.initfunc = file_ns::node_init;
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.draw_buttons = node_layout;
+  ntype.updatefunc = node_update;
+  ntype.initfunc = node_init;
   node_type_storage(&ntype,
                     "NodeGeometryCurvePrimitiveQuad",
                     node_free_standard_storage,
                     node_copy_standard_storage);
-  ntype.gather_link_search_ops = file_ns::node_gather_link_searches;
+  ntype.gather_link_search_ops = node_gather_link_searches;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_curve_primitive_quadrilateral_cc

@@ -28,6 +28,7 @@
 #include "BKE_context.h"
 #include "BKE_fcurve.h"
 #include "BKE_gpencil_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_main.h"
 #include "BKE_node.h"
 
@@ -39,7 +40,7 @@
 #include "SEQ_sequencer.h"
 #include "SEQ_utils.h"
 
-#include "ED_anim_api.h"
+#include "ED_anim_api.hh"
 
 /* **************************** depsgraph tagging ******************************** */
 
@@ -257,7 +258,6 @@ void ANIM_sync_animchannels_to_data(const bContext *C)
 {
   bAnimContext ac;
   ListBase anim_data = {nullptr, nullptr};
-  bAnimListElem *ale;
   int filter;
 
   bActionGroup *active_agrp = nullptr;
@@ -278,7 +278,7 @@ void ANIM_sync_animchannels_to_data(const bContext *C)
       &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
   /* flush settings as appropriate depending on the types of the channels */
-  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     switch (ale->type) {
       case ANIMTYPE_GROUP:
         animchan_sync_group(&ac, ale, &active_agrp);
@@ -292,9 +292,10 @@ void ANIM_sync_animchannels_to_data(const bContext *C)
         animchan_sync_gplayer(ale);
         break;
       case ANIMTYPE_GREASE_PENCIL_LAYER:
+        using namespace blender::bke::greasepencil;
         GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
-        GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(ale->data);
-        if (grease_pencil->active_layer == layer) {
+        Layer *layer = static_cast<Layer *>(ale->data);
+        if (grease_pencil->is_layer_active(layer)) {
           layer->base.flag |= GP_LAYER_TREE_NODE_SELECT;
         }
         else {
@@ -309,9 +310,7 @@ void ANIM_sync_animchannels_to_data(const bContext *C)
 
 void ANIM_animdata_update(bAnimContext *ac, ListBase *anim_data)
 {
-  bAnimListElem *ale;
-
-  for (ale = static_cast<bAnimListElem *>(anim_data->first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, anim_data) {
     if (ale->type == ANIMTYPE_GPLAYER) {
       bGPDlayer *gpl = static_cast<bGPDlayer *>(ale->data);
 

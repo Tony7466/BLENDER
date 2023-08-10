@@ -13,8 +13,8 @@
 
 #include "GEO_resample_curves.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "node_geometry_util.hh"
 
@@ -153,7 +153,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     case GEO_NODE_CURVE_RESAMPLE_COUNT: {
       Field<int> count = params.extract_input<Field<int>>("Count");
       geometry_set.modify_geometry_sets([&](GeometrySet &geometry) {
-        if (const Curves *src_curves_id = geometry.get_curves_for_read()) {
+        if (const Curves *src_curves_id = geometry.get_curves()) {
           const bke::CurvesGeometry &src_curves = src_curves_id->geometry.wrap();
           bke::CurvesGeometry dst_curves = geometry::resample_to_count(
               src_curves, fn::make_constant_field<bool>(true), count, resample_attributes);
@@ -170,7 +170,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     case GEO_NODE_CURVE_RESAMPLE_LENGTH: {
       Field<float> length = params.extract_input<Field<float>>("Length");
       geometry_set.modify_geometry_sets([&](GeometrySet &geometry) {
-        if (const Curves *src_curves_id = geometry.get_curves_for_read()) {
+        if (const Curves *src_curves_id = geometry.get_curves()) {
           const bke::CurvesGeometry &src_curves = src_curves_id->geometry.wrap();
           bke::CurvesGeometry dst_curves = geometry::resample_to_length(
               src_curves, fn::make_constant_field<bool>(true), length, resample_attributes);
@@ -186,7 +186,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
     case GEO_NODE_CURVE_RESAMPLE_EVALUATED:
       geometry_set.modify_geometry_sets([&](GeometrySet &geometry) {
-        if (const Curves *src_curves_id = geometry.get_curves_for_read()) {
+        if (const Curves *src_curves_id = geometry.get_curves()) {
           const bke::CurvesGeometry &src_curves = src_curves_id->geometry.wrap();
           bke::CurvesGeometry dst_curves = geometry::resample_to_evaluated(
               src_curves, fn::make_constant_field<bool>(true), resample_attributes);
@@ -204,21 +204,20 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Points", std::move(geometry_set));
 }
 
-}  // namespace blender::nodes::node_geo_curve_to_points_cc
-
-void register_node_type_geo_curve_to_points()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_curve_to_points_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_CURVE_TO_POINTS, "Curve to Points", NODE_CLASS_GEOMETRY);
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.draw_buttons = file_ns::node_layout;
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.draw_buttons = node_layout;
   node_type_storage(
       &ntype, "NodeGeometryCurveToPoints", node_free_standard_storage, node_copy_standard_storage);
-  ntype.initfunc = file_ns::node_init;
-  ntype.updatefunc = file_ns::node_update;
+  ntype.initfunc = node_init;
+  ntype.updatefunc = node_update;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_curve_to_points_cc

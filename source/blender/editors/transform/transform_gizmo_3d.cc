@@ -31,19 +31,19 @@
 #include "BKE_scene.h"
 #include "BLI_array_utils.h"
 
-#include "WM_api.h"
-#include "WM_message.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
 
-#include "ED_armature.h"
+#include "ED_armature.hh"
 #include "ED_curves.hh"
-#include "ED_gizmo_library.h"
-#include "ED_gizmo_utils.h"
-#include "ED_gpencil_legacy.h"
-#include "ED_object.h"
-#include "ED_particle.h"
-#include "ED_screen.h"
+#include "ED_gizmo_library.hh"
+#include "ED_gizmo_utils.hh"
+#include "ED_gpencil_legacy.hh"
+#include "ED_object.hh"
+#include "ED_particle.hh"
+#include "ED_screen.hh"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -532,7 +532,6 @@ static int gizmo_3d_foreach_selected(const bContext *C,
   Depsgraph *depsgraph = CTX_data_expect_evaluated_depsgraph(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   View3D *v3d = static_cast<View3D *>(area->spacedata.first);
-  Base *base;
   bGPdata *gpd = CTX_data_gpencil_data(C);
   const bool is_gp_edit = GPENCIL_ANY_MODE(gpd);
   const bool is_curve_edit = GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd);
@@ -878,15 +877,15 @@ static int gizmo_3d_foreach_selected(const bContext *C,
 
     /* we need the one selected object, if its not active */
     BKE_view_layer_synced_ensure(scene, view_layer);
-    base = BKE_view_layer_active_base_get(view_layer);
-    ob = base ? base->object : nullptr;
-    if (base && ((base->flag & BASE_SELECTED) == 0)) {
-      ob = nullptr;
+    {
+      Base *base = BKE_view_layer_active_base_get(view_layer);
+      ob = base ? base->object : nullptr;
+      if (base && ((base->flag & BASE_SELECTED) == 0)) {
+        ob = nullptr;
+      }
     }
 
-    for (base = static_cast<Base *>(BKE_view_layer_object_bases_get(view_layer)->first); base;
-         base = base->next)
-    {
+    LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
       if (!BASE_SELECTED_EDITABLE(v3d, base)) {
         continue;
       }
@@ -1672,7 +1671,7 @@ static int gizmo_modal(bContext *C,
     calc_params.use_only_center = true;
     if (ED_transform_calc_gizmo_stats(C, &calc_params, &tbounds, rv3d)) {
       gizmo_prepare_mat(C, rv3d, &tbounds);
-      for (wmGizmo *gz = static_cast<wmGizmo *>(gzgroup->gizmos.first); gz; gz = gz->next) {
+      LISTBASE_FOREACH (wmGizmo *, gz, &gzgroup->gizmos) {
         WM_gizmo_set_matrix_location(gz, rv3d->twmat[3]);
       }
     }

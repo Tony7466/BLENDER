@@ -16,27 +16,26 @@
 
 #include "DNA_scene_types.h"
 
-#include "ED_grease_pencil.h"
-#include "ED_keyframes_edit.h"
+#include "ED_grease_pencil.hh"
+#include "ED_keyframes_edit.hh"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 namespace blender::ed::greasepencil {
 
 bool remove_all_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::Layer &layer)
 {
-  bool changed = false;
+  Vector<int> frames_to_remove;
   for (auto [frame_number, frame] : layer.frames().items()) {
     if (!frame.is_selected()) {
       continue;
     }
-    changed |= grease_pencil.remove_frame_at(layer, frame_number);
+    frames_to_remove.append(frame_number);
   }
-
-  return changed;
+  return grease_pencil.remove_frames(layer, frames_to_remove.as_span());
 }
 
 static void select_frame(GreasePencilFrame &frame, const short select_mode)
