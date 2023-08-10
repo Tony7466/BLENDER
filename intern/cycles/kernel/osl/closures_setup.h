@@ -514,54 +514,6 @@ ccl_device void osl_closure_microfacet_multi_ggx_aniso_setup(
   }
 }
 
-ccl_device void osl_closure_microfacet_aniso_fresnel_setup(
-    KernelGlobals kg,
-    ccl_private ShaderData *sd,
-    uint32_t path_flag,
-    float3 weight,
-    ccl_private const MicrofacetAnisoFresnelClosure *closure,
-    float3 *layer_albedo)
-{
-  if (osl_closure_skip(kg, sd, path_flag, LABEL_GLOSSY | LABEL_REFLECT)) {
-    return;
-  }
-
-  ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
-      sd, sizeof(MicrofacetBsdf), rgb_to_spectrum(weight));
-  if (!bsdf) {
-    return;
-  }
-
-  ccl_private FresnelGeneralizedSchlick *fresnel = (ccl_private FresnelGeneralizedSchlick *)
-      closure_alloc_extra(sd, sizeof(FresnelGeneralizedSchlick));
-  if (!fresnel) {
-    return;
-  }
-
-  bsdf->N = ensure_valid_specular_reflection(sd->Ng, sd->wi, closure->N);
-  bsdf->alpha_x = closure->alpha_x;
-  bsdf->alpha_y = closure->alpha_y;
-  bsdf->ior = closure->ior;
-  bsdf->T = closure->T;
-
-  /* Only GGX (either single- or multi-scattering) supported here */
-  sd->flag |= bsdf_microfacet_ggx_setup(bsdf);
-
-  const bool preserve_energy = (closure->distribution ==
-                                make_string("multi_ggx", 16842698693386468366ull));
-
-  fresnel->reflection_tint = one_spectrum();
-  fresnel->transmission_tint = zero_spectrum();
-  fresnel->f0 = rgb_to_spectrum(closure->f0);
-  fresnel->f90 = rgb_to_spectrum(closure->f90);
-  fresnel->exponent = -1.0f;
-  bsdf_microfacet_setup_fresnel_generalized_schlick(kg, bsdf, sd, fresnel, preserve_energy);
-
-  if (layer_albedo != NULL) {
-    *layer_albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
-  }
-}
-
 /* Ashikhmin Velvet */
 
 ccl_device void osl_closure_ashikhmin_velvet_setup(
