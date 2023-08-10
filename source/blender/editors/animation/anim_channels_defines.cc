@@ -3582,6 +3582,22 @@ static bool acf_gpl_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA
   return (*r_prop != nullptr);
 }
 
+static bool acf_gpl_setting_valid(bAnimContext * /*ac*/,
+                                  bAnimListElem * /*ale*/,
+                                  eAnimChannel_Settings setting)
+{
+  switch (setting) {
+    case ACHANNEL_SETTING_EXPAND:
+    case ACHANNEL_SETTING_SOLO: /* NLA editor only. */
+    case ACHANNEL_SETTING_MOD_OFF:
+    case ACHANNEL_SETTING_PINNED: /* NLA actions only. */
+      return false;
+
+    default:
+      return true;
+  }
+}
+
 /* Get the appropriate flag(s) for the setting when it is valid.
  * Common for layers & layer groups.
  */
@@ -3603,6 +3619,9 @@ static int acf_gpl_setting_flag(bAnimContext * /*ac*/, eAnimChannel_Settings set
 
     case ACHANNEL_SETTING_PROTECT: /* Layer locked. */
       return GP_LAYER_TREE_NODE_LOCKED;
+
+    case ACHANNEL_SETTING_EXPAND: /* Layer expanded (for layer groups). */
+      return GP_LAYER_TREE_NODE_EXPANDED;
 
     default: /* Unsupported. */
       return 0;
