@@ -70,7 +70,7 @@ void node_bsdf_principled(vec4 base_color,
 
   if (coat_tint.rgb != vec3(1.0)) {
     float NV = dot(V, CN);
-    float NT = fast_sqrt(1.0 - (1.0 / (1.5*1.5)) * (1 - NV * NV));
+    float NT = fast_sqrt(1.0 - (1.0 / (1.5 * 1.5)) * (1 - NV * NV));
     coat_tint.rgb = pow(coat_tint.rgb, vec3(1.0 / NT));
   }
 

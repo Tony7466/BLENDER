@@ -91,11 +91,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 #define SOCK_SHEEN_ROUGHNESS_ID 13
   b.add_input<decl::Color>("Sheen Tint").default_value({1.0f, 1.0f, 1.0f, 1.0f});
 #define SOCK_SHEEN_TINT_ID 14
-  b.add_input<decl::Float>("Coat")
-      .default_value(0.0f)
-      .min(0.0f)
-      .max(1.0f)
-      .subtype(PROP_FACTOR);
+  b.add_input<decl::Float>("Coat").default_value(0.0f).min(0.0f).max(1.0f).subtype(PROP_FACTOR);
 #define SOCK_COAT_ID 15
   b.add_input<decl::Float>("Coat Roughness")
       .default_value(0.03f)
