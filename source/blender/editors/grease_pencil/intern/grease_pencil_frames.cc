@@ -123,6 +123,22 @@ void select_frames_region(KeyframeEditData *ked,
   }
 }
 
+void select_frames_region(KeyframeEditData *ked,
+                          bke::greasepencil::LayerGroup &layer_group,
+                          const short tool,
+                          const short selection_mode)
+{
+  LISTBASE_FOREACH_BACKWARD (GreasePencilLayerTreeNode *, node_, &layer_group.children) {
+    bke::greasepencil::TreeNode &node = node_->wrap();
+    if (node.is_group()) {
+      select_frames_region(ked, node.as_group_for_write(), tool, selection_mode);
+    }
+    else if (node.is_layer()) {
+      select_frames_region(ked, node.as_layer_for_write(), tool, selection_mode);
+    }
+  }
+}
+
 void select_frames_range(bke::greasepencil::Layer &layer,
                          const float min,
                          const float max,

@@ -726,6 +726,13 @@ static void region_select_elem(RegionSelectData *sel_data, bAnimListElem *ale, b
       ale->update |= ANIM_UPDATE_DEPS;
       break;
     }
+    case ANIMTYPE_GREASE_PENCIL_LAYER_GROUP: {
+      blender::ed::greasepencil::select_frames_region(
+          &sel_data->ked,
+          static_cast<GreasePencilLayerTreeGroup *>(ale->data)->wrap(),
+          sel_data->mode,
+          sel_data->selectmode);
+    }
     case ANIMTYPE_GREASE_PENCIL_DATABLOCK: {
       ListBase anim_data = {nullptr, nullptr};
       ANIM_animdata_filter(
