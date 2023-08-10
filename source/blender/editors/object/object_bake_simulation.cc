@@ -611,16 +611,12 @@ static int delete_baked_simulation_exec(bContext *C, wmOperator *op)
         BLI_path_join(bdata_dir, sizeof(bdata_dir), absolute_bake_dir, "bdata");
 
         if (BLI_exists(absolute_bake_dir)) {
-          if (!BLI_exists(meta_dir)) {
-            BKE_reportf(op->reports, RPT_ERROR, "Meta directory %s not found", meta_dir);
-          }
-          else if (!BLI_exists(bdata_dir)) {
-            BKE_reportf(op->reports, RPT_ERROR, "BData directory %s not found", bdata_dir);
-          }
-          else {
+          if (BLI_exists(meta_dir)) {
             if (BLI_delete(meta_dir, true, true)) {
               BKE_reportf(op->reports, RPT_ERROR, "Failed to remove meta directory %s", meta_dir);
             }
+          }
+          if (BLI_exists(bdata_dir)) {
             if (BLI_delete(bdata_dir, true, true)) {
               BKE_reportf(
                   op->reports, RPT_ERROR, "Failed to remove bdata directory %s", bdata_dir);
