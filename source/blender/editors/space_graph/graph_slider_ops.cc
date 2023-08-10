@@ -1075,10 +1075,10 @@ void GRAPH_OT_blend_offset(wmOperatorType *ot)
 }
 
 /* -------------------------------------------------------------------- */
-/** \name Blend to Infinity
+/** \name Match Slope
  * \{ */
 
-static void blend_to_infinity_graph_keys(bAnimContext *ac, const float factor)
+static void match_slope_graph_keys(bAnimContext *ac, const float factor)
 {
   ListBase anim_data = {NULL, NULL};
 
@@ -1091,7 +1091,7 @@ static void blend_to_infinity_graph_keys(bAnimContext *ac, const float factor)
     ListBase segments = find_fcurve_segments(fcu);
 
     LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
-      all_segments_valid = blend_to_infinity_fcurve_segment(fcu, segment, factor);
+      all_segments_valid = match_slope_fcurve_segment(fcu, segment, factor);
     }
 
     ale->update |= ANIM_UPDATE_DEFAULT;
@@ -1111,21 +1111,21 @@ static void blend_to_infinity_graph_keys(bAnimContext *ac, const float factor)
   ANIM_animdata_freelist(&anim_data);
 }
 
-static void blend_to_infinity_draw_status_header(bContext *C, tGraphSliderOp *gso)
+static void match_slope_draw_status_header(bContext *C, tGraphSliderOp *gso)
 {
-  common_draw_status_header(C, gso, "Blend to Infinity Keys");
+  common_draw_status_header(C, gso, "Match Slope");
 }
 
-static void blend_to_infinity_modal_update(bContext *C, wmOperator *op)
+static void match_slope_modal_update(bContext *C, wmOperator *op)
 {
   tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
 
-  blend_to_infinity_draw_status_header(C, gso);
+  match_slope_draw_status_header(C, gso);
 
   /* Reset keyframes to the state at invoke. */
   reset_bezts(gso);
   const float factor = slider_factor_get_and_remember(op);
-  blend_to_infinity_graph_keys(&gso->ac, factor);
+  match_slope_graph_keys(&gso->ac, factor);
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
 }
 
@@ -1138,9 +1138,9 @@ static int blend_to_infinity_invoke(bContext *C, wmOperator *op, const wmEvent *
   }
 
   tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
-  gso->modal_update = blend_to_infinity_modal_update;
+  gso->modal_update = match_slope_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
-  blend_to_infinity_draw_status_header(C, gso);
+  match_slope_draw_status_header(C, gso);
   ED_slider_allow_overshoot_set(gso->slider, false, false);
   ED_slider_factor_bounds_set(gso->slider, -1, 1);
   ED_slider_factor_set(gso->slider, 0.0f);
@@ -1148,7 +1148,7 @@ static int blend_to_infinity_invoke(bContext *C, wmOperator *op, const wmEvent *
   return invoke_result;
 }
 
-static int blend_to_infinity_exec(bContext *C, wmOperator *op)
+static int match_slope_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
 
@@ -1159,7 +1159,7 @@ static int blend_to_infinity_exec(bContext *C, wmOperator *op)
 
   const float factor = RNA_float_get(op->ptr, "factor");
 
-  blend_to_infinity_graph_keys(&ac, factor);
+  match_slope_graph_keys(&ac, factor);
 
   /* Set notifier that keyframes have changed. */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
@@ -1167,17 +1167,17 @@ static int blend_to_infinity_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void GRAPH_OT_blend_to_infinity(wmOperatorType *ot)
+void GRAPH_OT_match_slope(wmOperatorType *ot)
 {
   /* Identifiers. */
-  ot->name = "Blend to Infinity Keyframes";
-  ot->idname = "GRAPH_OT_blend_to_infinity";
-  ot->description = "Blend selected keys to the slant of neighboring ones";
+  ot->name = "Match Slope";
+  ot->idname = "GRAPH_OT_match_slope";
+  ot->description = "Blend selected keys to the slope of neighboring ones";
 
   /* API callbacks. */
   ot->invoke = blend_to_infinity_invoke;
   ot->modal = graph_slider_modal;
-  ot->exec = blend_to_infinity_exec;
+  ot->exec = match_slope_exec;
   ot->poll = graphop_editable_keyframes_poll;
 
   /* Flags. */
@@ -1188,8 +1188,8 @@ void GRAPH_OT_blend_to_infinity(wmOperatorType *ot)
                        0.0f,
                        -FLT_MAX,
                        FLT_MAX,
-                       "Curve Bend",
-                       "Control the bend of the curve",
+                       "Factor",
+                       "Defines which keys to use as slope and how much to blend towards them",
                        -1.0f,
                        1.0f);
 }

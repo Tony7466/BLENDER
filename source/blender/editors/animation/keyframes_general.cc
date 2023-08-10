@@ -704,7 +704,7 @@ void blend_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const floa
 
 /* ---------------- */
 
-bool blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+bool match_slope_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
 {
   const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
   const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
