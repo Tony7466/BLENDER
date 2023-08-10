@@ -732,6 +732,7 @@ static void region_select_elem(RegionSelectData *sel_data, bAnimListElem *ale, b
           static_cast<GreasePencilLayerTreeGroup *>(ale->data)->wrap(),
           sel_data->mode,
           sel_data->selectmode);
+      break;
     }
     case ANIMTYPE_GREASE_PENCIL_DATABLOCK: {
       ListBase anim_data = {nullptr, nullptr};
