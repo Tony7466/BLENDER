@@ -74,7 +74,7 @@
 
 /* could enable at some point but for now there are far too many conversions */
 #ifdef __GNUC__
-//#  pragma GCC diagnostic ignored "-Wdouble-promotion"
+// #  pragma GCC diagnostic ignored "-Wdouble-promotion"
 #endif
 
 static CLG_LogRef LOG = {"bke.dynamicpaint"};
@@ -138,7 +138,7 @@ struct Bounds3D {
   bool valid;
 };
 
-struct VolumeGrid {
+struct DynamicPaintVolumeGrid {
   int dim[3];
   /** whole grid bounds */
   Bounds3D grid_bounds;
@@ -193,7 +193,7 @@ struct PaintBakeData {
   double average_dist;
   /* space partitioning */
   /** space partitioning grid to optimize brush checks */
-  VolumeGrid *grid;
+  DynamicPaintVolumeGrid *grid;
 
   /* velocity and movement */
   /** speed vector in global space movement per frame, if required */
@@ -622,7 +622,7 @@ static float getSurfaceDimension(PaintSurfaceData *sData)
 static void freeGrid(PaintSurfaceData *data)
 {
   PaintBakeData *bData = data->bData;
-  VolumeGrid *grid = bData->grid;
+  DynamicPaintVolumeGrid *grid = bData->grid;
 
   if (grid->bounds) {
     MEM_freeN(grid->bounds);
@@ -668,7 +668,7 @@ static void grid_cell_points_cb_ex(void *__restrict userdata,
                                    const TaskParallelTLS *__restrict tls)
 {
   PaintBakeData *bData = static_cast<PaintBakeData *>(userdata);
-  VolumeGrid *grid = bData->grid;
+  DynamicPaintVolumeGrid *grid = bData->grid;
   int *temp_t_index = grid->temp_t_index;
   int *s_num = static_cast<int *>(tls->userdata_chunk);
 
@@ -689,7 +689,7 @@ static void grid_cell_points_reduce(const void *__restrict userdata,
                                     void *__restrict chunk)
 {
   const PaintBakeData *bData = static_cast<const PaintBakeData *>(userdata);
-  const VolumeGrid *grid = bData->grid;
+  const DynamicPaintVolumeGrid *grid = bData->grid;
   const int grid_cells = grid->dim[0] * grid->dim[1] * grid->dim[2];
 
   int *join_s_num = static_cast<int *>(chunk_join);
@@ -706,7 +706,7 @@ static void grid_cell_bounds_cb(void *__restrict userdata,
                                 const TaskParallelTLS *__restrict /*tls*/)
 {
   PaintBakeData *bData = static_cast<PaintBakeData *>(userdata);
-  VolumeGrid *grid = bData->grid;
+  DynamicPaintVolumeGrid *grid = bData->grid;
   float *dim = bData->dim;
   int *grid_dim = grid->dim;
 
@@ -728,7 +728,7 @@ static void surfaceGenerateGrid(DynamicPaintSurface *surface)
 {
   PaintSurfaceData *sData = surface->data;
   PaintBakeData *bData = sData->bData;
-  VolumeGrid *grid;
+  DynamicPaintVolumeGrid *grid;
   int grid_cells, axis = 3;
   int *temp_t_index = nullptr;
   int *temp_s_num = nullptr;
@@ -737,7 +737,7 @@ static void surfaceGenerateGrid(DynamicPaintSurface *surface)
     freeGrid(sData);
   }
 
-  bData->grid = MEM_cnew<VolumeGrid>(__func__);
+  bData->grid = MEM_cnew<DynamicPaintVolumeGrid>(__func__);
   grid = bData->grid;
 
   {
@@ -2109,7 +2109,8 @@ static void dynamicPaint_frameUpdate(
 
       /* image sequences are handled by bake operator */
       if ((surface->format == MOD_DPAINT_SURFACE_F_IMAGESEQ) ||
-          !(surface->flags & MOD_DPAINT_ACTIVE)) {
+          !(surface->flags & MOD_DPAINT_ACTIVE))
+      {
         continue;
       }
 
@@ -2685,7 +2686,8 @@ static void dynamic_paint_find_island_border(const DynamicPaintCreateUVSurfaceDa
       const float threshold = square_f(0.7f) / (w * h);
 
       if (dist_squared_to_looptri_uv_edges(looptris, mloopuv, final_tri_index, final_pt) >
-          threshold) {
+          threshold)
+      {
         continue;
       }
     }
@@ -3011,7 +3013,8 @@ int dynamicPaint_createUVSurface(Scene *scene,
 
                 if (n_target >= 0 && n_target != index) {
                   if (!dynamicPaint_pointHasNeighbor(
-                          ed, final_index[index], final_index[n_target])) {
+                          ed, final_index[index], final_index[n_target]))
+                  {
                     ed->n_target[n_pos] = final_index[n_target];
                     ed->n_num[final_index[index]]++;
                     n_pos++;
@@ -3947,7 +3950,7 @@ static void dynamic_paint_paint_mesh_cell_point_cb_ex(void *__restrict userdata,
   const DynamicPaintSurface *surface = data->surface;
   const PaintSurfaceData *sData = surface->data;
   const PaintBakeData *bData = sData->bData;
-  VolumeGrid *grid = bData->grid;
+  DynamicPaintVolumeGrid *grid = bData->grid;
 
   const DynamicPaintBrushSettings *brush = data->brush;
 
@@ -4301,7 +4304,7 @@ static bool dynamicPaint_paintMesh(Depsgraph *depsgraph,
     int numOfVerts;
     int ii;
     Bounds3D mesh_bb = {{0}};
-    VolumeGrid *grid = bData->grid;
+    DynamicPaintVolumeGrid *grid = bData->grid;
 
     mesh = BKE_mesh_copy_for_eval(brush_mesh);
     blender::MutableSpan<blender::float3> positions = mesh->vert_positions_for_write();
@@ -4404,7 +4407,7 @@ static void dynamic_paint_paint_particle_cell_point_cb_ex(
   const DynamicPaintSurface *surface = data->surface;
   const PaintSurfaceData *sData = surface->data;
   const PaintBakeData *bData = sData->bData;
-  VolumeGrid *grid = bData->grid;
+  DynamicPaintVolumeGrid *grid = bData->grid;
 
   const DynamicPaintBrushSettings *brush = data->brush;
 
@@ -4581,7 +4584,7 @@ static bool dynamicPaint_paintParticles(DynamicPaintSurface *surface,
   ParticleSettings *part = psys->part;
   PaintSurfaceData *sData = surface->data;
   PaintBakeData *bData = sData->bData;
-  VolumeGrid *grid = bData->grid;
+  DynamicPaintVolumeGrid *grid = bData->grid;
 
   KDTree_3d *tree;
   int particlesAdded = 0;
@@ -4757,7 +4760,8 @@ static void dynamic_paint_paint_single_point_cb_ex(void *__restrict userdata,
 
     if (surface->type == MOD_DPAINT_SURFACE_T_PAINT) {
       if (brush->proximity_falloff == MOD_DPAINT_PRFALL_RAMP &&
-          !(brush->flags & MOD_DPAINT_RAMP_ALPHA)) {
+          !(brush->flags & MOD_DPAINT_RAMP_ALPHA))
+      {
         paintColor[0] = colorband[0];
         paintColor[1] = colorband[1];
         paintColor[2] = colorband[2];
