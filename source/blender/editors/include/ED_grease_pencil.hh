@@ -126,13 +126,14 @@ struct Curves2DSpace {
 };
 
 /**
- * Collect all editable strokes in a GP object and convert them to
- * viewport 2D space.
+ * Convert all given Grease Pencil drawings to viewport 2D space.
  *
  * \return A struct with the 2D representation of all editable strokes.
  */
-Curves2DSpace editable_strokes_in_2d_space_get(ViewContext *vc,
-                                               Object *ob,
-                                               const bool get_fill = false);
+Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
+                                     Object *ob,
+                                     Vector<GreasePencilDrawing *> &drawings,
+                                     Vector<int> &drawing_indices,
+                                     const bool get_fill = false);
 
 }  // namespace blender::ed::greasepencil

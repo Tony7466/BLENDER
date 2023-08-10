@@ -22,6 +22,7 @@
 
 #include "ED_curves.hh"
 #include "ED_grease_pencil.hh"
+#include "ED_keyframing.hh"
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
 #include "ED_view3d.hh"
@@ -232,7 +233,7 @@ struct VectorFillData {
   Brush *brush;
 
   /* Draw handle for 3D viewport overlay. */
-  void *draw_handle;
+  void *draw_handle = nullptr;
 
   /* Starting time of the vector fill operator. */
   std::chrono::high_resolution_clock::time_point operator_time_start;
@@ -244,7 +245,7 @@ struct VectorFillData {
   /* Ratio between length of extension and length of curve end segment. */
   Array<float> extension_length_ratio;
   /* KD tree of curve ends in 2D space, used for gap closure by radius. */
-  KDTree_2d *curve_ends;
+  KDTree_2d *curve_ends = nullptr;
   /* Flag indicating a curve end is connected by radius with one or more other curve ends. */
   Array<bool> connected_by_radius;
   /* Curve end connections (by radius) with other curve ends. */
@@ -403,9 +404,6 @@ Vector<IntersectingSegment2D> get_intersections_of_segment_with_curves(
 
 Vector<float3> get_closed_fill_edge_as_3d_points(VectorFillData *vf)
 {
-  Vector<float3> edge_points;
-  int edge_point_index = 0;
-
   /* Ensure head starting point and tail end point are an exact match. */
   EdgeSegment *tail = &vf->segments.last();
   for (auto &head : vf->segments) {
@@ -413,15 +411,21 @@ Vector<float3> get_closed_fill_edge_as_3d_points(VectorFillData *vf)
       continue;
     }
     if ((head.flag & vfFlag::DirectionBackwards) == true) {
-      head.point_range[1] = tail->point_range[1];
+      if (head.point_range[1] > tail->point_range[1]) {
+        head.point_range[1] = tail->point_range[1];
+      }
     }
     else {
-      head.point_range[0] = tail->point_range[0];
+      if (head.point_range[0] < tail->point_range[0]) {
+        head.point_range[0] = tail->point_range[0];
+      }
     }
     break;
   }
 
   /* Convert all edge segments to 3D coordinates. */
+  Vector<float3> edge_points;
+  int edge_point_index = 0;
   for (auto &segment : vf->segments) {
     if ((segment.flag & vfFlag::IsUnused) == true) {
       continue;
@@ -462,7 +466,8 @@ Vector<float3> get_closed_fill_edge_as_3d_points(VectorFillData *vf)
 
     /* Calculate intersection with curve end extension. */
     if (vf->gap_close_extend && (segment.flag & vfFlag::IsGapClosure) == true &&
-        edge_point_index > 1) {
+        edge_point_index > 1)
+    {
       /* Get segment end data. */
       const SegmentEnd *segment_end = &segment.segment_ends[segment.segment_ends_index];
       const int extension_index = segment.curve_index_2d * 2 + (direction == 1 ? 1 : 0);
@@ -486,12 +491,17 @@ Vector<float3> get_closed_fill_edge_as_3d_points(VectorFillData *vf)
 
 static void create_fill_geometry(VectorFillData *vf)
 {
+  /* Ensure active frame (autokey is on, we checked on operator invoke). */
+  const bke::greasepencil::Layer *active_layer = vf->grease_pencil->get_active_layer();
+  if (active_layer->drawing_index_at(vf->vc.scene->r.cfra) == -1) {
+    bke::greasepencil::Layer *layer = vf->grease_pencil->get_active_layer_for_write();
+    vf->grease_pencil->insert_blank_frame(*layer, vf->vc.scene->r.cfra, 0, BEZT_KEYTYPE_KEYFRAME);
+  }
+
   /* Get the edge points in 3D space. */
   Vector<float3> fill_points = get_closed_fill_edge_as_3d_points(vf);
 
   /* Create geometry. */
-  BLI_assert(vf->grease_pencil->has_active_layer());
-  const bke::greasepencil::Layer *active_layer = vf->grease_pencil->get_active_layer();
   const int drawing_index = active_layer->drawing_index_at(vf->vc.scene->r.cfra);
   bke::greasepencil::Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(
                                             vf->grease_pencil->drawings()[drawing_index])
@@ -1719,7 +1729,70 @@ static void get_latest_toolsettings(VectorFillData *vf)
   vf->gap_distance = vf->brush->gpencil_settings->fill_extend_fac * GP_VFILL_GAP_PIXEL_FACTOR;
 }
 
-static void init(bContext *C, wmOperator *op)
+static void get_fill_edge_layers(VectorFillData *vf,
+                                 Vector<GreasePencilDrawing *> &r_drawings,
+                                 Vector<int> &r_drawing_indices)
+{
+  using namespace bke::greasepencil;
+
+  /* Find index of active layer. */
+  int active_layer_index = -1;
+  const Layer *active_layer = vf->grease_pencil->get_active_layer();
+  Span<const Layer *> layers = vf->grease_pencil->layers();
+  for (int index = 0; index < layers.size(); index++) {
+    if (layers[index] == active_layer) {
+      active_layer_index = index;
+      break;
+    }
+  }
+
+  /* Select layers based on position in the layer collection. */
+  Span<GreasePencilDrawingBase *> drawings = vf->grease_pencil->drawings();
+  for (int index = 0; index < layers.size(); index++) {
+    /* Skip invisible layers. */
+    if (!layers[index]->is_visible()) {
+      continue;
+    }
+
+    bool add = false;
+    switch (vf->brush->gpencil_settings->fill_layer_mode) {
+      case GP_FILL_GPLMODE_ACTIVE:
+        add = (index == active_layer_index);
+        break;
+      case GP_FILL_GPLMODE_ABOVE:
+        add = (index == active_layer_index + 1);
+        break;
+      case GP_FILL_GPLMODE_BELOW:
+        add = (index == active_layer_index - 1);
+        break;
+      case GP_FILL_GPLMODE_ALL_ABOVE:
+        add = (index > active_layer_index);
+        break;
+      case GP_FILL_GPLMODE_ALL_BELOW:
+        add = (index < active_layer_index);
+        break;
+      case GP_FILL_GPLMODE_VISIBLE:
+        add = true;
+      default:
+        break;
+    }
+
+    if (add) {
+      const int drawing_index = layers[index]->drawing_index_at(vf->vc.scene->r.cfra);
+      if (drawing_index == -1) {
+        continue;
+      }
+      GreasePencilDrawingBase *drawing_base = drawings[drawing_index];
+      if (drawing_base->type == GP_DRAWING) {
+        GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
+        r_drawings.append(drawing);
+        r_drawing_indices.append(drawing_index);
+      }
+    }
+  }
+}
+
+static bool init(bContext *C, wmOperator *op)
 {
   VectorFillData *vf = static_cast<VectorFillData *>(op->customdata);
 
@@ -1743,12 +1816,20 @@ static void init(bContext *C, wmOperator *op)
   vf->wait_for_release = true;
   vf->wait_event_type = LEFTMOUSE;
 
-  /* Convert curves to viewport 2D space. */
-  /* TODO: set layer options (visible, above, all etc.) */
-  vf->curves_2d = editable_strokes_in_2d_space_get(&vf->vc, vf->vc.obact, true);
+  /* Get layers according to tool settings (visible, above, below, etc.) */
+  Vector<GreasePencilDrawing *> drawings;
+  Vector<int> drawing_indices;
 
-  /* When using extensions of the curve ends to close gaps, build an array of those two-point
-   * 'curves'. */
+  get_fill_edge_layers(vf, drawings, drawing_indices);
+  if (drawings.is_empty()) {
+    return false;
+  }
+
+  /* Convert curves to viewport 2D space. */
+  vf->curves_2d = curves_in_2d_space_get(&vf->vc, vf->vc.obact, drawings, drawing_indices, true);
+
+  /* When using extensions of the curve ends to close gaps, build an array of those
+   * two-point 'curves'. */
   if (vf->gap_close_extend) {
     init_curve_end_extensions(vf);
     get_curve_end_extensions(vf);
@@ -1766,6 +1847,8 @@ static void init(bContext *C, wmOperator *op)
         vf->vc.region->type, draw_overlay, vf, REGION_DRAW_POST_PIXEL);
     ED_region_tag_redraw(vf->vc.region);
   }
+
+  return true;
 }
 
 static void exit(bContext *C, wmOperator *op)
@@ -1778,7 +1861,7 @@ static void exit(bContext *C, wmOperator *op)
       ED_region_draw_cb_exit(vf->vc.region->type, vf->draw_handle);
       ED_region_tag_redraw(vf->vc.region);
     }
-    if (vf->gap_close_radius) {
+    if (vf->curve_ends) {
       BLI_kdtree_2d_free(vf->curve_ends);
     }
     MEM_delete(vf);
@@ -1870,15 +1953,42 @@ static void cancel(bContext *C, wmOperator *op)
 
 static int invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  VectorFillData *op_data = MEM_new<VectorFillData>(__func__);
-  op->customdata = op_data;
+  const Scene *scene = CTX_data_scene(C);
+  const Object *object = CTX_data_active_object(C);
+  const GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
-  /* TODO: check active layer. */
-  /* TODO: check active frame. */
-  /* TODO: check active material. */
+  /* Check active layer. */
+  if (!grease_pencil.has_active_layer()) {
+    BKE_report(op->reports, RPT_ERROR, "No active Grease Pencil layer");
+    return OPERATOR_CANCELLED;
+  }
+
+  /* Check if layer is editable. */
+  const bke::greasepencil::Layer *active_layer = grease_pencil.get_active_layer();
+  if (!active_layer->is_editable()) {
+    BKE_report(op->reports, RPT_ERROR, "Grease Pencil layer is not editable");
+    return OPERATOR_CANCELLED;
+  }
+
+  /* Check active frame. */
+  if (active_layer->drawing_index_at(scene->r.cfra) == -1) {
+    if (!IS_AUTOKEY_ON(scene)) {
+      BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
+      return OPERATOR_CANCELLED;
+    }
+  }
 
   /* Init tool data. */
-  init(C, op);
+  VectorFillData *vf = MEM_new<VectorFillData>(__func__);
+  op->customdata = vf;
+  if (!init(C, op)) {
+    exit(C, op);
+    BKE_report(
+        op->reports,
+        RPT_ERROR,
+        "No Grease Pencil layers with edge strokes found, see 'Layers' in Advanced options");
+    return OPERATOR_CANCELLED;
+  }
 
   /* Add modal handler. */
   WM_event_add_modal_handler(C, op);

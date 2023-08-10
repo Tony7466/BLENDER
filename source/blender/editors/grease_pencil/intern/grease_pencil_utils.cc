@@ -22,33 +22,30 @@
 
 namespace blender::ed::greasepencil {
 
-Curves2DSpace editable_strokes_in_2d_space_get(ViewContext *vc, Object *ob, const bool get_fill)
+Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
+                                     Object *ob,
+                                     Vector<GreasePencilDrawing *> &drawings,
+                                     Vector<int> &drawing_indices,
+                                     const bool get_fill)
 {
   /* Get viewport projection matrix and evaluated GP object. */
   float4x4 projection;
   ED_view3d_ob_project_mat_get(vc->rv3d, ob, projection.ptr());
   const Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph, const_cast<Object *>(ob));
-  GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
 
-  /* Count total number of editable curves and points in grease pencil object. */
+  /* Count total number of editable curves and points in given Grease Pencil drawings. */
   Curves2DSpace cv2d;
-  Vector<GreasePencilDrawing *> drawings;
-  Vector<int> drawing_indices;
   Vector<int> curve_point_offset;
-  int drawing_num = 0, curve_num = 0, point_num = 0;
+  int curve_num = 0, point_num = 0;
 
-  grease_pencil->foreach_editable_drawing(vc->scene->r.cfra,
-                                          [&](int drawing_index, GreasePencilDrawing &drawing) {
-                                            cv2d.drawings.append(&drawing);
-                                            cv2d.curve_offset.append(curve_num);
-                                            curve_point_offset.append(point_num);
-                                            drawings.append(&drawing);
-                                            drawing_indices.append(drawing_index);
+  for (const auto &drawing : drawings) {
+    cv2d.drawings.append(drawing);
+    cv2d.curve_offset.append(curve_num);
+    curve_point_offset.append(point_num);
 
-                                            drawing_num++;
-                                            curve_num += drawing.geometry.curve_num;
-                                            point_num += drawing.geometry.point_num;
-                                          });
+    curve_num += drawing->geometry.curve_num;
+    point_num += drawing->geometry.point_num;
+  }
 
   /* Initialize the contiguous arrays for the 2D curve data. */
   cv2d.drawing_index_2d = Array<int>(curve_num);
@@ -62,10 +59,10 @@ Curves2DSpace editable_strokes_in_2d_space_get(ViewContext *vc, Object *ob, cons
   }
 
   /* Loop all drawings. */
-  threading::parallel_for(drawings.index_range(), 1, [&](const IndexRange range) {
+  threading::parallel_for(cv2d.drawings.index_range(), 1, [&](const IndexRange range) {
     for (const int drawing_i : range) {
       /* Get deformed geomtry. */
-      const bke::CurvesGeometry &curves = drawings[drawing_i]->geometry.wrap();
+      const bke::CurvesGeometry &curves = cv2d.drawings[drawing_i]->geometry.wrap();
       const OffsetIndices points_by_curve = curves.points_by_curve();
       const VArray<bool> cyclic = curves.cyclic();
       const bke::crazyspace::GeometryDeformation deformation =
