@@ -19,7 +19,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "DEG_depsgraph_query.h"
 

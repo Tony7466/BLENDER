@@ -16,7 +16,7 @@
 #include "BLI_utildefines.h"
 
 #include "RNA_access.hh"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "WM_message.hh"
 

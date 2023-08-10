@@ -11,7 +11,7 @@
 #include "DNA_listBase.h"
 
 #include "RNA_access.hh"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 struct BlenderRNA;
 struct CollectionPropertyIterator;

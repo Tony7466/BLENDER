@@ -8,7 +8,7 @@
 
 #include "RNA_define.hh"
 #include "RNA_enum_types.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "BKE_workspace.h"
 

@@ -17,7 +17,7 @@
 #include <Python.h>
 #include <descrobject.h>
 
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "BLI_utildefines.h"
 

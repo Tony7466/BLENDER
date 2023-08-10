@@ -18,7 +18,7 @@
 #include <cstddef>
 
 #include "RNA_path.hh"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "BLI_bitmap.h"
 #include "BLI_dynstr.h"

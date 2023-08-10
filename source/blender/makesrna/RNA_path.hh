@@ -15,7 +15,7 @@
  * UI code or Actions, though efficiency is a concern.
  */
 
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 struct ListBase;
 struct IDProperty;

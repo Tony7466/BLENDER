@@ -9,7 +9,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_blender_cpp.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "scene/film.h"
 

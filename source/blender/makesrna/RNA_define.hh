@@ -15,7 +15,7 @@
 #include <limits.h>
 
 #include "DNA_listBase.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #ifdef UNIT_TEST
 #  define RNA_MAX_ARRAY_LENGTH 64

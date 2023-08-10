@@ -12,7 +12,7 @@
 
 #include <stdarg.h>
 
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "BLI_compiler_attrs.h"
 

@@ -39,7 +39,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_enum_types.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "bpy_rna.h"
 
