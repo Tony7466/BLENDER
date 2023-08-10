@@ -412,7 +412,7 @@ void USDMeshReader::read_color_data_primvar(Mesh *mesh,
     return;
   }
 
-  if (ELEM(interp, pxr::UsdGeomTokens->constant, pxr::UsdGeomTokens->uniform)) {
+  if (ELEM(interp, pxr::UsdGeomTokens->constant)) {
     /* For situations where there's only a single item, flood fill the object. */
     color_data.span.fill(
         ColorGeometry4f(usd_colors[0][0], usd_colors[0][1], usd_colors[0][2], 1.0f));
@@ -537,7 +537,7 @@ void USDMeshReader::read_uv_data_primvar(Mesh *mesh,
         const IndexRange face = faces[i];
         for (int j : face.index_range()) {
           const int rev_index = face.last(j);
-          uv_data.span[j] = float2(usd_uvs[rev_index][0], usd_uvs[rev_index][1]);
+          uv_data.span[face.start() + j] = float2(usd_uvs[rev_index][0], usd_uvs[rev_index][1]);
         }
       }
     }
@@ -608,7 +608,7 @@ void USDMeshReader::copy_prim_array_to_blender_attribute(const Mesh *mesh,
         const IndexRange face = faces[i];
         for (int j : face.index_range()) {
           const int rev_index = face.last(j);
-          attribute[j] = convert_value<USDT, BlenderT>(primvar_array[rev_index]);
+          attribute[face.start()+j] = convert_value<USDT, BlenderT>(primvar_array[rev_index]);
         }
       }
     }
