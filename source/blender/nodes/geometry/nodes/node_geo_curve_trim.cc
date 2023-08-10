@@ -5,14 +5,14 @@
 #include "BKE_curves.hh"
 #include "BLI_task.hh"
 
-#include "NOD_rna_define.hh"
-
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
 #include "NOD_socket_search_link.hh"
 
 #include "GEO_trim_curves.hh"
+
+#include "NOD_rna_define.hh"
 
 #include "node_geometry_util.hh"
 
@@ -185,8 +185,6 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_rna(StructRNA *srna)
 {
-  PropertyRNA *prop;
-
   static EnumPropertyItem mode_items[] = {
       {GEO_NODE_CURVE_SAMPLE_FACTOR,
        "FACTOR",
@@ -201,12 +199,12 @@ static void node_rna(StructRNA *srna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  RNA_def_struct_sdna_from(srna, "NodeGeometryCurveTrim", "storage");
-
-  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, mode_items);
-  RNA_def_property_ui_text(prop, "Mode", "How to find endpoint positions for the trimmed spline");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+  RNA_def_node_enum(srna,
+                    "mode",
+                    "Mode",
+                    "How to find endpoint positions for the trimmed spline",
+                    mode_items,
+                    NOD_storage_enum_accessors(mode));
 }
 
 static void node_register()
@@ -222,6 +220,7 @@ static void node_register()
   ntype.updatefunc = node_update;
   ntype.gather_link_search_ops = node_gather_link_searches;
   nodeRegisterType(&ntype);
+
   node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)

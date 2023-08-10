@@ -12,12 +12,12 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 
-#include "NOD_rna_define.hh"
-
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
 #include "BKE_mesh.hh"
+
+#include "NOD_rna_define.hh"
 
 #include "node_geometry_util.hh"
 
@@ -454,8 +454,6 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_rna(StructRNA *srna)
 {
-  PropertyRNA *prop;
-
   static const EnumPropertyItem domain_items[] = {
       {ATTR_DOMAIN_FACE,
        "FACE",
@@ -482,24 +480,19 @@ static void node_rna(StructRNA *srna)
        "Single Axis",
        "Scale elements in a single direction"},
       {0, nullptr, 0, nullptr, nullptr},
-
   };
 
-  prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
-  RNA_def_property_enum_items(prop, domain_items);
-  RNA_def_property_enum_default(prop, ATTR_DOMAIN_FACE);
-  RNA_def_property_ui_text(prop, "Domain", "Element type to transform");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
+  RNA_def_node_enum(srna,
+                    "domain",
+                    "Domain",
+                    "Element type to transform",
+                    domain_items,
+                    NOD_inline_enum_accessors(custom1),
+                    ATTR_DOMAIN_FACE);
 
-  prop = RNA_def_property(srna, "scale_mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "custom2");
-  RNA_def_property_enum_items(prop, scale_mode_items);
-  RNA_def_property_ui_text(prop, "Scale Mode", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
+  RNA_def_node_enum(
+      srna, "scale_mode", "Scale Mode", "", scale_mode_items, NOD_inline_enum_accessors(custom2));
 }
-
-/* -------------------------------------------------------------------------- */
 
 static void node_register()
 {
@@ -512,6 +505,7 @@ static void node_register()
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
   nodeRegisterType(&ntype);
+
   node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
