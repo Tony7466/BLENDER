@@ -14,6 +14,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_math_matrix.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -2538,14 +2539,13 @@ static int annotation_draw_modal(bContext *C, wmOperator *op, const wmEvent *eve
     estate = OPERATOR_FINISHED;
   }
 
-  /* toggle painting mode upon mouse-button movement
-   *  - LEFTMOUSE  = standard drawing (all) / straight line drawing (all) / polyline (toolbox
-   * only)
-   *  - RIGHTMOUSE = polyline (hotkey) / eraser (all)
-   *    (Disabling RIGHTMOUSE case here results in bugs like #32647)
-   * also making sure we have a valid event value, to not exit too early
-   */
-  if (ELEM(event->type, LEFTMOUSE, RIGHTMOUSE) && ELEM(event->val, KM_PRESS, KM_RELEASE)) {
+  /* Toggle painting mode upon mouse-button movement
+   * - #RIGHTMOUSE: eraser (all).
+   *   (Disabling #RIGHTMOUSE case here results in bugs like #32647)
+   * - Others (typically LMB): standard drawing (all) / straight line drawing (all).
+   * Also making sure we have a valid event value, to not exit too early. */
+
+  if (ISMOUSE_BUTTON(event->type) && ELEM(event->val, KM_PRESS, KM_RELEASE)) {
     /* if painting, end stroke */
     if (p->status == GP_STATUS_PAINTING) {
       int sketch = 0;
@@ -2634,7 +2634,7 @@ static int annotation_draw_modal(bContext *C, wmOperator *op, const wmEvent *eve
           /* turn on eraser */
           p->paintmode = GP_PAINTMODE_ERASER;
         }
-        else if (event->type == LEFTMOUSE) {
+        else { /* Any mouse button besides right. */
           /* restore drawmode to default */
           p->paintmode = eGPencil_PaintModes(RNA_enum_get(op->ptr, "mode"));
         }
