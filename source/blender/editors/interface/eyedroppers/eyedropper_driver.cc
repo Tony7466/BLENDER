@@ -25,7 +25,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_path.h"
+#include "RNA_path.hh"
 
 #include "UI_interface.hh"
 

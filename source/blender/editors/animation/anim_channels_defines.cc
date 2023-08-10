@@ -44,7 +44,7 @@
 #include "DNA_world_types.h"
 
 #include "RNA_access.hh"
-#include "RNA_path.h"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #include "BKE_anim_data.h"

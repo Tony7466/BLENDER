@@ -17,7 +17,7 @@
 #include <cfloat> /* FLT_MIN/MAX */
 #include <cstddef>
 
-#include "RNA_path.h"
+#include "RNA_path.hh"
 #include "RNA_types.h"
 
 #include "BLI_bitmap.h"

@@ -36,7 +36,7 @@ const EnumPropertyItem rna_enum_color_space_convert_default_items[] = {
 #ifdef RNA_RUNTIME
 
 #  include "RNA_access.hh"
-#  include "RNA_path.h"
+#  include "RNA_path.hh"
 
 #  include "DNA_image_types.h"
 #  include "DNA_material_types.h"

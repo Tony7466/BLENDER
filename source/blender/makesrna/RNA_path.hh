@@ -17,10 +17,6 @@
 
 #include "RNA_types.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct ListBase;
 struct IDProperty;
 
@@ -254,7 +250,3 @@ char *RNA_path_struct_property_py(PointerRNA *ptr, PropertyRNA *prop, int index)
  *   some_prop[10]
  */
 char *RNA_path_property_py(const PointerRNA *ptr, PropertyRNA *prop, int index);
-
-#ifdef __cplusplus
-}
-#endif

@@ -200,7 +200,7 @@ set(SRC_RNA_INC
   ../RNA_documentation.h
   ../RNA_enum_items.h
   ../RNA_enum_types.h
-  ../RNA_path.h
+  ../RNA_path.hh
   ../RNA_types.h
 )
 

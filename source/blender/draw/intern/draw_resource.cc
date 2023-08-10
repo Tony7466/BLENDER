@@ -8,7 +8,7 @@
 
 #include "DNA_particle_types.h"
 #include "RNA_access.hh"
-#include "RNA_path.h"
+#include "RNA_path.hh"
 #include "RNA_types.h"
 
 #include "draw_handle.hh"

@@ -23,7 +23,7 @@
 #include "DNA_anim_types.h"
 
 #include "RNA_access.hh"
-#include "RNA_path.h"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #include "ED_anim_api.hh"
