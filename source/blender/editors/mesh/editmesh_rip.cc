@@ -11,7 +11,8 @@
 #include "DNA_object_types.h"
 
 #include "BLI_array.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_context.h"
 #include "BKE_editmesh.h"
@@ -23,12 +24,12 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
-#include "ED_mesh.h"
-#include "ED_screen.h"
-#include "ED_transform.h"
-#include "ED_view3d.h"
+#include "ED_mesh.hh"
+#include "ED_screen.hh"
+#include "ED_transform.hh"
+#include "ED_view3d.hh"
 
 #include "bmesh.h"
 #include "bmesh_tools.h"

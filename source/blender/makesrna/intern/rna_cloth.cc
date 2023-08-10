@@ -17,15 +17,13 @@
 
 #include "rna_internal.h"
 
-#include "BLI_math.h"
-
 #include "BKE_cloth.h"
 #include "BKE_modifier.h"
 
 #include "SIM_mass_spring.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #ifdef RNA_RUNTIME
 

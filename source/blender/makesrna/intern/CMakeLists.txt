@@ -74,7 +74,7 @@ set(DEFSRC
   rna_sound.cc
   rna_space.cc
   rna_speaker.cc
-  rna_test.c
+  rna_test.cc
   rna_text.cc
   rna_texture.cc
   rna_timeline.cc
@@ -89,6 +89,13 @@ set(DEFSRC
   rna_world.cc
   rna_xr.cc
 )
+
+if(WITH_USD)
+  list(APPEND DEFSRC
+    rna_usd.cc
+  )
+  add_definitions(-DWITH_USD)
+endif()
 
 if(WITH_EXPERIMENTAL_FEATURES)
   add_definitions(-DWITH_SIMULATION_DATABLOCK)
@@ -229,6 +236,7 @@ set(INC
   ../../gpu
   ../../ikplugin
   ../../imbuf
+  ../../io/usd
   ../../modifiers
   ../../nodes
   ../../sequencer

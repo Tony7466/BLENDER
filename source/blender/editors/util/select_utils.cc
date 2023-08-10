@@ -7,9 +7,10 @@
  */
 
 #include <cfloat>
+#include <math.h>
+#include <string.h>
 
 #include "BLI_kdtree.h"
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -18,9 +19,9 @@
 
 #include "RNA_access.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
-#include "ED_select_utils.h"
+#include "ED_select_utils.hh"
 
 int ED_select_op_action(const eSelectOp sel_op, const bool is_select, const bool is_inside)
 {
