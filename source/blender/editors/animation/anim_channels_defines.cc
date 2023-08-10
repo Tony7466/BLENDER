@@ -3662,6 +3662,11 @@ static int acf_gplgroup_icon(bAnimListElem * /*ale*/)
   return ICON_FILE_FOLDER;
 }
 
+static void acf_gplgroup_color(bAnimContext * /*ac*/, bAnimListElem * /*ale*/, float r_color[3])
+{
+  UI_GetThemeColor3fv(TH_GROUP, r_color);
+}
+
 /* Name for grease pencil layer entries */
 static void acf_gplgroup_name(bAnimListElem *ale, char *name)
 {
@@ -3703,7 +3708,7 @@ static bAnimChannelType ACF_GPLGROUP = {
     /*channel_type_name*/ "Grease Pencil Layer Group",
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
-    /*get_backdrop_color*/ acf_gpd_color,
+    /*get_backdrop_color*/ acf_gplgroup_color,
     /*draw_backdrop*/ acf_group_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
     /*get_offset*/ acf_generic_group_offset,
