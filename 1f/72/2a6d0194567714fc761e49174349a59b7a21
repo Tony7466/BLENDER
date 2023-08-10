@@ -1,1 +1,1 @@
-Referenced by pull request #110585, Pass `ShaderFxData` pointer to grease pencil effect constructor
+Referenced by pull request #110585, Cleanup: Fix missed ShaderFx pointer to TreeElementGPencilEffect constructor
