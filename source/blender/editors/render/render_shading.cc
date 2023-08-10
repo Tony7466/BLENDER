@@ -67,7 +67,7 @@
 #ifdef WITH_FREESTYLE
 #  include "BKE_freestyle.h"
 #  include "FRS_freestyle.h"
-#  include "RNA_enum_types.h"
+#  include "RNA_enum_types.hh"
 #endif
 
 #include "RNA_access.hh"

@@ -19,7 +19,7 @@
 #include "DNA_windowmanager_types.h"
 #include "DNA_workspace_types.h"
 
-#include "RNA_enum_types.h" /* own include */
+#include "RNA_enum_types.hh" /* own include */
 
 #include "rna_internal.h" /* own include */
 

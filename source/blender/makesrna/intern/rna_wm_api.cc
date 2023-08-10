@@ -13,7 +13,7 @@
 #include "BLI_utildefines.h"
 
 #include "RNA_define.hh"
-#include "RNA_enum_types.h"
+#include "RNA_enum_types.hh"
 
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"

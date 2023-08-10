@@ -23,7 +23,7 @@
 #include "BLI_utildefines.h"
 
 #include "RNA_define.hh"
-#include "RNA_enum_types.h"
+#include "RNA_enum_types.hh"
 #include "RNA_types.hh"
 
 #include "rna_internal.h"
@@ -611,7 +611,7 @@ static bool rna_color_quantize(PropertyRNA *prop, PropertyDefRNA *dp)
 }
 
 /**
- * Return the identifier for an enum which is defined in "RNA_enum_items.h".
+ * Return the identifier for an enum which is defined in "RNA_enum_items.hh".
  *
  * Prevents expanding duplicate enums bloating the binary size.
  */
@@ -622,7 +622,7 @@ static const char *rna_enum_id_from_pointer(const EnumPropertyItem *item)
   if (item == id) { \
     return STRINGIFY(id); \
   }
-#include "RNA_enum_items.h"
+#include "RNA_enum_items.hh"
 #undef RNA_MAKESRNA
   return nullptr;
 }
@@ -4020,7 +4020,7 @@ static void rna_generate_property(FILE *f, StructRNA *srna, const char *nest, Pr
       int i, defaultfound = 0, totflag = 0;
 
       if (eprop->item) {
-        /* Inline the enum if this is not a defined in "RNA_enum_items.h". */
+        /* Inline the enum if this is not a defined in "RNA_enum_items.hh". */
         const char *item_global_id = rna_enum_id_from_pointer(eprop->item);
         if (item_global_id == nullptr) {
           fprintf(f,

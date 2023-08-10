@@ -24,7 +24,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_enum_types.h"
+#include "RNA_enum_types.hh"
 
 #include "bpy_capi_utils.h"
 #include "bpy_gizmo_wrap.h" /* own include */

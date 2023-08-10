@@ -32,7 +32,7 @@
 #include "wm_event_system.h"
 #include "wm_event_types.hh"
 
-#include "RNA_enum_types.h"
+#include "RNA_enum_types.hh"
 
 #include "DEG_depsgraph.h"
 

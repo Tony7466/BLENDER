@@ -46,7 +46,7 @@
 #include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
-#include "RNA_enum_types.h"
+#include "RNA_enum_types.hh"
 
 #define USE_SPLINE_FIT
 

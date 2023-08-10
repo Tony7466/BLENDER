@@ -23,7 +23,7 @@
 #include "DNA_scene_types.h"
 
 #include "RNA_define.hh"
-#include "RNA_enum_types.h"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 

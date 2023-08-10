@@ -30,7 +30,7 @@
 #include "bpy_rna.h" /* for setting argument properties & type method `get_rna_type`. */
 
 #include "RNA_access.hh"
-#include "RNA_enum_types.h"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"

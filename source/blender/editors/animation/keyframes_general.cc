@@ -31,7 +31,7 @@
 #include "BKE_scene.h"
 
 #include "RNA_access.hh"
-#include "RNA_enum_types.h"
+#include "RNA_enum_types.hh"
 #include "RNA_path.hh"
 
 #include "ED_anim_api.hh"
