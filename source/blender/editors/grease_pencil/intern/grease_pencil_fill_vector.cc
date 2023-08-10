@@ -9,7 +9,7 @@
 #include "DNA_brush_types.h"
 #include "DNA_meshdata_types.h"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_context.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_report.h"
@@ -21,24 +21,24 @@
 #include "DEG_depsgraph_query.h"
 
 #include "ED_curves.hh"
-#include "ED_grease_pencil.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_view3d.h"
+#include "ED_grease_pencil.hh"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_view3d.hh"
 
 #include "GPU_framebuffer.h"
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 /**
- * Explanation of the used algorithm for vector-based fill.
+ * Explanation of the used algorithm for vector-based fill:
  *
  *
  *     |                         (C)      segment 1       \ (D)
- *    -|-->>----------------------x--->>------------->>----\-
+ *    -|-->>----------------------x--->>------------->>----\---
  *     |                                                    \
  *     ^                          ^                          \  segment 2
  *     ^                          |                           \
@@ -51,40 +51,44 @@
  *     |                                       1                |
  *     |                                       |  (E)           |
  *     ^                                  2 ---|----------<<----|-
- *     ^               /\                      |
- *     |              /  \                   3 |
- *     |  (G)        /    \  (F)               |
- *     |  ----------/------\--------<<---------|-
- *                 /        \
- *
+ *     ^                   /\                  |
+ *     |       (G)        /  \               3 |
+ *     |    e0    e1     /    \  (F)           |
+ *   ..|....x-----x-----/------\---------<<----|-
+ *     |    r1         /        \
+ *     r2
  *
  * When the user clicks to fill an area, a ray (B) is casted from the mouse position (A)
  * to find a first intersection point with a curve (C).
  * From point (C) a 'walk-along-egde' search is carried out to find a fully closed fill edge.
  * The walk is in clockwise direction (C -->>--).
  * The edge is made up of segments. A segment is part of a curve and ends at an intersection
- * with an other curve (D) or at the end of the curve itself (F).
+ * with an other curve (D) or at the end of the curve itself (G).
  * At an intersection (D), the right turn will be inspected first. Because we are inspecting
  * the edge in clockwise direction, this garantuees us that we find the 'narrowest' edge. See
  * at (F), for example: by taking the right turn first, we find the smallest fill area (just as
  * we should).
  * At an intersection, there are three possible turns. When a turn is not leading to a closed edge
  * (see e.g. (E), turn 1 and 2), the next turn is inspected.
- * When a segment ends without intersection, the 'gap closure' inspection starts (G). In the
- * 'extend' mode, the extrapolated first/last two points of the curve are used to find
- * intersections with other curves (or curve extensions). In 'radius' mode, we search for other
- * curves within a radius of the outer point of the segment.
+ *
+ * When a segment ends without intersection, the 'gap closure' inspection starts (G). In 'extend'
+ * mode, the extrapolated first/last two points of the curve (e0 and e1) are used to find
+ * intersections with other curves (or curve extensions).
+ * In 'radius' mode, we search for other curve ends (r2) within a radius of the end point (r1)
+ * of the curve.
  *
  * When a closed edge is found, we have to check if the mouse click position (A) is inside this
- * edge. Because edges can be self-intersecting (and therefore closed). Or an edge can be a
- * 'boolean-cut', small closed area above the click position that we want to ignore (boolean fills
- * are not supported yet).
+ * edge. This is because edges can be self-intersecting and give a 'false-positive' close.
  *
  * All inspections are done with a 2D (viewport) representation of all curve points.
- * When a closed edge is found, the fill geometry is -of course- created with the real 3D
- * coordinates of the segment points.
- * At intersections we create one additional fill curve point, otherwise we only use existing
- * geometry points. That makes this algorithm 'vector-based'.
+ * When a closed edge is found, the fill geometry is created with the corresponding 3D
+ * coordinates of the segment points. That way we almost only use existing geometry points; at
+ * intersections we create one additional curve point, that's it.
+ *
+ * Finding intersections can be a bit troublesome when two curves overlap (sharing exact same
+ * segment points). This can easily occur when the fill tool is used before: the original stroke
+ * and the fill curve share geometry points. Therefore, priority is given to curve with only
+ * 'stroke' material over curves with 'fill' material.
  *
  * In the code:
  * #vector_fill_do()          start of the algorithm, casting a ray (B)
@@ -330,13 +334,14 @@ Vector<IntersectingSegment2D> get_intersections_of_segment_with_curves(
       const int point_last = point_offset + curves_2d->point_size[curve_i] - 1;
 
       /* Skip curves with identical (overlapping) segments, because they produce false-positive
-       * intersections. */
+       * intersections. Overlapping curves are most likely created by a previous fill operation. */
       bool skip_curve = false;
       for (const int point_i : IndexRange(point_offset, point_size)) {
         const int point_i_next = (point_i == point_last ? point_offset : point_i + 1);
         const float2 p0 = curves_2d->points_2d[point_i];
         const float2 p1 = curves_2d->points_2d[point_i_next];
 
+        /* Check for identical segments. */
         if ((adj_a == p0 && segment_a == p1) || (segment_a == p0 && segment_b == p1) ||
             (segment_b == p0 && adj_b == p1) || (adj_b == p0 && segment_b == p1) ||
             (segment_b == p0 && segment_a == p1) || (segment_a == p0 && adj_a == p1))
@@ -345,6 +350,7 @@ Vector<IntersectingSegment2D> get_intersections_of_segment_with_curves(
           break;
         }
 
+        /* Check for adjacent segments, exactly parallel to the current. */
         if (segment_a == p0 || segment_a == p1 || segment_b == p0 || segment_b == p1) {
           const float2 p_vec = p1 - p0;
           if (fabsf(cross_v2v2(p_vec, segment_vec) < FLT_EPSILON)) {
@@ -508,17 +514,9 @@ static void create_fill_geometry(VectorFillData *vf)
   MutableSpan<float3> positions = curves.positions_for_write();
   MutableSpan<float> radii = drawing.radii_for_write();
   MutableSpan<float> opacities = drawing.opacities_for_write();
-  bke::SpanAttributeWriter<ColorGeometry4f> vertex_colors =
-      attributes.lookup_or_add_for_write_span<ColorGeometry4f>(
-          "vertex_color",
-          ATTR_DOMAIN_POINT,
-          bke::AttributeInitVArray(
-              VArray<ColorGeometry4f>::ForSingle(ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f),
-                                                 attributes.domain_size(ATTR_DOMAIN_POINT))));
   positions.slice(new_points_range).copy_from(fill_points);
   radii.slice(new_points_range).fill(vf->brush->size);
   opacities.slice(new_points_range).fill(1.0f);
-  vertex_colors.finish();
 
   /* Make curve cyclic. */
   curves.cyclic_for_write().slice(new_curves_range).fill(true);
@@ -526,17 +524,60 @@ static void create_fill_geometry(VectorFillData *vf)
   /* Set curve_type attribute. */
   curves.fill_curve_types(new_curves_range, CURVE_TYPE_POLY);
 
-  /* TODO: Set active material index attribute. */
-  int material_index = 1;
+  /* Set vertex color for fill and stroke. */
+  const bool use_vertex_color = (vf->vc.scene->toolsettings->gp_paint->mode ==
+                                 GPPAINT_FLAG_USE_VERTEXCOLOR);
+  const bool use_vertex_color_stroke = use_vertex_color &&
+                                       ELEM(vf->brush->gpencil_settings->vertex_mode,
+                                            GPPAINT_MODE_STROKE,
+                                            GPPAINT_MODE_BOTH);
+  const bool use_vertex_color_fill = use_vertex_color &&
+                                     ELEM(vf->brush->gpencil_settings->vertex_mode,
+                                          GPPAINT_MODE_FILL,
+                                          GPPAINT_MODE_BOTH);
+  const ColorGeometry4f vertex_color_stroke = use_vertex_color_stroke ?
+                                                  ColorGeometry4f(
+                                                      vf->brush->rgb[0],
+                                                      vf->brush->rgb[1],
+                                                      vf->brush->rgb[2],
+                                                      vf->brush->gpencil_settings->vertex_factor) :
+                                                  ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f);
+  const ColorGeometry4f vertex_color_fill = use_vertex_color_fill ?
+                                                ColorGeometry4f(
+                                                    vf->brush->rgb[0],
+                                                    vf->brush->rgb[1],
+                                                    vf->brush->rgb[2],
+                                                    vf->brush->gpencil_settings->vertex_factor) :
+                                                ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f);
+
+  bke::SpanAttributeWriter<ColorGeometry4f> vertex_colors =
+      attributes.lookup_or_add_for_write_span<ColorGeometry4f>("vertex_color", ATTR_DOMAIN_POINT);
+  vertex_colors.span.slice(new_points_range).fill(vertex_color_stroke);
+  vertex_colors.finish();
+  bke::SpanAttributeWriter<ColorGeometry4f> fill_colors =
+      attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color", ATTR_DOMAIN_CURVE);
+  fill_colors.span.slice(new_curves_range).fill(vertex_color_fill);
+  fill_colors.finish();
+
+  /* Set material. */
+  Material *material = BKE_grease_pencil_object_material_ensure_from_active_input_brush(
+      vf->vc.bmain, vf->vc.obact, vf->brush);
+  const int material_index = BKE_grease_pencil_object_material_index_get(vf->vc.obact, material);
+
   bke::SpanAttributeWriter<int> materials = attributes.lookup_or_add_for_write_span<int>(
       "material_index", ATTR_DOMAIN_CURVE);
-
   materials.span.slice(new_curves_range).fill(material_index);
   materials.finish();
 
   /* Explicitly set all other attributes besides those processed above to default values. */
-  Set<std::string> attributes_to_skip{
-      {"position", "radius", "opacity", "vertex_color", "material_index", "curve_type", "cyclic"}};
+  Set<std::string> attributes_to_skip{{"position",
+                                       "radius",
+                                       "opacity",
+                                       "curve_type",
+                                       "cyclic",
+                                       "vertex_color",
+                                       "fill_color",
+                                       "material_index"}};
   attributes.for_all(
       [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData /*meta_data*/) {
         if (attributes_to_skip.contains(id.name())) {
@@ -887,7 +928,8 @@ static bool walk_along_curve(VectorFillData *vf, EdgeSegment *segment, const int
 
     /* When one or more intersections are found, we can stop walking along the curve. */
     if (!segment->segment_ends.is_empty()) {
-      /* Sort intersections on distance. This is important to find the shortest edge. */
+      /* Sort intersections on distance. This is important to find the narrowest edge.
+       * Give priority to curves without fill material. */
       std::sort(segment->segment_ends.begin(),
                 segment->segment_ends.end(),
                 [](const SegmentEnd &a, const SegmentEnd &b) {
@@ -962,7 +1004,7 @@ static bool walk_along_curve(VectorFillData *vf, EdgeSegment *segment, const int
 
     if (!segment->segment_ends.is_empty()) {
       /* Sort intersections on distance. We want to start with the smallest distance to find the
-       * shortest fill edge. */
+       * narrowest fill edge. */
       std::sort(segment->segment_ends.begin(),
                 segment->segment_ends.end(),
                 [](const SegmentEnd &a, const SegmentEnd &b) {
@@ -1317,7 +1359,9 @@ static bool vector_fill_do(VectorFillData *vf)
       continue;
     }
 
-    /* Sort starting segments on distance (closest first). */
+    /* Sort starting segments on distance (closest first). Give priority to curves with only a
+     * stroke material, to avoid interference with overlapping filled curves at exact the same
+     * position. */
     std::sort(vf->starting_segments.begin(),
               vf->starting_segments.end(),
               [](const IntersectingSegment2D &a, const IntersectingSegment2D &b) {

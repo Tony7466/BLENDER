@@ -17,8 +17,8 @@
 #include "DNA_material_types.h"
 
 #include "ED_curves.hh"
-#include "ED_grease_pencil.h"
-#include "ED_view3d.h"
+#include "ED_grease_pencil.hh"
+#include "ED_view3d.hh"
 
 namespace blender::ed::greasepencil {
 
