@@ -895,7 +895,8 @@ void GHOST_SystemWin32::processWintabEvent(GHOST_WindowWin32 *window)
          * event queue. */
         MSG msg;
         if (PeekMessage(&msg, window->getHWND(), message, message, PM_NOYIELD) &&
-            msg.message != WM_QUIT) {
+            msg.message != WM_QUIT)
+        {
 
           /* Test for Win32/Wintab button down match. */
           useWintabPos = wt->testCoordinates(msg.pt.x, msg.pt.y, info.x, info.y);
@@ -1054,6 +1055,9 @@ void GHOST_SystemWin32::processPointerEvent(
     }
   }
 }
+static int x_prev;
+static int y_prev;
+static bool wait_to_position = false;
 
 GHOST_EventCursor *GHOST_SystemWin32::processCursorEvent(GHOST_WindowWin32 *window,
                                                          const int32_t screen_co[2])
@@ -1066,87 +1070,110 @@ GHOST_EventCursor *GHOST_SystemWin32::processCursorEvent(GHOST_WindowWin32 *wind
   }
 
   int32_t x_screen = screen_co[0], y_screen = screen_co[1];
+  GHOST_Rect bounds;
+  GHOST_TAxisFlag bounds_axis = GHOST_kAxisNone;
   if (window->getCursorGrabModeIsWarp()) {
-    /* WORKAROUND:
-     * Sometimes Windows ignores `SetCursorPos()` or `SendInput()` calls or the mouse event is
-     * outdated. Identify these cases by checking if the cursor is not yet within bounds. */
-    static bool is_warping_x = false;
-    static bool is_warping_y = false;
-
-    int32_t x_new = x_screen;
-    int32_t y_new = y_screen;
-    int32_t x_accum, y_accum;
-
-    /* Warp within bounds. */
-    {
-      GHOST_Rect bounds;
-      int32_t bounds_margin = 0;
-      GHOST_TAxisFlag bounds_axis = GHOST_kAxisNone;
-
-      if (window->getCursorGrabMode() == GHOST_kGrabHide) {
-        window->getClientBounds(bounds);
-
-        /* WARNING(@ideasman42): The current warping logic fails to warp on every event,
-         * so the box needs to small enough not to let the cursor escape the window but large
-         * enough that the cursor isn't being warped every time.
-         * If this was not the case it would be less trouble to simply warp the cursor to the
-         * center of the screen on every motion, see: D16558 (alternative fix for #102346). */
-        const int32_t subregion_div = 4; /* One quarter of the region. */
-        const int32_t size[2] = {bounds.getWidth(), bounds.getHeight()};
-        const int32_t center[2] = {(bounds.m_l + bounds.m_r) / 2, (bounds.m_t + bounds.m_b) / 2};
-        /* Shrink the box to prevent the cursor escaping. */
-        bounds.m_l = center[0] - (size[0] / (subregion_div * 2));
-        bounds.m_r = center[0] + (size[0] / (subregion_div * 2));
-        bounds.m_t = center[1] - (size[1] / (subregion_div * 2));
-        bounds.m_b = center[1] + (size[1] / (subregion_div * 2));
-        bounds_margin = 0;
-        bounds_axis = GHOST_TAxisFlag(GHOST_kAxisX | GHOST_kAxisY);
-      }
-      else {
-        /* Fallback to window bounds. */
-        if (window->getCursorGrabBounds(bounds) == GHOST_kFailure) {
-          window->getClientBounds(bounds);
-        }
-        bounds_margin = 2;
-        bounds_axis = window->getCursorGrabAxis();
-      }
-
-      /* Could also clamp to screen bounds wrap with a window outside the view will
-       * fail at the moment. Use inset in case the window is at screen bounds. */
-      bounds.wrapPoint(x_new, y_new, bounds_margin, bounds_axis);
+    if (window->getCursorGrabMode() == GHOST_kGrabHide) {
+      window->getClientBounds(bounds);
+      bounds_axis = GHOST_TAxisFlag(GHOST_kAxisX | GHOST_kAxisY);
     }
+    else {
+      /* Fallback to window bounds. */
+      if (window->getCursorGrabBounds(bounds) == GHOST_kFailure) {
+        window->getClientBounds(bounds);
+      }
+      bounds_axis = window->getCursorGrabAxis();
+    }
+  }
+  if (bounds_axis != GHOST_kAxisNone) {
 
+    if (wait_to_position) {
+      /**
+       * The cursor should be clippet at `{[x_prev, x_prev+1), [y_prev, y_prev+1)}`.
+       * Wait until the current mouse position is updated.
+       */
+      if (!((x_prev == x_screen) && (y_prev == y_screen))) {
+        system->setCursorPosition(x_prev, y_prev);
+        return nullptr;
+      }
+    }
+    /**
+     * If the mouse is placed on the window border, other windows can register mouse events.
+     * #margin is used to avoid that.
+     */
+    constexpr int32_t margin = 1;
+    /* Set clip region, if a axis is no locked use `INT_MIN/INT_MAX` to make the screen clip the
+     * mouse movement. */
+    bounds.m_l = bounds_axis & GHOST_kAxisX ? bounds.m_l + margin : INT_MIN;
+    bounds.m_t = bounds_axis & GHOST_kAxisY ? bounds.m_t + margin : INT_MIN;
+    bounds.m_r = bounds_axis & GHOST_kAxisX ? bounds.m_r - margin : INT_MAX;
+    bounds.m_b = bounds_axis & GHOST_kAxisY ? bounds.m_b - margin : INT_MAX;
+    /* Set cursor clip rect. */
+    RECT rect{
+        LONG(bounds.m_l),
+        LONG(bounds.m_t),
+        LONG(bounds.m_r),
+        LONG(bounds.m_b),
+    };
+    ClipCursor(&rect);
+    /**
+     * Get the new position of the mouse in a expecific axis.
+     * If the mouse is in range return the current position
+     * If the mouse is on one edge the position will be translated to the oposite edge
+     * axis cliping seems to works `[min,max)`
+     */
+    auto new_position = [](const int32_t position, const int32_t min, const int32_t max) {
+      if (position == min) {
+        return max - 2;
+      }
+      else if (position == (max - 1)) {
+        return min + 1;
+      }
+      return position;
+    };
+
+    const int32_t x_new_position = new_position(x_screen, bounds.m_l, bounds.m_r);
+    const int32_t y_new_position = new_position(y_screen, bounds.m_t, bounds.m_b);
+
+    int32_t x_accum, y_accum;
     window->getCursorGrabAccum(x_accum, y_accum);
-    if (x_new != x_screen || y_new != y_screen) {
-      system->setCursorPosition(x_new, y_new); /* wrap */
+    x_accum -= x_prev - x_screen;
+    y_accum -= y_prev - y_screen;
+    window->setCursorGrabAccum(x_accum, y_accum);
 
-      /* Do not update the accum values if we are an outdated or failed pos-warp event. */
-      if (!is_warping_x) {
-        is_warping_x = x_new != x_screen;
-        if (is_warping_x) {
-          x_accum += (x_screen - x_new);
-        }
-      }
+    x_prev = x_new_position;
+    y_prev = y_new_position;
 
-      if (!is_warping_y) {
-        is_warping_y = y_new != y_screen;
-        if (is_warping_y) {
-          y_accum += (y_screen - y_new);
-        }
-      }
-      window->setCursorGrabAccum(x_accum, y_accum);
-
-      /* When wrapping we don't need to add an event because the setCursorPosition call will cause
-       * a new event after. */
+    if (x_new_position != x_screen || y_new_position != y_screen) {
+      /**
+       * Lock mouse position at new target location. #system->setCursorPosition set mouse at the
+       * target `(x,y)` position but next events can be outdated, or can have new movement from the
+       * target position, this is a hack to be able to recognize when the new position is applied.
+       */
+      rect = {
+          x_new_position,
+          y_new_position,
+          x_new_position + 1,
+          y_new_position + 1,
+      };
+      ClipCursor(&rect);
+      /* Setting new cursor position. */
+      wait_to_position = true;
+      system->setCursorPosition(x_new_position, y_new_position);
       return nullptr;
     }
 
-    is_warping_x = false;
-    is_warping_y = false;
+    window->getCursorGrabInitPos(x_screen, y_screen);
     x_screen += x_accum;
     y_screen += y_accum;
   }
-
+  else {
+    x_prev = x_screen;
+    y_prev = y_screen;
+    /* Free clip rectangle. */
+    ClipCursor(nullptr);
+  }
+  wait_to_position = false;
   return new GHOST_EventCursor(system->getMilliSeconds(),
                                GHOST_kEventCursorMove,
                                window,
@@ -1228,7 +1255,8 @@ GHOST_EventKey *GHOST_SystemWin32::processKeyEvent(GHOST_WindowWin32 *window, RA
       /* TODO: #ToUnicodeEx can respond with up to 4 utf16 chars (only 2 here).
        * Could be up to 24 utf8 bytes. */
       if ((r = ToUnicodeEx(
-               vk, raw.data.keyboard.MakeCode, state, utf16, 2, 0, system->m_keylayout))) {
+               vk, raw.data.keyboard.MakeCode, state, utf16, 2, 0, system->m_keylayout)))
+      {
         if ((r > 0 && r < 3)) {
           utf16[r] = 0;
           conv_utf_16_to_8(utf16, utf8_char, 6);
