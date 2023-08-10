@@ -467,6 +467,7 @@ void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float factor);
  */
 void blend_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float factor);
 bool decimate_fcurve(bAnimListElem *ale, float remove_ratio, float error_sq_max);
+bool blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float factor);
 
 /**
  * Blends the selected keyframes to the default value of the property the F-curve drives.
