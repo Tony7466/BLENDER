@@ -1057,6 +1057,12 @@ static void draw_fcurve_curve_keys(
   }
 
   const blender::float2 resolution_scale = calculate_resolution_scale(v2d);
+  const int window_width = BLI_rcti_size_x(&v2d->mask);
+  const float v2d_frame_range = BLI_rctf_size_x(&v2d->cur);
+  const float pixel_width = v2d_frame_range / window_width;
+  const float samples_per_pixel = 0.75f;
+  const float evaluation_step = pixel_width / samples_per_pixel;
+
   /* Draw curve between first and last keyframe (if there are enough to do so). */
   for (int i = bounding_indices[0] + 1; i <= bounding_indices[1]; i++) {
     BezTriple *prevbezt = &fcu->bezt[i - 1];
@@ -1084,12 +1090,6 @@ static void draw_fcurve_curve_keys(
 
       default: {
         /* In case there is no other way to get curve points, evaluate the FCurve. */
-        const int window_width = BLI_rcti_size_x(&v2d->mask);
-        const float v2d_frame_range = BLI_rctf_size_x(&v2d->cur);
-        const float pixel_width = v2d_frame_range / window_width;
-        const float samples_per_pixel = 0.75f;
-        const float evaluation_step = pixel_width / samples_per_pixel;
-
         float current_frame = prevbezt->vec[1][0];
         while (current_frame < bezt->vec[1][0]) {
           curve_vertices.append({current_frame, evaluate_fcurve(fcu, current_frame)});
