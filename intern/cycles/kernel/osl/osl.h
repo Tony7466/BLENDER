@@ -71,7 +71,7 @@ ccl_device void flatten_closure_tree(KernelGlobals kg,
   float3 weight_stack[16];
   ccl_private const OSLClosure *closure_stack[16];
   int layer_stack_level = -1;
-  float3 layer_albedo;
+  float3 layer_albedo = zero_float3();
 
   while (closure) {
     switch (closure->id) {
@@ -141,8 +141,18 @@ ccl_device void flatten_closure_tree(KernelGlobals kg,
         /* We just finished processing the top layers of a Layer closure, so adjust the weight to
          * account for the layering. */
         weight *= saturatef(1.0f - reduce_max(layer_albedo / weight));
-        /* TODO: Skip if weight zero */
         layer_stack_level = -1;
+        if (is_zero(weight)) {
+          /* If it's fully occluded, skip the base layer we just popped from the stack and grab
+           * the next entry instead. */
+          if (stack_size > 0) {
+            weight = weight_stack[--stack_size];
+            closure = closure_stack[stack_size];
+          }
+          else {
+            closure = nullptr;
+          }
+        }
       }
     }
     else {
