@@ -134,6 +134,11 @@ class EvaluateAtIndexInput final : public bke::GeometryFieldInput {
 
   GVArray get_varray_for_context(const bke::GeometryFieldContext &context,
                                  const IndexMask &mask) const final;
+  volume::GGrid get_volume_grid_for_context(const bke::GeometryFieldContext & /*context*/,
+                                            const volume::GGrid & /*mask*/) const final
+  {
+    return {};
+  }
 
   std::optional<eAttrDomain> preferred_domain(const GeometryComponent & /*component*/) const final
   {

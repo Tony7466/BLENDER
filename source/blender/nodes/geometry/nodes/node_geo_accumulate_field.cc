@@ -284,7 +284,7 @@ class AccumulateFieldInput final : public bke::GeometryFieldInput {
     return attributes.adapt_domain(std::move(g_output), source_domain_, context.domain());
   }
 
-  volume::GGrid get_volume_grid_for_context(const bke::GeometryFieldContext &context,
+  volume::GGrid get_volume_grid_for_context(const bke::GeometryFieldContext & /*context*/,
                                             const volume::GGrid & /*mask*/) const final
   {
     /* XXX Grids don't have a simple axis over which to accumulate. */

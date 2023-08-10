@@ -132,6 +132,12 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
     return VArray<int>::ForContainer(std::move(result));
   }
 
+  volume::GGrid get_volume_grid_for_context(const bke::GeometryFieldContext & /*context*/,
+                                            const volume::GGrid & /*mask*/) const final
+  {
+    return {};
+  }
+
  public:
   void for_each_field_input_recursive(FunctionRef<void(const FieldInput &)> fn) const
   {
@@ -199,6 +205,12 @@ class HasNeighborFieldInput final : public bke::GeometryFieldInput {
     Array<bool> result(mask.min_array_size());
     mask.foreach_index([&](const int i) { result[i] = counts.lookup(group_span[i]) > 1; });
     return VArray<bool>::ForContainer(std::move(result));
+  }
+
+  volume::GGrid get_volume_grid_for_context(const bke::GeometryFieldContext & /*context*/,
+                                            const volume::GGrid & /*mask*/) const final
+  {
+    return {};
   }
 
  public:

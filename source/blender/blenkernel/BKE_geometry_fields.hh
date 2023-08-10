@@ -171,8 +171,8 @@ class GeometryFieldInput : public fn::FieldInput {
   virtual volume::GGrid get_volume_grid_for_context(const fn::FieldContext &context,
                                                     const volume::GGrid &mask,
                                                     ResourceScope &scope) const override;
-  virtual volume::GGrid get_volume_grid_for_context(const GeometryFieldContext & /*context*/,
-                                                    const volume::GGrid & /*mask*/) const = 0;
+  virtual volume::GGrid get_volume_grid_for_context(const GeometryFieldContext &context,
+                                                    const volume::GGrid &mask) const = 0;
   virtual std::optional<eAttrDomain> preferred_domain(const GeometryComponent &component) const;
 };
 
@@ -334,6 +334,11 @@ class IDAttributeFieldInput : public GeometryFieldInput {
 
   GVArray get_varray_for_context(const GeometryFieldContext &context,
                                  const IndexMask &mask) const override;
+  volume::GGrid get_volume_grid_for_context(const GeometryFieldContext & /*context*/,
+                                            const volume::GGrid & /*mask*/) const override
+  {
+    return {};
+  }
 
   std::string socket_inspection_name() const override;
 

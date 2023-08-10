@@ -46,6 +46,11 @@ class ToolSelectionFieldInput final : public bke::GeometryFieldInput {
         return {};
     }
   }
+  volume::GGrid get_volume_grid_for_context(const bke::GeometryFieldContext & /*context*/,
+                                            const volume::GGrid & /*mask*/) const final
+  {
+    return {};
+  }
 };
 
 static void node_geo_exec(GeoNodeExecParams params)

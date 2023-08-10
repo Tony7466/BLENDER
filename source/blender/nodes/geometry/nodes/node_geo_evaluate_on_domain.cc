@@ -120,6 +120,12 @@ class EvaluateOnDomainInput final : public bke::GeometryFieldInput {
         GVArray::ForGArray(std::move(values)), src_domain_, context.domain());
   }
 
+  volume::GGrid get_volume_grid_for_context(const bke::GeometryFieldContext & /*context*/,
+                                            const volume::GGrid & /*mask*/) const final
+  {
+    return {};
+  }
+
   void for_each_field_input_recursive(FunctionRef<void(const FieldInput &)> fn) const override
   {
     src_field_.node().for_each_field_input_recursive(fn);

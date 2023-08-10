@@ -178,8 +178,7 @@ class GFieldRef : public GFieldBase<const FieldNode *> {
 
 namespace detail {
 /* Utility class to make #is_field_v work. */
-struct TypedFieldBase {
-};
+struct TypedFieldBase {};
 }  // namespace detail
 
 /**
@@ -700,6 +699,12 @@ class IndexFieldInput final : public FieldInput {
   GVArray get_varray_for_context(const FieldContext &context,
                                  const IndexMask &mask,
                                  ResourceScope &scope) const final;
+  volume::GGrid get_volume_grid_for_context(const FieldContext & /*context*/,
+                                            const volume::GGrid & /*mask*/,
+                                            ResourceScope & /*scope*/) const final
+  {
+    return {};
+  }
 
   uint64_t hash() const override;
   bool is_equal_to(const fn::FieldNode &other) const override;
