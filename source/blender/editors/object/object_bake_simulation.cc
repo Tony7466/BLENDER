@@ -2,7 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <random>
@@ -623,10 +622,8 @@ static int delete_baked_simulation_exec(bContext *C, wmOperator *op)
                   op->reports, RPT_ERROR, "Failed to remove bdata directory %s", bdata_dir);
             }
           }
-          if (std::filesystem::is_empty(absolute_bake_dir)) {
-            /* Folder is empty. Can be safely removed. */
-            BLI_delete(absolute_bake_dir, true, true);
-          }
+          /* Delete the folder if it's empty. */
+          BLI_delete(absolute_bake_dir, true, false);
         }
         else {
           BKE_reportf(op->reports, RPT_ERROR, "Bake directory %s not found", absolute_bake_dir);
