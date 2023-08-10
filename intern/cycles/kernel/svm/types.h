@@ -470,7 +470,7 @@ typedef enum ClosureType {
 } ClosureType;
 
 /* watch this, being lazy with memory usage */
-#define CLOSURE_IS_BSDF(type) (type <= CLOSURE_BSDF_TRANSPARENT_ID)
+#define CLOSURE_IS_BSDF(type) (type != CLOSURE_NONE_ID && type <= CLOSURE_BSDF_TRANSPARENT_ID)
 #define CLOSURE_IS_BSDF_DIFFUSE(type) \
   (type >= CLOSURE_BSDF_DIFFUSE_ID && type <= CLOSURE_BSDF_TRANSLUCENT_ID)
 #define CLOSURE_IS_BSDF_GLOSSY(type) \
@@ -490,7 +490,7 @@ typedef enum ClosureType {
     type <= CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID) || \
    (type >= CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID && \
     type <= CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID))
-#define CLOSURE_IS_BSDF_OR_BSSRDF(type) (type <= CLOSURE_BSSRDF_RANDOM_WALK_FIXED_RADIUS_ID)
+#define CLOSURE_IS_BSDF_OR_BSSRDF(type) (type != CLOSURE_NONE_ID && type <= CLOSURE_BSSRDF_RANDOM_WALK_FIXED_RADIUS_ID)
 #define CLOSURE_IS_BSSRDF(type) \
   (type >= CLOSURE_BSSRDF_BURLEY_ID && type <= CLOSURE_BSSRDF_RANDOM_WALK_FIXED_RADIUS_ID)
 #define CLOSURE_IS_VOLUME(type) \
