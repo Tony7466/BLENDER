@@ -8,7 +8,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -20,11 +19,11 @@
 #include "BKE_movieclip.h"
 #include "BKE_tracking.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_clip.h"
-#include "ED_screen.h"
+#include "ED_clip.hh"
+#include "ED_screen.hh"
 
 #include "RNA_access.h"
 #include "RNA_define.h"

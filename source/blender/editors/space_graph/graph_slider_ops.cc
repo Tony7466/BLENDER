@@ -18,7 +18,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_string.h"
 
 #include "DNA_anim_types.h"
@@ -31,16 +30,16 @@
 
 #include "BKE_context.h"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "ED_anim_api.h"
-#include "ED_keyframes_edit.h"
-#include "ED_numinput.h"
-#include "ED_screen.h"
-#include "ED_util.h"
+#include "ED_anim_api.hh"
+#include "ED_keyframes_edit.hh"
+#include "ED_numinput.hh"
+#include "ED_screen.hh"
+#include "ED_util.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "graph_intern.h"
 
@@ -151,13 +150,12 @@ static void store_original_bezt_arrays(tGraphSliderOp *gso)
 {
   ListBase anim_data = {nullptr, nullptr};
   bAnimContext *ac = &gso->ac;
-  bAnimListElem *ale;
 
   ANIM_animdata_filter(
       ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, eAnimCont_Types(ac->datatype));
 
   /* Loop through filtered data and copy the curves. */
-  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
 
     if (fcu->bezt == nullptr) {
@@ -407,14 +405,13 @@ enum tDecimModes {
 static void decimate_graph_keys(bAnimContext *ac, float factor, float error_sq_max)
 {
   ListBase anim_data = {nullptr, nullptr};
-  bAnimListElem *ale;
 
   /* Filter data. */
   ANIM_animdata_filter(
       ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, eAnimCont_Types(ac->datatype));
 
   /* Loop through filtered data and clean curves. */
-  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     if (!decimate_fcurve(ale, factor, error_sq_max)) {
       /* The selection contains unsupported keyframe types! */
       WM_report(RPT_WARNING, "Decimate: Skipping non linear/bezier keyframes!");
@@ -982,6 +979,97 @@ void GRAPH_OT_ease(wmOperatorType *ot)
                        FLT_MAX,
                        "Curve Bend",
                        "Control the bend of the curve",
+                       -1.0f,
+                       1.0f);
+}
+
+/* -------------------------------------------------------------------- */
+/** \name Blend Offset Operator
+ * \{ */
+
+static void blend_offset_graph_keys(bAnimContext *ac, const float factor)
+{
+  apply_fcu_segment_function(ac, factor, blend_offset_fcurve_segment);
+}
+
+static void blend_offset_draw_status_header(bContext *C, tGraphSliderOp *gso)
+{
+  common_draw_status_header(C, gso, "Blend Offset Keys");
+}
+
+static void blend_offset_modal_update(bContext *C, wmOperator *op)
+{
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
+
+  blend_offset_draw_status_header(C, gso);
+
+  /* Reset keyframes to the state at invoke. */
+  reset_bezts(gso);
+  const float factor = slider_factor_get_and_remember(op);
+  blend_offset_graph_keys(&gso->ac, factor);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+}
+
+static int blend_offset_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  const int invoke_result = graph_slider_invoke(C, op, event);
+
+  if (invoke_result == OPERATOR_CANCELLED) {
+    return invoke_result;
+  }
+
+  tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
+  gso->modal_update = blend_offset_modal_update;
+  gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
+  blend_offset_draw_status_header(C, gso);
+  ED_slider_factor_bounds_set(gso->slider, -1, 1);
+  ED_slider_factor_set(gso->slider, 0.0f);
+
+  return invoke_result;
+}
+
+static int blend_offset_exec(bContext *C, wmOperator *op)
+{
+  bAnimContext ac;
+
+  /* Get editor data. */
+  if (ANIM_animdata_get_context(C, &ac) == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
+  const float factor = RNA_float_get(op->ptr, "factor");
+
+  blend_offset_graph_keys(&ac, factor);
+
+  /* Set notifier that keyframes have changed. */
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+
+  return OPERATOR_FINISHED;
+}
+
+void GRAPH_OT_blend_offset(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Blend Offset Keyframes";
+  ot->idname = "GRAPH_OT_blend_offset";
+  ot->description = "Shift selected keys to the value of the neighboring keys as a block";
+
+  /* API callbacks. */
+  ot->invoke = blend_offset_invoke;
+  ot->modal = graph_slider_modal;
+  ot->exec = blend_offset_exec;
+  ot->poll = graphop_editable_keyframes_poll;
+
+  /* Flags. */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  RNA_def_float_factor(ot->srna,
+                       "factor",
+                       0.0f,
+                       -FLT_MAX,
+                       FLT_MAX,
+                       "Offset Factor",
+                       "Control which key to offset towards and how far",
                        -1.0f,
                        1.0f);
 }

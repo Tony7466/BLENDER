@@ -14,7 +14,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
@@ -34,9 +34,9 @@
 #include "RNA_enum_types.h"
 #include "RNA_path.h"
 
-#include "ED_anim_api.h"
-#include "ED_keyframes_edit.h"
-#include "ED_keyframing.h"
+#include "ED_anim_api.hh"
+#include "ED_keyframes_edit.hh"
+#include "ED_keyframing.hh"
 
 /* This file contains code for various keyframe-editing tools which are 'destructive'
  * (i.e. they will modify the order of the keyframes, and change the size of the array).
@@ -679,6 +679,31 @@ void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor
 
 /* ---------------- */
 
+void blend_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+{
+  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+
+  float y_delta;
+
+  if (factor > 0) {
+    const BezTriple segment_last_key = fcu->bezt[segment->start_index + segment->length - 1];
+    y_delta = right_key->vec[1][1] - segment_last_key.vec[1][1];
+  }
+  else {
+    const BezTriple segment_first_key = fcu->bezt[segment->start_index];
+    y_delta = left_key->vec[1][1] - segment_first_key.vec[1][1];
+  }
+
+  const float offset_value = y_delta * fabs(factor);
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+    const float key_y_value = fcu->bezt[i].vec[1][1] + offset_value;
+    BKE_fcurve_keyframe_move_value_with_handles(&fcu->bezt[i], key_y_value);
+  }
+}
+
+/* ---------------- */
+
 bool blend_to_infinity_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
 {
   const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
@@ -1147,14 +1172,13 @@ void ANIM_fcurves_copybuf_free()
 
 short copy_animedit_keys(bAnimContext *ac, ListBase *anim_data)
 {
-  bAnimListElem *ale;
   Scene *scene = ac->scene;
 
   /* clear buffer first */
   ANIM_fcurves_copybuf_free();
 
   /* assume that each of these is an F-Curve */
-  for (ale = static_cast<bAnimListElem *>(anim_data->first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
     tAnimCopybufItem *aci;
     BezTriple *bezt, *nbezt, *newbuf;
@@ -1682,7 +1706,7 @@ eKeyPasteError paste_animedit_keys(bAnimContext *ac,
     for (pass = 0; pass < 3; pass++) {
       uint totmatch = 0;
 
-      for (ale = static_cast<bAnimListElem *>(anim_data->first); ale; ale = ale->next) {
+      LISTBASE_FOREACH (bAnimListElem *, ale, anim_data) {
         /* Find buffer item to paste from:
          * - If names don't matter (i.e. only 1 channel in buffer), don't check id/group
          * - If names do matter, only check if id-type is ok for now

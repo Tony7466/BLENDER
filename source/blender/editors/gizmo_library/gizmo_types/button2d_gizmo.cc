@@ -16,7 +16,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_color.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector_types.hh"
 
 #include "BKE_context.h"
@@ -33,16 +34,16 @@
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_gizmo_library.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_gizmo_library.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
+#include "UI_resources.hh"
 
 /* own includes */
 #include "../gizmo_geometry.h"
