@@ -608,7 +608,7 @@ void USDMeshReader::copy_prim_array_to_blender_attribute(const Mesh *mesh,
         const IndexRange face = faces[i];
         for (int j : face.index_range()) {
           const int rev_index = face.last(j);
-          attribute[face.start()+j] = convert_value<USDT, BlenderT>(primvar_array[rev_index]);
+          attribute[face.start() + j] = convert_value<USDT, BlenderT>(primvar_array[rev_index]);
         }
       }
     }
