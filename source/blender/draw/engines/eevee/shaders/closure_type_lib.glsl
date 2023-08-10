@@ -71,9 +71,7 @@ Closure closure_eval(ClosureVolumeScatter volume_scatter,
                      ClosureVolumeAbsorption volume_absorption,
                      ClosureEmission emission);
 /* Specular BSDF. */
-Closure closure_eval(ClosureDiffuse diffuse,
-                     ClosureReflection reflection,
-                     ClosureReflection coat);
+Closure closure_eval(ClosureDiffuse diffuse, ClosureReflection reflection, ClosureReflection coat);
 /* Principled BSDF. */
 Closure closure_eval(ClosureDiffuse diffuse,
                      ClosureReflection reflection,

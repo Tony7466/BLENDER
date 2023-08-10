@@ -39,9 +39,7 @@ Closure closure_eval(ClosureDiffuse diffuse, ClosureReflection reflection)
 {
   return CLOSURE_DEFAULT;
 }
-Closure closure_eval(ClosureDiffuse diffuse,
-                     ClosureReflection reflection,
-                     ClosureReflection coat)
+Closure closure_eval(ClosureDiffuse diffuse, ClosureReflection reflection, ClosureReflection coat)
 {
   return CLOSURE_DEFAULT;
 }

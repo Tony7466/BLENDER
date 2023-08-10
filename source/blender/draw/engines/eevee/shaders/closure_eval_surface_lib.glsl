@@ -227,9 +227,7 @@ Closure closure_eval(ClosureDiffuse diffuse, ClosureReflection reflection)
 
 /* Specular BSDF */
 CLOSURE_EVAL_FUNCTION_DECLARE_3(SpecularBSDF, Diffuse, Glossy, Glossy)
-Closure closure_eval(ClosureDiffuse diffuse,
-                     ClosureReflection reflection,
-                     ClosureReflection coat)
+Closure closure_eval(ClosureDiffuse diffuse, ClosureReflection reflection, ClosureReflection coat)
 {
 #if defined(DO_SPLIT_CLOSURE_EVAL)
   Closure closure = closure_eval(diffuse);

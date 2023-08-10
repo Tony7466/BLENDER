@@ -100,13 +100,14 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
 
   if (CoatTint != color(1.0)) {
     float cosNI = dot(I, CoatNormal);
-    float cosNT = sqrt(1.0 - (1.0 / 1.5) * (1.0 / 1.5) * (1 - cosNI*cosNI));
+    float cosNT = sqrt(1.0 - (1.0 / 1.5) * (1.0 / 1.5) * (1 - cosNI * cosNI));
     BSDF *= pow(CoatTint, 1.0 / cosNT);
   }
 
   if (Coat > 1e-5) {
     float coat_r2 = CoatRoughness * CoatRoughness;
-    closure color CoatBSDF = dielectric_bsdf(CoatNormal, vector(0.0), color(1.0), color(0.0), coat_r2, coat_r2, 1.5, "ggx");
+    closure color CoatBSDF = dielectric_bsdf(
+        CoatNormal, vector(0.0), color(1.0), color(0.0), coat_r2, coat_r2, 1.5, "ggx");
     BSDF = layer(Coat * CoatBSDF, BSDF);
   }
 

@@ -69,8 +69,8 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
   switch (type) {
     case CLOSURE_BSDF_PRINCIPLED_ID: {
       uint specular_offset, roughness_offset, specular_tint_offset, anisotropic_offset,
-          sheen_offset, sheen_tint_offset, coat_offset, coat_roughness_offset,
-          eta_offset, transmission_offset, anisotropic_rotation_offset, coat_tint_offset;
+          sheen_offset, sheen_tint_offset, coat_offset, coat_roughness_offset, eta_offset,
+          transmission_offset, anisotropic_rotation_offset, coat_tint_offset;
       uint4 data_node2 = read_node(kg, &offset);
 
       float3 T = stack_load_float3(stack, data_node.y);
@@ -79,13 +79,13 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
                              &roughness_offset,
                              &specular_tint_offset,
                              &anisotropic_offset);
-      svm_unpack_node_uchar4(data_node.w,
-                             &sheen_offset,
-                             &sheen_tint_offset,
-                             &coat_offset,
-                             &coat_roughness_offset);
       svm_unpack_node_uchar4(
-          data_node2.x, &eta_offset, &transmission_offset, &anisotropic_rotation_offset, &coat_tint_offset);
+          data_node.w, &sheen_offset, &sheen_tint_offset, &coat_offset, &coat_roughness_offset);
+      svm_unpack_node_uchar4(data_node2.x,
+                             &eta_offset,
+                             &transmission_offset,
+                             &anisotropic_rotation_offset,
+                             &coat_tint_offset);
 
       // get Disney principled parameters
       float metallic = saturatef(param1);
@@ -119,9 +119,8 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
       // get the additional coat normal and subsurface scattering radius
       uint4 data_cn_ssr = read_node(kg, &offset);
-      float3 coat_normal = stack_valid(data_cn_ssr.x) ?
-                                    stack_load_float3(stack, data_cn_ssr.x) :
-                                    sd->N;
+      float3 coat_normal = stack_valid(data_cn_ssr.x) ? stack_load_float3(stack, data_cn_ssr.x) :
+                                                        sd->N;
       coat_normal = maybe_ensure_valid_specular_reflection(sd, coat_normal);
       float3 subsurface_radius = stack_valid(data_cn_ssr.y) ?
                                      stack_load_float3(stack, data_cn_ssr.y) :

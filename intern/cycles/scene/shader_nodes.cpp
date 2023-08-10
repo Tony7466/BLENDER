@@ -2825,8 +2825,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
       tangent_offset,
       compiler.encode_uchar4(
           specular_offset, roughness_offset, specular_tint_offset, anisotropic_offset),
-      compiler.encode_uchar4(
-          sheen_offset, sheen_tint_offset, coat_offset, coat_roughness_offset));
+      compiler.encode_uchar4(sheen_offset, sheen_tint_offset, coat_offset, coat_roughness_offset));
 
   compiler.add_node(
       compiler.encode_uchar4(

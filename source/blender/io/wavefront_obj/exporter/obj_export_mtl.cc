@@ -244,8 +244,7 @@ static void store_bsdf_properties(const bNode *bsdf_node,
   if (bsdf_node) {
     copy_property_from_node(SOCK_FLOAT, bsdf_node, "Sheen", {&sheen, 1});
     copy_property_from_node(SOCK_FLOAT, bsdf_node, "Coat", {&coat, 1});
-    copy_property_from_node(
-        SOCK_FLOAT, bsdf_node, "Coat Roughness", {&coat_roughness, 1});
+    copy_property_from_node(SOCK_FLOAT, bsdf_node, "Coat Roughness", {&coat_roughness, 1});
     copy_property_from_node(SOCK_FLOAT, bsdf_node, "Anisotropic", {&aniso, 1});
     copy_property_from_node(SOCK_FLOAT, bsdf_node, "Anisotropic Rotation", {&aniso_rot, 1});
     copy_property_from_node(SOCK_FLOAT, bsdf_node, "Transmission", {&transmission, 1});

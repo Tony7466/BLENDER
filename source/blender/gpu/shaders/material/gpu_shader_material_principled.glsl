@@ -32,6 +32,7 @@ void node_bsdf_principled(vec4 base_color,
                           vec4 sheen_tint,
                           float coat,
                           float coat_roughness,
+                          vec4 coat_tint,
                           float ior,
                           float transmission,
                           vec4 emission,
@@ -67,6 +68,12 @@ void node_bsdf_principled(vec4 base_color,
 
   vec3 base_color_tint = tint_from_color(base_color.rgb);
 
+  if (coat_tint.rgb != vec3(1.0)) {
+    float NV = dot(V, CN);
+    float NT = fast_sqrt(1.0 - (1.0 / (1.5*1.5)) * (1 - NV * NV));
+    coat_tint.rgb = pow(coat_tint.rgb, vec3(1.0 / NT));
+  }
+
   vec2 split_sum = brdf_lut(NV, roughness);
 
   ClosureTransparency transparency_data;
@@ -83,7 +90,7 @@ void node_bsdf_principled(vec4 base_color,
   /* Diffuse. */
   ClosureDiffuse diffuse_data;
   diffuse_data.weight = diffuse_weight * weight;
-  diffuse_data.color = mix(base_color.rgb, subsurface_color.rgb, subsurface);
+  diffuse_data.color = coat_tint.rgb * mix(base_color.rgb, subsurface_color.rgb, subsurface);
   /* Sheen Coarse approximation: We reuse the diffuse radiance and just scale it. */
   diffuse_data.color += sheen * sheen_tint.rgb * principled_sheen(NV, sheen_roughness);
   diffuse_data.N = N;
@@ -113,7 +120,7 @@ void node_bsdf_principled(vec4 base_color,
 
     vec3 reflection_brdf = (do_multiscatter != 0.0) ? F_brdf_multi_scatter(f0, f90, split_sum) :
                                                       F_brdf_single_scatter(f0, f90, split_sum);
-    reflection_data.color = reflection_brdf * specular_weight;
+    reflection_data.color = coat_tint.rgb * reflection_brdf * specular_weight;
   }
   if (true) {
     /* Poor approximation since we baked the LUT using a fixed IOR. */
@@ -124,7 +131,7 @@ void node_bsdf_principled(vec4 base_color,
                                                  F_brdf_single_scatter(f0, f90, split_sum);
 
     /* Avoid 3 glossy evaluation. Use the same closure for glass reflection. */
-    reflection_data.color += glass_brdf * glass_reflection_weight;
+    reflection_data.color += coat_tint.rgb * glass_brdf * glass_reflection_weight;
   }
 
   ClosureReflection coat_data;
@@ -143,7 +150,7 @@ void node_bsdf_principled(vec4 base_color,
   refraction_data.weight = glass_transmission_weight * weight;
   float btdf = (do_multiscatter != 0.0) ? 1.0 : btdf_lut(NV, roughness, ior).x;
 
-  refraction_data.color = base_color.rgb * btdf;
+  refraction_data.color = coat_tint.rgb * base_color.rgb * btdf;
   refraction_data.N = N;
   refraction_data.roughness = roughness;
   refraction_data.ior = ior;

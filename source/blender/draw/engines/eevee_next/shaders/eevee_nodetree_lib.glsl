@@ -183,9 +183,7 @@ Closure closure_eval(ClosureVolumeScatter volume_scatter,
 }
 
 /* Specular BSDF. */
-Closure closure_eval(ClosureDiffuse diffuse,
-                     ClosureReflection reflection,
-                     ClosureReflection coat)
+Closure closure_eval(ClosureDiffuse diffuse, ClosureReflection reflection, ClosureReflection coat)
 {
   SELECT_CLOSURE(g_diffuse_data, g_diffuse_rand, diffuse);
   SELECT_CLOSURE(g_reflection_data, g_reflection_rand, reflection);

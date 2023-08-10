@@ -299,8 +299,7 @@ static InputSpecMap &preview_surface_input_map()
       /* Note that for the Normal input set_default_value is false. */
       {"Normal", {usdtokens::normal, pxr::SdfValueTypeNames->Float3, false}},
       {"Coat", {usdtokens::coat, pxr::SdfValueTypeNames->Float, true}},
-      {"Coat Roughness",
-       {usdtokens::coatRoughness, pxr::SdfValueTypeNames->Float, true}},
+      {"Coat Roughness", {usdtokens::coatRoughness, pxr::SdfValueTypeNames->Float, true}},
   };
 
   return input_map;
