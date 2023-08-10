@@ -3480,9 +3480,9 @@ static bool acf_gpl_name_prop_legacy(bAnimListElem *ale, PointerRNA *r_ptr, Prop
 }
 
 /* check if some setting exists for this channel */
-static bool acf_gpl_setting_valid(bAnimContext * /*ac*/,
-                                  bAnimListElem * /*ale*/,
-                                  eAnimChannel_Settings setting)
+static bool acf_gpl_setting_valid_legacy(bAnimContext * /*ac*/,
+                                         bAnimListElem * /*ale*/,
+                                         eAnimChannel_Settings setting)
 {
   switch (setting) {
     /* unsupported */
@@ -3550,7 +3550,7 @@ static bAnimChannelType ACF_GPL_LEGACY = {
     /*name_prop*/ acf_gpl_name_prop_legacy,
     /*icon*/ nullptr,
 
-    /*has_setting*/ acf_gpl_setting_valid,
+    /*has_setting*/ acf_gpl_setting_valid_legacy,
     /*setting_flag*/ acf_gpl_setting_flag_legacy,
     /*setting_ptr*/ acf_gpl_setting_ptr_legacy,
 };
@@ -3567,7 +3567,9 @@ static void acf_gpl_name(bAnimListElem *ale, char *name)
   }
 }
 
-/* Name property for grease pencil layer entries. */
+/* Name property for grease pencil layer entries.
+ * Common for layers & layer groups.
+ */
 static bool acf_gpl_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA **r_prop)
 {
   if (ale->data == nullptr) {
@@ -3580,9 +3582,14 @@ static bool acf_gpl_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA
   return (*r_prop != nullptr);
 }
 
+/* Get the appropriate flag(s) for the setting when it is valid.
+ * Common for layers & layer groups.
+ */
 static int acf_gpl_setting_flag(bAnimContext * /*ac*/, eAnimChannel_Settings setting, bool *r_neg)
 {
+  /* Clear extra return data first. */
   *r_neg = false;
+
   switch (setting) {
     case ACHANNEL_SETTING_SELECT: /* Layer selected. */
       return GP_LAYER_TREE_NODE_SELECT;
@@ -3607,7 +3614,6 @@ static void *acf_gpl_setting_ptr(bAnimListElem *ale,
                                  short *r_type)
 {
   GreasePencilLayer *layer = (GreasePencilLayer *)ale->data;
-
   return GET_ACF_FLAG_PTR(layer->base.flag, r_type);
 }
 
@@ -3628,6 +3634,67 @@ static bAnimChannelType ACF_GPL = {
     /*has_setting*/ acf_gpl_setting_valid,
     /*setting_flag*/ acf_gpl_setting_flag,
     /*setting_ptr*/ acf_gpl_setting_ptr,
+};
+
+/* Grease Pencil Layer Group -------------------------------- */
+
+static int acf_gplgroup_icon(bAnimListElem * /*ale*/)
+{
+  return ICON_FILE_FOLDER;
+}
+
+/* Name for grease pencil layer entries */
+static void acf_gplgroup_name(bAnimListElem *ale, char *name)
+{
+  GreasePencilLayerTreeGroup *layer_group = static_cast<GreasePencilLayerTreeGroup *>(ale->data);
+
+  if (layer_group && name) {
+    BLI_strncpy(name, layer_group->wrap().name().c_str(), ANIM_CHAN_NAME_SIZE);
+  }
+}
+
+/* Get pointer to the setting. */
+static void *acf_gplgroup_setting_ptr(bAnimListElem *ale,
+                                      eAnimChannel_Settings /*setting*/,
+                                      short *r_type)
+{
+  GreasePencilLayerTreeGroup *layer_group = static_cast<GreasePencilLayerTreeGroup *>(ale->data);
+  return GET_ACF_FLAG_PTR(layer_group->base.flag, r_type);
+}
+
+/* Check if some setting exists for this channel. */
+static bool acf_gplgroup_setting_valid(bAnimContext * /*ac*/,
+                                       bAnimListElem * /*ale*/,
+                                       eAnimChannel_Settings setting)
+{
+  switch (setting) {
+    /* Only select and expand supported. */
+    case ACHANNEL_SETTING_SELECT:
+    case ACHANNEL_SETTING_EXPAND:
+      return true;
+
+    default:
+      return false;
+  }
+}
+
+/** Grease-pencil layer type define. */
+static bAnimChannelType ACF_GPLGROUP = {
+    /*channel_type_name*/ "Grease Pencil Layer Group",
+    /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
+
+    /*get_backdrop_color*/ acf_gpd_color,
+    /*draw_backdrop*/ acf_group_backdrop,
+    /*get_indent_level*/ acf_generic_indentation_0,
+    /*get_offset*/ acf_generic_group_offset,
+
+    /*name*/ acf_gplgroup_name,
+    /*name_prop*/ acf_gpl_name_prop,
+    /*icon*/ acf_gplgroup_icon,
+
+    /*has_setting*/ acf_gplgroup_setting_valid,
+    /*setting_flag*/ acf_gpl_setting_flag,
+    /*setting_ptr*/ acf_gplgroup_setting_ptr,
 };
 
 /* Mask Datablock ------------------------------------------- */
@@ -4191,8 +4258,9 @@ static void ANIM_init_channel_typeinfo_data()
     animchannelTypeInfo[type++] = &ACF_GPD_LEGACY; /* Grease Pencil Datablock (Legacy) */
     animchannelTypeInfo[type++] = &ACF_GPL_LEGACY; /* Grease Pencil Layer (Legacy) */
 
-    animchannelTypeInfo[type++] = &ACF_GPD; /* Grease Pencil Datablock */
-    animchannelTypeInfo[type++] = &ACF_GPL; /* Grease Pencil Layer */
+    animchannelTypeInfo[type++] = &ACF_GPD;      /* Grease Pencil Datablock. */
+    animchannelTypeInfo[type++] = &ACF_GPLGROUP; /* Grease Pencil Layer Group. */
+    animchannelTypeInfo[type++] = &ACF_GPL;      /* Grease Pencil Layer. */
 
     animchannelTypeInfo[type++] = &ACF_MASKDATA;  /* Mask Datablock */
     animchannelTypeInfo[type++] = &ACF_MASKLAYER; /* Mask Layer */
