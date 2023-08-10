@@ -2233,14 +2233,33 @@ static int vertex_color_set_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   Object *obact = CTX_data_active_object(C);
 
-  ColorPaint4f paintcol = vpaint_get_current_col(scene, scene->toolsettings->vpaint, false);
-
-  const bool affect_alpha = RNA_boolean_get(op->ptr, "affect_alpha");
-  if (paint_object_attributes_active_color_fill_ex(obact, paintcol, true, affect_alpha)) {
-    WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, obact);
-    return OPERATOR_FINISHED;
+  if (!BKE_mesh_from_object(obact)) {
+    return OPERATOR_CANCELLED;
   }
-  return OPERATOR_CANCELLED;
+
+  ColorPaint4f paintcol = vpaint_get_current_col(scene, scene->toolsettings->vpaint, false);
+  const bool affect_alpha = RNA_boolean_get(op->ptr, "affect_alpha");
+
+  /* Ensure valid sculpt state. */
+  BKE_sculpt_update_object_for_edit(
+      CTX_data_ensure_evaluated_depsgraph(C), obact, true, false, true);
+
+  SCULPT_undo_push_begin(obact, op);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(
+      obact->sculpt->pbvh, nullptr, nullptr);
+  for (PBVHNode *node : nodes) {
+    SCULPT_undo_push_node(obact, node, SCULPT_UNDO_COLOR);
+  }
+
+  paint_object_attributes_active_color_fill_ex(obact, paintcol, true, affect_alpha);
+
+  for (PBVHNode *node : nodes) {
+    BKE_pbvh_node_mark_update_color(node);
+  }
+  SCULPT_undo_push_end(obact);
+
+  WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, obact);
+  return OPERATOR_FINISHED;
 }
 
 void PAINT_OT_vertex_color_set(wmOperatorType *ot)
