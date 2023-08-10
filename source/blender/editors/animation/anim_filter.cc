@@ -1785,13 +1785,6 @@ static size_t animdata_filter_grease_pencil_layer(ListBase *anim_data,
     return items;
   }
 
-  /* Skip layer if the name doesn't match the filter string. */
-  if (ads != nullptr && ads->searchstr[0] != '\0' &&
-      name_matches_dopesheet_filter(ads, layer.name().c_str()) == false)
-  {
-    return items;
-  }
-
   /* Skip empty layers. */
   if (layer.is_empty()) {
     return items;
@@ -1814,7 +1807,12 @@ static size_t animdata_filter_grease_pencil_layer_node_recursive(
   using namespace blender::bke::greasepencil;
   size_t items = 0;
 
-  if (node.is_layer()) {
+  /* Skip node if the name doesn't match the filter string. */
+  const bool name_matches = name_matches_dopesheet_filter(ads, node.name);
+  const bool name_search = (ads->searchstr[0] != '\0');
+  const bool skip_node = name_search && !name_matches;
+
+  if (node.is_layer() && !skip_node) {
     items += animdata_filter_grease_pencil_layer(
         anim_data, ads, grease_pencil, node.as_layer_for_write(), filter_mode);
   }
@@ -1833,12 +1831,12 @@ static size_t animdata_filter_grease_pencil_layer_node_recursive(
     }
     END_ANIMFILTER_SUBCHANNELS;
 
-    if (tmp_items == 0) {
+    if ((tmp_items == 0) && !name_search) {
       /* If no sub-channels, return early. */
       return items;
     }
 
-    if (filter_mode & ANIMFILTER_LIST_CHANNELS) {
+    if ((filter_mode & ANIMFILTER_LIST_CHANNELS) && !skip_node) {
       /* Add data block container (if for drawing, and it contains sub-channels). */
       ANIMCHANNEL_NEW_CHANNEL(
           static_cast<void *>(&node), ANIMTYPE_GREASE_PENCIL_LAYER_GROUP, grease_pencil, nullptr);
