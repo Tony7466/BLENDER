@@ -1751,6 +1751,50 @@ static size_t animdata_filter_shapekey(bAnimContext *ac,
 }
 
 /* Helper for Grease Pencil - layers within a data-block. */
+
+static size_t animdata_filter_grease_pencil_layer(ListBase *anim_data,
+                                                  bDopeSheet *ads,
+                                                  GreasePencil *grease_pencil,
+                                                  blender::bke::greasepencil::Layer *layer,
+                                                  int filter_mode)
+{
+
+  size_t items = 0;
+
+  /* Only if the layer is selected. */
+  if (!ANIMCHANNEL_SELOK(layer->is_selected())) {
+    return items;
+  }
+
+  /* Only if the layer is editable. */
+  if ((filter_mode & ANIMFILTER_FOREDIT) && !layer->is_editable()) {
+    return items;
+  }
+
+  /* Only if the layer is active. */
+  if ((filter_mode & ANIMFILTER_ACTIVE) && grease_pencil->is_layer_active(layer)) {
+    return items;
+  }
+
+  /* Skip layer if the name doesn't match the filter string. */
+  if (ads != nullptr && ads->searchstr[0] != '\0' &&
+      name_matches_dopesheet_filter(ads, layer->name().c_str()) == false)
+  {
+    return items;
+  }
+
+  /* Skip empty layers. */
+  if (layer->is_empty()) {
+    return items;
+  }
+
+  /* Add layer channel. */
+  ANIMCHANNEL_NEW_CHANNEL(
+      static_cast<void *>(layer), ANIMTYPE_GREASE_PENCIL_LAYER, grease_pencil, nullptr);
+
+  return items;
+}
+
 static size_t animdata_filter_grease_pencil_layers_data(ListBase *anim_data,
                                                         bDopeSheet *ads,
                                                         GreasePencil *grease_pencil,
@@ -1764,37 +1808,8 @@ static size_t animdata_filter_grease_pencil_layers_data(ListBase *anim_data,
   /* Loop on layer channels in reverse order to preserve the drawing order. */
   for (int64_t layer_index = layers.size() - 1; layer_index >= 0; layer_index--) {
     Layer *layer = layers[layer_index];
-
-    /* Only if the layer is selected. */
-    if (!ANIMCHANNEL_SELOK(layer->is_selected())) {
-      continue;
-    }
-
-    /* Only if the layer is editable. */
-    if ((filter_mode & ANIMFILTER_FOREDIT) && !layer->is_editable()) {
-      continue;
-    }
-
-    /* Only if the layer is active. */
-    if ((filter_mode & ANIMFILTER_ACTIVE) && grease_pencil->is_layer_active(layer)) {
-      continue;
-    }
-
-    /* Skip layer if the name doesn't match the filter string. */
-    if (ads != nullptr && ads->searchstr[0] != '\0' &&
-        name_matches_dopesheet_filter(ads, layer->name().c_str()) == false)
-    {
-      continue;
-    }
-
-    /* Skip empty layers. */
-    if (layer->is_empty()) {
-      continue;
-    }
-
-    /* Add layer channel. */
-    ANIMCHANNEL_NEW_CHANNEL(
-        static_cast<void *>(layer), ANIMTYPE_GREASE_PENCIL_LAYER, grease_pencil, nullptr);
+    items += animdata_filter_grease_pencil_layer(
+        anim_data, ads, grease_pencil, layer, filter_mode);
   }
   return items;
 }
