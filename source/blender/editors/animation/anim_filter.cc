@@ -1808,9 +1808,8 @@ static size_t animdata_filter_grease_pencil_layer_node_recursive(
   size_t items = 0;
 
   /* Skip node if the name doesn't match the filter string. */
-  const bool name_matches = name_matches_dopesheet_filter(ads, node.name);
   const bool name_search = (ads->searchstr[0] != '\0');
-  const bool skip_node = name_search && !name_matches;
+  const bool skip_node = name_search && !name_matches_dopesheet_filter(ads, node.name);
 
   if (node.is_layer() && !skip_node) {
     items += animdata_filter_grease_pencil_layer(
@@ -1832,7 +1831,9 @@ static size_t animdata_filter_grease_pencil_layer_node_recursive(
     END_ANIMFILTER_SUBCHANNELS;
 
     if ((tmp_items == 0) && !name_search) {
-      /* If no sub-channels, return early. */
+      /* If no sub-channels, return early.
+       * Except if the search by name is on, because we might want to display the layer group alone
+       * in that case. */
       return items;
     }
 
