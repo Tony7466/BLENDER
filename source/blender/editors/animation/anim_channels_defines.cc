@@ -3687,9 +3687,10 @@ static bool acf_gplgroup_setting_valid(bAnimContext * /*ac*/,
                                        eAnimChannel_Settings setting)
 {
   switch (setting) {
-    /* Only select and expand supported. */
     case ACHANNEL_SETTING_SELECT:
     case ACHANNEL_SETTING_EXPAND:
+    case ACHANNEL_SETTING_PROTECT:
+    case ACHANNEL_SETTING_VISIBLE:
       return true;
 
     default:
@@ -4630,7 +4631,11 @@ void ANIM_channel_draw(
     if (ELEM(ac->spacetype, SPACE_ACTION, SPACE_GRAPH) &&
         (acf->has_setting(ac, ale, ACHANNEL_SETTING_VISIBLE) ||
          acf->has_setting(ac, ale, ACHANNEL_SETTING_ALWAYS_VISIBLE)) &&
-        !ELEM(ale->type, ANIMTYPE_GPLAYER, ANIMTYPE_DSGPENCIL, ANIMTYPE_GREASE_PENCIL_LAYER))
+        !ELEM(ale->type,
+              ANIMTYPE_GPLAYER,
+              ANIMTYPE_DSGPENCIL,
+              ANIMTYPE_GREASE_PENCIL_LAYER,
+              ANIMTYPE_GREASE_PENCIL_LAYER_GROUP))
     {
       /* for F-Curves, draw color-preview of curve left to the visibility icon */
       if (ELEM(ale->type, ANIMTYPE_FCURVE, ANIMTYPE_NLACURVE)) {
@@ -4777,7 +4782,11 @@ void ANIM_channel_draw(
       }
 
       /* grease pencil visibility... */
-      if (ELEM(ale->type, ANIMTYPE_GPLAYER, ANIMTYPE_GREASE_PENCIL_LAYER)) {
+      if (ELEM(ale->type,
+               ANIMTYPE_GPLAYER,
+               ANIMTYPE_GREASE_PENCIL_LAYER,
+               ANIMTYPE_GREASE_PENCIL_LAYER_GROUP))
+      {
         offset += ICON_WIDTH;
       }
 
@@ -4812,7 +4821,8 @@ void ANIM_channel_draw(
                                ANIMTYPE_NLACURVE,
                                ANIMTYPE_SHAPEKEY,
                                ANIMTYPE_GPLAYER,
-                               ANIMTYPE_GREASE_PENCIL_LAYER))
+                               ANIMTYPE_GREASE_PENCIL_LAYER,
+                               ANIMTYPE_GREASE_PENCIL_LAYER_GROUP))
     {
       /* adjust offset */
       offset += SLIDER_WIDTH;
@@ -4857,7 +4867,7 @@ static void achannel_setting_flush_widget_cb(bContext *C, void *ale_npoin, void 
   if (!ale_setting) {
     return;
   }
-  if (ale_setting->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
+  if (ELEM(ale_setting->type, ANIMTYPE_GREASE_PENCIL_LAYER, ANIMTYPE_GREASE_PENCIL_LAYER_GROUP)) {
     WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
   }
 
@@ -5467,7 +5477,10 @@ void ANIM_channel_draw_widgets(const bContext *C,
     if (ELEM(ac->spacetype, SPACE_ACTION, SPACE_GRAPH) &&
         (acf->has_setting(ac, ale, ACHANNEL_SETTING_VISIBLE) ||
          acf->has_setting(ac, ale, ACHANNEL_SETTING_ALWAYS_VISIBLE)) &&
-        !ELEM(ale->type, ANIMTYPE_GPLAYER, ANIMTYPE_GREASE_PENCIL_LAYER))
+        !ELEM(ale->type,
+              ANIMTYPE_GPLAYER,
+              ANIMTYPE_GREASE_PENCIL_LAYER,
+              ANIMTYPE_GREASE_PENCIL_LAYER_GROUP))
     {
       /* Pin toggle. */
       if (acf->has_setting(ac, ale, ACHANNEL_SETTING_ALWAYS_VISIBLE)) {
@@ -5582,7 +5595,11 @@ void ANIM_channel_draw_widgets(const bContext *C,
         offset -= ICON_WIDTH;
         draw_setting_widget(ac, ale, acf, block, offset, ymid, ACHANNEL_SETTING_MUTE);
       }
-      if (ELEM(ale->type, ANIMTYPE_GPLAYER, ANIMTYPE_GREASE_PENCIL_LAYER)) {
+      if (ELEM(ale->type,
+               ANIMTYPE_GPLAYER,
+               ANIMTYPE_GREASE_PENCIL_LAYER,
+               ANIMTYPE_GREASE_PENCIL_LAYER_GROUP))
+      {
         /* Not technically "mute"
          * (in terms of anim channels, but this sets layer visibility instead). */
         offset -= ICON_WIDTH;
@@ -5648,7 +5665,8 @@ void ANIM_channel_draw_widgets(const bContext *C,
                                 ANIMTYPE_NLACURVE,
                                 ANIMTYPE_SHAPEKEY,
                                 ANIMTYPE_GPLAYER,
-                                ANIMTYPE_GREASE_PENCIL_LAYER)) ||
+                                ANIMTYPE_GREASE_PENCIL_LAYER,
+                                ANIMTYPE_GREASE_PENCIL_LAYER_GROUP)) ||
         ale->type == ANIMTYPE_SHAPEKEY)
     {
       /* adjust offset */
