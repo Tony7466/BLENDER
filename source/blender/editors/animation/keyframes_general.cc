@@ -718,7 +718,6 @@ void blend_to_ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const flo
   const float width = 2.0;
   const float height = 2.0;
   float xy_shift;
-  float y_delta;
 
   /* Shifting the x and y values we can decide what side of the "S" shape to use. */
   if (factor > 0) {
@@ -734,6 +733,7 @@ void blend_to_ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const flo
     const float ease = s_curve(x, slope, width, height, xy_shift, xy_shift);
     const float base = left_key->vec[1][1] + key_y_range * ease;
 
+    float y_delta;
     if (factor > 0) {
       y_delta = base - fcu->bezt[i].vec[1][1];
     }
