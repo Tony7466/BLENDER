@@ -1714,6 +1714,10 @@ static void actkeys_mselect_single(bAnimContext *ac,
         static_cast<GreasePencilLayer *>(ale->data)->wrap(), selx, select_mode);
     ale->update |= ANIM_UPDATE_DEPS;
   }
+  else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER_GROUP) {
+    blender::ed::greasepencil::select_frames_at(
+        static_cast<GreasePencilLayerTreeGroup *>(ale->data)->wrap(), selx, select_mode);
+  }
   else if (ale->type == ANIMTYPE_GREASE_PENCIL_DATABLOCK) {
     ListBase anim_data = {nullptr, nullptr};
     eAnimFilter_Flags filter;
