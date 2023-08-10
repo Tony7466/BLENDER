@@ -155,10 +155,14 @@ struct ViewOpsData {
 
   /** Current state. */
   struct {
-    /** Working copy of #RegionView3D.viewquat, needed for rotation calculation
-     * so we can apply snap to the 3D Viewport while keeping the unsnapped rotation
-     * here to use when snap is disabled and for continued calculation. */
-    float viewquat[4];
+    union {
+      /** Working copy of #RegionView3D.viewquat, needed for rotation calculation
+       * so we can apply snap to the 3D Viewport while keeping the unsnapped rotation
+       * here to use when snap is disabled and for continued calculation. */
+      float viewquat[4];
+      /** Total distance for continuous zoom */
+      float total_dist;
+    };
   } curr;
 
   const ViewOpsType *nav_type;

@@ -101,7 +101,6 @@ static void viewzoom_apply(ViewOpsData *vod, const int move_xy[2],
     else {
       scale = 1.0f + float(sgn * move_xy[1]) / UI_SCALE_FAC / 300.0f;
     }
-    
     ED_view3d_camera_view_zoom_scale(vod->rv3d, scale);
   }
   else {
@@ -119,7 +118,7 @@ static void viewzoom_apply(ViewOpsData *vod, const int move_xy[2],
         delta = float(sgn * move_xy[1]) / UI_SCALE_FAC / 130.0f;
       }
       delta *= move_t * vod->init.dist;
-      delta = vod->init.zfac += delta;
+      delta = vod->curr.total_dist += delta;
     }
     else if (zoomstyle == USER_ZOOM_SCALE) {
       /* method which zooms based on how far you move the mouse */
@@ -131,12 +130,12 @@ static void viewzoom_apply(ViewOpsData *vod, const int move_xy[2],
       ctr_xy[1] = BLI_rcti_cent_y(&vod->region->winrct);
       
       /* initial radius */
-      radii[0] = max_ff(len_v2v2_int(vod->init.event_xy, ctr_xy), 2.0f);
+      radii[0] = max_ff(len_v2v2_int(vod->init.event_xy, ctr_xy), 1.0f);
       
       delta_xy[0] = float(vod->init.event_xy[0] - ctr_xy[0] + move_xy[0]);
       delta_xy[1] = float(vod->init.event_xy[1] - ctr_xy[1] + move_xy[1]);
       /* current radius */
-      radii[1] = max_ff(len_v2(delta_xy), 2.0f);
+      radii[1] = max_ff(len_v2(delta_xy), 1.0f);
       
       delta = (radii[1] / radii[0] - 1.0f) * vod->init.dist * 2.0f;
     }
@@ -222,7 +221,7 @@ static int viewzoom_apply_step(bContext *C, PointerRNA *ptr, ViewOpsData *vod, c
 
   const int delta = RNA_int_get(ptr, "delta");
 
-  /* execution always based on input device event */
+  /* execution is always based on input device event */
   area = vod->area;
   region = vod->region;
   v3d = static_cast<View3D *>(area->spacedata.first);
@@ -356,10 +355,9 @@ static int viewzoom_invoke_impl(bContext *C,
     vod->timer = WM_event_timer_add(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.01f);
   }
   
-  vod->init.event_xy_offset[0] = zoomctr_xy[0];
-  vod->init.event_xy_offset[1] = zoomctr_xy[1];
-  vod->init.zfac = 0.0f;
+  copy_v2_v2_int(vod->init.event_xy_offset, zoomctr_xy);
   copy_v2_v2_int(vod->prev.event_xy, event->xy);
+  vod->curr.total_dist = 0.0f;
 
   return OPERATOR_RUNNING_MODAL;
 }

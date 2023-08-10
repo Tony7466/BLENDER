@@ -249,8 +249,6 @@ static int viewdolly_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   op->customdata = vod;
   
   ED_view3d_smooth_view_force_finish(C, vod->v3d, vod->region);
-  
-  /* needs to run before 'viewops_data_create' so the backup 'rv3d->ofs' is correct */
   /* switch from camera view when: */
   if (vod->rv3d->persp != RV3D_PERSP) {
     if (vod->rv3d->persp == RV3D_CAMOB) {
@@ -261,7 +259,6 @@ static int viewdolly_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     else {
       vod->rv3d->persp = RV3D_PERSP;
     }
-    
     ED_region_tag_redraw(vod->region);
   }
 
