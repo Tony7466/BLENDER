@@ -9,7 +9,6 @@
 #include "BLI_utildefines.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 
 #include "BLT_translation.h"
 
@@ -29,8 +28,8 @@
 #include "BKE_screen.h"
 #include "BKE_texture.h" /* Texture masking. */
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "RNA_access.h"
 #include "RNA_prototypes.h"

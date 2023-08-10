@@ -6,9 +6,8 @@
  * \ingroup modifiers
  */
 
+#include "BLI_math_matrix.h"
 #include "BLI_utildefines.h"
-
-#include "BLI_math.h"
 
 #include "BLT_translation.h"
 
@@ -24,7 +23,7 @@
 
 #include "MOD_modifiertypes.hh"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 static void deform_verts(ModifierData * /*md*/,
                          const ModifierEvalContext *ctx,

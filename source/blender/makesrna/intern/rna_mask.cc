@@ -16,6 +16,8 @@
 #include "DNA_object_types.h" /* SELECT */
 #include "DNA_scene_types.h"
 
+#include "BLI_math_vector.h"
+
 #include "BLT_translation.h"
 
 #include "BKE_movieclip.h"
@@ -26,14 +28,12 @@
 
 #include "rna_internal.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
 #ifdef RNA_RUNTIME
-
-#  include "BLI_math.h"
 
 #  include "DNA_movieclip_types.h"
 
@@ -43,7 +43,7 @@
 
 #  include "RNA_access.h"
 
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
 static void rna_Mask_update_data(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {

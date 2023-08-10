@@ -25,7 +25,6 @@
 #include "DNA_windowmanager_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_appdir.h"
@@ -41,18 +40,18 @@
 #include "IMB_imbuf_types.h"
 
 #include "ED_datafiles.h"
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
+#include "UI_resources.hh"
 
 #include "RNA_access.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "wm.h"
+#include "wm.hh"
 
 static void wm_block_close(bContext *C, void *arg_block, void * /*arg*/)
 {
@@ -174,6 +173,7 @@ static ImBuf *wm_block_splash_image(int width, int *r_height)
 
 static void new_manual_load_settings_fn(struct bContext *C, void *arg1, void *arg2)
 {
+  WM_cursor_wait(true);
   PointerRNA ptr_props;
   char buf[512] = "wiki.blender.org/wiki/Reference/Release_Notes/4.0/Keymap";
   WM_operator_properties_create(&ptr_props, "WM_OT_url_open");
@@ -181,6 +181,7 @@ static void new_manual_load_settings_fn(struct bContext *C, void *arg1, void *ar
   WM_operator_name_call_ptr(
       C, WM_operatortype_find("WM_OT_url_open", false), WM_OP_EXEC_DEFAULT, &ptr_props, nullptr);
   WM_operator_properties_free(&ptr_props);
+  WM_cursor_wait(false);
 }
 
 static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void * /*arg*/)
@@ -250,7 +251,8 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void * /*ar
     uiLayout *box = uiLayoutBox(layout);
     uiLayout *split_block = uiLayoutSplit(box, split_factor, false);
     uiLayoutSetAlignment(split_block, UI_LAYOUT_ALIGN_LEFT);
-    uiDefButAlert(block, ALERT_ICON_WARNING, 0, 0, icon_size, icon_size);
+    uiBut *icon = uiDefButAlert(block, ALERT_ICON_WARNING, 0, 0, icon_size, icon_size);
+    UI_but_func_set(icon, new_manual_load_settings_fn, nullptr, nullptr);
 
     /* The rest of the content on the right. */
     uiLayout *right = uiLayoutColumn(split_block, false);
@@ -260,7 +262,7 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void * /*ar
     uiBut *link = uiDefBut(block,
                            UI_BTYPE_BUT_MENU,
                            1,
-                           IFACE_("Click here for important details about shortcut changes..."),
+                           IFACE_("Click here for important information about shortcut changes..."),
                            0,
                            0,
                            0,
@@ -270,7 +272,7 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void * /*ar
                            0,
                            0,
                            0,
-                           TIP_("Open browser with information about this topic."));
+                           TIP_("Open browser with information about this topic"));
     UI_but_func_set(link, new_manual_load_settings_fn, nullptr, nullptr);
 
     mt = WM_menutype_find("WM_MT_splash_quick_setup", true);

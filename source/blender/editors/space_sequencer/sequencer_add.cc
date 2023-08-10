@@ -15,7 +15,6 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -37,8 +36,8 @@
 
 #include "IMB_imbuf.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "RNA_define.h"
 #include "RNA_enum_types.h"
@@ -56,12 +55,12 @@
 #include "SEQ_transform.h"
 #include "SEQ_utils.h"
 
-#include "ED_scene.h"
+#include "ED_scene.hh"
 /* For menu, popup, icons, etc. */
-#include "ED_screen.h"
-#include "ED_sequencer.h"
+#include "ED_screen.hh"
+#include "ED_sequencer.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #ifdef WITH_AUDASPACE
 #  include <AUD_Sequence.h>

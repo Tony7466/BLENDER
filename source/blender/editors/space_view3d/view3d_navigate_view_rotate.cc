@@ -6,15 +6,17 @@
  * \ingroup spview3d
  */
 
-#include "BLI_math.h"
-
 #include "BKE_context.h"
 
-#include "WM_api.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
+
+#include "WM_api.hh"
 
 #include "RNA_access.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "view3d_intern.h"
 #include "view3d_navigate.hh" /* own include */
