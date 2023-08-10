@@ -169,7 +169,8 @@ static void version_mesh_crease_generic(Main &bmain)
       LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
         if (STR_ELEM(node->idname,
                      "GeometryNodeStoreNamedAttribute",
-                     "GeometryNodeInputNamedAttribute")) {
+                     "GeometryNodeInputNamedAttribute"))
+        {
           bNodeSocket *socket = nodeFindSocket(node, SOCK_IN, "Name");
           if (STREQ(socket->default_value_typed<bNodeSocketValueString>()->value, "crease")) {
             STRNCPY(socket->default_value_typed<bNodeSocketValueString>()->value, "crease_edge");
@@ -342,16 +343,6 @@ static void version_principled_bsdf_sheen(bNodeTree *ntree)
 
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
-  /* Set Normalize property of Noise Texture node to true */
-  FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-    LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-      if (node->type == SH_NODE_TEX_NOISE) {
-        ((NodeTexNoise *)node->storage)->normalize = true;
-      }
-    }
-  }
-  FOREACH_NODETREE_END;
-
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
     LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
       version_mesh_legacy_to_struct_of_array_format(*mesh);
@@ -590,6 +581,20 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         }
       }
     }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 16)) {
+    /* Set Normalize property of Noise Texture node to true. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type != NTREE_CUSTOM) {
+        LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+          if (node->type == SH_NODE_TEX_NOISE) {
+            ((NodeTexNoise *)node->storage)->normalize = true;
+          }
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
   }
 
   /**
