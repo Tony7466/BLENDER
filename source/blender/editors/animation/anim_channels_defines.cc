@@ -5632,9 +5632,6 @@ void ANIM_channel_draw_widgets(const bContext *C,
         else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
           GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
           if (grease_pencil != nullptr) {
-            using namespace blender::bke::greasepencil;
-            Layer *layer = static_cast<Layer *>(ale->data);
-
             /* Reset slider offset, in order to add special gp icons. */
             offset += SLIDER_WIDTH;
 
