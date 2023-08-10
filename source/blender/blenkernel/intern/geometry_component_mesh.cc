@@ -1235,6 +1235,9 @@ static AttributeAccessorFunctions get_mesh_accessor_functions()
         return 0;
     }
   };
+  fn.domain_grid_mask = [](const void * /*owner*/,
+                           const eAttrDomain /*domain*/,
+                           const int /*main_grid*/) -> volume::GGrid { return {}; };
   fn.domain_supported = [](const void * /*owner*/, const eAttrDomain domain) {
     return ELEM(domain, ATTR_DOMAIN_POINT, ATTR_DOMAIN_EDGE, ATTR_DOMAIN_FACE, ATTR_DOMAIN_CORNER);
   };
