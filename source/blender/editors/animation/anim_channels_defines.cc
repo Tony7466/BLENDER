@@ -5632,12 +5632,37 @@ void ANIM_channel_draw_widgets(const bContext *C,
         else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
           GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
           if (grease_pencil != nullptr) {
+            using namespace blender::bke::greasepencil;
+            Layer *layer = static_cast<Layer *>(ale->data);
+
             /* Reset slider offset, in order to add special gp icons. */
             offset += SLIDER_WIDTH;
 
             /* Create the RNA pointers. */
             RNA_pointer_create(ale->id, &RNA_GreasePencilLayer, ale->data, &ptr);
             RNA_id_pointer_create(ale->id, &id_ptr);
+
+            /* Layer onion skinning switch. */
+            offset -= ICON_WIDTH;
+            UI_block_emboss_set(block, UI_EMBOSS_NONE);
+            prop = RNA_struct_find_property(&ptr, "use_onion_skinning");
+
+            char *onion_skinning_rna_path = RNA_path_from_ID_to_property(&ptr, prop);
+            if (RNA_path_resolve_property(&id_ptr, onion_skinning_rna_path, &ptr, &prop)) {
+              const int icon = layer->use_onion_skinning() ? ICON_ONIONSKIN_ON :
+                                                             ICON_ONIONSKIN_OFF;
+              uiDefAutoButR(block,
+                            &ptr,
+                            prop,
+                            array_index,
+                            "",
+                            icon,
+                            offset,
+                            rect->ymin,
+                            ICON_WIDTH,
+                            channel_height);
+            }
+            MEM_freeN(onion_skinning_rna_path);
 
             /* Layer opacity. */
             const short width = SLIDER_WIDTH * 0.6;
