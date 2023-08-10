@@ -13,7 +13,7 @@
 
 #include "ED_grease_pencil.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_define.hh"
 
 #include "DNA_scene_types.h"

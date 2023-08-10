@@ -44,7 +44,7 @@
 #include "ED_transform.hh"
 #include "ED_uvedit.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_define.hh"
 
 #include "WM_api.hh"

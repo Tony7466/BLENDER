@@ -56,7 +56,7 @@ const EnumPropertyItem rna_enum_uilist_layout_type_items[] = {
 
 #  include "MEM_guardedalloc.h"
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
 #  include "BLI_dynstr.h"
 

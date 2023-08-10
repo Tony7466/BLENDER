@@ -37,7 +37,7 @@
 
 #include "BLT_translation.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_enum_types.h"
 
 #include "FN_field_cpp_type.hh"

@@ -32,7 +32,7 @@
 
 #  include "BLI_iterator.h"
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
 #  include "BKE_duplilist.h"
 #  include "BKE_object.h"

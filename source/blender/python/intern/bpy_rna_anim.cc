@@ -32,7 +32,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_report.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_enum_types.h"
 #include "RNA_path.h"
 #include "RNA_prototypes.h"

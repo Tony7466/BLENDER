@@ -20,7 +20,7 @@
 #  include "ED_fileselect.hh"
 #  include "ED_outliner.hh"
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 #  include "RNA_define.hh"
 
 #  include "BLT_translation.h"

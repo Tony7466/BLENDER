@@ -54,7 +54,7 @@
 #include "UI_interface.hh"
 #include "UI_view2d.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.h"
 #include "RNA_path.h"

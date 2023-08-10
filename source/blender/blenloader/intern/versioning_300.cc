@@ -74,7 +74,7 @@
 #include "BKE_simulation_state_serialize.hh"
 #include "BKE_workspace.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_enum_types.h"
 #include "RNA_prototypes.h"
 

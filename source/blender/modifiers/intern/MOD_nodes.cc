@@ -68,7 +68,7 @@
 
 #include "WM_types.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_enum_types.h"
 #include "RNA_prototypes.h"
 

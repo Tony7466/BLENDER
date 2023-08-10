@@ -24,7 +24,7 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_enum_types.h"
 #include "RNA_prototypes.h"
 

@@ -16,7 +16,7 @@
 
 #include "DNA_ID.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_types.h"
 
 struct ID;

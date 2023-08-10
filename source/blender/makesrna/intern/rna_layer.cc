@@ -33,7 +33,7 @@
 #  include "DNA_collection_types.h"
 #  include "DNA_object_types.h"
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
 #  include "BKE_idprop.h"
 #  include "BKE_layer.h"

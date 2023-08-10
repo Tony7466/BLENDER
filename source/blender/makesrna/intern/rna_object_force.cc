@@ -53,7 +53,7 @@ static const EnumPropertyItem effector_shape_items[] = {
 
 #  include "BLI_math_base.h"
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
 /* type specific return values only used from functions */
 static const EnumPropertyItem curve_shape_items[] = {

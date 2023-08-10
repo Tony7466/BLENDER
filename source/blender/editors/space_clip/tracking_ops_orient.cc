@@ -32,7 +32,7 @@
 
 #include "ED_clip.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_define.hh"
 
 #include "clip_intern.h"

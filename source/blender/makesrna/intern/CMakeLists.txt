@@ -195,7 +195,7 @@ unset(CMAKE_C_CLANG_TIDY)
 unset(CMAKE_CXX_CLANG_TIDY)
 
 set(SRC_RNA_INC
-  ../RNA_access.h
+  ../RNA_access.hh
   ../RNA_define.hh
   ../RNA_documentation.h
   ../RNA_enum_items.h

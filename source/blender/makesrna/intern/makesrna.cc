@@ -5373,7 +5373,7 @@ static void rna_generate_header_cpp(BlenderRNA * /*brna*/, FILE *f)
 
   fprintf(f, "#include \"RNA_blender.h\"\n");
   fprintf(f, "#include \"RNA_types.h\"\n");
-  fprintf(f, "#include \"RNA_access.h\"\n");
+  fprintf(f, "#include \"RNA_access.hh\"\n");
   fprintf(f, "#include \"DNA_node_types.h\"\n");
 
   fprintf(f, "%s", cpp_classes);

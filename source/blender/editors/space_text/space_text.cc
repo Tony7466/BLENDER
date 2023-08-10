@@ -32,7 +32,7 @@
 
 #include "BLO_read_write.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_path.h"
 
 #include "text_format.hh"

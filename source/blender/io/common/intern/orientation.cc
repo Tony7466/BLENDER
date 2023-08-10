@@ -4,7 +4,7 @@
 
 #include "BKE_main.h"
 #include "DNA_scene_types.h"
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_types.h"
 
 #include "IO_orientation.h"

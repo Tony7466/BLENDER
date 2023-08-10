@@ -36,7 +36,7 @@
 #  include "ED_asset.hh"
 #  include "ED_paint.hh"
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
 #  include "WM_toolsystem.h"
 

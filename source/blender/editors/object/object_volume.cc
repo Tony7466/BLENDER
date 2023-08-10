@@ -16,7 +16,7 @@
 #include "DNA_object_types.h"
 #include "DNA_volume_types.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_define.hh"
 
 #include "BKE_context.h"

@@ -17,7 +17,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 #include "RNA_types.h"
 

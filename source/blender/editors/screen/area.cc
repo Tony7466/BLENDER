@@ -25,7 +25,7 @@
 #include "BKE_screen.h"
 #include "BKE_workspace.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_types.h"
 
 #include "WM_api.hh"

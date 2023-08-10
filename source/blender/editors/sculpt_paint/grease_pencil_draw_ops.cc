@@ -16,7 +16,7 @@
 #include "ED_object.hh"
 #include "ED_screen.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.h"
 

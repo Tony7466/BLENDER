@@ -19,7 +19,7 @@
 
 #include "DNA_ID.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_enum_types.h"
 
 #define USE_STRING_COERCE

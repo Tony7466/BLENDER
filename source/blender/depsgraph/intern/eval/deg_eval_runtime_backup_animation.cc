@@ -12,7 +12,7 @@
 
 #include "BKE_animsys.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_types.h"
 
 #include "intern/depsgraph.h"

@@ -18,7 +18,7 @@
 
 #include "DNA_space_types.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_path.h"
 
 #include "../outliner_intern.hh"

@@ -37,7 +37,7 @@
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_define.hh"
 
 #include "bmesh.h"

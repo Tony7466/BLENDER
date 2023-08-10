@@ -22,7 +22,7 @@
 
 #ifdef RNA_RUNTIME
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
 #  include "BKE_curveprofile.h"
 

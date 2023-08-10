@@ -28,7 +28,7 @@
 #include "ED_mask.hh" /* own include */
 #include "ED_select_utils.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_define.hh"
 
 #include "mask_intern.h" /* own include */

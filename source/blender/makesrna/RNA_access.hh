@@ -16,10 +16,6 @@
 
 #include "BLI_compiler_attrs.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct ID;
 struct IDOverrideLibrary;
 struct IDOverrideLibraryProperty;
@@ -941,9 +937,5 @@ eRNAOverrideStatus RNA_property_override_library_status(struct Main *bmainm,
 
 void RNA_struct_state_owner_set(const char *name);
 const char *RNA_struct_state_owner_get(void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* __RNA_ACCESS_H__ */

@@ -15,7 +15,7 @@
 
 #include "BKE_callbacks.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 #include "RNA_types.h"
 

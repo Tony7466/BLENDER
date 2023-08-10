@@ -34,7 +34,7 @@
 #include "BKE_global.h"
 #include "BKE_object.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_path.h"
 #include "RNA_prototypes.h"
 

@@ -30,7 +30,7 @@
 #include "GPU_select.h"
 #include "GPU_state.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_enum_types.h"
 

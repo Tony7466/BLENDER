@@ -21,7 +21,7 @@
 #include "WM_types.hh"
 #include "message_bus/intern/wm_message_bus_intern.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_path.h"
 
 /* -------------------------------------------------------------------- */

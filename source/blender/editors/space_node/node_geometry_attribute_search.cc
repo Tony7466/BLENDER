@@ -21,7 +21,7 @@
 #include "BKE_node_tree_zones.hh"
 #include "BKE_object.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_enum_types.h"
 
 #include "ED_node.hh"

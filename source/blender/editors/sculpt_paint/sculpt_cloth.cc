@@ -40,7 +40,7 @@
 
 #include "sculpt_intern.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_define.hh"
 
 #include "GPU_immediate.h"

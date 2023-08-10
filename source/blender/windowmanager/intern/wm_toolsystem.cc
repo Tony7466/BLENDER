@@ -34,7 +34,7 @@
 #include "BKE_paint.hh"
 #include "BKE_workspace.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_enum_types.h"
 
 #include "WM_api.hh"

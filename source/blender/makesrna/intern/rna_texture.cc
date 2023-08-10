@@ -130,7 +130,7 @@ static const EnumPropertyItem blend_type_items[] = {
 
 #  include "MEM_guardedalloc.h"
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
 #  include "BKE_colorband.h"
 #  include "BKE_context.h"

@@ -32,7 +32,7 @@
 #include "ED_util.hh"
 #include "ED_viewer_path.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
