@@ -242,7 +242,7 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void * /*ar
   if (!BLI_exists(userpref)) {
 
     const uiStyle *style = UI_style_get_dpi();
-    const short icon_size = 40 * UI_SCALE_FAC;
+    const short icon_size = 36 * UI_SCALE_FAC;
     const float icon_padding = 5.0f * UI_SCALE_FAC;
     /* Calculate the factor of the fixed icon column depending on the block width. */
     const float split_factor = (float(icon_size) + icon_padding) /
@@ -251,18 +251,18 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void * /*ar
     uiLayout *box = uiLayoutBox(layout);
     uiLayout *split_block = uiLayoutSplit(box, split_factor, false);
     uiLayoutSetAlignment(split_block, UI_LAYOUT_ALIGN_LEFT);
-    uiBut *icon = uiDefButAlert(block, ALERT_ICON_WARNING, 0, 0, icon_size, icon_size);
+    uiBut *icon = uiDefButAlert(block, ALERT_ICON_INFO, 0, 0, icon_size, icon_size);
     UI_but_func_set(icon, new_manual_load_settings_fn, nullptr, nullptr);
 
     /* The rest of the content on the right. */
     uiLayout *right = uiLayoutColumn(split_block, false);
 
-    uiLayoutSetScaleY(right, 2.0f);
+    uiLayoutSetScaleY(right, 1.8f);
 
     uiBut *link = uiDefBut(block,
                            UI_BTYPE_BUT_MENU,
                            1,
-                           IFACE_("Click here for important information about shortcut changes..."),
+                           IFACE_("New default shortcuts! Click here to read more..."),
                            0,
                            0,
                            0,
