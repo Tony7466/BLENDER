@@ -1755,43 +1755,66 @@ static size_t animdata_filter_shapekey(bAnimContext *ac,
 static size_t animdata_filter_grease_pencil_layer(ListBase *anim_data,
                                                   bDopeSheet *ads,
                                                   GreasePencil *grease_pencil,
-                                                  blender::bke::greasepencil::Layer *layer,
+                                                  blender::bke::greasepencil::Layer &layer,
                                                   int filter_mode)
 {
 
   size_t items = 0;
 
   /* Only if the layer is selected. */
-  if (!ANIMCHANNEL_SELOK(layer->is_selected())) {
+  if (!ANIMCHANNEL_SELOK(layer.is_selected())) {
     return items;
   }
 
   /* Only if the layer is editable. */
-  if ((filter_mode & ANIMFILTER_FOREDIT) && !layer->is_editable()) {
+  if ((filter_mode & ANIMFILTER_FOREDIT) && !layer.is_editable()) {
     return items;
   }
 
   /* Only if the layer is active. */
-  if ((filter_mode & ANIMFILTER_ACTIVE) && grease_pencil->is_layer_active(layer)) {
+  if ((filter_mode & ANIMFILTER_ACTIVE) && grease_pencil->is_layer_active(&layer)) {
     return items;
   }
 
   /* Skip layer if the name doesn't match the filter string. */
   if (ads != nullptr && ads->searchstr[0] != '\0' &&
-      name_matches_dopesheet_filter(ads, layer->name().c_str()) == false)
+      name_matches_dopesheet_filter(ads, layer.name().c_str()) == false)
   {
     return items;
   }
 
   /* Skip empty layers. */
-  if (layer->is_empty()) {
+  if (layer.is_empty()) {
     return items;
   }
 
   /* Add layer channel. */
   ANIMCHANNEL_NEW_CHANNEL(
-      static_cast<void *>(layer), ANIMTYPE_GREASE_PENCIL_LAYER, grease_pencil, nullptr);
+      static_cast<void *>(&layer), ANIMTYPE_GREASE_PENCIL_LAYER, grease_pencil, nullptr);
 
+  return items;
+}
+
+static size_t animdata_filter_grease_pencil_layer_node_recursive(
+    ListBase *anim_data,
+    bDopeSheet *ads,
+    GreasePencil *grease_pencil,
+    blender::bke::greasepencil::TreeNode &node,
+    int filter_mode)
+{
+  size_t items = 0;
+
+  if (node.is_layer()) {
+    items += animdata_filter_grease_pencil_layer(
+        anim_data, ads, grease_pencil, node.as_layer_for_write(), filter_mode);
+  }
+  else if (node.is_group()) {
+    /* TODO: Add layer group channel. */
+    LISTBASE_FOREACH_BACKWARD (GreasePencilLayerTreeNode *, node_, &node.as_group().children) {
+      items += animdata_filter_grease_pencil_layer_node_recursive(
+          anim_data, ads, grease_pencil, node_->wrap(), filter_mode);
+    }
+  }
   return items;
 }
 
@@ -1800,17 +1823,15 @@ static size_t animdata_filter_grease_pencil_layers_data(ListBase *anim_data,
                                                         GreasePencil *grease_pencil,
                                                         int filter_mode)
 {
-  using namespace blender::bke::greasepencil;
   size_t items = 0;
 
-  blender::Span<Layer *> layers = grease_pencil->layers_for_write();
-
-  /* Loop on layer channels in reverse order to preserve the drawing order. */
-  for (int64_t layer_index = layers.size() - 1; layer_index >= 0; layer_index--) {
-    Layer *layer = layers[layer_index];
-    items += animdata_filter_grease_pencil_layer(
-        anim_data, ads, grease_pencil, layer, filter_mode);
+  LISTBASE_FOREACH_BACKWARD (
+      GreasePencilLayerTreeNode *, node, &grease_pencil->root_group_ptr->children)
+  {
+    items += animdata_filter_grease_pencil_layer_node_recursive(
+        anim_data, ads, grease_pencil, node->wrap(), filter_mode);
   }
+
   return items;
 }
 
