@@ -974,6 +974,15 @@ static bAnimListElem *make_new_animlistelem(void *data,
         ale->datatype = ALE_GREASE_PENCIL_CEL;
         break;
       }
+      case ANIMTYPE_GREASE_PENCIL_LAYER_GROUP: {
+        GreasePencilLayerTreeGroup *layer_group = static_cast<GreasePencilLayerTreeGroup *>(data);
+
+        ale->flag = layer_group->base.flag;
+
+        ale->key_data = nullptr;
+        ale->datatype = ALE_GREASE_PENCIL_GROUP;
+        break;
+      }
       case ANIMTYPE_GREASE_PENCIL_DATABLOCK: {
         GreasePencil *grease_pencil = static_cast<GreasePencil *>(data);
 
