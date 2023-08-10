@@ -9223,6 +9223,41 @@ static void def_geo_attribute_statistic(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
+static void def_geo_distribute_points_on_faces(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  static const EnumPropertyItem rna_node_geometry_distribute_points_on_faces_mode_items[] = {
+      {GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_RANDOM,
+       "RANDOM",
+       0,
+       "Random",
+       "Distribute points randomly on the surface"},
+      {GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_POISSON,
+       "POISSON",
+       0,
+       "Poisson Disk",
+       "Distribute the points randomly on the surface while taking a minimum distance between "
+       "points into account"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  prop = RNA_def_property(srna, "distribute_method", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
+  RNA_def_property_enum_items(prop, rna_node_geometry_distribute_points_on_faces_mode_items);
+  RNA_def_property_enum_default(prop, GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_RANDOM);
+  RNA_def_property_ui_text(prop, "Distribution Method", "Method to use for scattering points");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+
+  prop = RNA_def_property(srna, "use_legacy_normal", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "custom2", 1);
+  RNA_def_property_ui_text(prop,
+                           "Legacy Normal",
+                           "Output the normal and rotation values that have been output "
+                           "before the node started taking smooth normals into account");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+}
+
 static void def_geo_curve_spline_type(StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -9264,6 +9299,35 @@ static void def_geo_curve_set_handle_positions(StructRNA *srna)
   RNA_def_property_enum_items(prop, rna_node_geometry_curve_handle_side_items);
   RNA_def_property_ui_text(prop, "Mode", "Whether to update left and right handles");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+}
+
+static void def_geo_simulation_input(StructRNA *srna)
+{
+  PropertyRNA *prop;
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  RNA_def_struct_sdna_from(srna, "NodeGeometrySimulationInput", "storage");
+
+  prop = RNA_def_property(srna, "paired_output", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "Node");
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_pointer_funcs(
+      prop, "rna_NodeGeometrySimulationInput_paired_output_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(
+      prop, "Paired Output", "Simulation output node that this input node is paired with");
+
+  func = RNA_def_function(
+      srna, "pair_with_output", "rna_GeometryNodeSimulationInput_pair_with_output");
+  RNA_def_function_ui_description(func, "Pair a simulation input node with an output node.");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_REPORTS | FUNC_USE_CONTEXT);
+  parm = RNA_def_pointer(
+      func, "output_node", "GeometryNode", "Output Node", "Simulation output node to pair with");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  /* return value */
+  parm = RNA_def_boolean(
+      func, "result", false, "Result", "True if pairing the node was successful");
+  RNA_def_function_return(func, parm);
 }
 
 static void rna_def_simulation_state_item(BlenderRNA *brna)
@@ -9351,6 +9415,36 @@ static void rna_def_geo_simulation_output_items(BlenderRNA *brna)
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 }
 
+static void def_geo_simulation_output(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeGeometrySimulationOutput", "storage");
+
+  prop = RNA_def_property(srna, "state_items", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, nullptr, "items", "items_num");
+  RNA_def_property_struct_type(prop, "SimulationStateItem");
+  RNA_def_property_ui_text(prop, "Items", "");
+  RNA_def_property_srna(prop, "NodeGeometrySimulationOutputItems");
+
+  prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, nullptr, "active_index");
+  RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_NODE, nullptr);
+
+  prop = RNA_def_property(srna, "active_item", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "SimulationStateItem");
+  RNA_def_property_pointer_funcs(prop,
+                                 "rna_NodeGeometrySimulationOutput_active_item_get",
+                                 "rna_NodeGeometrySimulationOutput_active_item_set",
+                                 nullptr,
+                                 nullptr);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
+  RNA_def_property_update(prop, NC_NODE, nullptr);
+}
+
 static void rna_def_repeat_item(BlenderRNA *brna)
 {
   PropertyRNA *prop;
@@ -9425,6 +9519,36 @@ static void rna_def_geo_repeat_output_items(BlenderRNA *brna)
   parm = RNA_def_int(
       func, "to_index", -1, 0, INT_MAX, "To Index", "Target index for the item", 0, 10000);
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+}
+
+static void def_geo_repeat_output(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeGeometryRepeatOutput", "storage");
+
+  prop = RNA_def_property(srna, "repeat_items", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, nullptr, "items", "items_num");
+  RNA_def_property_struct_type(prop, "RepeatItem");
+  RNA_def_property_ui_text(prop, "Items", "");
+  RNA_def_property_srna(prop, "NodeGeometryRepeatOutputItems");
+
+  prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, nullptr, "active_index");
+  RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_NODE, nullptr);
+
+  prop = RNA_def_property(srna, "active_item", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "RepeatItem");
+  RNA_def_property_pointer_funcs(prop,
+                                 "rna_NodeGeometryRepeatOutput_active_item_get",
+                                 "rna_NodeGeometryRepeatOutput_active_item_set",
+                                 nullptr,
+                                 nullptr);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Active Item Index", "Index of the active item");
+  RNA_def_property_update(prop, NC_NODE, nullptr);
 }
 
 static void def_geo_curve_handle_type_selection(StructRNA *srna)
@@ -9671,6 +9795,19 @@ static void def_geo_sample_uv_surface(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
+static void def_geo_input_material(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  prop = RNA_def_property(srna, "material", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, nullptr, "id");
+  RNA_def_property_struct_type(prop, "Material");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_ui_text(prop, "Material", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
 static void def_geo_raycast(StructRNA *srna)
 {
   static EnumPropertyItem mapping_items[] = {
@@ -9761,6 +9898,18 @@ static void def_geo_attribute_capture(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
+static void def_geo_image(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  prop = RNA_def_property(srna, "image", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, nullptr, "id");
+  RNA_def_property_struct_type(prop, "Image");
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT);
+  RNA_def_property_ui_text(prop, "Image", "");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
 static void def_geo_delete_geometry(StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -9783,6 +9932,157 @@ static void def_geo_delete_geometry(StructRNA *srna)
   RNA_def_property_enum_items(prop, rna_enum_attribute_domain_without_corner_items);
   RNA_def_property_enum_default(prop, ATTR_DOMAIN_POINT);
   RNA_def_property_ui_text(prop, "Domain", "Which domain to delete in");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
+static void def_geo_string_to_curves(StructRNA *srna)
+{
+  static const EnumPropertyItem rna_node_geometry_string_to_curves_overflow_items[] = {
+      {GEO_NODE_STRING_TO_CURVES_MODE_OVERFLOW,
+       "OVERFLOW",
+       ICON_NONE,
+       "Overflow",
+       "Let the text use more space than the specified height"},
+      {GEO_NODE_STRING_TO_CURVES_MODE_SCALE_TO_FIT,
+       "SCALE_TO_FIT",
+       ICON_NONE,
+       "Scale To Fit",
+       "Scale the text size to fit inside the width and height"},
+      {GEO_NODE_STRING_TO_CURVES_MODE_TRUNCATE,
+       "TRUNCATE",
+       ICON_NONE,
+       "Truncate",
+       "Only output curves that fit within the width and height. Output the remainder to the "
+       "\"Remainder\" output"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem rna_node_geometry_string_to_curves_align_x_items[] = {
+      {GEO_NODE_STRING_TO_CURVES_ALIGN_X_LEFT,
+       "LEFT",
+       ICON_ALIGN_LEFT,
+       "Left",
+       "Align text to the left"},
+      {GEO_NODE_STRING_TO_CURVES_ALIGN_X_CENTER,
+       "CENTER",
+       ICON_ALIGN_CENTER,
+       "Center",
+       "Align text to the center"},
+      {GEO_NODE_STRING_TO_CURVES_ALIGN_X_RIGHT,
+       "RIGHT",
+       ICON_ALIGN_RIGHT,
+       "Right",
+       "Align text to the right"},
+      {GEO_NODE_STRING_TO_CURVES_ALIGN_X_JUSTIFY,
+       "JUSTIFY",
+       ICON_ALIGN_JUSTIFY,
+       "Justify",
+       "Align text to the left and the right"},
+      {GEO_NODE_STRING_TO_CURVES_ALIGN_X_FLUSH,
+       "FLUSH",
+       ICON_ALIGN_FLUSH,
+       "Flush",
+       "Align text to the left and the right, with equal character spacing"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem rna_node_geometry_string_to_curves_align_y_items[] = {
+      {GEO_NODE_STRING_TO_CURVES_ALIGN_Y_TOP,
+       "TOP",
+       ICON_ALIGN_TOP,
+       "Top",
+       "Align text to the top"},
+      {GEO_NODE_STRING_TO_CURVES_ALIGN_Y_TOP_BASELINE,
+       "TOP_BASELINE",
+       ICON_ALIGN_TOP,
+       "Top Baseline",
+       "Align text to the top line's baseline"},
+      {GEO_NODE_STRING_TO_CURVES_ALIGN_Y_MIDDLE,
+       "MIDDLE",
+       ICON_ALIGN_MIDDLE,
+       "Middle",
+       "Align text to the middle"},
+      {GEO_NODE_STRING_TO_CURVES_ALIGN_Y_BOTTOM_BASELINE,
+       "BOTTOM_BASELINE",
+       ICON_ALIGN_BOTTOM,
+       "Bottom Baseline",
+       "Align text to the bottom line's baseline"},
+      {GEO_NODE_STRING_TO_CURVES_ALIGN_Y_BOTTOM,
+       "BOTTOM",
+       ICON_ALIGN_BOTTOM,
+       "Bottom",
+       "Align text to the bottom"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem rna_node_geometry_string_to_curves_pivot_mode[] = {
+      {GEO_NODE_STRING_TO_CURVES_PIVOT_MODE_MIDPOINT, "MIDPOINT", 0, "Midpoint", "Midpoint"},
+      {GEO_NODE_STRING_TO_CURVES_PIVOT_MODE_TOP_LEFT, "TOP_LEFT", 0, "Top Left", "Top Left"},
+      {GEO_NODE_STRING_TO_CURVES_PIVOT_MODE_TOP_CENTER,
+       "TOP_CENTER",
+       0,
+       "Top Center",
+       "Top Center"},
+      {GEO_NODE_STRING_TO_CURVES_PIVOT_MODE_TOP_RIGHT, "TOP_RIGHT", 0, "Top Right", "Top Right"},
+      {GEO_NODE_STRING_TO_CURVES_PIVOT_MODE_BOTTOM_LEFT,
+       "BOTTOM_LEFT",
+       0,
+       "Bottom Left",
+       "Bottom Left"},
+      {GEO_NODE_STRING_TO_CURVES_PIVOT_MODE_BOTTOM_CENTER,
+       "BOTTOM_CENTER",
+       0,
+       "Bottom Center",
+       "Bottom Center"},
+      {GEO_NODE_STRING_TO_CURVES_PIVOT_MODE_BOTTOM_RIGHT,
+       "BOTTOM_RIGHT",
+       0,
+       "Bottom Right",
+       "Bottom Right"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  PropertyRNA *prop;
+
+  prop = RNA_def_property(srna, "font", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, nullptr, "id");
+  RNA_def_property_struct_type(prop, "VectorFont");
+  RNA_def_property_ui_text(prop, "Font", "Font of the text. Falls back to the UI font by default");
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  RNA_def_struct_sdna_from(srna, "NodeGeometryStringToCurves", "storage");
+
+  prop = RNA_def_property(srna, "overflow", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "overflow");
+  RNA_def_property_enum_items(prop, rna_node_geometry_string_to_curves_overflow_items);
+  RNA_def_property_enum_default(prop, GEO_NODE_STRING_TO_CURVES_MODE_OVERFLOW);
+  RNA_def_property_ui_text(
+      prop, "Textbox Overflow", "Handle the text behavior when it doesn't fit in the text boxes");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+
+  prop = RNA_def_property(srna, "align_x", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "align_x");
+  RNA_def_property_enum_items(prop, rna_node_geometry_string_to_curves_align_x_items);
+  RNA_def_property_enum_default(prop, GEO_NODE_STRING_TO_CURVES_ALIGN_X_LEFT);
+  RNA_def_property_ui_text(
+      prop, "Horizontal Alignment", "Text horizontal alignment from the object center");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "align_y", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "align_y");
+  RNA_def_property_enum_items(prop, rna_node_geometry_string_to_curves_align_y_items);
+  RNA_def_property_enum_default(prop, GEO_NODE_STRING_TO_CURVES_ALIGN_Y_TOP_BASELINE);
+  RNA_def_property_ui_text(
+      prop, "Vertical Alignment", "Text vertical alignment from the object center");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "pivot_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "pivot_mode");
+  RNA_def_property_enum_items(prop, rna_node_geometry_string_to_curves_pivot_mode);
+  RNA_def_property_enum_default(prop, GEO_NODE_STRING_TO_CURVES_PIVOT_MODE_BOTTOM_LEFT);
+  RNA_def_property_ui_text(prop, "Pivot Point", "Pivot point position relative to character");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
