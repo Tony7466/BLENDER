@@ -1084,7 +1084,7 @@ static void node_socket_template_properties_update(bNodeType *ntype, bNodeSocket
   PropertyRNA *prop = RNA_struct_type_find_property(srna, stemp->identifier);
 
   if (prop) {
-    RNA_def_property_update_runtime(prop, (const void *)node_property_update_default);
+    RNA_def_property_update_runtime(prop, node_property_update_default);
   }
 }
 
@@ -1486,10 +1486,6 @@ static void std_node_socket_interface_draw(bContext * /*C*/, uiLayout *layout, P
   const bNodeTree *node_tree = reinterpret_cast<const bNodeTree *>(ptr->owner_id);
   if (sock->in_out == SOCK_IN && node_tree->type == NTREE_GEOMETRY) {
     uiItemR(col, ptr, "hide_in_modifier", DEFAULT_FLAGS, nullptr, 0);
-  }
-
-  if (U.experimental.use_node_panels) {
-    uiItemPointerR(col, ptr, "panel", &tree_ptr, "panels", nullptr, 0);
   }
 }
 

@@ -16,7 +16,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_threads.h"
 
 #include "BKE_colortools.h"
@@ -720,8 +719,9 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
                         nullptr,
                         C);
   }
-
-  WM_gizmomap_draw(region->gizmo_map, C, WM_GIZMOMAP_DRAWSTEP_2D);
+  if ((sima->gizmo_flag & SI_GIZMO_HIDE) == 0) {
+    WM_gizmomap_draw(region->gizmo_map, C, WM_GIZMOMAP_DRAWSTEP_2D);
+  }
   draw_image_cache(C, region);
 }
 

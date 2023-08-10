@@ -40,7 +40,7 @@
 #include "BLI_blenlib.h"
 #include "BLI_dial_2d.h"
 #include "BLI_dynstr.h" /* For #WM_operator_pystring. */
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
@@ -348,7 +348,7 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
   for (link = lb.first; link; link = link->next) {
     const char *identifier = link->data;
     PointerRNA ctx_item_ptr = {{0}};
-        /* CTX_data_pointer_get(C, identifier); */ /* XXX, this isn't working. */
+    // CTX_data_pointer_get(C, identifier);  /* XXX, this isn't working. */
 
     if (ctx_item_ptr.type == nullptr) {
       continue;

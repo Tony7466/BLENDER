@@ -19,6 +19,7 @@
 
 #include "BLI_fileops.h"
 #include "BLI_listbase.h"
+#include "BLI_math_geom.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 
@@ -1505,7 +1506,6 @@ static int bake(const BakeAPIRender *bkr,
   }
 
   if (bkr->is_selected_to_active) {
-    CollectionPointerLink *link;
     int i = 0;
 
     /* prepare cage mesh */
@@ -1561,8 +1561,7 @@ static int bake(const BakeAPIRender *bkr,
         MEM_callocN(sizeof(BakeHighPolyData) * tot_highpoly, "bake high poly objects"));
 
     /* populate highpoly array */
-    for (link = static_cast<CollectionPointerLink *>(selected_objects->first); link;
-         link = link->next) {
+    LISTBASE_FOREACH (CollectionPointerLink *, link, selected_objects) {
       Object *ob_iter = static_cast<Object *>(link->ptr.data);
 
       if (ob_iter == ob_low) {

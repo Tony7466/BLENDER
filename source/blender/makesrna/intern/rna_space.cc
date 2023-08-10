@@ -28,7 +28,9 @@
 #include "ED_text.hh"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_sys_types.h"
 #include "BLI_uuid.h"
@@ -1617,8 +1619,11 @@ static int rna_SpaceView3D_icon_from_show_object_viewport_get(PointerRNA *ptr)
                                                     &v3d->object_type_exclude_select);
 }
 
-static char *rna_View3DShading_path(const PointerRNA * /*ptr*/)
+static char *rna_View3DShading_path(const PointerRNA *ptr)
 {
+  if (GS(ptr->owner_id->name) == ID_SCE) {
+    return BLI_strdup("display.shading");
+  }
   return BLI_strdup("shading");
 }
 
@@ -7659,9 +7664,12 @@ static void rna_def_space_node(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Overlay Settings", "Settings for display of overlays in the Node Editor");
 
-  prop = RNA_def_property(srna, "supports_preview", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "supports_previews", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(prop, "rna_SpaceNode_supports_previews", nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop,
+                           "Supports Previews",
+                           "Whether the node editor's type supports displaying node previews");
 
   rna_def_space_node_overlay(brna);
   RNA_api_space_node(srna);

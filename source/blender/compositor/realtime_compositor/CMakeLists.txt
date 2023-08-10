@@ -319,4 +319,3 @@ if(WITH_OPENCOLORIO)
 endif()
 
 blender_add_lib(bf_realtime_compositor "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
-

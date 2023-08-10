@@ -25,7 +25,7 @@
 
 #include "BLI_assert.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_set.hh"
 #include "BLI_string_ref.hh"
 
@@ -600,6 +600,12 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         /* Keep old behavior of baking the whole lighting. */
         lightprobe->grid_flag = LIGHTPROBE_GRID_CAPTURE_WORLD | LIGHTPROBE_GRID_CAPTURE_INDIRECT |
                                 LIGHTPROBE_GRID_CAPTURE_EMISSION;
+      }
+    }
+
+    if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "int", "gi_irradiance_pool_size")) {
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->eevee.gi_irradiance_pool_size = 16;
       }
     }
   }
