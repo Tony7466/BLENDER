@@ -489,10 +489,11 @@ TreeNode *TreeNode::parent_node() const
 
 int TreeNode::depth() const
 {
-  if (this->parent == nullptr) {
+  const LayerGroup *parent = this->parent_group();
+  if (parent == nullptr) {
     return 0;
   }
-  return 1 + this->parent_group()->as_node().depth();
+  return 1 + parent->as_node().depth();
 }
 
 LayerMask::LayerMask()
