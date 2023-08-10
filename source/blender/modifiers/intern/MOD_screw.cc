@@ -12,7 +12,10 @@
 #include "BLI_utildefines.h"
 
 #include "BLI_bitmap.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_span.hh"
 
 #include "BLT_translation.h"
@@ -30,10 +33,10 @@
 #include "BKE_mesh.hh"
 #include "BKE_screen.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "DEG_depsgraph_build.h"
@@ -50,7 +53,7 @@
 
 using namespace blender;
 
-static void initData(ModifierData *md)
+static void init_data(ModifierData *md)
 {
   ScrewModifierData *ltmd = (ScrewModifierData *)md;
 
@@ -192,7 +195,7 @@ static Mesh *mesh_remove_doubles_on_axis(Mesh *result,
   return result;
 }
 
-static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *meshData)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *meshData)
 {
   using namespace blender;
   const Mesh *mesh = meshData;
@@ -532,7 +535,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
           vc->e[0] = vc->e[1] = nullptr;
           vc->v[0] = vc->v[1] = SV_UNUSED;
 
-          /* Length in 2D, don't sqrt because this is only for comparison. */
+          /* Length in 2D, don't `sqrt` because this is only for comparison. */
           vc->dist_sq = vc->co[other_axis_1] * vc->co[other_axis_1] +
                         vc->co[other_axis_2] * vc->co[other_axis_2];
 
@@ -1026,7 +1029,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh *
   return result;
 }
 
-static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
+static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
   ScrewModifierData *ltmd = (ScrewModifierData *)md;
   if (ltmd->ob_axis != nullptr) {
@@ -1035,18 +1038,18 @@ static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphConte
   }
 }
 
-static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *userData)
+static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
 {
   ScrewModifierData *ltmd = (ScrewModifierData *)md;
 
-  walk(userData, ob, (ID **)&ltmd->ob_axis, IDWALK_CB_NOP);
+  walk(user_data, ob, (ID **)&ltmd->ob_axis, IDWALK_CB_NOP);
 }
 
 static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *sub, *row, *col;
   uiLayout *layout = panel->layout;
-  int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
+  const eUI_Item_Flag toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
 
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
 
@@ -1055,36 +1058,36 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, ptr, "angle", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "angle", UI_ITEM_NONE, nullptr, ICON_NONE);
   row = uiLayoutRow(col, false);
   uiLayoutSetActive(row,
                     RNA_pointer_is_null(&screw_obj_ptr) ||
                         !RNA_boolean_get(ptr, "use_object_screw_offset"));
-  uiItemR(row, ptr, "screw_offset", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "iterations", 0, nullptr, ICON_NONE);
+  uiItemR(row, ptr, "screw_offset", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "iterations", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   uiItemS(layout);
   col = uiLayoutColumn(layout, false);
   row = uiLayoutRow(col, false);
   uiItemR(row, ptr, "axis", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "object", 0, IFACE_("Axis Object"), ICON_NONE);
+  uiItemR(col, ptr, "object", UI_ITEM_NONE, IFACE_("Axis Object"), ICON_NONE);
   sub = uiLayoutColumn(col, false);
   uiLayoutSetActive(sub, !RNA_pointer_is_null(&screw_obj_ptr));
-  uiItemR(sub, ptr, "use_object_screw_offset", 0, nullptr, ICON_NONE);
+  uiItemR(sub, ptr, "use_object_screw_offset", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   uiItemS(layout);
 
   col = uiLayoutColumn(layout, true);
-  uiItemR(col, ptr, "steps", 0, IFACE_("Steps Viewport"), ICON_NONE);
-  uiItemR(col, ptr, "render_steps", 0, IFACE_("Render"), ICON_NONE);
+  uiItemR(col, ptr, "steps", UI_ITEM_NONE, IFACE_("Steps Viewport"), ICON_NONE);
+  uiItemR(col, ptr, "render_steps", UI_ITEM_NONE, IFACE_("Render"), ICON_NONE);
 
   uiItemS(layout);
 
   row = uiLayoutRowWithHeading(layout, true, IFACE_("Merge"));
-  uiItemR(row, ptr, "use_merge_vertices", 0, "", ICON_NONE);
+  uiItemR(row, ptr, "use_merge_vertices", UI_ITEM_NONE, "", ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiLayoutSetActive(sub, RNA_boolean_get(ptr, "use_merge_vertices"));
-  uiItemR(sub, ptr, "merge_threshold", 0, "", ICON_NONE);
+  uiItemR(sub, ptr, "merge_threshold", UI_ITEM_NONE, "", ICON_NONE);
 
   uiItemS(layout);
 
@@ -1105,12 +1108,12 @@ static void normals_panel_draw(const bContext * /*C*/, Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, ptr, "use_smooth_shade", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "use_normal_calculate", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "use_normal_flip", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "use_smooth_shade", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "use_normal_calculate", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "use_normal_flip", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
-static void panelRegister(ARegionType *region_type)
+static void panel_register(ARegionType *region_type)
 {
   PanelType *panel_type = modifier_panel_register(region_type, eModifierType_Screw, panel_draw);
   modifier_subpanel_register(
@@ -1120,8 +1123,8 @@ static void panelRegister(ARegionType *region_type)
 ModifierTypeInfo modifierType_Screw = {
     /*idname*/ "Screw",
     /*name*/ N_("Screw"),
-    /*structName*/ "ScrewModifierData",
-    /*structSize*/ sizeof(ScrewModifierData),
+    /*struct_name*/ "ScrewModifierData",
+    /*struct_size*/ sizeof(ScrewModifierData),
     /*srna*/ &RNA_ScrewModifier,
     /*type*/ eModifierTypeType_Constructive,
 
@@ -1129,26 +1132,26 @@ ModifierTypeInfo modifierType_Screw = {
         eModifierTypeFlag_SupportsEditmode | eModifierTypeFlag_EnableInEditmode,
     /*icon*/ ICON_MOD_SCREW,
 
-    /*copyData*/ BKE_modifier_copydata_generic,
+    /*copy_data*/ BKE_modifier_copydata_generic,
 
-    /*deformVerts*/ nullptr,
-    /*deformMatrices*/ nullptr,
-    /*deformVertsEM*/ nullptr,
-    /*deformMatricesEM*/ nullptr,
-    /*modifyMesh*/ modifyMesh,
-    /*modifyGeometrySet*/ nullptr,
+    /*deform_verts*/ nullptr,
+    /*deform_matrices*/ nullptr,
+    /*deform_verts_EM*/ nullptr,
+    /*deform_matrices_EM*/ nullptr,
+    /*modify_mesh*/ modify_mesh,
+    /*modify_geometry_set*/ nullptr,
 
-    /*initData*/ initData,
-    /*requiredDataMask*/ nullptr,
-    /*freeData*/ nullptr,
-    /*isDisabled*/ nullptr,
-    /*updateDepsgraph*/ updateDepsgraph,
-    /*dependsOnTime*/ nullptr,
-    /*dependsOnNormals*/ nullptr,
-    /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ nullptr,
-    /*freeRuntimeData*/ nullptr,
-    /*panelRegister*/ panelRegister,
-    /*blendWrite*/ nullptr,
-    /*blendRead*/ nullptr,
+    /*init_data*/ init_data,
+    /*required_data_mask*/ nullptr,
+    /*free_data*/ nullptr,
+    /*is_disabled*/ nullptr,
+    /*update_depsgraph*/ update_depsgraph,
+    /*depends_on_time*/ nullptr,
+    /*depends_on_normals*/ nullptr,
+    /*foreach_ID_link*/ foreach_ID_link,
+    /*foreach_tex_link*/ nullptr,
+    /*free_runtime_data*/ nullptr,
+    /*panel_register*/ panel_register,
+    /*blend_write*/ nullptr,
+    /*blend_read*/ nullptr,
 };

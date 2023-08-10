@@ -13,7 +13,8 @@
 #include "BLI_ghash.h"
 #include "BLI_kdtree.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
 #include "BLT_translation.h"
 
@@ -23,7 +24,7 @@
 #include "DNA_gpencil_modifier_types.h"
 
 #include "BKE_action.h"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_deform.h"
@@ -34,18 +35,18 @@
 #include "BKE_report.h"
 #include "DNA_meshdata_types.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -299,7 +300,7 @@ static bool *gpencil_vgroup_bone_deformed_map_get(Object *ob, const int defbase_
 
   /* Add all vertex group names to a hash table. */
   gh = BLI_ghash_str_new_ex(__func__, defbase_tot);
-  for (dg = static_cast<bDeformGroup *>(defbase->first); dg; dg = dg->next) {
+  LISTBASE_FOREACH (bDeformGroup *, dg, defbase) {
     BLI_ghash_insert(gh, dg->name, nullptr);
   }
   BLI_assert(BLI_ghash_len(gh) == defbase_tot);
@@ -314,9 +315,8 @@ static bool *gpencil_vgroup_bone_deformed_map_get(Object *ob, const int defbase_
 
     if (amd->object && amd->object->pose) {
       bPose *pose = amd->object->pose;
-      bPoseChannel *chan;
 
-      for (chan = static_cast<bPoseChannel *>(pose->chanbase.first); chan; chan = chan->next) {
+      LISTBASE_FOREACH (bPoseChannel *, chan, &pose->chanbase) {
         void **val_p;
         if (chan->bone->flag & BONE_NO_DEFORM) {
           continue;
@@ -478,10 +478,10 @@ static float brush_influence_calc(tGP_BrushWeightpaintData *gso, const int radiu
   /* distance fading */
   int mouse_i[2];
   round_v2i_v2fl(mouse_i, gso->mouse);
-  float distance = (float)len_v2v2_int(mouse_i, co);
+  float distance = float(len_v2v2_int(mouse_i, co));
 
   /* Apply Brush curve. */
-  float brush_falloff = BKE_brush_curve_strength(brush, distance, (float)radius);
+  float brush_falloff = BKE_brush_curve_strength(brush, distance, float(radius));
   influence *= brush_falloff;
 
   /* apply multi-frame falloff */
@@ -784,7 +784,7 @@ static bool gpencil_weightpaint_brush_init(bContext *C, wmOperator *op)
   gso->region = CTX_wm_region(C);
 
   /* Multi-frame settings. */
-  gso->is_multiframe = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gso->gpd);
+  gso->is_multiframe = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gso->gpd));
   gso->use_multiframe_falloff = (ts->gp_sculpt.flag & GP_SCULPT_SETT_FLAG_FRAME_FALLOFF) != 0;
 
   /* Init multi-edit falloff curve data before doing anything,
@@ -925,7 +925,7 @@ static void gpencil_save_selected_point(tGP_BrushWeightpaintData *gso,
           gso->fn_added, POINTER_FROM_INT(point_hash), POINTER_FROM_INT(gso->fn_used));
 
       float pc_f[2];
-      copy_v2_fl2(pc_f, (float)pc[0], (float)pc[1]);
+      copy_v2_fl2(pc_f, float(pc[0]), float(pc[1]));
       BLI_kdtree_2d_insert(gso->fn_kdtree, gso->fn_used, pc_f);
 
       gso->fn_do_balance = true;
@@ -1244,8 +1244,8 @@ static void gpencil_weightpaint_brush_apply(bContext *C, wmOperator *op, Pointer
 
   /* Get latest mouse coordinates */
   RNA_float_get_array(itemptr, "mouse", mousef);
-  gso->mouse[0] = mouse[0] = (int)(mousef[0]);
-  gso->mouse[1] = mouse[1] = (int)(mousef[1]);
+  gso->mouse[0] = mouse[0] = int(mousef[0]);
+  gso->mouse[1] = mouse[1] = int(mousef[1]);
 
   gso->pressure = RNA_float_get(itemptr, "pressure");
 
@@ -1450,7 +1450,7 @@ static int gpencil_weightpaint_brush_modal(bContext *C, wmOperator *op, const wm
         return OPERATOR_PASS_THROUGH;
 
       /* Camera/View Gizmo's - Allowed. */
-      /* (See rationale in gpencil_paint.c -> gpencil_draw_modal()) */
+      /* See rationale in `gpencil_paint.cc`, #gpencil_draw_modal(). */
       case EVT_PAD0:
       case EVT_PAD1:
       case EVT_PAD2:
@@ -1679,5 +1679,5 @@ void GPENCIL_OT_weight_sample(wmOperatorType *ot)
   ot->poll = gpencil_weightpaint_brush_poll;
 
   /* flags */
-  ot->flag = OPTYPE_UNDO;
+  ot->flag = OPTYPE_UNDO | OPTYPE_DEPENDS_ON_CURSOR;
 }

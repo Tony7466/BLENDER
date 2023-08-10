@@ -7,17 +7,20 @@
  * Brush based operators for editing Grease Pencil strokes.
  */
 
-#include <math.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
 
@@ -34,7 +37,7 @@
 #include "DNA_space_types.h"
 #include "DNA_view3d_types.h"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_deform.h"
@@ -47,22 +50,22 @@
 #include "BKE_object_deform.h"
 #include "BKE_report.h"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_keyframing.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_keyframing.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -263,10 +266,10 @@ static float gpencil_brush_influence_calc(tGP_BrushEditData *gso,
   /* distance fading */
   int mval_i[2];
   round_v2i_v2fl(mval_i, gso->mval);
-  float distance = (float)len_v2v2_int(mval_i, co);
+  float distance = float(len_v2v2_int(mval_i, co));
 
   /* Apply Brush curve. */
-  float brush_falloff = BKE_brush_curve_strength(brush, distance, (float)radius);
+  float brush_falloff = BKE_brush_curve_strength(brush, distance, float(radius));
   influence *= brush_falloff;
 
   /* apply multiframe falloff */
@@ -525,8 +528,8 @@ static void gpencil_brush_grab_calc_dvec(tGP_BrushEditData *gso)
   float mval_f[2];
 
   /* Convert from 2D screen-space to 3D. */
-  mval_f[0] = (float)(gso->mval[0] - gso->mval_prev[0]);
-  mval_f[1] = (float)(gso->mval[1] - gso->mval_prev[1]);
+  mval_f[0] = float(gso->mval[0] - gso->mval_prev[0]);
+  mval_f[1] = float(gso->mval[1] - gso->mval_prev[1]);
 
   /* apply evaluated data transformation */
   if (gso->rot_eval != 0.0f) {
@@ -636,8 +639,7 @@ static bool gpencil_brush_push_apply(tGP_BrushEditData *gso,
 static void gpencil_brush_calc_midpoint(tGP_BrushEditData *gso)
 {
   /* Convert mouse position to 3D space
-   * See: gpencil_paint.c :: gpencil_stroke_convertcoords()
-   */
+   * See: `gpencil_paint.cc`, #gpencil_stroke_convertcoords(). */
   RegionView3D *rv3d = static_cast<RegionView3D *>(gso->region->regiondata);
   const float *rvec = gso->object->loc;
   const float zfac = ED_view3d_calc_zfac(rv3d, rvec);
@@ -770,16 +772,16 @@ static bool gpencil_brush_twist_apply(tGP_BrushEditData *gso,
 
     /* Express position of point relative to cursor, ready to rotate */
     /* XXX: There is still some offset here, but it's close to working as expected. */
-    vec[0] = (float)(co[0] - gso->mval[0]);
-    vec[1] = (float)(co[1] - gso->mval[1]);
+    vec[0] = float(co[0] - gso->mval[0]);
+    vec[1] = float(co[1] - gso->mval[1]);
 
     /* rotate point */
     axis_angle_normalized_to_mat3(rmat, axis, angle);
     mul_m3_v3(rmat, vec);
 
     /* Convert back to screen-coordinates */
-    vec[0] += (float)gso->mval[0];
-    vec[1] += (float)gso->mval[1];
+    vec[0] += float(gso->mval[0]);
+    vec[1] += float(gso->mval[1]);
 
     /* Map from screen-coordinates to final coordinate space */
     if (gps->flag & GP_STROKE_2DSPACE) {
@@ -826,8 +828,8 @@ static bool gpencil_brush_randomize_apply(tGP_BrushEditData *gso,
     float mvec[2], svec[2];
 
     /* mouse movement in ints -> floats */
-    mvec[0] = (float)(gso->mval[0] - gso->mval_prev[0]);
-    mvec[1] = (float)(gso->mval[1] - gso->mval_prev[1]);
+    mvec[0] = float(gso->mval[0] - gso->mval_prev[0]);
+    mvec[1] = float(gso->mval[1] - gso->mval_prev[1]);
 
     /* rotate mvec by 90 degrees... */
     svec[0] = -mvec[1];
@@ -924,16 +926,15 @@ struct tGPSB_CloneBrushData {
 static void gpencil_brush_clone_init(bContext *C, tGP_BrushEditData *gso)
 {
   tGPSB_CloneBrushData *data;
-  bGPDstroke *gps;
 
   /* Initialize custom-data. */
   gso->customdata = data = static_cast<tGPSB_CloneBrushData *>(
       MEM_callocN(sizeof(tGPSB_CloneBrushData), "CloneBrushData"));
 
   /* compute midpoint of strokes on clipboard */
-  for (gps = static_cast<bGPDstroke *>(gpencil_strokes_copypastebuf.first); gps; gps = gps->next) {
+  LISTBASE_FOREACH (bGPDstroke *, gps, &gpencil_strokes_copypastebuf) {
     if (ED_gpencil_stroke_can_use(C, gps)) {
-      const float dfac = 1.0f / ((float)gps->totpoints);
+      const float dfac = 1.0f / float(gps->totpoints);
       float mid[3] = {0.0f};
 
       bGPDspoint *pt;
@@ -955,11 +956,11 @@ static void gpencil_brush_clone_init(bContext *C, tGP_BrushEditData *gso)
 
   /* Divide the midpoint by the number of strokes, to finish averaging it */
   if (data->totitems > 1) {
-    mul_v3_fl(data->buffer_midpoint, 1.0f / (float)data->totitems);
+    mul_v3_fl(data->buffer_midpoint, 1.0f / float(data->totitems));
   }
 
   /* Create a buffer for storing the current strokes */
-  if (1 /*gso->brush->mode == GP_EDITBRUSH_CLONE_MODE_STAMP*/) {
+  if (true /*gso->brush->mode == GP_EDITBRUSH_CLONE_MODE_STAMP*/) {
     data->new_strokes = static_cast<bGPDstroke **>(
         MEM_callocN(sizeof(bGPDstroke *) * data->totitems, "cloned strokes ptr array"));
   }
@@ -997,7 +998,6 @@ static void gpencil_brush_clone_add(bContext *C, tGP_BrushEditData *gso)
   Object *ob = gso->object;
   bGPdata *gpd = (bGPdata *)ob->data;
   Scene *scene = gso->scene;
-  bGPDstroke *gps;
 
   float delta[3];
   size_t strokes_added = 0;
@@ -1009,7 +1009,7 @@ static void gpencil_brush_clone_add(bContext *C, tGP_BrushEditData *gso)
   sub_v3_v3v3(delta, gso->dvec, data->buffer_midpoint);
 
   /* Copy each stroke into the layer */
-  for (gps = static_cast<bGPDstroke *>(gpencil_strokes_copypastebuf.first); gps; gps = gps->next) {
+  LISTBASE_FOREACH (bGPDstroke *, gps, &gpencil_strokes_copypastebuf) {
     if (ED_gpencil_stroke_can_use(C, gps)) {
       bGPDstroke *new_stroke;
       bGPDspoint *pt;
@@ -1112,7 +1112,7 @@ static bool gpencil_sculpt_brush_apply_clone(bContext *C, tGP_BrushEditData *gso
   }
   else {
     /* Stamp or Continuous Mode */
-    if (1 /*gso->brush->mode == GP_EDITBRUSH_CLONE_MODE_STAMP*/) {
+    if (true /*gso->brush->mode == GP_EDITBRUSH_CLONE_MODE_STAMP*/) {
       /* Stamp - Proceed to translate the newly added strokes */
       gpencil_brush_clone_adjust(gso);
     }
@@ -1169,7 +1169,7 @@ static bool gpencil_sculpt_brush_init(bContext *C, wmOperator *op)
   gso->settings = gpencil_sculpt_get_settings(scene);
 
   /* Random generator, only init once. */
-  uint rng_seed = (uint)(PIL_check_seconds_timer_i() & UINT_MAX);
+  uint rng_seed = uint(PIL_check_seconds_timer_i() & UINT_MAX);
   rng_seed ^= POINTER_AS_UINT(gso);
   gso->rng = BLI_rng_new(rng_seed);
 
@@ -1229,7 +1229,7 @@ static bool gpencil_sculpt_brush_init(bContext *C, wmOperator *op)
   gso->mask = eGP_Sculpt_SelectMaskFlag(ts->gpencil_selectmode_sculpt);
 
   /* multiframe settings */
-  gso->is_multiframe = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gso->gpd);
+  gso->is_multiframe = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gso->gpd));
   gso->use_multiframe_falloff = (ts->gp_sculpt.flag & GP_SCULPT_SETT_FLAG_FRAME_FALLOFF) != 0;
 
   /* Init multi-edit falloff curve data before doing anything,
@@ -1242,12 +1242,10 @@ static bool gpencil_sculpt_brush_init(bContext *C, wmOperator *op)
   char tool = gso->brush->gpencil_sculpt_tool;
   switch (tool) {
     case GPSCULPT_TOOL_CLONE: {
-      bGPDstroke *gps;
       bool found = false;
 
       /* check that there are some usable strokes in the buffer */
-      for (gps = static_cast<bGPDstroke *>(gpencil_strokes_copypastebuf.first); gps;
-           gps = gps->next) {
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpencil_strokes_copypastebuf) {
         if (ED_gpencil_stroke_can_use(C, gps)) {
           found = true;
           break;
@@ -1782,7 +1780,7 @@ static void get_nearest_stroke_to_brush(tGP_BrushEditData *gso,
   Object *ob_eval = gso->ob_eval;
   bGPdata *gpd = (bGPdata *)ob_eval->data;
   GP_SpaceConversion *gsc = &gso->gsc;
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
   float dist = FLT_MAX;
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
@@ -1844,7 +1842,7 @@ static bool get_automasking_strokes_list(tGP_BrushEditData *gso)
   ToolSettings *ts = gso->scene->toolsettings;
   Object *ob = gso->object;
   const eGP_Sculpt_SettingsFlag flag = eGP_Sculpt_SettingsFlag(ts->gp_sculpt.flag);
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
   const bool is_masking_stroke = (flag & GP_SCULPT_SETT_FLAG_AUTOMASK_STROKE) != 0;
   const bool is_masking_layer_stroke = (flag & GP_SCULPT_SETT_FLAG_AUTOMASK_LAYER_STROKE) != 0;
   const bool is_masking_material_stroke = (flag & GP_SCULPT_SETT_FLAG_AUTOMASK_MATERIAL_STROKE) !=
@@ -2122,8 +2120,8 @@ static void gpencil_sculpt_brush_apply(bContext *C, wmOperator *op, PointerRNA *
 
   /* Get latest mouse coordinates */
   RNA_float_get_array(itemptr, "mouse", mousef);
-  gso->mval[0] = mouse[0] = (int)(mousef[0]);
-  gso->mval[1] = mouse[1] = (int)(mousef[1]);
+  gso->mval[0] = mouse[0] = int(mousef[0]);
+  gso->mval[1] = mouse[1] = int(mousef[1]);
 
   /* If the mouse/pen has not moved, no reason to continue. This also avoid a small
    * drift due precision accumulation errors. */
@@ -2427,7 +2425,7 @@ static int gpencil_sculpt_brush_modal(bContext *C, wmOperator *op, const wmEvent
         return OPERATOR_PASS_THROUGH;
 
       /* Camera/View Gizmo's - Allowed. */
-      /* (See rationale in gpencil_paint.c -> gpencil_draw_modal()) */
+      /* See rationale in `gpencil_paint.cc`, #gpencil_draw_modal(). */
       case EVT_PAD0:
       case EVT_PAD1:
       case EVT_PAD2:

@@ -18,7 +18,7 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 
@@ -26,15 +26,15 @@
 #include "BKE_cdderivedmesh.h"
 #include "BKE_editmesh.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_mapping.hh"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.h"
-#include "BKE_multires.h"
-#include "BKE_paint.h"
+#include "BKE_multires.hh"
+#include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_scene.h"
-#include "BKE_subdiv_ccg.h"
-#include "BKE_subsurf.h"
+#include "BKE_subdiv_ccg.hh"
+#include "BKE_subsurf.hh"
 
 #include "BKE_object.h"
 
@@ -238,7 +238,7 @@ Mesh *BKE_multires_create_mesh(Depsgraph *depsgraph, Object *object, MultiresMod
   modifier_ctx.flag = MOD_APPLY_USECACHE | MOD_APPLY_IGNORE_SIMPLIFY;
 
   const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(mmd->modifier.type));
-  Mesh *result = mti->modifyMesh(&mmd->modifier, &modifier_ctx, deformed_mesh);
+  Mesh *result = mti->modify_mesh(&mmd->modifier, &modifier_ctx, deformed_mesh);
 
   if (result == deformed_mesh) {
     result = BKE_mesh_copy_for_eval(deformed_mesh);
@@ -432,10 +432,11 @@ void multires_flush_sculpt_updates(Object *object)
    */
   ModifierData *md;
   MultiresModifierData *mmd = nullptr;
-  VirtualModifierData virtualModifierData;
+  VirtualModifierData virtual_modifier_data;
 
-  for (md = BKE_modifiers_get_virtual_modifierlist(object, &virtualModifierData); md;
-       md = md->next) {
+  for (md = BKE_modifiers_get_virtual_modifierlist(object, &virtual_modifier_data); md;
+       md = md->next)
+  {
     if (md->type == eModifierType_Multires) {
       if (BKE_modifier_is_enabled(nullptr, md, eModifierMode_Realtime)) {
         mmd = (MultiresModifierData *)md;

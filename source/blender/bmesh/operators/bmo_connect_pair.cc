@@ -11,7 +11,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_heap_simple.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "bmesh.h"
@@ -94,7 +95,7 @@ struct PathContext {
  * Single linked list where each item contains state and points to previous path item.
  */
 struct PathLink {
-  struct PathLink *next;
+  PathLink *next;
   BMElem *ele;      /* edge or vert */
   BMElem *ele_from; /* edge or face we came from (not 'next->ele') */
 };

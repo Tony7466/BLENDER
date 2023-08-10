@@ -10,11 +10,11 @@
  * Splits a face into a triangle fan.
  */
 
-#include "BLI_math.h"
-
 #include "bmesh.h"
 
 #include "intern/bmesh_operators_private.h" /* own include */
+
+#include "BLI_math_vector.h"
 
 #include "BKE_customdata.h"
 
@@ -115,7 +115,7 @@ void bmo_poke_exec(BMesh *bm, BMOperator *op)
     } while ((void)i++, (l_iter = l_iter->next) != l_first);
 
     if (use_relative_offset) {
-      offset_fac /= (float)f->len;
+      offset_fac /= float(f->len);
     }
     /* else remain at 1.0 */
 

@@ -25,7 +25,7 @@
 
 #include "BLO_writefile.h"
 
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "bpy_capi_utils.h"
 #include "bpy_library.h"
@@ -94,7 +94,7 @@ static PyObject *bpy_lib_write(BPy_PropertyRNA *self, PyObject *args, PyObject *
       "O&" /* `compress` */
       ":write",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args,
                                         kw,

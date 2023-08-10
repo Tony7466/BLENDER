@@ -11,7 +11,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_memarena.h"
 #include "BLI_mempool.h"
 #include "BLI_string.h"
@@ -450,7 +451,7 @@ bool BMO_slot_bool_get(BMOpSlot slot_args[BMO_OP_MAX_SLOTS], const char *slot_na
   BMOpSlot *slot = BMO_slot_get(slot_args, slot_name);
   BLI_assert(slot->slot_type == BMO_OP_SLOT_BOOL);
   if (!(slot->slot_type == BMO_OP_SLOT_BOOL)) {
-    return 0;
+    return false;
   }
 
   return slot->data.i;
@@ -1451,7 +1452,7 @@ bool BMO_iter_map_value_bool(BMOIter *iter)
 
 /* error system */
 struct BMOpError {
-  struct BMOpError *next, *prev;
+  BMOpError *next, *prev;
   BMOperator *op;
   const char *msg;
   eBMOpErrorLevel level;
@@ -1512,7 +1513,7 @@ bool BMO_error_get_at_level(BMesh *bm,
                             const char **r_msg,
                             BMOperator **r_op)
 {
-  for (BMOpError *err = static_cast<BMOpError *>(bm->errorstack.first); err; err = err->next) {
+  LISTBASE_FOREACH (BMOpError *, err, &bm->errorstack) {
     if (err->level >= level) {
       if (r_msg) {
         *r_msg = err->msg;
@@ -1761,7 +1762,7 @@ bool BMO_op_vinitf(BMesh *bm, BMOperator *op, const int flag, const char *_fmt, 
           else {
             char htype = 0;
 
-            while (1) {
+            while (true) {
               char htype_set;
               const char c = NEXT_CHAR(fmt);
               if (c == 'f') {
@@ -1819,7 +1820,7 @@ bool BMO_op_vinitf(BMesh *bm, BMOperator *op, const int flag, const char *_fmt, 
                   "%s: unrecognized bmop format char: '%c', %d in '%s'\n",
                   __func__,
                   *fmt,
-                  (int)(fmt - ofmt),
+                  int(fmt - ofmt),
                   ofmt);
           break;
       }
@@ -1834,10 +1835,10 @@ error:
   /* TODO: explain exactly what is failing (not urgent). */
   fprintf(stderr, "%s: error parsing formatting string\n", __func__);
 
-  fprintf(stderr, "string: '%s', position %d\n", _fmt, (int)(fmt - ofmt));
+  fprintf(stderr, "string: '%s', position %d\n", _fmt, int(fmt - ofmt));
   fprintf(stderr, "         ");
   {
-    int pos = (int)(fmt - ofmt);
+    int pos = int(fmt - ofmt);
     for (i = 0; i < pos; i++) {
       fprintf(stderr, " ");
     }

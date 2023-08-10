@@ -45,7 +45,7 @@
 #define USE_RNA_DATABLOCKS
 
 #ifdef USE_RNA_DATABLOCKS
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 #  include "bpy_rna.h"
 #endif
 
@@ -213,7 +213,7 @@ static PyObject *bpy_lib_load(BPy_PropertyRNA *self, PyObject *args, PyObject *k
       "O&" /* `create_liboverrides_runtime` */
       ":load",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args,
                                         kw,

@@ -13,7 +13,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_rect.h"
 #include "BLI_string_utils.h"
 #include "BLI_threads.h"
@@ -48,14 +47,14 @@
 
 #include "DEG_depsgraph.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_render.h"
-#include "ED_screen.h"
-#include "ED_util.h"
+#include "ED_render.hh"
+#include "ED_screen.hh"
+#include "ED_util.hh"
 
-#include "BIF_glutil.h"
+#include "BIF_glutil.hh"
 
 #include "RE_engine.h"
 #include "RE_pipeline.h"
@@ -63,8 +62,8 @@
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf_types.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "SEQ_relations.h"
 
@@ -743,8 +742,7 @@ static void render_image_restore_layer(RenderJob *rj)
 
   /* Only ever 1 `wm`. */
   LISTBASE_FOREACH (wmWindowManager *, wm, &rj->main->wm) {
-    wmWindow *win;
-    for (win = static_cast<wmWindow *>(wm->windows.first); win; win = win->next) {
+    LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
       const bScreen *screen = WM_window_get_active_screen(win);
 
       LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {

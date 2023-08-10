@@ -11,12 +11,13 @@
 
 #include "BLT_translation.h"
 
-#include "UI_interface.h"
 #include "UI_interface.hh"
 #include "UI_tree_view.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
+
+#include "ED_undo.hh"
 
 #include <fmt/format.h>
 
@@ -180,9 +181,18 @@ class LayerViewItem : public AbstractTreeViewItem {
     return {};
   }
 
-  void on_activate(bContext & /*C*/) override
+  void on_activate(bContext &C) override
   {
-    this->grease_pencil_.set_active_layer(&layer_);
+    PointerRNA grease_pencil_ptr, value_ptr;
+    RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilv3Layers, nullptr, &grease_pencil_ptr);
+    RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilLayer, &layer_, &value_ptr);
+
+    PropertyRNA *prop = RNA_struct_find_property(&grease_pencil_ptr, "active");
+
+    RNA_property_pointer_set(&grease_pencil_ptr, prop, value_ptr, nullptr);
+    RNA_property_update(&C, &grease_pencil_ptr, prop);
+
+    ED_undo_push(&C, "Active Grease Pencil Layer");
   }
 
   bool supports_renaming() const override
@@ -228,11 +238,50 @@ class LayerViewItem : public AbstractTreeViewItem {
 
   void build_layer_buttons(uiLayout &row)
   {
+    uiBut *but;
     PointerRNA layer_ptr;
     RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilLayer, &layer_, &layer_ptr);
 
-    uiItemR(&row, &layer_ptr, "hide", UI_ITEM_R_ICON_ONLY, nullptr, 0);
-    uiItemR(&row, &layer_ptr, "lock", UI_ITEM_R_ICON_ONLY, nullptr, 0);
+    uiBlock *block = uiLayoutGetBlock(&row);
+    but = uiDefIconButR(block,
+                        UI_BTYPE_ICON_TOGGLE,
+                        0,
+                        0,
+                        0,
+                        0,
+                        UI_UNIT_X,
+                        UI_UNIT_Y,
+                        &layer_ptr,
+                        "hide",
+                        0,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        nullptr);
+    if (!layer_.parent_group().is_visible()) {
+      UI_but_flag_enable(but, UI_BUT_INACTIVE);
+    }
+
+    but = uiDefIconButR(block,
+                        UI_BTYPE_ICON_TOGGLE,
+                        0,
+                        0,
+                        0,
+                        0,
+                        UI_UNIT_X,
+                        UI_UNIT_Y,
+                        &layer_ptr,
+                        "lock",
+                        0,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        nullptr);
+    if (layer_.parent_group().is_locked()) {
+      UI_but_flag_enable(but, UI_BUT_INACTIVE);
+    }
   }
 };
 

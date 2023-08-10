@@ -6,8 +6,8 @@
  * \ingroup modifiers
  */
 
-#include <stdio.h>
-#include <string.h> /* For #MEMCPY_STRUCT_AFTER. */
+#include <cstdio>
+#include <cstring> /* For #MEMCPY_STRUCT_AFTER. */
 
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
@@ -29,16 +29,16 @@
 
 #include "DEG_depsgraph.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "MOD_gpencil_legacy_modifiertypes.h"
 #include "MOD_gpencil_legacy_ui_common.h"
 #include "MOD_gpencil_legacy_util.h"
 
-static void initData(GpencilModifierData *md)
+static void init_data(GpencilModifierData *md)
 {
   SimplifyGpencilModifierData *gpmd = (SimplifyGpencilModifierData *)md;
 
@@ -47,17 +47,17 @@ static void initData(GpencilModifierData *md)
   MEMCPY_STRUCT_AFTER(gpmd, DNA_struct_default_get(SimplifyGpencilModifierData), modifier);
 }
 
-static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
+static void copy_data(const GpencilModifierData *md, GpencilModifierData *target)
 {
   BKE_gpencil_modifier_copydata_generic(md, target);
 }
 
-static void deformStroke(GpencilModifierData *md,
-                         Depsgraph * /*depsgraph*/,
-                         Object *ob,
-                         bGPDlayer *gpl,
-                         bGPDframe *gpf,
-                         bGPDstroke *gps)
+static void deform_stroke(GpencilModifierData *md,
+                          Depsgraph * /*depsgraph*/,
+                          Object *ob,
+                          bGPDlayer *gpl,
+                          bGPDframe *gpf,
+                          bGPDstroke *gps)
 {
   SimplifyGpencilModifierData *mmd = (SimplifyGpencilModifierData *)md;
 
@@ -103,19 +103,19 @@ static void deformStroke(GpencilModifierData *md,
   }
 }
 
-static void bakeModifier(struct Main * /*bmain*/,
-                         Depsgraph *depsgraph,
-                         GpencilModifierData *md,
-                         Object *ob)
+static void bake_modifier(Main * /*bmain*/,
+                          Depsgraph *depsgraph,
+                          GpencilModifierData *md,
+                          Object *ob)
 {
-  generic_bake_deform_stroke(depsgraph, md, ob, false, deformStroke);
+  generic_bake_deform_stroke(depsgraph, md, ob, false, deform_stroke);
 }
 
-static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, void *userData)
+static void foreach_ID_link(GpencilModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
 {
   SimplifyGpencilModifierData *mmd = (SimplifyGpencilModifierData *)md;
 
-  walk(userData, ob, (ID **)&mmd->material, IDWALK_CB_USER);
+  walk(user_data, ob, (ID **)&mmd->material, IDWALK_CB_USER);
 }
 
 static void panel_draw(const bContext * /*C*/, Panel *panel)
@@ -128,20 +128,20 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "mode", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   if (mode == GP_SIMPLIFY_FIXED) {
-    uiItemR(layout, ptr, "step", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "step", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   else if (mode == GP_SIMPLIFY_ADAPTIVE) {
-    uiItemR(layout, ptr, "factor", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "factor", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   else if (mode == GP_SIMPLIFY_SAMPLE) {
-    uiItemR(layout, ptr, "length", 0, nullptr, ICON_NONE);
-    uiItemR(layout, ptr, "sharp_threshold", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "length", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "sharp_threshold", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   else if (mode == GP_SIMPLIFY_MERGE) {
-    uiItemR(layout, ptr, "distance", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "distance", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
   gpencil_modifier_panel_end(layout, ptr);
@@ -152,7 +152,7 @@ static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
   gpencil_modifier_masking_panel_draw(panel, true, false);
 }
 
-static void panelRegister(ARegionType *region_type)
+static void panel_register(ARegionType *region_type)
 {
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Simplify, panel_draw);
@@ -162,24 +162,24 @@ static void panelRegister(ARegionType *region_type)
 
 GpencilModifierTypeInfo modifierType_Gpencil_Simplify = {
     /*name*/ N_("Simplify"),
-    /*structName*/ "SimplifyGpencilModifierData",
-    /*structSize*/ sizeof(SimplifyGpencilModifierData),
+    /*struct_name*/ "SimplifyGpencilModifierData",
+    /*struct_size*/ sizeof(SimplifyGpencilModifierData),
     /*type*/ eGpencilModifierTypeType_Gpencil,
     /*flags*/ eGpencilModifierTypeFlag_SupportsEditmode,
 
-    /*copyData*/ copyData,
+    /*copy_data*/ copy_data,
 
-    /*deformStroke*/ deformStroke,
-    /*generateStrokes*/ nullptr,
-    /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ nullptr,
+    /*deform_stroke*/ deform_stroke,
+    /*generate_strokes*/ nullptr,
+    /*bake_modifier*/ bake_modifier,
+    /*remap_time*/ nullptr,
 
-    /*initData*/ initData,
-    /*freeData*/ nullptr,
-    /*isDisabled*/ nullptr,
-    /*updateDepsgraph*/ nullptr,
-    /*dependsOnTime*/ nullptr,
-    /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ nullptr,
-    /*panelRegister*/ panelRegister,
+    /*init_data*/ init_data,
+    /*free_data*/ nullptr,
+    /*is_disabled*/ nullptr,
+    /*update_depsgraph*/ nullptr,
+    /*depends_on_time*/ nullptr,
+    /*foreach_ID_link*/ foreach_ID_link,
+    /*foreach_tex_link*/ nullptr,
+    /*panel_register*/ panel_register,
 };

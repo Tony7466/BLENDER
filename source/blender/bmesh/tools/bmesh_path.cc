@@ -14,7 +14,8 @@
 
 #include "BLI_heap_simple.h"
 #include "BLI_linklist.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 
 #include "bmesh.h"
 #include "bmesh_path.h" /* own include */
@@ -60,7 +61,7 @@ static void verttag_add_adjacent(HeapSimple *heap,
                                  BMVert *v_a,
                                  BMVert **verts_prev,
                                  float *cost,
-                                 const struct BMCalcPathParams *params)
+                                 const BMCalcPathParams *params)
 {
   const int v_a_index = BM_elem_index_get(v_a);
 
@@ -117,7 +118,7 @@ static void verttag_add_adjacent(HeapSimple *heap,
 LinkNode *BM_mesh_calc_path_vert(BMesh *bm,
                                  BMVert *v_src,
                                  BMVert *v_dst,
-                                 const struct BMCalcPathParams *params,
+                                 const BMCalcPathParams *params,
                                  bool (*filter_fn)(BMVert *, void *user_data),
                                  void *user_data)
 {
@@ -217,7 +218,7 @@ static void edgetag_add_adjacent(HeapSimple *heap,
                                  BMEdge *e_a,
                                  BMEdge **edges_prev,
                                  float *cost,
-                                 const struct BMCalcPathParams *params)
+                                 const BMCalcPathParams *params)
 {
   const int e_a_index = BM_elem_index_get(e_a);
 
@@ -297,7 +298,7 @@ static void edgetag_add_adjacent(HeapSimple *heap,
 LinkNode *BM_mesh_calc_path_edge(BMesh *bm,
                                  BMEdge *e_src,
                                  BMEdge *e_dst,
-                                 const struct BMCalcPathParams *params,
+                                 const BMCalcPathParams *params,
                                  bool (*filter_fn)(BMEdge *, void *user_data),
                                  void *user_data)
 {
@@ -429,7 +430,7 @@ static void facetag_add_adjacent(HeapSimple *heap,
                                  BMFace **faces_prev,
                                  float *cost,
                                  const void *const f_endpoints[2],
-                                 const struct BMCalcPathParams *params)
+                                 const BMCalcPathParams *params)
 {
   const int f_a_index = BM_elem_index_get(f_a);
 
@@ -495,7 +496,7 @@ static void facetag_add_adjacent(HeapSimple *heap,
 LinkNode *BM_mesh_calc_path_face(BMesh *bm,
                                  BMFace *f_src,
                                  BMFace *f_dst,
-                                 const struct BMCalcPathParams *params,
+                                 const BMCalcPathParams *params,
                                  bool (*filter_fn)(BMFace *, void *user_data),
                                  void *user_data)
 {

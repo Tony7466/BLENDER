@@ -24,14 +24,14 @@
 #include "BKE_bpath.h"
 #include "BKE_global.h" /* XXX, G_MAIN only */
 
-#include "RNA_access.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "GPU_state.h"
 
-#include "WM_api.h" /* For #WM_ghost_backend */
+#include "WM_api.hh" /* For #WM_ghost_backend */
 
 #include "bpy.h"
 #include "bpy_app.h"
@@ -127,7 +127,7 @@ static PyObject *bpy_blend_paths(PyObject * /*self*/, PyObject *args, PyObject *
       "O&" /* `local` */
       ":blend_paths",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args,
                                         kw,
@@ -189,7 +189,7 @@ static PyObject *bpy_flip_name(PyObject * /*self*/, PyObject *args, PyObject *kw
       "O&" /* `strip_digits` */
       ":flip_name",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kw, &_parser, &name_src, &name_src_len, PyC_ParseBool, &strip_digits))
@@ -233,7 +233,7 @@ static PyObject *bpy_user_resource(PyObject * /*self*/, PyObject *args, PyObject
       "s"  /* `path` */
       ":user_resource",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args, kw, &_parser, PyC_ParseStringEnum, &type, &subdir)) {
     return nullptr;
@@ -276,7 +276,7 @@ static PyObject *bpy_system_resource(PyObject * /*self*/, PyObject *args, PyObje
       "s"  /* `path` */
       ":system_resource",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args, kw, &_parser, PyC_ParseStringEnum, &type, &subdir)) {
     return nullptr;
@@ -322,7 +322,7 @@ static PyObject *bpy_resource_path(PyObject * /*self*/, PyObject *args, PyObject
       "i"  /* `minor` */
       ":resource_path",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kw, &_parser, PyC_ParseStringEnum, &type, &major, &minor))
@@ -362,7 +362,7 @@ static PyObject *bpy_driver_secure_code_test(PyObject * /*self*/, PyObject *args
       "O&" /* `verbose` */
       ":driver_secure_code_test",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args,
                                         kw,
@@ -527,7 +527,7 @@ static PyObject *bpy_rna_enum_items_static(PyObject * /*self*/)
     const char *id;
     const EnumPropertyItem *items;
   } enum_info[] = {
-#include "RNA_enum_items.h"
+#include "RNA_enum_items.hh"
   };
   PyObject *result = _PyDict_NewPresized(ARRAY_SIZE(enum_info));
   for (int i = 0; i < ARRAY_SIZE(enum_info); i++) {
@@ -689,7 +689,7 @@ void BPy_init_modules(bContext *C)
     PyModule_AddObject(mod, m->ml_name, (PyObject *)PyCFunction_New(m, nullptr));
   }
 
-  /* Register functions (`bpy_rna.c`). */
+  /* Register functions (`bpy_rna.cc`). */
   PyModule_AddObject(mod,
                      meth_bpy_register_class.ml_name,
                      (PyObject *)PyCFunction_New(&meth_bpy_register_class, nullptr));

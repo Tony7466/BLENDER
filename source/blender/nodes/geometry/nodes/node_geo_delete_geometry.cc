@@ -2,8 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "DNA_pointcloud_types.h"
 
@@ -136,7 +136,7 @@ void separate_geometry(GeometrySet &geometry_set,
   namespace file_ns = blender::nodes::node_geo_delete_geometry_cc;
 
   bool some_valid_domain = false;
-  if (const PointCloud *points = geometry_set.get_pointcloud_for_read()) {
+  if (const PointCloud *points = geometry_set.get_pointcloud()) {
     if (domain == ATTR_DOMAIN_POINT) {
       std::optional<PointCloud *> dst_points = file_ns::separate_point_cloud_selection(
           *points, selection, propagation_info);
@@ -146,7 +146,7 @@ void separate_geometry(GeometrySet &geometry_set,
       some_valid_domain = true;
     }
   }
-  if (const Mesh *mesh = geometry_set.get_mesh_for_read()) {
+  if (const Mesh *mesh = geometry_set.get_mesh()) {
     if (ELEM(domain, ATTR_DOMAIN_POINT, ATTR_DOMAIN_EDGE, ATTR_DOMAIN_FACE, ATTR_DOMAIN_CORNER)) {
       std::optional<Mesh *> dst_mesh = file_ns::separate_mesh_selection(
           *mesh, selection, domain, mode, propagation_info);
@@ -156,7 +156,7 @@ void separate_geometry(GeometrySet &geometry_set,
       some_valid_domain = true;
     }
   }
-  if (const Curves *curves_id = geometry_set.get_curves_for_read()) {
+  if (const Curves *curves_id = geometry_set.get_curves()) {
     if (ELEM(domain, ATTR_DOMAIN_POINT, ATTR_DOMAIN_CURVE)) {
       std::optional<Curves *> dst_curves = file_ns::separate_curves_selection(
           *curves_id, selection, domain, propagation_info);
@@ -198,10 +198,10 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   const NodeGeometryDeleteGeometry &storage = node_storage(*node);
   const eAttrDomain domain = eAttrDomain(storage.domain);
 
-  uiItemR(layout, ptr, "domain", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "domain", UI_ITEM_NONE, "", ICON_NONE);
   /* Only show the mode when it is relevant. */
   if (ELEM(domain, ATTR_DOMAIN_POINT, ATTR_DOMAIN_EDGE, ATTR_DOMAIN_FACE)) {
-    uiItemR(layout, ptr, "mode", 0, "", ICON_NONE);
+    uiItemR(layout, ptr, "mode", UI_ITEM_NONE, "", ICON_NONE);
   }
 }
 
@@ -246,12 +246,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Geometry", std::move(geometry_set));
 }
 
-}  // namespace blender::nodes::node_geo_delete_geometry_cc
-
-void register_node_type_geo_delete_geometry()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_delete_geometry_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_DELETE_GEOMETRY, "Delete Geometry", NODE_CLASS_GEOMETRY);
@@ -261,10 +257,12 @@ void register_node_type_geo_delete_geometry()
                     node_free_standard_storage,
                     node_copy_standard_storage);
 
-  ntype.initfunc = file_ns::node_init;
-
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.draw_buttons = file_ns::node_layout;
+  ntype.initfunc = node_init;
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_delete_geometry_cc

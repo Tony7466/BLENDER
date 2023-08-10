@@ -6,18 +6,18 @@
  * \ingroup modifiers
  */
 
-#include <stdio.h>
+#include <cstdio>
 
 #include "BLI_hash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
 #include "BLI_hash.h"
-#include "BLI_math.h"
 #include "BLI_rand.h"
 #include "DNA_defaults.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -25,7 +25,7 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "BKE_context.h"
 #include "BKE_deform.h"
@@ -39,14 +39,14 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "MOD_gpencil_legacy_modifiertypes.h"
 #include "MOD_gpencil_legacy_ui_common.h"
 #include "MOD_gpencil_legacy_util.h"
 
-static void initData(GpencilModifierData *md)
+static void init_data(GpencilModifierData *md)
 {
   OffsetGpencilModifierData *gpmd = (OffsetGpencilModifierData *)md;
 
@@ -57,18 +57,18 @@ static void initData(GpencilModifierData *md)
   md->ui_expand_flag = UI_PANEL_DATA_EXPAND_ROOT | UI_SUBPANEL_DATA_EXPAND_1;
 }
 
-static void copyData(const GpencilModifierData *md, GpencilModifierData *target)
+static void copy_data(const GpencilModifierData *md, GpencilModifierData *target)
 {
   BKE_gpencil_modifier_copydata_generic(md, target);
 }
 
 /* Change stroke offset. */
-static void deformStroke(GpencilModifierData *md,
-                         Depsgraph * /*depsgraph*/,
-                         Object *ob,
-                         bGPDlayer *gpl,
-                         bGPDframe *gpf,
-                         bGPDstroke *gps)
+static void deform_stroke(GpencilModifierData *md,
+                          Depsgraph * /*depsgraph*/,
+                          Object *ob,
+                          bGPDlayer *gpl,
+                          bGPDframe *gpf,
+                          bGPDstroke *gps)
 {
   OffsetGpencilModifierData *mmd = (OffsetGpencilModifierData *)md;
   const int def_nr = BKE_object_defgroup_name_index(ob, mmd->vgname);
@@ -155,7 +155,7 @@ static void deformStroke(GpencilModifierData *md,
       offset_factor = ((offset_size - (offset_index / step + start_offset % offset_size) %
                                           offset_size * step % offset_size) -
                        1) /
-                      (float)offset_size;
+                      float(offset_size);
       for (int j = 0; j < 3; j++) {
         for (int i = 0; i < 3; i++) {
           rand[j][i] = offset_factor;
@@ -212,26 +212,26 @@ static void deformStroke(GpencilModifierData *md,
   BKE_gpencil_stroke_geometry_update(gpd, gps);
 }
 
-static void bakeModifier(struct Main * /*bmain*/,
-                         Depsgraph *depsgraph,
-                         GpencilModifierData *md,
-                         Object *ob)
+static void bake_modifier(Main * /*bmain*/,
+                          Depsgraph *depsgraph,
+                          GpencilModifierData *md,
+                          Object *ob)
 {
-  generic_bake_deform_stroke(depsgraph, md, ob, false, deformStroke);
+  generic_bake_deform_stroke(depsgraph, md, ob, false, deform_stroke);
 }
 
-static void updateDepsgraph(GpencilModifierData * /*md*/,
-                            const ModifierUpdateDepsgraphContext *ctx,
-                            const int /*mode*/)
+static void update_depsgraph(GpencilModifierData * /*md*/,
+                             const ModifierUpdateDepsgraphContext *ctx,
+                             const int /*mode*/)
 {
   DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Offset Modifier");
 }
 
-static void foreachIDLink(GpencilModifierData *md, Object *ob, IDWalkFunc walk, void *userData)
+static void foreach_ID_link(GpencilModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
 {
   OffsetGpencilModifierData *mmd = (OffsetGpencilModifierData *)md;
 
-  walk(userData, ob, (ID **)&mmd->material, IDWALK_CB_USER);
+  walk(user_data, ob, (ID **)&mmd->material, IDWALK_CB_USER);
 }
 
 static void panel_draw(const bContext * /*C*/, Panel *panel)
@@ -241,9 +241,9 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "location", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "rotation", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "scale", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "location", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "rotation", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "scale", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   gpencil_modifier_panel_end(layout, ptr);
   uiLayoutSetActive(layout, true);
@@ -268,29 +268,29 @@ static void random_panel_draw(const bContext * /*C*/, Panel *panel)
   int mode = RNA_enum_get(ptr, "mode");
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "mode", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  uiItemR(layout, ptr, "random_offset", 0, IFACE_("Offset"), ICON_NONE);
-  uiItemR(layout, ptr, "random_rotation", 0, IFACE_("Rotation"), ICON_NONE);
-  uiItemR(layout, ptr, "random_scale", 0, IFACE_("Scale"), ICON_NONE);
+  uiItemR(layout, ptr, "random_offset", UI_ITEM_NONE, IFACE_("Offset"), ICON_NONE);
+  uiItemR(layout, ptr, "random_rotation", UI_ITEM_NONE, IFACE_("Rotation"), ICON_NONE);
+  uiItemR(layout, ptr, "random_scale", UI_ITEM_NONE, IFACE_("Scale"), ICON_NONE);
 
   col = uiLayoutColumn(layout, true);
   switch (mode) {
     case GP_OFFSET_RANDOM:
-      uiItemR(layout, ptr, "use_uniform_random_scale", 0, nullptr, ICON_NONE);
-      uiItemR(layout, ptr, "seed", 0, nullptr, ICON_NONE);
+      uiItemR(layout, ptr, "use_uniform_random_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiItemR(layout, ptr, "seed", UI_ITEM_NONE, nullptr, ICON_NONE);
       break;
     case GP_OFFSET_STROKE:
-      uiItemR(col, ptr, "stroke_step", 0, IFACE_("Stroke Step"), ICON_NONE);
-      uiItemR(col, ptr, "stroke_start_offset", 0, IFACE_("Offset"), ICON_NONE);
+      uiItemR(col, ptr, "stroke_step", UI_ITEM_NONE, IFACE_("Stroke Step"), ICON_NONE);
+      uiItemR(col, ptr, "stroke_start_offset", UI_ITEM_NONE, IFACE_("Offset"), ICON_NONE);
       break;
     case GP_OFFSET_MATERIAL:
-      uiItemR(col, ptr, "stroke_step", 0, IFACE_("Material Step"), ICON_NONE);
-      uiItemR(col, ptr, "stroke_start_offset", 0, IFACE_("Offset"), ICON_NONE);
+      uiItemR(col, ptr, "stroke_step", UI_ITEM_NONE, IFACE_("Material Step"), ICON_NONE);
+      uiItemR(col, ptr, "stroke_start_offset", UI_ITEM_NONE, IFACE_("Offset"), ICON_NONE);
       break;
     case GP_OFFSET_LAYER:
-      uiItemR(col, ptr, "stroke_step", 0, IFACE_("Layer Step"), ICON_NONE);
-      uiItemR(col, ptr, "stroke_start_offset", 0, IFACE_("Offset"), ICON_NONE);
+      uiItemR(col, ptr, "stroke_step", UI_ITEM_NONE, IFACE_("Layer Step"), ICON_NONE);
+      uiItemR(col, ptr, "stroke_start_offset", UI_ITEM_NONE, IFACE_("Offset"), ICON_NONE);
       break;
   }
   gpencil_modifier_panel_end(layout, ptr);
@@ -301,7 +301,7 @@ static void mask_panel_draw(const bContext * /*C*/, Panel *panel)
   gpencil_modifier_masking_panel_draw(panel, true, true);
 }
 
-static void panelRegister(ARegionType *region_type)
+static void panel_register(ARegionType *region_type)
 {
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_Offset, empty_panel_draw);
@@ -315,24 +315,24 @@ static void panelRegister(ARegionType *region_type)
 
 GpencilModifierTypeInfo modifierType_Gpencil_Offset = {
     /*name*/ N_("Offset"),
-    /*structName*/ "OffsetGpencilModifierData",
-    /*structSize*/ sizeof(OffsetGpencilModifierData),
+    /*struct_name*/ "OffsetGpencilModifierData",
+    /*struct_size*/ sizeof(OffsetGpencilModifierData),
     /*type*/ eGpencilModifierTypeType_Gpencil,
     /*flags*/ eGpencilModifierTypeFlag_SupportsEditmode,
 
-    /*copyData*/ copyData,
+    /*copy_data*/ copy_data,
 
-    /*deformStroke*/ deformStroke,
-    /*generateStrokes*/ nullptr,
-    /*bakeModifier*/ bakeModifier,
-    /*remapTime*/ nullptr,
+    /*deform_stroke*/ deform_stroke,
+    /*generate_strokes*/ nullptr,
+    /*bake_modifier*/ bake_modifier,
+    /*remap_time*/ nullptr,
 
-    /*initData*/ initData,
-    /*freeData*/ nullptr,
-    /*isDisabled*/ nullptr,
-    /*updateDepsgraph*/ updateDepsgraph,
-    /*dependsOnTime*/ nullptr,
-    /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ nullptr,
-    /*panelRegister*/ panelRegister,
+    /*init_data*/ init_data,
+    /*free_data*/ nullptr,
+    /*is_disabled*/ nullptr,
+    /*update_depsgraph*/ update_depsgraph,
+    /*depends_on_time*/ nullptr,
+    /*foreach_ID_link*/ foreach_ID_link,
+    /*foreach_tex_link*/ nullptr,
+    /*panel_register*/ panel_register,
 };

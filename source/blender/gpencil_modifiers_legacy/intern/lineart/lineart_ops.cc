@@ -6,12 +6,11 @@
  * \ingroup editors
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_linklist.h"
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
@@ -23,8 +22,8 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_gpencil_modifier_types.h"
@@ -46,7 +45,7 @@ static bool lineart_mod_is_disabled(GpencilModifierData *md)
    * it. We can assume that the guard function has already toggled this on for all modifiers that
    * are sent here. */
   lmd->flags &= (~LRT_GPENCIL_IS_BAKED);
-  bool disabled = info->isDisabled(md, 0);
+  bool disabled = info->is_disabled(md, false);
   lmd->flags |= LRT_GPENCIL_IS_BAKED;
 
   return disabled;
@@ -251,7 +250,7 @@ static void lineart_gpencil_bake_startjob(void *customdata,
     }
 
     /* Update and refresh the progress bar. */
-    *bj->progress = (float)(frame - bj->frame_begin) / (bj->frame_end - bj->frame_begin);
+    *bj->progress = float(frame - bj->frame_begin) / (bj->frame_end - bj->frame_begin);
     *bj->do_update = true;
   }
 
@@ -474,7 +473,7 @@ void OBJECT_OT_lineart_clear_all(wmOperatorType *ot)
   ot->exec = lineart_gpencil_clear_strokes_all_exec;
 }
 
-void WM_operatortypes_lineart(void)
+void WM_operatortypes_lineart()
 {
   WM_operatortype_append(OBJECT_OT_lineart_bake_strokes);
   WM_operatortype_append(OBJECT_OT_lineart_bake_strokes_all);

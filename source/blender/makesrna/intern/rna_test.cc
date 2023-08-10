@@ -8,10 +8,10 @@
 
 /* Defines a structure with properties used for array manipulation tests in BPY. */
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "rna_internal.h"
 

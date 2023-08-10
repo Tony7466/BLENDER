@@ -11,7 +11,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_array.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 
 #include "bmesh.h"
 #include "bmesh_tools.h"
@@ -111,7 +111,7 @@ void bmo_edgenet_prepare_exec(BMesh *bm, BMOperator *op)
     for (i = 0; i < 2; i++) {
       count = BMO_iter_elem_count_flag(bm, BM_EDGES_OF_VERT, (i ? e->v2 : e->v1), EDGE_MARK, true);
       if (count > 2) {
-        ok = 0;
+        ok = false;
         break;
       }
     }
@@ -128,7 +128,7 @@ void bmo_edgenet_prepare_exec(BMesh *bm, BMOperator *op)
 
   /* find connected loops within the input edge */
   count = 0;
-  while (1) {
+  while (true) {
     BMO_ITER (e, &siter, op->slots_in, "edges", BM_EDGE) {
       if (!BMO_edge_flag_test(bm, e, EDGE_VIS)) {
         if (BMO_iter_elem_count_flag(bm, BM_EDGES_OF_VERT, e->v1, EDGE_MARK, true) == 1 ||
@@ -228,7 +228,7 @@ void bmo_edgenet_prepare_exec(BMesh *bm, BMOperator *op)
     normal_tri_v3(dvec2, v1->co, v4->co, v3->co);
 #else
     {
-      /* save some CPU cycles and skip the sqrt and 1 subtraction */
+      /* Save some CPU cycles and skip the `sqrt` and 1 subtraction. */
       float a1[3], a2[3], a3[3];
       sub_v3_v3v3(a1, v1->co, v2->co);
       sub_v3_v3v3(a2, v1->co, v4->co);

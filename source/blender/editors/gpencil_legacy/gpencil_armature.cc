@@ -8,15 +8,17 @@
  * Operators for dealing with armatures and GP data-blocks.
  */
 
-#include <math.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_armature_types.h"
@@ -35,16 +37,18 @@
 #include "BKE_object_deform.h"
 #include "BKE_report.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_mesh.h"
-#include "ED_object.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
+
+#include "ANIM_bone_collections.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -203,7 +207,7 @@ static int dgroup_skinnable_cb(Object *ob, Bone *bone, void *datap)
         segments = 1;
       }
 
-      if (arm->layer & bone->layer) {
+      if (ANIM_bonecoll_is_visible(arm, bone)) {
         if (!(defgroup = BKE_object_defgroup_find_name(ob, bone->name))) {
           defgroup = BKE_object_defgroup_add_name(ob, bone->name);
         }
@@ -250,7 +254,7 @@ static void gpencil_add_verts_to_dgroups(
   bDeformGroup **dgrouplist;
   bPoseChannel *pchan;
   bGPdata *gpd = (bGPdata *)ob->data;
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
 
   Mat4 bbone_array[MAX_BBONE_SUBDIV], *bbone = nullptr;
   float(*root)[3], (*tip)[3], (*verts)[3];

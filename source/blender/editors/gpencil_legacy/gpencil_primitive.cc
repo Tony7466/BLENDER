@@ -7,16 +7,18 @@
  * Operators for creating new Grease Pencil primitives (boxes, circles, ...).
  */
 
-#include <math.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
 
@@ -33,7 +35,7 @@
 #include "DNA_space_types.h"
 #include "DNA_view3d_types.h"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_deform.h"
@@ -42,25 +44,25 @@
 #include "BKE_gpencil_legacy.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_report.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_keyframing.h"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_view3d.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_keyframing.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_view3d.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -326,7 +328,7 @@ static void gpencil_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
   gps->inittime = 0.0f;
 
   /* Set stroke caps. */
-  gps->caps[0] = gps->caps[1] = (short)brush->gpencil_settings->caps_type;
+  gps->caps[0] = gps->caps[1] = short(brush->gpencil_settings->caps_type);
 
   /* Apply the vertex color to fill. */
   ED_gpencil_fill_vertex_color_set(ts, brush, gps);
@@ -366,7 +368,7 @@ static void gpencil_primitive_set_initdata(bContext *C, tGPDprimitive *tgpi)
   gpencil_primitive_allocate_memory(tgpi);
 
   /* Random generator, only init once. */
-  uint rng_seed = (uint)(PIL_check_seconds_timer_i() & UINT_MAX);
+  uint rng_seed = uint(PIL_check_seconds_timer_i() & UINT_MAX);
   tgpi->rng = BLI_rng_new(rng_seed);
 
   DEG_id_tag_update(&tgpi->gpd->id, ID_RECALC_COPY_ON_WRITE);
@@ -473,18 +475,18 @@ static void gpencil_primitive_status_indicators(bContext *C, tGPDprimitive *tgpi
                  "%s: %d (%d, %d) (%d, %d)",
                  msg_str,
                  cur_subdiv,
-                 (int)tgpi->start[0],
-                 (int)tgpi->start[1],
-                 (int)tgpi->end[0],
-                 (int)tgpi->end[1]);
+                 int(tgpi->start[0]),
+                 int(tgpi->start[1]),
+                 int(tgpi->end[0]),
+                 int(tgpi->end[1]));
       }
       else {
         SNPRINTF(status_str,
                  "%s: %d (%d, %d)",
                  msg_str,
                  cur_subdiv,
-                 (int)tgpi->end[0],
-                 (int)tgpi->end[1]);
+                 int(tgpi->end[0]),
+                 int(tgpi->end[1]));
       }
     }
   }
@@ -494,13 +496,13 @@ static void gpencil_primitive_status_indicators(bContext *C, tGPDprimitive *tgpi
                "%s: %d (%d, %d) (%d, %d)",
                msg_str,
                cur_subdiv,
-               (int)tgpi->start[0],
-               (int)tgpi->start[1],
-               (int)tgpi->end[0],
-               (int)tgpi->end[1]);
+               int(tgpi->start[0]),
+               int(tgpi->start[1]),
+               int(tgpi->end[0]),
+               int(tgpi->end[1]));
     }
     else {
-      SNPRINTF(status_str, "%s: (%d, %d)", msg_str, (int)tgpi->end[0], (int)tgpi->end[1]);
+      SNPRINTF(status_str, "%s: (%d, %d)", msg_str, int(tgpi->end[0]), int(tgpi->end[1]));
     }
   }
   ED_workspace_status_text(C, status_str);
@@ -529,7 +531,7 @@ static void gpencil_primitive_rectangle(tGPDprimitive *tgpi, tGPspoint *points2D
     }
   }
   else {
-    const float step = 1.0f / (float)(tgpi->tot_edges);
+    const float step = 1.0f / float(tgpi->tot_edges);
     int i = tgpi->tot_stored_edges;
     for (int j = 0; j < 4; j++) {
       float a = 0.0f;
@@ -561,7 +563,7 @@ static void gpencil_primitive_rectangle(tGPDprimitive *tgpi, tGPspoint *points2D
 static void gpencil_primitive_line(tGPDprimitive *tgpi, tGPspoint *points2D, bool editable)
 {
   const int totpoints = (tgpi->tot_edges + tgpi->tot_stored_edges);
-  const float step = 1.0f / (float)(tgpi->tot_edges - 1);
+  const float step = 1.0f / float(tgpi->tot_edges - 1);
   float a = tgpi->tot_stored_edges ? step : 0.0f;
 
   for (int i = tgpi->tot_stored_edges; i < totpoints; i++) {
@@ -593,7 +595,7 @@ static void gpencil_primitive_line(tGPDprimitive *tgpi, tGPspoint *points2D, boo
 static void gpencil_primitive_arc(tGPDprimitive *tgpi, tGPspoint *points2D)
 {
   const int totpoints = (tgpi->tot_edges + tgpi->tot_stored_edges);
-  const float step = M_PI_2 / (float)(tgpi->tot_edges - 1);
+  const float step = M_PI_2 / float(tgpi->tot_edges - 1);
   float start[2];
   float end[2];
   float cp1[2];
@@ -634,7 +636,7 @@ static void gpencil_primitive_arc(tGPDprimitive *tgpi, tGPspoint *points2D)
 static void gpencil_primitive_bezier(tGPDprimitive *tgpi, tGPspoint *points2D)
 {
   const int totpoints = (tgpi->tot_edges + tgpi->tot_stored_edges);
-  const float step = 1.0f / (float)(tgpi->tot_edges - 1);
+  const float step = 1.0f / float(tgpi->tot_edges - 1);
   float bcp1[2];
   float bcp2[2];
   float bcp3[2];
@@ -670,7 +672,7 @@ static void gpencil_primitive_bezier(tGPDprimitive *tgpi, tGPspoint *points2D)
 static void gpencil_primitive_circle(tGPDprimitive *tgpi, tGPspoint *points2D)
 {
   const int totpoints = (tgpi->tot_edges + tgpi->tot_stored_edges);
-  const float step = (2.0f * M_PI) / (float)(tgpi->tot_edges);
+  const float step = (2.0f * M_PI) / float(tgpi->tot_edges);
   float center[2];
   float radius[2];
   float a = 0.0f;
@@ -706,8 +708,8 @@ static void gpencil_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
   GP_Sculpt_Settings *gset = &ts->gp_sculpt;
   int depth_margin = (ts->gpencil_v3d_align & GP_PROJECT_DEPTH_STROKE) ? 4 : 0;
   const char align_flag = ts->gpencil_v3d_align;
-  bool is_depth = (bool)(align_flag & (GP_PROJECT_DEPTH_VIEW | GP_PROJECT_DEPTH_STROKE));
-  const bool is_lock_axis_view = (bool)(ts->gp_sculpt.lock_axis == 0);
+  bool is_depth = bool(align_flag & (GP_PROJECT_DEPTH_VIEW | GP_PROJECT_DEPTH_STROKE));
+  const bool is_lock_axis_view = bool(ts->gp_sculpt.lock_axis == 0);
   const bool is_camera = is_lock_axis_view && (tgpi->rv3d->persp == RV3D_CAMOB) && (!is_depth);
 
   if (tgpi->type == GP_STROKE_BOX) {
@@ -889,7 +891,7 @@ static void gpencil_primitive_update_strokes(bContext *C, tGPDprimitive *tgpi)
 
     /* normalize value to evaluate curve */
     if (gset->flag & GP_SCULPT_SETT_FLAG_PRIMITIVE_CURVE) {
-      float value = (float)i / (gps->totpoints - 1);
+      float value = float(i) / (gps->totpoints - 1);
       curve_pressure = BKE_curvemapping_evaluateF(gset->cur_primitive, 0, value);
       pressure = curve_pressure;
     }
@@ -1583,7 +1585,7 @@ static void gpencil_primitive_size(tGPDprimitive *tgpi, bool reset)
       float move[2];
       sub_v2_v2v2(move, tgpi->mval, tgpi->mvalo);
       int adjust = (move[1] > 0.0f) ? 1 : -1;
-      brush->size += adjust * (int)fabsf(len_manhattan_v2(move));
+      brush->size += adjust * int(fabsf(len_manhattan_v2(move)));
     }
     CLAMP_MIN(brush->size, 1);
   }

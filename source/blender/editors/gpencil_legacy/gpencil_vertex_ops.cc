@@ -11,7 +11,8 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
+#include "BLI_math_vector.h"
 
 #include "DNA_brush_types.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -20,17 +21,17 @@
 #include "BKE_context.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_report.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_screen.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_screen.hh"
 
 #include "DEG_depsgraph.h"
 
@@ -120,7 +121,7 @@ static int gpencil_vertexpaint_brightness_contrast_exec(bContext *C, wmOperator 
 {
   Object *ob = CTX_data_active_object(C);
   bGPdata *gpd = (bGPdata *)ob->data;
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
   const eGp_Vertex_Mode mode = eGp_Vertex_Mode(RNA_enum_get(op->ptr, "mode"));
   const bool any_selected = is_any_stroke_selected(C, is_multiedit, false);
 
@@ -239,7 +240,7 @@ static int gpencil_vertexpaint_hsv_exec(bContext *C, wmOperator *op)
   Object *ob = CTX_data_active_object(C);
   bGPdata *gpd = (bGPdata *)ob->data;
 
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
   const eGp_Vertex_Mode mode = eGp_Vertex_Mode(RNA_enum_get(op->ptr, "mode"));
   const bool any_selected = is_any_stroke_selected(C, is_multiedit, false);
   float hue = RNA_float_get(op->ptr, "h");
@@ -359,7 +360,7 @@ static int gpencil_vertexpaint_invert_exec(bContext *C, wmOperator *op)
   Object *ob = CTX_data_active_object(C);
   bGPdata *gpd = (bGPdata *)ob->data;
 
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
   const eGp_Vertex_Mode mode = eGp_Vertex_Mode(RNA_enum_get(op->ptr, "mode"));
   const bool any_selected = is_any_stroke_selected(C, is_multiedit, false);
 
@@ -450,7 +451,7 @@ static int gpencil_vertexpaint_levels_exec(bContext *C, wmOperator *op)
   Object *ob = CTX_data_active_object(C);
   bGPdata *gpd = (bGPdata *)ob->data;
 
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
   const eGp_Vertex_Mode mode = eGp_Vertex_Mode(RNA_enum_get(op->ptr, "mode"));
   const bool any_selected = is_any_stroke_selected(C, is_multiedit, false);
   float gain = RNA_float_get(op->ptr, "gain");
@@ -551,7 +552,7 @@ static int gpencil_vertexpaint_set_exec(bContext *C, wmOperator *op)
   Paint *paint = &ts->gp_vertexpaint->paint;
   Brush *brush = paint->brush;
 
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
   const eGp_Vertex_Mode mode = eGp_Vertex_Mode(RNA_enum_get(op->ptr, "mode"));
   const bool any_selected = is_any_stroke_selected(C, is_multiedit, false);
   float factor = RNA_float_get(op->ptr, "factor");
@@ -831,7 +832,7 @@ static int gpencil_material_to_vertex_exec(bContext *C, wmOperator *op)
   bool changed = false;
 
   short *totcol = BKE_object_material_len_p(ob);
-  if (totcol == 0) {
+  if (totcol == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
@@ -1071,8 +1072,8 @@ static int gpencil_stroke_reset_vertex_color_exec(bContext *C, wmOperator *op)
 {
   Object *obact = CTX_data_active_object(C);
   bGPdata *gpd = (bGPdata *)obact->data;
-  const bool is_curve_edit = (bool)GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd);
-  const bool is_multiedit = (bool)GPENCIL_MULTIEDIT_SESSIONS_ON(gpd);
+  const bool is_curve_edit = bool(GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd));
+  const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
   const eGp_Vertex_Mode mode = eGp_Vertex_Mode(RNA_enum_get(op->ptr, "mode"));
 
   /* First need to check if there are something selected. If not, apply to all strokes. */

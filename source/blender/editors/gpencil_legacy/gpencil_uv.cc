@@ -11,7 +11,9 @@
 #include "DNA_gpencil_legacy_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
 #include "BLT_translation.h"
@@ -20,20 +22,20 @@
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_numinput.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_util.h"
-#include "ED_view3d.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_numinput.hh"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_util.hh"
+#include "ED_view3d.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -270,7 +272,7 @@ static bool gpencil_uv_transform_calc(bContext *C, wmOperator *op)
 
   /* Rotate. */
   if (mode == GP_UV_ROTATE) {
-    changed |= (bool)(uv_rotation != 0.0f);
+    changed |= bool(uv_rotation != 0.0f);
     RNA_float_set(op->ptr, "rotation", uv_rotation);
 
     if (changed) {
@@ -297,7 +299,7 @@ static bool gpencil_uv_transform_calc(bContext *C, wmOperator *op)
     scale *= SMOOTH_FACTOR;
     RNA_float_set(op->ptr, "scale", scale);
 
-    changed |= (bool)(scale != 0.0f);
+    changed |= bool(scale != 0.0f);
 
     if (changed) {
       GP_EDITABLE_STROKES_BEGIN (gpstroke_iter, C, gpl, gps) {
@@ -476,7 +478,7 @@ void GPENCIL_OT_transform_fill(wmOperatorType *ot)
   RNA_def_property_float_default(prop, 0.0f);
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
-  prop = RNA_def_boolean(ot->srna, "release_confirm", 0, "Confirm on Release", "");
+  prop = RNA_def_boolean(ot->srna, "release_confirm", false, "Confirm on Release", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 

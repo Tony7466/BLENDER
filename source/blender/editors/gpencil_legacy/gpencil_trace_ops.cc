@@ -8,7 +8,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "BLT_translation.h"
 
@@ -29,16 +30,16 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "IMB_imbuf_types.h"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_object.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_object.hh"
 
 #include "gpencil_intern.h"
 #include "gpencil_trace.h"
@@ -130,10 +131,10 @@ static bool gpencil_trace_image(TraceJob *trace_job, ImBuf *ibuf, bGPDframe *gpf
    * Really, there isn't documented in Potrace about how the scale is calculated,
    * but after doing a lot of tests, it looks is using a VGA resolution (640) as a base.
    * Maybe there are others ways to get the right scale conversion, but this solution works. */
-  float scale_potrace = trace_job->scale * (640.0f / (float)ibuf->x) *
-                        ((float)ibuf->x / (float)ibuf->y);
+  float scale_potrace = trace_job->scale * (640.0f / float(ibuf->x)) *
+                        (float(ibuf->x) / float(ibuf->y));
   if (ibuf->x > ibuf->y) {
-    scale_potrace *= (float)ibuf->y / (float)ibuf->x;
+    scale_potrace *= float(ibuf->y) / float(ibuf->x);
   }
 
   ED_gpencil_trace_data_to_strokes(trace_job->bmain,
@@ -239,7 +240,7 @@ static void trace_start_job(void *customdata, bool *stop, bool *do_update, float
         break;
       }
 
-      *(trace_job->progress) = (float)i / (float)iuser->frames;
+      *(trace_job->progress) = float(i) / float(iuser->frames);
       *do_update = true;
 
       iuser->framenr = i + 1;

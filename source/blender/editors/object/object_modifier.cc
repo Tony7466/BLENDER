@@ -30,7 +30,6 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
@@ -57,14 +56,14 @@
 #include "BKE_material.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_mapping.hh"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.h"
-#include "BKE_multires.h"
+#include "BKE_multires.hh"
 #include "BKE_object.h"
 #include "BKE_object_deform.h"
 #include "BKE_ocean.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcloud.h"
 #include "BKE_report.h"
@@ -78,21 +77,23 @@
 
 #include "BLT_translation.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
-#include "ED_armature.h"
-#include "ED_mesh.h"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_sculpt.h"
+#include "ED_armature.hh"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_sculpt.hh"
 
-#include "UI_interface.h"
+#include "ANIM_bone_collections.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "UI_interface.hh"
+
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "object_intern.h"
 
@@ -764,7 +765,7 @@ static Mesh *create_applied_mesh_for_modifier(Depsgraph *depsgraph,
     return nullptr;
   }
 
-  if (mti->isDisabled && mti->isDisabled(scene, md_eval, false)) {
+  if (mti->is_disabled && mti->is_disabled(scene, md_eval, false)) {
     return nullptr;
   }
 
@@ -782,9 +783,9 @@ static Mesh *create_applied_mesh_for_modifier(Depsgraph *depsgraph,
   float(*deformedVerts)[3] = nullptr;
 
   if (use_virtual_modifiers) {
-    VirtualModifierData virtualModifierData;
+    VirtualModifierData virtual_modifier_data;
     for (ModifierData *md_eval_virt =
-             BKE_modifiers_get_virtual_modifierlist(ob_eval, &virtualModifierData);
+             BKE_modifiers_get_virtual_modifierlist(ob_eval, &virtual_modifier_data);
          md_eval_virt && (md_eval_virt != ob_eval->modifiers.first);
          md_eval_virt = md_eval_virt->next)
     {
@@ -801,7 +802,7 @@ static Mesh *create_applied_mesh_for_modifier(Depsgraph *depsgraph,
       if (deformedVerts == nullptr) {
         deformedVerts = BKE_mesh_vert_coords_alloc(me, &numVerts);
       }
-      mti_virt->deformVerts(md_eval_virt, &mectx, mesh_temp, deformedVerts, numVerts);
+      mti_virt->deform_verts(md_eval_virt, &mectx, mesh_temp, deformedVerts, numVerts);
     }
   }
 
@@ -811,7 +812,7 @@ static Mesh *create_applied_mesh_for_modifier(Depsgraph *depsgraph,
       deformedVerts = BKE_mesh_vert_coords_alloc(me, &numVerts);
     }
     result = mesh_temp;
-    mti->deformVerts(md_eval, &mectx, result, deformedVerts, numVerts);
+    mti->deform_verts(md_eval, &mectx, result, deformedVerts, numVerts);
     BKE_mesh_vert_coords_apply(result, deformedVerts);
 
     if (build_shapekey_layers) {
@@ -827,10 +828,10 @@ static Mesh *create_applied_mesh_for_modifier(Depsgraph *depsgraph,
       add_shapekey_layers(*mesh_temp, *me);
     }
 
-    if (mti->modifyGeometrySet) {
-      bke::GeometrySet geometry_set = bke::GeometrySet::create_with_mesh(
+    if (mti->modify_geometry_set) {
+      bke::GeometrySet geometry_set = bke::GeometrySet::from_mesh(
           mesh_temp, bke::GeometryOwnershipType::Owned);
-      mti->modifyGeometrySet(md_eval, &mectx, &geometry_set);
+      mti->modify_geometry_set(md_eval, &mectx, &geometry_set);
       if (!geometry_set.has_mesh()) {
         BKE_report(reports, RPT_ERROR, "Evaluated geometry from modifier does not contain a mesh");
         return nullptr;
@@ -838,7 +839,7 @@ static Mesh *create_applied_mesh_for_modifier(Depsgraph *depsgraph,
       result = geometry_set.get_component_for_write<bke::MeshComponent>().release();
     }
     else {
-      result = mti->modifyMesh(md_eval, &mectx, mesh_temp);
+      result = mti->modify_mesh(md_eval, &mectx, mesh_temp);
       if (mesh_temp != result) {
         BKE_id_free(nullptr, mesh_temp);
       }
@@ -861,7 +862,7 @@ static bool modifier_apply_shape(Main *bmain,
 {
   const ModifierTypeInfo *mti = BKE_modifier_get_info((ModifierType)md_eval->type);
 
-  if (mti->isDisabled && mti->isDisabled(scene, md_eval, false)) {
+  if (mti->is_disabled && mti->is_disabled(scene, md_eval, false)) {
     BKE_report(reports, RPT_ERROR, "Modifier is disabled, skipping apply");
     return false;
   }
@@ -958,7 +959,7 @@ static bool modifier_apply_obdata(
   using namespace blender;
   const ModifierTypeInfo *mti = BKE_modifier_get_info((ModifierType)md_eval->type);
 
-  if (mti->isDisabled && mti->isDisabled(scene, md_eval, false)) {
+  if (mti->is_disabled && mti->is_disabled(scene, md_eval, false)) {
     BKE_report(reports, RPT_ERROR, "Modifier is disabled, skipping apply");
     return false;
   }
@@ -1033,7 +1034,7 @@ static bool modifier_apply_obdata(
 
     int verts_num;
     float(*vertexCos)[3] = BKE_curve_nurbs_vert_coords_alloc(&curve_eval->nurb, &verts_num);
-    mti->deformVerts(md_eval, &mectx, nullptr, vertexCos, verts_num);
+    mti->deform_verts(md_eval, &mectx, nullptr, vertexCos, verts_num);
     BKE_curve_nurbs_vert_coords_apply(&curve->nurb, vertexCos, false);
 
     MEM_freeN(vertexCos);
@@ -1052,7 +1053,7 @@ static bool modifier_apply_obdata(
 
     int verts_num;
     float(*vertexCos)[3] = BKE_lattice_vert_coords_alloc(lattice, &verts_num);
-    mti->deformVerts(md_eval, &mectx, nullptr, vertexCos, verts_num);
+    mti->deform_verts(md_eval, &mectx, nullptr, vertexCos, verts_num);
     BKE_lattice_vert_coords_apply(lattice, vertexCos);
 
     MEM_freeN(vertexCos);
@@ -1061,16 +1062,16 @@ static bool modifier_apply_obdata(
   }
   else if (ob->type == OB_CURVES) {
     Curves &curves = *static_cast<Curves *>(ob->data);
-    if (mti->modifyGeometrySet == nullptr) {
+    if (mti->modify_geometry_set == nullptr) {
       BLI_assert_unreachable();
       return false;
     }
 
-    bke::GeometrySet geometry_set = bke::GeometrySet::create_with_curves(
+    bke::GeometrySet geometry_set = bke::GeometrySet::from_curves(
         &curves, bke::GeometryOwnershipType::ReadOnly);
 
     ModifierEvalContext mectx = {depsgraph, ob, ModifierApplyFlag(0)};
-    mti->modifyGeometrySet(md_eval, &mectx, &geometry_set);
+    mti->modify_geometry_set(md_eval, &mectx, &geometry_set);
     if (!geometry_set.has_curves()) {
       BKE_report(reports, RPT_ERROR, "Evaluated geometry from modifier does not contain curves");
       return false;
@@ -1086,16 +1087,16 @@ static bool modifier_apply_obdata(
   }
   else if (ob->type == OB_POINTCLOUD) {
     PointCloud &points = *static_cast<PointCloud *>(ob->data);
-    if (mti->modifyGeometrySet == nullptr) {
+    if (mti->modify_geometry_set == nullptr) {
       BLI_assert_unreachable();
       return false;
     }
 
-    bke::GeometrySet geometry_set = bke::GeometrySet::create_with_pointcloud(
+    bke::GeometrySet geometry_set = bke::GeometrySet::from_pointcloud(
         &points, bke::GeometryOwnershipType::ReadOnly);
 
     ModifierEvalContext mectx = {depsgraph, ob, ModifierApplyFlag(0)};
-    mti->modifyGeometrySet(md_eval, &mectx, &geometry_set);
+    mti->modify_geometry_set(md_eval, &mectx, &geometry_set);
     if (!geometry_set.has_pointcloud()) {
       BKE_report(
           reports, RPT_ERROR, "Evaluated geometry from modifier does not contain a point cloud");
@@ -2957,7 +2958,7 @@ static Object *modifier_skin_armature_create(Depsgraph *depsgraph, Main *bmain, 
   Object *arm_ob = BKE_object_add(bmain, scene, view_layer, OB_ARMATURE, nullptr);
   BKE_object_transform_copy(arm_ob, skin_ob);
   bArmature *arm = static_cast<bArmature *>(arm_ob->data);
-  arm->layer = 1;
+  ANIM_armature_ensure_first_layer_enabled(arm);
   arm_ob->dtx |= OB_DRAW_IN_FRONT;
   arm->drawtype = ARM_LINE;
   arm->edbo = MEM_cnew<ListBase>("edbo armature");
