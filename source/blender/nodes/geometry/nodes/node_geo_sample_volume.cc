@@ -15,6 +15,8 @@
 
 #include "node_geometry_util.hh"
 
+#include "NOD_rna_define.hh"
+
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
@@ -377,6 +379,44 @@ static void node_geo_exec(GeoNodeExecParams params)
 #endif
 }
 
+static void node_rna(StructRNA *srna)
+{
+  static const EnumPropertyItem interpolation_mode_items[] = {
+      {GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_NEAREST, "NEAREST", 0, "Nearest Neighbor", ""},
+      {GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRILINEAR, "TRILINEAR", 0, "Trilinear", ""},
+      {GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRIQUADRATIC,
+       "TRIQUADRATIC",
+       0,
+       "Triquadratic",
+       ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem grid_type_items[] = {
+      {CD_PROP_FLOAT, "FLOAT", 0, "Float", "Floating-point value"},
+      {CD_PROP_FLOAT3, "FLOAT_VECTOR", 0, "Vector", "3D vector with floating-point values"},
+      {CD_PROP_INT32, "INT", 0, "Integer", "32-bit integer"},
+      {CD_PROP_BOOL, "BOOLEAN", 0, "Boolean", "True or false"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  PropertyRNA *prop;
+
+  RNA_def_struct_sdna_from(srna, "NodeGeometrySampleVolume", "storage");
+
+  prop = RNA_def_property(srna, "interpolation_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, interpolation_mode_items);
+  RNA_def_property_ui_text(
+      prop, "Interpolation Mode", "How to interpolate the values from neighboring voxels");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "grid_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, grid_type_items);
+  RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
+  RNA_def_property_ui_text(prop, "Grid Type", "Type of grid to sample data from");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
+}
+
 static void node_register()
 {
   static bNodeType ntype;
@@ -393,6 +433,7 @@ static void node_register()
   ntype.gather_link_search_ops = search_link_ops;
   ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
+  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 
