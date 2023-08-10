@@ -146,8 +146,6 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_rna(StructRNA *srna)
 {
-  PropertyRNA *prop;
-
   static const EnumPropertyItem rna_node_geometry_collection_info_transform_space_items[] = {
       {GEO_NODE_TRANSFORM_SPACE_ORIGINAL,
        "ORIGINAL",
@@ -163,15 +161,14 @@ static void node_rna(StructRNA *srna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  RNA_def_struct_sdna_from(srna, "NodeGeometryCollectionInfo", "storage");
-
-  prop = RNA_def_property(srna, "transform_space", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_node_geometry_collection_info_transform_space_items);
-  RNA_def_property_ui_text(
-      prop,
+  RNA_def_node_enum(
+      srna,
+      "transform_space",
       "Transform Space",
-      "The transformation of the instances output. Does not affect the internal geometry");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update_relations");
+      "The transformation of the instances output. Does not affect the internal geometry",
+      rna_node_geometry_collection_info_transform_space_items,
+      NOD_storage_enum_accessors(transform_space),
+      GEO_NODE_TRANSFORM_SPACE_ORIGINAL);
 }
 
 static void node_register()

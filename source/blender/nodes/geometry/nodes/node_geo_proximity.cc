@@ -231,16 +231,13 @@ static void node_rna(StructRNA *srna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  PropertyRNA *prop;
-
-  RNA_def_struct_sdna_from(srna, "NodeGeometryProximity", "storage");
-
-  prop = RNA_def_property(srna, "target_element", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, target_element_items);
-  RNA_def_property_enum_default(prop, GEO_NODE_PROX_TARGET_FACES);
-  RNA_def_property_ui_text(
-      prop, "Target Geometry", "Element of the target geometry to calculate the distance from");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+  RNA_def_node_enum(srna,
+                    "target_element",
+                    "Target Geometry",
+                    "Element of the target geometry to calculate the distance from",
+                    target_element_items,
+                    NOD_storage_enum_accessors(target_element),
+                    GEO_NODE_PROX_TARGET_FACES);
 }
 
 static void node_register()

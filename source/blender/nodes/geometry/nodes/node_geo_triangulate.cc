@@ -101,8 +101,6 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_rna(StructRNA *srna)
 {
-  PropertyRNA *prop;
-
   static const EnumPropertyItem rna_node_geometry_triangulate_quad_method_items[] = {
       {GEO_NODE_TRIANGULATE_QUAD_BEAUTY,
        "BEAUTY",
@@ -146,19 +144,19 @@ static void node_rna(StructRNA *srna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  prop = RNA_def_property(srna, "quad_method", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
-  RNA_def_property_enum_items(prop, rna_node_geometry_triangulate_quad_method_items);
-  RNA_def_property_enum_default(prop, GEO_NODE_TRIANGULATE_QUAD_SHORTEDGE);
-  RNA_def_property_ui_text(prop, "Quad Method", "Method for splitting the quads into triangles");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_node_enum(srna,
+                    "quad_method",
+                    "Quad Method", "Method for splitting the quads into triangles",
+                    rna_node_geometry_triangulate_quad_method_items,
+                    NOD_inline_enum_accessors(custom1),
+                    GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_AMOUNT);
 
-  prop = RNA_def_property(srna, "ngon_method", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "custom2");
-  RNA_def_property_enum_items(prop, rna_node_geometry_triangulate_ngon_method_items);
-  RNA_def_property_enum_default(prop, GEO_NODE_TRIANGULATE_NGON_BEAUTY);
-  RNA_def_property_ui_text(prop, "N-gon Method", "Method for splitting the n-gons into triangles");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_node_enum(srna,
+                    "ngon_method",
+                    "N-gon Method", "Method for splitting the n-gons into triangles",
+                    rna_node_geometry_triangulate_ngon_method_items,
+                    NOD_inline_enum_accessors(custom2),
+                    GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_AMOUNT);
 }
 
 static void node_register()

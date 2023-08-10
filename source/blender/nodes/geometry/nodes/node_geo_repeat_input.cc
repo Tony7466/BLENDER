@@ -7,8 +7,6 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "NOD_rna_define.hh"
-
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
@@ -83,35 +81,6 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
   return false;
 }
 
-static void node_rna(StructRNA *srna)
-{
-  PropertyRNA *prop;
-  FunctionRNA *func;
-  PropertyRNA *parm;
-
-  RNA_def_struct_sdna_from(srna, "NodeGeometryRepeatInput", "storage");
-
-  prop = RNA_def_property(srna, "paired_output", PROP_POINTER, PROP_NONE);
-  RNA_def_property_struct_type(prop, "Node");
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_pointer_funcs(
-      prop, "rna_NodeGeometryRepeatInput_paired_output_get", nullptr, nullptr, nullptr);
-  RNA_def_property_ui_text(
-      prop, "Paired Output", "Repeat output node that this input node is paired with");
-
-  func = RNA_def_function(
-      srna, "pair_with_output", "rna_GeometryNodeRepeatInput_pair_with_output");
-  RNA_def_function_ui_description(func, "Pair a repeat input node with an output node.");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_REPORTS | FUNC_USE_CONTEXT);
-  parm = RNA_def_pointer(
-      func, "output_node", "GeometryNode", "Output Node", "Repeat output node to pair with");
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  /* return value */
-  parm = RNA_def_boolean(
-      func, "result", false, "Result", "True if pairing the node was successful");
-  RNA_def_function_return(func, parm);
-}
-
 static void node_register()
 {
   static bNodeType ntype;
@@ -124,7 +93,6 @@ static void node_register()
   node_type_storage(
       &ntype, "NodeGeometryRepeatInput", node_free_standard_storage, node_copy_standard_storage);
   nodeRegisterType(&ntype);
-  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 

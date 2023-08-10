@@ -400,21 +400,20 @@ static void node_rna(StructRNA *srna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  PropertyRNA *prop;
-
-  RNA_def_struct_sdna_from(srna, "NodeGeometrySampleVolume", "storage");
-
-  prop = RNA_def_property(srna, "interpolation_mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, interpolation_mode_items);
-  RNA_def_property_ui_text(
-      prop, "Interpolation Mode", "How to interpolate the values from neighboring voxels");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
-
-  prop = RNA_def_property(srna, "grid_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, grid_type_items);
-  RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
-  RNA_def_property_ui_text(prop, "Grid Type", "Type of grid to sample data from");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNode_socket_update");
+  
+  RNA_def_node_enum(srna,
+                    "grid_type",
+                    "Grid Type", "Type of grid to sample data from",
+                    grid_type_items,
+                    NOD_storage_enum_accessors(grid_type),
+                    CD_PROP_FLOAT);
+  
+  RNA_def_node_enum(srna,
+                    "interpolation_mode",
+                    "Interpolation Mode", "How to interpolate the values from neighboring voxels",
+                    interpolation_mode_items,
+                    NOD_storage_enum_accessors(interpolation_mode),
+                    GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRILINEAR);
 }
 
 static void node_register()

@@ -217,7 +217,6 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_rna(StructRNA *srna)
 {
-  PropertyRNA *prop;
 
   static EnumPropertyItem resolution_mode_items[] = {
       {GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_AMOUNT,
@@ -233,12 +232,13 @@ static void node_rna(StructRNA *srna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  RNA_def_struct_sdna_from(srna, "NodeGeometryPointsToVolume", "storage");
-
-  prop = RNA_def_property(srna, "resolution_mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, resolution_mode_items);
-  RNA_def_property_ui_text(prop, "Resolution Mode", "How the voxel size is specified");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+  RNA_def_node_enum(srna,
+                    "resolution_mode",
+                    "Resolution Mode",
+                    "How the voxel size is specified",
+                    resolution_mode_items,
+                    NOD_storage_enum_accessors(resolution_mode),
+                    GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_AMOUNT);
 }
 
 static void node_register()

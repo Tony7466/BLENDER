@@ -2,8 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "NOD_rna_define.hh"
-
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
@@ -27,19 +25,6 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Material", material);
 }
 
-static void node_rna(StructRNA *srna)
-{
-  PropertyRNA *prop;
-
-  prop = RNA_def_property(srna, "material", PROP_POINTER, PROP_NONE);
-  RNA_def_property_pointer_sdna(prop, nullptr, "id");
-  RNA_def_property_struct_type(prop, "Material");
-  RNA_def_property_flag(prop, PROP_EDITABLE);
-  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
-  RNA_def_property_ui_text(prop, "Material", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
-}
-
 static void node_register()
 {
   static bNodeType ntype;
@@ -49,7 +34,6 @@ static void node_register()
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
-  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 

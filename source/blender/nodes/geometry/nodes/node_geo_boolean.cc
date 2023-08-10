@@ -155,8 +155,6 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_rna(StructRNA *srna)
 {
-  PropertyRNA *prop;
-
   static const EnumPropertyItem rna_node_geometry_boolean_method_items[] = {
       {GEO_NODE_BOOLEAN_INTERSECT,
        "INTERSECT",
@@ -172,12 +170,13 @@ static void node_rna(StructRNA *srna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  prop = RNA_def_property(srna, "operation", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
-  RNA_def_property_enum_items(prop, rna_node_geometry_boolean_method_items);
-  RNA_def_property_enum_default(prop, GEO_NODE_BOOLEAN_INTERSECT);
-  RNA_def_property_ui_text(prop, "Operation", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
+  RNA_def_node_enum(srna,
+                    "operation",
+                    "Operation",
+                    "",
+                    rna_node_geometry_boolean_method_items,
+                    NOD_inline_enum_accessors(custom1),
+                    GEO_NODE_BOOLEAN_INTERSECT);
 }
 
 static void node_register()

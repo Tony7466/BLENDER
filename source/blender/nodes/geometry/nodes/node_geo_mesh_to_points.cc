@@ -203,8 +203,6 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_rna(StructRNA *srna)
 {
-  PropertyRNA *prop;
-
   static EnumPropertyItem mode_items[] = {
       {GEO_NODE_MESH_TO_POINTS_VERTICES,
        "VERTICES",
@@ -229,12 +227,13 @@ static void node_rna(StructRNA *srna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  RNA_def_struct_sdna_from(srna, "NodeGeometryMeshToPoints", "storage");
-
-  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, mode_items);
-  RNA_def_property_ui_text(prop, "Mode", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+  RNA_def_node_enum(srna,
+                    "mode",
+                    "Mode",
+                    "",
+                    mode_items,
+                    NOD_storage_enum_accessors(mode),
+                    GEO_NODE_MESH_TO_POINTS_VERTICES);
 }
 
 static void node_register()
