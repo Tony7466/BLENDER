@@ -2028,10 +2028,10 @@ GHOST_TSuccess GHOST_SystemCocoa::showMessageBox(const char *title,
     NSString *continueString = [NSString stringWithCString:continue_label];
     NSString *helpString = [NSString stringWithCString:help_label];
 
-    if (dialog_options == GHOST_DialogError) {
+    if (dialog_options & GHOST_DialogError) {
       [alert setAlertStyle:NSAlertStyleCritical];
     }
-    else if (dialog_options == GHOST_DialogWarning) {
+    else if (dialog_options & GHOST_DialogWarning) {
       [alert setAlertStyle:NSAlertStyleWarning];
     }
     else {
