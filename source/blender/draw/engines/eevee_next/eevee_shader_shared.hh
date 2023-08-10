@@ -835,6 +835,7 @@ struct ShadowTileMapClip {
   float clip_near_stored;
   float clip_far_stored;
   /** Near and far clip distances for directional. Float stored as int for atomic operations. */
+  /** NOTE: These are positive just like camera parameters. */
   int clip_near;
   int clip_far;
 };

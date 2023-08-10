@@ -139,7 +139,7 @@ vec2 shadow_punctual_linear_depth(vec2 z, float near, float far)
 
 float shadow_directional_linear_depth(float z, float near, float far)
 {
-  return z * (near - far) - near;
+  return z * (far - near) + near;
 }
 
 ShadowSample shadow_punctual_sample_get(
@@ -200,7 +200,7 @@ ShadowSample shadow_directional_sample_get(
   /* Receiver distance needs to also be increasing.
    * Negate since Z distance follows blender camera convention of -Z as forward. */
   float receiver_dist = -lP.z;
-  samp.bias *= near - far;
+  samp.bias *= far - near;
   samp.occluder_delta = samp.occluder_dist - receiver_dist;
   return samp;
 }

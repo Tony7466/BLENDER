@@ -51,8 +51,8 @@ void main()
       tilemaps_clip_buf[clip_index].clip_near_stored = clip_near_new;
       tilemaps_clip_buf[clip_index].clip_far_stored = clip_far_new;
       /* Reset for next update. */
-      tilemaps_clip_buf[clip_index].clip_near = floatBitsToOrderedInt(-FLT_MAX);
-      tilemaps_clip_buf[clip_index].clip_far = floatBitsToOrderedInt(FLT_MAX);
+      tilemaps_clip_buf[clip_index].clip_near = floatBitsToOrderedInt(FLT_MAX);
+      tilemaps_clip_buf[clip_index].clip_far = floatBitsToOrderedInt(-FLT_MAX);
     }
     else {
       /* For cubefaces, simply use the light near and far distances. */
