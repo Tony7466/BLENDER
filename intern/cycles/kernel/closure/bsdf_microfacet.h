@@ -345,7 +345,7 @@ ccl_device Spectrum bsdf_microfacet_estimate_albedo(KernelGlobals kg,
     /* BSDF has a reflective lobe. */
     if (bsdf->fresnel_type == MicrofacetFresnel::GENERALIZED_SCHLICK) {
       ccl_private FresnelGeneralizedSchlick *fresnel = (ccl_private FresnelGeneralizedSchlick *)
-                                                          bsdf->fresnel;
+                                                           bsdf->fresnel;
       float mu = dot(sd->wi, bsdf->N);
       float rough = sqrtf(sqrtf(bsdf->alpha_x * bsdf->alpha_y));
       float s;
