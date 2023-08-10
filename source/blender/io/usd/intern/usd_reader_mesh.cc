@@ -596,11 +596,10 @@ void USDMeshReader::copy_prim_array_to_blender_attribute(const Mesh *mesh,
     return;
   }
 
-  if (ELEM(interp, pxr::UsdGeomTokens->constant, pxr::UsdGeomTokens->uniform)) {
+  if (interp == pxr::UsdGeomTokens->constant) {
     /* For situations where there's only a single item, flood fill the object. */
     attribute.fill(convert_value<USDT, BlenderT>(primvar_array[0]));
   }
-
   else if (interp == pxr::UsdGeomTokens->faceVarying) {
     if (is_left_handed_) {
       /* Reverse the index order. */
