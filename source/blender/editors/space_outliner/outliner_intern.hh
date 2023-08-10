@@ -30,6 +30,7 @@ struct Scene;
 struct ShaderFxData;
 struct TreeStoreElem;
 struct ViewLayer;
+struct bConstraint;
 struct bContext;
 struct bContextDataResult;
 struct bDeformGroup;
@@ -298,6 +299,11 @@ struct BoneElementCreateData {
 struct EditBoneElementCreateData {
   ID *armature_id;
   EditBone *ebone;
+};
+
+struct ConstraintElementCreateData {
+  Object *object;
+  bConstraint *con;
 };
 
 struct DeformGroupElementCreateData {
