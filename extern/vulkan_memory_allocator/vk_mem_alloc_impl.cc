@@ -10,7 +10,6 @@
 #  include <vulkan/vulkan.h>
 #endif
 
-
 #define VMA_IMPLEMENTATION
 
 /* 
