@@ -849,8 +849,10 @@ class NODE_PT_overlay(Panel):
         if snode.supports_previews:
             col.separator()
             col.prop(overlay, "show_previews", text="Previews")
-            if snode.tree_type == 'ShaderNodeTree' and overlay.show_previews:
-                col.prop(overlay, "show_previews_3d", text="3D Shape")
+            if snode.tree_type == 'ShaderNodeTree':
+                row = col.row()
+                row.prop(overlay, "preview_shape", text="")
+                row.active = overlay.show_previews
 
         if snode.tree_type == 'GeometryNodeTree':
             col.separator()
