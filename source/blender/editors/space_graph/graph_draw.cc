@@ -1060,7 +1060,7 @@ static void draw_fcurve_curve_keys(
   const int window_width = BLI_rcti_size_x(&v2d->mask);
   const float v2d_frame_range = BLI_rctf_size_x(&v2d->cur);
   const float pixel_width = v2d_frame_range / window_width;
-  const float samples_per_pixel = 0.75f;
+  const float samples_per_pixel = 0.66f;
   const float evaluation_step = pixel_width / samples_per_pixel;
 
   /* Draw curve between first and last keyframe (if there are enough to do so). */
@@ -1090,7 +1090,8 @@ static void draw_fcurve_curve_keys(
 
       default: {
         /* In case there is no other way to get curve points, evaluate the FCurve. */
-        float current_frame = prevbezt->vec[1][0];
+        curve_vertices.append(prevbezt->vec[1]);
+        float current_frame = prevbezt->vec[1][0] + evaluation_step;
         while (current_frame < bezt->vec[1][0]) {
           curve_vertices.append({current_frame, evaluate_fcurve(fcu, current_frame)});
           current_frame += evaluation_step;
