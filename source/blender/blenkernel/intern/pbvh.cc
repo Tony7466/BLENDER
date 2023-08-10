@@ -18,7 +18,7 @@
 #include "BLI_rand.h"
 #include "BLI_task.h"
 #include "BLI_task.hh"
-#include "BLI_timeit.hh"
+
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"

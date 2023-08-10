@@ -14,7 +14,6 @@
 #include "BLI_ordered_edge.hh"
 #include "BLI_task.hh"
 #include "BLI_threads.h"
-#include "BLI_timeit.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_customdata.h"

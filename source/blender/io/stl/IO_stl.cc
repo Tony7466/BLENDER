@@ -6,7 +6,7 @@
  * \ingroup stl
  */
 
-#include "BLI_timeit.hh"
+
 
 #include "IO_stl.h"
 #include "stl_import.hh"

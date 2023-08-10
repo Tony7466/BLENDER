@@ -27,7 +27,7 @@
 #include "BLI_memarena.h"
 #include "BLI_span.hh"
 #include "BLI_task.hh"
-#include "BLI_timeit.hh"
+
 #include "BLI_utildefines.h"
 
 #include "BKE_attribute.hh"

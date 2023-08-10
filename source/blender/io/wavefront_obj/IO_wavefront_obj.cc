@@ -7,7 +7,7 @@
  */
 
 #include "BLI_path_util.h"
-#include "BLI_timeit.hh"
+
 
 #include "IO_wavefront_obj.h"
 

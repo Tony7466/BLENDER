@@ -10,7 +10,7 @@
 #include "BLI_rand.h"
 #include "BLI_set.hh"
 #include "BLI_strict_flags.h"
-#include "BLI_timeit.hh"
+
 #include "BLI_vector.hh"
 #include "testing/testing.h"
 

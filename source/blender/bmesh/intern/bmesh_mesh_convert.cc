@@ -87,7 +87,7 @@
 #include "BLI_span.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_task.hh"
-#include "BLI_timeit.hh"
+
 #include "BLI_vector.hh"
 
 #include "BKE_attribute.hh"

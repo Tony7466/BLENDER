@@ -8,7 +8,7 @@
 
 #include "BLI_math_vector_types.hh"
 #include "BLI_threads.h"
-#include "BLI_timeit.hh"
+
 
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"

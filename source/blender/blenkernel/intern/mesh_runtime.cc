@@ -16,7 +16,6 @@
 
 #include "BLI_math_geom.h"
 #include "BLI_task.hh"
-#include "BLI_timeit.hh"
 
 #include "BKE_bvhutils.h"
 #include "BKE_editmesh_cache.hh"

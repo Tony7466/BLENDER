@@ -6,7 +6,7 @@
 
 #include "BLI_bit_span.hh"
 #include "BLI_bit_span_ops.hh"
-#include "BLI_timeit.hh"
+
 #include "BLI_vector.hh"
 
 #include "testing/testing.h"

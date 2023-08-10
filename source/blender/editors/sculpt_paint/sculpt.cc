@@ -23,7 +23,7 @@
 #include "BLI_set.hh"
 #include "BLI_task.h"
 #include "BLI_task.hh"
-#include "BLI_timeit.hh"
+
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 

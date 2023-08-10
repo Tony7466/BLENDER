@@ -11,7 +11,7 @@
 #include "BLI_string_search.hh"
 #include "BLI_string_utf8.h"
 #include "BLI_string_utf8_symbols.h"
-#include "BLI_timeit.hh"
+
 
 /* Right arrow, keep in sync with #UI_MENU_ARROW_SEP in `UI_interface.hh`. */
 #define UI_MENU_ARROW_SEP BLI_STR_UTF8_BLACK_RIGHT_POINTING_SMALL_TRIANGLE
