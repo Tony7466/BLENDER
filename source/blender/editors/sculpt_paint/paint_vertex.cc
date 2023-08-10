@@ -2280,7 +2280,7 @@ void PAINT_OT_vertex_color_set(wmOperatorType *ot)
                   "affect_alpha",
                   true,
                   "Affect Alpha",
-                  "When this is disabled, lock existing alpha when setting vertex colors");
+                  "Set to full Alpha, lock existing alpha when disabled");
 }
 
 /** \} */
