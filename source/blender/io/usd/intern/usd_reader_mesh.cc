@@ -534,9 +534,9 @@ void USDMeshReader::read_uv_data_primvar(Mesh *mesh,
       const OffsetIndices faces = mesh->faces();
       for (const int i : faces.index_range()) {
         const IndexRange face = faces[i];
-        for (int j = 0; j < face.size(); j++) {
-          const int rev_index = face.start() + face.size() - 1 - j;
-          uv_data.span[face.start() + j] = float2(usd_uvs[rev_index][0], usd_uvs[rev_index][1]);
+        for (int j : face.index_range()) {
+          const int rev_index = face.last(j);
+          uv_data.span[j] = float2(usd_uvs[rev_index][0], usd_uvs[rev_index][1]);
         }
       }
     }
@@ -606,9 +606,9 @@ void USDMeshReader::copy_prim_array_to_blender_attribute(const Mesh *mesh,
       const OffsetIndices faces = mesh->faces();
       for (const int i : faces.index_range()) {
         const IndexRange face = faces[i];
-        for (int j = 0; j < face.size(); j++) {
-          const int rev_index = face.start() + face.size() - 1 - j;
-          attribute[face.start() + j] = convert_value<USDT, BlenderT>(primvar_array[rev_index]);
+        for (int j : face.index_range()) {
+          const int rev_index = face.last(j);
+          attribute[j] = convert_value<USDT, BlenderT>(primvar_array[rev_index]);
         }
       }
     }
@@ -658,27 +658,22 @@ void USDMeshReader::read_generic_data_primvar(Mesh *mesh,
       copy_prim_array_to_blender_attribute<float>(
           mesh, primvar, motionSampleTime, attribute.span.typed<float>());
       break;
-
     case CD_PROP_INT32:
       copy_prim_array_to_blender_attribute<int32_t>(
           mesh, primvar, motionSampleTime, attribute.span.typed<int>());
       break;
-
     case CD_PROP_FLOAT2:
       copy_prim_array_to_blender_attribute<pxr::GfVec2f>(
           mesh, primvar, motionSampleTime, attribute.span.typed<float2>());
       break;
-
     case CD_PROP_FLOAT3:
       copy_prim_array_to_blender_attribute<pxr::GfVec3f>(
           mesh, primvar, motionSampleTime, attribute.span.typed<float3>());
       break;
-
     case CD_PROP_COLOR:
       copy_prim_array_to_blender_attribute<pxr::GfVec3f>(
           mesh, primvar, motionSampleTime, attribute.span.typed<ColorGeometry4f>());
       break;
-
     case CD_PROP_BOOL:
       copy_prim_array_to_blender_attribute<bool>(
           mesh, primvar, motionSampleTime, attribute.span.typed<bool>());
@@ -771,7 +766,7 @@ void USDMeshReader::process_normals_face_varying(Mesh *mesh)
   const OffsetIndices faces = mesh->faces();
   for (const int i : faces.index_range()) {
     const IndexRange face = faces[i];
-    for (int j = 0; j < face.size(); j++) {
+    for (int j : face.index_range()) {
       int blender_index = face.start() + j;
 
       int usd_index = face.start();
