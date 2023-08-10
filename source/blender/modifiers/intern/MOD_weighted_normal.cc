@@ -26,11 +26,11 @@
 #include "BKE_deform.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
+#include "BKE_mesh_mapping.hh"
 #include "BKE_screen.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "RNA_access.h"
 #include "RNA_prototypes.h"
@@ -638,14 +638,14 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "mode", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  uiItemR(layout, ptr, "weight", 0, IFACE_("Weight"), ICON_NONE);
-  uiItemR(layout, ptr, "thresh", 0, IFACE_("Threshold"), ICON_NONE);
+  uiItemR(layout, ptr, "weight", UI_ITEM_NONE, IFACE_("Weight"), ICON_NONE);
+  uiItemR(layout, ptr, "thresh", UI_ITEM_NONE, IFACE_("Threshold"), ICON_NONE);
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, ptr, "keep_sharp", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "use_face_influence", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "keep_sharp", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "use_face_influence", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   modifier_vgroup_ui(layout, ptr, &ob_ptr, "vertex_group", "invert_vertex_group", nullptr);
 

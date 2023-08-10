@@ -21,8 +21,8 @@
 
 #include "node_geometry_util.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 namespace blender::nodes::node_geo_duplicate_elements_cc {
 
@@ -52,7 +52,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "domain", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "domain", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 struct IndexAttributes {
@@ -291,7 +291,7 @@ static void duplicate_curves(GeometrySet &geometry_set,
   geometry_set.keep_only_during_modify({GeometryComponent::Type::Curve});
   GeometryComponentEditData::remember_deformed_curve_positions_if_necessary(geometry_set);
 
-  const Curves &curves_id = *geometry_set.get_curves_for_read();
+  const Curves &curves_id = *geometry_set.get_curves();
   const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
 
   const bke::CurvesFieldContext field_context{curves, ATTR_DOMAIN_CURVE};
@@ -475,7 +475,7 @@ static void duplicate_faces(GeometrySet &geometry_set,
   }
   geometry_set.keep_only_during_modify({GeometryComponent::Type::Mesh});
 
-  const Mesh &mesh = *geometry_set.get_mesh_for_read();
+  const Mesh &mesh = *geometry_set.get_mesh();
   const OffsetIndices faces = mesh.faces();
   const Span<int> corner_verts = mesh.corner_verts();
   const Span<int> corner_edges = mesh.corner_edges();
@@ -659,7 +659,7 @@ static void duplicate_edges(GeometrySet &geometry_set,
     geometry_set.remove_geometry_during_modify();
     return;
   };
-  const Mesh &mesh = *geometry_set.get_mesh_for_read();
+  const Mesh &mesh = *geometry_set.get_mesh();
   const Span<int2> edges = mesh.edges();
 
   const bke::MeshFieldContext field_context{mesh, ATTR_DOMAIN_EDGE};
@@ -735,7 +735,7 @@ static void duplicate_points_curve(GeometrySet &geometry_set,
                                    const IndexAttributes &attribute_outputs,
                                    const AnonymousAttributePropagationInfo &propagation_info)
 {
-  const Curves &src_curves_id = *geometry_set.get_curves_for_read();
+  const Curves &src_curves_id = *geometry_set.get_curves();
   const bke::CurvesGeometry &src_curves = src_curves_id.geometry.wrap();
   if (src_curves.points_num() == 0) {
     return;
@@ -816,7 +816,7 @@ static void duplicate_points_mesh(GeometrySet &geometry_set,
                                   const IndexAttributes &attribute_outputs,
                                   const AnonymousAttributePropagationInfo &propagation_info)
 {
-  const Mesh &mesh = *geometry_set.get_mesh_for_read();
+  const Mesh &mesh = *geometry_set.get_mesh();
 
   const bke::MeshFieldContext field_context{mesh, ATTR_DOMAIN_POINT};
   FieldEvaluator evaluator{field_context, mesh.totvert};
@@ -864,7 +864,7 @@ static void duplicate_points_pointcloud(GeometrySet &geometry_set,
                                         const IndexAttributes &attribute_outputs,
                                         const AnonymousAttributePropagationInfo &propagation_info)
 {
-  const PointCloud &src_points = *geometry_set.get_pointcloud_for_read();
+  const PointCloud &src_points = *geometry_set.get_pointcloud();
 
   const bke::PointCloudFieldContext field_context{src_points};
   FieldEvaluator evaluator{field_context, src_points.totpoint};
@@ -958,7 +958,7 @@ static void duplicate_instances(GeometrySet &geometry_set,
     return;
   }
 
-  const bke::Instances &src_instances = *geometry_set.get_instances_for_read();
+  const bke::Instances &src_instances = *geometry_set.get_instances();
 
   bke::InstancesFieldContext field_context{src_instances};
   FieldEvaluator evaluator{field_context, src_instances.instances_num()};
@@ -1007,7 +1007,7 @@ static void duplicate_instances(GeometrySet &geometry_set,
                                      duplicates);
   }
 
-  geometry_set = GeometrySet::create_with_instances(dst_instances.release());
+  geometry_set = GeometrySet::from_instances(dst_instances.release());
 }
 
 /** \} */
@@ -1078,11 +1078,8 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 /** \} */
 
-}  // namespace blender::nodes::node_geo_duplicate_elements_cc
-
-void register_node_type_geo_duplicate_elements()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_duplicate_elements_cc;
   static bNodeType ntype;
   geo_node_type_base(
       &ntype, GEO_NODE_DUPLICATE_ELEMENTS, "Duplicate Elements", NODE_CLASS_GEOMETRY);
@@ -1092,9 +1089,12 @@ void register_node_type_geo_duplicate_elements()
                     node_free_standard_storage,
                     node_copy_standard_storage);
 
-  ntype.initfunc = file_ns::node_init;
-  ntype.draw_buttons = file_ns::node_layout;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.declare = file_ns::node_declare;
+  ntype.initfunc = node_init;
+  ntype.draw_buttons = node_layout;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.declare = node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_duplicate_elements_cc

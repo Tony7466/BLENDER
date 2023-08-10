@@ -8,8 +8,9 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_base.h"
 #include "BLI_polyfill_2d.h"
+#include "BLI_rect.h"
 #include "BLI_sort_utils.h"
 #include "BLI_utildefines.h"
 
@@ -47,7 +48,7 @@ GPUBatch *GPU_batch_tris_from_poly_2d_encoded(const uchar *polys_flat,
   uint i_vert = 0;
   while (i_poly != polys_len) {
     for (uint j = 0; j < 2; j++) {
-      verts[i_vert][j] = min_uchar[j] + ((float)polys[i_poly][j] * range_uchar[j]);
+      verts[i_vert][j] = min_uchar[j] + (float(polys[i_poly][j]) * range_uchar[j]);
     }
     i_vert++;
     i_poly++;
@@ -201,7 +202,7 @@ GPUBatch *GPU_batch_wire_from_poly_2d_encoded(const uchar *polys_flat,
     for (uint k = 0; k < 2; k++) {
       float *pos_v2 = static_cast<float *>(GPU_vertbuf_raw_step(&pos_step));
       for (uint j = 0; j < 2; j++) {
-        pos_v2[j] = min_uchar[j] + ((float)data.as_u8_pair[k][j] * range_uchar[j]);
+        pos_v2[j] = min_uchar[j] + (float(data.as_u8_pair[k][j]) * range_uchar[j]);
       }
     }
   }

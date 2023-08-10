@@ -19,13 +19,12 @@
 #include "DNA_scene_types.h"
 #include "DNA_volume_types.h"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 
 #include "GPU_batch.h"
 #include "GPU_batch_utils.h"
@@ -34,7 +33,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "draw_cache.h"
-#include "draw_cache_impl.h"
+#include "draw_cache_impl.hh"
 #include "draw_manager.h"
 
 /* -------------------------------------------------------------------- */
@@ -168,7 +167,7 @@ static struct DRWShapeCache {
   GPUBatch *drw_sphere_lod[DRW_LOD_MAX];
 } SHC = {nullptr};
 
-void DRW_shape_cache_free(void)
+void DRW_shape_cache_free()
 {
   uint i = sizeof(SHC) / sizeof(GPUBatch *);
   GPUBatch **batch = (GPUBatch **)&SHC;
@@ -184,7 +183,7 @@ void DRW_shape_cache_free(void)
 /** \name Procedural Batches
  * \{ */
 
-GPUBatch *drw_cache_procedural_points_get(void)
+GPUBatch *drw_cache_procedural_points_get()
 {
   if (!SHC.drw_procedural_verts) {
     /* TODO(fclem): get rid of this dummy VBO. */
@@ -199,7 +198,7 @@ GPUBatch *drw_cache_procedural_points_get(void)
   return SHC.drw_procedural_verts;
 }
 
-GPUBatch *drw_cache_procedural_lines_get(void)
+GPUBatch *drw_cache_procedural_lines_get()
 {
   if (!SHC.drw_procedural_lines) {
     /* TODO(fclem): get rid of this dummy VBO. */
@@ -214,7 +213,7 @@ GPUBatch *drw_cache_procedural_lines_get(void)
   return SHC.drw_procedural_lines;
 }
 
-GPUBatch *drw_cache_procedural_triangles_get(void)
+GPUBatch *drw_cache_procedural_triangles_get()
 {
   if (!SHC.drw_procedural_tris) {
     /* TODO(fclem): get rid of this dummy VBO. */
@@ -228,7 +227,7 @@ GPUBatch *drw_cache_procedural_triangles_get(void)
   return SHC.drw_procedural_tris;
 }
 
-GPUBatch *drw_cache_procedural_triangle_strips_get(void)
+GPUBatch *drw_cache_procedural_triangle_strips_get()
 {
   if (!SHC.drw_procedural_tri_strips) {
     /* TODO(fclem): get rid of this dummy VBO. */
@@ -249,7 +248,7 @@ GPUBatch *drw_cache_procedural_triangle_strips_get(void)
 /** \name Helper functions
  * \{ */
 
-static GPUVertFormat extra_vert_format(void)
+static GPUVertFormat extra_vert_format()
 {
   GPUVertFormat format = {0};
   GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
@@ -357,7 +356,7 @@ static GPUVertBuf *sphere_wire_vbo(const float rad, int flag)
   /* a single ring of vertices */
   float p[NSEGMENTS][2];
   for (int i = 0; i < NSEGMENTS; i++) {
-    float angle = 2 * M_PI * ((float)i / (float)NSEGMENTS);
+    float angle = 2 * M_PI * (float(i) / float(NSEGMENTS));
     p[i][0] = rad * cosf(angle);
     p[i][1] = rad * sinf(angle);
   }
@@ -388,7 +387,7 @@ static GPUVertBuf *sphere_wire_vbo(const float rad, int flag)
 }
 
 /* Quads */
-GPUBatch *DRW_cache_fullscreen_quad_get(void)
+GPUBatch *DRW_cache_fullscreen_quad_get()
 {
   if (!SHC.drw_fullscreen_quad) {
     /* Use a triangle instead of a real quad */
@@ -421,7 +420,7 @@ GPUBatch *DRW_cache_fullscreen_quad_get(void)
   return SHC.drw_fullscreen_quad;
 }
 
-GPUBatch *DRW_cache_quad_get(void)
+GPUBatch *DRW_cache_quad_get()
 {
   if (!SHC.drw_quad) {
     GPUVertFormat format = extra_vert_format();
@@ -441,7 +440,7 @@ GPUBatch *DRW_cache_quad_get(void)
   return SHC.drw_quad;
 }
 
-GPUBatch *DRW_cache_quad_wires_get(void)
+GPUBatch *DRW_cache_quad_wires_get()
 {
   if (!SHC.drw_quad_wires) {
     GPUVertFormat format = extra_vert_format();
@@ -462,7 +461,7 @@ GPUBatch *DRW_cache_quad_wires_get(void)
   return SHC.drw_quad_wires;
 }
 
-GPUBatch *DRW_cache_grid_get(void)
+GPUBatch *DRW_cache_grid_get()
 {
   if (!SHC.drw_grid) {
     /* Position Only 2D format */
@@ -480,10 +479,10 @@ GPUBatch *DRW_cache_grid_get(void)
     uint v_idx = 0;
     for (int i = 0; i < 8; i++) {
       for (int j = 0; j < 8; j++) {
-        float pos0[2] = {(float)i / 8.0f, (float)j / 8.0f};
-        float pos1[2] = {(float)(i + 1) / 8.0f, (float)j / 8.0f};
-        float pos2[2] = {(float)i / 8.0f, (float)(j + 1) / 8.0f};
-        float pos3[2] = {(float)(i + 1) / 8.0f, (float)(j + 1) / 8.0f};
+        float pos0[2] = {float(i) / 8.0f, float(j) / 8.0f};
+        float pos1[2] = {float(i + 1) / 8.0f, float(j) / 8.0f};
+        float pos2[2] = {float(i) / 8.0f, float(j + 1) / 8.0f};
+        float pos3[2] = {float(i + 1) / 8.0f, float(j + 1) / 8.0f};
 
         madd_v2_v2v2fl(pos0, blender::float2{-1.0f, -1.0f}, pos0, 2.0f);
         madd_v2_v2v2fl(pos1, blender::float2{-1.0f, -1.0f}, pos1, 2.0f);
@@ -728,7 +727,7 @@ static const float bone_box_solid_normals[12][3] = {
     {0.0f, 1.0f, 0.0f},
 };
 
-GPUBatch *DRW_cache_cube_get(void)
+GPUBatch *DRW_cache_cube_get()
 {
   if (!SHC.drw_cube) {
     GPUVertFormat format = extra_vert_format();
@@ -761,7 +760,7 @@ GPUBatch *DRW_cache_cube_get(void)
   return SHC.drw_cube;
 }
 
-GPUBatch *DRW_cache_circle_get(void)
+GPUBatch *DRW_cache_circle_get()
 {
 #define CIRCLE_RESOL 64
   if (!SHC.drw_circle) {
@@ -772,8 +771,8 @@ GPUBatch *DRW_cache_circle_get(void)
 
     int v = 0;
     for (int a = 0; a < CIRCLE_RESOL + 1; a++) {
-      float x = sinf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
-      float z = cosf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
+      float x = sinf((2.0f * M_PI * a) / float(CIRCLE_RESOL));
+      float z = cosf((2.0f * M_PI * a) / float(CIRCLE_RESOL));
       float y = 0.0f;
       GPU_vertbuf_vert_set(vbo, v++, Vert{{x, y, z}, VCLASS_EMPTY_SCALED});
     }
@@ -784,7 +783,7 @@ GPUBatch *DRW_cache_circle_get(void)
 #undef CIRCLE_RESOL
 }
 
-GPUBatch *DRW_cache_normal_arrow_get(void)
+GPUBatch *DRW_cache_normal_arrow_get()
 {
   if (!SHC.drw_normal_arrow) {
     GPUVertFormat format = {0};
@@ -822,7 +821,7 @@ void DRW_vertbuf_create_wiredata(GPUVertBuf *vbo, const int vert_len)
   GPU_vertbuf_data_alloc(vbo, vert_len);
 
   if (GPU_vertbuf_get_format(vbo)->stride == 1) {
-    memset(GPU_vertbuf_get_data(vbo), 0xFF, (size_t)vert_len);
+    memset(GPU_vertbuf_get_data(vbo), 0xFF, size_t(vert_len));
   }
   else {
     GPUVertBufRaw wd_step;
@@ -842,7 +841,7 @@ void DRW_vertbuf_create_wiredata(GPUVertBuf *vbo, const int vert_len)
  *
  * \{ */
 
-GPUBatch *DRW_gpencil_dummy_buffer_get(void)
+GPUBatch *DRW_gpencil_dummy_buffer_get()
 {
   if (SHC.drw_gpencil_dummy_quad == nullptr) {
     GPUVertFormat format = {0};
@@ -927,7 +926,7 @@ GPUBatch *DRW_cache_object_surface_get(Object *ob)
 GPUVertBuf *DRW_cache_object_pos_vertbuf_get(Object *ob)
 {
   Mesh *me = BKE_object_get_evaluated_mesh_no_subsurf(ob);
-  short type = (me != nullptr) ? OB_MESH : ob->type;
+  short type = (me != nullptr) ? short(OB_MESH) : ob->type;
 
   switch (type) {
     case OB_MESH:
@@ -990,7 +989,7 @@ GPUBatch **DRW_cache_object_surface_material_get(Object *ob,
 /** \name Empties
  * \{ */
 
-GPUBatch *DRW_cache_plain_axes_get(void)
+GPUBatch *DRW_cache_plain_axes_get()
 {
   if (!SHC.drw_plain_axes) {
     GPUVertFormat format = extra_vert_format();
@@ -1012,7 +1011,7 @@ GPUBatch *DRW_cache_plain_axes_get(void)
   return SHC.drw_plain_axes;
 }
 
-GPUBatch *DRW_cache_empty_cube_get(void)
+GPUBatch *DRW_cache_empty_cube_get()
 {
   if (!SHC.drw_empty_cube) {
     GPUVertFormat format = extra_vert_format();
@@ -1032,7 +1031,7 @@ GPUBatch *DRW_cache_empty_cube_get(void)
   return SHC.drw_empty_cube;
 }
 
-GPUBatch *DRW_cache_single_arrow_get(void)
+GPUBatch *DRW_cache_single_arrow_get()
 {
   if (!SHC.drw_single_arrow) {
     GPUVertFormat format = extra_vert_format();
@@ -1070,7 +1069,7 @@ GPUBatch *DRW_cache_single_arrow_get(void)
   return SHC.drw_single_arrow;
 }
 
-GPUBatch *DRW_cache_empty_sphere_get(void)
+GPUBatch *DRW_cache_empty_sphere_get()
 {
   if (!SHC.drw_empty_sphere) {
     GPUVertBuf *vbo = sphere_wire_vbo(1.0f, VCLASS_EMPTY_SCALED);
@@ -1079,7 +1078,7 @@ GPUBatch *DRW_cache_empty_sphere_get(void)
   return SHC.drw_empty_sphere;
 }
 
-GPUBatch *DRW_cache_empty_cone_get(void)
+GPUBatch *DRW_cache_empty_cone_get()
 {
 #define NSEGMENTS 8
   if (!SHC.drw_empty_cone) {
@@ -1092,7 +1091,7 @@ GPUBatch *DRW_cache_empty_cone_get(void)
     /* a single ring of vertices */
     float p[NSEGMENTS][2];
     for (int i = 0; i < NSEGMENTS; i++) {
-      float angle = 2 * M_PI * ((float)i / (float)NSEGMENTS);
+      float angle = 2 * M_PI * (float(i) / float(NSEGMENTS));
       p[i][0] = cosf(angle);
       p[i][1] = sinf(angle);
     }
@@ -1118,7 +1117,7 @@ GPUBatch *DRW_cache_empty_cone_get(void)
 #undef NSEGMENTS
 }
 
-GPUBatch *DRW_cache_empty_cylinder_get(void)
+GPUBatch *DRW_cache_empty_cylinder_get()
 {
 #define NSEGMENTS 12
   if (!SHC.drw_empty_cylinder) {
@@ -1131,7 +1130,7 @@ GPUBatch *DRW_cache_empty_cylinder_get(void)
     int flag = VCLASS_EMPTY_SCALED;
     float p[NSEGMENTS][2];
     for (int i = 0; i < NSEGMENTS; i++) {
-      float angle = 2 * M_PI * ((float)i / (float)NSEGMENTS);
+      float angle = 2 * M_PI * (float(i) / float(NSEGMENTS));
       p[i][0] = cosf(angle);
       p[i][1] = sinf(angle);
     }
@@ -1159,7 +1158,7 @@ GPUBatch *DRW_cache_empty_cylinder_get(void)
 #undef NSEGMENTS
 }
 
-GPUBatch *DRW_cache_empty_capsule_body_get(void)
+GPUBatch *DRW_cache_empty_capsule_body_get()
 {
   if (!SHC.drw_empty_capsule_body) {
     const float pos[8][3] = {
@@ -1192,14 +1191,14 @@ GPUBatch *DRW_cache_empty_capsule_body_get(void)
   return SHC.drw_empty_capsule_body;
 }
 
-GPUBatch *DRW_cache_empty_capsule_cap_get(void)
+GPUBatch *DRW_cache_empty_capsule_cap_get()
 {
 #define NSEGMENTS 24 /* Must be multiple of 2. */
   if (!SHC.drw_empty_capsule_cap) {
     /* a single ring of vertices */
     float p[NSEGMENTS][2];
     for (int i = 0; i < NSEGMENTS; i++) {
-      float angle = 2 * M_PI * ((float)i / (float)NSEGMENTS);
+      float angle = 2 * M_PI * (float(i) / float(NSEGMENTS));
       p[i][0] = cosf(angle);
       p[i][1] = sinf(angle);
     }
@@ -1249,7 +1248,7 @@ GPUBatch *DRW_cache_empty_capsule_cap_get(void)
 #undef NSEGMENTS
 }
 
-GPUBatch *DRW_cache_field_wind_get(void)
+GPUBatch *DRW_cache_field_wind_get()
 {
 #define CIRCLE_RESOL 32
   if (!SHC.drw_field_wind) {
@@ -1262,7 +1261,7 @@ GPUBatch *DRW_cache_field_wind_get(void)
     int v = 0;
     int flag = VCLASS_EMPTY_SIZE;
     for (int i = 0; i < 4; i++) {
-      float z = 0.05f * (float)i;
+      float z = 0.05f * float(i);
       circle_verts(vbo, &v, CIRCLE_RESOL, 1.0f, z, flag);
     }
 
@@ -1272,7 +1271,7 @@ GPUBatch *DRW_cache_field_wind_get(void)
 #undef CIRCLE_RESOL
 }
 
-GPUBatch *DRW_cache_field_force_get(void)
+GPUBatch *DRW_cache_field_force_get()
 {
 #define CIRCLE_RESOL 32
   if (!SHC.drw_field_force) {
@@ -1295,7 +1294,7 @@ GPUBatch *DRW_cache_field_force_get(void)
 #undef CIRCLE_RESOL
 }
 
-GPUBatch *DRW_cache_field_vortex_get(void)
+GPUBatch *DRW_cache_field_vortex_get()
 {
 #define SPIRAL_RESOL 32
   if (!SHC.drw_field_vortex) {
@@ -1308,12 +1307,12 @@ GPUBatch *DRW_cache_field_vortex_get(void)
     int v = 0;
     int flag = VCLASS_EMPTY_SIZE;
     for (int a = SPIRAL_RESOL; a > -1; a--) {
-      float r = a / (float)SPIRAL_RESOL;
+      float r = a / float(SPIRAL_RESOL);
       float angle = (2.0f * M_PI * a) / SPIRAL_RESOL;
       GPU_vertbuf_vert_set(vbo, v++, Vert{{sinf(angle) * r, cosf(angle) * r, 0.0f}, flag});
     }
     for (int a = 1; a <= SPIRAL_RESOL; a++) {
-      float r = a / (float)SPIRAL_RESOL;
+      float r = a / float(SPIRAL_RESOL);
       float angle = (2.0f * M_PI * a) / SPIRAL_RESOL;
       GPU_vertbuf_vert_set(vbo, v++, Vert{{sinf(angle) * -r, cosf(angle) * -r, 0.0f}, flag});
     }
@@ -1325,7 +1324,7 @@ GPUBatch *DRW_cache_field_vortex_get(void)
 #undef SPIRAL_RESOL
 }
 
-GPUBatch *DRW_cache_field_curve_get(void)
+GPUBatch *DRW_cache_field_curve_get()
 {
 #define CIRCLE_RESOL 32
   if (!SHC.drw_field_curve) {
@@ -1345,7 +1344,7 @@ GPUBatch *DRW_cache_field_curve_get(void)
 #undef CIRCLE_RESOL
 }
 
-GPUBatch *DRW_cache_field_tube_limit_get(void)
+GPUBatch *DRW_cache_field_tube_limit_get()
 {
 #define CIRCLE_RESOL 32
 #define SIDE_STIPPLE 32
@@ -1367,7 +1366,7 @@ GPUBatch *DRW_cache_field_tube_limit_get(void)
     for (int a = 0; a < 4; a++) {
       float angle = (2.0f * M_PI * a) / 4.0f;
       for (int i = 0; i < SIDE_STIPPLE; i++) {
-        float z = (i / (float)SIDE_STIPPLE) * 2.0f - 1.0f;
+        float z = (i / float(SIDE_STIPPLE)) * 2.0f - 1.0f;
         GPU_vertbuf_vert_set(vbo, v++, Vert{{sinf(angle), cosf(angle), z}, flag});
       }
     }
@@ -1380,7 +1379,7 @@ GPUBatch *DRW_cache_field_tube_limit_get(void)
 #undef CIRCLE_RESOL
 }
 
-GPUBatch *DRW_cache_field_cone_limit_get(void)
+GPUBatch *DRW_cache_field_cone_limit_get()
 {
 #define CIRCLE_RESOL 32
 #define SIDE_STIPPLE 32
@@ -1402,7 +1401,7 @@ GPUBatch *DRW_cache_field_cone_limit_get(void)
     for (int a = 0; a < 4; a++) {
       float angle = (2.0f * M_PI * a) / 4.0f;
       for (int i = 0; i < SIDE_STIPPLE; i++) {
-        float z = (i / (float)SIDE_STIPPLE) * 2.0f - 1.0f;
+        float z = (i / float(SIDE_STIPPLE)) * 2.0f - 1.0f;
         GPU_vertbuf_vert_set(vbo, v++, Vert{{sinf(angle) * z, cosf(angle) * z, z}, flag});
       }
     }
@@ -1415,7 +1414,7 @@ GPUBatch *DRW_cache_field_cone_limit_get(void)
 #undef CIRCLE_RESOL
 }
 
-GPUBatch *DRW_cache_field_sphere_limit_get(void)
+GPUBatch *DRW_cache_field_sphere_limit_get()
 {
 #define CIRCLE_RESOL 32
   if (!SHC.drw_field_sphere_limit) {
@@ -1466,7 +1465,7 @@ static float light_distance_z_get(char axis, const bool start)
   return 0.0;
 }
 
-GPUBatch *DRW_cache_groundline_get(void)
+GPUBatch *DRW_cache_groundline_get()
 {
   if (!SHC.drw_ground_line) {
     GPUVertFormat format = extra_vert_format();
@@ -1487,7 +1486,7 @@ GPUBatch *DRW_cache_groundline_get(void)
   return SHC.drw_ground_line;
 }
 
-GPUBatch *DRW_cache_light_icon_inner_lines_get(void)
+GPUBatch *DRW_cache_light_icon_inner_lines_get()
 {
   if (!SHC.drw_light_icon_inner_lines) {
     GPUVertFormat format = extra_vert_format();
@@ -1508,7 +1507,7 @@ GPUBatch *DRW_cache_light_icon_inner_lines_get(void)
   return SHC.drw_light_icon_inner_lines;
 }
 
-GPUBatch *DRW_cache_light_icon_outer_lines_get(void)
+GPUBatch *DRW_cache_light_icon_outer_lines_get()
 {
   if (!SHC.drw_light_icon_outer_lines) {
     GPUVertFormat format = extra_vert_format();
@@ -1528,7 +1527,7 @@ GPUBatch *DRW_cache_light_icon_outer_lines_get(void)
   return SHC.drw_light_icon_outer_lines;
 }
 
-GPUBatch *DRW_cache_light_icon_sun_rays_get(void)
+GPUBatch *DRW_cache_light_icon_sun_rays_get()
 {
   if (!SHC.drw_light_icon_sun_rays) {
     GPUVertFormat format = extra_vert_format();
@@ -1545,7 +1544,7 @@ GPUBatch *DRW_cache_light_icon_sun_rays_get(void)
 
     /* Sun Rays */
     for (int a = 0; a < num_rays; a++) {
-      float angle = (2.0f * M_PI * a) / (float)num_rays;
+      float angle = (2.0f * M_PI * a) / float(num_rays);
       float s = sinf(angle) * r;
       float c = cosf(angle) * r;
       GPU_vertbuf_vert_set(vbo, v++, Vert{{s * 1.6f, c * 1.6f, 0.0f}, VCLASS_SCREENSPACE});
@@ -1560,7 +1559,7 @@ GPUBatch *DRW_cache_light_icon_sun_rays_get(void)
   return SHC.drw_light_icon_sun_rays;
 }
 
-GPUBatch *DRW_cache_light_point_lines_get(void)
+GPUBatch *DRW_cache_light_point_lines_get()
 {
   if (!SHC.drw_light_point_lines) {
     GPUVertFormat format = extra_vert_format();
@@ -1581,7 +1580,7 @@ GPUBatch *DRW_cache_light_point_lines_get(void)
   return SHC.drw_light_point_lines;
 }
 
-GPUBatch *DRW_cache_light_sun_lines_get(void)
+GPUBatch *DRW_cache_light_sun_lines_get()
 {
   if (!SHC.drw_light_sun_lines) {
     GPUVertFormat format = extra_vert_format();
@@ -1602,7 +1601,7 @@ GPUBatch *DRW_cache_light_sun_lines_get(void)
   return SHC.drw_light_sun_lines;
 }
 
-GPUBatch *DRW_cache_light_spot_lines_get(void)
+GPUBatch *DRW_cache_light_spot_lines_get()
 {
   if (!SHC.drw_light_spot_lines) {
     GPUVertFormat format = extra_vert_format();
@@ -1644,7 +1643,7 @@ GPUBatch *DRW_cache_light_spot_lines_get(void)
   return SHC.drw_light_spot_lines;
 }
 
-GPUBatch *DRW_cache_light_spot_volume_get(void)
+GPUBatch *DRW_cache_light_spot_volume_get()
 {
   if (!SHC.drw_light_spot_volume) {
     GPUVertFormat format = extra_vert_format();
@@ -1671,7 +1670,7 @@ GPUBatch *DRW_cache_light_spot_volume_get(void)
   return SHC.drw_light_spot_volume;
 }
 
-GPUBatch *DRW_cache_light_area_disk_lines_get(void)
+GPUBatch *DRW_cache_light_area_disk_lines_get()
 {
   if (!SHC.drw_light_area_disk_lines) {
     GPUVertFormat format = extra_vert_format();
@@ -1698,7 +1697,7 @@ GPUBatch *DRW_cache_light_area_disk_lines_get(void)
   return SHC.drw_light_area_disk_lines;
 }
 
-GPUBatch *DRW_cache_light_area_square_lines_get(void)
+GPUBatch *DRW_cache_light_area_square_lines_get()
 {
   if (!SHC.drw_light_area_square_lines) {
     GPUVertFormat format = extra_vert_format();
@@ -1743,7 +1742,7 @@ GPUBatch *DRW_cache_light_area_square_lines_get(void)
 /** \name Speaker
  * \{ */
 
-GPUBatch *DRW_cache_speaker_get(void)
+GPUBatch *DRW_cache_speaker_get()
 {
   if (!SHC.drw_speaker) {
     float v[3];
@@ -1769,8 +1768,8 @@ GPUBatch *DRW_cache_speaker_get(void)
       copy_v3_fl3(v, r, 0.0f, z);
       GPU_vertbuf_attr_set(vbo, attr_id.pos, vidx++, v);
       for (int i = 1; i < segments; i++) {
-        float x = cosf(2.0f * (float)M_PI * i / segments) * r;
-        float y = sinf(2.0f * (float)M_PI * i / segments) * r;
+        float x = cosf(2.0f * float(M_PI) * i / segments) * r;
+        float y = sinf(2.0f * float(M_PI) * i / segments) * r;
         copy_v3_fl3(v, x, y, z);
         GPU_vertbuf_attr_set(vbo, attr_id.pos, vidx++, v);
         GPU_vertbuf_attr_set(vbo, attr_id.pos, vidx++, v);
@@ -1808,7 +1807,7 @@ GPUBatch *DRW_cache_speaker_get(void)
 /** \name Probe
  * \{ */
 
-GPUBatch *DRW_cache_lightprobe_cube_get(void)
+GPUBatch *DRW_cache_lightprobe_cube_get()
 {
   if (!SHC.drw_lightprobe_cube) {
     GPUVertFormat format = extra_vert_format();
@@ -1863,7 +1862,7 @@ GPUBatch *DRW_cache_lightprobe_cube_get(void)
   return SHC.drw_lightprobe_cube;
 }
 
-GPUBatch *DRW_cache_lightprobe_grid_get(void)
+GPUBatch *DRW_cache_lightprobe_grid_get()
 {
   if (!SHC.drw_lightprobe_grid) {
     GPUVertFormat format = extra_vert_format();
@@ -1926,7 +1925,7 @@ GPUBatch *DRW_cache_lightprobe_grid_get(void)
   return SHC.drw_lightprobe_grid;
 }
 
-GPUBatch *DRW_cache_lightprobe_planar_get(void)
+GPUBatch *DRW_cache_lightprobe_planar_get()
 {
   if (!SHC.drw_lightprobe_planar) {
     GPUVertFormat format = extra_vert_format();
@@ -2067,7 +2066,7 @@ static const float bone_octahedral_solid_normals[8][3] = {
     {0.00000000f, 0.11043154f, 0.99388373f},
 };
 
-GPUBatch *DRW_cache_bone_octahedral_get(void)
+GPUBatch *DRW_cache_bone_octahedral_get()
 {
   if (!SHC.drw_bone_octahedral) {
     uint v_idx = 0;
@@ -2103,7 +2102,7 @@ GPUBatch *DRW_cache_bone_octahedral_get(void)
   return SHC.drw_bone_octahedral;
 }
 
-GPUBatch *DRW_cache_bone_octahedral_wire_get(void)
+GPUBatch *DRW_cache_bone_octahedral_wire_get()
 {
   if (!SHC.drw_bone_octahedral_wire) {
     GPUIndexBufBuilder elb;
@@ -2128,7 +2127,7 @@ GPUBatch *DRW_cache_bone_octahedral_wire_get(void)
   return SHC.drw_bone_octahedral_wire;
 }
 
-GPUBatch *DRW_cache_bone_box_get(void)
+GPUBatch *DRW_cache_bone_box_get()
 {
   if (!SHC.drw_bone_box) {
     uint v_idx = 0;
@@ -2161,7 +2160,7 @@ GPUBatch *DRW_cache_bone_box_get(void)
   return SHC.drw_bone_box;
 }
 
-GPUBatch *DRW_cache_bone_box_wire_get(void)
+GPUBatch *DRW_cache_bone_box_wire_get()
 {
   if (!SHC.drw_bone_box_wire) {
     GPUIndexBufBuilder elb;
@@ -2195,7 +2194,7 @@ static void benv_lat_lon_to_co(const float lat, const float lon, float r_nor[3])
   r_nor[2] = cosf(lat);
 }
 
-GPUBatch *DRW_cache_bone_envelope_solid_get(void)
+GPUBatch *DRW_cache_bone_envelope_solid_get()
 {
   if (!SHC.drw_bone_envelope) {
     const int lon_res = 24;
@@ -2246,7 +2245,7 @@ GPUBatch *DRW_cache_bone_envelope_solid_get(void)
   return SHC.drw_bone_envelope;
 }
 
-GPUBatch *DRW_cache_bone_envelope_outline_get(void)
+GPUBatch *DRW_cache_bone_envelope_outline_get()
 {
   if (!SHC.drw_bone_envelope_outline) {
 #define CIRCLE_RESOL 64
@@ -2267,16 +2266,16 @@ GPUBatch *DRW_cache_bone_envelope_outline_get(void)
     GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
     GPU_vertbuf_data_alloc(vbo, CIRCLE_RESOL + 1);
 
-    v0[0] = radius * sinf((2.0f * M_PI * -2) / ((float)CIRCLE_RESOL));
-    v0[1] = radius * cosf((2.0f * M_PI * -2) / ((float)CIRCLE_RESOL));
-    v1[0] = radius * sinf((2.0f * M_PI * -1) / ((float)CIRCLE_RESOL));
-    v1[1] = radius * cosf((2.0f * M_PI * -1) / ((float)CIRCLE_RESOL));
+    v0[0] = radius * sinf((2.0f * M_PI * -2) / float(CIRCLE_RESOL));
+    v0[1] = radius * cosf((2.0f * M_PI * -2) / float(CIRCLE_RESOL));
+    v1[0] = radius * sinf((2.0f * M_PI * -1) / float(CIRCLE_RESOL));
+    v1[1] = radius * cosf((2.0f * M_PI * -1) / float(CIRCLE_RESOL));
 
     /* Output 4 verts for each position. See shader for explanation. */
     uint v = 0;
     for (int a = 0; a <= CIRCLE_RESOL; a++) {
-      v2[0] = radius * sinf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
-      v2[1] = radius * cosf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
+      v2[0] = radius * sinf((2.0f * M_PI * a) / float(CIRCLE_RESOL));
+      v2[1] = radius * cosf((2.0f * M_PI * a) / float(CIRCLE_RESOL));
       GPU_vertbuf_attr_set(vbo, attr_id.pos0, v, v0);
       GPU_vertbuf_attr_set(vbo, attr_id.pos1, v, v1);
       GPU_vertbuf_attr_set(vbo, attr_id.pos2, v++, v2);
@@ -2291,7 +2290,7 @@ GPUBatch *DRW_cache_bone_envelope_outline_get(void)
   return SHC.drw_bone_envelope_outline;
 }
 
-GPUBatch *DRW_cache_bone_point_get(void)
+GPUBatch *DRW_cache_bone_point_get()
 {
   if (!SHC.drw_bone_point) {
 #if 0 /* old style geometry sphere */
@@ -2354,8 +2353,8 @@ GPUBatch *DRW_cache_bone_point_get(void)
     GPU_vertbuf_data_alloc(vbo, CIRCLE_RESOL);
 
     for (int a = 0; a < CIRCLE_RESOL; a++) {
-      v[0] = radius * sinf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
-      v[1] = radius * cosf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
+      v[0] = radius * sinf((2.0f * M_PI * a) / float(CIRCLE_RESOL));
+      v[1] = radius * cosf((2.0f * M_PI * a) / float(CIRCLE_RESOL));
       GPU_vertbuf_attr_set(vbo, attr_id.pos, a, v);
     }
 
@@ -2366,7 +2365,7 @@ GPUBatch *DRW_cache_bone_point_get(void)
   return SHC.drw_bone_point;
 }
 
-GPUBatch *DRW_cache_bone_point_wire_outline_get(void)
+GPUBatch *DRW_cache_bone_point_wire_outline_get()
 {
   if (!SHC.drw_bone_point_wire) {
 #if 0 /* old style geometry sphere */
@@ -2415,7 +2414,7 @@ GPUBatch *DRW_cache_bone_point_wire_outline_get(void)
 #define POS_TAIL (1 << 5)
 #define POS_BONE (1 << 6)
 
-GPUBatch *DRW_cache_bone_stick_get(void)
+GPUBatch *DRW_cache_bone_stick_get()
 {
   if (!SHC.drw_bone_stick) {
 #define CIRCLE_RESOL 12
@@ -2454,8 +2453,8 @@ GPUBatch *DRW_cache_bone_stick_get(void)
       /* circle vertices */
       flag |= COL_WIRE;
       for (int a = 0; a < CIRCLE_RESOL; a++) {
-        pos[0] = radius * sinf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
-        pos[1] = radius * cosf((2.0f * M_PI * a) / ((float)CIRCLE_RESOL));
+        pos[0] = radius * sinf((2.0f * M_PI * a) / float(CIRCLE_RESOL));
+        pos[1] = radius * cosf((2.0f * M_PI * a) / float(CIRCLE_RESOL));
         GPU_vertbuf_attr_set(vbo, attr_id.pos, v, pos);
         GPU_vertbuf_attr_set(vbo, attr_id.flag, v, &flag);
         GPU_indexbuf_add_generic_vert(&elb, v++);
@@ -2558,7 +2557,7 @@ static float axis_marker[8][2] = {
 #undef S_X
 #undef S_Y
 
-GPUBatch *DRW_cache_bone_arrows_get(void)
+GPUBatch *DRW_cache_bone_arrows_get()
 {
   if (!SHC.drw_bone_arrows) {
     GPUVertFormat format = extra_vert_format();
@@ -2578,7 +2577,7 @@ GPUBatch *DRW_cache_bone_arrows_get(void)
       /* Axis end marker */
       for (int j = 1; j < MARKER_FILL_LAYER + 1; j++) {
         for (int i = 0; i < MARKER_LEN; i++) {
-          mul_v2_v2fl(p, axis_marker[i], 4.0f * j / (float)MARKER_FILL_LAYER);
+          mul_v2_v2fl(p, axis_marker[i], 4.0f * j / float(MARKER_FILL_LAYER));
           GPU_vertbuf_vert_set(vbo, v++, Vert{{p[0], p[1], p[2]}, flag});
         }
       }
@@ -2624,7 +2623,7 @@ static const float staticSine[16] = {
   } \
   ((void)0)
 
-GPUBatch *DRW_cache_bone_dof_sphere_get(void)
+GPUBatch *DRW_cache_bone_dof_sphere_get()
 {
   if (!SHC.drw_bone_dof_sphere) {
     int i, j, q, n = ARRAY_SIZE(staticSine);
@@ -2677,7 +2676,7 @@ GPUBatch *DRW_cache_bone_dof_sphere_get(void)
   return SHC.drw_bone_dof_sphere;
 }
 
-GPUBatch *DRW_cache_bone_dof_lines_get(void)
+GPUBatch *DRW_cache_bone_dof_lines_get()
 {
   if (!SHC.drw_bone_dof_lines) {
     int i, n = ARRAY_SIZE(staticSine);
@@ -2697,7 +2696,7 @@ GPUBatch *DRW_cache_bone_dof_lines_get(void)
 
     uint v = 0;
     for (i = 0; i < n * 4; i++) {
-      float a = (1.0f - (i / (float)(n * 4))) * 2.0f * M_PI;
+      float a = (1.0f - (i / float(n * 4))) * 2.0f * M_PI;
       float x = cosf(a);
       float y = sinf(a);
       set_vert(x, y, 0);
@@ -2717,7 +2716,7 @@ GPUBatch *DRW_cache_bone_dof_lines_get(void)
 /** \name Camera
  * \{ */
 
-GPUBatch *DRW_cache_camera_frame_get(void)
+GPUBatch *DRW_cache_camera_frame_get()
 {
   if (!SHC.drw_camera_frame) {
     GPUVertFormat format = extra_vert_format();
@@ -2749,7 +2748,7 @@ GPUBatch *DRW_cache_camera_frame_get(void)
   return SHC.drw_camera_frame;
 }
 
-GPUBatch *DRW_cache_camera_volume_get(void)
+GPUBatch *DRW_cache_camera_volume_get()
 {
   if (!SHC.drw_camera_volume) {
     GPUVertFormat format = extra_vert_format();
@@ -2774,7 +2773,7 @@ GPUBatch *DRW_cache_camera_volume_get(void)
   return SHC.drw_camera_volume;
 }
 
-GPUBatch *DRW_cache_camera_volume_wire_get(void)
+GPUBatch *DRW_cache_camera_volume_wire_get()
 {
   if (!SHC.drw_camera_volume_wire) {
     GPUVertFormat format = extra_vert_format();
@@ -2798,7 +2797,7 @@ GPUBatch *DRW_cache_camera_volume_wire_get(void)
   return SHC.drw_camera_volume_wire;
 }
 
-GPUBatch *DRW_cache_camera_tria_wire_get(void)
+GPUBatch *DRW_cache_camera_tria_wire_get()
 {
   if (!SHC.drw_camera_tria_wire) {
     GPUVertFormat format = extra_vert_format();
@@ -2823,7 +2822,7 @@ GPUBatch *DRW_cache_camera_tria_wire_get(void)
   return SHC.drw_camera_tria_wire;
 }
 
-GPUBatch *DRW_cache_camera_tria_get(void)
+GPUBatch *DRW_cache_camera_tria_get()
 {
   if (!SHC.drw_camera_tria) {
     GPUVertFormat format = extra_vert_format();
@@ -2843,7 +2842,7 @@ GPUBatch *DRW_cache_camera_tria_get(void)
   return SHC.drw_camera_tria;
 }
 
-GPUBatch *DRW_cache_camera_distances_get(void)
+GPUBatch *DRW_cache_camera_distances_get()
 {
   if (!SHC.drw_camera_distances) {
     GPUVertFormat format = extra_vert_format();
@@ -3116,7 +3115,7 @@ GPUBatch *DRW_cache_particles_get_dots(Object *object, ParticleSystem *psys)
 
 GPUBatch *DRW_cache_particles_get_edit_strands(Object *object,
                                                ParticleSystem *psys,
-                                               struct PTCacheEdit *edit,
+                                               PTCacheEdit *edit,
                                                bool use_weight)
 {
   return DRW_particles_batch_cache_get_edit_strands(object, psys, edit, use_weight);
@@ -3124,14 +3123,14 @@ GPUBatch *DRW_cache_particles_get_edit_strands(Object *object,
 
 GPUBatch *DRW_cache_particles_get_edit_inner_points(Object *object,
                                                     ParticleSystem *psys,
-                                                    struct PTCacheEdit *edit)
+                                                    PTCacheEdit *edit)
 {
   return DRW_particles_batch_cache_get_edit_inner_points(object, psys, edit);
 }
 
 GPUBatch *DRW_cache_particles_get_edit_tip_points(Object *object,
                                                   ParticleSystem *psys,
-                                                  struct PTCacheEdit *edit)
+                                                  PTCacheEdit *edit)
 {
   return DRW_particles_batch_cache_get_edit_tip_points(object, psys, edit);
 }
@@ -3244,7 +3243,7 @@ GPUBatch *DRW_cache_cursor_get(bool crosshair_lines)
 
     int v = 0;
     for (int i = 0; i < segments; i++) {
-      float angle = (float)(2 * M_PI) * ((float)i / (float)segments);
+      float angle = float(2 * M_PI) * (float(i) / float(segments));
       float x = f10 * cosf(angle);
       float y = f10 * sinf(angle);
 

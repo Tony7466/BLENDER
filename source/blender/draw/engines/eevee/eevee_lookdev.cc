@@ -10,6 +10,7 @@
 #include "BKE_camera.h"
 #include "BKE_studiolight.h"
 
+#include "BLI_math_rotation.h"
 #include "BLI_rand.h"
 #include "BLI_rect.h"
 
@@ -18,11 +19,11 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "GPU_material.h"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 #include "eevee_lightcache.h"
 #include "eevee_private.h"
@@ -52,7 +53,7 @@ static void eevee_lookdev_hdri_preview_init(EEVEE_Data *vedata, EEVEE_ViewLayerD
   DRWShadingGroup *grp;
 
   const EEVEE_EffectsInfo *effects = vedata->stl->effects;
-  struct GPUBatch *sphere = DRW_cache_sphere_get(effects->sphere_lod);
+  GPUBatch *sphere = DRW_cache_sphere_get(effects->sphere_lod);
   int mat_options = VAR_MAT_MESH | VAR_MAT_LOOKDEV;
 
   DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS |

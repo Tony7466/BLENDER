@@ -29,7 +29,9 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
@@ -677,7 +679,7 @@ void BKE_mball_data_update(Depsgraph *depsgraph, Scene *scene, Object *ob)
     BKE_mesh_tag_positions_changed(mesh);
   }
 
-  ob->runtime.geometry_set_eval = new GeometrySet(GeometrySet::create_with_mesh(mesh));
+  ob->runtime.geometry_set_eval = new GeometrySet(GeometrySet::from_mesh(mesh));
 
   BKE_object_boundbox_calc_from_evaluated_geometry(ob);
 };

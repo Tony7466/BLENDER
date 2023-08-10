@@ -8,10 +8,9 @@
  * GPU fluid drawing functions.
  */
 
-#include <string.h>
+#include <cstring>
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_fluid_types.h"
@@ -68,7 +67,7 @@ static void create_flame_spectrum_texture(float *data)
           spec_pixels[index + 3] = MAX_FIRE_ALPHA *
                                    ((k > FULL_ON_FIRE) ?
                                         1.0f :
-                                        (k - FIRE_THRESH) / ((float)FULL_ON_FIRE - FIRE_THRESH));
+                                        (k - FIRE_THRESH) / (float(FULL_ON_FIRE) - FIRE_THRESH));
         }
         else {
           zero_v4(&spec_pixels[index]);
@@ -89,7 +88,7 @@ static void create_flame_spectrum_texture(float *data)
 static void create_color_ramp(const ColorBand *coba, float *data)
 {
   for (int i = 0; i < TFUNC_WIDTH; i++) {
-    BKE_colorband_evaluate(coba, (float)i / TFUNC_WIDTH, &data[i * 4]);
+    BKE_colorband_evaluate(coba, float(i) / TFUNC_WIDTH, &data[i * 4]);
     straight_to_premul_v4(&data[i * 4]);
   }
 }
@@ -179,7 +178,7 @@ static GPUTexture *create_volume_texture(const int dim[3],
     return nullptr;
   }
 
-  while (1) {
+  while (true) {
     tex = GPU_texture_create_3d("volume",
                                 UNPACK3(final_dim),
                                 1,

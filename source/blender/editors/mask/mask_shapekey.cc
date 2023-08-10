@@ -9,7 +9,6 @@
 #include <cstdlib>
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
@@ -24,10 +23,10 @@
 #include "RNA_access.h"
 #include "RNA_define.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_mask.h" /* own include */
+#include "ED_mask.hh" /* own include */
 
 #include "mask_intern.h" /* own include */
 

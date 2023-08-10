@@ -9,8 +9,8 @@
 #include "DRW_engine.h"
 #include "DRW_render.h"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_view3d.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_view3d.hh"
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_view3d_types.h"
@@ -21,11 +21,12 @@
 
 #include "BLI_hash.h"
 #include "BLI_link_utils.h"
+#include "BLI_math_color.h"
 #include "BLI_memblock.h"
 
 #include "gpencil_engine.h"
 
-#include "draw_cache_impl.h"
+#include "draw_cache_impl.hh"
 
 #include "DEG_depsgraph.h"
 
@@ -394,7 +395,7 @@ GPENCIL_tLayer *gpencil_layer_cache_add(GPENCIL_PrivateData *pd,
     DRW_shgroup_uniform_vec3_copy(grp, "gpNormal", tgp_ob->plane_normal);
     DRW_shgroup_uniform_bool_copy(grp, "gpStrokeOrder3d", tgp_ob->is_drawmode3d);
     DRW_shgroup_uniform_float_copy(grp, "gpThicknessScale", tgp_ob->object_scale);
-    DRW_shgroup_uniform_float_copy(grp, "gpThicknessOffset", (float)gpl->line_change);
+    DRW_shgroup_uniform_float_copy(grp, "gpThicknessOffset", float(gpl->line_change));
     DRW_shgroup_uniform_float_copy(grp, "gpThicknessWorldScale", thickness_scale);
     DRW_shgroup_uniform_float_copy(grp, "gpVertexColorOpacity", vert_col_opacity);
 

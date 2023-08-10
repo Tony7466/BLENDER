@@ -13,22 +13,24 @@
 #include "DNA_userdef_types.h"
 #include "DNA_view3d_types.h"
 
-#include "ED_screen.h"
-#include "ED_util.h"
-#include "ED_view3d.h"
+#include "ED_screen.hh"
+#include "ED_util.hh"
+#include "ED_view3d.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
 #include "GPU_shader.h"
 
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
-#include "WM_types.h"
+#include "WM_types.hh"
+
+#include "BLI_math_rotation.h"
 
 #include "BKE_global.h"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 
 #include "view3d_intern.h"
 
@@ -36,7 +38,7 @@
 
 /* ******************** region info ***************** */
 
-void DRW_draw_region_info(void)
+void DRW_draw_region_info()
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   ARegion *region = draw_ctx->region;
@@ -89,7 +91,7 @@ static bool is_cursor_visible(const DRWContextState *draw_ctx, Scene *scene, Vie
   return true;
 }
 
-void DRW_draw_cursor(void)
+void DRW_draw_cursor()
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   ARegion *region = draw_ctx->region;
@@ -256,7 +258,7 @@ void DRW_draw_cursor_2d_ex(const ARegion *region, const float cursor[2])
 
 /** \} */
 
-void DRW_draw_cursor_2d(void)
+void DRW_draw_cursor_2d()
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   ARegion *region = draw_ctx->region;
@@ -275,7 +277,7 @@ void DRW_draw_cursor_2d(void)
 
 /* **************************** 3D Gizmo ******************************** */
 
-void DRW_draw_gizmo_3d(void)
+void DRW_draw_gizmo_3d()
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   ARegion *region = draw_ctx->region;
@@ -286,7 +288,7 @@ void DRW_draw_gizmo_3d(void)
   WM_gizmomap_draw(region->gizmo_map, draw_ctx->evil_C, WM_GIZMOMAP_DRAWSTEP_3D);
 }
 
-void DRW_draw_gizmo_2d(void)
+void DRW_draw_gizmo_2d()
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   ARegion *region = draw_ctx->region;

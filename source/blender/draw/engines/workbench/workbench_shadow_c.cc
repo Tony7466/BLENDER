@@ -19,8 +19,6 @@
 
 #include "BKE_object.h"
 
-#include "BLI_math.h"
-
 #include "workbench_engine.h"
 #include "workbench_private.h"
 
@@ -297,7 +295,7 @@ void workbench_shadow_cache_populate(WORKBENCH_Data *data, Object *ob, const boo
   WORKBENCH_PrivateData *wpd = data->stl->wpd;
 
   bool is_manifold;
-  struct GPUBatch *geom_shadow = DRW_cache_object_edge_detection_get(ob, &is_manifold);
+  GPUBatch *geom_shadow = DRW_cache_object_edge_detection_get(ob, &is_manifold);
   if (geom_shadow == nullptr) {
     return;
   }

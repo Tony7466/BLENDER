@@ -11,6 +11,8 @@
 #include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
 
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "RNA_access.h"
@@ -20,8 +22,6 @@
 #include "rna_internal.h"
 
 #ifdef RNA_RUNTIME
-
-#  include "BLI_math.h"
 
 #  include "MEM_guardedalloc.h"
 
@@ -34,8 +34,8 @@
 
 #  include "DEG_depsgraph.h"
 
-#  include "WM_api.h"
-#  include "WM_types.h"
+#  include "WM_api.hh"
+#  include "WM_types.hh"
 
 static int rna_Meta_texspace_editable(PointerRNA *ptr, const char ** /*r_info*/)
 {

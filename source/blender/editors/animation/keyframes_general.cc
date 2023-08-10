@@ -14,7 +14,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
@@ -34,9 +34,9 @@
 #include "RNA_enum_types.h"
 #include "RNA_path.h"
 
-#include "ED_anim_api.h"
-#include "ED_keyframes_edit.h"
-#include "ED_keyframing.h"
+#include "ED_anim_api.hh"
+#include "ED_keyframes_edit.hh"
+#include "ED_keyframing.hh"
 
 /* This file contains code for various keyframe-editing tools which are 'destructive'
  * (i.e. they will modify the order of the keyframes, and change the size of the array).
@@ -1120,14 +1120,13 @@ void ANIM_fcurves_copybuf_free()
 
 short copy_animedit_keys(bAnimContext *ac, ListBase *anim_data)
 {
-  bAnimListElem *ale;
   Scene *scene = ac->scene;
 
   /* clear buffer first */
   ANIM_fcurves_copybuf_free();
 
   /* assume that each of these is an F-Curve */
-  for (ale = static_cast<bAnimListElem *>(anim_data->first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
     tAnimCopybufItem *aci;
     BezTriple *bezt, *nbezt, *newbuf;
@@ -1655,7 +1654,7 @@ eKeyPasteError paste_animedit_keys(bAnimContext *ac,
     for (pass = 0; pass < 3; pass++) {
       uint totmatch = 0;
 
-      for (ale = static_cast<bAnimListElem *>(anim_data->first); ale; ale = ale->next) {
+      LISTBASE_FOREACH (bAnimListElem *, ale, anim_data) {
         /* Find buffer item to paste from:
          * - If names don't matter (i.e. only 1 channel in buffer), don't check id/group
          * - If names do matter, only check if id-type is ok for now
