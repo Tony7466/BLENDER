@@ -3584,10 +3584,20 @@ static int acf_gpl_setting_flag(bAnimContext * /*ac*/, eAnimChannel_Settings set
 {
   *r_neg = false;
   switch (setting) {
-    case ACHANNEL_SETTING_SELECT: /* selected */
+    case ACHANNEL_SETTING_SELECT: /* Layer selected. */
       return GP_LAYER_TREE_NODE_SELECT;
 
-    default: /* unsupported */
+    case ACHANNEL_SETTING_MUTE: /* Animation muting. */
+      return GP_LAYER_TREE_NODE_MUTE;
+
+    case ACHANNEL_SETTING_VISIBLE: /* Visibility of the layers. */
+      *r_neg = true;
+      return GP_LAYER_TREE_NODE_HIDE;
+
+    case ACHANNEL_SETTING_PROTECT: /* Layer locked. */
+      return GP_LAYER_TREE_NODE_LOCKED;
+
+    default: /* Unsupported. */
       return 0;
   }
 }
