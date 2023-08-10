@@ -193,7 +193,8 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           bsdf->alpha_x = bsdf->alpha_y = sqr(coat_roughness);
 
           /* setup bsdf */
-          sd->flag |= bsdf_microfacet_ggx_clearcoat_setup(kg, bsdf, sd);
+          sd->flag |= bsdf_microfacet_ggx_setup(bsdf);
+          bsdf_microfacet_setup_fresnel_dielectric(kg, bsdf, sd);
 
           /* Attenuate lower layers */
           Spectrum albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
