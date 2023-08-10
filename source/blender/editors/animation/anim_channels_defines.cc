@@ -4543,7 +4543,7 @@ void ANIM_channel_draw(
     if (ELEM(ac->spacetype, SPACE_ACTION, SPACE_GRAPH) &&
         (acf->has_setting(ac, ale, ACHANNEL_SETTING_VISIBLE) ||
          acf->has_setting(ac, ale, ACHANNEL_SETTING_ALWAYS_VISIBLE)) &&
-        !ELEM(ale->type, ANIMTYPE_GPLAYER, ANIMTYPE_DSGPENCIL))
+        !ELEM(ale->type, ANIMTYPE_GPLAYER, ANIMTYPE_DSGPENCIL, ANIMTYPE_GREASE_PENCIL_LAYER))
     {
       /* for F-Curves, draw color-preview of curve left to the visibility icon */
       if (ELEM(ale->type, ANIMTYPE_FCURVE, ANIMTYPE_NLACURVE)) {
@@ -4690,7 +4690,7 @@ void ANIM_channel_draw(
       }
 
       /* grease pencil visibility... */
-      if (ale->type == ANIMTYPE_GPLAYER) {
+      if (ELEM(ale->type, ANIMTYPE_GPLAYER, ANIMTYPE_GREASE_PENCIL_LAYER)) {
         offset += ICON_WIDTH;
       }
 
@@ -4720,8 +4720,12 @@ void ANIM_channel_draw(
      * - Slider should start before the toggles (if they're visible)
      *   to keep a clean line down the side.
      */
-    if ((draw_sliders) &&
-        ELEM(ale->type, ANIMTYPE_FCURVE, ANIMTYPE_NLACURVE, ANIMTYPE_SHAPEKEY, ANIMTYPE_GPLAYER))
+    if ((draw_sliders) && ELEM(ale->type,
+                               ANIMTYPE_FCURVE,
+                               ANIMTYPE_NLACURVE,
+                               ANIMTYPE_SHAPEKEY,
+                               ANIMTYPE_GPLAYER,
+                               ANIMTYPE_GREASE_PENCIL_LAYER))
     {
       /* adjust offset */
       offset += SLIDER_WIDTH;
@@ -5058,7 +5062,7 @@ static void draw_setting_widget(bAnimContext *ac,
       if (ELEM(ale->type, ANIMTYPE_FCURVE, ANIMTYPE_NLACURVE)) {
         tooltip = TIP_("F-Curve visibility in Graph Editor");
       }
-      else if (ale->type == ANIMTYPE_GPLAYER) {
+      else if (ELEM(ale->type, ANIMTYPE_GPLAYER, ANIMTYPE_GREASE_PENCIL_LAYER)) {
         tooltip = TIP_("Grease Pencil layer is visible in the viewport");
       }
       else {
