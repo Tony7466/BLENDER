@@ -89,15 +89,35 @@ static void test_draw_pass_all_commands()
   expected << "  .bind_vertbuf_as_ssbo_ref(-1)" << std::endl;
   expected << "  .bind_indexbuf_as_ssbo(-1)" << std::endl;
   expected << "  .bind_indexbuf_as_ssbo_ref(-1)" << std::endl;
-  expected << "  .push_constant(2, data=(1, 1, 1, 0))" << std::endl;
-  expected << "  .push_constant(2, data=(1, 1, 1, 1))" << std::endl;
-  expected << "  .push_constant(0, data=(" << std::endl;
-  expected << "(1, 0, 0, 0)," << std::endl;
-  expected << "(0, 1, 0, 0)," << std::endl;
-  expected << "(0, 0, 1, 0)," << std::endl;
-  expected << "(0, 0, 0, 1)" << std::endl;
-  expected << ")" << std::endl;
-  expected << ")" << std::endl;
+  switch (GPU_backend_get_type()) {
+    case GPU_BACKEND_VULKAN:
+      expected << "  .push_constant(1024, data=(1, 1, 1, 0))" << std::endl;
+      expected << "  .push_constant(1024, data=(1, 1, 1, 1))" << std::endl;
+      expected << "  .push_constant(1025, data=(" << std::endl;
+      expected << "(1, 0, 0, 0)," << std::endl;
+      expected << "(0, 1, 0, 0)," << std::endl;
+      expected << "(0, 0, 1, 0)," << std::endl;
+      expected << "(0, 0, 0, 1)" << std::endl;
+      expected << ")" << std::endl;
+      expected << ")" << std::endl;
+      break;
+    case GPU_BACKEND_OPENGL:
+    case GPU_BACKEND_METAL:
+      expected << "  .push_constant(2, data=(1, 1, 1, 0))" << std::endl;
+      expected << "  .push_constant(2, data=(1, 1, 1, 1))" << std::endl;
+      expected << "  .push_constant(0, data=(" << std::endl;
+      expected << "(1, 0, 0, 0)," << std::endl;
+      expected << "(0, 1, 0, 0)," << std::endl;
+      expected << "(0, 0, 1, 0)," << std::endl;
+      expected << "(0, 0, 0, 1)" << std::endl;
+      expected << ")" << std::endl;
+      expected << ")" << std::endl;
+      break;
+    case GPU_BACKEND_ANY:
+    case GPU_BACKEND_NONE:
+      BLI_assert_unreachable();
+      break;
+  }
   expected << "  .draw(inst_len=1, vert_len=3, vert_first=0, res_id=0)" << std::endl;
   expected << "  .shader_bind(gpu_shader_3D_image_color)" << std::endl;
   expected << "  .dispatch(1, 1, 1)" << std::endl;
