@@ -24,7 +24,7 @@
 #include "BLI_array_utils.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
 #include "BLI_rect.h"
 #include "BLI_sort_utils.h"
 #include "BLI_string.h"
@@ -1871,9 +1871,9 @@ static bool ui_selectcontext_begin(bContext *C, uiBut *but, uiSelectContextStore
           }
           /* ignored for now */
 #  if 0
-            else if (rna_type == PROP_BOOLEAN) {
-              other->val_b = RNA_property_boolean_get_index(&lptr, lprop, index);
-            }
+          else if (rna_type == PROP_BOOLEAN) {
+            other->val_b = RNA_property_boolean_get_index(&lptr, lprop, index);
+          }
 #  endif
         }
         else {
@@ -1885,12 +1885,12 @@ static bool ui_selectcontext_begin(bContext *C, uiBut *but, uiSelectContextStore
           }
           /* ignored for now */
 #  if 0
-            else if (rna_type == PROP_BOOLEAN) {
-              other->val_b = RNA_property_boolean_get(&lptr, lprop);
-            }
-            else if (rna_type == PROP_ENUM) {
-              other->val_i = RNA_property_enum_get(&lptr, lprop);
-            }
+          else if (rna_type == PROP_BOOLEAN) {
+            other->val_b = RNA_property_boolean_get(&lptr, lprop);
+          }
+          else if (rna_type == PROP_ENUM) {
+            other->val_i = RNA_property_enum_get(&lptr, lprop);
+          }
 #  endif
         }
       }
