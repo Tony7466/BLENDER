@@ -172,10 +172,7 @@ class GeometryFieldInput : public fn::FieldInput {
                                                     const volume::GGrid &mask,
                                                     ResourceScope &scope) const override;
   virtual volume::GGrid get_volume_grid_for_context(const GeometryFieldContext & /*context*/,
-                                                    const volume::GGrid & /*mask*/) const
-  {
-    return {};
-  }
+                                                    const volume::GGrid & /*mask*/) const = 0;
   virtual std::optional<eAttrDomain> preferred_domain(const GeometryComponent &component) const;
 };
 
@@ -188,6 +185,12 @@ class MeshFieldInput : public fn::FieldInput {
   virtual GVArray get_varray_for_context(const Mesh &mesh,
                                          eAttrDomain domain,
                                          const IndexMask &mask) const = 0;
+  GGrid get_volume_grid_for_context(const fn::FieldContext & /*context*/,
+                                    const GGrid & /*mask*/,
+                                    ResourceScope & /*scope*/) const override
+  {
+    return {};
+  }
   virtual std::optional<eAttrDomain> preferred_domain(const Mesh &mesh) const;
 };
 
@@ -200,6 +203,12 @@ class CurvesFieldInput : public fn::FieldInput {
   virtual GVArray get_varray_for_context(const CurvesGeometry &curves,
                                          eAttrDomain domain,
                                          const IndexMask &mask) const = 0;
+  GGrid get_volume_grid_for_context(const fn::FieldContext & /*context*/,
+                                    const GGrid & /*mask*/,
+                                    ResourceScope & /*scope*/) const override
+  {
+    return {};
+  }
   virtual std::optional<eAttrDomain> preferred_domain(const CurvesGeometry &curves) const;
 };
 
@@ -211,6 +220,12 @@ class PointCloudFieldInput : public fn::FieldInput {
                                  ResourceScope &scope) const override;
   virtual GVArray get_varray_for_context(const PointCloud &pointcloud,
                                          const IndexMask &mask) const = 0;
+  GGrid get_volume_grid_for_context(const fn::FieldContext & /*context*/,
+                                    const GGrid & /*mask*/,
+                                    ResourceScope & /*scope*/) const override
+  {
+    return {};
+  }
 };
 
 class InstancesFieldInput : public fn::FieldInput {
@@ -221,6 +236,12 @@ class InstancesFieldInput : public fn::FieldInput {
                                  ResourceScope &scope) const override;
   virtual GVArray get_varray_for_context(const Instances &instances,
                                          const IndexMask &mask) const = 0;
+  GGrid get_volume_grid_for_context(const fn::FieldContext & /*context*/,
+                                    const GGrid & /*mask*/,
+                                    ResourceScope & /*scope*/) const override
+  {
+    return {};
+  }
 };
 
 class VolumeFieldInput : public fn::FieldInput {
@@ -270,6 +291,8 @@ class AttributeFieldInput : public GeometryFieldInput {
 
   GVArray get_varray_for_context(const GeometryFieldContext &context,
                                  const IndexMask &mask) const override;
+  GGrid get_volume_grid_for_context(const GeometryFieldContext &context,
+                                    const GGrid &mask) const override;
 
   std::string socket_inspection_name() const override;
 
@@ -298,6 +321,8 @@ class AttributeExistsFieldInput final : public bke::GeometryFieldInput {
 
   GVArray get_varray_for_context(const bke::GeometryFieldContext &context,
                                  const IndexMask &mask) const final;
+  GGrid get_volume_grid_for_context(const GeometryFieldContext &context,
+                                    const volume::GGrid &mask) const final;
 };
 
 class IDAttributeFieldInput : public GeometryFieldInput {
@@ -329,7 +354,8 @@ class NormalFieldInput : public GeometryFieldInput {
 
   GVArray get_varray_for_context(const GeometryFieldContext &context,
                                  const IndexMask &mask) const override;
-
+  volume::GGrid get_volume_grid_for_context(const GeometryFieldContext &context,
+                                            const volume::GGrid &mask) const override;
   std::string socket_inspection_name() const override;
 
   uint64_t hash() const override;
@@ -368,7 +394,8 @@ class AnonymousAttributeFieldInput : public GeometryFieldInput {
 
   GVArray get_varray_for_context(const GeometryFieldContext &context,
                                  const IndexMask &mask) const override;
-
+  volume::GGrid get_volume_grid_for_context(const GeometryFieldContext &context,
+                                            const volume::GGrid &mask) const override;
   std::string socket_inspection_name() const override;
 
   uint64_t hash() const override;

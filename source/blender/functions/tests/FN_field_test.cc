@@ -39,6 +39,13 @@ class IndexFieldInput final : public FieldInput {
     auto index_func = [](int i) { return i; };
     return VArray<int>::ForFunc(mask.min_array_size(), index_func);
   }
+
+  GGrid get_volume_grid_for_context(const FieldContext & /*context*/,
+                                    const GGrid & /*mask*/,
+                                    ResourceScope & /*scope*/) const final
+  {
+    return {};
+  }
 };
 
 TEST(field, VArrayInput)

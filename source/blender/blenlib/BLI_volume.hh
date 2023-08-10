@@ -310,6 +310,8 @@ template<typename T> class MutableGrid {
   /* Create a grid with the active volume mask voxels. */
   static MutableGrid<T> create(const GGrid &mask, const T &inactive_value, const T &active_value);
 
+  operator GGrid();
+  operator GGrid const() const;
   operator GMutableGrid();
   operator GMutableGrid const() const;
 
@@ -319,6 +321,42 @@ template<typename T> class MutableGrid {
 
   const CPPType *value_type() const;
 };
+
+template<typename T> MutableGrid<T>::operator GGrid()
+{
+#ifdef WITH_OPENVDB
+  return GGrid{grid_};
+#else
+  return GGrid{};
+#endif
+}
+
+template<typename T> MutableGrid<T>::operator GGrid const() const
+{
+#ifdef WITH_OPENVDB
+  return GGrid{grid_};
+#else
+  return GGrid{};
+#endif
+}
+
+template<typename T> MutableGrid<T>::operator GMutableGrid()
+{
+#ifdef WITH_OPENVDB
+  return GMutableGrid{grid_};
+#else
+  return GMutableGrid{};
+#endif
+}
+
+template<typename T> MutableGrid<T>::operator GMutableGrid const() const
+{
+#ifdef WITH_OPENVDB
+  return GMutableGrid{grid_};
+#else
+  return GMutableGrid{};
+#endif
+}
 
 /** \} */
 

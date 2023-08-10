@@ -293,10 +293,7 @@ class FieldInput : public FieldNode {
    */
   virtual GGrid get_volume_grid_for_context(const FieldContext & /*context*/,
                                             const GGrid & /*mask*/,
-                                            ResourceScope & /*scope*/) const
-  {
-    return {};
-  }
+                                            ResourceScope & /*scope*/) const = 0;
 
   virtual std::string socket_inspection_name() const;
   blender::StringRef debug_name() const;

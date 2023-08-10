@@ -170,38 +170,6 @@ const CPPType *GMutableGrid::value_type() const
   return type;
 }
 
-template<typename T> MutableGrid<T> MutableGrid<T>::create(const T &background_value)
-{
-  typename GridType::Ptr grid = grid_types::GridCommon<ValueType>::create(background_value);
-  return MutableGrid<T>{std::move(grid)};
-}
-
-template<typename T> MutableGrid<T> MutableGrid<T>::create()
-{
-  ValueType value = *static_cast<const ValueType *>(CPPType::get<T>().default_value_);
-  typename GridType::Ptr grid = grid_types::GridCommon<ValueType>::create(value);
-  return MutableGrid<T>{std::move(grid)};
-}
-
-template<typename T>
-MutableGrid<T> MutableGrid<T>::create(const GGrid &mask,
-                                      const T &inactive_value,
-                                      const T &active_value)
-{
-  if (mask.is_empty()) {
-    typename GridType::Ptr grid = grid_types::GridCommon<ValueType>::create();
-    return MutableGrid<T>{std::move(grid)};
-  }
-
-  const typename TreeType::Ptr tree = nullptr;
-  volume::grid_to_static_type(mask.grid_, [&](auto &typed_mask) {
-    tree = typename TreeType::Ptr(new TreeType(
-        typed_mask.grid_->tree(), inactive_value, active_value, openvdb::TopologyCopy{}));
-  });
-  typename GridType::Ptr grid(new GridType(tree));
-  return MutableGrid<T>{std::move(grid)};
-}
-
 template<typename T> int64_t MutableGrid<T>::voxel_count() const
 {
   return grid_ ? grid_->activeVoxelCount() : 0;
@@ -215,6 +183,11 @@ template<typename T> bool MutableGrid<T>::is_empty() const
 template<typename T> MutableGrid<T>::operator bool() const
 {
   return grid_ != nullptr;
+}
+
+template<typename T> const CPPType *MutableGrid<T>::value_type() const
+{
+  return &CPPType::get<T>();
 }
 
 template<typename T> const CPPType *Grid<T>::value_type() const
