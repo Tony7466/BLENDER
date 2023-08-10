@@ -1,2 +1,3 @@
 Referenced by issue #110737, The slider option when clicking on the weight paint side menu "vertex weights" does not work.
 Referenced by issue #109399, Blender LTS: Maintenance Task 3.6
+Referenced by pull request #111001, Fix #109460: vertex weight slider not working correctly (backported)
