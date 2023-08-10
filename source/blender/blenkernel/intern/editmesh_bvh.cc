@@ -9,7 +9,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_kdopbvh.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_editmesh.h"
 
@@ -206,7 +207,7 @@ static void bmbvh_tri_from_face(const float *cos[3],
   }
 }
 
-/* Taken from `bvhutils.c`. */
+/* Taken from `bvhutils.cc`. */
 
 /* -------------------------------------------------------------------- */
 /* BKE_bmbvh_ray_cast */

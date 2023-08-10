@@ -11,7 +11,8 @@
 #include "BLI_buffer.h"
 #include "BLI_ghash.h"
 #include "BLI_heap_simple.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 #include "BLI_memarena.h"
 #include "BLI_span.hh"
 #include "BLI_utildefines.h"
@@ -1895,7 +1896,6 @@ void BKE_pbvh_update_bmesh_offsets(PBVH *pbvh, int cd_vert_node_offset, int cd_f
 
 void BKE_pbvh_build_bmesh(PBVH *pbvh,
                           BMesh *bm,
-                          bool smooth_shading,
                           BMLog *log,
                           const int cd_vert_node_offset,
                           const int cd_face_node_offset)
@@ -1911,10 +1911,6 @@ void BKE_pbvh_build_bmesh(PBVH *pbvh,
   pbvh->leaf_limit = 400;
 
   BKE_pbvh_update_bmesh_offsets(pbvh, cd_vert_node_offset, cd_face_node_offset);
-
-  if (smooth_shading) {
-    pbvh->flags |= PBVH_DYNTOPO_SMOOTH_SHADING;
-  }
 
   /* bounding box array of all faces, no need to recalculate every time */
   BBC *bbc_array = static_cast<BBC *>(MEM_mallocN(sizeof(BBC) * bm->totface, "BBC"));

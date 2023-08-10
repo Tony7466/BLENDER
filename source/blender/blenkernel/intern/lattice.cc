@@ -15,7 +15,8 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -705,9 +706,7 @@ void BKE_lattice_transform(Lattice *lt, const float mat[4][4], bool do_keys)
   }
 
   if (do_keys && lt->key) {
-    KeyBlock *kb;
-
-    for (kb = static_cast<KeyBlock *>(lt->key->block.first); kb; kb = kb->next) {
+    LISTBASE_FOREACH (KeyBlock *, kb, &lt->key->block) {
       float *fp = static_cast<float *>(kb->data);
       for (i = kb->totelem; i--; fp += 3) {
         mul_m4_v3(mat, fp);
@@ -735,9 +734,7 @@ void BKE_lattice_translate(Lattice *lt, const float offset[3], bool do_keys)
   }
 
   if (do_keys && lt->key) {
-    KeyBlock *kb;
-
-    for (kb = static_cast<KeyBlock *>(lt->key->block.first); kb; kb = kb->next) {
+    LISTBASE_FOREACH (KeyBlock *, kb, &lt->key->block) {
       float *fp = static_cast<float *>(kb->data);
       for (i = kb->totelem; i--; fp += 3) {
         add_v3_v3(fp, offset);

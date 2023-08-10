@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstdlib>
 
+#include "BLI_math_rotation.h"
 #include "BLI_utildefines.h"
 
 #include "RNA_define.h"
@@ -20,8 +21,8 @@
 #include "DNA_material_types.h"
 #include "DNA_texture_types.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 const EnumPropertyItem rna_enum_linestyle_color_modifier_type_items[] = {
     {LS_MODIFIER_ALONG_STROKE, "ALONG_STROKE", ICON_MODIFIER, "Along Stroke", ""},
@@ -119,7 +120,7 @@ const EnumPropertyItem rna_enum_linestyle_geometry_modifier_type_items[] = {
 
 #  include "DEG_depsgraph.h"
 
-#  include "ED_node.h"
+#  include "ED_node.hh"
 
 #  include "RNA_access.h"
 
@@ -514,8 +515,6 @@ static void rna_LineStyle_geometry_modifier_remove(FreestyleLineStyle *linestyle
 }
 
 #else
-
-#  include "BLI_math.h"
 
 static void rna_def_linestyle_mtex(BlenderRNA *brna)
 {
