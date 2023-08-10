@@ -400,17 +400,18 @@ static void node_rna(StructRNA *srna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  
   RNA_def_node_enum(srna,
                     "grid_type",
-                    "Grid Type", "Type of grid to sample data from",
+                    "Grid Type",
+                    "Type of grid to sample data from",
                     grid_type_items,
                     NOD_storage_enum_accessors(grid_type),
                     CD_PROP_FLOAT);
-  
+
   RNA_def_node_enum(srna,
                     "interpolation_mode",
-                    "Interpolation Mode", "How to interpolate the values from neighboring voxels",
+                    "Interpolation Mode",
+                    "How to interpolate the values from neighboring voxels",
                     interpolation_mode_items,
                     NOD_storage_enum_accessors(interpolation_mode),
                     GEO_NODE_SAMPLE_VOLUME_INTERPOLATION_MODE_TRILINEAR);
@@ -432,6 +433,7 @@ static void node_register()
   ntype.gather_link_search_ops = search_link_ops;
   ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
+
   node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)

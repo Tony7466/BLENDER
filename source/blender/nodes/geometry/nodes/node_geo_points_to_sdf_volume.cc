@@ -124,7 +124,8 @@ static void node_rna(StructRNA *srna)
 
   RNA_def_node_enum(srna,
                     "resolution_mode",
-                    "Resolution Mode", "How the voxel size is specified",
+                    "Resolution Mode",
+                    "How the voxel size is specified",
                     resolution_mode_items,
                     NOD_storage_enum_accessors(resolution_mode),
                     GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_AMOUNT);
@@ -149,6 +150,7 @@ static void node_register()
   ntype.gather_add_node_search_ops = search_node_add_ops;
   ntype.gather_link_search_ops = search_link_ops;
   nodeRegisterType(&ntype);
+
   node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)

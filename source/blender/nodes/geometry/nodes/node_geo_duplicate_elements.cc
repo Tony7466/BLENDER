@@ -1090,10 +1090,11 @@ static void node_rna(StructRNA *srna)
       {ATTR_DOMAIN_INSTANCE, "INSTANCE", 0, "Instance", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
-  
+
   RNA_def_node_enum(srna,
                     "domain",
-                    "Domain", "Which domain to duplicate",
+                    "Domain",
+                    "Which domain to duplicate",
                     domain_items,
                     NOD_storage_enum_accessors(domain),
                     ATTR_DOMAIN_POINT);
@@ -1115,6 +1116,7 @@ static void node_register()
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
   nodeRegisterType(&ntype);
+
   node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)

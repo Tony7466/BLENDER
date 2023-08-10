@@ -250,6 +250,7 @@ static void node_register()
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
   nodeRegisterType(&ntype);
+
   node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)

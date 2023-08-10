@@ -1445,10 +1445,11 @@ static void node_rna(StructRNA *srna)
       {GEO_NODE_EXTRUDE_MESH_FACES, "FACES", 0, "Faces", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
-  
+
   RNA_def_node_enum(srna,
                     "mode",
-                    "Mode", "",
+                    "Mode",
+                    "",
                     mode_items,
                     NOD_storage_enum_accessors(mode),
                     GEO_NODE_EXTRUDE_MESH_FACES);
@@ -1466,6 +1467,7 @@ static void node_register()
       &ntype, "NodeGeometryExtrudeMesh", node_free_standard_storage, node_copy_standard_storage);
   ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
+
   node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)

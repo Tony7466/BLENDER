@@ -217,7 +217,6 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_rna(StructRNA *srna)
 {
-
   static EnumPropertyItem resolution_mode_items[] = {
       {GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_AMOUNT,
        "VOXEL_AMOUNT",
@@ -257,6 +256,7 @@ static void node_register()
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
+
   node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)

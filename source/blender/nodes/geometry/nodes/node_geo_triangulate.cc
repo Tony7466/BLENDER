@@ -146,14 +146,16 @@ static void node_rna(StructRNA *srna)
 
   RNA_def_node_enum(srna,
                     "quad_method",
-                    "Quad Method", "Method for splitting the quads into triangles",
+                    "Quad Method",
+                    "Method for splitting the quads into triangles",
                     rna_node_geometry_triangulate_quad_method_items,
                     NOD_inline_enum_accessors(custom1),
                     GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_AMOUNT);
 
   RNA_def_node_enum(srna,
                     "ngon_method",
-                    "N-gon Method", "Method for splitting the n-gons into triangles",
+                    "N-gon Method",
+                    "Method for splitting the n-gons into triangles",
                     rna_node_geometry_triangulate_ngon_method_items,
                     NOD_inline_enum_accessors(custom2),
                     GEO_NODE_POINTS_TO_VOLUME_RESOLUTION_MODE_AMOUNT);
@@ -169,6 +171,7 @@ static void node_register()
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
+
   node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
