@@ -100,7 +100,8 @@ static bool grease_pencil_layer_reset_trans_data(blender::bke::greasepencil::Lay
 
 static bool grease_pencil_layer_update_trans_data(blender::bke::greasepencil::Layer &layer,
                                                   const int src_frame_number,
-                                                  const int dst_frame_number)
+                                                  const int dst_frame_number,
+                                                  const bool duplicate)
 {
   using namespace blender::bke::greasepencil;
   LayerTransformData &trans_data = layer.runtime->trans_data_;
@@ -118,13 +119,24 @@ static bool grease_pencil_layer_update_trans_data(blender::bke::greasepencil::La
     trans_data.status = LayerTransformData::TRANS_RUNNING;
   }
 
+  if (duplicate && !trans_data.duplicated_frames.contains(src_frame_number)) {
+    return false;
+  }
+
   /* Apply the transformation directly in the frame map, so that we display the transformed
    * frame numbers. We don't want to edit the frames or remove any drawing here. This will be
    * done at once at the end of the transformation. */
-  const GreasePencilFrame src_frame = trans_data.frames_copy.lookup(src_frame_number);
+  const GreasePencilFrame src_frame = duplicate ?
+                                          trans_data.duplicated_frames.lookup(src_frame_number) :
+                                          trans_data.frames_copy.lookup(src_frame_number);
   const int src_duration = trans_data.frames_duration.lookup_default(src_frame_number, 0);
+
+  if (!duplicate) {
   layer.remove_frame(src_frame_number);
+  }
+
   layer.remove_frame(dst_frame_number);
+
   GreasePencilFrame *frame = layer.add_frame(
       dst_frame_number, src_frame.drawing_index, src_duration);
   *frame = src_frame;
@@ -886,10 +898,12 @@ static void recalcData_actedit(TransInfo *t)
     transform_convert_flush_handle2D(td, td2d, 0.0f);
 
     if ((t->state == TRANS_RUNNING) && ((td->flag & TD_GREASE_PENCIL_FRAME) != 0)) {
+      const bool duplicate = (t->flag & T_AUTOMERGE) != 0;
       grease_pencil_layer_update_trans_data(
           *static_cast<blender::bke::greasepencil::Layer *>(td->extra),
           round_fl_to_int(td->ival),
-          round_fl_to_int(td2d->loc[0]));
+          round_fl_to_int(td2d->loc[0]),
+          duplicate);
     }
   }
 
