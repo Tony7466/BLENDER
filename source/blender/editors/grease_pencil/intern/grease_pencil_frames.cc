@@ -106,7 +106,7 @@ bool duplicate_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::L
     }
 
     /* Create the duplicate drawing. */
-    Drawing *drawing = grease_pencil.get_editable_drawing_at(&layer, frame_number);
+    const Drawing *drawing = grease_pencil.get_editable_drawing_at(&layer, frame_number);
     if (drawing == nullptr) {
       continue;
     }
