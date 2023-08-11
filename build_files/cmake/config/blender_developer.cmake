@@ -24,7 +24,6 @@ set(WITH_PYTHON_SAFETY                ON  CACHE BOOL "" FORCE)
 if(WIN32)
   set(WITH_WINDOWS_BUNDLE_CRT         OFF CACHE BOOL "" FORCE)
 endif()
-set(WITH_COMPOSITOR_REALTIME_TEST     ON  CACHE BOOL "" FORCE)
 
 # This may have issues with C++ initialization order, needs to be tested
 # on all platforms to be sure this is safe to enable.
