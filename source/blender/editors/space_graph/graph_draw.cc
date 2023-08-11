@@ -13,6 +13,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_math_vector_types.hh"
+#include "BLI_timeit.hh"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
@@ -1022,6 +1023,12 @@ static blender::float2 calculate_points_per_unit(View2D *v2d)
   return points_per_unit;
 }
 
+static float calculate_pixel_distance(BezTriple *a, BezTriple *b, blender::float2 pixels_per_unit)
+{
+  return ((b->vec[1][0] - a->vec[1][0]) * pixels_per_unit[0]) +
+         (fabs(b->vec[1][1] - a->vec[1][1]) * pixels_per_unit[1]);
+}
+
 /* Helper function - draw one repeat of an F-Curve (using Bezier curve approximations). */
 static void draw_fcurve_curve_keys(
     bAnimContext *ac, ID *id, FCurve *fcu, View2D *v2d, uint pos, const bool draw_extrapolation)
@@ -1056,6 +1063,9 @@ static void draw_fcurve_curve_keys(
   }
 
   const blender::float2 points_per_unit = calculate_points_per_unit(v2d);
+  const blender::float2 pixels_per_unit = {
+      BLI_rcti_size_x(&v2d->mask) / BLI_rctf_size_x(&v2d->cur),
+      BLI_rcti_size_y(&v2d->mask) / BLI_rctf_size_y(&v2d->cur)};
   const int window_width = BLI_rcti_size_x(&v2d->mask);
   const float v2d_frame_range = BLI_rctf_size_x(&v2d->cur);
   const float pixel_width = v2d_frame_range / window_width;
@@ -1066,11 +1076,11 @@ static void draw_fcurve_curve_keys(
   BezTriple *prevbezt = &fcu->bezt[bounding_indices[0]];
   float2 key_sum = {0, 0};
   int key_count = 0;
-  const float min_pixel_distance = 1.5f;
+  const float min_pixel_distance = 3.0f;
+
   for (int i = bounding_indices[0] + 1; i <= bounding_indices[1]; i++) {
     BezTriple *bezt = &fcu->bezt[i];
-    float pixel_distance = ((bezt->vec[1][0] - prevbezt->vec[1][0]) * points_per_unit[0]) +
-                           (fabs(bezt->vec[1][1] - prevbezt->vec[1][1]) * points_per_unit[1]);
+    float pixel_distance = calculate_pixel_distance(prevbezt, bezt, pixels_per_unit);
 
     if (pixel_distance >= min_pixel_distance && key_count > 0) {
       curve_vertices.append(key_sum / key_count);
@@ -1078,8 +1088,7 @@ static void draw_fcurve_curve_keys(
       key_count = 0;
       prevbezt = &fcu->bezt[i - 1];
       /* Calculate again based on the new prevbezt. */
-      pixel_distance = ((bezt->vec[1][0] - prevbezt->vec[1][0]) * points_per_unit[0]) +
-                       (fabs(bezt->vec[1][1] - prevbezt->vec[1][1]) * points_per_unit[1]);
+      pixel_distance = calculate_pixel_distance(prevbezt, bezt, pixels_per_unit);
     }
 
     if (pixel_distance < min_pixel_distance) {
@@ -1148,6 +1157,7 @@ static void draw_fcurve_curve_keys(
 
 static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAnimListElem *ale)
 {
+  SCOPED_TIMER_AVERAGED("draw_fcurve");
   FCurve *fcu = (FCurve *)ale->key_data;
   FModifier *fcm = find_active_fmodifier(&fcu->modifiers);
   AnimData *adt = ANIM_nla_mapping_get(ac, ale);
