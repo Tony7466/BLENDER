@@ -16,7 +16,6 @@
 
 #include "BKE_context.h"
 #include "BKE_grease_pencil.hh"
-#include "BKE_report.h"
 
 #include "RNA_access.h"
 #include "RNA_define.h"
@@ -605,9 +604,7 @@ static int grease_pencil_delete_frame_exec(bContext *C, wmOperator *op)
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA | NA_EDITED, &grease_pencil);
   }
-  else {
-    BKE_report(op->reports, RPT_ERROR, "No editable frame(s) to delete");
-  }
+
   return OPERATOR_FINISHED;
 }
 
