@@ -4,6 +4,10 @@
 
 #pragma once
 
+#if !defined(__KERNEL_GPU__)
+#  include <OSL/oslversion.h>
+#endif
+
 CCL_NAMESPACE_BEGIN
 
 #if defined(__KERNEL_GPU__)
@@ -39,6 +43,7 @@ enum OSLClosureType {
 
 #define OSL_CLOSURE_STRUCT_BEGIN(Upper, lower) OSL_CLOSURE_##Upper##_ID,
 #include "closures_template.h"
+  OSL_CLOSURE_LAYER_ID,
 };
 
 struct OSLClosure {
