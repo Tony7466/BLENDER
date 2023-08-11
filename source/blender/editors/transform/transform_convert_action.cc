@@ -260,6 +260,7 @@ static int count_grease_pencil_frames(const blender::bke::greasepencil::Layer *l
                                       const char side,
                                       const float cfra,
                                       const bool is_prop_edit,
+                                      const bool duplicate)
 {
   if (layer == nullptr) {
     return 0;
@@ -277,6 +278,11 @@ static int count_grease_pencil_frames(const blender::bke::greasepencil::Layer *l
       count_selected++;
     }
     count_all++;
+  }
+
+  if (duplicate) {
+    /* Also count frames that were duplicated. */
+    count_selected += layer->runtime->trans_data_.duplicated_frames.size();
   }
 
   if (is_prop_edit && count_selected > 0) {
@@ -449,21 +455,23 @@ static int GreasePencilLayerToTransData(TransData *td,
                                         const char side,
                                         const float cfra,
                                         const bool is_prop_edit,
-                                        const float ypos)
+                                        const float ypos,
+                                        const bool duplicate)
 {
   using namespace blender;
   using namespace bke::greasepencil;
 
   int total_trans_frames = 0;
   bool any_frame_affected = false;
-  for (auto [frame_number, frame] : layer->frames().items()) {
+
+  const auto grease_pencil_frame_to_trans_data = [&](const int frame_number,
+                                                     const bool frame_selected) {
     /* We only add transform data for selected frames that are on the right side of current frame.
      * If proportional edit is set, then we should also account for non selected frames.
      */
-    if ((!is_prop_edit && !frame.is_selected()) || !FrameOnMouseSide(side, frame_number, cfra)) {
-      continue;
+    if ((!is_prop_edit && !frame_selected) || !FrameOnMouseSide(side, frame_number, cfra)) {
+      return;
     }
-    any_frame_affected = true;
 
     td2d->loc[0] = float(frame_number);
 
@@ -473,7 +481,7 @@ static int GreasePencilLayerToTransData(TransData *td,
     td->center[0] = td->ival;
     td->center[1] = ypos;
 
-    if (frame.is_selected()) {
+    if (frame_selected) {
       td->flag |= TD_SELECTED;
     }
     /* Set a pointer to the layer in the transform data so that we can apply the transformation
@@ -486,6 +494,19 @@ static int GreasePencilLayerToTransData(TransData *td,
     td++;
     td2d++;
     total_trans_frames++;
+    any_frame_affected = true;
+  };
+
+  for (const auto [frame_number, frame] : layer->frames().items()) {
+    grease_pencil_frame_to_trans_data(frame_number, frame.is_selected());
+  }
+
+  if (duplicate) {
+    /* Also insert frames that were duplicated. */
+    for (const auto [frame_number, frame] : layer->runtime->trans_data_.duplicated_frames.items())
+    {
+      grease_pencil_frame_to_trans_data(frame_number, frame.is_selected());
+    }
   }
 
   if (total_trans_frames == 0) {
@@ -542,6 +563,8 @@ static void createTransActionData(bContext *C, TransInfo *t)
   TransData *td = nullptr;
   TransData2D *td2d = nullptr;
   tGPFtransdata *tfd = nullptr;
+
+  const bool duplicate = (t->flag & T_AUTOMERGE) != 0;
 
   rcti *mask = &t->region->v2d.mask;
   rctf *datamask = &t->region->v2d.cur;
@@ -605,7 +628,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
     else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
       using namespace blender::bke::greasepencil;
       adt_count = count_grease_pencil_frames(
-          static_cast<Layer *>(ale->data), t->frame_side, cfra, is_prop_edit);
+          static_cast<Layer *>(ale->data), t->frame_side, cfra, is_prop_edit, duplicate);
     }
     else if (ale->type == ANIMTYPE_MASKLAYER) {
       adt_count = count_masklayer_frames(
@@ -680,7 +703,8 @@ static void createTransActionData(bContext *C, TransInfo *t)
       Layer *layer = static_cast<Layer *>(ale->data);
       int i;
 
-      i = GreasePencilLayerToTransData(td, td2d, layer, t->frame_side, cfra, is_prop_edit, ypos);
+      i = GreasePencilLayerToTransData(
+          td, td2d, layer, t->frame_side, cfra, is_prop_edit, ypos, duplicate);
       td += i;
       td2d += i;
     }
@@ -748,11 +772,12 @@ static void createTransActionData(bContext *C, TransInfo *t)
         using namespace blender::bke::greasepencil;
         Layer *layer = static_cast<Layer *>(ale->data);
 
-        for (const auto [frame_number, frame] : layer->frames().items()) {
-          if (frame.is_selected()) {
+        const auto grease_pencil_closest_selected_frame = [&](const int frame_number,
+                                                              const bool frame_selected) {
+          if (frame_selected) {
             td->dist = td->rdist = 0.0f;
             ++td;
-            continue;
+            return;
           }
 
           int closest_selected = INT_MAX;
@@ -768,6 +793,18 @@ static void createTransActionData(bContext *C, TransInfo *t)
 
           td->dist = td->rdist = closest_selected;
           ++td;
+        };
+
+        for (const auto [frame_number, frame] : layer->frames().items()) {
+          grease_pencil_closest_selected_frame(frame_number, frame.is_selected());
+        }
+
+        if (duplicate) {
+          /* Also count for duplicated frames. */
+          for (const auto [frame_number, frame] :
+               layer->runtime->trans_data_.duplicated_frames.items()) {
+            grease_pencil_closest_selected_frame(frame_number, frame.is_selected());
+          }
         }
       }
       else if (ale->type == ANIMTYPE_MASKLAYER) {
