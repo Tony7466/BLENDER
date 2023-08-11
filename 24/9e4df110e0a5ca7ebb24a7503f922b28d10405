@@ -39,3 +39,4 @@ Referenced by commit 1f722a6d0194567714fc761e49174349a59b7a21, Outliner: Port gr
 Referenced by pull request #110587, Outliner: Port pose group elements to new tree-element code design
 Referenced by pull request #110806, Outliner: Port pose base elements to new tree-element code design
 Referenced by pull request #110920, Outliner: Port view layer elements to new tree-element code design
+Referenced by commit d5c7608b39c516e849f6199cb73a3c430aa57113, Outliner: Port view layer elements to new tree-element code design
