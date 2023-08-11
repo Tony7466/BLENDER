@@ -99,7 +99,6 @@ bool duplicate_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::L
   using namespace bke::greasepencil;
   bool changed = false;
   LayerTransformData &trans_data = layer.runtime->trans_data_;
-  trans_data.duplicated_frames.clear();
 
   for (auto [frame_number, frame] : layer.frames_for_write().items()) {
     if (!frame.is_selected()) {
