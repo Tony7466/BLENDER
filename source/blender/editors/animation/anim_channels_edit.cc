@@ -1682,8 +1682,8 @@ static void rearrange_grease_pencil_channels(bAnimContext *ac, eRearrangeAnimCha
           temp_layer = layer;
         }
         else if (temp_layer) {
-          temp_layer->parent_group().unlink_node(&temp_layer->as_node());
-          layer->parent_group().add_layer_before(temp_layer, &layer->as_node());
+          layer->parent_group().unlink_node(&layer->as_node());
+          temp_layer->parent_group().add_layer_after(layer, &temp_layer->as_node());
         }
         break;
       }
