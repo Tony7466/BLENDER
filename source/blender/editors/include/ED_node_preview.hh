@@ -8,6 +8,8 @@
 
 #include "IMB_imbuf.h"
 
+#include "DNA_material_types.h"
+
 struct bContext;
 struct bNodeTree;
 struct ImBuf;
@@ -17,11 +19,13 @@ namespace blender::ed::space_node {
 
 struct NestedTreePreviews {
   Render *previews_render = nullptr;
-  /* Use this map to keep track of the latest ImBuf used (after freeing the renderresult). */
+  /** Use this map to keep track of the latest #ImBuf used (after freeing the render-result). */
   blender::Map<int32_t, ImBuf *> previews_map;
   int preview_size;
   bool rendering = false;
   bool restart_needed = false;
+  ePreviewType cached_preview_type = MA_FLAT;
+  ePreviewType rendering_preview_type = MA_FLAT;
   uint32_t cached_previews_refresh_state = -1;
   uint32_t rendering_previews_refresh_state = -1;
   NestedTreePreviews(const int size) : preview_size(size) {}

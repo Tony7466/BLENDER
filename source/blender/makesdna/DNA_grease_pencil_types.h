@@ -493,9 +493,29 @@ typedef struct GreasePencil {
                               const int dst_frame_number,
                               const bool do_instance);
 
-  bool remove_frame_at(blender::bke::greasepencil::Layer &layer, int frame_number);
+  /**
+   * Removes all the frames with \a frame_numbers in the \a layer.
+   * \returns true if any frame was removed.
+   */
+  bool remove_frames(blender::bke::greasepencil::Layer &layer, blender::Span<int> frame_numbers);
+  /**
+   * Removes all the drawings that have no users. Will free the drawing data and shrink the
+   * drawings array.
+   */
+  void remove_drawings_with_no_users();
 
-  void remove_drawing(int index);
+  /**
+   * Move a set of frames in a \a layer.
+   *
+   * \param frame_number_destinations describes all transformations that should be applied on the
+   * frame keys.
+   *
+   * If a transformation overlaps another frames, the frame will be overwritten, and the
+   * corresponding drawing may be removed, if it no longer has users.
+   *
+   */
+  void move_frames(blender::bke::greasepencil::Layer &layer,
+                   const blender::Map<int, int> &frame_number_destinations);
 
   /**
    * Returns an editable drawing on \a layer at frame \a frame_number or `nullptr` if no such
