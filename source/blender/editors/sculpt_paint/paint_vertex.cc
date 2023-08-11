@@ -2238,7 +2238,7 @@ static int vertex_color_set_exec(bContext *C, wmOperator *op)
   }
 
   ColorPaint4f paintcol = vpaint_get_current_col(scene, scene->toolsettings->vpaint, false);
-  const bool affect_alpha = RNA_boolean_get(op->ptr, "affect_alpha");
+  const bool affect_alpha = RNA_boolean_get(op->ptr, "use_alpha");
 
   /* Ensure valid sculpt state. */
   BKE_sculpt_update_object_for_edit(
@@ -2277,10 +2277,10 @@ void PAINT_OT_vertex_color_set(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   RNA_def_boolean(ot->srna,
-                  "affect_alpha",
+                  "use_alpha",
                   true,
                   "Affect Alpha",
-                  "Set to full Alpha, lock existing alpha when disabled");
+                  "Set color completely opaque instead of reusing existing alpha");
 }
 
 /** \} */
