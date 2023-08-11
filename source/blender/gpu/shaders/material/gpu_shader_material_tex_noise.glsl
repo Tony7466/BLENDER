@@ -36,12 +36,14 @@ vec4 random_vec4_offset(float seed)
               100.0 + hash_vec2_to_float(vec2(seed, 3.0)) * 100.0);
 }
 
-void node_noise_texture_1d(vec3 co,
+void node_noise_tex_fbm_1d(vec3 co,
                            float w,
                            float scale,
                            float detail,
                            float roughness,
                            float lacunarity,
+                           float offset,
+                           float gain,
                            float distortion,
                            float normalize,
                            out float value,
@@ -60,12 +62,14 @@ void node_noise_texture_1d(vec3 co,
       1.0);
 }
 
-void node_noise_texture_2d(vec3 co,
+void node_noise_tex_fbm_2d(vec3 co,
                            float w,
                            float scale,
                            float detail,
                            float roughness,
                            float lacunarity,
+                           float offset,
+                           float gain,
                            float distortion,
                            float normalize,
                            out float value,
@@ -85,12 +89,14 @@ void node_noise_texture_2d(vec3 co,
       1.0);
 }
 
-void node_noise_texture_3d(vec3 co,
+void node_noise_tex_fbm_3d(vec3 co,
                            float w,
                            float scale,
                            float detail,
                            float roughness,
                            float lacunarity,
+                           float offset,
+                           float gain,
                            float distortion,
                            float normalize,
                            out float value,
@@ -111,12 +117,14 @@ void node_noise_texture_3d(vec3 co,
       1.0);
 }
 
-void node_noise_texture_4d(vec3 co,
+void node_noise_tex_fbm_4d(vec3 co,
                            float w,
                            float scale,
                            float detail,
                            float roughness,
                            float lacunarity,
+                           float offset,
+                           float gain,
                            float distortion,
                            float normalize,
                            out float value,

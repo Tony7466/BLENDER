@@ -1120,6 +1120,14 @@ NODE_DEFINE(NoiseTextureNode)
   dimensions_enum.insert("4D", 4);
   SOCKET_ENUM(dimensions, "Dimensions", dimensions_enum, 3);
 
+  static NodeEnum type_enum;
+  type_enum.insert("multifractal", NODE_NOISE_MULTIFRACTAL);
+  type_enum.insert("fBM", NODE_NOISE_FBM);
+  type_enum.insert("hybrid_multifractal", NODE_NOISE_HYBRID_MULTIFRACTAL);
+  type_enum.insert("ridged_multifractal", NODE_NOISE_RIDGED_MULTIFRACTAL);
+  type_enum.insert("hetero_terrain", NODE_NOISE_HETERO_TERRAIN);
+  SOCKET_ENUM(type, "Type", type_enum, NODE_NOISE_FBM);
+
   SOCKET_BOOLEAN(use_normalize, "Normalize", true);
 
   SOCKET_IN_POINT(vector, "Vector", zero_float3(), SocketType::LINK_TEXTURE_GENERATED);
@@ -1128,6 +1136,8 @@ NODE_DEFINE(NoiseTextureNode)
   SOCKET_IN_FLOAT(detail, "Detail", 2.0f);
   SOCKET_IN_FLOAT(roughness, "Roughness", 0.5f);
   SOCKET_IN_FLOAT(lacunarity, "Lacunarity", 2.0f);
+  SOCKET_IN_FLOAT(offset, "Offset", 0.0f);
+  SOCKET_IN_FLOAT(gain, "Gain", 1.0f);
   SOCKET_IN_FLOAT(distortion, "Distortion", 0.0f);
 
   SOCKET_OUT_FLOAT(fac, "Fac");
@@ -1146,6 +1156,8 @@ void NoiseTextureNode::compile(SVMCompiler &compiler)
   ShaderInput *detail_in = input("Detail");
   ShaderInput *roughness_in = input("Roughness");
   ShaderInput *lacunarity_in = input("Lacunarity");
+  ShaderInput *offset_in = input("Offset");
+  ShaderInput *gain_in = input("Gain");
   ShaderInput *distortion_in = input("Distortion");
   ShaderOutput *fac_out = output("Fac");
   ShaderOutput *color_out = output("Color");
@@ -1156,6 +1168,8 @@ void NoiseTextureNode::compile(SVMCompiler &compiler)
   int detail_stack_offset = compiler.stack_assign_if_linked(detail_in);
   int roughness_stack_offset = compiler.stack_assign_if_linked(roughness_in);
   int lacunarity_stack_offset = compiler.stack_assign_if_linked(lacunarity_in);
+  int offset_stack_offset = compiler.stack_assign_if_linked(offset_in);
+  int gain_stack_offset = compiler.stack_assign_if_linked(gain_in);
   int distortion_stack_offset = compiler.stack_assign_if_linked(distortion_in);
   int fac_stack_offset = compiler.stack_assign_if_linked(fac_out);
   int color_stack_offset = compiler.stack_assign_if_linked(color_out);
@@ -1164,19 +1178,18 @@ void NoiseTextureNode::compile(SVMCompiler &compiler)
       NODE_TEX_NOISE,
       compiler.encode_uchar4(
           vector_stack_offset, w_stack_offset, scale_stack_offset, detail_stack_offset),
-      compiler.encode_uchar4(roughness_stack_offset,
-                             lacunarity_stack_offset,
-                             distortion_stack_offset,
-                             fac_stack_offset),
-      compiler.encode_uchar4(color_stack_offset, dimensions, use_normalize));
+      compiler.encode_uchar4(
+          roughness_stack_offset, lacunarity_stack_offset, offset_stack_offset, gain_stack_offset),
+      compiler.encode_uchar4(distortion_stack_offset, fac_stack_offset, color_stack_offset));
 
   compiler.add_node(
       __float_as_int(w), __float_as_int(scale), __float_as_int(detail), __float_as_int(roughness));
 
   compiler.add_node(__float_as_int(lacunarity),
-                    __float_as_int(distortion),
-                    SVM_STACK_INVALID,
-                    SVM_STACK_INVALID);
+                    __float_as_int(offset),
+                    __float_as_int(gain),
+                    __float_as_int(distortion));
+  compiler.add_node(dimensions, type, use_normalize, SVM_STACK_INVALID);
 
   tex_mapping.compile_end(compiler, vector_in, vector_stack_offset);
 }
@@ -1185,6 +1198,7 @@ void NoiseTextureNode::compile(OSLCompiler &compiler)
 {
   tex_mapping.compile(compiler);
   compiler.parameter(this, "dimensions");
+  compiler.parameter(this, "type");
   compiler.parameter(this, "use_normalize");
   compiler.add(this, "node_noise_texture");
 }

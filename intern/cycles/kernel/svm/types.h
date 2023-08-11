@@ -276,6 +276,14 @@ typedef enum NodeMusgraveType {
   NODE_MUSGRAVE_HETERO_TERRAIN
 } NodeMusgraveType;
 
+typedef enum NodeNoiseType {
+  NODE_NOISE_MULTIFRACTAL,
+  NODE_NOISE_FBM,
+  NODE_NOISE_HYBRID_MULTIFRACTAL,
+  NODE_NOISE_RIDGED_MULTIFRACTAL,
+  NODE_NOISE_HETERO_TERRAIN
+} NodeNoiseType;
+
 typedef enum NodeWaveType { NODE_WAVE_BANDS, NODE_WAVE_RINGS } NodeWaveType;
 
 typedef enum NodeWaveBandsDirection {
