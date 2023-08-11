@@ -4,8 +4,8 @@
 
 #include "node_geometry_util.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "BKE_bake_geometry_nodes_serialize.hh"
 #include "BKE_bake_items_socket.hh"
@@ -31,11 +31,9 @@
 
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-
 #include "DEG_depsgraph_query.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 namespace blender::nodes::node_geo_bake_cc {
 
