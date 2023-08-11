@@ -39,7 +39,8 @@
 
 #include "BLI_array_utils.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -301,6 +302,27 @@ void BKE_gpencil_material_attr_init(Material *ma)
     gp_style->mix_factor = 0.5f;
 
     gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
+  }
+}
+
+static void nodetree_mark_previews_dirty_reccursive(bNodeTree *tree)
+{
+  if (tree == nullptr) {
+    return;
+  }
+  tree->runtime->previews_refresh_state++;
+  for (bNode *node : tree->all_nodes()) {
+    if (node->type == NODE_GROUP) {
+      bNodeTree *nested_tree = reinterpret_cast<bNodeTree *>(node->id);
+      nodetree_mark_previews_dirty_reccursive(nested_tree);
+    }
+  }
+}
+
+void BKE_material_make_node_previews_dirty(Material *ma)
+{
+  if (ma && ma->nodetree) {
+    nodetree_mark_previews_dirty_reccursive(ma->nodetree);
   }
 }
 

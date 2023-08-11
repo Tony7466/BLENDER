@@ -44,8 +44,8 @@
 
 #include "DRW_engine.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "ED_node.hh"
@@ -1084,7 +1084,7 @@ static void node_socket_template_properties_update(bNodeType *ntype, bNodeSocket
   PropertyRNA *prop = RNA_struct_type_find_property(srna, stemp->identifier);
 
   if (prop) {
-    RNA_def_property_update_runtime(prop, (const void *)node_property_update_default);
+    RNA_def_property_update_runtime(prop, node_property_update_default);
   }
 }
 
