@@ -20,15 +20,16 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "BLT_translation.h"
@@ -43,18 +44,18 @@
 
 #include "DEG_depsgraph_build.h"
 
-#include "UI_interface.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_view2d.hh"
 
-#include "ED_anim_api.h"
-#include "ED_keyframes_edit.h"
-#include "ED_keyframing.h"
-#include "ED_markers.h"
-#include "ED_screen.h"
-#include "ED_transform.h"
+#include "ED_anim_api.hh"
+#include "ED_keyframes_edit.hh"
+#include "ED_keyframing.hh"
+#include "ED_markers.hh"
+#include "ED_screen.hh"
+#include "ED_transform.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "graph_intern.h"
 
@@ -2259,10 +2260,12 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
 
   const float current_frame = BKE_scene_frame_get(scene);
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    const FCurve *fcu = static_cast<const FCurve *>(ale->key_data);
+    FCurve *fcu = static_cast<FCurve *>(ale->key_data);
     if (!fcu->bezt) {
       continue;
     }
+    AnimData *adt = ANIM_nla_mapping_get(&ac, ale);
+    ANIM_nla_mapping_apply_fcurve(adt, fcu, false, true);
     float closest_fcu_frame;
     if (!find_closest_frame(fcu, current_frame, next, &closest_fcu_frame)) {
       continue;
@@ -2272,6 +2275,7 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
       closest_frame = closest_fcu_frame;
       found = true;
     }
+    ANIM_nla_mapping_apply_fcurve(adt, fcu, true, true);
   }
 
   if (!found) {

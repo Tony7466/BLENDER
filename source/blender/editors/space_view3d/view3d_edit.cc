@@ -15,7 +15,10 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_action.h"
 #include "BKE_armature.h"
@@ -29,15 +32,15 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "WM_api.h"
-#include "WM_message.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "ED_screen.h"
-#include "ED_transform.h"
-#include "ED_transform_snap_object_context.h"
+#include "ED_screen.hh"
+#include "ED_transform.hh"
+#include "ED_transform_snap_object_context.hh"
 
 #include "view3d_intern.h" /* own include */
 

@@ -56,7 +56,8 @@
 #include "BLI_kdtree.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
@@ -280,8 +281,11 @@ static void object_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const in
     }
   }
   else {
-    /* Do not copy lightprobe's cache. */
-    ob_dst->lightprobe_cache = nullptr;
+    if (ob_src->lightprobe_cache) {
+      /* Duplicate the original object data. */
+      ob_dst->lightprobe_cache = BKE_lightprobe_cache_copy(ob_src->lightprobe_cache);
+      ob_dst->lightprobe_cache->shared = false;
+    }
   }
 }
 

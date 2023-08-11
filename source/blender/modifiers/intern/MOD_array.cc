@@ -12,7 +12,8 @@
 
 #include "BLI_utildefines.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_span.hh"
 
 #include "BLT_translation.h"
@@ -37,10 +38,10 @@
 #include "BKE_object_deform.h"
 #include "BKE_screen.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "MOD_ui_common.hh"
@@ -800,7 +801,9 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
   }
   /* done capping */
 
-  blender::bke::mesh_vert_normals_assign(*result, std::move(dst_vert_normals));
+  if (!dst_vert_normals.is_empty()) {
+    blender::bke::mesh_vert_normals_assign(*result, std::move(dst_vert_normals));
+  }
 
   /* Handle merging */
   tot_doubles = 0;

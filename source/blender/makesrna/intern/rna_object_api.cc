@@ -12,9 +12,10 @@
 #include <ctime>
 
 #include "BLI_kdopbvh.h"
+#include "BLI_math_geom.h"
 #include "BLI_utildefines.h"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "DNA_constraint_types.h"
 #include "DNA_layer_types.h"
@@ -26,7 +27,7 @@
 
 #include "DEG_depsgraph.h"
 
-#include "ED_outliner.h"
+#include "ED_outliner.hh"
 
 #include "rna_internal.h" /* own include */
 
@@ -50,8 +51,6 @@ static const EnumPropertyItem space_items[] = {
 
 #ifdef RNA_RUNTIME
 
-#  include "BLI_math.h"
-
 #  include "BKE_bvhutils.h"
 #  include "BKE_constraint.h"
 #  include "BKE_context.h"
@@ -68,8 +67,8 @@ static const EnumPropertyItem space_items[] = {
 #  include "BKE_report.h"
 #  include "BKE_vfont.h"
 
-#  include "ED_object.h"
-#  include "ED_screen.h"
+#  include "ED_object.hh"
+#  include "ED_screen.hh"
 
 #  include "DNA_curve_types.h"
 #  include "DNA_mesh_types.h"

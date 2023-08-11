@@ -20,8 +20,9 @@
 #include "DRW_render.h"
 
 #include "BLI_listbase_wrapper.hh"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
 #include "BLI_math_matrix_types.hh"
+#include "BLI_math_rotation.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_action.h"
@@ -32,12 +33,12 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "ED_armature.h"
-#include "ED_view3d.h"
+#include "ED_armature.hh"
+#include "ED_view3d.hh"
 
 #include "ANIM_bone_collections.h"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 #include "draw_common.h"
 #include "draw_manager_text.h"

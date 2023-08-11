@@ -8,7 +8,6 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
 
 #include "BKE_context.h"
 #include "BKE_global.h"
@@ -17,17 +16,17 @@
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "BIF_glutil.h"
+#include "BIF_glutil.hh"
 
 #include "SEQ_relations.h"
 #include "SEQ_render.h"
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "MEM_guardedalloc.h"
 

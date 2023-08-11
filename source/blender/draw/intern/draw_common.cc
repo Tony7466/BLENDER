@@ -12,7 +12,9 @@
 #include "GPU_shader.h"
 #include "GPU_texture.h"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
+
+#include "BLI_math_color.h"
 
 #include "BKE_colorband.h"
 #include "BKE_global.h"

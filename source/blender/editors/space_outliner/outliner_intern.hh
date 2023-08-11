@@ -10,7 +10,7 @@
 
 #include <memory>
 
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 /* Needed for `tree_element_cast()`. */
 #include "tree/tree_element.hh"
@@ -315,6 +315,11 @@ struct ParticleSystemElementCreateData {
   ParticleSystem *psys;
 };
 
+struct ViewLayerElementCreateData {
+  Scene *scene;
+  ViewLayer *view_layer;
+};
+
 TreeTraversalAction outliner_collect_selected_collections(TreeElement *te, void *customdata);
 TreeTraversalAction outliner_collect_selected_objects(TreeElement *te, void *customdata);
 
@@ -491,7 +496,7 @@ void outliner_item_openclose(TreeElement *te, bool open, bool toggle_all);
 /**
  * Region drop-box definition.
  */
-void outliner_dropboxes(void);
+void outliner_dropboxes();
 
 void OUTLINER_OT_item_drag_drop(wmOperatorType *ot);
 void OUTLINER_OT_parent_drop(wmOperatorType *ot);
@@ -565,7 +570,7 @@ void OUTLINER_OT_delete(wmOperatorType *ot);
 
 /* `outliner_ops.cc` */
 
-void outliner_operatortypes(void);
+void outliner_operatortypes();
 void outliner_keymap(wmKeyConfig *keyconf);
 
 /* `outliner_collections.cc` */
