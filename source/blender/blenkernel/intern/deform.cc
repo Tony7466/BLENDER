@@ -435,7 +435,7 @@ void BKE_defvert_flip_merged(MDeformVert *dvert, const int *flip_map, const int 
   }
 }
 
-bool BKE_id_supports_vertex_groups(const ID *id)
+const bool BKE_id_supports_vertex_groups(const ID *id)
 {
   if (id == nullptr) {
     return false;
@@ -707,9 +707,6 @@ bool BKE_defgroup_unique_name_check(void *arg, const char *name)
   AttributeAndDefgroupUniqueNameData *data = static_cast<AttributeAndDefgroupUniqueNameData *>(
       arg);
 
-  if (!BKE_id_supports_vertex_groups(data->id)) {
-    return false;
-  }
   return defgroup_find_name_dupe(name, data->dg, data->id);
 }
 
