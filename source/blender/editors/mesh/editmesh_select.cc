@@ -4400,6 +4400,100 @@ void em_setup_viewcontext(bContext *C, ViewContext *vc)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Select Element by Index Operator
+* * \{ */
+
+static int edbm_select_element_by_index_exec(bContext *C, wmOperator *op)
+{
+  const Scene *scene = CTX_data_scene(C);
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  const int index = RNA_int_get(op->ptr, "index");
+  const int element_type = RNA_enum_get(op->ptr, "element_type");
+  const bool select = RNA_boolean_get(op->ptr, "select");
+  const bool use_extend = RNA_boolean_get(op->ptr, "extend");
+
+  uint objects_len = 0;
+  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C), &objects_len);
+
+  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
+    Object *obedit = objects[ob_index];
+    BMEditMesh *em = BKE_editmesh_from_object(obedit);
+    BMesh* bm = em->bm;
+    BMIter iter;
+    BMVert* v;
+    BMEdge* e;
+    BMFace* f;
+
+    if (!use_extend) {
+      EDBM_flag_disable_all(em, BM_ELEM_SELECT);
+    }
+
+    // Select the element.
+    if (element_type == SCE_SELECT_VERTEX) {
+      BM_mesh_elem_table_ensure(bm, BM_VERT);
+      if (index < bm->totvert) {
+        v = BM_vert_at_index(bm, index);
+        BM_vert_select_set(em->bm, v, select);
+      }
+    }
+    else if (element_type == SCE_SELECT_EDGE) {
+      BM_mesh_elem_table_ensure(em->bm, BM_EDGE);
+      if (index < bm->totedge) {
+        e = BM_edge_at_index(bm, index);
+        BM_edge_select_set(em->bm, e, select);
+      }
+    }
+    else if (element_type == SCE_SELECT_FACE) {
+      BM_mesh_elem_table_ensure(bm, BM_FACE);
+      if (index < bm->totface) {
+        f = BM_face_at_index(bm, index);
+        BM_face_select_set(bm, f, select);
+      }
+    }
+
+    DEG_id_tag_update(static_cast<ID*>(obedit->data), ID_RECALC_SELECT);
+    WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
+  }
+  MEM_freeN(objects);
+
+  return OPERATOR_FINISHED;
+}
+
+void MESH_OT_select_element_by_index(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Select Element by Index";
+  ot->idname = "MESH_OT_select_element_by_index";
+  ot->description = "Select element by index";
+
+  /* api callbacks */
+  ot->exec = edbm_select_element_by_index_exec;
+  ot->poll = ED_operator_editmesh;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  PropertyRNA *prop;
+
+  prop = RNA_def_enum(ot->srna, "element_type", rna_enum_mesh_select_mode_items, 0, "Element Type", "Type of element to select");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
+  prop = RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "Index of the element to select", INT_MIN, INT_MAX);
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
+  prop = RNA_def_boolean(ot->srna, "select", true, "Select", "Select or deselect the element");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
+  prop = RNA_def_boolean(ot->srna, "extend", true, "Extend", "Extend selection");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Select Sharp Edges Operator
  * \{ */
 

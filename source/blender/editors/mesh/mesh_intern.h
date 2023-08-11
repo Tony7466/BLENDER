@@ -220,6 +220,7 @@ void MESH_OT_select_mirror(struct wmOperatorType *ot);
 void MESH_OT_select_more(struct wmOperatorType *ot);
 void MESH_OT_select_less(struct wmOperatorType *ot);
 void MESH_OT_select_nth(struct wmOperatorType *ot);
+void MESH_OT_select_element_by_index(struct wmOperatorType* ot);
 void MESH_OT_edges_select_sharp(struct wmOperatorType *ot);
 void MESH_OT_faces_select_linked_flat(struct wmOperatorType *ot);
 void MESH_OT_select_non_manifold(struct wmOperatorType *ot);
