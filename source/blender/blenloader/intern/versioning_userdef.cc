@@ -128,14 +128,10 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     /* Keep this block, even when empty. */
 
     FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_keyframe);
-    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_extreme);
     FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_breakdown);
-    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_jitter);
     FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_movehold);
     FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_keyframe_select);
-    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_extreme_select);
     FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_breakdown_select);
-    FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_jitter_select);
     FROM_DEFAULT_V4_UCHAR(space_sequencer.keytype_movehold_select);
     FROM_DEFAULT_V4_UCHAR(space_sequencer.keyborder);
     FROM_DEFAULT_V4_UCHAR(space_sequencer.keyborder_select);

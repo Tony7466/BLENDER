@@ -3373,19 +3373,6 @@ static void rna_def_userdef_theme_space_seq(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Keyframe Selected", "Color of selected keyframe");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
-  prop = RNA_def_property(srna, "keyframe_extreme", PROP_FLOAT, PROP_COLOR_GAMMA);
-  RNA_def_property_float_sdna(prop, NULL, "keytype_extreme");
-  RNA_def_property_array(prop, 3);
-  RNA_def_property_ui_text(prop, "Extreme Keyframe", "Color of extreme keyframe");
-  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
-
-  prop = RNA_def_property(srna, "keyframe_extreme_selected", PROP_FLOAT, PROP_COLOR_GAMMA);
-  RNA_def_property_float_sdna(prop, NULL, "keytype_extreme_select");
-  RNA_def_property_array(prop, 3);
-  RNA_def_property_ui_text(
-      prop, "Extreme Keyframe Selected", "Color of selected extreme keyframe");
-  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
-
   prop = RNA_def_property(srna, "keyframe_breakdown", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_float_sdna(prop, NULL, "keytype_breakdown");
   RNA_def_property_array(prop, 3);
@@ -3397,18 +3384,6 @@ static void rna_def_userdef_theme_space_seq(BlenderRNA *brna)
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(
       prop, "Breakdown Keyframe Selected", "Color of selected breakdown keyframe");
-  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
-
-  prop = RNA_def_property(srna, "keyframe_jitter", PROP_FLOAT, PROP_COLOR_GAMMA);
-  RNA_def_property_float_sdna(prop, NULL, "keytype_jitter");
-  RNA_def_property_array(prop, 3);
-  RNA_def_property_ui_text(prop, "Jitter Keyframe", "Color of jitter keyframe");
-  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
-
-  prop = RNA_def_property(srna, "keyframe_jitter_selected", PROP_FLOAT, PROP_COLOR_GAMMA);
-  RNA_def_property_float_sdna(prop, NULL, "keytype_jitter_select");
-  RNA_def_property_array(prop, 3);
-  RNA_def_property_ui_text(prop, "Jitter Keyframe Selected", "Color of selected jitter keyframe");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
   prop = RNA_def_property(srna, "keyframe_movehold", PROP_FLOAT, PROP_COLOR_GAMMA);

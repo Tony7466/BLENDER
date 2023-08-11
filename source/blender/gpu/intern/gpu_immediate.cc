@@ -289,7 +289,7 @@ static void setAttrValueBit(uint attr_id)
 void immAttr1f(uint attr_id, float x)
 {
   GPUVertAttr *attr = &imm->vertex_format.attrs[attr_id];
-  /* BLI_assert(attr_id < imm->vertex_format.attr_len);
+  BLI_assert(attr_id < imm->vertex_format.attr_len);
   BLI_assert(attr->comp_type == GPU_COMP_F32);
   BLI_assert(attr->comp_len == 1);
   BLI_assert(imm->vertex_idx < imm->vertex_len);
