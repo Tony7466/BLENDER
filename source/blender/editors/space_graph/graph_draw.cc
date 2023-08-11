@@ -1073,6 +1073,7 @@ static void draw_fcurve_curve_keys(
 
   /* Draw curve between first and last keyframe (if there are enough to do so). */
   BezTriple *prevbezt = &fcu->bezt[bounding_indices[0]];
+  /* Used when skipping keys. */
   float2 key_sum = {0, 0};
   int key_count = 0;
   const float min_pixel_distance = 3.0f;
@@ -1082,6 +1083,10 @@ static void draw_fcurve_curve_keys(
     float pixel_distance = calculate_pixel_distance(prevbezt, bezt, pixels_per_unit);
 
     if (pixel_distance >= min_pixel_distance && key_count > 0) {
+      /* When the pixel distance is greater than the threshold, and we've skipped at least one, add
+       * a point. The point position is the average of all keys from INCLUDING prevbezt to
+       * EXCLUDING bezt. prevbezt then gets reset to the key before bezt because the distance
+       * between those is potentially below the threshold. */
       curve_vertices.append(key_sum / key_count);
       key_sum = {0, 0};
       key_count = 0;
@@ -1091,6 +1096,7 @@ static void draw_fcurve_curve_keys(
     }
 
     if (pixel_distance < min_pixel_distance) {
+      /* Skip any keys that are too close to each other in screen space. */
       key_sum += {bezt->vec[1][0], bezt->vec[1][1]};
       key_count++;
       continue;
