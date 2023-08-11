@@ -435,7 +435,7 @@ void BKE_defvert_flip_merged(MDeformVert *dvert, const int *flip_map, const int 
   }
 }
 
-const bool BKE_id_supports_vertex_groups(const ID *id)
+bool BKE_id_supports_vertex_groups(const ID *id)
 {
   if (id == nullptr) {
     return false;
