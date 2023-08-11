@@ -4,15 +4,17 @@
 
 #pragma once
 
+#if !defined(__KERNEL_GPU__)
+#  include <OSL/oslconfig.h>
+#endif
+
 CCL_NAMESPACE_BEGIN
 
 #if defined(__KERNEL_GPU__)
 /* Strings are represented by their hashes on the GPU. */
 typedef size_t DeviceString;
-#elif defined(OPENIMAGEIO_USTRING_H)
-typedef ustring DeviceString;
 #else
-typedef const char *DeviceString;
+typedef OSL::ustring DeviceString;
 #endif
 
 ccl_device_inline DeviceString make_string(const char *str, size_t hash)
@@ -20,12 +22,9 @@ ccl_device_inline DeviceString make_string(const char *str, size_t hash)
 #if defined(__KERNEL_GPU__)
   (void)str;
   return hash;
-#elif defined(OPENIMAGEIO_USTRING_H)
-  (void)hash;
-  return ustring(str);
 #else
   (void)hash;
-  return str;
+  return OSL::ustring(str);
 #endif
 }
 
@@ -39,6 +38,7 @@ enum OSLClosureType {
 
 #define OSL_CLOSURE_STRUCT_BEGIN(Upper, lower) OSL_CLOSURE_##Upper##_ID,
 #include "closures_template.h"
+  OSL_CLOSURE_LAYER_ID,
 };
 
 struct OSLClosure {
@@ -81,6 +81,9 @@ struct ShaderGlobals {
   ccl_private void *tracedata;
   ccl_private void *objdata;
   void *context;
+#if OSL_LIBRARY_VERSION_CODE >= 11302
+  void *shadingStateUniform;
+#endif
   void *renderer;
   ccl_private void *object2common;
   ccl_private void *shader2common;

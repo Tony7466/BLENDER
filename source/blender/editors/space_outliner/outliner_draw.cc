@@ -64,7 +64,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "outliner_intern.hh"
 #include "tree/tree_display.hh"
@@ -72,6 +72,7 @@
 #include "tree/tree_element_id.hh"
 #include "tree/tree_element_overrides.hh"
 #include "tree/tree_element_rna.hh"
+#include "tree/tree_element_seq.hh"
 #include "tree/tree_iterator.hh"
 
 namespace blender::ed::outliner {
@@ -2762,8 +2763,9 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
       case TSE_POSEGRP:
         data.icon = ICON_GROUP_BONE;
         break;
-      case TSE_SEQUENCE:
-        switch (te->idcode) {
+      case TSE_SEQUENCE: {
+        const TreeElementSequence *te_seq = tree_element_cast<TreeElementSequence>(te);
+        switch (te_seq->getSequenceType()) {
           case SEQ_TYPE_SCENE:
             data.icon = ICON_SCENE_DATA;
             break;
@@ -2816,6 +2818,7 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
             break;
         }
         break;
+      }
       case TSE_SEQ_STRIP:
         data.icon = ICON_LIBRARY_DATA_DIRECT;
         break;
