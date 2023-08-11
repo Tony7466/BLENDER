@@ -14,7 +14,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "RNA_enum_types.h"
+#include "RNA_enum_types.hh"
 
 #include "node_function_util.hh"
 
@@ -700,7 +700,7 @@ static void node_rna(StructRNA *srna)
         }
         else {
           return enum_items_filter(rna_enum_node_compare_operation_items,
-                                   [](const EnumPropertyItem &item) { return false; });
+                                   [](const EnumPropertyItem & /*item*/) { return false; });
         }
       });
 
