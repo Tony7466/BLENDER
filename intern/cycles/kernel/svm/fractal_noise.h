@@ -124,7 +124,7 @@ ccl_device_noinline float noise_fbm(
 
 /* Multifractal */
 
-ccl_device_noinline_cpu float noise_multi_fractal(float p,
+ccl_device_noinline float noise_multi_fractal(float p,
                                                   float octaves,
                                                   float roughness,
                                                   float lacunarity)
@@ -146,7 +146,7 @@ ccl_device_noinline_cpu float noise_multi_fractal(float p,
   return value;
 }
 
-ccl_device_noinline_cpu float noise_multi_fractal(float2 p,
+ccl_device_noinline float noise_multi_fractal(float2 p,
                                                   float octaves,
                                                   float roughness,
                                                   float lacunarity)
@@ -168,7 +168,7 @@ ccl_device_noinline_cpu float noise_multi_fractal(float2 p,
   return value;
 }
 
-ccl_device_noinline_cpu float noise_multi_fractal(float3 p,
+ccl_device_noinline float noise_multi_fractal(float3 p,
                                                   float octaves,
                                                   float roughness,
                                                   float lacunarity)
@@ -190,7 +190,7 @@ ccl_device_noinline_cpu float noise_multi_fractal(float3 p,
   return value;
 }
 
-ccl_device_noinline_cpu float noise_multi_fractal(float4 p,
+ccl_device_noinline float noise_multi_fractal(float4 p,
                                                   float octaves,
                                                   float roughness,
                                                   float lacunarity)
@@ -214,7 +214,7 @@ ccl_device_noinline_cpu float noise_multi_fractal(float4 p,
 
 /* Heterogeneous Terrain */
 
-ccl_device_noinline_cpu float noise_hetero_terrain(
+ccl_device_noinline float noise_hetero_terrain(
     float p, float octaves, float roughness, float lacunarity, float offset)
 {
   float pwr = roughness;
@@ -239,7 +239,7 @@ ccl_device_noinline_cpu float noise_hetero_terrain(
   return value;
 }
 
-ccl_device_noinline_cpu float noise_hetero_terrain(
+ccl_device_noinline float noise_hetero_terrain(
     float2 p, float octaves, float roughness, float lacunarity, float offset)
 {
   float pwr = roughness;
@@ -264,7 +264,7 @@ ccl_device_noinline_cpu float noise_hetero_terrain(
   return value;
 }
 
-ccl_device_noinline_cpu float noise_hetero_terrain(
+ccl_device_noinline float noise_hetero_terrain(
     float3 p, float octaves, float roughness, float lacunarity, float offset)
 {
   float pwr = roughness;
@@ -289,7 +289,7 @@ ccl_device_noinline_cpu float noise_hetero_terrain(
   return value;
 }
 
-ccl_device_noinline_cpu float noise_hetero_terrain(
+ccl_device_noinline float noise_hetero_terrain(
     float4 p, float octaves, float roughness, float lacunarity, float offset)
 {
   float pwr = roughness;
@@ -316,7 +316,7 @@ ccl_device_noinline_cpu float noise_hetero_terrain(
 
 /* Hybrid Additive/Multiplicative Multifractal Terrain */
 
-ccl_device_noinline_cpu float noise_hybrid_multi_fractal(
+ccl_device_noinline float noise_hybrid_multi_fractal(
     float p, float octaves, float roughness, float lacunarity, float offset, float gain)
 {
   float pwr = 1.0f;
@@ -347,7 +347,7 @@ ccl_device_noinline_cpu float noise_hybrid_multi_fractal(
   return value;
 }
 
-ccl_device_noinline_cpu float noise_hybrid_multi_fractal(
+ccl_device_noinline float noise_hybrid_multi_fractal(
     float2 p, float octaves, float roughness, float lacunarity, float offset, float gain)
 {
   float pwr = 1.0f;
@@ -378,7 +378,7 @@ ccl_device_noinline_cpu float noise_hybrid_multi_fractal(
   return value;
 }
 
-ccl_device_noinline_cpu float noise_hybrid_multi_fractal(
+ccl_device_noinline float noise_hybrid_multi_fractal(
     float3 p, float octaves, float roughness, float lacunarity, float offset, float gain)
 {
   float pwr = 1.0f;
@@ -409,7 +409,7 @@ ccl_device_noinline_cpu float noise_hybrid_multi_fractal(
   return value;
 }
 
-ccl_device_noinline_cpu float noise_hybrid_multi_fractal(
+ccl_device_noinline float noise_hybrid_multi_fractal(
     float4 p, float octaves, float roughness, float lacunarity, float offset, float gain)
 {
   float pwr = 1.0f;
@@ -442,7 +442,7 @@ ccl_device_noinline_cpu float noise_hybrid_multi_fractal(
 
 /* Ridged Multifractal Terrain */
 
-ccl_device_noinline_cpu float noise_ridged_multi_fractal(
+ccl_device_noinline float noise_ridged_multi_fractal(
     float p, float octaves, float roughness, float lacunarity, float offset, float gain)
 {
   float pwr = roughness;
@@ -465,7 +465,7 @@ ccl_device_noinline_cpu float noise_ridged_multi_fractal(
   return value;
 }
 
-ccl_device_noinline_cpu float noise_ridged_multi_fractal(
+ccl_device_noinline float noise_ridged_multi_fractal(
     float2 p, float octaves, float roughness, float lacunarity, float offset, float gain)
 {
   float pwr = roughness;
@@ -488,7 +488,7 @@ ccl_device_noinline_cpu float noise_ridged_multi_fractal(
   return value;
 }
 
-ccl_device_noinline_cpu float noise_ridged_multi_fractal(
+ccl_device_noinline float noise_ridged_multi_fractal(
     float3 p, float octaves, float roughness, float lacunarity, float offset, float gain)
 {
   float pwr = roughness;
@@ -511,7 +511,7 @@ ccl_device_noinline_cpu float noise_ridged_multi_fractal(
   return value;
 }
 
-ccl_device_noinline_cpu float noise_ridged_multi_fractal(
+ccl_device_noinline float noise_ridged_multi_fractal(
     float4 p, float octaves, float roughness, float lacunarity, float offset, float gain)
 {
   float pwr = roughness;

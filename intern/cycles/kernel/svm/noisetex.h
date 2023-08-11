@@ -53,18 +53,25 @@ ccl_device float noise_select(T p,
                               bool normalize)
 {
   switch ((NodeNoiseType)type) {
-    case NODE_NOISE_MULTIFRACTAL:
+    case NODE_NOISE_MULTIFRACTAL: {
       return noise_multi_fractal(p, detail, roughness, lacunarity);
-    case NODE_NOISE_FBM:
+    }
+    case NODE_NOISE_FBM: {
       return noise_fbm(p, detail, roughness, lacunarity, normalize);
-    case NODE_NOISE_HYBRID_MULTIFRACTAL:
+    }
+    case NODE_NOISE_HYBRID_MULTIFRACTAL: {
       return noise_hybrid_multi_fractal(p, detail, roughness, lacunarity, offset, gain);
-    case NODE_NOISE_RIDGED_MULTIFRACTAL:
+    }
+    case NODE_NOISE_RIDGED_MULTIFRACTAL: {
       return noise_ridged_multi_fractal(p, detail, roughness, lacunarity, offset, gain);
-    case NODE_NOISE_HETERO_TERRAIN:
+    }
+    case NODE_NOISE_HETERO_TERRAIN: {
       return noise_hetero_terrain(p, detail, roughness, lacunarity, offset);
-    default:
+    }
+    default: {
       kernel_assert(0);
+      return 0.0;
+    }
   }
 }
 
