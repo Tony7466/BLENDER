@@ -201,7 +201,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         }
       }
 
-      if (coat_tint != one_float3()) {
+      if (!isequal(coat_tint, one_float3())) {
         /* Tint is normalized to perpendicular incidence.
          * Therefore, if we define the coat thickness as length 1, the length along the ray is
          * t = sqrt(1+tan^2(angle(N, I))) = sqrt(1+tan^2(acos(dotNI))) = 1 / dotNI.
