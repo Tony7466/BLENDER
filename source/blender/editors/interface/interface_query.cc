@@ -202,6 +202,16 @@ bool ui_but_contains_pt(const uiBut *but, float mx, float my)
   return BLI_rctf_isect_pt(&but->rect, mx, my);
 }
 
+bool ui_but_contains_pt(const uiBut *but, float mx, float my, float pad_x, float pad_y)
+{
+  rctf rect = but->rect;
+  rect.xmin -= pad_x;
+  rect.xmax += pad_x;
+  rect.ymin -= pad_y;
+  rect.ymax += pad_y;
+  return BLI_rctf_isect_pt(&rect, mx, my);
+}
+
 bool ui_but_contains_rect(const uiBut *but, const rctf *rect)
 {
   return BLI_rctf_isect(&but->rect, rect, nullptr);
@@ -295,6 +305,12 @@ uiBut *ui_but_find_mouse_over_ex(const ARegion *region,
             butover = but;
             break;
           }
+        }
+        else if (ELEM(but->type, UI_BTYPE_LISTROW, UI_BTYPE_VIEW_ITEM) &&
+                 ui_but_contains_pt(but, mx, my, 2.0f * U.pixelsize, 2.0f * U.pixelsize))
+        {
+          butover = but;
+          break;
         }
         else if (ui_but_contains_pt(but, mx, my)) {
           butover = but;

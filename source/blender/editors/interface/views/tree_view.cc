@@ -455,6 +455,8 @@ std::optional<rctf> AbstractTreeViewItem::get_win_rect(const ARegion &region) co
 
   rctf win_rect;
   ui_block_to_window_rctf(&region, item_but->block, &win_rect, &item_but->rect);
+  win_rect.ymin -= 2.0f * U.pixelsize;
+  win_rect.ymax += 2.0f * U.pixelsize;
 
   return win_rect;
 }
