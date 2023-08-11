@@ -451,6 +451,30 @@ void SEQUENCER_OT_retiming_key_remove(wmOperatorType *ot)
 /** \name Retiming Set Segment Speed
  * \{ */
 
+static int sequencer_retiming_segment_speed_set_invoke(bContext *C,
+                                                       wmOperator *op,
+                                                       const wmEvent *event)
+{
+  const Scene *scene = CTX_data_scene(C);
+  const Editing *ed = SEQ_editing_get(scene);
+
+  if (ed->act_seq && RNA_struct_property_is_set(op->ptr, "key_index")) {
+    MutableSpan keys = SEQ_retiming_keys_get(ed->act_seq);
+    const int key_index = RNA_int_get(op->ptr, "key_index");
+    BLI_assert(key_index < keys.size());
+    SeqRetimingKey *key = &keys[key_index];
+    RNA_float_set(op->ptr, "speed", SEQ_retiming_key_speed_get(ed->act_seq, key) * 100.0f);
+    return WM_operator_props_popup(C, op, event);
+  }
+
+  if (!BLI_listbase_is_empty(&ed->retiming_selection)) {
+    return sequencer_retiming_segment_speed_set_exec(C, op);
+  }
+
+  BKE_report(op->reports, RPT_ERROR, "No key available");
+  return OPERATOR_CANCELLED;
+}
+
 static int sequencer_retiming_segment_speed_set_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
@@ -478,11 +502,23 @@ void SEQUENCER_OT_retiming_segment_speed_set(wmOperatorType *ot)
   ot->idname = "SEQUENCER_OT_retiming_segment_speed_set";
 
   /* api callbacks */
+  ot->invoke = sequencer_retiming_segment_speed_set_invoke;
   ot->exec = sequencer_retiming_segment_speed_set_exec;
   ot->poll = retiming_poll;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* properties */
+  PropertyRNA *prop = RNA_def_float(ot->srna,
+                                    "speed",
+                                    100.0f,
+                                    0.001f,
+                                    FLT_MAX,
+                                    "Speed",
+                                    "New speed of retimed segment",
+                                    0.1f,
+                                    FLT_MAX);
 }
 
 /** \} */
