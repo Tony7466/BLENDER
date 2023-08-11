@@ -13,7 +13,6 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_math_vector_types.hh"
-#include "BLI_timeit.hh"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
@@ -1157,7 +1156,6 @@ static void draw_fcurve_curve_keys(
 
 static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAnimListElem *ale)
 {
-  SCOPED_TIMER_AVERAGED("draw_fcurve");
   FCurve *fcu = (FCurve *)ale->key_data;
   FModifier *fcm = find_active_fmodifier(&fcu->modifiers);
   AnimData *adt = ANIM_nla_mapping_get(ac, ale);
