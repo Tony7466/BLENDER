@@ -86,21 +86,26 @@ std::string cache_or_get_image_file(Main *bmain, Scene *scene, Image *image, Ima
   }
   else if (BKE_image_has_packedfile(image)) {
     do_check_extension = true;
-    char dirname[FILE_MAXDIR];
-    char filename[FILE_MAX];
+    std::string dir_path = image_cache_file_path();
+    char *cached_path;
+    char subfolder[FILE_MAXDIR];
+    snprintf(subfolder, sizeof(subfolder), "unpack_%p", image);
     LISTBASE_FOREACH (ImagePackedFile *, ipf, &image->packedfiles) {
-      BLI_path_split_dir_file(ipf->filepath, dirname, sizeof(dirname), filename, sizeof(filename));
-      strcpy(str,
-             BKE_packedfile_unpack_to_file(nullptr,
-                                           BKE_main_blendfile_path(bmain),
-                                           dirname,
-                                           get_cache_file(filename).c_str(),
-                                           ipf->packedfile,
-                                           PF_WRITE_LOCAL));
+      char path[FILE_MAX];
+      BLI_path_join(path, sizeof(path), dir_path.c_str(), subfolder, BLI_path_basename(ipf->filepath));
+      cached_path = BKE_packedfile_unpack_to_file(nullptr,
+                    BKE_main_blendfile_path(bmain),
+                    dir_path.c_str(),
+                    path,
+                    ipf->packedfile,
+                    PF_WRITE_LOCAL);
 
       /* Take first succesfully unpacked image. */
-      if (strlen(str) != 0 && file_path.empty()) {
-        file_path = str;
+      if (cached_path != nullptr) {
+        if (file_path.empty()) {
+          file_path = cached_path;
+        }
+        MEM_freeN(cached_path);
       }
     }
   }
