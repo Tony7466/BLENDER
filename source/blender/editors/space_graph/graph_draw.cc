@@ -12,7 +12,6 @@
 #include <cstring>
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
@@ -34,13 +33,13 @@
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "ED_anim_api.h"
+#include "ED_anim_api.hh"
 
 #include "graph_intern.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
 static void graph_draw_driver_debug(bAnimContext *ac, ID *id, FCurve *fcu);
 
@@ -844,35 +843,18 @@ static void draw_fcurve_curve_samples(bAnimContext *ac,
   GPU_matrix_pop();
 }
 
-/* helper func - check if the F-Curve only contains easily drawable segments
- * (i.e. no easing equation interpolations)
- */
-static bool fcurve_can_use_simple_bezt_drawing(FCurve *fcu)
-{
-  BezTriple *bezt;
-  int i;
-
-  for (i = 0, bezt = fcu->bezt; i < fcu->totvert; i++, bezt++) {
-    if (ELEM(bezt->ipo, BEZT_IPO_CONST, BEZT_IPO_LIN, BEZT_IPO_BEZ) == false) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 static int calculate_bezt_draw_resolution(BezTriple *bezt,
                                           BezTriple *prevbezt,
                                           const blender::float2 resolution_scale)
 {
-  const int resolution_x = (int)((bezt->vec[1][0] - prevbezt->vec[1][0]) * resolution_scale[0]);
+  const int resolution_x = int((bezt->vec[1][0] - prevbezt->vec[1][0]) * resolution_scale[0]);
   /* Include the handles in the resolution calculation to cover the case where keys have the same
    * y-value, but their handles are offset to create an arc. */
   const float min_y = min_ffff(
       bezt->vec[1][1], bezt->vec[2][1], prevbezt->vec[1][1], prevbezt->vec[0][1]);
   const float max_y = max_ffff(
       bezt->vec[1][1], bezt->vec[2][1], prevbezt->vec[1][1], prevbezt->vec[0][1]);
-  const int resolution_y = (int)((max_y - min_y) * resolution_scale[1]);
+  const int resolution_y = int((max_y - min_y) * resolution_scale[1]);
   /* Using a simple sum instead of calculating the diagonal. This gives a slightly higher
    * resolution but it does compensate for the fact that bezier curves can create long arcs between
    * keys. */
@@ -1028,7 +1010,7 @@ static void add_extrapolation_point_right(FCurve *fcu,
 static blender::float2 calculate_resolution_scale(View2D *v2d)
 {
   /* The resolution for bezier forward diff in frame/value space. This ensures a constant
-   * resolution in screenspace. */
+   * resolution in screen-space. */
   const int window_width = BLI_rcti_size_x(&v2d->mask);
   const int window_height = BLI_rcti_size_y(&v2d->mask);
   const float points_per_pixel = 0.25f;
@@ -1041,7 +1023,7 @@ static blender::float2 calculate_resolution_scale(View2D *v2d)
 }
 
 /* Helper function - draw one repeat of an F-Curve (using Bezier curve approximations). */
-static void draw_fcurve_curve_bezts(
+static void draw_fcurve_curve_keys(
     bAnimContext *ac, ID *id, FCurve *fcu, View2D *v2d, uint pos, const bool draw_extrapolation)
 {
   using namespace blender;
@@ -1074,24 +1056,47 @@ static void draw_fcurve_curve_bezts(
   }
 
   const blender::float2 resolution_scale = calculate_resolution_scale(v2d);
+  const int window_width = BLI_rcti_size_x(&v2d->mask);
+  const float v2d_frame_range = BLI_rctf_size_x(&v2d->cur);
+  const float pixel_width = v2d_frame_range / window_width;
+  const float samples_per_pixel = 0.66f;
+  const float evaluation_step = pixel_width / samples_per_pixel;
+
   /* Draw curve between first and last keyframe (if there are enough to do so). */
   for (int i = bounding_indices[0] + 1; i <= bounding_indices[1]; i++) {
     BezTriple *prevbezt = &fcu->bezt[i - 1];
     BezTriple *bezt = &fcu->bezt[i];
 
-    if (prevbezt->ipo == BEZT_IPO_CONST) {
-      /* Constant-Interpolation: draw segment between previous keyframe and next,
-       * but holding same value */
-      curve_vertices.append({prevbezt->vec[1][0], prevbezt->vec[1][1]});
-      curve_vertices.append({bezt->vec[1][0], prevbezt->vec[1][1]});
-    }
-    else if (prevbezt->ipo == BEZT_IPO_LIN) {
-      /* Linear interpolation: just add one point (which should add a new line segment) */
-      curve_vertices.append({prevbezt->vec[1][0], prevbezt->vec[1][1]});
-    }
-    else if (prevbezt->ipo == BEZT_IPO_BEZ) {
-      const int resolution = calculate_bezt_draw_resolution(bezt, prevbezt, resolution_scale);
-      add_bezt_vertices(bezt, prevbezt, resolution, curve_vertices);
+    switch (prevbezt->ipo) {
+
+      case BEZT_IPO_CONST:
+        /* Constant-Interpolation: draw segment between previous keyframe and next,
+         * but holding same value */
+        curve_vertices.append({prevbezt->vec[1][0], prevbezt->vec[1][1]});
+        curve_vertices.append({bezt->vec[1][0], prevbezt->vec[1][1]});
+        break;
+
+      case BEZT_IPO_LIN:
+        /* Linear interpolation: just add one point (which should add a new line segment) */
+        curve_vertices.append({prevbezt->vec[1][0], prevbezt->vec[1][1]});
+        break;
+
+      case BEZT_IPO_BEZ: {
+        const int resolution = calculate_bezt_draw_resolution(bezt, prevbezt, resolution_scale);
+        add_bezt_vertices(bezt, prevbezt, resolution, curve_vertices);
+        break;
+      }
+
+      default: {
+        /* In case there is no other way to get curve points, evaluate the FCurve. */
+        curve_vertices.append(prevbezt->vec[1]);
+        float current_frame = prevbezt->vec[1][0] + evaluation_step;
+        while (current_frame < bezt->vec[1][0]) {
+          curve_vertices.append({current_frame, evaluate_fcurve(fcu, current_frame)});
+          current_frame += evaluation_step;
+        }
+        break;
+      }
     }
 
     /* Last point? */
@@ -1211,12 +1216,7 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
     else if (((fcu->bezt) || (fcu->fpt)) && (fcu->totvert)) {
       /* just draw curve based on defined data (i.e. no modifiers) */
       if (fcu->bezt) {
-        if (fcurve_can_use_simple_bezt_drawing(fcu)) {
-          draw_fcurve_curve_bezts(ac, ale->id, fcu, &region->v2d, shdr_pos, draw_extrapolation);
-        }
-        else {
-          draw_fcurve_curve(ac, ale->id, fcu, &region->v2d, shdr_pos, false, draw_extrapolation);
-        }
+        draw_fcurve_curve_keys(ac, ale->id, fcu, &region->v2d, shdr_pos, draw_extrapolation);
       }
       else if (fcu->fpt) {
         draw_fcurve_curve_samples(ac, ale->id, fcu, &region->v2d, shdr_pos, draw_extrapolation);
@@ -1416,8 +1416,6 @@ static void graph_draw_driver_debug(bAnimContext *ac, ID *id, FCurve *fcu)
 
 void graph_draw_ghost_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region)
 {
-  FCurve *fcu;
-
   /* draw with thick dotted lines */
   GPU_line_width(3.0f);
 
@@ -1445,7 +1443,7 @@ void graph_draw_ghost_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region
    * See issue #109920 for details. */
   const bool draw_extrapolation = false;
   /* the ghost curves are simply sampled F-Curves stored in sipo->runtime.ghost_curves */
-  for (fcu = static_cast<FCurve *>(sipo->runtime.ghost_curves.first); fcu; fcu = fcu->next) {
+  LISTBASE_FOREACH (FCurve *, fcu, &sipo->runtime.ghost_curves) {
     /* set whatever color the curve has set
      * - this is set by the function which creates these
      * - draw with a fixed opacity of 2
@@ -1467,7 +1465,6 @@ void graph_draw_ghost_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region
 void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, short sel)
 {
   ListBase anim_data = {nullptr, nullptr};
-  bAnimListElem *ale;
   int filter;
 
   /* build list of curves to draw */
@@ -1481,7 +1478,7 @@ void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, shor
    * the data will be layered correctly
    */
   bAnimListElem *ale_active_fcurve = nullptr;
-  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     const FCurve *fcu = (FCurve *)ale->key_data;
     if (fcu->flag & FCURVE_ACTIVE) {
       ale_active_fcurve = ale;

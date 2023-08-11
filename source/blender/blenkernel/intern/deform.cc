@@ -22,13 +22,14 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
+#include "BKE_attribute.hh"
 #include "BKE_customdata.h"
 #include "BKE_data_transfer.h"
 #include "BKE_deform.h" /* own include */
@@ -681,12 +682,11 @@ int BKE_object_defgroup_flip_index(const Object *ob, int index, const bool use_d
   return (flip_index == -1 && use_default) ? index : flip_index;
 }
 
-static bool defgroup_find_name_dupe(const char *name, bDeformGroup *dg, Object *ob)
+static bool defgroup_find_name_dupe(const char *name, bDeformGroup *dg, ID *id)
 {
-  const ListBase *defbase = BKE_object_defgroup_list(ob);
-  bDeformGroup *curdef;
+  const ListBase *defbase = BKE_id_defgroup_list_get(id);
 
-  for (curdef = static_cast<bDeformGroup *>(defbase->first); curdef; curdef = curdef->next) {
+  LISTBASE_FOREACH (bDeformGroup *, curdef, defbase) {
     if (dg != curdef) {
       if (STREQ(curdef->name, name)) {
         return true;
@@ -697,21 +697,31 @@ static bool defgroup_find_name_dupe(const char *name, bDeformGroup *dg, Object *
   return false;
 }
 
-struct DeformGroupUniqueNameData {
-  Object *ob;
-  bDeformGroup *dg;
-};
-
-static bool defgroup_unique_check(void *arg, const char *name)
+bool BKE_defgroup_unique_name_check(void *arg, const char *name)
 {
-  DeformGroupUniqueNameData *data = static_cast<DeformGroupUniqueNameData *>(arg);
-  return defgroup_find_name_dupe(name, data->dg, data->ob);
+  AttributeAndDefgroupUniqueNameData *data = static_cast<AttributeAndDefgroupUniqueNameData *>(
+      arg);
+  return defgroup_find_name_dupe(name, data->dg, data->id);
 }
 
 void BKE_object_defgroup_unique_name(bDeformGroup *dg, Object *ob)
 {
-  DeformGroupUniqueNameData data{ob, dg};
-  BLI_uniquename_cb(defgroup_unique_check, &data, DATA_("Group"), '.', dg->name, sizeof(dg->name));
+  /* Avoid name collisions with other vertex groups and (mesh) attributes. */
+  if (ob->type == OB_MESH) {
+    Mesh *me = static_cast<Mesh *>(ob->data);
+    AttributeAndDefgroupUniqueNameData data{&me->id, dg};
+    BLI_uniquename_cb(BKE_id_attribute_and_defgroup_unique_name_check,
+                      &data,
+                      DATA_("Group"),
+                      '.',
+                      dg->name,
+                      sizeof(dg->name));
+  }
+  else {
+    AttributeAndDefgroupUniqueNameData data{static_cast<ID *>(ob->data), dg};
+    BLI_uniquename_cb(
+        BKE_defgroup_unique_name_check, &data, DATA_("Group"), '.', dg->name, sizeof(dg->name));
+  }
 }
 
 float BKE_defvert_find_weight(const MDeformVert *dvert, const int defgroup)

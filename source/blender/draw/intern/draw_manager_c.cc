@@ -49,10 +49,10 @@
 #include "DNA_view3d_types.h"
 #include "DNA_world_types.h"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_view3d.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_view3d.hh"
 
 #include "GPU_capabilities.h"
 #include "GPU_framebuffer.h"
@@ -69,11 +69,11 @@
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
-#include "WM_api.h"
-#include "wm_window.h"
+#include "WM_api.hh"
+#include "wm_window.hh"
 
 #include "draw_color_management.h"
 #include "draw_manager.h"
@@ -85,7 +85,7 @@
 #include "draw_texture_pool.h"
 
 /* only for callbacks */
-#include "draw_cache_impl.h"
+#include "draw_cache_impl.hh"
 
 #include "engines/basic/basic_engine.h"
 #include "engines/compositor/compositor_engine.h"
@@ -790,9 +790,7 @@ void **DRW_view_layer_engine_data_ensure_ex(ViewLayer *view_layer,
 {
   ViewLayerEngineData *sled;
 
-  for (sled = static_cast<ViewLayerEngineData *>(view_layer->drawdata.first); sled;
-       sled = sled->next)
-  {
+  LISTBASE_FOREACH (ViewLayerEngineData *, sled, &view_layer->drawdata) {
     if (sled->engine_type == engine_type) {
       return &sled->storage;
     }
@@ -974,7 +972,6 @@ static void drw_drawdata_unlink_dupli(ID *id)
 void DRW_cache_free_old_batches(Main *bmain)
 {
   Scene *scene;
-  ViewLayer *view_layer;
   static int lasttime = 0;
   int ctime = int(PIL_check_seconds_timer());
 
@@ -987,9 +984,7 @@ void DRW_cache_free_old_batches(Main *bmain)
   for (scene = static_cast<Scene *>(bmain->scenes.first); scene;
        scene = static_cast<Scene *>(scene->id.next))
   {
-    for (view_layer = static_cast<ViewLayer *>(scene->view_layers.first); view_layer;
-         view_layer = view_layer->next)
-    {
+    LISTBASE_FOREACH (ViewLayer *, view_layer, &scene->view_layers) {
       Depsgraph *depsgraph = BKE_scene_get_depsgraph(scene, view_layer);
       if (depsgraph == nullptr) {
         continue;
@@ -2839,7 +2834,7 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, cons
     drw_engines_cache_finish();
 
     drw_task_graph_deinit();
-#if 0 /* This is a workaround to a nasty bug that seems to be a nasty driver bug. (See #69377) */
+#if 0 /* This is a workaround to a nasty bug that seems to be a nasty driver bug (see #69377). */
     DRW_render_instance_buffer_finish();
 #else
     DST.buffer_finish_called = true;

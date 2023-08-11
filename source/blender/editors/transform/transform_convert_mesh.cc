@@ -14,7 +14,10 @@
 #include "BLI_alloca.h"
 #include "BLI_bitmap.h"
 #include "BLI_linklist_stack.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_memarena.h"
 
 #include "BKE_context.h"
@@ -24,7 +27,7 @@
 #include "BKE_modifier.h"
 #include "BKE_scene.h"
 
-#include "ED_mesh.h"
+#include "ED_mesh.hh"
 
 #include "DEG_depsgraph_query.h"
 
@@ -1658,7 +1661,6 @@ static void createTransEditVerts(bContext * /*C*/, TransInfo *t)
             tob->dist = dists[a];
           }
           else {
-            tob->flag |= TD_NOTCONNECTED;
             tob->dist = FLT_MAX;
           }
         }

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <numeric>
 
+#include "BLI_math_geom.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_memory_utils.hh"
 #include "BLI_task.hh"
@@ -18,10 +19,10 @@
 
 #include "DEG_depsgraph.h"
 
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "curves_sculpt_intern.hh"
 

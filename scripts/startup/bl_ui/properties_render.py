@@ -58,6 +58,7 @@ class RENDER_PT_color_management(RenderButtonsPanel, Panel):
         'BLENDER_WORKBENCH_NEXT'}
 
     def draw(self, context):
+
         layout = self.layout
         layout.use_property_split = True
         layout.use_property_decorate = False  # No animation.
@@ -82,6 +83,36 @@ class RENDER_PT_color_management(RenderButtonsPanel, Panel):
         col.separator()
 
         col.prop(scene.sequencer_colorspace_settings, "name", text="Sequencer")
+
+
+class RENDER_PT_color_management_display_settings(RenderButtonsPanel, Panel):
+    bl_label = "Display"
+    bl_parent_id = "RENDER_PT_color_management"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {
+        'BLENDER_RENDER',
+        'BLENDER_EEVEE',
+        'BLENDER_EEVEE_NEXT',
+        'BLENDER_WORKBENCH',
+        'BLENDER_WORKBENCH_NEXT'}
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False  # No animation.
+
+        scene = context.scene
+        view = scene.view_settings
+
+        # Only enable display sub-section if HDR support is available.
+        import gpu
+        layout.enabled = gpu.capabilities.hdr_support_get()
+
+        # Only display HDR toggle for non-Filmic display transforms.
+        col = layout.column(align=True)
+        sub = col.row()
+        sub.active = (view.view_transform != "Filmic" and view.view_transform != "Filmic Log")
+        sub.prop(view, "use_hdr_view")
 
 
 class RENDER_PT_color_management_curves(RenderButtonsPanel, Panel):
@@ -406,6 +437,53 @@ class RENDER_PT_eevee_volumetric_shadows(RenderButtonsPanel, Panel):
         layout.prop(props, "volumetric_shadow_samples", text="Samples")
 
 
+class RENDER_PT_eevee_next_volumetric(RenderButtonsPanel, Panel):
+    bl_label = "Volumetrics"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
+
+    @classmethod
+    def poll(cls, context):
+        return (context.engine in cls.COMPAT_ENGINES)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        scene = context.scene
+        props = scene.eevee
+
+        col = layout.column(align=True)
+        col.prop(props, "volumetric_start")
+        col.prop(props, "volumetric_end")
+
+        col = layout.column()
+        col.prop(props, "volumetric_tile_size")
+        col.prop(props, "volumetric_samples")
+        col.prop(props, "volumetric_sample_distribution", text="Distribution")
+
+
+class RENDER_PT_eevee_next_volumetric_lighting(RenderButtonsPanel, Panel):
+    bl_label = "Volumetric Lighting"
+    bl_parent_id = "RENDER_PT_eevee_next_volumetric"
+    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
+
+    def draw_header(self, context):
+        scene = context.scene
+        props = scene.eevee
+        self.layout.prop(props, "use_volumetric_lights", text="")
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        scene = context.scene
+        props = scene.eevee
+
+        layout.active = props.use_volumetric_lights
+        layout.prop(props, "volumetric_light_clamp", text="Light Clamping")
+
+
 class RENDER_PT_eevee_subsurface_scattering(RenderButtonsPanel, Panel):
     bl_label = "Subsurface Scattering"
     bl_options = {'DEFAULT_CLOSED'}
@@ -548,7 +626,7 @@ class EeveeRaytracingDenoisePanel(RenderButtonsPanel, Panel):
 
 
 class RENDER_PT_eevee_next_raytracing_reflection(EeveeRaytracingOptionsPanel):
-    #NOTE: Label is drawn by draw_header
+    # NOTE: Label is drawn by draw_header
     bl_label = ""
     bl_parent_id = "RENDER_PT_eevee_next_raytracing"
 
@@ -763,6 +841,8 @@ class RENDER_PT_eevee_next_indirect_lighting(RenderButtonsPanel, Panel):
         col = layout.column()
         col.operator("object.lightprobe_cache_bake", text="Bake Light Caches", icon='RENDER_STILL').subset = "ALL"
         col.operator("object.lightprobe_cache_free", text="Delete Light Caches").subset = "ALL"
+
+        col.prop(props, "gi_irradiance_pool_size", text="Pool Size")
 
 
 class RENDER_PT_eevee_indirect_lighting_display(RenderButtonsPanel, Panel):
@@ -1109,6 +1189,25 @@ class RENDER_PT_simplify_greasepencil(RenderButtonsPanel, Panel, GreasePencilSim
     bl_options = {'DEFAULT_CLOSED'}
 
 
+class RENDER_PT_hydra_debug(RenderButtonsPanel, Panel):
+    bl_label = "Hydra Debug"
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_order = 200
+    COMPAT_ENGINES = {'HYDRA_STORM'}
+
+    @classmethod
+    def poll(cls, context):
+        prefs = context.preferences
+        return (context.engine in cls.COMPAT_ENGINES) and prefs.view.show_developer_ui
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+
+        hydra = context.scene.hydra
+        layout.prop(hydra, "export_method")
+
+
 classes = (
     RENDER_PT_context,
     RENDER_PT_eevee_sampling,
@@ -1133,6 +1232,8 @@ classes = (
     RENDER_PT_eevee_volumetric,
     RENDER_PT_eevee_volumetric_lighting,
     RENDER_PT_eevee_volumetric_shadows,
+    RENDER_PT_eevee_next_volumetric,
+    RENDER_PT_eevee_next_volumetric_lighting,
     RENDER_PT_eevee_performance,
     RENDER_PT_eevee_hair,
     RENDER_PT_eevee_shadows,
@@ -1151,7 +1252,9 @@ classes = (
     RENDER_PT_opengl_color,
     RENDER_PT_opengl_options,
     RENDER_PT_opengl_film,
+    RENDER_PT_hydra_debug,
     RENDER_PT_color_management,
+    RENDER_PT_color_management_display_settings,
     RENDER_PT_color_management_curves,
     RENDER_PT_simplify,
     RENDER_PT_simplify_viewport,

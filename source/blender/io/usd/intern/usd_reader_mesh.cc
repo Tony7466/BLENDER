@@ -15,7 +15,6 @@
 #include "BKE_mesh.hh"
 #include "BKE_object.h"
 
-#include "BLI_math.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
@@ -29,7 +28,7 @@
 #include "DNA_object_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "MEM_guardedalloc.h"
 
