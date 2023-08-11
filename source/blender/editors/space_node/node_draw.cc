@@ -2141,28 +2141,30 @@ static void node_draw_extra_info_panel(const Scene *scene,
     extra_info_rect.ymin = rct.ymax;
     extra_info_rect.ymax = rct.ymax + extra_info_rows.size() * (20.0f * UI_SCALE_FAC);
     if (preview) {
+      const float node_max_width = fmin(width, U.node_max_preview_size * UI_SCALE_FAC);
+      const float preview_padding = 3.0f * UI_SCALE_FAC;
       if (preview->x > preview->y) {
-        const float preview_padding = 3.0f * UI_SCALE_FAC;
-        preview_height = (width - 2.0 * preview_padding) * float(preview->y) / float(preview->x) +
+        preview_height = (node_max_width - 2.0 * preview_padding) * float(preview->y) /
+                             float(preview->x) +
                          2.0 * preview_padding;
         preview_rect.ymin = extra_info_rect.ymin + preview_padding;
         preview_rect.ymax = extra_info_rect.ymin + preview_height - preview_padding;
         preview_rect.xmin = extra_info_rect.xmin + preview_padding;
         preview_rect.xmax = extra_info_rect.xmax - preview_padding;
-        extra_info_rect.ymax += preview_height;
       }
       else {
-        const float preview_padding = 3.0f * UI_SCALE_FAC;
-        preview_height = width;
-        const float preview_width = (width - 2.0 * preview_padding) * float(preview->x) /
+        preview_height = node_max_width;
+        const float preview_width = (node_max_width - 2.0 * preview_padding) * float(preview->x) /
                                         float(preview->y) +
                                     2.0 * preview_padding;
         preview_rect.ymin = extra_info_rect.ymin + preview_padding;
         preview_rect.ymax = extra_info_rect.ymin + preview_height - preview_padding;
-        preview_rect.xmin = extra_info_rect.xmin + preview_padding + (width - preview_width) / 2;
-        preview_rect.xmax = extra_info_rect.xmax - preview_padding - (width - preview_width) / 2;
-        extra_info_rect.ymax += preview_height;
+        preview_rect.xmin = extra_info_rect.xmin + preview_padding +
+                            (node_max_width - preview_width) / 2;
+        preview_rect.xmax = extra_info_rect.xmax - preview_padding -
+                            (node_max_width - preview_width) / 2;
       }
+      extra_info_rect.ymax += preview_height;
     }
 
     if (node.flag & NODE_MUTED) {

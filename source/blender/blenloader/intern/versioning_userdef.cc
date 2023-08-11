@@ -852,6 +852,10 @@ void blo_do_versions_userdef(UserDef *userdef)
     userdef->node_preview_res = 120;
   }
 
+  if (!USER_VERSION_ATLEAST(400, 16)) {
+    userdef->node_max_preview_size = 150;
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *

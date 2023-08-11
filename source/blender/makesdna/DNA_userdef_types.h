@@ -823,6 +823,9 @@ typedef struct UserDef {
   /** Node insert offset (aka auto-offset) margin, but might be useful for later stuff as well. */
   char node_margin;
   char node_preview_res;
+  /** Maximum size of the preview above the node. */
+  char node_max_preview_size;
+  char _pad2[7];
   /** #eUserpref_Translation_Flags. */
   short transopts;
   short menuthreshold1, menuthreshold2;
