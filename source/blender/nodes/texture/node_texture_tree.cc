@@ -30,12 +30,12 @@
 
 #include "DEG_depsgraph.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "RE_texture.h"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 static void texture_get_from_context(
     const bContext *C, bNodeTreeType * /*treetype*/, bNodeTree **r_ntree, ID **r_id, ID **r_from)

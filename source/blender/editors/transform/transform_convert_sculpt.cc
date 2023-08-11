@@ -8,7 +8,9 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_context.h"
 #include "BKE_layer.h"
@@ -16,7 +18,7 @@
 #include "BKE_paint.hh"
 #include "BKE_report.h"
 
-#include "ED_sculpt.h"
+#include "ED_sculpt.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"

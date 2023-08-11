@@ -14,8 +14,8 @@
 #include "DNA_text_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_math_base.h"
+#include "BLI_math_vector.h"
 #include "BLI_string_cursor_utf8.h"
 
 #include "BLT_translation.h"
@@ -28,17 +28,17 @@
 #include "BKE_report.h"
 #include "BKE_text.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_curve.h"
-#include "ED_screen.h"
-#include "ED_text.h"
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "ED_curve.hh"
+#include "ED_screen.hh"
+#include "ED_text.hh"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"

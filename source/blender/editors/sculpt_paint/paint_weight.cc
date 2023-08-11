@@ -17,7 +17,6 @@
 #include "BLI_color.hh"
 #include "BLI_color_mix.hh"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_task.h"
@@ -30,7 +29,7 @@
 #include "DNA_particle_types.h"
 #include "DNA_scene_types.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "BKE_attribute.h"
 #include "BKE_attribute.hh"
@@ -49,16 +48,16 @@
 
 #include "DEG_depsgraph.h"
 
-#include "WM_api.h"
-#include "WM_message.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
 #include "WM_toolsystem.h"
-#include "WM_types.h"
+#include "WM_types.hh"
 
-#include "ED_image.h"
-#include "ED_mesh.h"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_image.hh"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
 /* For IMB_BlendMode only. */
 #include "IMB_imbuf.h"

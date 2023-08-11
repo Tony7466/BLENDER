@@ -44,7 +44,6 @@ struct Image;
 struct MovieClip;
 struct Object;
 struct Scene;
-struct SceneCollection;
 struct World;
 struct bGPdata;
 struct bNodeTree;
@@ -1810,7 +1809,7 @@ typedef struct SceneDisplay {
 } SceneDisplay;
 
 /**
- * Raytracing parameters.
+ * Ray-tracing parameters.
  */
 typedef struct RaytraceEEVEE {
   /** Higher values will take lower strides and have less blurry intersections. */
@@ -1835,6 +1834,7 @@ typedef struct SceneEEVEE {
   float gi_irradiance_smoothing;
   float gi_glossy_clamp;
   float gi_filter_quality;
+  int gi_irradiance_pool_size;
 
   float gi_cubemap_draw_size;
   float gi_irradiance_draw_size;
@@ -1889,7 +1889,6 @@ typedef struct SceneEEVEE {
 
   int ray_split_settings;
   int ray_tracing_method;
-  char _pad0[4];
 
   struct RaytraceEEVEE reflection_options;
   struct RaytraceEEVEE refraction_options;
@@ -1907,6 +1906,11 @@ typedef struct SceneGpencil {
   float smaa_threshold;
   char _pad[4];
 } SceneGpencil;
+
+typedef struct SceneHydra {
+  int export_method;
+  int _pad0;
+} SceneHydra;
 
 /** \} */
 
@@ -2045,15 +2049,14 @@ typedef struct Scene {
   ListBase view_layers;
   /** Not an actual data-block, but memory owned by scene. */
   struct Collection *master_collection;
-  struct SceneCollection *collection DNA_DEPRECATED;
 
   /** Settings to be override by work-spaces. */
   IDProperty *layer_properties;
-  void *_pad9;
 
   struct SceneDisplay display;
   struct SceneEEVEE eevee;
   struct SceneGpencil grease_pencil_settings;
+  struct SceneHydra hydra;
 } Scene;
 
 /** \} */
@@ -2841,7 +2844,7 @@ typedef enum RaytraceEEVEE_DenoiseStages {
 typedef enum RaytraceEEVEE_Method {
   RAYTRACE_EEVEE_METHOD_NONE = 0,
   RAYTRACE_EEVEE_METHOD_SCREEN = 1,
-  /* TODO(fclem): Hardware raytracing. */
+  /* TODO(fclem): Hardware ray-tracing. */
   // RAYTRACE_EEVEE_METHOD_HARDWARE = 2,
 } RaytraceEEVEE_Method;
 
@@ -2868,6 +2871,13 @@ enum {
   SCE_DISPLAY_AA_SAMPLES_11 = 11,
   SCE_DISPLAY_AA_SAMPLES_16 = 16,
   SCE_DISPLAY_AA_SAMPLES_32 = 32,
+};
+
+/** #SceneHydra->export_method */
+
+enum {
+  SCE_HYDRA_EXPORT_HYDRA = 0,
+  SCE_HYDRA_EXPORT_USD = 1,
 };
 
 /** \} */

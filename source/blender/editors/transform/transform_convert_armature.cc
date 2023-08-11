@@ -13,7 +13,9 @@
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
 #include "BKE_action.h"
@@ -26,13 +28,13 @@
 
 #include "BIK_api.h"
 
-#include "ED_armature.h"
-#include "ED_keyframing.h"
+#include "ED_armature.hh"
+#include "ED_keyframing.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "transform.hh"

@@ -11,14 +11,15 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_context.h"
 #include "BKE_main.h"
 #include "BKE_report.h"
 
-#include "ED_markers.h"
-#include "ED_time_scrub_ui.h"
+#include "ED_markers.hh"
+#include "ED_time_scrub_ui.hh"
 
 #include "SEQ_animation.h"
 #include "SEQ_channels.h"
@@ -31,7 +32,7 @@
 #include "SEQ_transform.h"
 #include "SEQ_utils.h"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"

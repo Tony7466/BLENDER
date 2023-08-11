@@ -9,7 +9,6 @@
  */
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_string_utils.h"
 
 #include "DNA_armature_types.h"
@@ -30,8 +29,8 @@
 /* Only for blend modes. */
 #include "IMB_imbuf.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "paint_intern.hh" /* own include */
 
