@@ -46,7 +46,7 @@
 #include "UI_interface_icons.hh"
 #include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -171,7 +171,7 @@ static ImBuf *wm_block_splash_image(int width, int *r_height)
   return ibuf;
 }
 
-static void new_manual_load_settings_fn(struct bContext *C, void *arg1, void *arg2)
+static void new_manual_load_settings_fn(struct bContext *C, void * /*arg1*/, void * /*arg2*/)
 {
   WM_cursor_wait(true);
   PointerRNA ptr_props;
