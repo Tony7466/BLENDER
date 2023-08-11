@@ -21,6 +21,8 @@
 
 #include "BLI_bounds.hh"
 #include "BLI_map.hh"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_memarena.h"
 #include "BLI_memory_utils.hh"
@@ -479,7 +481,10 @@ Layer &TreeNode::as_layer_for_write()
 
 LayerGroup *TreeNode::parent_group() const
 {
-  return &this->parent->wrap();
+  if (this->parent) {
+    return &this->parent->wrap();
+  }
+  return nullptr;
 }
 
 LayerMask::LayerMask()
@@ -598,6 +603,11 @@ bool Layer::is_empty() const
 bool Layer::is_selected() const
 {
   return ((this->base.flag & GP_LAYER_TREE_NODE_SELECT) != 0);
+}
+
+bool Layer::use_onion_skinning() const
+{
+  return ((this->base.flag & GP_LAYER_TREE_NODE_USE_ONION_SKINNING) != 0);
 }
 
 Layer::SortedKeysIterator Layer::remove_leading_null_frames_in_range(
@@ -756,6 +766,20 @@ int Layer::drawing_index_at(const int frame_number) const
 {
   const GreasePencilFrame *frame = frame_at(frame_number);
   return (frame != nullptr) ? frame->drawing_index : -1;
+}
+
+int Layer::get_frame_duration_at(const int frame_number) const
+{
+  const FramesMapKey frame_key = this->frame_key_at(frame_number);
+  if (frame_key == -1) {
+    return -1;
+  }
+  SortedKeysIterator frame_number_it = std::next(this->sorted_keys().begin(), frame_key);
+  if (*frame_number_it == this->sorted_keys().last()) {
+    return -1;
+  }
+  const int next_frame_number = *(std::next(frame_number_it));
+  return next_frame_number - frame_number;
 }
 
 void Layer::tag_frames_map_changed()
@@ -1415,19 +1439,6 @@ bool GreasePencil::insert_blank_frame(blender::bke::greasepencil::Layer &layer,
   return true;
 }
 
-static int get_frame_duration(const blender::bke::greasepencil::Layer &layer,
-                              const int frame_number)
-{
-  Span<int> sorted_keys = layer.sorted_keys();
-  const int *frame_number_it = std::lower_bound(
-      sorted_keys.begin(), sorted_keys.end(), frame_number);
-  if (std::next(frame_number_it) == sorted_keys.end()) {
-    return 0;
-  }
-  const int next_frame_number = *(std::next(frame_number_it));
-  return next_frame_number - frame_number;
-}
-
 bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &layer,
                                           const int src_frame_number,
                                           const int dst_frame_number,
@@ -1444,8 +1455,9 @@ bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &lay
    * If we want to make an instance of the source frame, the drawing index gets copied from the
    * source frame. Otherwise, we set the drawing index to the size of the drawings array, since we
    * are going to add a new drawing copied from the source drawing. */
-  const int duration = src_frame.is_implicit_hold() ? 0 :
-                                                      get_frame_duration(layer, src_frame_number);
+  const int duration = src_frame.is_implicit_hold() ?
+                           0 :
+                           layer.get_frame_duration_at(src_frame_number);
   const int drawing_index = do_instance ? src_frame.drawing_index : int(this->drawings().size());
   GreasePencilFrame *dst_frame = layer.add_frame(dst_frame_number, drawing_index, duration);
 
@@ -1482,95 +1494,166 @@ bool GreasePencil::insert_duplicate_frame(blender::bke::greasepencil::Layer &lay
   return true;
 }
 
-bool GreasePencil::remove_frame_at(blender::bke::greasepencil::Layer &layer,
-                                   const int frame_number)
+bool GreasePencil::remove_frames(blender::bke::greasepencil::Layer &layer,
+                                 blender::Span<int> frame_numbers)
 {
   using namespace blender::bke::greasepencil;
-  if (!layer.frames().contains(frame_number)) {
-    return false;
+  bool removed_any_drawing_user = false;
+  for (const int frame_number : frame_numbers) {
+    if (!layer.frames().contains(frame_number)) {
+      continue;
+    }
+    const GreasePencilFrame frame_to_remove = layer.frames().lookup(frame_number);
+    const int64_t drawing_index_to_remove = frame_to_remove.drawing_index;
+    if (!layer.remove_frame(frame_number)) {
+      /* If removing the frame was not successful, continue. */
+      continue;
+    }
+    if (frame_to_remove.is_null()) {
+      /* Null frames don't reference a drawing, continue. */
+      continue;
+    }
+    GreasePencilDrawingBase *drawing_base = this->drawings(drawing_index_to_remove);
+    if (drawing_base->type != GP_DRAWING) {
+      /* If the drawing is referenced from another object, we don't track it's users because we
+       * cannot delete drawings from another object. */
+      continue;
+    }
+    Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
+    drawing.remove_user();
+    removed_any_drawing_user = true;
   }
-  const GreasePencilFrame &frame_to_remove = layer.frames().lookup(frame_number);
-  const int drawing_index_to_remove = frame_to_remove.drawing_index;
-  if (!layer.remove_frame(frame_number)) {
-    /* If removing the frame was not successful, return early. */
-    return false;
+  if (removed_any_drawing_user) {
+    this->remove_drawings_with_no_users();
+    return true;
   }
-  GreasePencilDrawingBase *drawing_base = this->drawings(drawing_index_to_remove);
-  if (drawing_base->type != GP_DRAWING) {
-    /* If the drawing is referenced from another object, we don't track it's users because we
-     * cannot delete drawings from another object. Return early. */
-    return false;
-  }
-  Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
-  drawing.remove_user();
-  if (!drawing.has_users()) {
-    this->remove_drawing(drawing_index_to_remove);
-  }
-  return true;
+  return false;
 }
 
-void GreasePencil::remove_drawing(const int index_to_remove)
+static void remove_drawings_unchecked(GreasePencil &grease_pencil,
+                                      Span<int64_t> sorted_indices_to_remove)
 {
   using namespace blender::bke::greasepencil;
-  /* In order to not change the indices of the drawings, we do the following to the drawing to be
-   * removed:
-   *  - If the drawing (A) is not the last one:
-   *     1.1) Find any frames in the layers that reference the last drawing (B) and point them to
-   *          A's index.
-   *     1.2) Swap drawing A with drawing B.
-   *  2) Destroy A and shrink the array by one.
-   *  3) Remove any frames in the layers that reference the A's index.
-   */
-  BLI_assert(this->drawing_array_num > 0);
-  BLI_assert(index_to_remove >= 0 && index_to_remove < this->drawing_array_num);
+  if (grease_pencil.drawing_array_num == 0 || sorted_indices_to_remove.size() == 0) {
+    return;
+  }
+  const int64_t drawings_to_remove = sorted_indices_to_remove.size();
+  const blender::IndexRange last_drawings_range(
+      grease_pencil.drawings().size() - drawings_to_remove, drawings_to_remove);
 
-  /* Move the drawing that should be removed to the last index. */
-  const int last_drawing_index = this->drawing_array_num - 1;
-  if (index_to_remove != last_drawing_index) {
-    for (Layer *layer : this->layers_for_write()) {
-      blender::Map<int, GreasePencilFrame> &frames = layer->frames_for_write();
-      for (auto [key, value] : frames.items()) {
-        if (value.drawing_index == last_drawing_index) {
+  /* We keep track of the next available index (for swapping) by iterating from the end and
+   * skipping over drawings that are already in the range to be removed. */
+  auto next_available_index = last_drawings_range.last();
+  auto greatest_index_to_remove_it = std::rbegin(sorted_indices_to_remove);
+  auto get_next_available_index = [&]() {
+    while (next_available_index == *greatest_index_to_remove_it) {
+      greatest_index_to_remove_it = std::prev(greatest_index_to_remove_it);
+      next_available_index--;
+    }
+    return next_available_index;
+  };
+
+  /* Move the drawings to be removed to the end of the array by swapping the pointers. Make sure to
+   * remap any frames pointing to the drawings being swapped. */
+  for (const int64_t index_to_remove : sorted_indices_to_remove) {
+    if (index_to_remove >= last_drawings_range.first()) {
+      /* This drawing and all the next drawings are already in the range to be removed. */
+      break;
+    }
+    const int64_t swap_index = get_next_available_index();
+    /* Remap the drawing_index for frames that point to the drawing to be swapped with. */
+    for (Layer *layer : grease_pencil.layers_for_write()) {
+      for (auto [key, value] : layer->frames_for_write().items()) {
+        if (value.drawing_index == swap_index) {
           value.drawing_index = index_to_remove;
-        }
-        else if (value.drawing_index == index_to_remove) {
-          value.drawing_index = last_drawing_index;
         }
       }
     }
-    std::swap(this->drawings()[index_to_remove], this->drawings()[last_drawing_index]);
+    /* Swap the pointers to the drawings in the drawing array. */
+    std::swap(grease_pencil.drawings()[index_to_remove], grease_pencil.drawings()[swap_index]);
+    next_available_index--;
   }
 
-  /* Delete the last drawing. */
-  GreasePencilDrawingBase *drawing_base_to_remove = this->drawings(last_drawing_index);
-  switch (drawing_base_to_remove->type) {
-    case GP_DRAWING: {
-      GreasePencilDrawing *drawing_to_remove = reinterpret_cast<GreasePencilDrawing *>(
-          drawing_base_to_remove);
-      MEM_delete(&drawing_to_remove->wrap());
-      break;
-    }
-    case GP_DRAWING_REFERENCE: {
-      GreasePencilDrawingReference *drawing_reference_to_remove =
-          reinterpret_cast<GreasePencilDrawingReference *>(drawing_base_to_remove);
-      MEM_freeN(drawing_reference_to_remove);
-      break;
-    }
-  }
-
-  /* Remove any frame that points to the last drawing. */
-  for (Layer *layer : this->layers_for_write()) {
-    blender::Map<int, GreasePencilFrame> &frames = layer->frames_for_write();
-    int64_t frames_removed = frames.remove_if([last_drawing_index](auto item) {
-      return item.value.drawing_index == last_drawing_index;
-    });
-    if (frames_removed > 0) {
-      layer->tag_frames_map_keys_changed();
+  /* Free the last drawings. */
+  for (const int64_t drawing_index : last_drawings_range) {
+    GreasePencilDrawingBase *drawing_base_to_remove = grease_pencil.drawings(drawing_index);
+    switch (drawing_base_to_remove->type) {
+      case GP_DRAWING: {
+        GreasePencilDrawing *drawing_to_remove = reinterpret_cast<GreasePencilDrawing *>(
+            drawing_base_to_remove);
+        MEM_delete(&drawing_to_remove->wrap());
+        break;
+      }
+      case GP_DRAWING_REFERENCE: {
+        GreasePencilDrawingReference *drawing_reference_to_remove =
+            reinterpret_cast<GreasePencilDrawingReference *>(drawing_base_to_remove);
+        MEM_freeN(drawing_reference_to_remove);
+        break;
+      }
     }
   }
 
   /* Shrink drawing array. */
-  shrink_array<GreasePencilDrawingBase *>(&this->drawing_array, &this->drawing_array_num, 1);
+  shrink_array<GreasePencilDrawingBase *>(
+      &grease_pencil.drawing_array, &grease_pencil.drawing_array_num, drawings_to_remove);
+}
+
+void GreasePencil::remove_drawings_with_no_users()
+{
+  using namespace blender;
+  Vector<int64_t> drawings_to_be_removed;
+  for (const int64_t drawing_i : this->drawings().index_range()) {
+    GreasePencilDrawingBase *drawing_base = this->drawings(drawing_i);
+    if (drawing_base->type != GP_DRAWING) {
+      continue;
+    }
+    GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
+    if (!drawing->wrap().has_users()) {
+      drawings_to_be_removed.append(drawing_i);
+    }
+  }
+  remove_drawings_unchecked(*this, drawings_to_be_removed.as_span());
+}
+
+void GreasePencil::move_frames(blender::bke::greasepencil::Layer &layer,
+                               const blender::Map<int, int> &frame_number_destinations)
+{
+  using namespace blender;
+
+  Map<int, GreasePencilFrame> layer_frames_copy = layer.frames();
+
+  /* Remove all frames that have a mapping. */
+  for (const int frame_number : frame_number_destinations.keys()) {
+    layer.remove_frame(frame_number);
+  }
+
+  /* Insert all frames of the transformation. */
+  for (const auto [src_frame_number, dst_frame_number] : frame_number_destinations.items()) {
+    if (!layer_frames_copy.contains(src_frame_number)) {
+      continue;
+    }
+
+    const GreasePencilFrame src_frame = layer_frames_copy.lookup(src_frame_number);
+    const int drawing_index = src_frame.drawing_index;
+    const int duration = src_frame.is_implicit_hold() ?
+                             0 :
+                             layer.get_frame_duration_at(src_frame_number);
+
+    /* Add and overwrite the frame at the destination number. */
+    if (layer.frames().contains(dst_frame_number)) {
+      GreasePencilFrame frame_to_overwrite = layer.frames().lookup(dst_frame_number);
+      GreasePencilDrawingBase *drawing_base = this->drawings(frame_to_overwrite.drawing_index);
+      if (drawing_base->type == GP_DRAWING) {
+        reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap().remove_user();
+      }
+      layer.remove_frame(dst_frame_number);
+    }
+    GreasePencilFrame *frame = layer.add_frame(dst_frame_number, drawing_index, duration);
+    *frame = src_frame;
+  }
+
+  /* Remove drawings if they no longer have users. */
+  this->remove_drawings_with_no_users();
 }
 
 blender::bke::greasepencil::Drawing *GreasePencil::get_editable_drawing_at(
@@ -1895,10 +1978,15 @@ void GreasePencil::remove_layer(blender::bke::greasepencil::Layer &layer)
   layer.parent_group().unlink_node(&layer.as_node());
 
   /* Remove drawings. */
-  /* TODO: In the future this should only remove drawings when the user count hits zero. */
   for (GreasePencilFrame frame : layer.frames_for_write().values()) {
-    this->remove_drawing(frame.drawing_index);
+    GreasePencilDrawingBase *drawing_base = this->drawings(frame.drawing_index);
+    if (drawing_base->type != GP_DRAWING) {
+      continue;
+    }
+    GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
+    drawing->wrap().remove_user();
   }
+  this->remove_drawings_with_no_users();
 
   /* Delete the layer. */
   MEM_delete(&layer);

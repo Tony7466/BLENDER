@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "usd.h"
 
@@ -13,9 +15,9 @@
 
 #include "BLI_listbase.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 #include "bpy_rna.h"
 
 #include "WM_api.hh"
@@ -185,7 +187,7 @@ class USDHookInvoker {
 
       /* XXX: Not sure if this is necessary:
        * Advance the iterator before invoking the callback, to guard
-       * against the unlikely error where the hook is deregistered in
+       * against the unlikely error where the hook is de-registered in
        * the callback. This would prevent a crash due to the iterator
        * getting invalidated. */
       USDHook *hook = *hook_iter;

@@ -21,7 +21,6 @@ using namespace OCIO_NAMESPACE;
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
 #include "BLI_math_color.h"
 #include "BLI_math_matrix.h"
 
@@ -588,6 +587,11 @@ void OCIOImpl::cpuProcessorApply_predivide(OCIO_ConstCPUProcessorRcPtr *cpu_proc
   catch (Exception &exception) {
     OCIO_reportException(exception);
   }
+}
+
+bool OCIOImpl::cpuProcessorIsNoOp(OCIO_ConstCPUProcessorRcPtr *cpu_processor)
+{
+  return (*(ConstCPUProcessorRcPtr *)cpu_processor)->isNoOp();
 }
 
 void OCIOImpl::cpuProcessorApplyRGB(OCIO_ConstCPUProcessorRcPtr *cpu_processor, float *pixel)
