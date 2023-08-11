@@ -10,7 +10,7 @@
 
 #include <memory>
 
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 /* Needed for `tree_element_cast()`. */
 #include "tree/tree_element.hh"
@@ -313,6 +313,11 @@ struct GPencilEffectElementCreateData {
 struct ParticleSystemElementCreateData {
   Object *object;
   ParticleSystem *psys;
+};
+
+struct ViewLayerElementCreateData {
+  Scene *scene;
+  ViewLayer *view_layer;
 };
 
 TreeTraversalAction outliner_collect_selected_collections(TreeElement *te, void *customdata);

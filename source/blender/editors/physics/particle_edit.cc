@@ -22,7 +22,7 @@
 #include "BLI_kdtree.h"
 #include "BLI_lasso_2d.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 #include "BLI_rand.h"
 #include "BLI_rect.h"
 #include "BLI_task.h"
@@ -64,8 +64,8 @@
 #include "WM_toolsystem.h"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "DEG_depsgraph_query.h"
 
@@ -4001,49 +4001,19 @@ static void brush_puff(PEData *data, int point_index, float mouse_distance)
 /* NOLINTNEXTLINE: readability-redundant-preprocessor */
 #  if 0 /* Kind of works but looks worse than what's below. */
 
+            /* Move the unselected point on a vector based on the
+             * hair direction and the offset */
+            float c1[3], c2[3];
+            sub_v3_v3v3(dco, lastco, co);
+            mul_mat3_m4_v3(imat, dco); /* into particle space */
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* Move the unselected point on a vector based on the
-* hair direction and the offset */
-float c1[3], c2[3];
-sub_v3_v3v3(dco, lastco, co);
-mul_mat3_m4_v3(imat, dco); /* into particle space */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* move the point along a vector perpendicular to the
-* hairs direction, reduces odd kinks, */
-cross_v3_v3v3(c1, ofs, dco);
-cross_v3_v3v3(c2, c1, dco);
-normalize_v3(c2);
-mul_v3_fl(c2, len_v3(ofs));
-add_v3_v3(key->co, c2);
+            /* move the point along a vector perpendicular to the
+             * hairs direction, reduces odd kinks, */
+            cross_v3_v3v3(c1, ofs, dco);
+            cross_v3_v3v3(c2, c1, dco);
+            normalize_v3(c2);
+            mul_v3_fl(c2, len_v3(ofs));
+            add_v3_v3(key->co, c2);
 #  else
             /* Move the unselected point on a vector based on the
              * the normal of the closest geometry */

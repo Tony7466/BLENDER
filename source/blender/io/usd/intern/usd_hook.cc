@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "usd.h"
 
@@ -13,9 +15,9 @@
 
 #include "BLI_listbase.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 #include "bpy_rna.h"
 
 #include "WM_api.hh"
@@ -49,8 +51,8 @@ void USD_unregister_hook(struct USDHook *hook)
 USDHook *USD_find_hook_name(const char name[])
 {
   /* sanity checks */
-  if (g_usd_hooks.empty() || (name == NULL) || (name[0] == 0)) {
-    return NULL;
+  if (g_usd_hooks.empty() || (name == nullptr) || (name[0] == 0)) {
+    return nullptr;
   }
 
   USDHookList::iterator hook_iter = std::find_if(
@@ -58,7 +60,7 @@ USDHook *USD_find_hook_name(const char name[])
         return strcmp(hook->idname, name) == 0;
       });
 
-  return (hook_iter == g_usd_hooks.end()) ? NULL : *hook_iter;
+  return (hook_iter == g_usd_hooks.end()) ? nullptr : *hook_iter;
 }
 
 namespace blender::io::usd {
@@ -81,7 +83,7 @@ struct USDSceneExportContext {
 
   USDSceneExportContext(pxr::UsdStageRefPtr in_stage, Depsgraph *depsgraph) : stage(in_stage)
   {
-    RNA_pointer_create(NULL, &RNA_Depsgraph, depsgraph, &depsgraph_ptr);
+    RNA_pointer_create(nullptr, &RNA_Depsgraph, depsgraph, &depsgraph_ptr);
   }
 
   pxr::UsdStageRefPtr get_stage()
@@ -185,7 +187,7 @@ class USDHookInvoker {
 
       /* XXX: Not sure if this is necessary:
        * Advance the iterator before invoking the callback, to guard
-       * against the unlikely error where the hook is deregistered in
+       * against the unlikely error where the hook is de-registered in
        * the callback. This would prevent a crash due to the iterator
        * getting invalidated. */
       USDHook *hook = *hook_iter;
@@ -259,7 +261,7 @@ class OnMaterialExportInvoker : public USDHookInvoker {
                           pxr::UsdShadeMaterial &usd_material)
       : hook_context_(stage), usd_material_(usd_material)
   {
-    RNA_pointer_create(NULL, &RNA_Material, material, &material_ptr_);
+    RNA_pointer_create(nullptr, &RNA_Material, material, &material_ptr_);
   }
 
  protected:

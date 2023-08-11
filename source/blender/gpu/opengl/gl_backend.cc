@@ -234,6 +234,7 @@ static void detect_workarounds()
     GCaps.shader_image_load_store_support = false;
     GCaps.shader_draw_parameters_support = false;
     GCaps.shader_storage_buffer_objects_support = false;
+    GCaps.hdr_viewport_support = false;
     GLContext::base_instance_support = false;
     GLContext::clear_texture_support = false;
     GLContext::copy_image_support = false;
@@ -546,6 +547,7 @@ void GLBackend::capabilities_init()
                                  epoxy_gl_version() >= 43;
   GCaps.geometry_shader_support = true;
   GCaps.max_samplers = GCaps.max_textures;
+  GCaps.hdr_viewport_support = false;
 
   if (GCaps.compute_shader_support) {
     glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &GCaps.max_work_group_count[0]);
@@ -592,7 +594,8 @@ void GLBackend::capabilities_init()
   GLContext::explicit_location_support = epoxy_gl_version() >= 43;
   GLContext::geometry_shader_invocations = epoxy_has_gl_extension("GL_ARB_gpu_shader5");
   GLContext::fixed_restart_index_support = epoxy_has_gl_extension("GL_ARB_ES3_compatibility");
-  GLContext::layered_rendering_support = epoxy_has_gl_extension("GL_AMD_vertex_shader_layer");
+  GLContext::layered_rendering_support = epoxy_has_gl_extension(
+      "GL_ARB_shader_viewport_layer_array");
   GLContext::native_barycentric_support = epoxy_has_gl_extension(
       "GL_AMD_shader_explicit_vertex_parameter");
   GLContext::multi_bind_support = GLContext::multi_bind_image_support = epoxy_has_gl_extension(
