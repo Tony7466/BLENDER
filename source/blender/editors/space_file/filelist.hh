@@ -48,7 +48,7 @@ void filelist_setfilter_options(FileList *filelist,
                                 bool filter_assets_only,
                                 const char *filter_glob,
                                 const char *filter_search);
-void filelist_setpreviews(struct FileList *filelist, bool use_previews);
+void filelist_setpreviews(FileList *filelist, bool use_previews);
 /**
  * Set the indexer to be used by the filelist.
  *
@@ -218,6 +218,5 @@ void filelist_readjob_stop(FileList *filelist, wmWindowManager *wm);
 int filelist_readjob_running(FileList *filelist, wmWindowManager *wm);
 
 bool filelist_cache_previews_update(FileList *filelist);
-void filelist_cache_previews_set(FileList *filelist, bool use_previews);
 bool filelist_cache_previews_running(FileList *filelist);
 bool filelist_cache_previews_done(FileList *filelist);

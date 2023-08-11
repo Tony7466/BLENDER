@@ -229,6 +229,7 @@ static void file_refresh(const bContext *C, ScrArea *area)
   filelist_setrecursion(sfile->files, params->recursion_level);
   filelist_setsorting(sfile->files, params->sort, params->flag & FILE_SORT_INVERT);
   filelist_setlibrary(sfile->files, asset_params ? &asset_params->asset_library_ref : nullptr);
+  filelist_setpreviews(sfile->files, params->display == FILE_IMGDISPLAY);
   filelist_setfilter_options(
       sfile->files,
       (params->flag & FILE_FILTER) != 0,
