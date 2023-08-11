@@ -249,6 +249,7 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void * /*ar
                                float(splash_width - style->columnspace);
 
     uiLayout *box = uiLayoutBox(layout);
+
     uiLayout *split_block = uiLayoutSplit(box, split_factor, false);
     uiLayoutSetAlignment(split_block, UI_LAYOUT_ALIGN_LEFT);
     uiBut *icon = uiDefButAlert(block, ALERT_ICON_INFO, 0, 0, icon_size, icon_size);
@@ -262,7 +263,7 @@ static uiBlock *wm_block_create_splash(bContext *C, ARegion *region, void * /*ar
     uiBut *link = uiDefBut(block,
                            UI_BTYPE_BUT_MENU,
                            1,
-                           IFACE_("New default shortcuts! Click here to read more..."),
+                           IFACE_("Learn more about the Blender 4.0 shortcut changes..."),
                            0,
                            0,
                            0,
