@@ -1129,12 +1129,12 @@ static void draw_fcurve_curve_keys(
       }
     }
 
-    /* Last point? */
-    if (i == bounding_indices[1]) {
-      curve_vertices.append({bezt->vec[1][0], bezt->vec[1][1]});
-    }
     prevbezt = bezt;
   }
+
+  /* Always add the last point so the extrapolation line doesn't jump. */
+  curve_vertices.append(
+      {fcu->bezt[bounding_indices[1]].vec[1][0], fcu->bezt[bounding_indices[1]].vec[1][1]});
 
   /* Extrapolate to the right? (see code for left-extrapolation above too) */
   if (draw_extrapolation && fcu->bezt[fcu->totvert - 1].vec[1][0] < v2d->cur.xmax) {
