@@ -1226,10 +1226,12 @@ PreviewImage *filelist_file_request_preview(const FileList *filelist, FileDirEnt
 
 bool filelist_file_is_preview_pending(const FileList *filelist, const FileDirEntry *file)
 {
-  /* Actual preview loading is only started after the filelist is loaded, so the file isn't flagged
-   * with #FILE_ENTRY_PREVIEW_LOADING yet. */
-  const bool filelist_ready = filelist_is_ready(filelist);
-  return !filelist_ready || file->flags & FILE_ENTRY_PREVIEW_LOADING;
+  /* Actual preview loading is only started after the filelist is loaded, so the preview may not be
+   * tagged as finished or doesn't even exist yet. */
+  if (!filelist_is_ready(filelist)) {
+    return true;
+  }
+  return !file->preview || !BKE_previewimg_is_finished(file->preview, ICON_SIZE_PREVIEW);
 }
 
 static FileDirEntry *filelist_geticon_get_file(FileList *filelist, const int index)
