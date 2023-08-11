@@ -8239,7 +8239,7 @@ def km_sequencer_editor_tool_blade(_params):
 
 def _template_sequencer_retime_select(*, type, value, legacy):
     return [(
-        "sequencer.retiming_handle_select",
+        "sequencer.retiming_key_select",
         {"type": type, "value": value, **{m: True for m in mods}},
         {"properties": [(c, True) for c in props]},
     ) for props, mods in (

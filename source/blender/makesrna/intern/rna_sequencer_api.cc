@@ -651,11 +651,11 @@ static SeqRetimingKey *rna_Sequence_retiming_keys_add(ID *id, Sequence *seq, int
 {
   Scene *scene = (Scene *)id;
 
-  SeqRetimingKey *handle = SEQ_retiming_add_key(scene, seq, timeline_frame);
+  SeqRetimingKey *key = SEQ_retiming_add_key(scene, seq, timeline_frame);
 
   SEQ_relations_invalidate_cache_raw(scene, seq);
   WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, nullptr);
-  return handle;
+  return key;
 }
 
 static void rna_Sequence_retiming_keys_reset(ID *id, Sequence *seq)

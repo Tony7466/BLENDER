@@ -132,12 +132,12 @@ typedef enum eSeqRetimingKeyFlag {
 
 typedef struct SeqRetimingKey {
   int strip_frame_index;
-  int flag; /* eSeqRetimingHandleFlag */
+  int flag; /* eSeqRetimingKeyFlag */
   int _pad0;
   float retiming_factor; /* Value between 0-1 mapped to original content range. */
 
-  int original_strip_frame_index; /* Used for transition handles only. */
-  float original_retiming_factor; /* Used for transition handles only. */
+  int original_strip_frame_index; /* Used for transition keys only. */
+  float original_retiming_factor; /* Used for transition keys only. */
 } SeqRetimingKey;
 
 typedef struct SequenceRuntime {
@@ -302,7 +302,7 @@ typedef struct SeqRetimingKeySelection {
   char strip_name[64]; /* SEQ_NAME_MAXSTR */
   int index;
   int _pad0;
-} SeqRetimingHandleSelection;
+} SeqRetimingKeySelection;
 
 typedef struct EditingRuntime {
   struct SequenceLookup *sequence_lookup;
@@ -318,7 +318,7 @@ typedef struct Editing {
   ListBase metastack;
   ListBase channels; /* SeqTimelineChannel */
 
-  ListBase retiming_selection; /* RetimingHandleSelection */
+  ListBase retiming_selection; /* SeqRetimingKeySelection */
 
   /* Context vars, used to be static */
   Sequence *act_seq;

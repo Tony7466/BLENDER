@@ -1175,7 +1175,7 @@ class SEQUENCER_MT_context_menu(Menu):
 
         layout.operator("sequencer.retiming_key_add")
 
-        if context.scene.sequence_editor.selected_retiming_handles:
+        if context.scene.sequence_editor.selected_retiming_keys:
             layout.operator("sequencer.retiming_freeze_frame_add")
             layout.operator("sequencer.retiming_transition_add")
             layout.separator()
