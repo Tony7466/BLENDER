@@ -314,6 +314,7 @@ static const char *rna_Screen_statusbar_info_get(bScreen * /*screen*/, Main *bma
 static SpacePreset *rna_space_presets_new(ScrArea *area)
 {
   SpacePreset *space_preset = MEM_cnew<SpacePreset>(__func__);
+  space_preset->name = BLI_strdup("Space");
   BLI_addtail(&area->space_presets, space_preset);
   return space_preset;
 }

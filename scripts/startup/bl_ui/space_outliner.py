@@ -23,6 +23,8 @@ class OUTLINER_HT_header(Header):
 
         layout.template_header()
 
+        layout.popover(panel="AREA_PT_space_presets", text="Space Presets")
+
         layout.prop(space, "display_mode", icon_only=True)
 
         if display_mode == 'DATA_API':
@@ -510,6 +512,34 @@ class OUTLINER_PT_filter(Panel):
             row.prop(space, "use_filter_object_others", text="Others")
 
 
+class AREA_UL_space_presets(bpy.types.UIList):
+    def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
+        row = layout.row(align=True)
+        row.prop(item, "name", text="", emboss=False, icon_value=icon)
+
+
+class AREA_PT_space_presets(Panel):
+    bl_space_type = 'OUTLINER'
+    bl_region_type = 'HEADER'
+    bl_label = "Space Presets"
+    bl_ui_units_x = 10
+
+    def draw(self, context):
+        layout = self.layout
+        layout.label(text="Space Presets")
+
+        area = context.area
+
+        split = layout.row()
+        split.template_list(
+            "AREA_UL_space_presets",
+            "",
+            area,
+            "space_presets",
+            area.space_presets,
+            "active_index")
+
+
 classes = (
     OUTLINER_HT_header,
     OUTLINER_MT_editor_menus,
@@ -525,6 +555,9 @@ classes = (
     OUTLINER_MT_context_menu_view,
     OUTLINER_MT_view_pie,
     OUTLINER_PT_filter,
+
+    AREA_UL_space_presets,
+    AREA_PT_space_presets,
 )
 
 if __name__ == "__main__":  # only for live edit.
