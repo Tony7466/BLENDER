@@ -192,7 +192,7 @@ static std::optional<eCustomDataType> convert_usd_type_to_blender(
 
   const eCustomDataType *value = type_map.lookup_ptr(usd_type);
   if (value == nullptr) {
-    WM_reportf(RPT_WARNING, "Unsupported type for mesh data.");
+    WM_reportf(RPT_WARNING, "Unsupported type for mesh data");
     return std::nullopt;
   }
 
@@ -219,7 +219,7 @@ static const std::optional<eAttrDomain> convert_usd_varying_to_blender(
   const eAttrDomain *value = domain_map.lookup_ptr(usd_domain);
 
   if (value == nullptr) {
-    WM_reportf(RPT_WARNING, "Unsupported domain for mesh data type %s.", usd_domain.GetText());
+    WM_reportf(RPT_WARNING, "Unsupported domain for mesh data type %s", usd_domain.GetText());
     return std::nullopt;
   }
 
@@ -514,7 +514,7 @@ void USDMeshReader::read_uv_data_primvar(Mesh *mesh,
       (varying_type == pxr::UsdGeomTokens->varying && usd_uvs.size() != mesh->totloop))
   {
     WM_reportf(RPT_WARNING,
-               "USD Import: uv attribute value '%s' count inconsistent with interpolation type",
+               "USD Import: UV attribute value '%s' count inconsistent with interpolation type",
                primvar.GetName().GetText());
     return;
   }
@@ -682,7 +682,7 @@ void USDMeshReader::read_generic_data_primvar(Mesh *mesh,
       break;
     default:
       WM_reportf(RPT_ERROR,
-                 "Generic primvar %s: invalid type %s.",
+                 "Generic primvar %s: invalid type %s",
                  primvar.GetName().GetText(),
                  sdf_type.GetAsToken().GetText());
       break;
@@ -882,7 +882,7 @@ void USDMeshReader::read_custom_data(const ImportSettings *settings,
   for (pxr::UsdGeomPrimvar &pv : primvars) {
     if (!pv.HasValue()) {
       WM_reportf(RPT_WARNING,
-                 "Skipping primvar %s, mesh %s -- no value.",
+                 "Skipping primvar %s, mesh %s -- no value",
                  pv.GetName().GetText(),
                  &mesh->id.name[2]);
       continue;
