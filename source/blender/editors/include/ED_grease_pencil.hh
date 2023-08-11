@@ -49,6 +49,8 @@ namespace blender::ed::greasepencil {
 
 void set_selected_frames_type(bke::greasepencil::Layer &layer,
                               const eBezTriple_KeyframeType key_type);
+                              
+bool duplicate_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::Layer &layer);
 
 bool mirror_selected_frames(GreasePencil &grease_pencil,
                             bke::greasepencil::Layer &layer,
