@@ -1061,7 +1061,7 @@ void GRAPH_OT_samples_to_keys(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Sound to Samples Operator
  *
- * This operator converts the given sound to the selected F-Curves.
+ * This operator converts the given sound to samples on the selected F-Curves.
  * \{ */
 
 /* ------------------- */
