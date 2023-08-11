@@ -119,19 +119,22 @@ static bool grease_pencil_layer_update_trans_data(blender::bke::greasepencil::La
     trans_data.status = LayerTransformData::TRANS_RUNNING;
   }
 
-  if (duplicate && !trans_data.duplicated_frames.contains(src_frame_number)) {
+  const bool use_duplicate = duplicate && trans_data.duplicated_frames.contains(src_frame_number);
+  const blender::Map<int, GreasePencilFrame> &frame_map = use_duplicate ?
+                                                              (trans_data.duplicated_frames) :
+                                                              (trans_data.frames_copy);
+
+  if (!frame_map.contains(src_frame_number)) {
     return false;
   }
 
-  /* Apply the transformation directly in the frame map, so that we display the transformed
+  /* Apply the transformation directly in the layer frame map, so that we display the transformed
    * frame numbers. We don't want to edit the frames or remove any drawing here. This will be
    * done at once at the end of the transformation. */
-  const GreasePencilFrame src_frame = duplicate ?
-                                          trans_data.duplicated_frames.lookup(src_frame_number) :
-                                          trans_data.frames_copy.lookup(src_frame_number);
+  const GreasePencilFrame src_frame = frame_map.lookup(src_frame_number);
   const int src_duration = trans_data.frames_duration.lookup_default(src_frame_number, 0);
 
-  if (!duplicate) {
+  if (!use_duplicate) {
     layer.remove_frame(src_frame_number);
   }
 
