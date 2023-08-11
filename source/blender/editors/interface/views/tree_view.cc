@@ -455,8 +455,10 @@ std::optional<rctf> AbstractTreeViewItem::get_win_rect(const ARegion &region) co
 
   rctf win_rect;
   ui_block_to_window_rctf(&region, item_but->block, &win_rect, &item_but->rect);
-  win_rect.ymin -= 2.0f * U.pixelsize;
-  win_rect.ymax += 2.0f * U.pixelsize;
+
+  /* Expand to include the gaps in between items. */
+  const uiStyle *style = UI_style_get_dpi();
+  BLI_rctf_pad(&win_rect, 0.0f, style->buttonspacey / 2.0f);
 
   return win_rect;
 }

@@ -1335,8 +1335,6 @@ void ui_but_pie_dir(RadialDirection dir, float vec[2]);
 bool ui_but_is_cursor_warp(const uiBut *but) ATTR_WARN_UNUSED_RESULT;
 
 bool ui_but_contains_pt(const uiBut *but, float mx, float my) ATTR_WARN_UNUSED_RESULT;
-bool ui_but_contains_pt(const uiBut *but, float mx, float my, float pad_x, float pad_y) ATTR_WARN_UNUSED_RESULT;
-
 bool ui_but_contains_rect(const uiBut *but, const rctf *rect);
 bool ui_but_contains_point_px_icon(const uiBut *but,
                                    ARegion *region,
