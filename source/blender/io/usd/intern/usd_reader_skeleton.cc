@@ -9,8 +9,6 @@
 #include "BKE_idprop.h"
 #include "BKE_object.h"
 
-#include "BLI_math.h"
-
 #include "DNA_armature_types.h"
 #include "DNA_object_types.h"
 
