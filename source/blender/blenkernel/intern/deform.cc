@@ -701,6 +701,10 @@ bool BKE_defgroup_unique_name_check(void *arg, const char *name)
 {
   AttributeAndDefgroupUniqueNameData *data = static_cast<AttributeAndDefgroupUniqueNameData *>(
       arg);
+
+  if (!ELEM(GS(data->id->name), ID_ME, ID_LT, ID_GD_LEGACY)) {
+    return false;
+  }
   return defgroup_find_name_dupe(name, data->dg, data->id);
 }
 
