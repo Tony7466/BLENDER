@@ -19,6 +19,8 @@
 
 #include "BLI_assert.h"
 
+#define REMOVE_BEFORE_PUSH true
+
 namespace blender::gpu {
 
 VKCommandBuffer::~VKCommandBuffer()
@@ -83,18 +85,33 @@ void VKCommandBuffer::end_recording()
   stage_transfer(Stage::Recording, Stage::BetweenRecordingAndSubmitting);
 }
 
-void VKCommandBuffer::bind(const VKPipeline &pipeline, VkPipelineBindPoint bind_point)
+void VKCommandBuffer::bind(const VKPipeline &pipeline, VkPipelineBindPoint vk_bind_point)
 {
-  vkCmdBindPipeline(vk_command_buffer_, bind_point, pipeline.vk_handle());
+  VKCommand command = {VKCommand::Type::BindPipeline};
+  command.bind_pipeline.vk_pipeline = pipeline.vk_handle();
+  command.bind_pipeline.vk_pipeline_bind_point = vk_bind_point;
+  commands_.append(command);
+
+#if REMOVE_BEFORE_PUSH
+  vkCmdBindPipeline(vk_command_buffer_, vk_bind_point, pipeline.vk_handle());
+#endif
 }
 
 void VKCommandBuffer::bind(const VKDescriptorSet &descriptor_set,
                            const VkPipelineLayout vk_pipeline_layout,
                            VkPipelineBindPoint bind_point)
 {
+  VKCommand command = {VKCommand::Type::BindDescriptorSet};
+  command.bind_descriptor_set.vk_descriptor_set = descriptor_set.vk_handle();
+  command.bind_descriptor_set.vk_pipeline_bind_point = bind_point;
+  command.bind_descriptor_set.vk_pipeline_layout = vk_pipeline_layout;
+  commands_.append(command);
+
+#if REMOVE_BEFORE_PUSH
   VkDescriptorSet vk_descriptor_set = descriptor_set.vk_handle();
   vkCmdBindDescriptorSets(
       vk_command_buffer_, bind_point, vk_pipeline_layout, 0, 1, &vk_descriptor_set, 0, 0);
+#endif
 }
 
 void VKCommandBuffer::bind(const uint32_t binding,
@@ -115,15 +132,33 @@ void VKCommandBuffer::bind(const uint32_t binding,
 {
   validate_framebuffer_exists();
   ensure_active_framebuffer();
+
+  VKCommand command = {VKCommand::Type::BindVertexBuffer};
+  command.bind_vertex_buffer.binding = binding;
+  command.bind_vertex_buffer.vk_buffer = vk_vertex_buffer;
+  command.bind_vertex_buffer.offset = offset;
+  commands_.append(command);
+
+#if REMOVE_BEFORE_PUSH
   vkCmdBindVertexBuffers(vk_command_buffer_, binding, 1, &vk_vertex_buffer, &offset);
+#endif
 }
 
 void VKCommandBuffer::bind(const VKBufferWithOffset &index_buffer, VkIndexType index_type)
 {
   validate_framebuffer_exists();
   ensure_active_framebuffer();
+
+  VKCommand command = {VKCommand::Type::BindIndexBuffer};
+  command.bind_index_buffer.vk_buffer = index_buffer.buffer.vk_handle();
+  command.bind_index_buffer.offset = index_buffer.offset;
+  command.bind_index_buffer.vk_index_type = index_type;
+  commands_.append(command);
+
+#if REMOVE_BEFORE_PUSH
   vkCmdBindIndexBuffer(
       vk_command_buffer_, index_buffer.buffer.vk_handle(), index_buffer.offset, index_type);
+#endif
 }
 
 void VKCommandBuffer::begin_render_pass(const VKFrameBuffer &framebuffer)
@@ -147,18 +182,37 @@ void VKCommandBuffer::push_constants(const VKPushConstants &push_constants,
 {
   BLI_assert(push_constants.layout_get().storage_type_get() ==
              VKPushConstants::StorageType::PUSH_CONSTANTS);
+
+  VKCommand command = {VKCommand::Type::PushConstants};
+  command.push_constants.vk_pipeline_layout = vk_pipeline_layout;
+  command.push_constants.vk_shader_stages = vk_shader_stages;
+  command.push_constants.offset = push_constants.offset();
+  command.push_constants.size = push_constants.layout_get().size_in_bytes();
+  command.push_constants.data = push_constants.data();
+  commands_.append(command);
+
+#if REMOVE_BEFORE_PUSH
   vkCmdPushConstants(vk_command_buffer_,
                      vk_pipeline_layout,
                      vk_shader_stages,
                      push_constants.offset(),
                      push_constants.layout_get().size_in_bytes(),
                      push_constants.data());
+#endif
 }
 
 void VKCommandBuffer::fill(VKBuffer &buffer, uint32_t clear_data)
 {
   ensure_no_active_framebuffer();
+  VKCommand command = {VKCommand::Type::FillBuffer};
+  command.fill_buffer.vk_buffer = buffer.vk_handle();
+  command.fill_buffer.size = buffer.size_in_bytes();
+  command.fill_buffer.clear_data = clear_data;
+  commands_.append(command);
+
+#if REMOVE_BEFORE_PUSH
   vkCmdFillBuffer(vk_command_buffer_, buffer.vk_handle(), 0, buffer.size_in_bytes(), clear_data);
+#endif
 }
 
 void VKCommandBuffer::copy(VKBuffer &dst_buffer,
@@ -166,12 +220,21 @@ void VKCommandBuffer::copy(VKBuffer &dst_buffer,
                            Span<VkBufferImageCopy> regions)
 {
   ensure_no_active_framebuffer();
+  VKCommand command = {VKCommand::Type::CopyImageToBuffer};
+  command.copy_image_to_buffer.vk_source = src_texture.vk_image_handle();
+  command.copy_image_to_buffer.vk_source_layout = src_texture.current_layout_get();
+  command.copy_image_to_buffer.vk_destination = dst_buffer.vk_handle();
+  command.copy_image_to_buffer.regions = MEM_new<Vector<VkBufferImageCopy>>(__func__, regions);
+  commands_.append(command);
+
+#if REMOVE_BEFORE_PUSH
   vkCmdCopyImageToBuffer(vk_command_buffer_,
                          src_texture.vk_image_handle(),
                          src_texture.current_layout_get(),
                          dst_buffer.vk_handle(),
                          regions.size(),
                          regions.data());
+#endif
 }
 
 void VKCommandBuffer::copy(VKTexture &dst_texture,
@@ -179,12 +242,21 @@ void VKCommandBuffer::copy(VKTexture &dst_texture,
                            Span<VkBufferImageCopy> regions)
 {
   ensure_no_active_framebuffer();
+  VKCommand command = {VKCommand::Type::CopyBufferToImage};
+  command.copy_buffer_to_image.vk_source = src_buffer.vk_handle();
+  command.copy_buffer_to_image.vk_destination = dst_texture.vk_image_handle();
+  command.copy_buffer_to_image.vk_destination_layout = dst_texture.current_layout_get();
+  command.copy_buffer_to_image.regions = MEM_new<Vector<VkBufferImageCopy>>(__func__, regions);
+  commands_.append(command);
+
+#if REMOVE_BEFORE_PUSH
   vkCmdCopyBufferToImage(vk_command_buffer_,
                          src_buffer.vk_handle(),
                          dst_texture.vk_image_handle(),
                          dst_texture.current_layout_get(),
                          regions.size(),
                          regions.data());
+#endif
 }
 
 void VKCommandBuffer::copy(VKTexture &dst_texture,
@@ -192,6 +264,15 @@ void VKCommandBuffer::copy(VKTexture &dst_texture,
                            Span<VkImageCopy> regions)
 {
   ensure_no_active_framebuffer();
+  VKCommand command = {VKCommand::Type::CopyImage};
+  command.copy_image.vk_source = src_texture.vk_image_handle();
+  command.copy_image.vk_source_layout = src_texture.current_layout_get();
+  command.copy_image.vk_destination = dst_texture.vk_image_handle();
+  command.copy_image.vk_destination_layout = dst_texture.current_layout_get();
+  command.copy_image.regions = MEM_new<Vector<VkImageCopy>>(__func__, regions);
+  commands_.append(command);
+
+#if REMOVE_BEFORE_PUSH
   vkCmdCopyImage(vk_command_buffer_,
                  src_texture.vk_image_handle(),
                  src_texture.current_layout_get(),
@@ -199,6 +280,7 @@ void VKCommandBuffer::copy(VKTexture &dst_texture,
                  dst_texture.current_layout_get(),
                  regions.size(),
                  regions.data());
+#endif
 }
 
 void VKCommandBuffer::blit(VKTexture &dst_texture,
@@ -219,6 +301,15 @@ void VKCommandBuffer::blit(VKTexture &dst_texture,
                            Span<VkImageBlit> regions)
 {
   ensure_no_active_framebuffer();
+  VKCommand command = {VKCommand::Type::BlitImage};
+  command.blit_image.vk_source = src_texture.vk_image_handle();
+  command.blit_image.vk_source_layout = src_layout;
+  command.blit_image.vk_destination = dst_texture.vk_image_handle();
+  command.blit_image.vk_destination_layout = dst_layout;
+  command.blit_image.regions = MEM_new<Vector<VkImageBlit>>(__func__, regions);
+  commands_.append(command);
+
+#if REMOVE_BEFORE_PUSH
   vkCmdBlitImage(vk_command_buffer_,
                  src_texture.vk_image_handle(),
                  src_layout,
@@ -227,6 +318,7 @@ void VKCommandBuffer::blit(VKTexture &dst_texture,
                  regions.size(),
                  regions.data(),
                  VK_FILTER_NEAREST);
+#endif
 }
 
 void VKCommandBuffer::clear(VkImage vk_image,
@@ -325,9 +417,138 @@ void VKCommandBuffer::submit()
 
 void VKCommandBuffer::encode_recorded_commands()
 {
+#if REMOVE_BEFORE_PUSH
+  commands_.clear();
+#endif
+
   /* Intentionally not implemented. For the graphics pipeline we want to extract the
    * resources and its usages so we can encode multiple commands in the same command buffer with
    * the correct synchronizations. */
+  for (VKCommand &command : commands_) {
+    switch (command.type) {
+      case VKCommand::Type::BindPipeline: {
+        vkCmdBindPipeline(vk_command_buffer_,
+                          command.bind_pipeline.vk_pipeline_bind_point,
+                          command.bind_pipeline.vk_pipeline);
+        break;
+      }
+
+      case VKCommand::Type::BindDescriptorSet: {
+        vkCmdBindDescriptorSets(vk_command_buffer_,
+                                command.bind_descriptor_set.vk_pipeline_bind_point,
+                                command.bind_descriptor_set.vk_pipeline_layout,
+                                0,
+                                1,
+                                &command.bind_descriptor_set.vk_descriptor_set,
+                                0,
+                                0);
+        break;
+      }
+
+      case VKCommand::Type::BindVertexBuffer: {
+        vkCmdBindVertexBuffers(vk_command_buffer_,
+                               command.bind_vertex_buffer.binding,
+                               1,
+                               &command.bind_vertex_buffer.vk_buffer,
+                               &command.bind_vertex_buffer.offset);
+        break;
+      }
+
+      case VKCommand::Type::BindIndexBuffer: {
+        vkCmdBindIndexBuffer(vk_command_buffer_,
+                             command.bind_index_buffer.vk_buffer,
+                             command.bind_index_buffer.offset,
+                             command.bind_index_buffer.vk_index_type);
+        break;
+      }
+
+      case VKCommand::Type::BeginRenderPass: {
+        VkRenderPassBeginInfo render_pass_begin_info = {};
+        render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        render_pass_begin_info.renderPass = command.begin_render_pass.vk_render_pass;
+        render_pass_begin_info.framebuffer = command.begin_render_pass.vk_framebuffer;
+        render_pass_begin_info.renderArea = command.begin_render_pass.render_area;
+
+        /* We don't use clear ops, but vulkan wants to have at least one. */
+        VkClearValue clear_value = {};
+        render_pass_begin_info.clearValueCount = 1;
+        render_pass_begin_info.pClearValues = &clear_value;
+
+        vkCmdBeginRenderPass(
+            vk_command_buffer_, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+
+        break;
+      }
+
+      case VKCommand::Type::EndRenderPass: {
+        vkCmdEndRenderPass(vk_command_buffer_);
+        break;
+      }
+
+      case VKCommand::Type::PushConstants: {
+        vkCmdPushConstants(vk_command_buffer_,
+                           command.push_constants.vk_pipeline_layout,
+                           command.push_constants.vk_shader_stages,
+                           command.push_constants.offset,
+                           command.push_constants.size,
+                           command.push_constants.data);
+        break;
+      }
+
+      case VKCommand::Type::FillBuffer: {
+        vkCmdFillBuffer(vk_command_buffer_,
+                        command.fill_buffer.vk_buffer,
+                        0,
+                        command.fill_buffer.size,
+                        command.fill_buffer.clear_data);
+        break;
+      }
+
+      case VKCommand::Type::CopyImageToBuffer: {
+        vkCmdCopyImageToBuffer(vk_command_buffer_,
+                               command.copy_image_to_buffer.vk_source,
+                               command.copy_image_to_buffer.vk_source_layout,
+                               command.copy_image_to_buffer.vk_destination,
+                               command.copy_image_to_buffer.regions->size(),
+                               command.copy_image_to_buffer.regions->data());
+        break;
+      }
+
+      case VKCommand::Type::CopyBufferToImage: {
+        vkCmdCopyBufferToImage(vk_command_buffer_,
+                               command.copy_buffer_to_image.vk_source,
+                               command.copy_buffer_to_image.vk_destination,
+                               command.copy_buffer_to_image.vk_destination_layout,
+                               command.copy_image_to_buffer.regions->size(),
+                               command.copy_image_to_buffer.regions->data());
+        break;
+      }
+
+      case VKCommand::Type::BlitImage: {
+        vkCmdBlitImage(vk_command_buffer_,
+                       command.blit_image.vk_source,
+                       command.blit_image.vk_source_layout,
+                       command.blit_image.vk_destination,
+                       command.blit_image.vk_destination_layout,
+                       command.blit_image.regions->size(),
+                       command.blit_image.regions->data(),
+                       VK_FILTER_LINEAR);
+        break;
+      }
+
+      case VKCommand::Type::CopyImage: {
+        vkCmdCopyImage(vk_command_buffer_,
+                       command.copy_image.vk_source,
+                       command.copy_image.vk_source_layout,
+                       command.copy_image.vk_destination,
+                       command.copy_image.vk_destination_layout,
+                       command.copy_image.regions->size(),
+                       command.copy_image.regions->data());
+        break;
+      }
+    }
+  }
+  commands_.clear();
 }
 
 void VKCommandBuffer::submit_encoded_commands()
@@ -361,7 +582,12 @@ void VKCommandBuffer::ensure_no_active_framebuffer()
 {
   state.checks_++;
   if (state.framebuffer_ && state.framebuffer_active_) {
+    VKCommand command = {VKCommand::Type::EndRenderPass};
+    commands_.append(command);
+#if REMOVE_BEFORE_PUSH
     vkCmdEndRenderPass(vk_command_buffer_);
+#endif
+
     state.framebuffer_active_ = false;
     state.switches_++;
   }
@@ -372,6 +598,13 @@ void VKCommandBuffer::ensure_active_framebuffer()
   BLI_assert(state.framebuffer_);
   state.checks_++;
   if (!state.framebuffer_active_) {
+    VKCommand command = {VKCommand::Type::BeginRenderPass};
+    command.begin_render_pass.vk_render_pass = state.framebuffer_->vk_render_pass_get();
+    command.begin_render_pass.vk_framebuffer = state.framebuffer_->vk_framebuffer_get();
+    command.begin_render_pass.render_area = state.framebuffer_->vk_render_areas_get()[0];
+    commands_.append(command);
+
+#if REMOVE_BEFORE_PUSH
     VkRenderPassBeginInfo render_pass_begin_info = {};
     render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     render_pass_begin_info.renderPass = state.framebuffer_->vk_render_pass_get();
@@ -383,6 +616,7 @@ void VKCommandBuffer::ensure_active_framebuffer()
     render_pass_begin_info.pClearValues = &clear_value;
 
     vkCmdBeginRenderPass(vk_command_buffer_, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
+#endif
     state.framebuffer_active_ = true;
     state.switches_++;
   }

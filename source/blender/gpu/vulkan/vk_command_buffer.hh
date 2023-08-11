@@ -8,10 +8,12 @@
 
 #pragma once
 
+#include "vk_command.hh"
 #include "vk_common.hh"
 #include "vk_resource_tracker.hh"
 
 #include "BLI_utility_mixins.hh"
+#include "BLI_vector.hh"
 
 namespace blender::gpu {
 class VKBuffer;
@@ -31,6 +33,9 @@ class VKCommandBuffer : NonCopyable, NonMovable {
   VkDevice vk_device_ = VK_NULL_HANDLE;
   VkCommandBuffer vk_command_buffer_ = VK_NULL_HANDLE;
   VkQueue vk_queue_ = VK_NULL_HANDLE;
+
+  /** Command that will be encoded to the command buffer during the next flush? */
+  Vector<VKCommand> commands_;
 
   /**
    * Timeout to use when waiting for fences in nanoseconds.
