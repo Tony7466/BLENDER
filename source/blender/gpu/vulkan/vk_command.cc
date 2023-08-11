@@ -23,6 +23,16 @@ VKCommand::~VKCommand()
   if (type == Type::BlitImage) {
     MEM_delete(blit_image.regions);
   }
+  if (type == Type::ClearColorImage) {
+    MEM_delete(clear_color_image.ranges);
+  }
+  if (type == Type::ClearAttachments) {
+    MEM_delete(clear_attachments.attachments);
+    MEM_delete(clear_attachments.areas);
+  }
+  if (type == Type::PipelineImageMemoryBarrier) {
+    MEM_delete(pipeline_image_memory_barrier.image_memory_barriers);
+  }
 }
 
 }  // namespace blender::gpu

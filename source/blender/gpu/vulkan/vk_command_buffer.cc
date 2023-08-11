@@ -19,8 +19,6 @@
 
 #include "BLI_assert.h"
 
-#define REMOVE_BEFORE_PUSH true
-
 namespace blender::gpu {
 
 VKCommandBuffer::~VKCommandBuffer()
@@ -87,31 +85,19 @@ void VKCommandBuffer::end_recording()
 
 void VKCommandBuffer::bind(const VKPipeline &pipeline, VkPipelineBindPoint vk_bind_point)
 {
-  VKCommand command = {VKCommand::Type::BindPipeline};
+  VKCommand &command = add_command(VKCommand::Type::BindPipeline);
   command.bind_pipeline.vk_pipeline = pipeline.vk_handle();
   command.bind_pipeline.vk_pipeline_bind_point = vk_bind_point;
-  commands_.append(command);
-
-#if REMOVE_BEFORE_PUSH
-  vkCmdBindPipeline(vk_command_buffer_, vk_bind_point, pipeline.vk_handle());
-#endif
 }
 
 void VKCommandBuffer::bind(const VKDescriptorSet &descriptor_set,
                            const VkPipelineLayout vk_pipeline_layout,
                            VkPipelineBindPoint bind_point)
 {
-  VKCommand command = {VKCommand::Type::BindDescriptorSet};
+  VKCommand &command = add_command(VKCommand::Type::BindDescriptorSet);
   command.bind_descriptor_set.vk_descriptor_set = descriptor_set.vk_handle();
   command.bind_descriptor_set.vk_pipeline_bind_point = bind_point;
   command.bind_descriptor_set.vk_pipeline_layout = vk_pipeline_layout;
-  commands_.append(command);
-
-#if REMOVE_BEFORE_PUSH
-  VkDescriptorSet vk_descriptor_set = descriptor_set.vk_handle();
-  vkCmdBindDescriptorSets(
-      vk_command_buffer_, bind_point, vk_pipeline_layout, 0, 1, &vk_descriptor_set, 0, 0);
-#endif
 }
 
 void VKCommandBuffer::bind(const uint32_t binding,
@@ -133,15 +119,10 @@ void VKCommandBuffer::bind(const uint32_t binding,
   validate_framebuffer_exists();
   ensure_active_framebuffer();
 
-  VKCommand command = {VKCommand::Type::BindVertexBuffer};
+  VKCommand &command = add_command(VKCommand::Type::BindVertexBuffer);
   command.bind_vertex_buffer.binding = binding;
   command.bind_vertex_buffer.vk_buffer = vk_vertex_buffer;
   command.bind_vertex_buffer.offset = offset;
-  commands_.append(command);
-
-#if REMOVE_BEFORE_PUSH
-  vkCmdBindVertexBuffers(vk_command_buffer_, binding, 1, &vk_vertex_buffer, &offset);
-#endif
 }
 
 void VKCommandBuffer::bind(const VKBufferWithOffset &index_buffer, VkIndexType index_type)
@@ -149,16 +130,10 @@ void VKCommandBuffer::bind(const VKBufferWithOffset &index_buffer, VkIndexType i
   validate_framebuffer_exists();
   ensure_active_framebuffer();
 
-  VKCommand command = {VKCommand::Type::BindIndexBuffer};
+  VKCommand &command = add_command(VKCommand::Type::BindIndexBuffer);
   command.bind_index_buffer.vk_buffer = index_buffer.buffer.vk_handle();
   command.bind_index_buffer.offset = index_buffer.offset;
   command.bind_index_buffer.vk_index_type = index_type;
-  commands_.append(command);
-
-#if REMOVE_BEFORE_PUSH
-  vkCmdBindIndexBuffer(
-      vk_command_buffer_, index_buffer.buffer.vk_handle(), index_buffer.offset, index_type);
-#endif
 }
 
 void VKCommandBuffer::begin_render_pass(const VKFrameBuffer &framebuffer)
@@ -183,36 +158,21 @@ void VKCommandBuffer::push_constants(const VKPushConstants &push_constants,
   BLI_assert(push_constants.layout_get().storage_type_get() ==
              VKPushConstants::StorageType::PUSH_CONSTANTS);
 
-  VKCommand command = {VKCommand::Type::PushConstants};
+  VKCommand &command = add_command(VKCommand::Type::PushConstants);
   command.push_constants.vk_pipeline_layout = vk_pipeline_layout;
   command.push_constants.vk_shader_stages = vk_shader_stages;
   command.push_constants.offset = push_constants.offset();
   command.push_constants.size = push_constants.layout_get().size_in_bytes();
   command.push_constants.data = push_constants.data();
-  commands_.append(command);
-
-#if REMOVE_BEFORE_PUSH
-  vkCmdPushConstants(vk_command_buffer_,
-                     vk_pipeline_layout,
-                     vk_shader_stages,
-                     push_constants.offset(),
-                     push_constants.layout_get().size_in_bytes(),
-                     push_constants.data());
-#endif
 }
 
 void VKCommandBuffer::fill(VKBuffer &buffer, uint32_t clear_data)
 {
   ensure_no_active_framebuffer();
-  VKCommand command = {VKCommand::Type::FillBuffer};
+  VKCommand &command = add_command(VKCommand::Type::FillBuffer);
   command.fill_buffer.vk_buffer = buffer.vk_handle();
   command.fill_buffer.size = buffer.size_in_bytes();
   command.fill_buffer.clear_data = clear_data;
-  commands_.append(command);
-
-#if REMOVE_BEFORE_PUSH
-  vkCmdFillBuffer(vk_command_buffer_, buffer.vk_handle(), 0, buffer.size_in_bytes(), clear_data);
-#endif
 }
 
 void VKCommandBuffer::copy(VKBuffer &dst_buffer,
@@ -220,21 +180,11 @@ void VKCommandBuffer::copy(VKBuffer &dst_buffer,
                            Span<VkBufferImageCopy> regions)
 {
   ensure_no_active_framebuffer();
-  VKCommand command = {VKCommand::Type::CopyImageToBuffer};
+  VKCommand &command = add_command(VKCommand::Type::CopyImageToBuffer);
   command.copy_image_to_buffer.vk_source = src_texture.vk_image_handle();
   command.copy_image_to_buffer.vk_source_layout = src_texture.current_layout_get();
   command.copy_image_to_buffer.vk_destination = dst_buffer.vk_handle();
   command.copy_image_to_buffer.regions = MEM_new<Vector<VkBufferImageCopy>>(__func__, regions);
-  commands_.append(command);
-
-#if REMOVE_BEFORE_PUSH
-  vkCmdCopyImageToBuffer(vk_command_buffer_,
-                         src_texture.vk_image_handle(),
-                         src_texture.current_layout_get(),
-                         dst_buffer.vk_handle(),
-                         regions.size(),
-                         regions.data());
-#endif
 }
 
 void VKCommandBuffer::copy(VKTexture &dst_texture,
@@ -242,21 +192,11 @@ void VKCommandBuffer::copy(VKTexture &dst_texture,
                            Span<VkBufferImageCopy> regions)
 {
   ensure_no_active_framebuffer();
-  VKCommand command = {VKCommand::Type::CopyBufferToImage};
+  VKCommand &command = add_command(VKCommand::Type::CopyBufferToImage);
   command.copy_buffer_to_image.vk_source = src_buffer.vk_handle();
   command.copy_buffer_to_image.vk_destination = dst_texture.vk_image_handle();
   command.copy_buffer_to_image.vk_destination_layout = dst_texture.current_layout_get();
   command.copy_buffer_to_image.regions = MEM_new<Vector<VkBufferImageCopy>>(__func__, regions);
-  commands_.append(command);
-
-#if REMOVE_BEFORE_PUSH
-  vkCmdCopyBufferToImage(vk_command_buffer_,
-                         src_buffer.vk_handle(),
-                         dst_texture.vk_image_handle(),
-                         dst_texture.current_layout_get(),
-                         regions.size(),
-                         regions.data());
-#endif
 }
 
 void VKCommandBuffer::copy(VKTexture &dst_texture,
@@ -264,23 +204,12 @@ void VKCommandBuffer::copy(VKTexture &dst_texture,
                            Span<VkImageCopy> regions)
 {
   ensure_no_active_framebuffer();
-  VKCommand command = {VKCommand::Type::CopyImage};
+  VKCommand &command = add_command(VKCommand::Type::CopyImage);
   command.copy_image.vk_source = src_texture.vk_image_handle();
   command.copy_image.vk_source_layout = src_texture.current_layout_get();
   command.copy_image.vk_destination = dst_texture.vk_image_handle();
   command.copy_image.vk_destination_layout = dst_texture.current_layout_get();
   command.copy_image.regions = MEM_new<Vector<VkImageCopy>>(__func__, regions);
-  commands_.append(command);
-
-#if REMOVE_BEFORE_PUSH
-  vkCmdCopyImage(vk_command_buffer_,
-                 src_texture.vk_image_handle(),
-                 src_texture.current_layout_get(),
-                 dst_texture.vk_image_handle(),
-                 dst_texture.current_layout_get(),
-                 regions.size(),
-                 regions.data());
-#endif
 }
 
 void VKCommandBuffer::blit(VKTexture &dst_texture,
@@ -301,24 +230,12 @@ void VKCommandBuffer::blit(VKTexture &dst_texture,
                            Span<VkImageBlit> regions)
 {
   ensure_no_active_framebuffer();
-  VKCommand command = {VKCommand::Type::BlitImage};
+  VKCommand &command = add_command(VKCommand::Type::BlitImage);
   command.blit_image.vk_source = src_texture.vk_image_handle();
   command.blit_image.vk_source_layout = src_layout;
   command.blit_image.vk_destination = dst_texture.vk_image_handle();
   command.blit_image.vk_destination_layout = dst_layout;
   command.blit_image.regions = MEM_new<Vector<VkImageBlit>>(__func__, regions);
-  commands_.append(command);
-
-#if REMOVE_BEFORE_PUSH
-  vkCmdBlitImage(vk_command_buffer_,
-                 src_texture.vk_image_handle(),
-                 src_layout,
-                 dst_texture.vk_image_handle(),
-                 dst_layout,
-                 regions.size(),
-                 regions.data(),
-                 VK_FILTER_NEAREST);
-#endif
 }
 
 void VKCommandBuffer::clear(VkImage vk_image,
@@ -327,27 +244,35 @@ void VKCommandBuffer::clear(VkImage vk_image,
                             Span<VkImageSubresourceRange> ranges)
 {
   ensure_no_active_framebuffer();
-  vkCmdClearColorImage(vk_command_buffer_,
-                       vk_image,
-                       vk_image_layout,
-                       &vk_clear_color,
-                       ranges.size(),
-                       ranges.data());
+
+  VKCommand &command = add_command(VKCommand::Type::ClearColorImage);
+  command.clear_color_image.vk_image = vk_image;
+  command.clear_color_image.vk_image_layout = vk_image_layout;
+  command.clear_color_image.vk_clear_color_value = vk_clear_color;
+  command.clear_color_image.ranges = MEM_new<Vector<VkImageSubresourceRange>>(__func__, ranges);
 }
 
 void VKCommandBuffer::clear(Span<VkClearAttachment> attachments, Span<VkClearRect> areas)
 {
   validate_framebuffer_exists();
   ensure_active_framebuffer();
-  vkCmdClearAttachments(
-      vk_command_buffer_, attachments.size(), attachments.data(), areas.size(), areas.data());
+  VKCommand &command = add_command(VKCommand::Type::ClearAttachments);
+  command.clear_attachments.attachments = MEM_new<Vector<VkClearAttachment>>(__func__,
+                                                                             attachments);
+  command.clear_attachments.areas = MEM_new<Vector<VkClearRect>>(__func__, areas);
 }
 
 void VKCommandBuffer::draw(int v_first, int v_count, int i_first, int i_count)
 {
   validate_framebuffer_exists();
   ensure_active_framebuffer();
-  vkCmdDraw(vk_command_buffer_, v_count, i_count, v_first, i_first);
+
+  VKCommand &command = add_command(VKCommand::Type::Draw);
+  command.draw.vertex_count = v_count;
+  command.draw.instance_count = i_count;
+  command.draw.first_vertex = v_first;
+  command.draw.first_instance = i_first;
+
   state.draw_counts++;
 }
 
@@ -356,8 +281,13 @@ void VKCommandBuffer::draw(
 {
   validate_framebuffer_exists();
   ensure_active_framebuffer();
-  vkCmdDrawIndexed(
-      vk_command_buffer_, index_count, instance_count, first_index, vertex_offset, first_instance);
+  VKCommand &command = add_command(VKCommand::Type::DrawIndexed);
+  command.draw_indexed.index_count = index_count;
+  command.draw_indexed.instance_count = instance_count;
+  command.draw_indexed.first_index = first_index;
+  command.draw_indexed.vertex_offset = vertex_offset;
+  command.draw_indexed.first_instance = first_instance;
+
   state.draw_counts++;
 }
 
@@ -367,64 +297,47 @@ void VKCommandBuffer::pipeline_barrier(VkPipelineStageFlags source_stages,
   if (state.framebuffer_) {
     ensure_active_framebuffer();
   }
-  vkCmdPipelineBarrier(vk_command_buffer_,
-                       source_stages,
-                       destination_stages,
-                       0,
-                       0,
-                       nullptr,
-                       0,
-                       nullptr,
-                       0,
-                       nullptr);
+
+  VKCommand &command = add_command(VKCommand::Type::PipelineBarrier);
+  command.pipeline_barrier.source_stages = source_stages;
+  command.pipeline_barrier.destination_stages = destination_stages;
 }
 
 void VKCommandBuffer::pipeline_barrier(Span<VkImageMemoryBarrier> image_memory_barriers)
 {
   ensure_no_active_framebuffer();
-  vkCmdPipelineBarrier(vk_command_buffer_,
-                       VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                       VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                       VK_DEPENDENCY_BY_REGION_BIT,
-                       0,
-                       nullptr,
-                       0,
-                       nullptr,
-                       image_memory_barriers.size(),
-                       image_memory_barriers.data());
+  VKCommand &command = add_command(VKCommand::Type::PipelineImageMemoryBarrier);
+  command.pipeline_image_memory_barrier.image_memory_barriers =
+      MEM_new<Vector<VkImageMemoryBarrier>>(__func__, image_memory_barriers);
 }
 
 void VKCommandBuffer::dispatch(int groups_x_len, int groups_y_len, int groups_z_len)
 {
   ensure_no_active_framebuffer();
-  vkCmdDispatch(vk_command_buffer_, groups_x_len, groups_y_len, groups_z_len);
+  VKCommand &command = add_command(VKCommand::Type::Dispatch);
+  command.dispatch.groups_x_len = groups_x_len;
+  command.dispatch.groups_y_len = groups_y_len;
+  command.dispatch.groups_z_len = groups_z_len;
 }
 
 void VKCommandBuffer::dispatch(VKStorageBuffer &command_buffer)
 {
   ensure_no_active_framebuffer();
-  vkCmdDispatchIndirect(vk_command_buffer_, command_buffer.vk_handle(), 0);
+  VKCommand &command = add_command(VKCommand::Type::DispatchIndirect);
+  command.dispatch_indirect.vk_buffer = command_buffer.vk_handle();
 }
 
 void VKCommandBuffer::submit()
 {
   ensure_no_active_framebuffer();
-  end_recording();
   encode_recorded_commands();
   submit_encoded_commands();
-  begin_recording();
 }
 
 void VKCommandBuffer::encode_recorded_commands()
 {
-#if REMOVE_BEFORE_PUSH
-  commands_.clear();
-#endif
-
-  /* Intentionally not implemented. For the graphics pipeline we want to extract the
-   * resources and its usages so we can encode multiple commands in the same command buffer with
-   * the correct synchronizations. */
-  for (VKCommand &command : commands_) {
+  begin_recording();
+  for (const VKCommand &command : commands_) {
     switch (command.type) {
       case VKCommand::Type::BindPipeline: {
         vkCmdBindPipeline(vk_command_buffer_,
@@ -546,8 +459,88 @@ void VKCommandBuffer::encode_recorded_commands()
                        command.copy_image.regions->data());
         break;
       }
+
+      case VKCommand::Type::ClearColorImage: {
+        vkCmdClearColorImage(vk_command_buffer_,
+                             command.clear_color_image.vk_image,
+                             command.clear_color_image.vk_image_layout,
+                             &command.clear_color_image.vk_clear_color_value,
+                             command.clear_color_image.ranges->size(),
+                             command.clear_color_image.ranges->data());
+        break;
+      }
+
+      case VKCommand::Type::ClearAttachments: {
+        vkCmdClearAttachments(vk_command_buffer_,
+                              command.clear_attachments.attachments->size(),
+                              command.clear_attachments.attachments->data(),
+                              command.clear_attachments.areas->size(),
+                              command.clear_attachments.areas->data());
+        break;
+      }
+
+      case VKCommand::Type::Draw: {
+        vkCmdDraw(vk_command_buffer_,
+                  command.draw.vertex_count,
+                  command.draw.instance_count,
+                  command.draw.first_vertex,
+                  command.draw.first_instance);
+        break;
+      }
+
+      case VKCommand::Type::DrawIndexed: {
+        vkCmdDrawIndexed(vk_command_buffer_,
+                         command.draw_indexed.index_count,
+                         command.draw_indexed.instance_count,
+                         command.draw_indexed.first_index,
+                         command.draw_indexed.vertex_offset,
+                         command.draw_indexed.first_instance);
+        break;
+      }
+
+      case VKCommand::Type::PipelineBarrier: {
+        vkCmdPipelineBarrier(vk_command_buffer_,
+                             command.pipeline_barrier.source_stages,
+                             command.pipeline_barrier.destination_stages,
+                             0,
+                             0,
+                             nullptr,
+                             0,
+                             nullptr,
+                             0,
+                             nullptr);
+        break;
+      }
+
+      case VKCommand::Type::PipelineImageMemoryBarrier: {
+        vkCmdPipelineBarrier(vk_command_buffer_,
+                             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                             VK_DEPENDENCY_BY_REGION_BIT,
+                             0,
+                             nullptr,
+                             0,
+                             nullptr,
+                             command.pipeline_image_memory_barrier.image_memory_barriers->size(),
+                             command.pipeline_image_memory_barrier.image_memory_barriers->data());
+        break;
+      }
+
+      case VKCommand::Type::Dispatch: {
+        vkCmdDispatch(vk_command_buffer_,
+                      command.dispatch.groups_x_len,
+                      command.dispatch.groups_y_len,
+                      command.dispatch.groups_z_len);
+        break;
+      }
+
+      case VKCommand::Type::DispatchIndirect: {
+        vkCmdDispatchIndirect(vk_command_buffer_, command.dispatch_indirect.vk_buffer, 0);
+        break;
+      }
     }
   }
+  end_recording();
   commands_.clear();
 }
 
@@ -582,11 +575,7 @@ void VKCommandBuffer::ensure_no_active_framebuffer()
 {
   state.checks_++;
   if (state.framebuffer_ && state.framebuffer_active_) {
-    VKCommand command = {VKCommand::Type::EndRenderPass};
-    commands_.append(command);
-#if REMOVE_BEFORE_PUSH
-    vkCmdEndRenderPass(vk_command_buffer_);
-#endif
+    add_command(VKCommand::Type::EndRenderPass);
 
     state.framebuffer_active_ = false;
     state.switches_++;
@@ -598,30 +587,25 @@ void VKCommandBuffer::ensure_active_framebuffer()
   BLI_assert(state.framebuffer_);
   state.checks_++;
   if (!state.framebuffer_active_) {
-    VKCommand command = {VKCommand::Type::BeginRenderPass};
+    VKCommand &command = add_command(VKCommand::Type::BeginRenderPass);
     command.begin_render_pass.vk_render_pass = state.framebuffer_->vk_render_pass_get();
     command.begin_render_pass.vk_framebuffer = state.framebuffer_->vk_framebuffer_get();
     command.begin_render_pass.render_area = state.framebuffer_->vk_render_areas_get()[0];
-    commands_.append(command);
 
-#if REMOVE_BEFORE_PUSH
-    VkRenderPassBeginInfo render_pass_begin_info = {};
-    render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    render_pass_begin_info.renderPass = state.framebuffer_->vk_render_pass_get();
-    render_pass_begin_info.framebuffer = state.framebuffer_->vk_framebuffer_get();
-    render_pass_begin_info.renderArea = state.framebuffer_->vk_render_areas_get()[0];
-    /* We don't use clear ops, but vulkan wants to have at least one. */
-    VkClearValue clear_value = {};
-    render_pass_begin_info.clearValueCount = 1;
-    render_pass_begin_info.pClearValues = &clear_value;
-
-    vkCmdBeginRenderPass(vk_command_buffer_, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
-#endif
     state.framebuffer_active_ = true;
     state.switches_++;
   }
 }
 
 /** \} */
+
+VKCommand &VKCommandBuffer::add_command(VKCommand::Type type)
+{
+  VKCommand command = {type};
+  memset(static_cast<void *>(&command), 0, sizeof(VKCommand));
+  command.type = type;
+  commands_.append(command);
+  return commands_.last();
+}
 
 }  // namespace blender::gpu

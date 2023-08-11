@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_utility_mixins.hh"
 #include "BLI_vector.hh"
 
 #include "vk_common.hh"
@@ -32,6 +33,18 @@ struct VKCommand {
     CopyBufferToImage,
     CopyImage,
     BlitImage,
+
+    ClearColorImage,
+    ClearAttachments,
+
+    Draw,
+    DrawIndexed,
+
+    PipelineBarrier,
+    PipelineImageMemoryBarrier,
+
+    Dispatch,
+    DispatchIndirect,
   };
   Type type;
 
@@ -111,9 +124,56 @@ struct VKCommand {
       VkImageLayout vk_source_layout;
       Vector<VkImageBlit> *regions;
     } blit_image;
+
+    struct {
+      VkImage vk_image;
+      VkImageLayout vk_image_layout;
+      VkClearColorValue vk_clear_color_value;
+      Vector<VkImageSubresourceRange> *ranges;
+    } clear_color_image;
+
+    struct {
+      Vector<VkClearAttachment> *attachments;
+      Vector<VkClearRect> *areas;
+    } clear_attachments;
+
+    struct {
+      uint32_t vertex_count;
+      uint32_t instance_count;
+      uint32_t first_vertex;
+      uint32_t first_instance;
+    } draw;
+
+    struct {
+      uint32_t index_count;
+      uint32_t instance_count;
+      uint32_t first_index;
+      uint32_t vertex_offset;
+      uint32_t first_instance;
+    } draw_indexed;
+
+    struct {
+      VkPipelineStageFlags source_stages;
+      VkPipelineStageFlags destination_stages;
+    } pipeline_barrier;
+
+    struct {
+      Vector<VkImageMemoryBarrier> *image_memory_barriers;
+    } pipeline_image_memory_barrier;
+
+    struct {
+      uint32_t groups_x_len;
+      uint32_t groups_y_len;
+      uint32_t groups_z_len;
+    } dispatch;
+
+    struct {
+      VkBuffer vk_buffer;
+    } dispatch_indirect;
   };
 
   VKCommand(Type type) : type(type) {}
   virtual ~VKCommand();
 };
+
 }  // namespace blender::gpu

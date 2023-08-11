@@ -236,6 +236,9 @@ class VKCommandBuffer : NonCopyable, NonMovable {
    * Ensure that the tracked framebuffer is bound.
    */
   void ensure_active_framebuffer();
+
+  /** Add a new command to the command list and return a reference to it. */
+  VKCommand &add_command(VKCommand::Type type);
 };
 
 }  // namespace blender::gpu

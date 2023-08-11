@@ -76,7 +76,7 @@ void VKContext::sync_backbuffer()
                                  &command_buffer);
     VKDevice &device = VKBackend::get().device_;
     command_buffer_.init(device.device_get(), device.queue_get(), command_buffer);
-    command_buffer_.begin_recording();
+    // command_buffer_.begin_recording();
     device.descriptor_pools_get().reset();
   }
 }
@@ -106,7 +106,7 @@ void VKContext::begin_frame()
 
 void VKContext::end_frame()
 {
-  command_buffer_.end_recording();
+  // command_buffer_.end_recording();
 }
 
 void VKContext::flush()
