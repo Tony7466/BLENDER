@@ -446,10 +446,10 @@ static int GPLayerToTransData(TransData *td,
 static int GreasePencilLayerToTransData(TransData *td,
                                         TransData2D *td2d,
                                         blender::bke::greasepencil::Layer *layer,
-                                        char side,
-                                        float cfra,
-                                        bool is_prop_edit,
-                                        float ypos)
+                                        const char side,
+                                        const float cfra,
+                                        const bool is_prop_edit,
+                                        const float ypos)
 {
   using namespace blender;
   using namespace bke::greasepencil;
@@ -748,7 +748,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
         using namespace blender::bke::greasepencil;
         Layer *layer = static_cast<Layer *>(ale->data);
 
-        for (auto [frame_number, frame] : layer->frames_for_write().items()) {
+        for (const auto [frame_number, frame] : layer->frames().items()) {
           if (frame.is_selected()) {
             td->dist = td->rdist = 0.0f;
             ++td;
@@ -756,7 +756,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
           }
 
           int closest_selected = INT_MAX;
-          for (auto [neighbor_frame_number, neighbor_frame] : layer->frames_for_write().items()) {
+          for (const auto [neighbor_frame_number, neighbor_frame] : layer->frames().items()) {
             if (!neighbor_frame.is_selected() ||
                 !FrameOnMouseSide(t->frame_side, float(neighbor_frame_number), cfra))
             {
