@@ -3805,6 +3805,7 @@ static int spacedata_cleanup_exec(bContext *C, wmOperator *op)
         tot += BLI_listbase_count(&area->spacedata);
         BKE_spacedata_freelist(&area->spacedata);
         BLI_addtail(&area->spacedata, sl);
+        BKE_space_presets_freelist(&area->space_presets);
       }
     }
   }

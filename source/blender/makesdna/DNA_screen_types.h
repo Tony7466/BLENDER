@@ -367,6 +367,13 @@ typedef struct ScrArea_Runtime {
   char _pad0[7];
 } ScrArea_Runtime;
 
+typedef struct SpacePreset {
+  struct SpacePreset *next, *prev;
+  char *name;
+  int space_index;
+  char _pad[4];
+} SpacePreset;
+
 typedef struct ScrArea {
   DNA_DEFINE_CXX_METHODS(ScrArea)
 
@@ -426,6 +433,10 @@ typedef struct ScrArea {
    * spacedata list). Use SpaceLink.regionbase if it's inactive (but only then)!
    */
   ListBase regionbase;
+  /** #SpacePreset. */
+  ListBase space_presets;
+  int active_space_preset;
+  char _pad2[4];
   /** #wmEventHandler. */
   ListBase handlers;
 

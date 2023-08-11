@@ -311,6 +311,13 @@ static const char *rna_Screen_statusbar_info_get(bScreen * /*screen*/, Main *bma
   return ED_info_statusbar_string(bmain, CTX_data_scene(C), CTX_data_view_layer(C));
 }
 
+static SpacePreset *rna_space_presets_new(ScrArea *area)
+{
+  SpacePreset *space_preset = MEM_cnew<SpacePreset>(__func__);
+  BLI_addtail(&area->space_presets, space_preset);
+  return space_preset;
+}
+
 #else
 
 /* Area.spaces */
@@ -345,6 +352,43 @@ static void rna_def_area_api(StructRNA *srna)
   RNA_def_property_clear_flag(parm, PROP_NEVER_NULL);
 }
 
+static void rna_def_space_presets_api(BlenderRNA *brna, PropertyRNA *cprop)
+{
+  StructRNA *srna;
+  FunctionRNA *func;
+  PropertyRNA *parm;
+  PropertyRNA *prop;
+
+  RNA_def_property_srna(cprop, "SpacePresets");
+  srna = RNA_def_struct(brna, "SpacePresets", nullptr);
+  RNA_def_struct_sdna(srna, "ScrArea");
+  RNA_def_struct_ui_text(srna, "Space Presets", "Collection of space presets");
+
+  func = RNA_def_function(srna, "new", "rna_space_presets_new");
+  parm = RNA_def_pointer(
+      func, "preset", "SpacePreset", "Space Preset", "Newly created space preset");
+  RNA_def_function_return(func, parm);
+
+  prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "active_space_preset");
+  RNA_def_property_ui_text(prop, "Active Index", "Index of the active space preset");
+}
+
+static void rna_def_space_config(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "SpacePreset", nullptr);
+  RNA_def_struct_ui_text(srna, "Space Preset", "");
+
+  prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Name", "");
+
+  prop = RNA_def_property(srna, "space_index", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Space Index", "Index of the corresponding space in this area");
+}
+
 static void rna_def_area(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -363,6 +407,15 @@ static void rna_def_area(BlenderRNA *brna)
                            "(NOTE: Useful for example to restore a previously used 3D view space "
                            "in a certain area to get the old view orientation)");
   rna_def_area_spaces(brna, prop);
+
+  prop = RNA_def_property(srna, "space_presets", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_collection_sdna(prop, nullptr, "space_presets", nullptr);
+  RNA_def_property_struct_type(prop, "SpacePreset");
+  RNA_def_property_ui_text(prop,
+                           "Space Presets",
+                           "Named references to different editors in this space to make it easy "
+                           "to switch between them");
+  rna_def_space_presets_api(brna, prop);
 
   prop = RNA_def_property(srna, "regions", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "regionbase", nullptr);
@@ -677,6 +730,7 @@ static void rna_def_screen(BlenderRNA *brna)
 void RNA_def_screen(BlenderRNA *brna)
 {
   rna_def_screen(brna);
+  rna_def_space_config(brna);
   rna_def_area(brna);
   rna_def_region(brna);
   rna_def_view2d(brna);

@@ -540,6 +540,24 @@ void BKE_spacedata_freelist(ListBase *lb)
   BLI_freelistN(lb);
 }
 
+void BKE_space_presets_freelist(ListBase *lb)
+{
+  LISTBASE_FOREACH (SpacePreset *, space_preset, lb) {
+    MEM_SAFE_FREE(space_preset->name);
+  }
+  BLI_freelistN(lb);
+}
+void BKE_space_presets_copylist(ListBase *lb_dst, ListBase *lb_src)
+{
+  BLI_listbase_clear(lb_dst);
+
+  LISTBASE_FOREACH (SpacePreset *, src_space_preset, lb_src) {
+    SpacePreset *dst_space_preset = MEM_new<SpacePreset>(__func__, *src_space_preset);
+    dst_space_preset->name = BLI_strdup_null(dst_space_preset->name);
+    BLI_addtail(lb_dst, dst_space_preset);
+  }
+}
+
 static void panel_list_copy(ListBase *newlb, const ListBase *lb)
 {
   BLI_listbase_clear(newlb);
@@ -791,6 +809,7 @@ void BKE_screen_area_free(ScrArea *area)
   BLI_freelistN(&area->regionbase);
 
   BKE_spacedata_freelist(&area->spacedata);
+  BKE_space_presets_freelist(&area->space_presets);
 
   BLI_freelistN(&area->actionzones);
 }
@@ -1284,6 +1303,10 @@ static void write_area(BlendWriter *writer, ScrArea *area)
       space_type->blend_write(writer, sl);
     }
   }
+  BLO_write_struct_list(writer, SpacePreset, &area->space_presets);
+  LISTBASE_FOREACH (SpacePreset *, space_preset, &area->space_presets) {
+    BLO_write_string(writer, space_preset->name);
+  }
 }
 
 void BKE_screen_area_map_blend_write(BlendWriter *writer, ScrAreaMap *area_map)
@@ -1467,6 +1490,11 @@ static void direct_link_area(BlendDataReader *reader, ScrArea *area)
     if (space_type && space_type->blend_read_data) {
       space_type->blend_read_data(reader, sl);
     }
+  }
+
+  BLO_read_list(reader, &area->space_presets);
+  LISTBASE_FOREACH (SpacePreset *, space_preset, &area->space_presets) {
+    BLO_read_data_address(reader, &space_preset->name);
   }
 
   BLI_listbase_clear(&area->actionzones);

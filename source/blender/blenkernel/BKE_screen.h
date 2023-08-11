@@ -472,6 +472,9 @@ void BKE_spacedata_freelist(ListBase *lb);
  */
 void BKE_spacedata_copylist(ListBase *lb_dst, ListBase *lb_src);
 
+void BKE_space_presets_freelist(ListBase *lb);
+void BKE_space_presets_copylist(ListBase *lb_dst, ListBase *lb_src);
+
 /**
  * Facility to set locks for drawing to survive (render) threads accessing drawing data.
  *

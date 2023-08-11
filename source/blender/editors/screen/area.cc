@@ -2233,8 +2233,10 @@ void ED_area_data_copy(ScrArea *area_dst, ScrArea *area_src, const bool do_free)
   /* area */
   if (do_free) {
     BKE_spacedata_freelist(&area_dst->spacedata);
+    BKE_space_presets_freelist(&area_dst->space_presets);
   }
   BKE_spacedata_copylist(&area_dst->spacedata, &area_src->spacedata);
+  BKE_space_presets_copylist(&area_dst->space_presets, &area_src->space_presets);
 
   /* NOTE: SPACE_EMPTY is possible on new screens. */
 
