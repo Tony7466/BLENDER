@@ -346,7 +346,7 @@ ccl_device_noinline int svm_node_tex_noise(KernelGlobals kg,
   if (stack_valid(color_stack_offset)) {
     stack_store_float3(stack, color_stack_offset, color);
   }
-  return offset;
+  return node_offset;
 }
 
 CCL_NAMESPACE_END
