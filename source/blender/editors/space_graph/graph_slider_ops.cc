@@ -1221,7 +1221,7 @@ static void match_slope_modal_update(bContext *C, wmOperator *op)
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
 }
 
-static int blend_to_infinity_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int match_slope_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   const int invoke_result = graph_slider_invoke(C, op, event);
 
@@ -1267,7 +1267,7 @@ void GRAPH_OT_match_slope(wmOperatorType *ot)
   ot->description = "Blend selected keys to the slope of neighboring ones";
 
   /* API callbacks. */
-  ot->invoke = blend_to_infinity_invoke;
+  ot->invoke = match_slope_invoke;
   ot->modal = graph_slider_modal;
   ot->exec = match_slope_exec;
   ot->poll = graphop_editable_keyframes_poll;
