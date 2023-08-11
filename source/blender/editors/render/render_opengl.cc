@@ -14,7 +14,6 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_math_color_blend.h"
 #include "BLI_task.h"
 #include "BLI_task.hh"
@@ -49,13 +48,13 @@
 
 #include "DRW_engine.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
-#include "ED_view3d_offscreen.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
+#include "ED_view3d_offscreen.hh"
 
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"
@@ -65,8 +64,8 @@
 
 #include "BLT_translation.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "SEQ_render.h"
 
@@ -225,7 +224,7 @@ static void screen_opengl_views_setup(OGLRender *oglrender)
     }
 
     /* create all the views that are needed */
-    for (srv = static_cast<SceneRenderView *>(rd->views.first); srv; srv = srv->next) {
+    LISTBASE_FOREACH (SceneRenderView *, srv, &rd->views) {
       if (BKE_scene_multiview_is_render_view_active(rd, srv) == false) {
         continue;
       }

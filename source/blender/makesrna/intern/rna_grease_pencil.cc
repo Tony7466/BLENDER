@@ -10,13 +10,13 @@
 
 #include "DNA_grease_pencil_types.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 static const EnumPropertyItem rna_enum_layer_blend_modes_items[] = {
     {GP_LAYER_BLEND_NONE, "REGULAR", 0, "Regular", ""},
@@ -43,7 +43,7 @@ static GreasePencil *rna_grease_pencil(const PointerRNA *ptr)
 static void rna_grease_pencil_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
   DEG_id_tag_update(&rna_grease_pencil(ptr)->id, ID_RECALC_GEOMETRY);
-  WM_main_add_notifier(NC_GPENCIL | NA_EDITED, NULL);
+  WM_main_add_notifier(NC_GPENCIL | NA_EDITED, nullptr);
 }
 
 static void rna_iterator_grease_pencil_layers_begin(CollectionPropertyIterator *iter,
@@ -120,7 +120,7 @@ static void rna_GreasePencil_active_layer_set(PointerRNA *ptr,
 {
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
   grease_pencil->set_active_layer(static_cast<blender::bke::greasepencil::Layer *>(value.data));
-  WM_main_add_notifier(NC_GPENCIL | NA_EDITED, NULL);
+  WM_main_add_notifier(NC_GPENCIL | NA_EDITED, nullptr);
 }
 
 static char *rna_GreasePencilLayerGroup_path(const PointerRNA *ptr)
@@ -200,6 +200,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
                                 "rna_GreasePencilLayer_name_length",
                                 "rna_GreasePencilLayer_name_set");
   RNA_def_struct_name_property(srna, prop);
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_RENAME, "rna_grease_pencil_update");
 
   /* Visibility */
   prop = RNA_def_property(srna, "hide", PROP_BOOLEAN, PROP_NONE);
@@ -229,6 +230,13 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, nullptr, "blend_mode");
   RNA_def_property_enum_items(prop, rna_enum_layer_blend_modes_items);
   RNA_def_property_ui_text(prop, "Blend Mode", "Blend mode");
+  
+  /* Onion Skinning. */
+  prop = RNA_def_property(srna, "use_onion_skinning", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_USE_ONION_SKINNING);
+  RNA_def_property_ui_text(
+      prop, "Onion Skinning", "Display onion skins before and after the current frame");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 }
 
@@ -272,6 +280,7 @@ static void rna_def_grease_pencil_layer_group(BlenderRNA *brna)
                                 "rna_GreasePencilLayerGroup_name_length",
                                 "rna_GreasePencilLayerGroup_name_set");
   RNA_def_struct_name_property(srna, prop);
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_RENAME, "rna_grease_pencil_update");
 
   /* Visibility */
   prop = RNA_def_property(srna, "hide", PROP_BOOLEAN, PROP_NONE);

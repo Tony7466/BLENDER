@@ -15,24 +15,25 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_main.h"
 
-#include "ED_gizmo_library.h"
-#include "ED_screen.h"
-#include "ED_transform_snap_object_context.h"
-#include "ED_view3d.h"
+#include "ED_gizmo_library.hh"
+#include "ED_screen.hh"
+#include "ED_transform_snap_object_context.hh"
+#include "ED_view3d.hh"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 /* own includes */
 #include "../gizmo_library_intern.h"
@@ -372,7 +373,7 @@ static void GIZMO_GT_snap_3d(wmGizmoType *gzt)
       prop, gizmo_snap_rna_snap_elem_index_get_fn, nullptr, nullptr);
 }
 
-void ED_gizmotypes_snap_3d(void)
+void ED_gizmotypes_snap_3d()
 {
   WM_gizmotype_append(GIZMO_GT_snap_3d);
 }

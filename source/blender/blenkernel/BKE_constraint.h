@@ -46,7 +46,8 @@ typedef struct bConstraintOb {
 
   /** type of owner. */
   short type;
-  /** rotation order for constraint owner (as defined in #eEulerRotationOrders in BLI_math.h) */
+  /** rotation order for constraint owner (as defined in #eEulerRotationOrders in
+   * BLI_math_rotation.h) */
   short rotOrder;
 } bConstraintOb;
 
@@ -82,7 +83,7 @@ typedef struct bConstraintTypeInfo {
   /** name of constraint in interface */
   char name[32];
   /** name of struct for SDNA */
-  char structName[32];
+  char struct_name[32];
 
   /* data management function pointers - special handling */
   /** free any data that is allocated separately (optional) */

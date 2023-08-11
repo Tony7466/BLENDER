@@ -13,7 +13,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
 #include "BLT_translation.h"
 
@@ -23,15 +24,15 @@
 
 #include "DEG_depsgraph.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_curve.h"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_curve.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
 #include "curve_intern.h"
 
@@ -340,9 +341,9 @@ Nurb *ED_curve_add_nurbs_primitive(
         for (a = 0; a < 4; a++) {
           for (b = 0; b < 4; b++) {
             bp->f1 = SELECT;
-            fac = (float)a - 1.5f;
+            fac = float(a) - 1.5f;
             bp->vec[0] += fac * grid;
-            fac = (float)b - 1.5f;
+            fac = float(b) - 1.5f;
             bp->vec[1] += fac * grid;
             if (ELEM(a, 1, 2) && ELEM(b, 1, 2)) {
               bp->vec[2] += grid;
@@ -494,7 +495,7 @@ Nurb *ED_curve_add_nurbs_primitive(
 
 static int curvesurf_prim_add(bContext *C, wmOperator *op, int type, int isSurf)
 {
-  struct Main *bmain = CTX_data_main(C);
+  Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   BKE_view_layer_synced_ensure(scene, view_layer);

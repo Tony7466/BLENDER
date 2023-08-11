@@ -6,23 +6,23 @@
  * \ingroup RNA
  */
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 
 #include "DNA_curve_types.h"
 #include "DNA_curveprofile_types.h"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 #include "rna_internal.h"
 
 #include "BLT_translation.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #ifdef RNA_RUNTIME
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
 #  include "BKE_curveprofile.h"
 

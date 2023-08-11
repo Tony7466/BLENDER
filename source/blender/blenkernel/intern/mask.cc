@@ -6,8 +6,8 @@
  * \ingroup bke
  */
 
-#include <stddef.h>
-#include <string.h>
+#include <cstddef>
+#include <cstring>
 
 #include "CLG_log.h"
 
@@ -16,7 +16,9 @@
 #include "BLI_endian_switch.h"
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
@@ -1341,7 +1343,7 @@ static void mask_calc_point_handle(MaskSplinePoint *point,
 
 #if 1
   if (bezt_prev || bezt_next) {
-    BKE_nurb_handle_calc(bezt, bezt_prev, bezt_next, 0, 0);
+    BKE_nurb_handle_calc(bezt, bezt_prev, bezt_next, false, 0);
   }
 #else
   if (handle_type == HD_VECT) {

@@ -48,7 +48,7 @@
 #include "BKE_idtype.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
@@ -60,27 +60,27 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
 
-#include "ED_node.h"
-#include "ED_object.h"
-#include "ED_outliner.h"
-#include "ED_scene.h"
-#include "ED_screen.h"
-#include "ED_sequencer.h"
-#include "ED_undo.h"
+#include "ED_node.hh"
+#include "ED_object.hh"
+#include "ED_outliner.hh"
+#include "ED_scene.hh"
+#include "ED_screen.hh"
+#include "ED_sequencer.hh"
+#include "ED_undo.hh"
 
-#include "WM_api.h"
-#include "WM_message.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
 #include "../../blender/blenloader/BLO_readfile.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "SEQ_relations.h"
 #include "SEQ_sequencer.h"
@@ -1811,7 +1811,7 @@ static void refreshdrivers_animdata_fn(int /*event*/,
   IdAdtTemplate *iat = (IdAdtTemplate *)tselem->id;
 
   /* Loop over drivers, performing refresh
-   * (i.e. check graph_buttons.c and rna_fcurve.cc for details). */
+   * (i.e. check `graph_buttons.cc` and `rna_fcurve.cc` for details). */
   LISTBASE_FOREACH (FCurve *, fcu, &iat->adt->drivers) {
     fcu->flag &= ~FCURVE_DISABLED;
 
@@ -2613,7 +2613,7 @@ static TreeTraversalAction outliner_collect_objects_to_delete(TreeElement *te, v
     ID *id_parent = tselem_parent->id;
     /* It's not possible to remove an object from an overridden collection (and potentially scene,
      * through the master collection). */
-    if ((ELEM(GS(id_parent->name), ID_GR, ID_SCE))) {
+    if (ELEM(GS(id_parent->name), ID_GR, ID_SCE)) {
       if (ID_IS_OVERRIDE_LIBRARY_REAL(id_parent)) {
         return TRAVERSE_SKIP_CHILDS;
       }

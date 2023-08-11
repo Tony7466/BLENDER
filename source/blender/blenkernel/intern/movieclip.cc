@@ -6,9 +6,9 @@
  * \ingroup bke
  */
 
+#include <cstdio>
+#include <cstring>
 #include <fcntl.h>
-#include <stdio.h>
-#include <string.h>
 
 #ifndef WIN32
 #  include <unistd.h>
@@ -16,7 +16,7 @@
 #  include <io.h>
 #endif
 
-#include <time.h>
+#include <ctime>
 
 #include "MEM_guardedalloc.h"
 
@@ -39,7 +39,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_threads.h"
 
 #include "BLT_translation.h"
@@ -166,11 +166,7 @@ static void write_movieTracks(BlendWriter *writer, ListBase *tracks)
 
 static void write_moviePlaneTracks(BlendWriter *writer, ListBase *plane_tracks_base)
 {
-  MovieTrackingPlaneTrack *plane_track;
-
-  for (plane_track = static_cast<MovieTrackingPlaneTrack *>(plane_tracks_base->first); plane_track;
-       plane_track = plane_track->next)
-  {
+  LISTBASE_FOREACH (MovieTrackingPlaneTrack *, plane_track, plane_tracks_base) {
     BLO_write_struct(writer, MovieTrackingPlaneTrack, plane_track);
 
     BLO_write_pointer_array(writer, plane_track->point_tracksnr, plane_track->point_tracks);
@@ -488,10 +484,10 @@ static void get_proxy_filepath(const MovieClip *clip,
 
 #ifdef WITH_OPENEXR
 
-typedef struct MultilayerConvertContext {
+struct MultilayerConvertContext {
   float *combined_pass;
   int num_combined_channels;
-} MultilayerConvertContext;
+};
 
 static void *movieclip_convert_multilayer_add_view(void * /*ctx_v*/, const char * /*view_name*/)
 {
@@ -680,9 +676,9 @@ static void movieclip_calc_length(MovieClip *clip)
 
 /*********************** image buffer cache *************************/
 
-typedef struct MovieClipCache {
+struct MovieClipCache {
   /* regular movie cache */
-  struct MovieCache *moviecache;
+  MovieCache *moviecache;
 
   /* cached postprocessed shot */
   struct {
@@ -721,17 +717,17 @@ typedef struct MovieClipCache {
   int sequence_offset;
 
   bool is_still_sequence;
-} MovieClipCache;
+};
 
-typedef struct MovieClipImBufCacheKey {
+struct MovieClipImBufCacheKey {
   int framenr;
   int proxy;
   short render_flag;
-} MovieClipImBufCacheKey;
+};
 
-typedef struct MovieClipCachePriorityData {
+struct MovieClipCachePriorityData {
   int framenr;
-} MovieClipCachePriorityData;
+};
 
 static int user_frame_to_cache_frame(MovieClip *clip, int framenr)
 {
@@ -868,7 +864,7 @@ static bool put_imbuf_cache(
   MovieClipImBufCacheKey key;
 
   if (clip->cache == nullptr) {
-    struct MovieCache *moviecache;
+    MovieCache *moviecache;
 
     // char cache_name[64];
     // SNPRINTF(cache_name, "movie %s", clip->id.name);
@@ -1065,15 +1061,13 @@ static void real_ibuf_size(
   }
 }
 
-static ImBuf *get_undistorted_ibuf(MovieClip *clip,
-                                   struct MovieDistortion *distortion,
-                                   ImBuf *ibuf)
+static ImBuf *get_undistorted_ibuf(MovieClip *clip, MovieDistortion *distortion, ImBuf *ibuf)
 {
   ImBuf *undistibuf;
 
   if (distortion) {
     undistibuf = BKE_tracking_distortion_exec(
-        distortion, &clip->tracking, ibuf, ibuf->x, ibuf->y, 0.0f, 1);
+        distortion, &clip->tracking, ibuf, ibuf->x, ibuf->y, 0.0f, true);
   }
   else {
     undistibuf = BKE_tracking_undistort_frame(&clip->tracking, ibuf, ibuf->x, ibuf->y, 0.0f);
@@ -1086,7 +1080,7 @@ static ImBuf *get_undistorted_ibuf(MovieClip *clip,
 
 static bool need_undistortion_postprocess(const MovieClipUser *user, int clip_flag)
 {
-  bool result = 0;
+  bool result = false;
   const bool uses_full_frame = ((clip_flag & MCLIP_USE_PROXY) == 0) ||
                                (user->render_size == MCLIP_PROXY_RENDER_SIZE_FULL);
   /* Only full undistorted render can be used as on-fly undistorting image. */
@@ -1210,7 +1204,7 @@ static ImBuf *postprocess_frame(
     bool grayscale = (postprocess_flag & MOVIECLIP_PREVIEW_GRAYSCALE) != 0;
 
     if (disable_red || disable_green || disable_blue || grayscale) {
-      BKE_tracking_disable_channels(postproc_ibuf, disable_red, disable_green, disable_blue, 1);
+      BKE_tracking_disable_channels(postproc_ibuf, disable_red, disable_green, disable_blue, true);
     }
   }
 
@@ -1834,7 +1828,7 @@ static void movieclip_build_proxy_ibuf(
 
 void BKE_movieclip_build_proxy_frame(MovieClip *clip,
                                      int clip_flag,
-                                     struct MovieDistortion *distortion,
+                                     MovieDistortion *distortion,
                                      int cfra,
                                      int *build_sizes,
                                      int build_count,
@@ -1875,7 +1869,7 @@ void BKE_movieclip_build_proxy_frame(MovieClip *clip,
 
 void BKE_movieclip_build_proxy_frame_for_ibuf(MovieClip *clip,
                                               ImBuf *ibuf,
-                                              struct MovieDistortion *distortion,
+                                              MovieDistortion *distortion,
                                               int cfra,
                                               int *build_sizes,
                                               int build_count,

@@ -6,17 +6,18 @@
  * \ingroup bke
  */
 
-#include <math.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "CLG_log.h"
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 #include "BLI_string_utils.h"
 
@@ -48,7 +49,7 @@
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 
 #include "BLI_math_color.h"
 
@@ -1220,12 +1221,10 @@ bool BKE_gpencil_layer_is_editable(const bGPDlayer *gpl)
 
 bGPDframe *BKE_gpencil_layer_frame_find(bGPDlayer *gpl, int cframe)
 {
-  bGPDframe *gpf;
-
   /* Search in reverse order, since this is often used for playback/adding,
    * where it's less likely that we're interested in the earlier frames
    */
-  for (gpf = static_cast<bGPDframe *>(gpl->frames.last); gpf; gpf = gpf->prev) {
+  LISTBASE_FOREACH_BACKWARD (bGPDframe *, gpf, &gpl->frames) {
     if (gpf->framenum == cframe) {
       return gpf;
     }
@@ -1583,15 +1582,13 @@ bGPDlayer *BKE_gpencil_layer_active_get(bGPdata *gpd)
 
 bGPDlayer *BKE_gpencil_layer_get_by_name(bGPdata *gpd, const char *name, int first_if_not_found)
 {
-  bGPDlayer *gpl;
-
   /* error checking */
   if (ELEM(nullptr, gpd, gpd->layers.first)) {
     return nullptr;
   }
 
   /* loop over layers until found (assume only one active) */
-  for (gpl = static_cast<bGPDlayer *>(gpd->layers.first); gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     if (STREQ(name, gpl->info)) {
       return gpl;
     }
@@ -2024,7 +2021,7 @@ bool BKE_gpencil_merge_materials_table_get(Object *ob,
   GHash *mat_used = BLI_ghash_int_new(__func__);
 
   short *totcol = BKE_object_material_len_p(ob);
-  if (totcol == 0) {
+  if (totcol == nullptr) {
     return changed;
   }
 
@@ -2143,9 +2140,9 @@ bool BKE_gpencil_merge_materials(Object *ob,
   bGPdata *gpd = static_cast<bGPdata *>(ob->data);
 
   short *totcol = BKE_object_material_len_p(ob);
-  if (totcol == 0) {
+  if (totcol == nullptr) {
     *r_removed = 0;
-    return 0;
+    return false;
   }
 
   /* Review materials. */

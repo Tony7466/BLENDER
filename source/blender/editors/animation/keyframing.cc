@@ -6,17 +6,19 @@
  * \ingroup edanimation
  */
 
-#include <float.h>
-#include <math.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <string.h>
+#include <cfloat>
+#include <cmath>
+#include <cstddef>
+#include <cstdio>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_dynstr.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -51,22 +53,24 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
-#include "ED_anim_api.h"
-#include "ED_keyframes_edit.h"
-#include "ED_keyframing.h"
-#include "ED_object.h"
-#include "ED_screen.h"
+#include "ED_anim_api.hh"
+#include "ED_keyframes_edit.hh"
+#include "ED_keyframing.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "ANIM_bone_collections.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
-#include "RNA_path.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
+
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #include "anim_intern.h"
@@ -2184,7 +2188,7 @@ void ANIM_OT_keyframe_insert_menu(wmOperatorType *ot)
    * - by default, the menu should only be shown when there is no active Keying Set (2.5 behavior),
    *   although in some cases it might be useful to always shown (pre 2.5 behavior)
    */
-  prop = RNA_def_boolean(ot->srna, "always_prompt", 0, "Always Show Menu", "");
+  prop = RNA_def_boolean(ot->srna, "always_prompt", false, "Always Show Menu", "");
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
@@ -2436,7 +2440,7 @@ static int delete_key_v3d_without_keying_set(bContext *C, wmOperator *op)
             bArmature *arm = (bArmature *)ob->data;
 
             /* skipping - not visible on currently visible layers */
-            if ((arm->layer & pchan->bone->layer) == 0) {
+            if (!ANIM_bonecoll_is_visible_pchan(arm, pchan)) {
               continue;
             }
             /* skipping - is currently hidden */
@@ -2697,7 +2701,7 @@ void ANIM_OT_keyframe_insert_button(wmOperatorType *ot)
   ot->flag = OPTYPE_UNDO | OPTYPE_INTERNAL;
 
   /* properties */
-  RNA_def_boolean(ot->srna, "all", 1, "All", "Insert a keyframe for all element of the array");
+  RNA_def_boolean(ot->srna, "all", true, "All", "Insert a keyframe for all element of the array");
 }
 
 /* Delete Key Button Operator ------------------------ */
@@ -2808,7 +2812,7 @@ void ANIM_OT_keyframe_delete_button(wmOperatorType *ot)
   ot->flag = OPTYPE_UNDO | OPTYPE_INTERNAL;
 
   /* properties */
-  RNA_def_boolean(ot->srna, "all", 1, "All", "Delete keyframes from all elements of the array");
+  RNA_def_boolean(ot->srna, "all", true, "All", "Delete keyframes from all elements of the array");
 }
 
 /* Clear Key Button Operator ------------------------ */
@@ -2876,7 +2880,7 @@ void ANIM_OT_keyframe_clear_button(wmOperatorType *ot)
   ot->flag = OPTYPE_UNDO | OPTYPE_INTERNAL;
 
   /* properties */
-  RNA_def_boolean(ot->srna, "all", 1, "All", "Clear keyframes from all elements of the array");
+  RNA_def_boolean(ot->srna, "all", true, "All", "Clear keyframes from all elements of the array");
 }
 
 /* ******************************************* */
@@ -2971,8 +2975,6 @@ bool fcurve_is_changed(PointerRNA ptr,
  */
 static bool action_frame_has_keyframe(bAction *act, float frame)
 {
-  FCurve *fcu;
-
   /* can only find if there is data */
   if (act == nullptr) {
     return false;
@@ -2985,7 +2987,7 @@ static bool action_frame_has_keyframe(bAction *act, float frame)
   /* loop over F-Curves, using binary-search to try to find matches
    * - this assumes that keyframes are only beztriples
    */
-  for (fcu = static_cast<FCurve *>(act->curves.first); fcu; fcu = fcu->next) {
+  LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
     /* only check if there are keyframes (currently only of type BezTriple) */
     if (fcu->bezt && fcu->totvert) {
       if (fcurve_frame_has_keyframe(fcu, frame)) {
