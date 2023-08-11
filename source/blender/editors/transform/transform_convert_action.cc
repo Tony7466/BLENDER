@@ -257,9 +257,9 @@ static int count_gplayer_frames(bGPDlayer *gpl, char side, float cfra, bool is_p
 }
 
 static int count_grease_pencil_frames(const blender::bke::greasepencil::Layer *layer,
-                                      char side,
-                                      float cfra,
-                                      bool is_prop_edit)
+                                      const char side,
+                                      const float cfra,
+                                      const bool is_prop_edit,
 {
   if (layer == nullptr) {
     return 0;
