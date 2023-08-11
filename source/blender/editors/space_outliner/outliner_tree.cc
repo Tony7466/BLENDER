@@ -328,11 +328,10 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
   else if (type == TSE_LINKED_PSYS) {
     /* pass */
   }
-<<<<<<< HEAD
   else if (type == TSE_POSE_BASE) {
-=======
+    /* pass */
+  }
   else if (ELEM(type, TSE_R_LAYER, TSE_R_LAYER_BASE)) {
->>>>>>> origin/main
     /* pass */
   }
   else if (type == TSE_SOME_ID) {
