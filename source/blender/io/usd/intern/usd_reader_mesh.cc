@@ -178,6 +178,9 @@ static std::optional<eCustomDataType> convert_usd_type_to_blender(
     map.add_new(pxr::SdfValueTypeNames->TexCoord3fArray, CD_PROP_FLOAT2);
     map.add_new(pxr::SdfValueTypeNames->TexCoord3hArray, CD_PROP_FLOAT2);
     map.add_new(pxr::SdfValueTypeNames->Float3Array, CD_PROP_FLOAT3);
+    map.add_new(pxr::SdfValueTypeNames->Vector3fArray, CD_PROP_FLOAT3);
+    map.add_new(pxr::SdfValueTypeNames->Vector3hArray, CD_PROP_FLOAT3);
+    map.add_new(pxr::SdfValueTypeNames->Vector3dArray, CD_PROP_FLOAT3);
     map.add_new(pxr::SdfValueTypeNames->Color3fArray, CD_PROP_COLOR);
     map.add_new(pxr::SdfValueTypeNames->Color3hArray, CD_PROP_COLOR);
     map.add_new(pxr::SdfValueTypeNames->Color3dArray, CD_PROP_COLOR);
