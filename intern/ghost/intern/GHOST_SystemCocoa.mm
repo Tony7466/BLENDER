@@ -2023,6 +2023,8 @@ GHOST_TSuccess GHOST_SystemCocoa::showMessageBox(const char *title,
 {
   @autoreleasepool {
     NSAlert *alert = [[[NSAlert alloc] init] autorelease];
+    [alert setAccessoryView:[[[NSView alloc] initWithFrame:NSMakeRect(0, 0, 500, 0)] autorelease]];
+
     NSString *titleString = [NSString stringWithCString:title];
     NSString *messageString = [NSString stringWithCString:message];
     NSString *continueString = [NSString stringWithCString:continue_label];
