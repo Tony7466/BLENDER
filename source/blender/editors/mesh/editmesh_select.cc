@@ -4480,7 +4480,7 @@ void MESH_OT_select_element_by_index(wmOperatorType *ot)
   prop = RNA_def_enum(ot->srna, "element_type", rna_enum_mesh_select_mode_items, 0, "Element Type", "Type of element to select");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
-  prop = RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "Index of the element to select", INT_MIN, INT_MAX);
+  prop = RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "Index of the element to select", 0, INT_MAX);
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   prop = RNA_def_boolean(ot->srna, "select", true, "Select", "Select or deselect the element");
