@@ -48,7 +48,7 @@
 #include "IMB_imbuf_types.h"
 #include "IMB_metadata.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "RE_engine.h"
@@ -983,7 +983,7 @@ static ImBuf *seq_render_image_strip(const SeqRenderData *context,
   }
 
   BLI_path_join(filepath, sizeof(filepath), seq->strip->dirpath, s_elem->filename);
-  BLI_path_abs(filepath, BKE_main_blendfile_path_from_global());
+  BLI_path_abs(filepath, ID_BLEND_PATH_FROM_GLOBAL(&context->scene->id));
 
   /* Try to get a proxy image. */
   ibuf = seq_proxy_fetch(context, seq, timeline_frame);
