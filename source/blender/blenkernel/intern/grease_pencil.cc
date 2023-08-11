@@ -1564,47 +1564,13 @@ void GreasePencil::remove_drawings_with_no_users()
 void GreasePencil::move_frames(blender::bke::greasepencil::Layer &layer,
                                const blender::Map<int, int> &frame_number_destinations)
 {
-  using namespace blender;
-
-  Map<int, GreasePencilFrame> layer_frames_copy = layer.frames();
-
-  /* Remove all frames that have a mapping. */
-  for (const int frame_number : frame_number_destinations.keys()) {
-    layer.remove_frame(frame_number);
-  }
-
-  /* Insert all frames of the transformation. */
-  for (const auto [src_frame_number, dst_frame_number] : frame_number_destinations.items()) {
-    if (!layer_frames_copy.contains(src_frame_number)) {
-      continue;
-    }
-
-    const GreasePencilFrame src_frame = layer_frames_copy.lookup(src_frame_number);
-    const int drawing_index = src_frame.drawing_index;
-    const int duration = src_frame.is_implicit_hold() ?
-                             0 :
-                             layer.get_frame_duration_at(src_frame_number);
-
-    /* Add and overwrite the frame at the destination number. */
-    if (layer.frames().contains(dst_frame_number)) {
-      GreasePencilFrame frame_to_overwrite = layer.frames().lookup(dst_frame_number);
-      GreasePencilDrawingBase *drawing_base = this->drawings(frame_to_overwrite.drawing_index);
-      if (drawing_base->type == GP_DRAWING) {
-        reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap().remove_user();
-      }
-      layer.remove_frame(dst_frame_number);
-    }
-    GreasePencilFrame *frame = layer.add_frame(dst_frame_number, drawing_index, duration);
-    *frame = src_frame;
-  }
-
-  /* Remove drawings if they no longer have users. */
-  this->remove_drawings_with_no_users();
+  return this->move_duplicate_frames(
+      layer, frame_number_destinations, blender::Map<int, GreasePencilFrame>());
 }
 
 void GreasePencil::move_duplicate_frames(
     blender::bke::greasepencil::Layer &layer,
-    const blender::Map<int, int> &frame_number_destination,
+    const blender::Map<int, int> &frame_number_destinations,
     const blender::Map<int, GreasePencilFrame> &duplicate_frames)
 {
   using namespace blender;
@@ -1618,7 +1584,7 @@ void GreasePencil::move_duplicate_frames(
     }
   }
 
-  for (const auto [src_frame_number, dst_frame_number] : frame_number_destination.items()) {
+  for (const auto [src_frame_number, dst_frame_number] : frame_number_destinations.items()) {
     const bool use_duplicate = duplicate_frames.contains(src_frame_number);
 
     const Map<int, GreasePencilFrame> &frame_map = use_duplicate ? duplicate_frames :

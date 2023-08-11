@@ -167,15 +167,10 @@ static bool grease_pencil_layer_apply_trans_data(GreasePencil &grease_pencil,
   layer.tag_frames_map_keys_changed();
 
   if (!canceled) {
-    if (duplicate) {
-      /* Insert all the duplicated frames in the layer. */
-      grease_pencil.move_duplicate_frames(
-          layer, trans_data.frames_destination, trans_data.duplicated_frames);
-    }
-    else {
-      /* Move all the selected frames according to the transformation. */
-      grease_pencil.move_frames(layer, trans_data.frames_destination);
-    }
+    /* Moves all the selected frames according to the transformation, and inserts the potential
+     * duplicate frames in the layer. */
+    grease_pencil.move_duplicate_frames(
+        layer, trans_data.frames_destination, trans_data.duplicated_frames);
   }
 
   if (canceled && duplicate) {

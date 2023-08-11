@@ -530,7 +530,7 @@ typedef struct GreasePencil {
    * corresponding drawing may be removed, if it no longer has users.
    */
   void move_duplicate_frames(blender::bke::greasepencil::Layer &layer,
-                             const blender::Map<int, int> &frame_number_destination,
+                             const blender::Map<int, int> &frame_number_destinations,
                              const blender::Map<int, GreasePencilFrame> &duplicate_frames);
 
   /**
