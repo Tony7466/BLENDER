@@ -986,10 +986,10 @@ void GRAPH_OT_keys_to_samples(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Samples to Keys Operator
  *
- * This operator un-bakes the data of the selected F-Points to F-Curves.
+ * This operator converts the data of the selected F-Points to F-Curves.
  * \{ */
 
-/* Un-Bake F-Points into F-Curves. */
+/* Convert F-Points into F-Curves. */
 static void convert_samples_to_keys(bAnimContext *ac, int start, int end)
 {
   ListBase anim_data = {nullptr, nullptr};
@@ -1059,9 +1059,9 @@ void GRAPH_OT_samples_to_keys(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Sound Bake F-Curve Operator
+/** \name Sound to Samples Operator
  *
- * This operator bakes the given sound to the selected F-Curves.
+ * This operator converts the given sound to the selected F-Curves.
  * \{ */
 
 /* ------------------- */
@@ -1094,7 +1094,7 @@ static float fcurve_samplingcb_sound(FCurve * /*fcu*/, void *data, float evaltim
 
 /* ------------------- */
 
-static int graphkeys_sound_bake_exec(bContext *C, wmOperator *op)
+static int graphkeys_sound_to_samples_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
   ListBase anim_data = {nullptr, nullptr};
@@ -1175,7 +1175,7 @@ static int graphkeys_sound_bake_exec(bContext *C, wmOperator *op)
 
 #else /* WITH_AUDASPACE */
 
-static int graphkeys_sound_bake_exec(bContext * /*C*/, wmOperator *op)
+static int graphkeys_sound_to_samples_exec(bContext * /*C*/, wmOperator *op)
 {
   BKE_report(op->reports, RPT_ERROR, "Compiled without sound support");
 
@@ -1184,7 +1184,7 @@ static int graphkeys_sound_bake_exec(bContext * /*C*/, wmOperator *op)
 
 #endif /* WITH_AUDASPACE */
 
-static int graphkeys_sound_bake_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int graphkeys_sound_to_samples_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   bAnimContext ac;
 
@@ -1196,16 +1196,16 @@ static int graphkeys_sound_bake_invoke(bContext *C, wmOperator *op, const wmEven
   return WM_operator_filesel(C, op, event);
 }
 
-void GRAPH_OT_sound_bake(wmOperatorType *ot)
+void GRAPH_OT_sound_to_samples(wmOperatorType *ot)
 {
   /* Identifiers */
-  ot->name = "Bake Sound to F-Curves";
-  ot->idname = "GRAPH_OT_sound_bake";
+  ot->name = "Sound to Samples";
+  ot->idname = "GRAPH_OT_sound_to_samples";
   ot->description = "Bakes a sound wave to selected F-Curves";
 
   /* API callbacks */
-  ot->invoke = graphkeys_sound_bake_invoke;
-  ot->exec = graphkeys_sound_bake_exec;
+  ot->invoke = graphkeys_sound_to_samples_invoke;
+  ot->exec = graphkeys_sound_to_samples_exec;
   ot->poll = graphop_selected_fcurve_poll;
 
   /* Flags */
