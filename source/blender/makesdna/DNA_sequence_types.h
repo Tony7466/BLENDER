@@ -127,7 +127,7 @@ typedef enum eSeqRetimingHandleFlag {
   SPEED_TRANSITION_OUT = (1 << 1),
   FREEZE_FRAME_IN = (1 << 2),
   FREEZE_FRAME_OUT = (1 << 3),
-  DELETE_HANDLE = (1 << 4),
+  DELETE_KEY = (1 << 4),
 } eSeqRetimingHandleFlag;
 
 typedef struct SeqRetimingHandle {
@@ -297,8 +297,8 @@ typedef struct SeqTimelineChannel {
   int flag;
 } SeqTimelineChannel;
 
-typedef struct SeqRetimingHandleSelection {
-  struct SeqRetimingHandleSelection *next, *prev;
+typedef struct SeqRetimingKeySelection {
+  struct SeqRetimingKeySelection *next, *prev;
   char strip_name[64]; /* SEQ_NAME_MAXSTR */
   int index;
   int _pad0;

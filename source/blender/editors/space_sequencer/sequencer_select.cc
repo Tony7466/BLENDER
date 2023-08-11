@@ -971,30 +971,30 @@ static int sequencer_select_exec(bContext *C, wmOperator *op)
     return OPERATOR_RUNNING_MODAL;
   }
 
-  Sequence *seq_handle_test = nullptr;
-  const SeqRetimingHandle *handle = mousover_handle_get(C, mval, &seq_handle_test);
-  bool retiming_handle_clicked = (handle != nullptr);
+  Sequence *seq_key_test = nullptr;
+  const SeqRetimingHandle *key = retiming_mousover_key_get(C, mval, &seq_key_test);
+  bool retiming_handle_clicked = (key != nullptr);
 
-  /* Ensure handle selection even if data is not initialized yet. */
-  if (seq_handle_test != nullptr && last_handle_is_clicked(C, seq_handle_test, mval)) {
+  /* Ensure key selection even if data is not initialized yet. */
+  if (seq_key_test != nullptr && retiming_last_key_is_clicked(C, seq_key_test, mval)) {
     retiming_handle_clicked = true;
-    SEQ_retiming_data_ensure(scene, seq_handle_test);
-    handle = SEQ_retiming_last_handle_get(seq);
+    SEQ_retiming_data_ensure(scene, seq_key_test);
+    key = SEQ_retiming_last_key_get(seq);
   }
 
-  /* `&& !wait_to_deselect_others` will cause handle to be selected only if strip is already
+  /* `&& !wait_to_deselect_others` will cause key to be selected only if strip is already
    * selected. */
-  if (seq_handle_test && retiming_handle_clicked) {
+  if (seq_key_test && retiming_handle_clicked) {
     WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
     WM_toolsystem_ref_set_by_id(C, "builtin.retime");
-    /* Ensure retiming handles at strip handles before switching tool. */
+    /* Ensure retiming keys at strip handles before switching tool. */
     SeqCollection *strips = SEQ_query_all_strips(ed->seqbasep);
     Sequence *seq;
     SEQ_ITERATOR_FOREACH (seq, strips) {
       SEQ_retiming_data_ensure(scene, seq);
     }
     SEQ_collection_free(strips);
-    SEQ_retiming_selection_append(ed, seq_handle_test, handle);
+    SEQ_retiming_selection_append(ed, seq_key_test, key);
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
 

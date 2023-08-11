@@ -16,78 +16,75 @@ struct Scene;
 struct Sequence;
 struct SeqRetimingHandle;
 
-int SEQ_retiming_handles_count(const struct Sequence *seq);
+int SEQ_retiming_keys_count(const struct Sequence *seq);
 bool SEQ_retiming_is_active(const struct Sequence *seq);
-void SEQ_retiming_ensure_last_handle(const struct Scene *scene, struct Sequence *seq);
+void SEQ_retiming_ensure_last_key(const struct Scene *scene, struct Sequence *seq);
 void SEQ_retiming_data_ensure(const struct Scene *scene, struct Sequence *seq);
 void SEQ_retiming_data_clear(struct Sequence *seq);
 bool SEQ_retiming_is_allowed(const struct Sequence *seq);
 
 /**
- * Add new retiming handle.
+ * Add new retiming key.
  * This function always reallocates memory, so when function is used all stored pointers will
  * become invalid.
  */
-struct SeqRetimingHandle *SEQ_retiming_add_handle(const struct Scene *scene,
-                                                  struct Sequence *seq,
-                                                  const int timeline_frame);
+struct SeqRetimingHandle *SEQ_retiming_add_key(const struct Scene *scene,
+                                               struct Sequence *seq,
+                                               const int timeline_frame);
 SeqRetimingHandle *SEQ_retiming_add_transition(const struct Scene *scene,
                                                struct Sequence *seq,
-                                               struct SeqRetimingHandle *handle,
+                                               struct SeqRetimingHandle *key,
                                                const int offset);
 SeqRetimingHandle *SEQ_retiming_add_freeze_frame(const struct Scene *scene,
                                                  struct Sequence *seq,
-                                                 struct SeqRetimingHandle *handle,
+                                                 struct SeqRetimingHandle *key,
                                                  const int offset);
-bool SEQ_retiming_is_last_handle(const struct Sequence *seq,
-                                 const struct SeqRetimingHandle *handle);
-struct SeqRetimingHandle *SEQ_retiming_last_handle_get(const struct Sequence *seq);
-void SEQ_retiming_remove_handle(const struct Scene *scene,
+bool SEQ_retiming_is_last_key(const struct Sequence *seq, const struct SeqRetimingHandle *key);
+struct SeqRetimingHandle *SEQ_retiming_last_key_get(const struct Sequence *seq);
+void SEQ_retiming_remove_key(const struct Scene *scene,
+                             struct Sequence *seq,
+                             struct SeqRetimingHandle *key);
+void SEQ_retiming_offset_transition_key(const struct Scene *scene,
+                                        const struct Sequence *seq,
+                                        struct SeqRetimingHandle *key,
+                                        const int offset);
+float SEQ_retiming_key_speed_get(const struct Sequence *seq, const struct SeqRetimingHandle *key);
+void SEQ_retiming_key_speed_set(const struct Scene *scene,
                                 struct Sequence *seq,
-                                struct SeqRetimingHandle *handle);
-void SEQ_retiming_offset_transition_handle(const struct Scene *scene,
-                                           const struct Sequence *seq,
-                                           struct SeqRetimingHandle *handle,
-                                           const int offset);
-float SEQ_retiming_handle_speed_get(const struct Sequence *seq,
-                                    const struct SeqRetimingHandle *handle);
-void SEQ_retiming_handle_speed_set(const struct Scene *scene,
-                                   struct Sequence *seq,
-                                   struct SeqRetimingHandle *handle,
-                                   const float speed);
-int SEQ_retiming_handle_index_get(const struct Sequence *seq,
-                                  const struct SeqRetimingHandle *handle);
-SeqRetimingHandle *SEQ_retiming_handle_get_by_timeline_frame(const struct Scene *scene,
-                                                             const struct Sequence *seq,
-                                                             const int timeline_frame);
+                                struct SeqRetimingHandle *key,
+                                const float speed);
+int SEQ_retiming_key_index_get(const struct Sequence *seq, const struct SeqRetimingHandle *key);
+SeqRetimingHandle *SEQ_retiming_key_get_by_timeline_frame(const struct Scene *scene,
+                                                          const struct Sequence *seq,
+                                                          const int timeline_frame);
 void SEQ_retiming_sound_animation_data_set(const struct Scene *scene, const struct Sequence *seq);
-float SEQ_retiming_handle_timeline_frame_get(const struct Scene *scene,
-                                             const struct Sequence *seq,
-                                             const struct SeqRetimingHandle *handle);
-void SEQ_retiming_handle_timeline_frame_set(const struct Scene *scene,
-                                            struct Sequence *seq,
-                                            struct SeqRetimingHandle *handle,
-                                            const int timeline_frame);
-SeqRetimingHandle *SEQ_retiming_find_segment_start_handle(const struct Sequence *seq,
-                                                          const int frame_index);
-bool SEQ_retiming_handle_is_transition_type(const struct SeqRetimingHandle *handle);
-bool SEQ_retiming_handle_is_transition_start(const struct SeqRetimingHandle *handle);
-SeqRetimingHandle *SEQ_retiming_transition_start_get(struct SeqRetimingHandle *handle);
+float SEQ_retiming_key_timeline_frame_get(const struct Scene *scene,
+                                          const struct Sequence *seq,
+                                          const struct SeqRetimingHandle *key);
+void SEQ_retiming_key_timeline_frame_set(const struct Scene *scene,
+                                         struct Sequence *seq,
+                                         struct SeqRetimingHandle *key,
+                                         const int timeline_frame);
+SeqRetimingHandle *SEQ_retiming_find_segment_start_key(const struct Sequence *seq,
+                                                       const int frame_index);
+bool SEQ_retiming_key_is_transition_type(const struct SeqRetimingHandle *key);
+bool SEQ_retiming_key_is_transition_start(const struct SeqRetimingHandle *key);
+SeqRetimingHandle *SEQ_retiming_transition_start_get(struct SeqRetimingHandle *key);
 
-bool SEQ_retiming_handle_is_freeze_frame(const struct SeqRetimingHandle *handle);
+bool SEQ_retiming_key_is_freeze_frame(const struct SeqRetimingHandle *key);
 
 bool SEQ_retiming_selection_clear(struct Editing *ed);
 void SEQ_retiming_selection_append(struct Editing *ed,
                                    const struct Sequence *seq,
-                                   const struct SeqRetimingHandle *handle);
+                                   const struct SeqRetimingHandle *key);
 void SEQ_retiming_selection_remove(struct Editing *ed,
                                    const struct Sequence *seq,
-                                   const struct SeqRetimingHandle *handle);
+                                   const struct SeqRetimingHandle *key);
 bool SEQ_retiming_selection_contains(struct Editing *ed,
                                      const struct Sequence *seq,
-                                     const struct SeqRetimingHandle *handle);
+                                     const struct SeqRetimingHandle *key);
 bool SEQ_retiming_selection_has_whole_transition(struct Scene *scene,
-                                                 struct SeqRetimingHandle *handle);
+                                                 struct SeqRetimingHandle *key);
 #ifdef __cplusplus
 }
 #endif

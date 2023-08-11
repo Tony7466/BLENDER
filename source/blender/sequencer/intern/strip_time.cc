@@ -503,7 +503,7 @@ int SEQ_time_strip_length_get(const Scene *scene, const Sequence *seq)
 {
   if (SEQ_retiming_is_active(seq)) {
     SeqRetimingHandle *handle_start = seq->retiming_handles;
-    SeqRetimingHandle *handle_end = seq->retiming_handles + (SEQ_retiming_handles_count(seq) - 1);
+    SeqRetimingHandle *handle_end = seq->retiming_handles + (SEQ_retiming_keys_count(seq) - 1);
     return handle_end->strip_frame_index / seq_time_media_playback_rate_factor_get(scene, seq) -
            (handle_start->strip_frame_index) / seq_time_media_playback_rate_factor_get(scene, seq);
   }

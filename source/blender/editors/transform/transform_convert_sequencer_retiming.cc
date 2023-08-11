@@ -36,19 +36,19 @@
 typedef struct TransDataSeq {
   Sequence *seq;
   int orig_timeline_frame;
-  int handle_index; /* Some actions may need to destroy original data, use index to access it. */
+  int key_index; /* Some actions may need to destroy original data, use index to access it. */
 } TransDataSeq;
 
 static TransData *SeqToTransData(const Scene *scene,
                                  Sequence *seq,
-                                 SeqRetimingHandle *handle,
+                                 SeqRetimingHandle *key,
                                  TransData *td,
                                  TransData2D *td2d,
                                  TransDataSeq *tdseq)
 {
 
-  td2d->loc[0] = SEQ_retiming_handle_timeline_frame_get(scene, seq, handle);
-  td2d->loc[1] = handle->retiming_factor;
+  td2d->loc[0] = SEQ_retiming_key_timeline_frame_get(scene, seq, key);
+  td2d->loc[1] = key->retiming_factor;
   td2d->loc2d = NULL;
   td->loc = td2d->loc;
   copy_v3_v3(td->iloc, td->loc);
@@ -59,8 +59,8 @@ static TransData *SeqToTransData(const Scene *scene,
   unit_m3(td->smtx);
 
   tdseq->seq = seq;
-  tdseq->orig_timeline_frame = SEQ_retiming_handle_timeline_frame_get(scene, seq, handle);
-  tdseq->handle_index = SEQ_retiming_handle_index_get(seq, handle);
+  tdseq->orig_timeline_frame = SEQ_retiming_key_timeline_frame_get(scene, seq, key);
+  tdseq->key_index = SEQ_retiming_key_index_get(seq, key);
 
   td->extra = (void *)tdseq;
   td->ext = NULL;
@@ -103,24 +103,24 @@ static void createTransSeqRetimingData(bContext * /*C*/, TransInfo *t)
 
   /*for elem*/
   for (const RetimingSelectionElem elem : selection) {
-    SeqToTransData(t->scene, elem.seq, elem.handle, td++, td2d++, tdseq++);
+    SeqToTransData(t->scene, elem.seq, elem.key, td++, td2d++, tdseq++);
   }
 }
 
 static void seq_resize_speed_translation(Scene *scene,
                                          Sequence *seq,
-                                         SeqRetimingHandle *handle,
+                                         SeqRetimingHandle *key,
                                          const float loc)
 {
-  SeqRetimingHandle *handle_start = SEQ_retiming_transition_start_get(handle);
+  SeqRetimingHandle *key_start = SEQ_retiming_transition_start_get(key);
   float offset;
-  if (handle == handle_start) {
-    offset = loc - SEQ_retiming_handle_timeline_frame_get(scene, seq, handle);
+  if (key == key_start) {
+    offset = loc - SEQ_retiming_key_timeline_frame_get(scene, seq, key);
   }
   else {
-    offset = SEQ_retiming_handle_timeline_frame_get(scene, seq, handle) - loc;
+    offset = SEQ_retiming_key_timeline_frame_get(scene, seq, key) - loc;
   }
-  SEQ_retiming_offset_transition_handle(scene, seq, handle_start, offset);
+  SEQ_retiming_offset_transition_key(scene, seq, key_start, offset);
 }
 
 static void recalcData_sequencer_retiming(TransInfo *t)
@@ -136,17 +136,16 @@ static void recalcData_sequencer_retiming(TransInfo *t)
 
     /* Calculate translation. */
 
-    blender::MutableSpan handles = SEQ_retiming_handles_get(seq);
-    // SeqRetimingHandle *handle = &handles[tdseq->handle_index];
-    SeqRetimingHandle *handle = seq->retiming_handles + tdseq->handle_index;
+    blender::MutableSpan keys = SEQ_retiming_keys_get(seq);
+    SeqRetimingHandle *key = seq->retiming_handles + tdseq->key_index;
 
-    if (SEQ_retiming_handle_is_transition_type(handle) &&
-        !SEQ_retiming_selection_has_whole_transition(t->scene, handle))
+    if (SEQ_retiming_key_is_transition_type(key) &&
+        !SEQ_retiming_selection_has_whole_transition(t->scene, key))
     {
-      seq_resize_speed_translation(t->scene, seq, handle, td2d->loc[0]);
+      seq_resize_speed_translation(t->scene, seq, key, td2d->loc[0]);
     }
     else {
-      SEQ_retiming_handle_timeline_frame_set(t->scene, seq, handle, td2d->loc[0]);
+      SEQ_retiming_key_timeline_frame_set(t->scene, seq, key, td2d->loc[0]);
     }
 
     SEQ_relations_invalidate_cache_preprocessed(t->scene, seq);

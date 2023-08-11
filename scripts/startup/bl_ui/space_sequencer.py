@@ -1064,7 +1064,7 @@ class SEQUENCER_MT_retiming(Menu):
         layout = self.layout
         layout.operator_context = 'INVOKE_REGION_WIN'
 
-        layout.operator("sequencer.retiming_handle_add")
+        layout.operator("sequencer.retiming_key_add")
         layout.operator("sequencer.retiming_freeze_frame_add")
 
 
@@ -1173,7 +1173,7 @@ class SEQUENCER_MT_context_menu(Menu):
         layout = self.layout
         layout.operator_context = 'INVOKE_REGION_WIN'
 
-        layout.operator("sequencer.retiming_handle_add")
+        layout.operator("sequencer.retiming_key_add")
 
         if context.scene.sequence_editor.selected_retiming_handles:
             layout.operator("sequencer.retiming_freeze_frame_add")
@@ -1185,7 +1185,7 @@ class SEQUENCER_MT_context_menu(Menu):
             layout.operator("sequencer.retiming_segment_speed_set", text="Speed 200%").speed = 200
             layout.operator("sequencer.retiming_segment_speed_set", text="Speed 400%").speed = 400
             layout.separator()
-            layout.operator("sequencer.retiming_handle_remove")
+            layout.operator("sequencer.retiming_key_remove")
 
         layout.separator()
 

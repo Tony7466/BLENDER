@@ -1084,8 +1084,8 @@ static void scene_blend_write(BlendWriter *writer, ID *id, const void *id_addres
     LISTBASE_FOREACH (SeqTimelineChannel *, channel, &ed->channels) {
       BLO_write_struct(writer, SeqTimelineChannel, channel);
     }
-    LISTBASE_FOREACH (SeqRetimingHandleSelection *, elem, &ed->retiming_selection) {
-      BLO_write_struct(writer, SeqRetimingHandleSelection, elem);
+    LISTBASE_FOREACH (SeqRetimingKeySelection *, elem, &ed->retiming_selection) {
+      BLO_write_struct(writer, SeqRetimingKeySelection, elem);
     }
     /* new; meta stack too, even when its nasty restore code */
     LISTBASE_FOREACH (MetaStack *, ms, &ed->metastack) {

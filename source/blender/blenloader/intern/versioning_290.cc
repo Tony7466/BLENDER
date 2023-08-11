@@ -1321,7 +1321,8 @@ void blo_do_versions_290(FileData *fd, Library * /*lib*/, Main *bmain)
     if (!DNA_struct_elem_find(fd->filesdna, "WorkSpaceDataRelation", "int", "parentid")) {
       LISTBASE_FOREACH (WorkSpace *, workspace, &bmain->workspaces) {
         LISTBASE_FOREACH_MUTABLE (
-            WorkSpaceDataRelation *, relation, &workspace->hook_layout_relations) {
+            WorkSpaceDataRelation *, relation, &workspace->hook_layout_relations)
+        {
           relation->parent = blo_read_get_new_globaldata_address(fd, relation->parent);
           BLI_assert(relation->parentid == 0);
           if (relation->parent != nullptr) {

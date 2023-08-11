@@ -765,7 +765,7 @@ static bool seq_write_data_cb(Sequence *seq, void *userdata)
   }
 
   if (seq->retiming_handles != nullptr) {
-    int size = SEQ_retiming_handles_count(seq);
+    int size = SEQ_retiming_keys_count(seq);
     BLO_write_struct_array(writer, SeqRetimingHandle, size, seq->retiming_handles);
   }
 

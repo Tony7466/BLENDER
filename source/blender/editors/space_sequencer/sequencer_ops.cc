@@ -71,12 +71,12 @@ void sequencer_operatortypes()
 
   /* `sequencer_retiming.cc` */
   WM_operatortype_append(SEQUENCER_OT_retiming_reset);
-  WM_operatortype_append(SEQUENCER_OT_retiming_handle_add);
+  WM_operatortype_append(SEQUENCER_OT_retiming_key_add);
   WM_operatortype_append(SEQUENCER_OT_retiming_freeze_frame_add);
   WM_operatortype_append(SEQUENCER_OT_retiming_transition_add);
-  WM_operatortype_append(SEQUENCER_OT_retiming_handle_remove);
+  WM_operatortype_append(SEQUENCER_OT_retiming_key_remove);
   WM_operatortype_append(SEQUENCER_OT_retiming_segment_speed_set);
-  WM_operatortype_append(SEQUENCER_OT_retiming_handle_select);
+  WM_operatortype_append(SEQUENCER_OT_retiming_key_select);
   WM_operatortype_append(SEQUENCER_OT_retiming_select_box);
 
   /* `sequencer_select.cc` */

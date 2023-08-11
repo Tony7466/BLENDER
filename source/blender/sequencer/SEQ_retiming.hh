@@ -15,9 +15,9 @@ struct SeqRetimingHandle;
 
 typedef struct RetimingSelectionElem {
   Sequence *seq;
-  SeqRetimingHandle *handle;
-  RetimingSelectionElem(Sequence *seq, SeqRetimingHandle *handle) : seq(seq), handle(handle) {}
+  SeqRetimingHandle *key;
+  RetimingSelectionElem(Sequence *seq, SeqRetimingHandle *key) : seq(seq), key(key) {}
 } RetimingSelectionElem;
 
-blender::MutableSpan<SeqRetimingHandle> SEQ_retiming_handles_get(const Sequence *seq);
+blender::MutableSpan<SeqRetimingHandle> SEQ_retiming_keys_get(const Sequence *seq);
 blender::Vector<RetimingSelectionElem> SEQ_retiming_selection_get(const struct Scene *scene);

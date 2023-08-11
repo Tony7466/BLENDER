@@ -8253,9 +8253,9 @@ def km_sequencer_editor_tool_retime(_params):
         "Sequencer Tool: Retime",
         {"space_type": 'SEQUENCE_EDITOR', "region_type": 'WINDOW'},
         {"items": [
-            ("sequencer.retiming_handle_add", {"type": 'I', "value": 'PRESS', "shift": True}, None),
-            ("sequencer.retiming_handle_remove", {"type": 'DEL', "value": 'PRESS'},None),
-            ("sequencer.retiming_handle_remove", {"type": 'X', "value": 'PRESS'},None),
+            ("sequencer.retiming_key_add", {"type": 'I', "value": 'PRESS', "shift": True}, None),
+            ("sequencer.retiming_key_remove", {"type": 'DEL', "value": 'PRESS'},None),
+            ("sequencer.retiming_key_remove", {"type": 'X', "value": 'PRESS'},None),
             ("sequencer.retiming_select_box", {"type": _params.select_mouse, "value": 'CLICK_DRAG'},
              {"properties": [("tweak", True), ("mode", 'SET')]}),
             ("sequencer.retiming_select_box", {"type": _params.select_mouse, "value": 'CLICK_DRAG', "shift": True},
