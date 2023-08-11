@@ -9,6 +9,8 @@
 
 #include "IMB_imbuf.h"
 
+#include "DNA_material_types.h"
+
 struct bContext;
 struct bNodeTree;
 struct ImBuf;
@@ -32,6 +34,7 @@ struct NestedTreePreviews {
   int preview_size;
   ShaderNodesPreviewJob *running_job = nullptr;
 
+  ePreviewType preview_type = MA_FLAT;
   /**
    * Dirty state of the bNodeTreePath vector. It is the sum of the tree_dirty_state of all the
    * nodetrees plus the sum of all the dirty_state of the group nodes.
@@ -62,7 +65,7 @@ struct NestedTreePreviews {
 };
 
 void free_previews(wmWindowManager &wm, SpaceNode &snode);
-ImBuf *node_preview_acquire_ibuf(NestedTreePreviews &tree_previews, const bNode &node);
+ImBuf *node_preview_acquire_ibuf(bNodeTree &ntree, NestedTreePreviews &tree_previews, const bNode &node);
 void node_release_preview_ibuf(NestedTreePreviews &tree_previews);
 NestedTreePreviews *get_nested_previews(const bContext &C, SpaceNode &snode);
 void stop_preview_job(wmWindowManager &wm);

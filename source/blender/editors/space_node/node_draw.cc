@@ -78,7 +78,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "NOD_geometry_exec.hh"
@@ -2255,7 +2255,7 @@ static void node_draw_basis(const bContext &C,
       NestedTreePreviews *previews_shader = tree_draw_ctx.nested_group_infos;
 
       if (previews_shader) {
-        ImBuf *preview = node_preview_acquire_ibuf(*previews_shader, node);
+        ImBuf *preview = node_preview_acquire_ibuf(ntree, *previews_shader, node);
         node_draw_extra_info_panel(CTX_data_scene(&C), tree_draw_ctx, snode, node, preview, block);
         node_release_preview_ibuf(*previews_shader);
         drawn_with_previews = true;
