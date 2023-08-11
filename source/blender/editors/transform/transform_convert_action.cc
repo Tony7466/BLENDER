@@ -132,7 +132,7 @@ static bool grease_pencil_layer_update_trans_data(blender::bke::greasepencil::La
   const int src_duration = trans_data.frames_duration.lookup_default(src_frame_number, 0);
 
   if (!duplicate) {
-  layer.remove_frame(src_frame_number);
+    layer.remove_frame(src_frame_number);
   }
 
   layer.remove_frame(dst_frame_number);
@@ -148,7 +148,8 @@ static bool grease_pencil_layer_update_trans_data(blender::bke::greasepencil::La
 
 static bool grease_pencil_layer_apply_trans_data(GreasePencil &grease_pencil,
                                                  blender::bke::greasepencil::Layer &layer,
-                                                 const bool canceled)
+                                                 const bool canceled,
+                                                 const bool duplicate)
 {
   using namespace blender::bke::greasepencil;
   LayerTransformData &trans_data = layer.runtime->trans_data_;
@@ -163,13 +164,33 @@ static bool grease_pencil_layer_apply_trans_data(GreasePencil &grease_pencil,
   layer.tag_frames_map_keys_changed();
 
   if (!canceled) {
-    /* Apply the transformation. */
-    grease_pencil.move_frames(layer, trans_data.frames_destination);
+    if (duplicate) {
+      /* Insert all the duplicated frames in the layer. */
+      grease_pencil.move_duplicate_frames(
+          layer, trans_data.frames_destination, trans_data.duplicated_frames);
+    }
+    else {
+      /* Move all the selected frames according to the transformation. */
+      grease_pencil.move_frames(layer, trans_data.frames_destination);
+    }
+  }
+
+  if (canceled && duplicate) {
+    /* Duplicates were done, so we need to delete the corresponding duplicate drawings. */
+    for (const GreasePencilFrame &duplicate_frame : trans_data.duplicated_frames.values()) {
+      GreasePencilDrawingBase *drawing_base = grease_pencil.drawings(
+          duplicate_frame.drawing_index);
+      if (drawing_base->type == GP_DRAWING) {
+        reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap().remove_user();
+      }
+    }
+    grease_pencil.remove_drawings_with_no_users();
   }
 
   /* Clear the frames copy. */
   trans_data.frames_copy.clear();
   trans_data.frames_destination.clear();
+  trans_data.duplicated_frames.clear();
   trans_data.status = LayerTransformData::TRANS_CLEAR;
 
   return true;
@@ -1189,7 +1210,8 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
           grease_pencil_layer_apply_trans_data(
               *grease_pencil,
               *static_cast<blender::bke::greasepencil::Layer *>(ale->data),
-              canceled);
+              canceled,
+              duplicate);
           break;
         }
 
