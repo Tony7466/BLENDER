@@ -10,18 +10,19 @@
 
 #include "DNA_windowmanager_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_task.h"
 
 #include "BKE_context.h"
 #include "BKE_image.h"
 #include "BKE_unit.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "transform.hh"
 #include "transform_constraints.hh"

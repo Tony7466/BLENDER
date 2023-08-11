@@ -21,7 +21,7 @@
 #include "BLI_blenlib.h"
 #include "BLI_easing.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_sort_utils.h"
 #include "BLI_string_utils.h"
 
@@ -38,8 +38,8 @@
 
 #include "BLO_read_write.h"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 
 #include "CLG_log.h"
 
@@ -1766,9 +1766,7 @@ void BKE_fcurve_merge_duplicate_keys(FCurve *fcu, const int sel_flag, const bool
       bool found = false;
 
       /* If there's another selected frame here, merge it */
-      for (tRetainedKeyframe *rk = static_cast<tRetainedKeyframe *>(retained_keys.last); rk;
-           rk = rk->prev)
-      {
+      LISTBASE_FOREACH_BACKWARD (tRetainedKeyframe *, rk, &retained_keys) {
         if (IS_EQT(rk->frame, bezt->vec[1][0], BEZT_BINARYSEARCH_THRESH)) {
           rk->val += bezt->vec[1][1];
           rk->tot_count++;
@@ -1819,9 +1817,7 @@ void BKE_fcurve_merge_duplicate_keys(FCurve *fcu, const int sel_flag, const bool
 
     /* Is this keyframe a candidate for deletion? */
     /* TODO: Replace loop with an O(1) lookup instead */
-    for (tRetainedKeyframe *rk = static_cast<tRetainedKeyframe *>(retained_keys.last); rk;
-         rk = rk->prev)
-    {
+    LISTBASE_FOREACH_BACKWARD (tRetainedKeyframe *, rk, &retained_keys) {
       if (IS_EQT(bezt->vec[1][0], rk->frame, BEZT_BINARYSEARCH_THRESH)) {
         /* Selected keys are treated with greater care than unselected ones... */
         if (BEZT_ISSEL_ANY(bezt)) {

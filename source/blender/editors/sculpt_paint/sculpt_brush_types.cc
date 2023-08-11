@@ -11,7 +11,9 @@
 
 #include "BLI_ghash.h"
 #include "BLI_gsqueue.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_span.hh"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
@@ -30,7 +32,7 @@
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
 #include "paint_intern.hh"
 #include "sculpt_intern.hh"

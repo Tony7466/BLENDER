@@ -14,6 +14,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_endian_switch.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
@@ -46,8 +47,8 @@
 #include "BKE_mesh.hh"
 #include "BKE_scene.h"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #include "BLO_read_write.h"
@@ -306,7 +307,6 @@ Key *BKE_key_add(Main *bmain, ID *id) /* common function */
 void BKE_key_sort(Key *key)
 {
   KeyBlock *kb;
-  KeyBlock *kb2;
 
   /* locate the key which is out of position */
   for (kb = static_cast<KeyBlock *>(key->block.first); kb; kb = kb->next) {
@@ -321,7 +321,7 @@ void BKE_key_sort(Key *key)
     BLI_remlink(&key->block, kb);
 
     /* find the right location and insert before */
-    for (kb2 = static_cast<KeyBlock *>(key->block.first); kb2; kb2 = kb2->next) {
+    LISTBASE_FOREACH (KeyBlock *, kb2, &key->block) {
       if (kb2->pos > kb->pos) {
         BLI_insertlinkafter(&key->block, kb2->prev, kb);
         break;
@@ -1879,8 +1879,7 @@ KeyBlock *BKE_keyblock_add_ctime(Key *key, const char *name, const bool do_force
    * won't have to systematically use retiming func (and have ordering issues, too). See #39897.
    */
   if (!do_force && (key->type != KEY_RELATIVE)) {
-    KeyBlock *it_kb;
-    for (it_kb = static_cast<KeyBlock *>(key->block.first); it_kb; it_kb = it_kb->next) {
+    LISTBASE_FOREACH (KeyBlock *, it_kb, &key->block) {
       /* Use epsilon to avoid floating point precision issues.
        * 1e-3 because the position is stored as frame * 1e-2. */
       if (compare_ff(it_kb->pos, cpos, 1e-3f)) {
@@ -2063,7 +2062,6 @@ int BKE_keyblock_curve_element_count(const ListBase *nurb)
 
 void BKE_keyblock_update_from_curve(const Curve * /*cu*/, KeyBlock *kb, const ListBase *nurb)
 {
-  Nurb *nu;
   BezTriple *bezt;
   BPoint *bp;
   float *fp;
@@ -2078,7 +2076,7 @@ void BKE_keyblock_update_from_curve(const Curve * /*cu*/, KeyBlock *kb, const Li
   }
 
   fp = static_cast<float *>(kb->data);
-  for (nu = static_cast<Nurb *>(nurb->first); nu; nu = nu->next) {
+  LISTBASE_FOREACH (Nurb *, nu, nurb) {
     if (nu->bezt) {
       for (a = nu->pntsu, bezt = nu->bezt; a; a--, bezt++) {
         for (int i = 0; i < 3; i++) {
@@ -2107,7 +2105,7 @@ void BKE_keyblock_curve_data_transform(const ListBase *nurb,
 {
   const float *src = static_cast<const float *>(src_data);
   float *dst = static_cast<float *>(dst_data);
-  for (Nurb *nu = static_cast<Nurb *>(nurb->first); nu; nu = nu->next) {
+  LISTBASE_FOREACH (Nurb *, nu, nurb) {
     if (nu->bezt) {
       for (int a = nu->pntsu; a; a--) {
         for (int i = 0; i < 3; i++) {
@@ -2348,11 +2346,10 @@ void BKE_keyblock_update_from_vertcos(const Object *ob, KeyBlock *kb, const floa
   }
   else if (ELEM(ob->type, OB_CURVES_LEGACY, OB_SURF)) {
     const Curve *cu = (const Curve *)ob->data;
-    const Nurb *nu;
     const BezTriple *bezt;
     const BPoint *bp;
 
-    for (nu = static_cast<const Nurb *>(cu->nurb.first); nu; nu = nu->next) {
+    LISTBASE_FOREACH (const Nurb *, nu, &cu->nurb) {
       if (nu->bezt) {
         for (a = nu->pntsu, bezt = nu->bezt; a; a--, bezt++) {
           for (int i = 0; i < 3; i++, co++) {
@@ -2438,11 +2435,10 @@ float (*BKE_keyblock_convert_to_vertcos(const Object *ob, const KeyBlock *kb))[3
   }
   else if (ELEM(ob->type, OB_CURVES_LEGACY, OB_SURF)) {
     const Curve *cu = (const Curve *)ob->data;
-    const Nurb *nu;
     const BezTriple *bezt;
     const BPoint *bp;
 
-    for (nu = static_cast<Nurb *>(cu->nurb.first); nu; nu = nu->next) {
+    LISTBASE_FOREACH (Nurb *, nu, &cu->nurb) {
       if (nu->bezt) {
         for (a = nu->pntsu, bezt = nu->bezt; a; a--, bezt++) {
           for (int i = 0; i < 3; i++, co++) {
@@ -2475,11 +2471,10 @@ void BKE_keyblock_update_from_offset(const Object *ob, KeyBlock *kb, const float
   }
   else if (ELEM(ob->type, OB_CURVES_LEGACY, OB_SURF)) {
     const Curve *cu = (const Curve *)ob->data;
-    const Nurb *nu;
     const BezTriple *bezt;
     const BPoint *bp;
 
-    for (nu = static_cast<const Nurb *>(cu->nurb.first); nu; nu = nu->next) {
+    LISTBASE_FOREACH (const Nurb *, nu, &cu->nurb) {
       if (nu->bezt) {
         for (a = nu->pntsu, bezt = nu->bezt; a; a--, bezt++) {
           for (int i = 0; i < 3; i++, ofs++) {

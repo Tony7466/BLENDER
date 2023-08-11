@@ -14,11 +14,11 @@
 
 #include "BKE_context.h"
 
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "transform.hh"
 #include "transform_mode.hh"

@@ -83,9 +83,9 @@
 #include "BKE_tracking.h"
 #include "BKE_world.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "SEQ_iterator.h"
 
@@ -1339,7 +1339,7 @@ void DepsgraphRelationBuilder::build_constraints(ID *id,
                                      OperationCode::BONE_CONSTRAINTS :
                                      OperationCode::TRANSFORM_CONSTRAINTS);
   /* Add dependencies for each constraint in turn. */
-  for (bConstraint *con = (bConstraint *)constraints->first; con; con = con->next) {
+  LISTBASE_FOREACH (bConstraint *, con, constraints) {
     const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(con);
     ListBase targets = {nullptr, nullptr};
     /* Invalid constraint type. */

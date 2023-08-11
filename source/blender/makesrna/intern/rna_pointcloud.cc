@@ -8,8 +8,8 @@
 
 #include <cstdlib>
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -27,8 +27,8 @@
 
 #  include "DEG_depsgraph.h"
 
-#  include "WM_api.h"
-#  include "WM_types.h"
+#  include "WM_api.hh"
+#  include "WM_types.hh"
 
 static PointCloud *rna_pointcloud(const PointerRNA *ptr)
 {

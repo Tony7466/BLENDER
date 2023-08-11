@@ -53,7 +53,6 @@
 #include "BLI_ghash.h"
 #include "BLI_linklist.h"
 #include "BLI_map.hh"
-#include "BLI_math.h"
 #include "BLI_memarena.h"
 #include "BLI_mempool.h"
 #include "BLI_threads.h"
@@ -530,7 +529,7 @@ static Main *blo_find_main(FileData *fd, const char *filepath, const char *relab
   //  printf("blo_find_main: original in  %s\n", filepath);
   //  printf("blo_find_main: converted to %s\n", filepath_abs);
 
-  for (m = static_cast<Main *>(mainlist->first); m; m = m->next) {
+  LISTBASE_FOREACH (Main *, m, mainlist) {
     const char *libname = (m->curlib) ? m->curlib->filepath_abs : m->filepath;
 
     if (BLI_path_cmp(filepath_abs, libname) == 0) {
@@ -1922,6 +1921,13 @@ static void lib_link_id(BlendLibReader *reader, ID *id)
     BLO_read_id_address(reader, id, &id->override_library->reference);
     BLO_read_id_address(reader, id, &id->override_library->storage);
     BLO_read_id_address(reader, id, &id->override_library->hierarchy_root);
+
+    LISTBASE_FOREACH (IDOverrideLibraryProperty *, op, &id->override_library->properties) {
+      LISTBASE_FOREACH (IDOverrideLibraryPropertyOperation *, opop, &op->operations) {
+        BLO_read_id_address(reader, id, &opop->subitem_reference_id);
+        BLO_read_id_address(reader, id, &opop->subitem_local_id);
+      }
+    }
   }
 
   lib_link_id_embedded_id(reader, id);
@@ -2239,7 +2245,7 @@ static void direct_link_library(FileData *fd, Library *lib, Main *main)
   BLI_path_normalize(lib->filepath_abs);
 
   /* check if the library was already read */
-  for (newmain = static_cast<Main *>(fd->mainlist->first); newmain; newmain = newmain->next) {
+  LISTBASE_FOREACH (Main *, newmain, fd->mainlist) {
     if (newmain->curlib) {
       if (BLI_path_cmp(newmain->curlib->filepath_abs, lib->filepath_abs) == 0) {
         BLO_reportf_wrap(fd->reports,
@@ -3377,6 +3383,7 @@ static BHead *read_userdef(BlendFileData *bfd, FileData *fd, BHead *bhead)
   BLO_read_list(reader, &user->autoexec_paths);
   BLO_read_list(reader, &user->script_directories);
   BLO_read_list(reader, &user->asset_libraries);
+  BLO_read_list(reader, &user->extension_repos);
 
   LISTBASE_FOREACH (wmKeyMap *, keymap, &user->user_keymaps) {
     keymap->modal_items = nullptr;

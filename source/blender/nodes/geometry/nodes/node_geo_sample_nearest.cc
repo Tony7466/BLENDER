@@ -10,8 +10,8 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "node_geometry_util.hh"
 
@@ -213,7 +213,7 @@ static bool component_is_available(const GeometrySet &geometry,
   if (!geometry.has(type)) {
     return false;
   }
-  const GeometryComponent &component = *geometry.get_component_for_read(type);
+  const GeometryComponent &component = *geometry.get_component(type);
   return component.attribute_domain_size(domain) != 0;
 }
 
@@ -229,7 +229,7 @@ static const GeometryComponent *find_source_component(const GeometrySet &geometr
       GeometryComponent::Type::Instance};
   for (const GeometryComponent::Type src_type : supported_types) {
     if (component_is_available(geometry, src_type, domain)) {
-      return geometry.get_component_for_read(src_type);
+      return geometry.get_component(src_type);
     }
   }
 
@@ -269,7 +269,7 @@ class SampleNearestFunction : public mf::MultiFunction {
     switch (src_component_->type()) {
       case GeometryComponent::Type::Mesh: {
         const MeshComponent &component = *static_cast<const MeshComponent *>(src_component_);
-        const Mesh &mesh = *component.get_for_read();
+        const Mesh &mesh = *component.get();
         switch (domain_) {
           case ATTR_DOMAIN_POINT:
             get_closest_mesh_points(mesh, positions, mask, indices, {}, {});
@@ -291,7 +291,7 @@ class SampleNearestFunction : public mf::MultiFunction {
       case GeometryComponent::Type::PointCloud: {
         const PointCloudComponent &component = *static_cast<const PointCloudComponent *>(
             src_component_);
-        const PointCloud &points = *component.get_for_read();
+        const PointCloud &points = *component.get();
         get_closest_pointcloud_points(points, positions, mask, indices, {});
         break;
       }
@@ -318,18 +318,17 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output<Field<int>>("Index", Field<int>(std::move(op)));
 }
 
-}  // namespace blender::nodes::node_geo_sample_nearest_cc
-
-void register_node_type_geo_sample_nearest()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_sample_nearest_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_SAMPLE_NEAREST, "Sample Nearest", NODE_CLASS_GEOMETRY);
-  ntype.initfunc = file_ns::node_init;
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.draw_buttons = file_ns::node_layout;
+  ntype.initfunc = node_init;
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_sample_nearest_cc

@@ -27,7 +27,6 @@
 #include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 #include "BLI_utildefines_stack.h"
 #include "BLI_vector.hh"
@@ -54,18 +53,18 @@
 #include "BLT_translation.h"
 
 #include "DNA_armature_types.h"
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_mesh.h"
-#include "ED_object.h"
-#include "ED_screen.h"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 #include "object_intern.h"
 
@@ -3573,9 +3572,7 @@ static char *vgroup_init_remap(Object *ob)
   char *name;
 
   name = name_array;
-  for (const bDeformGroup *def = static_cast<const bDeformGroup *>(defbase->first); def;
-       def = def->next)
-  {
+  LISTBASE_FOREACH (const bDeformGroup *, def, defbase) {
     BLI_strncpy(name, def->name, MAX_VGROUP_NAME);
     name += MAX_VGROUP_NAME;
   }
@@ -3708,8 +3705,7 @@ static void vgroup_sort_bone_hierarchy(Object *ob, ListBase *bonebase)
   ListBase *defbase = BKE_object_defgroup_list_mutable(ob);
 
   if (bonebase != nullptr) {
-    Bone *bone;
-    for (bone = static_cast<Bone *>(bonebase->last); bone; bone = bone->prev) {
+    LISTBASE_FOREACH_BACKWARD (Bone *, bone, bonebase) {
       bDeformGroup *dg = BKE_object_defgroup_find_name(ob, bone->name);
       vgroup_sort_bone_hierarchy(ob, &bone->childbase);
 

@@ -20,8 +20,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
-
 #include "BLT_translation.h"
 
 #include "BKE_animsys.h"
@@ -37,14 +35,14 @@
 #include "BKE_multires.hh"
 #include "BKE_ocean.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "MOD_nodes.hh"
 

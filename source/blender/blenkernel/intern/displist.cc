@@ -22,7 +22,7 @@
 #include "BLI_index_range.hh"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_memarena.h"
 #include "BLI_scanfill.h"
 #include "BLI_span.hh"
@@ -1361,7 +1361,7 @@ void BKE_displist_make_curveTypes(Depsgraph *depsgraph,
        */
       Curve &cow_curve = *reinterpret_cast<Curve *>(
           BKE_id_copy_ex(nullptr, &original_curve.id, nullptr, LIB_ID_COPY_LOCALIZE));
-      cow_curve.curve_eval = geometry.get_curves_for_read();
+      cow_curve.curve_eval = geometry.get_curves();
       /* Copy edit mode pointers necessary for drawing to the duplicated curve. */
       cow_curve.editnurb = original_curve.editnurb;
       cow_curve.editfont = original_curve.editfont;

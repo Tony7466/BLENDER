@@ -8,7 +8,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_color.h"
 #include "BLI_math_color_blend.h"
 #include "BLI_task.h"
 
@@ -25,17 +25,17 @@
 
 #include "DEG_depsgraph.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_paint.h"
+#include "ED_paint.hh"
 #include "sculpt_intern.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include <cmath>
 #include <cstdlib>
@@ -420,19 +420,12 @@ static int sculpt_color_filter_invoke(bContext *C, wmOperator *op, const wmEvent
 
 static const char *sculpt_color_filter_get_name(wmOperatorType * /*ot*/, PointerRNA *ptr)
 {
-  int mode = RNA_enum_get(ptr, "type");
-  EnumPropertyItem *item = prop_color_filter_types;
+  PropertyRNA *prop = RNA_struct_find_property(ptr, "type");
+  const int value = RNA_property_enum_get(ptr, prop);
+  const char *ui_name = nullptr;
 
-  while (item->identifier) {
-    if (item->value == mode) {
-      return item->name;
-    }
-
-    item++;
-  }
-
-  BLI_assert_unreachable();
-  return "error";
+  RNA_property_enum_name_gettexted(nullptr, ptr, prop, value, &ui_name);
+  return ui_name;
 }
 
 static void sculpt_color_filter_ui(bContext * /*C*/, wmOperator *op)
