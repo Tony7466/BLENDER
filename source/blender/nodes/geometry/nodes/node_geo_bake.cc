@@ -687,6 +687,24 @@ class LazyFunctionForBakeNodeInputUsage : public LazyFunction {
   }
 };
 
+static void node_register()
+{
+  namespace file_ns = blender::nodes::node_geo_bake_cc;
+
+  static bNodeType ntype;
+
+  geo_node_type_base(&ntype, GEO_NODE_BAKE, "Bake", NODE_CLASS_GEOMETRY);
+  ntype.initfunc = file_ns::node_init;
+  ntype.declare_dynamic = file_ns::node_declare_dynamic;
+  ntype.draw_buttons = file_ns::node_layout;
+  ntype.draw_buttons_ex = file_ns::node_layout_ex;
+  ntype.insert_link = file_ns::node_insert_link;
+  node_type_storage(
+      &ntype, "NodeGeometryBake", file_ns::node_free_storage, file_ns::node_copy_storage);
+  nodeRegisterType(&ntype);
+}
+NOD_REGISTER_NODE(node_register)
+
 }  // namespace blender::nodes::node_geo_bake_cc
 
 namespace blender::nodes {
@@ -790,21 +808,4 @@ void NodeGeometryBake::set_item_name(NodeGeometryBakeItem &item, const char *nam
 
   MEM_SAFE_FREE(item.name);
   item.name = BLI_strdup(unique_name);
-}
-
-void register_node_type_geo_bake()
-{
-  namespace file_ns = blender::nodes::node_geo_bake_cc;
-
-  static bNodeType ntype;
-
-  geo_node_type_base(&ntype, GEO_NODE_BAKE, "Bake", NODE_CLASS_GEOMETRY);
-  ntype.initfunc = file_ns::node_init;
-  ntype.declare_dynamic = file_ns::node_declare_dynamic;
-  ntype.draw_buttons = file_ns::node_layout;
-  ntype.draw_buttons_ex = file_ns::node_layout_ex;
-  ntype.insert_link = file_ns::node_insert_link;
-  node_type_storage(
-      &ntype, "NodeGeometryBake", file_ns::node_free_storage, file_ns::node_copy_storage);
-  nodeRegisterType(&ntype);
 }
