@@ -1602,6 +1602,39 @@ void GreasePencil::move_frames(blender::bke::greasepencil::Layer &layer,
   this->remove_drawings_with_no_users();
 }
 
+void GreasePencil::move_duplicate_frames(
+    blender::bke::greasepencil::Layer &layer,
+    const blender::Map<int, int> &frame_number_destination,
+    const blender::Map<int, GreasePencilFrame> &duplicate_frames)
+{
+  for (auto [src_frame_number, frame] : duplicate_frames.items()) {
+    if (!frame_number_destination.contains(src_frame_number)) {
+      continue;
+    }
+    const int dst_frame_number = frame_number_destination.lookup(src_frame_number);
+    const int drawing_index = frame.drawing_index;
+    const int duration = frame.is_implicit_hold() ? 0 :
+                                                    layer.get_frame_duration_at(src_frame_number);
+
+    /* Add and overwrite the frame at the destination number. */
+    if (layer.frames().contains(dst_frame_number)) {
+      GreasePencilFrame frame_to_overwrite = layer.frames().lookup(dst_frame_number);
+      GreasePencilDrawingBase *drawing_base = this->drawings(frame_to_overwrite.drawing_index);
+      if (drawing_base->type == GP_DRAWING) {
+        reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap().remove_user();
+      }
+      layer.remove_frame(dst_frame_number);
+    }
+
+    GreasePencilFrame *duplicate_frame = layer.add_frame(
+        dst_frame_number, drawing_index, duration);
+    *duplicate_frame = frame;
+  }
+
+  /* Remove drawings if they no longer have users. */
+  this->remove_drawings_with_no_users();
+}
+
 blender::bke::greasepencil::Drawing *GreasePencil::get_editable_drawing_at(
     const blender::bke::greasepencil::Layer *layer, const int frame_number) const
 {
