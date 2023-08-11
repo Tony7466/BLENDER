@@ -11,13 +11,13 @@
 #include "BLI_span.hh"
 
 struct Sequence;
-struct SeqRetimingHandle;
+struct SeqRetimingKey;
 
 typedef struct RetimingSelectionElem {
   Sequence *seq;
-  SeqRetimingHandle *key;
-  RetimingSelectionElem(Sequence *seq, SeqRetimingHandle *key) : seq(seq), key(key) {}
+  SeqRetimingKey *key;
+  RetimingSelectionElem(Sequence *seq, SeqRetimingKey *key) : seq(seq), key(key) {}
 } RetimingSelectionElem;
 
-blender::MutableSpan<SeqRetimingHandle> SEQ_retiming_keys_get(const Sequence *seq);
+blender::MutableSpan<SeqRetimingKey> SEQ_retiming_keys_get(const Sequence *seq);
 blender::Vector<RetimingSelectionElem> SEQ_retiming_selection_get(const struct Scene *scene);

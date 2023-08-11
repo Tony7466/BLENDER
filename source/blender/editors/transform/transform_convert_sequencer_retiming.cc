@@ -41,7 +41,7 @@ typedef struct TransDataSeq {
 
 static TransData *SeqToTransData(const Scene *scene,
                                  Sequence *seq,
-                                 SeqRetimingHandle *key,
+                                 SeqRetimingKey *key,
                                  TransData *td,
                                  TransData2D *td2d,
                                  TransDataSeq *tdseq)
@@ -109,10 +109,10 @@ static void createTransSeqRetimingData(bContext * /*C*/, TransInfo *t)
 
 static void seq_resize_speed_translation(Scene *scene,
                                          Sequence *seq,
-                                         SeqRetimingHandle *key,
+                                         SeqRetimingKey *key,
                                          const float loc)
 {
-  SeqRetimingHandle *key_start = SEQ_retiming_transition_start_get(key);
+  SeqRetimingKey *key_start = SEQ_retiming_transition_start_get(key);
   float offset;
   if (key == key_start) {
     offset = loc - SEQ_retiming_key_timeline_frame_get(scene, seq, key);
@@ -137,7 +137,7 @@ static void recalcData_sequencer_retiming(TransInfo *t)
     /* Calculate translation. */
 
     blender::MutableSpan keys = SEQ_retiming_keys_get(seq);
-    SeqRetimingHandle *key = seq->retiming_handles + tdseq->key_index;
+    SeqRetimingKey *key = seq->retiming_keys + tdseq->key_index;
 
     if (SEQ_retiming_key_is_transition_type(key) &&
         !SEQ_retiming_selection_has_whole_transition(t->scene, key))

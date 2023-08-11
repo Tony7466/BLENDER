@@ -298,22 +298,22 @@ static void rna_SequenceEditor_retiming_keys_begin(CollectionPropertyIterator *i
 {
   Sequence *seq = (Sequence *)ptr->data;
   rna_iterator_array_begin(iter,
-                           (void *)seq->retiming_handles,
-                           sizeof(SeqRetimingHandle),
+                           (void *)seq->retiming_keys,
+                           sizeof(SeqRetimingKey),
                            SEQ_retiming_keys_count(seq),
                            0,
                            nullptr);
 }
 
-static Sequence *strip_by_key_find(Scene *scene, SeqRetimingHandle *key)
+static Sequence *strip_by_key_find(Scene *scene, SeqRetimingKey *key)
 {
   Editing *ed = SEQ_editing_get(scene);
   SeqCollection *strips = SEQ_query_all_strips_recursive(&ed->seqbase);
 
   Sequence *seq;
   SEQ_ITERATOR_FOREACH (seq, strips) {
-    SeqRetimingHandle *first = seq->retiming_handles;
-    SeqRetimingHandle *last = seq->retiming_handles + SEQ_retiming_keys_count(seq) - 1;
+    SeqRetimingKey *first = seq->retiming_keys;
+    SeqRetimingKey *last = seq->retiming_keys + SEQ_retiming_keys_count(seq) - 1;
 
     if (key >= first && key <= last) {
       return seq;
@@ -323,7 +323,7 @@ static Sequence *strip_by_key_find(Scene *scene, SeqRetimingHandle *key)
   return nullptr;
 }
 
-static void rna_Sequence_retiming_key_remove(ID *id, SeqRetimingHandle *key)
+static void rna_Sequence_retiming_key_remove(ID *id, SeqRetimingKey *key)
 {
   Scene *scene = (Scene *)id;
   Sequence *seq = strip_by_key_find(scene, key);
@@ -340,7 +340,7 @@ static void rna_Sequence_retiming_key_remove(ID *id, SeqRetimingHandle *key)
 
 static int rna_Sequence_retiming_key_frame_get(PointerRNA *ptr)
 {
-  SeqRetimingHandle *key = (SeqRetimingHandle *)ptr->data;
+  SeqRetimingKey *key = (SeqRetimingKey *)ptr->data;
   Scene *scene = (Scene *)ptr->owner_id;
   Sequence *seq = strip_by_key_find(scene, key);
 
@@ -353,7 +353,7 @@ static int rna_Sequence_retiming_key_frame_get(PointerRNA *ptr)
 
 static void rna_Sequence_retiming_key_frame_set(PointerRNA *ptr, int value)
 {
-  SeqRetimingHandle *key = (SeqRetimingHandle *)ptr->data;
+  SeqRetimingKey *key = (SeqRetimingKey *)ptr->data;
   Scene *scene = (Scene *)ptr->owner_id;
   Sequence *seq = strip_by_key_find(scene, key);
 
@@ -1600,7 +1600,7 @@ static void rna_def_retiming_key(BlenderRNA *brna)
       srna,
       "Retiming Key",
       "Key mapped to particular frame that can be moved to change playback speed");
-  RNA_def_struct_sdna(srna, "SeqRetimingHandle");
+  RNA_def_struct_sdna(srna, "SeqRetimingKey");
 
   prop = RNA_def_property(srna, "timeline_frame", PROP_INT, PROP_NONE);
   RNA_def_property_int_sdna(prop, nullptr, "strip_frame_index");
@@ -2853,7 +2853,7 @@ static void rna_def_movie(BlenderRNA *brna)
                                     nullptr);
 
   prop = RNA_def_property(srna, "retiming_keys", PROP_COLLECTION, PROP_NONE);
-  RNA_def_property_collection_sdna(prop, nullptr, "retiming_handles", nullptr);
+  RNA_def_property_collection_sdna(prop, nullptr, "retiming_keys", nullptr);
   RNA_def_property_struct_type(prop, "RetimingKey");
   RNA_def_property_ui_text(prop, "Retiming Keys", "");
   RNA_def_property_collection_funcs(prop,

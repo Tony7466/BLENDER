@@ -12,15 +12,15 @@
 
 struct bContext;
 struct Sequence;
-struct SeqRetimingHandle;
+struct SeqRetimingKey;
 
 blender::Vector<Sequence *> sequencer_visible_strips_get(const struct bContext *C);
 bool retiming_last_key_is_clicked(struct bContext *C,
                                   const struct Sequence *seq,
                                   const int mval[2]);
 
-const struct SeqRetimingHandle *retiming_mousover_key_get(struct bContext *C,
-                                                          const int mval[2],
-                                                          Sequence **r_seq);
+const struct SeqRetimingKey *retiming_mousover_key_get(struct bContext *C,
+                                                       const int mval[2],
+                                                       Sequence **r_seq);
 bool sequencer_retiming_tool_is_active(const struct bContext *C);
 void sequencer_draw_retiming(const struct bContext *C);

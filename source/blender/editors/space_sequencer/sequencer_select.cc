@@ -972,7 +972,7 @@ static int sequencer_select_exec(bContext *C, wmOperator *op)
   }
 
   Sequence *seq_key_test = nullptr;
-  const SeqRetimingHandle *key = retiming_mousover_key_get(C, mval, &seq_key_test);
+  const SeqRetimingKey *key = retiming_mousover_key_get(C, mval, &seq_key_test);
   bool retiming_handle_clicked = (key != nullptr);
 
   /* Ensure key selection even if data is not initialized yet. */

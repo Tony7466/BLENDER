@@ -672,7 +672,7 @@ static bool do_versions_sequencer_init_retiming_tool_data(Sequence *seq, void *u
 
   SEQ_retiming_data_ensure(scene, seq);
 
-  SeqRetimingHandle *handle = &seq->retiming_handles[seq->retiming_handle_num - 1];
+  SeqRetimingKey *handle = &seq->retiming_keys[seq->retiming_keys_num - 1];
   handle->strip_frame_index = round_fl_to_int(content_length / seq->speed_factor);
   seq->speed_factor = 1.0f;
 

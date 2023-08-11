@@ -141,7 +141,7 @@ static int sequencer_retiming_key_add_exec(bContext *C, wmOperator *op)
   SEQ_ITERATOR_FOREACH (seq, strips) {
     SEQ_retiming_data_ensure(scene, seq);
     const int frame_index = BKE_scene_frame_get(scene) - SEQ_time_start_frame_get(seq);
-    const SeqRetimingHandle *key = SEQ_retiming_find_segment_start_key(seq, frame_index);
+    const SeqRetimingKey *key = SEQ_retiming_find_segment_start_key(seq, frame_index);
 
     if (SEQ_retiming_key_is_transition_start(key)) {
       BKE_report(op->reports, RPT_WARNING, "Can not create key inside of speed transition");
@@ -197,7 +197,7 @@ bool freeze_frame_add_new_for_seq(
 {
   Scene *scene = CTX_data_scene(C);
   SEQ_retiming_data_ensure(scene, seq);
-  SeqRetimingHandle *key = SEQ_retiming_add_key(scene, seq, timeline_frame);
+  SeqRetimingKey *key = SEQ_retiming_add_key(scene, seq, timeline_frame);
 
   if (key == nullptr) {
     key = SEQ_retiming_key_get_by_timeline_frame(scene, seq, timeline_frame);
@@ -212,7 +212,7 @@ bool freeze_frame_add_new_for_seq(
     return false;
   }
 
-  SeqRetimingHandle *freeze = SEQ_retiming_add_freeze_frame(scene, seq, key, duration);
+  SeqRetimingKey *freeze = SEQ_retiming_add_freeze_frame(scene, seq, key, duration);
 
   if (freeze == nullptr) {
     BKE_report(op->reports, RPT_WARNING, "Can not create freeze frame");
@@ -313,13 +313,13 @@ bool transition_add_new_for_seq(
 {
   Scene *scene = CTX_data_scene(C);
   SEQ_retiming_data_ensure(scene, seq);
-  SeqRetimingHandle *key = SEQ_retiming_add_key(scene, seq, timeline_frame);
+  SeqRetimingKey *key = SEQ_retiming_add_key(scene, seq, timeline_frame);
 
   if (key == nullptr) {
     key = SEQ_retiming_key_get_by_timeline_frame(scene, seq, timeline_frame);
   }
 
-  SeqRetimingHandle *transition = SEQ_retiming_add_transition(scene, seq, key, duration);
+  SeqRetimingKey *transition = SEQ_retiming_add_transition(scene, seq, key, duration);
 
   if (transition == nullptr) {
     BKE_report(op->reports, RPT_WARNING, "Can not create transition");
@@ -411,8 +411,8 @@ static int sequencer_retiming_key_remove_exec(bContext *C, wmOperator * /* op */
   }
 
   for (Sequence *seq : strips_to_handle) {
-    for (int i = 0; i < seq->retiming_handle_num;) {
-      SeqRetimingHandle *key = seq->retiming_handles + i;
+    for (int i = 0; i < seq->retiming_keys_num;) {
+      SeqRetimingKey *key = seq->retiming_keys + i;
       i++;
 
       if ((key->flag & DELETE_KEY) == 0) {
@@ -500,7 +500,7 @@ static int sequencer_retiming_key_select_exec(bContext *C, wmOperator *op)
   int hand;
   Sequence *seq_click_exact = find_nearest_seq(scene, UI_view2d_fromcontext(C), &hand, mval);
   Sequence *seq_key_owner = nullptr;
-  const SeqRetimingHandle *key = retiming_mousover_key_get(C, mval, &seq_key_owner);
+  const SeqRetimingKey *key = retiming_mousover_key_get(C, mval, &seq_key_owner);
 
   const bool wait_to_deselect_others = RNA_boolean_get(op->ptr, "wait_to_deselect_others");
   const bool toggle = RNA_boolean_get(op->ptr, "toggle");
@@ -614,7 +614,7 @@ static int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op)
   UI_view2d_region_to_view_rctf(v2d, &rectf, &rectf);
 
   for (const Sequence *seq : sequencer_visible_strips_get(C)) {
-    for (const SeqRetimingHandle &key : SEQ_retiming_keys_get(seq)) {
+    for (const SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
       if (seq->machine < rectf.ymin || seq->machine > rectf.ymax) {
         continue;
       }

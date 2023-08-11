@@ -66,7 +66,7 @@ static float strip_y_rescale(const Sequence *seq, const float y_value)
   return (y_value * y_range) + seq->machine + SEQ_STRIP_OFSBOTTOM;
 }
 
-static float key_x_get(const Scene *scene, const Sequence *seq, const SeqRetimingHandle *key)
+static float key_x_get(const Scene *scene, const Sequence *seq, const SeqRetimingKey *key)
 {
   return SEQ_retiming_key_timeline_frame_get(scene, seq, key);
 }
@@ -180,17 +180,17 @@ bool retiming_last_key_is_clicked(bContext *C, const Sequence *seq, const int mv
   return distance < RETIME_KEY_MOUSEOVER_THRESHOLD;
 }
 
-static const SeqRetimingHandle *mouse_over_key_get_from_strip(bContext *C,
-                                                              const Sequence *seq,
-                                                              const int mval[2])
+static const SeqRetimingKey *mouse_over_key_get_from_strip(bContext *C,
+                                                           const Sequence *seq,
+                                                           const int mval[2])
 {
   Scene *scene = CTX_data_scene(C);
   const View2D *v2d = UI_view2d_fromcontext(C);
 
   int best_distance = INT_MAX;
-  const SeqRetimingHandle *best_key = nullptr;
+  const SeqRetimingKey *best_key = nullptr;
 
-  for (const SeqRetimingHandle &key : SEQ_retiming_keys_get(seq)) {
+  for (const SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
     int distance = round_fl_to_int(
         fabsf(UI_view2d_view_to_region_x(v2d, key_x_get(scene, seq, &key)) - mval[0]));
 
@@ -203,9 +203,7 @@ static const SeqRetimingHandle *mouse_over_key_get_from_strip(bContext *C,
   return best_key;
 }
 
-const SeqRetimingHandle *retiming_mousover_key_get(bContext *C,
-                                                   const int mval[2],
-                                                   Sequence **r_seq)
+const SeqRetimingKey *retiming_mousover_key_get(bContext *C, const int mval[2], Sequence **r_seq)
 {
   Scene *scene = CTX_data_scene(C);
   for (Sequence *seq : sequencer_visible_strips_get(C)) {
@@ -220,7 +218,7 @@ const SeqRetimingHandle *retiming_mousover_key_get(bContext *C,
       *r_seq = seq;
     }
 
-    const SeqRetimingHandle *key = mouse_over_key_get_from_strip(C, seq, mval);
+    const SeqRetimingKey *key = mouse_over_key_get_from_strip(C, seq, mval);
 
     if (key == nullptr) {
       continue;
@@ -254,7 +252,7 @@ static void draw_half_keyframe(const bContext *C, const Sequence *seq)
   GPU_blend(GPU_BLEND_ALPHA);
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-  SeqRetimingHandle *key = nullptr;
+  SeqRetimingKey *key = nullptr;
 
   if (SEQ_time_has_right_still_frames(scene, seq)) {
     const int content_end = SEQ_time_content_end_frame_get(scene, seq);
@@ -308,7 +306,7 @@ static void draw_half_keyframe(const bContext *C, const Sequence *seq)
   GPU_blend(GPU_BLEND_NONE);
 }
 
-static void retime_key_draw(const bContext *C, const Sequence *seq, const SeqRetimingHandle *key)
+static void retime_key_draw(const bContext *C, const Sequence *seq, const SeqRetimingKey *key)
 {
 
   if (SEQ_retiming_is_last_key(seq, key)) {
@@ -382,7 +380,7 @@ static void retime_key_draw(const bContext *C, const Sequence *seq, const SeqRet
   }
 }
 
-const void draw_continuity(const bContext *C, const Sequence *seq, const SeqRetimingHandle *key)
+const void draw_continuity(const bContext *C, const Sequence *seq, const SeqRetimingKey *key)
 {
   if (!sequencer_retiming_tool_is_active(C)) {
     return;
@@ -472,13 +470,13 @@ static void retime_key_draw(const bContext *C)
     draw_backdrop(C, seq);
 
     blender::MutableSpan keys = SEQ_retiming_keys_get(seq);
-    for (const SeqRetimingHandle &key : keys) {
+    for (const SeqRetimingKey &key : keys) {
       if (&key == keys.begin()) {
         continue; /* Ignore first key. */
       }
       draw_continuity(C, seq, &key);
     }
-    for (const SeqRetimingHandle &key : keys) {
+    for (const SeqRetimingKey &key : keys) {
       if (&key == keys.begin()) {
         continue; /* Ignore first key. */
       }
@@ -497,11 +495,11 @@ static void retime_key_draw(const bContext *C)
  * \{ */
 
 static size_t label_str_get(const Sequence *seq,
-                            const SeqRetimingHandle *key,
+                            const SeqRetimingKey *key,
                             char *r_label_str,
                             const size_t label_str_maxncpy)
 {
-  const SeqRetimingHandle *next_key = key + 1;
+  const SeqRetimingKey *next_key = key + 1;
   if (SEQ_retiming_key_is_transition_start(key)) {
     const float prev_speed = SEQ_retiming_key_speed_get(seq, key);
     const float next_speed = SEQ_retiming_key_speed_get(seq, next_key + 1);
@@ -518,13 +516,13 @@ static size_t label_str_get(const Sequence *seq,
 
 static bool label_rect_get(const bContext *C,
                            const Sequence *seq,
-                           const SeqRetimingHandle *key,
+                           const SeqRetimingKey *key,
                            char *label_str,
                            size_t label_len,
                            rctf *rect)
 {
   const Scene *scene = CTX_data_scene(C);
-  const SeqRetimingHandle *next_key = key + 1;
+  const SeqRetimingKey *next_key = key + 1;
   const float width = pixels_to_view_width(C, BLF_width(BLF_default(), label_str, label_len));
   const float height = pixels_to_view_height(C, BLF_height(BLF_default(), label_str, label_len));
 
@@ -543,7 +541,7 @@ static bool label_rect_get(const bContext *C,
 
 static void retime_speed_text_draw(const bContext *C,
                                    const Sequence *seq,
-                                   const SeqRetimingHandle *key)
+                                   const SeqRetimingKey *key)
 {
   if (SEQ_retiming_is_last_key(seq, key)) {
     return;
@@ -553,7 +551,7 @@ static void retime_speed_text_draw(const bContext *C,
   const int start_frame = SEQ_time_left_handle_frame_get(scene, seq);
   const int end_frame = SEQ_time_right_handle_frame_get(scene, seq);
 
-  const SeqRetimingHandle *next_key = key + 1;
+  const SeqRetimingKey *next_key = key + 1;
   if (key_x_get(scene, seq, next_key) < start_frame || key_x_get(scene, seq, key) > end_frame) {
     return; /* Label out of strip bounds. */
   }
@@ -588,7 +586,7 @@ static void retime_speed_draw(const bContext *C)
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
   for (Sequence *seq : sequencer_visible_strips_get(C)) {
-    for (const SeqRetimingHandle &key : SEQ_retiming_keys_get(seq)) {
+    for (const SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
       retime_speed_text_draw(C, seq, &key);
     }
   }

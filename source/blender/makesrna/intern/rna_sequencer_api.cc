@@ -647,11 +647,11 @@ static void rna_Sequence_invalidate_cache_rnafunc(ID *id, Sequence *self, int ty
   }
 }
 
-static SeqRetimingHandle *rna_Sequence_retiming_keys_add(ID *id, Sequence *seq, int timeline_frame)
+static SeqRetimingKey *rna_Sequence_retiming_keys_add(ID *id, Sequence *seq, int timeline_frame)
 {
   Scene *scene = (Scene *)id;
 
-  SeqRetimingHandle *handle = SEQ_retiming_add_key(scene, seq, timeline_frame);
+  SeqRetimingKey *handle = SEQ_retiming_add_key(scene, seq, timeline_frame);
 
   SEQ_relations_invalidate_cache_raw(scene, seq);
   WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, nullptr);
