@@ -3,23 +3,24 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
+  ../../intern/clog
+  ../blender/blenkernel
+  ../blender/depsgraph
   ../blender/editors/include
   ../blender/gpu
   ../blender/imbuf
   ../blender/io/usd
+  ../blender/bmesh
   ../blender/makesrna
   ../blender/render
+  ../blender/windowmanager
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::bmesh
-  PRIVATE bf::depsgraph
   PRIVATE bf::dna
-  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::windowmanager
+  bf_windowmanager
 )
 
 if(HAVE_FEENABLEEXCEPT)
@@ -78,6 +79,11 @@ if(WITH_TBB)
     # For `pragma` that links `tbbmalloc_proxy.lib`.
     link_directories(${LIBDIR}/tbb/lib)
   endif()
+endif()
+
+if(WIN32)
+  # Windows.h will define min/max macros that will collide with the stl versions.
+  add_definitions(-DNOMINMAX)
 endif()
 
 if(WITH_USD)
@@ -139,9 +145,9 @@ endif()
 
 # Setup the EXE sources and `buildinfo`.
 set(SRC
-  creator.c
-  creator_args.c
-  creator_signals.c
+  creator.cc
+  creator_args.cc
+  creator_signals.cc
 
   creator_intern.h
 )
@@ -924,8 +930,13 @@ elseif(WIN32)
   if(MSVC_ASAN)
     # The ASAN DLL's can be found in the same folder as the compiler,
     # this is the easiest way to find these.
-    string(REPLACE "cl.exe" "clang_rt.asan_dynamic-x86_64.dll" ASAN_DLL ${CMAKE_C_COMPILER})
-    string(REPLACE "cl.exe" "clang_rt.asan_dbg_dynamic-x86_64.dll" ASAN_DEBUG_DLL ${CMAKE_C_COMPILER})
+    string(
+      REPLACE "cl.exe" "clang_rt.asan_dynamic-x86_64.dll"
+      ASAN_DLL ${CMAKE_C_COMPILER})
+    string(
+      REPLACE "cl.exe" "clang_rt.asan_dbg_dynamic-x86_64.dll"
+      ASAN_DEBUG_DLL ${CMAKE_C_COMPILER}
+    )
     if(NOT EXISTS "${ASAN_DLL}")
       message(
         FATAL_ERROR
@@ -1617,15 +1628,31 @@ if((DEFINED LIBDIR) AND TARGETDIR_LIB)
         ${USD_LIBRARY_DIR}/usd
         DESTINATION ${TARGETDIR_LIB}
       )
+      install(DIRECTORY
+        ${LIBDIR}/usd/plugin/usd/hdStorm
+        ${LIBDIR}/usd/plugin/usd/usdShaders
+        ${LIBDIR}/usd/plugin/usd/hioOiio
+        DESTINATION "./blender.shared/usd"
+      )
     elseif(USD_PYTHON_SUPPORT)
       install(DIRECTORY
         ${USD_LIBRARY_DIR}/usd
         DESTINATION ${TARGETDIR_LIB}
       )
+      install(DIRECTORY
+        ${LIBDIR}/usd/plugin/usd/hdStorm
+        ${LIBDIR}/usd/plugin/usd/usdShaders
+        DESTINATION ${TARGETDIR_LIB}/usd
+      )
     else()
       install(DIRECTORY
         ${USD_LIBRARY_DIR}/usd
         DESTINATION "${TARGETDIR_VER}/datafiles"
+      )
+      install(DIRECTORY
+        ${LIBDIR}/usd/plugin/usd/hdStorm
+        ${LIBDIR}/usd/plugin/usd/usdShaders
+        DESTINATION "${TARGETDIR_VER}/datafiles/usd"
       )
     endif()
   endif()
@@ -1659,7 +1686,7 @@ endif()
 
 # Always install MaterialX files regardless if Blender itself uses them, the
 # bundled Python module still needs it.
-if((DEFINED LIBDIR) AND TARGETDIR_LIB AND WITH_MATERIALX )
+if((DEFINED LIBDIR) AND TARGETDIR_LIB AND WITH_MATERIALX)
   install(
     DIRECTORY ${LIBDIR}/materialx/libraries
     DESTINATION "${TARGETDIR_LIB}/materialx"

@@ -12,7 +12,9 @@
 #include "BLI_edgehash.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_sort.hh"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
@@ -34,8 +36,8 @@
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_mapping.hh"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_object.h"
 #include "BKE_pointcache.h"
 #include "BKE_scene.h"
@@ -1338,9 +1340,8 @@ void lineart_main_cull_triangles(LineartData *ld, bool clip_far)
 
 void lineart_main_free_adjacent_data(LineartData *ld)
 {
-  LinkData *link;
-  while ((link = static_cast<LinkData *>(BLI_pophead(&ld->geom.triangle_adjacent_pointers))) !=
-         nullptr)
+  while (
+      LinkData *link = static_cast<LinkData *>(BLI_pophead(&ld->geom.triangle_adjacent_pointers)))
   {
     MEM_freeN(link->data);
   }
@@ -1523,10 +1524,11 @@ static void lineart_identify_mlooptri_feature_edges(void *__restrict userdata,
     FreestyleFace *ff1, *ff2;
     int index = e_feat_data->freestyle_face_index;
     if (index > -1) {
-      ff1 = &((FreestyleFace *)me->pdata.layers[index].data)[looptri_faces[i / 3]];
+      ff1 = &((FreestyleFace *)me->face_data.layers[index].data)[looptri_faces[i / 3]];
     }
     if (edge_nabr[i].e > -1) {
-      ff2 = &((FreestyleFace *)me->pdata.layers[index].data)[looptri_faces[edge_nabr[i].e / 3]];
+      ff2 = &(
+          (FreestyleFace *)me->face_data.layers[index].data)[looptri_faces[edge_nabr[i].e / 3]];
     }
     else {
       /* Handle mesh boundary cases: We want mesh boundaries to respect
@@ -1691,7 +1693,7 @@ static void lineart_identify_mlooptri_feature_edges(void *__restrict userdata,
     if (ld->conf.use_edge_marks && e_feat_data->use_freestyle_edge) {
       FreestyleEdge *fe;
       int index = e_feat_data->freestyle_edge_index;
-      fe = &((FreestyleEdge *)me->edata.layers[index].data)[real_edges[i % 3]];
+      fe = &((FreestyleEdge *)me->edge_data.layers[index].data)[real_edges[i % 3]];
       if (fe->flag & FREESTYLE_EDGE_MARK) {
         edge_flag_result |= LRT_EDGE_FLAG_EDGE_MARK;
       }
@@ -1959,17 +1961,17 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
   const blender::Span<MLoopTri> looptris = me->looptris();
 
   const int *material_indices = (const int *)CustomData_get_layer_named(
-      &me->pdata, CD_PROP_INT32, "material_index");
+      &me->face_data, CD_PROP_INT32, "material_index");
 
   /* Check if we should look for custom data tags like Freestyle edges or faces. */
   bool can_find_freestyle_edge = false;
-  int layer_index = CustomData_get_active_layer_index(&me->edata, CD_FREESTYLE_EDGE);
+  int layer_index = CustomData_get_active_layer_index(&me->edge_data, CD_FREESTYLE_EDGE);
   if (layer_index != -1) {
     can_find_freestyle_edge = true;
   }
 
   bool can_find_freestyle_face = false;
-  layer_index = CustomData_get_active_layer_index(&me->pdata, CD_FREESTYLE_FACE);
+  layer_index = CustomData_get_active_layer_index(&me->face_data, CD_FREESTYLE_FACE);
   if (layer_index != -1) {
     can_find_freestyle_face = true;
   }
@@ -2118,11 +2120,11 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
   edge_feat_data.use_freestyle_face = can_find_freestyle_face;
   edge_feat_data.use_freestyle_edge = can_find_freestyle_edge;
   if (edge_feat_data.use_freestyle_face) {
-    edge_feat_data.freestyle_face_index = CustomData_get_layer_index(&me->pdata,
+    edge_feat_data.freestyle_face_index = CustomData_get_layer_index(&me->face_data,
                                                                      CD_FREESTYLE_FACE);
   }
   if (edge_feat_data.use_freestyle_edge) {
-    edge_feat_data.freestyle_edge_index = CustomData_get_layer_index(&me->edata,
+    edge_feat_data.freestyle_edge_index = CustomData_get_layer_index(&me->edge_data,
                                                                      CD_FREESTYLE_EDGE);
   }
 
@@ -5104,7 +5106,7 @@ bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
 
     lineart_main_remove_unused_lines_from_tiles(ld);
 
-    /* Chaining is all single threaded. See lineart_chain.c
+    /* Chaining is all single threaded. See `lineart_chain.cc`.
      * In this particular call, only lines that are geometrically connected (share the _exact_
      * same end point) will be chained together. */
     MOD_lineart_chain_feature_lines(ld);

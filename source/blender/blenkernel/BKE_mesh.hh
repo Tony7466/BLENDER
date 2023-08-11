@@ -8,10 +8,13 @@
  * \ingroup bke
  */
 
+#include "BLI_index_mask.hh"
+
 #include "BKE_mesh.h"
+#include "BKE_mesh_types.hh"
 
-namespace blender::bke::mesh {
-
+namespace blender::bke {
+namespace mesh {
 /* -------------------------------------------------------------------- */
 /** \name Polygon Data Evaluation
  * \{ */
@@ -156,9 +159,9 @@ void normals_calc_loop(Span<float3> vert_positions,
                        Span<float3> face_normals,
                        const bool *sharp_edges,
                        const bool *sharp_faces,
+                       const short2 *clnors_data,
                        bool use_split_normals,
                        float split_angle,
-                       short2 *clnors_data,
                        CornerNormalSpaceArray *r_lnors_spacearr,
                        MutableSpan<float3> r_loop_normals);
 
@@ -270,7 +273,17 @@ inline int edge_other_vert(const int2 &edge, const int vert)
 
 /** \} */
 
-}  // namespace blender::bke::mesh
+}  // namespace mesh
+
+void mesh_flip_faces(Mesh &mesh, const IndexMask &selection);
+
+/** Set mesh vertex normals to known-correct values, avoiding future lazy computation. */
+void mesh_vert_normals_assign(Mesh &mesh, Span<float3> vert_normals);
+
+/** Set mesh vertex normals to known-correct values, avoiding future lazy computation. */
+void mesh_vert_normals_assign(Mesh &mesh, Vector<float3> vert_normals);
+
+}  // namespace blender::bke
 
 /* -------------------------------------------------------------------- */
 /** \name Inline Mesh Data Access
@@ -279,26 +292,26 @@ inline int edge_other_vert(const int2 &edge, const int vert)
 inline blender::Span<blender::float3> Mesh::vert_positions() const
 {
   return {static_cast<const blender::float3 *>(
-              CustomData_get_layer_named(&this->vdata, CD_PROP_FLOAT3, "position")),
+              CustomData_get_layer_named(&this->vert_data, CD_PROP_FLOAT3, "position")),
           this->totvert};
 }
 inline blender::MutableSpan<blender::float3> Mesh::vert_positions_for_write()
 {
   return {static_cast<blender::float3 *>(CustomData_get_layer_named_for_write(
-              &this->vdata, CD_PROP_FLOAT3, "position", this->totvert)),
+              &this->vert_data, CD_PROP_FLOAT3, "position", this->totvert)),
           this->totvert};
 }
 
 inline blender::Span<blender::int2> Mesh::edges() const
 {
   return {static_cast<const blender::int2 *>(
-              CustomData_get_layer_named(&this->edata, CD_PROP_INT32_2D, ".edge_verts")),
+              CustomData_get_layer_named(&this->edge_data, CD_PROP_INT32_2D, ".edge_verts")),
           this->totedge};
 }
 inline blender::MutableSpan<blender::int2> Mesh::edges_for_write()
 {
   return {static_cast<blender::int2 *>(CustomData_get_layer_named_for_write(
-              &this->edata, CD_PROP_INT32_2D, ".edge_verts", this->totedge)),
+              &this->edge_data, CD_PROP_INT32_2D, ".edge_verts", this->totedge)),
           this->totedge};
 }
 
@@ -317,26 +330,26 @@ inline blender::Span<int> Mesh::face_offsets() const
 inline blender::Span<int> Mesh::corner_verts() const
 {
   return {static_cast<const int *>(
-              CustomData_get_layer_named(&this->ldata, CD_PROP_INT32, ".corner_vert")),
+              CustomData_get_layer_named(&this->loop_data, CD_PROP_INT32, ".corner_vert")),
           this->totloop};
 }
 inline blender::MutableSpan<int> Mesh::corner_verts_for_write()
 {
   return {static_cast<int *>(CustomData_get_layer_named_for_write(
-              &this->ldata, CD_PROP_INT32, ".corner_vert", this->totloop)),
+              &this->loop_data, CD_PROP_INT32, ".corner_vert", this->totloop)),
           this->totloop};
 }
 
 inline blender::Span<int> Mesh::corner_edges() const
 {
   return {static_cast<const int *>(
-              CustomData_get_layer_named(&this->ldata, CD_PROP_INT32, ".corner_edge")),
+              CustomData_get_layer_named(&this->loop_data, CD_PROP_INT32, ".corner_edge")),
           this->totloop};
 }
 inline blender::MutableSpan<int> Mesh::corner_edges_for_write()
 {
   return {static_cast<int *>(CustomData_get_layer_named_for_write(
-              &this->ldata, CD_PROP_INT32, ".corner_edge", this->totloop)),
+              &this->loop_data, CD_PROP_INT32, ".corner_edge", this->totloop)),
           this->totloop};
 }
 

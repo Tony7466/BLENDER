@@ -16,7 +16,10 @@
 
 #include "BLI_edgehash.h"
 #include "BLI_linklist.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
 
@@ -29,7 +32,7 @@
 #include "BKE_global.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.h"
 #include "BKE_pointcache.h"
 
@@ -766,7 +769,7 @@ static bool cloth_from_object(
       !(clmd->sim_parms->flags & CLOTH_SIMSETTINGS_FLAG_DYNAMIC_BASEMESH))
   {
     shapekey_rest = static_cast<const float(*)[3]>(
-        CustomData_get_layer(&mesh->vdata, CD_CLOTH_ORCO));
+        CustomData_get_layer(&mesh->vert_data, CD_CLOTH_ORCO));
   }
 
   const Span<float3> positions = mesh->vert_positions();

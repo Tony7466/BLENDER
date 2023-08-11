@@ -15,6 +15,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_multi_value_map.hh"
 #include "BLI_path_util.h"
@@ -62,7 +64,7 @@
 #include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_main.h"
 #include "BKE_main_namemap.h"
 #include "BKE_mesh.hh"
@@ -72,8 +74,8 @@
 #include "BKE_simulation_state_serialize.hh"
 #include "BKE_workspace.h"
 
-#include "RNA_access.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "BLO_readfile.h"
@@ -1342,8 +1344,8 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
    *
    * \note Be sure to check when bumping the version:
    * - #blo_do_versions_300 in this file.
-   * - "versioning_userdef.c", #blo_do_versions_userdef
-   * - "versioning_userdef.c", #do_versions_theme
+   * - `versioning_userdef.cc`, #blo_do_versions_userdef
+   * - `versioning_userdef.cc`, #do_versions_theme
    *
    * \note Keep this message at the bottom of the function.
    */
@@ -1764,7 +1766,12 @@ static bool version_seq_fix_broken_sound_strips(Sequence *seq, void * /*user_dat
 
   seq->speed_factor = 1.0f;
   SEQ_retiming_data_clear(seq);
-  seq->startofs = 0.0f;
+
+  /* Broken files do have negative start offset, which should not be present in sound strips. */
+  if (seq->startofs < 0) {
+    seq->startofs = 0.0f;
+  }
+
   return true;
 }
 
@@ -3540,19 +3547,19 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
         int vact1, vact2;
 
         if (step) {
-          vact1 = CustomData_get_render_layer_index(&me->vdata, CD_PROP_COLOR);
-          vact2 = CustomData_get_render_layer_index(&me->ldata, CD_PROP_BYTE_COLOR);
+          vact1 = CustomData_get_render_layer_index(&me->vert_data, CD_PROP_COLOR);
+          vact2 = CustomData_get_render_layer_index(&me->loop_data, CD_PROP_BYTE_COLOR);
         }
         else {
-          vact1 = CustomData_get_active_layer_index(&me->vdata, CD_PROP_COLOR);
-          vact2 = CustomData_get_active_layer_index(&me->ldata, CD_PROP_BYTE_COLOR);
+          vact1 = CustomData_get_active_layer_index(&me->vert_data, CD_PROP_COLOR);
+          vact2 = CustomData_get_active_layer_index(&me->loop_data, CD_PROP_BYTE_COLOR);
         }
 
         if (vact1 != -1) {
-          actlayer = me->vdata.layers + vact1;
+          actlayer = me->vert_data.layers + vact1;
         }
         else if (vact2 != -1) {
-          actlayer = me->ldata.layers + vact2;
+          actlayer = me->loop_data.layers + vact2;
         }
 
         if (actlayer) {
@@ -3705,19 +3712,19 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
         int vact1, vact2;
 
         if (step) {
-          vact1 = CustomData_get_render_layer_index(&me->vdata, CD_PROP_COLOR);
-          vact2 = CustomData_get_render_layer_index(&me->ldata, CD_PROP_BYTE_COLOR);
+          vact1 = CustomData_get_render_layer_index(&me->vert_data, CD_PROP_COLOR);
+          vact2 = CustomData_get_render_layer_index(&me->loop_data, CD_PROP_BYTE_COLOR);
         }
         else {
-          vact1 = CustomData_get_active_layer_index(&me->vdata, CD_PROP_COLOR);
-          vact2 = CustomData_get_active_layer_index(&me->ldata, CD_PROP_BYTE_COLOR);
+          vact1 = CustomData_get_active_layer_index(&me->vert_data, CD_PROP_COLOR);
+          vact2 = CustomData_get_active_layer_index(&me->loop_data, CD_PROP_BYTE_COLOR);
         }
 
         if (vact1 != -1) {
-          actlayer = me->vdata.layers + vact1;
+          actlayer = me->vert_data.layers + vact1;
         }
         else if (vact2 != -1) {
-          actlayer = me->ldata.layers + vact2;
+          actlayer = me->loop_data.layers + vact2;
         }
 
         if (actlayer) {
@@ -4026,7 +4033,7 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
 
     /* Face sets no longer store whether the corresponding face is hidden. */
     LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
-      int *face_sets = (int *)CustomData_get_layer(&mesh->pdata, CD_SCULPT_FACE_SETS);
+      int *face_sets = (int *)CustomData_get_layer(&mesh->face_data, CD_SCULPT_FACE_SETS);
       if (face_sets) {
         for (int i = 0; i < mesh->faces_num; i++) {
           face_sets[i] = abs(face_sets[i]);
@@ -4516,6 +4523,13 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
         }
       }
     }
+
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_COMPOSIT) {
+        version_node_socket_name(ntree, CMP_NODE_LENSDIST, "Distort", "Distortion");
+      }
+    }
+    FOREACH_NODETREE_END;
   }
 
   /**
@@ -4523,8 +4537,8 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
    *
    * \note Be sure to check when bumping the version:
    * - #do_versions_after_linking_300 in this file.
-   * - "versioning_userdef.c", #blo_do_versions_userdef
-   * - "versioning_userdef.c", #do_versions_theme
+   * - `versioning_userdef.cc`, #blo_do_versions_userdef
+   * - `versioning_userdef.cc`, #do_versions_theme
    *
    * \note Keep this message at the bottom of the function.
    */

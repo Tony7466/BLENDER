@@ -13,12 +13,12 @@
 
 #include "BKE_context.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_object.h"
+#include "ED_object.hh"
 
 #include "object_intern.h"
 

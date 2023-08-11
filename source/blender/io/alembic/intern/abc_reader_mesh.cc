@@ -174,12 +174,12 @@ void read_mverts(Mesh &mesh, const P3fArraySamplePtr positions, const N3fArraySa
   BKE_mesh_tag_positions_changed(&mesh);
 
   if (normals) {
-    float(*vert_normals)[3] = BKE_mesh_vert_normals_for_write(&mesh);
+    Vector<float3> vert_normals(mesh.totvert);
     for (const int64_t i : IndexRange(normals->size())) {
       Imath::V3f nor_in = (*normals)[i];
       copy_zup_from_yup(vert_normals[i], nor_in.getValue());
     }
-    BKE_mesh_vert_normals_clear_dirty(&mesh);
+    bke::mesh_vert_normals_assign(mesh, std::move(vert_normals));
   }
 }
 
@@ -392,7 +392,7 @@ static void *add_customdata_cb(Mesh *mesh, const char *name, int data_type)
   }
 
   void *cd_ptr = CustomData_get_layer_named_for_write(
-      &mesh->ldata, cd_data_type, name, mesh->totloop);
+      &mesh->loop_data, cd_data_type, name, mesh->totloop);
   if (cd_ptr != nullptr) {
     /* layer already exists, so just return it. */
     return cd_ptr;
@@ -400,7 +400,8 @@ static void *add_customdata_cb(Mesh *mesh, const char *name, int data_type)
 
   /* Create a new layer. */
   int numloops = mesh->totloop;
-  cd_ptr = CustomData_add_layer_named(&mesh->ldata, cd_data_type, CD_SET_DEFAULT, numloops, name);
+  cd_ptr = CustomData_add_layer_named(
+      &mesh->loop_data, cd_data_type, CD_SET_DEFAULT, numloops, name);
   return cd_ptr;
 }
 
@@ -558,7 +559,7 @@ CDStreamConfig get_config(Mesh *mesh)
   config.totvert = mesh->totvert;
   config.totloop = mesh->totloop;
   config.faces_num = mesh->faces_num;
-  config.loopdata = &mesh->ldata;
+  config.loopdata = &mesh->loop_data;
   config.add_customdata_cb = add_customdata_cb;
 
   return config;
@@ -970,7 +971,7 @@ static void read_vertex_creases(Mesh *mesh,
   }
 
   float *vertex_crease_data = (float *)CustomData_add_layer_named(
-      &mesh->vdata, CD_PROP_FLOAT, CD_SET_DEFAULT, mesh->totvert, "crease_vert");
+      &mesh->vert_data, CD_PROP_FLOAT, CD_SET_DEFAULT, mesh->totvert, "crease_vert");
   const int totvert = mesh->totvert;
 
   for (int i = 0, v = indices->size(); i < v; ++i) {
@@ -996,7 +997,7 @@ static void read_edge_creases(Mesh *mesh,
   EdgeHash *edge_hash = BLI_edgehash_new_ex(__func__, edges.size());
 
   float *creases = static_cast<float *>(CustomData_add_layer_named(
-      &mesh->edata, CD_PROP_FLOAT, CD_SET_DEFAULT, edges.size(), "crease_edge"));
+      &mesh->edge_data, CD_PROP_FLOAT, CD_SET_DEFAULT, edges.size(), "crease_edge"));
 
   for (const int i : edges.index_range()) {
     int2 &edge = edges[i];

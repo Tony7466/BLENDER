@@ -15,7 +15,6 @@
 #include "BKE_mesh.hh"
 #include "BKE_object.h"
 
-#include "BLI_math.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
@@ -29,7 +28,7 @@
 #include "DNA_object_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -159,7 +158,7 @@ static void *add_customdata_cb(Mesh *mesh, const char *name, const int data_type
     return nullptr;
   }
 
-  loopdata = &mesh->ldata;
+  loopdata = &mesh->loop_data;
   cd_ptr = CustomData_get_layer_named_for_write(loopdata, cd_data_type, name, mesh->totloop);
   if (cd_ptr != nullptr) {
     /* layer already exists, so just return it. */
@@ -303,7 +302,7 @@ void USDMeshReader::read_uvs(Mesh *mesh, const double motionSampleTime, const bo
   uint rev_loop_index = 0;
   uint uv_index = 0;
 
-  const CustomData *ldata = &mesh->ldata;
+  const CustomData *ldata = &mesh->loop_data;
 
   struct UVSample {
     pxr::VtVec2fArray uvs;
@@ -537,7 +536,7 @@ void USDMeshReader::read_color_data_primvar(Mesh *mesh,
   }
   else {
     /* Check for situations that allow for a straight-forward copy by index. */
-    if ((ELEM(interp, pxr::UsdGeomTokens->vertex)) ||
+    if (ELEM(interp, pxr::UsdGeomTokens->vertex) ||
         (color_domain == ATTR_DOMAIN_CORNER && !is_left_handed_))
     {
       for (int i = 0; i < usd_colors.size(); i++) {
@@ -656,10 +655,9 @@ void USDMeshReader::process_normals_vertex_varying(Mesh *mesh)
     return;
   }
 
-  MutableSpan vert_normals{(float3 *)BKE_mesh_vert_normals_for_write(mesh), mesh->totvert};
   BLI_STATIC_ASSERT(sizeof(normals_[0]) == sizeof(float3), "Expected float3 normals size");
-  vert_normals.copy_from({(float3 *)normals_.data(), int64_t(normals_.size())});
-  BKE_mesh_vert_normals_clear_dirty(mesh);
+  bke::mesh_vert_normals_assign(
+      *mesh, Span(reinterpret_cast<const float3 *>(normals_.data()), int64_t(normals_.size())));
 }
 
 void USDMeshReader::process_normals_face_varying(Mesh *mesh)

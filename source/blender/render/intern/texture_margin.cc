@@ -15,7 +15,7 @@
 #include "BKE_DerivedMesh.h"
 #include "BKE_customdata.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
+#include "BKE_mesh_mapping.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -570,11 +570,11 @@ void RE_generate_texturemargin_adjacentfaces(ImBuf *ibuf,
   const blender::float2 *mloopuv;
   if ((uv_layer == nullptr) || (uv_layer[0] == '\0')) {
     mloopuv = static_cast<const blender::float2 *>(
-        CustomData_get_layer(&mesh->ldata, CD_PROP_FLOAT2));
+        CustomData_get_layer(&mesh->loop_data, CD_PROP_FLOAT2));
   }
   else {
     mloopuv = static_cast<const blender::float2 *>(
-        CustomData_get_layer_named(&mesh->ldata, CD_PROP_FLOAT2, uv_layer));
+        CustomData_get_layer_named(&mesh->loop_data, CD_PROP_FLOAT2, uv_layer));
   }
 
   blender::render::texturemargin::generate_margin(ibuf,

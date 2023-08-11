@@ -13,11 +13,11 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_anim_data.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 
 #include "BLT_translation.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "../outliner_intern.hh"
 #include "common.hh"

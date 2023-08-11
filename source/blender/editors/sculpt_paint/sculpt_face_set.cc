@@ -16,7 +16,8 @@
 #include "BLI_bit_vector.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_hash.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_math_vector.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
@@ -37,23 +38,23 @@
 #include "BKE_context.h"
 #include "BKE_customdata.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_fair.h"
-#include "BKE_mesh_mapping.h"
+#include "BKE_mesh_fair.hh"
+#include "BKE_mesh_mapping.hh"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
 #include "DEG_depsgraph.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_sculpt.h"
+#include "ED_sculpt.hh"
 
 #include "sculpt_intern.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "bmesh.h"
 
@@ -66,7 +67,7 @@ using blender::Vector;
 int ED_sculpt_face_sets_find_next_available_id(Mesh *mesh)
 {
   const int *face_sets = static_cast<const int *>(
-      CustomData_get_layer_named(&mesh->pdata, CD_PROP_INT32, ".sculpt_face_set"));
+      CustomData_get_layer_named(&mesh->face_data, CD_PROP_INT32, ".sculpt_face_set"));
   if (!face_sets) {
     return SCULPT_FACE_SET_NONE;
   }
@@ -83,7 +84,7 @@ int ED_sculpt_face_sets_find_next_available_id(Mesh *mesh)
 void ED_sculpt_face_sets_initialize_none_to_id(Mesh *mesh, const int new_id)
 {
   int *face_sets = static_cast<int *>(CustomData_get_layer_named_for_write(
-      &mesh->pdata, CD_PROP_INT32, ".sculpt_face_set", mesh->faces_num));
+      &mesh->face_data, CD_PROP_INT32, ".sculpt_face_set", mesh->faces_num));
   if (!face_sets) {
     return;
   }
@@ -672,7 +673,7 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
     }
     case SCULPT_FACE_SETS_FROM_CREASES: {
       const float *creases = static_cast<const float *>(
-          CustomData_get_layer_named(&mesh->edata, CD_PROP_FLOAT, "crease_edge"));
+          CustomData_get_layer_named(&mesh->edge_data, CD_PROP_FLOAT, "crease_edge"));
       sculpt_face_sets_init_flood_fill(
           ob, [&](const int /*from_face*/, const int edge, const int /*to_face*/) -> bool {
             return creases ? creases[edge] < threshold : true;
@@ -690,7 +691,7 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
     }
     case SCULPT_FACE_SETS_FROM_BEVEL_WEIGHT: {
       const float *bevel_weights = static_cast<const float *>(
-          CustomData_get_layer_named(&mesh->edata, CD_PROP_FLOAT, "bevel_weight_edge"));
+          CustomData_get_layer_named(&mesh->edge_data, CD_PROP_FLOAT, "bevel_weight_edge"));
       sculpt_face_sets_init_flood_fill(
           ob, [&](const int /*from_face*/, const int edge, const int /*to_face*/) -> bool {
             return bevel_weights ? bevel_weights[edge] < threshold : true;
@@ -717,10 +718,6 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
   }
 
   BKE_pbvh_update_vertex_data(ss->pbvh, PBVH_UpdateVisibility);
-
-  if (BKE_pbvh_type(pbvh) == PBVH_FACES) {
-    BKE_mesh_flush_hidden_from_verts(mesh);
-  }
 
   SCULPT_tag_update_overlays(C);
 
@@ -785,7 +782,7 @@ static EnumPropertyItem prop_sculpt_face_sets_change_visibility_types[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static int sculpt_face_sets_change_visibility_exec(bContext *C, wmOperator *op)
+static int sculpt_face_set_change_visibility_exec(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
@@ -910,9 +907,9 @@ static int sculpt_face_sets_change_visibility_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int sculpt_face_sets_change_visibility_invoke(bContext *C,
-                                                     wmOperator *op,
-                                                     const wmEvent *event)
+static int sculpt_face_set_change_visibility_invoke(bContext *C,
+                                                    wmOperator *op,
+                                                    const wmEvent *event)
 {
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
@@ -924,10 +921,10 @@ static int sculpt_face_sets_change_visibility_invoke(bContext *C,
   SCULPT_vertex_random_access_ensure(ss);
   SCULPT_cursor_geometry_info_update(C, &sgi, mval_fl, false);
 
-  return sculpt_face_sets_change_visibility_exec(C, op);
+  return sculpt_face_set_change_visibility_exec(C, op);
 }
 
-void SCULPT_OT_face_sets_change_visibility(wmOperatorType *ot)
+void SCULPT_OT_face_set_change_visibility(wmOperatorType *ot)
 {
   /* Identifiers. */
   ot->name = "Face Sets Visibility";
@@ -935,8 +932,8 @@ void SCULPT_OT_face_sets_change_visibility(wmOperatorType *ot)
   ot->description = "Change the visibility of the Face Sets of the sculpt";
 
   /* Api callbacks. */
-  ot->exec = sculpt_face_sets_change_visibility_exec;
-  ot->invoke = sculpt_face_sets_change_visibility_invoke;
+  ot->exec = sculpt_face_set_change_visibility_exec;
+  ot->invoke = sculpt_face_set_change_visibility_invoke;
   ot->poll = SCULPT_mode_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_DEPENDS_ON_CURSOR;
@@ -1307,8 +1304,6 @@ static void sculpt_face_set_edit_modify_geometry(bContext *C,
 static void face_set_edit_do_post_visibility_updates(Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
-  PBVH *pbvh = ss->pbvh;
-  Mesh *mesh = static_cast<Mesh *>(ob->data);
 
   /* Sync face sets visibility and vertex visibility as now all Face Sets are visible. */
   SCULPT_visibility_sync_all_from_faces(ob);
@@ -1318,10 +1313,6 @@ static void face_set_edit_do_post_visibility_updates(Object *ob, Span<PBVHNode *
   }
 
   BKE_pbvh_update_vertex_data(ss->pbvh, PBVH_UpdateVisibility);
-
-  if (BKE_pbvh_type(pbvh) == PBVH_FACES) {
-    BKE_mesh_flush_hidden_from_verts(mesh);
-  }
 }
 
 static void sculpt_face_set_edit_modify_face_sets(Object *ob,
