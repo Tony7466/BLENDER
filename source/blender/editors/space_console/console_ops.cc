@@ -107,6 +107,10 @@ static int console_delete_editable_selection(SpaceConsole *sc)
     return 0;
   }
 
+  if (sc->sel_start < 0) {
+    sc->sel_start = 0;
+  }
+
   ConsoleLine *cl = static_cast<ConsoleLine *>(sc->history.last);
   if (!cl || sc->sel_start > cl->len) {
     sc->sel_start = sc->sel_end;
