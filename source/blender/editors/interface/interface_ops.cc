@@ -2603,8 +2603,7 @@ static int ui_space_preset_add_exec(bContext *C, wmOperator *op)
     BLI_addtail(&area->space_presets, space_preset);
   }
 
-  SpaceType *st = BKE_spacetype_from_id(old_space->spacetype);
-  SpaceLink *new_space = st->duplicate(old_space);
+  SpaceLink *new_space = BKE_spacedata_copy(old_space);
   /* Add to tail now, but will be moved to the front when activated. */
   BLI_addtail(&area->spacedata, new_space);
 

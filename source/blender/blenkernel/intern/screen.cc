@@ -627,19 +627,24 @@ static void region_copylist(SpaceType *st, ListBase *lb_dst, ListBase *lb_src)
   }
 }
 
+SpaceLink *BKE_spacedata_copy(SpaceLink *src_space)
+{
+  SpaceType *st = BKE_spacetype_from_id(src_space->spacetype);
+  if (st && st->duplicate) {
+    SpaceLink *new_space = st->duplicate(src_space);
+    region_copylist(st, &new_space->regionbase, &src_space->regionbase);
+    return new_space;
+  }
+  return nullptr;
+}
+
 void BKE_spacedata_copylist(ListBase *lb_dst, ListBase *lb_src)
 {
   BLI_listbase_clear(lb_dst); /* to be sure */
 
   LISTBASE_FOREACH (SpaceLink *, sl, lb_src) {
-    SpaceType *st = BKE_spacetype_from_id(sl->spacetype);
-
-    if (st && st->duplicate) {
-      SpaceLink *slnew = st->duplicate(sl);
-
+    if (SpaceLink *slnew = BKE_spacedata_copy(sl)) {
       BLI_addtail(lb_dst, slnew);
-
-      region_copylist(st, &slnew->regionbase, &sl->regionbase);
     }
   }
 }

@@ -471,6 +471,7 @@ void BKE_spacedata_freelist(ListBase *lb);
  * \param lb_dst: should be empty (will be cleared).
  */
 void BKE_spacedata_copylist(ListBase *lb_dst, ListBase *lb_src);
+struct SpaceLink *BKE_spacedata_copy(SpaceLink *src_space);
 
 void BKE_space_presets_freelist(ListBase *lb);
 void BKE_space_presets_copylist(ListBase *lb_dst, ListBase *lb_src);
