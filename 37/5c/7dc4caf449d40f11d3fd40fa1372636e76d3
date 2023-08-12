@@ -12,3 +12,4 @@ Referenced by issue #75254, Blender Freezing while moving ~120k vertices, also o
 Referenced by issue #75228, Segmentation fault at startup
 Referenced by issue #74318, Resetting the Theme to default causes most of the texts to disappear
 Referenced by issue #62043, Build modifier for Text object builds characters in the reversed order.
+Referenced by issue #111069, Grease Pencil Blur effect turns everything yellow
