@@ -1098,11 +1098,11 @@ GHOST_EventCursor *GHOST_SystemWin32::processCursorEvent(GHOST_WindowWin32 *wind
     }
     /**
      * If the mouse is placed on the window border, other windows can register mouse events.
-     * #margin is used to avoid that.
+     * This #margin is applied to avoid that.
      */
     constexpr int32_t margin = 1;
     /**
-     * Set clip region, if a axis is no locked use `INT_MIN/INT_MAX` to make the screen clip the
+     * Set clip region, if a axis is no warp use `INT_MIN/INT_MAX` to make the screen clip the
      * mouse movement.
      */
     bounds.m_l = bounds_axis & GHOST_kAxisX ? bounds.m_l + margin : INT_MIN;
@@ -1110,18 +1110,17 @@ GHOST_EventCursor *GHOST_SystemWin32::processCursorEvent(GHOST_WindowWin32 *wind
     bounds.m_r = bounds_axis & GHOST_kAxisX ? bounds.m_r - margin : INT_MAX;
     bounds.m_b = bounds_axis & GHOST_kAxisY ? bounds.m_b - margin : INT_MAX;
     /* Set cursor clip rect. */
-    RECT rect{
-        LONG(bounds.m_l),
-        LONG(bounds.m_t),
-        LONG(bounds.m_r),
-        LONG(bounds.m_b),
-    };
+    RECT rect;
+    rect.left = LONG(bounds.m_l);
+    rect.top = LONG(bounds.m_t);
+    rect.right = LONG(bounds.m_r);
+    rect.bottom = LONG(bounds.m_b);
     ClipCursor(&rect);
     /**
      * Get the new position of the mouse in a specific axis.
      * If the mouse is in range return the current position.
-     * If the mouse is on one edge the position will be translated to the opposite edge.
-     * axis clipping seems to works `[min,max)`.
+     * If the mouse is on one edge the position will be set one unit inside at the opposite edge.
+     * Axis clipping seems to be `[min,max)`.
      */
     auto new_position = [](const int32_t position, const int32_t min, const int32_t max) {
       if (position == min) {
@@ -1148,18 +1147,17 @@ GHOST_EventCursor *GHOST_SystemWin32::processCursorEvent(GHOST_WindowWin32 *wind
     if (x_new_position != x_screen || y_new_position != y_screen) {
       /**
        * Clip mouse position at new target location. #system->setCursorPosition set mouse at the
-       * target `(x,y)` position but following events can be outdated, or can have new movement from the
-       * target position, this is a trick to be able to recognize when the new position is applied.
+       * target `(x,y)` position, but following events can be outdated, or can have new movement
+       * from the target position, this is a trick to be able to recognize when the new position is
+       * applied.
        */
-      rect = {
-          x_new_position,
-          y_new_position,
-          x_new_position + 1,
-          y_new_position + 1,
-      };
+      rect.left = LONG(x_new_position);
+      rect.top = LONG(y_new_position);
+      rect.right = LONG(x_new_position + 1);
+      rect.bottom = LONG(y_new_position + 1);
       ClipCursor(&rect);
-      /* Setting new cursor position. */
       wait_to_position = true;
+      /* Setting new cursor position. */
       system->setCursorPosition(x_new_position, y_new_position);
       return nullptr;
     }
