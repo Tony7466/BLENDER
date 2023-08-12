@@ -115,7 +115,6 @@ void uiTemplateHeader(uiLayout *layout, bContext *C)
   ED_area_header_switchbutton(C, block, 0);
 
   uiLayout *row = uiLayoutRow(layout, true);
-  // uiLayoutSetScaleX(row, 0.7f);
   ScrArea *area = CTX_wm_area(C);
   SpaceLink *active_space = static_cast<SpaceLink *>(area->spacedata.first);
   int index;
@@ -132,6 +131,8 @@ void uiTemplateHeader(uiLayout *layout, bContext *C)
                 &props);
     RNA_int_set(&props, "preset_index", index);
   }
+  uiItemFullO(
+      row, "ui.space_preset_add", "", ICON_ADD, nullptr, WM_OP_INVOKE_AREA, UI_ITEM_NONE, nullptr);
 }
 
 /** \} */

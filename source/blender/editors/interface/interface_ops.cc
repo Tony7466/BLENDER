@@ -2584,6 +2584,50 @@ static void UI_OT_space_preset_activate(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Add Space Preset
+ *
+ * \{ */
+
+static int ui_space_preset_add_exec(bContext *C, wmOperator *op)
+{
+  ScrArea *area = CTX_wm_area(C);
+  SpaceLink *old_space = static_cast<SpaceLink *>(area->spacedata.first);
+
+  /* Add "default" preset that exists even when not created explicitly. */
+  if (BLI_listbase_is_empty(&area->space_presets)) {
+    SpacePreset *space_preset = MEM_cnew<SpacePreset>(__func__);
+    space_preset->space = old_space;
+    BLI_addtail(&area->space_presets, space_preset);
+  }
+
+  SpaceType *st = BKE_spacetype_from_id(old_space->spacetype);
+  SpaceLink *new_space = st->duplicate(old_space);
+  /* Add to tail now, but will be moved to the front when activated. */
+  BLI_addtail(&area->spacedata, new_space);
+
+  /* Add new preset that is a copy of the current state. */
+  SpacePreset *space_preset = MEM_cnew<SpacePreset>(__func__);
+  space_preset->space = new_space;
+  BLI_addtail(&area->space_presets, space_preset);
+
+  /* Activate new preset. */
+  ED_area_newspace(C, area, new_space->spacetype, true, new_space);
+  ED_area_tag_redraw(area);
+  return OPERATOR_FINISHED;
+}
+
+static void UI_OT_space_preset_add(wmOperatorType *ot)
+{
+  ot->name = "Add Space Preset";
+  ot->description = "Add new space preset";
+  ot->idname = __func__;
+
+  ot->exec = ui_space_preset_add_exec;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Operator & Keymap Registration
  * \{ */
 
@@ -2615,6 +2659,7 @@ void ED_operatortypes_ui()
   WM_operatortype_append(UI_OT_view_item_rename);
 
   WM_operatortype_append(UI_OT_space_preset_activate);
+  WM_operatortype_append(UI_OT_space_preset_add);
 
   WM_operatortype_append(UI_OT_override_type_set_button);
   WM_operatortype_append(UI_OT_override_remove_button);
