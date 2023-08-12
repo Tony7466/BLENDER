@@ -445,7 +445,7 @@ bool BKE_id_supports_vertex_groups(const ID *id)
 
 bool BKE_object_supports_vertex_groups(const Object *ob)
 {
-  const ID *id = (const ID *)ob->data;
+  const ID *id = static_cast<const ID *>(ob->data);
 
   return BKE_id_supports_vertex_groups(id);
 }
