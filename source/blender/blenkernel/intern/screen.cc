@@ -1440,6 +1440,7 @@ static void direct_link_area(BlendDataReader *reader, ScrArea *area)
 
   /* Should always be unset so that rna_Area_type_get works correctly. */
   area->butspacetype = SPACE_EMPTY;
+  area->butspace_hint = nullptr;
 
   area->region_active_win = -1;
 

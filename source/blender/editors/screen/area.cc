@@ -2533,11 +2533,14 @@ void ED_area_swapspace(bContext *C, ScrArea *sa1, ScrArea *sa2)
   ED_area_tag_refresh(sa2);
 }
 
-void ED_area_newspace(bContext *C, ScrArea *area, int type, const bool skip_region_exit)
+void ED_area_newspace(
+    bContext *C, ScrArea *area, int type, const bool skip_region_exit, SpaceLink *space_hint)
 {
+  BLI_assert(space_hint == nullptr || type == space_hint->spacetype);
+  BLI_assert(space_hint == nullptr || BLI_findindex(&area->spacedata, space_hint) >= 0);
   wmWindow *win = CTX_wm_window(C);
 
-  if (area->spacetype != type) {
+  if (area->spacetype != type || (space_hint != nullptr && area->spacedata.first != space_hint)) {
     SpaceLink *slold = static_cast<SpaceLink *>(area->spacedata.first);
     /* store area->type->exit callback */
     void (*area_exit)(wmWindowManager *, ScrArea *) = area->type ? area->type->exit : nullptr;
@@ -2582,11 +2585,21 @@ void ED_area_newspace(bContext *C, ScrArea *area, int type, const bool skip_regi
      * (e.g. with properties editor) until space-data is properly created */
 
     /* check previously stored space */
-    SpaceLink *sl = nullptr;
-    LISTBASE_FOREACH (SpaceLink *, sl_iter, &area->spacedata) {
-      if (sl_iter->spacetype == type) {
-        sl = sl_iter;
-        break;
+    SpaceLink *sl = space_hint;
+    if (sl == nullptr) {
+      blender::Set<SpaceLink *> spaces_used_by_preset;
+      LISTBASE_FOREACH (SpacePreset *, space_preset, &area->space_presets) {
+        spaces_used_by_preset.add(space_preset->space);
+      }
+      LISTBASE_FOREACH (SpaceLink *, sl_iter, &area->spacedata) {
+        if (sl_iter->spacetype == type) {
+          /* Don't automatically switch to spaces used by presets to avoid accidentally changing
+           * them. */
+          if (!spaces_used_by_preset.contains(sl_iter)) {
+            sl = sl_iter;
+            break;
+          }
+        }
       }
     }
 
@@ -2628,6 +2641,15 @@ void ED_area_newspace(bContext *C, ScrArea *area, int type, const bool skip_regi
         }
         area->regionbase = sl->regionbase;
         BLI_listbase_clear(&sl->regionbase);
+      }
+    }
+
+    if (space_hint == nullptr) {
+      /* Update active space preset to use new space. */
+      LISTBASE_FOREACH (SpacePreset *, space_preset, &area->space_presets) {
+        if (space_preset->space == slold) {
+          space_preset->space = sl;
+        }
       }
     }
 
@@ -2679,7 +2701,7 @@ void ED_area_prevspace(bContext *C, ScrArea *area)
   SpaceLink *prevspace = sl ? area_get_prevspace(area) : nullptr;
 
   if (prevspace) {
-    ED_area_newspace(C, area, prevspace->spacetype, false);
+    ED_area_newspace(C, area, prevspace->spacetype, false, nullptr);
     /* We've exited the space, so it can't be considered temporary anymore. */
     sl->link_flag &= ~SPACE_FLAG_TYPE_TEMPORARY;
   }

@@ -1008,7 +1008,7 @@ wmWindow *WM_window_open(bContext *C,
     /* Ensure it shows the right space-type editor. */
     ScrArea *area = static_cast<ScrArea *>(screen->areabase.first);
     CTX_wm_area_set(C, area);
-    ED_area_newspace(C, area, space_type, false);
+    ED_area_newspace(C, area, space_type, false, nullptr);
   }
 
   ED_screen_change(C, screen);

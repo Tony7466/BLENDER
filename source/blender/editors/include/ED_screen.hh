@@ -221,7 +221,8 @@ void ED_area_status_text(ScrArea *area, const char *str);
 /**
  * \param skip_region_exit: Skip calling area exit callback. Set for opening temp spaces.
  */
-void ED_area_newspace(bContext *C, ScrArea *area, int type, bool skip_region_exit);
+void ED_area_newspace(
+    bContext *C, ScrArea *area, int type, bool skip_region_exit, SpaceLink *space_hint);
 void ED_area_prevspace(bContext *C, ScrArea *area);
 void ED_area_swapspace(bContext *C, ScrArea *sa1, ScrArea *sa2);
 int ED_area_headersize();

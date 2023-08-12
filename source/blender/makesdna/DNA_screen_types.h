@@ -399,6 +399,9 @@ typedef struct ScrArea {
   /** #eSpace_Type (SPACE_FOO). */
   char butspacetype;
   short butspacetype_subtype;
+  char _pad2[4];
+  struct SpaceLink *butspace_hint;
+  char _pad3[4];
 
   /** Size. */
   short winx, winy;

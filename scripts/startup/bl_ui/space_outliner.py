@@ -517,7 +517,7 @@ class AREA_UL_space_presets(bpy.types.UIList):
         row = layout.row(align=True)
         row.prop(item, "name", text="", emboss=False, icon_value=icon)
         if item.space:
-            row.label(text=item.space.type)
+            row.label(text=item.space.type + " " + str(item.space.as_pointer()))
         else:
             row.label(text="None")
 

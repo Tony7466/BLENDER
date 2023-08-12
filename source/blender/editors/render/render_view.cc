@@ -219,7 +219,7 @@ ScrArea *render_view_open(bContext *C, int mx, int my, ReportList *reports)
       /* find largest open non-image area */
       area = biggest_non_image_area(C);
       if (area) {
-        ED_area_newspace(C, area, SPACE_IMAGE, true);
+        ED_area_newspace(C, area, SPACE_IMAGE, true, nullptr);
         sima = static_cast<SpaceImage *>(area->spacedata.first);
 
         /* Makes "Escape" go back to previous space. */

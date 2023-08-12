@@ -1375,7 +1375,8 @@ ScrArea *ED_screen_full_newspace(bContext *C, ScrArea *area, int type)
     newsl->link_flag |= SPACE_FLAG_TYPE_WAS_ACTIVE;
   }
 
-  ED_area_newspace(C, newsa, type, (newsl && newsl->link_flag & SPACE_FLAG_TYPE_TEMPORARY));
+  ED_area_newspace(
+      C, newsa, type, (newsl && newsl->link_flag & SPACE_FLAG_TYPE_TEMPORARY), nullptr);
 
   if (newscreen) {
     ED_screen_change(C, newscreen);
@@ -1664,7 +1665,7 @@ ScrArea *ED_screen_temp_space_open(bContext *C,
 
       if (ctx_area != nullptr && ctx_area->full) {
         area = ctx_area;
-        ED_area_newspace(C, ctx_area, space_type, true);
+        ED_area_newspace(C, ctx_area, space_type, true, nullptr);
         area->flag |= AREA_FLAG_STACKED_FULLSCREEN;
         ((SpaceLink *)area->spacedata.first)->link_flag |= SPACE_FLAG_TYPE_TEMPORARY;
       }

@@ -152,7 +152,7 @@ static void rna_Area_type_update(bContext *C, PointerRNA *ptr)
       CTX_wm_area_set(C, area);
       CTX_wm_region_set(C, nullptr);
 
-      ED_area_newspace(C, area, area->butspacetype, true);
+      ED_area_newspace(C, area, area->butspacetype, true, area->butspace_hint);
       ED_area_tag_redraw(area);
 
       /* Unset so that rna_Area_type_get uses spacetype instead. */
@@ -333,9 +333,29 @@ static int rna_space_presets_active_index_get(PointerRNA *ptr)
 }
 static void rna_space_presets_active_index_set(PointerRNA *ptr, const int new_active_index)
 {
+  ScrArea *area = static_cast<ScrArea *>(ptr->data);
+  SpacePreset *space_preset = static_cast<SpacePreset *>(
+      BLI_findlink(&area->space_presets, new_active_index));
+  if (space_preset == nullptr) {
+    return;
+  }
+  SpaceLink *space = space_preset->space;
+  if (space == nullptr) {
+    return;
+  }
+  area->butspacetype = space->spacetype;
+  area->butspace_hint = space;
   printf("Setting active space preset\n");
-  // ScrArea *area = static_cast<ScrArea *>(ptr->data);
-  // area->active_space_preset = new_active_index;
+}
+
+static void rna_space_preset_active_index_update(bContext *C, PointerRNA *ptr)
+{
+  ScrArea *area = static_cast<ScrArea *>(ptr->data);
+
+  rna_Area_type_update(C, ptr);
+
+  ED_area_tag_refresh(area);
+  printf("Updated\n");
 }
 
 #else
@@ -394,6 +414,8 @@ static void rna_def_space_presets_api(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_property_int_funcs(
       prop, "rna_space_presets_active_index_get", "rna_space_presets_active_index_set", nullptr);
   RNA_def_property_ui_text(prop, "Active Index", "Index of the active space preset");
+  RNA_def_property_flag(prop, PROP_CONTEXT_UPDATE);
+  RNA_def_property_update(prop, 0, "rna_space_preset_active_index_update");
 }
 
 static void rna_def_space_config(BlenderRNA *brna)
