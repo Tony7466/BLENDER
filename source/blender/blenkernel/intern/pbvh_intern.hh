@@ -152,8 +152,8 @@ struct PBVH {
   Mesh *mesh;
 
   /* NOTE: Normals are not `const` because they can be updated for drawing by sculpt code. */
-  blender::MutableSpan<blender::float3> vert_normals;
-  blender::MutableSpan<blender::float3> face_normals;
+  blender::Array<blender::float3> vert_normals;
+  blender::Array<blender::float3> face_normals;
   bool *hide_vert;
   blender::MutableSpan<blender::float3> vert_positions;
   /** Local vertex positions owned by the PVBH when not sculpting base mesh positions directly. */
