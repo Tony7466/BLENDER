@@ -2546,6 +2546,68 @@ static void UI_OT_drop_material(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Space Preset Activate
+ *
+ * \{ */
+
+static int ui_space_preset_activate_exec(bContext *C, wmOperator *op)
+{
+  ScrArea *area = CTX_wm_area(C);
+  const int preset_index = RNA_int_get(op->ptr, "preset_index");
+  SpacePreset *preset = static_cast<SpacePreset *>(
+      BLI_findlink(&area->space_presets, preset_index));
+
+  ED_area_newspace(C, area, preset->space->spacetype, true, preset->space);
+  ED_area_tag_redraw(area);
+
+  std::cout << "Activate: " << preset_index << "\n";
+  return OPERATOR_FINISHED;
+}
+
+static void UI_OT_space_preset_activate(wmOperatorType *ot)
+{
+  ot->name = "Activate Space Preset";
+  ot->description = "Activate space preset";
+  ot->idname = __func__;
+
+  ot->exec = ui_space_preset_activate_exec;
+
+  RNA_def_int(ot->srna,
+              "preset_index",
+              0,
+              0,
+              INT32_MAX,
+              "Preset Index",
+              "Index of preset to activate",
+              0,
+              INT32_MAX);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Space Preset Disable
+ *
+ * \{ */
+
+static int ui_space_presets_disable_exec(bContext *C, wmOperator *op)
+{
+  std::cout << "Disable\n";
+  return OPERATOR_FINISHED;
+}
+
+static void UI_OT_space_presets_disable(wmOperatorType *ot)
+{
+  ot->name = "Disable Space Presets";
+  ot->description = "Disable space presets";
+  ot->idname = __func__;
+
+  ot->exec = ui_space_presets_disable_exec;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Operator & Keymap Registration
  * \{ */
 
@@ -2575,6 +2637,9 @@ void ED_operatortypes_ui()
   WM_operatortype_append(UI_OT_view_start_filter);
   WM_operatortype_append(UI_OT_view_drop);
   WM_operatortype_append(UI_OT_view_item_rename);
+
+  WM_operatortype_append(UI_OT_space_preset_activate);
+  WM_operatortype_append(UI_OT_space_presets_disable);
 
   WM_operatortype_append(UI_OT_override_type_set_button);
   WM_operatortype_append(UI_OT_override_remove_button);

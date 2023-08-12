@@ -23,6 +23,7 @@
 #include "DNA_object_force_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_screen_types.h"
 #include "DNA_shader_fx_types.h"
 #include "DNA_texture_types.h"
 
@@ -112,6 +113,36 @@ void uiTemplateHeader(uiLayout *layout, bContext *C)
 {
   uiBlock *block = uiLayoutAbsoluteBlock(layout);
   ED_area_header_switchbutton(C, block, 0);
+
+  uiLayout *row = uiLayoutRow(layout, true);
+  // uiLayoutSetScaleX(row, 0.7f);
+  ScrArea *area = CTX_wm_area(C);
+  SpaceLink *active_space = static_cast<SpaceLink *>(area->spacedata.first);
+  int index;
+  LISTBASE_FOREACH_INDEX (SpacePreset *, space_preset, &area->space_presets, index) {
+    if (space_preset->space == active_space) {
+      uiItemFullO(row,
+                  "ui.space_presets_disable",
+                  "",
+                  ICON_RADIOBUT_ON,
+                  nullptr,
+                  WM_OP_INVOKE_AREA,
+                  UI_ITEM_NONE,
+                  nullptr);
+    }
+    else {
+      PointerRNA props;
+      uiItemFullO(row,
+                  "ui.space_preset_activate",
+                  "",
+                  ICON_RADIOBUT_OFF,
+                  nullptr,
+                  WM_OP_INVOKE_AREA,
+                  UI_ITEM_NONE,
+                  &props);
+      RNA_int_set(&props, "preset_index", index);
+    }
+  }
 }
 
 /** \} */
