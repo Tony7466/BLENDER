@@ -330,15 +330,19 @@ static void build_mesh_leaf_node(PBVH *pbvh, PBVHNode *node)
   node->face_vert_indices.reinitialize(totface);
 
   for (int i = 0; i < totface; i++) {
-    const MLoopTri *lt = &pbvh->looptri[node->prim_indices[i]];
+    const int tri_index = node->prim_indices[i];
     for (int j = 0; j < 3; j++) {
       node->face_vert_indices[i][j] = map_insert_vert(
-          pbvh, map, &node->face_verts, &node->uniq_verts, pbvh->corner_verts[lt->tri[j]]);
+          pbvh,
+          map,
+          &node->face_verts,
+          &node->uniq_verts,
+          pbvh->corner_verts[pbvh->looptri[tri_index].tri[j]]);
     }
 
     if (has_visible == false) {
-      if (!paint_is_face_hidden(
-              pbvh->looptri_faces.data(), pbvh->hide_poly, node->prim_indices[i])) {
+      const int face = pbvh->looptri_faces[tri_index];
+      if (!pbvh->hide_poly || !pbvh->hide_poly[face]) {
         has_visible = true;
       }
     }
@@ -1753,8 +1757,8 @@ blender::IndexMask BKE_pbvh_get_grid_updates(const PBVH *pbvh,
       for (const int grid : node->prim_indices) {
         const int face = pbvh->gridfaces[grid];
         faces_to_update[face] = true;
+      }
     }
-  }
   });
   return IndexMask::from_bools(faces_to_update, memory);
 }
@@ -2280,7 +2284,7 @@ static bool pbvh_faces_node_raycast(PBVH *pbvh,
     const MLoopTri *lt = &pbvh->looptri[looptri_i];
     const blender::int3 face_verts = node->face_vert_indices[i];
 
-    if (paint_is_face_hidden(pbvh->looptri_faces.data(), pbvh->hide_poly, looptri_i)) {
+    if (pbvh->hide_poly && pbvh->hide_poly[pbvh->looptri_faces[looptri_i]]) {
       continue;
     }
 
@@ -2627,7 +2631,7 @@ static bool pbvh_faces_node_nearest_to_ray(PBVH *pbvh,
     const MLoopTri *lt = &pbvh->looptri[looptri_i];
     const blender::int3 face_verts = node->face_vert_indices[i];
 
-    if (paint_is_face_hidden(pbvh->looptri_faces.data(), pbvh->hide_poly, looptri_i)) {
+    if (pbvh->hide_poly && pbvh->hide_poly[pbvh->looptri_faces[looptri_i]]) {
       continue;
     }
 
