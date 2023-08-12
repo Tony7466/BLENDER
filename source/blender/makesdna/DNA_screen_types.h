@@ -369,9 +369,10 @@ typedef struct ScrArea_Runtime {
 
 typedef struct SpacePreset {
   struct SpacePreset *next, *prev;
+  /** User-defined name of this preset. */
   char *name;
-  int space_index;
-  char _pad[4];
+  /** Non-owning pointer to the space data. It's owned by `ScrArea->spacedata`. */
+  struct SpaceLink *space;
 } SpacePreset;
 
 typedef struct ScrArea {
@@ -435,8 +436,6 @@ typedef struct ScrArea {
   ListBase regionbase;
   /** #SpacePreset. */
   ListBase space_presets;
-  int active_space_preset;
-  char _pad2[4];
   /** #wmEventHandler. */
   ListBase handlers;
 

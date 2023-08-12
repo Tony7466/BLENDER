@@ -1495,6 +1495,7 @@ static void direct_link_area(BlendDataReader *reader, ScrArea *area)
   BLO_read_list(reader, &area->space_presets);
   LISTBASE_FOREACH (SpacePreset *, space_preset, &area->space_presets) {
     BLO_read_data_address(reader, &space_preset->name);
+    BLO_read_data_address(reader, &space_preset->space);
   }
 
   BLI_listbase_clear(&area->actionzones);

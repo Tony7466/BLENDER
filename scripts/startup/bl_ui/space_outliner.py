@@ -516,6 +516,10 @@ class AREA_UL_space_presets(bpy.types.UIList):
     def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
         row = layout.row(align=True)
         row.prop(item, "name", text="", emboss=False, icon_value=icon)
+        if item.space:
+            row.label(text=item.space.type)
+        else:
+            row.label(text="None")
 
 
 class AREA_PT_space_presets(Panel):

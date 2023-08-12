@@ -315,6 +315,7 @@ static SpacePreset *rna_space_presets_new(ScrArea *area)
 {
   SpacePreset *space_preset = MEM_cnew<SpacePreset>(__func__);
   space_preset->name = BLI_strdup("Space");
+  space_preset->space = static_cast<SpaceLink *>(area->spacedata.first);
   BLI_addtail(&area->space_presets, space_preset);
   return space_preset;
 }
@@ -322,13 +323,19 @@ static SpacePreset *rna_space_presets_new(ScrArea *area)
 static int rna_space_presets_active_index_get(PointerRNA *ptr)
 {
   ScrArea *area = static_cast<ScrArea *>(ptr->data);
-  return area->active_space_preset;
+  int index;
+  LISTBASE_FOREACH_INDEX (SpacePreset *, space_preset, &area->space_presets, index) {
+    if (space_preset->space == area->spacedata.first) {
+      return index;
+    }
+  }
+  return -1;
 }
 static void rna_space_presets_active_index_set(PointerRNA *ptr, const int new_active_index)
 {
   printf("Setting active space preset\n");
-  ScrArea *area = static_cast<ScrArea *>(ptr->data);
-  area->active_space_preset = new_active_index;
+  // ScrArea *area = static_cast<ScrArea *>(ptr->data);
+  // area->active_space_preset = new_active_index;
 }
 
 #else
@@ -400,8 +407,8 @@ static void rna_def_space_config(BlenderRNA *brna)
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "Name", "");
 
-  prop = RNA_def_property(srna, "space_index", PROP_INT, PROP_NONE);
-  RNA_def_property_ui_text(prop, "Space Index", "Index of the corresponding space in this area");
+  prop = RNA_def_property(srna, "space", PROP_POINTER, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Space", "Space in this preset");
 }
 
 static void rna_def_area(BlenderRNA *brna)
