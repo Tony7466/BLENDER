@@ -120,15 +120,13 @@ static PanelType *create_space_presets_panel()
   PanelType *panel_type = MEM_cnew<PanelType>(__func__);
   STRNCPY(panel_type->idname, "UI_PT_space_presets");
   panel_type->draw = space_presets_panel_draw;
+  /* TODO: Make sure this is freed properly. */
   WM_paneltype_add(panel_type);
   return panel_type;
 }
 
-void uiTemplateHeader(uiLayout *layout, bContext *C)
+static void space_presets_draw(uiLayout *layout, bContext *C)
 {
-  uiBlock *block = uiLayoutAbsoluteBlock(layout);
-  ED_area_header_switchbutton(C, block, 0);
-
   static PanelType *space_presets_panel = create_space_presets_panel();
 
   uiLayout *row = uiLayoutRow(layout, true);
@@ -151,6 +149,17 @@ void uiTemplateHeader(uiLayout *layout, bContext *C)
   uiItemFullO(
       row, "ui.space_preset_add", "", ICON_ADD, nullptr, WM_OP_INVOKE_AREA, UI_ITEM_NONE, nullptr);
   uiItemPopoverPanel_ptr(row, C, space_presets_panel, "", ICON_NONE);
+}
+
+void uiTemplateHeader(uiLayout *layout, bContext *C)
+{
+  uiBlock *block = uiLayoutAbsoluteBlock(layout);
+  ED_area_header_switchbutton(C, block, 0);
+
+  ScrArea *area = CTX_wm_area(C);
+  if (area->flag & AREA_FLAG_SPACE_PRESETS) {
+    space_presets_draw(layout, C);
+  }
 }
 
 /** \} */
