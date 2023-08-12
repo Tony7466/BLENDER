@@ -15,6 +15,12 @@ class PROPERTIES_HT_header(Header):
         ui_scale = context.preferences.system.ui_scale
 
         layout.template_header()
+        row = layout.row(align=True)
+        row.scale_x = 0.7
+        row.operator("mesh.primitive_plane_add", text="1")
+        row.operator("mesh.primitive_plane_add", text="2")
+        row.operator("mesh.primitive_plane_add", text="3")
+        row.operator("mesh.primitive_plane_add", text="4")
 
         layout.separator_spacer()
 

@@ -539,6 +539,9 @@ class AREA_PT_space_presets(Panel):
             area.space_presets,
             "active_index")
 
+        row = layout.row(align=True)
+
+
 
 classes = (
     OUTLINER_HT_header,

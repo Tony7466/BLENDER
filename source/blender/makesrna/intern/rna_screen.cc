@@ -319,6 +319,18 @@ static SpacePreset *rna_space_presets_new(ScrArea *area)
   return space_preset;
 }
 
+static int rna_space_presets_active_index_get(PointerRNA *ptr)
+{
+  ScrArea *area = static_cast<ScrArea *>(ptr->data);
+  return area->active_space_preset;
+}
+static void rna_space_presets_active_index_set(PointerRNA *ptr, const int new_active_index)
+{
+  printf("Setting active space preset\n");
+  ScrArea *area = static_cast<ScrArea *>(ptr->data);
+  area->active_space_preset = new_active_index;
+}
+
 #else
 
 /* Area.spaces */
@@ -371,7 +383,9 @@ static void rna_def_space_presets_api(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_function_return(func, parm);
 
   prop = RNA_def_property(srna, "active_index", PROP_INT, PROP_NONE);
-  RNA_def_property_int_sdna(prop, nullptr, "active_space_preset");
+  // RNA_def_property_int_sdna(prop, nullptr, "active_space_preset");
+  RNA_def_property_int_funcs(
+      prop, "rna_space_presets_active_index_get", "rna_space_presets_active_index_set", nullptr);
   RNA_def_property_ui_text(prop, "Active Index", "Index of the active space preset");
 }
 
