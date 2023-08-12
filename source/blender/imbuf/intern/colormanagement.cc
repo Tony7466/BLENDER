@@ -29,6 +29,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_math_color.h"
+#include "BLI_os_utils.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_task.h"

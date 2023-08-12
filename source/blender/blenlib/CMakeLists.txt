@@ -121,6 +121,7 @@ set(SRC
   intern/noise.c
   intern/noise.cc
   intern/offset_indices.cc
+  intern/os_utils.c
   intern/path_util.c
   intern/polyfill_2d.c
   intern/polyfill_2d_beautify.c
@@ -322,6 +323,7 @@ set(SRC
   BLI_offset_indices.hh
   BLI_offset_span.hh
   BLI_ordered_edge.hh
+  BLI_os_utils.h
   BLI_parameter_pack_utils.hh
   BLI_path_util.h
   BLI_polyfill_2d.h

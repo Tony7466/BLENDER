@@ -18,6 +18,7 @@
 #include "IMB_filetype.h"
 #include "IMB_imbuf_types.h"
 
+#include "BLI_os_utils.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 
