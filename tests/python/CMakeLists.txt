@@ -693,7 +693,7 @@ if(WITH_COMPOSITOR_CPU)
         compositor_${comp_test}_cpu_test
         ${CMAKE_CURRENT_LIST_DIR}/compositor_cpu_render_tests.py
         -blender "${TEST_BLENDER_EXE}"
-        -testdir "${TEST_SRC_DIR}/compositor_cpu/${comp_test}"
+        -testdir "${TEST_SRC_DIR}/compositor/${comp_test}"
         -idiff "${OPENIMAGEIO_IDIFF}"
         -outdir "${TEST_OUT_DIR}/compositor_cpu"
       )
@@ -715,11 +715,12 @@ if(WITH_COMPOSITOR_REALTIME_TEST AND WITH_COMPOSITOR_CPU)
           output
           vector
 
-          distort
-          matte
-
           multiple_node_setups
         )
+      
+      if(WITH_LIBMV)
+        list(APPEND compositor_tests distort matte)
+      endif()
 
       foreach(comp_test ${compositor_tests})
         add_python_test(

@@ -53,7 +53,7 @@ def main():
     from modules import render_report
     report = render_report.Report("Compositor CPU", output_dir, idiff)
     report.set_pixelated(True)
-    report.set_reference_dir("compositor_renders")
+    report.set_reference_dir("compositor_cpu_renders")
 
     # Temporary change to pass OpenImageDenoise test with both 1.3 and 1.4.
     if os.path.basename(test_dir) == 'filter':
