@@ -1,13 +1,14 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
  *
- * Intended for use by `paint_vertex.c` & `paint_vertex_weight_ops.c`.
+ * Intended for use by `paint_vertex.cc` & `paint_vertex_weight_ops.cc`.
  */
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_string_utils.h"
 
 #include "DNA_armature_types.h"
@@ -17,7 +18,7 @@
 #include "BKE_action.h"
 #include "BKE_context.h"
 #include "BKE_deform.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_object_deform.h"
@@ -28,8 +29,8 @@
 /* Only for blend modes. */
 #include "IMB_imbuf.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "paint_intern.hh" /* own include */
 
@@ -54,11 +55,11 @@ bool ED_wpaint_ensure_data(bContext *C,
     return false;
   }
 
-  if (me == nullptr || me->totpoly == 0) {
+  if (me == nullptr || me->faces_num == 0) {
     return false;
   }
 
-  /* if nothing was added yet, we make dverts and a vertex deform group */
+  /* If nothing was added yet, we make deform-verts and a vertex deform group. */
   if (BKE_mesh_deform_verts(me) == nullptr) {
     BKE_object_defgroup_data_create(&me->id);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, me);
@@ -136,8 +137,7 @@ int ED_wpaint_mirror_vgroup_ensure(Object *ob, const int vgroup_active)
       }
     }
 
-    /* curdef should never be nullptr unless this is
-     * a  light and BKE_object_defgroup_add_name fails */
+    /* `mirrdef` shouldn't be -1 unless the object is a light & #BKE_object_defgroup_new fails. */
     return mirrdef;
   }
 

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -10,7 +12,7 @@
 #include <optional>
 
 #include "BLI_string_ref.hh"
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 struct ListBase;
 struct SpaceOutliner;
@@ -42,15 +44,6 @@ class AbstractTreeElement {
    * Check if the type is expandable in current context.
    */
   virtual bool expandPoll(const SpaceOutliner &) const
-  {
-    return true;
-  }
-
-  /**
-   * Just while transitioning to the new tree-element design: Some types are only partially ported,
-   * and the expanding isn't done yet.
-   */
-  virtual bool isExpandValid() const
   {
     return true;
   }
@@ -118,13 +111,13 @@ class AbstractTreeElement {
  *                noise, and can be expensive to add in big scenes. So prefer setting this to
  *                false.
  */
-struct TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
-                                         ListBase *lb,
-                                         void *idv,
-                                         struct TreeElement *parent,
-                                         short type,
-                                         short index,
-                                         const bool expand = true);
+TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
+                                  ListBase *lb,
+                                  void *idv,
+                                  TreeElement *parent,
+                                  short type,
+                                  short index,
+                                  const bool expand = true);
 
 void tree_element_expand(const AbstractTreeElement &tree_element, SpaceOutliner &space_outliner);
 

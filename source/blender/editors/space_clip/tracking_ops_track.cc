@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation */
+/* SPDX-FileCopyrightText: 2016 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spclip
@@ -7,7 +8,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -19,14 +19,14 @@
 #include "BKE_movieclip.h"
 #include "BKE_tracking.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_clip.h"
-#include "ED_screen.h"
+#include "ED_clip.hh"
+#include "ED_screen.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "PIL_time.h"
 
@@ -37,21 +37,21 @@
 
 /********************** Track operator *********************/
 
-typedef struct TrackMarkersJob {
-  struct AutoTrackContext *context; /* Tracking context */
-  int sfra, efra, lastfra;          /* Start, end and recently tracked frames */
-  int backwards;                    /* Backwards tracking flag */
-  MovieClip *clip;                  /* Clip which is tracking */
-  float delay;                      /* Delay in milliseconds to allow
-                                     * tracking at fixed FPS */
+struct TrackMarkersJob {
+  AutoTrackContext *context; /* Tracking context */
+  int sfra, efra, lastfra;   /* Start, end and recently tracked frames */
+  int backwards;             /* Backwards tracking flag */
+  MovieClip *clip;           /* Clip which is tracking */
+  float delay;               /* Delay in milliseconds to allow
+                              * tracking at fixed FPS */
 
-  struct wmWindowManager *wm;
-  struct Main *main;
-  struct Scene *scene;
-  struct bScreen *screen;
-} TrackMarkersJob;
+  wmWindowManager *wm;
+  Main *main;
+  Scene *scene;
+  bScreen *screen;
+};
 
-static bool track_markers_testbreak(void)
+static bool track_markers_testbreak()
 {
   return G.is_break;
 }
@@ -430,10 +430,10 @@ void CLIP_OT_track_markers(wmOperatorType *ot)
   ot->flag = OPTYPE_UNDO;
 
   /* properties */
-  RNA_def_boolean(ot->srna, "backwards", 0, "Backwards", "Do backwards tracking");
+  RNA_def_boolean(ot->srna, "backwards", false, "Backwards", "Do backwards tracking");
   RNA_def_boolean(ot->srna,
                   "sequence",
-                  0,
+                  false,
                   "Track Sequence",
                   "Track marker during image sequence rather than "
                   "single image");
@@ -480,5 +480,5 @@ void CLIP_OT_refine_markers(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  RNA_def_boolean(ot->srna, "backwards", 0, "Backwards", "Do backwards tracking");
+  RNA_def_boolean(ot->srna, "backwards", false, "Backwards", "Do backwards tracking");
 }

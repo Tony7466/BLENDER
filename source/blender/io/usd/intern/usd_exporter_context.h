@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation */
+/* SPDX-FileCopyrightText: 2019 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 #include "usd.h"
@@ -19,8 +20,9 @@ struct USDExporterContext {
   Depsgraph *depsgraph;
   const pxr::UsdStageRefPtr stage;
   const pxr::SdfPath usd_path;
-  const USDHierarchyIterator *hierarchy_iterator;
+  pxr::UsdTimeCode time_code;
   const USDExportParams &export_params;
+  std::string export_file_path;
 };
 
 }  // namespace blender::io::usd

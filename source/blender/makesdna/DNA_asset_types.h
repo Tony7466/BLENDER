@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -206,6 +208,11 @@ typedef struct AssetWeakReference {
 typedef struct AssetHandle {
   const struct FileDirEntry *file_data;
 } AssetHandle;
+
+typedef enum eUserExtensionRepo_Flag {
+  /** Maintain disk cache. */
+  USER_EXTENSION_FLAG_NO_CACHE = 1 << 0,
+} eUserExtensionRepo_Flag;
 
 #ifdef __cplusplus
 }

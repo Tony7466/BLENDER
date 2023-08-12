@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2004 Blender Foundation */
+/* SPDX-FileCopyrightText: 2004 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -19,7 +20,6 @@
 #include "DNA_text_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_mempool.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
@@ -34,7 +34,7 @@
 #include "BKE_idtype.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_library.h"
 #include "BKE_main.h"
 #include "BKE_main_namemap.h"
@@ -47,24 +47,24 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
 
-#include "ED_armature.h"
-#include "ED_fileselect.h"
-#include "ED_outliner.h"
-#include "ED_screen.h"
+#include "ED_armature.hh"
+#include "ED_fileselect.hh"
+#include "ED_outliner.hh"
+#include "ED_screen.hh"
 
-#include "WM_api.h"
-#include "WM_message.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
+#include "WM_types.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_state.h"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "outliner_intern.hh"
 #include "tree/tree_display.hh"
@@ -72,6 +72,7 @@
 #include "tree/tree_element_id.hh"
 #include "tree/tree_element_overrides.hh"
 #include "tree/tree_element_rna.hh"
+#include "tree/tree_element_seq.hh"
 #include "tree/tree_iterator.hh"
 
 namespace blender::ed::outliner {
@@ -674,7 +675,7 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
 {
   Main *bmain = CTX_data_main(C);
   SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
-  struct wmMsgBus *mbus = CTX_wm_message_bus(C);
+  wmMsgBus *mbus = CTX_wm_message_bus(C);
   BLI_mempool *ts = space_outliner->treestore;
   TreeStoreElem *tselem = static_cast<TreeStoreElem *>(tsep);
 
@@ -1852,21 +1853,23 @@ static void outliner_draw_overrides_rna_buts(uiBlock *block,
             tree_element_cast<TreeElementOverridesPropertyOperation>(te))
     {
       StringRefNull op_label = override_op_elem->getOverrideOperationLabel();
-      uiDefBut(block,
-               UI_BTYPE_LABEL,
-               0,
-               op_label.c_str(),
-               x + pad_x,
-               te->ys + pad_y,
-               item_max_width,
-               item_height,
-               nullptr,
-               0,
-               0,
-               0,
-               0,
-               "");
-      continue;
+      if (!op_label.is_empty()) {
+        uiDefBut(block,
+                 UI_BTYPE_LABEL,
+                 0,
+                 op_label.c_str(),
+                 x + pad_x,
+                 te->ys + pad_y,
+                 item_max_width,
+                 item_height,
+                 nullptr,
+                 0,
+                 0,
+                 0,
+                 0,
+                 "");
+        continue;
+      }
     }
 
     PointerRNA *ptr = &override_elem->override_rna_ptr;
@@ -2368,6 +2371,8 @@ static BIFIconID tree_element_get_icon_from_id(const ID *id)
         }
       case OB_GPENCIL_LEGACY:
         return ICON_OUTLINER_OB_GREASEPENCIL;
+      case OB_GREASE_PENCIL:
+        return ICON_OUTLINER_OB_GREASEPENCIL;
     }
 
     return ICON_NONE;
@@ -2494,9 +2499,6 @@ static BIFIconID tree_element_get_icon_from_id(const ID *id)
       return ICON_SEQUENCE;
     case ID_PC:
       return ICON_CURVE_BEZCURVE;
-    case ID_SIM:
-      /* TODO: Use correct icon. */
-      return ICON_PHYSICS;
     default:
       return ICON_NONE;
   }
@@ -2761,8 +2763,9 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
       case TSE_POSEGRP:
         data.icon = ICON_GROUP_BONE;
         break;
-      case TSE_SEQUENCE:
-        switch (te->idcode) {
+      case TSE_SEQUENCE: {
+        const TreeElementSequence *te_seq = tree_element_cast<TreeElementSequence>(te);
+        switch (te_seq->getSequenceType()) {
           case SEQ_TYPE_SCENE:
             data.icon = ICON_SCENE_DATA;
             break;
@@ -2815,6 +2818,7 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
             break;
         }
         break;
+      }
       case TSE_SEQ_STRIP:
         data.icon = ICON_LIBRARY_DATA_DIRECT;
         break;
@@ -2900,7 +2904,7 @@ static bool tselem_draw_icon(uiBlock *block,
 
   /* Collection colors and icons covered by restrict buttons. */
   if (!is_clickable || x >= xmax || is_collection) {
-    /* Placement of icons, copied from interface_widgets.c */
+    /* Placement of icons, copied from `interface_widgets.cc`. */
     float aspect = (0.8f * UI_UNIT_Y) / ICON_DEFAULT_HEIGHT;
     x += 2.0f * aspect;
     y += 2.0f * aspect;

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -7,32 +8,34 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_color.h"
 #include "BLI_math_color_blend.h"
 #include "BLI_task.h"
+
+#include "BLT_translation.h"
 
 #include "DNA_meshdata_types.h"
 #include "DNA_userdef_types.h"
 
 #include "BKE_context.h"
-#include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_paint.hh"
+#include "BKE_pbvh_api.hh"
 
 #include "IMB_colormanagement.h"
 
 #include "DEG_depsgraph.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_paint.h"
+#include "ED_paint.hh"
 #include "sculpt_intern.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include <cmath>
 #include <cstdlib>
@@ -339,6 +342,7 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
 
   int mval[2];
   RNA_int_get_array(op->ptr, "start_mouse", mval);
+  float mval_fl[2] = {float(mval[0]), float(mval[1])};
 
   const bool use_automasking = SCULPT_is_automasking_enabled(sd, ss, nullptr);
   if (use_automasking) {
@@ -348,7 +352,6 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
     if (v3d) {
       /* Update the active face set manually as the paint cursor is not enabled when using the Mesh
        * Filter Tool. */
-      float mval_fl[2] = {float(mval[0]), float(mval[1])};
       SculptCursorGeometryInfo sgi;
       SCULPT_cursor_geometry_info_update(C, &sgi, mval_fl, false);
     }
@@ -359,7 +362,6 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  const PBVHType pbvh_type_prev = BKE_pbvh_type(ss->pbvh);
   SCULPT_undo_push_begin(ob, op);
   BKE_sculpt_color_layer_create_if_needed(ob);
 
@@ -367,15 +369,12 @@ static int sculpt_color_filter_init(bContext *C, wmOperator *op)
    * earlier steps modifying the data. */
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true, false, true);
-  if (pbvh_type_prev == PBVH_FACES && !ob->sculpt->pmap) {
-    return OPERATOR_CANCELLED;
-  }
 
   SCULPT_filter_cache_init(C,
                            ob,
                            sd,
                            SCULPT_UNDO_COLOR,
-                           mval,
+                           mval_fl,
                            RNA_float_get(op->ptr, "area_normal_radius"),
                            RNA_float_get(op->ptr, "strength"));
   FilterCache *filter_cache = ss->filter_cache;
@@ -440,10 +439,10 @@ static void sculpt_color_filter_ui(bContext * /*C*/, wmOperator *op)
 {
   uiLayout *layout = op->layout;
 
-  uiItemR(layout, op->ptr, "strength", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "strength", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   if (RNA_enum_get(op->ptr, "type") == COLOR_FILTER_FILL) {
-    uiItemR(layout, op->ptr, "fill_color", 0, nullptr, ICON_NONE);
+    uiItemR(layout, op->ptr, "fill_color", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 }
 
@@ -479,5 +478,6 @@ void SCULPT_OT_color_filter(wmOperatorType *ot)
                                           "",
                                           0.0f,
                                           1.0f);
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_MESH);
   RNA_def_property_subtype(prop, PROP_COLOR_GAMMA);
 }

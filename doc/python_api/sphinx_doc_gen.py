@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """
@@ -77,7 +79,7 @@ SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 USE_ONLY_BUILTIN_RNA_TYPES = True
 
 # Write a page for each static enum defined in:
-# `source/blender/makesrna/RNA_enum_items.h` so the enums can be linked to instead of being expanded everywhere.
+# `source/blender/makesrna/RNA_enum_items.hh` so the enums can be linked to instead of being expanded everywhere.
 USE_SHARED_RNA_ENUM_ITEMS_STATIC = True
 
 if USE_SHARED_RNA_ENUM_ITEMS_STATIC:
@@ -1183,6 +1185,7 @@ context_type_map = {
     "fluid": ("FluidSimulationModifier", False),
     "gpencil": ("GreasePencil", False),
     "gpencil_data": ("GreasePencil", False),
+    "grease_pencil": ("GreasePencilv3", False),
     "gpencil_data_owner": ("ID", False),
     "curves": ("Hair Curves", False),
     "id": ("ID", False),
@@ -1202,6 +1205,7 @@ context_type_map = {
     "particle_settings": ("ParticleSettings", False),
     "particle_system": ("ParticleSystem", False),
     "particle_system_editable": ("ParticleSystem", False),
+    "property": ("(:class:`bpy.types.ID`, :class:`string`, :class:`int`)", False),
     "pointcloud": ("PointCloud", False),
     "pose_bone": ("PoseBone", False),
     "pose_object": ("Object", False),
@@ -1347,7 +1351,11 @@ def pycontext2sphinx(basepath):
                 raise SystemExit(
                     "Error: context key %r not found in context_type_map; update %s" %
                     (member, __file__)) from None
-            fw("   :type: %s :class:`bpy.types.%s`\n\n" % ("sequence of " if is_seq else "", member_type))
+
+            if member_type.isidentifier():
+                member_type = ":class:`bpy.types.%s`" % member_type
+            fw("   :type: %s %s\n\n" % ("sequence of " if is_seq else "", member_type))
+            write_example_ref("   ", fw, "bpy.context." + member)
 
     # Generate type-map:
     # for member in sorted(unique_context_strings):

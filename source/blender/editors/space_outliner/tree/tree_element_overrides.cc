@@ -1,11 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
  */
 
 #include "BKE_collection.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 
 #include "BLI_function_ref.hh"
 #include "BLI_listbase_wrapper.hh"
@@ -16,8 +18,8 @@
 
 #include "DNA_space_types.h"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 
 #include "../outliner_intern.hh"
 
@@ -228,12 +230,27 @@ TreeElementOverridesPropertyOperation::TreeElementOverridesPropertyOperation(
 
 StringRefNull TreeElementOverridesPropertyOperation::getOverrideOperationLabel() const
 {
-  if (ELEM(operation_->operation, LIBOVERRIDE_OP_INSERT_AFTER, LIBOVERRIDE_OP_INSERT_BEFORE)) {
-    return TIP_("Added through override");
+  switch (operation_->operation) {
+    case LIBOVERRIDE_OP_INSERT_AFTER:
+    case LIBOVERRIDE_OP_INSERT_BEFORE:
+      return TIP_("Added through override");
+    case LIBOVERRIDE_OP_REPLACE:
+      /* Returning nothing so that drawing code shows actual RNA button instead. */
+      return {};
+    /* Following cases are not expected in regular situation, but could be found in experimental
+     * files. */
+    case LIBOVERRIDE_OP_NOOP:
+      return TIP_("Protected from override");
+    case LIBOVERRIDE_OP_ADD:
+      return TIP_("Additive override");
+    case LIBOVERRIDE_OP_SUBTRACT:
+      return TIP_("Subtractive override");
+    case LIBOVERRIDE_OP_MULTIPLY:
+      return TIP_("Multiplicative override");
+    default:
+      BLI_assert_unreachable();
+      return {};
   }
-
-  BLI_assert_unreachable();
-  return {};
 }
 
 std::optional<BIFIconID> TreeElementOverridesPropertyOperation::getIcon() const
@@ -386,8 +403,15 @@ void OverrideRNAPathTreeBuilder::ensure_entire_collection(
                                                  item_idx,
                                                  nullptr);
     IDOverrideLibraryPropertyOperation *item_operation =
-        BKE_lib_override_library_property_operation_find(
-            &override_data.override_property, nullptr, nullptr, -1, item_idx, false, nullptr);
+        BKE_lib_override_library_property_operation_find(&override_data.override_property,
+                                                         nullptr,
+                                                         nullptr,
+                                                         {},
+                                                         {},
+                                                         -1,
+                                                         item_idx,
+                                                         false,
+                                                         nullptr);
     TreeElement *current_te = nullptr;
 
     TreeElement *existing_te = path_te_map.lookup_default(coll_item_path, nullptr);

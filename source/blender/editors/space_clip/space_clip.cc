@@ -1,12 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spclip
  */
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include "DNA_defaults.h"
 
@@ -18,7 +19,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
@@ -30,30 +30,34 @@
 
 #include "IMB_imbuf_types.h"
 
-#include "ED_anim_api.h" /* for timeline cursor drawing */
-#include "ED_clip.h"
-#include "ED_mask.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_time_scrub_ui.h"
-#include "ED_uvedit.h" /* just for ED_image_draw_cursor */
+#include "ED_anim_api.hh" /* for timeline cursor drawing */
+#include "ED_clip.hh"
+#include "ED_mask.hh"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_time_scrub_ui.hh"
+#include "ED_uvedit.hh" /* just for ED_image_draw_cursor */
 
 #include "IMB_imbuf.h"
 
 #include "GPU_matrix.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
 #include "BLO_read_write.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "clip_intern.h" /* own include */
+
+/* -------------------------------------------------------------------- */
+/** \name Local Utilities
+ * \{ */
 
 static void init_preview_region(const Scene *scene,
                                 const ScrArea *area,
@@ -144,7 +148,11 @@ static void clip_area_sync_frame_from_scene(ScrArea *area, const Scene *scene)
   BKE_movieclip_user_set_frame(&space_clip->user, scene->r.cfra);
 }
 
-/* ******************** default callbacks for clip space ***************** */
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Default Callbacks for Clip Space
+ * \{ */
 
 static SpaceLink *clip_create(const ScrArea * /*area*/, const Scene * /*scene*/)
 {
@@ -199,7 +207,7 @@ static SpaceLink *clip_create(const ScrArea * /*area*/, const Scene * /*scene*/)
   return (SpaceLink *)sc;
 }
 
-/* not spacelink itself */
+/* Doesn't free the space-link itself. */
 static void clip_free(SpaceLink *sl)
 {
   SpaceClip *sc = (SpaceClip *)sl;
@@ -216,7 +224,7 @@ static void clip_free(SpaceLink *sl)
 }
 
 /* spacetype; init callback */
-static void clip_init(struct wmWindowManager * /*wm*/, ScrArea *area)
+static void clip_init(wmWindowManager * /*wm*/, ScrArea *area)
 {
   ListBase *lb = WM_dropboxmap_find("Clip", SPACE_CLIP, 0);
 
@@ -336,9 +344,9 @@ static void clip_listener(const wmSpaceTypeListenerParams *params)
   }
 }
 
-static void clip_operatortypes(void)
+static void clip_operatortypes()
 {
-  /* ** clip_ops.c ** */
+  /* `clip_ops.cc` */
   WM_operatortype_append(CLIP_OT_open);
   WM_operatortype_append(CLIP_OT_reload);
   WM_operatortype_append(CLIP_OT_view_pan);
@@ -360,7 +368,7 @@ static void clip_operatortypes(void)
   WM_operatortype_append(CLIP_OT_cursor_set);
   WM_operatortype_append(CLIP_OT_lock_selection_toggle);
 
-  /* ** tracking_ops.c ** */
+  /* `tracking_ops.cc` */
 
   /* navigation */
   WM_operatortype_append(CLIP_OT_frame_jump);
@@ -440,7 +448,7 @@ static void clip_operatortypes(void)
   WM_operatortype_append(CLIP_OT_new_image_from_plane_marker);
   WM_operatortype_append(CLIP_OT_update_image_from_plane_marker);
 
-  /* ** clip_graph_ops.c  ** */
+  /* `clip_graph_ops.cc` */
 
   /* graph editing */
 
@@ -456,13 +464,13 @@ static void clip_operatortypes(void)
 
   WM_operatortype_append(CLIP_OT_graph_disable_markers);
 
-  /* ** clip_dopesheet_ops.c  ** */
+  /* `clip_dopesheet_ops.cc` */
 
   WM_operatortype_append(CLIP_OT_dopesheet_select_channel);
   WM_operatortype_append(CLIP_OT_dopesheet_view_all);
 }
 
-static void clip_keymap(struct wmKeyConfig *keyconf)
+static void clip_keymap(wmKeyConfig *keyconf)
 {
   /* ******** Global hotkeys available for all regions ******** */
   WM_keymap_ensure(keyconf, "Clip", SPACE_CLIP, 0);
@@ -537,7 +545,7 @@ static void clip_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
 }
 
 /* area+region dropbox definition */
-static void clip_dropboxes(void)
+static void clip_dropboxes()
 {
   ListBase *lb = WM_dropboxmap_find("Clip", SPACE_CLIP, 0);
 
@@ -576,7 +584,7 @@ static void CLIP_GGT_navigate(wmGizmoGroupType *gzgt)
   VIEW2D_GGT_navigate_impl(gzgt, "CLIP_GGT_navigate");
 }
 
-static void clip_gizmos(void)
+static void clip_gizmos()
 {
   const wmGizmoMapType_Params gizmo_params{SPACE_CLIP, RGN_TYPE_WINDOW};
   wmGizmoMapType *gzmap_type = WM_gizmomaptype_ensure(&gizmo_params);
@@ -584,7 +592,11 @@ static void clip_gizmos(void)
   WM_gizmogrouptype_append_and_link(gzmap_type, CLIP_GGT_navigate);
 }
 
-/********************* main region ********************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Main Region
+ * \{ */
 
 /* sets up the fields of the View2D from zoom and offset */
 static void movieclip_main_area_set_view2d(const bContext *C, ARegion *region)
@@ -682,7 +694,7 @@ static void clip_main_region_draw(const bContext *C, ARegion *region)
       tmpibuf = ED_space_clip_get_stable_buffer(sc, nullptr, nullptr, nullptr);
     }
 
-    if (ED_clip_view_selection(C, region, 0)) {
+    if (ED_clip_view_selection(C, region, false)) {
       sc->xof += sc->xlockof;
       sc->yof += sc->ylockof;
     }
@@ -770,8 +782,9 @@ static void clip_main_region_draw(const bContext *C, ARegion *region)
     /* draw Grease Pencil - screen space only */
     clip_draw_grease_pencil((bContext *)C, false);
   }
-
-  WM_gizmomap_draw(region->gizmo_map, C, WM_GIZMOMAP_DRAWSTEP_2D);
+  if ((sc->gizmo_flag & SCLIP_GIZMO_HIDE) == 0) {
+    WM_gizmomap_draw(region->gizmo_map, C, WM_GIZMOMAP_DRAWSTEP_2D);
+  }
 }
 
 static void clip_main_region_listener(const wmRegionListenerParams *params)
@@ -792,7 +805,11 @@ static void clip_main_region_listener(const wmRegionListenerParams *params)
   }
 }
 
-/****************** preview region ******************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Preview Region
+ * \{ */
 
 static bool clip_preview_region_poll(const RegionPollParams *params)
 {
@@ -923,7 +940,11 @@ static void clip_preview_region_draw(const bContext *C, ARegion *region)
 
 static void clip_preview_region_listener(const wmRegionListenerParams * /*params*/) {}
 
-/****************** channels region ******************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Channels Region
+ * \{ */
 
 static bool clip_channels_region_poll(const RegionPollParams *params)
 {
@@ -968,7 +989,11 @@ static void clip_channels_region_draw(const bContext *C, ARegion *region)
 
 static void clip_channels_region_listener(const wmRegionListenerParams * /*params*/) {}
 
-/****************** header region ******************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Header Region
+ * \{ */
 
 /* add handlers, stuff you only do once or on area/region changes */
 static void clip_header_region_init(wmWindowManager * /*wm*/, ARegion *region)
@@ -1003,7 +1028,11 @@ static void clip_header_region_listener(const wmRegionListenerParams *params)
   }
 }
 
-/****************** tools region ******************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Tools Region
+ * \{ */
 
 static bool clip_tools_region_poll(const RegionPollParams *params)
 {
@@ -1027,7 +1056,11 @@ static void clip_tools_region_draw(const bContext *C, ARegion *region)
   ED_region_panels(C, region);
 }
 
-/****************** tool properties region ******************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Tool Properties Region
+ * \{ */
 
 static void clip_props_region_listener(const wmRegionListenerParams *params)
 {
@@ -1059,7 +1092,11 @@ static void clip_props_region_listener(const wmRegionListenerParams *params)
   }
 }
 
-/****************** properties region ******************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Properties Region
+ * \{ */
 
 static bool clip_properties_region_poll(const RegionPollParams *params)
 {
@@ -1107,9 +1144,13 @@ static void clip_properties_region_listener(const wmRegionListenerParams *params
   }
 }
 
-/********************* registration ********************/
+/** \} */
 
-static void clip_id_remap(ScrArea * /*area*/, SpaceLink *slink, const struct IDRemapper *mappings)
+/* -------------------------------------------------------------------- */
+/** \name IO Callbacks
+ * \{ */
+
+static void clip_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper *mappings)
 {
   SpaceClip *sclip = (SpaceClip *)slink;
 
@@ -1142,7 +1183,13 @@ static void clip_space_blend_write(BlendWriter *writer, SpaceLink *sl)
   BLO_write_struct(writer, SpaceClip, sl);
 }
 
-void ED_spacetype_clip(void)
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Registration
+ * \{ */
+
+void ED_spacetype_clip()
 {
   SpaceType *st = MEM_cnew<SpaceType>("spacetype clip");
   ARegionType *art;
@@ -1243,3 +1290,5 @@ void ED_spacetype_clip(void)
   art = ED_area_type_hud(st->spaceid);
   BLI_addhead(&st->regiontypes, art);
 }
+
+/** \} */

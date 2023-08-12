@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2002-2009 Blender Foundation */
+/* SPDX-FileCopyrightText: 2002-2009 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -10,6 +11,8 @@
 
 #include "BLI_ghash.h"
 #include "BLI_math_base_safe.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_brush_types.h"
@@ -17,32 +20,32 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_customdata.h"
 #include "BKE_editmesh.h"
 #include "BKE_image.h"
-#include "BKE_mesh_mapping.h"
-#include "BKE_paint.h"
+#include "BKE_mesh_mapping.hh"
+#include "BKE_paint.hh"
 
 #include "DEG_depsgraph.h"
 
-#include "ED_image.h"
-#include "ED_mesh.h"
-#include "ED_screen.h"
-#include "ED_uvedit.h"
+#include "ED_image.hh"
+#include "ED_mesh.hh"
+#include "ED_screen.hh"
+#include "ED_uvedit.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "paint_intern.hh"
 #include "uvedit_intern.h"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
 /* When set, the UV element is on the boundary of the graph.
  * i.e. Instead of a 2-dimensional laplace operator, use a 1-dimensional version.
@@ -379,9 +382,8 @@ static void relaxation_iteration_uv(UvSculptData *sculptdata,
   const UvElement *storage = sculptdata->elementMap->storage;
   for (int j = 0; j < total_uvs; j++) {
     const UvElement *ele_curr = storage + j;
-    const BMFace *efa = ele_curr->l->f;
-    const UvElement *ele_next = BM_uv_element_get(sculptdata->elementMap, efa, ele_curr->l->next);
-    const UvElement *ele_prev = BM_uv_element_get(sculptdata->elementMap, efa, ele_curr->l->prev);
+    const UvElement *ele_next = BM_uv_element_get(sculptdata->elementMap, ele_curr->l->next);
+    const UvElement *ele_prev = BM_uv_element_get(sculptdata->elementMap, ele_curr->l->prev);
 
     const float *v_curr_co = ele_curr->l->v->co;
     const float *v_prev_co = ele_prev->l->v->co;
@@ -583,7 +585,7 @@ static void uv_sculpt_stroke_exit(bContext *C, wmOperator *op)
   }
   UvSculptData *data = static_cast<UvSculptData *>(op->customdata);
   if (data->timer) {
-    WM_event_remove_timer(CTX_wm_manager(C), CTX_wm_window(C), data->timer);
+    WM_event_timer_remove(CTX_wm_manager(C), CTX_wm_window(C), data->timer);
   }
   BM_uv_element_map_free(data->elementMap);
   data->elementMap = nullptr;
@@ -598,11 +600,13 @@ static void uv_sculpt_stroke_exit(bContext *C, wmOperator *op)
   op->customdata = nullptr;
 }
 
-static int uv_element_offset_from_face_get(
-    UvElementMap *map, BMFace *efa, BMLoop *l, int island_index, const bool doIslands)
+static int uv_element_offset_from_face_get(UvElementMap *map,
+                                           BMLoop *l,
+                                           int island_index,
+                                           const bool do_islands)
 {
-  UvElement *element = BM_uv_element_get(map, efa, l);
-  if (!element || (doIslands && element->island != island_index)) {
+  UvElement *element = BM_uv_element_get(map, l);
+  if (!element || (do_islands && element->island != island_index)) {
     return -1;
   }
   return element - map->storage;
@@ -686,14 +690,15 @@ static UvSculptData *uv_sculpt_stroke_init(bContext *C, wmOperator *op, const wm
     /* Mouse coordinates, useful for some functions like grab and sculpt all islands */
     UI_view2d_region_to_view(&region->v2d, event->mval[0], event->mval[1], &co[0], &co[1]);
 
-    /* we need to find the active island here */
+    /* We need to find the active island here. */
     if (do_island_optimization) {
-      UvElement *element;
       UvNearestHit hit = uv_nearest_hit_init_max(&region->v2d);
       uv_find_nearest_vert(scene, obedit, co, 0.0f, &hit);
 
-      element = BM_uv_element_get(data->elementMap, hit.efa, hit.l);
-      island_index = element->island;
+      UvElement *element = BM_uv_element_get(data->elementMap, hit.l);
+      if (element) {
+        island_index = element->island;
+      }
     }
 
     /* Count 'unique' UVs */
@@ -759,18 +764,18 @@ static UvSculptData *uv_sculpt_stroke_init(bContext *C, wmOperator *op, const wm
     counter = 0;
     BM_ITER_MESH (efa, &iter, em->bm, BM_FACES_OF_MESH) {
       BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
-        int offset1, itmp1 = uv_element_offset_from_face_get(
-                         data->elementMap, efa, l, island_index, do_island_optimization);
-        int offset2, itmp2 = uv_element_offset_from_face_get(
-                         data->elementMap, efa, l->next, island_index, do_island_optimization);
+        int itmp1 = uv_element_offset_from_face_get(
+            data->elementMap, l, island_index, do_island_optimization);
+        int itmp2 = uv_element_offset_from_face_get(
+            data->elementMap, l->next, island_index, do_island_optimization);
 
         /* Skip edge if not found(unlikely) or not on valid island */
         if (itmp1 == -1 || itmp2 == -1) {
           continue;
         }
 
-        offset1 = uniqueUv[itmp1];
-        offset2 = uniqueUv[itmp2];
+        int offset1 = uniqueUv[itmp1];
+        int offset2 = uniqueUv[itmp2];
 
         /* Using an order policy, sort UVs according to address space.
          * This avoids having two different UvEdges with the same UVs on different positions. */
@@ -912,7 +917,7 @@ static int uv_sculpt_stroke_invoke(bContext *C, wmOperator *op, const wmEvent *e
 
   uv_sculpt_stroke_apply(C, op, event, obedit);
 
-  data->timer = WM_event_add_timer(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.001f);
+  data->timer = WM_event_timer_add(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.001f);
 
   if (!data->timer) {
     uv_sculpt_stroke_exit(C, op);
@@ -1002,5 +1007,9 @@ void SCULPT_OT_uv_sculpt_stroke(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* props */
-  RNA_def_enum(ot->srna, "mode", stroke_mode_items, BRUSH_STROKE_NORMAL, "Mode", "Stroke Mode");
+  PropertyRNA *prop;
+
+  prop = RNA_def_enum(
+      ot->srna, "mode", stroke_mode_items, BRUSH_STROKE_NORMAL, "Mode", "Stroke Mode");
+  RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE));
 }

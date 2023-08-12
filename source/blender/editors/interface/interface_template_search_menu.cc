@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -28,7 +30,7 @@
 #include "BLI_math_matrix.h"
 #include "BLI_memarena.h"
 #include "BLI_string.h"
-#include "BLI_string_search.h"
+#include "BLI_string_search.hh"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
@@ -38,15 +40,15 @@
 #include "BKE_global.h"
 #include "BKE_screen.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 #include "interface_intern.hh"
 
 /* For key-map item access. */
@@ -158,7 +160,7 @@ static const char *strdup_memarena_from_dynstr(MemArena *memarena, DynStr *dyn_s
 
 static bool menu_items_from_ui_create_item_from_button(MenuSearch_Data *data,
                                                        MemArena *memarena,
-                                                       struct MenuType *mt,
+                                                       MenuType *mt,
                                                        const char *drawstr_submenu,
                                                        uiBut *but,
                                                        MenuSearch_Context *wm_context)
@@ -509,7 +511,7 @@ static MenuSearch_Data *menu_items_from_ui_create(
     PropertyRNA *prop_ui_type = nullptr;
     {
       /* This must be a valid pointer, with only it's type checked. */
-      ScrArea area_dummy = {nullptr};
+      ScrArea area_dummy{};
       /* Anything besides #SPACE_EMPTY is fine,
        * as this value is only included in the enum when set. */
       area_dummy.spacetype = SPACE_TOPBAR;
@@ -1003,24 +1005,19 @@ static void menu_search_update_fn(const bContext * /*C*/,
 {
   MenuSearch_Data *data = (MenuSearch_Data *)arg;
 
-  StringSearch *search = BLI_string_search_new();
+  blender::string_search::StringSearch<MenuSearch_Item> search;
 
   LISTBASE_FOREACH (MenuSearch_Item *, item, &data->items) {
-    BLI_string_search_add(search, item->drawwstr_full, item, 0);
+    search.add(item->drawwstr_full, item);
   }
 
-  MenuSearch_Item **filtered_items;
-  const int filtered_amount = BLI_string_search_query(search, str, (void ***)&filtered_items);
+  const blender::Vector<MenuSearch_Item *> filtered_items = search.query(str);
 
-  for (int i = 0; i < filtered_amount; i++) {
-    MenuSearch_Item *item = filtered_items[i];
+  for (MenuSearch_Item *item : filtered_items) {
     if (!UI_search_item_add(items, item->drawwstr_full, item, item->icon, item->state, 0)) {
       break;
     }
   }
-
-  MEM_freeN(filtered_items);
-  BLI_string_search_free(search);
 }
 
 /** \} */
@@ -1033,10 +1030,10 @@ static void menu_search_update_fn(const bContext * /*C*/,
  * a separate context menu just for the search, however this is fairly involved.
  * \{ */
 
-static bool ui_search_menu_create_context_menu(struct bContext *C,
+static bool ui_search_menu_create_context_menu(bContext *C,
                                                void *arg,
                                                void *active,
-                                               const struct wmEvent *event)
+                                               const wmEvent *event)
 {
   MenuSearch_Data *data = (MenuSearch_Data *)arg;
   MenuSearch_Item *item = (MenuSearch_Item *)active;
@@ -1077,11 +1074,8 @@ static bool ui_search_menu_create_context_menu(struct bContext *C,
 /** \name Tooltip
  * \{ */
 
-static struct ARegion *ui_search_menu_create_tooltip(struct bContext *C,
-                                                     struct ARegion *region,
-                                                     const rcti * /*item_rect*/,
-                                                     void *arg,
-                                                     void *active)
+static ARegion *ui_search_menu_create_tooltip(
+    bContext *C, ARegion *region, const rcti * /*item_rect*/, void *arg, void *active)
 {
   MenuSearch_Data *data = (MenuSearch_Data *)arg;
   MenuSearch_Item *item = (MenuSearch_Item *)active;
