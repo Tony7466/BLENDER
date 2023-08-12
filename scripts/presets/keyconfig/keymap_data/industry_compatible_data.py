@@ -319,7 +319,6 @@ def km_view2d(params):
         ("view2d.scroller_activate", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
         ("view2d.scroller_activate", {"type": 'MIDDLEMOUSE', "value": 'PRESS'}, None),
         # Pan/scroll
-        ("view2d.pan", {"type": 'MIDDLEMOUSE', "value": 'PRESS'}, None),
         ("view2d.pan", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True}, None),
         ("view2d.pan", {"type": 'MIDDLEMOUSE', "value": 'PRESS', "alt": True}, None),
         ("view2d.zoom", {"type": 'RIGHTMOUSE', "value": 'PRESS', "alt": True}, None),
@@ -2294,9 +2293,6 @@ def km_grease_pencil(_params):
         {"space_type": 'EMPTY', "region_type": 'WINDOW'},
         {"items": items},
     )
-
-    items.extend([
-    ])
 
     return keymap
 
