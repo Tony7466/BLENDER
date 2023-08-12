@@ -17,7 +17,7 @@
 #include <Python.h>
 #include <descrobject.h>
 
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "BLI_utildefines.h"
 
@@ -35,12 +35,12 @@
 
 #include "../generic/py_capi_utils.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "MEM_guardedalloc.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Blend Data

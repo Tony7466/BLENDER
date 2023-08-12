@@ -23,10 +23,9 @@
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
-#include "BLI_string_search.h"
+#include "BLI_string_search.hh"
 #include "BLI_string_utf8.h"
 #include "BLI_vector.hh"
 
@@ -43,7 +42,7 @@
 #include "BKE_screen.h"
 #include "BKE_unit.h"
 
-#include "ED_asset.h"
+#include "ED_asset.hh"
 
 #include "GPU_matrix.h"
 #include "GPU_state.h"
@@ -51,25 +50,24 @@
 #include "BLF_api.h"
 #include "BLT_translation.h"
 
-#include "UI_interface.h"
 #include "UI_interface.hh"
-#include "UI_interface_icons.h"
-#include "UI_view2d.h"
+#include "UI_interface_icons.hh"
+#include "UI_view2d.hh"
 
 #include "IMB_imbuf.h"
 
-#include "WM_api.h"
-#include "WM_message.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern_run.h"
 #endif
 
-#include "ED_numinput.h"
-#include "ED_screen.h"
+#include "ED_numinput.hh"
+#include "ED_screen.hh"
 
 #include "IMB_colormanagement.h"
 
@@ -3513,8 +3511,7 @@ void UI_block_free(const bContext *C, uiBlock *block)
 {
   UI_butstore_clear(block);
 
-  uiBut *but;
-  while ((but = static_cast<uiBut *>(BLI_pophead(&block->buttons)))) {
+  while (uiBut *but = static_cast<uiBut *>(BLI_pophead(&block->buttons))) {
     ui_but_free(C, but);
   }
 
@@ -3584,8 +3581,7 @@ void UI_blocklist_draw(const bContext *C, const ListBase *lb)
 void UI_blocklist_free(const bContext *C, ARegion *region)
 {
   ListBase *lb = &region->uiblocks;
-  uiBlock *block;
-  while ((block = static_cast<uiBlock *>(BLI_pophead(lb)))) {
+  while (uiBlock *block = static_cast<uiBlock *>(BLI_pophead(lb))) {
     UI_block_free(C, block);
   }
   if (region->runtime.block_name_map != nullptr) {
@@ -4224,7 +4220,7 @@ static uiBut *ui_def_but(uiBlock *block,
     but->flag |= UI_BUT_DISABLED;
   }
 
-  /* keep track of UI_interface.h */
+  /* keep track of UI_interface.hh */
   if (ELEM(but->type,
            UI_BTYPE_BLOCK,
            UI_BTYPE_BUT,
@@ -4815,9 +4811,11 @@ static uiBut *ui_def_but_operator_ptr(uiBlock *block,
                                       short height,
                                       const char *tip)
 {
+  std::string operator_name;
   if (!str) {
     if (ot && ot->srna) {
-      str = WM_operatortype_name(ot, nullptr);
+      operator_name = WM_operatortype_name(ot, nullptr);
+      str = operator_name.c_str();
     }
     else {
       str = "";
@@ -5013,26 +5011,26 @@ int UI_autocomplete_end(AutoComplete *autocpl, char *autoname)
 
 #define PREVIEW_TILE_PAD (0.15f * UI_UNIT_X)
 
-int UI_preview_tile_size_x()
+int UI_preview_tile_size_x(const int size_px)
 {
   const float pad = PREVIEW_TILE_PAD;
-  return round_fl_to_int((96.0f / 20.0f) * UI_UNIT_X + 2.0f * pad);
+  return round_fl_to_int((size_px / 20.0f) * UI_UNIT_X + 2.0f * pad);
 }
 
-int UI_preview_tile_size_y()
+int UI_preview_tile_size_y(const int size_px)
 {
   const uiStyle *style = UI_style_get();
   const float font_height = style->widget.points * UI_SCALE_FAC;
   /* Add some extra padding to make things less tight vertically. */
   const float pad = PREVIEW_TILE_PAD;
 
-  return round_fl_to_int(UI_preview_tile_size_y_no_label() + font_height + pad);
+  return round_fl_to_int(UI_preview_tile_size_y_no_label(size_px) + font_height + pad);
 }
 
-int UI_preview_tile_size_y_no_label()
+int UI_preview_tile_size_y_no_label(const int size_px)
 {
   const float pad = PREVIEW_TILE_PAD;
-  return round_fl_to_int((96.0f / 20.0f) * UI_UNIT_Y + 2.0f * pad);
+  return round_fl_to_int((size_px / 20.0f) * UI_UNIT_Y + 2.0f * pad);
 }
 
 #undef PREVIEW_TILE_PAD
@@ -6434,16 +6432,14 @@ static void operator_enum_search_update_fn(
     const EnumPropertyItem *all_items;
     RNA_property_enum_items_gettexted((bContext *)C, ptr, prop, &all_items, nullptr, &do_free);
 
-    StringSearch *search = BLI_string_search_new();
+    blender::string_search::StringSearch<const EnumPropertyItem> search;
+
     for (const EnumPropertyItem *item = all_items; item->identifier; item++) {
-      BLI_string_search_add(search, item->name, (void *)item, 0);
+      search.add(item->name, item);
     }
 
-    const EnumPropertyItem **filtered_items;
-    const int filtered_amount = BLI_string_search_query(search, str, (void ***)&filtered_items);
-
-    for (int i = 0; i < filtered_amount; i++) {
-      const EnumPropertyItem *item = filtered_items[i];
+    const blender::Vector<const EnumPropertyItem *> filtered_items = search.query(str);
+    for (const EnumPropertyItem *item : filtered_items) {
       /* NOTE: need to give the index rather than the
        * identifier because the enum can be freed */
       if (!UI_search_item_add(items, item->name, POINTER_FROM_INT(item->value), item->icon, 0, 0))
@@ -6451,9 +6447,6 @@ static void operator_enum_search_update_fn(
         break;
       }
     }
-
-    MEM_freeN((void *)filtered_items);
-    BLI_string_search_free(search);
 
     if (do_free) {
       MEM_freeN((void *)all_items);
@@ -6471,7 +6464,7 @@ static void operator_enum_search_exec_fn(bContext * /*C*/, void *but, void *arg2
     if (ot->prop) {
       RNA_property_enum_set(opptr, ot->prop, POINTER_AS_INT(arg2));
       /* We do not call op from here, will be called by button code.
-       * ui_apply_but_funcs_after() (in interface_handlers.c)
+       * ui_apply_but_funcs_after() (in `interface_handlers.cc`)
        * called this func before checking operators,
        * because one of its parameters is the button itself! */
     }
@@ -6670,12 +6663,12 @@ void UI_but_string_info_get(bContext *C, uiBut *but, ...)
       }
       else if (but->optype) {
         if (type == BUT_GET_RNA_LABEL) {
-          tmp = BLI_strdup(WM_operatortype_name(but->optype, opptr));
+          tmp = BLI_strdup(WM_operatortype_name(but->optype, opptr).c_str());
         }
         else {
           bContextStore *previous_ctx = CTX_store_get(C);
           CTX_store_set(C, but->context);
-          tmp = WM_operatortype_description(C, but->optype, opptr);
+          tmp = BLI_strdup(WM_operatortype_description(C, but->optype, opptr).c_str());
           CTX_store_set(C, previous_ctx);
         }
       }
@@ -6702,10 +6695,10 @@ void UI_but_string_info_get(bContext *C, uiBut *but, ...)
           wmOperatorType *ot = UI_but_operatortype_get_from_enum_menu(but, nullptr);
           if (ot) {
             if (type == BUT_GET_RNA_LABEL) {
-              tmp = BLI_strdup(WM_operatortype_name(ot, nullptr));
+              tmp = BLI_strdup(WM_operatortype_name(ot, nullptr).c_str());
             }
             else {
-              tmp = WM_operatortype_description(C, ot, nullptr);
+              tmp = BLI_strdup(WM_operatortype_description(C, ot, nullptr).c_str());
             }
           }
         }
@@ -6842,10 +6835,10 @@ void UI_but_extra_icon_string_info_get(bContext *C, uiButExtraOpIcon *extra_icon
 
     switch (si->type) {
       case BUT_GET_LABEL:
-        tmp = BLI_strdup(WM_operatortype_name(optype, opptr));
+        tmp = BLI_strdup(WM_operatortype_name(optype, opptr).c_str());
         break;
       case BUT_GET_TIP:
-        tmp = WM_operatortype_description(C, optype, opptr);
+        tmp = BLI_strdup(WM_operatortype_description(C, optype, opptr).c_str());
         break;
       case BUT_GET_OP_KEYMAP: {
         char buf[128];

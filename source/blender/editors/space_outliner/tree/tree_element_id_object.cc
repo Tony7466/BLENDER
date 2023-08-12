@@ -115,17 +115,8 @@ void TreeElementIDObject::expand_pose(SpaceOutliner &space_outliner) const
 
   /* Pose Groups */
   if (!BLI_listbase_is_empty(&object_.pose->agroups)) {
-    TreeElement *ten_bonegrp = outliner_add_element(
+    outliner_add_element(
         &space_outliner, &legacy_te_.subtree, &object_, &legacy_te_, TSE_POSEGRP_BASE, 0);
-    ten_bonegrp->name = IFACE_("Bone Groups");
-
-    int index;
-    LISTBASE_FOREACH_INDEX (bActionGroup *, agrp, &object_.pose->agroups, index) {
-      TreeElement *ten = outliner_add_element(
-          &space_outliner, &ten_bonegrp->subtree, &object_, ten_bonegrp, TSE_POSEGRP, index);
-      ten->name = agrp->name;
-      ten->directdata = agrp;
-    }
   }
 }
 
@@ -202,12 +193,11 @@ void TreeElementIDObject::expand_modifiers(SpaceOutliner &space_outliner) const
     }
     else if (md->type == eModifierType_ParticleSystem) {
       ParticleSystem *psys = ((ParticleSystemModifierData *)md)->psys;
-      TreeElement *ten_psys;
 
-      ten_psys = outliner_add_element(
-          &space_outliner, &ten->subtree, &object_, &legacy_te_, TSE_LINKED_PSYS, 0);
-      ten_psys->directdata = psys;
-      ten_psys->name = psys->part->id.name + 2;
+      ParticleSystemElementCreateData psys_data = {&object_, psys};
+
+      outliner_add_element(
+          &space_outliner, &ten->subtree, &psys_data, &legacy_te_, TSE_LINKED_PSYS, 0);
     }
   }
 }
@@ -260,26 +250,8 @@ void TreeElementIDObject::expand_gpencil_effects(SpaceOutliner &space_outliner) 
   if (BLI_listbase_is_empty(&object_.shader_fx)) {
     return;
   }
-  TreeElement *ten_fx = outliner_add_element(
+  outliner_add_element(
       &space_outliner, &legacy_te_.subtree, &object_, &legacy_te_, TSE_GPENCIL_EFFECT_BASE, 0);
-  ten_fx->name = IFACE_("Effects");
-
-  int index;
-  LISTBASE_FOREACH_INDEX (ShaderFxData *, fx, &object_.shader_fx, index) {
-    TreeElement *ten = outliner_add_element(
-        &space_outliner, &ten_fx->subtree, &object_, ten_fx, TSE_GPENCIL_EFFECT, index);
-    ten->name = fx->name;
-    ten->directdata = fx;
-
-    if (fx->type == eShaderFxType_Swirl) {
-      outliner_add_element(&space_outliner,
-                           &ten->subtree,
-                           ((SwirlShaderFxData *)fx)->object,
-                           ten,
-                           TSE_LINKED_OB,
-                           0);
-    }
-  }
 }
 
 void TreeElementIDObject::expand_vertex_groups(SpaceOutliner &space_outliner) const
@@ -291,17 +263,8 @@ void TreeElementIDObject::expand_vertex_groups(SpaceOutliner &space_outliner) co
   if (BLI_listbase_is_empty(defbase)) {
     return;
   }
-  TreeElement *tenla = outliner_add_element(
+  outliner_add_element(
       &space_outliner, &legacy_te_.subtree, &object_, &legacy_te_, TSE_DEFGROUP_BASE, 0);
-  tenla->name = IFACE_("Vertex Groups");
-
-  int index;
-  LISTBASE_FOREACH_INDEX (bDeformGroup *, defgroup, defbase, index) {
-    TreeElement *ten = outliner_add_element(
-        &space_outliner, &tenla->subtree, &object_, tenla, TSE_DEFGROUP, index);
-    ten->name = defgroup->name;
-    ten->directdata = defgroup;
-  }
 }
 
 void TreeElementIDObject::expand_duplicated_group(SpaceOutliner &space_outliner) const

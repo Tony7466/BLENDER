@@ -4,6 +4,7 @@
 
 set(INC
   ../include
+  ../asset
   ../../asset_system
   ../../blenfont
   ../../blenkernel
@@ -78,6 +79,7 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::animrig
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   bf_editor_curves

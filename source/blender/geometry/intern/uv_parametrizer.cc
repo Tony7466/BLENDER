@@ -11,6 +11,10 @@
 #include "BLI_array.hh"
 #include "BLI_convexhull_2d.h"
 #include "BLI_ghash.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_polyfill_2d.h"
 #include "BLI_polyfill_2d_beautify.h"
 #include "BLI_rand.h"
@@ -2984,10 +2988,9 @@ static void p_chart_lscm_begin(PChart *chart, bool live, bool abf)
   }
 
   if (abf) {
-    if (p_chart_abf_solve(chart)) {
-      return;
+    if (!p_chart_abf_solve(chart)) {
+      param_warning("ABF solving failed: falling back to LSCM.\n");
     }
-    param_warning("ABF solving failed: falling back to LSCM.\n");
   }
 
   if (npins <= 1) {
