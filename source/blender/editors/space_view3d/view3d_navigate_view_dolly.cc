@@ -195,6 +195,7 @@ static int viewdolly_exec(bContext *C, wmOperator *op)
     area = vod->area;
     region = vod->region;
     copy_v3_v3(mousevec, vod->init.mousevec);
+    delta *= vod->init.dist / 5.0f;
   }
   else {
     area = CTX_wm_area(C);

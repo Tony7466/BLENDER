@@ -233,7 +233,7 @@ static int viewzoom_apply_step(bContext *C, PointerRNA *ptr, ViewOpsData *vod, c
   }
   else {
     const float zoomctr_f_xy[2] = {float(zoomctr_xy[0]), float(zoomctr_xy[1])};
-    view_zoom_to_vector_3d(v3d, region, rv3d->ofs, rv3d->dist, zoomctr_f_xy, delta);
+    view_zoom_to_vector_3d(v3d, region, rv3d->ofs, rv3d->dist, zoomctr_f_xy, delta * vod->init.dist / 5.0f);
     
     if (RV3D_LOCK_FLAGS(rv3d) & RV3D_BOXVIEW) {
       view3d_boxview_sync(area, region);
