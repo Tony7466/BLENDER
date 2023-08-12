@@ -148,7 +148,7 @@ DefNode(CompositorNode, CMP_NODE_HUE_SAT,        0,                      "HUE_SA
 DefNode(CompositorNode, CMP_NODE_IMAGE,          def_cmp_image,          "IMAGE",          Image,            "Image",             ""              )
 DefNode(CompositorNode, CMP_NODE_R_LAYERS,       def_cmp_render_layers,  "R_LAYERS",       RLayers,          "Render Layers",     ""              )
 DefNode(CompositorNode, CMP_NODE_COMPOSITE,      def_cmp_composite,      "COMPOSITE",      Composite,        "Composite",         ""              )
-/* NOTE: #OutputFile node has special RNA setup function called in rna_nodetree.c */
+/* NOTE: #OutputFile node has special RNA setup function called in `rna_nodetree.cc`. */
 DefNode(CompositorNode, CMP_NODE_OUTPUT_FILE,    0,                      "OUTPUT_FILE",    OutputFile,       "File Output",       ""              )
 DefNode(CompositorNode, CMP_NODE_TEXTURE,        def_texture,            "TEXTURE",        Texture,          "Texture",           ""              )
 DefNode(CompositorNode, CMP_NODE_TRANSLATE,      def_cmp_translate,      "TRANSLATE",      Translate,        "Translate",         ""              )
@@ -388,6 +388,11 @@ DefNode(GeometryNode, GEO_NODE_MESH_TOPOLOGY_VERTEX_OF_CORNER, 0, "VERTEX_OF_COR
 DefNode(GeometryNode, GEO_NODE_OBJECT_INFO, def_geo_object_info, "OBJECT_INFO", ObjectInfo, "Object Info", "Retrieve information from an object")
 DefNode(GeometryNode, GEO_NODE_OFFSET_POINT_IN_CURVE, 0, "OFFSET_POINT_IN_CURVE", OffsetPointInCurve, "Offset Point in Curve", "Offset a control point index within its curve")
 DefNode(GeometryNode, GEO_NODE_OFFSET_SDF_VOLUME, 0, "OFFSET_SDF_VOLUME", OffsetSDFVolume, "Offset SDF Volume", "Move the surface of an SDF volume inwards or outwards")
+DefNode(GeometryNode, GEO_NODE_TOOL_FACE_SET, 0, "TOOL_FACE_SET", ToolFaceSet, "Face Set", "Each face's sculpt face set value")
+DefNode(GeometryNode, GEO_NODE_TOOL_3D_CURSOR, 0, "TOOL_3D_CURSOR", Tool3DCursor, "3D Cursor", "The scene's 3D cursor location and rotation")
+DefNode(GeometryNode, GEO_NODE_TOOL_SELECTION, 0, "TOOL_SELECTION", ToolSelection, "Selection", "User selection of the edited geometry, for tool execution")
+DefNode(GeometryNode, GEO_NODE_TOOL_SET_SELECTION, def_geo_tool_set_selection, "TOOL_SELECTION_SET", ToolSetSelection, "Set Selection", "Set selection of the edited geometry, for tool execution")
+DefNode(GeometryNode, GEO_NODE_TOOL_SET_FACE_SET, 0, "TOOL_SET_FACE_SET", ToolSetFaceSet, "Set Face Set", "Set sculpt face set values for faces")
 DefNode(GeometryNode, GEO_NODE_POINTS_TO_SDF_VOLUME, def_geo_points_to_sdf_volume, "POINTS_TO_SDF_VOLUME", PointsToSDFVolume, "Points to SDF Volume", "Generate an SDF volume sphere around every point")
 DefNode(GeometryNode, GEO_NODE_POINTS_TO_VERTICES, 0, "POINTS_TO_VERTICES", PointsToVertices, "Points to Vertices", "Generate a mesh vertex for each point cloud point")
 DefNode(GeometryNode, GEO_NODE_POINTS_TO_VOLUME, def_geo_points_to_volume, "POINTS_TO_VOLUME", PointsToVolume, "Points to Volume", "Generate a fog volume sphere around every point")
