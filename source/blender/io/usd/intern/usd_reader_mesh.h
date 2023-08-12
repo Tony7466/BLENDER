@@ -57,6 +57,14 @@ class USDMeshReader : public USDGeomReader {
 
   bool topology_changed(const Mesh *existing_mesh, double motionSampleTime) override;
 
+  /**
+   * If the USD mesh prim has a valid UsdSkel schema defined, return the USD path
+   * string to the bound skeleton, if any.  Returns the empty string if no skeleton
+   * binding is defined.
+   *
+   * The returned path is currently used to match armature modifiers with armature
+   * objects during import.
+   */
   std::string get_skeleton_path() const;
 
  private:
