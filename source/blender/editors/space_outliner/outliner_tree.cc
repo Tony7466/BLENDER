@@ -258,6 +258,9 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
   else if (type == TSE_LINKED_PSYS) {
     id = &static_cast<ParticleSystemElementCreateData *>(idv)->object->id;
   }
+  else if (type == TSE_POSEGRP) {
+    id = &static_cast<PoseGroupElementCreateData *>(idv)->object->id;
+  }
   else if (type == TSE_R_LAYER) {
     id = &static_cast<ViewLayerElementCreateData *>(idv)->scene->id;
   }
@@ -331,6 +334,9 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
   else if (type == TSE_POSE_BASE) {
     /* pass */
   }
+  else if (ELEM(type, TSE_POSEGRP, TSE_POSEGRP_BASE)) {
+    /* pass */
+  }
   else if (ELEM(type, TSE_R_LAYER, TSE_R_LAYER_BASE)) {
     /* pass */
   }
@@ -390,6 +396,8 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
                 TSE_GPENCIL_EFFECT,
                 TSE_GPENCIL_EFFECT_BASE,
                 TSE_POSE_BASE,
+                TSE_POSEGRP,
+                TSE_POSEGRP_BASE,
                 TSE_R_LAYER,
                 TSE_R_LAYER_BASE))
   {
