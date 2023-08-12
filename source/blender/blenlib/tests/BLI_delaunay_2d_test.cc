@@ -14,8 +14,6 @@
 #include <sstream>
 #include <type_traits>
 
-#define DO_CPP_TESTS 1
-#define DO_C_TESTS 1
 #define DO_TEXT_TESTS 0
 #define DO_RANDOM_TESTS 0
 
@@ -29,13 +27,21 @@
 
 namespace blender::meshintersect {
 
+template<typename T> struct CDT_input_storage {
+  Array<VecBase<T, 2>> vert;
+  Array<int2> edge;
+  Array<int> face_offsets;
+  Vector<int> face_vert_indices;
+};
+
 /* The spec should have the form:
  * #verts #edges #faces
  * <float> <float>   [#verts lines)
  * <int> <int>   [#edges lines]
  * <int> <int> ... <int>   [#faces lines]
  */
-template<typename T> CDT_input<T> fill_input_from_string(const char *spec)
+template<typename T>
+CDT_input<T> fill_input_from_string(const char *spec, CDT_input_storage<T> &r_storage)
 {
   std::istringstream ss(spec);
   std::string line;
@@ -46,9 +52,9 @@ template<typename T> CDT_input<T> fill_input_from_string(const char *spec)
   if (nverts == 0) {
     return CDT_input<T>();
   }
-  Array<vec2<T>> verts(nverts);
-  Array<std::pair<int, int>> edges(nedges);
-  Array<Vector<int>> faces(nfaces);
+  r_storage.vert.reinitialize(nverts);
+  r_storage.edge.reinitialize(nedges);
+  r_storage.face_offsets.reinitialize(nfaces + 1);
   int i = 0;
   while (i < nverts && getline(ss, line)) {
     std::istringstream iss(line);
@@ -56,7 +62,7 @@ template<typename T> CDT_input<T> fill_input_from_string(const char *spec)
     iss >> dp0 >> dp1;
     T p0(dp0);
     T p1(dp1);
-    verts[i] = vec2<T>(p0, p1);
+    r_storage.verts[i] = VecBase<T, 2>(p0, p1);
     i++;
   }
   i = 0;
@@ -64,22 +70,26 @@ template<typename T> CDT_input<T> fill_input_from_string(const char *spec)
     std::istringstream ess(line);
     int e0, e1;
     ess >> e0 >> e1;
-    edges[i] = std::pair<int, int>(e0, e1);
+    r_storage.edges[i] = int2(e0, e1);
     i++;
   }
   i = 0;
   while (i < nfaces && getline(ss, line)) {
+    r_storage.face_offsets[i] = r_storage.face_vert_indices.size();
     std::istringstream fss(line);
     int v;
     while (fss >> v) {
-      faces[i].append(v);
+      r_storage.face_vert_indices.append(v);
     }
     i++;
   }
+  r_storage.face_offsets.last() = r_storage.face_vert_indices.size();
+
   CDT_input<T> ans;
-  ans.vert = verts;
-  ans.edge = edges;
-  ans.face = faces;
+  ans.vert = r_storage.verts;
+  ans.edge = r_storage.edges;
+  ans.face_offsets = r_storage.face_offsets.as_span();
+  ans.face_vert_indices = r_storage.face_vert_indices;
 #ifdef WITH_GMP
   if (std::is_same<mpq_class, T>::value) {
     ans.epsilon = T(0);
@@ -265,8 +275,8 @@ static bool draw_append = false; /* Will be set to true after first call. */
 
 template<typename T>
 void graph_draw(const std::string &label,
-                const Array<vec2<T>> &verts,
-                const Array<std::pair<int, int>> &edges,
+                const Array<VecBase<T, 2>> &verts,
+                const Array<int2> &edges,
                 const Array<Vector<int>> &faces)
 {
   /* Would like to use BKE_tempdir_base() here, but that brings in dependence on kernel library.
@@ -287,9 +297,9 @@ void graph_draw(const std::string &label,
   if (verts.size() == 0) {
     return;
   }
-  vec2<double> vmin(1e10, 1e10);
-  vec2<double> vmax(-1e10, -1e10);
-  for (const vec2<T> &v : verts) {
+  double2 vmin(1e10, 1e10);
+  double2 vmax(-1e10, -1e10);
+  for (const VecBase<T, 2> &v : verts) {
     for (int i = 0; i < 2; ++i) {
       double dvi = math_to_double(v[i]);
       if (dvi < vmin[i]) {
@@ -342,15 +352,15 @@ void graph_draw(const std::string &label,
   for (const Vector<int> &fverts : faces) {
     f << "<polygon fill=\"azure\" stroke=\"none\"\n  points=\"";
     for (int vi : fverts) {
-      const vec2<T> &co = verts[vi];
+      const VecBase<T, 2> &co = verts[vi];
       f << SX(co[0]) << "," << SY(co[1]) << " ";
     }
     f << "\"\n  />\n";
   }
 
-  for (const std::pair<int, int> &e : edges) {
-    const vec2<T> &uco = verts[e.first];
-    const vec2<T> &vco = verts[e.second];
+  for (const int2 &e : edges) {
+    const VecBase<T, 2> &uco = verts[e.first];
+    const VecBase<T, 2> &vco = verts[e.second];
     int strokew = thin_line;
     f << R"(<line fill="none" stroke="black" stroke-width=")" << strokew << "\" x1=\""
       << SX(uco[0]) << "\" y1=\"" << SY(uco[1]) << "\" x2=\"" << SX(vco[0]) << "\" y2=\""
@@ -365,7 +375,7 @@ void graph_draw(const std::string &label,
   }
 
   int i = 0;
-  for (const vec2<T> &vco : verts) {
+  for (const VecBase<T, 2> &vco : verts) {
     f << R"(<circle fill="black" cx=")" << SX(vco[0]) << "\" cy=\"" << SY(vco[1]) << "\" r=\""
       << vert_radius << "\">\n";
     f << "  <title>[" << i << "]" << vco << "</title>\n";
@@ -385,24 +395,24 @@ void graph_draw(const std::string &label,
 /* Should tests draw their output to an html file? */
 constexpr bool DO_DRAW = false;
 
-template<typename T> void expect_coord_near(const vec2<T> &testco, const vec2<T> &refco);
+template<typename T>
+void expect_coord_near(const VecBase<T, 2> &testco, const VecBase<T, 2> &refco);
 
 #ifdef WITH_GMP
 template<>
-void expect_coord_near<mpq_class>(const vec2<mpq_class> &testco, const vec2<mpq_class> &refco)
+void expect_coord_near<mpq_class>(const VecBase<mpq_class, 2> &testco,
+                                  const VecBase<mpq_class, 2> &refco)
 {
   EXPECT_EQ(testco[0], refco[0]);
   EXPECT_EQ(testco[0], refco[0]);
 }
 #endif
 
-template<> void expect_coord_near<double>(const vec2<double> &testco, const vec2<double> &refco)
+template<> void expect_coord_near<double>(const double2 &testco, const double2 &refco)
 {
   EXPECT_NEAR(testco[0], refco[0], 1e-5);
   EXPECT_NEAR(testco[1], refco[1], 1e-5);
 }
-
-#if DO_CPP_TESTS
 
 template<typename T> void empty_test()
 {
@@ -422,14 +432,14 @@ template<typename T> void onept_test()
   const char *spec = R"(1 0 0
   0.0 0.0
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 1);
   EXPECT_EQ(out.edge.size(), 0);
   EXPECT_EQ(out.face.size(), 0);
   if (out.vert.size() >= 1) {
-    expect_coord_near<T>(out.vert[0], vec2<T>(0, 0));
+    expect_coord_near<T>(out.vert[0], VecBase<T, 2>(0, 0));
   }
 }
 
@@ -439,8 +449,8 @@ template<typename T> void twopt_test()
   0.0 -0.75
   0.0 0.75
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 2);
   EXPECT_EQ(out.edge.size(), 1);
@@ -451,8 +461,8 @@ template<typename T> void twopt_test()
   EXPECT_NE(v1_out, -1);
   EXPECT_NE(v0_out, v1_out);
   if (out.vert.size() >= 1) {
-    expect_coord_near<T>(out.vert[v0_out], vec2<T>(0.0, -0.75));
-    expect_coord_near<T>(out.vert[v1_out], vec2<T>(0.0, 0.75));
+    expect_coord_near<T>(out.vert[v0_out], VecBase<T, 2>(0.0, -0.75));
+    expect_coord_near<T>(out.vert[v1_out], VecBase<T, 2>(0.0, 0.75));
   }
   int e0_out = get_output_edge_index(out, v0_out, v1_out);
   EXPECT_EQ(e0_out, 0);
@@ -468,8 +478,8 @@ template<typename T> void threept_test()
   0.1 0.75
   0.5 0.5
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 3);
   EXPECT_EQ(out.edge.size(), 3);
@@ -503,8 +513,8 @@ template<typename T> void mixedpts_test()
   1 2
   2 3
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 4);
   EXPECT_EQ(out.edge.size(), 6);
@@ -533,8 +543,8 @@ template<typename T> void quad0_test()
   2.0 0.1
   2.25 0.5
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 4);
   EXPECT_EQ(out.edge.size(), 5);
@@ -553,8 +563,8 @@ template<typename T> void quad1_test()
   2.0 0.0
   0.9 3.0
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 4);
   EXPECT_EQ(out.edge.size(), 5);
@@ -573,8 +583,8 @@ template<typename T> void quad2_test()
   0.3 0.4
   .45 0.35
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 4);
   EXPECT_EQ(out.edge.size(), 5);
@@ -593,8 +603,8 @@ template<typename T> void quad3_test()
   0.3 0.4
   .45 0.35
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 4);
   EXPECT_EQ(out.edge.size(), 5);
@@ -613,8 +623,8 @@ template<typename T> void quad4_test()
   1.0 -3.0
   0.0 1.0
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 4);
   EXPECT_EQ(out.edge.size(), 5);
@@ -637,8 +647,8 @@ template<typename T> void lineinsquare_test()
   4 5
   0 1 3 2
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 6);
   EXPECT_EQ(out.face.size(), 6);
@@ -682,8 +692,8 @@ template<typename T> void lineholeinsquare_test()
   0 1 3 2
   6 7 8 9
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 10);
   EXPECT_EQ(out.face.size(), 14);
@@ -729,8 +739,8 @@ template<typename T> void nestedholes_test()
   4 7 6 5
   8 9 10 11
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 12);
   EXPECT_EQ(out.face.size(), 18);
@@ -767,8 +777,8 @@ template<typename T> void crosssegs_test()
   0 1
   2 3
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 5);
   EXPECT_EQ(out.edge.size(), 8);
@@ -788,7 +798,7 @@ template<typename T> void crosssegs_test()
     }
     EXPECT_NE(v_intersect, -1);
     if (v_intersect != -1) {
-      expect_coord_near<T>(out.vert[v_intersect], vec2<T>(0, 0));
+      expect_coord_near<T>(out.vert[v_intersect], VecBase<T, 2>(0, 0));
     }
   }
   if (DO_DRAW) {
@@ -808,8 +818,8 @@ template<typename T> void cutacrosstri_test()
   3 4
   0 1 2
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 5);
   EXPECT_EQ(out.edge.size(), 7);
@@ -862,8 +872,8 @@ template<typename T> void diamondcross_test()
   3 4
   5 6
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 4);
   EXPECT_EQ(out.edge.size(), 5);
@@ -898,8 +908,8 @@ template<typename T> void twodiamondscross_test()
   8 9
   10 11
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 8);
   EXPECT_EQ(out.edge.size(), 15);
@@ -987,8 +997,8 @@ template<typename T> void manycross_test()
   23 24
   25 26
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 19);
   EXPECT_EQ(out.edge.size(), 46);
@@ -1010,8 +1020,8 @@ template<typename T> void twoface_test()
   0 1 2
   3 4 5
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 6);
   EXPECT_EQ(out.edge.size(), 9);
@@ -1055,8 +1065,8 @@ template<typename T> void twoface2_test()
   0 1 2
   3 4 5
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_INSIDE);
   EXPECT_EQ(out.vert.size(), 10);
   EXPECT_EQ(out.edge.size(), 18);
@@ -1138,8 +1148,8 @@ template<typename T> void overlapfaces_test()
   4 5 6 7
   8 9 10 11
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 14);
   EXPECT_EQ(out.edge.size(), 33);
@@ -1157,8 +1167,8 @@ template<typename T> void overlapfaces_test()
       v_int1 = 13;
       v_int2 = 12;
     }
-    expect_coord_near<T>(out.vert[v_int1], vec2<T>(1, 0.5));
-    expect_coord_near<T>(out.vert[v_int2], vec2<T>(0.5, 1));
+    expect_coord_near<T>(out.vert[v_int1], VecBase<T, 2>(1, 0.5));
+    expect_coord_near<T>(out.vert[v_int2], VecBase<T, 2>(0.5, 1));
     EXPECT_EQ(out.vert_orig[v_int1].size(), 0);
     EXPECT_EQ(out.vert_orig[v_int2].size(), 0);
     int f0_out = get_output_tri_index(out, v_out[1], v_int1, v_out[4]);
@@ -1226,8 +1236,8 @@ template<typename T> void twosquaresoverlap_test()
   7 6 5 4
   3 2 1 0
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_CONSTRAINTS_VALID_BMESH);
   EXPECT_EQ(out.vert.size(), 10);
   EXPECT_EQ(out.edge.size(), 12);
@@ -1249,8 +1259,8 @@ template<typename T> void twofaceedgeoverlap_test()
   2 1 0
   5 4 3
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_CONSTRAINTS);
   EXPECT_EQ(out.vert.size(), 5);
   EXPECT_EQ(out.edge.size(), 7);
@@ -1311,8 +1321,8 @@ template<typename T> void triintri_test()
   0 1 2
   3 4 5
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_CONSTRAINTS_VALID_BMESH);
   EXPECT_EQ(out.vert.size(), 6);
   EXPECT_EQ(out.edge.size(), 8);
@@ -1336,8 +1346,8 @@ template<typename T> void diamondinsquare_test()
   0 1 2 3
   4 5 6 7
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_CONSTRAINTS_VALID_BMESH);
   EXPECT_EQ(out.vert.size(), 8);
   EXPECT_EQ(out.edge.size(), 10);
@@ -1367,8 +1377,8 @@ template<typename T> void diamondinsquarewire_test()
   6 7
   7 4
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_CONSTRAINTS);
   EXPECT_EQ(out.vert.size(), 8);
   EXPECT_EQ(out.edge.size(), 8);
@@ -1390,8 +1400,8 @@ template<typename T> void repeatedge_test()
   2 3
   2 3
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_CONSTRAINTS);
   EXPECT_EQ(out.edge.size(), 2);
   if (DO_DRAW) {
@@ -1408,8 +1418,8 @@ template<typename T> void repeattri_test()
   0 1 2
   0 1 2
   )";
-
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_CONSTRAINTS);
   EXPECT_EQ(out.edge.size(), 3);
   EXPECT_EQ(out.face.size(), 1);
@@ -1434,7 +1444,8 @@ template<typename T> void square_o_test()
   0 1 2 3
   4 5 6 7
   )";
-  CDT_input<T> in = fill_input_from_string<T>(spec);
+  CDT_input_storage<T> store;
+  CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out1 = delaunay_2d_calc(in, CDT_INSIDE_WITH_HOLES);
   EXPECT_EQ(out1.face.size(), 8);
   if (DO_DRAW) {
@@ -1593,7 +1604,7 @@ TEST(delaunay_d, SquareO)
   square_o_test<double>();
 }
 
-#  ifdef WITH_GMP
+#ifdef WITH_GMP
 TEST(delaunay_m, Empty)
 {
   empty_test<mpq_class>();
@@ -1732,318 +1743,6 @@ TEST(delaunay_m, RepeatTri)
 {
   repeattri_test<mpq_class>();
 }
-#  endif
-#endif
-
-#if DO_C_TESTS
-
-TEST(delaunay_d, CintTwoFace)
-{
-  float vert_coords[][2] = {
-      {0.0, 0.0}, {1.0, 0.0}, {0.5, 1.0}, {1.1, 1.0}, {1.1, 0.0}, {1.6, 1.0}};
-  int faces[] = {0, 1, 2, 3, 4, 5};
-  int faces_len[] = {3, 3};
-  int faces_start[] = {0, 3};
-
-  ::CDT_input input;
-  input.verts_len = 6;
-  input.edges_len = 0;
-  input.faces_len = 2;
-  input.vert_coords = vert_coords;
-  input.edges = nullptr;
-  input.faces = faces;
-  input.faces_len_table = faces_len;
-  input.faces_start_table = faces_start;
-  input.epsilon = 1e-5f;
-  input.need_ids = false;
-  ::CDT_result *output = BLI_delaunay_2d_cdt_calc(&input, CDT_FULL);
-  BLI_delaunay_2d_cdt_free(output);
-}
-
-TEST(delaunay_d, CintTwoFaceNoIds)
-{
-  float vert_coords[][2] = {
-      {0.0, 0.0}, {1.0, 0.0}, {0.5, 1.0}, {1.1, 1.0}, {1.1, 0.0}, {1.6, 1.0}};
-  int faces[] = {0, 1, 2, 3, 4, 5};
-  int faces_len[] = {3, 3};
-  int faces_start[] = {0, 3};
-
-  ::CDT_input input;
-  input.verts_len = 6;
-  input.edges_len = 0;
-  input.faces_len = 2;
-  input.vert_coords = vert_coords;
-  input.edges = nullptr;
-  input.faces = faces;
-  input.faces_len_table = faces_len;
-  input.faces_start_table = faces_start;
-  input.epsilon = 1e-5f;
-  input.need_ids = true;
-  ::CDT_result *output = BLI_delaunay_2d_cdt_calc(&input, CDT_FULL);
-  BLI_delaunay_2d_cdt_free(output);
-}
-
-#endif
-
-#if DO_TEXT_TESTS
-template<typename T>
-void text_test(
-    int arc_points_num, int lets_per_line_num, int lines_num, CDT_output_type otype, bool need_ids)
-{
-  constexpr bool print_timing = true;
-  /*
-   * Make something like a letter B:
-   *
-   *    4------------3
-   *    |              )
-   *    |  12--11       )
-   *    |  |     ) a3    ) a1
-   *    |  9---10       )
-   *    |              )
-   *    |            2
-   *    |              )
-   *    |  8----7       )
-   *    |  |     ) a2    ) a0
-   *    |  5----6       )
-   *    |              )
-   *    0------------1
-   *
-   * Where the numbers are the first 13 vertices, and the rest of
-   * the vertices are in arcs a0, a1, a2, a3, each of which have
-   * arc_points_num per arc in them.
-   */
-
-  const char *b_before_arcs = R"(13 0 3
-  0.0 0.0
-  1.0 0.0
-  1.0 1.5
-  1.0 3.0
-  0.0 3.0
-  0.2 0.2
-  0.6 0.2
-  0.6 1.4
-  0.2 1.4
-  0.2 1.6
-  0.6 1.6
-  0.6 2.8
-  0.2 2.8
-  3 4 0 1 2
-  6 5 8 7
-  10 9 12 11
-  )";
-
-  CDT_input<T> b_before_arcs_in = fill_input_from_string<T>(b_before_arcs);
-  constexpr int narcs = 4;
-  int b_npts = b_before_arcs_in.vert.size() + narcs * arc_points_num;
-  constexpr int b_nfaces = 3;
-  Array<vec2<T>> b_vert(b_npts);
-  Array<Vector<int>> b_face(b_nfaces);
-  std::copy(b_before_arcs_in.vert.begin(), b_before_arcs_in.vert.end(), b_vert.begin());
-  std::copy(b_before_arcs_in.face.begin(), b_before_arcs_in.face.end(), b_face.begin());
-  if (arc_points_num > 0) {
-    b_face[0].pop_last(); /* We'll add center point back between arcs for outer face. */
-    for (int arc = 0; arc < narcs; ++arc) {
-      int arc_origin_vert;
-      int arc_terminal_vert;
-      bool ccw;
-      switch (arc) {
-        case 0:
-          arc_origin_vert = 1;
-          arc_terminal_vert = 2;
-          ccw = true;
-          break;
-        case 1:
-          arc_origin_vert = 2;
-          arc_terminal_vert = 3;
-          ccw = true;
-          break;
-        case 2:
-          arc_origin_vert = 7;
-          arc_terminal_vert = 6;
-          ccw = false;
-          break;
-        case 3:
-          arc_origin_vert = 11;
-          arc_terminal_vert = 10;
-          ccw = false;
-          break;
-        default:
-          BLI_assert(false);
-      }
-      vec2<T> start_co = b_vert[arc_origin_vert];
-      vec2<T> end_co = b_vert[arc_terminal_vert];
-      vec2<T> center_co = 0.5 * (start_co + end_co);
-      BLI_assert(start_co[0] == end_co[0]);
-      double radius = abs(math_to_double<T>(end_co[1] - center_co[1]));
-      double angle_delta = M_PI / (arc_points_num + 1);
-      int start_vert = b_before_arcs_in.vert.size() + arc * arc_points_num;
-      Vector<int> &face = b_face[(arc <= 1) ? 0 : arc - 1];
-      for (int i = 0; i < arc_points_num; ++i) {
-        vec2<T> delta;
-        float ang = ccw ? (-M_PI_2 + (i + 1) * angle_delta) : (M_PI_2 - (i + 1) * angle_delta);
-        delta[0] = T(radius * cos(ang));
-        delta[1] = T(radius * sin(ang));
-        b_vert[start_vert + i] = center_co + delta;
-        face.append(start_vert + i);
-      }
-      if (arc == 0) {
-        face.append(arc_terminal_vert);
-      }
-    }
-  }
-
-  CDT_input<T> in;
-  int tot_instances = lets_per_line_num * lines_num;
-  if (tot_instances == 1) {
-    in.vert = b_vert;
-    in.face = b_face;
-  }
-  else {
-    in.vert = Array<vec2<T>>(tot_instances * b_vert.size());
-    in.face = Array<Vector<int>>(tot_instances * b_face.size());
-    T cur_x = T(0);
-    T cur_y = T(0);
-    T delta_x = T(2);
-    T delta_y = T(3.25);
-    int instance = 0;
-    for (int line = 0; line < lines_num; ++line) {
-      for (int let = 0; let < lets_per_line_num; ++let) {
-        vec2<T> co_offset(cur_x, cur_y);
-        int in_v_offset = instance * b_vert.size();
-        for (int v = 0; v < b_vert.size(); ++v) {
-          in.vert[in_v_offset + v] = b_vert[v] + co_offset;
-        }
-        int in_f_offset = instance * b_face.size();
-        for (int f : b_face.index_range()) {
-          for (int fv : b_face[f]) {
-            in.face[in_f_offset + f].append(in_v_offset + fv);
-          }
-        }
-        cur_x += delta_x;
-        ++instance;
-      }
-      cur_y += delta_y;
-      cur_x = T(0);
-    }
-  }
-  in.epsilon = b_before_arcs_in.epsilon;
-  in.need_ids = need_ids;
-  double tstart = PIL_check_seconds_timer();
-  CDT_result<T> out = delaunay_2d_calc(in, otype);
-  double tend = PIL_check_seconds_timer();
-  if (print_timing) {
-    std::cout << "time = " << tend - tstart << "\n";
-  }
-  if (!need_ids) {
-    EXPECT_EQ(out.vert_orig.size(), 0);
-    EXPECT_EQ(out.edge_orig.size(), 0);
-    EXPECT_EQ(out.face_orig.size(), 0);
-  }
-  if (DO_DRAW) {
-    std::string label = "Text arcpts=" + std::to_string(arc_points_num);
-    if (lets_per_line_num > 1) {
-      label += " linelen=" + std::to_string(lets_per_line_num);
-    }
-    if (lines_num > 1) {
-      label += " lines=" + std::to_string(lines_num);
-    }
-    if (!need_ids) {
-      label += " no_ids";
-    }
-    if (otype != CDT_INSIDE_WITH_HOLES) {
-      label += " otype=" + std::to_string(otype);
-    }
-    graph_draw<T>(label, out.vert, out.edge, out.face);
-  }
-}
-
-TEST(delaunay_d, TextB10)
-{
-  text_test<double>(10, 1, 1, CDT_INSIDE_WITH_HOLES, true);
-}
-
-TEST(delaunay_d, TextB10_noids)
-{
-  text_test<double>(10, 1, 1, CDT_INSIDE_WITH_HOLES, false);
-}
-
-TEST(delaunay_d, TextB10_inside)
-{
-  text_test<double>(10, 1, 1, CDT_INSIDE, true);
-}
-
-TEST(delaunay_d, TextB10_inside_noids)
-{
-  text_test<double>(10, 1, 1, CDT_INSIDE, false);
-}
-
-TEST(delaunay_d, TextB10_constraints)
-{
-  text_test<double>(10, 1, 1, CDT_CONSTRAINTS, true);
-}
-
-TEST(delaunay_d, TextB10_constraints_noids)
-{
-  text_test<double>(10, 1, 1, CDT_CONSTRAINTS, false);
-}
-
-TEST(delaunay_d, TextB10_constraints_valid_bmesh)
-{
-  text_test<double>(10, 1, 1, CDT_CONSTRAINTS_VALID_BMESH, true);
-}
-
-TEST(delaunay_d, TextB10_constraints_valid_bmesh_noids)
-{
-  text_test<double>(10, 1, 1, CDT_CONSTRAINTS_VALID_BMESH, false);
-}
-
-TEST(delaunay_d, TextB10_constraints_valid_bmesh_with_holes)
-{
-  text_test<double>(10, 1, 1, CDT_CONSTRAINTS_VALID_BMESH_WITH_HOLES, true);
-}
-
-TEST(delaunay_d, TextB10_constraints_valid_bmesh_with_holes_noids)
-{
-  text_test<double>(10, 1, 1, CDT_CONSTRAINTS_VALID_BMESH_WITH_HOLES, false);
-}
-
-TEST(delaunay_d, TextB200)
-{
-  text_test<double>(200, 1, 1, CDT_INSIDE_WITH_HOLES, true);
-}
-
-TEST(delaunay_d, TextB10_10_10)
-{
-  text_test<double>(10, 10, 10, CDT_INSIDE_WITH_HOLES, true);
-}
-
-TEST(delaunay_d, TextB10_10_10_noids)
-{
-  text_test<double>(10, 10, 10, CDT_INSIDE_WITH_HOLES, false);
-}
-
-#  ifdef WITH_GMP
-TEST(delaunay_m, TextB10)
-{
-  text_test<mpq_class>(10, 1, 1, CDT_INSIDE_WITH_HOLES, true);
-}
-
-TEST(delaunay_m, TextB200)
-{
-  text_test<mpq_class>(200, 1, 1, CDT_INSIDE_WITH_HOLES, true);
-}
-
-TEST(delaunay_m, TextB10_10_10)
-{
-  text_test<mpq_class>(10, 10, 10, CDT_INSIDE_WITH_HOLES, true);
-}
-
-TEST(delaunay_m, TextB10_10_10_noids)
-{
-  text_test<mpq_class>(10, 10, 10, CDT_INSIDE_WITH_HOLES, false);
-}
-#  endif
-
 #endif
 
 #if DO_RANDOM_TESTS
@@ -2146,9 +1845,9 @@ void rand_delaunay_test(int test_kind,
       }
 
       CDT_input<T> in;
-      in.vert = Array<vec2<T>>(npts);
+      in.vert = Array<VecBase<T, 2>>(npts);
       if (nedges > 0) {
-        in.edge = Array<std::pair<int, int>>(nedges);
+        in.edge = Array<int2>(nedges);
       }
       if (nfaces > 0) {
         in.face = Array<Vector<int>>(nfaces);

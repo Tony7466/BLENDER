@@ -10,11 +10,8 @@
 
 /* Can cast different mathutils types to this, use for generic functions. */
 
+#include "BLI_array.hh"
 #include "BLI_compiler_attrs.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 struct DynStr;
 
@@ -191,14 +188,14 @@ int mathutils_array_parse_alloc_vi(int **array,
                                    PyObject *value,
                                    const char *error_prefix);
 /**
- * Parse sequence of variable-length sequences of int and return allocated
- * triple of arrays to represent the result:
- * The flattened sequences are put into *array.
- * The start index of each sequence goes into start_table.
- * The length of each index goes into len_table.
+ * Parse sequence of variable-length sequences of integers and return arrays that store the result.
+ * \param r_offsets: Describes the groups of indices with the #OffsetIndices pattern.
+ * \param r_data: Stores the groups contiguously in slices described by \a r_offsets.
  */
-int mathutils_array_parse_alloc_viseq(
-    int **array, int **start_table, int **len_table, PyObject *value, const char *error_prefix);
+bool mathutils_array_parse_alloc_viseq(PyObject *value,
+                                      const char *error_prefix,
+                                      blender::Array<int> &r_offsets,
+                                      blender::Array<int> &r_data);
 int mathutils_any_to_rotmat(float rmat[3][3], PyObject *value, const char *error_prefix);
 
 /**
@@ -233,8 +230,4 @@ int column_vector_multiplication(float r_vec[4], VectorObject *vec, MatrixObject
 /* dynstr as python string utility functions */
 /* dynstr as python string utility functions, frees 'ds'! */
 PyObject *mathutils_dynstr_to_py(struct DynStr *ds);
-#endif
-
-#ifdef __cplusplus
-}
 #endif

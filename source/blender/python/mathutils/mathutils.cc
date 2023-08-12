@@ -12,6 +12,7 @@
 
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
+#include "BLI_offset_indices.hh"
 #include "BLI_utildefines.h"
 
 #include "../generic/py_capi_utils.h"
@@ -369,71 +370,47 @@ int mathutils_array_parse_alloc_vi(int **array,
   return size;
 }
 
-int mathutils_array_parse_alloc_viseq(
-    int **array, int **start_table, int **len_table, PyObject *value, const char *error_prefix)
+bool mathutils_array_parse_alloc_viseq(PyObject *value,
+                                       const char *error_prefix,
+                                       blender::Array<int> &r_offsets,
+                                       blender::Array<int> &r_data)
 {
   PyObject *value_fast, *subseq;
-  int i, size, start, subseq_len;
-  int *ip;
 
-  *array = nullptr;
-  *start_table = nullptr;
-  *len_table = nullptr;
   if (!(value_fast = PySequence_Fast(value, error_prefix))) {
     /* PySequence_Fast sets the error */
-    return -1;
+    return false;
   }
 
-  size = PySequence_Fast_GET_SIZE(value_fast);
-
+  const int size = PySequence_Fast_GET_SIZE(value_fast);
   if (size != 0) {
-    PyObject **value_fast_items = PySequence_Fast_ITEMS(value_fast);
+    Py_DECREF(value_fast);
+    return false;
+  }
 
-    *start_table = static_cast<int *>(PyMem_Malloc(size * sizeof(int)));
-    *len_table = static_cast<int *>(PyMem_Malloc(size * sizeof(int)));
+  r_offsets.reinitialize(size + 1);
+  PyObject **value_fast_items = PySequence_Fast_ITEMS(value_fast);
+  int count = 0;
+  for (int i = 0; i < size; i++) {
+    r_offsets[i] = count;
+    count += int(PySequence_Size(value_fast_items[i]));
+  }
+  r_offsets.last() = count;
+  const blender::OffsetIndices<int> offsets(r_offsets);
 
-    /* First pass to set starts and len, and calculate size of array needed */
-    start = 0;
-    for (i = 0; i < size; i++) {
-      subseq = value_fast_items[i];
-      if ((subseq_len = int(PySequence_Size(subseq))) == -1) {
-        PyErr_Format(
-            PyExc_ValueError, "%.200s: sequence expected to have subsequences", error_prefix);
-        PyMem_Free(*start_table);
-        PyMem_Free(*len_table);
-        Py_DECREF(value_fast);
-        *start_table = nullptr;
-        *len_table = nullptr;
-        return -1;
-      }
-      (*start_table)[i] = start;
-      (*len_table)[i] = subseq_len;
-      start += subseq_len;
-    }
+  r_data.reinitialize(offsets.total_size());
 
-    ip = *array = static_cast<int *>(PyMem_Malloc(start * sizeof(int)));
+  for (const int i : offsets.index_range()) {
+    blender::MutableSpan<int> group = r_data.as_mutable_span().slice(offsets[i]);
+    if (mathutils_int_array_parse(group.data(), group.size(), value_fast_items[i], error_prefix)) {
+      Py_DECREF(value_fast);
 
-    /* Second pass to parse the subsequences into array */
-    for (i = 0; i < size; i++) {
-      subseq = value_fast_items[i];
-      subseq_len = (*len_table)[i];
-
-      if (mathutils_int_array_parse(ip, subseq_len, subseq, error_prefix) == -1) {
-        PyMem_Free(*array);
-        PyMem_Free(*start_table);
-        PyMem_Free(*len_table);
-        *array = nullptr;
-        *len_table = nullptr;
-        *start_table = nullptr;
-        size = -1;
-        break;
-      }
-      ip += subseq_len;
+      return false;
     }
   }
 
   Py_DECREF(value_fast);
-  return size;
+  return true;
 }
 
 int mathutils_any_to_rotmat(float rmat[3][3], PyObject *value, const char *error_prefix)

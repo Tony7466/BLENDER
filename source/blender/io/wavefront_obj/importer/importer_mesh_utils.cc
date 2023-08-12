@@ -33,50 +33,41 @@ Vector<Vector<int>> fixup_invalid_polygon(Span<float3> vertex_coords,
   }
 
   /* Calculate face normal, to project verts to 2D. */
-  float normal[3] = {0, 0, 0};
-  float3 co_prev = vertex_coords[face_vertex_indices.last()];
-  for (int idx : face_vertex_indices) {
-    BLI_assert(idx >= 0 && idx < vertex_coords.size());
-    float3 co_curr = vertex_coords[idx];
-    add_newell_cross_v3_v3v3(normal, co_prev, co_curr);
-    co_prev = co_curr;
-  }
-  if (UNLIKELY(normalize_v3(normal) == 0.0f)) {
-    normal[2] = 1.0f;
-  }
+  const float3 normal = bke::mesh::face_normal_calc(vertex_coords, face_vertex_indices);
+
   float axis_mat[3][3];
   axis_dominant_v3_to_m3(axis_mat, normal);
 
-  /* Prepare data for CDT. */
-  CDT_input<double> input;
-  input.vert.reinitialize(face_vertex_indices.size());
-  input.face.reinitialize(1);
-  input.face[0].resize(face_vertex_indices.size());
-  for (int64_t i = 0; i < face_vertex_indices.size(); ++i) {
-    input.face[0][i] = i;
-  }
-  input.epsilon = 1.0e-6f;
-  input.need_ids = true;
   /* Project vertices to 2D. */
-  for (size_t i = 0; i < face_vertex_indices.size(); ++i) {
+  Array<double2> verts(face_vertex_indices.size());
+  for (const int i : face_vertex_indices.index_range()) {
     int idx = face_vertex_indices[i];
     BLI_assert(idx >= 0 && idx < vertex_coords.size());
-    float3 coord = vertex_coords[idx];
     float2 coord2d;
-    mul_v2_m3v3(coord2d, axis_mat, coord);
-    input.vert[i] = double2(coord2d.x, coord2d.y);
+    mul_v2_m3v3(coord2d, axis_mat, vertex_coords[idx]);
+    verts[i] = double2(coord2d.x, coord2d.y);
   }
 
+  Array<int> face_offsets({0, int(verts.size())});
+  Array<int> face_vert_indices(verts.size());
+  std::iota(face_vert_indices.begin(), face_vert_indices.end(), 0);
+
+  CDT_input<double> input;
+  input.vert = verts;
+  input.face_offsets = face_offsets.as_span();
+  input.face_vert_indices = face_vert_indices;
+  input.epsilon = 1.0e-6f;
+  input.need_ids = true;
   CDT_result<double> res = delaunay_2d_calc(input, CDT_CONSTRAINTS_VALID_BMESH_WITH_HOLES);
+  const OffsetIndices result_faces = res.faces();
 
   /* Emit new face information from CDT result. */
   Vector<Vector<int>> faces;
-  faces.reserve(res.face.size());
-  for (const auto &f : res.face) {
+  faces.reserve(result_faces.size());
+  for (const int i : result_faces.index_range()) {
     Vector<int> face_verts;
-    face_verts.reserve(f.size());
-    for (int64_t i = 0; i < f.size(); ++i) {
-      int idx = f[i];
+    face_verts.reserve(result_faces[i].size());
+    for (const int idx : res.faces_verts.as_span().slice(result_faces[i])) {
       BLI_assert(idx >= 0 && idx < res.vert_orig.size());
       if (res.vert_orig[idx].is_empty()) {
         /* If we have a whole new vertex in the tessellated result,
@@ -87,9 +78,9 @@ Vector<Vector<int>> fixup_invalid_polygon(Span<float3> vertex_coords,
       }
       else {
         /* Vertex corresponds to one or more of the input vertices, use it. */
-        idx = res.vert_orig[idx][0];
-        BLI_assert(idx >= 0 && idx < face_vertex_indices.size());
-        face_verts.append(idx);
+        const int old_idx = res.vert_orig[idx][0];
+        BLI_assert(old_idx >= 0 && old_idx < face_vertex_indices.size());
+        face_verts.append(old_idx);
       }
     }
     faces.append(face_verts);

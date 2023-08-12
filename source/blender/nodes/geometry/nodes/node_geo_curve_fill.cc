@@ -50,56 +50,43 @@ static meshintersect::CDT_result<double> do_cdt(const bke::CurvesGeometry &curve
   const OffsetIndices points_by_curve = curves.evaluated_points_by_curve();
   const Span<float3> positions = curves.evaluated_positions();
 
+  Array<double2> verts(positions.size());
+  threading::parallel_for(positions.index_range(), 2048, [&](const IndexRange range) {
+    for (const int i : range) {
+      verts[i] = double2(positions[i].x, positions[i].y);
+    }
+  });
+  Array<int> face_vert_indices(positions.size());
+  std::iota(face_vert_indices.begin(), face_vert_indices.end(), 0);
+
   meshintersect::CDT_input<double> input;
+  input.vert = verts;
+  input.face_offsets = curves.evaluated_points_by_curve();
+  input.face_vert_indices = face_vert_indices;
   input.need_ids = false;
-  input.vert.reinitialize(points_by_curve.total_size());
-  input.face.reinitialize(curves.curves_num());
-
-  for (const int i_curve : curves.curves_range()) {
-    const IndexRange points = points_by_curve[i_curve];
-
-    for (const int i : points) {
-      input.vert[i] = double2(positions[i].x, positions[i].y);
-    }
-
-    input.face[i_curve].resize(points.size());
-    MutableSpan<int> face_verts = input.face[i_curve];
-    for (const int i : face_verts.index_range()) {
-      face_verts[i] = points[i];
-    }
-  }
-  meshintersect::CDT_result<double> result = delaunay_2d_calc(input, output_type);
-  return result;
+  return delaunay_2d_calc(input, output_type);
 }
 
 /* Converts the CDT result into a Mesh. */
 static Mesh *cdt_to_mesh(const meshintersect::CDT_result<double> &result)
 {
-  const int vert_len = result.vert.size();
-  const int edge_len = result.edge.size();
-  const int face_len = result.face.size();
-  int loop_len = 0;
-  for (const Vector<int> &face : result.face) {
-    loop_len += face.size();
-  }
+  const OffsetIndices faces = result.faces();
 
-  Mesh *mesh = BKE_mesh_new_nomain(vert_len, edge_len, face_len, loop_len);
-  MutableSpan<float3> positions = mesh->vert_positions_for_write();
-  mesh->edges_for_write().copy_from(result.edge.as_span().cast<int2>());
+  Mesh *mesh = BKE_mesh_new_nomain(
+      result.vert.size(), result.edge.size(), faces.size(), faces.total_size());
+  mesh->edges_for_write().copy_from(result.edge.as_span());
   MutableSpan<int> face_offsets = mesh->face_offsets_for_write();
   MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
 
-  for (const int i : IndexRange(result.vert.size())) {
-    positions[i] = float3(float(result.vert[i].x), float(result.vert[i].y), 0.0f);
-  }
-  int i_loop = 0;
-  for (const int i : IndexRange(result.face.size())) {
-    face_offsets[i] = i_loop;
-    for (const int j : result.face[i].index_range()) {
-      corner_verts[i_loop] = result.face[i][j];
-      i_loop++;
+  MutableSpan<float3> positions = mesh->vert_positions_for_write();
+  threading::parallel_for(positions.index_range(), 2048, [&](const IndexRange range) {
+    for (const int i : range) {
+      positions[i] = float3(float(result.vert[i].x), float(result.vert[i].y), 0.0f);
     }
-  }
+  });
+
+  mesh->face_offsets_for_write().copy_from(result.face_offset_data);
+  mesh->corner_verts_for_write().copy_from(result.faces_verts);
 
   /* The delaunay triangulation doesn't seem to return all of the necessary edges, even in
    * triangulation mode. */
@@ -129,7 +116,7 @@ static void curve_fill_calculate(GeometrySet &geometry_set, const GeometryNodeCu
   Mesh *mesh = cdt_to_mesh(results);
 
   geometry_set.replace_mesh(mesh);
-  geometry_set.replace_curves(nullptr);
+  geometry_set.remove<CurveComponent>();
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
