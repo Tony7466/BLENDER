@@ -23,11 +23,11 @@ CCL_NAMESPACE_BEGIN
 
 #ifdef __SUBSURFACE__
 
-ccl_device_inline float subsurface_entry_bounce(KernelGlobals kg,
-                                                ccl_private const Bssrdf *bssrdf,
-                                                ccl_private ShaderData *sd,
-                                                ccl_private RNGState *rng_state,
-                                                ccl_private float3 *wo)
+ccl_device_inline bool subsurface_entry_bounce(KernelGlobals kg,
+                                               ccl_private const Bssrdf *bssrdf,
+                                               ccl_private ShaderData *sd,
+                                               ccl_private RNGState *rng_state,
+                                               ccl_private float3 *wo)
 {
   float2 rand_bsdf = path_state_rng_2D(kg, rng_state, PRNG_SUBSURFACE_BSDF);
 
@@ -38,14 +38,14 @@ ccl_device_inline float subsurface_entry_bounce(KernelGlobals kg,
       rand_bsdf.x *= 2.0f;
       float pdf;
       sample_cos_hemisphere(-bssrdf->N, rand_bsdf, wo, &pdf);
-      return 1.0f;
+      return true;
     }
     rand_bsdf.x = 2.0f * (rand_bsdf.x - 0.5f);
   }
 
   const float cos_NI = dot(bssrdf->N, sd->wi);
   if (cos_NI <= 0.0f) {
-    return 0.0f;
+    return false;
   }
 
   float3 X, Y, Z = bssrdf->N;
@@ -68,11 +68,14 @@ ccl_device_inline float subsurface_entry_bounce(KernelGlobals kg,
   const float dnp = max(sqrtf(arg), 1e-7f);
   const float nK = (neta * cos_HI) - dnp;
   *wo = -(neta * sd->wi) + (nK * H);
-  const float cos_NO = dot(Z, *wo);
-
-  const float lambdaI = bsdf_lambda<MicrofacetType::GGX>(alpha2, cos_NI);
-  const float lambdaO = bsdf_lambda<MicrofacetType::GGX>(alpha2, cos_NO);
-  return (1.0f + lambdaI) / (1.0f + lambdaI + lambdaO);
+  return true;
+  /* Note: For a proper refractive GGX interface, we should be computing lambdaI and lambdaO
+   * and multiplying the throughput by BSDF/pdf, which for VNDF sampling works out to
+   * (1 + lambdaI) / (1 + lambdaI + lambdaO).
+   * However, this causes darkening due to the single-scattering approximation, which we'd
+   * then have to correct with a lookup table.
+   * Since we only really care about the directional distribution here, it's much easier to
+   * just skip all that instead. */
 }
 
 ccl_device int subsurface_bounce(KernelGlobals kg,
@@ -99,10 +102,10 @@ ccl_device int subsurface_bounce(KernelGlobals kg,
 
   /* Compute weight, optionally including Fresnel from entry point. */
   Spectrum weight = surface_shader_bssrdf_sample_weight(sd, sc);
+  INTEGRATOR_STATE_WRITE(state, path, throughput) *= weight;
 
   uint32_t path_flag = (INTEGRATOR_STATE(state, path, flag) & ~PATH_RAY_CAMERA);
-  if (sc->type == CLOSURE_BSSRDF_BURLEY_ID)
-  {
+  if (sc->type == CLOSURE_BSSRDF_BURLEY_ID) {
     path_flag |= PATH_RAY_SUBSURFACE_DISK;
     INTEGRATOR_STATE_WRITE(state, subsurface, N) = sd->Ng;
   }
@@ -113,8 +116,7 @@ ccl_device int subsurface_bounce(KernelGlobals kg,
     RNGState rng_state;
     path_state_rng_load(state, &rng_state);
     float3 wo;
-    weight *= subsurface_entry_bounce(kg, bssrdf, sd, &rng_state, &wo);
-    if (is_zero(weight) || dot(sd->Ng, wo) >= 0.0f) {
+    if (!subsurface_entry_bounce(kg, bssrdf, sd, &rng_state, &wo) || dot(sd->Ng, wo) >= 0.0f) {
       /* Sampling failed, give up on this bounce. */
       return LABEL_NONE;
     }
@@ -126,7 +128,6 @@ ccl_device int subsurface_bounce(KernelGlobals kg,
     path_flag |= PATH_RAY_SUBSURFACE_BACKFACING;
   }
 
-  INTEGRATOR_STATE_WRITE(state, path, throughput) *= weight;
   INTEGRATOR_STATE_WRITE(state, path, flag) = path_flag;
 
   if (kernel_data.kernel_features & KERNEL_FEATURE_LIGHT_PASSES) {

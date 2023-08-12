@@ -57,8 +57,7 @@ ccl_device float bssrdf_dipole_compute_alpha_prime(float rd, float fourthirdA)
   return xmid;
 }
 
-ccl_device void bssrdf_setup_radius(ccl_private Bssrdf *bssrdf,
-                                    const ClosureType type)
+ccl_device void bssrdf_setup_radius(ccl_private Bssrdf *bssrdf, const ClosureType type)
 {
   if (type == CLOSURE_BSSRDF_BURLEY_ID || type == CLOSURE_BSSRDF_RANDOM_WALK_FIXED_RADIUS_ID) {
     /* Scale mean free path length so it gives similar looking result to older
