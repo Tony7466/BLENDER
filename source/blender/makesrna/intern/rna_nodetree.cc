@@ -511,7 +511,7 @@ static const EnumPropertyItem rna_node_geometry_curve_handle_type_items[] = {
      "The location is constrained to point in the opposite direction as the other handle"},
     {0, nullptr, 0, nullptr, nullptr}};
 
-static const EnumPropertyItem rna_node_geometry_curve_handle_side_items[] = {
+const EnumPropertyItem rna_node_geometry_curve_handle_side_items[] = {
     {GEO_NODE_CURVE_HANDLE_LEFT, "LEFT", ICON_NONE, "Left", "Use the left handles"},
     {GEO_NODE_CURVE_HANDLE_RIGHT, "RIGHT", ICON_NONE, "Right", "Use the right handles"},
     {0, nullptr, 0, nullptr, nullptr}};
