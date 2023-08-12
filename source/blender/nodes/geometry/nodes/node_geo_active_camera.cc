@@ -13,7 +13,8 @@ static void node_declare(NodeDeclarationBuilder &b)
 static void node_geo_exec(GeoNodeExecParams params)
 {
   const Scene *scene = DEG_get_input_scene(params.depsgraph());
-  params.set_output("Active Camera", const_cast<Object *>(scene->camera));
+  const Object *camera = DEG_get_original_object(scene->camera);
+  params.set_output("Active Camera", const_cast<Object *>(camera));
 }
 
 } // namespace blender::nodes::node_geo_active_camera_cc

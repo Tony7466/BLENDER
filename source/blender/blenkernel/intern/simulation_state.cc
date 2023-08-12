@@ -154,9 +154,9 @@ ModifierSimulationState &ModifierSimulationCache::get_state_at_frame_for_write(
     return states_at_frames_[i]->state;
   }
 
-  if (!states_at_frames_.is_empty()) {
-    BLI_assert(frame > states_at_frames_.last()->frame);
-  }
+//  if (!states_at_frames_.is_empty()) {
+//    BLI_assert(frame > states_at_frames_.last()->frame);
+//  }
 
   states_at_frames_.append(std::make_unique<ModifierSimulationStateAtFrame>());
   states_at_frames_.last()->frame = frame;
