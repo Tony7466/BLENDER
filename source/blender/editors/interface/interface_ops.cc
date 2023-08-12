@@ -2556,6 +2556,9 @@ static int ui_space_preset_activate_exec(bContext *C, wmOperator *op)
   const int preset_index = RNA_int_get(op->ptr, "preset_index");
   SpacePreset *preset = static_cast<SpacePreset *>(
       BLI_findlink(&area->space_presets, preset_index));
+  if (preset == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
 
   ED_area_newspace(C, area, preset->space->spacetype, true, preset->space);
   ED_area_tag_redraw(area);

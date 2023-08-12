@@ -112,7 +112,14 @@ void UI_template_fix_linking() {}
 static void space_presets_panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
-  uiItemL(layout, "Hello World", ICON_NONE);
+  uiItemFullO(layout,
+              "ui.space_preset_add",
+              "Duplicate",
+              ICON_ADD,
+              nullptr,
+              WM_OP_INVOKE_AREA,
+              UI_ITEM_NONE,
+              nullptr);
 }
 
 static PanelType *create_space_presets_panel()
@@ -132,22 +139,35 @@ static void space_presets_draw(uiLayout *layout, bContext *C)
   uiLayout *row = uiLayoutRow(layout, true);
   ScrArea *area = CTX_wm_area(C);
   SpaceLink *active_space = static_cast<SpaceLink *>(area->spacedata.first);
-  int index;
-  LISTBASE_FOREACH_INDEX (SpacePreset *, space_preset, &area->space_presets, index) {
-    const bool is_active = space_preset->space == active_space;
+  if (BLI_listbase_is_empty(&area->space_presets)) {
+    /* Draw a button for the default non-existant space preset. */
     PointerRNA props;
     uiItemFullO(row,
                 "ui.space_preset_activate",
                 "",
-                is_active ? ICON_RADIOBUT_ON : ICON_RADIOBUT_OFF,
+                ICON_RADIOBUT_ON,
                 nullptr,
                 WM_OP_INVOKE_AREA,
                 UI_ITEM_NONE,
                 &props);
-    RNA_int_set(&props, "preset_index", index);
+    RNA_int_set(&props, "preset_index", 0);
   }
-  uiItemFullO(
-      row, "ui.space_preset_add", "", ICON_ADD, nullptr, WM_OP_INVOKE_AREA, UI_ITEM_NONE, nullptr);
+  else {
+    int index;
+    LISTBASE_FOREACH_INDEX (SpacePreset *, space_preset, &area->space_presets, index) {
+      const bool is_active = space_preset->space == active_space;
+      PointerRNA props;
+      uiItemFullO(row,
+                  "ui.space_preset_activate",
+                  "",
+                  is_active ? ICON_RADIOBUT_ON : ICON_RADIOBUT_OFF,
+                  nullptr,
+                  WM_OP_INVOKE_AREA,
+                  UI_ITEM_NONE,
+                  &props);
+      RNA_int_set(&props, "preset_index", index);
+    }
+  }
   uiItemPopoverPanel_ptr(row, C, space_presets_panel, "", ICON_NONE);
 }
 
