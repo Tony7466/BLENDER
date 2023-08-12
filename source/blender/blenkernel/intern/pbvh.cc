@@ -927,7 +927,7 @@ void BKE_pbvh_build_grids(PBVH *pbvh,
                           CCGElem **grids,
                           int totgrid,
                           CCGKey *key,
-                          void **gridfaces,
+                          blender::Span<int> gridfaces,
                           DMFlagMat *flagmats,
                           BLI_bitmap **grid_hidden,
                           Mesh *me,
@@ -1750,10 +1750,11 @@ void BKE_pbvh_get_grid_updates(PBVH *pbvh, bool clear, void ***r_gridfaces, int 
 
   pbvh_iter_begin(&iter, pbvh, nullptr, nullptr);
 
+  SubdivCCGFace *all_faces = pbvh->subdiv_ccg->faces;
   while ((node = pbvh_iter_next(&iter, PBVH_Leaf))) {
     if (node->flag & PBVH_UpdateNormals) {
       for (const int grid : node->prim_indices) {
-        void *face = pbvh->gridfaces[grid];
+        void *face = &all_faces[pbvh->gridfaces[grid]];
         BLI_gset_add(face_set, face);
       }
 
@@ -2845,6 +2846,7 @@ bool BKE_pbvh_node_frustum_exclude_AABB(PBVHNode *node, void *data)
 
 void BKE_pbvh_update_normals(PBVH *pbvh, SubdivCCG *subdiv_ccg)
 {
+  using namespace blender;
   /* Update normals */
   Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(
       pbvh, update_search_cb, POINTER_FROM_INT(PBVH_UpdateNormals));
@@ -2981,7 +2983,7 @@ void BKE_pbvh_draw_debug_cb(PBVH *pbvh,
 
 void BKE_pbvh_grids_update(PBVH *pbvh,
                            CCGElem **grids,
-                           void **gridfaces,
+                           blender::Span<int> gridfaces,
                            DMFlagMat *flagmats,
                            BLI_bitmap **grid_hidden,
                            CCGKey *key)
