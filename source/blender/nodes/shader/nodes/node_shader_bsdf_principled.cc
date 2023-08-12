@@ -34,7 +34,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .max(10.0f)
       .subtype(PROP_DISTANCE)
       .description("Scale of the subsurface scattering (multiplied with Radius)");
-#define SOCK_SUBSURFACE_IOR_ID 2
+#define SOCK_SUBSURFACE_SCALE_ID 2
   b.add_input<decl::Vector>("Subsurface Radius")
       .default_value({1.0f, 0.2f, 0.1f})
       .min(0.0f)
@@ -42,10 +42,13 @@ static void node_declare(NodeDeclarationBuilder &b)
       .compact()
       .description("Scattering radius to use for subsurface component (multiplied with Scale)");
 #define SOCK_SUBSURFACE_RADIUS_ID 3
-  b.add_input<decl::Color>("Subsurface Color")
-      .default_value({0.8f, 0.8f, 0.8f, 1.0f})
-      .description("The overall color resulting from subsurface scattering effects");
-#define SOCK_SUBSURFACE_COLOR_ID 4
+  b.add_input<decl::Float>("Subsurface IOR")
+      .default_value(1.4f)
+      .min(1.01f)
+      .max(3.8f)
+      .subtype(PROP_FACTOR)
+      .description("Index of refraction used for rays that enter the subsurface component");
+#define SOCK_SUBSURFACE_IOR_ID 4
   b.add_input<decl::Float>("Subsurface Anisotropy")
       .default_value(0.0f)
       .min(0.0f)
@@ -250,11 +253,10 @@ static void node_shader_update_principled(bNodeTree *ntree, bNode *node)
 {
   const int sss_method = node->custom2;
 
-  LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
-    if (STR_ELEM(sock->name, "Subsurface IOR", "Subsurface Anisotropy")) {
-      bke::nodeSetSocketAvailability(ntree, sock, sss_method != SHD_SUBSURFACE_BURLEY);
-    }
-  }
+  bke::nodeSetSocketAvailability(
+      ntree, nodeFindSocket(node, SOCK_IN, "Subsurface IOR"), sss_method == SHD_SUBSURFACE_RANDOM_WALK);
+  bke::nodeSetSocketAvailability(
+      ntree, nodeFindSocket(node, SOCK_IN, "Subsurface Anisotropy"), sss_method != SHD_SUBSURFACE_BURLEY);
 }
 
 }  // namespace blender::nodes::node_shader_bsdf_principled_cc

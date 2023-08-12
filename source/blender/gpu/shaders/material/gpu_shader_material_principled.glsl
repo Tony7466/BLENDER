@@ -19,7 +19,7 @@ void node_bsdf_principled(vec4 base_color,
                           float subsurface,
                           float subsurface_scale,
                           vec3 subsurface_radius,
-                          vec4 subsurface_color,
+                          float subsurface_ior,
                           float subsurface_anisotropy,
                           float metallic,
                           float specular,
@@ -83,7 +83,7 @@ void node_bsdf_principled(vec4 base_color,
   /* Diffuse. */
   ClosureDiffuse diffuse_data;
   diffuse_data.weight = diffuse_weight * weight;
-  diffuse_data.color = mix(base_color.rgb, subsurface_color.rgb, subsurface);
+  diffuse_data.color = base_color.rgb;
   /* Sheen Coarse approximation: We reuse the diffuse radiance and just scale it. */
   diffuse_data.color += sheen * sheen_tint.rgb * principled_sheen(NV, sheen_roughness);
   diffuse_data.N = N;

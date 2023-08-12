@@ -22,7 +22,6 @@ ccl_device_inline int svm_node_closure_bsdf_skip(KernelGlobals kg, int offset, u
     read_node(kg, &offset);
     read_node(kg, &offset);
     read_node(kg, &offset);
-    read_node(kg, &offset);
   }
 
   return offset;
@@ -70,7 +69,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
     case CLOSURE_BSDF_PRINCIPLED_ID: {
       uint specular_offset, roughness_offset, specular_tint_offset, anisotropic_offset,
           sheen_offset, sheen_tint_offset, clearcoat_offset, clearcoat_roughness_offset,
-          eta_offset, transmission_offset, anisotropic_rotation_offset, pad1;
+          eta_offset, transmission_offset, anisotropic_rotation_offset, subsurface_ior_offset;
       uint4 data_node2 = read_node(kg, &offset);
 
       float3 T = stack_load_float3(stack, data_node.y);
@@ -85,7 +84,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
                              &clearcoat_offset,
                              &clearcoat_roughness_offset);
       svm_unpack_node_uchar4(
-          data_node2.x, &eta_offset, &transmission_offset, &anisotropic_rotation_offset, &pad1);
+          data_node2.x, &eta_offset, &transmission_offset, &anisotropic_rotation_offset, &subsurface_ior_offset);
 
       // get Disney principled parameters
       float metallic = saturatef(param1);
@@ -131,14 +130,6 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       float subsurface_anisotropy = stack_valid(data_cn_ssr.w) ?
                                         stack_load_float(stack, data_cn_ssr.w) :
                                         0.0f;
-
-      // get the subsurface color
-      uint4 data_subsurface_color = read_node(kg, &offset);
-      float3 subsurface_color = stack_valid(data_subsurface_color.x) ?
-                                    stack_load_float3(stack, data_subsurface_color.x) :
-                                    make_float3(__uint_as_float(data_subsurface_color.y),
-                                                __uint_as_float(data_subsurface_color.z),
-                                                __uint_as_float(data_subsurface_color.w));
 
       Spectrum weight = closure_weight * mix_weight;
 
@@ -303,14 +294,17 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       /* Diffuse/Subsurface component */
 #ifdef __SUBSURFACE__
       ccl_private Bssrdf *bssrdf = bssrdf_alloc(
-          sd, rgb_to_spectrum(subsurface_color) * subsurface * weight);
+          sd, rgb_to_spectrum(base_color) * subsurface * weight);
       if (bssrdf) {
         bssrdf->radius = rgb_to_spectrum(subsurface_radius * subsurface_scale);
-        bssrdf->albedo = rgb_to_spectrum(subsurface_color);
+        bssrdf->albedo = rgb_to_spectrum(base_color);
         bssrdf->N = N;
         bssrdf->alpha = sqr(roughness);
         bssrdf->ior = eta;
         bssrdf->anisotropy = subsurface_anisotropy;
+        if (subsurface_method == CLOSURE_BSSRDF_RANDOM_WALK_ID) {
+          bssrdf->ior = stack_load_float(stack, subsurface_ior_offset);
+        }
 
         /* setup bsdf */
         sd->flag |= bssrdf_setup(sd, bssrdf, path_flag, subsurface_method);

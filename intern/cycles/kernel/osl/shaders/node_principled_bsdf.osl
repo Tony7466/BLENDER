@@ -11,7 +11,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
                             float Subsurface = 0.0,
                             float SubsurfaceScale = 0.1,
                             vector SubsurfaceRadius = vector(1.0, 1.0, 1.0),
-                            color SubsurfaceColor = color(0.7, 0.1, 0.1),
+                            float SubsurfaceIOR = 1.4,
                             float SubsurfaceAnisotropy = 0.0,
                             float Metallic = 0.0,
                             float Specular = 0.5,
@@ -48,17 +48,18 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     BSDF = BaseColor * diffuse(Normal);
     if (Subsurface > 1e-5) {
       vector radius = SubsurfaceScale * SubsurfaceRadius;
+      float subsurface_ior = (subsurface_method == "random_walk") ? SubsurfaceIOR : IOR;
       closure color SubsurfBSDF = bssrdf(subsurface_method,
                                          Normal,
                                          SubsurfaceScale * SubsurfaceRadius,
-                                         SubsurfaceColor,
+                                         BaseColor,
                                          "roughness",
                                          Roughness,
                                          "ior",
-                                         IOR,
+                                         subsurface_ior,
                                          "anisotropy",
                                          SubsurfaceAnisotropy);
-      BSDF = mix(BSDF, SubsurfaceColor * SubsurfBSDF, Subsurface);
+      BSDF = mix(BSDF, BaseColor * SubsurfBSDF, Subsurface);
     }
 
     color f0 = color(F0_from_ior(IOR));

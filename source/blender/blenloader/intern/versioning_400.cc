@@ -378,12 +378,12 @@ static void version_principled_bsdf_sheen(bNodeTree *ntree)
 static void version_principled_bsdf_subsurface(bNodeTree *ntree)
 {
   /* - Create Subsurface Scale input
-   * - Remove Subsurface IOR input
    * - If a node's Subsurface input was connected or nonzero:
-   *   - Make the Subsurface Color a mix of Base Color and its old value,
+   *   - Make the Base Color a mix of old Base Color and Subsurface Color,
    *     using Subsurface as the mix factor
    *   - Move Subsurface link and default value to the new Subsurface Scale input
    *   - Set the Subsurface input to 1.0
+   * - Remove Subsurface Color input
    */
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     if (node->type != SH_NODE_BSDF_PRINCIPLED) {
@@ -392,12 +392,6 @@ static void version_principled_bsdf_subsurface(bNodeTree *ntree)
     if (nodeFindSocket(node, SOCK_IN, "Subsurface Scale")) {
       /* Node is already updated. */
       continue;
-    }
-
-    /* Delete IOR input */
-    bNodeSocket *ior_in = nodeFindSocket(node, SOCK_IN, "Subsurface IOR");
-    if (ior_in != nullptr) {
-      nodeRemoveSocket(ntree, node, ior_in);
     }
 
     /* Add Scale input */
@@ -436,6 +430,7 @@ static void version_principled_bsdf_subsurface(bNodeTree *ntree)
 
       if (base_col->link) {
         nodeAddLink(ntree, base_col->link->fromnode, base_col->link->fromsock, mix, a_in);
+        nodeRemLink(ntree, base_col->link);
       }
       if (subsurf_col->link) {
         nodeAddLink(ntree, subsurf_col->link->fromnode, subsurf_col->link->fromsock, mix, b_in);
@@ -446,13 +441,16 @@ static void version_principled_bsdf_subsurface(bNodeTree *ntree)
         nodeAddLink(ntree, subsurf->link->fromnode, subsurf->link->fromsock, node, scale_in);
         nodeRemLink(ntree, subsurf->link);
       }
-      nodeAddLink(ntree, mix, result_out, node, subsurf_col);
+      nodeAddLink(ntree, mix, result_out, node, base_col);
     }
     /* Mix the fixed values. */
-    interp_v4_v4v4(subsurf_col_val, base_col_val, subsurf_col_val, *subsurf_val);
+    interp_v4_v4v4(base_col_val, base_col_val, subsurf_col_val, *subsurf_val);
 
     /* Set node to 100% subsurface, 0% diffuse. */
     *subsurf_val = 1.0f;
+
+    /* Delete Subsurface Color input */
+    nodeRemoveSocket(ntree, node, subsurf_col);
   };
 }
 

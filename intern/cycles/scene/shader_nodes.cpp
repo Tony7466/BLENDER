@@ -2649,12 +2649,12 @@ NODE_DEFINE(PrincipledBsdfNode)
               subsurface_method_enum,
               CLOSURE_BSSRDF_RANDOM_WALK_ID);
 
-  SOCKET_IN_COLOR(base_color, "Base Color", make_float3(0.8f, 0.8f, 0.8f));
-  SOCKET_IN_COLOR(subsurface_color, "Subsurface Color", make_float3(0.8f, 0.8f, 0.8f));
+  SOCKET_IN_COLOR(base_color, "Base Color", make_float3(0.8f, 0.8f, 0.8f))
   SOCKET_IN_FLOAT(metallic, "Metallic", 0.0f);
   SOCKET_IN_FLOAT(subsurface, "Subsurface", 0.0f);
   SOCKET_IN_FLOAT(subsurface_scale, "Subsurface Scale", 0.1f);
   SOCKET_IN_VECTOR(subsurface_radius, "Subsurface Radius", make_float3(0.1f, 0.1f, 0.1f));
+  SOCKET_IN_FLOAT(subsurface_ior, "Subsurface IOR", 1.4f);
   SOCKET_IN_FLOAT(subsurface_anisotropy, "Subsurface Anisotropy", 0.0f);
   SOCKET_IN_FLOAT(specular, "Specular", 0.0f);
   SOCKET_IN_FLOAT(roughness, "Roughness", 0.5f);
@@ -2761,53 +2761,36 @@ void PrincipledBsdfNode::attributes(Shader *shader, AttributeRequestSet *attribu
   ShaderNode::attributes(shader, attributes);
 }
 
-void PrincipledBsdfNode::compile(SVMCompiler &compiler,
-                                 ShaderInput *p_metallic,
-                                 ShaderInput *p_subsurface,
-                                 ShaderInput *p_subsurface_scale,
-                                 ShaderInput *p_subsurface_radius,
-                                 ShaderInput *p_subsurface_anisotropy,
-                                 ShaderInput *p_specular,
-                                 ShaderInput *p_roughness,
-                                 ShaderInput *p_specular_tint,
-                                 ShaderInput *p_anisotropic,
-                                 ShaderInput *p_sheen,
-                                 ShaderInput *p_sheen_roughness,
-                                 ShaderInput *p_sheen_tint,
-                                 ShaderInput *p_clearcoat,
-                                 ShaderInput *p_clearcoat_roughness,
-                                 ShaderInput *p_ior,
-                                 ShaderInput *p_transmission,
-                                 ShaderInput *p_anisotropic_rotation)
+void PrincipledBsdfNode::compile(SVMCompiler &compiler)
 {
   ShaderInput *base_color_in = input("Base Color");
-  ShaderInput *subsurface_color_in = input("Subsurface Color");
-  ShaderInput *normal_in = input("Normal");
-  ShaderInput *clearcoat_normal_in = input("Clearcoat Normal");
-  ShaderInput *tangent_in = input("Tangent");
+
+  ShaderInput *p_metallic = input("Metallic");
+  ShaderInput *p_subsurface = input("Subsurface");
 
   float3 weight = one_float3();
 
   compiler.add_node(NODE_CLOSURE_SET_WEIGHT, weight);
 
-  int normal_offset = compiler.stack_assign_if_linked(normal_in);
-  int clearcoat_normal_offset = compiler.stack_assign_if_linked(clearcoat_normal_in);
-  int tangent_offset = compiler.stack_assign_if_linked(tangent_in);
-  int specular_offset = compiler.stack_assign(p_specular);
-  int roughness_offset = compiler.stack_assign(p_roughness);
-  int specular_tint_offset = compiler.stack_assign(p_specular_tint);
-  int anisotropic_offset = compiler.stack_assign(p_anisotropic);
-  int sheen_offset = compiler.stack_assign(p_sheen);
-  int sheen_roughness_offset = compiler.stack_assign(p_sheen_roughness);
-  int sheen_tint_offset = compiler.stack_assign(p_sheen_tint);
-  int clearcoat_offset = compiler.stack_assign(p_clearcoat);
-  int clearcoat_roughness_offset = compiler.stack_assign(p_clearcoat_roughness);
-  int ior_offset = compiler.stack_assign(p_ior);
-  int transmission_offset = compiler.stack_assign(p_transmission);
-  int anisotropic_rotation_offset = compiler.stack_assign(p_anisotropic_rotation);
-  int subsurface_radius_offset = compiler.stack_assign(p_subsurface_radius);
-  int subsurface_scale_offset = compiler.stack_assign(p_subsurface_scale);
-  int subsurface_anisotropy_offset = compiler.stack_assign(p_subsurface_anisotropy);
+  int normal_offset = compiler.stack_assign_if_linked(input("Normal"));
+  int clearcoat_normal_offset = compiler.stack_assign_if_linked(input("Clearcoat Normal"));
+  int tangent_offset = compiler.stack_assign_if_linked(input("Tangent"));
+  int specular_offset = compiler.stack_assign(input("Specular"));
+  int roughness_offset = compiler.stack_assign(input("Roughness"));
+  int specular_tint_offset = compiler.stack_assign(input("Specular Tint"));
+  int anisotropic_offset = compiler.stack_assign(input("Anisotropic"));
+  int sheen_offset = compiler.stack_assign(input("Sheen"));
+  int sheen_roughness_offset = compiler.stack_assign(input("Sheen Roughness"));
+  int sheen_tint_offset = compiler.stack_assign(input("Sheen Tint"));
+  int clearcoat_offset = compiler.stack_assign(input("Clearcoat"));
+  int clearcoat_roughness_offset = compiler.stack_assign(input("Clearcoat Roughness"));
+  int ior_offset = compiler.stack_assign(input("IOR"));
+  int transmission_offset = compiler.stack_assign(input("Transmission"));
+  int anisotropic_rotation_offset = compiler.stack_assign(input("Anisotropic Rotation"));
+  int subsurface_radius_offset = compiler.stack_assign(input("Subsurface Radius"));
+  int subsurface_scale_offset = compiler.stack_assign(input("Subsurface Scale"));
+  int subsurface_ior_offset = compiler.stack_assign(input("Subsurface IOR"));
+  int subsurface_anisotropy_offset = compiler.stack_assign(input("Subsurface Anisotropy"));
 
   compiler.add_node(NODE_CLOSURE_BSDF,
                     compiler.encode_uchar4(closure,
@@ -2827,7 +2810,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
 
   compiler.add_node(
       compiler.encode_uchar4(
-          ior_offset, transmission_offset, anisotropic_rotation_offset, SVM_STACK_INVALID),
+          ior_offset, transmission_offset, anisotropic_rotation_offset, subsurface_ior_offset),
       distribution,
       subsurface_method,
       sheen_roughness_offset);
@@ -2844,36 +2827,6 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
                     subsurface_radius_offset,
                     subsurface_scale_offset,
                     subsurface_anisotropy_offset);
-
-  float3 ss_default = get_float3(subsurface_color_in->socket_type);
-
-  compiler.add_node(((subsurface_color_in->link) ? compiler.stack_assign(subsurface_color_in) :
-                                                   SVM_STACK_INVALID),
-                    __float_as_int(ss_default.x),
-                    __float_as_int(ss_default.y),
-                    __float_as_int(ss_default.z));
-}
-
-void PrincipledBsdfNode::compile(SVMCompiler &compiler)
-{
-  compile(compiler,
-          input("Metallic"),
-          input("Subsurface"),
-          input("Subsurface Scale"),
-          input("Subsurface Radius"),
-          input("Subsurface Anisotropy"),
-          input("Specular"),
-          input("Roughness"),
-          input("Specular Tint"),
-          input("Anisotropic"),
-          input("Sheen"),
-          input("Sheen Roughness"),
-          input("Sheen Tint"),
-          input("Clearcoat"),
-          input("Clearcoat Roughness"),
-          input("IOR"),
-          input("Transmission"),
-          input("Anisotropic Rotation"));
 }
 
 void PrincipledBsdfNode::compile(OSLCompiler &compiler)
