@@ -418,6 +418,25 @@ def _template_items_select_actions(params, operator):
             (operator, {"type": 'I', "value": 'PRESS', "ctrl": True}, {"properties": [("action", 'INVERT')]}),
         ]
 
+# Because of shortcut conflicts on Ctrl LMB on right click select with brush modes,
+# all modifier keys are used together to unmask/deselect.
+def _template_items_select_lasso(params, operator):
+    if params.select_mouse == 'RIGHTMOUSE':
+        return [
+            (operator, {"type": params.action_mouse, "value": 'CLICK_DRAG', "shift": True, "ctrl": True},
+             {"properties": [("mode", 'SUB')]}),
+            (operator, {"type": params.action_mouse, "value": 'CLICK_DRAG', "shift": True, "ctrl": True, "alt": True},
+             {"properties": [("mode", 'ADD')]}),
+        ]
+    else:
+        return [
+            (operator, {"type": params.action_mouse, "value": 'CLICK_DRAG', "shift": True, "ctrl": True},
+             {"properties": [("mode", 'SUB')]}),
+            (operator, {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True},
+             {"properties": [("mode", 'ADD')]}),
+        ]
+
+
 
 def _template_items_hide_reveal_actions(op_hide, op_reveal):
     return [
@@ -3649,11 +3668,6 @@ def _grease_pencil_selection(params, *, alt_select=False):
         op_tool_optional(
             ("gpencil.select_box", {"type": 'B', "value": 'PRESS'}, None),
             (op_tool, "builtin.select_box"), params),
-        # Lasso select
-        ("gpencil.select_lasso", {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True},
-         {"properties": [("mode", 'ADD')]}),
-        ("gpencil.select_lasso", {"type": params.action_mouse, "value": 'CLICK_DRAG', "shift": True, "ctrl": True},
-         {"properties": [("mode", 'SUB')]}),
         *_template_view3d_gpencil_select(
             type=params.select_mouse,
             value=params.select_mouse_value_fallback,
@@ -3701,6 +3715,10 @@ def km_grease_pencil_stroke_edit_mode(params):
         ("gpencil.interpolate_sequence", {"type": 'E', "value": 'PRESS', "shift": True, "ctrl": True}, None),
         # Selection
         *_grease_pencil_selection(params),
+        ("gpencil.select_lasso", {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True},
+         {"properties": [("mode", 'ADD')]}),
+        ("gpencil.select_lasso", {"type": params.action_mouse, "value": 'CLICK_DRAG', "shift": True, "ctrl": True},
+         {"properties": [("mode", 'SUB')]}),
         # Duplicate and move selected points
         ("gpencil.duplicate_move", {"type": 'D', "value": 'PRESS', "shift": True}, None),
         # Extrude and move selected points
@@ -3984,6 +4002,7 @@ def km_grease_pencil_stroke_sculpt_mode(params):
     items.extend([
         # Selection
         *_grease_pencil_selection(params, alt_select=True),
+        *_template_items_select_lasso(params, "gpencil.select_lasso"),
         # Selection mode
         ("wm.context_toggle", {"type": 'ONE', "value": 'PRESS'},
          {"properties": [("data_path", 'scene.tool_settings.use_gpencil_select_mask_point')]}),
@@ -4341,6 +4360,7 @@ def km_grease_pencil_stroke_vertex_mode(params):
     items.extend([
         # Selection
         *_grease_pencil_selection(params, alt_select=True),
+        *_template_items_select_lasso(params, "gpencil.select_lasso"),
         # Selection mode
         ("wm.context_toggle", {"type": 'ONE', "value": 'PRESS'},
          {"properties": [("data_path", 'scene.tool_settings.use_gpencil_vertex_select_mask_point')]}),
@@ -5209,6 +5229,7 @@ def km_paint_face_mask(params):
 
     items.extend([
         *_template_items_select_actions(params, "paint.face_select_all"),
+        *_template_items_select_lasso(params, "view3d.select_lasso"),
         *_template_items_hide_reveal_actions("paint.face_select_hide", "paint.face_vert_reveal"),
         ("paint.face_select_linked", {"type": 'L', "value": 'PRESS', "ctrl": True}, None),
         ("paint.face_select_linked_pick", {"type": 'L', "value": 'PRESS'},
@@ -5237,12 +5258,9 @@ def km_paint_vertex_mask(params):
 
     items.extend([
         *_template_items_select_actions(params, "paint.vert_select_all"),
+        *_template_items_select_lasso(params, "view3d.select_lasso"),
         *_template_items_hide_reveal_actions("paint.vert_select_hide", "paint.face_vert_reveal"),
         ("view3d.select_box", {"type": 'B', "value": 'PRESS'}, None),
-        ("view3d.select_lasso", {"type": params.action_mouse, "value": 'CLICK_DRAG', "ctrl": True},
-         {"properties": [("mode", 'ADD')]}),
-        ("view3d.select_lasso", {"type": params.action_mouse, "value": 'CLICK_DRAG', "shift": True, "ctrl": True},
-         {"properties": [("mode", 'SUB')]}),
         ("view3d.select_circle", {"type": 'C', "value": 'PRESS'}, None),
         ("paint.vert_select_linked", {"type": 'L', "value": 'PRESS', "ctrl": True}, None),
         ("paint.vert_select_linked_pick", {"type": 'L', "value": 'PRESS'},
@@ -5377,18 +5395,24 @@ def km_sculpt(params):
         *_template_items_context_panel("VIEW3D_PT_sculpt_context_menu", params.context_menu_event),
     ])
 
-    # Lasso Masking
+    # Lasso Masking.
+    # Because of shortcut conflicts on Ctrl LMB on right click select,
+    # all modifier keys are used together to unmask (equivilant of selecting)
     if params.select_mouse == 'RIGHTMOUSE':
         items.extend([
-            ("paint.mask_lasso_gesture", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "ctrl": True},
-                {"properties": [("value", 1.0)]}),
+            ("paint.mask_lasso_gesture",
+             {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "ctrl": True},
+             {"properties": [("value", 1.0)]}),
+            ("paint.mask_lasso_gesture",
+             {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "ctrl": True, "alt": True},
+             {"properties": [("value", 0.0)]}),
         ])
     else:
         items.extend([
             ("paint.mask_lasso_gesture", {"type": 'RIGHTMOUSE', "value": 'PRESS', "shift": True, "ctrl": True},
-                {"properties": [("value", 1.0)]}),
+             {"properties": [("value", 1.0)]}),
             ("paint.mask_lasso_gesture", {"type": 'RIGHTMOUSE', "value": 'PRESS', "ctrl": True},
-                {"properties": [("value", 0.0)]}),
+             {"properties": [("value", 0.0)]}),
         ])
 
     if params.legacy:
