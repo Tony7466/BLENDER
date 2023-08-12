@@ -4365,10 +4365,15 @@ void ED_screens_header_tools_menu_create(bContext *C, uiLayout *layout, void * /
 {
   ScrArea *area = CTX_wm_area(C);
   {
-    PointerRNA ptr;
-    RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Space, area->spacedata.first, &ptr);
+    PointerRNA space_ptr;
+    RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Space, area->spacedata.first, &space_ptr);
     if (!ELEM(area->spacetype, SPACE_TOPBAR)) {
-      uiItemR(layout, &ptr, "show_region_header", UI_ITEM_NONE, IFACE_("Show Header"), ICON_NONE);
+      uiItemR(layout,
+              &space_ptr,
+              "show_region_header",
+              UI_ITEM_NONE,
+              IFACE_("Show Header"),
+              ICON_NONE);
     }
 
     ARegion *region_header = BKE_area_find_region_type(area, RGN_TYPE_HEADER);
@@ -4377,7 +4382,7 @@ void ED_screens_header_tools_menu_create(bContext *C, uiLayout *layout, void * /
 
     if (BKE_area_find_region_type(area, RGN_TYPE_TOOL_HEADER)) {
       uiItemR(col,
-              &ptr,
+              &space_ptr,
               "show_region_tool_header",
               UI_ITEM_NONE,
               IFACE_("Show Tool Settings"),
@@ -4388,6 +4393,10 @@ void ED_screens_header_tools_menu_create(bContext *C, uiLayout *layout, void * /
             IFACE_("Show Menus"),
             (area->flag & HEADER_NO_PULLDOWN) ? ICON_CHECKBOX_DEHLT : ICON_CHECKBOX_HLT,
             "SCREEN_OT_header_toggle_menus");
+
+    PointerRNA area_ptr;
+    RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Area, area, &area_ptr);
+    uiItemR(col, &area_ptr, "show_space_presets", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
   if (!ELEM(area->spacetype, SPACE_TOPBAR)) {

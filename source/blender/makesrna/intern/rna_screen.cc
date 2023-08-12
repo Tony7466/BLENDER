@@ -470,6 +470,10 @@ static void rna_def_area(BlenderRNA *brna)
   RNA_def_property_boolean_negative_sdna(prop, nullptr, "flag", HEADER_NO_PULLDOWN);
   RNA_def_property_ui_text(prop, "Show Menus", "Show menus in the header");
 
+  prop = RNA_def_property(srna, "show_space_presets", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", AREA_FLAG_SPACE_PRESETS);
+  RNA_def_property_ui_text(prop, "Show Space Presets", "Show space presets in header");
+
   /* Note on space type use of #SPACE_EMPTY, this is not visible to the user,
    * and script authors should be able to assign this value, however the value may be set
    * and needs to be read back by script authors.

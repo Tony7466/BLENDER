@@ -564,6 +564,7 @@ enum {
   AREA_FLAG_ACTIONZONES_UPDATE = (1 << 8),
   /** For off-screen areas. */
   AREA_FLAG_OFFSCREEN = (1 << 9),
+  AREA_FLAG_SPACE_PRESETS = (1 << 10),
 };
 
 #define AREAGRID 4
