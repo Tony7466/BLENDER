@@ -547,6 +547,7 @@ void BKE_space_presets_freelist(ListBase *lb)
   }
   BLI_freelistN(lb);
 }
+
 void BKE_space_presets_copylist(ListBase *lb_dst, ListBase *lb_src)
 {
   BLI_listbase_clear(lb_dst);

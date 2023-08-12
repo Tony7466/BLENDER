@@ -120,28 +120,17 @@ void uiTemplateHeader(uiLayout *layout, bContext *C)
   SpaceLink *active_space = static_cast<SpaceLink *>(area->spacedata.first);
   int index;
   LISTBASE_FOREACH_INDEX (SpacePreset *, space_preset, &area->space_presets, index) {
-    if (space_preset->space == active_space) {
-      uiItemFullO(row,
-                  "ui.space_presets_disable",
-                  "",
-                  ICON_RADIOBUT_ON,
-                  nullptr,
-                  WM_OP_INVOKE_AREA,
-                  UI_ITEM_NONE,
-                  nullptr);
-    }
-    else {
-      PointerRNA props;
-      uiItemFullO(row,
-                  "ui.space_preset_activate",
-                  "",
-                  ICON_RADIOBUT_OFF,
-                  nullptr,
-                  WM_OP_INVOKE_AREA,
-                  UI_ITEM_NONE,
-                  &props);
-      RNA_int_set(&props, "preset_index", index);
-    }
+    const bool is_active = space_preset->space == active_space;
+    PointerRNA props;
+    uiItemFullO(row,
+                "ui.space_preset_activate",
+                "",
+                is_active ? ICON_RADIOBUT_ON : ICON_RADIOBUT_OFF,
+                nullptr,
+                WM_OP_INVOKE_AREA,
+                UI_ITEM_NONE,
+                &props);
+    RNA_int_set(&props, "preset_index", index);
   }
 }
 
