@@ -10,7 +10,8 @@
 
 #include "BLI_jitter_2d.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector.hh"
 #include "BLI_rect.h"
 #include "BLI_string.h"
@@ -64,6 +65,7 @@
 
 #include "GPU_batch.h"
 #include "GPU_batch_presets.h"
+#include "GPU_capabilities.h"
 #include "GPU_framebuffer.h"
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
@@ -82,7 +84,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
@@ -1444,6 +1446,8 @@ static void draw_selected_name(
 
   BLI_assert(i < int(ARRAY_SIZE(info_array)));
   char info[300];
+  /* It's expected there will be enough room for the buffer (if not, increase it). */
+  BLI_assert(BLI_string_len_array(info_array, i) < sizeof(info));
   BLI_string_join_array(info, sizeof(info), info_array, i);
 
   BLF_enable(font_id, BLF_SHADOW);
@@ -1902,7 +1906,16 @@ ImBuf *ED_view3d_draw_offscreen_imbuf(Depsgraph *depsgraph,
   bool is_ortho = false;
   float winmat[4][4];
 
-  if (ofs && ((GPU_offscreen_width(ofs) != sizex) || (GPU_offscreen_height(ofs) != sizey))) {
+  /* Determine desired offscreen format depending on HDR availability. */
+  bool use_hdr = false;
+  if (scene && ((scene->view_settings.flag & COLORMANAGE_VIEW_USE_HDR) != 0)) {
+    use_hdr = GPU_hdr_support();
+  }
+  eGPUTextureFormat desired_format = (use_hdr) ? GPU_RGBA16F : GPU_RGBA8;
+
+  if (ofs && ((GPU_offscreen_width(ofs) != sizex) || (GPU_offscreen_height(ofs) != sizey) ||
+              (GPU_offscreen_format(ofs) != desired_format)))
+  {
     /* sizes differ, can't reuse */
     ofs = nullptr;
   }
@@ -1921,7 +1934,7 @@ ImBuf *ED_view3d_draw_offscreen_imbuf(Depsgraph *depsgraph,
     ofs = GPU_offscreen_create(sizex,
                                sizey,
                                true,
-                               GPU_RGBA8,
+                               desired_format,
                                GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_HOST_READ,
                                err_out);
     if (ofs == nullptr) {
@@ -2392,7 +2405,7 @@ void ED_view3d_depth_override(Depsgraph *depsgraph,
   rv3d->rflag |= RV3D_ZOFFSET_DISABLED;
 
   /* Needed in cases the 3D Viewport isn't already setup. */
-  WM_draw_region_viewport_ensure(region, SPACE_VIEW3D);
+  WM_draw_region_viewport_ensure(scene, region, SPACE_VIEW3D);
   WM_draw_region_viewport_bind(region);
 
   GPUViewport *viewport = WM_draw_region_get_viewport(region);
