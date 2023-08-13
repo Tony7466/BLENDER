@@ -13,6 +13,45 @@ vec3 hsv_to_rgb(vec3 hsv)
   return ((nrgb - 1.0) * hsv.y + 1.0) * hsv.z;
 }
 
+vec3 wire_selected_color_get(bool is_active)
+{
+  vec3 wire_col;
+  if (isTransform) {
+    wire_col = colorTransform.rgb;
+  }
+  else if (is_active) {
+    wire_col = colorActive.rgb;
+  }
+  else {
+    wire_col = colorSelect.rgb;
+  }
+  return wire_col;
+}
+
+vec3 wire_color_get()
+{
+  vec3 wire_col;
+  int flag = int(abs(ObjectInfo.w));
+  bool is_active = (flag & DRW_BASE_ACTIVE) != 0;
+  bool is_selected = (flag & DRW_BASE_SELECTED) != 0;
+
+  if (useColoring && is_selected) {
+    wire_col = wire_selected_color_get(is_active);
+  }
+  else if (colorType == V3D_SHADING_SINGLE_COLOR) {
+    wire_col = colorWire.rgb;
+  }
+  else if (colorType == V3D_SHADING_RANDOM_COLOR) {
+    /* Dim random color. */
+    float hue = ObjectInfo.z;
+    vec3 hsv = vec3(hue, 0.75, 0.8);
+    wire_col = hsv_to_rgb(hsv);
+  }
+  else /* V3D_SHADING_OBJECT_COLOR */
+    wire_col = ObjectColor.rgb;
+  return wire_col;
+}
+
 void main()
 {
   bool no_attr = all(equal(nor, vec3(0)));
@@ -51,44 +90,19 @@ void main()
 
 #ifndef SELECT_EDGES
   edgePos = edgeStart;
-#else 
+#else
     /* HACK: to avoid losing sub-pixel object in selections, we add a bit of randomness to the
    * wire to at least create one fragment that will pass the occlusion query. */
   gl_Position.xy += sizeViewportInv * gl_Position.w * ((gl_VertexID % 2 == 0) ? -1.0 : 1.0);
 #endif
-  
+
   /* Cull flat edges below threshold. */
   if (!no_attr && !is_edge_sharpness_visible(wd)) {
     edgeStart = vec2(-1.0);
   }
 
-  /* Base Color */
-  if (isRandomColor) { /* Dim random color. */
-    float hue = ObjectInfo.z;
-    vec3 hsv = vec3(hue, 0.75, 0.8);
-    finalColor.rgb = hsv_to_rgb(hsv);  
-  }
-  else { /* Initialize variable. */
-    finalColor.rgb = ObjectColor.rgb;
-  }
-  finalColor.rgb = (isSingleColor) ? colorWire.rgb : finalColor.rgb;
-
-  /* Selection Color */
-    int flag = int(abs(ObjectInfo.w));
-    bool is_selected = (flag & DRW_BASE_SELECTED) != 0;
-    bool is_active = (flag & DRW_BASE_ACTIVE) != 0;
-
-  if (is_selected && useColoring) {
-    if (isTransform) {
-      finalColor.rgb = colorTransform.rgb;
-    }
-    else if (is_active) {
-      finalColor.rgb = colorActive.rgb;
-    }
-    else {
-      finalColor.rgb = colorSelect.rgb;
-    }
-  }
+  /* Wire Color */
+  finalColor.rgb = wire_color_get();
 
   /* Fresnel */
   facing = clamp(abs(facing), 0.0, 1.0);

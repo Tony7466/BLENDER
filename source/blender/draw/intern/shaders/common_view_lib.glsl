@@ -291,6 +291,9 @@ float get_homogenous_z_offset(float vs_z, float hs_w, float vs_offset)
 #define DRW_BASE_FROM_SET (1 << 3)
 #define DRW_BASE_ACTIVE (1 << 4)
 
+#define V3D_SHADING_RANDOM_COLOR 1
+#define V3D_SHADING_SINGLE_COLOR 2
+
 /* ---- Opengl Depth conversion ---- */
 
 float linear_depth(bool is_persp, float z, float zf, float zn)
