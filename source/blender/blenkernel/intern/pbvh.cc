@@ -318,29 +318,20 @@ static int map_insert_vert(
 /* Find vertices used by the faces in this node and update the draw buffers */
 static void build_mesh_leaf_node(PBVH *pbvh, PBVHNode *node)
 {
-  bool has_visible = false;
-
   node->uniq_verts = node->face_verts = 0;
-  const int totface = node->prim_indices.size();
+  const Span<int> prim_indices = node->prim_indices;
 
   /* reserve size is rough guess */
   blender::Map<int, int> map;
-  map.reserve(totface);
+  map.reserve(prim_indices.size());
 
-  node->face_vert_indices.reinitialize(totface);
+  node->face_vert_indices.reinitialize(prim_indices.size());
 
-  for (int i = 0; i < totface; i++) {
-    const MLoopTri *lt = &pbvh->looptri[node->prim_indices[i]];
+  for (const int i : prim_indices.index_range()) {
+    const MLoopTri &tri = pbvh->looptri[prim_indices[i]];
     for (int j = 0; j < 3; j++) {
       node->face_vert_indices[i][j] = map_insert_vert(
-          pbvh, map, &node->face_verts, &node->uniq_verts, pbvh->corner_verts[lt->tri[j]]);
-    }
-
-    if (has_visible == false) {
-      if (!paint_is_face_hidden(
-              pbvh->looptri_faces.data(), pbvh->hide_poly, node->prim_indices[i])) {
-        has_visible = true;
-      }
+          pbvh, map, &node->face_verts, &node->uniq_verts, pbvh->corner_verts[tri.tri[j]]);
     }
   }
 
@@ -356,19 +347,22 @@ static void build_mesh_leaf_node(PBVH *pbvh, PBVHNode *node)
     node->vert_indices[value] = item.key;
   }
 
-  for (int i = 0; i < totface; i++) {
-    const int sides = 3;
-
-    for (int j = 0; j < sides; j++) {
+  for (const int i : prim_indices.index_range()) {
+    for (int j = 0; j < 3; j++) {
       if (node->face_vert_indices[i][j] < 0) {
         node->face_vert_indices[i][j] = -node->face_vert_indices[i][j] + node->uniq_verts - 1;
       }
     }
   }
 
+  const bool fully_hidden = pbvh->hide_poly &&
+                            std::all_of(
+                                prim_indices.begin(), prim_indices.end(), [&](const int tri) {
+                                  const int face = pbvh->looptri_faces[tri];
+                                  return pbvh->hide_poly[face];
+                                });
+  BKE_pbvh_node_fully_hidden_set(node, fully_hidden);
   BKE_pbvh_node_mark_rebuild_draw(node);
-
-  BKE_pbvh_node_fully_hidden_set(node, !has_visible);
 }
 
 static void update_vb(PBVH *pbvh, PBVHNode *node, const Span<BBC> prim_bbc, int offset, int count)
@@ -927,7 +921,7 @@ void BKE_pbvh_build_grids(PBVH *pbvh,
                           CCGElem **grids,
                           int totgrid,
                           CCGKey *key,
-                          blender::Span<int> gridfaces,
+                          void **gridfaces,
                           DMFlagMat *flagmats,
                           BLI_bitmap **grid_hidden,
                           Mesh *me,
@@ -1742,21 +1736,49 @@ void BKE_pbvh_redraw_BB(PBVH *pbvh, float bb_min[3], float bb_max[3])
   copy_v3_v3(bb_max, bb.bmax);
 }
 
-blender::IndexMask BKE_pbvh_get_grid_updates(const PBVH *pbvh,
-                                             const Span<const PBVHNode *> nodes,
-                                             blender::IndexMaskMemory &memory)
+void BKE_pbvh_get_grid_updates(PBVH *pbvh, bool clear, void ***r_gridfaces, int *r_totface)
 {
-  using namespace blender;
-  Array<bool> faces_to_update(pbvh->faces_num, false);
-  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-    for (const PBVHNode *node : nodes.slice(range)) {
+  GSet *face_set = BLI_gset_ptr_new(__func__);
+  PBVHNode *node;
+  PBVHIter iter;
+
+  pbvh_iter_begin(&iter, pbvh, nullptr, nullptr);
+
+  while ((node = pbvh_iter_next(&iter, PBVH_Leaf))) {
+    if (node->flag & PBVH_UpdateNormals) {
       for (const int grid : node->prim_indices) {
-        const int face = pbvh->gridfaces[grid];
-        faces_to_update[face] = true;
+        void *face = pbvh->gridfaces[grid];
+        BLI_gset_add(face_set, face);
+      }
+
+      if (clear) {
+        node->flag &= ~PBVH_UpdateNormals;
+      }
     }
   }
-  });
-  return IndexMask::from_bools(faces_to_update, memory);
+
+  pbvh_iter_end(&iter);
+
+  const int tot = BLI_gset_len(face_set);
+  if (tot == 0) {
+    *r_totface = 0;
+    *r_gridfaces = nullptr;
+    BLI_gset_free(face_set, nullptr);
+    return;
+  }
+
+  void **faces = static_cast<void **>(MEM_mallocN(sizeof(*faces) * tot, __func__));
+
+  GSetIterator gs_iter;
+  int i;
+  GSET_ITER_INDEX (gs_iter, face_set, i) {
+    faces[i] = BLI_gsetIterator_getKey(&gs_iter);
+  }
+
+  BLI_gset_free(face_set, nullptr);
+
+  *r_totface = tot;
+  *r_gridfaces = faces;
 }
 
 /***************************** PBVH Access ***********************************/
@@ -2280,7 +2302,7 @@ static bool pbvh_faces_node_raycast(PBVH *pbvh,
     const MLoopTri *lt = &pbvh->looptri[looptri_i];
     const blender::int3 face_verts = node->face_vert_indices[i];
 
-    if (paint_is_face_hidden(pbvh->looptri_faces.data(), pbvh->hide_poly, looptri_i)) {
+    if (pbvh->hide_poly && pbvh->hide_poly[pbvh->looptri_faces[looptri_i]]) {
       continue;
     }
 
@@ -2627,7 +2649,7 @@ static bool pbvh_faces_node_nearest_to_ray(PBVH *pbvh,
     const MLoopTri *lt = &pbvh->looptri[looptri_i];
     const blender::int3 face_verts = node->face_vert_indices[i];
 
-    if (paint_is_face_hidden(pbvh->looptri_faces.data(), pbvh->hide_poly, looptri_i)) {
+    if (pbvh->hide_poly && pbvh->hide_poly[pbvh->looptri_faces[looptri_i]]) {
       continue;
     }
 
@@ -2817,7 +2839,6 @@ bool BKE_pbvh_node_frustum_exclude_AABB(PBVHNode *node, void *data)
 
 void BKE_pbvh_update_normals(PBVH *pbvh, SubdivCCG *subdiv_ccg)
 {
-  using namespace blender;
   /* Update normals */
   Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(
       pbvh, update_search_cb, POINTER_FROM_INT(PBVH_UpdateNormals));
@@ -2830,11 +2851,12 @@ void BKE_pbvh_update_normals(PBVH *pbvh, SubdivCCG *subdiv_ccg)
       pbvh_faces_update_normals(pbvh, nodes);
     }
     else if (pbvh->header.type == PBVH_GRIDS) {
-      IndexMaskMemory memory;
-      const IndexMask faces_to_update = BKE_pbvh_get_grid_updates(pbvh, nodes, memory);
-      BKE_subdiv_ccg_update_normals(subdiv_ccg, faces_to_update);
-      for (PBVHNode *node : nodes) {
-        node->flag &= ~PBVH_UpdateNormals;
+      CCGFace **faces;
+      int num_faces;
+      BKE_pbvh_get_grid_updates(pbvh, true, (void ***)&faces, &num_faces);
+      if (num_faces > 0) {
+        BKE_subdiv_ccg_update_normals(subdiv_ccg, faces, num_faces);
+        MEM_freeN(faces);
       }
     }
   }
@@ -2953,7 +2975,7 @@ void BKE_pbvh_draw_debug_cb(PBVH *pbvh,
 
 void BKE_pbvh_grids_update(PBVH *pbvh,
                            CCGElem **grids,
-                           blender::Span<int> gridfaces,
+                           void **gridfaces,
                            DMFlagMat *flagmats,
                            BLI_bitmap **grid_hidden,
                            CCGKey *key)
