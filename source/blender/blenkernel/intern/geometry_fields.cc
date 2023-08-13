@@ -706,7 +706,7 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
 
     if (attribute_matches) {
       if (GAttributeGridWriter attribute = attributes.lookup_grid_for_write(attribute_id)) {
-        attribute.grid.try_assign(grid);
+        attribute.grid = grid;
         attribute.finish();
         return true;
       }
