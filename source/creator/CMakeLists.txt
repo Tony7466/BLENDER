@@ -423,10 +423,67 @@ endif()
 
 
 # Important to make a clean install each time, else old scripts get loaded.
-install(
-  CODE
-  "file(REMOVE_RECURSE ${TARGETDIR_VER})"
+#
+# NOTE(@ideasman42): originally the entire directory was removed with the following command:
+# `install(CODE "file(REMOVE_RECURSE ${TARGETDIR_VER})")`
+# however this isn't so nice for frequent rebuilds,
+# so only remove files not found in the `install_manifest.txt`.
+function(install_clean_target_paths)
+  # List all directories where stale files will be cleared.
+  set(code_string "set(target_path_list)\n")
+  foreach(path ${ARGV})
+    string(APPEND code_string "\
+if(EXISTS ${path})\n\
+  list(APPEND target_path_list ${path})\n\
+endif()\n"
+    )
+  endforeach()
+
+  # WARNING: recursive glob must NEVER follow symbolic-links because users who
+  # link their own add-ons into the installation directory could have them removed.
+  # This is ensured by setting the `CMP0009` policy to new.
+  string(APPEND code_string "\
+cmake_policy(SET CMP0011 NEW)\n\
+cmake_policy(SET CMP0009 NEW)\n\
+set(manifest_path \"${CMAKE_BINARY_DIR}/install_manifest.txt\")\n\
+if(NOT target_path_list)\n\
+  # Pass.\n\
+elseif(NOT (EXISTS \${manifest_path}))\n\
+  message(WARNING \"Manifest not found: \${manifest_path}\")\n\
+  foreach(target_path \${target_path_list})\n\
+    file(REMOVE_RECURSE \${target_path})\n\
+  endforeach()\n\
+else()\n\
+  set(files_glob)
+  foreach(target_path \${target_path_list})\n\
+    file(GLOB_RECURSE files_glob_sub \${target_path}/*)\n\
+    list(APPEND files_glob \${files_glob_sub})\n\
+    unset(files_glob_sub)\n\
+  endforeach()\n\
+  file(STRINGS \${manifest_path} manifest)\n\
+  list(SORT manifest)\n\
+  list(SORT files_glob)\n\
+  list(REMOVE_ITEM files_glob \${manifest})\n\
+  if(files_glob)\n\
+    list(LENGTH files_glob files_glob_len)\n\
+    string(REPLACE \";\" \", \" target_path_list_repr \"\${target_path_list}\")\n\
+    message(STATUS\n\
+      \"Install clearing \${files_glob_len} file(s) from: \${target_path_list_repr}\"\n\
+    )\n\
+    file(REMOVE_RECURSE \${files_glob})\n\
+  endif()\n\
+endif()"
+  )
+  install(CODE "${code_string}")
+endfunction()
+
+# The trailing slash causes the paths not to compare with the paths in the manifest.
+string(REGEX REPLACE "[/\\]+$" "" _cmake_install_prefix_noslash ${CMAKE_INSTALL_PREFIX})
+install_clean_target_paths(
+  ${_cmake_install_prefix_noslash}/${TARGETDIR_VER}
+  ${_cmake_install_prefix_noslash}/${TARGETDIR_TEXT}/license
 )
+unset(_cmake_install_prefix_noslash)
 
 if(WITH_PYTHON)
   # install(CODE "message(\"copying blender scripts...\")")
