@@ -15,7 +15,8 @@
 #include "DNA_mesh_types.h"
 #include "DNA_screen_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_rect.h"
 
 #include "BKE_context.h"
@@ -44,7 +45,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "BLF_api.h"
 #include "BLT_translation.h"
@@ -650,7 +651,9 @@ static bool transform_modal_item_poll(const wmOperator *op, int value)
         return false;
       }
       if (value == TFM_MODAL_RESIZE && t->mode == TFM_RESIZE) {
-        return false;
+        /* The tracking transform in MovieClip has an alternate resize that only affects the
+         * tracker size and not the search area. */
+        return t->data_type == &TransConvertType_Tracking;
       }
       if (value == TFM_MODAL_VERT_EDGE_SLIDE &&
           (t->data_type != &TransConvertType_Mesh ||
