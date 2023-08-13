@@ -8,8 +8,6 @@
 #include "BLI_generic_virtual_array.hh"
 #include "BLI_virtual_array.hh"
 
-#include "BLI_group_deduce.hh"
-
 #include "NOD_socket_search_link.hh"
 
 #include "node_geometry_util.hh"
