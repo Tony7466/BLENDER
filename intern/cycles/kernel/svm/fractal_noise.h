@@ -125,9 +125,9 @@ ccl_device_noinline float noise_fbm(
 /* Multifractal */
 
 ccl_device_noinline float noise_multi_fractal(float p,
-                                                  float octaves,
-                                                  float roughness,
-                                                  float lacunarity)
+                                              float octaves,
+                                              float roughness,
+                                              float lacunarity)
 {
   float value = 1.0f;
   float pwr = 1.0f;
@@ -147,9 +147,9 @@ ccl_device_noinline float noise_multi_fractal(float p,
 }
 
 ccl_device_noinline float noise_multi_fractal(float2 p,
-                                                  float octaves,
-                                                  float roughness,
-                                                  float lacunarity)
+                                              float octaves,
+                                              float roughness,
+                                              float lacunarity)
 {
   float value = 1.0f;
   float pwr = 1.0f;
@@ -169,9 +169,9 @@ ccl_device_noinline float noise_multi_fractal(float2 p,
 }
 
 ccl_device_noinline float noise_multi_fractal(float3 p,
-                                                  float octaves,
-                                                  float roughness,
-                                                  float lacunarity)
+                                              float octaves,
+                                              float roughness,
+                                              float lacunarity)
 {
   float value = 1.0f;
   float pwr = 1.0f;
@@ -191,9 +191,9 @@ ccl_device_noinline float noise_multi_fractal(float3 p,
 }
 
 ccl_device_noinline float noise_multi_fractal(float4 p,
-                                                  float octaves,
-                                                  float roughness,
-                                                  float lacunarity)
+                                              float octaves,
+                                              float roughness,
+                                              float lacunarity)
 {
   float value = 1.0f;
   float pwr = 1.0f;
