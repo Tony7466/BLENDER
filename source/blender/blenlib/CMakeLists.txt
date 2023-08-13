@@ -233,6 +233,7 @@ set(SRC
   BLI_generic_virtual_array.hh
   BLI_generic_virtual_vector_array.hh
   BLI_ghash.h
+  BLI_group_deduce.hh
   BLI_gsqueue.h
   BLI_hash.h
   BLI_hash.hh
@@ -388,7 +389,7 @@ set(LIB
   bf_intern_eigen
   PRIVATE bf::intern::guardedalloc
   extern_wcwidth
-  PRIVATE bf::intern::atomic
+  PUBLIC bf::intern::atomic
   ${ZLIB_LIBRARIES}
   ${ZSTD_LIBRARIES}
 )
