@@ -299,7 +299,6 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
     if (!grid_ptr) {
       return nullptr;
     }
-    BLI_assert(grid_ptr->voxel_count() >= (mask.grid_ ? mask.grid_->activeVoxelCount() : 0));
     return grid_ptr;
   };
 
@@ -312,18 +311,20 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
 
     /* Try to get an existing virtual array that the result should be written into. */
     GMutableGrid *dst_grid_ptr = get_dst_grid(out_index);
-    if (!dst_grid_ptr) {
-      /* Create a destination grid for the computed result. */
-      GMutableGrid dst_grid = GMutableGrid::create(
+    {
+      GMutableGrid grid_base = GMutableGrid::create(
           type, mask, type.default_value(), type.default_value());
-      scope.add_value<GMutableGrid>(std::move(dst_grid));
-      dst_grid_ptr = &dst_grid;
-      r_grids[out_index] = dst_grid;
-    }
-    else {
-      /* Write the result into the existing grid. */
+      if (!dst_grid_ptr) {
+        /* Create a destination grid pointer in the resource scope. */
+        GMutableGrid &dst_grid = scope.add_value<GMutableGrid>(std::move(grid_base));
+        dst_grid_ptr = &dst_grid;
+      }
+      else {
+        /* Write the result into the existing grid. */
+        *dst_grid_ptr = std::move(grid_base);
+        r_is_output_written_to_dst[out_index] = true;
+      }
       r_grids[out_index] = *dst_grid_ptr;
-      r_is_output_written_to_dst[out_index] = true;
     }
 
     /* Execute the multifunction procedure on each leaf buffer of the mask.
