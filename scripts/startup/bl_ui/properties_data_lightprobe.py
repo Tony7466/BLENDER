@@ -116,6 +116,7 @@ class DATA_PT_lightprobe_eevee_next(DataButtonsPanel, Panel):
             col.prop(probe, "grid_normal_bias")
             col.prop(probe, "grid_view_bias")
             col.prop(probe, "grid_irradiance_smoothing")
+            col.prop(probe, "grid_validity_threshold")
 
             col.separator()
 
@@ -126,6 +127,12 @@ class DATA_PT_lightprobe_eevee_next(DataButtonsPanel, Panel):
 
             col.prop(probe, "grid_dilation_threshold")
             col.prop(probe, "grid_dilation_radius")
+
+            col.separator()
+
+            col.prop(probe, "grid_capture_world")
+            col.prop(probe, "grid_capture_indirect")
+            col.prop(probe, "grid_capture_emission")
 
             col.separator()
 
