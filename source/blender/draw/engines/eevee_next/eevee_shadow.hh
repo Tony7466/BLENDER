@@ -207,9 +207,13 @@ class ShadowModule {
   StorageVectorBuffer<uint, 128> curr_casters_ = {"CurrCasters"};
 
   /** Indirect arguments for page clearing. */
-  DrawIndirectBuf clear_draw_buf_;
-  /** View to pages mapping. */
-  StorageArrayBuffer<uint, SHADOW_VIEW_MAX> render_map_buf_ = {"render_map_buf"};
+  DispatchIndirectBuf clear_dispatch_buf_;
+  /** Array containing a compact stream of tiles to clear. */
+  StorageArrayBuffer<uint, SHADOW_RENDER_MAP_SIZE, true> clear_list_buf_ = {"clear_list_buf"};
+  /** Tile to pages mapping. */
+  StorageArrayBuffer<uint, SHADOW_RENDER_MAP_SIZE, true> render_map_buf_ = {"render_map_buf"};
+  /** View to LOD mapping. Used to select the correct viewport. */
+  StorageArrayBuffer<uint, SHADOW_VIEW_MAX, true> view_lod_buf_ = {"view_lod_buf"};
 
   int3 dispatch_depth_scan_size_;
   /* Ratio between tile-map pixel world "radius" and film pixel world "radius". */
@@ -227,7 +231,7 @@ class ShadowModule {
   /** \name Page Management
    * \{ */
 
-  static constexpr eGPUTextureFormat atlas_type = GPU_DEPTH_COMPONENT32F;
+  static constexpr eGPUTextureFormat atlas_type = GPU_R32UI;
   /** Atlas containing all physical pages. */
   Texture atlas_tx_ = {"shadow_atlas_tx_"};
 

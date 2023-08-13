@@ -547,8 +547,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_shadow_lib.glsl
   engines/eevee_next/shaders/eevee_shadow_clipmap_clear_comp.glsl
   engines/eevee_next/shaders/eevee_shadow_page_allocate_comp.glsl
-  engines/eevee_next/shaders/eevee_shadow_page_clear_frag.glsl
-  engines/eevee_next/shaders/eevee_shadow_page_clear_vert.glsl
+  engines/eevee_next/shaders/eevee_shadow_page_clear_comp.glsl
   engines/eevee_next/shaders/eevee_shadow_page_defrag_comp.glsl
   engines/eevee_next/shaders/eevee_shadow_page_free_comp.glsl
   engines/eevee_next/shaders/eevee_shadow_page_mask_comp.glsl

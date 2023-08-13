@@ -126,16 +126,19 @@ void init_interface()
 }
 
 #ifdef GPU_VERTEX_SHADER
-void shadow_viewport_layer_set(uvec3 page_co)
+void shadow_viewport_layer_set(int view_id, int lod)
 {
-  gpu_Layer = int(page_co.z);
-  gpu_ViewportIndex = int(page_co.x + page_co.y * 4);
+  /* We still render to a layered framebuffer in the case of Metal + Tile Based Renderer.
+   * Since it needs correct depth buffering, each view needs to not overlap each others.
+   * It doesn't matter much for other platform, so we use that as a way to pass the view id. */
+  gpu_Layer = view_id;
+  gpu_ViewportIndex = lod;
 }
 #endif
 
 #ifdef GPU_FRAGMENT_SHADER
 int shadow_view_id_get()
 {
-  return gpu_Layer * 16 + gpu_ViewportIndex;
+  return gpu_Layer;
 }
 #endif

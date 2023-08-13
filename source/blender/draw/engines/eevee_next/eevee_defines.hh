@@ -64,6 +64,7 @@
 #define SHADOW_BOUNDS_GROUP_SIZE 64
 #define SHADOW_CLIPMAP_GROUP_SIZE 64
 #define SHADOW_VIEW_MAX 64 /* Must match DRW_VIEW_MAX. */
+#define SHADOW_RENDER_MAP_SIZE (SHADOW_VIEW_MAX * SHADOW_TILEMAP_LOD0_LEN)
 #define SHADOW_ATOMIC 1
 #define SHADOW_PAGE_PER_ROW 4
 #define SHADOW_PAGE_PER_COL 4
@@ -145,6 +146,8 @@
 #define VOLUME_PROP_EXTINCTION_IMG_SLOT 1
 #define VOLUME_PROP_EMISSION_IMG_SLOT 2
 #define VOLUME_PROP_PHASE_IMG_SLOT 3
+/* Only during shadow rendering. */
+#define SHADOW_ATLAS_IMG_SLOT 4
 
 /* Uniform Buffers. */
 /* Slot 0 is GPU_NODE_TREE_UBO_SLOT. */
@@ -163,8 +166,6 @@
 #define VELOCITY_CAMERA_PREV_BUF 3
 #define VELOCITY_CAMERA_CURR_BUF 4
 #define VELOCITY_CAMERA_NEXT_BUF 5
-/* Only during shadow rendering. */
-#define SHADOW_RENDER_MAP_BUF_SLOT 3
 
 /* Storage Buffers. */
 #define LIGHT_CULL_BUF_SLOT 0
@@ -172,14 +173,16 @@
 #define LIGHT_ZBIN_BUF_SLOT 2
 #define LIGHT_TILE_BUF_SLOT 3
 #define IRRADIANCE_BRICK_BUF_SLOT 4
+#define SAMPLING_BUF_SLOT 6
+#define CRYPTOMATTE_BUF_SLOT 7
 /* Only during surface capture. */
 #define SURFEL_BUF_SLOT 4
 /* Only during surface capture. */
 #define CAPTURE_BUF_SLOT 5
 /* Only during shadow rendering. */
+#define SHADOW_RENDER_MAP_BUF_SLOT 3
 #define SHADOW_PAGE_INFO_SLOT 4
-#define SAMPLING_BUF_SLOT 6
-#define CRYPTOMATTE_BUF_SLOT 7
+#define SHADOW_VIEW_LOD_BUF_SLOT 5
 
 /* Only during pre-pass. */
 #define VELOCITY_OBJ_PREV_BUF_SLOT 0

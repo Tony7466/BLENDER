@@ -151,8 +151,10 @@ void ShadowPipeline::sync()
   surface_ps_.init();
   surface_ps_.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS);
   surface_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+  surface_ps_.bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
   surface_ps_.bind_ubo(CAMERA_BUF_SLOT, inst_.camera.ubo_get());
   surface_ps_.bind_ssbo(SHADOW_RENDER_MAP_BUF_SLOT, &inst_.shadows.render_map_buf_);
+  surface_ps_.bind_ssbo(SHADOW_VIEW_LOD_BUF_SLOT, &inst_.shadows.view_lod_buf_);
   surface_ps_.bind_ssbo(SHADOW_PAGE_INFO_SLOT, &inst_.shadows.pages_infos_data_);
   inst_.sampling.bind_resources(&surface_ps_);
 }

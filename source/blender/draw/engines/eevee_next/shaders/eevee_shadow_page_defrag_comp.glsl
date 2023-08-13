@@ -123,9 +123,7 @@ void main()
   }
 
   /* Reset clear command indirect buffer. */
-  clear_draw_buf.vertex_len = 0;
-  clear_draw_buf.instance_len = 1;
-  clear_draw_buf.vertex_first = 0;
-  clear_draw_buf.base_index = 0;
-  clear_draw_buf.instance_first_indexed = 0;
+  clear_dispatch_buf.num_groups_x = pages_infos_buf.page_size / SHADOW_PAGE_CLEAR_GROUP_SIZE;
+  clear_dispatch_buf.num_groups_y = pages_infos_buf.page_size / SHADOW_PAGE_CLEAR_GROUP_SIZE;
+  clear_dispatch_buf.num_groups_z = 0;
 }

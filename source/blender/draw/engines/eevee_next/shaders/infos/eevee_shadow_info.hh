@@ -137,7 +137,7 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_defrag)
     .storage_buf(2, Qualifier::READ_WRITE, "ShadowPagesInfoData", "pages_infos_buf")
     .storage_buf(3, Qualifier::READ_WRITE, "uint", "pages_free_buf[]")
     .storage_buf(4, Qualifier::READ_WRITE, "uvec2", "pages_cached_buf[]")
-    .storage_buf(5, Qualifier::WRITE, "DrawCommand", "clear_draw_buf")
+    .storage_buf(5, Qualifier::WRITE, "DispatchCommand", "clear_dispatch_buf")
     .storage_buf(6, Qualifier::READ_WRITE, "ShadowStatistics", "statistics_buf")
     .additional_info("eevee_shared")
     .compute_source("eevee_shadow_page_defrag_comp.glsl");
@@ -164,9 +164,11 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_tilemap_finalize)
     .storage_buf(2, Qualifier::READ_WRITE, "ShadowPagesInfoData", "pages_infos_buf")
     .storage_buf(3, Qualifier::WRITE, "ViewMatrices", "view_infos_buf[SHADOW_VIEW_MAX]")
     .storage_buf(4, Qualifier::READ_WRITE, "ShadowStatistics", "statistics_buf")
-    .storage_buf(5, Qualifier::READ_WRITE, "DrawCommand", "clear_draw_buf")
-    .storage_buf(6, Qualifier::WRITE, SHADOW_PAGE_PACKED, "render_map_buf[SHADOW_VIEW_MAX]")
-    .storage_buf(7, Qualifier::READ, "ShadowTileMapClip", "tilemaps_clip_buf[]")
+    .storage_buf(5, Qualifier::READ_WRITE, "DispatchCommand", "clear_dispatch_buf")
+    .storage_buf(6, Qualifier::WRITE, SHADOW_PAGE_PACKED, "clear_list_buf[SHADOW_RENDER_MAP_SIZE]")
+    .storage_buf(7, Qualifier::WRITE, SHADOW_PAGE_PACKED, "render_map_buf[SHADOW_RENDER_MAP_SIZE]")
+    .storage_buf(8, Qualifier::WRITE, "uint", "view_lod_buf[SHADOW_VIEW_MAX]")
+    .storage_buf(9, Qualifier::READ, "ShadowTileMapClip", "tilemaps_clip_buf[]")
     .image(0, GPU_R32UI, Qualifier::WRITE, ImageType::UINT_2D, "tilemaps_img")
     .additional_info("eevee_shared")
     .compute_source("eevee_shadow_tilemap_finalize_comp.glsl");
@@ -175,10 +177,14 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear)
     .do_static_compilation(true)
     .local_group_size(SHADOW_PAGE_CLEAR_GROUP_SIZE, SHADOW_PAGE_CLEAR_GROUP_SIZE)
     .storage_buf(2, Qualifier::READ, "ShadowPagesInfoData", "pages_infos_buf")
-    .storage_buf(6, Qualifier::READ, SHADOW_PAGE_PACKED, "render_map_buf[SHADOW_VIEW_MAX]")
+    .storage_buf(6, Qualifier::READ, SHADOW_PAGE_PACKED, "clear_list_buf[SHADOW_RENDER_MAP_SIZE]")
+    .image(SHADOW_ATLAS_IMG_SLOT,
+           GPU_R32UI,
+           Qualifier::READ_WRITE,
+           ImageType::UINT_2D_ARRAY,
+           "shadow_atlas_img")
     .additional_info("eevee_shared")
-    .vertex_source("eevee_shadow_page_clear_vert.glsl")
-    .fragment_source("eevee_shadow_page_clear_frag.glsl");
+    .compute_source("eevee_shadow_page_clear_comp.glsl");
 
 /** \} */
 
@@ -187,7 +193,7 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear)
  * \{ */
 
 GPU_SHADER_CREATE_INFO(eevee_shadow_data)
-    .sampler(SHADOW_ATLAS_TEX_SLOT, ImageType::DEPTH_2D_ARRAY, "shadow_atlas_tx")
+    .sampler(SHADOW_ATLAS_TEX_SLOT, ImageType::UINT_2D_ARRAY, "shadow_atlas_tx")
     .sampler(SHADOW_TILEMAPS_TEX_SLOT, ImageType::UINT_2D, "shadow_tilemaps_tx");
 
 /** \} */

@@ -697,11 +697,13 @@ void ShadowModule::init()
 
   atlas_tx_.filter_mode(false);
 
+  /* Make one viewport per LOD level. LOD0 covers the whole tilemap, LOD1 only a quarter... etc. */
   for (int i = 0; i < multi_viewports_.size(); i++) {
-    multi_viewports_[i][0] = (i % 4) * shadow_page_size_;
-    multi_viewports_[i][1] = (i / 4) * shadow_page_size_;
-    multi_viewports_[i][2] = shadow_page_size_;
-    multi_viewports_[i][3] = shadow_page_size_;
+    int size_in_tile = max_ii(SHADOW_TILEMAP_RES >> i, 1);
+    multi_viewports_[i][0] = 0;
+    multi_viewports_[i][1] = 0;
+    multi_viewports_[i][2] = size_in_tile * shadow_page_size_;
+    multi_viewports_[i][3] = size_in_tile * shadow_page_size_;
   }
 }
 
@@ -996,7 +998,7 @@ void ShadowModule::end_sync()
         sub.bind_ssbo("pages_free_buf", pages_free_data_);
         sub.bind_ssbo("pages_cached_buf", pages_cached_data_);
         sub.bind_ssbo("statistics_buf", statistics_buf_.current());
-        sub.bind_ssbo("clear_draw_buf", clear_draw_buf_);
+        sub.bind_ssbo("clear_dispatch_buf", clear_dispatch_buf_);
         sub.dispatch(int3(1, 1, 1));
         sub.barrier(GPU_BARRIER_SHADER_STORAGE);
       }
@@ -1022,8 +1024,10 @@ void ShadowModule::end_sync()
         sub.bind_ssbo("tiles_buf", tilemap_pool.tiles_data);
         sub.bind_ssbo("view_infos_buf", &shadow_multi_view_.matrices_ubo_get());
         sub.bind_ssbo("statistics_buf", statistics_buf_.current());
-        sub.bind_ssbo("clear_draw_buf", clear_draw_buf_);
+        sub.bind_ssbo("clear_dispatch_buf", clear_dispatch_buf_);
+        sub.bind_ssbo("clear_list_buf", clear_list_buf_);
         sub.bind_ssbo("render_map_buf", render_map_buf_);
+        sub.bind_ssbo("view_lod_buf", view_lod_buf_);
         sub.bind_ssbo("pages_infos_buf", pages_infos_data_);
         sub.bind_image("tilemaps_img", tilemap_pool.tilemap_tx);
         sub.dispatch(int3(1, 1, tilemap_pool.tilemaps_data.size()));
@@ -1037,8 +1041,10 @@ void ShadowModule::end_sync()
         sub.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
         sub.shader_set(inst_.shaders.static_shader_get(SHADOW_PAGE_CLEAR));
         sub.bind_ssbo("pages_infos_buf", pages_infos_data_);
-        sub.bind_ssbo("render_map_buf", render_map_buf_);
-        sub.draw_procedural_indirect(GPU_PRIM_TRIS, clear_draw_buf_);
+        sub.bind_ssbo("clear_list_buf", clear_list_buf_);
+        sub.bind_image("shadow_atlas_img", atlas_tx_);
+        sub.dispatch(clear_dispatch_buf_);
+        sub.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
       }
     }
   }
@@ -1137,7 +1143,7 @@ void ShadowModule::set_view(View &view)
                                                int2(std::exp2(usage_tag_fb_lod_)));
   usage_tag_fb.ensure(usage_tag_fb_resolution_);
 
-  render_fb_.ensure(GPU_ATTACHMENT_TEXTURE(atlas_tx_));
+  render_fb_.ensure(int2(SHADOW_TILEMAP_RES * shadow_page_size_));
   GPU_framebuffer_bind(render_fb_);
   GPU_framebuffer_multi_viewports_set(render_fb_,
                                       reinterpret_cast<int(*)[4]>(multi_viewports_.data()));
@@ -1159,6 +1165,8 @@ void ShadowModule::set_view(View &view)
       shadow_multi_view_.compute_procedural_bounds();
 
       inst_.pipelines.shadow.render(shadow_multi_view_);
+
+      GPU_memory_barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS | GPU_BARRIER_TEXTURE_FETCH);
     }
     DRW_stats_group_end();
 

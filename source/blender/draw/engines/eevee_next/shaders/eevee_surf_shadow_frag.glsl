@@ -15,6 +15,7 @@
 #pragma BLENDER_REQUIRE(eevee_nodetree_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_transparency_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_shadow_tilemap_lib.glsl)
 
 void main()
 {
@@ -31,5 +32,24 @@ void main()
     discard;
     return;
   }
+#endif
+
+#ifdef USE_ATOMIC
+  ivec2 texel_co = ivec2(gl_FragCoord.xy);
+  /* TODO(fclem): Avoid integer ops. */
+  ivec2 tile_co = texel_co / pages_infos_buf.page_size;
+  ivec2 texel_page = texel_co % pages_infos_buf.page_size;
+  int view_index = shadow_view_id_get();
+
+  int render_page_index = shadow_render_page_index_get(view_index, tile_co);
+  uint page_packed = render_map_buf[render_page_index];
+  ivec3 page = ivec3(shadow_page_unpack(page_packed));
+  ivec3 out_texel = ivec3(page.xy * pages_infos_buf.page_size + texel_page, page.z);
+
+  uint u_depth = floatBitsToUint(gl_FragCoord.z);
+  /* Quantization bias. Equivalent to nextafter in C without all the safety. 1 is not enough. */
+  u_depth += 2;
+
+  imageAtomicMin(shadow_atlas_img, out_texel, u_depth);
 #endif
 }
