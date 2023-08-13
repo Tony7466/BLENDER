@@ -1087,15 +1087,15 @@ BOOL ClipCursorAtBounds(const GHOST_Rect &bounds,
                         int32_t &x,
                         int32_t &y)
 {
-  bool warp_x = bounds_axis & GHOST_kAxisX;
-  bool warp_y = bounds_axis & GHOST_kAxisY;
+  const bool warp_x = bounds_axis & GHOST_kAxisX;
+  const bool warp_y = bounds_axis & GHOST_kAxisY;
 
   RECT rect;
   rect.left = warp_x ? bounds.m_l + margin : INT32_MIN;
   rect.top = warp_y ? bounds.m_t + margin : INT32_MIN;
   rect.right = warp_x ? bounds.m_r - margin : INT32_MAX;
   rect.bottom = warp_y ? bounds.m_b - margin : INT32_MAX;
-  BOOL result = ClipCursor(&rect);
+  const BOOL result = ClipCursor(&rect);
 
   if (warp_x) {
     /* x axis clipping is `[left,ritgh)`*/
