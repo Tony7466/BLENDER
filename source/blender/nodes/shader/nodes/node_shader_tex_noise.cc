@@ -212,17 +212,19 @@ class NoiseFunction : public mf::MultiFunction {
     const VArray<float> &detail = params.readonly_single_input<float>(param++, "Detail");
     const VArray<float> &roughness = params.readonly_single_input<float>(param++, "Roughness");
     const VArray<float> &lacunarity = params.readonly_single_input<float>(param++, "Lacunarity");
+    /* Initialize to any other variable when unused to avoid unnecessary conditionals */
     const VArray<float> &offset = ELEM(type_,
                                        SHD_NOISE_RIDGED_MULTIFRACTAL,
                                        SHD_NOISE_HYBRID_MULTIFRACTAL,
                                        SHD_NOISE_HETERO_TERRAIN) ?
                                       params.readonly_single_input<float>(param++, "Offset") :
-                                      VArray<float>{};
+                                      scale;
+    /* Initialize to any other variable when unused to avoid unnecessary conditionals */
     const VArray<float> &gain = ELEM(type_,
                                      SHD_NOISE_RIDGED_MULTIFRACTAL,
                                      SHD_NOISE_HYBRID_MULTIFRACTAL) ?
                                     params.readonly_single_input<float>(param++, "Gain") :
-                                    VArray<float>{};
+                                    scale;
     const VArray<float> &distortion = params.readonly_single_input<float>(param++, "Distortion");
 
     MutableSpan<float> r_factor = params.uninitialized_single_output_if_required<float>(param++,
@@ -239,15 +241,29 @@ class NoiseFunction : public mf::MultiFunction {
         if (compute_factor) {
           mask.foreach_index([&](const int64_t i) {
             const float position = w[i] * scale[i];
-            r_factor[i] = noise::perlin_fractal_distorted(
-                position, detail[i], roughness[i], lacunarity[i], distortion[i], normalize_);
+            r_factor[i] = noise::perlin_fractal_distorted(position,
+                                                          detail[i],
+                                                          roughness[i],
+                                                          lacunarity[i],
+                                                          offset[i],
+                                                          gain[i],
+                                                          distortion[i],
+                                                          type_,
+                                                          normalize_);
           });
         }
         if (compute_color) {
           mask.foreach_index([&](const int64_t i) {
             const float position = w[i] * scale[i];
-            const float3 c = noise::perlin_float3_fractal_distorted(
-                position, detail[i], roughness[i], lacunarity[i], distortion[i], normalize_);
+            const float3 c = noise::perlin_float3_fractal_distorted(position,
+                                                                    detail[i],
+                                                                    roughness[i],
+                                                                    lacunarity[i],
+                                                                    offset[i],
+                                                                    gain[i],
+                                                                    distortion[i],
+                                                                    type_,
+                                                                    normalize_);
             r_color[i] = ColorGeometry4f(c[0], c[1], c[2], 1.0f);
           });
         }
@@ -258,15 +274,29 @@ class NoiseFunction : public mf::MultiFunction {
         if (compute_factor) {
           mask.foreach_index([&](const int64_t i) {
             const float2 position = float2(vector[i] * scale[i]);
-            r_factor[i] = noise::perlin_fractal_distorted(
-                position, detail[i], roughness[i], lacunarity[i], distortion[i], normalize_);
+            r_factor[i] = noise::perlin_fractal_distorted(position,
+                                                          detail[i],
+                                                          roughness[i],
+                                                          lacunarity[i],
+                                                          offset[i],
+                                                          gain[i],
+                                                          distortion[i],
+                                                          type_,
+                                                          normalize_);
           });
         }
         if (compute_color) {
           mask.foreach_index([&](const int64_t i) {
             const float2 position = float2(vector[i] * scale[i]);
-            const float3 c = noise::perlin_float3_fractal_distorted(
-                position, detail[i], roughness[i], lacunarity[i], distortion[i], normalize_);
+            const float3 c = noise::perlin_float3_fractal_distorted(position,
+                                                                    detail[i],
+                                                                    roughness[i],
+                                                                    lacunarity[i],
+                                                                    offset[i],
+                                                                    gain[i],
+                                                                    distortion[i],
+                                                                    type_,
+                                                                    normalize_);
             r_color[i] = ColorGeometry4f(c[0], c[1], c[2], 1.0f);
           });
         }
@@ -277,15 +307,29 @@ class NoiseFunction : public mf::MultiFunction {
         if (compute_factor) {
           mask.foreach_index([&](const int64_t i) {
             const float3 position = vector[i] * scale[i];
-            r_factor[i] = noise::perlin_fractal_distorted(
-                position, detail[i], roughness[i], lacunarity[i], distortion[i], normalize_);
+            r_factor[i] = noise::perlin_fractal_distorted(position,
+                                                          detail[i],
+                                                          roughness[i],
+                                                          lacunarity[i],
+                                                          offset[i],
+                                                          gain[i],
+                                                          distortion[i],
+                                                          type_,
+                                                          normalize_);
           });
         }
         if (compute_color) {
           mask.foreach_index([&](const int64_t i) {
             const float3 position = vector[i] * scale[i];
-            const float3 c = noise::perlin_float3_fractal_distorted(
-                position, detail[i], roughness[i], lacunarity[i], distortion[i], normalize_);
+            const float3 c = noise::perlin_float3_fractal_distorted(position,
+                                                                    detail[i],
+                                                                    roughness[i],
+                                                                    lacunarity[i],
+                                                                    offset[i],
+                                                                    gain[i],
+                                                                    distortion[i],
+                                                                    type_,
+                                                                    normalize_);
             r_color[i] = ColorGeometry4f(c[0], c[1], c[2], 1.0f);
           });
         }
@@ -300,8 +344,15 @@ class NoiseFunction : public mf::MultiFunction {
             const float position_w = w[i] * scale[i];
             const float4 position{
                 position_vector[0], position_vector[1], position_vector[2], position_w};
-            r_factor[i] = noise::perlin_fractal_distorted(
-                position, detail[i], roughness[i], lacunarity[i], distortion[i], normalize_);
+            r_factor[i] = noise::perlin_fractal_distorted(position,
+                                                          detail[i],
+                                                          roughness[i],
+                                                          lacunarity[i],
+                                                          offset[i],
+                                                          gain[i],
+                                                          distortion[i],
+                                                          type_,
+                                                          normalize_);
           });
         }
         if (compute_color) {
@@ -310,8 +361,15 @@ class NoiseFunction : public mf::MultiFunction {
             const float position_w = w[i] * scale[i];
             const float4 position{
                 position_vector[0], position_vector[1], position_vector[2], position_w};
-            const float3 c = noise::perlin_float3_fractal_distorted(
-                position, detail[i], roughness[i], lacunarity[i], distortion[i], normalize_);
+            const float3 c = noise::perlin_float3_fractal_distorted(position,
+                                                                    detail[i],
+                                                                    roughness[i],
+                                                                    lacunarity[i],
+                                                                    offset[i],
+                                                                    gain[i],
+                                                                    distortion[i],
+                                                                    type_,
+                                                                    normalize_);
             r_color[i] = ColorGeometry4f(c[0], c[1], c[2], 1.0f);
           });
         }

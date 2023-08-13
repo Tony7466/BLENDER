@@ -72,69 +72,61 @@ float perlin(float2 position);
 float perlin(float3 position);
 float perlin(float4 position);
 
-/* Fractal perlin noise in the range [0, 1]. */
+/* Perlin fractal Brownian motion. */
 
-float perlin_fractal(
-    float position, float octaves, float roughness, float lacunarity, bool normalize);
-float perlin_fractal(
-    float2 position, float octaves, float roughness, float lacunarity, bool normalize);
-float perlin_fractal(
-    float3 position, float octaves, float roughness, float lacunarity, bool normalize);
-float perlin_fractal(
-    float4 position, float octaves, float roughness, float lacunarity, bool normalize);
+template<typename T>
+float perlin_fbm(T position, float octaves, float roughness, float lacunarity, bool normalize);
 
-/* Positive distorted fractal perlin noise. */
+/* Distorted fractal perlin noise. */
 
-float perlin_fractal_distorted(float position,
+template<typename T>
+float perlin_fractal_distorted(T position,
                                float octaves,
                                float roughness,
                                float lacunarity,
+                               float offset,
+                               float gain,
                                float distortion,
-                               bool normalize);
-float perlin_fractal_distorted(float2 position,
-                               float octaves,
-                               float roughness,
-                               float lacunarity,
-                               float distortion,
-                               bool normalize);
-float perlin_fractal_distorted(float3 position,
-                               float octaves,
-                               float roughness,
-                               float lacunarity,
-                               float distortion,
-                               bool normalize);
-float perlin_fractal_distorted(float4 position,
-                               float octaves,
-                               float roughness,
-                               float lacunarity,
-                               float distortion,
+                               int type,
                                bool normalize);
 
-/* Positive distorted fractal perlin noise that outputs a float3. */
+/* Distorted fractal perlin noise that outputs a float3. */
 
 float3 perlin_float3_fractal_distorted(float position,
                                        float octaves,
                                        float roughness,
                                        float lacunarity,
+                                       float offset,
+                                       float gain,
                                        float distortion,
+                                       int type,
                                        bool normalize);
 float3 perlin_float3_fractal_distorted(float2 position,
                                        float octaves,
                                        float roughness,
                                        float lacunarity,
+                                       float offset,
+                                       float gain,
                                        float distortion,
+                                       int type,
                                        bool normalize);
 float3 perlin_float3_fractal_distorted(float3 position,
                                        float octaves,
                                        float roughness,
                                        float lacunarity,
+                                       float offset,
+                                       float gain,
                                        float distortion,
+                                       int type,
                                        bool normalize);
 float3 perlin_float3_fractal_distorted(float4 position,
                                        float octaves,
                                        float roughness,
                                        float lacunarity,
+                                       float offset,
+                                       float gain,
                                        float distortion,
+                                       int type,
                                        bool normalize);
 
 /** \} */
