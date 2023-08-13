@@ -239,8 +239,7 @@ void SEQ_sound_equalizermodifier_free(SequenceModifierData *smd)
 {
   SoundEqualizerModifierData *semd = (SoundEqualizerModifierData *)smd;
   EQCurveMappingData *eqcmd, *eqcmd_next;
-  LISTBASE_FOREACH (EQCurveMappingData *, eqcmd, &semd->graphics) {
-    eqcmd_next = eqcmd->next;
+  LISTBASE_FOREACH_MUTABLE (EQCurveMappingData *, eqcmd, &semd->graphics) {
     BKE_curvemapping_free_data(&eqcmd->curve_mapping);
     MEM_freeN(eqcmd);
   }

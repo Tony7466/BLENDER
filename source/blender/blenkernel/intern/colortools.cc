@@ -41,7 +41,7 @@ void BKE_curvemapping_set_defaults(CurveMapping *cumap,
                                    float maxx,
                                    float maxy,
                                    short default_handle_type)
-  {
+{
   int a;
   float clipminx, clipminy, clipmaxx, clipmaxy;
 
@@ -76,7 +76,6 @@ void BKE_curvemapping_set_defaults(CurveMapping *cumap,
     cumap->cm[a].curve[0].x = minx;
     cumap->cm[a].curve[0].y = miny;
     cumap->cm[a].curve[0].flag |= default_handle_type;
-
     cumap->cm[a].curve[1].x = maxx;
     cumap->cm[a].curve[1].y = maxy;
     cumap->cm[a].curve[1].flag |= default_handle_type;

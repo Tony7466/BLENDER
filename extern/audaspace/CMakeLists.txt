@@ -34,11 +34,6 @@ if(NOT DEFINED AUDASPACE_STANDALONE)
 	set(AUDASPACE_STANDALONE TRUE)
 endif()
 
-
-if(DEFINED FFTW3_INCLUDE_DIRS)
-    set(FFTW_FOUND TRUE)
-endif()
-
 # sources
 
 set(SRC
@@ -67,7 +62,6 @@ set(SRC
 	src/fx/Effect.cpp
 	src/fx/EffectReader.cpp
 	src/fx/Envelope.cpp
-	src/fx/Equalizer.cpp
 	src/fx/Fader.cpp
 	src/fx/FaderReader.cpp
 	src/fx/HighpassCalculator.cpp
@@ -180,7 +174,6 @@ set(PUBLIC_HDR
 	include/fx/Effect.h
 	include/fx/EffectReader.h
 	include/fx/Envelope.h
-	include/fx/Equalizer.h
 	include/fx/Fader.h
 	include/fx/FaderReader.h
 	include/fx/HighpassCalculator.h
@@ -507,7 +500,6 @@ if(WITH_FFMPEG)
 	endif()
 endif()
 
-message(WARNING "WITH_FFTW: ${WITH_FFTW}")
 # FFTW
 if(WITH_FFTW)
 	if(AUDASPACE_STANDALONE)
@@ -515,7 +507,6 @@ if(WITH_FFTW)
 	endif()
 
 	if(FFTW_FOUND)
-        message(WARNING "FFTW Found")
 		set(FFTW_SRC
 			src/fx/BinauralSound.cpp
 			src/fx/BinauralReader.cpp
@@ -544,12 +535,8 @@ if(WITH_FFTW)
 
 		add_definitions(-DWITH_CONVOLUTION)
 
-        list(APPEND INCLUDE ${FFTW3_INCLUDE_DIRS})
-        list(APPEND LIBRARIES ${FFTW3_LIBRARIES})
-
-        message(WARNING "INCLUDE: ${INCLUDE}")
-        message(WARNING "LIBRARIES: ${LIBRARIES}")
-
+		list(APPEND INCLUDE ${FFTW_INCLUDE_DIR})
+		list(APPEND LIBRARIES ${FFTW_LIBRARY})
 
 		list(APPEND SRC ${FFTW_SRC})
 		list(APPEND HDR ${FFTW_HDR})

@@ -527,17 +527,15 @@ enum {
 
 /** \} */
 
-
 /** \name Sound Modifiers
-* \{ */
+ * \{ */
 
-typedef struct EQCurveMappingData{
+typedef struct EQCurveMappingData {
   struct EQCurveMappingData *next, *prev;
   struct CurveMapping curve_mapping;
 } EQCurveMappingData;
 
-
-typedef struct SoundEqualizerModifierData{
+typedef struct SoundEqualizerModifierData {
   SequenceModifierData modifier;
   /* EQCurveMappingData */
   ListBase graphics;

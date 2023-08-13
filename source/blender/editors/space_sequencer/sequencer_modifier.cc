@@ -48,9 +48,9 @@ static int strip_modifier_add_exec(bContext *C, wmOperator *op)
 }
 
 static const EnumPropertyItem *filter_modifiers_by_sequence_type(bContext *C,
-                                                       PointerRNA *UNUSED(ptr),
-                                                       PropertyRNA *UNUSED(prop),
-                                                       bool *UNUSED(r_free))
+                                                                 PointerRNA * /* ptr */,
+                                                                 PropertyRNA * /* prop */,
+                                                                 bool * /* r_free */)
 {
   Scene *scene = CTX_data_scene(C);
   Sequence *seq = SEQ_select_active_get(scene);
@@ -82,16 +82,10 @@ void SEQUENCER_OT_strip_modifier_add(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  prop = RNA_def_enum(ot->srna,
-                      "type",
-                      DummyRNA_NULL_items,
-                      0,
-                      "Type",
-                      "");
+  prop = RNA_def_enum(ot->srna, "type", DummyRNA_NULL_items, 0, "Type", "");
   RNA_def_enum_funcs(prop, filter_modifiers_by_sequence_type);
   ot->prop = prop;
 }
-
 
 /*********************** Remove modifier operator *************************/
 
@@ -113,7 +107,7 @@ static int strip_modifier_remove_exec(bContext *C, wmOperator *op)
   SEQ_modifier_free(smd);
 
   if (ELEM(seq->type, SEQ_TYPE_SOUND_RAM)) {
-	DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS | ID_RECALC_AUDIO);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS | ID_RECALC_AUDIO);
   }
   else {
     SEQ_relations_invalidate_cache_preprocessed(scene, seq);
@@ -183,7 +177,7 @@ static int strip_modifier_move_exec(bContext *C, wmOperator *op)
   }
 
   if (ELEM(seq->type, SEQ_TYPE_SOUND_RAM)) {
-	DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS | ID_RECALC_AUDIO);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS | ID_RECALC_AUDIO);
   }
   else {
     SEQ_relations_invalidate_cache_preprocessed(scene, seq);
@@ -251,13 +245,12 @@ static int strip_modifier_copy_exec(bContext *C, wmOperator *op)
       if (seq_iter == seq) {
         continue;
       }
-	int seq_iter_is_sound =ELEM(seq_iter->type, SEQ_TYPE_SOUND_RAM);
-	/* If original is sound, only copy to "sound" strips
-	 * If original is not sound, only copy to "not sound" strips
-	 */
-	if(isSound != seq_iter_is_sound)
-		continue;
-
+      int seq_iter_is_sound = ELEM(seq_iter->type, SEQ_TYPE_SOUND_RAM);
+      /* If original is sound, only copy to "sound" strips
+       * If original is not sound, only copy to "not sound" strips
+       */
+      if (isSound != seq_iter_is_sound)
+        continue;
 
       if (type == SEQ_MODIFIER_COPY_REPLACE) {
         if (seq_iter->modifiers.first) {
@@ -277,9 +270,8 @@ static int strip_modifier_copy_exec(bContext *C, wmOperator *op)
     }
   }
 
-
   if (ELEM(seq->type, SEQ_TYPE_SOUND_RAM)) {
-	DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS | ID_RECALC_AUDIO);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS | ID_RECALC_AUDIO);
   }
   else {
     SEQ_relations_invalidate_cache_preprocessed(scene, seq);
@@ -347,11 +339,11 @@ void SEQUENCER_OT_strip_modifier_equalizer_redefine(wmOperatorType *ot)
 {
 
   static const EnumPropertyItem enum_modifier_equalizer_presets_items[] = {
-    {1, "SIMPLE", 0, "Unique", "One unique graphical definition"},
-    {2, "DOUBLE", 0, "Double", "Graphical definition in 2 sections"},
-    {3, "TRIPLE", 0, "Triplet", "Graphical definition in 3 sections"},
-    {0, NULL, 0, NULL, NULL},
-};
+      {1, "SIMPLE", 0, "Unique", "One unique graphical definition"},
+      {2, "DOUBLE", 0, "Double", "Graphical definition in 2 sections"},
+      {3, "TRIPLE", 0, "Triplet", "Graphical definition in 3 sections"},
+      {0, NULL, 0, NULL, NULL},
+  };
   PropertyRNA *prop;
 
   /* identifiers */
@@ -370,13 +362,10 @@ void SEQUENCER_OT_strip_modifier_equalizer_redefine(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  prop = RNA_def_enum(ot->srna,
-                      "graphs",
-                      enum_modifier_equalizer_presets_items,
-                      1,
-                      "Graphs",
-                      "Number of graphs");
+  prop = RNA_def_enum(
+      ot->srna, "graphs", enum_modifier_equalizer_presets_items, 1, "Graphs", "Number of graphs");
   ot->prop = prop;
-  prop = RNA_def_string(ot->srna, "name", "Name", MAX_NAME, "Name", "Name of modifier to redefine");
+  prop = RNA_def_string(
+      ot->srna, "name", "Name", MAX_NAME, "Name", "Name of modifier to redefine");
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }

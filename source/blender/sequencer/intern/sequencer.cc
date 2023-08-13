@@ -990,10 +990,9 @@ static bool seq_update_seq_cb(Sequence *seq, void *user_data)
 
       void *sound = seq->sound->playback_handle;
 
-      if(!BLI_listbase_is_empty(&seq->modifiers))
-      {
+      if (!BLI_listbase_is_empty(&seq->modifiers)) {
         SequenceModifierData *smd;
-		    for (smd= seq->modifiers.first; smd; smd= smd->next) {
+        LISTBASE_FOREACH (SequenceModifierData *, smd, &seq->modifiers) {
           sound = SEQ_sound_modifier_recreator(seq, smd, sound);
         }
       }

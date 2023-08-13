@@ -72,7 +72,6 @@ const EnumPropertyItem rna_enum_sequence_modifier_type_items[] = {
     {seqModifierType_Mask, "MASK", ICON_NONE, "Mask", ""},
     {seqModifierType_Tonemap, "TONEMAP", ICON_NONE, "Tone Map", ""},
     {seqModifierType_WhiteBalance, "WHITE_BALANCE", ICON_NONE, "White Balance", ""},
-<<<<<<< HEAD:source/blender/makesrna/intern/rna_sequencer.c
     {seqModifierType_SoundEqualizer, "SOUND_EQUALIZER", ICON_NONE, "Sound Equalizer", ""},
     {0, NULL, 0, NULL, NULL},
 };
@@ -107,21 +106,21 @@ const EnumPropertyItem rna_enum_strip_color_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-#  ifdef RNA_RUNTIME
+#ifdef RNA_RUNTIME
 
-#    include "BKE_global.h"
-#    include "BKE_idprop.h"
-#    include "BKE_movieclip.h"
-#    include "BKE_report.h"
+#  include "BKE_global.h"
+#  include "BKE_idprop.h"
+#  include "BKE_movieclip.h"
+#  include "BKE_report.h"
 
-#    include "WM_api.hh"
+#  include "WM_api.hh"
 
-#    include "DEG_depsgraph.h"
-#    include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph_build.h"
 
-#    include "IMB_imbuf.h"
+#  include "IMB_imbuf.h"
 
-#    include "SEQ_edit.h"
+#  include "SEQ_edit.h"
 
 struct SequenceSearchData {
   Sequence *seq;
@@ -722,10 +721,10 @@ static void rna_Sequence_name_set(PointerRNA *ptr, const char *value)
   /* fix all the animation data which may link to this */
 
   /* Don't rename everywhere because these are per scene. */
-#    if 0
+#  if 0
   BKE_animdata_fix_paths_rename_all(
       nullptr, "sequence_editor.sequences_all", oldname, seq->name + 2);
-#    endif
+#  endif
   adt = BKE_animdata_from_id(&scene->id);
   if (adt) {
     BKE_animdata_fix_paths_rename(&scene->id,
@@ -994,7 +993,7 @@ static void rna_Sequence_input_2_set(PointerRNA *ptr, PointerRNA ptr_value, Repo
 {
   rna_Sequence_input_set(ptr, ptr_value, reports, 2);
 }
-#    if 0
+#  if 0
 static void rna_SoundSequence_filename_set(PointerRNA *ptr, const char *value)
 {
   Sequence *seq = (Sequence *)(ptr->data);
@@ -1010,7 +1009,7 @@ static void rna_SequenceElement_filename_set(PointerRNA *ptr, const char *value)
   StripElem *elem = (StripElem *)(ptr->data);
   BLI_path_split_file_part(value, elem->name, sizeof(elem->name));
 }
-#    endif
+#  endif
 
 static void rna_Sequence_reopen_files_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
@@ -1364,7 +1363,7 @@ static void rna_SequenceModifier_name_set(PointerRNA *ptr, const char *value)
   }
 }
 
-static void rna_SequenceModifier_update(Main *bmain, Scene /*scene*/), PointerRNA *ptr)
+static void rna_SequenceModifier_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
   /* strip from other scenes could be modified, so using active scene is not reliable */
   Scene *scene = (Scene *)ptr->owner_id;
@@ -1384,7 +1383,7 @@ static void rna_SequenceModifier_update(Main *bmain, Scene /*scene*/), PointerRN
  * Update of Curve in an EQ Sound Modifier
  */
 static void rna_SequenceModifier_EQCurveMapping_update(Main *bmain,
-                                                       Scene *UNUSED(scene),
+                                                       Scene * /*scene*/,
                                                        PointerRNA *ptr)
 {
   Scene *scene = (Scene *)ptr->owner_id;
@@ -1595,7 +1594,7 @@ static char *rna_SeqTimelineChannel_path(const PointerRNA *ptr)
 }
 
 static EQCurveMappingData *rna_Sequence_SoundEqualizer_Curve_add(SoundEqualizerModifierData *semd,
-                                                                 bContext *UNUSED(C),
+                                                                 bContext * /* C */,
                                                                  float min_freq,
                                                                  float max_freq)
 {
@@ -1605,13 +1604,13 @@ static EQCurveMappingData *rna_Sequence_SoundEqualizer_Curve_add(SoundEqualizerM
 }
 
 static void rna_Sequence_SoundEqualizer_Curve_clear(SoundEqualizerModifierData *semd,
-                                                    bContext *UNUSED(C))
+                                                    bContext * /* C */)
 {
   SEQ_sound_equalizermodifier_free((SequenceModifierData *)semd);
   WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, NULL);
 }
 
-#  else
+#else
 
 static void rna_def_strip_element(BlenderRNA *brna)
 {
@@ -1974,7 +1973,7 @@ static void rna_def_color_balance(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_SequenceColorBalance_update");
 
   /* not yet used */
-#    if 0
+#  if 0
   prop = RNA_def_property(srna, "exposure", PROP_FLOAT, PROP_NONE);
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_ui_text(prop, "Exposure", "");
@@ -1984,7 +1983,7 @@ static void rna_def_color_balance(BlenderRNA *brna)
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_ui_text(prop, "Saturation", "");
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_ColorBabalnce_update");
-#    endif
+#  endif
 
   RNA_def_struct_path_func(srna, "rna_SequenceColorBalance_path");
 }
@@ -2705,7 +2704,7 @@ static void rna_def_effect_inputs(StructRNA *srna, int count)
     RNA_def_property_ui_text(prop, "Input 2", "Second input for the effect strip");
   }
 
-#    if 0
+#  if 0
   if (count == 3) {
     /* Not used by any effects (perhaps one day plugins?). */
     prop = RNA_def_property(srna, "input_3", PROP_POINTER, PROP_NONE);
@@ -2713,7 +2712,7 @@ static void rna_def_effect_inputs(StructRNA *srna, int count)
     RNA_def_property_flag(prop, PROP_EDITABLE | PROP_NEVER_NULL);
     RNA_def_property_ui_text(prop, "Input 3", "Third input for the effect strip");
   }
-#    endif
+#  endif
 }
 
 static void rna_def_color_management(StructRNA *srna)
@@ -3925,4 +3924,4 @@ void RNA_def_sequencer(BlenderRNA *brna)
   rna_def_sound_modifiers(brna);
 }
 
-#  endif
+#endif
