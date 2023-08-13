@@ -282,7 +282,7 @@ static void ui_selectcontext_apply(bContext *C,
  * e.g. ALT is also used for button array pasting, see #108096.
  */
 #  define IS_ALLSELECT_EVENT(event) \
-    (((event)->modifier & KM_ALT) != 0 && \
+    (((event)->modifier & KM_ALT) == 0 && \
      (ISMOUSE((event)->type) || ELEM((event)->type, EVT_RETKEY, EVT_PADENTER)))
 
 /** just show a tinted color so users know its activated */
@@ -2259,6 +2259,7 @@ static void ui_apply_but(
     }
 
 #ifdef USE_ALLSELECT
+    wmWindow *win = CTX_wm_window(C);
 #  ifdef USE_DRAG_MULTINUM
     if (but->flag & UI_BUT_DRAG_MULTI) {
       /* pass */
@@ -2267,13 +2268,19 @@ static void ui_apply_but(
 #  endif
         if (data->select_others.elems_len == 0)
     {
-      wmWindow *win = CTX_wm_window(C);
       /* may have been enabled before activating */
       if (data->select_others.is_enabled || IS_ALLSELECT_EVENT(win->eventstate)) {
         ui_selectcontext_begin(C, but, &data->select_others);
         data->select_others.is_enabled = true;
       }
     }
+    else {
+      if (!IS_ALLSELECT_EVENT(win->eventstate)) {
+        data->select_others.elems_len = 0;
+        but->flag &= ~UI_BUT_IS_SELECT_CONTEXT;
+      }
+    }
+
     if (data->select_others.elems_len == 0) {
       /* Don't check again. */
       data->select_others.elems_len = -1;
@@ -3434,6 +3441,9 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
       data->select_others.is_enabled = true;
       data->select_others.is_copy = true;
     }
+    else {
+      but->flag &= ~UI_BUT_IS_SELECT_CONTEXT;
+    }
   }
 #endif
 
@@ -4324,6 +4334,9 @@ static void ui_block_open_begin(bContext *C, uiBut *but, uiHandleButtonData *dat
   {
     if (IS_ALLSELECT_EVENT(data->window->eventstate)) {
       data->select_others.is_enabled = true;
+    }
+    else {
+      but->flag &= ~UI_BUT_IS_SELECT_CONTEXT;
     }
   }
 #endif
@@ -8569,6 +8582,7 @@ static void button_activate_init(bContext *C,
 
   /* activate button */
   but->flag |= UI_ACTIVE;
+  ui_selectcontext_begin(C, but, &data->select_others);
 
   but->active = data;
 
