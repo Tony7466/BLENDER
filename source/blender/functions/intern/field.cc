@@ -568,7 +568,7 @@ Vector<GGrid> evaluate_volume_fields(ResourceScope &scope,
                                      Span<GFieldRef> fields_to_evaluate,
                                      const GGrid &mask,
                                      const FieldContext &context,
-                                     Span<GMutableGrid> dst_grids)
+                                     Span<GMutableGrid *> dst_grids)
 {
   Vector<GGrid> r_grids(fields_to_evaluate.size());
   Array<bool> is_output_written_to_dst(fields_to_evaluate.size(), false);
@@ -583,15 +583,15 @@ Vector<GGrid> evaluate_volume_fields(ResourceScope &scope,
   }
 
   /* Destination grids are optional. Create a small utility method to access them. */
-  auto get_dst_grid = [&](int index) -> GGrid {
+  auto get_dst_grid = [&](int index) -> GMutableGrid * {
     if (dst_grids.is_empty()) {
       return {};
     }
-    const GGrid &grid = dst_grids[index];
-    if (!grid) {
-      return {};
+    GMutableGrid *grid_ptr = dst_grids[index];
+    if (!grid_ptr) {
+      return nullptr;
     }
-    return grid;
+    return grid_ptr;
   };
 
   /* Traverse the field tree and prepare some data that is used in later steps. */
@@ -691,8 +691,8 @@ Vector<GGrid> evaluate_volume_fields(ResourceScope &scope,
    * has written the computed data in the right place already. */
   if (!dst_grids.is_empty()) {
     for (const int out_index : fields_to_evaluate.index_range()) {
-      GGrid dst_grid = get_dst_grid(out_index);
-      if (!dst_grid) {
+      GMutableGrid *dst_grid_ptr = get_dst_grid(out_index);
+      if (!dst_grid_ptr) {
         /* Caller did not provide a destination for this output. */
         continue;
       }
@@ -703,9 +703,11 @@ Vector<GGrid> evaluate_volume_fields(ResourceScope &scope,
         continue;
       }
       /* Still have to copy over the data in the destination provided by the caller. */
-      // dst_grid.grid_->setTree(computed_grid.grid_->baseTreePtr());
-      dst_grid = computed_grid;
-      r_grids[out_index] = dst_grid;
+      *dst_grid_ptr = {computed_grid.grid_->deepCopyGrid()};
+      if (*dst_grid_ptr) {
+        const openvdb::Vec3d vsize = dst_grid_ptr->grid_->transform().voxelSize();
+      }
+      r_grids[out_index] = *dst_grid_ptr;
     }
   }
   return r_grids;
@@ -1065,10 +1067,10 @@ static volume::GridMask grid_mask_from_selection(const volume::GGrid &full_mask,
   return volume::GridMask::from_bools(full_mask, selection);
 }
 
-int VolumeFieldEvaluator::add_with_destination(GField field, GMutableGrid dst)
+int VolumeFieldEvaluator::add_with_destination(GField field, GMutableGrid &dst)
 {
   const int field_index = fields_to_evaluate_.append_and_get_index(std::move(field));
-  dst_grids_.append(dst);
+  dst_grids_.append(&dst);
   output_pointer_infos_.append({});
   return field_index;
 }

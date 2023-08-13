@@ -135,14 +135,14 @@ GMutableGrid GMutableGrid::create(const CPPType &type,
   return GMutableGrid{std::move(grid)};
 }
 
-bool GMutableGrid::try_assign(const GGrid & /*other*/)
+bool GMutableGrid::try_copy_masked(const GGrid &other, const GGrid & /*mask*/)
 {
-  return false;
-}
-
-bool GMutableGrid::try_copy_masked(const GGrid & /*other*/, const GGrid & /*mask*/)
-{
-  return false;
+  if (!grid_ || !other.grid_) {
+    return false;
+  }
+  *grid_ = *other.grid_->copyGridWithNewTree();
+  /* XXX TODO prune tree with mask */
+  return true;
 }
 
 int64_t GMutableGrid::voxel_count() const

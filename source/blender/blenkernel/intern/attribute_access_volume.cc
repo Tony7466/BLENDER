@@ -53,15 +53,8 @@ bool VolumeCustomAttributeGridProvider::try_delete(void *owner,
 }
 
 static openvdb::GridBase::Ptr add_generic_grid(const CPPType &value_type,
-                                               const eCDAllocType /*alloctype*/,
-                                               const openvdb::GridBase::ConstPtr &grid_template)
+                                               const eCDAllocType /*alloctype*/)
 {
-  /* Template build sanitization: nested static type dispatch creates a lot of code, which can
-   * easily make builds run out of memory. Capturing a functor allows doing the 2nd type dispatch
-   * for the grid template separately, avoiding combinatorial explosion. */
-  std::function<openvdb::GridBase::Ptr(const openvdb::GridBase::ConstPtr &template_grid)>
-      apply_template_fn = nullptr;
-
   volume::field_to_static_type(value_type, [&](auto tag) {
     using ValueType = typename decltype(tag)::type;
     using GridType = volume::grid_types::GridCommon<ValueType>;
@@ -69,29 +62,8 @@ static openvdb::GridBase::Ptr add_generic_grid(const CPPType &value_type,
 
     const ValueType &background_value = *static_cast<const ValueType *>(
         value_type.default_value());
-
-    apply_template_fn =
-        [background_value](
-            const openvdb::GridBase::ConstPtr &grid_template) -> openvdb::GridBase::Ptr {
-      if (grid_template) {
-        openvdb::GridBase::Ptr result = nullptr;
-        volume::grid_to_static_type(grid_template, [&](auto &typed_template) {
-          /* Make a topology copy of the template tree for the result type. */
-          typename TreeType::Ptr tree = std::make_shared<TreeType>(
-              typed_template.tree(), background_value, openvdb::TopologyCopy{});
-          result = GridType::create(tree);
-        });
-        return result;
-      }
-      else {
-        return GridType::create(background_value);
-      }
-    };
+    return GridType::create(background_value);
   });
-
-  if (apply_template_fn) {
-    return apply_template_fn(grid_template);
-  }
   return nullptr;
 }
 
@@ -175,28 +147,7 @@ static openvdb::GridBase::Ptr add_generic_grid_copy(const CPPType &value_type,
 static openvdb::GridBase::Ptr add_generic_grid_move(const CPPType &value_type,
                                                     const volume::GMutableGrid &data)
 {
-  openvdb::GridBase::Ptr result = nullptr;
-  volume::field_to_static_type(value_type, [&](auto tag) {
-    using ValueType = typename decltype(tag)::type;
-    using GridType = volume::grid_types::GridCommon<ValueType>;
-
-    const ValueType &background_value = *static_cast<const ValueType *>(
-        value_type.default_value());
-    /* Empty result grid, data gets moved into here. */
-    typename GridType::Ptr typed_result = GridType::create(background_value);
-
-    if (data) {
-      /* Data must be same grid type */
-      BLI_assert(data.grid_->isType<GridType>());
-      typename GridType::Ptr typed_data = openvdb::GridBase::grid<GridType>(data.grid_);
-      BLI_assert(typed_data != nullptr);
-
-      /* Move data into the result, data grid is empty after this. */
-      typed_result->tree().merge(typed_data->tree(), openvdb::MERGE_ACTIVE_STATES);
-    }
-    result = typed_result;
-  });
-  return result;
+  return data.grid_;
 }
 
 static openvdb::GridBase::Ptr add_generic_grid_shared(const CPPType &value_type,
@@ -227,16 +178,15 @@ static openvdb::GridBase::Ptr add_generic_grid_shared(const CPPType &value_type,
 static bool add_grid_from_attribute_init(const AttributeIDRef &attribute_id,
                                          VolumeGridVector &grids,
                                          const CPPType &value_type,
-                                         const openvdb::GridBase::Ptr &grid_template,
                                          const AttributeInit &initializer)
 {
   openvdb::GridBase::Ptr result = nullptr;
   switch (initializer.type) {
     case AttributeInit::Type::Construct:
-      result = add_generic_grid(value_type, CD_CONSTRUCT, grid_template);
+      result = add_generic_grid(value_type, CD_CONSTRUCT);
       break;
     case AttributeInit::Type::DefaultValue:
-      result = add_generic_grid(value_type, CD_SET_DEFAULT, grid_template);
+      result = add_generic_grid(value_type, CD_SET_DEFAULT);
       break;
     case AttributeInit::Type::VArray:
     case AttributeInit::Type::MoveArray:
@@ -297,17 +247,11 @@ bool VolumeCustomAttributeGridProvider::try_create(void *owner,
     return false;
   }
 
-  const VolumeGrid *grid_template = grids.empty() ? nullptr : &grids.front();
   const CPPType *value_type = custom_data_type_to_cpp_type(data_type);
   if (value_type == nullptr) {
     return false;
   }
-  if (!add_grid_from_attribute_init(attribute_id,
-                                    grids,
-                                    *value_type,
-                                    grid_template ? grid_template->grid() : nullptr,
-                                    initializer))
-  {
+  if (!add_grid_from_attribute_init(attribute_id, grids, *value_type, initializer)) {
     return false;
   }
   if (update_on_change_ != nullptr) {

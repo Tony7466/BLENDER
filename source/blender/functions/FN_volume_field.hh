@@ -24,7 +24,7 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
                                                  Span<volume::GGrid> field_context_inputs,
                                                  Span<GFieldRef> fields_to_evaluate,
                                                  Span<int> field_indices,
-                                                 Span<volume::GMutableGrid> dst_grids,
+                                                 Span<volume::GMutableGrid *> dst_grids,
                                                  MutableSpan<volume::GGrid> r_grids,
                                                  MutableSpan<bool> r_is_output_written_to_dst);
 void evaluate_procedure_on_constant_volume_fields(ResourceScope &scope,

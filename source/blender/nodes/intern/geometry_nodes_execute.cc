@@ -389,7 +389,7 @@ struct OutputAttributeToStore {
   eAttrDomain domain;
   StringRefNull name;
   GMutableSpan data;
-  volume::GMutableGrid grid_data;
+  volume::GMutableGrid *grid_data;
 };
 
 /**
@@ -484,12 +484,12 @@ static Vector<OutputAttributeToStore> compute_attributes_to_store(
             field_evaluator.add_with_destination(std::move(field), store.data);
             break;
           case bke::GeometryComponent::AttributeType::Grid:
-            store.grid_data = volume::GMutableGrid::create(type);
-            volume_field_evaluator.add_with_destination(std::move(field), store.grid_data);
+            store.grid_data = MEM_new<volume::GMutableGrid>(__func__);
+            volume_field_evaluator.add_with_destination(std::move(field), *store.grid_data);
             break;
         }
 
-        attributes_to_store.append(store);
+        attributes_to_store.append(std::move(store));
       }
       field_evaluator.evaluate();
       volume_field_evaluator.evaluate();
@@ -543,7 +543,7 @@ static void store_computed_output_attributes(
       }
       case bke::GeometryComponent::AttributeType::Grid: {
         const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(
-            *store.grid_data.value_type());
+            *store.grid_data->value_type());
         const std::optional<bke::AttributeMetaData> meta_data = attributes.lookup_meta_data(
             store.name);
 
@@ -557,8 +557,8 @@ static void store_computed_output_attributes(
 
         if (attributes.add(store.name,
                            store.domain,
-                           bke::cpp_type_to_custom_data_type(*store.grid_data.value_type()),
-                           bke::AttributeInitMoveGrid(store.grid_data)))
+                           bke::cpp_type_to_custom_data_type(*store.grid_data->value_type()),
+                           bke::AttributeInitMoveGrid(*store.grid_data)))
         {
           continue;
         }
@@ -566,9 +566,11 @@ static void store_computed_output_attributes(
         bke::GAttributeGridWriter attribute = attributes.lookup_or_add_grid_for_write(
             store.name, store.domain, data_type);
         if (attribute) {
-          attribute.grid.try_assign(store.grid_data);
+          attribute.grid = *store.grid_data;
           attribute.finish();
         }
+
+        MEM_delete(store.grid_data);
         break;
       }
     }

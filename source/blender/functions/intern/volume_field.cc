@@ -274,7 +274,7 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
                                                  Span<volume::GGrid> field_context_inputs,
                                                  Span<GFieldRef> fields_to_evaluate,
                                                  Span<int> field_indices,
-                                                 Span<volume::GMutableGrid> dst_grids,
+                                                 Span<volume::GMutableGrid *> dst_grids,
                                                  MutableSpan<volume::GGrid> r_grids,
                                                  MutableSpan<bool> r_is_output_written_to_dst)
 {
@@ -291,16 +291,16 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
   }
 
   /* Destination arrays are optional. Create a small utility method to access them. */
-  auto get_dst_grid = [&](int index) -> GMutableGrid {
+  auto get_dst_grid = [&](int index) -> GMutableGrid * {
     if (dst_grids.is_empty()) {
       return {};
     }
-    const GMutableGrid &grid = dst_grids[index];
-    if (!grid) {
-      return {};
+    GMutableGrid *grid_ptr = dst_grids[index];
+    if (!grid_ptr) {
+      return nullptr;
     }
-    BLI_assert(grid.voxel_count() >= (mask.grid_ ? mask.grid_->activeVoxelCount() : 0));
-    return grid;
+    BLI_assert(grid_ptr->voxel_count() >= (mask.grid_ ? mask.grid_->activeVoxelCount() : 0));
+    return grid_ptr;
   };
 
   mf::ProcedureExecutor procedure_executor{procedure};
@@ -311,16 +311,18 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
     const int out_index = field_indices[i];
 
     /* Try to get an existing virtual array that the result should be written into. */
-    GMutableGrid dst_grid = get_dst_grid(out_index);
-    if (!dst_grid) {
+    GMutableGrid *dst_grid_ptr = get_dst_grid(out_index);
+    if (!dst_grid_ptr) {
       /* Create a destination grid for the computed result. */
-      dst_grid = GMutableGrid::create(type, mask, type.default_value(), type.default_value());
-      scope.add_value<GMutableGrid::GridPtr>(std::move(dst_grid.grid_));
+      GMutableGrid dst_grid = GMutableGrid::create(
+          type, mask, type.default_value(), type.default_value());
+      scope.add_value<GMutableGrid>(std::move(dst_grid));
+      dst_grid_ptr = &dst_grid;
       r_grids[out_index] = dst_grid;
     }
     else {
       /* Write the result into the existing grid. */
-      r_grids[out_index] = dst_grid;
+      r_grids[out_index] = *dst_grid_ptr;
       r_is_output_written_to_dst[out_index] = true;
     }
 
@@ -328,7 +330,7 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
      * Each leaf buffer is a contiguous array that can be used as a span.
      * The leaf buffers' active voxel masks are used as index masks. */
 
-    volume::grid_to_static_type(dst_grid.grid_, [&](auto &dst_grid) {
+    volume::grid_to_static_type(dst_grid_ptr->grid_, [&](auto &dst_grid) {
       using GridType = typename std::decay<decltype(dst_grid)>::type;
 
       volume::grid_to_static_type(mask.grid_, [&](auto &mask_grid) {

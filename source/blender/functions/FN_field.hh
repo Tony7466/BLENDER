@@ -508,7 +508,7 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
   const FieldContext &context_;
   const GGrid &domain_mask_;
   Vector<GField> fields_to_evaluate_;
-  Vector<GMutableGrid> dst_grids_;
+  Vector<GMutableGrid *> dst_grids_;
   Vector<GGrid> evaluated_grids_;
   Vector<OutputPointerInfo> output_pointer_infos_;
   bool is_evaluated_ = false;
@@ -550,12 +550,12 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
    * \param field: Field to add to the evaluator.
    * \param dst: Mutable grid that the evaluated result for this field is written into.
    */
-  int add_with_destination(GField field, GMutableGrid dst);
+  int add_with_destination(GField field, GMutableGrid &dst);
 
   /** Same as #add_with_destination but typed. */
-  template<typename T> int add_with_destination(Field<T> field, volume::MutableGrid<T> dst)
+  template<typename T> int add_with_destination(Field<T> field, volume::MutableGrid<T> &dst)
   {
-    return this->add_with_destination(GField(std::move(field)), GMutableGrid(std::move(dst)));
+    return this->add_with_destination(GField(std::move(field)), std::move(dst));
   }
 
   int add(GField field, GGrid *grid_ptr);
@@ -654,7 +654,7 @@ Vector<volume::GGrid> evaluate_volume_fields(ResourceScope &scope,
                                              Span<GFieldRef> fields_to_evaluate,
                                              const volume::GGrid &mask,
                                              const FieldContext &context,
-                                             Span<volume::GMutableGrid> dst_grids = {});
+                                             Span<volume::GMutableGrid *> dst_grids = {});
 
 /* -------------------------------------------------------------------- */
 /** \name Utility functions for simple field creation and evaluation

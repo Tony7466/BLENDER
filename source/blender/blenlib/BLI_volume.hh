@@ -257,7 +257,6 @@ class GMutableGrid {
                              const void *inactive_value,
                              const void *active_value);
 
-  bool try_assign(const GGrid &other);
   bool try_copy_masked(const GGrid &other, const GGrid &selection);
 
   int64_t voxel_count() const;
