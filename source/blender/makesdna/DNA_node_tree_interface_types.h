@@ -11,7 +11,6 @@
 #include "BLI_utildefines.h"
 
 #ifdef __cplusplus
-#  include "BLI_color.hh"
 #  include "BLI_function_ref.hh"
 #  include "BLI_span.hh"
 #  include "BLI_string_ref.hh"
@@ -85,7 +84,6 @@ typedef struct bNodeTreeInterfaceSocket {
 
 #ifdef __cplusplus
   bNodeSocketType *socket_typeinfo() const;
-  blender::ColorGeometry4f socket_color() const;
 
   /**
    * Set the \a socket_type and replace the \a socket_data.
