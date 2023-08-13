@@ -31,13 +31,14 @@ static GroupedSpan<int> make_stabil(const OffsetIndices<int> offsets, MutableSpa
 static Span<int> take_first_equals(const Span<int> indices, const Span<int> values)
 {
   const int value = values[indices.first()];
-  const int &first_other = *std::find_if(indices.begin(), indices.end(), [&](const int index) { return values[index] != value; });
+  const int &first_other = *std::find_if(
+      indices.begin(), indices.end(), [&](const int index) { return values[index] != value; });
   return indices.take_front(&first_other - indices.begin());
 }
 
 static GroupedSpan<int> from_indices_large_groups(const Span<int> group_indices,
-                                                 MutableSpan<int> r_counts_to_offsets,
-                                                 MutableSpan<int> r_indices)
+                                                  MutableSpan<int> r_counts_to_offsets,
+                                                  MutableSpan<int> r_indices)
 {
   constexpr int segment_size = 1024;
   constexpr IndexRange segment(segment_size);
@@ -93,8 +94,8 @@ static GroupedSpan<int> from_indices_large_groups(const Span<int> group_indices,
 }
 
 static GroupedSpan<int> reverse_copy(const OffsetIndices<int> offsets,
-                                    const Span<int> src_indices,
-                                    MutableSpan<int> dst_indices)
+                                     const Span<int> src_indices,
+                                     MutableSpan<int> dst_indices)
 {
   Array<int> group_indices(src_indices.size());
   Array<int> counts(offsets.size(), -1);
@@ -120,8 +121,8 @@ static GroupedSpan<int> reverse_copy(const OffsetIndices<int> offsets,
 }
 
 static GroupedSpan<int> from_indices_many_groups(const Span<int> group_indices,
-                             MutableSpan<int> r_counts_to_offsets,
-                             MutableSpan<int> r_indices)
+                                                 MutableSpan<int> r_counts_to_offsets,
+                                                 MutableSpan<int> r_indices)
 {
   offset_indices::build_reverse_offsets(group_indices, r_counts_to_offsets);
   return reverse_copy(OffsetIndices<int>(r_counts_to_offsets), group_indices, r_indices);
@@ -142,7 +143,8 @@ GroupedSpan<int> from_indices(const Span<int> group_indices,
 {
   BLI_assert(!group_indices.is_empty());
   BLI_assert(*std::min_element(group_indices.begin(), group_indices.end()) >= 0);
-  BLI_assert(*std::max_element(group_indices.begin(), group_indices.end()) < r_counts_to_offsets.size() - 1);
+  BLI_assert(*std::max_element(group_indices.begin(), group_indices.end()) <
+             r_counts_to_offsets.size() - 1);
   if (fragmented) {
     return from_indices_many_groups(group_indices, r_counts_to_offsets, r_indices);
   }
@@ -171,7 +173,8 @@ GroupedSpan<int> from_identifiers(const Span<int> groups_ids,
   r_offsets.reinitialize(group_total + 1);
   r_offsets.as_mutable_span().fill(0);
   r_indices.reinitialize(groups_ids.size());
-  return from_indices(groups_indices, is_fragmented(groups_indices, group_total), r_offsets, r_indices);
+  return from_indices(
+      groups_indices, is_fragmented(groups_indices, group_total), r_offsets, r_indices);
 }
 
-}  // namespace blender
+}  // namespace blender::grouped_indices
