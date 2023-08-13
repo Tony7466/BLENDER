@@ -53,7 +53,6 @@
 #include "BLI_ghash.h"
 #include "BLI_linklist.h"
 #include "BLI_map.hh"
-#include "BLI_math.h"
 #include "BLI_memarena.h"
 #include "BLI_mempool.h"
 #include "BLI_threads.h"
@@ -1922,6 +1921,13 @@ static void lib_link_id(BlendLibReader *reader, ID *id)
     BLO_read_id_address(reader, id, &id->override_library->reference);
     BLO_read_id_address(reader, id, &id->override_library->storage);
     BLO_read_id_address(reader, id, &id->override_library->hierarchy_root);
+
+    LISTBASE_FOREACH (IDOverrideLibraryProperty *, op, &id->override_library->properties) {
+      LISTBASE_FOREACH (IDOverrideLibraryPropertyOperation *, opop, &op->operations) {
+        BLO_read_id_address(reader, id, &opop->subitem_reference_id);
+        BLO_read_id_address(reader, id, &opop->subitem_local_id);
+      }
+    }
   }
 
   lib_link_id_embedded_id(reader, id);
@@ -4073,6 +4079,13 @@ static void expand_id(BlendExpander *expander, ID *id)
   if (id->override_library) {
     BLO_expand(expander, id->override_library->reference);
     BLO_expand(expander, id->override_library->storage);
+
+    LISTBASE_FOREACH (IDOverrideLibraryProperty *, op, &id->override_library->properties) {
+      LISTBASE_FOREACH (IDOverrideLibraryPropertyOperation *, opop, &op->operations) {
+        BLO_expand(expander, opop->subitem_reference_id);
+        BLO_expand(expander, opop->subitem_local_id);
+      }
+    }
   }
 
   AnimData *adt = BKE_animdata_from_id(id);
@@ -4090,35 +4103,29 @@ void BLO_main_expander(BLOExpandDoitCallback expand_doit_func)
 
 void BLO_expand_main(void *fdhandle, Main *mainvar)
 {
-  ListBase *lbarray[INDEX_ID_MAX];
   FileData *fd = static_cast<FileData *>(fdhandle);
-  ID *id;
-  int a;
-  bool do_it = true;
-
   BlendExpander expander = {fd, mainvar};
 
-  while (do_it) {
+  for (bool do_it = true; do_it;) {
     do_it = false;
+    ID *id_iter;
 
-    a = set_listbasepointers(mainvar, lbarray);
-    while (a--) {
-      id = static_cast<ID *>(lbarray[a]->first);
-      while (id) {
-        if (id->tag & LIB_TAG_NEED_EXPAND) {
-          expand_id(&expander, id);
-
-          const IDTypeInfo *id_type = BKE_idtype_get_info_from_id(id);
-          if (id_type->blend_read_expand != nullptr) {
-            id_type->blend_read_expand(&expander, id);
-          }
-
-          do_it = true;
-          id->tag &= ~LIB_TAG_NEED_EXPAND;
-        }
-        id = static_cast<ID *>(id->next);
+    FOREACH_MAIN_ID_BEGIN (mainvar, id_iter) {
+      if ((id_iter->tag & LIB_TAG_NEED_EXPAND) == 0) {
+        continue;
       }
+
+      expand_id(&expander, id_iter);
+
+      const IDTypeInfo *id_type = BKE_idtype_get_info_from_id(id_iter);
+      if (id_type->blend_read_expand != nullptr) {
+        id_type->blend_read_expand(&expander, id_iter);
+      }
+
+      do_it = true;
+      id_iter->tag &= ~LIB_TAG_NEED_EXPAND;
     }
+    FOREACH_MAIN_ID_END;
   }
 }
 
