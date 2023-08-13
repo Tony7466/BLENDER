@@ -130,6 +130,7 @@ GMutableGrid GMutableGrid::create(const CPPType &type,
           typed_mask.tree(), typed_inactive_value, typed_active_value, openvdb::TopologyCopy{}));
     });
     grid = typename GridType::Ptr(new GridType(tree));
+    grid->setTransform(mask.grid_->transform().copy());
   });
 
   return GMutableGrid{std::move(grid)};
