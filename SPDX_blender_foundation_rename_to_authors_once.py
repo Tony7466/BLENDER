@@ -12,7 +12,34 @@ import re
 SOURCE_DIRS = (
     "build_files",
     "doc",
-    "intern",
+    # "intern", # Exclude individual files.
+    "intern/atomic",
+    "intern/audaspace",
+    "intern/clog",
+    "intern/cycles",
+    "intern/dualcon",
+    "intern/eigen",
+    "intern/ffmpeg",
+    "intern/ghost",
+    "intern/guardedalloc",
+    "intern/iksolver",
+    "intern/itasc",
+    "intern/libc_compat",
+    "intern/libmv",
+    "intern/locale",
+    "intern/mantaflow",
+    "intern/memutil",
+    "intern/mikktspace",
+    "intern/opencolorio",
+    # "intern/opensubdiv",
+    "intern/openvdb",
+    "intern/quadriflow",
+    "intern/renderdoc_dynload",
+    "intern/rigidbody",
+    "intern/sky",
+    "intern/utfconv",
+    "intern/wayland_dynload",
+
     "locale",
     "tests",
     "release",
@@ -23,6 +50,8 @@ SOURCE_DIRS = (
 
 SOURCE_FILES_INDIVIDUAL = [
     "CMakeLists.txt",
+    "intern/CMakeLists.txt",
+    "extern/CMakeLists.txt",
     "GNUmakefile",
 ]
 
