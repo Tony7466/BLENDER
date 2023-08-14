@@ -752,12 +752,13 @@ void import_skeleton(Main *bmain,
                skel.GetPath().GetAsString().c_str());
   }
 
-  /* Scale bones to account for separation between parents and
-   * children, so that the bone size is in proportion with the
-   * overall skeleton hierarchy.  USD skeletons are composed of
-   * joints which we imperfectly represent as bones. */
+  /* Set bone parenting.  In addition, scale bones to account
+   * for separation between parents and children, so that the
+   * bone size is in proportion with the overall skeleton hierarchy.
+   * USD skeletons are composed of joints which we imperfectly
+   * represent as bones. */
 
-  /* First, record the child bone indices per parent bone,
+  /* This will record the child bone indices per parent bone,
    * to simplify accessing children when computing lengths. */
   std::vector<std::vector<int>> child_bones(num_joints);
 
