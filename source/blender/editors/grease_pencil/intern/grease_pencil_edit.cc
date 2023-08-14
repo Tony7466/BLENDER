@@ -613,7 +613,7 @@ static int grease_pencil_dissolve_exec(bContext *C, wmOperator *op)
         /* Both `between` and `unselect` have the unselected point being dissolved.*/
         if (mode == DISSOLVE_BETWEEN || mode == DISSOLVE_UNSELECT) {
           threading::parallel_for(curves.curves_range(), 128, [&](const IndexRange range) {
-            for (const int curve_i : range) {
+            for (const int64_t curve_i : range) {
               const IndexRange points = points_by_curve[curve_i];
               const Span<bool> curve_selection = points_to_dissolve.as_span().slice(points);
               /* The unselected curves should not be dissolved.*/
