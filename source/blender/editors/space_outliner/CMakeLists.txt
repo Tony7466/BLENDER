@@ -71,6 +71,8 @@ set(SRC
   tree/tree_element_nla.cc
   tree/tree_element_overrides.cc
   tree/tree_element_particle_system.cc
+  tree/tree_element_pose.cc
+  tree/tree_element_pose_group.cc
   tree/tree_element_rna.cc
   tree/tree_element_scene_objects.cc
   tree/tree_element_seq.cc
@@ -105,6 +107,8 @@ set(SRC
   tree/tree_element_nla.hh
   tree/tree_element_overrides.hh
   tree/tree_element_particle_system.hh
+  tree/tree_element_pose.hh
+  tree/tree_element_pose_group.hh
   tree/tree_element_rna.hh
   tree/tree_element_scene_objects.hh
   tree/tree_element_seq.hh

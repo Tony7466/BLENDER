@@ -21,7 +21,6 @@
 #include "BLI_array.hh"
 #include "BLI_dlrbTree.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_range.h"
 #include "BLI_utildefines.h"
 
@@ -961,6 +960,10 @@ void summary_to_keylist(bAnimContext *ac, AnimKeylist *keylist, const int sactio
         case ALE_GPFRAME:
           gpl_to_keylist(ac->ads, static_cast<bGPDlayer *>(ale->data), keylist);
           break;
+        case ALE_GREASE_PENCIL_CEL:
+          grease_pencil_cels_to_keylist(
+              ale->adt, static_cast<const GreasePencilLayer *>(ale->data), keylist, saction_flag);
+          break;
         default:
           // printf("%s: datatype %d unhandled\n", __func__, ale->datatype);
           break;
@@ -1160,8 +1163,21 @@ void gpencil_to_keylist(bDopeSheet *ads, bGPdata *gpd, AnimKeylist *keylist, con
   }
 }
 
+void grease_pencil_data_block_to_keylist(AnimData *adt,
+                                         const GreasePencil *grease_pencil,
+                                         AnimKeylist *keylist,
+                                         const int saction_flag)
+{
+  if ((grease_pencil == nullptr) || (keylist == nullptr)) {
+    return;
+  }
+  for (const blender::bke::greasepencil::Layer *layer : grease_pencil->layers()) {
+    grease_pencil_cels_to_keylist(adt, layer, keylist, saction_flag);
+  }
+}
+
 void grease_pencil_cels_to_keylist(AnimData * /*adt*/,
-                                   GreasePencilLayer *gpl,
+                                   const GreasePencilLayer *gpl,
                                    AnimKeylist *keylist,
                                    int /*saction_flag*/)
 {
