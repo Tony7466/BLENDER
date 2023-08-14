@@ -622,10 +622,9 @@ static int grease_pencil_dissolve_exec(bContext *C, wmOperator *op)
                  * dissolved.*/
                 points_to_dissolve.as_mutable_span().slice(points).fill(true);
               }
-
               /* `between` is just `unselect` but with the first and last segments not geting
                * dissolved.*/
-              if (mode == DISSOLVE_BETWEEN) {
+              else if (mode == DISSOLVE_BETWEEN) {
                 const Vector<IndexRange> deselection_ranges = array_utils::find_all_ranges(
                     curve_selection, false);
 
@@ -634,9 +633,14 @@ static int grease_pencil_dissolve_exec(bContext *C, wmOperator *op)
                   IndexRange last_range = deselection_ranges.last().shift(points.first());
 
                   /* Because we are going to invert, fill with true so that it does not get
-                   * dissolved.*/
-                  points_to_dissolve.as_mutable_span().slice(last_range).fill(true);
-                  points_to_dissolve.as_mutable_span().slice(first_range).fill(true);
+                   * dissolved. also ranges should only be fill if the first/last point matchs the
+                   * points range.*/
+                  if (first_range.first() == points.first()) {
+                    points_to_dissolve.as_mutable_span().slice(first_range).fill(true);
+                  }
+                  if (last_range.last() == points.last()) {
+                    points_to_dissolve.as_mutable_span().slice(last_range).fill(true);
+                  }
                 }
               }
             }
