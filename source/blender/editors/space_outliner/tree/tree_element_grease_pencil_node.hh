@@ -11,7 +11,7 @@
 #include "tree_element.hh"
 
 namespace blender::bke::greasepencil {
-struct TreeNode;
+class TreeNode;
 }  // namespace blender::bke::greasepencil
 
 namespace blender::ed::outliner {
