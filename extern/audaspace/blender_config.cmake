@@ -10,7 +10,7 @@ set(WITH_FFMPEG ${WITH_CODEC_FFMPEG})  # "Build With FFMPEG"
 if(DEFINED WITH_FFTW3) # "Build With FFTW"
   set(FFTW_FOUND TRUE)
   set(WITH_FFTW TRUE)
-  set(FFTW3_INCLUDE_DIR ${FFTW3_INCLUDE_DIRS})
+  set(FFTW_INCLUDE_DIR ${FFTW3_INCLUDE_DIRS})
 endif()
 set(WITH_LIBSNDFILE ${WITH_CODEC_SNDFILE})  # "Build With LibSndFile"
 set(SEPARATE_C FALSE)  # "Build C Binding as separate library"
