@@ -87,6 +87,7 @@
 #include "SEQ_sequencer.h"
 
 #include "outliner_intern.hh"
+#include "tree/tree_element_grease_pencil_node.hh"
 #include "tree/tree_element_rna.hh"
 #include "tree/tree_element_seq.hh"
 #include "tree/tree_iterator.hh"
@@ -2213,7 +2214,7 @@ static void grease_pencil_node_fn(int event,
                                   TreeStoreElem * /*tselem*/,
                                   void * /*arg*/)
 {
-  bke::greasepencil::TreeNode &node = *static_cast<bke::greasepencil::TreeNode *>(te->directdata);
+  bke::greasepencil::TreeNode &node = tree_element_cast<TreeElementGreasePencilNode>(te)->node();
 
   if (event == OL_DOP_SELECT) {
     node.flag |= GP_LAYER_TREE_NODE_SELECT;

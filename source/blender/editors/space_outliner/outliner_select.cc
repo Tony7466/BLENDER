@@ -69,6 +69,7 @@
 
 #include "outliner_intern.hh"
 #include "tree/tree_display.hh"
+#include "tree/tree_element_grease_pencil_node.hh"
 #include "tree/tree_element_seq.hh"
 #include "tree/tree_iterator.hh"
 
@@ -490,7 +491,7 @@ static void tree_element_grease_pencil_layer_activate(bContext *C,
                                                       TreeStoreElem *tselem)
 {
   GreasePencil &grease_pencil = *(GreasePencil *)tselem->id;
-  bke::greasepencil::TreeNode &node = *static_cast<bke::greasepencil::TreeNode *>(te->directdata);
+  bke::greasepencil::TreeNode &node = tree_element_cast<TreeElementGreasePencilNode>(te)->node();
   if (node.is_layer()) {
     grease_pencil.set_active_layer(&node.as_layer());
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
@@ -1033,7 +1034,7 @@ static eOLDrawState tree_element_gplayer_state_get(const TreeElement *te)
 static eOLDrawState tree_element_grease_pencil_node_state_get(const TreeElement *te)
 {
   GreasePencil &grease_pencil = *(GreasePencil *)te->store_elem->id;
-  bke::greasepencil::TreeNode &node = *static_cast<bke::greasepencil::TreeNode *>(te->directdata);
+  bke::greasepencil::TreeNode &node = tree_element_cast<TreeElementGreasePencilNode>(te)->node();
   if (node.is_layer() && grease_pencil.is_layer_active(&node.as_layer())) {
     return OL_DRAWSEL_NORMAL;
   }

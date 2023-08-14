@@ -22,7 +22,6 @@ TreeElementGreasePencilNode::TreeElementGreasePencilNode(TreeElement &legacy_te,
 {
   BLI_assert(legacy_te.store_elem->type == TSE_GREASE_PENCIL_NODE);
   legacy_te.name = node.name;
-  legacy_te.directdata = &node;
 }
 
 void TreeElementGreasePencilNode::expand(SpaceOutliner &space_outliner) const
@@ -39,6 +38,11 @@ void TreeElementGreasePencilNode::expand(SpaceOutliner &space_outliner) const
                          0,
                          child->wrap().is_group());
   }
+}
+
+blender::bke::greasepencil::TreeNode &TreeElementGreasePencilNode::node() const
+{
+  return node_;
 }
 
 }  // namespace blender::ed::outliner

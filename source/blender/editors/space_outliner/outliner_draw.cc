@@ -70,6 +70,7 @@
 #include "outliner_intern.hh"
 #include "tree/tree_display.hh"
 #include "tree/tree_element.hh"
+#include "tree/tree_element_grease_pencil_node.hh"
 #include "tree/tree_element_id.hh"
 #include "tree/tree_element_overrides.hh"
 #include "tree/tree_element_rna.hh"
@@ -853,8 +854,8 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
         }
         case TSE_GREASE_PENCIL_NODE: {
           GreasePencil &grease_pencil = *(GreasePencil *)tselem->id;
-          bke::greasepencil::TreeNode &node = *static_cast<bke::greasepencil::TreeNode *>(
-              te->directdata);
+          bke::greasepencil::TreeNode &node =
+              tree_element_cast<TreeElementGreasePencilNode>(te)->node();
 
           /* The node already has the new name set. To properly rename the node, we need to first
            * store the new name, restore the old name in the node, and then call the rename
@@ -1511,8 +1512,8 @@ static void outliner_draw_restrictbuts(uiBlock *block,
         }
       }
       else if (tselem->type == TSE_GREASE_PENCIL_NODE) {
-        bke::greasepencil::TreeNode &node = *static_cast<bke::greasepencil::TreeNode *>(
-            te->directdata);
+        bke::greasepencil::TreeNode &node =
+            tree_element_cast<TreeElementGreasePencilNode>(te)->node();
         PointerRNA ptr;
         PropertyRNA *hide_prop;
         if (node.is_layer()) {
@@ -2914,8 +2915,8 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
         break;
       }
       case TSE_GREASE_PENCIL_NODE: {
-        bke::greasepencil::TreeNode &node = *static_cast<bke::greasepencil::TreeNode *>(
-            te->directdata);
+        bke::greasepencil::TreeNode &node =
+            tree_element_cast<TreeElementGreasePencilNode>(te)->node();
         if (node.is_layer()) {
           data.icon = ICON_OUTLINER_DATA_GP_LAYER;
         }
@@ -3207,7 +3208,7 @@ static void outliner_draw_iconrow(bContext *C,
         outliner_draw_iconrow_doit(block, te, xmax, offsx, ys, alpha_fac, active, 1);
       }
       else if (tselem->type == TSE_GREASE_PENCIL_NODE &&
-               static_cast<bke::greasepencil::TreeNode *>(te->directdata)->wrap().is_group())
+               tree_element_cast<TreeElementGreasePencilNode>(te)->node().is_group())
       {
         /* Grease Pencil layer groups are tree nodes, but they shouldn't be counted. We only want
          * to keep track of the nodes that are layers and show the total number of layers in a
@@ -3319,8 +3320,8 @@ static bool element_should_draw_faded(const TreeViewContext *tvc,
       return !is_visible || is_excluded;
     }
     case TSE_GREASE_PENCIL_NODE: {
-      bke::greasepencil::TreeNode &node = *static_cast<bke::greasepencil::TreeNode *>(
-          te->directdata);
+      bke::greasepencil::TreeNode &node =
+          tree_element_cast<TreeElementGreasePencilNode>(te)->node();
       if (node.is_layer()) {
         return !node.as_layer().is_visible();
       }
@@ -3629,12 +3630,10 @@ static void outliner_draw_hierarchy_lines_recursive(uint pos,
           y = *starty;
         }
       }
-      else if ((tselem->type == TSE_GREASE_PENCIL_NODE) &&
-               (static_cast<bke::greasepencil::TreeNode *>(te->directdata)->is_group()))
-      {
-        if (static_cast<bke::greasepencil::TreeNode *>(te->directdata)
-                ->as_group()
-                .num_direct_nodes() > 0) {
+      else if (tselem->type == TSE_GREASE_PENCIL_NODE) {
+        bke::greasepencil::TreeNode &node =
+            tree_element_cast<TreeElementGreasePencilNode>(te)->node();
+        if (node.is_group() && node.as_group().num_direct_nodes() > 0) {
           draw_hierarchy_line = true;
           y = *starty;
         }
