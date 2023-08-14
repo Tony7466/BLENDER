@@ -55,7 +55,7 @@ static void test_eevee_shadow_shift_clear()
     tile.do_update = true;
     tiles_data[tile_lod0] = shadow_tile_pack(tile);
 
-    tile.page = uint3(3, 4, 0);
+    tile.page = uint3(3, 2, 4);
     tile.is_used = false;
     tile.do_update = false;
     tiles_data[tile_lod1] = shadow_tile_pack(tile);
@@ -81,10 +81,10 @@ static void test_eevee_shadow_shift_clear()
   tiles_data.read();
 
   EXPECT_EQ(tilemaps_data[0].grid_offset, int2(0));
-  EXPECT_EQ(shadow_tile_unpack(tiles_data[tile_lod0]).page, uint2(1, 2));
+  EXPECT_EQ(shadow_tile_unpack(tiles_data[tile_lod0]).page, uint3(1, 2, 0));
   EXPECT_EQ(shadow_tile_unpack(tiles_data[tile_lod0]).is_used, false);
   EXPECT_EQ(shadow_tile_unpack(tiles_data[tile_lod0]).do_update, true);
-  EXPECT_EQ(shadow_tile_unpack(tiles_data[tile_lod1]).page, uint2(3, 4));
+  EXPECT_EQ(shadow_tile_unpack(tiles_data[tile_lod1]).page, uint3(3, 2, 4));
   EXPECT_EQ(shadow_tile_unpack(tiles_data[tile_lod1]).is_used, false);
   EXPECT_EQ(shadow_tile_unpack(tiles_data[tile_lod1]).do_update, true);
 
@@ -102,6 +102,13 @@ static void test_eevee_shadow_shift()
   ShadowTileMapClipBuf tilemaps_clip = {"tilemaps_clip"};
   ShadowPageCacheBuf pages_cached_data_ = {"pages_cached_data_"};
 
+  auto tile_co_to_page = [](int2 co) {
+    int page = co.x + co.y * SHADOW_TILEMAP_RES;
+    return uint3((page % SHADOW_PAGE_PER_ROW),
+                 (page / SHADOW_PAGE_PER_ROW) % SHADOW_PAGE_PER_COL,
+                 (page / SHADOW_PAGE_PER_LAYER));
+  };
+
   {
     ShadowTileMapData tilemap = {};
     tilemap.tiles_index = 0;
@@ -114,7 +121,6 @@ static void test_eevee_shadow_shift()
     tilemaps_data.push_update();
   }
   {
-
     ShadowTileData tile = shadow_tile_unpack(ShadowTileDataPacked(SHADOW_NO_DATA));
 
     for (auto x : IndexRange(SHADOW_TILEMAP_RES)) {
@@ -122,7 +128,7 @@ static void test_eevee_shadow_shift()
         tile.is_allocated = true;
         tile.is_rendered = true;
         tile.do_update = true;
-        tile.page = uint3(x, y, 0);
+        tile.page = tile_co_to_page(int2(x, y));
         tiles_data[x + y * SHADOW_TILEMAP_RES] = shadow_tile_pack(tile);
       }
     }
@@ -148,20 +154,22 @@ static void test_eevee_shadow_shift()
   tiles_data.read();
 
   EXPECT_EQ(tilemaps_data[0].grid_offset, int2(0));
-  EXPECT_EQ(shadow_tile_unpack(tiles_data[0]).page, uint2(SHADOW_TILEMAP_RES - 1, 2));
+  EXPECT_EQ(shadow_tile_unpack(tiles_data[0]).page,
+            tile_co_to_page(int2(SHADOW_TILEMAP_RES - 1, 2)));
   EXPECT_EQ(shadow_tile_unpack(tiles_data[0]).do_update, true);
   EXPECT_EQ(shadow_tile_unpack(tiles_data[0]).is_rendered, false);
   EXPECT_EQ(shadow_tile_unpack(tiles_data[0]).is_allocated, true);
-  EXPECT_EQ(shadow_tile_unpack(tiles_data[1]).page, uint2(0, 2));
+  EXPECT_EQ(shadow_tile_unpack(tiles_data[1]).page, tile_co_to_page(int2(0, 2)));
   EXPECT_EQ(shadow_tile_unpack(tiles_data[1]).do_update, false);
   EXPECT_EQ(shadow_tile_unpack(tiles_data[1]).is_rendered, false);
   EXPECT_EQ(shadow_tile_unpack(tiles_data[1]).is_allocated, true);
   EXPECT_EQ(shadow_tile_unpack(tiles_data[0 + SHADOW_TILEMAP_RES * 2]).page,
-            uint2(SHADOW_TILEMAP_RES - 1, 4));
+            tile_co_to_page(int2(SHADOW_TILEMAP_RES - 1, 4)));
   EXPECT_EQ(shadow_tile_unpack(tiles_data[0 + SHADOW_TILEMAP_RES * 2]).do_update, true);
   EXPECT_EQ(shadow_tile_unpack(tiles_data[0 + SHADOW_TILEMAP_RES * 2]).is_rendered, false);
   EXPECT_EQ(shadow_tile_unpack(tiles_data[0 + SHADOW_TILEMAP_RES * 2]).is_allocated, true);
-  EXPECT_EQ(shadow_tile_unpack(tiles_data[1 + SHADOW_TILEMAP_RES * 2]).page, uint2(0, 4));
+  EXPECT_EQ(shadow_tile_unpack(tiles_data[1 + SHADOW_TILEMAP_RES * 2]).page,
+            tile_co_to_page(int2(0, 4)));
   EXPECT_EQ(shadow_tile_unpack(tiles_data[1 + SHADOW_TILEMAP_RES * 2]).do_update, false);
   EXPECT_EQ(shadow_tile_unpack(tiles_data[1 + SHADOW_TILEMAP_RES * 2]).is_rendered, false);
   EXPECT_EQ(shadow_tile_unpack(tiles_data[1 + SHADOW_TILEMAP_RES * 2]).is_allocated, true);
