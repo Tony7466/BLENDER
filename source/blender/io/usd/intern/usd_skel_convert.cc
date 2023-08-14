@@ -46,6 +46,13 @@
 
 namespace {
 
+/* Utility: return the magnitude of the largest component 
+ * of the given vector. */
+inline float max_mag_component(const pxr::GfVec3d &vec)
+{
+  return pxr::GfMax(pxr::GfAbs(vec[0]), pxr::GfAbs(vec[1]), pxr::GfAbs(vec[2]));
+}
+
 /* Utility: create curve at the given array index. */
 FCurve *create_fcurve(const int array_index, const std::string &rna_path)
 {
@@ -57,7 +64,7 @@ FCurve *create_fcurve(const int array_index, const std::string &rna_path)
 }
 
 /* Utility: create curve at the given array index and
- * adds it as a channel to a group. */
+ * add it as a channel to a group. */
 FCurve *create_chan_fcurve(bAction *act,
                            bActionGroup *grp,
                            const int array_index,
@@ -228,7 +235,7 @@ void import_skeleton_curves(Main *bmain,
 
   pxr::VtMatrix4dArray joint_local_bind_xforms(bind_xforms.size());
   for (int i = 0; i < bind_xforms.size(); ++i) {
-    int parent_id = skel_topology.GetParent(i);
+    const int parent_id = skel_topology.GetParent(i);
 
     if (parent_id >= 0) {
       /* This is a non-root joint.  Compute the bind transform of the joint
@@ -268,11 +275,11 @@ void import_skeleton_curves(Main *bmain,
         continue;
       }
 
-      float re = qrot.GetReal();
-      pxr::GfVec3f im = qrot.GetImaginary();
+      const float re = qrot.GetReal();
+      const pxr::GfVec3f &im = qrot.GetImaginary();
 
       for (int j = 0; j < 3; ++j) {
-        int k = 3 * i + j;
+        const int k = 3 * i + j;
         if (k >= loc_curves.size()) {
           std::cout << "PROGRAMMER ERROR: out of bounds translation curve index." << std::endl;
           break;
@@ -283,7 +290,7 @@ void import_skeleton_curves(Main *bmain,
       }
 
       for (int j = 0; j < 4; ++j) {
-        int k = 4 * i + j;
+        const int k = 4 * i + j;
         if (k >= rot_curves.size()) {
           std::cout << "PROGRAMMER ERROR: out of bounds rotation curve index." << std::endl;
           break;
@@ -299,7 +306,7 @@ void import_skeleton_curves(Main *bmain,
       }
 
       for (int j = 0; j < 3; ++j) {
-        int k = 3 * i + j;
+        const int k = 3 * i + j;
         if (k >= scale_curves.size()) {
           std::cout << "PROGRAMMER ERROR: out of bounds scale curve index." << std::endl;
           break;
@@ -560,7 +567,7 @@ void import_blendshapes(Main *bmain,
     return;
   }
 
-  size_t num_samples = times.size();
+  const size_t num_samples = times.size();
 
   /* Create the animation and curves. */
   bAction *act = ED_id_action_ensure(bmain, (ID *)&key->id);
@@ -669,7 +676,7 @@ void import_skeleton(Main *bmain,
   }
 
   /* Sanity check: we should have created a bone for each joint. */
-  size_t num_joints = skel_topology.GetNumJoints();
+  const size_t num_joints = skel_topology.GetNumJoints();
   if (edit_bones.size() != num_joints) {
     WM_reportf(RPT_WARNING,
                "%s: Mismatch in bone and joint counts for skeleton %s",
@@ -755,7 +762,7 @@ void import_skeleton(Main *bmain,
   std::vector<std::vector<int>> child_bones(num_joints);
 
   for (size_t i = 0; i < num_joints; ++i) {
-    int parent_idx = skel_topology.GetParent(i);
+    const int parent_idx = skel_topology.GetParent(i);
     if (parent_idx < 0) {
       continue;
     }
@@ -802,10 +809,10 @@ void import_skeleton(Main *bmain,
     pxr::GfVec3f parent_head(parent->head);
     pxr::GfVec3f parent_tail(parent->tail);
 
-    float new_len = (avg_child_head - parent_head).GetLength();
+    const float new_len = (avg_child_head - parent_head).GetLength();
 
-    /* Be sure not to scale by zero. */
-    if (new_len > .00001) {
+    /* Check for epsilon relative to the parent head before scaling. */
+    if (new_len > .00001 * max_mag_component(parent_head)) {
       parent_tail = parent_head + (parent_tail - parent_head).GetNormalized() * new_len;
       copy_v3_v3(parent->tail, parent_tail.data());
       avg_len_scale += new_len;
@@ -815,16 +822,19 @@ void import_skeleton(Main *bmain,
   /* Scale terminal bones by the average length scale. */
   avg_len_scale /= num_joints;
 
-  if (avg_len_scale > .00001) {
-    for (size_t i = 0; i < num_joints; ++i) {
-      if (!child_bones[i].empty()) {
-        continue;
-      }
-      EditBone *bone = edit_bones[i];
-      if (!bone) {
-        continue;
-      }
-      pxr::GfVec3f head(bone->head);
+  for (size_t i = 0; i < num_joints; ++i) {
+    if (!child_bones[i].empty()) {
+      /* Not a terminal bone. */
+      continue;
+    }
+    EditBone *bone = edit_bones[i];
+    if (!bone) {
+      continue;
+    }
+    pxr::GfVec3f head(bone->head);
+
+    /* Check for epsilon relative to the head before scaling. */
+    if (avg_len_scale > .00001 * max_mag_component(head)) {
       pxr::GfVec3f tail(bone->tail);
       tail = head + (tail - head).GetNormalized() * avg_len_scale;
       copy_v3_v3(bone->tail, tail.data());
@@ -927,7 +937,7 @@ void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim
 
   Mesh *mesh = static_cast<Mesh *>(mesh_obj->data);
 
-  pxr::TfToken interp = joint_weights_primvar.GetInterpolation();
+  const pxr::TfToken interp = joint_weights_primvar.GetInterpolation();
 
   /* Sanity check: we expect only vertex or constant interpolation. */
   if (interp != pxr::UsdGeomTokens->vertex && interp != pxr::UsdGeomTokens->constant) {
@@ -1009,15 +1019,14 @@ void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim
       offset = i * joint_weights_elem_size;
     }
     for (int j = 0; j < joint_weights_elem_size; ++j) {
-      int k = offset + j;
-      float w = joint_weights[k];
+      const int k = offset + j;
+      const float w = joint_weights[k];
       if (w < .00001) {
         /* No deform group if zero weight. */
         continue;
       }
-      int joint_idx = joint_indices[k];
-      bDeformGroup *def_grp = joint_def_grps[joint_idx];
-      if (def_grp) {
+      const int joint_idx = joint_indices[k];
+      if (bDeformGroup *def_grp = joint_def_grps[joint_idx]) {
         ED_vgroup_vert_add(mesh_obj, def_grp, i, w, WEIGHT_REPLACE);
       }
     }
