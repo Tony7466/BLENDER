@@ -30,13 +30,8 @@ void TreeElementGreasePencilNode::expand(SpaceOutliner &space_outliner) const
     return;
   }
   LISTBASE_FOREACH_BACKWARD (GreasePencilLayerTreeNode *, child, &node_.as_group().children) {
-    outliner_add_element(&space_outliner,
-                         &legacy_te_.subtree,
-                         child,
-                         &legacy_te_,
-                         TSE_GREASE_PENCIL_NODE,
-                         0,
-                         child->wrap().is_group());
+    outliner_add_element(
+        &space_outliner, &legacy_te_.subtree, child, &legacy_te_, TSE_GREASE_PENCIL_NODE, 0);
   }
 }
 
