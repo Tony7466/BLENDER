@@ -117,7 +117,7 @@ typedef enum eTreeStoreElemType {
   TSE_LIBRARY_OVERRIDE = 45,
   TSE_LIBRARY_OVERRIDE_OPERATION = 46,
   TSE_GENERIC_LABEL = 47, /* No ID */
-  TSE_GREASE_PENCIL_NODE = 48, /* No ID */
+  TSE_GREASE_PENCIL_NODE = 48,
 } eTreeStoreElemType;
 
 /** Check whether given #TreeStoreElem should have a real ID in #TreeStoreElem.id member. */
@@ -134,6 +134,7 @@ typedef enum eTreeStoreElemType {
          TSE_RNA_ARRAY_ELEM, \
          TSE_ID_BASE, \
          TSE_GP_LAYER, \
+         TSE_GREASE_PENCIL_NODE, \
          TSE_GENERIC_LABEL))
 
 #ifdef __cplusplus
