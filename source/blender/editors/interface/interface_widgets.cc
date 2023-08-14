@@ -15,7 +15,7 @@
 #include "DNA_userdef_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
@@ -23,15 +23,15 @@
 
 #include "BKE_context.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "BLF_api.h"
 
 #include "ED_node.hh"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
+#include "UI_view2d.hh"
 
 #include "interface_intern.hh"
 
@@ -44,7 +44,7 @@
 #include "GPU_state.h"
 
 #ifdef WITH_INPUT_IME
-#  include "WM_types.h"
+#  include "WM_types.hh"
 #endif
 
 /* -------------------------------------------------------------------- */

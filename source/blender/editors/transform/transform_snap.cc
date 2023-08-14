@@ -13,7 +13,8 @@
 #include "DNA_windowmanager_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_utildefines.h"
 
 #include "GPU_immediate.h"
@@ -27,20 +28,20 @@
 #include "BKE_object.h"
 #include "BKE_scene.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_gizmo_library.h"
-#include "ED_markers.h"
-#include "ED_node.h"
-#include "ED_transform_snap_object_context.h"
-#include "ED_uvedit.h"
-#include "ED_view3d.h"
+#include "ED_gizmo_library.hh"
+#include "ED_markers.hh"
+#include "ED_node.hh"
+#include "ED_transform_snap_object_context.hh"
+#include "ED_uvedit.hh"
+#include "ED_view3d.hh"
 
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
 #include "SEQ_iterator.h"
 #include "SEQ_sequencer.h"

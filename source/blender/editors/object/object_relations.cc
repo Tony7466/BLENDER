@@ -33,7 +33,8 @@
 #include "BLI_kdtree.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -81,24 +82,24 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "ED_armature.h"
-#include "ED_curve.h"
-#include "ED_gpencil_legacy.h"
-#include "ED_keyframing.h"
-#include "ED_mesh.h"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_armature.hh"
+#include "ED_curve.hh"
+#include "ED_gpencil_legacy.hh"
+#include "ED_keyframing.hh"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
 #include "MOD_nodes.hh"
 
@@ -926,7 +927,7 @@ static int parent_set_invoke_menu(bContext *C, wmOperatorType *ot)
 
   PointerRNA opptr;
 #if 0
-  uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_OBJECT);
+  uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_OBJECT);
 #else
   uiItemFullO_ptr(
       layout, ot, IFACE_("Object"), ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, UI_ITEM_NONE, &opptr);
@@ -980,24 +981,24 @@ static int parent_set_invoke_menu(bContext *C, wmOperatorType *ot)
   CTX_DATA_END;
 
   if (parent->type == OB_ARMATURE) {
-    uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_ARMATURE);
-    uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_ARMATURE_NAME);
+    uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_ARMATURE);
+    uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_ARMATURE_NAME);
     if (!has_children_of_type.gpencil) {
-      uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_ARMATURE_ENVELOPE);
+      uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_ARMATURE_ENVELOPE);
     }
     if (has_children_of_type.mesh || has_children_of_type.gpencil) {
-      uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_ARMATURE_AUTO);
+      uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_ARMATURE_AUTO);
     }
-    uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_BONE);
-    uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_BONE_RELATIVE);
+    uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_BONE);
+    uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_BONE_RELATIVE);
   }
   else if (parent->type == OB_CURVES_LEGACY) {
-    uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_CURVE);
-    uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_FOLLOW);
-    uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_PATH_CONST);
+    uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_CURVE);
+    uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_FOLLOW);
+    uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_PATH_CONST);
   }
   else if (parent->type == OB_LATTICE) {
-    uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_LATTICE);
+    uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_LATTICE);
   }
   else if (parent->type == OB_MESH) {
     if (has_children_of_type.curves) {
@@ -1007,8 +1008,8 @@ static int parent_set_invoke_menu(bContext *C, wmOperatorType *ot)
 
   /* vertex parenting */
   if (OB_TYPE_SUPPORT_PARVERT(parent->type)) {
-    uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_VERTEX);
-    uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_VERTEX_TRI);
+    uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_VERTEX);
+    uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_VERTEX_TRI);
   }
 
   UI_popup_menu_end(C, pup);

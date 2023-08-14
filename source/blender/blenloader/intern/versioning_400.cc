@@ -25,7 +25,7 @@
 
 #include "BLI_assert.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_set.hh"
 #include "BLI_string_ref.hh"
 
@@ -38,6 +38,9 @@
 #include "BKE_scene.h"
 #include "BKE_tracking.h"
 
+#include "BLT_translation.h"
+
+#include "BLO_read_write.h"
 #include "BLO_readfile.h"
 
 #include "readfile.h"
@@ -46,7 +49,7 @@
 
 // static CLG_LogRef LOG = {"blo.readfile.doversion"};
 
-void do_versions_after_linking_400(FileData * /*fd*/, Main *bmain)
+void do_versions_after_linking_400(FileData *fd, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 9)) {
     /* Fix area light scaling. */
@@ -54,6 +57,37 @@ void do_versions_after_linking_400(FileData * /*fd*/, Main *bmain)
       light->energy = light->energy_deprecated;
       if (light->type == LA_AREA) {
         light->energy *= M_PI_4;
+      }
+    }
+
+    /* Object proxies have been deprecated sine 3.x era, so their update & sanity check can now
+     * happen in do_versions code. */
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      if (ob->proxy) {
+        /* Paranoia check, actually a proxy_from pointer should never be written... */
+        if (!ID_IS_LINKED(ob->proxy)) {
+          ob->proxy->proxy_from = nullptr;
+          ob->proxy = nullptr;
+
+          if (ob->id.lib) {
+            BLO_reportf_wrap(fd->reports,
+                             RPT_INFO,
+                             TIP_("Proxy lost from object %s lib %s\n"),
+                             ob->id.name + 2,
+                             ob->id.lib->filepath);
+          }
+          else {
+            BLO_reportf_wrap(fd->reports,
+                             RPT_INFO,
+                             TIP_("Proxy lost from object %s lib <NONE>\n"),
+                             ob->id.name + 2);
+          }
+          fd->reports->count.missing_obproxies++;
+        }
+        else {
+          /* This triggers object_update to always use a copy. */
+          ob->proxy->proxy_from = ob;
+        }
       }
     }
   }
@@ -617,5 +651,19 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       FOREACH_NODETREE_END;
     }
     /* Keep this block, even when empty. */
+
+    if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "float", "grid_flag")) {
+      LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
+        /* Keep old behavior of baking the whole lighting. */
+        lightprobe->grid_flag = LIGHTPROBE_GRID_CAPTURE_WORLD | LIGHTPROBE_GRID_CAPTURE_INDIRECT |
+                                LIGHTPROBE_GRID_CAPTURE_EMISSION;
+      }
+    }
+
+    if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "int", "gi_irradiance_pool_size")) {
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->eevee.gi_irradiance_pool_size = 16;
+      }
+    }
   }
 }

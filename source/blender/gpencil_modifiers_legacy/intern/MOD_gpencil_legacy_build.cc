@@ -14,6 +14,7 @@
 
 #include "BLI_listbase.h"
 #include "BLI_math_base.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 #include "BLI_sort.h"
 #include "BLI_utildefines.h"
@@ -37,10 +38,10 @@
 #include "BKE_modifier.h"
 #include "BKE_screen.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"

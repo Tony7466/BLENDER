@@ -27,10 +27,10 @@
 #include "SEQ_relations.h"
 #include "SEQ_sequencer.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 static void proxy_freejob(void *pjv)
 {

@@ -30,7 +30,6 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
 #include "BLI_timer.h"
 #include "BLI_utildefines.h"
 
@@ -50,33 +49,33 @@
 
 #include "BLT_translation.h"
 
-#include "ED_asset.h"
-#include "ED_fileselect.h"
-#include "ED_info.h"
-#include "ED_render.h"
-#include "ED_screen.h"
-#include "ED_undo.h"
-#include "ED_util.h"
-#include "ED_view3d.h"
+#include "ED_asset.hh"
+#include "ED_fileselect.hh"
+#include "ED_info.hh"
+#include "ED_render.hh"
+#include "ED_screen.hh"
+#include "ED_undo.hh"
+#include "ED_util.hh"
+#include "ED_view3d.hh"
 
 #include "GPU_context.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "PIL_time.h"
 
-#include "WM_api.h"
-#include "WM_message.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
 #include "WM_toolsystem.h"
-#include "WM_types.h"
+#include "WM_types.hh"
 
-#include "wm.h"
+#include "wm.hh"
 #include "wm_event_system.h"
-#include "wm_event_types.h"
-#include "wm_surface.h"
-#include "wm_window.h"
+#include "wm_event_types.hh"
+#include "wm_surface.hh"
+#include "wm_window.hh"
 #include "wm_window_private.h"
 
 #include "DEG_depsgraph.h"
@@ -4634,7 +4633,7 @@ void WM_event_get_keymap_from_toolsystem(wmWindowManager *wm,
 }
 
 wmEventHandler_Keymap *WM_event_add_keymap_handler_dynamic(
-    ListBase *handlers, wmEventHandler_KeymapDynamicFn *keymap_fn, void *user_data)
+    ListBase *handlers, wmEventHandler_KeymapDynamicFn keymap_fn, void *user_data)
 {
   if (!keymap_fn) {
     CLOG_WARN(WM_LOG_HANDLERS, "called with nullptr keymap_fn");
@@ -6249,7 +6248,8 @@ void WM_window_cursor_keymap_status_refresh(bContext *C, wmWindow *win)
     }
     if (kmi) {
       wmOperatorType *ot = WM_operatortype_find(kmi->idname, false);
-      const char *name = (ot) ? WM_operatortype_name(ot, kmi->ptr) : kmi->idname;
+      const std::string operator_name = WM_operatortype_name(ot, kmi->ptr);
+      const char *name = (ot) ? operator_name.c_str() : kmi->idname;
       STRNCPY(cd->text[button_index][type_index], name);
     }
   }
@@ -6330,7 +6330,7 @@ bool WM_window_modal_keymap_status_draw(bContext *C, wmWindow *win, uiLayout *la
       p -= 1;
       if (p > buf) {
         BLI_snprintf(p, available_len, ": %s", items[i].name);
-        uiItemL(row, buf, 0);
+        uiItemL(row, buf, ICON_NONE);
       }
     }
   }

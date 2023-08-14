@@ -24,15 +24,15 @@
 #include "BKE_image.h"
 #include "BKE_scene.h"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
-#include "ED_render.h"
+#include "ED_render.hh"
 
 /* Deprecated, only provided for API compatibility. */
 const EnumPropertyItem rna_enum_render_pass_type_items[] = {
@@ -84,7 +84,7 @@ const EnumPropertyItem rna_enum_bake_pass_type_items[] = {
 
 #  include "MEM_guardedalloc.h"
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
 #  include "BKE_appdir.h"
 #  include "BKE_context.h"

@@ -6,7 +6,7 @@
  * \ingroup edscr
  */
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "GPU_batch_presets.h"
 #include "GPU_framebuffer.h"
@@ -16,14 +16,13 @@
 #include "GPU_state.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_math_vector.hh"
 #include "BLI_rect.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "screen_intern.h"
 

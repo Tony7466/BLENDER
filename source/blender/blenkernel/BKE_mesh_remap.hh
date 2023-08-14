@@ -8,6 +8,8 @@
  * \ingroup bke
  */
 
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
 
@@ -34,7 +36,7 @@ struct MeshPairRemap {
   int items_num;
   MeshPairRemapItem *items; /* Array, one item per destination element. */
 
-  struct MemArena *mem; /* memory arena, internal use only. */
+  MemArena *mem; /* memory arena, internal use only. */
 };
 
 /* Helpers! */

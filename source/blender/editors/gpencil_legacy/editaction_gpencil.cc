@@ -24,12 +24,12 @@
 #include "BKE_gpencil_legacy.h"
 #include "BKE_report.h"
 
-#include "ED_anim_api.h"
-#include "ED_gpencil_legacy.h"
-#include "ED_keyframes_edit.h"
-#include "ED_markers.h"
+#include "ED_anim_api.hh"
+#include "ED_gpencil_legacy.hh"
+#include "ED_keyframes_edit.hh"
+#include "ED_markers.hh"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "DEG_depsgraph.h"
 
@@ -109,7 +109,7 @@ bool ED_gpencil_layer_frame_select_check(const bGPDlayer *gpl)
   return false;
 }
 
-/* helper function - select gp-frame based on SELECT_* mode */
+/* Helper function: select GP-frame based on SELECT_* mode. */
 static void gpencil_frame_select(bGPDframe *gpf, short select_mode)
 {
   if (gpf == nullptr) {

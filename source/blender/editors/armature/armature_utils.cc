@@ -12,7 +12,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string_utils.h"
 
 #include "BKE_armature.h"
@@ -25,8 +26,8 @@
 
 #include "DEG_depsgraph.h"
 
-#include "ED_armature.h"
-#include "ED_util.h"
+#include "ED_armature.hh"
+#include "ED_util.hh"
 
 #include "ANIM_bone_collections.h"
 

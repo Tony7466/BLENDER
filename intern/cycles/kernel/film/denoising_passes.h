@@ -61,16 +61,7 @@ ccl_device_forceinline void film_write_denoising_features_surface(KernelGlobals 
               sc->sample_weight;
     sum_weight += sc->sample_weight;
 
-    if (sc->type == CLOSURE_BSDF_PRINCIPLED_DIFFUSE_ID) {
-      /* BSSRDF already accounts for weight, retro-reflection would double up. */
-      ccl_private const PrincipledDiffuseBsdf *bsdf = (ccl_private const PrincipledDiffuseBsdf *)
-          sc;
-      if (bsdf->components == PRINCIPLED_DIFFUSE_RETRO_REFLECTION) {
-        continue;
-      }
-    }
-
-    Spectrum closure_albedo = bsdf_albedo(sd, sc, true, true);
+    Spectrum closure_albedo = bsdf_albedo(kg, sd, sc, true, true);
     if (bsdf_get_specular_roughness_squared(sc) > sqr(0.075f) ||
         sc->type == CLOSURE_BSDF_HAIR_MICROFACET_ID)
     {

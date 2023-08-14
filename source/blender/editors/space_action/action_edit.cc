@@ -13,7 +13,6 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_map.hh"
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -27,9 +26,9 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "BKE_action.h"
 #include "BKE_animsys.h"
@@ -42,21 +41,21 @@
 #include "BKE_nla.h"
 #include "BKE_report.h"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
-#include "ED_anim_api.h"
-#include "ED_gpencil_legacy.h"
-#include "ED_grease_pencil.h"
-#include "ED_keyframes_edit.h"
-#include "ED_keyframing.h"
-#include "ED_markers.h"
-#include "ED_mask.h"
-#include "ED_screen.h"
+#include "ED_anim_api.hh"
+#include "ED_gpencil_legacy.hh"
+#include "ED_grease_pencil.hh"
+#include "ED_keyframes_edit.hh"
+#include "ED_keyframing.hh"
+#include "ED_markers.hh"
+#include "ED_mask.hh"
+#include "ED_screen.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "action_intern.hh"
 
@@ -179,7 +178,7 @@ static bool get_keyframe_extents(bAnimContext *ac, float *min, float *max, const
       if (ale->datatype == ALE_GPFRAME) {
         bGPDlayer *gpl = static_cast<bGPDlayer *>(ale->data);
 
-        /* Find gp-frame which is less than or equal to current-frame. */
+        /* Find GP-frame which is less than or equal to current-frame. */
         LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
           if (!onlySel || (gpf->flag & GP_FRAME_SELECT)) {
             const float framenum = float(gpf->framenum);
@@ -683,7 +682,9 @@ static int actkeys_paste_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static char *actkeys_paste_description(bContext * /*C*/, wmOperatorType * /*op*/, PointerRNA *ptr)
+static std::string actkeys_paste_description(bContext * /*C*/,
+                                             wmOperatorType * /*op*/,
+                                             PointerRNA *ptr)
 {
   /* Custom description if the 'flipped' option is used. */
   if (RNA_boolean_get(ptr, "flipped")) {
@@ -691,7 +692,7 @@ static char *actkeys_paste_description(bContext * /*C*/, wmOperatorType * /*op*/
   }
 
   /* Use the default description in the other cases. */
-  return nullptr;
+  return "";
 }
 
 void ACTION_OT_paste(wmOperatorType *ot)

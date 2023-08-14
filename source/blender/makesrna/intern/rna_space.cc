@@ -23,12 +23,14 @@
 #include "BKE_studiolight.h"
 #include "BKE_viewer_path.h"
 
-#include "ED_asset.h"
-#include "ED_spreadsheet.h"
-#include "ED_text.h"
+#include "ED_asset.hh"
+#include "ED_spreadsheet.hh"
+#include "ED_text.hh"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_sys_types.h"
 #include "BLI_uuid.h"
@@ -45,8 +47,8 @@
 #include "DNA_view3d_types.h"
 #include "DNA_workspace_types.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "rna_internal.h"
 
@@ -54,13 +56,13 @@
 #include "SEQ_relations.h"
 #include "SEQ_sequencer.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
-#include "RNA_enum_types.h"
+#include "RNA_enum_types.hh"
 
 const EnumPropertyItem rna_enum_geometry_component_type_items[] = {
     {int(blender::bke::GeometryComponent::Type::Mesh),
@@ -564,24 +566,24 @@ static const EnumPropertyItem rna_enum_curve_display_handle_items[] = {
 #  include "DEG_depsgraph.h"
 #  include "DEG_depsgraph_build.h"
 
-#  include "ED_anim_api.h"
-#  include "ED_asset.h"
-#  include "ED_buttons.h"
-#  include "ED_clip.h"
-#  include "ED_fileselect.h"
-#  include "ED_image.h"
-#  include "ED_node.h"
-#  include "ED_screen.h"
-#  include "ED_sequencer.h"
-#  include "ED_transform.h"
-#  include "ED_view3d.h"
+#  include "ED_anim_api.hh"
+#  include "ED_asset.hh"
+#  include "ED_buttons.hh"
+#  include "ED_clip.hh"
+#  include "ED_fileselect.hh"
+#  include "ED_image.hh"
+#  include "ED_node.hh"
+#  include "ED_screen.hh"
+#  include "ED_sequencer.hh"
+#  include "ED_transform.hh"
+#  include "ED_view3d.hh"
 
 #  include "GPU_material.h"
 
 #  include "IMB_imbuf_types.h"
 
-#  include "UI_interface.h"
-#  include "UI_view2d.h"
+#  include "UI_interface.hh"
+#  include "UI_view2d.hh"
 
 static StructRNA *rna_Space_refine(PointerRNA *ptr)
 {
@@ -1617,8 +1619,11 @@ static int rna_SpaceView3D_icon_from_show_object_viewport_get(PointerRNA *ptr)
                                                     &v3d->object_type_exclude_select);
 }
 
-static char *rna_View3DShading_path(const PointerRNA * /*ptr*/)
+static char *rna_View3DShading_path(const PointerRNA *ptr)
 {
+  if (GS(ptr->owner_id->name) == ID_SCE) {
+    return BLI_strdup("display.shading");
+  }
   return BLI_strdup("shading");
 }
 
@@ -7395,6 +7400,16 @@ static void rna_def_space_node_overlay(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
+  static const EnumPropertyItem preview_shapes[] = {
+      {SN_OVERLAY_PREVIEW_FLAT, "FLAT", ICON_MESH_PLANE, "Flat", "Use the default flat previews"},
+      {SN_OVERLAY_PREVIEW_3D,
+       "3D",
+       ICON_SPHERE,
+       "3D",
+       "Use the material preview scene for the node previews"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   srna = RNA_def_struct(brna, "SpaceNodeOverlay", nullptr);
   RNA_def_struct_sdna(srna, "SpaceNode");
   RNA_def_struct_nested(brna, srna, "SpaceNodeEditor");
@@ -7439,6 +7454,13 @@ static void rna_def_space_node_overlay(BlenderRNA *brna)
   RNA_def_property_boolean_default(prop, false);
   RNA_def_property_ui_text(
       prop, "Show Node Previews", "Display each node's preview if node is toggled");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE, nullptr);
+
+  prop = RNA_def_property(srna, "preview_shape", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "overlay.preview_shape");
+  RNA_def_property_enum_items(prop, preview_shapes);
+  RNA_def_property_enum_default(prop, SN_OVERLAY_PREVIEW_FLAT);
+  RNA_def_property_ui_text(prop, "Preview Shape", "Preview shape used by the node previews");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE, nullptr);
 }
 
@@ -7659,9 +7681,12 @@ static void rna_def_space_node(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Overlay Settings", "Settings for display of overlays in the Node Editor");
 
-  prop = RNA_def_property(srna, "supports_preview", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "supports_previews", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(prop, "rna_SpaceNode_supports_previews", nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop,
+                           "Supports Previews",
+                           "Whether the node editor's type supports displaying node previews");
 
   rna_def_space_node_overlay(brna);
   RNA_api_space_node(srna);

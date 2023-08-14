@@ -12,7 +12,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
 
@@ -23,7 +23,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "BKE_brush.hh"
 #include "BKE_colortools.h"
@@ -32,14 +32,14 @@
 #include "BKE_image.h"
 #include "BKE_paint.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_state.h"
 
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
 #include "IMB_imbuf_types.h"
 

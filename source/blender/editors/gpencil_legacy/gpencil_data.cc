@@ -18,7 +18,9 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
@@ -53,18 +55,18 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_object.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_object.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"

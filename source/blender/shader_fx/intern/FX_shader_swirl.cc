@@ -24,10 +24,10 @@
 #include "BKE_screen.h"
 #include "BKE_shader_fx.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "FX_shader_types.h"
 #include "FX_ui_common.h"
