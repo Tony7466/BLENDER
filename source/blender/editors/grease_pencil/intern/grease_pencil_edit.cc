@@ -563,11 +563,11 @@ static void GREASE_PENCIL_OT_stroke_simplify(wmOperatorType *ot)
  * \{ */
 
 enum DissolveMode {
-  /* dissolve all selected points */
+  /* Dissolve all selected points. */
   DISSOLVE_POINTS = 0,
-  /* dissolve between selected points */
+  /* Dissolve between selected points. */
   DISSOLVE_BETWEEN = 1,
-  /* dissolve unselected points */
+  /* Dissolve unselected points. */
   DISSOLVE_UNSELECT = 2,
 };
 
