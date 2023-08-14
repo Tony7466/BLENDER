@@ -1,5 +1,12 @@
 # OpenColorIO configuration file for Blender
 #
+# ACEScg and ACES2065-1 spaces from OpenColorIO-Config
+#
+# Filmic Dynamic Range LUT configuration crafted by Troy James Sobotka with
+# special thanks and feedback from Guillermo, Claudio Rocha, Bassam Kurdali,
+# Eugenio Pignataro, Henri Hebeisen, Jason Clarke, Haarm-Peter Duiker, Thomas
+# Mansencal, and Timothy Lottes.
+#
 # Based on original AgX by Troy Sobotka: https://github.com/sobotka/AgX https://github.com/sobotka/SB2383-Configuration-Generation
 # Further Developed by Zijun Eary Zhou法纤净, Mark Faderbauer, and Sakari Kapanen
 # Repository for this version: https://github.com/EaryChow/AgX
