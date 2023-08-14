@@ -5311,7 +5311,7 @@ static void def_sh_tex_gradient(StructRNA *srna)
 
 static void def_sh_tex_noise(StructRNA *srna)
 {
-  static const EnumPropertyItem prop_musgrave_type[] = {
+  static const EnumPropertyItem prop_noise_type[] = {
       {SHD_NOISE_MULTIFRACTAL,
        "MULTIFRACTAL",
        0,
@@ -5350,7 +5350,7 @@ static void def_sh_tex_noise(StructRNA *srna)
 
   prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "type");
-  RNA_def_property_enum_items(prop, prop_musgrave_type);
+  RNA_def_property_enum_items(prop, prop_noise_type);
   RNA_def_property_ui_text(prop, "Type", "Type of the Noise texture");
   RNA_def_property_update(prop, 0, "rna_ShaderNode_socket_update");
 

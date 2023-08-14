@@ -43,6 +43,34 @@ vector4 random_vector4_offset(float seed)
                  100.0 + noise("hash", seed, 3.0) * 100.0);
 }
 
+float noise_select(T p,
+                              float detail,
+                              float roughness,
+                              float lacunarity,
+                              float offset,
+                              float gain,
+                              int type,
+                              int use_normalize)
+{
+  if(type="Multifractal"): {
+      return noise_multi_fractal(p, detail, roughness, lacunarity);
+    }
+else if(type="fBM"): {
+      return noise_fbm(p, detail, roughness, lacunarity, use_normalize);
+    }
+    else if(type="Hybrid Multifractal"): {
+      return noise_hybrid_multi_fractal(p, detail, roughness, lacunarity, offset, gain);
+    }
+    else if(type="Ridged Multifractal"): {
+      return noise_ridged_multi_fractal(p, detail, roughness, lacunarity, offset, gain);
+    }
+    else if(type="Hetero Terrain"): {
+      return noise_hetero_terrain(p, detail, roughness, lacunarity, offset);
+    }
+      else{
+    error("Unknown Type!");}
+}
+
 float noise_texture(float co,
                     float detail,
                     float roughness,
@@ -157,21 +185,21 @@ shader node_noise_texture(int use_mapping = 0,
   p *= Scale;
   float w = W * Scale;
 
-  if (dimensions == "1D")
-    Fac = noise_texture(w, Detail, Roughness, Lacunarity, Distortion, use_normalize, Color);
-  else if (dimensions == "2D")
-    Fac = noise_texture(
-        vector2(p[0], p[1]), Detail, Roughness, Lacunarity, Distortion, use_normalize, Color);
-  else if (dimensions == "3D")
-    Fac = noise_texture(p, Detail, Roughness, Lacunarity, Distortion, use_normalize, Color);
-  else if (dimensions == "4D")
-    Fac = noise_texture(vector4(p[0], p[1], p[2], w),
+  if (dimensions == "1D"){
+    Fac = noise_select(w, Detail, Roughness, Lacunarity,Offset, Gain,Distortion, use_normalize, Color);}
+  else if (dimensions == "2D"){
+    Fac = noise_select(
+        vector2(p[0], p[1]), Detail, Roughness, Lacunarity,Offset, Gain, Distortion, use_normalize, Color);}
+  else if (dimensions == "3D"){
+    Fac = noise_select(p, Detail, Roughness, Lacunarity,Offset, Gain, Distortion, use_normalize, Color);}
+  else if (dimensions == "4D"){
+    Fac = noise_select(vector4(p[0], p[1], p[2], w),
                         Detail,
                         Roughness,
-                        Lacunarity,
+                        Lacunarity,Offset, Gain,
                         Distortion,
                         use_normalize,
-                        Color);
-  else
-    error("Unknown dimension!");
+                        Color);}
+  else{
+    error("Unknown Dimension!");}
 }
