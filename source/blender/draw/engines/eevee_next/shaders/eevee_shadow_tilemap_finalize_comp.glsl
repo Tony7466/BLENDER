@@ -12,9 +12,35 @@
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_tilemap_lib.glsl)
 
-shared uvec2 rect_min;
-shared uvec2 rect_max;
+shared ivec2 rect_min;
+shared ivec2 rect_max;
 shared int view_index;
+
+/**
+ * Select the smallest viewport that can contain the given rect of tiles to render.
+ * Returns the viewport index.
+ */
+int viewport_select(ivec2 rect_size)
+{
+  /* TODO(fclem): Experiment with non squared viewports. */
+  int max_dim = max(rect_size.x, rect_size.y);
+  /* Assumes max_dim is non-null. */
+  int power_of_two = int(findMSB(uint(max_dim)));
+  if ((1 << power_of_two) != max_dim) {
+    power_of_two += 1;
+  }
+  return power_of_two;
+}
+
+/**
+ * Select the smallest viewport that can contain the given rect of tiles to render.
+ * Returns the viewport size in tile.
+ */
+ivec2 viewport_size_get(int viewport_index)
+{
+  /* TODO(fclem): Experiment with non squared viewports. */
+  return ivec2(1 << viewport_index);
+}
 
 void main()
 {
@@ -40,8 +66,8 @@ void main()
 
     /* Compute update area. */
     if (all(equal(gl_LocalInvocationID, uvec3(0)))) {
-      rect_min = uvec2(SHADOW_TILEMAP_RES);
-      rect_max = uvec2(0u);
+      rect_min = ivec2(SHADOW_TILEMAP_RES);
+      rect_max = ivec2(0);
       view_index = -1;
     }
 
@@ -54,8 +80,6 @@ void main()
       atomicMin(rect_min.y, tile_co_lod.y);
       atomicMax(rect_max.x, tile_co_lod.x + 1);
       atomicMax(rect_max.y, tile_co_lod.y + 1);
-      /* Tag tile as rendered. There is a barrier after the read. So it is safe. */
-      tiles_buf[tile_index] |= SHADOW_IS_RENDERED;
     }
 
     barrier();
@@ -73,11 +97,16 @@ void main()
           view_infos_buf[view_index].viewinv = inverse(tilemap_data.viewmat);
 
           float lod_res = float(SHADOW_TILEMAP_RES >> lod);
-          /* TODO(fclem): These should be the culling planes, not the view projection. */
-          // vec2 view_start = (vec2(rect_min) / lod_res) * 2.0 - 1.0;
-          // vec2 view_end = (vec2(rect_max) / lod_res) * 2.0 - 1.0;
-          vec2 view_start = vec2(-1.0);
-          vec2 view_end = vec2(1.0);
+
+          int viewport_index = viewport_select(rect_max - rect_min);
+          ivec2 viewport_size = viewport_size_get(viewport_index);
+          viewport_index_buf[view_index] = viewport_index;
+
+          /* TODO(fclem): These should be the culling planes. */
+          // vec2 cull_region_start = (vec2(rect_min) / lod_res) * 2.0 - 1.0;
+          // vec2 cull_region_end = (vec2(rect_max) / lod_res) * 2.0 - 1.0;
+          vec2 view_start = (vec2(rect_min) / lod_res) * 2.0 - 1.0;
+          vec2 view_end = (vec2(rect_min + viewport_size) / lod_res) * 2.0 - 1.0;
 
           int clip_index = tilemap_data.clip_data_index;
           float clip_far = tilemaps_clip_buf[clip_index].clip_far_stored;
@@ -110,17 +139,22 @@ void main()
     barrier();
 
     if ((view_index >= 0) && (view_index < SHADOW_VIEW_MAX) && lod_valid_thread) {
-      uint page_packed = shadow_page_pack(tile.page);
-      /* Add page to render map. */
-      int render_page_index = shadow_render_page_index_get(view_index, tile_co_lod);
-      render_map_buf[render_page_index] = do_page_render ? page_packed : 0xFFFFFFFFu;
+      ivec2 relative_tile_co = tile_co_lod - rect_min;
+      if (all(greaterThanEqual(relative_tile_co, ivec2(0)))) {
+        uint page_packed = shadow_page_pack(tile.page);
+        /* Add page to render map. */
+        int render_page_index = shadow_render_page_index_get(view_index, relative_tile_co);
+        render_map_buf[render_page_index] = do_page_render ? page_packed : 0xFFFFFFFFu;
 
-      if (do_page_render) {
-        /* Add page to clear list. */
-        uint clear_page_index = atomicAdd(clear_dispatch_buf.num_groups_z, 1u);
-        clear_list_buf[clear_page_index] = page_packed;
-        /* Statistics. */
-        atomicAdd(statistics_buf.page_rendered_count, 1);
+        if (do_page_render) {
+          /* Tag tile as rendered. There is a barrier after the read. So it is safe. */
+          tiles_buf[tile_index] |= SHADOW_IS_RENDERED;
+          /* Add page to clear list. */
+          uint clear_page_index = atomicAdd(clear_dispatch_buf.num_groups_z, 1u);
+          clear_list_buf[clear_page_index] = page_packed;
+          /* Statistics. */
+          atomicAdd(statistics_buf.page_rendered_count, 1);
+        }
       }
     }
 

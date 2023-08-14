@@ -697,9 +697,10 @@ void ShadowModule::init()
 
   atlas_tx_.filter_mode(false);
 
-  /* Make one viewport per LOD level. LOD0 covers the whole tilemap, LOD1 only a quarter... etc. */
+  /* Create different viewport to support different update region size. The most fitting viewport
+   * is then selected during the tilemap finalize stage in `viewport_select`. */
   for (int i = 0; i < multi_viewports_.size(); i++) {
-    int size_in_tile = max_ii(SHADOW_TILEMAP_RES >> i, 1);
+    int size_in_tile = min_ii(1 << i, SHADOW_TILEMAP_RES);
     multi_viewports_[i][0] = 0;
     multi_viewports_[i][1] = 0;
     multi_viewports_[i][2] = size_in_tile * shadow_page_size_;
