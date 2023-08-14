@@ -52,8 +52,7 @@ void main()
   ShadowTileMapData tilemap_data = tilemaps_buf[tilemap_index];
   bool is_cubemap = (tilemap_data.projection_type == SHADOW_PROJECTION_CUBEFACE);
   int lod_max = is_cubemap ? SHADOW_TILEMAP_LOD : 0;
-  int lod_valid = 0;
-  uvec3 page_valid;
+  int valid_tile_index = -1;
   /* With all threads (LOD0 size dispatch) load each lod tile from the highest lod
    * to the lowest, keeping track of the lowest one allocated which will be use for shadowing.
    * This guarantee a O(1) lookup time.
@@ -158,23 +157,19 @@ void main()
       }
     }
 
-    /* Save highest lod for this thread. */
-    if (tile.is_used && lod > 0) {
-      /* Reload the page in case there was an allocation in the valid thread. */
-      page_valid = tile.page;
-      lod_valid = lod;
+    if (tile.is_used) {
+      /* Save highest lod for this thread. */
+      valid_tile_index = tile_index;
     }
-    else if (lod == 0 && lod_valid != 0 && !tile.is_allocated) {
-      /* If the tile is not used, store the valid LOD level in LOD0. */
-      tile.page = page_valid;
-      tile.lod = lod_valid;
-      /* This is not a real ownership. It is just a tag so that the shadowing is deemed correct. */
-      tile.is_allocated = true;
-    }
+  }
 
-    if (lod == 0) {
-      imageStore(tilemaps_img, atlas_texel, uvec4(shadow_tile_pack(tile)));
-    }
+  if (valid_tile_index != -1) {
+    /* Store the highest LOD valid page for rendering. */
+    uint tile_packed = tiles_buf[valid_tile_index] | SHADOW_IS_ALLOCATED;
+    imageStore(tilemaps_img, atlas_texel, uvec4(tile_packed));
+  }
+  else {
+    imageStore(tilemaps_img, atlas_texel, uvec4(SHADOW_NO_DATA));
   }
 
   if (all(equal(gl_GlobalInvocationID, uvec3(0)))) {
