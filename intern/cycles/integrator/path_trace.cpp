@@ -244,20 +244,10 @@ void PathTrace::render_init_kernel_execution()
   }
 }
 
-/* TODO(sergey): Look into `std::function` rather than using a template. Should not be a
- * measurable performance impact at runtime, but will make compilation faster and binary somewhat
- * smaller. */
-template<typename Callback>
-static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>> &path_trace_works,
-                                         const vector<WorkBalanceInfo> &work_balance_infos,
-                                         const BufferParams &buffer_params,
-                                         const int overscan,
-                                         const bool interleaved_slices,
-                                         const Callback &callback)
-{
-  const int num_works = path_trace_works.size();
-  const int window_height = buffer_params.window_height;
-
+/*
+ *
+ */
+int calculateSliceSizesAndStride(int num_works, const vector<WorkBalanceInfo> &work_balance_infos, int window_height, bool interleaved_slices, int *slice_sizes) {
   /* Find the largest and smallest weights */
   int largest_weight = 0;
   int smallest_weight = 0;
@@ -273,37 +263,55 @@ static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>>
 
   int biggest_slice = work_balance_infos[largest_weight].weight/work_balance_infos[smallest_weight].weight;
   int slice_stride = 0;
-  int slice_sizes[num_works];
   int remaining_rows = window_height;
   /* Aim to acheive at least 1 Slice per device otherwise use consecutive slices */
   if(biggest_slice < window_height/num_works && interleaved_slices) {
-        /* Assign a size to each slice based on its weight */
-        for (int i = 0; i < num_works; i++) {
-            const double weight = work_balance_infos[i].weight;
-            int slice_size = weight / work_balance_infos[smallest_weight].weight;
-            slice_size = std::min(remaining_rows - (num_works - (i + 1)), slice_size);
-            slice_sizes[i] = slice_size;
-            slice_stride += slice_size;
-        }
-    } else {
-        /* Instead of using interleaved slices create n bigger consecutive slices */
-        remaining_rows = remaining_rows - num_works; /* each slice must have at least 1 row*/
-        for (int i = 0; i < num_works; i++) {
-            const double weight = work_balance_infos[i].weight;
-            /* Slice size is 1 row plus it's weighted portion of the remaining rows */
-            int slice_size = remaining_rows * weight;
-            slice_size += 1;
-            slice_sizes[i] = slice_size;
-            slice_stride += slice_size;
-        }
-        /* If there are any remaining scanlines due to truncation add them to the device with the
-         * highest weight */
-        int leftover_scanlines = window_height - slice_stride;
-        if (leftover_scanlines > 0) {
-            slice_sizes[largest_weight] += leftover_scanlines;
-            slice_stride++;
-        }
+    /* Assign a size to each slice based on its weight */
+    for (int i = 0; i < num_works; i++) {
+      const double weight = work_balance_infos[i].weight;
+      int slice_size = weight / work_balance_infos[smallest_weight].weight;
+      slice_size = std::min(remaining_rows - (num_works - (i + 1)), slice_size);
+      slice_sizes[i] = slice_size;
+      slice_stride += slice_size;
     }
+  } else {
+    /* Instead of using interleaved slices create n bigger consecutive slices */
+    remaining_rows = remaining_rows - num_works; /* each slice must have at least 1 row*/
+    for (int i = 0; i < num_works; i++) {
+      const double weight = work_balance_infos[i].weight;
+      /* Slice size is 1 row plus it's weighted portion of the remaining rows */
+      int slice_size = remaining_rows * weight;
+      slice_size += 1;
+      slice_sizes[i] = slice_size;
+      slice_stride += slice_size;
+    }
+    /* If there are any remaining scanlines due to truncation add them to the device with the
+     * highest weight */
+    int leftover_scanlines = window_height - slice_stride;
+    if (leftover_scanlines > 0) {
+      slice_sizes[largest_weight] += leftover_scanlines;
+      slice_stride++;
+    }
+  }
+
+  return slice_stride;
+}
+
+/* TODO(sergey): Look into `std::function` rather than using a template. Should not be a
+ * measurable performance impact at runtime, but will make compilation faster and binary somewhat
+ * smaller. */
+template<typename Callback>
+static void foreach_sliced_buffer_params(const vector<unique_ptr<PathTraceWork>> &path_trace_works,
+                                         const vector<WorkBalanceInfo> &work_balance_infos,
+                                         const BufferParams &buffer_params,
+                                         const int overscan,
+                                         const bool interleaved_slices,
+                                         const Callback &callback)
+{
+  const int num_works = path_trace_works.size();
+  const int window_height = buffer_params.window_height;
+  int slice_sizes[num_works];
+  int slice_stride = calculateSliceSizesAndStride(num_works, work_balance_infos, window_height, interleaved_slices, slice_sizes);
 
   VLOG_INFO << "===================SLICE================";
   int slices = window_height / slice_stride;
@@ -756,7 +764,7 @@ void PathTrace::rebalance(const RenderWork &render_work)
 
   const int num_works = path_trace_works_.size();
 
-  if (num_works == 1) {
+  if (num_works == 1 || work_balance_infos_[0].count == 3) {
     VLOG_WORK << "Ignoring rebalance work due to single device render.";
     return;
   }
@@ -788,17 +796,30 @@ void PathTrace::rebalance(const RenderWork &render_work)
     return;
   }
 
-  RenderBuffers big_tile_cpu_buffers(cpu_device_.get());
-  big_tile_cpu_buffers.reset(render_state_.effective_big_tile_params);
+  int slice_sizes[num_works];
+  const int resolution_divider = render_work.resolution_divider;
+  const BufferParams scaled_big_tile_params = scale_buffer_params(big_tile_params_,
+								  resolution_divider);
+  int slice_stride = calculateSliceSizesAndStride(num_works, work_balance_infos_, scaled_big_tile_params.window_height, interleaved_slices, slice_sizes);
+  bool changed = render_state_.need_reset_params || (render_state_.resolution_divider != render_work.resolution_divider);
+  for(int i = 0;(i < num_works) && !(changed);i++) {
+    changed = changed || (path_trace_works_[i].get()->slice_height() != slice_sizes[i]);
+    VLOG_INFO << "(" << i << ") " << slice_sizes[i] << " " << (changed ? "!=" : "==") << " " << path_trace_works_[i].get()->slice_height();
+  }
+  if(changed == true) {
+    RenderBuffers big_tile_cpu_buffers(cpu_device_.get());
+    big_tile_cpu_buffers.reset(render_state_.effective_big_tile_params);
 
-  copy_to_render_buffers(&big_tile_cpu_buffers);
+    copy_to_render_buffers(&big_tile_cpu_buffers);
 
-  render_state_.need_reset_params = true;
-  update_work_buffer_params_if_needed(render_work);
+    render_state_.need_reset_params = true;
+    update_work_buffer_params_if_needed(render_work);
 
-  copy_from_render_buffers(&big_tile_cpu_buffers);
-
-  render_scheduler_.report_rebalance_time(render_work, time_dt() - start_time, true);
+    copy_from_render_buffers(&big_tile_cpu_buffers);
+  } else {
+    VLOG_INFO << "Skip rebalance as the slize sizes are the same";
+  }
+  render_scheduler_.report_rebalance_time(render_work, time_dt() - start_time, changed);
 }
 
 void PathTrace::write_tile_buffer(const RenderWork &render_work)

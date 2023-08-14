@@ -358,6 +358,7 @@ class PathTrace {
   } full_frame_state_;
 
   bool interleaved_slices = true;
+  int iteration = 0;
 };
 
 CCL_NAMESPACE_END

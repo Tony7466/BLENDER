@@ -18,6 +18,8 @@ struct WorkBalanceInfo {
   /* Normalized weight, which is ready to be used for work balancing (like calculating fraction of
    * the big tile which is to be rendered on the device). */
   double weight = 1.0;
+
+  int count = 0;
 };
 
 /* Balance work for an initial render integration, before any statistics is known. */

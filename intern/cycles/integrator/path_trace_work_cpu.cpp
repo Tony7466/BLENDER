@@ -20,8 +20,10 @@
 #include "util/log.h"
 #include "util/tbb.h"
 
+#ifdef __APPLE__
 #include <os/log.h>
 #include <os/signpost.h>
+#endif
 
 CCL_NAMESPACE_BEGIN
 
@@ -112,7 +114,9 @@ void PathTraceWorkCPU::render_samples(RenderStatistics &statistics,
   const int image_height = effective_buffer_params_.height;
   //const int64_t total_pixels_num = image_width * image_height;
 
+#ifdef __APPLE__
   os_log_t log_handle = os_log_create("com.illumination.will", OS_LOG_CATEGORY_POINTS_OF_INTEREST);
+#endif  
   if (device_->profiler.active()) {
     for (CPUKernelThreadGlobals &kernel_globals : kernel_thread_globals_) {
       kernel_globals.start_profiling();
@@ -138,8 +142,10 @@ void PathTraceWorkCPU::render_samples(RenderStatistics &statistics,
   local_arena.execute([&]() {
       //for(int work_index = 0;work_index < total_tiles;work_index++) {
     parallel_for(int64_t(0), total_tiles /*total_pixels_num*/, [&](int64_t work_index) {
+#ifdef __APPLE_      
         os_signpost_id_t signpost_id = os_signpost_id_generate(log_handle);
         os_signpost_interval_begin(log_handle, signpost_id, "PathTraceWorkCPU", "Begin metadata: %s", "Foo");
+#endif
       // if (is_cancel_requested()) {
       //   return;
       // }
@@ -175,7 +181,9 @@ void PathTraceWorkCPU::render_samples(RenderStatistics &statistics,
                 render_samples_full_pipeline(kernel_globals, work_tile, samples_num, tile_size);
             //}
       }
+#ifdef __APPLE__      
         os_signpost_interval_end(log_handle, signpost_id, "PathTraceWorkCPU", "End metadata: %s", "Foo");
+#endif
     });
   });
   if (device_->profiler.active()) {

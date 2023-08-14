@@ -64,24 +64,54 @@ bool work_balance_do_rebalance(vector<WorkBalanceInfo> &work_balance_infos)
    * to do 5% less of the current work, and another needs to do 5% more. */
   const double lerp_weight = 1.0 / num_infos;
 
+  /* Need to find the quickest device and the one with the most work */
+  int shortest_time = -1;
+  int largest_weight = -1;
+  int fastest = -1;
+  int idx = 0;
+  for (const WorkBalanceInfo &info : work_balance_infos) {    
+    if((shortest_time == -1) || (info.time_spent > work_balance_infos[shortest_time].time_spent)) {
+      shortest_time = idx;
+      VLOG_INFO << "(" << idx << ") time_spent:" << work_balance_infos[shortest_time].time_spent;
+    }
+    if((largest_weight == -1) || (info.weight > work_balance_infos[largest_weight].weight)) {
+      largest_weight = idx;
+      VLOG_INFO << "(" << idx << ") weight:" << work_balance_infos[largest_weight].weight;
+    }
+    if((fastest == -1) || (info.weight*info.time_spent > work_balance_infos[fastest].weight*work_balance_infos[fastest].time_spent)) {
+      fastest = idx;
+      VLOG_INFO << "(" << idx << ") weight:" << work_balance_infos[fastest].weight << " time_spent:" << work_balance_infos[fastest].time_spent << " combo:" << work_balance_infos[fastest].weight*work_balance_infos[fastest].time_spent;
+    }
+    idx++;
+  }
+  
   bool has_big_difference = false;
-
+  idx = 0;
   for (const WorkBalanceInfo &info : work_balance_infos) {
-    double work_time = (info.time_spent > time_average) ? time_average/2.0 : time_average;
     /* Quickly reduce weight if device is taking too long otherwise slowly increase the weight */
     double w = lerp_weight;
-    if(time_average < info.time_spent) {
+    double duration = time_average;
+    /* Make the slower devices try to match the fastest device times */
+    if((fastest != -1) && (info.time_spent > work_balance_infos[fastest].time_spent)) {
       w = 1.0f;
+      duration = std::min(time_average , work_balance_infos[fastest].time_spent);
     }
-    const double time_target = mix(info.time_spent, time_average, w);
-    const double new_weight = info.weight * time_target / info.time_spent;
+    const double time_target = (1.0 - w)*info.time_spent + w*duration;
+    const double new_weight = /*(info.weight +*/ time_target*info.weight/info.time_spent; /*)*0.5;*/
     new_weights.push_back(new_weight);
     total_weight += new_weight;
 
-    double diff = time_target - time_average;
-    if ((diff < 0.0) || (diff > 0.5)) {
+    /* If there is a big difference between the current device and the fastest then it maybe good to rebalance */
+    double diff = std::fabs(info.time_spent - work_balance_infos[shortest_time].time_spent);
+    VLOG_INFO << "(" << idx << ") diff:"  << diff << " target:" << time_target;
+    /* Don't let the fastest device wait for the slower ones and don't allow the difference to be too large */
+    if (((info.time_spent > (work_balance_infos[fastest].time_spent)) &&
+	 (info.weight < (work_balance_infos[fastest].weight))) || (diff > 0.2)
+	) {
       has_big_difference = true;
+      VLOG_INFO << "Big balance difference";
     }
+    idx++;
   }
 
   if (!has_big_difference) {
@@ -89,10 +119,11 @@ bool work_balance_do_rebalance(vector<WorkBalanceInfo> &work_balance_infos)
   }
 
   const double total_weight_inv = 1.0 / total_weight;
-  for (int i = 0; i < num_infos; ++i) {
+  for (int i = 0; i < num_infos; ++i) {    
     WorkBalanceInfo &info = work_balance_infos[i];
     info.weight = new_weights[i] * total_weight_inv;
     info.time_spent = 0;
+    info.count++;
   }
 
   return true;

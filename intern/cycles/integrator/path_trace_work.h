@@ -141,6 +141,13 @@ class PathTraceWork {
     return device_;
   }
 
+  int window_height() const {
+    return effective_buffer_params_.window_height;
+  }
+
+  int slice_height() const {
+    return effective_buffer_params_.slice_height;
+  }
 #ifdef WITH_PATH_GUIDING
   /* Initializes the per-thread guiding kernel data. */
   virtual void guiding_init_kernel_globals(void *, void *, const bool) {}
