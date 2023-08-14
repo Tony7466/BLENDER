@@ -1581,7 +1581,10 @@ static void remove_drawings_unchecked(GreasePencil &grease_pencil,
       case GP_DRAWING: {
         GreasePencilDrawing *drawing_to_remove = reinterpret_cast<GreasePencilDrawing *>(
             drawing_base_to_remove);
-        MEM_delete(&drawing_to_remove->wrap());
+        /* Because the `CurvesGeometry` is embeded in the Drawing, we call the destructor here
+         * instead of `MEM_delete`. Otherwise we will call `MEM_freeN` on memory that should have
+         * already been freed by `~CurvesGeometry()`. */
+        drawing_to_remove->wrap().~Drawing();
         break;
       }
       case GP_DRAWING_REFERENCE: {
@@ -2060,7 +2063,10 @@ static void free_drawing_array(GreasePencil &grease_pencil)
     switch (drawing_base->type) {
       case GP_DRAWING: {
         GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
-        MEM_delete(&drawing->wrap());
+        /* Because the `CurvesGeometry` is embeded in the Drawing, we call the destructor here
+         * instead of `MEM_delete`. Otherwise we will call `MEM_freeN` on memory that should have
+         * already been freed by `~CurvesGeometry()`. */
+        drawing->wrap().~Drawing();
         break;
       }
       case GP_DRAWING_REFERENCE: {
