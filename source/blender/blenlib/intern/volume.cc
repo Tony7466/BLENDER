@@ -37,8 +37,16 @@ struct BoolGridToMask {
 
 GridMask GridMask::from_bools(const GGrid &full_mask, const Grid<bool> &selection)
 {
-  volume::GridMask result = {full_mask.grid_ ? openvdb::MaskGrid::create(*full_mask.grid_) :
-                                               nullptr};
+  volume::GridMask result;
+  if (!full_mask) {
+    return {};
+  }
+
+  volume::grid_to_static_type(full_mask.grid_, [&](auto &typed_full_mask) {
+    openvdb::MaskTree::Ptr result_tree = std::make_shared<openvdb::MaskTree>(
+        typed_full_mask.constTree(), false, true, openvdb::TopologyCopy{});
+    result = {openvdb::MaskGrid::create(result_tree)};
+  });
   if (selection) {
     BoolGridToMask op{selection.grid_->getConstAccessor()};
     openvdb::tools::foreach (result.grid_->beginValueOn(), op);
