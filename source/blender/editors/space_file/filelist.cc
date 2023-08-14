@@ -1228,6 +1228,9 @@ static PreviewImage *filelist_file_request_preview(const FileList *filelist, Fil
 
 bool filelist_file_is_preview_pending(const FileList *filelist, const FileDirEntry *file)
 {
+  if (!filelist_file_supports_preview(file)) {
+    return false;
+  }
   /* Actual preview loading is only started after the filelist is loaded, so the preview may not be
    * tagged as finished or doesn't even exist yet. */
   if (!filelist_is_ready(filelist)) {
