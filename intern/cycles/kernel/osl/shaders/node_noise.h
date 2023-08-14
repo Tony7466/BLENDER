@@ -72,15 +72,16 @@ float safe_snoise(vector4 p)
 }
 
 #define NOISE_FBM(T) \
-  float noise_fbm(T p, float octaves, float roughness, float lacunarity, int use_normalize) \
+  float noise_fbm(T co, float detail, float roughness, float lacunarity, int use_normalize) \
   { \
+    T p = co; \
+    float octaves = clamp(detail, 0.0, 15.0); \
     float fscale = 1.0; \
     float amp = 1.0; \
     float maxamp = 0.0; \
     float sum = 0.0; \
-    octaves = clamp(octaves, 0.0, 15.0); \
-    int n = (int)octaves; \
-    for (int i = 0; i <= n; i++) { \
+\
+    for (int i = 0; i <= int(octaves); i++) { \
       float t = safe_snoise(fscale * p); \
       sum += t * amp; \
       maxamp += amp; \
@@ -101,8 +102,10 @@ float safe_snoise(vector4 p)
   }
 
 #define NOISE_MULTI_FRACTAL(T) \
-  float noise_multi_fractal(T p, float octaves, float roughness, float lacunarity) \
+  float noise_multi_fractal(T co, float detail, float roughness, float lacunarity) \
   { \
+    T p = co; \
+    float octaves = clamp(detail, 0.0, 15.0); \
     float value = 1.0; \
     float pwr = 1.0; \
 \
@@ -121,9 +124,10 @@ float safe_snoise(vector4 p)
   }
 
 #define NOISE_HETERO_TERRAIN(T) \
-  float noise_hetero_terrain( \
-      T p, float octaves, float roughness, float lacunarity, float offset) \
+  float noise_hetero_terrain(T co, float detail, float roughness, float lacunarity, float offset) \
   { \
+    T p = co; \
+    float octaves = clamp(detail, 0.0, 15.0); \
     float pwr = roughness; \
 \
     /* first unscaled octave of function; later octaves are scaled */ \
@@ -148,13 +152,15 @@ float safe_snoise(vector4 p)
 
 #define NOISE_HYBRID_MULTI_FRACTAL(T) \
   float noise_hybrid_multi_fractal( \
-      T p, float octaves, float roughness, float lacunarity, float offset, float gain) \
+      T co, float detail, float roughness, float lacunarity, float offset, float gain) \
   { \
+    T p = co; \
+    float octaves = clamp(detail, 0.0, 15.0); \
     float pwr = 1.0; \
     float value = 0.0; \
     float weight = 1.0; \
 \
-    for (int i = 0; (weight > 0.001f) && (i < (int)octaves); i++) { \
+    for (int i = 0; (weight > 0.001) && (i < (int)octaves); i++) { \
       if (weight > 1.0) { \
         weight = 1.0; \
       } \
@@ -167,7 +173,7 @@ float safe_snoise(vector4 p)
     } \
 \
     float rmd = octaves - floor(octaves); \
-    if ((rmd != 0.0) && (weight > 0.001f)) { \
+    if ((rmd != 0.0) && (weight > 0.001)) { \
       if (weight > 1.0) { \
         weight = 1.0; \
       } \
@@ -180,8 +186,10 @@ float safe_snoise(vector4 p)
 
 #define NOISE_RIDGED_MULTI_FRACTAL(T) \
   float noise_ridged_multi_fractal( \
-      T p, float octaves, float roughness, float lacunarity, float offset, float gain) \
+      T co, float detail, float roughness, float lacunarity, float offset, float gain) \
   { \
+    T p = co; \
+    float octaves = clamp(detail, 0.0, 15.0); \
     float pwr = roughness; \
 \
     float signal = offset - fabs(safe_snoise(p)); \
