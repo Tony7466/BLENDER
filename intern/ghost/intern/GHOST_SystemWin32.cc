@@ -1054,7 +1054,8 @@ void GHOST_SystemWin32::processPointerEvent(
     }
   }
 }
-BOOL ClipCursorAtPoint(const int32_t x, const int32_t y)
+
+static BOOL clip_cursor_at_point(const int32_t x, const int32_t y)
 {
   RECT rect;
   rect.left = x;
@@ -1070,7 +1071,7 @@ BOOL ClipCursorAtPoint(const int32_t x, const int32_t y)
  * If the mouse is on one edge the position will be set one unit inside at the opposite
  * edge.
  */
-int32_t wrap_axis(const int32_t position, const int32_t min, const int32_t max)
+static int32_t wrap_axis(const int32_t position, const int32_t min, const int32_t max)
 {
   if (position == min) {
     return max - 1;
@@ -1081,11 +1082,11 @@ int32_t wrap_axis(const int32_t position, const int32_t min, const int32_t max)
   return position;
 };
 
-BOOL ClipCursorAtBounds(const GHOST_Rect &bounds,
-                        const GHOST_TAxisFlag bounds_axis,
-                        const int32_t margin,
-                        int32_t &x,
-                        int32_t &y)
+static BOOL clip_cursor_at_bounds(const GHOST_Rect &bounds,
+                                  const GHOST_TAxisFlag bounds_axis,
+                                  const int32_t margin,
+                                  int32_t &x,
+                                  int32_t &y)
 {
   const bool warp_x = bounds_axis & GHOST_kAxisX;
   const bool warp_y = bounds_axis & GHOST_kAxisY;
@@ -1098,11 +1099,11 @@ BOOL ClipCursorAtBounds(const GHOST_Rect &bounds,
   const BOOL result = ClipCursor(&rect);
 
   if (warp_x) {
-    /* x axis clipping is `[left,ritgh)`*/
+    /* The x-axis clipping is defined by `left <= x < right`. */
     x = wrap_axis(x, rect.left, rect.right - 1);
   }
   if (warp_y) {
-    /* y axis clipping is `[top,bottom)`*/
+    /* The y-axis clipping is is defined by `top <= y < bottom`. */
     y = wrap_axis(y, rect.top, rect.bottom - 1);
   }
   return result;
@@ -1141,7 +1142,7 @@ GHOST_EventCursor *GHOST_SystemWin32::processCursorEvent(GHOST_WindowWin32 *wind
   static bool is_warping = false;
   if (bounds_axis != GHOST_kAxisNone) {
     if (is_warping) {
-      /* The cursor should be clipped at `{[x_prev, x_prev+1), [y_prev, y_prev+1)}`.
+      /* The cursor should be clipped at `{ x_prev<= x < x_prev+1, y_prev <= y <= y_prev+1 }`.
        * Wait until the current mouse position is updated. */
       if (!((x_prev == x_screen) && (y_prev == y_screen))) {
         system->setCursorPosition(x_prev, y_prev);
@@ -1151,7 +1152,7 @@ GHOST_EventCursor *GHOST_SystemWin32::processCursorEvent(GHOST_WindowWin32 *wind
 
     int32_t x_new = x_screen;
     int32_t y_new = y_screen;
-    ClipCursorAtBounds(bounds, bounds_axis, 1, x_new, y_new);
+    clip_cursor_at_bounds(bounds, bounds_axis, 1, x_new, y_new);
 
     int32_t x_accum, y_accum;
     window->getCursorGrabAccum(x_accum, y_accum);
@@ -1163,7 +1164,7 @@ GHOST_EventCursor *GHOST_SystemWin32::processCursorEvent(GHOST_WindowWin32 *wind
     y_prev = y_new;
 
     if (x_new != x_screen || y_new != y_screen) {
-      ClipCursorAtPoint(x_new, y_new);
+      clip_cursor_at_point(x_new, y_new);
       is_warping = true;
       system->setCursorPosition(x_new, y_new);
       return nullptr;
