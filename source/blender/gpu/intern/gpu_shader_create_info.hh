@@ -987,4 +987,7 @@ struct ShaderCreateInfo {
 #undef TEST_VECTOR_EQUAL
 };
 
+bool validate_vulkan_support(const ShaderCreateInfo &info);
+bool validate_vulkan_support(const StageInterfaceInfo &iface);
+
 }  // namespace blender::gpu::shader
