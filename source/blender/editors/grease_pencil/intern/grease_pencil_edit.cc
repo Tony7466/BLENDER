@@ -618,9 +618,9 @@ static int grease_pencil_dissolve_exec(bContext *C, wmOperator *op)
               const Span<bool> curve_selection = points_to_dissolve.as_span().slice(points);
               /* The unselected curves should not be dissolved.*/
               if (!curve_selection.contains(true)) {
-                /* Because we are going to invert, fill with `!false` so that it does not get
+                /* Because we are going to invert, fill with true so that it does not get
                  * dissolved.*/
-                points_to_dissolve.as_mutable_span().slice(points).fill(!false);
+                points_to_dissolve.as_mutable_span().slice(points).fill(true);
               }
 
               /* `between` is just `unselect` but with the first and last segments not geting
@@ -633,10 +633,10 @@ static int grease_pencil_dissolve_exec(bContext *C, wmOperator *op)
                   IndexRange first_range = deselection_ranges.first().shift(points.first());
                   IndexRange last_range = deselection_ranges.last().shift(points.first());
 
-                  /* Because we are going to invert, fill with `!false` so that it does not get
+                  /* Because we are going to invert, fill with true so that it does not get
                    * dissolved.*/
-                  points_to_dissolve.as_mutable_span().slice(last_range).fill(!false);
-                  points_to_dissolve.as_mutable_span().slice(first_range).fill(!false);
+                  points_to_dissolve.as_mutable_span().slice(last_range).fill(true);
+                  points_to_dissolve.as_mutable_span().slice(first_range).fill(true);
                 }
               }
             }
