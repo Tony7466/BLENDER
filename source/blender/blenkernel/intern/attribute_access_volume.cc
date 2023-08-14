@@ -16,6 +16,10 @@
 
 #include "intern/volume_grids.hh"
 
+#ifndef NDEBUG
+#define DEBUG_GRID_ATTRIBUTES
+#endif
+
 namespace blender::bke {
 
 GAttributeGridReader VolumeCustomAttributeGridProvider::try_get_grid_for_read(
@@ -184,9 +188,15 @@ static bool add_grid_from_attribute_init(const AttributeIDRef &attribute_id,
   switch (initializer.type) {
     case AttributeInit::Type::Construct:
       result = add_generic_grid(value_type, CD_CONSTRUCT);
+#ifdef DEBUG_GRID_ATTRIBUTES
+        std::cout << "Constructed grid attribute " << attribute_id << std::endl;
+#endif
       break;
     case AttributeInit::Type::DefaultValue:
       result = add_generic_grid(value_type, CD_SET_DEFAULT);
+#ifdef DEBUG_GRID_ATTRIBUTES
+      std::cout << "Default value grid attribute " << attribute_id << std::endl;
+#endif
       break;
     case AttributeInit::Type::VArray:
     case AttributeInit::Type::MoveArray:
@@ -196,12 +206,24 @@ static bool add_grid_from_attribute_init(const AttributeIDRef &attribute_id,
       const volume::GGrid &data =
           static_cast<const blender::bke::AttributeInitGrid &>(initializer).grid;
       result = add_generic_grid_copy(value_type, data);
+#ifdef DEBUG_GRID_ATTRIBUTES
+      std::cout << "Copied grid to attribute " << attribute_id << std::endl;
+      if (data.grid_) {
+        data.grid_->print(std::cout, 2);
+      }
+#endif
       break;
     }
     case AttributeInit::Type::MoveGrid: {
       const volume::GMutableGrid &data =
           static_cast<const blender::bke::AttributeInitMoveGrid &>(initializer).grid;
       result = add_generic_grid_move(value_type, data);
+#ifdef DEBUG_GRID_ATTRIBUTES
+      std::cout << "Moved grid to attribute " << attribute_id << std::endl;
+      if (data.grid_) {
+        data.grid_->print(std::cout, 2);
+      }
+#endif
       break;
     }
     case AttributeInit::Type::SharedGrid: {
@@ -209,6 +231,12 @@ static bool add_grid_from_attribute_init(const AttributeIDRef &attribute_id,
           static_cast<const blender::bke::AttributeInitSharedGrid &>(initializer);
       const openvdb::GridBase::ConstPtr result = add_generic_grid_shared(
           value_type, init.grid, init.sharing_info);
+#ifdef DEBUG_GRID_ATTRIBUTES
+      std::cout << "Shared grid to attribute " << attribute_id << std::endl;
+      if (init.grid.grid_) {
+        init.grid.grid_->print(std::cout, 2);
+      }
+#endif
       break;
     }
   }
