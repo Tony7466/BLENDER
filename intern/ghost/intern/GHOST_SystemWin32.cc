@@ -1140,11 +1140,24 @@ GHOST_EventCursor *GHOST_SystemWin32::processCursorEvent(GHOST_WindowWin32 *wind
    * Sometimes Windows ignores `SetCursorPos()` or `SendInput()` calls or the mouse event is
    * outdated. Identify these cases by checking if the cursor is not yet within bounds. */
   static bool is_warping = false;
+
+  /* It's bad behavior clip the cursor if the program is not active, update only mouse position for
+   * now. */
+  if (bounds_axis != GHOST_kAxisNone && !(GetActiveWindow() == window->getHWND())) {
+    return new GHOST_EventCursor(system->getMilliSeconds(),
+                                 GHOST_kEventCursorMove,
+                                 window,
+                                 x_screen,
+                                 y_screen,
+                                 GHOST_TABLET_DATA_NONE);
+  }
+
   if (bounds_axis != GHOST_kAxisNone) {
     if (is_warping) {
       /* The cursor should be clipped at `{ x_prev<= x < x_prev+1, y_prev <= y <= y_prev+1 }`.
        * Wait until the current mouse position is updated. */
       if (!((x_prev == x_screen) && (y_prev == y_screen))) {
+        clip_cursor_at_point(x_prev, y_prev);
         system->setCursorPosition(x_prev, y_prev);
         return nullptr;
       }
