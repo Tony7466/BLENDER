@@ -43,3 +43,4 @@ Referenced by commit 55117f20eec9f31a4d66ed6f23d9b583b7d599db, Outliner: Port po
 Referenced by pull request #111108, Outliner: Port constraint elements to new tree-element code design
 Referenced by commit 485c98cc2c2bcb4b36e1e33b4d2fffa0b520f6e5, Outliner: Port pose base elements to new tree-element code design
 Referenced by commit 02969de1553a53b2b9eaa1a476f05f7d60c51943, Outliner: Port constraint elements to new tree-element code design
+Referenced by pull request #111114, Outliner: Port modifier elements to new tree-element code design
