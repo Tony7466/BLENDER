@@ -23,7 +23,7 @@ struct bTheme;
  * Builtin icons with a compile-time icon-id. Dynamically created icons such as preview image
  * icons get a dynamic icon-id <= #BIFICONID_LAST_STATIC, #BIFIconID can hold both.
  */
-enum BIFStaticIconID {
+enum BIFIconID_Static {
 /* ui */
 #include "UI_icons.hh"
   BIFICONID_LAST_STATIC,
@@ -31,7 +31,7 @@ enum BIFStaticIconID {
 
 /** Type that fits all compile time and dynamic icon-ids. */
 using BIFIconID = int;
-BLI_STATIC_ASSERT(sizeof(BIFStaticIconID) <= sizeof(BIFIconID),
+BLI_STATIC_ASSERT(sizeof(BIFIconID_Static) <= sizeof(BIFIconID),
                   "Expected all builtin icon IDs to fit into `BIFIconID`");
 
 #define BIFICONID_FIRST (ICON_NONE)
