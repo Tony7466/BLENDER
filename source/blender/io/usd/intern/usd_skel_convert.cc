@@ -46,7 +46,7 @@
 
 namespace {
 
-/* Utility: return the magnitude of the largest component 
+/* Utility: return the magnitude of the largest component
  * of the given vector. */
 inline float max_mag_component(const pxr::GfVec3d &vec)
 {
