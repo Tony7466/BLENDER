@@ -676,7 +676,7 @@ static void GREASE_PENCIL_OT_dissolve(wmOperatorType *ot)
   /* Callbacks. */
   ot->invoke = WM_menu_invoke;
   ot->exec = grease_pencil_dissolve_exec;
-  ot->poll = editable_grease_pencil_poll;
+  ot->poll = editable_grease_pencil_point_selection_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
