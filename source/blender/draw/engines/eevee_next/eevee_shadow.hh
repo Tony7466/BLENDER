@@ -212,8 +212,8 @@ class ShadowModule {
   StorageArrayBuffer<uint, SHADOW_RENDER_MAP_SIZE, true> clear_list_buf_ = {"clear_list_buf"};
   /** Tile to pages mapping. */
   StorageArrayBuffer<uint, SHADOW_RENDER_MAP_SIZE, true> render_map_buf_ = {"render_map_buf"};
-  /** View to LOD mapping. Used to select the correct viewport. */
-  StorageArrayBuffer<uint, SHADOW_VIEW_MAX, true> view_lod_buf_ = {"view_lod_buf"};
+  /** View to viewport index mapping. */
+  StorageArrayBuffer<uint, SHADOW_VIEW_MAX, true> viewport_index_buf_ = {"viewport_index_buf"};
 
   int3 dispatch_depth_scan_size_;
   /* Ratio between tile-map pixel world "radius" and film pixel world "radius". */

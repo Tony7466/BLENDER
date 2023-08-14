@@ -1027,7 +1027,7 @@ void ShadowModule::end_sync()
         sub.bind_ssbo("clear_dispatch_buf", clear_dispatch_buf_);
         sub.bind_ssbo("clear_list_buf", clear_list_buf_);
         sub.bind_ssbo("render_map_buf", render_map_buf_);
-        sub.bind_ssbo("view_lod_buf", view_lod_buf_);
+        sub.bind_ssbo("viewport_index_buf", viewport_index_buf_);
         sub.bind_ssbo("pages_infos_buf", pages_infos_data_);
         sub.bind_image("tilemaps_img", tilemap_pool.tilemap_tx);
         sub.dispatch(int3(1, 1, tilemap_pool.tilemaps_data.size()));

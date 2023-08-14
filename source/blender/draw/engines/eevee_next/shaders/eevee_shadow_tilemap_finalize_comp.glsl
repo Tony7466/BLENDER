@@ -67,7 +67,7 @@ void main()
         view_index = atomicAdd(pages_infos_buf.view_count, 1);
         if (view_index < SHADOW_VIEW_MAX) {
           /* Setup the view. */
-          view_lod_buf[view_index] = lod;
+          viewport_index_buf[view_index] = lod;
 
           view_infos_buf[view_index].viewmat = tilemap_data.viewmat;
           view_infos_buf[view_index].viewinv = inverse(tilemap_data.viewmat);

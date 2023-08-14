@@ -188,10 +188,10 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
                  Qualifier::READ,
                  "uint",
                  "render_map_buf[SHADOW_RENDER_MAP_SIZE]")
-    .storage_buf(SHADOW_VIEW_LOD_BUF_SLOT,
+    .storage_buf(SHADOW_VIEWPORT_INDEX_BUF_SLOT,
                  Qualifier::READ,
                  "uint",
-                 "view_lod_buf[SHADOW_VIEW_MAX]")
+                 "viewport_index_buf[SHADOW_VIEW_MAX]")
     .storage_buf(SHADOW_PAGE_INFO_SLOT, Qualifier::READ, "ShadowPagesInfoData", "pages_infos_buf")
     .image(SHADOW_ATLAS_IMG_SLOT,
            GPU_R32UI,
