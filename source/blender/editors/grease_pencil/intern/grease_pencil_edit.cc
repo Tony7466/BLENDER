@@ -603,7 +603,7 @@ static int grease_pencil_dissolve_exec(bContext *C, wmOperator *op)
           return;
         }
 
-        const OffsetIndices points_by_curve = curves.points_by_curve();
+        const OffsetIndices<int> points_by_curve = curves.points_by_curve();
         const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
             ".selection", ATTR_DOMAIN_POINT, true);
 
