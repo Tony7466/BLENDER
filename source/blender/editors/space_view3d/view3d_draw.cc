@@ -84,7 +84,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
@@ -1446,6 +1446,8 @@ static void draw_selected_name(
 
   BLI_assert(i < int(ARRAY_SIZE(info_array)));
   char info[300];
+  /* It's expected there will be enough room for the buffer (if not, increase it). */
+  BLI_assert(BLI_string_len_array(info_array, i) < sizeof(info));
   BLI_string_join_array(info, sizeof(info), info_array, i);
 
   BLF_enable(font_id, BLF_SHADOW);

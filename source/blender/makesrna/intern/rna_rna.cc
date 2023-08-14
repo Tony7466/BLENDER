@@ -14,9 +14,9 @@
 
 #include "BLI_utildefines.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -1369,7 +1369,7 @@ static void rna_property_override_diff_propptr_validate_diffing(
       ptrdiff_ctx.rna_itemname_b = rna_itemname_b;
     }
 
-    /* Note: This will always assign nullptr to these libpointers in case `do_id_lib` is false,
+    /* Note: This will always assign nullptr to these lib-pointers in case `do_id_lib` is false,
      * which ensures that they will not affect the result of `ptrdiff_ctx.is_valid_for_diffing` in
      * the last check below. */
     ID *rna_itemid_a = (do_id_pointer && propptr_a->data) ? static_cast<ID *>(propptr_a->data) :
