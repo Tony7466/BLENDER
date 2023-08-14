@@ -148,35 +148,43 @@ class VMutableArrayImpl_For_GridLeaf final
 };
 
 /* Wrapper holding an accessor for an input field. */
-template<typename LeafNodeType> struct AccessorWrapper {
-  virtual ~AccessorWrapper() {}
+template<typename GridType> struct VGridReader {
+  using TreeType = typename GridType::TreeType;
+  using LeafNodeType = typename TreeType::LeafNodeType;
+
+  virtual ~VGridReader() {}
 
   /* VArray for a specific leaf node using the accessor. */
   virtual GVArray make_varray_for_leaf(const LeafNodeType &leaf) const = 0;
-  ///* VMutableArray for a specific leaf node using the accessor. */
-  // virtual GVMutableArray make_vmutablearray_for_leaf(const LeafNodeType &leaf) const = 0;
 };
 
-template<typename LeafNodeType, typename AccessorType>
-struct TypedAccessorWrapper : public AccessorWrapper<LeafNodeType> {
-  using ValueType = typename AccessorType::ValueType;
+/* Wrapper holding an accessor for an input field. */
+template<typename GridType> struct VGridWriter {
+  using TreeType = typename GridType::TreeType;
+  using LeafNodeType = typename TreeType::LeafNodeType;
+
+  virtual ~VGridWriter() {}
+
+  /* VMutableArray for a specific leaf node using the accessor. */
+  virtual GVMutableArray make_varray_for_leaf(const LeafNodeType &leaf) const = 0;
+};
+
+template<typename GridType, typename AccessorType>
+struct VGridReader_For_Accessor : public VGridReader<GridType> {
+  using TreeType = typename GridType::TreeType;
+  using LeafNodeType = typename TreeType::LeafNodeType;
 
   AccessorType accessor_;
 
-  TypedAccessorWrapper(const AccessorType &accessor) : accessor_(accessor) {}
-  virtual ~TypedAccessorWrapper() {}
+  VGridReader_For_Accessor(const AccessorType &accessor) : accessor_(accessor) {}
+  virtual ~VGridReader_For_Accessor() {}
 
-  virtual GVArray make_varray_for_leaf(const LeafNodeType &leaf) const override
+  GVArray make_varray_for_leaf(const LeafNodeType &leaf) const override
   {
     using VArrayImplType = VArrayImpl_For_GridLeaf<AccessorType, LeafNodeType>;
+    using ValueType = typename AccessorType::ValueType;
     return VArray<ValueType>::template For<VArrayImplType>(accessor_, leaf);
   }
-
-  // virtual GVMutableArray make_vmutablearray_for_leaf(const LeafNodeType &leaf) const override
-  //{
-  //   using VMutableArrayImplType = VMutableArrayImpl_For_GridLeaf<AccessorType, LeafNodeType>;
-  //   return VMutableArray<ValueType>::For<VMutableArrayImplType>(accessor_, leaf);
-  // }
 };
 
 template<typename GridType, typename MaskGridType> struct EvalPerLeafOp {
@@ -187,7 +195,8 @@ template<typename GridType, typename MaskGridType> struct EvalPerLeafOp {
   using ValueType = typename GridType::ValueType;
 
   using LeafNode = typename TreeType::LeafNodeType;
-  using AccessorWrapperType = AccessorWrapper<LeafNode>;
+  using GridReaderType = VGridReader<GridType>;
+  using GridReaderPtr = std::shared_ptr<GridReaderType>;
 
   using Coord = openvdb::Coord;
   const int32_t leaf_size = LeafNode::size();
@@ -204,21 +213,21 @@ template<typename GridType, typename MaskGridType> struct EvalPerLeafOp {
   /* XXX have to use shared_ptr instead of unique_ptr because some parts
    * of BLI_memory_utils try to copy the values and that's forbidden for unique_ptr.
    */
-  Array<std::shared_ptr<AccessorWrapperType>> input_accessors_;
+  Array<GridReaderPtr> input_readers_;
 
   void make_input_accessors(Span<GGrid> field_context_inputs)
   {
-    input_accessors_.reinitialize(field_context_inputs.size());
+    input_readers_.reinitialize(field_context_inputs.size());
 
     for (const int i : field_context_inputs.index_range()) {
       volume::grid_to_static_type(field_context_inputs[i].grid_, [&](auto &input_grid) {
         using InputGridType = typename std::decay<decltype(input_grid)>::type;
         using AccessorType = typename InputGridType::ConstAccessor;
 
-        std::shared_ptr<AccessorWrapperType> accessor_ptr =
-            std::make_shared<TypedAccessorWrapper<LeafNode, AccessorType>>(
+        GridReaderPtr reader_ptr =
+            std::make_shared<VGridReader_For_Accessor<GridType, AccessorType>>(
                 input_grid.getConstAccessor());
-        input_accessors_[i] = std::move(accessor_ptr);
+        input_readers_[i] = std::move(reader_ptr);
       });
     }
   }
@@ -233,7 +242,7 @@ template<typename GridType, typename MaskGridType> struct EvalPerLeafOp {
   EvalPerLeafOp(const EvalPerLeafOp &other)
       : procedure_executor_(other.procedure_executor_),
         mask_accessor_(other.mask_accessor_),
-        input_accessors_(other.input_accessors_)
+        input_readers_(other.input_readers_)
   {
   }
 
@@ -255,8 +264,8 @@ template<typename GridType, typename MaskGridType> struct EvalPerLeafOp {
     mf::ParamsBuilder mf_params{procedure_executor_, &index_mask};
 
     /* Provide inputs to the procedure executor. */
-    for (const std::shared_ptr<AccessorWrapperType> &accessor_wrapper : input_accessors_) {
-      mf_params.add_readonly_single_input(accessor_wrapper->make_varray_for_leaf(leaf));
+    for (const GridReaderPtr &input_reader : input_readers_) {
+      mf_params.add_readonly_single_input(input_reader->make_varray_for_leaf(leaf));
     }
 
     /* Pass output buffer to the procedure executor. */
@@ -333,6 +342,17 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
 
     volume::grid_to_static_type(dst_grid_ptr->grid_, [&](auto &dst_grid) {
       using GridType = typename std::decay<decltype(dst_grid)>::type;
+
+      /* Make sure every active tile has leaf node buffers to write into.
+       * A tree can have active (non-leaf) tiles with only the background value.
+       * We need to "densify" these tiles so that the leaf iterator actually
+       * yields buffers on which we can evaluate the multifunction.
+       * XXX Ideally we'd be able to determine in advance if all values
+       * in a leaf node would be constant, and only evaluate the background value!
+       */
+      dst_grid.tree().voxelizeActiveTiles();
+      //std::cout << "Grid: ";
+      //dst_grid.print(std::cout, 2);
 
       volume::grid_to_static_type(mask.grid_, [&](auto &mask_grid) {
         using MaskGridType = typename std::decay<decltype(mask_grid)>::type;
