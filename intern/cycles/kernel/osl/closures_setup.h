@@ -868,6 +868,10 @@ ccl_device void osl_closure_microfacet_hair_setup(KernelGlobals kg,
     return;
   }
 
+  if (closure->r_lobe <= 0.0f && closure->tt_lobe <= 0.0f && closure->trt_lobe <= 0.0f) {
+    return;
+  }
+
   ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)bsdf_alloc(
       sd, sizeof(MicrofacetHairBSDF), rgb_to_spectrum(weight));
   if (!bsdf) {
