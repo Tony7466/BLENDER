@@ -631,9 +631,11 @@ class TestAlloc {
     pages_infos_data.page_cached_next = 0u;
     pages_infos_data.page_cached_start = 0u;
     pages_infos_data.page_cached_end = 0u;
-    pages_infos_data.view_count = 0u;
     pages_infos_data.page_size = 256u;
     pages_infos_data.push_update();
+
+    statistics_buf.view_needed_count = 0;
+    statistics_buf.push_update();
 
     int tile_allocated = tiles_index * SHADOW_TILEDATA_PER_TILEMAP + 5;
     int tile_free = tiles_index * SHADOW_TILEDATA_PER_TILEMAP + 6;
@@ -774,12 +776,15 @@ static void test_eevee_shadow_finalize()
     tilemaps_data.push_update();
   }
   {
+    statistics_buf.view_needed_count = 0;
+    statistics_buf.push_update();
+  }
+  {
     pages_infos_data.page_free_count = -5;
     pages_infos_data.page_alloc_count = 0;
     pages_infos_data.page_cached_next = 0u;
     pages_infos_data.page_cached_start = 0u;
     pages_infos_data.page_cached_end = 0u;
-    pages_infos_data.view_count = 0u;
     pages_infos_data.page_size = 256u;
     pages_infos_data.push_update();
   }
@@ -988,7 +993,9 @@ static void test_eevee_shadow_finalize()
 
   pages_infos_data.read();
   EXPECT_EQ(pages_infos_data.page_free_count, 0);
-  EXPECT_EQ(pages_infos_data.view_count, 1);
+
+  statistics_buf.read();
+  EXPECT_EQ(statistics_buf.view_needed_count, 1);
 
   GPU_shader_free(sh);
   DRW_shaders_free();

@@ -852,12 +852,11 @@ struct ShadowPagesInfoData {
   uint page_cached_start;
   /** Index of the last page in the buffer since the last defrag. */
   uint page_cached_end;
-  /** Number of views to be rendered during the shadow update pass. */
-  int view_count;
   /** Physical page size in pixel. Pages are all squares. */
   int page_size;
 
   int _pad0;
+  int _pad1;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowPagesInfoData, 16)
 
@@ -867,6 +866,10 @@ struct ShadowStatistics {
   int page_update_count;
   int page_allocated_count;
   int page_rendered_count;
+  int view_needed_count;
+  int _pad0;
+  int _pad1;
+  int _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowStatistics, 16)
 

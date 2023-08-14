@@ -693,6 +693,11 @@ void ShadowModule::init()
          << stats.page_used_count << " / " << shadow_page_len_ << ")\n";
       inst_.info = ss.str();
     }
+    if (stats.view_needed_count > SHADOW_VIEW_MAX && enabled_) {
+      std::stringstream ss;
+      ss << "Error: Too many shadow updates, some shadow might be incorrect.\n";
+      inst_.info = ss.str();
+    }
   }
 
   atlas_tx_.filter_mode(false);

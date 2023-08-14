@@ -87,7 +87,7 @@ void main()
     if (all(equal(gl_LocalInvocationID, uvec3(0)))) {
       bool lod_has_update = rect_min.x < rect_max.x;
       if (lod_has_update) {
-        view_index = atomicAdd(pages_infos_buf.view_count, 1);
+        view_index = atomicAdd(statistics_buf.view_needed_count, 1);
         if (view_index < SHADOW_VIEW_MAX) {
           /* Setup the view. */
           viewport_index_buf[view_index] = lod;
