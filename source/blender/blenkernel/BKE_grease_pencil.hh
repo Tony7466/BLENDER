@@ -136,20 +136,18 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
 
  public:
   /**
-   * \returns true if this node is a LayerGroup.
+   * \returns true if this node is a #LayerGroup.
    */
-  bool is_group() const
-  {
-    return this->type == GP_LAYER_TREE_GROUP;
-  }
-
+  bool is_group() const;
   /**
-   * \returns true if this node is a Layer.
+   * \returns true if this node is a #Layer.
    */
-  bool is_layer() const
-  {
-    return this->type == GP_LAYER_TREE_LEAF;
-  }
+  bool is_layer() const;
+  /**
+   * \returns the name of the node.
+   */
+  StringRefNull name() const;
+  void set_name(StringRefNull new_name);
 
   /**
    * \returns this tree node as a LayerGroup.
@@ -167,13 +165,13 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
    * \returns this tree node as a mutable LayerGroup.
    * \note This results in undefined behavior if the node is not a LayerGroup.
    */
-  LayerGroup &as_group_for_write();
+  LayerGroup &as_group();
 
   /**
    * \returns this tree node as a mutable Layer.
    * \note This results in undefined behavior if the node is not a Layer.
    */
-  Layer &as_layer_for_write();
+  Layer &as_layer();
 
   /**
    * \returns the parent layer group or nullptr for the root group.
@@ -520,6 +518,19 @@ inline bool Drawing::has_users() const
 {
   return this->runtime->user_count.load(std::memory_order_relaxed) > 0;
 }
+
+inline bool TreeNode::is_group() const
+{
+  return this->type == GP_LAYER_TREE_GROUP;
+}
+inline bool TreeNode::is_layer() const
+{
+  return this->type == GP_LAYER_TREE_LEAF;
+}
+inline StringRefNull TreeNode::name() const
+{
+  return this->name_ptr;
+}
 inline const TreeNode &LayerGroup::as_node() const
 {
   return *reinterpret_cast<const TreeNode *>(this);
@@ -540,7 +551,7 @@ inline TreeNode &Layer::as_node()
 
 inline StringRefNull Layer::name() const
 {
-  return this->base.name;
+  return this->base.name_ptr;
 }
 
 inline LayerGroup &Layer::parent_group() const
@@ -550,7 +561,7 @@ inline LayerGroup &Layer::parent_group() const
 
 inline StringRefNull LayerGroup::name() const
 {
-  return this->base.name;
+  return this->base.name_ptr;
 }
 
 namespace convert {

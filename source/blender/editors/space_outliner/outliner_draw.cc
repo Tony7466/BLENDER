@@ -864,16 +864,9 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
           /* The node already has the new name set. To properly rename the node, we need to first
            * store the new name, restore the old name in the node, and then call the rename
            * function. */
-
-          std::string new_name(node.name);
+          std::string new_name(node.name());
           node.name = BLI_strdup(oldname);
-
-          if (node.is_group()) {
-            grease_pencil.rename_group(node.as_group_for_write(), new_name);
-          }
-          else if (node.is_layer()) {
-            grease_pencil.rename_layer(node.as_layer_for_write(), new_name);
-          }
+          grease_pencil.rename_node(node, new_name);
           DEG_id_tag_update(&grease_pencil.id, ID_RECALC_COPY_ON_WRITE);
           WM_event_add_notifier(C, NC_ID | NA_RENAME, nullptr);
           break;
