@@ -1286,8 +1286,7 @@ typedef struct NodeShaderPrincipled {
 typedef struct NodeShaderHairPrincipled {
   short model;
   short parametrization;
-  short cross_section;
-  char _pad[2];
+  char _pad[4];
 } NodeShaderHairPrincipled;
 
 /** TEX_output. */

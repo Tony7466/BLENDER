@@ -94,22 +94,13 @@ shader node_principled_hair_bsdf(color Color = color(0.017513, 0.005763, 0.00205
     sigma = sigma_from_concentration(0.0, 0.8054375);
   }
 
-  normal major_axis = Normal;
-  if (model == "Far-field Model" && AspectRatio != 1.0) {
-    getattribute("geom:N", major_axis);
-  }
-
   if (model == "Far-field Model") {
-
-    BSDF = microfacet_hair(major_axis,
-                           sigma,
-                           roughness,
-                           Offset,
-                           IOR,
-                           AspectRatio,
-                           Rlobe,
-                           TTlobe,
-                           TRTlobe);
+    normal major_axis = Normal;
+    if (AspectRatio != 1.0) {
+      getattribute("geom:N", major_axis);
+    }
+    BSDF = microfacet_hair(
+        major_axis, sigma, roughness, Offset, IOR, AspectRatio, Rlobe, TTlobe, TRTlobe);
   }
   else {
     BSDF = principled_hair(Normal, sigma, roughness, radial_roughness, m0_roughness, Offset, IOR);

@@ -3441,15 +3441,17 @@ PrincipledHairBsdfNode::PrincipledHairBsdfNode() : BsdfBaseNode(get_node_type())
   closure = CLOSURE_BSDF_HAIR_MICROFACET_ID;
 }
 
-/* Enable retrieving Hair Info -> Random if Random isn't linked. */
 void PrincipledHairBsdfNode::attributes(Shader *shader, AttributeRequestSet *attributes)
 {
-  /* Make sure we have the normal for elliptical cross section tracking. */
-  if (model == NODE_PRINCIPLED_HAIR_HUANG && aspect_ratio != 1.0f) {
-    attributes->add(ATTR_STD_VERTEX_NORMAL);
+  if (model == NODE_PRINCIPLED_HAIR_HUANG) {
+    /* Make sure we have the normal for elliptical cross section tracking. */
+    if (aspect_ratio != 1.0f || input("Aspect Ratio")->link) {
+      attributes->add(ATTR_STD_VERTEX_NORMAL);
+    }
   }
 
   if (!input("Random")->link) {
+    /* Enable retrieving Hair Info -> Random if Random isn't linked. */
     attributes->add(ATTR_STD_CURVE_RANDOM);
   }
   ShaderNode::attributes(shader, attributes);

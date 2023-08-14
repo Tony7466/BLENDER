@@ -4291,7 +4291,7 @@ static const EnumPropertyItem node_principled_hair_model_items[] = {
      0,
      "Far-field Model",
      "Microfacet-based hair scattering model by Huang et. al 2022, suitable for viewing from a "
-     "distance, supports elliptical cross-sections and has preciser highlight in forward "
+     "distance, supports elliptical cross-sections and has more precise highlight in forward "
      "scattering direction."},
     {0, nullptr, 0, nullptr, nullptr},
 };
