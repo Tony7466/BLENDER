@@ -44,7 +44,7 @@ void import_blendshapes(Main *bmain,
                         bool import_anim = true);
 
 /**
- * Import the given USD sekeleton as an armature object. Optionally, if the
+ * Import the given USD skeleton as an armature object. Optionally, if the
  * skeleton has an animation defined, the time sampled joint transforms will be
  * imported as bone animation curves.
  *
