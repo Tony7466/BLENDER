@@ -16,7 +16,7 @@ SOURCE_DIRS = (
     "intern/atomic",
     "intern/audaspace",
     "intern/clog",
-    "intern/cycles",
+    # "intern/cycles", # Cycles will have it's own AUTHORS.
     "intern/dualcon",
     "intern/eigen",
     "intern/ffmpeg",
@@ -25,10 +25,7 @@ SOURCE_DIRS = (
     "intern/iksolver",
     "intern/itasc",
     "intern/libc_compat",
-
-    # "intern/libmv",
-    "intern/libmv/intern",
-
+    "intern/libmv",
     "intern/locale",
     "intern/mantaflow",
     "intern/memutil",
@@ -56,9 +53,6 @@ SOURCE_FILES_INDIVIDUAL = [
     "intern/CMakeLists.txt",
     "extern/CMakeLists.txt",
     "GNUmakefile",
-    # Parital libmv.
-    "intern/libmv/CMakeLists.txt",
-    "intern/libmv/libmv-capi.h",
 ]
 
 # A single string from a mising comma will search "/" ! - bad ju-ju.
