@@ -229,9 +229,11 @@ ccl_device int bsdf_microfacet_hair_setup(ccl_private ShaderData *sd,
 
   /* Treat as transparent material if intersection lies outside of the projected radius. */
   if (fabsf(bsdf->h) >= bsdf->extra->radius) {
+    /* Remove allocated closures. */
+    sd->num_closure--;
+    sd->num_closure_left += 2;
+    /* Allocate transparent closure. */
     bsdf_transparent_setup(sd, bsdf->weight, path_flag);
-    bsdf->type = CLOSURE_NONE_ID;
-    bsdf->sample_weight = 0.0f;
     return 0;
   }
 
