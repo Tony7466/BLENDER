@@ -134,7 +134,6 @@ typedef enum eTreeStoreElemType {
          TSE_RNA_ARRAY_ELEM, \
          TSE_ID_BASE, \
          TSE_GP_LAYER, \
-         TSE_GREASE_PENCIL_NODE, \
          TSE_GENERIC_LABEL))
 
 #ifdef __cplusplus
