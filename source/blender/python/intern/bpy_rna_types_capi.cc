@@ -213,7 +213,7 @@ static PyMethodDef pyrna_context_methods[] = {
 
 PyDoc_STRVAR(
     pyrna_draw_handler_add_doc,
-    ".. method:: draw_handler_add(callback, args, region_type, draw_type)\n"
+    ".. classmethod:: draw_handler_add(callback, args, region_type, draw_type)\n"
     "\n"
     "   Add a new draw handler to this space type.\n"
     "   It will be called every time the specified region in the space type will be drawn.\n"
@@ -236,7 +236,7 @@ PyDoc_STRVAR(
     "   :rtype: object");
 
 PyDoc_STRVAR(pyrna_draw_handler_remove_doc,
-             ".. method:: draw_handler_remove(handler, region_type)\n"
+             ".. classmethod:: draw_handler_remove(handler, region_type)\n"
              "\n"
              "   Remove a draw handler that was added previously.\n"
              "\n"
