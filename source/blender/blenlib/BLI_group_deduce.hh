@@ -9,15 +9,27 @@
 
 namespace blender::grouped_indices {
 
-bool is_fragmented(const Span<int> group_indices, const int total_groups);
+class IndexMask;
+
+bool is_fragmented(const Span<int> group_indices, int total_groups);
+
+int identifiers_to_indices(MutableSpan<int> r_identifiers_to_indices, bool stable = true);
 
 GroupedSpan<int> from_indices(const Span<int> group_indices,
-                              const bool fragmented,
                               MutableSpan<int> r_counts_to_offsets,
-                              MutableSpan<int> r_indices);
+                              MutableSpan<int> r_indices,
+                              bool fragmented,
+                              bool stable = true);
+
+GroupedSpan<int> from_identifiers(const Span<int> groups_ids,
+                                  const IndexMask &universe,
+                                  Array<int> &r_offsets,
+                                  Array<int> &r_indices,
+                                  bool stable = true);
 
 GroupedSpan<int> from_identifiers(const Span<int> groups_ids,
                                   Array<int> &r_offsets,
-                                  Array<int> &r_indices);
+                                  Array<int> &r_indices,
+                                  bool stable = true);
 
 }  // namespace blender::grouped_indices
