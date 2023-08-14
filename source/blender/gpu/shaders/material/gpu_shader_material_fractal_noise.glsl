@@ -50,7 +50,7 @@
     float value = 1.0; \
     float pwr = 1.0; \
 \
-    for (int i = 0; i < int(octaves); i++) { \
+    for (int i = 0; i <= int(octaves); i++) { \
       value *= (pwr * snoise(p) + 1.0); \
       pwr *= roughness; \
       p *= lacunarity; \
@@ -81,7 +81,7 @@
     float value = offset + snoise(p); \
     p *= lacunarity; \
 \
-    for (int i = 1; i < int(octaves); i++) { \
+    for (int i = 1; i <= int(octaves); i++) { \
       float increment = (snoise(p) + offset) * pwr * value; \
       value += increment; \
       pwr *= roughness; \
@@ -112,7 +112,7 @@
     float value = 0.0; \
     float weight = 1.0; \
 \
-    for (int i = 0; (weight > 0.001) && (i < int(octaves)); i++) { \
+    for (int i = 0; (weight > 0.001) && (i <= int(octaves)); i++) { \
       if (weight > 1.0) { \
         weight = 1.0; \
       } \
@@ -154,7 +154,7 @@
     float value = signal; \
     float weight = 1.0; \
 \
-    for (int i = 1; i < int(octaves); i++) { \
+    for (int i = 1; i <= int(octaves); i++) { \
       p *= lacunarity; \
       weight = clamp(signal * gain, 0.0, 1.0); \
       signal = offset - abs(snoise(p)); \

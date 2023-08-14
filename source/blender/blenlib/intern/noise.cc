@@ -539,8 +539,8 @@ float perlin_fbm(T position, float octaves, float roughness, float lacunarity, b
   float maxamp = 0.0f;
   float sum = 0.0f;
   octaves = CLAMPIS(octaves, 0.0f, 15.0f);
-  int n = int(octaves);
-  for (int i = 0; i <= n; i++) {
+
+  for (int i = 0; i <= int(octaves); i++) {
     float t = perlin_signed(fscale * position);
     sum += t * amp;
     maxamp += amp;
@@ -569,7 +569,7 @@ float perlin_multi_fractal(T p,
   float pwr = 1.0f;
   const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
 
-  for (int i = 0; i < int(octaves); i++) {
+  for (int i = 0; i <= int(octaves); i++) {
     value *= (pwr * perlin_signed(p) + 1.0f);
     pwr *= roughness;
     p *= lacunarity;
@@ -597,7 +597,7 @@ float perlin_hetero_terrain(T p,
   float value = offset + perlin_signed(p);
   p *= lacunarity;
 
-  for (int i = 1; i < int(octaves); i++) {
+  for (int i = 1; i <= int(octaves); i++) {
     float increment = (perlin_signed(p) + offset) * pwr * value;
     value += increment;
     pwr *= roughness;
@@ -627,7 +627,7 @@ float perlin_hybrid_multi_fractal(T p,
 
   const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
 
-  for (int i = 0; (weight > 0.001f) && (i < int(octaves)); i++) {
+  for (int i = 0; (weight > 0.001f) && (i <= int(octaves)); i++) {
     if (weight > 1.0f) {
       weight = 1.0f;
     }
@@ -668,7 +668,7 @@ float perlin_ridged_multi_fractal(T p,
 
   const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
 
-  for (int i = 1; i < int(octaves); i++) {
+  for (int i = 1; i <= int(octaves); i++) {
     p *= lacunarity;
     weight = CLAMPIS(signal * gain, 0.0f, 1.0f);
     signal = offset - std::abs(perlin_signed(p));
