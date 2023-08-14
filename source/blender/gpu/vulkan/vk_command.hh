@@ -173,7 +173,10 @@ struct VKCommand {
   };
 
   VKCommand(Type type) : type(type) {}
-  virtual ~VKCommand();
+  void free();
 };
+
+std::ostream &operator<<(std::ostream &stream, const VKCommand::Type &command_type);
+std::ostream &operator<<(std::ostream &stream, const VKCommand &command);
 
 }  // namespace blender::gpu

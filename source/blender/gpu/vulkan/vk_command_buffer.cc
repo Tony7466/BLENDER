@@ -60,11 +60,6 @@ void VKCommandBuffer::init(const VkDevice vk_device,
 
 void VKCommandBuffer::begin_recording()
 {
-  if (is_in_stage(Stage::Submitted)) {
-    vkWaitForFences(vk_device_, 1, &vk_fence_, VK_TRUE, FenceTimeout);
-    vkResetFences(vk_device_, 1, &vk_fence_);
-    stage_transfer(Stage::Submitted, Stage::Executed);
-  }
   if (is_in_stage(Stage::Executed)) {
     vkResetCommandBuffer(vk_command_buffer_, 0);
     stage_transfer(Stage::Executed, Stage::Initial);
@@ -78,7 +73,6 @@ void VKCommandBuffer::begin_recording()
 
 void VKCommandBuffer::end_recording()
 {
-  ensure_no_active_framebuffer();
   vkEndCommandBuffer(vk_command_buffer_);
   stage_transfer(Stage::Recording, Stage::BetweenRecordingAndSubmitting);
 }
@@ -330,6 +324,7 @@ void VKCommandBuffer::dispatch(VKStorageBuffer &command_buffer)
 void VKCommandBuffer::submit()
 {
   ensure_no_active_framebuffer();
+  // debug_print();
   encode_recorded_commands();
   submit_encoded_commands();
 }
@@ -337,7 +332,7 @@ void VKCommandBuffer::submit()
 void VKCommandBuffer::encode_recorded_commands()
 {
   begin_recording();
-  for (const VKCommand &command : commands_) {
+  for (VKCommand &command : commands_) {
     switch (command.type) {
       case VKCommand::Type::BindPipeline: {
         vkCmdBindPipeline(vk_command_buffer_,
@@ -539,7 +534,9 @@ void VKCommandBuffer::encode_recorded_commands()
         break;
       }
     }
+    command.free();
   }
+
   end_recording();
   commands_.clear();
 }
@@ -554,6 +551,11 @@ void VKCommandBuffer::submit_encoded_commands()
   vkQueueSubmit(vk_queue_, 1, &submit_info, vk_fence_);
   submission_id_.next();
   stage_transfer(Stage::BetweenRecordingAndSubmitting, Stage::Submitted);
+
+  /* Wait for execution to finish. */
+  vkWaitForFences(vk_device_, 1, &vk_fence_, VK_TRUE, FenceTimeout);
+  vkResetFences(vk_device_, 1, &vk_fence_);
+  stage_transfer(Stage::Submitted, Stage::Executed);
 }
 
 /* -------------------------------------------------------------------- */
@@ -606,6 +608,16 @@ VKCommand &VKCommandBuffer::add_command(VKCommand::Type type)
   command.type = type;
   commands_.append(command);
   return commands_.last();
+}
+
+void VKCommandBuffer::debug_print() const
+{
+  std::ostream &os = std::cout;
+
+  os << "VKCommandBuffer::debug_print(draw_count:" << state.draw_counts << ")\n";
+  for (const VKCommand &command : commands_) {
+    os << "  - " << command << "\n";
+  }
 }
 
 }  // namespace blender::gpu

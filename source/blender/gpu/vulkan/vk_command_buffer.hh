@@ -239,6 +239,8 @@ class VKCommandBuffer : NonCopyable, NonMovable {
 
   /** Add a new command to the command list and return a reference to it. */
   VKCommand &add_command(VKCommand::Type type);
+
+  void debug_print() const;
 };
 
 }  // namespace blender::gpu

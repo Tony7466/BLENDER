@@ -102,6 +102,18 @@ const VKPushConstants::Layout::PushConstant *VKPushConstants::Layout::find(int32
   return nullptr;
 }
 
+void VKPushConstants::Layout::debug_print() const
+{
+  std::ostream &stream = std::cout;
+  stream << "VKPushConstants::Layout::debug_print()\n";
+  for (const PushConstant &push_constant : push_constants) {
+    stream << "  - location:" << push_constant.location;
+    stream << ", offset:" << push_constant.offset;
+    stream << ", array_size:" << push_constant.array_size;
+    stream << "\n";
+  }
+}
+
 VKPushConstants::VKPushConstants() = default;
 VKPushConstants::VKPushConstants(const Layout *layout) : layout_(layout)
 {
@@ -141,7 +153,6 @@ void VKPushConstants::update(VKContext &context)
                  "Invalid state detected. Push constants doesn't belong to the active shader of "
                  "the given context.");
   VKDescriptorSetTracker &descriptor_set = pipeline.descriptor_set_get();
-
   switch (layout_get().storage_type_get()) {
     case VKPushConstants::StorageType::NONE:
       break;
