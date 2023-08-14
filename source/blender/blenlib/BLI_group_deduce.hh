@@ -4,7 +4,6 @@
 
 #pragma once
 
-#include "BLI_array.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_span.hh"
 
