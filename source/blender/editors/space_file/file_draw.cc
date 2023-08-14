@@ -347,9 +347,7 @@ struct FilePreview {
   FilePreview(PreviewImage &preview)
       : w(preview.w[ICON_SIZE_PREVIEW]),
         h(preview.h[ICON_SIZE_PREVIEW]),
-        buffer(reinterpret_cast<uint8_t *>(preview.rect[ICON_SIZE_PREVIEW])),
-        is_loading(!BKE_previewimg_is_finished(&preview, ICON_SIZE_PREVIEW)),
-        is_not_found(preview.flag[ICON_SIZE_PREVIEW] & PRV_DEFERRED_NOT_FOUND)
+        buffer(reinterpret_cast<uint8_t *>(preview.rect[ICON_SIZE_PREVIEW]))
   {
   }
   FilePreview(const FilePreview &) = default;
@@ -358,8 +356,6 @@ struct FilePreview {
   int w = 0;
   int h = 0;
   uint8_t *buffer = nullptr;
-  bool is_loading = false;
-  bool is_not_found = false;
 };
 
 static void file_draw_preview(const FileList *files,

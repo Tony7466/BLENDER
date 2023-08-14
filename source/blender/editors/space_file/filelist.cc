@@ -1205,8 +1205,10 @@ static std::optional<ThumbSource> file_thumbnail_source_get(const FileDirEntry *
   return std::nullopt;
 }
 
-PreviewImage *filelist_file_request_preview(const FileList *filelist, FileDirEntry *file)
+static PreviewImage *filelist_file_request_preview(const FileList *filelist, FileDirEntry *file)
 {
+  BLI_assert(filelist_file_supports_preview(file));
+
   if (file->preview) {
     return file->preview;
   }

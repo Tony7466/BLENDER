@@ -76,8 +76,6 @@ void filelist_file_get_full_path(const FileList *filelist,
                                  const FileDirEntry *file,
                                  char r_filepath[/*FILE_MAX_LIBEXTRA*/]);
 bool filelist_file_is_preview_pending(const FileList *filelist, const FileDirEntry *file);
-struct PreviewImage *filelist_file_request_preview(const struct FileList *filelist,
-                                                   struct FileDirEntry *file);
 struct ImBuf *filelist_getimage(struct FileList *filelist, int index);
 struct ImBuf *filelist_file_getimage(const FileDirEntry *file);
 struct ImBuf *filelist_geticon_image_ex(const FileDirEntry *file);
