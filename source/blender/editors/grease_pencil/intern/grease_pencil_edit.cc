@@ -645,11 +645,9 @@ static int grease_pencil_dissolve_exec(bContext *C, wmOperator *op)
           array_utils::invert_booleans(points_to_dissolve);
         }
 
-        IndexMaskMemory memory;
-        IndexMask points_to_remove = IndexMask::from_bools(points_to_dissolve, memory);
-
-        if (!points_to_remove.is_empty()) {
-          curves.remove_points(points_to_remove);
+        if (points_to_dissolve.as_span().contains(true)) {
+          IndexMaskMemory memory;
+          curves.remove_points(IndexMask::from_bools(points_to_dissolve, memory));
           drawing.tag_topology_changed();
           changed = true;
         }
