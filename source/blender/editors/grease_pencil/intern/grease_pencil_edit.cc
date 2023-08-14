@@ -612,15 +612,16 @@ static int grease_pencil_dissolve_exec(bContext *C, wmOperator *op)
 
         /* Both `between` and `unselect` have the unselected point being dissolved.*/
         if (mode == DISSOLVE_BETWEEN || mode == DISSOLVE_UNSELECT) {
+          /* Because we are going to invert, these become the points to keep.*/
+          MutableSpan<bool> points_to_keep = points_to_dissolve.as_mutable_span();
+
           threading::parallel_for(curves.curves_range(), 128, [&](const IndexRange range) {
             for (const int64_t curve_i : range) {
               const IndexRange points = points_by_curve[curve_i];
               const Span<bool> curve_selection = points_to_dissolve.as_span().slice(points);
               /* The unselected curves should not be dissolved.*/
               if (!curve_selection.contains(true)) {
-                /* Because we are going to invert, fill with true so that it does not get
-                 * dissolved.*/
-                points_to_dissolve.as_mutable_span().slice(points).fill(true);
+                points_to_keep.slice(points).fill(true);
               }
               /* `between` is just `unselect` but with the first and last segments not geting
                * dissolved.*/
@@ -632,14 +633,13 @@ static int grease_pencil_dissolve_exec(bContext *C, wmOperator *op)
                   IndexRange first_range = deselection_ranges.first().shift(points.first());
                   IndexRange last_range = deselection_ranges.last().shift(points.first());
 
-                  /* Because we are going to invert, fill with true so that it does not get
-                   * dissolved. also ranges should only be fill if the first/last point matchs the
-                   * points range.*/
+                  /* Ranges should only be fill if the first/last point matchs the start/end point
+                   * of the segment.*/
                   if (first_range.first() == points.first()) {
-                    points_to_dissolve.as_mutable_span().slice(first_range).fill(true);
+                    points_to_keep.slice(first_range).fill(true);
                   }
                   if (last_range.last() == points.last()) {
-                    points_to_dissolve.as_mutable_span().slice(last_range).fill(true);
+                    points_to_keep.slice(last_range).fill(true);
                   }
                 }
               }
