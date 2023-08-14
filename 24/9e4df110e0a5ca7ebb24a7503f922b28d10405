@@ -42,3 +42,4 @@ Referenced by pull request #110920, Outliner: Port view layer elements to new tr
 Referenced by commit d5c7608b39c516e849f6199cb73a3c430aa57113, Outliner: Port view layer elements to new tree-element code design
 Referenced by commit 55117f20eec9f31a4d66ed6f23d9b583b7d599db, Outliner: Port pose group elements to new tree-element code design
 Referenced by pull request #111108, Outliner: Port constraint elements to new tree-element code design
+Referenced by commit 485c98cc2c2bcb4b36e1e33b4d2fffa0b520f6e5, Outliner: Port pose base elements to new tree-element code design
