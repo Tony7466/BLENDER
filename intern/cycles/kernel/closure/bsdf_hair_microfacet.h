@@ -786,7 +786,11 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   const float trt = average(TRT);
   const float trrt = average(TRRT);
   const float total_energy = r + tt + trt + trrt;
-  kernel_assert(total_energy > 0.0f);
+
+  if (total_energy == 0.0f) {
+    *pdf = 0.0f;
+    return LABEL_NONE;
+  }
 
   float3 local_O;
 
