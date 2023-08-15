@@ -515,6 +515,7 @@ class PrincipledBsdfNode : public BsdfBaseNode {
   void expand(ShaderGraph *graph);
   bool has_surface_bssrdf();
   bool has_bssrdf_bump();
+  void simplify_settings(Scene *scene);
   void compile(SVMCompiler &compiler,
                ShaderInput *metallic,
                ShaderInput *subsurface,
@@ -569,6 +570,7 @@ class PrincipledBsdfNode : public BsdfBaseNode {
   {
     return true;
   }
+  bool has_surface_emission();
 };
 
 class TranslucentBsdfNode : public BsdfNode {

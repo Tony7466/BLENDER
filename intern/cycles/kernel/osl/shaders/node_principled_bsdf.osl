@@ -26,6 +26,8 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
                             float ClearcoatRoughness = 0.03,
                             float IOR = 1.45,
                             float Transmission = 0.0,
+                            color Emission = 1.0,
+                            float EmissionStrength = 0.0,
                             normal Normal = N,
                             normal ClearcoatNormal = N,
                             normal Tangent = normalize(dPdu),
@@ -95,6 +97,10 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     MetallicBSDF = generalized_schlick_bsdf(
         Normal, T, color(1.0), color(0.0), alpha_x, alpha_y, f0, f90, 5.0, distribution);
     BSDF = mix(BSDF, MetallicBSDF, clamp(Metallic, 0.0, 1.0));
+  }
+
+  if (EmissionStrength > 0.0 && Emission != color(0.0)) {
+    BSDF += EmissionStrength * Emission * emission();
   }
 
   if (Clearcoat > 1e-5) {

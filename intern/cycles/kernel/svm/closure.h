@@ -23,6 +23,7 @@ ccl_device_inline int svm_node_closure_bsdf_skip(KernelGlobals kg, int offset, u
     read_node(kg, &offset);
     read_node(kg, &offset);
     read_node(kg, &offset);
+    read_node(kg, &offset);
   }
 
   return offset;
@@ -139,6 +140,13 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
                                                 __uint_as_float(data_subsurface_color.z),
                                                 __uint_as_float(data_subsurface_color.w));
 
+      uint4 data_emission = read_node(kg, &offset);
+      float3 emission = stack_load_float3(stack, data_emission.x);
+      /* Emission strength */
+      emission *= stack_valid(data_emission.y) ?
+                      stack_load_float(stack, data_emission.y) :
+                      __uint_as_float(data_alpha_emission.z);
+
       Spectrum weight = closure_weight * mix_weight;
 
       float alpha_x = sqr(roughness), alpha_y = sqr(roughness);
@@ -198,6 +206,11 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           Spectrum albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
           weight *= 1.0f - reduce_max(albedo / weight);
         }
+      }
+
+      /* Emission (attenuated by sheen and coat) */
+      if (!is_zero(emission)) {
+        emission_setup(sd, rgb_to_spectrum(emission) * weight);
       }
 
       /* Metallic component */
