@@ -753,7 +753,12 @@ macro(remove_cc_flag
 
   foreach(_flag ${ARGV})
     foreach(_var ${_flag_vars})
-      string(REGEX REPLACE ${_flag} "" "${_var}" "${${_var}}")
+      # Expands to an expression like:
+      # `string(REGEX REPLACE "${_flag}" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")`
+      cmake_language(
+        EVAL CODE
+        "string(REGEX REPLACE \"\$\{_flag\}\" \"\" ${_var} \"\$\{${_var}\}\")"
+      )
     endforeach()
   endforeach()
 
@@ -1509,15 +1514,17 @@ macro(windows_install_shared_manifest)
     if(WINDOWS_INSTALL_RELEASE)
       list(APPEND WINDOWS_SHARED_MANIFEST_RELEASE ${WINDOWS_INSTALL_FILES})
     endif()
-    install(FILES ${WINDOWS_INSTALL_FILES}
-            CONFIGURATIONS ${WINDOWS_CONFIGURATIONS}
-            DESTINATION "./blender.shared"
+    install(
+      FILES ${WINDOWS_INSTALL_FILES}
+      DESTINATION "./blender.shared"
+      CONFIGURATIONS ${WINDOWS_CONFIGURATIONS}
     )
   else()
     # Python module without manifest.
-    install(FILES ${WINDOWS_INSTALL_FILES}
-            CONFIGURATIONS ${WINDOWS_CONFIGURATIONS}
-            DESTINATION "./bpy"
+    install(
+      FILES ${WINDOWS_INSTALL_FILES}
+      DESTINATION "./bpy"
+      CONFIGURATIONS ${WINDOWS_CONFIGURATIONS}
     )
   endif()
 endmacro()
