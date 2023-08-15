@@ -1815,6 +1815,13 @@ blender::bke::greasepencil::Layer &GreasePencil::add_layer_after(
   return group.add_layer_after(unique_name, link);
 }
 
+void GreasePencil::move_layer_up(blender::bke::greasepencil::Layer *layer,
+                                 blender::bke::greasepencil::Layer *move_along_layer)
+{
+  layer->parent_group().unlink_node(&layer->as_node());
+  move_along_layer->parent_group().add_layer_after(layer, &move_along_layer->as_node());
+}
+
 void GreasePencil::move_layer_down(blender::Span<blender::bke::greasepencil::Layer *> layers,
                                    blender::bke::greasepencil::Layer *move_along_layer)
 {

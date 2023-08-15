@@ -1676,19 +1676,17 @@ static void rearrange_grease_pencil_channels(bAnimContext *ac, eRearrangeAnimCha
     switch (mode) {
       case REARRANGE_ANIMCHAN_TOP: {
         if (layer->is_selected()) {
-          layer->parent_group().unlink_node(&layer->as_node());
-          temp_layer->parent_group().add_layer_after(layer, &temp_layer->as_node());
+          grease_pencil->move_layer_up(layer, temp_layer);
         }
         break;
       }
       case REARRANGE_ANIMCHAN_UP: {
-        /* Store last unselected element and move it "below" the last selected channel. */
+        /* Store last unselected element in temp_layer and move selected channels above it. */
         if (!layer->is_selected()) {
           temp_layer = layer;
         }
         else if (temp_layer) {
-          layer->parent_group().unlink_node(&layer->as_node());
-          temp_layer->parent_group().add_layer_after(layer, &temp_layer->as_node());
+          grease_pencil->move_layer_up(layer, temp_layer);
         }
         break;
       }

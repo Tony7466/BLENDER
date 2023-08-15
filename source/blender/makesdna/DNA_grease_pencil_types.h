@@ -460,6 +460,9 @@ typedef struct GreasePencil {
                                                      blender::bke::greasepencil::TreeNode *link,
                                                      blender::StringRefNull name);
 
+  void move_layer_up(blender::bke::greasepencil::Layer *layer,
+                     blender::bke::greasepencil::Layer *move_along_layer);
+
   void move_layer_down(blender::Span<blender::bke::greasepencil::Layer *> layers,
                        blender::bke::greasepencil::Layer *move_along_layer);
 
