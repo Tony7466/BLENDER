@@ -313,7 +313,7 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
     DEG_add_depends_on_transform_relation(ctx->node, "Nodes Modifier");
   }
   if (needs_camera_transform_relation && ctx->scene->camera != nullptr) {
-    add_object_relation(ctx, *ctx->scene->camera);
+    DEG_add_object_relation(ctx->node, ctx->scene->camera, DEG_OB_COMP_TRANSFORM, "Camera relation!");
   }
 }
 
