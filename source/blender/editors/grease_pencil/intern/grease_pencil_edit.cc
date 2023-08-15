@@ -562,23 +562,27 @@ static void GREASE_PENCIL_OT_stroke_simplify(wmOperatorType *ot)
 /** \name Dissolve Points Operator
  * \{ */
 
-enum DissolveMode {
+enum class DissolveMode : int8_t {
   /* Dissolve all selected points. */
-  DISSOLVE_POINTS = 0,
+  POINTS,
   /* Dissolve between selected points. */
-  DISSOLVE_BETWEEN = 1,
+  BETWEEN,
   /* Dissolve unselected points. */
-  DISSOLVE_UNSELECT = 2,
+  UNSELECT,
 };
 
 static const EnumPropertyItem prop_dissolve_types[] = {
-    {DISSOLVE_POINTS, "POINTS", 0, "Dissolve", "Dissolve selected points"},
-    {DISSOLVE_BETWEEN,
+    {int(DissolveMode::POINTS), "POINTS", 0, "Dissolve", "Dissolve selected points"},
+    {int(DissolveMode::BETWEEN),
      "BETWEEN",
      0,
      "Dissolve Between",
      "Dissolve points between selected points"},
-    {DISSOLVE_UNSELECT, "UNSELECT", 0, "Dissolve Unselect", "Dissolve all unselected points"},
+    {int(DissolveMode::UNSELECT),
+     "UNSELECT",
+     0,
+     "Dissolve Unselect",
+     "Dissolve all unselected points"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -590,13 +594,13 @@ static Array<bool> get_points_to_dissolve(bke::CurvesGeometry &curves, const Dis
   Array<bool> points_to_dissolve(curves.points_num());
   selection.materialize(points_to_dissolve);
 
-  if (mode == DISSOLVE_POINTS) {
+  if (mode == DissolveMode::POINTS) {
     return points_to_dissolve;
   }
 
   /* Both `between` and `unselect` have the unselected point being the ones dissolved so we need
    * to invert.*/
-  BLI_assert(ELEM(mode, DISSOLVE_BETWEEN, DISSOLVE_UNSELECT));
+  BLI_assert(ELEM(mode, DissolveMode::BETWEEN, DissolveMode::UNSELECT));
 
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   /* Because we are going to invert, these become the points to keep.*/
@@ -614,7 +618,7 @@ static Array<bool> get_points_to_dissolve(bke::CurvesGeometry &curves, const Dis
 
       /* `between` is just `unselect` but with the first and last segments not geting
        * dissolved.*/
-      if (mode != DISSOLVE_BETWEEN) {
+      if (mode != DissolveMode::BETWEEN) {
         continue;
       }
 
