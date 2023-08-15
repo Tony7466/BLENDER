@@ -72,10 +72,10 @@ static void test_eevee_shadow_shift_clear()
   pass.bind_ssbo("tiles_buf", tiles_data);
   pass.bind_ssbo("pages_cached_buf", pages_cached_data_);
   pass.dispatch(int3(1, 1, tilemaps_data.size()));
+  pass.barrier(GPU_BARRIER_BUFFER_UPDATE);
 
   Manager manager;
   manager.submit(pass);
-  GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
 
   tilemaps_data.read();
   tiles_data.read();
@@ -99,8 +99,8 @@ static void test_eevee_shadow_shift()
   GPU_render_begin();
   ShadowTileMapDataBuf tilemaps_data = {"tilemaps_data"};
   ShadowTileDataBuf tiles_data = {"tiles_data"};
-  ShadowTileMapClipBuf tilemaps_clip = {"tilemaps_clip"};
-  ShadowPageCacheBuf pages_cached_data_ = {"pages_cached_data_"};
+  StorageArrayBuffer<ShadowTileMapClip, SHADOW_MAX_TILEMAP> tilemaps_clip = {"tilemaps_clip"};
+  ShadowPageCacheBuf pages_cached_data = {"pages_cached_data"};
 
   auto tile_co_to_page = [](int2 co) {
     int page = co.x + co.y * SHADOW_TILEMAP_RES;
@@ -109,6 +109,17 @@ static void test_eevee_shadow_shift()
                  (page / SHADOW_PAGE_PER_LAYER));
   };
 
+  {
+    ShadowTileMapClip clip = {};
+    clip.clip_near_stored = 0.0;
+    clip.clip_far_stored = 1.0;
+    clip.clip_near = 0x00000000; /* floatBitsToOrderedInt(0.0) */
+    clip.clip_far = 0x3F800000;  /* floatBitsToOrderedInt(1.0) */
+
+    tilemaps_clip[0] = clip;
+
+    tilemaps_clip.push_update();
+  }
   {
     ShadowTileMapData tilemap = {};
     tilemap.tiles_index = 0;
@@ -143,12 +154,12 @@ static void test_eevee_shadow_shift()
   pass.bind_ssbo("tilemaps_buf", tilemaps_data);
   pass.bind_ssbo("tilemaps_clip_buf", tilemaps_clip);
   pass.bind_ssbo("tiles_buf", tiles_data);
-  pass.bind_ssbo("pages_cached_buf", pages_cached_data_);
+  pass.bind_ssbo("pages_cached_buf", pages_cached_data);
   pass.dispatch(int3(1, 1, tilemaps_data.size()));
+  pass.barrier(GPU_BARRIER_BUFFER_UPDATE);
 
   Manager manager;
   manager.submit(pass);
-  GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
 
   tilemaps_data.read();
   tiles_data.read();
@@ -242,9 +253,9 @@ static void test_eevee_shadow_tag_update()
   pass.bind_ssbo("bounds_buf", &manager.bounds_buf.current());
   pass.bind_ssbo("resource_ids_buf", curr_casters_updated);
   pass.dispatch(int3(curr_casters_updated.size(), 1, tilemaps_data.size()));
+  pass.barrier(GPU_BARRIER_BUFFER_UPDATE);
 
   manager.submit(pass);
-  GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
 
   tiles_data.read();
 
@@ -366,8 +377,10 @@ static void test_eevee_shadow_free()
   int page_free_count = SHADOW_MAX_PAGE - 6;
 
   for (uint i : IndexRange(2, page_free_count)) {
-    uint2 page = {i % SHADOW_PAGE_PER_ROW, i / SHADOW_PAGE_PER_ROW};
-    pages_free_data[i] = page.x | (page.y << 16u);
+    uint3 page = uint3((i % SHADOW_PAGE_PER_ROW),
+                       (i / SHADOW_PAGE_PER_ROW) % SHADOW_PAGE_PER_COL,
+                       (i / SHADOW_PAGE_PER_LAYER));
+    pages_free_data[i] = shadow_page_pack(page);
   }
   pages_free_data.push_update();
 
@@ -387,6 +400,9 @@ static void test_eevee_shadow_free()
 
   {
     ShadowTileData tile;
+
+    tiles_data.clear_to_zero();
+    tiles_data.read();
 
     /* is_orphaned = true */
     tile.is_used = false;
@@ -444,10 +460,10 @@ static void test_eevee_shadow_free()
   pass.bind_ssbo("pages_free_buf", pages_free_data);
   pass.bind_ssbo("pages_cached_buf", pages_cached_data);
   pass.dispatch(int3(1, 1, tilemaps_data.size()));
+  pass.barrier(GPU_BARRIER_BUFFER_UPDATE);
 
   Manager manager;
   manager.submit(pass);
-  GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
 
   tiles_data.read();
   pages_infos_data.read();
@@ -556,10 +572,10 @@ class TestDefrag {
     pass.bind_ssbo("statistics_buf", statistics_buf);
     pass.bind_ssbo("clear_draw_buf", clear_draw_buf);
     pass.dispatch(int3(1, 1, 1));
+    pass.barrier(GPU_BARRIER_BUFFER_UPDATE);
 
     Manager manager;
     manager.submit(pass);
-    GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
 
     tiles_data.read();
     pages_cached_data.read();
@@ -682,10 +698,10 @@ class TestAlloc {
     pass.bind_ssbo("pages_cached_buf", pages_cached_data);
     pass.bind_ssbo("statistics_buf", statistics_buf);
     pass.dispatch(int3(1, 1, tilemaps_data.size()));
+    pass.barrier(GPU_BARRIER_BUFFER_UPDATE);
 
     Manager manager;
     manager.submit(pass);
-    GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
 
     tiles_data.read();
     pages_infos_data.read();
@@ -757,21 +773,29 @@ static void test_eevee_shadow_finalize()
     tile.do_update = true;
     tiles_data[lod2_ofs] = shadow_tile_pack(tile);
 
-    tile.page = uint3(4, 0, 0);
-    tile.do_update = false;
+    tile.page = uint3(0, 1, 0);
+    tile.do_update = true;
     tiles_data[lod3_ofs] = shadow_tile_pack(tile);
 
-    tile.page = uint3(5, 0, 0);
+    tile.page = uint3(1, 1, 0);
     tile.do_update = true;
     tiles_data[lod4_ofs] = shadow_tile_pack(tile);
 
-    tile.page = uint3(6, 0, 0);
+    tile.page = uint3(2, 1, 0);
     tile.do_update = true;
     tiles_data[lod5_ofs] = shadow_tile_pack(tile);
 
-    tile.page = uint3(7, 0, 0);
+    tile.page = uint3(3, 1, 0);
     tile.do_update = true;
     tiles_data[lod0_ofs + 8] = shadow_tile_pack(tile);
+
+    tile.page = uint3(0, 2, 0);
+    tile.do_update = true;
+    tiles_data[lod3_ofs + 8] = shadow_tile_pack(tile);
+
+    tile.page = uint3(1, 2, 0);
+    tile.do_update = true;
+    tiles_data[lod0_ofs + 32 * 15 + 15] = shadow_tile_pack(tile);
 
     tiles_data.push_update();
   }
@@ -804,44 +828,34 @@ static void test_eevee_shadow_finalize()
                            GPU_TEXTURE_USAGE_SHADER_WRITE);
   tilemap_tx.clear(uint4(0));
 
-  Texture render_map_tx = {"ShadowRenderMap",
-                           GPU_R32UI,
-                           GPU_TEXTURE_USAGE_HOST_READ | GPU_TEXTURE_USAGE_SHADER_READ |
-                               GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_MIP_SWIZZLE_VIEW,
-                           int2(SHADOW_TILEMAP_RES),
-                           1, /* Only one layer for the test. */
-                           nullptr,
-                           SHADOW_TILEMAP_LOD + 1};
-  render_map_tx.ensure_mip_views();
-
   View shadow_multi_view = {"ShadowMultiView", 64, true};
-  StorageBuffer<DispatchCommand> clear_draw_buf;
-  StorageArrayBuffer<uint, SHADOW_MAX_PAGE> clear_page_buf = {"clear_page_buf"};
+  StorageBuffer<DispatchCommand> clear_dispatch_buf;
+  StorageArrayBuffer<uint, SHADOW_MAX_PAGE> clear_list_buf = {"clear_list_buf"};
+  StorageArrayBuffer<uint, SHADOW_RENDER_MAP_SIZE> render_map_buf = {"render_map_buf"};
+  StorageArrayBuffer<uint, SHADOW_VIEW_MAX> viewport_index_buf = {"viewport_index_buf"};
+
+  render_map_buf.clear_to_zero();
 
   GPUShader *sh = GPU_shader_create_from_info_name("eevee_shadow_tilemap_finalize");
 
   PassSimple pass("Test");
   pass.shader_set(sh);
   pass.bind_ssbo("tilemaps_buf", tilemaps_data);
+  pass.bind_ssbo("tilemaps_clip_buf", tilemaps_clip);
   pass.bind_ssbo("tiles_buf", tiles_data);
+  pass.bind_ssbo("view_infos_buf", shadow_multi_view.matrices_ubo_get());
+  pass.bind_ssbo("statistics_buf", statistics_buf);
+  pass.bind_ssbo("clear_dispatch_buf", clear_dispatch_buf);
+  pass.bind_ssbo("clear_list_buf", clear_list_buf);
+  pass.bind_ssbo("render_map_buf", render_map_buf);
+  pass.bind_ssbo("viewport_index_buf", viewport_index_buf);
   pass.bind_ssbo("pages_infos_buf", pages_infos_data);
   pass.bind_image("tilemaps_img", tilemap_tx);
-  pass.bind_ssbo("view_infos_buf", shadow_multi_view.matrices_ubo_get());
-  pass.bind_ssbo("clear_draw_buf", clear_draw_buf);
-  pass.bind_ssbo("clear_page_buf", clear_page_buf);
-  pass.bind_ssbo("statistics_buf", statistics_buf);
-  pass.bind_ssbo("tilemaps_clip_buf", tilemaps_clip);
-  pass.bind_image("render_map_lod0_img", render_map_tx.mip_view(0));
-  pass.bind_image("render_map_lod1_img", render_map_tx.mip_view(1));
-  pass.bind_image("render_map_lod2_img", render_map_tx.mip_view(2));
-  pass.bind_image("render_map_lod3_img", render_map_tx.mip_view(3));
-  pass.bind_image("render_map_lod4_img", render_map_tx.mip_view(4));
-  pass.bind_image("render_map_lod5_img", render_map_tx.mip_view(5));
   pass.dispatch(int3(1, 1, tilemaps_data.size()));
+  pass.barrier(GPU_BARRIER_BUFFER_UPDATE | GPU_BARRIER_TEXTURE_UPDATE);
 
   Manager manager;
   manager.submit(pass);
-  GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE | GPU_BARRIER_TEXTURE_UPDATE);
 
   {
     uint *pixels = tilemap_tx.read<uint32_t>(GPU_DATA_UINT);
@@ -849,7 +863,8 @@ static void test_eevee_shadow_finalize()
     std::string result = "";
     for (auto y : IndexRange(SHADOW_TILEMAP_RES)) {
       for (auto x : IndexRange(SHADOW_TILEMAP_RES)) {
-        result += std::to_string(shadow_tile_unpack(pixels[y * SHADOW_TILEMAP_RES + x]).page.x);
+        ShadowTileData tile = shadow_tile_unpack(pixels[y * SHADOW_TILEMAP_RES + x]);
+        result += std::to_string(tile.page.x + tile.page.y * SHADOW_PAGE_PER_ROW);
       }
     }
 
@@ -872,15 +887,15 @@ static void test_eevee_shadow_finalize()
         "55555555555555556666666666666666"
         "55555555555555556666666666666666"
         "55555555555555556666666666666666"
-        "55555555555555556666666666666666"
-        "66666666666666666666666666666666"
-        "66666666666666666666666666666666"
-        "66666666666666666666666666666666"
-        "66666666666666666666666666666666"
-        "66666666666666666666666666666666"
-        "66666666666666666666666666666666"
-        "66666666666666666666666666666666"
-        "66666666666666666666666666666666"
+        "55555555555555596666666666666666"
+        "88888888666666666666666666666666"
+        "88888888666666666666666666666666"
+        "88888888666666666666666666666666"
+        "88888888666666666666666666666666"
+        "88888888666666666666666666666666"
+        "88888888666666666666666666666666"
+        "88888888666666666666666666666666"
+        "88888888666666666666666666666666"
         "66666666666666666666666666666666"
         "66666666666666666666666666666666"
         "66666666666666666666666666666666"
@@ -894,17 +909,17 @@ static void test_eevee_shadow_finalize()
   }
 
   {
-    auto stringify_lod = [](Span<uint> data) -> std::string {
+    auto stringify_view = [](Span<uint> data) -> std::string {
       std::string result = "";
       for (auto x : data) {
-        result += (x == 0xFFFFFFFFu) ? '-' : '0' + (x % 10);
+        result += (x == 0u) ? '-' : ((x == 0xFFFFFFFFu) ? 'x' : '0' + (x % 10));
       }
       return result;
     };
 
     /** The layout of these expected strings is Y down. */
-    StringRefNull expected_lod0 =
-        "--------7-----------------------"
+    StringRefNull expected_view0 =
+        "6-------------------------------"
         "--------------------------------"
         "--------------------------------"
         "--------------------------------"
@@ -937,73 +952,166 @@ static void test_eevee_shadow_finalize()
         "--------------------------------"
         "--------------------------------";
 
-    StringRefNull expected_lod1 =
-        "----------------"
-        "----------------"
-        "----------------"
-        "----------------"
-        "----------------"
-        "----------------"
-        "----------------"
-        "----------------"
-        "----------------"
-        "----------------"
-        "----------------"
-        "----------------"
-        "----------------"
-        "----------------"
-        "----------------"
-        "----------------";
+    StringRefNull expected_view1 =
+        "5-------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------";
 
-    StringRefNull expected_lod2 =
-        "3-------"
-        "--------"
-        "--------"
-        "--------"
-        "--------"
-        "--------"
-        "--------"
-        "--------";
+    StringRefNull expected_view2 =
+        "4xxx----------------------------"
+        "xxxx----------------------------"
+        "8xxx----------------------------"
+        "xxxx----------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------";
 
-    StringRefNull expected_lod3 =
-        "----"
-        "----"
-        "----"
-        "----";
+    StringRefNull expected_view3 =
+        "3-------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------";
 
-    StringRefNull expected_lod4 =
-        "5-"
-        "--";
+    StringRefNull expected_view4 =
+        "7xxxxxxxxxxxxxxx----------------"
+        "xxxxxxxxxxxxxxxx----------------"
+        "xxxxxxxxxxxxxxxx----------------"
+        "xxxxxxxxxxxxxxxx----------------"
+        "xxxxxxxxxxxxxxxx----------------"
+        "xxxxxxxxxxxxxxxx----------------"
+        "xxxxxxxxxxxxxxxx----------------"
+        "xxxxxxxxxxxxxxxx----------------"
+        "xxxxxxxxxxxxxxxx----------------"
+        "xxxxxxxxxxxxxxxx----------------"
+        "xxxxxxxxxxxxxxxx----------------"
+        "xxxxxxxxxxxxxxxx----------------"
+        "xxxxxxxxxxxxxxxx----------------"
+        "xxxxxxxxxxxxxxxx----------------"
+        "xxxxxxxxxxxxxxxx----------------"
+        "xxxxxxx9xxxxxxxx----------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------"
+        "--------------------------------";
 
-    StringRefNull expected_lod5 = "6";
+    render_map_buf.read();
 
-    uint *pixels_lod0 = render_map_tx.read<uint32_t>(GPU_DATA_UINT, 0);
-    uint *pixels_lod1 = render_map_tx.read<uint32_t>(GPU_DATA_UINT, 1);
-    uint *pixels_lod2 = render_map_tx.read<uint32_t>(GPU_DATA_UINT, 2);
-    uint *pixels_lod3 = render_map_tx.read<uint32_t>(GPU_DATA_UINT, 3);
-    uint *pixels_lod4 = render_map_tx.read<uint32_t>(GPU_DATA_UINT, 4);
-    uint *pixels_lod5 = render_map_tx.read<uint32_t>(GPU_DATA_UINT, 5);
-
-    EXPECT_EQ(stringify_lod(Span<uint>(pixels_lod0, lod0_len)), expected_lod0);
-    EXPECT_EQ(stringify_lod(Span<uint>(pixels_lod1, lod1_len)), expected_lod1);
-    EXPECT_EQ(stringify_lod(Span<uint>(pixels_lod2, lod2_len)), expected_lod2);
-    EXPECT_EQ(stringify_lod(Span<uint>(pixels_lod3, lod3_len)), expected_lod3);
-    EXPECT_EQ(stringify_lod(Span<uint>(pixels_lod4, lod4_len)), expected_lod4);
-    EXPECT_EQ(stringify_lod(Span<uint>(pixels_lod5, 1)), expected_lod5);
-
-    MEM_SAFE_FREE(pixels_lod0);
-    MEM_SAFE_FREE(pixels_lod1);
-    MEM_SAFE_FREE(pixels_lod2);
-    MEM_SAFE_FREE(pixels_lod3);
-    MEM_SAFE_FREE(pixels_lod4);
-    MEM_SAFE_FREE(pixels_lod5);
+    EXPECT_EQ(stringify_view(Span<uint>(&render_map_buf[SHADOW_TILEMAP_LOD0_LEN * 0],
+                                        SHADOW_TILEMAP_LOD0_LEN)),
+              expected_view0);
+    EXPECT_EQ(stringify_view(Span<uint>(&render_map_buf[SHADOW_TILEMAP_LOD0_LEN * 1],
+                                        SHADOW_TILEMAP_LOD0_LEN)),
+              expected_view1);
+    EXPECT_EQ(stringify_view(Span<uint>(&render_map_buf[SHADOW_TILEMAP_LOD0_LEN * 2],
+                                        SHADOW_TILEMAP_LOD0_LEN)),
+              expected_view2);
+    EXPECT_EQ(stringify_view(Span<uint>(&render_map_buf[SHADOW_TILEMAP_LOD0_LEN * 3],
+                                        SHADOW_TILEMAP_LOD0_LEN)),
+              expected_view3);
+    EXPECT_EQ(stringify_view(Span<uint>(&render_map_buf[SHADOW_TILEMAP_LOD0_LEN * 4],
+                                        SHADOW_TILEMAP_LOD0_LEN)),
+              expected_view4);
   }
 
   pages_infos_data.read();
   EXPECT_EQ(pages_infos_data.page_free_count, 0);
 
   statistics_buf.read();
-  EXPECT_EQ(statistics_buf.view_needed_count, 1);
+  EXPECT_EQ(statistics_buf.view_needed_count, 5);
 
   GPU_shader_free(sh);
   DRW_shaders_free();

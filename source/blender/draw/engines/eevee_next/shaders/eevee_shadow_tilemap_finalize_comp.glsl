@@ -83,6 +83,9 @@ void main()
 
     barrier();
 
+    int viewport_index = viewport_select(rect_max - rect_min);
+    ivec2 viewport_size = viewport_size_get(viewport_index);
+
     /* Issue one view if there is an update in the LOD. */
     if (all(equal(gl_LocalInvocationID, uvec3(0)))) {
       bool lod_has_update = rect_min.x < rect_max.x;
@@ -90,16 +93,12 @@ void main()
         view_index = atomicAdd(statistics_buf.view_needed_count, 1);
         if (view_index < SHADOW_VIEW_MAX) {
           /* Setup the view. */
-          viewport_index_buf[view_index] = lod;
+          viewport_index_buf[view_index] = viewport_index;
 
           view_infos_buf[view_index].viewmat = tilemap_data.viewmat;
           view_infos_buf[view_index].viewinv = inverse(tilemap_data.viewmat);
 
           float lod_res = float(SHADOW_TILEMAP_RES >> lod);
-
-          int viewport_index = viewport_select(rect_max - rect_min);
-          ivec2 viewport_size = viewport_size_get(viewport_index);
-          viewport_index_buf[view_index] = viewport_index;
 
           /* TODO(fclem): These should be the culling planes. */
           // vec2 cull_region_start = (vec2(rect_min) / lod_res) * 2.0 - 1.0;
@@ -139,7 +138,7 @@ void main()
 
     if ((view_index >= 0) && (view_index < SHADOW_VIEW_MAX) && lod_valid_thread) {
       ivec2 relative_tile_co = tile_co_lod - rect_min;
-      if (all(greaterThanEqual(relative_tile_co, ivec2(0)))) {
+      if (in_range_exclusive(relative_tile_co, ivec2(-1), viewport_size)) {
         uint page_packed = shadow_page_pack(tile.page);
         /* Add page to render map. */
         int render_page_index = shadow_render_page_index_get(view_index, relative_tile_co);
