@@ -8,10 +8,6 @@
  * \ingroup sequencer
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct ListBase;
 struct Scene;
 struct SeqCollection;
@@ -49,8 +45,8 @@ bool SEQ_transform_seqbase_shuffle_time(struct SeqCollection *strips_to_shuffle,
 
 void SEQ_transform_handle_overlap(struct Scene *scene,
                                   struct ListBase *seqbasep,
-                                  struct SeqCollection *transformed_strips,
-                                  struct SeqCollection *time_dependent_strips,
+                                  blender::Vector<Sequence *> *transformed_strips,
+                                  blender::Vector<Sequence *> *time_dependent_strips,
                                   bool use_sync_markers);
 /**
  * Check if the selected seq's reference unselected seq's.
@@ -131,11 +127,7 @@ void SEQ_image_preview_unit_from_px(const struct Scene *scene,
  * \param r_max: Maximum x and y values
  */
 void SEQ_image_transform_bounding_box_from_collection(struct Scene *scene,
-                                                      struct SeqCollection *strips,
+                                                      blender::Vector<Sequence *> *strips,
                                                       bool apply_rotation,
                                                       float r_min[2],
                                                       float r_max[2]);
-
-#ifdef __cplusplus
-}
-#endif

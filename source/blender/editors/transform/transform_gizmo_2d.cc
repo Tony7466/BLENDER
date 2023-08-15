@@ -250,15 +250,14 @@ static bool gizmo2d_calc_bounds(const bContext *C, float *r_center, float *r_min
     Editing *ed = SEQ_editing_get(scene);
     ListBase *seqbase = SEQ_active_seqbase_get(ed);
     ListBase *channels = SEQ_channels_displayed_get(ed);
-    SeqCollection *strips = SEQ_query_rendered_strips(scene, channels, seqbase, scene->r.cfra, 0);
+    blender::Vector strips = SEQ_query_rendered_strips(scene, channels, seqbase, scene->r.cfra, 0);
     SEQ_filter_selected_strips(strips);
-    int selected_strips = SEQ_collection_len(strips);
+    int selected_strips = strips.size();
     if (selected_strips > 0) {
       has_select = true;
       SEQ_image_transform_bounding_box_from_collection(
-          scene, strips, selected_strips != 1, r_min, r_max);
+          scene, &strips, selected_strips != 1, r_min, r_max);
     }
-    SEQ_collection_free(strips);
     if (selected_strips > 1) {
       /* Don't draw the cage as transforming multiple strips isn't currently very useful as it
        * doesn't behave as one would expect.
@@ -302,11 +301,10 @@ static int gizmo2d_calc_transform_orientation(const bContext *C)
   Editing *ed = SEQ_editing_get(scene);
   ListBase *seqbase = SEQ_active_seqbase_get(ed);
   ListBase *channels = SEQ_channels_displayed_get(ed);
-  SeqCollection *strips = SEQ_query_rendered_strips(scene, channels, seqbase, scene->r.cfra, 0);
+  blender::Vector strips = SEQ_query_rendered_strips(scene, channels, seqbase, scene->r.cfra, 0);
   SEQ_filter_selected_strips(strips);
 
-  bool use_local_orient = SEQ_collection_len(strips) == 1;
-  SEQ_collection_free(strips);
+  bool use_local_orient = strips.size() == 1;
 
   if (use_local_orient) {
     return V3D_ORIENT_LOCAL;
@@ -325,22 +323,19 @@ static float gizmo2d_calc_rotation(const bContext *C)
   Editing *ed = SEQ_editing_get(scene);
   ListBase *seqbase = SEQ_active_seqbase_get(ed);
   ListBase *channels = SEQ_channels_displayed_get(ed);
-  SeqCollection *strips = SEQ_query_rendered_strips(scene, channels, seqbase, scene->r.cfra, 0);
+  blender::Vector strips = SEQ_query_rendered_strips(scene, channels, seqbase, scene->r.cfra, 0);
   SEQ_filter_selected_strips(strips);
 
-  if (SEQ_collection_len(strips) == 1) {
+  if (strips.size() == 1) {
     /* Only return the strip rotation if only one is selected. */
-    Sequence *seq;
-    SEQ_ITERATOR_FOREACH (seq, strips) {
+    for (auto seq : strips) {
       StripTransform *transform = seq->strip->transform;
       float mirror[2];
       SEQ_image_transform_mirror_factor_get(seq, mirror);
-      SEQ_collection_free(strips);
       return transform->rotation * mirror[0] * mirror[1];
     }
   }
 
-  SEQ_collection_free(strips);
   return 0.0f;
 }
 
@@ -351,21 +346,19 @@ static bool seq_get_strip_pivot_median(const Scene *scene, float r_pivot[2])
   Editing *ed = SEQ_editing_get(scene);
   ListBase *seqbase = SEQ_active_seqbase_get(ed);
   ListBase *channels = SEQ_channels_displayed_get(ed);
-  SeqCollection *strips = SEQ_query_rendered_strips(scene, channels, seqbase, scene->r.cfra, 0);
+  blender::Vector strips = SEQ_query_rendered_strips(scene, channels, seqbase, scene->r.cfra, 0);
   SEQ_filter_selected_strips(strips);
-  bool has_select = SEQ_collection_len(strips) != 0;
+  bool has_select = strips.size() != 0;
 
   if (has_select) {
-    Sequence *seq;
-    SEQ_ITERATOR_FOREACH (seq, strips) {
+    for (auto seq : strips) {
       float origin[2];
       SEQ_image_transform_origin_offset_pixelspace_get(scene, seq, origin);
       add_v2_v2(r_pivot, origin);
     }
-    mul_v2_fl(r_pivot, 1.0f / SEQ_collection_len(strips));
+    mul_v2_fl(r_pivot, 1.0f / strips.size());
   }
 
-  SEQ_collection_free(strips);
   return has_select;
 }
 
@@ -390,11 +383,10 @@ static bool gizmo2d_calc_transform_pivot(const bContext *C, float r_pivot[2])
       Editing *ed = SEQ_editing_get(scene);
       ListBase *seqbase = SEQ_active_seqbase_get(ed);
       ListBase *channels = SEQ_channels_displayed_get(ed);
-      SeqCollection *strips = SEQ_query_rendered_strips(
+      blender::Vector strips = SEQ_query_rendered_strips(
           scene, channels, seqbase, scene->r.cfra, 0);
       SEQ_filter_selected_strips(strips);
-      has_select = SEQ_collection_len(strips) != 0;
-      SEQ_collection_free(strips);
+      has_select = strips.size() != 0;
     }
     else {
       has_select = seq_get_strip_pivot_median(scene, r_pivot);

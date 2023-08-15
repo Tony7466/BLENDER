@@ -1445,14 +1445,16 @@ static int sequencer_split_exec(bContext *C, wmOperator *op)
       if (use_cursor_position) {
         LISTBASE_FOREACH (Sequence *, seq, SEQ_active_seqbase_get(ed)) {
           if (SEQ_time_right_handle_frame_get(scene, seq) == split_frame &&
-              seq->machine == split_channel) {
+              seq->machine == split_channel)
+          {
             seq_selected = seq->flag & SEQ_ALLSEL;
           }
         }
         if (!seq_selected) {
           LISTBASE_FOREACH (Sequence *, seq, SEQ_active_seqbase_get(ed)) {
             if (SEQ_time_left_handle_frame_get(scene, seq) == split_frame &&
-                seq->machine == split_channel) {
+                seq->machine == split_channel)
+            {
               seq->flag &= ~SEQ_ALLSEL;
             }
           }
@@ -1710,18 +1712,13 @@ static int sequencer_delete_exec(bContext *C, wmOperator *op)
 
   SEQ_prefetch_stop(scene);
 
-  SeqCollection *selected_strips = selected_strips_from_context(C);
-  Sequence *seq;
-
-  SEQ_ITERATOR_FOREACH (seq, selected_strips) {
+  for (auto seq : selected_strips_from_context(C)) {
     SEQ_edit_flag_for_removal(scene, seqbasep, seq);
     if (delete_data) {
       sequencer_delete_strip_data(C, seq);
     }
   }
   SEQ_edit_remove_flagged_sequences(scene, seqbasep);
-
-  SEQ_collection_free(selected_strips);
 
   DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
   DEG_relations_tag_update(bmain);
@@ -2241,14 +2238,16 @@ static Sequence *find_next_prev_sequence(Scene *scene, Sequence *test, int lr, i
       switch (lr) {
         case SEQ_SIDE_LEFT:
           if (SEQ_time_right_handle_frame_get(scene, seq) <=
-              SEQ_time_left_handle_frame_get(scene, test)) {
+              SEQ_time_left_handle_frame_get(scene, test))
+          {
             dist = SEQ_time_right_handle_frame_get(scene, test) -
                    SEQ_time_left_handle_frame_get(scene, seq);
           }
           break;
         case SEQ_SIDE_RIGHT:
           if (SEQ_time_left_handle_frame_get(scene, seq) >=
-              SEQ_time_right_handle_frame_get(scene, test)) {
+              SEQ_time_right_handle_frame_get(scene, test))
+          {
             dist = SEQ_time_left_handle_frame_get(scene, seq) -
                    SEQ_time_right_handle_frame_get(scene, test);
           }

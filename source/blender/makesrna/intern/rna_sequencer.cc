@@ -196,31 +196,40 @@ static void rna_Sequence_use_sequence(Main *bmain, Scene *scene, PointerRNA *ptr
   DEG_relations_tag_update(bmain);
 }
 
+static void add_strips_from_seqbase(const ListBase *seqbase, blender::Vector<Sequence *> *strips)
+{
+  LISTBASE_FOREACH (Sequence *, seq, seqbase) {
+    strips->append(seq);
+
+    if (seq->type == SEQ_TYPE_META) {
+      add_strips_from_seqbase(&seq->seqbase, strips);
+    }
+  }
+}
+
 static void rna_SequenceEditor_sequences_all_begin(CollectionPropertyIterator *iter,
                                                    PointerRNA *ptr)
 {
   Scene *scene = (Scene *)ptr->owner_id;
   Editing *ed = SEQ_editing_get(scene);
-  SeqCollection *all_strips = SEQ_query_all_strips_recursive(&ed->seqbase);
+
+  blender::Vector<Sequence *> *strips = new blender::Vector<Sequence *>;
+  add_strips_from_seqbase(&ed->seqbase, strips);
 
   BLI_Iterator *bli_iter = static_cast<BLI_Iterator *>(
       MEM_callocN(sizeof(BLI_Iterator), __func__));
-  bli_iter->data = MEM_callocN(sizeof(SeqIterator), __func__);
   iter->internal.custom = bli_iter;
 
-  if (!SEQ_iterator_ensure(
-          all_strips, static_cast<SeqIterator *>(bli_iter->data), (Sequence **)&bli_iter->current))
-  {
-    SEQ_collection_free(all_strips);
-  }
-
+  bli_iter->data = strips;
+  bli_iter->current = strips->begin();
   iter->valid = bli_iter->current != nullptr;
 }
 
 static void rna_SequenceEditor_sequences_all_next(CollectionPropertyIterator *iter)
 {
   BLI_Iterator *bli_iter = static_cast<BLI_Iterator *>(iter->internal.custom);
-  bli_iter->current = SEQ_iterator_yield(static_cast<SeqIterator *>(bli_iter->data));
+  Sequence *seq_current = static_cast<Sequence *>(bli_iter->current);
+  bli_iter->current = seq_current + 1;
   iter->valid = bli_iter->current != nullptr;
 }
 
@@ -233,11 +242,8 @@ static PointerRNA rna_SequenceEditor_sequences_all_get(CollectionPropertyIterato
 static void rna_SequenceEditor_sequences_all_end(CollectionPropertyIterator *iter)
 {
   BLI_Iterator *bli_iter = static_cast<BLI_Iterator *>(iter->internal.custom);
-  SeqIterator *seq_iter = static_cast<SeqIterator *>(bli_iter->data);
-  if (seq_iter->collection != nullptr) {
-    SEQ_collection_free(seq_iter->collection);
-  }
-  MEM_freeN(seq_iter);
+
+  delete bli_iter->data;
   MEM_freeN(bli_iter);
 }
 
@@ -308,10 +314,9 @@ static void rna_SequenceEditor_retiming_handles_begin(CollectionPropertyIterator
 static Sequence *strip_by_handle_find(Scene *scene, SeqRetimingHandle *handle)
 {
   Editing *ed = SEQ_editing_get(scene);
-  SeqCollection *strips = SEQ_query_all_strips_recursive(&ed->seqbase);
+  blender::Vector strips = SEQ_query_all_strips_recursive(&ed->seqbase);
 
-  Sequence *seq;
-  SEQ_ITERATOR_FOREACH (seq, strips) {
+  for (auto seq : strips) {
     const int retiming_handle_count = SEQ_retiming_handles_count(seq);
     SeqRetimingHandle *first = seq->retiming_handles;
     SeqRetimingHandle *last = seq->retiming_handles + retiming_handle_count - 1;
@@ -1467,11 +1472,10 @@ static void rna_Sequence_separate(ID *id, Sequence *seqm, Main *bmain)
 /* Find channel owner. If nullptr, owner is `Editing`, otherwise it's `Sequence`. */
 static Sequence *rna_SeqTimelineChannel_owner_get(Editing *ed, SeqTimelineChannel *channel)
 {
-  SeqCollection *strips = SEQ_query_all_strips_recursive(&ed->seqbase);
+  blender::Vector strips = SEQ_query_all_strips_recursive(&ed->seqbase);
 
   Sequence *channel_owner = nullptr;
-  Sequence *seq;
-  SEQ_ITERATOR_FOREACH (seq, strips) {
+  for (auto seq : strips) {
     if (seq->type != SEQ_TYPE_META) {
       continue;
     }
@@ -1481,7 +1485,6 @@ static Sequence *rna_SeqTimelineChannel_owner_get(Editing *ed, SeqTimelineChanne
     }
   }
 
-  SEQ_collection_free(strips);
   return channel_owner;
 }
 

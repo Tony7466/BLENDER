@@ -235,21 +235,20 @@ void seq_time_effect_range_set(const Scene *scene, Sequence *seq)
   seq->len = seq->enddisp - seq->startdisp;
 }
 
-void seq_time_update_effects_strip_range(const Scene *scene, SeqCollection *effects)
+void seq_time_update_effects_strip_range(const Scene *scene, blender::Vector<Sequence *> *effects)
 {
   if (effects == nullptr) {
     return;
   }
 
-  Sequence *seq;
   /* First pass: Update length of immediate effects. */
-  SEQ_ITERATOR_FOREACH (seq, effects) {
+  for (auto seq : *effects) {
     seq_time_effect_range_set(scene, seq);
   }
 
   /* Second pass: Recursive call to update effects in chain and in order, so they inherit length
    * correctly. */
-  SEQ_ITERATOR_FOREACH (seq, effects) {
+  for (auto seq : *effects) {
     seq_time_update_effects_strip_range(scene, seq_sequence_lookup_effects_by_seq(scene, seq));
   }
 }
@@ -398,11 +397,10 @@ void SEQ_timeline_boundbox(const Scene *scene, const ListBase *seqbase, rctf *re
 }
 
 static bool strip_exists_at_frame(const Scene *scene,
-                                  SeqCollection *all_strips,
+                                  blender::Vector<Sequence *> *strips,
                                   const int timeline_frame)
 {
-  Sequence *seq;
-  SEQ_ITERATOR_FOREACH (seq, all_strips) {
+  for (auto seq : *strips) {
     if (SEQ_time_strip_intersects_frame(scene, seq, timeline_frame)) {
       return true;
     }
@@ -423,12 +421,12 @@ void seq_time_gap_info_get(const Scene *scene,
   int timeline_frame = initial_frame;
   r_gap_info->gap_exists = false;
 
-  SeqCollection *collection = SEQ_query_all_strips(seqbase);
+  blender::Vector strips = SEQ_query_all_strips(seqbase);
 
-  if (!strip_exists_at_frame(scene, collection, initial_frame)) {
+  if (!strip_exists_at_frame(scene, &strips, initial_frame)) {
     /* Search backward for gap_start_frame. */
     for (; timeline_frame >= sfra; timeline_frame--) {
-      if (strip_exists_at_frame(scene, collection, timeline_frame)) {
+      if (strip_exists_at_frame(scene, &strips, timeline_frame)) {
         break;
       }
     }
@@ -438,7 +436,7 @@ void seq_time_gap_info_get(const Scene *scene,
   else {
     /* Search forward for gap_start_frame. */
     for (; timeline_frame <= efra; timeline_frame++) {
-      if (!strip_exists_at_frame(scene, collection, timeline_frame)) {
+      if (!strip_exists_at_frame(scene, &strips, timeline_frame)) {
         r_gap_info->gap_start_frame = timeline_frame;
         break;
       }
@@ -446,7 +444,7 @@ void seq_time_gap_info_get(const Scene *scene,
   }
   /* Search forward for gap_end_frame. */
   for (; timeline_frame <= efra; timeline_frame++) {
-    if (strip_exists_at_frame(scene, collection, timeline_frame)) {
+    if (strip_exists_at_frame(scene, &strips, timeline_frame)) {
       const int gap_end_frame = timeline_frame;
       r_gap_info->gap_length = gap_end_frame - r_gap_info->gap_start_frame;
       r_gap_info->gap_exists = true;

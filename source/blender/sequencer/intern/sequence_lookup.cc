@@ -17,9 +17,12 @@
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
+#include "BLI_map.hh"
 #include "BLI_string.h"
 #include "BLI_sys_types.h"
 #include "BLI_threads.h"
+#include "BLI_vector.hh"
+
 #include <cstring>
 
 #include "MEM_guardedalloc.h"
@@ -29,7 +32,7 @@ static ThreadMutex lookup_lock = BLI_MUTEX_INITIALIZER;
 struct SequenceLookup {
   GHash *seq_by_name;
   GHash *meta_by_seq;
-  GHash *effects_by_seq;
+  blender::Map<const Sequence *, blender::Vector<Sequence *> *> *effects_by_seq;
   eSequenceLookupTag tag;
 };
 
@@ -37,11 +40,11 @@ static void seq_sequence_lookup_init(SequenceLookup *lookup)
 {
   lookup->seq_by_name = BLI_ghash_str_new(__func__);
   lookup->meta_by_seq = BLI_ghash_ptr_new(__func__);
-  lookup->effects_by_seq = BLI_ghash_ptr_new(__func__);
+  lookup->effects_by_seq = new blender::Map<const Sequence *, blender::Vector<Sequence *> *>;
   lookup->tag |= SEQ_LOOKUP_TAG_INVALID;
 }
 
-static void seq_sequence_lookup_append_effect(Sequence *input,
+static void seq_sequence_lookup_append_effect(const Sequence *input,
                                               Sequence *effect,
                                               SequenceLookup *lookup)
 {
@@ -49,14 +52,14 @@ static void seq_sequence_lookup_append_effect(Sequence *input,
     return;
   }
 
-  SeqCollection *effects = static_cast<SeqCollection *>(
-      BLI_ghash_lookup(lookup->effects_by_seq, input));
+  blender::Vector<Sequence *> *effects = lookup->effects_by_seq->lookup(input);
+
   if (effects == nullptr) {
-    effects = SEQ_collection_create(__func__);
-    BLI_ghash_insert(lookup->effects_by_seq, input, effects);
+    effects = new blender::Vector<Sequence *>;
+    lookup->effects_by_seq->add(input, effects);
   }
 
-  SEQ_collection_append_strip(effect, effects);
+  effects->append(effect);
 }
 
 static void seq_sequence_lookup_build_effect(Sequence *seq, SequenceLookup *lookup)
@@ -107,10 +110,10 @@ static void seq_sequence_lookup_free(SequenceLookup **lookup)
 
   BLI_ghash_free((*lookup)->seq_by_name, nullptr, nullptr);
   BLI_ghash_free((*lookup)->meta_by_seq, nullptr, nullptr);
-  BLI_ghash_free((*lookup)->effects_by_seq, nullptr, SEQ_collection_free_void_p);
+  // BLI_ghash_free((*lookup)->effects_by_seq, nullptr, nullptr);
   (*lookup)->seq_by_name = nullptr;
   (*lookup)->meta_by_seq = nullptr;
-  (*lookup)->effects_by_seq = nullptr;
+  //(*lookup)->effects_by_seq = nullptr;
   MEM_freeN(*lookup);
   *lookup = nullptr;
 }
@@ -170,14 +173,14 @@ Sequence *seq_sequence_lookup_meta_by_seq(const Scene *scene, const Sequence *ke
   return seq;
 }
 
-SeqCollection *seq_sequence_lookup_effects_by_seq(const Scene *scene, const Sequence *key)
+blender::Vector<Sequence *> *seq_sequence_lookup_effects_by_seq(const Scene *scene,
+                                                                const Sequence *key)
 {
   BLI_assert(scene->ed);
   BLI_mutex_lock(&lookup_lock);
   seq_sequence_lookup_update_if_needed(scene, &scene->ed->runtime.sequence_lookup);
   SequenceLookup *lookup = scene->ed->runtime.sequence_lookup;
-  SeqCollection *effects = static_cast<SeqCollection *>(
-      BLI_ghash_lookup(lookup->effects_by_seq, key));
+  blender::Vector<Sequence *> *effects = lookup->effects_by_seq->lookup(key);
   BLI_mutex_unlock(&lookup_lock);
   return effects;
 }

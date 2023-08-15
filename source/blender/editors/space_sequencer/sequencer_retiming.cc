@@ -59,14 +59,12 @@ static bool retiming_poll(bContext *C)
 static void retiming_handle_overlap(Scene *scene, Sequence *seq)
 {
   ListBase *seqbase = SEQ_active_seqbase_get(SEQ_editing_get(scene));
-  SeqCollection *strips = SEQ_collection_create(__func__);
-  SEQ_collection_append_strip(seq, strips);
-  SeqCollection *dependant = SEQ_collection_create(__func__);
-  SEQ_collection_expand(scene, seqbase, strips, SEQ_query_strip_effect_chain);
-  SEQ_collection_remove_strip(seq, dependant);
-  SEQ_transform_handle_overlap(scene, seqbase, strips, dependant, true);
-  SEQ_collection_free(strips);
-  SEQ_collection_free(dependant);
+  blender::Vector<Sequence *> strips;
+  strips.append(seq);
+  blender::Vector<Sequence *> dependant;
+  SEQ_collection_expand(scene, seqbase, &strips, SEQ_query_strip_effect_chain);
+  dependant.remove(0);
+  SEQ_transform_handle_overlap(scene, seqbase, &strips, &dependant, true);
 }
 
 /*-------------------------------------------------------------------- */

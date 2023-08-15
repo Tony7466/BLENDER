@@ -764,7 +764,8 @@ static void draw_seq_outline(Scene *scene,
    */
   const eSeqOverlapMode overlap_mode = SEQ_tool_settings_overlap_mode_get(scene);
   if ((G.moving & G_TRANSFORM_SEQ) && (seq->flag & SELECT) &&
-      overlap_mode != SEQ_OVERLAP_OVERWRITE) {
+      overlap_mode != SEQ_OVERLAP_OVERWRITE)
+  {
     if (seq->flag & SEQ_OVERLAP) {
       col[0] = 255;
       col[1] = col[2] = 33;
@@ -1411,7 +1412,8 @@ static void draw_seq_strip(const bContext *C,
   if (sseq->flag & SEQ_SHOW_OVERLAY) {
     if (!is_single_image && pixely > 0) {
       if ((sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_OFFSETS) ||
-          (seq == special_seq_update)) {
+          (seq == special_seq_update))
+      {
         draw_sequence_extensions_overlay(scene, seq, pos, pixely, show_strip_color_tag);
       }
     }
@@ -1495,7 +1497,8 @@ static void draw_seq_strip(const bContext *C,
   /* If a waveform or a color strip is drawn,
    * avoid drawing text when there is not enough vertical space. */
   if (strip_content_single &&
-      (seq_draw_waveforms_poll(C, sseq, seq) || seq->type == SEQ_TYPE_COLOR)) {
+      (seq_draw_waveforms_poll(C, sseq, seq) || seq->type == SEQ_TYPE_COLOR))
+  {
     return;
   }
 
@@ -2287,14 +2290,12 @@ void sequencer_draw_preview(const bContext *C,
   if (!draw_backdrop && scene->ed != nullptr) {
     Editing *ed = SEQ_editing_get(scene);
     ListBase *channels = SEQ_channels_displayed_get(ed);
-    SeqCollection *collection = SEQ_query_rendered_strips(
+    blender::Vector strips = SEQ_query_rendered_strips(
         scene, channels, ed->seqbasep, timeline_frame, 0);
-    Sequence *seq;
     Sequence *active_seq = SEQ_select_active_get(scene);
-    SEQ_ITERATOR_FOREACH (seq, collection) {
+    for (auto seq : strips) {
       seq_draw_image_origin_and_outline(C, seq, seq == active_seq);
     }
-    SEQ_collection_free(collection);
   }
 
   if (draw_gpencil && show_imbuf && (sseq->flag & SEQ_SHOW_OVERLAY)) {
@@ -2548,7 +2549,8 @@ static bool draw_cache_view_iter_fn(void *userdata,
   size_t *vert_count;
 
   if ((cache_type & SEQ_CACHE_STORE_FINAL_OUT) &&
-      (drawdata->cache_flag & SEQ_CACHE_VIEW_FINAL_OUT)) {
+      (drawdata->cache_flag & SEQ_CACHE_VIEW_FINAL_OUT))
+  {
     stripe_ht = UI_view2d_region_to_view_y(v2d, 4.0f * UI_SCALE_FAC * U.pixelsize) - v2d->cur.ymin;
     stripe_bot = UI_view2d_region_to_view_y(v2d, V2D_SCROLL_HANDLE_HEIGHT);
     stripe_top = stripe_bot + stripe_ht;
