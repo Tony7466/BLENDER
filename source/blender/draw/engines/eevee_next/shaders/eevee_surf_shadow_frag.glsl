@@ -36,9 +36,14 @@ void main()
 
 #ifdef USE_ATOMIC
   ivec2 texel_co = ivec2(gl_FragCoord.xy);
-  /* TODO(fclem): Avoid integer ops. */
-  ivec2 tile_co = texel_co / pages_infos_buf.page_size;
-  ivec2 texel_page = texel_co % pages_infos_buf.page_size;
+
+  /* Using bitwise ops is way faster than integer ops. */
+  const int page_shift = SHADOW_PAGE_LOD;
+  const int page_mask = ~(0xFFFFFFFF << SHADOW_PAGE_LOD);
+
+  ivec2 tile_co = texel_co >> page_shift;
+  ivec2 texel_page = texel_co & page_mask;
+
   int view_index = shadow_view_id_get();
 
   int render_page_index = shadow_render_page_index_get(view_index, tile_co);
