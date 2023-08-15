@@ -17,7 +17,7 @@
 #include "intern/volume_grids.hh"
 
 #ifndef NDEBUG
-#define DEBUG_GRID_ATTRIBUTES
+#  define DEBUG_GRID_ATTRIBUTES
 #endif
 
 namespace blender::bke {
@@ -148,7 +148,7 @@ static openvdb::GridBase::Ptr add_generic_grid_copy(const CPPType &value_type,
   return nullptr;
 }
 
-static openvdb::GridBase::Ptr add_generic_grid_move(const CPPType &value_type,
+static openvdb::GridBase::Ptr add_generic_grid_move(const CPPType & /*value_type*/,
                                                     const volume::GMutableGrid &data)
 {
   return data.grid_;
@@ -189,7 +189,7 @@ static bool add_grid_from_attribute_init(const AttributeIDRef &attribute_id,
     case AttributeInit::Type::Construct:
       result = add_generic_grid(value_type, CD_CONSTRUCT);
 #ifdef DEBUG_GRID_ATTRIBUTES
-        std::cout << "Constructed grid attribute " << attribute_id << std::endl;
+      std::cout << "Constructed grid attribute " << attribute_id << std::endl;
 #endif
       break;
     case AttributeInit::Type::DefaultValue:
@@ -209,7 +209,7 @@ static bool add_grid_from_attribute_init(const AttributeIDRef &attribute_id,
 #ifdef DEBUG_GRID_ATTRIBUTES
       std::cout << "Copied grid to attribute " << attribute_id << std::endl;
       if (data.grid_) {
-        data.grid_->print(std::cout, 2);
+        data.grid_->print(std::cout, 3);
       }
 #endif
       break;
@@ -221,7 +221,7 @@ static bool add_grid_from_attribute_init(const AttributeIDRef &attribute_id,
 #ifdef DEBUG_GRID_ATTRIBUTES
       std::cout << "Moved grid to attribute " << attribute_id << std::endl;
       if (data.grid_) {
-        data.grid_->print(std::cout, 2);
+        data.grid_->print(std::cout, 3);
       }
 #endif
       break;
@@ -234,7 +234,7 @@ static bool add_grid_from_attribute_init(const AttributeIDRef &attribute_id,
 #ifdef DEBUG_GRID_ATTRIBUTES
       std::cout << "Shared grid to attribute " << attribute_id << std::endl;
       if (init.grid.grid_) {
-        init.grid.grid_->print(std::cout, 2);
+        init.grid.grid_->print(std::cout, 3);
       }
 #endif
       break;

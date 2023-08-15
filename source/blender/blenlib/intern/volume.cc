@@ -29,7 +29,8 @@ struct BoolGridToMask {
   inline void operator()(const openvdb::MaskGrid::ValueOnIter &iter) const
   {
     const openvdb::Coord coord = iter.getCoord();
-    if (!accessor.isValueOn(coord)) {
+    /* Disable voxels where selection is false. */
+    if (!accessor.getValue(coord)) {
       iter.setActiveState(false);
     }
   }
@@ -37,15 +38,14 @@ struct BoolGridToMask {
 
 GridMask GridMask::from_bools(const GGrid &full_mask, const Grid<bool> &selection)
 {
-  volume::GridMask result;
   if (!full_mask) {
     return {};
   }
 
+  /* Empty GridMask with same transform and metadata as the full mask */
+  volume::GridMask result = {openvdb::MaskGrid::create(*full_mask.grid_)};
   volume::grid_to_static_type(full_mask.grid_, [&](auto &typed_full_mask) {
-    openvdb::MaskTree::Ptr result_tree = std::make_shared<openvdb::MaskTree>(
-        typed_full_mask.constTree(), false, true, openvdb::TopologyCopy{});
-    result = {openvdb::MaskGrid::create(result_tree)};
+    result.grid()->topologyUnion(typed_full_mask);
   });
   if (selection) {
     BoolGridToMask op{selection.grid_->getConstAccessor()};

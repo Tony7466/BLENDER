@@ -351,8 +351,6 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
        * in a leaf node would be constant, and only evaluate the background value!
        */
       dst_grid.tree().voxelizeActiveTiles();
-      //std::cout << "Grid: ";
-      //dst_grid.print(std::cout, 2);
 
       volume::grid_to_static_type(mask.grid_, [&](auto &mask_grid) {
         using MaskGridType = typename std::decay<decltype(mask_grid)>::type;

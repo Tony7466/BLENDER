@@ -619,9 +619,9 @@ Vector<GGrid> evaluate_volume_fields(ResourceScope &scope,
       }
       case FieldNodeType::Constant: {
         const FieldConstant &field_constant = static_cast<const FieldConstant &>(field.node());
-        r_grids[out_index] = GMutableGrid::create(field_constant.type(),
-                                                  field_constant.value().get());
-        scope.add_value<GGrid::GridPtr>(std::move(r_grids[out_index].grid_));
+        GMutableGrid grid_constant = GMutableGrid::create(field_constant.type(),
+                                                          field_constant.value().get());
+        r_grids[out_index] = scope.add_value<GMutableGrid>(std::move(grid_constant));
         break;
       }
       case FieldNodeType::Operation: {
