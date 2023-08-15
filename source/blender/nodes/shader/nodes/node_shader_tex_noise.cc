@@ -32,7 +32,7 @@ static void sh_node_tex_noise_declare(NodeDeclarationBuilder &b)
       .min(0.0f)
       .max(1000.0f)
       .default_value(2.0f)
-      .description("The scale of a Voronoi layer relative to that of the previous layer");
+      .description("The scale of a Perlin noise octave relative to that of the previous octave");
   b.add_input<decl::Float>("Offset").min(-1000.0f).max(1000.0f).default_value(0.0f);
   b.add_input<decl::Float>("Gain").min(0.0f).max(1000.0f).default_value(1.0f);
   b.add_input<decl::Float>("Distortion").min(-1000.0f).max(1000.0f).default_value(0.0f);
