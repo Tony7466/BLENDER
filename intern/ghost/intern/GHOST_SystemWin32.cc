@@ -2588,8 +2588,9 @@ GHOST_TSuccess GHOST_SystemWin32::showMessageBox(const char *title,
   config.pszWindowTitle = L"Blender";
   config.pszMainInstruction = title_16;
   config.pszContent = message_16;
-  config.pButtons = strlen(link) ? buttons : buttons + 1;
-  config.cButtons = strlen(link) ? 2 : 1;
+  const bool has_link = link && strlen(link);
+  config.pButtons = has_link ? buttons : buttons + 1;
+  config.cButtons = has_link ? 2 : 1;
 
   TaskDialogIndirect(&config, &nButtonPressed, nullptr, nullptr);
   switch (nButtonPressed) {

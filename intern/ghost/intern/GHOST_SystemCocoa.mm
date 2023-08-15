@@ -2044,7 +2044,7 @@ GHOST_TSuccess GHOST_SystemCocoa::showMessageBox(const char *title,
     [alert setInformativeText:messageString];
 
     [alert addButtonWithTitle:continueString];
-    if (strlen(link)) {
+    if (link && strlen(link)) {
       [alert addButtonWithTitle:helpString];
     }
 
