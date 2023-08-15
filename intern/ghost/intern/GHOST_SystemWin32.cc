@@ -1054,7 +1054,13 @@ void GHOST_SystemWin32::processPointerEvent(
     }
   }
 }
-
+/**
+ * Clips the cursor to specific point `(x,y)`
+ * Useful for events that depend on mouse movement and cursor relocation.
+ * The #setCursorPos Windows Api sets the cursor at speficic location, but following cursor events
+ * can  be outdated or can have new movement since the position was set, #clip_cursor_at_point
+ * helpes to reduce the iterations needed to regonize when this position was successfully updated.
+ */
 static BOOL clip_cursor_at_point(const int32_t x, const int32_t y)
 {
   RECT rect;
@@ -1062,6 +1068,9 @@ static BOOL clip_cursor_at_point(const int32_t x, const int32_t y)
   rect.right = x + 1;
   rect.top = y;
   rect.bottom = y + 1;
+  /* The request to `ClipCursor` may be rejected by the WIN32 API, this should not be considered an
+   * error, however in the case this happens the cursor may "escape" the window and GHOST is unable
+   * to prevent that. In practice this does not seem to be a problem. */
   return ClipCursor(&rect);
 }
 
@@ -1090,12 +1099,17 @@ static BOOL clip_cursor_at_bounds(const GHOST_Rect &bounds,
 {
   const bool warp_x = bounds_axis & GHOST_kAxisX;
   const bool warp_y = bounds_axis & GHOST_kAxisY;
+  GHOST_ASSERT(warp_x || warp_y, "Expected warp on at least one axis");
 
   RECT rect;
-  rect.left = warp_x ? bounds.m_l + margin : INT32_MIN;
-  rect.top = warp_y ? bounds.m_t + margin : INT32_MIN;
-  rect.right = warp_x ? bounds.m_r - margin : INT32_MAX;
-  rect.bottom = warp_y ? bounds.m_b - margin : INT32_MAX;
+  rect.left = warp_x ? bounds.m_l + margin : LONG_MIN;
+  rect.top = warp_y ? bounds.m_t + margin : LONG_MIN;
+  rect.right = warp_x ? bounds.m_r - margin : LONG_MAX;
+  rect.bottom = warp_y ? bounds.m_b - margin : LONG_MAX;
+
+  /* The request to `ClipCursor` may be rejected by the WIN32 API, this should not be considered an
+   * error, however in the case this happens the cursor may "escape" the window and GHOST is unable
+   * to prevent that. In practice this does not seem to be a problem. */
   const BOOL result = ClipCursor(&rect);
 
   if (warp_x) {
