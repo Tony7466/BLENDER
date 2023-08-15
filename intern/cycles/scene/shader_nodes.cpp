@@ -2702,25 +2702,10 @@ void PrincipledBsdfNode::simplify_settings(Scene * /* scene */)
   }
 }
 
-void PrincipledBsdfNode::expand(ShaderGraph *graph)
+bool PrincipledBsdfNode::has_surface_transparent()
 {
   ShaderInput *alpha_in = input("Alpha");
-  if (alpha_in->link || alpha != 1.0f) {
-    /* Create mix and transparent BSDF for alpha transparency. */
-    MixClosureNode *mix = graph->create_node<MixClosureNode>();
-    TransparentBsdfNode *transparent = graph->create_node<TransparentBsdfNode>();
-
-    graph->add(mix);
-    graph->add(transparent);
-
-    ShaderOutput *principled_out = output("BSDF");
-    graph->relink(alpha_in, mix->input("Fac"));
-    graph->relink(principled_out, mix->output("Closure"));
-    graph->connect(transparent->output("BSDF"), mix->input("Closure1"));
-    graph->connect(principled_out, mix->input("Closure2"));
-  }
-
-  remove_input(alpha_in);
+  return (alpha_in->link != NULL || alpha < (1.0f - CLOSURE_WEIGHT_CUTOFF));
 }
 
 bool PrincipledBsdfNode::has_surface_emission()
@@ -2776,6 +2761,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
 
   ShaderInput *emission_in = input("Emission");
   ShaderInput *emission_strength_in = input("Emission Strength");
+  ShaderInput *alpha_in = input("Alpha");
 
   float3 weight = one_float3();
 
@@ -2799,6 +2785,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
   int subsurface_radius_offset = compiler.stack_assign(p_subsurface_radius);
   int subsurface_ior_offset = compiler.stack_assign(p_subsurface_ior);
   int subsurface_anisotropy_offset = compiler.stack_assign(p_subsurface_anisotropy);
+  int alpha_offset = compiler.stack_assign_if_linked(alpha_in);
   int emission_strength_offset = compiler.stack_assign_if_linked(emission_strength_in);
   int emission_offset = compiler.stack_assign(emission_in);
 
@@ -2846,9 +2833,12 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
                     __float_as_int(ss_default.y),
                     __float_as_int(ss_default.z));
 
-  compiler.add_node(emission_offset, emission_strength_offset,
-                    __float_as_int(get_float(emission_strength_in->socket_type)),
-                    SVM_STACK_INVALID);
+  compiler.add_node(
+      compiler.encode_uchar4(
+          alpha_offset, emission_strength_offset, emission_offset, SVM_STACK_INVALID),
+      __float_as_int(get_float(alpha_in->socket_type)),
+      __float_as_int(get_float(emission_strength_in->socket_type)),
+      SVM_STACK_INVALID);
 }
 
 void PrincipledBsdfNode::compile(SVMCompiler &compiler)

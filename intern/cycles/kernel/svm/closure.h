@@ -71,7 +71,8 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
     case CLOSURE_BSDF_PRINCIPLED_ID: {
       uint specular_offset, roughness_offset, specular_tint_offset, anisotropic_offset,
           sheen_offset, sheen_tint_offset, clearcoat_offset, clearcoat_roughness_offset,
-          eta_offset, transmission_offset, anisotropic_rotation_offset, pad1;
+          eta_offset, transmission_offset, anisotropic_rotation_offset, pad1, alpha_offset,
+          emission_strength_offset, emission_offset;
       uint4 data_node2 = read_node(kg, &offset);
 
       float3 T = stack_load_float3(stack, data_node.y);
@@ -140,11 +141,18 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
                                                 __uint_as_float(data_subsurface_color.z),
                                                 __uint_as_float(data_subsurface_color.w));
 
-      uint4 data_emission = read_node(kg, &offset);
-      float3 emission = stack_load_float3(stack, data_emission.x);
+      uint4 data_alpha_emission = read_node(kg, &offset);
+      svm_unpack_node_uchar4(data_alpha_emission.x,
+                             &alpha_offset,
+                             &emission_strength_offset,
+                             &emission_offset,
+                             &pad1);
+      float alpha = stack_valid(alpha_offset) ? stack_load_float(stack, alpha_offset) :
+                                                __uint_as_float(data_alpha_emission.y);
+      float3 emission = stack_load_float3(stack, emission_offset);
       /* Emission strength */
-      emission *= stack_valid(data_emission.y) ?
-                      stack_load_float(stack, data_emission.y) :
+      emission *= stack_valid(emission_strength_offset) ?
+                      stack_load_float(stack, emission_strength_offset) :
                       __uint_as_float(data_alpha_emission.z);
 
       Spectrum weight = closure_weight * mix_weight;
@@ -168,6 +176,12 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       const bool reflective_caustics = true;
       const bool glass_caustics = true;
 #endif
+
+      /* Before any actual shader components, apply transparency. */
+      if (alpha < 1.0f) {
+        bsdf_transparent_setup(sd, weight * (1.0f - alpha), path_flag);
+        weight *= alpha;
+      }
 
       /* First layer: Sheen */
       if (sheen > CLOSURE_WEIGHT_CUTOFF) {

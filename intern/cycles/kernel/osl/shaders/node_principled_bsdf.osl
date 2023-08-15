@@ -28,6 +28,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
                             float Transmission = 0.0,
                             color Emission = 1.0,
                             float EmissionStrength = 0.0,
+                            float Alpha = 1.0,
                             normal Normal = N,
                             normal ClearcoatNormal = N,
                             normal Tangent = normalize(dPdu),
@@ -113,4 +114,6 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     closure color SheenBSDF = sheen(Normal, SheenRoughness);
     BSDF = layer(SheenTint * Sheen * SheenBSDF, BSDF);
   }
+
+  BSDF = mix(transparent(), BSDF, Alpha);
 }
