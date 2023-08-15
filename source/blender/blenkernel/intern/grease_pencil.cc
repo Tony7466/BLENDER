@@ -1711,7 +1711,8 @@ static void foreach_drawing_ex(
       function(index, drawing->wrap());
     }
     else if (drawing_base->type == GP_DRAWING_REFERENCE) {
-      /* TODO */
+      /* TODO: Drawing references are not implemented yet. */
+      BLI_assert_unreachable();
     }
   }
 }
@@ -1752,7 +1753,8 @@ static void foreach_drawing_ex(
       function(index, drawing->wrap());
     }
     else if (drawing_base->type == GP_DRAWING_REFERENCE) {
-      /* TODO */
+      /* TODO: Drawing references are not implemented yet. */
+      BLI_assert_unreachable();
     }
   }
 }
