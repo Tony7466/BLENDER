@@ -18,18 +18,21 @@
 
 namespace blender::gpu {
 class VKShaderInterface;
+class VKShaderBuilder;
 
 class VKShader : public Shader {
  private:
   VKContext *context_ = nullptr;
+  VKShaderBuilder *builder_ = nullptr;
   VkShaderModule vertex_module_ = VK_NULL_HANDLE;
   VkShaderModule geometry_module_ = VK_NULL_HANDLE;
   VkShaderModule fragment_module_ = VK_NULL_HANDLE;
   VkShaderModule compute_module_ = VK_NULL_HANDLE;
-  bool compilation_failed_ = false;
   VkDescriptorSetLayout layout_ = VK_NULL_HANDLE;
   VkPipelineLayout pipeline_layout_ = VK_NULL_HANDLE;
   VKPipeline pipeline_;
+  /* Is this a compute shader (true) or a graphics shader (false).*/
+  bool compute_shader_ = false;
 
  public:
   VKShader(const char *name);
@@ -76,11 +79,6 @@ class VKShader : public Shader {
                                 const VKVertexAttributeObject &vertex_attribute_object);
 
  private:
-  Vector<uint32_t> compile_glsl_to_spirv(Span<const char *> sources, shaderc_shader_kind kind);
-  void build_shader_module(Span<uint32_t> spirv_module, VkShaderModule *r_shader_module);
-  void build_shader_module(MutableSpan<const char *> sources,
-                           shaderc_shader_kind stage,
-                           VkShaderModule *r_shader_module);
   bool finalize_descriptor_set_layouts(VkDevice vk_device,
                                        const VKShaderInterface &shader_interface,
                                        const shader::ShaderCreateInfo &info);
@@ -93,7 +91,7 @@ class VKShader : public Shader {
 
   bool is_compute_shader() const
   {
-    return compute_module_ != VK_NULL_HANDLE;
+    return compute_shader_;
   }
 };
 

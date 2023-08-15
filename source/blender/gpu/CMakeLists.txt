@@ -217,6 +217,7 @@ set(VULKAN_SRC
   vulkan/vk_resource_tracker.cc
   vulkan/vk_sampler.cc
   vulkan/vk_shader.cc
+  vulkan/vk_shader_builder.cc
   vulkan/vk_shader_interface.cc
   vulkan/vk_shader_log.cc
   vulkan/vk_state_manager.cc
@@ -254,6 +255,7 @@ set(VULKAN_SRC
   vulkan/vk_resource_tracker.hh
   vulkan/vk_sampler.hh
   vulkan/vk_shader.hh
+  vulkan/vk_shader_builder.hh
   vulkan/vk_shader_interface.hh
   vulkan/vk_shader_log.hh
   vulkan/vk_state_manager.hh

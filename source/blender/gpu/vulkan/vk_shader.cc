@@ -10,6 +10,7 @@
 
 #include "vk_backend.hh"
 #include "vk_memory.hh"
+#include "vk_shader_builder.hh"
 #include "vk_shader_interface.hh"
 #include "vk_shader_log.hh"
 
@@ -397,6 +398,102 @@ inline int get_location_count(const Type &type)
   return 1;
 }
 
+static void print_interface_no_instance(std::ostream &os,
+                                        const std::string &prefix,
+                                        const StageInterfaceInfo &iface,
+                                        int &location)
+{
+  for (const StageInterfaceInfo::InOut &inout : iface.inouts) {
+    os << "layout(location=" << location << ") " << prefix << " " << to_string(inout.interp) << " "
+       << to_string(inout.type) << " " << inout.name << ";\n";
+    location += get_location_count(inout.type);
+  }
+}
+
+static void print_interface_struct(std::ostream &os,
+                                   const StageInterfaceInfo &iface,
+                                   Interpolation interpolation,
+                                   const std::string &struct_prefix,
+                                   const std::string &struct_suffix,
+                                   const StringRefNull &attr_suffix,
+                                   int &location)
+{
+  std::string struct_name = struct_prefix + iface.name + struct_suffix;
+  std::string iface_attribute = iface.instance_name + struct_suffix + attr_suffix;
+
+  std::string interp_qualifier = "";
+  if (struct_prefix == "in") {
+    interp_qualifier = std::string(to_string(interpolation)) + " ";
+  }
+
+  os << "struct " << struct_name << " {\n";
+  for (const StageInterfaceInfo::InOut &inout : iface.inouts) {
+    if (inout.interp == interpolation) {
+      os << "  " << to_string(inout.type) << " " << inout.name << ";\n";
+    }
+  }
+  os << "};\n";
+  os << "layout(location=" << location << ") " << struct_prefix << " " << interp_qualifier
+     << struct_name << " " << iface_attribute << attr_suffix << ";\n";
+
+  for (const StageInterfaceInfo::InOut &inout : iface.inouts) {
+    if (inout.interp == interpolation) {
+      location += get_location_count(inout.type);
+    }
+  }
+}
+
+static void print_interface_with_instance(std::ostream &os,
+                                          const std::string &prefix,
+                                          const StageInterfaceInfo &iface,
+                                          int &location,
+                                          const StringRefNull &suffix)
+{
+  bool has_flat = false;
+  bool has_smooth = false;
+  bool has_noperspective = false;
+
+  for (const StageInterfaceInfo::InOut &inout : iface.inouts) {
+    switch (inout.interp) {
+      case Interpolation::FLAT:
+        has_flat = true;
+        break;
+      case Interpolation::SMOOTH:
+        has_smooth = true;
+        break;
+      case Interpolation::NO_PERSPECTIVE:
+        has_noperspective = true;
+        break;
+    }
+  }
+
+  const int num_interpolation_types = (has_flat ? 1 : 0) + (has_smooth ? 1 : 0) +
+                                      (has_noperspective ? 1 : 0);
+
+  const bool add_qualifier = num_interpolation_types > 1;
+  const std::string struct_flat_suffix = add_qualifier ? "_flat" : "";
+  const std::string struct_smooth_suffix = add_qualifier ? "_smooth" : "";
+  const std::string struct_noperspective_suffix = add_qualifier ? "_noperspective" : "";
+
+  if (has_flat) {
+    print_interface_struct(
+        os, iface, Interpolation::FLAT, prefix, struct_flat_suffix, suffix, location);
+  }
+  if (has_smooth) {
+    print_interface_struct(
+        os, iface, Interpolation::SMOOTH, prefix, struct_smooth_suffix, suffix, location);
+  }
+  if (has_noperspective) {
+    print_interface_struct(os,
+                           iface,
+                           Interpolation::NO_PERSPECTIVE,
+                           prefix,
+                           struct_noperspective_suffix,
+                           suffix,
+                           location);
+  }
+}
+
 static void print_interface(std::ostream &os,
                             const std::string &prefix,
                             const StageInterfaceInfo &iface,
@@ -404,44 +501,10 @@ static void print_interface(std::ostream &os,
                             const StringRefNull &suffix = "")
 {
   if (iface.instance_name.is_empty()) {
-    for (const StageInterfaceInfo::InOut &inout : iface.inouts) {
-      os << "layout(location=" << location << ") " << prefix << " " << to_string(inout.interp)
-         << " " << to_string(inout.type) << " " << inout.name << ";\n";
-      location += get_location_count(inout.type);
-    }
+    print_interface_no_instance(os, prefix, iface, location);
   }
   else {
-    std::string struct_name = prefix + iface.name;
-    std::string iface_attribute;
-    if (iface.instance_name.is_empty()) {
-      iface_attribute = "iface_";
-    }
-    else {
-      iface_attribute = iface.instance_name;
-    }
-    std::string flat = "";
-    if (prefix == "in") {
-      flat = "flat ";
-    }
-    const bool add_defines = iface.instance_name.is_empty();
-
-    os << "struct " << struct_name << " {\n";
-    for (const StageInterfaceInfo::InOut &inout : iface.inouts) {
-      os << "  " << to_string(inout.type) << " " << inout.name << ";\n";
-    }
-    os << "};\n";
-    os << "layout(location=" << location << ") " << prefix << " " << flat << struct_name << " "
-       << iface_attribute << suffix << ";\n";
-
-    if (add_defines) {
-      for (const StageInterfaceInfo::InOut &inout : iface.inouts) {
-        os << "#define " << inout.name << " (" << iface_attribute << "." << inout.name << ")\n";
-      }
-    }
-
-    for (const StageInterfaceInfo::InOut &inout : iface.inouts) {
-      location += get_location_count(inout.type);
-    }
+    print_interface_with_instance(os, prefix, iface, location, suffix);
   }
 }
 
@@ -462,25 +525,6 @@ static std::string main_function_wrapper(std::string &pre_main, std::string &pos
   ss << "#define main main_function_\n";
   ss << "\n";
   return ss.str();
-}
-
-static const std::string to_stage_name(shaderc_shader_kind stage)
-{
-  switch (stage) {
-    case shaderc_vertex_shader:
-      return std::string("vertex");
-    case shaderc_geometry_shader:
-      return std::string("geometry");
-    case shaderc_fragment_shader:
-      return std::string("fragment");
-    case shaderc_compute_shader:
-      return std::string("compute");
-
-    default:
-      BLI_assert_msg(false, "Do not know how to convert shaderc_shader_kind to stage name.");
-      break;
-  }
-  return std::string("unknown stage");
 }
 
 static char *glsl_patch_get()
@@ -515,71 +559,10 @@ static char *glsl_patch_get()
   return patch;
 }
 
-static std::string combine_sources(Span<const char *> sources)
-{
-  char *sources_combined = BLI_string_join_arrayN((const char **)sources.data(), sources.size());
-  std::string result(sources_combined);
-  MEM_freeN(sources_combined);
-  return result;
-}
-
-Vector<uint32_t> VKShader::compile_glsl_to_spirv(Span<const char *> sources,
-                                                 shaderc_shader_kind stage)
-{
-  std::string combined_sources = combine_sources(sources);
-  VKBackend &backend = VKBackend::get();
-  shaderc::Compiler &compiler = backend.get_shaderc_compiler();
-  shaderc::CompileOptions options;
-  options.SetOptimizationLevel(shaderc_optimization_level_performance);
-  options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_2);
-  if (G.debug & G_DEBUG_GPU_RENDERDOC) {
-    options.SetOptimizationLevel(shaderc_optimization_level_zero);
-    options.SetGenerateDebugInfo();
-  }
-
-  shaderc::SpvCompilationResult module = compiler.CompileGlslToSpv(
-      combined_sources, stage, name, options);
-  if (module.GetNumErrors() != 0 || module.GetNumWarnings() != 0) {
-    std::string log = module.GetErrorMessage();
-    Vector<char> logcstr(log.c_str(), log.c_str() + log.size() + 1);
-
-    VKLogParser parser;
-    print_log(sources,
-              logcstr.data(),
-              to_stage_name(stage).c_str(),
-              module.GetCompilationStatus() != shaderc_compilation_status_success,
-              &parser);
-  }
-
-  if (module.GetCompilationStatus() != shaderc_compilation_status_success) {
-    compilation_failed_ = true;
-    return Vector<uint32_t>();
-  }
-
-  return Vector<uint32_t>(module.cbegin(), module.cend());
-}
-
-void VKShader::build_shader_module(Span<uint32_t> spirv_module, VkShaderModule *r_shader_module)
-{
-  VK_ALLOCATION_CALLBACKS;
-
-  VkShaderModuleCreateInfo create_info = {};
-  create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-  create_info.codeSize = spirv_module.size() * sizeof(uint32_t);
-  create_info.pCode = spirv_module.data();
-
-  const VKDevice &device = VKBackend::get().device_get();
-  VkResult result = vkCreateShaderModule(
-      device.device_get(), &create_info, vk_allocation_callbacks, r_shader_module);
-  if (result != VK_SUCCESS) {
-    compilation_failed_ = true;
-    *r_shader_module = VK_NULL_HANDLE;
-  }
-}
-
 VKShader::VKShader(const char *name) : Shader(name)
 {
   context_ = VKContext::get();
+  builder_ = MEM_new<VKShaderBuilder>(__func__, *this);
 }
 
 VKShader::~VKShader()
@@ -610,53 +593,44 @@ VKShader::~VKShader()
     vkDestroyDescriptorSetLayout(device.device_get(), layout_, vk_allocation_callbacks);
     layout_ = VK_NULL_HANDLE;
   }
-}
 
-void VKShader::build_shader_module(MutableSpan<const char *> sources,
-                                   shaderc_shader_kind stage,
-                                   VkShaderModule *r_shader_module)
-{
-  BLI_assert_msg(ELEM(stage,
-                      shaderc_vertex_shader,
-                      shaderc_geometry_shader,
-                      shaderc_fragment_shader,
-                      shaderc_compute_shader),
-                 "Only forced ShaderC shader kinds are supported.");
-  sources[0] = glsl_patch_get();
-  Vector<uint32_t> spirv_module = compile_glsl_to_spirv(sources, stage);
-  build_shader_module(spirv_module, r_shader_module);
+  MEM_delete(builder_);
+  builder_ = nullptr;
 }
 
 void VKShader::vertex_shader_from_glsl(MutableSpan<const char *> sources)
 {
-  build_shader_module(sources, shaderc_vertex_shader, &vertex_module_);
+  sources[0] = glsl_patch_get();
+  builder_->set_vertex_glsl(sources);
 }
 
 void VKShader::geometry_shader_from_glsl(MutableSpan<const char *> sources)
 {
-  build_shader_module(sources, shaderc_geometry_shader, &geometry_module_);
+  sources[0] = glsl_patch_get();
+  builder_->set_geometry_glsl(sources);
 }
 
 void VKShader::fragment_shader_from_glsl(MutableSpan<const char *> sources)
 {
-  build_shader_module(sources, shaderc_fragment_shader, &fragment_module_);
+  sources[0] = glsl_patch_get();
+  builder_->set_fragment_glsl(sources);
 }
 
 void VKShader::compute_shader_from_glsl(MutableSpan<const char *> sources)
 {
-  build_shader_module(sources, shaderc_compute_shader, &compute_module_);
+  compute_shader_ = true;
+
+  sources[0] = glsl_patch_get();
+  builder_->set_compute_glsl(sources);
 }
 
 void VKShader::warm_cache(int /*limit*/) {}
 
 bool VKShader::finalize(const shader::ShaderCreateInfo *info)
 {
-  if (compilation_failed_) {
-    return false;
-  }
-
   VKShaderInterface *vk_interface = new VKShaderInterface();
   vk_interface->init(*info);
+  builder_->patch_glsl(*info);
 
   const VKDevice &device = VKBackend::get().device_get();
   if (!finalize_descriptor_set_layouts(device.device_get(), *vk_interface, *info)) {
@@ -670,6 +644,13 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
    * pipeline requires more data before it can be constructed. */
   bool result;
   if (is_graphics_shader()) {
+    const bool compilation_success = builder_->build_vertex_module(&vertex_module_) &&
+                                     builder_->build_geometry_module(&geometry_module_) &&
+                                     builder_->build_fragment_module(&fragment_module_);
+    if (!compilation_success) {
+      delete vk_interface;
+      return false;
+    }
     BLI_assert((fragment_module_ != VK_NULL_HANDLE && info->tf_type_ == GPU_SHADER_TFB_NONE) ||
                (fragment_module_ == VK_NULL_HANDLE && info->tf_type_ != GPU_SHADER_TFB_NONE));
     BLI_assert(compute_module_ == VK_NULL_HANDLE);
@@ -678,6 +659,10 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
     result = true;
   }
   else {
+    if (!builder_->build_compute_module(&compute_module_)) {
+      delete vk_interface;
+      return false;
+    }
     BLI_assert(vertex_module_ == VK_NULL_HANDLE);
     BLI_assert(geometry_module_ == VK_NULL_HANDLE);
     BLI_assert(fragment_module_ == VK_NULL_HANDLE);
@@ -693,6 +678,10 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
   else {
     delete vk_interface;
   }
+
+  MEM_delete(builder_);
+  builder_ = nullptr;
+
   return result;
 }
 
@@ -1170,6 +1159,7 @@ std::string VKShader::geometry_layout_declare(const shader::ShaderCreateInfo &in
     print_interface(ss, "out", *iface, location, suffix);
   }
   ss << "\n";
+  std::cout << ss.str() << "\n";
 
   return ss.str();
 }

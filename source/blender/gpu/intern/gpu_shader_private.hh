@@ -98,7 +98,6 @@ class Shader {
   static void set_srgb_uniform(GPUShader *shader);
   static void set_framebuffer_srgb_target(int use_srgb_to_linear);
 
- protected:
   void print_log(Span<const char *> sources,
                  const char *log,
                  const char *stage,
