@@ -30,6 +30,11 @@ static void cmp_node_kuwahara_declare(NodeDeclarationBuilder &b)
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0);
   b.add_output<decl::Color>(N_("Image"));
+
+  // todo: remove
+  // ### debug
+  b.add_output<decl::Color>(N_("sat"));
+  b.add_output<decl::Color>(N_("sat squared"));
 }
 
 static void node_composit_init_kuwahara(bNodeTree * /*ntree*/, bNode *node)
@@ -55,6 +60,8 @@ static void node_composit_buts_kuwahara(uiLayout *layout, bContext * /*C*/, Poin
 
   if (variation == CMP_NODE_KUWAHARA_ANISOTROPIC) {
     uiItemR(col, ptr, "smoothing", UI_ITEM_NONE, nullptr, ICON_NONE);
+  } else if (variation == CMP_NODE_KUWAHARA_CLASSIC) {
+    uiItemR(col, ptr, "fast", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 }
 

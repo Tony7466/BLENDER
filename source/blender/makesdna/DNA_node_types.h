@@ -997,6 +997,8 @@ typedef struct NodeKuwaharaData {
   short size;
   short variation;
   int smoothing;
+  short fast;
+  char _pad[2];
 } NodeKuwaharaData;
 
 typedef struct NodeAntiAliasingData {

@@ -10,8 +10,14 @@ namespace blender::compositor {
 
 class KuwaharaClassicOperation : public MultiThreadedOperation {
   SocketReader *image_reader_;
+  SocketReader *sat_reader_;
+  SocketReader *sat_squared_reader_;
 
   int kernel_size_;
+
+  /* If true, execute filter using precomputed summed area table.
+   * This yields faster, but less accurate results. */
+  bool use_sat_;
 
  public:
   KuwaharaClassicOperation();
@@ -22,7 +28,9 @@ class KuwaharaClassicOperation : public MultiThreadedOperation {
 
   void set_kernel_size(int kernel_size);
   int get_kernel_size();
-
+  void set_use_sat(bool use_sat);
+  bool get_use_sat();
+  
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,
                                     Span<MemoryBuffer *> inputs) override;

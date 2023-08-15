@@ -8986,6 +8986,13 @@ static void def_cmp_kuwahara(StructRNA *srna)
                            "Smoothing",
                            "Smoothing degree before applying filter. Higher values remove details "
                            "and give smoother edges");
+
+  prop = RNA_def_property(srna, "fast", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "fast", 1);
+  RNA_def_property_ui_text(prop,
+                           "Fast",
+                           "Use faster computation. Might produce artefacts for large images.");
+
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
