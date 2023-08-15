@@ -1654,7 +1654,9 @@ static void rearrange_grease_pencil_channels(bAnimContext *ac, eRearrangeAnimCha
 {
   using namespace blender::bke::greasepencil;
   ListBase anim_data = {nullptr, nullptr};
+  blender::Vector<Layer *> layer_list;
   int filter = ANIMFILTER_DATA_VISIBLE;
+
   ANIM_animdata_filter(
       ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
@@ -1664,10 +1666,13 @@ static void rearrange_grease_pencil_channels(bAnimContext *ac, eRearrangeAnimCha
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
     Layer *layer = static_cast<Layer *>(ale->data);
+
     if (layer == grease_pencil->layers().last()) {
       temp_layer = (mode == REARRANGE_ANIMCHAN_TOP) ? grease_pencil->layers_for_write().last() :
                                                       nullptr;
+      layer_list.clear();
     }
+
     switch (mode) {
       case REARRANGE_ANIMCHAN_TOP: {
         if (layer->is_selected()) {
@@ -1688,16 +1693,13 @@ static void rearrange_grease_pencil_channels(bAnimContext *ac, eRearrangeAnimCha
         break;
       }
       case REARRANGE_ANIMCHAN_DOWN: {
-        /* Store first selected channel in temp_layer, traverse till last selection. When first
-         * unselected channel found, move it "above" temp_layer. */
-        if (layer->is_selected() && (temp_layer == nullptr)) {
-          temp_layer = layer;
+        if (layer->is_selected()) {
+          layer_list.append(layer);
           continue;
         }
-        if (temp_layer && !layer->is_selected()) {
-          layer->parent_group().unlink_node(&layer->as_node());
-          temp_layer->parent_group().add_layer_after(layer, &temp_layer->as_node());
-          temp_layer = nullptr;
+        if (layer_list.size() != 0) {
+          grease_pencil->move_layer_down(layer_list, layer);
+          layer_list.clear();
         }
         break;
       }
