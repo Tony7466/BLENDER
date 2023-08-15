@@ -236,4 +236,30 @@ ccl_device float3 maybe_ensure_valid_specular_reflection(ccl_private ShaderData 
   return ensure_valid_specular_reflection(sd->Ng, sd->wi, N);
 }
 
+/* Principled Hair albedo and absorption coefficients. */
+ccl_device_inline float bsdf_principled_hair_albedo_roughness_scale(
+    const float azimuthal_roughness)
+{
+  const float x = azimuthal_roughness;
+  return (((((0.245f * x) + 5.574f) * x - 10.73f) * x + 2.532f) * x - 0.215f) * x + 5.969f;
+}
+
+ccl_device_inline Spectrum
+bsdf_principled_hair_sigma_from_reflectance(const Spectrum color, const float azimuthal_roughness)
+{
+  const Spectrum sigma = log(color) /
+                         bsdf_principled_hair_albedo_roughness_scale(azimuthal_roughness);
+  return sigma * sigma;
+}
+
+ccl_device_inline Spectrum bsdf_principled_hair_sigma_from_concentration(const float eumelanin,
+                                                                         const float pheomelanin)
+{
+  const float3 eumelanin_color = make_float3(0.506f, 0.841f, 1.653f);
+  const float3 pheomelanin_color = make_float3(0.343f, 0.733f, 1.924f);
+
+  return eumelanin * rgb_to_spectrum(eumelanin_color) +
+         pheomelanin * rgb_to_spectrum(pheomelanin_color);
+}
+
 CCL_NAMESPACE_END

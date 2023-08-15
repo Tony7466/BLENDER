@@ -1,8 +1,8 @@
 /* SPDX-FileCopyrightText: 2023 Blender Foundation
  *
- * SPDX-License-Identifier: Apache-2.0 */
+ * SPDX-License-Identifier: Apache-2.0
 
-/* This code implements the paper [A Microfacet-based Hair Scattering
+ * This code implements the paper [A Microfacet-based Hair Scattering
  * Model](https://onlinelibrary.wiley.com/doi/full/10.1111/cgf.14588) by Weizhen Huang, Matthias B.
  * Hullin and Johannes Hanika. */
 
@@ -14,7 +14,7 @@
 
 CCL_NAMESPACE_BEGIN
 
-typedef struct MicrofacetHairExtra {
+typedef struct HuangHairExtra {
   /* Optional modulation factors. */
   float R, TT, TRT;
 
@@ -29,9 +29,9 @@ typedef struct MicrofacetHairExtra {
 
   /* Squared Eccentricity. */
   float e2;
-} MicrofacetHairExtra;
+} HuangHairExtra;
 
-typedef struct MicrofacetHairBSDF {
+typedef struct HuangHairBSDF {
   SHADER_CLOSURE_BASE;
 
   /* Absorption coefficient. */
@@ -53,13 +53,11 @@ typedef struct MicrofacetHairBSDF {
   float h;
 
   /* Extra closure for optional modulation factors and local coordinate system. */
-  ccl_private MicrofacetHairExtra *extra;
-} MicrofacetHairBSDF;
+  ccl_private HuangHairExtra *extra;
+} HuangHairBSDF;
 
-static_assert(sizeof(ShaderClosure) >= sizeof(MicrofacetHairBSDF),
-              "MicrofacetHairBSDF is too large!");
-static_assert(sizeof(ShaderClosure) >= sizeof(MicrofacetHairExtra),
-              "MicrofacetHairExtra is too large!");
+static_assert(sizeof(ShaderClosure) >= sizeof(HuangHairBSDF), "HuangHairBSDF is too large!");
+static_assert(sizeof(ShaderClosure) >= sizeof(HuangHairExtra), "HuangHairExtra is too large!");
 
 /* -------------------------------------------------------------------- */
 /** \name Hair coordinate system utils.
@@ -176,11 +174,11 @@ ccl_device_inline float arc_length(float e2, float gamma)
 
 #ifdef __HAIR__
 /* Set up the hair closure. */
-ccl_device int bsdf_microfacet_hair_setup(ccl_private ShaderData *sd,
-                                          ccl_private MicrofacetHairBSDF *bsdf,
-                                          uint32_t path_flag)
+ccl_device int bsdf_hair_huang_setup(ccl_private ShaderData *sd,
+                                     ccl_private HuangHairBSDF *bsdf,
+                                     uint32_t path_flag)
 {
-  bsdf->type = CLOSURE_BSDF_HAIR_MICROFACET_ID;
+  bsdf->type = CLOSURE_BSDF_HAIR_HUANG_ID;
 
   bsdf->roughness = clamp(bsdf->roughness, 0.001f, 1.0f);
 
@@ -243,7 +241,7 @@ ccl_device int bsdf_microfacet_hair_setup(ccl_private ShaderData *sd,
 #endif /* __HAIR__ */
 
 /* Albedo correction, treat as glass. `rough` has already applied square root. */
-ccl_device_forceinline float microfacet_hair_energy_scale(KernelGlobals kg,
+ccl_device_forceinline float bsdf_hair_huang_energy_scale(KernelGlobals kg,
                                                           float mu,
                                                           float rough,
                                                           float ior)
@@ -293,12 +291,12 @@ ccl_device_inline float bsdf_Go(float alpha2, float cos_NI, float cos_NO)
   return (1.0f + lambdaI) / (1.0f + lambdaI + lambdaO);
 }
 
-ccl_device Spectrum bsdf_microfacet_hair_eval_r(KernelGlobals kg,
-                                                ccl_private const ShaderClosure *sc,
-                                                const float3 wi,
-                                                const float3 wo)
+ccl_device Spectrum bsdf_hair_huang_eval_r(KernelGlobals kg,
+                                           ccl_private const ShaderClosure *sc,
+                                           const float3 wi,
+                                           const float3 wo)
 {
-  ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)sc;
+  ccl_private HuangHairBSDF *bsdf = (ccl_private HuangHairBSDF *)sc;
 
   if (bsdf->extra->R <= 0.0f) {
     return zero_float3();
@@ -376,7 +374,7 @@ ccl_device Spectrum bsdf_microfacet_hair_eval_r(KernelGlobals kg,
       const float G = bsdf_G<MicrofacetType::GGX>(roughness2, cos_mi, dot(wm, wo));
       integral += weight * bsdf_D<MicrofacetType::GGX>(roughness2, dot(wm, wh)) * G *
                   arc_length(bsdf->extra->e2, gamma_m) *
-                  microfacet_hair_energy_scale(kg, cos_mi, sqrtf(roughness), bsdf->eta);
+                  bsdf_hair_huang_energy_scale(kg, cos_mi, sqrtf(roughness), bsdf->eta);
     }
   }
 
@@ -389,7 +387,7 @@ ccl_device Spectrum bsdf_microfacet_hair_eval_r(KernelGlobals kg,
 
 /* Approximate components beyond TRT (starting TRRT) by summing up a geometric series. Attenuations
  * are approximated from previous interactions. */
-ccl_device Spectrum bsdf_microfacet_hair_eval_trrt(const float T, const float R, const Spectrum A)
+ccl_device Spectrum bsdf_hair_huang_eval_trrt(const float T, const float R, const Spectrum A)
 {
   /* `T` could be zero due to total internal reflection. Clamp to avoid numerical issues. */
   const float T_avg = max(1.0f - R, 1e-5f);
@@ -399,13 +397,13 @@ ccl_device Spectrum bsdf_microfacet_hair_eval_trrt(const float T, const float R,
 
 /* Evaluate components beyond R using numerical integration. TT and TRT are computed via combined
  * Monte Carlo-Simpson integration; components beyond TRRT are integrated via Simpson's method. */
-ccl_device Spectrum bsdf_microfacet_hair_eval_residual(KernelGlobals kg,
-                                                       ccl_private const ShaderClosure *sc,
-                                                       const float3 wi,
-                                                       const float3 wo,
-                                                       uint rng_quadrature)
+ccl_device Spectrum bsdf_hair_huang_eval_residual(KernelGlobals kg,
+                                                  ccl_private const ShaderClosure *sc,
+                                                  const float3 wi,
+                                                  const float3 wo,
+                                                  uint rng_quadrature)
 {
-  ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)sc;
+  ccl_private HuangHairBSDF *bsdf = (ccl_private HuangHairBSDF *)sc;
 
   if (bsdf->extra->TT <= 0.0f && bsdf->extra->TRT <= 0.0f) {
     return zero_spectrum();
@@ -472,7 +470,7 @@ ccl_device Spectrum bsdf_microfacet_hair_eval_residual(KernelGlobals kg,
     const float cos_mi1 = dot(wi, wmi);
     float cos_theta_t1;
     const float T1 = 1.0f - fresnel_dielectric(cos_hi1, eta, &cos_theta_t1);
-    const float scale1 = microfacet_hair_energy_scale(kg, cos_mi1, sqrt_roughness, eta);
+    const float scale1 = bsdf_hair_huang_energy_scale(kg, cos_mi1, sqrt_roughness, eta);
 
     /* Refraction at the first interface. */
     const float3 wt = refract_angle(wi, wh1, cos_theta_t1, inv_eta);
@@ -495,7 +493,7 @@ ccl_device Spectrum bsdf_microfacet_hair_eval_residual(KernelGlobals kg,
                                   2.0f * cosf(gamma_mi - phi_t) :
                                   -len(to_point(gamma_mi, b) - to_point(gamma_mt + M_PI_F, b))));
 
-    const float scale2 = microfacet_hair_energy_scale(kg, cos_mi2, sqrt_roughness, inv_eta);
+    const float scale2 = bsdf_hair_huang_energy_scale(kg, cos_mi2, sqrt_roughness, inv_eta);
 
     /* TT */
     if (bsdf->extra->TT > 0.0f) {
@@ -538,7 +536,7 @@ ccl_device Spectrum bsdf_microfacet_hair_eval_residual(KernelGlobals kg,
       const float3 wtr = -reflect(wt, wh2);
       if (dot(-wtr, wo) < inv_eta - 1e-5f) {
         /* Total internal reflection. */
-        S_trrt += weight * bsdf_microfacet_hair_eval_trrt(T1, R2, A_t);
+        S_trrt += weight * bsdf_hair_huang_eval_trrt(T1, R2, A_t);
         continue;
       }
 
@@ -558,7 +556,7 @@ ccl_device Spectrum bsdf_microfacet_hair_eval_residual(KernelGlobals kg,
       if (cos_mh3 < 0.0f || !microfacet_visible(wtr, -wo, wmtr, wh3) ||
           !microfacet_visible(wtr, -wo, wmtr_, wh3))
       {
-        S_trrt += weight * bsdf_microfacet_hair_eval_trrt(T1, R2, A_t);
+        S_trrt += weight * bsdf_hair_huang_eval_trrt(T1, R2, A_t);
         continue;
       }
 
@@ -567,7 +565,7 @@ ccl_device Spectrum bsdf_microfacet_hair_eval_residual(KernelGlobals kg,
       const float cos_mi3 = dot(wmtr, wtr);
 
       const float T3 = (1.0f - fresnel_dielectric_cos(cos_hi3, inv_eta)) *
-                       microfacet_hair_energy_scale(kg, cos_mi3, sqrt_roughness, inv_eta);
+                       bsdf_hair_huang_energy_scale(kg, cos_mi3, sqrt_roughness, inv_eta);
       const float D3 = bsdf_D<MicrofacetType::GGX>(roughness2, cos_mh3);
 
       const Spectrum A_tr = exp(mu_a / cos_theta(wtr) *
@@ -587,7 +585,7 @@ ccl_device Spectrum bsdf_microfacet_hair_eval_residual(KernelGlobals kg,
         S_trt += bsdf->extra->TRT * result * arc_length(bsdf->extra->e2, gamma_mtr);
       }
 
-      S_trrt += weight * bsdf_microfacet_hair_eval_trrt(T1, R2, A_t);
+      S_trrt += weight * bsdf_hair_huang_eval_trrt(T1, R2, A_t);
     }
   }
 
@@ -602,17 +600,17 @@ ccl_device Spectrum bsdf_microfacet_hair_eval_residual(KernelGlobals kg,
          3.0f;
 }
 
-ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
-                                           ccl_private const ShaderClosure *sc,
-                                           ccl_private ShaderData *sd,
-                                           float3 rand,
-                                           ccl_private Spectrum *eval,
-                                           ccl_private float3 *wo,
-                                           ccl_private float *pdf,
-                                           ccl_private float2 *sampled_roughness,
-                                           ccl_private float *eta)
+ccl_device int bsdf_hair_huang_sample(const KernelGlobals kg,
+                                      ccl_private const ShaderClosure *sc,
+                                      ccl_private ShaderData *sd,
+                                      float3 rand,
+                                      ccl_private Spectrum *eval,
+                                      ccl_private float3 *wo,
+                                      ccl_private float *pdf,
+                                      ccl_private float2 *sampled_roughness,
+                                      ccl_private float *eta)
 {
-  ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)sc;
+  ccl_private HuangHairBSDF *bsdf = (ccl_private HuangHairBSDF *)sc;
 
   const float roughness = bsdf->roughness;
   *sampled_roughness = make_float2(roughness, roughness);
@@ -676,7 +674,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
 
   float cos_theta_t1;
   const float R1 = fresnel_dielectric(dot(wi, wh1), *eta, &cos_theta_t1);
-  const float scale1 = microfacet_hair_energy_scale(kg, cos_mi1, sqrt_roughness, bsdf->eta);
+  const float scale1 = bsdf_hair_huang_energy_scale(kg, cos_mi1, sqrt_roughness, bsdf->eta);
   const float R = bsdf->extra->R * R1 * scale1 * microfacet_visible(wr, wmi_, wh1) *
                   bsdf_Go(roughness2, cos_mi1, dot(wmi, wr));
 
@@ -710,7 +708,7 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
     const float R2 = fresnel_dielectric(dot(-wt, wh2), inv_eta, &cos_theta_t2);
     const float T1 = (1.0f - R1) * scale1 * bsdf_Go(roughness2, cos_mi1, dot(wmi, -wt));
     const float T2 = 1.0f - R2;
-    const float scale2 = microfacet_hair_energy_scale(kg, cos_mi2, sqrt_roughness, inv_eta);
+    const float scale2 = bsdf_hair_huang_energy_scale(kg, cos_mi2, sqrt_roughness, inv_eta);
 
     wtt = refract_angle(-wt, wh2, cos_theta_t2, *eta);
 
@@ -738,13 +736,14 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
                                       len(to_point(gamma_mt, b) - to_point(gamma_mtr, b))));
 
       const Spectrum TR = T1 * R2 * scale2 * A_t * A_tr *
-                          microfacet_hair_energy_scale(kg, cos_mi3, sqrt_roughness, inv_eta) *
+                          bsdf_hair_huang_energy_scale(kg, cos_mi3, sqrt_roughness, inv_eta) *
                           bsdf_Go(roughness2, cos_mi2, dot(wmt, -wtr));
 
       const float T3 = 1.0f - R3;
 
       if (cos_theta_t3 != 0.0f &&
-          microfacet_visible(wtr, -wtrt, make_float3(wmtr.x, 0.0f, wmtr.z), wh3)) {
+          microfacet_visible(wtr, -wtrt, make_float3(wmtr.x, 0.0f, wmtr.z), wh3))
+      {
         TRT = bsdf->extra->TRT * TR * make_spectrum(T3) *
               bsdf_Go(roughness2, cos_mi3, dot(wmtr, -wtrt));
       }
@@ -829,13 +828,13 @@ ccl_device int bsdf_microfacet_hair_sample(const KernelGlobals kg,
   return LABEL_GLOSSY | LABEL_REFLECT;
 }
 
-ccl_device Spectrum bsdf_microfacet_hair_eval(KernelGlobals kg,
-                                              ccl_private const ShaderData *sd,
-                                              ccl_private const ShaderClosure *sc,
-                                              const float3 wo,
-                                              ccl_private float *pdf)
+ccl_device Spectrum bsdf_hair_huang_eval(KernelGlobals kg,
+                                         ccl_private const ShaderData *sd,
+                                         ccl_private const ShaderClosure *sc,
+                                         const float3 wo,
+                                         ccl_private float *pdf)
 {
-  ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)sc;
+  ccl_private HuangHairBSDF *bsdf = (ccl_private HuangHairBSDF *)sc;
 
   kernel_assert(fabsf(bsdf->h) < bsdf->extra->radius);
 
@@ -851,25 +850,25 @@ ccl_device Spectrum bsdf_microfacet_hair_eval(KernelGlobals kg,
   /* TODO: better estimation of the pdf */
   *pdf = 1.0f;
 
-  return (bsdf_microfacet_hair_eval_r(kg, sc, local_I, local_O) +
-          bsdf_microfacet_hair_eval_residual(kg, sc, local_I, local_O, sd->lcg_state)) /
+  return (bsdf_hair_huang_eval_r(kg, sc, local_I, local_O) +
+          bsdf_hair_huang_eval_residual(kg, sc, local_I, local_O, sd->lcg_state)) /
          cos_theta(local_I);
 }
 
 /* Implements Filter Glossy by capping the effective roughness. */
-ccl_device void bsdf_microfacet_hair_blur(ccl_private ShaderClosure *sc, float roughness)
+ccl_device void bsdf_hair_huang_blur(ccl_private ShaderClosure *sc, float roughness)
 {
-  ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)sc;
+  ccl_private HuangHairBSDF *bsdf = (ccl_private HuangHairBSDF *)sc;
 
   bsdf->roughness = fmaxf(roughness, bsdf->roughness);
 }
 
 /* Hair Albedo. Computed by summing up geometric series, assuming circular cross-section and
  * specular reflection. */
-ccl_device Spectrum bsdf_microfacet_hair_albedo(ccl_private const ShaderData *sd,
-                                                ccl_private const ShaderClosure *sc)
+ccl_device Spectrum bsdf_hair_huang_albedo(ccl_private const ShaderData *sd,
+                                           ccl_private const ShaderClosure *sc)
 {
-  ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)sc;
+  ccl_private HuangHairBSDF *bsdf = (ccl_private HuangHairBSDF *)sc;
 
   const float3 wmi = make_float3(bsdf->h, 0.0f, cos_from_sin(bsdf->h));
   float cos_t;

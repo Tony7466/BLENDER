@@ -566,8 +566,8 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       break;
     }
 #ifdef __HAIR__
-    case CLOSURE_BSDF_HAIR_PRINCIPLED_ID:
-    case CLOSURE_BSDF_HAIR_MICROFACET_ID: {
+    case CLOSURE_BSDF_HAIR_CHIANG_ID:
+    case CLOSURE_BSDF_HAIR_HUANG_ID: {
       uint4 data_node2 = read_node(kg, &offset);
       uint4 data_node3 = read_node(kg, &offset);
       uint4 data_node4 = read_node(kg, &offset);
@@ -603,7 +603,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       float random_roughness = param2;
       float factor_random_roughness = 1.0f + 2.0f * (random - 0.5f) * random_roughness;
       float roughness = param1 * factor_random_roughness;
-      float radial_roughness = (type == CLOSURE_BSDF_HAIR_PRINCIPLED_ID) ?
+      float radial_roughness = (type == CLOSURE_BSDF_HAIR_CHIANG_ID) ?
                                    stack_load_float_default(stack, shared_ofs2, data_node4.y) *
                                        factor_random_roughness :
                                    roughness;
@@ -657,12 +657,12 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         }
       }
 
-      if (type == CLOSURE_BSDF_HAIR_PRINCIPLED_ID) {
-        ccl_private PrincipledHairBSDF *bsdf = (ccl_private PrincipledHairBSDF *)bsdf_alloc(
-            sd, sizeof(PrincipledHairBSDF), weight);
+      if (type == CLOSURE_BSDF_HAIR_CHIANG_ID) {
+        ccl_private ChiangHairBSDF *bsdf = (ccl_private ChiangHairBSDF *)bsdf_alloc(
+            sd, sizeof(ChiangHairBSDF), weight);
         if (bsdf) {
-          ccl_private PrincipledHairExtra *extra = (ccl_private PrincipledHairExtra *)
-              closure_alloc_extra(sd, sizeof(PrincipledHairExtra));
+          ccl_private ChiangHairExtra *extra = (ccl_private ChiangHairExtra *)closure_alloc_extra(
+              sd, sizeof(ChiangHairExtra));
 
           if (!extra) {
             break;
@@ -680,11 +680,11 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           bsdf->extra = extra;
           bsdf->sigma = sigma;
 
-          sd->flag |= bsdf_principled_hair_setup(sd, bsdf);
+          sd->flag |= bsdf_hair_chiang_setup(sd, bsdf);
         }
       }
       else {
-        kernel_assert(type == CLOSURE_BSDF_HAIR_MICROFACET_ID);
+        kernel_assert(type == CLOSURE_BSDF_HAIR_HUANG_ID);
         uint R_ofs, TT_ofs, TRT_ofs, unused;
         svm_unpack_node_uchar4(data_node4.x, &R_ofs, &TT_ofs, &TRT_ofs, &unused);
         float R = stack_load_float_default(stack, R_ofs, data_node4.y);
@@ -694,11 +694,11 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           break;
         }
 
-        ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)bsdf_alloc(
-            sd, sizeof(MicrofacetHairBSDF), weight);
+        ccl_private HuangHairBSDF *bsdf = (ccl_private HuangHairBSDF *)bsdf_alloc(
+            sd, sizeof(HuangHairBSDF), weight);
         if (bsdf) {
-          ccl_private MicrofacetHairExtra *extra = (ccl_private MicrofacetHairExtra *)
-              closure_alloc_extra(sd, sizeof(MicrofacetHairExtra));
+          ccl_private HuangHairExtra *extra = (ccl_private HuangHairExtra *)closure_alloc_extra(
+              sd, sizeof(HuangHairExtra));
 
           if (!extra) {
             break;
@@ -721,7 +721,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           bsdf->eta = ior;
           bsdf->sigma = sigma;
 
-          sd->flag |= bsdf_microfacet_hair_setup(sd, bsdf, path_flag);
+          sd->flag |= bsdf_hair_huang_setup(sd, bsdf, path_flag);
         }
       }
       break;

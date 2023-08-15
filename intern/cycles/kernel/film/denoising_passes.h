@@ -57,15 +57,15 @@ ccl_device_forceinline void film_write_denoising_features_surface(KernelGlobals 
 
     /* All closures contribute to the normal feature, but only diffuse-like ones to the albedo. */
     /* If far-field hair, use fiber tangent as feature instead of normal. */
-    normal += (sc->type == CLOSURE_BSDF_HAIR_MICROFACET_ID ? safe_normalize(sd->dPdu) : sc->N) *
+    normal += (sc->type == CLOSURE_BSDF_HAIR_HUANG_ID ? safe_normalize(sd->dPdu) : sc->N) *
               sc->sample_weight;
     sum_weight += sc->sample_weight;
 
     Spectrum closure_albedo = bsdf_albedo(kg, sd, sc, true, true);
     if (bsdf_get_specular_roughness_squared(sc) > sqr(0.075f) ||
-        sc->type == CLOSURE_BSDF_HAIR_MICROFACET_ID)
+        sc->type == CLOSURE_BSDF_HAIR_HUANG_ID)
     {
-      /* Hair far field models "count" as diffuse. */
+      /* Far-field hair models "count" as diffuse. */
       diffuse_albedo += closure_albedo;
       sum_nonspecular_weight += sc->sample_weight;
     }

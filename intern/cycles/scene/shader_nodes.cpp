@@ -3393,8 +3393,8 @@ NODE_DEFINE(PrincipledHairBsdfNode)
 
   /* Scattering models. */
   static NodeEnum model_enum;
-  model_enum.insert("Near-field Model", NODE_PRINCIPLED_HAIR_CHIANG);
-  model_enum.insert("Far-field Model", NODE_PRINCIPLED_HAIR_HUANG);
+  model_enum.insert("Chiang", NODE_PRINCIPLED_HAIR_CHIANG);
+  model_enum.insert("Huang", NODE_PRINCIPLED_HAIR_HUANG);
   SOCKET_ENUM(model, "Model", model_enum, NODE_PRINCIPLED_HAIR_HUANG);
 
   /* Color parametrization specified as enum. */
@@ -3438,7 +3438,7 @@ NODE_DEFINE(PrincipledHairBsdfNode)
 
 PrincipledHairBsdfNode::PrincipledHairBsdfNode() : BsdfBaseNode(get_node_type())
 {
-  closure = CLOSURE_BSDF_HAIR_MICROFACET_ID;
+  closure = CLOSURE_BSDF_HAIR_HUANG_ID;
 }
 
 void PrincipledHairBsdfNode::attributes(Shader *shader, AttributeRequestSet *attributes)
@@ -3460,8 +3460,8 @@ void PrincipledHairBsdfNode::attributes(Shader *shader, AttributeRequestSet *att
 /* Prepares the input data for the SVM shader. */
 void PrincipledHairBsdfNode::compile(SVMCompiler &compiler)
 {
-  closure = (model == NODE_PRINCIPLED_HAIR_HUANG) ? CLOSURE_BSDF_HAIR_MICROFACET_ID :
-                                                    CLOSURE_BSDF_HAIR_PRINCIPLED_ID;
+  closure = (model == NODE_PRINCIPLED_HAIR_HUANG) ? CLOSURE_BSDF_HAIR_HUANG_ID :
+                                                    CLOSURE_BSDF_HAIR_CHIANG_ID;
 
   compiler.add_node(NODE_CLOSURE_SET_WEIGHT, one_float3());
 

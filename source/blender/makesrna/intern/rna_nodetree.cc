@@ -4281,18 +4281,18 @@ static const EnumPropertyItem node_hair_items[] = {
 
 static const EnumPropertyItem node_principled_hair_model_items[] = {
     {SHD_PRINCIPLED_HAIR_CHIANG,
-     "HAIR_PRINCIPLED_CHIANG",
+     "CHIANG",
      0,
-     "Near-field Model",
-     "Hair scattering model by Chiang et. al 2016, suitable for close-up looks, but is in general "
-     "more noisy."},
+     "Chiang",
+     "Near-field hair scattering model by Chiang et. al 2016, suitable for close-up looks, but is "
+     "more noisy when viewing from a distance"},
     {SHD_PRINCIPLED_HAIR_HUANG,
-     "HAIR_PRINCIPLED_HUANG",
+     "HUANG",
      0,
-     "Far-field Model",
-     "Microfacet-based hair scattering model by Huang et. al 2022, suitable for viewing from a "
-     "distance, supports elliptical cross-sections and has more precise highlight in forward "
-     "scattering direction."},
+     "Huang",
+     "Far-field hair scattering model by Huang et. al 2022, suitable for viewing from a distance, "
+     "supports elliptical cross-sections and has more precise highlight in forward scattering "
+     "directions"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -5755,7 +5755,7 @@ static void def_hair_principled(StructRNA *srna)
 
   prop = RNA_def_property(srna, "model", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "model");
-  RNA_def_property_ui_text(prop, "Scattering model", "Select from near- or far-field model");
+  RNA_def_property_ui_text(prop, "Scattering model", "Select from Chiang or Huang model");
   RNA_def_property_enum_items(prop, node_principled_hair_model_items);
   RNA_def_property_enum_default(prop, SHD_PRINCIPLED_HAIR_HUANG);
   /* Upon editing, update both the node data AND the UI representation */
