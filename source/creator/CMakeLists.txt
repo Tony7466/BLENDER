@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -420,13 +420,6 @@ endif()
 
 # -----------------------------------------------------------------------------
 # Install Targets (Generic, All Platforms)
-
-
-# Important to make a clean install each time, else old scripts get loaded.
-install(
-  CODE
-  "file(REMOVE_RECURSE ${TARGETDIR_VER})"
-)
 
 if(WITH_PYTHON)
   # install(CODE "message(\"copying blender scripts...\")")
