@@ -47,6 +47,9 @@
 
 #include "SEQ_iterator.h"
 
+/* TODO(sergey): Remove before landing the patch. */
+#include "BLI_timeit.hh"
+
 #include <ocio_capi.h>
 
 /* -------------------------------------------------------------------- */
@@ -2501,6 +2504,9 @@ ImBuf *IMB_colormanagement_imbuf_for_write(ImBuf *ibuf,
                                            bool allocate_result,
                                            const ImageFormatData *image_format)
 {
+  /* TODO(sergey): Remove before landing the patch. */
+  const blender::timeit::ScopedTimer timer(__func__);
+
   ImBuf *colormanaged_ibuf = ibuf;
 
   /* Update byte buffer if exists but invalid. */
