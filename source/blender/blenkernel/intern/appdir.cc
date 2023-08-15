@@ -231,10 +231,11 @@ bool BKE_appdir_font_folder_default(char *dir, size_t dir_maxncpy)
   test_dir[0] = '\0';
 
 #ifdef WIN32
-  wchar_t wpath[MAX_PATH];
-  if (SHGetSpecialFolderPathW(0, wpath, CSIDL_FONTS, 0)) {
-    BLI_strncpy_wchar_as_utf8(test_dir, wpath, sizeof(test_dir));
+  PWSTR known_path = nullptr;
+  if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Fonts, 0, nullptr, &known_path))) {
+    BLI_strncpy_wchar_as_utf8(test_dir, known_path, sizeof(test_dir));
   }
+  CoTaskMemFree(known_path);
 #elif defined(__APPLE__)
   STRNCPY(test_dir, BLI_expand_tilde("~/Library/Fonts"));
 #else

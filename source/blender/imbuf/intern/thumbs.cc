@@ -18,6 +18,7 @@
 #include "BLI_hash_md5.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
+#include "BLI_string_utf8.h"
 #include "BLI_string_utils.h"
 #include "BLI_system.h"
 #include "BLI_threads.h"
@@ -72,11 +73,13 @@ static bool get_thumb_dir(char *dir, ThumbSize size)
   char *s = dir;
   const char *subdir;
 #ifdef WIN32
-  wchar_t dir_16[MAX_PATH];
+  PWSTR known_path = nullptr;
   /* Yes, applications shouldn't store data there, but so does GIMP :). */
-  SHGetSpecialFolderPathW(0, dir_16, CSIDL_PROFILE, 0);
-  conv_utf_16_to_8(dir_16, dir, FILE_MAX);
-  s += strlen(dir);
+  if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Profile, 0, nullptr, &known_path))) {
+    BLI_strncpy_wchar_as_utf8(dir, known_path, FILE_MAX);
+    s += strlen(dir);
+  }
+  CoTaskMemFree(known_path);
 #else
 #  if defined(USE_FREEDESKTOP)
   const char *home_cache = BLI_getenv("XDG_CACHE_HOME");
