@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,7 +22,7 @@ class FastGrid : public Grid {
  public:
   FastGrid() : Grid()
   {
-    _cells = NULL;
+    _cells = nullptr;
     _cells_size = 0;
   }
 

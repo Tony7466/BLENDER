@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,6 +23,7 @@ namespace blender::ed::outliner {
 TreeElementGPencilEffectBase::TreeElementGPencilEffectBase(TreeElement &legacy_te, Object &object)
     : AbstractTreeElement(legacy_te), object_(object)
 {
+  BLI_assert(legacy_te.store_elem->type == TSE_GPENCIL_EFFECT_BASE);
   legacy_te.name = IFACE_("Effects");
 }
 
@@ -30,8 +31,14 @@ void TreeElementGPencilEffectBase::expand(SpaceOutliner &space_outliner) const
 {
   int index;
   LISTBASE_FOREACH_INDEX (ShaderFxData *, fx, &object_.shader_fx, index) {
-    outliner_add_element(
-        &space_outliner, &legacy_te_.subtree, &object_, &legacy_te_, TSE_GPENCIL_EFFECT, index);
+    GPencilEffectElementCreateData gp_effect_data = {&object_, fx};
+
+    outliner_add_element(&space_outliner,
+                         &legacy_te_.subtree,
+                         &gp_effect_data,
+                         &legacy_te_,
+                         TSE_GPENCIL_EFFECT,
+                         index);
   }
 }
 
@@ -40,6 +47,7 @@ TreeElementGPencilEffect::TreeElementGPencilEffect(TreeElement &legacy_te,
                                                    ShaderFxData &fx)
     : AbstractTreeElement(legacy_te), /* object_(object), */ fx_(fx)
 {
+  BLI_assert(legacy_te.store_elem->type == TSE_GPENCIL_EFFECT);
   legacy_te.name = fx_.name;
   legacy_te.directdata = &fx_;
 }

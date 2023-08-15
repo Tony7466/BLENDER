@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -48,6 +48,7 @@ struct PBVH_GPU_Args {
   const CustomData *loop_data;
   const CustomData *face_data;
   blender::Span<blender::float3> vert_normals;
+  blender::Span<blender::float3> face_normals;
 
   const char *active_color;
   const char *render_color;
@@ -60,7 +61,6 @@ struct PBVH_GPU_Args {
   blender::Span<int> grid_indices;
   CCGKey ccg_key;
   CCGElem **grids;
-  void **gridfaces;
   BLI_bitmap **grid_hidden;
 
   blender::Span<int> prim_indices;

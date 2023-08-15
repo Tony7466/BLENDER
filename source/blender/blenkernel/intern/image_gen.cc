@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -344,7 +344,7 @@ static void checker_board_grid_fill(
   }
 }
 
-/* defined in image.c */
+/* Defined in `image.cc`. */
 
 static void checker_board_text(
     uchar *rect, float *rect_float, int width, int height, int step, int outline)

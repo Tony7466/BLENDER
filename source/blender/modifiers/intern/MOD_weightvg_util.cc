@@ -8,7 +8,7 @@
 
 #include "BLI_utildefines.h"
 
-#include "BLI_math.h"
+#include "BLI_math_color.h"
 #include "BLI_rand.h"
 #include "BLI_string.h"
 
@@ -29,10 +29,10 @@
 #include "BKE_scene.h"
 #include "BKE_texture.h" /* Texture masking. */
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -115,7 +115,7 @@ void weightvg_do_mask(const ModifierEvalContext *ctx,
                       Mesh *mesh,
                       const float fact,
                       const char defgrp_name[MAX_VGROUP_NAME],
-                      Scene *scene,
+                      Scene * /*scene*/,
                       Tex *texture,
                       const int tex_use_channel,
                       const int tex_mapping,
@@ -161,8 +161,7 @@ void weightvg_do_mask(const ModifierEvalContext *ctx,
       int idx = indices ? indices[i] : i;
       TexResult texres;
       float hsv[3]; /* For HSV color space. */
-      bool do_color_manage = tex_use_channel != MOD_WVG_MASK_TEX_USE_INT &&
-                             BKE_scene_check_color_management_enabled(scene);
+      bool do_color_manage = tex_use_channel != MOD_WVG_MASK_TEX_USE_INT;
 
       BKE_texture_get_value(texture, tex_co[idx], &texres, do_color_manage);
       /* Get the good channel value... */
@@ -335,7 +334,7 @@ void weightvg_ui_common(const bContext *C, PointerRNA *ob_ptr, PointerRNA *ptr, 
                  nullptr,
                  nullptr,
                  0,
-                 ICON_NONE,
+                 false,
                  IFACE_("Mask Texture"));
 
     if (has_mask_texture) {

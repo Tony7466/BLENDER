@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Blender Foundation
+/* SPDX-FileCopyrightText: Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,7 +18,9 @@
 #  include "DNA_scene_types.h"
 #  include "DNA_texture_types.h"
 
-#  include "BLI_math.h"
+#  include "BLI_math_geom.h"
+#  include "BLI_math_matrix.h"
+#  include "BLI_math_vector.h"
 #  include "BLI_utildefines.h"
 
 #  include "BKE_cloth.h"
@@ -992,7 +994,7 @@ static int cg_filtered_pre(lfVector *dv,
 
 #      ifdef DEBUG_TIME
   double end = PIL_check_seconds_timer();
-  printf("cg_filtered_pre time: %f\n", (float)(end - start));
+  printf("cg_filtered_pre time: %f\n", float(end - start));
 #      endif
 
   del_lfvector(h);
@@ -1103,7 +1105,7 @@ static int cg_filtered_pre(lfVector *dv,
 
 #    ifdef DEBUG_TIME
   double end = PIL_check_seconds_timer();
-  printf("cg_filtered_pre time: %f\n", (float)(end - start));
+  printf("cg_filtered_pre time: %f\n", float(end - start));
 #    endif
 
   del_lfvector(btemp);
@@ -1145,7 +1147,7 @@ bool SIM_mass_spring_solve_velocities(Implicit_Data *data, float dt, ImplicitSol
 
 #  ifdef DEBUG_TIME
   double end = PIL_check_seconds_timer();
-  printf("cg_filtered calc time: %f\n", (float)(end - start));
+  printf("cg_filtered calc time: %f\n", float(end - start));
 #  endif
 
   /* advance velocities */
@@ -1723,7 +1725,8 @@ BLI_INLINE bool spring_length(Implicit_Data *data,
 #  if 0
     if (length > L) {
       if ((clmd->sim_parms->flags & CSIMSETT_FLAG_TEARING_ENABLED) &&
-          (((length - L) * 100.0f / L) > clmd->sim_parms->maxspringlen)) {
+          (((length - L) * 100.0f / L) > clmd->sim_parms->maxspringlen))
+      {
         /* cut spring! */
         s->flags |= CSPRING_FLAG_DEACTIVATE;
         return false;

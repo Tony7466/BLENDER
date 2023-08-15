@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
@@ -219,7 +219,7 @@ typedef struct ModifierTypeInfo {
    */
   void (*deform_verts_EM)(struct ModifierData *md,
                           const struct ModifierEvalContext *ctx,
-                          struct BMEditMesh *editData,
+                          struct BMEditMesh *em,
                           struct Mesh *mesh,
                           float (*vertexCos)[3],
                           int numVerts);
@@ -227,7 +227,7 @@ typedef struct ModifierTypeInfo {
   /* Set deform matrix per vertex for crazy-space correction */
   void (*deform_matrices_EM)(struct ModifierData *md,
                              const struct ModifierEvalContext *ctx,
-                             struct BMEditMesh *editData,
+                             struct BMEditMesh *em,
                              struct Mesh *mesh,
                              float (*vertexCos)[3],
                              float (*defMats)[3][3],
