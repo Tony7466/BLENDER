@@ -98,7 +98,6 @@ const char *GHOST_SystemPathsWin32::getUserSpecialDir(GHOST_TUserSpecialDirTypes
   HRESULT hResult = SHGetKnownFolderPath(folderid, KF_FLAG_DEFAULT, nullptr, &knownpath_unicode);
 
   if (hResult == S_OK) {
-
     BLI_strncpy_wchar_as_utf8(knownpath, knownpath_unicode, MAX_PATH * 3);
     CoTaskMemFree(knownpath_unicode);
     return knownpath;
