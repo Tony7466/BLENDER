@@ -20,6 +20,8 @@
  * #lazy_function::Graph is build that can be used when evaluating the graph (e.g. for logging).
  */
 
+#include <variant>
+
 #include "FN_lazy_function_graph.hh"
 #include "FN_lazy_function_graph_executor.hh"
 
@@ -39,6 +41,73 @@ namespace blender::nodes {
 
 using lf::LazyFunction;
 using mf::MultiFunction;
+
+using NestedNodeID = int;
+
+enum class SimulationEvalType {
+  /**
+   * Used when the simulation is disabled e.g. because the current time is before the simulation
+   * starts.
+   */
+  PassThrough,
+  /**
+   * First frame of the simulation needs to be initialized.
+   */
+  Initialize,
+  /**
+   * Create a new simulation state based on the previous simulation state.
+   */
+  Solve,
+  /**
+   * Same as #Solve, but can modify the previous simulation state. Sometimes that can improve
+   * performance when the old simulation state is not needed anymore.
+   */
+  SolveRealtime,
+  /**
+   * Read data from a single cached frame.
+   */
+  Read,
+  /**
+   * Try to interpolate between the previous and next simulation state for the output.
+   */
+  ReadInterpolated,
+};
+
+struct SimulationInputInfo {
+  SimulationEvalType eval_type;
+
+  struct Solve {
+    float delta_time;
+    Map<int, const bke::BakeItem *> prev_items;
+  };
+  struct SolveRealtime {
+    float delta_time;
+    Map<int, std::unique_ptr<bke::BakeItem>> prev_items;
+  };
+  std::variant<std::monostate, Solve, SolveRealtime> info;
+};
+
+struct SimulationOutputInfo {
+  SimulationEvalType eval_type;
+
+  struct ReadSingle {
+    Map<int, bke::BakeItem *> items;
+  };
+  struct ReadInterpolated {
+    float mix_factor;
+    Map<int, const bke::BakeItem *> prev_items;
+    Map<int, const bke::BakeItem *> next_items;
+  };
+  std::variant<std::monostate, ReadSingle, ReadInterpolated> info;
+};
+
+class GeoNodesSimulationParams {
+ public:
+  virtual SimulationInputInfo get_input_info(NestedNodeID id) const = 0;
+  virtual SimulationOutputInfo get_output_info(NestedNodeID id) const = 0;
+  virtual void store_simulation_state(NestedNodeID id,
+                                      Map<int, std::unique_ptr<bke::BakeItem>> items) const = 0;
+};
 
 /**
  * Data that is passed into geometry nodes evaluation from the modifier.
