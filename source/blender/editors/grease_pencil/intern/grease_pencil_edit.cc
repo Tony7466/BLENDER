@@ -593,47 +593,51 @@ static Array<bool> get_points_to_dissolve(bke::CurvesGeometry &curves, const Dis
   if (mode == DISSOLVE_POINTS) {
     return points_to_dissolve;
   }
+
   /* Both `between` and `unselect` have the unselected point being the ones dissolved so we need
    * to invert.*/
-  else if (mode == DISSOLVE_BETWEEN || mode == DISSOLVE_UNSELECT) {
-    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  BLI_assert(ELEM(mode, DISSOLVE_BETWEEN, DISSOLVE_UNSELECT));
 
-    /* Because we are going to invert, these become the points to keep.*/
-    MutableSpan<bool> points_to_keep = points_to_dissolve.as_mutable_span();
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  /* Because we are going to invert, these become the points to keep.*/
+  MutableSpan<bool> points_to_keep = points_to_dissolve.as_mutable_span();
 
-    threading::parallel_for(curves.curves_range(), 128, [&](const IndexRange range) {
-      for (const int64_t curve_i : range) {
-        const IndexRange points = points_by_curve[curve_i];
-        const Span<bool> curve_selection = points_to_dissolve.as_span().slice(points);
-        /* The unselected curves should not be dissolved.*/
-        if (!curve_selection.contains(true)) {
-          points_to_keep.slice(points).fill(true);
+  threading::parallel_for(curves.curves_range(), 128, [&](const IndexRange range) {
+    for (const int64_t curve_i : range) {
+      const IndexRange points = points_by_curve[curve_i];
+      const Span<bool> curve_selection = points_to_dissolve.as_span().slice(points);
+      /* The unselected curves should not be dissolved.*/
+      if (!curve_selection.contains(true)) {
+        points_to_keep.slice(points).fill(true);
+        continue;
+      }
+
+      /* `between` is just `unselect` but with the first and last segments not geting
+       * dissolved.*/
+      if (mode != DISSOLVE_BETWEEN) {
+        continue;
+      }
+
+      const Vector<IndexRange> deselection_ranges = array_utils::find_all_ranges(curve_selection,
+                                                                                 false);
+
+      if (deselection_ranges.size() != 0) {
+        const IndexRange first_range = deselection_ranges.first().shift(points.first());
+        const IndexRange last_range = deselection_ranges.last().shift(points.first());
+
+        /* Ranges should only be fill if the first/last point matchs the start/end point
+         * of the segment.*/
+        if (first_range.first() == points.first()) {
+          points_to_keep.slice(first_range).fill(true);
         }
-        /* `between` is just `unselect` but with the first and last segments not geting
-         * dissolved.*/
-        else if (mode == DISSOLVE_BETWEEN) {
-          const Vector<IndexRange> deselection_ranges = array_utils::find_all_ranges(
-              curve_selection, false);
-
-          if (deselection_ranges.size() != 0) {
-            const IndexRange first_range = deselection_ranges.first().shift(points.first());
-            const IndexRange last_range = deselection_ranges.last().shift(points.first());
-
-            /* Ranges should only be fill if the first/last point matchs the start/end point
-             * of the segment.*/
-            if (first_range.first() == points.first()) {
-              points_to_keep.slice(first_range).fill(true);
-            }
-            if (last_range.last() == points.last()) {
-              points_to_keep.slice(last_range).fill(true);
-            }
-          }
+        if (last_range.last() == points.last()) {
+          points_to_keep.slice(last_range).fill(true);
         }
       }
-    });
+    }
+  });
 
-    array_utils::invert_booleans(points_to_dissolve);
-  }
+  array_utils::invert_booleans(points_to_dissolve);
 
   return points_to_dissolve;
 }
