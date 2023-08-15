@@ -1079,11 +1079,12 @@ void GHOST_SystemWin32::processPointerEvent(
     }
   }
 }
+
 /**
  * Clips the cursor to specific point `(x,y)`
  * Useful for events that depend on mouse movement and cursor relocation.
  * The #setCursorPos Windows Api sets the cursor at speficic location, but following cursor events
- * can  be outdated or can have new movement since the position was set, #clip_cursor_at_point
+ * can be outdated or can have new movement since the position was set, #clip_cursor_at_point
  * helpes to reduce the iterations needed to regonize when this position was successfully updated.
  */
 static BOOL clip_cursor_at_point(const int32_t x, const int32_t y)
