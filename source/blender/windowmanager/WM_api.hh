@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
@@ -1112,12 +1112,14 @@ wmOperatorType *WM_operatortype_append_macro(const char *idname,
                                              int flag);
 wmOperatorTypeMacro *WM_operatortype_macro_define(wmOperatorType *ot, const char *idname);
 
-const char *WM_operatortype_name(wmOperatorType *ot, PointerRNA *properties);
-char *WM_operatortype_description(bContext *C, wmOperatorType *ot, PointerRNA *properties);
+std::string WM_operatortype_name(wmOperatorType *ot, PointerRNA *properties);
+std::string WM_operatortype_description(bContext *C, wmOperatorType *ot, PointerRNA *properties);
 /**
  * Use when we want a label, preferring the description.
  */
-char *WM_operatortype_description_or_name(bContext *C, wmOperatorType *ot, PointerRNA *properties);
+std::string WM_operatortype_description_or_name(bContext *C,
+                                                wmOperatorType *ot,
+                                                PointerRNA *properties);
 
 /* `wm_operator_utils.cc` */
 
@@ -1597,7 +1599,7 @@ void *WM_draw_cb_activate(wmWindow *win, void (*draw)(const wmWindow *, void *),
 void WM_draw_cb_exit(wmWindow *win, void *handle);
 void WM_redraw_windows(bContext *C);
 
-void WM_draw_region_viewport_ensure(ARegion *region, short space_type);
+void WM_draw_region_viewport_ensure(Scene *scene, ARegion *region, short space_type);
 void WM_draw_region_viewport_bind(ARegion *region);
 void WM_draw_region_viewport_unbind(ARegion *region);
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -28,13 +28,14 @@
 #include "BKE_context.h"
 #include "BKE_fcurve.h"
 #include "BKE_gpencil_legacy.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_main.h"
 #include "BKE_node.h"
 
 #include "DEG_depsgraph.h"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 
 #include "SEQ_sequencer.h"
 #include "SEQ_utils.h"
@@ -291,9 +292,10 @@ void ANIM_sync_animchannels_to_data(const bContext *C)
         animchan_sync_gplayer(ale);
         break;
       case ANIMTYPE_GREASE_PENCIL_LAYER:
+        using namespace blender::bke::greasepencil;
         GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
-        GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(ale->data);
-        if (grease_pencil->active_layer == layer) {
+        Layer *layer = static_cast<Layer *>(ale->data);
+        if (grease_pencil->is_layer_active(layer)) {
           layer->base.flag |= GP_LAYER_TREE_NODE_SELECT;
         }
         else {

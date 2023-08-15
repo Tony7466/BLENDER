@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -39,7 +39,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_threads.h"
 
 #include "BLT_translation.h"
@@ -198,10 +198,6 @@ static void movieclip_blend_write(BlendWriter *writer, ID *id, const void *id_ad
   BLO_write_id_struct(writer, MovieClip, id_address, &clip->id);
   BKE_id_blend_write(writer, &clip->id);
 
-  if (clip->adt) {
-    BKE_animdata_blend_write(writer, clip->adt);
-  }
-
   LISTBASE_FOREACH (MovieTrackingObject *, object, &tracking->objects) {
     BLO_write_struct(writer, MovieTrackingObject, object);
     write_movieTracks(writer, &object->tracks);
@@ -243,9 +239,6 @@ static void movieclip_blend_read_data(BlendDataReader *reader, ID *id)
 {
   MovieClip *clip = (MovieClip *)id;
   MovieTracking *tracking = &clip->tracking;
-
-  BLO_read_data_address(reader, &clip->adt);
-  BKE_animdata_blend_read_data(reader, clip->adt);
 
   direct_link_movieTracks(reader, &tracking->tracks_legacy);
   direct_link_moviePlaneTracks(reader, &tracking->plane_tracks_legacy);

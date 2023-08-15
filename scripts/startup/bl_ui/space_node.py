@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -846,9 +846,13 @@ class NODE_PT_overlay(Panel):
         col.prop(overlay, "show_context_path", text="Context Path")
         col.prop(snode, "show_annotation", text="Annotations")
 
-        if snode.supports_preview:
+        if snode.supports_previews:
             col.separator()
             col.prop(overlay, "show_previews", text="Previews")
+            if snode.tree_type == 'ShaderNodeTree':
+                row = col.row()
+                row.prop(overlay, "preview_shape", expand=True)
+                row.active = overlay.show_previews
 
         if snode.tree_type == 'GeometryNodeTree':
             col.separator()

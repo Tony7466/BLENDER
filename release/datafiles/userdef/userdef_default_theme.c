@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation
+/* SPDX-FileCopyrightText: 2018 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -676,7 +676,7 @@ const bTheme U_theme_default = {
     .scene = RGBA(0x808033ff),
     .audio = RGBA(0x448080ff),
     .effect = RGBA(0x514a73ff),
-    .transition = RGBA(0x8f4571ff),
+    .transition = RGBA(0x50458fff),
     .meta = RGBA(0x5b4d91ff),
     .text_strip = RGBA(0x824c8fff),
     .color_strip = RGBA(0x8f8f8fff),
