@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include <optional>
 
@@ -389,7 +390,7 @@ static float4 LerpCurveSegmentMotionCV(ParticleCurveData *CData, int sys, int cu
   }
   const float4 mP = CurveSegmentMotionCV(CData, sys, curve, first_curve_key + curvekey);
   const float4 mP2 = CurveSegmentMotionCV(CData, sys, curve, first_curve_key + curvekey2);
-  return lerp(mP, mP2, remainder);
+  return mix(mP, mP2, remainder);
 }
 
 static void export_hair_motion_validate_attribute(Hair *hair,
@@ -899,9 +900,9 @@ static float4 interpolate_curve_points(const float (*b_attr_position)[3],
   const int point_a = clamp((int)curve_t, 0, num_points - 1);
   const int point_b = min(point_a + 1, num_points - 1);
   const float t = curve_t - (float)point_a;
-  return lerp(curve_point_as_float4(b_attr_position, b_attr_radius, first_point_index + point_a),
-              curve_point_as_float4(b_attr_position, b_attr_radius, first_point_index + point_b),
-              t);
+  return mix(curve_point_as_float4(b_attr_position, b_attr_radius, first_point_index + point_a),
+             curve_point_as_float4(b_attr_position, b_attr_radius, first_point_index + point_b),
+             t);
 }
 
 static void export_hair_curves(Scene *scene,

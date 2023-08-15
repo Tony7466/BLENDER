@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2014 Blender Foundation */
+/* SPDX-FileCopyrightText: 2014 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -49,7 +50,7 @@ enum {
   IDWALK_CB_DIRECT_WEAK_LINK = (1 << 3),
 
   /**
-   * That ID is used as mere sub-data by its owner (only case currently: those root nodetrees in
+   * That ID is used as mere sub-data by its owner (only case currently: those root node-trees in
    * materials etc., and the Scene's master collections).
    * This means callback shall not *do* anything, only use this as informative data if it needs it.
    */
@@ -111,12 +112,12 @@ typedef struct LibraryIDLinkCallbackData {
    * 'Real' ID, the one that might be in bmain, only differs from self_id when the later is an
    * embedded one.
    */
-  struct ID *id_owner;
+  struct ID *owner_id;
   /**
    * ID from which the current ID pointer is being processed. It may be an embedded ID like master
    * collection or root node tree.
    */
-  struct ID *id_self;
+  struct ID *self_id;
   struct ID **id_pointer;
   int cb_flag;
 } LibraryIDLinkCallbackData;
@@ -131,11 +132,14 @@ typedef int (*LibraryIDLinkCallback)(LibraryIDLinkCallbackData *cb_data);
 /* Flags for the foreach function itself. */
 enum {
   IDWALK_NOP = 0,
-  /** The callback will never modify the ID pointers it processes.
+  /**
+   * The callback will never modify the ID pointers it processes.
    * WARNING: It is very important to pass this flag when valid, as it can lead to important
-   * optimizations and debug/assert code. */
+   * optimizations and debug/assert code.
+   */
   IDWALK_READONLY = (1 << 0),
-  /** Recurse into 'descendant' IDs.
+  /**
+   * Recurse into 'descendant' IDs.
    * Each ID is only processed once. Order of ID processing is not guaranteed.
    *
    * Also implies IDWALK_READONLY, and excludes IDWALK_DO_INTERNAL_RUNTIME_POINTERS.
@@ -189,39 +193,45 @@ typedef struct LibraryForeachIDData LibraryForeachIDData;
  * Check whether current iteration over ID usages should be stopped or not.
  * \return true if the iteration should be stopped, false otherwise.
  */
-bool BKE_lib_query_foreachid_iter_stop(struct LibraryForeachIDData *data);
+bool BKE_lib_query_foreachid_iter_stop(const struct LibraryForeachIDData *data);
 void BKE_lib_query_foreachid_process(struct LibraryForeachIDData *data,
                                      struct ID **id_pp,
                                      int cb_flag);
-int BKE_lib_query_foreachid_process_flags_get(struct LibraryForeachIDData *data);
+int BKE_lib_query_foreachid_process_flags_get(const struct LibraryForeachIDData *data);
 int BKE_lib_query_foreachid_process_callback_flag_override(struct LibraryForeachIDData *data,
                                                            int cb_flag,
                                                            bool do_replace);
 
-#define BKE_LIB_FOREACHID_PROCESS_ID(_data, _id, _cb_flag) \
+#define BKE_LIB_FOREACHID_PROCESS_ID(data_, id_, cb_flag_) \
   { \
-    CHECK_TYPE_ANY((_id), ID *, void *); \
-    BKE_lib_query_foreachid_process((_data), (ID **)&(_id), (_cb_flag)); \
-    if (BKE_lib_query_foreachid_iter_stop((_data))) { \
+    CHECK_TYPE_ANY((id_), ID *, void *); \
+    BKE_lib_query_foreachid_process((data_), (ID **)&(id_), (cb_flag_)); \
+    if (BKE_lib_query_foreachid_iter_stop((data_))) { \
       return; \
     } \
   } \
   ((void)0)
 
-#define BKE_LIB_FOREACHID_PROCESS_IDSUPER(_data, _id_super, _cb_flag) \
+#define BKE_LIB_FOREACHID_PROCESS_IDSUPER_P(data_, id_super_p_, cb_flag_) \
   { \
-    CHECK_TYPE(&((_id_super)->id), ID *); \
-    BKE_lib_query_foreachid_process((_data), (ID **)&(_id_super), (_cb_flag)); \
-    if (BKE_lib_query_foreachid_iter_stop((_data))) { \
+    CHECK_TYPE(&((*(id_super_p_))->id), ID *); \
+    BKE_lib_query_foreachid_process((data_), (ID **)(id_super_p_), (cb_flag_)); \
+    if (BKE_lib_query_foreachid_iter_stop((data_))) { \
       return; \
     } \
   } \
   ((void)0)
 
-#define BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(_data, _func_call) \
+#define BKE_LIB_FOREACHID_PROCESS_IDSUPER(data_, id_super_, cb_flag_) \
   { \
-    _func_call; \
-    if (BKE_lib_query_foreachid_iter_stop((_data))) { \
+    BKE_LIB_FOREACHID_PROCESS_IDSUPER_P(data_, &(id_super_), cb_flag_); \
+  } \
+  ((void)0)
+
+#define BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data_, func_call_) \
+  { \
+    func_call_; \
+    if (BKE_lib_query_foreachid_iter_stop((data_))) { \
       return; \
     } \
   } \
@@ -259,17 +269,17 @@ void BKE_library_update_ID_link_user(struct ID *id_dst, struct ID *id_src, int c
 int BKE_library_ID_use_ID(struct ID *id_user, struct ID *id_used);
 
 /**
- * Say whether given \a id_owner may use (in any way) a data-block of \a id_type_used.
+ * Say whether given \a owner_id may use (in any way) a data-block of \a id_type_used.
  *
  * This is a 'simplified' abstract version of #BKE_library_foreach_ID_link() above,
  * quite useful to reduce useless iterations in some cases.
  */
-bool BKE_library_id_can_use_idtype(struct ID *id_owner, short id_type_used);
+bool BKE_library_id_can_use_idtype(struct ID *owner_id, short id_type_used);
 
 /**
- * Given the id_owner return the type of id_types it can use as a filter_id.
+ * Given the owner_id return the type of id_types it can use as a filter_id.
  */
-uint64_t BKE_library_id_can_use_filter_id(const struct ID *id_owner);
+uint64_t BKE_library_id_can_use_filter_id(const struct ID *owner_id, const bool include_ui);
 
 /**
  * Check whether given ID is used locally (i.e. by another non-linked ID).

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -14,11 +15,13 @@
 
 namespace blender::gpu {
 class VKBuffer;
+struct VKBufferWithOffset;
 class VKDescriptorSet;
 class VKFrameBuffer;
 class VKIndexBuffer;
 class VKPipeline;
 class VKPushConstants;
+class VKStorageBuffer;
 class VKTexture;
 class VKVertexBuffer;
 
@@ -141,8 +144,10 @@ class VKCommandBuffer : NonCopyable, NonMovable {
             const VKVertexBuffer &vertex_buffer,
             const VkDeviceSize offset);
   /* Bind the given buffer as a vertex buffer. */
+  void bind(const uint32_t binding, const VKBufferWithOffset &vertex_buffer);
   void bind(const uint32_t binding, const VkBuffer &vk_vertex_buffer, const VkDeviceSize offset);
-  void bind(const VKIndexBuffer &index_buffer, VkIndexType index_type);
+  /* Bind the given buffer as an index buffer. */
+  void bind(const VKBufferWithOffset &index_buffer, VkIndexType index_type);
 
   void begin_render_pass(const VKFrameBuffer &framebuffer);
   void end_render_pass(const VKFrameBuffer &framebuffer);
@@ -156,10 +161,17 @@ class VKCommandBuffer : NonCopyable, NonMovable {
                       const VkPipelineLayout vk_pipeline_layout,
                       const VkShaderStageFlags vk_shader_stages);
   void dispatch(int groups_x_len, int groups_y_len, int groups_z_len);
+  void dispatch(VKStorageBuffer &command_buffer);
   /** Copy the contents of a texture MIP level to the dst buffer. */
   void copy(VKBuffer &dst_buffer, VKTexture &src_texture, Span<VkBufferImageCopy> regions);
   void copy(VKTexture &dst_texture, VKBuffer &src_buffer, Span<VkBufferImageCopy> regions);
+  void copy(VKTexture &dst_texture, VKTexture &src_texture, Span<VkImageCopy> regions);
   void blit(VKTexture &dst_texture, VKTexture &src_texture, Span<VkImageBlit> regions);
+  void blit(VKTexture &dst_texture,
+            VkImageLayout dst_layout,
+            VKTexture &src_texture,
+            VkImageLayout src_layout,
+            Span<VkImageBlit> regions);
   void pipeline_barrier(VkPipelineStageFlags source_stages,
                         VkPipelineStageFlags destination_stages);
   void pipeline_barrier(Span<VkImageMemoryBarrier> image_memory_barriers);

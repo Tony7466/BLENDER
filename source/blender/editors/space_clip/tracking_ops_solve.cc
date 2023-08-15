@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation */
+/* SPDX-FileCopyrightText: 2016 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spclip
@@ -24,17 +25,17 @@
 
 #include "DEG_depsgraph.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_clip.h"
+#include "ED_clip.hh"
 
 #include "clip_intern.h"
 
 /********************** solve camera operator *********************/
 
-typedef struct {
-  struct wmWindowManager *wm;
+struct SolveCameraJob {
+  wmWindowManager *wm;
   Scene *scene;
   MovieClip *clip;
   MovieClipUser user;
@@ -43,8 +44,8 @@ typedef struct {
 
   char stats_message[256];
 
-  struct MovieReconstructContext *context;
-} SolveCameraJob;
+  MovieReconstructContext *context;
+};
 
 static bool solve_camera_initjob(
     bContext *C, SolveCameraJob *scj, wmOperator *op, char *error_msg, int max_error)
@@ -88,7 +89,7 @@ static void solve_camera_updatejob(void *scv)
   SolveCameraJob *scj = (SolveCameraJob *)scv;
   MovieTracking *tracking = &scj->clip->tracking;
 
-  BLI_strncpy(tracking->stats->message, scj->stats_message, sizeof(tracking->stats->message));
+  STRNCPY(tracking->stats->message, scj->stats_message);
 }
 
 static void solve_camera_startjob(void *scv, bool *stop, bool *do_update, float *progress)
@@ -213,9 +214,7 @@ static int solve_camera_invoke(bContext *C, wmOperator *op, const wmEvent * /*ev
     return OPERATOR_CANCELLED;
   }
 
-  BLI_strncpy(tracking->stats->message,
-              "Solving camera | Preparing solve",
-              sizeof(tracking->stats->message));
+  STRNCPY(tracking->stats->message, "Solving camera | Preparing solve");
 
   /* Hide reconstruction statistics from previous solve. */
   reconstruction->flag &= ~TRACKING_RECONSTRUCTED;

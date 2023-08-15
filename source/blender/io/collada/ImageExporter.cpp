@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2010-2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup collada
@@ -67,7 +69,7 @@ void ImagesExporter::export_UV_Image(Image *image, bool use_copies)
 
     /* make absolute destination path */
 
-    BLI_strncpy(export_file, name.c_str(), sizeof(export_file));
+    STRNCPY(export_file, name.c_str());
     BKE_image_path_ext_from_imformat_ensure(export_file, sizeof(export_file), &imageFormat);
 
     BLI_path_join(export_path, sizeof(export_path), export_dir, export_file);
@@ -85,12 +87,12 @@ void ImagesExporter::export_UV_Image(Image *image, bool use_copies)
       fprintf(stderr, "Collada export: Cannot export image to:\n%s\n", export_path);
       return;
     }
-    BLI_strncpy(export_path, export_file, sizeof(export_path));
+    STRNCPY(export_path, export_file);
   }
   else {
 
     /* make absolute source path */
-    BLI_strncpy(source_path, image->filepath, sizeof(source_path));
+    STRNCPY(source_path, image->filepath);
     BLI_path_abs(source_path, ID_BLEND_PATH_FROM_GLOBAL(&image->id));
     BLI_path_normalize(source_path);
 
@@ -112,14 +114,14 @@ void ImagesExporter::export_UV_Image(Image *image, bool use_copies)
         }
       }
 
-      BLI_strncpy(export_path, export_file, sizeof(export_path));
+      STRNCPY(export_path, export_file);
     }
     else {
 
       /* Do not make any copies, but use the source path directly as reference
        * to the original image */
 
-      BLI_strncpy(export_path, source_path, sizeof(export_path));
+      STRNCPY(export_path, source_path);
     }
   }
 

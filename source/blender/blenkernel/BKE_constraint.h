@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -45,7 +46,8 @@ typedef struct bConstraintOb {
 
   /** type of owner. */
   short type;
-  /** rotation order for constraint owner (as defined in #eEulerRotationOrders in BLI_math.h) */
+  /** rotation order for constraint owner (as defined in #eEulerRotationOrders in
+   * BLI_math_rotation.h) */
   short rotOrder;
 } bConstraintOb;
 
@@ -81,7 +83,7 @@ typedef struct bConstraintTypeInfo {
   /** name of constraint in interface */
   char name[32];
   /** name of struct for SDNA */
-  char structName[32];
+  char struct_name[32];
 
   /* data management function pointers - special handling */
   /** free any data that is allocated separately (optional) */
@@ -115,7 +117,10 @@ typedef struct bConstraintTypeInfo {
                             struct bConstraintOb *cob,
                             struct bConstraintTarget *ct,
                             float ctime);
-  /** evaluate the constraint for the given time */
+  /**
+   * Evaluate the constraint for the given time.
+   * solved as separate loop.
+   */
   void (*evaluate_constraint)(struct bConstraint *con,
                               struct bConstraintOb *cob,
                               struct ListBase *targets);
@@ -358,7 +363,9 @@ void BKE_constraints_solve(struct Depsgraph *depsgraph,
                            float ctime);
 
 void BKE_constraint_blend_write(struct BlendWriter *writer, struct ListBase *conlist);
-void BKE_constraint_blend_read_data(struct BlendDataReader *reader, struct ListBase *lb);
+void BKE_constraint_blend_read_data(struct BlendDataReader *reader,
+                                    struct ID *id_owner,
+                                    struct ListBase *lb);
 void BKE_constraint_blend_read_lib(struct BlendLibReader *reader,
                                    struct ID *id,
                                    struct ListBase *conlist);

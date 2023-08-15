@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2018 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2018 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -10,17 +11,18 @@
 #include "BLI_memblock.h"
 
 #include "BKE_image.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 #include "BLI_dynstr.h"
 #include "BLI_hash.h"
+#include "BLI_math_color.h"
 
 #include "DNA_mesh_types.h"
 #include "DNA_node_types.h"
 
 #include "GPU_uniform_buffer.h"
 
-#include "ED_uvedit.h"
+#include "ED_uvedit.hh"
 
 #define HSV_SATURATION 0.5
 #define HSV_VALUE 0.8

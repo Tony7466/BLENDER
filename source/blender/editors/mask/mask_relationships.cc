@@ -1,12 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation */
+/* SPDX-FileCopyrightText: 2012 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edmask
  */
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
 #include "BKE_context.h"
@@ -17,12 +18,12 @@
 
 #include "DNA_mask_types.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_clip.h" /* frame remapping functions */
-#include "ED_mask.h"
-#include "ED_screen.h"
+#include "ED_clip.hh" /* frame remapping functions */
+#include "ED_mask.hh"
+#include "ED_screen.hh"
 
 #include "mask_intern.h" /* own include */
 
@@ -133,8 +134,8 @@ static int mask_parent_set_exec(bContext *C, wmOperator * /*op*/)
           point->parent.id_type = ID_MC;
           point->parent.id = &clip->id;
           point->parent.type = parent_type;
-          BLI_strncpy(point->parent.parent, tracking_object->name, sizeof(point->parent.parent));
-          BLI_strncpy(point->parent.sub_parent, sub_parent_name, sizeof(point->parent.sub_parent));
+          STRNCPY(point->parent.parent, tracking_object->name);
+          STRNCPY(point->parent.sub_parent, sub_parent_name);
 
           copy_v2_v2(point->parent.parent_orig, parmask_pos);
           memcpy(point->parent.parent_corners_orig,

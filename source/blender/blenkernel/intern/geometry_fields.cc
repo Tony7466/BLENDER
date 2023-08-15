@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array_utils.hh"
 
@@ -16,6 +18,8 @@
 
 #include "BLT_translation.h"
 
+#include <fmt/format.h>
+
 namespace blender::bke {
 
 MeshFieldContext::MeshFieldContext(const Mesh &mesh, const eAttrDomain domain)
@@ -31,15 +35,15 @@ CurvesFieldContext::CurvesFieldContext(const CurvesGeometry &curves, const eAttr
 }
 
 GeometryFieldContext::GeometryFieldContext(const void *geometry,
-                                           const GeometryComponentType type,
+                                           const GeometryComponent::Type type,
                                            const eAttrDomain domain)
     : geometry_(geometry), type_(type), domain_(domain)
 {
   BLI_assert(ELEM(type,
-                  GEO_COMPONENT_TYPE_MESH,
-                  GEO_COMPONENT_TYPE_CURVE,
-                  GEO_COMPONENT_TYPE_POINT_CLOUD,
-                  GEO_COMPONENT_TYPE_INSTANCES));
+                  GeometryComponent::Type::Mesh,
+                  GeometryComponent::Type::Curve,
+                  GeometryComponent::Type::PointCloud,
+                  GeometryComponent::Type::Instance));
 }
 
 GeometryFieldContext::GeometryFieldContext(const GeometryComponent &component,
@@ -47,50 +51,53 @@ GeometryFieldContext::GeometryFieldContext(const GeometryComponent &component,
     : type_(component.type()), domain_(domain)
 {
   switch (component.type()) {
-    case GEO_COMPONENT_TYPE_MESH: {
+    case GeometryComponent::Type::Mesh: {
       const MeshComponent &mesh_component = static_cast<const MeshComponent &>(component);
-      geometry_ = mesh_component.get_for_read();
+      geometry_ = mesh_component.get();
       break;
     }
-    case GEO_COMPONENT_TYPE_CURVE: {
+    case GeometryComponent::Type::Curve: {
       const CurveComponent &curve_component = static_cast<const CurveComponent &>(component);
-      const Curves *curves = curve_component.get_for_read();
+      const Curves *curves = curve_component.get();
       geometry_ = curves ? &curves->geometry.wrap() : nullptr;
       break;
     }
-    case GEO_COMPONENT_TYPE_POINT_CLOUD: {
+    case GeometryComponent::Type::PointCloud: {
       const PointCloudComponent &pointcloud_component = static_cast<const PointCloudComponent &>(
           component);
-      geometry_ = pointcloud_component.get_for_read();
+      geometry_ = pointcloud_component.get();
       break;
     }
-    case GEO_COMPONENT_TYPE_INSTANCES: {
+    case GeometryComponent::Type::Instance: {
       const InstancesComponent &instances_component = static_cast<const InstancesComponent &>(
           component);
-      geometry_ = instances_component.get_for_read();
+      geometry_ = instances_component.get();
       break;
     }
-    case GEO_COMPONENT_TYPE_VOLUME:
-    case GEO_COMPONENT_TYPE_EDIT:
+    case GeometryComponent::Type::Volume:
+    case GeometryComponent::Type::Edit:
+    case GeometryComponent::Type::GreasePencil:
       BLI_assert_unreachable();
       break;
   }
 }
 
 GeometryFieldContext::GeometryFieldContext(const Mesh &mesh, eAttrDomain domain)
-    : geometry_(&mesh), type_(GEO_COMPONENT_TYPE_MESH), domain_(domain)
+    : geometry_(&mesh), type_(GeometryComponent::Type::Mesh), domain_(domain)
 {
 }
 GeometryFieldContext::GeometryFieldContext(const CurvesGeometry &curves, eAttrDomain domain)
-    : geometry_(&curves), type_(GEO_COMPONENT_TYPE_CURVE), domain_(domain)
+    : geometry_(&curves), type_(GeometryComponent::Type::Curve), domain_(domain)
 {
 }
 GeometryFieldContext::GeometryFieldContext(const PointCloud &points)
-    : geometry_(&points), type_(GEO_COMPONENT_TYPE_POINT_CLOUD), domain_(ATTR_DOMAIN_POINT)
+    : geometry_(&points), type_(GeometryComponent::Type::PointCloud), domain_(ATTR_DOMAIN_POINT)
 {
 }
 GeometryFieldContext::GeometryFieldContext(const Instances &instances)
-    : geometry_(&instances), type_(GEO_COMPONENT_TYPE_INSTANCES), domain_(ATTR_DOMAIN_INSTANCE)
+    : geometry_(&instances),
+      type_(GeometryComponent::Type::Instance),
+      domain_(ATTR_DOMAIN_INSTANCE)
 {
 }
 
@@ -113,28 +120,30 @@ std::optional<AttributeAccessor> GeometryFieldContext::attributes() const
 
 const Mesh *GeometryFieldContext::mesh() const
 {
-  return this->type() == GEO_COMPONENT_TYPE_MESH ? static_cast<const Mesh *>(geometry_) : nullptr;
+  return this->type() == GeometryComponent::Type::Mesh ? static_cast<const Mesh *>(geometry_) :
+                                                         nullptr;
 }
 const CurvesGeometry *GeometryFieldContext::curves() const
 {
-  return this->type() == GEO_COMPONENT_TYPE_CURVE ?
+  return this->type() == GeometryComponent::Type::Curve ?
              static_cast<const CurvesGeometry *>(geometry_) :
              nullptr;
 }
 const PointCloud *GeometryFieldContext::pointcloud() const
 {
-  return this->type() == GEO_COMPONENT_TYPE_POINT_CLOUD ?
+  return this->type() == GeometryComponent::Type::PointCloud ?
              static_cast<const PointCloud *>(geometry_) :
              nullptr;
 }
 const Instances *GeometryFieldContext::instances() const
 {
-  return this->type() == GEO_COMPONENT_TYPE_INSTANCES ? static_cast<const Instances *>(geometry_) :
-                                                        nullptr;
+  return this->type() == GeometryComponent::Type::Instance ?
+             static_cast<const Instances *>(geometry_) :
+             nullptr;
 }
 
 GVArray GeometryFieldInput::get_varray_for_context(const fn::FieldContext &context,
-                                                   const IndexMask mask,
+                                                   const IndexMask &mask,
                                                    ResourceScope & /*scope*/) const
 {
   if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
@@ -169,7 +178,7 @@ std::optional<eAttrDomain> GeometryFieldInput::preferred_domain(
 }
 
 GVArray MeshFieldInput::get_varray_for_context(const fn::FieldContext &context,
-                                               const IndexMask mask,
+                                               const IndexMask &mask,
                                                ResourceScope & /*scope*/) const
 {
   if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
@@ -191,7 +200,7 @@ std::optional<eAttrDomain> MeshFieldInput::preferred_domain(const Mesh & /*mesh*
 }
 
 GVArray CurvesFieldInput::get_varray_for_context(const fn::FieldContext &context,
-                                                 IndexMask mask,
+                                                 const IndexMask &mask,
                                                  ResourceScope & /*scope*/) const
 {
   if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
@@ -215,7 +224,7 @@ std::optional<eAttrDomain> CurvesFieldInput::preferred_domain(
 }
 
 GVArray PointCloudFieldInput::get_varray_for_context(const fn::FieldContext &context,
-                                                     IndexMask mask,
+                                                     const IndexMask &mask,
                                                      ResourceScope & /*scope*/) const
 {
   if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
@@ -234,7 +243,7 @@ GVArray PointCloudFieldInput::get_varray_for_context(const fn::FieldContext &con
 }
 
 GVArray InstancesFieldInput::get_varray_for_context(const fn::FieldContext &context,
-                                                    IndexMask mask,
+                                                    const IndexMask &mask,
                                                     ResourceScope & /*scope*/) const
 {
   if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
@@ -253,7 +262,7 @@ GVArray InstancesFieldInput::get_varray_for_context(const fn::FieldContext &cont
 }
 
 GVArray AttributeFieldInput::get_varray_for_context(const GeometryFieldContext &context,
-                                                    const IndexMask /*mask*/) const
+                                                    const IndexMask & /*mask*/) const
 {
   const eCustomDataType data_type = cpp_type_to_custom_data_type(*type_);
   if (auto attributes = context.attributes()) {
@@ -262,11 +271,17 @@ GVArray AttributeFieldInput::get_varray_for_context(const GeometryFieldContext &
   return {};
 }
 
+GVArray AttributeExistsFieldInput::get_varray_for_context(const bke::GeometryFieldContext &context,
+                                                          const IndexMask & /*mask*/) const
+{
+  const bool exists = context.attributes()->contains(name_);
+  const int domain_size = context.attributes()->domain_size(context.domain());
+  return VArray<bool>::ForSingle(exists, domain_size);
+}
+
 std::string AttributeFieldInput::socket_inspection_name() const
 {
-  std::stringstream ss;
-  ss << '"' << name_ << '"' << TIP_(" attribute from geometry");
-  return ss.str();
+  return fmt::format(TIP_("\"{}\" attribute from geometry"), name_);
 }
 
 uint64_t AttributeFieldInput::hash() const
@@ -308,7 +323,7 @@ static StringRef get_random_id_attribute_name(const eAttrDomain domain)
 }
 
 GVArray IDAttributeFieldInput::get_varray_for_context(const GeometryFieldContext &context,
-                                                      const IndexMask mask) const
+                                                      const IndexMask &mask) const
 {
 
   const StringRef name = get_random_id_attribute_name(context.domain());
@@ -340,7 +355,7 @@ bool IDAttributeFieldInput::is_equal_to(const fn::FieldNode &other) const
 }
 
 GVArray AnonymousAttributeFieldInput::get_varray_for_context(const GeometryFieldContext &context,
-                                                             const IndexMask /*mask*/) const
+                                                             const IndexMask & /*mask*/) const
 {
   const eCustomDataType data_type = cpp_type_to_custom_data_type(*type_);
   return *context.attributes()->lookup(*anonymous_id_, context.domain(), data_type);
@@ -348,9 +363,7 @@ GVArray AnonymousAttributeFieldInput::get_varray_for_context(const GeometryField
 
 std::string AnonymousAttributeFieldInput::socket_inspection_name() const
 {
-  std::stringstream ss;
-  ss << '"' << debug_name_ << '"' << TIP_(" from ") << producer_name_;
-  return ss.str();
+  return fmt::format(TIP_("\"{}\" from {}"), TIP_(debug_name_.c_str()), producer_name_);
 }
 
 uint64_t AnonymousAttributeFieldInput::hash() const
@@ -391,7 +404,7 @@ std::optional<eAttrDomain> AnonymousAttributeFieldInput::preferred_domain(
 namespace blender::bke {
 
 GVArray NormalFieldInput::get_varray_for_context(const GeometryFieldContext &context,
-                                                 const IndexMask mask) const
+                                                 const IndexMask &mask) const
 {
   if (const Mesh *mesh = context.mesh()) {
     return mesh_normals_varray(*mesh, mask, context.domain());
@@ -482,7 +495,6 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
   }
 
   const bke::GeometryFieldContext field_context{component, domain};
-  const IndexMask mask{IndexMask(domain_size)};
   const bke::AttributeValidator validator = attributes.lookup_validator(attribute_id);
 
   const std::optional<AttributeMetaData> meta_data = attributes.lookup_meta_data(attribute_id);
@@ -492,10 +504,8 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
   /* We are writing to an attribute that exists already with the correct domain and type. */
   if (attribute_matches) {
     if (GSpanAttributeWriter dst_attribute = attributes.lookup_for_write_span(attribute_id)) {
-      const IndexMask mask{IndexMask(domain_size)};
-
       const bke::GeometryFieldContext field_context{component, domain};
-      fn::FieldEvaluator evaluator{field_context, &mask};
+      fn::FieldEvaluator evaluator{field_context, domain_size};
       evaluator.add(validator.validate_field_if_necessary(field));
       evaluator.set_selection(selection);
       evaluator.evaluate();
@@ -524,7 +534,7 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
   if (!selection_is_full) {
     type.value_initialize_n(buffer, domain_size);
   }
-  fn::FieldEvaluator evaluator{field_context, &mask};
+  fn::FieldEvaluator evaluator{field_context, domain_size};
   evaluator.add_with_destination(validator.validate_field_if_necessary(field),
                                  GMutableSpan{type, buffer, domain_size});
   evaluator.set_selection(selection);
@@ -564,11 +574,11 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
 std::optional<eAttrDomain> try_detect_field_domain(const GeometryComponent &component,
                                                    const fn::GField &field)
 {
-  const GeometryComponentType component_type = component.type();
-  if (component_type == GEO_COMPONENT_TYPE_POINT_CLOUD) {
+  const GeometryComponent::Type component_type = component.type();
+  if (component_type == GeometryComponent::Type::PointCloud) {
     return ATTR_DOMAIN_POINT;
   }
-  if (component_type == GEO_COMPONENT_TYPE_INSTANCES) {
+  if (component_type == GeometryComponent::Type::Instance) {
     return ATTR_DOMAIN_INSTANCE;
   }
   const std::shared_ptr<const fn::FieldInputs> &field_inputs = field.node().field_inputs();
@@ -589,9 +599,9 @@ std::optional<eAttrDomain> try_detect_field_domain(const GeometryComponent &comp
     output_domain = domain;
     return true;
   };
-  if (component_type == GEO_COMPONENT_TYPE_MESH) {
+  if (component_type == GeometryComponent::Type::Mesh) {
     const MeshComponent &mesh_component = static_cast<const MeshComponent &>(component);
-    const Mesh *mesh = mesh_component.get_for_read();
+    const Mesh *mesh = mesh_component.get();
     if (mesh == nullptr) {
       return std::nullopt;
     }
@@ -612,9 +622,9 @@ std::optional<eAttrDomain> try_detect_field_domain(const GeometryComponent &comp
       }
     }
   }
-  if (component_type == GEO_COMPONENT_TYPE_CURVE) {
+  if (component_type == GeometryComponent::Type::Curve) {
     const CurveComponent &curve_component = static_cast<const CurveComponent &>(component);
-    const Curves *curves = curve_component.get_for_read();
+    const Curves *curves = curve_component.get();
     if (curves == nullptr) {
       return std::nullopt;
     }

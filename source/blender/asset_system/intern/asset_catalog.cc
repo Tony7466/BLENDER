@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup asset_system
@@ -840,12 +842,12 @@ bool AssetCatalogDefinitionFile::write_to_disk(const CatalogFilePath &dest_file_
     return false;
   }
   if (BLI_exists(dest_file_path.c_str())) {
-    if (BLI_rename(dest_file_path.c_str(), backup_path.c_str())) {
+    if (BLI_rename_overwrite(dest_file_path.c_str(), backup_path.c_str())) {
       /* TODO: communicate what went wrong. */
       return false;
     }
   }
-  if (BLI_rename(writable_path.c_str(), dest_file_path.c_str())) {
+  if (BLI_rename_overwrite(writable_path.c_str(), dest_file_path.c_str())) {
     /* TODO: communicate what went wrong. */
     return false;
   }

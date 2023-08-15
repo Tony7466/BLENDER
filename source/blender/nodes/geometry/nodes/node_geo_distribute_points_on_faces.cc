@@ -1,6 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_kdtree.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_rotation.h"
 #include "BLI_noise.hh"
 #include "BLI_rand.hh"
 #include "BLI_task.hh"
@@ -13,12 +17,12 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_bvhutils.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_sample.hh"
 #include "BKE_pointcloud.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "node_geometry_util.hh"
 
@@ -33,43 +37,40 @@ static void node_declare(NodeDeclarationBuilder &b)
     node.custom1 = GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_POISSON;
   };
 
-  b.add_input<decl::Geometry>(N_("Mesh")).supported_type(GEO_COMPONENT_TYPE_MESH);
-  b.add_input<decl::Bool>(N_("Selection")).default_value(true).hide_value().field_on_all();
-  b.add_input<decl::Float>(N_("Distance Min"))
+  b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
+  b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
+  b.add_input<decl::Float>("Distance Min")
       .min(0.0f)
       .subtype(PROP_DISTANCE)
       .make_available(enable_poisson);
-  b.add_input<decl::Float>(N_("Density Max"))
+  b.add_input<decl::Float>("Density Max")
       .default_value(10.0f)
       .min(0.0f)
       .make_available(enable_poisson);
-  b.add_input<decl::Float>(N_("Density"))
-      .default_value(10.0f)
-      .min(0.0f)
-      .field_on_all()
-      .make_available(enable_random);
-  b.add_input<decl::Float>(N_("Density Factor"))
+  b.add_input<decl::Float>("Density").default_value(10.0f).min(0.0f).field_on_all().make_available(
+      enable_random);
+  b.add_input<decl::Float>("Density Factor")
       .default_value(1.0f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR)
       .field_on_all()
       .make_available(enable_poisson);
-  b.add_input<decl::Int>(N_("Seed"));
+  b.add_input<decl::Int>("Seed");
 
-  b.add_output<decl::Geometry>(N_("Points")).propagate_all();
-  b.add_output<decl::Vector>(N_("Normal")).field_on_all();
-  b.add_output<decl::Vector>(N_("Rotation")).subtype(PROP_EULER).field_on_all();
+  b.add_output<decl::Geometry>("Points").propagate_all();
+  b.add_output<decl::Vector>("Normal").field_on_all();
+  b.add_output<decl::Vector>("Rotation").subtype(PROP_EULER).field_on_all();
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "distribute_method", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "distribute_method", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_layout_ex(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "use_legacy_normal", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_legacy_normal", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void node_point_distribute_points_on_faces_update(bNodeTree *ntree, bNode *node)
@@ -78,16 +79,18 @@ static void node_point_distribute_points_on_faces_update(bNodeTree *ntree, bNode
   bNodeSocket *sock_density_max = static_cast<bNodeSocket *>(sock_distance_min->next);
   bNodeSocket *sock_density = sock_density_max->next;
   bNodeSocket *sock_density_factor = sock_density->next;
-  nodeSetSocketAvailability(ntree,
-                            sock_distance_min,
-                            node->custom1 == GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_POISSON);
-  nodeSetSocketAvailability(
+  bke::nodeSetSocketAvailability(ntree,
+                                 sock_distance_min,
+                                 node->custom1 ==
+                                     GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_POISSON);
+  bke::nodeSetSocketAvailability(
       ntree, sock_density_max, node->custom1 == GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_POISSON);
-  nodeSetSocketAvailability(
+  bke::nodeSetSocketAvailability(
       ntree, sock_density, node->custom1 == GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_RANDOM);
-  nodeSetSocketAvailability(ntree,
-                            sock_density_factor,
-                            node->custom1 == GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_POISSON);
+  bke::nodeSetSocketAvailability(ntree,
+                                 sock_density_factor,
+                                 node->custom1 ==
+                                     GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_POISSON);
 }
 
 /**
@@ -274,7 +277,7 @@ BLI_NOINLINE static void interpolate_attribute(const Mesh &mesh,
       break;
     }
     case ATTR_DOMAIN_FACE: {
-      bke::mesh_surface_sample::sample_face_attribute(mesh.looptri_polys(),
+      bke::mesh_surface_sample::sample_face_attribute(mesh.looptri_faces(),
                                                       looptri_indices,
                                                       source_data,
                                                       IndexMask(output_data.size()),
@@ -306,6 +309,9 @@ BLI_NOINLINE static void propagate_existing_attributes(
     if (!src) {
       continue;
     }
+    if (src.domain == ATTR_DOMAIN_EDGE) {
+      continue;
+    }
 
     GSpanAttributeWriter dst = point_attributes.lookup_or_add_for_write_only_span(
         attribute_id, ATTR_DOMAIN_POINT, output_data_type);
@@ -332,7 +338,7 @@ static void compute_normal_outputs(const Mesh &mesh,
 {
   Array<float3> corner_normals(mesh.totloop);
   BKE_mesh_calc_normals_split_ex(
-      const_cast<Mesh *>(&mesh), nullptr, reinterpret_cast<float(*)[3]>(corner_normals.data()));
+      &mesh, nullptr, reinterpret_cast<float(*)[3]>(corner_normals.data()));
 
   const Span<MLoopTri> looptris = mesh.looptris();
   threading::parallel_for(bary_coords.index_range(), 512, [&](const IndexRange range) {
@@ -491,7 +497,7 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
     return;
   }
 
-  const Mesh &mesh = *geometry_set.get_mesh_for_read();
+  const Mesh &mesh = *geometry_set.get_mesh();
 
   Vector<float3> positions;
   Vector<float3> bary_coords;
@@ -536,8 +542,8 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
   geometry_set.replace_pointcloud(pointcloud);
 
   Map<AttributeIDRef, AttributeKind> attributes;
-  geometry_set.gather_attributes_for_propagation({GEO_COMPONENT_TYPE_MESH},
-                                                 GEO_COMPONENT_TYPE_POINT_CLOUD,
+  geometry_set.gather_attributes_for_propagation({GeometryComponent::Type::Mesh},
+                                                 GeometryComponent::Type::PointCloud,
                                                  false,
                                                  params.get_output_propagation_info("Points"),
                                                  attributes);
@@ -574,29 +580,28 @@ static void node_geo_exec(GeoNodeExecParams params)
         geometry_set, selection_field, method, seed, attribute_outputs, params);
     /* Keep instances because the original geometry set may contain instances that are processed as
      * well. */
-    geometry_set.keep_only_during_modify({GEO_COMPONENT_TYPE_POINT_CLOUD});
+    geometry_set.keep_only_during_modify({GeometryComponent::Type::PointCloud});
   });
 
   params.set_output("Points", std::move(geometry_set));
 }
 
-}  // namespace blender::nodes::node_geo_distribute_points_on_faces_cc
-
-void register_node_type_geo_distribute_points_on_faces()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_distribute_points_on_faces_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(&ntype,
                      GEO_NODE_DISTRIBUTE_POINTS_ON_FACES,
                      "Distribute Points on Faces",
                      NODE_CLASS_GEOMETRY);
-  ntype.updatefunc = file_ns::node_point_distribute_points_on_faces_update;
-  node_type_size(&ntype, 170, 100, 320);
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.draw_buttons = file_ns::node_layout;
-  ntype.draw_buttons_ex = file_ns::node_layout_ex;
+  ntype.updatefunc = node_point_distribute_points_on_faces_update;
+  blender::bke::node_type_size(&ntype, 170, 100, 320);
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.draw_buttons = node_layout;
+  ntype.draw_buttons_ex = node_layout_ex;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_distribute_points_on_faces_cc

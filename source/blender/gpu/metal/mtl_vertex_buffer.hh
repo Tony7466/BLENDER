@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -29,7 +31,7 @@ class MTLVertBuf : public VertBuf {
   /** Metal buffer allocation. **/
   gpu::MTLBuffer *vbo_ = nullptr;
   /** Texture used if the buffer is bound as buffer texture. Init on first use. */
-  struct ::GPUTexture *buffer_texture_ = nullptr;
+  ::GPUTexture *buffer_texture_ = nullptr;
   /** Defines whether the buffer handle is wrapped by this MTLVertBuf, i.e. we do not own it and
    * should not free it. */
   bool is_wrapper_ = false;

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup shdnodes
@@ -10,7 +11,7 @@
 #include "NOD_math_functions.hh"
 #include "NOD_socket_search_link.hh"
 
-#include "RNA_enum_types.h"
+#include "RNA_enum_types.hh"
 
 /* **************** SCALAR MATH ******************** */
 
@@ -19,16 +20,10 @@ namespace blender::nodes::node_shader_math_cc {
 static void sh_node_math_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Float>(N_("Value")).default_value(0.5f).min(-10000.0f).max(10000.0f);
-  b.add_input<decl::Float>(N_("Value"), "Value_001")
-      .default_value(0.5f)
-      .min(-10000.0f)
-      .max(10000.0f);
-  b.add_input<decl::Float>(N_("Value"), "Value_002")
-      .default_value(0.5f)
-      .min(-10000.0f)
-      .max(10000.0f);
-  b.add_output<decl::Float>(N_("Value"));
+  b.add_input<decl::Float>("Value").default_value(0.5f).min(-10000.0f).max(10000.0f);
+  b.add_input<decl::Float>("Value", "Value_001").default_value(0.5f).min(-10000.0f).max(10000.0f);
+  b.add_input<decl::Float>("Value", "Value_002").default_value(0.5f).min(-10000.0f).max(10000.0f);
+  b.add_output<decl::Float>("Value");
 }
 
 class SocketSearchOp {
@@ -151,7 +146,7 @@ class ClampWrapperFunction : public mf::MultiFunction {
     this->set_signature(&fn.signature());
   }
 
-  void call(IndexMask mask, mf::Params params, mf::Context context) const override
+  void call(const IndexMask &mask, mf::Params params, mf::Context context) const override
   {
     fn_.call(mask, params, context);
 
@@ -160,10 +155,10 @@ class ClampWrapperFunction : public mf::MultiFunction {
     /* This has actually been initialized in the call above. */
     MutableSpan<float> results = params.uninitialized_single_output<float>(output_param_index);
 
-    for (const int i : mask) {
+    mask.foreach_index_optimized<int>([&](const int i) {
       float &value = results[i];
       CLAMP(value, 0.0f, 1.0f);
-    }
+    });
   }
 };
 

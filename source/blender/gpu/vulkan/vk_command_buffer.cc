@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -12,6 +13,7 @@
 #include "vk_index_buffer.hh"
 #include "vk_memory.hh"
 #include "vk_pipeline.hh"
+#include "vk_storage_buffer.hh"
 #include "vk_texture.hh"
 #include "vk_vertex_buffer.hh"
 
@@ -37,6 +39,13 @@ void VKCommandBuffer::init(const VkDevice vk_device,
   vk_command_buffer_ = vk_command_buffer;
   submission_id_.reset();
   state.stage = Stage::Initial;
+
+  /* When a the last GHOST context is destroyed the device is deallocate. A moment later the GPU
+   * context is destroyed. The first step is to activate it. Activating would retrieve the device
+   * from GHOST which in that case is a #VK_NULL_HANDLE. */
+  if (vk_device == VK_NULL_HANDLE) {
+    return;
+  }
 
   if (vk_fence_ == VK_NULL_HANDLE) {
     VK_ALLOCATION_CALLBACKS;
@@ -95,6 +104,11 @@ void VKCommandBuffer::bind(const uint32_t binding,
   bind(binding, vertex_buffer.vk_handle(), offset);
 }
 
+void VKCommandBuffer::bind(const uint32_t binding, const VKBufferWithOffset &vertex_buffer)
+{
+  bind(binding, vertex_buffer.buffer.vk_handle(), vertex_buffer.offset);
+}
+
 void VKCommandBuffer::bind(const uint32_t binding,
                            const VkBuffer &vk_vertex_buffer,
                            const VkDeviceSize offset)
@@ -104,12 +118,12 @@ void VKCommandBuffer::bind(const uint32_t binding,
   vkCmdBindVertexBuffers(vk_command_buffer_, binding, 1, &vk_vertex_buffer, &offset);
 }
 
-void VKCommandBuffer::bind(const VKIndexBuffer &index_buffer, VkIndexType index_type)
+void VKCommandBuffer::bind(const VKBufferWithOffset &index_buffer, VkIndexType index_type)
 {
   validate_framebuffer_exists();
   ensure_active_framebuffer();
-  VkBuffer vk_buffer = index_buffer.vk_handle();
-  vkCmdBindIndexBuffer(vk_command_buffer_, vk_buffer, 0, index_type);
+  vkCmdBindIndexBuffer(
+      vk_command_buffer_, index_buffer.buffer.vk_handle(), index_buffer.offset, index_type);
 }
 
 void VKCommandBuffer::begin_render_pass(const VKFrameBuffer &framebuffer)
@@ -159,6 +173,7 @@ void VKCommandBuffer::copy(VKBuffer &dst_buffer,
                          regions.size(),
                          regions.data());
 }
+
 void VKCommandBuffer::copy(VKTexture &dst_texture,
                            VKBuffer &src_buffer,
                            Span<VkBufferImageCopy> regions)
@@ -171,16 +186,44 @@ void VKCommandBuffer::copy(VKTexture &dst_texture,
                          regions.size(),
                          regions.data());
 }
+
+void VKCommandBuffer::copy(VKTexture &dst_texture,
+                           VKTexture &src_texture,
+                           Span<VkImageCopy> regions)
+{
+  ensure_no_active_framebuffer();
+  vkCmdCopyImage(vk_command_buffer_,
+                 src_texture.vk_image_handle(),
+                 src_texture.current_layout_get(),
+                 dst_texture.vk_image_handle(),
+                 dst_texture.current_layout_get(),
+                 regions.size(),
+                 regions.data());
+}
+
 void VKCommandBuffer::blit(VKTexture &dst_texture,
-                           VKTexture &src_buffer,
+                           VKTexture &src_texture,
+                           Span<VkImageBlit> regions)
+{
+  blit(dst_texture,
+       dst_texture.current_layout_get(),
+       src_texture,
+       src_texture.current_layout_get(),
+       regions);
+}
+
+void VKCommandBuffer::blit(VKTexture &dst_texture,
+                           VkImageLayout dst_layout,
+                           VKTexture &src_texture,
+                           VkImageLayout src_layout,
                            Span<VkImageBlit> regions)
 {
   ensure_no_active_framebuffer();
   vkCmdBlitImage(vk_command_buffer_,
-                 src_buffer.vk_image_handle(),
-                 src_buffer.current_layout_get(),
+                 src_texture.vk_image_handle(),
+                 src_layout,
                  dst_texture.vk_image_handle(),
-                 dst_texture.current_layout_get(),
+                 dst_layout,
                  regions.size(),
                  regions.data(),
                  VK_FILTER_NEAREST);
@@ -265,6 +308,12 @@ void VKCommandBuffer::dispatch(int groups_x_len, int groups_y_len, int groups_z_
   vkCmdDispatch(vk_command_buffer_, groups_x_len, groups_y_len, groups_z_len);
 }
 
+void VKCommandBuffer::dispatch(VKStorageBuffer &command_buffer)
+{
+  ensure_no_active_framebuffer();
+  vkCmdDispatchIndirect(vk_command_buffer_, command_buffer.vk_handle(), 0);
+}
+
 void VKCommandBuffer::submit()
 {
   ensure_no_active_framebuffer();
@@ -327,7 +376,7 @@ void VKCommandBuffer::ensure_active_framebuffer()
     render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     render_pass_begin_info.renderPass = state.framebuffer_->vk_render_pass_get();
     render_pass_begin_info.framebuffer = state.framebuffer_->vk_framebuffer_get();
-    render_pass_begin_info.renderArea = state.framebuffer_->vk_render_area_get();
+    render_pass_begin_info.renderArea = state.framebuffer_->vk_render_areas_get()[0];
     /* We don't use clear ops, but vulkan wants to have at least one. */
     VkClearValue clear_value = {};
     render_pass_begin_info.clearValueCount = 1;

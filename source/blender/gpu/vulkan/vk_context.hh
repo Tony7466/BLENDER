@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -15,6 +16,8 @@
 
 namespace blender::gpu {
 class VKFrameBuffer;
+class VKVertexAttributeObject;
+class VKBatch;
 class VKStateManager;
 
 class VKContext : public Context, NonCopyable {
@@ -45,10 +48,17 @@ class VKContext : public Context, NonCopyable {
   bool debug_capture_scope_begin(void *scope) override;
   void debug_capture_scope_end(void *scope) override;
 
+  bool has_active_framebuffer() const;
   void activate_framebuffer(VKFrameBuffer &framebuffer);
   void deactivate_framebuffer();
+  VKFrameBuffer *active_framebuffer_get() const;
 
-  static VKContext *get(void)
+  void bind_compute_pipeline();
+  void bind_graphics_pipeline(const GPUPrimType prim_type,
+                              const VKVertexAttributeObject &vertex_attribute_object);
+  void sync_backbuffer();
+
+  static VKContext *get()
   {
     return static_cast<VKContext *>(Context::get());
   }
@@ -58,10 +68,12 @@ class VKContext : public Context, NonCopyable {
     return command_buffer_;
   }
 
-  const VKStateManager &state_manager_get() const;
-
- private:
-  bool has_active_framebuffer() const;
+  VKStateManager &state_manager_get() const;
 };
+
+BLI_INLINE bool operator==(const VKContext &a, const VKContext &b)
+{
+  return static_cast<const void *>(&a) == static_cast<const void *>(&b);
+}
 
 }  // namespace blender::gpu

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -20,18 +22,18 @@
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
-#include "ED_object.h"
+#include "ED_object.hh"
 
 #include "BLT_translation.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh" /* Self include */
@@ -137,7 +139,7 @@ void modifier_vgroup_ui(uiLayout *layout,
     uiLayout *sub = uiLayoutRow(row, true);
     uiLayoutSetActive(sub, has_vertex_group);
     uiLayoutSetPropDecorate(sub, false);
-    uiItemR(sub, ptr, invert_vgroup_prop, 0, "", ICON_ARROW_LEFTRIGHT);
+    uiItemR(sub, ptr, invert_vgroup_prop, UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
   }
 }
 
@@ -256,7 +258,7 @@ static void modifier_ops_extra_draw(bContext *C, uiLayout *layout, void *md_v)
               ICON_TRIA_UP,
               nullptr,
               WM_OP_INVOKE_DEFAULT,
-              0,
+              UI_ITEM_NONE,
               &op_ptr);
   RNA_int_set(&op_ptr, "index", 0);
   if (!md->prev) {
@@ -271,7 +273,7 @@ static void modifier_ops_extra_draw(bContext *C, uiLayout *layout, void *md_v)
               ICON_TRIA_DOWN,
               nullptr,
               WM_OP_INVOKE_DEFAULT,
-              0,
+              UI_ITEM_NONE,
               &op_ptr);
   RNA_int_set(&op_ptr, "index", BLI_listbase_count(&ob->modifiers) - 1);
   if (!md->next) {
@@ -285,7 +287,7 @@ static void modifier_ops_extra_draw(bContext *C, uiLayout *layout, void *md_v)
                 ICON_NONE,
                 nullptr,
                 WM_OP_INVOKE_DEFAULT,
-                0,
+                UI_ITEM_NONE,
                 &op_ptr);
   }
 }
@@ -309,7 +311,7 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
   /* Modifier Icon. */
   sub = uiLayoutRow(layout, true);
   uiLayoutSetEmboss(sub, UI_EMBOSS_NONE);
-  if (mti->isDisabled && mti->isDisabled(scene, md, 0)) {
+  if (mti->is_disabled && mti->is_disabled(scene, md, false)) {
     uiLayoutSetRedAlert(sub, true);
   }
   uiItemStringO(sub,
@@ -329,13 +331,13 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
   /* Display mode switching buttons. */
   if (ob->type == OB_MESH) {
     int last_cage_index;
-    int cage_index = BKE_modifiers_get_cage_index(scene, ob, &last_cage_index, 0);
+    int cage_index = BKE_modifiers_get_cage_index(scene, ob, &last_cage_index, false);
     if (BKE_modifier_supports_cage(scene, md) && (index <= last_cage_index)) {
       sub = uiLayoutRow(row, true);
       if (index < cage_index || !BKE_modifier_couldbe_cage(scene, md)) {
         uiLayoutSetActive(sub, false);
       }
-      uiItemR(sub, ptr, "show_on_cage", 0, "", ICON_NONE);
+      uiItemR(sub, ptr, "show_on_cage", UI_ITEM_NONE, "", ICON_NONE);
       buttons_number++;
     }
   } /* Tessellation point for curve-typed objects. */
@@ -393,7 +395,7 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
     }
     else if (mti->type != eModifierTypeType_Constructive) {
       /* Constructive modifiers tessellates curve before applying. */
-      uiItemR(row, ptr, "use_apply_on_spline", 0, "", ICON_NONE);
+      uiItemR(row, ptr, "use_apply_on_spline", UI_ITEM_NONE, "", ICON_NONE);
       buttons_number++;
     }
   }
@@ -402,11 +404,11 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
     if (mti->flags & eModifierTypeFlag_SupportsEditmode) {
       sub = uiLayoutRow(row, true);
       uiLayoutSetActive(sub, (md->mode & eModifierMode_Realtime));
-      uiItemR(sub, ptr, "show_in_editmode", 0, "", ICON_NONE);
+      uiItemR(sub, ptr, "show_in_editmode", UI_ITEM_NONE, "", ICON_NONE);
       buttons_number++;
     }
-    uiItemR(row, ptr, "show_viewport", 0, "", ICON_NONE);
-    uiItemR(row, ptr, "show_render", 0, "", ICON_NONE);
+    uiItemR(row, ptr, "show_viewport", UI_ITEM_NONE, "", ICON_NONE);
+    uiItemR(row, ptr, "show_render", UI_ITEM_NONE, "", ICON_NONE);
     buttons_number += 2;
   }
 
@@ -435,7 +437,7 @@ static void modifier_panel_header(const bContext *C, Panel *panel)
 
   bool display_name = (panel->sizex / UI_UNIT_X - buttons_number > 5) || (panel->sizex == 0);
   if (display_name) {
-    uiItemR(name_row, ptr, "name", 0, "", ICON_NONE);
+    uiItemR(name_row, ptr, "name", UI_ITEM_NONE, "", ICON_NONE);
   }
   else {
     uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_RIGHT);
@@ -456,10 +458,10 @@ PanelType *modifier_panel_register(ARegionType *region_type, ModifierType type, 
   PanelType *panel_type = MEM_cnew<PanelType>(__func__);
 
   BKE_modifier_type_panel_id(type, panel_type->idname);
-  BLI_strncpy(panel_type->label, "", BKE_ST_MAXNAME);
-  BLI_strncpy(panel_type->context, "modifier", BKE_ST_MAXNAME);
-  BLI_strncpy(panel_type->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA, BKE_ST_MAXNAME);
-  BLI_strncpy(panel_type->active_property, "is_active", BKE_ST_MAXNAME);
+  STRNCPY(panel_type->label, "");
+  STRNCPY(panel_type->context, "modifier");
+  STRNCPY(panel_type->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+  STRNCPY(panel_type->active_property, "is_active");
 
   panel_type->draw_header = modifier_panel_header;
   panel_type->draw = draw;
@@ -486,11 +488,11 @@ PanelType *modifier_subpanel_register(ARegionType *region_type,
 {
   PanelType *panel_type = MEM_cnew<PanelType>(__func__);
 
-  BLI_snprintf(panel_type->idname, BKE_ST_MAXNAME, "%s_%s", parent->idname, name);
-  BLI_strncpy(panel_type->label, label, BKE_ST_MAXNAME);
-  BLI_strncpy(panel_type->context, "modifier", BKE_ST_MAXNAME);
-  BLI_strncpy(panel_type->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA, BKE_ST_MAXNAME);
-  BLI_strncpy(panel_type->active_property, "is_active", BKE_ST_MAXNAME);
+  SNPRINTF(panel_type->idname, "%s_%s", parent->idname, name);
+  STRNCPY(panel_type->label, label);
+  STRNCPY(panel_type->context, "modifier");
+  STRNCPY(panel_type->translation_context, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+  STRNCPY(panel_type->active_property, "is_active");
 
   panel_type->draw_header = draw_header;
   panel_type->draw = draw;
@@ -498,7 +500,7 @@ PanelType *modifier_subpanel_register(ARegionType *region_type,
   panel_type->flag = PANEL_TYPE_DEFAULT_CLOSED;
 
   BLI_assert(parent != nullptr);
-  BLI_strncpy(panel_type->parent_id, parent->idname, BKE_ST_MAXNAME);
+  STRNCPY(panel_type->parent_id, parent->idname);
   panel_type->parent = parent;
   BLI_addtail(&parent->children, BLI_genericNodeN(panel_type));
   BLI_addtail(&region_type->paneltypes, panel_type);

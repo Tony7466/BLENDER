@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -13,7 +15,7 @@
 #  include <dirent.h>
 #endif
 
-#include <string.h> /* #strcpy etc. */
+#include <string.h>
 #include <sys/stat.h>
 #include <time.h>
 
@@ -117,7 +119,7 @@ static void bli_builddir(struct BuildDirCtx *dir_ctx, const char *dirname)
     return;
   }
 
-  struct ListBase dirbase = {NULL, NULL};
+  ListBase dirbase = {NULL, NULL};
   int newnum = 0;
   const struct dirent *fname;
   bool has_current = false, has_parent = false;
@@ -151,7 +153,7 @@ static void bli_builddir(struct BuildDirCtx *dir_ctx, const char *dirname)
   if (!has_parent) {
     char pardir[FILE_MAXDIR];
 
-    BLI_strncpy(pardir, dirname, sizeof(pardir));
+    STRNCPY(pardir, dirname);
     if (BLI_path_parent_dir(pardir) && (BLI_access(pardir, R_OK) == 0)) {
       struct dirlink *const dlink = (struct dirlink *)malloc(sizeof(struct dirlink));
       if (dlink != NULL) {
@@ -318,7 +320,7 @@ void BLI_filelist_entry_owner_to_string(const struct stat *st,
 {
 #ifdef WIN32
   UNUSED_VARS(st);
-  strcpy(r_owner, "unknown");
+  BLI_strncpy(r_owner, "unknown", FILELIST_DIRENTRY_OWNER_LEN);
 #else
   struct passwd *pwuser = getpwuid(st->st_uid);
 

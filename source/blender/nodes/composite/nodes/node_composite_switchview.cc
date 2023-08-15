@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation */
+/* SPDX-FileCopyrightText: 2006 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup cmpnodes
@@ -8,8 +9,8 @@
 #include "BKE_context.h"
 #include "BKE_lib_id.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "COM_node_operation.hh"
 
@@ -53,7 +54,7 @@ static void cmp_node_switch_view_update(bNodeTree *ntree, bNode *node)
   }
 
   if (scene == nullptr) {
-    nodeRemoveAllSockets(ntree, node);
+    blender::bke::nodeRemoveAllSockets(ntree, node);
     /* make sure there is always one socket */
     cmp_node_switch_view_sanitycheck(ntree, node);
     return;
@@ -138,7 +139,7 @@ static void node_composit_buts_switch_view_ex(uiLayout *layout,
               ICON_FILE_REFRESH,
               nullptr,
               WM_OP_INVOKE_DEFAULT,
-              0,
+              UI_ITEM_NONE,
               nullptr);
 }
 
@@ -150,8 +151,16 @@ class SwitchViewOperation : public NodeOperation {
 
   void execute() override
   {
-    Result &input = get_input(context().get_view_name());
     Result &result = get_result("Image");
+
+    /* A context that is not multi view, pass the first input through as a fallback. */
+    if (context().get_view_name().is_empty()) {
+      Result &input = get_input(node().input(0)->identifier);
+      input.pass_through(result);
+      return;
+    }
+
+    Result &input = get_input(context().get_view_name());
     input.pass_through(result);
   }
 };
@@ -170,7 +179,7 @@ void register_node_type_cmp_switch_view()
   static bNodeType ntype;
 
   cmp_node_type_base(&ntype, CMP_NODE_SWITCH_VIEW, "Switch View", NODE_CLASS_CONVERTER);
-  node_type_socket_templates(&ntype, nullptr, file_ns::cmp_node_switch_view_out);
+  blender::bke::node_type_socket_templates(&ntype, nullptr, file_ns::cmp_node_switch_view_out);
   ntype.draw_buttons_ex = file_ns::node_composit_buts_switch_view_ex;
   ntype.initfunc_api = file_ns::init_switch_view;
   ntype.updatefunc = file_ns::cmp_node_switch_view_update;

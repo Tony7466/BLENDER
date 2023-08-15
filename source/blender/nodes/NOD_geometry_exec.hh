@@ -1,6 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
+
+#include "BLI_math_quaternion_types.hh"
 
 #include "FN_field.hh"
 #include "FN_lazy_function.hh"
@@ -27,11 +31,19 @@ using bke::AttributeKind;
 using bke::AttributeMetaData;
 using bke::AttributeReader;
 using bke::AttributeWriter;
+using bke::CurveComponent;
 using bke::GAttributeReader;
 using bke::GAttributeWriter;
+using bke::GeometryComponent;
+using bke::GeometryComponentEditData;
+using bke::GeometrySet;
 using bke::GSpanAttributeWriter;
+using bke::InstancesComponent;
+using bke::MeshComponent;
 using bke::MutableAttributeAccessor;
+using bke::PointCloudComponent;
 using bke::SpanAttributeWriter;
+using bke::VolumeComponent;
 using fn::Field;
 using fn::FieldContext;
 using fn::FieldEvaluator;
@@ -70,7 +82,7 @@ class GeoNodeExecParams {
 
   template<typename T>
   static inline constexpr bool is_field_base_type_v =
-      is_same_any_v<T, float, int, bool, ColorGeometry4f, float3, std::string>;
+      is_same_any_v<T, float, int, bool, ColorGeometry4f, float3, std::string, math::Quaternion>;
 
   /**
    * Get the input value for the input socket with the given identifier.
@@ -160,14 +172,7 @@ class GeoNodeExecParams {
 
   geo_eval_log::GeoTreeLogger *get_local_tree_logger() const
   {
-    GeoNodesLFUserData *user_data = this->user_data();
-    BLI_assert(user_data != nullptr);
-    const ComputeContext *compute_context = user_data->compute_context;
-    BLI_assert(compute_context != nullptr);
-    if (user_data->modifier_data->eval_log == nullptr) {
-      return nullptr;
-    }
-    return &user_data->modifier_data->eval_log->get_local_tree_logger(*compute_context);
+    return this->local_user_data()->tree_logger;
   }
 
   /**
@@ -202,6 +207,9 @@ class GeoNodeExecParams {
       if (data->modifier_data) {
         return data->modifier_data->self_object;
       }
+      if (data->operator_data) {
+        return data->operator_data->self_object;
+      }
     }
     return nullptr;
   }
@@ -212,13 +220,21 @@ class GeoNodeExecParams {
       if (data->modifier_data) {
         return data->modifier_data->depsgraph;
       }
+      if (data->operator_data) {
+        return data->operator_data->depsgraph;
+      }
     }
     return nullptr;
   }
 
   GeoNodesLFUserData *user_data() const
   {
-    return dynamic_cast<GeoNodesLFUserData *>(lf_context_.user_data);
+    return static_cast<GeoNodesLFUserData *>(lf_context_.user_data);
+  }
+
+  GeoNodesLFLocalUserData *local_user_data() const
+  {
+    return static_cast<GeoNodesLFLocalUserData *>(lf_context_.local_user_data);
   }
 
   /**

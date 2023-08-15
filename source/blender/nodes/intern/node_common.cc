@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation */
+/* SPDX-FileCopyrightText: 2007 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup nodes
@@ -12,6 +13,7 @@
 
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
+#include "BLI_math_euler.hh"
 #include "BLI_multi_value_map.hh"
 #include "BLI_set.hh"
 #include "BLI_stack.hh"
@@ -21,11 +23,11 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -33,7 +35,7 @@
 #include "NOD_common.h"
 #include "NOD_node_declaration.hh"
 #include "NOD_register.hh"
-#include "NOD_socket.h"
+#include "NOD_socket.hh"
 #include "NOD_socket_declarations.hh"
 #include "NOD_socket_declarations_geometry.hh"
 #include "node_common.h"
@@ -206,6 +208,13 @@ static SocketDeclarationPtr declaration_for_interface_socket(const bNodeTree &nt
       dst = std::move(decl);
       break;
     }
+    case SOCK_ROTATION: {
+      const auto &value = *io_socket.default_value_typed<bNodeSocketValueRotation>();
+      std::unique_ptr<decl::Rotation> decl = std::make_unique<decl::Rotation>();
+      decl->default_value = math::EulerXYZ(float3(value.value_euler));
+      dst = std::move(decl);
+      break;
+    }
     case SOCK_INT: {
       const auto &value = *io_socket.default_value_typed<bNodeSocketValueInt>();
       std::unique_ptr<decl::Int> decl = std::make_unique<decl::Int>();
@@ -317,11 +326,11 @@ void register_node_type_frame()
   bNodeType *ntype = MEM_cnew<bNodeType>("frame node type");
   ntype->free_self = (void (*)(bNodeType *))MEM_freeN;
 
-  node_type_base(ntype, NODE_FRAME, "Frame", NODE_CLASS_LAYOUT);
+  blender::bke::node_type_base(ntype, NODE_FRAME, "Frame", NODE_CLASS_LAYOUT);
   ntype->initfunc = node_frame_init;
   ntype->gather_add_node_search_ops = blender::nodes::search_node_add_ops_for_basic_node;
   node_type_storage(ntype, "NodeFrame", node_free_standard_storage, node_copy_standard_storage);
-  node_type_size(ntype, 150, 100, 0);
+  blender::bke::node_type_size(ntype, 150, 100, 0);
   ntype->flag |= NODE_BACKGROUND;
 
   nodeRegisterType(ntype);
@@ -348,7 +357,7 @@ void register_node_type_reroute()
   bNodeType *ntype = MEM_cnew<bNodeType>("frame node type");
   ntype->free_self = (void (*)(bNodeType *))MEM_freeN;
 
-  node_type_base(ntype, NODE_REROUTE, "Reroute", NODE_CLASS_LAYOUT);
+  blender::bke::node_type_base(ntype, NODE_REROUTE, "Reroute", NODE_CLASS_LAYOUT);
   ntype->initfunc = node_reroute_init;
   ntype->gather_add_node_search_ops = blender::nodes::search_node_add_ops_for_basic_node;
 
@@ -438,15 +447,15 @@ void ntree_update_reroute_nodes(bNodeTree *ntree)
     bNodeSocket *output_socket = (bNodeSocket *)reroute_node->outputs.first;
 
     if (input_socket->typeinfo != socket_type) {
-      nodeModifySocketType(ntree, reroute_node, input_socket, socket_type->idname);
+      blender::bke::nodeModifySocketType(ntree, reroute_node, input_socket, socket_type->idname);
     }
     if (output_socket->typeinfo != socket_type) {
-      nodeModifySocketType(ntree, reroute_node, output_socket, socket_type->idname);
+      blender::bke::nodeModifySocketType(ntree, reroute_node, output_socket, socket_type->idname);
     }
   }
 }
 
-bool BKE_node_is_connected_to_output(const bNodeTree *ntree, const bNode *node)
+bool blender::bke::node_is_connected_to_output(const bNodeTree *ntree, const bNode *node)
 {
   ntree->ensure_topology_cache();
   Stack<const bNode *> nodes_to_check;
@@ -479,8 +488,7 @@ bool BKE_node_is_connected_to_output(const bNodeTree *ntree, const bNode *node)
 
 bNodeSocket *node_group_input_find_socket(bNode *node, const char *identifier)
 {
-  bNodeSocket *sock;
-  for (sock = (bNodeSocket *)node->outputs.first; sock; sock = sock->next) {
+  LISTBASE_FOREACH (bNodeSocket *, sock, &node->outputs) {
     if (STREQ(sock->identifier, identifier)) {
       return sock;
     }
@@ -523,7 +531,7 @@ static bool group_input_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *li
     /* Don't connect to other "extend" sockets. */
     return false;
   }
-  const bNodeSocket *io_socket = ntreeAddSocketInterfaceFromSocket(
+  const bNodeSocket *io_socket = blender::bke::ntreeAddSocketInterfaceFromSocket(
       ntree, link->tonode, link->tosock);
   if (!io_socket) {
     return false;
@@ -544,7 +552,7 @@ static bool group_output_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *l
     /* Don't connect to other "extend" sockets. */
     return false;
   }
-  const bNodeSocket *io_socket = ntreeAddSocketInterfaceFromSocket(
+  const bNodeSocket *io_socket = blender::bke::ntreeAddSocketInterfaceFromSocket(
       ntree, link->fromnode, link->fromsock);
   if (!io_socket) {
     return false;
@@ -562,8 +570,8 @@ void register_node_type_group_input()
   bNodeType *ntype = MEM_cnew<bNodeType>("node type");
   ntype->free_self = (void (*)(bNodeType *))MEM_freeN;
 
-  node_type_base(ntype, NODE_GROUP_INPUT, "Group Input", NODE_CLASS_INTERFACE);
-  node_type_size(ntype, 140, 80, 400);
+  blender::bke::node_type_base(ntype, NODE_GROUP_INPUT, "Group Input", NODE_CLASS_INTERFACE);
+  blender::bke::node_type_size(ntype, 140, 80, 400);
   ntype->gather_add_node_search_ops = blender::nodes::search_node_add_ops_for_basic_node;
   ntype->declare_dynamic = blender::nodes::group_input_declare_dynamic;
   ntype->insert_link = blender::nodes::group_input_insert_link;
@@ -573,8 +581,7 @@ void register_node_type_group_input()
 
 bNodeSocket *node_group_output_find_socket(bNode *node, const char *identifier)
 {
-  bNodeSocket *sock;
-  for (sock = (bNodeSocket *)node->inputs.first; sock; sock = sock->next) {
+  LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
     if (STREQ(sock->identifier, identifier)) {
       return sock;
     }
@@ -588,8 +595,8 @@ void register_node_type_group_output()
   bNodeType *ntype = MEM_cnew<bNodeType>("node type");
   ntype->free_self = (void (*)(bNodeType *))MEM_freeN;
 
-  node_type_base(ntype, NODE_GROUP_OUTPUT, "Group Output", NODE_CLASS_INTERFACE);
-  node_type_size(ntype, 140, 80, 400);
+  blender::bke::node_type_base(ntype, NODE_GROUP_OUTPUT, "Group Output", NODE_CLASS_INTERFACE);
+  blender::bke::node_type_size(ntype, 140, 80, 400);
   ntype->gather_add_node_search_ops = blender::nodes::search_node_add_ops_for_basic_node;
   ntype->declare_dynamic = blender::nodes::group_output_declare_dynamic;
   ntype->insert_link = blender::nodes::group_output_insert_link;
