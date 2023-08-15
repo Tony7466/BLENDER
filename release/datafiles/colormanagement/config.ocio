@@ -328,11 +328,9 @@ colorspaces:
       children:
         - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear FilmLight E-Gamut}
         - !<MatrixTransform> {matrix: [0.960599732262383, 0.0196075412762159, 0.019792726461401, 0, 0.0105997322623829, 0.969607541276216, 0.0197927264614012, 0, 0.0105997322623829, 0.0196075412762162, 0.969792726461401, 0, 0, 0, 0, 1]}
-        - !<BuiltinTransform> {style: CURVE - LINEAR_to_ST-2084}
-        - !<ExponentTransform> {value: 0.5}
+        - !<FileTransform> {src: Guard_Rail_Shaper_EOTF.spi1d, interpolation: linear, direction: inverse}
         - !<FileTransform> {src: luminance_compensation_srgb.cube, interpolation: best}
-        - !<ExponentTransform> {value: 0.5, direction: inverse}
-        - !<BuiltinTransform> {style: CURVE - LINEAR_to_ST-2084, direction: inverse}
+        - !<FileTransform> {src: Guard_Rail_Shaper_EOTF.spi1d, interpolation: linear}
         - !<MatrixTransform> {matrix: [0.960599732262383, 0.0196075412762159, 0.019792726461401, 0, 0.0105997322623829, 0.969607541276216, 0.0197927264614012, 0, 0.0105997322623829, 0.0196075412762162, 0.969792726461401, 0, 0, 0, 0, 1], direction: inverse}
         - !<ColorSpaceTransform> {src: Linear FilmLight E-Gamut, dst: Linear Rec.709}
         - !<RangeTransform> {min_in_value: 0, min_out_value: 0}
@@ -349,11 +347,9 @@ colorspaces:
       children:
         - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear FilmLight E-Gamut}
         - !<MatrixTransform> {matrix: [0.960599732262383, 0.0196075412762159, 0.019792726461401, 0, 0.0105997322623829, 0.969607541276216, 0.0197927264614012, 0, 0.0105997322623829, 0.0196075412762162, 0.969792726461401, 0, 0, 0, 0, 1]}
-        - !<BuiltinTransform> {style: CURVE - LINEAR_to_ST-2084}
-        - !<ExponentTransform> {value: 0.5}
+        - !<FileTransform> {src: Guard_Rail_Shaper_EOTF.spi1d, interpolation: linear, direction: inverse}
         - !<FileTransform> {src: luminance_compensation_p3.cube, interpolation: best}
-        - !<ExponentTransform> {value: 0.5, direction: inverse}
-        - !<BuiltinTransform> {style: CURVE - LINEAR_to_ST-2084, direction: inverse}
+        - !<FileTransform> {src: Guard_Rail_Shaper_EOTF.spi1d, interpolation: linear}
         - !<MatrixTransform> {matrix: [0.960599732262383, 0.0196075412762159, 0.019792726461401, 0, 0.0105997322623829, 0.969607541276216, 0.0197927264614012, 0, 0.0105997322623829, 0.0196075412762162, 0.969792726461401, 0, 0, 0, 0, 1], direction: inverse}
         - !<ColorSpaceTransform> {src: Linear FilmLight E-Gamut, dst: Linear DCI-P3 D65}
         - !<RangeTransform> {min_in_value: 0, min_out_value: 0}
@@ -370,9 +366,9 @@ colorspaces:
     from_scene_reference: !<GroupTransform>
       children:
         - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Luminance Compensation Rec.2020}
-        - !<FileTransform> {src: Guard_Rail_Higher_Shaper_EOTF.spi1d, interpolation: linear, direction: inverse}
+        - !<FileTransform> {src: Guard_Rail_Shaper_EOTF.spi1d, interpolation: linear, direction: inverse}
         - !<FileTransform> {src: guard_rail_higher.cube, interpolation: best}
-        - !<FileTransform> {src: Guard_Rail_Higher_Shaper_EOTF.spi1d, interpolation: linear}
+        - !<FileTransform> {src: Guard_Rail_Shaper_EOTF.spi1d, interpolation: linear}
         - !<ColorSpaceTransform> {src: Linear Rec.2020, dst: Rec.2020}
         - !<RangeTransform> {max_in_value: 1, max_out_value: 1}
     to_scene_reference: !<GroupTransform>
@@ -390,9 +386,9 @@ colorspaces:
     from_scene_reference: !<GroupTransform>
       children:
         - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Luminance Compensation sRGB}
-        - !<FileTransform> {src: Guard_Rail_Higher_Shaper_EOTF.spi1d, interpolation: linear, direction: inverse}
+        - !<FileTransform> {src: Guard_Rail_Shaper_EOTF.spi1d, interpolation: linear, direction: inverse}
         - !<FileTransform> {src: guard_rail_higher.cube, interpolation: best}
-        - !<FileTransform> {src: Guard_Rail_Higher_Shaper_EOTF.spi1d, interpolation: linear}
+        - !<FileTransform> {src: Guard_Rail_Shaper_EOTF.spi1d, interpolation: linear}
         - !<ColorSpaceTransform> {src: Linear Rec.709, dst: sRGB}
         - !<RangeTransform> {max_in_value: 1, max_out_value: 1}
     to_scene_reference: !<GroupTransform>
@@ -427,9 +423,9 @@ colorspaces:
     from_scene_reference: !<GroupTransform>
       children:
         - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Luminance Compensation P3}
-        - !<FileTransform> {src: Guard_Rail_Higher_Shaper_EOTF.spi1d, interpolation: linear, direction: inverse}
+        - !<FileTransform> {src: Guard_Rail_Shaper_EOTF.spi1d, interpolation: linear, direction: inverse}
         - !<FileTransform> {src: guard_rail_higher.cube, interpolation: best}
-        - !<FileTransform> {src: Guard_Rail_Higher_Shaper_EOTF.spi1d, interpolation: linear}
+        - !<FileTransform> {src: Guard_Rail_Shaper_EOTF.spi1d, interpolation: linear}
         - !<ColorSpaceTransform> {src: Linear DCI-P3 D65, dst: Display P3}
         - !<RangeTransform> {max_in_value: 1, max_out_value: 1}
     to_scene_reference: !<GroupTransform>
@@ -469,22 +465,15 @@ colorspaces:
     isdata: false
     from_scene_reference: !<GroupTransform>
       children:
-        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: AgX Log}
-        - !<AllocationTransform> {allocation: uniform, vars: [0, 0.82]}
-        - !<FileTransform> {src: filmic_desat65cube.spi3d, interpolation: best}
-        - !<AllocationTransform> {allocation: uniform, vars: [0, 0.82], direction: inverse}
-        - !<FileTransform> {src: AgX_Formation.cube, interpolation: best}
-        - !<ColorSpaceTransform> {src: Rec.2020, dst: Linear Rec.2020}
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear FilmLight E-Gamut}
+        - !<AllocationTransform> {allocation: lg2, vars: [-12.47393, 12.5260688117]}
+        - !<FileTransform> {src: AgX_Base_Rec2020.cube, interpolation: best}
         # outset = [0.4, 0.22, 0.04]
-        - !<MatrixTransform> {matrix: [0.899796955911611, 0.0871996192028351, 0.013003424885555, 0, 0.11142098895748, 0.875575586156966, 0.0130034248855548, 0, 0.11142098895748, 0.0871996192028349, 0.801379391839686, 0, 0, 0, 0, 1], direction: inverse}
-        - !<ColorSpaceTransform> {src: Linear Rec.2020, dst: Rec.2020}
     to_scene_reference: !<GroupTransform>
       children:
-        - !<ColorSpaceTransform> {src: Rec.2020, dst: Linear Rec.2020}
-        - !<MatrixTransform> {matrix: [0.899796955911611, 0.0871996192028351, 0.013003424885555, 0, 0.11142098895748, 0.875575586156966, 0.0130034248855548, 0, 0.11142098895748, 0.0871996192028349, 0.801379391839686, 0, 0, 0, 0, 1]}
-        - !<ColorSpaceTransform> {src: Linear Rec.2020, dst: Rec.2020}
-        - !<FileTransform> {src: AgX_Formation.cube, interpolation: best, direction: inverse}
-        - !<ColorSpaceTransform> {src: AgX Log, dst: Linear CIE-XYZ E}
+        - !<FileTransform> {src: Inverse_AgX_Base_Rec2020.cube, interpolation: best}
+        - !<AllocationTransform> {allocation: lg2, vars: [-12.47393, 4.026069], direction: inverse}
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear Rec.2020, direction: inverse}
 
   - !<ColorSpace>
     name: AgX Base sRGB
@@ -496,12 +485,15 @@ colorspaces:
     isdata: false
     from_scene_reference: !<GroupTransform>
       children:
-        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: AgX Base Rec.2020}
-        - !<ColorSpaceTransform> {src: Rec.2020, dst: Guard Rail sRGB}
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear FilmLight E-Gamut}
+        - !<AllocationTransform> {allocation: lg2, vars: [-12.47393, 12.5260688117]}
+        - !<FileTransform> {src: AgX_Base_sRGB.cube, interpolation: best}
+        - !<ExponentTransform> {value: 2.4}
+        - !<ColorSpaceTransform> {src: Linear Rec.709, dst: sRGB}
     to_scene_reference: !<GroupTransform>
       children:
-        - !<ColorSpaceTransform> {src: sRGB, dst: Rec.2020}
-        - !<ColorSpaceTransform> {src: AgX Base Rec.2020, dst: Linear CIE-XYZ E}
+       - !<ColorSpaceTransform> {src: sRGB, dst: Rec.2020}
+       - !<ColorSpaceTransform> {src: AgX Base Rec.2020, dst: Linear CIE-XYZ E}
 
   - !<ColorSpace>
     name: AgX Base Display P3
@@ -513,12 +505,15 @@ colorspaces:
     isdata: false
     from_scene_reference: !<GroupTransform>
       children:
-        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: AgX Base Rec.2020}
-        - !<ColorSpaceTransform> {src: Rec.2020, dst: Guard Rail P3}
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear FilmLight E-Gamut}
+        - !<AllocationTransform> {allocation: lg2, vars: [-12.47393, 12.5260688117]}
+        - !<FileTransform> {src: AgX_Base_P3.cube, interpolation: best}
+        - !<ExponentTransform> {value: 2.4}
+        - !<ColorSpaceTransform> {src: Linear DCI-P3 D65, dst: Display P3}
     to_scene_reference: !<GroupTransform>
       children:
-        - !<ColorSpaceTransform> {src: Display P3, dst: Rec.2020}
-        - !<ColorSpaceTransform> {src: AgX Base Rec.2020, dst: Linear CIE-XYZ E}
+       - !<ColorSpaceTransform> {src: Display P3, dst: Rec.2020}
+       - !<ColorSpaceTransform> {src: AgX Base Rec.2020, dst: Linear CIE-XYZ E}
 
   - !<ColorSpace>
     name: AgX Base Rec.1886
@@ -531,12 +526,13 @@ colorspaces:
     isdata: false
     from_scene_reference: !<GroupTransform>
       children:
-        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: AgX Base sRGB}
-        - !<ColorSpaceTransform> {src: sRGB, dst: Rec.1886}
+        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear FilmLight E-Gamut}
+        - !<AllocationTransform> {allocation: lg2, vars: [-12.47393, 12.5260688117]}
+        - !<FileTransform> {src: AgX_Base_sRGB.cube, interpolation: best}
     to_scene_reference: !<GroupTransform>
       children:
-        - !<ColorSpaceTransform> {src: Rec.1886, dst: Rec.2020}
-        - !<ColorSpaceTransform> {src: AgX Base Rec.2020, dst: Linear CIE-XYZ E}
+       - !<ColorSpaceTransform> {src: Rec.1886, dst: Rec.2020}
+       - !<ColorSpaceTransform> {src: AgX Base Rec.2020, dst: Linear CIE-XYZ E}
 
   - !<ColorSpace>
     name: AgX False Color Rec.709
