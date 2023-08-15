@@ -35,7 +35,7 @@
 #include "DNA_meshdata_types.h"
 
 #include "WM_api.hh"
-#include "WM_toolsystem.hh"
+#include "WM_toolsystem.h"
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
@@ -52,7 +52,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "gpencil_intern.h"
-#include "paint_intern.h"
+#include "paint_intern.hh"
 
 /* ************************************************ */
 /* General Brush Editing Context */
@@ -1695,7 +1695,7 @@ void GPENCIL_OT_weight_sample(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /*  Weight Gradient Operator */
 
-typedef struct tGPWeightGradient_vertex {
+struct tGPWeightGradient_vertex {
   bGPDstroke *gps;
   int point_index;
   int co[2];
@@ -1703,14 +1703,14 @@ typedef struct tGPWeightGradient_vertex {
   float mf_falloff;
   MDeformWeight *dw;
   short flag;
-} tGPWeightGradient_vertex;
+};
 
-typedef enum tGPWeightGradient_flag {
+enum tGPWeightGradient_flag {
   GP_WEIGHT_GRADIENT_VERTEX_DW_EXISTS = (1 << 0),
   GP_WEIGHT_GRADIENT_VERTEX_IS_MODIFIED = (1 << 1),
 } tGPWeightGradient_flag;
 
-typedef struct tGPWeightGradient_data {
+struct tGPWeightGradient_data {
   /* Number of cached vertex weights. */
   int vertex_tot;
   /* Array of cached vertex weights. */
@@ -1727,13 +1727,16 @@ typedef struct tGPWeightGradient_data {
   bool *vgroup_bone_deformed;
   /* Boolean array of locked vertex groups. */
   bool *vgroup_locked;
-} tGPWeightGradient_data;
+};
 
+/**
+ * Cache the vertex weights and coordinates in 2D space for all stroke points in a GP frame.
+ */
 static void gpencil_weight_gradient_cache_frame(bContext *C,
                                                 Object *ob,
                                                 bGPDframe *gpf,
                                                 tGPWeightGradient_data *vertex_data,
-                                                int *cache_index,
+                                                int *r_cache_index,
                                                 GP_SpaceConversion *gsc,
                                                 const int vertex_group,
                                                 const float mf_falloff,
@@ -1758,9 +1761,9 @@ static void gpencil_weight_gradient_cache_frame(bContext *C,
       if (i >= gps_eval->totpoints) {
         break;
       }
-      tGPWeightGradient_vertex *cached_vertex = &vertex_data->vertex_cache[*cache_index];
+      tGPWeightGradient_vertex *cached_vertex = &vertex_data->vertex_cache[*r_cache_index];
       bGPDspoint pt_world;
-      bGPDspoint *pt = &gps_eval->points[i];
+      const bGPDspoint *pt = &gps_eval->points[i];
       gpencil_point_to_world_space(pt, diff_mat, &pt_world);
       gpencil_point_to_xy(gsc, gps_eval, &pt_world, &co_2d[0], &co_2d[1]);
 
@@ -1770,19 +1773,19 @@ static void gpencil_weight_gradient_cache_frame(bContext *C,
       cached_vertex->gps = gps;
       cached_vertex->point_index = i;
       cached_vertex->mf_falloff = mf_falloff;
-      cached_vertex->dw = NULL;
+      cached_vertex->dw = nullptr;
 
-      if (gps->dvert != NULL) {
+      if (gps->dvert != nullptr) {
         MDeformVert *dvert = &gps->dvert[i];
         MDeformWeight *dw = BKE_defvert_find_index(dvert, vertex_group);
-        if (dw != NULL) {
+        if (dw != nullptr) {
           cached_vertex->flag |= GP_WEIGHT_GRADIENT_VERTEX_DW_EXISTS;
           cached_vertex->dw = dw;
           cached_vertex->weight_orig = dw->weight;
         }
       }
 
-      (*cache_index)++;
+      (*r_cache_index)++;
     }
   }
 }
@@ -1801,8 +1804,8 @@ static int gpencil_weight_gradient_vertex_count_frame_get(bContext *C, Object *o
       continue;
     }
 
-    bGPDstroke *gps = (gps_eval->runtime.gps_orig) ? gps_eval->runtime.gps_orig : gps_eval;
-    vertex_tot += min(gps->totpoints, gps_eval->totpoints);
+    const bGPDstroke *gps = (gps_eval->runtime.gps_orig) ? gps_eval->runtime.gps_orig : gps_eval;
+    vertex_tot += MIN2(gps->totpoints, gps_eval->totpoints);
   }
 
   return vertex_tot;
@@ -1816,7 +1819,7 @@ static int gpencil_weight_gradient_vertex_count_total_get(bContext *C,
   int vertex_tot = 0;
 
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-    if (!BKE_gpencil_layer_is_editable(gpl) || (gpl->actframe == NULL)) {
+    if (!BKE_gpencil_layer_is_editable(gpl) || (gpl->actframe == nullptr)) {
       continue;
     }
     if (is_multiframe) {
@@ -1839,24 +1842,25 @@ static int gpencil_weight_gradient_exec(bContext *C, wmOperator *op)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   ToolSettings *ts = CTX_data_tool_settings(C);
-  wmGesture *gesture = (wmGesture *)(op->customdata);
-  tGPWeightGradient_data *tool_data = NULL;
-  tGP_BrushWeightpaintData *gso = NULL;
-  const bool is_interactive = (gesture != NULL);
+  wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
+  tGPWeightGradient_data *tool_data = nullptr;
+  tGP_BrushWeightpaintData *gso = nullptr;
+  const bool is_interactive = (gesture != nullptr);
 
   /* Check active GP object. */
   Object *ob_active = CTX_data_active_object(C);
-  if (ob_active == NULL) {
+  if (ob_active == nullptr) {
     return OPERATOR_CANCELLED;
   }
   Object *ob_eval = (Object *)DEG_get_evaluated_id(depsgraph, &ob_active->id);
-  bGPdata *gpd = (bGPdata *)ob_eval->data;
-  if (gpd == NULL) {
+  bGPdata *gpd = static_cast<bGPdata *>(ob_eval->data);
+  if (gpd == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
   /* Init operator data. */
-  gso = MEM_callocN(sizeof(tGP_BrushWeightpaintData), "tGP_BrushWeightpaintData");
+  gso = static_cast<tGP_BrushWeightpaintData *>(
+      MEM_callocN(sizeof(tGP_BrushWeightpaintData), "tGP_BrushWeightpaintData"));
   gso->bmain = CTX_data_main(C);
   gso->object = ob_active;
   gso->gpd = ED_gpencil_data_get_active(C);
@@ -1869,12 +1873,14 @@ static int gpencil_weight_gradient_exec(bContext *C, wmOperator *op)
 
   /* Ensure active vertex group. */
   gso->vrgroup = gpd->vertex_group_active_index - 1;
-  bDeformGroup *defgroup = BLI_findlink(&gso->gpd->vertex_group_names, gso->vrgroup);
+  bDeformGroup *defgroup = static_cast<bDeformGroup *>(
+      BLI_findlink(&gso->gpd->vertex_group_names, gso->vrgroup));
   if (!defgroup) {
     gso->vrgroup = -1;
   }
   gpencil_vertex_group_ensure(gso);
-  defgroup = BLI_findlink(&gso->gpd->vertex_group_names, gso->vrgroup);
+  defgroup = static_cast<bDeformGroup *>(
+      BLI_findlink(&gso->gpd->vertex_group_names, gso->vrgroup));
   if (defgroup->flag & DG_LOCK_WEIGHT) {
     return OPERATOR_CANCELLED;
   }
@@ -1890,16 +1896,17 @@ static int gpencil_weight_gradient_exec(bContext *C, wmOperator *op)
   gso->auto_normalize = (ts->auto_normalize && gso->vrgroup != -1);
 
   /* Create tool data and cache. */
-  if ((!is_interactive) || (gesture->user_data.data == NULL)) {
-    tool_data = MEM_mallocN(sizeof(tGPWeightGradient_data), __func__);
+  if ((!is_interactive) || (gesture->user_data.data == nullptr)) {
+    tool_data = static_cast<tGPWeightGradient_data *>(
+        MEM_mallocN(sizeof(tGPWeightGradient_data), __func__));
 
     /* Count total number of vertices that can be affacted by the gradient tool. */
     tool_data->vertex_tot = gpencil_weight_gradient_vertex_count_total_get(
         C, ob_active, gpd, gso->is_multiframe);
 
     /* Init cache. */
-    tool_data->vertex_cache = (tGPWeightGradient_vertex *)MEM_malloc_arrayN(
-        tool_data->vertex_tot, sizeof(tGPWeightGradient_vertex), __func__);
+    tool_data->vertex_cache = static_cast<tGPWeightGradient_vertex *>(
+        MEM_malloc_arrayN(tool_data->vertex_tot, sizeof(tGPWeightGradient_vertex), __func__));
 
     if (is_interactive) {
       gesture->user_data.data = tool_data;
@@ -1911,7 +1918,7 @@ static int gpencil_weight_gradient_exec(bContext *C, wmOperator *op)
     float diff_mat[4][4];
 
     LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-      if (!BKE_gpencil_layer_is_editable(gpl) || (gpl->actframe == NULL)) {
+      if (!BKE_gpencil_layer_is_editable(gpl) || (gpl->actframe == nullptr)) {
         continue;
       }
 
@@ -1936,7 +1943,7 @@ static int gpencil_weight_gradient_exec(bContext *C, wmOperator *op)
                 gpf, gpl->actframe->framenum, f_init, f_end, ts->gp_sculpt.cur_falloff);
           }
 
-          /* Always do active frame; otherwise, only include selected frames. */
+          /* In multiframe mode, cache the active frame and the selected frames. */
           if ((gpf == gpl->actframe) || (gpf->flag & GP_FRAME_SELECT)) {
             gpencil_weight_gradient_cache_frame(C,
                                                 ob_active,
@@ -1964,18 +1971,18 @@ static int gpencil_weight_gradient_exec(bContext *C, wmOperator *op)
     }
 
     /* Setup auto-normalize. */
-    tool_data->vgroup_bone_deformed = NULL;
-    tool_data->vgroup_locked = NULL;
+    tool_data->vgroup_bone_deformed = nullptr;
+    tool_data->vgroup_locked = nullptr;
     if (gso->auto_normalize) {
       tool_data->vgroup_tot = BLI_listbase_count(&gso->gpd->vertex_group_names);
       /* Get boolean array of vertex groups deformed by bones. */
       tool_data->vgroup_bone_deformed = gpencil_vgroup_bone_deformed_map_get(
           ob_active, tool_data->vgroup_tot);
-      if (tool_data->vgroup_bone_deformed != NULL) {
+      if (tool_data->vgroup_bone_deformed != nullptr) {
         /* Get boolean array of locked vertex groups. */
         tool_data->vgroup_locked = BKE_object_defgroup_lock_flags_get(ob_active,
                                                                       tool_data->vgroup_tot);
-        if (tool_data->vgroup_locked == NULL) {
+        if (tool_data->vgroup_locked == nullptr) {
           tool_data->vgroup_locked = (bool *)MEM_callocN(sizeof(bool) * tool_data->vgroup_tot,
                                                          __func__);
         }
@@ -1988,21 +1995,24 @@ static int gpencil_weight_gradient_exec(bContext *C, wmOperator *op)
 
   /* Set interactive tool data. */
   if (is_interactive) {
-    tool_data = (tGPWeightGradient_data *)gesture->user_data.data;
+    tool_data = static_cast<tGPWeightGradient_data *>(gesture->user_data.data);
   }
   gso->vgroup_bone_deformed = tool_data->vgroup_bone_deformed;
   gso->vgroup_locked = tool_data->vgroup_locked;
   gso->vgroup_tot = tool_data->vgroup_tot;
 
-  int x_start = RNA_int_get(op->ptr, "xstart");
-  int y_start = RNA_int_get(op->ptr, "ystart");
-  int x_end = RNA_int_get(op->ptr, "xend");
-  int y_end = RNA_int_get(op->ptr, "yend");
-  const float sco_start[2] = {(float)x_start, (float)y_start};
-  const float sco_end[2] = {(float)x_end, (float)y_end};
+  const int x_start = RNA_int_get(op->ptr, "xstart");
+  const int y_start = RNA_int_get(op->ptr, "ystart");
+  const int x_end = RNA_int_get(op->ptr, "xend");
+  const int y_end = RNA_int_get(op->ptr, "yend");
+  const float sco_start[2] = {float(x_start), float(y_start)};
+  const float sco_end[2] = {float(x_end), float(y_end)};
 
   /* Gradient type (linear/radial). */
-  int gradient_type = RNA_enum_get(op->ptr, "type");
+  const int gradient_type = RNA_enum_get(op->ptr, "type");
+
+  /* Get direction: add or subtract gradient to existing weight. */
+  const int direction = (gso->brush->gpencil_settings->sculpt_flag & BRUSH_DIR_IN) ? -1 : 1;
 
   /* Get length of interactive line segment. */
   sub_v2_v2v2(tool_data->line_segment, sco_end, sco_start);
@@ -2011,9 +2021,6 @@ static int gpencil_weight_gradient_exec(bContext *C, wmOperator *op)
   if (tool_data->line_segment_len_sq == 0.0f) {
     goto finally;
   }
-
-  /* Get direction: add or subtract gradient to existing weight. */
-  int direction = (gso->brush->gpencil_settings->sculpt_flag & BRUSH_DIR_IN) ? -1 : 1;
 
   /* Update vertex weights based on interactive gradient. */
   for (int v_index = 0; v_index < tool_data->vertex_tot; v_index++) {
@@ -2034,53 +2041,54 @@ static int gpencil_weight_gradient_exec(bContext *C, wmOperator *op)
     /* Linear gradient. */
     if (gradient_type == WPAINT_GRADIENT_TYPE_LINEAR) {
       /* Get orthogonal position of vertex relative to the gradient line segment. */
-      float dist_on_line = MAX2(0.0f, dot_v2v2(vec_p_to_line, tool_data->line_segment));
+      const float dist_on_line = MAX2(0.0f, dot_v2v2(vec_p_to_line, tool_data->line_segment));
 
       /* When vertex is within reach of the line segment, add the gradient weight. */
       if (dist_on_line <= tool_data->line_segment_len_sq) {
-        if (vertex->dw == NULL) {
+        if (vertex->dw == nullptr) {
           BKE_gpencil_dvert_ensure(vertex->gps);
           dvert = &vertex->gps->dvert[vertex->point_index];
           vertex->dw = BKE_defvert_ensure_index(dvert, gso->vrgroup);
-          if (vertex->dw == NULL) {
+          if (vertex->dw == nullptr) {
             continue;
           }
         }
 
         /* Calculate new weight, with gradient tool weight, strength and falloff, and multi-frame
          * falloff. */
-        float distance_factor = dist_on_line / tool_data->line_segment_len_sq;
-        float gradient_falloff = BKE_brush_curve_strength(
+        const float distance_factor = dist_on_line / tool_data->line_segment_len_sq;
+        const float gradient_falloff = BKE_brush_curve_strength(
             gso->brush, distance_factor * tool_data->radius, tool_data->radius);
-        float add_weight = gso->brush->weight * gso->brush->alpha * gradient_falloff *
-                           vertex->mf_falloff * direction;
+        const float add_weight = gso->brush->weight * gso->brush->alpha * gradient_falloff *
+                                 vertex->mf_falloff * direction;
         vertex->dw->weight += add_weight;
         CLAMP(vertex->dw->weight, 0.0f, 1.0f);
         changed = true;
       }
     }
+
     /* Radial gradient. */
-    else if (gradient_type == WPAINT_GRADIENT_TYPE_RADIAL) {
+    if (gradient_type == WPAINT_GRADIENT_TYPE_RADIAL) {
       /* Get distance of vertex to center of gradient. */
-      float p_dist_to_center = len_v2(vec_p_to_line);
+      const float p_dist_to_center = len_v2(vec_p_to_line);
 
       /* When vertex is within the radius, add the gradient weight. */
       if (p_dist_to_center <= tool_data->radius) {
-        if (vertex->dw == NULL) {
+        if (vertex->dw == nullptr) {
           BKE_gpencil_dvert_ensure(vertex->gps);
           dvert = &vertex->gps->dvert[vertex->point_index];
           vertex->dw = BKE_defvert_ensure_index(dvert, gso->vrgroup);
-          if (vertex->dw == NULL) {
+          if (vertex->dw == nullptr) {
             continue;
           }
         }
 
         /* Calculate new weight, with gradient tool weight, strength and falloff, and multi-frame
          * falloff. */
-        float gradient_falloff = BKE_brush_curve_strength(
+        const float gradient_falloff = BKE_brush_curve_strength(
             gso->brush, p_dist_to_center, tool_data->radius);
-        float add_weight = gso->brush->weight * gso->brush->alpha * gradient_falloff *
-                           vertex->mf_falloff * direction;
+        const float add_weight = gso->brush->weight * gso->brush->alpha * gradient_falloff *
+                                 vertex->mf_falloff * direction;
         vertex->dw->weight += add_weight;
         CLAMP(vertex->dw->weight, 0.0f, 1.0f);
         changed = true;
@@ -2088,15 +2096,15 @@ static int gpencil_weight_gradient_exec(bContext *C, wmOperator *op)
     }
 
     /* Perform auto-normalize. */
-    if (changed && gso->auto_normalize && vertex->gps->dvert != NULL) {
+    if (changed && gso->auto_normalize && vertex->gps->dvert != nullptr) {
       dvert = &vertex->gps->dvert[vertex->point_index];
-      do_weight_paint_normalize_all_try(dvert, gso);
+      do_weight_paint_normalize_try(dvert, gso);
     }
   }
 
   /* Update viewport. */
   DEG_id_tag_update(&gso->gpd->id, ID_RECALC_GEOMETRY);
-  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
 
   /* Clean up. */
 finally:
@@ -2113,7 +2121,7 @@ finally:
 
 static void gpencil_weight_gradient_finish(tGPWeightGradient_data *tool_data)
 {
-  if (tool_data == NULL) {
+  if (tool_data == nullptr) {
     return;
   }
 
@@ -2125,7 +2133,7 @@ static void gpencil_weight_gradient_finish(tGPWeightGradient_data *tool_data)
 
 static void gpencil_weight_gradient_cancel(tGPWeightGradient_data *tool_data)
 {
-  if (tool_data == NULL) {
+  if (tool_data == nullptr) {
     return;
   }
 
@@ -2147,8 +2155,9 @@ static void gpencil_weight_gradient_cancel(tGPWeightGradient_data *tool_data)
 
 static int gpencil_weight_gradient_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  wmGesture *gesture = (wmGesture *)(op->customdata);
-  tGPWeightGradient_data *tool_data = (tGPWeightGradient_data *)gesture->user_data.data;
+  wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
+  tGPWeightGradient_data *tool_data = static_cast<tGPWeightGradient_data *>(
+      gesture->user_data.data);
 
   int ret = WM_gesture_straightline_modal(C, op, event);
 
@@ -2168,7 +2177,7 @@ static int gpencil_weight_gradient_modal(bContext *C, wmOperator *op, const wmEv
     /* Update viewport. */
     bGPdata *gpd = ED_gpencil_data_get_active(C);
     DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
-    WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, NULL);
+    WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
   }
   /* Operator finished. */
   else if (ret & OPERATOR_FINISHED) {
@@ -2181,9 +2190,9 @@ static int gpencil_weight_gradient_modal(bContext *C, wmOperator *op, const wmEv
 static int gpencil_weight_gradient_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   /* Check active GP object and active vertex group. */
-  Object *ob = CTX_data_active_object(C);
-  bGPdata *gpd = ED_gpencil_data_get_active(C);
-  if ((ob == NULL) || (gpd == NULL)) {
+  const Object *ob = CTX_data_active_object(C);
+  const bGPdata *gpd = ED_gpencil_data_get_active(C);
+  if ((ob == nullptr) || (gpd == nullptr)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -2194,7 +2203,7 @@ static int gpencil_weight_gradient_invoke(bContext *C, wmOperator *op, const wmE
     ARegion *region = CTX_wm_region(C);
     if (region->regiontype == RGN_TYPE_WINDOW) {
       if (event->type == LEFTMOUSE && event->val == KM_PRESS) {
-        wmGesture *gesture = (wmGesture *)(op->customdata);
+        wmGesture *gesture = static_cast<wmGesture *>(op->customdata);
         gesture->is_active = true;
       }
     }
@@ -2209,7 +2218,7 @@ void GPENCIL_OT_weight_gradient(wmOperatorType *ot)
   static const EnumPropertyItem gradient_types[] = {
       {WPAINT_GRADIENT_TYPE_LINEAR, "LINEAR", 0, "Linear", ""},
       {WPAINT_GRADIENT_TYPE_RADIAL, "RADIAL", 0, "Radial", ""},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   /* Identifiers. */
@@ -2228,7 +2237,9 @@ void GPENCIL_OT_weight_gradient(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* Properties. */
-  RNA_def_enum(ot->srna, "type", gradient_types, 0, "Type", "");
+  PropertyRNA *prop;
+  prop = RNA_def_enum(ot->srna, "type", gradient_types, 0, "Type", "");
+  RNA_def_property_flag(prop, PROP_HIDDEN);
 
   WM_operator_properties_gesture_straightline(ot, WM_CURSOR_EDIT);
 }
