@@ -24,6 +24,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
                             color SheenTint = 0.5,
                             float Coat = 0.0,
                             float CoatRoughness = 0.03,
+                            float CoatIOR = 1.5,
                             color CoatTint = color(1.0, 1.0, 1.0),
                             float IOR = 1.45,
                             float Transmission = 0.0,
@@ -98,16 +99,16 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     BSDF = mix(BSDF, MetallicBSDF, clamp(Metallic, 0.0, 1.0));
   }
 
-  if (CoatTint != color(1.0)) {
+  if (Coat > 1e-5 && CoatTint != color(1.0)) {
     float cosNI = dot(I, CoatNormal);
-    float cosNT = sqrt(1.0 - (1.0 / 1.5) * (1.0 / 1.5) * (1 - cosNI * cosNI));
-    BSDF *= pow(CoatTint, 1.0 / cosNT);
+    float cosNT = sqrt(1.0 - (1.0 / CoatIOR) * (1.0 / CoatIOR) * (1 - cosNI * cosNI));
+    BSDF *= pow(CoatTint, Coat / cosNT);
   }
 
   if (Coat > 1e-5) {
     float coat_r2 = CoatRoughness * CoatRoughness;
     closure color CoatBSDF = dielectric_bsdf(
-        CoatNormal, vector(0.0), color(1.0), color(0.0), coat_r2, coat_r2, 1.5, "ggx");
+        CoatNormal, vector(0.0), color(1.0), color(0.0), coat_r2, coat_r2, CoatIOR, "ggx");
     BSDF = layer(Coat * CoatBSDF, BSDF);
   }
 

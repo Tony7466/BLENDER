@@ -69,8 +69,9 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
   switch (type) {
     case CLOSURE_BSDF_PRINCIPLED_ID: {
       uint specular_offset, roughness_offset, specular_tint_offset, anisotropic_offset,
-          sheen_offset, sheen_tint_offset, coat_offset, coat_roughness_offset, eta_offset,
-          transmission_offset, anisotropic_rotation_offset, coat_tint_offset;
+          sheen_offset, sheen_tint_offset, sheen_roughness_offset, coat_offset,
+          coat_roughness_offset, coat_ior_offset, eta_offset, transmission_offset,
+          anisotropic_rotation_offset, coat_tint_offset, dummy;
       uint4 data_node2 = read_node(kg, &offset);
 
       float3 T = stack_load_float3(stack, data_node.y);
@@ -80,11 +81,16 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
                              &specular_tint_offset,
                              &anisotropic_offset);
       svm_unpack_node_uchar4(
-          data_node.w, &sheen_offset, &sheen_tint_offset, &coat_offset, &coat_roughness_offset);
+          data_node.w, &sheen_offset, &sheen_tint_offset, &sheen_roughness_offset, &dummy);
       svm_unpack_node_uchar4(data_node2.x,
                              &eta_offset,
                              &transmission_offset,
                              &anisotropic_rotation_offset,
+                             &dummy);
+      svm_unpack_node_uchar4(data_node2.w,
+                             &coat_offset,
+                             &coat_roughness_offset,
+                             &coat_ior_offset,
                              &coat_tint_offset);
 
       // get Disney principled parameters
@@ -96,9 +102,10 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       float anisotropic = stack_load_float(stack, anisotropic_offset);
       float sheen = stack_load_float(stack, sheen_offset);
       float3 sheen_tint = stack_load_float3(stack, sheen_tint_offset);
-      float sheen_roughness = stack_load_float(stack, data_node2.w);
+      float sheen_roughness = stack_load_float(stack, sheen_roughness_offset);
       float coat = stack_load_float(stack, coat_offset);
       float coat_roughness = stack_load_float(stack, coat_roughness_offset);
+      float coat_ior = fmaxf(stack_load_float(stack, coat_ior_offset), 1.0f);
       float3 coat_tint = stack_load_float3(stack, coat_tint_offset);
       float transmission = saturatef(stack_load_float(stack, transmission_offset));
       float anisotropic_rotation = stack_load_float(stack, anisotropic_rotation_offset);
@@ -187,7 +194,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         if (bsdf) {
           bsdf->N = coat_normal;
           bsdf->T = zero_float3();
-          bsdf->ior = 1.5f;
+          bsdf->ior = coat_ior;
 
           bsdf->alpha_x = bsdf->alpha_y = sqr(coat_roughness);
 
@@ -201,7 +208,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         }
       }
 
-      if (!isequal(coat_tint, one_float3())) {
+      if (coat > CLOSURE_WEIGHT_CUTOFF && !isequal(coat_tint, one_float3())) {
         /* Tint is normalized to perpendicular incidence.
          * Therefore, if we define the coat thickness as length 1, the length along the ray is
          * t = sqrt(1+tan^2(angle(N, I))) = sqrt(1+tan^2(acos(dotNI))) = 1 / dotNI.
@@ -213,11 +220,11 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
          * path follows the same angle, and that there aren't multiple internal bounces.
          */
         float cosNI = dot(sd->wi, coat_normal);
-        /* Refract incoming direction into coat material, which has a fixed IOR of 1.5.
+        /* Refract incoming direction into coat material.
          * TIR is no concern here since we're always coming from the outside. */
-        float cosNT = sqrtf(1.0f - sqr(1.0f / 1.5f) * (1 - sqr(cosNI)));
+        float cosNT = sqrtf(1.0f - sqr(1.0f / coat_ior) * (1 - sqr(cosNI)));
         float optical_depth = 1.0f / cosNT;
-        weight *= power(rgb_to_spectrum(coat_tint), optical_depth);
+        weight *= power(rgb_to_spectrum(coat_tint), coat * optical_depth);
       }
 
       /* Metallic component */

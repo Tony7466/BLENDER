@@ -377,26 +377,18 @@ static void version_principled_bsdf_sheen(bNodeTree *ntree)
 /* Convert coat inputs on the Principled BSDF. */
 static void version_principled_bsdf_coat(bNodeTree *ntree)
 {
-  /* Adjust coat weight - the old Principled BSDF used to hardcode a 0.25 multiplier,
-   * the new one doesn't, so we need to multiply old weights by 0.25 here. */
-  auto check_node = [](const bNode *node) { return (node->type == SH_NODE_BSDF_PRINCIPLED); };
-  auto update_coat_socket = [](bNode *, bNodeSocket *coat) {
-    float *value = version_cycles_node_socket_float_value(coat);
-    *value *= 0.25f;
-  };
-  auto update_coat_link =
-      [ntree](bNode *fromnode, bNodeSocket *fromsock, bNode *tonode, bNodeSocket *tosock) {
-        bNode *node = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
-        node->custom1 = NODE_MATH_MULTIPLY;
-        node->locx = 0.5f * (fromnode->locx + tonode->locx);
-        node->locy = 0.5f * (fromnode->locy + tonode->locy);
-
-        bNodeSocket *in = static_cast<bNodeSocket *>(node->inputs.first);
-        *version_cycles_node_socket_float_value(in->next) = 0.25f;
-        nodeAddLink(ntree, fromnode, fromsock, node, in);
-        nodeAddLink(ntree, node, static_cast<bNodeSocket *>(node->outputs.first), tonode, tosock);
-      };
-  version_update_node_input(ntree, check_node, "Clearcoat", update_coat_socket, update_coat_link);
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->type != SH_NODE_BSDF_PRINCIPLED) {
+      continue;
+    }
+    if (nodeFindSocket(node, SOCK_IN, "Coat IOR") != nullptr) {
+      continue;
+    }
+    bNodeSocket *input = nodeAddStaticSocket(
+        ntree, node, SOCK_IN, SOCK_FLOAT, PROP_NONE, "Coat IOR", "Coat IOR");
+    /* Default to 1.2 for old files to account for change in intensity. */
+    *version_cycles_node_socket_float_value(input) = 1.2f;
+  }
 
   /* Rename sockets. */
   version_node_input_socket_name(ntree, SH_NODE_BSDF_PRINCIPLED, "Clearcoat", "Coat");
