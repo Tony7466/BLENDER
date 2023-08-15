@@ -448,11 +448,6 @@ colorspaces:
         # rotate = [3.0, -1, -2.0], inset = [0.4, 0.22, 0.13]
         - !<MatrixTransform> {matrix: [0.856627153315983, 0.0951212405381588, 0.0482516061458583, 0, 0.137318972929847, 0.761241990602591, 0.101439036467562, 0, 0.11189821299995, 0.0767994186031903, 0.811302368396859, 0, 0, 0, 0, 1]}
         - !<AllocationTransform> {allocation: lg2, vars: [-12.47393, 12.5260688117]}
-    to_scene_reference: !<GroupTransform>
-      children:
-        - !<AllocationTransform> {allocation: lg2, vars: [-12.47393, 12.5260688117], direction: inverse}
-        - !<MatrixTransform> {matrix: [0.856627153315983, 0.0951212405381588, 0.0482516061458583, 0, 0.137318972929847, 0.761241990602591, 0.101439036467562, 0, 0.11189821299995, 0.0767994186031903, 0.811302368396859, 0, 0, 0, 0, 1], direction: inverse}
-        - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Luminance Compensation Rec.2020, direction: inverse}
 
   - !<ColorSpace>
     name: AgX Base Rec.2020
