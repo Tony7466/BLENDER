@@ -41,7 +41,7 @@
 
 #include "BKE_callbacks.h"
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
 #include "BLI_task.h"
@@ -99,7 +99,7 @@
 
 #include "RE_engine.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "SEQ_edit.h"
 #include "SEQ_iterator.h"
@@ -1009,9 +1009,6 @@ static void scene_blend_write(BlendWriter *writer, ID *id, const void *id_addres
   BLO_write_id_struct(writer, Scene, id_address, &sce->id);
   BKE_id_blend_write(writer, &sce->id);
 
-  if (sce->adt) {
-    BKE_animdata_blend_write(writer, sce->adt);
-  }
   BKE_keyingsets_blend_write(writer, &sce->keyingsets);
 
   /* direct data */
@@ -1228,9 +1225,6 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
   id_us_ensure_real(&sce->id);
 
   BLO_read_list(reader, &(sce->base));
-
-  BLO_read_data_address(reader, &sce->adt);
-  BKE_animdata_blend_read_data(reader, sce->adt);
 
   BLO_read_list(reader, &sce->keyingsets);
   BKE_keyingsets_blend_read_data(reader, &sce->keyingsets);
