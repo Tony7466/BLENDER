@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,7 +20,7 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
 #include "DRW_render.h"
 
@@ -58,6 +58,11 @@ class Context : public realtime_compositor::Context {
   {
   }
 
+  const Scene &get_scene() const override
+  {
+    return *DRW_context_state_get()->scene;
+  }
+
   const bNodeTree &get_node_tree() const override
   {
     return *DRW_context_state_get()->scene->nodetree;
@@ -74,11 +79,6 @@ class Context : public realtime_compositor::Context {
   bool use_composite_output() const override
   {
     return false;
-  }
-
-  bool use_texture_color_management() const override
-  {
-    return BKE_scene_check_color_management_enabled(DRW_context_state_get()->scene);
   }
 
   const RenderData &get_render_data() const override
@@ -158,9 +158,12 @@ class Context : public realtime_compositor::Context {
     return DRW_viewport_texture_list_get()->color;
   }
 
-  GPUTexture *get_input_texture(int view_layer, const char *pass_name) override
+  GPUTexture *get_input_texture(const Scene *scene, int view_layer, const char *pass_name) override
   {
-    if (view_layer == 0 && STREQ(pass_name, RE_PASSNAME_COMBINED)) {
+    if ((DEG_get_original_id(const_cast<ID *>(&scene->id)) ==
+         DEG_get_original_id(&DRW_context_state_get()->scene->id)) &&
+        view_layer == 0 && STREQ(pass_name, RE_PASSNAME_COMBINED))
+    {
       return get_output_texture();
     }
     else {

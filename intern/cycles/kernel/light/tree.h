@@ -174,9 +174,19 @@ ccl_device void light_tree_importance(const float3 N_or_D,
     cos_max_incidence_angle = fmaxf(cos_theta_i * cos_theta_u - sin_theta_i * sin_theta_u, 0.0f);
   }
 
+  float cos_theta, sin_theta;
+  if (isequal(bcone.axis, -point_to_centroid)) {
+    /* When `bcone.axis == -point_to_centroid`, dot(bcone.axis, -point_to_centroid) doesn't always
+     * return 1 due to floating point precision issues. We account for that case here. */
+    cos_theta = 1.0f;
+    sin_theta = 0.0f;
+  }
+  else {
+    cos_theta = dot(bcone.axis, -point_to_centroid);
+    sin_theta = sin_from_cos(cos_theta);
+  }
+
   /* cos(theta - theta_u) */
-  const float cos_theta = dot(bcone.axis, -point_to_centroid);
-  const float sin_theta = sin_from_cos(cos_theta);
   const float cos_theta_minus_theta_u = cos_theta * cos_theta_u + sin_theta * sin_theta_u;
 
   float cos_theta_o, sin_theta_o;
@@ -761,7 +771,9 @@ ccl_device_noinline bool light_tree_sample(KernelGlobals kg,
                                          float3_to_float2(rand),
                                          time,
                                          P,
+                                         N_or_D,
                                          object_receiver,
+                                         shader_flags,
                                          bounce,
                                          path_flag,
                                          selected_emitter,

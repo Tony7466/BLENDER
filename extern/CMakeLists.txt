@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -14,10 +14,15 @@ if(CMAKE_COMPILER_IS_GNUCC)
   remove_cc_flag(
     "-Wmisleading-indentation"
   )
+elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
+  remove_cc_flag(
+    "-Weverything"
+  )
 endif()
 
 
 add_subdirectory(rangetree)
+add_subdirectory(nanosvg)
 add_subdirectory(wcwidth)
 
 if(WITH_BULLET)

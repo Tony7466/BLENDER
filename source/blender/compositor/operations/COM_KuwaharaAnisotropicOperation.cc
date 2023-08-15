@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -58,8 +58,7 @@ void KuwaharaAnisotropicOperation::execute_pixel_sampled(float output[4],
   const float q = 3.0;
   const float EPS = 1.0e-10;
 
-  /* For now use green channel to compute orientation. */
-  /* TODO: convert to HSV and compute orientation and strength on luminance channel */
+  /* All channels are identical. Take first channel for simplicity. */
   float tmp[4];
   s_xx_reader_->read(tmp, x, y, nullptr);
   const float a = tmp[1];
@@ -202,11 +201,10 @@ void KuwaharaAnisotropicOperation::update_memory_buffer_partial(MemoryBuffer *ou
     const int x = it.x;
     const int y = it.y;
 
-    /* For now use green channel to compute orientation. */
-    /* TODO: convert to HSV and compute orientation and strength on luminance channel. */
-    const float a = s_xx->get_value(x, y, 1);
-    const float b = s_xy->get_value(x, y, 1);
-    const float c = s_yy->get_value(x, y, 1);
+    /* All channels are identical. Take first channel for simplicity. */
+    const float a = s_xx->get_value(x, y, 0);
+    const float b = s_xy->get_value(x, y, 0);
+    const float c = s_yy->get_value(x, y, 0);
 
     /* Compute egenvalues of structure tensor */
     const double tr = a + c;

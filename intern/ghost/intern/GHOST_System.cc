@@ -30,8 +30,9 @@ GHOST_System::GHOST_System()
       m_windowManager(nullptr),
       m_eventManager(nullptr),
 #ifdef WITH_INPUT_NDOF
-      m_ndofManager(0),
+      m_ndofManager(nullptr),
 #endif
+      m_preFullScreenSetting{0},
       m_multitouchGestures(true),
       m_tabletAPI(GHOST_kTabletAutomatic),
       m_is_debug_enabled(false)
@@ -403,7 +404,15 @@ GHOST_TSuccess GHOST_System::createFullScreenWindow(GHOST_Window **window,
   if (stereoVisual) {
     gpuSettings.flags |= GHOST_gpuStereoVisual;
   }
+#if defined(WITH_OPENGL_BACKEND)
   gpuSettings.context_type = GHOST_kDrawingContextTypeOpenGL;
+#elif defined(WITH_METAL_BACKEND)
+  gpuSettings.context_type = GHOST_kDrawingContextTypeMetal;
+#elif defined(WITH_VULKAN_BACKEND)
+  gpuSettings.context_type = GHOST_kDrawingContextTypeVulkan;
+#else
+#  error
+#endif
   /* NOTE: don't use #getCurrentDisplaySetting() because on X11 we may
    * be zoomed in and the desktop may be bigger than the viewport. */
   GHOST_ASSERT(m_displayManager,

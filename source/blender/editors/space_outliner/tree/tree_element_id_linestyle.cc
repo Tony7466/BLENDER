@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -28,15 +28,10 @@ void TreeElementIDLineStyle::expand(SpaceOutliner &space_outliner) const
 {
   expand_animation_data(space_outliner, linestyle_.adt);
 
-  expandTextures(space_outliner);
+  expand_textures(space_outliner);
 }
 
-bool TreeElementIDLineStyle::isExpandValid() const
-{
-  return true;
-}
-
-void TreeElementIDLineStyle::expandTextures(SpaceOutliner &space_outliner) const
+void TreeElementIDLineStyle::expand_textures(SpaceOutliner &space_outliner) const
 {
   for (int a = 0; a < MAX_MTEX; a++) {
     if (linestyle_.mtex[a]) {

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -207,6 +207,9 @@ class GeoNodeExecParams {
       if (data->modifier_data) {
         return data->modifier_data->self_object;
       }
+      if (data->operator_data) {
+        return data->operator_data->self_object;
+      }
     }
     return nullptr;
   }
@@ -216,6 +219,9 @@ class GeoNodeExecParams {
     if (const auto *data = this->user_data()) {
       if (data->modifier_data) {
         return data->modifier_data->depsgraph;
+      }
+      if (data->operator_data) {
+        return data->operator_data->depsgraph;
       }
     }
     return nullptr;

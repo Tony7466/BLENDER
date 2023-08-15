@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,8 +6,8 @@
 
 #include "BLI_noise.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 namespace blender::nodes::node_shader_tex_wave_cc {
 
@@ -175,7 +175,8 @@ class WaveFunction : public mf::MultiFunction {
 
       if (distortion[i] != 0.0f) {
         n += distortion[i] *
-             (noise::perlin_fractal(p * dscale[i], detail[i], droughness[i]) * 2.0f - 1.0f);
+             (noise::perlin_fractal(p * dscale[i], detail[i], droughness[i], 2.0f, true) * 2.0f -
+              1.0f);
       }
 
       switch (wave_profile_) {

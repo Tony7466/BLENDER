@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -7,13 +7,8 @@ if(HAVE_EXECINFO_H)
 endif()
 
 set(INC
-  .
-  ..
-  # ../blenkernel  # don't add this back!
-  ../makesdna
-  ../../../intern/atomic
+  PUBLIC .
   ../../../intern/eigen
-  ../../../intern/guardedalloc
 )
 
 set(INC_SYS
@@ -23,7 +18,6 @@ set(INC_SYS
   ${EIGEN3_INCLUDE_DIRS}
   ${ZLIB_INCLUDE_DIRS}
   ${ZSTD_INCLUDE_DIRS}
-  ${GMP_INCLUDE_DIRS}
 )
 
 set(SRC
@@ -271,7 +265,6 @@ set(SRC
   BLI_listbase_wrapper.hh
   BLI_map.hh
   BLI_map_slots.hh
-  BLI_math.h
   BLI_math_angle_types.hh
   BLI_math_axis_angle.hh
   BLI_math_axis_angle_types.hh
@@ -352,8 +345,9 @@ set(SRC
   BLI_string.h
   BLI_string_cursor_utf8.h
   BLI_string_ref.hh
-  BLI_string_search.h
+  BLI_string_search.hh
   BLI_string_utf8.h
+  BLI_string_utf8_symbols.h
   BLI_string_utils.h
   BLI_sub_frame.hh
   BLI_sys_types.h
@@ -390,10 +384,11 @@ set(SRC
 )
 
 set(LIB
+  PUBLIC bf::dna
   bf_intern_eigen
-  bf_intern_guardedalloc
+  PRIVATE bf::intern::guardedalloc
   extern_wcwidth
-
+  PRIVATE bf::intern::atomic
   ${ZLIB_LIBRARIES}
   ${ZSTD_LIBRARIES}
 )
@@ -476,6 +471,7 @@ set_source_files_properties(
 )
 
 blender_add_lib(bf_blenlib "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+add_library(bf::blenlib ALIAS bf_blenlib)
 
 if(WITH_GTESTS)
   set(TEST_SRC
