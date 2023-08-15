@@ -1747,7 +1747,8 @@ static void foreach_drawing_ex(
     }
     const GreasePencilDrawingBase *drawing_base = drawings[index];
     if (drawing_base->type == GP_DRAWING) {
-      const GreasePencilDrawing *drawing = reinterpret_cast<const GreasePencilDrawing *>(drawing_base);
+      const GreasePencilDrawing *drawing = reinterpret_cast<const GreasePencilDrawing *>(
+          drawing_base);
       function(index, drawing->wrap());
     }
     else if (drawing_base->type == GP_DRAWING_REFERENCE) {
@@ -1757,19 +1758,22 @@ static void foreach_drawing_ex(
 }
 
 void GreasePencil::foreach_visible_drawing(
-    const int frame, blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function)
+    const int frame,
+    blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function)
 {
   foreach_drawing_ex(*this, frame, VISIBLE, function);
 }
 
 void GreasePencil::foreach_visible_drawing(
-    const int frame, blender::FunctionRef<void(int, const blender::bke::greasepencil::Drawing &)> function) const
+    const int frame,
+    blender::FunctionRef<void(int, const blender::bke::greasepencil::Drawing &)> function) const
 {
   foreach_drawing_ex(*this, frame, VISIBLE, function);
 }
 
 void GreasePencil::foreach_editable_drawing(
-    const int frame, blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function)
+    const int frame,
+    blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function)
 {
   foreach_drawing_ex(*this, frame, EDITABLE, function);
 }
@@ -1778,11 +1782,12 @@ std::optional<blender::Bounds<blender::float3>> GreasePencil::bounds_min_max() c
 {
   using namespace blender;
   std::optional<Bounds<float3>> bounds;
-  this->foreach_visible_drawing(this->runtime->eval_frame,
-                                [&](int /*drawing_index*/, const bke::greasepencil::Drawing &drawing) {
-                                  const bke::CurvesGeometry &curves = drawing.strokes();
-                                  bounds = bounds::merge(bounds, curves.bounds_min_max());
-                                });
+  this->foreach_visible_drawing(
+      this->runtime->eval_frame,
+      [&](int /*drawing_index*/, const bke::greasepencil::Drawing &drawing) {
+        const bke::CurvesGeometry &curves = drawing.strokes();
+        bounds = bounds::merge(bounds, curves.bounds_min_max());
+      });
   return bounds;
 }
 
