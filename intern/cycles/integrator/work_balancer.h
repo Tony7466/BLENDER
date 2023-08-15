@@ -18,10 +18,13 @@ struct WorkBalanceInfo {
   /* Normalized weight, which is ready to be used for work balancing (like calculating fraction of
    * the big tile which is to be rendered on the device). */
   double weight = 1.0;
+
+  /* Counts the number of rebalances */
+  int count = 0;
 };
 
 /* Balance work for an initial render integration, before any statistics is known. */
-void work_balance_do_initial(vector<WorkBalanceInfo> &work_balance_infos);
+void work_balance_do_initial(vector<WorkBalanceInfo> &work_balance_infos, int cpu_index);
 
 /* Rebalance work after statistics has been accumulated.
  * Returns true if the balancing did change. */

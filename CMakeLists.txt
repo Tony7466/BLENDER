@@ -628,9 +628,9 @@ Dynamically load CUDA libraries at runtime (for developers, makes cuda-gdb work)
     ON
   )
 
-  set(OPTIX_ROOT_DIR "" CACHE PATH "\
-Path to the OptiX SDK root directory, for building Cycles OptiX kernels."
-  )
+#  set(OPTIX_ROOT_DIR "" CACHE PATH "\
+#Path to the OptiX SDK root directory, for building Cycles OptiX kernels."
+#  )
   set(CYCLES_RUNTIME_OPTIX_ROOT_DIR "" CACHE PATH "\
 Path to the OptiX SDK root directory. \
 When set, this path will be used at runtime to compile OptiX kernels."
