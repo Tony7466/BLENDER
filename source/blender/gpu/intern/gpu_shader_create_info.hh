@@ -882,6 +882,7 @@ struct ShaderCreateInfo {
   void finalize();
 
   std::string check_error() const;
+  bool is_vulkan_compatible() const;
 
   /** Error detection that some backend compilers do not complain about. */
   void validate_merge(const ShaderCreateInfo &other_info);
@@ -986,8 +987,5 @@ struct ShaderCreateInfo {
 #undef TEST_EQUAL
 #undef TEST_VECTOR_EQUAL
 };
-
-bool validate_vulkan_support(const ShaderCreateInfo &info);
-bool validate_vulkan_support(const StageInterfaceInfo &iface);
 
 }  // namespace blender::gpu::shader
