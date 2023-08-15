@@ -597,10 +597,20 @@ static int image_view_zoom_invoke(bContext *C, wmOperator *op, const wmEvent *ev
     UI_view2d_region_to_view(
         &region->v2d, event->mval[0], event->mval[1], &location[0], &location[1]);
 
-    delta = event->prev_xy[0] - event->xy[0] + event->prev_xy[1] - event->xy[1];
+    if (event->type == MOUSEPAN) {
+      if (U.uiflag & USER_ZOOM_HORIZ) {
+        delta = WM_event_absolute_delta_x(event);
+      }
+      else {
+        delta = WM_event_absolute_delta_y(event);
+      }
 
-    if (U.uiflag & USER_ZOOM_INVERT) {
-      delta *= -1;
+      if (U.uiflag & USER_ZOOM_INVERT) {
+        delta *= -1.0f;
+      }
+    }
+    else { /* MOUSEZOOM */
+      delta = event->prev_xy[0] - event->xy[0];
     }
 
     factor = 1.0f + delta / 300.0f;

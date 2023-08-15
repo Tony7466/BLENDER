@@ -281,18 +281,17 @@ static int viewdolly_invoke(bContext *C, wmOperator *op, const wmEvent *event)
       normalize_v3(vod->init.mousevec);
     }
 
-    if (event->type == MOUSEZOOM) {
-      /* Bypass Zoom invert flag for track pads (pass false always) */
-
-      if (U.uiflag & USER_ZOOM_HORIZ) {
-        vod->init.event_xy[0] = vod->prev.event_xy[0] = event->xy[0];
+    if (ELEM(event->type, MOUSEZOOM, MOUSEPAN)) {
+      int m_xy[2];
+      if (event->type == MOUSEPAN) {
+        m_xy[0] = event->xy[0] + WM_event_absolute_delta_x(event);
+        m_xy[1] = event->xy[1] + WM_event_absolute_delta_y(event);
       }
-      else {
-        /* Set y move = x move as MOUSEZOOM uses only x axis to pass magnification value */
-        vod->init.event_xy[1] = vod->prev.event_xy[1] = vod->init.event_xy[1] + event->xy[0] -
-                                                        event->prev_xy[0];
+      else { /* MOUSEZOOM */
+        m_xy[0] = event->prev_xy[0];
+        m_xy[1] = event->xy[1] - (event->xy[0] - event->prev_xy[0]);
       }
-      viewdolly_apply(vod, event->prev_xy, (U.uiflag & USER_ZOOM_INVERT) == 0);
+      viewdolly_apply(vod, m_xy, (U.uiflag & USER_ZOOM_INVERT) == 0);
 
       viewops_data_free(C, static_cast<ViewOpsData *>(op->customdata));
       op->customdata = nullptr;

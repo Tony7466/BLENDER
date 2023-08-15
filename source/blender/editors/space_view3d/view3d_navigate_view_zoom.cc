@@ -498,15 +498,16 @@ static int viewzoom_invoke_impl(bContext *C,
   else {
     eV3D_OpEvent event_code = ELEM(event->type, MOUSEZOOM, MOUSEPAN) ? VIEW_CONFIRM : VIEW_PASS;
     if (event_code == VIEW_CONFIRM) {
-      if (U.uiflag & USER_ZOOM_HORIZ) {
-        vod->init.event_xy[0] = vod->prev.event_xy[0] = xy[0];
+      int m_xy[2];
+      if (event->type == MOUSEPAN) {
+        m_xy[0] = event->xy[0] + WM_event_absolute_delta_x(event);
+        m_xy[1] = event->xy[1] + WM_event_absolute_delta_y(event);
       }
-      else {
-        /* Set y move = x move as MOUSEZOOM uses only x axis to pass magnification value */
-        vod->init.event_xy[1] = vod->prev.event_xy[1] = vod->init.event_xy[1] + xy[0] -
-                                                        event->prev_xy[0];
+      else { /* MOUSEZOOM */
+        m_xy[0] = event->prev_xy[0];
+        m_xy[1] = event->xy[1] - (event->xy[0] - event->prev_xy[0]);
       }
-      viewzoom_apply(vod, event->prev_xy, USER_ZOOM_DOLLY, (U.uiflag & USER_ZOOM_INVERT) != 0);
+      viewzoom_apply(vod, m_xy, USER_ZOOM_DOLLY, (U.uiflag & USER_ZOOM_INVERT) != 0);
       ED_view3d_camera_lock_autokey(vod->v3d, vod->rv3d, C, false, true);
 
       return OPERATOR_FINISHED;
