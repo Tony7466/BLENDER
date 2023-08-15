@@ -384,10 +384,15 @@ static void version_principled_bsdf_coat(bNodeTree *ntree)
     if (nodeFindSocket(node, SOCK_IN, "Coat IOR") != nullptr) {
       continue;
     }
-    bNodeSocket *input = nodeAddStaticSocket(
+    bNodeSocket *coat_ior_input = nodeAddStaticSocket(
         ntree, node, SOCK_IN, SOCK_FLOAT, PROP_NONE, "Coat IOR", "Coat IOR");
-    /* Default to 1.2 for old files to account for change in intensity. */
-    *version_cycles_node_socket_float_value(input) = 1.2f;
+
+    /* Adjust for 4x change in intensity. */
+    bNodeSocket *coat_input = nodeFindSocket(node, SOCK_IN, "Clearcoat");
+    *version_cycles_node_socket_float_value(coat_input) *= 0.25f;
+    /* When the coat input is dynamic, instead of inserting a *0.25 math node, set the Coat IOR
+     * to 1.2 instead - this also roughly quarters reflectivity compared to the 1.5 default. */
+    *version_cycles_node_socket_float_value(coat_ior_input) = (coat_input->link) ? 1.2f : 1.5f;
   }
 
   /* Rename sockets. */
