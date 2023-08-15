@@ -6,8 +6,10 @@
  * \ingroup GHOST
  */
 
-#include "GHOST_SystemPathsWin32.hh"
+#include "BLI_string_utf8.h"
+
 #include "GHOST_Debug.hh"
+#include "GHOST_SystemPathsWin32.hh"
 
 #ifndef _WIN32_IE
 #  define _WIN32_IE 0x0501
@@ -23,38 +25,38 @@ const char *GHOST_SystemPathsWin32::getSystemDir(int, const char *versionstr) co
 {
   /* 1 utf-16 might translate into 3 utf-8. 2 utf-16 translates into 4 utf-8. */
   static char knownpath[MAX_PATH * 3 + 128] = {0};
-  PWSTR knownpath_16 = nullptr;
+  PWSTR knownpath_unicode = nullptr;
 
   HRESULT hResult = SHGetKnownFolderPath(
-      FOLDERID_ProgramData, KF_FLAG_DEFAULT, nullptr, &knownpath_16);
+      FOLDERID_ProgramData, KF_FLAG_DEFAULT, nullptr, &knownpath_unicode);
 
   if (hResult == S_OK) {
-    conv_utf_16_to_8(knownpath_16, knownpath, MAX_PATH * 3);
-    CoTaskMemFree(knownpath_16);
+    BLI_strncpy_wchar_as_utf8(knownpath, knownpath_unicode, MAX_PATH * 3);
+    CoTaskMemFree(knownpath_unicode);
     strcat(knownpath, "\\Blender Foundation\\Blender\\");
     strcat(knownpath, versionstr);
     return knownpath;
   }
-
+  CoTaskMemFree(knownpath_unicode);
   return nullptr;
 }
 
 const char *GHOST_SystemPathsWin32::getUserDir(int, const char *versionstr) const
 {
   static char knownpath[MAX_PATH * 3 + 128] = {0};
-  PWSTR knownpath_16 = nullptr;
+  PWSTR knownpath_unicode = nullptr;
 
   HRESULT hResult = SHGetKnownFolderPath(
-      FOLDERID_RoamingAppData, KF_FLAG_DEFAULT, nullptr, &knownpath_16);
+      FOLDERID_RoamingAppData, KF_FLAG_DEFAULT, nullptr, &knownpath_unicode);
 
   if (hResult == S_OK) {
-    conv_utf_16_to_8(knownpath_16, knownpath, MAX_PATH * 3);
-    CoTaskMemFree(knownpath_16);
+    BLI_strncpy_wchar_as_utf8(knownpath, knownpath_unicode, MAX_PATH * 3);
+    CoTaskMemFree(knownpath_unicode);
     strcat(knownpath, "\\Blender Foundation\\Blender\\");
     strcat(knownpath, versionstr);
     return knownpath;
   }
-
+  CoTaskMemFree(knownpath_unicode);
   return nullptr;
 }
 
@@ -92,16 +94,16 @@ const char *GHOST_SystemPathsWin32::getUserSpecialDir(GHOST_TUserSpecialDirTypes
   }
 
   static char knownpath[MAX_PATH * 3] = {0};
-  PWSTR knownpath_16 = nullptr;
-  HRESULT hResult = SHGetKnownFolderPath(folderid, KF_FLAG_DEFAULT, nullptr, &knownpath_16);
+  PWSTR knownpath_unicode = nullptr;
+  HRESULT hResult = SHGetKnownFolderPath(folderid, KF_FLAG_DEFAULT, nullptr, &knownpath_unicode);
 
   if (hResult == S_OK) {
-    conv_utf_16_to_8(knownpath_16, knownpath, MAX_PATH * 3);
-    CoTaskMemFree(knownpath_16);
+
+    BLI_strncpy_wchar_as_utf8(knownpath, knownpath_unicode, MAX_PATH * 3);
+    CoTaskMemFree(knownpath_unicode);
     return knownpath;
   }
-
-  CoTaskMemFree(knownpath_16);
+  CoTaskMemFree(knownpath_unicode);
   return nullptr;
 }
 
