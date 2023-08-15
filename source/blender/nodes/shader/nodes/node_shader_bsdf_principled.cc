@@ -91,17 +91,25 @@ static void node_declare(NodeDeclarationBuilder &b)
 #define SOCK_SHEEN_ROUGHNESS_ID 13
   b.add_input<decl::Color>("Sheen Tint").default_value({1.0f, 1.0f, 1.0f, 1.0f});
 #define SOCK_SHEEN_TINT_ID 14
-  b.add_input<decl::Float>("Coat").default_value(0.0f).min(0.0f).max(1.0f).subtype(PROP_FACTOR);
+  b.add_input<decl::Float>("Coat").default_value(0.0f).min(0.0f).max(1.0f).subtype(PROP_FACTOR)
+  .description("Controls the intensity of the coat layer, both the reflection and the tinting. "
+  "Typically should be zero or one for physically-based materials.");
 #define SOCK_COAT_ID 15
   b.add_input<decl::Float>("Coat Roughness")
       .default_value(0.03f)
       .min(0.0f)
       .max(1.0f)
-      .subtype(PROP_FACTOR);
+      .subtype(PROP_FACTOR)
+      .description("The roughness of the coat layer");
 #define SOCK_COAT_ROUGHNESS_ID 16
-  b.add_input<decl::Float>("Coat IOR").default_value(1.5f).min(0.0f).max(1000.0f);
+  b.add_input<decl::Float>("Coat IOR").default_value(1.5f).min(0.0f).max(4.0f)
+  .description("The index of refraction of the coat layer (affects its reflectivity as well "
+  "as the falloff of coat tinting)");
 #define SOCK_COAT_IOR_ID 17
-  b.add_input<decl::Color>("Coat Tint").default_value({1.0f, 1.0f, 1.0f, 1.0f});
+  b.add_input<decl::Color>("Coat Tint").default_value({1.0f, 1.0f, 1.0f, 1.0f})
+  .description("Adds a colored tint to the coat layer by modeling absorption in the layer. "
+  "Saturation increases at shallower angles, as the light travels farther through the medium "
+  "(depending on the Coat IOR)");
 #define SOCK_COAT_TINT_ID 18
   b.add_input<decl::Float>("IOR").default_value(1.45f).min(0.0f).max(1000.0f);
 #define SOCK_IOR_ID 19
