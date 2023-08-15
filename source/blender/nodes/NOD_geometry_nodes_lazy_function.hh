@@ -66,7 +66,7 @@ enum class SimulationEvalType {
   /**
    * Read data from a single cached frame.
    */
-  Read,
+  ReadSingle,
   /**
    * Try to interpolate between the previous and next simulation state for the output.
    */
@@ -91,7 +91,7 @@ struct SimulationOutputInfo {
   SimulationEvalType eval_type;
 
   struct ReadSingle {
-    Map<int, bke::BakeItem *> items;
+    Map<int, const bke::BakeItem *> items;
   };
   struct ReadInterpolated {
     float mix_factor;
@@ -107,6 +107,34 @@ class GeoNodesSimulationParams {
   virtual SimulationOutputInfo get_output_info(NestedNodeID id) const = 0;
   virtual void store_simulation_state(NestedNodeID id,
                                       Map<int, std::unique_ptr<bke::BakeItem>> items) const = 0;
+};
+
+enum class BakeEvalType {
+  PassThrough,
+  Bake,
+  ReadSingle,
+  ReadInterpolated,
+};
+
+struct BakeInfo {
+  BakeEvalType eval_type;
+
+  struct ReadSingle {
+    Map<int, const bke::BakeItem *> items;
+  };
+  struct ReadInterpolated {
+    float mix_factor;
+    Map<int, const bke::BakeItem *> prev_items;
+    Map<int, const bke::BakeItem *> next_items;
+  };
+  std::variant<std::monostate, ReadSingle, ReadInterpolated> info;
+};
+
+class GeoNodesBakeParams {
+ public:
+  virtual BakeInfo get_info(NestedNodeID id) const = 0;
+  virtual void store_bake_state(NestedNodeID id,
+                                Map<int, std::unique_ptr<BakeItem>> items) const = 0;
 };
 
 /**
