@@ -2828,14 +2828,16 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
       tangent_offset,
       compiler.encode_uchar4(
           specular_offset, roughness_offset, specular_tint_offset, anisotropic_offset),
-      compiler.encode_uchar4(sheen_offset, sheen_tint_offset, sheen_roughness_offset, SVM_STACK_INVALID));
+      compiler.encode_uchar4(
+          sheen_offset, sheen_tint_offset, sheen_roughness_offset, SVM_STACK_INVALID));
 
   compiler.add_node(
       compiler.encode_uchar4(
           ior_offset, transmission_offset, anisotropic_rotation_offset, SVM_STACK_INVALID),
       distribution,
       subsurface_method,
-      compiler.encode_uchar4(coat_offset, coat_roughness_offset, coat_ior_offset, coat_tint_offset));
+      compiler.encode_uchar4(
+          coat_offset, coat_roughness_offset, coat_ior_offset, coat_tint_offset));
 
   float3 bc_default = get_float3(base_color_in->socket_type);
 

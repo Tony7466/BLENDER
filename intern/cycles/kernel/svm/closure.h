@@ -82,16 +82,10 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
                              &anisotropic_offset);
       svm_unpack_node_uchar4(
           data_node.w, &sheen_offset, &sheen_tint_offset, &sheen_roughness_offset, &dummy);
-      svm_unpack_node_uchar4(data_node2.x,
-                             &eta_offset,
-                             &transmission_offset,
-                             &anisotropic_rotation_offset,
-                             &dummy);
-      svm_unpack_node_uchar4(data_node2.w,
-                             &coat_offset,
-                             &coat_roughness_offset,
-                             &coat_ior_offset,
-                             &coat_tint_offset);
+      svm_unpack_node_uchar4(
+          data_node2.x, &eta_offset, &transmission_offset, &anisotropic_rotation_offset, &dummy);
+      svm_unpack_node_uchar4(
+          data_node2.w, &coat_offset, &coat_roughness_offset, &coat_ior_offset, &coat_tint_offset);
 
       // get Disney principled parameters
       float metallic = saturatef(param1);
