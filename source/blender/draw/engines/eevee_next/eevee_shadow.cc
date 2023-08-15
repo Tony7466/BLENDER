@@ -879,6 +879,9 @@ void ShadowModule::end_sync()
                     i / SHADOW_PAGE_PER_LAYER};
       pages_free_data_[i] = shadow_page_pack(page);
     }
+    for (uint i : IndexRange(shadow_page_len_, SHADOW_MAX_PAGE - shadow_page_len_)) {
+      pages_free_data_[i] = 0xFFFFFFFFu;
+    }
     pages_free_data_.push_update();
 
     /* Clear tiles to not reference any page. */
