@@ -176,7 +176,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
           /* Attenuate lower layers */
           Spectrum albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
-          weight *= 1.0f - reduce_max(albedo / weight);
+          weight *= 1.0f - reduce_max(safe_divide_color(albedo, weight));
         }
       }
 
@@ -198,7 +198,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
           /* Attenuate lower layers */
           Spectrum albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
-          weight *= 1.0f - reduce_max(albedo / weight);
+          weight *= 1.0f - reduce_max(safe_divide_color(albedo, weight));
         }
       }
 
@@ -323,7 +323,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
           /* Attenuate lower layers */
           Spectrum albedo = bsdf_albedo(kg, sd, (ccl_private ShaderClosure *)bsdf, true, false);
-          weight *= 1.0f - reduce_max(albedo / weight);
+          weight *= 1.0f - reduce_max(safe_divide_color(albedo, weight));
         }
       }
 
