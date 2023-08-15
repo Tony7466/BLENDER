@@ -98,7 +98,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .subtype(PROP_FACTOR)
       .description(
           "Controls the intensity of the coat layer, both the reflection and the tinting. "
-          "Typically should be zero or one for physically-based materials.");
+          "Typically should be zero or one for physically-based materials");
 #define SOCK_COAT_ID 15
   b.add_input<decl::Float>("Coat Roughness")
       .default_value(0.03f)

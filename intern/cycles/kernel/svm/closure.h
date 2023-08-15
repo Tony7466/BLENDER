@@ -210,8 +210,15 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
          * Therefore, tint = exp(-sigma_e * 1) (per def.), so -sigma_e = log(tint).
          * From this, T = exp(log(tint) * t) = exp(log(tint)) ^ t = tint ^ t;
          *
-         * Note that this is only an approximation - in particular, this assumes that the exit
-         * path follows the same angle, and that there aren't multiple internal bounces.
+         * Note that this is only an approximation - it assumes that the outgoing ray
+         * follows the same angle, and that there aren't multiple internal bounces.
+         * In particular, things that could be improved:
+         * - For transmissive materials, there should not be an outgoing path at all if the path
+         *   is transmitted.
+         * - For rough materials, we could blend towards a view-independent average path length
+         *   (e.g. 2 for diffuse reflection) for the outgoing direction.
+         * However, there's also an argument to be made for keeping parameters independent of each
+         * other for more intuitive control, in particular main roughness not affecting the coat.
          */
         float cosNI = dot(sd->wi, coat_normal);
         /* Refract incoming direction into coat material.

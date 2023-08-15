@@ -100,8 +100,9 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
   }
 
   if (Coat > 1e-5 && CoatTint != color(1.0)) {
+    float coat_neta = 1.0 / max(CoatIOR, 1.0);
     float cosNI = dot(I, CoatNormal);
-    float cosNT = sqrt(1.0 - (1.0 / CoatIOR) * (1.0 / CoatIOR) * (1 - cosNI * cosNI));
+    float cosNT = sqrt(1.0 - coat_neta * coat_neta * (1 - cosNI * cosNI));
     BSDF *= pow(CoatTint, Coat / cosNT);
   }
 

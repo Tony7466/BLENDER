@@ -69,10 +69,14 @@ void node_bsdf_principled(vec4 base_color,
 
   vec3 base_color_tint = tint_from_color(base_color.rgb);
 
-  if (coat_tint.rgb != vec3(1.0)) {
+  if (coat == 0.0) {
+    coat_tint.rgb = vec3(1.0);
+  }
+  else if (!all(equal(coat_tint.rgb, vec3(1.0)))) {
+    float coat_neta = 1.0 / max(coat_ior, 1.0);
     float NV = dot(V, CN);
-    float NT = fast_sqrt(1.0 - (1.0 / (1.5 * 1.5)) * (1 - NV * NV));
-    coat_tint.rgb = pow(coat_tint.rgb, vec3(1.0 / NT));
+    float NT = fast_sqrt(1.0 - coat_neta * coat_neta * (1 - NV * NV));
+    coat_tint.rgb = pow(coat_tint.rgb, vec3(coat / NT));
   }
 
   vec2 split_sum = brdf_lut(NV, roughness);
