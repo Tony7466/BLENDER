@@ -864,16 +864,20 @@ ccl_device void bsdf_microfacet_hair_blur(ccl_private ShaderClosure *sc, float r
   bsdf->roughness = fmaxf(roughness, bsdf->roughness);
 }
 
-/* Hair Albedo. */
+/* Hair Albedo. Computed by summing up geometric series, assuming circular cross-section and
+ * specular reflection. */
 ccl_device Spectrum bsdf_microfacet_hair_albedo(ccl_private const ShaderData *sd,
                                                 ccl_private const ShaderClosure *sc)
 {
   ccl_private MicrofacetHairBSDF *bsdf = (ccl_private MicrofacetHairBSDF *)sc;
 
-  const float f = fresnel_dielectric_cos(dot(sd->N, sd->wi), bsdf->eta);
+  const float3 wmi = make_float3(bsdf->h, 0.0f, cos_from_sin(bsdf->h));
+  float cos_t;
+  const float f = fresnel_dielectric(dot(wmi, bsdf->extra->wi), bsdf->eta, &cos_t);
+  const float3 wt = refract_angle(bsdf->extra->wi, wmi, cos_t, 1.0f / bsdf->eta);
+  const Spectrum A = exp(2.0f * bsdf->sigma * cos_t / (1.0f - sqr(wt.y)));
 
-  return exp(-sqrt(bsdf->sigma) * bsdf_principled_hair_albedo_roughness_scale(bsdf->roughness)) +
-         make_spectrum(f);
+  return safe_divide(A - 2.0f * f * A + f, one_spectrum() - f * A);
 }
 
 CCL_NAMESPACE_END
