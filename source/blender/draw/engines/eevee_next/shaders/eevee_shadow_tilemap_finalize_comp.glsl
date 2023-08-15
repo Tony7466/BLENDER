@@ -136,7 +136,8 @@ void main()
 
     barrier();
 
-    if ((view_index >= 0) && (view_index < SHADOW_VIEW_MAX) && lod_valid_thread) {
+    bool lod_is_updated = (view_index >= 0) && (view_index < SHADOW_VIEW_MAX);
+    if (lod_is_updated && lod_valid_thread) {
       ivec2 relative_tile_co = tile_co_lod - rect_min;
       if (in_range_exclusive(relative_tile_co, ivec2(-1), viewport_size)) {
         uint page_packed = shadow_page_pack(tile.page);
@@ -156,20 +157,15 @@ void main()
       }
     }
 
-    if (tile.is_used) {
+    if (tile.is_used && tile.is_allocated && (!tile.do_update || lod_is_updated)) {
       /* Save highest lod for this thread. */
       valid_tile_index = tile_index;
     }
   }
 
-  if (valid_tile_index != -1) {
-    /* Store the highest LOD valid page for rendering. */
-    uint tile_packed = tiles_buf[valid_tile_index] | SHADOW_IS_ALLOCATED;
-    imageStore(tilemaps_img, atlas_texel, uvec4(tile_packed));
-  }
-  else {
-    imageStore(tilemaps_img, atlas_texel, uvec4(SHADOW_NO_DATA));
-  }
+  /* Store the highest LOD valid page for rendering. */
+  uint tile_packed = (valid_tile_index != -1) ? tiles_buf[valid_tile_index] : SHADOW_NO_DATA;
+  imageStore(tilemaps_img, atlas_texel, uvec4(tile_packed));
 
   if (all(equal(gl_GlobalInvocationID, uvec3(0)))) {
     /* Clamp it as it can underflow if there is too much tile present on screen. */
