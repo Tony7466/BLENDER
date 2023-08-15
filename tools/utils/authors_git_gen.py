@@ -361,7 +361,7 @@ author_table_source = {
         "Juergen Herrmann <shadowrom@me.com>",
     ),
     "Kaspian Jakobsson <kaspian.jakobsson@gmail.com>": (
-        "kaspian.jakobssongmail.com <kaspian.jakobsson@gmail.com>",
+        "\x96kaspian.jakobssongmail.com <kaspian.jakobsson@gmail.com>",
     ),
     "Kevin C. Burke <kevincburke@noreply.localhost>": (
         "Kevin C. Burke <blastframe>",
@@ -584,7 +584,7 @@ author_table_source = {
         "Stephan <theHamsta>",
     ),
     "Sybren A. Stüvel <sybren@blender.org>": (
-        "Sybren A. StÃÂ¼vel <sybren@stuvel.eu>",
+        "Sybren A. StÃ\x83Â¼vel <sybren@stuvel.eu>",
         "Sybren A. Stüvel <sybren>",
         "Sybren A. Stüvel <sybren@stuvel.eu>",
     ),
@@ -614,7 +614,7 @@ author_table_source = {
         "Vitor Boschi <vitorboschi>",
     ),
     "Vuk Gardašević <lijenstina>": (
-        "Vuk GardaÅ¡eviÄ <lijenstina>",
+        "Vuk GardaÅ¡eviÄ\x87 <lijenstina>",
     ),
     "Wayde Moss <wbmoss_dev@yahoo.com>": (
         "Wayde Moss <GuiltyGhost>",
@@ -662,7 +662,6 @@ author_table_source = {
         "ok what <ok_what>",
     ),
 }
-
 
 # Some projects prefer not to have their developers listed.
 author_table_exclude = {
