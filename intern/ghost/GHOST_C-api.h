@@ -766,7 +766,7 @@ extern void GHOST_SetTabletAPI(GHOST_SystemHandle systemhandle, GHOST_TTabletAPI
 
 /**
  * Get the color of the pixel at the current mouse cursor location
- * \param r_color: returned RGB float colors
+ * \param r_color: returned sRGB float colors
  * \return Success value (true == successful and supported by platform)
  */
 extern GHOST_TSuccess GHOST_GetPixelAtCursor(float r_color[3]);

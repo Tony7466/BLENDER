@@ -351,22 +351,24 @@ void eyedropper_color_sample_fl(bContext *C, const int m_xy[2], float r_col[3])
     }
   }
 
-  if (!(WM_capabilities_flag() & WM_CAPABILITY_DESKTOP_SAMPLE &&
-        WM_desktop_cursor_sample_read(r_col)))
-  {
-    if (win) {
-      if (!WM_window_pixels_read_sample(C, win, mval, r_col)) {
-        WM_window_pixels_read_sample_from_offscreen(C, win, mval, r_col);
-      }
+  if (win) {
+    /* Other areas within a Blender window. */
+    if (!WM_window_pixels_read_sample(C, win, mval, r_col)) {
+      WM_window_pixels_read_sample_from_offscreen(C, win, mval, r_col);
     }
-    else {
-      zero_v3(r_col);
-    }
+    const char *display_device = CTX_data_scene(C)->display_settings.display_device;
+    ColorManagedDisplay *display = IMB_colormanagement_display_get_named(display_device);
+    IMB_colormanagement_display_to_scene_linear_v3(r_col, display);
   }
-
-  const char *display_device = CTX_data_scene(C)->display_settings.display_device;
-  ColorManagedDisplay *display = IMB_colormanagement_display_get_named(display_device);
-  IMB_colormanagement_display_to_scene_linear_v3(r_col, display);
+  else if ((WM_capabilities_flag() & WM_CAPABILITY_DESKTOP_SAMPLE) &&
+           WM_desktop_cursor_sample_read(r_col))
+  {
+    /* Outside of the Blender window if we support it. */
+    IMB_colormanagement_srgb_to_scene_linear_v3(r_col, r_col);
+  }
+  else {
+    zero_v3(r_col);
+  }
 }
 
 /* sets the sample color RGB, maintaining A */
