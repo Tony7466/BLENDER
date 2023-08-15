@@ -73,13 +73,13 @@ static bool get_thumb_dir(char *dir, ThumbSize size)
   char *s = dir;
   const char *subdir;
 #ifdef WIN32
-  PWSTR known_path = nullptr;
+  PWSTR knownpath_unicode = nullptr;
   /* Yes, applications shouldn't store data there, but so does GIMP :). */
-  if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Profile, 0, nullptr, &known_path))) {
-    BLI_strncpy_wchar_as_utf8(dir, known_path, FILE_MAX);
+  if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Profile, 0, nullptr, &knownpath_unicode))) {
+    BLI_strncpy_wchar_as_utf8(dir, knownpath_unicode, FILE_MAX);
     s += strlen(dir);
   }
-  CoTaskMemFree(known_path);
+  CoTaskMemFree(knownpath_unicode);
 #else
 #  if defined(USE_FREEDESKTOP)
   const char *home_cache = BLI_getenv("XDG_CACHE_HOME");
