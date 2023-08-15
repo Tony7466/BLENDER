@@ -146,11 +146,6 @@ class CreditUser:
         self.year_max = 0
 
 
-AUTHOR_EMAIL_MAP = {}
-AUTHOR_LINES_LIMIT = 100
-AUTHOR_LINES_CHANGE = {}
-
-
 class Credits:
     __slots__ = (
         "users",
@@ -207,11 +202,6 @@ class Credits:
         if not self.is_credit_commit_valid(c):
             return
 
-        if c.author not in AUTHOR_EMAIL_MAP:
-            AUTHOR_EMAIL_MAP[c.author] = c.email
-
-        lines_change = -1
-
         authors = self.commit_authors_get(c)
         year = c.date.year
         for author in authors:
@@ -224,17 +214,6 @@ class Credits:
             cu.commit_total += 1
             cu.year_min = min(cu.year_min, year)
             cu.year_max = max(cu.year_max, year)
-
-            lines_change_for_author = AUTHOR_LINES_CHANGE.get(author, -1)
-            if lines_change_for_author < AUTHOR_LINES_LIMIT:
-                if lines_change_for_author == -1:
-                    AUTHOR_LINES_CHANGE[author] = lines_change_for_author = 0
-
-                if lines_change == -1:
-                    diff = c.diff
-                    lines_change = diff.count("\n-") + diff.count("\n+")
-
-                AUTHOR_LINES_CHANGE[author] += lines_change
 
     def _process_multiprocessing(self, commit_iter: Iterable[GitCommit], *, jobs: int) -> None:
         print("Collecting commits...")
@@ -288,18 +267,11 @@ class Credits:
         else:
             sorted_authors = dict(sorted(self.users.items()))
 
-        with open(filepath, 'w', encoding="utf8", errors='xmlcharrefreplace') as file:
+        with open(filepath, 'w', encoding="ascii", errors='xmlcharrefreplace') as file:
             file.write("<h3>Individual Contributors</h3>\n\n")
             for author, cu in sorted_authors.items():
-                email = AUTHOR_EMAIL_MAP.get(author)
-                if email is None:
-                    print("Skipping", author, "no email known")
-                    continue
-                file.write("{:s} <{:s}>\t\t\t\t# lines={:,d} ({:s}), {:,d} {:s} {:s}<br />\n".format(
+                file.write("{:s}, {:,d} {:s} {:s}<br />\n".format(
                     author,
-                    email,
-                    min(AUTHOR_LINES_CHANGE.get(author, 0), AUTHOR_LINES_LIMIT),
-                    "" if AUTHOR_LINES_CHANGE.get(author, 0) >= AUTHOR_LINES_LIMIT else "<SKIP?>",
                     cu.commit_total,
                     commit_word[cu.commit_total > 1],
                     ("" if not is_main_credits else
