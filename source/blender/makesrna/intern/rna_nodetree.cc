@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,7 @@
 #include <cstring>
 
 #include "BLI_function_ref.hh"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_string_utf8_symbols.h"
 #include "BLI_utildefines.h"
 
@@ -39,9 +39,9 @@
 #include "BKE_node_tree_update.h"
 #include "BKE_texture.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 #include "rna_internal_types.h"
