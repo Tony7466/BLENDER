@@ -3403,57 +3403,6 @@ static bAnimChannelType ACF_GPD_LEGACY = {
     /*setting_ptr*/ acf_gpd_setting_ptr_legacy,
 };
 
-/* Grease Pencil Datablock ------------------------------------------- */
-
-/* Get pointer to the setting */
-static void *acf_gpd_setting_ptr(bAnimListElem *ale,
-                                 eAnimChannel_Settings /*setting*/,
-                                 short *r_type)
-{
-  GreasePencil *grease_pencil = (GreasePencil *)ale->data;
-
-  return GET_ACF_FLAG_PTR(grease_pencil->flag, r_type);
-}
-
-/* Get the appropriate flag(s) for the setting when it is valid. */
-static int acf_gpd_setting_flag(bAnimContext * /*ac*/, eAnimChannel_Settings setting, bool *r_neg)
-{
-  /* Clear extra return data first. */
-  *r_neg = false;
-
-  switch (setting) {
-    case ACHANNEL_SETTING_SELECT: /* Selected */
-      return AGRP_SELECTED;
-
-    case ACHANNEL_SETTING_EXPAND: /* Expanded */
-      return GREASE_PENCIL_ANIM_CHANNEL_EXPANDED;
-
-    default:
-      /* This shouldn't happen */
-      BLI_assert_msg(true, "Unexpected channel flag");
-      return 0;
-  }
-}
-
-/** Grease-pencil data-block type define. */
-static bAnimChannelType ACF_GPD = {
-    /*channel_type_name*/ "Grease Pencil Datablock",
-    /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
-
-    /*get_backdrop_color*/ acf_gpd_color,
-    /*draw_backdrop*/ acf_group_backdrop,
-    /*get_indent_level*/ acf_generic_indentation_0,
-    /*get_offset*/ acf_generic_group_offset,
-
-    /*name*/ acf_generic_idblock_name,
-    /*name_prop*/ acf_generic_idfill_name_prop,
-    /*icon*/ acf_gpd_icon,
-
-    /*has_setting*/ acf_gpd_setting_valid,
-    /*setting_flag*/ acf_gpd_setting_flag,
-    /*setting_ptr*/ acf_gpd_setting_ptr,
-};
-
 /* GPencil Layer (Legacy) ------------------------------------------- */
 
 /* name for grease pencil layer entries */
@@ -3555,10 +3504,44 @@ static bAnimChannelType ACF_GPL_LEGACY = {
     /*setting_ptr*/ acf_gpl_setting_ptr_legacy,
 };
 
-/* Grease Pencil Layer ------------------------------------------- */
+/* Grease Pencil Animation functions ------------------------------------------- */
+
+namespace blender::ed::animation::greasepencil {
+
+/* Get pointer to the setting */
+static void *data_block_setting_ptr(bAnimListElem *ale,
+                                    eAnimChannel_Settings /*setting*/,
+                                    short *r_type)
+{
+  GreasePencil *grease_pencil = (GreasePencil *)ale->data;
+
+  return GET_ACF_FLAG_PTR(grease_pencil->flag, r_type);
+}
+
+/* Get the appropriate flag(s) for the setting when it is valid. */
+static int data_block_setting_flag(bAnimContext * /*ac*/,
+                                   eAnimChannel_Settings setting,
+                                   bool *r_neg)
+{
+  /* Clear extra return data first. */
+  *r_neg = false;
+
+  switch (setting) {
+    case ACHANNEL_SETTING_SELECT: /* Selected */
+      return AGRP_SELECTED;
+
+    case ACHANNEL_SETTING_EXPAND: /* Expanded */
+      return GREASE_PENCIL_ANIM_CHANNEL_EXPANDED;
+
+    default:
+      /* This shouldn't happen */
+      BLI_assert_msg(true, "Unexpected channel flag");
+      return 0;
+  }
+}
 
 /* Offset of the channel, defined by its depth in the tree hierarchy. */
-static short acf_gpl_offset(bAnimContext *ac, bAnimListElem *ale)
+static short layer_offset(bAnimContext *ac, bAnimListElem *ale)
 {
   GreasePencilLayerTreeNode *node = static_cast<GreasePencilLayerTreeNode *>(ale->data);
 
@@ -3569,7 +3552,7 @@ static short acf_gpl_offset(bAnimContext *ac, bAnimListElem *ale)
 }
 
 /* Name for grease pencil layer entries. */
-static void acf_gpl_name(bAnimListElem *ale, char *name)
+static void layer_name(bAnimListElem *ale, char *name)
 {
   GreasePencilLayer *layer = (GreasePencilLayer *)ale->data;
 
@@ -3581,7 +3564,7 @@ static void acf_gpl_name(bAnimListElem *ale, char *name)
 /* Name property for grease pencil layer entries.
  * Common for layers & layer groups.
  */
-static bool acf_gpl_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA **r_prop)
+static bool layer_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA **r_prop)
 {
   if (ale->data == nullptr) {
     return false;
@@ -3593,9 +3576,9 @@ static bool acf_gpl_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA
   return (*r_prop != nullptr);
 }
 
-static bool acf_gpl_setting_valid(bAnimContext * /*ac*/,
-                                  bAnimListElem * /*ale*/,
-                                  eAnimChannel_Settings setting)
+static bool layer_setting_valid(bAnimContext * /*ac*/,
+                                bAnimListElem * /*ale*/,
+                                eAnimChannel_Settings setting)
 {
   switch (setting) {
     case ACHANNEL_SETTING_EXPAND:
@@ -3612,7 +3595,7 @@ static bool acf_gpl_setting_valid(bAnimContext * /*ac*/,
 /* Get the appropriate flag(s) for the setting when it is valid.
  * Common for layers & layer groups.
  */
-static int acf_gpl_setting_flag(bAnimContext * /*ac*/, eAnimChannel_Settings setting, bool *r_neg)
+static int layer_setting_flag(bAnimContext * /*ac*/, eAnimChannel_Settings setting, bool *r_neg)
 {
   /* Clear extra return data first. */
   *r_neg = false;
@@ -3639,47 +3622,26 @@ static int acf_gpl_setting_flag(bAnimContext * /*ac*/, eAnimChannel_Settings set
   }
 }
 /* Get pointer to the setting. */
-static void *acf_gpl_setting_ptr(bAnimListElem *ale,
-                                 eAnimChannel_Settings /*setting*/,
-                                 short *r_type)
+static void *layer_setting_ptr(bAnimListElem *ale,
+                               eAnimChannel_Settings /*setting*/,
+                               short *r_type)
 {
   GreasePencilLayer *layer = (GreasePencilLayer *)ale->data;
   return GET_ACF_FLAG_PTR(layer->base.flag, r_type);
 }
 
-/** Grease-pencil layer type define. */
-static bAnimChannelType ACF_GPL = {
-    /*channel_type_name*/ "Grease Pencil Layer",
-    /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
-
-    /*get_backdrop_color*/ acf_gpencil_channel_color,
-    /*draw_backdrop*/ acf_generic_channel_backdrop,
-    /*get_indent_level*/ acf_generic_indentation_flexible,
-    /*get_offset*/ acf_gpl_offset,
-
-    /*name*/ acf_gpl_name,
-    /*name_prop*/ acf_gpl_name_prop,
-    /*icon*/ nullptr,
-
-    /*has_setting*/ acf_gpl_setting_valid,
-    /*setting_flag*/ acf_gpl_setting_flag,
-    /*setting_ptr*/ acf_gpl_setting_ptr,
-};
-
-/* Grease Pencil Layer Group -------------------------------- */
-
-static int acf_gplgroup_icon(bAnimListElem * /*ale*/)
+static int layer_group_icon(bAnimListElem * /*ale*/)
 {
   return ICON_FILE_FOLDER;
 }
 
-static void acf_gplgroup_color(bAnimContext * /*ac*/, bAnimListElem * /*ale*/, float r_color[3])
+static void layer_group_color(bAnimContext * /*ac*/, bAnimListElem * /*ale*/, float r_color[3])
 {
   UI_GetThemeColor3fv(TH_GROUP, r_color);
 }
 
 /* Name for grease pencil layer entries */
-static void acf_gplgroup_name(bAnimListElem *ale, char *name)
+static void layer_group_name(bAnimListElem *ale, char *name)
 {
   GreasePencilLayerTreeGroup *layer_group = static_cast<GreasePencilLayerTreeGroup *>(ale->data);
 
@@ -3689,18 +3651,18 @@ static void acf_gplgroup_name(bAnimListElem *ale, char *name)
 }
 
 /* Get pointer to the setting. */
-static void *acf_gplgroup_setting_ptr(bAnimListElem *ale,
-                                      eAnimChannel_Settings /*setting*/,
-                                      short *r_type)
+static void *layer_group_setting_ptr(bAnimListElem *ale,
+                                     eAnimChannel_Settings /*setting*/,
+                                     short *r_type)
 {
   GreasePencilLayerTreeGroup *layer_group = static_cast<GreasePencilLayerTreeGroup *>(ale->data);
   return GET_ACF_FLAG_PTR(layer_group->base.flag, r_type);
 }
 
 /* Check if some setting exists for this channel. */
-static bool acf_gplgroup_setting_valid(bAnimContext * /*ac*/,
-                                       bAnimListElem * /*ale*/,
-                                       eAnimChannel_Settings setting)
+static bool layer_group_setting_valid(bAnimContext * /*ac*/,
+                                      bAnimListElem * /*ale*/,
+                                      eAnimChannel_Settings setting)
 {
   switch (setting) {
     case ACHANNEL_SETTING_SELECT:
@@ -3714,23 +3676,65 @@ static bool acf_gplgroup_setting_valid(bAnimContext * /*ac*/,
   }
 }
 
-/** Grease-pencil layer type define. */
+}  // namespace blender::ed::animation::greasepencil
+
+using namespace blender::ed::animation;
+
+/* Grease Pencil Datablock ------------------------------------------- */
+static bAnimChannelType ACF_GPD = {
+    /*channel_type_name*/ "Grease Pencil Datablock",
+    /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
+
+    /*get_backdrop_color*/ acf_gpd_color,
+    /*draw_backdrop*/ acf_group_backdrop,
+    /*get_indent_level*/ acf_generic_indentation_0,
+    /*get_offset*/ acf_generic_group_offset,
+
+    /*name*/ acf_generic_idblock_name,
+    /*name_prop*/ acf_generic_idfill_name_prop,
+    /*icon*/ acf_gpd_icon,
+
+    /*has_setting*/ acf_gpd_setting_valid,
+    /*setting_flag*/ greasepencil::data_block_setting_flag,
+    /*setting_ptr*/ greasepencil::data_block_setting_ptr,
+};
+
+/* Grease Pencil Layer ------------------------------------------- */
+static bAnimChannelType ACF_GPL = {
+    /*channel_type_name*/ "Grease Pencil Layer",
+    /*channel_role*/ ACHANNEL_ROLE_CHANNEL,
+
+    /*get_backdrop_color*/ acf_gpencil_channel_color,
+    /*draw_backdrop*/ acf_generic_channel_backdrop,
+    /*get_indent_level*/ acf_generic_indentation_flexible,
+    /*get_offset*/ greasepencil::layer_offset,
+
+    /*name*/ greasepencil::layer_name,
+    /*name_prop*/ greasepencil::layer_name_prop,
+    /*icon*/ nullptr,
+
+    /*has_setting*/ greasepencil::layer_setting_valid,
+    /*setting_flag*/ greasepencil::layer_setting_flag,
+    /*setting_ptr*/ greasepencil::layer_setting_ptr,
+};
+
+/* Grease Pencil Layer Group -------------------------------- */
 static bAnimChannelType ACF_GPLGROUP = {
     /*channel_type_name*/ "Grease Pencil Layer Group",
     /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
 
-    /*get_backdrop_color*/ acf_gplgroup_color,
+    /*get_backdrop_color*/ greasepencil::layer_group_color,
     /*draw_backdrop*/ acf_group_backdrop,
     /*get_indent_level*/ acf_generic_indentation_0,
-    /*get_offset*/ acf_gpl_offset,
+    /*get_offset*/ greasepencil::layer_offset,
 
-    /*name*/ acf_gplgroup_name,
-    /*name_prop*/ acf_gpl_name_prop,
-    /*icon*/ acf_gplgroup_icon,
+    /*name*/ greasepencil::layer_group_name,
+    /*name_prop*/ greasepencil::layer_name_prop,
+    /*icon*/ greasepencil::layer_group_icon,
 
-    /*has_setting*/ acf_gplgroup_setting_valid,
-    /*setting_flag*/ acf_gpl_setting_flag,
-    /*setting_ptr*/ acf_gplgroup_setting_ptr,
+    /*has_setting*/ greasepencil::layer_group_setting_valid,
+    /*setting_flag*/ greasepencil::layer_setting_flag,
+    /*setting_ptr*/ greasepencil::layer_group_setting_ptr,
 };
 
 /* Mask Datablock ------------------------------------------- */
