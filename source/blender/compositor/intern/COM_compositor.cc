@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation.
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -79,15 +79,11 @@ void COM_execute(Render *render,
   if (U.experimental.use_full_frame_compositor &&
       node_tree->execution_mode == NTREE_EXECUTION_MODE_REALTIME)
   {
-    /* Realtime GPU compositer. */
-
-    /* TODO: add persistence and depsgraph updates for better performance. */
-    blender::render::RealtimeCompositor compositer(
-        *render, *scene, *render_data, *node_tree, rendering, view_name);
-    compositer.execute();
+    /* Realtime GPU compositor. */
+    RE_compositor_execute(*render, *scene, *render_data, *node_tree, rendering, view_name);
   }
   else {
-    /* Tiled and Full Frame compositers. */
+    /* Tiled and Full Frame compositors. */
 
     /* Initialize workscheduler. */
     const bool use_opencl = (node_tree->flag & NTREE_COM_OPENCL) != 0;

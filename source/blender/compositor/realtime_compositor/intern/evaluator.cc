@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -72,7 +72,7 @@ void Evaluator::compile_and_evaluate()
     return;
   }
 
-  const Schedule schedule = compute_schedule(*derived_node_tree_);
+  const Schedule schedule = compute_schedule(context_, *derived_node_tree_);
 
   CompileState compile_state(schedule);
 
