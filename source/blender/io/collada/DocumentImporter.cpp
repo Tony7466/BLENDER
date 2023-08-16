@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2009-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -55,7 +55,7 @@
 #include "DNA_camera_types.h"
 #include "DNA_light_types.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"

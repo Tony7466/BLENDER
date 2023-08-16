@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -30,9 +30,9 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
-#include "RNA_access.h"
-#include "RNA_enum_types.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_path.hh"
 
 #include "ED_anim_api.hh"
 #include "ED_keyframes_edit.hh"
@@ -706,10 +706,11 @@ void blend_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const floa
 
 static float s_curve(float x, float slope, float width, float height, float xshift, float yshift)
 {
-  /* Formula for 'S' curve we use for the "ease" sliders. The shift values move the curve verticaly
-   * or horizontaly. The range of the curve used is from 0 to 1 on "x" and "y" so we can scale it
-   * (width and height) and move it (xshift and y yshift) to crop the part of the curve we need.
-   * Slope determins how curvy the shape is. */
+  /* Formula for 'S' curve we use for the "ease" sliders.
+   * The shift values move the curve vertically or horizontally.
+   * The range of the curve used is from 0 to 1 on "x" and "y"
+   * so we can scale it (width and height) and move it (`xshift` and y `yshift`)
+   * to crop the part of the curve we need. Slope determines how curvy the shape is. */
   float y = height * pow((x - xshift), slope) /
                 (pow((x - xshift), slope) + pow((width - (x - xshift)), slope)) +
             yshift;

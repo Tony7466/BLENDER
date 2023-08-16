@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -39,10 +39,10 @@
 #include "BKE_lib_override.hh"
 #include "BKE_main.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #include "rna_access_internal.h"
@@ -1017,7 +1017,7 @@ static bool rna_property_override_collection_subitem_name_id_match(
   if (do_id_pointer) {
     if (*item_id != static_cast<ID *>(ptr_item_name->data)) {
       /* If the ID pointer does not match, then there is no match, no need to check the
-       * name iteself. */
+       * name itself. */
       return is_match;
     }
   }

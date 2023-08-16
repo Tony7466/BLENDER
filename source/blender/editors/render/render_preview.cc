@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Blender Foundation
+/* SPDX-FileCopyrightText: Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -197,6 +197,8 @@ void ED_preview_ensure_dbase(const bool with_gpencil)
                                                     datatoc_preview_grease_pencil_blend_size);
     base_initialized_gpencil = true;
   }
+#else
+  UNUSED_VARS(with_gpencil);
 #endif
 }
 

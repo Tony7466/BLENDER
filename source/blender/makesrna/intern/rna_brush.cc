@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,8 +23,8 @@
 
 #include "BLT_translation.h"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -450,7 +450,7 @@ static EnumPropertyItem rna_enum_gpencil_brush_vertex_icons_items[] = {
 
 #  include "MEM_guardedalloc.h"
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
 #  include "BKE_brush.hh"
 #  include "BKE_colorband.h"
@@ -759,7 +759,7 @@ static void rna_Brush_reset_icon(Brush *br)
     return;
   }
 
-  if (id->icon_id >= BIFICONID_LAST) {
+  if (id->icon_id >= BIFICONID_LAST_STATIC) {
     BKE_icon_id_delete(id);
     BKE_previewimg_id_free(id);
   }

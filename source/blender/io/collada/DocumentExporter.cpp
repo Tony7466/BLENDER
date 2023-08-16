@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2009-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -87,7 +87,7 @@ extern "C" char build_commit_time[];
 extern "C" char build_hash[];
 #endif
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "DocumentExporter.h"
 #include "collada_internal.h"

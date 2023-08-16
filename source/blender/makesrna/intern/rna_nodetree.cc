@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -39,9 +39,9 @@
 #include "BKE_node_tree_update.h"
 #include "BKE_texture.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 #include "rna_internal_types.h"
@@ -69,7 +69,7 @@ const EnumPropertyItem rna_enum_node_socket_in_out_items[] = {{SOCK_IN, "IN", 0,
                                                               {SOCK_OUT, "OUT", 0, "Output", ""},
                                                               {0, nullptr, 0, nullptr, nullptr}};
 
-static const EnumPropertyItem node_socket_data_type_items[] = {
+const EnumPropertyItem node_socket_data_type_items[] = {
     {SOCK_FLOAT, "FLOAT", 0, "Float", ""},
     {SOCK_INT, "INT", 0, "Integer", ""},
     {SOCK_BOOLEAN, "BOOLEAN", 0, "Boolean", ""},
@@ -511,12 +511,12 @@ static const EnumPropertyItem rna_node_geometry_curve_handle_type_items[] = {
      "The location is constrained to point in the opposite direction as the other handle"},
     {0, nullptr, 0, nullptr, nullptr}};
 
-static const EnumPropertyItem rna_node_geometry_curve_handle_side_items[] = {
+const EnumPropertyItem rna_node_geometry_curve_handle_side_items[] = {
     {GEO_NODE_CURVE_HANDLE_LEFT, "LEFT", ICON_NONE, "Left", "Use the left handles"},
     {GEO_NODE_CURVE_HANDLE_RIGHT, "RIGHT", ICON_NONE, "Right", "Use the right handles"},
     {0, nullptr, 0, nullptr, nullptr}};
 
-static const EnumPropertyItem rna_node_combsep_color_items[] = {
+const EnumPropertyItem rna_node_combsep_color_items[] = {
     {NODE_COMBSEP_COLOR_RGB, "RGB", ICON_NONE, "RGB", "Use RGB color processing"},
     {NODE_COMBSEP_COLOR_HSV, "HSV", ICON_NONE, "HSV", "Use HSV color processing"},
     {NODE_COMBSEP_COLOR_HSL, "HSL", ICON_NONE, "HSL", "Use HSL color processing"},
@@ -528,6 +528,13 @@ static const EnumPropertyItem rna_enum_mix_data_type_items[] = {
     {SOCK_VECTOR, "VECTOR", 0, "Vector", ""},
     {SOCK_RGBA, "RGBA", 0, "Color", ""},
     {SOCK_ROTATION, "ROTATION", 0, "Rotation", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+const EnumPropertyItem rna_node_geometry_mesh_circle_fill_type_items[] = {
+    {GEO_NODE_MESH_CIRCLE_FILL_NONE, "NONE", 0, "None", ""},
+    {GEO_NODE_MESH_CIRCLE_FILL_NGON, "NGON", 0, "N-Gon", ""},
+    {GEO_NODE_MESH_CIRCLE_FILL_TRIANGLE_FAN, "TRIANGLE_FAN", 0, "Triangles", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -557,12 +564,6 @@ static const EnumPropertyItem node_cryptomatte_layer_name_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static EnumPropertyItem rna_node_geometry_mesh_circle_fill_type_items[] = {
-    {GEO_NODE_MESH_CIRCLE_FILL_NONE, "NONE", 0, "None", ""},
-    {GEO_NODE_MESH_CIRCLE_FILL_NGON, "NGON", 0, "N-Gon", ""},
-    {GEO_NODE_MESH_CIRCLE_FILL_TRIANGLE_FAN, "TRIANGLE_FAN", 0, "Triangles", ""},
-    {0, nullptr, 0, nullptr, nullptr},
-};
 #endif
 
 #ifndef RNA_RUNTIME
@@ -1793,7 +1794,7 @@ static bNodeType *rna_Node_register_base(Main *bmain,
   /* setup dummy node & node type to store static properties in */
   memset(&dummy_nt, 0, sizeof(bNodeType));
   /* this does some additional initialization of default values */
-  node_type_base_custom(&dummy_nt, identifier, "", 0);
+  node_type_base_custom(&dummy_nt, identifier, "", "CUSTOM", 0);
 
   memset(&dummy_node, 0, sizeof(bNode));
   dummy_node.typeinfo = &dummy_nt;
@@ -1946,16 +1947,6 @@ static const EnumPropertyItem *rna_GeometryNodeSwitch_type_itemf(bContext * /*C*
   return itemf_function_check(node_socket_data_type_items, switch_type_supported);
 }
 
-static bool compare_type_supported(const EnumPropertyItem *item)
-{
-  return ELEM(item->value, SOCK_FLOAT, SOCK_INT, SOCK_VECTOR, SOCK_STRING, SOCK_RGBA);
-}
-
-static bool compare_main_operation_supported(const EnumPropertyItem *item)
-{
-  return !ELEM(item->value, NODE_COMPARE_COLOR_BRIGHTER, NODE_COMPARE_COLOR_DARKER);
-}
-
 static bool geometry_node_asset_trait_flag_get(PointerRNA *ptr,
                                                const GeometryNodeAssetTraitFlag flag)
 {
@@ -2031,61 +2022,6 @@ static void rna_GeometryNodeTree_is_type_point_cloud_set(PointerRNA *ptr, bool v
   geometry_node_asset_trait_flag_set(ptr, GEO_NODE_ASSET_POINT_CLOUD, value);
 }
 
-static bool compare_rgba_operation_supported(const EnumPropertyItem *item)
-{
-  return ELEM(item->value,
-              NODE_COMPARE_EQUAL,
-              NODE_COMPARE_NOT_EQUAL,
-              NODE_COMPARE_COLOR_BRIGHTER,
-              NODE_COMPARE_COLOR_DARKER);
-}
-
-static bool compare_string_operation_supported(const EnumPropertyItem *item)
-{
-  return ELEM(item->value, NODE_COMPARE_EQUAL, NODE_COMPARE_NOT_EQUAL);
-}
-
-static bool compare_other_operation_supported(const EnumPropertyItem * /*item*/)
-{
-  return false;
-}
-
-static const EnumPropertyItem *rna_FunctionNodeCompare_type_itemf(bContext * /*C*/,
-                                                                  PointerRNA * /*ptr*/,
-                                                                  PropertyRNA * /*prop*/,
-                                                                  bool *r_free)
-{
-  *r_free = true;
-  return itemf_function_check(node_socket_data_type_items, compare_type_supported);
-}
-
-static const EnumPropertyItem *rna_FunctionNodeCompare_operation_itemf(bContext * /*C*/,
-                                                                       PointerRNA *ptr,
-                                                                       PropertyRNA * /*prop*/,
-                                                                       bool *r_free)
-{
-  *r_free = true;
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeFunctionCompare *data = static_cast<NodeFunctionCompare *>(node->storage);
-
-  if (ELEM(data->data_type, SOCK_FLOAT, SOCK_INT, SOCK_VECTOR)) {
-    return itemf_function_check(rna_enum_node_compare_operation_items,
-                                compare_main_operation_supported);
-  }
-  else if (data->data_type == SOCK_STRING) {
-    return itemf_function_check(rna_enum_node_compare_operation_items,
-                                compare_string_operation_supported);
-  }
-  else if (data->data_type == SOCK_RGBA) {
-    return itemf_function_check(rna_enum_node_compare_operation_items,
-                                compare_rgba_operation_supported);
-  }
-  else {
-    return itemf_function_check(rna_enum_node_compare_operation_items,
-                                compare_other_operation_supported);
-  }
-}
-
 static bool random_value_type_supported(const EnumPropertyItem *item)
 {
   return ELEM(item->value, CD_PROP_FLOAT, CD_PROP_FLOAT3, CD_PROP_BOOL, CD_PROP_INT32);
@@ -2111,33 +2047,6 @@ static const EnumPropertyItem *rna_GeoNodeAccumulateField_type_itemf(bContext * 
 {
   *r_free = true;
   return itemf_function_check(rna_enum_attribute_type_items, accumulate_field_type_supported);
-}
-
-static void rna_GeometryNodeCompare_data_type_update(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-  bNode *node = static_cast<bNode *>(ptr->data);
-  NodeFunctionCompare *node_storage = static_cast<NodeFunctionCompare *>(node->storage);
-
-  if (node_storage->data_type == SOCK_RGBA && !ELEM(node_storage->operation,
-                                                    NODE_COMPARE_EQUAL,
-                                                    NODE_COMPARE_NOT_EQUAL,
-                                                    NODE_COMPARE_COLOR_BRIGHTER,
-                                                    NODE_COMPARE_COLOR_DARKER))
-  {
-    node_storage->operation = NODE_COMPARE_EQUAL;
-  }
-  else if (node_storage->data_type == SOCK_STRING &&
-           !ELEM(node_storage->operation, NODE_COMPARE_EQUAL, NODE_COMPARE_NOT_EQUAL))
-  {
-    node_storage->operation = NODE_COMPARE_EQUAL;
-  }
-  else if (node_storage->data_type != SOCK_RGBA &&
-           ELEM(node_storage->operation, NODE_COMPARE_COLOR_BRIGHTER, NODE_COMPARE_COLOR_DARKER))
-  {
-    node_storage->operation = NODE_COMPARE_EQUAL;
-  }
-
-  rna_Node_socket_update(bmain, scene, ptr);
 }
 
 static bool generic_attribute_type_supported(const EnumPropertyItem *item)
@@ -4593,70 +4502,6 @@ static void def_math(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
-static void def_boolean_math(StructRNA *srna)
-{
-  PropertyRNA *prop;
-
-  prop = RNA_def_property(srna, "operation", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
-  RNA_def_property_enum_items(prop, rna_enum_node_boolean_math_items);
-  RNA_def_property_ui_text(prop, "Operation", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
-}
-
-static void def_compare(StructRNA *srna)
-{
-
-  static const EnumPropertyItem mode_items[] = {
-      {NODE_COMPARE_MODE_ELEMENT,
-       "ELEMENT",
-       0,
-       "Element-Wise",
-       "Compare each element of the input vectors"},
-      {NODE_COMPARE_MODE_LENGTH, "LENGTH", 0, "Length", "Compare the length of the input vectors"},
-      {NODE_COMPARE_MODE_AVERAGE,
-       "AVERAGE",
-       0,
-       "Average",
-       "Compare the average of the input vectors elements"},
-      {NODE_COMPARE_MODE_DOT_PRODUCT,
-       "DOT_PRODUCT",
-       0,
-       "Dot Product",
-       "Compare the dot products of the input vectors"},
-      {NODE_COMPARE_MODE_DIRECTION,
-       "DIRECTION",
-       0,
-       "Direction",
-       "Compare the direction of the input vectors"},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
-  PropertyRNA *prop;
-
-  RNA_def_struct_sdna_from(srna, "NodeFunctionCompare", "storage");
-
-  prop = RNA_def_property(srna, "operation", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_FunctionNodeCompare_operation_itemf");
-  RNA_def_property_enum_items(prop, rna_enum_node_compare_operation_items);
-  RNA_def_property_enum_default(prop, NODE_COMPARE_EQUAL);
-  RNA_def_property_ui_text(prop, "Operation", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
-
-  prop = RNA_def_property(srna, "data_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_FunctionNodeCompare_type_itemf");
-  RNA_def_property_enum_items(prop, node_socket_data_type_items);
-  RNA_def_property_enum_default(prop, SOCK_FLOAT);
-  RNA_def_property_ui_text(prop, "Input Type", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_GeometryNodeCompare_data_type_update");
-
-  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, mode_items);
-  RNA_def_property_enum_default(prop, NODE_COMPARE_MODE_ELEMENT);
-  RNA_def_property_ui_text(prop, "Mode", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
-}
-
 static void def_sh_mix(StructRNA *srna)
 {
   static const EnumPropertyItem rna_enum_mix_mode_items[] = {
@@ -4889,18 +4734,6 @@ static void def_fn_input_string(StructRNA *srna)
   prop = RNA_def_property(srna, "string", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(prop, "String", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
-}
-
-static void def_fn_combsep_color(StructRNA *srna)
-{
-  PropertyRNA *prop;
-
-  RNA_def_struct_sdna_from(srna, "NodeCombSepColor", "storage");
-
-  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_node_combsep_color_items);
-  RNA_def_property_ui_text(prop, "Mode", "Mode of color processing");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
 /* -- Shader Nodes ---------------------------------------------------------- */
@@ -5321,6 +5154,11 @@ static void def_sh_tex_noise(StructRNA *srna)
   RNA_def_property_enum_items(prop, rna_enum_node_tex_dimensions_items);
   RNA_def_property_ui_text(prop, "Dimensions", "Number of dimensions to output noise for");
   RNA_def_property_update(prop, 0, "rna_ShaderNode_socket_update");
+
+  prop = RNA_def_property(srna, "normalize", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, NULL, "normalize", 0);
+  RNA_def_property_ui_text(prop, "Normalize", "Normalize outputs to 0.0 to 1.0 range");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
 static void def_sh_tex_checker(StructRNA *srna)
@@ -9119,16 +8957,6 @@ static void def_tex_bricks(StructRNA *srna)
 
 /* -- Geometry Nodes --------------------------------------------------------- */
 
-static void def_geo_attribute_domain_size(StructRNA *srna)
-{
-  PropertyRNA *prop = RNA_def_property(srna, "component", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
-  RNA_def_property_enum_items(prop, rna_enum_geometry_component_type_items);
-  RNA_def_property_enum_default(prop, int(blender::bke::GeometryComponent::Type::Mesh));
-  RNA_def_property_ui_text(prop, "Component", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
-}
-
 static void def_geo_curve_sample(StructRNA *srna)
 {
   static EnumPropertyItem mode_items[] = {
@@ -9279,19 +9107,6 @@ static void def_geo_distribute_points_on_faces(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
-static void def_geo_curve_spline_type(StructRNA *srna)
-{
-  PropertyRNA *prop;
-  RNA_def_struct_sdna_from(srna, "NodeGeometryCurveSplineType", "storage");
-
-  prop = RNA_def_property(srna, "spline_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "spline_type");
-  RNA_def_property_enum_items(prop, rna_enum_curves_types);
-  RNA_def_property_ui_text(prop, "Type", "The curve type to change the selected curves to");
-
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
-}
-
 static void def_geo_curve_set_handle_type(StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -9307,18 +9122,6 @@ static void def_geo_curve_set_handle_type(StructRNA *srna)
   RNA_def_property_enum_items(prop, rna_node_geometry_curve_handle_side_items);
   RNA_def_property_ui_text(prop, "Mode", "Whether to update left and right handles");
   RNA_def_property_flag(prop, PROP_ENUM_FLAG);
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
-}
-
-static void def_geo_curve_set_handle_positions(StructRNA *srna)
-{
-  PropertyRNA *prop;
-
-  RNA_def_struct_sdna_from(srna, "NodeGeometrySetCurveHandlePositions", "storage");
-
-  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_node_geometry_curve_handle_side_items);
-  RNA_def_property_ui_text(prop, "Mode", "Whether to update left and right handles");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
 }
 
@@ -9664,112 +9467,6 @@ static void def_fn_rotate_euler(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
-static void def_fn_align_euler_to_vector(StructRNA *srna)
-{
-  static const EnumPropertyItem axis_items[] = {
-      {FN_NODE_ALIGN_EULER_TO_VECTOR_AXIS_X,
-       "X",
-       ICON_NONE,
-       "X",
-       "Align the X axis with the vector"},
-      {FN_NODE_ALIGN_EULER_TO_VECTOR_AXIS_Y,
-       "Y",
-       ICON_NONE,
-       "Y",
-       "Align the Y axis with the vector"},
-      {FN_NODE_ALIGN_EULER_TO_VECTOR_AXIS_Z,
-       "Z",
-       ICON_NONE,
-       "Z",
-       "Align the Z axis with the vector"},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
-  static const EnumPropertyItem pivot_axis_items[] = {
-      {FN_NODE_ALIGN_EULER_TO_VECTOR_PIVOT_AXIS_AUTO,
-       "AUTO",
-       ICON_NONE,
-       "Auto",
-       "Automatically detect the best rotation axis to rotate towards the vector"},
-      {FN_NODE_ALIGN_EULER_TO_VECTOR_PIVOT_AXIS_X,
-       "X",
-       ICON_NONE,
-       "X",
-       "Rotate around the local X axis"},
-      {FN_NODE_ALIGN_EULER_TO_VECTOR_PIVOT_AXIS_Y,
-       "Y",
-       ICON_NONE,
-       "Y",
-       "Rotate around the local Y axis"},
-      {FN_NODE_ALIGN_EULER_TO_VECTOR_PIVOT_AXIS_Z,
-       "Z",
-       ICON_NONE,
-       "Z",
-       "Rotate around the local Z axis"},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
-  PropertyRNA *prop;
-
-  prop = RNA_def_property(srna, "axis", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
-  RNA_def_property_enum_items(prop, axis_items);
-  RNA_def_property_ui_text(prop, "Axis", "Axis to align to the vector");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
-
-  prop = RNA_def_property(srna, "pivot_axis", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "custom2");
-  RNA_def_property_enum_items(prop, pivot_axis_items);
-  RNA_def_property_ui_text(prop, "Pivot Axis", "Axis to rotate around");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
-}
-
-static void def_geo_tool_set_selection(StructRNA *srna)
-{
-  PropertyRNA *prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
-  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_point_face_curve_items);
-  RNA_def_property_enum_default(prop, ATTR_DOMAIN_POINT);
-  RNA_def_property_ui_text(prop, "Domain", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
-}
-
-static void def_geo_mesh_circle(StructRNA *srna)
-{
-  PropertyRNA *prop;
-
-  RNA_def_struct_sdna_from(srna, "NodeGeometryMeshCircle", "storage");
-
-  prop = RNA_def_property(srna, "fill_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_node_geometry_mesh_circle_fill_type_items);
-  RNA_def_property_ui_text(prop, "Fill Type", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
-}
-
-static void def_geo_mesh_cylinder(StructRNA *srna)
-{
-  PropertyRNA *prop;
-
-  RNA_def_struct_sdna_from(srna, "NodeGeometryMeshCylinder", "storage");
-
-  prop = RNA_def_property(srna, "fill_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_node_geometry_mesh_circle_fill_type_items);
-  RNA_def_property_ui_text(prop, "Fill Type", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
-}
-
-static void def_geo_mesh_cone(StructRNA *srna)
-{
-  PropertyRNA *prop;
-
-  RNA_def_struct_sdna_from(srna, "NodeGeometryMeshCone", "storage");
-
-  prop = RNA_def_property(srna, "fill_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_node_geometry_mesh_circle_fill_type_items);
-  RNA_def_property_ui_text(prop, "Fill Type", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
-}
-
 static void def_geo_switch(StructRNA *srna)
 {
   PropertyRNA *prop;
@@ -9821,16 +9518,6 @@ static void def_geo_sample_nearest_surface(StructRNA *srna)
   RNA_def_property_enum_default(prop, CD_PROP_FLOAT);
   RNA_def_property_ui_text(prop, "Data Type", "");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_socket_update");
-}
-
-static void def_geo_sample_nearest(StructRNA *srna)
-{
-  PropertyRNA *prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "custom2");
-  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_only_mesh_items);
-  RNA_def_property_enum_default(prop, ATTR_DOMAIN_POINT);
-  RNA_def_property_ui_text(prop, "Domain", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
 static void def_geo_sample_uv_surface(StructRNA *srna)
@@ -9957,31 +9644,6 @@ static void def_geo_image(StructRNA *srna)
   RNA_def_property_struct_type(prop, "Image");
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_REFCOUNT);
   RNA_def_property_ui_text(prop, "Image", "");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
-}
-
-static void def_geo_delete_geometry(StructRNA *srna)
-{
-  PropertyRNA *prop;
-
-  static const EnumPropertyItem mode_items[] = {
-      {GEO_NODE_DELETE_GEOMETRY_MODE_ALL, "ALL", 0, "All", ""},
-      {GEO_NODE_DELETE_GEOMETRY_MODE_EDGE_FACE, "EDGE_FACE", 0, "Only Edges & Faces", ""},
-      {GEO_NODE_DELETE_GEOMETRY_MODE_ONLY_FACE, "ONLY_FACE", 0, "Only Faces", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-  RNA_def_struct_sdna_from(srna, "NodeGeometryDeleteGeometry", "storage");
-
-  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, mode_items);
-  RNA_def_property_enum_default(prop, GEO_NODE_DELETE_GEOMETRY_MODE_ALL);
-  RNA_def_property_ui_text(prop, "Mode", "Which parts of the mesh component to delete");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
-
-  prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_without_corner_items);
-  RNA_def_property_enum_default(prop, ATTR_DOMAIN_POINT);
-  RNA_def_property_ui_text(prop, "Domain", "Which domain to delete in");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
@@ -10133,19 +9795,6 @@ static void def_geo_string_to_curves(StructRNA *srna)
   RNA_def_property_enum_items(prop, rna_node_geometry_string_to_curves_pivot_mode);
   RNA_def_property_enum_default(prop, GEO_NODE_STRING_TO_CURVES_PIVOT_MODE_BOTTOM_LEFT);
   RNA_def_property_ui_text(prop, "Pivot Point", "Pivot point position relative to character");
-  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
-}
-
-static void def_geo_separate_geometry(StructRNA *srna)
-{
-  PropertyRNA *prop;
-
-  RNA_def_struct_sdna_from(srna, "NodeGeometrySeparateGeometry", "storage");
-
-  prop = RNA_def_property(srna, "domain", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, rna_enum_attribute_domain_without_corner_items);
-  RNA_def_property_enum_default(prop, ATTR_DOMAIN_POINT);
-  RNA_def_property_ui_text(prop, "Domain", "Which domain to separate on");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 

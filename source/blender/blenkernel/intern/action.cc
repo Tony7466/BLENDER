@@ -56,8 +56,8 @@
 
 #include "BIK_api.h"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #include "BLO_read_write.h"
@@ -1870,7 +1870,7 @@ void BKE_pose_blend_write(BlendWriter *writer, bPose *pose, bArmature *arm)
   BLO_write_struct(writer, bPose, pose);
 }
 
-void BKE_pose_blend_read_data(BlendDataReader *reader, bPose *pose)
+void BKE_pose_blend_read_data(BlendDataReader *reader, ID *id_owner, bPose *pose)
 {
   if (!pose) {
     return;
@@ -1894,7 +1894,7 @@ void BKE_pose_blend_read_data(BlendDataReader *reader, bPose *pose)
     BLO_read_data_address(reader, &pchan->bbone_prev);
     BLO_read_data_address(reader, &pchan->bbone_next);
 
-    BKE_constraint_blend_read_data(reader, &pchan->constraints);
+    BKE_constraint_blend_read_data(reader, id_owner, &pchan->constraints);
 
     BLO_read_data_address(reader, &pchan->prop);
     IDP_BlendDataRead(reader, &pchan->prop);

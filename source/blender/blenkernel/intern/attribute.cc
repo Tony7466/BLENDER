@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -37,7 +37,7 @@
 #include "BKE_pointcloud.h"
 #include "BKE_report.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 using blender::IndexRange;
 
@@ -229,7 +229,7 @@ bool BKE_id_attribute_and_defgroup_unique_name_check(void *arg, const char *name
   AttributeAndDefgroupUniqueNameData *data = static_cast<AttributeAndDefgroupUniqueNameData *>(
       arg);
 
-  if (BKE_defgroup_unique_name_check(data, name)) {
+  if (BKE_id_supports_vertex_groups(data->id) && BKE_defgroup_unique_name_check(data, name)) {
     return true;
   }
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -38,6 +38,9 @@
 #include "BKE_scene.h"
 #include "BKE_tracking.h"
 
+#include "BLT_translation.h"
+
+#include "BLO_read_write.h"
 #include "BLO_readfile.h"
 
 #include "readfile.h"
@@ -46,7 +49,19 @@
 
 // static CLG_LogRef LOG = {"blo.readfile.doversion"};
 
-void do_versions_after_linking_400(FileData * /*fd*/, Main *bmain)
+static void version_composite_nodetree_null_id(bNodeTree *ntree, Scene *scene)
+{
+  for (bNode *node : ntree->all_nodes()) {
+    if (node->id == nullptr &&
+        ((node->type == CMP_NODE_R_LAYERS) ||
+         (node->type == CMP_NODE_CRYPTOMATTE && node->custom1 == CMP_CRYPTOMATTE_SRC_RENDER)))
+    {
+      node->id = &scene->id;
+    }
+  }
+}
+
+void do_versions_after_linking_400(FileData *fd, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 9)) {
     /* Fix area light scaling. */
@@ -54,6 +69,45 @@ void do_versions_after_linking_400(FileData * /*fd*/, Main *bmain)
       light->energy = light->energy_deprecated;
       if (light->type == LA_AREA) {
         light->energy *= M_PI_4;
+      }
+    }
+
+    /* XXX This was added several years ago in 'lib_link` code of Scene... Should be safe enough
+     * here. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (scene->nodetree) {
+        version_composite_nodetree_null_id(scene->nodetree, scene);
+      }
+    }
+
+    /* Object proxies have been deprecated sine 3.x era, so their update & sanity check can now
+     * happen in do_versions code. */
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      if (ob->proxy) {
+        /* Paranoia check, actually a proxy_from pointer should never be written... */
+        if (!ID_IS_LINKED(ob->proxy)) {
+          ob->proxy->proxy_from = nullptr;
+          ob->proxy = nullptr;
+
+          if (ob->id.lib) {
+            BLO_reportf_wrap(fd->reports,
+                             RPT_INFO,
+                             TIP_("Proxy lost from object %s lib %s\n"),
+                             ob->id.name + 2,
+                             ob->id.lib->filepath);
+          }
+          else {
+            BLO_reportf_wrap(fd->reports,
+                             RPT_INFO,
+                             TIP_("Proxy lost from object %s lib <NONE>\n"),
+                             ob->id.name + 2);
+          }
+          fd->reports->count.missing_obproxies++;
+        }
+        else {
+          /* This triggers object_update to always use a copy. */
+          ob->proxy->proxy_from = ob;
+        }
       }
     }
   }
@@ -580,6 +634,20 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         }
       }
     }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 16)) {
+    /* Set Normalize property of Noise Texture node to true. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type != NTREE_CUSTOM) {
+        LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+          if (node->type == SH_NODE_TEX_NOISE) {
+            ((NodeTexNoise *)node->storage)->normalize = true;
+          }
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
   }
 
   /**
