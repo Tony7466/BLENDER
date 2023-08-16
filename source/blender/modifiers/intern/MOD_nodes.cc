@@ -790,7 +790,7 @@ static SimulationPrepareResult prepare_simulation_states_for_evaluation(
       if (realtime_cache.current_frame == current_frame && realtime_cache.current_state) {
         /* Don't simulate in the same frame again. */
         result.current_simulation_state = realtime_cache.current_state.get();
-        return;
+        return result;
       }
 
       /* Advance in time, making the last "current" state the new "previous" state. */
@@ -819,6 +819,7 @@ static SimulationPrepareResult prepare_simulation_states_for_evaluation(
       }
     }
   }
+  return result;
 }
 
 class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
@@ -830,7 +831,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     prepare_ = prepare_simulation_states_for_evaluation(nmd, ctx);
   }
 
-  nodes::SimulationEvalType get_eval_type(const nodes::NestedNodeID id) const override
+  nodes::SimulationEvalType get_eval_type(const nodes::NestedNodeID /*id*/) const override
   {
     if (prepare_.current_simulation_state == nullptr) {
       return nodes::SimulationEvalType::PassThrough;
@@ -844,17 +845,17 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     return nodes::SimulationEvalType::Read;
   }
 
-  nodes::SimulationInputInfo get_input_info(const nodes::NestedNodeID id) const override
+  nodes::SimulationInputInfo get_input_info(const nodes::NestedNodeID /*id*/) const override
   {
     return {};
   }
 
-  nodes::SimulationOutputInfo get_output_info(const nodes::NestedNodeID id) const override
+  nodes::SimulationOutputInfo get_output_info(const nodes::NestedNodeID /*id*/) const override
   {
     return {};
   }
 
-  void store_simulation_state(const nodes::NestedNodeID id,
+  void store_simulation_state(const nodes::NestedNodeID /*id*/,
                               Map<int, std::unique_ptr<bke::BakeItem>> items) const override
   {
   }
@@ -919,9 +920,7 @@ static void modifyGeometry(ModifierData *md,
   modifier_eval_data.self_object = ctx->object;
   auto eval_log = std::make_unique<geo_log::GeoModifierLog>();
 
-  NodesModifierSimulationParams simulation_params;
-  simulation_params.nmd_ = nmd;
-  simulation_params.ctx_ = ctx;
+  NodesModifierSimulationParams simulation_params(*nmd, *ctx);
   modifier_eval_data.simulation_params = &simulation_params;
 
   Set<ComputeContextHash> socket_log_contexts;
