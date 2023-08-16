@@ -140,8 +140,8 @@ class Layer;
   void set_selected(bool selected); \
   bool use_onion_skinning() const;
 
-/* Note: Implements the methods defined by #TREENODE_COMMON_METHODS. */
-#define TREENODE_COMMON_METHODS_IMPL(class_name) \
+/* Implements the forwarding of the methods defined by #TREENODE_COMMON_METHODS. */
+#define TREENODE_COMMON_METHODS_FORWARD_IMPL(class_name) \
   inline StringRefNull class_name::name() const \
   { \
     return this->as_node().name(); \
@@ -617,7 +617,7 @@ inline TreeNode &Layer::as_node()
   return *reinterpret_cast<TreeNode *>(this);
 }
 
-TREENODE_COMMON_METHODS_IMPL(Layer);
+TREENODE_COMMON_METHODS_FORWARD_IMPL(Layer);
 inline bool Layer::is_empty() const
 {
   return (this->frames().size() == 0);
@@ -627,7 +627,7 @@ inline LayerGroup &Layer::parent_group() const
   return *this->as_node().parent_group();
 }
 
-TREENODE_COMMON_METHODS_IMPL(LayerGroup);
+TREENODE_COMMON_METHODS_FORWARD_IMPL(LayerGroup);
 
 namespace convert {
 
