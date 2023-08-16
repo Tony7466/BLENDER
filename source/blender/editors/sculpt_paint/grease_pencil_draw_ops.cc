@@ -140,15 +140,23 @@ static int grease_pencil_stroke_invoke(bContext *C, wmOperator *op, const wmEven
   }
 
   const int current_frame = scene->r.cfra;
-  const bke::greasepencil::Layer &active_layer = *grease_pencil.get_active_layer();
-  if (active_layer.drawing_index_at(current_frame) == -1) {
+  if (grease_pencil.get_active_layer()->drawing_index_at(current_frame) == -1) {
     if (!IS_AUTOKEY_ON(scene)) {
       BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
       return OPERATOR_CANCELLED;
     }
-    /* Create a new blank frame here. */
-    grease_pencil.insert_blank_frame(
-        *grease_pencil.get_active_layer_for_write(), current_frame, 1, BEZT_KEYTYPE_KEYFRAME);
+    const ToolSettings *ts = CTX_data_tool_settings(C);
+    bke::greasepencil::Layer &active_layer = *grease_pencil.get_active_layer_for_write();
+    if ((ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) != 0) {
+      /* For additive drawing, we duplicate the frame that's currently visible and insert it at the
+       * current frame. */
+      grease_pencil.insert_duplicate_frame(
+          active_layer, active_layer.frame_key_at(current_frame), current_frame, false);
+    }
+    else {
+      /* Otherwise we just insert a blank keyframe. */
+      grease_pencil.insert_blank_frame(active_layer, current_frame, 0, BEZT_KEYTYPE_KEYFRAME);
+    }
   }
 
   op->customdata = paint_stroke_new(C,
