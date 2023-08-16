@@ -8,8 +8,6 @@
 #include "BLI_span.hh"
 #include "BLI_vector_set.hh"
 
-// #include <fmt/format.h>
-
 #include "testing/testing.h"
 
 namespace blender::grouped_indices::tests {
@@ -47,9 +45,7 @@ TEST(grouped_indices, LargeTest)
         std::stringstream test_name_str;
         test_name_str << "size: " << size << ", max_value: " << max_value << std::boolalpha
                       << ", fragmented: " << fragmented;
-        const std::string test_name =
-            test_name_str.str();  //= fmt::format("size: {}, max_value: {}, fragmented: {}", size,
-                                  //max_value, fragmented);
+        const std::string test_name = test_name_str.str();
 
         Array<int> group_indices(size);
         for (const int index : group_indices.index_range()) {

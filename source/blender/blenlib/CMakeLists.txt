@@ -391,7 +391,6 @@ set(LIB
   PRIVATE bf::intern::guardedalloc
   extern_wcwidth
   PRIVATE bf::intern::atomic
-  #PRIVATE bf::extern::fmtlib
   ${ZLIB_LIBRARIES}
   ${ZSTD_LIBRARIES}
 )

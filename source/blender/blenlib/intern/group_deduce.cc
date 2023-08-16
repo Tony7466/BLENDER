@@ -28,7 +28,7 @@ static Span<int> front_indices_to_same_value(const Span<int> indices, const Span
 }
 
 static void from_indices_large_groups(const Span<int> group_indices,
-                                      MutableSpan<int> r_counts_to_offsets,
+                                      MutableSpan<int> r_counts_to_offset,
                                       MutableSpan<int> r_indices)
 {
   constexpr int segment_size = 1024;
@@ -48,14 +48,14 @@ static void from_indices_large_groups(const Span<int> group_indices,
     for (Span<int> indices = segment_indices; !indices.is_empty();) {
       const int group = group_indices[indices.first()];
       const int step_size = front_indices_to_same_value(indices, group_indices).size();
-      atomic_add_and_fetch_int32(&r_counts_to_offsets[group], step_size);
+      atomic_add_and_fetch_int32(&r_counts_to_offset[group], step_size);
       indices = indices.drop_front(step_size);
     }
   });
 
-  const OffsetIndices<int> offsets = offset_indices::accumulate_counts_to_offsets(
-      r_counts_to_offsets);
-  Array<int> counts(offsets.size(), 0);
+  const OffsetIndices<int> offset = offset_indices::accumulate_counts_to_offsets(
+      r_counts_to_offset);
+  Array<int> counts(offset.size(), 0);
   threading::parallel_for_each(IndexRange(total_segments), [&](const int segment_index) {
     const IndexRange range = segment.shift(segment_size * segment_index);
     const Span<int> segment_indices = src_indices.as_span().slice_safe(range);
@@ -65,26 +65,26 @@ static void from_indices_large_groups(const Span<int> group_indices,
       const int step_size = indices_of_current_group.size();
       const int group = group_indices[indices.first()];
       const int start = atomic_add_and_fetch_int32(&counts[group], step_size) - step_size;
-      const IndexRange dst_range = offsets[group].slice(start, step_size);
+      const IndexRange dst_range = offset[group].slice(start, step_size);
       array_utils::copy(indices_of_current_group, r_indices.slice(dst_range));
       indices = indices.drop_front(step_size);
     }
   });
 }
 
-static void reverse_copy(const OffsetIndices<int> offsets,
+static void reverse_copy(const OffsetIndices<int> offset,
                          const Span<int> src_indices,
                          MutableSpan<int> dst_indices)
 {
   Array<int> revers_indices(src_indices.size());
-  Array<int> counts(offsets.size(), 0);
+  Array<int> counts(offset.size(), 0);
   threading::parallel_for(src_indices.index_range(), 1024, [&](const IndexRange range) {
     const Span<int> segment_src_indices = src_indices.slice(range);
     MutableSpan<int> segment_dst_indices = revers_indices.as_mutable_span().slice(range);
     array_utils::copy(segment_src_indices, segment_dst_indices);
     for (int &group_to_index : segment_dst_indices) {
       const int index_in_group = atomic_add_and_fetch_int32(&counts[group_to_index], 1) - 1;
-      group_to_index = offsets[group_to_index][index_in_group];
+      group_to_index = offset[group_to_index][index_in_group];
     }
   });
 
@@ -96,21 +96,11 @@ static void reverse_copy(const OffsetIndices<int> offsets,
 }
 
 static void from_indices_many_groups(const Span<int> group_indices,
-                                     MutableSpan<int> r_counts_to_offsets,
+                                     MutableSpan<int> r_counts_to_offset,
                                      MutableSpan<int> r_indices)
 {
-  offset_indices::build_reverse_offsets(group_indices, r_counts_to_offsets);
-  reverse_copy(OffsetIndices<int>(r_counts_to_offsets), group_indices, r_indices);
-}
-
-static void make_stabil(const OffsetIndices<int> offsets, MutableSpan<int> indices)
-{
-  threading::parallel_for(offsets.index_range(), 256, [&](const IndexRange range) {
-    for (const int64_t index : range) {
-      MutableSpan<int> group_indices = indices.slice(offsets[index]);
-      parallel_sort(group_indices.begin(), group_indices.end());
-    }
-  });
+  offset_indices::build_reverse_offsets(group_indices, r_counts_to_offset);
+  reverse_copy(OffsetIndices<int>(r_counts_to_offset), group_indices, r_indices);
 }
 
 bool is_fragmented(const Span<int> group_indices, const int total_groups)
@@ -150,37 +140,42 @@ int identifiers_to_indices(MutableSpan<int> r_identifiers_to_indices, const bool
 }
 
 GroupedSpan<int> from_indices(const Span<int> group_indices,
-                              MutableSpan<int> r_counts_to_offsets,
+                              MutableSpan<int> r_counts_to_offset,
                               MutableSpan<int> r_indices,
                               const bool fragmented,
                               const bool stable)
 {
   BLI_assert(!group_indices.is_empty());
   BLI_assert(group_indices.size() == r_indices.size());
-  BLI_assert(std::all_of(r_counts_to_offsets.begin(), r_counts_to_offsets.end(), [](int value) {
-    return value == 0;
-  }));
+  BLI_assert(std::all_of(
+      r_counts_to_offset.begin(), r_counts_to_offset.end(), [](int value) { return value == 0; }));
   BLI_assert(*std::min_element(group_indices.begin(), group_indices.end()) >= 0);
   BLI_assert(*std::max_element(group_indices.begin(), group_indices.end()) <
-             r_counts_to_offsets.size() - 1);
+             r_counts_to_offset.size() - 1);
 
   if (fragmented) {
-    from_indices_many_groups(group_indices, r_counts_to_offsets, r_indices);
+    from_indices_many_groups(group_indices, r_counts_to_offset, r_indices);
   }
   else {
-    from_indices_large_groups(group_indices, r_counts_to_offsets, r_indices);
+    from_indices_large_groups(group_indices, r_counts_to_offset, r_indices);
   }
 
+  const OffsetIndices<int> offset(r_counts_to_offset);
   if (stable) {
-    make_stabil(r_counts_to_offsets.as_span(), r_indices);
+    threading::parallel_for(offset.index_range(), 256, [&](const IndexRange range) {
+      for (const int64_t index : range) {
+        MutableSpan<int> group_indices = r_indices.slice(offset[index]);
+        parallel_sort(group_indices.begin(), group_indices.end());
+      }
+    });
   }
 
-  return {OffsetIndices<int>(r_counts_to_offsets), r_indices};
+  return {offset, r_indices};
 }
 
 GroupedSpan<int> from_identifiers(const Span<int> groups_ids,
                                   const IndexMask &universe,
-                                  Array<int> &r_offsets,
+                                  Array<int> &r_offset,
                                   Array<int> &r_indices,
                                   const bool stable)
 {
@@ -189,18 +184,18 @@ GroupedSpan<int> from_identifiers(const Span<int> groups_ids,
   array_utils::gather(groups_ids, universe, group_indices.as_mutable_span());
   const int total_groups = identifiers_to_indices(group_indices, stable);
   const bool fragmented = is_fragmented(group_indices, total_groups);
-  r_offsets.reinitialize(total_groups + 1);
-  r_offsets.as_mutable_span().fill(0);
+  r_offset.reinitialize(total_groups + 1);
+  r_offset.as_mutable_span().fill(0);
   r_indices.reinitialize(universe.size());
-  return from_indices(group_indices, r_offsets, r_indices, fragmented, stable);
+  return from_indices(group_indices, r_offset, r_indices, fragmented, stable);
 }
 
 GroupedSpan<int> from_identifiers(const Span<int> groups_ids,
-                                  Array<int> &r_offsets,
+                                  Array<int> &r_offset,
                                   Array<int> &r_indices,
                                   const bool stable)
 {
-  return from_identifiers(groups_ids, IndexMask(groups_ids.size()), r_offsets, r_indices, stable);
+  return from_identifiers(groups_ids, IndexMask(groups_ids.size()), r_offset, r_indices, stable);
 }
 
 }  // namespace blender::grouped_indices
