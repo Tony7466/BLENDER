@@ -753,9 +753,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
             ((NodeTexNoise *)node->storage)->normalize = true;
           }
         }
-
-        /* Convert Musgrave Texture nodes to Noise Texture nodes. */
-        // versioning_replace_musgrave_texture_node(ntree);
       }
     }
     FOREACH_NODETREE_END;
