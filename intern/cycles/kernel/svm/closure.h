@@ -55,6 +55,12 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       return svm_node_closure_bsdf_skip(kg, offset, type);
     }
   }
+  else IF_KERNEL_NODES_FEATURE(EMISSION) {
+    if (type != CLOSURE_BSDF_PRINCIPLED_ID) {
+      /* Only principled BSDF can have emission. */
+      return svm_node_closure_bsdf_skip(kg, offset, type);
+    }
+  }
   else {
     return svm_node_closure_bsdf_skip(kg, offset, type);
   }
