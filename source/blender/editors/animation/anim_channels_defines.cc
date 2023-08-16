@@ -3561,9 +3561,9 @@ static bAnimChannelType ACF_GPL_LEGACY = {
 static short acf_gpl_offset(bAnimContext *ac, bAnimListElem *ale)
 {
   GreasePencilLayerTreeNode *node = static_cast<GreasePencilLayerTreeNode *>(ale->data);
-  const int depth = node->wrap().depth();
+
   short offset = acf_generic_basic_offset(ac, ale);
-  offset += depth * short(0.7f * U.widget_unit);
+  offset += node->wrap().depth() * short(0.7f * U.widget_unit);
 
   return offset;
 }
