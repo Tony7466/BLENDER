@@ -491,6 +491,7 @@ int64_t TreeNode::depth() const
 {
   const LayerGroup *parent = this->parent_group();
   if (parent == nullptr) {
+    /* The root group has a depth of 0. */
     return 0;
   }
   return 1 + parent->as_node().depth();
