@@ -152,6 +152,22 @@ void select_frames_range(bke::greasepencil::Layer &layer,
   }
 }
 
+void select_frames_range(bke::greasepencil::LayerGroup &layer_group,
+                         const float min,
+                         const float max,
+                         const short select_mode)
+{
+  LISTBASE_FOREACH_BACKWARD (GreasePencilLayerTreeNode *, node_, &layer_group.children) {
+    bke::greasepencil::TreeNode &node = node_->wrap();
+    if (node.is_group()) {
+      select_frames_range(node.as_group_for_write(), min, max, select_mode);
+    }
+    else if (node.is_layer()) {
+      select_frames_range(node.as_layer_for_write(), min, max, select_mode);
+    }
+  }
+}
+
 static void append_frame_to_key_edit_data(KeyframeEditData *ked,
                                           const int frame_number,
                                           const GreasePencilFrame &frame)

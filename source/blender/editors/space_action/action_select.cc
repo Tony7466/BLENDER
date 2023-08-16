@@ -447,6 +447,14 @@ static void box_select_elem(
       ale->update |= ANIM_UPDATE_DEPS;
       break;
     }
+    case ANIMTYPE_GREASE_PENCIL_LAYER_GROUP:
+      blender::ed::greasepencil::select_frames_range(
+          static_cast<GreasePencilLayerTreeGroup *>(ale->data)->wrap(),
+          xmin,
+          xmax,
+          sel_data->selectmode);
+      ale->update |= ANIM_UPDATE_DEPS;
+      break;
     case ANIMTYPE_GREASE_PENCIL_LAYER: {
       blender::ed::greasepencil::select_frames_range(
           static_cast<GreasePencilLayer *>(ale->data)->wrap(), xmin, xmax, sel_data->selectmode);
