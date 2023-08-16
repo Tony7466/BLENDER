@@ -397,7 +397,7 @@ static int view_edge_pan_modal(bContext *C, wmOperator *op, const wmEvent *event
   int r_mval[2];
   wmWindow *target_win = WM_window_find_under_cursor(source_win, event->xy, &r_mval[0]);
 
-  /* Exit if we release mouse button, hit escape, or enter a different window. */
+  /* Exit if we release the mouse button, hit escape, or enter a different window. */
   if (event->val == KM_RELEASE || event->type == EVT_ESCKEY || source_win != target_win) {
     vpd->v2d->flag &= ~V2D_IS_NAVIGATING;
     MEM_SAFE_FREE(op->customdata);
