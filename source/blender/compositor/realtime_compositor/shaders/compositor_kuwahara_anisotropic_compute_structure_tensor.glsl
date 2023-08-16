@@ -14,8 +14,8 @@ void main()
 
   /* The weight kernels of the filter optimized for rotational symmetry described in section "3.2.1
    * Gradient Calculation". */
-  float corner_weight = 0.182;
-  float center_weight = 1.0 - 2.0 * corner_weight;
+  const float corner_weight = 0.182;
+  const float center_weight = 1.0 - 2.0 * corner_weight;
 
   vec3 x_partial_derivative = texture_load(input_tx, texel + ivec2(-1, 1)).rgb * -corner_weight +
                               texture_load(input_tx, texel + ivec2(-1, 0)).rgb * -center_weight +
@@ -31,10 +31,12 @@ void main()
                               texture_load(input_tx, texel + ivec2(0, -1)).rgb * -center_weight +
                               texture_load(input_tx, texel + ivec2(1, -1)).rgb * -corner_weight;
 
+  float dxdx = dot(x_partial_derivative, x_partial_derivative);
+  float dxdy = dot(x_partial_derivative, y_partial_derivative);
+  float dydy = dot(y_partial_derivative, y_partial_derivative);
+
   /* We encode the structure tensor in a vec4 using a column major storage order. */
-  vec4 structure_tensor = vec4(dot(x_partial_derivative, x_partial_derivative),
-                               dot(x_partial_derivative, y_partial_derivative),
-                               dot(x_partial_derivative, y_partial_derivative),
-                               dot(y_partial_derivative, y_partial_derivative));
+  vec4 structure_tensor = vec4(dxdx, dxdy, dxdy, dydy);
+
   imageStore(structure_tensor_img, texel, structure_tensor);
 }

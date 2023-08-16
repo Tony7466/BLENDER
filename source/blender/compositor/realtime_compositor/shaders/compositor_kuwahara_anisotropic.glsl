@@ -30,7 +30,7 @@ void main()
   /* Compute the first and second eigenvalues of the structure tensor using the equations in
    * section "3.1 Orientation and Anisotropy Estimation" of the paper. */
   float eigenvalue_first_term = (dxdx + dydy) / 2.0;
-  float eigenvalue_square_root_term = sqrt(pow(dxdx - dydy, 2.0) + 4.0 * pow(dxdy, 2.0)) / 2.0;
+  float eigenvalue_square_root_term = sqrt(square_f(dxdx - dydy) + 4.0 * square_f(dxdy)) / 2.0;
   float first_eigenvalue = eigenvalue_first_term + eigenvalue_square_root_term;
   float second_eigenvalue = eigenvalue_first_term - eigenvalue_square_root_term;
 
@@ -82,17 +82,17 @@ void main()
   vec2 ellipse_major_axis = ellipse_width * unit_eigenvector;
   vec2 ellipse_minor_axis = ellipse_height * unit_eigenvector.yx * vec2(-1, 1);
   ivec2 ellipse_bounds = ivec2(
-      ceil(sqrt(pow(ellipse_major_axis, vec2(2.0)) + pow(ellipse_minor_axis, vec2(2.0)))));
+      ceil(sqrt(square_f(ellipse_major_axis) + square_f(ellipse_minor_axis))));
 
   /* Compute the overlap polynomial parameters for 8-sector ellipse based on the equations in
    * section "3 Alternative Weighting Functions" of the polynomial weights paper. More on this
    * later in the code. */
-  int number_of_sectors = 8;
+  const int number_of_sectors = 8;
   float sector_center_overlap_parameter = 2.0 / radius;
   float sector_envelope_angle = ((3.0 / 2.0) * M_PI) / number_of_sectors;
   float cross_sector_overlap_parameter = (sector_center_overlap_parameter +
                                           cos(sector_envelope_angle)) /
-                                         pow(sin(sector_envelope_angle), 2.0);
+                                         square_f(sin(sector_envelope_angle));
 
   /* We need to compute the weighted mean of color and squared color of each of the 8 sectors of
    * the ellipse, so we declare arrays for accumulating those and initialize them in the next code
@@ -156,11 +156,11 @@ void main()
        * and can be computed once for the x and once for the y coordinates. So we compute every
        * other even-indexed 4 weights by successive 90 degree rotations as discussed. */
       vec2 polynomial = sector_center_overlap_parameter -
-                        cross_sector_overlap_parameter * pow(disk_point, vec2(2.0));
-      sector_weights[0] = pow(max(0.0, disk_point.y + polynomial.x), 2.0);
-      sector_weights[2] = pow(max(0.0, -disk_point.x + polynomial.y), 2.0);
-      sector_weights[4] = pow(max(0.0, -disk_point.y + polynomial.x), 2.0);
-      sector_weights[6] = pow(max(0.0, disk_point.x + polynomial.y), 2.0);
+                        cross_sector_overlap_parameter * square_f(disk_point);
+      sector_weights[0] = square_f(max(0.0, disk_point.y + polynomial.x));
+      sector_weights[2] = square_f(max(0.0, -disk_point.x + polynomial.y));
+      sector_weights[4] = square_f(max(0.0, -disk_point.y + polynomial.x));
+      sector_weights[6] = square_f(max(0.0, disk_point.x + polynomial.y));
 
       /* Then we rotate the disk point by 45 degrees, which is a simple expression involving a
        * constant as can be demonstrated by applying a 45 degree rotation matrix. */
@@ -170,12 +170,11 @@ void main()
       /* Finally, we compute every other odd-index 4 weights starting from the 45 degreed rotated
        * disk point. */
       vec2 rotated_polynomial = sector_center_overlap_parameter -
-                                cross_sector_overlap_parameter *
-                                    pow(rotated_disk_point, vec2(2.0));
-      sector_weights[1] = pow(max(0.0, rotated_disk_point.y + rotated_polynomial.x), 2.0);
-      sector_weights[3] = pow(max(0.0, -rotated_disk_point.x + rotated_polynomial.y), 2.0);
-      sector_weights[5] = pow(max(0.0, -rotated_disk_point.y + rotated_polynomial.x), 2.0);
-      sector_weights[7] = pow(max(0.0, rotated_disk_point.x + rotated_polynomial.y), 2.0);
+                                cross_sector_overlap_parameter * square_f(rotated_disk_point);
+      sector_weights[1] = square_f(max(0.0, rotated_disk_point.y + rotated_polynomial.x));
+      sector_weights[3] = square_f(max(0.0, -rotated_disk_point.x + rotated_polynomial.y));
+      sector_weights[5] = square_f(max(0.0, -rotated_disk_point.y + rotated_polynomial.x));
+      sector_weights[7] = square_f(max(0.0, rotated_disk_point.x + rotated_polynomial.y));
 
       /* We compute a radial Gaussian weighting component such that pixels further away from the
        * sector center gets attenuated, and we also divide by the sum of sector weights to

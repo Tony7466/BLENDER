@@ -126,7 +126,7 @@ void KuwaharaAnisotropicOperation::execute_pixel_sampled(float output[4],
   /* Compute the overlap polynomial parameters for 8-sector ellipse based on the equations in
    * section "3 Alternative Weighting Functions" of the polynomial weights paper. More on this
    * later in the code. */
-  int number_of_sectors = 8;
+  const int number_of_sectors = 8;
   float sector_center_overlap_parameter = 2.0f / data.size;
   float sector_envelope_angle = ((3.0f / 2.0f) * M_PI) / number_of_sectors;
   float cross_sector_overlap_parameter = (sector_center_overlap_parameter +
