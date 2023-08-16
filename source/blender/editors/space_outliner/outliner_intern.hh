@@ -9,7 +9,6 @@
 #pragma once
 
 #include <memory>
-#include <variant>
 
 #include "RNA_types.hh"
 
