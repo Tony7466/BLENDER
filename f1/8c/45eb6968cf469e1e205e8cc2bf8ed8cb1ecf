@@ -1,2 +1,3 @@
 Referenced by issue #111142, Regression: Node group property 'bl_static_type' returns empty string
 Referenced by pull request #111154, Fix #111142: Node group property 'bl_static_type' returns empty string for node groups and custom nodes
+Referenced by commit f50da4040f91e52a20a6ce7cae338339c8ce5f70, Fix #111142: bl_static_type is empty for node groups and custom nodes
