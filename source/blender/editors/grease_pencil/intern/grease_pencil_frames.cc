@@ -108,10 +108,10 @@ void select_frames_region(KeyframeEditData *ked,
   }
 }
 
-void select_frames_box(bke::greasepencil::Layer &layer,
-                       const float min,
-                       const float max,
-                       const short select_mode)
+void select_frames_range(bke::greasepencil::Layer &layer,
+                         const float min,
+                         const float max,
+                         const short select_mode)
 {
   /* Only select those frames which are in bounds. */
   for (auto [frame_number, frame] : layer.frames_for_write().items()) {
