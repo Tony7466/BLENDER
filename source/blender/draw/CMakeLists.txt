@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2016 Blender Foundation
+# SPDX-FileCopyrightText: 2016 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -895,6 +895,9 @@ if(WITH_GTESTS)
     endif()
     if(WITH_METAL_BACKEND)
       add_definitions(-DWITH_METAL_BACKEND)
+    endif()
+    if(WITH_VULKAN_BACKEND)
+      add_definitions(-DWITH_VULKAN_BACKEND)
     endif()
   endif()
 endif()

@@ -14,7 +14,10 @@
 #include "BLI_alloca.h"
 #include "BLI_bitmap.h"
 #include "BLI_linklist_stack.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_memarena.h"
 
 #include "BKE_context.h"
@@ -1337,8 +1340,7 @@ void transform_convert_mesh_crazyspace_detect(TransInfo *t,
      * correction with \a quats, relative to the coordinates after
      * the modifiers that support deform matrices \a defcos. */
 
-#if 0 /* TODO(@ideasman42): fix crazy-space & extrude so it can be enabled for general use. \
-       */
+#if 0 /* TODO(@ideasman42): fix crazy-space & extrude so it can be enabled for general use. */
     if ((totleft > 0) || (totleft == -1))
 #else
     if (totleft > 0)

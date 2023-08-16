@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,9 +14,9 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "MOD_lineart.h"
+#include "BLI_math_matrix.h"
 
-#include "BLI_math.h"
+#include "MOD_lineart.h"
 
 #include "lineart_intern.h"
 

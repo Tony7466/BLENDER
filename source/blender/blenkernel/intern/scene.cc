@@ -41,7 +41,7 @@
 
 #include "BKE_callbacks.h"
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
 #include "BLI_task.h"
@@ -99,7 +99,7 @@
 
 #include "RE_engine.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "SEQ_edit.h"
 #include "SEQ_iterator.h"
@@ -1009,9 +1009,6 @@ static void scene_blend_write(BlendWriter *writer, ID *id, const void *id_addres
   BLO_write_id_struct(writer, Scene, id_address, &sce->id);
   BKE_id_blend_write(writer, &sce->id);
 
-  if (sce->adt) {
-    BKE_animdata_blend_write(writer, sce->adt);
-  }
   BKE_keyingsets_blend_write(writer, &sce->keyingsets);
 
   /* direct data */
@@ -1228,9 +1225,6 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
   id_us_ensure_real(&sce->id);
 
   BLO_read_list(reader, &(sce->base));
-
-  BLO_read_data_address(reader, &sce->adt);
-  BKE_animdata_blend_read_data(reader, sce->adt);
 
   BLO_read_list(reader, &sce->keyingsets);
   BKE_keyingsets_blend_read_data(reader, &sce->keyingsets);
@@ -1486,14 +1480,6 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
 
   BKE_curvemapping_blend_read(reader, &sce->r.mblur_shutter_curve);
 
-#ifdef USE_COLLECTION_COMPAT_28
-  /* this runs before the very first doversion */
-  if (sce->collection) {
-    BLO_read_data_address(reader, &sce->collection);
-    BKE_collection_compat_blend_read_data(reader, sce->collection);
-  }
-#endif
-
   /* insert into global old-new map for reading without UI (link_global accesses it again) */
   BLO_read_glob_list(reader, &sce->view_layers);
   LISTBASE_FOREACH (ViewLayer *, view_layer, &sce->view_layers) {
@@ -1520,18 +1506,6 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
 }
 
 /* patch for missing scene IDs, can't be in do-versions */
-static void composite_patch(bNodeTree *ntree, Scene *scene)
-{
-  for (bNode *node : ntree->all_nodes()) {
-    if (node->id == nullptr &&
-        ((node->type == CMP_NODE_R_LAYERS) ||
-         (node->type == CMP_NODE_CRYPTOMATTE && node->custom1 == CMP_CRYPTOMATTE_SRC_RENDER)))
-    {
-      node->id = &scene->id;
-    }
-  }
-}
-
 static void scene_blend_read_lib(BlendLibReader *reader, ID *id)
 {
   Scene *sce = (Scene *)id;
@@ -1634,10 +1608,6 @@ static void scene_blend_read_lib(BlendLibReader *reader, ID *id)
     }
   }
 
-  if (sce->nodetree) {
-    composite_patch(sce->nodetree, sce);
-  }
-
   LISTBASE_FOREACH (SceneRenderLayer *, srl, &sce->r.layers) {
     BLO_read_id_address(reader, id, &srl->mat_override);
     LISTBASE_FOREACH (FreestyleModuleConfig *, fmc, &srl->freestyleConfig.modules) {
@@ -1650,12 +1620,6 @@ static void scene_blend_read_lib(BlendLibReader *reader, ID *id)
   }
   /* Motion Tracking */
   BLO_read_id_address(reader, id, &sce->clip);
-
-#ifdef USE_COLLECTION_COMPAT_28
-  if (sce->collection) {
-    BKE_collection_compat_blend_read_lib(reader, id, sce->collection);
-  }
-#endif
 
   LISTBASE_FOREACH (ViewLayer *, view_layer, &sce->view_layers) {
     BKE_view_layer_blend_read_lib(reader, id, view_layer);
@@ -1742,12 +1706,6 @@ static void scene_blend_read_expand(BlendExpander *expander, ID *id)
   }
 
   BLO_expand(expander, sce->clip);
-
-#ifdef USE_COLLECTION_COMPAT_28
-  if (sce->collection) {
-    BKE_collection_compat_blend_read_expand(expander, sce->collection);
-  }
-#endif
 
   if (sce->r.bake.cage_object) {
     BLO_expand(expander, sce->r.bake.cage_object);

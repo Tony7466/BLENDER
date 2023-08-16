@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -110,7 +110,7 @@ struct SpaceNode_Runtime {
 
   /**
    * Use this to store data for the displayed node tree. It has an entry for every distinct
-   * nested nodegroup.
+   * nested node-group.
    */
   Map<ComputeContextHash, std::unique_ptr<space_node::NestedTreePreviews>>
       tree_previews_per_context;
@@ -305,6 +305,7 @@ void NODE_OT_group_edit(wmOperatorType *ot);
 
 void update_multi_input_indices_for_removed_links(bNode &node);
 bool all_links_muted(const bNodeSocket &socket);
+bNodeSocket *get_main_socket(bNodeTree &ntree, bNode &node, eNodeSocketInOut in_out);
 
 void NODE_OT_link(wmOperatorType *ot);
 void NODE_OT_link_make(wmOperatorType *ot);
@@ -339,7 +340,7 @@ bool composite_node_editable(bContext *C);
 
 bool node_has_hidden_sockets(bNode *node);
 void node_set_hidden_sockets(bNode *node, int set);
-bool node_is_previewable(const bNodeTree &ntree, const bNode &node);
+bool node_is_previewable(const SpaceNode &snode, const bNodeTree &ntree, const bNode &node);
 int node_render_changed_exec(bContext *, wmOperator *);
 bNodeSocket *node_find_indicated_socket(SpaceNode &snode,
                                         const float2 &cursor,

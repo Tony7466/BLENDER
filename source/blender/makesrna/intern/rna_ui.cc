@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,9 +18,9 @@
 
 #include "BLI_listbase.h"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
-#include "RNA_enum_types.h"
+#include "RNA_enum_types.hh"
 #include "rna_internal.h"
 
 #include "UI_interface.hh"
@@ -56,7 +56,7 @@ const EnumPropertyItem rna_enum_uilist_layout_type_items[] = {
 
 #  include "MEM_guardedalloc.h"
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
 #  include "BLI_dynstr.h"
 
@@ -1135,8 +1135,9 @@ static void asset_shelf_draw_context_menu(const bContext *C,
 
   PointerRNA ptr;
   RNA_pointer_create(nullptr, shelf_type->rna_ext.srna, nullptr, &ptr); /* dummy */
-  FunctionRNA *func = &rna_AssetShelf_draw_context_menu_func; /* RNA_struct_find_function(&ptr,
-                                                                     "draw_context_menu"); */
+
+  FunctionRNA *func = &rna_AssetShelf_draw_context_menu_func;
+  // RNA_struct_find_function(&ptr, "draw_context_menu");
 
   ParameterList list;
   RNA_parameter_list_create(&list, &ptr, func);

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -668,6 +668,11 @@ int GPU_offscreen_height(const GPUOffScreen *offscreen);
  * \note only to be used by viewport code!
  */
 struct GPUTexture *GPU_offscreen_color_texture(const GPUOffScreen *offscreen);
+
+/**
+ * Return the texture format of a #GPUOffScreen.
+ */
+eGPUTextureFormat GPU_offscreen_format(const GPUOffScreen *offscreen);
 
 /**
  * Return the internals of a #GPUOffScreen. Does not give ownership.
