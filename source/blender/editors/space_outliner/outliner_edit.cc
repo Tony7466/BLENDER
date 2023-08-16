@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2004 Blender Foundation */
+/* SPDX-FileCopyrightText: 2004 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -31,7 +32,7 @@
 #include "BKE_idtype.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
@@ -42,21 +43,21 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
 
-#include "ED_keyframing.h"
-#include "ED_outliner.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
+#include "ED_keyframing.hh"
+#include "ED_outliner.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_view2d.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_path.hh"
 
 #include "GPU_material.h"
 
@@ -72,6 +73,18 @@ static void outliner_show_active(SpaceOutliner *space_outliner,
                                  ARegion *region,
                                  TreeElement *te,
                                  ID *id);
+
+/* -------------------------------------------------------------------- */
+/** \name Local Utilities
+ * \{ */
+
+static void outliner_copybuffer_filepath_get(char filepath[FILE_MAX], size_t filepath_maxncpy)
+{
+  /* NOTE: this uses the same path as the 3D viewport. */
+  BLI_path_join(filepath, filepath_maxncpy, BKE_tempdir_base(), "copybuffer.blend");
+}
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Highlight on Cursor Motion Operator
@@ -295,44 +308,40 @@ static void do_item_rename(ARegion *region,
 
   /* can't rename rna datablocks entries or listbases */
   if (ELEM(tselem->type,
+           TSE_ANIM_DATA,
+           TSE_NLA,
+           TSE_DEFGROUP_BASE,
+           TSE_CONSTRAINT_BASE,
+           TSE_MODIFIER_BASE,
+           TSE_DRIVER_BASE,
+           TSE_POSE_BASE,
+           TSE_POSEGRP_BASE,
+           TSE_R_LAYER_BASE,
+           TSE_SCENE_COLLECTION_BASE,
+           TSE_VIEW_COLLECTION_BASE,
+           TSE_LIBRARY_OVERRIDE_BASE,
            TSE_RNA_STRUCT,
            TSE_RNA_PROPERTY,
            TSE_RNA_ARRAY_ELEM,
-           TSE_ID_BASE,
-           TSE_SCENE_OBJECTS_BASE))
+           TSE_ID_BASE) ||
+      ELEM(tselem->type, TSE_SCENE_OBJECTS_BASE, TSE_GENERIC_LABEL))
   {
-    /* do nothing */
-  }
-  else if (ELEM(tselem->type,
-                TSE_ANIM_DATA,
-                TSE_NLA,
-                TSE_DEFGROUP_BASE,
-                TSE_CONSTRAINT_BASE,
-                TSE_MODIFIER_BASE,
-                TSE_DRIVER_BASE,
-                TSE_POSE_BASE,
-                TSE_POSEGRP_BASE,
-                TSE_R_LAYER_BASE,
-                TSE_SCENE_COLLECTION_BASE,
-                TSE_VIEW_COLLECTION_BASE,
-                TSE_LIBRARY_OVERRIDE_BASE))
-  {
-    BKE_report(reports, RPT_WARNING, "Cannot edit builtin name");
+    BKE_report(reports, RPT_WARNING, "Not an editable name");
   }
   else if (ELEM(tselem->type, TSE_SEQUENCE, TSE_SEQ_STRIP, TSE_SEQUENCE_DUP)) {
-    BKE_report(reports, RPT_WARNING, "Cannot edit sequence name");
+    BKE_report(reports, RPT_WARNING, "Sequence names are not editable from the Outliner");
   }
-  else if (ID_IS_LINKED(tselem->id)) {
-    BKE_report(reports, RPT_WARNING, "Cannot edit external library data");
+  else if (TSE_IS_REAL_ID(tselem) && ID_IS_LINKED(tselem->id)) {
+    BKE_report(reports, RPT_WARNING, "External library data is not editable");
   }
-  else if (ID_IS_OVERRIDE_LIBRARY(tselem->id)) {
-    BKE_report(reports, RPT_WARNING, "Cannot edit name of an override data-block");
+  else if (TSE_IS_REAL_ID(tselem) && ID_IS_OVERRIDE_LIBRARY(tselem->id)) {
+    BKE_report(reports, RPT_WARNING, "Overridden data-blocks are not editable");
   }
   else if (outliner_is_collection_tree_element(te)) {
     Collection *collection = outliner_collection_from_tree_element(te);
 
     if (collection->flag & COLLECTION_IS_MASTER) {
-      BKE_report(reports, RPT_WARNING, "Cannot edit name of master collection");
+      BKE_report(reports, RPT_WARNING, "Not an editable name");
     }
     else {
       add_textbut = true;
@@ -346,7 +355,7 @@ static void do_item_rename(ARegion *region,
       BKE_report(
           reports,
           RPT_WARNING,
-          "Library path is not editable from here anymore, please use Relocate operation instead");
+          "Library path is not editable from here anymore, use the Relocate operation instead");
     }
   }
   else {
@@ -806,7 +815,7 @@ static int outliner_id_copy_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
-  char str[FILE_MAX];
+  char filepath[FILE_MAX];
 
   BKE_copybuffer_copy_begin(bmain);
 
@@ -816,8 +825,8 @@ static int outliner_id_copy_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  BLI_path_join(str, sizeof(str), BKE_tempdir_base(), "copybuffer.blend");
-  BKE_copybuffer_copy_end(bmain, str, op->reports);
+  outliner_copybuffer_filepath_get(filepath, sizeof(filepath));
+  BKE_copybuffer_copy_end(bmain, filepath, op->reports);
 
   BKE_reportf(op->reports, RPT_INFO, "Copied %d selected data-block(s)", num_ids);
 
@@ -847,12 +856,12 @@ void OUTLINER_OT_id_copy(wmOperatorType *ot)
 
 static int outliner_id_paste_exec(bContext *C, wmOperator *op)
 {
-  char str[FILE_MAX];
+  char filepath[FILE_MAX];
   const short flag = FILE_AUTOSELECT | FILE_ACTIVE_COLLECTION;
 
-  BLI_path_join(str, sizeof(str), BKE_tempdir_base(), "copybuffer.blend");
+  outliner_copybuffer_filepath_get(filepath, sizeof(filepath));
 
-  const int num_pasted = BKE_copybuffer_paste(C, str, flag, op->reports, 0);
+  const int num_pasted = BKE_copybuffer_paste(C, filepath, flag, op->reports, 0);
   if (num_pasted == 0) {
     BKE_report(op->reports, RPT_INFO, "No data to paste");
     return OPERATOR_CANCELLED;
@@ -1266,7 +1275,8 @@ static int outliner_open_back(TreeElement *te)
   return retval;
 }
 
-/* Return element representing the active base or bone in the outliner, or NULL if none exists
+/**
+ * \return element representing the active base or bone in the outliner, or null if none exists
  */
 static TreeElement *outliner_show_active_get_element(bContext *C,
                                                      SpaceOutliner *space_outliner,
@@ -2138,7 +2148,7 @@ static int outliner_orphans_purge_invoke(bContext *C, wmOperator *op, const wmEv
   }
 
   DynStr *dyn_str = BLI_dynstr_new();
-  BLI_dynstr_appendf(dyn_str, "Purging %d unused data-blocks (", num_tagged[INDEX_ID_NULL]);
+  BLI_dynstr_appendf(dyn_str, TIP_("Purging %d unused data-blocks ("), num_tagged[INDEX_ID_NULL]);
   bool is_first = true;
   for (int i = 0; i < INDEX_ID_MAX - 2; i++) {
     if (num_tagged[i] != 0) {
@@ -2245,9 +2255,8 @@ void OUTLINER_OT_orphans_purge(wmOperatorType *ot)
                   "data-blocks remain after execution");
 }
 
-static void wm_block_orphans_cancel(bContext *C, void *arg_block, void *arg_data)
+static void wm_block_orphans_cancel(bContext *C, void *arg_block, void * /*arg_data*/)
 {
-  UNUSED_VARS_NDEBUG(arg_data);
   UI_popup_block_close(C, CTX_wm_window(C), (uiBlock *)arg_block);
 }
 
@@ -2293,86 +2302,11 @@ static void wm_block_orphans_purge(bContext *C, void *arg_block, void *arg_data)
   UI_popup_block_close(C, CTX_wm_window(C), (uiBlock *)arg_block);
 }
 
-static void wm_block_orphans_keep(bContext *C, void *arg_block, void *arg_data)
-{
-  wmOperator *op = (wmOperator *)arg_data;
-  Main *bmain = CTX_data_main(C);
-  int num_tagged[INDEX_ID_MAX] = {0};
-
-  /* Tag all IDs that are unused. */
-  BKE_lib_query_unused_ids_tag(bmain,
-                               LIB_TAG_DOIT,
-                               orphans_purge_do_local,
-                               orphans_purge_do_linked,
-                               orphans_purge_do_recursive,
-                               num_tagged);
-
-  if (num_tagged[INDEX_ID_NULL] == 0) {
-    BKE_report(op->reports, RPT_INFO, "No orphaned data-blocks");
-  }
-  else {
-    ListBase *lbarray[INDEX_ID_MAX];
-    int a;
-    a = set_listbasepointers(bmain, lbarray);
-    while (a--) {
-      LISTBASE_FOREACH (ID *, id, lbarray[a]) {
-        if (id->tag & LIB_TAG_DOIT) {
-          id_fake_user_set(id);
-        }
-      }
-    }
-
-    BKE_reportf(op->reports, RPT_INFO, "Set fake user on %d data-block(s)", num_tagged[INDEX_ID_NULL]);
-    DEG_relations_tag_update(bmain);
-    WM_event_add_notifier(C, NC_ID | NA_EDITED, nullptr);
-    /* Force full redraw of the UI. */
-    WM_main_add_notifier(NC_WINDOW, nullptr);
-  }
-
-  UI_popup_block_close(C, CTX_wm_window(C), (uiBlock *)arg_block);
-}
-
-static void wm_block_orphans_manage(bContext *C, void *arg_block, void *arg_data)
-{
-  wmWindow *win = CTX_wm_window(C);
-  if (WM_window_open(C,
-                     IFACE_("Manage Unused Data"),
-                     0,
-                     0,
-                     500 * UI_SCALE_FAC,
-                     500 * UI_SCALE_FAC,
-                     SPACE_OUTLINER,
-                     false,
-                     false,
-                     true,
-                     WIN_ALIGN_PARENT_CENTER) != NULL) {
-    SpaceOutliner *soutline = (SpaceOutliner *)CTX_wm_area(C)->spacedata.first;
-    soutline->outlinevis = SO_ID_ORPHANS;
-  }
-  UI_popup_block_close(C, win, (uiBlock *)arg_block);
-}
-
 static void wm_block_orphans_purge_button(uiBlock *block, wmOperator *op)
 {
   uiBut *but = uiDefIconTextBut(
       block, UI_BTYPE_BUT, 0, 0, IFACE_("Delete"), 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, "");
   UI_but_func_set(but, wm_block_orphans_purge, block, op);
-  UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
-}
-
-static void wm_block_orphans_keep_button(uiBlock *block, wmOperator *op)
-{
-  uiBut *but = uiDefIconTextBut(
-      block, UI_BTYPE_BUT, 0, 0, IFACE_("Protect"), 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, "");
-  UI_but_func_set(but, wm_block_orphans_keep, block, op);
-  UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
-}
-
-static void wm_block_orphans_manage_button(uiBlock *block, wmOperator *op)
-{
-  uiBut *but = uiDefIconTextBut(
-      block, UI_BTYPE_BUT, 0, 0, IFACE_("Manage"), 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, "");
-  UI_but_func_set(but, wm_block_orphans_manage, block, op);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
 }
 
@@ -2502,20 +2436,12 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
     uiLayoutColumn(split, false);
     wm_block_orphans_purge_button(block, op);
     uiLayoutColumn(split, false);
-    wm_block_orphans_keep_button(block, op);
-    uiLayoutColumn(split, false);
-    wm_block_orphans_manage_button(block, op);
-    uiLayoutColumn(split, false);
     wm_block_orphans_cancel_button(block);
   }
   else {
     /* Non-Windows layout (macOS and Linux). */
     uiLayoutColumn(split, false);
     wm_block_orphans_cancel_button(block);
-    uiLayoutColumn(split, false);
-    wm_block_orphans_manage_button(block, op);
-    uiLayoutColumn(split, false);
-    wm_block_orphans_keep_button(block, op);
     uiLayoutColumn(split, false);
     wm_block_orphans_purge_button(block, op);
   }
@@ -2539,6 +2465,46 @@ void OUTLINER_OT_orphans_cleanup(wmOperatorType *ot)
 
   /* callbacks */
   ot->exec = outliner_orphans_cleanup_exec;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER;
+}
+
+static int outliner_orphans_manage_exec(bContext *C, wmOperator * /*op*/)
+{
+  const rcti window_rect = {
+      /*xmin*/ 0,
+      /*xmax*/ 500,
+      /*ymin*/ 0,
+      /*ymax*/ 500,
+  };
+
+  if (WM_window_open(C,
+                     IFACE_("Manage Unused Data"),
+                     &window_rect,
+                     SPACE_OUTLINER,
+                     false,
+                     false,
+                     true,
+                     WIN_ALIGN_PARENT_CENTER,
+                     nullptr,
+                     nullptr) != nullptr)
+  {
+    SpaceOutliner *soutline = (SpaceOutliner *)CTX_wm_area(C)->spacedata.first;
+    soutline->outlinevis = SO_ID_ORPHANS;
+  }
+  return OPERATOR_FINISHED;
+}
+
+void OUTLINER_OT_orphans_manage(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->idname = "OUTLINER_OT_orphans_manage";
+  ot->name = "Manage Unused Data...";
+  ot->description = "Open a window to manage unused data-blocks";
+
+  /* callbacks */
+  ot->exec = outliner_orphans_manage_exec;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER;

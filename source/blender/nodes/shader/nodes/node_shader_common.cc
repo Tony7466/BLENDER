@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation */
+/* SPDX-FileCopyrightText: 2006 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup shdnodes
@@ -17,7 +18,7 @@
 #include "node_exec.hh"
 #include "node_shader_util.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 /**** GROUP ****/
 

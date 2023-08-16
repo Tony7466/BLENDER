@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -22,20 +23,20 @@
 #include "BKE_outliner_treehash.hh"
 #include "BKE_screen.h"
 
-#include "ED_screen.h"
-#include "ED_space_api.h"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
 
-#include "WM_api.h"
-#include "WM_message.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
 #include "BLO_read_write.h"
 
@@ -235,7 +236,7 @@ static void outliner_main_region_listener(const wmRegionListenerParams *params)
       }
       break;
     case NC_GPENCIL:
-      if (ELEM(wmn->action, NA_EDITED, NA_SELECTED)) {
+      if (ELEM(wmn->action, NA_EDITED, NA_SELECTED, NA_RENAME)) {
         ED_region_tag_redraw(region);
       }
       break;
@@ -271,7 +272,7 @@ static void outliner_main_region_listener(const wmRegionListenerParams *params)
 
 static void outliner_main_region_message_subscribe(const wmRegionMessageSubscribeParams *params)
 {
-  struct wmMsgBus *mbus = params->message_bus;
+  wmMsgBus *mbus = params->message_bus;
   ScrArea *area = params->area;
   ARegion *region = params->region;
   SpaceOutliner *space_outliner = static_cast<SpaceOutliner *>(area->spacedata.first);
@@ -353,7 +354,7 @@ static SpaceLink *outliner_create(const ScrArea * /*area*/, const Scene * /*scen
   return (SpaceLink *)space_outliner;
 }
 
-/* not spacelink itself */
+/* Doesn't free the space-link itself. */
 static void outliner_free(SpaceLink *sl)
 {
   SpaceOutliner *space_outliner = (SpaceOutliner *)sl;
@@ -395,7 +396,7 @@ static SpaceLink *outliner_duplicate(SpaceLink *sl)
   return (SpaceLink *)space_outliner_new;
 }
 
-static void outliner_id_remap(ScrArea *area, SpaceLink *slink, const struct IDRemapper *mappings)
+static void outliner_id_remap(ScrArea *area, SpaceLink *slink, const IDRemapper *mappings)
 {
   SpaceOutliner *space_outliner = (SpaceOutliner *)slink;
 
@@ -440,7 +441,7 @@ static void outliner_id_remap(ScrArea *area, SpaceLink *slink, const struct IDRe
   }
 }
 
-static void outliner_deactivate(struct ScrArea *area)
+static void outliner_deactivate(ScrArea *area)
 {
   /* Remove hover highlights */
   SpaceOutliner *space_outliner = static_cast<SpaceOutliner *>(area->spacedata.first);
@@ -564,7 +565,7 @@ static void outliner_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 
 }  // namespace blender::ed::outliner
 
-void ED_spacetype_outliner(void)
+void ED_spacetype_outliner()
 {
   using namespace blender::ed::outliner;
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -856,7 +857,7 @@ template<class T> inline void PassBase<T>::material_set(Manager &manager, GPUMat
 
   GPUUniformBuf *ubo = GPU_material_uniform_buffer_get(material);
   if (ubo != nullptr) {
-    bind_ubo(GPU_UBO_BLOCK_NAME, ubo);
+    bind_ubo(GPU_NODE_TREE_UBO_SLOT, ubo);
   }
 }
 

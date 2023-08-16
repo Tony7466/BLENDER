@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -455,6 +457,9 @@ void BKE_object_eval_uber_transform(struct Depsgraph *depsgraph, struct Object *
 void BKE_object_eval_uber_data(struct Depsgraph *depsgraph,
                                struct Scene *scene,
                                struct Object *ob);
+
+void BKE_object_eval_light_linking(struct Depsgraph *depsgraph, struct Object *object);
+
 /**
  * Assign #Object.data after modifier stack evaluation.
  */
@@ -704,7 +709,7 @@ void BKE_object_to_curve_clear(struct Object *object);
 
 void BKE_object_check_uuids_unique_and_report(const struct Object *object);
 
-void BKE_object_modifiers_lib_link_common(void *userData,
+void BKE_object_modifiers_lib_link_common(void *user_data,
                                           struct Object *ob,
                                           struct ID **idpoin,
                                           int cb_flag);

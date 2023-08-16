@@ -1,10 +1,11 @@
+# SPDX-FileCopyrightText: 2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../include
   ../uvedit
   ../../blenkernel
-  ../../blenlib
   ../../blentranslation
   ../../bmesh
   ../../depsgraph
@@ -13,15 +14,12 @@ set(INC
   ../../geometry
   ../../gpu
   ../../imbuf
-  ../../makesdna
   ../../makesrna
   ../../nodes
   ../../render
   ../../windowmanager
-  ../../../../intern/atomic
   ../../../../intern/clog
   ../../../../intern/eigen
-  ../../../../intern/guardedalloc
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -41,6 +39,9 @@ set(SRC
   curves_sculpt_slide.cc
   curves_sculpt_smooth.cc
   curves_sculpt_snake_hook.cc
+  grease_pencil_draw_ops.cc
+  grease_pencil_erase.cc
+  grease_pencil_paint.cc
   paint_canvas.cc
   paint_cursor.cc
   paint_curve.cc
@@ -60,6 +61,7 @@ set(SRC
   paint_vertex_proj.cc
   paint_vertex_weight_ops.cc
   paint_vertex_weight_utils.cc
+  paint_weight.cc
   sculpt.cc
   sculpt_automasking.cc
   sculpt_boundary.cc
@@ -86,13 +88,17 @@ set(SRC
   sculpt_uv.cc
 
   curves_sculpt_intern.hh
+  grease_pencil_intern.hh
   paint_intern.hh
   sculpt_intern.hh
 )
 
 set(LIB
   bf_blenkernel
-  bf_blenlib
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
+  PRIVATE bf::intern::atomic
+  PRIVATE bf::intern::guardedalloc
 )
 
 if(WITH_TBB)

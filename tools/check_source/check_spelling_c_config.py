@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # these must be all lower case for comparisons
@@ -31,6 +33,7 @@ dict_custom = {
     # Correct spelling, update the dictionary, here:
     # https://github.com/en-wl/wordlist
     "accessor",
+    "accumulatively",
     "additively",
     "adjoint",
     "adjugate",
@@ -50,6 +53,7 @@ dict_custom = {
     "breaked",
     "callables",
     "canonicalization",
+    "canonicalize",
     "canonicalized",
     "canonicalizing",
     "catadioptric",
@@ -70,7 +74,10 @@ dict_custom = {
     "copyable",
     "counterforce",
     "criterium",
+    "crosshair",
     "crosstalk",
+    "cumulate",
+    "cumulated",
     "customizable",
     "deallocate",
     "deallocated",
@@ -125,6 +132,7 @@ dict_custom = {
     "extrema",
     "fallbacks",
     "finalizer",
+    "flippable",
     "flushable",
     "formatter",
     "formatters",
@@ -136,6 +144,7 @@ dict_custom = {
     "homogenous",
     "ideographic",
     "illuminant",
+    "imbricated",
     "impactful",
     "incrementation",
     "initializer",
@@ -150,6 +159,7 @@ dict_custom = {
     "interferences",
     "interocular",
     "interpolator",
+    "invariance",
     "invariant",
     "invariants",
     "invisibilities",
@@ -179,6 +189,7 @@ dict_custom = {
     "monospaced",
     "mutators",
     "natively",
+    "nullable",
     "occludee",
     "occluder",
     "occluders",
@@ -249,6 +260,7 @@ dict_custom = {
     "rasterizes",
     "rasterizing",
     "reallocations",
+    "realtime",
     "rebalancing",
     "rebase",
     "recomputation",
@@ -258,6 +270,7 @@ dict_custom = {
     "recursing",
     "recursivity",
     "redefinitions",
+    "redisplay",
     "redistributions",
     "registerable",
     "reimplement",
@@ -293,8 +306,11 @@ dict_custom = {
     "sidedness",
     "simplices",
     "situationally",
+    "skinnable",
     "skippable",
     "sortable",
+    "stepsize",
+    "stepwise",
     "stitchable",
     "subclass",
     "subclasses",
@@ -302,8 +318,12 @@ dict_custom = {
     "subdirectories",
     "subdirectory",
     "suboptimally",
+    "subrange",
     "subtractive",
+    "subtype",
+    "subtypes",
     "superset",
+    "symmetrizable",
     "symmetrize",
     "symmetrized",
     "targetless",
@@ -433,6 +453,7 @@ dict_custom = {
     "volumetrics",
     "vortices",
     "voxelize",
+    "workspaces",
     "writeable",
     "zoomable",
 
@@ -454,6 +475,7 @@ dict_custom = {
     "addon",
     "addons",
     "autocomplete",
+    "bitmask",
     "codegen",
     "colospace",
     "datablock",
@@ -478,6 +500,8 @@ dict_custom = {
     "coord",
     "coords",
     "ctrl",  # control (modifier key).
+    "ie",
+    "init",
     "iter",  # iteration.
     "multi",
     "numpad",  # numeric-pad.
@@ -502,6 +526,9 @@ dict_custom = {
     "codepage",
     "contructor",
     "decimator",
+    "decref",
+    "decrefed",
+    "decrefing",
     "diff",
     "diffs",
     "endian",
@@ -512,6 +539,9 @@ dict_custom = {
     "foo",
     "hashable",
     "http",
+    "incref",
+    "increfed",
+    "increfing",
     "intelisense",
     "jitter",
     "jittered",
@@ -591,12 +621,17 @@ dict_custom = {
     "normals",
     "nurbs",
     "octree",
+    "quaternion",
     "quaternions",
     "radiosity",
     "reflectance",
     "shader",
     "shaders",
     "specular",
+
+    # Mathematical terms.
+    "egenvalue",
+    "egenvalues",
 
     # Blender specific terms.
     "animsys",

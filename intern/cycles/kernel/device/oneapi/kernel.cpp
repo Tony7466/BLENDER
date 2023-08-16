@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Intel Corporation */
+/* SPDX-FileCopyrightText: 2021-2022 Intel Corporation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifdef WITH_ONEAPI
 
@@ -8,6 +9,8 @@
 #  include <map>
 #  include <set>
 
+/* <algorithm> is needed until included upstream in sycl/detail/property_list_base.hpp */
+#  include <algorithm>
 #  include <sycl/sycl.hpp>
 
 #  include "kernel/device/oneapi/compat.h"
@@ -109,9 +112,12 @@ size_t oneapi_kernel_preferred_local_size(SyclQueue *queue,
   assert(queue);
   (void)kernel_global_size;
   const static size_t preferred_work_group_size_intersect_shading = 32;
-  /* Shader evalutation kernels seems to use some amount of shared memory, so better
+  /* Shader evaluation kernels seems to use some amount of shared memory, so better
    * to avoid usage of maximum work group sizes for them. */
   const static size_t preferred_work_group_size_shader_evaluation = 256;
+  /* NOTE(@nsirgien): 1024 currently may lead to issues with cryptomatte kernels, so
+   * for now their work-group size is restricted to 512. */
+  const static size_t preferred_work_group_size_cryptomatte = 512;
   const static size_t preferred_work_group_size_default = 1024;
 
   size_t preferred_work_group_size = 0;
@@ -122,6 +128,7 @@ size_t oneapi_kernel_preferred_local_size(SyclQueue *queue,
     case DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW:
     case DEVICE_KERNEL_INTEGRATOR_INTERSECT_SUBSURFACE:
     case DEVICE_KERNEL_INTEGRATOR_INTERSECT_VOLUME_STACK:
+    case DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT:
     case DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND:
     case DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT:
     case DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE:
@@ -129,6 +136,7 @@ size_t oneapi_kernel_preferred_local_size(SyclQueue *queue,
     case DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_MNEE:
     case DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME:
     case DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW:
+    case DEVICE_KERNEL_INTEGRATOR_SHADE_DEDICATED_LIGHT:
       preferred_work_group_size = preferred_work_group_size_intersect_shading;
       break;
 
@@ -155,6 +163,10 @@ size_t oneapi_kernel_preferred_local_size(SyclQueue *queue,
 
     case DEVICE_KERNEL_PREFIX_SUM:
       preferred_work_group_size = GPU_PARALLEL_PREFIX_SUM_DEFAULT_BLOCK_SIZE;
+      break;
+
+    case DEVICE_KERNEL_CRYPTOMATTE_POSTPROCESS:
+      preferred_work_group_size = preferred_work_group_size_cryptomatte;
       break;
 
     case DEVICE_KERNEL_SHADER_EVAL_DISPLACE:
@@ -196,7 +208,7 @@ bool oneapi_kernel_is_required_for_features(const std::string &kernel_name,
 
 bool oneapi_kernel_is_compatible_with_hardware_raytracing(const std::string &kernel_name)
 {
-  /* MNEE and Raytrace kernels work correctly with Hardware Raytracing starting with Embree 4.1.
+  /* MNEE and Ray-trace kernels work correctly with Hardware Ray-tracing starting with Embree 4.1.
    */
 #  if defined(RTC_VERSION) && RTC_VERSION < 40100
   return (kernel_name.find(device_kernel_as_string(DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_MNEE)) ==
@@ -435,6 +447,15 @@ bool oneapi_enqueue_kernel(KernelContext *kernel_context,
                       oneapi_kernel_integrator_intersect_volume_stack);
           break;
         }
+        case DEVICE_KERNEL_INTEGRATOR_INTERSECT_DEDICATED_LIGHT: {
+          oneapi_call(kg,
+                      cgh,
+                      global_size,
+                      local_size,
+                      args,
+                      oneapi_kernel_integrator_intersect_dedicated_light);
+          break;
+        }
         case DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND: {
           oneapi_call(
               kg, cgh, global_size, local_size, args, oneapi_kernel_integrator_shade_background);
@@ -472,6 +493,15 @@ bool oneapi_enqueue_kernel(KernelContext *kernel_context,
         case DEVICE_KERNEL_INTEGRATOR_SHADE_VOLUME: {
           oneapi_call(
               kg, cgh, global_size, local_size, args, oneapi_kernel_integrator_shade_volume);
+          break;
+        }
+        case DEVICE_KERNEL_INTEGRATOR_SHADE_DEDICATED_LIGHT: {
+          oneapi_call(kg,
+                      cgh,
+                      global_size,
+                      local_size,
+                      args,
+                      oneapi_kernel_integrator_shade_dedicated_light);
           break;
         }
         case DEVICE_KERNEL_INTEGRATOR_QUEUED_PATHS_ARRAY: {

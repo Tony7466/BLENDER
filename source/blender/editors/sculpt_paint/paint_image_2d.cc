@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -20,26 +21,26 @@
 #include "BLI_stack.h"
 #include "BLI_task.h"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colorband.h"
 #include "BKE_context.h"
 #include "BKE_image.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_report.h"
 
 #include "DEG_depsgraph.h"
 
-#include "ED_paint.h"
-#include "ED_screen.h"
+#include "ED_paint.hh"
+#include "ED_screen.hh"
 
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
 #include "paint_intern.hh"
 
@@ -262,7 +263,7 @@ static void brush_painter_mask_imbuf_update(BrushPainter *painter,
 
       if (!use_texture_old) {
         brush_imbuf_tex_co(&tex_mapping, x, y, texco);
-        res = (ushort)(65535.0f * BKE_brush_sample_masktex(scene, brush, texco, thread, pool));
+        res = ushort(65535.0f * BKE_brush_sample_masktex(scene, brush, texco, thread, pool));
       }
 
       /* read from old texture buffer */
@@ -690,7 +691,7 @@ static void brush_painter_2d_refresh_cache(ImagePaintState *s,
   UnifiedPaintSettings *ups = &scene->toolsettings->unified_paint_settings;
   Brush *brush = painter->brush;
   BrushPainterCache *cache = &tile->cache;
-  /* Adding 4 pixels of padding for brush antialiasing */
+  /* Adding 4 pixels of padding for brush anti-aliasing. */
   const int diameter = MAX2(1, size * 2) + 4;
 
   bool do_random = false;
@@ -1027,7 +1028,7 @@ static void paint_2d_lift_soften(ImagePaintState *s,
       /* write into brush buffer */
       xo = out_off[0] + x;
       yo = out_off[1] + y;
-      paint_2d_ibuf_rgb_set(ibufb, xo, yo, 0, outrgb);
+      paint_2d_ibuf_rgb_set(ibufb, xo, yo, false, outrgb);
     }
   }
 }
@@ -1715,7 +1716,7 @@ static void paint_2d_fill_add_pixel_byte(const int x_px,
     return;
   }
 
-  coordinate = ((size_t)y_px) * ibuf->x + x_px;
+  coordinate = size_t(y_px) * ibuf->x + x_px;
 
   if (!BLI_BITMAP_TEST(touched, coordinate)) {
     float color_f[4];
@@ -1744,7 +1745,7 @@ static void paint_2d_fill_add_pixel_float(const int x_px,
     return;
   }
 
-  coordinate = ((size_t)y_px) * ibuf->x + x_px;
+  coordinate = size_t(y_px) * ibuf->x + x_px;
 
   if (!BLI_BITMAP_TEST(touched, coordinate)) {
     if (len_squared_v4v4(ibuf->float_buffer.data + 4 * coordinate, color) <= threshold_sq) {
@@ -1839,8 +1840,8 @@ void paint_2d_bucket_fill(const bContext *C,
     if (do_float) {
       for (x_px = 0; x_px < ibuf->x; x_px++) {
         for (y_px = 0; y_px < ibuf->y; y_px++) {
-          blend_color_mix_float(ibuf->float_buffer.data + 4 * (((size_t)y_px) * ibuf->x + x_px),
-                                ibuf->float_buffer.data + 4 * (((size_t)y_px) * ibuf->x + x_px),
+          blend_color_mix_float(ibuf->float_buffer.data + 4 * (size_t(y_px) * ibuf->x + x_px),
+                                ibuf->float_buffer.data + 4 * (size_t(y_px) * ibuf->x + x_px),
                                 color_f);
         }
       }
@@ -1848,8 +1849,8 @@ void paint_2d_bucket_fill(const bContext *C,
     else {
       for (x_px = 0; x_px < ibuf->x; x_px++) {
         for (y_px = 0; y_px < ibuf->y; y_px++) {
-          blend_color_mix_byte(ibuf->byte_buffer.data + 4 * (((size_t)y_px) * ibuf->x + x_px),
-                               ibuf->byte_buffer.data + 4 * (((size_t)y_px) * ibuf->x + x_px),
+          blend_color_mix_byte(ibuf->byte_buffer.data + 4 * (size_t(y_px) * ibuf->x + x_px),
+                               ibuf->byte_buffer.data + 4 * (size_t(y_px) * ibuf->x + x_px),
                                (uchar *)&color_b);
         }
       }
@@ -1880,9 +1881,9 @@ void paint_2d_bucket_fill(const bContext *C,
     ED_imapaint_dirty_region(ima, ibuf, iuser, 0, 0, ibuf->x, ibuf->y, false);
 
     stack = BLI_stack_new(sizeof(size_t), __func__);
-    touched = BLI_BITMAP_NEW(((size_t)ibuf->x) * ibuf->y, "bucket_fill_bitmap");
+    touched = BLI_BITMAP_NEW(size_t(ibuf->x) * ibuf->y, "bucket_fill_bitmap");
 
-    coordinate = (((size_t)y_px) * ibuf->x + x_px);
+    coordinate = (size_t(y_px) * ibuf->x + x_px);
 
     if (do_float) {
       copy_v4_v4(pixel_color, ibuf->float_buffer.data + 4 * coordinate);
@@ -2074,8 +2075,8 @@ void paint_2d_gradient_fill(
         /* convert to premultiplied */
         mul_v3_fl(color_f, color_f[3]);
         color_f[3] *= brush_alpha;
-        IMB_blend_color_float(ibuf->float_buffer.data + 4 * (((size_t)y_px) * ibuf->x + x_px),
-                              ibuf->float_buffer.data + 4 * (((size_t)y_px) * ibuf->x + x_px),
+        IMB_blend_color_float(ibuf->float_buffer.data + 4 * (size_t(y_px) * ibuf->x + x_px),
+                              ibuf->float_buffer.data + 4 * (size_t(y_px) * ibuf->x + x_px),
                               color_f,
                               IMB_BlendMode(br->blend));
       }
@@ -2103,8 +2104,8 @@ void paint_2d_gradient_fill(
         linearrgb_to_srgb_v3_v3(color_f, color_f);
         rgba_float_to_uchar((uchar *)&color_b, color_f);
         ((uchar *)&color_b)[3] *= brush_alpha;
-        IMB_blend_color_byte(ibuf->byte_buffer.data + 4 * (((size_t)y_px) * ibuf->x + x_px),
-                             ibuf->byte_buffer.data + 4 * (((size_t)y_px) * ibuf->x + x_px),
+        IMB_blend_color_byte(ibuf->byte_buffer.data + 4 * (size_t(y_px) * ibuf->x + x_px),
+                             ibuf->byte_buffer.data + 4 * (size_t(y_px) * ibuf->x + x_px),
                              (uchar *)&color_b,
                              IMB_BlendMode(br->blend));
       }

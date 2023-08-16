@@ -1,10 +1,14 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
  */
 
 #pragma once
+
+#include "DNA_sequence_types.h"
 
 #include "tree_element.hh"
 
@@ -23,6 +27,7 @@ class TreeElementSequence : public AbstractTreeElement {
   void expand(SpaceOutliner &) const override;
 
   Sequence &getSequence() const;
+  SequenceType getSequenceType() const;
 };
 
 /* -------------------------------------------------------------------- */
