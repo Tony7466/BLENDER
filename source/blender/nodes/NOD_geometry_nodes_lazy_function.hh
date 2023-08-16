@@ -95,11 +95,14 @@ struct SimulationOutputInfo {
   std::variant<PassThrough, StoreAndPassThrough, ReadSingle, ReadInterpolated> info;
 };
 
+struct SimulationZoneInfo {
+  SimulationInputInfo input;
+  SimulationOutputInfo output;
+};
+
 class GeoNodesSimulationParams {
  public:
-  virtual SimulationEvalType get_eval_type(NestedNodeID id) const = 0;
-  virtual SimulationInputInfo get_input_info(NestedNodeID id) const = 0;
-  virtual SimulationOutputInfo get_output_info(NestedNodeID id) const = 0;
+  virtual SimulationZoneInfo *get(NestedNodeID id) const = 0;
 };
 
 enum class BakeEvalType {

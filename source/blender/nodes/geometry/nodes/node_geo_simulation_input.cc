@@ -55,26 +55,10 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
     }
   }
 
-  struct Storage {
-    std::optional<FoundNestedNodeID> id;
-    std::optional<SimulationInputInfo> info;
-  };
-
-  void *init_storage(LinearAllocator<> &allocator) const override
-  {
-    return allocator.construct<Storage>().release();
-  }
-
-  void destruct_storage(void *storage) const override
-  {
-    std::destroy_at(static_cast<Storage *>(storage));
-  }
-
   void execute_impl(lf::Params &params, const lf::Context &context) const final
   {
     const GeoNodesLFUserData &user_data = *static_cast<const GeoNodesLFUserData *>(
         context.user_data);
-    Storage &storage = *static_cast<Storage *>(context.storage);
     if (!user_data.modifier_data) {
       params.set_default_remaining_outputs();
       return;
@@ -84,34 +68,31 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
       params.set_default_remaining_outputs();
       return;
     }
-    if (!storage.id.has_value()) {
-      storage.id = find_nested_node_id(user_data, output_node_id_);
-      if (!storage.id.has_value()) {
-        params.set_default_remaining_outputs();
-        return;
-      }
-    }
-    if (storage.id->is_in_loop) {
+    std::optional<FoundNestedNodeID> found_id = find_nested_node_id(user_data, output_node_id_);
+    if (!found_id) {
       params.set_default_remaining_outputs();
       return;
     }
-    if (!storage.info.has_value()) {
-      storage.info = modifier_data.simulation_params->get_input_info(storage.id->id);
-      if (!storage.info.has_value()) {
-        params.set_default_remaining_outputs();
-        return;
-      }
+    if (found_id->is_in_loop) {
+      params.set_default_remaining_outputs();
+      return;
     }
+    SimulationZoneInfo *info = modifier_data.simulation_params->get(found_id->id);
+    if (!info) {
+      params.set_default_remaining_outputs();
+      return;
+    }
+    SimulationInputInfo &input_info = info->input;
     float delta_time = 0.0f;
-    if (auto *info = std::get_if<SimulationInputInfo::OutputCopy>(&storage.info->info)) {
+    if (auto *info = std::get_if<SimulationInputInfo::OutputCopy>(&input_info.info)) {
       delta_time = info->delta_time;
       this->output_simulation_state_copy(params, user_data, info->prev_items);
     }
-    else if (auto *info = std::get_if<SimulationInputInfo::OutputMove>(&storage.info->info)) {
+    else if (auto *info = std::get_if<SimulationInputInfo::OutputMove>(&input_info.info)) {
       delta_time = info->delta_time;
       this->output_simulation_state_move(params, user_data, std::move(info->prev_items));
     }
-    else if (std::get_if<SimulationInputInfo::PassThrough>(&storage.info->info)) {
+    else if (std::get_if<SimulationInputInfo::PassThrough>(&input_info.info)) {
       delta_time = 0.0f;
       this->pass_through(params, user_data);
     }

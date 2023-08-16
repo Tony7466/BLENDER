@@ -530,25 +530,9 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
     }
   }
 
-  struct Storage {
-    std::optional<FoundNestedNodeID> id;
-    std::optional<SimulationOutputInfo> info;
-  };
-
-  void *init_storage(LinearAllocator<> &allocator) const
-  {
-    return allocator.construct<Storage>().release();
-  }
-
-  void destruct_storage(void *storage) const
-  {
-    std::destroy_at(static_cast<Storage *>(storage));
-  }
-
   void execute_impl(lf::Params &params, const lf::Context &context) const final
   {
     GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
-    Storage &storage = *static_cast<Storage *>(context.storage);
     if (!user_data.modifier_data) {
       params.set_default_remaining_outputs();
       return;
@@ -558,29 +542,25 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
       params.set_default_remaining_outputs();
       return;
     }
-    if (!storage.id.has_value()) {
-      storage.id = find_nested_node_id(user_data, node_.identifier);
-      if (!storage.id.has_value()) {
-        params.set_default_remaining_outputs();
-        return;
-      }
-    }
-    if (storage.id->is_in_loop) {
+    std::optional<FoundNestedNodeID> found_id = find_nested_node_id(user_data, node_.identifier);
+    if (!found_id) {
       params.set_default_remaining_outputs();
       return;
     }
-    if (!storage.info.has_value()) {
-      storage.info = modifier_data.simulation_params->get_output_info(storage.id->id);
-      if (!storage.info.has_value()) {
-        params.set_default_remaining_outputs();
-        return;
-      }
+    if (found_id->is_in_loop) {
+      params.set_default_remaining_outputs();
+      return;
     }
-    if (auto *info = std::get_if<SimulationOutputInfo::ReadSingle>(&storage.info->info)) {
+    SimulationZoneInfo *info = modifier_data.simulation_params->get(found_id->id);
+    if (!info) {
+      params.set_default_remaining_outputs();
+      return;
+    }
+    SimulationOutputInfo &output_info = info->output;
+    if (auto *info = std::get_if<SimulationOutputInfo::ReadSingle>(&output_info.info)) {
       this->output_cached_state(params, user_data, info->items);
     }
-    else if (auto *info = std::get_if<SimulationOutputInfo::ReadInterpolated>(&storage.info->info))
-    {
+    else if (auto *info = std::get_if<SimulationOutputInfo::ReadInterpolated>(&output_info.info)) {
       this->output_mixed_cached_state(params,
                                       *modifier_data.self_object,
                                       *user_data.compute_context,
@@ -588,11 +568,11 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
                                       info->next_items,
                                       info->mix_factor);
     }
-    else if (std::get_if<SimulationOutputInfo::PassThrough>(&storage.info->info)) {
+    else if (std::get_if<SimulationOutputInfo::PassThrough>(&output_info.info)) {
       this->pass_through(params, user_data);
     }
     else if (auto *info = std::get_if<SimulationOutputInfo::StoreAndPassThrough>(
-                 &storage.info->info)) {
+                 &output_info.info)) {
       this->store_and_pass_through(params, user_data, *info);
     }
     else {

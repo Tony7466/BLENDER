@@ -873,8 +873,8 @@ class LazyFunctionForSimulationInputsUsage : public LazyFunction {
   LazyFunctionForSimulationInputsUsage(const bNode &output_bnode) : output_bnode_(&output_bnode)
   {
     debug_name_ = "Simulation Inputs Usage";
-    outputs_.append_as("Need Inputs", CPPType::get<bool>());
-    outputs_.append_as("Need Solve Outputs", CPPType::get<bool>());
+    outputs_.append_as("Need Input Inputs", CPPType::get<bool>());
+    outputs_.append_as("Need Output Inputs", CPPType::get<bool>());
   }
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override
@@ -889,9 +889,18 @@ class LazyFunctionForSimulationInputsUsage : public LazyFunction {
       params.set_default_remaining_outputs();
       return;
     }
-    const std::optional<FoundNestedNodeID> id = find_nested_node_id(user_data,
-                                                                    output_bnode_->identifier);
-    if (!id) {
+    const std::optional<FoundNestedNodeID> found_id = find_nested_node_id(
+        user_data, output_bnode_->identifier);
+    if (!found_id) {
+      params.set_default_remaining_outputs();
+      return;
+    }
+    if (found_id->is_in_loop) {
+      params.set_default_remaining_outputs();
+      return;
+    }
+    SimulationZoneInfo *info = modifier_data.simulation_params->get(found_id->id);
+    if (!info) {
       params.set_default_remaining_outputs();
       return;
     }
@@ -903,11 +912,13 @@ class LazyFunctionForSimulationInputsUsage : public LazyFunction {
       solve_contains_side_effect = !side_effect_nodes.is_empty();
     }
 
-    const SimulationEvalType eval_type = modifier_data.simulation_params->get_eval_type(id->id);
-
+    params.set_output(0,
+                      std::holds_alternative<SimulationInputInfo::PassThrough>(info->input.info));
     params.set_output(
-        0, ELEM(eval_type, SimulationEvalType::PassThrough, SimulationEvalType::Initialize));
-    params.set_output(1, solve_contains_side_effect || eval_type != SimulationEvalType::Read);
+        1,
+        solve_contains_side_effect ||
+            std::holds_alternative<SimulationOutputInfo::PassThrough>(info->output.info) ||
+            std::holds_alternative<SimulationOutputInfo::StoreAndPassThrough>(info->output.info));
   }
 };
 

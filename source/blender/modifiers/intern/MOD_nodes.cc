@@ -831,28 +831,9 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     prepare_ = prepare_simulation_states_for_evaluation(nmd, ctx);
   }
 
-  nodes::SimulationEvalType get_eval_type(const nodes::NestedNodeID /*id*/) const override
+  nodes::SimulationZoneInfo *get(nodes::NestedNodeID /*id*/) const override
   {
-    if (prepare_.current_simulation_state == nullptr) {
-      return nodes::SimulationEvalType::PassThrough;
-    }
-    if (prepare_.current_simulation_state_for_write != nullptr) {
-      if (prepare_.prev_simulation_state == nullptr) {
-        return nodes::SimulationEvalType::Initialize;
-      }
-      return nodes::SimulationEvalType::Solve;
-    }
-    return nodes::SimulationEvalType::Read;
-  }
-
-  nodes::SimulationInputInfo get_input_info(const nodes::NestedNodeID /*id*/) const override
-  {
-    return {};
-  }
-
-  nodes::SimulationOutputInfo get_output_info(const nodes::NestedNodeID /*id*/) const override
-  {
-    return {};
+    return nullptr;
   }
 };
 
