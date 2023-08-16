@@ -433,6 +433,15 @@ static void box_select_elem(
       break;
     }
 #endif
+    case ANIMTYPE_GREASE_PENCIL_DATABLOCK: {
+      GreasePencil *grease_pencil = static_cast<GreasePencil *>(ale->data);
+      for (blender::bke::greasepencil::Layer *layer : grease_pencil->layers_for_write()) {
+        blender::ed::greasepencil::select_frames_range(
+            layer->wrap(), xmin, xmax, sel_data->selectmode);
+      }
+      ale->update |= ANIM_UPDATE_DEPS;
+      break;
+    }
     case ANIMTYPE_GREASE_PENCIL_LAYER: {
       blender::ed::greasepencil::select_frames_range(
           static_cast<GreasePencilLayer *>(ale->data)->wrap(), xmin, xmax, sel_data->selectmode);
