@@ -1300,6 +1300,19 @@ static char *collection_drop_tooltip(bContext *C,
   return nullptr;
 }
 
+/* Tag scene's base flags and cached base arrays to be re-evaluated on change in the hierarchy of
+ * objects and collections. */
+static void tag_scenes_after_hierarchy_change(bContext *C)
+{
+  Main *bmain = CTX_data_main(C);
+
+  /* It is not possible to easily know which scenes modified collection belongs to, so tag all
+   * scenes. It is quite cheap tag and evaluation, so should not be a big performance concern. */
+  LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+    DEG_id_tag_update(&scene->id, ID_RECALC_BASE_FLAGS);
+  }
+}
+
 static int collection_drop_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
 {
   Main *bmain = CTX_data_main(C);
@@ -1369,6 +1382,8 @@ static int collection_drop_invoke(bContext *C, wmOperator * /*op*/, const wmEven
       DEG_id_tag_update(&from->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_GEOMETRY);
     }
   }
+
+  tag_scenes_after_hierarchy_change(C);
 
   /* Update dependency graph. */
   DEG_id_tag_update(&data.to->id, ID_RECALC_COPY_ON_WRITE);
