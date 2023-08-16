@@ -886,6 +886,7 @@ void ShadowModule::end_sync()
 
     /* Clear tiles to not reference any page. */
     tilemap_pool.tiles_data.clear_to_zero();
+    tilemap_pool.tilemaps_clip.clear_to_zero();
 
     /* Clear cached page buffer. */
     GPU_storagebuf_clear(pages_cached_data_, -1);
