@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -532,7 +532,7 @@ endif()
 option(WITH_PYTHON_INSTALL "Copy system python into the blender install folder" ON)
 
 option(WITH_INSTALL_COPYRIGHT "\
-Copy the official Blender Foundation's copyright.txt into the Blender install folder"
+Copy the official Blender Authors's copyright.txt into the Blender install folder"
   OFF
 )
 mark_as_advanced(WITH_INSTALL_COPYRIGHT)
@@ -650,7 +650,8 @@ if(NOT APPLE)
   # Radeon VII (gfx906) not currently working with HIP SDK, so left out of the list.
   set(CYCLES_HIP_BINARIES_ARCH
     gfx900 gfx90c gfx902
-    gfx1010 gfx1011 gfx1012 gfx1030 gfx1031 gfx1032 gfx1034 gfx1035
+    gfx1010 gfx1011 gfx1012
+    gfx1030 gfx1031 gfx1032 gfx1034 gfx1035 gfx1036
     gfx1100 gfx1101 gfx1102
     CACHE STRING "AMD HIP architectures to build binaries for"
   )
