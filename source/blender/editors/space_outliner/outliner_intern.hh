@@ -322,6 +322,11 @@ struct ParticleSystemElementCreateData {
   ParticleSystem *psys;
 };
 
+struct PoseChannelElementCreateData {
+  Object *object;
+  bPoseChannel *pchan;
+};
+
 struct PoseGroupElementCreateData {
   Object *object;
   bActionGroup *agrp;
