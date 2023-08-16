@@ -10,7 +10,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 
 #include "BLT_translation.h"
 
@@ -35,9 +35,9 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
@@ -432,15 +432,15 @@ static int pose_clear_paths_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static char *pose_clear_paths_description(bContext * /*C*/,
-                                          wmOperatorType * /*ot*/,
-                                          PointerRNA *ptr)
+static std::string pose_clear_paths_description(bContext * /*C*/,
+                                                wmOperatorType * /*ot*/,
+                                                PointerRNA *ptr)
 {
   const bool only_selected = RNA_boolean_get(ptr, "only_selected");
   if (only_selected) {
-    return BLI_strdup(TIP_("Clear motion paths of selected bones"));
+    return TIP_("Clear motion paths of selected bones");
   }
-  return BLI_strdup(TIP_("Clear motion paths of all bones"));
+  return TIP_("Clear motion paths of all bones");
 }
 
 void POSE_OT_paths_clear(wmOperatorType *ot)

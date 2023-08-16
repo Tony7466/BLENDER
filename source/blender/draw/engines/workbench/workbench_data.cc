@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation
+/* SPDX-FileCopyrightText: 2018 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,6 +9,7 @@
 
 #include "workbench_private.h"
 
+#include "BLI_math_rotation.h"
 #include "BLI_memblock.h"
 
 #include "DNA_userdef_types.h"

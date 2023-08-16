@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -119,6 +119,8 @@ void GRAPH_OT_clean(struct wmOperatorType *ot);
 void GRAPH_OT_blend_to_neighbor(struct wmOperatorType *ot);
 void GRAPH_OT_breakdown(struct wmOperatorType *ot);
 void GRAPH_OT_ease(struct wmOperatorType *ot);
+void GRAPH_OT_blend_offset(struct wmOperatorType *ot);
+void GRAPH_OT_blend_to_ease(struct wmOperatorType *ot);
 void GRAPH_OT_decimate(struct wmOperatorType *ot);
 void GRAPH_OT_blend_to_default(struct wmOperatorType *ot);
 void GRAPH_OT_butterworth_smooth(struct wmOperatorType *ot);

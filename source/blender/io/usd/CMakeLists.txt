@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2019 Blender Foundation
+# SPDX-FileCopyrightText: 2019 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -116,6 +116,7 @@ set(SRC
 
   intern/usd_asset_utils.h
   intern/usd_exporter_context.h
+  intern/usd_hash_types.h
   intern/usd_hierarchy_iterator.h
   intern/usd_hook.h
   intern/usd_writer_abstract.h

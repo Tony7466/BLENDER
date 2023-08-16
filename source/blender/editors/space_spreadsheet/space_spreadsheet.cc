@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -29,7 +29,7 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -44,6 +44,8 @@
 #include "spreadsheet_layout.hh"
 #include "spreadsheet_row_filter.hh"
 #include "spreadsheet_row_filter_ui.hh"
+
+#include <sstream>
 
 using namespace blender;
 using namespace blender::ed::spreadsheet;

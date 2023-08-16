@@ -41,7 +41,7 @@
 
 #include "BKE_callbacks.h"
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
 #include "BLI_task.h"
@@ -99,7 +99,7 @@
 
 #include "RE_engine.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "SEQ_edit.h"
 #include "SEQ_iterator.h"
@@ -889,19 +889,12 @@ static void scene_foreach_id(ID *id, LibraryForeachIDData *data)
         data, scene_foreach_layer_collection(data, &view_layer->layer_collections));
 
     LISTBASE_FOREACH (FreestyleModuleConfig *, fmc, &view_layer->freestyle_config.modules) {
-      if (fmc->script) {
-        BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, fmc->script, IDWALK_CB_NOP);
-      }
+      BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, fmc->script, IDWALK_CB_NOP);
     }
 
     LISTBASE_FOREACH (FreestyleLineSet *, fls, &view_layer->freestyle_config.linesets) {
-      if (fls->group) {
-        BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, fls->group, IDWALK_CB_USER);
-      }
-
-      if (fls->linestyle) {
-        BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, fls->linestyle, IDWALK_CB_USER);
-      }
+      BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, fls->group, IDWALK_CB_USER);
+      BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, fls->linestyle, IDWALK_CB_USER);
     }
   }
 
@@ -1009,9 +1002,6 @@ static void scene_blend_write(BlendWriter *writer, ID *id, const void *id_addres
   BLO_write_id_struct(writer, Scene, id_address, &sce->id);
   BKE_id_blend_write(writer, &sce->id);
 
-  if (sce->adt) {
-    BKE_animdata_blend_write(writer, sce->adt);
-  }
   BKE_keyingsets_blend_write(writer, &sce->keyingsets);
 
   /* direct data */
@@ -1228,9 +1218,6 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
   id_us_ensure_real(&sce->id);
 
   BLO_read_list(reader, &(sce->base));
-
-  BLO_read_data_address(reader, &sce->adt);
-  BKE_animdata_blend_read_data(reader, sce->adt);
 
   BLO_read_list(reader, &sce->keyingsets);
   BKE_keyingsets_blend_read_data(reader, &sce->keyingsets);
@@ -1512,18 +1499,6 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
 }
 
 /* patch for missing scene IDs, can't be in do-versions */
-static void composite_patch(bNodeTree *ntree, Scene *scene)
-{
-  for (bNode *node : ntree->all_nodes()) {
-    if (node->id == nullptr &&
-        ((node->type == CMP_NODE_R_LAYERS) ||
-         (node->type == CMP_NODE_CRYPTOMATTE && node->custom1 == CMP_CRYPTOMATTE_SRC_RENDER)))
-    {
-      node->id = &scene->id;
-    }
-  }
-}
-
 static void scene_blend_read_lib(BlendLibReader *reader, ID *id)
 {
   Scene *sce = (Scene *)id;
@@ -1624,10 +1599,6 @@ static void scene_blend_read_lib(BlendLibReader *reader, ID *id)
     if (rbw->effector_weights) {
       BLO_read_id_address(reader, id, &rbw->effector_weights->group);
     }
-  }
-
-  if (sce->nodetree) {
-    composite_patch(sce->nodetree, sce);
   }
 
   LISTBASE_FOREACH (SceneRenderLayer *, srl, &sce->r.layers) {
