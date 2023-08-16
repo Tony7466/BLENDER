@@ -449,7 +449,6 @@ colorspaces:
         - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Linear FilmLight E-Gamut}
         - !<AllocationTransform> {allocation: lg2, vars: [-12.47393, 12.5260688117]}
         - !<FileTransform> {src: AgX_Base_Rec2020.cube, interpolation: best}
-        # outset = [0.4, 0.22, 0.04]
     to_scene_reference: !<GroupTransform>
       children:
         - !<FileTransform> {src: Inverse_AgX_Base_Rec2020.cube, interpolation: best}
