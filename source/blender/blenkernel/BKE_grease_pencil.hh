@@ -229,7 +229,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
   /**
    * \returns the number of non-null parents of the node.
    */
-  int depth() const;
+  int64_t depth() const;
 };
 
 /**
