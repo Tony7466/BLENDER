@@ -655,6 +655,32 @@ static void check_property_socket_sync(const Object *ob, ModifierData *md)
   }
 }
 
+class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
+ public:
+  NodesModifierData *nmd_;
+  const ModifierEvalContext *ctx_;
+
+  nodes::SimulationEvalType get_eval_type(const nodes::NestedNodeID id) const override
+  {
+    return {};
+  }
+
+  nodes::SimulationInputInfo get_input_info(const nodes::NestedNodeID id) const override
+  {
+    return {};
+  }
+
+  nodes::SimulationOutputInfo get_output_info(const nodes::NestedNodeID id) const override
+  {
+    return {};
+  }
+
+  void store_simulation_state(const nodes::NestedNodeID id,
+                              Map<int, std::unique_ptr<bke::BakeItem>> items) const override
+  {
+  }
+};
+
 static void modifyGeometry(ModifierData *md,
                            const ModifierEvalContext *ctx,
                            bke::GeometrySet &geometry_set)
@@ -714,7 +740,10 @@ static void modifyGeometry(ModifierData *md,
   modifier_eval_data.self_object = ctx->object;
   auto eval_log = std::make_unique<geo_log::GeoModifierLog>();
 
-  // prepare_simulation_states_for_evaluation(*nmd, *ctx, modifier_eval_data);
+  NodesModifierSimulationParams simulation_params;
+  simulation_params.nmd_ = nmd;
+  simulation_params.ctx_ = ctx;
+  modifier_eval_data.simulation_params = &simulation_params;
 
   Set<ComputeContextHash> socket_log_contexts;
   if (logging_enabled(ctx)) {
