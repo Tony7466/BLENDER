@@ -136,10 +136,17 @@ void main()
 
     barrier();
 
-    bool lod_is_updated = (view_index >= 0) && (view_index < SHADOW_VIEW_MAX);
-    if (lod_is_updated && lod_valid_thread) {
-      ivec2 relative_tile_co = tile_co_lod - rect_min;
-      if (in_range_exclusive(relative_tile_co, ivec2(-1), viewport_size)) {
+    bool lod_is_rendered = (view_index >= 0) && (view_index < SHADOW_VIEW_MAX);
+    if (lod_is_rendered && lod_valid_thread) {
+      /* Tile coordinate relative to chosen viewport origin. */
+      ivec2 viewport_tile_co = tile_co_lod - rect_min;
+      /* We need to add page indirection to the render map for the whole viewport even if this one
+       * might extend outside of the shadowmap range. To this end, we need to wrap the threads to
+       * always cover the whole mip. This is because the viewport cannot be bigger than the mip
+       * level itself. */
+      int lod_res = SHADOW_TILEMAP_RES >> lod;
+      ivec2 relative_tile_co = (viewport_tile_co + lod_res) % lod_res;
+      if (all(lessThan(relative_tile_co, viewport_size))) {
         uint page_packed = shadow_page_pack(tile.page);
         /* Add page to render map. */
         int render_page_index = shadow_render_page_index_get(view_index, relative_tile_co);
@@ -157,7 +164,7 @@ void main()
       }
     }
 
-    if (tile.is_used && tile.is_allocated && (!tile.do_update || lod_is_updated)) {
+    if (tile.is_used && tile.is_allocated && (!tile.do_update || lod_is_rendered)) {
       /* Save highest lod for this thread. */
       valid_tile_index = tile_index;
     }

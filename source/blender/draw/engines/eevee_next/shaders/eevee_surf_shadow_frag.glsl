@@ -48,13 +48,15 @@ void main()
 
   int render_page_index = shadow_render_page_index_get(view_index, tile_co);
   uint page_packed = render_map_buf[render_page_index];
-  ivec3 page = ivec3(shadow_page_unpack(page_packed));
+  if (page_packed != 0xFFFFFFFFu) {
+    ivec3 page = ivec3(shadow_page_unpack(page_packed));
     ivec3 out_texel = ivec3((page.xy << page_shift) | texel_page, page.z);
 
-  uint u_depth = floatBitsToUint(gl_FragCoord.z);
-  /* Quantization bias. Equivalent to nextafter in C without all the safety. 1 is not enough. */
-  u_depth += 2;
+    uint u_depth = floatBitsToUint(gl_FragCoord.z);
+    /* Quantization bias. Equivalent to nextafter in C without all the safety. 1 is not enough. */
+    u_depth += 2;
 
-  imageAtomicMin(shadow_atlas_img, out_texel, u_depth);
+    imageAtomicMin(shadow_atlas_img, out_texel, u_depth);
+  }
 #endif
 }
