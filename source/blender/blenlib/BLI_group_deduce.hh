@@ -15,7 +15,7 @@
  * Deduced group is a set of indices to all the values in taked span.
  *
  * This file contains base implementation of algorithm and helpful tools to deal with groups.
- * Index or IDs of groups both is a ways to define а group value key.
+ * Index or IDs of groups both is a ways to define a group value key.
  * Index is the main one, but IDs can be used too by utils.
  *
  * All the implementations are multithreaded. Result can be not stable to avoid redundant actions.
