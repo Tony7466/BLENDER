@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -29,6 +29,7 @@
 #include "tree_element_grease_pencil_node.hh"
 #include "tree_element_id.hh"
 #include "tree_element_label.hh"
+#include "tree_element_linked_object.hh"
 #include "tree_element_modifier.hh"
 #include "tree_element_nla.hh"
 #include "tree_element_overrides.hh"
@@ -174,6 +175,8 @@ std::unique_ptr<AbstractTreeElement> AbstractTreeElement::createFromType(const i
       ModifierCreateElementData *md_data = static_cast<ModifierCreateElementData *>(idv);
       return std::make_unique<TreeElementModifier>(legacy_te, *md_data->object, *md_data->md);
     }
+    case TSE_LINKED_OB:
+      return std::make_unique<TreeElementLinkedObject>(legacy_te, *static_cast<ID *>(idv));
     default:
       break;
   }
