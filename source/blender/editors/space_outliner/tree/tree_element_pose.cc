@@ -37,8 +37,10 @@ void TreeElementPoseBase::expand(SpaceOutliner &space_outliner) const
     int const_index = 1000; /* ensure unique id for bone constraints */
     int a;
     LISTBASE_FOREACH_INDEX (bPoseChannel *, pchan, &object_.pose->chanbase, a) {
+      PoseChannelElementCreateData pchan_data = {&object_, pchan};
+      
       TreeElement *ten = outliner_add_element(
-          &space_outliner, &legacy_te_.subtree, &object_, &legacy_te_, TSE_POSE_CHANNEL, a);
+          &space_outliner, &legacy_te_.subtree, &pchan_data, &legacy_te_, TSE_POSE_CHANNEL, a);
       pchan->temp = (void *)ten;
 
       if (!BLI_listbase_is_empty(&pchan->constraints)) {
