@@ -527,7 +527,6 @@ typedef struct PointerPropertyRNA {
   PropPointerGetFunc get;
   PropPointerSetFunc set;
   PropPointerTypeFunc type_fn;
-  /** unlike operators, 'set' can still run if poll fails, used for filtering display. */
   PropPointerPollFunc poll;
 
   struct StructRNA *type;

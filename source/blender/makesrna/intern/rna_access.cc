@@ -3701,8 +3701,11 @@ void RNA_property_pointer_set(PointerRNA *ptr,
   PointerPropertyRNA *pprop = (PointerPropertyRNA *)prop;
   BLI_assert(RNA_property_type(prop) == PROP_POINTER);
 
+  const bool is_real_rna = pprop->set != nullptr;
+  const bool is_existing_idprop = idprop != nullptr;
+
   /* Check types. */
-  if (pprop->set != nullptr) {
+  if (is_real_rna) {
     /* Assigning to a real RNA property. */
     if (ptr_value.type != nullptr && !RNA_struct_is_a(ptr_value.type, pprop->type)) {
       BKE_reportf(reports,
@@ -3726,8 +3729,18 @@ void RNA_property_pointer_set(PointerRNA *ptr,
     }
   }
 
+  /* Check potential poll function (non-valid values are already filtered from the UI in
+   * id_search_allows_id(), but setting from python could still get here. Clearing (setting to
+   * NULL) should always be possible though. */
+  if ((is_real_rna || is_existing_idprop) && (ptr_value.data != nullptr) &&
+      !RNA_property_pointer_poll(ptr, prop, &ptr_value))
+  {
+    BKE_reportf(reports, RPT_ERROR, "%s: pointer property poll function failed", __func__);
+    return;
+  }
+
   /* We got an existing IDProperty. */
-  if (idprop != nullptr) {
+  if (is_existing_idprop) {
     /* Not-yet-defined ID IDProps have an IDP_GROUP type, not an IDP_ID one - because of reasons?
      * XXX This has to be investigated fully - there might be a good reason for it, but off hands
      * this seems really weird... */
@@ -3747,7 +3760,7 @@ void RNA_property_pointer_set(PointerRNA *ptr,
     }
   }
   /* RNA property. */
-  else if (pprop->set) {
+  else if (is_real_rna) {
     if (!((prop->flag & PROP_NEVER_NULL) && ptr_value.data == nullptr) &&
         !((prop->flag & PROP_ID_SELF_CHECK) && ptr->owner_id == ptr_value.owner_id))
     {
