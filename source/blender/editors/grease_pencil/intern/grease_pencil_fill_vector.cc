@@ -66,8 +66,8 @@
  * The edge is made up of segments. A segment is part of a curve and ends at an intersection
  * with an other curve (D) or at the end of the curve itself (G).
  * At an intersection (D), the right turn will be inspected first. Because we are inspecting
- * the edge in clockwise direction, this garantuees us that we find the 'narrowest' edge. See
- * at (F), for example: by taking the right turn first, we find the smallest fill area (just as
+ * the edge in clockwise direction, this guarantees us that we find the 'narrowest' edge. See
+ * for example at (F): by taking the right turn first, we find the smallest fill area (just as
  * we should).
  * At an intersection, there are three possible turns. When a turn is not leading to a closed edge
  * (see e.g. (E), turn 1 and 2), the next turn is inspected.
@@ -87,9 +87,9 @@
  * intersections we create one additional curve point, that's it.
  *
  * Finding intersections can be a bit troublesome when two curves overlap (sharing exact same
- * segment points). This can easily occur when the fill tool is used before: the original stroke
- * and the fill curve share geometry points. Therefore, priority is given to curve with only
- * 'stroke' material over curves with 'fill' material.
+ * segment points). This can easily occur when the fill tool is used twice: the original stroke
+ * and the fill curve share geometry points. Therefore, when looking for intersections, priority is
+ * given to curves with only 'stroke' material over curves with a 'fill' material.
  *
  * In the code:
  * #vector_fill_do()          start of the algorithm, casting a ray (B)
@@ -135,7 +135,7 @@ enum class vfFlag : uint16_t {
   IsUnused = 1 << 9,
 };
 ENUM_OPERATORS(vfFlag, vfFlag::IsUnused);
-inline constexpr bool operator==(vfFlag a, bool b)
+static inline constexpr bool operator==(vfFlag a, bool b)
 {
   return (uint64_t(a) != 0) == b;
 }
@@ -299,7 +299,7 @@ static float get_intersection_distance(const float2 &v1,
   return math::max(0.0f, math::min(1.0f, math::length(isect - v1) / vec_length));
 }
 
-Vector<IntersectingSegment2D> get_intersections_of_segment_with_curves(
+static Vector<IntersectingSegment2D> get_intersections_of_segment_with_curves(
     const float2 &segment_a,
     const float2 &segment_b,
     const int segment_curve_index,
@@ -402,7 +402,16 @@ Vector<IntersectingSegment2D> get_intersections_of_segment_with_curves(
 /** \name Vector Fill functions
  * \{ */
 
-Vector<float3> get_closed_fill_edge_as_3d_points(VectorFillData *vf)
+static bool equals_previous(const float3 &co, float3 &r_co_prev)
+{
+  if (equals_v3v3(co, r_co_prev)) {
+    return true;
+  }
+  copy_v3_v3(r_co_prev, co);
+  return false;
+}
+
+static Vector<float3> get_closed_fill_edge_as_3d_points(VectorFillData *vf)
 {
   /* Ensure head starting point and tail end point are an exact match. */
   EdgeSegment *tail = &vf->segments.last();
@@ -423,9 +432,11 @@ Vector<float3> get_closed_fill_edge_as_3d_points(VectorFillData *vf)
     break;
   }
 
-  /* Convert all edge segments to 3D coordinates. */
   Vector<float3> edge_points;
+  float3 co_prev = {FLT_MAX, FLT_MAX, FLT_MAX};
   int edge_point_index = 0;
+
+  /* Convert all edge segments to 3D coordinates. */
   for (auto &segment : vf->segments) {
     if ((segment.flag & vfFlag::IsUnused) == true) {
       continue;
@@ -442,15 +453,18 @@ Vector<float3> get_closed_fill_edge_as_3d_points(VectorFillData *vf)
 
     /* Append curve points of this segment to 3D edge point array. */
     const int direction = ((segment.flag & vfFlag::DirectionBackwards) == true) ? -1 : 1;
-    int point_start = segment.point_range[0];
-    int point_end = segment.point_range[1];
+    int point_start = segment.point_range[0] + point_offset;
+    int point_end = segment.point_range[1] + point_offset;
     if (direction == -1) {
       std::swap(point_start, point_end);
     }
     point_end += direction;
+
     for (int point_i = point_start; point_i != point_end; point_i += direction) {
-      edge_points.append(positions[point_offset + point_i]);
-      edge_point_index++;
+      if (!equals_previous(positions[point_i], co_prev)) {
+        edge_points.append(positions[point_i]);
+        edge_point_index++;
+      }
     }
 
     /* Calculate regular intersection point. */
@@ -460,14 +474,15 @@ Vector<float3> get_closed_fill_edge_as_3d_points(VectorFillData *vf)
                                  (positions[point_offset + segment_end->ori_segment_point_end] -
                                   edge_points.last()) *
                                      segment_end->distance;
-      edge_points.append(isect_point);
-      edge_point_index++;
+      if (!equals_previous(isect_point, co_prev)) {
+        edge_points.append(isect_point);
+        edge_point_index++;
+      }
     }
 
     /* Calculate intersection with curve end extension. */
     if (vf->gap_close_extend && (segment.flag & vfFlag::IsGapClosure) == true &&
-        edge_point_index > 1)
-    {
+        edge_point_index > 1) {
       /* Get segment end data. */
       const SegmentEnd *segment_end = &segment.segment_ends[segment.segment_ends_index];
       const int extension_index = segment.curve_index_2d * 2 + (direction == 1 ? 1 : 0);
@@ -478,8 +493,10 @@ Vector<float3> get_closed_fill_edge_as_3d_points(VectorFillData *vf)
                                   edge_points[edge_point_index - 2]) *
                                      vf->extension_length_ratio[extension_index] *
                                      segment_end->distance;
-      edge_points.append(isect_point);
-      edge_point_index++;
+      if (!equals_previous(isect_point, co_prev)) {
+        edge_points.append(isect_point);
+        edge_point_index++;
+      }
     }
   }
 
@@ -631,7 +648,7 @@ static bool mouse_pos_is_inside_polygon(float2 &mouse_pos, Vector<float2> &polyg
   return (count & 1) != 0;
 }
 
-Vector<float2> get_closed_fill_edge_as_2d_polygon(VectorFillData *vf)
+static Vector<float2> get_closed_fill_edge_as_2d_polygon(VectorFillData *vf)
 {
   Vector<float2> points;
 
@@ -692,6 +709,10 @@ static void remove_overlapping_edge_tail_points(const EdgeSegment *head,
       range_tail[1] = range_tail[0];
     }
   }
+
+  /* Clear tail end flags. */
+  tail->flag &= ~vfFlag::IsGapClosure;
+  tail->flag &= ~vfFlag::IsIntersected;
 }
 
 static bool segments_have_overlap(EdgeSegment *segment, EdgeSegment *tail)
@@ -1898,7 +1919,7 @@ static int modal(bContext *C, wmOperator *op, const wmEvent *event)
       break;
 
     case LEFTMOUSE: {
-      /* Second click: perform the actual fill. */
+      /* Get mouse position of second click (the 'fill' click). */
       vf->mouse_pos[0] = float(event->mval[0]);
       vf->mouse_pos[1] = float(event->mval[1]);
 
@@ -1914,7 +1935,7 @@ static int modal(bContext *C, wmOperator *op, const wmEvent *event)
       /* DEBUG: measure time. */
       auto t2 = std::chrono::high_resolution_clock::now();
       auto delta_t = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1);
-      printf("Vector fill took %lld ms.\n", delta_t.count());
+      printf("Vector fill took %d ms.\n", int(delta_t.count()));
 
       if (succes) {
         modal_state = OPERATOR_FINISHED;
@@ -1932,7 +1953,7 @@ static int modal(bContext *C, wmOperator *op, const wmEvent *event)
   switch (modal_state) {
     case OPERATOR_FINISHED:
       exit(C, op);
-      WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, NULL);
+      WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
       break;
 
     case OPERATOR_CANCELLED:

@@ -2381,12 +2381,10 @@ class VIEW3D_PT_tools_grease_pencil_fill_options(View3DPanel, Panel):
         layout.use_property_decorate = False
 
         tool_settings = context.scene.tool_settings
-        gpencil_paint = tool_settings.gpencil_paint
-        brush = gpencil_paint.brush
-        gp_settings = brush.gpencil_settings
-
+        brush = tool_settings.gpencil_paint.brush
         if brush is None:
             return
+        gp_settings = brush.gpencil_settings
         
         col = layout.column(align=True)
         row = col.row(align=True)
