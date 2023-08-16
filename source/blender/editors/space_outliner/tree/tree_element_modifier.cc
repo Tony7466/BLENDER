@@ -31,13 +31,17 @@ void TreeElementModifierBase::expand(SpaceOutliner &space_outliner) const
 {
   int index;
   LISTBASE_FOREACH_INDEX (ModifierData *, md, &object_.modifiers, index) {
-    ModifierCreateElementData md_data = {&object_, md};
+    ModifierDataStoreElem md_store(md);
+
+    ModifierCreateElementData md_data = {&object_, &md_store};
 
     outliner_add_element(
         &space_outliner, &legacy_te_.subtree, &md_data, &legacy_te_, TSE_MODIFIER, index);
   }
   LISTBASE_FOREACH_INDEX (GpencilModifierData *, md, &object_.greasepencil_modifiers, index) {
-    ModifierCreateElementData md_data = {&object_, md};
+    ModifierDataStoreElem md_store(md);
+
+    ModifierCreateElementData md_data = {&object_, &md_store};
 
     outliner_add_element(
         &space_outliner, &legacy_te_.subtree, &md_data, &legacy_te_, TSE_MODIFIER, index);
@@ -46,25 +50,23 @@ void TreeElementModifierBase::expand(SpaceOutliner &space_outliner) const
 
 TreeElementModifier::TreeElementModifier(TreeElement &legacy_te,
                                          Object &object,
-                                         std::variant<ModifierData *, GpencilModifierData *> md)
+                                         ModifierDataStoreElem &md)
     : AbstractTreeElement(legacy_te), object_(object), md_(md)
 {
-  if (std::holds_alternative<ModifierData *>(md_)) {
-    ModifierData *md = std::get<ModifierData *>(md_);
-    legacy_te.name = md->name;
-    legacy_te.directdata = md;
+  if (md_.type == MODIFIER_TYPE) {
+    legacy_te.name = md_.md->name;
+    legacy_te.directdata = md_.md;
   }
-  else {
-    GpencilModifierData *md = std::get<GpencilModifierData *>(md_);
-    legacy_te.name = md->name;
-    legacy_te.directdata = md;
+  if (md_.type == GPENCIL_MODIFIER_TYPE) {
+    legacy_te.name = md_.gp_md->name;
+    legacy_te.directdata = md_.gp_md;
   }
 }
 
 void TreeElementModifier::expand(SpaceOutliner &space_outliner) const
 {
-  if (std::holds_alternative<ModifierData *>(md_)) {
-    ModifierData *md = std::get<ModifierData *>(md_);
+  if (md_.type == MODIFIER_TYPE) {
+    ModifierData *md = md_.md;
     if (md->type == eModifierType_Lattice) {
       outliner_add_element(&space_outliner,
                            &legacy_te_.subtree,
@@ -106,8 +108,8 @@ void TreeElementModifier::expand(SpaceOutliner &space_outliner) const
           &space_outliner, &legacy_te_.subtree, &psys_data, &legacy_te_, TSE_LINKED_PSYS, 0);
     }
   }
-  else {
-    GpencilModifierData *md = std::get<GpencilModifierData *>(md_);
+  if (md_.type == GPENCIL_MODIFIER_TYPE) {
+    GpencilModifierData *md = md_.gp_md;
     if (md->type == eGpencilModifierType_Armature) {
       outliner_add_element(&space_outliner,
                            &legacy_te_.subtree,

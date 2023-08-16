@@ -28,6 +28,7 @@ struct LayerCollection;
 struct ListBase;
 struct Main;
 struct ModifierData;
+struct ModifierDataStoreElem;
 struct Object;
 struct Scene;
 struct ShaderFxData;
@@ -322,7 +323,7 @@ struct GPencilEffectElementCreateData {
 
 struct ModifierCreateElementData {
   Object *object;
-  std::variant<ModifierData *, GpencilModifierData *> md;
+  ModifierDataStoreElem *md;
 };
 
 struct ParticleSystemElementCreateData {

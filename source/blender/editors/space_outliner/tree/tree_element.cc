@@ -172,7 +172,7 @@ std::unique_ptr<AbstractTreeElement> AbstractTreeElement::createFromType(const i
       return std::make_unique<TreeElementModifierBase>(legacy_te, *static_cast<Object *>(idv));
     case TSE_MODIFIER: {
       ModifierCreateElementData *md_data = static_cast<ModifierCreateElementData *>(idv);
-      return std::make_unique<TreeElementModifier>(legacy_te, *md_data->object, md_data->md);
+      return std::make_unique<TreeElementModifier>(legacy_te, *md_data->object, *md_data->md);
     }
     default:
       break;
