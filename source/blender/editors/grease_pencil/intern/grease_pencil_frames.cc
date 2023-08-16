@@ -100,41 +100,34 @@ bool has_any_frame_selected(const bke::greasepencil::Layer &layer)
 }
 
 void select_frames_region(KeyframeEditData *ked,
-                          bke::greasepencil::Layer &layer,
+                          bke::greasepencil::TreeNode &node,
                           const short tool,
                           const short select_mode)
 {
-  for (auto [frame_number, frame] : layer.frames_for_write().items()) {
-    /* Construct a dummy point coordinate to do this testing with. */
-    const float2 pt(float(frame_number), ked->channel_y);
+  if (node.is_layer()) {
+    for (auto [frame_number, frame] : node.as_layer_for_write().frames_for_write().items()) {
+      /* Construct a dummy point coordinate to do this testing with. */
+      const float2 pt(float(frame_number), ked->channel_y);
 
-    /* Check the necessary regions. */
-    if (tool == BEZT_OK_CHANNEL_LASSO) {
-      if (keyframe_region_lasso_test(static_cast<const KeyframeEdit_LassoData *>(ked->data), pt)) {
-        select_frame(frame, select_mode);
+      /* Check the necessary regions. */
+      if (tool == BEZT_OK_CHANNEL_LASSO) {
+        if (keyframe_region_lasso_test(static_cast<const KeyframeEdit_LassoData *>(ked->data), pt))
+        {
+          select_frame(frame, select_mode);
+        }
       }
-    }
-    else if (tool == BEZT_OK_CHANNEL_CIRCLE) {
-      if (keyframe_region_circle_test(static_cast<const KeyframeEdit_CircleData *>(ked->data), pt))
-      {
-        select_frame(frame, select_mode);
+      else if (tool == BEZT_OK_CHANNEL_CIRCLE) {
+        if (keyframe_region_circle_test(static_cast<const KeyframeEdit_CircleData *>(ked->data),
+                                        pt)) {
+          select_frame(frame, select_mode);
+        }
       }
     }
   }
-}
-
-void select_frames_region(KeyframeEditData *ked,
-                          bke::greasepencil::LayerGroup &layer_group,
-                          const short tool,
-                          const short selection_mode)
-{
-  LISTBASE_FOREACH_BACKWARD (GreasePencilLayerTreeNode *, node_, &layer_group.children) {
-    bke::greasepencil::TreeNode &node = node_->wrap();
-    if (node.is_group()) {
-      select_frames_region(ked, node.as_group_for_write(), tool, selection_mode);
-    }
-    else if (node.is_layer()) {
-      select_frames_region(ked, node.as_layer_for_write(), tool, selection_mode);
+  else if (node.is_group()) {
+    LISTBASE_FOREACH_BACKWARD (
+        GreasePencilLayerTreeNode *, node_, &node.as_group_for_write().children) {
+      select_frames_region(ked, node_->wrap(), tool, select_mode);
     }
   }
 }
