@@ -143,6 +143,13 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
    * \returns true if this node is a #Layer.
    */
   bool is_layer() const;
+
+  bool is_visible() const;
+  bool is_locked() const;
+  bool is_editable() const;
+  bool is_selected() const;
+  bool use_onion_skinning() const;
+
   /**
    * \returns the name of the node.
    */
@@ -268,17 +275,6 @@ class Layer : public ::GreasePencilLayer {
   ~Layer();
 
   /**
-   * \returns the layer name.
-   */
-  StringRefNull name() const;
-  void set_name(StringRefNull new_name);
-
-  /**
-   * \returns the parent layer group.
-   */
-  LayerGroup &parent_group() const;
-
-  /**
    * \returns the layer as a `TreeNode`.
    */
   const TreeNode &as_node() const;
@@ -290,13 +286,7 @@ class Layer : public ::GreasePencilLayer {
   const Map<FramesMapKey, GreasePencilFrame> &frames() const;
   Map<FramesMapKey, GreasePencilFrame> &frames_for_write();
 
-  bool is_visible() const;
-  bool is_locked() const;
-  bool is_editable() const;
   bool is_empty() const;
-  bool is_selected() const;
-
-  bool use_onion_skinning() const;
 
   /**
    * Adds a new frame into the layer frames map.
@@ -404,12 +394,6 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
   ~LayerGroup();
 
  public:
-  StringRefNull name() const;
-  void set_name(StringRefNull new_name);
-
-  bool is_visible() const;
-  bool is_locked() const;
-
   /**
    * \returns the group as a `TreeNode`.
    */
@@ -527,6 +511,28 @@ inline bool TreeNode::is_layer() const
 {
   return this->type == GP_LAYER_TREE_LEAF;
 }
+inline bool TreeNode::is_visible() const
+{
+  return ((this->flag & GP_LAYER_TREE_NODE_HIDE) == 0) &&
+         (!this->parent_group() || this->parent_group()->as_node().is_visible());
+}
+inline bool TreeNode::is_locked() const
+{
+  return ((this->flag & GP_LAYER_TREE_NODE_LOCKED) != 0) ||
+         (!this->parent_group() || this->parent_group()->as_node().is_locked());
+}
+inline bool TreeNode::is_editable() const
+{
+  return this->is_visible() && !this->is_locked();
+}
+inline bool TreeNode::is_selected() const
+{
+  return (this->flag & GP_LAYER_TREE_NODE_SELECT) != 0;
+}
+inline bool TreeNode::use_onion_skinning() const
+{
+  return ((this->flag & GP_LAYER_TREE_NODE_USE_ONION_SKINNING) != 0);
+}
 inline StringRefNull TreeNode::name() const
 {
   return this->name_ptr;
@@ -547,21 +553,6 @@ inline const TreeNode &Layer::as_node() const
 inline TreeNode &Layer::as_node()
 {
   return *reinterpret_cast<TreeNode *>(this);
-}
-
-inline StringRefNull Layer::name() const
-{
-  return this->base.name_ptr;
-}
-
-inline LayerGroup &Layer::parent_group() const
-{
-  return this->base.parent->wrap();
-}
-
-inline StringRefNull LayerGroup::name() const
-{
-  return this->base.name_ptr;
 }
 
 namespace convert {

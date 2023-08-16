@@ -56,7 +56,7 @@ class LayerNodeDropTarget : public TreeViewItemDropTarget {
         static_cast<const wmDragGreasePencilLayer *>(drag_info.drag_data.poin);
     Layer &drag_layer = drag_grease_pencil->layer->wrap();
 
-    std::string_view drag_name = drag_layer.name();
+    std::string_view drag_name = drag_layer.as_node().name();
     std::string_view drop_name = drop_tree_node_.name();
 
     switch (drag_info.drop_location) {
@@ -80,7 +80,7 @@ class LayerNodeDropTarget : public TreeViewItemDropTarget {
         static_cast<const wmDragGreasePencilLayer *>(drag_info.drag_data.poin);
     Layer &drag_layer = drag_grease_pencil->layer->wrap();
 
-    LayerGroup &drag_parent = drag_layer.parent_group();
+    LayerGroup &drag_parent = *drag_layer.as_node().parent_group();
     LayerGroup *drop_parent_group = drop_tree_node_.parent_group();
     if (!drop_parent_group) {
       /* Root node is not added to the tree view, so there should never be a drop target for this.
@@ -155,7 +155,7 @@ class LayerViewItem : public AbstractTreeViewItem {
   LayerViewItem(GreasePencil &grease_pencil, Layer &layer)
       : grease_pencil_(grease_pencil), layer_(layer)
   {
-    this->label_ = layer.name();
+    this->label_ = layer.as_node().name();
   }
 
   void build_row(uiLayout &row) override
@@ -208,7 +208,7 @@ class LayerViewItem : public AbstractTreeViewItem {
 
   StringRef get_rename_string() const override
   {
-    return layer_.name();
+    return layer_.as_node().name();
   }
 
   std::unique_ptr<AbstractViewItemDragController> create_drag_controller() const override
@@ -230,8 +230,8 @@ class LayerViewItem : public AbstractTreeViewItem {
   void build_layer_name(uiLayout &row)
   {
     uiBut *but = uiItemL_ex(
-        &row, IFACE_(layer_.name().c_str()), ICON_OUTLINER_DATA_GP_LAYER, false, false);
-    if (layer_.is_locked() || !layer_.parent_group().is_visible()) {
+        &row, IFACE_(layer_.as_node().name().c_str()), ICON_OUTLINER_DATA_GP_LAYER, false, false);
+    if (layer_.as_node().is_locked() || !layer_.as_node().parent_group()->as_node().is_visible()) {
       UI_but_disable(but, "Layer is locked or not visible");
     }
   }
@@ -259,7 +259,7 @@ class LayerViewItem : public AbstractTreeViewItem {
                         0.0f,
                         0.0f,
                         nullptr);
-    if (!layer_.parent_group().is_visible()) {
+    if (!layer_.as_node().parent_group()->as_node().is_visible()) {
       UI_but_flag_enable(but, UI_BUT_INACTIVE);
     }
 
@@ -279,7 +279,7 @@ class LayerViewItem : public AbstractTreeViewItem {
                         0.0f,
                         0.0f,
                         nullptr);
-    if (layer_.parent_group().is_locked()) {
+    if (layer_.as_node().parent_group()->as_node().is_locked()) {
       UI_but_flag_enable(but, UI_BUT_INACTIVE);
     }
   }
@@ -291,7 +291,7 @@ class LayerGroupViewItem : public AbstractTreeViewItem {
       : grease_pencil_(grease_pencil), group_(group)
   {
     this->disable_activatable();
-    this->label_ = group_.name();
+    this->label_ = group_.as_node().name();
   }
 
   void build_row(uiLayout &row) override
@@ -317,7 +317,7 @@ class LayerGroupViewItem : public AbstractTreeViewItem {
 
   StringRef get_rename_string() const override
   {
-    return group_.name();
+    return group_.as_node().name();
   }
 
   std::unique_ptr<TreeViewItemDropTarget> create_drop_target() override
@@ -333,8 +333,9 @@ class LayerGroupViewItem : public AbstractTreeViewItem {
   void build_layer_group_name(uiLayout &row)
   {
     uiItemS_ex(&row, 0.8f);
-    uiBut *but = uiItemL_ex(&row, IFACE_(group_.name().c_str()), ICON_FILE_FOLDER, false, false);
-    if (group_.is_locked()) {
+    uiBut *but = uiItemL_ex(
+        &row, IFACE_(group_.as_node().name().c_str()), ICON_FILE_FOLDER, false, false);
+    if (group_.as_node().is_locked()) {
       UI_but_disable(but, "Layer Group is locked");
     }
   }

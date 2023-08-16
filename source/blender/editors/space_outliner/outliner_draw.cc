@@ -1542,7 +1542,7 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                   -1,
                                   nullptr);
           UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
-          if (!node.parent_group()->is_visible()) {
+          if (!node.parent_group()->as_node().is_visible()) {
             UI_but_flag_enable(bt, UI_BUT_INACTIVE);
           }
         }
@@ -3321,12 +3321,7 @@ static bool element_should_draw_faded(const TreeViewContext *tvc,
     case TSE_GREASE_PENCIL_NODE: {
       bke::greasepencil::TreeNode &node =
           tree_element_cast<TreeElementGreasePencilNode>(te)->node();
-      if (node.is_layer()) {
-        return !node.as_layer().is_visible();
-      }
-      if (node.is_group()) {
-        return !node.as_group().is_visible();
-      }
+      return !node.is_visible();
     }
   }
 

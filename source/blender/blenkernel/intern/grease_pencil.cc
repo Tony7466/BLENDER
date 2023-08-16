@@ -120,7 +120,7 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
   /* Set active layer. */
   if (grease_pencil_src->has_active_layer()) {
     grease_pencil_dst->set_active_layer(
-        grease_pencil_dst->find_layer_by_name(grease_pencil_src->active_layer->wrap().name()));
+        grease_pencil_dst->find_layer_by_name(grease_pencil_src->active_layer->wrap().as_node().name()));
   }
 
   /* Make sure the runtime pointer exists. */
@@ -561,11 +561,6 @@ Layer::~Layer()
   this->runtime = nullptr;
 }
 
-void Layer::set_name(StringRefNull new_name)
-{
-  this->base.name_ptr = BLI_strdup(new_name.c_str());
-}
-
 const Map<int, GreasePencilFrame> &Layer::frames() const
 {
   return this->runtime->frames_;
@@ -576,34 +571,9 @@ Map<int, GreasePencilFrame> &Layer::frames_for_write()
   return this->runtime->frames_;
 }
 
-bool Layer::is_visible() const
-{
-  return this->parent_group().is_visible() && (this->base.flag & GP_LAYER_TREE_NODE_HIDE) == 0;
-}
-
-bool Layer::is_locked() const
-{
-  return this->parent_group().is_locked() || (this->base.flag & GP_LAYER_TREE_NODE_LOCKED) != 0;
-}
-
-bool Layer::is_editable() const
-{
-  return !this->is_locked() && this->is_visible();
-}
-
 bool Layer::is_empty() const
 {
   return (this->frames().size() == 0);
-}
-
-bool Layer::is_selected() const
-{
-  return ((this->base.flag & GP_LAYER_TREE_NODE_SELECT) != 0);
-}
-
-bool Layer::use_onion_skinning() const
-{
-  return ((this->base.flag & GP_LAYER_TREE_NODE_USE_ONION_SKINNING) != 0);
 }
 
 Layer::SortedKeysIterator Layer::remove_leading_null_frames_in_range(
@@ -848,29 +818,6 @@ LayerGroup::~LayerGroup()
   this->runtime = nullptr;
 }
 
-void LayerGroup::set_name(StringRefNull new_name)
-{
-  this->base.name_ptr = BLI_strdup(new_name.c_str());
-}
-
-bool LayerGroup::is_visible() const
-{
-  if (this->base.parent) {
-    return this->base.parent->wrap().is_visible() &&
-           (this->base.flag & GP_LAYER_TREE_NODE_HIDE) == 0;
-  }
-  return (this->base.flag & GP_LAYER_TREE_NODE_HIDE) == 0;
-}
-
-bool LayerGroup::is_locked() const
-{
-  if (this->base.parent) {
-    return this->base.parent->wrap().is_locked() ||
-           (this->base.flag & GP_LAYER_TREE_NODE_LOCKED) != 0;
-  }
-  return (this->base.flag & GP_LAYER_TREE_NODE_LOCKED) != 0;
-}
-
 LayerGroup &LayerGroup::add_group(LayerGroup *group)
 {
   BLI_assert(group != nullptr);
@@ -1012,7 +959,7 @@ Span<LayerGroup *> LayerGroup::groups_for_write()
 const Layer *LayerGroup::find_layer_by_name(const StringRefNull name) const
 {
   for (const Layer *layer : this->layers()) {
-    if (StringRef(layer->name()) == StringRef(name)) {
+    if (StringRef(layer->as_node().name()) == StringRef(name)) {
       return layer;
     }
   }
@@ -1022,7 +969,7 @@ const Layer *LayerGroup::find_layer_by_name(const StringRefNull name) const
 Layer *LayerGroup::find_layer_by_name(const StringRefNull name)
 {
   for (Layer *layer : this->layers_for_write()) {
-    if (StringRef(layer->name()) == StringRef(name)) {
+    if (StringRef(layer->as_node().name()) == StringRef(name)) {
       return layer;
     }
   }
@@ -1032,7 +979,7 @@ Layer *LayerGroup::find_layer_by_name(const StringRefNull name)
 const LayerGroup *LayerGroup::find_group_by_name(StringRefNull name) const
 {
   for (const LayerGroup *group : this->groups()) {
-    if (StringRef(group->name()) == StringRef(name)) {
+    if (StringRef(group->as_node().name()) == StringRef(name)) {
       return group;
     }
   }
@@ -1042,7 +989,7 @@ const LayerGroup *LayerGroup::find_group_by_name(StringRefNull name) const
 LayerGroup *LayerGroup::find_group_by_name(StringRefNull name)
 {
   for (LayerGroup *group : this->groups_for_write()) {
-    if (StringRef(group->name()) == StringRef(name)) {
+    if (StringRef(group->as_node().name()) == StringRef(name)) {
       return group;
     }
   }
@@ -1658,7 +1605,7 @@ void GreasePencil::move_frames(blender::bke::greasepencil::Layer &layer,
 blender::bke::greasepencil::Drawing *GreasePencil::get_editable_drawing_at(
     const blender::bke::greasepencil::Layer *layer, const int frame_number) const
 {
-  if (layer == nullptr || !layer->is_editable()) {
+  if (layer == nullptr || !layer->as_node().is_editable()) {
     return nullptr;
   }
 
@@ -1693,13 +1640,13 @@ static void foreach_drawing_ex(
   for (const Layer *layer : grease_pencil.layers()) {
     switch (mode) {
       case VISIBLE: {
-        if (!layer->is_visible()) {
+        if (!layer->as_node().is_visible()) {
           continue;
         }
         break;
       }
       case EDITABLE: {
-        if (!layer->is_editable()) {
+        if (!layer->as_node().is_editable()) {
           continue;
         }
         break;
@@ -2011,7 +1958,7 @@ void GreasePencil::remove_layer(blender::bke::greasepencil::Layer &layer)
   }
 
   /* Unlink the layer from the parent group. */
-  layer.parent_group().unlink_node(&layer.as_node());
+  layer.as_node().parent_group()->unlink_node(&layer.as_node());
 
   /* Remove drawings. */
   for (GreasePencilFrame frame : layer.frames_for_write().values()) {
