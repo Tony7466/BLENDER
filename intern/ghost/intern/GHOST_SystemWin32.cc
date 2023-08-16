@@ -126,7 +126,7 @@ static void initRawInput()
     /* Success. */
   }
   else {
-    GHOST_PRINTF("could not register for RawInput: %d\n", (int)GetLastError());
+    GHOST_PRINTF("could not register for RawInput: %d\n", int(GetLastError()));
   }
 #undef DEVICE_COUNT
 }
@@ -178,7 +178,7 @@ uint64_t GHOST_SystemWin32::performanceCounterToMillis(__int64 perf_ticks) const
   /* Calculate the time passed since system initialization. */
   __int64 delta = (perf_ticks - m_start) * 1000;
 
-  uint64_t t = (uint64_t)(delta / m_freq);
+  uint64_t t = uint64_t(delta / m_freq);
   return t;
 }
 
@@ -2588,8 +2588,9 @@ GHOST_TSuccess GHOST_SystemWin32::showMessageBox(const char *title,
   config.pszWindowTitle = L"Blender";
   config.pszMainInstruction = title_16;
   config.pszContent = message_16;
-  config.pButtons = (link) ? buttons : buttons + 1;
-  config.cButtons = (link) ? 2 : 1;
+  const bool has_link = link && strlen(link);
+  config.pButtons = has_link ? buttons : buttons + 1;
+  config.cButtons = has_link ? 2 : 1;
 
   TaskDialogIndirect(&config, &nButtonPressed, nullptr, nullptr);
   switch (nButtonPressed) {

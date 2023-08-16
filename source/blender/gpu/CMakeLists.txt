@@ -5,6 +5,7 @@
 set(INC
   .
   intern
+  dummy
   metal
   opengl
   vulkan
@@ -142,6 +143,12 @@ set(SRC
   intern/gpu_uniform_buffer_private.hh
   intern/gpu_vertex_buffer_private.hh
   intern/gpu_vertex_format_private.h
+
+  dummy/dummy_backend.hh
+  dummy/dummy_batch.hh
+  dummy/dummy_context.hh
+  dummy/dummy_framebuffer.hh
+  dummy/dummy_vertex_buffer.hh
 )
 
 set(OPENGL_SRC
@@ -571,6 +578,7 @@ set(GLSL_SRC_TEST
   tests/shaders/gpu_compute_ssbo_test.glsl
   tests/shaders/gpu_compute_vbo_test.glsl
   tests/shaders/gpu_compute_dummy_test.glsl
+  tests/shaders/gpu_framebuffer_layer_viewport_test.glsl
   tests/shaders/gpu_push_constants_test.glsl
 )
 

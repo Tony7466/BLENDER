@@ -39,7 +39,8 @@
 
 #include "BLI_array_utils.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -184,10 +185,6 @@ static void material_blend_write(BlendWriter *writer, ID *id, const void *id_add
   BLO_write_id_struct(writer, Material, id_address, &ma->id);
   BKE_id_blend_write(writer, &ma->id);
 
-  if (ma->adt) {
-    BKE_animdata_blend_write(writer, ma->adt);
-  }
-
   /* nodetree is integral part of material, no libdata */
   if (ma->nodetree) {
     BLO_Write_IDBuffer *temp_embedded_id_buffer = BLO_write_allocate_id_buffer();
@@ -212,8 +209,6 @@ static void material_blend_write(BlendWriter *writer, ID *id, const void *id_add
 static void material_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Material *ma = (Material *)id;
-  BLO_read_data_address(reader, &ma->adt);
-  BKE_animdata_blend_read_data(reader, ma->adt);
 
   ma->texpaintslot = nullptr;
 
@@ -301,6 +296,27 @@ void BKE_gpencil_material_attr_init(Material *ma)
     gp_style->mix_factor = 0.5f;
 
     gp_style->flag |= GP_MATERIAL_STROKE_SHOW;
+  }
+}
+
+static void nodetree_mark_previews_dirty_reccursive(bNodeTree *tree)
+{
+  if (tree == nullptr) {
+    return;
+  }
+  tree->runtime->previews_refresh_state++;
+  for (bNode *node : tree->all_nodes()) {
+    if (node->type == NODE_GROUP) {
+      bNodeTree *nested_tree = reinterpret_cast<bNodeTree *>(node->id);
+      nodetree_mark_previews_dirty_reccursive(nested_tree);
+    }
+  }
+}
+
+void BKE_material_make_node_previews_dirty(Material *ma)
+{
+  if (ma && ma->nodetree) {
+    nodetree_mark_previews_dirty_reccursive(ma->nodetree);
   }
 }
 

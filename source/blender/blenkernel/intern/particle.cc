@@ -34,7 +34,10 @@
 #include "BLI_kdopbvh.h"
 #include "BLI_kdtree.h"
 #include "BLI_linklist.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_rand.h"
 #include "BLI_task.h"
 #include "BLI_threads.h"
@@ -253,9 +256,6 @@ static void particle_settings_blend_write(BlendWriter *writer, ID *id, const voi
   BLO_write_id_struct(writer, ParticleSettings, id_address, &part->id);
   BKE_id_blend_write(writer, &part->id);
 
-  if (part->adt) {
-    BKE_animdata_blend_write(writer, part->adt);
-  }
   BLO_write_struct(writer, PartDeflect, part->pd);
   BLO_write_struct(writer, PartDeflect, part->pd2);
   BLO_write_struct(writer, EffectorWeights, part->effector_weights);
@@ -315,11 +315,9 @@ void BKE_particle_partdeflect_blend_read_data(BlendDataReader * /*reader*/, Part
 static void particle_settings_blend_read_data(BlendDataReader *reader, ID *id)
 {
   ParticleSettings *part = (ParticleSettings *)id;
-  BLO_read_data_address(reader, &part->adt);
+
   BLO_read_data_address(reader, &part->pd);
   BLO_read_data_address(reader, &part->pd2);
-
-  BKE_animdata_blend_read_data(reader, part->adt);
   BKE_particle_partdeflect_blend_read_data(reader, part->pd);
   BKE_particle_partdeflect_blend_read_data(reader, part->pd2);
 
