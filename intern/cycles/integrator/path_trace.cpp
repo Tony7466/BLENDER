@@ -48,10 +48,12 @@ PathTrace::PathTrace(Device *device,
   device_->foreach_device([&](Device *path_trace_device) {
     unique_ptr<PathTraceWork> work = PathTraceWork::create(
         path_trace_device, film, device_scene, &render_cancel_.is_requested);
+    VLOG_INFO << "(" << index << ") " << path_trace_device->info.description;
     if (work) {
       path_trace_works_.emplace_back(std::move(work));
       if(path_trace_device->info.type == DEVICE_CPU) {
         cpu_index = index;
+	VLOG_INFO << "Found CPU at index " << cpu_index;
       }
     }
       index++;

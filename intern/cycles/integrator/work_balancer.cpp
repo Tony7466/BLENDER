@@ -23,13 +23,15 @@ void work_balance_do_initial(vector<WorkBalanceInfo> &work_balance_infos, int cp
   }
 
   /* There is no statistics available, so start with an equal distribution. */
-  /* initially assume the CPU is much slower (100x) than the GPU */
+  /* initially assume the CPU is much slower (50x) than the GPU */
   int cpu_used = ((cpu_index == -1) ? 0 : 1);
-  const double GPU_WEIGHT = 100.0;
+  const double GPU_WEIGHT = 50.0;
   const double total_weigth = GPU_WEIGHT*(num_infos - cpu_used) + cpu_used;
   //const double weight = 1.0 / num_infos;
+  VLOG_INFO << " CPU index:" << cpu_index;
   for (int device_index = 0;device_index < num_infos; device_index++) {
       work_balance_infos[device_index].weight = ((cpu_index == device_index) ? 1 : GPU_WEIGHT)/total_weigth;
+      VLOG_INFO << "(" << device_index << ") " << work_balance_infos[device_index].weight << "is cpu:" << ((cpu_index == device_index) ? "true" : "false");
   }
 }
 
@@ -62,7 +64,13 @@ bool work_balance_do_rebalance(vector<WorkBalanceInfo> &work_balance_infos)
    * equalize.
    * Can think of it that if one of the devices is 10% faster than another, then one device needs
    * to do 5% less of the current work, and another needs to do 5% more. */
-  const double lerp_weight = 1.0 / num_infos;
+  /* Try to aim for about 75% of the way between the target time and the current time
+   * as we don't want to overshoot. This is only used when the target time is greater
+   * than the current time (i.e. the slower device is not doing enough work). When
+   * the target time is less it just uses the target time. This way it can be sure
+   * that the slower devices will try to be quicker than the fastest device.
+   */
+  const double lerp_weight = 0.75; // 1.0 / num_infos; Not sure why this was based on the number of devices
 
   /* Need to find the quickest device and the one with the most work */
   int shortest_time = -1;
