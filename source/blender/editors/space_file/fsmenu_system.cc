@@ -35,9 +35,11 @@
 /* For SHGetSpecialFolderPath, has to be done before BLI_winstuff
  * because 'near' is disabled through BLI_windstuff. */
 #  include "BLI_winstuff.h"
-#  include <shldisp.h>
+#  include <comdef.h>
+#  include <comutil.h>
 #  include <shlobj.h>
 #  include <shlwapi.h>
+#  include <wrl.h>
 #endif
 
 #include "UI_resources.hh"
@@ -164,94 +166,59 @@ static void fsmenu_add_windows_quick_access(struct FSMenu *fsmenu,
                                             FSMenuCategory category,
                                             FSMenuInsert flag)
 {
-  VARIANT var;
-  IShellDispatch *shell = NULL;
-  HRESULT hr;
-
-  /* Get shell COM object. */
-  hr = CoCreateInstance(CLSID_Shell, NULL, CLSCTX_ALL, IID_IShellDispatch, (void **)&shell);
-  if (FAILED(hr)) {
-    shell = NULL;
+  Microsoft::WRL::ComPtr<IShellDispatch> shell;
+  if (FAILED(
+          CoCreateInstance(CLSID_Shell, nullptr, CLSCTX_ALL, IID_PPV_ARGS(shell.GetAddressOf()))))
+  {
+    return;
   }
 
   /* Open Quick Access folder. */
-  Folder *dir = NULL;
-  if (shell) {
-    VariantInit(&var);
-    V_VT(&var) = VT_BSTR;
-    V_BSTR(&var) = SysAllocString(L"shell:::{679f85cb-0220-4080-b29b-5540cc05aab6}");
-    hr = shell->NameSpace(var, &dir);
-    SysFreeString(V_BSTR(&var));
-    if (FAILED(hr)) {
-      dir = NULL;
-    }
+  Microsoft::WRL::ComPtr<Folder> dir;
+  if (FAILED(shell->NameSpace(_variant_t(L"shell:::{679f85cb-0220-4080-b29b-5540cc05aab6}"),
+                              dir.GetAddressOf())))
+  {
+    return;
   }
 
   /* Get FolderItems. */
-  FolderItems *items = NULL;
-  if (dir) {
-    hr = dir->Items(&items);
-    if (FAILED(hr)) {
-      items = NULL;
-    }
+  Microsoft::WRL::ComPtr<FolderItems> items;
+  if (FAILED(dir->Items(items.GetAddressOf()))) {
+    return;
   }
 
   long count = 0;
-  if (items) {
-    hr = items->get_Count(&count);
-    if (FAILED(hr)) {
-      count = 0;
-    }
+  if (FAILED(items->get_Count(&count))) {
+    return;
   }
 
   /* Iterate through the folder. */
   for (long i = 0; i < count; i++) {
-    FolderItem *item;
+    Microsoft::WRL::ComPtr<FolderItem> item;
 
-    V_VT(&var) = VT_I4;
-    V_I4(&var) = i;
-    hr = items->Item(var, &item);
-    if (FAILED(hr)) {
+    if (FAILED(items->Item(_variant_t(i), item.GetAddressOf()))) {
       continue;
     }
 
     VARIANT_BOOL isFolder;
-    hr = item->get_IsFolder(&isFolder);
     /* Skip if it's not a folder. */
-    if (FAILED(hr) || isFolder == VARIANT_FALSE) {
-      item->Release();
+    if (FAILED(item->get_IsFolder(&isFolder)) || isFolder == VARIANT_FALSE) {
       continue;
     }
 
-    BSTR path = NULL;
-    hr = item->get_Path(&path);
-    if (FAILED(hr)) {
-      path = NULL;
+    _bstr_t path;
+    if (FAILED(item->get_Path(path.GetAddress()))) {
+      continue;
     }
 
     char utf_path[FILE_MAXDIR];
-    if (path) {
-      BLI_strncpy_wchar_as_utf8(utf_path, path, FILE_MAXDIR);
-      SysFreeString(path);
+    BLI_strncpy_wchar_as_utf8(utf_path, path, FILE_MAXDIR);
 
-      /* Skip library folders since they are not currently supported. */
-      if (!BLI_strcasestr(utf_path, ".library-ms")) {
-        /* Add folder to the fsmenu. */
-        fsmenu_insert_entry(fsmenu, category, utf_path, NULL, ICON_FILE_FOLDER, flag);
-      }
+    /* Skip library folders since they are not currently supported. */
+    if (!BLI_strcasestr(utf_path, ".library-ms")) {
+      /* Add folder to the fsmenu. */
+      fsmenu_insert_entry(fsmenu, category, utf_path, NULL, ICON_FILE_FOLDER, flag);
     }
-
-    item->Release();
-  }
-
-  if (items) {
-    items->Release();
-  }
-  if (dir) {
-    dir->Release();
-  }
-  if (shell) {
-    shell->Release();
   }
 }
 
