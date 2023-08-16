@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved. 2007 Blender Foundation.
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved. 2007 Blender Authors.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,10 +8,10 @@
  * Window management, wrap GHOST.
  */
 
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "DNA_listBase.h"
 #include "DNA_screen_types.h"
@@ -23,7 +23,6 @@
 #include "GHOST_C-api.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_system.h"
 #include "BLI_utildefines.h"
 
@@ -38,34 +37,34 @@
 #include "BKE_screen.h"
 #include "BKE_workspace.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
-#include "wm.h"
-#include "wm_draw.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
+#include "wm.hh"
+#include "wm_draw.hh"
 #include "wm_event_system.h"
-#include "wm_files.h"
+#include "wm_files.hh"
 #include "wm_platform_support.h"
-#include "wm_window.h"
+#include "wm_window.hh"
 #include "wm_window_private.h"
 #ifdef WITH_XR_OPENXR
 #  include "wm_xr.h"
 #endif
 
-#include "ED_anim_api.h"
-#include "ED_fileselect.h"
-#include "ED_render.h"
-#include "ED_scene.h"
-#include "ED_screen.h"
+#include "ED_anim_api.hh"
+#include "ED_fileselect.hh"
+#include "ED_render.hh"
+#include "ED_scene.hh"
+#include "ED_screen.hh"
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
 
 #include "PIL_time.h"
 
@@ -80,7 +79,7 @@
 #include "GPU_state.h"
 #include "GPU_texture.h"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 /* for assert */
 #ifndef NDEBUG
@@ -483,7 +482,7 @@ void wm_window_title(wmWindowManager *wm, wmWindow *win)
     /* this is set to 1 if you don't have startup.blend open */
     const char *blendfile_path = BKE_main_blendfile_path_from_global();
     if (blendfile_path[0] != '\0') {
-      char str[sizeof(((Main *)nullptr)->filepath) + 24];
+      char str[sizeof(Main::filepath) + 24];
       SNPRINTF(str,
                "Blender%s [%s%s]",
                wm->file_saved ? "" : "*",
@@ -499,7 +498,7 @@ void wm_window_title(wmWindowManager *wm, wmWindow *win)
      * and to give hint of unsaved changes for a user warning mechanism in case of OS application
      * terminate request (e.g. OS Shortcut Alt+F4, Command+Q, (...), or session end). */
     GHOST_SetWindowModifiedState(static_cast<GHOST_WindowHandle>(win->ghostwin),
-                                 (bool)!wm->file_saved);
+                                 bool(!wm->file_saved));
   }
 }
 
@@ -534,7 +533,7 @@ void WM_window_set_dpi(const wmWindow *win)
   U.dpi = auto_dpi * U.ui_scale * (72.0 / 96.0f);
 
   /* Automatically set larger pixel size for high DPI. */
-  int pixelsize = max_ii(1, (int)(U.dpi / 64));
+  int pixelsize = max_ii(1, int(U.dpi / 64));
   /* User adjustment for pixel size. */
   pixelsize = max_ii(1, pixelsize + U.ui_line_width);
 
@@ -546,7 +545,7 @@ void WM_window_set_dpi(const wmWindow *win)
 
   /* Widget unit is 20 pixels at 1X scale. This consists of 18 user-scaled units plus
    * left and right borders of line-width (pixel-size). */
-  U.widget_unit = (int)roundf(18.0f * U.scale_factor) + (2 * pixelsize);
+  U.widget_unit = int(roundf(18.0f * U.scale_factor)) + (2 * pixelsize);
 }
 
 /**
@@ -1214,7 +1213,7 @@ void wm_window_make_drawable(wmWindowManager *wm, wmWindow *win)
   }
 }
 
-void wm_window_reset_drawable(void)
+void wm_window_reset_drawable()
 {
   BLI_assert(BLI_thread_is_main());
   BLI_assert(GPU_framebuffer_active_get() == GPU_framebuffer_back_get());
@@ -1355,9 +1354,9 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
 
         wm_window_make_drawable(wm, win);
 #if 0
-/* NOTE(@ideasman42): Ideally we could swap-buffers to avoid a full redraw.
-* however this causes window flickering on resize with LIBDECOR under WAYLAND. */
-wm_window_swap_buffers(win);
+        /* NOTE(@ideasman42): Ideally we could swap-buffers to avoid a full redraw.
+         * however this causes window flickering on resize with LIBDECOR under WAYLAND. */
+        wm_window_swap_buffers(win);
 #else
         WM_event_add_notifier(C, NC_WINDOW, nullptr);
 #endif
@@ -1726,7 +1725,7 @@ void wm_ghost_init(bContext *C)
   GHOST_UseWindowFocus(wm_init_state.window_focus);
 }
 
-void wm_ghost_init_background(void)
+void wm_ghost_init_background()
 {
   /* TODO: move this to `wm_init_exit.cc`. */
 
@@ -1745,7 +1744,7 @@ void wm_ghost_init_background(void)
   GHOST_SystemInitDebug(g_system, debug);
 }
 
-void wm_ghost_exit(void)
+void wm_ghost_exit()
 {
   if (g_system) {
     GHOST_DisposeSystem(g_system);
@@ -1753,7 +1752,7 @@ void wm_ghost_exit(void)
   g_system = nullptr;
 }
 
-const char *WM_ghost_backend(void)
+const char *WM_ghost_backend()
 {
 #if !(defined(WIN32) || defined(__APPLE__))
   return g_system_backend_id ? g_system_backend_id : "NONE";
@@ -1864,13 +1863,13 @@ void wm_test_opengl_deprecation_warning(bContext *C)
   message_shown = true;
 }
 
-eWM_CapabilitiesFlag WM_capabilities_flag(void)
+eWM_CapabilitiesFlag WM_capabilities_flag()
 {
-  static eWM_CapabilitiesFlag flag = eWM_CapabilitiesFlag(-1);
-  if (flag != -1) {
+  static eWM_CapabilitiesFlag flag = eWM_CapabilitiesFlag(0);
+  if (flag != 0) {
     return flag;
   }
-  flag = eWM_CapabilitiesFlag(0);
+  flag |= WM_CAPABILITY_INITIALIZED;
 
   const GHOST_TCapabilityFlag ghost_flag = GHOST_GetCapabilities();
   if (ghost_flag & GHOST_kCapabilityCursorWarp) {
@@ -1887,6 +1886,9 @@ eWM_CapabilitiesFlag WM_capabilities_flag(void)
   }
   if (ghost_flag & GHOST_kCapabilityClipboardImages) {
     flag |= WM_CAPABILITY_CLIPBOARD_IMAGES;
+  }
+  if (ghost_flag & GHOST_kCapabilityDesktopSample) {
+    flag |= WM_CAPABILITY_DESKTOP_SAMPLE;
   }
 
   return flag;
@@ -1975,8 +1977,7 @@ void WM_event_timers_free_all(wmWindowManager *wm)
 {
   BLI_assert_msg(BLI_listbase_is_empty(&wm->windows),
                  "This should only be called when freeing the window-manager");
-  wmTimer *timer;
-  while ((timer = static_cast<wmTimer *>(BLI_pophead(&wm->timers)))) {
+  while (wmTimer *timer = static_cast<wmTimer *>(BLI_pophead(&wm->timers))) {
     WM_event_timer_free_data(timer);
     MEM_freeN(timer);
   }
@@ -2129,15 +2130,15 @@ void WM_clipboard_text_set(const char *buf, bool selection)
   }
 }
 
-bool WM_clipboard_image_available(void)
+bool WM_clipboard_image_available()
 {
   if (G.background) {
     return false;
   }
-  return (bool)GHOST_hasClipboardImage();
+  return bool(GHOST_hasClipboardImage());
 }
 
-ImBuf *WM_clipboard_image_get(void)
+ImBuf *WM_clipboard_image_get()
 {
   if (G.background) {
     return nullptr;
@@ -2169,7 +2170,7 @@ bool WM_clipboard_image_set(ImBuf *ibuf)
     free_byte_buffer = true;
   }
 
-  bool success = (bool)GHOST_putClipboardImage((uint *)ibuf->byte_buffer.data, ibuf->x, ibuf->y);
+  bool success = bool(GHOST_putClipboardImage((uint *)ibuf->byte_buffer.data, ibuf->x, ibuf->y));
 
   if (free_byte_buffer) {
     /* Remove the byte buffer if we added it. */
@@ -2310,19 +2311,19 @@ void WM_init_state_size_set(int stax, int stay, int sizx, int sizy)
   wm_init_state.override_flag |= WIN_OVERRIDE_GEOM;
 }
 
-void WM_init_state_fullscreen_set(void)
+void WM_init_state_fullscreen_set()
 {
   wm_init_state.windowstate = GHOST_kWindowStateFullScreen;
   wm_init_state.override_flag |= WIN_OVERRIDE_WINSTATE;
 }
 
-void WM_init_state_normal_set(void)
+void WM_init_state_normal_set()
 {
   wm_init_state.windowstate = GHOST_kWindowStateNormal;
   wm_init_state.override_flag |= WIN_OVERRIDE_WINSTATE;
 }
 
-void WM_init_state_maximized_set(void)
+void WM_init_state_maximized_set()
 {
   wm_init_state.windowstate = GHOST_kWindowStateMaximized;
   wm_init_state.override_flag |= WIN_OVERRIDE_WINSTATE;
@@ -2344,7 +2345,7 @@ void WM_init_native_pixels(bool do_it)
 /** \name Cursor API
  * \{ */
 
-void WM_init_input_devices(void)
+void WM_init_input_devices()
 {
   if (UNLIKELY(!g_system)) {
     return;
@@ -2396,13 +2397,13 @@ int WM_window_pixels_x(const wmWindow *win)
 {
   float f = GHOST_GetNativePixelSize(static_cast<GHOST_WindowHandle>(win->ghostwin));
 
-  return (int)(f * (float)win->sizex);
+  return int(f * float(win->sizex));
 }
 int WM_window_pixels_y(const wmWindow *win)
 {
   float f = GHOST_GetNativePixelSize(static_cast<GHOST_WindowHandle>(win->ghostwin));
 
-  return (int)(f * (float)win->sizey);
+  return int(f * float(win->sizey));
 }
 
 void WM_window_rect_calc(const wmWindow *win, rcti *r_rect)
@@ -2672,7 +2673,7 @@ void wm_window_IME_end(wmWindow *win)
 /** \name Direct GPU Context Management
  * \{ */
 
-void *WM_system_gpu_context_create(void)
+void *WM_system_gpu_context_create()
 {
   /* On Windows there is a problem creating contexts that share resources (almost any object,
    * including legacy display lists, but also textures) with a context which is current in another

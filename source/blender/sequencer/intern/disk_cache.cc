@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,9 +6,9 @@
  * \ingroup sequencer
  */
 
+#include <cstddef>
+#include <ctime>
 #include <memory.h>
-#include <stddef.h>
-#include <time.h>
 
 #include "MEM_guardedalloc.h"
 

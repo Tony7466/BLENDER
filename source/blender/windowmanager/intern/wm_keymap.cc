@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,7 +8,7 @@
  * Configurable key-maps - add/remove/find/compare/patch...
  */
 
-#include <string.h>
+#include <cstring>
 
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
@@ -21,13 +21,12 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
 #include "BLF_api.h"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "BKE_context.h"
 #include "BKE_global.h"
@@ -38,13 +37,13 @@
 
 #include "BLT_translation.h"
 
-#include "RNA_access.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 #include "wm_event_system.h"
-#include "wm_event_types.h"
+#include "wm_event_types.hh"
 
 struct wmKeyMapItemFind_Params {
   bool (*filter_fn)(const wmKeyMap *km, const wmKeyMapItem *kmi, void *user_data);
@@ -96,7 +95,7 @@ static void wm_keymap_item_free(wmKeyMapItem *kmi)
 static void wm_keymap_item_properties_set(wmKeyMapItem *kmi)
 {
   WM_operator_properties_alloc(&(kmi->ptr), &(kmi->properties), kmi->idname);
-  WM_operator_properties_sanitize(kmi->ptr, 1);
+  WM_operator_properties_sanitize(kmi->ptr, true);
 
   /* Signal for no context, see #STRUCT_NO_CONTEXT_WITHOUT_OWNER_ID. */
   kmi->ptr->owner_id = nullptr;
@@ -117,7 +116,7 @@ static void wm_keymap_item_properties_update_ot(wmKeyMapItem *kmi)
     wm_keymap_item_properties_set(kmi);
   }
   else {
-    wmOperatorType *ot = WM_operatortype_find(kmi->idname, 0);
+    wmOperatorType *ot = WM_operatortype_find(kmi->idname, false);
     if (ot) {
       if (ot->srna != kmi->ptr->type) {
         /* matches wm_keymap_item_properties_set but doesn't alloc new ptr */
@@ -129,7 +128,7 @@ static void wm_keymap_item_properties_update_ot(wmKeyMapItem *kmi)
         if (kmi->properties) {
           kmi->ptr->data = kmi->properties;
         }
-        WM_operator_properties_sanitize(kmi->ptr, 1);
+        WM_operator_properties_sanitize(kmi->ptr, true);
 
         /* Signal for no context, see #STRUCT_NO_CONTEXT_WITHOUT_OWNER_ID. */
         kmi->ptr->owner_id = nullptr;
@@ -454,7 +453,10 @@ bool WM_keymap_poll(bContext *C, wmKeyMap *keymap)
         !BLI_str_endswith(keymap->idname, " (fallback)") &&
         /* This is an exception which may be empty.
          * Longer term we might want a flag to indicate an empty key-map is intended. */
-        !STREQ(keymap->idname, "Node Tool: Tweak"))
+        !STREQ(keymap->idname, "Node Tool: Tweak") &&
+        /* Another exception: Asset shelf keymap is meant for add-ons to use, it's empty by
+         * default. */
+        !STREQ(keymap->idname, "Asset Shelf"))
     {
       CLOG_WARN(WM_LOG_KEYMAPS, "empty keymap '%s'", keymap->idname);
     }
@@ -827,8 +829,8 @@ static void wm_keymap_diff_update(ListBase *lb,
  *
  * Name id's are for storing general or multiple keymaps.
  *
- * - Space/region ids are same as DNA_space_types.h
- * - Gets freed in wm.c
+ * - Space/region ids are same as `DNA_space_types.h`.
+ * - Gets freed in `wm.cc`.
  * \{ */
 
 wmKeyMap *WM_keymap_list_find(ListBase *lb, const char *idname, int spaceid, int regionid)
@@ -1140,7 +1142,7 @@ const char *WM_key_event_string(const short type, const bool compact)
   }
 
   const EnumPropertyItem *it;
-  const int i = RNA_enum_from_value(rna_enum_event_type_items, (int)type);
+  const int i = RNA_enum_from_value(rna_enum_event_type_items, int(type));
 
   if (i == -1) {
     return "";
@@ -1321,7 +1323,7 @@ static wmKeyMapItem *wm_keymap_item_find_in_keymap(wmKeyMap *keymap,
                                                    const char *opname,
                                                    IDProperty *properties,
                                                    const bool is_strict,
-                                                   const struct wmKeyMapItemFind_Params *params)
+                                                   const wmKeyMapItemFind_Params *params)
 {
   LISTBASE_FOREACH (wmKeyMapItem *, kmi, &keymap->items) {
     /* skip disabled keymap items [#38447] */
@@ -1410,7 +1412,7 @@ static wmKeyMapItem *wm_keymap_item_find_handlers(const bContext *C,
                                                   wmOperatorCallContext /*opcontext*/,
                                                   IDProperty *properties,
                                                   const bool is_strict,
-                                                  const struct wmKeyMapItemFind_Params *params,
+                                                  const wmKeyMapItemFind_Params *params,
                                                   wmKeyMap **r_keymap)
 {
   /* find keymap item in handlers */
@@ -1446,7 +1448,7 @@ static wmKeyMapItem *wm_keymap_item_find_props(const bContext *C,
                                                wmOperatorCallContext opcontext,
                                                IDProperty *properties,
                                                const bool is_strict,
-                                               const struct wmKeyMapItemFind_Params *params,
+                                               const wmKeyMapItemFind_Params *params,
                                                wmKeyMap **r_keymap)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -1559,7 +1561,7 @@ static wmKeyMapItem *wm_keymap_item_find(const bContext *C,
                                          wmOperatorCallContext opcontext,
                                          IDProperty *properties,
                                          bool is_strict,
-                                         const struct wmKeyMapItemFind_Params *params,
+                                         const wmKeyMapItemFind_Params *params,
                                          wmKeyMap **r_keymap)
 {
   /* XXX Hack! Macro operators in menu entry have their whole props defined,
@@ -1723,7 +1725,7 @@ wmKeyMapItem *WM_key_event_operator_from_keymap(wmKeyMap *keymap,
 bool WM_keymap_item_compare(const wmKeyMapItem *k1, const wmKeyMapItem *k2)
 {
   if (k1->flag & KMI_INACTIVE || k2->flag & KMI_INACTIVE) {
-    return 0;
+    return false;
   }
 
   /* take event mapping into account */
@@ -1731,46 +1733,46 @@ bool WM_keymap_item_compare(const wmKeyMapItem *k1, const wmKeyMapItem *k2)
   int k2type = WM_userdef_event_map(k2->type);
 
   if (k1type != KM_ANY && k2type != KM_ANY && k1type != k2type) {
-    return 0;
+    return false;
   }
 
   if (k1->val != KM_ANY && k2->val != KM_ANY) {
     /* take click, press, release conflict into account */
     if (k1->val == KM_CLICK && ELEM(k2->val, KM_PRESS, KM_RELEASE, KM_CLICK) == 0) {
-      return 0;
+      return false;
     }
     if (k2->val == KM_CLICK && ELEM(k1->val, KM_PRESS, KM_RELEASE, KM_CLICK) == 0) {
-      return 0;
+      return false;
     }
     if (k1->val != k2->val) {
-      return 0;
+      return false;
     }
     if (k1->val == KM_CLICK_DRAG && (k1->direction != k2->direction)) {
-      return 0;
+      return false;
     }
   }
 
   if (k1->shift != KM_ANY && k2->shift != KM_ANY && k1->shift != k2->shift) {
-    return 0;
+    return false;
   }
 
   if (k1->ctrl != KM_ANY && k2->ctrl != KM_ANY && k1->ctrl != k2->ctrl) {
-    return 0;
+    return false;
   }
 
   if (k1->alt != KM_ANY && k2->alt != KM_ANY && k1->alt != k2->alt) {
-    return 0;
+    return false;
   }
 
   if (k1->oskey != KM_ANY && k2->oskey != KM_ANY && k1->oskey != k2->oskey) {
-    return 0;
+    return false;
   }
 
   if (k1->keymodifier != k2->keymodifier) {
-    return 0;
+    return false;
   }
 
-  return 1;
+  return true;
 }
 
 /** \} */
@@ -1806,7 +1808,7 @@ void WM_keyconfig_update_tag(wmKeyMap *keymap, wmKeyMapItem *kmi)
   }
 }
 
-void WM_keyconfig_update_operatortype(void)
+void WM_keyconfig_update_operatortype()
 {
   wm_keymap_update_flag |= WM_KEYMAP_UPDATE_OPERATORTYPE;
 }

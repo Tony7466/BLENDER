@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,7 +6,7 @@
  * \ingroup wm
  */
 
-#include <stdio.h>
+#include <cstdio>
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
@@ -20,17 +20,17 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 /* only for own init/exit calls (wm_gizmotype_init/wm_gizmotype_free) */
-#include "wm.h"
+#include "wm.hh"
 
 /* own includes */
 #include "wm_gizmo_intern.h"
@@ -72,7 +72,7 @@ void WM_gizmotype_iter(GHashIterator *ghi)
   BLI_ghashIterator_init(ghi, global_gizmotype_hash);
 }
 
-static wmGizmoType *wm_gizmotype_append__begin(void)
+static wmGizmoType *wm_gizmotype_append__begin()
 {
   wmGizmoType *gzt = static_cast<wmGizmoType *>(MEM_callocN(sizeof(wmGizmoType), "gizmotype"));
   gzt->srna = RNA_def_struct_ptr(&BLENDER_RNA, "", &RNA_GizmoProperties);
@@ -132,9 +132,7 @@ static void gizmotype_unlink(bContext *C, Main *bmain, wmGizmoType *gzt)
         LISTBASE_FOREACH (ARegion *, region, lb) {
           wmGizmoMap *gzmap = region->gizmo_map;
           if (gzmap) {
-            wmGizmoGroup *gzgroup;
-            for (gzgroup = static_cast<wmGizmoGroup *>(gzmap->groups.first); gzgroup;
-                 gzgroup = gzgroup->next) {
+            LISTBASE_FOREACH (wmGizmoGroup *, gzgroup, &gzmap->groups) {
               for (wmGizmo *gz = static_cast<wmGizmo *>(gzgroup->gizmos.first), *gz_next; gz;
                    gz = gz_next) {
                 gz_next = gz->next;
@@ -179,13 +177,13 @@ static void wm_gizmotype_ghash_free_cb(wmGizmoType *gzt)
   WM_gizmotype_free_ptr(gzt);
 }
 
-void wm_gizmotype_free(void)
+void wm_gizmotype_free()
 {
   BLI_ghash_free(global_gizmotype_hash, nullptr, (GHashValFreeFP)wm_gizmotype_ghash_free_cb);
   global_gizmotype_hash = nullptr;
 }
 
-void wm_gizmotype_init(void)
+void wm_gizmotype_init()
 {
   /* reserve size is set based on blender default setup */
   global_gizmotype_hash = BLI_ghash_str_new_ex("wm_gizmotype_init gh", 128);

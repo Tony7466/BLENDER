@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,17 +12,21 @@
  */
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
 #include "GHOST_C-api.h"
 
 #include "MEM_guardedalloc.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "wm_xr_intern.h"
+
+#include <string.h>
 
 /* -------------------------------------------------------------------- */
 /** \name XR-Action API
@@ -74,7 +78,7 @@ static wmXrAction *action_create(const char *action_name,
   action->name = BLI_strdup(action_name);
   action->type = type;
 
-  const uint count = (uint)BLI_listbase_count(user_paths);
+  const uint count = uint(BLI_listbase_count(user_paths));
   uint subaction_idx = 0;
   action->count_subaction_paths = count;
 
@@ -240,7 +244,7 @@ bool WM_xr_action_create(wmXrData *xr,
                                      action_flag,
                                      haptic_flag);
 
-  const uint count = (uint)BLI_listbase_count(user_paths);
+  const uint count = uint(BLI_listbase_count(user_paths));
   uint subaction_idx = 0;
 
   char **subaction_paths = static_cast<char **>(
@@ -335,8 +339,8 @@ bool WM_xr_action_binding_create(wmXrData *xr,
                                  const eXrAxisFlag *axis_flags,
                                  const wmXrPose *poses)
 {
-  const uint count = (uint)BLI_listbase_count(user_paths);
-  BLI_assert(count == (uint)BLI_listbase_count(component_paths));
+  const uint count = uint(BLI_listbase_count(user_paths));
+  BLI_assert(count == uint(BLI_listbase_count(component_paths)));
 
   GHOST_XrActionBindingInfo *binding_infos = static_cast<GHOST_XrActionBindingInfo *>(
       MEM_calloc_arrayN(count, sizeof(*binding_infos), "XrActionBinding_Infos"));
@@ -479,7 +483,7 @@ bool WM_xr_action_state_get(const wmXrData *xr,
     return false;
   }
 
-  r_state->type = (int)action->type;
+  r_state->type = int(action->type);
 
   /* Find the action state corresponding to the subaction path. */
   for (uint i = 0; i < action->count_subaction_paths; ++i) {

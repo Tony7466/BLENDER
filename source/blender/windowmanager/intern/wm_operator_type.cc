@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -27,15 +27,15 @@
 #include "BKE_context.h"
 #include "BKE_idprop.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "wm.h"
+#include "wm.hh"
 #include "wm_event_system.h"
 
 #define UNDOCUMENTED_OPERATOR_TIP N_("(undocumented operator)")
@@ -87,7 +87,7 @@ void WM_operatortype_iter(GHashIterator *ghi)
 /** \name Operator Type Append
  * \{ */
 
-static wmOperatorType *wm_operatortype_append__begin(void)
+static wmOperatorType *wm_operatortype_append__begin()
 {
   wmOperatorType *ot = static_cast<wmOperatorType *>(
       MEM_callocN(sizeof(wmOperatorType), "operatortype"));
@@ -162,7 +162,7 @@ void WM_operatortype_remove_ptr(wmOperatorType *ot)
 
 bool WM_operatortype_remove(const char *idname)
 {
-  wmOperatorType *ot = WM_operatortype_find(idname, 0);
+  wmOperatorType *ot = WM_operatortype_find(idname, false);
 
   if (ot == nullptr) {
     return false;
@@ -173,7 +173,7 @@ bool WM_operatortype_remove(const char *idname)
   return true;
 }
 
-void wm_operatortype_init(void)
+void wm_operatortype_init()
 {
   /* reserve size is set based on blender default setup */
   global_ops_hash = BLI_ghash_str_new_ex("wm_operatortype_init gh", 2048);
@@ -197,7 +197,7 @@ static void operatortype_ghash_free_cb(wmOperatorType *ot)
   MEM_freeN(ot);
 }
 
-void wm_operatortype_free(void)
+void wm_operatortype_free()
 {
   BLI_ghash_free(global_ops_hash, nullptr, (GHashValFreeFP)operatortype_ghash_free_cb);
   global_ops_hash = nullptr;
@@ -234,7 +234,7 @@ void WM_operatortype_props_advanced_end(wmOperatorType *ot)
   ot_prop_basic_count = -1;
 }
 
-void WM_operatortype_last_properties_clear_all(void)
+void WM_operatortype_last_properties_clear_all()
 {
   GHashIterator iter;
 
@@ -546,13 +546,13 @@ wmOperatorTypeMacro *WM_operatortype_macro_define(wmOperatorType *ot, const char
 
   /* do this on first use, since operatordefinitions might have been not done yet */
   WM_operator_properties_alloc(&(otmacro->ptr), &(otmacro->properties), idname);
-  WM_operator_properties_sanitize(otmacro->ptr, 1);
+  WM_operator_properties_sanitize(otmacro->ptr, true);
 
   BLI_addtail(&ot->macro, otmacro);
 
   {
     /* operator should always be found but in the event its not. don't segfault */
-    wmOperatorType *otsub = WM_operatortype_find(idname, 0);
+    wmOperatorType *otsub = WM_operatortype_find(idname, false);
     if (otsub) {
       RNA_def_pointer_runtime(
           ot->srna, otsub->idname, otsub->srna, otsub->name, otsub->description);
@@ -573,44 +573,41 @@ static void wm_operatortype_free_macro(wmOperatorType *ot)
   BLI_freelistN(&ot->macro);
 }
 
-const char *WM_operatortype_name(wmOperatorType *ot, PointerRNA *properties)
+std::string WM_operatortype_name(wmOperatorType *ot, PointerRNA *properties)
 {
-  const char *name = nullptr;
-
+  std::string name;
   if (ot->get_name && properties) {
     name = ot->get_name(ot, properties);
   }
 
-  return (name && name[0]) ? name : RNA_struct_ui_name(ot->srna);
+  return name.empty() ? std::string(RNA_struct_ui_name(ot->srna)) : name;
 }
 
-char *WM_operatortype_description(bContext *C, wmOperatorType *ot, PointerRNA *properties)
+std::string WM_operatortype_description(bContext *C, wmOperatorType *ot, PointerRNA *properties)
 {
   if (ot->get_description && properties) {
-    char *description = ot->get_description(C, ot, properties);
-
-    if (description) {
-      if (description[0]) {
-        return description;
-      }
-      MEM_freeN(description);
+    std::string description = ot->get_description(C, ot, properties);
+    if (!description.empty()) {
+      return description;
     }
   }
 
   const char *info = RNA_struct_ui_description(ot->srna);
   if (info && info[0]) {
-    return BLI_strdup(info);
+    return info;
   }
-  return nullptr;
+  return "";
 }
 
-char *WM_operatortype_description_or_name(bContext *C, wmOperatorType *ot, PointerRNA *properties)
+std::string WM_operatortype_description_or_name(bContext *C,
+                                                wmOperatorType *ot,
+                                                PointerRNA *properties)
 {
-  char *text = WM_operatortype_description(C, ot, properties);
-  if (text == nullptr) {
-    const char *text_orig = WM_operatortype_name(ot, properties);
-    if (text_orig != nullptr) {
-      text = BLI_strdup(text_orig);
+  std::string text = WM_operatortype_description(C, ot, properties);
+  if (text.empty()) {
+    const std::string text_orig = WM_operatortype_name(ot, properties);
+    if (!text_orig.empty()) {
+      text = BLI_strdup(text_orig.c_str());
     }
   }
   return text;

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2017-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2017-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -1741,7 +1741,7 @@ class _defs_paint_grease_pencil:
             icon="brush.gpencil_draw.draw",
             data_block='DRAW',
         )
-    
+
     @ToolDef.from_fn
     def erase():
         def draw_settings(context, layout, _tool):

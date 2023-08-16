@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,17 +18,17 @@
 #include "BLI_math_base.h"
 #include "BLI_rect.h"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
-#include "ED_select_utils.h"
+#include "ED_select_utils.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 void WM_operator_properties_confirm_or_exec(wmOperatorType *ot)
 {
@@ -42,7 +42,7 @@ void WM_operator_properties_confirm_or_exec(wmOperatorType *ot)
  * Extends rna_enum_fileselect_params_sort_items with a default item for operators to use.
  */
 static const EnumPropertyItem *wm_operator_properties_filesel_sort_items_itemf(
-    struct bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free)
+    bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free)
 {
   EnumPropertyItem *items;
   const EnumPropertyItem default_item = {
@@ -211,9 +211,9 @@ void WM_operator_properties_filesel(wmOperatorType *ot,
   }
 
   if ((filter & FILE_TYPE_IMAGE) || (filter & FILE_TYPE_MOVIE)) {
-    prop = RNA_def_boolean(ot->srna, "show_multiview", 0, "Enable Multi-View", "");
+    prop = RNA_def_boolean(ot->srna, "show_multiview", false, "Enable Multi-View", "");
     RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-    prop = RNA_def_boolean(ot->srna, "use_multiview", 0, "Use Multi-View", "");
+    prop = RNA_def_boolean(ot->srna, "use_multiview", false, "Use Multi-View", "");
     RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
   }
 
@@ -231,7 +231,7 @@ void WM_operator_properties_id_lookup_set_from_id(PointerRNA *ptr, const ID *id)
   PropertyRNA *prop_name = RNA_struct_find_property(ptr, "name");
 
   if (prop_session_uuid) {
-    RNA_int_set(ptr, "session_uuid", (int)id->session_uuid);
+    RNA_int_set(ptr, "session_uuid", int(id->session_uuid));
   }
   else if (prop_name) {
     RNA_string_set(ptr, "name", id->name + 2);
@@ -247,7 +247,7 @@ ID *WM_operator_properties_id_lookup_from_name_or_session_uuid(Main *bmain,
 {
   PropertyRNA *prop_session_uuid = RNA_struct_find_property(ptr, "session_uuid");
   if (prop_session_uuid && RNA_property_is_set(ptr, prop_session_uuid)) {
-    const uint32_t session_uuid = (uint32_t)RNA_property_int_get(ptr, prop_session_uuid);
+    const uint32_t session_uuid = uint32_t(RNA_property_int_get(ptr, prop_session_uuid));
     return BKE_libblock_find_session_uuid(bmain, type, session_uuid);
   }
 
@@ -633,7 +633,7 @@ void WM_operator_properties_checker_interval(wmOperatorType *ot, bool nth_can_di
 }
 
 void WM_operator_properties_checker_interval_from_op(wmOperator *op,
-                                                     struct CheckerIntervalParams *op_params)
+                                                     CheckerIntervalParams *op_params)
 {
   const int nth = RNA_int_get(op->ptr, "nth");
   const int skip = RNA_int_get(op->ptr, "skip");
@@ -646,7 +646,7 @@ void WM_operator_properties_checker_interval_from_op(wmOperator *op,
   op_params->offset = mod_i(offset, nth + skip);
 }
 
-bool WM_operator_properties_checker_interval_test(const struct CheckerIntervalParams *op_params,
+bool WM_operator_properties_checker_interval_test(const CheckerIntervalParams *op_params,
                                                   int depth)
 {
   return ((op_params->skip == 0) ||

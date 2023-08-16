@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,8 +10,8 @@
  * XR actionmap API, similar to WM keymap API.
  */
 
-#include <math.h>
-#include <string.h>
+#include <cmath>
+#include <cstring>
 
 #include "BKE_context.h"
 #include "BKE_idprop.h"
@@ -23,8 +23,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "wm_xr_intern.h"
 
@@ -173,7 +173,7 @@ XrActionMapBinding *WM_xr_actionmap_binding_find(XrActionMapItem *ami, const cha
 static void wm_xr_actionmap_item_properties_set(XrActionMapItem *ami)
 {
   WM_operator_properties_alloc(&(ami->op_properties_ptr), &(ami->op_properties), ami->op);
-  WM_operator_properties_sanitize(ami->op_properties_ptr, 1);
+  WM_operator_properties_sanitize(ami->op_properties_ptr, true);
 }
 
 static void wm_xr_actionmap_item_properties_free(XrActionMapItem *ami)
@@ -225,7 +225,7 @@ void WM_xr_actionmap_item_properties_update_ot(XrActionMapItem *ami)
     wm_xr_actionmap_item_properties_set(ami);
   }
   else {
-    wmOperatorType *ot = WM_operatortype_find(ami->op, 0);
+    wmOperatorType *ot = WM_operatortype_find(ami->op, false);
     if (ot) {
       if (ot->srna != ami->op_properties_ptr->type) {
         /* Matches wm_xr_actionmap_item_properties_set() but doesn't alloc new ptr. */
@@ -233,7 +233,7 @@ void WM_xr_actionmap_item_properties_update_ot(XrActionMapItem *ami)
         if (ami->op_properties) {
           ami->op_properties_ptr->data = ami->op_properties;
         }
-        WM_operator_properties_sanitize(ami->op_properties_ptr, 1);
+        WM_operator_properties_sanitize(ami->op_properties_ptr, true);
       }
     }
     else {

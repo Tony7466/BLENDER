@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005-2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2005-2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,8 +8,8 @@
  * Cursor pixmap and cursor utility functions to change the cursor.
  */
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include "GHOST_C-api.h"
 
@@ -25,21 +25,21 @@
 #include "BKE_global.h"
 #include "BKE_main.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
-#include "wm_cursors.h"
-#include "wm_window.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
+#include "wm_cursors.hh"
+#include "wm_window.hh"
 
 /* Blender custom cursor. */
-typedef struct BCursor {
+struct BCursor {
   char *bitmap;
   char *mask;
   char hotx;
   char hoty;
   bool can_invert_color;
-} BCursor;
+};
 
-static BCursor *BlenderCursor[WM_CURSOR_NUM] = {0};
+static BCursor *BlenderCursor[WM_CURSOR_NUM] = {nullptr};
 
 /* Blender cursor to GHOST standard cursor conversion. */
 static GHOST_TStandardCursor convert_to_ghost_standard_cursor(WMCursorType curs)
@@ -141,11 +141,11 @@ void WM_cursor_set(wmWindow *win, int curs)
   }
 
   if (curs == WM_CURSOR_NONE) {
-    GHOST_SetCursorVisibility(static_cast<GHOST_WindowHandle>(win->ghostwin), 0);
+    GHOST_SetCursorVisibility(static_cast<GHOST_WindowHandle>(win->ghostwin), false);
     return;
   }
 
-  GHOST_SetCursorVisibility(static_cast<GHOST_WindowHandle>(win->ghostwin), 1);
+  GHOST_SetCursorVisibility(static_cast<GHOST_WindowHandle>(win->ghostwin), true);
 
   if (win->cursor == curs) {
     return; /* Cursor is already set */
@@ -328,22 +328,22 @@ bool wm_cursor_arrow_move(wmWindow *win, const wmEvent *event)
 
     if (event->type == EVT_UPARROWKEY) {
       wm_cursor_warp_relative(win, 0, fac);
-      return 1;
+      return true;
     }
     if (event->type == EVT_DOWNARROWKEY) {
       wm_cursor_warp_relative(win, 0, -fac);
-      return 1;
+      return true;
     }
     if (event->type == EVT_LEFTARROWKEY) {
       wm_cursor_warp_relative(win, -fac, 0);
-      return 1;
+      return true;
     }
     if (event->type == EVT_RIGHTARROWKEY) {
       wm_cursor_warp_relative(win, fac, 0);
-      return 1;
+      return true;
     }
   }
-  return 0;
+  return false;
 }
 
 void WM_cursor_time(wmWindow *win, int nr)
@@ -425,7 +425,7 @@ void WM_cursor_time(wmWindow *win, int nr)
   } \
   ((void)0)
 
-void wm_init_cursor_data(void)
+void wm_init_cursor_data()
 {
   /********************** NW_ARROW Cursor **************************/
   BEGIN_CURSOR_BLOCK;

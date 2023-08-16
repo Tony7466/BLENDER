@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,13 +6,13 @@
  * \ingroup wm
  */
 
-#include <string.h>
+#include <cstring>
 
 #include "BLI_buffer.h"
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_math_bits.h"
+#include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_rect.h"
 
@@ -20,9 +20,9 @@
 #include "BKE_global.h"
 #include "BKE_main.h"
 
-#include "ED_screen.h"
-#include "ED_select_utils.h"
-#include "ED_view3d.h"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
+#include "ED_view3d.hh"
 
 #include "GPU_framebuffer.h"
 #include "GPU_matrix.h"
@@ -33,12 +33,12 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 #include "wm_event_system.h"
 
 /* for tool-tips */
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "DEG_depsgraph.h"
 
@@ -168,7 +168,7 @@ static wmGizmoMap *wm_gizmomap_new_from_type_ex(wmGizmoMapType *gzmap_type, wmGi
   return gzmap;
 }
 
-wmGizmoMap *WM_gizmomap_new_from_type(const struct wmGizmoMapType_Params *gzmap_params)
+wmGizmoMap *WM_gizmomap_new_from_type(const wmGizmoMapType_Params *gzmap_params)
 {
   wmGizmoMapType *gzmap_type = WM_gizmomaptype_ensure(gzmap_params);
   wmGizmoMap *gzmap = static_cast<wmGizmoMap *>(MEM_callocN(sizeof(wmGizmoMap), "GizmoMap"));
@@ -302,7 +302,7 @@ eWM_GizmoFlagMapDrawStep WM_gizmomap_drawstep_from_gizmo_group(const wmGizmoGrou
 
 void WM_gizmomap_tag_refresh_drawstep(wmGizmoMap *gzmap, const eWM_GizmoFlagMapDrawStep drawstep)
 {
-  BLI_assert((uint)drawstep < WM_GIZMOMAP_DRAWSTEP_MAX);
+  BLI_assert(uint(drawstep) < WM_GIZMOMAP_DRAWSTEP_MAX);
   if (gzmap) {
     gzmap->update_flag[drawstep] |= (GIZMOMAP_IS_PREPARE_DRAW | GIZMOMAP_IS_REFRESH_CALLBACK);
   }
@@ -616,7 +616,7 @@ static int gizmo_find_intersected_3d_intern(wmGizmo **visible_gizmos,
       BLI_assert(buf_iter->id != -1);
       wmGizmo *gz = visible_gizmos[buf_iter->id >> 8];
       float co_3d[3];
-      co_screen[2] = (float)((double)buf_iter->depth / (double)UINT_MAX);
+      co_screen[2] = float(double(buf_iter->depth) / double(UINT_MAX));
       GPU_matrix_unproject_3fv(co_screen, rv3d->viewinv, rv3d->winmat, viewport, co_3d);
       float select_bias = gz->select_bias;
       if ((gz->flag & WM_GIZMO_DRAW_NO_SCALE) == 0) {
@@ -1174,7 +1174,7 @@ ListBase *wm_gizmomap_groups_get(wmGizmoMap *gzmap)
 void WM_gizmomap_message_subscribe(const bContext *C,
                                    wmGizmoMap *gzmap,
                                    ARegion *region,
-                                   struct wmMsgBus *mbus)
+                                   wmMsgBus *mbus)
 {
   LISTBASE_FOREACH (wmGizmoGroup *, gzgroup, &gzmap->groups) {
     if ((gzgroup->hide.any != 0) || (gzgroup->init_flag & WM_GIZMOGROUP_INIT_SETUP) == 0 ||
@@ -1225,7 +1225,7 @@ ARegion *WM_gizmomap_tooltip_init(
 /** \name wmGizmoMapType
  * \{ */
 
-wmGizmoMapType *WM_gizmomaptype_find(const struct wmGizmoMapType_Params *gzmap_params)
+wmGizmoMapType *WM_gizmomaptype_find(const wmGizmoMapType_Params *gzmap_params)
 {
   LISTBASE_FOREACH (wmGizmoMapType *, gzmap_type, &gizmomaptypes) {
     if (gzmap_type->spaceid == gzmap_params->spaceid &&
@@ -1237,7 +1237,7 @@ wmGizmoMapType *WM_gizmomaptype_find(const struct wmGizmoMapType_Params *gzmap_p
   return nullptr;
 }
 
-wmGizmoMapType *WM_gizmomaptype_ensure(const struct wmGizmoMapType_Params *gzmap_params)
+wmGizmoMapType *WM_gizmomaptype_ensure(const wmGizmoMapType_Params *gzmap_params)
 {
   wmGizmoMapType *gzmap_type = WM_gizmomaptype_find(gzmap_params);
 
@@ -1254,7 +1254,7 @@ wmGizmoMapType *WM_gizmomaptype_ensure(const struct wmGizmoMapType_Params *gzmap
   return gzmap_type;
 }
 
-void wm_gizmomaptypes_free(void)
+void wm_gizmomaptypes_free()
 {
   for (wmGizmoMapType *gzmap_type = static_cast<wmGizmoMapType *>(gizmomaptypes.first),
                       *gzmap_type_next;

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,7 +8,7 @@
  * Menu Registry.
  */
 
-#include <stdio.h>
+#include <cstdio>
 
 #include "BLI_sys_types.h"
 
@@ -24,8 +24,8 @@
 #include "BKE_screen.h"
 #include "BKE_workspace.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 static GHash *menutypes_hash = nullptr;
 
@@ -65,13 +65,13 @@ void WM_menutype_freelink(MenuType *mt)
   UNUSED_VARS_NDEBUG(ok);
 }
 
-void WM_menutype_init(void)
+void WM_menutype_init()
 {
   /* reserve size is set based on blender default setup */
   menutypes_hash = BLI_ghash_str_new_ex("menutypes_hash gh", 512);
 }
 
-void WM_menutype_free(void)
+void WM_menutype_free()
 {
   GHashIterator gh_iter;
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,14 +10,16 @@
  * Implements Blender specific drawing functionality for use with the Ghost-XR API.
  */
 
-#include <string.h>
+#include <cstring>
 
 #include "BKE_context.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
-#include "ED_view3d_offscreen.h"
+#include "ED_view3d_offscreen.hh"
 
 #include "GHOST_C-api.h"
 #include "GPU_batch_presets.h"
@@ -26,9 +28,9 @@
 
 #include "GPU_viewport.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
-#include "wm_surface.h"
+#include "wm_surface.hh"
 #include "wm_xr_intern.h"
 
 void wm_xr_pose_to_mat(const GHOST_XrPose *pose, float r_mat[4][4])
@@ -335,7 +337,7 @@ static void wm_xr_controller_aim_draw(const XrSessionSettings *settings, wmXrSes
     GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
     GPU_blend(GPU_BLEND_ALPHA);
 
-    immBegin(GPU_PRIM_LINES, (uint)BLI_listbase_count(&state->controllers) * 2);
+    immBegin(GPU_PRIM_LINES, uint(BLI_listbase_count(&state->controllers)) * 2);
 
     LISTBASE_FOREACH (wmXrController *, controller, &state->controllers) {
       const float(*mat)[4] = controller->aim_mat;
@@ -359,7 +361,7 @@ static void wm_xr_controller_aim_draw(const XrSessionSettings *settings, wmXrSes
     GPU_depth_test(GPU_DEPTH_NONE);
     GPU_blend(GPU_BLEND_NONE);
 
-    immBegin(GPU_PRIM_LINES, (uint)BLI_listbase_count(&state->controllers) * 6);
+    immBegin(GPU_PRIM_LINES, uint(BLI_listbase_count(&state->controllers)) * 6);
 
     LISTBASE_FOREACH (wmXrController *, controller, &state->controllers) {
       const float(*mat)[4] = controller->aim_mat;

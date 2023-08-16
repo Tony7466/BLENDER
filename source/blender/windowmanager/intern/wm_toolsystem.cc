@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,7 +8,7 @@
  * Experimental tool-system>
  */
 
-#include <string.h>
+#include <cstring>
 
 #include "CLG_log.h"
 
@@ -25,22 +25,22 @@
 #include "DNA_windowmanager_types.h"
 #include "DNA_workspace_types.h"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_context.h"
 #include "BKE_idprop.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_workspace.h"
 
-#include "RNA_access.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
 
-#include "WM_api.h"
-#include "WM_message.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
 #include "WM_toolsystem.h" /* own include */
-#include "WM_types.h"
+#include "WM_types.hh"
 
 static void toolsystem_reinit_with_toolref(bContext *C, WorkSpace * /*workspace*/, bToolRef *tref);
 static bToolRef *toolsystem_reinit_ensure_toolref(bContext *C,
@@ -189,10 +189,10 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
             Scene *scene = WM_window_get_active_scene(win);
             BKE_paint_ensure_from_paintmode(scene, paint_mode);
             Paint *paint = BKE_paint_get_active_from_paintmode(scene, paint_mode);
-            struct Brush *brush = BKE_paint_toolslots_brush_get(paint, slot_index);
+            Brush *brush = BKE_paint_toolslots_brush_get(paint, slot_index);
             if (brush == nullptr) {
               /* Could make into a function. */
-              brush = (struct Brush *)BKE_libblock_find_name(bmain, ID_BR, items[i].name);
+              brush = (Brush *)BKE_libblock_find_name(bmain, ID_BR, items[i].name);
               if (brush && slot_index == BKE_brush_tool_get(brush, paint)) {
                 /* pass */
               }
@@ -348,7 +348,7 @@ void WM_toolsystem_ref_set_from_runtime(bContext *C,
   }
 
   {
-    struct wmMsgBus *mbus = CTX_wm_message_bus(C);
+    wmMsgBus *mbus = CTX_wm_message_bus(C);
     WM_msg_publish_rna_prop(mbus, &workspace->id, workspace, WorkSpace, tools);
   }
 }
@@ -390,7 +390,7 @@ void WM_toolsystem_ref_sync_from_context(Main *bmain, WorkSpace *workspace, bToo
       const EnumPropertyItem *items = BKE_paint_get_tool_enum_from_paintmode(paint_mode);
       if (paint && paint->brush && items) {
         const ID *brush = (ID *)paint->brush;
-        const char tool_type = BKE_brush_tool_get((struct Brush *)brush, paint);
+        const char tool_type = BKE_brush_tool_get((Brush *)brush, paint);
         const int i = RNA_enum_from_value(items, tool_type);
         /* Possible when loading files from the future. */
         if (i != -1) {
@@ -507,7 +507,7 @@ void WM_toolsystem_refresh_active(bContext *C)
     ScrArea *area;
     ARegion *region;
     bool is_set;
-  } context_prev = {0};
+  } context_prev = {nullptr};
 
   for (wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first); wm;
        wm = static_cast<wmWindowManager *>(wm->id.next))
@@ -590,7 +590,7 @@ void WM_toolsystem_refresh_screen_area(WorkSpace *workspace,
 void WM_toolsystem_refresh_screen_window(wmWindow *win)
 {
   WorkSpace *workspace = WM_window_get_active_workspace(win);
-  bool space_type_has_tools[SPACE_TYPE_NUM] = {0};
+  bool space_type_has_tools[SPACE_TYPE_NUM] = {false};
   LISTBASE_FOREACH (bToolRef *, tref, &workspace->tools) {
     space_type_has_tools[tref->space_type] = true;
   }

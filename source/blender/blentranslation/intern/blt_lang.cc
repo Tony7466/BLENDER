@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,15 +8,15 @@
  * Main internationalization functions to set the locale and query available languages.
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #ifndef _WIN32
-#  include <locale.h>
+#  include <clocale>
 #endif
 
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "BLT_lang.h" /* own include */
 #include "BLT_translation.h"

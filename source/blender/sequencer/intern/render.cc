@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
+ * SPDX-FileCopyrightText: 2003-2009 Blender Authors
  * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -8,7 +8,7 @@
  * \ingroup bke
  */
 
-#include <time.h>
+#include <ctime>
 
 #include "MEM_guardedalloc.h"
 
@@ -21,6 +21,8 @@
 
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
@@ -46,7 +48,7 @@
 #include "IMB_imbuf_types.h"
 #include "IMB_metadata.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "RE_engine.h"
@@ -981,7 +983,7 @@ static ImBuf *seq_render_image_strip(const SeqRenderData *context,
   }
 
   BLI_path_join(filepath, sizeof(filepath), seq->strip->dirpath, s_elem->filename);
-  BLI_path_abs(filepath, BKE_main_blendfile_path_from_global());
+  BLI_path_abs(filepath, ID_BLEND_PATH_FROM_GLOBAL(&context->scene->id));
 
   /* Try to get a proxy image. */
   ibuf = seq_proxy_fetch(context, seq, timeline_frame);
@@ -1433,7 +1435,7 @@ static ImBuf *seq_render_scene_strip(const SeqRenderData *context,
 
   const bool is_rendering = G.is_rendering;
   const bool is_background = G.background;
-  const bool do_seq_gl = is_rendering ? 0 : (context->scene->r.seq_prev_type) != OB_RENDER;
+  const bool do_seq_gl = is_rendering ? false : (context->scene->r.seq_prev_type) != OB_RENDER;
   bool have_comp = false;
   bool use_gpencil = true;
   /* do we need to re-evaluate the frame after rendering? */

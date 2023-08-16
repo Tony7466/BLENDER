@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,8 +8,8 @@
  * Read-only queries utility functions for the event system.
  */
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "DNA_listBase.h"
 #include "DNA_scene_types.h"
@@ -18,20 +18,21 @@
 #include "DNA_windowmanager_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "wm_event_system.h"
-#include "wm_event_types.h"
+#include "wm_event_types.hh"
 
-#include "RNA_enum_types.h"
+#include "RNA_enum_types.hh"
 
 #include "DEG_depsgraph.h"
 
@@ -46,7 +47,7 @@ struct FlagIdentifierPair {
 
 static void event_ids_from_flag(char *str,
                                 const int str_maxncpy,
-                                const struct FlagIdentifierPair *flag_data,
+                                const FlagIdentifierPair *flag_data,
                                 const int flag_data_len,
                                 const uint flag)
 {
@@ -89,7 +90,7 @@ void WM_event_print(const wmEvent *event)
 
     char modifier_id[128];
     {
-      struct FlagIdentifierPair flag_data[] = {
+      FlagIdentifierPair flag_data[] = {
           {"SHIFT", KM_SHIFT},
           {"CTRL", KM_CTRL},
           {"ALT", KM_ALT},
@@ -101,7 +102,7 @@ void WM_event_print(const wmEvent *event)
 
     char flag_id[128];
     {
-      struct FlagIdentifierPair flag_data[] = {
+      FlagIdentifierPair flag_data[] = {
           {"SCROLL_INVERT", WM_EVENT_SCROLL_INVERT},
           {"IS_REPEAT", WM_EVENT_IS_REPEAT},
           {"IS_CONSECUTIVE", WM_EVENT_IS_CONSECUTIVE},
@@ -233,14 +234,14 @@ bool WM_event_is_modal_drag_exit(const wmEvent *event,
     /* option on, so can exit with km-release */
     if (event->val == KM_RELEASE) {
       if ((init_event_val == KM_CLICK_DRAG) && (event->type == init_event_type)) {
-        return 1;
+        return true;
       }
     }
     else {
       /* If the initial event wasn't a drag event then
        * ignore #USER_RELEASECONFIRM setting: see #26756. */
       if (init_event_val != KM_CLICK_DRAG) {
-        return 1;
+        return true;
       }
     }
   }
@@ -248,11 +249,11 @@ bool WM_event_is_modal_drag_exit(const wmEvent *event,
     /* This is fine as long as not doing km-release, otherwise some items (i.e. markers)
      * being tweaked may end up getting dropped all over. */
     if (event->val != KM_RELEASE) {
-      return 1;
+      return true;
     }
   }
 
-  return 0;
+  return false;
 }
 
 bool WM_event_is_mouse_drag(const wmEvent *event)
@@ -273,7 +274,7 @@ int WM_event_drag_direction(const wmEvent *event)
       event->xy[1] - event->prev_press_xy[1],
   };
 
-  int theta = round_fl_to_int(4.0f * atan2f((float)delta[1], (float)delta[0]) / (float)M_PI);
+  int theta = round_fl_to_int(4.0f * atan2f(float(delta[1]), float(delta[0])) / float(M_PI));
   int val = KM_DIRECTION_W;
 
   if (theta == 0) {

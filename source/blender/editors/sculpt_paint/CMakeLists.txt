@@ -1,12 +1,14 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../include
   ../uvedit
+  ../../blenkernel
   ../../blentranslation
   ../../bmesh
+  ../../depsgraph
   ../../draw
   ../../functions
   ../../geometry
@@ -15,6 +17,7 @@ set(INC
   ../../makesrna
   ../../nodes
   ../../render
+  ../../windowmanager
   ../../../../intern/clog
   ../../../../intern/eigen
   # RNA_prototypes.h
@@ -91,13 +94,11 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::atomic
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::windowmanager
 )
 
 if(WITH_TBB)

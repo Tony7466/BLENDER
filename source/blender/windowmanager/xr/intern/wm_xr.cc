@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,7 +20,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "GHOST_C-api.h"
 
@@ -28,9 +28,9 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
-#include "wm_surface.h"
+#include "wm_surface.hh"
 #include "wm_xr_intern.h"
 
 struct wmXrErrorHandlerData {
@@ -145,7 +145,7 @@ bool wm_xr_events_handle(wmWindowManager *wm)
 /** \name XR Runtime Data
  * \{ */
 
-wmXrRuntimeData *wm_xr_runtime_data_create(void)
+wmXrRuntimeData *wm_xr_runtime_data_create()
 {
   wmXrRuntimeData *runtime = static_cast<wmXrRuntimeData *>(
       MEM_callocN(sizeof(*runtime), __func__));
@@ -162,7 +162,7 @@ void wm_xr_runtime_data_free(wmXrRuntimeData **runtime)
   /* We free all runtime XR data here, so if the context is still alive, destroy it. */
   if ((*runtime)->context != nullptr) {
     GHOST_XrContextHandle context = (*runtime)->context;
-    /* Prevent recursive GHOST_XrContextDestroy() call by nullptr'ing the context pointer before
+    /* Prevent recursive #GHOST_XrContextDestroy() call by nulling the context pointer before
      * the first call, see comment above. */
     (*runtime)->context = nullptr;
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,8 +8,8 @@
  * UI List Registry.
  */
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include "BLI_listbase.h"
 #include "BLI_sys_types.h"
@@ -19,7 +19,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "BLI_ghash.h"
 #include "BLI_string.h"
@@ -28,8 +28,8 @@
 #include "BKE_main.h"
 #include "BKE_screen.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 static GHash *uilisttypes_hash = nullptr;
 
@@ -52,7 +52,7 @@ uiListType *WM_uilisttype_find(const char *idname, bool quiet)
 bool WM_uilisttype_add(uiListType *ult)
 {
   BLI_ghash_insert(uilisttypes_hash, ult->idname, ult);
-  return 1;
+  return true;
 }
 
 static void wm_uilisttype_unlink_from_region(const uiListType *ult, ARegion *region)
@@ -122,12 +122,12 @@ void WM_uilisttype_remove_ptr(Main *bmain, uiListType *ult)
   UNUSED_VARS_NDEBUG(ok);
 }
 
-void WM_uilisttype_init(void)
+void WM_uilisttype_init()
 {
   uilisttypes_hash = BLI_ghash_str_new_ex("uilisttypes_hash gh", 16);
 }
 
-void WM_uilisttype_free(void)
+void WM_uilisttype_free()
 {
   GHashIterator gh_iter;
   GHASH_ITER (gh_iter, uilisttypes_hash) {

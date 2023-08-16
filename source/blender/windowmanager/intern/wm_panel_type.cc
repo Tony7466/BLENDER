@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,7 +12,7 @@
  * For popups/popovers only, regions handle panel types by including them in local lists.
  */
 
-#include <stdio.h>
+#include <cstdio>
 
 #include "BLI_sys_types.h"
 
@@ -23,7 +23,7 @@
 
 #include "BKE_screen.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 static GHash *g_paneltypes_hash = nullptr;
 
@@ -57,13 +57,13 @@ void WM_paneltype_remove(PanelType *pt)
   UNUSED_VARS_NDEBUG(ok);
 }
 
-void WM_paneltype_init(void)
+void WM_paneltype_init()
 {
   /* reserve size is set based on blender default setup */
   g_paneltypes_hash = BLI_ghash_str_new_ex("g_paneltypes_hash gh", 512);
 }
 
-void WM_paneltype_clear(void)
+void WM_paneltype_clear()
 {
   BLI_ghash_free(g_paneltypes_hash, nullptr, nullptr);
 }

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,7 +10,6 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_linklist.h"
-#include "BLI_math.h"
 
 #include "BKE_appdir.h"
 #include "BKE_blendfile.h"
@@ -26,34 +25,34 @@
 #  include "BLI_winstuff.h"
 #endif
 
-#include "ED_asset.h"
-#include "ED_fileselect.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
+#include "ED_asset.hh"
+#include "ED_fileselect.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
+#include "UI_resources.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "file_intern.h"
-#include "filelist.h"
+#include "file_intern.hh"
+#include "filelist.hh"
 #include "fsmenu.h"
 
-#include <ctype.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cctype>
+#include <cerrno>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 /* -------------------------------------------------------------------- */
 /** \name File Selection Utilities
@@ -90,11 +89,11 @@ static FileSelection find_file_mouse_rect(SpaceFile *sfile,
   return sel;
 }
 
-typedef enum FileSelect {
+enum FileSelect {
   FILE_SELECT_NOTHING = 0,
   FILE_SELECT_DIR = 1,
   FILE_SELECT_FILE = 2,
-} FileSelect;
+};
 
 static void clamp_to_filelist(int numfiles, FileSelection *sel)
 {
@@ -458,7 +457,7 @@ static int file_box_select_modal(bContext *C, wmOperator *op, const wmEvent *eve
 
     ED_fileselect_layout_isect_rect(sfile->layout, &region->v2d, &rect, &rect);
 
-    sel = file_selection_get(C, &rect, 0);
+    sel = file_selection_get(C, &rect, false);
     if ((sel.first != params->sel_first) || (sel.last != params->sel_last)) {
       int idx;
 
@@ -1543,7 +1542,7 @@ static bool file_operator_poll(bContext *C)
   SpaceFile *sfile = CTX_wm_space_file(C);
 
   if (!sfile || !sfile->op) {
-    poll = 0;
+    poll = false;
   }
 
   return poll;
@@ -1850,13 +1849,13 @@ static int file_external_operation_exec(bContext *C, wmOperator *op)
   return OPERATOR_CANCELLED;
 }
 
-static char *file_external_operation_description(bContext * /*C*/,
-                                                 wmOperatorType * /*ot*/,
-                                                 PointerRNA *ptr)
+static std::string file_external_operation_description(bContext * /*C*/,
+                                                       wmOperatorType * /*ot*/,
+                                                       PointerRNA *ptr)
 {
   const char *description = "";
   RNA_enum_description(file_external_operation, RNA_enum_get(ptr, "operation"), &description);
-  return BLI_strdup(description);
+  return description;
 }
 
 void FILE_OT_external_operation(wmOperatorType *ot)
@@ -1906,7 +1905,8 @@ static void file_os_operations_menu_item(uiLayout *layout,
   RNA_enum_name(file_external_operation, operation, &title);
 
   PointerRNA props_ptr;
-  uiItemFullO_ptr(layout, ot, title, ICON_NONE, nullptr, WM_OP_INVOKE_DEFAULT, 0, &props_ptr);
+  uiItemFullO_ptr(
+      layout, ot, title, ICON_NONE, nullptr, WM_OP_INVOKE_DEFAULT, UI_ITEM_NONE, &props_ptr);
   RNA_string_set(&props_ptr, "filepath", path);
   if (operation) {
     RNA_enum_set(&props_ptr, "operation", operation);
@@ -2361,7 +2361,7 @@ static int file_smoothscroll_invoke(bContext *C, wmOperator * /*op*/, const wmEv
 
   const int numfiles = filelist_files_ensure(sfile->files);
 
-  /* Due to async nature of file listing, we may execute this code before `file_refresh()`
+  /* Due to asynchronous nature of file listing, we may execute this code before `file_refresh()`
    * editing entry is available in our listing,
    * so we also have to handle switching to rename mode here. */
   FileSelectParams *params = ED_fileselect_get_active_params(sfile);

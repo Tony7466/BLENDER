@@ -16,7 +16,10 @@
 #include "BLI_array_utils.h"
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "BLT_translation.h"
 
@@ -38,17 +41,17 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_curve.h"
-#include "ED_object.h"
-#include "ED_outliner.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
-#include "ED_transform.h"
-#include "ED_transform_snap_object_context.h"
-#include "ED_view3d.h"
+#include "ED_curve.hh"
+#include "ED_object.hh"
+#include "ED_outliner.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
+#include "ED_transform.hh"
+#include "ED_transform_snap_object_context.hh"
+#include "ED_view3d.hh"
 
 #include "curve_intern.h"
 
@@ -56,12 +59,12 @@ extern "C" {
 #include "curve_fit_nd.h"
 }
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 void selectend_nurb(Object *obedit, enum eEndPoint_Types selfirst, bool doswap, bool selstatus);
 static void adduplicateflagNurb(
@@ -596,7 +599,7 @@ static void calc_keyHandles(ListBase *nurb, float *key)
           key_to_bezt(prevfp, prevp, &prev);
         }
 
-        BKE_nurb_handle_calc(&cur, prevp ? &prev : nullptr, nextp ? &next : nullptr, 0, 0);
+        BKE_nurb_handle_calc(&cur, prevp ? &prev : nullptr, nextp ? &next : nullptr, false, 0);
         bezt_to_key(&cur, fp);
 
         prevp = bezt;
@@ -1564,11 +1567,11 @@ static bool isNurbselU(Nurb *nu, int *v, int flag)
     }
     else if (sel >= 1) {
       *v = 0;
-      return 0;
+      return false;
     }
   }
 
-  return 1;
+  return true;
 }
 
 /* return true if V direction is selected and number of selected rows u */
@@ -1592,11 +1595,11 @@ static bool isNurbselV(Nurb *nu, int *u, int flag)
     }
     else if (sel >= 1) {
       *u = 0;
-      return 0;
+      return false;
     }
   }
 
-  return 1;
+  return true;
 }
 
 static void rotateflagNurb(ListBase *editnurb,
@@ -3324,7 +3327,8 @@ void CURVE_OT_hide(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* props */
-  RNA_def_boolean(ot->srna, "unselected", 0, "Unselected", "Hide unselected rather than selected");
+  RNA_def_boolean(
+      ot->srna, "unselected", false, "Unselected", "Hide unselected rather than selected");
 }
 
 /** \} */
@@ -3955,7 +3959,7 @@ void CURVE_OT_spline_type_set(wmOperatorType *ot)
   ot->prop = RNA_def_enum(ot->srna, "type", type_items, CU_POLY, "Type", "Spline type");
   RNA_def_boolean(ot->srna,
                   "use_handles",
-                  0,
+                  false,
                   "Handles",
                   "Use handles when converting bezier curves into polygons");
 }
@@ -4554,7 +4558,7 @@ static int make_segment_exec(bContext *C, wmOperator *op)
     }
 
     /* find both nurbs and points, nu1 will be put behind nu2 */
-    for (nu = static_cast<Nurb *>(nubase->first); nu; nu = nu->next) {
+    LISTBASE_FOREACH (Nurb *, nu, nubase) {
       if (nu->pntsu == 1) {
         nu->flagu &= ~CU_NURB_CYCLIC;
       }
@@ -4803,7 +4807,7 @@ bool ED_curve_editnurb_select_pick(bContext *C,
   const bool use_handle_select = vert_without_handles &&
                                  (vc.v3d->overlay.handle_display != CURVE_HANDLE_NONE);
 
-  bool found = ED_curve_pick_vert_ex(&vc, 1, dist_px, &nu, &bezt, &bp, &hand, &basact);
+  bool found = ED_curve_pick_vert_ex(&vc, true, dist_px, &nu, &bezt, &bp, &hand, &basact);
 
   if (params->sel_op == SEL_OP_SET) {
     if ((found && params->select_passthrough) &&

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,12 +9,12 @@
  * as well as some generic operators and shared operator properties.
  */
 
-#include <ctype.h>
-#include <errno.h>
-#include <float.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <string.h>
+#include <cctype>
+#include <cerrno>
+#include <cfloat>
+#include <cstddef>
+#include <cstdio>
+#include <cstring>
 
 #ifdef WIN32
 #  include "GHOST_C-api.h"
@@ -40,13 +40,13 @@
 #include "BLI_blenlib.h"
 #include "BLI_dial_2d.h"
 #include "BLI_dynstr.h" /* For #WM_operator_pystring. */
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_anim_data.h"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
@@ -74,32 +74,32 @@
 
 #include "IMB_imbuf_types.h"
 
-#include "ED_fileselect.h"
-#include "ED_gpencil_legacy.h"
-#include "ED_numinput.h"
-#include "ED_screen.h"
-#include "ED_undo.h"
-#include "ED_view3d.h"
+#include "ED_fileselect.hh"
+#include "ED_gpencil_legacy.hh"
+#include "ED_numinput.hh"
+#include "ED_screen.hh"
+#include "ED_undo.hh"
+#include "ED_view3d.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
+#include "UI_resources.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "wm.h"
-#include "wm_draw.h"
+#include "wm.hh"
+#include "wm_draw.hh"
 #include "wm_event_system.h"
-#include "wm_event_types.h"
-#include "wm_files.h"
-#include "wm_window.h"
+#include "wm_event_types.hh"
+#include "wm_files.hh"
+#include "wm_window.hh"
 #ifdef WITH_XR_OPENXR
 #  include "wm_xr.h"
 #endif
@@ -124,7 +124,7 @@ size_t WM_operator_py_idname(char *dst, const char *src)
 {
   const char *sep = strstr(src, OP_BL_SEP_STRING);
   if (sep) {
-    const size_t sep_offset = (size_t)(sep - src);
+    const size_t sep_offset = size_t(sep - src);
 
     /* NOTE: we use ascii `tolower` instead of system `tolower`, because the
      * latter depends on the locale, and can lead to `idname` mismatch. */
@@ -143,11 +143,11 @@ size_t WM_operator_py_idname(char *dst, const char *src)
 
 size_t WM_operator_bl_idname(char *dst, const char *src)
 {
-  const size_t from_len = (size_t)strlen(src);
+  const size_t from_len = size_t(strlen(src));
 
   const char *sep = strchr(src, OP_PY_SEP_CHAR);
   if (sep && (from_len <= OP_MAX_PY_IDNAME)) {
-    const size_t sep_offset = (size_t)(sep - src);
+    const size_t sep_offset = size_t(sep - src);
     memcpy(dst, src, sep_offset);
     BLI_str_toupper_ascii(dst, sep_offset);
 
@@ -348,7 +348,7 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
   for (link = lb.first; link; link = link->next) {
     const char *identifier = link->data;
     PointerRNA ctx_item_ptr = {{0}};
-        /* CTX_data_pointer_get(C, identifier); */ /* XXX, this isn't working. */
+    // CTX_data_pointer_get(C, identifier);  /* XXX, this isn't working. */
 
     if (ctx_item_ptr.type == nullptr) {
       continue;
@@ -467,7 +467,7 @@ static const char *wm_context_member_from_ptr(const bContext *C,
         TEST_PTR_DATA_TYPE_FROM_CONTEXT("active_nla_track", RNA_NlaTrack, ptr);
         TEST_PTR_DATA_TYPE_FROM_CONTEXT("active_nla_strip", RNA_NlaStrip, ptr);
       }
-    } while (0);
+    } while (false);
   }
 
   /* Specific ID type checks. */
@@ -925,7 +925,7 @@ int WM_generic_select_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   PropertyRNA *wait_to_deselect_prop = RNA_struct_find_property(op->ptr,
                                                                 "wait_to_deselect_others");
-  const short init_event_type = (short)POINTER_AS_INT(op->customdata);
+  const short init_event_type = short(POINTER_AS_INT(op->customdata));
   int ret_value = 0;
 
   /* get settings from RNA properties for operator */
@@ -937,7 +937,7 @@ int WM_generic_select_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
       ret_value = op->type->exec(C, op);
       OPERATOR_RETVAL_CHECK(ret_value);
-      op->customdata = POINTER_FROM_INT((int)event->type);
+      op->customdata = POINTER_FROM_INT(int(event->type));
       if (ret_value & OPERATOR_RUNNING_MODAL) {
         WM_event_add_modal_handler(C, op);
       }
@@ -1048,7 +1048,8 @@ int WM_menu_invoke_ex(bContext *C, wmOperator *op, wmOperatorCallContext opconte
     return retval;
   }
   else {
-    uiPopupMenu *pup = UI_popup_menu_begin(C, WM_operatortype_name(op->type, op->ptr), ICON_NONE);
+    uiPopupMenu *pup = UI_popup_menu_begin(
+        C, WM_operatortype_name(op->type, op->ptr).c_str(), ICON_NONE);
     uiLayout *layout = UI_popup_menu_layout(pup);
     /* set this so the default execution context is the same as submenus */
     uiLayoutSetOperatorContext(layout, opcontext);
@@ -1057,7 +1058,7 @@ int WM_menu_invoke_ex(bContext *C, wmOperator *op, wmOperatorCallContext opconte
                      RNA_property_identifier(prop),
                      static_cast<IDProperty *>(op->ptr->data),
                      opcontext,
-                     0);
+                     UI_ITEM_NONE);
     UI_popup_menu_end(C, pup);
     return OPERATOR_INTERFACE;
   }
@@ -1080,7 +1081,7 @@ struct EnumSearchMenu {
 /** Generic enum search invoke popup. */
 static uiBlock *wm_enum_search_menu(bContext *C, ARegion *region, void *arg)
 {
-  struct EnumSearchMenu *search_menu = static_cast<EnumSearchMenu *>(arg);
+  EnumSearchMenu *search_menu = static_cast<EnumSearchMenu *>(arg);
   wmWindow *win = CTX_wm_window(C);
   wmOperator *op = search_menu->op;
   /* template_ID uses 4 * widget_unit for width,
@@ -1155,7 +1156,7 @@ static uiBlock *wm_enum_search_menu(bContext *C, ARegion *region, void *arg)
 
 int WM_enum_search_invoke_previews(bContext *C, wmOperator *op, short prv_cols, short prv_rows)
 {
-  static struct EnumSearchMenu search_menu;
+  static EnumSearchMenu search_menu;
 
   search_menu.op = op;
   search_menu.use_previews = true;
@@ -1169,7 +1170,7 @@ int WM_enum_search_invoke_previews(bContext *C, wmOperator *op, short prv_cols, 
 
 int WM_enum_search_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  static struct EnumSearchMenu search_menu;
+  static EnumSearchMenu search_menu;
   search_menu.op = op;
   UI_popup_block_invoke(C, wm_enum_search_menu, &search_menu, nullptr);
   return OPERATOR_INTERFACE;
@@ -1193,7 +1194,8 @@ int WM_operator_confirm_message_ex(bContext *C,
 
   uiPopupMenu *pup = UI_popup_menu_begin(C, title, icon);
   uiLayout *layout = UI_popup_menu_layout(pup);
-  uiItemFullO_ptr(layout, op->type, message, ICON_NONE, properties, opcontext, 0, nullptr);
+  uiItemFullO_ptr(
+      layout, op->type, message, ICON_NONE, properties, opcontext, UI_ITEM_NONE, nullptr);
   UI_popup_menu_end(C, pup);
 
   return OPERATOR_INTERFACE;
@@ -1246,9 +1248,9 @@ bool WM_operator_filesel_ensure_ext_imtype(wmOperator *op, const ImageFormatData
 bool WM_operator_winactive(bContext *C)
 {
   if (CTX_wm_window(C) == nullptr) {
-    return 0;
+    return false;
   }
-  return 1;
+  return true;
 }
 
 bool WM_operator_check_ui_enabled(const bContext *C, const char *idname)
@@ -1457,9 +1459,9 @@ static void dialog_exec_cb(bContext *C, void *arg1, void *arg2)
 }
 
 /* Dialogs are popups that require user verification (click OK) before exec */
-static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *userData)
+static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_data)
 {
-  wmOpPopUp *data = static_cast<wmOpPopUp *>(userData);
+  wmOpPopUp *data = static_cast<wmOpPopUp *>(user_data);
   wmOperator *op = data->op;
   const uiStyle *style = UI_style_get_dpi();
 
@@ -1498,9 +1500,9 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *userD
   return block;
 }
 
-static uiBlock *wm_operator_ui_create(bContext *C, ARegion *region, void *userData)
+static uiBlock *wm_operator_ui_create(bContext *C, ARegion *region, void *user_data)
 {
-  wmOpPopUp *data = static_cast<wmOpPopUp *>(userData);
+  wmOpPopUp *data = static_cast<wmOpPopUp *>(user_data);
   wmOperator *op = data->op;
   const uiStyle *style = UI_style_get_dpi();
 
@@ -1522,9 +1524,9 @@ static uiBlock *wm_operator_ui_create(bContext *C, ARegion *region, void *userDa
   return block;
 }
 
-static void wm_operator_ui_popup_cancel(bContext *C, void *userData)
+static void wm_operator_ui_popup_cancel(bContext *C, void *user_data)
 {
-  wmOpPopUp *data = static_cast<wmOpPopUp *>(userData);
+  wmOpPopUp *data = static_cast<wmOpPopUp *>(user_data);
   wmOperator *op = data->op;
 
   if (op) {
@@ -1747,8 +1749,7 @@ struct SearchPopupInit_Data {
 
 static uiBlock *wm_block_search_menu(bContext *C, ARegion *region, void *userdata)
 {
-  const struct SearchPopupInit_Data *init_data = static_cast<const SearchPopupInit_Data *>(
-      userdata);
+  const SearchPopupInit_Data *init_data = static_cast<const SearchPopupInit_Data *>(userdata);
   static char search[256] = "";
 
   uiBlock *block = UI_block_begin(C, region, "_popup", UI_EMBOSS);
@@ -1883,7 +1884,7 @@ static int wm_call_menu_exec(bContext *C, wmOperator *op)
   return UI_popup_menu_invoke(C, idname, op->reports);
 }
 
-static const char *wm_call_menu_get_name(wmOperatorType *ot, PointerRNA *ptr)
+static std::string wm_call_menu_get_name(wmOperatorType *ot, PointerRNA *ptr)
 {
   char idname[BKE_ST_MAXNAME];
   RNA_string_get(ptr, "name", idname);
@@ -1962,7 +1963,7 @@ static int wm_call_panel_exec(bContext *C, wmOperator *op)
   return UI_popover_panel_invoke(C, idname, keep_open, op->reports);
 }
 
-static const char *wm_call_panel_get_name(wmOperatorType *ot, PointerRNA *ptr)
+static std::string wm_call_panel_get_name(wmOperatorType *ot, PointerRNA *ptr)
 {
   char idname[BKE_ST_MAXNAME];
   RNA_string_get(ptr, "name", idname);
@@ -2010,16 +2011,16 @@ static bool wm_operator_winactive_normal(bContext *C)
   bScreen *screen;
 
   if (win == nullptr) {
-    return 0;
+    return false;
   }
   if (!((screen = WM_window_get_active_screen(win)) && (screen->state == SCREENNORMAL))) {
-    return 0;
+    return false;
   }
   if (G.background) {
-    return 0;
+    return false;
   }
 
-  return 1;
+  return true;
 }
 
 /* included for script-access */
@@ -2232,7 +2233,7 @@ static void radial_control_update_header(wmOperator *op, bContext *C)
         SNPRINTF(msg, "%s: %0.4f", ui_name, rc->current_value);
         break;
       case PROP_PIXEL:
-        SNPRINTF(msg, "%s: %d", ui_name, (int)rc->current_value); /* XXX: round to nearest? */
+        SNPRINTF(msg, "%s: %d", ui_name, int(rc->current_value)); /* XXX: round to nearest? */
         break;
       case PROP_PERCENTAGE:
         SNPRINTF(msg, "%s: %3.1f%%", ui_name, rc->current_value);
@@ -2413,7 +2414,7 @@ static void radial_control_paint_curve(uint pos, Brush *br, float radius, int li
 {
   GPU_line_width(2.0f);
   immUniformColor4f(0.8f, 0.8f, 0.8f, 0.85f);
-  float step = (radius * 2.0f) / (float)line_segments;
+  float step = (radius * 2.0f) / float(line_segments);
   BKE_curvemapping_init(br->curve);
   immBegin(GPU_PRIM_LINES, line_segments * 2);
   for (int i = 0; i < line_segments; i++) {
@@ -2491,7 +2492,7 @@ static void radial_control_paint_cursor(bContext * /*C*/, int x, int y, void *cu
     x = rc->initial_co[0];
     y = rc->initial_co[1];
   }
-  GPU_matrix_translate_2f((float)x, (float)y);
+  GPU_matrix_translate_2f(float(x), float(y));
 
   GPU_blend(GPU_BLEND_ALPHA);
   GPU_line_smooth(true);
@@ -2524,15 +2525,15 @@ static void radial_control_paint_cursor(bContext * /*C*/, int x, int y, void *cu
     /* draw original angle line */
     GPU_matrix_rotate_3f(RAD2DEGF(rc->initial_value), 0.0f, 0.0f, 1.0f);
     immBegin(GPU_PRIM_LINES, 2);
-    immVertex2f(pos, (float)WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE, 0.0f);
-    immVertex2f(pos, (float)WM_RADIAL_CONTROL_DISPLAY_SIZE, 0.0f);
+    immVertex2f(pos, float(WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE), 0.0f);
+    immVertex2f(pos, float(WM_RADIAL_CONTROL_DISPLAY_SIZE), 0.0f);
     immEnd();
 
     /* draw new angle line */
     GPU_matrix_rotate_3f(RAD2DEGF(rc->current_value - rc->initial_value), 0.0f, 0.0f, 1.0f);
     immBegin(GPU_PRIM_LINES, 2);
-    immVertex2f(pos, (float)WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE, 0.0f);
-    immVertex2f(pos, (float)WM_RADIAL_CONTROL_DISPLAY_SIZE, 0.0f);
+    immVertex2f(pos, float(WM_RADIAL_CONTROL_DISPLAY_MIN_SIZE), 0.0f);
+    immVertex2f(pos, float(WM_RADIAL_CONTROL_DISPLAY_SIZE), 0.0f);
     immEnd();
 
     GPU_matrix_pop();
@@ -2682,7 +2683,7 @@ static int radial_control_get_properties(bContext *C, wmOperator *op)
                                &use_secondary_ptr,
                                &use_secondary_prop,
                                0,
-                               RCPropFlags((RC_PROP_ALLOW_MISSING | RC_PROP_REQUIRE_BOOL))))
+                               RCPropFlags(RC_PROP_ALLOW_MISSING | RC_PROP_REQUIRE_BOOL)))
   {
     return 0;
   }
@@ -2931,9 +2932,9 @@ static int radial_control_modal(bContext *C, wmOperator *op, const wmEvent *even
     applyNumInput(&rc->num_input, &numValue);
 
     if (rc->subtype == PROP_ANGLE) {
-      numValue = fmod(numValue, 2.0f * (float)M_PI);
+      numValue = fmod(numValue, 2.0f * float(M_PI));
       if (numValue < 0.0f) {
-        numValue += 2.0f * (float)M_PI;
+        numValue += 2.0f * float(M_PI);
       }
     }
 
@@ -2997,8 +2998,8 @@ static int radial_control_modal(bContext *C, wmOperator *op, const wmEvent *even
           }
         }
         else {
-          delta[0] = (float)(rc->initial_mouse[0] - event->xy[0]);
-          delta[1] = (float)(rc->initial_mouse[1] - event->xy[1]);
+          delta[0] = float(rc->initial_mouse[0] - event->xy[0]);
+          delta[1] = float(rc->initial_mouse[1] - event->xy[1]);
           if (rc->zoom_prop) {
             RNA_property_float_get_array(&rc->zoom_ptr, rc->zoom_prop, zoom);
             delta[0] /= zoom[0];
@@ -3019,7 +3020,7 @@ static int radial_control_modal(bContext *C, wmOperator *op, const wmEvent *even
           case PROP_PIXEL:
             new_value = dist;
             if (snap) {
-              new_value = ((int)new_value + 5) / 10 * 10;
+              new_value = (int(new_value) + 5) / 10 * 10;
             }
             break;
           case PROP_PERCENTAGE:
@@ -3027,25 +3028,25 @@ static int radial_control_modal(bContext *C, wmOperator *op, const wmEvent *even
                          WM_RADIAL_CONTROL_DISPLAY_WIDTH) *
                         100.0f;
             if (snap) {
-              new_value = (int)(new_value + 2.5f) / 5 * 5;
+              new_value = int(new_value + 2.5f) / 5 * 5;
             }
             break;
           case PROP_FACTOR:
             new_value = (WM_RADIAL_CONTROL_DISPLAY_SIZE - dist) / WM_RADIAL_CONTROL_DISPLAY_WIDTH;
             if (snap) {
-              new_value = ((int)ceil(new_value * 10.0f) * 10.0f) / 100.0f;
+              new_value = (int(ceil(new_value * 10.0f)) * 10.0f) / 100.0f;
             }
             /* Invert new value to increase the factor moving the mouse to the right */
             new_value = 1 - new_value;
             break;
           case PROP_ANGLE:
-            new_value = atan2f(delta[1], delta[0]) + (float)M_PI + angle_precision;
-            new_value = fmod(new_value, 2.0f * (float)M_PI);
+            new_value = atan2f(delta[1], delta[0]) + float(M_PI) + angle_precision;
+            new_value = fmod(new_value, 2.0f * float(M_PI));
             if (new_value < 0.0f) {
-              new_value += 2.0f * (float)M_PI;
+              new_value += 2.0f * float(M_PI);
             }
             if (snap) {
-              new_value = DEG2RADF(((int)RAD2DEGF(new_value) + 5) / 10 * 10);
+              new_value = DEG2RADF((int(RAD2DEGF(new_value)) + 5) / 10 * 10);
             }
             break;
           default:
@@ -3092,9 +3093,9 @@ static int radial_control_modal(bContext *C, wmOperator *op, const wmEvent *even
     applyNumInput(&rc->num_input, &numValue);
 
     if (rc->subtype == PROP_ANGLE) {
-      numValue = fmod(numValue, 2.0f * (float)M_PI);
+      numValue = fmod(numValue, 2.0f * float(M_PI));
       if (numValue < 0.0f) {
-        numValue += 2.0f * (float)M_PI;
+        numValue += 2.0f * float(M_PI);
       }
     }
 
@@ -3276,7 +3277,7 @@ static const EnumPropertyItem redraw_timer_type_items[] = {
 
 static void redraw_timer_step(bContext *C,
                               Scene *scene,
-                              struct Depsgraph *depsgraph,
+                              Depsgraph *depsgraph,
                               wmWindow *win,
                               ScrArea *area,
                               ARegion *region,
@@ -3366,14 +3367,14 @@ static int redraw_timer_exec(bContext *C, wmOperator *op)
   wmWindowManager *wm = CTX_wm_manager(C);
   const int type = RNA_enum_get(op->ptr, "type");
   const int iter = RNA_int_get(op->ptr, "iterations");
-  const double time_limit = (double)RNA_float_get(op->ptr, "time_limit");
+  const double time_limit = double(RNA_float_get(op->ptr, "time_limit"));
   const int cfra = scene->r.cfra;
   const char *infostr = "";
 
   /* NOTE: Depsgraph is used to update scene for a new state, so no need to ensure evaluation
    * here.
    */
-  struct Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
 
   WM_cursor_wait(true);
 
@@ -3800,7 +3801,7 @@ static void WM_OT_stereo3d_set(wmOperatorType *ot)
 /** \name Operator Registration & Keymaps
  * \{ */
 
-void wm_operatortypes_register(void)
+void wm_operatortypes_register()
 {
   WM_operatortype_append(WM_OT_window_close);
   WM_operatortype_append(WM_OT_window_new);
@@ -4089,7 +4090,7 @@ static const EnumPropertyItem *rna_id_itemf(bool *r_free,
 
         /* Show collection color tag icons in menus. */
         if (id_type == ID_GR) {
-          item_tmp.icon = UI_icon_color_from_collection((struct Collection *)id);
+          item_tmp.icon = UI_icon_color_from_collection((Collection *)id);
         }
 
         RNA_enum_item_add(&item, &totitem, &item_tmp);

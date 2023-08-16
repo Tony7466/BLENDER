@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,33 +8,34 @@
  * Default operator callbacks for use with gestures (border/circle/lasso/straightline).
  * Operators themselves are defined elsewhere.
  *
- * - Keymaps are in `wm_operators.c`.
- * - Property definitions are in `wm_operator_props.c`.
+ * - Keymaps are in `wm_operators.cc`.
+ * - Property definitions are in `wm_operator_props.cc`.
  */
 
 #include "MEM_guardedalloc.h"
 
 #include "DNA_windowmanager_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_rect.h"
 
 #include "BKE_context.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "wm.h"
+#include "wm.hh"
 #include "wm_event_system.h"
-#include "wm_event_types.h"
+#include "wm_event_types.hh"
 
-#include "ED_screen.h"
-#include "ED_select_utils.h"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Internal Gesture Utilities
@@ -129,7 +130,7 @@ static bool gesture_box_apply_rect(wmOperator *op)
   rcti *rect = static_cast<rcti *>(gesture->customdata);
 
   if (rect->xmin == rect->xmax || rect->ymin == rect->ymax) {
-    return 0;
+    return false;
   }
 
   /* operator arguments and storage. */
@@ -138,7 +139,7 @@ static bool gesture_box_apply_rect(wmOperator *op)
   RNA_int_set(op->ptr, "xmax", max_ii(rect->xmin, rect->xmax));
   RNA_int_set(op->ptr, "ymax", max_ii(rect->ymin, rect->ymax));
 
-  return 1;
+  return true;
 }
 
 static bool gesture_box_apply(bContext *C, wmOperator *op)
@@ -148,7 +149,7 @@ static bool gesture_box_apply(bContext *C, wmOperator *op)
   int retval;
 
   if (!gesture_box_apply_rect(op)) {
-    return 0;
+    return false;
   }
 
   if (gesture->wait_for_input) {
@@ -158,7 +159,7 @@ static bool gesture_box_apply(bContext *C, wmOperator *op)
   retval = op->type->exec(C, op);
   OPERATOR_RETVAL_CHECK(retval);
 
-  return (retval & OPERATOR_FINISHED) ? 1 : 0;
+  return (retval & OPERATOR_FINISHED) ? true : false;
 }
 
 int WM_gesture_box_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -642,8 +643,8 @@ const int (*WM_gesture_lasso_path_to_array(bContext * /*C*/,
         float loc[2];
 
         RNA_float_get_array(&itemptr, "loc", loc);
-        mcoords[i][0] = (int)loc[0];
-        mcoords[i][1] = (int)loc[1];
+        mcoords[i][0] = int(loc[0]);
+        mcoords[i][1] = int(loc[1]);
         i++;
       }
       RNA_PROP_END;
@@ -716,7 +717,7 @@ static bool gesture_straightline_apply(bContext *C, wmOperator *op)
   rcti *rect = static_cast<rcti *>(gesture->customdata);
 
   if (rect->xmin == rect->xmax && rect->ymin == rect->ymax) {
-    return 0;
+    return false;
   }
 
   /* operator arguments and storage. */
@@ -731,7 +732,7 @@ static bool gesture_straightline_apply(bContext *C, wmOperator *op)
     OPERATOR_RETVAL_CHECK(retval);
   }
 
-  return 1;
+  return true;
 }
 
 int WM_gesture_straightline_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -788,8 +789,8 @@ static void wm_gesture_straightline_do_angle_snap(rcti *rect)
   mul_v2_fl(line_snapped_end, line_length);
   add_v2_v2(line_snapped_end, line_start);
 
-  rect->xmax = (int)line_snapped_end[0];
-  rect->ymax = (int)line_snapped_end[1];
+  rect->xmax = int(line_snapped_end[0]);
+  rect->ymax = int(line_snapped_end[1]);
 }
 
 int WM_gesture_straightline_modal(bContext *C, wmOperator *op, const wmEvent *event)

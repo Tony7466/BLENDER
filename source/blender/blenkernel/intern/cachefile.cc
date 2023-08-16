@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,7 +6,7 @@
  * \ingroup bke
  */
 
-#include <string.h>
+#include <cstring>
 
 #include "DNA_anim_types.h"
 #include "DNA_cachefile_types.h"
@@ -104,10 +104,6 @@ static void cache_file_blend_write(BlendWriter *writer, ID *id, const void *id_a
   BLO_write_id_struct(writer, CacheFile, id_address, &cache_file->id);
   BKE_id_blend_write(writer, &cache_file->id);
 
-  if (cache_file->adt) {
-    BKE_animdata_blend_write(writer, cache_file->adt);
-  }
-
   /* write layers */
   LISTBASE_FOREACH (CacheFileLayer *, layer, &cache_file->layers) {
     BLO_write_struct(writer, CacheFileLayer, layer);
@@ -121,10 +117,6 @@ static void cache_file_blend_read_data(BlendDataReader *reader, ID *id)
   cache_file->handle = nullptr;
   cache_file->handle_filepath[0] = '\0';
   cache_file->handle_readers = nullptr;
-
-  /* relink animdata */
-  BLO_read_data_address(reader, &cache_file->adt);
-  BKE_animdata_blend_read_data(reader, cache_file->adt);
 
   /* relink layers */
   BLO_read_list(reader, &cache_file->layers);
@@ -375,7 +367,7 @@ void BKE_cachefile_eval(Main *bmain, Depsgraph *depsgraph, CacheFile *cache_file
   if (BLI_path_extension_check_glob(filepath, "*.usd;*.usda;*.usdc;*.usdz")) {
     cache_file->type = CACHEFILE_TYPE_USD;
     cache_file->handle = USD_create_handle(bmain, filepath, &cache_file->object_paths);
-    BLI_strncpy(cache_file->handle_filepath, filepath, FILE_MAX);
+    STRNCPY(cache_file->handle_filepath, filepath);
   }
 #endif
 
@@ -438,9 +430,7 @@ bool BKE_cache_file_uses_render_procedural(const CacheFile *cache_file, Scene *s
 
 CacheFileLayer *BKE_cachefile_add_layer(CacheFile *cache_file, const char filepath[1024])
 {
-  for (CacheFileLayer *layer = static_cast<CacheFileLayer *>(cache_file->layers.first); layer;
-       layer = layer->next)
-  {
+  LISTBASE_FOREACH (CacheFileLayer *, layer, &cache_file->layers) {
     if (STREQ(layer->filepath, filepath)) {
       return nullptr;
     }

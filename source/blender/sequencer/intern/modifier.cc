@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation
+/* SPDX-FileCopyrightText: 2012 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,13 +6,12 @@
  * \ingroup bke
  */
 
-#include <stddef.h>
-#include <string.h>
+#include <cstddef>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
@@ -43,13 +42,13 @@ static bool modifierTypesInit = false;
 /** \name Modifier Multi-Threading Utilities
  * \{ */
 
-typedef void (*modifier_apply_threaded_cb)(int width,
-                                           int height,
-                                           uchar *rect,
-                                           float *rect_float,
-                                           uchar *mask_rect,
-                                           const float *mask_rect_float,
-                                           void *data_v);
+using modifier_apply_threaded_cb = void (*)(int width,
+                                            int height,
+                                            uchar *rect,
+                                            float *rect_float,
+                                            uchar *mask_rect,
+                                            const float *mask_rect_float,
+                                            void *data_v);
 
 struct ModifierInitData {
   ImBuf *ibuf;
@@ -832,12 +831,12 @@ static void curves_apply(SequenceModifierData *smd, ImBuf *ibuf, ImBuf *mask)
 
   BKE_curvemapping_init(&cmd->curve_mapping);
 
-  BKE_curvemapping_premultiply(&cmd->curve_mapping, 0);
+  BKE_curvemapping_premultiply(&cmd->curve_mapping, false);
   BKE_curvemapping_set_black_white(&cmd->curve_mapping, black, white);
 
   modifier_apply_threaded(ibuf, mask, curves_apply_threaded, &cmd->curve_mapping);
 
-  BKE_curvemapping_premultiply(&cmd->curve_mapping, 1);
+  BKE_curvemapping_premultiply(&cmd->curve_mapping, true);
 }
 
 static SequenceModifierTypeInfo seqModifier_Curves = {
@@ -1489,7 +1488,6 @@ ImBuf *SEQ_modifier_apply_stack(const SeqRenderData *context,
                                 ImBuf *ibuf,
                                 int timeline_frame)
 {
-  SequenceModifierData *smd;
   ImBuf *processed_ibuf = ibuf;
 
   if (seq->modifiers.first && (seq->flag & SEQ_USE_LINEAR_MODIFIERS)) {
@@ -1497,7 +1495,7 @@ ImBuf *SEQ_modifier_apply_stack(const SeqRenderData *context,
     SEQ_render_imbuf_from_sequencer_space(context->scene, processed_ibuf);
   }
 
-  for (smd = static_cast<SequenceModifierData *>(seq->modifiers.first); smd; smd = smd->next) {
+  LISTBASE_FOREACH (SequenceModifierData *, smd, &seq->modifiers) {
     const SequenceModifierTypeInfo *smti = SEQ_modifier_type_info_get(smd->type);
 
     /* could happen if modifier is being removed or not exists in current version of blender */
@@ -1543,9 +1541,7 @@ ImBuf *SEQ_modifier_apply_stack(const SeqRenderData *context,
 
 void SEQ_modifier_list_copy(Sequence *seqn, Sequence *seq)
 {
-  SequenceModifierData *smd;
-
-  for (smd = static_cast<SequenceModifierData *>(seq->modifiers.first); smd; smd = smd->next) {
+  LISTBASE_FOREACH (SequenceModifierData *, smd, &seq->modifiers) {
     SequenceModifierData *smdn;
     const SequenceModifierTypeInfo *smti = SEQ_modifier_type_info_get(smd->type);
 

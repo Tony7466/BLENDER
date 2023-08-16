@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,10 +6,10 @@
  * \ingroup bke
  */
 
-#include <float.h>
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cfloat>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -17,7 +17,6 @@
 #include "DNA_curve_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_task.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
@@ -451,7 +450,7 @@ void BKE_curvemap_handle_set(CurveMap *cuma, int type)
 /* *********************** Making the tables and display ************** */
 
 /**
- * reduced copy of #calchandleNurb_intern code in curve.c
+ * Reduced copy of #calchandleNurb_intern code in `curve.cc`.
  */
 static void calchandle_curvemap(BezTriple *bezt, const BezTriple *prev, const BezTriple *next)
 {
@@ -987,11 +986,11 @@ float BKE_curvemapping_evaluateF(const CurveMapping *cumap, int cur, float value
 
   /* account for clipping */
   if (cumap->flag & CUMA_DO_CLIP) {
-    if (val < cumap->curr.ymin) {
-      val = cumap->curr.ymin;
+    if (val < cumap->clipr.ymin) {
+      val = cumap->clipr.ymin;
     }
-    else if (val > cumap->curr.ymax) {
-      val = cumap->curr.ymax;
+    else if (val > cumap->clipr.ymax) {
+      val = cumap->clipr.ymax;
     }
   }
 

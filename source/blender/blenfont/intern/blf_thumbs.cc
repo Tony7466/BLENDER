@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,7 +10,7 @@
  * Isolate since this needs to be called by #ImBuf code (bad level call).
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include <ft2build.h>
 

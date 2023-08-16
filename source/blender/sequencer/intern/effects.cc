@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
+ * SPDX-FileCopyrightText: 2003-2009 Blender Authors
  * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -8,14 +8,14 @@
  * \ingroup bke
  */
 
-#include <math.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h" /* windows needs for M_PI */
+#include "BLI_math_rotation.h"
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
@@ -40,7 +40,7 @@
 
 #include "BLI_math_color_blend.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "RE_pipeline.h"
@@ -1077,8 +1077,8 @@ static void do_mul_effect(const SeqRenderData *context,
 /** \name Blend Mode Effect
  * \{ */
 
-typedef void (*IMB_blend_func_byte)(uchar *dst, const uchar *src1, const uchar *src2);
-typedef void (*IMB_blend_func_float)(float *dst, const float *src1, const float *src2);
+using IMB_blend_func_byte = void (*)(uchar *dst, const uchar *src1, const uchar *src2);
+using IMB_blend_func_float = void (*)(float *dst, const float *src1, const float *src2);
 
 BLI_INLINE void apply_blend_function_byte(float fac,
                                           int x,

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,9 @@
 #include "BKE_screen.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
 #include "DEG_depsgraph.h"
@@ -26,8 +28,8 @@
 
 #include "DRW_engine.h"
 
-#include "ED_screen.h"
-#include "ED_space_api.h"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
 
 #include "GHOST_C-api.h"
 
@@ -38,12 +40,12 @@
 
 #include "PIL_time.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "wm_event_system.h"
-#include "wm_surface.h"
-#include "wm_window.h"
+#include "wm_surface.hh"
+#include "wm_window.hh"
 #include "wm_xr_intern.h"
 
 static wmSurface *g_xr_surface = nullptr;
@@ -51,7 +53,7 @@ static CLG_LogRef LOG = {"wm.xr"};
 
 /* -------------------------------------------------------------------- */
 
-static void wm_xr_session_create_cb(void)
+static void wm_xr_session_create_cb()
 {
   Main *bmain = G_MAIN;
   wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
@@ -75,9 +77,7 @@ static void wm_xr_session_create_cb(void)
 static void wm_xr_session_controller_data_free(wmXrSessionState *state)
 {
   ListBase *lb = &state->controllers;
-  wmXrController *c;
-
-  while ((c = static_cast<wmXrController *>(BLI_pophead(lb)))) {
+  while (wmXrController *c = static_cast<wmXrController *>(BLI_pophead(lb))) {
     if (c->model) {
       GPU_batch_discard(c->model);
     }
@@ -986,7 +986,7 @@ static bool wm_xr_session_action_test_bimanual(const wmXrSessionState *session_s
   bool bimanual = false;
 
   *r_subaction_idx_other = (subaction_idx == 0) ?
-                               (uint)min_ii(1, action->count_subaction_paths - 1) :
+                               uint(min_ii(1, action->count_subaction_paths - 1)) :
                                0;
 
   switch (action->type) {
@@ -1115,7 +1115,7 @@ static void wm_xr_session_events_dispatch(wmXrData *xr,
     return;
   }
 
-  const int64_t time_now = (int64_t)(PIL_check_seconds_timer() * 1000);
+  const int64_t time_now = int64_t(PIL_check_seconds_timer() * 1000);
 
   ListBase *active_modal_actions = &action_set->active_modal_actions;
   ListBase *active_haptic_actions = &action_set->active_haptic_actions;
@@ -1435,9 +1435,8 @@ static void wm_xr_session_surface_free_data(wmSurface *surface)
 {
   wmXrSurfaceData *data = static_cast<wmXrSurfaceData *>(surface->customdata);
   ListBase *lb = &data->viewports;
-  wmXrViewportPair *vp;
 
-  while ((vp = static_cast<wmXrViewportPair *>(BLI_pophead(lb)))) {
+  while (wmXrViewportPair *vp = static_cast<wmXrViewportPair *>(BLI_pophead(lb))) {
     if (vp->viewport) {
       GPU_viewport_free(vp->viewport);
     }
@@ -1457,7 +1456,7 @@ static void wm_xr_session_surface_free_data(wmSurface *surface)
   g_xr_surface = nullptr;
 }
 
-static wmSurface *wm_xr_session_surface_create(void)
+static wmSurface *wm_xr_session_surface_create()
 {
   if (g_xr_surface) {
     BLI_assert(false);
@@ -1487,7 +1486,7 @@ static wmSurface *wm_xr_session_surface_create(void)
   return surface;
 }
 
-void *wm_xr_session_gpu_binding_context_create(void)
+void *wm_xr_session_gpu_binding_context_create()
 {
   wmSurface *surface = wm_xr_session_surface_create();
 
@@ -1513,7 +1512,7 @@ void wm_xr_session_gpu_binding_context_destroy(GHOST_ContextHandle /*context*/)
   WM_main_add_notifier(NC_WM | ND_XR_DATA_CHANGED, nullptr);
 }
 
-ARegionType *WM_xr_surface_controller_region_type_get(void)
+ARegionType *WM_xr_surface_controller_region_type_get()
 {
   if (g_xr_surface) {
     wmXrSurfaceData *data = static_cast<wmXrSurfaceData *>(g_xr_surface->customdata);
