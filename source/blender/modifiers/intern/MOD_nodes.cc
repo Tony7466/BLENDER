@@ -655,14 +655,193 @@ static void check_property_socket_sync(const Object *ob, ModifierData *md)
   }
 }
 
+struct SimulationPrepareResult {
+  /** Read-only simulation states around the current frame. */
+  const bke::sim::ModifierSimulationState *current_simulation_state = nullptr;
+  const bke::sim::ModifierSimulationState *prev_simulation_state = nullptr;
+  const bke::sim::ModifierSimulationState *next_simulation_state = nullptr;
+  float simulation_state_mix_factor = 0.0f;
+  /** Used when the evaluation should create a new simulation state. */
+  bke::sim::ModifierSimulationState *current_simulation_state_for_write = nullptr;
+  float simulation_time_delta = 0.0f;
+
+  /**
+   * The same as #prev_simulation_state, but the cached values can be moved from,
+   * to keep data managed by implicit sharing mutable.
+   */
+  bke::sim::ModifierSimulationState *prev_simulation_state_mutable = nullptr;
+};
+
+static SimulationPrepareResult prepare_simulation_states_for_evaluation(
+    const NodesModifierData &nmd, const ModifierEvalContext &ctx)
+{
+  SimulationPrepareResult result;
+  if (!nmd.runtime->simulation_cache) {
+    return result;
+  }
+  const Main *bmain = DEG_get_bmain(ctx.depsgraph);
+  const SubFrame current_frame = DEG_get_ctime(ctx.depsgraph);
+  const Scene *scene = DEG_get_input_scene(ctx.depsgraph);
+  const SubFrame start_frame = scene->r.sfra;
+  const bool is_start_frame = current_frame == start_frame;
+
+  /* This cache may be shared between original and evaluated modifiers. */
+  blender::bke::sim::ModifierSimulationCache &simulation_cache = *nmd.runtime->simulation_cache;
+
+  {
+    /* Try to use baked data. */
+    const StringRefNull bmain_path = BKE_main_blendfile_path(bmain);
+    if (simulation_cache.cache_state != bke::sim::CacheState::Baked && !bmain_path.is_empty()) {
+      if (!StringRef(nmd.simulation_bake_directory).is_empty()) {
+        if (const char *base_path = ID_BLEND_PATH(bmain, &ctx.object->id)) {
+          char absolute_bake_dir[FILE_MAX];
+          STRNCPY(absolute_bake_dir, nmd.simulation_bake_directory);
+          BLI_path_abs(absolute_bake_dir, base_path);
+          simulation_cache.try_discover_bake(absolute_bake_dir);
+        }
+      }
+    }
+  }
+
+  if (ctx.object->flag & OB_FLAG_USE_SIMULATION_CACHE) {
+    if (DEG_is_active(ctx.depsgraph)) {
+
+      {
+        /* Invalidate cached data on user edits. */
+        if (nmd.modifier.flag & eModifierFlag_UserModified) {
+          if (simulation_cache.cache_state != bke::sim::CacheState::Baked) {
+            simulation_cache.invalidate();
+          }
+        }
+      }
+
+      {
+        /* Reset cached data if necessary. */
+        const bke::sim::StatesAroundFrame sim_states = simulation_cache.get_states_around_frame(
+            current_frame);
+        if (simulation_cache.cache_state == bke::sim::CacheState::Invalid &&
+            (current_frame == start_frame ||
+             (sim_states.current == nullptr && sim_states.prev == nullptr &&
+              sim_states.next != nullptr)))
+        {
+          simulation_cache.reset();
+        }
+      }
+      /* Decide if a new simulation state should be created in this evaluation. */
+      const bke::sim::StatesAroundFrame sim_states = simulation_cache.get_states_around_frame(
+          current_frame);
+      if (simulation_cache.cache_state != bke::sim::CacheState::Baked) {
+        if (sim_states.current == nullptr) {
+          if (is_start_frame || !simulation_cache.has_states()) {
+            bke::sim::ModifierSimulationState &current_sim_state =
+                simulation_cache.get_state_at_frame_for_write(current_frame);
+            result.current_simulation_state_for_write = &current_sim_state;
+            result.simulation_time_delta = 0.0f;
+            if (!is_start_frame) {
+              /* When starting a new simulation at another frame than the start frame,
+               * it can't match what would be baked, so invalidate it immediately. */
+              simulation_cache.invalidate();
+            }
+          }
+          else if (sim_states.prev != nullptr && sim_states.next == nullptr) {
+            const float max_delta_frames = 1.0f;
+            const float scene_delta_frames = float(current_frame) - float(sim_states.prev->frame);
+            const float delta_frames = std::min(max_delta_frames, scene_delta_frames);
+            if (delta_frames != scene_delta_frames) {
+              simulation_cache.invalidate();
+            }
+            bke::sim::ModifierSimulationState &current_sim_state =
+                simulation_cache.get_state_at_frame_for_write(current_frame);
+            result.current_simulation_state_for_write = &current_sim_state;
+            const float delta_seconds = delta_frames / FPS;
+            result.simulation_time_delta = delta_seconds;
+          }
+        }
+      }
+    }
+
+    /* Load read-only states to give nodes access to cached data. */
+    const bke::sim::StatesAroundFrame sim_states = simulation_cache.get_states_around_frame(
+        current_frame);
+    if (sim_states.current) {
+      sim_states.current->state.ensure_bake_loaded(*nmd.node_group);
+      result.current_simulation_state = &sim_states.current->state;
+    }
+    if (sim_states.prev) {
+      sim_states.prev->state.ensure_bake_loaded(*nmd.node_group);
+      result.prev_simulation_state = &sim_states.prev->state;
+      if (sim_states.next) {
+        sim_states.next->state.ensure_bake_loaded(*nmd.node_group);
+        result.next_simulation_state = &sim_states.next->state;
+        result.simulation_state_mix_factor =
+            (float(current_frame) - float(sim_states.prev->frame)) /
+            (float(sim_states.next->frame) - float(sim_states.prev->frame));
+      }
+    }
+  }
+  else {
+    if (DEG_is_active(ctx.depsgraph)) {
+      bke::sim::ModifierSimulationCacheRealtime &realtime_cache = simulation_cache.realtime_cache;
+
+      if (current_frame < realtime_cache.prev_frame) {
+        /* Reset the cache when going backwards in time. */
+        simulation_cache.reset();
+      }
+      if (realtime_cache.current_frame == current_frame && realtime_cache.current_state) {
+        /* Don't simulate in the same frame again. */
+        result.current_simulation_state = realtime_cache.current_state.get();
+        return;
+      }
+
+      /* Advance in time, making the last "current" state the new "previous" state. */
+      realtime_cache.prev_frame = realtime_cache.current_frame;
+      realtime_cache.prev_state = std::move(realtime_cache.current_state);
+      if (realtime_cache.prev_state) {
+        result.prev_simulation_state_mutable = realtime_cache.prev_state.get();
+      }
+
+      /* Create a new current state used to pass the data to the next frame. */
+      realtime_cache.current_state = std::make_unique<bke::sim::ModifierSimulationState>();
+      realtime_cache.current_frame = current_frame;
+      result.current_simulation_state_for_write = realtime_cache.current_state.get();
+      result.current_simulation_state = result.current_simulation_state_for_write;
+
+      /* Calculate the delta time. */
+      if (realtime_cache.prev_state) {
+        const float max_delta_frames = 1.0f;
+        const float scene_delta_frames = float(current_frame) - float(realtime_cache.prev_frame);
+        const float delta_frames = std::min(max_delta_frames, scene_delta_frames);
+        const float delta_seconds = delta_frames / FPS;
+        result.simulation_time_delta = delta_seconds;
+      }
+      else {
+        result.simulation_time_delta = 0.0f;
+      }
+    }
+  }
+}
+
 class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
+  SimulationPrepareResult prepare_;
+
  public:
-  NodesModifierData *nmd_;
-  const ModifierEvalContext *ctx_;
+  NodesModifierSimulationParams(NodesModifierData &nmd, const ModifierEvalContext &ctx)
+  {
+    prepare_ = prepare_simulation_states_for_evaluation(nmd, ctx);
+  }
 
   nodes::SimulationEvalType get_eval_type(const nodes::NestedNodeID id) const override
   {
-    return {};
+    if (prepare_.current_simulation_state == nullptr) {
+      return nodes::SimulationEvalType::PassThrough;
+    }
+    if (prepare_.current_simulation_state_for_write != nullptr) {
+      if (prepare_.prev_simulation_state == nullptr) {
+        return nodes::SimulationEvalType::Initialize;
+      }
+      return nodes::SimulationEvalType::Solve;
+    }
+    return nodes::SimulationEvalType::Read;
   }
 
   nodes::SimulationInputInfo get_input_info(const nodes::NestedNodeID id) const override
