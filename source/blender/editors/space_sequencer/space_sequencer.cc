@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -1067,6 +1067,7 @@ void ED_spacetype_sequencer()
   art->snap_size = ED_region_generic_tools_region_snap_size;
   art->init = sequencer_tools_region_init;
   art->draw = sequencer_tools_region_draw;
+  art->listener = sequencer_main_region_listener;
   BLI_addhead(&st->regiontypes, art);
 
   /* Channels. */

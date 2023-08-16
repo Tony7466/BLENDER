@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -61,7 +61,7 @@
 #include "BLO_readfile.h"
 #include "BLO_writefile.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "RE_pipeline.h"
 

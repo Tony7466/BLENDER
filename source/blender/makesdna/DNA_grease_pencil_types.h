@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -505,6 +505,19 @@ typedef struct GreasePencil {
   void remove_drawings_with_no_users();
 
   /**
+   * Move a set of frames in a \a layer.
+   *
+   * \param frame_number_destinations describes all transformations that should be applied on the
+   * frame keys.
+   *
+   * If a transformation overlaps another frames, the frame will be overwritten, and the
+   * corresponding drawing may be removed, if it no longer has users.
+   *
+   */
+  void move_frames(blender::bke::greasepencil::Layer &layer,
+                   const blender::Map<int, int> &frame_number_destinations);
+
+  /**
    * Returns an editable drawing on \a layer at frame \a frame_number or `nullptr` if no such
    * drawing exists.
    */
@@ -512,9 +525,12 @@ typedef struct GreasePencil {
       const blender::bke::greasepencil::Layer *layer, int frame_number) const;
 
   void foreach_visible_drawing(
-      int frame, blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function);
+      const int frame, blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function);
+  void foreach_visible_drawing(
+      const int frame,
+      blender::FunctionRef<void(int, const blender::bke::greasepencil::Drawing &)> function) const;
   void foreach_editable_drawing(
-      int frame, blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function);
+      const int frame, blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function);
 
   std::optional<blender::Bounds<blender::float3>> bounds_min_max() const;
 
