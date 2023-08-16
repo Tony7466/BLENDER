@@ -1129,7 +1129,7 @@ static void ui_draw_colorband_handle(uint shdr_pos,
 
   immUniformColor3ub(0, 0, 0);
   ui_draw_colorband_handle_box(
-      shdr_pos, x - half_width, y1 - 1, x + half_width, y1 + height, false);
+      shdr_pos, x - half_width, y1 - 1, x + half_width, y1 + height + 1, true);
 
   /* draw all triangles blended */
   GPU_blend(GPU_BLEND_ALPHA);
