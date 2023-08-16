@@ -738,7 +738,7 @@ void draw_grease_pencil_cels_channel(AnimKeylistDrawList *draw_list,
       draw_list, ANIM_KEYLIST_GREASE_PENCIL_CELS, ypos, yscale_fac, eSAction_Flag(saction_flag));
   draw_elem->ads = ads;
   draw_elem->grease_pencil_layer = layer;
-  draw_elem->channel_locked = layer->wrap().as_node().is_locked();
+  draw_elem->channel_locked = layer->wrap().is_locked();
 }
 
 void draw_gpl_channel(AnimKeylistDrawList *draw_list,

@@ -1766,12 +1766,12 @@ static size_t animdata_filter_grease_pencil_layers_data(ListBase *anim_data,
     Layer *layer = layers[layer_index];
 
     /* Only if the layer is selected. */
-    if (!ANIMCHANNEL_SELOK(layer->as_node().is_selected())) {
+    if (!ANIMCHANNEL_SELOK(layer->is_selected())) {
       continue;
     }
 
     /* Only if the layer is editable. */
-    if ((filter_mode & ANIMFILTER_FOREDIT) && !layer->as_node().is_editable()) {
+    if ((filter_mode & ANIMFILTER_FOREDIT) && !layer->is_editable()) {
       continue;
     }
 
@@ -1782,7 +1782,7 @@ static size_t animdata_filter_grease_pencil_layers_data(ListBase *anim_data,
 
     /* Skip layer if the name doesn't match the filter string. */
     if (ads != nullptr && ads->searchstr[0] != '\0' &&
-        name_matches_dopesheet_filter(ads, layer->as_node().name().c_str()) == false)
+        name_matches_dopesheet_filter(ads, layer->name().c_str()) == false)
     {
       continue;
     }

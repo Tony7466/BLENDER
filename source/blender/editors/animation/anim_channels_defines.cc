@@ -3563,7 +3563,7 @@ static void acf_gpl_name(bAnimListElem *ale, char *name)
   GreasePencilLayer *layer = (GreasePencilLayer *)ale->data;
 
   if (layer && name) {
-    BLI_strncpy(name, layer->wrap().as_node().name().c_str(), ANIM_CHAN_NAME_SIZE);
+    BLI_strncpy(name, layer->wrap().name().c_str(), ANIM_CHAN_NAME_SIZE);
   }
 }
 
@@ -5294,8 +5294,7 @@ static void draw_grease_pencil_layer_widgets(bAnimListElem *ale,
 
   char *onion_skinning_rna_path = RNA_path_from_ID_to_property(&ptr, onion_skinning_prop);
   if (RNA_path_resolve_property(&id_ptr, onion_skinning_rna_path, &ptr, &onion_skinning_prop)) {
-    const int icon = layer->as_node().use_onion_skinning() ? ICON_ONIONSKIN_ON :
-                                                             ICON_ONIONSKIN_OFF;
+    const int icon = layer->use_onion_skinning() ? ICON_ONIONSKIN_ON : ICON_ONIONSKIN_OFF;
     uiDefAutoButR(block,
                   &ptr,
                   onion_skinning_prop,

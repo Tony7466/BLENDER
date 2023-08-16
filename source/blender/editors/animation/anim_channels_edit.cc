@@ -3670,7 +3670,7 @@ static int click_select_channel_grease_pencil_layer(bContext *C,
   }
 
   /* Active channel is not changed during range select. */
-  if (layer->as_node().is_selected() && (selectmode != SELECT_EXTEND_RANGE)) {
+  if (layer->is_selected() && (selectmode != SELECT_EXTEND_RANGE)) {
     grease_pencil->set_active_layer(layer);
   }
 

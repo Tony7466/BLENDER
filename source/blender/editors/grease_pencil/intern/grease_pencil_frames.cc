@@ -156,7 +156,7 @@ static int insert_blank_frame_exec(bContext *C, wmOperator *op)
   bool changed = false;
   if (all_layers) {
     for (Layer *layer : grease_pencil.layers_for_write()) {
-      if (!layer->as_node().is_editable()) {
+      if (!layer->is_editable()) {
         continue;
       }
       changed = grease_pencil.insert_blank_frame(

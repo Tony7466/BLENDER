@@ -122,6 +122,19 @@ class Drawing : public ::GreasePencilDrawing {
 class LayerGroup;
 class Layer;
 
+/* Defines the common functions used by #TreeNode, #Layer, and #LayerGroup.
+ * Note: Because we cannot mix C-style and C++ inheritence, we define and implement these methods
+ * on all these classes individually. This just means that we can call `layer->name()` directly
+ * instead of having to do `layer->as_node().name()`. */
+#define TREENODE_COMMON_METHODS \
+  StringRefNull name() const; \
+  void set_name(StringRefNull new_name); \
+  bool is_visible() const; \
+  bool is_locked() const; \
+  bool is_editable() const; \
+  bool is_selected() const; \
+  bool use_onion_skinning() const;
+
 /**
  * A TreeNode represents one node in the layer tree.
  * It can either be a layer or a group. The node has zero children if it is a layer or zero or
@@ -135,6 +148,8 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
   TreeNode(const TreeNode &other);
 
  public:
+  /* Define the common functions for #TreeNode. */
+  TREENODE_COMMON_METHODS;
   /**
    * \returns true if this node is a #LayerGroup.
    */
@@ -144,46 +159,23 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
    */
   bool is_layer() const;
 
-  bool is_visible() const;
-  bool is_locked() const;
-  bool is_editable() const;
-  bool is_selected() const;
-  bool use_onion_skinning() const;
-
   /**
-   * \returns the name of the node.
+   * \returns this node as a #Layer.
    */
-  StringRefNull name() const;
-  void set_name(StringRefNull new_name);
-
-  /**
-   * \returns this tree node as a LayerGroup.
-   * \note This results in undefined behavior if the node is not a LayerGroup.
-   */
-  const LayerGroup &as_group() const;
-
-  /**
-   * \returns this tree node as a Layer.
-   * \note This results in undefined behavior if the node is not a Layer.
-   */
+  Layer &as_layer();
   const Layer &as_layer() const;
 
   /**
-   * \returns this tree node as a mutable LayerGroup.
-   * \note This results in undefined behavior if the node is not a LayerGroup.
+   * \returns this node as a #LayerGroup.
    */
   LayerGroup &as_group();
-
-  /**
-   * \returns this tree node as a mutable Layer.
-   * \note This results in undefined behavior if the node is not a Layer.
-   */
-  Layer &as_layer();
+  const LayerGroup &as_group() const;
 
   /**
    * \returns the parent layer group or nullptr for the root group.
    */
   LayerGroup *parent_group() const;
+  TreeNode *parent_node() const;
 };
 
 /**
@@ -274,11 +266,19 @@ class Layer : public ::GreasePencilLayer {
   Layer(const Layer &other);
   ~Layer();
 
+ public:
+  /* Define the common functions for #TreeNode. */
+  TREENODE_COMMON_METHODS;
   /**
    * \returns the layer as a `TreeNode`.
    */
   const TreeNode &as_node() const;
   TreeNode &as_node();
+
+  /**
+   * \returns the parent #LayerGroup of this layer.
+   */
+  LayerGroup &parent_group() const;
 
   /**
    * \returns the frames mapping.
@@ -394,6 +394,7 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
   ~LayerGroup();
 
  public:
+  TREENODE_COMMON_METHODS
   /**
    * \returns the group as a `TreeNode`.
    */
@@ -554,6 +555,51 @@ inline TreeNode &Layer::as_node()
 {
   return *reinterpret_cast<TreeNode *>(this);
 }
+
+/* Note: Implements the methods defined by #TREENODE_COMMON_METHODS. See comment there for why we
+ * cannot use C++ inheritence. */
+#define TREENODE_COMMON_METHODS_IMPL(class_name) \
+  inline StringRefNull class_name::name() const \
+  { \
+    return this->as_node().name(); \
+  } \
+  inline void class_name::set_name(StringRefNull new_name) \
+  { \
+    return this->as_node().set_name(new_name); \
+  } \
+  inline bool class_name::is_visible() const \
+  { \
+    return this->as_node().is_visible(); \
+  } \
+  inline bool class_name::is_locked() const \
+  { \
+    return this->as_node().is_locked(); \
+  } \
+  inline bool class_name::is_editable() const \
+  { \
+    return this->as_node().is_editable(); \
+  } \
+  inline bool class_name::is_selected() const \
+  { \
+    return this->as_node().is_selected(); \
+  } \
+  inline bool class_name::use_onion_skinning() const \
+  { \
+    return this->as_node().use_onion_skinning(); \
+  }
+
+TREENODE_COMMON_METHODS_IMPL(Layer);
+
+inline bool Layer::is_empty() const
+{
+  return (this->frames().size() == 0);
+}
+inline LayerGroup &Layer::parent_group() const
+{
+  return *this->as_node().parent_group();
+}
+
+TREENODE_COMMON_METHODS_IMPL(LayerGroup);
 
 namespace convert {
 

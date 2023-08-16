@@ -1542,7 +1542,7 @@ static void outliner_draw_restrictbuts(uiBlock *block,
                                   -1,
                                   nullptr);
           UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
-          if (!node.parent_group()->as_node().is_visible()) {
+          if (node.parent_group() && node.parent_group()->is_visible()) {
             UI_but_flag_enable(bt, UI_BUT_INACTIVE);
           }
         }

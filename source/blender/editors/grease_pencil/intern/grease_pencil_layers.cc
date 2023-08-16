@@ -48,7 +48,7 @@ static int grease_pencil_layer_add_exec(bContext *C, wmOperator *op)
       op->ptr, "new_layer_name", nullptr, 0, &new_layer_name_length);
 
   if (grease_pencil.has_active_layer()) {
-    LayerGroup &active_group = *grease_pencil.get_active_layer()->as_node().parent_group();
+    LayerGroup &active_group = grease_pencil.get_active_layer()->parent_group();
     Layer &new_layer = grease_pencil.add_layer_after(
         active_group, &grease_pencil.get_active_layer_for_write()->as_node(), new_layer_name);
     grease_pencil.set_active_layer(&new_layer);
@@ -147,21 +147,19 @@ static int grease_pencil_layer_reorder_exec(bContext *C, wmOperator *op)
   }
 
   Layer *active_layer = grease_pencil.get_active_layer_for_write();
-  active_layer->as_node().parent_group()->unlink_node(&active_layer->as_node());
+  active_layer->parent_group().unlink_node(&active_layer->as_node());
 
   switch (reorder_location) {
     case LAYER_REORDER_ABOVE: {
       /* NOTE: The layers are stored from bottom to top, so inserting above (visually), means
        * inserting the link after the target. */
-      target_layer->as_node().parent_group()->add_layer_after(active_layer,
-                                                              &target_layer->as_node());
+      target_layer->parent_group().add_layer_after(active_layer, &target_layer->as_node());
       break;
     }
     case LAYER_REORDER_BELOW: {
       /* NOTE: The layers are stored from bottom to top, so inserting below (visually), means
        * inserting the link before the target. */
-      target_layer->as_node().parent_group()->add_layer_before(active_layer,
-                                                               &target_layer->as_node());
+      target_layer->parent_group().add_layer_before(active_layer, &target_layer->as_node());
       break;
     }
     default:
@@ -212,7 +210,7 @@ static int grease_pencil_layer_group_add_exec(bContext *C, wmOperator *op)
       op->ptr, "new_layer_group_name", nullptr, 0, &new_layer_group_name_length);
 
   if (grease_pencil.has_active_layer()) {
-    LayerGroup &active_group = *grease_pencil.get_active_layer()->as_node().parent_group();
+    LayerGroup &active_group = grease_pencil.get_active_layer()->parent_group();
     grease_pencil.add_layer_group_after(active_group,
                                         &grease_pencil.get_active_layer_for_write()->as_node(),
                                         new_layer_group_name);
