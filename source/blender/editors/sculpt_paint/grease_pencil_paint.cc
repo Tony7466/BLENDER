@@ -11,7 +11,7 @@
 #include "BKE_material.h"
 #include "BKE_scene.h"
 
-#include "BLI_math_base.hh"
+#include "BLI_math_geom.h"
 
 #include "DEG_depsgraph_query.h"
 
