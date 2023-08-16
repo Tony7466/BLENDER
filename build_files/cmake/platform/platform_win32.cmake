@@ -974,7 +974,10 @@ if(WITH_USD)
 endif()
 
 if(WITH_MATERIALX)
-  include("${LIBDIR}/MaterialX/lib/cmake/MaterialX/MaterialXTargets.cmake")
+  set(MATERIALX_ROOT_DIR ${LIBDIR}/MaterialX)
+  set(MATERIALX_INCLUDE_DIRS ${MATERIALX_ROOT_DIR}/include)
+  file(GLOB MATERIALX_LIBRARIES "${MATERIALX_ROOT_DIR}/lib/*.lib")
+  include("${MATERIALX_ROOT_DIR}/lib/cmake/MaterialX/MaterialXTargets.cmake")
 endif()
 
 if(WINDOWS_PYTHON_DEBUG)
