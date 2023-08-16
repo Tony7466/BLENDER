@@ -119,9 +119,9 @@ static bool grease_pencil_layer_update_trans_data(blender::bke::greasepencil::La
     trans_data.status = LayerTransformData::TRANS_RUNNING;
   }
 
-  const bool use_duplicate = duplicate && trans_data.duplicated_frames.contains(src_frame_number);
+  const bool use_duplicate = duplicate && trans_data.temp_frames_buffer.contains(src_frame_number);
   const blender::Map<int, GreasePencilFrame> &frame_map = use_duplicate ?
-                                                              (trans_data.duplicated_frames) :
+                                                              (trans_data.temp_frames_buffer) :
                                                               (trans_data.frames_copy);
 
   if (!frame_map.contains(src_frame_number)) {
@@ -170,12 +170,12 @@ static bool grease_pencil_layer_apply_trans_data(GreasePencil &grease_pencil,
     /* Moves all the selected frames according to the transformation, and inserts the potential
      * duplicate frames in the layer. */
     grease_pencil.move_duplicate_frames(
-        layer, trans_data.frames_destination, trans_data.duplicated_frames);
+        layer, trans_data.frames_destination, trans_data.temp_frames_buffer);
   }
 
   if (canceled && duplicate) {
     /* Duplicates were done, so we need to delete the corresponding duplicate drawings. */
-    for (const GreasePencilFrame &duplicate_frame : trans_data.duplicated_frames.values()) {
+    for (const GreasePencilFrame &duplicate_frame : trans_data.temp_frames_buffer.values()) {
       GreasePencilDrawingBase *drawing_base = grease_pencil.drawings(
           duplicate_frame.drawing_index);
       if (drawing_base->type == GP_DRAWING) {
@@ -188,7 +188,7 @@ static bool grease_pencil_layer_apply_trans_data(GreasePencil &grease_pencil,
   /* Clear the frames copy. */
   trans_data.frames_copy.clear();
   trans_data.frames_destination.clear();
-  trans_data.duplicated_frames.clear();
+  trans_data.temp_frames_buffer.clear();
   trans_data.status = LayerTransformData::TRANS_CLEAR;
 
   return true;
@@ -280,7 +280,7 @@ static int count_grease_pencil_frames(const blender::bke::greasepencil::Layer *l
 
   if (duplicate) {
     /* Also count frames that were duplicated. */
-    count_selected += layer->runtime->trans_data_.duplicated_frames.size();
+    count_selected += layer->runtime->trans_data_.temp_frames_buffer.size();
   }
 
   if (is_prop_edit && count_selected > 0) {
@@ -501,7 +501,7 @@ static int GreasePencilLayerToTransData(TransData *td,
 
   if (duplicate) {
     /* Also insert frames that were duplicated. */
-    for (const auto [frame_number, frame] : layer->runtime->trans_data_.duplicated_frames.items())
+    for (const auto [frame_number, frame] : layer->runtime->trans_data_.temp_frames_buffer.items())
     {
       grease_pencil_frame_to_trans_data(frame_number, frame.is_selected());
     }
@@ -800,7 +800,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
         if (duplicate) {
           /* Also count for duplicated frames. */
           for (const auto [frame_number, frame] :
-               layer->runtime->trans_data_.duplicated_frames.items()) {
+               layer->runtime->trans_data_.temp_frames_buffer.items()) {
             grease_pencil_closest_selected_frame(frame_number, frame.is_selected());
           }
         }
