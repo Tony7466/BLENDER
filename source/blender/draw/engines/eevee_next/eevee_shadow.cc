@@ -896,7 +896,6 @@ void ShadowModule::end_sync()
     pages_infos_data_.page_cached_next = 0u;
     pages_infos_data_.page_cached_start = 0u;
     pages_infos_data_.page_cached_end = 0u;
-    pages_infos_data_.page_size = shadow_page_size_;
     pages_infos_data_.push_update();
   }
 

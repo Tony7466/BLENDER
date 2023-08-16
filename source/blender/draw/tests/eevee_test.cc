@@ -655,7 +655,6 @@ class TestAlloc {
     pages_infos_data.page_cached_next = 0u;
     pages_infos_data.page_cached_start = 0u;
     pages_infos_data.page_cached_end = 0u;
-    pages_infos_data.page_size = 256u;
     pages_infos_data.push_update();
 
     statistics_buf.view_needed_count = 0;
@@ -817,7 +816,6 @@ static void test_eevee_shadow_finalize()
     pages_infos_data.page_cached_next = 0u;
     pages_infos_data.page_cached_start = 0u;
     pages_infos_data.page_cached_end = 0u;
-    pages_infos_data.page_size = 256u;
     pages_infos_data.push_update();
   }
 

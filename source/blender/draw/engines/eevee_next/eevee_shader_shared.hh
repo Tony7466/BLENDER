@@ -852,11 +852,10 @@ struct ShadowPagesInfoData {
   uint page_cached_start;
   /** Index of the last page in the buffer since the last defrag. */
   uint page_cached_end;
-  /** Physical page size in pixel. Pages are all squares. */
-  int page_size;
 
   int _pad0;
   int _pad1;
+  int _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowPagesInfoData, 16)
 
