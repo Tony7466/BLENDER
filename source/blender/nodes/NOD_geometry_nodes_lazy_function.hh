@@ -65,22 +65,25 @@ enum class SimulationEvalType {
 };
 
 struct SimulationInputInfo {
-  SimulationEvalType eval_type;
-
-  struct SolveCopy {
+  struct PassThrough {
+  };
+  struct OutputCopy {
     float delta_time;
     Map<int, const bke::BakeItem *> prev_items;
   };
-  struct SolveMove {
+  struct OutputMove {
     float delta_time;
     Map<int, std::unique_ptr<bke::BakeItem>> prev_items;
   };
-  std::variant<std::monostate, SolveCopy, SolveMove> info;
+  std::variant<PassThrough, OutputCopy, OutputMove> info;
 };
 
 struct SimulationOutputInfo {
-  SimulationEvalType eval_type;
-
+  struct PassThrough {
+  };
+  struct StoreAndPassThrough {
+    std::function<void(Map<int, std::unique_ptr<bke::BakeItem>>)> store_fn;
+  };
   struct ReadSingle {
     Map<int, const bke::BakeItem *> items;
   };
@@ -89,7 +92,7 @@ struct SimulationOutputInfo {
     Map<int, const bke::BakeItem *> prev_items;
     Map<int, const bke::BakeItem *> next_items;
   };
-  std::variant<std::monostate, ReadSingle, ReadInterpolated> info;
+  std::variant<PassThrough, StoreAndPassThrough, ReadSingle, ReadInterpolated> info;
 };
 
 class GeoNodesSimulationParams {
@@ -97,8 +100,6 @@ class GeoNodesSimulationParams {
   virtual SimulationEvalType get_eval_type(NestedNodeID id) const = 0;
   virtual SimulationInputInfo get_input_info(NestedNodeID id) const = 0;
   virtual SimulationOutputInfo get_output_info(NestedNodeID id) const = 0;
-  virtual void store_simulation_state(NestedNodeID id,
-                                      Map<int, std::unique_ptr<bke::BakeItem>> items) const = 0;
 };
 
 enum class BakeEvalType {

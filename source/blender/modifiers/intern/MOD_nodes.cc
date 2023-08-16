@@ -854,11 +854,6 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
   {
     return {};
   }
-
-  void store_simulation_state(const nodes::NestedNodeID /*id*/,
-                              Map<int, std::unique_ptr<bke::BakeItem>> items) const override
-  {
-  }
 };
 
 static void modifyGeometry(ModifierData *md,

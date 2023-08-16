@@ -588,11 +588,15 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
                                       info->next_items,
                                       info->mix_factor);
     }
-    else if (storage.info->eval_type == SimulationEvalType::PassThrough) {
+    else if (std::get_if<SimulationOutputInfo::PassThrough>(&storage.info->info)) {
       this->pass_through(params, user_data);
     }
+    else if (auto *info = std::get_if<SimulationOutputInfo::StoreAndPassThrough>(
+                 &storage.info->info)) {
+      this->store_and_pass_through(params, user_data, *info);
+    }
     else {
-      this->store_and_pass_through(params, user_data, storage.id->id);
+      BLI_assert_unreachable();
     }
   }
 
@@ -681,7 +685,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
 
   void store_and_pass_through(lf::Params &params,
                               GeoNodesLFUserData &user_data,
-                              const NestedNodeID id) const
+                              const SimulationOutputInfo::StoreAndPassThrough &info) const
   {
     std::optional<Map<int, std::unique_ptr<bke::BakeItem>>> bake_items =
         this->get_bake_items_from_inputs(params);
@@ -694,7 +698,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
       bake_item_pointers.add_new(item.key, item.value.get());
     }
     this->output_cached_state(params, user_data, bake_item_pointers);
-    user_data.modifier_data->simulation_params->store_simulation_state(id, std::move(*bake_items));
+    info.store_fn(std::move(*bake_items));
   }
 
   std::optional<Map<int, std::unique_ptr<bke::BakeItem>>> get_bake_items_from_inputs(

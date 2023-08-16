@@ -103,17 +103,20 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
       }
     }
     float delta_time = 0.0f;
-    if (auto *info = std::get_if<SimulationInputInfo::SolveCopy>(&storage.info->info)) {
+    if (auto *info = std::get_if<SimulationInputInfo::OutputCopy>(&storage.info->info)) {
       delta_time = info->delta_time;
       this->output_simulation_state_copy(params, user_data, info->prev_items);
     }
-    else if (auto *info = std::get_if<SimulationInputInfo::SolveMove>(&storage.info->info)) {
+    else if (auto *info = std::get_if<SimulationInputInfo::OutputMove>(&storage.info->info)) {
       delta_time = info->delta_time;
       this->output_simulation_state_move(params, user_data, std::move(info->prev_items));
     }
-    else {
+    else if (std::get_if<SimulationInputInfo::PassThrough>(&storage.info->info)) {
       delta_time = 0.0f;
       this->pass_through(params, user_data);
+    }
+    else {
+      BLI_assert_unreachable();
     }
     if (!params.output_was_set(0)) {
       params.set_output(0, delta_time);
