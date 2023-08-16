@@ -364,9 +364,6 @@ colorspaces:
         - !<FileTransform> {src: Guard_Rail_Shaper_EOTF.spi1d, interpolation: linear}
         - !<ColorSpaceTransform> {src: Linear Rec.2020, dst: Rec.2020}
         - !<RangeTransform> {max_in_value: 1, max_out_value: 1}
-    to_scene_reference: !<GroupTransform>
-      children:
-        - !<ColorSpaceTransform> {src: Rec.2020, dst: Linear CIE-XYZ E}
 
   - !<ColorSpace>
     name: Guard Rail sRGB
@@ -384,9 +381,6 @@ colorspaces:
         - !<FileTransform> {src: Guard_Rail_Shaper_EOTF.spi1d, interpolation: linear}
         - !<ColorSpaceTransform> {src: Linear Rec.709, dst: sRGB}
         - !<RangeTransform> {max_in_value: 1, max_out_value: 1}
-    to_scene_reference: !<GroupTransform>
-      children:
-        - !<ColorSpaceTransform> {src: sRGB, dst: Linear CIE-XYZ E}
 
   - !<ColorSpace>
     name: Guard Rail Rec.1886
@@ -401,9 +395,6 @@ colorspaces:
       children:
         - !<ColorSpaceTransform> {src: Linear CIE-XYZ E, dst: Guard Rail sRGB}
         - !<ColorSpaceTransform> {src: sRGB, dst: Rec.1886}
-    to_scene_reference: !<GroupTransform>
-      children:
-        - !<ColorSpaceTransform> {src: Rec.1886, dst: Linear CIE-XYZ E}
 
   - !<ColorSpace>
     name: Guard Rail P3
@@ -421,9 +412,6 @@ colorspaces:
         - !<FileTransform> {src: Guard_Rail_Shaper_EOTF.spi1d, interpolation: linear}
         - !<ColorSpaceTransform> {src: Linear DCI-P3 D65, dst: Display P3}
         - !<RangeTransform> {max_in_value: 1, max_out_value: 1}
-    to_scene_reference: !<GroupTransform>
-      children:
-        - !<ColorSpaceTransform> {src: Display P3, dst: Linear CIE-XYZ E}
 
   - !<ColorSpace>
     name: AgX Log
