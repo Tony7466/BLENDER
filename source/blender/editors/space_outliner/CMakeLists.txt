@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -56,11 +56,13 @@ set(SRC
   tree/tree_element_edit_bone.cc
   tree/tree_element_gpencil_effect.cc
   tree/tree_element_gpencil_layer.cc
+  tree/tree_element_grease_pencil_node.cc
   tree/tree_element_id.cc
   tree/tree_element_id_armature.cc
   tree/tree_element_id_collection.cc
   tree/tree_element_id_curve.cc
   tree/tree_element_id_gpencil_legacy.cc
+  tree/tree_element_id_grease_pencil.cc
   tree/tree_element_id_library.cc
   tree/tree_element_id_linestyle.cc
   tree/tree_element_id_mesh.cc
@@ -69,6 +71,7 @@ set(SRC
   tree/tree_element_id_scene.cc
   tree/tree_element_id_texture.cc
   tree/tree_element_label.cc
+  tree/tree_element_linked_object.cc
   tree/tree_element_nla.cc
   tree/tree_element_overrides.cc
   tree/tree_element_particle_system.cc
@@ -92,12 +95,14 @@ set(SRC
   tree/tree_element_driver.hh
   tree/tree_element_edit_bone.hh
   tree/tree_element_gpencil_layer.hh
+  tree/tree_element_grease_pencil_node.hh
   tree/tree_element_id.hh
   tree/tree_element_id_armature.hh
   tree/tree_element_id_collection.hh
   tree/tree_element_id_curve.hh
   tree/tree_element_gpencil_effect.hh
   tree/tree_element_id_gpencil_legacy.hh
+  tree/tree_element_id_grease_pencil.hh
   tree/tree_element_id_library.hh
   tree/tree_element_id_linestyle.hh
   tree/tree_element_id_mesh.hh
@@ -106,6 +111,7 @@ set(SRC
   tree/tree_element_id_scene.hh
   tree/tree_element_id_texture.hh
   tree/tree_element_label.hh
+  tree/tree_element_linked_object.hh
   tree/tree_element_nla.hh
   tree/tree_element_overrides.hh
   tree/tree_element_particle_system.hh

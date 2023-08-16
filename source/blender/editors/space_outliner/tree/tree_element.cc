@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -26,8 +26,10 @@
 #include "tree_element_edit_bone.hh"
 #include "tree_element_gpencil_effect.hh"
 #include "tree_element_gpencil_layer.hh"
+#include "tree_element_grease_pencil_node.hh"
 #include "tree_element_id.hh"
 #include "tree_element_label.hh"
+#include "tree_element_linked_object.hh"
 #include "tree_element_nla.hh"
 #include "tree_element_overrides.hh"
 #include "tree_element_particle_system.hh"
@@ -81,6 +83,9 @@ std::unique_ptr<AbstractTreeElement> AbstractTreeElement::createFromType(const i
       return std::make_unique<TreeElementNLAAction>(legacy_te, *static_cast<bAction *>(idv));
     case TSE_GP_LAYER:
       return std::make_unique<TreeElementGPencilLayer>(legacy_te, *static_cast<bGPDlayer *>(idv));
+    case TSE_GREASE_PENCIL_NODE:
+      return std::make_unique<TreeElementGreasePencilNode>(
+          legacy_te, *static_cast<bke::greasepencil::TreeNode *>(idv));
     case TSE_R_LAYER_BASE:
       return std::make_unique<TreeElementViewLayerBase>(legacy_te, *static_cast<Scene *>(idv));
     case TSE_R_LAYER: {
@@ -163,6 +168,8 @@ std::unique_ptr<AbstractTreeElement> AbstractTreeElement::createFromType(const i
       return std::make_unique<TreeElementPoseGroup>(
           legacy_te, *posegrp_data->object, *posegrp_data->agrp);
     }
+    case TSE_LINKED_OB:
+      return std::make_unique<TreeElementLinkedObject>(legacy_te, *static_cast<ID *>(idv));
     default:
       break;
   }
