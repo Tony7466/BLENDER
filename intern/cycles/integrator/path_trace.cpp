@@ -693,7 +693,8 @@ void PathTrace::rebalance(const RenderWork &render_work)
 
   const int num_works = path_trace_works_.size();
 
-  if (num_works == 1) {
+  /* Don't rebalance if only 1 device or after 3 iterations */
+  if (num_works == 1 || work_balance_infos_[0].count == 3) {
     VLOG_WORK << "Ignoring rebalance work due to single device render.";
     return;
   }
