@@ -866,7 +866,7 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
            * function. */
 
           std::string new_name(node.name);
-          BLI_strncpy(node.name, oldname, sizeof(oldname));
+          node.name = BLI_strdup(oldname);
 
           if (node.is_group()) {
             grease_pencil.rename_group(node.as_group_for_write(), new_name);
