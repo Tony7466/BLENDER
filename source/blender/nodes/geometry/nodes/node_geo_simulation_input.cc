@@ -55,63 +55,81 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
     }
   }
 
+  struct Storage {
+    std::optional<FoundNestedNodeID> id;
+    std::optional<SimulationInputInfo> info;
+  };
+
+  void *init_storage(LinearAllocator<> &allocator) const override
+  {
+    return allocator.construct<Storage>().release();
+  }
+
+  void destruct_storage(void *storage) const override
+  {
+    std::destroy_at(static_cast<Storage *>(storage));
+  }
+
   void execute_impl(lf::Params &params, const lf::Context &context) const final
   {
     const GeoNodesLFUserData &user_data = *static_cast<const GeoNodesLFUserData *>(
         context.user_data);
+    Storage &storage = *static_cast<Storage *>(context.storage);
     if (!user_data.modifier_data) {
       params.set_default_remaining_outputs();
       return;
     }
     const GeoNodesModifierData &modifier_data = *user_data.modifier_data;
-
-    if (!params.output_was_set(0)) {
-      const float delta_time = modifier_data.simulation_time_delta;
-      params.set_output(0, fn::ValueOrField<float>(delta_time));
-    }
-
-    if (modifier_data.current_simulation_state == nullptr) {
-      this->pass_through(params, user_data);
-      return;
-    }
-
-    const std::optional<bke::sim::SimulationZoneID> zone_id = get_simulation_zone_id(
-        user_data, output_node_id_);
-    if (!zone_id) {
+    if (!modifier_data.simulation_params) {
       params.set_default_remaining_outputs();
       return;
     }
-
-    /* When caching is turned off and the old state doesn't need to persist, moving data
-     * from the last state instead of copying it can avoid copies of geometry data arrays. */
-    if (auto *state = modifier_data.prev_simulation_state_mutable) {
-      if (bke::sim::SimulationZoneState *zone = state->get_zone_state(*zone_id)) {
-        this->output_simulation_state_move(params, user_data, *zone);
+    if (!storage.id.has_value()) {
+      storage.id = find_nested_node_id(user_data, output_node_id_);
+      if (!storage.id.has_value()) {
+        params.set_default_remaining_outputs();
         return;
       }
     }
-
-    /* If there is a read-only state from the last frame, output that directly. */
-    if (const auto *state = modifier_data.prev_simulation_state) {
-      if (const bke::sim::SimulationZoneState *zone = state->get_zone_state(*zone_id)) {
-        this->output_simulation_state_copy(params, user_data, *zone);
+    if (storage.id->is_in_loop) {
+      params.set_default_remaining_outputs();
+      return;
+    }
+    if (!storage.info.has_value()) {
+      storage.info = modifier_data.simulation_params->get_input_info(storage.id->id);
+      if (!storage.info.has_value()) {
+        params.set_default_remaining_outputs();
         return;
       }
     }
-
-    this->pass_through(params, user_data);
+    float delta_time = 0.0f;
+    if (auto *info = std::get_if<SimulationInputInfo::SolveCopy>(&storage.info->info)) {
+      delta_time = info->delta_time;
+      this->output_simulation_state_copy(params, user_data, info->prev_items);
+    }
+    else if (auto *info = std::get_if<SimulationInputInfo::SolveMove>(&storage.info->info)) {
+      delta_time = info->delta_time;
+      this->output_simulation_state_move(params, user_data, std::move(info->prev_items));
+    }
+    else {
+      delta_time = 0.0f;
+      this->pass_through(params, user_data);
+    }
+    if (!params.output_was_set(0)) {
+      params.set_output(0, delta_time);
+    }
   }
 
   void output_simulation_state_copy(lf::Params &params,
                                     const GeoNodesLFUserData &user_data,
-                                    const bke::sim::SimulationZoneState &state) const
+                                    const Map<int, const bke::BakeItem *> &zone_state) const
   {
     Array<void *> outputs(simulation_items_.size());
     for (const int i : simulation_items_.index_range()) {
       outputs[i] = params.get_output_data_ptr(i + 1);
     }
     copy_simulation_state_to_values(simulation_items_,
-                                    state,
+                                    std::move(zone_state),
                                     *user_data.modifier_data->self_object,
                                     *user_data.compute_context,
                                     node_,
@@ -123,14 +141,14 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
 
   void output_simulation_state_move(lf::Params &params,
                                     const GeoNodesLFUserData &user_data,
-                                    bke::sim::SimulationZoneState &state) const
+                                    Map<int, std::unique_ptr<bke::BakeItem>> zone_state) const
   {
     Array<void *> outputs(simulation_items_.size());
     for (const int i : simulation_items_.index_range()) {
       outputs[i] = params.get_output_data_ptr(i + 1);
     }
     move_simulation_state_to_values(simulation_items_,
-                                    state,
+                                    std::move(zone_state),
                                     *user_data.modifier_data->self_object,
                                     *user_data.compute_context,
                                     node_,
@@ -153,9 +171,9 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
     /* Instead of outputting the initial values directly, convert them to a simulation state and
      * then back. This ensures that some geometry processing happens on the data consistently (e.g.
      * removing anonymous attributes). */
-    bke::sim::SimulationZoneState state;
-    move_values_to_simulation_state(simulation_items_, input_values, state);
-    this->output_simulation_state_move(params, user_data, state);
+    Map<int, std::unique_ptr<bke::BakeItem>> bake_items = move_values_to_simulation_state(
+        simulation_items_, input_values);
+    this->output_simulation_state_move(params, user_data, std::move(bake_items));
   }
 };
 

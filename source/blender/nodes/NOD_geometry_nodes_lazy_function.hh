@@ -59,32 +59,23 @@ enum class SimulationEvalType {
    */
   Solve,
   /**
-   * Same as #Solve, but can modify the previous simulation state. Sometimes that can improve
-   * performance when the old simulation state is not needed anymore.
+   * Read cached data. Note that the solve step could still run if there is e.g. a viewer node.
    */
-  SolveRealtime,
-  /**
-   * Read data from a single cached frame.
-   */
-  ReadSingle,
-  /**
-   * Try to interpolate between the previous and next simulation state for the output.
-   */
-  ReadInterpolated,
+  Read,
 };
 
 struct SimulationInputInfo {
   SimulationEvalType eval_type;
 
-  struct Solve {
+  struct SolveCopy {
     float delta_time;
     Map<int, const bke::BakeItem *> prev_items;
   };
-  struct SolveRealtime {
+  struct SolveMove {
     float delta_time;
     Map<int, std::unique_ptr<bke::BakeItem>> prev_items;
   };
-  std::variant<std::monostate, Solve, SolveRealtime> info;
+  std::variant<std::monostate, SolveCopy, SolveMove> info;
 };
 
 struct SimulationOutputInfo {
@@ -103,6 +94,7 @@ struct SimulationOutputInfo {
 
 class GeoNodesSimulationParams {
  public:
+  virtual SimulationEvalType get_eval_type(NestedNodeID id) const = 0;
   virtual SimulationInputInfo get_input_info(NestedNodeID id) const = 0;
   virtual SimulationOutputInfo get_output_info(NestedNodeID id) const = 0;
   virtual void store_simulation_state(NestedNodeID id,
@@ -134,7 +126,7 @@ class GeoNodesBakeParams {
  public:
   virtual BakeInfo get_info(NestedNodeID id) const = 0;
   virtual void store_bake_state(NestedNodeID id,
-                                Map<int, std::unique_ptr<BakeItem>> items) const = 0;
+                                Map<int, std::unique_ptr<bke::BakeItem>> items) const = 0;
 };
 
 /**
@@ -349,8 +341,14 @@ std::unique_ptr<LazyFunction> get_simulation_input_lazy_function(
     GeometryNodesLazyFunctionGraphInfo &own_lf_graph_info);
 std::unique_ptr<LazyFunction> get_switch_node_lazy_function(const bNode &node);
 
-std::optional<bke::sim::SimulationZoneID> get_simulation_zone_id(
-    const GeoNodesLFUserData &user_data, const int output_node_id);
+struct FoundNestedNodeID {
+  NestedNodeID id;
+  bool is_in_simulation = false;
+  bool is_in_loop = false;
+};
+
+std::optional<FoundNestedNodeID> find_nested_node_id(const GeoNodesLFUserData &user_data,
+                                                     const int node_id);
 
 /**
  * An anonymous attribute created by a node.
