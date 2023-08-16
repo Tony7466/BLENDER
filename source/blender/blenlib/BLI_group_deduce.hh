@@ -11,17 +11,17 @@
  * \ingroup bli
  *
  * Implementations of an algorithm to deduce all the groups.
- * Group is a set of the same values.
- * Deduced group is a set of indices to all the values in taked span.
+ * Group is a set of the same values. The values can be randomly distributed in taked span.
+ * Deduced group is a set of an indices to all the values in taked span.
  *
- * This file contains base implementation of algorithm and helpful tools to deal with groups.
- * Index or IDs of groups both is a ways to define a group value key.
- * Index is the main one, but IDs can be used too by utils.
+ * This file contains base implementation of algorithm and helpful tools to deal with the groups.
+ * Index or an identifier of groups both is a ways to define the group value key.
+ * Index is the main one, but identifier can be used too by utils.
  *
  * All the implementations are multithreaded. Result can be not stable to avoid redundant actions.
  *
  * The main statistical property of groups is fragmentation. This is a simplified version of the
- * average group size.
+ * average group size grade for algorithm.
  */
 
 namespace blender::grouped_indices {
@@ -34,7 +34,7 @@ class IndexMask;
 bool is_fragmented(const Span<int> group_indices, int total_groups);
 
 /**
- * Turn an span of random values to the span of an group value indices.
+ * Turn the span of random values to the span of the group value indices.
  * \return Total of the groups.
  */
 int identifiers_to_indices(MutableSpan<int> r_identifiers_to_indices, bool stable = true);
