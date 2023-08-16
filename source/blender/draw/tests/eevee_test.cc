@@ -736,7 +736,8 @@ static void test_eevee_shadow_finalize()
   ShadowPageCacheBuf pages_cached_data = {"PagesCachedBuf"};
   ShadowPagesInfoDataBuf pages_infos_data = {"PagesInfosBuf"};
   ShadowStatisticsBuf statistics_buf = {"statistics_buf"};
-  ShadowTileMapClipBuf tilemaps_clip = {"tilemaps_clip"};
+  StorageArrayBuffer<ShadowTileMapClip, SHADOW_MAX_TILEMAP, false> tilemaps_clip = {
+      "tilemaps_clip"};
 
   const uint lod0_len = SHADOW_TILEMAP_LOD0_LEN;
   const uint lod1_len = SHADOW_TILEMAP_LOD1_LEN;
@@ -752,7 +753,7 @@ static void test_eevee_shadow_finalize()
   const uint lod5_ofs = lod4_ofs + lod4_len;
 
   for (auto i : IndexRange(SHADOW_TILEDATA_PER_TILEMAP)) {
-    tiles_data[i] = 0;
+    tiles_data[i] = SHADOW_NO_DATA;
   }
 
   {
@@ -786,7 +787,7 @@ static void test_eevee_shadow_finalize()
 
     tile.page = uint3(3, 1, 0);
     tile.do_update = true;
-    tiles_data[lod0_ofs + 8] = shadow_tile_pack(tile);
+    tiles_data[lod0_ofs + 31] = shadow_tile_pack(tile);
 
     tile.page = uint3(0, 2, 0);
     tile.do_update = true;
@@ -794,17 +795,26 @@ static void test_eevee_shadow_finalize()
 
     tile.page = uint3(1, 2, 0);
     tile.do_update = true;
-    tiles_data[lod0_ofs + 32 * 15 + 15] = shadow_tile_pack(tile);
+    tiles_data[lod0_ofs + 32 * 16 - 8] = shadow_tile_pack(tile);
 
     tiles_data.push_update();
   }
   {
     ShadowTileMapData tilemap = {};
+    tilemap.viewmat = float4x4::identity();
     tilemap.tiles_index = 0;
+    tilemap.clip_data_index = 0;
     tilemap.projection_type = SHADOW_PROJECTION_CUBEFACE;
     tilemaps_data.append(tilemap);
 
     tilemaps_data.push_update();
+  }
+  {
+    ShadowTileMapClip clip = {};
+    clip.clip_far_stored = 10.0f;
+    clip.clip_near_stored = 1.0f;
+    tilemaps_clip[0] = clip;
+    tilemaps_clip.push_update();
   }
   {
     statistics_buf.view_needed_count = 0;
@@ -826,7 +836,7 @@ static void test_eevee_shadow_finalize()
                            GPU_TEXTURE_USAGE_SHADER_WRITE);
   tilemap_tx.clear(uint4(0));
 
-  View shadow_multi_view = {"ShadowMultiView", 64, true};
+  StorageArrayBuffer<ViewMatrices, DRW_VIEW_MAX> shadow_multi_view_buf = {"ShadowMultiView"};
   StorageBuffer<DispatchCommand> clear_dispatch_buf;
   StorageArrayBuffer<uint, SHADOW_MAX_PAGE> clear_list_buf = {"clear_list_buf"};
   StorageArrayBuffer<uint, SHADOW_RENDER_MAP_SIZE> render_map_buf = {"render_map_buf"};
@@ -841,7 +851,7 @@ static void test_eevee_shadow_finalize()
   pass.bind_ssbo("tilemaps_buf", tilemaps_data);
   pass.bind_ssbo("tilemaps_clip_buf", tilemaps_clip);
   pass.bind_ssbo("tiles_buf", tiles_data);
-  pass.bind_ssbo("view_infos_buf", shadow_multi_view.matrices_ubo_get());
+  pass.bind_ssbo("view_infos_buf", shadow_multi_view_buf);
   pass.bind_ssbo("statistics_buf", statistics_buf);
   pass.bind_ssbo("clear_dispatch_buf", clear_dispatch_buf);
   pass.bind_ssbo("clear_list_buf", clear_list_buf);
@@ -854,6 +864,27 @@ static void test_eevee_shadow_finalize()
 
   Manager manager;
   manager.submit(pass);
+
+  {
+    /* Check output views. */
+    shadow_multi_view_buf.read();
+
+    for (auto i : IndexRange(5)) {
+      EXPECT_EQ(shadow_multi_view_buf[i].viewmat, float4x4::identity());
+      EXPECT_EQ(shadow_multi_view_buf[i].viewinv, float4x4::identity());
+    }
+
+    EXPECT_EQ(shadow_multi_view_buf[0].winmat,
+              math::projection::perspective(-1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 10.0f));
+    EXPECT_EQ(shadow_multi_view_buf[1].winmat,
+              math::projection::perspective(-1.0f, 0.0f, -1.0f, 0.0f, 1.0f, 10.0f));
+    EXPECT_EQ(shadow_multi_view_buf[2].winmat,
+              math::projection::perspective(-1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 10.0f));
+    EXPECT_EQ(shadow_multi_view_buf[3].winmat,
+              math::projection::perspective(-1.0f, -0.75f, -1.0f, -0.75f, 1.0f, 10.0f));
+    EXPECT_EQ(shadow_multi_view_buf[4].winmat,
+              math::projection::perspective(0.5f, 1.5f, -1.0f, 0.0f, 1.0f, 10.0f));
+  }
 
   {
     uint *pixels = tilemap_tx.read<uint32_t>(GPU_DATA_UINT);
@@ -870,7 +901,7 @@ static void test_eevee_shadow_finalize()
 
     /** The layout of these expected strings is Y down. */
     StringRefNull expected_pages =
-        "12334444755555556666666666666666"
+        "12334444555555556666666666666667"
         "22334444555555556666666666666666"
         "33334444555555556666666666666666"
         "33334444555555556666666666666666"
@@ -885,7 +916,7 @@ static void test_eevee_shadow_finalize()
         "55555555555555556666666666666666"
         "55555555555555556666666666666666"
         "55555555555555556666666666666666"
-        "55555555555555596666666666666666"
+        "55555555555555556666666696666666"
         "88888888666666666666666666666666"
         "88888888666666666666666666666666"
         "88888888666666666666666666666666"
@@ -1053,7 +1084,7 @@ static void test_eevee_shadow_finalize()
         "--------------------------------";
 
     StringRefNull expected_view4 =
-        "7xxxxxxxxxxxxxxx----------------"
+        "xxxxxxx7xxxxxxxx----------------"
         "xxxxxxxxxxxxxxxx----------------"
         "xxxxxxxxxxxxxxxx----------------"
         "xxxxxxxxxxxxxxxx----------------"
@@ -1068,7 +1099,7 @@ static void test_eevee_shadow_finalize()
         "xxxxxxxxxxxxxxxx----------------"
         "xxxxxxxxxxxxxxxx----------------"
         "xxxxxxxxxxxxxxxx----------------"
-        "xxxxxxx9xxxxxxxx----------------"
+        "9xxxxxxxxxxxxxxx----------------"
         "--------------------------------"
         "--------------------------------"
         "--------------------------------"
