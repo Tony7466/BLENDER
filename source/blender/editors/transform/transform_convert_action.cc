@@ -119,8 +119,9 @@ static bool grease_pencil_layer_update_trans_data(blender::bke::greasepencil::La
     trans_data.status = LayerTransformData::TRANS_RUNNING;
   }
 
-  const bool use_duplicate = duplicate && trans_data.temp_frames_buffer.contains(src_frame_number);
-  const blender::Map<int, GreasePencilFrame> &frame_map = use_duplicate ?
+  const bool use_duplicated = duplicate &&
+                              trans_data.temp_frames_buffer.contains(src_frame_number);
+  const blender::Map<int, GreasePencilFrame> &frame_map = use_duplicated ?
                                                               (trans_data.temp_frames_buffer) :
                                                               (trans_data.frames_copy);
 
@@ -134,7 +135,7 @@ static bool grease_pencil_layer_update_trans_data(blender::bke::greasepencil::La
   const GreasePencilFrame src_frame = frame_map.lookup(src_frame_number);
   const int src_duration = trans_data.frames_duration.lookup_default(src_frame_number, 0);
 
-  if (!use_duplicate) {
+  if (!use_duplicated) {
     layer.remove_frame(src_frame_number);
   }
 
@@ -258,7 +259,7 @@ static int count_grease_pencil_frames(const blender::bke::greasepencil::Layer *l
                                       const char side,
                                       const float cfra,
                                       const bool is_prop_edit,
-                                      const bool duplicate)
+                                      const bool use_duplicated)
 {
   if (layer == nullptr) {
     return 0;
@@ -278,7 +279,7 @@ static int count_grease_pencil_frames(const blender::bke::greasepencil::Layer *l
     count_all++;
   }
 
-  if (duplicate) {
+  if (use_duplicated) {
     /* Also count frames that were duplicated. */
     count_selected += layer->runtime->trans_data_.temp_frames_buffer.size();
   }
@@ -562,7 +563,9 @@ static void createTransActionData(bContext *C, TransInfo *t)
   TransData2D *td2d = nullptr;
   tGPFtransdata *tfd = nullptr;
 
-  const bool duplicate = (t->flag & T_AUTOMERGE) != 0;
+  /* The automerge flag is only set if we made some duplicates of the selected frames, and there
+   * are the ones that are being transformed. */
+  const bool use_duplicated = (t->flag & T_AUTOMERGE) != 0;
 
   rcti *mask = &t->region->v2d.mask;
   rctf *datamask = &t->region->v2d.cur;
@@ -626,7 +629,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
     else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
       using namespace blender::bke::greasepencil;
       adt_count = count_grease_pencil_frames(
-          static_cast<Layer *>(ale->data), t->frame_side, cfra, is_prop_edit, duplicate);
+          static_cast<Layer *>(ale->data), t->frame_side, cfra, is_prop_edit, use_duplicated);
     }
     else if (ale->type == ANIMTYPE_MASKLAYER) {
       adt_count = count_masklayer_frames(
@@ -702,7 +705,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
       int i;
 
       i = GreasePencilLayerToTransData(
-          td, td2d, layer, t->frame_side, cfra, is_prop_edit, ypos, duplicate);
+          td, td2d, layer, t->frame_side, cfra, is_prop_edit, ypos, use_duplicated);
       td += i;
       td2d += i;
     }
@@ -797,7 +800,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
           grease_pencil_closest_selected_frame(frame_number, frame.is_selected());
         }
 
-        if (duplicate) {
+        if (use_duplicated) {
           /* Also count for duplicated frames. */
           for (const auto [frame_number, frame] :
                layer->runtime->trans_data_.temp_frames_buffer.items()) {
@@ -954,12 +957,12 @@ static void recalcData_actedit(TransInfo *t)
     transform_convert_flush_handle2D(td, td2d, 0.0f);
 
     if ((t->state == TRANS_RUNNING) && ((td->flag & TD_GREASE_PENCIL_FRAME) != 0)) {
-      const bool duplicate = (t->flag & T_AUTOMERGE) != 0;
+      const bool use_duplicated = (t->flag & T_AUTOMERGE) != 0;
       grease_pencil_layer_update_trans_data(
           *static_cast<blender::bke::greasepencil::Layer *>(td->extra),
           round_fl_to_int(td->ival),
           round_fl_to_int(td2d->loc[0]),
-          duplicate);
+          use_duplicated);
     }
   }
 
