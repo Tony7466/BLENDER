@@ -132,31 +132,23 @@ void select_frames_region(KeyframeEditData *ked,
   }
 }
 
-void select_frames_range(bke::greasepencil::Layer &layer,
+void select_frames_range(bke::greasepencil::TreeNode &node,
                          const float min,
                          const float max,
                          const short select_mode)
 {
   /* Only select those frames which are in bounds. */
-  for (auto [frame_number, frame] : layer.frames_for_write().items()) {
-    if (IN_RANGE(float(frame_number), min, max)) {
-      select_frame(frame, select_mode);
+  if (node.is_layer()) {
+    for (auto [frame_number, frame] : node.as_layer_for_write().frames_for_write().items()) {
+      if (IN_RANGE(float(frame_number), min, max)) {
+        select_frame(frame, select_mode);
+      }
     }
   }
-}
-
-void select_frames_range(bke::greasepencil::LayerGroup &layer_group,
-                         const float min,
-                         const float max,
-                         const short select_mode)
-{
-  LISTBASE_FOREACH_BACKWARD (GreasePencilLayerTreeNode *, node_, &layer_group.children) {
-    bke::greasepencil::TreeNode &node = node_->wrap();
-    if (node.is_group()) {
-      select_frames_range(node.as_group_for_write(), min, max, select_mode);
-    }
-    else if (node.is_layer()) {
-      select_frames_range(node.as_layer_for_write(), min, max, select_mode);
+  else if (node.is_group()) {
+    LISTBASE_FOREACH_BACKWARD (
+        GreasePencilLayerTreeNode *, node_, &node.as_group_for_write().children) {
+      select_frames_range(node_->wrap(), min, max, select_mode);
     }
   }
 }
