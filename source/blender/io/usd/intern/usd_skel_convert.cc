@@ -41,6 +41,7 @@
 
 #include "WM_api.hh"
 
+#include <iostream>
 #include <string>
 #include <vector>
 
