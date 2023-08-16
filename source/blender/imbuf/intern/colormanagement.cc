@@ -3314,6 +3314,39 @@ const char *IMB_colormanagement_look_get_indexed_name(int index)
   return nullptr;
 }
 
+const char *IMB_colormanagement_look_get_default_name_for_view(const char *view_name)
+{
+  LISTBASE_FOREACH (ColorManagedLook *, look, &global_looks) {
+    if (!colormanage_compatible_look(look, view_name)) {
+      continue;
+    }
+
+    return look->name;
+  }
+
+  return nullptr;
+}
+
+const char *IMB_colormanagement_look_validate_for_view(const char *view_name,
+                                                       const char *look_name)
+{
+  ColorManagedLook *look_descr = colormanage_look_get_named(look_name);
+  if (!look_descr) {
+    return look_name;
+  }
+
+  if (colormanage_compatible_look(look_descr, view_name)) {
+    return look_name;
+  }
+
+  const char *default_look = IMB_colormanagement_look_get_default_name_for_view(view_name);
+  if (default_look) {
+    return default_look;
+  }
+
+  return look_name;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
