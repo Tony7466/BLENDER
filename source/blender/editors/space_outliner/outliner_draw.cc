@@ -864,6 +864,9 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
           /* The node already has the new name set. To properly rename the node, we need to first
            * store the new name, restore the old name in the node, and then call the rename
            * function. */
+          if (strcmp(node.name, oldname) == 0) {
+            break;
+          }
           std::string new_name(node.name);
           node.name = oldname;
           if (node.is_group()) {
