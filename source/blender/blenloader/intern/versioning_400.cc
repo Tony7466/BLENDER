@@ -365,40 +365,29 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
       float locyoffset = 0.0f;
 
       if (version_node_socket_is_used(sockDetail) && sockDetail->link != nullptr) {
-        locyoffset = 80.0f;
+        locyoffset = 40.0f;
 
-        /* Add 2 Math nodes before Detail input. */
+        /* Add Subtract Math node before Detail input. */
 
         bNode *subNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
         subNode->custom1 = NODE_MATH_SUBTRACT;
         subNode->locx = node->locx;
-        subNode->locy = node->locy - 340.0f;
+        subNode->locy = node->locy - 300.0f;
         subNode->flag |= NODE_HIDDEN;
         bNodeSocket *subSockA = static_cast<bNodeSocket *>(BLI_findlink(&subNode->inputs, 0));
         bNodeSocket *subSockB = static_cast<bNodeSocket *>(BLI_findlink(&subNode->inputs, 1));
         bNodeSocket *subSockOut = nodeFindSocket(subNode, SOCK_OUT, "Value");
 
-        bNode *maxNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
-        maxNode->custom1 = NODE_MATH_MAXIMUM;
-        maxNode->locx = node->locx;
-        maxNode->locy = node->locy - 300.0f;
-        maxNode->flag |= NODE_HIDDEN;
-        bNodeSocket *maxSockA = static_cast<bNodeSocket *>(BLI_findlink(&maxNode->inputs, 0));
-        bNodeSocket *maxSockB = static_cast<bNodeSocket *>(BLI_findlink(&maxNode->inputs, 1));
-        bNodeSocket *maxSockOut = nodeFindSocket(maxNode, SOCK_OUT, "Value");
-
         *version_cycles_node_socket_float_value(subSockB) = 1.0f;
-        *version_cycles_node_socket_float_value(maxSockB) = 0.0f;
 
         bNode *detailFromNode = sockDetail->link->fromnode;
         bNodeSocket *detailFromSock = sockDetail->link->fromsock;
 
         nodeRemLink(ntree, sockDetail->link);
         nodeAddLink(ntree, detailFromNode, detailFromSock, subNode, subSockA);
-        nodeAddLink(ntree, subNode, subSockOut, maxNode, maxSockA);
-        nodeAddLink(ntree, maxNode, maxSockOut, node, sockDetail);
+        nodeAddLink(ntree, subNode, subSockOut, node, sockDetail);
 
-        /* Add Clamp node and Math node behind Fac output. */
+        /* Add Clamp node and Multiply Math node behind Fac output. */
 
         bNode *clampNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_CLAMP);
         clampNode->custom1 = NODE_CLAMP_MINMAX;
@@ -435,7 +424,8 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
       }
       else {
         if (*detail < 1.0f) {
-          /* Add Math node behind Fac output. */
+          /* Add Multiply Math node behind Fac output. */
+
           bNode *mulNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
           mulNode->custom1 = NODE_MATH_MULTIPLY;
           mulNode->locx = node->locx;
@@ -466,7 +456,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
       bNodeSocket *sockLacunarity = nodeFindSocket(node, SOCK_IN, "Lacunarity");
       float *lacunarity = version_cycles_node_socket_float_value(sockLacunarity);
 
-      /* Add 2 Math nodes before Roughness and Lacunarity input. */
+      /* Add Power Math node Multiply Math node before Roughness and Lacunarity input. */
 
       bNode *mulNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
       mulNode->custom1 = NODE_MATH_MULTIPLY;
