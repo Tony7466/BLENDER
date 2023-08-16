@@ -106,11 +106,11 @@ class USDMeshReader : public USDGeomReader {
                                             const double motionSampleTime,
                                             MutableSpan<BlenderT> attribute);
 
-  /* Override transform computation to account for the binding
-   * transformation for skinned meshes. */
-  bool get_local_usd_xform(const float time,
-                           pxr::GfMatrix4d *r_xform,
-                           bool *r_is_constant) const override;
+  /**
+   * Override transform computation to account for the binding
+   * transformation for skinned meshes.
+   */
+  std::optional<XformResult> get_local_usd_xform(const float time) const override;
 };
 
 }  // namespace blender::io::usd

@@ -1130,19 +1130,13 @@ std::string USDMeshReader::get_skeleton_path() const
   return "";
 }
 
-bool USDMeshReader::get_local_usd_xform(const float time,
-                                        pxr::GfMatrix4d *r_xform,
-                                        bool *r_is_constant) const
+std::optional<XformResult> USDMeshReader::get_local_usd_xform(const float time) const
 {
-  if (!r_xform) {
-    return false;
-  }
-
   if (!import_params_.import_skeletons || prim_.IsInstanceProxy()) {
     /* Use the standard transform computation, since we are ignoring
      * skinning data. Note that applying the UsdSkelBinding API to an
      * instance proxy generates a USD error. */
-    return USDXformReader::get_local_usd_xform(time, r_xform, r_is_constant);
+    return USDXformReader::get_local_usd_xform(time);
   }
 
   if (pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(prim_)) {
@@ -1151,11 +1145,7 @@ bool USDMeshReader::get_local_usd_xform(const float time,
       if (skel_api.GetGeomBindTransformAttr().Get(&bind_xf)) {
         /* Assume that if a bind transform is defined, then the
          * transform is constant. */
-        if (r_is_constant) {
-          *r_is_constant = true;
-        }
-        *r_xform = bind_xf;
-        return true;
+        return XformResult(pxr::GfMatrix4f(bind_xf), true);
       }
       else {
         WM_reportf(RPT_WARNING,
@@ -1166,7 +1156,7 @@ bool USDMeshReader::get_local_usd_xform(const float time,
     }
   }
 
-  return USDXformReader::get_local_usd_xform(time, r_xform, r_is_constant);
+  return USDXformReader::get_local_usd_xform(time);
 }
 
 }  // namespace blender::io::usd
