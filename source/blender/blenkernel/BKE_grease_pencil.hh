@@ -123,9 +123,11 @@ class LayerGroup;
 class Layer;
 
 /* Defines the common functions used by #TreeNode, #Layer, and #LayerGroup.
- * Note: Because we cannot mix C-style and C++ inheritence, we define and implement these methods
- * on all these classes individually. This just means that we can call `layer->name()` directly
- * instead of having to do `layer->as_node().name()`. */
+ * Note: Because we cannot mix C-style and C++ inheritance (all of these three classes wrap a
+ * C-struct that already uses "inheritance"), we define and implement these methods on all these
+ * classes individually. This just means that we can call `layer->name()` directly instead of
+ * having to write `layer->as_node().name()`. For #Layer and #LayerGroup the calls are just
+ * forwarded to #TreeNode. */
 #define TREENODE_COMMON_METHODS \
   StringRefNull name() const; \
   void set_name(StringRefNull new_name); \
