@@ -80,7 +80,7 @@ class LayerNodeDropTarget : public TreeViewItemDropTarget {
         static_cast<const wmDragGreasePencilLayer *>(drag_info.drag_data.poin);
     Layer &drag_layer = drag_grease_pencil->layer->wrap();
 
-    LayerGroup &drag_parent = *drag_layer.parent_group();
+    LayerGroup &drag_parent = drag_layer.parent_group();
     LayerGroup *drop_parent_group = drop_tree_node_.parent_group();
     if (!drop_parent_group) {
       /* Root node is not added to the tree view, so there should never be a drop target for this.
@@ -231,7 +231,7 @@ class LayerViewItem : public AbstractTreeViewItem {
   {
     uiBut *but = uiItemL_ex(
         &row, IFACE_(layer_.name().c_str()), ICON_OUTLINER_DATA_GP_LAYER, false, false);
-    if (layer_.is_locked() || !layer_.parent_group()->is_visible()) {
+    if (layer_.is_locked() || !layer_.parent_group().is_visible()) {
       UI_but_disable(but, "Layer is locked or not visible");
     }
   }
