@@ -130,10 +130,56 @@ class Layer;
   StringRefNull name() const; \
   void set_name(StringRefNull new_name); \
   bool is_visible() const; \
+  void set_visible(bool visible); \
   bool is_locked() const; \
+  void set_locked(bool locked); \
   bool is_editable() const; \
   bool is_selected() const; \
+  void set_selected(bool selected); \
   bool use_onion_skinning() const;
+
+/* Note: Implements the methods defined by #TREENODE_COMMON_METHODS. */
+#define TREENODE_COMMON_METHODS_IMPL(class_name) \
+  inline StringRefNull class_name::name() const \
+  { \
+    return this->as_node().name(); \
+  } \
+  inline void class_name::set_name(StringRefNull new_name) \
+  { \
+    return this->as_node().set_name(new_name); \
+  } \
+  inline bool class_name::is_visible() const \
+  { \
+    return this->as_node().is_visible(); \
+  } \
+  inline void class_name::set_visible(const bool visible) \
+  { \
+    this->as_node().set_visible(visible); \
+  } \
+  inline bool class_name::is_locked() const \
+  { \
+    return this->as_node().is_locked(); \
+  } \
+  inline void class_name::set_locked(const bool locked) \
+  { \
+    this->as_node().set_locked(locked); \
+  } \
+  inline bool class_name::is_editable() const \
+  { \
+    return this->as_node().is_editable(); \
+  } \
+  inline bool class_name::is_selected() const \
+  { \
+    return this->as_node().is_selected(); \
+  } \
+  inline void class_name::set_selected(const bool selected) \
+  { \
+    this->as_node().set_selected(selected); \
+  } \
+  inline bool class_name::use_onion_skinning() const \
+  { \
+    return this->as_node().use_onion_skinning(); \
+  }
 
 /**
  * A TreeNode represents one node in the layer tree.
@@ -517,10 +563,18 @@ inline bool TreeNode::is_visible() const
   return ((this->flag & GP_LAYER_TREE_NODE_HIDE) == 0) &&
          (!this->parent_group() || this->parent_group()->as_node().is_visible());
 }
+inline void TreeNode::set_visible(const bool visible)
+{
+  SET_FLAG_FROM_TEST(this->flag, !visible, GP_LAYER_TREE_NODE_HIDE);
+}
 inline bool TreeNode::is_locked() const
 {
   return ((this->flag & GP_LAYER_TREE_NODE_LOCKED) != 0) ||
          (!this->parent_group() || this->parent_group()->as_node().is_locked());
+}
+inline void TreeNode::set_locked(const bool locked)
+{
+  SET_FLAG_FROM_TEST(this->flag, locked, GP_LAYER_TREE_NODE_LOCKED);
 }
 inline bool TreeNode::is_editable() const
 {
@@ -529,6 +583,10 @@ inline bool TreeNode::is_editable() const
 inline bool TreeNode::is_selected() const
 {
   return (this->flag & GP_LAYER_TREE_NODE_SELECT) != 0;
+}
+inline void TreeNode::set_selected(const bool selected)
+{
+  SET_FLAG_FROM_TEST(this->flag, selected, GP_LAYER_TREE_NODE_SELECT);
 }
 inline bool TreeNode::use_onion_skinning() const
 {
@@ -556,40 +614,7 @@ inline TreeNode &Layer::as_node()
   return *reinterpret_cast<TreeNode *>(this);
 }
 
-/* Note: Implements the methods defined by #TREENODE_COMMON_METHODS. See comment there for why we
- * cannot use C++ inheritence. */
-#define TREENODE_COMMON_METHODS_IMPL(class_name) \
-  inline StringRefNull class_name::name() const \
-  { \
-    return this->as_node().name(); \
-  } \
-  inline void class_name::set_name(StringRefNull new_name) \
-  { \
-    return this->as_node().set_name(new_name); \
-  } \
-  inline bool class_name::is_visible() const \
-  { \
-    return this->as_node().is_visible(); \
-  } \
-  inline bool class_name::is_locked() const \
-  { \
-    return this->as_node().is_locked(); \
-  } \
-  inline bool class_name::is_editable() const \
-  { \
-    return this->as_node().is_editable(); \
-  } \
-  inline bool class_name::is_selected() const \
-  { \
-    return this->as_node().is_selected(); \
-  } \
-  inline bool class_name::use_onion_skinning() const \
-  { \
-    return this->as_node().use_onion_skinning(); \
-  }
-
 TREENODE_COMMON_METHODS_IMPL(Layer);
-
 inline bool Layer::is_empty() const
 {
   return (this->frames().size() == 0);
