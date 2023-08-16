@@ -824,6 +824,8 @@ static SimulationPrepareResult prepare_simulation_states_for_evaluation(
 
 class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
   SimulationPrepareResult prepare_;
+  mutable std::mutex mutex_;
+  mutable Map<nodes::NestedNodeID, std::unique_ptr<nodes::SimulationZoneInfo>> map_;
 
  public:
   NodesModifierSimulationParams(NodesModifierData &nmd, const ModifierEvalContext &ctx)
@@ -831,9 +833,16 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     prepare_ = prepare_simulation_states_for_evaluation(nmd, ctx);
   }
 
-  nodes::SimulationZoneInfo *get(nodes::NestedNodeID /*id*/) const override
+  nodes::SimulationZoneInfo *get(nodes::NestedNodeID id) const override
   {
-    return nullptr;
+    std::lock_guard lock{mutex_};
+    return map_
+        .lookup_or_add_cb(id,
+                          [&]() {
+                            auto info = std::make_unique<nodes::SimulationZoneInfo>();
+                            return info;
+                          })
+        .get();
   }
 };
 
