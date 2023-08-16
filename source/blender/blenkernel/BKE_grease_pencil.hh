@@ -442,7 +442,8 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
   ~LayerGroup();
 
  public:
-  TREENODE_COMMON_METHODS
+  /* Define the common functions for #TreeNode. */
+  TREENODE_COMMON_METHODS;
   /**
    * \returns the group as a `TreeNode`.
    */
