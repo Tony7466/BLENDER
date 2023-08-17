@@ -1112,7 +1112,7 @@ struct EraseOperationExecutor {
   /**
    * The soft eraser decreases the opacity of the points it hits.
    * The new opacity is computed as a minimum between the current opacity and
-   * a linear falloff function of the distance of the point to the center of the eraser.
+   * a falloff function of the distance of the point to the center of the eraser.
    * If the opacity of a point falls below a threshold, then the point is removed from the
    * curves.
    */
