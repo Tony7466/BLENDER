@@ -107,20 +107,6 @@ def draw_vpaint_symmetry(layout, vpaint, obj):
     col.prop(vpaint, "radial_symmetry", text="Radial")
 
 
-def draw_options_placement(layout, tool_settings):
-    layout.use_property_split = True
-    layout.use_property_decorate = False
-
-    col = layout.column(align=True)
-    col.prop(tool_settings, "plane_depth", text="Depth")
-    col.prop(tool_settings, "plane_orientation")
-    col.prop(tool_settings, "snap_elements_tool")
-    sub = col.column(align=True)
-    sub.active = not tool_settings.plane_axis_auto
-    sub.prop(tool_settings, "plane_axis")
-    col.prop(tool_settings, "plane_axis_auto")
-
-
 # ********** default tools for object mode ****************
 
 
@@ -159,9 +145,23 @@ class VIEW3D_PT_tools_object_options_dragdrop(View3DPanel, Panel):
     bl_context = ".objectmode"  # dot on purpose (access from topbar)
     bl_label = "Drag & Drop"
     bl_parent_id = "VIEW3D_PT_tools_object_options"
+    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
-        draw_options_placement(self.layout, context.tool_settings)
+        layout = self.layout
+        tool_settings = context.tool_settings
+
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        col = layout.column(align=True)
+        col.prop(tool_settings, "plane_depth", text="Depth")
+        col.prop(tool_settings, "plane_orientation")
+        col.prop(tool_settings, "snap_elements_tool")
+        sub = col.column(align=True)
+        sub.active = not tool_settings.plane_axis_auto
+        sub.prop(tool_settings, "plane_axis")
+        col.prop(tool_settings, "plane_axis_auto")
 
 
 # ********** default tools for editmode_mesh ****************
