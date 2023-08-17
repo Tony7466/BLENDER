@@ -2405,10 +2405,10 @@ class _defs_gpencil_weight:
             props = tool.operator_properties("gpencil.weight_gradient")
             compact = context.region.type == 'TOOL_HEADER'
             
-            layout.prop(brush, "strength", expand=True)
             layout.prop(brush, "weight", expand=True)
-            layout.prop(props, "type", expand=True)
             layout.prop(brush.gpencil_settings, "direction", expand=True, text="" if compact else "Direction")
+            layout.prop(brush, "strength", expand=True)
+            layout.prop(props, "type", expand=True)
             
             if compact:
                 layout.popover("VIEW3D_PT_tools_grease_pencil_weight_options", text="Options")

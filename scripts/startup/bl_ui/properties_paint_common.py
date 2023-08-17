@@ -1414,6 +1414,12 @@ def brush_basic_gpencil_sculpt_settings(layout, _context, brush, *, compact=Fals
 
 
 def brush_basic_gpencil_weight_settings(layout, _context, brush, *, compact=False, gradient_tool=False):
+    if brush.gpencil_weight_tool in {'WEIGHT'} or gradient_tool:
+        layout.prop(brush, "weight", slider=True)
+
+        gp_settings = brush.gpencil_settings
+        layout.prop(gp_settings, "direction", expand=True, text="" if compact else "Direction")
+
     if not gradient_tool:
         layout.prop(brush, "size", slider=True)
 
@@ -1422,11 +1428,6 @@ def brush_basic_gpencil_weight_settings(layout, _context, brush, *, compact=Fals
     if not gradient_tool:
         row.prop(brush, "use_pressure_strength", text="")
 
-    if brush.gpencil_weight_tool in {'WEIGHT'} or gradient_tool:
-        layout.prop(brush, "weight", slider=True)
-
-        gp_settings = brush.gpencil_settings
-        layout.prop(gp_settings, "direction", expand=True, text="" if compact else "Direction")
 
 
 def brush_basic_gpencil_vertex_settings(layout, _context, brush, *, compact=False):
