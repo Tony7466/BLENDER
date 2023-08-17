@@ -1010,12 +1010,8 @@ static void add_extrapolation_point_right(FCurve *fcu,
   curve_vertices.append(vertex_position);
 }
 
-/** Calculate how many points are needed per unit of the visible range of the View2D based on its
- * pixel size. */
 static blender::float2 calculate_pixels_per_unit(View2D *v2d)
 {
-  /* The resolution for bezier forward diff in frame/value space. This ensures a constant
-   * resolution in screen-space. */
   const int window_width = BLI_rcti_size_x(&v2d->mask);
   const int window_height = BLI_rcti_size_y(&v2d->mask);
 
