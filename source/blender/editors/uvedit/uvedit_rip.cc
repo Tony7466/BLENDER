@@ -123,70 +123,6 @@ static BMLoop *bm_loop_find_other_radial_loop_with_visible_face(BMLoop *l_src,
   return l_other;
 }
 
-static BMLoop *bm_loop_find_other_fan_loop_with_visible_face(BMLoop *l_src,
-                                                             BMVert *v_src,
-                                                             const int cd_loop_uv_offset)
-{
-  BLI_assert(BM_vert_in_edge(l_src->e, v_src));
-  BMLoop *l_other = nullptr;
-  BMLoop *l_iter = l_src->radial_next;
-  if (l_iter != l_src) {
-    do {
-      if (BM_elem_flag_test(l_iter->f, BM_ELEM_TAG) &&
-          BM_loop_uv_share_edge_check(l_src, l_iter, cd_loop_uv_offset))
-      {
-        /* Check UVs are contiguous. */
-        if (l_other == nullptr) {
-          l_other = l_iter;
-        }
-        else {
-          /* Only use when there is a single alternative. */
-          l_other = nullptr;
-          break;
-        }
-      }
-    } while ((l_iter = l_iter->radial_next) != l_src);
-  }
-  if (l_other != nullptr) {
-    if (l_other->v == v_src) {
-      /* do nothing. */
-    }
-    else if (l_other->next->v == v_src) {
-      l_other = l_other->next;
-    }
-    else if (l_other->prev->v == v_src) {
-      l_other = l_other->prev;
-    }
-    else {
-      BLI_assert_unreachable();
-    }
-  }
-  return l_other;
-}
-
-/**
- * A version of #BM_vert_step_fan_loop that checks UVs.
- */
-static BMLoop *bm_vert_step_fan_loop_uv(BMLoop *l, BMEdge **e_step, const int cd_loop_uv_offset)
-{
-  BMEdge *e_prev = *e_step;
-  BMLoop *l_next;
-  if (l->e == e_prev) {
-    l_next = l->prev;
-  }
-  else if (l->prev->e == e_prev) {
-    l_next = l;
-  }
-  else {
-    BLI_assert_unreachable();
-    return nullptr;
-  }
-
-  *e_step = l_next->e;
-
-  return bm_loop_find_other_fan_loop_with_visible_face(l_next, l->v, cd_loop_uv_offset);
-}
-
 static void bm_loop_uv_select_single_vert_validate(BMLoop *l_init, const int cd_loop_uv_offset)
 {
   const float *luv_init = BM_ELEM_CD_GET_FLOAT_P(l_init, cd_loop_uv_offset);
@@ -373,7 +309,8 @@ static UVRipSingle *uv_rip_single_from_loop(BMLoop *l_init_orig,
   for (int i = 0; i < 2; i += 1) {
     BMEdge *e_prev = i ? l_init->e : l_init->prev->e;
     BMLoop *l_iter = l_init;
-    while (((l_iter = bm_vert_step_fan_loop_uv(l_iter, &e_prev, cd_loop_uv_offset)) != l_init) &&
+    while (((l_iter = BM_vert_step_fan_loop_uv(l_iter, &e_prev, cd_loop_uv_offset, true)) !=
+            l_init) &&
            (l_iter != nullptr) && (UL(l_iter)->side == 0))
     {
       uv_fan_count_contiguous += 1;

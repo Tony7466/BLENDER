@@ -208,3 +208,78 @@ bool BM_face_uv_point_inside_test(const BMFace *f, const float co[2], const int 
   return isect_point_poly_v2(
       co, reinterpret_cast<const float(*)[2]>(projverts.data()), f->len, false);
 }
+
+/**
+ * A version of #BM_vert_step_fan_loop that checks UVs.
+ */
+BMLoop *BM_vert_step_fan_loop_uv(BMLoop *l,
+                                 BMEdge **e_step,
+                                 const int cd_loop_uv_offset,
+                                 const bool check_face_tags)
+{
+  BMEdge *e_prev = *e_step;
+  BMLoop *l_next;
+  if (l->e == e_prev) {
+    l_next = l->prev;
+  }
+  else if (l->prev->e == e_prev) {
+    l_next = l;
+  }
+  else {
+    BLI_assert_unreachable();
+    return nullptr;
+  }
+
+  *e_step = l_next->e;
+
+  return BM_loop_find_other_fan_loop_with_visible_face(
+      l_next, l->v, cd_loop_uv_offset, check_face_tags);
+}
+
+BMLoop *BM_loop_find_other_fan_loop_with_visible_face(BMLoop *l_src,
+                                                      BMVert *v_src,
+                                                      const int cd_loop_uv_offset,
+                                                      const bool check_face_tags)
+{
+  BLI_assert(BM_vert_in_edge(l_src->e, v_src));
+  BMLoop *l_other = nullptr;
+  BMLoop *l_iter = l_src->radial_next;
+  /*Should always be true if not checking face tags*/
+  bool check = true;
+
+  if (l_iter != l_src) {
+    do {
+
+      if (check_face_tags) {
+        check = BM_elem_flag_test(l_iter->f, BM_ELEM_TAG);
+      }
+
+      if (check && BM_loop_uv_share_edge_check(l_src, l_iter, cd_loop_uv_offset)) {
+        /* Check UVs are contiguous. */
+        if (l_other == nullptr) {
+          l_other = l_iter;
+        }
+        else {
+          /* Only use when there is a single alternative. */
+          l_other = nullptr;
+          break;
+        }
+      }
+    } while ((l_iter = l_iter->radial_next) != l_src);
+  }
+  if (l_other != nullptr) {
+    if (l_other->v == v_src) {
+      /* do nothing. */
+    }
+    else if (l_other->next->v == v_src) {
+      l_other = l_other->next;
+    }
+    else if (l_other->prev->v == v_src) {
+      l_other = l_other->prev;
+    }
+    else {
+      BLI_assert_unreachable();
+    }
+  }
+  return l_other;
+}

@@ -87,6 +87,19 @@ bool BM_face_uv_point_inside_test(const BMFace *f,
                                   const float co[2],
                                   int cd_loop_uv_offset) ATTR_WARN_UNUSED_RESULT ATTR_NONNULL();
 
+/**
+ * A version of #BM_vert_step_fan_loop that checks UVs.
+ */
+ BMLoop *BM_vert_step_fan_loop_uv(BMLoop *l,
+                                        BMEdge **e_step,
+                                        const int cd_loop_uv_offset,
+                                        const bool check_face_tags);
+
+ BMLoop *BM_loop_find_other_fan_loop_with_visible_face(BMLoop *l_src,
+                                                             BMVert *v_src,
+                                                             const int cd_loop_uv_offset,
+                                                             const bool check_face_tags);
+
 #ifdef __cplusplus
 }
 #endif

@@ -57,6 +57,8 @@ struct EdgeSlideUV {
   blender::float2 slide_uv_target[2];
   /** The original location (never changes), used to re-calculate the slide location. */
   blender::float2 orig_uv;
+  /** Flag indicating custom target locations for non-grid topology. **/
+  bool custom_targets;
 };
 
 static void freeEdgeSlideUVs(TransInfo * /*t*/,
@@ -96,6 +98,8 @@ static void calc_side_loops_from_single_terminating_uv(BMEdge *edge,
     BM_elem_flag_disable(loop_v->prev, BM_ELEM_TAG_ALT);
   }
 
+  esuv.custom_targets = false;
+
   BM_ITER_ELEM (loop_v, &lv_iter, v_orig, BM_LOOPS_OF_VERT) {
     if (BM_loop_uv_share_vert_check(loop_v, orig_loop, offsets.uv) &&
         (loop_v->f == e->l->f || loop_v->f == e->l->radial_next->f))
@@ -129,14 +133,24 @@ static void calc_side_loops_from_pair(BMLoop *orig_loop, EdgeSlideUV &esuv, BMUV
   BMLoop *loop_v, *loop_side;
   BMIter lv_iter, side_iter;
   BMVert *v_orig = orig_loop->v;
+  blender::Set<blender::float2> unique_adjacent_uvs;
   int i = 0;
 
-  /*Clear tags*/
+  /*Clear tags and count edges connected to vertex. */
   BM_ITER_ELEM (loop_v, &lv_iter, v_orig, BM_LOOPS_OF_VERT) {
+    unique_adjacent_uvs.add(BM_ELEM_CD_GET_FLOAT_P(loop_v->next, offsets.uv));
+    unique_adjacent_uvs.add(BM_ELEM_CD_GET_FLOAT_P(loop_v->prev, offsets.uv));
     BM_elem_flag_disable(loop_v->next, BM_ELEM_TAG_ALT);
     BM_elem_flag_disable(loop_v->prev, BM_ELEM_TAG_ALT);
   }
 
+  /* Calculate custom targets later. */
+  if (unique_adjacent_uvs.size() > 4) {
+    esuv.custom_targets = true;
+    return;
+  }
+
+  esuv.custom_targets = false;
   BM_ITER_ELEM (loop_v, &lv_iter, v_orig, BM_LOOPS_OF_VERT) {
     /*Pick the first two unselected edges encountered to slide along. */
     if (i == 2) {
@@ -165,6 +179,94 @@ static void calc_side_loops_from_pair(BMLoop *orig_loop, EdgeSlideUV &esuv, BMUV
   }
 }
 
+static void calc_and_flip_custom_targets_pair(BMLoop *orig_loop,
+                                              EdgeSlideUV &esuv,
+                                              BMUVOffsets offsets)
+{
+  BMEdge *e_prev = (BM_ELEM_CD_GET_BOOL(orig_loop->next, offsets.select_vert)) ?
+                       orig_loop->e :
+                       orig_loop->prev->e;
+  BMEdge *e_closest = e_prev;
+  BMLoop *l_iter = orig_loop;
+  blender::Vector<BMLoop *> uvs_side_a, uvs_side_b;
+
+  /* Set default values. */
+  int a_found_side = 0;
+  int b_found_side = 1;
+
+  blender::Vector<BMLoop *> *uvs_curr = &uvs_side_a;
+  int *curr_found_side = &a_found_side;
+
+  do {
+    /* Side 0 is tagged with BM_ELEM_TAG and side 1 is tagged with BM_ELEM_TAG_ALT. */
+    if (BM_elem_flag_test(l_iter->f, BM_ELEM_TAG)) {
+      *curr_found_side = 0;
+    }
+    else if (BM_elem_flag_test(l_iter->f, BM_ELEM_TAG_ALT)) {
+      *curr_found_side = 1;
+    }
+
+    if (BM_ELEM_CD_GET_BOOL(l_iter->next, offsets.select_vert) ||
+        BM_ELEM_CD_GET_BOOL(l_iter->prev, offsets.select_vert))
+    {
+      if (!BM_ELEM_CD_GET_BOOL(l_iter->next, offsets.select_vert)) {
+        uvs_curr->append(l_iter->next);
+      }
+      else {
+        uvs_curr->append(l_iter->prev);
+      }
+
+      if (l_iter->e != e_closest && l_iter->prev->e != e_closest) {
+
+        uvs_curr = &uvs_side_b;
+        curr_found_side = &b_found_side;
+        e_closest = (BM_ELEM_CD_GET_BOOL(l_iter->next, offsets.select_vert)) ? l_iter->e :
+                                                                               l_iter->prev->e;
+      }
+      continue;
+    }
+
+    uvs_curr->append(l_iter->next);
+    uvs_curr->append(l_iter->prev);
+
+  } while (
+      ((l_iter = BM_vert_step_fan_loop_uv(l_iter, &e_prev, offsets.uv, false)) != orig_loop) &&
+      (l_iter != nullptr));
+
+  if (a_found_side == b_found_side) {
+    a_found_side = 0;
+    b_found_side = 1;
+  }
+
+  /* Calculate average point and tag sides.*/
+  for (int i = 0; i < 2; i++) {
+    uvs_curr = (i) ? &uvs_side_a : &uvs_side_b;
+    int found_side = (i) ? a_found_side : b_found_side;
+    int num_uvs = 0;
+    blender::float2 sum = {0, 0};
+
+    for (const auto &uv : *uvs_curr) {
+      num_uvs++;
+      if (found_side == 0) {
+        BM_elem_flag_enable(uv->f, BM_ELEM_TAG);
+      }
+      else {
+        BM_elem_flag_enable(uv->f, BM_ELEM_TAG_ALT);
+      }
+
+      sum += BM_ELEM_CD_GET_FLOAT_P(uv, offsets.uv);
+    }
+
+    if (num_uvs == 0) {
+      esuv.slide_uv_target[found_side] = BM_ELEM_CD_GET_FLOAT_P(orig_loop, offsets.uv);
+      continue;
+    }
+
+    blender::float2 average_point = sum / num_uvs;
+    esuv.slide_uv_target[found_side] = average_point;
+  }
+}
+
 static void flip_and_set_sides(blender::Vector<EdgeSlideUV> &slide_uv, BMUVOffsets offsets)
 {
   BMLoop *l_iter;
@@ -172,12 +274,31 @@ static void flip_and_set_sides(blender::Vector<EdgeSlideUV> &slide_uv, BMUVOffse
   BMVert *v_orig;
 
   for (int i = 0; i < slide_uv.size(); i++) {
+
     /*Initialize as selected uv. */
     float *uv = BM_ELEM_CD_GET_FLOAT_P(slide_uv[i].loops[0], offsets.uv);
     slide_uv[i].slide_uv_target[0] = uv;
     slide_uv[i].slide_uv_target[1] = uv;
 
     slide_uv[i].orig_uv = uv;
+
+    if (slide_uv[i].custom_targets == true) {
+      BMLoop *orig_loop;
+      v_orig = slide_uv[i].loops[0]->v;
+
+      BM_ITER_ELEM (l_iter, &lv_iter, v_orig, BM_LOOPS_OF_VERT) {
+        if (BM_ELEM_CD_GET_BOOL(l_iter->next, offsets.select_vert) ||
+            BM_ELEM_CD_GET_BOOL(l_iter->prev, offsets.select_vert))
+        {
+          orig_loop = l_iter;
+          break;
+        }
+      }
+
+      calc_and_flip_custom_targets_pair(orig_loop, slide_uv[i], offsets);
+
+      continue;
+    }
 
     if (i != 0) {
       /* Side 0 is tagged with BM_ELEM_TAG and side 1 is tagged with BM_ELEM_TAG_ALT. */
@@ -332,15 +453,17 @@ static blender::Vector<EdgeSlideUV> *create_EdgeSlideUVs(TransInfo *t, TransData
           continue;
         }
 
+        /* Do not slide single verts. */
         if (unique_edges_orig.size() == 0) {
-          calc_side_loops_from_single_terminating_uv(nullptr, l, esuv, offsets);
+          delete slide_edge_loops;
+          return nullptr;
         }
         else if (unique_edges_orig.size() == 1) {
           calc_side_loops_from_single_terminating_uv(
               *unique_edges_orig.begin(), fan_iter, esuv, offsets);
         }
         else if (unique_edges_orig.size() == 2) {
-          calc_side_loops_from_pair(l, esuv, offsets);
+          calc_side_loops_from_pair(fan_iter, esuv, offsets);
         }
 
         blender::Vector<EdgeSlideUV> slide_uv1;
@@ -474,34 +597,34 @@ static void applyEdgeUVSlide(TransInfo *t)
 
 static void calcEdgeSlideCustomPointsUV(TransInfo *t)
 {
-  float max_len = 0;
+  float max_length = 0;
   float *start_uv, *end_uv;
   int start_region[2], end_region[2];
 
-  blender::Vector<EdgeSlideUV> slide_edge_loops = *(static_cast<blender::Vector<EdgeSlideUV> *>(
-      TRANS_DATA_CONTAINER_FIRST_OK(t)->custom.mode.data));
+  blender::Vector<EdgeSlideUV> *slide_edge_loops = static_cast<blender::Vector<EdgeSlideUV> *>(
+      TRANS_DATA_CONTAINER_FIRST_OK(t)->custom.mode.data);
   /* Find the longest slide edge to set the range of the mouse input. */
-  for (int i = 0; i < slide_edge_loops.size(); i++) {
-    float side0_len = len_squared_v2v2(slide_edge_loops[i].slide_uv_target[0],
-                                       slide_edge_loops[i].orig_uv);
-    float side1_len = len_squared_v2v2(slide_edge_loops[i].slide_uv_target[1],
-                                       slide_edge_loops[i].orig_uv);
-    float side_len_max;
+  for (int i = 0; i < (*slide_edge_loops).size(); i++) {
+    float side0_length = len_squared_v2v2((*slide_edge_loops)[i].slide_uv_target[0],
+                                          (*slide_edge_loops)[i].orig_uv);
+    float side1_length = len_squared_v2v2((*slide_edge_loops)[i].slide_uv_target[1],
+                                          (*slide_edge_loops)[i].orig_uv);
+    float side_length_max;
     int side_max;
 
-    if (side0_len >= side1_len) {
-      side_len_max = side0_len;
+    if (side0_length >= side1_length) {
+      side_length_max = side0_length;
       side_max = 0;
     }
     else {
-      side_len_max = side1_len;
+      side_length_max = side1_length;
       side_max = 0;
     }
 
-    if (side_len_max > max_len) {
-      max_len = side_len_max;
-      start_uv = slide_edge_loops[i].orig_uv;
-      end_uv = slide_edge_loops[i].slide_uv_target[side_max];
+    if (side_length_max > max_length) {
+      max_length = side_length_max;
+      start_uv = (*slide_edge_loops)[i].orig_uv;
+      end_uv = (*slide_edge_loops)[i].slide_uv_target[side_max];
     }
   }
 
@@ -525,12 +648,11 @@ static eRedrawFlag handleEventEdgeSlideUV(TransInfo *t, const wmEvent *event)
 
 static void initEdgeUVSlide(TransInfo *t, wmOperator * /*op*/)
 {
-  blender::Vector<EdgeSlideUV> *esd;
   t->mode = TFM_UV_EDGE_SLIDE;
   bool ok = false;
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    esd = create_EdgeSlideUVs(t, tc);
+    blender::Vector<EdgeSlideUV> *esd = create_EdgeSlideUVs(t, tc);
     if (esd) {
       tc->custom.mode.data = esd;
       tc->custom.mode.free_cb = freeEdgeSlideUVs;
