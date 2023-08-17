@@ -1144,8 +1144,10 @@ std::optional<XformResult> USDMeshReader::get_local_usd_xform(const float time) 
     if (skel_api.GetGeomBindTransformAttr().HasAuthoredValue()) {
       pxr::GfMatrix4d bind_xf;
       if (skel_api.GetGeomBindTransformAttr().Get(&bind_xf)) {
-        /* Assume that if a bind transform is defined, then the
-         * transform is constant. */
+        /* The USD bind transform is a matrix of doubles,
+         * but we cast it to GfMatrix4f because Blender expects
+         * a matrix of floats. Also, we assume the transform
+         * is constant over time. */
         return XformResult(pxr::GfMatrix4f(bind_xf), true);
       }
       else {

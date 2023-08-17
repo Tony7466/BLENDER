@@ -350,25 +350,28 @@ void USDStageReader::process_armature_modifiers() const
     if (!reader->object()) {
       continue;
     }
-    if (const USDMeshReader *mesh_reader = dynamic_cast<const USDMeshReader *>(reader)) {
-      /* Check if the mesh object has an armature modifier. */
-      ModifierData *md = BKE_modifiers_findby_type(reader->object(), eModifierType_Armature);
-      if (!md) {
-        continue;
-      }
-      ArmatureModifierData *amd = reinterpret_cast<ArmatureModifierData *>(md);
-
-      /* Assign the armature based on the bound USD skeleton path of the skinned mesh. */
-      std::string skel_path = mesh_reader->get_skeleton_path();
-      std::map<std::string, Object *>::const_iterator it = usd_path_to_armature.find(skel_path);
-      if (it == usd_path_to_armature.end()) {
-        WM_reportf(RPT_WARNING,
-                   "%s: Couldn't find armature object corresponding to USD skeleton %s",
-                   __func__,
-                   skel_path.c_str());
-      }
-      amd->object = it->second;
+    const USDMeshReader *mesh_reader = dynamic_cast<const USDMeshReader *>(reader);
+    if (!mesh_reader) {
+      continue;
     }
+    /* Check if the mesh object has an armature modifier. */
+    ModifierData *md = BKE_modifiers_findby_type(reader->object(), eModifierType_Armature);
+    if (!md) {
+      continue;
+    }
+
+    ArmatureModifierData *amd = reinterpret_cast<ArmatureModifierData *>(md);
+
+    /* Assign the armature based on the bound USD skeleton path of the skinned mesh. */
+    std::string skel_path = mesh_reader->get_skeleton_path();
+    std::map<std::string, Object *>::const_iterator it = usd_path_to_armature.find(skel_path);
+    if (it == usd_path_to_armature.end()) {
+      WM_reportf(RPT_WARNING,
+                 "%s: Couldn't find armature object corresponding to USD skeleton %s",
+                 __func__,
+                 skel_path.c_str());
+    }
+    amd->object = it->second;
   }
 }
 

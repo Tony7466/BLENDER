@@ -110,7 +110,7 @@ class USDMeshReader : public USDGeomReader {
    * Override transform computation to account for the binding
    * transformation for skinned meshes.
    */
-  std::optional<XformResult> get_local_usd_xform(const float time) const override;
+  std::optional<XformResult> get_local_usd_xform(float time) const override;
 };
 
 }  // namespace blender::io::usd

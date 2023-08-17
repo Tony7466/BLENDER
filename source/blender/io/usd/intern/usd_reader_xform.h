@@ -12,6 +12,8 @@
 
 namespace blender::io::usd {
 
+/** A transformation matrix and a boolean indicating
+ * whether the matrix is constant over time. */
 using XformResult = std::tuple<pxr::GfMatrix4f, bool>;
 
 class USDXformReader : public USDPrimReader {
@@ -63,7 +65,7 @@ class USDXformReader : public USDPrimReader {
    *          - A boolean flag indicating whether the matrix
    *            is constant over time.
    */
-  virtual std::optional<XformResult> get_local_usd_xform(const float time) const;
+  virtual std::optional<XformResult> get_local_usd_xform(float time) const;
 };
 
 }  // namespace blender::io::usd
