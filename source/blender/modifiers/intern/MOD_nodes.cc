@@ -837,11 +837,76 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
   {
     std::lock_guard lock{mutex_};
     return map_
-        .lookup_or_add_cb(id,
-                          [&]() {
-                            auto info = std::make_unique<nodes::SimulationZoneInfo>();
-                            return info;
-                          })
+        .lookup_or_add_cb(
+            id,
+            [&]() {
+              auto info = std::make_unique<nodes::SimulationZoneInfo>();
+              if (prepare_.current_simulation_state == nullptr) {
+                info->input.info.emplace<nodes::SimulationInputInfo::PassThrough>();
+              }
+              else if (prepare_.prev_simulation_state_mutable) {
+                nodes::SimulationInputInfo::OutputMove value;
+                value.delta_time = prepare_.simulation_time_delta;
+                if (bke::sim::SimulationZoneState *prev_zone_state =
+                        prepare_.prev_simulation_state_mutable->get_zone_state(
+                            bke::sim::SimulationZoneID{id}))
+                {
+                  value.prev_items = std::move(prev_zone_state->item_by_identifier);
+                  info->input.info = std::move(value);
+                }
+                else {
+                  info->input.info.emplace<nodes::SimulationInputInfo::PassThrough>();
+                }
+              }
+              else if (prepare_.prev_simulation_state) {
+                nodes::SimulationInputInfo::OutputCopy value;
+                value.delta_time = prepare_.simulation_time_delta;
+                if (const bke::sim::SimulationZoneState *prev_zone_state =
+                        prepare_.prev_simulation_state->get_zone_state(
+                            bke::sim::SimulationZoneID{id}))
+                {
+                  for (const auto &item : prev_zone_state->item_by_identifier.items()) {
+                    value.prev_items.add_new(item.key, item.value.get());
+                  }
+                  info->input.info = value;
+                }
+                else {
+                  info->input.info.emplace<nodes::SimulationInputInfo::PassThrough>();
+                }
+              }
+              else {
+                info->input.info.emplace<nodes::SimulationInputInfo::PassThrough>();
+              }
+
+              if (prepare_.current_simulation_state) {
+                if (const bke::sim::SimulationZoneState *zone_state =
+                        prepare_.current_simulation_state->get_zone_state(
+                            bke::sim::SimulationZoneID{id}))
+                {
+                  nodes::SimulationOutputInfo::ReadSingle value;
+                  for (const auto item : zone_state->item_by_identifier.items()) {
+                    value.items.add_new(item.key, item.value.get());
+                  }
+                  info->output.info = value;
+                }
+                else {
+                  info->output.info.emplace<nodes::SimulationOutputInfo::PassThrough>();
+                }
+              }
+              else if (prepare_.current_simulation_state_for_write) {
+                bke::sim::SimulationZoneState &zone_state =
+                    prepare_.current_simulation_state_for_write->get_zone_state_for_write(
+                        bke::sim::SimulationZoneID{id});
+                zone_state.item_by_identifier.clear();
+                nodes::SimulationOutputInfo::StoreAndPassThrough value;
+                value.store_fn =
+                    [zone_state = &zone_state](Map<int, std::unique_ptr<bke::BakeItem>> items) {
+                      zone_state->item_by_identifier = std::move(items);
+                    };
+                info->output.info = value;
+              }
+              return info;
+            })
         .get();
   }
 };
