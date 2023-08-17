@@ -1637,6 +1637,16 @@ static char *rna_View3DOverlay_path(const PointerRNA * /*ptr*/)
   return BLI_strdup("overlay");
 }
 
+static char *rna_View3DGhosts_path(const PointerRNA * /*ptr*/)
+{
+  return BLI_strdup("ghosts");
+}
+
+static PointerRNA rna_SpaceView3D_ghosts_get(PointerRNA *ptr)
+{
+  return rna_pointer_inherit_refine(ptr, &RNA_View3DGhosts, ptr->data);
+}
+
 /* Space Image Editor */
 
 static PointerRNA rna_SpaceImage_overlay_get(PointerRNA *ptr)
@@ -4518,13 +4528,6 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Motion Paths", "Show the Motion Paths Overlay");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
 
-  prop = RNA_def_property(srna, "show_ghost_frames", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_negative_sdna(
-      prop, nullptr, "overlay.flag", V3D_OVERLAY_HIDE_GHOST_FRAMES);
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_ui_text(prop, "Ghost Frames", "Show ghost frames in the viewport");
-  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
-
   prop = RNA_def_property(srna, "show_onion_skins", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "overlay.flag", V3D_OVERLAY_ONION_SKINS);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
@@ -4938,6 +4941,40 @@ static void rna_def_space_view3d_overlay(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
 }
 
+static void rna_def_space_view3d_ghosts(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "View3DGhosts", nullptr);
+  RNA_def_struct_sdna(srna, "View3D");
+  RNA_def_struct_nested(brna, srna, "SpaceView3D");
+  RNA_def_struct_path_func(srna, "rna_View3DGhosts_path");
+  RNA_def_struct_ui_text(
+      srna, "3D View Ghosting Settings", "Settings for display of ghosts in the 3D viewport");
+
+  prop = RNA_def_property(srna, "show_ghosts", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(prop, nullptr, "flag2", V3D_HIDE_GHOSTS);
+  RNA_def_property_ui_text(prop, "Show Ghosts", "Display ghosts in the viewport");
+  RNA_def_property_ui_icon(prop, ICON_GHOST_ENABLED, 0);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
+
+  prop = RNA_def_property(srna, "color_before", PROP_FLOAT, PROP_COLOR);
+  RNA_def_property_float_sdna(prop, nullptr, "ghosts.color_before");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "Before", "Color of the ghosts before the current frame");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
+
+  prop = RNA_def_property(srna, "color_after", PROP_FLOAT, PROP_COLOR);
+  RNA_def_property_float_sdna(prop, nullptr, "ghosts.color_after");
+  RNA_def_property_array(prop, 3);
+  RNA_def_property_ui_text(prop, "After", "Color of the ghosts after the current frame");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
+}
+
 static void rna_def_space_view3d(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -5290,8 +5327,16 @@ static void rna_def_space_view3d(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Overlay Settings", "Settings for display of overlays in the 3D viewport");
 
+  prop = RNA_def_property(srna, "ghosts", PROP_POINTER, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_NEVER_NULL);
+  RNA_def_property_struct_type(prop, "View3DGhosts");
+  RNA_def_property_pointer_funcs(prop, "rna_SpaceView3D_ghosts_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(
+      prop, "Ghosting Settings", "Settings for display of ghosts in the 3D viewport");
+
   rna_def_space_view3d_shading(brna);
   rna_def_space_view3d_overlay(brna);
+  rna_def_space_view3d_ghosts(brna);
 
   /* *** Animated *** */
   RNA_define_animate_sdna(true);

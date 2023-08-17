@@ -1686,6 +1686,7 @@ void DRW_draw_render_loop_ex(Depsgraph *depsgraph,
   const bool internal_engine = (engine_type->flag & RE_INTERNAL) != 0;
   const bool draw_type_render = v3d->shading.type == OB_RENDER;
   const bool overlays_on = (v3d->flag2 & V3D_HIDE_OVERLAYS) == 0;
+  const bool ghosts_on = (v3d->flag2 & V3D_HIDE_GHOSTS) == 0;
   const bool gpencil_engine_needed = drw_gpencil_engine_needed(depsgraph, v3d);
   const bool do_populate_loop = internal_engine || overlays_on || !draw_type_render ||
                                 gpencil_engine_needed;
@@ -1739,7 +1740,7 @@ void DRW_draw_render_loop_ex(Depsgraph *depsgraph,
       }
       DEG_OBJECT_ITER_END;
 
-      if (scene_orig->ghosting_system.is_built && !draw_type_render && overlays_on) {
+      if (scene_orig->ghosting_system.is_built && !draw_type_render && ghosts_on) {
         for (int i = 0; i < 8; i++) {
           GhostFrame *ghost_frame = &scene_orig->ghosting_system.frames[i];
           if (!ghost_frame->depsgraph) {
@@ -1760,10 +1761,10 @@ void DRW_draw_render_loop_ex(Depsgraph *depsgraph,
             ob->base_flag |= BASE_IS_GHOST_FRAME;
             ob->base_flag &= ~BASE_SELECTED;
             if (i < 4) {
-              copy_v3_fl3(ob->color, 1.0f, 0.0f, 0.0f);
+              copy_v3_v3(ob->color, v3d->ghosts.color_before);
             }
             else {
-              copy_v3_fl3(ob->color, 0.0f, 0.0f, 1.0f);
+              copy_v3_v3(ob->color, v3d->ghosts.color_after);
             }
             ob->color[3] = (i < 4) ? 0.1f + 0.2f * i : 0.7f - (i - 4) * 0.2f;
             drw_engines_cache_populate(ob);

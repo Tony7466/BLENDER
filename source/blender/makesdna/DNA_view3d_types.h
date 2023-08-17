@@ -249,6 +249,12 @@ typedef enum eHandleDisplay {
   CURVE_HANDLE_NONE = 2,
 } eHandleDisplay;
 
+/* 3D View Ghosting settings. */
+typedef struct View3DGhosts {
+  float color_before[3];
+  float color_after[3];
+} View3DGhosts;
+
 typedef struct View3D_Runtime {
   /** Nkey panel stores stuff here. */
   void *properties_storage;
@@ -357,6 +363,7 @@ typedef struct View3D {
   /** Display settings. */
   View3DShading shading;
   View3DOverlay overlay;
+  View3DGhosts ghosts;
 
   /** Path to the viewer node that is currently previewed. This is retrieved from the workspace. */
   ViewerPath viewer_path;
@@ -484,6 +491,7 @@ enum {
   V3D_FLAG2_UNUSED_15 = 1 << 15, /* cleared */
   V3D_XR_SHOW_CONTROLLERS = 1 << 16,
   V3D_XR_SHOW_CUSTOM_OVERLAYS = 1 << 17,
+  V3D_HIDE_GHOSTS = 1 << 18,
 };
 
 /** #View3D::gp_flag (short) */
@@ -578,7 +586,6 @@ enum {
   V3D_OVERLAY_SCULPT_SHOW_FACE_SETS = (1 << 15),
   V3D_OVERLAY_SCULPT_CURVES_CAGE = (1 << 16),
   V3D_OVERLAY_SHOW_LIGHT_COLORS = (1 << 17),
-  V3D_OVERLAY_HIDE_GHOST_FRAMES = (1 << 18),
 };
 
 /** #View3DOverlay.edit_flag */

@@ -710,5 +710,30 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         scene->eevee.gi_irradiance_pool_size = 16;
       }
     }
+
+    if (!DNA_struct_elem_find(fd->filesdna, "View3DGhosts", "float", "color_before[3]")) {
+      LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+        LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+          LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+            if (sl->spacetype == SPACE_VIEW3D) {
+              View3D *v3d = (View3D *)sl;
+              copy_v3_fl3(v3d->ghosts.color_before, 1.0f, 0.0f, 0.0f);
+            }
+          }
+        }
+      }
+    }
+    if (!DNA_struct_elem_find(fd->filesdna, "View3DGhosts", "float", "color_after[3]")) {
+      LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+        LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+          LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+            if (sl->spacetype == SPACE_VIEW3D) {
+              View3D *v3d = (View3D *)sl;
+              copy_v3_fl3(v3d->ghosts.color_after, 0.0f, 0.0f, 1.0f);
+            }
+          }
+        }
+      }
+    }
   }
 }

@@ -66,6 +66,12 @@
     .normals_constant_screen_size = 7.0f, \
   }
 
+#define _DNA_DEFAULT_View3DGhosts \
+ { \
+  .color_before = {1.0f, 0.0f, 0.0f}, \
+  .color_after = {0.0f, 0.0f, 1.0f}, \
+ } \
+
 #define _DNA_DEFAULT_View3DCursor \
   { \
     .rotation_mode = ROT_MODE_XYZ, \
@@ -82,6 +88,7 @@
     .gridsubdiv = 10, \
     .shading = _DNA_DEFAULT_View3DShading, \
     .overlay = _DNA_DEFAULT_View3DOverlay, \
+    .ghosts = _DNA_DEFAULT_View3DGhosts, \
  \
     .gridflag = V3D_SHOW_X | V3D_SHOW_Y | V3D_SHOW_FLOOR | V3D_SHOW_ORTHO_GRID, \
  \

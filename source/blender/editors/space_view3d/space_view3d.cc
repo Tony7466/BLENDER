@@ -1471,6 +1471,7 @@ static void view3d_main_region_message_subscribe(const wmRegionMessageSubscribeP
       &RNA_View3DCursor,
       &RNA_View3DOverlay,
       &RNA_View3DShading,
+      &RNA_View3DGhosts,
       &RNA_World,
   };
 

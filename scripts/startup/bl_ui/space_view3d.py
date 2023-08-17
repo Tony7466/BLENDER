@@ -920,6 +920,14 @@ class VIEW3D_HT_header(Header):
         sub.active = overlay.show_overlays
         sub.popover(panel="VIEW3D_PT_overlay", text="")
 
+        # Ghosting toggle & popover
+        ghosts = view.ghosts
+        row = layout.row(align=True)
+        row.prop(ghosts, "show_ghosts", text="")
+        sub = row.row(align=True)
+        sub.active = ghosts.show_ghosts
+        sub.popover(panel="VIEW3D_PT_ghosts", text="")
+
         row = layout.row()
         row.active = (object_mode == 'EDIT') or (shading.type in {'WIREFRAME', 'SOLID'})
 
@@ -6662,7 +6670,6 @@ class VIEW3D_PT_overlay_object(Panel):
         sub = split.column(align=True)
         sub.prop(overlay, "show_bones", text="Bones")
         sub.prop(overlay, "show_motion_paths")
-        sub.prop(overlay, "show_ghost_frames")
         sub.prop(overlay, "show_object_origins", text="Origins")
         subsub = sub.column()
         subsub.active = overlay.show_object_origins
@@ -7196,6 +7203,30 @@ class VIEW3D_PT_overlay_weight_paint(Panel):
 
         col.prop(overlay, "show_wpaint_contours")
         col.prop(overlay, "show_paint_wire")
+
+
+class VIEW3D_PT_ghosts(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_label = "Ghosts"
+    bl_ui_units_x = 13
+
+    def draw(self, context):
+        layout = self.layout
+        layout.label(text="Ghosts")
+        
+        view = context.space_data
+        ghosts = view.ghosts
+        display_all = ghosts.show_ghosts
+
+        col = layout.column(align=True)
+        col.active = display_all
+
+        split = col.split()
+
+        sub = split.row(align=True)
+        sub.prop(ghosts, "color_before", text="")
+        sub.prop(ghosts, "color_after", text="")
 
 
 class VIEW3D_PT_snapping(Panel):
@@ -8559,6 +8590,7 @@ classes = (
     VIEW3D_PT_overlay_bones,
     VIEW3D_PT_overlay_sculpt,
     VIEW3D_PT_overlay_sculpt_curves,
+    VIEW3D_PT_ghosts,
     VIEW3D_PT_snapping,
     VIEW3D_PT_proportional_edit,
     VIEW3D_PT_gpencil_origin,

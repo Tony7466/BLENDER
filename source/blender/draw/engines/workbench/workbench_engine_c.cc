@@ -430,13 +430,6 @@ void workbench_cache_populate(void *ved, Object *ob)
     return;
   }
 
-  const DRWContextState *draw_ctx = DRW_context_state_get();
-  if ((draw_ctx->v3d->overlay.flag & V3D_OVERLAY_HIDE_GHOST_FRAMES) &&
-      (ob->base_flag & BASE_IS_GHOST_FRAME))
-  {
-    return;
-  }
-
   if (ob->type == OB_MESH) {
     bool use_sculpt_pbvh, use_texpaint_mode, draw_shadow, has_transp_mat = false;
     eV3DShadingColorType color_type = workbench_color_type_get(
