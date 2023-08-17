@@ -23,6 +23,7 @@
 #include "DEG_depsgraph_query.h"
 #include "DNA_brush_enums.h"
 
+#include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
 
 #include "WM_api.hh"
@@ -673,6 +674,7 @@ struct EraseOperationExecutor {
   }
 
   struct SoftEraserPoint {
+    float radius;
     int64_t squared_radius;
     float opacity;
   };
@@ -1002,38 +1004,109 @@ struct EraseOperationExecutor {
     return dst_points;
   }
 
-  float compute_soft_eraser_opacity(const float2 point) const
+  Vector<SoftEraserPoint> compute_piecewise_linear_falloff(const float opacity_threshold) const
   {
-    const float distance = math::distance(point, this->mouse_position);
+    /* The changes in opacity implied by the soft eraser are described by a falloff curve mapping.
+     * Abscissa of the curve is the normalized distance to the brush, and ordinate of the curve is
+     * the strength of the eraser.
+     *
+     * To apply this falloff as precisely as possible, we compute a set of "rings" to the brush,
+     * meaning a set of samples in the curve mapping in between which the strength of the eraser is
+     * applied linearly.
+     *
+     * In other words, we compute a minimal set of samples that describe the falloff curve as a
+     * polyline. */
 
-    if (this->brush_ == nullptr) {
-      /* Default linear falloff. */
-      return 1.0f - this->eraser_strength * (1.0f - distance / this->eraser_radius);
-    }
-
-    /* Use the brush's curve to find the falloff value. */
-    return 1.0 - this->eraser_strength *
-                     BKE_brush_curve_strength(this->brush_, distance, this->eraser_radius);
-  }
-
-  Array<SoftEraserPoint> compute_piecewise_linear_falloff() const
-  {
-    const int64_t step_pixels = 20;
-    const float radius = this->eraser_radius;
-    const int64_t radius_px = round_fl_to_int(radius);
-    const int nb_samples = round_fl_to_int(radius / step_pixels) + 1;
-    Array<SoftEraserPoint> samples(nb_samples);
+    /* First, distance-based sampling with a small pixel distance. */
+    const int64_t step_pixels = 2;
+    int nb_samples = round_fl_to_int(this->eraser_radius / step_pixels) + 1;
+    Vector<SoftEraserPoint> falloff_samples(nb_samples);
     for (const int sample_index : IndexRange(nb_samples)) {
       const int64_t sampled_distance = math::max(sample_index * step_pixels, int64_t(1));
 
-      samples[sample_index].squared_radius = sampled_distance * sampled_distance;
-      samples[sample_index].opacity = 1.0 - this->eraser_strength *
-                                                BKE_brush_curve_strength(
-                                                    this->brush_, float(sampled_distance), radius);
-      std::cout << sample_index << " : " << sampled_distance << ","
-                << samples[sample_index].opacity << std::endl;
+      SoftEraserPoint &falloff_sample = falloff_samples[sample_index];
+      falloff_sample.radius = sampled_distance;
+      falloff_sample.squared_radius = sampled_distance * sampled_distance;
+      falloff_sample.opacity = 1.0 - this->eraser_strength *
+                                         BKE_brush_curve_strength(this->brush_,
+                                                                  float(sampled_distance),
+                                                                  this->eraser_radius);
     }
-    return samples;
+
+    /* Then, prune samples that are under the opacity threshold. */
+    Array<bool> prune_sample(nb_samples, false);
+    for (const int sample_index : falloff_samples.index_range()) {
+      SoftEraserPoint &sample = falloff_samples[sample_index];
+
+      if (sample.opacity > opacity_threshold) {
+        continue;
+      }
+
+      /* The sample is under the threshold.
+       * If the next sample is also under the threshold, prune it ! */
+      if ((sample_index == nb_samples - 1) ||
+          (falloff_samples[sample_index + 1].opacity <= opacity_threshold))
+      {
+        prune_sample[sample_index] = true;
+      }
+
+      /* Otherwise, shift the sample to the spot where the opacity is exactly at the threshold.
+       * This way we don't remove larger opacity values in-between the samples. */
+      const SoftEraserPoint &sample_after = falloff_samples[sample_index + 1];
+
+      const float t = (opacity_threshold - sample.opacity) /
+                      (sample_after.opacity - sample.opacity);
+
+      const int64_t radius = round_fl_to_int_clamp(
+          math::interpolate(float(sample.radius), float(sample_after.radius), t));
+
+      sample.radius = radius;
+      sample.squared_radius = radius * radius;
+      sample.opacity = opacity_threshold;
+    }
+
+    for (const int rev_sample_index : falloff_samples.index_range()) {
+      const int sample_index = nb_samples - rev_sample_index - 1;
+      if (prune_sample[sample_index]) {
+        falloff_samples.remove(sample_index);
+      }
+    }
+
+    /* Finally, simplify the array to have a minimal set of samples. */
+    nb_samples = falloff_samples.size();
+
+    const auto opacity_distance = [&](const IndexRange &sub_range, const int64_t index) {
+      /* Distance function for the simplification algorithm.
+       * It is computed as the difference in opacity that may result from removing the
+       * samples inside the range. */
+      const SoftEraserPoint &sample_first = falloff_samples[sub_range.first()];
+      const SoftEraserPoint &sample_last = falloff_samples[sub_range.last()];
+      const SoftEraserPoint &sample = falloff_samples[sub_range[index]];
+
+      /* If we were to remove the samples between sample_first and sample_last, then the opacity at
+       * sample.radius would be a linear interpolation between the opacities in the endpoints of
+       * the range, with a parameter depending on the distance between radii. That is what we are
+       * computing here. */
+      const float t = (sample.radius - sample_first.radius) /
+                      (sample_last.radius - sample_first.radius);
+      const float linear_opacity = math::interpolate(sample_first.opacity, sample_last.opacity, t);
+
+      return math::abs(sample.opacity - linear_opacity);
+    };
+    Array<bool> simplify_sample(nb_samples, false);
+    ed::greasepencil::ramer_douglas_peucker_simplify(falloff_samples.index_range(),
+                                                     opacity_threshold / 2.0f,
+                                                     opacity_distance,
+                                                     simplify_sample);
+
+    for (const int rev_sample_index : falloff_samples.index_range()) {
+      const int sample_index = nb_samples - rev_sample_index - 1;
+      if (simplify_sample[sample_index]) {
+        falloff_samples.remove(sample_index);
+      }
+    }
+
+    return falloff_samples;
   }
 
   /**
@@ -1059,7 +1132,8 @@ struct EraseOperationExecutor {
     VArray<float> src_opacity = *(
         src_attributes.lookup_or_default<float>(opacity_attr, ATTR_DOMAIN_POINT, 1.0f));
 
-    const Array<SoftEraserPoint> eraser_falloff = compute_piecewise_linear_falloff();
+    const Vector<SoftEraserPoint> eraser_falloff = compute_piecewise_linear_falloff(
+        opacity_threshold);
     const int nb_falloff_points = eraser_falloff.size();
 
     /* Compute intersections between the eraser and the curves in the source domain. */
@@ -1081,7 +1155,6 @@ struct EraseOperationExecutor {
 
         int point_ring_index = -1;
         for (const int falloff_index : IndexRange(nb_falloff_points)) {
-          const SoftEraserPoint &falloff = eraser_falloff[falloff_index];
           if (ELEM(src_point_side[src_point][falloff_index],
                    PointCircleSide::Inside,
                    PointCircleSide::InsideOutsideBoundary))
