@@ -1022,10 +1022,26 @@ static blender::float2 calculate_points_per_unit(View2D *v2d)
   return points_per_unit;
 }
 
-static float calculate_pixel_distance(BezTriple *a, BezTriple *b, blender::float2 pixels_per_unit)
+static float calculate_pixel_distance(rctf &bounds, blender::float2 pixels_per_unit)
 {
-  return ((b->vec[1][0] - a->vec[1][0]) * pixels_per_unit[0]) +
-         (fabs(b->vec[1][1] - a->vec[1][1]) * pixels_per_unit[1]);
+  return BLI_rctf_size_x(&bounds) * pixels_per_unit[0] +
+         BLI_rctf_size_y(&bounds) * pixels_per_unit[1];
+}
+
+static void expand_key_bounds(BezTriple *left_key, BezTriple *right_key, rctf &bounds)
+{
+  bounds.xmax = right_key->vec[1][0];
+  if (left_key->ipo == BEZT_IPO_BEZ) {
+    /* Respect handles of bezier keys. */
+    bounds.ymin = min_ffff(
+        bounds.ymin, right_key->vec[1][1], right_key->vec[0][1], left_key->vec[2][1]);
+    bounds.ymax = max_ffff(
+        bounds.ymax, right_key->vec[1][1], right_key->vec[0][1], left_key->vec[2][1]);
+  }
+  else {
+    bounds.ymax = max_ff(bounds.ymax, right_key->vec[1][1]);
+    bounds.ymin = min_ff(bounds.ymin, right_key->vec[1][1]);
+  }
 }
 
 /* Helper function - draw one repeat of an F-Curve (using Bezier curve approximations). */
@@ -1071,34 +1087,37 @@ static void draw_fcurve_curve_keys(
   const float samples_per_pixel = 0.66f;
   const float evaluation_step = pixel_width / samples_per_pixel;
 
-  /* Draw curve between first and last keyframe (if there are enough to do so). */
-  BezTriple *prevbezt = &fcu->bezt[bounding_indices[0]];
+  BezTriple *first_key = &fcu->bezt[bounding_indices[0]];
+  rctf key_bounds = {
+      first_key->vec[1][0], first_key->vec[1][1], first_key->vec[1][0], first_key->vec[1][1]};
   /* Used when skipping keys. */
-  float2 key_sum = {0, 0};
-  int key_count = 0;
+  bool has_skipped_keys = false;
   const float min_pixel_distance = 3.0f;
 
+  /* Draw curve between first and last keyframe (if there are enough to do so). */
   for (int i = bounding_indices[0] + 1; i <= bounding_indices[1]; i++) {
+    BezTriple *prevbezt = &fcu->bezt[i - 1];
     BezTriple *bezt = &fcu->bezt[i];
-    float pixel_distance = calculate_pixel_distance(prevbezt, bezt, pixels_per_unit);
+    expand_key_bounds(prevbezt, bezt, key_bounds);
+    float pixel_distance = calculate_pixel_distance(key_bounds, pixels_per_unit);
 
-    if (pixel_distance >= min_pixel_distance && key_count > 0) {
+    if (pixel_distance >= min_pixel_distance && has_skipped_keys) {
       /* When the pixel distance is greater than the threshold, and we've skipped at least one, add
        * a point. The point position is the average of all keys from INCLUDING prevbezt to
        * EXCLUDING bezt. prevbezt then gets reset to the key before bezt because the distance
        * between those is potentially below the threshold. */
-      curve_vertices.append(key_sum / key_count);
-      key_sum = {0, 0};
-      key_count = 0;
-      prevbezt = &fcu->bezt[i - 1];
+      curve_vertices.append({BLI_rctf_cent_x(&key_bounds), BLI_rctf_cent_y(&key_bounds)});
+      has_skipped_keys = false;
+      key_bounds = {
+          prevbezt->vec[1][0], prevbezt->vec[1][1], prevbezt->vec[1][0], prevbezt->vec[1][1]};
+      expand_key_bounds(prevbezt, bezt, key_bounds);
       /* Calculate again based on the new prevbezt. */
-      pixel_distance = calculate_pixel_distance(prevbezt, bezt, pixels_per_unit);
+      pixel_distance = calculate_pixel_distance(key_bounds, pixels_per_unit);
     }
 
     if (pixel_distance < min_pixel_distance) {
       /* Skip any keys that are too close to each other in screen space. */
-      key_sum += {bezt->vec[1][0], bezt->vec[1][1]};
-      key_count++;
+      has_skipped_keys = true;
       continue;
     }
 
