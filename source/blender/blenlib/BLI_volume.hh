@@ -53,107 +53,255 @@ using PointDataTree = tree::Tree<tree::RootNode<
     tree::InternalNode<tree::InternalNode<PointDataLeafNode<PointDataIndex32, 3>, 4>, 5>>>;
 using PointDataGrid = Grid<PointDataTree>;
 }  // namespace points
+
+/// Common tree types
+using BoolTree = tree::Tree4Fwd<bool, 5, 4, 3>::Type;
+using DoubleTree = tree::Tree4Fwd<double, 5, 4, 3>::Type;
+using FloatTree = tree::Tree4Fwd<float, 5, 4, 3>::Type;
+using Int32Tree = tree::Tree4Fwd<int32_t, 5, 4, 3>::Type;
+using Int64Tree = tree::Tree4Fwd<int64_t, 5, 4, 3>::Type;
+using MaskTree = tree::Tree4Fwd<ValueMask, 5, 4, 3>::Type;
+using UInt32Tree = tree::Tree4Fwd<uint32_t, 5, 4, 3>::Type;
+using Vec2DTree = tree::Tree4Fwd<Vec2d, 5, 4, 3>::Type;
+using Vec2ITree = tree::Tree4Fwd<Vec2i, 5, 4, 3>::Type;
+using Vec2STree = tree::Tree4Fwd<Vec2s, 5, 4, 3>::Type;
+using Vec3DTree = tree::Tree4Fwd<Vec3d, 5, 4, 3>::Type;
+using Vec3ITree = tree::Tree4Fwd<Vec3i, 5, 4, 3>::Type;
+using Vec3STree = tree::Tree4Fwd<Vec3f, 5, 4, 3>::Type;
+using ScalarTree = FloatTree;
+using TopologyTree = MaskTree;
+using Vec3dTree = Vec3DTree;
+using Vec3fTree = Vec3STree;
+using VectorTree = Vec3fTree;
+
+/// Common grid types
+using BoolGrid = Grid<BoolTree>;
+using DoubleGrid = Grid<DoubleTree>;
+using FloatGrid = Grid<FloatTree>;
+using Int32Grid = Grid<Int32Tree>;
+using Int64Grid = Grid<Int64Tree>;
+using UInt32Grid = Grid<UInt32Tree>;
+using MaskGrid = Grid<MaskTree>;
+using Vec3DGrid = Grid<Vec3DTree>;
+using Vec2IGrid = Grid<Vec2ITree>;
+using Vec3IGrid = Grid<Vec3ITree>;
+using Vec2SGrid = Grid<Vec2STree>;
+using Vec3SGrid = Grid<Vec3STree>;
+using ScalarGrid = FloatGrid;
+using TopologyGrid = MaskGrid;
+using Vec3dGrid = Vec3DGrid;
+using Vec2fGrid = Vec2SGrid;
+using Vec3fGrid = Vec3SGrid;
+using VectorGrid = Vec3fGrid;
+
 }  // namespace OPENVDB_VERSION_NAME
 }  // namespace openvdb
 #endif
 
 namespace blender {
 
-/* XXX OpenVDB expects some math functions on vector types. */
-template<typename T, int Size> inline VecBase<T, Size> Abs(VecBase<T, Size> v)
-{
-  VecBase<T, Size> r;
-  for (int i = 0; i < Size; i++) {
-    r[i] = math::abs(v[i]);
-  }
-  return r;
-}
-/* Specialization: math::abs is not defined for unsigned types. */
-template<int Size> inline VecBase<uint32_t, Size> Abs(VecBase<uint32_t, Size> v)
-{
-  return v;
-}
+///* XXX OpenVDB expects some math functions on vector types. */
+// template<typename T, int Size> inline VecBase<T, Size> Abs(VecBase<T, Size> v)
+//{
+//   VecBase<T, Size> r;
+//   for (int i = 0; i < Size; i++) {
+//     r[i] = math::abs(v[i]);
+//   }
+//   return r;
+// }
+///* Specialization: math::abs is not defined for unsigned types. */
+// template<int Size> inline VecBase<uint32_t, Size> Abs(VecBase<uint32_t, Size> v)
+//{
+//   return v;
+// }
 
 namespace volume {
 
 #ifdef WITH_OPENVDB
 namespace grid_types {
 
-template<typename ValueType>
-using TreeCommon = typename openvdb::tree::Tree4Fwd<ValueType, 5, 4, 3>::Type;
-template<typename ValueType> using GridCommon = openvdb::Grid<TreeCommon<ValueType>>;
+/* No-op converter utility: OpenVDB types are interpreted as their Blender counterpart so they can
+ * be used directly with attributes.
+ * Supported types are instantiated explicitly below.
+ */
+template<typename T> struct AttributeValueConverter {
+  using ValueType = T;
+
+  static ValueType to_grid(const T &value)
+  {
+    return reinterpret_cast<const ValueType &>(value);
+  }
+  static Span<ValueType> to_grid(const Span<T> values)
+  {
+    return {reinterpret_cast<const ValueType *>(values.begin()), values.size()};
+  }
+  static MutableSpan<ValueType> to_grid(const MutableSpan<T> values)
+  {
+    return {reinterpret_cast<ValueType *>(values.begin()), values.size()};
+  }
+
+  static T to_attribute(const ValueType &value)
+  {
+    return reinterpret_cast<const T &>(value);
+  }
+  static Span<T> to_attribute(const Span<ValueType> values)
+  {
+    return {reinterpret_cast<const T *>(values.begin()), values.size()};
+  }
+  static MutableSpan<T> to_attribute(const MutableSpan<ValueType> values)
+  {
+    return {reinterpret_cast<T *>(values.begin()), values.size()};
+  }
+};
+
+/* No-op converter utility: OpenVDB types are interpreted as their Blender counterpart so they can
+ * be used directly with attributes.
+ * Supported types are instantiated explicitly below.
+ *
+ * GridValueConverter uses the GridType rather than ValueType as argument.
+ * This is because MaskGrid has a bool value type, but any leaf buffer arrays
+ * are actually of type ValueMask, which is an empty dummy type.
+ * A specialization for MaskGrid is implemented below.
+ */
+template<typename GridType> struct GridValueConverter {
+  using ValueType = typename GridType::ValueType;
+  using MFType = ValueType;
+
+  static ValueType to_grid(const MFType &value)
+  {
+    return reinterpret_cast<const ValueType &>(value);
+  }
+  static Span<ValueType> to_grid(const Span<MFType> values)
+  {
+    return {reinterpret_cast<const ValueType *>(values.begin()), values.size()};
+  }
+  static MutableSpan<ValueType> to_grid(const MutableSpan<MFType> values)
+  {
+    return {reinterpret_cast<ValueType *>(values.begin()), values.size()};
+  }
+
+  static MFType to_attribute(const ValueType &value)
+  {
+    return reinterpret_cast<const MFType &>(value);
+  }
+  static Span<MFType> to_attribute(const Span<ValueType> values)
+  {
+    return {reinterpret_cast<const MFType *>(values.begin()), values.size()};
+  }
+  static MutableSpan<MFType> to_attribute(const MutableSpan<ValueType> values)
+  {
+    return {reinterpret_cast<MFType *>(values.begin()), values.size()};
+  }
+};
+
+/* Specialization for MaskGrid, converting between bool and ValueMask. */
+template<> struct GridValueConverter<openvdb::MaskGrid> {
+  using ValueType = typename bool;
+  using MFType = ValueType;
+
+  static openvdb::ValueMask to_grid(const bool &value)
+  {
+    return reinterpret_cast<const openvdb::ValueMask &>(value);
+  }
+  static Span<openvdb::ValueMask> to_grid(const Span<bool> values)
+  {
+    return {reinterpret_cast<const openvdb::ValueMask *>(values.begin()), values.size()};
+  }
+  static MutableSpan<openvdb::ValueMask> to_grid(const MutableSpan<bool> values)
+  {
+    return {reinterpret_cast<openvdb::ValueMask *>(values.begin()), values.size()};
+  }
+
+  static bool to_attribute(const openvdb::ValueMask & /*value*/)
+  {
+    return true;
+  }
+  static Span<bool> to_attribute(const Span<openvdb::ValueMask> values)
+  {
+    return Span<bool>(reinterpret_cast<const bool *>(values.begin()), values.size());
+  }
+  static MutableSpan<bool> to_attribute(const MutableSpan<openvdb::ValueMask> values)
+  {
+    return MutableSpan<bool>(reinterpret_cast<bool *>(values.begin()), values.size());
+  }
+};
+
+template<typename T>
+using AttributeTree = typename openvdb::tree::
+    Tree4Fwd<typename AttributeValueConverter<T>::ValueType, 5, 4, 3>::Type;
+template<typename T> using AttributeGrid = openvdb::Grid<AttributeTree<T>>;
 
 /* TODO add more as needed. */
 /* TODO could use template magic to generate all from 1 list, but not worth it for now. */
 /* TODO some types disabled because of missing CPPType registration. */
 
-using BoolTree = TreeCommon<bool>;
-using MaskTree = TreeCommon<openvdb::ValueMask>;
-using FloatTree = TreeCommon<float>;
-using Float2Tree = TreeCommon<float2>;
-using Float3Tree = TreeCommon<float3>;
-// using Float4Tree = TreeCommon<float4>;
-using DoubleTree = TreeCommon<double>;
-using Double3Tree = TreeCommon<double3>;
-using IntTree = TreeCommon<int32_t>;
-using Int2Tree = TreeCommon<int2>;
-using Int3Tree = TreeCommon<int3>;
-// using Int4Tree = TreeCommon<int4>;
-using UIntTree = TreeCommon<uint32_t>;
-// using UInt2Tree = TreeCommon<uint2>;
-// using UInt3Tree = TreeCommon<uint3>;
-// using UInt4Tree = TreeCommon<uint4>;
-using ScalarTree = FloatTree;
-using TopologyTree = MaskTree;
-
-using BoolGrid = openvdb::Grid<BoolTree>;
-using MaskGrid = openvdb::Grid<MaskTree>;
-using FloatGrid = openvdb::Grid<FloatTree>;
-using Float2Grid = openvdb::Grid<Float2Tree>;
-using Float3Grid = openvdb::Grid<Float3Tree>;
-// using Float4Grid = openvdb::Grid<Float4Tree>;
-using DoubleGrid = openvdb::Grid<DoubleTree>;
-using Double3Grid = openvdb::Grid<Double3Tree>;
-using IntGrid = openvdb::Grid<IntTree>;
-using Int2Grid = openvdb::Grid<Int2Tree>;
-using Int3Grid = openvdb::Grid<Int3Tree>;
-// using Int4Grid = openvdb::Grid<Int4Tree>;
-using UIntGrid = openvdb::Grid<UIntTree>;
-// using UInt2Grid = openvdb::Grid<UInt2Tree>;
-// using UInt3Grid = openvdb::Grid<UInt3Tree>;
-// using UInt4Grid = openvdb::Grid<UInt4Tree>;
-using ScalarGrid = openvdb::Grid<ScalarTree>;
-using TopologyGrid = openvdb::Grid<TopologyTree>;
-using PointDataGrid = openvdb::points::PointDataGrid;
+// using BoolTree = TreeCommon<bool>;
+// using MaskTree = TreeCommon<openvdb::ValueMask>;
+// using FloatTree = TreeCommon<float>;
+// using Float2Tree = TreeCommon<float2>;
+// using Float3Tree = TreeCommon<float3>;
+//// using Float4Tree = TreeCommon<float4>;
+// using DoubleTree = TreeCommon<double>;
+// using Double3Tree = TreeCommon<double3>;
+// using IntTree = TreeCommon<int32_t>;
+// using Int2Tree = TreeCommon<int2>;
+// using Int3Tree = TreeCommon<int3>;
+//// using Int4Tree = TreeCommon<int4>;
+// using UIntTree = TreeCommon<uint32_t>;
+//// using UInt2Tree = TreeCommon<uint2>;
+//// using UInt3Tree = TreeCommon<uint3>;
+//// using UInt4Tree = TreeCommon<uint4>;
+// using ScalarTree = FloatTree;
+// using TopologyTree = MaskTree;
+//
+// using BoolGrid = openvdb::Grid<BoolTree>;
+// using MaskGrid = openvdb::Grid<MaskTree>;
+// using FloatGrid = openvdb::Grid<FloatTree>;
+// using Float2Grid = openvdb::Grid<Float2Tree>;
+// using Float3Grid = openvdb::Grid<Float3Tree>;
+//// using Float4Grid = openvdb::Grid<Float4Tree>;
+// using DoubleGrid = openvdb::Grid<DoubleTree>;
+// using Double3Grid = openvdb::Grid<Double3Tree>;
+// using IntGrid = openvdb::Grid<IntTree>;
+// using Int2Grid = openvdb::Grid<Int2Tree>;
+// using Int3Grid = openvdb::Grid<Int3Tree>;
+//// using Int4Grid = openvdb::Grid<Int4Tree>;
+// using UIntGrid = openvdb::Grid<UIntTree>;
+//// using UInt2Grid = openvdb::Grid<UInt2Tree>;
+//// using UInt3Grid = openvdb::Grid<UInt3Tree>;
+//// using UInt4Grid = openvdb::Grid<UInt4Tree>;
+// using ScalarGrid = openvdb::Grid<ScalarTree>;
+// using TopologyGrid = openvdb::Grid<TopologyTree>;
+// using PointDataGrid = openvdb::points::PointDataGrid;
 
 using SupportedGridValueTypes = std::tuple<bool,
                                            float,
-                                           float2,
-                                           float3,
-                                           /*float4,*/
+                                           openvdb::Vec2f,
+                                           openvdb::Vec3f,
+                                           /*openvdb::Vec4f,*/
                                            int32_t,
-                                           int2,
-                                           /*int3,*/ /*int4,*/ uint32_t
-                                           /*,uint2*/
-                                           /*,uint3*/
-                                           /*,uint4*/>;
+                                           openvdb::Vec2i,
+                                           /*openvdb::Vec3i,*/ /*openvdb::Vec4i,*/ uint32_t
+                                           /*,openvdb::Vec2u*/
+                                           /*,openvdb::Vec3u*/
+                                           /*,openvdb::Vec4u*/>;
 
-using SupportedGridTypes = openvdb::TypeList<BoolGrid,
-                                             MaskGrid,
-                                             FloatGrid,
-                                             Float2Grid,
-                                             Float3Grid,
-                                             /*Float4Grid,*/
-                                             IntGrid,
-                                             Int2Grid,
-                                             /*Int3Grid,*/
-                                             /*Int4Grid,*/
-                                             UIntGrid,
-                                             /*UInt2Grid,*/
-                                             /*UInt3Grid,*/
-                                             /*UInt4Grid,*/
-                                             ScalarGrid,
-                                             TopologyGrid>;
+using SupportedGridTypes = openvdb::TypeList<openvdb::BoolGrid,
+                                             openvdb::MaskGrid,
+                                             openvdb::FloatGrid,
+                                             openvdb::Vec2fGrid,
+                                             openvdb::Vec3fGrid,
+                                             /*openvdb::Vec4fGrid,*/
+                                             openvdb::Int32Grid,
+                                             openvdb::Vec2IGrid,
+                                             /*openvdb::Vec3IGrid,*/
+                                             /*openvdb::Vec4IGrid,*/
+                                             openvdb::UInt32Grid,
+                                             /*openvdb::Vec2UInt32Grid,*/
+                                             /*openvdb::Vec3UInt32Grid,*/
+                                             /*openvdb::Vec4UInt32Grid,*/
+                                             openvdb::ScalarGrid,
+                                             openvdb::TopologyGrid>;
 
 }  // namespace grid_types
 #endif
@@ -166,7 +314,7 @@ template<typename T> class MutableGrid;
 /* Mask defined by active voxels of the grid. */
 class GridMask {
 #ifdef WITH_OPENVDB
-  using GridPtr = std::shared_ptr<grid_types::MaskGrid>;
+  using GridPtr = std::shared_ptr<openvdb::MaskGrid>;
   GridPtr grid_;
 
   static GridPtr empty_grid();
@@ -270,12 +418,12 @@ class GMutableGrid {
 
 template<typename T> class Grid {
  public:
-  using ValueType = T;
 #ifdef WITH_OPENVDB
-  using GridType = grid_types::GridCommon<T>;
+  using GridType = grid_types::AttributeGrid<T>;
   using TreeType = typename GridType::TreeType;
   using GridPtr = typename GridType::Ptr;
   using GridConstPtr = typename GridType::ConstPtr;
+  using ValueType = typename GridType::ValueType;
 
   GridConstPtr grid_ = nullptr;
 #endif
@@ -292,12 +440,12 @@ template<typename T> class Grid {
 
 template<typename T> class MutableGrid {
  public:
-  using ValueType = T;
 #ifdef WITH_OPENVDB
-  using GridType = grid_types::GridCommon<T>;
+  using GridType = grid_types::AttributeGrid<T>;
   using TreeType = typename GridType::TreeType;
   using GridPtr = typename GridType::Ptr;
   using GridConstPtr = typename GridType::ConstPtr;
+  using ValueType = typename GridType::ValueType;
 
   GridPtr grid_ = nullptr;
 #endif

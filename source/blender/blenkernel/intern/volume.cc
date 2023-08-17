@@ -1011,34 +1011,34 @@ VolumeGridType BKE_volume_grid_type_openvdb(const openvdb::GridBase &grid)
 {
   namespace grid_types = blender::volume::grid_types;
 
-  if (grid.isType<openvdb::FloatGrid>() || grid.isType<grid_types::FloatGrid>()) {
+  if (grid.isType<openvdb::FloatGrid>()) {
     return VOLUME_GRID_FLOAT;
   }
-  if (grid.isType<openvdb::Vec3fGrid>() || grid.isType<grid_types::Float3Grid>()) {
+  if (grid.isType<openvdb::Vec3fGrid>()) {
     return VOLUME_GRID_VECTOR_FLOAT;
   }
-  if (grid.isType<openvdb::BoolGrid>() || grid.isType<grid_types::BoolGrid>()) {
+  if (grid.isType<openvdb::BoolGrid>()) {
     return VOLUME_GRID_BOOLEAN;
   }
-  if (grid.isType<openvdb::DoubleGrid>() || grid.isType<grid_types::DoubleGrid>()) {
+  if (grid.isType<openvdb::DoubleGrid>()) {
     return VOLUME_GRID_DOUBLE;
   }
-  if (grid.isType<openvdb::Int32Grid>() || grid.isType<grid_types::IntGrid>()) {
+  if (grid.isType<openvdb::Int32Grid>()) {
     return VOLUME_GRID_INT;
   }
   if (grid.isType<openvdb::Int64Grid>()) {
     return VOLUME_GRID_INT64;
   }
-  if (grid.isType<openvdb::Vec3IGrid>() || grid.isType<grid_types::Int3Grid>()) {
+  if (grid.isType<openvdb::Vec3IGrid>()) {
     return VOLUME_GRID_VECTOR_INT;
   }
-  if (grid.isType<openvdb::Vec3dGrid>() || grid.isType<grid_types::Double3Grid>()) {
+  if (grid.isType<openvdb::Vec3dGrid>()) {
     return VOLUME_GRID_VECTOR_DOUBLE;
   }
-  if (grid.isType<openvdb::MaskGrid>() || grid.isType<grid_types::MaskGrid>()) {
+  if (grid.isType<openvdb::MaskGrid>()) {
     return VOLUME_GRID_MASK;
   }
-  if (grid.isType<openvdb::points::PointDataGrid>() || grid.isType<grid_types::PointDataGrid>()) {
+  if (grid.isType<openvdb::points::PointDataGrid>()) {
     return VOLUME_GRID_POINTS;
   }
   return VOLUME_GRID_UNKNOWN;

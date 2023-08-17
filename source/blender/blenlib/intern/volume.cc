@@ -19,7 +19,7 @@ namespace blender::volume {
 #ifdef WITH_OPENVDB
 GridMask::GridPtr GridMask::empty_grid()
 {
-  static GridPtr grid = grid_types::MaskGrid::create();
+  static GridPtr grid = openvdb::MaskGrid::create();
   return grid;
 }
 
@@ -93,9 +93,10 @@ GMutableGrid GMutableGrid::create(const CPPType &type, const void *background_va
 {
   openvdb::GridBase::Ptr grid;
   volume::field_to_static_type(type, [&grid, background_value](auto type_tag) {
-    using ValueType = typename decltype(type_tag)::type;
-    const ValueType &value = *static_cast<const ValueType *>(background_value);
-    grid = grid_types::GridCommon<ValueType>::create(value);
+    using T = typename decltype(type_tag)::type;
+
+    const T &value = *static_cast<const T *>(background_value);
+    grid = grid_types::AttributeGrid<T>::create(value);
   });
 
   return GMutableGrid{std::move(grid)};
@@ -105,10 +106,11 @@ GMutableGrid GMutableGrid::create(const CPPType &type)
 {
   openvdb::GridBase::Ptr grid;
   volume::field_to_static_type(type, [&grid](auto type_tag) {
-    using ValueType = typename decltype(type_tag)::type;
-    const CPPType &type = CPPType::get<ValueType>();
-    const ValueType &value = *static_cast<const ValueType *>(type.default_value());
-    grid = grid_types::GridCommon<ValueType>::create(value);
+    using T = typename decltype(type_tag)::type;
+
+    const CPPType &type = CPPType::get<T>();
+    const T &value = *static_cast<const T *>(type.default_value());
+    grid = grid_types::AttributeGrid<T>::create(value);
   });
 
   return GMutableGrid{std::move(grid)};
@@ -121,17 +123,17 @@ GMutableGrid GMutableGrid::create(const CPPType &type,
 {
   openvdb::GridBase::Ptr grid = nullptr;
   volume::field_to_static_type(type, [&](auto type_tag) {
-    using ValueType = typename decltype(type_tag)::type;
-    using TreeType = grid_types::TreeCommon<ValueType>;
-    using GridType = grid_types::GridCommon<ValueType>;
+    using T = typename decltype(type_tag)::type;
+    using TreeType = grid_types::AttributeTree<T>;
+    using GridType = grid_types::AttributeGrid<T>;
 
     if (mask.is_empty()) {
-      grid = grid_types::GridCommon<ValueType>::create();
+      grid = GridType::create();
       return;
     }
 
-    const ValueType &typed_inactive_value = *static_cast<const ValueType *>(inactive_value);
-    const ValueType &typed_active_value = *static_cast<const ValueType *>(active_value);
+    const T &typed_inactive_value = *static_cast<const T *>(inactive_value);
+    const T &typed_active_value = *static_cast<const T *>(active_value);
     typename TreeType::Ptr tree = nullptr;
     volume::grid_to_static_type(mask.grid_, [&](auto &typed_mask) {
       tree = typename TreeType::Ptr(new TreeType(

@@ -23,11 +23,16 @@
  * OpenVDB is heavily templated and exposing this can affect build times severely.
  */
 
-namespace blender {
-
-namespace volume {
+namespace blender::volume {
 
 #ifdef WITH_OPENVDB
+
+namespace grid_types {
+
+extern template AttributeValueConverter<float>;
+extern template GridValueConverter<openvdb::FloatGrid>;
+
+}  // namespace grid_types
 
 template<typename T> Grid<T> GGrid::typed() const
 {
@@ -110,14 +115,14 @@ void grid_to_static_type(const std::shared_ptr<const openvdb::GridBase> &grid, F
 
 template<typename T> MutableGrid<T> MutableGrid<T>::create(const T &background_value)
 {
-  typename GridType::Ptr grid = grid_types::GridCommon<ValueType>::create(background_value);
+  typename GridType::Ptr grid = GridType::create(background_value);
   return MutableGrid<T>{std::move(grid)};
 }
 
 template<typename T> MutableGrid<T> MutableGrid<T>::create()
 {
   ValueType value = *static_cast<const ValueType *>(CPPType::get<T>().default_value_);
-  typename GridType::Ptr grid = grid_types::GridCommon<ValueType>::create(value);
+  typename GridType::Ptr grid = GridType::create(value);
   return MutableGrid<T>{std::move(grid)};
 }
 
@@ -127,7 +132,7 @@ MutableGrid<T> MutableGrid<T>::create(const GGrid &mask,
                                       const T &active_value)
 {
   if (mask.is_empty()) {
-    typename GridType::Ptr grid = grid_types::GridCommon<ValueType>::create();
+    typename GridType::Ptr grid = GridType::create();
     return MutableGrid<T>{std::move(grid)};
   }
 
@@ -142,6 +147,4 @@ MutableGrid<T> MutableGrid<T>::create(const GGrid &mask,
 
 #endif
 
-}  // namespace volume
-
-}  // namespace blender
+}  // namespace blender::volume

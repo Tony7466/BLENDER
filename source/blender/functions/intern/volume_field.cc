@@ -193,6 +193,8 @@ template<typename GridType, typename MaskGridType> struct EvalPerLeafOp {
   using GridMask = volume::GridMask;
   using TreeType = typename GridType::TreeType;
   using ValueType = typename GridType::ValueType;
+  using Converter = volume::grid_types::GridValueConverter<GridType>;
+  using MFType = typename Converter::MFType;
 
   using LeafNode = typename TreeType::LeafNodeType;
   using GridReaderType = VGridReader<GridType>;
@@ -269,8 +271,8 @@ template<typename GridType, typename MaskGridType> struct EvalPerLeafOp {
     }
 
     /* Pass output buffer to the procedure executor. */
-    const CPPType &out_type = CPPType::get<ValueType>();
-    const GMutableSpan out_span{out_type, leaf.buffer().data(), leaf_size};
+    const GMutableSpan out_span = Converter::to_attribute(
+        MutableSpan{leaf.buffer().data(), leaf_size});
     mf_params.add_uninitialized_single_output(out_span);
 
     procedure_executor_.call_auto(index_mask, mf_params, mf_context_);
@@ -419,10 +421,10 @@ void evaluate_procedure_on_constant_volume_fields(ResourceScope & /*scope*/,
     const int out_index = field_indices[i];
 
     volume::field_to_static_type(type, [&](auto type_tag) {
-      using ValueType = typename decltype(type_tag)::type;
+      using T = typename decltype(type_tag)::type;
 
-      const ValueType &value = *static_cast<ValueType *>(output_buffers[i]);
-      r_grids[out_index] = GGrid{volume::grid_types::GridCommon<ValueType>::create(value)};
+      const T &value = *static_cast<T *>(output_buffers[i]);
+      r_grids[out_index] = GGrid{volume::grid_types::AttributeGrid<T>::create(value)};
     });
 
     /* Destruct output value buffers, value is stored in grid backgrounds now. */

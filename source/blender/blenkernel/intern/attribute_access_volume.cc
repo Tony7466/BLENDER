@@ -61,7 +61,7 @@ static openvdb::GridBase::Ptr add_generic_grid(const CPPType &value_type,
 {
   volume::field_to_static_type(value_type, [&](auto tag) {
     using ValueType = typename decltype(tag)::type;
-    using GridType = volume::grid_types::GridCommon<ValueType>;
+    using GridType = volume::grid_types::AttributeGrid<ValueType>;
     using TreeType = typename GridType::TreeType;
 
     const ValueType &background_value = *static_cast<const ValueType *>(
@@ -96,10 +96,8 @@ struct ConvertGridOp<ToTreeType, FromTreeType, false> {
   }
 };
 
-template<typename ToTreeType>
-struct ConvertGridOp<ToTreeType, volume::grid_types::MaskTree, true> {
-  typename openvdb::Grid<ToTreeType>::Ptr operator()(
-      const volume::grid_types::MaskTree & /*from_tree*/)
+template<typename ToTreeType> struct ConvertGridOp<ToTreeType, openvdb::MaskTree, true> {
+  typename openvdb::Grid<ToTreeType>::Ptr operator()(const openvdb::MaskTree & /*from_tree*/)
   {
     return openvdb::Grid<ToTreeType>::create();
   }
@@ -116,7 +114,7 @@ static openvdb::GridBase::Ptr add_generic_grid_copy(const CPPType &value_type,
 
   volume::field_to_static_type(value_type, [&](auto tag) {
     using ValueType = typename decltype(tag)::type;
-    using GridType = volume::grid_types::GridCommon<ValueType>;
+    using GridType = volume::grid_types::AttributeGrid<ValueType>;
     using TreeType = typename GridType::TreeType;
 
     const ValueType &background_value = *static_cast<const ValueType *>(
@@ -164,7 +162,7 @@ static openvdb::GridBase::Ptr add_generic_grid_shared(const CPPType &value_type,
   openvdb::GridBase::Ptr result = nullptr;
   volume::field_to_static_type(value_type, [&](auto tag) {
     using ValueType = typename decltype(tag)::type;
-    using GridType = volume::grid_types::GridCommon<ValueType>;
+    using GridType = volume::grid_types::AttributeGrid<ValueType>;
 
     if (data) {
       /* Data must be same grid type */

@@ -47,35 +47,34 @@ VolumeGridType BKE_volume_grid_type_openvdb(const openvdb::GridBase &grid);
 template<typename OpType>
 auto BKE_volume_grid_type_operation(const VolumeGridType grid_type, OpType &&op)
 {
-  namespace grid_types = blender::volume::grid_types;
   switch (grid_type) {
     case VOLUME_GRID_FLOAT:
-      return op.template operator()<grid_types::FloatGrid>();
+      return op.template operator()<openvdb::FloatGrid>();
     case VOLUME_GRID_VECTOR_FLOAT:
-      return op.template operator()<grid_types::Float3Grid>();
+      return op.template operator()<openvdb::Vec3fGrid>();
     case VOLUME_GRID_BOOLEAN:
-      return op.template operator()<grid_types::BoolGrid>();
+      return op.template operator()<openvdb::BoolGrid>();
     case VOLUME_GRID_DOUBLE:
-      return op.template operator()<grid_types::DoubleGrid>();
+      return op.template operator()<openvdb::DoubleGrid>();
     case VOLUME_GRID_INT:
-      return op.template operator()<grid_types::IntGrid>();
+      return op.template operator()<openvdb::Int32Grid>();
     case VOLUME_GRID_INT64:
-      return op.template operator()<grid_types::GridCommon<int64_t>>();
+      return op.template operator()<openvdb::Int64Grid>();
     case VOLUME_GRID_VECTOR_INT:
-      return op.template operator()<grid_types::Int3Grid>();
+      return op.template operator()<openvdb::Vec3IGrid>();
     case VOLUME_GRID_VECTOR_DOUBLE:
-      return op.template operator()<grid_types::Double3Grid>();
+      return op.template operator()<openvdb::Vec3DGrid>();
     case VOLUME_GRID_MASK:
-      return op.template operator()<grid_types::MaskGrid>();
+      return op.template operator()<openvdb::MaskGrid>();
     case VOLUME_GRID_POINTS:
-      return op.template operator()<grid_types::PointDataGrid>();
+      return op.template operator()<openvdb::points::PointDataGrid>();
     case VOLUME_GRID_UNKNOWN:
       break;
   }
 
   /* Should never be called. */
   BLI_assert_msg(0, "should never be reached");
-  return op.template operator()<grid_types::FloatGrid>();
+  return op.template operator()<openvdb::FloatGrid>();
 }
 
 blender::volume::GMutableGrid BKE_volume_grid_create_with_changed_resolution(
