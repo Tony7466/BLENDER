@@ -1,10 +1,12 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
  */
+
+#include <sstream>
 
 #include "vk_shader.hh"
 
@@ -654,6 +656,11 @@ bool VKShader::finalize(const shader::ShaderCreateInfo *info)
   if (compilation_failed_) {
     return false;
   }
+#if DEBUG
+  if (!info->is_vulkan_compatible()) {
+    std::cout << "'" << info->name_ << "' stage interfaces are not compatible with Vulkan.\n";
+  }
+#endif
 
   VKShaderInterface *vk_interface = new VKShaderInterface();
   vk_interface->init(*info);

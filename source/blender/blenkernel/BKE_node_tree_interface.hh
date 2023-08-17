@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -177,7 +177,7 @@ template<typename T> const T &get_socket_data_as(const bNodeTreeInterfaceSocket 
 }
 
 inline bNodeTreeInterfaceSocket *add_interface_socket_from_node(bNodeTree &ntree,
-                                                                const bNode &from_node,
+                                                                const bNode & /*from_node*/,
                                                                 const bNodeSocket &from_sock,
                                                                 const StringRefNull socket_type,
                                                                 const StringRefNull name)
@@ -194,6 +194,7 @@ inline bNodeTreeInterfaceSocket *add_interface_socket_from_node(bNodeTree &ntree
   const bNodeSocketType *typeinfo = iosock->socket_typeinfo();
   if (typeinfo->interface_from_socket) {
     /* XXX Enable when bNodeSocketType callbacks have been updated. */
+    UNUSED_VARS(from_sock);
     //    typeinfo->interface_from_socket(ntree.id, iosock, &from_node, &from_sock);
   }
   return iosock;
