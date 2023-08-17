@@ -49,3 +49,4 @@ Referenced by commit 077db81638ba7caa03bbb0381a8e7fb65fafbd69, Outliner: Port li
 Referenced by pull request #111167, Outliner: Port pose channel elements to new tree-element code design
 Referenced by pull request #111220, Outliner: Port layer collection elements to new tree-element code design
 Referenced by pull request #111230, Outliner: Port view collection base elements to new tree-element code design
+Referenced by commit 28f4bb20071ae615b7df746fa3258430fec6ae75, Outliner: Port modifier elements to new tree-element code design
