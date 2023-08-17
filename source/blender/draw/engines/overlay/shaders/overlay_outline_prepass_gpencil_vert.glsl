@@ -40,10 +40,10 @@ void main()
                                unused_color,
                                unused_strength,
                                unused_uv,
-                               gp_interp.sspos,
-                               gp_interp.aspect,
-                               gp_interp.thickness,
-                               gp_interp.hardness);
+                               gp_flat_interp.sspos,
+                               gp_flat_interp.aspect,
+                               gp_noperspective_interp.thickness,
+                               gp_noperspective_interp.hardness);
 
   /* Small bias to always be on top of the geom. */
   gl_Position.z -= 1e-3;
