@@ -497,6 +497,10 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
   const bke::GeometryFieldContext field_context{component, domain};
   const bke::AttributeValidator validator = attributes.lookup_validator(attribute_id);
 
+  if (!validator.validate_meta_data_if_necessary({domain, data_type})) {
+    return false;
+  }
+
   const std::optional<AttributeMetaData> meta_data = attributes.lookup_meta_data(attribute_id);
   const bool attribute_matches = meta_data &&
                                  attribute_kind_matches(*meta_data, domain, data_type);
@@ -516,12 +520,6 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
 
       dst_attribute.finish();
       return true;
-    }
-  }
-
-  if (!attribute_matches) {
-    if (attributes.is_builtin(attribute_id)) {
-      return false;
     }
   }
 

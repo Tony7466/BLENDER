@@ -63,6 +63,11 @@ struct AttributeMetaData {
   eAttrDomain domain;
   eCustomDataType data_type;
 
+  constexpr AttributeMetaData(eAttrDomain src_domain, eCustomDataType src_data_type)
+      : domain(src_domain), data_type(src_data_type)
+  {
+  }
+
   constexpr friend bool operator==(AttributeMetaData a, AttributeMetaData b)
   {
     return (a.domain == b.domain) && (a.data_type == b.data_type);
@@ -197,14 +202,31 @@ struct AttributeValidator {
    */
   const fn::multi_function::MultiFunction *function;
 
+  /**
+   * Static meta data for the attribute, if needed.
+   */
+  const std::optional<AttributeMetaData> meta_data;
+
+  AttributeValidator() = default;
+  AttributeValidator(const fn::multi_function::MultiFunction &src_function)
+      : function(&src_function)
+  {
+  }
+  AttributeValidator(const fn::multi_function::MultiFunction &src_function,
+                     const AttributeMetaData src_meta_data)
+      : function(&src_function), meta_data(src_meta_data)
+  {
+  }
+
   operator bool() const
   {
-    return this->function != nullptr;
+    return this->function != nullptr || meta_data.has_value();
   }
   /**
    * Return a field that creates corrected attribute values.
    */
   fn::GField validate_field_if_necessary(const fn::GField &field) const;
+  bool validate_meta_data_if_necessary(AttributeMetaData) const;
 };
 
 /**

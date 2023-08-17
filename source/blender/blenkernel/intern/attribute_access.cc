@@ -964,6 +964,14 @@ fn::GField AttributeValidator::validate_field_if_necessary(const fn::GField &fie
   return field;
 }
 
+bool AttributeValidator::validate_meta_data_if_necessary(const AttributeMetaData other) const
+{
+  if (meta_data.has_value()) {
+    return other == meta_data;
+  }
+  return true;
+}
+
 Vector<AttributeTransferData> retrieve_attributes_for_transfer(
     const bke::AttributeAccessor src_attributes,
     bke::MutableAttributeAccessor dst_attributes,

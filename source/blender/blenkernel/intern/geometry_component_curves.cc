@@ -424,25 +424,27 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
         return std::clamp<int8_t>(value, BEZIER_HANDLE_FREE, BEZIER_HANDLE_ALIGN);
       },
       mf::build::exec_presets::AllSpanOrSingle());
-  static BuiltinCustomDataLayerProvider handle_type_right("handle_type_right",
-                                                          ATTR_DOMAIN_POINT,
-                                                          CD_PROP_INT8,
-                                                          CD_PROP_INT8,
-                                                          BuiltinAttributeProvider::Creatable,
-                                                          BuiltinAttributeProvider::Deletable,
-                                                          point_access,
-                                                          tag_component_topology_changed,
-                                                          AttributeValidator{&handle_type_clamp});
+  static BuiltinCustomDataLayerProvider handle_type_right(
+      "handle_type_right",
+      ATTR_DOMAIN_POINT,
+      CD_PROP_INT8,
+      CD_PROP_INT8,
+      BuiltinAttributeProvider::Creatable,
+      BuiltinAttributeProvider::Deletable,
+      point_access,
+      tag_component_topology_changed,
+      AttributeValidator(handle_type_clamp, AttributeMetaData(ATTR_DOMAIN_POINT, CD_PROP_INT8)));
 
-  static BuiltinCustomDataLayerProvider handle_type_left("handle_type_left",
-                                                         ATTR_DOMAIN_POINT,
-                                                         CD_PROP_INT8,
-                                                         CD_PROP_INT8,
-                                                         BuiltinAttributeProvider::Creatable,
-                                                         BuiltinAttributeProvider::Deletable,
-                                                         point_access,
-                                                         tag_component_topology_changed,
-                                                         AttributeValidator{&handle_type_clamp});
+  static BuiltinCustomDataLayerProvider handle_type_left(
+      "handle_type_left",
+      ATTR_DOMAIN_POINT,
+      CD_PROP_INT8,
+      CD_PROP_INT8,
+      BuiltinAttributeProvider::Creatable,
+      BuiltinAttributeProvider::Deletable,
+      point_access,
+      tag_component_topology_changed,
+      AttributeValidator(handle_type_clamp, AttributeMetaData(ATTR_DOMAIN_POINT, CD_PROP_INT8)));
 
   static BuiltinCustomDataLayerProvider nurbs_weight("nurbs_weight",
                                                      ATTR_DOMAIN_POINT,
@@ -457,15 +459,16 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
       "NURBS Order Validate",
       [](int8_t value) { return std::max<int8_t>(value, 0); },
       mf::build::exec_presets::AllSpanOrSingle());
-  static BuiltinCustomDataLayerProvider nurbs_order("nurbs_order",
-                                                    ATTR_DOMAIN_CURVE,
-                                                    CD_PROP_INT8,
-                                                    CD_PROP_INT8,
-                                                    BuiltinAttributeProvider::Creatable,
-                                                    BuiltinAttributeProvider::Deletable,
-                                                    curve_access,
-                                                    tag_component_topology_changed,
-                                                    AttributeValidator{&nurbs_order_clamp});
+  static BuiltinCustomDataLayerProvider nurbs_order(
+      "nurbs_order",
+      ATTR_DOMAIN_CURVE,
+      CD_PROP_INT8,
+      CD_PROP_INT8,
+      BuiltinAttributeProvider::Creatable,
+      BuiltinAttributeProvider::Deletable,
+      curve_access,
+      tag_component_topology_changed,
+      AttributeValidator(nurbs_order_clamp, AttributeMetaData(ATTR_DOMAIN_CURVE, CD_PROP_INT8)));
 
   static const auto normal_mode_clamp = mf::build::SI1_SO<int8_t, int8_t>(
       "Normal Mode Validate",
@@ -473,15 +476,16 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
         return std::clamp<int8_t>(value, NORMAL_MODE_MINIMUM_TWIST, NORMAL_MODE_Z_UP);
       },
       mf::build::exec_presets::AllSpanOrSingle());
-  static BuiltinCustomDataLayerProvider normal_mode("normal_mode",
-                                                    ATTR_DOMAIN_CURVE,
-                                                    CD_PROP_INT8,
-                                                    CD_PROP_INT8,
-                                                    BuiltinAttributeProvider::Creatable,
-                                                    BuiltinAttributeProvider::Deletable,
-                                                    curve_access,
-                                                    tag_component_normals_changed,
-                                                    AttributeValidator{&normal_mode_clamp});
+  static BuiltinCustomDataLayerProvider normal_mode(
+      "normal_mode",
+      ATTR_DOMAIN_CURVE,
+      CD_PROP_INT8,
+      CD_PROP_INT8,
+      BuiltinAttributeProvider::Creatable,
+      BuiltinAttributeProvider::Deletable,
+      curve_access,
+      tag_component_normals_changed,
+      AttributeValidator(normal_mode_clamp, AttributeMetaData(ATTR_DOMAIN_CURVE, CD_PROP_INT8)));
 
   static const auto knots_mode_clamp = mf::build::SI1_SO<int8_t, int8_t>(
       "Knots Mode Validate",
@@ -489,15 +493,16 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
         return std::clamp<int8_t>(value, NURBS_KNOT_MODE_NORMAL, NURBS_KNOT_MODE_ENDPOINT_BEZIER);
       },
       mf::build::exec_presets::AllSpanOrSingle());
-  static BuiltinCustomDataLayerProvider nurbs_knots_mode("knots_mode",
-                                                         ATTR_DOMAIN_CURVE,
-                                                         CD_PROP_INT8,
-                                                         CD_PROP_INT8,
-                                                         BuiltinAttributeProvider::Creatable,
-                                                         BuiltinAttributeProvider::Deletable,
-                                                         curve_access,
-                                                         tag_component_topology_changed,
-                                                         AttributeValidator{&knots_mode_clamp});
+  static BuiltinCustomDataLayerProvider nurbs_knots_mode(
+      "knots_mode",
+      ATTR_DOMAIN_CURVE,
+      CD_PROP_INT8,
+      CD_PROP_INT8,
+      BuiltinAttributeProvider::Creatable,
+      BuiltinAttributeProvider::Deletable,
+      curve_access,
+      tag_component_topology_changed,
+      AttributeValidator(knots_mode_clamp, AttributeMetaData(ATTR_DOMAIN_CURVE, CD_PROP_INT8)));
 
   static const auto curve_type_clamp = mf::build::SI1_SO<int8_t, int8_t>(
       "Curve Type Validate",
@@ -505,29 +510,31 @@ static ComponentAttributeProviders create_attribute_providers_for_curve()
         return std::clamp<int8_t>(value, CURVE_TYPE_CATMULL_ROM, CURVE_TYPES_NUM);
       },
       mf::build::exec_presets::AllSpanOrSingle());
-  static BuiltinCustomDataLayerProvider curve_type("curve_type",
-                                                   ATTR_DOMAIN_CURVE,
-                                                   CD_PROP_INT8,
-                                                   CD_PROP_INT8,
-                                                   BuiltinAttributeProvider::Creatable,
-                                                   BuiltinAttributeProvider::Deletable,
-                                                   curve_access,
-                                                   tag_component_curve_types_changed,
-                                                   AttributeValidator{&curve_type_clamp});
+  static BuiltinCustomDataLayerProvider curve_type(
+      "curve_type",
+      ATTR_DOMAIN_CURVE,
+      CD_PROP_INT8,
+      CD_PROP_INT8,
+      BuiltinAttributeProvider::Creatable,
+      BuiltinAttributeProvider::Deletable,
+      curve_access,
+      tag_component_curve_types_changed,
+      AttributeValidator(curve_type_clamp, AttributeMetaData(ATTR_DOMAIN_CURVE, CD_PROP_INT8)));
 
   static const auto resolution_clamp = mf::build::SI1_SO<int, int>(
       "Resolution Validate",
       [](int value) { return std::max<int>(value, 1); },
       mf::build::exec_presets::AllSpanOrSingle());
-  static BuiltinCustomDataLayerProvider resolution("resolution",
-                                                   ATTR_DOMAIN_CURVE,
-                                                   CD_PROP_INT32,
-                                                   CD_PROP_INT32,
-                                                   BuiltinAttributeProvider::Creatable,
-                                                   BuiltinAttributeProvider::Deletable,
-                                                   curve_access,
-                                                   tag_component_topology_changed,
-                                                   AttributeValidator{&resolution_clamp});
+  static BuiltinCustomDataLayerProvider resolution(
+      "resolution",
+      ATTR_DOMAIN_CURVE,
+      CD_PROP_INT32,
+      CD_PROP_INT32,
+      BuiltinAttributeProvider::Creatable,
+      BuiltinAttributeProvider::Deletable,
+      curve_access,
+      tag_component_topology_changed,
+      AttributeValidator(resolution_clamp, AttributeMetaData(ATTR_DOMAIN_CURVE, CD_PROP_INT32)));
 
   static BuiltinCustomDataLayerProvider cyclic("cyclic",
                                                ATTR_DOMAIN_CURVE,

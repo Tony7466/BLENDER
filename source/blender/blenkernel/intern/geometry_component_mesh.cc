@@ -1124,29 +1124,32 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
         return std::clamp<int>(value, 0, std::numeric_limits<short>::max());
       },
       mf::build::exec_presets::AllSpanOrSingle());
-  static BuiltinCustomDataLayerProvider material_index("material_index",
-                                                       ATTR_DOMAIN_FACE,
-                                                       CD_PROP_INT32,
-                                                       CD_PROP_INT32,
-                                                       BuiltinAttributeProvider::Creatable,
-                                                       BuiltinAttributeProvider::Deletable,
-                                                       face_access,
-                                                       nullptr,
-                                                       AttributeValidator{&material_index_clamp});
+  static BuiltinCustomDataLayerProvider material_index(
+      "material_index",
+      ATTR_DOMAIN_FACE,
+      CD_PROP_INT32,
+      CD_PROP_INT32,
+      BuiltinAttributeProvider::Creatable,
+      BuiltinAttributeProvider::Deletable,
+      face_access,
+      nullptr,
+      AttributeValidator(material_index_clamp,
+                         AttributeMetaData(ATTR_DOMAIN_FACE, CD_PROP_INT32)));
 
   static const auto int2_index_clamp = mf::build::SI1_SO<int2, int2>(
       "Index Validate",
       [](int2 value) { return math::max(value, int2(0)); },
       mf::build::exec_presets::AllSpanOrSingle());
-  static BuiltinCustomDataLayerProvider edge_verts(".edge_verts",
-                                                   ATTR_DOMAIN_EDGE,
-                                                   CD_PROP_INT32_2D,
-                                                   CD_PROP_INT32_2D,
-                                                   BuiltinAttributeProvider::Creatable,
-                                                   BuiltinAttributeProvider::NonDeletable,
-                                                   edge_access,
-                                                   nullptr,
-                                                   AttributeValidator{&int2_index_clamp});
+  static BuiltinCustomDataLayerProvider edge_verts(
+      ".edge_verts",
+      ATTR_DOMAIN_EDGE,
+      CD_PROP_INT32_2D,
+      CD_PROP_INT32_2D,
+      BuiltinAttributeProvider::Creatable,
+      BuiltinAttributeProvider::NonDeletable,
+      edge_access,
+      nullptr,
+      AttributeValidator(int2_index_clamp, AttributeMetaData(ATTR_DOMAIN_EDGE, CD_PROP_INT32_2D)));
 
   /* Note: This clamping is more of a last resort, since it's quite easy to make an
    * invalid mesh that will crash Blender by arbitrarily editing this attribute. */
@@ -1154,24 +1157,26 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
       "Index Validate",
       [](int value) { return std::max(value, 0); },
       mf::build::exec_presets::AllSpanOrSingle());
-  static BuiltinCustomDataLayerProvider corner_vert(".corner_vert",
-                                                    ATTR_DOMAIN_CORNER,
-                                                    CD_PROP_INT32,
-                                                    CD_PROP_INT32,
-                                                    BuiltinAttributeProvider::Creatable,
-                                                    BuiltinAttributeProvider::NonDeletable,
-                                                    corner_access,
-                                                    nullptr,
-                                                    AttributeValidator{&int_index_clamp});
-  static BuiltinCustomDataLayerProvider corner_edge(".corner_edge",
-                                                    ATTR_DOMAIN_CORNER,
-                                                    CD_PROP_INT32,
-                                                    CD_PROP_INT32,
-                                                    BuiltinAttributeProvider::Creatable,
-                                                    BuiltinAttributeProvider::NonDeletable,
-                                                    corner_access,
-                                                    nullptr,
-                                                    AttributeValidator{&int_index_clamp});
+  static BuiltinCustomDataLayerProvider corner_vert(
+      ".corner_vert",
+      ATTR_DOMAIN_CORNER,
+      CD_PROP_INT32,
+      CD_PROP_INT32,
+      BuiltinAttributeProvider::Creatable,
+      BuiltinAttributeProvider::NonDeletable,
+      corner_access,
+      nullptr,
+      AttributeValidator(int_index_clamp, AttributeMetaData(ATTR_DOMAIN_CORNER, CD_PROP_INT32)));
+  static BuiltinCustomDataLayerProvider corner_edge(
+      ".corner_edge",
+      ATTR_DOMAIN_CORNER,
+      CD_PROP_INT32,
+      CD_PROP_INT32,
+      BuiltinAttributeProvider::Creatable,
+      BuiltinAttributeProvider::NonDeletable,
+      corner_access,
+      nullptr,
+      AttributeValidator(int_index_clamp, AttributeMetaData(ATTR_DOMAIN_CORNER, CD_PROP_INT32)));
 
   static BuiltinCustomDataLayerProvider sharp_face("sharp_face",
                                                    ATTR_DOMAIN_FACE,
