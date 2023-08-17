@@ -51,8 +51,10 @@ enum class CompositorInputRealizationOptions : uint8_t {
   RealizeOnOperationDomain = (1 << 0),
   RealizeRotation = (1 << 1),
   RealizeScale = (1 << 2),
+  RealizeForFilterNodes = RealizeOnOperationDomain | RealizeRotation,
 };
-ENUM_OPERATORS(CompositorInputRealizationOptions, CompositorInputRealizationOptions::RealizeScale)
+ENUM_OPERATORS(CompositorInputRealizationOptions,
+               CompositorInputRealizationOptions::RealizeForFilterNodes)
 
 /**
  * Contains information about how a node output's field state depends on inputs of the same node.
