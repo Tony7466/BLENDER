@@ -94,9 +94,11 @@ GMutableGrid GMutableGrid::create(const CPPType &type, const void *background_va
   openvdb::GridBase::Ptr grid;
   volume::field_to_static_type(type, [&grid, background_value](auto type_tag) {
     using T = typename decltype(type_tag)::type;
+    using GridType = grid_types::AttributeGrid<T>;
 
     const T &value = *static_cast<const T *>(background_value);
-    grid = grid_types::AttributeGrid<T>::create(value);
+    grid = grid_types::AttributeGrid<T>::create(
+        grid_types::Converter<GridType>::single_value_to_grid(value));
   });
 
   return GMutableGrid{std::move(grid)};

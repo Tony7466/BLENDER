@@ -181,9 +181,12 @@ namespace grid_types {
 //  using MFType = long unsigned int;
 //};
 
-template<typename GridType> struct Converter {
-  using LeafBufferValueType = typename GridType::ValueType;
-  using AttributeValueType = typename GridType::ValueType;
+template<typename AttributeValueType, typename GridValueType, typename LeafBufferValueType>
+struct ReinterpretCastConverter {
+  static GridValueType single_value_to_grid(const AttributeValueType &value)
+  {
+    return reinterpret_cast<const GridValueType &>(value);
+  }
 
   static MutableSpan<AttributeValueType> leaf_buffer_to_varray(
       const MutableSpan<LeafBufferValueType> values)
@@ -192,10 +195,31 @@ template<typename GridType> struct Converter {
   }
 };
 
+/* Default implementation, only used when grid and attribute types are exactly the same. */
+template<typename GridType>
+struct Converter : public ReinterpretCastConverter<typename GridType::ValueType,
+                                                   typename GridType::ValueType,
+                                                   typename GridType::ValueType> {
+};
+
+/* Vector implementation, casts Blender vectors to OpenVDB vectors and vice versa. */
+template<typename BaseT, int N>
+struct Converter<openvdb::math::Tuple<N, BaseT>>
+    : public ReinterpretCastConverter<typename blender::VecBase<BaseT, N>,
+                                      typename openvdb::math::Tuple<N, BaseT>,
+                                      typename openvdb::math::Tuple<N, BaseT>> {
+};
+
 /* Specialization for MaskGrid: Leaf buffers directly expose the activation state bit fields. */
 template<> struct Converter<openvdb::MaskGrid> {
+  using GridValueType = openvdb::ValueMask;
   using LeafBufferValueType = unsigned long int;
   using AttributeValueType = bool;
+
+  static GridValueType single_value_to_grid(const AttributeValueType & /*value*/)
+  {
+    return {};
+  }
 
   static MutableSpan<AttributeValueType> leaf_buffer_to_varray(
       const MutableSpan<LeafBufferValueType> values)
@@ -206,8 +230,14 @@ template<> struct Converter<openvdb::MaskGrid> {
 
 /* Specialization for BoolGrid: Leaf buffers directly expose the activation state bit fields. */
 template<> struct Converter<openvdb::BoolGrid> {
+  using GridValueType = openvdb::ValueMask;
   using LeafBufferValueType = unsigned long int;
   using AttributeValueType = bool;
+
+  static GridValueType single_value_to_grid(const AttributeValueType & /*value*/)
+  {
+    return {};
+  }
 
   static MutableSpan<AttributeValueType> leaf_buffer_to_varray(
       const MutableSpan<LeafBufferValueType> values)
@@ -216,8 +246,46 @@ template<> struct Converter<openvdb::BoolGrid> {
   }
 };
 
-template<typename T> using AttributeTree = typename openvdb::tree::Tree4Fwd<T, 5, 4, 3>::Type;
-template<typename T> using AttributeGrid = openvdb::Grid<AttributeTree<T>>;
+/* XXX Generic template for attribute grids, this can cause excessive code generation,
+ * so the allowed types are declared below to be on the safe side.
+ */
+// template<typename T> using AttributeTree = typename openvdb::tree::Tree4Fwd<T, 5, 4, 3>::Type;
+// template<typename T> using AttributeGrid = openvdb::Grid<AttributeTree<T>>;
+
+template<typename T> struct AttributeTreeImpl;
+template<> struct AttributeTreeImpl<bool> {
+  using Type = openvdb::BoolTree;
+};
+template<> struct AttributeTreeImpl<float> {
+  using Type = openvdb::FloatTree;
+};
+template<> struct AttributeTreeImpl<float2> {
+  using Type = openvdb::Vec2STree;
+};
+template<> struct AttributeTreeImpl<float3> {
+  using Type = openvdb::Vec3STree;
+};
+template<> struct AttributeTreeImpl<double> {
+  using Type = openvdb::DoubleTree;
+};
+template<> struct AttributeTreeImpl<double3> {
+  using Type = openvdb::Vec3DTree;
+};
+template<> struct AttributeTreeImpl<int32_t> {
+  using Type = openvdb::Int32Tree;
+};
+template<> struct AttributeTreeImpl<int2> {
+  using Type = openvdb::Vec2ITree;
+};
+template<> struct AttributeTreeImpl<int3> {
+  using Type = openvdb::Vec3ITree;
+};
+template<> struct AttributeTreeImpl<uint32_t> {
+  using Type = openvdb::UInt32Tree;
+};
+
+template<typename T> using AttributeTree = typename AttributeTreeImpl<T>::Type;
+template<typename T> using AttributeGrid = typename openvdb::Grid<AttributeTree<T>>;
 
 /* TODO add more as needed. */
 /* TODO could use template magic to generate all from 1 list, but not worth it for now. */
@@ -262,17 +330,17 @@ template<typename T> using AttributeGrid = openvdb::Grid<AttributeTree<T>>;
 // using TopologyGrid = openvdb::Grid<TopologyTree>;
 // using PointDataGrid = openvdb::points::PointDataGrid;
 
-using SupportedGridValueTypes = std::tuple<bool,
-                                           float,
-                                           openvdb::Vec2f,
-                                           openvdb::Vec3f,
-                                           /*openvdb::Vec4f,*/
-                                           int32_t,
-                                           openvdb::Vec2i,
-                                           /*openvdb::Vec3i,*/ /*openvdb::Vec4i,*/ uint32_t
-                                           /*,openvdb::Vec2u*/
-                                           /*,openvdb::Vec3u*/
-                                           /*,openvdb::Vec4u*/>;
+using SupportedAttributeValueTypes = std::tuple<bool,
+                                                float,
+                                                float2,
+                                                float3,
+                                                /*float4,*/
+                                                int32_t,
+                                                int2,
+                                                /*int3,*/ /*int4,*/ uint32_t
+                                                /*,uint2*/
+                                                /*,uint3*/
+                                                /*,uint4*/>;
 
 using SupportedGridTypes = openvdb::TypeList<openvdb::BoolGrid,
                                              openvdb::MaskGrid,

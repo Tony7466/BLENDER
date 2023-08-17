@@ -96,7 +96,7 @@ void field_to_static_type_resolve(std::tuple<Types...> /*dummy*/, const CPPType 
 /* Helper function to evaluate a function with a static field type. */
 template<typename Func> void field_to_static_type(const CPPType &type, Func func)
 {
-  detail::field_to_static_type_resolve(grid_types::SupportedGridValueTypes(), type, func);
+  detail::field_to_static_type_resolve(grid_types::SupportedAttributeValueTypes(), type, func);
 }
 
 /* Helper function to evaluate a function with a static field type. */
