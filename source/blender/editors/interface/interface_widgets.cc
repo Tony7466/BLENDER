@@ -2746,7 +2746,7 @@ static void widget_state_menu_item(uiWidgetType *wt,
   }
   else if (state->but_flag & UI_ACTIVE) {
     /* Regular hover. */
-    color_blend_v3_v3(wt->wcol.inner, wt->wcol.text, 0.3f);
+    color_blend_v3_v3(wt->wcol.inner, wt->wcol.text, 0.2f);
     copy_v3_v3_uchar(wt->wcol.text, wt->wcol.text_sel);
     wt->wcol.inner[3] = 255;
     wt->wcol.text[3] = 255;
