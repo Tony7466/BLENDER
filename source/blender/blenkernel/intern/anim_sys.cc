@@ -4155,10 +4155,6 @@ void BKE_animsys_eval_driver(Depsgraph *depsgraph, ID *id, int driver_index, FCu
   const AnimData *adt = BKE_animdata_from_id(id);
   FCurve *fcu;
 
-  if (!adt) {
-    return;
-  }
-
   if (adt->driver_array) {
     fcu = adt->driver_array[driver_index];
   }
