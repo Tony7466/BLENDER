@@ -228,10 +228,12 @@ class NoiseTextureNode : public TextureNode {
   SHADER_NODE_CLASS(NoiseTextureNode)
 
   NODE_SOCKET_API(int, dimensions)
+  NODE_SOCKET_API(bool, use_normalize)
   NODE_SOCKET_API(float, w)
   NODE_SOCKET_API(float, scale)
   NODE_SOCKET_API(float, detail)
   NODE_SOCKET_API(float, roughness)
+  NODE_SOCKET_API(float, lacunarity)
   NODE_SOCKET_API(float, distortion)
   NODE_SOCKET_API(float3, vector)
 };
@@ -526,6 +528,7 @@ class PrincipledBsdfNode : public BsdfBaseNode {
                ShaderInput *specular_tint,
                ShaderInput *anisotropic,
                ShaderInput *sheen,
+               ShaderInput *sheen_roughness,
                ShaderInput *sheen_tint,
                ShaderInput *clearcoat,
                ShaderInput *clearcoat_roughness,
@@ -545,7 +548,8 @@ class PrincipledBsdfNode : public BsdfBaseNode {
   NODE_SOCKET_API(float, specular_tint)
   NODE_SOCKET_API(float, anisotropic)
   NODE_SOCKET_API(float, sheen)
-  NODE_SOCKET_API(float, sheen_tint)
+  NODE_SOCKET_API(float, sheen_roughness)
+  NODE_SOCKET_API(float3, sheen_tint)
   NODE_SOCKET_API(float, clearcoat)
   NODE_SOCKET_API(float, clearcoat_roughness)
   NODE_SOCKET_API(float, ior)

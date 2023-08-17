@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2011 Blender Foundation
+# SPDX-FileCopyrightText: 2011 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -10,14 +10,19 @@ if(WITH_COMPOSITOR_CPU)
     intern
     nodes
     operations
+    ../blenkernel
+    ../blentranslation
+    ../depsgraph
     ../imbuf
     ../makesrna
     ../nodes
+    ../windowmanager
     ../nodes/composite
     ../nodes/intern
     ../render
     ../render/intern
     ../../../extern/clew/include
+    ../../../intern/clog
 
     # RNA_prototypes.h
     ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -589,14 +594,10 @@ if(WITH_COMPOSITOR_CPU)
   )
 
   set(LIB
-    PRIVATE bf::blenkernel
+    bf_blenkernel
     PRIVATE bf::blenlib
-    PRIVATE bf::blentranslation
-    PRIVATE bf::depsgraph
     PRIVATE bf::dna
-    PRIVATE bf::intern::clog
     PRIVATE bf::intern::guardedalloc
-    PRIVATE bf::windowmanager
     extern_clew
     PRIVATE bf::intern::atomic
   )

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -103,16 +103,16 @@ static void join_instances(const Span<const GeometryComponent *> src_components,
 
   int tot_instances = 0;
   for (const GeometryComponent *src_component : src_components) {
-    const InstancesComponent &src_instance_component = dynamic_cast<const InstancesComponent &>(
+    const InstancesComponent &src_instance_component = static_cast<const InstancesComponent &>(
         *src_component);
-    tot_instances += src_instance_component.get_for_read()->instances_num();
+    tot_instances += src_instance_component.get()->instances_num();
   }
   dst_instances->reserve(tot_instances);
 
   for (const GeometryComponent *src_component : src_components) {
-    const InstancesComponent &src_instance_component = dynamic_cast<const InstancesComponent &>(
+    const InstancesComponent &src_instance_component = static_cast<const InstancesComponent &>(
         *src_component);
-    const bke::Instances &src_instances = *src_instance_component.get_for_read();
+    const bke::Instances &src_instances = *src_instance_component.get();
 
     const Span<bke::InstanceReference> src_references = src_instances.references();
     Array<int> handle_map(src_references.size());
@@ -150,7 +150,7 @@ static void join_component_type(const bke::GeometryComponent::Type component_typ
 {
   Vector<const GeometryComponent *> components;
   for (const GeometrySet &geometry_set : src_geometry_sets) {
-    const GeometryComponent *component = geometry_set.get_component_for_read(component_type);
+    const GeometryComponent *component = geometry_set.get_component(component_type);
     if (component != nullptr && !component->is_empty()) {
       components.append(component);
     }
@@ -188,7 +188,7 @@ static void join_component_type(const bke::GeometryComponent::Type component_typ
   options.realize_instance_attributes = false;
   options.propagation_info = propagation_info;
   GeometrySet joined_components = geometry::realize_instances(
-      GeometrySet::create_with_instances(instances.release()), options);
+      GeometrySet::from_instances(instances.release()), options);
   result.add(joined_components.get_component_for_write(component_type));
 }
 
@@ -204,35 +204,29 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   GeometrySet geometry_set_result;
-  join_component_type(
-      bke::GeometryComponent::Type::Mesh, geometry_sets, propagation_info, geometry_set_result);
-  join_component_type(bke::GeometryComponent::Type::PointCloud,
-                      geometry_sets,
-                      propagation_info,
-                      geometry_set_result);
-  join_component_type(bke::GeometryComponent::Type::Instance,
-                      geometry_sets,
-                      propagation_info,
-                      geometry_set_result);
-  join_component_type(
-      bke::GeometryComponent::Type::Volume, geometry_sets, propagation_info, geometry_set_result);
-  join_component_type(
-      bke::GeometryComponent::Type::Curve, geometry_sets, propagation_info, geometry_set_result);
-  join_component_type(
-      bke::GeometryComponent::Type::Edit, geometry_sets, propagation_info, geometry_set_result);
+  static const Array<bke::GeometryComponent::Type> supported_types(
+      {bke::GeometryComponent::Type::Mesh,
+       bke::GeometryComponent::Type::PointCloud,
+       bke::GeometryComponent::Type::Instance,
+       bke::GeometryComponent::Type::Volume,
+       bke::GeometryComponent::Type::Curve,
+       bke::GeometryComponent::Type::Edit});
+  for (const bke::GeometryComponent::Type type : supported_types) {
+    join_component_type(type, geometry_sets, propagation_info, geometry_set_result);
+  }
 
   params.set_output("Geometry", std::move(geometry_set_result));
 }
-}  // namespace blender::nodes::node_geo_join_geometry_cc
 
-void register_node_type_geo_join_geometry()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_join_geometry_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_JOIN_GEOMETRY, "Join Geometry", NODE_CLASS_GEOMETRY);
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.declare = file_ns::node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.declare = node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_join_geometry_cc

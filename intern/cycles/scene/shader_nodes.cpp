@@ -1120,11 +1120,14 @@ NODE_DEFINE(NoiseTextureNode)
   dimensions_enum.insert("4D", 4);
   SOCKET_ENUM(dimensions, "Dimensions", dimensions_enum, 3);
 
+  SOCKET_BOOLEAN(use_normalize, "Normalize", true);
+
   SOCKET_IN_POINT(vector, "Vector", zero_float3(), SocketType::LINK_TEXTURE_GENERATED);
   SOCKET_IN_FLOAT(w, "W", 0.0f);
   SOCKET_IN_FLOAT(scale, "Scale", 1.0f);
   SOCKET_IN_FLOAT(detail, "Detail", 2.0f);
   SOCKET_IN_FLOAT(roughness, "Roughness", 0.5f);
+  SOCKET_IN_FLOAT(lacunarity, "Lacunarity", 2.0f);
   SOCKET_IN_FLOAT(distortion, "Distortion", 0.0f);
 
   SOCKET_OUT_FLOAT(fac, "Fac");
@@ -1142,6 +1145,7 @@ void NoiseTextureNode::compile(SVMCompiler &compiler)
   ShaderInput *scale_in = input("Scale");
   ShaderInput *detail_in = input("Detail");
   ShaderInput *roughness_in = input("Roughness");
+  ShaderInput *lacunarity_in = input("Lacunarity");
   ShaderInput *distortion_in = input("Distortion");
   ShaderOutput *fac_out = output("Fac");
   ShaderOutput *color_out = output("Color");
@@ -1151,22 +1155,28 @@ void NoiseTextureNode::compile(SVMCompiler &compiler)
   int scale_stack_offset = compiler.stack_assign_if_linked(scale_in);
   int detail_stack_offset = compiler.stack_assign_if_linked(detail_in);
   int roughness_stack_offset = compiler.stack_assign_if_linked(roughness_in);
+  int lacunarity_stack_offset = compiler.stack_assign_if_linked(lacunarity_in);
   int distortion_stack_offset = compiler.stack_assign_if_linked(distortion_in);
   int fac_stack_offset = compiler.stack_assign_if_linked(fac_out);
   int color_stack_offset = compiler.stack_assign_if_linked(color_out);
 
   compiler.add_node(
       NODE_TEX_NOISE,
-      dimensions,
       compiler.encode_uchar4(
           vector_stack_offset, w_stack_offset, scale_stack_offset, detail_stack_offset),
-      compiler.encode_uchar4(
-          roughness_stack_offset, distortion_stack_offset, fac_stack_offset, color_stack_offset));
+      compiler.encode_uchar4(roughness_stack_offset,
+                             lacunarity_stack_offset,
+                             distortion_stack_offset,
+                             fac_stack_offset),
+      compiler.encode_uchar4(color_stack_offset, dimensions, use_normalize));
+
   compiler.add_node(
       __float_as_int(w), __float_as_int(scale), __float_as_int(detail), __float_as_int(roughness));
 
-  compiler.add_node(
-      __float_as_int(distortion), SVM_STACK_INVALID, SVM_STACK_INVALID, SVM_STACK_INVALID);
+  compiler.add_node(__float_as_int(lacunarity),
+                    __float_as_int(distortion),
+                    SVM_STACK_INVALID,
+                    SVM_STACK_INVALID);
 
   tex_mapping.compile_end(compiler, vector_in, vector_stack_offset);
 }
@@ -1175,6 +1185,7 @@ void NoiseTextureNode::compile(OSLCompiler &compiler)
 {
   tex_mapping.compile(compiler);
   compiler.parameter(this, "dimensions");
+  compiler.parameter(this, "use_normalize");
   compiler.add(this, "node_noise_texture");
 }
 
@@ -2661,7 +2672,8 @@ NODE_DEFINE(PrincipledBsdfNode)
   SOCKET_IN_FLOAT(specular_tint, "Specular Tint", 0.0f);
   SOCKET_IN_FLOAT(anisotropic, "Anisotropic", 0.0f);
   SOCKET_IN_FLOAT(sheen, "Sheen", 0.0f);
-  SOCKET_IN_FLOAT(sheen_tint, "Sheen Tint", 0.0f);
+  SOCKET_IN_FLOAT(sheen_roughness, "Sheen Roughness", 0.5f);
+  SOCKET_IN_COLOR(sheen_tint, "Sheen Tint", one_float3());
   SOCKET_IN_FLOAT(clearcoat, "Clearcoat", 0.0f);
   SOCKET_IN_FLOAT(clearcoat_roughness, "Clearcoat Roughness", 0.03f);
   SOCKET_IN_FLOAT(ior, "IOR", 0.0f);
@@ -2771,6 +2783,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
                                  ShaderInput *p_specular_tint,
                                  ShaderInput *p_anisotropic,
                                  ShaderInput *p_sheen,
+                                 ShaderInput *p_sheen_roughness,
                                  ShaderInput *p_sheen_tint,
                                  ShaderInput *p_clearcoat,
                                  ShaderInput *p_clearcoat_roughness,
@@ -2796,6 +2809,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
   int specular_tint_offset = compiler.stack_assign(p_specular_tint);
   int anisotropic_offset = compiler.stack_assign(p_anisotropic);
   int sheen_offset = compiler.stack_assign(p_sheen);
+  int sheen_roughness_offset = compiler.stack_assign(p_sheen_roughness);
   int sheen_tint_offset = compiler.stack_assign(p_sheen_tint);
   int clearcoat_offset = compiler.stack_assign(p_clearcoat);
   int clearcoat_roughness_offset = compiler.stack_assign(p_clearcoat_roughness);
@@ -2827,7 +2841,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
           ior_offset, transmission_offset, anisotropic_rotation_offset, SVM_STACK_INVALID),
       distribution,
       subsurface_method,
-      SVM_STACK_INVALID);
+      sheen_roughness_offset);
 
   float3 bc_default = get_float3(base_color_in->socket_type);
 
@@ -2864,6 +2878,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler)
           input("Specular Tint"),
           input("Anisotropic"),
           input("Sheen"),
+          input("Sheen Roughness"),
           input("Sheen Tint"),
           input("Clearcoat"),
           input("Clearcoat Roughness"),
@@ -6288,6 +6303,7 @@ NODE_DEFINE(MathNode)
   type_enum.insert("less_than", NODE_MATH_LESS_THAN);
   type_enum.insert("greater_than", NODE_MATH_GREATER_THAN);
   type_enum.insert("modulo", NODE_MATH_MODULO);
+  type_enum.insert("floored_modulo", NODE_MATH_FLOORED_MODULO);
   type_enum.insert("absolute", NODE_MATH_ABSOLUTE);
   type_enum.insert("arctan2", NODE_MATH_ARCTAN2);
   type_enum.insert("floor", NODE_MATH_FLOOR);
