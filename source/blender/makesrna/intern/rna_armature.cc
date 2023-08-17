@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,15 +6,15 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
-#include "BLI_math.h"
+#include "BLI_math_base.h"
 #include "BLI_string_utf8_symbols.h"
 
 #include "BLT_translation.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "rna_internal.h"
 
@@ -22,8 +22,8 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #ifdef RNA_RUNTIME
 
@@ -36,7 +36,7 @@
 #  include "BKE_main.h"
 
 #  include "BKE_armature.h"
-#  include "ED_armature.h"
+#  include "ED_armature.hh"
 
 #  include "DEG_depsgraph.h"
 #  include "DEG_depsgraph_build.h"
@@ -67,9 +67,7 @@ static void rna_Armature_dependency_update(Main *bmain, Scene * /*scene*/, Point
   WM_main_add_notifier(NC_GEOM | ND_DATA, id);
 }
 
-static void rna_Armature_act_bone_set(PointerRNA *ptr,
-                                      PointerRNA value,
-                                      struct ReportList * /*reports*/)
+static void rna_Armature_act_bone_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   bArmature *arm = (bArmature *)ptr->data;
 
@@ -93,7 +91,7 @@ static void rna_Armature_act_bone_set(PointerRNA *ptr,
 
 static void rna_Armature_act_edit_bone_set(PointerRNA *ptr,
                                            PointerRNA value,
-                                           struct ReportList * /*reports*/)
+                                           ReportList * /*reports*/)
 {
   bArmature *arm = (bArmature *)ptr->data;
 
@@ -426,9 +424,7 @@ static PointerRNA rna_EditBone_parent_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_EditBone, data->parent);
 }
 
-static void rna_EditBone_parent_set(PointerRNA *ptr,
-                                    PointerRNA value,
-                                    struct ReportList * /*reports*/)
+static void rna_EditBone_parent_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   EditBone *ebone = (EditBone *)(ptr->data);
   EditBone *pbone, *parbone = (EditBone *)value.data;
@@ -526,7 +522,7 @@ static PointerRNA rna_EditBone_bbone_prev_get(PointerRNA *ptr)
 
 static void rna_EditBone_bbone_prev_set(PointerRNA *ptr,
                                         PointerRNA value,
-                                        struct ReportList * /*reports*/)
+                                        ReportList * /*reports*/)
 {
   EditBone *ebone = (EditBone *)(ptr->data);
   EditBone *hbone = (EditBone *)value.data;
@@ -537,9 +533,7 @@ static void rna_EditBone_bbone_prev_set(PointerRNA *ptr,
   }
 }
 
-static void rna_Bone_bbone_prev_set(PointerRNA *ptr,
-                                    PointerRNA value,
-                                    struct ReportList * /*reports*/)
+static void rna_Bone_bbone_prev_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   Bone *bone = (Bone *)ptr->data;
   Bone *hbone = (Bone *)value.data;
@@ -558,7 +552,7 @@ static PointerRNA rna_EditBone_bbone_next_get(PointerRNA *ptr)
 
 static void rna_EditBone_bbone_next_set(PointerRNA *ptr,
                                         PointerRNA value,
-                                        struct ReportList * /*reports*/)
+                                        ReportList * /*reports*/)
 {
   EditBone *ebone = (EditBone *)(ptr->data);
   EditBone *hbone = (EditBone *)value.data;
@@ -569,9 +563,7 @@ static void rna_EditBone_bbone_next_set(PointerRNA *ptr,
   }
 }
 
-static void rna_Bone_bbone_next_set(PointerRNA *ptr,
-                                    PointerRNA value,
-                                    struct ReportList * /*reports*/)
+static void rna_Bone_bbone_next_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   Bone *bone = (Bone *)ptr->data;
   Bone *hbone = (Bone *)value.data;
@@ -653,7 +645,7 @@ static bool rna_Armature_is_editmode_get(PointerRNA *ptr)
   return (arm->edbo != nullptr);
 }
 
-static void rna_Armature_transform(bArmature *arm, float mat[16])
+static void rna_Armature_transform(bArmature *arm, const float mat[16])
 {
   ED_armature_transform(arm, (const float(*)[4])mat, true);
 }
@@ -1292,7 +1284,7 @@ static void rna_def_edit_bone(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "Edit Bone", "Edit mode bone in an armature data-block");
   RNA_def_struct_ui_icon(srna, ICON_BONE_DATA);
 
-  RNA_define_verify_sdna(0); /* not in sdna */
+  RNA_define_verify_sdna(false); /* not in sdna */
 
   prop = RNA_def_property(srna, "parent", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "EditBone");
@@ -1383,7 +1375,7 @@ static void rna_def_edit_bone(BlenderRNA *brna)
 
   RNA_api_armature_edit_bone(srna);
 
-  RNA_define_verify_sdna(1);
+  RNA_define_verify_sdna(true);
 }
 
 /* armature.bones.* */

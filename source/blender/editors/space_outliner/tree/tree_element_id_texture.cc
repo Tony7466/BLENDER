@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -25,10 +25,10 @@ void TreeElementIDTexture::expand(SpaceOutliner &space_outliner) const
 {
   expand_animation_data(space_outliner, texture_.adt);
 
-  expandImage(space_outliner);
+  expand_image(space_outliner);
 }
 
-void TreeElementIDTexture::expandImage(SpaceOutliner &space_outliner) const
+void TreeElementIDTexture::expand_image(SpaceOutliner &space_outliner) const
 {
   outliner_add_element(
       &space_outliner, &legacy_te_.subtree, texture_.ima, &legacy_te_, TSE_SOME_ID, 0);
