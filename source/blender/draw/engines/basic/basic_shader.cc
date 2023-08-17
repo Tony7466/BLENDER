@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -87,7 +87,7 @@ GPUShader *BASIC_shaders_pointcloud_depth_conservative_sh_get(eGPUShaderConfig c
   return sh_data->pointcloud_depth_conservative;
 }
 
-void BASIC_shaders_free(void)
+void BASIC_shaders_free()
 {
   for (int i = 0; i < GPU_SHADER_CFG_LEN; i++) {
     GPUShader **sh_data_as_array = (GPUShader **)&e_data.sh_data[i];

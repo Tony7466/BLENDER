@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -32,10 +32,10 @@
 
 #include "DEG_depsgraph.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "MOD_gpencil_legacy_modifiertypes.h"
 #include "MOD_gpencil_legacy_ui_common.h"
@@ -175,12 +175,12 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "factor", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "step", 0, IFACE_("Repeat"), ICON_NONE);
+  uiItemR(layout, ptr, "factor", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "step", UI_ITEM_NONE, IFACE_("Repeat"), ICON_NONE);
 
   col = uiLayoutColumn(layout, false);
   uiLayoutSetActive(col, RNA_boolean_get(ptr, "use_edit_position"));
-  uiItemR(col, ptr, "use_keep_shape", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "use_keep_shape", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   gpencil_modifier_panel_end(layout, ptr);
 }

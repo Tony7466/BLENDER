@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004 Blender Foundation
+/* SPDX-FileCopyrightText: 2004 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -124,7 +124,7 @@ void SEQ_eval_sequences(struct Depsgraph *depsgraph,
                         struct Scene *scene,
                         struct ListBase *seqbase);
 
-/* Defined in sequence_lookup.c */
+/* Defined in `sequence_lookup.cc`. */
 
 typedef enum eSequenceLookupTag {
   SEQ_LOOKUP_TAG_INVALID = (1 << 0),

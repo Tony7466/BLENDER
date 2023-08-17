@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,7 +8,7 @@
  * Find the region defined by the path(s) between 2 UV elements.
  * (path isn't ordered).
  *
- * \note This uses the same behavior as bmesh_path_region.c
+ * \note This uses the same behavior as `bmesh_path_region.cc`
  * however walking UVs causes enough differences that it's
  * impractical to share the code.
  */
@@ -17,7 +17,7 @@
 
 #include "BLI_alloca.h"
 #include "BLI_linklist.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines_stack.h"
 
 #include "bmesh.h"

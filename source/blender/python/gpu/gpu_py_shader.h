@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,7 +20,7 @@ extern "C" {
  * passed by reference in the #GPUStageInterfaceInfo and #GPUShaderCreateInfo APIs. */
 #define USE_GPU_PY_REFERENCES
 
-/* gpu_py_shader.c */
+/* `gpu_py_shader.cc` */
 
 extern PyTypeObject BPyGPUShader_Type;
 

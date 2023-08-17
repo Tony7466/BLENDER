@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,7 +10,7 @@
 #include "draw_texture_pool.h"
 
 #ifndef NDEBUG
-/* Maybe gpu_texture.c is a better place for this. */
+/* Maybe `gpu_texture.cc` is a better place for this. */
 static bool drw_texture_format_supports_framebuffer(eGPUTextureFormat format)
 {
   /* Some formats do not work with frame-buffers. */
@@ -213,7 +213,7 @@ GPUTexture *DRW_texture_pool_query_fullscreen_ex(eGPUTextureFormat format,
                                                  DrawEngineType *engine_type)
 {
   const float *size = DRW_viewport_size_get();
-  return DRW_texture_pool_query_2d_ex((int)size[0], (int)size[1], format, usage, engine_type);
+  return DRW_texture_pool_query_2d_ex(int(size[0]), int(size[1]), format, usage, engine_type);
 }
 
 GPUTexture *DRW_texture_pool_query_fullscreen(eGPUTextureFormat format,
@@ -229,7 +229,7 @@ void DRW_texture_ensure_fullscreen_2d_ex(GPUTexture **tex,
 {
   if (*(tex) == nullptr) {
     const float *size = DRW_viewport_size_get();
-    *(tex) = DRW_texture_create_2d_ex((int)size[0], (int)size[1], format, usage, flags, nullptr);
+    *(tex) = DRW_texture_create_2d_ex(int(size[0]), int(size[1]), format, usage, flags, nullptr);
   }
 }
 
