@@ -12,11 +12,11 @@ vec3 ray_plane_intersection(vec3 ray_ori, vec3 ray_dir, vec4 plane)
 
 void main()
 {
-  if (gpencil_stroke_round_cap_mask(gp_flat_interp.sspos.xy,
-                                    gp_flat_interp.sspos.zw,
-                                    gp_flat_interp.aspect,
-                                    gp_noperspective_interp.thickness.x,
-                                    gp_noperspective_interp.hardness) < 0.001)
+  if (gpencil_stroke_round_cap_mask(gp_interp_flat.sspos.xy,
+                                    gp_interp_flat.sspos.zw,
+                                    gp_interp_flat.aspect,
+                                    gp_interp_noperspective.thickness.x,
+                                    gp_interp_noperspective.hardness) < 0.001)
   {
     discard;
     return;
