@@ -508,17 +508,20 @@ class _defs_view3d_add:
     @staticmethod
     def draw_settings_interactive_add(layout, tool_settings, tool, extra):
         show_extra = False
-        region_is_header = bpy.context.region.type == 'TOOL_HEADER'
         if not extra:
-            if region_is_header:
-                # Only draw these options in the header.
-                # They are already available in the "Options" panel and already appear in the "Tool" tab
-                # either in the sidebar or in the "Properties" editor.
-                row = layout.row()
-                row.prop(tool_settings, "plane_depth", text="Depth:")
-                row.prop(tool_settings, "plane_orientation")
-                row.prop(tool_settings, "snap_elements_tool")
+            row = layout.row()
+            row.label(text="Depth:")
+            row = layout.row()
+            row.prop(tool_settings, "plane_depth", text="")
+            row = layout.row()
+            row.label(text="Orientation:")
+            row = layout.row()
+            row.prop(tool_settings, "plane_orientation", text="")
+            row = layout.row()
+            row.prop(tool_settings, "snap_elements_tool")
 
+            region_is_header = bpy.context.region.type == 'TOOL_HEADER'
+            if region_is_header:
                 # Don't draw the "extra" popover here as we might have other settings & this should be last.
                 show_extra = True
             else:
@@ -527,10 +530,8 @@ class _defs_view3d_add:
         if extra:
             props = tool.operator_properties("view3d.interactive_add")
             layout.use_property_split = True
-            if region_is_header:
-                # Already available in the "Options" panel.
-                layout.row().prop(tool_settings, "plane_axis", expand=True)
-                layout.row().prop(tool_settings, "plane_axis_auto")
+            layout.row().prop(tool_settings, "plane_axis", expand=True)
+            layout.row().prop(tool_settings, "plane_axis_auto")
 
             layout.label(text="Base")
             layout.row().prop(props, "plane_origin_base", expand=True)
