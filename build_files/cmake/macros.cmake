@@ -413,6 +413,10 @@ function(blender_add_lib__impl
   # Not for system includes because they can resolve to the same path
   # list_assert_duplicates("${includes_sys}")
 
+  if(NOT "${name}" STREQUAL "bf_pch")
+    target_link_libraries(${name} PRIVATE bf_pch)
+  endif()  
+
 endfunction()
 
 

@@ -8,6 +8,8 @@
 
 #define _USE_MATH_DEFINES
 
+#include "BLI_math_base.h"
+
 #include "GHOST_Wintab.hh"
 
 GHOST_Wintab *GHOST_Wintab::loadWintab(HWND hwnd)
