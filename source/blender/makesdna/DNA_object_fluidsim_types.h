@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004-2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2004-2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -69,7 +69,7 @@ typedef struct FluidsimSettings {
   char surfdataPath[1024];
 
   /* store start coords of axis aligned bounding box together with size */
-  /* values are inited during derived mesh display */
+  /* values are initialized during derived mesh display. */
   float bbStart[3], bbSize[3];
 
   /* animated params */

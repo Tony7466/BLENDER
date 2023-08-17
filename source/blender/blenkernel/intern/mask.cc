@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation
+/* SPDX-FileCopyrightText: 2012 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,8 +6,8 @@
  * \ingroup bke
  */
 
-#include <stddef.h>
-#include <string.h>
+#include <cstddef>
+#include <cstring>
 
 #include "CLG_log.h"
 
@@ -16,7 +16,9 @@
 #include "BLI_endian_switch.h"
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
@@ -93,10 +95,6 @@ static void mask_blend_write(BlendWriter *writer, ID *id, const void *id_address
 
   BLO_write_id_struct(writer, Mask, id_address, &mask->id);
   BKE_id_blend_write(writer, &mask->id);
-
-  if (mask->adt) {
-    BKE_animdata_blend_write(writer, mask->adt);
-  }
 
   LISTBASE_FOREACH (MaskLayer *, masklay, &mask->masklayers) {
     BLO_write_struct(writer, MaskLayer, masklay);
@@ -1341,7 +1339,7 @@ static void mask_calc_point_handle(MaskSplinePoint *point,
 
 #if 1
   if (bezt_prev || bezt_next) {
-    BKE_nurb_handle_calc(bezt, bezt_prev, bezt_next, 0, 0);
+    BKE_nurb_handle_calc(bezt, bezt_prev, bezt_next, false, 0);
   }
 #else
   if (handle_type == HD_VECT) {
@@ -2004,7 +2002,7 @@ static void mask_clipboard_free_ex(bool final_free)
   }
 }
 
-void BKE_mask_clipboard_free(void)
+void BKE_mask_clipboard_free()
 {
   mask_clipboard_free_ex(true);
 }
@@ -2041,7 +2039,7 @@ void BKE_mask_clipboard_copy_from_layer(MaskLayer *mask_layer)
   }
 }
 
-bool BKE_mask_clipboard_is_empty(void)
+bool BKE_mask_clipboard_is_empty()
 {
   return BLI_listbase_is_empty(&mask_clipboard.splines);
 }

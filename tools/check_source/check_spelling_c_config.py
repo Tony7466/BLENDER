@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -33,6 +33,7 @@ dict_custom = {
     # Correct spelling, update the dictionary, here:
     # https://github.com/en-wl/wordlist
     "accessor",
+    "accumulatively",
     "additively",
     "adjoint",
     "adjugate",
@@ -75,6 +76,8 @@ dict_custom = {
     "criterium",
     "crosshair",
     "crosstalk",
+    "cumulate",
+    "cumulated",
     "customizable",
     "deallocate",
     "deallocated",
@@ -129,6 +132,7 @@ dict_custom = {
     "extrema",
     "fallbacks",
     "finalizer",
+    "flippable",
     "flushable",
     "formatter",
     "formatters",
@@ -155,6 +159,7 @@ dict_custom = {
     "interferences",
     "interocular",
     "interpolator",
+    "invariance",
     "invariant",
     "invariants",
     "invisibilities",
@@ -265,6 +270,7 @@ dict_custom = {
     "recursing",
     "recursivity",
     "redefinitions",
+    "redisplay",
     "redistributions",
     "registerable",
     "reimplement",
@@ -300,9 +306,11 @@ dict_custom = {
     "sidedness",
     "simplices",
     "situationally",
+    "skinnable",
     "skippable",
     "sortable",
     "stepsize",
+    "stepwise",
     "stitchable",
     "subclass",
     "subclasses",
@@ -312,7 +320,10 @@ dict_custom = {
     "suboptimally",
     "subrange",
     "subtractive",
+    "subtype",
+    "subtypes",
     "superset",
+    "symmetrizable",
     "symmetrize",
     "symmetrized",
     "targetless",
@@ -489,6 +500,7 @@ dict_custom = {
     "coord",
     "coords",
     "ctrl",  # control (modifier key).
+    "ie",
     "init",
     "iter",  # iteration.
     "multi",
@@ -516,6 +528,7 @@ dict_custom = {
     "decimator",
     "decref",
     "decrefed",
+    "decrefing",
     "diff",
     "diffs",
     "endian",
@@ -528,6 +541,7 @@ dict_custom = {
     "http",
     "incref",
     "increfed",
+    "increfing",
     "intelisense",
     "jitter",
     "jittered",
