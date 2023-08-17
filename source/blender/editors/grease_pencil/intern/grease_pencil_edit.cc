@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,6 +9,7 @@
 #include "BLI_array_utils.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_index_range.hh"
+#include "BLI_math_geom.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
 #include "BLI_stack.hh"
@@ -16,16 +17,16 @@
 #include "BKE_context.h"
 #include "BKE_grease_pencil.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "DEG_depsgraph.h"
 
 #include "ED_curves.hh"
-#include "ED_grease_pencil.h"
-#include "ED_screen.h"
+#include "ED_grease_pencil.hh"
+#include "ED_screen.hh"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 namespace blender::ed::greasepencil {
 
@@ -93,7 +94,7 @@ static void keymap_grease_pencil_painting(wmKeyConfig *keyconf)
 }
 
 /* -------------------------------------------------------------------- */
-/** \name Smooth Stroke Operator.
+/** \name Smooth Stroke Operator
  * \{ */
 
 template<typename T>
@@ -151,7 +152,7 @@ static void gaussian_blur_1D(const Span<T> src,
   const int64_t last_pt = total_points - 1;
 
   auto is_end_and_fixed = [smooth_ends, is_cyclic, last_pt](int index) {
-    return !smooth_ends && !is_cyclic && (ELEM(index, 0, last_pt));
+    return !smooth_ends && !is_cyclic && ELEM(index, 0, last_pt);
   };
 
   /* Initialize at zero. */
@@ -246,21 +247,16 @@ void gaussian_blur_1D(const GSpan src,
   });
 }
 
-static void smooth_curve_attribute(bke::CurvesGeometry &curves,
-                                   bke::GSpanAttributeWriter &attribute,
-                                   const OffsetIndices<int> points_by_curve,
-                                   const VArray<bool> selection,
-                                   const VArray<bool> cyclic,
+static void smooth_curve_attribute(const OffsetIndices<int> points_by_curve,
+                                   const VArray<bool> &selection,
+                                   const VArray<bool> &cyclic,
                                    const int64_t iterations,
                                    const float influence,
                                    const bool smooth_ends,
-                                   const bool keep_shape)
+                                   const bool keep_shape,
+                                   GMutableSpan data)
 {
-  GMutableSpan data = attribute.span;
-  if (data.is_empty()) {
-    return;
-  }
-  threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
+  threading::parallel_for(points_by_curve.index_range(), 512, [&](const IndexRange range) {
     Vector<std::byte> orig_data;
     for (const int curve_i : range) {
       const IndexRange points = points_by_curve[curve_i];
@@ -273,17 +269,16 @@ static void smooth_curve_attribute(bke::CurvesGeometry &curves,
       Vector<IndexRange> selection_ranges = selection_mask.to_ranges();
       for (const IndexRange range : selection_ranges) {
         GMutableSpan dst_data = data.slice(range);
+
         orig_data.resize(dst_data.size_in_bytes());
         dst_data.type().copy_assign_n(dst_data.data(), orig_data.data(), range.size());
+        const GSpan src_data(dst_data.type(), orig_data.data(), range.size());
 
-        GSpan src_data(dst_data.type(), orig_data.data(), range.size());
         gaussian_blur_1D(
             src_data, iterations, influence, smooth_ends, keep_shape, cyclic[curve_i], dst_data);
       }
     }
   });
-
-  attribute.finish();
 }
 
 static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
@@ -322,41 +317,38 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
 
         if (smooth_position) {
           bke::GSpanAttributeWriter positions = attributes.lookup_for_write_span("position");
-          smooth_curve_attribute(curves,
-                                 positions,
-                                 points_by_curve,
+          smooth_curve_attribute(points_by_curve,
                                  selection,
                                  cyclic,
                                  iterations,
                                  influence,
                                  smooth_ends,
-                                 keep_shape);
+                                 keep_shape,
+                                 positions.span);
           positions.finish();
         }
         if (smooth_opacity && drawing.opacities().is_span()) {
-          bke::GSpanAttributeWriter opcities = attributes.lookup_for_write_span("opacity");
-          smooth_curve_attribute(curves,
-                                 opcities,
-                                 points_by_curve,
+          bke::GSpanAttributeWriter opacities = attributes.lookup_for_write_span("opacity");
+          smooth_curve_attribute(points_by_curve,
                                  selection,
                                  cyclic,
                                  iterations,
                                  influence,
                                  smooth_ends,
-                                 false);
-          opcities.finish();
+                                 false,
+                                 opacities.span);
+          opacities.finish();
         }
         if (smooth_radius && drawing.radii().is_span()) {
           bke::GSpanAttributeWriter radii = attributes.lookup_for_write_span("radius");
-          smooth_curve_attribute(curves,
-                                 radii,
-                                 points_by_curve,
+          smooth_curve_attribute(points_by_curve,
                                  selection,
                                  cyclic,
                                  iterations,
                                  influence,
                                  smooth_ends,
-                                 false);
+                                 false,
+                                 radii.span);
           radii.finish();
         }
       });
@@ -397,7 +389,7 @@ static void GREASE_PENCIL_OT_stroke_smooth(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Simplify Stroke Operator.
+/** \name Simplify Stroke Operator
  * \{ */
 
 /**

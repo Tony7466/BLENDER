@@ -1,10 +1,14 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../include
+  ../../blenkernel
   ../../blenloader
+  ../../blentranslation
+  ../../bmesh
+  ../../depsgraph
   ../../draw
   ../../gpu
   ../../imbuf
@@ -12,8 +16,12 @@ set(INC
   ../../nodes
   ../../render
   ../../sequencer
+  ../../windowmanager
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
+)
+
+set(INC_SYS
 )
 
 set(SRC
@@ -29,15 +37,10 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::blentranslation
-  PRIVATE bf::bmesh
-  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_draw
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::windowmanager
 )
 
 if(WITH_HEADLESS)

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,10 +6,10 @@
  * \ingroup cmpnodes
  */
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "COM_node_operation.hh"
 #include "COM_utilities.hh"
@@ -48,13 +48,13 @@ static void node_composit_buts_kuwahara(uiLayout *layout, bContext * /*C*/, Poin
 
   col = uiLayoutColumn(layout, false);
 
-  uiItemR(col, ptr, "variation", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "size", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "variation", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "size", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   const int variation = RNA_enum_get(ptr, "variation");
 
   if (variation == CMP_NODE_KUWAHARA_ANISOTROPIC) {
-    uiItemR(col, ptr, "smoothing", 0, nullptr, ICON_NONE);
+    uiItemR(col, ptr, "smoothing", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 }
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,6 +11,10 @@
 #include "BLI_array.hh"
 #include "BLI_convexhull_2d.h"
 #include "BLI_ghash.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_polyfill_2d.h"
 #include "BLI_polyfill_2d_beautify.h"
 #include "BLI_rand.h"
@@ -1334,7 +1338,7 @@ static void p_polygon_kernel_center(float (*points)[2], int npoints, float *cent
     p_polygon_kernel_clip(oldpoints, nnewpoints, newpoints, &nnewpoints, p1, p2);
 
     if (nnewpoints == 0) {
-      /* degenerate case, use center of original polygon */
+      /* degenerate case, use center of original face */
       memcpy(oldpoints, points, sizeof(float[2]) * npoints);
       nnewpoints = npoints;
       break;
@@ -1495,7 +1499,7 @@ static void p_vert_harmonic_insert(PVert *v)
   PEdge *e;
 
   if (!p_vert_map_harmonic_weights(v)) {
-    /* do polygon kernel center insertion: this is quite slow, but should
+    /* do face kernel center insertion: this is quite slow, but should
      * only be needed for 0.01 % of verts or so, when insert with harmonic
      * weights fails */
 
@@ -2984,10 +2988,9 @@ static void p_chart_lscm_begin(PChart *chart, bool live, bool abf)
   }
 
   if (abf) {
-    if (p_chart_abf_solve(chart)) {
-      return;
+    if (!p_chart_abf_solve(chart)) {
+      param_warning("ABF solving failed: falling back to LSCM.\n");
     }
-    param_warning("ABF solving failed: falling back to LSCM.\n");
   }
 
   if (npins <= 1) {

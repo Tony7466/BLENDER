@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,7 +13,8 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
@@ -24,14 +25,14 @@
 
 #include "DEG_depsgraph.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_clip.h"
-#include "ED_screen.h"
+#include "ED_clip.hh"
+#include "ED_screen.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "BLT_translation.h"
 
@@ -1761,8 +1762,8 @@ void CLIP_OT_clean_tracks(wmOperatorType *ot)
               0,
               INT_MAX,
               "Tracked Frames",
-              "Effect on tracks which are tracked less than "
-              "specified amount of frames",
+              "Affect tracks which are tracked less than the "
+              "specified number of frames",
               0,
               INT_MAX);
   RNA_def_float(ot->srna,
@@ -1771,7 +1772,7 @@ void CLIP_OT_clean_tracks(wmOperatorType *ot)
                 0.0f,
                 FLT_MAX,
                 "Reprojection Error",
-                "Effect on tracks which have got larger reprojection error",
+                "Affect tracks which have a larger reprojection error",
                 0.0f,
                 100.0f);
   RNA_def_enum(ot->srna, "action", actions_items, 0, "Action", "Cleanup action to execute");

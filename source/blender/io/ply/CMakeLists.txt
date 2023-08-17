@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -8,8 +8,12 @@ set(INC
   importer
   intern
   ../common
+  ../../blenkernel
+  ../../bmesh
+  ../../depsgraph
   ../../geometry
   ../../makesrna
+  ../../windowmanager
 )
 
 set(INC_SYS
@@ -48,14 +52,11 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::bmesh
-  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
   bf_io_common
-  PRIVATE bf::windowmanager
   extern_fmtlib
 )
 
