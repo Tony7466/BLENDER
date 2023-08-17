@@ -1980,8 +1980,10 @@ static void space_view3d_refresh(const bContext *C, ScrArea *area)
     view3d_lightcache_update((bContext *)C);
   }
 
-  View3D *v3d = (View3D *)area->spacedata.first;
+  View3D *v3d = static_cast<View3D *>(area->spacedata.first);
   MEM_SAFE_FREE(v3d->runtime.local_stats);
+
+  // view3d_ghosts_update();
 }
 
 const char *view3d_context_dir[] = {

@@ -16,6 +16,7 @@
 #include "DNA_sequence_types.h"
 
 #include "BKE_context.h"
+#include "BKE_ghosting_system.hh"
 #include "BKE_global.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
@@ -429,17 +430,16 @@ static bool scene_enable_ghosting_poll(bContext *C)
   return scene != nullptr && object != nullptr;
 }
 
-static int scene_enable_ghosting_exec(bContext *C, wmOperator */*op*/)
+static int scene_enable_ghosting_exec(bContext *C, wmOperator * /*op*/)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Object *active_object = CTX_data_active_object(C);
 
-  /* Delete before, so we can reassign a new object. */
-  BKE_scene_delete_ghosting_system(scene);
-  BKE_scene_ensure_depsgraphs_ghosting_system(bmain, scene, view_layer, active_object);
-  BKE_scene_evaluate_ghosting_system_for_framechange(scene);
+  for (int i = 0; i < 8; i++) {
+    scene->ghosting_system->request_ghost(bmain, scene, view_layer, active_object, scene->r.cfra + 4 - i);
+  }
 
   return OPERATOR_FINISHED;
 }

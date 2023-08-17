@@ -66,6 +66,7 @@
 #include "BKE_effect.h"
 #include "BKE_fcurve.h"
 #include "BKE_freestyle.h"
+#include "BKE_ghosting_system.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_icons.h"
 #include "BKE_idprop.h"
@@ -248,8 +249,7 @@ static void scene_init_data(ID *id)
 
   BKE_view_layer_add(scene, DATA_("ViewLayer"), nullptr, VIEWLAYER_ADD_NEW);
 
-  scene->ghosting_system.is_built = false;
-  BKE_scene_clear_ghosting_system(scene);
+  scene->ghosting_system = MEM_new<blender::bke::ghosts::GhostingSystem>(__func__);
 }
 
 static void scene_copy_markers(Scene *scene_dst, const Scene *scene_src, const int flag)
@@ -371,7 +371,7 @@ static void scene_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int
 
   BKE_scene_copy_data_eevee(scene_dst, scene_src);
 
-  BKE_scene_clear_ghosting_system(scene_dst);
+  scene_dst->ghosting_system = MEM_new<blender::bke::ghosts::GhostingSystem>(__func__);
 }
 
 static void scene_free_markers(Scene *scene, bool do_id_user)
@@ -468,8 +468,8 @@ static void scene_free_data(ID *id)
   /* These are freed on `do_versions`. */
   BLI_assert(scene->layer_properties == nullptr);
 
-  BKE_scene_delete_ghosting_system(scene);
-  BKE_scene_clear_ghosting_system(scene);
+  MEM_delete(scene->ghosting_system);
+  scene->ghosting_system = nullptr;
 }
 
 static void scene_foreach_rigidbodyworldSceneLooper(RigidBodyWorld * /*rbw*/,
@@ -1507,8 +1507,7 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
   BLO_read_data_address(reader, &sce->layer_properties);
   IDP_BlendDataRead(reader, &sce->layer_properties);
 
-  sce->ghosting_system.is_built = false;
-  BKE_scene_clear_ghosting_system(sce);
+  sce->ghosting_system = MEM_new<blender::bke::ghosts::GhostingSystem>(__func__);
 }
 
 /* patch for missing scene IDs, can't be in do-versions */
@@ -2724,7 +2723,7 @@ static void scene_graph_update_tagged(Depsgraph *depsgraph, Main *bmain, bool on
 
     if (pass == 0) {
       /* Evaluate ghosting depsgraphs here (if needed). */
-      BKE_scene_evaluate_ghosting_system(scene);
+      scene->ghosting_system->evaluate_all_frames();
     }
 
     /* Update sound system. */
@@ -2809,8 +2808,8 @@ void BKE_scene_graph_update_for_newframe_ex(Depsgraph *depsgraph, const bool cle
       const float frame = BKE_scene_frame_get(scene);
       DEG_evaluate_on_framechange(depsgraph, frame);
 
-      /* Evaluate ghosting depsgraphs here (if needed). */
-      BKE_scene_evaluate_ghosting_system_for_framechange(scene);
+      /* Evaluate ghosting depsgraphs. */
+      scene->ghosting_system->evaluate_on_framechange();
     }
     else {
       DEG_evaluate_on_refresh(depsgraph, true);
@@ -3821,88 +3820,6 @@ void BKE_scene_cursor_from_mat4(View3DCursor *cursor, const float mat[4][4], boo
   copy_m3_m4(mat3, mat);
   BKE_scene_cursor_mat3_to_rot(cursor, mat3, use_compat);
   copy_v3_v3(cursor->location, mat[3]);
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Ghosting System API
- * \{ */
-
-void BKE_scene_ensure_depsgraphs_ghosting_system(Main *bmain,
-                                                 Scene *scene,
-                                                 ViewLayer *view_layer,
-                                                 Object *object)
-{
-  if (scene->ghosting_system.is_built) {
-    return;
-  }
-
-  for (int i = 0; i < 8; i++) {
-    GhostFrame *ghost_frame = &scene->ghosting_system.frames[i];
-    ghost_frame->depsgraph = DEG_graph_new(bmain, scene, view_layer, DAG_EVAL_VIEWPORT);
-    ghost_frame->object = object;
-    ghost_frame->frame = scene->r.cfra - i;
-
-    ID *id = &ghost_frame->object->id;
-    /* Use the ID of the active object. This will also add any object related to it. */
-    DEG_graph_build_from_ids(ghost_frame->depsgraph, &id, 1);
-    DEG_graph_tag_relations_update(ghost_frame->depsgraph);
-  }
-
-  scene->ghosting_system.is_built = true;
-}
-
-void BKE_scene_delete_ghosting_system(Scene *scene)
-{
-  for (int i = 0; i < 8; i++) {
-    GhostFrame *ghost_frame = &scene->ghosting_system.frames[i];
-    if (ghost_frame->depsgraph) {
-      DEG_graph_free(ghost_frame->depsgraph);
-    }
-  }
-}
-
-void BKE_scene_clear_ghosting_system(Scene *scene)
-{
-  scene->ghosting_system.is_built = false;
-  for (int i = 0; i < 8; i++) {
-    GhostFrame *ghost_frame = &scene->ghosting_system.frames[i];
-    ghost_frame->depsgraph = nullptr;
-    ghost_frame->object = nullptr;
-  }
-}
-
-void BKE_scene_evaluate_ghosting_system(Scene *scene)
-{
-  if (!scene->ghosting_system.is_built) {
-    return;
-  }
-
-  /* TODO: check if we actually need to reevaluate the state. */
-  for (int i = 0; i < 8; i++) {
-    GhostFrame *ghost_frame = &scene->ghosting_system.frames[i];
-    DEG_evaluate_on_refresh(ghost_frame->depsgraph, false);
-    DEG_graph_tag_relations_update(ghost_frame->depsgraph);
-  }
-}
-
-void BKE_scene_evaluate_ghosting_system_for_framechange(Scene *scene)
-{
-  if (!scene->ghosting_system.is_built) {
-    return;
-  }
-
-  /* TODO: check if we actually need to reevaluate the state. */
-  for (int i = 0; i < 8; i++) {
-    GhostFrame *ghost_frame = &scene->ghosting_system.frames[i];
-    /* TODO: This should be done in another function. Right now this means that the ghosts are
-     * always showing relative to the active frame. */
-    ghost_frame->frame = (i < 4) ? scene->r.cfra - ((4 - i) * 5) :
-                                   scene->r.cfra + ((i - 4 + 1) * 5);
-    /* Evaluate the graph on the right frame. */
-    DEG_evaluate_on_framechange(ghost_frame->depsgraph, (float)ghost_frame->frame);
-  }
 }
 
 /** \} */

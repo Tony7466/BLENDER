@@ -24,6 +24,7 @@
 #include "BKE_curves.h"
 #include "BKE_duplilist.h"
 #include "BKE_editmesh.h"
+#include "BKE_ghosting_system.hh"
 #include "BKE_global.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.h"
@@ -45,6 +46,7 @@
 #include "DNA_camera_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_scene_types.h"
 #include "DNA_userdef_types.h"
 #include "DNA_view3d_types.h"
 #include "DNA_world_types.h"
@@ -1659,7 +1661,7 @@ void DRW_draw_render_loop_ex(Depsgraph *depsgraph,
   ViewLayer *view_layer = DEG_get_evaluated_view_layer(depsgraph);
   RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
 
-  Scene *scene_orig = (Scene *)DEG_get_original_id(&scene->id);
+  Scene *scene_orig = reinterpret_cast<Scene *>(DEG_get_original_id(&scene->id));
 
   BKE_view_layer_synced_ensure(scene, view_layer);
   DST.draw_ctx = {};
@@ -1740,37 +1742,37 @@ void DRW_draw_render_loop_ex(Depsgraph *depsgraph,
       }
       DEG_OBJECT_ITER_END;
 
-      if (scene_orig->ghosting_system.is_built && !draw_type_render && ghosts_on) {
-        for (int i = 0; i < 8; i++) {
-          GhostFrame *ghost_frame = &scene_orig->ghosting_system.frames[i];
-          if (!ghost_frame->depsgraph) {
-            continue;
-          }
-          DEGObjectIterSettings deg_ghost_iter_settings = {0};
-          deg_ghost_iter_settings.depsgraph = ghost_frame->depsgraph;
-          deg_ghost_iter_settings.flags = DEG_ITER_OBJECT_FLAG_VISIBLE |
-                                          DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY;
+      if (!scene_orig->ghosting_system->is_empty() && !draw_type_render && ghosts_on) {
+        scene_orig->ghosting_system->foreach_ghost_frame(
+            [&](int frame, blender::bke::ghosts::GhostFrame &ghost_frame) {
+              if (!ghost_frame.depsgraph) {
+                return;
+              }
+              DEGObjectIterSettings deg_ghost_iter_settings = {0};
+              deg_ghost_iter_settings.depsgraph = ghost_frame.depsgraph;
+              deg_ghost_iter_settings.flags = DEG_OBJECT_ITER_FOR_RENDER_ENGINE_FLAGS;
 
-          DEG_OBJECT_ITER_BEGIN (&deg_ghost_iter_settings, ob) {
-            if ((object_type_exclude_viewport & (1 << ob->type)) != 0) {
-              continue;
-            }
-            if (!BKE_object_is_visible_in_viewport(v3d, ob)) {
-              continue;
-            }
-            ob->base_flag |= BASE_IS_GHOST_FRAME;
-            ob->base_flag &= ~BASE_SELECTED;
-            if (i < 4) {
-              copy_v3_v3(ob->color, v3d->ghosts.color_before);
-            }
-            else {
-              copy_v3_v3(ob->color, v3d->ghosts.color_after);
-            }
-            ob->color[3] = (i < 4) ? 0.1f + 0.2f * i : 0.7f - (i - 4) * 0.2f;
-            drw_engines_cache_populate(ob);
-          }
-          DEG_OBJECT_ITER_END;
-        }
+              DEG_OBJECT_ITER_BEGIN (&deg_ghost_iter_settings, ob) {
+                if ((object_type_exclude_viewport & (1 << ob->type)) != 0) {
+                  continue;
+                }
+                if (!BKE_object_is_visible_in_viewport(v3d, ob)) {
+                  continue;
+                }
+                ob->base_flag |= BASE_IS_GHOST_FRAME;
+                ob->base_flag &= ~BASE_SELECTED;
+                const bool before = frame < scene_orig->r.cfra;
+                if (before) {
+                  copy_v3_v3(ob->color, v3d->ghosts.color_before);
+                }
+                else {
+                  copy_v3_v3(ob->color, v3d->ghosts.color_after);
+                }
+                // ob->color[3] = (before) ? 0.1f + 0.2f * i : 0.7f - (i - 4) * 0.2f;
+                drw_engines_cache_populate(ob);
+              }
+              DEG_OBJECT_ITER_END;
+            });
       }
     }
 

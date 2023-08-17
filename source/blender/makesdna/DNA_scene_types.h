@@ -1936,24 +1936,14 @@ enum {
 
 /** \} */
 
-/* -------------------------------------------------------------------- */
-/** \name Ghosting System
- * \{ */
-
-typedef struct GhostFrame {
-  struct Depsgraph *depsgraph;
-  struct Object *object;
-  int frame;
-  char _pad[4];
-} GhostFrame;
-
-typedef struct GhostingSystem {
-  struct GhostFrame frames[8];
-  char is_built;
-  char _pad[7];
-} GhostingSystem;
-
-/** \} */
+#ifdef __cplusplus
+namespace blender::bke::ghosts {
+class GhostingSystem;
+}  // namespace blender::bke::ghosts
+using GhostingSystemHandle = blender::bke::ghosts::GhostingSystem;
+#else
+typedef struct GhostingSystemHandle GhostingSystemHandle;
+#endif
 
 /* -------------------------------------------------------------------- */
 /** \name Scene ID-Block
@@ -2077,7 +2067,8 @@ typedef struct Scene {
   struct SceneEEVEE eevee;
   struct SceneGpencil grease_pencil_settings;
   struct SceneHydra hydra;
-  struct GhostingSystem ghosting_system;
+  GhostingSystemHandle *ghosting_system;
+  void *_pad9;
 } Scene;
 
 /** \} */
