@@ -1527,11 +1527,15 @@ static int make_links_data_exec(bContext *C, wmOperator *op)
             break;
           case MAKE_LINKS_ANIMDATA:
             BKE_animdata_copy_id(bmain, (ID *)ob_dst, (ID *)ob_src, 0);
-            if (ob_dst->data && ob_src->data) {
-              BKE_animdata_copy_id(bmain, (ID *)ob_dst->data, (ID *)ob_src->data, 0);
-            }
             DEG_id_tag_update(&ob_dst->id,
                               ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
+            if (ob_dst->data && ob_src->data) {
+              if (!BKE_id_is_editable(bmain, obdata_id)) {
+                is_lib = true;
+                break;
+              }
+              BKE_animdata_copy_id(bmain, (ID *)ob_dst->data, (ID *)ob_src->data, 0);
+            }
             break;
           case MAKE_LINKS_GROUP: {
             LinkNode *collection_node;
