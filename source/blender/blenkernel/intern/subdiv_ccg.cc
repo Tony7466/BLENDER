@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation
+/* SPDX-FileCopyrightText: 2018 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,6 +15,7 @@
 
 #include "BLI_ghash.h"
 #include "BLI_math_bits.h"
+#include "BLI_math_geom.h"
 #include "BLI_math_vector.h"
 #include "BLI_task.h"
 

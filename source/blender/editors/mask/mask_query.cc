@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation
+/* SPDX-FileCopyrightText: 2012 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,10 +8,11 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
-
 #include "BKE_context.h"
 #include "BKE_mask.h"
+
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
