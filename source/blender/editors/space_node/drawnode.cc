@@ -1198,16 +1198,38 @@ static const float std_node_socket_colors[][4] = {
     {0.92, 0.46, 0.7, 1.0},  /* SOCK_ROTATION */
 };
 
-/* common color callbacks for standard types */
-static void std_node_socket_draw_color(bContext * /*C*/,
-                                       PointerRNA *ptr,
-                                       PointerRNA * /*node_ptr*/,
-                                       float *r_color)
+/* Callback for colors that does not depend on the socket pointer argument to get the type. */
+template<int socket_type>
+void std_node_socket_color_fn(bContext * /*C*/,
+                              PointerRNA * /*ptr*/,
+                              PointerRNA * /*node_ptr*/,
+                              float *r_color)
 {
-  bNodeSocket *sock = (bNodeSocket *)ptr->data;
-  int type = sock->typeinfo->type;
-  copy_v4_v4(r_color, std_node_socket_colors[type]);
-}
+  copy_v4_v4(r_color, std_node_socket_colors[socket_type]);
+};
+
+using SocketColorFn = void (*)(bContext * /*C*/,
+                               PointerRNA * /*ptr*/,
+                               PointerRNA * /*node_ptr*/,
+                               float *r_color);
+/* Callbacks for all built-in socket types. */
+static const SocketColorFn std_node_socket_color_funcs[] = {
+    std_node_socket_color_fn<SOCK_FLOAT>,
+    std_node_socket_color_fn<SOCK_VECTOR>,
+    std_node_socket_color_fn<SOCK_RGBA>,
+    std_node_socket_color_fn<SOCK_SHADER>,
+    std_node_socket_color_fn<SOCK_BOOLEAN>,
+    nullptr /* UNUSED */,
+    std_node_socket_color_fn<SOCK_INT>,
+    std_node_socket_color_fn<SOCK_STRING>,
+    std_node_socket_color_fn<SOCK_OBJECT>,
+    std_node_socket_color_fn<SOCK_IMAGE>,
+    std_node_socket_color_fn<SOCK_GEOMETRY>,
+    std_node_socket_color_fn<SOCK_COLLECTION>,
+    std_node_socket_color_fn<SOCK_TEXTURE>,
+    std_node_socket_color_fn<SOCK_MATERIAL>,
+    std_node_socket_color_fn<SOCK_ROTATION>,
+};
 
 /* draw function for file output node sockets,
  * displays only sub-path and format, no value button */
@@ -1499,7 +1521,7 @@ void ED_init_standard_node_socket_type(bNodeSocketType *stype)
 {
   using namespace blender::ed::space_node;
   stype->draw = std_node_socket_draw;
-  stype->draw_color = std_node_socket_draw_color;
+  stype->draw_color = std_node_socket_color_funcs[stype->type];
   stype->interface_draw = std_node_socket_interface_draw;
 }
 
