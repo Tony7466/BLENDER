@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,7 +19,6 @@
 #include "BLI_fileops.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_memory_utils.hh"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
@@ -267,9 +266,9 @@ void set_normal_texture_range(pxr::UsdShadeShader &usd_shader, const InputSpec &
 }
 
 /* Create USD Shade Material network from Blender viewport display settings. */
-void create_usd_viewport_material(const USDExporterContext &usd_export_context,
-                                  Material *material,
-                                  pxr::UsdShadeMaterial &usd_material)
+static void create_usd_viewport_material(const USDExporterContext &usd_export_context,
+                                         Material *material,
+                                         pxr::UsdShadeMaterial &usd_material)
 {
   /* Construct the shader. */
   pxr::SdfPath shader_path = usd_material.GetPath().AppendChild(usdtokens::preview_shader);

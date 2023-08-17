@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -143,6 +143,8 @@ set(GLSL_SRC
   shaders/compositor_keying_extract_chroma.glsl
   shaders/compositor_keying_replace_chroma.glsl
   shaders/compositor_keying_tweak_matte.glsl
+  shaders/compositor_kuwahara_anisotropic.glsl
+  shaders/compositor_kuwahara_anisotropic_compute_structure_tensor.glsl
   shaders/compositor_kuwahara_classic.glsl
   shaders/compositor_map_uv.glsl
   shaders/compositor_morphological_distance.glsl
@@ -317,4 +319,3 @@ if(WITH_OPENCOLORIO)
 endif()
 
 blender_add_lib(bf_realtime_compositor "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
-

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -36,7 +36,7 @@
 #include "BLI_fnmatch.h"
 #include "BLI_ghash.h"
 #include "BLI_linklist.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_stack.h"
 #include "BLI_string_utils.h"
 #include "BLI_task.h"
@@ -3536,12 +3536,12 @@ static void filelist_readjob_main_recursive(Main *bmain, FileList *filelist)
 #  if 0 /* XXX TODO: show the selection status of the objects. */
           if (!filelist->has_func) { /* F4 DATA BROWSE */
             if (idcode == ID_OB) {
-              if ( ((Object *)id)->flag & SELECT) {
+              if (((Object *)id)->flag & SELECT) {
                 files->entry->selflag |= FILE_SEL_SELECTED;
               }
             }
             else if (idcode == ID_SCE) {
-              if ( ((Scene *)id)->r.scemode & R_BG_RENDER) {
+              if (((Scene *)id)->r.scemode & R_BG_RENDER) {
                 files->entry->selflag |= FILE_SEL_SELECTED;
               }
             }

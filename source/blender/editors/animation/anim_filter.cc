@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2008 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -966,12 +966,21 @@ static bAnimListElem *make_new_animlistelem(void *data,
         break;
       }
       case ANIMTYPE_GREASE_PENCIL_LAYER: {
-        GreasePencilLayer *layer = (GreasePencilLayer *)data;
+        GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(data);
 
         ale->flag = layer->base.flag;
 
         ale->key_data = nullptr;
-        ale->datatype = ALE_GREASE_PENCIL_CELS;
+        ale->datatype = ALE_GREASE_PENCIL_CEL;
+        break;
+      }
+      case ANIMTYPE_GREASE_PENCIL_DATABLOCK: {
+        GreasePencil *grease_pencil = static_cast<GreasePencil *>(data);
+
+        ale->flag = grease_pencil->flag;
+
+        ale->key_data = nullptr;
+        ale->datatype = ALE_GREASE_PENCIL_DATA;
         break;
       }
       case ANIMTYPE_MASKLAYER: {
@@ -1767,7 +1776,7 @@ static size_t animdata_filter_grease_pencil_layers_data(ListBase *anim_data,
     }
 
     /* Only if the layer is active. */
-    if ((filter_mode & ANIMFILTER_ACTIVE) && (grease_pencil->active_layer == layer)) {
+    if ((filter_mode & ANIMFILTER_ACTIVE) && grease_pencil->is_layer_active(layer)) {
       continue;
     }
 

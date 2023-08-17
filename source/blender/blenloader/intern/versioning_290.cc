@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,7 +9,8 @@
 #define DNA_DEPRECATED_ALLOW
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -58,7 +59,7 @@
 #include "IMB_imbuf.h"
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "SEQ_proxy.h"
 #include "SEQ_render.h"
@@ -254,7 +255,7 @@ static void seq_convert_transform_crop_lb(const Scene *scene,
 {
 
   LISTBASE_FOREACH (Sequence *, seq, lb) {
-    if (seq->type != SEQ_TYPE_SOUND_RAM) {
+    if (!ELEM(seq->type, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD)) {
       seq_convert_transform_crop(scene, seq, render_size);
     }
     if (seq->type == SEQ_TYPE_META) {
@@ -340,7 +341,7 @@ static void seq_convert_transform_crop_lb_2(const Scene *scene,
 {
 
   LISTBASE_FOREACH (Sequence *, seq, lb) {
-    if (seq->type != SEQ_TYPE_SOUND_RAM) {
+    if (!ELEM(seq->type, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD)) {
       seq_convert_transform_crop_2(scene, seq, render_size);
     }
     if (seq->type == SEQ_TYPE_META) {

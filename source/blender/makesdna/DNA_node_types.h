@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,6 +10,7 @@
 
 #include "DNA_ID.h"
 #include "DNA_listBase.h"
+#include "DNA_node_tree_interface_types.h"
 #include "DNA_scene_types.h" /* for #ImageFormatData */
 #include "DNA_vec_types.h"   /* for #rctf */
 
@@ -637,6 +638,8 @@ typedef struct bNodeTree {
    */
   ListBase inputs, outputs;
 
+  bNodeTreeInterface tree_interface;
+
   /**
    * Node preview hash table.
    * Only available in base node trees (e.g. scene->node_tree).
@@ -996,7 +999,9 @@ typedef struct NodeBilateralBlurData {
 typedef struct NodeKuwaharaData {
   short size;
   short variation;
-  int smoothing;
+  int uniformity;
+  float sharpness;
+  float eccentricity;
 } NodeKuwaharaData;
 
 typedef struct NodeAntiAliasingData {
@@ -1212,7 +1217,8 @@ typedef struct NodeTexGradient {
 typedef struct NodeTexNoise {
   NodeTexBase base;
   int dimensions;
-  char _pad[4];
+  uint8_t normalize;
+  char _pad[3];
 } NodeTexNoise;
 
 typedef struct NodeTexVoronoi {
@@ -2124,6 +2130,7 @@ typedef enum NodeMathOperation {
   NODE_MATH_PINGPONG = 37,
   NODE_MATH_SMOOTH_MIN = 38,
   NODE_MATH_SMOOTH_MAX = 39,
+  NODE_MATH_FLOORED_MODULO = 40,
 } NodeMathOperation;
 
 typedef enum NodeVectorMathOperation {
