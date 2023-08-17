@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -30,6 +30,8 @@ struct Scene;
 struct ShaderFxData;
 struct TreeStoreElem;
 struct ViewLayer;
+struct bActionGroup;
+struct bConstraint;
 struct bContext;
 struct bContextDataResult;
 struct bDeformGroup;
@@ -300,6 +302,11 @@ struct EditBoneElementCreateData {
   EditBone *ebone;
 };
 
+struct ConstraintElementCreateData {
+  Object *object;
+  bConstraint *con;
+};
+
 struct DeformGroupElementCreateData {
   Object *object;
   bDeformGroup *defgroup;
@@ -313,6 +320,16 @@ struct GPencilEffectElementCreateData {
 struct ParticleSystemElementCreateData {
   Object *object;
   ParticleSystem *psys;
+};
+
+struct PoseGroupElementCreateData {
+  Object *object;
+  bActionGroup *agrp;
+};
+
+struct ViewLayerElementCreateData {
+  Scene *scene;
+  ViewLayer *view_layer;
 };
 
 TreeTraversalAction outliner_collect_selected_collections(TreeElement *te, void *customdata);
