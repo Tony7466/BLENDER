@@ -79,7 +79,8 @@ static char *rna_NodeTreeInterfaceItem_path(const PointerRNA *ptr)
   }
 
   ntree->ensure_topology_cache();
-  // XXX new interface API
+  UNUSED_VARS(item);
+  // Note: New API, will be enabled after new interface cache is added.
   //  const blender::bke::bNodeTreeInterfaceCache &cache = ntree->interface_cache();
   //  for (const int index : cache.items.index_range()) {
   //    if (cache.items[index] == item) {
@@ -112,15 +113,15 @@ static void rna_NodeTreeInterfaceSocket_draw_builtin(ID *id,
 {
   bNodeSocketType *typeinfo = interface_socket->socket_typeinfo();
   if (typeinfo && typeinfo->interface_draw) {
-    // XXX new interface API
+    UNUSED_VARS(id, C, layout);
+    // Note: New API, will be enabled after typeinfo callbacks change.
     //    typeinfo->interface_draw(id, interface_socket, C, layout);
   }
 }
 
-static void rna_NodeTreeInterfaceSocket_draw_custom(ID *id,
-                                                    bNodeTreeInterfaceSocket *interface_socket,
-                                                    bContext *C,
-                                                    uiLayout *layout)
+// Note: New API, interface draw callback used after changing callbacks.
+static void UNUSED_FUNCTION(rna_NodeTreeInterfaceSocket_draw_custom)(
+    ID *id, bNodeTreeInterfaceSocket *interface_socket, bContext *C, uiLayout *layout)
 {
   bNodeSocketType *typeinfo = nodeSocketTypeFind(interface_socket->socket_type);
   if (typeinfo == nullptr) {
@@ -150,12 +151,14 @@ static void rna_NodeTreeInterfaceSocket_init_socket_builtin(
 {
   bNodeSocketType *typeinfo = interface_socket->socket_typeinfo();
   if (typeinfo && typeinfo->interface_draw) {
-    // XXX new interface API
+    // Note: New API, callback signatures change.
+    UNUSED_VARS(id, node, socket, data_path);
     //    typeinfo->interface_init_socket(id, interface_socket, node, socket, data_path);
   }
 }
 
-static void rna_NodeTreeInterfaceSocket_init_socket_custom(
+// Note: New API, used when callbacks change.
+static void UNUSED_FUNCTION(rna_NodeTreeInterfaceSocket_init_socket_custom)(
     ID *id,
     const bNodeTreeInterfaceSocket *interface_socket,
     bNode *node,
@@ -192,12 +195,14 @@ static void rna_NodeTreeInterfaceSocket_from_socket_builtin(
 {
   bNodeSocketType *typeinfo = interface_socket->socket_typeinfo();
   if (typeinfo && typeinfo->interface_draw) {
-    // XXX new interface API
+    // Note: New API, callback signatures change.
+    UNUSED_VARS(id, node, socket);
     //    typeinfo->interface_from_socket(id, interface_socket, node, socket);
   }
 }
 
-static void rna_NodeTreeInterfaceSocket_from_socket_custom(
+// Note: New API, used after callback signatures change.
+static void UNUSED_FUNCTION(rna_NodeTreeInterfaceSocket_from_socket_custom)(
     ID *id,
     bNodeTreeInterfaceSocket *interface_socket,
     const bNode *node,
@@ -274,7 +279,7 @@ static StructRNA *rna_NodeTreeInterfaceSocket_register(Main * /*bmain*/,
   st->ext_interface.free = free;
   RNA_struct_blender_type_set(st->ext_interface.srna, st);
 
-  // XXX new interface API
+  // Note: New API callbacks.
   //  st->interface_draw = (have_function[0]) ? rna_NodeTreeInterfaceSocket_draw_custom : nullptr;
   //  st->interface_init_socket = (have_function[1]) ?
   //  rna_NodeTreeInterfaceSocket_init_socket_custom :
@@ -653,7 +658,8 @@ static void rna_NodeTreeInterface_items_begin(CollectionPropertyIterator *iter, 
   }
 
   ntree->ensure_topology_cache();
-  // XXX new interface API
+  // Note: New API, enabled when interface cache is added.
+  UNUSED_VARS(iter);
   //  const blender::bke::bNodeTreeInterfaceCache &cache = ntree->interface_cache();
   //  rna_iterator_array_begin(iter,
   //                           const_cast<bNodeTreeInterfaceItem **>(cache.items.data()),
@@ -671,7 +677,7 @@ static int rna_NodeTreeInterface_items_length(PointerRNA *ptr)
   }
 
   ntree->ensure_topology_cache();
-  // XXX new interface API
+  // Note: New API callbacks.
   //  return ntree->interface_cache().items.size();
   return 0;
 }
@@ -684,7 +690,8 @@ static int rna_NodeTreeInterface_items_lookup_int(PointerRNA *ptr, int index, Po
   }
 
   ntree->ensure_topology_cache();
-  // XXX new interface API
+  // Note: New API, enabled when interface cache is added.
+  UNUSED_VARS(index, r_ptr);
   //  const blender::bke::bNodeTreeInterfaceCache &cache = ntree->interface_cache();
   //  if (!cache.items.index_range().contains(index)) {
   //    return false;
@@ -704,7 +711,8 @@ static int rna_NodeTreeInterface_items_lookup_string(struct PointerRNA *ptr,
   }
 
   ntree->ensure_topology_cache();
-  // XXX new interface API
+  // Note: New API, enabled when interface cache is added.
+  UNUSED_VARS(key, r_ptr);
   //  const blender::bke::bNodeTreeInterfaceCache &cache = ntree->interface_cache();
   //  for (bNodeTreeInterfaceItem *item : cache.items) {
   //    switch (item->item_type) {

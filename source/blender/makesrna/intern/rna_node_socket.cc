@@ -991,7 +991,9 @@ static void rna_def_node_socket_standard(BlenderRNA *brna)
       func, "color", 4, default_draw_color, 0.0f, 1.0f, "Color", "", 0.0f, 1.0f);
   RNA_def_function_output(func, parm);
 
-  /* XXX Legacy socket interface, this will be removed. */
+  /* Note: Legacy socket interface below.
+   * The new interface RNA is defined in a separate file,
+   * the NodeSocketInterface struct will be replaced. */
 
   srna = RNA_def_struct(brna, "NodeSocketInterfaceStandard", "NodeSocketInterface");
   RNA_def_struct_sdna(srna, "bNodeSocket");
