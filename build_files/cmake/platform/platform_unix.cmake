@@ -77,7 +77,7 @@ if(DEFINED LIBDIR)
     set(WITH_OPENMP_STATIC ON)
   endif()
   set(Boost_NO_BOOST_CMAKE ON)
-  set(BOOST_ROOT ${LIBDIR}/boost)
+  set(Boost_ROOT ${LIBDIR}/boost)
   set(BOOST_LIBRARYDIR ${LIBDIR}/boost/lib)
   set(Boost_NO_SYSTEM_PATHS ON)
   set(OPENEXR_ROOT_DIR ${LIBDIR}/openexr)
@@ -144,6 +144,9 @@ if(NOT WITH_SYSTEM_FREETYPE)
     # list(APPEND FREETYPE_LIBRARIES
     #   ${BROTLI_LIBRARIES}
     # )
+  else()
+    # Quiet warning as this variable will be used after `FREETYPE_LIBRARIES`.
+    set(BROTLI_LIBRARIES "")
   endif()
   check_freetype_for_brotli()
 endif()
@@ -604,6 +607,8 @@ if(WITH_SYSTEM_FREETYPE)
     message(FATAL_ERROR "Failed finding system FreeType version!")
   endif()
   check_freetype_for_brotli()
+  # Quiet warning as this variable will be used after `FREETYPE_LIBRARIES`.
+  set(BROTLI_LIBRARIES "")
 endif()
 
 if(WITH_LZO AND WITH_SYSTEM_LZO)

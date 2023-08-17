@@ -145,9 +145,10 @@ endif()
 
 # FreeType compiled with Brotli compression for woff2.
 find_package(Freetype REQUIRED)
-list(APPEND FREETYPE_LIBRARIES
+set(BROTLI_LIBRARIES
   ${LIBDIR}/brotli/lib/libbrotlicommon-static.a
-  ${LIBDIR}/brotli/lib/libbrotlidec-static.a)
+  ${LIBDIR}/brotli/lib/libbrotlidec-static.a
+)
 
 if(WITH_IMAGE_OPENEXR)
   find_package(OpenEXR)
@@ -243,7 +244,7 @@ endif()
 
 if(WITH_BOOST)
   set(Boost_NO_BOOST_CMAKE ON)
-  set(BOOST_ROOT ${LIBDIR}/boost)
+  set(Boost_ROOT ${LIBDIR}/boost)
   set(Boost_NO_SYSTEM_PATHS ON)
   set(_boost_FIND_COMPONENTS date_time filesystem regex system thread wave)
   if(WITH_INTERNATIONAL)
