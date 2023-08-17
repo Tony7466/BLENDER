@@ -32,7 +32,7 @@ void work_balance_do_initial(vector<WorkBalanceInfo> &work_balance_infos, int cp
   for (int device_index = 0; device_index < num_infos; device_index++) {
     work_balance_infos[device_index].weight = ((cpu_index == device_index) ? 1 : GPU_WEIGHT) /
                                               total_weigth;
-    VLOG_INFO << "(" << device_index << ") weight:" << work_balance_infos[device_index].weight << " is_cpu:" << ((cpu_index == device_index) ? "true" : "false");
+    VLOG_INFO << "(" << device_index << "/" << work_balance_infos[device_index].count  << ") start weight:" << work_balance_infos[device_index].weight << " is_cpu:" << ((cpu_index == device_index) ? "true" : "false");
   }
 }
 
@@ -65,7 +65,7 @@ bool work_balance_do_rebalance(vector<WorkBalanceInfo> & work_balance_infos)
    * equalize.
    * Can think of it that if one of the devices is 10% faster than another, then one device needs
    * to do 5% less of the current work, and another needs to do 5% more. */
-  const double lerp_weight = 0.75; //1.0 / num_infos;
+  const double lerp_weight = 0.5; //1.0 / num_infos;
 
   /* Need to find the quickest device and the one with the most work */
   int shortest_time = -1;
@@ -73,7 +73,7 @@ bool work_balance_do_rebalance(vector<WorkBalanceInfo> & work_balance_infos)
   int fastest = -1;
   int idx = 0;
   for (const WorkBalanceInfo &info : work_balance_infos) {
-    if ((shortest_time == -1) || (info.time_spent > work_balance_infos[shortest_time].time_spent))
+    if ((shortest_time == -1) || (info.time_spent < work_balance_infos[shortest_time].time_spent))
     {
       shortest_time = idx;
       VLOG_INFO << "(" << idx << ") time_spent:" << work_balance_infos[shortest_time].time_spent;
@@ -116,7 +116,7 @@ bool work_balance_do_rebalance(vector<WorkBalanceInfo> & work_balance_infos)
     /* If there is a big difference between the current device and the fastest then it maybe good
      * to rebalance */
     double diff = std::fabs(info.time_spent - work_balance_infos[shortest_time].time_spent);
-    VLOG_INFO << "(" << idx << ") time:" << info.time_spent << " diff:" << diff << " target:" << time_target;
+    VLOG_INFO << "(" << idx << "/" << info.count << ") time:" << info.time_spent << " diff:" << diff << " weight:" << info.weight << " target:" << time_target << " is_fastest:" << ((fastest == idx) ? "true" : "false") << " is_shortest:" << ((shortest_time == idx) ? "true" : "false");
     /* Don't let the fastest device wait for the slower ones and don't allow the difference to be
      * too large */
     if (((info.time_spent > (work_balance_infos[fastest].time_spent)) &&
@@ -140,7 +140,7 @@ bool work_balance_do_rebalance(vector<WorkBalanceInfo> & work_balance_infos)
     info.weight = new_weights[i] * total_weight_inv;
     info.time_spent = 0;
     info.count++;
-    VLOG_INFO << "(" << i << ") weight:" << info.weight;
+    VLOG_INFO << "(" << i << ") weight:" << info.weight << "is_fastest:" << ((fastest == idx) ? "true" : "false");
   }
 
   return true;

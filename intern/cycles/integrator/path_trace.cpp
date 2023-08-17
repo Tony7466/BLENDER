@@ -21,6 +21,8 @@
 
 CCL_NAMESPACE_BEGIN
 
+double PathTrace::weights[10] = { -1.0,-1.0,-1.0,-1.0,-1.0,-1.0,-1.0,-1.0,-1.0 };
+
 PathTrace::PathTrace(Device *device,
                      Film *film,
                      DeviceScene *device_scene,
@@ -41,11 +43,16 @@ PathTrace::PathTrace(Device *device,
     cpu_device_.reset(device_cpu_create(cpu_devices[0], device->stats, device->profiler));
   }
 
+  int devices = 0;
+  device_->foreach_device([&](Device *path_trace_device) { devices++; });
+  work_balance_infos_.resize(devices);
+  VLOG_INFO << "Found " << devices << " devices.";
+  
   /* Create path tracing work in advance, so that it can be reused by incremental sampling as much
    * as possible. */
   int index = 0;
   int cpu_index = -1;
-
+  bool use_weights = true;
   device_->foreach_device([&](Device *path_trace_device) {
     unique_ptr<PathTraceWork> work = PathTraceWork::create(
         path_trace_device, film, device_scene, &render_cancel_.is_requested);
@@ -53,19 +60,36 @@ PathTrace::PathTrace(Device *device,
       path_trace_works_.emplace_back(std::move(work));
       if(path_trace_device->info.type == DEVICE_CPU) {
         cpu_index = index;
+	use_weights = use_weights && (weights[index] > 0.0f);
       }
+      work_balance_infos_[index].weight = weights[index];//path_trace_device->info.weight;
+      VLOG_INFO << "(" << index << ") initial weight:" << weights[index];
     }
     index++;
   });
 
-  work_balance_infos_.resize(path_trace_works_.size());
-  work_balance_do_initial(work_balance_infos_, cpu_index);
+  /* Only assign default weights if weights were  not already found */
+  if(!use_weights) {
+    work_balance_do_initial(work_balance_infos_, cpu_index);
+  } else {
+    for(int d = 0; d < devices;d++) {
+      work_balance_infos_[d].count = 3;
+    }
+  }
 
   render_scheduler.set_need_schedule_rebalance(path_trace_works_.size() > 1);
 }
 
 PathTrace::~PathTrace()
 {
+  int index = 0;
+  /* Upload the weights back to the device */
+  device_->foreach_device([&](Device *path_trace_device){
+    //path_trace_device->info.weight = work_balance_infos_[index].weight;
+    weights[index] = work_balance_infos_[index].weight;
+    VLOG_INFO << "(" << index << ") device weight:" << weights[index];
+    index++;
+  });
   destroy_gpu_resources();
 }
 
@@ -695,7 +719,7 @@ void PathTrace::rebalance(const RenderWork &render_work)
 
   /* Don't rebalance if only 1 device or after 3 iterations */
   if (num_works == 1 || work_balance_infos_[0].count == 3) {
-    VLOG_WORK << "Ignoring rebalance work due to single device render.";
+    VLOG_WORK << "Ignoring rebalance work due to single device render or weights have already been determined.";
     return;
   }
 

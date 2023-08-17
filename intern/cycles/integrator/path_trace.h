@@ -350,6 +350,8 @@ class PathTrace {
   struct {
     RenderBuffers *render_buffers = nullptr;
   } full_frame_state_;
+
+  static double weights[10];
 };
 
 CCL_NAMESPACE_END
