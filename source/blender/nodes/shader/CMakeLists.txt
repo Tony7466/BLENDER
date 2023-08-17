@@ -134,6 +134,15 @@ set(LIB
   bf_nodes
 )
 
+if(WITH_MATERIALX)
+  list(APPEND LIB MaterialXCore)
+  list(APPEND SRC
+    materialx/material.cc
+
+    materialx/material.h
+  )
+endif()
+
 if(WITH_FREESTYLE)
   add_definitions(-DWITH_FREESTYLE)
 endif()
