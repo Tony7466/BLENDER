@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,8 +23,8 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
@@ -3634,6 +3634,19 @@ static int click_select_channel_gplayer(bContext *C,
   return (ND_ANIMCHAN | NA_EDITED); /* Animation Editors updates */
 }
 
+static int click_select_channel_grease_pencil_datablock(bAnimListElem *ale)
+{
+  GreasePencil *grease_pencil = static_cast<GreasePencil *>(ale->data);
+
+  /* Toggle expand:
+   * - Although the triangle widget already allows this,
+   *   the whole channel can also be used for this purpose.
+   */
+  grease_pencil->flag ^= GREASE_PENCIL_ANIM_CHANNEL_EXPANDED;
+
+  return (ND_ANIMCHAN | NA_EDITED);
+}
+
 static int click_select_channel_grease_pencil_layer(bContext *C,
                                                     bAnimContext *ac,
                                                     bAnimListElem *ale,
@@ -3645,7 +3658,7 @@ static int click_select_channel_grease_pencil_layer(bContext *C,
   GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
 
   if (selectmode == SELECT_INVERT) {
-    layer->base.flag ^= GP_LAYER_TREE_NODE_SELECT;
+    layer->set_selected(!layer->is_selected());
   }
   else if (selectmode == SELECT_EXTEND_RANGE) {
     ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_EXTEND_RANGE);
@@ -3653,7 +3666,7 @@ static int click_select_channel_grease_pencil_layer(bContext *C,
   }
   else {
     ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_CLEAR);
-    layer->base.flag |= GP_LAYER_TREE_NODE_SELECT;
+    layer->set_selected(true);
   }
 
   /* Active channel is not changed during range select. */
@@ -3800,7 +3813,7 @@ static int mouse_anim_channels(bContext *C,
       notifierFlags |= click_select_channel_gplayer(C, ac, ale, selectmode, filter);
       break;
     case ANIMTYPE_GREASE_PENCIL_DATABLOCK:
-      /*todo*/
+      notifierFlags |= click_select_channel_grease_pencil_datablock(ale);
       break;
     case ANIMTYPE_GREASE_PENCIL_LAYER:
       notifierFlags |= click_select_channel_grease_pencil_layer(C, ac, ale, selectmode, filter);

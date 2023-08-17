@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Blender Foundation
+/* SPDX-FileCopyrightText: Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,7 +18,9 @@
 #  include "DNA_scene_types.h"
 #  include "DNA_texture_types.h"
 
-#  include "BLI_math.h"
+#  include "BLI_math_geom.h"
+#  include "BLI_math_matrix.h"
+#  include "BLI_math_vector.h"
 #  include "BLI_utildefines.h"
 
 #  include "BKE_cloth.h"
