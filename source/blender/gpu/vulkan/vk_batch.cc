@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,7 +19,7 @@ namespace blender::gpu {
 void VKBatch::draw(int vertex_first, int vertex_count, int instance_first, int instance_count)
 {
   /* Currently the pipeline is rebuild on each draw command. Clearing the dirty flag for
-   * consistency with the internals of GPU module.  */
+   * consistency with the internals of GPU module. */
   flag &= ~GPU_BATCH_DIRTY;
 
   /* Finalize graphics pipeline */

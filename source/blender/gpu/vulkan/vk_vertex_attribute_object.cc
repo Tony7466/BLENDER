@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation. All rights reserved.
+/* SPDX-FileCopyrightText: 2023 Blender Authors All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,7 +22,7 @@ VKVertexAttributeObject::VKVertexAttributeObject()
 void VKVertexAttributeObject::clear()
 {
   is_valid = false;
-  info.pNext = NULL;
+  info.pNext = nullptr;
   bindings.clear();
   attributes.clear();
   vbos.clear();

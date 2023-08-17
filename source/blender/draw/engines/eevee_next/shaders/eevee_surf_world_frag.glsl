@@ -20,7 +20,7 @@ void main()
   /* View position is passed to keep accuracy. */
   g_data.N = normal_view_to_world(viewCameraVec(interp.P));
   g_data.Ng = g_data.N;
-  g_data.P = -g_data.N + cameraPos;
+  g_data.P = -g_data.N;
   attrib_load();
 
   nodetree_surface();
@@ -49,6 +49,6 @@ void main()
   output_renderpass_color(rp_buf.specular_color_id, clear_color);
   output_renderpass_color(rp_buf.emission_id, clear_color);
   output_renderpass_value(rp_buf.shadow_id, 1.0);
-  output_renderpass_value(rp_buf.ambient_occlusion_id, 0.0);
+  /** NOTE: AO is done on its own pass. */
   imageStore(rp_cryptomatte_img, texel, vec4(0.0));
 }

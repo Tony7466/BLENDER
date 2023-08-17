@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,11 +6,10 @@
 
 #include <optional>
 
-#include "BLI_color.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_generic_span.hh"
 #include "BLI_generic_virtual_array.hh"
-#include "BLI_math_vector_types.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_set.hh"
 
 #include "BKE_anonymous_attribute_id.hh"
@@ -927,6 +926,20 @@ void gather_attributes(AttributeAccessor src_attributes,
                        const Set<std::string> &skip,
                        const IndexMask &selection,
                        MutableAttributeAccessor dst_attributes);
+
+/**
+ * Copy attribute values from groups defined by \a src_offsets to groups defined by \a
+ * dst_offsets. The group indices are gathered to the result by \a selection. The size of each
+ * source and result group must be the same.
+ */
+void gather_attributes_group_to_group(AttributeAccessor src_attributes,
+                                      eAttrDomain domain,
+                                      const AnonymousAttributePropagationInfo &propagation_info,
+                                      const Set<std::string> &skip,
+                                      OffsetIndices<int> src_offsets,
+                                      OffsetIndices<int> dst_offsets,
+                                      const IndexMask &selection,
+                                      MutableAttributeAccessor dst_attributes);
 
 void copy_attributes(const AttributeAccessor src_attributes,
                      const eAttrDomain domain,
