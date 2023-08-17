@@ -154,10 +154,10 @@ class VIEW3D_PT_tools_object_options_transform(View3DPanel, Panel):
         col.prop(tool_settings, "use_transform_skip_children", text="Parents")
 
 
-class VIEW3D_PT_tools_object_options_placement(View3DPanel, Panel):
+class VIEW3D_PT_tools_object_options_dragdrop(View3DPanel, Panel):
     bl_category = "Tool"
     bl_context = ".objectmode"  # dot on purpose (access from topbar)
-    bl_label = "Placement"
+    bl_label = "Drag & Drop"
     bl_parent_id = "VIEW3D_PT_tools_object_options"
 
     def draw(self, context):
@@ -177,16 +177,6 @@ class VIEW3D_PT_tools_meshedit_options(View3DPanel, Panel):
     def draw(self, _context):
         # layout = self.layout
         pass
-
-
-class VIEW3D_PT_tools_meshedit_options_placement(View3DPanel, Panel):
-    bl_category = "Tool"
-    bl_context = ".mesh_edit"  # dot on purpose (access from topbar)
-    bl_label = "Placement"
-    bl_parent_id = "VIEW3D_PT_tools_meshedit_options"
-
-    def draw(self, context):
-        draw_options_placement(self.layout, context.tool_settings)
 
 
 class VIEW3D_PT_tools_meshedit_options_transform(View3DPanel, Panel):
@@ -250,6 +240,16 @@ class VIEW3D_PT_tools_meshedit_options_uvs(View3DPanel, Panel):
         tool_settings = context.tool_settings
 
         layout.prop(tool_settings, "use_edge_path_live_unwrap")
+        
+
+class VIEW3D_PT_tools_meshedit_options_dragdrop(View3DPanel, Panel):
+    bl_category = "Tool"
+    bl_context = ".mesh_edit"  # dot on purpose (access from topbar)
+    bl_label = "Drag & Drop"
+    bl_parent_id = "VIEW3D_PT_tools_meshedit_options"
+
+    def draw(self, context):
+        draw_options_placement(self.layout, context.tool_settings)
 
 
 # ********** default tools for editmode_armature ****************
@@ -2397,11 +2397,11 @@ classes = (
     VIEW3D_MT_brush_gpencil_context_menu,
     VIEW3D_PT_tools_object_options,
     VIEW3D_PT_tools_object_options_transform,
-    VIEW3D_PT_tools_object_options_placement,
+    VIEW3D_PT_tools_object_options_dragdrop,
     VIEW3D_PT_tools_meshedit_options,
     VIEW3D_PT_tools_meshedit_options_transform,
     VIEW3D_PT_tools_meshedit_options_uvs,
-    VIEW3D_PT_tools_meshedit_options_placement,
+    VIEW3D_PT_tools_meshedit_options_dragdrop,
     VIEW3D_PT_tools_armatureedit_options,
     VIEW3D_PT_tools_posemode_options,
 
