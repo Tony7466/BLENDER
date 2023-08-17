@@ -433,7 +433,7 @@ static void print_interface_as_struct(std::ostream &os,
   }
   os << "};\n";
   os << "layout(location=" << location << ") " << prefix << " " << to_string(qualifier) << " "
-     << struct_name << " " << iface.instance_name << suffix << ";\n\n";
+     << struct_name << " " << iface.instance_name << suffix << ";\n";
 
   for (const StageInterfaceInfo::InOut &inout : iface.inouts) {
     location += get_location_count(inout.type);
