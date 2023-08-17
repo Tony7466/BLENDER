@@ -356,9 +356,6 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
   else if (type == TSE_LINKED_OB) {
     /* pass */
   }
-  else if (type == TSE_LAYER_COLLECTION) {
-    /* pass */
-  }
   else if (type == TSE_SOME_ID) {
     if (!te->abstract_element) {
       BLI_assert_msg(0, "Expected this ID type to be ported to new Outliner tree-element design");
