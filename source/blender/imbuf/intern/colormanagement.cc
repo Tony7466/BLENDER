@@ -1101,7 +1101,7 @@ static void colormanage_check_view_settings(ColorManagedDisplaySettings *display
 {
   ColorManagedDisplay *display;
   ColorManagedView *default_view = nullptr;
-  ColorManagedLook *default_look = (ColorManagedLook *)global_looks.first;
+  const char *default_look_name = IMB_colormanagement_look_get_default_name();
 
   if (view_settings->view_transform[0] == '\0') {
     display = colormanage_display_get_named(display_settings->display_device);
@@ -1136,7 +1136,7 @@ static void colormanage_check_view_settings(ColorManagedDisplaySettings *display
   }
 
   if (view_settings->look[0] == '\0') {
-    STRNCPY(view_settings->look, default_look->name);
+    STRNCPY(view_settings->look, default_look_name);
   }
   else {
     ColorManagedLook *look = colormanage_look_get_named(view_settings->look);
@@ -1144,9 +1144,9 @@ static void colormanage_check_view_settings(ColorManagedDisplaySettings *display
       printf("Color management: %s look \"%s\" not found, setting default \"%s\".\n",
              what,
              view_settings->look,
-             default_look->name);
+             default_look_name);
 
-      STRNCPY(view_settings->look, default_look->name);
+      STRNCPY(view_settings->look, default_look_name);
     }
   }
 
@@ -3314,17 +3314,14 @@ const char *IMB_colormanagement_look_get_indexed_name(int index)
   return nullptr;
 }
 
-const char *IMB_colormanagement_look_get_default_name_for_view(const char *view_name)
+const char *IMB_colormanagement_look_get_default_name()
 {
-  LISTBASE_FOREACH (ColorManagedLook *, look, &global_looks) {
-    if (!colormanage_compatible_look(look, view_name)) {
-      continue;
-    }
-
-    return look->name;
+  const ColorManagedLook *default_look = static_cast<const ColorManagedLook *>(global_looks.first);
+  if (!default_look) {
+    return "";
   }
 
-  return nullptr;
+  return default_look->name;
 }
 
 const char *IMB_colormanagement_look_validate_for_view(const char *view_name,
@@ -3339,12 +3336,7 @@ const char *IMB_colormanagement_look_validate_for_view(const char *view_name,
     return look_name;
   }
 
-  const char *default_look = IMB_colormanagement_look_get_default_name_for_view(view_name);
-  if (default_look) {
-    return default_look;
-  }
-
-  return look_name;
+  return IMB_colormanagement_look_get_default_name();
 }
 
 /** \} */
