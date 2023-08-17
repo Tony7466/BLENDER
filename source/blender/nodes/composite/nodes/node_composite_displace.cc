@@ -24,7 +24,8 @@ static void cmp_node_displace_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Color>("Image")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
-      .compositor_domain_priority(0);
+      .compositor_domain_priority(0)
+      .compositor_realization_options(CompositorInputRealizationOptions::RealizeForFilterNodes);
   b.add_input<decl::Vector>("Vector")
       .default_value({1.0f, 1.0f, 1.0f})
       .min(0.0f)
@@ -97,7 +98,8 @@ class DisplaceOperation : public NodeOperation {
 
     const Result &input_displacement = get_input("Vector");
     if (input_displacement.is_single_value() &&
-        math::is_zero(input_displacement.get_vector_value())) {
+        math::is_zero(input_displacement.get_vector_value()))
+    {
       return true;
     }
 

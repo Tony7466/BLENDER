@@ -24,7 +24,8 @@ static void cmp_node_sunbeams_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Color>("Image")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
-      .compositor_domain_priority(0);
+      .compositor_domain_priority(0)
+      .compositor_realization_options(CompositorInputRealizationOptions::RealizeForFilterNodes);
   b.add_output<decl::Color>("Image");
 }
 

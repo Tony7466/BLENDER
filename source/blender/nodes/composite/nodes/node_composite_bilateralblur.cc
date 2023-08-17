@@ -28,7 +28,8 @@ static void cmp_node_bilateralblur_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Color>("Image")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
-      .compositor_domain_priority(0);
+      .compositor_domain_priority(0)
+      .compositor_realization_options(CompositorInputRealizationOptions::RealizeForFilterNodes);
   b.add_input<decl::Color>("Determinator")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(1);
