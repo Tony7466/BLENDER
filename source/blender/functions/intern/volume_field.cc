@@ -193,8 +193,6 @@ template<typename GridType, typename MaskGridType> struct EvalPerLeafOp {
   using GridMask = volume::GridMask;
   using TreeType = typename GridType::TreeType;
   using ValueType = typename GridType::ValueType;
-  using Converter = volume::grid_types::GridValueConverter<GridType>;
-  using MFType = typename Converter::MFType;
 
   using LeafNode = typename TreeType::LeafNodeType;
   using GridReaderType = VGridReader<GridType>;
@@ -271,8 +269,15 @@ template<typename GridType, typename MaskGridType> struct EvalPerLeafOp {
     }
 
     /* Pass output buffer to the procedure executor. */
-    const GMutableSpan out_span = Converter::to_attribute(
-        MutableSpan{leaf.buffer().data(), leaf_size});
+    //    ValueType *leaf_values = leaf.buffer().data();
+    //    MutableSpan<ValueType> leaf_span = {leaf_values, leaf_size};
+    //    const GMutableSpan out_span =
+    //    volume::grid_types::Converter<GridType>::leaf_buffer_to_varray(
+    //        leaf_span);
+    auto *leaf_values = leaf.buffer().data();
+    MutableSpan<std::decay_t<decltype(*leaf_values)>> leaf_span = {leaf_values, leaf_size};
+    const GMutableSpan out_span = volume::grid_types::Converter<GridType>::leaf_buffer_to_varray(
+        leaf_span);
     mf_params.add_uninitialized_single_output(out_span);
 
     procedure_executor_.call_auto(index_mask, mf_params, mf_context_);

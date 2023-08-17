@@ -29,8 +29,8 @@ namespace blender::volume {
 
 namespace grid_types {
 
-extern template AttributeValueConverter<float>;
-extern template GridValueConverter<openvdb::FloatGrid>;
+// extern template struct AttributeValueConverter<float>;
+// extern template struct GridValueConverter<openvdb::FloatGrid>;
 
 }  // namespace grid_types
 
