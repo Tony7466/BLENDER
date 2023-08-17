@@ -416,7 +416,8 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
                 TSE_R_LAYER,
                 TSE_R_LAYER_BASE,
                 TSE_GREASE_PENCIL_NODE,
-                TSE_LINKED_OB))
+                TSE_LINKED_OB,
+                TSE_VIEW_COLLECTION_BASE))
   {
     BLI_assert_msg(false, "Element type should already use new AbstractTreeElement design");
   }
