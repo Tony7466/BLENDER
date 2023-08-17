@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -39,12 +39,13 @@
 
 #include "ED_node.hh" /* own include */
 #include "ED_node.hh"
+#include "ED_node_preview.hh"
 #include "ED_render.hh"
 #include "ED_screen.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
@@ -190,6 +191,7 @@ static int node_group_edit_exec(bContext *C, wmOperator *op)
   const bool exit = RNA_boolean_get(op->ptr, "exit");
 
   ED_preview_kill_jobs(CTX_wm_manager(C), CTX_data_main(C));
+  stop_preview_job(*CTX_wm_manager(C));
 
   bNode *gnode = node_group_get_active(C, node_idname);
 
@@ -649,6 +651,7 @@ static int node_group_separate_exec(bContext *C, wmOperator *op)
   int type = RNA_enum_get(op->ptr, "type");
 
   ED_preview_kill_jobs(CTX_wm_manager(C), bmain);
+  stop_preview_job(*CTX_wm_manager(C));
 
   /* are we inside of a group? */
   bNodeTree *ngroup = snode->edittree;
@@ -690,8 +693,8 @@ static int node_group_separate_invoke(bContext *C, wmOperator * /*op*/, const wm
   uiLayout *layout = UI_popup_menu_layout(pup);
 
   uiLayoutSetOperatorContext(layout, WM_OP_EXEC_DEFAULT);
-  uiItemEnumO(layout, "NODE_OT_group_separate", nullptr, 0, "type", NODE_GS_COPY);
-  uiItemEnumO(layout, "NODE_OT_group_separate", nullptr, 0, "type", NODE_GS_MOVE);
+  uiItemEnumO(layout, "NODE_OT_group_separate", nullptr, ICON_NONE, "type", NODE_GS_COPY);
+  uiItemEnumO(layout, "NODE_OT_group_separate", nullptr, ICON_NONE, "type", NODE_GS_MOVE);
 
   UI_popup_menu_end(C, pup);
 
@@ -1230,8 +1233,7 @@ static void node_group_make_insert_selected(const bContext &C,
   for (const OutputLinkInfo &info : output_links) {
     /* Reconnect the link to the group node instead of the node now inside the group. */
     info.link->fromnode = gnode;
-    info.link->fromsock = node_group_find_output_socket(gnode,
-                                                        info.interface_socket->identifier);
+    info.link->fromsock = node_group_find_output_socket(gnode, info.interface_socket->identifier);
   }
 
   update_nested_node_refs_after_moving_nodes_into_group(ntree, group, *gnode, node_identifier_map);
@@ -1274,6 +1276,7 @@ static int node_group_make_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
 
   ED_preview_kill_jobs(CTX_wm_manager(C), CTX_data_main(C));
+  stop_preview_job(*CTX_wm_manager(C));
 
   VectorSet<bNode *> nodes_to_group = get_nodes_to_group(ntree, nullptr);
   if (!node_group_make_test_selected(ntree, nodes_to_group, ntree_idname, *op->reports)) {
@@ -1327,6 +1330,7 @@ static int node_group_insert_exec(bContext *C, wmOperator *op)
   const char *node_idname = node_group_idname(C);
 
   ED_preview_kill_jobs(CTX_wm_manager(C), CTX_data_main(C));
+  stop_preview_job(*CTX_wm_manager(C));
 
   bNode *gnode = node_group_get_active(C, node_idname);
   if (!gnode || !gnode->id) {

@@ -86,6 +86,7 @@ class NodeGroupInterfaceTests:
     def make_socket_value_comparator(socket_type):
         def cmp_default(test, value, expected):
             test.assertEqual(value, expected, f"Value {value} does not match expected value {expected}")
+
         def cmp_array(test, value, expected):
             test.assertSequenceEqual(value[:], expected[:], f"Value {value} does not match expected value {expected}")
 
@@ -151,7 +152,10 @@ class NodeGroupInterfaceTests:
 
     def do_test_user_count(self, value, expected_users):
         if (isinstance(value, bpy.types.ID)):
-            self.assertEqual(value.users, expected_users, f"Socket default value has user count {value.users}, expected {expected_users}")
+            self.assertEqual(
+                value.users,
+                expected_users,
+                f"Socket default value has user count {value.users}, expected {expected_users}")
 
     def do_test_socket_type(self, socket_type):
         default_value = self.make_default_socket_value(socket_type)

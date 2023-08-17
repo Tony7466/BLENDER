@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -10,6 +10,15 @@ endif()
 # Needed for `mallocn.c`.
 if(HAVE_MALLOC_STATS_H)
   add_definitions(-DHAVE_MALLOC_STATS_H)
+endif()
+
+# There is some code in `makesrna.cc` that forces files to be regenerated even if they have not
+# changed to keep make out of some dependency problem. Ninja and VisualStudios `msbuild` do not
+# appear to be requiring this and much time can be saved by not rebuilding hundreds of files
+# when not required, both generators have been whitelisted here not to take this code-path,
+# all other generators will take the conservative route and regenerate.
+if(CMAKE_GENERATOR MATCHES ".*Unix Makefiles")
+  add_definitions(-DUSE_MAKEFILE_WORKAROUND)
 endif()
 
 # files rna_access.cc rna_define.cc makesrna.cc intentionally excluded.
@@ -196,13 +205,13 @@ unset(CMAKE_C_CLANG_TIDY)
 unset(CMAKE_CXX_CLANG_TIDY)
 
 set(SRC_RNA_INC
-  ../RNA_access.h
-  ../RNA_define.h
-  ../RNA_documentation.h
-  ../RNA_enum_items.h
-  ../RNA_enum_types.h
-  ../RNA_path.h
-  ../RNA_types.h
+  ../RNA_access.hh
+  ../RNA_define.hh
+  ../RNA_documentation.hh
+  ../RNA_enum_items.hh
+  ../RNA_enum_types.hh
+  ../RNA_path.hh
+  ../RNA_types.hh
 )
 
 set(SRC

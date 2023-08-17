@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,7 +22,7 @@
 
 #include "BLT_translation.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "WM_api.hh"
 
@@ -105,8 +105,7 @@ static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
   /* Hide the new input in all other group input nodes, to avoid making them taller. */
   for (bNode *node : params.node_tree.all_nodes()) {
     if (node->type == NODE_GROUP_INPUT) {
-      bNodeSocket *new_group_input_socket = nodeFindSocket(
-          node, in_out, socket_iface->identifier);
+      bNodeSocket *new_group_input_socket = nodeFindSocket(node, in_out, socket_iface->identifier);
       if (new_group_input_socket) {
         new_group_input_socket->flag |= SOCK_HIDDEN;
       }

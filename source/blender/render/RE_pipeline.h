@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -245,6 +245,7 @@ struct RenderStats *RE_GetStats(struct Render *re);
  * Caller is responsible for allocating `rect` in correct size!
  */
 void RE_ResultGet32(struct Render *re, unsigned int *rect);
+void RE_ResultGetFloat(struct Render *re, float *rect);
 
 void RE_render_result_full_channel_name(char *fullname,
                                         const char *layname,

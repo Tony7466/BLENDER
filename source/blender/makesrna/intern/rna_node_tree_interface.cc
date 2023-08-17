@@ -8,9 +8,9 @@
 
 #include "DNA_node_tree_interface_types.h"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
-#include "RNA_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_types.hh"
 
 #include "rna_internal.h"
 
@@ -27,7 +27,6 @@ const EnumPropertyItem rna_enum_node_tree_interface_item_type_items[] = {
 #  include "BKE_node_runtime.hh"
 #  include "BKE_node_tree_interface.hh"
 #  include "BKE_node_tree_update.h"
-#  include "BLI_math.h"
 #  include "DNA_material_types.h"
 #  include "ED_node.hh"
 #  include "WM_api.hh"

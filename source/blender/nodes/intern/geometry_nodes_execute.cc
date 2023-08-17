@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,6 +6,7 @@
  * \ingroup nodes
  */
 
+#include "BLI_math_color.hh"
 #include "BLI_math_euler.hh"
 #include "BLI_math_quaternion.hh"
 
@@ -362,11 +363,9 @@ static void initialize_group_input(const bNodeTree &tree,
   }
 
   const IDProperty *property_use_attribute = IDP_GetPropertyFromGroup(
-      properties,
-      (std::string(io_input.identifier) + input_use_attribute_suffix()).c_str());
+      properties, (std::string(io_input.identifier) + input_use_attribute_suffix()).c_str());
   const IDProperty *property_attribute_name = IDP_GetPropertyFromGroup(
-      properties,
-      (std::string(io_input.identifier) + input_attribute_name_suffix()).c_str());
+      properties, (std::string(io_input.identifier) + input_attribute_name_suffix()).c_str());
   if (property_use_attribute == nullptr || property_attribute_name == nullptr) {
     init_socket_cpp_value_from_property(*property, socket_data_type, r_value);
     return;

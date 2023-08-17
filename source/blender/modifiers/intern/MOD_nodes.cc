@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,6 +8,7 @@
 
 #include <cstring>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 #include "MEM_guardedalloc.h"
@@ -68,8 +69,8 @@
 
 #include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "DEG_depsgraph_build.h"
@@ -631,8 +632,7 @@ static void check_property_socket_sync(const Object *ob, ModifierData *md)
       continue;
     }
 
-    IDProperty *property = IDP_GetPropertyFromGroup(nmd->settings.properties,
-                                                    socket->identifier);
+    IDProperty *property = IDP_GetPropertyFromGroup(nmd->settings.properties, socket->identifier);
     if (property == nullptr) {
       if (type == SOCK_GEOMETRY) {
         geometry_socket_count++;

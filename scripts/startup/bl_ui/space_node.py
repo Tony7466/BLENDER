@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -849,6 +849,10 @@ class NODE_PT_overlay(Panel):
         if snode.supports_previews:
             col.separator()
             col.prop(overlay, "show_previews", text="Previews")
+            if snode.tree_type == 'ShaderNodeTree':
+                row = col.row()
+                row.prop(overlay, "preview_shape", expand=True)
+                row.active = overlay.show_previews
 
         if snode.tree_type == 'GeometryNodeTree':
             col.separator()
@@ -924,6 +928,8 @@ class NODE_PT_node_tree_declaration(Panel):
                         layout.prop(active_item, "default_attribute_name")
             if active_item.item_type == 'PANEL':
                 layout.prop(active_item, "name")
+
+
 class NODE_UL_simulation_zone_items(bpy.types.UIList):
     def draw_item(self, context, layout, _data, item, icon, _active_data, _active_propname, _index):
         if self.layout_type in {'DEFAULT', 'COMPACT'}:

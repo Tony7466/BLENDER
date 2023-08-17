@@ -19,7 +19,7 @@
 
 #include "ED_node.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "UI_interface.hh"

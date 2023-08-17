@@ -18,7 +18,8 @@
 #include "BLI_dial_2d.h"
 #include "BLI_ghash.h"
 #include "BLI_gsqueue.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
 #include "BLI_set.hh"
 #include "BLI_task.h"
 #include "BLI_task.hh"
@@ -73,8 +74,8 @@
 #include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "bmesh.h"
 
@@ -3006,14 +3007,6 @@ static void calc_brush_local_mat(const float rotation,
 
   /* Scale by brush radius. */
   float radius = cache->radius;
-
-  /* Square tips should scale by square root of 2. */
-  if (BKE_brush_has_cube_tip(cache->brush, PAINT_MODE_SCULPT)) {
-    radius += (radius / M_SQRT2 - radius) * cache->brush->tip_roundness;
-  }
-  else {
-    radius /= M_SQRT2;
-  }
 
   normalize_m4(mat);
   scale_m4_fl(scale, radius);

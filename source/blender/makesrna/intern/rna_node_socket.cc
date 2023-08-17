@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,13 +6,13 @@
  * \ingroup RNA
  */
 
-#include "BLI_array.hh"
+#include "BLI_math_vector.h"
 
 #include "DNA_node_types.h"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
-#include "RNA_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_types.hh"
 
 #include "rna_internal.h"
 
@@ -40,8 +40,6 @@ const EnumPropertyItem rna_enum_node_socket_type_items[] = {
 #ifdef RNA_RUNTIME
 
 #  include "DNA_material_types.h"
-
-#  include "BLI_math.h"
 
 #  include "BKE_node.h"
 #  include "BKE_node_tree_update.h"
@@ -1327,78 +1325,63 @@ struct bNodeSocketStaticTypeInfo {
   const char *label;
 };
 
-/* XXX would like to have this in BKE and base all the subtype stuff (nodeStaticSocketType***)
- * on the same central list instead of repeating the same switch statements everywhere.
- * But makesrna cannot have a dependency on BKE, so this list would have to live in RNA itself,
+/* Note: Socket and interface subtypes could be defined from a single central list,
+ * but makesrna cannot have a dependency on BKE, so this list would have to live in RNA itself,
  * with BKE etc. accessing the RNA API to get the subtypes info. */
-static blender::Span<bNodeSocketStaticTypeInfo> nodeSocketStaticTypeInfo()
-{
-  static const blender::Array<bNodeSocketStaticTypeInfo> node_socket_subtypes = {
-      {"NodeSocketFloat", "NodeTreeInterfaceSocketFloat", SOCK_FLOAT, PROP_NONE},
-      {"NodeSocketFloatUnsigned",
-       "NodeTreeInterfaceSocketFloatUnsigned",
-       SOCK_FLOAT,
-       PROP_UNSIGNED},
-      {"NodeSocketFloatPercentage",
-       "NodeTreeInterfaceSocketFloatPercentage",
-       SOCK_FLOAT,
-       PROP_PERCENTAGE},
-      {"NodeSocketFloatFactor", "NodeTreeInterfaceSocketFloatFactor", SOCK_FLOAT, PROP_FACTOR},
-      {"NodeSocketFloatAngle", "NodeTreeInterfaceSocketFloatAngle", SOCK_FLOAT, PROP_ANGLE},
-      {"NodeSocketFloatTime", "NodeTreeInterfaceSocketFloatTime", SOCK_FLOAT, PROP_TIME},
-      {"NodeSocketFloatTimeAbsolute",
-       "NodeTreeInterfaceSocketFloatTimeAbsolute",
-       SOCK_FLOAT,
-       PROP_TIME_ABSOLUTE},
-      {"NodeSocketFloatDistance",
-       "NodeTreeInterfaceSocketFloatDistance",
-       SOCK_FLOAT,
-       PROP_DISTANCE},
-      {"NodeSocketInt", "NodeTreeInterfaceSocketInt", SOCK_INT, PROP_NONE},
-      {"NodeSocketIntUnsigned", "NodeTreeInterfaceSocketIntUnsigned", SOCK_INT, PROP_UNSIGNED},
-      {"NodeSocketIntPercentage",
-       "NodeTreeInterfaceSocketIntPercentage",
-       SOCK_INT,
-       PROP_PERCENTAGE},
-      {"NodeSocketIntFactor", "NodeTreeInterfaceSocketIntFactor", SOCK_INT, PROP_FACTOR},
-      {"NodeSocketBool", "NodeTreeInterfaceSocketBool", SOCK_BOOLEAN, PROP_NONE},
-      {"NodeSocketRotation", "NodeTreeInterfaceSocketRotation", SOCK_ROTATION, PROP_NONE},
-      {"NodeSocketVector", "NodeTreeInterfaceSocketVector", SOCK_VECTOR, PROP_NONE},
-      {"NodeSocketVectorTranslation",
-       "NodeTreeInterfaceSocketVectorTranslation",
-       SOCK_VECTOR,
-       PROP_TRANSLATION},
-      {"NodeSocketVectorDirection",
-       "NodeTreeInterfaceSocketVectorDirection",
-       SOCK_VECTOR,
-       PROP_DIRECTION},
-      {"NodeSocketVectorVelocity",
-       "NodeTreeInterfaceSocketVectorVelocity",
-       SOCK_VECTOR,
-       PROP_VELOCITY},
-      {"NodeSocketVectorAcceleration",
-       "NodeTreeInterfaceSocketVectorAcceleration",
-       SOCK_VECTOR,
-       PROP_ACCELERATION},
-      {"NodeSocketVectorEuler", "NodeTreeInterfaceSocketVectorEuler", SOCK_VECTOR, PROP_EULER},
-      {"NodeSocketVectorXYZ", "NodeTreeInterfaceSocketVectorXYZ", SOCK_VECTOR, PROP_XYZ},
-      {"NodeSocketColor", "NodeTreeInterfaceSocketColor", SOCK_RGBA, PROP_NONE},
-      {"NodeSocketString", "NodeTreeInterfaceSocketString", SOCK_STRING, PROP_NONE},
-      {"NodeSocketShader", "NodeTreeInterfaceSocketShader", SOCK_SHADER, PROP_NONE},
-      {"NodeSocketObject", "NodeTreeInterfaceSocketObject", SOCK_OBJECT, PROP_NONE},
-      {"NodeSocketImage", "NodeTreeInterfaceSocketImage", SOCK_IMAGE, PROP_NONE},
-      {"NodeSocketGeometry", "NodeTreeInterfaceSocketGeometry", SOCK_GEOMETRY, PROP_NONE},
-      {"NodeSocketCollection", "NodeTreeInterfaceSocketCollection", SOCK_COLLECTION, PROP_NONE},
-      {"NodeSocketTexture", "NodeTreeInterfaceSocketTexture", SOCK_TEXTURE, PROP_NONE},
-      {"NodeSocketMaterial", "NodeTreeInterfaceSocketMaterial", SOCK_MATERIAL, PROP_NONE},
-  };
-
-  return node_socket_subtypes;
-}
+static const bNodeSocketStaticTypeInfo node_socket_subtypes[] = {
+    {"NodeSocketFloat", "NodeTreeInterfaceSocketFloat", SOCK_FLOAT, PROP_NONE},
+    {"NodeSocketFloatUnsigned", "NodeTreeInterfaceSocketFloatUnsigned", SOCK_FLOAT, PROP_UNSIGNED},
+    {"NodeSocketFloatPercentage",
+     "NodeTreeInterfaceSocketFloatPercentage",
+     SOCK_FLOAT,
+     PROP_PERCENTAGE},
+    {"NodeSocketFloatFactor", "NodeTreeInterfaceSocketFloatFactor", SOCK_FLOAT, PROP_FACTOR},
+    {"NodeSocketFloatAngle", "NodeTreeInterfaceSocketFloatAngle", SOCK_FLOAT, PROP_ANGLE},
+    {"NodeSocketFloatTime", "NodeTreeInterfaceSocketFloatTime", SOCK_FLOAT, PROP_TIME},
+    {"NodeSocketFloatTimeAbsolute",
+     "NodeTreeInterfaceSocketFloatTimeAbsolute",
+     SOCK_FLOAT,
+     PROP_TIME_ABSOLUTE},
+    {"NodeSocketFloatDistance", "NodeTreeInterfaceSocketFloatDistance", SOCK_FLOAT, PROP_DISTANCE},
+    {"NodeSocketInt", "NodeTreeInterfaceSocketInt", SOCK_INT, PROP_NONE},
+    {"NodeSocketIntUnsigned", "NodeTreeInterfaceSocketIntUnsigned", SOCK_INT, PROP_UNSIGNED},
+    {"NodeSocketIntPercentage", "NodeTreeInterfaceSocketIntPercentage", SOCK_INT, PROP_PERCENTAGE},
+    {"NodeSocketIntFactor", "NodeTreeInterfaceSocketIntFactor", SOCK_INT, PROP_FACTOR},
+    {"NodeSocketBool", "NodeTreeInterfaceSocketBool", SOCK_BOOLEAN, PROP_NONE},
+    {"NodeSocketRotation", "NodeTreeInterfaceSocketRotation", SOCK_ROTATION, PROP_NONE},
+    {"NodeSocketVector", "NodeTreeInterfaceSocketVector", SOCK_VECTOR, PROP_NONE},
+    {"NodeSocketVectorTranslation",
+     "NodeTreeInterfaceSocketVectorTranslation",
+     SOCK_VECTOR,
+     PROP_TRANSLATION},
+    {"NodeSocketVectorDirection",
+     "NodeTreeInterfaceSocketVectorDirection",
+     SOCK_VECTOR,
+     PROP_DIRECTION},
+    {"NodeSocketVectorVelocity",
+     "NodeTreeInterfaceSocketVectorVelocity",
+     SOCK_VECTOR,
+     PROP_VELOCITY},
+    {"NodeSocketVectorAcceleration",
+     "NodeTreeInterfaceSocketVectorAcceleration",
+     SOCK_VECTOR,
+     PROP_ACCELERATION},
+    {"NodeSocketVectorEuler", "NodeTreeInterfaceSocketVectorEuler", SOCK_VECTOR, PROP_EULER},
+    {"NodeSocketVectorXYZ", "NodeTreeInterfaceSocketVectorXYZ", SOCK_VECTOR, PROP_XYZ},
+    {"NodeSocketColor", "NodeTreeInterfaceSocketColor", SOCK_RGBA, PROP_NONE},
+    {"NodeSocketString", "NodeTreeInterfaceSocketString", SOCK_STRING, PROP_NONE},
+    {"NodeSocketShader", "NodeTreeInterfaceSocketShader", SOCK_SHADER, PROP_NONE},
+    {"NodeSocketObject", "NodeTreeInterfaceSocketObject", SOCK_OBJECT, PROP_NONE},
+    {"NodeSocketImage", "NodeTreeInterfaceSocketImage", SOCK_IMAGE, PROP_NONE},
+    {"NodeSocketGeometry", "NodeTreeInterfaceSocketGeometry", SOCK_GEOMETRY, PROP_NONE},
+    {"NodeSocketCollection", "NodeTreeInterfaceSocketCollection", SOCK_COLLECTION, PROP_NONE},
+    {"NodeSocketTexture", "NodeTreeInterfaceSocketTexture", SOCK_TEXTURE, PROP_NONE},
+    {"NodeSocketMaterial", "NodeTreeInterfaceSocketMaterial", SOCK_MATERIAL, PROP_NONE},
+};
 
 static void rna_def_node_socket_subtypes(BlenderRNA *brna)
 {
-  for (const bNodeSocketStaticTypeInfo &info : nodeSocketStaticTypeInfo()) {
+  for (const bNodeSocketStaticTypeInfo &info : node_socket_subtypes) {
     const char *identifier = info.socket_identifier;
 
     switch (info.type) {
@@ -1458,7 +1441,7 @@ static void rna_def_node_socket_subtypes(BlenderRNA *brna)
  * is called from the interface rna file to ensure correct order. */
 void rna_def_node_socket_interface_subtypes(BlenderRNA *brna)
 {
-  for (const bNodeSocketStaticTypeInfo &info : nodeSocketStaticTypeInfo()) {
+  for (const bNodeSocketStaticTypeInfo &info : node_socket_subtypes) {
     const char *identifier = info.interface_identifier;
 
     switch (info.type) {
