@@ -936,15 +936,6 @@ static ShaderNode *add_node(Scene *scene,
     get_tex_mapping(noise, b_texture_mapping);
     node = noise;
   }
-  else if (b_node.is_a(&RNA_ShaderNodeTexMusgrave)) {
-    BL::ShaderNodeTexMusgrave b_musgrave_node(b_node);
-    MusgraveTextureNode *musgrave_node = graph->create_node<MusgraveTextureNode>();
-    musgrave_node->set_musgrave_type((NodeMusgraveType)b_musgrave_node.musgrave_type());
-    musgrave_node->set_dimensions(b_musgrave_node.musgrave_dimensions());
-    BL::TexMapping b_texture_mapping(b_musgrave_node.texture_mapping());
-    get_tex_mapping(musgrave_node, b_texture_mapping);
-    node = musgrave_node;
-  }
   else if (b_node.is_a(&RNA_ShaderNodeTexCoord)) {
     BL::ShaderNodeTexCoord b_tex_coord_node(b_node);
     TextureCoordinateNode *tex_coord = graph->create_node<TextureCoordinateNode>();
