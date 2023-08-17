@@ -4247,6 +4247,59 @@ static void ANIM_OT_channel_view_pick(wmOperatorType *ot)
                              "Ignore frames outside of the preview range");
 }
 
+static const EnumPropertyItem channel_bake_key_options[] = {
+    {-1, "KEEP", 0, "Keep", ""},
+    {BEZT_IPO_BEZ, "BEZIER", 0, "Bezier", ""},
+    {BEZT_IPO_LIN, "LIN", 0, "Linear", ""},
+    {BEZT_IPO_CONST, "CONST", 0, "Constant", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+static int channels_bake_exec(bContext *C, wmOperator *op)
+{
+  return OPERATOR_FINISHED;
+}
+
+static void ANIM_OT_channels_bake(wmOperatorType *ot)
+{
+  /* Identifiers */
+  ot->name = "Bake Channels";
+  ot->idname = "ANIM_OT_channels_bake";
+  ot->description = "Create keyframes on the F-Curves of selected channels";
+
+  /* API callbacks */
+  ot->exec = channels_bake_exec;
+  ot->poll = channel_view_poll;
+
+  ot->flag = 0;
+  RNA_def_float_array(ot->srna,
+                      "range",
+                      2,
+                      nullptr,
+                      -FLT_MAX,
+                      FLT_MAX,
+                      "Frame Range",
+                      "The range in which to create new keys",
+                      0,
+                      FLT_MAX);
+
+  RNA_def_float(
+      ot->srna, "step", 1, 0.001, FLT_MAX, "Frame Step", "At which interval to add keys", 1, 16);
+
+  RNA_def_boolean(ot->srna,
+                  "remove_existing",
+                  true,
+                  "Remove Existing Keys",
+                  "If enabled removes the keys that currently make up the curve");
+
+  RNA_def_enum(ot->srna,
+               "key_type",
+               channel_bake_key_options,
+               -1,
+               "Key Type",
+               "Choose the key type with which new keys will be added");
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
