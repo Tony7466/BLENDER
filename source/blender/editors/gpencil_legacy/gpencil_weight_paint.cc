@@ -1709,7 +1709,7 @@ struct tGPWeightGradient_vertex {
 enum tGPWeightGradient_flag {
   GP_WEIGHT_GRADIENT_VERTEX_DW_EXISTS = (1 << 0),
   GP_WEIGHT_GRADIENT_VERTEX_IS_MODIFIED = (1 << 1),
-} tGPWeightGradient_flag;
+};
 
 struct tGPWeightGradient_data {
   /* Number of cached vertex weights. */
