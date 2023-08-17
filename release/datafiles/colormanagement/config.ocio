@@ -560,7 +560,7 @@ colorspaces:
 
 looks:
   - !<Look>
-    name: Filmic - Very High Contrast
+    name: Very High Contrast
     process_space: Filmic Log
     transform: !<GroupTransform>
       children:
@@ -568,7 +568,7 @@ looks:
         - !<FileTransform> {src: filmic_to_0-70_1-03.spi1d, interpolation: linear, direction: inverse}
 
   - !<Look>
-    name: Filmic - High Contrast
+    name: High Contrast
     process_space: Filmic Log
     transform: !<GroupTransform>
       children:
@@ -576,7 +576,7 @@ looks:
         - !<FileTransform> {src: filmic_to_0-70_1-03.spi1d, interpolation: linear, direction: inverse}
 
   - !<Look>
-    name: Filmic - Medium High Contrast
+    name: Medium High Contrast
     process_space: Filmic Log
     transform: !<GroupTransform>
       children:
@@ -584,13 +584,13 @@ looks:
         - !<FileTransform> {src: filmic_to_0-70_1-03.spi1d, interpolation: linear, direction: inverse}
 
   - !<Look>
-    name: Filmic - Medium Contrast
+    name: Medium Contrast
     process_space: Filmic Log
     transform: !<GroupTransform>
       children:
 
   - !<Look>
-    name: Filmic - Medium Low Contrast
+    name: Medium Low Contrast
     process_space: Filmic Log
     transform: !<GroupTransform>
       children:
@@ -598,7 +598,7 @@ looks:
         - !<FileTransform> {src: filmic_to_0-70_1-03.spi1d, interpolation: linear, direction: inverse}
 
   - !<Look>
-    name: Filmic - Low Contrast
+    name: Low Contrast
     process_space: Filmic Log
     transform: !<GroupTransform>
       children:
@@ -606,7 +606,7 @@ looks:
         - !<FileTransform> {src: filmic_to_0-70_1-03.spi1d, interpolation: linear, direction: inverse}
 
   - !<Look>
-    name: Filmic - Very Low Contrast
+    name: Very Low Contrast
     process_space: Filmic Log
     transform: !<GroupTransform>
       children:
