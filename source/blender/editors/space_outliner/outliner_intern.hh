@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -31,6 +31,7 @@ struct ShaderFxData;
 struct TreeStoreElem;
 struct ViewLayer;
 struct bActionGroup;
+struct bConstraint;
 struct bContext;
 struct bContextDataResult;
 struct bDeformGroup;
@@ -299,6 +300,11 @@ struct BoneElementCreateData {
 struct EditBoneElementCreateData {
   ID *armature_id;
   EditBone *ebone;
+};
+
+struct ConstraintElementCreateData {
+  Object *object;
+  bConstraint *con;
 };
 
 struct DeformGroupElementCreateData {

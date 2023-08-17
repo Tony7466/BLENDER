@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  * Adapted from the Blender Alembic importer implementation.
@@ -15,6 +15,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_object.h"
 
+#include "BLI_math_color.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
@@ -156,7 +157,6 @@ USDMeshReader::USDMeshReader(const pxr::UsdPrim &prim,
     : USDGeomReader(prim, import_params, settings),
       mesh_prim_(prim),
       is_left_handed_(false),
-      has_uvs_(false),
       is_time_varying_(false),
       is_initial_load_(false)
 {
@@ -192,7 +192,7 @@ static std::optional<eCustomDataType> convert_usd_type_to_blender(
 
   const eCustomDataType *value = type_map.lookup_ptr(usd_type);
   if (value == nullptr) {
-    WM_reportf(RPT_WARNING, "Unsupported type for mesh data");
+    WM_reportf(RPT_WARNING, "Unsupported type %s for mesh data", usd_type.GetAsToken().GetText());
     return std::nullopt;
   }
 

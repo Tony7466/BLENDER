@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -166,11 +166,6 @@ static void grease_pencil_blend_write(BlendWriter *writer, ID *id, const void *i
   BLO_write_id_struct(writer, GreasePencil, id_address, &grease_pencil->id);
   BKE_id_blend_write(writer, &grease_pencil->id);
 
-  /* Write animation data. */
-  if (grease_pencil->adt) {
-    BKE_animdata_blend_write(writer, grease_pencil->adt);
-  }
-
   /* Write drawings. */
   write_drawing_array(*grease_pencil, writer);
   /* Write layer tree. */
@@ -185,10 +180,6 @@ static void grease_pencil_blend_read_data(BlendDataReader *reader, ID *id)
 {
   using namespace blender::bke::greasepencil;
   GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(id);
-
-  /* Read animation data. */
-  BLO_read_data_address(reader, &grease_pencil->adt);
-  BKE_animdata_blend_read_data(reader, grease_pencil->adt);
 
   /* Read drawings. */
   read_drawing_array(*grease_pencil, reader);
@@ -433,7 +424,7 @@ TreeNode::TreeNode()
   this->next = this->prev = nullptr;
   this->parent = nullptr;
 
-  this->name = nullptr;
+  this->name_ptr = nullptr;
   this->flag = 0;
   this->color[0] = this->color[1] = this->color[2] = 0;
 }
@@ -446,17 +437,22 @@ TreeNode::TreeNode(GreasePencilLayerTreeNodeType type) : TreeNode()
 TreeNode::TreeNode(GreasePencilLayerTreeNodeType type, StringRefNull name) : TreeNode()
 {
   this->type = type;
-  this->name = BLI_strdup(name.c_str());
+  this->name_ptr = BLI_strdup(name.c_str());
 }
 
 TreeNode::TreeNode(const TreeNode &other)
     : TreeNode::TreeNode(GreasePencilLayerTreeNodeType(other.type))
 {
-  if (other.name) {
-    this->name = BLI_strdup(other.name);
+  if (!other.name().is_empty()) {
+    this->name_ptr = BLI_strdup(other.name().c_str());
   }
   this->flag = other.flag;
   copy_v3_v3_uchar(this->color, other.color);
+}
+
+void TreeNode::set_name(StringRefNull name)
+{
+  this->name_ptr = BLI_strdup(name.c_str());
 }
 
 const LayerGroup &TreeNode::as_group() const
@@ -469,22 +465,24 @@ const Layer &TreeNode::as_layer() const
   return *reinterpret_cast<const Layer *>(this);
 }
 
-LayerGroup &TreeNode::as_group_for_write()
+LayerGroup &TreeNode::as_group()
 {
   return *reinterpret_cast<LayerGroup *>(this);
 }
 
-Layer &TreeNode::as_layer_for_write()
+Layer &TreeNode::as_layer()
 {
   return *reinterpret_cast<Layer *>(this);
 }
 
 LayerGroup *TreeNode::parent_group() const
 {
-  if (this->parent) {
-    return &this->parent->wrap();
-  }
-  return nullptr;
+  return (this->parent) ? &this->parent->wrap() : nullptr;
+}
+
+TreeNode *TreeNode::parent_node() const
+{
+  return this->parent_group() ? &this->parent->wrap().as_node() : nullptr;
 }
 
 LayerMask::LayerMask()
@@ -531,7 +529,7 @@ Layer::Layer()
 
 Layer::Layer(StringRefNull name) : Layer()
 {
-  this->base.name = BLI_strdup(name.c_str());
+  this->base.name_ptr = BLI_strdup(name.c_str());
 }
 
 Layer::Layer(const Layer &other) : Layer()
@@ -552,7 +550,7 @@ Layer::Layer(const Layer &other) : Layer()
 
 Layer::~Layer()
 {
-  MEM_SAFE_FREE(this->base.name);
+  MEM_SAFE_FREE(this->base.name_ptr);
   MEM_SAFE_FREE(this->frames_storage.keys);
   MEM_SAFE_FREE(this->frames_storage.values);
 
@@ -565,11 +563,6 @@ Layer::~Layer()
   this->runtime = nullptr;
 }
 
-void Layer::set_name(StringRefNull new_name)
-{
-  this->base.name = BLI_strdup(new_name.c_str());
-}
-
 const Map<int, GreasePencilFrame> &Layer::frames() const
 {
   return this->runtime->frames_;
@@ -578,36 +571,6 @@ const Map<int, GreasePencilFrame> &Layer::frames() const
 Map<int, GreasePencilFrame> &Layer::frames_for_write()
 {
   return this->runtime->frames_;
-}
-
-bool Layer::is_visible() const
-{
-  return this->parent_group().is_visible() && (this->base.flag & GP_LAYER_TREE_NODE_HIDE) == 0;
-}
-
-bool Layer::is_locked() const
-{
-  return this->parent_group().is_locked() || (this->base.flag & GP_LAYER_TREE_NODE_LOCKED) != 0;
-}
-
-bool Layer::is_editable() const
-{
-  return !this->is_locked() && this->is_visible();
-}
-
-bool Layer::is_empty() const
-{
-  return (this->frames().size() == 0);
-}
-
-bool Layer::is_selected() const
-{
-  return ((this->base.flag & GP_LAYER_TREE_NODE_SELECT) != 0);
-}
-
-bool Layer::use_onion_skinning() const
-{
-  return ((this->base.flag & GP_LAYER_TREE_NODE_USE_ONION_SKINNING) != 0);
 }
 
 Layer::SortedKeysIterator Layer::remove_leading_null_frames_in_range(
@@ -804,7 +767,7 @@ LayerGroup::LayerGroup()
 
 LayerGroup::LayerGroup(StringRefNull name) : LayerGroup()
 {
-  this->base.name = BLI_strdup(name.c_str());
+  this->base.name_ptr = BLI_strdup(name.c_str());
 }
 
 LayerGroup::LayerGroup(const LayerGroup &other) : LayerGroup()
@@ -831,7 +794,7 @@ LayerGroup::LayerGroup(const LayerGroup &other) : LayerGroup()
 
 LayerGroup::~LayerGroup()
 {
-  MEM_SAFE_FREE(this->base.name);
+  MEM_SAFE_FREE(this->base.name_ptr);
 
   LISTBASE_FOREACH_MUTABLE (GreasePencilLayerTreeNode *, child, &this->children) {
     switch (child->type) {
@@ -850,29 +813,6 @@ LayerGroup::~LayerGroup()
 
   MEM_delete(this->runtime);
   this->runtime = nullptr;
-}
-
-void LayerGroup::set_name(StringRefNull new_name)
-{
-  this->base.name = BLI_strdup(new_name.c_str());
-}
-
-bool LayerGroup::is_visible() const
-{
-  if (this->base.parent) {
-    return this->base.parent->wrap().is_visible() &&
-           (this->base.flag & GP_LAYER_TREE_NODE_HIDE) == 0;
-  }
-  return (this->base.flag & GP_LAYER_TREE_NODE_HIDE) == 0;
-}
-
-bool LayerGroup::is_locked() const
-{
-  if (this->base.parent) {
-    return this->base.parent->wrap().is_locked() ||
-           (this->base.flag & GP_LAYER_TREE_NODE_LOCKED) != 0;
-  }
-  return (this->base.flag & GP_LAYER_TREE_NODE_LOCKED) != 0;
 }
 
 LayerGroup &LayerGroup::add_group(LayerGroup *group)
@@ -1067,10 +1007,10 @@ void LayerGroup::print_nodes(StringRefNull header) const
       std::cout << "  ";
     }
     if (node->is_layer()) {
-      std::cout << StringRefNull(node->name);
+      std::cout << node->name();
     }
     else if (node->is_group()) {
-      std::cout << StringRefNull(node->name) << ": ";
+      std::cout << node->name() << ": ";
       LISTBASE_FOREACH_BACKWARD (GreasePencilLayerTreeNode *, child_, &node->as_group().children) {
         TreeNode *child = reinterpret_cast<TreeNode *>(child_);
         next_node.push(std::make_pair(indent + 1, child));
@@ -1093,18 +1033,18 @@ void LayerGroup::ensure_nodes_cache() const
       this->runtime->nodes_cache_.append(node);
       switch (node->type) {
         case GP_LAYER_TREE_LEAF: {
-          this->runtime->layer_cache_.append(&node->as_layer_for_write());
+          this->runtime->layer_cache_.append(&node->as_layer());
           break;
         }
         case GP_LAYER_TREE_GROUP: {
-          this->runtime->layer_group_cache_.append(&node->as_group_for_write());
-          for (TreeNode *child : node->as_group_for_write().nodes_for_write()) {
+          this->runtime->layer_group_cache_.append(&node->as_group());
+          for (TreeNode *child : node->as_group().nodes_for_write()) {
             this->runtime->nodes_cache_.append(child);
             if (child->is_layer()) {
-              this->runtime->layer_cache_.append(&child->as_layer_for_write());
+              this->runtime->layer_cache_.append(&child->as_layer());
             }
             else if (child->is_group()) {
-              this->runtime->layer_group_cache_.append(&child->as_group_for_write());
+              this->runtime->layer_group_cache_.append(&child->as_group());
             }
           }
           break;
@@ -1224,6 +1164,9 @@ void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *o
   /* For now the evaluated data is not const. We could use #get_grease_pencil_for_write, but that
    * would result in a copy when it's shared. So for now, we use a const_cast here. */
   GreasePencil *grease_pencil_eval = const_cast<GreasePencil *>(geometry_set.get_grease_pencil());
+
+  /* Store the frame that this grease pencil data was evaluated on. */
+  grease_pencil_eval->runtime->eval_frame = int(DEG_get_ctime(depsgraph));
 
   /* Assign evaluated object. */
   BKE_object_eval_assign_data(object, &grease_pencil_eval->id, false);
@@ -1684,8 +1627,8 @@ enum ForeachDrawingMode {
 
 static void foreach_drawing_ex(
     GreasePencil &grease_pencil,
-    int frame,
-    ForeachDrawingMode mode,
+    const int frame,
+    const ForeachDrawingMode mode,
     blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function)
 {
   using namespace blender::bke::greasepencil;
@@ -1717,19 +1660,71 @@ static void foreach_drawing_ex(
       function(index, drawing->wrap());
     }
     else if (drawing_base->type == GP_DRAWING_REFERENCE) {
-      /* TODO */
+      /* TODO: Drawing references are not implemented yet. */
+      BLI_assert_unreachable();
+    }
+  }
+}
+
+static void foreach_drawing_ex(
+    const GreasePencil &grease_pencil,
+    const int frame,
+    const ForeachDrawingMode mode,
+    blender::FunctionRef<void(int, const blender::bke::greasepencil::Drawing &)> function)
+{
+  using namespace blender::bke::greasepencil;
+
+  blender::Span<GreasePencilDrawingBase *> drawings = grease_pencil.drawings();
+  for (const Layer *layer : grease_pencil.layers()) {
+    switch (mode) {
+      case VISIBLE: {
+        if (!layer->is_visible()) {
+          continue;
+        }
+        break;
+      }
+      case EDITABLE: {
+        if (!layer->is_editable()) {
+          continue;
+        }
+        break;
+      }
+    }
+
+    int index = layer->drawing_index_at(frame);
+    if (index == -1) {
+      continue;
+    }
+    const GreasePencilDrawingBase *drawing_base = drawings[index];
+    if (drawing_base->type == GP_DRAWING) {
+      const GreasePencilDrawing *drawing = reinterpret_cast<const GreasePencilDrawing *>(
+          drawing_base);
+      function(index, drawing->wrap());
+    }
+    else if (drawing_base->type == GP_DRAWING_REFERENCE) {
+      /* TODO: Drawing references are not implemented yet. */
+      BLI_assert_unreachable();
     }
   }
 }
 
 void GreasePencil::foreach_visible_drawing(
-    int frame, blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function)
+    const int frame,
+    blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function)
+{
+  foreach_drawing_ex(*this, frame, VISIBLE, function);
+}
+
+void GreasePencil::foreach_visible_drawing(
+    const int frame,
+    blender::FunctionRef<void(int, const blender::bke::greasepencil::Drawing &)> function) const
 {
   foreach_drawing_ex(*this, frame, VISIBLE, function);
 }
 
 void GreasePencil::foreach_editable_drawing(
-    int frame, blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function)
+    const int frame,
+    blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function)
 {
   foreach_drawing_ex(*this, frame, EDITABLE, function);
 }
@@ -1737,25 +1732,13 @@ void GreasePencil::foreach_editable_drawing(
 std::optional<blender::Bounds<blender::float3>> GreasePencil::bounds_min_max() const
 {
   using namespace blender;
-  /* FIXME: this should somehow go through the visible drawings. We don't have access to the
-   * scene time here, so we probably need to cache the visible drawing for each layer somehow. */
   std::optional<Bounds<float3>> bounds;
-  for (int i = 0; i < this->drawing_array_num; i++) {
-    GreasePencilDrawingBase *drawing_base = this->drawing_array[i];
-    switch (drawing_base->type) {
-      case GP_DRAWING: {
-        GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
-        const bke::CurvesGeometry &curves = drawing->wrap().strokes();
+  this->foreach_visible_drawing(
+      this->runtime->eval_frame,
+      [&](int /*drawing_index*/, const bke::greasepencil::Drawing &drawing) {
+        const bke::CurvesGeometry &curves = drawing.strokes();
         bounds = bounds::merge(bounds, curves.bounds_min_max());
-        break;
-      }
-      case GP_DRAWING_REFERENCE: {
-        /* TODO: Calculate the bounding box of the reference drawing. */
-        break;
-      }
-    }
-  }
-
+      });
   return bounds;
 }
 
@@ -1819,12 +1802,12 @@ bool GreasePencil::is_layer_active(const blender::bke::greasepencil::Layer *laye
   return this->get_active_layer() == layer;
 }
 
-static blender::VectorSet<blender::StringRefNull> get_node_names(GreasePencil &grease_pencil)
+static blender::VectorSet<blender::StringRefNull> get_node_names(const GreasePencil &grease_pencil)
 {
   using namespace blender;
   VectorSet<StringRefNull> names;
   for (const blender::bke::greasepencil::TreeNode *node : grease_pencil.nodes()) {
-    names.add(node->name);
+    names.add(node->name());
   }
   return names;
 }
@@ -1836,23 +1819,41 @@ static bool check_unique_node_cb(void *arg, const char *name)
   return names.contains(name);
 }
 
-static bool unique_layer_name(VectorSet<blender::StringRefNull> &names, char *name)
+static bool unique_node_name_ex(VectorSet<blender::StringRefNull> &names,
+                                const char *default_name,
+                                char *name)
 {
-  return BLI_uniquename_cb(check_unique_node_cb, &names, "GP_Layer", '.', name, MAX_NAME);
+  return BLI_uniquename_cb(check_unique_node_cb, &names, default_name, '.', name, MAX_NAME);
 }
 
-static bool unique_layer_group_name(VectorSet<blender::StringRefNull> &names, char *name)
+static std::string unique_node_name(const GreasePencil &grease_pencil,
+                                    const char *default_name,
+                                    blender::StringRefNull name)
 {
-  return BLI_uniquename_cb(check_unique_node_cb, &names, "GP_Group", '.', name, MAX_NAME);
+  using namespace blender;
+  std::string unique_name(name.c_str());
+  VectorSet<StringRefNull> names = get_node_names(grease_pencil);
+  unique_node_name_ex(names, default_name, unique_name.data());
+  return unique_name;
+}
+
+static std::string unique_layer_name(const GreasePencil &grease_pencil,
+                                     blender::StringRefNull name)
+{
+  return unique_node_name(grease_pencil, "GP_Layer", name);
+}
+
+static std::string unique_layer_group_name(const GreasePencil &grease_pencil,
+                                           blender::StringRefNull name)
+{
+  return unique_node_name(grease_pencil, "GP_Group", name);
 }
 
 blender::bke::greasepencil::Layer &GreasePencil::add_layer(
     blender::bke::greasepencil::LayerGroup &group, const blender::StringRefNull name)
 {
   using namespace blender;
-  VectorSet<StringRefNull> names = get_node_names(*this);
-  std::string unique_name(name.c_str());
-  unique_layer_name(names, unique_name.data());
+  std::string unique_name = unique_layer_name(*this, name);
   return group.add_layer(unique_name);
 }
 
@@ -1862,9 +1863,7 @@ blender::bke::greasepencil::Layer &GreasePencil::add_layer_after(
     const blender::StringRefNull name)
 {
   using namespace blender;
-  VectorSet<StringRefNull> names = get_node_names(*this);
-  std::string unique_name(name.c_str());
-  unique_layer_name(names, unique_name.data());
+  std::string unique_name = unique_layer_name(*this, name);
   return group.add_layer_after(unique_name, link);
 }
 
@@ -1877,9 +1876,7 @@ blender::bke::greasepencil::LayerGroup &GreasePencil::add_layer_group(
     blender::bke::greasepencil::LayerGroup &group, const blender::StringRefNull name)
 {
   using namespace blender;
-  VectorSet<StringRefNull> names = get_node_names(*this);
-  std::string unique_name(name.c_str());
-  unique_layer_group_name(names, unique_name.data());
+  std::string unique_name = unique_layer_group_name(*this, name);
   return group.add_group(unique_name);
 }
 
@@ -1889,9 +1886,7 @@ blender::bke::greasepencil::LayerGroup &GreasePencil::add_layer_group_after(
     const blender::StringRefNull name)
 {
   using namespace blender;
-  VectorSet<StringRefNull> names = get_node_names(*this);
-  std::string unique_name(name.c_str());
-  unique_layer_group_name(names, unique_name.data());
+  std::string unique_name = unique_layer_group_name(*this, name);
   return group.add_group_after(unique_name, node);
 }
 
@@ -1925,30 +1920,15 @@ blender::bke::greasepencil::LayerGroup *GreasePencil::find_group_by_name(
   return this->root_group().find_group_by_name(name);
 }
 
-void GreasePencil::rename_layer(blender::bke::greasepencil::Layer &layer,
-                                blender::StringRefNull new_name)
+void GreasePencil::rename_node(blender::bke::greasepencil::TreeNode &node,
+                               blender::StringRefNull new_name)
 {
   using namespace blender;
-  if (layer.name() == new_name) {
+  if (node.name() == new_name) {
     return;
   }
-  VectorSet<StringRefNull> names = get_node_names(*this);
-  std::string unique_name(new_name.c_str());
-  unique_layer_name(names, unique_name.data());
-  layer.set_name(unique_name);
-}
-
-void GreasePencil::rename_group(blender::bke::greasepencil::LayerGroup &group,
-                                blender::StringRefNull new_name)
-{
-  using namespace blender;
-  if (group.name() == new_name) {
-    return;
-  }
-  VectorSet<StringRefNull> names = get_node_names(*this);
-  std::string unique_name(new_name.c_str());
-  unique_layer_group_name(names, unique_name.data());
-  group.set_name(unique_name);
+  node.set_name(node.is_layer() ? unique_layer_name(*this, new_name) :
+                                  unique_layer_group_name(*this, new_name));
 }
 
 void GreasePencil::remove_layer(blender::bke::greasepencil::Layer &layer)
@@ -2086,7 +2066,7 @@ static void read_layer(BlendDataReader *reader,
                        GreasePencilLayer *node,
                        GreasePencilLayerTreeGroup *parent)
 {
-  BLO_read_data_address(reader, &node->base.name);
+  BLO_read_data_address(reader, &node->base.name_ptr);
   node->base.parent = parent;
 
   /* Read frames storage. */
@@ -2111,7 +2091,7 @@ static void read_layer_tree_group(BlendDataReader *reader,
                                   GreasePencilLayerTreeGroup *node,
                                   GreasePencilLayerTreeGroup *parent)
 {
-  BLO_read_data_address(reader, &node->base.name);
+  BLO_read_data_address(reader, &node->base.name_ptr);
   node->base.parent = parent;
   /* Read list of children. */
   BLO_read_list(reader, &node->children);
@@ -2175,7 +2155,7 @@ static void write_layer(BlendWriter *writer, GreasePencilLayer *node)
   }
 
   BLO_write_struct(writer, GreasePencilLayer, node);
-  BLO_write_string(writer, node->base.name);
+  BLO_write_string(writer, node->base.name_ptr);
 
   BLO_write_int32_array(writer, node->frames_storage.num, node->frames_storage.keys);
   BLO_write_struct_array(
@@ -2190,7 +2170,7 @@ static void write_layer(BlendWriter *writer, GreasePencilLayer *node)
 static void write_layer_tree_group(BlendWriter *writer, GreasePencilLayerTreeGroup *node)
 {
   BLO_write_struct(writer, GreasePencilLayerTreeGroup, node);
-  BLO_write_string(writer, node->base.name);
+  BLO_write_string(writer, node->base.name_ptr);
   LISTBASE_FOREACH (GreasePencilLayerTreeNode *, child, &node->children) {
     switch (child->type) {
       case GP_LAYER_TREE_LEAF: {
