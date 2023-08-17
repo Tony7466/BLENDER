@@ -48,3 +48,4 @@ Referenced by pull request #111130, Outliner: Port linked object elements to new
 Referenced by commit 077db81638ba7caa03bbb0381a8e7fb65fafbd69, Outliner: Port linked object elements to new tree-element code design
 Referenced by pull request #111167, Outliner: Port pose channel elements to new tree-element code design
 Referenced by pull request #111220, Outliner: Port layer collection elements to new tree-element code design
+Referenced by pull request #111230, Outliner: Port view collection base elements to new tree-element code design
