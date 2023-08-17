@@ -426,10 +426,10 @@ static bool scene_enable_ghosting_poll(bContext *C)
 {
   Scene *scene = CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
-  return scene != NULL && object != NULL;
+  return scene != nullptr && object != nullptr;
 }
 
-static int scene_enable_ghosting_exec(bContext *C, wmOperator *UNUSED(op))
+static int scene_enable_ghosting_exec(bContext *C, wmOperator */*op*/)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
