@@ -6,10 +6,13 @@
 #include "BLI_math_quaternion.hh"
 #include "BLI_math_vector.hh"
 
+#include "BLI_cpp_types.hh"
 #include "BLI_generic_array.hh"
 #include "BLI_length_parameterize.hh"
 
 #include "BKE_curves.hh"
+
+#include "FN_field_cpp_type.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -266,6 +269,7 @@ class SampleCurveFunction : public mf::MultiFunction {
     mf::SignatureBuilder builder{"Sample Curve", signature_};
     builder.single_input<int>("Curve Index");
     builder.single_input<float>("Length");
+    builder.single_input<bool>("Curve Index Valid");
     builder.single_output<float3>("Position", mf::ParamFlag::SupportsUnusedOutput);
     builder.single_output<float3>("Tangent", mf::ParamFlag::SupportsUnusedOutput);
     builder.single_output<float3>("Normal", mf::ParamFlag::SupportsUnusedOutput);
@@ -278,12 +282,12 @@ class SampleCurveFunction : public mf::MultiFunction {
   void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
     MutableSpan<float3> sampled_positions = params.uninitialized_single_output_if_required<float3>(
-        2, "Position");
+        3, "Position");
     MutableSpan<float3> sampled_tangents = params.uninitialized_single_output_if_required<float3>(
-        3, "Tangent");
+        4, "Tangent");
     MutableSpan<float3> sampled_normals = params.uninitialized_single_output_if_required<float3>(
-        4, "Normal");
-    GMutableSpan sampled_values = params.uninitialized_single_output_if_required(5, "Value");
+        5, "Normal");
+    GMutableSpan sampled_values = params.uninitialized_single_output_if_required(6, "Value");
 
     auto return_default = [&]() {
       if (!sampled_positions.is_empty()) {
@@ -321,6 +325,8 @@ class SampleCurveFunction : public mf::MultiFunction {
     const OffsetIndices evaluated_points_by_curve = curves.evaluated_points_by_curve();
     const VArray<int> curve_indices = params.readonly_single_input<int>(0, "Curve Index");
     const VArraySpan<float> lengths = params.readonly_single_input<float>(1, "Length");
+    const VArray<bool> curve_indices_is_valid = params.readonly_single_input<bool>(
+        2, "Curve Index Valid");
     const VArray<bool> cyclic = curves.cyclic();
 
     Array<int> indices;
@@ -328,31 +334,10 @@ class SampleCurveFunction : public mf::MultiFunction {
     GArray<> src_original_values(source_data_->type());
     GArray<> src_evaluated_values(source_data_->type());
 
-    auto fill_invalid = [&](const IndexMask &mask) {
-      if (!sampled_positions.is_empty()) {
-        index_mask::masked_fill(sampled_positions, float3(0), mask);
-      }
-      if (!sampled_tangents.is_empty()) {
-        index_mask::masked_fill(sampled_tangents, float3(0), mask);
-      }
-      if (!sampled_normals.is_empty()) {
-        index_mask::masked_fill(sampled_normals, float3(0), mask);
-      }
-      if (!sampled_values.is_empty()) {
-        bke::attribute_math::convert_to_static_type(source_data_->type(), [&](auto dummy) {
-          using T = decltype(dummy);
-          index_mask::masked_fill<T>(sampled_values.typed<T>(), {}, mask);
-        });
-      }
-    };
-
     auto sample_curve = [&](const int curve_i, const IndexMask &mask) {
       const Span<float> accumulated_lengths = curves.evaluated_lengths_for_curve(curve_i,
                                                                                  cyclic[curve_i]);
-      if (accumulated_lengths.is_empty()) {
-        fill_invalid(mask);
-        return;
-      }
+      BLI_assert(!accumulated_lengths.is_empty());
       /* Store the sampled indices and factors in arrays the size of the mask.
        * Then, during interpolation, move the results back to the masked indices. */
       indices.reinitialize(mask.size());
@@ -397,41 +382,34 @@ class SampleCurveFunction : public mf::MultiFunction {
       }
     };
 
-    if (const std::optional<int> curve_i = curve_indices.get_if_single()) {
-      if (curves.curves_range().contains(*curve_i)) {
-        sample_curve(*curve_i, mask);
-      }
-      else {
-        fill_invalid(mask);
-      }
+    IndexMaskMemory memory;
+    const IndexMask valid_mask = IndexMask::from_bools(mask, curve_indices_is_valid, memory);
+    if (valid_mask.is_empty()) {
+      return;
     }
-    else {
-      Vector<int> invalid_indices;
-      VectorSet<int> used_curves;
-      devirtualize_varray(curve_indices, [&](const auto curve_indices) {
-        mask.foreach_index([&](const int i) {
-          const int curve_i = curve_indices[i];
-          if (curves.curves_range().contains(curve_i)) {
-            used_curves.add(curve_i);
-          }
-          else {
-            invalid_indices.append(i);
-          }
-        });
-      });
 
-      IndexMaskMemory memory;
-      Array<IndexMask> mask_by_curve(used_curves.size());
-      IndexMask::from_groups<int>(
-          mask,
-          memory,
-          [&](const int i) { return used_curves.index_of(curve_indices[i]); },
-          mask_by_curve);
+    if (const std::optional<int> curve_i = curve_indices.get_if_single()) {
+      sample_curve(*curve_i, mask);
+      return;
+    }
 
-      for (const int i : mask_by_curve.index_range()) {
-        sample_curve(used_curves[i], mask_by_curve[i]);
-      }
-      fill_invalid(IndexMask::from_indices<int>(invalid_indices, memory));
+    Array<int> valid_curve_indices(valid_mask.size());
+    curve_indices.materialize_compressed(valid_mask, valid_curve_indices);
+    const VectorSet<int> used_curves(valid_curve_indices);
+    if (used_curves.size() == 1) {
+      sample_curve(valid_curve_indices.first(), mask);
+      return;
+    }
+
+    Array<IndexMask> mask_by_curve(used_curves.size());
+    IndexMask::from_groups<int>(
+        mask,
+        memory,
+        [&](const int i) { return used_curves.index_of(curve_indices[i]); },
+        mask_by_curve);
+
+    for (const int i : mask_by_curve.index_range()) {
+      sample_curve(used_curves[i], mask_by_curve[i]);
     }
   }
 
@@ -514,6 +492,44 @@ static void output_attribute_field(GeoNodeExecParams &params, GField field)
   }
 }
 
+static Field<bool> curve_index_validate_fn(const IndexRange curves, Field<int> curve_indices)
+{
+  static auto validate_fn = mf::build::SI1_SO<int, bool>(
+      "Curve Index Validate",
+      [=](const int index) { return curves.contains(index); },
+      mf::build::exec_presets::AllSpanOrSingle());
+  auto validate_op = FieldOperation::Create(std::move(validate_fn), {std::move(curve_indices)});
+  return Field<bool>(validate_op, 0);
+}
+
+class ValueFilterFunction : public mf::MultiFunction {
+ private:
+  mf::Signature signature_;
+
+ public:
+  ValueFilterFunction(const CPPType &type)
+  {
+    mf::SignatureBuilder builder{"Valid Only", signature_};
+    builder.single_input<bool>("Valid");
+    builder.single_input("Value", type);
+    builder.single_output("Value", type);
+    this->set_signature(&signature_);
+  }
+  ValueFilterFunction(const ValueFilterFunction &other) = delete;
+
+  void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
+  {
+    const VArray<bool> valid_selection = params.readonly_single_input<bool>(0, "Valid");
+    const GVArray src_values = params.readonly_single_input(1, "Value");
+    GMutableSpan dst_values = params.uninitialized_single_output(2, "Value");
+    IndexMaskMemory memory;
+    const IndexMask valid_mask = IndexMask::from_bools(mask, valid_selection, memory);
+    bke::attribute_math::convert_to_static_type(
+        dst_values.type(), [&](auto dummy) { dst_values.typed<decltype(dummy)>().fill({}); });
+    src_values.materialize_to_uninitialized(valid_mask, dst_values.data());
+  }
+};
+
 static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Curves");
@@ -540,14 +556,17 @@ static void node_geo_exec(GeoNodeExecParams params)
   GField src_values_field = get_input_attribute_field(params, data_type);
 
   std::shared_ptr<FieldOperation> sample_op;
+  Field<bool> validate_field;
   if (curves.curves_num() == 1) {
+    validate_field = fn::make_constant_field<bool>(true);
     sample_op = FieldOperation::Create(
         std::make_unique<SampleCurveFunction>(
             std::move(geometry_set), mode, std::move(src_values_field)),
-        {fn::make_constant_field<int>(0), std::move(length_field)});
+        {fn::make_constant_field<int>(0), std::move(length_field), validate_field});
   }
   else {
     if (storage.use_all_curves) {
+      validate_field = fn::make_constant_field<bool>(true);
       auto index_fn = std::make_unique<SampleFloatSegmentsFunction>(
           curve_accumulated_lengths(curves), mode);
       auto index_op = FieldOperation::Create(std::move(index_fn), {std::move(length_field)});
@@ -556,22 +575,38 @@ static void node_geo_exec(GeoNodeExecParams params)
       sample_op = FieldOperation::Create(
           std::make_unique<SampleCurveFunction>(
               std::move(geometry_set), GEO_NODE_CURVE_SAMPLE_LENGTH, std::move(src_values_field)),
-          {std::move(curve_index), std::move(length_in_curve)});
+          {std::move(curve_index), std::move(length_in_curve), validate_field});
     }
     else {
       Field<int> curve_index = params.extract_input<Field<int>>("Curve Index");
       Field<float> length_in_curve = std::move(length_field);
+      validate_field = curve_index_validate_fn(curves.curves_range(), curve_index);
       sample_op = FieldOperation::Create(
           std::make_unique<SampleCurveFunction>(
               std::move(geometry_set), mode, std::move(src_values_field)),
-          {std::move(curve_index), std::move(length_in_curve)});
+          {std::move(curve_index), std::move(length_in_curve), validate_field});
     }
   }
 
-  params.set_output("Position", Field<float3>(sample_op, 0));
-  params.set_output("Tangent", Field<float3>(sample_op, 1));
-  params.set_output("Normal", Field<float3>(sample_op, 2));
-  output_attribute_field(params, GField(sample_op, 3));
+  const auto validate_output = [&](const int index, const CPPType &type) {
+    GField output(sample_op, index);
+    std::shared_ptr<FieldOperation> valid_output = FieldOperation::Create(
+        std::make_unique<ValueFilterFunction>(type), {validate_field, output});
+    return GField(valid_output, 0);
+  };
+
+  const auto validate_output_v = [&](const int index) {
+    Field<float3> output(sample_op, index);
+    std::shared_ptr<FieldOperation> valid_output = FieldOperation::Create(
+        std::make_unique<ValueFilterFunction>(CPPType::get<float3>()), {validate_field, output});
+    return Field<float3>(valid_output, 0);
+  };
+
+  params.set_output("Position", validate_output_v(0));
+  params.set_output("Tangent", validate_output_v(1));
+  params.set_output("Normal", validate_output_v(2));
+  output_attribute_field(params,
+                         validate_output(3, *bke::custom_data_type_to_cpp_type(data_type)));
 }
 
 static void node_register()
