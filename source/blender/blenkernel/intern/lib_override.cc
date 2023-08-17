@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,6 +8,7 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <map>
 #include <queue>
 
@@ -3800,7 +3801,7 @@ static IDOverrideLibraryPropertyOperation *liboverride_opop_find_name_lib_iterat
       }
     }
 
-    /* No exact match found, keep cheking the rest of the list of operations. */
+    /* No exact match found, keep checking the rest of the list of operations. */
   }
 
   return nullptr;

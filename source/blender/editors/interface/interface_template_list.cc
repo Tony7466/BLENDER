@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -875,7 +875,7 @@ static void ui_template_list_layout_draw(const bContext *C,
       but = uiDefIconTextButR_prop(block,
                                    UI_BTYPE_NUM,
                                    0,
-                                   0,
+                                   ICON_NONE,
                                    numstr,
                                    0,
                                    0,

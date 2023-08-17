@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -2238,6 +2238,9 @@ enum {
    * the mesh topology changes, but this heuristic sometimes fails. In these cases, users can
    * disable interpolation with this flag. */
   MOD_MESHSEQ_INTERPOLATE_VERTICES = (1 << 4),
+
+  /* Read animated custom attributes from point cache files. */
+  MOD_MESHSEQ_READ_ATTRIBUTES = (1 << 5),
 };
 
 typedef struct SDefBind {

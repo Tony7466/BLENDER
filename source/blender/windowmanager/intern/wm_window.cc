@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved. 2007 Blender Foundation.
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved. 2007 Blender Authors.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -1886,6 +1886,9 @@ eWM_CapabilitiesFlag WM_capabilities_flag()
   }
   if (ghost_flag & GHOST_kCapabilityClipboardImages) {
     flag |= WM_CAPABILITY_CLIPBOARD_IMAGES;
+  }
+  if (ghost_flag & GHOST_kCapabilityDesktopSample) {
+    flag |= WM_CAPABILITY_DESKTOP_SAMPLE;
   }
 
   return flag;

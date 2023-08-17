@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -555,10 +555,6 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
 {
   BKE_id_blend_write(writer, &ntree->id);
 
-  if (ntree->adt) {
-    BKE_animdata_blend_write(writer, ntree->adt);
-  }
-
   for (bNode *node : ntree->all_nodes()) {
     BLO_write_struct(writer, bNode, node);
 
@@ -760,9 +756,6 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
 
   ntree->runtime = MEM_new<bNodeTreeRuntime>(__func__);
   BKE_ntree_update_tag_missing_runtime_data(ntree);
-
-  BLO_read_data_address(reader, &ntree->adt);
-  BKE_animdata_blend_read_data(reader, ntree->adt);
 
   BLO_read_list(reader, &ntree->nodes);
   int i;
@@ -4308,12 +4301,14 @@ void node_type_base(bNodeType *ntype, const int type, const char *name, const sh
 void node_type_base_custom(bNodeType *ntype,
                            const char *idname,
                            const char *name,
+                           const char *enum_name,
                            const short nclass)
 {
   STRNCPY(ntype->idname, idname);
   ntype->type = NODE_CUSTOM;
   STRNCPY(ntype->ui_name, name);
   ntype->nclass = nclass;
+  ntype->enum_name_legacy = enum_name;
 
   blender::bke::node_type_base_defaults(ntype);
 }
