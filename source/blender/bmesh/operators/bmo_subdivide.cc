@@ -1028,8 +1028,8 @@ void bmo_subdivide_edges_exec(BMesh *bm, BMOperator *op)
     }
 
     /* figure out which pattern to use */
-    verts.resize(face->len);
-    edges.resize(face->len);
+    verts.reinitialize(face->len);
+    edges.reinitialize(face->len);
 
     totesel = 0;
     BM_ITER_ELEM_INDEX (l_new, &liter, face, BM_LOOPS_OF_FACE, i) {
@@ -1168,7 +1168,7 @@ void bmo_subdivide_edges_exec(BMesh *bm, BMOperator *op)
       /* ok, no pattern.  we still may be able to do something */
 
       /* for case of two edges, connecting them shouldn't be too hard */
-      loops.resize(face->len);
+      loops.reinitialize(face->len);
       BM_ITER_ELEM_INDEX (l, &liter, face, BM_LOOPS_OF_FACE, a) {
         loops[a] = l;
       }
@@ -1203,7 +1203,7 @@ void bmo_subdivide_edges_exec(BMesh *bm, BMOperator *op)
 
       b += numcuts - 1;
 
-      loops_split.resize(numcuts);
+      loops_split.reinitialize(numcuts);
       for (j = 0; j < numcuts; j++) {
         bool ok = true;
 
@@ -1280,7 +1280,7 @@ void bmo_subdivide_edges_exec(BMesh *bm, BMOperator *op)
       }
     }
 
-    verts.resize(face->len);
+    verts.reinitialize(face->len);
     BM_ITER_ELEM_INDEX (l_new, &liter, face, BM_LOOPS_OF_FACE, j) {
       b = (j - a + face->len) % face->len;
       verts[b] = l_new->v;

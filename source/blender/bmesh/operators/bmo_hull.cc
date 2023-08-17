@@ -491,7 +491,7 @@ static void hull_from_bullet(BMesh *bm, BMOperator *op, BLI_mempool *hull_triang
       int j;
 
       /* Get face vertex indices */
-      fvi.resize(len);
+      fvi.reinitialize(len);
       plConvexHullGetFaceVertices(hull, i, fvi.data());
 
       /* NOTE: here we throw away any NGons from Bullet and turn
