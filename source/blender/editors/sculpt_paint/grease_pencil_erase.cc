@@ -672,10 +672,15 @@ struct EraseOperationExecutor {
     return true;
   }
 
+  struct SoftEraserPoint {
+    int64_t squared_radius;
+    float opacity;
+  };
+
   int64_t intersections_with_curves_falloff(
       const bke::CurvesGeometry &src,
       const Span<float2> screen_space_positions,
-      const Span<int64_t> squared_radii,
+      const Span<SoftEraserPoint> falloff,
       MutableSpan<Array<PointCircleSide>> r_point_side,
       MutableSpan<Vector<SegmentCircleIntersection>> r_intersections) const
   {
@@ -698,14 +703,15 @@ struct EraseOperationExecutor {
         if (src_curve_points.size() == 1) {
           /* One-point stroke : just check if the point is inside the eraser. */
           int radius_index = -1;
-          for (const int64_t sq_radius : squared_radii) {
+          for (const SoftEraserPoint &eraser_point : falloff) {
             const int64_t src_point = src_curve_points.first();
             const int64_t sq_distance = math::distance_squared(
                 this->mouse_position_pixels, screen_space_positions_pixel[src_point]);
 
             /* Note: We don't account for boundaries here, since we are not going to split any
              * curve. */
-            r_point_side[src_point][++radius_index] = (sq_distance <= sq_radius) ?
+            r_point_side[src_point][++radius_index] = (sq_distance <=
+                                                       eraser_point.squared_radius) ?
                                                           PointCircleSide::Inside :
                                                           PointCircleSide::Outside;
           }
@@ -714,7 +720,7 @@ struct EraseOperationExecutor {
 
         for (const int64_t src_point : src_curve_points.drop_back(1)) {
           int ring_index = 0;
-          for (const int64_t squared_radius : squared_radii) {
+          for (const SoftEraserPoint &eraser_point : falloff) {
             SegmentCircleIntersection inter0;
             SegmentCircleIntersection inter1;
 
@@ -724,7 +730,7 @@ struct EraseOperationExecutor {
             const int8_t nb_inter = segment_intersections_and_points_sides(
                 screen_space_positions_pixel[src_point],
                 screen_space_positions_pixel[src_point + 1],
-                squared_radius,
+                eraser_point.squared_radius,
                 inter0.factor,
                 inter1.factor,
                 r_point_side[src_point][ring_index],
@@ -750,14 +756,14 @@ struct EraseOperationExecutor {
           const int64_t src_first_point = src_curve_points.first();
           int radius_index = 0;
 
-          for (const int64_t squared_radius : squared_radii) {
+          for (const SoftEraserPoint &eraser_point : falloff) {
             SegmentCircleIntersection inter0;
             SegmentCircleIntersection inter1;
 
             const int8_t nb_inter = segment_intersections_and_points_sides(
                 screen_space_positions_pixel[src_last_point],
                 screen_space_positions_pixel[src_first_point],
-                squared_radius,
+                eraser_point.squared_radius,
                 inter0.factor,
                 inter1.factor,
                 r_point_side[src_last_point][radius_index],
@@ -794,6 +800,8 @@ struct EraseOperationExecutor {
     float factor;
     bool is_src_point;
     bool is_cut;
+
+    float opacity;
   };
 
   static Array<DestinationPoint> recompute_topology(
@@ -1008,6 +1016,26 @@ struct EraseOperationExecutor {
                      BKE_brush_curve_strength(this->brush_, distance, this->eraser_radius);
   }
 
+  Array<SoftEraserPoint> compute_piecewise_linear_falloff() const
+  {
+    const int64_t step_pixels = 20;
+    const float radius = this->eraser_radius;
+    const int64_t radius_px = round_fl_to_int(radius);
+    const int nb_samples = round_fl_to_int(radius / step_pixels) + 1;
+    Array<SoftEraserPoint> samples(nb_samples);
+    for (const int sample_index : IndexRange(nb_samples)) {
+      const int64_t sampled_distance = math::max(sample_index * step_pixels, int64_t(1));
+
+      samples[sample_index].squared_radius = sampled_distance * sampled_distance;
+      samples[sample_index].opacity = 1.0 - this->eraser_strength *
+                                                BKE_brush_curve_strength(
+                                                    this->brush_, float(sampled_distance), radius);
+      std::cout << sample_index << " : " << sampled_distance << ","
+                << samples[sample_index].opacity << std::endl;
+    }
+    return samples;
+  }
+
   /**
    * The soft eraser decreases the opacity of the points it hits.
    * The new opacity is computed as a minimum between the current opacity and
@@ -1022,7 +1050,7 @@ struct EraseOperationExecutor {
   {
     using namespace blender::bke;
 
-    const float opacity_threshold = 0.01f;
+    const float opacity_threshold = 0.05f;
     const std::string opacity_attr = "opacity";
 
     const int src_points_num = src.points_num();
@@ -1031,27 +1059,15 @@ struct EraseOperationExecutor {
     VArray<float> src_opacity = *(
         src_attributes.lookup_or_default<float>(opacity_attr, ATTR_DOMAIN_POINT, 1.0f));
 
-    /* Get opacity of the source points. */
-    Array<float> src_new_opacity(src_points_num);
-    if (src_opacity.is_single()) {
-      src_new_opacity.fill(src_opacity.get_internal_single());
-    }
-    else {
-      array_utils::copy<float>(src_opacity.get_internal_span(), src_new_opacity.as_mutable_span());
-    }
-
-    const Array<int64_t> squared_radii = {
-        round_fl_to_int(0.1f * this->eraser_squared_radius_pixels),
-        this->eraser_squared_radius_pixels};
-    const int radii_size = squared_radii.size();
-    const int index_smallest_radius = 0;
+    const Array<SoftEraserPoint> eraser_falloff = compute_piecewise_linear_falloff();
+    const int nb_falloff_points = eraser_falloff.size();
 
     /* Compute intersections between the eraser and the curves in the source domain. */
     Array<Array<PointCircleSide>> src_point_side(src_points_num,
-                                                 Array<PointCircleSide>(radii_size));
+                                                 Array<PointCircleSide>(nb_falloff_points));
     Array<Vector<SegmentCircleIntersection>> src_intersections(src_points_num);
-    const int total_intersections = intersections_with_curves_falloff(
-        src, screen_space_positions, squared_radii, src_point_side, src_intersections);
+    intersections_with_curves_falloff(
+        src, screen_space_positions, eraser_falloff, src_point_side, src_intersections);
 
     const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
 
@@ -1063,47 +1079,81 @@ struct EraseOperationExecutor {
         const int64_t src_next_point = (src_point == src_points.last()) ? src_points.first() :
                                                                           (src_point + 1);
 
-        const PointCircleSide point_side_smallest =
-            src_point_side[src_point][index_smallest_radius];
-        if (point_side_smallest != PointCircleSide::Inside) {
-          src_to_dst_points[src_point].append(
-              {src_point,
-               src_next_point,
-               0.0f,
-               true,
-               (point_side_smallest == PointCircleSide::OutsideInsideBoundary)});
+        int point_ring_index = -1;
+        for (const int falloff_index : IndexRange(nb_falloff_points)) {
+          const SoftEraserPoint &falloff = eraser_falloff[falloff_index];
+          if (ELEM(src_point_side[src_point][falloff_index],
+                   PointCircleSide::Inside,
+                   PointCircleSide::InsideOutsideBoundary))
+          {
+            point_ring_index = falloff_index;
+            break;
+          }
         }
+
+        bool remove_point = false;
+        bool is_point_cut = false;
+        float point_opacity = src_opacity[src_point];
+
+        if (point_ring_index >= 0) {
+          const SoftEraserPoint &point_falloff = eraser_falloff[point_ring_index];
+          remove_point = (src_point_side[src_point][point_ring_index] ==
+                          PointCircleSide::Inside) &&
+                         (point_falloff.opacity < opacity_threshold);
+          is_point_cut = (src_point_side[src_point][point_ring_index] ==
+                          PointCircleSide::InsideOutsideBoundary) &&
+                         (point_falloff.opacity < opacity_threshold);
+          point_opacity = math::min(0.0f, math::min(point_opacity, point_falloff.opacity));
+        }
+
+        if (!remove_point) {
+          src_to_dst_points[src_point].append(
+              {src_point, src_next_point, 0.0f, true, is_point_cut, point_opacity});
+        }
+
+        std::sort(src_intersections[src_point].begin(),
+                  src_intersections[src_point].end(),
+                  [](SegmentCircleIntersection a, SegmentCircleIntersection b) {
+                    return a.factor < b.factor;
+                  });
 
         for (const SegmentCircleIntersection &intersection : src_intersections[src_point]) {
+          const SoftEraserPoint &falloff = eraser_falloff[intersection.ring_index];
           const bool is_cut = intersection.inside_outside_intersection &&
-                              (intersection.ring_index == index_smallest_radius);
-          src_to_dst_points[src_point].append(
-              {src_point, src_next_point, intersection.factor, false, is_cut});
-        }
+                              (falloff.opacity < opacity_threshold);
+          const float initial_opacity = math::interpolate(
+              src_opacity[src_point], src_opacity[src_next_point], intersection.factor);
 
-        std::sort(src_to_dst_points[src_point].begin(),
-                  src_to_dst_points[src_point].end(),
-                  [](DestinationPoint a, DestinationPoint b) { return a.factor < b.factor; });
+          const float opacity = math::max(0.0f, math::min(initial_opacity, falloff.opacity));
+
+          if (is_cut && !src_to_dst_points[src_point].is_empty() &&
+              src_to_dst_points[src_point].last().is_cut)
+          {
+            src_to_dst_points[src_point].last().is_cut = false;
+          }
+
+          src_to_dst_points[src_point].append(
+              {src_point, src_next_point, intersection.factor, false, is_cut, opacity});
+        }
       }
     }
 
-    const Array<DestinationPoint> dst_points_parameters = recompute_topology(
+    const Array<DestinationPoint> dst_points = recompute_topology(
         src, dst, src_to_dst_points, keep_caps);
 
-    /* Decrease the opacities. */
-    // bool opacity_changed = false;
-    // threading::parallel_for(src.points_range(), 1024, [&](const IndexRange src_points) {
-    //   for (const int src_point : src_points) {
-    //     if (!src_point_inside[src_point]) {
-    //       continue;
-    //     }
+    /* Set opacity. */
+    bke::MutableAttributeAccessor dst_attributes = dst.attributes_for_write();
+    const bke::AnonymousAttributePropagationInfo propagation_info{};
 
-    //     const float2 pos = screen_space_positions[src_point];
-    //     const float new_opacity = compute_soft_eraser_opacity(pos);
-    //     src_new_opacity[src_point] = std::min(src_opacity[src_point], new_opacity);
-    //     opacity_changed = (src_opacity[src_point] > new_opacity);
-    //   }
-    // });
+    bke::SpanAttributeWriter<float> dst_opacity =
+        dst_attributes.lookup_or_add_for_write_span<float>(opacity_attr, ATTR_DOMAIN_POINT);
+    threading::parallel_for(dst.points_range(), 4096, [&](const IndexRange dst_points_range) {
+      for (const int64_t dst_point_index : dst_points_range) {
+        const DestinationPoint &dst_point = dst_points[dst_point_index];
+        dst_opacity.span[dst_point_index] = dst_point.opacity;
+      }
+    });
+    dst_opacity.finish();
 
     return true;
   }
