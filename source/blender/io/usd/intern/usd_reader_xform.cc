@@ -169,6 +169,9 @@ std::optional<XformResult> USDXformReader::get_local_usd_xform(const float time)
     return std::nullopt;
   }
 
+  /* The USD bind transform is a matrix of doubles,
+   * but we cast it to GfMatrix4f because Blender expects
+   * a matrix of floats. */
   return XformResult(pxr::GfMatrix4f(xform), is_constant);
 }
 
