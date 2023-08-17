@@ -96,8 +96,7 @@ float shadow_slope_bias_get(vec2 atlas_size, LightData light, vec3 lNg, vec3 lP,
   /* Compute slope to where the receiver should be by extending the plane to the texel center. */
   float bias = dot(ndc_slope, ndc_texel_center_delta);
   /* Bias for 1 pixel of the sampled LOD. */
-  bias /= ((SHADOW_TILEMAP_RES * SHADOW_PAGE_RES) >> lod);
-  bias += 1e-20;
+  bias /= float((SHADOW_TILEMAP_RES * SHADOW_PAGE_RES) >> lod);
   return bias;
 }
 
@@ -123,9 +122,8 @@ float shadow_tile_depth_get(usampler2DArray atlas_tx, ShadowTileData tile, vec2 
      * But also not FLT_MAX since it can cause issue with projection. */
     return 1.1;
   }
-  float depth = uintBitsToFloat(texture(atlas_tx, vec3(atlas_uv, float(tile.page.z))).r);
-  /* TODO(fclem): Replace this by an adaptive epsilon. */
-  depth = uintBitsToFloat(floatBitsToUint(depth) + 200u);
+  uint raw_bits = texture(atlas_tx, vec3(atlas_uv, float(tile.page.z))).r;
+  float depth = uintBitsToFloat(raw_bits);
   return depth;
 }
 
