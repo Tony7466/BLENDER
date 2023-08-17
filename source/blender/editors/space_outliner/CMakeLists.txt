@@ -71,6 +71,7 @@ set(SRC
   tree/tree_element_id_scene.cc
   tree/tree_element_id_texture.cc
   tree/tree_element_label.cc
+  tree/tree_element_layer_collection.cc
   tree/tree_element_linked_object.cc
   tree/tree_element_nla.cc
   tree/tree_element_overrides.cc
@@ -111,6 +112,7 @@ set(SRC
   tree/tree_element_id_scene.hh
   tree/tree_element_id_texture.hh
   tree/tree_element_label.hh
+  tree/tree_element_layer_collection.hh
   tree/tree_element_linked_object.hh
   tree/tree_element_nla.hh
   tree/tree_element_overrides.hh
