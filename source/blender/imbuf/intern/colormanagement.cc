@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation
+/* SPDX-FileCopyrightText: 2012 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -28,7 +28,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_math_color.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
@@ -44,7 +43,7 @@
 
 #include "GPU_capabilities.h"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "SEQ_iterator.h"
 
@@ -1356,7 +1355,7 @@ bool IMB_colormanagement_space_is_data(ColorSpace *colorspace)
 
 static void colormanage_ensure_srgb_scene_linear_info(ColorSpace *colorspace)
 {
-  if (!colorspace->info.cached) {
+  if (colorspace && !colorspace->info.cached) {
     OCIO_ConstConfigRcPtr *config = OCIO_getCurrentConfig();
     OCIO_ConstColorSpaceRcPtr *ocio_colorspace = OCIO_configGetColorSpace(config,
                                                                           colorspace->name);

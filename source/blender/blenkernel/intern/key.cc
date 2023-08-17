@@ -14,6 +14,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_endian_switch.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
@@ -46,8 +47,8 @@
 #include "BKE_mesh.hh"
 #include "BKE_scene.h"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #include "BLO_read_write.h"
@@ -109,10 +110,6 @@ static void shapekey_blend_write(BlendWriter *writer, ID *id, const void *id_add
   BLO_write_id_struct(writer, Key, id_address, &key->id);
   BKE_id_blend_write(writer, &key->id);
 
-  if (key->adt) {
-    BKE_animdata_blend_write(writer, key->adt);
-  }
-
   /* direct data */
   LISTBASE_FOREACH (KeyBlock *, kb, &key->block) {
     KeyBlock tmp_kb = *kb;
@@ -164,9 +161,6 @@ static void shapekey_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Key *key = (Key *)id;
   BLO_read_list(reader, &(key->block));
-
-  BLO_read_data_address(reader, &key->adt);
-  BKE_animdata_blend_read_data(reader, key->adt);
 
   BLO_read_data_address(reader, &key->refkey);
 

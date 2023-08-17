@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -252,7 +252,9 @@ mark_as_advanced(BUILDINFO_OVERRIDE_TIME)
 
 if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16")
   option(WITH_UNITY_BUILD "\
-Enable unity build for modules that support it to improve compile times"
+Enable unity build for modules that support it to improve compile times.\n\
+WARNING: this option allows files to be built without all necessary headers!\n
+This option should be disabled before manipulating or removing headers."
     ON
   )
   mark_as_advanced(WITH_UNITY_BUILD)
@@ -530,7 +532,7 @@ endif()
 option(WITH_PYTHON_INSTALL "Copy system python into the blender install folder" ON)
 
 option(WITH_INSTALL_COPYRIGHT "\
-Copy the official Blender Foundation's copyright.txt into the Blender install folder"
+Copy the official Blender Authors's copyright.txt into the Blender install folder"
   OFF
 )
 mark_as_advanced(WITH_INSTALL_COPYRIGHT)
@@ -648,7 +650,8 @@ if(NOT APPLE)
   # Radeon VII (gfx906) not currently working with HIP SDK, so left out of the list.
   set(CYCLES_HIP_BINARIES_ARCH
     gfx900 gfx90c gfx902
-    gfx1010 gfx1011 gfx1012 gfx1030 gfx1031 gfx1032 gfx1034 gfx1035
+    gfx1010 gfx1011 gfx1012
+    gfx1030 gfx1031 gfx1032 gfx1034 gfx1035 gfx1036
     gfx1100 gfx1101 gfx1102
     CACHE STRING "AMD HIP architectures to build binaries for"
   )
@@ -1264,8 +1267,12 @@ if(NOT CMAKE_BUILD_TYPE MATCHES "Release")
       unset(_is_CONFIG_DEBUG)
     elseif(COMPILER_ASAN_LIBRARY)
       set(PLATFORM_LINKLIBS "${PLATFORM_LINKLIBS};${COMPILER_ASAN_LIBRARY}")
-      set(PLATFORM_LINKFLAGS "${COMPILER_ASAN_LIBRARY} ${COMPILER_ASAN_LINKER_FLAGS}")
-      set(PLATFORM_LINKFLAGS_DEBUG "${COMPILER_ASAN_LIBRARY} ${COMPILER_ASAN_LINKER_FLAGS}")
+      set(PLATFORM_LINKFLAGS "${COMPILER_ASAN_LIBRARY}")
+      set(PLATFORM_LINKFLAGS_DEBUG "${COMPILER_ASAN_LIBRARY}")
+      if(DEFINED COMPILER_ASAN_LINKER_FLAGS)
+        set(PLATFORM_LINKFLAGS "${PLATFORM_LINKFLAGS} ${COMPILER_ASAN_LINKER_FLAGS}")
+        set(PLATFORM_LINKFLAGS_DEBUG "${PLATFORM_LINKFLAGS_DEBUG} ${COMPILER_ASAN_LINKER_FLAGS}")
+      endif()
     endif()
   endif()
 endif()
@@ -1431,7 +1438,12 @@ if(WITH_OPENVDB)
 
   if(WITH_OPENVDB_BLOSC)
     list(APPEND OPENVDB_DEFINITIONS -DWITH_OPENVDB_BLOSC)
-    list(APPEND OPENVDB_LIBRARIES ${BLOSC_LIBRARIES} ${ZLIB_LIBRARIES})
+    # Even when `WITH_OPENVDB_BLOSC` is set, `FindBlosc.cmake` isn't running.
+    # As this might be used at some point, check the libraries are defined.
+    if(DEFINED BLOSC_LIBRARIES)
+      list(APPEND OPENVDB_LIBRARIES ${BLOSC_LIBRARIES})
+    endif()
+    list(APPEND OPENVDB_LIBRARIES ${ZLIB_LIBRARIES})
   endif()
 
   list(APPEND OPENVDB_LIBRARIES ${BOOST_LIBRARIES} ${TBB_LIBRARIES})

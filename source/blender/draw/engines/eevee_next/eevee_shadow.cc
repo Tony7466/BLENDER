@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,6 +9,7 @@
  */
 
 #include "BKE_global.h"
+#include "BLI_math_rotation.h"
 #include "BLI_rect.h"
 
 #include "eevee_instance.hh"

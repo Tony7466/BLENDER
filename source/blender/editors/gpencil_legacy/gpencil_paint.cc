@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,8 +16,9 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_hash.h"
-#include "BLI_math.h"
 #include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
 
@@ -63,8 +64,8 @@
 #include "GPU_immediate_util.h"
 #include "GPU_state.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"

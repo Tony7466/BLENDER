@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,9 +10,11 @@
  * \brief Preset shapes that can be drawn from any gizmo type.
  */
 
-#include "BLI_math.h"
-
 #include "DNA_object_types.h"
+
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_context.h"
 

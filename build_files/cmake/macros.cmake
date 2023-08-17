@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -753,7 +753,12 @@ macro(remove_cc_flag
 
   foreach(_flag ${ARGV})
     foreach(_var ${_flag_vars})
-      string(REGEX REPLACE ${_flag} "" "${_var}" "${${_var}}")
+      # Expands to an expression like:
+      # `string(REGEX REPLACE "${_flag}" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")`
+      cmake_language(
+        EVAL CODE
+        "string(REGEX REPLACE \"\$\{_flag\}\" \"\" ${_var} \"\$\{${_var}\}\")"
+      )
     endforeach()
   endforeach()
 
@@ -781,6 +786,7 @@ macro(remove_strict_flags)
   if(CMAKE_COMPILER_IS_GNUCC)
     remove_cc_flag(
       "-Wstrict-prototypes"
+      "-Wsuggest-attribute=format"
       "-Wmissing-prototypes"
       "-Wmissing-declarations"
       "-Wmissing-format-attribute"
@@ -901,7 +907,7 @@ macro(remove_cc_flag_unsigned_char)
   endif()
 endmacro()
 
-function(ADD_CHECK_C_COMPILER_FLAG_IMPL
+function(add_check_c_compiler_flag_impl
   _CFLAGS
   _CACHE_VAR
   _FLAG
@@ -918,7 +924,7 @@ function(ADD_CHECK_C_COMPILER_FLAG_IMPL
   endif()
 endfunction()
 
-function(ADD_CHECK_CXX_COMPILER_FLAG_IMPL
+function(add_check_cxx_compiler_flag_impl
   _CXXFLAGS
   _CACHE_VAR
   _FLAG
@@ -940,7 +946,7 @@ function(ADD_CHECK_C_COMPILER_FLAGS _CFLAGS)
   set(cache_var "")
   foreach(arg ${ARGN})
     if(cache_var)
-      ADD_CHECK_C_COMPILER_FLAG_IMPL("${_CFLAGS}" "${cache_var}" "${arg}")
+      add_check_c_compiler_flag_impl("${_CFLAGS}" "${cache_var}" "${arg}")
       set(cache_var "")
     else()
       set(cache_var "${arg}")
@@ -954,7 +960,7 @@ function(ADD_CHECK_CXX_COMPILER_FLAGS _CXXFLAGS)
   set(cache_var "")
   foreach(arg ${ARGN})
     if(cache_var)
-      ADD_CHECK_CXX_COMPILER_FLAG_IMPL("${_CXXFLAGS}" "${cache_var}" "${arg}")
+      add_check_cxx_compiler_flag_impl("${_CXXFLAGS}" "${cache_var}" "${arg}")
       set(cache_var "")
     else()
       set(cache_var "${arg}")
@@ -1509,15 +1515,17 @@ macro(windows_install_shared_manifest)
     if(WINDOWS_INSTALL_RELEASE)
       list(APPEND WINDOWS_SHARED_MANIFEST_RELEASE ${WINDOWS_INSTALL_FILES})
     endif()
-    install(FILES ${WINDOWS_INSTALL_FILES}
-            CONFIGURATIONS ${WINDOWS_CONFIGURATIONS}
-            DESTINATION "./blender.shared"
+    install(
+      FILES ${WINDOWS_INSTALL_FILES}
+      DESTINATION "./blender.shared"
+      CONFIGURATIONS ${WINDOWS_CONFIGURATIONS}
     )
   else()
     # Python module without manifest.
-    install(FILES ${WINDOWS_INSTALL_FILES}
-            CONFIGURATIONS ${WINDOWS_CONFIGURATIONS}
-            DESTINATION "./bpy"
+    install(
+      FILES ${WINDOWS_INSTALL_FILES}
+      DESTINATION "./bpy"
+      CONFIGURATIONS ${WINDOWS_CONFIGURATIONS}
     )
   endif()
 endmacro()

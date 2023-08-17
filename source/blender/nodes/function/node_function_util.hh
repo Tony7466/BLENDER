@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,6 +23,6 @@
 
 #include "FN_multi_function_builder.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 void fn_node_type_base(bNodeType *ntype, int type, const char *name, short nclass);
