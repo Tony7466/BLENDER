@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2022 Blender Authors
+#
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright 2022 Blender Foundation.
 
 # - Find WebP library
 # Find the native WebP includes and library
@@ -13,9 +14,13 @@
 # also defined, but not for general use are
 #  WEBP_LIBRARY, where to find the WEBP library.
 
-# If WEBP_ROOT_DIR was defined in the environment, use it.
-IF(NOT WEBP_ROOT_DIR AND NOT $ENV{WEBP_ROOT_DIR} STREQUAL "")
+# If `WEBP_ROOT_DIR` was defined in the environment, use it.
+IF(DEFINED WEBP_ROOT_DIR)
+  # Pass.
+ELSEIF(DEFINED ENV{WEBP_ROOT_DIR})
   SET(WEBP_ROOT_DIR $ENV{WEBP_ROOT_DIR})
+ELSE()
+  SET(WEBP_ROOT_DIR "")
 ENDIF()
 
 SET(_webp_SEARCH_DIRS
@@ -54,7 +59,7 @@ FOREACH(COMPONENT ${_webp_FIND_COMPONENTS})
   LIST(APPEND _webp_LIBRARIES "${WEBP_${UPPERCOMPONENT}_LIBRARY}")
 ENDFOREACH()
 
-IF(${WEBP_WEBP_LIBRARY_NOTFOUND})
+IF(NOT WEBP_WEBP_LIBRARY)
   set(WEBP_FOUND FALSE)
 ELSE()
   # handle the QUIETLY and REQUIRED arguments and set WEBP_FOUND to TRUE if

@@ -1,5 +1,6 @@
+# SPDX-FileCopyrightText: 2021-2022 Intel Corporation
+#
 # SPDX-License-Identifier: BSD-3-Clause
-# Copyright 2021-2022 Intel Corporation
 
 # - Find Level Zero library
 # Find Level Zero headers and libraries needed by oneAPI implementation
@@ -10,8 +11,13 @@
 #                 This can also be an environment variable.
 #  LEVEL_ZERO_FOUND, If false, then don't try to use L0.
 
-IF(NOT LEVEL_ZERO_ROOT_DIR AND NOT $ENV{LEVEL_ZERO_ROOT_DIR} STREQUAL "")
+# If `LEVEL_ZERO_ROOT_DIR` was defined in the environment, use it.
+IF(DEFINED LEVEL_ZERO_ROOT_DIR)
+  # Pass.
+ELSEIF(DEFINED ENV{LEVEL_ZERO_ROOT_DIR})
   SET(LEVEL_ZERO_ROOT_DIR $ENV{LEVEL_ZERO_ROOT_DIR})
+ELSE()
+  SET(LEVEL_ZERO_ROOT_DIR "")
 ENDIF()
 
 SET(_level_zero_search_dirs
@@ -44,7 +50,7 @@ FIND_PACKAGE_HANDLE_STANDARD_ARGS(LevelZero DEFAULT_MSG _LEVEL_ZERO_LIBRARY _LEV
 
 IF(LevelZero_FOUND)
   SET(LEVEL_ZERO_LIBRARY ${_LEVEL_ZERO_LIBRARY})
-  SET(LEVEL_ZERO_INCLUDE_DIR ${_LEVEL_ZERO_INCLUDE_DIR} ${_LEVEL_ZERO_INCLUDE_PARENT_DIR})
+  SET(LEVEL_ZERO_INCLUDE_DIR ${_LEVEL_ZERO_INCLUDE_DIR})
   SET(LEVEL_ZERO_FOUND TRUE)
 ELSE()
   SET(LEVEL_ZERO_FOUND FALSE)

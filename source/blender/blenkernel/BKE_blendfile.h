@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
@@ -49,6 +49,13 @@ bool BKE_blendfile_library_path_explode(const char *path,
                                         char **r_name);
 
 /**
+ * Check whether a given path is actually a Blender-readable, valid .blend file.
+ *
+ * \note Currently does attempt to open and read (part of) the given file.
+ */
+bool BKE_blendfile_is_readable(const char *path, struct ReportList *reports);
+
+/**
  * Shared setup function that makes the data from `bfd` into the current blend file,
  * replacing the contents of #G.main.
  * This uses the bfd returned by #BKE_blendfile_read and similarly named functions.
@@ -65,7 +72,7 @@ void BKE_blendfile_read_setup_readfile(struct bContext *C,
                                        const char *startup_app_template);
 
 /**
- * Simpler version of #BKE_blendfile_read_setup_readfile used when reading undoe steps from
+ * Simpler version of #BKE_blendfile_read_setup_readfile used when reading undo steps from
  * memfile. */
 void BKE_blendfile_read_setup_undo(struct bContext *C,
                                    struct BlendFileData *bfd,
