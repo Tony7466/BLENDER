@@ -554,7 +554,7 @@ looks:
         - !<CDLTransform> {power: [1.0912, 1.0912, 1.0912]}
 
   - !<Look>
-    name: Greyscale
+    name: AgX - Greyscale
     process_space: AgX Log
     description: A Black and White Look
     transform: !<GroupTransform>
