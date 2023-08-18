@@ -51,13 +51,17 @@ void VKBatch::draw(int vertex_first, int vertex_count, int instance_first, int i
   context.command_buffer_get().submit();
 }
 
-void VKBatch::draw_indirect(GPUStorageBuf * /*indirect_buf*/, intptr_t /*offset*/) {}
+void VKBatch::draw_indirect(GPUStorageBuf * /*indirect_buf*/, intptr_t /*offset*/)
+{
+  NOT_YET_IMPLEMENTED;
+}
 
 void VKBatch::multi_draw_indirect(GPUStorageBuf * /*indirect_buf*/,
                                   int /*count*/,
                                   intptr_t /*offset*/,
                                   intptr_t /*stride*/)
 {
+  NOT_YET_IMPLEMENTED;
 }
 
 VKVertexBuffer *VKBatch::vertex_buffer_get(int index)

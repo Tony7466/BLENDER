@@ -53,9 +53,6 @@ void VKCommandBuffer::init(const VkDevice vk_device,
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     vkCreateFence(vk_device_, &fenceInfo, vk_allocation_callbacks, &vk_fence_);
   }
-  else {
-    vkResetFences(vk_device_, 1, &vk_fence_);
-  }
 }
 
 void VKCommandBuffer::begin_recording()
@@ -548,13 +545,13 @@ void VKCommandBuffer::submit_encoded_commands()
   submit_info.commandBufferCount = 1;
   submit_info.pCommandBuffers = &vk_command_buffer_;
 
+  vkResetFences(vk_device_, 1, &vk_fence_);
   vkQueueSubmit(vk_queue_, 1, &submit_info, vk_fence_);
   submission_id_.next();
   stage_transfer(Stage::BetweenRecordingAndSubmitting, Stage::Submitted);
 
   /* Wait for execution to finish. */
   vkWaitForFences(vk_device_, 1, &vk_fence_, VK_TRUE, FenceTimeout);
-  vkResetFences(vk_device_, 1, &vk_fence_);
   stage_transfer(Stage::Submitted, Stage::Executed);
 }
 

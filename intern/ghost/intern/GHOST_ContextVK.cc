@@ -496,8 +496,9 @@ GHOST_TSuccess GHOST_ContextVK::swapBuffers()
 
   VkDevice device = vulkan_device->device;
 
-  VkResult result;
+  VK_CHECK(vkResetFences(device, 1, &m_in_flight_fences[m_currentFrame]));
   VK_CHECK(vkQueueSubmit(m_graphic_queue, 1, &submit_info, m_in_flight_fences[m_currentFrame]));
+  VkResult result;
   do {
     result = vkWaitForFences(device, 1, &m_in_flight_fences[m_currentFrame], VK_TRUE, 10000);
   } while (result == VK_TIMEOUT);
@@ -529,7 +530,6 @@ GHOST_TSuccess GHOST_ContextVK::swapBuffers()
   }
 
   m_currentFrame = (m_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-  vkResetFences(device, 1, &m_in_flight_fences[m_currentFrame]);
 
   return GHOST_kSuccess;
 }
