@@ -532,24 +532,24 @@ float perlin(float4 position)
 /* Positive fractal perlin noise. */
 
 template<typename T>
-float perlin_fbm(T position, float octaves, float roughness, float lacunarity, bool normalize)
+float perlin_fbm(
+    T p, const float detail, const float roughness, const float lacunarity, const bool normalize)
 {
   float fscale = 1.0f;
   float amp = 1.0f;
   float maxamp = 0.0f;
   float sum = 0.0f;
-  octaves = CLAMPIS(octaves, 0.0f, 15.0f);
 
-  for (int i = 0; i <= int(octaves); i++) {
-    float t = perlin_signed(fscale * position);
+  for (int i = 0; i <= int(detail); i++) {
+    float t = perlin_signed(fscale * p);
     sum += t * amp;
     maxamp += amp;
-    amp *= CLAMPIS(roughness, 0.0f, 1.0f);
+    amp *= roughness;
     fscale *= lacunarity;
   }
-  float rmd = octaves - std::floor(octaves);
+  float rmd = detail - std::floor(detail);
   if (rmd != 0.0f) {
-    float t = perlin_signed(fscale * position);
+    float t = perlin_signed(fscale * p);
     float sum2 = sum + t * amp;
     return normalize ? mix(0.5f * sum / maxamp + 0.5f, 0.5f * sum2 / (maxamp + amp) + 0.5f, rmd) :
                        mix(sum, sum2, rmd);
@@ -560,22 +560,18 @@ float perlin_fbm(T position, float octaves, float roughness, float lacunarity, b
 }
 
 template<typename T>
-float perlin_multi_fractal(T p,
-                           const float octaves_unclamped,
-                           const float roughness,
-                           const float lacunarity)
+float perlin_multi_fractal(T p, const float detail, const float roughness, const float lacunarity)
 {
   float value = 1.0f;
   float pwr = 1.0f;
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
 
-  for (int i = 0; i <= int(octaves); i++) {
+  for (int i = 0; i <= int(detail); i++) {
     value *= (pwr * perlin_signed(p) + 1.0f);
     pwr *= roughness;
     p *= lacunarity;
   }
 
-  const float rmd = octaves - floorf(octaves);
+  const float rmd = detail - floorf(detail);
   if (rmd != 0.0f) {
     value *= (rmd * pwr * perlin_signed(p) + 1.0f); /* correct? */
   }
@@ -584,27 +580,23 @@ float perlin_multi_fractal(T p,
 }
 
 template<typename T>
-float perlin_hetero_terrain(T p,
-                            const float octaves_unclamped,
-                            const float roughness,
-                            const float lacunarity,
-                            const float offset)
+float perlin_hetero_terrain(
+    T p, const float detail, const float roughness, const float lacunarity, const float offset)
 {
   float pwr = roughness;
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
 
   /* First unscaled octave of function; later octaves are scaled. */
   float value = offset + perlin_signed(p);
   p *= lacunarity;
 
-  for (int i = 1; i <= int(octaves); i++) {
+  for (int i = 1; i <= int(detail); i++) {
     float increment = (perlin_signed(p) + offset) * pwr * value;
     value += increment;
     pwr *= roughness;
     p *= lacunarity;
   }
 
-  const float rmd = octaves - floorf(octaves);
+  const float rmd = detail - floorf(detail);
   if (rmd != 0.0f) {
     float increment = (perlin_signed(p) + offset) * pwr * value;
     value += rmd * increment;
@@ -615,7 +607,7 @@ float perlin_hetero_terrain(T p,
 
 template<typename T>
 float perlin_hybrid_multi_fractal(T p,
-                                  const float octaves_unclamped,
+                                  const float detail,
                                   const float roughness,
                                   const float lacunarity,
                                   const float offset,
@@ -625,9 +617,7 @@ float perlin_hybrid_multi_fractal(T p,
   float value = 0.0f;
   float weight = 1.0f;
 
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  for (int i = 0; (weight > 0.001f) && (i <= int(octaves)); i++) {
+  for (int i = 0; (weight > 0.001f) && (i <= int(detail)); i++) {
     if (weight > 1.0f) {
       weight = 1.0f;
     }
@@ -639,7 +629,7 @@ float perlin_hybrid_multi_fractal(T p,
     p *= lacunarity;
   }
 
-  const float rmd = octaves - floorf(octaves);
+  const float rmd = detail - floorf(detail);
   if ((rmd != 0.0f) && (weight > 0.001f)) {
     if (weight > 1.0f) {
       weight = 1.0f;
@@ -653,7 +643,7 @@ float perlin_hybrid_multi_fractal(T p,
 
 template<typename T>
 float perlin_ridged_multi_fractal(T p,
-                                  const float octaves_unclamped,
+                                  const float detail,
                                   const float roughness,
                                   const float lacunarity,
                                   const float offset,
@@ -666,9 +656,7 @@ float perlin_ridged_multi_fractal(T p,
   float value = signal;
   float weight = 1.0f;
 
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  for (int i = 1; i <= int(octaves); i++) {
+  for (int i = 1; i <= int(detail); i++) {
     p *= lacunarity;
     weight = CLAMPIS(signal * gain, 0.0f, 1.0f);
     signal = offset - std::abs(perlin_signed(p));
@@ -691,7 +679,7 @@ enum {
 
 template<typename T>
 float perlin_select(T p,
-                    float octaves,
+                    float detail,
                     float roughness,
                     float lacunarity,
                     float offset,
@@ -701,19 +689,19 @@ float perlin_select(T p,
 {
   switch (type) {
     case NOISE_SHD_PERLIN_MULTIFRACTAL: {
-      return perlin_multi_fractal(p, octaves, roughness, lacunarity);
+      return perlin_multi_fractal(p, detail, roughness, lacunarity);
     }
     case NOISE_SHD_PERLIN_FBM: {
-      return perlin_fbm(p, octaves, roughness, lacunarity, normalize);
+      return perlin_fbm(p, detail, roughness, lacunarity, normalize);
     }
     case NOISE_SHD_PERLIN_HYBRID_MULTIFRACTAL: {
-      return perlin_hybrid_multi_fractal(p, octaves, roughness, lacunarity, offset, gain);
+      return perlin_hybrid_multi_fractal(p, detail, roughness, lacunarity, offset, gain);
     }
     case NOISE_SHD_PERLIN_RIDGED_MULTIFRACTAL: {
-      return perlin_ridged_multi_fractal(p, octaves, roughness, lacunarity, offset, gain);
+      return perlin_ridged_multi_fractal(p, detail, roughness, lacunarity, offset, gain);
     }
     case NOISE_SHD_PERLIN_HETERO_TERRAIN: {
-      return perlin_hetero_terrain(p, octaves, roughness, lacunarity, offset);
+      return perlin_hetero_terrain(p, detail, roughness, lacunarity, offset);
     }
     default: {
       return 0.0;
@@ -786,7 +774,7 @@ BLI_INLINE float4 perlin_distortion(float4 position, float strength)
 
 template<typename T>
 float perlin_fractal_distorted(T position,
-                               float octaves,
+                               float detail,
                                float roughness,
                                float lacunarity,
                                float offset,
@@ -796,11 +784,11 @@ float perlin_fractal_distorted(T position,
                                bool normalize)
 {
   position += perlin_distortion(position, distortion);
-  return perlin_select(position, octaves, roughness, lacunarity, offset, gain, type, normalize);
+  return perlin_select(position, detail, roughness, lacunarity, offset, gain, type, normalize);
 }
 
 template float perlin_fractal_distorted<float>(float position,
-                                               float octaves,
+                                               float detail,
                                                float roughness,
                                                float lacunarity,
                                                float offset,
@@ -809,7 +797,7 @@ template float perlin_fractal_distorted<float>(float position,
                                                int type,
                                                bool normalize);
 template float perlin_fractal_distorted<float2>(float2 position,
-                                                float octaves,
+                                                float detail,
                                                 float roughness,
                                                 float lacunarity,
                                                 float offset,
@@ -818,7 +806,7 @@ template float perlin_fractal_distorted<float2>(float2 position,
                                                 int type,
                                                 bool normalize);
 template float perlin_fractal_distorted<float3>(float3 position,
-                                                float octaves,
+                                                float detail,
                                                 float roughness,
                                                 float lacunarity,
                                                 float offset,
@@ -827,7 +815,7 @@ template float perlin_fractal_distorted<float3>(float3 position,
                                                 int type,
                                                 bool normalize);
 template float perlin_fractal_distorted<float4>(float4 position,
-                                                float octaves,
+                                                float detail,
                                                 float roughness,
                                                 float lacunarity,
                                                 float offset,
@@ -840,7 +828,7 @@ template float perlin_fractal_distorted<float4>(float4 position,
  * compatibility with shading functions. */
 
 float3 perlin_float3_fractal_distorted(float position,
-                                       float octaves,
+                                       float detail,
                                        float roughness,
                                        float lacunarity,
                                        float offset,
@@ -851,9 +839,9 @@ float3 perlin_float3_fractal_distorted(float position,
 {
   position += perlin_distortion(position, distortion);
   return float3(
-      perlin_select(position, octaves, roughness, lacunarity, offset, gain, type, normalize),
+      perlin_select(position, detail, roughness, lacunarity, offset, gain, type, normalize),
       perlin_select(position + random_float_offset(1.0f),
-                    octaves,
+                    detail,
                     roughness,
                     lacunarity,
                     offset,
@@ -861,7 +849,7 @@ float3 perlin_float3_fractal_distorted(float position,
                     type,
                     normalize),
       perlin_select(position + random_float_offset(2.0f),
-                    octaves,
+                    detail,
                     roughness,
                     lacunarity,
                     offset,
@@ -871,7 +859,7 @@ float3 perlin_float3_fractal_distorted(float position,
 }
 
 float3 perlin_float3_fractal_distorted(float2 position,
-                                       float octaves,
+                                       float detail,
                                        float roughness,
                                        float lacunarity,
                                        float offset,
@@ -882,9 +870,9 @@ float3 perlin_float3_fractal_distorted(float2 position,
 {
   position += perlin_distortion(position, distortion);
   return float3(
-      perlin_select(position, octaves, roughness, lacunarity, offset, gain, type, normalize),
+      perlin_select(position, detail, roughness, lacunarity, offset, gain, type, normalize),
       perlin_select(position + random_float2_offset(2.0f),
-                    octaves,
+                    detail,
                     roughness,
                     lacunarity,
                     offset,
@@ -892,7 +880,7 @@ float3 perlin_float3_fractal_distorted(float2 position,
                     type,
                     normalize),
       perlin_select(position + random_float2_offset(3.0f),
-                    octaves,
+                    detail,
                     roughness,
                     lacunarity,
                     offset,
@@ -902,7 +890,7 @@ float3 perlin_float3_fractal_distorted(float2 position,
 }
 
 float3 perlin_float3_fractal_distorted(float3 position,
-                                       float octaves,
+                                       float detail,
                                        float roughness,
                                        float lacunarity,
                                        float offset,
@@ -913,9 +901,9 @@ float3 perlin_float3_fractal_distorted(float3 position,
 {
   position += perlin_distortion(position, distortion);
   return float3(
-      perlin_select(position, octaves, roughness, lacunarity, offset, gain, type, normalize),
+      perlin_select(position, detail, roughness, lacunarity, offset, gain, type, normalize),
       perlin_select(position + random_float3_offset(3.0f),
-                    octaves,
+                    detail,
                     roughness,
                     lacunarity,
                     offset,
@@ -923,7 +911,7 @@ float3 perlin_float3_fractal_distorted(float3 position,
                     type,
                     normalize),
       perlin_select(position + random_float3_offset(4.0f),
-                    octaves,
+                    detail,
                     roughness,
                     lacunarity,
                     offset,
@@ -933,7 +921,7 @@ float3 perlin_float3_fractal_distorted(float3 position,
 }
 
 float3 perlin_float3_fractal_distorted(float4 position,
-                                       float octaves,
+                                       float detail,
                                        float roughness,
                                        float lacunarity,
                                        float offset,
@@ -944,9 +932,9 @@ float3 perlin_float3_fractal_distorted(float4 position,
 {
   position += perlin_distortion(position, distortion);
   return float3(
-      perlin_select(position, octaves, roughness, lacunarity, offset, gain, type, normalize),
+      perlin_select(position, detail, roughness, lacunarity, offset, gain, type, normalize),
       perlin_select(position + random_float4_offset(4.0f),
-                    octaves,
+                    detail,
                     roughness,
                     lacunarity,
                     offset,
@@ -954,7 +942,7 @@ float3 perlin_float3_fractal_distorted(float4 position,
                     type,
                     normalize),
       perlin_select(position + random_float4_offset(5.0f),
-                    octaves,
+                    detail,
                     roughness,
                     lacunarity,
                     offset,

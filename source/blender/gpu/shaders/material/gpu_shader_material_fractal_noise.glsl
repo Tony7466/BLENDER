@@ -11,20 +11,19 @@
                   bool normalize) \
   { \
     T p = co; \
-    float octaves = clamp(detail, 0.0, 15.0); \
     float fscale = 1.0; \
     float amp = 1.0; \
     float maxamp = 0.0; \
     float sum = 0.0; \
 \
-    for (int i = 0; i <= int(octaves); i++) { \
+    for (int i = 0; i <= int(detail); i++) { \
       float t = snoise(fscale * p); \
       sum += t * amp; \
       maxamp += amp; \
-      amp *= clamp(roughness, 0.0, 1.0); \
+      amp *= roughness; \
       fscale *= lacunarity; \
     } \
-    float rmd = octaves - floor(octaves); \
+    float rmd = detail - floor(detail); \
     if (rmd != 0.0) { \
       float t = snoise(fscale * p); \
       float sum2 = sum + t * amp; \
@@ -46,17 +45,16 @@
                             bool normalize) \
   { \
     T p = co; \
-    float octaves = clamp(detail, 0.0, 15.0); \
     float value = 1.0; \
     float pwr = 1.0; \
 \
-    for (int i = 0; i <= int(octaves); i++) { \
+    for (int i = 0; i <= int(detail); i++) { \
       value *= (pwr * snoise(p) + 1.0); \
       pwr *= roughness; \
       p *= lacunarity; \
     } \
 \
-    float rmd = octaves - floor(octaves); \
+    float rmd = detail - floor(detail); \
     if (rmd != 0.0) { \
       value *= (rmd * pwr * snoise(p) + 1.0); /* correct? */ \
     } \
@@ -74,21 +72,20 @@
                              bool normalize) \
   { \
     T p = co; \
-    float octaves = clamp(detail, 0.0, 15.0); \
     float pwr = roughness; \
 \
     /* first unscaled octave of function; later octaves are scaled */ \
     float value = offset + snoise(p); \
     p *= lacunarity; \
 \
-    for (int i = 1; i <= int(octaves); i++) { \
+    for (int i = 1; i <= int(detail); i++) { \
       float increment = (snoise(p) + offset) * pwr * value; \
       value += increment; \
       pwr *= roughness; \
       p *= lacunarity; \
     } \
 \
-    float rmd = octaves - floor(octaves); \
+    float rmd = detail - floor(detail); \
     if (rmd != 0.0) { \
       float increment = (snoise(p) + offset) * pwr * value; \
       value += rmd * increment; \
@@ -107,12 +104,11 @@
                                    bool normalize) \
   { \
     T p = co; \
-    float octaves = clamp(detail, 0.0, 15.0); \
     float pwr = 1.0; \
     float value = 0.0; \
     float weight = 1.0; \
 \
-    for (int i = 0; (weight > 0.001) && (i <= int(octaves)); i++) { \
+    for (int i = 0; (weight > 0.001) && (i <= int(detail)); i++) { \
       if (weight > 1.0) { \
         weight = 1.0; \
       } \
@@ -124,7 +120,7 @@
       p *= lacunarity; \
     } \
 \
-    float rmd = octaves - floor(octaves); \
+    float rmd = detail - floor(detail); \
     if ((rmd != 0.0) && (weight > 0.001)) { \
       if (weight > 1.0) { \
         weight = 1.0; \
@@ -146,7 +142,6 @@
                                    bool normalize) \
   { \
     T p = co; \
-    float octaves = clamp(detail, 0.0, 15.0); \
     float pwr = roughness; \
 \
     float signal = offset - abs(snoise(p)); \
@@ -154,7 +149,7 @@
     float value = signal; \
     float weight = 1.0; \
 \
-    for (int i = 1; i <= int(octaves); i++) { \
+    for (int i = 1; i <= int(detail); i++) { \
       p *= lacunarity; \
       weight = clamp(signal * gain, 0.0, 1.0); \
       signal = offset - abs(snoise(p)); \

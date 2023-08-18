@@ -149,6 +149,9 @@ void node_noise_tex_fbm_1d(vec3 co,
                            out float value,
                            out vec4 color)
 {
+  detail = clamp(detail, 0.0, 15.0);
+  roughness = clamp(roughness, 0.0, 1.0);
+
   float p = w * scale;
 
   NOISE_FRACTAL_DISTORTED_1D(noise_fbm)
@@ -167,6 +170,9 @@ void node_noise_tex_fbm_2d(vec3 co,
                            out float value,
                            out vec4 color)
 {
+  detail = clamp(detail, 0.0, 15.0);
+  roughness = clamp(roughness, 0.0, 1.0);
+
   vec2 p = co.xy * scale;
 
   NOISE_FRACTAL_DISTORTED_2D(noise_fbm)
@@ -185,6 +191,9 @@ void node_noise_tex_fbm_3d(vec3 co,
                            out float value,
                            out vec4 color)
 {
+  detail = clamp(detail, 0.0, 15.0);
+  roughness = clamp(roughness, 0.0, 1.0);
+
   vec3 p = co * scale;
 
   NOISE_FRACTAL_DISTORTED_3D(noise_fbm)
@@ -203,6 +212,9 @@ void node_noise_tex_fbm_4d(vec3 co,
                            out float value,
                            out vec4 color)
 {
+  detail = clamp(detail, 0.0, 15.0);
+  roughness = clamp(roughness, 0.0, 1.0);
+
   vec4 p = vec4(co, w) * scale;
 
   NOISE_FRACTAL_DISTORTED_4D(noise_fbm)
@@ -223,6 +235,9 @@ void node_noise_tex_multi_fractal_1d(vec3 co,
                                      out float value,
                                      out vec4 color)
 {
+  detail = clamp(detail, 0.0, 15.0);
+  roughness = clamp(roughness, 0.0, 1.0);
+
   float p = w * scale;
 
   NOISE_FRACTAL_DISTORTED_1D(noise_multi_fractal)
@@ -241,6 +256,9 @@ void node_noise_tex_multi_fractal_2d(vec3 co,
                                      out float value,
                                      out vec4 color)
 {
+  detail = clamp(detail, 0.0, 15.0);
+  roughness = clamp(roughness, 0.0, 1.0);
+
   vec2 p = co.xy * scale;
 
   NOISE_FRACTAL_DISTORTED_2D(noise_multi_fractal)
@@ -259,6 +277,9 @@ void node_noise_tex_multi_fractal_3d(vec3 co,
                                      out float value,
                                      out vec4 color)
 {
+  detail = clamp(detail, 0.0, 15.0);
+  roughness = clamp(roughness, 0.0, 1.0);
+
   vec3 p = co * scale;
 
   NOISE_FRACTAL_DISTORTED_3D(noise_multi_fractal)
@@ -277,6 +298,9 @@ void node_noise_tex_multi_fractal_4d(vec3 co,
                                      out float value,
                                      out vec4 color)
 {
+  detail = clamp(detail, 0.0, 15.0);
+  roughness = clamp(roughness, 0.0, 1.0);
+
   vec4 p = vec4(co, w) * scale;
 
   NOISE_FRACTAL_DISTORTED_4D(noise_multi_fractal)
@@ -297,6 +321,9 @@ void node_noise_tex_hetero_terrain_1d(vec3 co,
                                       out float value,
                                       out vec4 color)
 {
+  detail = clamp(detail, 0.0, 15.0);
+  roughness = clamp(roughness, 0.0, 1.0);
+
   float p = w * scale;
 
   NOISE_FRACTAL_DISTORTED_1D(noise_hetero_terrain)
@@ -315,6 +342,9 @@ void node_noise_tex_hetero_terrain_2d(vec3 co,
                                       out float value,
                                       out vec4 color)
 {
+  detail = clamp(detail, 0.0, 15.0);
+  roughness = clamp(roughness, 0.0, 1.0);
+
   vec2 p = co.xy * scale;
 
   NOISE_FRACTAL_DISTORTED_2D(noise_hetero_terrain)
@@ -333,6 +363,9 @@ void node_noise_tex_hetero_terrain_3d(vec3 co,
                                       out float value,
                                       out vec4 color)
 {
+  detail = clamp(detail, 0.0, 15.0);
+  roughness = clamp(roughness, 0.0, 1.0);
+
   vec3 p = co * scale;
 
   NOISE_FRACTAL_DISTORTED_3D(noise_hetero_terrain)
@@ -351,6 +384,9 @@ void node_noise_tex_hetero_terrain_4d(vec3 co,
                                       out float value,
                                       out vec4 color)
 {
+  detail = clamp(detail, 0.0, 15.0);
+  roughness = clamp(roughness, 0.0, 1.0);
+
   vec4 p = vec4(co, w) * scale;
 
   NOISE_FRACTAL_DISTORTED_4D(noise_hetero_terrain)
@@ -371,6 +407,9 @@ void node_noise_tex_hybrid_multi_fractal_1d(vec3 co,
                                             out float value,
                                             out vec4 color)
 {
+  detail = clamp(detail, 0.0, 15.0);
+  roughness = clamp(roughness, 0.0, 1.0);
+
   float p = w * scale;
 
   NOISE_FRACTAL_DISTORTED_1D(noise_hybrid_multi_fractal)
@@ -389,6 +428,9 @@ void node_noise_tex_hybrid_multi_fractal_2d(vec3 co,
                                             out float value,
                                             out vec4 color)
 {
+  detail = clamp(detail, 0.0, 15.0);
+  roughness = clamp(roughness, 0.0, 1.0);
+
   vec2 p = co.xy * scale;
 
   NOISE_FRACTAL_DISTORTED_2D(noise_hybrid_multi_fractal)
@@ -407,6 +449,9 @@ void node_noise_tex_hybrid_multi_fractal_3d(vec3 co,
                                             out float value,
                                             out vec4 color)
 {
+  detail = clamp(detail, 0.0, 15.0);
+  roughness = clamp(roughness, 0.0, 1.0);
+
   vec3 p = co * scale;
 
   NOISE_FRACTAL_DISTORTED_3D(noise_hybrid_multi_fractal)
@@ -425,6 +470,9 @@ void node_noise_tex_hybrid_multi_fractal_4d(vec3 co,
                                             out float value,
                                             out vec4 color)
 {
+  detail = clamp(detail, 0.0, 15.0);
+  roughness = clamp(roughness, 0.0, 1.0);
+
   vec4 p = vec4(co, w) * scale;
 
   NOISE_FRACTAL_DISTORTED_4D(noise_hybrid_multi_fractal)
@@ -445,6 +493,9 @@ void node_noise_tex_ridged_multi_fractal_1d(vec3 co,
                                             out float value,
                                             out vec4 color)
 {
+  detail = clamp(detail, 0.0, 15.0);
+  roughness = clamp(roughness, 0.0, 1.0);
+
   float p = w * scale;
 
   NOISE_FRACTAL_DISTORTED_1D(noise_ridged_multi_fractal)
@@ -463,6 +514,9 @@ void node_noise_tex_ridged_multi_fractal_2d(vec3 co,
                                             out float value,
                                             out vec4 color)
 {
+  detail = clamp(detail, 0.0, 15.0);
+  roughness = clamp(roughness, 0.0, 1.0);
+
   vec2 p = co.xy * scale;
 
   NOISE_FRACTAL_DISTORTED_2D(noise_ridged_multi_fractal)
@@ -481,6 +535,9 @@ void node_noise_tex_ridged_multi_fractal_3d(vec3 co,
                                             out float value,
                                             out vec4 color)
 {
+  detail = clamp(detail, 0.0, 15.0);
+  roughness = clamp(roughness, 0.0, 1.0);
+
   vec3 p = co * scale;
 
   NOISE_FRACTAL_DISTORTED_3D(noise_ridged_multi_fractal)
@@ -499,6 +556,9 @@ void node_noise_tex_ridged_multi_fractal_4d(vec3 co,
                                             out float value,
                                             out vec4 color)
 {
+  detail = clamp(detail, 0.0, 15.0);
+  roughness = clamp(roughness, 0.0, 1.0);
+
   vec4 p = vec4(co, w) * scale;
 
   NOISE_FRACTAL_DISTORTED_4D(noise_ridged_multi_fractal)

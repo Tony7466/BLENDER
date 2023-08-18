@@ -75,20 +75,19 @@ float safe_snoise(vector4 p)
   float noise_fbm(T co, float detail, float roughness, float lacunarity, int use_normalize) \
   { \
     T p = co; \
-    float octaves = clamp(detail, 0.0, 15.0); \
     float fscale = 1.0; \
     float amp = 1.0; \
     float maxamp = 0.0; \
     float sum = 0.0; \
 \
-    for (int i = 0; i <= int(octaves); i++) { \
+    for (int i = 0; i <= int(detail); i++) { \
       float t = safe_snoise(fscale * p); \
       sum += t * amp; \
       maxamp += amp; \
-      amp *= clamp(roughness, 0.0, 1.0); \
+      amp *= roughness; \
       fscale *= lacunarity; \
     } \
-    float rmd = octaves - floor(octaves); \
+    float rmd = detail - floor(detail); \
     if (rmd != 0.0) { \
       float t = safe_snoise(fscale * p); \
       float sum2 = sum + t * amp; \
@@ -105,17 +104,16 @@ float safe_snoise(vector4 p)
   float noise_multi_fractal(T co, float detail, float roughness, float lacunarity) \
   { \
     T p = co; \
-    float octaves = clamp(detail, 0.0, 15.0); \
     float value = 1.0; \
     float pwr = 1.0; \
 \
-    for (int i = 0; i <= (int)octaves; i++) { \
+    for (int i = 0; i <= (int)detail; i++) { \
       value *= (pwr * safe_snoise(p) + 1.0); \
       pwr *= roughness; \
       p *= lacunarity; \
     } \
 \
-    float rmd = octaves - floor(octaves); \
+    float rmd = detail - floor(detail); \
     if (rmd != 0.0) { \
       value *= (rmd * pwr * safe_snoise(p) + 1.0); /* correct? */ \
     } \
@@ -127,21 +125,20 @@ float safe_snoise(vector4 p)
   float noise_hetero_terrain(T co, float detail, float roughness, float lacunarity, float offset) \
   { \
     T p = co; \
-    float octaves = clamp(detail, 0.0, 15.0); \
     float pwr = roughness; \
 \
     /* first unscaled octave of function; later octaves are scaled */ \
     float value = offset + safe_snoise(p); \
     p *= lacunarity; \
 \
-    for (int i = 1; i <= (int)octaves; i++) { \
+    for (int i = 1; i <= (int)detail; i++) { \
       float increment = (safe_snoise(p) + offset) * pwr * value; \
       value += increment; \
       pwr *= roughness; \
       p *= lacunarity; \
     } \
 \
-    float rmd = octaves - floor(octaves); \
+    float rmd = detail - floor(detail); \
     if (rmd != 0.0) { \
       float increment = (safe_snoise(p) + offset) * pwr * value; \
       value += rmd * increment; \
@@ -155,12 +152,11 @@ float safe_snoise(vector4 p)
       T co, float detail, float roughness, float lacunarity, float offset, float gain) \
   { \
     T p = co; \
-    float octaves = clamp(detail, 0.0, 15.0); \
     float pwr = 1.0; \
     float value = 0.0; \
     float weight = 1.0; \
 \
-    for (int i = 0; (weight > 0.001) && (i <= (int)octaves); i++) { \
+    for (int i = 0; (weight > 0.001) && (i <= (int)detail); i++) { \
       if (weight > 1.0) { \
         weight = 1.0; \
       } \
@@ -172,7 +168,7 @@ float safe_snoise(vector4 p)
       p *= lacunarity; \
     } \
 \
-    float rmd = octaves - floor(octaves); \
+    float rmd = detail - floor(detail); \
     if ((rmd != 0.0) && (weight > 0.001)) { \
       if (weight > 1.0) { \
         weight = 1.0; \
@@ -189,7 +185,6 @@ float safe_snoise(vector4 p)
       T co, float detail, float roughness, float lacunarity, float offset, float gain) \
   { \
     T p = co; \
-    float octaves = clamp(detail, 0.0, 15.0); \
     float pwr = roughness; \
 \
     float signal = offset - fabs(safe_snoise(p)); \
@@ -197,7 +192,7 @@ float safe_snoise(vector4 p)
     float value = signal; \
     float weight = 1.0; \
 \
-    for (int i = 1; i <= (int)octaves; i++) { \
+    for (int i = 1; i <= (int)detail; i++) { \
       p *= lacunarity; \
       weight = clamp(signal * gain, 0.0, 1.0); \
       signal = offset - fabs(safe_snoise(p)); \

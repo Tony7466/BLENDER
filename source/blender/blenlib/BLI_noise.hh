@@ -75,13 +75,13 @@ float perlin(float4 position);
 /* Perlin fractal Brownian motion. */
 
 template<typename T>
-float perlin_fbm(T position, float octaves, float roughness, float lacunarity, bool normalize);
+float perlin_fbm(T p, float detail, float roughness, float lacunarity, bool normalize);
 
 /* Distorted fractal perlin noise. */
 
 template<typename T>
 float perlin_fractal_distorted(T position,
-                               float octaves,
+                               float detail,
                                float roughness,
                                float lacunarity,
                                float offset,
@@ -93,7 +93,7 @@ float perlin_fractal_distorted(T position,
 /* Distorted fractal perlin noise that outputs a float3. */
 
 float3 perlin_float3_fractal_distorted(float position,
-                                       float octaves,
+                                       float detail,
                                        float roughness,
                                        float lacunarity,
                                        float offset,
@@ -102,7 +102,7 @@ float3 perlin_float3_fractal_distorted(float position,
                                        int type,
                                        bool normalize);
 float3 perlin_float3_fractal_distorted(float2 position,
-                                       float octaves,
+                                       float detail,
                                        float roughness,
                                        float lacunarity,
                                        float offset,
@@ -111,7 +111,7 @@ float3 perlin_float3_fractal_distorted(float2 position,
                                        int type,
                                        bool normalize);
 float3 perlin_float3_fractal_distorted(float3 position,
-                                       float octaves,
+                                       float detail,
                                        float roughness,
                                        float lacunarity,
                                        float offset,
@@ -120,7 +120,7 @@ float3 perlin_float3_fractal_distorted(float3 position,
                                        int type,
                                        bool normalize);
 float3 perlin_float3_fractal_distorted(float4 position,
-                                       float octaves,
+                                       float detail,
                                        float roughness,
                                        float lacunarity,
                                        float offset,

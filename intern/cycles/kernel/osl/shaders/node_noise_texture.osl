@@ -256,17 +256,20 @@ shader node_noise_texture(int use_mapping = 0,
   if (use_mapping)
     p = transform(mapping, p);
 
+  float detail = clamp(Detail, 0.0, 15.0);
+  float roughness = clamp(Roughness, 0.0, 1.0);
+
   p *= Scale;
   float w = W * Scale;
 
   if (dimensions == "1D") {
     Fac = noise_texture(
-        w, Detail, Roughness, Lacunarity, Offset, Gain, Distortion, type, use_normalize, Color);
+        w, detail, roughness, Lacunarity, Offset, Gain, Distortion, type, use_normalize, Color);
   }
   else if (dimensions == "2D") {
     Fac = noise_texture(vector2(p[0], p[1]),
-                        Detail,
-                        Roughness,
+                        detail,
+                        roughness,
                         Lacunarity,
                         Offset,
                         Gain,
@@ -277,12 +280,12 @@ shader node_noise_texture(int use_mapping = 0,
   }
   else if (dimensions == "3D") {
     Fac = noise_texture(
-        p, Detail, Roughness, Lacunarity, Offset, Gain, Distortion, type, use_normalize, Color);
+        p, detail, roughness, Lacunarity, Offset, Gain, Distortion, type, use_normalize, Color);
   }
   else if (dimensions == "4D") {
     Fac = noise_texture(vector4(p[0], p[1], p[2], w),
-                        Detail,
-                        Roughness,
+                        detail,
+                        roughness,
                         Lacunarity,
                         Offset,
                         Gain,
