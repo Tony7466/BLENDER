@@ -362,16 +362,13 @@ static void deformVert(void *__restrict userdata,
   /* Retrieve the value of the weight vertex group if specified. */
   float weight = 1.0f;
   
-  /*if (data->dvert && data->defgrp_index != -1) {
-    weight = BKE_defvert_find_weight(&data->dvert[vertex_idx], data->defgrp_index);
+  if (data->dvert && data->defgrp_index != -1) {
+    weight = get_modifier_point_weight(&data->dvert[vertex_idx], data->invert_vgroup, data->defgrp_index);
 
-    if (data->invert_vgroup) {
-      weight = 1.0f - weight;
-    }
-  }*/
+  }
   /* Check if this vertex will be deformed. If it is not deformed we return and avoid
    * unnecessary calculations. */
-  if (weight == 0.0f) {
+  if (weight <= 0.0f) {
     return;
   }
 
@@ -515,7 +512,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   {
     check_bind_situation(smd_orig, depsgraph, DEG_get_evaluated_scene(depsgraph), ob);
     smd->bound_flags = smd_orig->bound_flags;
-    smd->flags &= GP_MOD_SDEF_CHECKED;
+    smd->flags |= GP_MOD_SDEF_CHECKED;
   }
  
   /* Exit function if bind flag is not set  and free bind data if any. */
@@ -671,10 +668,11 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
     return;
   }
 
-  /*int defgrp_index;
-  MDeformVert *dvert;
-  MOD_get_vgroup(ob, mesh, smd->defgrp_name, &dvert, &defgrp_index);
-  const bool invert_vgroup = (smd->flags & MOD_SDEF_INVERT_VGROUP) != 0;*/
+  int defgrp_index = BKE_object_defgroup_name_index(ob, smd->defgrp_name);
+  MDeformVert *dvert = gps->dvert;
+
+  //MOD_get_vgroup(ob, mesh, smd->defgrp_name, &dvert, &defgrp_index);
+  const bool invert_vgroup = (smd->flags & GP_MOD_SDEF_INVERT_VGROUP) != 0;
 
   /* Actual vertex location update starts here */
   SDefGPLayer *curr_layer = NULL;
@@ -726,9 +724,9 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
       .bind_verts = current_sdef_stroke->verts,
       .targetCos = MEM_malloc_arrayN(target_verts_num, sizeof(float[3]), "SDefTargetVertArray"),
       .gps = gps,
-      /*.dvert = dvert,
+      .dvert = dvert,
       .defgrp_index = defgrp_index,
-      .invert_vgroup = invert_vgroup,*/
+      .invert_vgroup = invert_vgroup,
       .strength = smd->strength,
   };
   
@@ -833,11 +831,14 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
 
   bool display_unbind = false;
 
-  /*uiItemR(layout, ptr, "strength", 0, NULL, ICON_NONE);
+  uiItemR(layout, ptr, "strength", 0, NULL, ICON_NONE);
   row = uiLayoutRow(layout, true);
   uiItemPointerR(row, ptr, "vertex_group", &ob_ptr, "vertex_groups", NULL, ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+  //modifier_vgroup_ui(layout, ptr, &ob_ptr, "vertex_group", "invert_vertex_group", NULL);
 
-  col = uiLayoutColumn(layout, false);
+  /*col = uiLayoutColumn(layout, false);
   uiLayoutSetEnabled(col, !is_bound);
   uiLayoutSetActive(col, !is_bound && RNA_string_length(ptr, "vertex_group") != 0);
   uiItemR(col, ptr, "use_sparse_bind", 0, NULL, ICON_NONE); */
