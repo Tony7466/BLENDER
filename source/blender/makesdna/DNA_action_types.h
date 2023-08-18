@@ -646,6 +646,8 @@ typedef enum eActionGroup_Flag {
   /* sub channel modifiers off */
   AGRP_MODIFIERS_OFF = (1 << 7),
 
+  AGRP_NO_COLOR_SET = (1 << 8),
+
   AGRP_TEMP = (1 << 30),
   AGRP_MOVED = (1u << 31),
 } eActionGroup_Flag;

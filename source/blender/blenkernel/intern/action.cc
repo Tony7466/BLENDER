@@ -403,13 +403,14 @@ void action_group_colors_sync(bActionGroup *grp, const bActionGroup *ref_grp)
       /* otherwise, init custom color with a generic/placeholder color set if
        * no previous theme color was used that we can just keep using
        */
-      else if (grp->cs.solid[0] == 0) {
+      else if (grp->flag & AGRP_NO_COLOR_SET) {
         /* define for setting colors in theme below */
         rgba_uchar_args_set(grp->cs.solid, 0xff, 0x00, 0x00, 255);
         rgba_uchar_args_set(grp->cs.select, 0x81, 0xe6, 0x14, 255);
         rgba_uchar_args_set(grp->cs.active, 0x18, 0xb6, 0xe0, 255);
       }
     }
+    grp->flag &= ~AGRP_NO_COLOR_SET;
   }
 }
 
@@ -1268,6 +1269,8 @@ bActionGroup *BKE_pose_add_group(bPose *pose, const char *name)
   STRNCPY(grp->name, name);
   BLI_addtail(&pose->agroups, grp);
   BLI_uniquename(&pose->agroups, grp, name, '.', offsetof(bActionGroup, name), sizeof(grp->name));
+
+  grp->flag |= AGRP_NO_COLOR_SET;
 
   pose->active_group = BLI_listbase_count(&pose->agroups);
 
