@@ -246,7 +246,7 @@ typedef struct GreasePencilLayerTreeNode {
   /**
    * Name of the layer/group. Dynamic length.
    */
-  char *name_ptr;
+  char *name;
   /**
    * One of `GreasePencilLayerTreeNodeType`.
    * Indicates the type of struct this element is.
@@ -523,12 +523,14 @@ typedef struct GreasePencil {
       const blender::bke::greasepencil::Layer *layer, int frame_number) const;
 
   void foreach_visible_drawing(
-      const int frame, blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function);
+      const int frame,
+      blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function);
   void foreach_visible_drawing(
       const int frame,
       blender::FunctionRef<void(int, const blender::bke::greasepencil::Drawing &)> function) const;
   void foreach_editable_drawing(
-      const int frame, blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function);
+      const int frame,
+      blender::FunctionRef<void(int, blender::bke::greasepencil::Drawing &)> function);
 
   std::optional<blender::Bounds<blender::float3>> bounds_min_max() const;
 
