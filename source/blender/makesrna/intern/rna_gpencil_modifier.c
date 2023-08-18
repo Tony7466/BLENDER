@@ -4684,12 +4684,12 @@ static void rna_def_modifier_gpencilsurdeform(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "invert_vertex_group", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_SDEF_INVERT_VGROUP);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", GP_MOD_SDEF_INVERT_VGROUP);
   RNA_def_property_ui_text(prop, "Invert", "Invert vertex group influence");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "use_sparse_bind", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "flags", MOD_SDEF_SPARSE_BIND);
+  RNA_def_property_boolean_sdna(prop, NULL, "flags", GP_MOD_SDEF_SPARSE_BIND);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(
       prop,

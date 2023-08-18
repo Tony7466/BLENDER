@@ -1429,7 +1429,7 @@ enum {
   /*So that bound_flags is not 0 and the data doesn't get freed if a frame is added*/
   GP_MOD_SDEF_SOMETHING_BOUND = (1 << 4),
 };
-/** Surface Deform modifier flags. */
+/** Surface Deform modifier flags. (flags) */
 enum {
   /* This indicates "do bind on next modifier evaluation" as well as "is bound". */
   GP_MOD_SDEF_DO_BIND = (1 << 0),
@@ -1437,7 +1437,7 @@ enum {
   /* Only store bind data for nonzero vgroup weights at the time of bind. */
   GP_MOD_SDEF_SPARSE_BIND = (1 << 2),
   GP_MOD_SDEF_WITHHOLD_EVALUATION = (1 << 3),
-  GP_MOD_SDEF_CHECKED = (1 << 3),
+  GP_MOD_SDEF_CHECKED = (1 << 4),
   
 
 };
