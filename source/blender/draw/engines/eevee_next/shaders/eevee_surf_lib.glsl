@@ -125,6 +125,7 @@ void init_interface()
 #endif
 }
 
+#ifdef MAT_SHADOW
 #ifdef GPU_VERTEX_SHADER
 void shadow_viewport_layer_set(int view_id, int lod)
 {
@@ -141,4 +142,5 @@ int shadow_view_id_get()
 {
   return gpu_Layer;
 }
+#endif
 #endif

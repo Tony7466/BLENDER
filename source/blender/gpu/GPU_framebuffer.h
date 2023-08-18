@@ -136,6 +136,7 @@ void GPU_framebuffer_restore(void);
 typedef struct GPULoadStore {
   eGPULoadOp load_action;
   eGPUStoreOp store_action;
+  float clear_value[4];
 } GPULoadStore;
 
 /* Empty bind point. */

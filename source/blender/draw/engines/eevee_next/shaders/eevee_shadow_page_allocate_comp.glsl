@@ -39,4 +39,15 @@ void main()
     }
     tile_start += lod_len;
   }
+
+#ifdef GPU_METAL
+  if (gl_GlobalInvocationID.z == 0) {
+    /* Temp: Clear render_map_buf in Metal, as we need to ensure that only the tiles updated in the
+     * current pass are marked with valid IDs. */
+    int start = SHADOW_VIEW_MAX * gl_GlobalInvocationID.x;
+    for (int i = start; i < start + SHADOW_VIEW_MAX; i++) {
+      render_map_buf[i] = 0xFFFFFFFFu;
+    }
+  }
+#endif
 }

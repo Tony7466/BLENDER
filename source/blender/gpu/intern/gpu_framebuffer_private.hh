@@ -112,8 +112,7 @@ class FrameBuffer {
                                 const void *clear_value) = 0;
 
   virtual void attachment_set_loadstore_op(GPUAttachmentType type,
-                                           eGPULoadOp load_action,
-                                           eGPUStoreOp store_action) = 0;
+                                           GPULoadStore ls) = 0;
 
   virtual void read(eGPUFrameBufferBits planes,
                     eGPUDataFormat format,

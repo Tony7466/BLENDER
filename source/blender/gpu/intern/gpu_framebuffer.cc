@@ -135,18 +135,16 @@ void FrameBuffer::load_store_config_array(const GPULoadStore *load_store_actions
   Span<GPULoadStore> color_attachments(load_store_actions + 1, actions_len - 1);
 
   if (this->attachments_[GPU_FB_DEPTH_STENCIL_ATTACHMENT].tex) {
-    this->attachment_set_loadstore_op(
-        GPU_FB_DEPTH_STENCIL_ATTACHMENT, depth_action.load_action, depth_action.store_action);
+    this->attachment_set_loadstore_op(GPU_FB_DEPTH_STENCIL_ATTACHMENT, depth_action);
   }
   if (this->attachments_[GPU_FB_DEPTH_ATTACHMENT].tex) {
-    this->attachment_set_loadstore_op(
-        GPU_FB_DEPTH_ATTACHMENT, depth_action.load_action, depth_action.store_action);
+    this->attachment_set_loadstore_op(GPU_FB_DEPTH_ATTACHMENT, depth_action);
   }
 
   GPUAttachmentType type = GPU_FB_COLOR_ATTACHMENT0;
-  for (const GPULoadStore &actions : color_attachments) {
+  for (const GPULoadStore &action : color_attachments) {
     if (this->attachments_[type].tex) {
-      this->attachment_set_loadstore_op(type, actions.load_action, actions.store_action);
+      this->attachment_set_loadstore_op(type, action);
     }
     ++type;
   }
@@ -200,7 +198,7 @@ void FrameBuffer::recursive_downsample(int max_lvl,
     for (GPUAttachment &attachment : attachments_) {
       Texture *tex = reinterpret_cast<Texture *>(attachment.tex);
       if (tex != nullptr) {
-        this->attachment_set_loadstore_op(type, GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE);
+        this->attachment_set_loadstore_op(type, {GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_STORE});
       }
       ++type;
     }

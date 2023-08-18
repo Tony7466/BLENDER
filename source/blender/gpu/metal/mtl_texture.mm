@@ -1189,7 +1189,7 @@ void gpu::MTLTexture::generate_mipmap()
   }
 
   /* Ensure mipmaps. */
-  this->ensure_mipmaps(9999);
+  this->ensure_mipmaps(mtl_max_mips_);
 
   /* Ensure texture is baked. */
   this->ensure_baked();
@@ -2136,10 +2136,22 @@ void gpu::MTLTexture::ensure_baked()
     /* Determine Resource Mode. */
     resource_mode_ = MTL_TEXTURE_MODE_DEFAULT;
 
+    /* Override storage mode if memoryless attachments are being used. */
+    if (gpu_image_usage_flags_ & GPU_TEXTURE_USAGE_MEMORYLESS) {
+      texture_descriptor_.storageMode = MTLStorageModeMemoryless;
+    }
+
     /* Standard texture allocation. */
     texture_ = [ctx->device newTextureWithDescriptor:texture_descriptor_];
+#ifndef NDEBUG
+    if (gpu_image_usage_flags_ & GPU_TEXTURE_USAGE_MEMORYLESS) {
+      texture_.label = [NSString stringWithFormat:@"MemorylessTexture_%s", this->get_name()];
+    }
+    else {
+      texture_.label = [NSString stringWithFormat:@"Texture_%s", this->get_name()];
+    }
+#endif
 
-    texture_.label = [NSString stringWithUTF8String:this->get_name()];
     BLI_assert(texture_);
     is_baked_ = true;
     is_dirty_ = false;

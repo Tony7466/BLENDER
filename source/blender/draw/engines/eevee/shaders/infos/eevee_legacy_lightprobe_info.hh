@@ -96,6 +96,7 @@ GPU_SHADER_CREATE_INFO(eevee_legacy_effect_downsample_cube_no_geom)
     .sampler(0, ImageType::FLOAT_CUBE, "source")
     .push_constant(Type::FLOAT, "texelSize")
     .fragment_out(0, Type::VEC4, "FragColor")
+    .builtins(BuiltinBits::LAYER)
     .metal_backend_only(true)
     .do_static_compilation(true)
     .auto_resource_location(true);

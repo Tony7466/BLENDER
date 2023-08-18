@@ -1022,6 +1022,11 @@ void ShadowModule::end_sync()
         sub.bind_ssbo("pages_infos_buf", pages_infos_data_);
         sub.bind_ssbo("pages_free_buf", pages_free_data_);
         sub.bind_ssbo("pages_cached_buf", pages_cached_data_);
+#ifdef WITH_METAL_BACKEND
+        if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+          sub.bind_ssbo("render_map_buf", render_map_buf_);
+        }
+#endif
         sub.dispatch(int3(1, 1, tilemap_pool.tilemaps_data.size()));
         sub.barrier(GPU_BARRIER_SHADER_STORAGE);
       }
@@ -1153,8 +1158,29 @@ void ShadowModule::set_view(View &view)
                                                int2(std::exp2(usage_tag_fb_lod_)));
   usage_tag_fb.ensure(usage_tag_fb_resolution_);
 
-  render_fb_.ensure(int2(SHADOW_TILEMAP_RES * shadow_page_size_));
-  GPU_framebuffer_bind(render_fb_);
+#ifdef WITH_METAL_BACKEND
+  if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+    /* Create memoryless depth attachment for on-tile surface depth accumulation.*/
+    shadow_depth_fb_tx_.ensure_2d_array(GPU_DEPTH_COMPONENT32F,
+                                        int2(SHADOW_TILEMAP_RES * shadow_page_size_),
+                                        SHADOW_VIEW_MAX,
+                                        GPU_TEXTURE_USAGE_ATTACHMENT |
+                                            GPU_TEXTURE_USAGE_MEMORYLESS);
+    shadow_depth_accum_tx_.ensure_2d_array(GPU_R32F,
+                                           int2(SHADOW_TILEMAP_RES * shadow_page_size_),
+                                           SHADOW_VIEW_MAX,
+                                           GPU_TEXTURE_USAGE_ATTACHMENT |
+                                               GPU_TEXTURE_USAGE_MEMORYLESS);
+    render_fb_.ensure(GPU_ATTACHMENT_TEXTURE(shadow_depth_fb_tx_),
+                      GPU_ATTACHMENT_TEXTURE(shadow_depth_accum_tx_));
+  }
+  else
+#endif
+  {
+    render_fb_.ensure(int2(SHADOW_TILEMAP_RES * shadow_page_size_));
+    GPU_framebuffer_bind(render_fb_);
+  }
+
   GPU_framebuffer_multi_viewports_set(render_fb_,
                                       reinterpret_cast<int(*)[4]>(multi_viewports_.data()));
 
@@ -1174,7 +1200,24 @@ void ShadowModule::set_view(View &view)
 
       shadow_multi_view_.compute_procedural_bounds();
 
+#ifdef WITH_METAL_BACKEND
+      /* Specify load-store config right before render to ensure flags are retained. */
+      if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+        GPU_framebuffer_bind_ex(
+            render_fb_,
+            {{GPU_LOADACTION_CLEAR, GPU_STOREACTION_DONT_CARE, {1.0f, 1.0f, 1.0f, 1.0f}},
+             {GPU_LOADACTION_CLEAR, GPU_STOREACTION_DONT_CARE, {1.0f, 1.0f, 1.0f, 1.0f}}});
+      }
+#endif
+
       inst_.pipelines.shadow.render(shadow_multi_view_);
+
+#ifdef WITH_METAL_BACKEND
+      /* Perform tile-based shadow accumulation pass. */
+      if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+        inst_.pipelines.shadow.render_accum(shadow_multi_view_);
+      }
+#endif
 
       GPU_memory_barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS | GPU_BARRIER_TEXTURE_FETCH);
     }

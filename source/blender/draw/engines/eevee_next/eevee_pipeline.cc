@@ -149,7 +149,12 @@ void WorldVolumePipeline::render(View &view)
 void ShadowPipeline::sync()
 {
   surface_ps_.init();
-  surface_ps_.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS);
+  DRWState state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS;
+  if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+    /* Metal writes depth value in local tile memory, which is considered a color attachment. */
+    state |= DRW_STATE_WRITE_COLOR;
+  }
+  surface_ps_.state_set(state);
   surface_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
   surface_ps_.bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
   surface_ps_.bind_ubo(CAMERA_BUF_SLOT, inst_.camera.ubo_get());
@@ -157,6 +162,21 @@ void ShadowPipeline::sync()
   surface_ps_.bind_ssbo(SHADOW_VIEWPORT_INDEX_BUF_SLOT, &inst_.shadows.viewport_index_buf_);
   surface_ps_.bind_ssbo(SHADOW_PAGE_INFO_SLOT, &inst_.shadows.pages_infos_data_);
   inst_.sampling.bind_resources(&surface_ps_);
+
+#ifdef WITH_METAL_BACKEND
+  /* Perform accumulation step for storing final tile depth results back to shadow atlas.  */
+  accum_ps_.init();
+  accum_ps_.shader_set(inst_.shaders.static_shader_get(SHADOW_DEPTH_ACCUM));
+  accum_ps_.state_set(DRW_STATE_DEPTH_GREATER_EQUAL);
+  accum_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+  accum_ps_.bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
+  accum_ps_.bind_ubo(CAMERA_BUF_SLOT, inst_.camera.ubo_get());
+  accum_ps_.bind_ssbo(SHADOW_RENDER_MAP_BUF_SLOT, &inst_.shadows.render_map_buf_);
+  accum_ps_.bind_ssbo(SHADOW_VIEWPORT_INDEX_BUF_SLOT, &inst_.shadows.viewport_index_buf_);
+  accum_ps_.bind_ssbo(SHADOW_PAGE_INFO_SLOT, &inst_.shadows.pages_infos_data_);
+  inst_.sampling.bind_resources(&accum_ps_);
+  accum_ps_.draw_procedural(GPU_PRIM_TRIS, (SHADOW_TILEMAP_RES)*(SHADOW_TILEMAP_RES)*SHADOW_VIEW_MAX,  6);
+#endif
 }
 
 PassMain::Sub *ShadowPipeline::surface_material_add(GPUMaterial *gpumat)
@@ -168,6 +188,12 @@ void ShadowPipeline::render(View &view)
 {
   inst_.manager->submit(surface_ps_, view);
 }
+#ifdef WITH_METAL_BACKEND
+void ShadowPipeline::render_accum(View &view)
+{
+  inst_.manager->submit(accum_ps_, view);
+}
+#endif
 
 /** \} */
 

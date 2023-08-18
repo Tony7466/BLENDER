@@ -257,7 +257,14 @@ class ShadowModule {
   /** Multi-View containing a maximum of 64 view to be rendered with the shadow pipeline. */
   View shadow_multi_view_ = {"ShadowMultiView", SHADOW_VIEW_MAX, true};
   /** Framebuffer with the atlas_tx attached. */
-  Framebuffer render_fb_;
+#ifdef WITH_METAL_BACKEND
+  Framebuffer render_fb_ = {"shadow_write_framebuffer"};
+  /* NOTE(Metal): Metal requires memoryless textures to be created which represent attachments in
+   * the shadow write framebuffer. These textures do not occupy any physical memory, but require a
+   * Texture object containing its parameters.*/
+  Texture shadow_depth_fb_tx_ = {"shadow_depth_fb_tx_"};
+  Texture shadow_depth_accum_tx_ = {"shadow_depth_accum_tx_"};
+#endif
   /** Arrays of viewports to rendering each tile to. */
   std::array<int4, 16> multi_viewports_;
 

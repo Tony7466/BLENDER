@@ -37,6 +37,10 @@
 using namespace blender;
 using namespace blender::gpu;
 
+/* Fire off a single dispatch per encoder. Can make debugging view clearer for texture resources
+ * associated with each dispatch. */
+#define MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER 1 && !NDEBUG
+
 /* Debug option to bind null buffer for missing UBOs.
  * Enabled by default. TODO: Ensure all required UBO bindings are present. */
 #define DEBUG_BIND_NULL_BUFFER_FOR_MISSING_UBO 1
@@ -1493,9 +1497,9 @@ bool MTLContext::ensure_buffer_bindings(
     const MTLShaderBufferBlock &ssbo = shader_interface->get_storage_block(ssbo_index);
 
     if (ssbo.buffer_index >= 0 && ssbo.location >= 0) {
-      /* Explicit lookup location for UBO in bind table. */
+      /* Explicit lookup location for SSBO in bind table. */
       const uint32_t ssbo_location = ssbo.location;
-      /* buffer(N) index of where to bind the UBO. */
+      /* buffer(N) index of where to bind the SSBO. */
       const uint32_t buffer_index = ssbo.buffer_index;
       id<MTLBuffer> ssbo_buffer = nil;
       int ssbo_size = 0;
@@ -2183,6 +2187,10 @@ void MTLContext::compute_dispatch(int groups_x_len, int groups_y_len, int groups
     return;
   }
 
+#if MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER == 1
+    GPU_finish();
+#endif
+
   /* Shader instance. */
   MTLShaderInterface *shader_interface = this->pipeline_state.active_shader->get_interface();
   const MTLComputePipelineStateInstance &compute_pso_inst =
@@ -2214,10 +2222,18 @@ void MTLContext::compute_dispatch(int groups_x_len, int groups_y_len, int groups
                   threadsPerThreadgroup:MTLSizeMake(compute_pso_inst.threadgroup_x_len,
                                                     compute_pso_inst.threadgroup_y_len,
                                                     compute_pso_inst.threadgroup_z_len)];
+#if MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER == 1
+    GPU_finish();
+#endif
 }
 
 void MTLContext::compute_dispatch_indirect(StorageBuf *indirect_buf)
 {
+
+#if MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER == 1
+    GPU_finish();
+#endif
+
   /* Ensure all resources required by upcoming compute submission are correctly bound. */
   if (this->ensure_compute_pipeline_state()) {
     /* Shader instance. */
@@ -2260,6 +2276,9 @@ void MTLContext::compute_dispatch_indirect(StorageBuf *indirect_buf)
                          threadsPerThreadgroup:MTLSizeMake(compute_pso_inst.threadgroup_x_len,
                                                            compute_pso_inst.threadgroup_y_len,
                                                            compute_pso_inst.threadgroup_z_len)];
+#if MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER == 1
+    GPU_finish();
+#endif
   }
 }
 

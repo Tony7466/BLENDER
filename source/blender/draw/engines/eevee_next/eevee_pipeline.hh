@@ -102,6 +102,9 @@ class ShadowPipeline {
   Instance &inst_;
 
   PassMain surface_ps_ = {"Shadow.Surface"};
+#ifdef WITH_METAL_BACKEND
+  PassSimple accum_ps_ = {"Shadow.Accum"};
+#endif
 
  public:
   ShadowPipeline(Instance &inst) : inst_(inst){};
@@ -110,6 +113,9 @@ class ShadowPipeline {
 
   void sync();
   void render(View &view);
+#ifdef WITH_METAL_BACKEND
+  void render_accum(View &view);
+#endif
 };
 
 /** \} */

@@ -154,6 +154,9 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_allocate)
     .storage_buf(3, Qualifier::READ_WRITE, "uint", "pages_free_buf[]")
     .storage_buf(4, Qualifier::READ_WRITE, "uvec2", "pages_cached_buf[]")
     .storage_buf(6, Qualifier::READ_WRITE, "ShadowStatistics", "statistics_buf")
+#ifdef WITH_METAL_BACKEND
+    .storage_buf(7, Qualifier::WRITE, "uint", "render_map_buf[SHADOW_RENDER_MAP_SIZE]")
+#endif
     .additional_info("eevee_shared")
     .compute_source("eevee_shadow_page_allocate_comp.glsl");
 
@@ -187,6 +190,43 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear)
            "shadow_atlas_img")
     .additional_info("eevee_shared")
     .compute_source("eevee_shadow_page_clear_comp.glsl");
+
+#ifdef WITH_METAL_BACKEND
+/* Interface for passing precalculated values in accumulation vertex to frag. */
+GPU_SHADER_INTERFACE_INFO(eevee_surf_shadow_accum_iface, "")
+    .no_perspective(Type::VEC2, "out_texel_xy")
+    .flat(Type::UINT, "out_page_z");
+
+/* 2nd tile pass to store shadow depths in atlas. */
+GPU_SHADER_CREATE_INFO(eevee_surf_shadow_accum)
+    .early_fragment_test(true)
+    .metal_backend_only(true)
+    .do_static_compilation(true)
+    .define("DRW_VIEW_LEN", "64")
+    .define("MAT_SHADOW")
+    .define("USE_ATOMIC")
+    .define("METAL_SHADOW_ACCUM_PASS")
+    .builtins(BuiltinBits::VIEWPORT_INDEX)
+    .builtins(BuiltinBits::LAYER)
+    .vertex_out(eevee_surf_shadow_accum_iface)
+    .storage_buf(SHADOW_RENDER_MAP_BUF_SLOT,
+                 Qualifier::READ,
+                 "uint",
+                 "render_map_buf[SHADOW_RENDER_MAP_SIZE]")
+    .storage_buf(SHADOW_VIEWPORT_INDEX_BUF_SLOT,
+                 Qualifier::READ,
+                 "uint",
+                 "viewport_index_buf[SHADOW_VIEW_MAX]")
+    .image(SHADOW_ATLAS_IMG_SLOT,
+           GPU_R32UI,
+           Qualifier::READ_WRITE,
+           ImageType::UINT_2D_ARRAY,
+           "shadow_atlas_img")
+    .vertex_source("eevee_surf_shadow_accum_vert.glsl")
+    .fragment_source("eevee_surf_shadow_accum_frag.glsl")
+    .fragment_tile_in(0, Type::FLOAT, "in_tile_depth", DualBlend::NONE, 0)
+    .additional_info("eevee_shared");
+#endif
 
 /** \} */
 

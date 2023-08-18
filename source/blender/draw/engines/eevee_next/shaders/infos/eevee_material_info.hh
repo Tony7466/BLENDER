@@ -182,6 +182,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_world)
     .push_constant(Type::FLOAT, "world_opacity_fade")
     .fragment_out(0, Type::VEC4, "out_background")
     .fragment_source("eevee_surf_world_frag.glsl")
+    .builtins(BuiltinBits::VIEWPORT_INDEX | BuiltinBits::LAYER)
     .additional_info("eevee_render_pass_out",
                      "eevee_cryptomatte_out",
                      "eevee_camera",
@@ -193,6 +194,8 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
     .define("USE_ATOMIC")
     .vertex_out(eevee_surf_iface)
     .vertex_out(eevee_surf_flat_iface)
+    .builtins(BuiltinBits::VIEWPORT_INDEX)
+    .builtins(BuiltinBits::LAYER)
     .storage_buf(SHADOW_RENDER_MAP_BUF_SLOT,
                  Qualifier::READ,
                  "uint",
@@ -208,6 +211,11 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
            ImageType::UINT_2D_ARRAY,
            "shadow_atlas_img")
     .fragment_source("eevee_surf_shadow_frag.glsl")
+#ifdef WITH_METAL_BACKEND
+    /* F32 colour attachment with raster order group for on-tile depth accumulation without
+       atomics. */
+    .fragment_out(0, Type::FLOAT, "out_depth", DualBlend::NONE, 0)
+#endif
     .additional_info("eevee_camera", "eevee_utility_texture", "eevee_sampling_data");
 
 #undef image_out

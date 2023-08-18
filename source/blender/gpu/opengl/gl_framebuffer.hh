@@ -78,8 +78,7 @@ class GLFrameBuffer : public FrameBuffer {
 
   /* Attachment load-stores are currently no-op's in OpenGL. */
   void attachment_set_loadstore_op(GPUAttachmentType /*type*/,
-                                   eGPULoadOp /*load_action*/,
-                                   eGPUStoreOp /*store_action*/) override{};
+                                   GPULoadStore /*ls*/) override{};
 
   void read(eGPUFrameBufferBits planes,
             eGPUDataFormat format,

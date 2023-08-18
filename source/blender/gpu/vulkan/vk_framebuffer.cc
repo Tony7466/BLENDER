@@ -221,8 +221,7 @@ void VKFrameBuffer::clear_attachment(GPUAttachmentType /*type*/,
  * \{ */
 
 void VKFrameBuffer::attachment_set_loadstore_op(GPUAttachmentType /*type*/,
-                                                eGPULoadOp /*load_action*/,
-                                                eGPUStoreOp /*store_action*/)
+                                                GPULoadStore /*ls*/)
 {
 }
 

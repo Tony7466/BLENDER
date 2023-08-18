@@ -34,8 +34,7 @@ class DummyFrameBuffer : public FrameBuffer {
   }
 
   void attachment_set_loadstore_op(GPUAttachmentType /*type*/,
-                                   eGPULoadOp /*load_action*/,
-                                   eGPUStoreOp /*store_action*/) override
+                                   GPULoadStore /*ls*/) override
   {
   }
 
