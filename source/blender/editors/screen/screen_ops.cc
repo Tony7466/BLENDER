@@ -3237,7 +3237,13 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
 static bool keyframe_jump_poll(bContext *C)
 {
   /* There is a keyframe jump operator specifically for the Graph Editor. */
-  return ED_operator_screenactive_norender(C) && CTX_wm_area(C)->spacetype != SPACE_GRAPH;
+  ScrArea *area = CTX_wm_area(C);
+  /* The area can be a nullptr when two main windows are open and you call the search menu on the
+   * non-active window. */
+  if (area == nullptr) {
+    return false;
+  }
+  return ED_operator_screenactive_norender(C) && area->spacetype != SPACE_GRAPH;
 }
 
 static void SCREEN_OT_keyframe_jump(wmOperatorType *ot)
