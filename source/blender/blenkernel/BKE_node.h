@@ -1314,9 +1314,6 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_INPUT_SIGNED_DISTANCE 2102
 #define GEO_NODE_SAMPLE_VOLUME 2103
 #define GEO_NODE_MESH_TOPOLOGY_CORNERS_OF_EDGE 2104
-<<<<<<< HEAD
-#define GEO_NODE_INPUT_MESH_EDGE_RINGS 2105
-=======
 /* Leaving out two indices to avoid crashes with files that were created during the development of
  * the repeat zone. */
 #define GEO_NODE_REPEAT_INPUT 2107
@@ -1326,7 +1323,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_TOOL_3D_CURSOR 2111
 #define GEO_NODE_TOOL_FACE_SET 2112
 #define GEO_NODE_TOOL_SET_FACE_SET 2113
->>>>>>> main
+#define GEO_NODE_INPUT_MESH_EDGE_RINGS 2114
 
 /** \} */
 
