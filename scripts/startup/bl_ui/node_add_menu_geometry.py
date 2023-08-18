@@ -631,9 +631,6 @@ class NODE_MT_category_GEO_VOLUME(Menu):
         if context.preferences.experimental.use_new_volume_nodes:
             layout.separator()
             node_add_menu.add_node_type(layout, "GeometryNodeVolumeInfo")
-            node_add_menu.add_node_type(layout, "GeometryNodeInputGridCoordinate")
-            node_add_menu.add_node_type(layout, "GeometryNodeInputGridValue")
-            node_add_menu.add_node_type(layout, "GeometryNodeSetGridValue")
             node_add_menu.add_node_type(layout, "GeometryNodeSampleVolume")
             node_add_menu.add_node_type(layout, "GeometryNodeMeanFilterSDFVolume")
             node_add_menu.add_node_type(layout, "GeometryNodeOffsetSDFVolume")
