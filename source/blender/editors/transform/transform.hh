@@ -147,6 +147,9 @@ enum eTFlag {
   T_NO_GIZMO = 1 << 24,
 
   T_DRAW_SNAP_SOURCE = 1 << 25,
+
+  /** Special flag for when the transform code is called after keys have been duplicated. */
+  T_DUPLICATED_KEYS = 1 << 26,
 };
 ENUM_OPERATORS(eTFlag, T_NO_GIZMO);
 
