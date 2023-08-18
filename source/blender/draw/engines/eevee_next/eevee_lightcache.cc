@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -27,10 +27,10 @@
 #include "GPU_capabilities.h"
 #include "GPU_context.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "wm_window.h"
+#include "wm_window.hh"
 
 #include "eevee_engine.h"
 #include "eevee_instance.hh"

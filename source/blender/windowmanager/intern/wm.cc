@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -39,19 +39,19 @@
 #include "BKE_screen.h"
 #include "BKE_workspace.h"
 
-#include "WM_api.h"
-#include "WM_message.h"
-#include "WM_types.h"
-#include "wm.h"
-#include "wm_draw.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
+#include "WM_types.hh"
+#include "wm.hh"
+#include "wm_draw.hh"
 #include "wm_event_system.h"
-#include "wm_window.h"
+#include "wm_window.hh"
 #ifdef WITH_XR_OPENXR
 #  include "wm_xr.h"
 #endif
 
 #include "BKE_undo_system.h"
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
@@ -83,9 +83,9 @@ static void window_manager_foreach_id(ID *id, LibraryForeachIDData *data)
       if (BKE_lib_query_foreachid_iter_stop(data)) {
         return;
       }
-
-      BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, win->unpinned_scene, IDWALK_CB_NOP);
     }
+
+    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, win->unpinned_scene, IDWALK_CB_NOP);
 
     if (BKE_lib_query_foreachid_process_flags_get(data) & IDWALK_INCLUDE_UI) {
       LISTBASE_FOREACH (ScrArea *, area, &win->global_areas.areabase) {

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -44,7 +44,7 @@
 #include "opensubdiv_topology_refiner_capi.h"
 
 #include "draw_cache_extract.hh"
-#include "draw_cache_impl.h"
+#include "draw_cache_impl.hh"
 #include "draw_cache_inline.h"
 #include "mesh_extractors/extract_mesh.hh"
 

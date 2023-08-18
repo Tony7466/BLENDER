@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -24,7 +24,8 @@
 #include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
 #include "BLI_linklist.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_task.h"
 #include "BLI_task.hh"
@@ -555,7 +556,7 @@ static Mesh *modifier_modify_mesh_and_geometry_set(ModifierData *md,
     /* Release the mesh from the geometry set again. */
     if (geometry_set.has<MeshComponent>()) {
       MeshComponent &mesh_component = geometry_set.get_component_for_write<MeshComponent>();
-      if (mesh_component.get_for_read() != input_mesh) {
+      if (mesh_component.get() != input_mesh) {
         /* Make sure the mesh component actually owns the mesh before taking over ownership. */
         mesh_component.ensure_owns_direct_data();
       }

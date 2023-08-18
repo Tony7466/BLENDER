@@ -21,19 +21,20 @@
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
 
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
 #include "BLT_translation.h"
 
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
 #include "transform.hh"
 #include "transform_gizmo.hh"

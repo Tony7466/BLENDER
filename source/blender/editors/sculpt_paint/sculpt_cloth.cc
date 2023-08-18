@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,7 +10,8 @@
 
 #include "BLI_edgehash.h"
 #include "BLI_gsqueue.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
@@ -34,20 +35,20 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "sculpt_intern.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "bmesh.h"
 
@@ -664,16 +665,12 @@ static void cloth_brush_solve_collision(Object *object,
 {
   const int raycast_flag = BVH_RAYCAST_DEFAULT & ~(BVH_RAYCAST_WATERTIGHT);
 
-  ColliderCache *collider_cache;
   BVHTreeRayHit hit;
 
   float obmat_inv[4][4];
   invert_m4_m4(obmat_inv, object->object_to_world);
 
-  for (collider_cache = static_cast<ColliderCache *>(cloth_sim->collider_list->first);
-       collider_cache;
-       collider_cache = collider_cache->next)
-  {
+  LISTBASE_FOREACH (ColliderCache *, collider_cache, cloth_sim->collider_list) {
     float ray_start[3], ray_normal[3];
     float pos_world_space[3], prev_pos_world_space[3];
 

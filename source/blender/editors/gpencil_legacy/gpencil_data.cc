@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,7 +18,9 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
@@ -53,18 +55,18 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_object.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_object.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -1098,8 +1100,7 @@ static bool gpencil_reveal_poll(bContext *C)
 
 static void gpencil_reveal_select_frame(bContext *C, bGPDframe *frame, bool select)
 {
-  bGPDstroke *gps;
-  for (gps = static_cast<bGPDstroke *>(frame->strokes.first); gps; gps = gps->next) {
+  LISTBASE_FOREACH (bGPDstroke *, gps, &frame->strokes) {
 
     /* only deselect strokes that are valid in this view */
     if (ED_gpencil_stroke_can_use(C, gps)) {
@@ -1141,8 +1142,7 @@ static int gpencil_reveal_exec(bContext *C, wmOperator *op)
         }
         else {
           /* deselect strokes on all frames (same as deselect all operator) */
-          bGPDframe *gpf;
-          for (gpf = static_cast<bGPDframe *>(gpl->frames.first); gpf; gpf = gpf->next) {
+          LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
             gpencil_reveal_select_frame(C, gpf, false);
           }
         }
@@ -1621,7 +1621,7 @@ static int gpencil_stroke_arrange_exec(bContext *C, wmOperator *op)
           continue;
         }
         /* verify if any selected stroke is in the extreme of the stack and select to move */
-        for (gps = static_cast<bGPDstroke *>(gpf->strokes.first); gps; gps = gps->next) {
+        LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
           /* only if selected */
           if (gps->flag & GP_STROKE_SELECT) {
             /* skip strokes that are invalid for current view */
@@ -1896,9 +1896,7 @@ static int gpencil_material_lock_unsused_exec(bContext *C, wmOperator * /*op*/)
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     /* only editable and visible layers are considered */
     if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != nullptr)) {
-      for (bGPDstroke *gps = static_cast<bGPDstroke *>(gpl->actframe->strokes.last); gps;
-           gps = gps->prev)
-      {
+      LISTBASE_FOREACH_BACKWARD (bGPDstroke *, gps, &gpl->actframe->strokes) {
         /* only if selected */
         if (gps->flag & GP_STROKE_SELECT) {
           /* skip strokes that are invalid for current view */
@@ -3115,9 +3113,7 @@ static int gpencil_lock_layer_exec(bContext *C, wmOperator * /*op*/)
     if (BKE_gpencil_layer_is_editable(gpl) && (gpl->actframe != nullptr) &&
         (gpl->flag & GP_LAYER_ACTIVE))
     {
-      for (bGPDstroke *gps = static_cast<bGPDstroke *>(gpl->actframe->strokes.last); gps;
-           gps = gps->prev)
-      {
+      LISTBASE_FOREACH_BACKWARD (bGPDstroke *, gps, &gpl->actframe->strokes) {
         /* skip strokes that are invalid for current view */
         if (ED_gpencil_stroke_can_use(C, gps) == false) {
           continue;

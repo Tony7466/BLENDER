@@ -13,7 +13,8 @@
 #include "DNA_windowmanager_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_utildefines.h"
 
 #include "GPU_immediate.h"
@@ -27,20 +28,20 @@
 #include "BKE_object.h"
 #include "BKE_scene.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_gizmo_library.h"
-#include "ED_markers.h"
-#include "ED_node.h"
-#include "ED_transform_snap_object_context.h"
-#include "ED_uvedit.h"
-#include "ED_view3d.h"
+#include "ED_gizmo_library.hh"
+#include "ED_markers.hh"
+#include "ED_node.hh"
+#include "ED_transform_snap_object_context.hh"
+#include "ED_uvedit.hh"
+#include "ED_view3d.hh"
 
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
 #include "SEQ_iterator.h"
 #include "SEQ_sequencer.h"
@@ -276,7 +277,6 @@ void drawSnapping(const bContext *C, TransInfo *t)
   }
   else if (t->spacetype == SPACE_NODE) {
     ARegion *region = CTX_wm_region(C);
-    TransSnapPoint *p;
     float size;
 
     size = 2.5f * UI_GetThemeValuef(TH_VERTEX_SIZE);
@@ -287,7 +287,7 @@ void drawSnapping(const bContext *C, TransInfo *t)
 
     immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-    for (p = static_cast<TransSnapPoint *>(t->tsnap.points.first); p; p = p->next) {
+    LISTBASE_FOREACH (TransSnapPoint *, p, &t->tsnap.points) {
       if (p == t->tsnap.selectedPoint) {
         immUniformColor4ubv(selectedCol);
       }
@@ -998,11 +998,11 @@ eRedrawFlag updateSelectedSnapPoint(TransInfo *t)
   eRedrawFlag status = TREDRAW_NOTHING;
 
   if (t->tsnap.status & SNAP_MULTI_POINTS) {
-    TransSnapPoint *p, *closest_p = nullptr;
+    TransSnapPoint *closest_p = nullptr;
     float dist_min_sq = TRANSFORM_SNAP_MAX_PX;
     float screen_loc[2];
 
-    for (p = static_cast<TransSnapPoint *>(t->tsnap.points.first); p; p = p->next) {
+    LISTBASE_FOREACH (TransSnapPoint *, p, &t->tsnap.points) {
       float dist_sq;
 
       if (ED_view3d_project_float_global(t->region, p->co, screen_loc, V3D_PROJ_TEST_NOP) !=
@@ -1447,9 +1447,7 @@ bool peelObjectsTransform(TransInfo *t,
     if (use_peel_object) {
       /* if peeling objects, take the first and last from each object */
       hit_max = hit_min;
-      for (SnapObjectHitDepth *iter = static_cast<SnapObjectHitDepth *>(depths_peel.first); iter;
-           iter = iter->next)
-      {
+      LISTBASE_FOREACH (SnapObjectHitDepth *, iter, &depths_peel) {
         if ((iter->depth > hit_max->depth) && (iter->ob_uuid == hit_min->ob_uuid)) {
           hit_max = iter;
         }
@@ -1457,9 +1455,7 @@ bool peelObjectsTransform(TransInfo *t,
     }
     else {
       /* otherwise, pair first with second and so on */
-      for (SnapObjectHitDepth *iter = static_cast<SnapObjectHitDepth *>(depths_peel.first); iter;
-           iter = iter->next)
-      {
+      LISTBASE_FOREACH (SnapObjectHitDepth *, iter, &depths_peel) {
         if ((iter != hit_min) && (iter->ob_uuid == hit_min->ob_uuid)) {
           if (hit_max == nullptr) {
             hit_max = iter;
@@ -1589,12 +1585,11 @@ static bool snapNodes(ToolSettings *ts,
                       char *r_node_border)
 {
   bNodeTree *ntree = snode->edittree;
-  bNode *node;
   bool retval = false;
 
   *r_node_border = 0;
 
-  for (node = static_cast<bNode *>(ntree->nodes.first); node; node = node->next) {
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
     if (snapNodeTest(&region->v2d, node, snap_target_select)) {
       retval |= snapNode(ts, snode, region, node, mval, r_loc, r_dist_px, r_node_border);
     }

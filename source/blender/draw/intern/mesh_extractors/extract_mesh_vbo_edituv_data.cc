@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,7 +10,7 @@
 
 #include "extract_mesh.hh"
 
-#include "draw_cache_impl.h"
+#include "draw_cache_impl.hh"
 
 #include "draw_subdivision.h"
 
