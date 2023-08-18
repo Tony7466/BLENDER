@@ -274,6 +274,9 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
   else if (type == TSE_LAYER_COLLECTION) {
     id = &static_cast<LayerCollection *>(idv)->collection->id;
   }
+  else if (type == TSE_MODIFIER) {
+    id = &static_cast<ModifierCreateElementData *>(idv)->object->id;
+  }
 
   /* exceptions */
   if (ELEM(type, TSE_ID_BASE, TSE_GENERIC_LABEL)) {
@@ -353,6 +356,9 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
   else if (ELEM(type, TSE_R_LAYER, TSE_R_LAYER_BASE)) {
     /* pass */
   }
+  else if (ELEM(type, TSE_MODIFIER, TSE_MODIFIER_BASE)) {
+    /* pass */
+  }
   else if (type == TSE_LINKED_OB) {
     /* pass */
   }
@@ -418,6 +424,8 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
                 TSE_POSEGRP_BASE,
                 TSE_R_LAYER,
                 TSE_R_LAYER_BASE,
+                TSE_MODIFIER,
+                TSE_MODIFIER_BASE,
                 TSE_GREASE_PENCIL_NODE,
                 TSE_LINKED_OB,
                 TSE_LAYER_COLLECTION))

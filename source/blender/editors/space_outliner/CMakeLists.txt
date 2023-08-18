@@ -74,6 +74,7 @@ set(SRC
   tree/tree_element_layer_collection.cc
   tree/tree_element_linked_object.cc
   tree/tree_element_nla.cc
+  tree/tree_element_modifier.cc
   tree/tree_element_overrides.cc
   tree/tree_element_particle_system.cc
   tree/tree_element_pose.cc
@@ -115,6 +116,7 @@ set(SRC
   tree/tree_element_layer_collection.hh
   tree/tree_element_linked_object.hh
   tree/tree_element_nla.hh
+  tree/tree_element_modifier.hh
   tree/tree_element_overrides.hh
   tree/tree_element_particle_system.hh
   tree/tree_element_pose.hh
