@@ -6141,7 +6141,7 @@ class VIEW3D_PT_object_type_visibility(Panel):
             row = col.row(align=True)
             row.alignment = 'RIGHT'
 
-            row.label(text=attr_name + ' ')
+            row.label(text=attr_name + " ")
             row.prop(view, attr_v, text="", icon=icon_v, emboss=False)
 
             if show_select:
