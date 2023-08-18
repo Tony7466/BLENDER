@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,35 +13,41 @@
 
 #include "BKE_report.h"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "DNA_windowmanager_types.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "rna_internal.h" /* own include */
 
 #ifdef RNA_RUNTIME
 
 #  include "BKE_context.h"
-#  include "UI_interface.h"
+#  include "UI_interface.hh"
 
-#  include "ED_gizmo_library.h"
+#  include "ED_gizmo_library.hh"
 
-static void rna_gizmo_draw_preset_box(wmGizmo *gz, float matrix[16], int select_id)
+static void rna_gizmo_draw_preset_box(wmGizmo *gz, const float matrix[16], int select_id)
 {
-  ED_gizmo_draw_preset_box(gz, (float(*)[4])matrix, select_id);
+  ED_gizmo_draw_preset_box(gz, (const float(*)[4])matrix, select_id);
 }
 
-static void rna_gizmo_draw_preset_arrow(wmGizmo *gz, float matrix[16], int axis, int select_id)
+static void rna_gizmo_draw_preset_arrow(wmGizmo *gz,
+                                        const float matrix[16],
+                                        int axis,
+                                        int select_id)
 {
-  ED_gizmo_draw_preset_arrow(gz, (float(*)[4])matrix, axis, select_id);
+  ED_gizmo_draw_preset_arrow(gz, (const float(*)[4])matrix, axis, select_id);
 }
 
-static void rna_gizmo_draw_preset_circle(wmGizmo *gz, float matrix[16], int axis, int select_id)
+static void rna_gizmo_draw_preset_circle(wmGizmo *gz,
+                                         const float matrix[16],
+                                         int axis,
+                                         int select_id)
 {
-  ED_gizmo_draw_preset_circle(gz, (float(*)[4])matrix, axis, select_id);
+  ED_gizmo_draw_preset_circle(gz, (const float(*)[4])matrix, axis, select_id);
 }
 
 /* -------------------------------------------------------------------- */

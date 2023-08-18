@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 /** \file
@@ -100,7 +100,7 @@ typedef struct TexResult {
  * Use it for stuff which is out of render pipeline.
  */
 int multitex_ext(struct Tex *tex,
-                 float texvec[3],
+                 const float texvec[3],
                  float dxt[3],
                  float dyt[3],
                  int osatex,
@@ -137,7 +137,7 @@ int multitex_nodes(struct Tex *tex,
                    struct TexResult *texres,
                    short thread,
                    short which_output,
-                   struct MTex *mtex,
+                   const struct MTex *mtex,
                    struct ImagePool *pool);
 
 #ifdef __cplusplus
