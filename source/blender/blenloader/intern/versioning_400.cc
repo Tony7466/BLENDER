@@ -406,9 +406,9 @@ static void version_principled_bsdf_sheen(bNodeTree *ntree)
 
 static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
 {
-  version_node_input_socket_name(ntree, SH_NODE_TEX_MUSGRAVE, "Dimension", "Roughness");
+  version_node_input_socket_name(ntree, SH_NODE_TEX_MUSGRAVE_DEPRECATED, "Dimension", "Roughness");
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-    if (node->type == SH_NODE_TEX_MUSGRAVE) {
+    if (node->type == SH_NODE_TEX_MUSGRAVE_DEPRECATED) {
       STRNCPY(node->idname, "ShaderNodeTexNoise");
       node->type = SH_NODE_TEX_NOISE;
       NodeTexNoise *data = (NodeTexNoise *)MEM_callocN(sizeof(NodeTexNoise), __func__);
