@@ -616,68 +616,68 @@ GVMutableArray DataTypeConversions::try_convert(GVMutableArray varray,
       std::move(varray), to_type, *this);
 }
 
-volume::GGrid DataTypeConversions::try_convert(volume::GGrid grid, const CPPType &to_type) const
-{
-  const CPPType *from_type = grid.value_type();
-  if (!from_type || *from_type == to_type) {
-    return grid;
-  }
-  if (!this->is_convertible(*from_type, to_type)) {
-    return {};
-  }
-  return {};
-  /* TODO implement virtual grid class?
-   *
-   * VGrid/VMutableGrid virtualize access to grids,
-   * similar to VArray/VMutableArray. This will allow access to procedural
-   * inputs, for example voxel locations, coordinates, active mask.
-   * A VGrid can return a VArray for a leaf node, which allows
-   * optimal processing of fields by letting OpenVDB run an operator.
-   * The operator evaluates a multifunction procedure on each leaf,
-   * using the VArrays provided by these accesors. The output is in turn
-   * stored in a grid using the VMutableGrid.
-   *
-   * template <typename T>
-   * class VGrid<T> {
-   *   using TreeType = grid_types::TreeCommon<T>;
-   *   using LeafNodeType = typename TreeType::LeafNodeType;
-   *
-   *   // VArray for a specific leaf node.
-   *   virtual GVArray make_varray_for_leaf(const LeafNodeType &leaf) const = 0;
-   * };
-   * template <typename T>
-   * class VMutableGrid<T> : public VGrid<T> {
-   *   using TreeType = grid_types::TreeCommon<T>;
-   *   using LeafNodeType = typename TreeType::LeafNodeType;
-   *
-   *  // VMutableArray for a specific leaf node.
-   *  virtual GVMutableArray make_vmutablearray_for_leaf(LeafNodeType &leaf) const = 0;
-   * };
-   *
-   * Conversion of a VGrid can just fall back on the VArray conversion:
-   *
-   * template<typename T>
-   * class VGrid_For_ConvertedVGrid<T> : public VGrid<T> {
-   *   using Accessor = VGridAccesor<T>;
-   *
-   *   virtual GVArray make_varray_for_leaf(const LeafNodeType &leaf) const override
-   *   {
-   *     return GVArray::For<GVArray_For_ConvertedGVArray>(std::move(grid), to_type, *this)
-   *   }
-   * };
-   * template<typename T>
-   * class VMutableGrid<T> {
-   *   using Accessor = VGridAccesor<T>;
-   *   using MutableAccessor = VMutableGridAccesor<T>;
-   *
-   *   virtual GVMutableArray make_vmutablearray_for_leaf(LeafNodeType &leaf) const override
-   *   {
-   *   }
-   * };
+// volume::GGrid DataTypeConversions::try_convert(volume::GGrid grid, const CPPType &to_type) const
+//{
+//  const CPPType *from_type = grid.value_type();
+//  if (!from_type || *from_type == to_type) {
+//    return grid;
+//  }
+//  if (!this->is_convertible(*from_type, to_type)) {
+//    return {};
+//  }
+//  return {};
+//  /* TODO implement virtual grid class?
+//   *
+//   * VGrid/VMutableGrid virtualize access to grids,
+//   * similar to VArray/VMutableArray. This will allow access to procedural
+//   * inputs, for example voxel locations, coordinates, active mask.
+//   * A VGrid can return a VArray for a leaf node, which allows
+//   * optimal processing of fields by letting OpenVDB run an operator.
+//   * The operator evaluates a multifunction procedure on each leaf,
+//   * using the VArrays provided by these accesors. The output is in turn
+//   * stored in a grid using the VMutableGrid.
+//   *
+//   * template <typename T>
+//   * class VGrid<T> {
+//   *   using TreeType = grid_types::TreeCommon<T>;
+//   *   using LeafNodeType = typename TreeType::LeafNodeType;
+//   *
+//   *   // VArray for a specific leaf node.
+//   *   virtual GVArray make_varray_for_leaf(const LeafNodeType &leaf) const = 0;
+//   * };
+//   * template <typename T>
+//   * class VMutableGrid<T> : public VGrid<T> {
+//   *   using TreeType = grid_types::TreeCommon<T>;
+//   *   using LeafNodeType = typename TreeType::LeafNodeType;
+//   *
+//   *  // VMutableArray for a specific leaf node.
+//   *  virtual GVMutableArray make_vmutablearray_for_leaf(LeafNodeType &leaf) const = 0;
+//   * };
+//   *
+//   * Conversion of a VGrid can just fall back on the VArray conversion:
+//   *
+//   * template<typename T>
+//   * class VGrid_For_ConvertedVGrid<T> : public VGrid<T> {
+//   *   using Accessor = VGridAccesor<T>;
+//   *
+//   *   virtual GVArray make_varray_for_leaf(const LeafNodeType &leaf) const override
+//   *   {
+//   *     return GVArray::For<GVArray_For_ConvertedGVArray>(std::move(grid), to_type, *this)
+//   *   }
+//   * };
+//   * template<typename T>
+//   * class VMutableGrid<T> {
+//   *   using Accessor = VGridAccesor<T>;
+//   *   using MutableAccessor = VMutableGridAccesor<T>;
+//   *
+//   *   virtual GVMutableArray make_vmutablearray_for_leaf(LeafNodeType &leaf) const override
+//   *   {
+//   *   }
+//   * };
 
-   */
-  // return GVArray::For<GVArray_For_ConvertedGVArray>(std::move(grid), to_type, *this);
-}
+//   */
+//  // return GVArray::For<GVArray_For_ConvertedGVArray>(std::move(grid), to_type, *this);
+//}
 
 fn::GField DataTypeConversions::try_convert(fn::GField field, const CPPType &to_type) const
 {

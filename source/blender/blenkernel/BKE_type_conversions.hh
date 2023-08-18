@@ -62,7 +62,7 @@ class DataTypeConversions {
 
   GVArray try_convert(GVArray varray, const CPPType &to_type) const;
   GVMutableArray try_convert(GVMutableArray varray, const CPPType &to_type) const;
-  volume::GGrid try_convert(volume::GGrid grid, const CPPType &to_type) const;
+  //  volume::GGrid try_convert(volume::GGrid grid, const CPPType &to_type) const;
   fn::GField try_convert(fn::GField field, const CPPType &to_type) const;
 };
 

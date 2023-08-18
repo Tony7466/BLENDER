@@ -811,12 +811,13 @@ GAttributeReader AttributeAccessor::lookup_or_default(const AttributeIDRef &attr
   return {GVArray::ForSingle(type, domain_size, default_value), domain, nullptr};
 }
 
-static volume::GGrid try_adapt_grid_data_type(volume::GGrid grid, const blender::CPPType &to_type)
-{
-  const blender::bke::DataTypeConversions &conversions =
-      blender::bke::get_implicit_type_conversions();
-  return conversions.try_convert(std::move(grid), to_type);
-}
+// static volume::GGrid try_adapt_grid_data_type(volume::GGrid grid, const blender::CPPType
+// &to_type)
+//{
+//  const blender::bke::DataTypeConversions &conversions =
+//      blender::bke::get_implicit_type_conversions();
+//  return conversions.try_convert(std::move(grid), to_type);
+//}
 
 GAttributeGridReader AttributeAccessor::lookup_grid(
     const AttributeIDRef &attribute_id,
@@ -834,14 +835,14 @@ GAttributeGridReader AttributeAccessor::lookup_grid(
     }
   }
   if (data_type.has_value()) {
-    const CPPType &type = *custom_data_type_to_cpp_type(*data_type);
-    if (attribute.grid.value_type() != &type) {
-      attribute.grid = try_adapt_grid_data_type(std::move(attribute.grid), type);
-      attribute.sharing_info = nullptr;
-      if (!attribute.grid) {
-        return {};
-      }
-    }
+    //    const CPPType &type = *custom_data_type_to_cpp_type(*data_type);
+    //    if (attribute.grid.value_type() != &type) {
+    //      attribute.grid = try_adapt_grid_data_type(std::move(attribute.grid), type);
+    //      attribute.sharing_info = nullptr;
+    //      if (!attribute.grid) {
+    //        return {};
+    //      }
+    //    }
   }
   return attribute;
 }
