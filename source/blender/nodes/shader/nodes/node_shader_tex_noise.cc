@@ -11,6 +11,8 @@
 
 #include "NOD_multi_function.hh"
 
+#include "RNA_access.hh"
+
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
@@ -49,7 +51,9 @@ static void node_shader_buts_tex_noise(uiLayout *layout, bContext * /*C*/, Point
 {
   uiItemR(layout, ptr, "noise_dimensions", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
   uiItemR(layout, ptr, "type", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
-  uiItemR(layout, ptr, "normalize", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
+  if (ELEM(RNA_enum_get(ptr, "type"), SHD_NOISE_FBM)) {
+    uiItemR(layout, ptr, "normalize", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
+  }
 }
 
 static void node_shader_init_tex_noise(bNodeTree * /*ntree*/, bNode *node)
