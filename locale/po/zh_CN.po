@@ -5728,11 +5728,11 @@ msgstr "图像文件中的颜色空间，用于在保存和加载图像时转换
 
 
 msgid "Filmic Log"
-msgstr "电影日志"
+msgstr "电影对数"
 
 
 msgid "Log based filmic shaper with 16.5 stops of latitude, and 25 stops of dynamic range"
-msgstr "基于filmic shaper的log，使用16.5stops的宽容度，以及25 stops的动态范围"
+msgstr "基于filmic shaper的对数空间，使用16.5 stops的宽容度，以及25 stops的动态范围"
 
 
 msgid "Filmic sRGB"
@@ -5744,7 +5744,7 @@ msgstr "带有Filmic视图变换的sRGB显示空间"
 
 
 msgid "Non-Color"
-msgstr "非彩色"
+msgstr "无彩色"
 
 
 msgid "Do not perform any color transform on load, treat colors as in scene linear space already"
@@ -10409,7 +10409,7 @@ msgstr "减慢"
 
 
 msgid "Use logarithmic dissolve (makes high values to fade faster than low values)"
-msgstr "使用指数型消融 (值越高,消褪越快)"
+msgstr "使用对数型消融 (值越高,消褪越快)"
 
 
 msgid "Use Drip"
@@ -29197,7 +29197,7 @@ msgstr "参考黑点的对数转换"
 
 
 msgid "Log conversion gamma"
-msgstr "伽玛转换的日志"
+msgstr "对数转换伽玛"
 
 
 msgid "White"
@@ -123838,55 +123838,55 @@ msgstr "APS-H (佳能)"
 
 
 msgid "Analog 16mm"
-msgstr "Analog 16mm"
+msgstr "模拟 16mm"
 
 
 msgid "Analog 35mm"
-msgstr "Analog 35mm"
+msgstr "模拟 35mm"
 
 
 msgid "Analog 65mm"
-msgstr "Analog 65mm"
+msgstr "模拟 65mm"
 
 
 msgid "Analog IMAX"
-msgstr "Analog IMAX"
+msgstr "模拟 IMAX"
 
 
 msgid "Analog Super 16"
-msgstr "Analog Super 16"
+msgstr "模拟 Super 16"
 
 
 msgid "Analog Super 35"
-msgstr "Analog Super 35"
+msgstr "模拟 Super 35"
 
 
 msgid "Arri Alexa 65"
-msgstr "阿莱 Alexa 65"
+msgstr "Arri Alexa 65"
 
 
 msgid "Arri Alexa LF"
-msgstr "阿莱 Alexa LF"
+msgstr "Arri Alexa LF"
 
 
 msgid "Arri Alexa Mini & SXT"
-msgstr "阿莱 Alexa Mini & SXT"
+msgstr "Arri Alexa Mini & SXT"
 
 
 msgid "Blackmagic Pocket & Studio"
-msgstr "黑魔法 Pocket & Studio"
+msgstr "Blackmagic Pocket & Studio"
 
 
 msgid "Blackmagic Pocket 4K"
-msgstr "黑魔法 Pocket 4K"
+msgstr "Blackmagic Pocket 4K"
 
 
 msgid "Blackmagic Pocket 6k"
-msgstr "黑魔法 Pocket 6k"
+msgstr "Blackmagic Pocket 6k"
 
 
 msgid "Blackmagic URSA 4.6K"
-msgstr "黑魔法 URSA 4.6K"
+msgstr "Blackmagic URSA 4.6K"
 
 
 msgid "Foveon (Sigma)"
