@@ -6115,7 +6115,6 @@ class VIEW3D_PT_object_type_visibility(Panel):
             ("pointcloud", "Point Cloud"),
             ("volume", "Volume"),
             ("grease_pencil", "Grease Pencil"),
-            (None, None),
             # Other
             ("armature", "Armature"),
             ("lattice", "Lattice"),
@@ -6142,7 +6141,7 @@ class VIEW3D_PT_object_type_visibility(Panel):
             row = col.row(align=True)
             row.alignment = 'RIGHT'
 
-            row.label(text=attr_name)
+            row.label(text=attr_name + ' ')
             row.prop(view, attr_v, text="", icon=icon_v, emboss=False)
 
             if show_select:
