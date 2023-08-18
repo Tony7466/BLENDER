@@ -262,7 +262,22 @@ std::optional<DropLocation> TreeViewItemDropTarget::choose_drop_location(
           3;
   const float segment_height = item_height / segment_count;
 
+  const uiStyle *style = UI_style_get_dpi();
+  int gap_size = style->buttonspacey;
+
   if (event.xy[1] - win_rect->ymin > (item_height - segment_height)) {
+
+    GPUVertFormat *format = immVertexFormat();
+    uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+    immUniformThemeColor(TH_TEXT);
+    immRectf(pos,
+             win_rect->xmin,
+             win_rect->ymax - U.pixelsize,
+             win_rect->xmax,
+             win_rect->ymax + gap_size - U.pixelsize);
+    immUnbindProgram();
+
     return DropLocation::Before;
   }
   if (event.xy[1] - win_rect->ymin <= segment_height) {
@@ -273,6 +288,18 @@ std::optional<DropLocation> TreeViewItemDropTarget::choose_drop_location(
        * after. */
       return DropLocation::Into;
     }
+
+    GPUVertFormat *format = immVertexFormat();
+    uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+    immUniformThemeColor(TH_TEXT);
+    immRectf(pos,
+             win_rect->xmin,
+             win_rect->ymin + U.pixelsize,
+             win_rect->xmax,
+             win_rect->ymin - gap_size + U.pixelsize);
+    immUnbindProgram();
+
     return DropLocation::After;
   }
 
@@ -579,7 +606,7 @@ void TreeViewLayoutBuilder::build_from_tree(const AbstractTreeView &tree_view)
   uiLayout &parent_layout = current_layout();
 
   uiLayout *box = uiLayoutBox(&parent_layout);
-  uiLayoutColumn(box, false);
+  uiLayoutColumn(box, true);
 
   tree_view.foreach_item([this](AbstractTreeViewItem &item) { build_row(item); },
                          AbstractTreeView::IterOptions::SkipCollapsed |
