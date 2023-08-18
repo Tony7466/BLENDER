@@ -337,6 +337,9 @@ float outliner_right_columns_width(const SpaceOutliner *space_outliner)
       if (space_outliner->show_restrict_flags & SO_RESTRICT_INDIRECT_ONLY) {
         num_columns++;
       }
+      if (space_outliner->show_restrict_flags & SO_RESTRICT_SHOW_GHOSTS) {
+        num_columns++;
+      }
       ATTR_FALLTHROUGH;
     case SO_SCENES:
       if (space_outliner->show_restrict_flags & SO_RESTRICT_SELECT) {

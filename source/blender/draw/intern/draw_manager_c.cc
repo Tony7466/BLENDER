@@ -1691,7 +1691,7 @@ void DRW_draw_render_loop_ex(Depsgraph *depsgraph,
   const bool ghosts_on = (v3d->flag2 & V3D_HIDE_GHOSTS) == 0;
   const bool gpencil_engine_needed = drw_gpencil_engine_needed(depsgraph, v3d);
   const bool do_populate_loop = internal_engine || overlays_on || !draw_type_render ||
-                                gpencil_engine_needed;
+                                gpencil_engine_needed || ghosts_on;
 
   /* Get list of enabled engines */
   drw_engines_enable(view_layer, engine_type, gpencil_engine_needed);
@@ -1753,10 +1753,8 @@ void DRW_draw_render_loop_ex(Depsgraph *depsgraph,
               deg_ghost_iter_settings.flags = DEG_OBJECT_ITER_FOR_RENDER_ENGINE_FLAGS;
 
               DEG_OBJECT_ITER_BEGIN (&deg_ghost_iter_settings, ob) {
-                if ((object_type_exclude_viewport & (1 << ob->type)) != 0) {
-                  continue;
-                }
-                if (!BKE_object_is_visible_in_viewport(v3d, ob)) {
+                Object *ob_orig = DEG_get_original_object(ob);
+                if (!BKE_object_is_visible_in_viewport(v3d, ob_orig)) {
                   continue;
                 }
                 ob->base_flag |= BASE_IS_GHOST_FRAME;

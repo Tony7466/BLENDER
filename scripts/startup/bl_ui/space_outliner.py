@@ -393,6 +393,7 @@ class OUTLINER_PT_filter(Panel):
             row.prop(space, "show_restrict_column_hide", text="")
             row.prop(space, "show_restrict_column_viewport", text="")
             row.prop(space, "show_restrict_column_render", text="")
+            row.prop(space, "show_restrict_column_ghosts", text="")
             row.prop(space, "show_restrict_column_holdout", text="")
             row.prop(space, "show_restrict_column_indirect_only", text="")
             layout.separator()
@@ -403,6 +404,7 @@ class OUTLINER_PT_filter(Panel):
             row.prop(space, "show_restrict_column_hide", text="")
             row.prop(space, "show_restrict_column_viewport", text="")
             row.prop(space, "show_restrict_column_render", text="")
+            row.prop(space, "show_restrict_column_ghosts", text="")
             layout.separator()
 
         if display_mode != 'DATA_API':

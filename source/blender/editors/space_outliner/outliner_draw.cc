@@ -906,7 +906,7 @@ static void namebutton_fn(bContext *C, void *tsep, char *oldname)
 struct RestrictProperties {
   bool initialized;
 
-  PropertyRNA *object_hide_viewport, *object_hide_select, *object_hide_render;
+  PropertyRNA *object_hide_viewport, *object_hide_select, *object_hide_render, *object_show_ghosts;
   PropertyRNA *base_hide_viewport;
   PropertyRNA *collection_hide_viewport, *collection_hide_select, *collection_hide_render;
   PropertyRNA *layer_collection_exclude, *layer_collection_holdout,
@@ -922,6 +922,7 @@ struct RestrictPropertiesActive {
   bool object_hide_viewport;
   bool object_hide_select;
   bool object_hide_render;
+  bool object_show_ghosts;
   bool base_hide_viewport;
   bool collection_hide_viewport;
   bool collection_hide_select;
@@ -1066,6 +1067,7 @@ static void outliner_draw_restrictbuts(uiBlock *block,
     props.object_hide_viewport = RNA_struct_type_find_property(&RNA_Object, "hide_viewport");
     props.object_hide_select = RNA_struct_type_find_property(&RNA_Object, "hide_select");
     props.object_hide_render = RNA_struct_type_find_property(&RNA_Object, "hide_render");
+    props.object_show_ghosts = RNA_struct_type_find_property(&RNA_Object, "show_ghosts");
     props.base_hide_viewport = RNA_struct_type_find_property(&RNA_ObjectBase, "hide_viewport");
     props.collection_hide_viewport = RNA_struct_type_find_property(&RNA_Collection,
                                                                    "hide_viewport");
@@ -1095,6 +1097,7 @@ static void outliner_draw_restrictbuts(uiBlock *block,
     int hide;
     int viewport;
     int render;
+    int ghosts;
     int indirect_only;
     int holdout;
   } restrict_offsets = {0};
@@ -1117,6 +1120,9 @@ static void outliner_draw_restrictbuts(uiBlock *block,
   }
   if (space_outliner->show_restrict_flags & SO_RESTRICT_HIDE) {
     restrict_offsets.hide = (++restrict_column_offset) * UI_UNIT_X + V2D_SCROLL_WIDTH;
+  }
+  if (space_outliner->show_restrict_flags & SO_RESTRICT_SHOW_GHOSTS) {
+    restrict_offsets.ghosts = (++restrict_column_offset) * UI_UNIT_X + V2D_SCROLL_WIDTH;
   }
   if (space_outliner->show_restrict_flags & SO_RESTRICT_SELECT) {
     restrict_offsets.select = (++restrict_column_offset) * UI_UNIT_X + V2D_SCROLL_WIDTH;
@@ -1278,6 +1284,32 @@ static void outliner_draw_restrictbuts(uiBlock *block,
           UI_but_func_set(bt, outliner__object_set_flag_recursive_fn, ob, (char *)"hide_render");
           UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
           if (!props_active.object_hide_render) {
+            UI_but_flag_enable(bt, UI_BUT_INACTIVE);
+          }
+        }
+
+        if (space_outliner->show_restrict_flags & SO_RESTRICT_SHOW_GHOSTS &&
+            OB_TYPE_SUPPORT_GHOSTING(ob->type))
+        {
+          bt = uiDefIconButR_prop(block,
+                                  UI_BTYPE_ICON_TOGGLE,
+                                  0,
+                                  ICON_NONE,
+                                  int(region->v2d.cur.xmax - restrict_offsets.ghosts),
+                                  te->ys,
+                                  UI_UNIT_X,
+                                  UI_UNIT_Y,
+                                  &ptr,
+                                  props.object_show_ghosts,
+                                  -1,
+                                  0,
+                                  0,
+                                  -1,
+                                  -1,
+                                  TIP_("Show ghosts in viewport"));
+          UI_but_func_set(bt, outliner__object_set_flag_recursive_fn, ob, (char *)"show_ghosts");
+          UI_but_flag_enable(bt, UI_BUT_DRAG_LOCK);
+          if (!props_active.object_show_ghosts) {
             UI_but_flag_enable(bt, UI_BUT_INACTIVE);
           }
         }

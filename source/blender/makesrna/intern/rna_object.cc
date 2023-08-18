@@ -376,6 +376,13 @@ static void rna_Object_hide_update(Main *bmain, Scene * /*scene*/, PointerRNA *p
   WM_main_add_notifier(NC_OBJECT | ND_DRAW, &ob->id);
 }
 
+static void rna_Object_show_ghosts_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
+{
+  Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
+  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+  WM_main_add_notifier(NC_OBJECT | ND_DRAW, &ob->id);
+}
+
 static void rna_Object_duplicator_visibility_flag_update(Main * /*bmain*/,
                                                          Scene * /*scene*/,
                                                          PointerRNA *ptr)
@@ -2973,6 +2980,12 @@ static void rna_def_object_visibility(StructRNA *srna)
       "footage. Objects with this setting are considered to already exist in the footage, "
       "objects without it are synthetic objects being composited into it");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Object_internal_update_draw");
+
+  prop = RNA_def_property(srna, "show_ghosts", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_negative_sdna(prop, nullptr, "visibility_flag", OB_HIDE_GHOSTS);
+  RNA_def_property_ui_text(prop, "Show Ghosts", "Show ghost frames in viewport");
+  RNA_def_property_ui_icon(prop, ICON_ONIONSKIN_ON, -1);
+  RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Object_show_ghosts_update");
 }
 
 static void rna_def_object(BlenderRNA *brna)

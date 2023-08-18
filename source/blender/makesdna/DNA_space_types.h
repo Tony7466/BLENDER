@@ -393,6 +393,7 @@ typedef enum eSpaceOutliner_ShowRestrictFlag {
   SO_RESTRICT_RENDER = (1 << 4),
   SO_RESTRICT_HOLDOUT = (1 << 5),
   SO_RESTRICT_INDIRECT_ONLY = (1 << 6),
+  SO_RESTRICT_SHOW_GHOSTS = (1 << 7),
 } eSpaceOutliner_Restrict;
 
 /** #SpaceOutliner.outlinevis */

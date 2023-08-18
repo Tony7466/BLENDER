@@ -657,6 +657,8 @@ typedef enum ObjectType {
   case ID_VO: \
   case ID_GP
 
+#define OB_TYPE_SUPPORT_GHOSTING(_type) (ELEM(_type, OB_MESH, OB_GREASE_PENCIL))
+
 /** #Object.partype: first 4 bits: type. */
 enum {
   PARTYPE = (1 << 4) - 1,
@@ -801,7 +803,8 @@ enum {
   OB_HIDE_VOLUME_SCATTER = 1 << 7,
   OB_HIDE_SHADOW = 1 << 8,
   OB_HOLDOUT = 1 << 9,
-  OB_SHADOW_CATCHER = 1 << 10
+  OB_SHADOW_CATCHER = 1 << 10,
+  OB_HIDE_GHOSTS = 1 << 11
 };
 
 /** #Object.shapeflag */
