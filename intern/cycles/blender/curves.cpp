@@ -334,7 +334,8 @@ static void ExportCurveSegments(Scene *scene, Hair *hair, ParticleCurveData *CDa
           attr_intercept->add(time);
 
         if (attr_normal) {
-          /* TODO: compute geometry normals. */
+          /* NOTE: the geometry normals are not computed for legacy particle hairs. This hair
+           * system is expected to be discarded. */
           attr_normal->add(make_float3(1.0f, 0.0f, 0.0f));
         }
 
