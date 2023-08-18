@@ -1074,9 +1074,20 @@ void BKE_nlameta_flush_transforms(NlaStrip *mstrip)
     if (scaleChanged) {
       float p1, p2;
 
-      /* compute positions of endpoints relative to old extents of strip */
-      p1 = (strip->start - oStart) / oLen;
-      p2 = (strip->end - oStart) / oLen;
+      if (oLen) {
+        /* Compute positions of endpoints relative to old extents of strip. */
+        p1 = (strip->start - oStart) / oLen;
+        p2 = (strip->end - oStart) / oLen;
+      }
+      else {
+        /* WORKAROUND: A strip should never be shorter than #NLASTRIP_MIN_LEN_THRESH.
+         * `rna_NlaStrip_frame_start_ui_set` and `rna_NlaStrip_frame_end_ui_set` should ensure this
+         * doesn't occur, but in some cases, it seems to be happening.
+         * Therefore, we must prevent division by zero. */
+
+        p1 = 0.0f;
+        p2 = 1.0f;
+      }
 
       /* Apply new strip endpoints using the proportions,
        * then wait for second pass to flush scale properly. */
