@@ -15,6 +15,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_math_vector.h"
+#include "BLI_math_vector_types.hh"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
@@ -1095,6 +1096,34 @@ void sample_fcurve_segment(FCurve *fcu,
     const float evaluation_time = start_frame + (float(i) / sample_rate);
     samples[i] = evaluate_fcurve(fcu, evaluation_time);
   }
+}
+
+void bake_fcurve(FCurve *fcu,
+                 const blender::int2 range,
+                 const float step,
+                 const bool remove_existing)
+{
+  const int sample_count = range[1] - range[0];
+  float *samples = static_cast<float *>(
+      MEM_callocN(sample_count * sizeof(float), "Channel Bake Samples"));
+  sample_fcurve_segment(fcu, range[0], 1, samples, sample_count);
+  if (remove_existing) {
+    for (int i = fcu->totvert - 1; i >= 0; i--) {
+      BezTriple key = fcu->bezt[i];
+      if (key.vec[1][0] < range[0]) {
+        break;
+      }
+      if (key.vec[1][0] > range[1]) {
+        continue;
+      }
+      BKE_fcurve_delete_key(fcu, i);
+    }
+  }
+  for (int i = 0; i < sample_count; i++) {
+    insert_vert_fcurve(fcu, range[0] + i, samples[i], BEZT_KEYTYPE_KEYFRAME, eInsertKeyFlags(0));
+  }
+  MEM_freeN(samples);
+  BKE_fcurve_handles_recalc(fcu);
 }
 
 void sample_fcurve(FCurve *fcu)

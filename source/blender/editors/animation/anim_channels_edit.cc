@@ -4246,9 +4246,10 @@ static void ANIM_OT_channel_view_pick(wmOperatorType *ot)
                              "Use Preview Range",
                              "Ignore frames outside of the preview range");
 }
+#define CHANNEL_BAKE_KEEP -1
 
 static const EnumPropertyItem channel_bake_key_options[] = {
-    {-1, "KEEP", 0, "Keep", ""},
+    {CHANNEL_BAKE_KEEP, "KEEP", 0, "Keep", ""},
     {BEZT_IPO_BEZ, "BEZIER", 0, "Bezier", ""},
     {BEZT_IPO_LIN, "LIN", 0, "Linear", ""},
     {BEZT_IPO_CONST, "CONST", 0, "Constant", ""},
@@ -4257,6 +4258,50 @@ static const EnumPropertyItem channel_bake_key_options[] = {
 
 static int channels_bake_exec(bContext *C, wmOperator *op)
 {
+  bAnimContext ac;
+
+  /* Get editor data. */
+  if (ANIM_animdata_get_context(C, &ac) == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
+  ListBase anim_data = {nullptr, nullptr};
+  const int filter = (ANIMFILTER_SEL | ANIMFILTER_NODUPLIS | ANIMFILTER_DATA_VISIBLE |
+                      ANIMFILTER_LIST_VISIBLE | ANIMFILTER_FCURVESONLY);
+  size_t anim_data_length = ANIM_animdata_filter(
+      &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
+
+  if (anim_data_length == 0) {
+    WM_report(RPT_WARNING, "No channels to operate on");
+    return OPERATOR_CANCELLED;
+  }
+
+  Scene *scene = CTX_data_scene(C);
+  blender::int2 frame_range;
+  RNA_int_get_array(op->ptr, "range", frame_range);
+  if (frame_range[0] == 0 && frame_range[1] == 0) {
+    if (scene->r.flag & SCER_PRV_RANGE) {
+      frame_range = {scene->r.psfra, scene->r.pefra};
+    }
+    else {
+      frame_range = {scene->r.sfra, scene->r.efra};
+    }
+    RNA_int_set_array(op->ptr, "range", frame_range);
+  }
+
+  const int sample_count = frame_range[1] - frame_range[0];
+  const bool remove_existing = RNA_boolean_get(op->ptr, "remove_existing");
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    FCurve *fcu = static_cast<FCurve *>(ale->data);
+    if (!fcu->bezt) {
+      continue;
+    }
+    bake_fcurve(fcu, frame_range, 1, remove_existing);
+  }
+
+  ANIM_animdata_freelist(&anim_data);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);
+
   return OPERATOR_FINISHED;
 }
 
@@ -4271,17 +4316,17 @@ static void ANIM_OT_channels_bake(wmOperatorType *ot)
   ot->exec = channels_bake_exec;
   ot->poll = channel_view_poll;
 
-  ot->flag = 0;
-  RNA_def_float_array(ot->srna,
-                      "range",
-                      2,
-                      nullptr,
-                      -FLT_MAX,
-                      FLT_MAX,
-                      "Frame Range",
-                      "The range in which to create new keys",
-                      0,
-                      FLT_MAX);
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  RNA_def_int_array(ot->srna,
+                    "range",
+                    2,
+                    nullptr,
+                    INT_MIN,
+                    INT_MAX,
+                    "Frame Range",
+                    "The range in which to create new keys",
+                    0,
+                    INT_MAX);
 
   RNA_def_float(
       ot->srna, "step", 1, 0.001, FLT_MAX, "Frame Step", "At which interval to add keys", 1, 16);
@@ -4340,6 +4385,8 @@ void ED_operatortypes_animchannels()
 
   WM_operatortype_append(ANIM_OT_channels_group);
   WM_operatortype_append(ANIM_OT_channels_ungroup);
+
+  WM_operatortype_append(ANIM_OT_channels_bake);
 }
 
 void ED_keymap_animchannels(wmKeyConfig *keyconf)

@@ -264,6 +264,7 @@ class GRAPH_MT_channel(Menu):
         layout.operator("graph.bake")
         layout.operator("graph.unbake")
         layout.operator("graph.sound_bake")
+        layout.operator("anim.channels_bake")
 
         layout.separator()
         layout.operator("graph.euler_filter", text="Discontinuity (Euler) Filter")

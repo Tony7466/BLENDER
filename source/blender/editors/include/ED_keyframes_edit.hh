@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_math_vector_types.hh"
 #include "ED_anim_api.hh" /* for enum eAnimFilter_Flags */
 
 struct BezTriple;
@@ -484,6 +485,8 @@ void sample_fcurve(FCurve *fcu);
  */
 void sample_fcurve_segment(
     FCurve *fcu, float start_frame, int sample_rate, float *r_samples, int sample_count);
+
+void bake_fcurve(FCurve *fcu, blender::int2 range, float step, bool remove_existing);
 
 /* ----------- */
 
