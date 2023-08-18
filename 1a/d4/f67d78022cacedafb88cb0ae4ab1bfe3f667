@@ -1,1 +1,2 @@
 Referenced by issue #108403, Regression: Copying text selected with double-click in the Python Console instead copies the text after the selection
+Referenced by issue #111278, Regression: Shift+Arrow on selected text teleports the start of the text selection to double click position
