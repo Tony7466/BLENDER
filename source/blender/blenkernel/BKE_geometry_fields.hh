@@ -246,7 +246,6 @@ class InstancesFieldInput : public fn::FieldInput {
 class VolumeFieldInput : public fn::FieldInput {
  public:
   using GGrid = volume::GGrid;
-  using GridMask = volume::GridMask;
 
   using fn::FieldInput::FieldInput;
   GVArray get_varray_for_context(const fn::FieldContext & /*context*/,

@@ -17,52 +17,6 @@
 namespace blender::volume {
 
 #ifdef WITH_OPENVDB
-GridMask::GridPtr GridMask::empty_grid()
-{
-  static GridPtr grid = openvdb::MaskGrid::create();
-  return grid;
-}
-
-struct BoolGridToMask {
-  volume::Grid<bool>::GridType::ConstAccessor accessor;
-
-  inline void operator()(const openvdb::MaskGrid::ValueOnIter &iter) const
-  {
-    const openvdb::Coord coord = iter.getCoord();
-    /* Disable voxels where selection is false. */
-    if (!accessor.getValue(coord)) {
-      iter.setActiveState(false);
-    }
-  }
-};
-
-GridMask GridMask::from_bools(const GGrid &full_mask, const Grid<bool> &selection)
-{
-  if (!full_mask) {
-    return {};
-  }
-
-  /* Empty GridMask with same transform and metadata as the full mask */
-  volume::GridMask result = {openvdb::MaskGrid::create(*full_mask.grid_)};
-  volume::grid_to_static_type(full_mask.grid_, [&](auto &typed_full_mask) {
-    result.grid()->topologyUnion(typed_full_mask);
-  });
-  if (selection) {
-    BoolGridToMask op{selection.grid_->getConstAccessor()};
-    openvdb::tools::foreach (result.grid_->beginValueOn(), op);
-  }
-  return result;
-}
-
-bool GridMask::is_empty() const
-{
-  return grid_ ? grid_->empty() : false;
-}
-
-int64_t GridMask::min_voxel_count() const
-{
-  return grid_ ? grid_->activeVoxelCount() : 0;
-}
 
 int64_t GGrid::voxel_count() const
 {
@@ -192,72 +146,7 @@ const CPPType *GMutableGrid::value_type() const
   return type;
 }
 
-template<typename T> int64_t MutableGrid<T>::voxel_count() const
-{
-  return grid_ ? grid_->activeVoxelCount() : 0;
-}
-
-template<typename T> bool MutableGrid<T>::is_empty() const
-{
-  return grid_ ? grid_->empty() : true;
-}
-
-template<typename T> MutableGrid<T>::operator bool() const
-{
-  return grid_ != nullptr;
-}
-
-template<typename T> const CPPType *MutableGrid<T>::value_type() const
-{
-  return &CPPType::get<T>();
-}
-
-template<typename T> const CPPType *Grid<T>::value_type() const
-{
-  return &CPPType::get<T>();
-}
-
-template<typename T> Grid<T>::operator GGrid()
-{
-  return {grid_};
-}
-template<typename T> Grid<T>::operator GGrid const() const
-{
-  return {grid_};
-}
-
-template<typename T> int64_t Grid<T>::voxel_count() const
-{
-  return grid_ ? grid_->activeVoxelCount() : 0;
-}
-
-template<typename T> bool Grid<T>::is_empty() const
-{
-  return grid_ ? grid_->empty() : true;
-}
-
-template<typename T> Grid<T>::operator bool() const
-{
-  return grid_ != nullptr;
-}
-
 #else
-
-GridMask GridMask::from_bools(const volume::GGrid & /*full_mask*/,
-                              const volume::Grid<bool> & /*selection*/)
-{
-  return {nullptr};
-}
-
-bool GridMask::is_empty() const
-{
-  return true;
-}
-
-int64_t GridMask::min_voxel_count() const
-{
-  return 0;
-}
 
 GGrid::operator bool() const
 {
@@ -298,56 +187,6 @@ GGrid GGrid::create(ResourceScope & /*scope*/,
                     const void * /*active_value*/)
 {
   return GGrid{};
-}
-
-template<typename T>
-Grid<T> Grid<T>::create(ResourceScope & /*scope*/, const T & /*background_value*/)
-{
-  return Grid<T>{};
-}
-
-template<typename T> Grid<T> Grid<T>::create(ResourceScope & /*scope*/)
-{
-  return Grid<T>{};
-}
-
-template<typename T>
-Grid<T> Grid<T>::create(ResourceScope & /*scope*/,
-                        const GridMask & /*mask*/,
-                        const T & /*inactive_value*/,
-                        const T & /*active_value*/)
-{
-  return Grid<T>{};
-}
-
-template<typename T> int64_t Grid<T>::voxel_count() const
-{
-  return 0;
-}
-
-template<typename T> bool Grid<T>::is_empty() const
-{
-  return true;
-}
-
-template<typename T> Grid<T>::operator bool() const
-{
-  return false;
-}
-
-template<typename T> const CPPType *Grid<T>::value_type() const
-{
-  return nullptr;
-}
-
-template<typename T> Grid<T>::operator GGrid()
-{
-  return {};
-}
-
-template<typename T> Grid<T>::operator GGrid const() const
-{
-  return {};
 }
 
 #endif

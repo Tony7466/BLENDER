@@ -178,7 +178,8 @@ class GFieldRef : public GFieldBase<const FieldNode *> {
 
 namespace detail {
 /* Utility class to make #is_field_v work. */
-struct TypedFieldBase {};
+struct TypedFieldBase {
+};
 }  // namespace detail
 
 /**
@@ -260,7 +261,6 @@ class FieldContext;
 class FieldInput : public FieldNode {
  public:
   using GGrid = volume::GGrid;
-  using GridMask = volume::GridMask;
 
   /* The order is also used for sorting in socket inspection. */
   enum class Category {
@@ -334,7 +334,6 @@ struct FieldInputs {
  */
 class FieldContext {
  public:
-  using GridMask = volume::GridMask;
   using GGrid = volume::GGrid;
 
   virtual ~FieldContext() = default;
@@ -490,7 +489,6 @@ class FieldEvaluator : NonMovable, NonCopyable {
  */
 class VolumeFieldEvaluator : NonMovable, NonCopyable {
  public:
-  using GridMask = volume::GridMask;
   using GGrid = volume::GGrid;
   using GMutableGrid = volume::GMutableGrid;
 

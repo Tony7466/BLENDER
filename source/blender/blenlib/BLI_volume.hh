@@ -283,51 +283,6 @@ class GMutableGrid;
 template<typename T> class Grid;
 template<typename T> class MutableGrid;
 
-/* Mask defined by active voxels of the grid. */
-class GridMask {
-#ifdef WITH_OPENVDB
-  using GridPtr = std::shared_ptr<openvdb::MaskGrid>;
-  GridPtr grid_;
-
-  static GridPtr empty_grid();
-#endif
-
- public:
-  GridMask()
-#ifdef WITH_OPENVDB
-      : grid_(empty_grid())
-#endif
-  {
-  }
-
-  GridMask(const GridMask &other) = default;
-  GridMask &operator=(const GridMask &other)
-  {
-#ifdef WITH_OPENVDB
-    grid_ = other.grid_;
-#else
-    UNUSED_VARS(other);
-#endif
-    return *this;
-  }
-
-#ifdef WITH_OPENVDB
-  GridMask(const GridPtr &grid) : grid_(grid) {}
-#endif
-
-  static GridMask from_bools(const GGrid &full_mask, const Grid<bool> &selection);
-
-  bool is_empty() const;
-  int64_t min_voxel_count() const;
-
-#ifdef WITH_OPENVDB
-  const GridPtr &grid() const
-  {
-    return grid_;
-  }
-#endif
-};
-
 /* -------------------------------------------------------------------- */
 /** \name Grid pointer wrappers
  *  \note Using wrappers avoids checking for WITH_OPENVDB everywhere.

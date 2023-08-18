@@ -141,6 +141,107 @@ MutableGrid<T> MutableGrid<T>::create(const GGrid &mask,
   return MutableGrid<T>{std::move(grid)};
 }
 
+template<typename T> int64_t MutableGrid<T>::voxel_count() const
+{
+  return grid_ ? grid_->activeVoxelCount() : 0;
+}
+
+template<typename T> bool MutableGrid<T>::is_empty() const
+{
+  return grid_ ? grid_->empty() : true;
+}
+
+template<typename T> MutableGrid<T>::operator bool() const
+{
+  return grid_ != nullptr;
+}
+
+template<typename T> const CPPType *MutableGrid<T>::value_type() const
+{
+  return &CPPType::get<T>();
+}
+
+template<typename T> const CPPType *Grid<T>::value_type() const
+{
+  return &CPPType::get<T>();
+}
+
+template<typename T> Grid<T>::operator GGrid()
+{
+  return {grid_};
+}
+template<typename T> Grid<T>::operator GGrid const() const
+{
+  return {grid_};
+}
+
+template<typename T> int64_t Grid<T>::voxel_count() const
+{
+  return grid_ ? grid_->activeVoxelCount() : 0;
+}
+
+template<typename T> bool Grid<T>::is_empty() const
+{
+  return grid_ ? grid_->empty() : true;
+}
+
+template<typename T> Grid<T>::operator bool() const
+{
+  return grid_ != nullptr;
+}
+
+#else
+
+template<typename T>
+Grid<T> Grid<T>::create(ResourceScope & /*scope*/, const T & /*background_value*/)
+{
+  return Grid<T>{};
+}
+
+template<typename T> Grid<T> Grid<T>::create(ResourceScope & /*scope*/)
+{
+  return Grid<T>{};
+}
+
+template<typename T>
+Grid<T> Grid<T>::create(ResourceScope & /*scope*/,
+                        const GridMask & /*mask*/,
+                        const T & /*inactive_value*/,
+                        const T & /*active_value*/)
+{
+  return Grid<T>{};
+}
+
+template<typename T> int64_t Grid<T>::voxel_count() const
+{
+  return 0;
+}
+
+template<typename T> bool Grid<T>::is_empty() const
+{
+  return true;
+}
+
+template<typename T> Grid<T>::operator bool() const
+{
+  return false;
+}
+
+template<typename T> const CPPType *Grid<T>::value_type() const
+{
+  return nullptr;
+}
+
+template<typename T> Grid<T>::operator GGrid()
+{
+  return {};
+}
+
+template<typename T> Grid<T>::operator GGrid const() const
+{
+  return {};
+}
+
 #endif
 
 }  // namespace blender::volume

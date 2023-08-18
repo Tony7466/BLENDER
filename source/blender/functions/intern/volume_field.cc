@@ -192,7 +192,6 @@ struct VGridReader_For_Accessor : public VGridReader<GridType> {
 template<typename GridType, typename MaskGridType> struct EvalPerLeafOp {
   using GGrid = volume::GGrid;
   using GMutableGrid = volume::GMutableGrid;
-  using GridMask = volume::GridMask;
   using TreeType = typename GridType::TreeType;
   using ValueType = typename GridType::ValueType;
 
@@ -298,7 +297,6 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
 
   using volume::GGrid;
   using volume::GMutableGrid;
-  using volume::GridMask;
 
   if (mask.is_empty()) {
     return;
@@ -380,7 +378,6 @@ void evaluate_procedure_on_constant_volume_fields(ResourceScope & /*scope*/,
 {
   using volume::GGrid;
   using volume::GMutableGrid;
-  using volume::GridMask;
 
   mf::ProcedureExecutor procedure_executor{procedure};
   const IndexMask mask(1);

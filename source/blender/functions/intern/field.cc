@@ -18,11 +18,14 @@
 #include "FN_multi_function_procedure_optimization.hh"
 #include "FN_volume_field.hh"
 
+#ifdef WITH_OPENVDB
+#  include <openvdb/tools/ValueTransformer.h>
+#endif
+
 namespace blender::fn {
 
 using GGrid = volume::GGrid;
 using GMutableGrid = volume::GMutableGrid;
-using GridMask = volume::GridMask;
 
 /* -------------------------------------------------------------------- */
 /** \name Field Evaluation
@@ -1057,11 +1060,37 @@ IndexMask FieldEvaluator::get_evaluated_selection_as_mask()
 
 const volume::GGrid VolumeFieldEvaluator::empty_grid_ = {};
 
-static volume::GridMask grid_mask_from_selection(const volume::GGrid &full_mask,
-                                                 const volume::Grid<bool> &selection,
-                                                 ResourceScope & /*scope*/)
+struct BoolGridToMask {
+  volume::Grid<bool>::GridType::ConstAccessor accessor;
+
+  inline void operator()(const openvdb::BoolGrid::ValueOnIter &iter) const
+  {
+    const openvdb::Coord coord = iter.getCoord();
+    /* Disable voxels where selection is false. */
+    if (!accessor.getValue(coord)) {
+      iter.setActiveState(false);
+    }
+  }
+};
+
+static volume::GMutableGrid grid_mask_from_selection(const volume::GGrid &full_mask,
+                                                     const volume::Grid<bool> &selection,
+                                                     ResourceScope & /*scope*/)
 {
-  return volume::GridMask::from_bools(full_mask, selection);
+  if (!full_mask) {
+    return {};
+  }
+
+  /* Empty bool grid with same transform and metadata as the full mask */
+  volume::MutableGrid<bool> result = {openvdb::BoolGrid::create(*full_mask.grid_)};
+  volume::grid_to_static_type(full_mask.grid_, [&](auto &typed_full_mask) {
+    result.grid_->topologyUnion(typed_full_mask);
+  });
+  if (selection) {
+    BoolGridToMask op{selection.grid_->getConstAccessor()};
+    openvdb::tools::foreach (result.grid_->beginValueOn(), op);
+  }
+  return result;
 }
 
 int VolumeFieldEvaluator::add_with_destination(GField field, GMutableGrid &dst)
@@ -1099,7 +1128,7 @@ static volume::GGrid evaluate_selection(const Field<bool> &selection_field,
   if (selection_field) {
     volume::Grid<bool> selection =
         evaluate_volume_fields(scope, {selection_field}, domain_mask, context)[0].typed<bool>();
-    return GGrid{grid_mask_from_selection(domain_mask, selection, scope).grid()};
+    return grid_mask_from_selection(domain_mask, selection, scope);
   }
   return domain_mask;
 }
@@ -1128,7 +1157,7 @@ void VolumeFieldEvaluator::evaluate()
 volume::GGrid VolumeFieldEvaluator::get_evaluated_as_mask(const int field_index)
 {
   volume::Grid<bool> grid = this->get_evaluated(field_index).typed<bool>();
-  return GGrid{grid_mask_from_selection(domain_mask_, grid, scope_).grid()};
+  return grid_mask_from_selection(domain_mask_, grid, scope_);
 }
 
 volume::GGrid VolumeFieldEvaluator::get_evaluated_selection_as_mask()
