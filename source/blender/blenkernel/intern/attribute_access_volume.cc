@@ -62,11 +62,11 @@ static openvdb::GridBase::Ptr add_generic_grid(const CPPType &value_type,
   volume::field_to_static_type(value_type, [&](auto tag) {
     using ValueType = typename decltype(tag)::type;
     using GridType = volume::grid_types::AttributeGrid<ValueType>;
-    using TreeType = typename GridType::TreeType;
+    using Converter = volume::grid_types::Converter<GridType>;
 
     const ValueType &background_value = *static_cast<const ValueType *>(
         value_type.default_value());
-    return GridType::create(background_value);
+    return GridType::create(Converter::single_value_to_grid(background_value));
   });
   return nullptr;
 }
@@ -116,6 +116,7 @@ static openvdb::GridBase::Ptr add_generic_grid_copy(const CPPType &value_type,
     using ValueType = typename decltype(tag)::type;
     using GridType = volume::grid_types::AttributeGrid<ValueType>;
     using TreeType = typename GridType::TreeType;
+    using Converter = volume::grid_types::Converter<GridType>;
 
     const ValueType &background_value = *static_cast<const ValueType *>(
         value_type.default_value());
@@ -134,7 +135,7 @@ static openvdb::GridBase::Ptr add_generic_grid_copy(const CPPType &value_type,
         });
       }
       else {
-        result = GridType::create(background_value);
+        result = GridType::create(Converter::single_value_to_grid(background_value));
       }
       return result;
     };

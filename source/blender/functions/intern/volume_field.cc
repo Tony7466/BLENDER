@@ -427,9 +427,11 @@ void evaluate_procedure_on_constant_volume_fields(ResourceScope & /*scope*/,
 
     volume::field_to_static_type(type, [&](auto type_tag) {
       using T = typename decltype(type_tag)::type;
+      using GridType = volume::grid_types::AttributeGrid<T>;
+      using Converter = volume::grid_types::Converter<GridType>;
 
       const T &value = *static_cast<T *>(output_buffers[i]);
-      r_grids[out_index] = GGrid{volume::grid_types::AttributeGrid<T>::create(value)};
+      r_grids[out_index] = GGrid{GridType::create(Converter::single_value_to_grid(value))};
     });
 
     /* Destruct output value buffers, value is stored in grid backgrounds now. */

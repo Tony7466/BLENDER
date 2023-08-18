@@ -120,132 +120,6 @@ namespace volume {
 #ifdef WITH_OPENVDB
 namespace grid_types {
 
-// template<typename GridValueType, typename MFValueType> struct ConverterImpl {
-//  static GridValueType to_grid(const MFValueType &value)
-//  {
-//    return reinterpret_cast<const GridValueType &>(value);
-//  }
-//  static Span<GridValueType> to_grid(const Span<MFValueType> values)
-//  {
-//    return {reinterpret_cast<const GridValueType *>(values.begin()), values.size()};
-//  }
-//  static MutableSpan<GridValueType> to_grid(const MutableSpan<MFValueType> values)
-//  {
-//    return {reinterpret_cast<GridValueType *>(values.begin()), values.size()};
-//  }
-
-//  static MFValueType to_attribute(const GridValueType &value)
-//  {
-//    return reinterpret_cast<const MFValueType &>(value);
-//  }
-//  static Span<MFValueType> to_attribute(const Span<GridValueType> values)
-//  {
-//    return {reinterpret_cast<const MFValueType *>(values.begin()), values.size()};
-//  }
-//  static MutableSpan<MFValueType> to_attribute(const MutableSpan<GridValueType> values)
-//  {
-//    return {reinterpret_cast<MFValueType *>(values.begin()), values.size()};
-//  }
-//};
-
-///* No-op converter utility: OpenVDB types are interpreted as their Blender counterpart so they
-/// can
-// * be used directly with attributes.
-// * Supported types are instantiated explicitly below.
-// */
-// template<typename T> struct AttributeValueConverter : public ConverterImpl<T, T> {
-//  using ValueType = T;
-//};
-
-///* No-op converter utility: OpenVDB types are interpreted as their Blender counterpart so they
-/// can
-// * be used directly with attributes.
-// * Supported types are instantiated explicitly below.
-// *
-// * GridValueConverter uses the GridType rather than ValueType as argument.
-// * This is because MaskGrid has a bool value type, but any leaf buffer arrays
-// * are actually of type ValueMask, which is an empty dummy type.
-// * A specialization for MaskGrid is implemented below.
-// */
-// template<typename GridType>
-// struct GridValueConverter
-//    : public ConverterImpl<typename GridType::ValueType, typename GridType::ValueType> {
-//  using ValueType = typename GridType::ValueType;
-//  using MFType = ValueType;
-//};
-
-///* Specialization for MaskGrid, converting between bool and ValueMask. */
-// template<>
-// struct GridValueConverter<openvdb::MaskGrid> : public ConverterImpl<long unsigned int, bool> {
-//  using ValueType = bool;
-//  using MFType = long unsigned int;
-//};
-
-template<typename AttributeValueType, typename GridValueType, typename LeafBufferValueType>
-struct ReinterpretCastConverter {
-  static GridValueType single_value_to_grid(const AttributeValueType &value)
-  {
-    return reinterpret_cast<const GridValueType &>(value);
-  }
-
-  static MutableSpan<AttributeValueType> leaf_buffer_to_varray(
-      const MutableSpan<LeafBufferValueType> values)
-  {
-    return {reinterpret_cast<AttributeValueType *>(values.begin()), values.size()};
-  }
-};
-
-/* Default implementation, only used when grid and attribute types are exactly the same. */
-template<typename GridType>
-struct Converter : public ReinterpretCastConverter<typename GridType::ValueType,
-                                                   typename GridType::ValueType,
-                                                   typename GridType::ValueType> {
-};
-
-/* Vector implementation, casts Blender vectors to OpenVDB vectors and vice versa. */
-template<typename BaseT, int N>
-struct Converter<openvdb::math::Tuple<N, BaseT>>
-    : public ReinterpretCastConverter<typename blender::VecBase<BaseT, N>,
-                                      typename openvdb::math::Tuple<N, BaseT>,
-                                      typename openvdb::math::Tuple<N, BaseT>> {
-};
-
-/* Specialization for MaskGrid: Leaf buffers directly expose the activation state bit fields. */
-template<> struct Converter<openvdb::MaskGrid> {
-  using GridValueType = openvdb::ValueMask;
-  using LeafBufferValueType = unsigned long int;
-  using AttributeValueType = bool;
-
-  static GridValueType single_value_to_grid(const AttributeValueType & /*value*/)
-  {
-    return {};
-  }
-
-  static MutableSpan<AttributeValueType> leaf_buffer_to_varray(
-      const MutableSpan<LeafBufferValueType> values)
-  {
-    return {reinterpret_cast<AttributeValueType *>(values.begin()), values.size()};
-  }
-};
-
-/* Specialization for BoolGrid: Leaf buffers directly expose the activation state bit fields. */
-template<> struct Converter<openvdb::BoolGrid> {
-  using GridValueType = openvdb::ValueMask;
-  using LeafBufferValueType = unsigned long int;
-  using AttributeValueType = bool;
-
-  static GridValueType single_value_to_grid(const AttributeValueType & /*value*/)
-  {
-    return {};
-  }
-
-  static MutableSpan<AttributeValueType> leaf_buffer_to_varray(
-      const MutableSpan<LeafBufferValueType> values)
-  {
-    return {reinterpret_cast<AttributeValueType *>(values.begin()), values.size()};
-  }
-};
-
 /* XXX Generic template for attribute grids, this can cause excessive code generation,
  * so the allowed types are declared below to be on the safe side.
  */
@@ -286,6 +160,85 @@ template<> struct AttributeTreeImpl<uint32_t> {
 
 template<typename T> using AttributeTree = typename AttributeTreeImpl<T>::Type;
 template<typename T> using AttributeGrid = typename openvdb::Grid<AttributeTree<T>>;
+
+template<typename AttributeValueType, typename GridValueType, typename LeafBufferValueType>
+struct ReinterpretCastConverter {
+  static GridValueType single_value_to_grid(const AttributeValueType &value)
+  {
+    return reinterpret_cast<const GridValueType &>(value);
+  }
+
+  static MutableSpan<AttributeValueType> leaf_buffer_to_varray(
+      const MutableSpan<LeafBufferValueType> values)
+  {
+    return {reinterpret_cast<AttributeValueType *>(values.begin()), values.size()};
+  }
+};
+
+/* Default implementation, only used when grid and attribute types are exactly the same. */
+template<typename GridType>
+struct Converter : public ReinterpretCastConverter<typename GridType::ValueType,
+                                                   typename GridType::ValueType,
+                                                   typename GridType::ValueType> {
+};
+
+/* Vector implementation, casts Blender vectors to OpenVDB vectors and vice versa. */
+template<>
+struct Converter<openvdb::Vec2fGrid>
+    : public ReinterpretCastConverter<float2, openvdb::math::Vec2s, openvdb::math::Vec2s> {
+};
+template<>
+struct Converter<openvdb::Vec3fGrid>
+    : public ReinterpretCastConverter<float3, openvdb::math::Vec3s, openvdb::math::Vec3s> {
+};
+template<>
+struct Converter<openvdb::Vec3DGrid>
+    : public ReinterpretCastConverter<float2, openvdb::math::Vec3d, openvdb::math::Vec3d> {
+};
+template<>
+struct Converter<openvdb::Vec2IGrid>
+    : public ReinterpretCastConverter<int2, openvdb::math::Vec2i, openvdb::math::Vec2i> {
+};
+template<>
+struct Converter<openvdb::Vec3IGrid>
+    : public ReinterpretCastConverter<int3, openvdb::math::Vec3i, openvdb::math::Vec3i> {
+};
+
+/* Specialization for MaskGrid: Leaf buffers directly expose the activation state bit fields. */
+template<> struct Converter<openvdb::MaskGrid> {
+  using GridValueType = openvdb::ValueMask;
+  using LeafBufferValueType = unsigned long int;
+  using AttributeValueType = bool;
+
+  static GridValueType single_value_to_grid(const AttributeValueType & /*value*/)
+  {
+    return {};
+  }
+
+  static MutableSpan<AttributeValueType> leaf_buffer_to_varray(
+      const MutableSpan<LeafBufferValueType> values)
+  {
+    return {reinterpret_cast<AttributeValueType *>(values.begin()), values.size()};
+  }
+};
+
+/* Specialization for BoolGrid: Leaf buffers directly expose the activation state bit fields. */
+template<> struct Converter<openvdb::BoolGrid> {
+  using GridValueType = bool;
+  using LeafBufferValueType = unsigned long int;
+  using AttributeValueType = bool;
+
+  static GridValueType single_value_to_grid(const AttributeValueType &value)
+  {
+    return value;
+  }
+
+  static MutableSpan<AttributeValueType> leaf_buffer_to_varray(
+      const MutableSpan<LeafBufferValueType> values)
+  {
+    return {reinterpret_cast<AttributeValueType *>(values.begin()), values.size()};
+  }
+};
 
 /* TODO add more as needed. */
 /* TODO could use template magic to generate all from 1 list, but not worth it for now. */

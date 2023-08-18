@@ -95,10 +95,10 @@ GMutableGrid GMutableGrid::create(const CPPType &type, const void *background_va
   volume::field_to_static_type(type, [&grid, background_value](auto type_tag) {
     using T = typename decltype(type_tag)::type;
     using GridType = grid_types::AttributeGrid<T>;
+    using Converter = grid_types::Converter<GridType>;
 
     const T &value = *static_cast<const T *>(background_value);
-    grid = grid_types::AttributeGrid<T>::create(
-        grid_types::Converter<GridType>::single_value_to_grid(value));
+    grid = grid_types::AttributeGrid<T>::create(Converter::single_value_to_grid(value));
   });
 
   return GMutableGrid{std::move(grid)};
@@ -107,12 +107,13 @@ GMutableGrid GMutableGrid::create(const CPPType &type, const void *background_va
 GMutableGrid GMutableGrid::create(const CPPType &type)
 {
   openvdb::GridBase::Ptr grid;
-  volume::field_to_static_type(type, [&grid](auto type_tag) {
+  volume::field_to_static_type(type, [&](auto type_tag) {
     using T = typename decltype(type_tag)::type;
+    using GridType = grid_types::AttributeGrid<T>;
+    using Converter = grid_types::Converter<GridType>;
 
-    const CPPType &type = CPPType::get<T>();
     const T &value = *static_cast<const T *>(type.default_value());
-    grid = grid_types::AttributeGrid<T>::create(value);
+    grid = grid_types::AttributeGrid<T>::create(Converter::single_value_to_grid(value));
   });
 
   return GMutableGrid{std::move(grid)};
@@ -128,6 +129,7 @@ GMutableGrid GMutableGrid::create(const CPPType &type,
     using T = typename decltype(type_tag)::type;
     using TreeType = grid_types::AttributeTree<T>;
     using GridType = grid_types::AttributeGrid<T>;
+    using Converter = grid_types::Converter<GridType>;
 
     if (mask.is_empty()) {
       grid = GridType::create();
@@ -138,8 +140,11 @@ GMutableGrid GMutableGrid::create(const CPPType &type,
     const T &typed_active_value = *static_cast<const T *>(active_value);
     typename TreeType::Ptr tree = nullptr;
     volume::grid_to_static_type(mask.grid_, [&](auto &typed_mask) {
-      tree = typename TreeType::Ptr(new TreeType(
-          typed_mask.tree(), typed_inactive_value, typed_active_value, openvdb::TopologyCopy{}));
+      tree = typename TreeType::Ptr(
+          new TreeType(typed_mask.tree(),
+                       Converter::single_value_to_grid(typed_inactive_value),
+                       Converter::single_value_to_grid(typed_active_value),
+                       openvdb::TopologyCopy{}));
     });
     grid = typename GridType::Ptr(new GridType(tree));
     grid->setTransform(mask.grid_->transform().copy());
