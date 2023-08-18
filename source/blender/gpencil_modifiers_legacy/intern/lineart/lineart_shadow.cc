@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,6 +17,8 @@
 #include "BKE_material.h"
 #include "BKE_object.h"
 #include "BKE_scene.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "DEG_depsgraph_query.h"
 #include "DNA_collection_types.h"
 #include "DNA_gpencil_legacy_types.h"

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -24,7 +24,9 @@
 #include "DNA_shader_fx_types.h"
 #include "DNA_workspace_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -37,9 +39,9 @@
 #include "BKE_object_deform.h"
 #include "BKE_paint.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -311,8 +313,6 @@ const EnumPropertyItem rna_enum_object_axis_items[] = {
 };
 
 #ifdef RNA_RUNTIME
-
-#  include "BLI_math.h"
 
 #  include "DNA_ID.h"
 #  include "DNA_constraint_types.h"
@@ -2543,7 +2543,8 @@ static void rna_def_object_modifiers(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_property_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Active EditBone", "Armatures active edit bone");
   // RNA_def_property_update(prop, 0, "rna_Armature_act_editbone_update");
-  RNA_def_property_pointer_funcs(prop, nullptr, "rna_Armature_act_edit_bone_set", nullptr, nullptr);
+  RNA_def_property_pointer_funcs(
+      prop, nullptr, "rna_Armature_act_edit_bone_set", nullptr, nullptr);
 
   /* TODO: redraw. */
   // RNA_def_property_collection_active(prop, prop_act);
@@ -3391,8 +3392,16 @@ static void rna_def_object(BlenderRNA *brna)
       prop, "Constraints", "Constraints affecting the transformation of the object");
   RNA_def_property_override_funcs(prop, nullptr, nullptr, "rna_Object_constraints_override_apply");
 #  if 0
-  RNA_def_property_collection_funcs(
-      prop, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, "constraints__add", "constraints__remove");
+  RNA_def_property_collection_funcs(prop,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    "constraints__add",
+                                    "constraints__remove");
 #  endif
   rna_def_object_constraints(brna, prop);
 

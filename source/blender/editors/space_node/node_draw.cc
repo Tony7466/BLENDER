@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -78,7 +78,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "NOD_geometry_exec.hh"
@@ -96,6 +96,7 @@
 #include "node_intern.hh" /* own include */
 
 #include <fmt/format.h>
+#include <sstream>
 
 namespace geo_log = blender::nodes::geo_eval_log;
 using blender::bke::bNodeTreeZone;
@@ -2112,7 +2113,7 @@ static void node_draw_extra_info_panel(const Scene *scene,
     return;
   }
   if (preview && !(preview->x > 0 && preview->y > 0)) {
-    /* If the preview has an non-drawable size, just dont draw it. */
+    /* If the preview has an non-drawable size, just don't draw it. */
     preview = nullptr;
   }
   Vector<NodeExtraInfoRow> extra_info_rows = node_get_extra_info(tree_draw_ctx, snode, node);
@@ -2213,7 +2214,8 @@ static void node_draw_basis(const bContext &C,
                             bNodeInstanceKey key)
 {
   const float iconbutw = NODE_HEADER_ICON_SIZE;
-  const bool show_preview = (snode.overlay.flag & SN_OVERLAY_SHOW_PREVIEWS) &&
+  const bool show_preview = (snode.overlay.flag & SN_OVERLAY_SHOW_OVERLAYS) &&
+                            (snode.overlay.flag & SN_OVERLAY_SHOW_PREVIEWS) &&
                             (node.flag & NODE_PREVIEW) &&
                             (U.experimental.use_shader_node_previews ||
                              ntree.type != NTREE_SHADER);
@@ -2302,7 +2304,7 @@ static void node_draw_basis(const bContext &C,
   float iconofs = rct.xmax - 0.35f * U.widget_unit;
 
   /* Preview. */
-  if (node_is_previewable(ntree, node)) {
+  if (node_is_previewable(snode, ntree, node)) {
     iconofs -= iconbutw;
     UI_block_emboss_set(&block, UI_EMBOSS_NONE);
     uiBut *but = uiDefIconBut(&block,
@@ -3511,7 +3513,8 @@ static void draw_nodetree(const bContext &C,
   }
   else if (ntree.type == NTREE_SHADER && U.experimental.use_shader_node_previews &&
            BKE_scene_uses_shader_previews(CTX_data_scene(&C)) &&
-           U.experimental.use_shader_node_previews)
+           snode->overlay.flag & SN_OVERLAY_SHOW_OVERLAYS &&
+           snode->overlay.flag & SN_OVERLAY_SHOW_PREVIEWS)
   {
     tree_draw_ctx.nested_group_infos = get_nested_previews(C, *snode);
   }

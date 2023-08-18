@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,7 +18,7 @@
 #include "DNA_userdef_types.h"
 
 #include "BLI_dlrbTree.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_rect.h"
 #include "BLI_timecode.h"
 #include "BLI_utildefines.h"
@@ -35,8 +35,8 @@
 #include "ED_keyframes_edit.hh"
 #include "ED_keyframes_keylist.hh"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -504,11 +504,10 @@ static float normalization_factor_get(Scene *scene, FCurve *fcu, short flag, flo
   float min_coord = FLT_MAX;
   fcurve_scene_coord_range_get(scene, fcu, &min_coord, &max_coord);
 
-  /* We use an ulps-based floating point comparison here, with the
+  /* We use an ULPS-based floating point comparison here, with the
    * rationale that if there are too few possible values between
    * `min_coord` and `max_coord`, then after display normalization it
-   * will certainly be a weird quantized experience for the user anyway.
-   */
+   * will certainly be a weird quantized experience for the user anyway. */
   if (min_coord < max_coord && ulp_diff_ff(min_coord, max_coord) > 256) {
     /* Normalize. */
     const float range = max_coord - min_coord;
