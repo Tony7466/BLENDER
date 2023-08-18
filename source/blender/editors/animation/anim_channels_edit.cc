@@ -4246,7 +4246,7 @@ static void ANIM_OT_channel_view_pick(wmOperatorType *ot)
                              "Use Preview Range",
                              "Ignore frames outside of the preview range");
 }
-#define CHANNEL_BAKE_KEEP -1
+#define CHANNEL_BAKE_KEEP 255
 
 static const EnumPropertyItem channel_bake_key_options[] = {
     {CHANNEL_BAKE_KEEP, "KEEP", 0, "Keep", ""},
@@ -4291,12 +4291,26 @@ static int channels_bake_exec(bContext *C, wmOperator *op)
   }
 
   const bool remove_existing = RNA_boolean_get(op->ptr, "remove_existing");
+  const int key_type = RNA_enum_get(op->ptr, "key_type");
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = static_cast<FCurve *>(ale->data);
     if (!fcu->bezt) {
       continue;
     }
     bake_fcurve(fcu, frame_range, step, remove_existing);
+    if (key_type == CHANNEL_BAKE_KEEP) {
+      continue;
+    }
+    for (int i = 0; i < fcu->totvert; i++) {
+      BezTriple *key = &fcu->bezt[i];
+      if (key->vec[1][0] < frame_range[0]) {
+        continue;
+      }
+      if (key->vec[1][0] > frame_range[1]) {
+        break;
+      }
+      key->ipo = key_type;
+    }
   }
 
   ANIM_animdata_freelist(&anim_data);
@@ -4347,7 +4361,7 @@ static void ANIM_OT_channels_bake(wmOperatorType *ot)
   RNA_def_enum(ot->srna,
                "key_type",
                channel_bake_key_options,
-               -1,
+               CHANNEL_BAKE_KEEP,
                "Key Type",
                "Choose the key type with which new keys will be added");
 }
