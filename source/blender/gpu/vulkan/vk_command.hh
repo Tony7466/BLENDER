@@ -39,6 +39,8 @@ struct VKCommand {
 
     Draw,
     DrawIndexed,
+    DrawIndirect,
+    DrawIndexedIndirect,
 
     PipelineBarrier,
     PipelineImageMemoryBarrier,
@@ -151,6 +153,20 @@ struct VKCommand {
       uint32_t vertex_offset;
       uint32_t first_instance;
     } draw_indexed;
+
+    struct {
+      VkBuffer vk_buffer;
+      VkDeviceSize offset;
+      uint32_t draw_count;
+      uint32_t stride;
+    } draw_indirect;
+
+    struct {
+      VkBuffer vk_buffer;
+      VkDeviceSize offset;
+      uint32_t draw_count;
+      uint32_t stride;
+    } draw_indexed_indirect;
 
     struct {
       VkPipelineStageFlags source_stages;

@@ -48,6 +48,8 @@ void VKCommand::free()
     case Type::FillBuffer:
     case Type::Draw:
     case Type::DrawIndexed:
+    case Type::DrawIndirect:
+    case Type::DrawIndexedIndirect:
     case Type::PipelineBarrier:
     case Type::Dispatch:
     case Type::DispatchIndirect:
@@ -102,6 +104,8 @@ std::ostream &operator<<(std::ostream &stream, const VKCommand::Type &command_ty
     CASE(VKCommand::Type::FillBuffer)
     CASE(VKCommand::Type::Draw)
     CASE(VKCommand::Type::DrawIndexed)
+    CASE(VKCommand::Type::DrawIndirect)
+    CASE(VKCommand::Type::DrawIndexedIndirect)
     CASE(VKCommand::Type::PipelineBarrier)
     CASE(VKCommand::Type::Dispatch)
     CASE(VKCommand::Type::DispatchIndirect)

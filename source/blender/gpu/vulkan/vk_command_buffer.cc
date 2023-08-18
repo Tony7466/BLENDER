@@ -267,7 +267,7 @@ void VKCommandBuffer::draw(int v_first, int v_count, int i_first, int i_count)
   state.draw_counts++;
 }
 
-void VKCommandBuffer::draw(
+void VKCommandBuffer::draw_indexed(
     int index_count, int instance_count, int first_index, int vertex_offset, int first_instance)
 {
   validate_framebuffer_exists();
@@ -279,6 +279,37 @@ void VKCommandBuffer::draw(
   command.draw_indexed.vertex_offset = vertex_offset;
   command.draw_indexed.first_instance = first_instance;
 
+  state.draw_counts++;
+}
+
+void VKCommandBuffer::draw_indirect(const VKStorageBuffer &buffer,
+                                    VkDeviceSize offset,
+                                    uint32_t draw_count,
+                                    uint32_t stride)
+{
+  validate_framebuffer_exists();
+  ensure_active_framebuffer();
+  VKCommand &command = add_command(VKCommand::Type::DrawIndirect);
+  command.draw_indirect.vk_buffer = buffer.vk_handle();
+  command.draw_indirect.offset = offset;
+  command.draw_indirect.draw_count = draw_count;
+  command.draw_indirect.stride = stride;
+
+  state.draw_counts++;
+}
+
+void VKCommandBuffer::draw_indexed_indirect(const VKStorageBuffer &buffer,
+                                            VkDeviceSize offset,
+                                            uint32_t draw_count,
+                                            uint32_t stride)
+{
+  validate_framebuffer_exists();
+  ensure_active_framebuffer();
+  VKCommand &command = add_command(VKCommand::Type::DrawIndexedIndirect);
+  command.draw_indexed_indirect.vk_buffer = buffer.vk_handle();
+  command.draw_indexed_indirect.offset = offset;
+  command.draw_indexed_indirect.draw_count = draw_count;
+  command.draw_indexed_indirect.stride = stride;
   state.draw_counts++;
 }
 
@@ -487,6 +518,24 @@ void VKCommandBuffer::encode_recorded_commands()
                          command.draw_indexed.first_index,
                          command.draw_indexed.vertex_offset,
                          command.draw_indexed.first_instance);
+        break;
+      }
+
+      case VKCommand::Type::DrawIndirect: {
+        vkCmdDrawIndirect(vk_command_buffer_,
+                          command.draw_indirect.vk_buffer,
+                          command.draw_indirect.offset,
+                          command.draw_indirect.draw_count,
+                          command.draw_indirect.stride);
+        break;
+      }
+
+      case VKCommand::Type::DrawIndexedIndirect: {
+        vkCmdDrawIndexedIndirect(vk_command_buffer_,
+                                 command.draw_indexed_indirect.vk_buffer,
+                                 command.draw_indexed_indirect.offset,
+                                 command.draw_indexed_indirect.draw_count,
+                                 command.draw_indexed_indirect.stride);
         break;
       }
 
