@@ -424,6 +424,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
         /* Add Subtract Math node before Detail input. */
 
         bNode *subNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+        subNode->parent = node->parent;
         subNode->custom1 = NODE_MATH_SUBTRACT;
         subNode->locx = node->locx;
         subNode->locy = node->locy - 300.0f;
@@ -444,6 +445,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
         /* Add Clamp node and Multiply Math node behind Fac output. */
 
         bNode *clampNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_CLAMP);
+        clampNode->parent = node->parent;
         clampNode->custom1 = NODE_CLAMP_MINMAX;
         clampNode->locx = node->locx;
         clampNode->locy = node->locy + 40.0f;
@@ -454,6 +456,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
         bNodeSocket *clampSockOut = nodeFindSocket(clampNode, SOCK_OUT, "Result");
 
         bNode *mulNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+        mulNode->parent = node->parent;
         mulNode->custom1 = NODE_MATH_MULTIPLY;
         mulNode->locx = node->locx;
         mulNode->locy = node->locy + 80.0f;
@@ -481,6 +484,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
           /* Add Multiply Math node behind Fac output. */
 
           bNode *mulNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+          mulNode->parent = node->parent;
           mulNode->custom1 = NODE_MATH_MULTIPLY;
           mulNode->locx = node->locx;
           mulNode->locy = node->locy + 40.0f;
@@ -513,6 +517,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
       /* Add Power Math node Multiply Math node before Roughness and Lacunarity input. */
 
       bNode *mulNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+      mulNode->parent = node->parent;
       mulNode->custom1 = NODE_MATH_MULTIPLY;
       mulNode->locx = node->locx;
       mulNode->locy = node->locy - 340.0f - locyoffset;
@@ -522,6 +527,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
       bNodeSocket *mulSockOut = nodeFindSocket(mulNode, SOCK_OUT, "Value");
 
       bNode *powNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+      powNode->parent = node->parent;
       powNode->custom1 = NODE_MATH_POWER;
       powNode->locx = node->locx;
       powNode->locy = node->locy - 300.0f - locyoffset;
