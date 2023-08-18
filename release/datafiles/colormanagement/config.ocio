@@ -77,7 +77,7 @@ displays:
     - !<View> {name: AgX False Color, colorspace: AgX False Color Rec.2020}
     - !<View> {name: Raw, colorspace: Non-Color}
 active_displays: [sRGB, Display P3, Rec.1886, Rec.2020]
-active_views: [Guard Rail, AgX, Filmic, AgX False Color, Standard, Raw]
+active_views: [Standard, AgX, Filmic, AgX False Color, Raw]
 inactive_colorspaces: [Luminance Compensation Rec.2020, Luminance Compensation sRGB, Luminance Compensation P3, AgX False Color Rec.709, AgX False Color P3, AgX False Color Rec.1886, AgX False Color Rec.2020]
 
 colorspaces:
