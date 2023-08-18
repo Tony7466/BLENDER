@@ -39,10 +39,10 @@ struct NodeLinkData {
   bool1 doMuted;
   float dim_factor;
   float thickness;
-  float dash_factor;
-  float dash_alpha;
+  float4 dash_params;
   float expandSize;
   float arrowSize;
+  float2 _pad;
 };
 BLI_STATIC_ASSERT_ALIGN(struct NodeLinkData, 16)
 

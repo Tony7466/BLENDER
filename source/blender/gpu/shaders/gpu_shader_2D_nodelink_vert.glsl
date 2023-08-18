@@ -30,8 +30,7 @@ void main(void)
   bool doMuted = node_link_data.doMuted;
   float dim_factor = node_link_data.dim_factor;
   float thickness = node_link_data.thickness;
-  float dash_factor = node_link_data.dash_factor;
-  float dash_alpha = node_link_data.dash_alpha;
+  vec3 dash_params = node_link_data.dash_params.xyz;
 
   vec4 colShadow = node_link_data.colors[0];
   vec4 colStart = node_link_data.colors[1];
@@ -65,8 +64,9 @@ void main(void)
 
   /* Parameters for the dashed line. */
   isMainLine = expand.y != 1.0 ? 0 : 1;
-  dashFactor = dash_factor;
-  dashAlpha = dash_alpha;
+  dashLength = dash_params.x;
+  dashFactor = dash_params.y;
+  dashAlpha = dash_params.z;
   /* Approximate line length, no need for real bezier length calculation. */
   lineLength = distance(P0, P3);
   /* TODO: Incorrect U, this leads to non-uniform dash distribution. */
