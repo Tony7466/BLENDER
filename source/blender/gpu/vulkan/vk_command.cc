@@ -6,6 +6,8 @@
  * \ingroup gpu
  */
 
+#include <sstream>
+
 #include "vk_command.hh"
 
 namespace blender::gpu {
