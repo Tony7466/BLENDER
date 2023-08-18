@@ -8,7 +8,6 @@
 
 #include "BLI_generic_array.hh"
 #include "BLI_length_parameterize.hh"
-#include "BLI_offset_indices.hh"
 
 #include "BKE_curves.hh"
 

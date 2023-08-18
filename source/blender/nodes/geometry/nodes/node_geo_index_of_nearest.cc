@@ -82,7 +82,6 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
     if (!context.attributes()) {
       return {};
     }
-
     const int domain_size = context.attributes()->domain_size(context.domain());
     fn::FieldEvaluator evaluator{context, domain_size};
     evaluator.add(positions_field_);
