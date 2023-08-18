@@ -4279,6 +4279,7 @@ static int channels_bake_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   blender::int2 frame_range;
   RNA_int_get_array(op->ptr, "range", frame_range);
+  const float step = RNA_float_get(op->ptr, "step");
   if (frame_range[0] == 0 && frame_range[1] == 0) {
     if (scene->r.flag & SCER_PRV_RANGE) {
       frame_range = {scene->r.psfra, scene->r.pefra};
@@ -4289,14 +4290,13 @@ static int channels_bake_exec(bContext *C, wmOperator *op)
     RNA_int_set_array(op->ptr, "range", frame_range);
   }
 
-  const int sample_count = frame_range[1] - frame_range[0];
   const bool remove_existing = RNA_boolean_get(op->ptr, "remove_existing");
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = static_cast<FCurve *>(ale->data);
     if (!fcu->bezt) {
       continue;
     }
-    bake_fcurve(fcu, frame_range, 1, remove_existing);
+    bake_fcurve(fcu, frame_range, step, remove_existing);
   }
 
   ANIM_animdata_freelist(&anim_data);
@@ -4328,8 +4328,15 @@ static void ANIM_OT_channels_bake(wmOperatorType *ot)
                     0,
                     INT_MAX);
 
-  RNA_def_float(
-      ot->srna, "step", 1, 0.001, FLT_MAX, "Frame Step", "At which interval to add keys", 1, 16);
+  RNA_def_float(ot->srna,
+                "step",
+                1.0f,
+                0.01f,
+                FLT_MAX,
+                "Frame Step",
+                "At which interval to add keys",
+                1.0f,
+                16.0f);
 
   RNA_def_boolean(ot->srna,
                   "remove_existing",

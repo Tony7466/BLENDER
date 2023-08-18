@@ -484,7 +484,7 @@ void sample_fcurve(FCurve *fcu);
  * \param sample_rate: indicates how many samples per frame should be generated.
  */
 void sample_fcurve_segment(
-    FCurve *fcu, float start_frame, int sample_rate, float *r_samples, int sample_count);
+    FCurve *fcu, float start_frame, float sample_rate, float *r_samples, int sample_count);
 
 void bake_fcurve(FCurve *fcu, blender::int2 range, float step, bool remove_existing);
 

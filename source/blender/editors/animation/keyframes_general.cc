@@ -1088,7 +1088,7 @@ struct TempFrameValCache {
 
 void sample_fcurve_segment(FCurve *fcu,
                            const float start_frame,
-                           const int sample_rate,
+                           const float sample_rate,
                            float *samples,
                            const int sample_count)
 {
@@ -1103,11 +1103,15 @@ void bake_fcurve(FCurve *fcu,
                  const float step,
                  const bool remove_existing)
 {
-  const int sample_count = range[1] - range[0];
+  const int sample_count = (range[1] - range[0]) / step;
   float *samples = static_cast<float *>(
       MEM_callocN(sample_count * sizeof(float), "Channel Bake Samples"));
-  sample_fcurve_segment(fcu, range[0], 1, samples, sample_count);
+  const float sample_rate = 1.0f / step;
+  sample_fcurve_segment(fcu, range[0], sample_rate, samples, sample_count);
+
   if (remove_existing) {
+    /* Iterating backwards to not cause issues because the bezt array is modified during the
+     * loop. */
     for (int i = fcu->totvert - 1; i >= 0; i--) {
       BezTriple key = fcu->bezt[i];
       if (key.vec[1][0] < range[0]) {
@@ -1119,8 +1123,10 @@ void bake_fcurve(FCurve *fcu,
       BKE_fcurve_delete_key(fcu, i);
     }
   }
+
   for (int i = 0; i < sample_count; i++) {
-    insert_vert_fcurve(fcu, range[0] + i, samples[i], BEZT_KEYTYPE_KEYFRAME, eInsertKeyFlags(0));
+    insert_vert_fcurve(
+        fcu, range[0] + i * step, samples[i], BEZT_KEYTYPE_KEYFRAME, eInsertKeyFlags(0));
   }
   MEM_freeN(samples);
   BKE_fcurve_handles_recalc(fcu);
