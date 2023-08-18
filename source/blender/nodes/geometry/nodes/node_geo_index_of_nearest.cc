@@ -3,8 +3,12 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array.hh"
+#include "BLI_array_utils.hh"
+#include "BLI_group_deduce.hh"
+#include "BLI_index_mask.hh"
 #include "BLI_kdtree.h"
 #include "BLI_map.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_task.hh"
 
 #include "node_geometry_util.hh"
@@ -50,6 +54,15 @@ static void find_neighbors(const KDTree_3d &tree,
   });
 }
 
+static void gathered_indices_to_masked(const Span<int> mask_indices, MutableSpan<int> r_indices)
+{
+  threading::parallel_for(r_indices.index_range(), 2048, [&](const IndexRange range) {
+    for (int &index : r_indices.slice(range)) {
+      index = mask_indices[index];
+    }
+  });
+}
+
 class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
  private:
   const Field<float3> positions_field_;
@@ -69,6 +82,7 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
     if (!context.attributes()) {
       return {};
     }
+
     const int domain_size = context.attributes()->domain_size(context.domain());
     fn::FieldEvaluator evaluator{context, domain_size};
     evaluator.add(positions_field_);
@@ -86,43 +100,56 @@ class IndexOfNearestFieldInput final : public bke::GeometryFieldInput {
       BLI_kdtree_3d_free(tree);
       return VArray<int>::ForContainer(std::move(result));
     }
-    const VArraySpan<int> group_ids_span(group_ids);
 
-    VectorSet<int> group_indexing;
-    for (const int index : IndexRange(domain_size)) {
-      const int group_id = group_ids_span[index];
-      group_indexing.add(group_id);
+    Array<int> group_indices(group_ids.size());
+    {
+      const VArraySpan<int> group_ids_span(group_ids);
+      array_utils::copy(group_ids_span, group_indices.as_mutable_span());
     }
-    const int groups_num = group_indexing.size();
+    const int groups_num = grouped_indices::identifiers_to_indices(group_indices);
 
     IndexMaskMemory mask_memory;
-    Array<IndexMask> all_indices_by_group_id(groups_num);
-    Array<IndexMask> lookup_indices_by_group_id(groups_num);
+    Array<IndexMask> all_indices_by_group_index(groups_num);
+    Array<IndexMask> lookup_indices_by_group_index(groups_num);
 
-    const auto get_group_index = [&](const int i) {
-      const int group_id = group_ids_span[i];
-      return group_indexing.index_of(group_id);
-    };
+    {
+      Array<int> offset(groups_num + 1, 0);
+      Array<int> indices(group_indices.size());
+      const GroupedSpan<int> groups = grouped_indices::from_indices(
+          group_indices,
+          offset,
+          indices,
+          grouped_indices::is_fragmented(group_indices, groups_num));
+      IndexMask::from_groups(groups, mask_memory, all_indices_by_group_index.as_mutable_span());
+    }
 
-    IndexMask::from_groups<int>(
-        IndexMask(domain_size), mask_memory, get_group_index, all_indices_by_group_id);
-
+    result.reinitialize(mask.min_array_size());
     if (mask.size() == domain_size) {
-      lookup_indices_by_group_id = all_indices_by_group_id;
-      result.reinitialize(domain_size);
+      lookup_indices_by_group_index = all_indices_by_group_index;
     }
     else {
-      IndexMask::from_groups<int>(mask, mask_memory, get_group_index, lookup_indices_by_group_id);
-      result.reinitialize(mask.min_array_size());
+      Array<int> offset(groups_num + 1, 0);
+      Array<int> indices(mask.size());
+      Array<int> lookup_group_indices(mask.size());
+      array_utils::gather(group_indices.as_span(), mask, lookup_group_indices.as_mutable_span());
+      const GroupedSpan<int> groups = grouped_indices::from_indices(
+          lookup_group_indices,
+          offset,
+          indices,
+          grouped_indices::is_fragmented(lookup_group_indices, groups_num));
+      Array<int> mask_indices(mask.size());
+      mask.to_indices(mask_indices.as_mutable_span());
+      gathered_indices_to_masked(mask_indices, indices);
+      IndexMask::from_groups(groups, mask_memory, lookup_indices_by_group_index.as_mutable_span());
     }
 
     /* The grain size should be larger as each tree gets smaller. */
-    const int avg_tree_size = domain_size / group_indexing.size();
+    const int avg_tree_size = domain_size / groups_num;
     const int grain_size = std::max(8192 / avg_tree_size, 1);
     threading::parallel_for(IndexRange(groups_num), grain_size, [&](const IndexRange range) {
       for (const int group_index : range) {
-        const IndexMask &tree_mask = all_indices_by_group_id[group_index];
-        const IndexMask &lookup_mask = lookup_indices_by_group_id[group_index];
+        const IndexMask &tree_mask = all_indices_by_group_index[group_index];
+        const IndexMask &lookup_mask = lookup_indices_by_group_index[group_index];
         KDTree_3d *tree = build_kdtree(positions, tree_mask);
         find_neighbors(*tree, positions, lookup_mask, result);
         BLI_kdtree_3d_free(tree);
@@ -232,9 +259,9 @@ static void node_geo_exec(GeoNodeExecParams params)
   Field<int> group_field = params.extract_input<Field<int>>("Group ID");
 
   if (params.output_is_required("Index")) {
-    params.set_output("Index",
-                      Field<int>(std::make_shared<IndexOfNearestFieldInput>(
-                          std::move(position_field), group_field)));
+    params.set_output(
+        "Index",
+        Field<int>(std::make_shared<IndexOfNearestFieldInput>(position_field, group_field)));
   }
 
   if (params.output_is_required("Has Neighbor")) {

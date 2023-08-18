@@ -586,10 +586,13 @@ IndexMask IndexMask::from_union(const IndexMask &mask_a,
   return IndexMask::from_bools(tmp, memory);
 }
 
-void IndexMask::from_groups(const GroupedSpan<int> & /*groups*/,
-                            IndexMaskMemory & /*memory*/,
-                            MutableSpan<IndexMask> /*r_masks*/)
+void IndexMask::from_groups(const GroupedSpan<int> &groups,
+                            IndexMaskMemory &memory,
+                            MutableSpan<IndexMask> r_masks)
 {
+  for (const int64_t index : r_masks.index_range()) {
+    r_masks[index] = from_indices(groups[index], memory);
+  }
 }
 
 template<typename T> void IndexMask::to_indices(MutableSpan<T> r_indices) const
