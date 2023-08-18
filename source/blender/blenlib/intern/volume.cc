@@ -84,7 +84,9 @@ const CPPType *GGrid::value_type() const
   const CPPType *type = nullptr;
   grid_to_static_type(grid_, [&](auto &grid) {
     using GridType = typename std::decay<decltype(grid)>::type;
-    type = &CPPType::get<typename GridType::ValueType>();
+    using Converter = grid_types::Converter<GridType>;
+
+    type = &CPPType::get<typename Converter::AttributeValueType>();
   });
   return type;
 }
@@ -183,7 +185,9 @@ const CPPType *GMutableGrid::value_type() const
   const CPPType *type = nullptr;
   grid_to_static_type(grid_, [&](auto &grid) {
     using GridType = typename std::decay<decltype(grid)>::type;
-    type = &CPPType::get<typename GridType::ValueType>();
+    using Converter = grid_types::Converter<GridType>;
+
+    type = &CPPType::get<typename Converter::AttributeValueType>();
   });
   return type;
 }

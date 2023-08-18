@@ -115,14 +115,15 @@ void grid_to_static_type(const std::shared_ptr<const openvdb::GridBase> &grid, F
 
 template<typename T> MutableGrid<T> MutableGrid<T>::create(const T &background_value)
 {
-  typename GridType::Ptr grid = GridType::create(background_value);
+  typename GridType::Ptr grid = GridType::create(
+      Converter::single_value_to_grid(background_value));
   return MutableGrid<T>{std::move(grid)};
 }
 
 template<typename T> MutableGrid<T> MutableGrid<T>::create()
 {
-  ValueType value = *static_cast<const ValueType *>(CPPType::get<T>().default_value_);
-  typename GridType::Ptr grid = GridType::create(value);
+  const T &value = *CPPType::get<T>().default_value_;
+  typename GridType::Ptr grid = GridType::create(Converter::single_value_to_grid(value));
   return MutableGrid<T>{std::move(grid)};
 }
 
@@ -138,8 +139,10 @@ MutableGrid<T> MutableGrid<T>::create(const GGrid &mask,
 
   const typename TreeType::Ptr tree = nullptr;
   volume::grid_to_static_type(mask.grid_, [&](auto &typed_mask) {
-    tree = typename TreeType::Ptr(new TreeType(
-        typed_mask.grid_->tree(), inactive_value, active_value, openvdb::TopologyCopy{}));
+    tree = typename TreeType::Ptr(new TreeType(typed_mask.grid_->tree(),
+                                               Converter::single_value_to_grid(inactive_value),
+                                               Converter::single_value_to_grid(active_value),
+                                               openvdb::TopologyCopy{}));
   });
   typename GridType::Ptr grid(new GridType(tree));
   return MutableGrid<T>{std::move(grid)};

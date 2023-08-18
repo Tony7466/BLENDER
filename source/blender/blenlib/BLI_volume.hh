@@ -168,6 +168,11 @@ struct ReinterpretCastConverter {
     return reinterpret_cast<const GridValueType &>(value);
   }
 
+  static AttributeValueType single_value_to_attribute(const GridValueType &value)
+  {
+    return reinterpret_cast<const AttributeValueType &>(value);
+  }
+
   static MutableSpan<AttributeValueType> leaf_buffer_to_varray(
       const MutableSpan<LeafBufferValueType> values)
   {
@@ -180,28 +185,34 @@ template<typename GridType>
 struct Converter : public ReinterpretCastConverter<typename GridType::ValueType,
                                                    typename GridType::ValueType,
                                                    typename GridType::ValueType> {
+  using AttributeValueType = typename GridType::ValueType;
 };
 
 /* Vector implementation, casts Blender vectors to OpenVDB vectors and vice versa. */
 template<>
 struct Converter<openvdb::Vec2fGrid>
     : public ReinterpretCastConverter<float2, openvdb::math::Vec2s, openvdb::math::Vec2s> {
+  using AttributeValueType = float2;
 };
 template<>
 struct Converter<openvdb::Vec3fGrid>
     : public ReinterpretCastConverter<float3, openvdb::math::Vec3s, openvdb::math::Vec3s> {
+  using AttributeValueType = float3;
 };
 template<>
 struct Converter<openvdb::Vec3DGrid>
-    : public ReinterpretCastConverter<float2, openvdb::math::Vec3d, openvdb::math::Vec3d> {
+    : public ReinterpretCastConverter<double3, openvdb::math::Vec3d, openvdb::math::Vec3d> {
+  using AttributeValueType = double3;
 };
 template<>
 struct Converter<openvdb::Vec2IGrid>
     : public ReinterpretCastConverter<int2, openvdb::math::Vec2i, openvdb::math::Vec2i> {
+  using AttributeValueType = int2;
 };
 template<>
 struct Converter<openvdb::Vec3IGrid>
     : public ReinterpretCastConverter<int3, openvdb::math::Vec3i, openvdb::math::Vec3i> {
+  using AttributeValueType = int3;
 };
 
 /* Specialization for MaskGrid: Leaf buffers directly expose the activation state bit fields. */
@@ -213,6 +224,12 @@ template<> struct Converter<openvdb::MaskGrid> {
   static GridValueType single_value_to_grid(const AttributeValueType & /*value*/)
   {
     return {};
+  }
+
+  /* MaskGrid accessor also returns a bool. */
+  static AttributeValueType single_value_to_attribute(const bool value)
+  {
+    return value;
   }
 
   static MutableSpan<AttributeValueType> leaf_buffer_to_varray(
@@ -229,6 +246,11 @@ template<> struct Converter<openvdb::BoolGrid> {
   using AttributeValueType = bool;
 
   static GridValueType single_value_to_grid(const AttributeValueType &value)
+  {
+    return value;
+  }
+
+  static AttributeValueType single_value_to_attribute(const AttributeValueType &value)
   {
     return value;
   }
@@ -433,6 +455,7 @@ template<typename T> class Grid {
   using GridPtr = typename GridType::Ptr;
   using GridConstPtr = typename GridType::ConstPtr;
   using ValueType = typename GridType::ValueType;
+  using Converter = grid_types::Converter<GridType>;
 
   GridConstPtr grid_ = nullptr;
 #endif
@@ -455,6 +478,7 @@ template<typename T> class MutableGrid {
   using GridPtr = typename GridType::Ptr;
   using GridConstPtr = typename GridType::ConstPtr;
   using ValueType = typename GridType::ValueType;
+  using Converter = grid_types::Converter<GridType>;
 
   GridPtr grid_ = nullptr;
 #endif

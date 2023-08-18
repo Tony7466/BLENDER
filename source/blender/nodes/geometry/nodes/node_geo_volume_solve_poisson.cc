@@ -63,15 +63,6 @@ static void node_init(bNodeTree * /*tree*/, bNode * /*node*/) {}
 
 #ifdef WITH_OPENVDB
 
-static const StringRefNull get_grid_name(GField &field)
-{
-  if (const auto *attribute_field_input = dynamic_cast<const AttributeFieldInput *>(&field.node()))
-  {
-    return attribute_field_input->attribute_name();
-  }
-  return "";
-}
-
 static const blender::CPPType *vdb_grid_type_to_cpp_type(const VolumeGridType grid_type)
 {
   switch (grid_type) {
@@ -184,43 +175,6 @@ class SampleVolumeFunction : public mf::MultiFunction {
     }
   }
 };
-
-static GField get_input_attribute_field(GeoNodeExecParams &params, const eCustomDataType data_type)
-{
-  switch (data_type) {
-    case CD_PROP_FLOAT:
-      return params.extract_input<Field<float>>("Grid_Float");
-    case CD_PROP_FLOAT3:
-      return params.extract_input<Field<float3>>("Grid_Vector");
-    case CD_PROP_BOOL:
-      return params.extract_input<Field<bool>>("Grid_Bool");
-    case CD_PROP_INT32:
-      return params.extract_input<Field<int>>("Grid_Int");
-    default:
-      BLI_assert_unreachable();
-  }
-  return {};
-}
-
-static void output_attribute_field(GeoNodeExecParams &params, GField field)
-{
-  switch (bke::cpp_type_to_custom_data_type(field.cpp_type())) {
-    case CD_PROP_FLOAT:
-      params.set_output("Value_Float", Field<float>(field));
-      break;
-    case CD_PROP_FLOAT3:
-      params.set_output("Value_Vector", Field<float3>(field));
-      break;
-    case CD_PROP_BOOL:
-      params.set_output("Value_Bool", Field<bool>(field));
-      break;
-    case CD_PROP_INT32:
-      params.set_output("Value_Int", Field<int>(field));
-      break;
-    default:
-      break;
-  }
-}
 
 #endif /* WITH_OPENVDB */
 

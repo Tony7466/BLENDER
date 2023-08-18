@@ -234,26 +234,6 @@ static GField get_input_attribute_field(GeoNodeExecParams &params, const eCustom
   return {};
 }
 
-static void output_attribute_field(GeoNodeExecParams &params, GField field)
-{
-  switch (bke::cpp_type_to_custom_data_type(field.cpp_type())) {
-    case CD_PROP_FLOAT:
-      params.set_output("Value_Float", Field<float>(field));
-      break;
-    case CD_PROP_FLOAT3:
-      params.set_output("Value_Vector", Field<float3>(field));
-      break;
-    case CD_PROP_BOOL:
-      params.set_output("Value_Bool", Field<bool>(field));
-      break;
-    case CD_PROP_INT32:
-      params.set_output("Value_Int", Field<int>(field));
-      break;
-    default:
-      break;
-  }
-}
-
 // static void set_computed_value(bke::VolumeGeometry &volume,
 //                                const GVArray &in_values,
 //                                const IndexMask &selection)

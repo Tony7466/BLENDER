@@ -704,9 +704,6 @@ Vector<GGrid> evaluate_volume_fields(ResourceScope &scope,
       }
       /* Still have to copy over the data in the destination provided by the caller. */
       *dst_grid_ptr = {computed_grid.grid_->deepCopyGrid()};
-      if (*dst_grid_ptr) {
-        const openvdb::Vec3d vsize = dst_grid_ptr->grid_->transform().voxelSize();
-      }
       r_grids[out_index] = *dst_grid_ptr;
     }
   }
