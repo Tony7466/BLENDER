@@ -257,6 +257,7 @@ DefNode(TextureNode,    TEX_NODE_PROC+TEX_MAGIC, 0,                      "TEX_MA
 DefNode(TextureNode,    TEX_NODE_PROC+TEX_MARBLE, 0,                     "TEX_MARBLE",     TexMarble,        "Marble",            ""              )
 DefNode(TextureNode,    TEX_NODE_PROC+TEX_CLOUDS, 0,                     "TEX_CLOUDS",     TexClouds,        "Clouds",            ""              )
 DefNode(TextureNode,    TEX_NODE_PROC+TEX_WOOD, 0,                       "TEX_WOOD",       TexWood,          "Wood",              ""              )
+DefNode(TextureNode,    TEX_NODE_PROC+TEX_MUSGRAVE, 0,                   "TEX_MUSGRAVE",   TexMusgrave,      "Musgrave",          ""              )
 DefNode(TextureNode,    TEX_NODE_PROC+TEX_NOISE, 0,                      "TEX_NOISE",      TexNoise,         "Noise",             ""              )
 DefNode(TextureNode,    TEX_NODE_PROC+TEX_STUCCI, 0,                     "TEX_STUCCI",     TexStucci,        "Stucci",            ""              )
 DefNode(TextureNode,    TEX_NODE_PROC+TEX_DISTNOISE, 0,                  "TEX_DISTNOISE",  TexDistNoise,     "Distorted Noise",   ""              )
