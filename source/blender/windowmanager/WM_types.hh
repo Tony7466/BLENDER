@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -103,6 +103,8 @@ struct wmDropBox;
 struct wmEvent;
 struct wmOperator;
 struct wmWindowManager;
+
+#include <string>
 
 #include "BLI_compiler_attrs.h"
 #include "BLI_utildefines.h"
@@ -982,14 +984,16 @@ struct wmOperatorType {
   /**
    * Return a different name to use in the user interface, based on property values.
    * The returned string does not need to be freed.
+   * The returned string is expected to be translated if needed.
    */
-  const char *(*get_name)(wmOperatorType *, PointerRNA *);
+  std::string (*get_name)(wmOperatorType *, PointerRNA *);
 
   /**
    * Return a different description to use in the user interface, based on property values.
    * The returned string must be freed by the caller, unless NULL.
+   * The returned string is expected to be translated if needed.
    */
-  char *(*get_description)(bContext *C, wmOperatorType *, PointerRNA *);
+  std::string (*get_description)(bContext *C, wmOperatorType *, PointerRNA *);
 
   /** rna for properties */
   StructRNA *srna;

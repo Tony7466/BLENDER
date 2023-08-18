@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -979,7 +979,7 @@ void ED_screen_set_active_region(bContext *C, wmWindow *win, const int xy[2])
 
       LISTBASE_FOREACH (ARegion *, region, &area_iter->regionbase) {
         /* Call old area's deactivate if assigned. */
-        if (region == region_prev && area_iter->type->deactivate) {
+        if (region == region_prev && area_iter->type && area_iter->type->deactivate) {
           area_iter->type->deactivate(area_iter);
         }
 
