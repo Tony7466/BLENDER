@@ -22,7 +22,6 @@ namespace blender::bke {
 
 class CurvesGeometry;
 class GeometryFieldInput;
-// class VolumeGeometry;
 
 class MeshFieldContext : public fn::FieldContext {
  private:

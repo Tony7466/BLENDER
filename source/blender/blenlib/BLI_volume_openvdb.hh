@@ -27,13 +27,6 @@ namespace blender::volume {
 
 #ifdef WITH_OPENVDB
 
-namespace grid_types {
-
-// extern template struct AttributeValueConverter<float>;
-// extern template struct GridValueConverter<openvdb::FloatGrid>;
-
-}  // namespace grid_types
-
 template<typename T> Grid<T> GGrid::typed() const
 {
 #  ifdef WITH_OPENVDB

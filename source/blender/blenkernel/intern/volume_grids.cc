@@ -361,16 +361,6 @@ static ComponentAttributeProviders create_attribute_providers_for_volume()
   static VolumeCustomAttributeGridProvider grid_custom_data(
       ATTR_DOMAIN_VOXEL, grid_access, update_on_change);
 
-  // static VolumeGridPositionAttributeProvider position(
-  //     "position", ATTR_DOMAIN_VOXEL, grid_access, update_on_change);
-
-  // static VolumeGridValueAttributeProvider value(
-  //     "value", ATTR_DOMAIN_VOXEL, grid_access, update_on_change);
-
-  // static VolumeCustomAttributeProvider voxel_custom_data(
-  //     ATTR_DOMAIN_VOXEL, grid_access, update_on_change);
-
-  // return ComponentAttributeProviders({&position}, {&voxel_custom_data});
   return ComponentAttributeProviders({}, {&grid_custom_data});
 }
 

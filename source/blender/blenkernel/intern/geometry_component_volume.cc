@@ -10,7 +10,6 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_lib_id.h"
 #include "BKE_volume.h"
-#include "BKE_volume_geometry.hh"
 
 #include "attribute_access_volume.hh"
 

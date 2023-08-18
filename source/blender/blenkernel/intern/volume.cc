@@ -44,7 +44,6 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_volume.h"
-#include "BKE_volume_geometry.hh"
 #include "BKE_volume_openvdb.hh"
 
 #include "BLT_translation.h"
@@ -121,8 +120,6 @@ static void volume_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, con
 #endif
 
   volume_dst->batch_cache = nullptr;
-
-  // new (&volume_dst->geometry) blender::bke::VolumeGeometry(volume_src->geometry.wrap());
 }
 
 static void volume_free_data(ID *id)
@@ -135,8 +132,6 @@ static void volume_free_data(ID *id)
   MEM_delete(volume->runtime.grids);
   volume->runtime.grids = nullptr;
 #endif
-
-  // volume->geometry.wrap().~VolumeGeometry();
 }
 
 static void volume_foreach_id(ID *id, LibraryForeachIDData *data)
@@ -165,8 +160,7 @@ static void volume_foreach_path(ID *id, BPathForeachPathData *bpath_data)
   Volume *volume = reinterpret_cast<Volume *>(id);
 
   if (volume->packedfile != nullptr &&
-      (bpath_data->flag & BKE_BPATH_FOREACH_PATH_SKIP_PACKED) != 0)
-  {
+      (bpath_data->flag & BKE_BPATH_FOREACH_PATH_SKIP_PACKED) != 0) {
     return;
   }
 
@@ -194,8 +188,6 @@ static void volume_blend_write(BlendWriter *writer, ID *id, const void *id_addre
   BLO_write_pointer_array(writer, volume->totcol, volume->mat);
 
   BKE_packedfile_blend_write(writer, volume->packedfile);
-
-  // volume->geometry.wrap().blend_write(*writer, *id);
 }
 
 static void volume_blend_read_data(BlendDataReader *reader, ID *id)
@@ -207,8 +199,6 @@ static void volume_blend_read_data(BlendDataReader *reader, ID *id)
 
   /* materials */
   BLO_read_pointer_array(reader, (void **)&volume->mat);
-
-  // volume->geometry.wrap().blend_read_data(*reader);
 }
 
 static void volume_blend_read_lib(BlendLibReader *reader, ID *id)

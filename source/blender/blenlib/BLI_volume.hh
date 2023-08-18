@@ -46,8 +46,6 @@ template<typename T, Index N1 = 5, Index N2 = 4, Index N3 = 3> struct Tree4Fwd {
 };
 }  // namespace tree
 namespace points {
-// template<typename IntType_, Index Kind> struct PointIndex;
-// using PointDataIndex32 = PointIndex<Index32, 1>;
 template<typename T, Index Log2Dim> class PointDataLeafNode;
 using PointDataTree = tree::Tree<tree::RootNode<
     tree::InternalNode<tree::InternalNode<PointDataLeafNode<PointDataIndex32, 3>, 4>, 5>>>;
@@ -98,24 +96,7 @@ using VectorGrid = Vec3fGrid;
 }  // namespace openvdb
 #endif
 
-namespace blender {
-
-///* XXX OpenVDB expects some math functions on vector types. */
-// template<typename T, int Size> inline VecBase<T, Size> Abs(VecBase<T, Size> v)
-//{
-//   VecBase<T, Size> r;
-//   for (int i = 0; i < Size; i++) {
-//     r[i] = math::abs(v[i]);
-//   }
-//   return r;
-// }
-///* Specialization: math::abs is not defined for unsigned types. */
-// template<int Size> inline VecBase<uint32_t, Size> Abs(VecBase<uint32_t, Size> v)
-//{
-//   return v;
-// }
-
-namespace volume {
+namespace blender::volume {
 
 #ifdef WITH_OPENVDB
 namespace grid_types {
@@ -263,47 +244,7 @@ template<> struct Converter<openvdb::BoolGrid> {
 };
 
 /* TODO add more as needed. */
-/* TODO could use template magic to generate all from 1 list, but not worth it for now. */
 /* TODO some types disabled because of missing CPPType registration. */
-
-// using BoolTree = TreeCommon<bool>;
-// using MaskTree = TreeCommon<openvdb::ValueMask>;
-// using FloatTree = TreeCommon<float>;
-// using Float2Tree = TreeCommon<float2>;
-// using Float3Tree = TreeCommon<float3>;
-//// using Float4Tree = TreeCommon<float4>;
-// using DoubleTree = TreeCommon<double>;
-// using Double3Tree = TreeCommon<double3>;
-// using IntTree = TreeCommon<int32_t>;
-// using Int2Tree = TreeCommon<int2>;
-// using Int3Tree = TreeCommon<int3>;
-//// using Int4Tree = TreeCommon<int4>;
-// using UIntTree = TreeCommon<uint32_t>;
-//// using UInt2Tree = TreeCommon<uint2>;
-//// using UInt3Tree = TreeCommon<uint3>;
-//// using UInt4Tree = TreeCommon<uint4>;
-// using ScalarTree = FloatTree;
-// using TopologyTree = MaskTree;
-//
-// using BoolGrid = openvdb::Grid<BoolTree>;
-// using MaskGrid = openvdb::Grid<MaskTree>;
-// using FloatGrid = openvdb::Grid<FloatTree>;
-// using Float2Grid = openvdb::Grid<Float2Tree>;
-// using Float3Grid = openvdb::Grid<Float3Tree>;
-//// using Float4Grid = openvdb::Grid<Float4Tree>;
-// using DoubleGrid = openvdb::Grid<DoubleTree>;
-// using Double3Grid = openvdb::Grid<Double3Tree>;
-// using IntGrid = openvdb::Grid<IntTree>;
-// using Int2Grid = openvdb::Grid<Int2Tree>;
-// using Int3Grid = openvdb::Grid<Int3Tree>;
-//// using Int4Grid = openvdb::Grid<Int4Tree>;
-// using UIntGrid = openvdb::Grid<UIntTree>;
-//// using UInt2Grid = openvdb::Grid<UInt2Tree>;
-//// using UInt3Grid = openvdb::Grid<UInt3Tree>;
-//// using UInt4Grid = openvdb::Grid<UInt4Tree>;
-// using ScalarGrid = openvdb::Grid<ScalarTree>;
-// using TopologyGrid = openvdb::Grid<TopologyTree>;
-// using PointDataGrid = openvdb::points::PointDataGrid;
 
 using SupportedAttributeValueTypes = std::tuple<bool,
                                                 float,
@@ -540,6 +481,4 @@ template<typename T> MutableGrid<T>::operator GMutableGrid const() const
 
 /** \} */
 
-}  // namespace volume
-
-}  // namespace blender
+}  // namespace blender::volume
