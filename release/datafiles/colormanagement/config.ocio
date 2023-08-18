@@ -291,7 +291,7 @@ colorspaces:
     equalitygroup:
     bitdepth: 32f
     description: |
-      Offset the negative values in BT.2020 and compensate for luminance
+      Offset the negative values in BT.2020 and compensate for luminance, ensuring there is no negative values in Rec.2020
     isdata: false
     from_scene_reference: !<GroupTransform>
       children:
@@ -307,7 +307,7 @@ colorspaces:
     equalitygroup:
     bitdepth: 32f
     description: |
-      Offset the negative values in BT.709 and compensate for luminance
+      Offset the negative values in BT.709 and compensate for luminance, ensuring there is no negative values in Rec.709
     isdata: false
     from_scene_reference: !<GroupTransform>
       children:
@@ -326,7 +326,7 @@ colorspaces:
     equalitygroup:
     bitdepth: 32f
     description: |
-      Offset the negative values in P3 and compensate for luminance
+      Offset the negative values in P3 and compensate for luminance, ensuring there is no negative values in P3
     isdata: false
     from_scene_reference: !<GroupTransform>
       children:
