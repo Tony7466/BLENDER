@@ -3241,7 +3241,7 @@ static bool keyframe_jump_poll(bContext *C)
   /* The area can be a nullptr when two main windows are open and you call the search menu on the
    * non-active window. */
   if (area == nullptr) {
-    return false;
+    return ED_operator_screenactive_norender(C);
   }
   return ED_operator_screenactive_norender(C) && area->spacetype != SPACE_GRAPH;
 }
