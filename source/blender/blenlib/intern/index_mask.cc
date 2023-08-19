@@ -9,6 +9,7 @@
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_math_base.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_set.hh"
 #include "BLI_sort.hh"
 #include "BLI_strict_flags.h"
@@ -583,6 +584,15 @@ IndexMask IndexMask::from_union(const IndexMask &mask_a,
   mask_b.foreach_index_optimized<int64_t>(GrainSize(2048),
                                           [&](const int64_t i) { tmp[i] = true; });
   return IndexMask::from_bools(tmp, memory);
+}
+
+void IndexMask::from_groups(const GroupedSpan<int> &groups,
+                            IndexMaskMemory &memory,
+                            MutableSpan<IndexMask> r_masks)
+{
+  for (const int64_t index : r_masks.index_range()) {
+    r_masks[index] = from_indices(groups[index], memory);
+  }
 }
 
 template<typename T> void IndexMask::to_indices(MutableSpan<T> r_indices) const

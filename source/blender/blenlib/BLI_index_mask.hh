@@ -18,7 +18,10 @@
 
 namespace blender {
 template<typename T> class VArray;
+namespace offset_indices {
+template<typename T> struct GroupedSpan;
 }
+}  // namespace blender
 
 namespace blender::index_mask {
 
@@ -203,6 +206,9 @@ class IndexMask : private IndexMaskData {
   static void from_groups(const IndexMask &universe,
                           IndexMaskMemory &memory,
                           Fn &&get_group_index,
+                          MutableSpan<IndexMask> r_masks);
+  static void from_groups(const offset_indices::GroupedSpan<int> &groups,
+                          IndexMaskMemory &memory,
                           MutableSpan<IndexMask> r_masks);
 
   int64_t size() const;
