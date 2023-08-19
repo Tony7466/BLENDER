@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2020-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2020-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -244,7 +244,7 @@ class NewGeometryNodeTreeAssign(Operator):
 
     def execute(self, context):
         space = context.space_data
-        if space and space.type == 'NODE_EDITOR' and space.geometry_nodes_type == 'OPERATOR':
+        if space and space.type == 'NODE_EDITOR' and space.geometry_nodes_type == 'TOOL':
             group = geometry_node_group_empty_new()
             space.node_tree = group
             return {'FINISHED'}
@@ -255,6 +255,24 @@ class NewGeometryNodeTreeAssign(Operator):
             group = geometry_node_group_empty_new()
             modifier.node_group = group
 
+        return {'FINISHED'}
+
+
+class NewGeometryNodeGroupTool(Operator):
+    """Create a new geometry node group for an tool"""
+    bl_idname = "node.new_geometry_node_group_tool"
+    bl_label = "New Geometry Node Tool Group"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        return context.space_data.type == 'NODE_EDITOR' and context.space_data.geometry_nodes_type == 'TOOL'
+
+    def execute(self, context):
+        group = geometry_node_group_empty_new()
+        group.asset_mark()
+        group.is_tool = True
+        context.space_data.node_tree = group
         return {'FINISHED'}
 
 
@@ -458,6 +476,7 @@ class RepeatZoneItemMoveOperator(RepeatZoneOperator, Operator):
 classes = (
     NewGeometryNodesModifier,
     NewGeometryNodeTreeAssign,
+    NewGeometryNodeGroupTool,
     MoveModifierToNodes,
     SimulationZoneItemAddOperator,
     SimulationZoneItemRemoveOperator,

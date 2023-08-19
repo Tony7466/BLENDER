@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,12 +11,12 @@
 #include <cstdio>
 #include <cstring>
 
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_utildefines.h"
 
 #include "GPU_immediate.h"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 static const float cube_coords[8][3] = {
     {-1, -1, -1},

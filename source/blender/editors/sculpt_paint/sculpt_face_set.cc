@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,7 +16,8 @@
 #include "BLI_bit_vector.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_hash.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_math_vector.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
@@ -37,23 +38,23 @@
 #include "BKE_context.h"
 #include "BKE_customdata.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_fair.h"
-#include "BKE_mesh_mapping.h"
+#include "BKE_mesh_fair.hh"
+#include "BKE_mesh_mapping.hh"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
 #include "DEG_depsgraph.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_sculpt.h"
+#include "ED_sculpt.hh"
 
 #include "sculpt_intern.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "bmesh.h"
 

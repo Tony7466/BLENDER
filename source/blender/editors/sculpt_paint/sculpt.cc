@@ -18,7 +18,8 @@
 #include "BLI_dial_2d.h"
 #include "BLI_ghash.h"
 #include "BLI_gsqueue.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
 #include "BLI_set.hh"
 #include "BLI_task.h"
 #include "BLI_task.hh"
@@ -36,7 +37,7 @@
 
 #include "BKE_attribute.h"
 #include "BKE_attribute.hh"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_ccg.h"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
@@ -45,36 +46,36 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
+#include "BKE_mesh_mapping.hh"
 #include "BKE_modifier.h"
-#include "BKE_multires.h"
+#include "BKE_multires.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_subdiv_ccg.h"
-#include "BKE_subsurf.h"
+#include "BKE_subdiv_ccg.hh"
+#include "BKE_subsurf.hh"
 #include "BLI_math_vector.hh"
 
 #include "NOD_texture.h"
 
 #include "DEG_depsgraph.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_paint.h"
-#include "ED_screen.h"
-#include "ED_sculpt.h"
-#include "ED_view3d.h"
+#include "ED_paint.hh"
+#include "ED_screen.hh"
+#include "ED_sculpt.hh"
+#include "ED_view3d.hh"
 
 #include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "bmesh.h"
 
@@ -3006,14 +3007,6 @@ static void calc_brush_local_mat(const float rotation,
 
   /* Scale by brush radius. */
   float radius = cache->radius;
-
-  /* Square tips should scale by square root of 2. */
-  if (BKE_brush_has_cube_tip(cache->brush, PAINT_MODE_SCULPT)) {
-    radius += (radius / M_SQRT2 - radius) * cache->brush->tip_roundness;
-  }
-  else {
-    radius /= M_SQRT2;
-  }
 
   normalize_m4(mat);
   scale_m4_fl(scale, radius);
@@ -6266,7 +6259,7 @@ bool SCULPT_vertex_is_occluded(SculptSession *ss, PBVHVertRef vertex, bool origi
   copy_v3_v3(ray_start, SCULPT_vertex_co_get(ss, vertex));
   madd_v3_v3fl(ray_start, ray_normal, 0.002);
 
-  SculptRaycastData srd = {0};
+  SculptRaycastData srd = {nullptr};
   srd.original = original;
   srd.ss = ss;
   srd.hit = false;

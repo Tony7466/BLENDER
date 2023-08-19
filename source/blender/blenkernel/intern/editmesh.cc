@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,7 +13,8 @@
 #include "DNA_object_types.h"
 
 #include "BLI_bitmap.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_DerivedMesh.h"
 #include "BKE_customdata.h"
@@ -21,8 +22,8 @@
 #include "BKE_editmesh_cache.hh"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_iterators.h"
-#include "BKE_mesh_wrapper.h"
+#include "BKE_mesh_iterators.hh"
+#include "BKE_mesh_wrapper.hh"
 #include "BKE_object.h"
 
 #include "DEG_depsgraph_query.h"

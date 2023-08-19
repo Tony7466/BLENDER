@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,27 +11,27 @@
 
 #include "DEG_depsgraph.h"
 
-#include "ED_grease_pencil.h"
+#include "ED_grease_pencil.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "DNA_scene_types.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 namespace blender::ed::greasepencil {
 
-void select_layer_channel(GreasePencil *grease_pencil, bke::greasepencil::Layer *layer)
+void select_layer_channel(GreasePencil &grease_pencil, bke::greasepencil::Layer *layer)
 {
   using namespace blender::bke::greasepencil;
 
   if (layer != nullptr) {
-    layer->base.flag |= GP_LAYER_TREE_NODE_SELECT;
+    layer->set_selected(true);
   }
 
-  if (grease_pencil->active_layer != layer) {
-    grease_pencil->set_active_layer(layer);
+  if (grease_pencil.active_layer != layer) {
+    grease_pencil.set_active_layer(layer);
     WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, &grease_pencil);
   }
 }

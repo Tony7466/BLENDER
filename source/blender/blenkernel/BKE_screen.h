@@ -9,7 +9,7 @@
 
 #include "BLI_compiler_attrs.h"
 
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "BKE_context.h"
 
@@ -105,6 +105,13 @@ typedef struct SpaceType {
   /* Used when we want to replace an ID by another (or NULL). */
   void (*id_remap)(struct ScrArea *area, struct SpaceLink *sl, const struct IDRemapper *mappings);
 
+  /**
+   * foreach_id callback to process all ID pointers of the editor. Used indirectly by lib_query's
+   * #BKE_library_foreach_ID_link when #IDWALK_INCLUDE_UI bit-flag is set (through WM's foreach_id
+   * usage of #BKE_screen_foreach_id_screen_area).
+   */
+  void (*foreach_id)(struct SpaceLink *space_link, struct LibraryForeachIDData *data);
+
   int (*space_subtype_get)(struct ScrArea *area);
   void (*space_subtype_set)(struct ScrArea *area, int value);
   void (*space_subtype_item_extend)(struct bContext *C, EnumPropertyItem **item, int *totitem);
@@ -128,6 +135,9 @@ typedef struct SpaceType {
 
   /* region type definitions */
   ListBase regiontypes;
+
+  /** Asset shelf type definitions. */
+  ListBase asset_shelf_types; /* #AssetShelfType */
 
   /* read and write... */
 
@@ -412,6 +422,44 @@ typedef struct Menu {
   struct MenuType *type;   /* runtime */
   struct uiLayout *layout; /* runtime for drawing */
 } Menu;
+
+/* asset shelf types */
+
+/* #AssetShelfType.flag */
+typedef enum AssetShelfTypeFlag {
+  /** Do not trigger asset dragging on drag events. Drag events can be overridden with custom
+   * keymap items then. */
+  ASSET_SHELF_TYPE_FLAG_NO_ASSET_DRAG = (1 << 0),
+
+  ASSET_SHELF_TYPE_FLAG_MAX
+} AssetShelfTypeFlag;
+ENUM_OPERATORS(AssetShelfTypeFlag, ASSET_SHELF_TYPE_FLAG_MAX);
+
+typedef struct AssetShelfType {
+  struct AssetShelfType *next, *prev;
+
+  char idname[BKE_ST_MAXNAME]; /* unique name */
+
+  int space_type;
+
+  AssetShelfTypeFlag flag;
+
+  /** Determine if asset shelves of this type should be available in current context or not. */
+  bool (*poll)(const struct bContext *C, const struct AssetShelfType *shelf_type);
+
+  /** Determine if an individual asset should be visible or not. May be a temporary design,
+   * visibility should first and foremost be controlled by asset traits. */
+  bool (*asset_poll)(const struct AssetShelfType *shelf_type, const struct AssetHandle *asset);
+
+  /** Asset shelves can define their own context menu via this layout definition callback. */
+  void (*draw_context_menu)(const struct bContext *C,
+                            const struct AssetShelfType *shelf_type,
+                            const struct AssetHandle *asset,
+                            struct uiLayout *layout);
+
+  /* RNA integration */
+  ExtensionRNA rna_ext;
+} AssetShelfType;
 
 /* Space-types. */
 
