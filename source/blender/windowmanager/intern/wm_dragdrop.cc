@@ -768,29 +768,29 @@ const ListBase *WM_drag_asset_list_get(const wmDrag *drag)
   return &drag->asset_items;
 }
 
-wmDragPath *WM_drag_create_path_data(blender::Span<const char *> _paths)
+wmDragPath *WM_drag_create_path_data(blender::Span<const char *> paths)
 {
-  const char *extension = BLI_path_extension(_paths[0]);
-  blender::Vector<std::string> paths;
-  for (auto path : _paths) {
+  const char *extension = BLI_path_extension(paths[0]);
+  blender::Vector<std::string> filtered_paths;
+  for (auto path : paths) {
     const char *test_ext = BLI_path_extension(path);
     if (extension == test_ext || (extension && test_ext && STREQ(extension, test_ext))) {
-      paths.append(path);
+      filtered_paths.append(path);
     }
   }
-  const char *tooltip = _paths[0];
+  const char *tooltip = paths[0];
   char tooltip_buffer[256];
-  if (_paths.size() == 1) {
+  if (filtered_paths.size() > 1) {
     BLI_snprintf(tooltip_buffer,
                  ARRAY_SIZE(tooltip_buffer),
                  TIP_("Dragging %d %s files."),
-                 paths.size(),
+                 filtered_paths.size(),
                  extension ? extension : TIP_("Folder"));
     tooltip = tooltip_buffer;
   }
 
   wmDragPath *path_data = MEM_new<wmDragPath>(
-      "wmDragPath", paths, tooltip, ED_path_extension_type(_paths[0]));
+      "wmDragPath", filtered_paths, tooltip, ED_path_extension_type(paths[0]));
 
   return path_data;
 }
