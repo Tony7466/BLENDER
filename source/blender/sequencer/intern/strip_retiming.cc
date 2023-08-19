@@ -101,7 +101,7 @@ void SEQ_retiming_data_ensure(const Scene *scene, Sequence *seq)
   seq->retiming_handles = (SeqRetimingHandle *)MEM_calloc_arrayN(
       2, sizeof(SeqRetimingHandle), __func__);
   SeqRetimingHandle *handle = seq->retiming_handles + 1;
-  handle->strip_frame_index = seq->len;
+  handle->strip_frame_index = seq->len - 1;
   handle->retiming_factor = 1.0f;
   seq->retiming_handle_num = 2;
 
