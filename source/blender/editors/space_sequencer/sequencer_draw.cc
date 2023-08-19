@@ -1234,6 +1234,10 @@ static void calculate_seq_text_offsets(
   else if (*x2 > v2d->cur.xmax) {
     *x2 = v2d->cur.xmax;
   }
+
+  if (*x1 > *x2) {
+    *x1 = *x2;
+  }
 }
 
 static void fcurve_batch_add_verts(GPUVertBuf *vbo,
