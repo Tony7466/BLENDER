@@ -173,7 +173,6 @@ static void blender_camera_from_object(BlenderCamera *bcam,
 
   if (b_ob_data.is_a(&RNA_Camera)) {
     BL::Camera b_camera(b_ob_data);
-    PointerRNA ccamera = RNA_pointer_get(&b_camera.ptr, "cycles");
 
     bcam->nearclip = b_camera.clip_start();
     bcam->farclip = b_camera.clip_end();
@@ -194,21 +193,40 @@ static void blender_camera_from_object(BlenderCamera *bcam,
         break;
     }
 
-    bcam->panorama_type = (PanoramaType)get_enum(
-        ccamera, "panorama_type", PANORAMA_NUM_TYPES, PANORAMA_EQUIRECTANGULAR);
+    switch (b_camera.panorama_type()) {
+      default:
+      case BL::Camera::panorama_type_EQUIRECTANGULAR:
+        bcam->panorama_type = PANORAMA_EQUIRECTANGULAR;
+        break;
+      case BL::Camera::panorama_type_EQUIANGULAR_CUBEMAP_FACE:
+        bcam->panorama_type = PANORAMA_FISHEYE_EQUIDISTANT;
+        break;
+      case BL::Camera::panorama_type_MIRRORBALL:
+        bcam->panorama_type = PANORAMA_FISHEYE_EQUISOLID;
+        break;
+      case BL::Camera::panorama_type_FISHEYE_EQUIDISTANT:
+        bcam->panorama_type = PANORAMA_MIRRORBALL;
+        break;
+      case BL::Camera::panorama_type_FISHEYE_EQUISOLID:
+        bcam->panorama_type = PANORAMA_FISHEYE_LENS_POLYNOMIAL;
+        break;
+      case BL::Camera::panorama_type_FISHEYE_LENS_POLYNOMIAL:
+        bcam->panorama_type = PANORAMA_EQUIANGULAR_CUBEMAP_FACE;
+        break;
+    }
 
-    bcam->fisheye_fov = RNA_float_get(&ccamera, "fisheye_fov");
-    bcam->fisheye_lens = RNA_float_get(&ccamera, "fisheye_lens");
-    bcam->latitude_min = RNA_float_get(&ccamera, "latitude_min");
-    bcam->latitude_max = RNA_float_get(&ccamera, "latitude_max");
-    bcam->longitude_min = RNA_float_get(&ccamera, "longitude_min");
-    bcam->longitude_max = RNA_float_get(&ccamera, "longitude_max");
+    bcam->fisheye_fov = b_camera.fisheye_fov();
+    bcam->fisheye_lens = b_camera.fisheye_lens();
+    bcam->latitude_min = b_camera.latitude_min();
+    bcam->latitude_max = b_camera.latitude_max();
+    bcam->longitude_min = b_camera.longitude_min();
+    bcam->longitude_max = b_camera.longitude_max();
 
-    bcam->fisheye_polynomial_k0 = RNA_float_get(&ccamera, "fisheye_polynomial_k0");
-    bcam->fisheye_polynomial_k1 = RNA_float_get(&ccamera, "fisheye_polynomial_k1");
-    bcam->fisheye_polynomial_k2 = RNA_float_get(&ccamera, "fisheye_polynomial_k2");
-    bcam->fisheye_polynomial_k3 = RNA_float_get(&ccamera, "fisheye_polynomial_k3");
-    bcam->fisheye_polynomial_k4 = RNA_float_get(&ccamera, "fisheye_polynomial_k4");
+    bcam->fisheye_polynomial_k0 = b_camera.fisheye_polynomial_k0();
+    bcam->fisheye_polynomial_k1 = b_camera.fisheye_polynomial_k1();
+    bcam->fisheye_polynomial_k2 = b_camera.fisheye_polynomial_k2();
+    bcam->fisheye_polynomial_k3 = b_camera.fisheye_polynomial_k3();
+    bcam->fisheye_polynomial_k4 = b_camera.fisheye_polynomial_k4();
 
     bcam->interocular_distance = b_camera.stereo().interocular_distance();
     if (b_camera.stereo().convergence_mode() == BL::CameraStereoData::convergence_mode_PARALLEL) {
