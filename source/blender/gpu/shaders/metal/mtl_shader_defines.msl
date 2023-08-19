@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** Special header for mapping commonly defined tokens to API-specific variations.
  * Where possible, this will adhere closely to base GLSL, where semantics are the same.
@@ -66,7 +68,7 @@ using uvec4 = uint4;
 
 /* Compute decorators. */
 #define TG threadgroup
-#define barrier() threadgroup_barrier(mem_flags::mem_threadgroup)
+#define barrier() threadgroup_barrier(mem_flags::mem_threadgroup | mem_flags::mem_device | mem_flags::mem_texture)
 
 #ifdef MTL_USE_WORKGROUP_SIZE
 /* Compute workgroup size. */
@@ -255,6 +257,7 @@ struct SStruct {
 #define depth2D thread _mtl_combined_image_sampler_depth_2d<float>
 #define sampler2DArray thread _mtl_combined_image_sampler_2d_array<float>
 #define sampler2DArrayShadow thread _mtl_combined_image_sampler_depth_2d_array<float>
+#define depth2DArray thread _mtl_combined_image_sampler_depth_2d_array<float>
 #define depth2DArrayShadow thread _mtl_combined_image_sampler_depth_2d_array<float>
 #define sampler3D thread _mtl_combined_image_sampler_3d<float>
 #define samplerBuffer thread _mtl_combined_image_sampler_buffer<float, access::read>
@@ -1454,7 +1457,7 @@ template<typename T> T mix(T a, T b, MTLBOOL mask)
   return (mask) ? b : a;
 }
 
-template<typename T, unsigned int Size> bool is_zero(vec<T, Size> a)
+template<typename T, int Size> bool is_zero(vec<T, Size> a)
 {
   for (int i = 0; i < Size; i++) {
     if (a[i] != T(0)) {

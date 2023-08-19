@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Tangent Animation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 Tangent Animation. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "usd_reader_geom.h"
 
@@ -8,7 +9,6 @@
 #include "BKE_object.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_math_geom.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
@@ -31,7 +31,7 @@ void USDGeomReader::add_cache_modifier()
   id_us_plus(&mcmd->cache_file->id);
   mcmd->read_flag = import_params_.mesh_read_flag;
 
-  BLI_strncpy(mcmd->object_path, prim_.GetPath().GetString().c_str(), FILE_MAX);
+  STRNCPY(mcmd->object_path, prim_.GetPath().GetString().c_str());
 }
 
 void USDGeomReader::add_subdiv_modifier()

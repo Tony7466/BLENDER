@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -9,6 +10,7 @@
 
 #include "BLI_compiler_compat.h"
 #include "BLI_ghash.h"
+#include "BLI_math_vector_types.hh"
 
 #include "DNA_listBase.h"
 
@@ -17,7 +19,7 @@
 /* for FOREACH_NODETREE_BEGIN */
 #include "DNA_node_types.h"
 
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "BLI_map.hh"
 #include "BLI_string_ref.hh"
@@ -155,9 +157,9 @@ bool nodeLinkIsSelected(const bNodeLink *link);
 
 void nodeInternalRelink(bNodeTree *ntree, bNode *node);
 
-void nodeToView(const bNode *node, float x, float y, float *rx, float *ry);
+float2 nodeToView(const bNode *node, float2 loc);
 
-void nodeFromView(const bNode *node, float x, float y, float *rx, float *ry);
+float2 nodeFromView(const bNode *node, float2 view_loc);
 
 void nodePositionRelative(bNode *from_node,
                           const bNode *to_node,

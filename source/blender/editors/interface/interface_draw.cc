@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -14,7 +15,7 @@
 #include "DNA_movieclip_types.h"
 #include "DNA_screen_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_polyfill_2d.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
@@ -32,7 +33,7 @@
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
-#include "BIF_glutil.h"
+#include "BIF_glutil.hh"
 
 #include "BLF_api.h"
 
@@ -45,7 +46,7 @@
 #include "GPU_shader_shared.h"
 #include "GPU_state.h"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 /* own include */
 #include "interface_intern.hh"
@@ -60,7 +61,7 @@ void UI_draw_roundbox_corner_set(int type)
 }
 
 #if 0 /* unused */
-int UI_draw_roundbox_corner_get(void)
+int UI_draw_roundbox_corner_get()
 {
   return roundboxtype;
 }
@@ -301,7 +302,7 @@ void ui_draw_but_IMAGE(ARegion * /*region*/,
                         ibuf->y,
                         GPU_RGBA8,
                         false,
-                        ibuf->rect,
+                        ibuf->byte_buffer.data,
                         1.0f,
                         1.0f,
                         col);
@@ -2053,11 +2054,11 @@ void ui_draw_but_TRACKPREVIEW(ARegion * /*region*/,
                                                  height,
                                                  scopes->track_pos);
     if (tmpibuf) {
-      if (tmpibuf->rect_float) {
+      if (tmpibuf->float_buffer.data) {
         IMB_rect_from_float(tmpibuf);
       }
 
-      if (tmpibuf->rect) {
+      if (tmpibuf->byte_buffer.data) {
         scopes->track_preview = tmpibuf;
       }
       else {
@@ -2073,7 +2074,7 @@ void ui_draw_but_TRACKPREVIEW(ARegion * /*region*/,
     GPU_scissor(rect.xmin, rect.ymin, scissor[2], scissor[3]);
 
     if (width > 0 && height > 0) {
-      ImBuf *drawibuf = scopes->track_preview;
+      const ImBuf *drawibuf = scopes->track_preview;
       float col_sel[4], col_outline[4];
 
       if (scopes->use_track_mask) {
@@ -2095,7 +2096,7 @@ void ui_draw_but_TRACKPREVIEW(ARegion * /*region*/,
                             drawibuf->y,
                             GPU_RGBA8,
                             true,
-                            drawibuf->rect,
+                            drawibuf->byte_buffer.data,
                             1.0f,
                             1.0f,
                             nullptr);

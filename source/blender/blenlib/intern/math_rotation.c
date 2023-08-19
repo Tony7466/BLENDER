@@ -1,12 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
  */
 
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_strict_flags.h"
 
 /******************************** Quaternions ********************************/
@@ -352,7 +356,7 @@ void mat3_normalized_to_quat_fast(float q[4], const float mat[3][3])
 
   BLI_assert(!(q[0] < 0.0f));
 
-  /* Sometimes normalisation is necessary due to round-off errors in the above
+  /* Sometimes normalization is necessary due to round-off errors in the above
    * calculations. The comparison here uses tighter tolerances than
    * BLI_ASSERT_UNIT_QUAT(), so it's likely that even after a few more
    * transformations the quaternion will still be considered unit-ish. */
@@ -2215,34 +2219,34 @@ void vec_apply_track(float vec[3], short axis)
 
   switch (axis) {
     case 0: /* pos-x */
-      /* vec[0] =  0.0; */
+      // vec[0] =  0.0;
       vec[1] = tvec[2];
       vec[2] = -tvec[1];
       break;
     case 1: /* pos-y */
-      /* vec[0] = tvec[0]; */
-      /* vec[1] =  0.0; */
-      /* vec[2] = tvec[2]; */
+      // vec[0] = tvec[0];
+      // vec[1] =  0.0;
+      // vec[2] = tvec[2];
       break;
     case 2: /* pos-z */
-      /* vec[0] = tvec[0]; */
-      /* vec[1] = tvec[1]; */
-      /* vec[2] =  0.0; */
+      // vec[0] = tvec[0];
+      // vec[1] = tvec[1];
+      // vec[2] =  0.0;
       break;
     case 3: /* neg-x */
-      /* vec[0] =  0.0; */
+      // vec[0] =  0.0;
       vec[1] = tvec[2];
       vec[2] = -tvec[1];
       break;
     case 4: /* neg-y */
       vec[0] = -tvec[2];
-      /* vec[1] =  0.0; */
+      // vec[1] =  0.0;
       vec[2] = tvec[0];
       break;
     case 5: /* neg-z */
       vec[0] = -tvec[0];
       vec[1] = -tvec[1];
-      /* vec[2] =  0.0; */
+      // vec[2] =  0.0;
       break;
   }
 }

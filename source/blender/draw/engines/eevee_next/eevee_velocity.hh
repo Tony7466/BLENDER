@@ -1,6 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -108,7 +108,9 @@ class VelocityModule {
   bool step_object_sync(Object *ob,
                         ObjectKey &object_key,
                         ResourceHandle resource_handle,
-                        int recalc = 0);
+                        int recalc = 0,
+                        ModifierData *modifier_data = nullptr,
+                        ParticleSystem *particle_sys = nullptr);
 
   /* Moves next frame data to previous frame data. Nullify next frame data. */
   void step_swap();
@@ -120,13 +122,13 @@ class VelocityModule {
 
   template<typename T> void bind_resources(draw::detail::Pass<T> *pass)
   {
-    /* Storage Buf. */
+    /* Storage Buffer. */
     pass->bind_ssbo(VELOCITY_OBJ_PREV_BUF_SLOT, &(*object_steps[STEP_PREVIOUS]));
     pass->bind_ssbo(VELOCITY_OBJ_NEXT_BUF_SLOT, &(*object_steps[next_step_]));
     pass->bind_ssbo(VELOCITY_GEO_PREV_BUF_SLOT, &(*geometry_steps[STEP_PREVIOUS]));
     pass->bind_ssbo(VELOCITY_GEO_NEXT_BUF_SLOT, &(*geometry_steps[next_step_]));
     pass->bind_ssbo(VELOCITY_INDIRECTION_BUF_SLOT, &indirection_buf);
-    /* Uniform Buf. */
+    /* Uniform Buffer. */
     pass->bind_ubo(VELOCITY_CAMERA_PREV_BUF, &(*camera_steps[STEP_PREVIOUS]));
     pass->bind_ubo(VELOCITY_CAMERA_CURR_BUF, &(*camera_steps[STEP_CURRENT]));
     pass->bind_ubo(VELOCITY_CAMERA_NEXT_BUF, &(*camera_steps[next_step_]));
@@ -137,6 +139,10 @@ class VelocityModule {
 
   /* Returns frame time difference between two steps. */
   float step_time_delta_get(eVelocityStep start, eVelocityStep end) const;
+
+  /* Perform VelocityGeometryData offset computation and copy into the geometry step buffer.
+   * Should be called after all the vertex buffers have been updated by batch cache extraction. */
+  void geometry_steps_fill();
 
  private:
   bool object_has_velocity(const Object *ob);

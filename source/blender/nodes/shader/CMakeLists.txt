@@ -1,28 +1,28 @@
+# SPDX-FileCopyrightText: 2021 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright 2021 Blender Foundation
 
 set(INC
   .
   ..
   ../intern
   ../../blenkernel
-  ../../blenlib
   ../../blentranslation
   ../../depsgraph
   ../../editors/include
   ../../functions
   ../../gpu
   ../../imbuf
-  ../../makesdna
   ../../makesrna
   ../../render
   ../../windowmanager
-  ../../../../intern/guardedalloc
   ../../../../intern/sky/include
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
+set(INC_SYS
+)
 
 set(SRC
   nodes/node_shader_add_shader.cc
@@ -32,7 +32,6 @@ set(SRC
   nodes/node_shader_bevel.cc
   nodes/node_shader_blackbody.cc
   nodes/node_shader_brightness.cc
-  nodes/node_shader_bsdf_anisotropic.cc
   nodes/node_shader_bsdf_diffuse.cc
   nodes/node_shader_bsdf_glass.cc
   nodes/node_shader_bsdf_glossy.cc
@@ -40,10 +39,10 @@ set(SRC
   nodes/node_shader_bsdf_hair_principled.cc
   nodes/node_shader_bsdf_principled.cc
   nodes/node_shader_bsdf_refraction.cc
+  nodes/node_shader_bsdf_sheen.cc
   nodes/node_shader_bsdf_toon.cc
   nodes/node_shader_bsdf_translucent.cc
   nodes/node_shader_bsdf_transparent.cc
-  nodes/node_shader_bsdf_velvet.cc
   nodes/node_shader_bump.cc
   nodes/node_shader_camera.cc
   nodes/node_shader_clamp.cc
@@ -129,7 +128,10 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenlib
+  PRIVATE bf::dna
   bf_functions
+  PRIVATE bf::intern::guardedalloc
   bf_intern_sky
   bf_nodes
 )

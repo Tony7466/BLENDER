@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup imbuf
@@ -9,7 +10,7 @@
 #  include <io.h>
 #endif
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
@@ -213,7 +214,7 @@ static void ffmpeg_log_callback(void *ptr, int level, const char *format, va_lis
 #    pragma GCC diagnostic pop
 #  endif
 
-void IMB_ffmpeg_init(void)
+void IMB_ffmpeg_init()
 {
   avdevice_register_all();
 
@@ -227,7 +228,7 @@ void IMB_ffmpeg_init(void)
   av_log_set_callback(ffmpeg_log_callback);
 }
 
-const char *IMB_ffmpeg_last_error(void)
+const char *IMB_ffmpeg_last_error()
 {
   return ffmpeg_last_error;
 }
