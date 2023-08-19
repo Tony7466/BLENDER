@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -93,6 +93,12 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
    * #eNodeTreeRuntimeFlag.
    */
   uint8_t runtime_flag = 0;
+
+  /**
+   * Contains a number increased for each node-tree update.
+   * Store a state variable in the #NestedTreePreviews structure to compare if they differ.
+   */
+  uint32_t previews_refresh_state = 0;
 
   /**
    * Storage of nodes based on their identifier. Also used as a contiguous array of nodes to
@@ -526,16 +532,6 @@ inline blender::Span<const bNodeLink *> bNodeTree::all_links() const
 {
   BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
   return this->runtime->links;
-}
-
-inline blender::Span<const bNodePanel *> bNodeTree::panels() const
-{
-  return blender::Span(panels_array, panels_num);
-}
-
-inline blender::MutableSpan<bNodePanel *> bNodeTree::panels_for_write()
-{
-  return blender::MutableSpan(panels_array, panels_num);
 }
 
 inline blender::MutableSpan<bNestedNodeRef> bNodeTree::nested_node_refs_span()

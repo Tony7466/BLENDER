@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2011-2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -121,7 +121,7 @@ float Engine::renderer_percent_done()
   if (it == render_stats.end()) {
     return 0.0f;
   }
-  return (float)it->second.UncheckedGet<double>();
+  return float(it->second.UncheckedGet<double>());
 }
 
 pxr::HdTaskSharedPtrVector Engine::tasks()
