@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -939,6 +939,10 @@ class PropertyGroup(StructRNA, metaclass=RNAMetaPropGroup):
 
 
 class KeyingSetInfo(StructRNA, metaclass=RNAMeta):
+    __slots__ = ()
+
+
+class USDHook(StructRNA, metaclass=RNAMeta):
     __slots__ = ()
 
 

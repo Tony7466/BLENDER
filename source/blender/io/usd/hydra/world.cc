@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2011-2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -120,7 +120,7 @@ void WorldData::init()
     StudioLight *sl = BKE_studiolight_find(
         scene_delegate_->shading_settings.studiolight_name.c_str(),
         STUDIOLIGHT_ORIENTATIONS_MATERIAL_MODE);
-    if (sl != NULL && sl->flag & STUDIOLIGHT_TYPE_WORLD) {
+    if (sl != nullptr && sl->flag & STUDIOLIGHT_TYPE_WORLD) {
       texture_file = pxr::SdfAssetPath(sl->filepath, sl->filepath);
       /* coefficient to follow Cycles result */
       intensity = scene_delegate_->shading_settings.studiolight_intensity / 2;

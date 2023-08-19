@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,7 +16,7 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_rand.h"
 
 #include "BLT_translation.h"

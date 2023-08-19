@@ -50,7 +50,8 @@ vec3 lightprobe_irradiance_grid_bias_sample_coord(IrradianceGridData grid_data,
   /* NOTE(fclem): Use uint to avoid signed int modulo. */
   uint vis_comp = uint(cell_start.z) % 4u;
   /* Visibility is stored after the irradiance. */
-  ivec3 vis_coord = ivec3(brick_atlas_coord, IRRADIANCE_GRID_BRICK_SIZE * 4) + ivec3(cell_start);
+  ivec3 vis_coord = ivec3(ivec2(brick_atlas_coord), IRRADIANCE_GRID_BRICK_SIZE * 4) +
+                    ivec3(cell_start);
   /* Visibility is stored packed 1 cell per channel. */
   vis_coord.z -= int(vis_comp);
   float cell_visibility = texelFetch(irradiance_atlas_tx, vis_coord, 0)[vis_comp];
@@ -85,7 +86,7 @@ vec3 lightprobe_irradiance_grid_bias_sample_coord(IrradianceGridData grid_data,
 
     /* Biases. See McGuire's presentation. */
     positional_weight += 0.001;
-    geometry_weight = square_f(geometry_weight) + 0.2 + grid_data.facing_bias;
+    geometry_weight = square(geometry_weight) + 0.2 + grid_data.facing_bias;
 
     trilinear_weights[i] = saturate(positional_weight * geometry_weight * validity_weight);
     total_weight += trilinear_weights[i];
@@ -105,24 +106,24 @@ SphericalHarmonicL1 lightprobe_irradiance_sample(
     sampler3D atlas_tx, vec3 P, vec3 V, vec3 Ng, const bool do_bias)
 {
   vec3 lP;
-  int grid_index = 0;
+  int index = 0;
 #ifdef IRRADIANCE_GRID_UPLOAD
-  grid_index = grid_start_index;
+  index = grid_start_index;
 #endif
-  for (; grid_index < IRRADIANCE_GRID_MAX; grid_index++) {
+  for (; index < IRRADIANCE_GRID_MAX; index++) {
     /* Last grid is tagged as invalid to stop the iteration. */
-    if (grids_infos_buf[grid_index].grid_size.x == -1) {
+    if (grids_infos_buf[index].grid_size.x == -1) {
       /* Sample the last grid instead. */
-      grid_index -= 1;
+      index -= 1;
       break;
     }
     /* If sample fall inside the grid, step out of the loop. */
-    if (lightprobe_irradiance_grid_local_coord(grids_infos_buf[grid_index], P, lP)) {
+    if (lightprobe_irradiance_grid_local_coord(grids_infos_buf[index], P, lP)) {
       break;
     }
   }
 
-  IrradianceGridData grid_data = grids_infos_buf[grid_index];
+  IrradianceGridData grid_data = grids_infos_buf[index];
 
   /* TODO(fclem): Make sure this is working as expected. */
   mat3x3 world_to_grid_transposed = mat3x3(grid_data.world_to_grid_transposed);

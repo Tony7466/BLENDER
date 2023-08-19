@@ -34,7 +34,9 @@
 #include "BLI_kdopbvh.h"
 #include "BLI_kdtree.h"
 #include "BLI_linklist.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_rand.h"
 #include "BLI_string_utils.h"
 #include "BLI_task.h"
@@ -1491,7 +1493,7 @@ static void integrate_particle(
           madd_v3_v3v3fl(states[1].co, states->co, states->vel, dtime * 0.5f);
           madd_v3_v3v3fl(states[1].vel, states->vel, acceleration, dtime * 0.5f);
           states[1].time = dtime * 0.5f;
-          /*fra=sim->psys->cfra+0.5f*dfra;*/
+          // fra = sim->psys->cfra + 0.5f * dfra;
         }
         else {
           madd_v3_v3v3fl(pa->state.co, states->co, states[1].vel, dtime);
@@ -1509,7 +1511,7 @@ static void integrate_particle(
             madd_v3_v3v3fl(states[1].co, states->co, dx[0], 0.5f);
             madd_v3_v3v3fl(states[1].vel, states->vel, dv[0], 0.5f);
             states[1].time = dtime * 0.5f;
-            /*fra=sim->psys->cfra+0.5f*dfra;*/
+            // fra = sim->psys->cfra + 0.5f * dfra;
             break;
           case 1:
             madd_v3_v3v3fl(dx[1], states->vel, dv[0], 0.5f);
@@ -1530,7 +1532,7 @@ static void integrate_particle(
             add_v3_v3v3(states[3].co, states->co, dx[2]);
             add_v3_v3v3(states[3].vel, states->vel, dv[2]);
             states[3].time = dtime;
-            /*fra=cfra;*/
+            // fra = cfra;
             break;
           case 3:
             add_v3_v3v3(dx[3], states->vel, dv[2]);
@@ -4360,8 +4362,8 @@ static void particles_fluid_step(ParticleSimulationData *sim,
           return;
         }
 #  if 0
-/* Debugging: Print type of particle system and current particles. */
-printf("system type is %d and particle type is %d\n", part->type, flagActivePart);
+        /* Debugging: Print type of particle system and current particles. */
+        printf("system type is %d and particle type is %d\n", part->type, flagActivePart);
 #  endif
 
         /* Type of particle must match current particle system type
@@ -4379,8 +4381,8 @@ printf("system type is %d and particle type is %d\n", part->type, flagActivePart
           continue;
         }
 #  if 0
-/* Debugging: Print type of particle system and current particles. */
-printf("system type is %d and particle type is %d\n", part->type, flagActivePart);
+        /* Debugging: Print type of particle system and current particles. */
+        printf("system type is %d and particle type is %d\n", part->type, flagActivePart);
 #  endif
         /* Particle system has allocated 'tottypepart' particles - so break early before exceeded.
          */
@@ -4438,16 +4440,22 @@ printf("system type is %d and particle type is %d\n", part->type, flagActivePart
           mul_v3_v3(tmp, ob->scale);
           add_v3_v3(pa->state.co, tmp);
 #  if 0
-/* Debugging: Print particle coordinates. */
-printf("pa->state.co[0]: %f, pa->state.co[1]: %f, pa->state.co[2]: %f\n", pa->state.co[0], pa->state.co[1], pa->state.co[2]);
+          /* Debugging: Print particle coordinates. */
+          printf("pa->state.co[0]: %f, pa->state.co[1]: %f, pa->state.co[2]: %f\n",
+                 pa->state.co[0],
+                 pa->state.co[1],
+                 pa->state.co[2]);
 #  endif
           /* Set particle velocity. */
           const float velParticle[3] = {velX, velY, velZ};
           copy_v3_v3(pa->state.vel, velParticle);
           mul_v3_fl(pa->state.vel, fds->dx);
 #  if 0
-/* Debugging: Print particle velocity. */
-printf("pa->state.vel[0]: %f, pa->state.vel[1]: %f, pa->state.vel[2]: %f\n", pa->state.vel[0], pa->state.vel[1], pa->state.vel[2]);
+          /* Debugging: Print particle velocity. */
+          printf("pa->state.vel[0]: %f, pa->state.vel[1]: %f, pa->state.vel[2]: %f\n",
+                 pa->state.vel[0],
+                 pa->state.vel[1],
+                 pa->state.vel[2]);
 #  endif
           /* Set default angular velocity and particle rotation. */
           zero_v3(pa->state.ave);
@@ -4463,8 +4471,8 @@ printf("pa->state.vel[0]: %f, pa->state.vel[1]: %f, pa->state.vel[2]: %f\n", pa-
         }
       }
 #  if 0
-/* Debugging: Print number of active particles. */
-printf("active parts: %d\n", activeParts);
+      /* Debugging: Print number of active particles. */
+      printf("active parts: %d\n", activeParts);
 #  endif
       totpart = psys->totpart = part->totpart = activeParts;
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -53,8 +53,8 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #include "BLO_read_write.h"
@@ -730,8 +730,8 @@ static void animsys_blend_in_fcurves(PointerRNA *ptr,
         case PROP_ENUM:
           value_to_write = roundf(value_to_write);
           break;
-        default: /* All other types are just handled as float, and value_to_write is already
-        correct. */
+          /* All other types are just handled as float, and value_to_write is already correct. */
+        default:
           break;
       }
     }
@@ -1072,8 +1072,8 @@ NlaEvalStrip *nlastrips_ctime_get_strip(ListBase *list,
         return nullptr;
       }
       break;
-    case NLASTRIP_TYPE_TRANSITION: /* there must be strips to transition from and to (i.e. prev and
-    next required) */
+      /* There must be strips to transition from and to (i.e. `prev` and `next` required). */
+    case NLASTRIP_TYPE_TRANSITION:
       if (ELEM(nullptr, estrip->prev, estrip->next)) {
         return nullptr;
       }

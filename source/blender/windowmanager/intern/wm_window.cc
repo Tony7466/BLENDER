@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved. 2007 Blender Foundation.
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved. 2007 Blender Authors.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,7 +23,6 @@
 #include "GHOST_C-api.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_system.h"
 #include "BLI_utildefines.h"
 
@@ -38,9 +37,9 @@
 #include "BKE_screen.h"
 #include "BKE_workspace.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -1355,9 +1354,9 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
 
         wm_window_make_drawable(wm, win);
 #if 0
-/* NOTE(@ideasman42): Ideally we could swap-buffers to avoid a full redraw.
-* however this causes window flickering on resize with LIBDECOR under WAYLAND. */
-wm_window_swap_buffers(win);
+        /* NOTE(@ideasman42): Ideally we could swap-buffers to avoid a full redraw.
+         * however this causes window flickering on resize with LIBDECOR under WAYLAND. */
+        wm_window_swap_buffers(win);
 #else
         WM_event_add_notifier(C, NC_WINDOW, nullptr);
 #endif
@@ -1518,7 +1517,7 @@ wm_window_swap_buffers(win);
             int icon = ED_file_extension_icon((char *)stra->strings[a]);
             wmDragPath *path_data = WM_drag_create_path_data((char *)stra->strings[a]);
             WM_event_start_drag(C, icon, WM_DRAG_PATH, path_data, 0.0, WM_DRAG_NOP);
-            /* void poin should point to string, it makes a copy */
+            /* Void pointer should point to string, it makes a copy. */
             break; /* only one drop element supported now */
           }
         }
@@ -1887,6 +1886,9 @@ eWM_CapabilitiesFlag WM_capabilities_flag()
   }
   if (ghost_flag & GHOST_kCapabilityClipboardImages) {
     flag |= WM_CAPABILITY_CLIPBOARD_IMAGES;
+  }
+  if (ghost_flag & GHOST_kCapabilityDesktopSample) {
+    flag |= WM_CAPABILITY_DESKTOP_SAMPLE;
   }
 
   return flag;

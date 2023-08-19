@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation
+/* SPDX-FileCopyrightText: 2012 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -172,5 +172,5 @@ void free_gpcopybuf();
 void copy_gpdata();
 void paste_gpdata();
 
-void mirror_masklayer_frames( MaskLayer *mask_layer, short mode);
+void mirror_masklayer_frames(MaskLayer *mask_layer, short mode);
 #endif

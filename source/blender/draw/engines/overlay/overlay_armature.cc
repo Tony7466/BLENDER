@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,8 +20,9 @@
 #include "DRW_render.h"
 
 #include "BLI_listbase_wrapper.hh"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
 #include "BLI_math_matrix_types.hh"
+#include "BLI_math_rotation.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_action.h"

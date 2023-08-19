@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,6 +10,7 @@
 
 #include "DNA_ID.h"
 #include "DNA_listBase.h"
+#include "DNA_node_tree_interface_types.h"
 #include "DNA_scene_types.h" /* for #ImageFormatData */
 #include "DNA_vec_types.h"   /* for #rctf */
 
@@ -637,6 +638,8 @@ typedef struct bNodeTree {
    */
   ListBase inputs, outputs;
 
+  bNodeTreeInterface tree_interface;
+
   /**
    * Node preview hash table.
    * Only available in base node trees (e.g. scene->node_tree).
@@ -996,7 +999,9 @@ typedef struct NodeBilateralBlurData {
 typedef struct NodeKuwaharaData {
   short size;
   short variation;
-  int smoothing;
+  int uniformity;
+  float sharpness;
+  float eccentricity;
 } NodeKuwaharaData;
 
 typedef struct NodeAntiAliasingData {
@@ -1212,7 +1217,8 @@ typedef struct NodeTexGradient {
 typedef struct NodeTexNoise {
   NodeTexBase base;
   int dimensions;
-  char _pad[4];
+  uint8_t normalize;
+  char _pad[3];
 } NodeTexNoise;
 
 typedef struct NodeTexVoronoi {
@@ -1279,6 +1285,12 @@ typedef struct NodeShaderPrincipled {
   char use_subsurface_auto_radius;
   char _pad[3];
 } NodeShaderPrincipled;
+
+typedef struct NodeShaderHairPrincipled {
+  short model;
+  short parametrization;
+  char _pad[4];
+} NodeShaderHairPrincipled;
 
 /** TEX_output. */
 typedef struct TexNodeOutput {
@@ -1911,7 +1923,13 @@ enum {
   SHD_HAIR_TRANSMISSION = 1,
 };
 
-/* principled hair parametrization */
+/* principled hair models */
+enum {
+  SHD_PRINCIPLED_HAIR_CHIANG = 0,
+  SHD_PRINCIPLED_HAIR_HUANG = 1,
+};
+
+/* principled hair color parametrization */
 enum {
   SHD_PRINCIPLED_HAIR_REFLECTANCE = 0,
   SHD_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION = 1,
@@ -2124,6 +2142,7 @@ typedef enum NodeMathOperation {
   NODE_MATH_PINGPONG = 37,
   NODE_MATH_SMOOTH_MIN = 38,
   NODE_MATH_SMOOTH_MAX = 39,
+  NODE_MATH_FLOORED_MODULO = 40,
 } NodeMathOperation;
 
 typedef enum NodeVectorMathOperation {

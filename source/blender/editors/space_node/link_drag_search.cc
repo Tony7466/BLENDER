@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,7 +22,7 @@
 
 #include "BLT_translation.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "WM_api.hh"
 
@@ -90,7 +90,6 @@ static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
   bNodeSocket *interface_socket = bke::ntreeAddSocketInterfaceFromSocket(
       &params.node_tree, &params.node, &params.socket);
   const int group_input_index = BLI_findindex(&params.node_tree.inputs, interface_socket);
-
   bNode &group_input = params.add_node("NodeGroupInput");
 
   /* This is necessary to create the new sockets in the other input nodes. */
