@@ -190,3 +190,13 @@ typedef struct
 	/// Audio data parameters.
 	AUD_DeviceSpecs specs;
 } AUD_StreamInfo;
+
+
+/// Specification of the values returned by the AUD_readSoundAt function
+typedef struct {
+  /// Number of samples read.
+  int length;
+
+  /// Maximum sample value among all samples read.
+  float maximum_sample_value;
+} AUD_ReadSoundAtResult;

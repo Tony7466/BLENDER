@@ -245,4 +245,22 @@ ATOMIC_INLINE float atomic_add_and_fetch_fl(float *p, const float x)
   return newval;
 }
 
+ATOMIC_INLINE float atomic_fetch_and_update_max_float(float *p, float x)
+{
+  float prev_value;
+  while ((prev_value = *p) < x) {
+    if (atomic_cas_float(p, prev_value, x) == prev_value) {
+      break;
+    }
+  }
+
+  return prev_value;
+}
+
+ATOMIC_INLINE float atomic_load_float(float *p)
+{
+  uint32_t ret = atomic_load_uint32((uint32_t *)p);
+  return *(float *)&ret;
+}
+
 #endif /* __ATOMIC_OPS_EXT_H__ */

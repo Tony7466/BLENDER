@@ -58,7 +58,20 @@ extern AUD_API AUD_Handle* AUD_pauseAfter(AUD_Handle* handle, double seconds);
  */
 extern AUD_API int AUD_readSound(AUD_Sound* sound, float* buffer, int length, int samples_per_second, short* interrupt);
 
-extern AUD_API int AUD_readSoundAt(AUD_Sound* sound, int at, float* buffer, int length, int samples_per_second, short* interrupt);
+/**
+ * Reads a sound into a buffer for drawing at a specific sampling rate, starting at a specific sample.
+ * The returned sample values are not normalized by the overall maximum sample value.
+ * It is up to the caller to normalize the samples if that is needed.
+ *
+ * \param sound The sound to read.
+ * \param at The sample to start reading from.
+ * \param buffer The buffer to write to. Must have a size of 3*4*length.
+ * \param length How many samples to read from the sound.
+ * \param samples_per_second How many samples to read per second of the sound.
+ * \param interrupt Must point to a short that equals 0. If it is set to a non-zero value, the method will be interrupted and return 0.
+ * \return How many samples have been read and what is the maximum sample value is for the samples read (used for normalization).  The length return is always  <= length.
+ */
+extern AUD_API AUD_ReadSoundAtResult AUD_readSoundAt(AUD_Sound* sound, int at, float* buffer, int length, int samples_per_second, short* interrupt);
 
 /**
  * Mixes a sound down into a file.

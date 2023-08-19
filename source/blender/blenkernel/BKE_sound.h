@@ -29,6 +29,7 @@ typedef struct SoundWaveform {
   struct SoundWaveformSegment *segments;
   float *data;
   int length;
+  float maximum_sample_value;
 } SoundWaveform;
 
 typedef struct SoundWaveformSegment {

@@ -14,6 +14,7 @@
 #include "BLI_string_utils.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
+#include "atomic_ops.h"
 
 #include "IMB_imbuf_types.h"
 
@@ -487,6 +488,7 @@ static void draw_seq_waveform_overlay(
   }
 
   SoundWaveform *waveform = static_cast<SoundWaveform *>(seq->sound->waveform);
+  float maximum_sample_value = atomic_load_float(&waveform->maximum_sample_value);
 
   /* F-Curve lookup is quite expensive, so do this after precondition. */
   FCurve *fcu = id_data_find_fcurve(&scene->id, seq, &RNA_Sequence, "volume", 0, nullptr);
@@ -515,16 +517,18 @@ static void draw_seq_waveform_overlay(
       break;
     }
 
-    float value_min = waveform->data[sample_index * 3];
-    float value_max = waveform->data[sample_index * 3 + 1];
-    float rms = waveform->data[sample_index * 3 + 2];
+    float value_min = waveform->data[sample_index * 3] / maximum_sample_value;
+    float value_max = waveform->data[sample_index * 3 + 1] / maximum_sample_value;
+    float rms = waveform->data[sample_index * 3 + 2] / maximum_sample_value;
 
     if (sample_index + 1 < waveform->length) {
       /* Use simple linear interpolation. */
       float f = sample - sample_index;
-      value_min = (1.0f - f) * value_min + f * waveform->data[sample_index * 3 + 3];
-      value_max = (1.0f - f) * value_max + f * waveform->data[sample_index * 3 + 4];
-      rms = (1.0f - f) * rms + f * waveform->data[sample_index * 3 + 5];
+      value_min = (1.0f - f) * value_min +
+                  f * (waveform->data[sample_index * 3 + 3] / maximum_sample_value);
+      value_max = (1.0f - f) * value_max +
+                  f * (waveform->data[sample_index * 3 + 4] / maximum_sample_value);
+      rms = (1.0f - f) * rms + f * (waveform->data[sample_index * 3 + 5] / maximum_sample_value);
 
       float samples_per_pixel = samples_per_frame * frames_per_pixel;
       if (samples_per_pixel > 1.0f) {
@@ -533,9 +537,9 @@ static void draw_seq_waveform_overlay(
         int end_idx = next_pos;
 
         for (int j = sample_index + 1; (j < waveform->length) && (j < end_idx); j++) {
-          value_min = min_ff(value_min, waveform->data[j * 3]);
-          value_max = max_ff(value_max, waveform->data[j * 3 + 1]);
-          rms = max_ff(rms, waveform->data[j * 3 + 2]);
+          value_min = min_ff(value_min, waveform->data[j * 3] / maximum_sample_value);
+          value_max = max_ff(value_max, waveform->data[j * 3 + 1] / maximum_sample_value);
+          rms = max_ff(rms, waveform->data[j * 3 + 2] / maximum_sample_value);
         }
       }
     }

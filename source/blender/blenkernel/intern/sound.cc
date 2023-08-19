@@ -9,6 +9,8 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "atomic_ops.h"
+
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
@@ -192,6 +194,15 @@ static void sound_blend_read_expand(BlendExpander *expander, ID *id)
 {
   bSound *snd = (bSound *)id;
   BLO_expand(expander, snd->ipo); /* XXX deprecated - old animation system */
+}
+
+static void free_waveform_segment_tree(SoundWaveformSegment *node)
+{
+  if (node) {
+    free_waveform_segment_tree(node->left);
+    free_waveform_segment_tree(node->right);
+    MEM_freeN(node);
+  }
 }
 
 static SoundWaveformSegment *sound_waveform_segment_build_tree(SoundWaveformSegment *parent,
@@ -1151,7 +1162,7 @@ void BKE_sound_init_waveform(Main *bmain, bSound *sound)
     int data_length = sizeof(float[SOUND_WAVEFORM_ENTRIES_PER_SAMPLE]) * info.length *
                       SOUND_WAVE_SAMPLES_PER_SECOND;
 
-    waveform->data = static_cast<float *>(MEM_mallocN(data_length, "SoundWaveform.samples"));
+    waveform->data = static_cast<float *>(MEM_callocN(data_length, "SoundWaveform.samples"));
     waveform->length = data_length;
     waveform->segments = sound_waveform_segment_build_tree(
         nullptr, 0, sound->length, DEFAULT_MAX_SEGMENT_SIZE);
@@ -1161,6 +1172,8 @@ void BKE_sound_init_waveform(Main *bmain, bSound *sound)
     waveform->length = 0;
     waveform->segments = nullptr;
   }
+
+  waveform->maximum_sample_value = 1.0f;
 }
 
 void BKE_sound_free_waveform(bSound *sound)
@@ -1171,6 +1184,9 @@ void BKE_sound_free_waveform(bSound *sound)
       if (waveform->data) {
         MEM_freeN(waveform->data);
       }
+
+      free_waveform_segment_tree(waveform->segments);
+
       MEM_freeN(waveform);
     }
 
@@ -1257,23 +1273,6 @@ void BKE_sound_read_waveform(Main *bmain, bSound *sound, bool *stop)
   }
 }
 
-static void mark_waveform_segment_children_as_loaded(SoundWaveformSegment *segment)
-{
-  if (!segment) {
-    return;
-  }
-
-  if (segment->tags & SOUND_TAGS_WAVEFORM_LOADED) {
-    return;
-  }
-
-  segment->tags |= SOUND_TAGS_WAVEFORM_LOADED;
-  segment->tags &= ~SOUND_TAGS_WAVEFORM_LOADING;
-
-  mark_waveform_segment_children_as_loaded(segment->left);
-  mark_waveform_segment_children_as_loaded(segment->right);
-}
-
 static void mark_waveform_segment_parents_as_loaded(SoundWaveformSegment *segment)
 {
   if (!segment) {
@@ -1290,7 +1289,7 @@ static void mark_waveform_segment_parents_as_loaded(SoundWaveformSegment *segmen
   }
 }
 
-void BKE_sound_read_waveform_segment(struct Main *bmain,
+void BKE_sound_read_waveform_segment(struct Main * /* bmain */,
                                      struct bSound *sound,
                                      SoundWaveformSegment *segment,
                                      bool *stop)
@@ -1299,24 +1298,31 @@ void BKE_sound_read_waveform_segment(struct Main *bmain,
   BLI_assert_msg(waveform,
                  "cannot be called before initializing the waveform with BKE_sound_init_waveform");
 
-  float *data = waveform->data + segment->low * 3 * SOUND_WAVE_SAMPLES_PER_SECOND;
+  int start_offset = segment->low * 3 * SOUND_WAVE_SAMPLES_PER_SECOND;
+  float *data = waveform->data + start_offset;
   int length = (segment->high - segment->low) * SOUND_WAVE_SAMPLES_PER_SECOND;
   int at = segment->low * SOUND_WAVE_SAMPLES_PER_SECOND;
 
   short stop_i16 = *stop;
-  AUD_readSoundAt(
+  AUD_ReadSoundAtResult result = AUD_readSoundAt(
       sound->playback_handle, at, data, length, SOUND_WAVE_SAMPLES_PER_SECOND, &stop_i16);
 
   *stop = stop_i16 != 0;
 
   BLI_spin_lock(static_cast<SpinLock *>(sound->spinlock));
+
   segment->tags |= SOUND_TAGS_WAVEFORM_LOADED;
   segment->tags &= ~SOUND_TAGS_WAVEFORM_LOADING;
-
-  mark_waveform_segment_children_as_loaded(segment->left);
-  mark_waveform_segment_children_as_loaded(segment->right);
   mark_waveform_segment_parents_as_loaded(segment->parent);
+
+  // Release the playback handle if all segments have been loaded
+  SoundWaveformSegment *rootSegment = waveform->segments;
+  if (rootSegment->tags & SOUND_TAGS_WAVEFORM_LOADED) {
+    sound_free_audio(sound);
+  }
   BLI_spin_unlock(static_cast<SpinLock *>(sound->spinlock));
+
+  atomic_fetch_and_update_max_float(&waveform->maximum_sample_value, result.maximum_sample_value);
 }
 
 static void sound_update_base(Scene *scene, Object *object, void *new_set)

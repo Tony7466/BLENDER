@@ -270,7 +270,7 @@ AUD_API int AUD_readSound(AUD_Sound* sound, float* buffer, int length, int sampl
 	return length;
 }
 
-AUD_API int AUD_readSoundAt(AUD_Sound* sound, int start, float* buffer, int length, int samples_per_second, short* interrupt)
+AUD_API AUD_ReadSoundAtResult AUD_readSoundAt(AUD_Sound* sound, int start, float* buffer, int length, int samples_per_second, short* interrupt)
 {
 	DeviceSpecs specs;
 	float* buf;
@@ -292,12 +292,14 @@ AUD_API int AUD_readSoundAt(AUD_Sound* sound, int start, float* buffer, int leng
 
 	overallmax = 0;
 
+  AUD_ReadSoundAtResult result = {};
+
 	for(int i = 0; i < length; i++)
 	{
 		len = floor(samplejump * (i+1)) - floor(samplejump * i);
 
 		if(*interrupt)
-			return 0;
+      return result;
 
 		aBuffer.assureSize(len * AUD_SAMPLE_SIZE(specs));
 		buf = aBuffer.getBuffer();
@@ -331,15 +333,9 @@ AUD_API int AUD_readSoundAt(AUD_Sound* sound, int start, float* buffer, int leng
 		}
 	}
 
-	if(overallmax > 1.0f)
-	{
-		for(int i = 0; i < length * 3; i++)
-		{
-			buffer[i] /= overallmax;
-		}
-	}
-
-	return length;
+  result.length = length;
+  result.maximum_sample_value = overallmax;
+  return result;
 }
 
 AUD_API int AUD_mixdown(AUD_Sound* sound, unsigned int start, unsigned int length, unsigned int buffersize, const char* filename, AUD_DeviceSpecs specs, AUD_Container format, AUD_Codec codec, unsigned int bitrate, void(*callback)(float, void*), void* data, char* error, size_t errorsize)
