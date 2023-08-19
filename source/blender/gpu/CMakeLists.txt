@@ -338,6 +338,7 @@ endif()
 
 if(WITH_METAL_BACKEND)
   list(APPEND SRC ${METAL_SRC})
+  set_source_files_properties(${METAL_SRC} PROPERTIES SKIP_PRECOMPILE_HEADERS TRUE)
 endif()
 
 

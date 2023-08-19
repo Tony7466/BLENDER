@@ -458,6 +458,7 @@ if(APPLE)
   list(APPEND SRC
     intern/storage_apple.mm
   )
+  set_property(SOURCE intern/storage_apple.mm PROPERTY SKIP_PRECOMPILE_HEADERS TRUE)
 endif()
 
 if(UNIX AND NOT APPLE)

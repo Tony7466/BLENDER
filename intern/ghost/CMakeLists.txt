@@ -611,4 +611,13 @@ if(WITH_XR_OPENXR)
   unset(XR_PLATFORM_DEFINES)
 endif()
 
+# precompiled headers are not compatible between C and ObjC sources,
+# so turn them off for ObjC files.
+foreach(SOURCE_FILE ${SRC})
+  get_filename_component(FILE_EXTENSION ${SOURCE_FILE} EXT)
+  if(FILE_EXTENSION STREQUAL ".mm")
+    set_property(SOURCE ${SOURCE_FILE} PROPERTY SKIP_PRECOMPILE_HEADERS TRUE)
+  endif()
+endforeach()
+
 blender_add_lib(bf_intern_ghost "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

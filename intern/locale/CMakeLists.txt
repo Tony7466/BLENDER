@@ -31,6 +31,7 @@ if(APPLE)
   list(APPEND SRC
     osx_user_locale.mm
   )
+  set_property(SOURCE osx_user_locale.mm PROPERTY SKIP_PRECOMPILE_HEADERS TRUE)
 endif()
 
 if(WITH_HEADLESS)
