@@ -20,21 +20,14 @@ SummedAreaTableOperation::SummedAreaTableOperation()
 }
 void SummedAreaTableOperation::init_execution()
 {
+  SingleThreadedOperation::init_execution();
   image_reader_ = this->get_input_socket_reader(0);
-  //  NodeOperation::init_mutex();
-}
-
-void SummedAreaTableOperation::execute_pixel_sampled(float output[4],
-                                                     float x,
-                                                     float y,
-                                                     PixelSampler sampler)
-{
 }
 
 void SummedAreaTableOperation::deinit_execution()
 {
   image_reader_ = nullptr;
-  //  NodeOperation::deinit_mutex();
+  SingleThreadedOperation::deinit_execution();
 }
 
 bool SummedAreaTableOperation::determine_depending_area_of_interest(
@@ -117,9 +110,9 @@ MemoryBuffer *SummedAreaTableOperation::create_memory_buffer(rcti *rect)
     float4 color, upper, left, upper_left;
     image_reader_->read_sampled(color, x, y, sampler);
 
-    image_reader_->read_sampled(upper, x, y - 1, sampler);
-    image_reader_->read_sampled(left, x - 1, y, sampler);
-    image_reader_->read_sampled(upper_left, x - 1, y - 1, sampler);
+    result->read_elem_checked(x, y - 1, &upper.x);
+    result->read_elem_checked(x - 1, y, &left.x);
+    result->read_elem_checked(x - 1, y - 1, &upper_left.x);
 
     float4 sum = upper + left - upper_left;
 

@@ -26,15 +26,15 @@ NODE_STORAGE_FUNCS(NodeKuwaharaData)
 
 static void cmp_node_kuwahara_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>(N_("Image"))
+  b.add_input<decl::Color>("Image")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0);
-  b.add_output<decl::Color>(N_("Image"));
+  b.add_output<decl::Color>("Image");
 
   // todo: remove
   // ### debug
-  b.add_output<decl::Color>(N_("sat"));
-  b.add_output<decl::Color>(N_("sat squared"));
+  b.add_output<decl::Color>("sat");
+  b.add_output<decl::Color>("sat squared");
 }
 
 static void node_composit_init_kuwahara(bNodeTree * /*ntree*/, bNode *node)
