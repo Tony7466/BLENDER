@@ -1392,6 +1392,11 @@ static void ghost_wl_display_report_error(wl_display *display)
   ::exit(-1);
 }
 
+#ifdef __GNUC__
+static void ghost_wayland_log_handler(const char *msg, va_list arg)
+    __attribute__((format(printf, 1, 0)));
+#endif
+
 /**
  * Callback for WAYLAND to run when there is an error.
  *
@@ -6843,6 +6848,8 @@ GHOST_TCapabilityFlag GHOST_SystemWayland::getCapabilities() const
            * screen-shot and eye-dropper sampling logic, both operations where the overhead
            * is negligible. */
           GHOST_kCapabilityGPUReadFrontBuffer |
+          /* This WAYLAND back-end has not yet implemented desktop color sample. */
+          GHOST_kCapabilityDesktopSample |
           /* This WAYLAND back-end has not yet implemented image copy/paste. */
           GHOST_kCapabilityClipboardImages));
 }

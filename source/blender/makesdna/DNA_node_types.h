@@ -999,7 +999,9 @@ typedef struct NodeBilateralBlurData {
 typedef struct NodeKuwaharaData {
   short size;
   short variation;
-  int smoothing;
+  int uniformity;
+  float sharpness;
+  float eccentricity;
   short fast;
   char _pad[2];
 } NodeKuwaharaData;
@@ -1285,6 +1287,12 @@ typedef struct NodeShaderPrincipled {
   char use_subsurface_auto_radius;
   char _pad[3];
 } NodeShaderPrincipled;
+
+typedef struct NodeShaderHairPrincipled {
+  short model;
+  short parametrization;
+  char _pad[4];
+} NodeShaderHairPrincipled;
 
 /** TEX_output. */
 typedef struct TexNodeOutput {
@@ -1917,7 +1925,13 @@ enum {
   SHD_HAIR_TRANSMISSION = 1,
 };
 
-/* principled hair parametrization */
+/* principled hair models */
+enum {
+  SHD_PRINCIPLED_HAIR_CHIANG = 0,
+  SHD_PRINCIPLED_HAIR_HUANG = 1,
+};
+
+/* principled hair color parametrization */
 enum {
   SHD_PRINCIPLED_HAIR_REFLECTANCE = 0,
   SHD_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION = 1,
