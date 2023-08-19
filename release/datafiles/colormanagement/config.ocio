@@ -65,19 +65,16 @@ displays:
   Display P3:
     - !<View> {name: Standard, colorspace: Display P3}
     - !<View> {name: AgX, colorspace: AgX Base Display P3}
-    - !<View> {name: Filmic Log, colorspace: Filmic Log}
     - !<View> {name: AgX False Color, colorspace: AgX False Color P3}
     - !<View> {name: Raw, colorspace: Non-Color}
   Rec.1886:
     - !<View> {name: Standard, colorspace: Rec.1886}
     - !<View> {name: AgX, colorspace: AgX Base Rec.1886}
-    - !<View> {name: Filmic Log, colorspace: Filmic Log}
     - !<View> {name: AgX False Color, colorspace: AgX False Color Rec.709}
     - !<View> {name: Raw, colorspace: Non-Color}
   Rec.2020:
     - !<View> {name: Standard, colorspace: Rec.2020}
     - !<View> {name: AgX, colorspace: AgX Base Rec.2020}
-    - !<View> {name: Filmic Log, colorspace: Filmic Log}
     - !<View> {name: AgX False Color, colorspace: AgX False Color Rec.2020}
     - !<View> {name: Raw, colorspace: Non-Color}
 active_displays: [sRGB, Display P3, Rec.1886, Rec.2020]
