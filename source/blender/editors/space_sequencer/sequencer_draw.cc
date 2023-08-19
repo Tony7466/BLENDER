@@ -307,32 +307,20 @@ static void waveform_job_start_if_needed(const bContext *C,
 {
   bSound *sound = seq->sound;
 
-  BLI_spin_lock(static_cast<SpinLock *>(sound->spinlock));
-
   if (!sound->waveform) {
     BKE_sound_init_waveform(CTX_data_main(C), sound);
   }
 
   SoundWaveformSegment *segment = BKE_sound_get_containing_waveform_segment(
       sound, range_start, range_end);
+
   if (!segment) {
-    BLI_spin_unlock(static_cast<SpinLock *>(sound->spinlock));
     return;
   }
 
+  BLI_spin_lock(static_cast<SpinLock *>(sound->spinlock));
   waveform_job_start_all_needed_segments(C, seq, segment);
   BLI_spin_unlock(static_cast<SpinLock *>(sound->spinlock));
-#if 0
-  const unsigned int loaded_or_loading = SOUND_TAGS_WAVEFORM_LOADING | SOUND_TAGS_WAVEFORM_LOADED;
-  if (segment && !(segment->tags & loaded_or_loading)) {
-    segment->tags |= SOUND_TAGS_WAVEFORM_LOADING;
-    BLI_spin_unlock(static_cast<SpinLock *>(sound->spinlock));
-    sequencer_preview_add_sound_segment(C, seq, segment);
-  }
-  else {
-    BLI_spin_unlock(static_cast<SpinLock *>(sound->spinlock));
-  }
-#endif
 }
 
 static size_t get_vertex_count(WaveVizData *waveform_data)

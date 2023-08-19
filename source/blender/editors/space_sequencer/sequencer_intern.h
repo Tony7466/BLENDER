@@ -297,7 +297,6 @@ void SEQUENCER_OT_rename_channel(struct wmOperatorType *ot);
 
 /* `sequencer_preview.cc` */
 
-void sequencer_preview_add_sound(const struct bContext *C, struct Sequence *seq);
 void sequencer_preview_add_sound_segment(const struct bContext *C,
                                          struct Sequence *seq,
                                          struct SoundWaveformSegment *segment);

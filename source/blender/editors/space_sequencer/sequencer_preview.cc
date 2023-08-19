@@ -182,66 +182,6 @@ static void preview_endjob(void *data)
   WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, pj->scene);
 }
 
-void sequencer_preview_add_sound(const bContext *C, Sequence *seq)
-{
-  wmJob *wm_job;
-  PreviewJob *pj;
-  ScrArea *area = CTX_wm_area(C);
-  PreviewJobAudio *audiojob = MEM_cnew<PreviewJobAudio>("preview_audio");
-  wm_job = WM_jobs_get(CTX_wm_manager(C),
-                       CTX_wm_window(C),
-                       CTX_data_scene(C),
-                       "Strip Previews",
-                       WM_JOB_PROGRESS,
-                       WM_JOB_TYPE_SEQ_BUILD_PREVIEW);
-
-  /* Get the preview job if it exists. */
-  pj = static_cast<PreviewJob *>(WM_jobs_customdata_get(wm_job));
-
-  if (pj) {
-    BLI_mutex_lock(pj->mutex);
-
-    /* If the job exists but is not running, bail and try again on the next draw call. */
-    if (!pj->running) {
-      BLI_mutex_unlock(pj->mutex);
-
-      /* Clear the sound loading tag to that it can be reattempted. */
-      clear_sound_waveform_loading_tag(seq->sound);
-      WM_event_add_notifier(C, NC_SCENE | ND_SPACE_SEQUENCER, CTX_data_scene(C));
-      return;
-    }
-  }
-  else { /* There's no existing preview job. */
-    pj = MEM_cnew<PreviewJob>("preview rebuild job");
-
-    pj->mutex = BLI_mutex_alloc();
-    BLI_condition_init(&pj->preview_suspend_cond);
-    pj->scene = CTX_data_scene(C);
-    pj->running = true;
-    BLI_mutex_lock(pj->mutex);
-
-    WM_jobs_customdata_set(wm_job, pj, free_preview_job);
-    WM_jobs_timer(wm_job, 0.1, NC_SCENE | ND_SEQUENCER, NC_SCENE | ND_SEQUENCER);
-    WM_jobs_callbacks(wm_job, preview_startjob, nullptr, nullptr, preview_endjob);
-  }
-
-  audiojob->bmain = CTX_data_main(C);
-  audiojob->sound = seq->sound;
-
-  BLI_addtail(&pj->previews, audiojob);
-  pj->total++;
-  BLI_mutex_unlock(pj->mutex);
-
-  BLI_condition_notify_one(&pj->preview_suspend_cond);
-
-  if (!WM_jobs_is_running(wm_job)) {
-    G.is_break = false;
-    WM_jobs_start(CTX_wm_manager(C), wm_job);
-  }
-
-  ED_area_tag_redraw(area);
-}
-
 void sequencer_preview_add_sound_segment(const bContext *C,
                                          Sequence *seq,
                                          SoundWaveformSegment *segment_to_load)

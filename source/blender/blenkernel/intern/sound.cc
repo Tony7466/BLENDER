@@ -1217,62 +1217,6 @@ bool BKE_sound_is_waveform_segment_loaded(bSound *sound, float segment_start, fl
   return (node->tags & SOUND_TAGS_WAVEFORM_LOADED);
 }
 
-void BKE_sound_read_waveform(Main *bmain, bSound *sound, bool *stop)
-{
-  bool need_close_audio_handles = false;
-  if (sound->playback_handle == nullptr) {
-    /* TODO(sergey): Make it fully independent audio handle. */
-    sound_load_audio(bmain, sound, true);
-    need_close_audio_handles = true;
-  }
-
-  AUD_SoundInfo info = AUD_getInfo(sound->playback_handle);
-  SoundWaveform *waveform = static_cast<SoundWaveform *>(
-      MEM_mallocN(sizeof(SoundWaveform), "SoundWaveform"));
-
-  if (info.length > 0) {
-    int length = info.length * SOUND_WAVE_SAMPLES_PER_SECOND;
-
-    waveform->data = static_cast<float *>(
-        MEM_mallocN(sizeof(float[3]) * length, "SoundWaveform.samples"));
-    /* Ideally this would take a boolean argument. */
-    short stop_i16 = *stop;
-    waveform->length = AUD_readSound(
-        sound->playback_handle, waveform->data, length, SOUND_WAVE_SAMPLES_PER_SECOND, &stop_i16);
-    *stop = stop_i16 != 0;
-  }
-  else {
-    /* Create an empty waveform here if the sound couldn't be
-     * read. This indicates that reading the waveform is "done",
-     * whereas just setting sound->waveform to nullptr causes other
-     * code to think the waveform still needs to be created. */
-    waveform->data = nullptr;
-    waveform->length = 0;
-  }
-
-  if (*stop) {
-    if (waveform->data) {
-      MEM_freeN(waveform->data);
-    }
-    MEM_freeN(waveform);
-    BLI_spin_lock(static_cast<SpinLock *>(sound->spinlock));
-    sound->tags &= ~SOUND_TAGS_WAVEFORM_LOADING;
-    BLI_spin_unlock(static_cast<SpinLock *>(sound->spinlock));
-    return;
-  }
-
-  BKE_sound_free_waveform(sound);
-
-  BLI_spin_lock(static_cast<SpinLock *>(sound->spinlock));
-  sound->waveform = waveform;
-  sound->tags &= ~SOUND_TAGS_WAVEFORM_LOADING;
-  BLI_spin_unlock(static_cast<SpinLock *>(sound->spinlock));
-
-  if (need_close_audio_handles) {
-    sound_free_audio(sound);
-  }
-}
-
 static void mark_waveform_segment_parents_as_loaded(SoundWaveformSegment *segment)
 {
   if (!segment) {
@@ -1589,12 +1533,11 @@ int BKE_sound_scene_playing(Scene * /*scene*/)
 {
   return -1;
 }
-void BKE_sound_read_waveform(Main *bmain,
-                             bSound *sound,
-                             /* NOLINTNEXTLINE: readability-non-const-parameter. */
-                             bool *stop)
+void BKE_sound_read_waveform_segment(struct Main * /*bmain*/,
+                                     struct bSound * /*sound*/,
+                                     SoundWaveformSegment * /*segment*/,
+                                     bool * /*stop*/)
 {
-  UNUSED_VARS(sound, stop, bmain);
 }
 void BKE_sound_init_main(Main * /*bmain*/) {}
 void BKE_sound_set_cfra(int /*cfra*/) {}
