@@ -119,6 +119,7 @@ void fly_modal_keymap(wmKeyConfig *keyconf)
       {FLY_MODAL_FREELOOK_ENABLE, "FREELOOK_ENABLE", 0, "Rotation", ""},
       {FLY_MODAL_FREELOOK_DISABLE, "FREELOOK_DISABLE", 0, "Rotation (Off)", ""},
 
+      {FLY_MODAL_SPEED, "SPEED", 0, "Speed", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
