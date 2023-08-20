@@ -11,6 +11,7 @@
 #include "COM_GaussianYBlurOperation.h"
 #include "COM_KuwaharaAnisotropicOperation.h"
 #include "COM_KuwaharaAnisotropicStructureTensorOperation.h"
+#include "COM_KuwaharaClassicOperation.h"
 #include "COM_SummedAreaTableOperation.h"
 
 namespace blender::compositor {
