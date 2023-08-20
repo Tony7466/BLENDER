@@ -38,6 +38,9 @@ void main()
   diffuse_data.sss_id = 0u;
   float thickness = 0.0;
 
+  drw_debug_draw_enable = (ivec2(gl_FragCoord.xy) == ivec2(1000, 512));
+  drw_debug_print_enable = (ivec2(gl_FragCoord.xy) == ivec2(1000, 512));
+
   ClosureRefraction refraction_data;
   refraction_data.N = diffuse_data.N;
   refraction_data.roughness = gbuffer_1_packed.z;

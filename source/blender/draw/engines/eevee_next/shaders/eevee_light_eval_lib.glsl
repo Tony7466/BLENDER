@@ -43,7 +43,7 @@ void light_eval_ex(ClosureDiffuse diffuse,
 
 #ifdef EEVEE_SAMPLING_DATA
     ShadowSample samp = shadow_map_trace(
-        128, is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, lL, lNg, P);
+        8, is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, lL, lNg, P);
 #else
     /* TODO(fclem): Support soft shadows in surfel light eval. */
     ShadowSample samp = shadow_sample(
