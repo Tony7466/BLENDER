@@ -78,6 +78,9 @@ cmake_policy(SET CMP0010 NEW)
 # Input directories must have CMakeLists.txt
 cmake_policy(SET CMP0014 NEW)
 
+# Enable if IN_LIST
+cmake_policy(SET CMP0057 NEW)
+
 # Silence draco warning on macOS, new policy works fine.
 if(POLICY CMP0068)
   cmake_policy(SET CMP0068 NEW)

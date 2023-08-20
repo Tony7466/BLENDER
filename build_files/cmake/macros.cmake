@@ -412,10 +412,11 @@ function(blender_add_lib__impl
   list_assert_duplicates("${includes}")
   # Not for system includes because they can resolve to the same path
   # list_assert_duplicates("${includes_sys}")
-
-  if(NOT "${name}" STREQUAL "bf_pch")
-    target_link_libraries(${name} PRIVATE bf_pch)
-  endif()  
+  set(_targetsWithPch "bf_pch" "bf_compositor" "bf_freestyle" "bf_usd")
+  if (COMMAND target_precompile_headers AND TARGET bf_pch AND NOT "${name}" IN_LIST _targetsWithPch)
+    target_precompile_headers(${name} REUSE_FROM bf_pch)
+  endif()
+  unset(_targetsWithPch)
 
 endfunction()
 
