@@ -1820,7 +1820,7 @@ static void do_cdt(CDT_data &cd)
     std::cout << "Tris\n";
     for (int f : cd.cdt_out.faces().index_range()) {
       std::cout << "f" << f << ": ";
-      for (int vert : cd.cdt_out.face_vert_indices.as_span().slice(cd.cdt_out.faces()[f])) {
+      for (int vert : cd.cdt_out.faces()[f]) {
         std::cout << vert << " ";
       }
       std::cout << "orig: ";
@@ -1935,7 +1935,7 @@ static Face *cdt_tri_as_imesh_face(
   const CDT_result<mpq_class> &cdt_out = cd.cdt_out;
   int t_orig = tm.face(cd.input_face[cdt_in_t])->orig;
   BLI_assert(cdt_out.face[cdt_out_t].size() == 3);
-  const Span<int> face_verts = cdt_out.face_vert_indices.as_span().slice(cdt_out.faces()[cdt_out_t]);
+  const Span<int> face_verts = cdt_out.faces()[cdt_out_t];
   int i0 = face_verts[0];
   int i1 = face_verts[1];
   int i2 = face_verts[2];
@@ -2306,9 +2306,9 @@ static IMesh extract_subdivided_tri(const CDT_data &cd,
   }
   constexpr int inline_buf_size = 20;
   Vector<Face *, inline_buf_size> faces;
-  for (int f : cdt_out.faces().index_range()) {
-    const Span<int> face_verts = cdt_out.face_vert_indices.as_span().slice(cdt_out.faces()[f]);
-    if (face_verts.contains(t_in_cdt)) {
+  const GroupedSpan<int> cdt_faces = cdt_out.faces();
+  for (int f : cdt_faces.index_range()) {
+    if (cdt_faces[f].contains(t_in_cdt)) {
       Face *facep = cdt_tri_as_imesh_face(f, t_in_cdt, cd, in_tm, arena);
       faces.append(facep);
     }

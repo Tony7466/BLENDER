@@ -69,10 +69,10 @@ static meshintersect::CDT_result<double> do_cdt(const bke::CurvesGeometry &curve
 /* Converts the CDT result into a Mesh. */
 static Mesh *cdt_to_mesh(const meshintersect::CDT_result<double> &result)
 {
-  const OffsetIndices faces = result.faces();
-
-  Mesh *mesh = BKE_mesh_new_nomain(
-      result.vert.size(), result.edge.size(), faces.size(), faces.total_size());
+  Mesh *mesh = BKE_mesh_new_nomain(result.vert.size(),
+                                   result.edge.size(),
+                                   result.faces().size(),
+                                   result.face_vert_indices.size());
 
   MutableSpan<float3> positions = mesh->vert_positions_for_write();
   threading::parallel_for(positions.index_range(), 2048, [&](const IndexRange range) {

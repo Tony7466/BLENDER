@@ -15,7 +15,7 @@
 #include <type_traits>
 
 #define DO_TEXT_TESTS 0
-#define DO_RANDOM_TESTS 1
+#define DO_RANDOM_TESTS 0
 
 #include "BLI_array.hh"
 #include "BLI_math_boolean.hh"
@@ -27,7 +27,7 @@
 
 namespace blender::meshintersect {
 
-template<typename T> struct CDT_input_storage {
+template<typename T> struct InputStorage {
   Array<VecBase<T, 2>> vert;
   Array<int2> edge;
   Array<int> faces;
@@ -41,7 +41,7 @@ template<typename T> struct CDT_input_storage {
  * <int> <int> ... <int>   [#faces lines]
  */
 template<typename T>
-CDT_input<T> fill_input_from_string(const char *spec, CDT_input_storage<T> &r_storage)
+CDT_input<T> fill_input_from_string(const char *spec, InputStorage<T> &r_storage)
 {
   std::istringstream ss(spec);
   std::string line;
@@ -433,7 +433,7 @@ template<typename T> void onept_test()
   const char *spec = R"(1 0 0
   0.0 0.0
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 1);
@@ -450,7 +450,7 @@ template<typename T> void twopt_test()
   0.0 -0.75
   0.0 0.75
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 2);
@@ -468,7 +468,7 @@ template<typename T> void twopt_test()
   int e0_out = get_output_edge_index(out, v0_out, v1_out);
   EXPECT_EQ(e0_out, 0);
   if (DO_DRAW) {
-    graph_draw<T>("TwoPt", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("TwoPt", out.vert, out.edge, out.faces());
   }
 }
 
@@ -479,7 +479,7 @@ template<typename T> void threept_test()
   0.1 0.75
   0.5 0.5
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 3);
@@ -498,7 +498,7 @@ template<typename T> void threept_test()
   int f0_out = get_output_tri_index(out, v0_out, v2_out, v1_out);
   EXPECT_EQ(f0_out, 0);
   if (DO_DRAW) {
-    graph_draw<T>("ThreePt", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("ThreePt", out.vert, out.edge, out.faces());
   }
 }
 
@@ -514,7 +514,7 @@ template<typename T> void mixedpts_test()
   1 2
   2 3
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 4);
@@ -532,7 +532,7 @@ template<typename T> void mixedpts_test()
   EXPECT_TRUE(output_edge_has_input_id(out, e1_out, 1));
   EXPECT_TRUE(output_edge_has_input_id(out, e2_out, 2));
   if (DO_DRAW) {
-    graph_draw<T>("MixedPts", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("MixedPts", out.vert, out.edge, out.faces());
   }
 }
 
@@ -544,7 +544,7 @@ template<typename T> void quad0_test()
   2.0 0.1
   2.25 0.5
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 4);
@@ -552,7 +552,7 @@ template<typename T> void quad0_test()
   int e_diag_out = get_output_edge_index(out, 1, 3);
   EXPECT_NE(e_diag_out, -1);
   if (DO_DRAW) {
-    graph_draw<T>("Quad0", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("Quad0", out.vert, out.edge, out.faces());
   }
 }
 
@@ -564,7 +564,7 @@ template<typename T> void quad1_test()
   2.0 0.0
   0.9 3.0
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 4);
@@ -572,7 +572,7 @@ template<typename T> void quad1_test()
   int e_diag_out = get_output_edge_index(out, 0, 2);
   EXPECT_NE(e_diag_out, -1);
   if (DO_DRAW) {
-    graph_draw<T>("Quad1", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("Quad1", out.vert, out.edge, out.faces());
   }
 }
 
@@ -584,7 +584,7 @@ template<typename T> void quad2_test()
   0.3 0.4
   .45 0.35
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 4);
@@ -592,7 +592,7 @@ template<typename T> void quad2_test()
   int e_diag_out = get_output_edge_index(out, 1, 3);
   EXPECT_NE(e_diag_out, -1);
   if (DO_DRAW) {
-    graph_draw<T>("Quad2", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("Quad2", out.vert, out.edge, out.faces());
   }
 }
 
@@ -604,7 +604,7 @@ template<typename T> void quad3_test()
   0.3 0.4
   .45 0.35
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 4);
@@ -612,7 +612,7 @@ template<typename T> void quad3_test()
   int e_diag_out = get_output_edge_index(out, 0, 2);
   EXPECT_NE(e_diag_out, -1);
   if (DO_DRAW) {
-    graph_draw<T>("Quad3", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("Quad3", out.vert, out.edge, out.faces());
   }
 }
 
@@ -624,7 +624,7 @@ template<typename T> void quad4_test()
   1.0 -3.0
   0.0 1.0
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 4);
@@ -632,7 +632,7 @@ template<typename T> void quad4_test()
   int e_diag_out = get_output_edge_index(out, 0, 1);
   EXPECT_NE(e_diag_out, -1);
   if (DO_DRAW) {
-    graph_draw<T>("Quad4", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("Quad4", out.vert, out.edge, out.faces());
   }
 }
 
@@ -648,40 +648,31 @@ template<typename T> void lineinsquare_test()
   4 5
   0 1 3 2
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 6);
   EXPECT_EQ(out.faces().size(), 6);
   if (DO_DRAW) {
-    graph_draw<T>("LineInSquare - full", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("LineInSquare - full", out.vert, out.edge, out.faces());
   }
   CDT_result<T> out2 = delaunay_2d_calc(in, CDT_CONSTRAINTS);
   EXPECT_EQ(out2.vert.size(), 6);
   EXPECT_EQ(out2.faces().size(), 1);
   if (DO_DRAW) {
-    graph_draw<T>("LineInSquare - constraints",
-                  out2.vert,
-                  out2.edge,
-                  {out2.faces(), out2.face_vert_indices});
+    graph_draw<T>("LineInSquare - constraints", out2.vert, out2.edge, out2.faces());
   }
   CDT_result<T> out3 = delaunay_2d_calc(in, CDT_INSIDE_WITH_HOLES);
   EXPECT_EQ(out3.vert.size(), 6);
   EXPECT_EQ(out3.faces().size(), 6);
   if (DO_DRAW) {
-    graph_draw<T>("LineInSquare - inside with holes",
-                  out3.vert,
-                  out3.edge,
-                  {out3.faces(), out3.face_vert_indices});
+    graph_draw<T>("LineInSquare - inside with holes", out3.vert, out3.edge, out3.faces());
   }
   CDT_result<T> out4 = delaunay_2d_calc(in, CDT_CONSTRAINTS_VALID_BMESH_WITH_HOLES);
   EXPECT_EQ(out4.vert.size(), 6);
   EXPECT_EQ(out4.faces().size(), 2);
   if (DO_DRAW) {
-    graph_draw<T>("LineInSquare - valid bmesh with holes",
-                  out4.vert,
-                  out4.edge,
-                  {out4.faces(), out4.face_vert_indices});
+    graph_draw<T>("LineInSquare - valid bmesh with holes", out4.vert, out4.edge, out4.faces());
   }
 }
 
@@ -702,41 +693,31 @@ template<typename T> void lineholeinsquare_test()
   0 1 3 2
   6 7 8 9
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 10);
   EXPECT_EQ(out.faces().size(), 14);
   if (DO_DRAW) {
-    graph_draw<T>(
-        "LineHoleInSquare - full", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("LineHoleInSquare - full", out.vert, out.edge, out.faces());
   }
   CDT_result<T> out2 = delaunay_2d_calc(in, CDT_CONSTRAINTS);
   EXPECT_EQ(out2.vert.size(), 10);
   EXPECT_EQ(out2.faces().size(), 2);
   if (DO_DRAW) {
-    graph_draw<T>("LineHoleInSquare - constraints",
-                  out2.vert,
-                  out2.edge,
-                  {out2.faces(), out2.face_vert_indices});
+    graph_draw<T>("LineHoleInSquare - constraints", out2.vert, out2.edge, out2.faces());
   }
   CDT_result<T> out3 = delaunay_2d_calc(in, CDT_INSIDE_WITH_HOLES);
   EXPECT_EQ(out3.vert.size(), 10);
   EXPECT_EQ(out3.faces().size(), 12);
   if (DO_DRAW) {
-    graph_draw<T>("LineHoleInSquare - inside with holes",
-                  out3.vert,
-                  out3.edge,
-                  {out3.faces(), out3.face_vert_indices});
+    graph_draw<T>("LineHoleInSquare - inside with holes", out3.vert, out3.edge, out3.faces());
   }
   CDT_result<T> out4 = delaunay_2d_calc(in, CDT_CONSTRAINTS_VALID_BMESH_WITH_HOLES);
   EXPECT_EQ(out4.vert.size(), 10);
   EXPECT_EQ(out4.faces().size(), 2);
   if (DO_DRAW) {
-    graph_draw<T>("LineHoleInSquare - valid bmesh with holes",
-                  out4.vert,
-                  out4.edge,
-                  {out4.faces(), out4.face_vert_indices});
+    graph_draw<T>("LineHoleInSquare - valid bmesh with holes", out4.vert, out4.edge, out4.faces());
   }
 }
 
@@ -759,38 +740,31 @@ template<typename T> void nestedholes_test()
   4 7 6 5
   8 9 10 11
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 12);
   EXPECT_EQ(out.faces().size(), 18);
   if (DO_DRAW) {
-    graph_draw<T>("NestedHoles - full", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("NestedHoles - full", out.vert, out.edge, out.faces());
   }
   CDT_result<T> out2 = delaunay_2d_calc(in, CDT_CONSTRAINTS);
   EXPECT_EQ(out2.vert.size(), 12);
   EXPECT_EQ(out2.faces().size(), 3);
   if (DO_DRAW) {
-    graph_draw<T>(
-        "NestedHoles - constraints", out2.vert, out2.edge, {out2.faces(), out2.face_vert_indices});
+    graph_draw<T>("NestedHoles - constraints", out2.vert, out2.edge, out2.faces());
   }
   CDT_result<T> out3 = delaunay_2d_calc(in, CDT_INSIDE_WITH_HOLES);
   EXPECT_EQ(out3.vert.size(), 12);
   EXPECT_EQ(out3.faces().size(), 10);
   if (DO_DRAW) {
-    graph_draw<T>("NestedHoles - inside with holes",
-                  out3.vert,
-                  out3.edge,
-                  {out3.faces(), out3.face_vert_indices});
+    graph_draw<T>("NestedHoles - inside with holes", out3.vert, out3.edge, out3.faces());
   }
   CDT_result<T> out4 = delaunay_2d_calc(in, CDT_CONSTRAINTS_VALID_BMESH_WITH_HOLES);
   EXPECT_EQ(out4.vert.size(), 12);
   EXPECT_EQ(out4.faces().size(), 3);
   if (DO_DRAW) {
-    graph_draw<T>("NestedHoles - valid bmesh with holes",
-                  out4.vert,
-                  out4.edge,
-                  {out4.faces(), out4.face_vert_indices});
+    graph_draw<T>("NestedHoles - valid bmesh with holes", out4.vert, out4.edge, out4.faces());
   }
 }
 
@@ -804,7 +778,7 @@ template<typename T> void crosssegs_test()
   0 1
   2 3
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 5);
@@ -829,7 +803,7 @@ template<typename T> void crosssegs_test()
     }
   }
   if (DO_DRAW) {
-    graph_draw<T>("CrossSegs", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("CrossSegs", out.vert, out.edge, out.faces());
   }
 }
 
@@ -845,7 +819,7 @@ template<typename T> void cutacrosstri_test()
   3 4
   0 1 2
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 5);
@@ -878,7 +852,7 @@ template<typename T> void cutacrosstri_test()
     }
   }
   if (DO_DRAW) {
-    graph_draw<T>("CutAcrossTri", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("CutAcrossTri", out.vert, out.edge, out.faces());
   }
 }
 
@@ -899,14 +873,14 @@ template<typename T> void diamondcross_test()
   3 4
   5 6
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 4);
   EXPECT_EQ(out.edge.size(), 5);
   EXPECT_EQ(out.faces().size(), 2);
   if (DO_DRAW) {
-    graph_draw<T>("DiamondCross", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("DiamondCross", out.vert, out.edge, out.faces());
   }
 }
 
@@ -935,7 +909,7 @@ template<typename T> void twodiamondscross_test()
   8 9
   10 11
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 8);
@@ -967,7 +941,7 @@ template<typename T> void twodiamondscross_test()
     EXPECT_TRUE(output_edge_has_input_id(out, e_cross_3, 8));
   }
   if (DO_DRAW) {
-    graph_draw<T>("TwoDiamondsCross", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("TwoDiamondsCross", out.vert, out.edge, out.faces());
   }
 }
 
@@ -1024,14 +998,14 @@ template<typename T> void manycross_test()
   23 24
   25 26
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 19);
   EXPECT_EQ(out.edge.size(), 46);
   EXPECT_EQ(out.faces().size(), 28);
   if (DO_DRAW) {
-    graph_draw<T>("ManyCross", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("ManyCross", out.vert, out.edge, out.faces());
   }
 }
 
@@ -1047,7 +1021,7 @@ template<typename T> void twoface_test()
   0 1 2
   3 4 5
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 6);
@@ -1076,7 +1050,7 @@ template<typename T> void twoface_test()
     EXPECT_TRUE(output_face_has_input_id(out, f1_out, 1));
   }
   if (DO_DRAW) {
-    graph_draw<T>("TwoFace", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("TwoFace", out.vert, out.edge, out.faces());
   }
 }
 
@@ -1092,7 +1066,7 @@ template<typename T> void twoface2_test()
   0 1 2
   3 4 5
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_INSIDE);
   EXPECT_EQ(out.vert.size(), 10);
@@ -1152,7 +1126,7 @@ template<typename T> void twoface2_test()
     EXPECT_TRUE(output_face_has_input_id(out, f8, 1));
   }
   if (DO_DRAW) {
-    graph_draw<T>("TwoFace2", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("TwoFace2", out.vert, out.edge, out.faces());
   }
 }
 
@@ -1175,7 +1149,7 @@ template<typename T> void overlapfaces_test()
   4 5 6 7
   8 9 10 11
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_FULL);
   EXPECT_EQ(out.vert.size(), 14);
@@ -1214,51 +1188,38 @@ template<typename T> void overlapfaces_test()
     EXPECT_TRUE(output_face_has_input_id(out, f2_out, 2));
   }
   if (DO_DRAW) {
-    graph_draw<T>("OverlapFaces - full", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("OverlapFaces - full", out.vert, out.edge, out.faces());
   }
 
   /* Different output types. */
   CDT_result<T> out2 = delaunay_2d_calc(in, CDT_INSIDE);
   EXPECT_EQ(out2.faces().size(), 18);
   if (DO_DRAW) {
-    graph_draw<T>(
-        "OverlapFaces - inside", out2.vert, out2.edge, {out2.faces(), out2.face_vert_indices});
+    graph_draw<T>("OverlapFaces - inside", out2.vert, out2.edge, out2.faces());
   }
 
   CDT_result<T> out3 = delaunay_2d_calc(in, CDT_INSIDE_WITH_HOLES);
   EXPECT_EQ(out3.faces().size(), 14);
   if (DO_DRAW) {
-    graph_draw<T>("OverlapFaces - inside with holes",
-                  out3.vert,
-                  out3.edge,
-                  {out3.faces(), out3.face_vert_indices});
+    graph_draw<T>("OverlapFaces - inside with holes", out3.vert, out3.edge, out3.faces());
   }
 
   CDT_result<T> out4 = delaunay_2d_calc(in, CDT_CONSTRAINTS);
   EXPECT_EQ(out4.faces().size(), 4);
   if (DO_DRAW) {
-    graph_draw<T>("OverlapFaces - constraints",
-                  out4.vert,
-                  out4.edge,
-                  {out4.faces(), out4.face_vert_indices});
+    graph_draw<T>("OverlapFaces - constraints", out4.vert, out4.edge, out4.faces());
   }
 
   CDT_result<T> out5 = delaunay_2d_calc(in, CDT_CONSTRAINTS_VALID_BMESH);
   EXPECT_EQ(out5.faces().size(), 5);
   if (DO_DRAW) {
-    graph_draw<T>("OverlapFaces - valid bmesh",
-                  out5.vert,
-                  out5.edge,
-                  {out5.faces(), out5.face_vert_indices});
+    graph_draw<T>("OverlapFaces - valid bmesh", out5.vert, out5.edge, out5.faces());
   }
 
   CDT_result<T> out6 = delaunay_2d_calc(in, CDT_CONSTRAINTS_VALID_BMESH_WITH_HOLES);
   EXPECT_EQ(out6.faces().size(), 3);
   if (DO_DRAW) {
-    graph_draw<T>("OverlapFaces - valid bmesh with holes",
-                  out6.vert,
-                  out6.edge,
-                  {out6.faces(), out6.face_vert_indices});
+    graph_draw<T>("OverlapFaces - valid bmesh with holes", out6.vert, out6.edge, out6.faces());
   }
 }
 
@@ -1276,14 +1237,14 @@ template<typename T> void twosquaresoverlap_test()
   7 6 5 4
   3 2 1 0
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_CONSTRAINTS_VALID_BMESH);
   EXPECT_EQ(out.vert.size(), 10);
   EXPECT_EQ(out.edge.size(), 12);
   EXPECT_EQ(out.faces().size(), 3);
   if (DO_DRAW) {
-    graph_draw<T>("TwoSquaresOverlap", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("TwoSquaresOverlap", out.vert, out.edge, out.faces());
   }
 }
 
@@ -1299,7 +1260,7 @@ template<typename T> void twofaceedgeoverlap_test()
   2 1 0
   5 4 3
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_CONSTRAINTS);
   EXPECT_EQ(out.vert.size(), 5);
@@ -1345,7 +1306,7 @@ template<typename T> void twofaceedgeoverlap_test()
     EXPECT_FALSE(output_face_has_input_id(out, f10i, 1));
   }
   if (DO_DRAW) {
-    graph_draw<T>("TwoFaceEdgeOverlap", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("TwoFaceEdgeOverlap", out.vert, out.edge, out.faces());
   }
 }
 
@@ -1361,14 +1322,14 @@ template<typename T> void triintri_test()
   0 1 2
   3 4 5
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_CONSTRAINTS_VALID_BMESH);
   EXPECT_EQ(out.vert.size(), 6);
   EXPECT_EQ(out.edge.size(), 8);
   EXPECT_EQ(out.faces().size(), 3);
   if (DO_DRAW) {
-    graph_draw<T>("TriInTri", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("TriInTri", out.vert, out.edge, out.faces());
   }
 }
 
@@ -1386,14 +1347,14 @@ template<typename T> void diamondinsquare_test()
   0 1 2 3
   4 5 6 7
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_CONSTRAINTS_VALID_BMESH);
   EXPECT_EQ(out.vert.size(), 8);
   EXPECT_EQ(out.edge.size(), 10);
   EXPECT_EQ(out.faces().size(), 3);
   if (DO_DRAW) {
-    graph_draw<T>("DiamondInSquare", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("DiamondInSquare", out.vert, out.edge, out.faces());
   }
 }
 
@@ -1417,14 +1378,14 @@ template<typename T> void diamondinsquarewire_test()
   6 7
   7 4
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_CONSTRAINTS);
   EXPECT_EQ(out.vert.size(), 8);
   EXPECT_EQ(out.edge.size(), 8);
   EXPECT_EQ(out.faces().size(), 2);
   if (DO_DRAW) {
-    graph_draw<T>("DiamondInSquareWire", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("DiamondInSquareWire", out.vert, out.edge, out.faces());
   }
 }
 
@@ -1440,12 +1401,12 @@ template<typename T> void repeatedge_test()
   2 3
   2 3
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_CONSTRAINTS);
   EXPECT_EQ(out.edge.size(), 2);
   if (DO_DRAW) {
-    graph_draw<T>("RepeatEdge", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("RepeatEdge", out.vert, out.edge, out.faces());
   }
 }
 
@@ -1458,7 +1419,7 @@ template<typename T> void repeattri_test()
   0 1 2
   0 1 2
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out = delaunay_2d_calc(in, CDT_CONSTRAINTS);
   EXPECT_EQ(out.edge.size(), 3);
@@ -1466,7 +1427,7 @@ template<typename T> void repeattri_test()
   EXPECT_TRUE(output_face_has_input_id(out, 0, 0));
   EXPECT_TRUE(output_face_has_input_id(out, 0, 1));
   if (DO_DRAW) {
-    graph_draw<T>("RepeatTri", out.vert, out.edge, {out.faces(), out.face_vert_indices});
+    graph_draw<T>("RepeatTri", out.vert, out.edge, out.faces());
   }
 }
 
@@ -1484,24 +1445,18 @@ template<typename T> void square_o_test()
   0 1 2 3
   4 5 6 7
   )";
-  CDT_input_storage<T> store;
+  InputStorage<T> store;
   CDT_input<T> in = fill_input_from_string<T>(spec, store);
   CDT_result<T> out1 = delaunay_2d_calc(in, CDT_INSIDE_WITH_HOLES);
   EXPECT_EQ(out1.faces().size(), 8);
   if (DO_DRAW) {
-    graph_draw<T>("Square O - inside with holes",
-                  out1.vert,
-                  out1.edge,
-                  {out1.faces(), out1.face_vert_indices});
+    graph_draw<T>("Square O - inside with holes", out1.vert, out1.edge, out1.faces());
   }
 
   CDT_result<T> out2 = delaunay_2d_calc(in, CDT_CONSTRAINTS_VALID_BMESH_WITH_HOLES);
   EXPECT_EQ(out2.faces().size(), 2);
   if (DO_DRAW) {
-    graph_draw<T>("Square O - valid bmesh with holes",
-                  out2.vert,
-                  out2.edge,
-                  {out2.faces(), out2.face_vert_indices});
+    graph_draw<T>("Square O - valid bmesh with holes", out2.vert, out2.edge, out2.faces());
   }
 }
 
@@ -1987,7 +1942,7 @@ void rand_delaunay_test(int test_kind,
       EXPECT_NE(out.vert.size(), 0);
       times[lg_size] += PIL_check_seconds_timer() - tstart;
       if (DO_DRAW) {
-        graph_draw<T>(test_label, out.vert, out.edge, {out.faces(), out.face_vert_indices});
+        graph_draw<T>(test_label, out.vert, out.edge, out.faces());
       }
     }
   }

@@ -1542,7 +1542,7 @@ static PyObject *list_of_lists_from_arrays(const blender::GroupedSpan<int> data)
   if (data.is_empty()) {
     return PyList_New(0);
   }
-  PyObject *ret = PyList_New(data.offsets.total_size());
+  PyObject *ret = PyList_New(data.offsets.size());
   for (const int i : data.index_range()) {
     const blender::Span<int> group = data[i];
     PyObject *sublist = PyList_New(group.size());
@@ -1685,20 +1685,16 @@ static PyObject *M_Geometry_delaunay_2d_cdt(PyObject * /*self*/, PyObject *args)
   }
   PyTuple_SET_ITEM(ret_value, 1, out_edges);
 
-  PyObject *out_faces = list_of_lists_from_arrays(
-      {res.face_offsets.as_span(), res.face_vert_indices});
+  PyObject *out_faces = list_of_lists_from_arrays(res.faces());
   PyTuple_SET_ITEM(ret_value, 2, out_faces);
 
-  PyObject *out_orig_verts = list_of_lists_from_arrays(
-      {res.vert_orig_offsets.as_span(), res.vert_orig_indices});
+  PyObject *out_orig_verts = list_of_lists_from_arrays(res.orig_verts());
   PyTuple_SET_ITEM(ret_value, 3, out_orig_verts);
 
-  PyObject *out_orig_edges = list_of_lists_from_arrays(
-      {res.edge_orig_offsets.as_span(), res.edge_orig_indices});
+  PyObject *out_orig_edges = list_of_lists_from_arrays(res.orig_edges());
   PyTuple_SET_ITEM(ret_value, 4, out_orig_edges);
 
-  PyObject *out_orig_faces = list_of_lists_from_arrays(
-      {res.face_orig_offsets.as_span(), res.face_orig_indices});
+  PyObject *out_orig_faces = list_of_lists_from_arrays(res.orig_faces());
   PyTuple_SET_ITEM(ret_value, 5, out_orig_faces);
 
   return ret_value;

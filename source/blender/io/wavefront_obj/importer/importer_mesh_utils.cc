@@ -59,7 +59,7 @@ Vector<Vector<int>> fixup_invalid_polygon(Span<float3> vertex_coords,
   input.epsilon = 1.0e-6f;
   input.need_ids = true;
   CDT_result<double> res = delaunay_2d_calc(input, CDT_CONSTRAINTS_VALID_BMESH_WITH_HOLES);
-  const OffsetIndices result_faces = res.faces();
+  const GroupedSpan<int> result_faces = res.faces();
 
   /* Emit new face information from CDT result. */
   Vector<Vector<int>> faces;
@@ -67,7 +67,7 @@ Vector<Vector<int>> fixup_invalid_polygon(Span<float3> vertex_coords,
   for (const int i : result_faces.index_range()) {
     Vector<int> face_verts;
     face_verts.reserve(result_faces[i].size());
-    for (const int idx : res.face_vert_indices.as_span().slice(result_faces[i])) {
+    for (const int idx : result_faces[i]) {
       BLI_assert(idx >= 0 && idx < res.vert_orig.size());
       if (res.orig_verts()[idx].is_empty()) {
         /* If we have a whole new vertex in the tessellated result,

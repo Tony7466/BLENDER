@@ -187,9 +187,9 @@ template<typename T> class CDT_result {
   /** Used to encode edge_orig (see above). */
   int face_edge_offset;
 
-  OffsetIndices<int> faces() const
+  GroupedSpan<int> faces() const
   {
-    return OffsetIndices<int>(face_offsets);
+    return GroupedSpan<int>(face_offsets.as_span(), face_vert_indices);
   }
   GroupedSpan<int> orig_verts() const
   {
