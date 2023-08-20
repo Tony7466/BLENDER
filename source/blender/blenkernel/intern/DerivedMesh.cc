@@ -27,6 +27,7 @@
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector_types.hh"
+#include "BLI_span.hh"
 #include "BLI_task.h"
 #include "BLI_task.hh"
 #include "BLI_utildefines.h"
@@ -71,6 +72,7 @@
 
 using blender::float3;
 using blender::IndexRange;
+using blender::MutableSpan;
 using blender::Span;
 using blender::VArray;
 using blender::bke::GeometryOwnershipType;
@@ -405,15 +407,15 @@ static void add_orco_mesh(
 {
   const int totvert = mesh->totvert;
 
-  auto make_layer_orco = [mesh, layer]() -> blender::MutableSpan<float3> {
+  auto make_layer_orco = [mesh, layer]() -> MutableSpan<float3> {
     void *data = CustomData_get_layer_for_write(&mesh->vert_data, layer, mesh->totvert);
     if (!data) {
       data = CustomData_add_layer(&mesh->vert_data, layer, CD_CONSTRUCT, mesh->totvert);
     }
-    return blender::MutableSpan(reinterpret_cast<float3 *>(data), mesh->totvert);
+    return MutableSpan(reinterpret_cast<float3 *>(data), mesh->totvert);
   };
 
-  blender::MutableSpan<float3> layer_orco;
+  MutableSpan<float3> layer_orco;
   if (mesh_orco) {
     layer_orco = make_layer_orco();
 
@@ -431,7 +433,7 @@ static void add_orco_mesh(
     float(*orco)[3] = get_orco_coords(ob, em, layer, &free);
     if (orco) {
       layer_orco = make_layer_orco();
-      layer_orco.copy_from(blender::Span<float3>(reinterpret_cast<float3 *>(orco), totvert));
+      layer_orco.copy_from(Span<float3>(reinterpret_cast<float3 *>(orco), totvert));
     }
     if (free) {
       MEM_freeN(orco);
@@ -1132,7 +1134,7 @@ static void editbmesh_calc_modifier_final_normals_or_defer(
   editbmesh_calc_modifier_final_normals(mesh_final, final_datamask);
 }
 
-static blender::MutableSpan<float3> mesh_wrapper_vert_coords_ensure_for_write(Mesh *mesh)
+static MutableSpan<float3> mesh_wrapper_vert_coords_ensure_for_write(Mesh *mesh)
 {
   switch (mesh->runtime->wrapper_type) {
     case ME_WRAPPER_TYPE_BMESH:
