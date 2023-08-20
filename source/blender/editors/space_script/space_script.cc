@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,8 +6,8 @@
  * \ingroup spscript
  */
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -15,15 +15,16 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
+#include "BKE_lib_query.h"
 #include "BKE_screen.h"
 
-#include "ED_screen.h"
-#include "ED_space_api.h"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
 #include "BLO_read_write.h"
 
@@ -147,6 +148,12 @@ static void script_main_region_listener(const wmRegionListenerParams * /*params*
 #endif
 }
 
+static void script_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
+{
+  SpaceScript *scpt = reinterpret_cast<SpaceScript *>(space_link);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, scpt->script, IDWALK_CB_NOP);
+}
+
 static void script_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, SpaceLink *sl)
 {
   SpaceScript *scpt = (SpaceScript *)sl;
@@ -180,6 +187,7 @@ void ED_spacetype_script()
   st->duplicate = script_duplicate;
   st->operatortypes = script_operatortypes;
   st->keymap = script_keymap;
+  st->foreach_id = script_foreach_id;
   st->blend_read_lib = script_space_blend_read_lib;
   st->blend_write = script_space_blend_write;
 
