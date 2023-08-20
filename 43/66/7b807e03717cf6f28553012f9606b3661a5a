@@ -2,3 +2,4 @@ Referenced by pull request #111014, Fix: Back Repeat Input node rna declaration
 Referenced by commit 9f8535a4982b131426968abc0ed0ccb90b4ff92c, Fix: bring back repeat input node rna declaration
 Referenced by pull request #111056, Nodes: Move more rna code to geometry node files
 Referenced by commit 63fd2575e692683344dc0d697798c555b994ffa6, Nodes: move more rna code to geometry node files
+Referenced by pull request #111329, Nodes: Move more rna code to geometry node files
