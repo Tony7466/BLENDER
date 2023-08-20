@@ -2206,8 +2206,8 @@ int add_face_constraints(CDT_state<T> *cdt_state,
   SymEdge<T> *face_symedge0 = nullptr;
   CDTArrangement<T> *cdt = &cdt_state->cdt;
   int maxflen = 0;
-  for (const int f : input.face_offsets.index_range()) {
-    maxflen = max_ii(maxflen, input.face_offsets[f].size());
+  for (const int f : input.faces.index_range()) {
+    maxflen = max_ii(maxflen, input.faces[f].size());
   }
   /* For convenience in debugging, make face_edge_offset be a power of 10. */
   cdt_state->face_edge_offset = power_of_10_greater_equal_to(
@@ -2216,10 +2216,10 @@ int add_face_constraints(CDT_state<T> *cdt_state,
    * If we really have that many faces and that large a max face length that when multiplied
    * together the are >= INT_MAX, then the Delaunay calculation will take unreasonably long anyway.
    */
-  BLI_assert(INT_MAX / cdt_state->face_edge_offset > nf);
+  BLI_assert(INT_MAX / cdt_state->face_edge_offset > input.faces.size());
   int faces_added = 0;
-  for (const int f : input.face_offsets.index_range()) {
-    int flen = input.face_offsets[f].size();
+  for (const int f : input.faces.index_range()) {
+    int flen = input.faces[f].size();
     if (flen <= 2) {
       /* Ignore faces with fewer than 3 vertices. */
       continue;
@@ -2227,8 +2227,8 @@ int add_face_constraints(CDT_state<T> *cdt_state,
     int fedge_start = (f + 1) * cdt_state->face_edge_offset;
     for (int i = 0; i < flen; i++) {
       int face_edge_id = fedge_start + i;
-      int iv1 = input.face_offsets[f][i];
-      int iv2 = input.face_offsets[f][(i + 1) % flen];
+      int iv1 = input.faces[f][i];
+      int iv2 = input.faces[f][(i + 1) % flen];
       if (iv1 < 0 || iv1 >= nv || iv2 < 0 || iv2 >= nv) {
         /* Ignore face edges with invalid vertices. */
         continue;
@@ -2733,7 +2733,7 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
     result.edge_orig_offsets.reinitialize(ne + 1);
     int e_out = 0;
     for (const int i : cdt->edges.index_range()) {
-      if (!is_deleted_edge(cdt->edges[i]) {
+      if (!is_deleted_edge(cdt->edges[i])) {
         result.edge_orig_offsets[e_out] = cdt->edges[i]->input_ids.size();
         e_out++;
       }
@@ -2773,15 +2773,15 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
     }
   }
 
-  result.face_offset_data.reinitialize(new_face_count + 1);
-  result.faces_verts.reinitialize(new_face_vert_count);
+  result.face_offsets.reinitialize(new_face_count + 1);
+  result.face_vert_indices.reinitialize(new_face_vert_count);
   if (cdt_state->need_ids) {
-    result.face_orig_offsets.reinitialize(nf + 1);
+    result.face_orig_offsets.reinitialize(new_face_count + 1);
     int f_out = 0;
     for (const int i : cdt->faces.index_range()) {
       const CDTFace<T> *f = cdt->faces[i];
       if (!f->deleted && f != cdt->outer_face) {
-        result->face_orig_offsets[f_out] = f->input_ids.size();
+        result.face_orig_offsets[f_out] = f->input_ids.size();
         f_out++;
       }
     }
@@ -2792,17 +2792,17 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
   int f_out = 0;
   for (const CDTFace<T> *f : cdt->faces) {
     if (!f->deleted && f != cdt->outer_face) {
-      result.face_offset_data[f_out] = face_vert_out;
+      result.face_offsets[f_out] = face_vert_out;
       const SymEdge<T> *se = f->symedge;
       BLI_assert(se != nullptr);
       const SymEdge<T> *se_start = se;
       do {
-        result.faces_verts[face_vert_out] = vert_to_output_map[se->vert->index];
+        result.face_vert_indices[face_vert_out] = vert_to_output_map[se->vert->index];
         face_vert_out++;
         se = se->next;
       } while (se != se_start);
       if (cdt_state->need_ids) {
-        int orig_i = result.face_orig_offsets[i];
+        int orig_i = result.face_orig_offsets[f_out];
         for (int face : f->input_ids) {
           result.face_orig_indices[orig_i] = face;
           orig_i++;
@@ -2811,6 +2811,7 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
       ++f_out;
     }
   }
+  result.face_offsets.last() = face_vert_out;
   return result;
 }
 
@@ -2829,8 +2830,8 @@ template<typename T>
 CDT_result<T> delaunay_calc(const CDT_input<T> &input, CDT_output_type output_type)
 {
   int nv = input.vert.size();
-  int ne = input.face.size();
-  int nf = input.face_offsets.size();
+  int ne = input.edge.size();
+  int nf = input.faces.size();
   CDT_state<T> cdt_state(nv, ne, nf, input.epsilon, input.need_ids);
   add_input_verts(&cdt_state, input);
   initial_triangulation(&cdt_state.cdt);
@@ -2841,12 +2842,6 @@ CDT_result<T> delaunay_calc(const CDT_input<T> &input, CDT_output_type output_ty
     output_type = CDT_INSIDE;
   }
   return get_cdt_output(&cdt_state, input, output_type);
-}
-
-meshintersect::CDT_result<float> delaunay_2d_calc(const CDT_input<float> &input,
-                                                  CDT_output_type output_type)
-{
-  return delaunay_calc(input, output_type);
 }
 
 blender::meshintersect::CDT_result<double> delaunay_2d_calc(const CDT_input<double> &input,

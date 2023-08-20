@@ -47,7 +47,6 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 static meshintersect::CDT_result<double> do_cdt(const bke::CurvesGeometry &curves,
                                                 const CDT_output_type output_type)
 {
-  const OffsetIndices points_by_curve = curves.evaluated_points_by_curve();
   const Span<float3> positions = curves.evaluated_positions();
 
   Array<double2> verts(positions.size());
@@ -61,7 +60,7 @@ static meshintersect::CDT_result<double> do_cdt(const bke::CurvesGeometry &curve
 
   meshintersect::CDT_input<double> input;
   input.vert = verts;
-  input.face_offsets = curves.evaluated_points_by_curve();
+  input.faces = curves.evaluated_points_by_curve();
   input.face_vert_indices = face_vert_indices;
   input.need_ids = false;
   return delaunay_2d_calc(input, output_type);
@@ -74,9 +73,6 @@ static Mesh *cdt_to_mesh(const meshintersect::CDT_result<double> &result)
 
   Mesh *mesh = BKE_mesh_new_nomain(
       result.vert.size(), result.edge.size(), faces.size(), faces.total_size());
-  mesh->edges_for_write().copy_from(result.edge.as_span());
-  MutableSpan<int> face_offsets = mesh->face_offsets_for_write();
-  MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
 
   MutableSpan<float3> positions = mesh->vert_positions_for_write();
   threading::parallel_for(positions.index_range(), 2048, [&](const IndexRange range) {
@@ -85,8 +81,9 @@ static Mesh *cdt_to_mesh(const meshintersect::CDT_result<double> &result)
     }
   });
 
-  mesh->face_offsets_for_write().copy_from(result.face_offset_data);
-  mesh->corner_verts_for_write().copy_from(result.faces_verts);
+  mesh->edges_for_write().copy_from(result.edge.as_span());
+  mesh->face_offsets_for_write().copy_from(result.face_offsets);
+  mesh->corner_verts_for_write().copy_from(result.face_vert_indices);
 
   /* The delaunay triangulation doesn't seem to return all of the necessary edges, even in
    * triangulation mode. */

@@ -54,7 +54,7 @@ Vector<Vector<int>> fixup_invalid_polygon(Span<float3> vertex_coords,
 
   CDT_input<double> input;
   input.vert = verts;
-  input.face_offsets = face_offsets.as_span();
+  input.faces = face_offsets.as_span();
   input.face_vert_indices = face_vert_indices;
   input.epsilon = 1.0e-6f;
   input.need_ids = true;
@@ -67,18 +67,18 @@ Vector<Vector<int>> fixup_invalid_polygon(Span<float3> vertex_coords,
   for (const int i : result_faces.index_range()) {
     Vector<int> face_verts;
     face_verts.reserve(result_faces[i].size());
-    for (const int idx : res.faces_verts.as_span().slice(result_faces[i])) {
+    for (const int idx : res.face_vert_indices.as_span().slice(result_faces[i])) {
       BLI_assert(idx >= 0 && idx < res.vert_orig.size());
-      if (res.vert_orig[idx].is_empty()) {
+      if (res.orig_verts()[idx].is_empty()) {
         /* If we have a whole new vertex in the tessellated result,
          * we won't quite know what to do with it (how to create normal/UV
-         * for it, for example). Such vertices are often due to
+         * for it, for example). Such vertices are oftvert_orig_indicesen due to
          * self-intersecting polygons. Just skip them from the output
          * face. */
       }
       else {
         /* Vertex corresponds to one or more of the input vertices, use it. */
-        const int old_idx = res.vert_orig[idx][0];
+        const int old_idx = res.orig_verts()[idx][0];
         BLI_assert(old_idx >= 0 && old_idx < face_vertex_indices.size());
         face_verts.append(old_idx);
       }

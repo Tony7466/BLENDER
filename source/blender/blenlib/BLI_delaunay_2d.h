@@ -127,7 +127,7 @@ template<typename T> class CDT_input {
  public:
   Span<VecBase<T, 2>> vert;
   Span<int2> edge;
-  OffsetIndices<int> face_offsets;
+  OffsetIndices<int> faces;
   Span<int> face_vert_indices;
   T epsilon{0};
   bool need_ids{true};
@@ -159,8 +159,8 @@ template<typename T> class CDT_result {
  public:
   Array<VecBase<T, 2>> vert;
   Array<int2> edge;
-  Array<int> face_offset_data;
-  Array<int> faces_verts;
+  Array<int> face_offsets;
+  Array<int> face_vert_indices;
 
   /* The orig vectors are only populated if the need_ids input field is true. */
 
@@ -189,7 +189,7 @@ template<typename T> class CDT_result {
 
   OffsetIndices<int> faces() const
   {
-    return OffsetIndices<int>(face_offset_data);
+    return OffsetIndices<int>(face_offsets);
   }
   GroupedSpan<int> orig_verts() const
   {
@@ -205,7 +205,6 @@ template<typename T> class CDT_result {
   }
 };
 
-CDT_result<float> delaunay_2d_calc(const CDT_input<float> &input, CDT_output_type output_type);
 CDT_result<double> delaunay_2d_calc(const CDT_input<double> &input, CDT_output_type output_type);
 
 #ifdef WITH_GMP

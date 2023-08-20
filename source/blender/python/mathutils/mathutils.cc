@@ -375,8 +375,7 @@ bool mathutils_array_parse_alloc_viseq(PyObject *value,
                                        blender::Array<int> &r_offsets,
                                        blender::Array<int> &r_data)
 {
-  PyObject *value_fast, *subseq;
-
+  PyObject *value_fast;
   if (!(value_fast = PySequence_Fast(value, error_prefix))) {
     /* PySequence_Fast sets the error */
     return false;

@@ -1598,6 +1598,7 @@ PyDoc_STRVAR(
     "\n");
 static PyObject *M_Geometry_delaunay_2d_cdt(PyObject * /*self*/, PyObject *args)
 {
+  using namespace blender;
   const char *error_prefix = "delaunay_2d_cdt";
   PyObject *vert_coords, *edges, *faces;
   int output_type;
@@ -1639,28 +1640,33 @@ static PyObject *M_Geometry_delaunay_2d_cdt(PyObject * /*self*/, PyObject *args)
     }
   });
 
-  blender::Array<int> face_offsets;
-  blender::Array<int> face_vert_indices;
+  Array<int> face_offsets;
+  Array<int> face_vert_indices;
   if (!mathutils_array_parse_alloc_viseq(faces, error_prefix, face_offsets, face_vert_indices)) {
     return nullptr;
   }
 
-  blender::meshintersect::CDT_input<float> in;
-  in.vert = blender::Span(reinterpret_cast<blender::float2 *>(in_coords), vert_coords_len);
-  in.edge = blender::Span(reinterpret_cast<blender::int2 *>(in_edges), edges_len);
-  in.face_offsets = face_offsets.as_span();
+  Array<double2> in_coords_db(vert_coords_len);
+  for (const int i : in_coords_db.index_range()) {
+    in_coords_db[i] = double2(in_coords[i]);
+  }
+
+  meshintersect::CDT_input<double> in;
+  in.vert = in_coords_db;
+  in.edge = Span(reinterpret_cast<int2 *>(in_edges), edges_len);
+  in.faces = face_offsets.as_span();
   in.face_vert_indices = face_vert_indices;
   in.epsilon = epsilon;
   in.need_ids = need_ids;
 
-  const blender::meshintersect::CDT_result<float> res = blender::meshintersect::delaunay_2d_calc(
+  const meshintersect::CDT_result<double> res = meshintersect::delaunay_2d_calc(
       in, CDT_output_type(output_type));
 
   PyObject *ret_value = PyTuple_New(6);
 
   PyObject *out_vert_coords = PyList_New(res.vert.size());
   for (const int i : res.vert.index_range()) {
-    PyObject *item = Vector_CreatePyObject(res.vert[i], 2, nullptr);
+    PyObject *item = Vector_CreatePyObject(float2(res.vert[i]), 2, nullptr);
     if (item == nullptr) {
       Py_DECREF(ret_value);
       Py_DECREF(out_vert_coords);
@@ -1680,7 +1686,7 @@ static PyObject *M_Geometry_delaunay_2d_cdt(PyObject * /*self*/, PyObject *args)
   PyTuple_SET_ITEM(ret_value, 1, out_edges);
 
   PyObject *out_faces = list_of_lists_from_arrays(
-      {res.face_offset_data.as_span(), res.faces_verts});
+      {res.face_offsets.as_span(), res.face_vert_indices});
   PyTuple_SET_ITEM(ret_value, 2, out_faces);
 
   PyObject *out_orig_verts = list_of_lists_from_arrays(
