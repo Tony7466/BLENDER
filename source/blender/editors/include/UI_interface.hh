@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,9 @@
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
+
+#include "UI_interface_c.hh"
 
 namespace blender::nodes::geo_eval_log {
 struct GeometryAttributeInfo;

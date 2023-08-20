@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -41,7 +41,7 @@
 
 #include "BLO_read_write.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "nla_private.h"
@@ -573,6 +573,9 @@ void BKE_nla_strip_foreach_id(NlaStrip *strip, LibraryForeachIDData *data)
   LISTBASE_FOREACH (FCurve *, fcu, &strip->fcurves) {
     BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data, BKE_fcurve_foreach_id(fcu, data));
   }
+
+  BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data,
+                                          BKE_fmodifiers_foreach_id(&strip->modifiers, data));
 
   LISTBASE_FOREACH (NlaStrip *, substrip, &strip->strips) {
     BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data, BKE_nla_strip_foreach_id(substrip, data));
@@ -2397,9 +2400,14 @@ void BKE_nla_blend_write(BlendWriter *writer, ListBase *tracks)
   }
 }
 
-void BKE_nla_blend_read_data(BlendDataReader *reader, ListBase *tracks)
+void BKE_nla_blend_read_data(BlendDataReader *reader, ID *id_owner, ListBase *tracks)
 {
   LISTBASE_FOREACH (NlaTrack *, nlt, tracks) {
+    /* If linking from a library, clear 'local' library override flag. */
+    if (ID_IS_LINKED(id_owner)) {
+      nlt->flag &= ~NLATRACK_OVERRIDELIBRARY_LOCAL;
+    }
+
     /* relink list of strips */
     BLO_read_list(reader, &nlt->strips);
 
@@ -2412,11 +2420,6 @@ void BKE_nla_blend_read_lib(BlendLibReader *reader, ID *id, ListBase *tracks)
 {
   /* we only care about the NLA strips inside the tracks */
   LISTBASE_FOREACH (NlaTrack *, nlt, tracks) {
-    /* If linking from a library, clear 'local' library override flag. */
-    if (ID_IS_LINKED(id)) {
-      nlt->flag &= ~NLATRACK_OVERRIDELIBRARY_LOCAL;
-    }
-
     blend_lib_read_nla_strips(reader, id, &nlt->strips);
   }
 }

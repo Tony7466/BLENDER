@@ -1,11 +1,11 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
  *
- * Used by ED_undo.h, internal implementation.
+ * Used by ED_undo.hh, internal implementation.
  */
 
 #include <cstdio>
@@ -29,7 +29,7 @@
 #include "BKE_main.h"
 #include "BKE_undo_system.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "MEM_guardedalloc.h"
 

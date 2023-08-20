@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,7 +18,8 @@
 #include "BLI_ghash.h"
 #include "BLI_hash.h"
 #include "BLI_lasso_2d.h"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
+#include "BLI_math_matrix.h"
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
 #include "BLT_translation.h"
@@ -51,25 +52,25 @@
 #include "BKE_paint.hh"
 #include "BKE_tracking.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 #include "WM_toolsystem.h"
-#include "WM_types.h"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
-#include "ED_clip.h"
-#include "ED_gpencil_legacy.h"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
-#include "ED_transform_snap_object_context.h"
-#include "ED_view3d.h"
+#include "ED_clip.hh"
+#include "ED_gpencil_legacy.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
+#include "ED_transform_snap_object_context.hh"
+#include "ED_view3d.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"

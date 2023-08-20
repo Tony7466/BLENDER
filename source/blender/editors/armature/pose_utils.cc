@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,7 +9,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
@@ -26,15 +27,15 @@
 
 #include "DEG_depsgraph.h"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_armature.h"
-#include "ED_keyframing.h"
+#include "ED_armature.hh"
+#include "ED_keyframing.hh"
 
 #include "armature_intern.h"
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,6 +12,8 @@
 
 #include "AS_asset_catalog_path.hh"
 
+#include "BLI_string.h"
+
 #include "BKE_context.h"
 #include "BKE_screen.h"
 
@@ -20,17 +22,16 @@
 #include "DNA_screen_types.h"
 
 #include "ED_asset_list.h"
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "RNA_prototypes.h"
 
-#include "UI_interface.h"
 #include "UI_interface.hh"
-#include "UI_resources.h"
+#include "UI_resources.hh"
 #include "UI_tree_view.hh"
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "ED_asset_shelf.h"
 #include "asset_shelf.hh"
@@ -361,7 +362,7 @@ static void asset_shelf_region_snap_height_to_closest(ScrArea *area,
 
   if (region->sizey != new_size_y) {
     region->sizey = new_size_y;
-    area->flag |= AREA_FLAG_REGION_SIZE_UPDATE;
+    ED_area_tag_region_size_update(area, region);
   }
 }
 
@@ -383,7 +384,7 @@ void ED_asset_shelf_region_layout(const bContext *C, ARegion *region)
 
   RegionAssetShelf *shelf_regiondata = RegionAssetShelf::get_from_asset_shelf_region(*region);
   if (!shelf_regiondata) {
-    /* Regiondata should've been created by a previously called ED_asset_shelf_region_init(). */
+    /* Region-data should've been created by a previously called #ED_asset_shelf_region_init(). */
     BLI_assert_unreachable();
     return;
   }

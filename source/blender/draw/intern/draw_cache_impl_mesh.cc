@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -55,8 +55,8 @@
 
 #include "DRW_render.h"
 
-#include "ED_mesh.h"
-#include "ED_uvedit.h"
+#include "ED_mesh.hh"
+#include "ED_uvedit.hh"
 
 #include "draw_cache_extract.hh"
 #include "draw_cache_inline.h"

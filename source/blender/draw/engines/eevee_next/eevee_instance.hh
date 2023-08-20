@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -38,6 +38,7 @@
 #include "eevee_subsurface.hh"
 #include "eevee_sync.hh"
 #include "eevee_view.hh"
+#include "eevee_volume.hh"
 #include "eevee_world.hh"
 
 namespace blender::eevee {
@@ -77,6 +78,7 @@ class Instance {
   LookdevModule lookdev;
   LightProbeModule light_probes;
   IrradianceCache irradiance_cache;
+  VolumeModule volume;
 
   /** Input data. */
   Depsgraph *depsgraph;
@@ -94,6 +96,9 @@ class Instance {
   const DRWView *drw_view;
   const View3D *v3d;
   const RegionView3D *rv3d;
+  /** Only available when baking irradiance volume. */
+  Collection *visibility_collection = nullptr;
+  bool visibility_collection_invert = false;
 
   /** True if the grease pencil engine might be running. */
   bool gpencil_engine_enabled;
@@ -131,7 +136,8 @@ class Instance {
         world(*this),
         lookdev(*this),
         light_probes(*this),
-        irradiance_cache(*this){};
+        irradiance_cache(*this),
+        volume(*this){};
   ~Instance(){};
 
   /* Render & Viewport. */

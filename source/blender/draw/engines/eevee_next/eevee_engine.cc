@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,7 +8,7 @@
 #include "GPU_capabilities.h"
 #include "GPU_framebuffer.h"
 
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
 #include "DRW_render.h"
 

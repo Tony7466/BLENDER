@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,8 @@
 #include <cstring>
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_string_utils.h"
@@ -43,8 +44,8 @@
 
 #include "readfile.h" /* Own include. */
 
-#include "WM_types.h"
-#include "wm_event_types.h"
+#include "WM_types.hh"
+#include "wm_event_types.hh"
 
 /* Don't use translation strings in versioning!
  * These depend on the preferences already being read.
@@ -126,6 +127,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
    */
   {
     /* Keep this block, even when empty. */
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.transition);
   }
 
 #undef FROM_DEFAULT_V4_UCHAR
@@ -844,6 +846,10 @@ void blo_do_versions_userdef(UserDef *userdef)
       userdef->gpu_backend = GPU_BACKEND_METAL;
     }
 #endif
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 15)) {
+    userdef->node_preview_res = 120;
   }
 
   /**

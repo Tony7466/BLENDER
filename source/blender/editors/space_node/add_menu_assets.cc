@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,10 +18,10 @@
 
 #include "BLT_translation.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "ED_asset.h"
-#include "ED_screen.h"
+#include "ED_asset.hh"
+#include "ED_screen.hh"
 
 #include "node_intern.hh"
 

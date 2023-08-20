@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -35,16 +35,16 @@
 #include "BKE_paint.hh"
 #include "BKE_report.h"
 
-#include "ED_image.h"
-#include "ED_paint.h"
-#include "ED_screen.h"
+#include "ED_image.hh"
+#include "ED_paint.hh"
+#include "ED_screen.hh"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 #include "WM_toolsystem.h"
-#include "WM_types.h"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "curves_sculpt_intern.hh"
 #include "paint_intern.hh"

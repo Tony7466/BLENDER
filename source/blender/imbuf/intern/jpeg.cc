@@ -27,6 +27,7 @@
 #include "IMB_metadata.h"
 #include "imbuf.h"
 
+#include <cstring>
 #include <jerror.h>
 #include <jpeglib.h>
 

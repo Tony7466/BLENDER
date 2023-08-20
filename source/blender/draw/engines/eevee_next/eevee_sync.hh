@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -167,6 +167,10 @@ class SyncModule {
                  ObjectHandle &ob_handle,
                  ResourceHandle res_handle,
                  const ObjectRef &ob_ref);
+  bool sync_sculpt(Object *ob,
+                   ObjectHandle &ob_handle,
+                   ResourceHandle res_handle,
+                   const ObjectRef &ob_ref);
   void sync_point_cloud(Object *ob,
                         ObjectHandle &ob_handle,
                         ResourceHandle res_handle,

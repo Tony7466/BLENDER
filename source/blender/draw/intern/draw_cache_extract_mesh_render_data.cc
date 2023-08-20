@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,6 +12,7 @@
 
 #include "BLI_array.hh"
 #include "BLI_enumerable_thread_specific.hh"
+#include "BLI_math_matrix.h"
 #include "BLI_task.hh"
 
 #include "BKE_attribute.hh"
@@ -22,7 +23,7 @@
 
 #include "GPU_batch.h"
 
-#include "ED_mesh.h"
+#include "ED_mesh.hh"
 
 #include "mesh_extractors/extract_mesh.hh"
 

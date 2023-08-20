@@ -35,7 +35,8 @@
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
@@ -92,33 +93,33 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_armature.h"
-#include "ED_curve.h"
+#include "ED_armature.hh"
+#include "ED_curve.hh"
 #include "ED_curves.hh"
-#include "ED_gpencil_legacy.h"
-#include "ED_grease_pencil.h"
-#include "ED_mball.h"
-#include "ED_mesh.h"
-#include "ED_node.h"
-#include "ED_object.h"
-#include "ED_outliner.h"
-#include "ED_physics.h"
-#include "ED_render.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
-#include "ED_transform.h"
-#include "ED_view3d.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_grease_pencil.hh"
+#include "ED_mball.hh"
+#include "ED_mesh.hh"
+#include "ED_node.hh"
+#include "ED_object.hh"
+#include "ED_outliner.hh"
+#include "ED_physics.hh"
+#include "ED_render.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
+#include "ED_transform.hh"
+#include "ED_view3d.hh"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 #include "object_intern.h"
 
@@ -416,7 +417,7 @@ void ED_object_add_generic_props(wmOperatorType *ot, bool do_editmode)
   /* NOTE: this property gets hidden for add-camera operator. */
   prop = RNA_def_enum(
       ot->srna, "align", align_options, ALIGN_WORLD, "Align", "The alignment of the new object");
-  RNA_def_property_update_runtime(prop, (void *)view_align_update);
+  RNA_def_property_update_runtime(prop, view_align_update);
 
   prop = RNA_def_float_vector_xyz(ot->srna,
                                   "location",

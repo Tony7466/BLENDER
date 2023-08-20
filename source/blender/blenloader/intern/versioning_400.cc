@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,13 +23,16 @@
 
 #include "DNA_defaults.h"
 #include "DNA_genfile.h"
+#include "DNA_particle_types.h"
 
 #include "BLI_assert.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_set.hh"
 #include "BLI_string_ref.hh"
 
+#include "BKE_attribute.hh"
+#include "BKE_effect.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idprop.hh"
 #include "BKE_main.h"
@@ -41,6 +44,9 @@
 #include "BKE_scene.h"
 #include "BKE_tracking.h"
 
+#include "BLT_translation.h"
+
+#include "BLO_read_write.h"
 #include "BLO_readfile.h"
 
 #include "BLT_translation.h"
@@ -167,9 +173,78 @@ static void version_mesh_objects_replace_auto_smooth(Main &bmain)
   }
 }
 
-void do_versions_after_linking_400(FileData * /*fd*/, Main *bmain)
+static void version_composite_nodetree_null_id(bNodeTree *ntree, Scene *scene)
 {
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 14)) {
+  for (bNode *node : ntree->all_nodes()) {
+    if (node->id == nullptr &&
+        ((node->type == CMP_NODE_R_LAYERS) ||
+         (node->type == CMP_NODE_CRYPTOMATTE && node->custom1 == CMP_CRYPTOMATTE_SRC_RENDER)))
+    {
+      node->id = &scene->id;
+    }
+  }
+}
+
+void do_versions_after_linking_400(FileData *fd, Main *bmain)
+{
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 9)) {
+    /* Fix area light scaling. */
+    LISTBASE_FOREACH (Light *, light, &bmain->lights) {
+      light->energy = light->energy_deprecated;
+      if (light->type == LA_AREA) {
+        light->energy *= M_PI_4;
+      }
+    }
+
+    /* XXX This was added several years ago in 'lib_link` code of Scene... Should be safe enough
+     * here. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (scene->nodetree) {
+        version_composite_nodetree_null_id(scene->nodetree, scene);
+      }
+    }
+
+    /* XXX This was added many years ago (1c19940198) in 'lib_link` code of particles as a bugfix.
+     * But this is actually versioning. Should be safe enough here. */
+    LISTBASE_FOREACH (ParticleSettings *, part, &bmain->particles) {
+      if (!part->effector_weights) {
+        part->effector_weights = BKE_effector_add_weights(part->force_group);
+      }
+    }
+
+    /* Object proxies have been deprecated sine 3.x era, so their update & sanity check can now
+     * happen in do_versions code. */
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      if (ob->proxy) {
+        /* Paranoia check, actually a proxy_from pointer should never be written... */
+        if (!ID_IS_LINKED(ob->proxy)) {
+          ob->proxy->proxy_from = nullptr;
+          ob->proxy = nullptr;
+
+          if (ob->id.lib) {
+            BLO_reportf_wrap(fd->reports,
+                             RPT_INFO,
+                             TIP_("Proxy lost from object %s lib %s\n"),
+                             ob->id.name + 2,
+                             ob->id.lib->filepath);
+          }
+          else {
+            BLO_reportf_wrap(fd->reports,
+                             RPT_INFO,
+                             TIP_("Proxy lost from object %s lib <NONE>\n"),
+                             ob->id.name + 2);
+          }
+          fd->reports->count.missing_obproxies++;
+        }
+        else {
+          /* This triggers object_update to always use a copy. */
+          ob->proxy->proxy_from = ob;
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 16)) {
     version_mesh_objects_replace_auto_smooth(*bmain);
   }
 
@@ -455,6 +530,21 @@ static void version_principled_bsdf_sheen(bNodeTree *ntree)
   }
 }
 
+/* Replace old Principled Hair BSDF as a variant in the new Principled Hair BSDF. */
+static void version_replace_principled_hair_model(bNodeTree *ntree)
+{
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->type != SH_NODE_BSDF_HAIR_PRINCIPLED) {
+      continue;
+    }
+    NodeShaderHairPrincipled *data = MEM_cnew<NodeShaderHairPrincipled>(__func__);
+    data->model = SHD_PRINCIPLED_HAIR_CHIANG;
+    data->parametrization = node->custom1;
+
+    node->storage = data;
+  }
+}
+
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -697,6 +787,20 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 16)) {
+    /* Set Normalize property of Noise Texture node to true. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type != NTREE_CUSTOM) {
+        LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+          if (node->type == SH_NODE_TEX_NOISE) {
+            ((NodeTexNoise *)node->storage)->normalize = true;
+          }
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -709,5 +813,28 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    if (!DNA_struct_find(fd->filesdna, "NodeShaderHairPrincipled")) {
+      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+        if (ntree->type == NTREE_SHADER) {
+          version_replace_principled_hair_model(ntree);
+        }
+      }
+      FOREACH_NODETREE_END;
+    }
+
+    if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "float", "grid_flag")) {
+      LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
+        /* Keep old behavior of baking the whole lighting. */
+        lightprobe->grid_flag = LIGHTPROBE_GRID_CAPTURE_WORLD | LIGHTPROBE_GRID_CAPTURE_INDIRECT |
+                                LIGHTPROBE_GRID_CAPTURE_EMISSION;
+      }
+    }
+
+    if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "int", "gi_irradiance_pool_size")) {
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->eevee.gi_irradiance_pool_size = 16;
+      }
+    }
   }
 }

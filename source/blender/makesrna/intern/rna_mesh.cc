@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,6 +16,7 @@
 #include "DNA_object_types.h"
 
 #include "BLI_math_base.h"
+#include "BLI_math_geom.h"
 #include "BLI_math_rotation.h"
 #include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
@@ -23,14 +24,14 @@
 #include "BKE_attribute.h"
 #include "BKE_editmesh.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
-#include "RNA_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_types.hh"
 
 #include "rna_internal.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 const EnumPropertyItem rna_enum_mesh_delimit_mode_items[] = {
     {BMO_DELIM_NORMAL, "NORMAL", 0, "Normal", "Delimit by face directions"},
@@ -61,9 +62,9 @@ static const EnumPropertyItem rna_enum_mesh_remesh_mode_items[] = {
 
 #  include "DEG_depsgraph.h"
 
-#  include "ED_mesh.h" /* XXX Bad level call */
+#  include "ED_mesh.hh" /* XXX Bad level call */
 
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
 #  include "rna_mesh_utils.hh"
 

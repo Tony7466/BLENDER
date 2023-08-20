@@ -9,7 +9,9 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_animsys.h"
 #include "BKE_context.h"
@@ -22,8 +24,8 @@
 #include "BKE_rigidbody.h"
 #include "BKE_scene.h"
 
-#include "ED_keyframing.h"
-#include "ED_object.h"
+#include "ED_keyframing.hh"
+#include "ED_object.hh"
 
 #include "DEG_depsgraph_query.h"
 
