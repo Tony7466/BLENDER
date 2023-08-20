@@ -94,11 +94,8 @@ class EndpointFieldInput final : public bke::CurvesFieldInput {
 
   bool is_equal_to(const fn::FieldNode &other) const override
   {
-    if (const EndpointFieldInput *other_endpoint = dynamic_cast<const EndpointFieldInput *>(
-            &other)) {
-      return start_size_ == other_endpoint->start_size_ && end_size_ == other_endpoint->end_size_;
-    }
-    return false;
+    const auto typed_other = dynamic_cast<const EndpointFieldInput *>(&other);
+    return typed_other && *typed_other == *this;
   }
 
   std::optional<eAttrDomain> preferred_domain(const CurvesGeometry & /*curves*/) const

@@ -83,12 +83,8 @@ class OffsetCornerInFaceFieldInput final : public bke::MeshFieldInput {
 
   bool is_equal_to(const fn::FieldNode &other) const final
   {
-    if (const OffsetCornerInFaceFieldInput *other_field =
-            dynamic_cast<const OffsetCornerInFaceFieldInput *>(&other))
-    {
-      return other_field->corner_index_ == corner_index_ && other_field->offset_ == offset_;
-    }
-    return false;
+    const auto typed_other = dynamic_cast<const OffsetCornerInFaceFieldInput *>(&other);
+    return typed_other && *typed_other == *this;
   }
 
   std::optional<eAttrDomain> preferred_domain(const Mesh & /*mesh*/) const final

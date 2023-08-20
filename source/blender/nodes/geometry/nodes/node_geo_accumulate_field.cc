@@ -291,15 +291,8 @@ class AccumulateFieldInput final : public bke::GeometryFieldInput {
 
   bool is_equal_to(const fn::FieldNode &other) const override
   {
-    if (const AccumulateFieldInput *other_accumulate = dynamic_cast<const AccumulateFieldInput *>(
-            &other))
-    {
-      return input_ == other_accumulate->input_ &&
-             group_index_ == other_accumulate->group_index_ &&
-             source_domain_ == other_accumulate->source_domain_ &&
-             accumulation_mode_ == other_accumulate->accumulation_mode_;
-    }
-    return false;
+    const auto typed_other = dynamic_cast<const AccumulateFieldInput *>(&other);
+    return typed_other && *typed_other == *this;
   }
 
   std::optional<eAttrDomain> preferred_domain(
@@ -380,11 +373,8 @@ class TotalFieldInput final : public bke::GeometryFieldInput {
 
   bool is_equal_to(const fn::FieldNode &other) const override
   {
-    if (const TotalFieldInput *other_field = dynamic_cast<const TotalFieldInput *>(&other)) {
-      return input_ == other_field->input_ && group_index_ == other_field->group_index_ &&
-             source_domain_ == other_field->source_domain_;
-    }
-    return false;
+    const auto typed_other = dynamic_cast<const TotalFieldInput *>(&other);
+    return typed_other && *typed_other == *this;
   }
 
   std::optional<eAttrDomain> preferred_domain(

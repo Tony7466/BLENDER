@@ -133,11 +133,8 @@ class EdgesOfVertInput final : public bke::MeshFieldInput {
 
   bool is_equal_to(const fn::FieldNode &other) const final
   {
-    if (const auto *typed = dynamic_cast<const EdgesOfVertInput *>(&other)) {
-      return typed->vert_index_ == vert_index_ && typed->sort_index_ == sort_index_ &&
-             typed->sort_weight_ == sort_weight_;
-    }
-    return false;
+    const auto typed_other = dynamic_cast<const EdgesOfVertInput *>(&other);
+    return typed_other && *typed_other == *this;
   }
 
   std::optional<eAttrDomain> preferred_domain(const Mesh & /*mesh*/) const final

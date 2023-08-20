@@ -91,12 +91,8 @@ class MaterialSelectionFieldInput final : public bke::GeometryFieldInput {
 
   bool is_equal_to(const fn::FieldNode &other) const override
   {
-    if (const MaterialSelectionFieldInput *other_material_selection =
-            dynamic_cast<const MaterialSelectionFieldInput *>(&other))
-    {
-      return material_ == other_material_selection->material_;
-    }
-    return false;
+    const auto typed_other = dynamic_cast<const MaterialSelectionFieldInput *>(&other);
+    return typed_other && *typed_other == *this;
   }
 
   std::optional<eAttrDomain> preferred_domain(

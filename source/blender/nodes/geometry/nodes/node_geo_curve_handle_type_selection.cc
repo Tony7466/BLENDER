@@ -105,12 +105,8 @@ class HandleTypeFieldInput final : public bke::CurvesFieldInput {
 
   bool is_equal_to(const fn::FieldNode &other) const override
   {
-    if (const HandleTypeFieldInput *other_handle_selection =
-            dynamic_cast<const HandleTypeFieldInput *>(&other))
-    {
-      return mode_ == other_handle_selection->mode_ && type_ == other_handle_selection->type_;
-    }
-    return false;
+    const auto typed_other = dynamic_cast<const HandleTypeFieldInput *>(&other);
+    return typed_other && *typed_other == *this;
   }
 
   std::optional<eAttrDomain> preferred_domain(const CurvesGeometry & /*curves*/) const
