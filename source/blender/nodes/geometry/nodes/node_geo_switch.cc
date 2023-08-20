@@ -8,6 +8,9 @@
 #include "UI_resources.hh"
 
 #include "NOD_socket_search_link.hh"
+#include "NOD_rna_define.hh"
+
+#include "RNA_enum_types.hh"
 
 #include "FN_field_cpp_type.hh"
 
@@ -271,6 +274,31 @@ class LazyFunctionForSwitchNode : public LazyFunction {
   }
 };
 
+static const EnumPropertyItem *rna_GeometryNodeSwitch_type_itemf(bContext * /*C*/,
+                                                                 PointerRNA * /*ptr*/,
+                                                                 PropertyRNA * /*prop*/,
+                                                                 bool *r_free)
+{
+  *r_free = true;
+  return enum_items_filter(rna_node_socket_data_type_items, [](const EnumPropertyItem *item) -> bool {
+    if (!U.experimental.use_rotation_socket && item->value == SOCK_ROTATION) {
+      return false;
+    }
+    return ELEM(item->value, SOCK_FLOAT, SOCK_INT, SOCK_BOOLEAN, SOCK_ROTATION, SOCK_VECTOR, SOCK_STRING, SOCK_RGBA, SOCK_GEOMETRY, SOCK_OBJECT, SOCK_COLLECTION, SOCK_TEXTURE, SOCK_MATERIAL, SOCK_IMAGE);
+  });
+}
+
+static void node_rna(StructRNA *srna)
+{
+  RNA_def_node_enum(srna,
+                    "input_type",
+                    "Input Type", "",
+                    rna_node_socket_data_type_items,
+                    NOD_storage_enum_accessors(input_type),
+                    SOCK_GEOMETRY,
+                    rna_GeometryNodeSwitch_type_itemf);
+}
+
 static void register_node()
 {
   static bNodeType ntype;
@@ -283,6 +311,8 @@ static void register_node()
   ntype.gather_link_search_ops = node_gather_link_searches;
   ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(register_node)
 
