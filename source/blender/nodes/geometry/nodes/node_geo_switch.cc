@@ -280,11 +280,11 @@ static const EnumPropertyItem *rna_GeometryNodeSwitch_type_itemf(bContext * /*C*
                                                                  bool *r_free)
 {
   *r_free = true;
-  return enum_items_filter(rna_node_socket_data_type_items, [](const EnumPropertyItem *item) -> bool {
-    if (!U.experimental.use_rotation_socket && item->value == SOCK_ROTATION) {
+  return enum_items_filter(rna_node_socket_data_type_items, [](const EnumPropertyItem &item) -> bool {
+    if (!U.experimental.use_rotation_socket && item.value == SOCK_ROTATION) {
       return false;
     }
-    return ELEM(item->value, SOCK_FLOAT, SOCK_INT, SOCK_BOOLEAN, SOCK_ROTATION, SOCK_VECTOR, SOCK_STRING, SOCK_RGBA, SOCK_GEOMETRY, SOCK_OBJECT, SOCK_COLLECTION, SOCK_TEXTURE, SOCK_MATERIAL, SOCK_IMAGE);
+    return ELEM(item.value, SOCK_FLOAT, SOCK_INT, SOCK_BOOLEAN, SOCK_ROTATION, SOCK_VECTOR, SOCK_STRING, SOCK_RGBA, SOCK_GEOMETRY, SOCK_OBJECT, SOCK_COLLECTION, SOCK_TEXTURE, SOCK_MATERIAL, SOCK_IMAGE);
   });
 }
 

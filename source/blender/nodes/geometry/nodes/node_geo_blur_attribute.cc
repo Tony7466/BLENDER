@@ -521,6 +521,11 @@ static void node_geo_exec(GeoNodeExecParams params)
   });
 }
 
+static bool rna_GeometryNodeBlurAttribute_data_type_supported(const EnumPropertyItem &item)
+{
+  return ELEM(item.value, CD_PROP_FLOAT, CD_PROP_FLOAT3, CD_PROP_COLOR, CD_PROP_INT32);
+}
+
 static const EnumPropertyItem *rna_GeometryNodeBlurAttribute_data_type_itemf(
     bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free)
 {

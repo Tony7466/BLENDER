@@ -167,7 +167,7 @@ const EnumPropertyItem *attribute_type_type_with_socket_fn(bContext * /*C*/,
                                                            PropertyRNA * /*prop*/,
                                                            bool *r_free);
 
-bool generic_attribute_type_supported(const EnumPropertyItem *item);
+bool generic_attribute_type_supported(const EnumPropertyItem &item);
 
 }  // namespace enums
 

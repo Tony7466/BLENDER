@@ -256,7 +256,7 @@ static void node_rna(StructRNA *srna)
                     rna_enum_attribute_type_items,
                     NOD_inline_enum_accessors(custom1),
                     CD_PROP_FLOAT,
-                    attribute_type_type_with_socket_fn);
+                    enums::attribute_type_type_with_socket_fn);
 }
 
 static void node_register()

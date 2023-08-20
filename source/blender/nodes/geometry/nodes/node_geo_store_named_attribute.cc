@@ -212,7 +212,7 @@ static const EnumPropertyItem *rna_GeometryNodeAttributeType_type_itemf(bContext
                                                                         bool *r_free)
 {
   *r_free = true;
-  return enum_items_filter(rna_enum_attribute_type_items, generic_attribute_type_supported);
+  return enum_items_filter(rna_enum_attribute_type_items, enums::generic_attribute_type_supported);
 }
 
 static void node_rna(StructRNA *srna)

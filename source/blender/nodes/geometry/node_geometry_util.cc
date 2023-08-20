@@ -82,18 +82,18 @@ const EnumPropertyItem *attribute_type_type_with_socket_fn(bContext * /*C*/,
 {
   *r_free = true;
   return enum_items_filter(rna_enum_attribute_type_items,
-                           [](const EnumPropertyItem *item) -> bool {
+                           [](const EnumPropertyItem &item) -> bool {
                              return generic_attribute_type_supported(item) &&
-                                    !ELEM(item->value, CD_PROP_BYTE_COLOR, CD_PROP_FLOAT2);
+                                    !ELEM(item.value, CD_PROP_BYTE_COLOR, CD_PROP_FLOAT2);
                            });
 }
 
-bool generic_attribute_type_supported(const EnumPropertyItem *item)
+bool generic_attribute_type_supported(const EnumPropertyItem &item)
 {
-  if (!U.experimental.use_rotation_socket && item->value == CD_PROP_QUATERNION) {
+  if (!U.experimental.use_rotation_socket && item.value == CD_PROP_QUATERNION) {
     return false;
   }
-  return ELEM(item->value,
+  return ELEM(item.value,
               CD_PROP_FLOAT,
               CD_PROP_FLOAT2,
               CD_PROP_FLOAT3,

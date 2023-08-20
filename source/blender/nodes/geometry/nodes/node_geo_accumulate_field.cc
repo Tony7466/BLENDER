@@ -443,6 +443,11 @@ static void node_geo_exec(GeoNodeExecParams params)
   });
 }
 
+static bool accumulate_field_type_supported(const EnumPropertyItem &item)
+{
+  return ELEM(item.value, CD_PROP_FLOAT, CD_PROP_FLOAT3, CD_PROP_INT32);
+}
+
 const EnumPropertyItem *rna_GeoNodeAccumulateField_type_itemf(bContext * /*C*/,
                                                               PointerRNA * /*ptr*/,
                                                               PropertyRNA * /*prop*/,
