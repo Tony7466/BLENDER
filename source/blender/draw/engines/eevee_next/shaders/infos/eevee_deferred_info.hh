@@ -30,7 +30,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_base)
     .image_out(2, Qualifier::WRITE, GPU_RGBA16F, "out_diffuse_light_img")
     .image_out(3, Qualifier::WRITE, GPU_RGBA16F, "out_specular_light_img");
 
-GPU_SHADER_CREATE_INFO(eevee_deferred_light_base)
+GPU_SHADER_CREATE_INFO(eevee_deferred_light)
     .fragment_source("eevee_deferred_light_frag.glsl")
     .sampler(0, ImageType::FLOAT_2D_ARRAY, "gbuffer_closure_tx")
     .sampler(1, ImageType::FLOAT_2D_ARRAY, "gbuffer_color_tx")
@@ -56,15 +56,12 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light_base)
                      "eevee_hiz_data",
                      "eevee_render_pass_out",
                      "draw_view",
-                     "draw_fullscreen");
-
-GPU_SHADER_CREATE_INFO(eevee_deferred_light)
-    .additional_info("eevee_deferred_light_base")
-    .define("DO_REFLECTION_PROBES")
+                     "draw_fullscreen")
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_deferred_light_diffuse)
-    .additional_info("eevee_deferred_light_base")
+    .additional_info("eevee_deferred_light")
+    .define("NO_REFLECTION_PROBES")
     .do_static_compilation(true);
 
 #undef image_array_out

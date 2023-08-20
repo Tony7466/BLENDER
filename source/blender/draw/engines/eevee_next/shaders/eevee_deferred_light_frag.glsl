@@ -57,7 +57,7 @@ void main()
   }
 
   vec3 diffuse_light = vec3(0.0);
-#ifdef DO_REFLECTION_PROBES
+#ifndef NO_REFLECTION_PROBES
   vec3 reflection_light = imageLoad(indirect_reflection_img, texel).rgb;
   vec3 refraction_light = imageLoad(indirect_refraction_img, texel).rgb;
 #else
