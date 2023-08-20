@@ -159,6 +159,7 @@ set(SRC
   intern/uvproject.c
   intern/vector.cc
   intern/virtual_array.cc
+  intern/virtual_grid.cc
   intern/volume.cc
   intern/voronoi_2d.c
   intern/voxel.c
@@ -381,6 +382,7 @@ set(SRC
   BLI_vector_set.hh
   BLI_vector_set_slots.hh
   BLI_virtual_array.hh
+  BLI_virtual_grid.hh
   BLI_virtual_vector_array.hh
   BLI_volume.hh
   BLI_volume_openvdb.hh
