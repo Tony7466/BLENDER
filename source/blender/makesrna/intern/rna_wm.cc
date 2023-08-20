@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -1475,7 +1475,6 @@ static std::string rna_operator_description_cb(bContext *C,
   ParameterList list;
   FunctionRNA *func;
   void *ret;
-  char *result;
 
   RNA_pointer_create(nullptr, ot->rna_ext.srna, nullptr, &ptr); /* dummy */
   func = &rna_Operator_description_func; /* RNA_struct_find_function(&ptr, "description"); */
@@ -1486,14 +1485,7 @@ static std::string rna_operator_description_cb(bContext *C,
   ot->rna_ext.call(C, &ptr, func, &list);
 
   RNA_parameter_get_lookup(&list, "result", &ret);
-  result = (char *)ret;
-
-  if (result) {
-    result = result;
-  }
-  else {
-    result = "";
-  }
+  std::string result = ret ? std::string(static_cast<const char *>(ret)) : "";
 
   RNA_parameter_list_free(&list);
 
