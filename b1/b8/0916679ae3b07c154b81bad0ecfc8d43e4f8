@@ -1,3 +1,4 @@
 Referenced by commit 83047bed26cfb98ff7a9b1c634ea1f2aec1432dd, Correction to b1b8091667: Use utility function
 Referenced by issue #106976, Crash when changing asset icon
 Referenced by issue #109399, Blender LTS: Maintenance Task 3.6
+Referenced by issue #111297, Crash on setting preview image for asset when File Browser is set to 'Maximized Area'
