@@ -2,3 +2,4 @@ Referenced by issue #110737, The slider option when clicking on the weight paint
 Referenced by issue #109399, Blender LTS: Maintenance Task 3.6
 Referenced by pull request #111001, Fix #109460: vertex weight slider not working correctly (backported)
 Referenced by issue #111273, Regression: Edit mode weights panel shows incorrect values
+Referenced by issue #111336, Incorrect vertex weights shown in context menu
