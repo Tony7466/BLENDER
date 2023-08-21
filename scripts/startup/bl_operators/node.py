@@ -280,8 +280,11 @@ class NODE_OT_interface_item_new(NodeInterfaceOperator, Operator):
     item_type: EnumProperty(
         name="Item Type",
         description="Type of the item to create",
-        items=[('SOCKET', "Socket", ""), ('PANEL', "Panel", "")],
-        default='SOCKET',
+        items=[
+            ('INPUT', "Input Socket", ""),
+            ('OUTPUT', "Output Socket", ""),
+            ('PANEL', "Panel", "")],
+        default='INPUT',
     )
 
     socket_type = 'NodeSocketFloat'
@@ -293,8 +296,10 @@ class NODE_OT_interface_item_new(NodeInterfaceOperator, Operator):
 
         # Remember index to move the item.
         dst_index = interface.active_index + 1
-        if self.item_type == 'SOCKET':
-            item = interface.new_socket("Socket", socket_type=self.socket_type)
+        if self.item_type == 'INPUT':
+            item = interface.new_socket("Socket", socket_type=self.socket_type, is_input=True)
+        elif self.item_type == 'OUTPUT':
+            item = interface.new_socket("Socket", socket_type=self.socket_type, is_output=True)
         elif self.item_type == 'PANEL':
             item = interface.new_panel("Panel")
         else:
