@@ -1809,11 +1809,11 @@ static size_t animdata_filter_grease_pencil_layer_node_recursive(
 
   /* Skip node if the name doesn't match the filter string. */
   const bool name_search = (ads->searchstr[0] != '\0');
-  const bool skip_node = name_search && !name_matches_dopesheet_filter(ads, node.name);
+  const bool skip_node = name_search && !name_matches_dopesheet_filter(ads, node.name().c_str());
 
   if (node.is_layer() && !skip_node) {
     items += animdata_filter_grease_pencil_layer(
-        anim_data, ads, grease_pencil, node.as_layer_for_write(), filter_mode);
+        anim_data, ads, grease_pencil, node.as_layer(), filter_mode);
   }
   else if (node.is_group()) {
     const LayerGroup &layer_group = node.as_group();

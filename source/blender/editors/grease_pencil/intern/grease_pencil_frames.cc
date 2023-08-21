@@ -74,10 +74,10 @@ void select_frames_at(bke::greasepencil::LayerGroup &layer_group,
   LISTBASE_FOREACH_BACKWARD (GreasePencilLayerTreeNode *, node_, &layer_group.children) {
     bke::greasepencil::TreeNode &node = node_->wrap();
     if (node.is_group()) {
-      select_frames_at(node.as_group_for_write(), frame_number, select_mode);
+      select_frames_at(node.as_group(), frame_number, select_mode);
     }
     else if (node.is_layer()) {
-      select_frame_at(node.as_layer_for_write(), frame_number, select_mode);
+      select_frame_at(node.as_layer(), frame_number, select_mode);
     }
   }
 }
@@ -105,7 +105,7 @@ void select_frames_region(KeyframeEditData *ked,
                           const short select_mode)
 {
   if (node.is_layer()) {
-    for (auto [frame_number, frame] : node.as_layer_for_write().frames_for_write().items()) {
+    for (auto [frame_number, frame] : node.as_layer().frames_for_write().items()) {
       /* Construct a dummy point coordinate to do this testing with. */
       const float2 pt(float(frame_number), ked->channel_y);
 
@@ -125,8 +125,7 @@ void select_frames_region(KeyframeEditData *ked,
     }
   }
   else if (node.is_group()) {
-    LISTBASE_FOREACH_BACKWARD (
-        GreasePencilLayerTreeNode *, node_, &node.as_group_for_write().children) {
+    LISTBASE_FOREACH_BACKWARD (GreasePencilLayerTreeNode *, node_, &node.as_group().children) {
       select_frames_region(ked, node_->wrap(), tool, select_mode);
     }
   }
@@ -139,15 +138,14 @@ void select_frames_range(bke::greasepencil::TreeNode &node,
 {
   /* Only select those frames which are in bounds. */
   if (node.is_layer()) {
-    for (auto [frame_number, frame] : node.as_layer_for_write().frames_for_write().items()) {
+    for (auto [frame_number, frame] : node.as_layer().frames_for_write().items()) {
       if (IN_RANGE(float(frame_number), min, max)) {
         select_frame(frame, select_mode);
       }
     }
   }
   else if (node.is_group()) {
-    LISTBASE_FOREACH_BACKWARD (
-        GreasePencilLayerTreeNode *, node_, &node.as_group_for_write().children) {
+    LISTBASE_FOREACH_BACKWARD (GreasePencilLayerTreeNode *, node_, &node.as_group().children) {
       select_frames_range(node_->wrap(), min, max, select_mode);
     }
   }
