@@ -160,6 +160,8 @@ class NODE_HT_header(Header):
                             row.template_ID(active_modifier, "node_group", new="node.new_geometry_node_group_assign")
                     else:
                         row.template_ID(snode, "node_tree", new="node.new_geometry_nodes_modifier")
+                if snode.node_tree and snode.node_tree.asset_data:
+                    layout.popover(panel="NODE_PT_geometry_node_asset_traits")
             else:
                 layout.template_ID(snode, "node_tree", new="node.new_geometry_node_group_tool")
                 if snode.node_tree and snode.node_tree.asset_data:
@@ -446,13 +448,16 @@ class NODE_PT_geometry_node_asset_traits(Panel):
         group = snode.node_tree
 
         col = layout.column(heading="Type")
-        col.prop(group, "is_tool")
-        col = layout.column(heading="Mode")
-        col.active = group.is_tool
-        col.prop(group, "is_mode_edit")
-        col.prop(group, "is_mode_sculpt")
+        if snode.geometry_nodes_type == 'TOOL':
+            col.prop(group, "is_tool")
+            col = layout.column(heading="Mode")
+            col.active = group.is_tool
+            col.prop(group, "is_mode_edit")
+            col.prop(group, "is_mode_sculpt")
+        elif snode.geometry_nodes_type == 'MODIFIER':
+            col.prop(group, "is_modifier")
         col = layout.column(heading="Geometry")
-        col.active = group.is_tool
+        col.active = group.is_tool if snode.geometry_nodes_type == 'TOOL' else group.is_modifier
         col.prop(group, "is_type_mesh")
         col.prop(group, "is_type_curve")
         if context.preferences.experimental.use_new_point_cloud_type:
