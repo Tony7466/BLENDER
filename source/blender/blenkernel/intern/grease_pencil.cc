@@ -440,14 +440,16 @@ TreeNode::TreeNode(GreasePencilLayerTreeNodeType type, StringRefNull name) : Tre
   this->GreasePencilLayerTreeNode::name = BLI_strdup(name.c_str());
 }
 
-TreeNode::TreeNode(const TreeNode &other)
-    : TreeNode::TreeNode(GreasePencilLayerTreeNodeType(other.type))
+TreeNode::TreeNode(const TreeNode &other) : TreeNode(GreasePencilLayerTreeNodeType(other.type))
 {
-  if (!other.name().is_empty()) {
-    this->GreasePencilLayerTreeNode::name = BLI_strdup(other.name().c_str());
-  }
+  this->GreasePencilLayerTreeNode::name = BLI_strdup_null(other.GreasePencilLayerTreeNode::name);
   this->flag = other.flag;
   copy_v3_v3_uchar(this->color, other.color);
+}
+
+TreeNode::~TreeNode()
+{
+  MEM_SAFE_FREE(this->GreasePencilLayerTreeNode::name);
 }
 
 void TreeNode::set_name(StringRefNull name)
@@ -485,6 +487,16 @@ TreeNode *TreeNode::parent_node() const
   return this->parent_group() ? &this->parent->wrap().as_node() : nullptr;
 }
 
+int64_t TreeNode::depth() const
+{
+  const LayerGroup *parent = this->parent_group();
+  if (parent == nullptr) {
+    /* The root group has a depth of 0. */
+    return 0;
+  }
+  return 1 + parent->as_node().depth();
+}
+
 LayerMask::LayerMask()
 {
   this->layer_name = nullptr;
@@ -513,7 +525,7 @@ LayerMask::~LayerMask()
 
 Layer::Layer()
 {
-  this->base = TreeNode(GP_LAYER_TREE_LEAF);
+  new (&this->base) TreeNode(GP_LAYER_TREE_LEAF);
 
   this->frames_storage.num = 0;
   this->frames_storage.keys = nullptr;
@@ -529,12 +541,12 @@ Layer::Layer()
 
 Layer::Layer(StringRefNull name) : Layer()
 {
-  this->base.name = BLI_strdup(name.c_str());
+  new (&this->base) TreeNode(GP_LAYER_TREE_LEAF, name);
 }
 
 Layer::Layer(const Layer &other) : Layer()
 {
-  this->base = TreeNode(other.base.wrap());
+  new (&this->base) TreeNode(other.base.wrap());
 
   /* TODO: duplicate masks. */
 
@@ -550,7 +562,8 @@ Layer::Layer(const Layer &other) : Layer()
 
 Layer::~Layer()
 {
-  MEM_SAFE_FREE(this->base.name);
+  this->base.wrap().~TreeNode();
+
   MEM_SAFE_FREE(this->frames_storage.keys);
   MEM_SAFE_FREE(this->frames_storage.values);
 
@@ -758,7 +771,7 @@ void Layer::tag_frames_map_keys_changed()
 
 LayerGroup::LayerGroup()
 {
-  this->base = TreeNode(GP_LAYER_TREE_GROUP);
+  new (&this->base) TreeNode(GP_LAYER_TREE_GROUP);
 
   BLI_listbase_clear(&this->children);
 
@@ -767,12 +780,12 @@ LayerGroup::LayerGroup()
 
 LayerGroup::LayerGroup(StringRefNull name) : LayerGroup()
 {
-  this->base.name = BLI_strdup(name.c_str());
+  new (&this->base) TreeNode(GP_LAYER_TREE_GROUP, name);
 }
 
 LayerGroup::LayerGroup(const LayerGroup &other) : LayerGroup()
 {
-  this->base = TreeNode(other.base.wrap());
+  new (&this->base) TreeNode(other.base.wrap());
 
   LISTBASE_FOREACH (GreasePencilLayerTreeNode *, child, &other.children) {
     switch (child->type) {
@@ -794,7 +807,7 @@ LayerGroup::LayerGroup(const LayerGroup &other) : LayerGroup()
 
 LayerGroup::~LayerGroup()
 {
-  MEM_SAFE_FREE(this->base.name);
+  this->base.wrap().~TreeNode();
 
   LISTBASE_FOREACH_MUTABLE (GreasePencilLayerTreeNode *, child, &this->children) {
     switch (child->type) {

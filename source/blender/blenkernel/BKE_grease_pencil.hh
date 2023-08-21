@@ -194,6 +194,7 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
   explicit TreeNode(GreasePencilLayerTreeNodeType type);
   explicit TreeNode(GreasePencilLayerTreeNodeType type, StringRefNull name);
   TreeNode(const TreeNode &other);
+  ~TreeNode();
 
  public:
   /* Define the common functions for #TreeNode. */
@@ -224,6 +225,11 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
    */
   LayerGroup *parent_group() const;
   TreeNode *parent_node() const;
+
+  /**
+   * \returns the number of non-null parents of the node.
+   */
+  int64_t depth() const;
 };
 
 /**
