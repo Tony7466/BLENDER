@@ -98,7 +98,6 @@ static Mesh *uvprojectModifier_do(UVProjectModifierData *umd,
                                   Mesh *mesh)
 {
   using namespace blender;
-
   Projector projectors[MOD_UVPROJECT_MAXPROJECTORS];
   int projectors_num = 0;
   char uvname[MAX_CUSTOMDATA_LAYER_NAME];

@@ -402,22 +402,23 @@ static Mesh *create_orco_mesh(Object *ob, Mesh *me, BMEditMesh *em, int layer)
   return mesh;
 }
 
+static MutableSpan<float3> orco_coord_layer_ensure(Mesh *mesh, const eCustomDataType layer)
+{
+  void *data = CustomData_get_layer_for_write(&mesh->vert_data, layer, mesh->totvert);
+  if (!data) {
+    data = CustomData_add_layer(&mesh->vert_data, layer, CD_CONSTRUCT, mesh->totvert);
+  }
+  return MutableSpan(reinterpret_cast<float3 *>(data), mesh->totvert);
+}
+
 static void add_orco_mesh(
     Object *ob, BMEditMesh *em, Mesh *mesh, Mesh *mesh_orco, const eCustomDataType layer)
 {
   const int totvert = mesh->totvert;
 
-  auto make_layer_orco = [mesh, layer]() -> MutableSpan<float3> {
-    void *data = CustomData_get_layer_for_write(&mesh->vert_data, layer, mesh->totvert);
-    if (!data) {
-      data = CustomData_add_layer(&mesh->vert_data, layer, CD_CONSTRUCT, mesh->totvert);
-    }
-    return MutableSpan(reinterpret_cast<float3 *>(data), mesh->totvert);
-  };
-
   MutableSpan<float3> layer_orco;
   if (mesh_orco) {
-    layer_orco = make_layer_orco();
+    layer_orco = orco_coord_layer_ensure(mesh, layer);
 
     if (mesh_orco->totvert == totvert) {
       layer_orco.copy_from(mesh_orco->vert_positions());
@@ -432,7 +433,7 @@ static void add_orco_mesh(
     int free = 0;
     float(*orco)[3] = get_orco_coords(ob, em, layer, &free);
     if (orco) {
-      layer_orco = make_layer_orco();
+      layer_orco = orco_coord_layer_ensure(mesh, layer);
       layer_orco.copy_from(Span<float3>(reinterpret_cast<float3 *>(orco), totvert));
     }
     if (free) {
