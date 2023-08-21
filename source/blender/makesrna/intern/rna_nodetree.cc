@@ -604,7 +604,6 @@ static const EnumPropertyItem node_cryptomatte_layer_name_items[] = {
 #  include "DNA_scene_types.h"
 #  include "WM_api.hh"
 
-extern "C" {
 extern FunctionRNA rna_NodeTree_poll_func;
 extern FunctionRNA rna_NodeTree_update_func;
 extern FunctionRNA rna_NodeTree_get_from_context_func;
@@ -619,7 +618,6 @@ extern FunctionRNA rna_Node_free_func;
 extern FunctionRNA rna_Node_draw_buttons_func;
 extern FunctionRNA rna_Node_draw_buttons_ext_func;
 extern FunctionRNA rna_Node_draw_label_func;
-}
 
 void rna_Node_socket_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr);
 

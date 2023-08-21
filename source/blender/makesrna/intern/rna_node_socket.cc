@@ -48,14 +48,12 @@ const EnumPropertyItem rna_enum_node_socket_type_items[] = {
 
 #  include "ED_node.hh"
 
-extern "C" {
 extern FunctionRNA rna_NodeSocket_draw_func;
 extern FunctionRNA rna_NodeSocket_draw_color_func;
 extern FunctionRNA rna_NodeSocketInterface_draw_func;
 extern FunctionRNA rna_NodeSocketInterface_draw_color_func;
 extern FunctionRNA rna_NodeSocketInterface_init_socket_func;
 extern FunctionRNA rna_NodeSocketInterface_from_socket_func;
-}
 
 /* ******** Node Socket ******** */
 

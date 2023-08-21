@@ -32,11 +32,9 @@ const EnumPropertyItem rna_enum_node_tree_interface_item_type_items[] = {
 #  include "WM_api.hh"
 
 /* Internal RNA function declarations, used to invoke registered callbacks. */
-extern "C" {
 extern FunctionRNA rna_NodeTreeInterfaceSocket_draw_func;
 extern FunctionRNA rna_NodeTreeInterfaceSocket_init_socket_func;
 extern FunctionRNA rna_NodeTreeInterfaceSocket_from_socket_func;
-}
 
 namespace node_interface = blender::bke::node_interface;
 
