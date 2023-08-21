@@ -47,6 +47,8 @@ class EraseOperation : public GreasePencilStrokeOperation {
   float strength = 0.1f;
   eGP_BrushEraserMode eraser_mode = GP_BRUSH_ERASER_HARD;
   bool active_layer_only = false;
+
+  Set<GreasePencilDrawing *> affected_drawings;
 };
 
 /**
@@ -1273,6 +1275,28 @@ struct EraseOperationExecutor {
     });
     dst_opacity.finish();
 
+    SpanAttributeWriter<bool> dst_inserted = dst_attributes.lookup_or_add_for_write_span<bool>(
+        "_eraser_inserted", ATTR_DOMAIN_POINT);
+    const OffsetIndices<int> &dst_points_by_curve = dst.points_by_curve();
+    threading::parallel_for(dst.curves_range(), 4096, [&](const IndexRange dst_curves_range) {
+      for (const int64_t dst_curve : dst_curves_range) {
+        IndexRange dst_points_range = dst_points_by_curve[dst_curve];
+
+        dst_inserted.span[dst_points_range.first()] = false;
+        dst_inserted.span[dst_points_range.last()] = false;
+
+        if (dst_points_range.size() < 3) {
+          continue;
+        }
+
+        for (const int64_t dst_point_index : dst_points_range.drop_back(1).drop_front(1)) {
+          const DestinationPoint &dst_point = dst_points[dst_point_index];
+          dst_inserted.span[dst_point_index] |= !dst_point.is_src_point;
+        }
+      }
+    });
+    dst_inserted.finish();
+
     return true;
   }
 
@@ -1403,6 +1427,7 @@ struct EraseOperationExecutor {
         drawing.geometry.wrap() = std::move(dst);
         drawing.tag_topology_changed();
         changed = true;
+        self.affected_drawings.add(&drawing);
       }
     };
 
@@ -1452,7 +1477,67 @@ void EraseOperation::on_stroke_extended(const bContext &C, const InputSample &ex
   executor.execute(*this, C, extension_sample);
 }
 
-void EraseOperation::on_stroke_done(const bContext & /*C*/) {}
+void EraseOperation::on_stroke_done(const bContext & /*C*/)
+{
+  const float epsilon = 0.01f;
+
+  for (GreasePencilDrawing *drawing_ : this->affected_drawings) {
+    blender::bke::CurvesGeometry &curves = drawing_->geometry.wrap();
+
+    VArray<float> opacities = drawing_->wrap().opacities();
+    Span<float3> positions = curves.positions();
+
+    const auto opacity_distance = [&](const IndexRange &sub_range, const int64_t index) {
+      Span<float3> s_positions = positions.slice(sub_range);
+
+      /* Distance function for the simplification algorithm.
+       * It is computed as the difference in opacity that may result from removing the
+       * samples inside the range. */
+      const float3 &s0 = s_positions.first();
+      const float3 &s1 = s_positions.last();
+      const float segment_length = math::distance(s0, s1);
+      if (segment_length < 1e-6) {
+        return 0.0f;
+      }
+
+      /* If we were to remove the samples between sample_first and sample_last, then the
+       * opacity at sample.radius would be a linear interpolation between the opacities in the
+       * endpoints of the range, with a parameter depending on the distance between radii. That
+       * is what we are computing here. */
+      const float t = math::distance(s0, s_positions[index]) / segment_length;
+      const float linear_opacity = math::interpolate(
+          opacities[sub_range.first()], opacities[sub_range.last()], t);
+
+      const int abs_index = index + sub_range.first();
+
+      return math::abs(opacities[abs_index] - linear_opacity);
+    };
+
+    Array<bool> remove_points(curves.points_num(), false);
+
+    /* Simplify in between the ranges of inserted points. */
+    const VArray<bool> &curves_inserted = *curves.attributes().lookup<bool>("_eraser_inserted",
+                                                                            ATTR_DOMAIN_POINT);
+    IndexMaskMemory mem_inserted;
+    IndexMask inserted_points = IndexMask::from_bools(curves_inserted, mem_inserted);
+    inserted_points.foreach_range([&](const IndexRange &range) {
+      IndexRange range_to_simplify(range.one_before_start(), range.size() + 2);
+      const int nb_pts_removed = ed::greasepencil::ramer_douglas_peucker_simplify(
+          range_to_simplify, epsilon, opacity_distance, remove_points);
+      std::cout << "Range : (" << range_to_simplify.first() << "," << range_to_simplify.last()
+                << ") -> remove " << nb_pts_removed << " points." << std::endl;
+    });
+
+    /* Remove the points. */
+    IndexMaskMemory mem_remove;
+    IndexMask points_to_remove = IndexMask::from_bools(remove_points, mem_remove);
+
+    curves.remove_points(points_to_remove);
+    drawing_->wrap().tag_topology_changed();
+
+    curves.attributes_for_write().remove("_eraser_inserted");
+  }
+}
 
 std::unique_ptr<GreasePencilStrokeOperation> new_erase_operation()
 {
