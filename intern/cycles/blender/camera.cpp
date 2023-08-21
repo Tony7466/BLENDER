@@ -164,6 +164,26 @@ static float blender_camera_focal_distance(BL::RenderEngine &b_engine,
   return fabsf(dot(view_dir, dof_dir));
 }
 
+static PanoramaType blender_panorama_type_to_cycles(const BL::Camera::panorama_type_enum type)
+{
+  switch (type) {
+    case BL::Camera::panorama_type_EQUIRECTANGULAR:
+      return PANORAMA_EQUIRECTANGULAR;
+    case BL::Camera::panorama_type_EQUIANGULAR_CUBEMAP_FACE:
+      return PANORAMA_EQUIANGULAR_CUBEMAP_FACE;
+    case BL::Camera::panorama_type_MIRRORBALL:
+      return PANORAMA_MIRRORBALL;
+    case BL::Camera::panorama_type_FISHEYE_EQUIDISTANT:
+      return PANORAMA_FISHEYE_EQUIDISTANT;
+    case BL::Camera::panorama_type_FISHEYE_EQUISOLID:
+      return PANORAMA_FISHEYE_EQUISOLID;
+    case BL::Camera::panorama_type_FISHEYE_LENS_POLYNOMIAL:
+      return PANORAMA_FISHEYE_LENS_POLYNOMIAL;
+  }
+  /* Could happen if loading a newer file that has an unsupported type. */
+  return PANORAMA_FISHEYE_EQUISOLID;
+}
+
 static void blender_camera_from_object(BlenderCamera *bcam,
                                        BL::RenderEngine &b_engine,
                                        BL::Object &b_ob,
@@ -193,28 +213,7 @@ static void blender_camera_from_object(BlenderCamera *bcam,
         break;
     }
 
-    switch (b_camera.panorama_type()) {
-      default:
-      case BL::Camera::panorama_type_EQUIRECTANGULAR:
-        bcam->panorama_type = PANORAMA_EQUIRECTANGULAR;
-        break;
-      case BL::Camera::panorama_type_EQUIANGULAR_CUBEMAP_FACE:
-        bcam->panorama_type = PANORAMA_EQUIANGULAR_CUBEMAP_FACE;
-        break;
-      case BL::Camera::panorama_type_MIRRORBALL:
-        bcam->panorama_type = PANORAMA_MIRRORBALL;
-        break;
-      case BL::Camera::panorama_type_FISHEYE_EQUIDISTANT:
-        bcam->panorama_type = PANORAMA_FISHEYE_EQUIDISTANT;
-        break;
-      case BL::Camera::panorama_type_FISHEYE_EQUISOLID:
-        bcam->panorama_type = PANORAMA_FISHEYE_EQUISOLID;
-        break;
-      case BL::Camera::panorama_type_FISHEYE_LENS_POLYNOMIAL:
-        bcam->panorama_type = PANORAMA_FISHEYE_LENS_POLYNOMIAL;
-        break;
-    }
-
+    bcam->panorama_type = blender_panorama_type_to_cycles(b_camera.panorama_type());
     bcam->fisheye_fov = b_camera.fisheye_fov();
     bcam->fisheye_lens = b_camera.fisheye_lens();
     bcam->latitude_min = b_camera.latitude_min();
