@@ -177,7 +177,7 @@ class NODE_HT_header(Header):
                 if node_tree:
                     if node_tree.asset_data:
                         if not node_tree.is_tool:
-                            layout.label(text="Node group is not marked as tool", icon='ERROR')
+                            layout.label(text="Asset is not marked as tool", icon='ERROR')
                         elif len(node_tree.asset_data.catalog_simple_name) == 0:
                             layout.label(text="Add asset to catalog to show in menus", icon='ERROR')
         else:
