@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Blender Foundation
+/* SPDX-FileCopyrightText: Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,7 +16,8 @@
 
 #include "BLI_bit_vector.hh"
 #include "BLI_linklist.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 #include "BLI_span.hh"
 #include "BLI_task.h"
 #include "BLI_threads.h"
@@ -26,7 +27,7 @@
 #include "BKE_bvhutils.h"
 #include "BKE_editmesh.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_pointcloud.h"
 
 #include "MEM_guardedalloc.h"
@@ -294,7 +295,7 @@ static void mesh_looptri_nearest_point(void *userdata,
     normal_tri_v3(nearest->no, UNPACK3(vtri_co));
   }
 }
-/* copy of function above (warning, should de-duplicate with editmesh_bvh.c) */
+/* Copy of function above (warning, should de-duplicate with `editmesh_bvh.cc`). */
 static void editmesh_looptri_nearest_point(void *userdata,
                                            int index,
                                            const float co[3],
@@ -398,7 +399,7 @@ static void mesh_looptri_spherecast(void *userdata,
     normal_tri_v3(hit->no, UNPACK3(vtri_co));
   }
 }
-/* copy of function above (warning, should de-duplicate with editmesh_bvh.c) */
+/* Copy of function above (warning, should de-duplicate with `editmesh_bvh.cc`). */
 static void editmesh_looptri_spherecast(void *userdata,
                                         int index,
                                         const BVHTreeRay *ray,

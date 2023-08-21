@@ -27,27 +27,27 @@
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_ccg.h"
 #include "BKE_context.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
-#include "BKE_multires.h"
-#include "BKE_paint.h"
+#include "BKE_multires.hh"
+#include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_scene.h"
-#include "BKE_subsurf.h"
+#include "BKE_subsurf.hh"
 
 #include "DEG_depsgraph.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_sculpt.h"
-#include "ED_view3d.h"
+#include "ED_sculpt.hh"
+#include "ED_view3d.hh"
 
 #include "bmesh.h"
 #include "tools/bmesh_boolean.h"
@@ -1167,7 +1167,9 @@ static void sculpt_gesture_trim_geometry_generate(SculptGestureContext *sgcontex
   const float(*ob_imat)[4] = vc->obact->world_to_object;
 
   /* Write vertices coordinatesSCULPT_GESTURE_TRIM_DIFFERENCE for the front face. */
-  float(*positions)[3] = BKE_mesh_vert_positions_for_write(trim_operation->mesh);
+  blender::MutableSpan<blender::float3> positions =
+      trim_operation->mesh->vert_positions_for_write();
+
   float depth_point[3];
 
   /* Get origin point for SCULPT_GESTURE_TRIM_ORIENTATION_VIEW.
@@ -1421,7 +1423,7 @@ static void sculpt_gesture_trim_apply_for_symmetry_pass(bContext * /*C*/,
 {
   SculptGestureTrimOperation *trim_operation = (SculptGestureTrimOperation *)sgcontext->operation;
   Mesh *trim_mesh = trim_operation->mesh;
-  float(*positions)[3] = BKE_mesh_vert_positions_for_write(trim_mesh);
+  blender::MutableSpan<blender::float3> positions = trim_mesh->vert_positions_for_write();
   for (int i = 0; i < trim_mesh->totvert; i++) {
     flip_v3_v3(positions[i], trim_operation->true_mesh_co[i], sgcontext->symmpass);
   }

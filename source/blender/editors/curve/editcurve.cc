@@ -16,7 +16,10 @@
 #include "BLI_array_utils.h"
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "BLT_translation.h"
 
@@ -38,17 +41,17 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_curve.h"
-#include "ED_object.h"
-#include "ED_outliner.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
-#include "ED_transform.h"
-#include "ED_transform_snap_object_context.h"
-#include "ED_view3d.h"
+#include "ED_curve.hh"
+#include "ED_object.hh"
+#include "ED_outliner.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
+#include "ED_transform.hh"
+#include "ED_transform_snap_object_context.hh"
+#include "ED_view3d.hh"
 
 #include "curve_intern.h"
 
@@ -56,12 +59,12 @@ extern "C" {
 #include "curve_fit_nd.h"
 }
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 void selectend_nurb(Object *obedit, enum eEndPoint_Types selfirst, bool doswap, bool selstatus);
 static void adduplicateflagNurb(
@@ -3527,13 +3530,11 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
     else if (nu->pntsv == 1) {
       BPoint *nextbp;
 
-      /*
-       * All flat lines (ie. co-planar), except flat Nurbs. Flat NURB curves
+      /* NOTE(@nzc): All flat lines (ie. co-planar), except flat Nurbs. Flat NURB curves
        * are handled together with the regular NURB plane division, as it
-       * should be. I split it off just now, let's see if it is
-       * stable... nzc 30-5-'00
-       */
-      /* count */
+       * should be. I split it off just now, let's see if it is stable. */
+
+      /* Count. */
       a = nu->pntsu;
       bp = nu->bp;
       while (a--) {
@@ -3593,7 +3594,7 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
     else if (nu->type == CU_NURBS) {
       /* This is a very strange test ... */
       /**
-       * Subdivide NURB surfaces - nzc 30-5-'00 -
+       * NOTE(@nzc): Subdivide NURB surfaces
        *
        * Subdivision of a NURB curve can be effected by adding a
        * control point (insertion of a knot), or by raising the
@@ -4555,7 +4556,7 @@ static int make_segment_exec(bContext *C, wmOperator *op)
     }
 
     /* find both nurbs and points, nu1 will be put behind nu2 */
-    for (nu = static_cast<Nurb *>(nubase->first); nu; nu = nu->next) {
+    LISTBASE_FOREACH (Nurb *, nu, nubase) {
       if (nu->pntsu == 1) {
         nu->flagu &= ~CU_NURB_CYCLIC;
       }

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,10 +8,13 @@
  * \ingroup bke
  */
 
+#include "BLI_index_mask.hh"
+
 #include "BKE_mesh.h"
+#include "BKE_mesh_types.hh"
 
-namespace blender::bke::mesh {
-
+namespace blender::bke {
+namespace mesh {
 /* -------------------------------------------------------------------- */
 /** \name Polygon Data Evaluation
  * \{ */
@@ -156,9 +159,9 @@ void normals_calc_loop(Span<float3> vert_positions,
                        Span<float3> face_normals,
                        const bool *sharp_edges,
                        const bool *sharp_faces,
+                       const short2 *clnors_data,
                        bool use_split_normals,
                        float split_angle,
-                       short2 *clnors_data,
                        CornerNormalSpaceArray *r_lnors_spacearr,
                        MutableSpan<float3> r_loop_normals);
 
@@ -270,7 +273,17 @@ inline int edge_other_vert(const int2 &edge, const int vert)
 
 /** \} */
 
-}  // namespace blender::bke::mesh
+}  // namespace mesh
+
+void mesh_flip_faces(Mesh &mesh, const IndexMask &selection);
+
+/** Set mesh vertex normals to known-correct values, avoiding future lazy computation. */
+void mesh_vert_normals_assign(Mesh &mesh, Span<float3> vert_normals);
+
+/** Set mesh vertex normals to known-correct values, avoiding future lazy computation. */
+void mesh_vert_normals_assign(Mesh &mesh, Vector<float3> vert_normals);
+
+}  // namespace blender::bke
 
 /* -------------------------------------------------------------------- */
 /** \name Inline Mesh Data Access

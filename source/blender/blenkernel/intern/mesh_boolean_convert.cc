@@ -18,8 +18,10 @@
 
 #include "BLI_alloca.h"
 #include "BLI_array.hh"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_matrix.hh"
+#include "BLI_math_vector.h"
 #include "BLI_mesh_boolean.hh"
 #include "BLI_mesh_intersect.hh"
 #include "BLI_span.hh"
@@ -492,7 +494,7 @@ static int fill_orig_loops(const Face *f,
   int orig_me_vert_offset = mim.mesh_vert_offset[orig_me_index];
   int first_orig_v_in_orig_me = first_orig_v - orig_me_vert_offset;
   BLI_assert(0 <= first_orig_v_in_orig_me && first_orig_v_in_orig_me < orig_me->totvert);
-  /* Assume all vertices in an mpoly are unique. */
+  /* Assume all vertices in each face is unique. */
   int offset = -1;
   for (int i = 0; i < orig_mplen; ++i) {
     int loop_i = i + orig_face.start();

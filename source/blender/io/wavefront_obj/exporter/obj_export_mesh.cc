@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,12 +12,14 @@
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
+#include "BKE_mesh_mapping.hh"
 #include "BKE_object.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
-#include "BLI_math.h"
 #include "BLI_sort.hh"
 
 #include "DEG_depsgraph_query.h"
@@ -203,10 +205,8 @@ void OBJMesh::calc_smooth_groups(const bool use_bitflags)
   const bool *sharp_faces = static_cast<const bool *>(
       CustomData_get_layer_named(&export_mesh_->face_data, CD_PROP_BOOL, "sharp_face"));
   poly_smooth_groups_ = BKE_mesh_calc_smoothgroups(mesh_edges_.size(),
-                                                   mesh_faces_.data(),
-                                                   mesh_faces_.size(),
-                                                   export_mesh_->corner_edges().data(),
-                                                   export_mesh_->totloop,
+                                                   mesh_faces_,
+                                                   export_mesh_->corner_edges(),
                                                    sharp_edges,
                                                    sharp_faces,
                                                    &tot_smooth_groups_,

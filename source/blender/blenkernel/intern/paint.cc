@@ -26,6 +26,8 @@
 #include "BLI_bitmap.h"
 #include "BLI_hash.h"
 #include "BLI_listbase.h"
+#include "BLI_math_color.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 #include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
@@ -35,7 +37,7 @@
 
 #include "BKE_attribute.h"
 #include "BKE_attribute.hh"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_ccg.h"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
@@ -50,21 +52,21 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_mapping.hh"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.h"
-#include "BKE_multires.h"
+#include "BKE_multires.hh"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_scene.h"
-#include "BKE_subdiv_ccg.h"
-#include "BKE_subsurf.h"
+#include "BKE_subdiv_ccg.hh"
+#include "BKE_subsurf.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "RNA_enum_types.h"
+#include "RNA_enum_types.hh"
 
 #include "BLO_read_write.h"
 
@@ -594,6 +596,8 @@ ePaintMode BKE_paintmode_get_active_from_context(const bContext *C)
           return PAINT_MODE_SCULPT_UV;
         case OB_MODE_SCULPT_CURVES:
           return PAINT_MODE_SCULPT_CURVES;
+        case OB_MODE_PAINT_GREASE_PENCIL:
+          return PAINT_MODE_GPENCIL;
         default:
           return PAINT_MODE_TEXTURE_2D;
       }
@@ -1271,6 +1275,7 @@ void BKE_paint_blend_read_data(BlendDataReader *reader, const Scene *scene, Pain
     p->tool_slots = static_cast<PaintToolSlot *>(MEM_callocN(expected_size, "PaintToolSlot"));
   }
 
+  p->paint_cursor = nullptr;
   BKE_paint_runtime_init(scene->toolsettings, p);
 }
 
@@ -1284,18 +1289,7 @@ void BKE_paint_blend_read_lib(BlendLibReader *reader, Scene *sce, Paint *p)
       }
     }
     BLO_read_id_address(reader, &sce->id, &p->palette);
-    p->paint_cursor = nullptr;
-
-    BKE_paint_runtime_init(sce->toolsettings, p);
   }
-}
-
-bool paint_is_face_hidden(const int *looptri_faces, const bool *hide_poly, const int tri_index)
-{
-  if (!hide_poly) {
-    return false;
-  }
-  return hide_poly[looptri_faces[tri_index]];
 }
 
 bool paint_is_grid_face_hidden(const uint *grid_hidden, int gridsize, int x, int y)
@@ -1446,11 +1440,6 @@ static void sculptsession_bm_to_me_update_data_only(Object *ob, bool reorder)
 
   if (ss->bm) {
     if (ob->data) {
-      BMIter iter;
-      BMFace *efa;
-      BM_ITER_MESH (efa, &iter, ss->bm, BM_FACES_OF_MESH) {
-        BM_elem_flag_set(efa, BM_ELEM_SMOOTH, ss->bm_smooth_shading);
-      }
       if (reorder) {
         BM_log_mesh_elems_reorder(ss->bm, ss->bm_log);
       }
@@ -1583,7 +1572,7 @@ static MultiresModifierData *sculpt_multires_modifier_get(const Scene *scene,
 {
   Mesh *me = (Mesh *)ob->data;
   ModifierData *md;
-  VirtualModifierData virtualModifierData;
+  VirtualModifierData virtual_modifier_data;
 
   if (ob->sculpt && ob->sculpt->bm) {
     /* Can't combine multires and dynamic topology. */
@@ -1606,7 +1595,8 @@ static MultiresModifierData *sculpt_multires_modifier_get(const Scene *scene,
     return nullptr;
   }
 
-  for (md = BKE_modifiers_get_virtual_modifierlist(ob, &virtualModifierData); md; md = md->next) {
+  for (md = BKE_modifiers_get_virtual_modifierlist(ob, &virtual_modifier_data); md; md = md->next)
+  {
     if (md->type == eModifierType_Multires) {
       MultiresModifierData *mmd = (MultiresModifierData *)md;
 
@@ -1639,7 +1629,7 @@ static bool sculpt_modifiers_active(Scene *scene, Sculpt *sd, Object *ob)
 {
   ModifierData *md;
   Mesh *me = (Mesh *)ob->data;
-  VirtualModifierData virtualModifierData;
+  VirtualModifierData virtual_modifier_data;
 
   if (ob->sculpt->bm || BKE_sculpt_multires_active(scene, ob)) {
     return false;
@@ -1650,7 +1640,7 @@ static bool sculpt_modifiers_active(Scene *scene, Sculpt *sd, Object *ob)
     return true;
   }
 
-  md = BKE_modifiers_get_virtual_modifierlist(ob, &virtualModifierData);
+  md = BKE_modifiers_get_virtual_modifierlist(ob, &virtual_modifier_data);
 
   /* Exception for shape keys because we can edit those. */
   for (; md; md = md->next) {
@@ -2224,7 +2214,6 @@ static PBVH *build_pbvh_for_dynamic_topology(Object *ob)
 
   BKE_pbvh_build_bmesh(pbvh,
                        ob->sculpt->bm,
-                       ob->sculpt->bm_smooth_shading,
                        ob->sculpt->bm_log,
                        ob->sculpt->attrs.dyntopo_node_id_vertex->bmesh_cd_offset,
                        ob->sculpt->attrs.dyntopo_node_id_face->bmesh_cd_offset);
@@ -2272,7 +2261,7 @@ static PBVH *build_pbvh_from_ccg(Object *ob, SubdivCCG *subdiv_ccg)
 
 PBVH *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob)
 {
-  if (ob == nullptr || ob->sculpt == nullptr) {
+  if (ob->sculpt == nullptr) {
     return nullptr;
   }
 
@@ -2342,11 +2331,6 @@ PBVH *BKE_object_sculpt_pbvh_get(Object *object)
 bool BKE_object_sculpt_use_dyntopo(const Object *object)
 {
   return object->sculpt && object->sculpt->bm;
-}
-
-void BKE_object_sculpt_dyntopo_smooth_shading_set(Object *object, const bool value)
-{
-  object->sculpt->bm_smooth_shading = value;
 }
 
 void BKE_sculpt_bvh_update_from_ccg(PBVH *pbvh, SubdivCCG *subdiv_ccg)

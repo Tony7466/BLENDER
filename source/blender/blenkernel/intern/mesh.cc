@@ -27,7 +27,7 @@
 #include "BLI_index_range.hh"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector.hh"
 #include "BLI_memarena.h"
 #include "BLI_resource_scope.hh"
@@ -53,11 +53,11 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_legacy_convert.h"
-#include "BKE_mesh_runtime.h"
-#include "BKE_mesh_wrapper.h"
+#include "BKE_mesh_legacy_convert.hh"
+#include "BKE_mesh_runtime.hh"
+#include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.h"
-#include "BKE_multires.h"
+#include "BKE_multires.hh"
 #include "BKE_object.h"
 
 #include "PIL_time.h"
@@ -270,10 +270,6 @@ static void mesh_blend_write(BlendWriter *writer, ID *id, const void *id_address
   BLO_write_id_struct(writer, Mesh, id_address, &mesh->id);
   BKE_id_blend_write(writer, &mesh->id);
 
-  if (mesh->adt) {
-    BKE_animdata_blend_write(writer, mesh->adt);
-  }
-
   BKE_defbase_blend_write(writer, &mesh->vertex_group_names);
   BLO_write_string(writer, mesh->active_color_attribute);
   BLO_write_string(writer, mesh->default_color_attribute);
@@ -302,6 +298,10 @@ static void mesh_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Mesh *mesh = reinterpret_cast<Mesh *>(id);
   BLO_read_pointer_array(reader, (void **)&mesh->mat);
+  /* This check added for python created meshes. */
+  if (!mesh->mat) {
+    mesh->totcol = 0;
+  }
 
   /* Deprecated pointers to custom data layers are read here for backward compatibility
    * with files where these were owning pointers rather than a view into custom data. */
@@ -314,9 +314,6 @@ static void mesh_blend_read_data(BlendDataReader *reader, ID *id)
   BLO_read_data_address(reader, &mesh->mcol);
 
   BLO_read_data_address(reader, &mesh->mselect);
-
-  BLO_read_data_address(reader, &mesh->adt);
-  BKE_animdata_blend_read_data(reader, mesh->adt);
 
   BLO_read_list(reader, &mesh->vertex_group_names);
 
@@ -359,14 +356,8 @@ static void mesh_blend_read_data(BlendDataReader *reader, ID *id)
 static void mesh_blend_read_lib(BlendLibReader *reader, ID *id)
 {
   Mesh *me = reinterpret_cast<Mesh *>(id);
-  /* This check added for python created meshes. */
-  if (me->mat) {
-    for (int i = 0; i < me->totcol; i++) {
-      BLO_read_id_address(reader, id, &me->mat[i]);
-    }
-  }
-  else {
-    me->totcol = 0;
+  for (int i = 0; i < me->totcol; i++) {
+    BLO_read_id_address(reader, id, &me->mat[i]);
   }
 
   BLO_read_id_address(reader, id, &me->ipo);  // XXX: deprecated: old anim sys
@@ -1731,18 +1722,11 @@ void BKE_mesh_count_selected_items(const Mesh *mesh, int r_count[3])
   /* We could support faces in paint modes. */
 }
 
-void BKE_mesh_vert_coords_get(const Mesh *mesh, float (*vert_coords)[3])
-{
-  blender::bke::AttributeAccessor attributes = mesh->attributes();
-  VArray<float3> positions = *attributes.lookup_or_default(
-      "position", ATTR_DOMAIN_POINT, float3(0));
-  positions.materialize({(float3 *)vert_coords, mesh->totvert});
-}
-
 float (*BKE_mesh_vert_coords_alloc(const Mesh *mesh, int *r_vert_len))[3]
 {
   float(*vert_coords)[3] = (float(*)[3])MEM_mallocN(sizeof(float[3]) * mesh->totvert, __func__);
-  BKE_mesh_vert_coords_get(mesh, vert_coords);
+  MutableSpan(reinterpret_cast<float3 *>(vert_coords), mesh->totvert)
+      .copy_from(mesh->vert_positions());
   if (r_vert_len) {
     *r_vert_len = mesh->totvert;
   }
@@ -1785,7 +1769,7 @@ static float (*ensure_corner_normal_layer(Mesh &mesh))[3]
   return r_loop_normals;
 }
 
-void BKE_mesh_calc_normals_split_ex(Mesh *mesh,
+void BKE_mesh_calc_normals_split_ex(const Mesh *mesh,
                                     MLoopNorSpaceArray *r_lnors_spacearr,
                                     float (*r_corner_normals)[3])
 {
@@ -1796,9 +1780,8 @@ void BKE_mesh_calc_normals_split_ex(Mesh *mesh,
                                  ((mesh->flag & ME_AUTOSMOOTH) != 0);
   const float split_angle = (mesh->flag & ME_AUTOSMOOTH) != 0 ? mesh->smoothresh : float(M_PI);
 
-  /* may be nullptr */
-  blender::short2 *clnors = (blender::short2 *)CustomData_get_layer_for_write(
-      &mesh->loop_data, CD_CUSTOMLOOPNORMAL, mesh->totloop);
+  const blender::short2 *clnors = static_cast<const blender::short2 *>(
+      CustomData_get_layer(&mesh->loop_data, CD_CUSTOMLOOPNORMAL));
   const bool *sharp_edges = static_cast<const bool *>(
       CustomData_get_layer_named(&mesh->edge_data, CD_PROP_BOOL, "sharp_edge"));
   const bool *sharp_faces = static_cast<const bool *>(
@@ -1815,9 +1798,9 @@ void BKE_mesh_calc_normals_split_ex(Mesh *mesh,
       mesh->face_normals(),
       sharp_edges,
       sharp_faces,
+      clnors,
       use_split_normals,
       split_angle,
-      clnors,
       nullptr,
       {reinterpret_cast<float3 *>(r_corner_normals), mesh->totloop});
 }

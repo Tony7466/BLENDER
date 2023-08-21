@@ -7,12 +7,15 @@
  *
  * Mesh normal calculation functions.
  *
- * \see bmesh_mesh_normals.c for the equivalent #BMesh functionality.
+ * \see `bmesh_mesh_normals.cc` for the equivalent #BMesh functionality.
  */
 
 #include <climits>
 
 #include "MEM_guardedalloc.h"
+
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -20,7 +23,6 @@
 #include "BLI_array_utils.hh"
 #include "BLI_bit_vector.hh"
 #include "BLI_linklist.h"
-#include "BLI_math.h"
 #include "BLI_math_vector.hh"
 #include "BLI_memarena.h"
 #include "BLI_span.hh"
@@ -33,7 +35,7 @@
 #include "BKE_editmesh_cache.hh"
 #include "BKE_global.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
+#include "BKE_mesh_mapping.hh"
 
 #include "atomic_ops.h"
 
@@ -89,17 +91,22 @@ static void add_v3_v3_atomic(float r[3], const float a[3])
  * Related to managing normals but not directly related to calculating normals.
  * \{ */
 
-float (*BKE_mesh_vert_normals_for_write(Mesh *mesh))[3]
+namespace blender::bke {
+
+void mesh_vert_normals_assign(Mesh &mesh, Span<float3> vert_normals)
 {
-  mesh->runtime->vert_normals.reinitialize(mesh->totvert);
-  return reinterpret_cast<float(*)[3]>(mesh->runtime->vert_normals.data());
+  mesh.runtime->vert_normals.clear();
+  mesh.runtime->vert_normals.extend(vert_normals);
+  mesh.runtime->vert_normals_dirty = false;
 }
 
-void BKE_mesh_vert_normals_clear_dirty(Mesh *mesh)
+void mesh_vert_normals_assign(Mesh &mesh, Vector<float3> vert_normals)
 {
-  mesh->runtime->vert_normals_dirty = false;
-  BLI_assert(mesh->runtime->vert_normals.size() == mesh->totvert);
+  mesh.runtime->vert_normals = std::move(vert_normals);
+  mesh.runtime->vert_normals_dirty = false;
 }
+
+}  // namespace blender::bke
 
 bool BKE_mesh_vert_normals_are_dirty(const Mesh *mesh)
 {
@@ -139,7 +146,8 @@ static float3 normal_calc_ngon(const Span<float3> vert_positions, const Span<int
   }
 
   if (UNLIKELY(normalize_v3(normal) == 0.0f)) {
-    normal[2] = 1.0f; /* other axis set to 0.0 */
+    /* Other axis are already set to zero. */
+    normal[2] = 1.0f;
   }
 
   return normal;
@@ -147,25 +155,30 @@ static float3 normal_calc_ngon(const Span<float3> vert_positions, const Span<int
 
 float3 face_normal_calc(const Span<float3> vert_positions, const Span<int> face_verts)
 {
-  if (face_verts.size() > 4) {
-    return normal_calc_ngon(vert_positions, face_verts);
-  }
-  if (face_verts.size() == 3) {
-    return math::normal_tri(vert_positions[face_verts[0]],
-                            vert_positions[face_verts[1]],
-                            vert_positions[face_verts[2]]);
-  }
+  float3 normal;
   if (face_verts.size() == 4) {
-    float3 normal;
     normal_quad_v3(normal,
                    vert_positions[face_verts[0]],
                    vert_positions[face_verts[1]],
                    vert_positions[face_verts[2]],
                    vert_positions[face_verts[3]]);
-    return normal;
   }
-  /* horrible, two sided face! */
-  return float3(0);
+  else if (face_verts.size() == 3) {
+    normal = math::normal_tri(vert_positions[face_verts[0]],
+                              vert_positions[face_verts[1]],
+                              vert_positions[face_verts[2]]);
+  }
+  else {
+    BLI_assert(face_verts.size() > 4);
+    normal = normal_calc_ngon(vert_positions, face_verts);
+  }
+
+  if (UNLIKELY(math::is_zero(normal))) {
+    normal.z = 1.0f;
+  }
+
+  BLI_ASSERT_UNIT_V3(normal);
+  return normal;
 }
 
 /** \} */
@@ -700,7 +713,6 @@ struct LoopSplitTaskDataCommon {
    * different elements in the arrays. */
   CornerNormalSpaceArray *lnors_spacearr;
   MutableSpan<float3> loop_normals;
-  MutableSpan<short2> clnors_data;
 
   /* Read-only. */
   Span<float3> positions;
@@ -712,6 +724,7 @@ struct LoopSplitTaskDataCommon {
   Span<int> loop_to_face;
   Span<float3> face_normals;
   Span<float3> vert_normals;
+  Span<short2> clnors_data;
 };
 
 #define INDEX_UNSET INT_MIN
@@ -916,7 +929,6 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
 {
   CornerNormalSpaceArray *lnors_spacearr = common_data->lnors_spacearr;
   MutableSpan<float3> loop_normals = common_data->loop_normals;
-  MutableSpan<short2> clnors_data = common_data->clnors_data;
 
   const Span<float3> positions = common_data->positions;
   const Span<int2> edges = common_data->edges;
@@ -926,6 +938,7 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
   const Span<int2> edge_to_loops = common_data->edge_to_loops;
   const Span<int> loop_to_face = common_data->loop_to_face;
   const Span<float3> face_normals = common_data->face_normals;
+  const Span<short2> clnors_data = common_data->clnors_data;
 
   const int face_index = loop_to_face[ml_curr_index];
   const int ml_prev_index = face_corner_prev(faces[face_index], ml_curr_index);
@@ -946,11 +959,7 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
   float3 vec_org;
   float3 lnor(0.0f);
 
-  /* We validate clnors data on the fly - cheapest way to do! */
   int2 clnors_avg(0);
-  const short2 *clnor_ref = nullptr;
-  int clnors_count = 0;
-  bool clnors_invalid = false;
 
   Vector<int, 8> processed_corners;
 
@@ -995,19 +1004,6 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
     /* Calculate angle between the two face edges incident on this vertex. */
     lnor += face_normals[loop_to_face[mlfan_curr_index]] * saacos(math::dot(vec_curr, vec_prev));
 
-    if (!clnors_data.is_empty()) {
-      /* Accumulate all clnors, if they are not all equal we have to fix that! */
-      const short2 &clnor = clnors_data[mlfan_vert_index];
-      if (clnors_count) {
-        clnors_invalid |= *clnor_ref != clnor;
-      }
-      else {
-        clnor_ref = &clnor;
-      }
-      clnors_avg += int2(clnor);
-      clnors_count++;
-    }
-
     processed_corners.append(mlfan_vert_index);
 
     if (lnors_spacearr) {
@@ -1017,6 +1013,9 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
       }
       if (!lnors_spacearr->corners_by_space.is_empty()) {
         lnors_spacearr->corners_by_space[space_index] = processed_corners.as_span();
+      }
+      if (!clnors_data.is_empty()) {
+        clnors_avg += int2(clnors_data[mlfan_vert_index]);
       }
     }
 
@@ -1058,18 +1057,8 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
     edge_vectors->clear();
 
     if (!clnors_data.is_empty()) {
-      if (clnors_invalid) {
-        clnors_avg /= clnors_count;
-        /* Fix/update all clnors of this fan with computed average value. */
-        if (G.debug & G_DEBUG) {
-          printf("Invalid clnors in this fan!\n");
-        }
-        clnors_data.fill_indices(processed_corners.as_span(), short2(clnors_avg));
-      }
-      /* Extra bonus: since small-stack is local to this function,
-       * no more need to empty it at all cost! */
-
-      lnor = lnor_space_custom_data_to_normal(lnor_space, *clnor_ref);
+      clnors_avg /= processed_corners.size();
+      lnor = lnor_space_custom_data_to_normal(lnor_space, short2(clnors_avg));
     }
   }
 
@@ -1238,9 +1227,9 @@ void normals_calc_loop(const Span<float3> vert_positions,
                        const Span<float3> face_normals,
                        const bool *sharp_edges,
                        const bool *sharp_faces,
+                       const short2 *clnors_data,
                        bool use_split_normals,
                        float split_angle,
-                       short2 *clnors_data,
                        CornerNormalSpaceArray *r_lnors_spacearr,
                        MutableSpan<float3> r_loop_normals)
 {
@@ -1314,8 +1303,7 @@ void normals_calc_loop(const Span<float3> vert_positions,
   LoopSplitTaskDataCommon common_data;
   common_data.lnors_spacearr = r_lnors_spacearr;
   common_data.loop_normals = r_loop_normals;
-  common_data.clnors_data = {reinterpret_cast<short2 *>(clnors_data),
-                             clnors_data ? corner_verts.size() : 0};
+  common_data.clnors_data = {clnors_data, clnors_data ? corner_verts.size() : 0};
   common_data.positions = vert_positions;
   common_data.edges = edges;
   common_data.faces = faces;
@@ -1425,9 +1413,9 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
                     face_normals,
                     sharp_edges.data(),
                     sharp_faces,
+                    r_clnors_data.data(),
                     use_split_normals,
                     split_angle,
-                    r_clnors_data.data(),
                     &lnors_spacearr,
                     loop_normals);
 
@@ -1547,9 +1535,9 @@ static void mesh_normals_loop_custom_set(Span<float3> positions,
                       face_normals,
                       sharp_edges.data(),
                       sharp_faces,
+                      r_clnors_data.data(),
                       use_split_normals,
                       split_angle,
-                      r_clnors_data.data(),
                       &lnors_spacearr,
                       loop_normals);
   }

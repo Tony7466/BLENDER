@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,7 +20,11 @@
 #include "BLI_array.hh"
 #include "BLI_astar.h"
 #include "BLI_bit_vector.hh"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_solvers.h"
+#include "BLI_math_statistics.h"
+#include "BLI_math_vector.h"
 #include "BLI_memarena.h"
 #include "BLI_polyfill_2d.h"
 #include "BLI_rand.h"
@@ -29,9 +33,9 @@
 #include "BKE_bvhutils.h"
 #include "BKE_customdata.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
-#include "BKE_mesh_remap.h" /* own include */
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_mapping.hh"
+#include "BKE_mesh_remap.hh" /* own include */
+#include "BKE_mesh_runtime.hh"
 
 #include "BLI_strict_flags.h"
 
@@ -1343,8 +1347,8 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
         face_normals_dst = mesh_dst->face_normals();
       }
       if (need_lnors_dst) {
-        blender::short2 *custom_nors_dst = static_cast<blender::short2 *>(
-            CustomData_get_layer_for_write(ldata_dst, CD_CUSTOMLOOPNORMAL, numloops_dst));
+        const blender::short2 *custom_nors_dst = static_cast<const blender::short2 *>(
+            CustomData_get_layer(ldata_dst, CD_CUSTOMLOOPNORMAL));
 
         /* Cache loop normals into a temporary custom data layer. */
         loop_normals_dst = static_cast<blender::float3 *>(
@@ -1372,9 +1376,9 @@ void BKE_mesh_remap_calc_loops_from_mesh(const int mode,
               mesh_dst->face_normals(),
               sharp_edges,
               sharp_faces,
+              custom_nors_dst,
               use_split_nors_dst,
               split_angle_dst,
-              custom_nors_dst,
               nullptr,
               {loop_normals_dst, numloops_dst});
         }

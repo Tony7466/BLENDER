@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2020 Blender Foundation
+# SPDX-FileCopyrightText: 2020 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -17,7 +17,7 @@ set(SRC
   intern/dupli_parent_finder.cc
   intern/dupli_persistent_id.cc
   intern/object_identifier.cc
-  intern/orientation.c
+  intern/orientation.cc
   intern/path_util.cc
 
   IO_abstract_hierarchy_iterator.h
