@@ -50,11 +50,11 @@
     .longitude_min = -M_PI,\
     .longitude_max = M_PI,\
     /* Fit to match default projective camera with focal_length 50 and sensor_width 36. */ \
-    .fisheye_polynomial_k0 = -1.1735143712967577e-05,\
-    .fisheye_polynomial_k1 = -0.019988736953434998,\
-    .fisheye_polynomial_k2 = -3.3525322965709175e-06,\
-    .fisheye_polynomial_k3 = 3.099275275886036e-06,\
-    .fisheye_polynomial_k4 = -2.6064646454854524e-08,\
+    .fisheye_polynomial_k0 = -1.1735143712967577e-05f,\
+    .fisheye_polynomial_k1 = -0.019988736953434998f,\
+    .fisheye_polynomial_k2 = -3.3525322965709175e-06f,\
+    .fisheye_polynomial_k3 = 3.099275275886036e-06f,\
+    .fisheye_polynomial_k4 = -2.6064646454854524e-08f,\
  \
     .dof = _DNA_DEFAULT_CameraDOFSettings, \
  \
