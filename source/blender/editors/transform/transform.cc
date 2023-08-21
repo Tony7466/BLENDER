@@ -532,8 +532,7 @@ static void viewRedrawPost(bContext *C, TransInfo *t)
                                          UVCALC_TRANSFORM_CORRECT;
 
     if ((t->data_type == &TransConvertType_Mesh) &&
-        (t->settings->uvcalc_flag & uvcalc_correct_flag))
-    {
+        (t->settings->uvcalc_flag & uvcalc_correct_flag)) {
       WM_event_add_notifier(C, NC_GEOM | ND_DATA, nullptr);
     }
 
@@ -1518,7 +1517,7 @@ static void drawAutoKeyWarning(TransInfo * /*t*/, const bContext *C, ARegion *re
     offset = 10;
   }
   else {
-    /* Depending on user AXIS preference, pad accordingly. */
+    /* Depending on user MINI_AXIS preference, pad accordingly. */
     switch ((eUserpref_MiniAxisType)U.mini_axis_type) {
       case USER_MINI_AXIS_TYPE_GIZMO:
         offset = U.gizmo_size_navigate_v3d;
