@@ -199,19 +199,19 @@ static void blender_camera_from_object(BlenderCamera *bcam,
         bcam->panorama_type = PANORAMA_EQUIRECTANGULAR;
         break;
       case BL::Camera::panorama_type_EQUIANGULAR_CUBEMAP_FACE:
-        bcam->panorama_type = PANORAMA_FISHEYE_EQUIDISTANT;
+        bcam->panorama_type = PANORAMA_EQUIANGULAR_CUBEMAP_FACE;
         break;
       case BL::Camera::panorama_type_MIRRORBALL:
-        bcam->panorama_type = PANORAMA_FISHEYE_EQUISOLID;
-        break;
-      case BL::Camera::panorama_type_FISHEYE_EQUIDISTANT:
         bcam->panorama_type = PANORAMA_MIRRORBALL;
         break;
+      case BL::Camera::panorama_type_FISHEYE_EQUIDISTANT:
+        bcam->panorama_type = PANORAMA_FISHEYE_EQUIDISTANT;
+        break;
       case BL::Camera::panorama_type_FISHEYE_EQUISOLID:
-        bcam->panorama_type = PANORAMA_FISHEYE_LENS_POLYNOMIAL;
+        bcam->panorama_type = PANORAMA_FISHEYE_EQUISOLID;
         break;
       case BL::Camera::panorama_type_FISHEYE_LENS_POLYNOMIAL:
-        bcam->panorama_type = PANORAMA_EQUIANGULAR_CUBEMAP_FACE;
+        bcam->panorama_type = PANORAMA_FISHEYE_LENS_POLYNOMIAL;
         break;
     }
 
