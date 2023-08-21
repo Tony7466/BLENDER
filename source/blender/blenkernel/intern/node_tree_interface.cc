@@ -1086,6 +1086,12 @@ void bNodeTreeInterfacePanel::copy_from(
   }
 }
 
+void bNodeTreeInterface::init_data()
+{
+  /* Root panel is allowed to contain child panels. */
+  root_panel.flag |= NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS;
+}
+
 void bNodeTreeInterface::copy_data(const bNodeTreeInterface &src, int flag)
 {
   this->root_panel.copy_from(src.root_panel.items(), flag);

@@ -212,6 +212,8 @@ typedef struct bNodeTreeInterface {
 
 #ifdef __cplusplus
 
+  /** Initialize data of new interface instance. */
+  void init_data();
   /** Copy data from another interface.
    *  \param flag: ID creation/copying flags, e.g. LIB_ID_CREATE_NO_MAIN.
    */

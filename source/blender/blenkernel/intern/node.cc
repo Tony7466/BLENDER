@@ -145,6 +145,7 @@ static void node_socket_interface_free(bNodeTree * /*ntree*/,
 static void ntree_init_data(ID *id)
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
+  ntree->tree_interface.init_data();
   ntree->runtime = MEM_new<bNodeTreeRuntime>(__func__);
   ntree_set_typeinfo(ntree, nullptr);
 }
