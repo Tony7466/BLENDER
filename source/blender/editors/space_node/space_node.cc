@@ -791,6 +791,7 @@ static void node_header_region_draw(const bContext *C, ARegion *region)
 static void node_region_listener(const wmRegionListenerParams *params)
 {
   ARegion *region = params->region;
+  SpaceNode *snode = static_cast<SpaceNode *>(params->area->spacedata.first);
   const wmNotifier *wmn = params->notifier;
   wmGizmoMap *gzmap = region->gizmo_map;
 
@@ -800,6 +801,12 @@ static void node_region_listener(const wmRegionListenerParams *params)
       switch (wmn->data) {
         case ND_SPACE_NODE:
           ED_region_tag_redraw(region);
+          break;
+        case ND_SPACE_FILE_LIST:
+          if (ED_node_is_geometry(snode)) {
+            /* Redraw header for potential asset warnings. */
+            ED_region_tag_redraw(region);
+          }
           break;
         case ND_SPACE_NODE_VIEW:
           WM_gizmomap_tag_refresh(gzmap);
