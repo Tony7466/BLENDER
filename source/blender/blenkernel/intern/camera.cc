@@ -105,7 +105,9 @@ static void camera_foreach_id(ID *id, LibraryForeachIDData *data)
   }
 }
 
-static void camera_blend_write(BlendWriter *writer, ID *id, const void *id_address)
+static void camera_write_cycles_compatibility_data_create(ID *id,
+                                                          IDProperty *&idprop,
+                                                          IDProperty *&cycles_cam)
 {
   Camera *cam = (Camera *)id;
 
@@ -135,15 +137,18 @@ static void camera_blend_write(BlendWriter *writer, ID *id, const void *id_addre
 
   /* For forward compatibility, still write panoramic properties as ID properties for
    * previous cycles versions. */
-  IDProperty *idprop = IDP_GetProperties(id, false);
+  idprop = IDP_GetProperties(id, false);
   bool alloc_id_prop = (idprop == nullptr);
   if (alloc_id_prop) {
     idprop = IDP_GetProperties(id, true);
   }
-  /* Ensure `cycles` IDProp is available. */
-  IDPropertyTemplate val = {0};
-  bool alloc_cycles_cam = IDP_AddToGroup(idprop, IDP_New(IDP_GROUP, &val, "cycles"));
-  IDProperty *cycles_cam = IDP_GetPropertyTypeFromGroup(idprop, "cycles", IDP_GROUP);
+  cycles_cam = IDP_GetPropertyTypeFromGroup(idprop, "cycles", IDP_GROUP);
+  bool alloc_cycles_cam = (cycles_cam == nullptr);
+  if (alloc_cycles_cam) {
+    IDPropertyTemplate val = {0};
+    cycles_cam = IDP_New(IDP_GROUP, &val, "cycles");
+    IDP_AddToGroup(idprop, cycles_cam);
+  }
   cycles_property_int_set(cycles_cam, "panorama_type", cam->panorama_type);
   cycles_property_float_set(cycles_cam, "fisheye_fov", cam->fisheye_fov);
   cycles_property_float_set(cycles_cam, "fisheye_lens", cam->fisheye_lens);
@@ -157,6 +162,32 @@ static void camera_blend_write(BlendWriter *writer, ID *id, const void *id_addre
   cycles_property_float_set(cycles_cam, "fisheye_polynomial_k3", cam->fisheye_polynomial_k3);
   cycles_property_float_set(cycles_cam, "fisheye_polynomial_k4", cam->fisheye_polynomial_k4);
 
+  if (!alloc_cycles_cam) {
+    cycles_cam = nullptr;
+  }
+  if (!alloc_id_prop) {
+    idprop = nullptr;
+  }
+}
+
+static void camera_write_cycles_compatibility_data_clear(IDProperty *idprop,
+                                                         IDProperty *cycles_cam)
+{
+  if (idprop && cycles_cam) {
+    IDP_FreeFromGroup(idprop, cycles_cam);
+  }
+  if (idprop) {
+    IDP_FreeProperty(idprop);
+  }
+}
+
+static void camera_blend_write(BlendWriter *writer, ID *id, const void *id_address)
+{
+  Camera *cam = (Camera *)id;
+
+  IDProperty *idprop, *cycles_cam;
+  camera_write_cycles_compatibility_data_create(id, idprop, cycles_cam);
+
   /* write LibData */
   BLO_write_id_struct(writer, Camera, id_address, &cam->id);
   BKE_id_blend_write(writer, &cam->id);
@@ -165,12 +196,7 @@ static void camera_blend_write(BlendWriter *writer, ID *id, const void *id_addre
     BLO_write_struct(writer, CameraBGImage, bgpic);
   }
 
-  if (alloc_cycles_cam) {
-    IDP_FreeFromGroup(idprop, cycles_cam);
-  }
-  if (alloc_id_prop) {
-    IDP_FreeProperty(idprop);
-  }
+  camera_write_cycles_compatibility_data_clear(idprop, cycles_cam);
 }
 
 static void camera_blend_read_data(BlendDataReader *reader, ID *id)
