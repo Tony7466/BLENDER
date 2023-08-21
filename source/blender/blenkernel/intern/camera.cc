@@ -148,7 +148,7 @@ static CameraCyclesCompatibilityData camera_write_cycles_compatibility_data_crea
   };
 
   /* For forward compatibility, still write panoramic properties as ID properties for
-   * previous cycles versions. */
+   * previous blender versions. */
   IDProperty *idprop_prev = IDP_GetProperties(id, false);
   /* Make a copy to avoid modifying the original. */
   IDProperty *idprop_temp = idprop_prev ? IDP_CopyProperty(idprop_prev) :
@@ -178,19 +178,21 @@ static void camera_write_cycles_compatibility_data_clear(ID *id,
                                                          CameraCyclesCompatibilityData &data)
 {
   id->properties = data.idprop_prev;
+  data.idprop_prev = nullptr;
 
   if (data.idprop_temp) {
     IDP_FreeProperty(data.idprop_temp);
+    data.idprop_temp = nullptr;
   }
 }
 
 static void camera_blend_write(BlendWriter *writer, ID *id, const void *id_address)
 {
+  const bool is_undo = BLO_write_is_undo(writer);
   Camera *cam = (Camera *)id;
 
   CameraCyclesCompatibilityData cycles_data;
-
-  if (!BLO_write_is_undo(writer)) {
+  if (!is_undo) {
     cycles_data = camera_write_cycles_compatibility_data_create(id);
   }
 
@@ -202,7 +204,7 @@ static void camera_blend_write(BlendWriter *writer, ID *id, const void *id_addre
     BLO_write_struct(writer, CameraBGImage, bgpic);
   }
 
-  if (!BLO_write_is_undo(writer)) {
+  if (!is_undo) {
     camera_write_cycles_compatibility_data_clear(id, cycles_data);
   }
 }

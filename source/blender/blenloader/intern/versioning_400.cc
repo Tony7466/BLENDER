@@ -688,45 +688,50 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 
     /* Panorama properties shared with Eevee. */
     if (!DNA_struct_elem_find(fd->filesdna, "Camera", "float", "fisheye_fov")) {
+      Camera default_cam = *DNA_struct_default_get(Camera);
       LISTBASE_FOREACH (Camera *, camera, &bmain->cameras) {
         IDProperty *ccam = version_cycles_properties_from_ID(&camera->id);
         if (ccam) {
           camera->panorama_type = version_cycles_property_int(
-              ccam, "panorama_type", CAM_PANORAMA_FISHEYE_EQUISOLID);
-          camera->fisheye_fov = version_cycles_property_float(ccam, "fisheye_fov", M_PI);
-          camera->fisheye_lens = version_cycles_property_float(ccam, "fisheye_lens", 10.5f);
+              ccam, "panorama_type", default_cam.panorama_type);
+          camera->fisheye_fov = version_cycles_property_float(
+              ccam, "fisheye_fov", default_cam.fisheye_fov);
+          camera->fisheye_lens = version_cycles_property_float(
+              ccam, "fisheye_lens", default_cam.fisheye_lens);
           camera->latitude_min = version_cycles_property_float(
-              ccam, "latitude_min", -0.5f * float(M_PI));
+              ccam, "latitude_min", default_cam.latitude_min);
           camera->latitude_max = version_cycles_property_float(
-              ccam, "latitude_max", 0.5f * float(M_PI));
-          camera->longitude_min = version_cycles_property_float(ccam, "longitude_min", -M_PI);
-          camera->longitude_max = version_cycles_property_float(ccam, "longitude_max", M_PI);
+              ccam, "latitude_max", default_cam.latitude_max);
+          camera->longitude_min = version_cycles_property_float(
+              ccam, "longitude_min", default_cam.longitude_min);
+          camera->longitude_max = version_cycles_property_float(
+              ccam, "longitude_max", default_cam.longitude_max);
           /* Fit to match default projective camera with focal_length 50 and sensor_width 36. */
           camera->fisheye_polynomial_k0 = version_cycles_property_float(
-              ccam, "fisheye_polynomial_k0", -1.1735143712967577e-05f);
+              ccam, "fisheye_polynomial_k0", default_cam.fisheye_polynomial_k0);
           camera->fisheye_polynomial_k1 = version_cycles_property_float(
-              ccam, "fisheye_polynomial_k1", -0.019988736953434998f);
+              ccam, "fisheye_polynomial_k1", default_cam.fisheye_polynomial_k1);
           camera->fisheye_polynomial_k2 = version_cycles_property_float(
-              ccam, "fisheye_polynomial_k2", -3.3525322965709175e-06f);
+              ccam, "fisheye_polynomial_k2", default_cam.fisheye_polynomial_k2);
           camera->fisheye_polynomial_k3 = version_cycles_property_float(
-              ccam, "fisheye_polynomial_k3", 3.099275275886036e-06f);
+              ccam, "fisheye_polynomial_k3", default_cam.fisheye_polynomial_k3);
           camera->fisheye_polynomial_k4 = version_cycles_property_float(
-              ccam, "fisheye_polynomial_k4", -2.6064646454854524e-08f);
+              ccam, "fisheye_polynomial_k4", default_cam.fisheye_polynomial_k4);
         }
         else {
-          camera->panorama_type = CAM_PANORAMA_FISHEYE_EQUISOLID;
-          camera->fisheye_fov = M_PI;
-          camera->fisheye_lens = 10.5f;
-          camera->latitude_min = -0.5f * float(M_PI);
-          camera->latitude_max = 0.5f * float(M_PI);
-          camera->longitude_min = -M_PI;
-          camera->longitude_max = M_PI;
+          camera->panorama_type = default_cam.panorama_type;
+          camera->fisheye_fov = default_cam.fisheye_fov;
+          camera->fisheye_lens = default_cam.fisheye_lens;
+          camera->latitude_min = default_cam.latitude_min;
+          camera->latitude_max = default_cam.latitude_max;
+          camera->longitude_min = default_cam.longitude_min;
+          camera->longitude_max = default_cam.longitude_max;
           /* Fit to match default projective camera with focal_length 50 and sensor_width 36. */
-          camera->fisheye_polynomial_k0 = -1.1735143712967577e-05f;
-          camera->fisheye_polynomial_k1 = -0.019988736953434998f;
-          camera->fisheye_polynomial_k2 = -3.3525322965709175e-06f;
-          camera->fisheye_polynomial_k3 = 3.099275275886036e-06f;
-          camera->fisheye_polynomial_k4 = -2.6064646454854524e-08f;
+          camera->fisheye_polynomial_k0 = default_cam.fisheye_polynomial_k0;
+          camera->fisheye_polynomial_k1 = default_cam.fisheye_polynomial_k1;
+          camera->fisheye_polynomial_k2 = default_cam.fisheye_polynomial_k2;
+          camera->fisheye_polynomial_k3 = default_cam.fisheye_polynomial_k3;
+          camera->fisheye_polynomial_k4 = default_cam.fisheye_polynomial_k4;
         }
       }
     }
