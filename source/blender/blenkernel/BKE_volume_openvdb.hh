@@ -18,9 +18,9 @@ struct VolumeGrid;
 
 VolumeGrid *BKE_volume_grid_add_vdb(Volume &volume,
                                     blender::StringRef name,
-                                    blender::volume::GMutableGrid vdb_grid);
+                                    blender::volume::GVMutableGrid vdb_grid);
 
-bool BKE_volume_grid_bounds(blender::volume::GGrid grid,
+bool BKE_volume_grid_bounds(blender::volume::GVGrid grid,
                             blender::float3 &r_min,
                             blender::float3 &r_max);
 
@@ -29,15 +29,15 @@ bool BKE_volume_grid_bounds(blender::volume::GGrid grid,
  * This is useful for instances, where there is a separate transform on top of the original
  * grid transform that must be applied for some operations that only take a grid argument.
  */
-blender::volume::GGrid BKE_volume_grid_shallow_transform(blender::volume::GGrid grid,
-                                                         const blender::float4x4 &transform);
+blender::volume::GVGrid BKE_volume_grid_shallow_transform(blender::volume::GVGrid grid,
+                                                          const blender::float4x4 &transform);
 
-blender::volume::GGrid BKE_volume_grid_openvdb_for_metadata(const VolumeGrid *grid);
-blender::volume::GGrid BKE_volume_grid_openvdb_for_read(const Volume *volume,
-                                                        const VolumeGrid *grid);
-blender::volume::GMutableGrid BKE_volume_grid_openvdb_for_write(const Volume *volume,
-                                                                VolumeGrid *grid,
-                                                                bool clear);
+blender::volume::GVGrid BKE_volume_grid_openvdb_for_metadata(const VolumeGrid *grid);
+blender::volume::GVGrid BKE_volume_grid_openvdb_for_read(const Volume *volume,
+                                                         const VolumeGrid *grid);
+blender::volume::GVMutableGrid BKE_volume_grid_openvdb_for_write(const Volume *volume,
+                                                                 VolumeGrid *grid,
+                                                                 bool clear);
 
 void BKE_volume_grid_clear_tree(Volume &volume, VolumeGrid &volume_grid);
 void BKE_volume_grid_clear_tree(openvdb::GridBase &grid);
@@ -77,7 +77,7 @@ auto BKE_volume_grid_type_operation(const VolumeGridType grid_type, OpType &&op)
   return op.template operator()<openvdb::FloatGrid>();
 }
 
-blender::volume::GMutableGrid BKE_volume_grid_create_with_changed_resolution(
+blender::volume::GVMutableGrid BKE_volume_grid_create_with_changed_resolution(
     const VolumeGridType grid_type, const openvdb::GridBase &old_grid, float resolution_factor);
 
 #endif

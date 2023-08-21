@@ -582,7 +582,7 @@ static AttributeAccessorFunctions get_curves_accessor_functions()
   };
   fn.domain_grid_mask = [](const void * /*owner*/,
                            const eAttrDomain /*domain*/,
-                           const int /*main_grid*/) -> volume::GGrid { return {}; };
+                           const int /*main_grid*/) -> volume::GVGrid { return {}; };
   fn.domain_supported = [](const void * /*owner*/, const eAttrDomain domain) {
     return ELEM(domain, ATTR_DOMAIN_POINT, ATTR_DOMAIN_CURVE);
   };

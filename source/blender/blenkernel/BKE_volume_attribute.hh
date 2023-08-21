@@ -6,6 +6,7 @@
 
 #include "BLI_cpp_type.hh"
 #include "BLI_generic_virtual_array.hh"
+#include "BLI_generic_virtual_grid.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_volume.hh"
 
@@ -22,7 +23,7 @@ template<typename T> struct AttributeGridReader {
   /**
    * Virtual array that provides access to the attribute data. This may be empty.
    */
-  volume::Grid<T> grid;
+  VGrid<T> grid;
   /**
    * Domain where the attribute is stored. This also determines the size of the virtual array.
    */
@@ -34,11 +35,11 @@ template<typename T> struct AttributeGridReader {
    */
   const ImplicitSharingInfo *sharing_info;
 
-  const volume::Grid<T> &operator*() const
+  const VGrid<T> &operator*() const
   {
     return this->grid;
   }
-  volume::Grid<T> &operator*()
+  VGrid<T> &operator*()
   {
     return this->grid;
   }
@@ -58,7 +59,7 @@ template<typename T> struct AttributeGridWriter {
   /**
    * Grid pointer giving read and write access to the attribute. This may be empty.
    */
-  volume::MutableGrid<T> grid;
+  VMutableGrid<T> grid;
   /**
    * Domain where the attribute is stored on the geometry. Also determines the size of the
    * virtual array.
@@ -89,7 +90,7 @@ template<typename T> struct AttributeGridWriter {
  * A generic version of #AttributeReader.
  */
 struct GAttributeGridReader {
-  volume::GGrid grid;
+  GVGrid grid;
   eAttrDomain domain;
   const ImplicitSharingInfo *sharing_info;
 
@@ -98,11 +99,11 @@ struct GAttributeGridReader {
     return this->grid;
   }
 
-  const volume::GGrid &operator*() const
+  const GVGrid &operator*() const
   {
     return this->grid;
   }
-  volume::GGrid &operator*()
+  GVGrid &operator*()
   {
     return this->grid;
   }
@@ -117,7 +118,7 @@ struct GAttributeGridReader {
  * A generic version of #AttributeWriter.
  */
 struct GAttributeGridWriter {
-  volume::GMutableGrid grid;
+  GVMutableGrid grid;
   eAttrDomain domain;
   std::function<void()> tag_modified_fn;
 

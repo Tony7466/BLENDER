@@ -196,9 +196,9 @@ GVArray GeometryFieldInput::get_varray_for_context(const fn::FieldContext &conte
   return {};
 }
 
-volume::GGrid GeometryFieldInput::get_volume_grid_for_context(const fn::FieldContext &context,
-                                                              const volume::GGrid &mask,
-                                                              ResourceScope & /*scope*/) const
+volume::GVGrid GeometryFieldInput::get_volume_grid_for_context(const fn::FieldContext &context,
+                                                               const volume::GVGrid &mask,
+                                                               ResourceScope & /*scope*/) const
 {
   if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
           &context))
@@ -304,9 +304,9 @@ GVArray InstancesFieldInput::get_varray_for_context(const fn::FieldContext &cont
   return {};
 }
 
-volume::GGrid VolumeFieldInput::get_volume_grid_for_context(const fn::FieldContext &context,
-                                                            const volume::GGrid &mask,
-                                                            ResourceScope & /*scope*/) const
+volume::GVGrid VolumeFieldInput::get_volume_grid_for_context(const fn::FieldContext &context,
+                                                             const volume::GVGrid &mask,
+                                                             ResourceScope & /*scope*/) const
 {
   if (const GeometryFieldContext *geometry_context = dynamic_cast<const GeometryFieldContext *>(
           &context))
@@ -333,8 +333,8 @@ GVArray AttributeFieldInput::get_varray_for_context(const GeometryFieldContext &
   return {};
 }
 
-volume::GGrid AttributeFieldInput::get_volume_grid_for_context(const GeometryFieldContext &context,
-                                                               const GGrid & /*mask*/) const
+volume::GVGrid AttributeFieldInput::get_volume_grid_for_context(
+    const GeometryFieldContext &context, const GGrid & /*mask*/) const
 {
   const eCustomDataType data_type = cpp_type_to_custom_data_type(*type_);
   if (auto attributes = context.attributes()) {
@@ -351,11 +351,11 @@ GVArray AttributeExistsFieldInput::get_varray_for_context(const bke::GeometryFie
   return VArray<bool>::ForSingle(exists, domain_size);
 }
 
-volume::GGrid AttributeExistsFieldInput::get_volume_grid_for_context(
-    const GeometryFieldContext &context, const volume::GGrid & /*mask*/) const
+volume::GVGrid AttributeExistsFieldInput::get_volume_grid_for_context(
+    const GeometryFieldContext &context, const volume::GVGrid & /*mask*/) const
 {
   const bool exists = context.attributes()->contains(name_);
-  return volume::MutableGrid<bool>::create(exists);
+  return volume::VMutableGrid<bool>::create(exists);
 }
 
 std::string AttributeFieldInput::socket_inspection_name() const
@@ -440,8 +440,8 @@ GVArray AnonymousAttributeFieldInput::get_varray_for_context(const GeometryField
   return *context.attributes()->lookup(*anonymous_id_, context.domain(), data_type);
 }
 
-volume::GGrid AnonymousAttributeFieldInput::get_volume_grid_for_context(
-    const GeometryFieldContext &context, const volume::GGrid & /*mask*/) const
+volume::GVGrid AnonymousAttributeFieldInput::get_volume_grid_for_context(
+    const GeometryFieldContext &context, const volume::GVGrid & /*mask*/) const
 {
   const eCustomDataType data_type = cpp_type_to_custom_data_type(*type_);
   return *context.attributes()->lookup_grid(*anonymous_id_, context.domain(), data_type);
@@ -501,8 +501,8 @@ GVArray NormalFieldInput::get_varray_for_context(const GeometryFieldContext &con
   return {};
 }
 
-volume::GGrid NormalFieldInput::get_volume_grid_for_context(
-    const GeometryFieldContext & /*context*/, const volume::GGrid & /*mask*/) const
+volume::GVGrid NormalFieldInput::get_volume_grid_for_context(
+    const GeometryFieldContext & /*context*/, const volume::GVGrid & /*mask*/) const
 {
   return {};
 }
@@ -632,14 +632,14 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
         const auto &volume_component = static_cast<const bke::VolumeComponent &>(component);
         main_grid = volume_component.get()->active_grid;
       }
-      const volume::GGrid domain_mask = {attributes.domain_grid_mask(domain, main_grid)};
+      const volume::GVGrid domain_mask = {attributes.domain_grid_mask(domain, main_grid)};
       const bke::GeometryFieldContext field_context{component, domain};
       fn::VolumeFieldEvaluator evaluator{field_context, domain_mask};
       evaluator.add(validator.validate_field_if_necessary(field));
       evaluator.set_selection(selection);
       evaluator.evaluate();
 
-      const volume::GGrid selection = evaluator.get_evaluated_selection_as_mask();
+      const volume::GVGrid selection = evaluator.get_evaluated_selection_as_mask();
 
       dst_attribute.grid.try_copy_masked(evaluator.get_evaluated(0), selection);
 
@@ -697,9 +697,9 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
       const auto &volume_component = static_cast<const bke::VolumeComponent &>(component);
       main_grid = volume_component.get()->active_grid;
     }
-    const volume::GGrid domain_mask = {attributes.domain_grid_mask(domain, main_grid)};
+    const volume::GVGrid domain_mask = {attributes.domain_grid_mask(domain, main_grid)};
     fn::VolumeFieldEvaluator evaluator{field_context, domain_mask};
-    volume::GMutableGrid grid = volume::GMutableGrid::create(type);
+    volume::GVMutableGrid grid = volume::GVMutableGrid::create(type);
     evaluator.add_with_destination(validator.validate_field_if_necessary(field), grid);
     evaluator.set_selection(selection);
     evaluator.evaluate();

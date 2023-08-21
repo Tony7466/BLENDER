@@ -161,9 +161,9 @@ struct AttributeInitShared : public AttributeInit {
  * the newly created attribute.
  */
 struct AttributeInitGrid : public AttributeInit {
-  volume::GGrid grid;
+  GVGrid grid;
 
-  AttributeInitGrid(volume::GGrid grid) : AttributeInit(Type::Grid), grid(std::move(grid)) {}
+  AttributeInitGrid(GVGrid grid) : AttributeInit(Type::Grid), grid(std::move(grid)) {}
 };
 
 /**
@@ -172,10 +172,9 @@ struct AttributeInitGrid : public AttributeInit {
  * preferable to move data directly to the created attribute to avoid a new allocation and a copy.
  */
 struct AttributeInitMoveGrid : public AttributeInit {
-  volume::GMutableGrid grid;
+  GVMutableGrid grid;
 
-  AttributeInitMoveGrid(volume::GMutableGrid grid)
-      : AttributeInit(Type::MoveGrid), grid(std::move(grid))
+  AttributeInitMoveGrid(GVMutableGrid grid) : AttributeInit(Type::MoveGrid), grid(std::move(grid))
   {
   }
 };
@@ -185,10 +184,10 @@ struct AttributeInitMoveGrid : public AttributeInit {
  * The sharing info has ownership of the provided contiguous array.
  */
 struct AttributeInitSharedGrid : public AttributeInit {
-  const volume::GMutableGrid grid;
+  const GVMutableGrid grid;
   const ImplicitSharingInfo *sharing_info = nullptr;
 
-  AttributeInitSharedGrid(const volume::GMutableGrid grid, const ImplicitSharingInfo &sharing_info)
+  AttributeInitSharedGrid(const GVMutableGrid grid, const ImplicitSharingInfo &sharing_info)
       : AttributeInit(Type::SharedGrid), grid(grid), sharing_info(&sharing_info)
   {
   }
@@ -441,7 +440,7 @@ struct AttributeAccessorFunctions {
                                                        const AttributeIDRef &attribute_id);
   bool (*domain_supported)(const void *owner, eAttrDomain domain);
   int (*domain_size)(const void *owner, eAttrDomain domain);
-  volume::GGrid (*domain_grid_mask)(const void *owner, eAttrDomain domain, int main_grid);
+  GVGrid (*domain_grid_mask)(const void *owner, eAttrDomain domain, int main_grid);
   bool (*is_builtin)(const void *owner, const AttributeIDRef &attribute_id);
   GAttributeReader (*lookup)(const void *owner, const AttributeIDRef &attribute_id);
   GAttributeGridReader (*lookup_grid)(const void *owner, const AttributeIDRef &attribute_id);
@@ -527,7 +526,7 @@ class AttributeAccessor {
   /**
    * \return Topology grid that defines the default extent of a volume.
    */
-  volume::GGrid domain_grid_mask(const eAttrDomain domain, int main_grid) const
+  GVGrid domain_grid_mask(const eAttrDomain domain, int main_grid) const
   {
     return fn_->domain_grid_mask(owner_, domain, main_grid);
   }

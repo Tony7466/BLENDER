@@ -19,19 +19,19 @@ class GFieldRef;
 namespace blender::fn {
 
 void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
-                                                 const volume::GGrid &mask,
+                                                 const GVGrid &mask,
                                                  const multi_function::Procedure &procedure,
-                                                 Span<volume::GGrid> field_context_inputs,
+                                                 Span<GVGrid> field_context_inputs,
                                                  Span<GFieldRef> fields_to_evaluate,
                                                  Span<int> field_indices,
-                                                 Span<volume::GMutableGrid *> dst_grids,
-                                                 MutableSpan<volume::GGrid> r_grids,
+                                                 Span<GVMutableGrid> dst_grids,
+                                                 MutableSpan<GVGrid> r_grids,
                                                  MutableSpan<bool> r_is_output_written_to_dst);
 void evaluate_procedure_on_constant_volume_fields(ResourceScope &scope,
                                                   const multi_function::Procedure &procedure,
-                                                  Span<volume::GGrid> field_context_inputs,
+                                                  Span<GVGrid> field_context_inputs,
                                                   Span<GFieldRef> fields_to_evaluate,
                                                   Span<int> field_indices,
-                                                  MutableSpan<volume::GGrid> r_grids);
+                                                  MutableSpan<GVGrid> r_grids);
 
 }  // namespace blender::fn

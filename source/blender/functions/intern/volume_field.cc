@@ -8,6 +8,7 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_resource_scope.hh"
 #include "BLI_virtual_array.hh"
+#include "BLI_virtual_grid.hh"
 #include "BLI_volume_openvdb.hh"
 
 #include "FN_field.hh"
@@ -190,8 +191,8 @@ struct VGridReader_For_Accessor : public VGridReader<GridType> {
 };
 
 template<typename GridType, typename MaskGridType> struct EvalPerLeafOp {
-  using GGrid = volume::GGrid;
-  using GMutableGrid = volume::GMutableGrid;
+  using GGrid = GVGrid;
+  using GMutableGrid = GVMutableGrid;
   using TreeType = typename GridType::TreeType;
   using ValueType = typename GridType::ValueType;
 
@@ -282,36 +283,33 @@ template<typename GridType, typename MaskGridType> struct EvalPerLeafOp {
 };
 
 void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
-                                                 const volume::GGrid &mask,
+                                                 const GVGrid &mask,
                                                  const mf::Procedure &procedure,
-                                                 Span<volume::GGrid> field_context_inputs,
+                                                 Span<GVGrid> field_context_inputs,
                                                  Span<GFieldRef> fields_to_evaluate,
                                                  Span<int> field_indices,
-                                                 Span<volume::GMutableGrid *> dst_grids,
-                                                 MutableSpan<volume::GGrid> r_grids,
+                                                 Span<GVMutableGrid> dst_grids,
+                                                 MutableSpan<GVGrid> r_grids,
                                                  MutableSpan<bool> r_is_output_written_to_dst)
 {
   /* Execute a multifunction procedure on each leaf buffer of the mask.
    * Each leaf buffer is a contiguous array that can be used as a span.
    * The leaf buffers' active voxel masks are used as index masks. */
 
-  using volume::GGrid;
-  using volume::GMutableGrid;
-
-  if (mask.is_empty()) {
+  if (mask) {
     return;
   }
 
   /* Destination arrays are optional. Create a small utility method to access them. */
-  auto get_dst_grid = [&](int index) -> GMutableGrid * {
+  auto get_dst_grid = [&](int index) -> GVMutableGrid {
     if (dst_grids.is_empty()) {
       return {};
     }
-    GMutableGrid *grid_ptr = dst_grids[index];
-    if (!grid_ptr) {
+    GVMutableGrid grid = dst_grids[index];
+    if (!grid) {
       return nullptr;
     }
-    return grid_ptr;
+    return grid;
   };
 
   mf::ProcedureExecutor procedure_executor{procedure};
@@ -321,14 +319,14 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
     const CPPType &type = field.cpp_type();
     const int out_index = field_indices[i];
 
-    /* Try to get an existing virtual array that the result should be written into. */
-    GMutableGrid *dst_grid_ptr = get_dst_grid(out_index);
+    /* Try to get an existing virtual grid that the result should be written into. */
+    GVMutableGrid dst_grid = get_dst_grid(out_index);
     {
-      GMutableGrid grid_base = GMutableGrid::create(
-          type, mask, type.default_value(), type.default_value());
+      GVMutableGrid grid_base = GVMutableGrid::ForGrid(*buffer);
       if (!dst_grid_ptr) {
         /* Create a destination grid pointer in the resource scope. */
-        GMutableGrid &dst_grid = scope.add_value<GMutableGrid>(std::move(grid_base));
+        openvdb::GridBase *buffer = volume::make_grid_for_attribute_type(type);
+        GVMutableGrid &dst_grid = scope.add_value<GVMutableGrid>(std::move(grid_base));
         dst_grid_ptr = &dst_grid;
       }
       else {
@@ -371,14 +369,11 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
 
 void evaluate_procedure_on_constant_volume_fields(ResourceScope & /*scope*/,
                                                   const mf::Procedure &procedure,
-                                                  Span<volume::GGrid> field_context_inputs,
+                                                  Span<GVGrid> field_context_inputs,
                                                   Span<GFieldRef> fields_to_evaluate,
                                                   Span<int> field_indices,
-                                                  MutableSpan<volume::GGrid> r_grids)
+                                                  MutableSpan<GVGrid> r_grids)
 {
-  using volume::GGrid;
-  using volume::GMutableGrid;
-
   mf::ProcedureExecutor procedure_executor{procedure};
   const IndexMask mask(1);
   mf::ParamsBuilder mf_params{procedure_executor, &mask};
@@ -429,7 +424,7 @@ void evaluate_procedure_on_constant_volume_fields(ResourceScope & /*scope*/,
       using Converter = volume::grid_types::Converter<GridType>;
 
       const T &value = *static_cast<T *>(output_buffers[i]);
-      r_grids[out_index] = GGrid{GridType::create(Converter::single_value_to_grid(value))};
+      r_grids[out_index] = GVGrid{GridType::create(Converter::single_value_to_grid(value))};
     });
 
     /* Destruct output value buffers, value is stored in grid backgrounds now. */

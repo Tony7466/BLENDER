@@ -378,7 +378,7 @@ static AttributeAccessorFunctions get_volume_accessor_functions()
     return grids.domain_size(domain);
   };
   fn.domain_grid_mask =
-      [](const void *owner, const eAttrDomain /*domain*/, const int main_grid) -> volume::GGrid {
+      [](const void *owner, const eAttrDomain /*domain*/, const int main_grid) -> volume::GVGrid {
     if (owner == nullptr || main_grid < 0) {
       return {nullptr};
     }

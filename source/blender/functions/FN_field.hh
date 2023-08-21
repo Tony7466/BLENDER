@@ -36,6 +36,7 @@
 
 #include "BLI_function_ref.hh"
 #include "BLI_generic_virtual_array.hh"
+#include "BLI_generic_virtual_grid.hh"
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
@@ -178,8 +179,7 @@ class GFieldRef : public GFieldBase<const FieldNode *> {
 
 namespace detail {
 /* Utility class to make #is_field_v work. */
-struct TypedFieldBase {
-};
+struct TypedFieldBase {};
 }  // namespace detail
 
 /**
@@ -260,7 +260,7 @@ class FieldContext;
  */
 class FieldInput : public FieldNode {
  public:
-  using GGrid = volume::GGrid;
+  using GGrid = GVGrid;
 
   /* The order is also used for sorting in socket inspection. */
   enum class Category {
@@ -334,7 +334,7 @@ struct FieldInputs {
  */
 class FieldContext {
  public:
-  using GGrid = volume::GGrid;
+  using GGrid = GVGrid;
 
   virtual ~FieldContext() = default;
 
@@ -489,8 +489,8 @@ class FieldEvaluator : NonMovable, NonCopyable {
  */
 class VolumeFieldEvaluator : NonMovable, NonCopyable {
  public:
-  using GGrid = volume::GGrid;
-  using GMutableGrid = volume::GMutableGrid;
+  using GGrid = GVGrid;
+  using GMutableGrid = GVMutableGrid;
 
  private:
   static const GGrid empty_grid_;
@@ -551,7 +551,7 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
   int add_with_destination(GField field, GMutableGrid &dst);
 
   /** Same as #add_with_destination but typed. */
-  template<typename T> int add_with_destination(Field<T> field, volume::MutableGrid<T> &dst)
+  template<typename T> int add_with_destination(Field<T> field, VMutableGrid<T> &dst)
   {
     return this->add_with_destination(GField(std::move(field)), std::move(dst));
   }
@@ -564,13 +564,13 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
    *   assigned to the given position.
    * \return Index of the field in the evaluator which can be used in the #get_evaluated methods.
    */
-  template<typename T> int add(Field<T> field, volume::Grid<T> *grid_ptr)
+  template<typename T> int add(Field<T> field, VGrid<T> *grid_ptr)
   {
     const int field_index = fields_to_evaluate_.append_and_get_index(std::move(field));
     dst_grids_.append({});
     output_pointer_infos_.append(
         OutputPointerInfo{grid_ptr, [](void *dst, const GGrid &grid, ResourceScope & /*scope*/) {
-                            *(volume::Grid<T> *)dst = grid.typed<T>();
+                            *(VGrid<T> *)dst = grid.typed<T>();
                           }});
     return field_index;
   }
@@ -648,11 +648,11 @@ Vector<GVArray> evaluate_fields(ResourceScope &scope,
  * \return The computed virtual arrays for each provided field. If #dst_varrays is passed,
  *   the provided virtual arrays are returned.
  */
-Vector<volume::GGrid> evaluate_volume_fields(ResourceScope &scope,
-                                             Span<GFieldRef> fields_to_evaluate,
-                                             const volume::GGrid &mask,
-                                             const FieldContext &context,
-                                             Span<volume::GMutableGrid *> dst_grids = {});
+Vector<GVGrid> evaluate_volume_fields(ResourceScope &scope,
+                                      Span<GFieldRef> fields_to_evaluate,
+                                      const GVGrid &mask,
+                                      const FieldContext &context,
+                                      Span<GVMutableGrid> dst_grids = {});
 
 /* -------------------------------------------------------------------- */
 /** \name Utility functions for simple field creation and evaluation
@@ -697,9 +697,9 @@ class IndexFieldInput final : public FieldInput {
   GVArray get_varray_for_context(const FieldContext &context,
                                  const IndexMask &mask,
                                  ResourceScope &scope) const final;
-  volume::GGrid get_volume_grid_for_context(const FieldContext & /*context*/,
-                                            const volume::GGrid & /*mask*/,
-                                            ResourceScope & /*scope*/) const final
+  GVGrid get_volume_grid_for_context(const FieldContext & /*context*/,
+                                     const GVGrid & /*mask*/,
+                                     ResourceScope & /*scope*/) const final
   {
     return {};
   }

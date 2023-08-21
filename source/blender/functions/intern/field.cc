@@ -24,9 +24,6 @@
 
 namespace blender::fn {
 
-using GGrid = volume::GGrid;
-using GMutableGrid = volume::GMutableGrid;
-
 /* -------------------------------------------------------------------- */
 /** \name Field Evaluation
  * \{ */
@@ -113,21 +110,22 @@ static Vector<GVArray> get_field_context_inputs(
 /**
  * Retrieves the data from the context that is passed as input into the field.
  */
-static Vector<GGrid> get_volume_field_context_inputs(
+static Vector<GVGrid> get_volume_field_context_inputs(
     ResourceScope &scope,
-    const GGrid &mask,
+    const GVGrid &mask,
     const FieldContext &context,
     const Span<std::reference_wrapper<const FieldInput>> field_inputs)
 {
-  Vector<GGrid> field_context_inputs;
+  Vector<GVGrid> field_context_inputs;
   for (const FieldInput &field_input : field_inputs) {
-    GGrid grid = context.get_volume_grid_for_input(field_input, mask, scope);
+    GVGrid grid = context.get_volume_grid_for_input(field_input, mask, scope);
     if (!grid) {
       const CPPType &type = field_input.cpp_type();
       const void *default_value = type.default_value();
-      grid = GMutableGrid::create(type, default_value);
       /* Move ownership to the resource scope. */
-      grid = {scope.add_value<GGrid::GridPtr>(std::move(grid.grid_))};
+      openvdb::GridBase::Ptr buffer{volume::make_grid_for_attribute_type(type)};
+      buffer = scope.add_value<openvdb::GridBase::Ptr>(std::move(buffer));
+      grid = GVMutableGrid::ForGrid(*buffer);
     }
     field_context_inputs.append(grid);
   }
@@ -178,7 +176,7 @@ static Set<GFieldRef> find_varying_fields(const FieldTreeInfo &field_tree_info,
  * for different indices.
  */
 static Set<GFieldRef> find_varying_fields(const FieldTreeInfo &field_tree_info,
-                                          Span<GGrid> field_context_inputs)
+                                          Span<GVGrid> field_context_inputs)
 {
   Set<GFieldRef> found_fields;
   Stack<GFieldRef> fields_to_check;
@@ -187,8 +185,8 @@ static Set<GFieldRef> find_varying_fields(const FieldTreeInfo &field_tree_info,
    * start the tree search at the non-constant input fields and traverse through all fields that
    * depend on them. */
   for (const int i : field_context_inputs.index_range()) {
-    const GGrid &grid = field_context_inputs[i];
-    if (grid.is_empty()) {
+    const GVGrid &grid = field_context_inputs[i];
+    if (!grid) {
       continue;
     }
     const FieldInput &field_input = field_tree_info.deduplicated_field_inputs[i];
@@ -261,8 +259,8 @@ static void build_multi_function_procedure_for_fields(mf::Procedure &procedure,
           const Span<GField> operation_inputs = operation_node.inputs();
 
           if (field_with_index.current_input_index < operation_inputs.size()) {
-            /* Not all inputs are handled yet. Push the next input field to the stack and increment
-             * the input index. */
+            /* Not all inputs are handled yet. Push the next input field to the stack and
+             * increment the input index. */
             fields_to_check.push({operation_inputs[field_with_index.current_input_index]});
             field_with_index.current_input_index++;
           }
@@ -567,30 +565,21 @@ Vector<GVArray> evaluate_fields(ResourceScope &scope,
   return r_varrays;
 }
 
-Vector<GGrid> evaluate_volume_fields(ResourceScope &scope,
-                                     Span<GFieldRef> fields_to_evaluate,
-                                     const GGrid &mask,
-                                     const FieldContext &context,
-                                     Span<GMutableGrid *> dst_grids)
+Vector<GVGrid> evaluate_volume_fields(ResourceScope &scope,
+                                      Span<GFieldRef> fields_to_evaluate,
+                                      const GVGrid &mask,
+                                      const FieldContext &context,
+                                      Span<GVMutableGrid> dst_grids)
 {
-  Vector<GGrid> r_grids(fields_to_evaluate.size());
+  Vector<GVGrid> r_grids(fields_to_evaluate.size());
   Array<bool> is_output_written_to_dst(fields_to_evaluate.size(), false);
 
-  if (mask.is_empty()) {
-    for (const int i : fields_to_evaluate.index_range()) {
-      const CPPType &type = fields_to_evaluate[i].cpp_type();
-      r_grids[i] = GMutableGrid::create(type);
-      scope.add_value<GGrid::GridPtr>(std::move(r_grids[i].grid_));
-    }
-    return r_grids;
-  }
-
   /* Destination grids are optional. Create a small utility method to access them. */
-  auto get_dst_grid = [&](int index) -> GMutableGrid * {
+  auto get_dst_grid = [&](int index) -> GVMutableGrid {
     if (dst_grids.is_empty()) {
       return {};
     }
-    GMutableGrid *grid_ptr = dst_grids[index];
+    GVMutableGrid grid_ptr = dst_grids[index];
     if (!grid_ptr) {
       return nullptr;
     }
@@ -601,7 +590,7 @@ Vector<GGrid> evaluate_volume_fields(ResourceScope &scope,
   FieldTreeInfo field_tree_info = preprocess_field_tree(fields_to_evaluate);
 
   /* Get inputs that will be passed into the field when evaluated. */
-  Vector<GGrid> field_context_inputs = get_volume_field_context_inputs(
+  Vector<GVGrid> field_context_inputs = get_volume_field_context_inputs(
       scope, mask, context, field_tree_info.deduplicated_field_inputs);
 
   /* Finish fields that don't need any processing directly. */
@@ -613,7 +602,7 @@ Vector<GGrid> evaluate_volume_fields(ResourceScope &scope,
         const FieldInput &field_input = static_cast<const FieldInput &>(field.node());
         const int field_input_index = field_tree_info.deduplicated_field_inputs.index_of(
             field_input);
-        const GGrid &grid = field_context_inputs[field_input_index];
+        const GVGrid &grid = field_context_inputs[field_input_index];
         /* Input grid needs to exist, otherwise evaluator will try
          * computing the input and write into the same field. */
         BLI_assert(grid);
@@ -622,9 +611,8 @@ Vector<GGrid> evaluate_volume_fields(ResourceScope &scope,
       }
       case FieldNodeType::Constant: {
         const FieldConstant &field_constant = static_cast<const FieldConstant &>(field.node());
-        GMutableGrid grid_constant = GMutableGrid::create(field_constant.type(),
-                                                          field_constant.value().get());
-        r_grids[out_index] = scope.add_value<GMutableGrid>(std::move(grid_constant));
+        r_grids[out_index] = GVGrid::ForSingleRef(field_constant.type(),
+                                                  field_constant.value().get());
         break;
       }
       case FieldNodeType::Operation: {
@@ -694,20 +682,26 @@ Vector<GGrid> evaluate_volume_fields(ResourceScope &scope,
    * has written the computed data in the right place already. */
   if (!dst_grids.is_empty()) {
     for (const int out_index : fields_to_evaluate.index_range()) {
-      GMutableGrid *dst_grid_ptr = get_dst_grid(out_index);
-      if (!dst_grid_ptr) {
+      GVMutableGrid dst_grid = get_dst_grid(out_index);
+      if (!dst_grid) {
         /* Caller did not provide a destination for this output. */
         continue;
       }
-      const GGrid &computed_grid = r_grids[out_index];
+      const GVGrid &computed_grid = r_grids[out_index];
       // BLI_assert(computed_varray.type() == dst_grid.type());
       if (is_output_written_to_dst[out_index]) {
         /* The result has been written into the destination provided by the caller already. */
         continue;
       }
       /* Still have to copy over the data in the destination provided by the caller. */
-      *dst_grid_ptr = {computed_grid.grid_->deepCopyGrid()};
-      r_grids[out_index] = *dst_grid_ptr;
+      if (dst_grid.is_grid()) {
+        volume::grid_to_static_type(*dst_grid.get_internal_grid(), [&](auto &typed_grid) {
+
+        });
+
+        = GVMutableGrid::ForGrid{computed_grid.grid_->deepCopyGrid()};
+      }
+      r_grids[out_index] = *dst_grid;
     }
   }
   return r_grids;
@@ -763,9 +757,9 @@ GVArray FieldContext::get_varray_for_input(const FieldInput &field_input,
   return field_input.get_varray_for_context(*this, mask, scope);
 }
 
-GGrid FieldContext::get_volume_grid_for_input(const FieldInput &field_input,
-                                              const GGrid &mask,
-                                              ResourceScope &scope) const
+GVGrid FieldContext::get_volume_grid_for_input(const FieldInput &field_input,
+                                               const GGrid &mask,
+                                               ResourceScope &scope) const
 {
   /* By default ask the field input to create the varray. Another field context might overwrite
    * the context here. */
@@ -1058,10 +1052,10 @@ IndexMask FieldEvaluator::get_evaluated_selection_as_mask()
 /** \name #VolumeFieldEvaluator
  * \{ */
 
-const volume::GGrid VolumeFieldEvaluator::empty_grid_ = {};
+const volume::GVGrid VolumeFieldEvaluator::empty_grid_ = {};
 
 struct BoolGridToMask {
-  volume::Grid<bool>::GridType::ConstAccessor accessor;
+  volume::VGrid<bool>::GridType::ConstAccessor accessor;
 
   inline void operator()(const openvdb::BoolGrid::ValueOnIter &iter) const
   {
@@ -1073,16 +1067,16 @@ struct BoolGridToMask {
   }
 };
 
-static volume::GMutableGrid grid_mask_from_selection(const volume::GGrid &full_mask,
-                                                     const volume::Grid<bool> &selection,
-                                                     ResourceScope & /*scope*/)
+static volume::GVMutableGrid grid_mask_from_selection(const volume::GVGrid &full_mask,
+                                                      const volume::VGrid<bool> &selection,
+                                                      ResourceScope & /*scope*/)
 {
   if (!full_mask) {
     return {};
   }
 
   /* Empty bool grid with same transform and metadata as the full mask */
-  volume::MutableGrid<bool> result = {openvdb::BoolGrid::create(*full_mask.grid_)};
+  volume::VMutableGrid<bool> result = {openvdb::BoolGrid::create(*full_mask.grid_)};
   volume::grid_to_static_type(full_mask.grid_, [&](auto &typed_full_mask) {
     result.grid_->topologyUnion(typed_full_mask);
   });
@@ -1120,13 +1114,13 @@ int VolumeFieldEvaluator::add(GField field)
   return field_index;
 }
 
-static volume::GGrid evaluate_selection(const Field<bool> &selection_field,
-                                        const FieldContext &context,
-                                        const volume::GGrid &domain_mask,
-                                        ResourceScope &scope)
+static volume::GVGrid evaluate_selection(const Field<bool> &selection_field,
+                                         const FieldContext &context,
+                                         const volume::GVGrid &domain_mask,
+                                         ResourceScope &scope)
 {
   if (selection_field) {
-    volume::Grid<bool> selection =
+    volume::VGrid<bool> selection =
         evaluate_volume_fields(scope, {selection_field}, domain_mask, context)[0].typed<bool>();
     return grid_mask_from_selection(domain_mask, selection, scope);
   }
@@ -1154,13 +1148,13 @@ void VolumeFieldEvaluator::evaluate()
   is_evaluated_ = true;
 }
 
-volume::GGrid VolumeFieldEvaluator::get_evaluated_as_mask(const int field_index)
+volume::GVGrid VolumeFieldEvaluator::get_evaluated_as_mask(const int field_index)
 {
-  volume::Grid<bool> grid = this->get_evaluated(field_index).typed<bool>();
+  volume::VGrid<bool> grid = this->get_evaluated(field_index).typed<bool>();
   return grid_mask_from_selection(domain_mask_, grid, scope_);
 }
 
-volume::GGrid VolumeFieldEvaluator::get_evaluated_selection_as_mask()
+volume::GVGrid VolumeFieldEvaluator::get_evaluated_selection_as_mask()
 {
   BLI_assert(is_evaluated_);
   return selection_mask_;

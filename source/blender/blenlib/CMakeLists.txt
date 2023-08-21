@@ -75,6 +75,7 @@ set(SRC
   intern/fnmatch.c
   intern/generic_vector_array.cc
   intern/generic_virtual_array.cc
+  intern/generic_virtual_grid.cc
   intern/generic_virtual_vector_array.cc
   intern/gsqueue.c
   intern/hash_md5.c
@@ -241,6 +242,7 @@ set(SRC
   BLI_generic_value_map.hh
   BLI_generic_vector_array.hh
   BLI_generic_virtual_array.hh
+  BLI_generic_virtual_grid.hh
   BLI_generic_virtual_vector_array.hh
   BLI_ghash.h
   BLI_gsqueue.h

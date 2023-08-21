@@ -183,9 +183,9 @@ static AttributeAccessorFunctions get_pointcloud_accessor_functions()
         return 0;
     }
   };
-  fn.domain_grid_mask = [](const void */*owner*/,
+  fn.domain_grid_mask = [](const void * /*owner*/,
                            const eAttrDomain /*domain*/,
-                           const int /*main_grid*/) -> volume::GGrid { return {}; };
+                           const int /*main_grid*/) -> volume::GVGrid { return {}; };
   fn.domain_supported = [](const void * /*owner*/, const eAttrDomain domain) {
     return domain == ATTR_DOMAIN_POINT;
   };

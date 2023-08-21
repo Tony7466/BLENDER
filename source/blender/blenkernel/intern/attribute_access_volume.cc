@@ -104,7 +104,7 @@ template<typename ToTreeType> struct ConvertGridOp<ToTreeType, openvdb::MaskTree
 };
 
 static openvdb::GridBase::Ptr add_generic_grid_copy(const CPPType &value_type,
-                                                    const volume::GGrid &data)
+                                                    const volume::GVGrid &data)
 {
   /* Template build sanitization: nested static type dispatch creates a lot of code, which can
    * easily make builds run out of memory. Capturing a functor allows doing the 2nd type dispatch
@@ -148,13 +148,13 @@ static openvdb::GridBase::Ptr add_generic_grid_copy(const CPPType &value_type,
 }
 
 static openvdb::GridBase::Ptr add_generic_grid_move(const CPPType & /*value_type*/,
-                                                    const volume::GMutableGrid &data)
+                                                    const volume::GVMutableGrid &data)
 {
   return data.grid_;
 }
 
 static openvdb::GridBase::Ptr add_generic_grid_shared(const CPPType &value_type,
-                                                      const volume::GMutableGrid &data,
+                                                      const volume::GVMutableGrid &data,
                                                       const ImplicitSharingInfo *sharing_info)
 {
   /* XXX May eventually use this, for now just rely on shared_ptr. */
@@ -202,7 +202,7 @@ static bool add_grid_from_attribute_init(const AttributeIDRef &attribute_id,
     case AttributeInit::Type::Shared:
       break;
     case AttributeInit::Type::Grid: {
-      const volume::GGrid &data =
+      const volume::GVGrid &data =
           static_cast<const blender::bke::AttributeInitGrid &>(initializer).grid;
       result = add_generic_grid_copy(value_type, data);
 #ifdef DEBUG_GRID_ATTRIBUTES
@@ -214,7 +214,7 @@ static bool add_grid_from_attribute_init(const AttributeIDRef &attribute_id,
       break;
     }
     case AttributeInit::Type::MoveGrid: {
-      const volume::GMutableGrid &data =
+      const volume::GVMutableGrid &data =
           static_cast<const blender::bke::AttributeInitMoveGrid &>(initializer).grid;
       result = add_generic_grid_move(value_type, data);
 #ifdef DEBUG_GRID_ATTRIBUTES
@@ -294,7 +294,7 @@ bool VolumeCustomAttributeGridProvider::foreach_attribute(
 
   for (const VolumeGrid &grid : grids) {
     const AttributeIDRef attribute_id{grid.name()};
-    const CPPType *type = volume::GGrid{grid.grid()}.value_type();
+    const CPPType *type = volume::GVGrid{grid.grid()}.value_type();
     if (type == nullptr) {
       continue;
     }

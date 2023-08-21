@@ -390,7 +390,7 @@ struct OutputAttributeToStore {
   eAttrDomain domain;
   StringRefNull name;
   GMutableSpan data;
-  volume::GMutableGrid *grid_data;
+  volume::GVMutableGrid *grid_data;
 };
 
 /**
@@ -469,7 +469,7 @@ static Vector<OutputAttributeToStore> compute_attributes_to_store(
         continue;
       }
       const int domain_size = attributes.domain_size(domain);
-      const volume::GGrid domain_mask = attributes.domain_grid_mask(domain, main_grid);
+      const volume::GVGrid domain_mask = attributes.domain_grid_mask(domain, main_grid);
       bke::GeometryFieldContext field_context{component, domain};
       fn::FieldEvaluator field_evaluator{field_context, domain_size};
       fn::VolumeFieldEvaluator volume_field_evaluator{field_context, domain_mask};
@@ -485,7 +485,7 @@ static Vector<OutputAttributeToStore> compute_attributes_to_store(
             field_evaluator.add_with_destination(std::move(field), store.data);
             break;
           case bke::GeometryComponent::AttributeType::Grid:
-            store.grid_data = MEM_new<volume::GMutableGrid>(__func__);
+            store.grid_data = MEM_new<volume::GVMutableGrid>(__func__);
             volume_field_evaluator.add_with_destination(std::move(field), *store.grid_data);
             break;
         }

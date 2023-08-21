@@ -455,8 +455,8 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
     return GVArray::ForGArray(std::move(buffer_b));
   }
 
-  volume::GGrid get_volume_grid_for_context(const bke::GeometryFieldContext & /*context*/,
-                                            const volume::GGrid & /*mask*/) const final
+  volume::GVGrid get_volume_grid_for_context(const bke::GeometryFieldContext & /*context*/,
+                                             const volume::GVGrid & /*mask*/) const final
   {
     /* TODO */
     return {};

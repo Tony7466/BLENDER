@@ -405,11 +405,6 @@ if(WITH_OPENVDB)
     ${OPENVDB_INCLUDE_DIRS}
   )
   add_definitions(-DWITH_OPENVDB ${OPENVDB_DEFINITIONS})
-endif()
-
-if(WITH_OPENVDB)
-  add_definitions(-DWITH_OPENVDB)
-
   if(WITH_OPENVDB_BLOSC)
     add_definitions(-DWITH_OPENVDB_BLOSC)
   endif()

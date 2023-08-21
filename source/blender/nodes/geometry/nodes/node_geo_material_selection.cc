@@ -84,8 +84,8 @@ class MaterialSelectionFieldInput final : public bke::GeometryFieldInput {
     return mesh->attributes().adapt_domain<bool>(std::move(selection), ATTR_DOMAIN_FACE, domain);
   }
 
-  volume::GGrid get_volume_grid_for_context(const bke::GeometryFieldContext & /*context*/,
-                                            const volume::GGrid & /*mask*/) const final
+  volume::GVGrid get_volume_grid_for_context(const bke::GeometryFieldContext & /*context*/,
+                                             const volume::GVGrid & /*mask*/) const final
   {
     return {};
   }

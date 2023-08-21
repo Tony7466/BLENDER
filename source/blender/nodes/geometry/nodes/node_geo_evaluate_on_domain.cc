@@ -120,8 +120,8 @@ class EvaluateOnDomainInput final : public bke::GeometryFieldInput {
         GVArray::ForGArray(std::move(values)), src_domain_, context.domain());
   }
 
-  volume::GGrid get_volume_grid_for_context(const bke::GeometryFieldContext & /*context*/,
-                                            const volume::GGrid & /*mask*/) const final
+  volume::GVGrid get_volume_grid_for_context(const bke::GeometryFieldContext & /*context*/,
+                                             const volume::GVGrid & /*mask*/) const final
   {
     return {};
   }
