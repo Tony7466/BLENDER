@@ -57,9 +57,7 @@ static StructRNA *rna_NodeTreeInterfaceItem_refine(PointerRNA *ptr)
       if (socket_typeinfo && socket_typeinfo->ext_interface.srna) {
         return socket_typeinfo->ext_interface.srna;
       }
-      else {
-        return &RNA_NodeTreeInterfaceSocket;
-      }
+      return &RNA_NodeTreeInterfaceSocket;
     }
     case NODE_INTERFACE_PANEL:
       return &RNA_NodeTreeInterfacePanel;
