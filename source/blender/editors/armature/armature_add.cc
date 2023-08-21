@@ -17,7 +17,9 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string_utils.h"
 
 #include "BKE_action.h"
@@ -32,16 +34,16 @@
 #include "BKE_library.h"
 #include "BKE_main.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_armature.h"
-#include "ED_outliner.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_armature.hh"
+#include "ED_outliner.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
 #include "ANIM_bone_collections.h"
 
@@ -1177,7 +1179,7 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
       EditBone *ebone = ED_armature_ebone_find_name(arm->edbo, name_flip);
 
       if (!ebone) {
-        /* The ebone_iter is unique and mirrorable. */
+        /* The ebone_iter is unique and mirror-able. */
         continue;
       }
 

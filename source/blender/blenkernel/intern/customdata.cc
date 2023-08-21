@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,7 +23,6 @@
 #include "BLI_color.hh"
 #include "BLI_endian_switch.h"
 #include "BLI_index_range.hh"
-#include "BLI_math.h"
 #include "BLI_math_color_blend.h"
 #include "BLI_math_quaternion_types.hh"
 #include "BLI_math_vector.hh"
@@ -2589,8 +2588,8 @@ int CustomData_get_layer_index_n(const CustomData *data, const eCustomDataType t
   int i = CustomData_get_layer_index(data, type);
 
   if (i != -1) {
-    BLI_assert(i + n < data->totlayer);
-    i = (data->layers[i + n].type == type) ? (i + n) : (-1);
+    /* If the value of n goes past the block of layers of the correct type, return -1. */
+    i = (i + n < data->totlayer && data->layers[i + n].type == type) ? (i + n) : (-1);
   }
 
   return i;

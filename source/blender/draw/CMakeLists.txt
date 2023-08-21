@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2016 Blender Foundation
+# SPDX-FileCopyrightText: 2016 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -29,7 +29,9 @@ set(INC
 
   ../../../intern/clog
   ../../../intern/opensubdiv
+)
 
+set(INC_SYS
 )
 
 set(SRC
@@ -635,6 +637,7 @@ set(GLSL_SRC
   intern/shaders/common_fullscreen_vert.glsl
   intern/shaders/common_fxaa_lib.glsl
   intern/shaders/common_gpencil_lib.glsl
+  intern/shaders/common_grease_pencil_lib.glsl
   intern/shaders/common_hair_lib.glsl
   intern/shaders/common_hair_refine_comp.glsl
   intern/shaders/common_hair_refine_vert.glsl
@@ -832,7 +835,7 @@ set(GLSL_SRC
 set(GLSL_C)
 
 foreach(GLSL_FILE ${GLSL_SRC})
-  data_to_c_simple(${GLSL_FILE} GLSL_C)
+  data_to_c_simple(${GLSL_FILE} GLSL_C STRIP_LEADING_C_COMMENTS)
 endforeach()
 
 blender_add_lib(bf_draw_shaders "${GLSL_C}" "" "" "")
@@ -896,6 +899,9 @@ if(WITH_GTESTS)
     endif()
     if(WITH_METAL_BACKEND)
       add_definitions(-DWITH_METAL_BACKEND)
+    endif()
+    if(WITH_VULKAN_BACKEND)
+      add_definitions(-DWITH_VULKAN_BACKEND)
     endif()
   endif()
 endif()

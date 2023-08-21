@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2010-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2010-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,8 +17,9 @@
 #include "BKE_armature.h"
 #include "BKE_object.h"
 #include "BLI_listbase.h"
+#include "BLI_math_matrix.h"
 #include "BLI_string.h"
-#include "ED_armature.h"
+#include "ED_armature.hh"
 
 #include "ANIM_bone_collections.h"
 

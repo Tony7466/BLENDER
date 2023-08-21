@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -257,6 +257,13 @@ void Instance::object_sync_render(void *instance_,
 {
   UNUSED_VARS(engine, depsgraph);
   Instance &inst = *reinterpret_cast<Instance *>(instance_);
+
+  if (inst.visibility_collection != nullptr) {
+    bool object_part_of_group = BKE_collection_has_object(inst.visibility_collection, ob);
+    if (object_part_of_group == inst.visibility_collection_invert) {
+      return;
+    }
+  }
   inst.object_sync(ob);
 }
 
@@ -559,7 +566,11 @@ void Instance::light_bake_irradiance(
   irradiance_cache.bake.init(probe);
 
   custom_pipeline_wrapper([&]() {
-    /* TODO: lightprobe visibility group option. */
+    const ::LightProbe *light_probe = static_cast<const ::LightProbe *>(probe.data);
+
+    visibility_collection = light_probe->visibility_grp;
+    visibility_collection_invert = (light_probe->flag & LIGHTPROBE_FLAG_INVERT_GROUP) != 0;
+
     manager->begin_sync();
     render_sync();
     manager->end_sync();
@@ -576,6 +587,7 @@ void Instance::light_bake_irradiance(
   sampling.init(probe);
   while (!sampling.finished()) {
     context_wrapper([&]() {
+      GPU_debug_capture_begin();
       /* Batch ray cast by pack of 16. Avoids too much overhead of the update function & context
        * switch. */
       /* TODO(fclem): Could make the number of iteration depend on the computation time. */
@@ -603,6 +615,7 @@ void Instance::light_bake_irradiance(
 
       float progress = sampling.sample_index() / float(sampling.sample_count());
       result_update(cache_frame, progress);
+      GPU_debug_capture_end();
     });
 
     if (stop()) {

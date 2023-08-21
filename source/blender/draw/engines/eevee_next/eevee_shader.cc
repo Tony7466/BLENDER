@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -579,7 +579,7 @@ GPUMaterial *ShaderModule::material_shader_get(::Material *blender_mat,
 }
 
 GPUMaterial *ShaderModule::world_shader_get(::World *blender_world,
-                                            struct bNodeTree *nodetree,
+                                            bNodeTree *nodetree,
                                             eMaterialPipeline pipeline_type)
 {
   bool is_volume = (pipeline_type == MAT_PIPE_VOLUME);

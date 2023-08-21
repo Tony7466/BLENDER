@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * SPDX-FileCopyrightText: 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -23,7 +24,7 @@ class LightData : public ObjectData {
   pxr::TfToken prim_type_;
 
  public:
-  LightData(HydraSceneDelegate *scene_delegate, Object *object, pxr::SdfPath const &prim_id);
+  LightData(HydraSceneDelegate *scene_delegate, const Object *object, pxr::SdfPath const &prim_id);
 
   void init() override;
   void insert() override;
@@ -33,7 +34,7 @@ class LightData : public ObjectData {
   pxr::VtValue get_data(pxr::TfToken const &key) const override;
 
  protected:
-  pxr::TfToken prim_type(Light *light);
+  pxr::TfToken prim_type(const Light *light);
 };
 
 }  // namespace blender::io::hydra

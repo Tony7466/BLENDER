@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -26,7 +26,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -41,6 +42,7 @@
 #include "BKE_lattice.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
+#include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
 #include "BKE_mball.h"
@@ -52,32 +54,32 @@
 #include "BKE_workspace.h"
 
 #include "ED_asset_shelf.h"
-#include "ED_geometry.h"
-#include "ED_object.h"
-#include "ED_outliner.h"
-#include "ED_render.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_transform.h"
-#include "ED_undo.h"
+#include "ED_geometry.hh"
+#include "ED_object.hh"
+#include "ED_outliner.hh"
+#include "ED_render.hh"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_transform.hh"
+#include "ED_undo.hh"
 #include "ED_viewer_path.hh"
 
 #include "GPU_matrix.h"
 
 #include "DRW_engine.h"
 
-#include "WM_api.h"
-#include "WM_message.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
 #include "WM_toolsystem.h"
-#include "WM_types.h"
+#include "WM_types.hh"
 
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "BLO_read_write.h"
 
@@ -2091,6 +2093,18 @@ static void view3d_id_remap(ScrArea *area, SpaceLink *slink, const IDRemapper *m
   BKE_viewer_path_id_remap(&view3d->viewer_path, mappings);
 }
 
+static void view3d_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
+{
+  View3D *v3d = reinterpret_cast<View3D *>(space_link);
+
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, v3d->camera, IDWALK_CB_NOP);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, v3d->ob_center, IDWALK_CB_NOP);
+  if (v3d->localvd) {
+    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, v3d->localvd->camera, IDWALK_CB_NOP);
+  }
+  BKE_viewer_path_foreach_id(data, &v3d->viewer_path);
+}
+
 static void view3d_space_blend_read_data(BlendDataReader *reader, SpaceLink *sl)
 {
   View3D *v3d = (View3D *)sl;
@@ -2165,6 +2179,7 @@ void ED_spacetype_view3d()
   st->gizmos = view3d_widgets;
   st->context = view3d_context;
   st->id_remap = view3d_id_remap;
+  st->foreach_id = view3d_foreach_id;
   st->blend_read_data = view3d_space_blend_read_data;
   st->blend_read_lib = view3d_space_blend_read_lib;
   st->blend_write = view3d_space_blend_write;

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * SPDX-FileCopyrightText: 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -13,9 +14,9 @@ class VolumeModifierData : public VolumeData {
 
  public:
   VolumeModifierData(HydraSceneDelegate *scene_delegate,
-                     Object *object,
+                     const Object *object,
                      pxr::SdfPath const &prim_id);
-  static bool is_volume_modifier(Object *object);
+  static bool is_volume_modifier(const Object *object);
 
   void init() override;
   void update() override;
@@ -26,7 +27,7 @@ class VolumeModifierData : public VolumeData {
  private:
   std::string get_cached_file_path(std::string directory, int frame);
 
-  FluidModifierData *modifier_;
+  const FluidModifierData *modifier_;
 };
 
 }  // namespace blender::io::hydra

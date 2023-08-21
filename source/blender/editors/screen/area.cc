@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,6 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_linklist_stack.h"
-#include "BLI_math.h"
 #include "BLI_rand.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
@@ -26,21 +25,21 @@
 #include "BKE_screen.h"
 #include "BKE_workspace.h"
 
-#include "RNA_access.h"
-#include "RNA_types.h"
+#include "RNA_access.hh"
+#include "RNA_types.hh"
 
-#include "WM_api.h"
-#include "WM_message.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
 #include "WM_toolsystem.h"
-#include "WM_types.h"
+#include "WM_types.hh"
 
-#include "ED_asset.h"
+#include "ED_asset.hh"
 #include "ED_asset_shelf.h"
-#include "ED_buttons.h"
-#include "ED_screen.h"
-#include "ED_screen_types.h"
-#include "ED_space_api.h"
-#include "ED_time_scrub_ui.h"
+#include "ED_buttons.hh"
+#include "ED_screen.hh"
+#include "ED_screen_types.hh"
+#include "ED_space_api.hh"
+#include "ED_time_scrub_ui.hh"
 
 #include "GPU_framebuffer.h"
 #include "GPU_immediate.h"
@@ -53,10 +52,10 @@
 #include "IMB_imbuf_types.h"
 #include "IMB_metadata.h"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
 #include "screen_intern.h"
 
@@ -1297,15 +1296,27 @@ bool ED_region_is_overlap(int spacetype, int regiontype)
         return true;
       }
     }
-    else if (ELEM(spacetype, SPACE_VIEW3D, SPACE_IMAGE)) {
+    else if (spacetype == SPACE_VIEW3D) {
       if (ELEM(regiontype,
                RGN_TYPE_TOOLS,
                RGN_TYPE_UI,
                RGN_TYPE_TOOL_PROPS,
                RGN_TYPE_FOOTER,
+               RGN_TYPE_HEADER,
                RGN_TYPE_TOOL_HEADER,
                RGN_TYPE_ASSET_SHELF,
                RGN_TYPE_ASSET_SHELF_HEADER))
+      {
+        return true;
+      }
+    }
+    else if (spacetype == SPACE_IMAGE) {
+      if (ELEM(regiontype,
+               RGN_TYPE_TOOLS,
+               RGN_TYPE_UI,
+               RGN_TYPE_TOOL_PROPS,
+               RGN_TYPE_FOOTER,
+               RGN_TYPE_TOOL_HEADER))
       {
         return true;
       }

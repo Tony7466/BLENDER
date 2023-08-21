@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2015 Blender Foundation
+/* SPDX-FileCopyrightText: 2015 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -30,7 +30,7 @@
 #include "GPU_texture.h"
 #include "GPU_viewport.h"
 
-#include "ED_view3d_offscreen.h"
+#include "ED_view3d_offscreen.hh"
 
 #include "../mathutils/mathutils.h"
 

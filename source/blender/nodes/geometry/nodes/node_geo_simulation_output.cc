@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,9 +15,10 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "NOD_common.h"
+#include "NOD_geometry.hh"
 #include "NOD_socket.hh"
 
 #include "FN_field_cpp_type.hh"
@@ -546,6 +547,10 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
   void execute_impl(lf::Params &params, const lf::Context &context) const final
   {
     GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
+    if (!user_data.modifier_data) {
+      params.set_default_remaining_outputs();
+      return;
+    }
     GeoNodesModifierData &modifier_data = *user_data.modifier_data;
     EvalData &eval_data = *static_cast<EvalData *>(context.storage);
     BLI_SCOPED_DEFER([&]() { eval_data.is_first_evaluation = false; });
@@ -573,9 +578,9 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
               modifier_data.prev_simulation_state->get_zone_state(*zone_id) :
               nullptr;
       if (prev_zone_state == nullptr) {
-        /* There is no previous simulation state and we also don't create a new one, so just
-         * output defaults. */
-        params.set_default_remaining_outputs();
+        /* There is no previous simulation state and we also don't create a new one, so just pass
+         * the data through. */
+        this->pass_through(params, user_data);
         return;
       }
       const bke::sim::SimulationZoneState *next_zone_state =
@@ -669,6 +674,24 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
     for (const int i : simulation_items_.index_range()) {
       params.output_set(i);
     }
+  }
+
+  void pass_through(lf::Params &params, GeoNodesLFUserData &user_data) const
+  {
+    Array<void *> input_values(inputs_.size());
+    for (const int i : inputs_.index_range()) {
+      input_values[i] = params.try_get_input_data_ptr_or_request(i);
+    }
+    if (input_values.as_span().contains(nullptr)) {
+      /* Wait for inputs to be computed. */
+      return;
+    }
+    /* Instead of outputting the initial values directly, convert them to a simulation state and
+     * then back. This ensures that some geometry processing happens on the data consistently (e.g.
+     * removing anonymous attributes). */
+    bke::sim::SimulationZoneState state;
+    move_values_to_simulation_state(simulation_items_, input_values, state);
+    this->output_cached_state(params, user_data, state);
   }
 };
 
@@ -837,27 +860,23 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
   return true;
 }
 
-}  // namespace blender::nodes::node_geo_simulation_output_cc
-
-void register_node_type_geo_simulation_output()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_simulation_output_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_SIMULATION_OUTPUT, "Simulation Output", NODE_CLASS_INTERFACE);
-  ntype.initfunc = file_ns::node_init;
-  ntype.declare_dynamic = file_ns::node_declare_dynamic;
-  ntype.gather_add_node_search_ops = file_ns::search_node_add_ops;
+  ntype.initfunc = node_init;
+  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.gather_add_node_search_ops = search_node_add_ops;
   ntype.gather_link_search_ops = nullptr;
-  ntype.insert_link = file_ns::node_insert_link;
-  node_type_storage(&ntype,
-                    "NodeGeometrySimulationOutput",
-                    file_ns::node_free_storage,
-                    file_ns::node_copy_storage);
+  ntype.insert_link = node_insert_link;
+  node_type_storage(&ntype, "NodeGeometrySimulationOutput", node_free_storage, node_copy_storage);
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_simulation_output_cc
 
 blender::Span<NodeSimulationItem> NodeGeometrySimulationOutput::items_span() const
 {

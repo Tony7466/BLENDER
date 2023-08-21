@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -29,11 +29,11 @@
 
 #include "DEG_depsgraph.h"
 
-#include "ED_curve.h"
-#include "ED_undo.h"
+#include "ED_curve.hh"
+#include "ED_undo.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "curve_intern.h"
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -25,7 +25,6 @@
 #include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
 #include "BLI_edgehash.h"
-#include "BLI_math.h"
 #include "BLI_memarena.h"
 #include "BLI_task.h"
 #include "BLI_threads.h"

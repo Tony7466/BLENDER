@@ -125,9 +125,9 @@ struct TransData {
   float smtx[3][3];
   /** Axis orientation matrix of the data. */
   float axismtx[3][3];
-  struct Object *ob;
+  Object *ob;
   /** For objects/bones, the first constraint in its constraint stack. */
-  struct bConstraint *con;
+  bConstraint *con;
   /** For objects, poses. 1 single allocation per #TransInfo! */
   TransDataExtension *ext;
   /** for curves, stores handle flags for modification/cancel. */
@@ -186,6 +186,8 @@ enum {
   TD_PBONE_LOCAL_MTX_P = 1 << 17,
   /** Same as above but for a child bone. */
   TD_PBONE_LOCAL_MTX_C = 1 << 18,
+  /* Grease pencil layer frames. */
+  TD_GREASE_PENCIL_FRAME = 1 << 19,
 };
 
 /* Hard min/max for proportional size. */

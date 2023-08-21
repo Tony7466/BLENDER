@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -28,7 +28,7 @@
 #include "BKE_main.h"
 #include "BKE_node_tree_update.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "NOD_node_declaration.hh"
@@ -36,12 +36,12 @@
 #include "NOD_socket_declarations.hh"
 
 #include "../interface/interface_intern.hh" /* XXX bad level */
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "ED_node.h" /* own include */
+#include "ED_node.hh" /* own include */
 #include "node_intern.hh"
 
-#include "ED_undo.h"
+#include "ED_undo.hh"
 
 using blender::nodes::NodeDeclaration;
 

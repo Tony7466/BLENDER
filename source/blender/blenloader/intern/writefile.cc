@@ -934,6 +934,10 @@ static void write_userdef(BlendWriter *writer, const UserDef *userdef)
     BLO_write_struct(writer, bUserAssetLibrary, asset_library_ref);
   }
 
+  LISTBASE_FOREACH (const bUserExtensionRepo *, repo_ref, &userdef->extension_repos) {
+    BLO_write_struct(writer, bUserExtensionRepo, repo_ref);
+  }
+
   LISTBASE_FOREACH (const uiStyle *, style, &userdef->uistyles) {
     BLO_write_struct(writer, uiStyle, style);
   }
@@ -1219,16 +1223,6 @@ static bool write_file_handle(Main *mainvar,
           /* Forces all linked data to be considered as directly linked.
            * FIXME: Workaround some BAT tool limitations for Heist production, should be removed
            * asap afterward. */
-          id_lib_extern(id_iter);
-        }
-        else if (ID_FAKE_USERS(id_iter) > 0 && id_iter->asset_data == nullptr) {
-          /* Even though fake user is not directly editable by the user on linked data, it is a
-           * common 'work-around' to set it in library files on data-blocks that need to be linked
-           * but typically do not have an actual real user (e.g. texts, etc.).
-           * See e.g. #105687 and #103867.
-           *
-           * Would be good to find a better solution, but for now consider these as directly linked
-           * as well. */
           id_lib_extern(id_iter);
         }
         else {

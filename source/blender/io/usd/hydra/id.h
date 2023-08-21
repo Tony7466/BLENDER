@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * SPDX-FileCopyrightText: 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -31,14 +32,14 @@ class HydraSceneDelegate;
 
 class IdData {
  public:
-  ID *id;
+  const ID *id;
   pxr::SdfPath prim_id;
 
  protected:
   HydraSceneDelegate *scene_delegate_;
 
  public:
-  IdData(HydraSceneDelegate *scene_delegate, ID *id, pxr::SdfPath const &prim_id);
+  IdData(HydraSceneDelegate *scene_delegate, const ID *id, pxr::SdfPath const &prim_id);
   virtual ~IdData() = default;
 
   virtual void init() = 0;

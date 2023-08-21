@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -61,7 +61,7 @@
 
 #  include "ED_datafiles.h"
 
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
 #  ifdef WITH_LIBMV
 #    include "libmv-capi.h"
@@ -75,7 +75,7 @@
 #  include "DEG_depsgraph_build.h"
 #  include "DEG_depsgraph_debug.h"
 
-#  include "WM_types.h"
+#  include "WM_types.hh"
 
 #  include "creator_intern.h" /* own include */
 

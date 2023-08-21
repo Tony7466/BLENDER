@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * SPDX-FileCopyrightText: 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "world.h"
 
@@ -26,7 +27,7 @@
 #include "hydra_scene_delegate.h"
 #include "image.h"
 
-/* TODO : add custom tftoken "transparency"? */
+/* TODO: add custom `tftoken` "transparency"? */
 
 /* NOTE: opacity and blur aren't supported by USD */
 
@@ -49,7 +50,7 @@ void WorldData::init()
   pxr::SdfAssetPath texture_file;
 
   if (scene_delegate_->shading_settings.use_scene_world) {
-    World *world = scene_delegate_->scene->world;
+    const World *world = scene_delegate_->scene->world;
     ID_LOG(1, "%s", world->id.name);
 
     exposure = world->exposure;
@@ -57,7 +58,7 @@ void WorldData::init()
       /* TODO: Create nodes parsing system */
 
       bNode *output_node = ntreeShaderOutputNode(world->nodetree, SHD_OUTPUT_ALL);
-      blender::Span<bNodeSocket *> input_sockets = output_node->input_sockets();
+      const Span<bNodeSocket *> input_sockets = output_node->input_sockets();
       bNodeSocket *input_socket = nullptr;
 
       for (auto socket : input_sockets) {
@@ -119,7 +120,7 @@ void WorldData::init()
     StudioLight *sl = BKE_studiolight_find(
         scene_delegate_->shading_settings.studiolight_name.c_str(),
         STUDIOLIGHT_ORIENTATIONS_MATERIAL_MODE);
-    if (sl != NULL && sl->flag & STUDIOLIGHT_TYPE_WORLD) {
+    if (sl != nullptr && sl->flag & STUDIOLIGHT_TYPE_WORLD) {
       texture_file = pxr::SdfAssetPath(sl->filepath, sl->filepath);
       /* coefficient to follow Cycles result */
       intensity = scene_delegate_->shading_settings.studiolight_intensity / 2;

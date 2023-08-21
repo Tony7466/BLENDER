@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -26,7 +26,7 @@
 #include "DNA_key_types.h"
 #include "DNA_scene_types.h"
 
-#include "ED_object.h"
+#include "ED_object.hh"
 
 static std::string EMPTY_STRING;
 static BCAnimationCurveMap BCEmptyAnimationCurves;
@@ -154,7 +154,6 @@ BCSample &BCAnimationSampler::sample_object(Object *ob, int frame_index, bool fo
 #endif
 
   if (ob->type == OB_ARMATURE) {
-    bPoseChannel *pchan;
     LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
       Bone *bone = pchan->bone;
       Matrix bmat;
@@ -222,7 +221,6 @@ bool BCAnimationSampler::is_animated_by_constraint(Object *ob,
                                                    ListBase *conlist,
                                                    std::set<Object *> &animated_objects)
 {
-  bConstraint *con;
   LISTBASE_FOREACH (bConstraint *, con, conlist) {
     ListBase targets = {nullptr, nullptr};
 
@@ -231,7 +229,6 @@ bool BCAnimationSampler::is_animated_by_constraint(Object *ob,
     }
 
     if (BKE_constraint_targets_get(con, &targets)) {
-      bConstraintTarget *ct;
       Object *obtar;
       bool found = false;
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -27,7 +27,7 @@
 #include "DRW_render.h"
 #include "GPU_shader.h"
 
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
 #include "overlay_private.hh"
 
