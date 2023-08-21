@@ -406,11 +406,10 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
 
     /* calculate custom normals into loop_normals, then mirror first half into second half */
 
-    const blender::bke::AttributeAccessor attributes = result->attributes();
-    const blender::VArray<bool> sharp_edges = *attributes.lookup_or_default<bool>(
-        "sharp_edge", ATTR_DOMAIN_EDGE, false);
-    const blender::VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
-        "sharp_face", ATTR_DOMAIN_FACE, false);
+    const bool *sharp_edges = static_cast<const bool *>(
+        CustomData_get_layer_named(&result->edge_data, CD_PROP_BOOL, "sharp_edge"));
+    const bool *sharp_faces = static_cast<const bool *>(
+        CustomData_get_layer_named(&result->face_data, CD_PROP_BOOL, "sharp_face"));
     blender::bke::mesh::normals_calc_loop(result->vert_positions(),
                                           result_edges,
                                           result_faces,

@@ -625,12 +625,14 @@ void GeometryExporter::create_normals(std::vector<Normal> &normals,
   const VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
       "sharp_face", ATTR_DOMAIN_FACE, false);
 
-  const blender::Span<blender::float3> corner_normals = me->corner_normals();
-  bool use_custom_normals = true;
+  blender::Span<blender::float3> corner_normals;
+  if (me->normal_domain_all_info() == ATTR_DOMAIN_CORNER) {
+    corner_normals = me->corner_normals();
+  }
 
   for (const int face_index : faces.index_range()) {
     const IndexRange face = faces[face_index];
-    bool use_vert_normals = use_custom_normals || !sharp_faces[face_index];
+    bool use_vert_normals = !corner_normals.is_empty() || !sharp_faces[face_index];
 
     if (!use_vert_normals) {
       /* For flat faces use face normal as vertex normal: */
@@ -648,7 +650,7 @@ void GeometryExporter::create_normals(std::vector<Normal> &normals,
       if (use_vert_normals) {
         float normalized[3];
 
-        if (use_custom_normals) {
+        if (!corner_normals.is_empty()) {
           normalize_v3_v3(normalized, corner_normals[corner]);
         }
         else {

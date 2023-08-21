@@ -1124,21 +1124,22 @@ Mesh *ED_mesh_context(bContext *C)
 void ED_mesh_split_faces(Mesh *mesh)
 {
   using namespace blender;
-  const OffsetIndices faces = mesh->faces();
+  const OffsetIndices polys = mesh->faces();
+  const Span<int> corner_verts = mesh->corner_verts();
   const Span<int> corner_edges = mesh->corner_edges();
   const bke::AttributeAccessor attributes = mesh->attributes();
   const VArray<bool> mesh_sharp_edges = *attributes.lookup_or_default<bool>(
       "sharp_edge", ATTR_DOMAIN_EDGE, false);
-  const VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
-      "sharp_face", ATTR_DOMAIN_FACE, false);
+  const bool *sharp_faces = static_cast<const bool *>(
+      CustomData_get_layer_named(&mesh->face_data, CD_PROP_BOOL, "sharp_face"));
 
   Array<bool> sharp_edges(mesh->totedge);
   mesh_sharp_edges.materialize(sharp_edges);
 
-  threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
+  threading::parallel_for(polys.index_range(), 1024, [&](const IndexRange range) {
     for (const int face_i : range) {
       if (sharp_faces && sharp_faces[face_i]) {
-        for (const int edge : corner_edges.slice(faces[face_i])) {
+        for (const int edge : corner_edges.slice(polys[face_i])) {
           sharp_edges[edge] = true;
         }
       }

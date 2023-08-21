@@ -9,7 +9,6 @@
  */
 
 #include "BLI_index_mask.hh"
-#include "BLI_virtual_array.hh"
 
 #include "BKE_mesh.h"
 #include "BKE_mesh_types.hh"
@@ -158,9 +157,9 @@ void normals_calc_loop(Span<float3> vert_positions,
                        Span<int> loop_to_face_map,
                        Span<float3> vert_normals,
                        Span<float3> face_normals,
-                       const VArray<bool> &sharp_edges,
-                       const VArray<bool> &sharp_faces,
-                       const short2 *custom_normals_data,
+                       const bool *sharp_edges,
+                       const bool *sharp_faces,
+                       const short2 *clnors_data,
                        CornerNormalSpaceArray *r_lnors_spacearr,
                        MutableSpan<float3> r_loop_normals);
 
@@ -171,7 +170,7 @@ void normals_loop_custom_set(Span<float3> vert_positions,
                              Span<int> corner_edges,
                              Span<float3> vert_normals,
                              Span<float3> face_normals,
-                             const VArray<bool> &sharp_faces,
+                             const bool *sharp_faces,
                              MutableSpan<bool> sharp_edges,
                              MutableSpan<float3> r_custom_loop_normals,
                              MutableSpan<short2> r_clnors_data);
@@ -183,7 +182,7 @@ void normals_loop_custom_set_from_verts(Span<float3> vert_positions,
                                         Span<int> corner_edges,
                                         Span<float3> vert_normals,
                                         Span<float3> face_normals,
-                                        const VArray<bool> &sharp_faces,
+                                        const bool *sharp_faces,
                                         MutableSpan<bool> sharp_edges,
                                         MutableSpan<float3> r_custom_vert_normals,
                                         MutableSpan<short2> r_clnors_data);
@@ -200,7 +199,7 @@ void edges_sharp_from_angle_set(OffsetIndices<int> faces,
                                 Span<int> corner_verts,
                                 Span<int> corner_edges,
                                 Span<float3> face_normals,
-                                const VArray<bool> &sharp_faces,
+                                const bool *sharp_faces,
                                 const float split_angle,
                                 MutableSpan<bool> sharp_edges);
 

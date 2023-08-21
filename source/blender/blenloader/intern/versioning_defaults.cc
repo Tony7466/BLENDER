@@ -13,8 +13,6 @@
  * To update preference defaults see `userdef_default.c`.
  */
 
-#define DNA_DEPRECATED_ALLOW
-
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"

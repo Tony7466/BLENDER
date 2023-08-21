@@ -153,9 +153,6 @@ typedef struct Mesh {
   /** Mostly more flags used when editing or displaying the mesh. */
   uint16_t flag;
 
-  /**
-   * The angle for auto smooth in radians. `M_PI` (180 degrees) causes all edges to be smooth.
-   */
   float smoothresh DNA_DEPRECATED;
 
   /** Per-mesh settings for voxel remesh. */
@@ -356,7 +353,7 @@ typedef struct Mesh {
    * face corner normals, since there is a 2-4x performance cost increase for each more complex
    * domain.
    */
-  eAttrDomain normal_domain_all_info() const;
+  int normal_domain_all_info() const;
   /**
    * Normal direction of polygons, defined by positions and the winding direction of face corners.
    */
@@ -371,7 +368,7 @@ typedef struct Mesh {
    * normals, the `sharp_edge` and `sharp_face` attributes, and potentially by custom normals.
    *
    * \note Because of the large memory requirements of storing normals per face corner, prefer
-   * using #poly_normals() or #vert_normals() when possible (see #normal_domain_all_info()).
+   * using #face_normals() or #vert_normals() when possible (see #normal_domain_all_info()).
    */
   blender::Span<blender::float3> corner_normals() const;
 #endif

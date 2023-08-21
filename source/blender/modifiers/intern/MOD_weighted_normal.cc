@@ -85,7 +85,7 @@ struct WeightedNormalData {
 
   blender::OffsetIndices<int> faces;
   blender::Span<blender::float3> face_normals;
-  blender::VArray<bool> sharp_faces;
+  const bool *sharp_faces;
   const int *face_strength;
 
   const MDeformVert *dvert;
@@ -227,7 +227,7 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
                                  loop_to_face,
                                  wn_data->vert_normals,
                                  wn_data->face_normals,
-                                 blender::VArray<bool>::ForSpan(wn_data->sharp_edges),
+                                 wn_data->sharp_edges.data(),
                                  wn_data->sharp_faces,
                                  has_clnors ? clnors.data() : nullptr,
                                  &lnors_spacearr,
@@ -356,7 +356,7 @@ static void apply_weights_vertex_normal(WeightedNormalModifierData *wnmd,
                                             loop_to_face,
                                             wn_data->vert_normals,
                                             face_normals,
-                                            blender::VArray<bool>::ForSpan(wn_data->sharp_edges),
+                                            wn_data->sharp_edges.data(),
                                             wn_data->sharp_faces,
                                             has_clnors ? clnors.data() : nullptr,
                                             nullptr,
@@ -477,7 +477,8 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
   using namespace blender;
   WeightedNormalModifierData *wnmd = (WeightedNormalModifierData *)md;
 
-  Mesh *result = (Mesh *)BKE_id_copy_ex(nullptr, &mesh->id, nullptr, LIB_ID_COPY_LOCALIZE);
+  Mesh *result;
+  result = (Mesh *)BKE_id_copy_ex(nullptr, &mesh->id, nullptr, LIB_ID_COPY_LOCALIZE);
 
   const int verts_num = result->totvert;
   const blender::Span<blender::float3> positions = mesh->vert_positions();
@@ -540,8 +541,9 @@ static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext *ctx, Mesh 
 
   wn_data.faces = faces;
   wn_data.face_normals = mesh->face_normals();
-  wn_data.sharp_faces = *attributes.lookup_or_default<bool>("sharp_face", ATTR_DOMAIN_FACE, false);
-  wn_data.poly_strength = static_cast<const int *>(CustomData_get_layer_named(
+  wn_data.sharp_faces = static_cast<const bool *>(
+      CustomData_get_layer_named(&mesh->face_data, CD_PROP_BOOL, "sharp_face"));
+  wn_data.face_strength = static_cast<const int *>(CustomData_get_layer_named(
       &result->face_data, CD_PROP_INT32, MOD_WEIGHTEDNORMALS_FACEWEIGHT_CDLAYER_ID));
 
   wn_data.dvert = dvert;

@@ -556,7 +556,7 @@ static void get_loop_normals(const Mesh *mesh, std::vector<Imath::V3f> &normals)
       threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
         for (const int i : range) {
           const IndexRange face = faces[i];
-          for (const int i : IndexRange(face.size())) {
+          for (const int i : face.index_range()) {
             copy_yup_from_zup(dst_normals[face.last(i)], corner_normals[face[i]]);
           }
         }

@@ -2064,7 +2064,7 @@ bool initTransform(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
     if ((t->flag & T_EDIT) && t->obedit_type == OB_MESH) {
 
       FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-        BMEditMesh *em = NULL; /* BKE_editmesh_from_object(t->obedit); */
+        BMEditMesh *em = nullptr; /* BKE_editmesh_from_object(t->obedit); */
         bool do_skip = false;
 
         /* Currently only used for two of three most frequent transform ops,

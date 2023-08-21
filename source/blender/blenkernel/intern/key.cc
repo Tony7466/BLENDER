@@ -34,7 +34,6 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_anim_data.h"
-#include "BKE_attribute.hh"
 #include "BKE_curve.h"
 #include "BKE_customdata.h"
 #include "BKE_deform.h"
@@ -2269,13 +2268,12 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         {reinterpret_cast<blender::float3 *>(vert_normals), mesh->totvert});
   }
   if (loop_normals_needed) {
-    const blender::bke::AttributeAccessor attributes = mesh->attributes();
-    const blender::VArray<bool> sharp_edges = *attributes.lookup_or_default<bool>(
-        "sharp_edge", ATTR_DOMAIN_EDGE, false);
-    const blender::VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
-        "sharp_face", ATTR_DOMAIN_FACE, false);
     const blender::short2 *clnors = static_cast<const blender::short2 *>(
         CustomData_get_layer(&mesh->loop_data, CD_CUSTOMLOOPNORMAL));
+    const bool *sharp_edges = static_cast<const bool *>(
+        CustomData_get_layer_named(&mesh->edge_data, CD_PROP_BOOL, "sharp_edge"));
+    const bool *sharp_faces = static_cast<const bool *>(
+        CustomData_get_layer_named(&mesh->face_data, CD_PROP_BOOL, "sharp_face"));
     blender::bke::mesh::normals_calc_loop(
         positions,
         edges,
