@@ -419,6 +419,36 @@ static void version_replace_principled_hair_model(bNodeTree *ntree)
   }
 }
 
+static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *ntree)
+{
+  bNodeTreeInterface &tree_interface = ntree->tree_interface;
+
+  LISTBASE_FOREACH (const bNodeSocket *, socket, &ntree->inputs_legacy) {
+    eNodeTreeInterfaceSocketFlag flag = NODE_INTERFACE_SOCKET_INPUT;
+    SET_FLAG_FROM_TEST(flag, socket->flag & SOCK_HIDE_VALUE, NODE_INTERFACE_SOCKET_HIDE_VALUE);
+    SET_FLAG_FROM_TEST(
+        flag, socket->flag & SOCK_HIDE_IN_MODIFIER, NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER);
+    bNodeTreeInterfaceSocket *new_socket = tree_interface.add_socket(
+        socket->name, socket->description, socket->idname, flag, nullptr);
+    BLI_assert(new_socket != nullptr);
+
+    MEM_SAFE_FREE(new_socket->identifier);
+    new_socket->identifier = BLI_strdup(socket->identifier);
+  }
+  LISTBASE_FOREACH (const bNodeSocket *, socket, &ntree->outputs_legacy) {
+    eNodeTreeInterfaceSocketFlag flag = NODE_INTERFACE_SOCKET_OUTPUT;
+    SET_FLAG_FROM_TEST(flag, socket->flag & SOCK_HIDE_VALUE, NODE_INTERFACE_SOCKET_HIDE_VALUE);
+    SET_FLAG_FROM_TEST(
+        flag, socket->flag & SOCK_HIDE_IN_MODIFIER, NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER);
+    bNodeTreeInterfaceSocket *new_socket = tree_interface.add_socket(
+        socket->name, socket->description, socket->idname, flag, nullptr);
+    BLI_assert(new_socket != nullptr);
+
+    MEM_SAFE_FREE(new_socket->identifier);
+    new_socket->identifier = BLI_strdup(socket->identifier);
+  }
+}
+
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -573,6 +603,12 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         /* Convert sheen inputs on the Principled BSDF. */
         version_principled_bsdf_sheen(ntree);
       }
+    }
+    FOREACH_NODETREE_END;
+
+    /* Convert old socket lists into new interface items. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      versioning_convert_node_tree_socket_lists_to_interface(ntree);
     }
     FOREACH_NODETREE_END;
 

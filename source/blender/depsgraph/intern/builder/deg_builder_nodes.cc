@@ -1871,6 +1871,9 @@ void DepsgraphNodeBuilder::build_nodetree(bNodeTree *ntree)
   if (built_map_.checkIsBuiltAndTag(ntree)) {
     return;
   }
+
+  ntree->ensure_topology_cache();
+
   /* nodetree itself */
   add_id_node(&ntree->id);
   /* General parameters. */
@@ -1953,11 +1956,11 @@ void DepsgraphNodeBuilder::build_nodetree(bNodeTree *ntree)
     }
   }
 
-  LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->inputs) {
-    build_idproperties(socket->prop);
+  for (bNodeTreeInterfaceSocket *socket : ntree->interface_cache().inputs) {
+    build_idproperties(socket->properties);
   }
-  LISTBASE_FOREACH (bNodeSocket *, socket, &ntree->outputs) {
-    build_idproperties(socket->prop);
+  for (bNodeTreeInterfaceSocket *socket : ntree->interface_cache().outputs) {
+    build_idproperties(socket->properties);
   }
 
   /* TODO: link from nodetree to owner_component? */

@@ -260,6 +260,128 @@ class NODE_OT_tree_path_parent(Operator):
         return {'FINISHED'}
 
 
+class NodeInterfaceOperator():
+    @classmethod
+    def poll(cls, context):
+        space = context.space_data
+        if not space or space.type != 'NODE_EDITOR' or not space.edit_tree:
+            return False
+        if space.edit_tree.is_embedded_data:
+            return False
+        return True
+
+
+class NODE_OT_interface_item_new(NodeInterfaceOperator, Operator):
+    '''Add a new item to the interface'''
+    bl_idname = "node.interface_item_new"
+    bl_label = "New Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    item_type: EnumProperty(
+        name="Item Type",
+        description="Type of the item to create",
+        items=[('SOCKET', "Socket", ""), ('PANEL', "Panel", "")],
+        default='SOCKET',
+    )
+
+    socket_type = 'NodeSocketFloat'
+
+    def execute(self, context):
+        snode = context.space_data
+        tree = snode.edit_tree
+        interface = tree.interface
+
+        # Remember index to move the item.
+        dst_index = interface.active_index + 1
+        if self.item_type == 'SOCKET':
+            item = interface.new_socket("Socket", socket_type=self.socket_type)
+        elif self.item_type == 'PANEL':
+            item = interface.new_panel("Panel")
+        else:
+            return {'CANCELLED'}
+
+        interface.move(item, dst_index)
+        interface.active = item
+
+        return {'FINISHED'}
+
+
+class NODE_OT_interface_item_copy(NodeInterfaceOperator, Operator):
+    '''Add a copy of the active item to the interface'''
+    bl_idname = "node.interface_item_copy"
+    bl_label = "Copy Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        if not super().poll(context):
+            return False
+
+        snode = context.space_data
+        tree = snode.edit_tree
+        interface = tree.interface
+        return interface.active is not None
+
+    def execute(self, context):
+        snode = context.space_data
+        tree = snode.edit_tree
+        interface = tree.interface
+        item = interface.active
+
+        if item:
+            interface.copy(item)
+            interface.active = item
+
+        return {'FINISHED'}
+
+
+class NODE_OT_interface_item_remove(NodeInterfaceOperator, Operator):
+    '''Remove active item from the interface'''
+    bl_idname = "node.interface_item_remove"
+    bl_label = "Remove Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        snode = context.space_data
+        tree = snode.edit_tree
+        interface = tree.interface
+        item = interface.active
+
+        if item:
+            interface.remove(item)
+            interface.active_index -= 1
+
+        return {'FINISHED'}
+
+
+class NODE_OT_interface_item_move(NodeInterfaceOperator, Operator):
+    '''Move an item up or down in the interface'''
+    bl_idname = "node.interface_item_move"
+    bl_label = "Move Item"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    direction: EnumProperty(
+        name="Direction",
+        items=[('UP', "Up", ""), ('DOWN', "Down", "")],
+        default='UP',
+    )
+
+    def execute(self, context):
+        snode = context.space_data
+        tree = snode.edit_tree
+        interface = tree.interface
+        item = interface.active
+
+        if self.direction == 'UP':
+            interface.move(item, interface.active_index - 1)
+            interface.active_index -= 1
+        elif self.direction == 'DOWN':
+            interface.move(item, interface.active_index + 1)
+            interface.active_index += 1
+
+        return {'FINISHED'}
+
+
 classes = (
     NodeSetting,
 
@@ -267,5 +389,9 @@ classes = (
     NODE_OT_add_simulation_zone,
     NODE_OT_add_repeat_zone,
     NODE_OT_collapse_hide_unused_toggle,
+    NODE_OT_interface_item_new,
+    NODE_OT_interface_item_copy,
+    NODE_OT_interface_item_remove,
+    NODE_OT_interface_item_move,
     NODE_OT_tree_path_parent,
 )

@@ -75,14 +75,12 @@ static char *rna_NodeTreeInterfaceItem_path(const PointerRNA *ptr)
   }
 
   ntree->ensure_topology_cache();
-  UNUSED_VARS(item);
-  // Note: New API, will be enabled after new interface cache is added.
-  //  const blender::bke::bNodeTreeInterfaceCache &cache = ntree->interface_cache();
-  //  for (const int index : cache.items.index_range()) {
-  //    if (cache.items[index] == item) {
-  //      return BLI_sprintfN("interface.ui_items[%d]", index);
-  //    }
-  //  }
+  const blender::bke::bNodeTreeInterfaceCache &cache = ntree->interface_cache();
+  for (const int index : cache.items.index_range()) {
+    if (cache.items[index] == item) {
+      return BLI_sprintfN("interface.ui_items[%d]", index);
+    }
+  }
   return nullptr;
 }
 
@@ -109,15 +107,14 @@ static void rna_NodeTreeInterfaceSocket_draw_builtin(ID *id,
 {
   bNodeSocketType *typeinfo = interface_socket->socket_typeinfo();
   if (typeinfo && typeinfo->interface_draw) {
-    UNUSED_VARS(id, C, layout);
-    // Note: New API, will be enabled after typeinfo callbacks change.
-    //    typeinfo->interface_draw(id, interface_socket, C, layout);
+    typeinfo->interface_draw(id, interface_socket, C, layout);
   }
 }
 
-// Note: New API, interface draw callback used after changing callbacks.
-static void UNUSED_FUNCTION(rna_NodeTreeInterfaceSocket_draw_custom)(
-    ID *id, bNodeTreeInterfaceSocket *interface_socket, bContext *C, uiLayout *layout)
+static void rna_NodeTreeInterfaceSocket_draw_custom(ID *id,
+                                                    bNodeTreeInterfaceSocket *interface_socket,
+                                                    bContext *C,
+                                                    uiLayout *layout)
 {
   bNodeSocketType *typeinfo = nodeSocketTypeFind(interface_socket->socket_type);
   if (typeinfo == nullptr) {
@@ -147,14 +144,11 @@ static void rna_NodeTreeInterfaceSocket_init_socket_builtin(
 {
   bNodeSocketType *typeinfo = interface_socket->socket_typeinfo();
   if (typeinfo && typeinfo->interface_draw) {
-    // Note: New API, callback signatures change.
-    UNUSED_VARS(id, node, socket, data_path);
-    //    typeinfo->interface_init_socket(id, interface_socket, node, socket, data_path);
+    typeinfo->interface_init_socket(id, interface_socket, node, socket, data_path);
   }
 }
 
-// Note: New API, used when callbacks change.
-static void UNUSED_FUNCTION(rna_NodeTreeInterfaceSocket_init_socket_custom)(
+static void rna_NodeTreeInterfaceSocket_init_socket_custom(
     ID *id,
     const bNodeTreeInterfaceSocket *interface_socket,
     bNode *node,
@@ -191,14 +185,11 @@ static void rna_NodeTreeInterfaceSocket_from_socket_builtin(
 {
   bNodeSocketType *typeinfo = interface_socket->socket_typeinfo();
   if (typeinfo && typeinfo->interface_draw) {
-    // Note: New API, callback signatures change.
-    UNUSED_VARS(id, node, socket);
-    //    typeinfo->interface_from_socket(id, interface_socket, node, socket);
+    typeinfo->interface_from_socket(id, interface_socket, node, socket);
   }
 }
 
-// Note: New API, used after callback signatures change.
-static void UNUSED_FUNCTION(rna_NodeTreeInterfaceSocket_from_socket_custom)(
+static void rna_NodeTreeInterfaceSocket_from_socket_custom(
     ID *id,
     bNodeTreeInterfaceSocket *interface_socket,
     const bNode *node,
@@ -275,14 +266,11 @@ static StructRNA *rna_NodeTreeInterfaceSocket_register(Main * /*bmain*/,
   st->ext_interface.free = free;
   RNA_struct_blender_type_set(st->ext_interface.srna, st);
 
-  // Note: New API callbacks.
-  //  st->interface_draw = (have_function[0]) ? rna_NodeTreeInterfaceSocket_draw_custom : nullptr;
-  //  st->interface_init_socket = (have_function[1]) ?
-  //  rna_NodeTreeInterfaceSocket_init_socket_custom :
-  //                                                   nullptr;
-  //  st->interface_from_socket = (have_function[2]) ?
-  //  rna_NodeTreeInterfaceSocket_from_socket_custom :
-  //                                                   nullptr;
+  st->interface_draw = (have_function[0]) ? rna_NodeTreeInterfaceSocket_draw_custom : nullptr;
+  st->interface_init_socket = (have_function[1]) ? rna_NodeTreeInterfaceSocket_init_socket_custom :
+                                                   nullptr;
+  st->interface_from_socket = (have_function[2]) ? rna_NodeTreeInterfaceSocket_from_socket_custom :
+                                                   nullptr;
 
   /* Cleanup local dummy type. */
   MEM_SAFE_FREE(dummy_socket.socket_type);
@@ -654,15 +642,13 @@ static void rna_NodeTreeInterface_items_begin(CollectionPropertyIterator *iter, 
   }
 
   ntree->ensure_topology_cache();
-  // Note: New API, enabled when interface cache is added.
-  UNUSED_VARS(iter);
-  //  const blender::bke::bNodeTreeInterfaceCache &cache = ntree->interface_cache();
-  //  rna_iterator_array_begin(iter,
-  //                           const_cast<bNodeTreeInterfaceItem **>(cache.items.data()),
-  //                           sizeof(bNodeTreeInterfaceItem *),
-  //                           cache.items.size(),
-  //                           false,
-  //                           nullptr);
+  const blender::bke::bNodeTreeInterfaceCache &cache = ntree->interface_cache();
+  rna_iterator_array_begin(iter,
+                           const_cast<bNodeTreeInterfaceItem **>(cache.items.data()),
+                           sizeof(bNodeTreeInterfaceItem *),
+                           cache.items.size(),
+                           false,
+                           nullptr);
 }
 
 static int rna_NodeTreeInterface_items_length(PointerRNA *ptr)
@@ -673,9 +659,7 @@ static int rna_NodeTreeInterface_items_length(PointerRNA *ptr)
   }
 
   ntree->ensure_topology_cache();
-  // Note: New API callbacks.
-  //  return ntree->interface_cache().items.size();
-  return 0;
+  return ntree->interface_cache().items.size();
 }
 
 static int rna_NodeTreeInterface_items_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
@@ -686,14 +670,12 @@ static int rna_NodeTreeInterface_items_lookup_int(PointerRNA *ptr, int index, Po
   }
 
   ntree->ensure_topology_cache();
-  // Note: New API, enabled when interface cache is added.
-  UNUSED_VARS(index, r_ptr);
-  //  const blender::bke::bNodeTreeInterfaceCache &cache = ntree->interface_cache();
-  //  if (!cache.items.index_range().contains(index)) {
-  //    return false;
-  //  }
+  const blender::bke::bNodeTreeInterfaceCache &cache = ntree->interface_cache();
+  if (!cache.items.index_range().contains(index)) {
+    return false;
+  }
 
-  //  RNA_pointer_create(ptr->owner_id, &RNA_NodeTreeInterfaceItem, cache.items[index], r_ptr);
+  RNA_pointer_create(ptr->owner_id, &RNA_NodeTreeInterfaceItem, cache.items[index], r_ptr);
   return true;
 }
 
@@ -707,29 +689,27 @@ static int rna_NodeTreeInterface_items_lookup_string(struct PointerRNA *ptr,
   }
 
   ntree->ensure_topology_cache();
-  // Note: New API, enabled when interface cache is added.
-  UNUSED_VARS(key, r_ptr);
-  //  const blender::bke::bNodeTreeInterfaceCache &cache = ntree->interface_cache();
-  //  for (bNodeTreeInterfaceItem *item : cache.items) {
-  //    switch (item->item_type) {
-  //      case NODE_INTERFACE_SOCKET: {
-  //        bNodeTreeInterfaceSocket *socket = reinterpret_cast<bNodeTreeInterfaceSocket *>(item);
-  //        if (STREQ(socket->name, key)) {
-  //          RNA_pointer_create(ptr->owner_id, &RNA_NodeTreeInterfaceSocket, socket, r_ptr);
-  //          return true;
-  //        }
-  //        break;
-  //      }
-  //      case NODE_INTERFACE_PANEL: {
-  //        bNodeTreeInterfacePanel *panel = reinterpret_cast<bNodeTreeInterfacePanel *>(item);
-  //        if (STREQ(panel->name, key)) {
-  //          RNA_pointer_create(ptr->owner_id, &RNA_NodeTreeInterfacePanel, panel, r_ptr);
-  //          return true;
-  //        }
-  //        break;
-  //      }
-  //    }
-  //  }
+  const blender::bke::bNodeTreeInterfaceCache &cache = ntree->interface_cache();
+  for (bNodeTreeInterfaceItem *item : cache.items) {
+    switch (item->item_type) {
+      case NODE_INTERFACE_SOCKET: {
+        bNodeTreeInterfaceSocket *socket = reinterpret_cast<bNodeTreeInterfaceSocket *>(item);
+        if (STREQ(socket->name, key)) {
+          RNA_pointer_create(ptr->owner_id, &RNA_NodeTreeInterfaceSocket, socket, r_ptr);
+          return true;
+        }
+        break;
+      }
+      case NODE_INTERFACE_PANEL: {
+        bNodeTreeInterfacePanel *panel = reinterpret_cast<bNodeTreeInterfacePanel *>(item);
+        if (STREQ(panel->name, key)) {
+          RNA_pointer_create(ptr->owner_id, &RNA_NodeTreeInterfacePanel, panel, r_ptr);
+          return true;
+        }
+        break;
+      }
+    }
+  }
   return false;
 }
 

@@ -860,22 +860,11 @@ class NODE_PT_overlay(Panel):
             col.prop(overlay, "show_named_attributes", text="Named Attributes")
 
 
-class NODE_UL_interface_sockets(bpy.types.UIList):
-    def draw_item(self, context, layout, _data, item, icon, _active_data, _active_propname, _index):
-        socket = item
-        color = socket.draw_color(context)
-
-        if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            row = layout.row(align=True)
-
-            row.template_node_socket(color=color)
-            row.prop(socket, "name", text="", emboss=False, icon_value=icon)
-        elif self.layout_type == 'GRID':
-            layout.alignment = 'CENTER'
-            layout.template_node_socket(color=color)
-
-
-class NodeTreeInterfacePanel(Panel):
+class NODE_PT_node_tree_declaration(Panel):
+    bl_space_type = 'NODE_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "Group"
+    bl_label = "Sockets"
 
     @classmethod
     def poll(cls, context):
@@ -889,119 +878,56 @@ class NodeTreeInterfacePanel(Panel):
             return False
         return True
 
-    def draw_socket_list(self, context, in_out, sockets_propname, active_socket_propname):
+    def draw(self, context):
         layout = self.layout
-
         snode = context.space_data
         tree = snode.edit_tree
-        sockets = getattr(tree, sockets_propname)
-        active_socket_index = getattr(tree, active_socket_propname)
-        active_socket = sockets[active_socket_index] if active_socket_index >= 0 else None
 
         split = layout.row()
 
-        split.template_list("NODE_UL_interface_sockets", in_out, tree, sockets_propname, tree, active_socket_propname)
+        split.template_node_tree_declaration(tree.interface)
 
         ops_col = split.column()
 
         add_remove_col = ops_col.column(align=True)
-        props = add_remove_col.operator("node.tree_socket_add", icon='ADD', text="")
-        props.in_out = in_out
-        props = add_remove_col.operator("node.tree_socket_remove", icon='REMOVE', text="")
-        props.in_out = in_out
+        add_remove_col.operator_menu_enum("node.interface_item_new", "item_type", icon='ADD', text="")
+        add_remove_col.operator("node.interface_item_copy", icon='DUPLICATE', text="")
+        add_remove_col.operator("node.interface_item_remove", icon='REMOVE', text="")
 
         ops_col.separator()
 
         up_down_col = ops_col.column(align=True)
-        props = up_down_col.operator("node.tree_socket_move", icon='TRIA_UP', text="")
-        props.in_out = in_out
+        props = up_down_col.operator("node.interface_item_move", icon='TRIA_UP', text="")
         props.direction = 'UP'
-        props = up_down_col.operator("node.tree_socket_move", icon='TRIA_DOWN', text="")
-        props.in_out = in_out
+        props = up_down_col.operator("node.interface_item_move", icon='TRIA_DOWN', text="")
         props.direction = 'DOWN'
 
-        if active_socket is not None:
-            # Mimicking property split.
-            layout.use_property_split = False
-            layout.use_property_decorate = False
-            layout_row = layout.row(align=True)
-            layout_split = layout_row.split(factor=0.4, align=True)
+        active_item = tree.interface.active
+        if active_item is not None:
+            if active_item.item_type == 'SOCKET':
+                layout.prop(active_item, "name")
+                layout.prop(active_item, "description")
+                layout.prop(active_item, "is_input", toggle=True)
+                layout.prop(active_item, "is_output", toggle=True)
+                layout.prop(active_item, "socket_type")
 
-            label_column = layout_split.column(align=True)
-            label_column.alignment = 'RIGHT'
-            # Menu to change the socket type.
-            label_column.label(text="Type")
+                active_item.draw(context, layout)
 
-            property_row = layout_split.row(align=True)
-            props = property_row.operator_menu_enum(
-                "node.tree_socket_change_type",
-                "socket_type",
-                text=(iface_(active_socket.bl_label) if active_socket.bl_label
-                      else iface_(active_socket.bl_idname)),
-            )
-            props.in_out = in_out
-
-            with context.temp_override(interface_socket=active_socket):
-                if bpy.ops.node.tree_socket_change_subtype.poll():
-                    layout_row = layout.row(align=True)
-                    layout_split = layout_row.split(factor=0.4, align=True)
-
-                    label_column = layout_split.column(align=True)
-                    label_column.alignment = 'RIGHT'
-                    label_column.label(text="Subtype")
-                    property_row = layout_split.row(align=True)
-
-                    property_row.context_pointer_set("interface_socket", active_socket)
-                    props = property_row.operator_menu_enum(
-                        "node.tree_socket_change_subtype",
-                        "socket_subtype",
-                        text=(iface_(active_socket.bl_subtype_label) if active_socket.bl_subtype_label
-                              else iface_(active_socket.bl_idname)),
-                    )
-
-            layout.use_property_split = True
-            layout.use_property_decorate = False
-
-            layout.prop(active_socket, "name")
-            # Display descriptions only for Geometry Nodes, since it's only used in the modifier panel.
-            if tree.type == 'GEOMETRY':
-                layout.prop(active_socket, "description")
-                field_socket_prefixes = {
-                    "NodeSocketInt",
-                    "NodeSocketColor",
-                    "NodeSocketVector",
-                    "NodeSocketBool",
-                    "NodeSocketFloat",
-                }
-                is_field_type = any(
-                    active_socket.bl_socket_idname.startswith(prefix)
-                    for prefix in field_socket_prefixes
-                )
-                if is_field_type:
-                    if in_out == 'OUT':
-                        layout.prop(active_socket, "attribute_domain")
-                    layout.prop(active_socket, "default_attribute_name")
-            active_socket.draw(context, layout)
-
-
-class NODE_PT_node_tree_interface_inputs(NodeTreeInterfacePanel):
-    bl_space_type = 'NODE_EDITOR'
-    bl_region_type = 'UI'
-    bl_category = "Group"
-    bl_label = "Inputs"
-
-    def draw(self, context):
-        self.draw_socket_list(context, "IN", "inputs", "active_input")
-
-
-class NODE_PT_node_tree_interface_outputs(NodeTreeInterfacePanel):
-    bl_space_type = 'NODE_EDITOR'
-    bl_region_type = 'UI'
-    bl_category = "Group"
-    bl_label = "Outputs"
-
-    def draw(self, context):
-        self.draw_socket_list(context, "OUT", "outputs", "active_output")
+                # Display descriptions only for Geometry Nodes, since it's only used in the modifier panel.
+                if tree.type == 'GEOMETRY':
+                    field_socket_types = {
+                        "NodeSocketInt",
+                        "NodeSocketColor",
+                        "NodeSocketVector",
+                        "NodeSocketBool",
+                        "NodeSocketFloat",
+                    }
+                    if active_item.socket_type in field_socket_types:
+                        if active_item.is_output:
+                            layout.prop(active_item, "attribute_domain")
+                        layout.prop(active_item, "default_attribute_name")
+            if active_item.item_type == 'PANEL':
+                layout.prop(active_item, "name")
 
 
 class NODE_UL_simulation_zone_items(bpy.types.UIList):
@@ -1210,6 +1136,7 @@ classes = (
     NODE_PT_material_slots,
     NODE_PT_geometry_node_asset_traits,
     NODE_PT_node_color_presets,
+    NODE_PT_node_tree_declaration,
     NODE_PT_active_node_generic,
     NODE_PT_active_node_color,
     NODE_PT_texture_mapping,
@@ -1218,9 +1145,6 @@ classes = (
     NODE_PT_quality,
     NODE_PT_annotation,
     NODE_PT_overlay,
-    NODE_UL_interface_sockets,
-    NODE_PT_node_tree_interface_inputs,
-    NODE_PT_node_tree_interface_outputs,
     NODE_UL_simulation_zone_items,
     NODE_PT_simulation_zone_items,
     NODE_UL_repeat_zone_items,
