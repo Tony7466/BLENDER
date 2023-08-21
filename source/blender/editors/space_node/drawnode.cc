@@ -1924,7 +1924,7 @@ static void nodelink_batch_draw(const SpaceNode &snode)
   UI_GetThemeColor4fv(TH_EDGE_SELECT,
                       node_link_data.colors[nodelink_get_color_id(TH_EDGE_SELECT)]);
   UI_GetThemeColor4fv(TH_REDALERT, node_link_data.colors[nodelink_get_color_id(TH_REDALERT)]);
-  node_link_data.expandSize = snode.runtime->aspect * LINK_WIDTH;
+  node_link_data.aspect = snode.runtime->aspect;
   node_link_data.arrowSize = ARROW_SIZE;
 
   GPUUniformBuf *ubo = GPU_uniformbuf_create_ex(sizeof(node_link_data), &node_link_data, __func__);
@@ -2080,7 +2080,8 @@ static NodeLinkDrawConfig nodelink_get_draw_config(const bContext &C,
 
   const float scale = UI_view2d_scale_get_x(&v2d);
   /* Clamp the thickness to make the links more readable when zooming out. */
-  draw_config.thickness = max_ff(UI_SCALE_FAC * scale, 1.0f) * (field_link ? 0.7f : 1.0f);
+  draw_config.thickness = LINK_WIDTH * max_ff(UI_SCALE_FAC * scale, 1.0f) *
+                          (field_link ? 0.7f : 1.0f);
   draw_config.highlighted = link.flag & NODE_LINK_TEMP_HIGHLIGHT;
   draw_config.drawarrow = ((link.tonode && (link.tonode->type == NODE_REROUTE)) &&
                            (link.fromnode && (link.fromnode->type == NODE_REROUTE)));
@@ -2170,7 +2171,7 @@ static void node_draw_link_bezier_ex(const SpaceNode &snode,
     node_link_data.dash_params[0] = draw_config.dash_length;
     node_link_data.dash_params[1] = draw_config.dash_factor;
     node_link_data.dash_params[2] = draw_config.dash_alpha;
-    node_link_data.expandSize = snode.runtime->aspect * LINK_WIDTH;
+    node_link_data.aspect = snode.runtime->aspect;
     node_link_data.arrowSize = ARROW_SIZE;
 
     GPUBatch *batch = g_batch_link.batch_single;

@@ -62,6 +62,7 @@ void main(void)
     }
   }
 
+  aspect = node_link_data.aspect;
   /* Parameters for the dashed line. */
   isMainLine = expand.y != 1.0 ? 0 : 1;
   dashLength = dash_params.x;
@@ -107,7 +108,7 @@ void main(void)
   finalColor[3] *= dim_factor;
 
   /* Expand into a line */
-  gl_Position.xy += exp_axis * node_link_data.expandSize * expand_dist;
+  gl_Position.xy += exp_axis * node_link_data.aspect * expand_dist;
 
   /* If the link is not muted or is not a reroute arrow the points are squashed to the center of
    * the line. Magic numbers are defined in drawnode.c */

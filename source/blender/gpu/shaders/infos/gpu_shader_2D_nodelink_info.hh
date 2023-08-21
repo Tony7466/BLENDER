@@ -17,7 +17,8 @@ GPU_SHADER_INTERFACE_INFO(nodelink_iface, "")
     .flat(Type::FLOAT, "dashLength")
     .flat(Type::FLOAT, "dashFactor")
     .flat(Type::FLOAT, "dashAlpha")
-    .flat(Type::INT, "isMainLine");
+    .flat(Type::INT, "isMainLine")
+    .flat(Type::FLOAT, "aspect");
 
 GPU_SHADER_CREATE_INFO(gpu_shader_2D_nodelink)
     .vertex_in(0, Type::VEC2, "uv")
