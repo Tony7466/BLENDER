@@ -748,14 +748,20 @@ struct EraseOperationExecutor {
              * each time the point is inside or at the boundary. We include the outside boundary of
              * the ring, that is why we do not check for LeftBoundary.
              */
-            if (ELEM(point_side, PointCircleSide::Inside, PointCircleSide::InsideOutsideBoundary))
+            if ((r_point_ring[src_point].first == -1) &&
+                ELEM(point_side, PointCircleSide::Inside, PointCircleSide::InsideOutsideBoundary))
             {
               r_point_ring[src_point] = {ring_index, point_side};
             }
-            if (ELEM(point_after_side,
-                     PointCircleSide::Inside,
-                     PointCircleSide::InsideOutsideBoundary)) {
-              r_point_ring[src_point + 1] = {ring_index, point_after_side};
+
+            if (src_point + 1 == src_curve_points.last()) {
+              if ((r_point_ring[src_point + 1].first == -1) &&
+                  ELEM(point_after_side,
+                       PointCircleSide::Inside,
+                       PointCircleSide::InsideOutsideBoundary))
+              {
+                r_point_ring[src_point + 1] = {ring_index, point_after_side};
+              }
             }
 
             if (nb_inter > 0) {
