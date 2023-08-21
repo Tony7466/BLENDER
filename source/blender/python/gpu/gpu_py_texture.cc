@@ -116,16 +116,19 @@ static PyObject *pygpu_texture__tp_new(PyTypeObject * /*self*/, PyObject *args, 
   PyObject *py_size;
   int size[3] = {1, 1, 1};
   int layers = 0;
+  int mipmaps = 1;
   int is_cubemap = false;
   PyC_StringEnum pygpu_textureformat = {pygpu_textureformat_items, GPU_RGBA8};
   BPyGPUBuffer *pybuffer_obj = nullptr;
   char err_out[256] = "unknown error. See console";
 
-  static const char *_keywords[] = {"size", "layers", "is_cubemap", "format", "data", nullptr};
+  static const char *_keywords[] = {
+      "size", "layers", "mipmaps", "is_cubemap", "format", "data", nullptr};
   static _PyArg_Parser _parser = {
       "O"  /* `size` */
       "|$" /* Optional keyword only arguments. */
       "i"  /* `layers` */
+      "i"  /* `mipmaps` */
       "p"  /* `is_cubemap` */
       "O&" /* `format` */
       "O!" /* `data` */
@@ -138,6 +141,7 @@ static PyObject *pygpu_texture__tp_new(PyTypeObject * /*self*/, PyObject *args, 
                                         &_parser,
                                         &py_size,
                                         &layers,
+                                        &mipmaps,
                                         &is_cubemap,
                                         PyC_ParseStringEnum,
                                         &pygpu_textureformat,
@@ -165,6 +169,13 @@ static PyObject *pygpu_texture__tp_new(PyTypeObject * /*self*/, PyObject *args, 
   }
   else {
     PyErr_SetString(PyExc_ValueError, "GPUTexture.__new__: Expected an int or tuple as first arg");
+    return nullptr;
+  }
+
+  if (mipmaps < 1) {
+    PyErr_Format(PyExc_ValueError,
+                 "GPUTexture.__new__: \"mipmaps\" must be larger than zero, (got %d)",
+                 mipmaps);
     return nullptr;
   }
 
@@ -214,7 +225,7 @@ static PyObject *pygpu_texture__tp_new(PyTypeObject * /*self*/, PyObject *args, 
         tex = GPU_texture_create_cube_array(name,
                                             size[0],
                                             layers,
-                                            1,
+                                            mipmaps,
                                             eGPUTextureFormat(pygpu_textureformat.value_found),
                                             usage,
                                             static_cast<const float *>(data));
@@ -222,7 +233,7 @@ static PyObject *pygpu_texture__tp_new(PyTypeObject * /*self*/, PyObject *args, 
       else {
         tex = GPU_texture_create_cube(name,
                                       size[0],
-                                      1,
+                                      mipmaps,
                                       eGPUTextureFormat(pygpu_textureformat.value_found),
                                       usage,
                                       static_cast<const float *>(data));
@@ -234,7 +245,7 @@ static PyObject *pygpu_texture__tp_new(PyTypeObject * /*self*/, PyObject *args, 
                                           size[0],
                                           size[1],
                                           layers,
-                                          1,
+                                          mipmaps,
                                           eGPUTextureFormat(pygpu_textureformat.value_found),
                                           usage,
                                           static_cast<const float *>(data));
@@ -243,7 +254,7 @@ static PyObject *pygpu_texture__tp_new(PyTypeObject * /*self*/, PyObject *args, 
         tex = GPU_texture_create_1d_array(name,
                                           size[0],
                                           layers,
-                                          1,
+                                          mipmaps,
                                           eGPUTextureFormat(pygpu_textureformat.value_found),
                                           usage,
                                           static_cast<const float *>(data));
@@ -254,7 +265,7 @@ static PyObject *pygpu_texture__tp_new(PyTypeObject * /*self*/, PyObject *args, 
                                   size[0],
                                   size[1],
                                   size[2],
-                                  1,
+                                  mipmaps,
                                   eGPUTextureFormat(pygpu_textureformat.value_found),
                                   usage,
                                   data);
@@ -263,7 +274,7 @@ static PyObject *pygpu_texture__tp_new(PyTypeObject * /*self*/, PyObject *args, 
       tex = GPU_texture_create_2d(name,
                                   size[0],
                                   size[1],
-                                  1,
+                                  mipmaps,
                                   eGPUTextureFormat(pygpu_textureformat.value_found),
                                   usage,
                                   static_cast<const float *>(data));
@@ -271,7 +282,7 @@ static PyObject *pygpu_texture__tp_new(PyTypeObject * /*self*/, PyObject *args, 
     else {
       tex = GPU_texture_create_1d(name,
                                   size[0],
-                                  1,
+                                  mipmaps,
                                   eGPUTextureFormat(pygpu_textureformat.value_found),
                                   usage,
                                   static_cast<const float *>(data));
@@ -387,6 +398,19 @@ static PyObject *pygpu_texture_clear(BPyGPUTexture *self, PyObject *args, PyObje
   Py_RETURN_NONE;
 }
 
+PyDoc_STRVAR(pygpu_texture_generate_mipmap_doc,
+             ".. method:: generate_mipmap()\n"
+             "\n"
+             "   Update the mipmap levels using mipmap level 0.\n");
+static PyObject *pygpu_texture_generate_mipmap(BPyGPUTexture *self,
+                                               PyObject * /*args*/,
+                                               PyObject * /*kwds*/)
+{
+  BPYGPU_TEXTURE_CHECK_OBJ(self);
+  GPU_texture_update_mipmap_chain(self->tex);
+  Py_RETURN_NONE;
+}
+
 PyDoc_STRVAR(pygpu_texture_read_doc,
              ".. method:: read()\n"
              "\n"
@@ -496,6 +520,10 @@ static PyMethodDef pygpu_texture__tp_methods[] = {
      (PyCFunction)pygpu_texture_clear,
      METH_VARARGS | METH_KEYWORDS,
      pygpu_texture_clear_doc},
+    {"generate_mipmap",
+     (PyCFunction)pygpu_texture_generate_mipmap,
+     METH_NOARGS,
+     pygpu_texture_generate_mipmap_doc},
     {"read", (PyCFunction)pygpu_texture_read, METH_NOARGS, pygpu_texture_read_doc},
 #ifdef BPYGPU_USE_GPUOBJ_FREE_METHOD
     {"free", (PyCFunction)pygpu_texture_free, METH_NOARGS, pygpu_texture_free_doc},
@@ -509,13 +537,19 @@ static PyMethodDef pygpu_texture__tp_methods[] = {
 
 PyDoc_STRVAR(
     pygpu_texture__tp_doc,
-    ".. class:: GPUTexture(size, layers=0, is_cubemap=False, format='RGBA8', data=None)\n"
+    ".. class:: GPUTexture(size, layers=0, mipmaps=1, is_cubemap=False, format='RGBA8', "
+    "data=None)\n"
     "\n"
     "   This object gives access to off GPU textures.\n"
     "\n"
     "   :arg size: Dimensions of the texture 1D, 2D, 3D or cubemap.\n"
     "   :type size: tuple or int\n"
     "   :arg layers: Number of layers in texture array or number of cubemaps in cubemap array\n"
+    "   :type layers: int\n"
+    "   :arg mipmaps: Number of mipmaps to allocate for this texture.\n"
+    "       The minimum number of mipmaps must be 1.\n"
+    "       The actual number of mipmaps can be less than the provided, as it is adjusted for\n"
+    "       the given size.\n"
     "   :type layers: int\n"
     "   :arg is_cubemap: Indicates the creation of a cubemap texture.\n"
     "   :type is_cubemap: int\n"
