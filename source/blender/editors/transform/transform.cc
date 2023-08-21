@@ -1497,7 +1497,7 @@ static void drawTransformView(const bContext *C, ARegion *region, void *arg)
 
 /* just draw a little warning message in the top-right corner of the viewport
  * to warn that autokeying is enabled */
-static void drawAutoKeyWarning(TransInfo * /*t*/, ARegion *region)
+static void drawAutoKeyWarning(TransInfo * /*t*/, const bContext *C, ARegion *region)
 {
   const char *printable = IFACE_("Auto Keying On");
   float printable_size[2];
@@ -1505,21 +1505,31 @@ static void drawAutoKeyWarning(TransInfo * /*t*/, ARegion *region)
   int offset = 0;
 
   const rcti *rect = ED_region_visible_rect(region);
+  View3D *v3d = CTX_wm_view3d(C);
 
   const int font_id = BLF_set_default();
   BLF_width_and_height(
       font_id, printable, BLF_DRAW_STR_DUMMY_MAX, &printable_size[0], &printable_size[1]);
 
-  switch ((eUserpref_MiniAxisType)U.mini_axis_type) {
-    case USER_MINI_AXIS_TYPE_GIZMO:
-      offset = U.gizmo_size_navigate_v3d;
-      break;
-    case USER_MINI_AXIS_TYPE_MINIMAL:
-      offset = U.rvisize * 1.2f;  // Scaled by 1.2 so it's not touching the gizmo
-      break;
-    case USER_MINI_AXIS_TYPE_NONE:
-      offset = 20;  // Just a number that works based on empirical testing
-      break;
+  /* Check to see if the Navigation Gizmo is enabled. */
+  if (((U.uiflag & USER_SHOW_GIZMO_NAVIGATE) == 0) ||
+      (v3d->gizmo_flag & (V3D_GIZMO_HIDE | V3D_GIZMO_HIDE_NAVIGATE)))
+  {
+    offset = 10;
+  }
+  else {
+    /* Depending on user AXIS preference, pad accordingly. */
+    switch ((eUserpref_MiniAxisType)U.mini_axis_type) {
+      case USER_MINI_AXIS_TYPE_GIZMO:
+        offset = U.gizmo_size_navigate_v3d;
+        break;
+      case USER_MINI_AXIS_TYPE_MINIMAL:
+        offset = U.rvisize * 1.7f;
+        break;
+      case USER_MINI_AXIS_TYPE_NONE:
+        offset = U.rvisize;
+        break;
+    }
   }
 
   offset *= U.scale_factor;
@@ -1569,7 +1579,7 @@ static void drawTransformPixel(const bContext *C, ARegion *region, void *arg)
       if (region == t->region) {
         if (t->options & (CTX_OBJECT | CTX_POSE_BONE)) {
           if (ob && autokeyframe_cfra_can_key(scene, &ob->id)) {
-            drawAutoKeyWarning(t, region);
+            drawAutoKeyWarning(t, C, region);
           }
         }
       }
