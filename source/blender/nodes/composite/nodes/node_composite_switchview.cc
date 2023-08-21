@@ -20,7 +20,7 @@
 
 namespace blender::nodes::node_composite_switchview_cc {
 
-static void node_declare_dynamic(const bNodeTree &ntree,
+static void node_declare_dynamic(const bNodeTree & /*ntree*/,
                                  const bNode &node,
                                  NodeDeclaration &r_declaration)
 {
