@@ -475,8 +475,8 @@ GHOST_TSuccess GHOST_SystemWin32::getPixelAtCursor(float r_color[3]) const
 
 GHOST_IWindow *GHOST_SystemWin32::getWindowUnderCursor(int32_t /*x*/, int32_t /*y*/)
 {
-  /* Get cursor position from OS. Do not use supplied positions as those could
-   * be incorrect, especially if using multiple windows of differing OS scale. */
+  /* Get cursor position from the OS. Do not use the supplied positions as those
+   * could be incorrect, especially if using multiple windows of differing OS scale. */
   POINT point;
   if (!GetCursorPos(&point)) {
     return nullptr;

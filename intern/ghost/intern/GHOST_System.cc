@@ -210,8 +210,10 @@ bool GHOST_System::getFullScreen()
 
 GHOST_IWindow *GHOST_System::getWindowUnderCursor(int32_t x, int32_t y)
 {
-  /* TODO: This solution should follow the order of the activated windows (Z-order).
-   * It is imperfect but usable in most cases. */
+  /* TODO: The following does not consider z-order so only works for simple cases
+   * of windows that do not overlap. It iterates in natural order, which will result
+   * in parent windows returned when their children are in front of them. Reversed order
+   * would be better. However, each platform should use a specific version of this. */
   for (GHOST_IWindow *iwindow : m_windowManager->getWindows()) {
     if (iwindow->getState() == GHOST_kWindowStateMinimized) {
       continue;

@@ -332,7 +332,10 @@ class GHOST_ISystem {
   virtual void setAutoFocus(const bool auto_focus) = 0;
 
   /**
-   * Get the Window under the cursor.
+   * Get the Window under the cursor. Although coordinates of the mouse are supplied,
+   * these could be incorrect on some platforms under some conditions, for example when
+   * using multiple monitors that vary in scale or DPI). It is best to ignore these
+   * and ask the OS for the position of the mouse instead.
    * \param x: The x-coordinate of the cursor.
    * \param y: The y-coordinate of the cursor.
    * \return The window under the cursor or nullptr if none.
