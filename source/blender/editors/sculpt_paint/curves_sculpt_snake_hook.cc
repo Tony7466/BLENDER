@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,6 +8,7 @@
 
 #include "BLI_kdtree.h"
 #include "BLI_length_parameterize.hh"
+#include "BLI_math_geom.h"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_rand.hh"
 #include "BLI_vector.hh"
@@ -34,10 +35,10 @@
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 /**
  * The code below uses a prefix naming convention to indicate the coordinate space:

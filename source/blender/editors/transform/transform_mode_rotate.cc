@@ -8,16 +8,18 @@
 
 #include <cstdlib>
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_task.h"
 
 #include "BKE_context.h"
 #include "BKE_report.h"
 #include "BKE_unit.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
@@ -366,10 +368,7 @@ static void applyRotation(TransInfo *t)
       applyRotationValue(t, t->values_final[0], axis_final, is_large_rotation);
     }
 
-    /* In proportional edit it can happen that */
-    /* vertices in the radius of the brush end */
-    /* outside the clipping area               */
-    /* XXX HACK - dg */
+    /* Not ideal, see #clipUVData code-comment. */
     if (t->flag & T_PROP_EDIT) {
       clipUVData(t);
     }

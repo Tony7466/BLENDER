@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2010-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2010-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,9 +20,10 @@
 #include "BKE_global.h"
 #include "BKE_mesh.hh"
 
-#include "ED_armature.h"
+#include "ED_armature.hh"
 
 #include "BLI_listbase.h"
+#include "BLI_math_matrix.h"
 
 #include "ArmatureExporter.h"
 #include "GeometryExporter.h"
@@ -83,7 +84,6 @@ bool ArmatureExporter::add_instance_controller(Object *ob)
   }
 
   /* write root bone URLs */
-  Bone *bone;
   LISTBASE_FOREACH (Bone *, bone, &arm->bonebase) {
     write_bone_URLs(ins, ob_arm, bone);
   }

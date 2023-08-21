@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,6 +8,7 @@
 
 #include <cstring>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 #include "MEM_guardedalloc.h"
@@ -19,7 +20,7 @@
 #include "BLI_path_util.h"
 #include "BLI_set.hh"
 #include "BLI_string.h"
-#include "BLI_string_search.h"
+#include "BLI_string_search.hh"
 #include "BLI_utildefines.h"
 
 #include "DNA_collection_types.h"
@@ -61,16 +62,15 @@
 
 #include "BLO_read_write.h"
 
-#include "UI_interface.h"
 #include "UI_interface.hh"
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 #include "BLT_translation.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "DEG_depsgraph_build.h"
@@ -80,10 +80,10 @@
 #include "MOD_nodes.hh"
 #include "MOD_ui_common.hh"
 
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_spreadsheet.h"
-#include "ED_undo.h"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_spreadsheet.hh"
+#include "ED_undo.hh"
 #include "ED_viewer_path.hh"
 
 #include "NOD_geometry.hh"

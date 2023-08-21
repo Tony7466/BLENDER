@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -49,10 +49,10 @@
 #include "DNA_view3d_types.h"
 #include "DNA_world_types.h"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_view3d.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_view3d.hh"
 
 #include "GPU_capabilities.h"
 #include "GPU_framebuffer.h"
@@ -69,11 +69,11 @@
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
-#include "WM_api.h"
-#include "wm_window.h"
+#include "WM_api.hh"
+#include "wm_window.hh"
 
 #include "draw_color_management.h"
 #include "draw_manager.h"
@@ -2834,7 +2834,7 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d, cons
     drw_engines_cache_finish();
 
     drw_task_graph_deinit();
-#if 0 /* This is a workaround to a nasty bug that seems to be a nasty driver bug. (See #69377) */
+#if 0 /* This is a workaround to a nasty bug that seems to be a nasty driver bug (see #69377). */
     DRW_render_instance_buffer_finish();
 #else
     DST.buffer_finish_called = true;

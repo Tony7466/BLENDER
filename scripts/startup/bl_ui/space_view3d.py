@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -3564,6 +3564,7 @@ class VIEW3D_MT_mask(Menu):
         layout.menu("VIEW3D_MT_random_mask", text="Random Mask")
 
         layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
+
 
 class VIEW3D_MT_face_sets(Menu):
     bl_label = "Face Sets"

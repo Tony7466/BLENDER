@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,8 +23,8 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
@@ -43,19 +43,19 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
 
-#include "UI_interface.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_view2d.hh"
 
-#include "ED_anim_api.h"
-#include "ED_armature.h"
-#include "ED_keyframes_edit.h" /* XXX move the select modes out of there! */
-#include "ED_markers.h"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
+#include "ED_anim_api.hh"
+#include "ED_armature.hh"
+#include "ED_keyframes_edit.hh" /* XXX move the select modes out of there! */
+#include "ED_markers.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Channel helper functions
@@ -352,6 +352,11 @@ bool ANIM_is_active_channel(bAnimListElem *ale)
     case ANIMTYPE_GPLAYER: {
       bGPDlayer *gpl = (bGPDlayer *)ale->data;
       return gpl->flag & GP_LAYER_ACTIVE;
+    }
+    case ANIMTYPE_GREASE_PENCIL_LAYER: {
+      GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
+      return grease_pencil->is_layer_active(
+          static_cast<blender::bke::greasepencil::Layer *>(ale->data));
     }
     /* These channel types do not have active flags. */
     case ANIMTYPE_MASKLAYER:
@@ -3629,23 +3634,60 @@ static int click_select_channel_gplayer(bContext *C,
   return (ND_ANIMCHAN | NA_EDITED); /* Animation Editors updates */
 }
 
+static int click_select_channel_grease_pencil_datablock(bAnimListElem *ale)
+{
+  GreasePencil *grease_pencil = static_cast<GreasePencil *>(ale->data);
+
+  /* Toggle expand:
+   * - Although the triangle widget already allows this,
+   *   the whole channel can also be used for this purpose.
+   */
+  grease_pencil->flag ^= GREASE_PENCIL_ANIM_CHANNEL_EXPANDED;
+
+  return (ND_ANIMCHAN | NA_EDITED);
+}
+
+static int click_select_channel_grease_pencil_layer_group(bAnimListElem *ale)
+{
+  GreasePencilLayerTreeGroup *layer_group = static_cast<GreasePencilLayerTreeGroup *>(ale->data);
+
+  /* Toggle expand:
+   * - Although the triangle widget already allows this,
+   *   the whole channel can also be used for this purpose.
+   */
+  layer_group->base.flag ^= GP_LAYER_TREE_NODE_EXPANDED;
+
+  return (ND_ANIMCHAN | NA_EDITED);
+}
+
 static int click_select_channel_grease_pencil_layer(bContext *C,
                                                     bAnimContext *ac,
                                                     bAnimListElem *ale,
-                                                    const short /*selectmode*/,
+                                                    const short selectmode,
                                                     const int /*filter*/)
 {
-  /* TODO: Implement other selection modes. */
-  GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(ale->data);
+  using namespace blender::bke::greasepencil;
+  Layer *layer = static_cast<Layer *>(ale->data);
   GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
 
-  /* Clear previous channel selection and set active flag on current selection */
-  ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_CLEAR);
+  if (selectmode == SELECT_INVERT) {
+    layer->set_selected(!layer->is_selected());
+  }
+  else if (selectmode == SELECT_EXTEND_RANGE) {
+    ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_EXTEND_RANGE);
+    animchannel_select_range(ac, ale);
+  }
+  else {
+    ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_CLEAR);
+    layer->set_selected(true);
+  }
 
-  layer->base.flag |= GP_LAYER_TREE_NODE_SELECT;
-  grease_pencil->active_layer = layer;
+  /* Active channel is not changed during range select. */
+  if (layer->is_selected() && (selectmode != SELECT_EXTEND_RANGE)) {
+    grease_pencil->set_active_layer(layer);
+  }
 
-  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, nullptr);
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
   return (ND_ANIMCHAN | NA_EDITED);
 }
 
@@ -3784,11 +3826,13 @@ static int mouse_anim_channels(bContext *C,
       notifierFlags |= click_select_channel_gplayer(C, ac, ale, selectmode, filter);
       break;
     case ANIMTYPE_GREASE_PENCIL_DATABLOCK:
-      /*todo*/
+      notifierFlags |= click_select_channel_grease_pencil_datablock(ale);
+      break;
+    case ANIMTYPE_GREASE_PENCIL_LAYER_GROUP:
+      notifierFlags |= click_select_channel_grease_pencil_layer_group(ale);
       break;
     case ANIMTYPE_GREASE_PENCIL_LAYER:
-      notifierFlags |= click_select_channel_grease_pencil_layer(
-          C, ac, ale, SELECT_REPLACE, filter);
+      notifierFlags |= click_select_channel_grease_pencil_layer(C, ac, ale, selectmode, filter);
       break;
     case ANIMTYPE_MASKDATABLOCK:
       notifierFlags |= click_select_channel_maskdatablock(ale);

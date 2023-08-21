@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,12 +7,12 @@
  */
 
 #include "ED_curves.hh"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
-#include "ED_view3d.h"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
+#include "ED_view3d.hh"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "BKE_asset.h"
 #include "BKE_attribute_math.hh"
@@ -38,16 +38,16 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "ED_asset.h"
-#include "ED_geometry.h"
-#include "ED_mesh.h"
+#include "ED_asset.hh"
+#include "ED_geometry.hh"
+#include "ED_mesh.hh"
 
 #include "BLT_translation.h"
 
@@ -370,17 +370,18 @@ static int run_node_group_invoke(bContext *C, wmOperator *op, const wmEvent * /*
   return run_node_group_exec(C, op);
 }
 
-static char *run_node_group_get_description(bContext *C, wmOperatorType * /*ot*/, PointerRNA *ptr)
+static std::string run_node_group_get_description(bContext *C,
+                                                  wmOperatorType * /*ot*/,
+                                                  PointerRNA *ptr)
 {
   const asset_system::AssetRepresentation *asset = get_asset(*C, *ptr, nullptr);
   if (!asset) {
-    return nullptr;
+    return "";
   }
-  const char *description = asset->get_metadata().description;
-  if (!description) {
-    return nullptr;
+  if (!asset->get_metadata().description) {
+    return "";
   }
-  return BLI_strdup(description);
+  return asset->get_metadata().description;
 }
 
 static void add_attribute_search_or_value_buttons(uiLayout *layout,
