@@ -565,9 +565,8 @@ static void node_update_basis_from_declaration(
       panel_updates.pop();
     }
   }
-  if (!panel_updates.is_empty()) {
-    /* TODO warning, more panel items declared than added. */
-  }
+  /* Enough items should have been added to close all panels. */
+  BLI_assert(panel_updates.is_empty());
 
   /* Little bit of space in end. */
   if (has_sockets || !has_buttons) {
