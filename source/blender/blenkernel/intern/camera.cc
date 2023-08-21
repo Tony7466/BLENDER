@@ -105,11 +105,23 @@ static void camera_foreach_id(ID *id, LibraryForeachIDData *data)
   }
 }
 
-static void camera_write_cycles_compatibility_data_create(ID *id,
-                                                          IDProperty *&idprop,
-                                                          IDProperty *&cycles_cam)
+struct CameraCyclesCompatibilityData {
+  IDProperty *idprop_prev = nullptr;
+  IDProperty *idprop_temp = nullptr;
+};
+
+static CameraCyclesCompatibilityData camera_write_cycles_compatibility_data_create(ID *id)
 {
-  Camera *cam = (Camera *)id;
+  auto cycles_data_ensure = [](IDProperty *group) {
+    IDProperty *prop = IDP_GetPropertyTypeFromGroup(group, "cycles", IDP_GROUP);
+    if (prop) {
+      return prop;
+    }
+    IDPropertyTemplate val = {0};
+    prop = IDP_New(IDP_GROUP, &val, "cycles");
+    IDP_AddToGroup(group, prop);
+    return prop;
+  };
 
   auto cycles_property_int_set = [](IDProperty *idprop, const char *name, int value) {
     IDProperty *prop = IDP_GetPropertyTypeFromGroup(idprop, name, IDP_INT);
@@ -137,18 +149,13 @@ static void camera_write_cycles_compatibility_data_create(ID *id,
 
   /* For forward compatibility, still write panoramic properties as ID properties for
    * previous cycles versions. */
-  idprop = IDP_GetProperties(id, false);
-  bool alloc_id_prop = (idprop == nullptr);
-  if (alloc_id_prop) {
-    idprop = IDP_GetProperties(id, true);
-  }
-  cycles_cam = IDP_GetPropertyTypeFromGroup(idprop, "cycles", IDP_GROUP);
-  bool alloc_cycles_cam = (cycles_cam == nullptr);
-  if (alloc_cycles_cam) {
-    IDPropertyTemplate val = {0};
-    cycles_cam = IDP_New(IDP_GROUP, &val, "cycles");
-    IDP_AddToGroup(idprop, cycles_cam);
-  }
+  IDProperty *idprop_prev = IDP_GetProperties(id, false);
+  /* Make a copy to avoid modifying the original. */
+  IDProperty *idprop_temp = idprop_prev ? IDP_CopyProperty(idprop_prev) :
+                                          IDP_GetProperties(id, true);
+
+  Camera *cam = (Camera *)id;
+  IDProperty *cycles_cam = cycles_data_ensure(idprop_temp);
   cycles_property_int_set(cycles_cam, "panorama_type", cam->panorama_type);
   cycles_property_float_set(cycles_cam, "fisheye_fov", cam->fisheye_fov);
   cycles_property_float_set(cycles_cam, "fisheye_lens", cam->fisheye_lens);
@@ -162,22 +169,18 @@ static void camera_write_cycles_compatibility_data_create(ID *id,
   cycles_property_float_set(cycles_cam, "fisheye_polynomial_k3", cam->fisheye_polynomial_k3);
   cycles_property_float_set(cycles_cam, "fisheye_polynomial_k4", cam->fisheye_polynomial_k4);
 
-  if (!alloc_cycles_cam) {
-    cycles_cam = nullptr;
-  }
-  if (!alloc_id_prop) {
-    idprop = nullptr;
-  }
+  id->properties = idprop_temp;
+
+  return {idprop_prev, idprop_temp};
 }
 
-static void camera_write_cycles_compatibility_data_clear(IDProperty *idprop,
-                                                         IDProperty *cycles_cam)
+static void camera_write_cycles_compatibility_data_clear(ID *id,
+                                                         CameraCyclesCompatibilityData &data)
 {
-  if (idprop && cycles_cam) {
-    IDP_FreeFromGroup(idprop, cycles_cam);
-  }
-  if (idprop) {
-    IDP_FreeProperty(idprop);
+  id->properties = data.idprop_prev;
+
+  if (data.idprop_temp) {
+    IDP_FreeProperty(data.idprop_temp);
   }
 }
 
@@ -185,8 +188,11 @@ static void camera_blend_write(BlendWriter *writer, ID *id, const void *id_addre
 {
   Camera *cam = (Camera *)id;
 
-  IDProperty *idprop, *cycles_cam;
-  camera_write_cycles_compatibility_data_create(id, idprop, cycles_cam);
+  CameraCyclesCompatibilityData cycles_data;
+
+  if (!BLO_write_is_undo(writer)) {
+    cycles_data = camera_write_cycles_compatibility_data_create(id);
+  }
 
   /* write LibData */
   BLO_write_id_struct(writer, Camera, id_address, &cam->id);
@@ -196,7 +202,9 @@ static void camera_blend_write(BlendWriter *writer, ID *id, const void *id_addre
     BLO_write_struct(writer, CameraBGImage, bgpic);
   }
 
-  camera_write_cycles_compatibility_data_clear(idprop, cycles_cam);
+  if (!BLO_write_is_undo(writer)) {
+    camera_write_cycles_compatibility_data_clear(id, cycles_data);
+  }
 }
 
 static void camera_blend_read_data(BlendDataReader *reader, ID *id)
