@@ -330,17 +330,15 @@ static int graph_slider_modal(bContext *C, wmOperator *op, const wmEvent *event)
     default: {
       if ((event->val == KM_PRESS) && handleNumInput(C, &gso->num, event)) {
         float value;
-        float percentage = RNA_property_float_get(op->ptr, gso->factor_prop);
-
-        /* Grab percentage from numeric input, and store this new value for redo
-         * NOTE: users see ints, while internally we use a 0-1 float.
-         */
-        value = percentage * 100.0f;
         applyNumInput(&gso->num, &value);
 
-        percentage = value / 100.0f;
-        ED_slider_factor_set(gso->slider, percentage);
-        RNA_property_float_set(op->ptr, gso->factor_prop, percentage);
+        /* Grab percentage from numeric input, and store this new value for redo
+         * NOTE: users see ints, while internally we use a 0-1 float. */
+        if (ED_slider_mode_get(gso->slider) == SLIDER_MODE_PERCENT) {
+          value = value / 100.0f;
+        }
+        ED_slider_factor_set(gso->slider, value);
+        RNA_property_float_set(op->ptr, gso->factor_prop, value);
 
         gso->modal_update(C, op);
         break;
@@ -1172,7 +1170,7 @@ void GRAPH_OT_blend_to_ease(wmOperatorType *ot)
 
 static void match_slope_graph_keys(bAnimContext *ac, const float factor)
 {
-  ListBase anim_data = {NULL, NULL};
+  ListBase anim_data = {nullptr, nullptr};
 
   bool all_segments_valid = true;
 
@@ -1218,7 +1216,7 @@ static void match_slope_modal_update(bContext *C, wmOperator *op)
   reset_bezts(gso);
   const float factor = slider_factor_get_and_remember(op);
   match_slope_graph_keys(&gso->ac, factor);
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 }
 
 static int match_slope_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -1254,7 +1252,7 @@ static int match_slope_exec(bContext *C, wmOperator *op)
   match_slope_graph_keys(&ac, factor);
 
   /* Set notifier that keyframes have changed. */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
 
   return OPERATOR_FINISHED;
 }
