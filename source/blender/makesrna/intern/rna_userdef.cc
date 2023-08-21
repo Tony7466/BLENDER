@@ -4711,6 +4711,12 @@ static void rna_def_userdef_view(BlenderRNA *brna)
                            "It improves the shape readability of very dense meshes");
   RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
 
+  prop = RNA_def_property(srna, "fresnel_intensity_factor", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, nullptr, "fresnel_intensity");
+  RNA_def_property_ui_text(prop, "Fresnel Intensity", "Intensity of wireframe fresnel");
+  RNA_def_property_range(prop, 0.0, 1.0);
+  RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
+
   USERDEF_TAG_DIRTY_PROPERTY_UPDATE_DISABLE;
   prop = RNA_def_property(srna, "show_addons_enabled_only", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(

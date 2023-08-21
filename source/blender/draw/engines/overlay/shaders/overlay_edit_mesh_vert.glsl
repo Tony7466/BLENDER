@@ -97,7 +97,7 @@ void main()
   vec3 view_normal = normalize(normal_object_to_view(vnor) + 1e-4);
   vec3 view_vec = (drw_view.winmat[3][3] == 0.0) ? normalize(view_pos) : vec3(0.0, 0.0, 1.0);
   float facing = dot(view_vec, view_normal);
-  facing = 1.0 - abs(facing) * 0.2;
+  facing = 1.0 - abs(facing)*0.6;
 
   /* Do interpolation in a non-linear space to have a better visual result. */
   finalColor.rgb = mix(finalColor.rgb, non_linear_blend_color(colorEditMeshMiddle.rgb,

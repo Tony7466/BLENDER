@@ -993,6 +993,9 @@ typedef struct UserDef {
 
   struct WalkNavigation walk_navigation;
 
+  /** Fresnel */
+  float fresnel_intensity;
+  char _pad[4];
 
   /** The UI for the user preferences. */
   UserDef_SpaceData space_data;

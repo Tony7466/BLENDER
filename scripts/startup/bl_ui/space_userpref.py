@@ -751,7 +751,7 @@ class USERPREF_PT_viewport_display(ViewportPanel, CenterAlignMixIn, Panel):
         col = layout.column(heading="Fresnel")
         col.prop(view, "use_fresnel_edit")
         col.prop(view, "use_fresnel")
-
+        col.prop(view, "fresnel_intensity_factor")
 
 class USERPREF_PT_viewport_quality(ViewportPanel, CenterAlignMixIn, Panel):
     bl_label = "Quality"
