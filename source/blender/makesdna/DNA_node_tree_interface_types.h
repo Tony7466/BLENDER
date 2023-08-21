@@ -103,7 +103,10 @@ typedef struct bNodeTreeInterfaceSocket {
 
 /* Panel interface flags */
 typedef enum NodeTreeInterfacePanelFlag {
+  /* Panel starts closed on new node instances. */
   NODE_INTERFACE_PANEL_DEFAULT_CLOSED = 1 << 0,
+  /* Allow child panels inside this panel. */
+  NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS = 1 << 1,
 } NodeTreeInterfacePanelFlag;
 ENUM_OPERATORS(NodeTreeInterfacePanelFlag, NODE_INTERFACE_PANEL_DEFAULT_CLOSED);
 

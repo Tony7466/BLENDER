@@ -852,6 +852,10 @@ bNodeTreeInterfacePanel *bNodeTreeInterfacePanel::find_parent_recursive(
 
 void bNodeTreeInterfacePanel::add_item(bNodeTreeInterfaceItem &item)
 {
+  /* Are child panels allowed? */
+  BLI_assert(item.item_type != NODE_INTERFACE_PANEL ||
+             (flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS));
+
   blender::MutableSpan<bNodeTreeInterfaceItem *> old_items = this->items();
   items_num++;
   items_array = MEM_cnew_array<bNodeTreeInterfaceItem *>(items_num, __func__);
@@ -865,6 +869,10 @@ void bNodeTreeInterfacePanel::add_item(bNodeTreeInterfaceItem &item)
 
 void bNodeTreeInterfacePanel::insert_item(bNodeTreeInterfaceItem &item, int position)
 {
+  /* Are child panels allowed? */
+  BLI_assert(item.item_type != NODE_INTERFACE_PANEL ||
+             (flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS));
+
   position = std::min(std::max(position, 0), items_num);
 
   blender::MutableSpan<bNodeTreeInterfaceItem *> old_items = this->items();
@@ -1071,6 +1079,8 @@ void bNodeTreeInterfacePanel::copy_from(
   /* Copy buffers. */
   for (const int i : items_src.index_range()) {
     const bNodeTreeInterfaceItem *item_src = items_src[i];
+    BLI_assert(item_src->item_type != NODE_INTERFACE_PANEL ||
+               (flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS));
     items_array[i] = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(item_src));
     item_types::item_copy(*items_array[i], *item_src, flag);
   }
@@ -1173,13 +1183,12 @@ bNodeTreeInterfaceSocket *bNodeTreeInterface::add_socket(blender::StringRefNull 
   return new_socket;
 }
 
-bNodeTreeInterfaceSocket *bNodeTreeInterface::insert_socket(
-    blender::StringRefNull name,
-    blender::StringRefNull description,
-    blender::StringRefNull socket_type,
-    const NodeTreeInterfaceSocketFlag flag,
-    bNodeTreeInterfacePanel *parent,
-    const int position)
+bNodeTreeInterfaceSocket *bNodeTreeInterface::insert_socket(blender::StringRefNull name,
+                                                            blender::StringRefNull description,
+                                                            blender::StringRefNull socket_type,
+                                                            const NodeTreeInterfaceSocketFlag flag,
+                                                            bNodeTreeInterfacePanel *parent,
+                                                            const int position)
 {
   if (parent == nullptr) {
     parent = &root_panel;
@@ -1204,6 +1213,11 @@ bNodeTreeInterfacePanel *bNodeTreeInterface::add_panel(blender::StringRefNull na
   }
   BLI_assert(this->find_item(parent->item));
 
+  if (!(parent->flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS)) {
+    /* Parent does not allow adding child panels. */
+    return nullptr;
+  }
+
   bNodeTreeInterfacePanel *new_panel = make_panel(next_uid++, name, description, flag);
   if (new_panel) {
     parent->add_item(new_panel->item);
@@ -1222,6 +1236,11 @@ bNodeTreeInterfacePanel *bNodeTreeInterface::insert_panel(blender::StringRefNull
   }
   BLI_assert(this->find_item(parent->item));
 
+  if (!(parent->flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS)) {
+    /* Parent does not allow adding child panels. */
+    return nullptr;
+  }
+
   bNodeTreeInterfacePanel *new_panel = make_panel(next_uid++, name, description, flag);
   if (new_panel) {
     parent->insert_item(new_panel->item, position);
@@ -1238,8 +1257,11 @@ bNodeTreeInterfaceItem *bNodeTreeInterface::add_item_copy(const bNodeTreeInterfa
   BLI_assert(this->find_item(item));
   BLI_assert(this->find_item(parent->item));
 
-  if (parent == nullptr) {
-    parent = &root_panel;
+  if (item.item_type == NODE_INTERFACE_PANEL &&
+      !(parent->flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS))
+  {
+    /* Parent does not allow adding child panels. */
+    return nullptr;
   }
 
   bNodeTreeInterfaceItem *citem = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(&item));
@@ -1258,6 +1280,13 @@ bNodeTreeInterfaceItem *bNodeTreeInterface::insert_item_copy(const bNodeTreeInte
   }
   BLI_assert(this->find_item(item));
   BLI_assert(this->find_item(parent->item));
+
+  if (item.item_type == NODE_INTERFACE_PANEL &&
+      !(parent->flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS))
+  {
+    /* Parent does not allow adding child panels. */
+    return nullptr;
+  }
 
   bNodeTreeInterfaceItem *citem = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(&item));
   item_types::item_copy(*citem, item, 0);
@@ -1306,6 +1335,12 @@ bool bNodeTreeInterface::move_item_to_parent(bNodeTreeInterfaceItem &item,
 {
   bNodeTreeInterfacePanel *parent = this->find_item_parent(item);
   if (parent == nullptr) {
+    return false;
+  }
+  if (item.item_type == NODE_INTERFACE_PANEL &&
+      !(new_parent->flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS))
+  {
+    /* Parent does not allow adding child panels. */
     return false;
   }
   if (parent->remove_item(item, false)) {
