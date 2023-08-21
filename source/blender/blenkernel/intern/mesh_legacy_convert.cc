@@ -37,6 +37,7 @@
 #include "BKE_multires.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
+#include "BKE_node_tree_update.h"
 
 #include "BLT_translation.h"
 
@@ -2178,6 +2179,7 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
     }
     if (!auto_smooth_node_tree) {
       auto_smooth_node_tree = add_auto_smooth_node_tree(bmain);
+      BKE_ntree_update_main_tree(&bmain, auto_smooth_node_tree, nullptr);
     }
     auto *md = reinterpret_cast<NodesModifierData *>(BKE_modifier_new(eModifierType_Nodes));
     STRNCPY(md->modifier.name, DATA_("Auto Smooth"));
@@ -2197,7 +2199,13 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
 
     md->settings.properties = bke::idprop::create_group("Nodes Modifier Settings").release();
     IDProperty *angle_prop = bke::idprop::create(DATA_("Input_1"), mesh->smoothresh).release();
+    auto *ui_data = reinterpret_cast<IDPropertyUIDataFloat *>(IDP_ui_data_ensure(angle_prop));
+    ui_data->base.rna_subtype = PROP_ANGLE;
     IDP_AddToGroup(md->settings.properties, angle_prop);
+    IDP_AddToGroup(md->settings.properties,
+                   bke::idprop::create(DATA_("Input_1_use_attribute"), 0).release());
+    IDP_AddToGroup(md->settings.properties,
+                   bke::idprop::create(DATA_("Input_1_attribute_name"), "").release());
   }
 }
 

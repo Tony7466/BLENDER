@@ -343,7 +343,7 @@ void mesh_render_data_update_normals(MeshRenderData &mr, const eMRDataType data_
       mr.face_normals = mr.me->face_normals();
     }
     if (((data_flag & MR_DATA_LOOP_NOR) &&
-         mr.me->normal_domain_all_info() == ATTR_DOMAIN_CORNER) ||
+         ELEM(mr.me->normal_domain_all_info(), ATTR_DOMAIN_CORNER, ATTR_DOMAIN_FACE)) ||
         (data_flag & MR_DATA_TAN_LOOP_NOR))
     {
       mr.loop_normals = mr.me->corner_normals();
