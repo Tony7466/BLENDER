@@ -151,6 +151,14 @@ class GHOST_SystemWin32 : public GHOST_System {
    */
   static GHOST_TSuccess disposeContextD3D(GHOST_ContextD3D *context);
 
+  /**
+   * Get the Window under the cursor.
+   * \param x: The x-coordinate of the cursor.
+   * \param y: The y-coordinate of the cursor.
+   * \return The window under the cursor or nullptr if none.
+   */
+  GHOST_IWindow *getWindowUnderCursor(int32_t x, int32_t y);
+
   /***************************************************************************************
    ** Event management functionality
    ***************************************************************************************/
