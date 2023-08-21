@@ -280,8 +280,11 @@ class NodeGroupInterfaceTests:
         self.assertSequenceEqual([s.name for s in group_node.inputs], ["Input 0", "Input 1"])
         self.assertSequenceEqual([s.name for s in group_node.outputs], ["Output 0", "Output 1"])
 
+        # Nested panel is not allowed, should produce error messages.
+        self.assertFalse(panel0.is_child_panel_allowed)
         panel1 = tree.interface.new_panel("Panel 1", parent=panel0)
-        self.assertSequenceEqual(tree.interface.ui_items, [in0, out0, panel0, in1, out1, panel1])
+        self.assertIsNone(panel1)
+        self.assertSequenceEqual(tree.interface.ui_items, [in0, out0, panel0, in1, out1])
         self.assertSequenceEqual([s.name for s in group_node.inputs], ["Input 0", "Input 1"])
         self.assertSequenceEqual([s.name for s in group_node.outputs], ["Output 0", "Output 1"])
 

@@ -447,9 +447,15 @@ static bNodeTreeInterfacePanel *rna_NodeTreeInterfaceItems_new_panel(
     bool default_closed,
     bNodeTreeInterfacePanel *parent)
 {
-  if (parent != nullptr && !interface->find_item(parent->item)) {
-    BKE_report(reports, RPT_ERROR_INVALID_INPUT, "Parent is not part of the interface");
-    return nullptr;
+  if (parent != nullptr) {
+    if (!interface->find_item(parent->item)) {
+      BKE_report(reports, RPT_ERROR_INVALID_INPUT, "Parent is not part of the interface");
+      return nullptr;
+    }
+    if (!(parent->flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS)) {
+      BKE_report(reports, RPT_WARNING, "Parent panel does not allow child panels");
+      return nullptr;
+    }
   }
 
   NodeTreeInterfacePanelFlag flag = NodeTreeInterfacePanelFlag(0);
@@ -479,9 +485,17 @@ static bNodeTreeInterfaceItem *rna_NodeTreeInterfaceItems_copy_to_parent(
     bNodeTreeInterfaceItem *item,
     bNodeTreeInterfacePanel *parent)
 {
-  if (parent != nullptr && !interface->find_item(parent->item)) {
-    BKE_report(reports, RPT_ERROR_INVALID_INPUT, "Parent is not part of the interface");
-    return nullptr;
+  if (parent != nullptr) {
+    if (!interface->find_item(parent->item)) {
+      BKE_report(reports, RPT_ERROR_INVALID_INPUT, "Parent is not part of the interface");
+      return nullptr;
+    }
+    if (item->item_type == NODE_INTERFACE_PANEL &&
+        !(parent->flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS))
+    {
+      BKE_report(reports, RPT_WARNING, "Parent panel does not allow child panels");
+      return nullptr;
+    }
   }
 
   if (parent == nullptr) {
@@ -559,10 +573,18 @@ static void rna_NodeTreeInterfaceItems_move(
 static void rna_NodeTreeInterfaceItems_move_to_parent(ID *id,
                                                       bNodeTreeInterface *interface,
                                                       Main *bmain,
+                                                      ReportList *reports,
                                                       bNodeTreeInterfaceItem *item,
                                                       bNodeTreeInterfacePanel *parent,
                                                       int to_index)
 {
+  if (item->item_type == NODE_INTERFACE_PANEL &&
+      !(parent->flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS))
+  {
+    BKE_report(reports, RPT_WARNING, "Parent panel does not allow child panels");
+    return;
+  }
+
   interface->move_item_to_parent(*item, parent, to_index);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
@@ -892,6 +914,12 @@ static void rna_def_node_interface_panel(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "NodeTreeInterfaceItem");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Items", "Items in the node panel");
+
+  prop = RNA_def_property(srna, "is_child_panel_allowed", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop, "Is Child Panel Allowed", "True if the panel can contain child panels");
 }
 
 static void rna_def_node_tree_interface_items_api(StructRNA *srna)
@@ -931,7 +959,8 @@ static void rna_def_node_tree_interface_items_api(StructRNA *srna)
                       0,
                       "Socket Type",
                       "Type of socket generated on nodes");
-  /* Note: itemf callback works for the function parameter, it does not require a data pointer. */
+  /* Note: itemf callback works for the function parameter, it does not require a data pointer.
+   */
   RNA_def_property_enum_funcs(
       parm, nullptr, nullptr, "rna_NodeTreeInterfaceSocket_socket_type_itemf");
   RNA_def_pointer(
@@ -994,7 +1023,7 @@ static void rna_def_node_tree_interface_items_api(StructRNA *srna)
 
   func = RNA_def_function(srna, "move_to_parent", "rna_NodeTreeInterfaceItems_move_to_parent");
   RNA_def_function_ui_description(func, "Move an item to a new panel and/or position.");
-  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
   parm = RNA_def_pointer(func, "item", "NodeTreeInterfaceItem", "Item", "The item to remove");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_pointer(
