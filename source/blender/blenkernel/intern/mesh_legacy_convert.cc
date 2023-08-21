@@ -36,6 +36,7 @@
 #include "BKE_modifier.h"
 #include "BKE_multires.hh"
 #include "BKE_node.hh"
+#include "BKE_node_runtime.hh"
 
 #include "BLT_translation.h"
 

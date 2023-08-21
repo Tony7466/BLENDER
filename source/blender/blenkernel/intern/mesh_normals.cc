@@ -299,7 +299,7 @@ void normals_calc_face_vert(const Span<float3> positions,
 /** \name Mesh Normal Calculation
  * \{ */
 
-eAttrDomain Mesh::normal_domain_all_info() const
+int Mesh::normal_domain_all_info() const
 {
   using namespace blender;
   using namespace blender::bke;
