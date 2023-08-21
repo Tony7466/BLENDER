@@ -583,6 +583,42 @@ VkFormat to_vk_format(const GPUVertCompType type, const uint32_t size, GPUVertFe
   return VK_FORMAT_R32_SFLOAT;
 }
 
+VkFormat to_vk_format(const shader::Type type)
+{
+  /* TODO: complete this function. */
+  switch (type) {
+    case shader::Type::FLOAT:
+      return VK_FORMAT_R32_SFLOAT;
+    case shader::Type::VEC2:
+    case shader::Type::VEC3:
+    case shader::Type::VEC4:
+    case shader::Type::MAT3:
+    case shader::Type::MAT4:
+    case shader::Type::UINT:
+    case shader::Type::UVEC2:
+    case shader::Type::UVEC3:
+    case shader::Type::UVEC4:
+    case shader::Type::INT:
+    case shader::Type::IVEC2:
+    case shader::Type::IVEC3:
+    case shader::Type::IVEC4:
+    case shader::Type::BOOL:
+    case shader::Type::VEC3_101010I2:
+    case shader::Type::UCHAR:
+    case shader::Type::UCHAR2:
+    case shader::Type::UCHAR3:
+    case shader::Type::UCHAR4:
+    case shader::Type::CHAR:
+    case shader::Type::CHAR2:
+    case shader::Type::CHAR3:
+    case shader::Type::CHAR4:
+      break;
+  }
+
+  BLI_assert_unreachable();
+  return VK_FORMAT_R32G32B32A32_SFLOAT;
+}
+
 VkImageType to_vk_image_type(const eGPUTextureType type)
 {
   /* See

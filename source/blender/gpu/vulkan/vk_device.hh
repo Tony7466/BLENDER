@@ -11,6 +11,7 @@
 #include "BLI_utility_mixins.hh"
 #include "BLI_vector.hh"
 
+#include "vk_buffer.hh"
 #include "vk_common.hh"
 #include "vk_debug.hh"
 #include "vk_descriptor_pools.hh"
@@ -64,6 +65,8 @@ class VKDevice : public NonCopyable {
 
   /* Workarounds */
   VKWorkarounds workarounds_;
+
+  VKBuffer dummy_buffer_;
 
  public:
   VkPhysicalDevice physical_device_get() const
@@ -143,6 +146,11 @@ class VKDevice : public NonCopyable {
   void context_unregister(VKContext &context);
   const Vector<std::reference_wrapper<VKContext>> &contexts_get() const;
 
+  const VKBuffer &dummy_buffer_get() const
+  {
+    return dummy_buffer_;
+  }
+
   /** \} */
 
  private:
@@ -150,6 +158,7 @@ class VKDevice : public NonCopyable {
   void init_debug_callbacks();
   void init_memory_allocator();
   void init_descriptor_pools();
+  void init_dummy_buffer();
 
   /* During initialization the backend requires access to update the workarounds. */
   friend VKBackend;

@@ -66,6 +66,11 @@ void VKVertexAttributeObject::bind(VKContext &context)
       vbo.upload();
       context.command_buffer_get().bind(attribute.binding, vbo, 0);
     }
+    else {
+      const VKBuffer &buffer = VKBackend::get().device_get().dummy_buffer_get();
+      const VKBufferWithOffset buffer_with_offset = {buffer, 0};
+      context.command_buffer_get().bind(attribute.binding, buffer_with_offset);
+    }
 
     /* Bind dynamic buffers from immediate mode. */
     if (attribute.binding < buffers.size()) {
@@ -93,6 +98,39 @@ void VKVertexAttributeObject::update_bindings(const VKContext &context, VKBatch 
     if (vbo) {
       update_bindings(
           vbo->format, vbo, nullptr, vbo->vertex_len, interface, occupied_attributes, false);
+    }
+  }
+
+  if (occupied_attributes != interface.enabled_attr_mask_) {
+    interface.debug_print();
+
+    for (int location : IndexRange(16)) {
+      AttributeMask location_mask = 1 << location;
+      /* Skip occupied slots */
+      if (occupied_attributes & location_mask) {
+        continue;
+      }
+      /* Skip slots that are not used by the vertex shader. */
+      if ((interface.enabled_attr_mask_ & location_mask) == 0) {
+        continue;
+      }
+
+      /* Use dummy binding...*/
+      const uint32_t binding = bindings.size();
+      VkVertexInputAttributeDescription attribute_description = {};
+      attribute_description.binding = binding;
+      attribute_description.location = location;
+      attribute_description.offset = 0;
+      /* TODO make a function on interface to hide this ugly complexity... */
+      shader::Type attribute_type = static_cast<shader::Type>(interface.attr_types_[location]);
+      attribute_description.format = to_vk_format(attribute_type);
+      attributes.append(attribute_description);
+
+      VkVertexInputBindingDescription vk_binding_descriptor = {};
+      vk_binding_descriptor.binding = binding;
+      vk_binding_descriptor.stride = 0;
+      vk_binding_descriptor.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+      bindings.append(vk_binding_descriptor);
     }
   }
 
