@@ -405,6 +405,7 @@ static bool node_update_basis_socket(const bContext &C,
     return false;
   }
 
+  const int topy = locy;
   PointerRNA nodeptr, sockptr;
   RNA_pointer_create(&ntree.id, &RNA_Node, &node, &nodeptr);
   RNA_pointer_create(&ntree.id, &RNA_NodeSocket, &socket, &sockptr);
@@ -455,6 +456,8 @@ static bool node_update_basis_socket(const bContext &C,
   UI_block_align_end(&block);
   int buty;
   UI_block_layout_resolve(&block, nullptr, &buty);
+  /* Ensure minimum socket height in case layout is empty. */
+  buty = min_ii(buty, topy - NODE_DY);
 
   /* Horizontal position for input/output. */
   const float offsetx = (in_out == SOCK_IN ? 0.0f : NODE_WIDTH(node));
@@ -491,6 +494,9 @@ static void node_update_basis_from_declaration(
 
   Stack<PanelUpdate> panel_updates;
   for (const nodes::ItemDeclarationPtr &item_decl : decl.items) {
+    /* Space after header and between items. */
+    locy -= NODE_SOCKDY;
+
     bool is_parent_collapsed = false;
     if (PanelUpdate *parent_update = panel_updates.is_empty() ? nullptr : &panel_updates.peek()) {
       /* Adding an item to the parent panel, will be popped when reaching 0. */
