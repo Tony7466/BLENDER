@@ -209,7 +209,6 @@ GPU_SHADER_INTERFACE_INFO(eevee_surf_shadow_accum_iface, "")
 GPU_SHADER_CREATE_INFO(eevee_surf_shadow_metal_tile_pass_common)
     .early_fragment_test(true)
     .metal_backend_only(true)
-    .do_static_compilation(true)
     .define("DRW_VIEW_LEN", "64")
     .define("MAT_SHADOW")
     .define("USE_ATOMIC")
@@ -233,6 +232,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow_metal_tile_pass_common)
     .additional_info("eevee_shared");
 
 GPU_SHADER_CREATE_INFO(eevee_surf_shadow_metal_tile_clear)
+    .do_static_compilation(true)
     .early_fragment_test(true)
     .metal_backend_only(true)
     .additional_info("eevee_surf_shadow_metal_tile_pass_common")
@@ -240,6 +240,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow_metal_tile_clear)
     .fragment_out(0, Type::FLOAT, "out_tile_depth", DualBlend::NONE, 0);
 
 GPU_SHADER_CREATE_INFO(eevee_surf_shadow_metal_tile_accumulation)
+    .do_static_compilation(true)
     .early_fragment_test(true)
     .metal_backend_only(true)
     .additional_info("eevee_surf_shadow_metal_tile_pass_common")
