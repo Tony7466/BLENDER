@@ -27,6 +27,25 @@ from bl_ui.properties_data_light import (
     DATA_PT_EEVEE_light,
 )
 
+def show_ineffective_tool_warning(context, node_tree):
+    if not (node_tree.is_type_mesh or
+            node_tree.is_type_curve or
+            (context.preferences.experimental.use_new_point_cloud_type and node_tree.is_type_point_cloud)):
+        return True
+    if not (node_tree.is_mode_edit or node_tree.is_mode_sculpt):
+        return True
+    return False
+
+def draw_geometry_node_asset_warnings(layout, context, node_tree):
+    if not node_tree.asset_data:
+        return
+    if not node_tree.is_tool:
+        layout.label(text="Asset is not marked as tool", icon='ERROR')
+    elif show_ineffective_tool_warning(context, node_tree):
+        layout.label(text="Asset options must support at least one type and mode", icon='ERROR')
+    elif len(node_tree.asset_data.catalog_simple_name) == 0:
+        layout.label(text="Add asset to catalog to show in menus", icon='ERROR')
+
 
 class NODE_HT_header(Header):
     bl_space_type = 'NODE_EDITOR'
@@ -175,11 +194,7 @@ class NODE_HT_header(Header):
                         row.operator("asset.mark", text="Mark as Asset")
                 layout.prop(snode, "pin", text="", emboss=False)
                 if node_tree:
-                    if node_tree.asset_data:
-                        if not node_tree.is_tool:
-                            layout.label(text="Asset is not marked as tool", icon='ERROR')
-                        elif len(node_tree.asset_data.catalog_simple_name) == 0:
-                            layout.label(text="Add asset to catalog to show in menus", icon='ERROR')
+                    draw_geometry_node_asset_warnings(layout, context, node_tree)
         else:
             # Custom node tree is edited as independent ID block
             NODE_MT_editor_menus.draw_collapsible(context, layout)
