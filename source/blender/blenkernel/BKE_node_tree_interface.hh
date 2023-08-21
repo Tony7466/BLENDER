@@ -182,7 +182,7 @@ inline bNodeTreeInterfaceSocket *add_interface_socket_from_node(bNodeTree &ntree
                                                                 const StringRefNull socket_type,
                                                                 const StringRefNull name)
 {
-  eNodeTreeInterfaceSocketFlag flag = eNodeTreeInterfaceSocketFlag(0);
+  NodeTreeInterfaceSocketFlag flag = NodeTreeInterfaceSocketFlag(0);
   SET_FLAG_FROM_TEST(flag, from_sock.in_out & SOCK_IN, NODE_INTERFACE_SOCKET_INPUT);
   SET_FLAG_FROM_TEST(flag, from_sock.in_out & SOCK_OUT, NODE_INTERFACE_SOCKET_OUTPUT);
 

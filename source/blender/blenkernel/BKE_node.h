@@ -153,7 +153,6 @@ typedef struct CPPTypeHandle CPPTypeHandle;
  *
  * Defines the appearance and behavior of a socket in the UI.
  */
-/* XXX replace interface parts when old tree interfaces are fully deprecated */
 typedef struct bNodeSocketType {
   /** Identifier name. */
   char idname[64];

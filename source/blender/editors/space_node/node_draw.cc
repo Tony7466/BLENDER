@@ -524,10 +524,8 @@ static void node_update_basis_from_declaration(
     {
       switch (socket_decl->in_out) {
         case SOCK_IN:
-          if (!current_input) {
-            /* XXX should match the declaration, assert? */
-            break;
-          }
+          /* Must match the declaration. */
+          BLI_assert(current_input != nullptr);
 
           SET_FLAG_FROM_TEST(current_input->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
           if (is_parent_collapsed) {
@@ -540,10 +538,8 @@ static void node_update_basis_from_declaration(
           current_input = current_input->next;
           break;
         case SOCK_OUT:
-          if (!current_output) {
-            /* XXX should match the declaration, assert? */
-            break;
-          }
+          /* Must match the declaration. */
+          BLI_assert(current_output != nullptr);
 
           SET_FLAG_FROM_TEST(current_output->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
           if (is_parent_collapsed) {

@@ -424,7 +424,7 @@ static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *nt
   bNodeTreeInterface &tree_interface = ntree->tree_interface;
 
   LISTBASE_FOREACH (const bNodeSocket *, socket, &ntree->inputs_legacy) {
-    eNodeTreeInterfaceSocketFlag flag = NODE_INTERFACE_SOCKET_INPUT;
+    NodeTreeInterfaceSocketFlag flag = NODE_INTERFACE_SOCKET_INPUT;
     SET_FLAG_FROM_TEST(flag, socket->flag & SOCK_HIDE_VALUE, NODE_INTERFACE_SOCKET_HIDE_VALUE);
     SET_FLAG_FROM_TEST(
         flag, socket->flag & SOCK_HIDE_IN_MODIFIER, NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER);
@@ -436,7 +436,7 @@ static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *nt
     new_socket->identifier = BLI_strdup(socket->identifier);
   }
   LISTBASE_FOREACH (const bNodeSocket *, socket, &ntree->outputs_legacy) {
-    eNodeTreeInterfaceSocketFlag flag = NODE_INTERFACE_SOCKET_OUTPUT;
+    NodeTreeInterfaceSocketFlag flag = NODE_INTERFACE_SOCKET_OUTPUT;
     SET_FLAG_FROM_TEST(flag, socket->flag & SOCK_HIDE_VALUE, NODE_INTERFACE_SOCKET_HIDE_VALUE);
     SET_FLAG_FROM_TEST(
         flag, socket->flag & SOCK_HIDE_IN_MODIFIER, NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER);

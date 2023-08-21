@@ -928,6 +928,8 @@ class NODE_PT_node_tree_declaration(Panel):
                         layout.prop(active_item, "default_attribute_name")
             if active_item.item_type == 'PANEL':
                 layout.prop(active_item, "name")
+                layout.prop(active_item, "description")
+                layout.prop(active_item, "default_closed")
 
 
 class NODE_UL_simulation_zone_items(bpy.types.UIList):

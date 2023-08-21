@@ -53,13 +53,13 @@ typedef struct bNodeTreeInterfaceItem {
 } bNodeTreeInterfaceItem;
 
 /* Socket interface flags */
-typedef enum eNodeTreeInterfaceSocketFlag {
+typedef enum NodeTreeInterfaceSocketFlag {
   NODE_INTERFACE_SOCKET_INPUT = 1 << 0,
   NODE_INTERFACE_SOCKET_OUTPUT = 1 << 1,
   NODE_INTERFACE_SOCKET_HIDE_VALUE = 1 << 2,
   NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER = 1 << 3,
-} eNodeTreeInterfaceSocketFlag;
-ENUM_OPERATORS(eNodeTreeInterfaceSocketFlag, NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER);
+} NodeTreeInterfaceSocketFlag;
+ENUM_OPERATORS(NodeTreeInterfaceSocketFlag, NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER);
 
 typedef struct bNodeTreeInterfaceSocket {
   bNodeTreeInterfaceItem item;
@@ -101,11 +101,21 @@ typedef struct bNodeTreeInterfaceSocket {
 #endif
 } bNodeTreeInterfaceSocket;
 
+/* Panel interface flags */
+typedef enum NodeTreeInterfacePanelFlag {
+  NODE_INTERFACE_PANEL_DEFAULT_CLOSED = 1 << 0,
+} NodeTreeInterfacePanelFlag;
+ENUM_OPERATORS(NodeTreeInterfacePanelFlag, NODE_INTERFACE_PANEL_DEFAULT_CLOSED);
+
 typedef struct bNodeTreeInterfacePanel {
   bNodeTreeInterfaceItem item;
 
   /* UI name of the panel. */
   char *name;
+  char *description;
+  /* eNodeTreeInterfacePanelFlag */
+  int flag;
+  char _pad[4];
 
   bNodeTreeInterfaceItem **items_array;
   int items_num;
@@ -258,7 +268,7 @@ typedef struct bNodeTreeInterface {
   bNodeTreeInterfaceSocket *add_socket(blender::StringRefNull name,
                                        blender::StringRefNull description,
                                        blender::StringRefNull socket_type,
-                                       eNodeTreeInterfaceSocketFlag flag,
+                                       NodeTreeInterfaceSocketFlag flag,
                                        bNodeTreeInterfacePanel *parent);
   /**
    * Insert a new socket.
@@ -269,7 +279,7 @@ typedef struct bNodeTreeInterface {
   bNodeTreeInterfaceSocket *insert_socket(blender::StringRefNull name,
                                           blender::StringRefNull description,
                                           blender::StringRefNull socket_type,
-                                          eNodeTreeInterfaceSocketFlag flag,
+                                          NodeTreeInterfaceSocketFlag flag,
                                           bNodeTreeInterfacePanel *parent,
                                           int position);
 
@@ -278,7 +288,10 @@ typedef struct bNodeTreeInterface {
    * \param parent: Panel in which the new panel is added as a child. If parent is null the new
    * panel is made a child of the root panel.
    */
-  bNodeTreeInterfacePanel *add_panel(blender::StringRefNull name, bNodeTreeInterfacePanel *parent);
+  bNodeTreeInterfacePanel *add_panel(blender::StringRefNull name,
+                                     blender::StringRefNull description,
+                                     const NodeTreeInterfacePanelFlag flag,
+                                     bNodeTreeInterfacePanel *parent);
   /**
    * Insert a new panel.
    * \param parent: Panel in which the new panel is added as a child. If parent is null the new
@@ -286,6 +299,8 @@ typedef struct bNodeTreeInterface {
    * \param position: Position of the child panel within the parent panel.
    */
   bNodeTreeInterfacePanel *insert_panel(blender::StringRefNull name,
+                                        blender::StringRefNull description,
+                                        const NodeTreeInterfacePanelFlag flag,
                                         bNodeTreeInterfacePanel *parent,
                                         int position);
 

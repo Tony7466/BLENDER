@@ -102,9 +102,8 @@ class NodeSocketViewItem : public BasicTreeViewItem {
     if (socket_.flag & NODE_INTERFACE_SOCKET_INPUT) {
       /* XXX Socket template only draws in embossed layouts (Julian). */
       uiLayoutSetEmboss(input_socket_layout, UI_EMBOSS);
-      /* XXX Context is not used by the template function. */
-      bContext *C = nullptr;
-      uiTemplateNodeSocket(input_socket_layout, C, socket_.socket_color());
+      /* Context is not used by the template function. */
+      uiTemplateNodeSocket(input_socket_layout, /*C*/ nullptr, socket_.socket_color());
     }
     else {
       /* Blank item to align output socket labels with inputs. */
@@ -117,9 +116,8 @@ class NodeSocketViewItem : public BasicTreeViewItem {
     if (socket_.flag & NODE_INTERFACE_SOCKET_OUTPUT) {
       /* XXX Socket template only draws in embossed layouts (Julian). */
       uiLayoutSetEmboss(output_socket_layout, UI_EMBOSS);
-      /* XXX Context is not used by the template function. */
-      bContext *C = nullptr;
-      uiTemplateNodeSocket(output_socket_layout, C, socket_.socket_color());
+      /* Context is not used by the template function. */
+      uiTemplateNodeSocket(output_socket_layout, /*C*/ nullptr, socket_.socket_color());
     }
     else {
       /* Blank item to align input socket labels with outputs. */

@@ -415,7 +415,7 @@ static bNodeTreeInterfaceSocket *rna_NodeTreeInterfaceItems_new_socket(
   }
   const char *socket_type = typeinfo->idname;
 
-  eNodeTreeInterfaceSocketFlag flag = eNodeTreeInterfaceSocketFlag(0);
+  NodeTreeInterfaceSocketFlag flag = NodeTreeInterfaceSocketFlag(0);
   SET_FLAG_FROM_TEST(flag, is_input, NODE_INTERFACE_SOCKET_INPUT);
   SET_FLAG_FROM_TEST(flag, is_output, NODE_INTERFACE_SOCKET_OUTPUT);
 
@@ -443,6 +443,8 @@ static bNodeTreeInterfacePanel *rna_NodeTreeInterfaceItems_new_panel(
     Main *bmain,
     ReportList *reports,
     const char *name,
+    const char *description,
+    bool default_closed,
     bNodeTreeInterfacePanel *parent)
 {
   if (parent != nullptr && !interface->find_item(parent->item)) {
@@ -450,7 +452,11 @@ static bNodeTreeInterfacePanel *rna_NodeTreeInterfaceItems_new_panel(
     return nullptr;
   }
 
-  bNodeTreeInterfacePanel *panel = interface->add_panel(name ? name : "", parent);
+  NodeTreeInterfacePanelFlag flag = NodeTreeInterfacePanelFlag(0);
+  SET_FLAG_FROM_TEST(flag, default_closed, NODE_INTERFACE_PANEL_DEFAULT_CLOSED);
+
+  bNodeTreeInterfacePanel *panel = interface->add_panel(
+      name ? name : "", description ? description : "", flag, parent);
 
   if (panel == nullptr) {
     BKE_report(reports, RPT_ERROR, "Unable to create panel");
@@ -870,6 +876,17 @@ static void rna_def_node_interface_panel(BlenderRNA *brna)
   RNA_def_struct_name_property(srna, prop);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceItem_update");
 
+  prop = RNA_def_property(srna, "description", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "description");
+  RNA_def_property_ui_text(prop, "Description", "Panel description");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceItem_update");
+
+  prop = RNA_def_property(srna, "default_closed", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NODE_INTERFACE_PANEL_DEFAULT_CLOSED);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(prop, "Default Closed", "Panel is closed by default on new nodes");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceItem_update");
+
   prop = RNA_def_property(srna, "interface_items", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_collection_sdna(prop, nullptr, "items_array", "items_num");
   RNA_def_property_struct_type(prop, "NodeTreeInterfaceItem");
@@ -927,6 +944,9 @@ static void rna_def_node_tree_interface_items_api(StructRNA *srna)
   RNA_def_function_ui_description(func, "Add a new panel to the interface");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
   parm = RNA_def_string(func, "name", nullptr, 0, "Name", "Name of the new panel");
+  RNA_def_string(func, "description", nullptr, 0, "Description", "Description of the panel");
+  RNA_def_boolean(
+      func, "default_closed", false, "Default Closed", "Panel is closed by default on new nodes");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   RNA_def_pointer(func,
                   "parent",

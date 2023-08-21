@@ -88,7 +88,7 @@ static void add_group_input_node_fn(nodes::LinkSearchOpParams &params)
 {
   /* Add a group input based on the connected socket, and add a new group input node. */
   const eNodeSocketInOut in_out = eNodeSocketInOut(params.socket.in_out);
-  eNodeTreeInterfaceSocketFlag flag = eNodeTreeInterfaceSocketFlag(0);
+  NodeTreeInterfaceSocketFlag flag = NodeTreeInterfaceSocketFlag(0);
   SET_FLAG_FROM_TEST(flag, in_out & SOCK_IN, NODE_INTERFACE_SOCKET_INPUT);
   SET_FLAG_FROM_TEST(flag, in_out & SOCK_OUT, NODE_INTERFACE_SOCKET_OUTPUT);
   bNodeTreeInterfaceSocket *socket_iface = params.node_tree.tree_interface.add_socket(
@@ -132,7 +132,7 @@ static void add_existing_group_input_fn(nodes::LinkSearchOpParams &params,
                                         const bNodeTreeInterfaceSocket &interface_socket)
 {
   const eNodeSocketInOut in_out = eNodeSocketInOut(params.socket.in_out);
-  eNodeTreeInterfaceSocketFlag flag = eNodeTreeInterfaceSocketFlag(0);
+  NodeTreeInterfaceSocketFlag flag = NodeTreeInterfaceSocketFlag(0);
   SET_FLAG_FROM_TEST(flag, in_out & SOCK_IN, NODE_INTERFACE_SOCKET_INPUT);
   SET_FLAG_FROM_TEST(flag, in_out & SOCK_OUT, NODE_INTERFACE_SOCKET_OUTPUT);
 
