@@ -196,20 +196,24 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
     .vertex_out(eevee_surf_flat_iface)
     .builtins(BuiltinBits::VIEWPORT_INDEX)
     .builtins(BuiltinBits::LAYER)
-    .storage_buf(SHADOW_RENDER_MAP_BUF_SLOT,
-                 Qualifier::READ,
-                 "uint",
-                 "render_map_buf[SHADOW_RENDER_MAP_SIZE]")
     .storage_buf(SHADOW_VIEWPORT_INDEX_BUF_SLOT,
                  Qualifier::READ,
                  "uint",
                  "viewport_index_buf[SHADOW_VIEW_MAX]")
+#ifndef WITH_METAL_BACKEND
+    /* We do not need all of the shadow information for depth write in Metal. */
+    .storage_buf(SHADOW_RENDER_MAP_BUF_SLOT,
+                 Qualifier::READ,
+                 "uint",
+                 "render_map_buf[SHADOW_RENDER_MAP_SIZE]")
+
     .storage_buf(SHADOW_PAGE_INFO_SLOT, Qualifier::READ, "ShadowPagesInfoData", "pages_infos_buf")
     .image(SHADOW_ATLAS_IMG_SLOT,
            GPU_R32UI,
            Qualifier::READ_WRITE,
            ImageType::UINT_2D_ARRAY,
            "shadow_atlas_img")
+#endif
     .fragment_source("eevee_surf_shadow_frag.glsl")
 #ifdef WITH_METAL_BACKEND
     /* F32 colour attachment with raster order group for on-tile depth accumulation without

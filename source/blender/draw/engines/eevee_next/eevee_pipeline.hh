@@ -103,7 +103,8 @@ class ShadowPipeline {
 
   PassMain surface_ps_ = {"Shadow.Surface"};
 #ifdef WITH_METAL_BACKEND
-  PassSimple accum_ps_ = {"Shadow.Accum"};
+  PassSimple tile_clear_ps_ = {"Shadow.MetalTileClear"};
+  PassSimple tile_accum_store_ps = {"Shadow.MetalTileAccum"};
 #endif
 
  public:
@@ -112,9 +113,11 @@ class ShadowPipeline {
   PassMain::Sub *surface_material_add(GPUMaterial *gpumat);
 
   void sync();
-  void render(View &view);
+  void render_prepare_visibility(View &view, command::RecordingState *state);
+  void render_main_pass(View &view, command::RecordingState *state);
 #ifdef WITH_METAL_BACKEND
-  void render_accum(View &view);
+  void render_tile_clear(View &view);
+  void render_tile_accum(View &view);
 #endif
 };
 

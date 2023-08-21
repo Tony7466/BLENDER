@@ -63,7 +63,15 @@ enum class Type {
   CHAR,
   CHAR2,
   CHAR3,
-  CHAR4
+  CHAR4,
+  USHORT,
+  USHORT2,
+  USHORT3,
+  USHORT4,
+  SHORT,
+  SHORT2,
+  SHORT3,
+  SHORT4
 };
 
 /* All of these functions is a bit out of place */
@@ -137,6 +145,22 @@ static inline std::ostream &operator<<(std::ostream &stream, const Type type)
       return stream << "uvec3";
     case Type::UVEC4:
       return stream << "uvec4";
+    case Type::USHORT:
+      return stream << "ushort";
+    case Type::USHORT2:
+      return stream << "ushort2";
+    case Type::USHORT3:
+      return stream << "ushort3";
+    case Type::USHORT4:
+      return stream << "ushort4";
+    case Type::SHORT:
+      return stream << "short";
+    case Type::SHORT2:
+      return stream << "short2";
+    case Type::SHORT3:
+      return stream << "short3";
+    case Type::SHORT4:
+      return stream << "short4";
     default:
       BLI_assert(0);
       return stream;

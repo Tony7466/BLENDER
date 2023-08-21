@@ -1049,7 +1049,10 @@ void ShadowModule::end_sync()
         sub.barrier(GPU_BARRIER_SHADER_STORAGE | GPU_BARRIER_UNIFORM | GPU_BARRIER_TEXTURE_FETCH |
                     GPU_BARRIER_SHADER_IMAGE_ACCESS);
       }
-      {
+
+      /* NOTE: We do not need to run the clear pass in Metal, as tiles will be fully cleared as
+       * part of the shadow raster step.*/
+      if (GPU_backend_get_type() != GPU_BACKEND_METAL) {
         /** Clear pages that need to be rendered. */
         PassSimple::Sub &sub = pass.sub("RenderClear");
         sub.framebuffer_set(&render_fb_);
@@ -1205,17 +1208,31 @@ void ShadowModule::set_view(View &view)
       if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
         GPU_framebuffer_bind_ex(
             render_fb_,
-            {{GPU_LOADACTION_CLEAR, GPU_STOREACTION_DONT_CARE, {1.0f, 1.0f, 1.0f, 1.0f}},
+            {{GPU_LOADACTION_CLEAR, GPU_STOREACTION_DONT_CARE, {0.0f, 0.0f, 0.0f, 0.0f}},
              {GPU_LOADACTION_CLEAR, GPU_STOREACTION_DONT_CARE, {1.0f, 1.0f, 1.0f, 1.0f}}});
       }
 #endif
 
-      inst_.pipelines.shadow.render(shadow_multi_view_);
+      /* Shadow pass visibility computation and preparation. */
+      command::RecordingState state;
+      inst_.pipelines.shadow.render_prepare_visibility(shadow_multi_view_, &state);
+
+#ifdef WITH_METAL_BACKEND
+      /* Perform tile-based clear to ensure only tiles being updated are cleared to 1.0f.
+       * All other tiles will be cleared to 0.0f to ensure depth test fails and unneeded
+       * raster work is efficiently skipped.  */
+      if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+        inst_.pipelines.shadow.render_tile_clear(shadow_multi_view_);
+      }
+#endif
+
+      /* Main shadow geometry pass*/
+      inst_.pipelines.shadow.render_main_pass(shadow_multi_view_, &state);
 
 #ifdef WITH_METAL_BACKEND
       /* Perform tile-based shadow accumulation pass. */
       if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
-        inst_.pipelines.shadow.render_accum(shadow_multi_view_);
+        inst_.pipelines.shadow.render_tile_accum(shadow_multi_view_);
       }
 #endif
 

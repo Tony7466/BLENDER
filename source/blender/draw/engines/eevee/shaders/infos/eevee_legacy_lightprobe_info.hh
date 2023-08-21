@@ -27,8 +27,10 @@ GPU_SHADER_CREATE_INFO(eevee_legacy_lightprobe_vert)
 
 #ifdef WITH_METAL_BACKEND
 GPU_SHADER_CREATE_INFO(eevee_legacy_lightprobe_vert_no_geom)
+    .builtins(BuiltinBits::LAYER)
     .vertex_in(0, Type::VEC3, "pos")
     .push_constant(Type::INT, "Layer")
+    .builtins(BuiltinBits::LAYER)
     .vertex_source("lightprobe_vert_no_geom.glsl")
     .vertex_out(eevee_legacy_lightprobe_geom_frag_iface)
     .vertex_out(eevee_legacy_lightprobe_geom_frag_flat_iface)
@@ -226,6 +228,7 @@ GPU_SHADER_INTERFACE_INFO(eevee_legacy_probe_planar_downsample_geom_frag_iface,
 GPU_SHADER_CREATE_INFO(eevee_legacy_lightprobe_planar_downsample_common)
     .vertex_source("lightprobe_planar_downsample_vert.glsl")
     .fragment_source("lightprobe_planar_downsample_frag.glsl")
+    .builtins(BuiltinBits::LAYER)
     .vertex_out(eevee_legacy_probe_planar_downsample_vert_geom_iface)
     .vertex_out(eevee_legacy_probe_planar_downsample_vert_geom_flat_iface)
     .sampler(0, ImageType::FLOAT_2D_ARRAY, "source")

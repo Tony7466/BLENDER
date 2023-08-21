@@ -34,6 +34,7 @@ template<typename T> class Pass;
 namespace command {
 class DrawCommandBuf;
 class DrawMultiBuf;
+struct RecordingState;
 }  // namespace command
 
 using PassSimple = detail::Pass<command::DrawCommandBuf>;
@@ -161,6 +162,12 @@ class Manager {
   void submit(PassSimple &pass, View &view);
   void submit(PassMain &pass, View &view);
   void submit(PassSortable &pass, View &view);
+  /**
+   * Variant for PassMain splitting out visibility computation and main draw submissions.
+   * Note: Required for pre-draw operations occuring after visibility computation.
+   */
+  void submit_prepare_visibility(PassMain &pass, View &view, command::RecordingState* state);
+  void submit_pass_only(PassMain &pass, View &view, command::RecordingState* state);
   /**
    * Variant without any view. Must not contain any shader using `draw_view` create info.
    */

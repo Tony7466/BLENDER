@@ -42,8 +42,10 @@ void main()
     gpu_Layer = 0;
     gpu_ViewportIndex = 0;
     gl_Position = vec4(0.0) / vec4(0.0);
+#ifdef PASS_ACCUMULATION_STORE
     out_texel_xy = vec2(-1000.0);
     out_page_z = 0;
+#endif
     return;
   }
 
@@ -72,6 +74,7 @@ void main()
       break;
   };
 
+#ifdef PASS_ACCUMULATION_STORE
   /** Interpolate output texel  */
   /* Using bitwise ops is way faster than integer ops. */
   const int page_shift = SHADOW_PAGE_LOD;
@@ -79,7 +82,8 @@ void main()
 
   uint3 page = uint3(shadow_page_unpack(page_packed));
   out_texel_xy = (vec2(page.xy) * vec2(256.0)) + vec2(pos);
-  out_page_z = float(page.z);
+  out_page_z = page.z;
+#endif
 
   /** Output quad position*/
   /* Offset quad coordinates in screen space. */
@@ -91,6 +95,7 @@ void main()
                                                clamp(gpu_ViewportIndex, 0, SHADOW_TILEMAP_LOD)));
   pos = pos * vec2(viewport_dim_inv * 2.0) - vec2(1.0);
 
+#ifdef PASS_ACCUMULATION_STORE
   /* NOTE: To avoid redundant writes, we still enable the depth test and configure the accumulation
    * pass quad depth such that only the fragments updated during the surface depth pass will run.
    *
@@ -98,4 +103,12 @@ void main()
    * existing depth value is smaller than `depth_update_treshold`.  */
   const float depth_update_treshold = 0.99;
   gl_Position = vec4(pos.x, pos.y, depth_update_treshold, 1.0);
+#endif
+
+#ifdef PASS_CLEAR
+  /* We initially clear depth to 1.0 only for update fragments.
+   * Non-updated tile depth will remain at 0.0 to ensure
+   * fragments are discarded. */
+  gl_Position = vec4(pos.x, pos.y, 1.0, 1.0);
+#endif
 }

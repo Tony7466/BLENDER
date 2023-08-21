@@ -148,34 +148,68 @@ void WorldVolumePipeline::render(View &view)
 
 void ShadowPipeline::sync()
 {
+  /* NOTE: Metal backend performs a two-pass implementation. First performing a fast depth-only
+   * pass, then storing the on-tile results into the shadow atlas during a 2nd accumulation pass.
+   * This takes advantage of Apple Silicon's tile-based architecture, reducing overdraw and
+   * additional per-fragment calculations. */
+  bool backend_is_metal = (GPU_backend_get_type() == GPU_BACKEND_METAL);
+
   surface_ps_.init();
   DRWState state = DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS;
-  if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+  if (backend_is_metal) {
     /* Metal writes depth value in local tile memory, which is considered a color attachment. */
     state |= DRW_STATE_WRITE_COLOR;
   }
   surface_ps_.state_set(state);
   surface_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
-  surface_ps_.bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
   surface_ps_.bind_ubo(CAMERA_BUF_SLOT, inst_.camera.ubo_get());
-  surface_ps_.bind_ssbo(SHADOW_RENDER_MAP_BUF_SLOT, &inst_.shadows.render_map_buf_);
   surface_ps_.bind_ssbo(SHADOW_VIEWPORT_INDEX_BUF_SLOT, &inst_.shadows.viewport_index_buf_);
-  surface_ps_.bind_ssbo(SHADOW_PAGE_INFO_SLOT, &inst_.shadows.pages_infos_data_);
+  if (!backend_is_metal) {
+    /* We do not need all of the shadow information for depth write in Metal. */
+    surface_ps_.bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
+    surface_ps_.bind_ssbo(SHADOW_RENDER_MAP_BUF_SLOT, &inst_.shadows.render_map_buf_);
+    surface_ps_.bind_ssbo(SHADOW_PAGE_INFO_SLOT, &inst_.shadows.pages_infos_data_);
+  }
   inst_.sampling.bind_resources(&surface_ps_);
 
 #ifdef WITH_METAL_BACKEND
   /* Perform accumulation step for storing final tile depth results back to shadow atlas.  */
-  accum_ps_.init();
-  accum_ps_.shader_set(inst_.shaders.static_shader_get(SHADOW_DEPTH_ACCUM));
-  accum_ps_.state_set(DRW_STATE_DEPTH_GREATER_EQUAL);
-  accum_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
-  accum_ps_.bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
-  accum_ps_.bind_ubo(CAMERA_BUF_SLOT, inst_.camera.ubo_get());
-  accum_ps_.bind_ssbo(SHADOW_RENDER_MAP_BUF_SLOT, &inst_.shadows.render_map_buf_);
-  accum_ps_.bind_ssbo(SHADOW_VIEWPORT_INDEX_BUF_SLOT, &inst_.shadows.viewport_index_buf_);
-  accum_ps_.bind_ssbo(SHADOW_PAGE_INFO_SLOT, &inst_.shadows.pages_infos_data_);
-  inst_.sampling.bind_resources(&accum_ps_);
-  accum_ps_.draw_procedural(GPU_PRIM_TRIS, (SHADOW_TILEMAP_RES)*(SHADOW_TILEMAP_RES)*SHADOW_VIEW_MAX,  6);
+  if (backend_is_metal) {
+    tile_clear_ps_.init();
+    tile_clear_ps_.shader_set(inst_.shaders.static_shader_get(SHADOW_DEPTH_METAL_TILE_CLEAR));
+    tile_clear_ps_.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_GREATER_EQUAL);
+    tile_clear_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+    tile_clear_ps_.bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
+    tile_clear_ps_.bind_ubo(CAMERA_BUF_SLOT, inst_.camera.ubo_get());
+    tile_clear_ps_.bind_ssbo(SHADOW_RENDER_MAP_BUF_SLOT, &inst_.shadows.render_map_buf_);
+    tile_clear_ps_.bind_ssbo(SHADOW_VIEWPORT_INDEX_BUF_SLOT, &inst_.shadows.viewport_index_buf_);
+    tile_clear_ps_.bind_ssbo(SHADOW_PAGE_INFO_SLOT, &inst_.shadows.pages_infos_data_);
+    inst_.sampling.bind_resources(&tile_clear_ps_);
+    tile_clear_ps_.draw_procedural(
+        GPU_PRIM_TRIS, (SHADOW_TILEMAP_RES) * (SHADOW_TILEMAP_RES)*SHADOW_VIEW_MAX, 6);
+
+    tile_accum_store_ps.init();
+    tile_accum_store_ps.shader_set(inst_.shaders.static_shader_get(SHADOW_DEPTH_METAL_TILE_ACCUM));
+    /* NOTE: Setting to DRW_STATE_DEPTH_ALWAYS allows removal of the SHADOW_PAGE_CLEAR pass as
+     * all tile texels are cleared within tile memory and stored.
+     * DRW_STATE_DEPTH_GREATER/GREATER_EQUAL is the most optimal for the update pass itself, as it
+     * means only those pixels whose depth has been updated by geometry get rastered. However, in
+     * this case, the more expensive split compute-based clear is required.
+     *
+     * For relative perf, raster-based clear within tile update adds around 0.1ms vs 0.25ms for
+     * compute based for a simple testcase. */
+    tile_accum_store_ps.state_set(DRW_STATE_DEPTH_ALWAYS);
+    tile_accum_store_ps.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+    tile_accum_store_ps.bind_image(SHADOW_ATLAS_IMG_SLOT, inst_.shadows.atlas_tx_);
+    tile_accum_store_ps.bind_ubo(CAMERA_BUF_SLOT, inst_.camera.ubo_get());
+    tile_accum_store_ps.bind_ssbo(SHADOW_RENDER_MAP_BUF_SLOT, &inst_.shadows.render_map_buf_);
+    tile_accum_store_ps.bind_ssbo(SHADOW_VIEWPORT_INDEX_BUF_SLOT,
+                                  &inst_.shadows.viewport_index_buf_);
+    tile_accum_store_ps.bind_ssbo(SHADOW_PAGE_INFO_SLOT, &inst_.shadows.pages_infos_data_);
+    inst_.sampling.bind_resources(&tile_accum_store_ps);
+    tile_accum_store_ps.draw_procedural(
+        GPU_PRIM_TRIS, (SHADOW_TILEMAP_RES) * (SHADOW_TILEMAP_RES)*SHADOW_VIEW_MAX, 6);
+  }
 #endif
 }
 
@@ -184,14 +218,23 @@ PassMain::Sub *ShadowPipeline::surface_material_add(GPUMaterial *gpumat)
   return &surface_ps_.sub(GPU_material_get_name(gpumat));
 }
 
-void ShadowPipeline::render(View &view)
+void ShadowPipeline::render_prepare_visibility(View &view, command::RecordingState *state)
 {
-  inst_.manager->submit(surface_ps_, view);
+  inst_.manager->submit_prepare_visibility(surface_ps_, view, state);
+}
+
+void ShadowPipeline::render_main_pass(View &view, command::RecordingState *state)
+{
+  inst_.manager->submit_pass_only(surface_ps_, view, state);
 }
 #ifdef WITH_METAL_BACKEND
-void ShadowPipeline::render_accum(View &view)
+void ShadowPipeline::render_tile_clear(View &view)
 {
-  inst_.manager->submit(accum_ps_, view);
+  inst_.manager->submit(tile_clear_ps_, view);
+}
+void ShadowPipeline::render_tile_accum(View &view)
+{
+  inst_.manager->submit(tile_accum_store_ps, view);
 }
 #endif
 

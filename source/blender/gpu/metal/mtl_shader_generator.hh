@@ -805,6 +805,22 @@ inline const char *to_string(const shader::Type &type)
       return "char3";
     case shader::Type::CHAR4:
       return "char4";
+    case shader::Type::USHORT:
+      return "ushort";
+    case shader::Type::USHORT2:
+      return "ushort2";
+    case shader::Type::USHORT3:
+      return "ushort3";
+    case shader::Type::USHORT4:
+      return "ushort4";
+    case shader::Type::SHORT:
+      return "short";
+    case shader::Type::SHORT2:
+      return "short2";
+    case shader::Type::SHORT3:
+      return "short3";
+    case shader::Type::SHORT4:
+      return "short4";
     default:
       BLI_assert(false);
       return "unkown";

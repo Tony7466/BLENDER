@@ -721,12 +721,10 @@ void MTLContext::pipeline_state_init()
     for (int t = 0; t < GPU_max_textures(); t++) {
       /* Textures. */
       this->pipeline_state.texture_bindings[t].used = false;
-      this->pipeline_state.texture_bindings[t].slot_index = -1;
       this->pipeline_state.texture_bindings[t].texture_resource = nullptr;
 
       /* Images. */
       this->pipeline_state.image_bindings[t].used = false;
-      this->pipeline_state.image_bindings[t].slot_index = -1;
       this->pipeline_state.image_bindings[t].texture_resource = nullptr;
     }
     for (int s = 0; s < MTL_MAX_SAMPLER_SLOTS; s++) {
@@ -2188,7 +2186,7 @@ void MTLContext::compute_dispatch(int groups_x_len, int groups_y_len, int groups
   }
 
 #if MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER == 1
-    GPU_finish();
+  GPU_finish();
 #endif
 
   /* Shader instance. */
@@ -2223,7 +2221,7 @@ void MTLContext::compute_dispatch(int groups_x_len, int groups_y_len, int groups
                                                     compute_pso_inst.threadgroup_y_len,
                                                     compute_pso_inst.threadgroup_z_len)];
 #if MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER == 1
-    GPU_finish();
+  GPU_finish();
 #endif
 }
 
@@ -2231,7 +2229,7 @@ void MTLContext::compute_dispatch_indirect(StorageBuf *indirect_buf)
 {
 
 #if MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER == 1
-    GPU_finish();
+  GPU_finish();
 #endif
 
   /* Ensure all resources required by upcoming compute submission are correctly bound. */

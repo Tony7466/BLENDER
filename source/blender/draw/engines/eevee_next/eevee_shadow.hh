@@ -230,8 +230,11 @@ class ShadowModule {
   /* -------------------------------------------------------------------- */
   /** \name Page Management
    * \{ */
-
+#ifdef WITH_METAL_BACKEND
+  static constexpr eGPUTextureFormat atlas_type = GPU_R32F;
+#else
   static constexpr eGPUTextureFormat atlas_type = GPU_R32UI;
+#endif
   /** Atlas containing all physical pages. */
   Texture atlas_tx_ = {"shadow_atlas_tx_"};
 
@@ -257,8 +260,8 @@ class ShadowModule {
   /** Multi-View containing a maximum of 64 view to be rendered with the shadow pipeline. */
   View shadow_multi_view_ = {"ShadowMultiView", SHADOW_VIEW_MAX, true};
   /** Framebuffer with the atlas_tx attached. */
-#ifdef WITH_METAL_BACKEND
   Framebuffer render_fb_ = {"shadow_write_framebuffer"};
+  #ifdef WITH_METAL_BACKEND
   /* NOTE(Metal): Metal requires memoryless textures to be created which represent attachments in
    * the shadow write framebuffer. These textures do not occupy any physical memory, but require a
    * Texture object containing its parameters.*/
