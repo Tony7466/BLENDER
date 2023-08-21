@@ -433,24 +433,24 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
 
         /* Add Subtract Math node before Detail input. */
 
-        bNode *subNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
-        subNode->parent = node->parent;
-        subNode->custom1 = NODE_MATH_SUBTRACT;
-        subNode->locx = node->locx;
-        subNode->locy = node->locy - 300.0f;
-        subNode->flag |= NODE_HIDDEN;
-        bNodeSocket *subSockA = static_cast<bNodeSocket *>(BLI_findlink(&subNode->inputs, 0));
-        bNodeSocket *subSockB = static_cast<bNodeSocket *>(BLI_findlink(&subNode->inputs, 1));
-        bNodeSocket *subSockOut = nodeFindSocket(subNode, SOCK_OUT, "Value");
+        bNode *subNode1 = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+        subNode1->parent = node->parent;
+        subNode1->custom1 = NODE_MATH_SUBTRACT;
+        subNode1->locx = node->locx;
+        subNode1->locy = node->locy - 300.0f;
+        subNode1->flag |= NODE_HIDDEN;
+        bNodeSocket *subSock1A = static_cast<bNodeSocket *>(BLI_findlink(&subNode1->inputs, 0));
+        bNodeSocket *subSock1B = static_cast<bNodeSocket *>(BLI_findlink(&subNode1->inputs, 1));
+        bNodeSocket *subSock1Out = nodeFindSocket(subNode1, SOCK_OUT, "Value");
 
-        *version_cycles_node_socket_float_value(subSockB) = 1.0f;
+        *version_cycles_node_socket_float_value(subSock1B) = 1.0f;
 
         bNode *detailFromNode = sockDetail->link->fromnode;
         bNodeSocket *detailFromSock = sockDetail->link->fromsock;
 
         nodeRemLink(ntree, sockDetail->link);
-        nodeAddLink(ntree, detailFromNode, detailFromSock, subNode, subSockA);
-        nodeAddLink(ntree, subNode, subSockOut, node, sockDetail);
+        nodeAddLink(ntree, detailFromNode, detailFromSock, subNode1, subSock1A);
+        nodeAddLink(ntree, subNode1, subSock1Out, node, sockDetail);
 
         /* Add Clamp node and Multiply Math node behind Fac output. */
 
@@ -478,10 +478,49 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
         *version_cycles_node_socket_float_value(clampSockMin) = 0.0f;
         *version_cycles_node_socket_float_value(clampSockMax) = 1.0f;
 
-        LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
-          if (link->fromsock == sockFac) {
-            nodeAddLink(ntree, mulNode, mulSockOut, link->tonode, link->tosock);
-            nodeRemLink(ntree, link);
+        if (((NodeTexNoise *)node->storage)->type == SHD_NOISE_MULTIFRACTAL) {
+          /* Add Add Math node and Subtract Math node after Multiply Math node. */
+
+          bNode *subNode2 = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+          subNode2->parent = node->parent;
+          subNode2->custom1 = NODE_MATH_SUBTRACT;
+          subNode2->custom2 = SHD_MATH_CLAMP;
+          subNode2->locx = node->locx;
+          subNode2->locy = node->locy + 120.0f;
+          subNode2->flag |= NODE_HIDDEN;
+          bNodeSocket *subSock2A = static_cast<bNodeSocket *>(BLI_findlink(&subNode2->inputs, 0));
+          bNodeSocket *subSock2B = static_cast<bNodeSocket *>(BLI_findlink(&subNode2->inputs, 1));
+          bNodeSocket *subSock2Out = nodeFindSocket(subNode2, SOCK_OUT, "Value");
+
+          bNode *addNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+          addNode->parent = node->parent;
+          addNode->custom1 = NODE_MATH_ADD;
+          addNode->locx = node->locx;
+          addNode->locy = node->locy + 160.0f;
+          addNode->flag |= NODE_HIDDEN;
+          bNodeSocket *addSockA = static_cast<bNodeSocket *>(BLI_findlink(&addNode->inputs, 0));
+          bNodeSocket *addSockB = static_cast<bNodeSocket *>(BLI_findlink(&addNode->inputs, 1));
+          bNodeSocket *addSockOut = nodeFindSocket(addNode, SOCK_OUT, "Value");
+
+          *version_cycles_node_socket_float_value(subSock2A) = 1.0f;
+
+          LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
+            if (link->fromsock == sockFac) {
+              nodeAddLink(ntree, addNode, addSockOut, link->tonode, link->tosock);
+              nodeRemLink(ntree, link);
+            }
+          }
+
+          nodeAddLink(ntree, mulNode, mulSockOut, addNode, addSockA);
+          nodeAddLink(ntree, detailFromNode, detailFromSock, subNode2, subSock2B);
+          nodeAddLink(ntree, subNode2, subSock2Out, addNode, addSockB);
+        }
+        else {
+          LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
+            if (link->fromsock == sockFac) {
+              nodeAddLink(ntree, mulNode, mulSockOut, link->tonode, link->tosock);
+              nodeRemLink(ntree, link);
+            }
           }
         }
 
@@ -503,10 +542,36 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
           bNodeSocket *mulSockB = static_cast<bNodeSocket *>(BLI_findlink(&mulNode->inputs, 1));
           bNodeSocket *mulSockOut = nodeFindSocket(mulNode, SOCK_OUT, "Value");
 
-          LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
-            if (link->fromsock == sockFac) {
-              nodeAddLink(ntree, mulNode, mulSockOut, link->tonode, link->tosock);
-              nodeRemLink(ntree, link);
+          if (((NodeTexNoise *)node->storage)->type == SHD_NOISE_MULTIFRACTAL) {
+            /* Add Add Math node after Multiply Math node. */
+
+            bNode *addNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+            addNode->parent = node->parent;
+            addNode->custom1 = NODE_MATH_ADD;
+            addNode->locx = node->locx;
+            addNode->locy = node->locy + 80.0f;
+            addNode->flag |= NODE_HIDDEN;
+            bNodeSocket *addSockA = static_cast<bNodeSocket *>(BLI_findlink(&addNode->inputs, 0));
+            bNodeSocket *addSockB = static_cast<bNodeSocket *>(BLI_findlink(&addNode->inputs, 1));
+            bNodeSocket *addSockOut = nodeFindSocket(addNode, SOCK_OUT, "Value");
+
+            *version_cycles_node_socket_float_value(addSockB) = 1.0f - *detail;
+
+            LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
+              if (link->fromsock == sockFac) {
+                nodeAddLink(ntree, addNode, addSockOut, link->tonode, link->tosock);
+                nodeRemLink(ntree, link);
+              }
+            }
+
+            nodeAddLink(ntree, mulNode, mulSockOut, addNode, addSockA);
+          }
+          else {
+            LISTBASE_FOREACH_BACKWARD_MUTABLE (bNodeLink *, link, &ntree->links) {
+              if (link->fromsock == sockFac) {
+                nodeAddLink(ntree, mulNode, mulSockOut, link->tonode, link->tosock);
+                nodeRemLink(ntree, link);
+              }
             }
           }
 
