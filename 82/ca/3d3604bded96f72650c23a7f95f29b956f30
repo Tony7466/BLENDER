@@ -1,2 +1,3 @@
 Referenced by issue #109432, Regression: Selection Fails to Highlight in Edit Mode (with restposition and modifier/shapekey displayed in editmode), also crash switching to wireframe or x-ray
 Referenced by issue #109301, Crash and Visual glitches in Edit mode if add_rest_position_attribute enabled with modifiers
+Referenced by issue #110925, mirror modifier and subdivision surface.on_cage enabled crashes blender
