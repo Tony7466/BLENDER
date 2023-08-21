@@ -576,8 +576,8 @@ template<typename T> inline GVGrid::GVGrid(const VGrid<T> &vgrid)
   }
   /* Need to check for ownership, because otherwise the referenced data can be destructed when
    * #this is destructed. */
-  if (info.type == CommonVGridInfo::Type::Span && !info.may_have_ownership) {
-    *this = GVGrid::ForSpan(GSpan(CPPType::get<T>(), info.data, vgrid.size()));
+  if (info.type == CommonVGridInfo::Type::Grid && !info.may_have_ownership) {
+    *this = GVGrid::ForGrid(*static_cast<const GridType *>(info.data));
     return;
   }
   if (vgrid.try_assign_GVGrid(*this)) {
@@ -631,7 +631,7 @@ template<typename T> inline GVMutableGrid::GVMutableGrid(const VMutableGrid<T> &
   }
   const CommonVGridInfo info = vgrid.common_info();
   if (info.type == CommonVGridInfo::Type::Grid && !info.may_have_ownership) {
-    *this = GVMutableGrid::ForGrid(static_cast<GridType *>(const_cast<void *>(info.data)));
+    *this = GVMutableGrid::ForGrid(*static_cast<GridType *>(const_cast<void *>(info.data)));
     return;
   }
   if (vgrid.try_assign_GVMutableGrid(*this)) {

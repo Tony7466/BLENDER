@@ -179,7 +179,8 @@ class GFieldRef : public GFieldBase<const FieldNode *> {
 
 namespace detail {
 /* Utility class to make #is_field_v work. */
-struct TypedFieldBase {};
+struct TypedFieldBase {
+};
 }  // namespace detail
 
 /**
@@ -488,40 +489,35 @@ class FieldEvaluator : NonMovable, NonCopyable {
  * Utility class that makes it easier to evaluate volume fields.
  */
 class VolumeFieldEvaluator : NonMovable, NonCopyable {
- public:
-  using GGrid = GVGrid;
-  using GMutableGrid = GVMutableGrid;
-
  private:
-  static const GGrid empty_grid_;
-
   struct OutputPointerInfo {
     void *dst = nullptr;
     /* When a destination grid is provided for an input, this is
      * unnecessary, otherwise this is used to construct the required grid. */
-    void (*set)(void *dst, const GGrid &grid, ResourceScope &scope) = nullptr;
+    void (*set)(void *dst, const GVGrid &grid, ResourceScope &scope) = nullptr;
   };
 
   ResourceScope scope_;
   const FieldContext &context_;
-  const GGrid &domain_mask_;
+  const openvdb::MaskGrid &domain_mask_;
   Vector<GField> fields_to_evaluate_;
-  Vector<GMutableGrid *> dst_grids_;
-  Vector<GGrid> evaluated_grids_;
+  Vector<GVMutableGrid> dst_grids_;
+  Vector<GVGrid> evaluated_grids_;
   Vector<OutputPointerInfo> output_pointer_infos_;
   bool is_evaluated_ = false;
 
   Field<bool> selection_field_;
-  GGrid selection_mask_;
+  GVGrid selection_mask_;
 
  public:
   /** Takes #mask by pointer because the mask has to live longer than the evaluator. */
-  VolumeFieldEvaluator(const FieldContext &context, const GGrid &domain_mask)
+  VolumeFieldEvaluator(const FieldContext &context, const openvdb::MaskGrid &domain_mask)
       : context_(context), domain_mask_(domain_mask)
   {
   }
 
-  VolumeFieldEvaluator(const FieldContext &context) : context_(context), domain_mask_(empty_grid_)
+  VolumeFieldEvaluator(const FieldContext &context)
+      : context_(context), domain_mask_(scope_.construct<openvdb::MaskGrid>())
   {
   }
 
@@ -548,7 +544,7 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
    * \param field: Field to add to the evaluator.
    * \param dst: Mutable grid that the evaluated result for this field is written into.
    */
-  int add_with_destination(GField field, GMutableGrid &dst);
+  int add_with_destination(GField field, GVMutableGrid &dst);
 
   /** Same as #add_with_destination but typed. */
   template<typename T> int add_with_destination(Field<T> field, VMutableGrid<T> &dst)
@@ -556,7 +552,7 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
     return this->add_with_destination(GField(std::move(field)), std::move(dst));
   }
 
-  int add(GField field, GGrid *grid_ptr);
+  int add(GField field, GVGrid *grid_ptr);
 
   /**
    * \param field: Field to add to the evaluator.
@@ -569,7 +565,7 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
     const int field_index = fields_to_evaluate_.append_and_get_index(std::move(field));
     dst_grids_.append({});
     output_pointer_infos_.append(
-        OutputPointerInfo{grid_ptr, [](void *dst, const GGrid &grid, ResourceScope & /*scope*/) {
+        OutputPointerInfo{grid_ptr, [](void *dst, const GVGrid &grid, ResourceScope & /*scope*/) {
                             *(VGrid<T> *)dst = grid.typed<T>();
                           }});
     return field_index;
@@ -585,7 +581,7 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
    */
   void evaluate();
 
-  const GGrid &get_evaluated(const int field_index) const
+  const GVGrid &get_evaluated(const int field_index) const
   {
     BLI_assert(is_evaluated_);
     return evaluated_grids_[field_index];
@@ -596,14 +592,14 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
     return this->get_evaluated(field_index).typed<T>();
   }
 
-  GGrid get_evaluated_selection_as_mask();
+  GVGrid get_evaluated_selection_as_mask();
 
   /**
    * Retrieve the output of an evaluated boolean field and convert it to a mask, which can be used
    * to avoid calculations for unnecessary elements later on. The evaluator will own the indices in
    * some cases, so it must live at least as long as the returned mask.
    */
-  GGrid get_evaluated_as_mask(int field_index);
+  GVGrid get_evaluated_as_mask(int field_index);
 };
 
 /**

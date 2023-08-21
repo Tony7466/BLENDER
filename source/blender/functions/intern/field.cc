@@ -688,20 +688,18 @@ Vector<GVGrid> evaluate_volume_fields(ResourceScope &scope,
         continue;
       }
       const GVGrid &computed_grid = r_grids[out_index];
-      // BLI_assert(computed_varray.type() == dst_grid.type());
+      BLI_assert(computed_grid.type() == dst_grid.type());
       if (is_output_written_to_dst[out_index]) {
         /* The result has been written into the destination provided by the caller already. */
         continue;
       }
       /* Still have to copy over the data in the destination provided by the caller. */
       if (dst_grid.is_grid()) {
-        volume::grid_to_static_type(*dst_grid.get_internal_grid(), [&](auto &typed_grid) {
-
-        });
-
-        = GVMutableGrid::ForGrid{computed_grid.grid_->deepCopyGrid()};
+        BLI_assert(computed_grid.is_grid());
+        dst_grid.get_internal_grid()->setTree(
+            computed_grid.get_internal_grid()->baseTree().copy());
       }
-      r_grids[out_index] = *dst_grid;
+      r_grids[out_index] = dst_grid;
     }
   }
   return r_grids;
@@ -1052,10 +1050,8 @@ IndexMask FieldEvaluator::get_evaluated_selection_as_mask()
 /** \name #VolumeFieldEvaluator
  * \{ */
 
-const volume::GVGrid VolumeFieldEvaluator::empty_grid_ = {};
-
 struct BoolGridToMask {
-  volume::VGrid<bool>::GridType::ConstAccessor accessor;
+  VGrid<bool>::GridType::ConstAccessor accessor;
 
   inline void operator()(const openvdb::BoolGrid::ValueOnIter &iter) const
   {
@@ -1067,16 +1063,16 @@ struct BoolGridToMask {
   }
 };
 
-static volume::GVMutableGrid grid_mask_from_selection(const volume::GVGrid &full_mask,
-                                                      const volume::VGrid<bool> &selection,
-                                                      ResourceScope & /*scope*/)
+static GVMutableGrid grid_mask_from_selection(const GVGrid &full_mask,
+                                              const VGrid<bool> &selection,
+                                              ResourceScope & /*scope*/)
 {
   if (!full_mask) {
     return {};
   }
 
   /* Empty bool grid with same transform and metadata as the full mask */
-  volume::VMutableGrid<bool> result = {openvdb::BoolGrid::create(*full_mask.grid_)};
+  VMutableGrid<bool> result = {openvdb::BoolGrid::create(*full_mask.grid_)};
   volume::grid_to_static_type(full_mask.grid_, [&](auto &typed_full_mask) {
     result.grid_->topologyUnion(typed_full_mask);
   });
@@ -1114,13 +1110,13 @@ int VolumeFieldEvaluator::add(GField field)
   return field_index;
 }
 
-static volume::GVGrid evaluate_selection(const Field<bool> &selection_field,
-                                         const FieldContext &context,
-                                         const volume::GVGrid &domain_mask,
-                                         ResourceScope &scope)
+static GVGrid evaluate_selection(const Field<bool> &selection_field,
+                                 const FieldContext &context,
+                                 const GVGrid &domain_mask,
+                                 ResourceScope &scope)
 {
   if (selection_field) {
-    volume::VGrid<bool> selection =
+    VGrid<bool> selection =
         evaluate_volume_fields(scope, {selection_field}, domain_mask, context)[0].typed<bool>();
     return grid_mask_from_selection(domain_mask, selection, scope);
   }
@@ -1148,13 +1144,13 @@ void VolumeFieldEvaluator::evaluate()
   is_evaluated_ = true;
 }
 
-volume::GVGrid VolumeFieldEvaluator::get_evaluated_as_mask(const int field_index)
+GVGrid VolumeFieldEvaluator::get_evaluated_as_mask(const int field_index)
 {
-  volume::VGrid<bool> grid = this->get_evaluated(field_index).typed<bool>();
+  VGrid<bool> grid = this->get_evaluated(field_index).typed<bool>();
   return grid_mask_from_selection(domain_mask_, grid, scope_);
 }
 
-volume::GVGrid VolumeFieldEvaluator::get_evaluated_selection_as_mask()
+GVGrid VolumeFieldEvaluator::get_evaluated_selection_as_mask()
 {
   BLI_assert(is_evaluated_);
   return selection_mask_;

@@ -24,11 +24,9 @@ openvdb::GridBase *make_grid_for_attribute_type(const CPPType &type)
   volume::field_to_static_type(type, [&](auto tag) {
     using ValueType = typename decltype(tag)::type;
     using GridType = volume::grid_types::AttributeGrid<ValueType>;
-    using TreeType = typename GridType::TreeType;
     using Converter = volume::grid_types::Converter<GridType>;
 
-    const ValueType &background_value = *static_cast<const ValueType *>(
-        value_type.default_value());
+    const ValueType &background_value = *static_cast<const ValueType *>(type.default_value());
     result = new GridType(Converter::single_value_to_grid(background_value));
   });
   BLI_assert(result != nullptr);

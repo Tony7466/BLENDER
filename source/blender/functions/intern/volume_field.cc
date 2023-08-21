@@ -322,11 +322,11 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
     /* Try to get an existing virtual grid that the result should be written into. */
     GVMutableGrid dst_grid = get_dst_grid(out_index);
     {
-      GVMutableGrid grid_base = GVMutableGrid::ForGrid(*buffer);
-      if (!dst_grid_ptr) {
+      if (!dst_grid) {
         /* Create a destination grid pointer in the resource scope. */
-        openvdb::GridBase *buffer = volume::make_grid_for_attribute_type(type);
+        openvdb::GridBase *buffer = scope.construct<openvdb::GridBase>(volume::make_grid_for_attribute_type(type);
         GVMutableGrid &dst_grid = scope.add_value<GVMutableGrid>(std::move(grid_base));
+        GVMutableGrid grid_base = GVMutableGrid::ForGrid(*buffer);
         dst_grid_ptr = &dst_grid;
       }
       else {

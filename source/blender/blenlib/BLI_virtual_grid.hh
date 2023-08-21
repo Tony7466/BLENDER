@@ -183,7 +183,7 @@ template<typename T> class VGridImpl_For_Grid_final final : public VGridImpl_For
  public:
   using VGridImpl_For_Grid<T>::VGridImpl_For_Grid;
 #ifdef WITH_OPENVDB
-  using VGridImpl_For_Grid<T>::GridType;
+  using GridType = typename VGridImpl_For_Grid<T>::GridType;
 #endif
 
   VGridImpl_For_Grid_final(GridType &grid)
@@ -492,9 +492,12 @@ template<typename T> class VMutableGrid;
  * construct the virtual grid first and then move it into the vector.
  */
 namespace vgrid_tag {
-struct grid {};
-struct single_ref {};
-struct single {};
+struct grid {
+};
+struct single_ref {
+};
+struct single {
+};
 }  // namespace vgrid_tag
 
 /**
