@@ -115,6 +115,7 @@ vec3 volume_shadow(LightData ld, vec3 ray_wpos, vec3 L, float l_dist, sampler3D 
 
   vec4 l_vector = vec4(L * l_dist, l_dist);
 
+/* TODO(Miguel Pozo): Soft shadows support. */
 #  if 0
   /* If light is shadowed, use the shadow vector, if not, reuse the light vector. */
   if (volumes_info_buf.use_soft_shadows && ld.shadowid >= 0.0) {
@@ -135,7 +136,7 @@ vec3 volume_shadow(LightData ld, vec3 ray_wpos, vec3 L, float l_dist, sampler3D 
   float dd = l_vector.w / volumes_info_buf.shadow_steps;
   L = l_vector.xyz / volumes_info_buf.shadow_steps;
 
-  if (ld.type <= LIGHT_SUN_ORTHO) {
+  if (is_sun_light(ld.type)) {
     /* For sun light we scan the whole frustum. So we need to get the correct endpoints. */
     vec3 ndcP = project_point(ProjectionMatrix, transform_point(ViewMatrix, ray_wpos));
     vec3 ndcL = project_point(ProjectionMatrix,
@@ -172,10 +173,7 @@ vec3 volume_shadow(LightData ld, vec3 ray_wpos, vec3 L, float l_dist, sampler3D 
 vec3 volume_irradiance(vec3 P)
 {
 #ifdef VOLUME_IRRADIANCE
-  /* Skip normal and view bias. */
-  SphericalHarmonicL1 irradiance = lightprobe_irradiance_sample(
-      irradiance_atlas_tx, P, vec3(0.0), vec3(0.0));
-
+  SphericalHarmonicL1 irradiance = lightprobe_irradiance_sample(P);
   return irradiance.L0.M0.rgb * M_PI;
 #else
   return vec3(0.0);

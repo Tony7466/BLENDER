@@ -33,11 +33,9 @@ vec3 volume_scatter_light_eval(vec3 P, vec3 V, uint l_idx, float s_anisotropy)
   LightData light = light_buf[l_idx];
   if (light.tilemap_index != LIGHT_NO_SHADOW && (visibility > 0.0)) {
     vec3 lL = light_world_to_local(light, -L) * l_dist;
-    /* Disable shadow bias. */
     vec3 lNg = vec3(0);
-
     ShadowSample samp = shadow_sample(
-        light.type <= LIGHT_SUN_ORTHO, shadow_atlas_tx, shadow_tilemaps_tx, light, lL, lNg, P);
+        is_sun_light(light.type), shadow_atlas_tx, shadow_tilemaps_tx, light, lL, lNg, P);
     visibility *= float(samp.occluder_delta + samp.bias >= 0.0);
   }
 
