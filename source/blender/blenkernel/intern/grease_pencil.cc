@@ -440,8 +440,7 @@ TreeNode::TreeNode(GreasePencilLayerTreeNodeType type, StringRefNull name) : Tre
   this->GreasePencilLayerTreeNode::name = BLI_strdup(name.c_str());
 }
 
-TreeNode::TreeNode(const TreeNode &other)
-    : TreeNode(GreasePencilLayerTreeNodeType(other.type))
+TreeNode::TreeNode(const TreeNode &other) : TreeNode(GreasePencilLayerTreeNodeType(other.type))
 {
   this->GreasePencilLayerTreeNode::name = BLI_strdup_null(other.GreasePencilLayerTreeNode::name);
   this->flag = other.flag;
@@ -486,6 +485,16 @@ LayerGroup *TreeNode::parent_group() const
 TreeNode *TreeNode::parent_node() const
 {
   return this->parent_group() ? &this->parent->wrap().as_node() : nullptr;
+}
+
+int64_t TreeNode::depth() const
+{
+  const LayerGroup *parent = this->parent_group();
+  if (parent == nullptr) {
+    /* The root group has a depth of 0. */
+    return 0;
+  }
+  return 1 + parent->as_node().depth();
 }
 
 LayerMask::LayerMask()
