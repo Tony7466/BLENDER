@@ -901,22 +901,22 @@ void RNA_def_camera(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Fisheye Polynomial K0", "Coefficient K0 of the lens polynomial");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
 
-  prop = RNA_def_property(srna, "fisheye_polynomial_k1", PROP_FLOAT, PROP_NONE);
+  prop = RNA_def_property(srna, "fisheye_polynomial_k1", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
   RNA_def_property_ui_text(prop, "Fisheye Polynomial K1", "Coefficient K1 of the lens polynomial");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
 
-  prop = RNA_def_property(srna, "fisheye_polynomial_k2", PROP_FLOAT, PROP_NONE);
+  prop = RNA_def_property(srna, "fisheye_polynomial_k2", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
   RNA_def_property_ui_text(prop, "Fisheye Polynomial K2", "Coefficient K2 of the lens polynomial");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
 
-  prop = RNA_def_property(srna, "fisheye_polynomial_k3", PROP_FLOAT, PROP_NONE);
+  prop = RNA_def_property(srna, "fisheye_polynomial_k3", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
   RNA_def_property_ui_text(prop, "Fisheye Polynomial K3", "Coefficient K3 of the lens polynomial");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
 
-  prop = RNA_def_property(srna, "fisheye_polynomial_k4", PROP_FLOAT, PROP_NONE);
+  prop = RNA_def_property(srna, "fisheye_polynomial_k4", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_ui_range(prop, -FLT_MAX, FLT_MAX, 0.1, 6);
   RNA_def_property_ui_text(prop, "Fisheye Polynomial K4", "Coefficient K4 of the lens polynomial");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Camera_update");
