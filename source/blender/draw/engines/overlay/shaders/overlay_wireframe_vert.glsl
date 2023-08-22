@@ -109,7 +109,7 @@ void main()
   float fresnel_alpha = mix(0.0, fresnelMix, facing);
 
   finalColor.a = wireOpacity - fresnel_alpha;
-  finalColor.rgb = mix(finalColor.rgb, finalColor.rgb*(1-fresnel_alpha), fresnelMix);
+  finalColor.rgb = mix(finalColor.rgb, finalColor.rgb*(fresnel_alpha), fresnelMix);
   finalColor.rgb *= wireOpacity;
 
   view_clipping_distances(wpos);
