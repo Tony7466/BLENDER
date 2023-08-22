@@ -2,3 +2,4 @@ Referenced by issue #109432, Regression: Selection Fails to Highlight in Edit Mo
 Referenced by issue #109301, Crash and Visual glitches in Edit mode if add_rest_position_attribute enabled with modifiers
 Referenced by issue #110925, mirror modifier and subdivision surface.on_cage enabled crashes blender
 Referenced by issue #110136, Crash when switching to the Face select mode in 3.6
+Referenced by pull request #111396, Revert "Fix #107185: Edit mode or existing attribute break rest position"
