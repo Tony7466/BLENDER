@@ -42,7 +42,7 @@ def draw_geometry_node_asset_warnings(layout, context, node_tree):
     if not node_tree.is_tool:
         layout.label(text="Asset is not marked as tool", icon='ERROR')
     elif show_ineffective_tool_warning(context, node_tree):
-        layout.label(text="Asset options must support at least one type and mode", icon='ERROR')
+        layout.label(text="Asset options must support at least one mode and geometry", icon='ERROR')
     elif node_tree.asset_data.catalog_id == "00000000-0000-0000-0000-000000000000":
         layout.label(text="Add asset to catalog to show in menus", icon='ERROR')
 
