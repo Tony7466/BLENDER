@@ -14,11 +14,6 @@
 #include "util/log.h"
 #include "util/openimagedenoise.h"
 
-#if defined(OIDN_DEVICE_CUDA) && defined(WITH_CUDA)
-#  include "device/cuda/device_impl.h"
-#  include <cuew.h>
-#endif
-
 #include "kernel/device/cpu/compat.h"
 #include "kernel/device/cpu/kernel.h"
 
@@ -39,11 +34,6 @@ bool OIDNDenoiser::is_device_supported(const DeviceInfo &device)
 #if OIDN_VERSION_MAJOR >= 2
 #  ifdef OIDN_DEVICE_SYCL
     case DEVICE_ONEAPI:
-      return true;
-#  endif
-#if defined(OIDN_DEVICE_CUDA) && defined(WITH_CUDA)
-    case DEVICE_CUDA:
-    case DEVICE_OPTIX:
       return true;
 #  endif
 #endif
@@ -795,15 +785,6 @@ bool OIDNDenoiser::denoise_create_if_needed(DenoiseContext &context)
       oidn_device_ = oidnNewDevice(OIDN_DEVICE_TYPE_SYCL);
       denoiser_queue_->init_execution();
       break;
-#    endif
-#if defined(OIDN_DEVICE_CUDA) && defined(WITH_CUDA)
-    case DEVICE_CUDA:
-    case DEVICE_OPTIX: {
-      int device_id = static_cast<CUDADevice *>(denoiser_queue_->device)->cuDevId;
-      CUstream stream = nullptr;
-      oidn_device_ = oidnNewCUDADevice(&device_id, &stream, 1);
-      break;
-    }
 #    endif
     /* Devices without explicit support fall through to CPU backend. */
     default:
