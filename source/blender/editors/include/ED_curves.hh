@@ -228,7 +228,8 @@ bool select_circle(const ViewContext &vc,
                    float radius,
                    eSelectOp sel_op);
 
-std::optional<Bounds<float3>> selection_bounds(const Curves &curves_id, const bke::crazyspace::GeometryDeformation deformation);
+std::optional<Bounds<float3>> selection_bounds(
+    const Curves &curves_id, const bke::crazyspace::GeometryDeformation deformation);
 /** \} */
 
 /* -------------------------------------------------------------------- */
