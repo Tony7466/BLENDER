@@ -1,10 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_math_geom.h"
 #include "BLI_math_matrix.hh"
+#include "BLI_math_vector.h"
 
 #include "pbvh_uv_islands.hh"
 
+#include <iostream>
 #include <optional>
+#include <sstream>
 
 namespace blender::bke::pbvh::uv_islands {
 
@@ -160,7 +166,8 @@ static void extract_uv_neighbors(const MeshData &mesh_data,
 
       if (primitive_has_shared_uv_edge(mesh_data.uv_map,
                                        mesh_data.looptris[primitive_i],
-                                       mesh_data.looptris[other_primitive_i])) {
+                                       mesh_data.looptris[other_primitive_i]))
+      {
         prims_to_add.append(other_primitive_i);
       }
     }
@@ -541,7 +548,6 @@ struct FanSegment {
   void print_debug(const MeshData &mesh_data) const
   {
     std::stringstream ss;
-    ss << "# p:" << primitive->poly;
     ss << " v1:" << mesh_data.corner_verts[primitive->tri[vert_order[0]]];
     ss << " v2:" << mesh_data.corner_verts[primitive->tri[vert_order[1]]];
     ss << " v3:" << mesh_data.corner_verts[primitive->tri[vert_order[2]]];
@@ -1374,8 +1380,8 @@ UVEdge *UVPrimitive::get_uv_edge(const int v1, const int v2) const
 bool UVPrimitive::contains_uv_vertex(const UVVertex *uv_vertex) const
 {
   for (UVEdge *edge : edges) {
-    if (std::find(edge->vertices.begin(), edge->vertices.end(), uv_vertex) !=
-        edge->vertices.end()) {
+    if (std::find(edge->vertices.begin(), edge->vertices.end(), uv_vertex) != edge->vertices.end())
+    {
       return true;
     }
   }
@@ -1611,7 +1617,8 @@ static bool dilate_y(UVIslandsMask::Tile &islands_mask)
         changed = true;
       }
       else if (y < islands_mask.mask_resolution.y - 1 &&
-               prev_mask[offset + islands_mask.mask_resolution.x] != 0xffff) {
+               prev_mask[offset + islands_mask.mask_resolution.x] != 0xffff)
+      {
         islands_mask.mask[offset] = prev_mask[offset + islands_mask.mask_resolution.x];
         changed = true;
       }

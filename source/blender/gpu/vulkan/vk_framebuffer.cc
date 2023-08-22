@@ -1,11 +1,14 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
  */
 
 #include "vk_framebuffer.hh"
+#include "vk_backend.hh"
+#include "vk_context.hh"
 #include "vk_memory.hh"
 #include "vk_texture.hh"
 
@@ -18,26 +21,28 @@ namespace blender::gpu {
 VKFrameBuffer::VKFrameBuffer(const char *name) : FrameBuffer(name)
 {
   immutable_ = false;
+  flip_viewport_ = false;
+  size_set(1, 1);
 }
 
 VKFrameBuffer::VKFrameBuffer(const char *name,
+                             VkImage vk_image,
                              VkFramebuffer vk_framebuffer,
                              VkRenderPass vk_render_pass,
                              VkExtent2D vk_extent)
     : FrameBuffer(name)
 {
   immutable_ = true;
+  flip_viewport_ = true;
   /* Never update an internal frame-buffer. */
   dirty_attachments_ = false;
-  width_ = vk_extent.width;
-  height_ = vk_extent.height;
+  vk_image_ = vk_image;
   vk_framebuffer_ = vk_framebuffer;
   vk_render_pass_ = vk_render_pass;
 
-  viewport_[0] = scissor_[0] = 0;
-  viewport_[1] = scissor_[1] = 0;
-  viewport_[2] = scissor_[2] = width_;
-  viewport_[3] = scissor_[3] = height_;
+  size_set(vk_extent.width, vk_extent.height);
+  viewport_reset();
+  scissor_reset();
 }
 
 VKFrameBuffer::~VKFrameBuffer()
@@ -51,37 +56,73 @@ VKFrameBuffer::~VKFrameBuffer()
 
 void VKFrameBuffer::bind(bool /*enabled_srgb*/)
 {
+  VKContext &context = *VKContext::get();
+  /* Updating attachments can issue pipeline barriers, this should be done outside the render pass.
+   * When done inside a render pass there should be a self-dependency between sub-passes on the
+   * active render pass. As the active render pass isn't aware of the new render pass (and should
+   * not) it is better to deactivate it before updating the attachments. For more information check
+   * `VkSubpassDependency`. */
+  if (context.has_active_framebuffer()) {
+    context.deactivate_framebuffer();
+  }
+
   update_attachments();
 
-  VKContext &context = *VKContext::get();
   context.activate_framebuffer(*this);
 }
 
-VkRect2D VKFrameBuffer::vk_render_area_get() const
+Array<VkViewport, 16> VKFrameBuffer::vk_viewports_get() const
 {
-  VkRect2D render_area = {};
+  Array<VkViewport, 16> viewports(this->multi_viewport_ ? GPU_MAX_VIEWPORTS : 1);
 
-  if (scissor_test_get()) {
-    int scissor_rect[4];
-    scissor_get(scissor_rect);
-    render_area.offset.x = scissor_rect[0];
-    render_area.offset.y = scissor_rect[1];
-    render_area.extent.width = scissor_rect[2];
-    render_area.extent.height = scissor_rect[3];
+  int index = 0;
+  for (VkViewport &viewport : viewports) {
+    viewport.x = viewport_[index][0];
+    viewport.y = viewport_[index][1];
+    viewport.width = viewport_[index][2];
+    viewport.height = viewport_[index][3];
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    /*
+     * Vulkan has origin to the top left, Blender bottom left. We counteract this by using a
+     * negative viewport when flip_viewport_ is set. This flips the viewport making any draw/blit
+     * use the correct orientation.
+     */
+    if (flip_viewport_) {
+      viewport.y = height_ - viewport_[index][1];
+      viewport.height = -viewport_[index][3];
+    }
+    index++;
   }
-  else {
-    render_area.offset.x = 0;
-    render_area.offset.y = 0;
-    render_area.extent.width = width_;
-    render_area.extent.height = height_;
-  }
+  return viewports;
+}
 
-  return render_area;
+Array<VkRect2D, 16> VKFrameBuffer::vk_render_areas_get() const
+{
+  Array<VkRect2D, 16> render_areas(this->multi_viewport_ ? GPU_MAX_VIEWPORTS : 1);
+
+  for (VkRect2D &render_area : render_areas) {
+    if (scissor_test_get()) {
+      int scissor_rect[4];
+      scissor_get(scissor_rect);
+      render_area.offset.x = scissor_rect[0];
+      render_area.offset.y = scissor_rect[1];
+      render_area.extent.width = scissor_rect[2];
+      render_area.extent.height = scissor_rect[3];
+    }
+    else {
+      render_area.offset.x = 0;
+      render_area.offset.y = 0;
+      render_area.extent.width = width_;
+      render_area.extent.height = height_;
+    }
+  }
+  return render_areas;
 }
 
 bool VKFrameBuffer::check(char /*err_out*/[256])
 {
-  return false;
+  return true;
 }
 
 void VKFrameBuffer::build_clear_attachments_depth_stencil(
@@ -126,8 +167,11 @@ void VKFrameBuffer::build_clear_attachments_color(const float (*clear_colors)[4]
 
 void VKFrameBuffer::clear(const Vector<VkClearAttachment> &attachments) const
 {
+  if (attachments.is_empty()) {
+    return;
+  }
   VkClearRect clear_rect = {};
-  clear_rect.rect = vk_render_area_get();
+  clear_rect.rect = vk_render_areas_get()[0];
   clear_rect.baseArrayLayer = 0;
   clear_rect.layerCount = 1;
 
@@ -188,13 +232,32 @@ void VKFrameBuffer::attachment_set_loadstore_op(GPUAttachmentType /*type*/,
 /** \name Read back
  * \{ */
 
-void VKFrameBuffer::read(eGPUFrameBufferBits /*planes*/,
-                         eGPUDataFormat /*format*/,
-                         const int /*area*/[4],
+void VKFrameBuffer::read(eGPUFrameBufferBits plane,
+                         eGPUDataFormat format,
+                         const int area[4],
                          int /*channel_len*/,
-                         int /*slot*/,
-                         void * /*r_data*/)
+                         int slot,
+                         void *r_data)
 {
+  VKTexture *texture = nullptr;
+  switch (plane) {
+    case GPU_COLOR_BIT:
+      texture = unwrap(unwrap(attachments_[GPU_FB_COLOR_ATTACHMENT0 + slot].tex));
+      break;
+
+    case GPU_DEPTH_BIT:
+      texture = unwrap(unwrap(attachments_[GPU_FB_DEPTH_ATTACHMENT].tex));
+      break;
+
+    default:
+      BLI_assert_unreachable();
+      return;
+  }
+
+  BLI_assert_msg(texture,
+                 "Trying to read back texture from framebuffer, but no texture is available in "
+                 "requested slot.");
+  texture->read_sub(0, format, area, r_data);
 }
 
 /** \} */
@@ -203,13 +266,76 @@ void VKFrameBuffer::read(eGPUFrameBufferBits /*planes*/,
 /** \name Blit operations
  * \{ */
 
-void VKFrameBuffer::blit_to(eGPUFrameBufferBits /*planes*/,
-                            int /*src_slot*/,
-                            FrameBuffer * /*dst*/,
-                            int /*dst_slot*/,
-                            int /*dst_offset_x*/,
-                            int /*dst_offset_y*/)
+void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
+                            int src_slot,
+                            FrameBuffer *dst,
+                            int dst_slot,
+                            int dst_offset_x,
+                            int dst_offset_y)
 {
+  BLI_assert(dst);
+  BLI_assert(planes == GPU_COLOR_BIT);
+  UNUSED_VARS_NDEBUG(planes);
+
+  VKContext &context = *VKContext::get();
+  if (!context.has_active_framebuffer()) {
+    BLI_assert_unreachable();
+    return;
+  }
+
+  /* Retrieve source texture. */
+  const GPUAttachment &src_attachment = attachments_[GPU_FB_COLOR_ATTACHMENT0 + src_slot];
+  if (src_attachment.tex == nullptr) {
+    return;
+  }
+  VKTexture &src_texture = *unwrap(unwrap(src_attachment.tex));
+  src_texture.layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+  /* Retrieve destination texture. */
+  const VKFrameBuffer &dst_framebuffer = *unwrap(dst);
+  const GPUAttachment &dst_attachment =
+      dst_framebuffer.attachments_[GPU_FB_COLOR_ATTACHMENT0 + dst_slot];
+  VKTexture *dst_texture = nullptr;
+  VKTexture tmp_texture("FramebufferTexture");
+  if (dst_attachment.tex) {
+    dst_texture = unwrap(unwrap(dst_attachment.tex));
+    dst_texture->layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  }
+  else {
+    tmp_texture.init(dst_framebuffer.vk_image_get(), VK_IMAGE_LAYOUT_GENERAL);
+    dst_texture = &tmp_texture;
+  }
+
+  VkImageBlit image_blit = {};
+  image_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  image_blit.srcSubresource.mipLevel = 0;
+  image_blit.srcSubresource.baseArrayLayer = 0;
+  image_blit.srcSubresource.layerCount = 1;
+  image_blit.srcOffsets[0].x = 0;
+  image_blit.srcOffsets[0].y = 0;
+  image_blit.srcOffsets[0].z = 0;
+  image_blit.srcOffsets[1].x = src_texture.width_get();
+  image_blit.srcOffsets[1].y = src_texture.height_get();
+  image_blit.srcOffsets[1].z = 1;
+
+  image_blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  image_blit.dstSubresource.mipLevel = 0;
+  image_blit.dstSubresource.baseArrayLayer = 0;
+  image_blit.dstSubresource.layerCount = 1;
+  image_blit.dstOffsets[0].x = dst_offset_x;
+  image_blit.dstOffsets[0].y = dst_offset_y;
+  image_blit.dstOffsets[0].z = 0;
+  image_blit.dstOffsets[1].x = dst_offset_x + src_texture.width_get();
+  image_blit.dstOffsets[1].y = dst_offset_x + src_texture.height_get();
+  image_blit.dstOffsets[1].z = 1;
+
+  const bool should_flip = flip_viewport_ != dst_framebuffer.flip_viewport_;
+  if (should_flip) {
+    image_blit.dstOffsets[0].y = dst_framebuffer.height_ - dst_offset_y;
+    image_blit.dstOffsets[1].y = dst_framebuffer.height_ - dst_offset_y - src_texture.height_get();
+  }
+
+  context.command_buffer_get().blit(*dst_texture, src_texture, Span<VkImageBlit>(&image_blit, 1));
 }
 
 /** \} */
@@ -247,10 +373,8 @@ void VKFrameBuffer::render_pass_create()
   std::array<VkAttachmentDescription, GPU_FB_MAX_ATTACHMENT> attachment_descriptions;
   std::array<VkImageView, GPU_FB_MAX_ATTACHMENT> image_views;
   std::array<VkAttachmentReference, GPU_FB_MAX_ATTACHMENT> attachment_references;
-#if 0
-  Vector<VkAttachmentReference> color_attachments;
-  VkAttachmentReference depth_attachment = {};
-#endif
+  image_views_.clear();
+
   bool has_depth_attachment = false;
   bool found_attachment = false;
   int depth_location = -1;
@@ -269,7 +393,8 @@ void VKFrameBuffer::render_pass_create()
     /* Keep the first attachment to the first color attachment, or to the depth buffer when there
      * is no color attachment. */
     if (attachment.tex != nullptr &&
-        (first_attachment == GPU_FB_MAX_ATTACHMENT || type >= GPU_FB_COLOR_ATTACHMENT0)) {
+        (first_attachment == GPU_FB_MAX_ATTACHMENT || type >= GPU_FB_COLOR_ATTACHMENT0))
+    {
       first_attachment = static_cast<GPUAttachmentType>(type);
     }
 
@@ -280,19 +405,24 @@ void VKFrameBuffer::render_pass_create()
       /* Ensure texture is allocated to ensure the image view. */
       VKTexture &texture = *static_cast<VKTexture *>(unwrap(attachment.tex));
       texture.ensure_allocated();
-      image_views[attachment_location] = texture.vk_image_view_handle();
+      image_views_.append(VKImageView(texture,
+                                      eImageViewUsage::Attachment,
+                                      IndexRange(max_ii(attachment.layer, 0), 1),
+                                      IndexRange(attachment.mip, 1),
+                                      name_));
+      image_views[attachment_location] = image_views_.last().vk_handle();
 
       VkAttachmentDescription &attachment_description =
           attachment_descriptions[attachment_location];
       attachment_description.flags = 0;
       attachment_description.format = to_vk_format(texture.format_get());
       attachment_description.samples = VK_SAMPLE_COUNT_1_BIT;
-      attachment_description.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+      attachment_description.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
       attachment_description.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-      attachment_description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-      attachment_description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-      attachment_description.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
-      attachment_description.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
+      attachment_description.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+      attachment_description.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+      attachment_description.initialLayout = texture.current_layout_get();
+      attachment_description.finalLayout = texture.current_layout_get();
 
       /* Create the attachment reference. */
       const bool is_depth_attachment = ELEM(
@@ -319,7 +449,8 @@ void VKFrameBuffer::render_pass_create()
     size_set(size[0], size[1]);
   }
   else {
-    this->size_set(0, 0);
+    /* A frame-buffer should at least be 1 by 1. */
+    this->size_set(1, 1);
   }
   viewport_reset();
   scissor_reset();
@@ -343,9 +474,9 @@ void VKFrameBuffer::render_pass_create()
   render_pass_info.subpassCount = 1;
   render_pass_info.pSubpasses = &subpass;
 
-  VKContext &context = *VKContext::get();
+  const VKDevice &device = VKBackend::get().device_get();
   vkCreateRenderPass(
-      context.device_get(), &render_pass_info, vk_allocation_callbacks, &vk_render_pass_);
+      device.device_get(), &render_pass_info, vk_allocation_callbacks, &vk_render_pass_);
 
   /* We might want to split frame-buffer and render pass. */
   VkFramebufferCreateInfo framebuffer_create_info = {};
@@ -358,7 +489,7 @@ void VKFrameBuffer::render_pass_create()
   framebuffer_create_info.layers = 1;
 
   vkCreateFramebuffer(
-      context.device_get(), &framebuffer_create_info, vk_allocation_callbacks, &vk_framebuffer_);
+      device.device_get(), &framebuffer_create_info, vk_allocation_callbacks, &vk_framebuffer_);
 }
 
 void VKFrameBuffer::render_pass_free()
@@ -369,9 +500,12 @@ void VKFrameBuffer::render_pass_free()
   }
   VK_ALLOCATION_CALLBACKS
 
-  VKContext &context = *VKContext::get();
-  vkDestroyRenderPass(context.device_get(), vk_render_pass_, vk_allocation_callbacks);
-  vkDestroyFramebuffer(context.device_get(), vk_framebuffer_, vk_allocation_callbacks);
+  const VKDevice &device = VKBackend::get().device_get();
+  if (device.is_initialized()) {
+    vkDestroyRenderPass(device.device_get(), vk_render_pass_, vk_allocation_callbacks);
+    vkDestroyFramebuffer(device.device_get(), vk_framebuffer_, vk_allocation_callbacks);
+  }
+  image_views_.clear();
   vk_render_pass_ = VK_NULL_HANDLE;
   vk_framebuffer_ = VK_NULL_HANDLE;
 }

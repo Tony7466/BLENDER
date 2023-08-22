@@ -3,7 +3,7 @@
  * Depth of Field Gather accumulator.
  * We currently have only 2 which are very similar.
  * One is for the halfres gather passes and the other one for slight in focus regions.
- **/
+ */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
@@ -148,11 +148,13 @@ void dof_gather_accumulate_sample_pair(DofGatherData pair_data[2],
   /* TODO(fclem) Promote to parameter? dither with Noise? */
   const float mirroring_min_distance = 15.0;
   if (pair_data[0].coc < mirroring_threshold &&
-      (pair_data[1].coc - mirroring_min_distance) > pair_data[0].coc) {
+      (pair_data[1].coc - mirroring_min_distance) > pair_data[0].coc)
+  {
     pair_data[1].coc = pair_data[0].coc;
   }
   else if (pair_data[1].coc < mirroring_threshold &&
-           (pair_data[0].coc - mirroring_min_distance) > pair_data[1].coc) {
+           (pair_data[0].coc - mirroring_min_distance) > pair_data[1].coc)
+  {
     pair_data[0].coc = pair_data[1].coc;
   }
 #endif
@@ -164,10 +166,9 @@ void dof_gather_accumulate_sample_pair(DofGatherData pair_data[2],
         pair_data[i].coc, pair_data[i].dist, intersection_multiplier);
     float weight = inter_weight * layer_weight * sample_weight;
 
-    /**
-     * If a CoC is larger than bordering radius we accumulate it to the general accumulator.
+    /* If a CoC is larger than bordering radius we accumulate it to the general accumulator.
      * If not, we accumulate to the ring bucket. This is to have more consistent sample occlusion.
-     **/
+     */
     float accum_weight = dof_gather_accum_weight(pair_data[i].coc, bordering_radius, first_ring);
     dof_gather_accumulate_sample(pair_data[i], weight * accum_weight, accum_data);
     dof_gather_accumulate_sample(pair_data[i], weight * (1.0 - accum_weight), ring_data);
@@ -524,7 +525,8 @@ void dof_gather_accumulator(sampler2D color_tx,
     first_ring = false;
 
     if (do_density_change && (ring == change_density_at_ring) &&
-        (density_change < gather_max_density_change)) {
+        (density_change < gather_max_density_change))
+    {
       if (dof_do_density_change(base_radius, min_intersectable_radius)) {
         base_radius *= radius_downscale_factor;
         ring += gather_density_change_ring;

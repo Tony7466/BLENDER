@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2004 Blender Foundation */
+/* SPDX-FileCopyrightText: 2004 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -7,11 +8,11 @@
  * \ingroup sequencer
  */
 
+#include "DNA_scene_types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "DNA_scene_types.h"
 
 struct BlendDataReader;
 struct BlendExpander;
@@ -112,6 +113,8 @@ void SEQ_blend_read_lib(struct BlendLibReader *reader,
 
 void SEQ_blend_read_expand(struct BlendExpander *expander, struct ListBase *seqbase);
 
+void SEQ_doversion_250_sound_proxy_update(struct Main *bmain, struct Editing *ed);
+
 /* Depsgraph update function. */
 
 /**
@@ -123,11 +126,12 @@ void SEQ_eval_sequences(struct Depsgraph *depsgraph,
                         struct Scene *scene,
                         struct ListBase *seqbase);
 
-/* Defined in sequence_lookup.c */
+/* Defined in `sequence_lookup.cc`. */
 
 typedef enum eSequenceLookupTag {
   SEQ_LOOKUP_TAG_INVALID = (1 << 0),
 } eSequenceLookupTag;
+ENUM_OPERATORS(eSequenceLookupTag, SEQ_LOOKUP_TAG_INVALID)
 
 /**
  * Find a sequence with a given name.

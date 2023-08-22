@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "device/hip/device.h"
 
@@ -91,10 +92,12 @@ Device *device_hip_create(const DeviceInfo &info, Stats &stats, Profiler &profil
 static hipError_t device_hip_safe_init()
 {
 #  ifdef _WIN32
-  __try {
+  __try
+  {
     return hipInit(0);
   }
-  __except (EXCEPTION_EXECUTE_HANDLER) {
+  __except (EXCEPTION_EXECUTE_HANDLER)
+  {
     /* Ignore crashes inside the HIP driver and hope we can
      * survive even with corrupted HIP installs. */
     fprintf(stderr, "Cycles HIP: driver crashed, continuing without HIP.\n");
@@ -153,6 +156,7 @@ void device_hip_info(vector<DeviceInfo> &devices)
 
     info.has_nanovdb = true;
     info.has_light_tree = true;
+    info.has_mnee = true;
     info.denoisers = 0;
 
     info.has_gpu_queue = true;

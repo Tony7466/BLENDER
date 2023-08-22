@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "scene/image.h"
 #include "device/device.h"
@@ -799,7 +800,8 @@ void ImageManager::device_load_image(Device *device, Scene *scene, size_t slot, 
   }
 #ifdef WITH_NANOVDB
   else if (type == IMAGE_DATA_TYPE_NANOVDB_FLOAT || type == IMAGE_DATA_TYPE_NANOVDB_FLOAT3 ||
-           type == IMAGE_DATA_TYPE_NANOVDB_FPN || type == IMAGE_DATA_TYPE_NANOVDB_FP16) {
+           type == IMAGE_DATA_TYPE_NANOVDB_FPN || type == IMAGE_DATA_TYPE_NANOVDB_FP16)
+  {
     thread_scoped_lock device_lock(device_mutex);
     void *pixels = img->mem->alloc(img->metadata.byte_size, 0);
 

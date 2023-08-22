@@ -1,6 +1,9 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Adapted from code copyright 2009-2010 NVIDIA Corporation
- * Modifications Copyright 2011-2022 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2009-2010 NVIDIA Corporation
+ * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Adapted code from NVIDIA Corporation. */
 
 #include "bvh/bvh2.h"
 
@@ -516,7 +519,8 @@ void BVH2::pack_instances(size_t nodes_size, size_t leaf_nodes_size)
   pack.object_node.resize(objects.size());
 
   if (params.num_motion_curve_steps > 0 || params.num_motion_triangle_steps > 0 ||
-      params.num_motion_point_steps > 0) {
+      params.num_motion_point_steps > 0)
+  {
     pack.prim_time.resize(prim_index_size);
   }
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 /* Device data taken from HIP occupancy calculator.
  *
@@ -20,7 +21,7 @@
 #define GPU_KERNEL_BLOCK_NUM_THREADS 1024
 #define GPU_KERNEL_MAX_REGISTERS 64
 
-/* For performance tuning of hiprt kernels we might have to change the number
+/* For performance tuning of HIPRT kernels we might have to change the number
  * that's why we don't use GPU_KERNEL_BLOCK_NUM_THREADS. */
 #define GPU_HIPRT_KERNEL_BLOCK_NUM_THREADS 1024
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2004 Blender Foundation */
+/* SPDX-FileCopyrightText: 2004 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -31,7 +32,7 @@
 #include "BKE_idtype.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
@@ -42,21 +43,21 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
 
-#include "ED_keyframing.h"
-#include "ED_outliner.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
+#include "ED_keyframing.hh"
+#include "ED_outliner.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_view2d.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_path.hh"
 
 #include "GPU_material.h"
 
@@ -72,6 +73,18 @@ static void outliner_show_active(SpaceOutliner *space_outliner,
                                  ARegion *region,
                                  TreeElement *te,
                                  ID *id);
+
+/* -------------------------------------------------------------------- */
+/** \name Local Utilities
+ * \{ */
+
+static void outliner_copybuffer_filepath_get(char filepath[FILE_MAX], size_t filepath_maxncpy)
+{
+  /* NOTE: this uses the same path as the 3D viewport. */
+  BLI_path_join(filepath, filepath_maxncpy, BKE_tempdir_base(), "copybuffer.blend");
+}
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Highlight on Cursor Motion Operator
@@ -110,7 +123,8 @@ static int outliner_highlight_update(bContext *C, wmOperator * /*op*/, const wmE
   bool changed = false;
 
   if (!hovered_te || !is_over_icon || !(hovered_te->store_elem->flag & TSE_HIGHLIGHTED) ||
-      !(icon_te->store_elem->flag & TSE_HIGHLIGHTED_ICON)) {
+      !(icon_te->store_elem->flag & TSE_HIGHLIGHTED_ICON))
+  {
     /* Clear highlights when nothing is hovered or when a new item is hovered. */
     changed = outliner_flag_set(*space_outliner, TSE_HIGHLIGHTED_ANY | TSE_DRAG_ANY, false);
     if (hovered_te) {
@@ -294,42 +308,40 @@ static void do_item_rename(ARegion *region,
 
   /* can't rename rna datablocks entries or listbases */
   if (ELEM(tselem->type,
+           TSE_ANIM_DATA,
+           TSE_NLA,
+           TSE_DEFGROUP_BASE,
+           TSE_CONSTRAINT_BASE,
+           TSE_MODIFIER_BASE,
+           TSE_DRIVER_BASE,
+           TSE_POSE_BASE,
+           TSE_POSEGRP_BASE,
+           TSE_R_LAYER_BASE,
+           TSE_SCENE_COLLECTION_BASE,
+           TSE_VIEW_COLLECTION_BASE,
+           TSE_LIBRARY_OVERRIDE_BASE,
            TSE_RNA_STRUCT,
            TSE_RNA_PROPERTY,
            TSE_RNA_ARRAY_ELEM,
-           TSE_ID_BASE,
-           TSE_SCENE_OBJECTS_BASE)) {
-    /* do nothing */
-  }
-  else if (ELEM(tselem->type,
-                TSE_ANIM_DATA,
-                TSE_NLA,
-                TSE_DEFGROUP_BASE,
-                TSE_CONSTRAINT_BASE,
-                TSE_MODIFIER_BASE,
-                TSE_DRIVER_BASE,
-                TSE_POSE_BASE,
-                TSE_POSEGRP_BASE,
-                TSE_R_LAYER_BASE,
-                TSE_SCENE_COLLECTION_BASE,
-                TSE_VIEW_COLLECTION_BASE,
-                TSE_LIBRARY_OVERRIDE_BASE)) {
-    BKE_report(reports, RPT_WARNING, "Cannot edit builtin name");
+           TSE_ID_BASE) ||
+      ELEM(tselem->type, TSE_SCENE_OBJECTS_BASE, TSE_GENERIC_LABEL))
+  {
+    BKE_report(reports, RPT_WARNING, "Not an editable name");
   }
   else if (ELEM(tselem->type, TSE_SEQUENCE, TSE_SEQ_STRIP, TSE_SEQUENCE_DUP)) {
-    BKE_report(reports, RPT_WARNING, "Cannot edit sequence name");
+    BKE_report(reports, RPT_WARNING, "Sequence names are not editable from the Outliner");
   }
-  else if (ID_IS_LINKED(tselem->id)) {
-    BKE_report(reports, RPT_WARNING, "Cannot edit external library data");
+  else if (TSE_IS_REAL_ID(tselem) && ID_IS_LINKED(tselem->id)) {
+    BKE_report(reports, RPT_WARNING, "External library data is not editable");
   }
-  else if (ID_IS_OVERRIDE_LIBRARY(tselem->id)) {
-    BKE_report(reports, RPT_WARNING, "Cannot edit name of an override data-block");
+  else if (TSE_IS_REAL_ID(tselem) && ID_IS_OVERRIDE_LIBRARY(tselem->id)) {
+    BKE_report(reports, RPT_WARNING, "Overridden data-blocks are not editable");
   }
   else if (outliner_is_collection_tree_element(te)) {
     Collection *collection = outliner_collection_from_tree_element(te);
 
     if (collection->flag & COLLECTION_IS_MASTER) {
-      BKE_report(reports, RPT_WARNING, "Cannot edit name of master collection");
+      BKE_report(reports, RPT_WARNING, "Not an editable name");
     }
     else {
       add_textbut = true;
@@ -343,7 +355,7 @@ static void do_item_rename(ARegion *region,
       BKE_report(
           reports,
           RPT_WARNING,
-          "Library path is not editable from here anymore, please use Relocate operation instead");
+          "Library path is not editable from here anymore, use the Relocate operation instead");
     }
   }
   else {
@@ -423,6 +435,8 @@ static int outliner_item_rename(bContext *C, wmOperator *op, const wmEvent *even
 
 void OUTLINER_OT_item_rename(wmOperatorType *ot)
 {
+  PropertyRNA *prop;
+
   ot->name = "Rename";
   ot->idname = "OUTLINER_OT_item_rename";
   ot->description = "Rename the active element";
@@ -434,11 +448,12 @@ void OUTLINER_OT_item_rename(wmOperatorType *ot)
   /* Flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_boolean(ot->srna,
-                  "use_active",
-                  false,
-                  "Use Active",
-                  "Rename the active item, rather than the one the mouse is over");
+  prop = RNA_def_boolean(ot->srna,
+                         "use_active",
+                         false,
+                         "Use Active",
+                         "Rename the active item, rather than the one the mouse is over");
+  RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE | PROP_HIDDEN));
 }
 
 /** \} */
@@ -459,7 +474,8 @@ static void id_delete_tag(bContext *C, ReportList *reports, TreeElement *te, Tre
 
   if (ID_IS_OVERRIDE_LIBRARY(id)) {
     if (!ID_IS_OVERRIDE_LIBRARY_REAL(id) ||
-        (id->override_library->flag & IDOVERRIDE_LIBRARY_FLAG_NO_HIERARCHY) == 0) {
+        (id->override_library->flag & LIBOVERRIDE_FLAG_NO_HIERARCHY) == 0)
+    {
       BKE_reportf(reports,
                   RPT_WARNING,
                   "Cannot delete library override id '%s', it is part of an override hierarchy",
@@ -799,7 +815,7 @@ static int outliner_id_copy_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
-  char str[FILE_MAX];
+  char filepath[FILE_MAX];
 
   BKE_copybuffer_copy_begin(bmain);
 
@@ -809,8 +825,8 @@ static int outliner_id_copy_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  BLI_path_join(str, sizeof(str), BKE_tempdir_base(), "copybuffer.blend");
-  BKE_copybuffer_copy_end(bmain, str, op->reports);
+  outliner_copybuffer_filepath_get(filepath, sizeof(filepath));
+  BKE_copybuffer_copy_end(bmain, filepath, op->reports);
 
   BKE_reportf(op->reports, RPT_INFO, "Copied %d selected data-block(s)", num_ids);
 
@@ -840,12 +856,12 @@ void OUTLINER_OT_id_copy(wmOperatorType *ot)
 
 static int outliner_id_paste_exec(bContext *C, wmOperator *op)
 {
-  char str[FILE_MAX];
+  char filepath[FILE_MAX];
   const short flag = FILE_AUTOSELECT | FILE_ACTIVE_COLLECTION;
 
-  BLI_path_join(str, sizeof(str), BKE_tempdir_base(), "copybuffer.blend");
+  outliner_copybuffer_filepath_get(filepath, sizeof(filepath));
 
-  const int num_pasted = BKE_copybuffer_paste(C, str, flag, op->reports, 0);
+  const int num_pasted = BKE_copybuffer_paste(C, filepath, flag, op->reports, 0);
   if (num_pasted == 0) {
     BKE_report(op->reports, RPT_INFO, "No data to paste");
     return OPERATOR_CANCELLED;
@@ -896,7 +912,7 @@ static int lib_relocate(
     Library *lib = (Library *)tselem->id;
     char dir[FILE_MAXDIR], filename[FILE_MAX];
 
-    BLI_split_dirfile(lib->filepath_abs, dir, filename, sizeof(dir), sizeof(filename));
+    BLI_path_split_dir_file(lib->filepath_abs, dir, sizeof(dir), filename, sizeof(filename));
 
     printf("%s, %s\n", tselem->id->name, lib->filepath_abs);
 
@@ -1259,7 +1275,8 @@ static int outliner_open_back(TreeElement *te)
   return retval;
 }
 
-/* Return element representing the active base or bone in the outliner, or NULL if none exists
+/**
+ * \return element representing the active base or bone in the outliner, or null if none exists
  */
 static TreeElement *outliner_show_active_get_element(bContext *C,
                                                      SpaceOutliner *space_outliner,
@@ -1521,7 +1538,8 @@ static void tree_element_show_hierarchy(Scene *scene, SpaceOutliner *space_outli
              TSE_SOME_ID,
              TSE_SCENE_OBJECTS_BASE,
              TSE_VIEW_COLLECTION_BASE,
-             TSE_LAYER_COLLECTION)) {
+             TSE_LAYER_COLLECTION))
+    {
       if (te->idcode == ID_SCE) {
         if (tselem->id != (ID *)scene) {
           tselem->flag |= TSE_CLOSED;
@@ -2130,7 +2148,7 @@ static int outliner_orphans_purge_invoke(bContext *C, wmOperator *op, const wmEv
   }
 
   DynStr *dyn_str = BLI_dynstr_new();
-  BLI_dynstr_appendf(dyn_str, "Purging %d unused data-blocks (", num_tagged[INDEX_ID_NULL]);
+  BLI_dynstr_appendf(dyn_str, TIP_("Purging %d unused data-blocks ("), num_tagged[INDEX_ID_NULL]);
   bool is_first = true;
   for (int i = 0; i < INDEX_ID_MAX - 2; i++) {
     if (num_tagged[i] != 0) {

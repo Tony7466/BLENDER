@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -9,7 +10,7 @@
 
 #include <array>
 #include <cmath>
-#include <iostream>
+#include <ostream>
 #include <type_traits>
 
 #include "BLI_utildefines.h"
@@ -645,6 +646,7 @@ template<typename T> struct AssertUnitEpsilon {
 
 using char2 = blender::VecBase<int8_t, 2>;
 using char3 = blender::VecBase<int8_t, 3>;
+using char4 = blender::VecBase<int8_t, 4>;
 
 using uchar3 = blender::VecBase<uint8_t, 3>;
 using uchar4 = blender::VecBase<uint8_t, 4>;
@@ -659,6 +661,7 @@ using uint4 = VecBase<uint32_t, 4>;
 
 using short2 = blender::VecBase<int16_t, 2>;
 using short3 = blender::VecBase<int16_t, 3>;
+using short4 = blender::VecBase<int16_t, 4>;
 
 using ushort2 = VecBase<uint16_t, 2>;
 using ushort3 = blender::VecBase<uint16_t, 3>;

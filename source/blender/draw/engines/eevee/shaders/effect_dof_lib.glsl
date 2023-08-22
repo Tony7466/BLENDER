@@ -312,7 +312,8 @@ float dof_coc_max_slight_focus(float coc1, float coc2)
   /* Do not consider values below 0.5 for expansion as they are "encoded".
    * See setup pass shader for more infos. */
   if ((coc1 == DOF_TILE_DEFOCUS && coc2 == DOF_TILE_FOCUS) ||
-      (coc1 == DOF_TILE_FOCUS && coc2 == DOF_TILE_DEFOCUS)) {
+      (coc1 == DOF_TILE_FOCUS && coc2 == DOF_TILE_DEFOCUS))
+  {
     /* Tile where completely out of focus and in focus are both present.
      * Consider as very slightly out of focus. */
     return DOF_TILE_MIXED;
@@ -385,11 +386,13 @@ void dof_gather_accumulate_sample_pair(DofGatherData pair_data[2],
   /* TODO(@fclem): Promote to parameter? dither with Noise? */
   const float mirroring_min_distance = 15.0;
   if (pair_data[0].coc < mirroring_threshold &&
-      (pair_data[1].coc - mirroring_min_distance) > pair_data[0].coc) {
+      (pair_data[1].coc - mirroring_min_distance) > pair_data[0].coc)
+  {
     pair_data[1].coc = pair_data[0].coc;
   }
   else if (pair_data[1].coc < mirroring_threshold &&
-           (pair_data[0].coc - mirroring_min_distance) > pair_data[1].coc) {
+           (pair_data[0].coc - mirroring_min_distance) > pair_data[1].coc)
+  {
     pair_data[0].coc = pair_data[1].coc;
   }
 #endif

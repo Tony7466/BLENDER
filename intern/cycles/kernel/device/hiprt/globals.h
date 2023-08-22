@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -11,7 +12,7 @@
 
 #define HIPRT_SHARED_STACK
 
-/* The size of global stack  availavle to each thread (memory reserved for each thread in
+/* The size of global stack  available to each thread (memory reserved for each thread in
  * global_stack_buffer). */
 #define HIPRT_THREAD_STACK_SIZE 64
 
@@ -19,7 +20,7 @@
 #define HIPRT_SHARED_STACK_SIZE 24
 
 /* HIPRT_THREAD_GROUP_SIZE is the number of threads per work group for intersection kernels
- * The default number of threads per workgroup is 1024, however, since HIP RT intersection kernels
+ * The default number of threads per work-group is 1024, however, since HIP RT intersection kernels
  * use local memory, and the local memory size in those kernels scales up with the number of
  * threads, the number of threads to is scaled down to 256 to avoid going over maximum local memory
  * and to strike a balance between memory access and the number of waves.

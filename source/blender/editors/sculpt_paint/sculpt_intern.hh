@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 by Nicholas Bishop. All rights reserved. */
+/* SPDX-FileCopyrightText: 2006 by Nicholas Bishop. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -14,24 +15,26 @@
 #include "DNA_scene_types.h"
 #include "DNA_vec_types.h"
 
-#include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_paint.hh"
+#include "BKE_pbvh_api.hh"
 
 #include "BLI_bitmap.h"
 #include "BLI_compiler_attrs.h"
 #include "BLI_compiler_compat.h"
+#include "BLI_generic_array.hh"
 #include "BLI_gsqueue.h"
 #include "BLI_implicit_sharing.hh"
 #include "BLI_span.hh"
 #include "BLI_threads.h"
 #include "BLI_vector.hh"
 
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
 #include <functional>
 
 struct AutomaskingCache;
 struct AutomaskingNodeData;
+struct BMLog;
 struct Dial;
 struct DistRayAABB_Precalc;
 struct Image;
@@ -45,6 +48,7 @@ struct PaintModeSettings;
 struct WeightPaintInfo;
 struct WPaintData;
 struct wmKeyConfig;
+struct wmKeyMap;
 struct wmOperator;
 struct wmOperatorType;
 
@@ -95,7 +99,7 @@ struct SculptVertexNeighborIter {
 
 /* Sculpt Original Data */
 struct SculptOrigVertData {
-  struct BMLog *bm_log;
+  BMLog *bm_log;
 
   SculptUndoNode *unode;
   float (*coords)[3];
@@ -112,7 +116,7 @@ struct SculptOrigVertData {
 
 struct SculptOrigFaceData {
   SculptUndoNode *unode;
-  struct BMLog *bm_log;
+  BMLog *bm_log;
   const int *face_sets;
   int face_set;
 };
@@ -149,16 +153,16 @@ struct SculptUndoNodeGeometry {
    * geometry pushes happened in the undo stack. */
   bool is_initialized;
 
-  CustomData vdata;
-  CustomData edata;
-  CustomData ldata;
-  CustomData pdata;
-  int *poly_offset_indices;
-  const blender::ImplicitSharingInfo *poly_offsets_sharing_info;
+  CustomData vert_data;
+  CustomData edge_data;
+  CustomData loop_data;
+  CustomData face_data;
+  int *face_offset_indices;
+  const blender::ImplicitSharingInfo *face_offsets_sharing_info;
   int totvert;
   int totedge;
   int totloop;
-  int totpoly;
+  int faces_num;
 };
 
 struct SculptUndoNode {
@@ -200,7 +204,7 @@ struct SculptUndoNode {
   bool applied;
 
   /* shape keys */
-  char shapeName[sizeof(((KeyBlock *)0))->name];
+  char shapeName[sizeof(KeyBlock::name)];
 
   /* Geometry modification operations.
    *
@@ -554,7 +558,7 @@ struct StrokeCache {
   float mouse_event[2];
 
   float (*prev_colors)[4];
-  void *prev_colors_vpaint;
+  blender::GArray<> prev_colors_vpaint;
 
   /* Multires Displacement Smear. */
   float (*prev_displacement)[3];
@@ -613,7 +617,10 @@ struct StrokeCache {
   int radial_symmetry_pass;
   float symm_rot_mat[4][4];
   float symm_rot_mat_inv[4][4];
-  bool original;
+
+  /* Accumulate mode. Note: inverted for SCULPT_TOOL_DRAW_SHARP. */
+  bool accum;
+
   float anchored_location[3];
 
   /* Paint Brush. */
@@ -725,7 +732,7 @@ struct ExpandCache {
   /* Max falloff value in *vert_falloff. */
   float max_vert_falloff;
 
-  /* Indexed by base mesh poly index, precalculated falloff value of that face. These values are
+  /* Indexed by base mesh face index, precalculated falloff value of that face. These values are
    * calculated from the per vertex falloff (*vert_falloff) when needed. */
   float *face_falloff;
   float max_face_falloff;
@@ -1023,7 +1030,8 @@ void SCULPT_vertex_neighbors_get(SculptSession *ss,
 #define SCULPT_VERTEX_DUPLICATES_AND_NEIGHBORS_ITER_BEGIN(ss, v_index, neighbor_iterator) \
   SCULPT_vertex_neighbors_get(ss, v_index, true, &neighbor_iterator); \
   for (neighbor_iterator.i = neighbor_iterator.size - 1; neighbor_iterator.i >= 0; \
-       neighbor_iterator.i--) { \
+       neighbor_iterator.i--) \
+  { \
     neighbor_iterator.vertex = neighbor_iterator.neighbors[neighbor_iterator.i]; \
     neighbor_iterator.index = neighbor_iterator.neighbor_indices[neighbor_iterator.i]; \
     neighbor_iterator.is_duplicate = (neighbor_iterator.i >= \
@@ -1064,7 +1072,6 @@ bool SCULPT_vertex_is_boundary(const SculptSession *ss, PBVHVertRef vertex);
 /** \name Sculpt Visibility API
  * \{ */
 
-void SCULPT_vertex_visible_set(SculptSession *ss, PBVHVertRef vertex, bool visible);
 bool SCULPT_vertex_visible_get(SculptSession *ss, PBVHVertRef vertex);
 bool SCULPT_vertex_all_faces_visible_get(const SculptSession *ss, PBVHVertRef vertex);
 bool SCULPT_vertex_any_face_visible_get(SculptSession *ss, PBVHVertRef vertex);
@@ -1165,7 +1172,8 @@ BLI_INLINE bool SCULPT_tool_needs_all_pbvh_nodes(const Brush *brush)
   }
 
   if (brush->sculpt_tool == SCULPT_TOOL_SNAKE_HOOK &&
-      brush->snake_hook_deform_type == BRUSH_SNAKE_HOOK_DEFORM_ELASTIC) {
+      brush->snake_hook_deform_type == BRUSH_SNAKE_HOOK_DEFORM_ELASTIC)
+  {
     /* Snake hook in elastic deform type has same requirements as the elastic deform tool. */
     return true;
   }
@@ -1226,16 +1234,17 @@ bool SCULPT_brush_test_sphere_fast(const SculptBrushTest *test, const float co[3
 bool SCULPT_brush_test_cube(SculptBrushTest *test,
                             const float co[3],
                             const float local[4][4],
-                            float roundness);
+                            const float roundness,
+                            const float tip_scale_x);
 bool SCULPT_brush_test_circle_sq(SculptBrushTest *test, const float co[3]);
 /**
  * Test AABB against sphere.
  */
-bool SCULPT_search_sphere_cb(PBVHNode *node, void *data_v);
+bool SCULPT_search_sphere(PBVHNode *node, SculptSearchSphereData *data);
 /**
  * 2D projection (distance to line).
  */
-bool SCULPT_search_circle_cb(PBVHNode *node, void *data_v);
+bool SCULPT_search_circle(PBVHNode *node, SculptSearchCircleData *data);
 
 void SCULPT_combine_transform_proxies(Sculpt *sd, Object *ob);
 
@@ -1251,7 +1260,12 @@ SculptBrushTestFn SCULPT_brush_test_init_with_falloff_shape(SculptSession *ss,
                                                             char falloff_shape);
 const float *SCULPT_brush_frontface_normal_from_falloff_shape(SculptSession *ss,
                                                               char falloff_shape);
-void SCULPT_cube_tip_init(Sculpt *sd, Object *ob, Brush *brush, float mat[4][4]);
+void SCULPT_cube_tip_init(Sculpt *sd,
+                          Object *ob,
+                          Brush *brush,
+                          float mat[4][4],
+                          const float *co = nullptr,  /* Custom brush center. */
+                          const float *no = nullptr); /* Custom brush normal. */
 
 /**
  * Return a multiplier for brush strength on a particular vertex.
@@ -1289,7 +1303,7 @@ void SCULPT_brush_strength_color(SculptSession *ss,
 void SCULPT_calc_vertex_displacement(SculptSession *ss,
                                      const Brush *brush,
                                      float rgba[3],
-                                     float out_offset[3]);
+                                     float r_offset[3]);
 
 /**
  * Tilts a normal by the x and y tilt values using the view axis.
@@ -1343,10 +1357,7 @@ enum eDynTopoWarnFlag {
 ENUM_OPERATORS(eDynTopoWarnFlag, DYNTOPO_WARN_MODIFIER);
 
 /** Enable dynamic topology; mesh will be triangulated */
-void SCULPT_dynamic_topology_enable_ex(Main *bmain,
-                                       Depsgraph *depsgraph,
-                                       Scene *scene,
-                                       Object *ob);
+void SCULPT_dynamic_topology_enable_ex(Main *bmain, Depsgraph *depsgraph, Object *ob);
 void SCULPT_dynamic_topology_disable(bContext *C, SculptUndoNode *unode);
 void sculpt_dynamic_topology_disable_with_undo(Main *bmain,
                                                Depsgraph *depsgraph,
@@ -1379,8 +1390,9 @@ struct AutomaskingNodeData {
   bool have_orig_data;
 };
 
-/** Call before PBVH vertex iteration.
- * \param automask_data: pointer to an uninitialized AutomaskingNodeData struct.
+/**
+ * Call before PBVH vertex iteration.
+ * \param automask_data: pointer to an uninitialized #AutomaskingNodeData struct.
  */
 void SCULPT_automasking_node_begin(Object *ob,
                                    const SculptSession *ss,
@@ -1447,7 +1459,7 @@ void SCULPT_filter_cache_init(bContext *C,
                               Object *ob,
                               Sculpt *sd,
                               int undo_type,
-                              const int mval[2],
+                              const float mval_fl[2],
                               float area_normal_radius,
                               float start_strength);
 void SCULPT_filter_cache_free(SculptSession *ss);
@@ -1607,7 +1619,7 @@ void SCULPT_cache_free(StrokeCache *cache);
 
 SculptUndoNode *SCULPT_undo_push_node(Object *ob, PBVHNode *node, SculptUndoType type);
 SculptUndoNode *SCULPT_undo_get_node(PBVHNode *node, SculptUndoType type);
-SculptUndoNode *SCULPT_undo_get_first_node(void);
+SculptUndoNode *SCULPT_undo_get_first_node();
 
 /**
  * Pushes an undo step using the operator name. This is necessary for
@@ -1666,7 +1678,8 @@ void SCULPT_OT_project_line_gesture(wmOperatorType *ot);
  * \{ */
 
 void SCULPT_OT_face_sets_randomize_colors(wmOperatorType *ot);
-void SCULPT_OT_face_sets_change_visibility(wmOperatorType *ot);
+void SCULPT_OT_face_set_change_visibility(wmOperatorType *ot);
+void SCULPT_OT_face_sets_invert_visibility(wmOperatorType *ot);
 void SCULPT_OT_face_sets_init(wmOperatorType *ot);
 void SCULPT_OT_face_sets_create(wmOperatorType *ot);
 void SCULPT_OT_face_sets_edit(wmOperatorType *ot);
@@ -1687,7 +1700,7 @@ void SCULPT_OT_set_pivot_position(wmOperatorType *ot);
 /* Mesh Filter. */
 
 void SCULPT_OT_mesh_filter(wmOperatorType *ot);
-struct wmKeyMap *filter_mesh_modal_keymap(struct wmKeyConfig *keyconf);
+wmKeyMap *filter_mesh_modal_keymap(wmKeyConfig *keyconf);
 
 /* Cloth Filter. */
 

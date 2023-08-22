@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 by Nicholas Bishop. All rights reserved. */
+/* SPDX-FileCopyrightText: 2006 by Nicholas Bishop. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -10,7 +11,9 @@
 
 #include "BLI_ghash.h"
 #include "BLI_gsqueue.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_span.hh"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
@@ -21,17 +24,17 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_ccg.h"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_kelvinlet.h"
-#include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_paint.hh"
+#include "BKE_pbvh_api.hh"
 
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
-#include "paint_intern.h"
+#include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
 #include "bmesh.h"
@@ -96,7 +99,8 @@ static void calc_sculpt_plane(
 
   if (SCULPT_stroke_is_main_symmetry_pass(ss->cache) &&
       (SCULPT_stroke_is_first_brush_step_of_symmetry_pass(ss->cache) ||
-       !(brush->flag & BRUSH_ORIGINAL_PLANE) || !(brush->flag & BRUSH_ORIGINAL_NORMAL))) {
+       !(brush->flag & BRUSH_ORIGINAL_PLANE) || !(brush->flag & BRUSH_ORIGINAL_NORMAL)))
+  {
     switch (brush->sculpt_plane) {
       case SCULPT_DISP_DIR_VIEW:
         copy_v3_v3(r_area_no, ss->cache->true_view_normal);
@@ -134,7 +138,8 @@ static void calc_sculpt_plane(
 
     /* For area normal. */
     if (!SCULPT_stroke_is_first_brush_step_of_symmetry_pass(ss->cache) &&
-        (brush->flag & BRUSH_ORIGINAL_NORMAL)) {
+        (brush->flag & BRUSH_ORIGINAL_NORMAL))
+    {
       copy_v3_v3(r_area_no, ss->cache->sculpt_normal);
     }
     else {
@@ -143,7 +148,8 @@ static void calc_sculpt_plane(
 
     /* For flatten center. */
     if (!SCULPT_stroke_is_first_brush_step_of_symmetry_pass(ss->cache) &&
-        (brush->flag & BRUSH_ORIGINAL_PLANE)) {
+        (brush->flag & BRUSH_ORIGINAL_PLANE))
+    {
       copy_v3_v3(r_area_co, ss->cache->last_center);
     }
     else {
@@ -269,7 +275,8 @@ static void do_draw_brush_task_cb_ex(void *__restrict userdata,
 
     /* Offset vertex. */
     if (ss->cache->brush->flag2 & BRUSH_USE_COLOR_AS_DISPLACEMENT &&
-        (brush->mtex.brush_map_mode == MTEX_MAP_MODE_AREA)) {
+        (brush->mtex.brush_map_mode == MTEX_MAP_MODE_AREA))
+    {
       float r_rgba[4];
       SCULPT_brush_strength_color(ss,
                                   brush,
@@ -1053,7 +1060,7 @@ static void do_clay_strips_brush_task_cb_ex(void *__restrict userdata,
       data->ob, ss, ss->cache->automasking, &automask_data, data->nodes[n]);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
-    if (!SCULPT_brush_test_cube(&test, vd.co, mat, brush->tip_roundness)) {
+    if (!SCULPT_brush_test_cube(&test, vd.co, mat, brush->tip_roundness, brush->tip_scale_x)) {
       continue;
     }
 
@@ -1112,8 +1119,6 @@ void SCULPT_do_clay_strips_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 
   float temp[3];
   float mat[4][4];
-  float scale[4][4];
-  float tmat[4][4];
 
   SCULPT_calc_brush_plane(sd, ob, nodes, area_no_sp, area_co);
   SCULPT_tilt_apply_to_normal(area_no_sp, ss->cache, brush->tilt_strength_factor);
@@ -1123,15 +1128,6 @@ void SCULPT_do_clay_strips_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
   }
   else {
     copy_v3_v3(area_no, area_no_sp);
-  }
-
-  /* Delay the first daub because grab delta is not setup. */
-  if (SCULPT_stroke_is_first_brush_step_of_symmetry_pass(ss->cache)) {
-    return;
-  }
-
-  if (is_zero_v3(ss->cache->grab_delta_symmetry)) {
-    return;
   }
 
   mul_v3_v3v3(temp, area_no_sp, ss->cache->scale);
@@ -1150,6 +1146,20 @@ void SCULPT_do_clay_strips_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
   madd_v3_v3v3fl(area_co_displaced, area_co, area_no, -radius * 0.7f);
 
   /* Initialize brush local-space matrix. */
+  SCULPT_cube_tip_init(sd, ob, brush, mat, area_co, area_no);
+
+  /* Deform the local space in Z to scale the test cube. As the test cube does not have falloff in
+   * Z this does not produce artifacts in the falloff cube and allows to deform extra vertices
+   * during big deformation while keeping the surface as uniform as possible. */
+  invert_m4(mat);
+  mul_v3_fl(mat[2], 1.25f);
+  invert_m4(mat);
+
+#if 0 /* The original matrix construction code, preserved here for reference. */
+  if (is_zero_v3(ss->cache->grab_delta_symmetry)) {
+    return;
+  }
+
   cross_v3_v3v3(mat[0], area_no, ss->cache->grab_delta_symmetry);
   mat[0][3] = 0.0f;
   cross_v3_v3v3(mat[1], area_no, mat[0]);
@@ -1164,12 +1174,8 @@ void SCULPT_do_clay_strips_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
   scale_m4_fl(scale, ss->cache->radius);
   mul_m4_m4m4(tmat, mat, scale);
 
-  /* Deform the local space in Z to scale the test cube. As the test cube does not have falloff in
-   * Z this does not produce artifacts in the falloff cube and allows to deform extra vertices
-   * during big deformation while keeping the surface as uniform as possible. */
-  mul_v3_fl(tmat[2], 1.25f);
-
   invert_m4_m4(mat, tmat);
+#endif
 
   SculptThreadedTaskData data{};
   data.sd = sd;
@@ -2421,7 +2427,8 @@ void SCULPT_relax_vertex(SculptSession *ss,
   SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vd->vertex, ni) {
     neighbor_count++;
     if (!filter_boundary_face_sets ||
-        (filter_boundary_face_sets && !SCULPT_vertex_has_unique_face_set(ss, ni.vertex))) {
+        (filter_boundary_face_sets && !SCULPT_vertex_has_unique_face_set(ss, ni.vertex)))
+    {
 
       /* When the vertex to relax is boundary, use only connected boundary vertices for the average
        * position. */

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -136,7 +138,7 @@ void MTLFrameBuffer::bind(bool enabled_srgb)
     dirty_state_ = true;
   }
   else {
-    MTL_LOG_WARNING("Attempting to bind FrameBuffer, but no context is active\n");
+    MTL_LOG_WARNING("Attempting to bind FrameBuffer, but no context is active");
   }
 }
 
@@ -266,8 +268,8 @@ bool MTLFrameBuffer::check(char err_out[256])
       }
     }
     else {
-      if (dim_x != stencil_att.texture->width_get() ||
-          dim_y != stencil_att.texture->height_get()) {
+      if (dim_x != stencil_att.texture->width_get() || dim_y != stencil_att.texture->height_get())
+      {
         const char *format =
             "Framebuffer %s: Stencil attachment dimensions do not match that of previous "
             "attachment";
@@ -494,7 +496,7 @@ void MTLFrameBuffer::read(eGPUFrameBufferBits planes,
         if (tex) {
           size_t sample_len = area[2] * area[3];
           size_t sample_size = to_bytesize(tex->format_, format);
-          int debug_data_size = sample_len * sample_size;
+          size_t debug_data_size = sample_len * sample_size;
           tex->read_internal(0,
                              area[0],
                              area[1],
@@ -511,7 +513,7 @@ void MTLFrameBuffer::read(eGPUFrameBufferBits planes,
       else {
         MTL_LOG_ERROR(
             "Attempting to read depth from a framebuffer which does not have a depth "
-            "attachment!\n");
+            "attachment!");
       }
     }
       return;
@@ -523,7 +525,7 @@ void MTLFrameBuffer::read(eGPUFrameBufferBits planes,
         if (tex) {
           size_t sample_len = area[2] * area[3];
           size_t sample_size = to_bytesize(tex->format_, format);
-          int debug_data_size = sample_len * sample_size * channel_len;
+          size_t debug_data_size = sample_len * sample_size * channel_len;
           tex->read_internal(0,
                              area[0],
                              area[1],
@@ -541,7 +543,7 @@ void MTLFrameBuffer::read(eGPUFrameBufferBits planes,
       return;
 
     case GPU_STENCIL_BIT:
-      MTL_LOG_ERROR("GPUFramebuffer: Error: Trying to read stencil bit. Unsupported.\n");
+      MTL_LOG_ERROR("Framebuffer: Trying to read stencil bit. Unsupported.");
       return;
   }
 }
@@ -622,7 +624,7 @@ void MTLFrameBuffer::mark_do_clear()
   has_pending_clear_ = true;
 }
 
-void MTLFrameBuffer::update_attachments(bool update_viewport)
+void MTLFrameBuffer::update_attachments(bool /*update_viewport*/)
 {
   if (!dirty_attachments_) {
     return;
@@ -778,17 +780,21 @@ void MTLFrameBuffer::apply_state()
 
     /* Ensure viewport has been set. NOTE: This should no longer happen, but kept for safety to
      * track bugs. If viewport size is zero, use framebuffer size. */
-    int viewport_w = viewport_[2];
-    int viewport_h = viewport_[3];
+    int viewport_w = viewport_[0][2];
+    int viewport_h = viewport_[0][3];
     if (viewport_w == 0 || viewport_h == 0) {
-      MTL_LOG_WARNING(
-          "Viewport had width and height of (0,0) -- Updating -- DEBUG Safety check\n");
+      MTL_LOG_WARNING("Viewport had width and height of (0,0) -- Updating -- DEBUG Safety check");
       viewport_w = default_width_;
       viewport_h = default_height_;
     }
 
     /* Update Context State. */
-    mtl_ctx->set_viewport(viewport_[0], viewport_[1], viewport_w, viewport_h);
+    if (multi_viewport_) {
+      mtl_ctx->set_viewports(GPU_MAX_VIEWPORTS, viewport_);
+    }
+    else {
+      mtl_ctx->set_viewport(viewport_[0][0], viewport_[0][1], viewport_w, viewport_h);
+    }
     mtl_ctx->set_scissor(scissor_[0], scissor_[1], scissor_[2], scissor_[3]);
     mtl_ctx->set_scissor_enabled(scissor_test_);
 
@@ -798,7 +804,7 @@ void MTLFrameBuffer::apply_state()
   else {
     MTL_LOG_ERROR(
         "Attempting to set FrameBuffer State (VIEWPORT, SCISSOR), But FrameBuffer is not bound to "
-        "current Context.\n");
+        "current Context.");
   }
 }
 
@@ -818,7 +824,7 @@ bool MTLFrameBuffer::add_color_attachment(gpu::MTLTexture *texture,
 
   if (texture) {
     if (miplevel < 0 || miplevel >= MTL_MAX_MIPMAP_COUNT) {
-      MTL_LOG_WARNING("Attachment specified with invalid mip level %u\n", miplevel);
+      MTL_LOG_WARNING("Attachment specified with invalid mip level %u", miplevel);
       miplevel = 0;
     }
 
@@ -843,7 +849,7 @@ bool MTLFrameBuffer::add_color_attachment(gpu::MTLTexture *texture,
       case GPU_TEXTURE_1D_ARRAY:
         if (layer < 0) {
           layer = 0;
-          MTL_LOG_WARNING("TODO: Support layered rendering for 1D array textures, if needed.\n");
+          MTL_LOG_WARNING("TODO: Support layered rendering for 1D array textures, if needed.");
         }
         BLI_assert(layer < texture->h_);
         mtl_color_attachments_[slot].slice = layer;
@@ -897,7 +903,7 @@ bool MTLFrameBuffer::add_color_attachment(gpu::MTLTexture *texture,
         mtl_color_attachments_[slot].depth_plane = 0;
         break;
       default:
-        MTL_LOG_ERROR("MTLFrameBuffer::add_color_attachment Unrecognized texture type %u\n",
+        MTL_LOG_ERROR("MTLFrameBuffer::add_color_attachment Unrecognized texture type %u",
                       texture->type_);
         break;
     }
@@ -929,7 +935,7 @@ bool MTLFrameBuffer::add_color_attachment(gpu::MTLTexture *texture,
   else {
     MTL_LOG_ERROR(
         "Passing in null texture to MTLFrameBuffer::addColourAttachment (This could be due to not "
-        "all texture types being supported).\n");
+        "all texture types being supported).");
   }
   return true;
 }
@@ -940,7 +946,7 @@ bool MTLFrameBuffer::add_depth_attachment(gpu::MTLTexture *texture, int miplevel
 
   if (texture) {
     if (miplevel < 0 || miplevel >= MTL_MAX_MIPMAP_COUNT) {
-      MTL_LOG_WARNING("Attachment specified with invalid mip level %u\n", miplevel);
+      MTL_LOG_WARNING("Attachment specified with invalid mip level %u", miplevel);
       miplevel = 0;
     }
 
@@ -963,7 +969,7 @@ bool MTLFrameBuffer::add_depth_attachment(gpu::MTLTexture *texture, int miplevel
       case GPU_TEXTURE_1D_ARRAY:
         if (layer < 0) {
           layer = 0;
-          MTL_LOG_WARNING("TODO: Support layered rendering for 1D array textures, if needed\n");
+          MTL_LOG_WARNING("TODO: Support layered rendering for 1D array textures, if needed");
         }
         BLI_assert(layer < texture->h_);
         mtl_depth_attachment_.slice = layer;
@@ -1059,7 +1065,7 @@ bool MTLFrameBuffer::add_stencil_attachment(gpu::MTLTexture *texture, int miplev
 
   if (texture) {
     if (miplevel < 0 || miplevel >= MTL_MAX_MIPMAP_COUNT) {
-      MTL_LOG_WARNING("Attachment specified with invalid mip level %u\n", miplevel);
+      MTL_LOG_WARNING("Attachment specified with invalid mip level %u", miplevel);
       miplevel = 0;
     }
 
@@ -1082,7 +1088,7 @@ bool MTLFrameBuffer::add_stencil_attachment(gpu::MTLTexture *texture, int miplev
       case GPU_TEXTURE_1D_ARRAY:
         if (layer < 0) {
           layer = 0;
-          MTL_LOG_WARNING("TODO: Support layered rendering for 1D array textures, if needed\n");
+          MTL_LOG_WARNING("TODO: Support layered rendering for 1D array textures, if needed");
         }
         BLI_assert(layer < texture->h_);
         mtl_stencil_attachment_.slice = layer;
@@ -1235,7 +1241,8 @@ void MTLFrameBuffer::ensure_render_target_size()
 {
   /* If we have no attachments, reset width and height to zero. */
   if (colour_attachment_count_ == 0 && !this->has_depth_attachment() &&
-      !this->has_stencil_attachment()) {
+      !this->has_stencil_attachment())
+  {
 
     /* Reset default size for empty framebuffer. */
     this->default_size_set(0, 0);
@@ -1291,7 +1298,8 @@ bool MTLFrameBuffer::set_depth_attachment_clear_value(float depth_clear)
   BLI_assert(this);
 
   if (mtl_depth_attachment_.clear_value.depth != depth_clear ||
-      mtl_depth_attachment_.load_action != GPU_LOADACTION_CLEAR) {
+      mtl_depth_attachment_.load_action != GPU_LOADACTION_CLEAR)
+  {
     mtl_depth_attachment_.clear_value.depth = depth_clear;
     mtl_depth_attachment_.load_action = GPU_LOADACTION_CLEAR;
     this->mark_loadstore_dirty();
@@ -1304,7 +1312,8 @@ bool MTLFrameBuffer::set_stencil_attachment_clear_value(uint stencil_clear)
   BLI_assert(this);
 
   if (mtl_stencil_attachment_.clear_value.stencil != stencil_clear ||
-      mtl_stencil_attachment_.load_action != GPU_LOADACTION_CLEAR) {
+      mtl_stencil_attachment_.load_action != GPU_LOADACTION_CLEAR)
+  {
     mtl_stencil_attachment_.clear_value.stencil = stencil_clear;
     mtl_stencil_attachment_.load_action = GPU_LOADACTION_CLEAR;
     this->mark_loadstore_dirty();
@@ -1397,7 +1406,8 @@ bool MTLFrameBuffer::has_color_attachment_with_texture(gpu::MTLTexture *texture)
 
   for (int attachment = 0; attachment < this->get_attachment_limit(); attachment++) {
     if (mtl_color_attachments_[attachment].used &&
-        mtl_color_attachments_[attachment].texture == texture) {
+        mtl_color_attachments_[attachment].texture == texture)
+    {
       return true;
     }
   }
@@ -1423,7 +1433,8 @@ int MTLFrameBuffer::get_color_attachment_slot_from_texture(gpu::MTLTexture *text
 
   for (int attachment = 0; attachment < this->get_attachment_limit(); attachment++) {
     if (mtl_color_attachments_[attachment].used &&
-        (mtl_color_attachments_[attachment].texture == texture)) {
+        (mtl_color_attachments_[attachment].texture == texture))
+    {
       return attachment;
     }
   }
@@ -1564,8 +1575,8 @@ MTLRenderPassDescriptor *MTLFrameBuffer::bake_render_pass_descriptor(bool load_c
       int len = 0;
       bool valid = true;
 
-      for (int attachment_ind = 0; attachment_ind < GPU_FB_MAX_COLOR_ATTACHMENT;
-           attachment_ind++) {
+      for (int attachment_ind = 0; attachment_ind < GPU_FB_MAX_COLOR_ATTACHMENT; attachment_ind++)
+      {
         if (mtl_color_attachments_[attachment_ind].used) {
           if (len == 0) {
             len = mtl_color_attachments_[attachment_ind].render_target_array_length;
@@ -1617,14 +1628,15 @@ MTLRenderPassDescriptor *MTLFrameBuffer::bake_render_pass_descriptor(bool load_c
         id<MTLTexture> texture =
             mtl_color_attachments_[attachment_ind].texture->get_metal_handle_base();
         if (texture == nil) {
-          MTL_LOG_ERROR("Attempting to assign invalid texture as attachment\n");
+          MTL_LOG_ERROR("Attempting to assign invalid texture as attachment");
         }
 
         /* IF SRGB is enabled, but we are rendering with SRGB disabled, sample texture view. */
         id<MTLTexture> source_color_texture = texture;
         if (this->get_is_srgb() &&
             mtl_color_attachments_[attachment_ind].texture->is_format_srgb() &&
-            !this->get_srgb_enabled()) {
+            !this->get_srgb_enabled())
+        {
           source_color_texture =
               mtl_color_attachments_[attachment_ind].texture->get_non_srgb_handle();
           BLI_assert(source_color_texture != nil);
@@ -1637,8 +1649,8 @@ MTLRenderPassDescriptor *MTLFrameBuffer::bake_render_pass_descriptor(bool load_c
           /* MTL_FB_CONFIG_LOAD must always load. */
           load_action = GPU_LOADACTION_LOAD;
         }
-        else if (descriptor_config == MTL_FB_CONFIG_CUSTOM &&
-                 load_action == GPU_LOADACTION_CLEAR) {
+        else if (descriptor_config == MTL_FB_CONFIG_CUSTOM && load_action == GPU_LOADACTION_CLEAR)
+        {
           /* Custom config should be LOAD or DONT_CARE only. */
           load_action = GPU_LOADACTION_LOAD;
         }
@@ -1771,8 +1783,7 @@ void MTLFrameBuffer::blit(uint read_slot,
 
   /* Early exit if there is no blit to do. */
   if (!(do_color || do_depth || do_stencil)) {
-    MTL_LOG_WARNING(
-        " MTLFrameBuffer: requested blit but no color, depth or stencil flag was set\n");
+    MTL_LOG_WARNING("FrameBuffer: requested blit but no color, depth or stencil flag was set");
     return;
   }
 
@@ -1781,7 +1792,8 @@ void MTLFrameBuffer::blit(uint read_slot,
   /* If the color format is not the same, we cannot use the BlitCommandEncoder, and instead use
    * a Graphics-based blit. */
   if (do_color && (this->get_color_attachment(read_slot).texture->format_get() !=
-                   metal_fb_write->get_color_attachment(read_slot).texture->format_get())) {
+                   metal_fb_write->get_color_attachment(read_slot).texture->format_get()))
+  {
 
     MTLAttachment src_attachment = this->get_color_attachment(read_slot);
     MTLAttachment dst_attachment = metal_fb_write->get_color_attachment(write_slot);
@@ -1828,7 +1840,7 @@ void MTLFrameBuffer::blit(uint read_slot,
                                      1);
       }
       else {
-        MTL_LOG_ERROR("Failed performing colour blit\n");
+        MTL_LOG_ERROR("Failed performing colour blit");
       }
     }
   }
@@ -1860,7 +1872,7 @@ void MTLFrameBuffer::blit(uint read_slot,
                                    1);
     }
     else {
-      MTL_LOG_ERROR("Failed performing depth blit\n");
+      MTL_LOG_ERROR("Failed performing depth blit");
     }
   }
 
@@ -1889,7 +1901,7 @@ void MTLFrameBuffer::blit(uint read_slot,
                                    1);
     }
     else {
-      MTL_LOG_ERROR("Failed performing Stencil blit\n");
+      MTL_LOG_ERROR("Failed performing Stencil blit");
     }
   }
 }

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -126,7 +128,6 @@ typedef enum eAssetImportMethod {
   ASSET_IMPORT_APPEND_REUSE = 2,
 } eAssetImportMethod;
 
-
 typedef enum eAssetLibrary_Flag {
   ASSET_LIBRARY_RELATIVE_PATH = (1 << 0),
 } eAssetLibrary_Flag;
@@ -207,6 +208,11 @@ typedef struct AssetWeakReference {
 typedef struct AssetHandle {
   const struct FileDirEntry *file_data;
 } AssetHandle;
+
+typedef enum eUserExtensionRepo_Flag {
+  /** Maintain disk cache. */
+  USER_EXTENSION_FLAG_NO_CACHE = 1 << 0,
+} eUserExtensionRepo_Flag;
 
 #ifdef __cplusplus
 }

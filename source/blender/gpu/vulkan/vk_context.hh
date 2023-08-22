@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -15,26 +16,13 @@
 
 namespace blender::gpu {
 class VKFrameBuffer;
+class VKVertexAttributeObject;
+class VKBatch;
+class VKStateManager;
 
-class VKContext : public Context {
+class VKContext : public Context, NonCopyable {
  private:
-  /** Copies of the handles owned by the GHOST context. */
-  VkInstance vk_instance_ = VK_NULL_HANDLE;
-  VkPhysicalDevice vk_physical_device_ = VK_NULL_HANDLE;
-  VkDevice vk_device_ = VK_NULL_HANDLE;
   VKCommandBuffer command_buffer_;
-  uint32_t vk_queue_family_ = 0;
-  VkQueue vk_queue_ = VK_NULL_HANDLE;
-
-  /** Allocator used for texture and buffers and other resources. */
-  VmaAllocator mem_allocator_ = VK_NULL_HANDLE;
-  VKDescriptorPools descriptor_pools_;
-
-  /** Limits of the device linked to this context. */
-  VkPhysicalDeviceLimits vk_physical_device_limits_;
-
-  /** Functions of vk_ext_debugutils to use in this context. */
-  debug::VKDebuggingTools debugging_tools_;
 
   void *ghost_context_;
 
@@ -60,32 +48,19 @@ class VKContext : public Context {
   bool debug_capture_scope_begin(void *scope) override;
   void debug_capture_scope_end(void *scope) override;
 
+  bool has_active_framebuffer() const;
   void activate_framebuffer(VKFrameBuffer &framebuffer);
   void deactivate_framebuffer();
+  VKFrameBuffer *active_framebuffer_get() const;
 
-  static VKContext *get(void)
+  void bind_compute_pipeline();
+  void bind_graphics_pipeline(const GPUPrimType prim_type,
+                              const VKVertexAttributeObject &vertex_attribute_object);
+  void sync_backbuffer();
+
+  static VKContext *get()
   {
     return static_cast<VKContext *>(Context::get());
-  }
-
-  VkPhysicalDevice physical_device_get() const
-  {
-    return vk_physical_device_;
-  }
-
-  const VkPhysicalDeviceLimits &physical_device_limits_get() const
-  {
-    return vk_physical_device_limits_;
-  }
-
-  VkInstance instance_get() const
-  {
-    return vk_instance_;
-  };
-
-  VkDevice device_get() const
-  {
-    return vk_device_;
   }
 
   VKCommandBuffer &command_buffer_get()
@@ -93,40 +68,12 @@ class VKContext : public Context {
     return command_buffer_;
   }
 
-  VkQueue queue_get() const
-  {
-    return vk_queue_;
-  }
-
-  const uint32_t *queue_family_ptr_get() const
-  {
-    return &vk_queue_family_;
-  }
-
-  VKDescriptorPools &descriptor_pools_get()
-  {
-    return descriptor_pools_;
-  }
-
-  VmaAllocator mem_allocator_get() const
-  {
-    return mem_allocator_;
-  }
-
-  debug::VKDebuggingTools &debugging_tools_get()
-  {
-    return debugging_tools_;
-  }
-
-  const debug::VKDebuggingTools &debugging_tools_get() const
-  {
-    return debugging_tools_;
-  }
-
- private:
-  void init_physical_device_limits();
-
-  bool has_active_framebuffer() const;
+  VKStateManager &state_manager_get() const;
 };
+
+BLI_INLINE bool operator==(const VKContext &a, const VKContext &b)
+{
+  return static_cast<const void *>(&a) == static_cast<const void *>(&b);
+}
 
 }  // namespace blender::gpu

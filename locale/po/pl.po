@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.6.0 Alpha (b'dfa42c614fb4')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'3dc93d6e3806')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-04-17 09:43:08\n"
+"POT-Creation-Date: 2023-08-21 09:30:35\n"
 "PO-Revision-Date: 2017-08-26 11:13+0200\n"
 "Last-Translator: Mikołaj Juda <mikolaj.juda@gmail.com>\n"
 "Language: pl\n"
@@ -1014,6 +1014,10 @@ msgid "Vector Fonts"
 msgstr "Czcionki wektorowe"
 
 
+msgid "Grease Pencil"
+msgstr "Szkicownik"
+
+
 msgid "Images"
 msgstr "Obrazy"
 
@@ -1702,16 +1706,8 @@ msgid "Bone Matrix"
 msgstr "Macierz kości"
 
 
-msgid "3x3 bone matrix"
-msgstr "Macierz kości o rozmiarach 3x3"
-
-
 msgid "Bone Armature-Relative Matrix"
 msgstr "Macierz lokalna kości szkieletowych"
-
-
-msgid "4x4 bone matrix relative to armature"
-msgstr "Macierz 4x4 kości względna do szkieletu"
 
 
 msgid "Parent"
@@ -1874,12 +1870,12 @@ msgid "Threshold"
 msgstr "Próg"
 
 
-msgid "Smooth"
-msgstr "Wygładzanie"
-
-
 msgid "Blur"
 msgstr "Rozmycie"
+
+
+msgid "Smooth"
+msgstr "Wygładzanie"
 
 
 msgid "Iterations"
@@ -2312,10 +2308,6 @@ msgstr "Grupa wierzchołków sztywności zgięć"
 
 msgid "Vertex group for fine control over bending stiffness"
 msgstr "Grupa wierzchołków, która pozwala kontrolować sztywność zginania"
-
-
-msgid "Mass Vertex Group"
-msgstr "Masa grupy wierzchołków"
 
 
 msgid "Vertex Group for pinning of vertices"
@@ -4423,10 +4415,6 @@ msgid "Map To"
 msgstr "Mapuj na"
 
 
-msgid "The transformation type to affect of the constrained object"
-msgstr "Typ transformacji do zmiany w obiekcie"
-
-
 msgid "Map To X From"
 msgstr "Mapuj na X z"
 
@@ -5199,26 +5187,6 @@ msgid "Multiplier for wave influence of this brush"
 msgstr "Mnożnik wpływu fali dla tego pędzla"
 
 
-msgid "Wave Type"
-msgstr "Rodzaj fali"
-
-
-msgid "Depth Change"
-msgstr "Zmiana głębi"
-
-
-msgid "Obstacle"
-msgstr "Przeszkoda"
-
-
-msgid "Force"
-msgstr "Siła"
-
-
-msgid "Reflect Only"
-msgstr "Tylko odbicie"
-
-
 msgid "Acceleration"
 msgstr "Przyspieszenie"
 
@@ -5317,6 +5285,10 @@ msgstr "Wciąganie"
 
 msgid "Drag effector weight"
 msgstr "Siła oddziaływania takiego jak wciąganie lub zasysanie"
+
+
+msgid "Force"
+msgstr "Siła"
 
 
 msgid "Force effector weight"
@@ -5593,14 +5565,6 @@ msgstr "Kodek dźwięku FFmpeg do użycia"
 
 msgid "Vorbis"
 msgstr "Vorbis"
-
-
-msgid "Samplerate"
-msgstr "Częstotliwość próbkowania"
-
-
-msgid "Audio samplerate(samples/s)"
-msgstr "Częstotliwość z jaką próbkowany jest dźwięk (w próbkach na sekundę)"
 
 
 msgctxt "Sound"
@@ -6052,12 +6016,12 @@ msgid "Size"
 msgstr "Rozmiar"
 
 
-msgid "Grease Pencil"
-msgstr "Szkicownik"
-
-
 msgid "Save"
 msgstr "Zapisz"
+
+
+msgid "Obstacle"
+msgstr "Przeszkoda"
 
 
 msgid "Time"
@@ -6136,20 +6100,12 @@ msgid "Local"
 msgstr "Lokalnie"
 
 
-msgid "Mask"
-msgstr "Maska"
-
-
 msgid "Brush"
 msgstr "Pędzel"
 
 
 msgid "Paint Curve"
 msgstr "Krzywa graficzna"
-
-
-msgid "Rotate"
-msgstr "Obróć"
 
 
 msgid "Laplacian"
@@ -6198,6 +6154,14 @@ msgstr "Używaj Węzłów"
 
 msgid "Cube"
 msgstr "Sześcian"
+
+
+msgid "Edit"
+msgstr "Edytuj"
+
+
+msgid "Mesh"
+msgstr "Siatka"
 
 
 msgid "Faces"
@@ -6277,12 +6241,12 @@ msgid "ID Type"
 msgstr "Typ ID"
 
 
+msgid "Mask"
+msgstr "Maska"
+
+
 msgid "Key"
 msgstr "Klucz"
-
-
-msgid "Edit"
-msgstr "Edytuj"
 
 
 msgid "Distort"
@@ -6291,10 +6255,6 @@ msgstr "Zniekształć"
 
 msgid "Text"
 msgstr "Tekst"
-
-
-msgid "Mesh"
-msgstr "Siatka"
 
 
 msgid "Python"
@@ -6365,6 +6325,10 @@ msgid "Pixelate"
 msgstr "Pikselizacja"
 
 
+msgid "Rotate"
+msgstr "Obróć"
+
+
 msgid "Translate"
 msgstr "Przesuń"
 
@@ -6395,6 +6359,10 @@ msgstr "Oś Y"
 
 msgid "Z axis"
 msgstr "Oś Z"
+
+
+msgid "Wave Type"
+msgstr "Rodzaj fali"
 
 
 msgid "Z Axis"
@@ -6445,6 +6413,10 @@ msgstr "Lampa"
 
 msgid "Open"
 msgstr "Otwórz"
+
+
+msgid "Play"
+msgstr "Start"
 
 
 msgid "Remove Pack"
@@ -6514,10 +6486,6 @@ msgid "Pinned"
 msgstr "Przypięty"
 
 
-msgid "Play"
-msgstr "Start"
-
-
 msgid "Property Name"
 msgstr "Nazwa właściwości"
 
@@ -6574,12 +6542,20 @@ msgid "Continue"
 msgstr "Kontynuacja"
 
 
+msgid "Temperature"
+msgstr "Temperatura"
+
+
 msgid "Gray Scale"
 msgstr "Odcienie szarości"
 
 
 msgid "Sepia"
 msgstr "Sepia"
+
+
+msgid "Mass Vertex Group"
+msgstr "Masa grupy wierzchołków"
 
 
 msgid "Timeline and playback controls"
@@ -6621,10 +6597,6 @@ msgstr "Szczegóły"
 
 msgid "Priority"
 msgstr "Priorytet"
-
-
-msgid "Temperature"
-msgstr "Temperatura"
 
 
 msgctxt "Image"
@@ -6975,10 +6947,6 @@ msgid "Render height has to be 576 pixels for DV-PAL!"
 msgstr "Wysokość renderu musi wynosić 576 pikseli dla DV-PAL!"
 
 
-msgid "FFMPEG only supports 48khz / stereo audio for DV!"
-msgstr "FFMPEG obsługuje wyłącznie 48khz / dźwięk stereo dla DV!"
-
-
 msgid "Error initializing video stream"
 msgstr "Błąd inicjacji strumienia filmowego"
 
@@ -7183,10 +7151,6 @@ msgid "<Missing ID block>"
 msgstr "<Brak bloku ID>"
 
 
-msgid "No RNA pointer available to retrieve values for this fcurve"
-msgstr "Brak dostępnego wskaźnika RNA, z którego można odzyskać wartości dla tej krzywej-F"
-
-
 msgid "No F-Curve to add keyframes to"
 msgstr "Brak krzywej-F, do której można dodać klatki kluczowe"
 
@@ -7217,10 +7181,6 @@ msgstr "Ustanowienie ścieżki do właściwości nie powiodło się, spróbuj r�
 
 msgid "No active Keying Set"
 msgstr "Brak aktywnego Zestawu Kluczowania"
-
-
-msgid "Could not update flags for this fcurve, as RNA path is invalid for the given ID (ID = %s, path = %s)"
-msgstr "Nie można było uaktualnić flag dla tej krzywej-F ponieważ ścieżka RNA jest nieprawidłowa dla danego ID (ID = %s, path = %s)"
 
 
 msgid "F-Curve with path '%s[%d]' cannot be keyframed, ensure that it is not locked or sampled, and try removing F-Modifiers"
@@ -7672,14 +7632,6 @@ msgid "Active button not found"
 msgstr "Nie odnaleziono aktywnego przycisku"
 
 
-msgid "File '%s' cannot be opened"
-msgstr "Nie można otworzyć pliku '%s'"
-
-
-msgid "See '%s' in the text editor"
-msgstr "Patrz '%s' w edytorze tekstu"
-
-
 msgid "No valid po found for language '%s' under %s"
 msgstr "Nie odnaleziono prawidłowego 'po' dla języka '%s' pod '%s'"
 
@@ -7904,10 +7856,6 @@ msgid "Browse Particle Settings to be linked"
 msgstr "Przeglądaj dane cząstek do powiązania"
 
 
-msgid "Browse Grease Pencil Data to be linked"
-msgstr "Przeglądaj dane szkicownika do powiązania"
-
-
 msgid "Browse Movie Clip to be linked"
 msgstr "Przeglądaj klipy filmowe do powiązania"
 
@@ -7922,6 +7870,10 @@ msgstr "Przeglądaj dane palety do powiązania"
 
 msgid "Browse Paint Curve Data to be linked"
 msgstr "Przeglądaj dane krzywej malowania do powiązania"
+
+
+msgid "Browse Grease Pencil Data to be linked"
+msgstr "Przeglądaj dane szkicownika do powiązania"
 
 
 msgid "Browse ID data to be linked"
@@ -8025,10 +7977,6 @@ msgstr "Nowy"
 
 msgid "%d items"
 msgstr "%d elementów"
-
-
-msgid "No filename given"
-msgstr "Nie podano nazwy pliku"
 
 
 msgid "Can't create export file"
@@ -8234,10 +8182,6 @@ msgstr "Nie można dodać krawędzi w trybie edycji"
 
 msgid "Cannot add loops in edit mode"
 msgstr "Nie można dodać pętli w trybie edycji"
-
-
-msgid "Cannot add polygons in edit mode"
-msgstr "Nie można dodać poligonów w trybie edycji"
 
 
 msgid "Cannot remove vertices in edit mode"
@@ -8938,26 +8882,6 @@ msgid "Rigid Body World has no associated physics data to export"
 msgstr "Świat Brył Sztywnych nie posiada powiązanych danych fizyki do eksportu"
 
 
-msgid "3D Local View"
-msgstr "Widok 3D Lokalny"
-
-
-msgid "Frame:%d "
-msgstr "Klatka:%d "
-
-
-msgid "| Last:%s "
-msgstr "| Ostatni:%s "
-
-
-msgid "Time:%s "
-msgstr "Czas:%s "
-
-
-msgid "| Mem:%.2fM, Peak: %.2fM "
-msgstr "| Pamięć:%.2fM, Szczyt: %.2fM "
-
-
 msgid "Cannot write a single file with an animation format selected"
 msgstr "Nie można zapisać pojedynczego pliku z wybranym formatem animacji"
 
@@ -9026,12 +8950,12 @@ msgid "Maximize Area"
 msgstr "Maksymalizuj Obszar"
 
 
-msgid "Flip to Bottom"
-msgstr "Przerzuć w dół"
-
-
 msgid "Flip to Top"
 msgstr "Przerzuć na górę"
+
+
+msgid "Flip to Bottom"
+msgstr "Przerzuć w dół"
 
 
 msgid "Can only scale region size from an action zone"
@@ -9114,12 +9038,12 @@ msgid "Missing%s%s%s%s detected!"
 msgstr "Wykryto Missing%s%s%s%s!"
 
 
-msgid "Active group is locked, aborting"
-msgstr "Aktywna grupa jest zablokowana, rezygnuję"
-
-
 msgid "The modifier used does not support deformed locations"
 msgstr "Użyty modyfikator nie obsługuje deformowanych lokacji"
+
+
+msgid "Active group is locked, aborting"
+msgstr "Aktywna grupa jest zablokowana, rezygnuję"
 
 
 msgid "No active vertex group for painting, aborting"
@@ -9538,10 +9462,6 @@ msgid " RGB byte"
 msgstr " bit RGB"
 
 
-msgid " + Z"
-msgstr " + Z"
-
-
 msgid "unsupported image format"
 msgstr "Nie obsługiwany format obrazu"
 
@@ -9695,14 +9615,6 @@ msgid "Library path '%s' does not exist, correct this before saving"
 msgstr "Ścieżka biblioteki '%s' nie istnieje, popraw to zanim zapiszesz"
 
 
-msgid "Cannot edit builtin name"
-msgstr "Nie można edytować wbudowanej nazwy"
-
-
-msgid "Cannot edit sequence name"
-msgstr "Nie można edytować nazwy sekwencji"
-
-
 msgid "Cannot edit the path of an indirectly linked library"
 msgstr "Nie można edytować ścieżki z biblioteki zlinkowanej niebezpośrednio"
 
@@ -9823,10 +9735,6 @@ msgid "unknown error writing file"
 msgstr "nieznany błąd zapisu pliku"
 
 
-msgid "unknown error stating file"
-msgstr "nieznany błąd stating file"
-
-
 msgid "Could not reopen file"
 msgstr "Ponowne otwarcie pliku nie powiodło się"
 
@@ -9845,6 +9753,14 @@ msgstr "Nie możliwe stat \"%s': %s"
 
 msgid "Text not found: %s"
 msgstr "Nie odnaleziono tekstu: %s"
+
+
+msgid "File '%s' cannot be opened"
+msgstr "Nie można otworzyć pliku '%s'"
+
+
+msgid "See '%s' in the text editor"
+msgstr "Patrz '%s' w edytorze tekstu"
 
 
 msgid "No Recent Files"
@@ -10271,14 +10187,6 @@ msgid " or Alt) Even Thickness %s"
 msgstr " lub Alt) Równa grubość %s"
 
 
-msgid "Tilt: %s° %s"
-msgstr "Przechyl: %s° %s"
-
-
-msgid "Tilt: %.2f° %s"
-msgstr "Przechyl: %.2f° %s"
-
-
 msgid "ScaleX: %s"
 msgstr "SkalaX: %s"
 
@@ -10540,22 +10448,6 @@ msgid "Already a control point at frame %.6f"
 msgstr "Punkt kontrolny już w klatce %.6f"
 
 
-msgid "FCurve has already sample points"
-msgstr "Krzywa F już posiada próbkowane punkty"
-
-
-msgid "FCurve has no keyframes"
-msgstr "Krzywa F nie posiada klatek kluczowych"
-
-
-msgid "FCurve has already keyframes"
-msgstr "Krzywa F już posiada klatki kluczowe"
-
-
-msgid "FCurve has no sample points"
-msgstr "Krzywa F nie posiada próbkowanych punktów"
-
-
 msgid "Invalid frame range (%d - %d)"
 msgstr "Nieprawidłowy zakres klatek (%d - %d)"
 
@@ -10705,6 +10597,10 @@ msgid "NLA strip '%s' not found in track '%s'"
 msgstr "Nie odnaleziono paska NLA '%s' na ścieżce '%s'"
 
 
+msgid "Registering node socket class: '%s' is too long, maximum length is %d"
+msgstr "Rejestracja node socket class: '%s' jest za długie, maksymalna długość: %d"
+
+
 msgid "Same input/output direction of sockets"
 msgstr "Identyczny kierunek wejście/wyjście złącza"
 
@@ -10735,10 +10631,6 @@ msgstr "Nie znaleziono noda '%s' w drzewie nodów (node tree)"
 
 msgid "Unable to locate socket '%s' in node"
 msgstr "Nie znaleziono złącza '%s' w nodzie"
-
-
-msgid "Registering node socket class: '%s' is too long, maximum length is %d"
-msgstr "Rejestracja node socket class: '%s' jest za długie, maksymalna długość: %d"
 
 
 msgid "VertexGroup.add(): cannot be called while object is in edit mode"
@@ -10942,12 +10834,12 @@ msgid "Val"
 msgstr "Val"
 
 
-msgid "Anisotropy"
-msgstr "Anizotropia"
-
-
 msgid "BSDF"
 msgstr "BSDF"
+
+
+msgid "Anisotropy"
+msgstr "Anizotropia"
 
 
 msgid "RoughnessU"
@@ -11326,10 +11218,6 @@ msgid "Japanese (日本語)"
 msgstr "Japoński (日本語)"
 
 
-msgid "Dutch (Nederlandse taal)"
-msgstr "Niderlandzki (Nederlandse taal)"
-
-
 msgid "Italian (Italiano)"
 msgstr "Włoski (Italiano)"
 
@@ -11442,10 +11330,6 @@ msgid "Hebrew (תירִבְעִ)"
 msgstr "Hebrajski (תירִבְעִ)"
 
 
-msgid "Estonian (Eestlane)"
-msgstr "Estoński (Eestlane)"
-
-
 msgid "Esperanto (Esperanto)"
 msgstr "Esperanto (Esperanto)"
 
@@ -11464,10 +11348,6 @@ msgstr "Uzbecki (Oʻzbek)"
 
 msgid "Uzbek Cyrillic (Ўзбек)"
 msgstr "Uzbecki Cyrylica (Ўзбек)"
-
-
-msgid "Hindi (मानक हिन्दी)"
-msgstr "Hinduski (मानक हिन्दी)"
 
 
 msgid "Complete"

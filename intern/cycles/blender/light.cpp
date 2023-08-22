@@ -1,8 +1,10 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "scene/light.h"
 
+#include "blender/light_linking.h"
 #include "blender/sync.h"
 #include "blender/util.h"
 
@@ -37,6 +39,8 @@ void BlenderSync::sync_light(BL::Object &b_parent,
     }
   }
 
+  light->name = b_light.name().c_str();
+
   /* type */
   switch (b_light.type()) {
     case BL::Light::type_POINT: {
@@ -48,8 +52,6 @@ void BlenderSync::sync_light(BL::Object &b_parent,
     case BL::Light::type_SPOT: {
       BL::SpotLight b_spot_light(b_light);
       light->set_size(b_spot_light.shadow_soft_size());
-      light->set_axisu(transform_get_column(&tfm, 0));
-      light->set_axisv(transform_get_column(&tfm, 1));
       light->set_light_type(LIGHT_SPOT);
       light->set_spot_angle(b_spot_light.spot_size());
       light->set_spot_smooth(b_spot_light.spot_blend());
@@ -70,8 +72,6 @@ void BlenderSync::sync_light(BL::Object &b_parent,
     case BL::Light::type_AREA: {
       BL::AreaLight b_area_light(b_light);
       light->set_size(1.0f);
-      light->set_axisu(transform_get_column(&tfm, 0));
-      light->set_axisv(transform_get_column(&tfm, 1));
       light->set_sizeu(b_area_light.size());
       light->set_spread(b_area_light.spread());
       switch (b_area_light.shape()) {
@@ -102,8 +102,6 @@ void BlenderSync::sync_light(BL::Object &b_parent,
   light->set_strength(strength);
 
   /* location and (inverted!) direction */
-  light->set_co(transform_get_column(&tfm, 3));
-  light->set_dir(-transform_get_column(&tfm, 2));
   light->set_tfm(tfm);
 
   /* shader */
@@ -145,8 +143,16 @@ void BlenderSync::sync_light(BL::Object &b_parent,
   light->set_use_scatter((visibility & PATH_RAY_VOLUME_SCATTER) != 0);
   light->set_is_shadow_catcher(b_ob_info.real_object.is_shadow_catcher());
 
-  /* lightgroup */
-  light->set_lightgroup(ustring(b_ob_info.real_object.lightgroup()));
+  /* Light group and linking. */
+  string lightgroup = b_ob_info.real_object.lightgroup();
+  if (lightgroup.empty()) {
+    lightgroup = b_parent.lightgroup();
+  }
+  light->set_lightgroup(ustring(lightgroup));
+  light->set_light_set_membership(
+      BlenderLightLink::get_light_set_membership(PointerRNA_NULL, b_ob_info.real_object));
+  light->set_shadow_set_membership(
+      BlenderLightLink::get_shadow_set_membership(PointerRNA_NULL, b_ob_info.real_object));
 
   /* tag */
   light->tag_update(scene);
@@ -169,7 +175,8 @@ void BlenderSync::sync_background_light(BL::SpaceView3D &b_v3d, bool use_portal)
       ObjectKey key(b_world, 0, b_world, false);
 
       if (light_map.add_or_update(&light, b_world, b_world, key) || world_recalc ||
-          b_world.ptr.data != world_map) {
+          b_world.ptr.data != world_map)
+      {
         light->set_light_type(LIGHT_BACKGROUND);
         if (sampling_method == SAMPLING_MANUAL) {
           light->set_map_resolution(get_int(cworld, "sample_map_resolution"));

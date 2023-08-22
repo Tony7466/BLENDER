@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -14,11 +15,13 @@
 
 namespace blender::gpu {
 class VKBuffer;
+struct VKBufferWithOffset;
 class VKDescriptorSet;
 class VKFrameBuffer;
 class VKIndexBuffer;
 class VKPipeline;
 class VKPushConstants;
+class VKStorageBuffer;
 class VKTexture;
 class VKVertexBuffer;
 
@@ -60,13 +63,13 @@ class VKCommandBuffer : NonCopyable, NonMovable {
    * - minimize command buffers and track render passes.
    * - add custom encoder to also track resource usages.
    *
-   * Currently I expect the custom encoder has to be done eventually. But want to keep post-poning
+   * Currently I expect the custom encoder has to be done eventually. But want to keep postponing
    * the custom encoder for now to collect more use cases it should solve. (first pixel drawn on
    * screen).
    *
    * Some command can also be encoded in another way when encoded as a first command. For example
-   * clearing a framebuffer textures isn't allowed inside a render pass, but clearing the
-   * framebuffer textures via ops is allowed. When clearing a framebuffer texture directly after
+   * clearing a frame-buffer textures isn't allowed inside a render pass, but clearing the
+   * frame-buffer textures via ops is allowed. When clearing a frame-buffer texture directly after
    * beginning a render pass could be re-encoded to do this in the same command.
    *
    * So for now we track the state and temporary switch to another state if the command requires
@@ -118,6 +121,7 @@ class VKCommandBuffer : NonCopyable, NonMovable {
   void stage_transfer(Stage stage_from, Stage stage_to)
   {
     BLI_assert(is_in_stage(stage_from));
+    UNUSED_VARS_NDEBUG(stage_from);
 #if 0
     printf(" *** Transfer stage from %s to %s\n",
            to_string(stage_from).c_str(),
@@ -131,6 +135,7 @@ class VKCommandBuffer : NonCopyable, NonMovable {
   void init(const VkDevice vk_device, const VkQueue vk_queue, VkCommandBuffer vk_command_buffer);
   void begin_recording();
   void end_recording();
+
   void bind(const VKPipeline &vk_pipeline, VkPipelineBindPoint bind_point);
   void bind(const VKDescriptorSet &descriptor_set,
             const VkPipelineLayout vk_pipeline_layout,
@@ -139,7 +144,10 @@ class VKCommandBuffer : NonCopyable, NonMovable {
             const VKVertexBuffer &vertex_buffer,
             const VkDeviceSize offset);
   /* Bind the given buffer as a vertex buffer. */
+  void bind(const uint32_t binding, const VKBufferWithOffset &vertex_buffer);
   void bind(const uint32_t binding, const VkBuffer &vk_vertex_buffer, const VkDeviceSize offset);
+  /* Bind the given buffer as an index buffer. */
+  void bind(const VKBufferWithOffset &index_buffer, VkIndexType index_type);
 
   void begin_render_pass(const VKFrameBuffer &framebuffer);
   void end_render_pass(const VKFrameBuffer &framebuffer);
@@ -153,10 +161,17 @@ class VKCommandBuffer : NonCopyable, NonMovable {
                       const VkPipelineLayout vk_pipeline_layout,
                       const VkShaderStageFlags vk_shader_stages);
   void dispatch(int groups_x_len, int groups_y_len, int groups_z_len);
+  void dispatch(VKStorageBuffer &command_buffer);
   /** Copy the contents of a texture MIP level to the dst buffer. */
   void copy(VKBuffer &dst_buffer, VKTexture &src_texture, Span<VkBufferImageCopy> regions);
   void copy(VKTexture &dst_texture, VKBuffer &src_buffer, Span<VkBufferImageCopy> regions);
+  void copy(VKTexture &dst_texture, VKTexture &src_texture, Span<VkImageCopy> regions);
   void blit(VKTexture &dst_texture, VKTexture &src_texture, Span<VkImageBlit> regions);
+  void blit(VKTexture &dst_texture,
+            VkImageLayout dst_layout,
+            VKTexture &src_texture,
+            VkImageLayout src_layout,
+            Span<VkImageBlit> regions);
   void pipeline_barrier(VkPipelineStageFlags source_stages,
                         VkPipelineStageFlags destination_stages);
   void pipeline_barrier(Span<VkImageMemoryBarrier> image_memory_barriers);
@@ -175,8 +190,17 @@ class VKCommandBuffer : NonCopyable, NonMovable {
   void fill(VKBuffer &buffer, uint32_t data);
 
   void draw(int v_first, int v_count, int i_first, int i_count);
-  void draw(
+  void draw_indexed(
       int index_count, int instance_count, int first_index, int vertex_offset, int first_instance);
+
+  void draw_indirect(const VKStorageBuffer &buffer,
+                     VkDeviceSize offset,
+                     uint32_t draw_count,
+                     uint32_t stride);
+  void draw_indexed_indirect(const VKStorageBuffer &buffer,
+                             VkDeviceSize offset,
+                             uint32_t draw_count,
+                             uint32_t stride);
 
   /**
    * Stop recording commands, encode + send the recordings to Vulkan, wait for the until the

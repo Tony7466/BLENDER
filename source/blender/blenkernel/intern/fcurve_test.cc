@@ -1,12 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "testing/testing.h"
 
 #include "MEM_guardedalloc.h"
 
 #include "BKE_fcurve.h"
 
-#include "ED_keyframing.h"
+#include "ED_keyframing.hh"
 
 #include "DNA_anim_types.h"
 
@@ -595,7 +596,7 @@ static FCurve *testcurve_with_duplicates()
   /* Create a curve with some duplicate keys. The first ones are all with Y=1, the later repeats
    * increase Y-coordinates on every repeat. */
   FCurve *fcu = BKE_fcurve_create();
-  ED_keyframes_add(fcu, 10); /* Avoid `insert_vert_fcurve`, that deduplicates the keys. */
+  ED_keyframes_add(fcu, 10); /* Avoid `insert_vert_fcurve`, that de-duplicates the keys. */
   set_key(fcu, 0, 1.0f, 1.0f);
   set_key(fcu, 1, 327.16f, 1.0f);
   set_key(fcu, 2, 7.0f, 1.0f);

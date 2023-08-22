@@ -1,14 +1,13 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "testing/testing.h"
 
 #include "MEM_guardedalloc.h"
 
-extern "C" {
-#include "BLI_math.h"
 #include "BLI_rand.h"
 #include "PIL_time.h"
-}
 
 #include <fstream>
 #include <iostream>
@@ -165,7 +164,8 @@ int get_output_edge_index(const CDT_result<T> &out, int out_index_1, int out_ind
   int ne = int(out.edge.size());
   for (int i = 0; i < ne; ++i) {
     if ((out.edge[i].first == out_index_1 && out.edge[i].second == out_index_2) ||
-        (out.edge[i].first == out_index_2 && out.edge[i].second == out_index_1)) {
+        (out.edge[i].first == out_index_2 && out.edge[i].second == out_index_1))
+    {
       return i;
     }
   }
@@ -1062,7 +1062,7 @@ template<typename T> void twoface2_test()
   EXPECT_EQ(out.edge.size(), 18);
   EXPECT_EQ(out.face.size(), 9);
   if (out.vert.size() == 10 && out.edge.size() == 18 && out.face.size() == 9) {
-    /* Input verts have no dups, so expect output ones match input ones. */
+    /* Input verts have no duplicates, so expect output ones match input ones. */
     for (int i = 0; i < 6; i++) {
       EXPECT_EQ(get_orig_index(out.vert_orig, i), i);
     }

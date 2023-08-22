@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -261,7 +263,8 @@ void ObjectsChildrenBuilder::make_object_parent_hierarchy_collections()
       parent_ob_collection_tree_element = parent_ob_tree_element->parent;
       while (!ELEM(TREESTORE(parent_ob_collection_tree_element)->type,
                    TSE_VIEW_COLLECTION_BASE,
-                   TSE_LAYER_COLLECTION)) {
+                   TSE_LAYER_COLLECTION))
+      {
         parent_ob_collection_tree_element = parent_ob_collection_tree_element->parent;
       }
 

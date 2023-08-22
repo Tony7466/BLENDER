@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -7,7 +8,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_task.h"
 
 #include "BLT_translation.h"
@@ -19,18 +20,18 @@
 
 #include "BKE_ccg.h"
 #include "BKE_context.h"
-#include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_paint.hh"
+#include "BKE_pbvh_api.hh"
 
 #include "DEG_depsgraph.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 #include "sculpt_intern.hh"
 
 #include "bmesh.h"
@@ -175,7 +176,8 @@ static int sculpt_mask_expand_modal(bContext *C, wmOperator *op, const wmEvent *
   }
 
   if ((event->type == EVT_ESCKEY && event->val == KM_PRESS) ||
-      (event->type == RIGHTMOUSE && event->val == KM_PRESS)) {
+      (event->type == RIGHTMOUSE && event->val == KM_PRESS))
+  {
     /* Returning OPERATOR_CANCELLED will leak memory due to not finishing
      * undo. Better solution could be to make paint_mesh_restore_co work
      * for this case. */
@@ -185,7 +187,8 @@ static int sculpt_mask_expand_modal(bContext *C, wmOperator *op, const wmEvent *
 
   if ((event->type == LEFTMOUSE && event->val == KM_RELEASE) ||
       (event->type == EVT_RETKEY && event->val == KM_PRESS) ||
-      (event->type == EVT_PADENTER && event->val == KM_PRESS)) {
+      (event->type == EVT_PADENTER && event->val == KM_PRESS))
+  {
 
     /* Smooth iterations. */
     BKE_sculpt_update_object_for_edit(depsgraph, ob, true, false, false);
@@ -355,7 +358,7 @@ static int sculpt_mask_expand_invoke(bContext *C, wmOperator *op, const wmEvent 
 
   ss->filter_cache = MEM_new<FilterCache>(__func__);
 
-  ss->filter_cache->nodes = blender::bke::pbvh::search_gather(pbvh, nullptr, nullptr);
+  ss->filter_cache->nodes = blender::bke::pbvh::search_gather(pbvh, {});
 
   SCULPT_undo_push_begin(ob, op);
 
