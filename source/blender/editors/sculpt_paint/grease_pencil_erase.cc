@@ -411,7 +411,7 @@ struct EraseOperationExecutor {
 
         if (src_curve_points.size() == 1) {
           /* One-point stroke : just check if the point is inside the eraser. */
-          int ring_index = -1;
+          int ring_index = 0;
           for (const EraserRing &eraser_point : rings) {
             const int64_t src_point = src_curve_points.first();
             const int64_t squared_distance = math::distance_squared(
@@ -423,6 +423,7 @@ struct EraseOperationExecutor {
                 (squared_distance <= eraser_point.squared_radius)) {
               r_point_ring[src_point] = {ring_index, PointCircleSide::Inside};
             }
+            ++ring_index;
           }
           continue;
         }
