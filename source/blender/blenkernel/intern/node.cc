@@ -199,9 +199,6 @@ static void ntree_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, cons
   }
 
   ntree_dst->tree_interface.copy_data(ntree_src->tree_interface, flag);
-  /* Legacy inputs/outputs lists may contain unmanaged pointers, don't copy these. */
-  BLI_listbase_clear(&ntree_dst->inputs_legacy);
-  BLI_listbase_clear(&ntree_dst->outputs_legacy);
   /* copy preview hash */
   if (ntree_src->previews && (flag & LIB_ID_COPY_NO_PREVIEW) == 0) {
     bNodeInstanceHashIterator iter;
@@ -294,17 +291,6 @@ static void ntree_free_data(ID *id)
   }
 
   ntree->tree_interface.free_data();
-  /* Free legacy interface data */
-  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, socket, &ntree->inputs_legacy) {
-    node_socket_interface_free(ntree, socket, false);
-    MEM_freeN(socket);
-  }
-  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, socket, &ntree->outputs_legacy) {
-    node_socket_interface_free(ntree, socket, false);
-    MEM_freeN(socket);
-  }
-  BLI_listbase_clear(&ntree->inputs_legacy);
-  BLI_listbase_clear(&ntree->outputs_legacy);
 
   /* free preview hash */
   if (ntree->previews) {
