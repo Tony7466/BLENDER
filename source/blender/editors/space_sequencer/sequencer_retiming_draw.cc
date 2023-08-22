@@ -308,11 +308,6 @@ static void draw_half_keyframe(const bContext *C, const Sequence *seq)
 
 static void retime_key_draw(const bContext *C, const Sequence *seq, const SeqRetimingKey *key)
 {
-
-  if (SEQ_retiming_is_last_key(seq, key)) {
-    return;
-  }
-
   const Scene *scene = CTX_data_scene(C);
   const float key_x = key_x_get(scene, seq, key);
 
@@ -345,39 +340,35 @@ static void retime_key_draw(const bContext *C, const Sequence *seq, const SeqRet
       format, "outlineColor", GPU_COMP_U8, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
   sh_bindings.flags_id = GPU_vertformat_attr_add(format, "flags", GPU_COMP_U32, 1, GPU_FETCH_INT);
 
-  if (SEQ_retiming_key_timeline_frame_get(scene, seq, key) !=
-      SEQ_time_right_handle_frame_get(scene, seq))
-  {
-    GPU_blend(GPU_BLEND_ALPHA);
-    GPU_program_point_size(true);
-    immBindBuiltinProgram(GPU_SHADER_KEYFRAME_SHAPE);
-    immUniform1f("outline_scale", 1.0f);
-    immUniform2f("ViewportSize", BLI_rcti_size_x(&v2d->mask) + 1, BLI_rcti_size_y(&v2d->mask) + 1);
-    immBegin(GPU_PRIM_POINTS, 1);
+  GPU_blend(GPU_BLEND_ALPHA);
+  GPU_program_point_size(true);
+  immBindBuiltinProgram(GPU_SHADER_KEYFRAME_SHAPE);
+  immUniform1f("outline_scale", 1.0f);
+  immUniform2f("ViewportSize", BLI_rcti_size_x(&v2d->mask) + 1, BLI_rcti_size_y(&v2d->mask) + 1);
+  immBegin(GPU_PRIM_POINTS, 1);
 
-    eBezTriple_KeyframeType key_type = BEZT_KEYTYPE_KEYFRAME;
-    if (SEQ_retiming_key_is_freeze_frame(key)) {
-      key_type = BEZT_KEYTYPE_BREAKDOWN;
-    }
-    if (SEQ_retiming_key_is_transition_type(key)) {
-      key_type = BEZT_KEYTYPE_MOVEHOLD;
-    }
-
-    draw_keyframe_shape(key_position,
-                        bottom,
-                        size,
-                        is_selected && sequencer_retiming_tool_is_active(C),
-                        key_type,
-                        KEYFRAME_SHAPE_BOTH,
-                        1,
-                        &sh_bindings,
-                        0,
-                        0);
-    immEnd();
-    GPU_program_point_size(false);
-    immUnbindProgram();
-    GPU_blend(GPU_BLEND_NONE);
+  eBezTriple_KeyframeType key_type = BEZT_KEYTYPE_KEYFRAME;
+  if (SEQ_retiming_key_is_freeze_frame(key)) {
+    key_type = BEZT_KEYTYPE_BREAKDOWN;
   }
+  if (SEQ_retiming_key_is_transition_type(key)) {
+    key_type = BEZT_KEYTYPE_MOVEHOLD;
+  }
+
+  draw_keyframe_shape(key_position,
+                      bottom,
+                      size,
+                      is_selected && sequencer_retiming_tool_is_active(C),
+                      key_type,
+                      KEYFRAME_SHAPE_BOTH,
+                      1,
+                      &sh_bindings,
+                      0,
+                      0);
+  immEnd();
+  GPU_program_point_size(false);
+  immUnbindProgram();
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 const void draw_continuity(const bContext *C, const Sequence *seq, const SeqRetimingKey *key)
@@ -451,7 +442,7 @@ static void draw_backdrop(const bContext *C, const Sequence *seq)
   GPU_blend(GPU_BLEND_NONE);
 }
 
-static void retime_key_draw(const bContext *C)
+static void retime_keys_draw(const bContext *C)
 {
   SpaceSeq *sseq = CTX_wm_space_seq(C);
   if (!sequencer_retiming_tool_is_active(C) &&
@@ -482,9 +473,6 @@ static void retime_key_draw(const bContext *C)
       }
       retime_key_draw(C, seq, &key);
     }
-
-    /* Special case for last key. */
-    draw_half_keyframe(C, seq);
   }
 }
 
@@ -602,6 +590,6 @@ static void retime_speed_draw(const bContext *C)
 
 void sequencer_draw_retiming(const bContext *C)
 {
-  retime_key_draw(C);
+  retime_keys_draw(C);
   retime_speed_draw(C);
 }

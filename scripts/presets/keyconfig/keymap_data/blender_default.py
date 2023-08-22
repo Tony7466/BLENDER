@@ -8267,6 +8267,7 @@ def km_sequencer_editor_tool_retime(_params):
             value="PRESS",
             legacy=_params.legacy,
             ),
+            ("sequencer.retiming_deselect_all", {"type": 'A', "value": 'PRESS', "alt": True},None),
             ("transform.translate", {"type": 'G', "value": 'PRESS'},
              {"properties": [("view2d_edge_pan", True)]}),
             ("transform.translate", {"type": _params.select_mouse, "value": 'CLICK_DRAG'},

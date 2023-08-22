@@ -451,31 +451,32 @@ void SEQUENCER_OT_retiming_key_remove(wmOperatorType *ot)
 /** \name Retiming Set Segment Speed
  * \{ */
 
-static int sequencer_retiming_segment_speed_set_invoke(bContext *C,
-                                                       wmOperator *op,
-                                                       const wmEvent *event)
+static int strip_speed_set_exec(bContext *C, wmOperator *op)
 {
-  const Scene *scene = CTX_data_scene(C);
-  const Editing *ed = SEQ_editing_get(scene);
+  Scene *scene = CTX_data_scene(C);
+  SeqCollection *strips = selected_strips_from_context(C);
 
-  if (ed->act_seq && RNA_struct_property_is_set(op->ptr, "key_index")) {
-    MutableSpan keys = SEQ_retiming_keys_get(ed->act_seq);
-    const int key_index = RNA_int_get(op->ptr, "key_index");
-    BLI_assert(key_index < keys.size());
-    SeqRetimingKey *key = &keys[key_index];
-    RNA_float_set(op->ptr, "speed", SEQ_retiming_key_speed_get(ed->act_seq, key) * 100.0f);
-    return WM_operator_props_popup(C, op, event);
+  Sequence *seq;
+  SEQ_ITERATOR_FOREACH (seq, strips) {
+    if (SEQ_retiming_is_active(seq)) {
+      /* TODO: Can't modify retimed strips with simple logic, probably even with complex logic. */
+      continue;
+    }
+    SEQ_retiming_data_ensure(scene, seq);
+    SeqRetimingKey *key = SEQ_retiming_ensure_last_key(scene, seq);
+
+    if (key == nullptr) {
+      continue;
+    }
+    SEQ_retiming_key_speed_set(scene, seq, key, RNA_float_get(op->ptr, "speed"));
   }
+  SEQ_collection_free(strips);
 
-  if (!BLI_listbase_is_empty(&ed->retiming_selection)) {
-    return sequencer_retiming_segment_speed_set_exec(C, op);
-  }
-
-  BKE_report(op->reports, RPT_ERROR, "No key available");
-  return OPERATOR_CANCELLED;
+  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+  return OPERATOR_FINISHED;
 }
 
-static int sequencer_retiming_segment_speed_set_exec(bContext *C, wmOperator *op)
+static int segment_speed_set_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   const Editing *ed = SEQ_editing_get(scene);
@@ -494,6 +495,34 @@ static int sequencer_retiming_segment_speed_set_exec(bContext *C, wmOperator *op
   return OPERATOR_FINISHED;
 }
 
+static int sequencer_retiming_segment_speed_set_exec(bContext *C, wmOperator *op)
+{
+  const Editing *ed = SEQ_editing_get(CTX_data_scene(C));
+
+  /* Strip mode. */
+  if (!sequencer_retiming_tool_is_active(C)) {
+    return strip_speed_set_exec(C, op);
+  }
+
+  /* Retiming mode. */
+  if (!BLI_listbase_is_empty(&ed->retiming_selection)) {
+    return segment_speed_set_exec(C, op);
+  }
+
+  BKE_report(op->reports, RPT_ERROR, "No keys or strips selected");
+  return OPERATOR_CANCELLED;
+}
+
+static int sequencer_retiming_segment_speed_set_invoke(bContext *C,
+                                                       wmOperator *op,
+                                                       const wmEvent *event)
+{
+  if (!RNA_struct_property_is_set(op->ptr, "speed")) {
+    return WM_operator_props_popup(C, op, event);
+  }
+  return sequencer_retiming_segment_speed_set_exec(C, op);
+}
+
 void SEQUENCER_OT_retiming_segment_speed_set(wmOperatorType *ot)
 {
   /* identifiers */
@@ -510,15 +539,15 @@ void SEQUENCER_OT_retiming_segment_speed_set(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  PropertyRNA *prop = RNA_def_float(ot->srna,
-                                    "speed",
-                                    100.0f,
-                                    0.001f,
-                                    FLT_MAX,
-                                    "Speed",
-                                    "New speed of retimed segment",
-                                    0.1f,
-                                    FLT_MAX);
+  RNA_def_float(ot->srna,
+                "speed",
+                100.0f,
+                0.001f,
+                FLT_MAX,
+                "Speed",
+                "New speed of retimed segment",
+                0.1f,
+                FLT_MAX);
 }
 
 /** \} */
@@ -541,39 +570,31 @@ static int sequencer_retiming_key_select_exec(bContext *C, wmOperator *op)
   const bool wait_to_deselect_others = RNA_boolean_get(op->ptr, "wait_to_deselect_others");
   const bool toggle = RNA_boolean_get(op->ptr, "toggle");
 
+  bool clicked_on_strip = seq_click_exact != nullptr;
+  bool clicked_on_selected_key = key != nullptr &&
+                                 SEQ_retiming_selection_contains(ed, seq_key_owner, key);
+
   /* Clicking on already selected element falls on modal operation.
    * All strips are deselected on mouse button release unless extend mode is used. */
-  if (key && SEQ_retiming_selection_contains(ed, seq_key_owner, key) && wait_to_deselect_others &&
-      !toggle)
-  {
-    return OPERATOR_RUNNING_MODAL;
-  }
-  /* If click happened on strip, with no key, prevent immediately switching to previous tool.
-   * That should happen on mouse release. */
-  if (seq_key_owner != nullptr && key == nullptr && wait_to_deselect_others && !toggle) {
+  if (clicked_on_selected_key && wait_to_deselect_others && !toggle) {
     return OPERATOR_RUNNING_MODAL;
   }
 
-  if (seq_key_owner != nullptr && key == nullptr) {
-    WM_toolsystem_ref_set_by_id(C, "builtin.select");  // prev tool
-    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
+  /* Make it possible for box select to begin on strip. */
+  if (clicked_on_strip && wait_to_deselect_others && !toggle) {
+    SEQ_retiming_selection_clear(ed);
+    return OPERATOR_RUNNING_MODAL;
+  }
+
+  if (clicked_on_strip && key == nullptr) {
+    WM_toolsystem_ref_set_by_id(C, "builtin.select");
+    WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+    return OPERATOR_FINISHED;
   }
 
   bool changed = false;
   if (RNA_boolean_get(op->ptr, "deselect_all")) {
     changed = SEQ_retiming_selection_clear(ed);
-  }
-
-  if (key == nullptr && seq_click_exact != nullptr) {
-    if (changed) {
-      WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
-      return OPERATOR_FINISHED;
-    }
-    else {
-      WM_toolsystem_ref_set_by_id(C, "builtin.select");
-      WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
-      return OPERATOR_CANCELLED;
-    }
   }
 
   if (seq_key_owner == nullptr && !changed) {
@@ -708,7 +729,7 @@ void SEQUENCER_OT_retiming_select_box(wmOperatorType *ot)
   /* Identifiers. */
   ot->name = "Box Select";
   ot->idname = "SEQUENCER_OT_retiming_select_box";
-  ot->description = "Select strips using box selection";
+  ot->description = "Select retiming keys using box selection";
 
   /* Api callbacks. */
   ot->invoke = sequencer_retiming_box_select_invoke;
@@ -726,6 +747,35 @@ void SEQUENCER_OT_retiming_select_box(wmOperatorType *ot)
   WM_operator_properties_select_operation_simple(ot);
   RNA_def_boolean(
       ot->srna, "tweak", 0, "Tweak", "Operator has been activated using a click-drag event");
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Retiming Key Deselect All
+ * \{ */
+
+static int sequencer_retiming_deselect_all_exec(bContext *C, wmOperator * /* op */)
+{
+  Scene *scene = CTX_data_scene(C);
+  SEQ_retiming_selection_clear(SEQ_editing_get(scene));
+  WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
+  return OPERATOR_FINISHED;
+}
+
+void SEQUENCER_OT_retiming_deselect_all(wmOperatorType *ot)
+{
+  /* Identifiers. */
+  ot->name = "Deselect All";
+  ot->idname = "SEQUENCER_OT_retiming_deselect_all";
+  ot->description = "Select strips using box selection";
+
+  /* Api callbacks. */
+  ot->exec = sequencer_retiming_deselect_all_exec;
+  ot->poll = sequencer_editing_initialized_and_active;
+
+  /* Flags. */
+  ot->flag = OPTYPE_UNDO;
 }
 
 /** \} */

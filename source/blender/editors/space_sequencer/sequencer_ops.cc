@@ -78,6 +78,7 @@ void sequencer_operatortypes()
   WM_operatortype_append(SEQUENCER_OT_retiming_segment_speed_set);
   WM_operatortype_append(SEQUENCER_OT_retiming_key_select);
   WM_operatortype_append(SEQUENCER_OT_retiming_select_box);
+  WM_operatortype_append(SEQUENCER_OT_retiming_deselect_all);
 
   /* `sequencer_select.cc` */
   WM_operatortype_append(SEQUENCER_OT_select_all);

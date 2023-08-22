@@ -100,14 +100,14 @@ int SEQ_retiming_keys_count(const Sequence *seq)
   return seq->retiming_keys_num;
 }
 
-void SEQ_retiming_ensure_last_key(const Scene *scene, Sequence *seq)
+SeqRetimingKey *SEQ_retiming_ensure_last_key(const Scene *scene, Sequence *seq)
 {
   if (!SEQ_retiming_is_allowed(seq)) {
-    return;
+    return nullptr;
   }
 
   if (seq->retiming_keys != nullptr) {
-    SEQ_retiming_add_key(scene, seq, SEQ_time_right_handle_frame_get(scene, seq));
+    return SEQ_retiming_add_key(scene, seq, SEQ_time_right_handle_frame_get(scene, seq));
   }
 }
 
@@ -289,10 +289,10 @@ SeqRetimingKey *SEQ_retiming_add_key(const Scene *scene, Sequence *seq, const in
   float frame_index = (timeline_frame - SEQ_time_start_frame_get(seq)) *
                       seq_time_media_playback_rate_factor_get(scene, seq);
 
-  const SeqRetimingKey *last_key = SEQ_retiming_last_key_get(seq);
+  SeqRetimingKey *last_key = SEQ_retiming_last_key_get(seq);
 
   if (frame_index >= last_key->strip_frame_index) {
-    return nullptr; /* Can not create key beyond last key. */
+    return last_key; /* This is expected for strips with no offsets. */
   }
 
   float value = seq_retiming_evaluate(seq, frame_index);

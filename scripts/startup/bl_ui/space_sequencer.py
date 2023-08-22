@@ -921,6 +921,57 @@ class SEQUENCER_MT_strip_movie(Menu):
         layout.operator("sequencer.deinterlace_selected_movies")
 
 
+class SEQUENCER_MT_strip_retiming_speed(Menu):
+    bl_label = "Set Speed"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator("sequencer.retiming_segment_speed_set", text="Speed 25%").speed = 25
+        layout.operator("sequencer.retiming_segment_speed_set", text="Speed 50%").speed = 50
+        layout.operator("sequencer.retiming_segment_speed_set", text="Speed 75%").speed = 75
+        layout.operator("sequencer.retiming_segment_speed_set", text="Speed 100%").speed = 100
+        layout.operator("sequencer.retiming_segment_speed_set", text="Speed 150%").speed = 150
+        layout.operator("sequencer.retiming_segment_speed_set", text="Speed 200%").speed = 200
+        layout.operator("sequencer.retiming_segment_speed_set", text="Speed 400%").speed = 400
+
+
+class SEQUENCER_MT_strip_retiming(Menu):
+    bl_label = "Retiming"
+
+    def draw_strip_context(self, context):
+        layout = self.layout
+
+        layout.operator("sequencer.retiming_key_add")
+        layout.operator("sequencer.retiming_freeze_frame_add")
+        layout.separator()
+        layout.menu("SEQUENCER_MT_strip_retiming_speed")
+
+    def draw_retiming_context(self, context):
+        layout = self.layout
+
+        layout.operator("sequencer.retiming_key_add")
+        layout.operator("sequencer.retiming_freeze_frame_add")
+        layout.operator("sequencer.retiming_transition_add")
+        layout.separator()
+
+        layout.operator("sequencer.retiming_key_remove")
+        layout.separator()
+
+        layout.operator("sequencer.retiming_select_box")
+        layout.operator("sequencer.retiming_deselect_all")
+        layout.separator()
+
+        layout.menu("SEQUENCER_MT_strip_retiming_speed")
+
+    def draw(self, context):
+        tool = bpy.context.workspace.tools.from_space_sequencer('SEQUENCER')
+        if tool.idname == 'builtin.retime':
+            self.draw_retiming_context(context)
+        else:
+            self.draw_strip_context(context)
+
+
+
 class SEQUENCER_MT_strip(Menu):
     bl_label = "Strip"
 
@@ -930,6 +981,7 @@ class SEQUENCER_MT_strip(Menu):
         has_sequencer, _has_preview = _space_view_types(st)
 
         layout.menu("SEQUENCER_MT_strip_transform")
+        layout.menu("SEQUENCER_MT_strip_retiming")
         layout.separator()
 
         if has_sequencer:
@@ -1174,9 +1226,9 @@ class SEQUENCER_MT_context_menu(Menu):
         layout.operator_context = 'INVOKE_REGION_WIN'
 
         layout.operator("sequencer.retiming_key_add")
+        layout.operator("sequencer.retiming_freeze_frame_add")
 
         if context.scene.sequence_editor.selected_retiming_keys:
-            layout.operator("sequencer.retiming_freeze_frame_add")
             layout.operator("sequencer.retiming_transition_add")
             layout.separator()
             layout.operator("sequencer.retiming_segment_speed_set", text="Speed 25%").speed = 25
@@ -2717,6 +2769,8 @@ classes = (
     SEQUENCER_MT_strip_movie,
     SEQUENCER_MT_strip,
     SEQUENCER_MT_strip_transform,
+    SEQUENCER_MT_strip_retiming,
+    SEQUENCER_MT_strip_retiming_speed,
     SEQUENCER_MT_strip_input,
     SEQUENCER_MT_strip_lock_mute,
     SEQUENCER_MT_image,

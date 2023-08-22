@@ -18,7 +18,7 @@ struct SeqRetimingKey;
 
 int SEQ_retiming_keys_count(const struct Sequence *seq);
 bool SEQ_retiming_is_active(const struct Sequence *seq);
-void SEQ_retiming_ensure_last_key(const struct Scene *scene, struct Sequence *seq);
+SeqRetimingKey *SEQ_retiming_ensure_last_key(const struct Scene *scene, struct Sequence *seq);
 void SEQ_retiming_data_ensure(const struct Scene *scene, struct Sequence *seq);
 void SEQ_retiming_data_clear(struct Sequence *seq);
 bool SEQ_retiming_is_allowed(const struct Sequence *seq);
@@ -28,9 +28,9 @@ bool SEQ_retiming_is_allowed(const struct Sequence *seq);
  * This function always reallocates memory, so when function is used all stored pointers will
  * become invalid.
  */
-struct SeqRetimingKey *SEQ_retiming_add_key(const struct Scene *scene,
-                                            struct Sequence *seq,
-                                            const int timeline_frame);
+SeqRetimingKey *SEQ_retiming_add_key(const struct Scene *scene,
+                                     struct Sequence *seq,
+                                     const int timeline_frame);
 SeqRetimingKey *SEQ_retiming_add_transition(const struct Scene *scene,
                                             struct Sequence *seq,
                                             struct SeqRetimingKey *key,

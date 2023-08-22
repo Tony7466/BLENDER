@@ -316,6 +316,7 @@ void SEQUENCER_OT_retiming_key_remove(struct wmOperatorType *ot);
 void SEQUENCER_OT_retiming_segment_speed_set(struct wmOperatorType *ot);
 void SEQUENCER_OT_retiming_key_select(struct wmOperatorType *ot);
 void SEQUENCER_OT_retiming_select_box(wmOperatorType *ot);
+void SEQUENCER_OT_retiming_deselect_all(wmOperatorType *ot);
 
 #ifdef __cplusplus
 }

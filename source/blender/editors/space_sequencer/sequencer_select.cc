@@ -273,13 +273,15 @@ Sequence *find_neighboring_sequence(Scene *scene, Sequence *test, int lr, int se
       switch (lr) {
         case SEQ_SIDE_LEFT:
           if (SEQ_time_left_handle_frame_get(scene, test) ==
-              SEQ_time_right_handle_frame_get(scene, seq)) {
+              SEQ_time_right_handle_frame_get(scene, seq))
+          {
             return seq;
           }
           break;
         case SEQ_SIDE_RIGHT:
           if (SEQ_time_right_handle_frame_get(scene, test) ==
-              SEQ_time_left_handle_frame_get(scene, seq)) {
+              SEQ_time_left_handle_frame_get(scene, seq))
+          {
             return seq;
           }
           break;
@@ -977,11 +979,9 @@ static int sequencer_select_exec(bContext *C, wmOperator *op)
   if (seq_key_test != nullptr && retiming_last_key_is_clicked(C, seq_key_test, mval)) {
     retiming_key_clicked = true;
     SEQ_retiming_data_ensure(scene, seq_key_test);
-    key = SEQ_retiming_last_key_get(seq);
+    key = SEQ_retiming_last_key_get(seq_key_test);
   }
 
-  /* `&& !wait_to_deselect_others` will cause key to be selected only if strip is already
-   * selected. */
   if (seq_key_test && retiming_key_clicked) {
     WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
     WM_toolsystem_ref_set_by_id(C, "builtin.retime");
