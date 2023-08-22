@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
+/* SPDX-FileCopyrightText: 2013 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -199,9 +199,6 @@ enum class OperationCode {
 
   /* Duplication/instancing system. --------------------------------------- */
   DUPLI,
-
-  /* Simulation. ---------------------------------------------------------- */
-  SIMULATION_EVAL,
 };
 const char *operationCodeAsString(OperationCode opcode);
 
