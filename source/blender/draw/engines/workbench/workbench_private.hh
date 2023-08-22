@@ -11,6 +11,8 @@
 #include "workbench_enums.hh"
 #include "workbench_shader_shared.h"
 
+#include "GPU_capabilities.h"
+
 extern "C" DrawEngineType draw_engine_workbench_next;
 
 namespace blender::workbench {
@@ -161,8 +163,7 @@ class StencilViewWorkaround {
    * any stencil value that is not 0x00 will be rendered as 0xFF. */
   GPUTexture *extract(Manager &manager, Texture &stencil_src)
   {
-    bool use_workaround = true;
-    if (!use_workaround) {
+    if (GPU_texture_view_support()) {
       return stencil_src.stencil_view();
     }
 
