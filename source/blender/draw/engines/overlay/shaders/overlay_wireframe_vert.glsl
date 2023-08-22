@@ -28,17 +28,10 @@ vec3 wire_selected_color_get(bool is_active)
   return wire_col;
 }
 
-vec3 wire_color_get()
+vec3 base_wire_color_get()
 {
   vec3 wire_col;
-  int flag = int(abs(ObjectInfo.w));
-  bool is_active = (flag & DRW_BASE_ACTIVE) != 0;
-  bool is_selected = (flag & DRW_BASE_SELECTED) != 0;
-
-  if (useColoring && is_selected) {
-    wire_col = wire_selected_color_get(is_active);
-  }
-  else if (colorType == V3D_SHADING_SINGLE_COLOR) {
+  if (colorType == V3D_SHADING_SINGLE_COLOR) {
     wire_col = colorWire.rgb;
   }
   else if (colorType == V3D_SHADING_RANDOM_COLOR) {
@@ -49,6 +42,27 @@ vec3 wire_color_get()
   }
   else /* V3D_SHADING_OBJECT_COLOR */
     wire_col = ObjectColor.rgb;
+  return wire_col;
+}
+
+vec3 wire_color_get(bool is_active, bool is_selected)
+{
+  vec3 wire_col;
+  if (useColoring && is_selected) {
+    wire_col = wire_selected_color_get(is_active);
+  }
+  else 
+    wire_col = base_wire_color_get();
+  return wire_col;
+}
+
+vec4 wire_fresnel_get(vec4 wire_col, float facing, bool is_selected)
+{
+  facing = clamp(abs(facing), 0.0, 1.0);
+  float fresnel_alpha = mix(0.0, fresnelMix, facing);
+  vec3 fresnel_color = wire_col.rgb * fresnel_alpha;
+  wire_col.rgb = mix(wire_col.rgb, fresnel_color, fresnelMix); 
+  wire_col.a = wireOpacity * (1 - fresnel_alpha);
   return wire_col;
 }
 
@@ -102,14 +116,15 @@ void main()
   }
 
   /* Wire Color */
-  finalColor.rgb = wire_color_get();
+  int flag = int(abs(ObjectInfo.w));
+  bool is_active = (flag & DRW_BASE_ACTIVE) != 0;
+  bool is_selected = (flag & DRW_BASE_SELECTED) != 0;
+  
+  finalColor.rgb = wire_color_get(is_active, is_selected);
 
   /* Fresnel */
-  facing = clamp(abs(facing), 0.0, 1.0);
-  float fresnel_alpha = mix(0.0, fresnelMix, facing);
+  finalColor = wire_fresnel_get(finalColor, facing, is_selected);
 
-  finalColor.a = wireOpacity - fresnel_alpha;
-  finalColor.rgb = mix(finalColor.rgb, finalColor.rgb*(fresnel_alpha), fresnelMix);
   finalColor.rgb *= wireOpacity;
 
   view_clipping_distances(wpos);
