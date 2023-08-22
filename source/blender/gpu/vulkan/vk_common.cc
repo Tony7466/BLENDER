@@ -585,7 +585,6 @@ VkFormat to_vk_format(const GPUVertCompType type, const uint32_t size, GPUVertFe
 
 VkFormat to_vk_format(const shader::Type type)
 {
-  /* TODO: complete this function. */
   switch (type) {
     case shader::Type::FLOAT:
       return VK_FORMAT_R32_SFLOAT;
