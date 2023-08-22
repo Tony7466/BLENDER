@@ -114,11 +114,14 @@ struct EraseOperationExecutor {
   }
 
   struct SegmentCircleIntersection {
+    /* Position of the intersection in the segment. */
     float factor{0.0f};
+
+    /* True if the intersection corresponds to an inside/outside transition with respect to the
+     * circle, false if it corresponds to an outside/inside transition . */
     bool inside_outside_intersection{false};
   };
-
-  enum PointCircleSide { Outside, LeftBoundary, RightBoundary, Inside };
+  enum PointCircleSide { Outside, OutsideInsideBoundary, InsideOutsideBoundary, Inside };
 
   /**
    * Computes the intersection between the eraser tool and a 2D segment, using integer values.
@@ -181,10 +184,11 @@ struct EraseOperationExecutor {
 
     /* The endpoints are on the circle's boundary if one of the intersection falls exactly on them.
      */
-    point_side = (mu0 == 0) ? LeftBoundary : ((mu1 == 0) ? RightBoundary : Inside);
+    point_side = (mu0 == 0) ? OutsideInsideBoundary :
+                              ((mu1 == 0) ? InsideOutsideBoundary : Inside);
     point_after_side = (mu0 == segment_length) ?
-                           LeftBoundary :
-                           ((mu1 == segment_length) ? RightBoundary : Inside);
+                           OutsideInsideBoundary :
+                           ((mu1 == segment_length) ? InsideOutsideBoundary : Inside);
 
     /* Compute the normalized position of the intersection in the curve. */
     r_mu0 = mu0 / float(segment_length);
@@ -349,6 +353,7 @@ struct EraseOperationExecutor {
 
     return total_intersections;
   }
+
   /**
    * Structure describing a point in the destination relatively to the source.
    * If a point in the destination \a is_src_point, then it corresponds
@@ -610,7 +615,7 @@ struct EraseOperationExecutor {
         /* Add the source point only if it does not lie inside of the eraser. */
         if (point_side != Inside) {
           dst_points.append(
-              {src_point, src_next_point, 0.0f, true, (point_side == RightBoundary)});
+              {src_point, src_next_point, 0.0f, true, (point_side == InsideOutsideBoundary)});
         }
 
         /* Add all intersections with the eraser. */
