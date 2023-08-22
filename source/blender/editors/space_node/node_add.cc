@@ -578,7 +578,7 @@ static int node_add_collection_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
   SpaceNode &snode = *CTX_wm_space_node(C);
-  bNodeTree &ntree = *snode.edittree;
+  bNodeTree &ntree = *snode->edittree;
 
   Collection *collection = reinterpret_cast<Collection *>(
       WM_operator_properties_id_lookup_from_name_or_session_uuid(bmain, op->ptr, ID_GR));
