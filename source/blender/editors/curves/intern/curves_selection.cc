@@ -10,6 +10,7 @@
 #include "BLI_bounds.hh"
 #include "BLI_bounds_types.hh"
 #include "BLI_lasso_2d.h"
+#include "BLI_math_geom.h"
 #include "BLI_math_vector.hh"
 #include "BLI_rand.hh"
 #include "BLI_rect.h"

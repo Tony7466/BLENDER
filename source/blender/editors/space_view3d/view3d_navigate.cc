@@ -11,7 +11,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_bounds_types.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
@@ -22,7 +21,6 @@
 
 #include "BKE_armature.h"
 #include "BKE_context.h"
-#include "BKE_crazyspace.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_layer.h"
 #include "BKE_object.h"
@@ -33,7 +31,6 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "ED_curves.hh"
 #include "ED_mesh.hh"
 #include "ED_particle.hh"
 #include "ED_screen.hh"
