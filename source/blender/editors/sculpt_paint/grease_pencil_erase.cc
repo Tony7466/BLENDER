@@ -803,15 +803,8 @@ struct EraseOperationExecutor {
                 point_side,
                 point_after_side);
 
-            if (ELEM(point_side, PointCircleSide::Inside, PointCircleSide::InsideOutsideBoundary))
-            {
-              r_point_ring[src_last_point] = {radius_index, point_side};
-            }
-            if (ELEM(point_after_side,
-                     PointCircleSide::Inside,
-                     PointCircleSide::InsideOutsideBoundary)) {
-              r_point_ring[src_first_point] = {radius_index, point_after_side};
-            }
+            /* Note : we don't need to set the point side here, since it was already set by the
+             * former loop. */
 
             if (nb_inter > 0) {
               inter0.inside_outside_intersection = (inter0.factor > inter1.factor);
