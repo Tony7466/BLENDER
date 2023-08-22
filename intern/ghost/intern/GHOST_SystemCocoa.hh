@@ -10,7 +10,7 @@
 #pragma once
 
 #ifndef __APPLE__
-#  error Apple OSX only!
+  #  error Apple OSX only!
 #endif  // __APPLE__
 
 //#define __CARBONSOUND__
@@ -115,6 +115,13 @@ class GHOST_SystemCocoa : public GHOST_System {
    * \return The window under the cursor or nullptr if none.
    */
   GHOST_IWindow *getWindowUnderCursor(int32_t x, int32_t y);
+
+  /**
+   * Get the color of the pixel at the current mouse cursor location
+   * \param r_color: returned sRGB float colors
+   * \return Success value (true == successful and supported by platform)
+   */
+  GHOST_TSuccess getPixelAtCursor(float r_color[3]) const;
 
   /***************************************************************************************
    * Event management functionality

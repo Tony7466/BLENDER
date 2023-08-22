@@ -821,6 +821,42 @@ GHOST_IWindow *GHOST_SystemCocoa::getWindowUnderCursor(int32_t x, int32_t y)
   return m_windowManager->getWindowAssociatedWithOSWindow((void *)nswindow);
 }
 
+GHOST_TSuccess GHOST_SystemCocoa::getPixelAtCursor(float r_color[3]) const 
+{
+    @autoreleasepool {
+        CGPoint cursorPosition = [NSEvent mouseLocation];
+    
+        // Create rect to get color at location
+        CGRect rect = CGRectMake(cursorPosition.x, cursorPosition.y, 1, 1);
+    
+        // Create Image from rect
+        CGImageRef image = CGDisplayCreateImageForRect(kCGDirectMainDisplay, rect);
+    
+        // Create bitmap from image & free it
+        NSBitmapImageRep *bitmap = [[NSBitmapImageRep alloc] initWithCGImage:image];
+        if (bitmap == nil) {
+            return GHOST_kFailure;
+        }
+        CGImageRelease(image);
+    
+        // Get color from bitmap
+        NSColor *color = [bitmap colorAtX:0 y:0];
+    
+        if (color == nil) {
+            return GHOST_kFailure;
+        }
+    
+        CGFloat red, green, blue, alpha;
+        [color getRed:&red green:&green blue:&blue alpha:&alpha];
+    
+        r_color[0] = (float)red;
+        r_color[1] = (float)green;
+        r_color[2] = (float)blue;
+    
+        return GHOST_kSuccess; 
+    }
+}
+
 /**
  * \note returns coordinates in Cocoa screen coordinates.
  */
@@ -921,8 +957,6 @@ GHOST_TCapabilityFlag GHOST_SystemCocoa::getCapabilities() const
       ~(
           /* Cocoa has no support for a primary selection clipboard. */
           GHOST_kCapabilityPrimaryClipboard |
-          /* Cocoa has no support for sampling colors from the desktop. */
-          GHOST_kCapabilityDesktopSample |
           /* This Cocoa back-end has not yet implemented image copy/paste. */
           GHOST_kCapabilityClipboardImages));
 }
