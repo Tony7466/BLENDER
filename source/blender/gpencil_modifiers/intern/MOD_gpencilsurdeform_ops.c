@@ -1251,7 +1251,7 @@ static bool add_frame(SurDeformGpencilModifierData *smd_orig,
     return true;
 }
 
-/*Free a single layer*/
+/*Free a single layer *** UNUSED *** */
 static bool free_layer(SurDeformGpencilModifierData *smd_orig,
                        SurDeformGpencilModifierData *smd_eval,
                        char *layer_info)
@@ -1338,15 +1338,17 @@ static bool free_frame(SurDeformGpencilModifierData *smd_orig,
       g++;
     }
     MEM_SAFE_FREE(sdef_layer->frames);
-  }
-
-  sdef_layer->frames = first_frame;
-  /*Set the first frame again if the first was the one being removed*/
-  if (sdef_layer->frames->first != first_frame) {
-    for (int f = 0; f < sdef_layer->num_of_frames; f++) {
-      sdef_layer->frames[f].first = first_frame;
+    sdef_layer->frames = first_frame;
+    /*Set the first frame again if the first was the one being removed*/
+    if (sdef_layer->frames->first != first_frame) {
+      for (int f = 0; f < sdef_layer->num_of_frames; f++) {
+        sdef_layer->frames[f].first = first_frame;
+      }
     }
   }
+  else MEM_SAFE_FREE(sdef_layer->frames);
+
+  
 
   return true;
 }
@@ -1562,12 +1564,14 @@ static bool surfacedeformBind(bContext *C,
   Object *ob_target_orig = smd_orig->target;
   Object *ob_target_eval;
   Mesh *mesh_target;
-  Depsgraph *dg;
-  
+  Depsgraph *dg =CTX_data_depsgraph_pointer(C);
 
   /*If unbind mode: unbind and exit */
   if (smd_orig->bind_modes & GP_MOD_SDEF_UNBIND_MODE) 
   {
+    if (!smd_orig->layers) {
+      BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "No layer data to unbind");
+    }
     rollback_layers_a(smd_orig);
     
     /*free one frame or all the frames?*/
@@ -1586,6 +1590,10 @@ static bool surfacedeformBind(bContext *C,
             free_frame(smd_orig, smd_eval, &(smd_orig->layers[l]), framenum);
             break;
           }
+          /*If last frame of layer was removed, free the layer data (todo) 
+          if (!smd_orig->layers[l].frames[f]) {
+
+          }*/
         }
         
       }
