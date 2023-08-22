@@ -1246,10 +1246,9 @@ struct EraseOperationExecutor {
 
           const float opacity = math::max(0.0f, math::min(initial_opacity, falloff.opacity));
 
-          if (is_cut && !src_to_dst_points[src_point].is_empty() &&
-              src_to_dst_points[src_point].last().is_cut)
-          {
-            src_to_dst_points[src_point].last().is_cut = false;
+          /* Avoid the accumulation of multiple cuts. */
+          if (is_cut && !dst_points.is_empty() && dst_points.last().is_cut) {
+            dst_points.remove_last();
           }
 
           src_to_dst_points[src_point].append(
