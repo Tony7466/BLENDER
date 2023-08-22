@@ -99,7 +99,6 @@ void VKDevice::init_dummy_buffer(VKContext &context)
     return;
   }
 
-  /* TODO: initialize dummy buffer after creation of the context. So we can clear it. */
   dummy_buffer_.create(sizeof(float4x4), GPU_USAGE_DEVICE_ONLY, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
   dummy_buffer_.clear(context, 0);
 }

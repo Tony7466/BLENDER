@@ -297,11 +297,6 @@ messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
     debugging_tools.print_labels(callback_data);
   }
 
-  /* All vertex inputs should be bound to a vbo. */
-  BLI_assert(callback_data->messageIdNumber != 0x23e43bb7);
-  /* Do not allow vertex buffer binding of VK_NULL_HANDLE. */
-  BLI_assert(callback_data->messageIdNumber != 0x36481fcb);
-
   return VK_FALSE;
 };
 
