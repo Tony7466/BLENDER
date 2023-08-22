@@ -606,12 +606,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
     FOREACH_NODETREE_END;
 
-    /* Convert old socket lists into new interface items. */
-    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-      versioning_convert_node_tree_socket_lists_to_interface(ntree);
-    }
-    FOREACH_NODETREE_END;
-
     LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
       LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
         LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
@@ -746,5 +740,11 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         scene->eevee.gi_irradiance_pool_size = 16;
       }
     }
+
+    /* Convert old socket lists into new interface items. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      versioning_convert_node_tree_socket_lists_to_interface(ntree);
+    }
+    FOREACH_NODETREE_END;
   }
 }
