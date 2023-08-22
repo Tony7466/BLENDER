@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -32,7 +32,7 @@ void GPENCIL_render_init(GPENCIL_Data *vedata,
 
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   const float *viewport_size = DRW_viewport_size_get();
-  const int size[2] = {(int)viewport_size[0], (int)viewport_size[1]};
+  const int size[2] = {int(viewport_size[0]), int(viewport_size[1])};
 
   /* Set the perspective & view matrix. */
   float winmat[4][4], viewmat[4][4], viewinv[4][4];

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -45,8 +45,8 @@
 #include "BLI_array_utils.hh"
 #include "BLI_bitmap.h"
 #include "BLI_heap_simple.h"
-#include "BLI_math.h"
 #include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
 #include "BLI_stack.h"
 #include "BLI_vector.hh"
 
@@ -63,17 +63,17 @@
 #include "BKE_deform.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
+#include "BKE_mesh_mapping.hh"
 #include "BKE_modifier.h"
 #include "BKE_screen.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_types.h" /* For skin mark clear operator UI. */
+#include "WM_types.hh" /* For skin mark clear operator UI. */
 
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
@@ -2017,7 +2017,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *row;
   uiLayout *layout = panel->layout;
-  int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
+  const eUI_Item_Flag toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
 
   PointerRNA ob_ptr;
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
@@ -2026,14 +2026,14 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "branch_smoothing", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "branch_smoothing", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   row = uiLayoutRowWithHeading(layout, true, IFACE_("Symmetry"));
   uiItemR(row, ptr, "use_x_symmetry", toggles_flag, nullptr, ICON_NONE);
   uiItemR(row, ptr, "use_y_symmetry", toggles_flag, nullptr, ICON_NONE);
   uiItemR(row, ptr, "use_z_symmetry", toggles_flag, nullptr, ICON_NONE);
 
-  uiItemR(layout, ptr, "use_smooth_shade", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_smooth_shade", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   row = uiLayoutRow(layout, false);
   uiItemO(row, IFACE_("Create Armature"), ICON_NONE, "OBJECT_OT_skin_armature_create");
@@ -2046,7 +2046,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
               ICON_NONE,
               nullptr,
               WM_OP_EXEC_DEFAULT,
-              0,
+              UI_ITEM_NONE,
               &op_ptr);
   RNA_enum_set(&op_ptr, "action", 0); /* SKIN_LOOSE_MARK */
   uiItemFullO(row,
@@ -2055,7 +2055,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
               ICON_NONE,
               nullptr,
               WM_OP_EXEC_DEFAULT,
-              0,
+              UI_ITEM_NONE,
               &op_ptr);
   RNA_enum_set(&op_ptr, "action", 1); /* SKIN_LOOSE_CLEAR */
 

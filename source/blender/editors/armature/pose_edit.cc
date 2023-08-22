@@ -10,7 +10,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 
 #include "BLT_translation.h"
 
@@ -35,22 +35,24 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_anim_api.h"
-#include "ED_armature.h"
-#include "ED_keyframing.h"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_anim_api.hh"
+#include "ED_armature.hh"
+#include "ED_keyframing.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
-#include "UI_interface.h"
+#include "ANIM_bone_collections.h"
+
+#include "UI_interface.hh"
 
 #include "armature_intern.h"
 
@@ -382,7 +384,6 @@ void POSE_OT_paths_update(wmOperatorType *ot)
 /* for the object with pose/action: clear path curves for selected bones only */
 static void ED_pose_clear_paths(Object *ob, bool only_selected)
 {
-  bPoseChannel *pchan;
   bool skipped = false;
 
   if (ELEM(nullptr, ob, ob->pose)) {
@@ -390,7 +391,7 @@ static void ED_pose_clear_paths(Object *ob, bool only_selected)
   }
 
   /* free the motionpath blocks for all bones - This is easier for users to quickly clear all */
-  for (pchan = static_cast<bPoseChannel *>(ob->pose->chanbase.first); pchan; pchan = pchan->next) {
+  LISTBASE_FOREACH (bPoseChannel *, pchan, &ob->pose->chanbase) {
     if (pchan->mpath) {
       if ((only_selected == false) || ((pchan->bone) && (pchan->bone->flag & BONE_SELECTED))) {
         animviz_free_motionpath(pchan->mpath);
@@ -431,15 +432,15 @@ static int pose_clear_paths_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static char *pose_clear_paths_description(bContext * /*C*/,
-                                          wmOperatorType * /*ot*/,
-                                          PointerRNA *ptr)
+static std::string pose_clear_paths_description(bContext * /*C*/,
+                                                wmOperatorType * /*ot*/,
+                                                PointerRNA *ptr)
 {
   const bool only_selected = RNA_boolean_get(ptr, "only_selected");
   if (only_selected) {
-    return BLI_strdup(TIP_("Clear motion paths of selected bones"));
+    return TIP_("Clear motion paths of selected bones");
   }
-  return BLI_strdup(TIP_("Clear motion paths of all bones"));
+  return TIP_("Clear motion paths of all bones");
 }
 
 void POSE_OT_paths_clear(wmOperatorType *ot)
@@ -995,7 +996,7 @@ static int hide_pose_bone_fn(Object *ob, Bone *bone, void *ptr)
   bArmature *arm = static_cast<bArmature *>(ob->data);
   const bool hide_select = bool(POINTER_AS_INT(ptr));
   int count = 0;
-  if (arm->layer & bone->layer) {
+  if (ANIM_bonecoll_is_visible(arm, bone)) {
     if (((bone->flag & BONE_SELECTED) != 0) == hide_select) {
       bone->flag |= BONE_HIDDEN_P;
       /* only needed when 'hide_select' is true, but harmless. */
@@ -1065,7 +1066,7 @@ static int show_pose_bone_cb(Object *ob, Bone *bone, void *data)
 
   bArmature *arm = static_cast<bArmature *>(ob->data);
   int count = 0;
-  if (arm->layer & bone->layer) {
+  if (ANIM_bonecoll_is_visible(arm, bone)) {
     if (bone->flag & BONE_HIDDEN_P) {
       if (!(bone->flag & BONE_UNSELECTABLE)) {
         SET_FLAG_FROM_TEST(bone->flag, select, BONE_SELECTED);

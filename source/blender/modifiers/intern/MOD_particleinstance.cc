@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,9 @@
 #include "BLI_utildefines.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_rand.h"
 #include "BLI_string.h"
 
@@ -32,10 +34,10 @@
 #include "BKE_pointcache.h"
 #include "BKE_screen.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "DEG_depsgraph_build.h"
@@ -66,7 +68,6 @@ static bool is_disabled(const Scene *scene, ModifierData *md, bool use_render_pa
 {
   ParticleInstanceModifierData *pimd = (ParticleInstanceModifierData *)md;
   ParticleSystem *psys;
-  ModifierData *ob_md;
 
   /* The object type check is only needed here in case we have a placeholder
    * object assigned (because the library containing the mesh is missing).
@@ -85,8 +86,7 @@ static bool is_disabled(const Scene *scene, ModifierData *md, bool use_render_pa
   /* If the psys modifier is disabled we cannot use its data.
    * First look up the psys modifier from the object, then check if it is enabled.
    */
-  for (ob_md = static_cast<ModifierData *>(pimd->ob->modifiers.first); ob_md; ob_md = ob_md->next)
-  {
+  LISTBASE_FOREACH (ModifierData *, ob_md, &pimd->ob->modifiers) {
     if (ob_md->type == eModifierType_ParticleSystem) {
       ParticleSystemModifierData *psmd = (ParticleSystemModifierData *)ob_md;
       if (psmd->psys == psys) {
@@ -527,7 +527,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *row;
   uiLayout *layout = panel->layout;
-  int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
+  const eUI_Item_Flag toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
 
   PointerRNA ob_ptr;
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
@@ -536,7 +536,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "object", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "object", UI_ITEM_NONE, nullptr, ICON_NONE);
   if (!RNA_pointer_is_null(&particle_obj_ptr)) {
     uiItemPointerR(layout,
                    ptr,
@@ -547,7 +547,8 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
                    ICON_NONE);
   }
   else {
-    uiItemR(layout, ptr, "particle_system_index", 0, IFACE_("Particle System"), ICON_NONE);
+    uiItemR(
+        layout, ptr, "particle_system_index", UI_ITEM_NONE, IFACE_("Particle System"), ICON_NONE);
   }
 
   uiItemS(layout);
@@ -562,12 +563,12 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   uiItemR(row, ptr, "show_dead", toggles_flag, nullptr, ICON_NONE);
   uiItemR(row, ptr, "show_unborn", toggles_flag, nullptr, ICON_NONE);
 
-  uiItemR(layout, ptr, "particle_amount", 0, IFACE_("Amount"), ICON_NONE);
-  uiItemR(layout, ptr, "particle_offset", 0, IFACE_("Offset"), ICON_NONE);
+  uiItemR(layout, ptr, "particle_amount", UI_ITEM_NONE, IFACE_("Amount"), ICON_NONE);
+  uiItemR(layout, ptr, "particle_offset", UI_ITEM_NONE, IFACE_("Offset"), ICON_NONE);
 
   uiItemS(layout);
 
-  uiItemR(layout, ptr, "space", 0, IFACE_("Coordinate Space"), ICON_NONE);
+  uiItemR(layout, ptr, "space", UI_ITEM_NONE, IFACE_("Coordinate Space"), ICON_NONE);
   row = uiLayoutRow(layout, true);
   uiItemR(row, ptr, "axis", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
 
@@ -580,7 +581,7 @@ static void path_panel_draw_header(const bContext * /*C*/, Panel *panel)
 
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
 
-  uiItemR(layout, ptr, "use_path", 0, IFACE_("Create Along Paths"), ICON_NONE);
+  uiItemR(layout, ptr, "use_path", UI_ITEM_NONE, IFACE_("Create Along Paths"), ICON_NONE);
 }
 
 static void path_panel_draw(const bContext * /*C*/, Panel *panel)
@@ -602,7 +603,7 @@ static void path_panel_draw(const bContext * /*C*/, Panel *panel)
   uiItemR(col, ptr, "rotation", UI_ITEM_R_SLIDER, nullptr, ICON_NONE);
   uiItemR(col, ptr, "random_rotation", UI_ITEM_R_SLIDER, IFACE_("Random"), ICON_NONE);
 
-  uiItemR(layout, ptr, "use_preserve_shape", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_preserve_shape", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void layers_panel_draw(const bContext * /*C*/, Panel *panel)

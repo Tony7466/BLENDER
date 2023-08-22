@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,7 +17,7 @@ extern "C" {
 #define DIAL_RESOLUTION 48
 
 /**
- * Data for common interactions. Used in gizmo_library_utils.c functions.
+ * Data for common interactions. Used in `gizmo_library_utils.cc` functions.
  */
 typedef struct GizmoCommonData {
   float range_fac; /* factor for arrow min/max distance */

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,7 +9,7 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "BLI_sys_types.h"
 
@@ -20,7 +20,7 @@
 #include "rna_internal.h" /* own include */
 
 #ifdef RNA_RUNTIME
-static void rna_Curve_transform(Curve *cu, float mat[16], bool shape_keys)
+static void rna_Curve_transform(Curve *cu, const float mat[16], bool shape_keys)
 {
   BKE_curve_transform(cu, (const float(*)[4])mat, shape_keys, true);
 
@@ -37,7 +37,7 @@ static float rna_Nurb_calc_length(Nurb *nu, int resolution_u)
   return BKE_nurb_calc_length(nu, resolution_u);
 }
 
-static void rna_Nurb_valid_message(Nurb *nu, int direction, int *result_len, const char **r_result)
+static void rna_Nurb_valid_message(Nurb *nu, int direction, const char **r_result, int *result_len)
 {
   const bool is_surf = nu->pntsv > 1;
   const short type = nu->type;

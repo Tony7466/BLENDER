@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,10 +15,10 @@
 #include "BLI_alloca.h"
 
 #include "BKE_editmesh.h"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_particle.h"
 
 #include "DNA_curves_types.h"
@@ -29,7 +29,7 @@
 #include "DNA_node_types.h"
 #include "DNA_pointcloud_types.h"
 
-#include "ED_paint.h"
+#include "ED_paint.hh"
 
 #include "GPU_context.h"
 
@@ -653,7 +653,7 @@ void workbench_draw_finish(void * /*ved*/)
   DRW_view_set_active(nullptr);
 }
 
-static void workbench_engine_free(void)
+static void workbench_engine_free()
 {
   workbench_shader_free();
 }
@@ -685,7 +685,7 @@ DrawEngineType draw_engine_workbench = {
     /*vedata_size*/ &workbench_data_size,
     /*engine_init*/ &workbench_engine_init,
     /*engine_free*/ &workbench_engine_free,
-    /*instance_free*/ /*instance_free*/ nullptr,
+    /*instance_free*/ nullptr,
     /*cache_init*/ &workbench_cache_init,
     /*cache_populate*/ &workbench_cache_populate,
     /*cache_finish*/ &workbench_cache_finish,

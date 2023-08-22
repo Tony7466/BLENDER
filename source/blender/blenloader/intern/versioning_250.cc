@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -46,7 +46,9 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_anim_data.h"
@@ -56,9 +58,9 @@
 #include "BKE_global.h" /* for G */
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.h"
-#include "BKE_multires.h"
+#include "BKE_multires.hh"
 #include "BKE_node.h"
 #include "BKE_node_tree_update.h"
 #include "BKE_particle.h"
@@ -77,7 +79,7 @@
 
 #include <cerrno>
 
-/* Make preferences read-only, use versioning_userdef.c. */
+/* Make preferences read-only, use `versioning_userdef.cc`. */
 #define U (*((const UserDef *)&U))
 
 /* 2.50 patch */
@@ -107,7 +109,7 @@ static void area_add_header_region(ScrArea *area, ListBase *lb)
 void sequencer_init_preview_region(ARegion *region)
 {
   /* XXX a bit ugly still, copied from space_sequencer */
-  /* NOTE: if you change values here, also change them in space_sequencer.c, sequencer_new */
+  /* NOTE: if you change values here, also change them in `space_sequencer.cc`, sequencer_new */
   region->regiontype = RGN_TYPE_PREVIEW;
   region->alignment = RGN_ALIGN_TOP;
   region->flag &= ~RGN_FLAG_HIDDEN;
@@ -288,7 +290,7 @@ static void area_add_window_regions(ScrArea *area, SpaceLink *sl, ListBase *lb)
         SpaceGraph *sipo = (SpaceGraph *)sl;
         memcpy(&region->v2d, &sipo->v2d, sizeof(View2D));
 
-        /* init mainarea view2d */
+        /* Initialize main-area view2d. */
         region->v2d.scroll |= (V2D_SCROLL_BOTTOM | V2D_SCROLL_HORIZONTAL_HANDLES);
         region->v2d.scroll |= (V2D_SCROLL_LEFT | V2D_SCROLL_VERTICAL_HANDLES);
 
@@ -548,7 +550,7 @@ static void do_version_bone_roll_256(Bone *bone)
   }
 }
 
-/* deprecated, only keep this for readfile.c */
+/* deprecated, only keep this for `readfile.cc` */
 /* XXX Deprecated function to add a socket in ntree->inputs/ntree->outputs list
  * (previously called node_group_add_socket). This function has been superseded
  * by the implementation of proxy nodes. It is still necessary though
@@ -627,16 +629,8 @@ static void do_versions_socket_default_value_259(bNodeSocket *sock)
   }
 }
 
-static bool seq_sound_proxy_update_cb(Sequence *seq, void *user_data)
+static bool seq_sound_proxy_update_cb(Sequence *seq, void * /*user_data*/)
 {
-  Main *bmain = (Main *)user_data;
-  if (seq->type == SEQ_TYPE_SOUND_HD) {
-    char filepath_abs[FILE_MAX];
-    BLI_path_join(
-        filepath_abs, sizeof(filepath_abs), seq->strip->dirpath, seq->strip->stripdata->filename);
-    BLI_path_abs(filepath_abs, BKE_main_blendfile_path(bmain));
-    seq->sound = BKE_sound_new_file(bmain, filepath_abs);
-  }
 #define SEQ_USE_PROXY_CUSTOM_DIR (1 << 19)
 #define SEQ_USE_PROXY_CUSTOM_FILE (1 << 21)
   /* don't know, if anybody used that this way, but just in case, upgrade to new way... */
@@ -686,7 +680,7 @@ void blo_do_versions_250(FileData *fd, Library * /*lib*/, Main *bmain)
     }
 
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-      if (scene->ed && scene->ed->seqbasep) {
+      if (scene->ed) {
         SEQ_for_each_callback(&scene->ed->seqbase, seq_sound_proxy_update_cb, bmain);
       }
     }
@@ -1148,7 +1142,7 @@ void blo_do_versions_250(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 250, 10)) {
-    /* properly initialize hair clothsim data on old files */
+    /* Properly initialize hair cloth-simulation data on old files. */
     LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
       LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
         if (md->type == eModifierType_Cloth) {

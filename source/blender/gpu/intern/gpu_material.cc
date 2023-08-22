@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,8 +8,8 @@
  * Manages materials, lights and textures.
  */
 
-#include <math.h>
-#include <string.h>
+#include <cmath>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -18,7 +18,7 @@
 #include "DNA_world_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -165,7 +165,7 @@ GPUTexture **gpu_material_sky_texture_layer_set(
   }
 
   int layer = mat->sky_builder->current_layer;
-  *row = (float)layer;
+  *row = float(layer);
 
   if (*row == MAX_GPU_SKIES) {
     printf("Too many sky textures in shader!\n");
@@ -196,7 +196,7 @@ GPUTexture **gpu_material_ramp_texture_row_set(GPUMaterial *mat,
   }
 
   int layer = mat->coba_builder->current_layer;
-  *row = (float)layer;
+  *row = float(layer);
 
   if (*row == MAX_COLOR_BAND) {
     printf("Too many color band in shader! Remove some Curve, Black Body or Color Ramp Node.\n");
@@ -385,9 +385,9 @@ BLI_STATIC_ASSERT_ALIGN(GPUSssKernelData, 16)
 
 static void sss_calculate_offsets(GPUSssKernelData *kd, int count, float exponent)
 {
-  float step = 2.0f / (float)(count - 1);
+  float step = 2.0f / float(count - 1);
   for (int i = 0; i < count; i++) {
-    float o = ((float)i) * step - 1.0f;
+    float o = float(i) * step - 1.0f;
     float sign = (o < 0.0f) ? -1.0f : 1.0f;
     float ofs = sign * fabsf(powf(o, exponent));
     kd->kernel[i][3] = ofs;
@@ -418,7 +418,7 @@ static float eval_integral(float x0, float x1, float param)
   float integral = 0.0f;
 
   for (int i = 0; i < INTEGRAL_RESOLUTION; i++) {
-    float x = x0 + range * ((float)i + 0.5f) / (float)INTEGRAL_RESOLUTION;
+    float x = x0 + range * (float(i) + 0.5f) / float(INTEGRAL_RESOLUTION);
     float y = eval_profile(x, param);
     integral += y * step;
   }
@@ -524,7 +524,7 @@ static void compute_sss_translucence_kernel(const GPUSssKernelData *kd,
   /* Last texel should be black, hence the - 1. */
   for (int i = 0; i < resolution - 1; i++) {
     /* Distance from surface. */
-    float d = kd->max_radius * ((float)i + 0.00001f) / ((float)resolution);
+    float d = kd->max_radius * (float(i) + 0.00001f) / float(resolution);
 
     /* For each distance d we compute the radiance incoming from an hypothetical parallel plane. */
     /* Compute radius of the footprint on the hypothetical plane. */
@@ -633,7 +633,7 @@ GPUUniformBuf *GPU_material_sss_profile_get(GPUMaterial *material,
   return material->sss_profile;
 }
 
-GPUUniformBuf *GPU_material_create_sss_profile_ubo(void)
+GPUUniformBuf *GPU_material_create_sss_profile_ubo()
 {
   return GPU_uniformbuf_create(sizeof(GPUSssKernelData));
 }
@@ -948,9 +948,9 @@ void GPU_material_compile(GPUMaterial *mat)
     GPUShader *sh = GPU_pass_shader_get(mat->pass);
     if (sh != nullptr) {
 
-      /** Perform async Render Pipeline State Object (PSO) compilation.
+      /** Perform asynchronous Render Pipeline State Object (PSO) compilation.
        *
-       * Warm PSO cache within async compilation thread using default material as source.
+       * Warm PSO cache within asynchronous compilation thread using default material as source.
        * GPU_shader_warm_cache(..) performs the API-specific PSO compilation using the assigned
        * parent shader's cached PSO descriptors as an input.
        *
@@ -1040,9 +1040,9 @@ void GPU_material_optimize(GPUMaterial *mat)
   if (success) {
     GPUShader *sh = GPU_pass_shader_get(mat->optimized_pass);
     if (sh != nullptr) {
-      /** Perform async Render Pipeline State Object (PSO) compilation.
+      /** Perform asynchronous Render Pipeline State Object (PSO) compilation.
        *
-       * Warm PSO cache within async compilation thread for optimized materials.
+       * Warm PSO cache within asynchronous compilation thread for optimized materials.
        * This setup assigns the original unoptimized shader as a "parent" shader
        * for the optimized version. This then allows the associated GPU backend to
        * compile PSOs within this asynchronous pass, using the identical PSO descriptors of the

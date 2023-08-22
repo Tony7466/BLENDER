@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -27,7 +27,7 @@
 #include "DNA_rigidbody_types.h"
 #include "DNA_screen_types.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -62,8 +62,8 @@ int EEVEE_motion_blur_init(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *vedata)
 
     const float *fs_size = DRW_viewport_size_get();
     const int tx_size[2] = {
-        1 + ((int)fs_size[0] / EEVEE_VELOCITY_TILE_SIZE),
-        1 + ((int)fs_size[1] / EEVEE_VELOCITY_TILE_SIZE),
+        1 + (int(fs_size[0]) / EEVEE_VELOCITY_TILE_SIZE),
+        1 + (int(fs_size[1]) / EEVEE_VELOCITY_TILE_SIZE),
     };
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
     effects->velocity_tiles_x_tx = DRW_texture_pool_query_2d_ex(
