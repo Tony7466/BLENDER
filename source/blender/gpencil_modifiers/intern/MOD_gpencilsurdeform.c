@@ -814,7 +814,7 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
   SurDeformGpencilModifierData *smd = (SurDeformGpencilModifierData *)md;
   
 
- // bool unbind_mode = RNA_boolean_get(ptr, "unbind_mode"); 
+ // bool unbind_mode = RNA_boolean_get(ptr, "unbind_mode");
   bool bind_all_frames = (RNA_enum_get(ptr, "curr_frame_or_all_frames") == GP_MOD_SDEF_BIND_ALL_FRAMES);
  
   bool all_layers_and_frames_bound = RNA_boolean_get(ptr, "all_layers_and_frames_bound");
@@ -825,8 +825,9 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   col = uiLayoutColumn(layout, false);
-  //uiLayoutSetActive(col, !is_bound);
+  uiLayoutSetActive(col, !smd->layers);
   uiItemR(col, ptr, "target", 0, NULL, ICON_NONE); // TODO: disable layout if bound
+  col = uiLayoutColumn(layout, false);
   uiItemR(col, ptr, "falloff", 0, NULL, ICON_NONE);
 
   bool display_unbind = false;
