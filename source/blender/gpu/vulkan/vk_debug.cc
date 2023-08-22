@@ -296,6 +296,7 @@ messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
   if (do_labels) {
     debugging_tools.print_labels(callback_data);
   }
+
   return VK_FALSE;
 };
 
