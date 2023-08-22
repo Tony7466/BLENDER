@@ -306,6 +306,9 @@ struct SculptThreadedTaskData {
 
   bool any_vertex_sampled;
 
+  bool any_normal_sampled;
+  bool any_area_sampled;
+
   float *wet_mix_sampled_color;
 
   float *prev_mask;
@@ -319,6 +322,8 @@ struct SculptThreadedTaskData {
 
   float max_distance_squared;
   float nearest_vertex_search_co[3];
+
+  bool trim_flip;
 
   /* Stabilized strength for the Clay Thumb brush. */
   float clay_strength;
@@ -661,6 +666,15 @@ struct StrokeCache {
 
   /* Layer brush */
   float *layer_displacement_factor;
+
+  /* Plane Trim Brush */
+  float prev_area_co[3];
+  float prev_area_no[3];
+  float prev_plane[4];
+  float trim_normal_samples[100][3];
+  float trim_area_samples[100][3];
+  int trim_normal_samples_index;
+  int trim_area_samples_index;
 
   float vertex_rotation; /* amount to rotate the vertices when using rotate brush */
   Dial *dial;
@@ -1845,6 +1859,7 @@ void SCULPT_do_draw_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes);
 
 void SCULPT_do_fill_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes);
 void SCULPT_do_scrape_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes);
+void SCULPT_do_plane_trim_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes);
 void SCULPT_do_clay_thumb_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes);
 void SCULPT_do_flatten_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes);
 void SCULPT_do_clay_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes);

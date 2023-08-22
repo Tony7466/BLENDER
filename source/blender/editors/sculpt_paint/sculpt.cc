@@ -3566,6 +3566,7 @@ static void do_brush_action(Sculpt *sd,
     if (brush->sculpt_tool == SCULPT_TOOL_DRAW && brush->flag & BRUSH_ORIGINAL_NORMAL) {
       radius_scale = 2.0f;
     }
+    radius_scale = 2.0f;
     nodes = sculpt_pbvh_gather_generic(ob, sd, brush, use_original, radius_scale);
   }
 
@@ -3713,7 +3714,8 @@ static void do_brush_action(Sculpt *sd,
       break;
     case SCULPT_TOOL_FILL:
       if (invert && brush->flag & BRUSH_INVERT_TO_SCRAPE_FILL) {
-        SCULPT_do_scrape_brush(sd, ob, nodes);
+        // SCULPT_do_scrape_brush(sd, ob, nodes);
+        SCULPT_do_plane_trim_brush(sd, ob, nodes);
       }
       else {
         SCULPT_do_fill_brush(sd, ob, nodes);
@@ -3721,10 +3723,14 @@ static void do_brush_action(Sculpt *sd,
       break;
     case SCULPT_TOOL_SCRAPE:
       if (invert && brush->flag & BRUSH_INVERT_TO_SCRAPE_FILL) {
-        SCULPT_do_fill_brush(sd, ob, nodes);
+        // SCULPT_do_fill_brush(sd, ob, nodes);
+        SCULPT_do_plane_trim_brush(sd, ob, nodes);
       }
       else {
-        SCULPT_do_scrape_brush(sd, ob, nodes);
+        // SCULPT_do_scrape_brush(sd, ob, nodes);
+        // for (int i = 0; i < 3; i++) {
+        SCULPT_do_plane_trim_brush(sd, ob, nodes);
+        //}
       }
       break;
     case SCULPT_TOOL_MASK:
@@ -4955,7 +4961,7 @@ static bool sculpt_needs_connectivity_info(const Sculpt *sd,
   return ((stroke_mode == BRUSH_STROKE_SMOOTH) || (ss && ss->cache && ss->cache->alt_smooth) ||
           (brush->sculpt_tool == SCULPT_TOOL_SMOOTH) || (brush->autosmooth_factor > 0) ||
           ((brush->sculpt_tool == SCULPT_TOOL_MASK) && (brush->mask_tool == BRUSH_MASK_SMOOTH)) ||
-          (brush->sculpt_tool == SCULPT_TOOL_POSE) ||
+          (brush->sculpt_tool == SCULPT_TOOL_POSE) || (brush->sculpt_tool == SCULPT_TOOL_SCRAPE) ||
           (brush->sculpt_tool == SCULPT_TOOL_BOUNDARY) ||
           (brush->sculpt_tool == SCULPT_TOOL_SLIDE_RELAX) ||
           SCULPT_tool_is_paint(brush->sculpt_tool) || (brush->sculpt_tool == SCULPT_TOOL_CLOTH) ||

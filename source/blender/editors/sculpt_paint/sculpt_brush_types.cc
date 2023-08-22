@@ -561,6 +561,337 @@ void SCULPT_do_scrape_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Sculpt Trim Brush
+ * \{ */
+
+typedef struct PlaneTrimSampleSurfaceTLSData {
+  float normal_accum[3];
+  float area_accum[3];
+  int area_count;
+  int area_count_top;
+  int area_count_botton;
+} PlaneTrimSampleSurfaceTLSData;
+
+static void plane_trim_sample_surface_task_cb(void *__restrict userdata,
+                                              const int n,
+                                              const TaskParallelTLS *__restrict tls)
+{
+  SculptThreadedTaskData *data = static_cast<SculptThreadedTaskData *>(userdata);
+  SculptSession *ss = data->ob->sculpt;
+  PlaneTrimSampleSurfaceTLSData *psd = static_cast<PlaneTrimSampleSurfaceTLSData *>(
+      tls->userdata_chunk);
+
+  const float normal_radius = ss->cache->radius * data->brush->normal_radius_factor;
+  const float normal_radius_squared = normal_radius * normal_radius;
+
+  float area_radius = ss->cache->radius * data->brush->area_radius_factor;
+  if (data->brush->flag2 & BRUSH_AREA_RADIUS_PRESSURE) {
+    area_radius *= ss->cache->pressure;
+  }
+
+  const float area_radius_squared = area_radius * area_radius;
+  const float radius_squared = ss->cache->radius * ss->cache->radius;
+
+  float area_sample_plane[4];
+  plane_from_point_normal_v3(area_sample_plane, ss->cache->location, ss->cache->prev_area_no);
+
+  PBVHVertexIter vd;
+  BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
+    float co[3];
+    copy_v3_v3(co, SCULPT_vertex_co_get(ss, vd.vertex));
+    float no[3];
+    SCULPT_vertex_normal_get(ss, vd.vertex, no);
+
+    const float dist_squared = len_squared_v3v3(ss->cache->location, co);
+
+    if (dist_squared < normal_radius_squared) {
+      if (dot_v3v3(ss->cache->view_normal, no) > 0.0f) {
+        const float p = 1.0f - (sqrtf(dist_squared) / normal_radius);
+        float nfactor = clamp_f(3.0f * p * p - 2.0f * p * p * p, 0.0f, 1.0f);
+
+        /*
+        nfactor = 1.0f;
+        nfactor *= 1.0f - clamp_f(dot_v3v3(ss->cache->prev_area_no, no), 0.0f, 1.0f);
+        */
+
+        if (ss->cache->invert) {
+          // nfactor *= 1.0f - clamp_f(dot_v3v3(ss->cache->prev_area_no, no), 0.0f, 1.0f);
+          // nfactor *= clamp_f(dot_v3v3(ss->cache->prev_area_no, no), 0.0f, 1.0f);
+        }
+        else {
+          // nfactor *= clamp_f(dot_v3v3(ss->cache->prev_area_no, no), 0.0f, 1.0f);
+        }
+
+        nfactor *= clamp_f(dot_v3v3(ss->cache->prev_area_no, no), 0.0f, 1.0f);
+        mul_v3_fl(no, nfactor);
+
+        add_v3_v3(psd->normal_accum, no);
+        data->any_normal_sampled = true;
+      }
+    }
+    if (dist_squared < radius_squared) {
+      if (true || dot_v3v3(ss->cache->view_normal, no) > 0.0f) {
+        const bool side = plane_point_side_flip(co, area_sample_plane, !ss->cache->invert);
+        if (ss->cache->first_time || side || dist_squared < area_radius_squared) {
+
+          /*
+        const float p = 1.0f - (sqrtf(dist_squared) / area_radius);
+        float afactor = 1.0f - clamp_f(3.0f * p * p - 2.0f * p * p * p, 0.0f, 1.0f);
+        */
+          float afactor = 1.0f;
+          afactor *= clamp_f(dot_v3v3(ss->cache->prev_area_no, no), 0.3f, 1.0f);
+          float disp[3];
+          sub_v3_v3v3(disp, co, ss->cache->location);
+          mul_v3_fl(disp, afactor);
+          add_v3_v3v3(co, ss->cache->location, disp);
+
+          add_v3_v3(psd->area_accum, co);
+          psd->area_count++;
+          data->any_area_sampled = true;
+        }
+
+        if (side) {
+          psd->area_count_botton++;
+        }
+        else {
+          psd->area_count_top++;
+        }
+      }
+    }
+  }
+  BKE_pbvh_vertex_iter_end;
+}
+
+static void plane_trim_sample_surface_reduce(const void *__restrict /*userdata*/,
+                                             void *__restrict chunk_join,
+                                             void *__restrict chunk)
+{
+  PlaneTrimSampleSurfaceTLSData *join = static_cast<PlaneTrimSampleSurfaceTLSData *>(chunk_join);
+  PlaneTrimSampleSurfaceTLSData *psd = static_cast<PlaneTrimSampleSurfaceTLSData *>(chunk);
+
+  add_v3_v3(join->normal_accum, psd->normal_accum);
+  add_v3_v3(join->area_accum, psd->area_accum);
+  join->area_count += psd->area_count;
+}
+
+static void do_plane_trim_brush_task_cb_ex(void *__restrict userdata,
+                                           const int n,
+                                           const TaskParallelTLS *__restrict tls)
+{
+  SculptThreadedTaskData *data = static_cast<SculptThreadedTaskData *>(userdata);
+  SculptSession *ss = data->ob->sculpt;
+  const Brush *brush = data->brush;
+  const float *area_no = data->area_no;
+  const float *area_co = data->area_co;
+
+  PBVHVertexIter vd;
+  const float bstrength = ss->cache->bstrength;
+
+  SculptBrushTest test;
+  SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
+      ss, &test, data->brush->falloff_shape);
+  const int thread_id = BLI_task_parallel_thread_id(tls);
+
+  plane_from_point_normal_v3(test.plane_tool, area_co, area_no);
+
+  AutomaskingNodeData automask_data;
+  SCULPT_automasking_node_begin(
+      data->ob, ss, ss->cache->automasking, &automask_data, data->nodes[n]);
+
+  BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
+    if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
+      continue;
+    }
+
+    bool plane_point_side = plane_point_side_flip(vd.co, test.plane_tool, !data->trim_flip);
+    float fade_base = 0.5f;
+    bool smooth = false;
+
+    float dist = sqrtf(test.dist);
+    if (plane_point_side) {
+      if (dist < ss->cache->radius * 0.8f) {
+        dist = dist * 2.0f;
+        fade_base *= 0.2f;
+        smooth = true;
+        continue;
+      }
+      else {
+        continue;
+      }
+    }
+
+    float closest_co_in_plane[3];
+    float plane_displacement[3];
+
+    closest_to_plane_normalized_v3(closest_co_in_plane, test.plane_tool, vd.co);
+    sub_v3_v3v3(plane_displacement, closest_co_in_plane, vd.co);
+
+    if (!SCULPT_plane_trim(ss->cache, brush, plane_displacement)) {
+      continue;
+    }
+
+    SCULPT_automasking_node_update(ss, &automask_data, &vd);
+
+    const float fade = fade_base * bstrength *
+                       SCULPT_brush_strength_factor(ss,
+                                                    brush,
+                                                    vd.co,
+                                                    dist,
+                                                    vd.no,
+                                                    vd.fno,
+                                                    vd.mask ? *vd.mask : 0.0f,
+                                                    vd.vertex,
+                                                    thread_id,
+                                                    &automask_data);
+
+    madd_v3_v3fl(vd.co, plane_displacement, fade);
+
+    float avg_co[3];
+    float smooth_disp[3] = {0.0f};
+    if (smooth) {
+      SCULPT_neighbor_coords_average(ss, avg_co, vd.vertex);
+      sub_v3_v3v3(smooth_disp, avg_co, vd.co);
+      madd_v3_v3fl(vd.co, smooth_disp, fade);
+    }
+
+    if (vd.is_mesh) {
+      BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
+    }
+  }
+  BKE_pbvh_vertex_iter_end;
+}
+
+#define TRIM_NORMAL_SAMPLES_STABILIZER 10
+#define TRIM_AREA_SAMPLES_STABILIZER 10
+
+void SCULPT_do_plane_trim_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
+{
+  SculptSession *ss = ob->sculpt;
+  Brush *brush = BKE_paint_brush(&sd->paint);
+
+  float area_no[3];
+  float area_co[3];
+
+  /*
+  float offset = SCULPT_brush_plane_offset_get(sd, ss);
+  const float radius = ss->cache->radius;
+  float displace;
+  float temp[3];
+  */
+
+  if (ss->cache->first_time) {
+    SCULPT_active_vertex_normal_get(ss, ss->cache->prev_area_no);
+    ss->cache->trim_normal_samples_index = 0;
+    for (int i = 0; i < TRIM_NORMAL_SAMPLES_STABILIZER; i++) {
+      zero_v3(ss->cache->trim_normal_samples[i]);
+    }
+    for (int i = 0; i < TRIM_AREA_SAMPLES_STABILIZER; i++) {
+      copy_v3_v3(ss->cache->trim_area_samples[i], ss->cache->location);
+    }
+  }
+
+  PlaneTrimSampleSurfaceTLSData psd{};
+
+  SculptThreadedTaskData sample_data{};
+  sample_data.sd = nullptr;
+  sample_data.ob = ob;
+  sample_data.brush = brush;
+  sample_data.nodes = nodes;
+  sample_data.any_normal_sampled = false;
+  sample_data.any_area_sampled = false;
+
+  TaskParallelSettings sample_settings;
+  BKE_pbvh_parallel_range_settings(&sample_settings, true, nodes.size());
+  sample_settings.func_reduce = plane_trim_sample_surface_reduce;
+  sample_settings.userdata_chunk = &psd;
+  sample_settings.userdata_chunk_size = sizeof(PlaneTrimSampleSurfaceTLSData);
+  BLI_task_parallel_range(
+      0, nodes.size(), &sample_data, plane_trim_sample_surface_task_cb, &sample_settings);
+
+  if (sample_data.any_normal_sampled) {
+    normalize_v3_v3(area_no, psd.normal_accum);
+  }
+  else {
+    SCULPT_active_vertex_normal_get(ss, area_no);
+  }
+
+  if (sample_data.any_area_sampled) {
+    mul_v3_v3fl(area_co, psd.area_accum, 1.0f / psd.area_count);
+  }
+  else {
+    copy_v3_v3(area_co, ss->cache->location);
+  }
+
+  bool trim_flip = true;
+  /*
+  if (psd.area_count_top >= 0.5f * psd.area_count_botton) {
+      trim_flip = true;
+  }
+  else {
+      copy_v3_v3(area_co, ss->cache->location);
+  }
+  */
+
+  float area_co_sp[3];
+  copy_v3_v3(area_co_sp, area_co);
+
+  float area_no_stabilized[3] = {0.0f};
+  float area_co_stabilized[3] = {0.0f};
+  copy_v3_v3(ss->cache->trim_normal_samples[ss->cache->trim_normal_samples_index], area_no);
+  copy_v3_v3(ss->cache->trim_area_samples[ss->cache->trim_area_samples_index], area_co_sp);
+  for (int i = 0; i < TRIM_NORMAL_SAMPLES_STABILIZER; i++) {
+    add_v3_v3(area_no_stabilized, ss->cache->trim_normal_samples[i]);
+  }
+
+  for (int i = 0; i < TRIM_AREA_SAMPLES_STABILIZER; i++) {
+    add_v3_v3(area_co_stabilized, ss->cache->trim_area_samples[i]);
+  }
+
+  ss->cache->trim_normal_samples_index++;
+  if (ss->cache->trim_normal_samples_index >= TRIM_NORMAL_SAMPLES_STABILIZER) {
+    ss->cache->trim_normal_samples_index = 0;
+  }
+
+  ss->cache->trim_area_samples_index++;
+  if (ss->cache->trim_area_samples_index >= TRIM_AREA_SAMPLES_STABILIZER) {
+    ss->cache->trim_area_samples_index = 0;
+  }
+
+  normalize_v3(area_no_stabilized);
+  SCULPT_tilt_apply_to_normal(area_no_stabilized, ss->cache, brush->tilt_strength_factor);
+  copy_v3_v3(ss->cache->prev_area_no, area_no_stabilized);
+
+  mul_v3_v3fl(area_co, area_co_stabilized, 1.0f / TRIM_AREA_SAMPLES_STABILIZER);
+  copy_v3_v3(area_no, area_no_stabilized);
+
+  if (ss->cache->invert) {
+    // mul_v3_fl(area_no, -1.0f);
+  }
+
+  float temp[3];
+  mul_v3_v3v3(temp, area_no, ss->cache->scale);
+  mul_v3_fl(temp, (1.0f - ss->cache->bstrength) * ss->cache->radius * 0.05f);
+  add_v3_v3(area_co, temp);
+
+  SculptThreadedTaskData data{};
+  data.sd = sd;
+  data.ob = ob;
+  data.brush = brush;
+  data.nodes = nodes;
+  data.area_no = area_no;
+  data.area_co = area_co;
+  data.trim_flip = trim_flip;
+
+  TaskParallelSettings settings;
+  BKE_pbvh_parallel_range_settings(&settings, true, nodes.size());
+  for (int i = 0; i < 1; i++) {
+    BLI_task_parallel_range(0, nodes.size(), &data, do_plane_trim_brush_task_cb_ex, &settings);
+  }
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Sculpt Clay Thumb Brush
  * \{ */
 
@@ -788,7 +1119,7 @@ static void do_flatten_brush_task_cb_ex(void *__restrict userdata,
       const float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                                   brush,
                                                                   vd.co,
-                                                                  sqrtf(test.dist),
+                                                                  sqrtf(test.dist) * 1.5f,
                                                                   vd.no,
                                                                   vd.fno,
                                                                   vd.mask ? *vd.mask : 0.0f,
