@@ -96,7 +96,7 @@ GHOST_ContextCGL::GHOST_ContextCGL(bool stereoVisual,
        */
       m_metalLayer.wantsExtendedDynamicRangeContent = YES;
       m_metalLayer.pixelFormat = METAL_FRAMEBUFFERPIXEL_FORMAT_EDR;
-      const CFStringRef name = kCGColorSpaceExtendedSRGB;
+      const CFStringRef name = kCGColorSpaceDisplayP3;
       CGColorSpaceRef colorspace = CGColorSpaceCreateWithName(name);
       m_metalLayer.colorspace = colorspace;
       CGColorSpaceRelease(colorspace);

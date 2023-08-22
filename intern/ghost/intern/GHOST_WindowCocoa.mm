@@ -356,7 +356,7 @@ GHOST_WindowCocoa::GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
        */
       m_metalLayer.wantsExtendedDynamicRangeContent = YES;
       m_metalLayer.pixelFormat = MTLPixelFormatRGBA16Float;
-      const CFStringRef name = kCGColorSpaceExtendedSRGB;
+      const CFStringRef name = kCGColorSpaceDisplayP3;
       CGColorSpaceRef colorspace = CGColorSpaceCreateWithName(name);
       m_metalLayer.colorspace = colorspace;
       CGColorSpaceRelease(colorspace);
