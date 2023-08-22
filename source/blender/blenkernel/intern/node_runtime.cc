@@ -27,6 +27,8 @@ void preprocess_geometry_node_tree_for_evaluation(bNodeTree &tree_cow)
 static void update_interface(const bNodeTree &ntree)
 {
   bNodeTreeRuntime &tree_runtime = *ntree.runtime;
+  /* const_cast needed because the cache stores mutable item pointers, but needs a mutable
+   * interface in order to get them. The interface itself is not modified here. */
   tree_runtime.interface_cache.rebuild(const_cast<bNodeTreeInterface &>(ntree.tree_interface));
 }
 
