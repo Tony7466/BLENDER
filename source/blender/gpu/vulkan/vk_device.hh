@@ -66,6 +66,7 @@ class VKDevice : public NonCopyable {
   /* Workarounds */
   VKWorkarounds workarounds_;
 
+  /** Buffer to bind to unbound resource locations. */
   VKBuffer dummy_buffer_;
 
  public:
@@ -158,7 +159,7 @@ class VKDevice : public NonCopyable {
   void init_debug_callbacks();
   void init_memory_allocator();
   void init_descriptor_pools();
-  void init_dummy_buffer();
+  void init_dummy_buffer(VKContext &context);
 
   /* During initialization the backend requires access to update the workarounds. */
   friend VKBackend;

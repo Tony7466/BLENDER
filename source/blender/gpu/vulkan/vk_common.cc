@@ -610,9 +610,10 @@ VkFormat to_vk_format(const shader::Type type)
       return VK_FORMAT_R32G32B32_SINT;
     case shader::Type::IVEC4:
       return VK_FORMAT_R32G32B32A32_SINT;
+    case shader::Type::MAT4:
+      return VK_FORMAT_R32G32B32A32_SFLOAT;
 
     case shader::Type::MAT3:
-    case shader::Type::MAT4:
     case shader::Type::BOOL:
     case shader::Type::VEC3_101010I2:
     case shader::Type::UCHAR:
