@@ -70,6 +70,13 @@ struct EraseOperationExecutor {
 
   EraseOperationExecutor(const bContext & /*C*/) {}
 
+  struct FalloffSample {
+    float radius;
+    int64_t squared_radius;
+    float opacity;
+    bool is_cut{false};
+  };
+
   /**
    * Computes the intersections between a 2D line segment and a circle with integer values.
    *
@@ -379,6 +386,153 @@ struct EraseOperationExecutor {
     return total_intersections;
   }
 
+  int64_t intersections_with_curves_falloff(
+      const bke::CurvesGeometry &src,
+      const Span<float2> screen_space_positions,
+      const Span<FalloffSample> falloff,
+      MutableSpan<std::pair<int, PointCircleSide>> r_point_ring,
+      MutableSpan<Vector<SegmentCircleIntersection>> r_intersections) const
+  {
+    const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
+    const VArray<bool> src_cyclic = src.cyclic();
+
+    Array<int2> screen_space_positions_pixel(src.points_num());
+    threading::parallel_for(src.points_range(), 1024, [&](const IndexRange src_points) {
+      for (const int64_t src_point : src_points) {
+        const float2 pos = screen_space_positions[src_point];
+        screen_space_positions_pixel[src_point] = int2(round_fl_to_int(pos[0]),
+                                                       round_fl_to_int(pos[1]));
+      }
+    });
+
+    threading::parallel_for(src.curves_range(), 512, [&](const IndexRange src_curves) {
+      for (const int64_t src_curve : src_curves) {
+        const IndexRange src_curve_points = src_points_by_curve[src_curve];
+
+        if (src_curve_points.size() == 1) {
+          /* One-point stroke : just check if the point is inside the eraser. */
+          int radius_index = -1;
+          for (const FalloffSample &eraser_point : falloff) {
+            const int64_t src_point = src_curve_points.first();
+            const int64_t sq_distance = math::distance_squared(
+                this->mouse_position_pixels, screen_space_positions_pixel[src_point]);
+
+            /* Note: We don't account for boundaries here, since we are not going to split any
+             * curve. */
+            if ((r_point_ring[src_point].first == -1) &&
+                (sq_distance <= eraser_point.squared_radius)) {
+              r_point_ring[src_point] = {radius_index, PointCircleSide::Inside};
+            }
+          }
+          continue;
+        }
+
+        for (const int64_t src_point : src_curve_points.drop_back(1)) {
+          int radius_index = 0;
+          for (const FalloffSample &eraser_point : falloff) {
+            SegmentCircleIntersection inter0;
+            SegmentCircleIntersection inter1;
+
+            inter0.ring_index = radius_index;
+            inter1.ring_index = radius_index;
+
+            PointCircleSide point_side;
+            PointCircleSide point_after_side;
+
+            const int8_t nb_inter = segment_intersections_and_points_sides(
+                screen_space_positions_pixel[src_point],
+                screen_space_positions_pixel[src_point + 1],
+                eraser_point.squared_radius,
+                inter0.factor,
+                inter1.factor,
+                point_side,
+                point_after_side);
+
+            /* The point belongs in the ring of the highest radius circle it is in.
+             * Since our rings are stored in increasing radius order, we can simply update the
+             * ring each time the point is inside or at the boundary. We include the outside
+             * boundary of the ring, that is why we do not check for LeftBoundary.
+             */
+            if ((r_point_ring[src_point].first == -1) &&
+                ELEM(point_side, PointCircleSide::Inside, PointCircleSide::InsideOutsideBoundary))
+            {
+              r_point_ring[src_point] = {radius_index, point_side};
+            }
+
+            if (src_point + 1 == src_curve_points.last()) {
+              if ((r_point_ring[src_point + 1].first == -1) &&
+                  ELEM(point_after_side,
+                       PointCircleSide::Inside,
+                       PointCircleSide::InsideOutsideBoundary))
+              {
+                r_point_ring[src_point + 1] = {radius_index, point_after_side};
+              }
+            }
+
+            if (nb_inter > 0) {
+              inter0.inside_outside_intersection = (inter0.factor > inter1.factor);
+              r_intersections[src_point].append(inter0);
+
+              if (nb_inter > 1) {
+                inter1.inside_outside_intersection = true;
+                r_intersections[src_point].append(inter1);
+              }
+            }
+
+            ++radius_index;
+          }
+        }
+
+        if (src_cyclic[src_curve]) {
+          /* If the curve is cyclic, we need to check for the closing segment. */
+          const int64_t src_last_point = src_curve_points.last();
+          const int64_t src_first_point = src_curve_points.first();
+          int radius_index = 0;
+
+          for (const FalloffSample &eraser_point : falloff) {
+            SegmentCircleIntersection inter0;
+            SegmentCircleIntersection inter1;
+
+            PointCircleSide point_side;
+            PointCircleSide point_after_side;
+
+            const int8_t nb_inter = segment_intersections_and_points_sides(
+                screen_space_positions_pixel[src_last_point],
+                screen_space_positions_pixel[src_first_point],
+                eraser_point.squared_radius,
+                inter0.factor,
+                inter1.factor,
+                point_side,
+                point_after_side);
+
+            /* Note : we don't need to set the point side here, since it was already set by the
+             * former loop. */
+
+            if (nb_inter > 0) {
+              inter0.inside_outside_intersection = (inter0.factor > inter1.factor);
+              r_intersections[src_last_point].append(inter0);
+
+              if (nb_inter > 1) {
+                inter1.inside_outside_intersection = true;
+                r_intersections[src_last_point].append(inter1);
+              }
+            }
+
+            ++radius_index;
+          }
+        }
+      }
+    });
+
+    /* Compute total number of intersections. */
+    int64_t total_intersections = 0;
+    for (const int64_t src_point : src.points_range()) {
+      total_intersections += r_intersections[src_point].size();
+    }
+
+    return total_intersections;
+  }
+
   /**
    * Structure describing a point in the destination relatively to the source.
    * If a point in the destination \a is_src_point, then it corresponds
@@ -682,160 +836,6 @@ struct EraseOperationExecutor {
     compute_topology_change(src, dst, src_to_dst_points, keep_caps);
 
     return true;
-  }
-
-  struct FalloffSample {
-    float radius;
-    int64_t squared_radius;
-    float opacity;
-    bool is_cut{false};
-  };
-
-  int intersections_with_curves_falloff(
-      const bke::CurvesGeometry &src,
-      const Span<float2> screen_space_positions,
-      const Span<FalloffSample> falloff,
-      MutableSpan<std::pair<int, PointCircleSide>> r_point_ring,
-      MutableSpan<Vector<SegmentCircleIntersection>> r_intersections) const
-  {
-    const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
-    const VArray<bool> src_cyclic = src.cyclic();
-
-    Array<int2> screen_space_positions_pixel(src.points_num());
-    threading::parallel_for(src.points_range(), 1024, [&](const IndexRange src_points) {
-      for (const int src_point : src_points) {
-        const float2 pos = screen_space_positions[src_point];
-        screen_space_positions_pixel[src_point] = int2(round_fl_to_int(pos[0]),
-                                                       round_fl_to_int(pos[1]));
-      }
-    });
-
-    threading::parallel_for(src.curves_range(), 512, [&](const IndexRange src_curves) {
-      for (const int src_curve : src_curves) {
-        const IndexRange src_curve_points = src_points_by_curve[src_curve];
-
-        if (src_curve_points.size() == 1) {
-          /* One-point stroke : just check if the point is inside the eraser. */
-          int ring_index = -1;
-          for (const FalloffSample &eraser_point : falloff) {
-            const int src_point = src_curve_points.first();
-            const int64_t sq_distance = math::distance_squared(
-                this->mouse_position_pixels, screen_space_positions_pixel[src_point]);
-
-            /* Note: We don't account for boundaries here, since we are not going to split any
-             * curve. */
-            if ((r_point_ring[src_point].first == -1) &&
-                (sq_distance <= eraser_point.squared_radius)) {
-              r_point_ring[src_point] = {ring_index, PointCircleSide::Inside};
-            }
-          }
-          continue;
-        }
-
-        for (const int src_point : src_curve_points.drop_back(1)) {
-          int ring_index = 0;
-          for (const FalloffSample &eraser_point : falloff) {
-            SegmentCircleIntersection inter0;
-            SegmentCircleIntersection inter1;
-
-            inter0.ring_index = ring_index;
-            inter1.ring_index = ring_index;
-
-            PointCircleSide point_side;
-            PointCircleSide point_after_side;
-
-            const int8_t nb_inter = segment_intersections_and_points_sides(
-                screen_space_positions_pixel[src_point],
-                screen_space_positions_pixel[src_point + 1],
-                eraser_point.squared_radius,
-                inter0.factor,
-                inter1.factor,
-                point_side,
-                point_after_side);
-
-            /* The point belongs in the ring of the highest radius circle it is in.
-             * Since our rings are stored in increasing radius order, we can simply update the
-             * ring each time the point is inside or at the boundary. We include the outside
-             * boundary of the ring, that is why we do not check for LeftBoundary.
-             */
-            if ((r_point_ring[src_point].first == -1) &&
-                ELEM(point_side, PointCircleSide::Inside, PointCircleSide::InsideOutsideBoundary))
-            {
-              r_point_ring[src_point] = {ring_index, point_side};
-            }
-
-            if (src_point + 1 == src_curve_points.last()) {
-              if ((r_point_ring[src_point + 1].first == -1) &&
-                  ELEM(point_after_side,
-                       PointCircleSide::Inside,
-                       PointCircleSide::InsideOutsideBoundary))
-              {
-                r_point_ring[src_point + 1] = {ring_index, point_after_side};
-              }
-            }
-
-            if (nb_inter > 0) {
-              inter0.inside_outside_intersection = (inter0.factor > inter1.factor);
-              r_intersections[src_point].append(inter0);
-
-              if (nb_inter > 1) {
-                inter1.inside_outside_intersection = true;
-                r_intersections[src_point].append(inter1);
-              }
-            }
-
-            ++ring_index;
-          }
-        }
-
-        if (src_cyclic[src_curve]) {
-          /* If the curve is cyclic, we need to check for the closing segment. */
-          const int src_last_point = src_curve_points.last();
-          const int src_first_point = src_curve_points.first();
-          int radius_index = 0;
-
-          for (const FalloffSample &eraser_point : falloff) {
-            SegmentCircleIntersection inter0;
-            SegmentCircleIntersection inter1;
-
-            PointCircleSide point_side;
-            PointCircleSide point_after_side;
-
-            const int8_t nb_inter = segment_intersections_and_points_sides(
-                screen_space_positions_pixel[src_last_point],
-                screen_space_positions_pixel[src_first_point],
-                eraser_point.squared_radius,
-                inter0.factor,
-                inter1.factor,
-                point_side,
-                point_after_side);
-
-            /* Note : we don't need to set the point side here, since it was already set by the
-             * former loop. */
-
-            if (nb_inter > 0) {
-              inter0.inside_outside_intersection = (inter0.factor > inter1.factor);
-              r_intersections[src_last_point].append(inter0);
-
-              if (nb_inter > 1) {
-                inter1.inside_outside_intersection = true;
-                r_intersections[src_last_point].append(inter1);
-              }
-            }
-
-            ++radius_index;
-          }
-        }
-      }
-    });
-
-    /* Compute total number of intersections. */
-    int total_intersections = 0;
-    for (const int src_point : src.points_range()) {
-      total_intersections += r_intersections[src_point].size();
-    }
-
-    return total_intersections;
   }
 
   Vector<FalloffSample> compute_piecewise_linear_falloff() const
