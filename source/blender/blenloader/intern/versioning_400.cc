@@ -429,7 +429,7 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
       float locyoffset = 0.0f;
 
       if (version_node_socket_is_used(sockDetail) && sockDetail->link != nullptr) {
-        locyoffset = 40.0f;
+        locyoffset = 80.0f;
 
         /* Add Subtract Math node before Detail input. */
 
@@ -452,9 +452,29 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
         nodeAddLink(ntree, detailFromNode, detailFromSock, subNode1, subSock1A);
         nodeAddLink(ntree, subNode1, subSock1Out, node, sockDetail);
 
-        if ((((NodeTexNoise *)node->storage)->type != SHD_NOISE_RIDGED_MULTIFRACTAL) &&
-            (((NodeTexNoise *)node->storage)->type != SHD_NOISE_HETERO_TERRAIN))
+        if ((((NodeTexNoise *)node->storage)->type == SHD_NOISE_RIDGED_MULTIFRACTAL) ||
+            (((NodeTexNoise *)node->storage)->type == SHD_NOISE_HETERO_TERRAIN))
         {
+          /* Add Greater Than Math node before Subtract Math node. */
+
+          bNode *greaterNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_MATH);
+          greaterNode->parent = node->parent;
+          greaterNode->custom1 = NODE_MATH_GREATER_THAN;
+          greaterNode->locx = node->locx;
+          greaterNode->locy = node->locy - 340.0f;
+          greaterNode->flag |= NODE_HIDDEN;
+          bNodeSocket *greaterSockA = static_cast<bNodeSocket *>(
+              BLI_findlink(&greaterNode->inputs, 0));
+          bNodeSocket *greaterSockB = static_cast<bNodeSocket *>(
+              BLI_findlink(&greaterNode->inputs, 1));
+          bNodeSocket *greaterSockOut = nodeFindSocket(greaterNode, SOCK_OUT, "Value");
+
+          *version_cycles_node_socket_float_value(greaterSockB) = 1.0f;
+
+          nodeAddLink(ntree, detailFromNode, detailFromSock, greaterNode, greaterSockA);
+          nodeAddLink(ntree, greaterNode, greaterSockOut, subNode1, subSock1B);
+        }
+        else {
           /* Add Clamp node and Multiply Math node behind Fac output. */
 
           bNode *clampNode = nodeAddStaticNode(nullptr, ntree, SH_NODE_CLAMP);
@@ -589,9 +609,9 @@ static void versioning_replace_musgrave_texture_node(bNodeTree *ntree)
             }
 
             nodeAddLink(ntree, node, sockFac, mulNode, mulSockA);
-          }
 
-          *detail = 0.0f;
+            *detail = 0.0f;
+          }
         }
         else {
           *detail -= 1.0f;
