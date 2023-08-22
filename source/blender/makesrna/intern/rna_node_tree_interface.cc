@@ -914,12 +914,6 @@ static void rna_def_node_interface_panel(BlenderRNA *brna)
   RNA_def_property_struct_type(prop, "NodeTreeInterfaceItem");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Items", "Items in the node panel");
-
-  prop = RNA_def_property(srna, "is_child_panel_allowed", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(
-      prop, "Is Child Panel Allowed", "True if the panel can contain child panels");
 }
 
 static void rna_def_node_tree_interface_items_api(StructRNA *srna)
