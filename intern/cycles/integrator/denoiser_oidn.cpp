@@ -25,6 +25,7 @@
 
 CCL_NAMESPACE_BEGIN
 
+thread_mutex OIDNDenoiser::mutex_;
 bool OIDNDenoiser::is_device_supported(const DeviceInfo &device)
 {
 
@@ -627,6 +628,7 @@ bool OIDNDenoiser::denoise_buffer(const BufferParams &buffer_params,
       << "OpenImageDenoiser is not supported on this platform or build.";
 
 #ifdef WITH_OPENIMAGEDENOISE
+  thread_scoped_lock lock(mutex_);
   /* Make sure the host-side data is available for denoising. */
   unique_ptr<DeviceQueue> queue = create_device_queue(render_buffers);
   copy_render_buffers_from_device(queue, render_buffers);
@@ -666,29 +668,6 @@ bool OIDNDenoiser::denoise_buffer(const BufferParams &buffer_params,
 
   /* This code is not supposed to run when compiled without OIDN support, so can assume if we made
    * it up here all passes are properly denoised. */
-  return true;
-}
-
-bool OIDNDenoiser::denoise_buffer(const DenoiseTask &task)
-{
-  DenoiseContext context(denoiser_device_, task);
-
-  if (!denoise_ensure(context)) {
-    return false;
-  }
-
-  if (!denoise_filter_guiding_preprocess(context)) {
-    LOG(ERROR) << "Error preprocessing guiding passes.";
-    return false;
-  }
-
-  /* Passes which will use real albedo when it is available. */
-  denoise_pass(context, PASS_COMBINED);
-  denoise_pass(context, PASS_SHADOW_CATCHER_MATTE);
-
-  /* Passes which do not need albedo and hence if real is present it needs to become fake. */
-  denoise_pass(context, PASS_SHADOW_CATCHER);
-
   return true;
 }
 
@@ -737,21 +716,6 @@ Device *OIDNDenoiser::ensure_denoiser_device(Progress *progress)
   return denoiser_device;
 #  endif
 #endif
-}
-
-bool OIDNDenoiser::denoise_ensure(DenoiseContext &context)
-{
-  if (!denoise_create_if_needed(context)) {
-    LOG(ERROR) << "OIDN denoiser creation has failed.";
-    return false;
-  }
-
-  if (!denoise_configure_if_needed(context)) {
-    LOG(ERROR) << "OIDN denoiser configuration has failed.";
-    return false;
-  }
-
-  return true;
 }
 
 bool OIDNDenoiser::denoise_create_if_needed(DenoiseContext &context)

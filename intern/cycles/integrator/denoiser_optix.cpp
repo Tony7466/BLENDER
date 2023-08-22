@@ -225,40 +225,7 @@ bool OptiXDenoiser::denoise_buffer(const DenoiseTask &task)
 
   const CUDAContextScope scope(optix_device);
 
-  DenoiseContext context(optix_device, task);
-
-  if (!denoise_ensure(context)) {
-    return false;
-  }
-
-  if (!denoise_filter_guiding_preprocess(context)) {
-    LOG(ERROR) << "Error preprocessing guiding passes.";
-    return false;
-  }
-
-  /* Passes which will use real albedo when it is available. */
-  denoise_pass(context, PASS_COMBINED);
-  denoise_pass(context, PASS_SHADOW_CATCHER_MATTE);
-
-  /* Passes which do not need albedo and hence if real is present it needs to become fake. */
-  denoise_pass(context, PASS_SHADOW_CATCHER);
-
-  return true;
-}
-
-bool OptiXDenoiser::denoise_ensure(DenoiseContext &context)
-{
-  if (!denoise_create_if_needed(context)) {
-    LOG(ERROR) << "OptiX denoiser creation has failed.";
-    return false;
-  }
-
-  if (!denoise_configure_if_needed(context)) {
-    LOG(ERROR) << "OptiX denoiser configuration has failed.";
-    return false;
-  }
-
-  return true;
+  return DenoiserGPU::denoise_buffer(task);
 }
 
 bool OptiXDenoiser::denoise_create_if_needed(DenoiseContext &context)

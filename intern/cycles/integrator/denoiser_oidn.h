@@ -26,7 +26,6 @@ class OIDNDenoiser : public DenoiserGPU {
   OIDNDenoiser(Device *path_trace_device, const DenoiseParams &params);
   ~OIDNDenoiser();
 
-  virtual bool denoise_buffer(const DenoiseTask &task) override;
   virtual bool denoise_buffer(const BufferParams &buffer_params,
                               RenderBuffers *render_buffers,
                               const int num_samples,
@@ -38,19 +37,20 @@ class OIDNDenoiser : public DenoiserGPU {
   virtual uint get_device_type_mask() const override;
   virtual Device *ensure_denoiser_device(Progress *progress) override;
 
-  /* Make sure the OIDN denoiser is created and configured. */
-  bool denoise_ensure(DenoiseContext &context);
+ /* We only perform one denoising at a time, since OpenImageDenoise itself is multithreaded.
+   * Use this mutex whenever images are passed to the OIDN and needs to be denoised. */
+  static thread_mutex mutex_;
 
   /* Create OIDN denoiser descriptor if needed.
    * Will do nothing if the current OIDN descriptor is usable for the given parameters.
    * If the OIDN denoiser descriptor did re-allocate here it is left unconfigured. */
-  bool denoise_create_if_needed(DenoiseContext &context);
+  virtual bool denoise_create_if_needed(DenoiseContext &context) override;
 
   /* Configure existing OIDN denoiser descriptor for the use for the given task. */
-  bool denoise_configure_if_needed(DenoiseContext &context);
+  virtual bool denoise_configure_if_needed(DenoiseContext &context) override;
 
   /* Run configured denoiser. */
-  bool denoise_run(const DenoiseContext &context, const DenoisePass &pass) override;
+  virtual bool denoise_run(const DenoiseContext &context, const DenoisePass &pass) override;
 
   OIDNDevice oidn_device_ = nullptr;
   OIDNFilter oidn_filter_ = nullptr;

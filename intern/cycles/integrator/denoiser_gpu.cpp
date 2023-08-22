@@ -90,6 +90,29 @@ bool DenoiserGPU::denoise_buffer(const BufferParams &buffer_params,
   return denoise_result;
 }
 
+bool DenoiserGPU::denoise_buffer(const DenoiseTask &task)
+{
+  DenoiseContext context(denoiser_device_, task);
+
+  if (!denoise_ensure(context)) {
+    return false;
+  }
+
+  if (!denoise_filter_guiding_preprocess(context)) {
+    LOG(ERROR) << "Error preprocessing guiding passes.";
+    return false;
+  }
+
+  /* Passes which will use real albedo when it is available. */
+  denoise_pass(context, PASS_COMBINED);
+  denoise_pass(context, PASS_SHADOW_CATCHER_MATTE);
+
+  /* Passes which do not need albedo and hence if real is present it needs to become fake. */
+  denoise_pass(context, PASS_SHADOW_CATCHER);
+
+  return true;
+}
+
 Device *DenoiserGPU::ensure_denoiser_device(Progress *progress)
 {
   Device *denoiser_device = Denoiser::ensure_denoiser_device(progress);
@@ -176,6 +199,21 @@ DenoiserGPU::DenoiseContext::DenoiseContext(Device *device, const DenoiseTask &t
   }
 
   pass_sample_count = buffer_params.get_pass_offset(PASS_SAMPLE_COUNT);
+}
+
+bool DenoiserGPU::denoise_ensure(DenoiseContext &context)
+{
+  if (!denoise_create_if_needed(context)) {
+    LOG(ERROR) << "OptiX denoiser creation has failed.";
+    return false;
+  }
+
+  if (!denoise_configure_if_needed(context)) {
+    LOG(ERROR) << "OptiX denoiser configuration has failed.";
+    return false;
+  }
+
+  return true;
 }
 
 bool DenoiserGPU::denoise_filter_color_postprocess(const DenoiseContext &context,
