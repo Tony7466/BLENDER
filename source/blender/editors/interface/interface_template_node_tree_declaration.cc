@@ -37,6 +37,9 @@ namespace {
 class NodeTreeInterfaceView;
 
 class NodeTreeInterfaceDragController : public AbstractViewItemDragController {
+ private:
+  bNodeTreeInterfaceItem &item_;
+
  public:
   explicit NodeTreeInterfaceDragController(NodeTreeInterfaceView &view,
                                            bNodeTreeInterfaceItem &item);
@@ -45,12 +48,12 @@ class NodeTreeInterfaceDragController : public AbstractViewItemDragController {
   eWM_DragDataType get_drag_type() const;
 
   void *create_drag_data() const;
-
- private:
-  bNodeTreeInterfaceItem &item_;
 };
 
 class NodeSocketDropTarget : public TreeViewItemDropTarget {
+ private:
+  bNodeTreeInterfaceSocket &socket_;
+
  public:
   explicit NodeSocketDropTarget(NodeTreeInterfaceView &view, bNodeTreeInterfaceSocket &socket);
 
@@ -60,12 +63,12 @@ class NodeSocketDropTarget : public TreeViewItemDropTarget {
 
  protected:
   wmDragNodeTreeInterface *get_drag_node_tree_declaration(const wmDrag &drag) const;
-
- private:
-  bNodeTreeInterfaceSocket &socket_;
 };
 
 class NodePanelDropTarget : public TreeViewItemDropTarget {
+ private:
+  bNodeTreeInterfacePanel &panel_;
+
  public:
   explicit NodePanelDropTarget(NodeTreeInterfaceView &view, bNodeTreeInterfacePanel &panel);
 
@@ -75,12 +78,13 @@ class NodePanelDropTarget : public TreeViewItemDropTarget {
 
  protected:
   wmDragNodeTreeInterface *get_drag_node_tree_declaration(const wmDrag &drag) const;
-
- private:
-  bNodeTreeInterfacePanel &panel_;
 };
 
 class NodeSocketViewItem : public BasicTreeViewItem {
+ private:
+  bNodeTree &nodetree_;
+  bNodeTreeInterfaceSocket &socket_;
+
  public:
   NodeSocketViewItem(bNodeTree &nodetree,
                      bNodeTreeInterface &interface,
@@ -154,13 +158,13 @@ class NodeSocketViewItem : public BasicTreeViewItem {
 
   std::unique_ptr<AbstractViewItemDragController> create_drag_controller() const override;
   std::unique_ptr<TreeViewItemDropTarget> create_drop_target() override;
-
- private:
-  bNodeTree &nodetree_;
-  bNodeTreeInterfaceSocket &socket_;
 };
 
 class NodePanelViewItem : public BasicTreeViewItem {
+ private:
+  bNodeTree &nodetree_;
+  bNodeTreeInterfacePanel &panel_;
+
  public:
   NodePanelViewItem(bNodeTree &nodetree,
                     bNodeTreeInterface &interface,
@@ -211,13 +215,13 @@ class NodePanelViewItem : public BasicTreeViewItem {
 
   std::unique_ptr<AbstractViewItemDragController> create_drag_controller() const override;
   std::unique_ptr<TreeViewItemDropTarget> create_drop_target() override;
-
- private:
-  bNodeTree &nodetree_;
-  bNodeTreeInterfacePanel &panel_;
 };
 
 class NodeTreeInterfaceView : public AbstractTreeView {
+ private:
+  bNodeTree &nodetree_;
+  bNodeTreeInterface &interface_;
+
  public:
   explicit NodeTreeInterfaceView(bNodeTree &nodetree, bNodeTreeInterface &interface)
       : nodetree_(nodetree), interface_(interface)
@@ -266,10 +270,6 @@ class NodeTreeInterfaceView : public AbstractTreeView {
       }
     }
   }
-
- private:
-  bNodeTree &nodetree_;
-  bNodeTreeInterface &interface_;
 };
 
 std::unique_ptr<AbstractViewItemDragController> NodeSocketViewItem::create_drag_controller() const
