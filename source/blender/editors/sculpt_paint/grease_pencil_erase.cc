@@ -754,9 +754,9 @@ struct EraseOperationExecutor {
                 point_after_side);
 
             /* The point belongs in the ring of the highest radius circle it is in.
-             * Since our rings are stored in increasing radius order, we can simply update the ring
-             * each time the point is inside or at the boundary. We include the outside boundary of
-             * the ring, that is why we do not check for LeftBoundary.
+             * Since our rings are stored in increasing radius order, we can simply update the
+             * ring each time the point is inside or at the boundary. We include the outside
+             * boundary of the ring, that is why we do not check for LeftBoundary.
              */
             if ((r_point_ring[src_point].first == -1) &&
                 ELEM(point_side, PointCircleSide::Inside, PointCircleSide::InsideOutsideBoundary))
@@ -840,13 +840,13 @@ struct EraseOperationExecutor {
 
   Vector<FalloffSample> compute_piecewise_linear_falloff() const
   {
-    /* The changes in opacity implied by the soft eraser are described by a falloff curve mapping.
-     * Abscissa of the curve is the normalized distance to the brush, and ordinate of the curve is
-     * the strength of the eraser.
+    /* The changes in opacity implied by the soft eraser are described by a falloff curve
+     * mapping. Abscissa of the curve is the normalized distance to the brush, and ordinate of
+     * the curve is the strength of the eraser.
      *
      * To apply this falloff as precisely as possible, we compute a set of "rings" to the brush,
-     * meaning a set of samples in the curve mapping in between which the strength of the eraser is
-     * applied linearly.
+     * meaning a set of samples in the curve mapping in between which the strength of the eraser
+     * is applied linearly.
      *
      * In other words, we compute a minimal set of samples that describe the falloff curve as a
      * polyline. */
@@ -874,8 +874,8 @@ struct EraseOperationExecutor {
       FalloffSample &sample = falloff_samples[sample_index];
 
       if (sample_index == nb_samples - 1) {
-        /* If this is the last samples, we need to keep it at the same position (it corresponds to
-         * the brush overall radius). It is a cut if the opacity is under the threshold.*/
+        /* If this is the last samples, we need to keep it at the same position (it corresponds
+         * to the brush overall radius). It is a cut if the opacity is under the threshold.*/
         sample.is_cut = (sample.opacity < opacity_threshold);
         continue;
       }
@@ -924,10 +924,10 @@ struct EraseOperationExecutor {
       const FalloffSample &sample_last = falloff_samples[sub_range.last()];
       const FalloffSample &sample = falloff_samples[sub_range[index]];
 
-      /* If we were to remove the samples between sample_first and sample_last, then the opacity at
-       * sample.radius would be a linear interpolation between the opacities in the endpoints of
-       * the range, with a parameter depending on the distance between radii. That is what we are
-       * computing here. */
+      /* If we were to remove the samples between sample_first and sample_last, then the opacity
+       * at sample.radius would be a linear interpolation between the opacities in the endpoints
+       * of the range, with a parameter depending on the distance between radii. That is what we
+       * are computing here. */
       const float t = (sample.radius - sample_first.radius) /
                       (sample_last.radius - sample_first.radius);
       const float linear_opacity = math::interpolate(sample_first.opacity, sample_last.opacity, t);
@@ -970,7 +970,8 @@ struct EraseOperationExecutor {
      * sample this curve to get a set of rings in the brush. */
     const Vector<FalloffSample> eraser_falloff = compute_piecewise_linear_falloff();
 
-    /* Compute intersections between the source curves geometry and all the rings of the eraser. */
+    /* Compute intersections between the source curves geometry and all the rings of the eraser.
+     */
     const int src_points_num = src.points_num();
     Array<std::pair<int, PointCircleSide>> src_point_ring(src_points_num,
                                                           {-1, PointCircleSide::Outside});
