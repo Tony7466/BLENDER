@@ -177,17 +177,12 @@ void select_linked(bke::CurvesGeometry &curves);
  */
 void select_alternate(bke::CurvesGeometry &curves, const bool deselect_ends);
 
-void select_similar_create_set(bke::CurvesGeometry &curves,
-                               blender::Set<float> &rs,
-                               int type,
-                               float threshoold);
-
 template<typename T>
-void select_similar_cs(bke::CurvesGeometry &curves,
-                       blender::Set<T> &rs,
-                       int type,
-                       std::string attribute_id,
-                       const T default_for_lookup)
+void select_similar_create_set(bke::CurvesGeometry &curves,
+                               blender::Set<T> &return_set,
+                               int type,
+                               std::string attribute_id,
+                               const T default_for_lookup)
 {
   VArray<T> attributes = *curves.attributes().lookup_or_default<T>(
       attribute_id, ATTR_DOMAIN_POINT, default_for_lookup);
@@ -196,7 +191,9 @@ void select_similar_cs(bke::CurvesGeometry &curves,
       curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
 
   MutableSpan<bool> selection_typed = selection.span.typed<bool>();
-  threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
+
+  // for now sequential impl, grain_size == 1
+  threading::parallel_for(curves.curves_range(), 1, [&](const IndexRange range) {
     for (const int curve_i : range) {
       const IndexRange points = points_by_curve[curve_i];
 
@@ -207,7 +204,7 @@ void select_similar_cs(bke::CurvesGeometry &curves,
       for (const int index : points.index_range()) {
         if (selection_typed[points[index]]) {
           // careful: problems with concurrency?
-          rs.add(attributes[points[index]]);
+          return_set.add(attributes[points[index]]);
         }
       }
     }
@@ -216,8 +213,8 @@ void select_similar_cs(bke::CurvesGeometry &curves,
   selection.finish();
 }
 
-template<typename T>
-float distance(T first, T second) {
+template<typename T> static float distance(T first, T second)
+{
   if constexpr (std::is_same<T, float>::value || std::is_same<T, int>::value) {
     return std::abs(first - second);
   }
@@ -225,17 +222,16 @@ float distance(T first, T second) {
     // might be better to normalize and then dot product
     return std::abs(int(rgb_to_grayscale(first)) - int(rgb_to_grayscale(second)));
   }
-  throw std::invalid_argument(
-      "Undefined behavior for distance function for the used type");
+  throw std::invalid_argument("Undefined behavior for distance function for the used type");
 }
 
 template<typename T>
-void select_similar_ua(bke::CurvesGeometry &curves,
-                                  blender::Set<T> &rs,
-                                  float threshold,
-                                  int type,
-                                  std::string attribute_id,
-                                  T default_attribute)
+static void select_similar_update_active(bke::CurvesGeometry &curves,
+                                         blender::Set<T> &set_active_if_similar_to,
+                                         float threshold,
+                                         int type,
+                                         std::string attribute_id,
+                                         T default_attribute)
 {
   VArray<T> attributes = *curves.attributes().lookup_or_default<T>(
       attribute_id, ATTR_DOMAIN_POINT, default_attribute);
@@ -244,7 +240,8 @@ void select_similar_ua(bke::CurvesGeometry &curves,
       curves, ATTR_DOMAIN_POINT, CD_PROP_BOOL);
 
   MutableSpan<bool> selection_typed = selection.span.typed<bool>();
-  threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
+  // for now sequential impl, grain_size == 1
+  threading::parallel_for(curves.curves_range(), 1, [&](const IndexRange range) {
     for (const int curve_i : range) {
       const IndexRange points = points_by_curve[curve_i];
 
@@ -253,7 +250,7 @@ void select_similar_ua(bke::CurvesGeometry &curves,
       }
 
       for (const int index : points.index_range()) {
-        for (auto s : rs) {
+        for (auto s : set_active_if_similar_to) {
           if (distance<T>(attributes[points[index]], s) <= threshold) {
             selection_typed[points[index]] = true;
           }
@@ -266,13 +263,13 @@ void select_similar_ua(bke::CurvesGeometry &curves,
 }
 
 template<typename T>
-void select_similar_main(GreasePencil &grease_pencil,
-                         Scene *scene,
-                         eAttrDomain selection_domain,
-                         int type,
-                         float threshold,
-                         std::string attribute_id,
-                         T default_value)
+static void select_similar_main(GreasePencil &grease_pencil,
+                                Scene *scene,
+                                eAttrDomain selection_domain,
+                                int type,
+                                float threshold,
+                                std::string attribute_id,
+                                T default_value)
 {
   blender::Vector<blender::Set<T>> v(grease_pencil.drawings().size());
 
@@ -282,7 +279,10 @@ void select_similar_main(GreasePencil &grease_pencil,
   // fixme: this type here should be LAYER... Do we move the enum here?
   if (type == 0) {
     grease_pencil.foreach_editable_drawing_in_layer_ex(
-        scene->r.cfra, [&](int drawing_index, blender::bke::greasepencil::Drawing &drawing, const blender::bke::greasepencil::Layer * layer) {
+        scene->r.cfra,
+        [&](int drawing_index,
+            blender::bke::greasepencil::Drawing &drawing,
+            const blender::bke::greasepencil::Layer *layer) {
           if (!has_anything_selected(drawing.strokes_for_write())) {
             return;
           }
@@ -294,11 +294,10 @@ void select_similar_main(GreasePencil &grease_pencil,
   else {
     grease_pencil.foreach_editable_drawing(
         scene->r.cfra, [&](int drawing_index, blender::bke::greasepencil::Drawing &drawing) {
-          blender::ed::curves::select_similar_cs<T>(
+          blender::ed::curves::select_similar_create_set<T>(
               drawing.strokes_for_write(), v[drawing_index], type, attribute_id, default_value);
         });
   }
-  
 
   Set<T> s{};
   for (auto set : v) {
@@ -323,21 +322,16 @@ void select_similar_main(GreasePencil &grease_pencil,
             select_all(drawing.strokes_for_write(), selection_domain, SEL_SELECT);
           }
         });
-
   }
   else {
     grease_pencil.foreach_editable_drawing(
         scene->r.cfra, [&](int /* drawing_index */, blender::bke::greasepencil::Drawing &drawing) {
-          blender::ed::curves::select_similar_ua<T>(
+          blender::ed::curves::select_similar_update_active<T>(
               drawing.strokes_for_write(), s, threshold, type, attribute_id, default_value);
         });
   }
 }
 
-void select_similar_update_active(bke::CurvesGeometry &curves,
-                                  blender::Set<float> &rs,
-                                  int type,
-                                  float threshold);
     /**
  * (De)select all the adjacent points of the current selected points.
  */

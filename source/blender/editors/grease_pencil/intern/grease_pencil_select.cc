@@ -267,12 +267,10 @@ static void GREASE_PENCIL_OT_select_alternate(wmOperatorType *ot)
                   "(De)select the first and last point of each stroke");
 }
 
-// **************** start
 
 
 static int select_similar_exec(bContext *C, wmOperator *op)
 {
-  // todo: select enum
   const int type = RNA_enum_get(op->ptr, "type");
   const float threshold = RNA_float_get(op->ptr, "threshold");
   Scene *scene = CTX_data_scene(C);
@@ -340,8 +338,6 @@ static void GREASE_PENCIL_OT_select_similar(wmOperatorType *ot)
 
   RNA_def_float(ot->srna, "threshold", 0.1f, 0.0f, 1.0f, "Threshold", "", 0.0f, 1.0f);
 }
-
-// ***********************************************************************
 
 static int select_ends_exec(bContext *C, wmOperator *op)
 {
