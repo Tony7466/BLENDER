@@ -20,6 +20,11 @@ float compatible_fmod(float a, float b)
   return 0.0;
 }
 
+float safe_floored_modulo(float a, float b, float c)
+{
+  return (b != 0.0) ? a - floor(a / b) * b : 0.0;
+}
+
 float compatible_pow(float x, float y)
 {
   if (y == 0.0) { /* x^0 -> 1, including 0^0 */

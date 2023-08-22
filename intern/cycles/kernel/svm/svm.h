@@ -168,6 +168,7 @@ CCL_NAMESPACE_END
 #include "kernel/svm/gamma.h"
 #include "kernel/svm/geometry.h"
 #include "kernel/svm/gradient.h"
+#include "kernel/svm/hexagon.h"
 #include "kernel/svm/hsv.h"
 #include "kernel/svm/ies.h"
 #include "kernel/svm/image.h"
@@ -596,6 +597,9 @@ ccl_device void svm_eval_nodes(KernelGlobals kg,
       break;
       SVM_CASE(NODE_MIX_VECTOR_NON_UNIFORM)
       svm_node_mix_vector_non_uniform(sd, stack, node.y, node.z);
+      break;
+      SVM_CASE(NODE_TEX_HEXAGON)
+      offset = svm_node_tex_hexagon(kg, sd, stack, node, offset);
       break;
       default:
         kernel_assert(!"Unknown node type was passed to the SVM machine");

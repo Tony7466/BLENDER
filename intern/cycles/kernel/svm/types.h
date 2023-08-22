@@ -409,6 +409,24 @@ typedef enum NodeCombSepColorType {
   NODE_COMBSEP_COLOR_HSL,
 } NodeCombSepColorType;
 
+typedef enum NodeHexagonCoordinateMode {
+  NODE_HEXAGON_COORDS_XY,
+  NODE_HEXAGON_COORDS_HEX,
+} NodeHexagonCoordinateMode;
+
+typedef enum NodeHexagonValueMode {
+  NODE_HEXAGON_VALUE_HEX,
+  NODE_HEXAGON_VALUE_SDF,
+  NODE_HEXAGON_VALUE_DOT,
+} NodeHexagonValueMode;
+
+typedef enum NodeHexagonDirection {
+  NODE_HEXAGON_DIRECTION_HORIZONTAL,
+  NODE_HEXAGON_DIRECTION_VERTICAL,
+  NODE_HEXAGON_DIRECTION_HORIZONTAL_TILED,
+  NODE_HEXAGON_DIRECTION_VERTICAL_TILED,
+} NodeHexagonDirection;
+
 /* Closure */
 
 typedef enum ClosureType {

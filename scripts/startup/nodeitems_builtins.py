@@ -214,6 +214,7 @@ shader_node_categories = [
         NodeItem("ShaderNodeTexNoise"),
         NodeItem("ShaderNodeTexWave"),
         NodeItem("ShaderNodeTexVoronoi"),
+        NodeItem("ShaderNodeTexHexagon"),
         NodeItem("ShaderNodeTexMusgrave"),
         NodeItem("ShaderNodeTexGradient"),
         NodeItem("ShaderNodeTexMagic"),

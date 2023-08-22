@@ -939,6 +939,17 @@ static ShaderNode *add_node(Scene *scene,
     get_tex_mapping(noise, b_texture_mapping);
     node = noise;
   }
+  else if (b_node.is_a(&RNA_ShaderNodeTexHexagon)) {
+    BL::ShaderNodeTexHexagon b_hexagon_node(b_node);
+    HexagonTextureNode *hexagon = graph->create_node<HexagonTextureNode>();
+    hexagon->set_coord_mode((NodeHexagonCoordinateMode)b_hexagon_node.coord_mode());
+    hexagon->set_value_mode((NodeHexagonValueMode)b_hexagon_node.value_mode());
+    hexagon->set_direction((NodeHexagonDirection)b_hexagon_node.direction());
+    hexagon->set_use_clamp(b_hexagon_node.use_clamp());
+    BL::TexMapping b_texture_mapping(b_hexagon_node.texture_mapping());
+    get_tex_mapping(hexagon, b_texture_mapping);
+    node = hexagon;
+  }
   else if (b_node.is_a(&RNA_ShaderNodeTexMusgrave)) {
     BL::ShaderNodeTexMusgrave b_musgrave_node(b_node);
     MusgraveTextureNode *musgrave_node = graph->create_node<MusgraveTextureNode>();

@@ -1221,6 +1221,14 @@ typedef struct NodeTexNoise {
   char _pad[3];
 } NodeTexNoise;
 
+typedef struct NodeTexHexagon {
+  NodeTexBase base;
+  int coord_mode;
+  int value_mode;
+  int direction;
+  int use_clamp;
+} NodeTexHexagon;
+
 typedef struct NodeTexVoronoi {
   NodeTexBase base;
   int dimensions;
@@ -1979,6 +1987,19 @@ enum {
   SHD_VORONOI_SMOOTH_F1 = 2,
   SHD_VORONOI_DISTANCE_TO_EDGE = 3,
   SHD_VORONOI_N_SPHERE_RADIUS = 4,
+};
+
+/* Hexagon node coords. */
+enum {
+  SHD_HEXAGON_COORDS_XY = 0,
+  SHD_HEXAGON_COORDS_HEX = 1,
+};
+
+/* Hexagon node value mode. */
+enum {
+  SHD_HEXAGON_VALUE_HEX = 0,
+  SHD_HEXAGON_VALUE_SDF = 1,
+  SHD_HEXAGON_VALUE_DOT = 2,
 };
 
 /* musgrave texture */

@@ -1,0 +1,165 @@
+/* SPDX-License-Identifier: Apache-2.0
+ * Copyright 2011-2022 Blender Foundation */
+
+#include "node_hash.h"
+#include "node_math.h"
+#include "stdcycles.h"
+#include "vector2.h"
+
+#define HRATIO 1.1547005
+#define HSQRT3 1.7320508
+#define HSQRT2 1.4142136
+
+/*
+ * SDF Functions based on:
+ * -
+ * https://www.iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
+ */
+
+float sdf_dimension(float w, output float roundness)
+{
+  float sw = sign(w);
+  float w2 = abs(w);
+  roundness = mix(0.0, w2, clamp(roundness, 0.0, 1.0));
+  float dim = max(w2 - roundness, 0.0);
+  roundness *= 0.5;
+  return dim * sw;
+}
+
+float hex_value_sdf(point pos, float radius, float roundness)
+{
+  float rd = roundness;
+  vector2 p = vector2(pos[0], pos[1]);
+  float r = sdf_dimension(radius, rd);
+  point k = point(HSQRT3 * -0.5, 0.5, HRATIO * 0.5);
+  p = abs(p);
+  vector2 kxy = vector2(k[0], k[1]);
+  vector2 pxy = vector2(p.x, p.y);
+  p -= 2.0 * min(dot(kxy, pxy), 0.0) * kxy;
+  p -= vector2(clamp(p.x, -k[2] * r, k.z * r), r);
+  return length(p) * sign(p.y) - rd * 2.0;
+}
+
+float hex_value(point hp, float radius)
+{
+  point fac = point(fabs(hp[0] - hp[1]), fabs(hp[1] - hp[2]), fabs(hp[2] - hp[0]));
+  float f = max(fac[0], max(fac[1], fac[2]));
+  return (radius == 0.0) ? f : mix(f, length(fac) / HSQRT2, radius);
+}
+
+point xy_to_hex(point xy, float ratio)
+{
+  point p = xy;
+  p[0] *= ratio;
+  p[2] = -0.5 * p[0] - p[1];
+  p[1] = -0.5 * p[0] + p[1];
+  return p;
+}
+
+float hexagon(point co,
+              float scale,
+              float size,
+              float radius,
+              float roundness,
+              string coord_mode,
+              string value_mode,
+              string direction,
+              output color cell_color,
+              output point hex_coords,
+              output point grid_position,
+              output point cell_coords,
+              output point cell_id)
+{
+  point p = co;
+  float ratio = (direction == "horizontal_tiled" || direction == "vertical_tiled") ? 1.0 : HRATIO;
+  if (direction == "vertical" || direction == "vertical_tiled") {
+    float t = p[0];
+    p[0] = p[1];
+    p[1] = t;
+  }
+  p = xy_to_hex(p * scale, ratio);
+  hex_coords = p;
+  point ip = floor(p + 0.5);
+  float s = ip[0] + ip[1] + ip[2];
+  point abs_d = point(0.0);
+  if (s != 0.0) {
+    abs_d = fabs(ip - p);
+    if (abs_d[0] >= abs_d[1] && abs_d[0] >= abs_d[2]) {
+      ip[0] -= s;
+    }
+    else if (abs_d[1] >= abs_d[0] && abs_d[1] >= abs_d[2]) {
+      ip[1] -= s;
+    }
+    else {
+      ip[2] -= s;
+    }
+  }
+  point hp = p - ip;
+  hp *= (size != 0.0) ? 1.0 / size : 0.0;
+  point xy_coords = point(hp[0] * HSQRT3, hp[1] - hp[2], 0.0);
+  if (coord_mode == "hex") {
+    cell_coords = hp;
+    cell_id = ip;
+  }
+  else {
+    cell_coords = xy_coords;
+    cell_id = point(
+        ip[0] / ratio, (ip[1] - ip[2] + (1.0 - safe_floored_modulo(ip[0], 2.0))) / 2.0, 0.0);
+  }
+  if (direction == "vertical" || direction == "vertical_tiled") {
+    hp = point(hp[1], hp[0], hp[2]);
+    cell_coords = point(cell_coords[1], cell_coords[0], cell_coords[2]);
+    cell_id = point(cell_id[1], cell_id[0], cell_id[2]);
+  }
+  grid_position = safe_divide(cell_id, point(scale));
+  cell_color = hash_vector3_to_vector3(cell_id);
+  /* Calc value. */
+  if (value_mode == "dot") {
+    return length(hp);
+  }
+  else if (value_mode == "sdf") {
+    return hex_value_sdf(xy_coords, radius, roundness);
+  }
+  else { /* "hex" */
+    return hex_value(hp, radius);
+  }
+}
+
+shader node_hexagon_texture(
+    int use_mapping = 0,
+    matrix mapping = matrix(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+    string coord_mode = "xy",
+    string value_mode = "hex",
+    string direction = "horizontal",
+    point Vector = P,
+    float Scale = 5.0,
+    float Size = 1.0,
+    float Radius = 0.0,
+    float Roundness = 0.0,
+    output float Value = 0.0,
+    output color Color = 0.0,
+    output point HexCoords = 0.0,
+    output point Position = 0.0,
+    output point CellUV = 0.0,
+    output point CellID = 0.0)
+{
+  point p = Vector;
+
+  if (use_mapping) {
+    p = transform(mapping, p);
+  }
+
+  Value = hexagon(p,
+                  Scale,
+                  Size,
+                  Radius,
+                  Roundness,
+                  coord_mode,
+                  value_mode,
+                  direction,
+                  Color,
+                  HexCoords,
+                  Position,
+                  CellUV,
+                  CellID);
+}

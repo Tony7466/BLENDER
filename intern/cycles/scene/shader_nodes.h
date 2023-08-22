@@ -238,6 +238,22 @@ class NoiseTextureNode : public TextureNode {
   NODE_SOCKET_API(float3, vector)
 };
 
+class HexagonTextureNode : public TextureNode {
+ public:
+  SHADER_NODE_CLASS(HexagonTextureNode)
+  void expand(ShaderGraph *graph);
+
+  NODE_SOCKET_API(float, scale)
+  NODE_SOCKET_API(float, size)
+  NODE_SOCKET_API(float, radius)
+  NODE_SOCKET_API(float, roundness)
+  NODE_SOCKET_API(float3, vector)
+  NODE_SOCKET_API(NodeHexagonCoordinateMode, coord_mode)
+  NODE_SOCKET_API(NodeHexagonValueMode, value_mode)
+  NODE_SOCKET_API(NodeHexagonDirection, direction)
+  NODE_SOCKET_API(bool, use_clamp)  
+};
+
 class VoronoiTextureNode : public TextureNode {
  public:
   SHADER_NODE_CLASS(VoronoiTextureNode)

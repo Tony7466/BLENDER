@@ -505,6 +505,7 @@ class NODE_MT_category_GEO_TEXTURE(Menu):
         node_add_menu.add_node_type(layout, "ShaderNodeTexBrick")
         node_add_menu.add_node_type(layout, "ShaderNodeTexChecker")
         node_add_menu.add_node_type(layout, "ShaderNodeTexGradient")
+        node_add_menu.add_node_type(layout, "ShaderNodeTexHexagon")        
         node_add_menu.add_node_type(layout, "GeometryNodeImageTexture")
         node_add_menu.add_node_type(layout, "ShaderNodeTexMagic")
         node_add_menu.add_node_type(layout, "ShaderNodeTexMusgrave")

@@ -1189,6 +1189,124 @@ void NoiseTextureNode::compile(OSLCompiler &compiler)
   compiler.add(this, "node_noise_texture");
 }
 
+/* Hexagon Texture */
+
+NODE_DEFINE(HexagonTextureNode)
+{
+  NodeType *type = NodeType::add("hexagon_texture", create, NodeType::SHADER);
+
+  TEXTURE_MAPPING_DEFINE(HexagonTextureNode);
+
+  static NodeEnum coord_enum;
+  coord_enum.insert("xy", NODE_HEXAGON_COORDS_XY);
+  coord_enum.insert("hex", NODE_HEXAGON_COORDS_HEX);
+  SOCKET_ENUM(coord_mode, "Coordinate Mode", coord_enum, NODE_HEXAGON_COORDS_XY);
+
+  static NodeEnum value_enum;
+  value_enum.insert("hex", NODE_HEXAGON_VALUE_HEX);
+  value_enum.insert("sdf", NODE_HEXAGON_VALUE_SDF);
+  value_enum.insert("dot", NODE_HEXAGON_VALUE_DOT);
+  SOCKET_ENUM(value_mode, "Value Mode", value_enum, NODE_HEXAGON_VALUE_HEX);
+
+  static NodeEnum direction_enum;
+  direction_enum.insert("horizontal", NODE_HEXAGON_DIRECTION_HORIZONTAL);
+  direction_enum.insert("vertical", NODE_HEXAGON_DIRECTION_VERTICAL);
+  direction_enum.insert("horizontal_tiled", NODE_HEXAGON_DIRECTION_HORIZONTAL_TILED);
+  direction_enum.insert("vertical_tiled", NODE_HEXAGON_DIRECTION_VERTICAL_TILED);
+  SOCKET_ENUM(direction, "Direction", direction_enum, NODE_HEXAGON_DIRECTION_HORIZONTAL);
+
+  SOCKET_BOOLEAN(use_clamp, "Use Clamp", false);
+
+  SOCKET_IN_POINT(vector, "Vector", zero_float3(), SocketType::LINK_TEXTURE_GENERATED);
+  SOCKET_IN_FLOAT(scale, "Scale", 5.0f);
+  SOCKET_IN_FLOAT(size, "Size", 1.0f);
+  SOCKET_IN_FLOAT(radius, "Radius", 0.0f);
+  SOCKET_IN_FLOAT(roundness, "Roundness", 0.0f);
+
+  SOCKET_OUT_FLOAT(value, "Value");
+  SOCKET_OUT_COLOR(color, "Color");
+  SOCKET_OUT_POINT(hex_coords, "Hex Coords");
+  SOCKET_OUT_POINT(position, "Position");
+  SOCKET_OUT_POINT(cell_coords, "Cell UV");
+  SOCKET_OUT_POINT(cell, "Cell ID");
+  return type;
+}
+
+HexagonTextureNode::HexagonTextureNode() : TextureNode(get_node_type()) {}
+
+void HexagonTextureNode::expand(ShaderGraph *graph)
+{
+  if (use_clamp) {
+    ShaderOutput *result_out = output("Value");
+    if (!result_out->links.empty()) {
+      ClampNode *clamp_node = graph->create_node<ClampNode>();
+      clamp_node->set_clamp_type(NODE_CLAMP_MINMAX);
+      clamp_node->set_min(0.0f);
+      clamp_node->set_max(1.0f);
+      graph->add(clamp_node);
+      graph->relink(result_out, clamp_node->output("Result"));
+      graph->connect(result_out, clamp_node->input("Value"));
+    }
+  }
+}
+
+void HexagonTextureNode::compile(SVMCompiler &compiler)
+{
+  ShaderInput *vector_in = input("Vector");
+  ShaderInput *scale_in = input("Scale");
+  ShaderInput *size_in = input("Size");
+  ShaderInput *radius_in = input("Radius");
+  ShaderInput *roundness_in = input("Roundness");
+
+  ShaderOutput *value_out = output("Value");
+  ShaderOutput *color_out = output("Color");
+  ShaderOutput *hex_coords_out = output("Hex Coords");
+  ShaderOutput *grid_position_out = output("Position");
+  ShaderOutput *cell_coords_out = output("Cell UV");
+  ShaderOutput *cell_out = output("Cell ID");
+
+  int vector_in_stack_offset = tex_mapping.compile_begin(compiler, vector_in);
+  int scale_in_stack_offset = compiler.stack_assign(scale_in);
+  int size_in_stack_offset = compiler.stack_assign(size_in);
+  int radius_in_stack_offset = compiler.stack_assign(radius_in);
+  int roundness_in_stack_offset = compiler.stack_assign(roundness_in);
+
+  int value_stack_offset = compiler.stack_assign_if_linked(value_out);
+  int color_stack_offset = compiler.stack_assign_if_linked(color_out);
+  int coords_out_stack_offset = compiler.stack_assign_if_linked(hex_coords_out);
+  int grid_position_stack_offset = compiler.stack_assign_if_linked(grid_position_out);
+  int cell_coords_stack_offset = compiler.stack_assign_if_linked(cell_coords_out);
+  int cell_stack_offset = compiler.stack_assign_if_linked(cell_out);
+
+  compiler.add_node(
+      NODE_TEX_HEXAGON,
+      compiler.encode_uchar4(vector_in_stack_offset, coord_mode, value_mode, direction),
+      compiler.encode_uchar4(
+          scale_in_stack_offset, size_in_stack_offset, radius_in_stack_offset, color_stack_offset),
+      compiler.encode_uchar4(cell_stack_offset,
+                             grid_position_stack_offset,
+                             cell_coords_stack_offset,
+                             value_stack_offset));
+
+  compiler.add_node(compiler.encode_uchar4(roundness_in_stack_offset, coords_out_stack_offset));
+
+  compiler.add_node(__float_as_int(scale),
+                    __float_as_int(size),
+                    __float_as_int(radius),
+                    __float_as_int(roundness));
+
+  tex_mapping.compile_end(compiler, vector_in, vector_in_stack_offset);
+}
+
+void HexagonTextureNode::compile(OSLCompiler &compiler)
+{
+  tex_mapping.compile(compiler);
+  compiler.parameter(this, "coord_mode");
+  compiler.parameter(this, "value_mode");
+  compiler.parameter(this, "direction");
+  compiler.add(this, "node_hexagon_texture");
+}
+
 /* Voronoi Texture */
 
 NODE_DEFINE(VoronoiTextureNode)
@@ -1570,7 +1688,7 @@ NODE_DEFINE(WaveTextureNode)
   SOCKET_IN_FLOAT(detail, "Detail", 2.0f);
   SOCKET_IN_FLOAT(detail_scale, "Detail Scale", 0.0f);
   SOCKET_IN_FLOAT(detail_roughness, "Detail Roughness", 0.5f);
-  SOCKET_IN_FLOAT(phase, "Phase Offset", 0.0f);
+  SOCKET_IN_FLOAT(phase, "Phase Randomness", 0.0f);
   SOCKET_OUT_COLOR(color, "Color");
   SOCKET_OUT_FLOAT(fac, "Fac");
 
