@@ -1580,26 +1580,22 @@ void draw_nodespace_back_pix(const bContext &C,
   GPU_matrix_push_projection();
   GPU_matrix_push();
 
-  /* The draw manager is used to draw the
-   * backdrop image. */
+  /* The draw manager is used to draw the backdrop image. */
   GPUFrameBuffer *old_fb = GPU_framebuffer_active_get();
   GPU_framebuffer_restore();
   BLI_thread_lock(LOCK_DRAW_IMAGE);
   DRW_draw_view(&C);
   BLI_thread_unlock(LOCK_DRAW_IMAGE);
   GPU_framebuffer_bind_no_srgb(old_fb);
-  /* Draw manager changes the depth state.
-   * Set it back to NONE. Without this the
-   * node preview images aren't drawn
-   * correctly. */
+  /* Draw manager changes the depth state. Set it back to NONE. Without this the
+   * node preview images aren't drawn correctly. */
   GPU_depth_test(GPU_DEPTH_NONE);
 
   void *lock;
   Image *ima = BKE_image_ensure_viewer(bmain, IMA_TYPE_COMPOSITE, "Viewer Node");
   ImBuf *ibuf = BKE_image_acquire_ibuf(ima, nullptr, &lock);
   if (ibuf) {
-    /* somehow the offset has to be
-     * calculated inverse */
+    /* somehow the offset has to be calculated inverse */
     wmOrtho2_region_pixelspace(&region);
     const float offset_x = snode.xof + ima->offset_x * snode.zoom;
     const float offset_y = snode.yof + ima->offset_y * snode.zoom;
@@ -2006,8 +2002,7 @@ static void nodelink_batch_add_link(const SpaceNode &snode,
                                     const std::array<float2, 4> &points,
                                     const NodeLinkDrawConfig &draw_config)
 {
-  /* Only allow these colors. If more is needed, you need to modify the shader accordingly.
-   */
+  /* Only allow these colors. If more is needed, you need to modify the shader accordingly. */
   BLI_assert(
       ELEM(draw_config.th_col1, TH_WIRE_INNER, TH_WIRE, TH_ACTIVE, TH_EDGE_SELECT, TH_REDALERT));
   BLI_assert(

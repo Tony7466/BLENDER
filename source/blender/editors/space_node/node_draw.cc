@@ -486,9 +486,14 @@ static void node_update_basis_from_declaration(
   bke::bNodePanelRuntime *current_panel_runtime = node.runtime->panels.begin();
   bool has_sockets = false;
 
-  /* Parent panel stack with count of items still to be added. */
+  /* The panel stack keeps track of the hierarchy of panels. When a panel declaration is found a
+   * new #PanelUpdate is added to the stack. Items in the declaration are added to the top panel of
+   * the stack. Each panel expects a number of items to be added, after which the panel is removed
+   * from the stack again. */
   struct PanelUpdate {
+    /* How many items still to add. */
     int remaining_items;
+    /* True if the panel or its parent is collapsed. */
     bool is_collapsed;
   };
 
@@ -863,14 +868,13 @@ static void node_socket_draw_multi_input(const float color[4],
                                          const float height,
                                          const float2 location)
 {
-  /* The other sockets are drawn with the keyframe shader. There, the outline has a base
-   * thickness that can be varied but always scales with the size the socket is drawn at. Using
+  /* The other sockets are drawn with the keyframe shader. There, the outline has a base thickness
+   * that can be varied but always scales with the size the socket is drawn at. Using
    * `UI_SCALE_FAC` has the same effect here. It scales the outline correctly across different
    * screen DPI's and UI scales without being affected by the 'line-width'. */
   const float outline_width = NODE_SOCK_OUTLINE_SCALE * UI_SCALE_FAC;
 
-  /* UI_draw_roundbox draws the outline on the outer side, so compensate for the outline width.
-   */
+  /* UI_draw_roundbox draws the outline on the outer side, so compensate for the outline width. */
   const rctf rect = {
       location.x - width + outline_width * 0.5f,
       location.x + width - outline_width * 0.5f,
@@ -2260,8 +2264,7 @@ static Vector<NodeExtraInfoRow> node_get_extra_info(TreeDrawContext &tree_draw_c
     row.text = node_get_execution_time_label(tree_draw_ctx, snode, node);
     if (!row.text.empty()) {
       row.tooltip = TIP_(
-          "The execution time from the node tree's latest evaluation. For frame and group "
-          "nodes, "
+          "The execution time from the node tree's latest evaluation. For frame and group nodes, "
           "the time for all sub-nodes");
       row.icon = ICON_PREVIEW_RANGE;
       rows.append(std::move(row));
@@ -3552,8 +3555,7 @@ static void node_draw_zones(TreeDrawContext & /*tree_draw_ctx*/,
     return bounding_box_area_by_zone[a] > bounding_box_area_by_zone[b];
   });
 
-  /* Draw all the contour lines after to prevent them from getting hidden by overlapping zones.
-   */
+  /* Draw all the contour lines after to prevent them from getting hidden by overlapping zones.  */
   for (const int zone_i : zone_draw_order) {
     float zone_color[4];
     UI_GetThemeColor4fv(get_theme_id(zone_i), zone_color);
