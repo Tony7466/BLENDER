@@ -598,26 +598,26 @@ static Array<bool> get_points_to_dissolve(bke::CurvesGeometry &curves, const Dis
     return points_to_dissolve;
   }
 
-  /* Both `between` and `unselect` have the unselected point being the ones dissolved so we need
-   * to invert.*/
+  /* Both `between` and `unselect` have the unselected point being the ones dissolved so we need to
+   * invert. */
   BLI_assert(ELEM(mode, DissolveMode::BETWEEN, DissolveMode::UNSELECT));
 
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-  /* Because we are going to invert, these become the points to keep.*/
+  /* Because we are going to invert, these become the points to keep. */
   MutableSpan<bool> points_to_keep = points_to_dissolve.as_mutable_span();
 
   threading::parallel_for(curves.curves_range(), 128, [&](const IndexRange range) {
     for (const int64_t curve_i : range) {
       const IndexRange points = points_by_curve[curve_i];
       const Span<bool> curve_selection = points_to_dissolve.as_span().slice(points);
-      /* The unselected curves should not be dissolved.*/
+      /* The unselected curves should not be dissolved. */
       if (!curve_selection.contains(true)) {
         points_to_keep.slice(points).fill(true);
         continue;
       }
 
       /* `between` is just `unselect` but with the first and last segments not geting
-       * dissolved.*/
+       * dissolved. */
       if (mode != DissolveMode::BETWEEN) {
         continue;
       }
@@ -630,7 +630,7 @@ static Array<bool> get_points_to_dissolve(bke::CurvesGeometry &curves, const Dis
         const IndexRange last_range = deselection_ranges.last().shift(points.first());
 
         /* Ranges should only be fill if the first/last point matchs the start/end point
-         * of the segment.*/
+         * of the segment. */
         if (first_range.first() == points.first()) {
           points_to_keep.slice(first_range).fill(true);
         }
