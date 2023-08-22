@@ -959,7 +959,7 @@ struct EraseOperationExecutor {
    * curves.
    */
   bool soft_eraser(const blender::bke::CurvesGeometry &src,
-                   const Array<float2> &screen_space_positions,
+                   const Span<float2> screen_space_positions,
                    blender::bke::CurvesGeometry &dst,
                    const bool keep_caps)
   {
