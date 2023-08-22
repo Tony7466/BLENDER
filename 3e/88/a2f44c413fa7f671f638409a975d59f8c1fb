@@ -1,2 +1,3 @@
 Referenced by pull request #110438, CMake: revert last weeks modernizations
 Referenced by commit 4ea2baf4ae3b06bba27bee48a26325ac52583efe, CMake: revert last weeks modernizations
+Referenced by issue #110674, 3.6.1 cycles light tree will cause normal map looks not right
