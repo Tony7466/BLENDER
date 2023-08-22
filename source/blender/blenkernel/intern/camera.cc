@@ -8,7 +8,6 @@
 
 #include <cstddef>
 #include <cstdlib>
-#include <iostream>
 
 /* Allow using deprecated functionality for .blend file I/O. */
 #define DNA_DEPRECATED_ALLOW
