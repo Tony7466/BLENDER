@@ -709,7 +709,7 @@ struct EraseOperationExecutor {
 
         if (src_curve_points.size() == 1) {
           /* One-point stroke : just check if the point is inside the eraser. */
-          int radius_index = -1;
+          int ring_index = -1;
           for (const FalloffSample &eraser_point : falloff) {
             const int64_t src_point = src_curve_points.first();
             const int64_t sq_distance = math::distance_squared(
@@ -717,8 +717,9 @@ struct EraseOperationExecutor {
 
             /* Note: We don't account for boundaries here, since we are not going to split any
              * curve. */
-            if ((sq_distance <= eraser_point.squared_radius)) {
-              r_point_ring[src_point] = {radius_index, PointCircleSide::Inside};
+            if ((r_point_ring[src_point].first == -1) &&
+                (sq_distance <= eraser_point.squared_radius)) {
+              r_point_ring[src_point] = {ring_index, PointCircleSide::Inside};
             }
           }
           continue;
@@ -1214,6 +1215,7 @@ struct EraseOperationExecutor {
       const IndexRange src_points = src_points_by_curve[src_curve];
 
       for (const int64_t src_point : src_points) {
+        Vector<DestinationPoint> &dst_points = src_to_dst_points[src_point];
         const int64_t src_next_point = (src_point == src_points.last()) ? src_points.first() :
                                                                           (src_point + 1);
 
