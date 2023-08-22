@@ -14,7 +14,6 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BLI_edgehash.h"
 #include "BLI_linklist.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
@@ -496,7 +495,7 @@ void cloth_free_modifier(ClothModifierData *clmd)
       MEM_freeN(clmd->clothObject->facemarks);
     }
 #endif
-    MEM_freeN(cloth);
+    MEM_delete(cloth);
     clmd->clothObject = nullptr;
   }
 }
@@ -742,7 +741,7 @@ static bool cloth_from_object(
   }
 
   /* Allocate a new cloth object. */
-  clmd->clothObject = MEM_cnew<Cloth>(__func__);
+  clmd->clothObject = MEM_new<Cloth>(__func__);
   if (clmd->clothObject) {
     clmd->clothObject->old_solver_type = 255;
     clmd->clothObject->edgeset = nullptr;

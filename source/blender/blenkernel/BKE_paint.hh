@@ -14,6 +14,8 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_utildefines.h"
+#include "BLI_set.hh"
+#include "BLI_ordered_edge.hh"
 
 #include "DNA_brush_enums.h"
 #include "DNA_object_enums.h"

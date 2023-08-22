@@ -8,7 +8,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_edgehash.h"
 #include "BLI_gsqueue.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
@@ -152,7 +151,7 @@ static bool cloth_brush_sim_has_length_constraint(SculptClothSimulation *cloth_s
                                                   const int v1,
                                                   const int v2)
 {
-  return BLI_edgeset_haskey(cloth_sim->created_length_constraints, v1, v2);
+  return cloth_sim->created_length_constraints.contains({v1, v2});
 }
 
 static void cloth_brush_reallocate_constraints(SculptClothSimulation *cloth_sim)
@@ -205,7 +204,7 @@ static void cloth_brush_add_length_constraint(SculptSession *ss,
   cloth_brush_reallocate_constraints(cloth_sim);
 
   /* Add the constraint to the #GSet to avoid creating it again. */
-  BLI_edgeset_add(cloth_sim->created_length_constraints, v1, v2);
+  cloth_sim->created_length_constraints.add({v1, v2});
 }
 
 static void cloth_brush_add_softbody_constraint(SculptClothSimulation *cloth_sim,
@@ -1096,7 +1095,7 @@ void SCULPT_cloth_brush_ensure_nodes_constraints(
   TaskParallelSettings settings;
   BKE_pbvh_parallel_range_settings(&settings, false, nodes.size());
 
-  cloth_sim->created_length_constraints = BLI_edgeset_new("created length constraints");
+  cloth_sim->created_length_constraints.clear();
 
   SculptThreadedTaskData build_constraints_data{};
   build_constraints_data.sd = sd;
@@ -1113,7 +1112,7 @@ void SCULPT_cloth_brush_ensure_nodes_constraints(
                           do_cloth_brush_build_constraints_task_cb_ex,
                           &settings);
 
-  BLI_edgeset_free(cloth_sim->created_length_constraints);
+  cloth_sim->created_length_constraints.clear_and_shrink();
 }
 
 void SCULPT_cloth_brush_simulation_init(SculptSession *ss, SculptClothSimulation *cloth_sim)

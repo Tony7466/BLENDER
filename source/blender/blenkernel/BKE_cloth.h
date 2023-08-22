@@ -8,6 +8,8 @@
  */
 
 #include "BLI_math_inline.h"
+#include "BLI_ordered_edge.hh"
+
 #include <float.h>
 
 #ifdef __cplusplus
@@ -76,7 +78,7 @@ typedef struct Cloth {
   struct BVHTree *bvhselftree; /* collision tree for this cloth object (may be same as bvhtree) */
   struct MVertTri *tri;
   struct Implicit_Data *implicit; /* our implicit solver connects to this pointer */
-  struct EdgeSet *edgeset;        /* used for selfcollisions */
+  blender::Set<blender::OrderedEdge> edgeset;
   int last_frame;
   float initial_mesh_volume;      /* Initial volume of the mesh. Used for pressure */
   float average_acceleration[3];  /* Moving average of overall acceleration. */
