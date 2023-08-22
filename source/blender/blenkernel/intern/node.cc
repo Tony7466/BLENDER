@@ -117,7 +117,7 @@ using blender::nodes::OutputSocketFieldType;
 using blender::nodes::SocketDeclaration;
 
 /* Forward declaration. */
-static void write_node_socket_default_value(BlendWriter *writer, bNodeSocket *sock);
+static void write_node_socket_default_value(BlendWriter *writer, const bNodeSocket *sock);
 
 static CLG_LogRef LOG = {"bke.node"};
 
@@ -469,7 +469,7 @@ static ID **node_owner_pointer_get(ID *id)
 
 namespace blender::bke::forward_compat {
 
-static void write_node_socket_interface(BlendWriter *writer, bNodeSocket *sock)
+static void write_node_socket_interface(BlendWriter *writer, const bNodeSocket *sock)
 {
   BLO_write_struct(writer, bNodeSocket, sock);
 
@@ -578,7 +578,7 @@ static void write_interface_as_sockets(BlendWriter *writer, bNodeTree *ntree)
 
 }  // namespace blender::bke::forward_compat
 
-static void write_node_socket_default_value(BlendWriter *writer, bNodeSocket *sock)
+static void write_node_socket_default_value(BlendWriter *writer, const bNodeSocket *sock)
 {
   if (sock->default_value == nullptr) {
     return;
@@ -631,7 +631,7 @@ static void write_node_socket_default_value(BlendWriter *writer, bNodeSocket *so
   }
 }
 
-static void write_node_socket(BlendWriter *writer, bNodeSocket *sock)
+static void write_node_socket(BlendWriter *writer, const bNodeSocket *sock)
 {
   BLO_write_struct(writer, bNodeSocket, sock);
 
