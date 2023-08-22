@@ -1523,7 +1523,7 @@ static void drawAutoKeyWarning(TransInfo * /*t*/, const bContext *C, ARegion *re
         offset = U.gizmo_size_navigate_v3d;
         break;
       case USER_MINI_AXIS_TYPE_MINIMAL:
-        offset = U.rvisize * 1.7f;
+        offset = U.rvisize * MIN2((U.pixelsize / U.scale_factor), 1.0f) * 2.5f;
         break;
       case USER_MINI_AXIS_TYPE_NONE:
         offset = U.rvisize;
