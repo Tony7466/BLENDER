@@ -66,7 +66,7 @@ struct EraseOperationExecutor {
   int64_t eraser_squared_radius_pixels{};
 
   /* Threshold below which points are considered as transparent and thus shall be removed. */
-  static constexpr float opacity_threshold = 0.01f;
+  static constexpr float opacity_threshold = 0.05f;
 
   EraseOperationExecutor(const bContext & /*C*/) {}
 
