@@ -70,11 +70,11 @@ struct EraseOperationExecutor {
 
   EraseOperationExecutor(const bContext & /*C*/) {}
 
-  struct FalloffSample {
+  struct EraserRing {
     float radius;
     int64_t squared_radius;
     float opacity;
-    bool is_cut{false};
+    bool hard_erase{false};
   };
 
   /**
@@ -389,9 +389,9 @@ struct EraseOperationExecutor {
   int64_t intersections_with_curves_falloff(
       const bke::CurvesGeometry &src,
       const Span<float2> screen_space_positions,
-      const Span<FalloffSample> falloff,
       MutableSpan<std::pair<int, PointCircleSide>> r_point_ring,
-      MutableSpan<Vector<SegmentCircleIntersection>> r_intersections) const
+      MutableSpan<Vector<SegmentCircleIntersection>> r_intersections,
+      const Span<EraserRing> rings) const
   {
     const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
     const VArray<bool> src_cyclic = src.cyclic();
@@ -411,30 +411,30 @@ struct EraseOperationExecutor {
 
         if (src_curve_points.size() == 1) {
           /* One-point stroke : just check if the point is inside the eraser. */
-          int radius_index = -1;
-          for (const FalloffSample &eraser_point : falloff) {
+          int ring_index = -1;
+          for (const EraserRing &eraser_point : rings) {
             const int64_t src_point = src_curve_points.first();
-            const int64_t sq_distance = math::distance_squared(
+            const int64_t squared_distance = math::distance_squared(
                 this->mouse_position_pixels, screen_space_positions_pixel[src_point]);
 
             /* Note: We don't account for boundaries here, since we are not going to split any
              * curve. */
             if ((r_point_ring[src_point].first == -1) &&
-                (sq_distance <= eraser_point.squared_radius)) {
-              r_point_ring[src_point] = {radius_index, PointCircleSide::Inside};
+                (squared_distance <= eraser_point.squared_radius)) {
+              r_point_ring[src_point] = {ring_index, PointCircleSide::Inside};
             }
           }
           continue;
         }
 
         for (const int64_t src_point : src_curve_points.drop_back(1)) {
-          int radius_index = 0;
-          for (const FalloffSample &eraser_point : falloff) {
+          int ring_index = 0;
+          for (const EraserRing &eraser_point : rings) {
             SegmentCircleIntersection inter0;
             SegmentCircleIntersection inter1;
 
-            inter0.ring_index = radius_index;
-            inter1.ring_index = radius_index;
+            inter0.ring_index = ring_index;
+            inter1.ring_index = ring_index;
 
             PointCircleSide point_side;
             PointCircleSide point_after_side;
@@ -456,7 +456,7 @@ struct EraseOperationExecutor {
             if ((r_point_ring[src_point].first == -1) &&
                 ELEM(point_side, PointCircleSide::Inside, PointCircleSide::InsideOutsideBoundary))
             {
-              r_point_ring[src_point] = {radius_index, point_side};
+              r_point_ring[src_point] = {ring_index, point_side};
             }
 
             if (src_point + 1 == src_curve_points.last()) {
@@ -465,7 +465,7 @@ struct EraseOperationExecutor {
                        PointCircleSide::Inside,
                        PointCircleSide::InsideOutsideBoundary))
               {
-                r_point_ring[src_point + 1] = {radius_index, point_after_side};
+                r_point_ring[src_point + 1] = {ring_index, point_after_side};
               }
             }
 
@@ -479,7 +479,7 @@ struct EraseOperationExecutor {
               }
             }
 
-            ++radius_index;
+            ++ring_index;
           }
         }
 
@@ -487,9 +487,9 @@ struct EraseOperationExecutor {
           /* If the curve is cyclic, we need to check for the closing segment. */
           const int64_t src_last_point = src_curve_points.last();
           const int64_t src_first_point = src_curve_points.first();
-          int radius_index = 0;
+          int ring_index = 0;
 
-          for (const FalloffSample &eraser_point : falloff) {
+          for (const EraserRing &eraser_point : rings) {
             SegmentCircleIntersection inter0;
             SegmentCircleIntersection inter1;
 
@@ -518,7 +518,7 @@ struct EraseOperationExecutor {
               }
             }
 
-            ++radius_index;
+            ++ring_index;
           }
         }
       }
@@ -838,7 +838,7 @@ struct EraseOperationExecutor {
     return true;
   }
 
-  Vector<FalloffSample> compute_piecewise_linear_falloff() const
+  Vector<EraserRing> compute_piecewise_linear_falloff() const
   {
     /* The changes in opacity implied by the soft eraser are described by a falloff curve
      * mapping. Abscissa of the curve is the normalized distance to the brush, and ordinate of
@@ -855,32 +855,31 @@ struct EraseOperationExecutor {
      * The samples are stored in increasing radius order. */
     const int64_t step_pixels = 2;
     int nb_samples = round_fl_to_int(this->eraser_radius / step_pixels) + 1;
-    Vector<FalloffSample> falloff_samples(nb_samples);
+    Vector<EraserRing> eraser_rings(nb_samples);
     for (const int sample_index : IndexRange(nb_samples)) {
       const int64_t sampled_distance = math::max(sample_index * step_pixels, int64_t(1));
 
-      FalloffSample &falloff_sample = falloff_samples[sample_index];
-      falloff_sample.radius = sampled_distance;
-      falloff_sample.squared_radius = sampled_distance * sampled_distance;
-      falloff_sample.opacity = 1.0 - this->eraser_strength *
-                                         BKE_brush_curve_strength(this->brush_,
-                                                                  float(sampled_distance),
-                                                                  this->eraser_radius);
+      EraserRing &ring = eraser_rings[sample_index];
+      ring.radius = sampled_distance;
+      ring.squared_radius = sampled_distance * sampled_distance;
+      ring.opacity = 1.0 - this->eraser_strength *
+                               BKE_brush_curve_strength(
+                                   this->brush_, float(sampled_distance), this->eraser_radius);
     }
 
     /* Then, prune samples that are under the opacity threshold. */
     Array<bool> prune_sample(nb_samples, false);
-    for (const int sample_index : falloff_samples.index_range()) {
-      FalloffSample &sample = falloff_samples[sample_index];
+    for (const int sample_index : eraser_rings.index_range()) {
+      EraserRing &sample = eraser_rings[sample_index];
 
       if (sample_index == nb_samples - 1) {
         /* If this is the last samples, we need to keep it at the same position (it corresponds
          * to the brush overall radius). It is a cut if the opacity is under the threshold.*/
-        sample.is_cut = (sample.opacity < opacity_threshold);
+        sample.hard_erase = (sample.opacity < opacity_threshold);
         continue;
       }
 
-      FalloffSample next_sample = falloff_samples[sample_index + 1];
+      EraserRing next_sample = eraser_rings[sample_index + 1];
 
       /* If both samples are under the threshold, prune it !
        * If none of them are under the threshold, leave them as they are.
@@ -892,7 +891,7 @@ struct EraseOperationExecutor {
 
       /* Otherwise, shift the sample to the spot where the opacity is exactly at the threshold.
        * This way we don't remove larger opacity values in-between the samples. */
-      const FalloffSample &sample_after = falloff_samples[sample_index + 1];
+      const EraserRing &sample_after = eraser_rings[sample_index + 1];
 
       const float t = (opacity_threshold - sample.opacity) /
                       (sample_after.opacity - sample.opacity);
@@ -903,26 +902,26 @@ struct EraseOperationExecutor {
       sample.radius = radius;
       sample.squared_radius = radius * radius;
       sample.opacity = opacity_threshold;
-      sample.is_cut = !(next_sample.opacity < opacity_threshold);
+      sample.hard_erase = !(next_sample.opacity < opacity_threshold);
     }
 
-    for (const int rev_sample_index : falloff_samples.index_range()) {
+    for (const int rev_sample_index : eraser_rings.index_range()) {
       const int sample_index = nb_samples - rev_sample_index - 1;
       if (prune_sample[sample_index]) {
-        falloff_samples.remove(sample_index);
+        eraser_rings.remove(sample_index);
       }
     }
 
     /* Finally, simplify the array to have a minimal set of samples. */
-    nb_samples = falloff_samples.size();
+    nb_samples = eraser_rings.size();
 
     const auto opacity_distance = [&](const IndexRange &sub_range, const int index) {
       /* Distance function for the simplification algorithm.
        * It is computed as the difference in opacity that may result from removing the
        * samples inside the range. */
-      const FalloffSample &sample_first = falloff_samples[sub_range.first()];
-      const FalloffSample &sample_last = falloff_samples[sub_range.last()];
-      const FalloffSample &sample = falloff_samples[sub_range[index]];
+      const EraserRing &sample_first = eraser_rings[sub_range.first()];
+      const EraserRing &sample_last = eraser_rings[sub_range.last()];
+      const EraserRing &sample = eraser_rings[sub_range[index]];
 
       /* If we were to remove the samples between sample_first and sample_last, then the opacity
        * at sample.radius would be a linear interpolation between the opacities in the endpoints
@@ -937,18 +936,16 @@ struct EraseOperationExecutor {
     Array<bool> simplify_sample(nb_samples, false);
     const float distance_threshold = 0.1f;
     ed::greasepencil::ramer_douglas_peucker_simplify(
-        falloff_samples.index_range(), distance_threshold, opacity_distance, simplify_sample);
+        eraser_rings.index_range(), distance_threshold, opacity_distance, simplify_sample);
 
-    for (const int rev_sample_index : falloff_samples.index_range()) {
+    for (const int rev_sample_index : eraser_rings.index_range()) {
       const int sample_index = nb_samples - rev_sample_index - 1;
       if (simplify_sample[sample_index]) {
-        falloff_samples.remove(sample_index);
+        eraser_rings.remove(sample_index);
       }
     }
-    std::cout << "Falloff samples : " << (round_fl_to_int(this->eraser_radius / step_pixels) + 1)
-              << " -> " << nb_samples << std::endl;
 
-    return falloff_samples;
+    return eraser_rings;
   }
 
   /**
@@ -968,7 +965,7 @@ struct EraseOperationExecutor {
 
     /* The soft eraser changes the opacity of the strokes underneath it using a curve falloff. We
      * sample this curve to get a set of rings in the brush. */
-    const Vector<FalloffSample> eraser_falloff = compute_piecewise_linear_falloff();
+    const Vector<EraserRing> eraser_rings = compute_piecewise_linear_falloff();
 
     /* Compute intersections between the source curves geometry and all the rings of the eraser.
      */
@@ -977,7 +974,7 @@ struct EraseOperationExecutor {
                                                           {-1, PointCircleSide::Outside});
     Array<Vector<SegmentCircleIntersection>> src_intersections(src_points_num);
     intersections_with_curves_falloff(
-        src, screen_space_positions, eraser_falloff, src_point_ring, src_intersections);
+        src, screen_space_positions, src_point_ring, src_intersections, eraser_rings);
 
     /* Function to get the resulting opacity at a specific point in the source. */
     const VArray<float> &src_opacity = *(
@@ -1009,7 +1006,7 @@ struct EraseOperationExecutor {
         /* Get the ring into which the source point lies.
          * If the point is completely outside of the eraser, then the index is (-1). */
         const int point_ring = src_point_ring[src_point].first;
-        const bool ring_is_cut = (point_ring != -1) && eraser_falloff[point_ring].is_cut;
+        const bool ring_is_cut = (point_ring != -1) && eraser_rings[point_ring].hard_erase;
         const PointCircleSide point_side = src_point_ring[src_point].second;
 
         const bool point_is_cut = ring_is_cut &&
@@ -1028,8 +1025,8 @@ struct EraseOperationExecutor {
 
         /* Add all intersections with the rings. */
         for (const SegmentCircleIntersection &intersection : src_intersections[src_point]) {
-          const FalloffSample &ring = eraser_falloff[intersection.ring_index];
-          const bool is_cut = intersection.inside_outside_intersection && ring.is_cut;
+          const EraserRing &ring = eraser_rings[intersection.ring_index];
+          const bool is_cut = intersection.inside_outside_intersection && ring.hard_erase;
           const float initial_opacity = math::interpolate(
               src_opacity[src_point], src_opacity[src_next_point], intersection.factor);
 
