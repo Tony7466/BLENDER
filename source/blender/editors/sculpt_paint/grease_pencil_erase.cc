@@ -854,10 +854,10 @@ struct EraseOperationExecutor {
     /* First, distance-based sampling with a small pixel distance.
      * The samples are stored in increasing radius order. */
     const int64_t step_pixels = 2;
-    int nb_samples = round_fl_to_int(this->eraser_radius / step_pixels) + 1;
+    int nb_samples = round_fl_to_int(this->eraser_radius / step_pixels);
     Vector<EraserRing> eraser_rings(nb_samples);
-    for (const int sample_index : IndexRange(nb_samples)) {
-      const int64_t sampled_distance = math::max(sample_index * step_pixels, int64_t(1));
+    for (const int sample_index : eraser_rings.index_range()) {
+      const int64_t sampled_distance = (sample_index + 1) * step_pixels;
 
       EraserRing &ring = eraser_rings[sample_index];
       ring.radius = sampled_distance;
