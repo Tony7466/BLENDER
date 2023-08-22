@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,9 +19,9 @@
 #include "BKE_curves.hh"
 
 #include "ED_curves.hh"
-#include "ED_object.h"
-#include "ED_select_utils.h"
-#include "ED_view3d.h"
+#include "ED_object.hh"
+#include "ED_select_utils.hh"
+#include "ED_view3d.hh"
 
 namespace blender::ed::curves {
 
