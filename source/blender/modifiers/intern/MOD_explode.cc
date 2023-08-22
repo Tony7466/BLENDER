@@ -665,11 +665,10 @@ static Mesh *cutEdges(ExplodeModifierData *emd, Mesh *mesh)
   int *facesplit = static_cast<int *>(MEM_calloc_arrayN(totface, sizeof(int), __func__));
   int *vertpa = static_cast<int *>(MEM_calloc_arrayN(totvert, sizeof(int), __func__));
   int *facepa = emd->facepa;
-  int *fs, totesplit = 0, totfsplit = 0, curdupface = 0;
+  int *fs, totfsplit = 0, curdupface = 0;
   int i, v1, v2, v3, v4, v[4] = {0, 0, 0, 0}, /* To quite gcc barking... */
       uv[4] = {0, 0, 0, 0};                   /* To quite gcc barking... */
   int layers_num;
-  int ed_v1, ed_v2;
 
   blender::VectorSet<blender::OrderedEdge> edgehash;
 
@@ -758,10 +757,9 @@ static Mesh *cutEdges(ExplodeModifierData *emd, Mesh *mesh)
   emd->facepa = facepa;
 
   /* create new verts */
-  ehi = BLI_edgehashIterator_new(edgehash);
-  for (; !BLI_edgehashIterator_isDone(ehi); BLI_edgehashIterator_step(ehi)) {
-    BLI_edgehashIterator_getKey(ehi, &ed_v1, &ed_v2);
-    esplit = POINTER_AS_INT(BLI_edgehashIterator_getValue(ehi));
+  for (const int esplit : edgehash.index_range()) {
+    const int ed_v1 = edgehash[esplit].v_low;
+    const int ed_v2 = edgehash[esplit].v_high;
 
     CustomData_copy_data(&split_m->vert_data, &split_m->vert_data, ed_v2, esplit, 1);
 
@@ -887,7 +885,6 @@ static Mesh *cutEdges(ExplodeModifierData *emd, Mesh *mesh)
         mf, &split_m->fdata_legacy, i, ((mf->flag & ME_FACE_SEL) ? 4 : 3));
   }
 
-  BLI_edgehash_free(edgehash, nullptr);
   MEM_freeN(facesplit);
   MEM_freeN(vertpa);
 
@@ -909,16 +906,14 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
   ParticleSimulationData sim = {nullptr};
   ParticleData *pa = nullptr, *pars = psmd->psys->particles;
   ParticleKey state, birth;
-  EdgeHash *vertpahash;
-  EdgeHashIterator *ehi;
   float *vertco = nullptr, imat[4][4];
   float rot[4];
   float ctime;
   // float timestep;
   const int *facepa = emd->facepa;
   int totdup = 0, totvert = 0, totface = 0, totpart = 0, delface = 0;
-  int i, v, u;
-  int ed_v1, ed_v2, mindex = 0;
+  int i, u;
+  uint mindex = 0;
 
   totface = mesh->totface_legacy;
   totvert = mesh->totvert;
@@ -937,7 +932,7 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
   ctime = BKE_scene_ctime_get(scene);
 
   /* hash table for vertex <-> particle relations */
-  vertpahash = BLI_edgehash_new(__func__);
+  blender::VectorSet<blender::OrderedEdge> vertpahash;
 
   for (i = 0; i < totface; i++) {
     if (facepa[i] != totpart) {
@@ -955,8 +950,7 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
       pa = nullptr;
     }
 
-    /* do mindex + totvert to ensure the vertex index to be the first
-     * with BLI_edgehashIterator_getKey */
+    /* do mindex + totvert to ensure the vertex index to be the first. */
     if (pa == nullptr || ctime < pa->time) {
       mindex = totvert + totpart;
     }
@@ -967,21 +961,13 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
     mf = &mface[i];
 
     /* set face vertices to exist in particle group */
-    BLI_edgehash_reinsert(vertpahash, mf->v1, mindex, nullptr);
-    BLI_edgehash_reinsert(vertpahash, mf->v2, mindex, nullptr);
-    BLI_edgehash_reinsert(vertpahash, mf->v3, mindex, nullptr);
+    vertpahash.add({mf->v1, mindex});
+    vertpahash.add({mf->v2, mindex});
+    vertpahash.add({mf->v3, mindex});
     if (mf->v4) {
-      BLI_edgehash_reinsert(vertpahash, mf->v4, mindex, nullptr);
+      vertpahash.add({mf->v4, mindex});
     }
   }
-
-  /* make new vertex indexes & count total vertices after duplication */
-  ehi = BLI_edgehashIterator_new(vertpahash);
-  for (; !BLI_edgehashIterator_isDone(ehi); BLI_edgehashIterator_step(ehi)) {
-    BLI_edgehashIterator_setValue(ehi, POINTER_FROM_INT(totdup));
-    totdup++;
-  }
-  BLI_edgehashIterator_free(ehi);
 
   /* the final duplicated vertices */
   explode = BKE_mesh_new_nomain_from_template_ex(
@@ -998,14 +984,11 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
   const blender::Span<blender::float3> positions = mesh->vert_positions();
   blender::MutableSpan<blender::float3> explode_positions = explode->vert_positions_for_write();
 
-  /* duplicate & displace vertices */
-  ehi = BLI_edgehashIterator_new(vertpahash);
-  for (; !BLI_edgehashIterator_isDone(ehi); BLI_edgehashIterator_step(ehi)) {
-
+  for (const int v : vertpahash.index_range()) {
     /* get particle + vertex from hash */
-    BLI_edgehashIterator_getKey(ehi, &ed_v1, &ed_v2);
+    int ed_v1 = vertpahash[v].v_low;
+    int ed_v2 = vertpahash[v].v_high;
     ed_v2 -= totvert;
-    v = POINTER_AS_INT(BLI_edgehashIterator_getValue(ehi));
 
     copy_v3_v3(explode_positions[v], positions[ed_v1]);
 
@@ -1043,7 +1026,6 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
       pa = nullptr;
     }
   }
-  BLI_edgehashIterator_free(ehi);
 
   /* Map new vertices to faces. */
   MFace *explode_mface = static_cast<MFace *>(

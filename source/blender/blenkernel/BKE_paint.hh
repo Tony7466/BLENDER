@@ -13,9 +13,9 @@
 #include "BLI_compiler_compat.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
-#include "BLI_utildefines.h"
-#include "BLI_set.hh"
 #include "BLI_ordered_edge.hh"
+#include "BLI_set.hh"
+#include "BLI_utildefines.h"
 
 #include "DNA_brush_enums.h"
 #include "DNA_object_enums.h"
@@ -33,7 +33,6 @@ struct BlendWriter;
 struct Brush;
 struct CurveMapping;
 struct Depsgraph;
-struct EdgeSet;
 struct EnumPropertyItem;
 struct ExpandCache;
 struct FilterCache;

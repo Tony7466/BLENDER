@@ -1892,7 +1892,6 @@ static void sph_force_cb(void *sphdata_v, ParticleKey *state, float *force, floa
       /* Viscoelastic spring force */
       if (pfn->psys == psys[0] && fluid->flag & SPH_VISCOELASTIC_SPRINGS && !springhash.is_empty())
       {
-        /* BLI_edgehash_lookup appears to be thread-safe. - z0r */
         spring_index = springhash.lookup({index, pfn->index});
 
         if (spring_index) {

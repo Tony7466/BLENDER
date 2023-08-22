@@ -19,7 +19,6 @@
 #include "DNA_object_types.h"
 
 #include "BLI_bounds.hh"
-#include "BLI_edgehash.h"
 #include "BLI_endian_switch.h"
 #include "BLI_ghash.h"
 #include "BLI_hash.h"

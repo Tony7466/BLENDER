@@ -22,7 +22,6 @@
 #include "DNA_object_types.h"
 
 #include "BLI_compiler_compat.h"
-#include "BLI_edgehash.h"
 #include "BLI_index_range.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_geom.h"

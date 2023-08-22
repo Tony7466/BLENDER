@@ -9,6 +9,7 @@
 
 #include "BLI_math_vector_types.hh"
 #include "BLI_ordered_edge.hh"
+#include "BLI_set.hh"
 
 #include <float.h>
 
@@ -18,8 +19,6 @@ struct ClothModifierData;
 struct CollisionModifierData;
 struct Implicit_Data;
 struct Depsgraph;
-struct EdgeSet;
-struct GHash;
 struct LinkNode;
 struct Mesh;
 struct MVertTri;
@@ -85,7 +84,7 @@ struct Cloth {
   float initial_mesh_volume;     /* Initial volume of the mesh. Used for pressure */
   float average_acceleration[3]; /* Moving average of overall acceleration. */
   const blender::int2 *edges;    /* Used for hair collisions. */
-  EdgeSet *sew_edge_graph;       /* Sewing edges represented using a GHash */
+  blender::Set<blender::OrderedEdge> sew_edge_graph; /* Sewing edges. */
 };
 
 /**
