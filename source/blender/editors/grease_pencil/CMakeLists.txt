@@ -4,6 +4,7 @@
 
 set(INC
   ../include
+  ../../blenfont
   ../../blenkernel
   ../../blentranslation
   ../../bmesh

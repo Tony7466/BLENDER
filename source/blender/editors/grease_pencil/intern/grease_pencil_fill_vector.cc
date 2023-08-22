@@ -6,6 +6,9 @@
  * \ingroup edgreasepencil
  */
 
+/* DEBUG: print segment info, show curve indices in viewport. */
+#define GP_VFILL_DEBUG_VERBOSE
+
 #include "DNA_brush_types.h"
 #include "DNA_meshdata_types.h"
 
@@ -31,6 +34,12 @@
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
 #include "GPU_state.h"
+
+#ifdef GP_VFILL_DEBUG_VERBOSE
+#  include "BLF_api.h"
+#  include "UI_interface.hh"
+#  include "UI_resources.hh"
+#endif
 
 #include "WM_api.hh"
 
@@ -277,9 +286,7 @@ static float2 get_intersection_distance(const float2 &v1,
 {
   float2 distance = {0.0f, 0.0f};
 
-  const float v1_length = math::length(v2 - v1);
-  const float v3_length = math::length(v4 - v3);
-
+  /* Get intersection point. */
   const float a1 = v2[1] - v1[1];
   const float b1 = v1[0] - v2[0];
   const float c1 = a1 * v1[0] + b1 * v1[1];
@@ -289,10 +296,15 @@ static float2 get_intersection_distance(const float2 &v1,
   const float c2 = a2 * v3[0] + b2 * v3[1];
 
   const float det = a1 * b2 - a2 * b1;
+  BLI_assert(det != 0.0f);
 
   float2 isect;
   isect[0] = (b2 * c1 - b1 * c2) / det;
   isect[1] = (a1 * c2 - a2 * c1) / det;
+
+  /* Get relative distance from v1 and v3 to intersection point. */
+  const float v1_length = math::length(v2 - v1);
+  const float v3_length = math::length(v4 - v3);
 
   distance[0] = (v1_length == 0.0f ?
                      0.0f :
@@ -326,7 +338,7 @@ static Vector<IntersectingSegment2D> get_intersections_of_segment_with_curves(
   /* Loop all strokes, looking for intersecting segments. */
   threading::parallel_for(curves_2d->point_offset.index_range(), 256, [&](const IndexRange range) {
     for (const int curve_i : range) {
-      /* Do a quick bounding box check first. When the bounding box of a stroke doesn't
+      /* Do a quick bounding box check. When the bounding box of a stroke doesn't
        * intersect with the segment, none of the stroke segments do. */
       if (!BLI_rctf_isect(&bbox_sel, &curves_2d->curve_bbox[curve_i], nullptr)) {
         continue;
@@ -340,32 +352,34 @@ static Vector<IntersectingSegment2D> get_intersections_of_segment_with_curves(
 
       /* Skip curves with identical (overlapping) segments, because they produce false-positive
        * intersections. Overlapping curves are most likely created by a previous fill operation. */
-      bool skip_curve = false;
-      for (const int point_i : IndexRange(point_offset, point_size)) {
-        const int point_i_next = (point_i == point_last ? point_offset : point_i + 1);
-        const float2 p0 = curves_2d->points_2d[point_i];
-        const float2 p1 = curves_2d->points_2d[point_i_next];
+      if (curve_i != segment_curve_index) {
+        bool skip_curve = false;
+        for (const int point_i : IndexRange(point_offset, point_size)) {
+          const int point_i_next = (point_i == point_last ? point_offset : point_i + 1);
+          const float2 p0 = curves_2d->points_2d[point_i];
+          const float2 p1 = curves_2d->points_2d[point_i_next];
 
-        /* Check for identical segments. */
-        if ((adj_a == p0 && segment_a == p1) || (segment_a == p0 && segment_b == p1) ||
-            (segment_b == p0 && adj_b == p1) || (adj_b == p0 && segment_b == p1) ||
-            (segment_b == p0 && segment_a == p1) || (segment_a == p0 && adj_a == p1))
-        {
-          skip_curve = true;
-          break;
-        }
-
-        /* Check for adjacent segments, exactly parallel to the current. */
-        if (segment_a == p0 || segment_a == p1 || segment_b == p0 || segment_b == p1) {
-          const float2 p_vec = p1 - p0;
-          if (fabsf(cross_v2v2(p_vec, segment_vec) < FLT_EPSILON)) {
+          /* Check for identical segments. */
+          if ((adj_a == p0 && segment_a == p1) || (segment_a == p0 && segment_b == p1) ||
+              (segment_b == p0 && adj_b == p1) || (adj_b == p0 && segment_b == p1) ||
+              (segment_b == p0 && segment_a == p1) || (segment_a == p0 && adj_a == p1))
+          {
             skip_curve = true;
             break;
           }
+
+          /* Check for adjacent segments, exactly parallel to the current. */
+          if (segment_a == p0 || segment_a == p1 || segment_b == p0 || segment_b == p1) {
+            const float2 p_vec = p1 - p0;
+            if (fabsf(cross_v2v2(p_vec, segment_vec) < FLT_EPSILON)) {
+              skip_curve = true;
+              break;
+            }
+          }
         }
-      }
-      if (skip_curve) {
-        continue;
+        if (skip_curve) {
+          continue;
+        }
       }
 
       /* Find intersecting stroke segments. */
@@ -657,8 +671,8 @@ static Vector<float2> get_closed_fill_edge_as_2d_polygon(VectorFillData *vf)
   Vector<float2> points;
 
   /* We cut some corners here, literally, because we don't calculate the exact intersection point
-   * of intersections. Since the 2D polygon is only used for a mouse-position-inside-polygon check,
-   * we can afford to be a little sloppy. */
+   * of intersections. Since the 2D polygon is only used for a mouse-position-inside-polygon
+   * check, we can afford to be a little sloppy. */
   for (auto &segment : vf->segments) {
     if ((segment.flag & vfFlag::IsUnused) == true) {
       continue;
@@ -791,11 +805,19 @@ static void add_segment_end(const Curves2DSpace *curves_2d,
     }
 
     /* Since we follow the fill edge clockwise, at each intersection we want to take a right turn
-     * first (for finding the narrowest path).
-     * So we have to determine the direction of the intersecting curve, because then we know what
-     * the right turn is. */
+     * first (for finding the narrowest path). Therefore we have to determine the direction of the
+     * intersecting curve, because then we know what the right turn is. */
     const int point_offset = curves_2d->point_offset[intersection.curve_index_2d];
-    const float2 isect_point_start = curves_2d->points_2d[point_offset + intersection.point_start];
+    float2 isect_point_start = curves_2d->points_2d[point_offset + intersection.point_start];
+    if (fabsf(intersection.distance[1]) < FLT_EPSILON) {
+      /* When the starting point of the intersecting curve is exactly ON the segment, create a more
+       * distinctive point by mirroring the end point. */
+      if (intersection.point_start == intersection.point_end) {
+        continue;
+      }
+      isect_point_start -= curves_2d->points_2d[point_offset + intersection.point_end] -
+                           isect_point_start;
+    }
     const bool point_start_is_on_right = cross_v2v2(segment_vec,
                                                     isect_point_start - segment_point_a) < 0.0f;
     if (point_start_is_on_right) {
@@ -953,6 +975,7 @@ static bool walk_along_curve(VectorFillData *vf, EdgeSegment *segment, const int
         if (intersection.curve_index_2d == -1 || intersection.with_end_extension) {
           continue;
         }
+
         /* Look for intersections with the current curve segment. */
         if (intersection.curve_index_2d == curve_i &&
             ((intersection.point_start == point_i && intersection.point_end == point_next) ||
@@ -961,7 +984,7 @@ static bool walk_along_curve(VectorFillData *vf, EdgeSegment *segment, const int
           intersection.curve_index_2d = intersection_index;
           intersection.point_start = 0;
           intersection.point_end = 1;
-          intersection.distance[0] = intersection.distance[1];
+          std::swap(intersection.distance[0], intersection.distance[1]);
           intersections.append(intersection);
         }
       }
@@ -1263,9 +1286,34 @@ static void take_next_gap_closure_curve(VectorFillData *vf, SegmentEnd *segment_
   vf->segments.append(segment);
 }
 
+#ifdef GP_VFILL_DEBUG_VERBOSE
+static void debug_print_segment_data(VectorFillData *vf, EdgeSegment *segment)
+{
+  printf("Segments: %lld, walked along: curve %d (%d) %d-%d, flag %d, end segments %lld \n",
+         vf->segments.size(),
+         segment->curve_index_2d,
+         vf->curves_2d.point_size[segment->curve_index_2d],
+         segment->point_range[0],
+         segment->point_range[1],
+         segment->flag,
+         segment->segment_ends.size());
+}
+#endif
+
 static bool find_closed_fill_edge(VectorFillData *vf)
 {
+#ifdef GP_VFILL_DEBUG_VERBOSE
+  int iteration = 0;
+#endif
+
   while (!vf->segments.is_empty()) {
+#ifdef GP_VFILL_DEBUG_VERBOSE
+    /* Limit number of iterations in debug mode. */
+    iteration++;
+    if (iteration > 30) {
+      return false;
+    }
+#else
     /* Emergency break: when the operator is taking too much time, jump to the conclusion that no
      * closed fill edge can be found. */
     auto t2 = std::chrono::high_resolution_clock::now();
@@ -1274,6 +1322,7 @@ static bool find_closed_fill_edge(VectorFillData *vf)
     if (delta_t.count() > GP_VFILL_MAX_EXECUTION_TIME) {
       return false;
     }
+#endif
 
     /* Explore the last edge segment in the array. */
     EdgeSegment *segment = &vf->segments.last();
@@ -1281,6 +1330,12 @@ static bool find_closed_fill_edge(VectorFillData *vf)
     /* Walk along the curve until an intersection or the end of the curve is reached. */
     bool changed = walk_along_curve(vf, segment);
     segment = &vf->segments.last();
+
+#ifdef GP_VFILL_DEBUG_VERBOSE
+    if (changed) {
+      debug_print_segment_data(vf, segment);
+    }
+#endif
 
     /* Check if the edge is closed. */
     if (changed) {
@@ -1364,7 +1419,7 @@ static bool vector_fill_do(VectorFillData *vf)
   /* Find a first (arbitrary) edge point of the fill area by casting a ray from the mouse click
    * position in one of four directions: up, right, down, left. When this ray crosses a curve,
    * we use the intersection point as the starting point of the fill edge.
-   * Note: we check in four directions, because the user can click near a gap in the fill edge. */
+   * We check in four directions, because the user can click near a gap in the fill edge. */
   float2 ray_vec;
   vfRayDirection ray_direction;
   vf->operator_time_start = std::chrono::high_resolution_clock::now();
@@ -1599,40 +1654,37 @@ static void add_curve_end_extension(VectorFillData *vf,
 static void get_curve_end_extensions(VectorFillData *vf)
 {
   /* Create extension curves. */
-  threading::parallel_for(
-      vf->curves_2d.point_offset.index_range(), 256, [&](const IndexRange range) {
-        for (const int curve_i : range) {
-          /* Two extensions for each curve. */
-          const int curve_ext = curve_i * 2;
-          /* Each extension contains two points. */
-          const int point_i_ext = curve_ext * 2;
-          const int point_size = vf->curves_2d.point_size[curve_i];
+  for (const int curve_i : vf->curves_2d.point_offset.index_range()) {
+    /* Two extensions for each curve. */
+    const int curve_ext = curve_i * 2;
+    /* Each extension contains two points. */
+    const int point_i_ext = curve_ext * 2;
+    const int point_size = vf->curves_2d.point_size[curve_i];
 
-          /* Create extension for the first segment of the 2D curve. */
-          int point_i = vf->curves_2d.point_offset[curve_i];
-          int next_point_delta = (point_size > 1 ? 1 : 0);
-          add_curve_end_extension(vf, curve_i, curve_ext, point_i, next_point_delta, point_i_ext);
+    /* Create extension for the first segment of the 2D curve. */
+    int point_i = vf->curves_2d.point_offset[curve_i];
+    int next_point_delta = (point_size > 1 ? 1 : 0);
+    add_curve_end_extension(vf, curve_i, curve_ext, point_i, next_point_delta, point_i_ext);
 
-          /* Create extension for the last segment of the 2D curve. */
-          point_i += point_size - 1;
-          next_point_delta = (point_size > 1 ? -1 : 0);
-          add_curve_end_extension(
-              vf, curve_i, curve_ext + 1, point_i, next_point_delta, point_i_ext + 2);
+    /* Create extension for the last segment of the 2D curve. */
+    point_i += point_size - 1;
+    next_point_delta = (point_size > 1 ? -1 : 0);
+    add_curve_end_extension(
+        vf, curve_i, curve_ext + 1, point_i, next_point_delta, point_i_ext + 2);
 
-          /* Create bounding boxes for the extensions. */
-          BLI_rctf_init_minmax(&vf->extensions_2d.curve_bbox[curve_ext]);
-          BLI_rctf_do_minmax_v(&vf->extensions_2d.curve_bbox[curve_ext],
-                               vf->extensions_2d.points_2d[point_i_ext]);
-          BLI_rctf_do_minmax_v(&vf->extensions_2d.curve_bbox[curve_ext],
-                               vf->extensions_2d.points_2d[point_i_ext + 1]);
+    /* Create bounding boxes for the extensions. */
+    BLI_rctf_init_minmax(&vf->extensions_2d.curve_bbox[curve_ext]);
+    BLI_rctf_do_minmax_v(&vf->extensions_2d.curve_bbox[curve_ext],
+                         vf->extensions_2d.points_2d[point_i_ext]);
+    BLI_rctf_do_minmax_v(&vf->extensions_2d.curve_bbox[curve_ext],
+                         vf->extensions_2d.points_2d[point_i_ext + 1]);
 
-          BLI_rctf_init_minmax(&vf->extensions_2d.curve_bbox[curve_ext + 1]);
-          BLI_rctf_do_minmax_v(&vf->extensions_2d.curve_bbox[curve_ext + 1],
-                               vf->extensions_2d.points_2d[point_i_ext + 2]);
-          BLI_rctf_do_minmax_v(&vf->extensions_2d.curve_bbox[curve_ext + 1],
-                               vf->extensions_2d.points_2d[point_i_ext + 3]);
-        }
-      });
+    BLI_rctf_init_minmax(&vf->extensions_2d.curve_bbox[curve_ext + 1]);
+    BLI_rctf_do_minmax_v(&vf->extensions_2d.curve_bbox[curve_ext + 1],
+                         vf->extensions_2d.points_2d[point_i_ext + 2]);
+    BLI_rctf_do_minmax_v(&vf->extensions_2d.curve_bbox[curve_ext + 1],
+                         vf->extensions_2d.points_2d[point_i_ext + 3]);
+  }
 
   /* Check intersections. */
   for (const int extension_index : vf->extensions_2d.point_offset.index_range()) {
@@ -1706,6 +1758,31 @@ static int get_curve_point_by_end_index(VectorFillData *vf, const int end_index)
   }
   return point_i;
 }
+
+#ifdef GP_VFILL_DEBUG_VERBOSE
+static void debug_draw_curve_indices(VectorFillData *vf)
+{
+  const int font_id = BLF_default();
+  const uiStyle *style = UI_style_get();
+  BLF_size(font_id, style->widget.points * UI_SCALE_FAC * 1.2);
+  BLF_color4fv(font_id, float4{1.0f, 0.0f, 0.2f, 1.0f});
+  BLF_enable(font_id, BLF_BOLD);
+
+  for (const int curve_i : vf->curves_2d.point_offset.index_range()) {
+    const std::string str = std::to_string(curve_i);
+    const char *text = str.c_str();
+
+    const int point_offset = vf->curves_2d.point_offset[curve_i];
+    const float x = vf->curves_2d.points_2d[point_offset][0] - strlen(text) * 10;
+    const float y = vf->curves_2d.points_2d[point_offset][1] + 2;
+    BLF_position(font_id, x, y, 0);
+
+    BLF_draw(font_id, text, strlen(text));
+  }
+
+  BLF_disable(font_id, BLF_BOLD);
+}
+#endif
 
 static void draw_overlay(const bContext * /*C*/, ARegion *region, void *arg)
 {
@@ -1811,6 +1888,10 @@ static void draw_overlay(const bContext * /*C*/, ARegion *region, void *arg)
   GPU_line_width(1.0f);
   GPU_line_smooth(false);
   GPU_blend(GPU_BLEND_NONE);
+
+#ifdef GP_VFILL_DEBUG_VERBOSE
+  debug_draw_curve_indices(vf);
+#endif
 }
 
 static void update_gap_distance(VectorFillData *vf, const float delta)
