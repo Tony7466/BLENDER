@@ -386,7 +386,7 @@ struct EraseOperationExecutor {
     return total_intersections;
   }
 
-  int64_t intersections_with_curves_falloff(
+  int64_t curves_intersections_and_points_sides(
       const bke::CurvesGeometry &src,
       const Span<float2> screen_space_positions,
       MutableSpan<std::pair<int, PointCircleSide>> r_point_ring,
@@ -973,7 +973,7 @@ struct EraseOperationExecutor {
     Array<std::pair<int, PointCircleSide>> src_point_ring(src_points_num,
                                                           {-1, PointCircleSide::Outside});
     Array<Vector<SegmentCircleIntersection>> src_intersections(src_points_num);
-    intersections_with_curves_falloff(
+    curves_intersections_and_points_sides(
         src, screen_space_positions, src_point_ring, src_intersections, eraser_rings);
 
     /* Function to get the resulting opacity at a specific point in the source. */
