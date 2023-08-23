@@ -393,6 +393,9 @@ struct EraseOperationExecutor {
             SegmentCircleIntersection inter0;
             SegmentCircleIntersection inter1;
 
+            inter0.ring_index = ring_index;
+            inter1.ring_index = ring_index;
+
             PointCircleSide point_side;
             PointCircleSide point_after_side;
 
@@ -410,11 +413,11 @@ struct EraseOperationExecutor {
 
             if (nb_inter > 0) {
               inter0.inside_outside_intersection = (inter0.factor > inter1.factor);
-              r_intersections[++intersection_offset];
+              r_intersections[++intersection_offset] = inter0;
 
               if (nb_inter > 1) {
                 inter1.inside_outside_intersection = true;
-                r_intersections[++intersection_offset];
+                r_intersections[++intersection_offset] = inter1;
               }
             }
 
