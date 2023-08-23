@@ -130,8 +130,10 @@ struct EraseOperationExecutor {
   }
 
   struct SegmentCircleIntersection {
-    /* Position of the intersection in the segment.*/
-    float factor = -1.0f;
+    /* Position of the intersection in the segment.
+     * Note: we use a value > 1.0f as initial value so that sorting intersection by increasing
+     * factor can directly put the non-valid ones at the end. */
+    float factor = 2.0f;
 
     /* True if the intersection corresponds to an inside/outside transition with respect to the
      * circle, false if it corresponds to an outside/inside transition . */
