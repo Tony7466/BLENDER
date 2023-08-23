@@ -119,6 +119,7 @@ def canonical_author_map() -> Dict[str, str]:
         "Brian Savery <brian.savery@gmail.com>": (
             "Brian Savery (AMD) <briansavery@noreply.localhost>",
             "Brian Savery <bsavery>",
+            "bsavery <brian.savery@gmail.com>",
         ),
         "Campbell Barton <campbell@blender.org>": (
             "Campbell Barton <campbellbarton>",
@@ -240,6 +241,9 @@ def canonical_author_map() -> Dict[str, str]:
         "Gaia Clary <gaia.clary@machinimatrix.org>": (
             "Gaia Clary <gaiaclary>",
             "gaiaclary <gaia.clary@machinimatrix.org>",
+        ),
+        "Georgiy Markelov <georgiy.m.markelov@gmail.com>": (
+            "georgiy.m.markelov@gmail.com <georgiy.m.markelov@gmail.com>",
         ),
         "Germano Cavalcante <germano.costa@ig.com.br>": (
             "Germano <germano.costa@ig.com.br>",

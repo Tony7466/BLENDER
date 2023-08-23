@@ -28,6 +28,8 @@
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 
+#include "SEQ_sequencer.h"
+
 #include "MEM_guardedalloc.h"
 
 #include "BLO_readfile.h"
@@ -490,7 +492,7 @@ void do_versions_after_setup(Main *new_bmain, BlendFileReadReport *reports)
    *     decision to apply some versioning on some data should mostly rely on the data itself.
    *   - Unlike the regular do_version code, this one should _not_ be assumed as 'valid forever'.
    *     It is closer to the Editing or BKE code in that respect, changes to the logic or data
-   *     model of an ID will require carefull update here as well.
+   *     model of an ID will require a careful update here as well.
    *
    * Another critical weakness of this code is that it is currently _not_ performed on data linked
    * during an editing session, but only on data linked while reading a whole blendfile. This will
@@ -502,6 +504,14 @@ void do_versions_after_setup(Main *new_bmain, BlendFileReadReport *reports)
 
   if (!blendfile_or_libraries_versions_atleast(new_bmain, 250, 0)) {
     do_versions_ipos_to_animato(new_bmain);
+  }
+
+  if (!blendfile_or_libraries_versions_atleast(new_bmain, 250, 0)) {
+    LISTBASE_FOREACH (Scene *, scene, &new_bmain->scenes) {
+      if (scene->ed) {
+        SEQ_doversion_250_sound_proxy_update(new_bmain, scene->ed);
+      }
+    }
   }
 
   if (!blendfile_or_libraries_versions_atleast(new_bmain, 302, 1)) {

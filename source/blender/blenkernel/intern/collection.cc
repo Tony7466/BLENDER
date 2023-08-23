@@ -173,7 +173,9 @@ static void collection_foreach_id(ID *id, LibraryForeachIDData *data)
   const int data_flags = BKE_lib_query_foreachid_process_flags_get(data);
 
   BKE_LIB_FOREACHID_PROCESS_ID(
-      data, collection->runtime.owner_id, IDWALK_CB_LOOPBACK | IDWALK_CB_NEVER_SELF);
+      data,
+      collection->runtime.owner_id,
+      (IDWALK_CB_LOOPBACK | IDWALK_CB_NEVER_SELF | IDWALK_CB_READFILE_IGNORE));
 
   LISTBASE_FOREACH (CollectionObject *, cob, &collection->gobject) {
     Object *cob_ob_old = cob->ob;
@@ -2200,7 +2202,7 @@ static void scene_objects_iterator_begin(BLI_Iterator *iter, Scene *scene, GSet 
     data->visited = BLI_gset_ptr_new(__func__);
   }
 
-  /* We wrap the scenecollection iterator here to go over the scene collections. */
+  /* We wrap the scene-collection iterator here to go over the scene collections. */
   BKE_scene_collections_iterator_begin(&data->scene_collection_iter, scene);
 
   Collection *collection = static_cast<Collection *>(data->scene_collection_iter.current);
