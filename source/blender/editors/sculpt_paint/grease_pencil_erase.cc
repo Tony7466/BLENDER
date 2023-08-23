@@ -257,7 +257,7 @@ struct EraseOperationExecutor {
    *
    * \returns total number of intersections found.
    */
-  int64_t curves_intersections_and_points_sides(
+  int curves_intersections_and_points_sides(
       const bke::CurvesGeometry &src,
       const Span<float2> screen_space_positions,
       MutableSpan<PointCircleSide> r_point_side,
@@ -269,7 +269,7 @@ struct EraseOperationExecutor {
 
     Array<int2> screen_space_positions_pixel(src.points_num());
     threading::parallel_for(src.points_range(), 1024, [&](const IndexRange src_points) {
-      for (const int64_t src_point : src_points) {
+      for (const int src_point : src_points) {
         const float2 pos = screen_space_positions[src_point];
         screen_space_positions_pixel[src_point] = int2(round_fl_to_int(pos[0]),
                                                        round_fl_to_int(pos[1]));
@@ -277,12 +277,12 @@ struct EraseOperationExecutor {
     });
 
     threading::parallel_for(src.curves_range(), 512, [&](const IndexRange src_curves) {
-      for (const int64_t src_curve : src_curves) {
+      for (const int src_curve : src_curves) {
         const IndexRange src_curve_points = src_points_by_curve[src_curve];
 
         if (src_curve_points.size() == 1) {
           /* One-point stroke : just check if the point is inside the eraser. */
-          const int64_t src_point = src_curve_points.first();
+          const int src_point = src_curve_points.first();
           const int64_t squared_distance = math::distance_squared(
               this->mouse_position_pixels, screen_space_positions_pixel[src_point]);
 
@@ -294,7 +294,7 @@ struct EraseOperationExecutor {
           continue;
         }
 
-        for (const int64_t src_point : src_curve_points.drop_back(1)) {
+        for (const int src_point : src_curve_points.drop_back(1)) {
           SegmentCircleIntersection inter0;
           SegmentCircleIntersection inter1;
 
@@ -320,8 +320,8 @@ struct EraseOperationExecutor {
 
         if (src_cyclic[src_curve]) {
           /* If the curve is cyclic, we need to check for the closing segment. */
-          const int64_t src_last_point = src_curve_points.last();
-          const int64_t src_first_point = src_curve_points.first();
+          const int src_last_point = src_curve_points.last();
+          const int src_first_point = src_curve_points.first();
 
           SegmentCircleIntersection inter0;
           SegmentCircleIntersection inter1;
@@ -349,8 +349,8 @@ struct EraseOperationExecutor {
     });
 
     /* Compute total number of intersections. */
-    int64_t total_intersections = 0;
-    for (const int64_t src_point : src.points_range()) {
+    int total_intersections = 0;
+    for (const int src_point : src.points_range()) {
       total_intersections += r_intersections[src_point].size();
     }
 
@@ -368,8 +368,8 @@ struct EraseOperationExecutor {
    *
    */
   struct PointTransferData {
-    int64_t src_point;
-    int64_t src_next_point;
+    int src_point;
+    int src_next_point;
     float factor;
     bool is_src_point;
     bool is_cut;
@@ -398,7 +398,7 @@ struct EraseOperationExecutor {
     const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
     const VArray<bool> src_cyclic = src.cyclic();
 
-    int64_t dst_points_num = 0;
+    int dst_points_num = 0;
     for (const Vector<PointTransferData> &src_transfer_data : src_to_dst_points) {
       dst_points_num += src_transfer_data.size();
     }
@@ -414,13 +414,13 @@ struct EraseOperationExecutor {
      */
     Array<PointTransferData> dst_transfer_data(dst_points_num);
 
-    Array<int64_t> src_pivot_point(src_curves_num, -1);
-    Array<int64_t> dst_interm_curves_offsets(src_curves_num + 1, 0);
-    int64_t dst_point = -1;
-    for (const int64_t src_curve : src.curves_range()) {
+    Array<int> src_pivot_point(src_curves_num, -1);
+    Array<int> dst_interm_curves_offsets(src_curves_num + 1, 0);
+    int dst_point = -1;
+    for (const int src_curve : src.curves_range()) {
       const IndexRange src_points = src_points_by_curve[src_curve];
 
-      for (const int64_t src_point : src_points) {
+      for (const int src_point : src_points) {
         for (const PointTransferData &dst_point_transfer : src_to_dst_points[src_point]) {
           if (dst_point_transfer.is_src_point) {
             dst_transfer_data[++dst_point] = dst_point_transfer;
@@ -448,8 +448,8 @@ struct EraseOperationExecutor {
     /* Cyclic curves. */
     Array<bool> src_now_cyclic(src_curves_num);
     threading::parallel_for(src.curves_range(), 4096, [&](const IndexRange src_curves) {
-      for (const int64_t src_curve : src_curves) {
-        const int64_t pivot_point = src_pivot_point[src_curve];
+      for (const int src_curve : src_curves) {
+        const int pivot_point = src_pivot_point[src_curve];
 
         if (pivot_point == -1) {
           /* Either the curve was not cyclic or it wasn't cut : no need to change it. */
@@ -463,8 +463,8 @@ struct EraseOperationExecutor {
          */
         src_now_cyclic[src_curve] = false;
 
-        const int64_t dst_interm_first = dst_interm_curves_offsets[src_curve];
-        const int64_t dst_interm_last = dst_interm_curves_offsets[src_curve + 1];
+        const int dst_interm_first = dst_interm_curves_offsets[src_curve];
+        const int dst_interm_last = dst_interm_curves_offsets[src_curve + 1];
         std::rotate(dst_transfer_data.begin() + dst_interm_first,
                     dst_transfer_data.begin() + pivot_point,
                     dst_transfer_data.begin() + dst_interm_last);
@@ -479,7 +479,7 @@ struct EraseOperationExecutor {
       const IndexRange dst_points_range(dst_interm_curves_offsets[src_curve],
                                         dst_interm_curves_offsets[src_curve + 1] -
                                             dst_interm_curves_offsets[src_curve]);
-      int64_t length_of_current = 0;
+      int length_of_current = 0;
 
       for (int dst_point : dst_points_range) {
 
@@ -498,7 +498,7 @@ struct EraseOperationExecutor {
         dst_to_src_curve.append(src_curve);
       }
     }
-    const int64_t dst_curves_num = dst_curves_offset.size() - 1;
+    const int dst_curves_num = dst_curves_offset.size() - 1;
     if (dst_curves_num == 0) {
       dst.resize(0, 0);
       return dst_transfer_data;
@@ -532,7 +532,7 @@ struct EraseOperationExecutor {
           dst_attributes.lookup_or_add_for_write_span<int8_t>("end_cap", ATTR_DOMAIN_CURVE);
 
       threading::parallel_for(dst.curves_range(), 4096, [&](const IndexRange dst_curves) {
-        for (const int64_t dst_curve : dst_curves) {
+        for (const int dst_curve : dst_curves) {
           const IndexRange dst_curve_points = dst_points_by_curve[dst_curve];
           if (dst_transfer_data[dst_curve_points.first()].is_cut) {
             dst_start_caps.span[dst_curve] = GP_STROKE_CAP_TYPE_FLAT;
@@ -596,7 +596,7 @@ struct EraseOperationExecutor {
                    const bool keep_caps) const
   {
     const VArray<bool> src_cyclic = src.cyclic();
-    const int64_t src_points_num = src.points_num();
+    const int src_points_num = src.points_num();
 
     /* Compute intersections between the eraser and the curves in the source domain. */
     Array<PointCircleSide> src_point_side(src_points_num, PointCircleSide::Outside);
@@ -606,13 +606,13 @@ struct EraseOperationExecutor {
 
     Array<Vector<PointTransferData>> src_to_dst_points(src_points_num);
     const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
-    for (const int64_t src_curve : src.curves_range()) {
+    for (const int src_curve : src.curves_range()) {
       const IndexRange src_points = src_points_by_curve[src_curve];
 
-      for (const int64_t src_point : src_points) {
+      for (const int src_point : src_points) {
         Vector<PointTransferData> &dst_points = src_to_dst_points[src_point];
-        const int64_t src_next_point = (src_point == src_points.last()) ? src_points.first() :
-                                                                          (src_point + 1);
+        const int src_next_point = (src_point == src_points.last()) ? src_points.first() :
+                                                                      (src_point + 1);
         const PointCircleSide point_side = src_point_side[src_point];
 
         /* Add the source point only if it does not lie inside of the eraser. */
@@ -649,7 +649,7 @@ struct EraseOperationExecutor {
 
     IndexMaskMemory memory;
     const IndexMask strokes_to_keep = IndexMask::from_predicate(
-        src.curves_range(), GrainSize(256), memory, [&](const int64_t src_curve) {
+        src.curves_range(), GrainSize(256), memory, [&](const int src_curve) {
           const IndexRange src_curve_points = src_points_by_curve[src_curve];
 
           /* One-point stroke : remove the stroke if the point lies inside of the eraser. */
@@ -661,7 +661,7 @@ struct EraseOperationExecutor {
 
           /* If any segment of the stroke is closer to the eraser than its radius, then remove
            * the stroke. */
-          for (const int64_t src_point : src_curve_points.drop_back(1)) {
+          for (const int src_point : src_curve_points.drop_back(1)) {
             const float dist_to_eraser = dist_to_line_segment_v2(
                 this->mouse_position,
                 screen_space_positions[src_point],
@@ -732,7 +732,7 @@ struct EraseOperationExecutor {
       /* Compute screen space positions. */
       Array<float2> screen_space_positions(src.points_num());
       threading::parallel_for(src.points_range(), 4096, [&](const IndexRange src_points) {
-        for (const int64_t src_point : src_points) {
+        for (const int src_point : src_points) {
           ED_view3d_project_float_global(region,
                                          deformation.positions[src_point],
                                          screen_space_positions[src_point],
