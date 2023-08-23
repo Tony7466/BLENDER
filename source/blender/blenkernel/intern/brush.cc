@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,13 +16,13 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_rand.h"
 
 #include "BLT_translation.h"
 
 #include "BKE_bpath.h"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_gpencil_legacy.h"
@@ -33,7 +33,7 @@
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_texture.h"
 
 #include "IMB_colormanagement.h"
@@ -527,6 +527,8 @@ static void brush_defaults(Brush *brush)
   FROM_DEFAULT(mtex);
   FROM_DEFAULT(mask_mtex);
   FROM_DEFAULT(falloff_shape);
+  FROM_DEFAULT(tip_scale_x);
+  FROM_DEFAULT(tip_roundness);
 
 #undef FROM_DEFAULT
 #undef FROM_DEFAULT_PTR
@@ -1939,8 +1941,6 @@ void BKE_brush_sculpt_reset(Brush *br)
       br->spacing = 10;
       br->alpha = 1.0f;
       br->flow = 1.0f;
-      br->tip_scale_x = 1.0f;
-      br->tip_roundness = 1.0f;
       br->density = 1.0f;
       br->flag &= ~BRUSH_SPACE_ATTEN;
       zero_v3(br->rgb);
@@ -2660,7 +2660,7 @@ bool BKE_brush_has_cube_tip(const Brush *brush, ePaintMode paint_mode)
       }
 
       if (ELEM(brush->sculpt_tool, SCULPT_TOOL_CLAY_STRIPS, SCULPT_TOOL_PAINT) &&
-          brush->tip_roundness < 1.0f)
+          (brush->tip_roundness < 1.0f || brush->tip_scale_x != 1.0f))
       {
         return true;
       }

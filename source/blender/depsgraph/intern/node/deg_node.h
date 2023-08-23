@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
+/* SPDX-FileCopyrightText: 2013 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -129,8 +129,6 @@ enum class NodeType {
   DUPLI,
   /* Synchronization back to original datablock. */
   SYNCHRONIZATION,
-  /* Simulation component. */
-  SIMULATION,
   /* Node tree output component. */
   NTREE_OUTPUT,
   /* Preprocessing for geometry node trees before they can be evaluated. */
