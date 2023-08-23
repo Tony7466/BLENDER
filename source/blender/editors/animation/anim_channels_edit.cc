@@ -2192,6 +2192,13 @@ static int animchannels_delete_exec(bContext *C, wmOperator * /*op*/)
         ale->update = ANIM_UPDATE_DEPS;
         break;
       }
+      case ANIMTYPE_GREASE_PENCIL_LAYER: {
+        using namespace blender::bke::greasepencil;
+        GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
+        Layer *layer = static_cast<Layer *>(ale->data);
+        grease_pencil->remove_layer(*layer);
+        break;
+      }
       case ANIMTYPE_MASKLAYER: {
         /* Mask layer */
         Mask *mask = (Mask *)ale->id;
