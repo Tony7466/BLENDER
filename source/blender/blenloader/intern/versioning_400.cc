@@ -811,6 +811,23 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 18)) {
+    /* Convert old socket lists into new interface items. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      versioning_convert_node_tree_socket_lists_to_interface(ntree);
+      versioning_free_legacy_node_tree_socket_lists(ntree);
+    }
+    FOREACH_NODETREE_END;
+  }
+  else {
+    /* Legacy node tree sockets are created for forward compatibilty,
+     * but have to be freed after loading and versioning. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      versioning_free_legacy_node_tree_socket_lists(ntree);
+    }
+    FOREACH_NODETREE_END;
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -823,22 +840,5 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
-
-    if (!DNA_struct_find(fd->filesdna, "bNodeTreeInterface")) {
-      /* Convert old socket lists into new interface items. */
-      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-        versioning_convert_node_tree_socket_lists_to_interface(ntree);
-        versioning_free_legacy_node_tree_socket_lists(ntree);
-      }
-      FOREACH_NODETREE_END;
-    }
-    else {
-      /* Legacy node tree sockets are created for forward compatibilty,
-       * but have to be freed after loading and versioning. */
-      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-        versioning_free_legacy_node_tree_socket_lists(ntree);
-      }
-      FOREACH_NODETREE_END;
-    }
   }
 }
