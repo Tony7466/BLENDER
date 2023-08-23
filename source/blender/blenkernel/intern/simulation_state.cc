@@ -127,19 +127,33 @@ ModifierSimulationState &ModifierSimulationCache::get_state_at_frame_for_write(
     const SubFrame &frame)
 {
   std::lock_guard lock(states_at_frames_mutex_);
-  const int64_t i = find_state_at_frame_exact(states_at_frames_, frame);
-  if (i != -1) {
+
+  const int64_t i = find_state_at_frame(states_at_frames_, frame);
+  if (i == -1) {
+    /* Either we have an empty container, or the last frame < than the requested frame
+     in both cases we can just append a new state at the end. */
+    if (!states_at_frames_.is_empty()) {
+      BLI_assert(frame > states_at_frames_.last()->frame);
+    }
+
+    states_at_frames_.append(std::make_unique<ModifierSimulationStateAtFrame>());
+    states_at_frames_.last()->frame = frame;
+    states_at_frames_.last()->state.owner_ = this;
+    return states_at_frames_.last()->state;
+  }
+
+  if (states_at_frames_[i]->frame == frame) {
+    /* Found a cached frame. */
     return states_at_frames_[i]->state;
   }
 
-  if (!states_at_frames_.is_empty()) {
-    BLI_assert(frame > states_at_frames_.last()->frame);
-  }
+  /* No cached frame found: need to insert it just before i to keep ordering. */
+  BLI_assert(frame < states_at_frames_[i]->frame);
 
-  states_at_frames_.append(std::make_unique<ModifierSimulationStateAtFrame>());
-  states_at_frames_.last()->frame = frame;
-  states_at_frames_.last()->state.owner_ = this;
-  return states_at_frames_.last()->state;
+  states_at_frames_.insert(i, std::make_unique<ModifierSimulationStateAtFrame>());
+  states_at_frames_[i]->frame = frame;
+  states_at_frames_[i]->state.owner_ = this;
+  return states_at_frames_[i]->state;
 }
 
 StatesAroundFrame ModifierSimulationCache::get_states_around_frame(const SubFrame &frame) const
