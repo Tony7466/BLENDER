@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,12 +10,14 @@
 
 #include "DNA_ID.h"
 #include "DNA_listBase.h"
+#include "DNA_node_tree_interface_types.h"
 #include "DNA_scene_types.h" /* for #ImageFormatData */
 #include "DNA_vec_types.h"   /* for #rctf */
 
 /** Workaround to forward-declare C++ type in C header. */
 #ifdef __cplusplus
 #  include <BLI_vector.hh>
+#  include <string>
 
 namespace blender {
 template<typename T> class Span;
@@ -52,8 +54,10 @@ typedef struct bNodeSocketRuntimeHandle bNodeSocketRuntimeHandle;
 
 struct AnimData;
 struct Collection;
+struct GeometryNodeAssetTraits;
 struct ID;
 struct Image;
+struct ImBuf;
 struct ListBase;
 struct Material;
 struct PreviewImage;
@@ -177,9 +181,6 @@ typedef struct bNodeSocket {
    * kept for forward compatibility */
   /** Custom data for inputs, only UI writes in this. */
   bNodeStack ns DNA_DEPRECATED;
-
-  /* UI panel of the socket. */
-  struct bNodePanel *panel;
 
   bNodeSocketRuntimeHandle *runtime;
 
@@ -513,8 +514,7 @@ typedef struct bNodePreview {
   /** Must be first. */
   bNodeInstanceHashEntry hash_entry;
 
-  unsigned char *rect;
-  short xsize, ysize;
+  struct ImBuf *ibuf;
 } bNodePreview;
 
 typedef struct bNodeLink {
@@ -563,12 +563,6 @@ enum {
   NTREE_CHUNKSIZE_512 = 512,
   NTREE_CHUNKSIZE_1024 = 1024,
 };
-
-/** Panel in node tree for grouping sockets. */
-typedef struct bNodePanel {
-  /** UI name of the panel (not unique). */
-  char *name;
-} bNodePanel;
 
 typedef struct bNestedNodePath {
   /** ID of the node that is or contains the nested node. */
@@ -644,6 +638,8 @@ typedef struct bNodeTree {
    */
   ListBase inputs, outputs;
 
+  bNodeTreeInterface tree_interface;
+
   /**
    * Node preview hash table.
    * Only available in base node trees (e.g. scene->node_tree).
@@ -662,13 +658,10 @@ typedef struct bNodeTree {
   int nested_node_refs_num;
   bNestedNodeRef *nested_node_refs;
 
+  struct GeometryNodeAssetTraits *geometry_node_asset_traits;
+
   /** Image representing what the node group does. */
   struct PreviewImage *preview;
-
-  /* UI panels */
-  struct bNodePanel **panels_array;
-  int panels_num;
-  int active_panel;
 
   bNodeTreeRuntimeHandle *runtime;
 
@@ -746,8 +739,6 @@ typedef struct bNodeTree {
   blender::Span<const bNodeSocket *> interface_inputs() const;
   blender::Span<const bNodeSocket *> interface_outputs() const;
 
-  blender::Span<const bNodePanel *> panels() const;
-  blender::MutableSpan<bNodePanel *> panels_for_write();
   /** Zones in the node tree. Currently there are only simulation zones in geometry nodes. */
   const blender::bke::bNodeTreeZones *zones() const;
 #endif
@@ -864,6 +855,20 @@ typedef struct bNodeSocketValueTexture {
 typedef struct bNodeSocketValueMaterial {
   struct Material *value;
 } bNodeSocketValueMaterial;
+
+typedef struct GeometryNodeAssetTraits {
+  int flag;
+} GeometryNodeAssetTraits;
+
+typedef enum GeometryNodeAssetTraitFlag {
+  GEO_NODE_ASSET_TOOL = (1 << 0),
+  GEO_NODE_ASSET_EDIT = (1 << 1),
+  GEO_NODE_ASSET_SCULPT = (1 << 2),
+  GEO_NODE_ASSET_MESH = (1 << 3),
+  GEO_NODE_ASSET_CURVE = (1 << 4),
+  GEO_NODE_ASSET_POINT_CLOUD = (1 << 5),
+} GeometryNodeAssetTraitFlag;
+ENUM_OPERATORS(GeometryNodeAssetTraitFlag, GEO_NODE_ASSET_POINT_CLOUD);
 
 /* Data structs, for `node->storage`. */
 
@@ -994,7 +999,9 @@ typedef struct NodeBilateralBlurData {
 typedef struct NodeKuwaharaData {
   short size;
   short variation;
-  int smoothing;
+  int uniformity;
+  float sharpness;
+  float eccentricity;
 } NodeKuwaharaData;
 
 typedef struct NodeAntiAliasingData {
@@ -1210,7 +1217,8 @@ typedef struct NodeTexGradient {
 typedef struct NodeTexNoise {
   NodeTexBase base;
   int dimensions;
-  char _pad[4];
+  uint8_t normalize;
+  char _pad[3];
 } NodeTexNoise;
 
 typedef struct NodeTexVoronoi {
@@ -1277,6 +1285,12 @@ typedef struct NodeShaderPrincipled {
   char use_subsurface_auto_radius;
   char _pad[3];
 } NodeShaderPrincipled;
+
+typedef struct NodeShaderHairPrincipled {
+  short model;
+  short parametrization;
+  char _pad[4];
+} NodeShaderHairPrincipled;
 
 /** TEX_output. */
 typedef struct TexNodeOutput {
@@ -1745,6 +1759,44 @@ typedef struct NodeGeometrySimulationOutput {
 #endif
 } NodeGeometrySimulationOutput;
 
+typedef struct NodeRepeatItem {
+  char *name;
+  /** #eNodeSocketDatatype. */
+  short socket_type;
+  char _pad[2];
+  /**
+   * Generated unique identifier for sockets which stays the same even when the item order or
+   * names change.
+   */
+  int identifier;
+
+#ifdef __cplusplus
+  static bool supports_type(eNodeSocketDatatype type);
+  std::string identifier_str() const;
+#endif
+} NodeRepeatItem;
+
+typedef struct NodeGeometryRepeatInput {
+  /** bNode.identifier of the corresponding output node. */
+  int32_t output_node_id;
+} NodeGeometryRepeatInput;
+
+typedef struct NodeGeometryRepeatOutput {
+  NodeRepeatItem *items;
+  int items_num;
+  int active_index;
+  /** Identifier to give to the next repeat item. */
+  int next_identifier;
+  char _pad[4];
+
+#ifdef __cplusplus
+  blender::Span<NodeRepeatItem> items_span() const;
+  blender::MutableSpan<NodeRepeatItem> items_span();
+  NodeRepeatItem *add_item(const char *name, eNodeSocketDatatype type);
+  void set_item_name(NodeRepeatItem &item, const char *name);
+#endif
+} NodeGeometryRepeatOutput;
+
 typedef struct NodeGeometryDistributePointsInVolume {
   /** #GeometryNodePointDistributeVolumeMode. */
   uint8_t mode;
@@ -1834,6 +1886,10 @@ enum {
   SHD_GLOSSY_MULTI_GGX = 4,
 };
 
+/* sheen distributions */
+#define SHD_SHEEN_ASHIKHMIN 0
+#define SHD_SHEEN_MICROFIBER 1
+
 /* vector transform */
 enum {
   SHD_VECT_TRANSFORM_TYPE_VECTOR = 0,
@@ -1867,7 +1923,13 @@ enum {
   SHD_HAIR_TRANSMISSION = 1,
 };
 
-/* principled hair parametrization */
+/* principled hair models */
+enum {
+  SHD_PRINCIPLED_HAIR_CHIANG = 0,
+  SHD_PRINCIPLED_HAIR_HUANG = 1,
+};
+
+/* principled hair color parametrization */
 enum {
   SHD_PRINCIPLED_HAIR_REFLECTANCE = 0,
   SHD_PRINCIPLED_HAIR_PIGMENT_CONCENTRATION = 1,
@@ -2080,6 +2142,7 @@ typedef enum NodeMathOperation {
   NODE_MATH_PINGPONG = 37,
   NODE_MATH_SMOOTH_MIN = 38,
   NODE_MATH_SMOOTH_MAX = 39,
+  NODE_MATH_FLOORED_MODULO = 40,
 } NodeMathOperation;
 
 typedef enum NodeVectorMathOperation {

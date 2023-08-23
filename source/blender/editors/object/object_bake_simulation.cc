@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,10 +16,10 @@
 
 #include "PIL_time.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "DNA_curves_types.h"
 #include "DNA_material_types.h"
@@ -43,18 +43,20 @@
 #include "BKE_simulation_state.hh"
 #include "BKE_simulation_state_serialize.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
 
+#include "MOD_nodes.hh"
+
 #include "object_intern.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 namespace blender::ed::object::bake_simulation {
 
@@ -96,7 +98,7 @@ static void calculate_simulation_job_startjob(void *customdata,
     LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
       if (md->type == eModifierType_Nodes) {
         NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-        nmd->simulation_cache->ptr->reset();
+        nmd->runtime->simulation_cache->reset();
       }
     }
     objects_to_calc.append(object);
@@ -215,7 +217,7 @@ static bool bake_simulation_poll(bContext *C)
 struct ModifierBakeData {
   NodesModifierData *nmd;
   std::string absolute_bake_dir;
-  std::unique_ptr<bke::sim::BDataSharing> bdata_sharing;
+  std::unique_ptr<bke::BDataSharing> bdata_sharing;
 };
 
 struct ObjectBakeData {
@@ -256,11 +258,12 @@ static void bake_simulation_job_startjob(void *customdata,
     LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
       if (md->type == eModifierType_Nodes) {
         NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-        nmd->simulation_cache->ptr->reset();
+        nmd->runtime->simulation_cache->reset();
         char absolute_bake_dir[FILE_MAX];
         STRNCPY(absolute_bake_dir, nmd->simulation_bake_directory);
         BLI_path_abs(absolute_bake_dir, base_path);
-        bake_data.modifiers.append({nmd, absolute_bake_dir, std::make_unique<BDataSharing>()});
+        bake_data.modifiers.append(
+            {nmd, absolute_bake_dir, std::make_unique<bke::BDataSharing>()});
       }
     }
     objects_to_bake.append(std::move(bake_data));
@@ -295,10 +298,10 @@ static void bake_simulation_job_startjob(void *customdata,
     for (ObjectBakeData &object_bake_data : objects_to_bake) {
       for (ModifierBakeData &modifier_bake_data : object_bake_data.modifiers) {
         NodesModifierData &nmd = *modifier_bake_data.nmd;
-        if (nmd.simulation_cache == nullptr) {
+        if (!nmd.runtime->simulation_cache) {
           continue;
         }
-        ModifierSimulationCache &sim_cache = *nmd.simulation_cache->ptr;
+        ModifierSimulationCache &sim_cache = *nmd.runtime->simulation_cache;
         const ModifierSimulationState *sim_state = sim_cache.get_state_at_exact_frame(frame);
         if (sim_state == nullptr || sim_state->zone_states_.is_empty()) {
           continue;
@@ -322,7 +325,7 @@ static void bake_simulation_job_startjob(void *customdata,
 
         BLI_file_ensure_parent_dir_exists(bdata_path);
         fstream bdata_file{bdata_path, std::ios::out | std::ios::binary};
-        bke::sim::DiskBDataWriter bdata_writer{bdata_file_name, bdata_file, 0};
+        bke::DiskBDataWriter bdata_writer{bdata_file_name, bdata_file, 0};
 
         io::serialize::DictionaryValue io_root;
         bke::sim::serialize_modifier_simulation_state(
@@ -340,9 +343,9 @@ static void bake_simulation_job_startjob(void *customdata,
   for (ObjectBakeData &object_bake_data : objects_to_bake) {
     for (ModifierBakeData &modifier_bake_data : object_bake_data.modifiers) {
       NodesModifierData &nmd = *modifier_bake_data.nmd;
-      if (nmd.simulation_cache) {
+      if (nmd.runtime->simulation_cache) {
         /* Tag the caches as being baked so that they are not changed anymore. */
-        nmd.simulation_cache->ptr->cache_state = CacheState::Baked;
+        nmd.runtime->simulation_cache->cache_state = CacheState::Baked;
       }
     }
     DEG_id_tag_update(&object_bake_data.object->id, ID_RECALC_GEOMETRY);
@@ -594,18 +597,36 @@ static int delete_baked_simulation_exec(bContext *C, wmOperator *op)
     LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
       if (md->type == eModifierType_Nodes) {
         NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-        nmd->simulation_cache->ptr->reset();
+        nmd->runtime->simulation_cache->reset();
         if (StringRef(nmd->simulation_bake_directory).is_empty()) {
           continue;
         }
         char absolute_bake_dir[FILE_MAX];
         STRNCPY(absolute_bake_dir, nmd->simulation_bake_directory);
         BLI_path_abs(absolute_bake_dir, base_path);
+
+        char meta_dir[FILE_MAX];
+        BLI_path_join(meta_dir, sizeof(meta_dir), absolute_bake_dir, "meta");
+        char bdata_dir[FILE_MAX];
+        BLI_path_join(bdata_dir, sizeof(bdata_dir), absolute_bake_dir, "bdata");
+
         if (BLI_exists(absolute_bake_dir)) {
-          if (BLI_delete(absolute_bake_dir, true, true)) {
-            BKE_reportf(
-                op->reports, RPT_ERROR, "Failed to remove bake directory %s", absolute_bake_dir);
+          if (BLI_exists(meta_dir)) {
+            if (BLI_delete(meta_dir, true, true)) {
+              BKE_reportf(op->reports, RPT_ERROR, "Failed to remove meta directory %s", meta_dir);
+            }
           }
+          if (BLI_exists(bdata_dir)) {
+            if (BLI_delete(bdata_dir, true, true)) {
+              BKE_reportf(
+                  op->reports, RPT_ERROR, "Failed to remove bdata directory %s", bdata_dir);
+            }
+          }
+          /* Delete the folder if it's empty. */
+          BLI_delete(absolute_bake_dir, true, false);
+        }
+        else {
+          BKE_reportf(op->reports, RPT_ERROR, "Bake directory %s not found", absolute_bake_dir);
         }
       }
     }

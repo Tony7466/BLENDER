@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,11 +6,11 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -20,12 +20,14 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_pointcloud_types.h"
 
+#include "BLI_math_color.h"
+
 #include "BKE_attribute.h"
 #include "BKE_customdata.h"
 
 #include "BLT_translation.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 const EnumPropertyItem rna_enum_attribute_type_items[] = {
     {CD_PROP_FLOAT, "FLOAT", 0, "Float", "Floating-point value"},
@@ -97,6 +99,13 @@ const EnumPropertyItem rna_enum_attribute_domain_only_mesh_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+const EnumPropertyItem rna_enum_attribute_domain_point_face_curve_items[] = {
+    {ATTR_DOMAIN_POINT, "POINT", 0, "Point", "Attribute on point"},
+    {ATTR_DOMAIN_FACE, "FACE", 0, "Face", "Attribute on mesh faces"},
+    {ATTR_DOMAIN_CURVE, "CURVE", 0, "Spline", "Attribute on spline"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 const EnumPropertyItem rna_enum_attribute_domain_without_corner_items[] = {
     {ATTR_DOMAIN_POINT, "POINT", 0, "Point", "Attribute on point"},
     {ATTR_DOMAIN_EDGE, "EDGE", 0, "Edge", "Attribute on mesh edge"},
@@ -129,13 +138,11 @@ const EnumPropertyItem rna_enum_attribute_curves_domain_items[] = {
 
 #ifdef RNA_RUNTIME
 
-#  include "BLI_math.h"
-
 #  include "DEG_depsgraph.h"
 
 #  include "BLT_translation.h"
 
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
 /* Attribute */
 
@@ -270,49 +277,12 @@ static void rna_Attribute_data_begin(CollectionPropertyIterator *iter, PointerRN
 {
   ID *id = ptr->owner_id;
   CustomDataLayer *layer = (CustomDataLayer *)ptr->data;
-
-  int length = BKE_id_attribute_data_length(id, layer);
-  size_t struct_size;
-
-  switch (layer->type) {
-    case CD_PROP_FLOAT:
-      struct_size = sizeof(MFloatProperty);
-      break;
-    case CD_PROP_INT32:
-      struct_size = sizeof(MIntProperty);
-      break;
-    case CD_PROP_FLOAT3:
-      struct_size = sizeof(float[3]);
-      break;
-    case CD_PROP_COLOR:
-      struct_size = sizeof(MPropCol);
-      break;
-    case CD_PROP_BYTE_COLOR:
-      struct_size = sizeof(MLoopCol);
-      break;
-    case CD_PROP_STRING:
-      struct_size = sizeof(MStringProperty);
-      break;
-    case CD_PROP_BOOL:
-      struct_size = sizeof(MBoolProperty);
-      break;
-    case CD_PROP_FLOAT2:
-      struct_size = sizeof(float[2]);
-      break;
-    case CD_PROP_INT8:
-      struct_size = sizeof(int8_t);
-      break;
-    case CD_PROP_INT32_2D:
-      struct_size = sizeof(int[2]);
-      break;
-    case CD_PROP_QUATERNION:
-      struct_size = sizeof(float[4]);
-      break;
-    default:
-      struct_size = 0;
-      length = 0;
-      break;
+  if (!(CD_TYPE_AS_MASK(layer->type) & CD_MASK_PROP_ALL)) {
+    iter->valid = false;
   }
+
+  const int length = BKE_id_attribute_data_length(id, layer);
+  const size_t struct_size = CustomData_get_elem_size(layer);
 
   rna_iterator_array_begin(iter, layer->data, struct_size, length, 0, nullptr);
 }
@@ -384,7 +354,7 @@ static void rna_FloatColorAttributeValue_color_srgb_set(PointerRNA *ptr, const f
 static int rna_ByteIntAttributeValue_get(PointerRNA *ptr)
 {
   int8_t *value = (int8_t *)ptr->data;
-  return (int)(*value);
+  return int(*value);
 }
 
 static void rna_ByteIntAttributeValue_set(PointerRNA *ptr, const int new_value)
@@ -397,7 +367,7 @@ static void rna_ByteIntAttributeValue_set(PointerRNA *ptr, const int new_value)
     *value = INT8_MIN;
   }
   else {
-    *value = (int8_t)new_value;
+    *value = int8_t(new_value);
   }
 }
 
@@ -449,8 +419,8 @@ static int rna_Attributes_noncolor_layer_skip(CollectionPropertyIterator *iter, 
 
   /* Check valid domain here, too, keep in line with rna_AttributeGroup_color_length(). */
   ID *id = iter->parent.owner_id;
-  eAttrDomain domain = BKE_id_attribute_domain(id, layer);
-  if (!ELEM(domain, ATTR_DOMAIN_POINT, ATTR_DOMAIN_CORNER)) {
+  const eAttrDomain domain = BKE_id_attribute_domain(id, layer);
+  if (!(ATTR_DOMAIN_AS_MASK(domain) & ATTR_DOMAIN_MASK_COLOR)) {
     return 1;
   }
 
@@ -533,9 +503,7 @@ PointerRNA rna_AttributeGroup_color_iterator_get(CollectionPropertyIterator *ite
 
 int rna_AttributeGroup_color_length(PointerRNA *ptr)
 {
-  return BKE_id_attributes_length(ptr->owner_id,
-                                  ATTR_DOMAIN_MASK_POINT | ATTR_DOMAIN_MASK_CORNER,
-                                  CD_MASK_PROP_COLOR | CD_MASK_PROP_BYTE_COLOR);
+  return BKE_id_attributes_length(ptr->owner_id, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
 }
 
 int rna_AttributeGroup_length(PointerRNA *ptr)

@@ -1,7 +1,7 @@
 
 /**
  * Film accumulation utils functions.
- **/
+ */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
@@ -655,6 +655,9 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     }
     else {
       out_depth = imageLoad(depth_img, texel_film).r;
+      if (film_buf.display_id != -1 && film_buf.display_id == film_buf.normal_id) {
+        out_color = imageLoad(color_accum_img, ivec3(texel_film, film_buf.display_id));
+      }
     }
   }
 
