@@ -22,7 +22,6 @@ set(SRC
   nodes/node_fn_axis_angle_to_rotation.cc
   nodes/node_fn_boolean_math.cc
   nodes/node_fn_combine_color.cc
-  nodes/node_fn_combine_quaternion.cc
   nodes/node_fn_compare.cc
   nodes/node_fn_euler_to_rotation.cc
   nodes/node_fn_float_to_int.cc
@@ -33,14 +32,15 @@ set(SRC
   nodes/node_fn_input_string.cc
   nodes/node_fn_input_vector.cc
   nodes/node_fn_invert_rotation.cc
+  nodes/node_fn_quaternion_to_rotation.cc
   nodes/node_fn_random_value.cc
   nodes/node_fn_replace_string.cc
   nodes/node_fn_rotate_euler.cc
   nodes/node_fn_rotate_vector.cc
   nodes/node_fn_rotation_to_axis_angle.cc
   nodes/node_fn_rotation_to_euler.cc
+  nodes/node_fn_rotation_to_quaternion.cc
   nodes/node_fn_separate_color.cc
-  nodes/node_fn_separate_quaternion.cc
   nodes/node_fn_slice_string.cc
   nodes/node_fn_string_length.cc
   nodes/node_fn_value_to_string.cc

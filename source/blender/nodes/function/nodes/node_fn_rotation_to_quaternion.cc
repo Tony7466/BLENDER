@@ -6,7 +6,7 @@
 
 #include "node_function_util.hh"
 
-namespace blender::nodes::node_fn_separate_quaternion_cc {
+namespace blender::nodes::node_fn_rotation_to_quaternion_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -23,7 +23,7 @@ class SeparateQuaternionFunction : public mf::MultiFunction {
   SeparateQuaternionFunction()
   {
     static mf::Signature signature_;
-    mf::SignatureBuilder builder{"Separate Quaternion", signature_};
+    mf::SignatureBuilder builder{"Rotation to Quaternion", signature_};
     builder.single_input<math::Quaternion>("Quaternion");
     builder.single_output<float>("W");
     builder.single_output<float>("X");
@@ -60,11 +60,11 @@ static void node_register()
 {
   static bNodeType ntype;
   fn_node_type_base(
-      &ntype, FN_NODE_SEPARATE_QUATERNION, "Separate Quaternion", NODE_CLASS_CONVERTER);
+      &ntype, FN_NODE_ROTATION_TO_QUATERNION, "Rotation to Quaternion", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.build_multi_function = node_build_multi_function;
   nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 
-}  // namespace blender::nodes::node_fn_separate_quaternion_cc
+}  // namespace blender::nodes::node_fn_rotation_to_quaternion_cc

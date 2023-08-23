@@ -6,7 +6,7 @@
 
 #include "node_function_util.hh"
 
-namespace blender::nodes::node_fn_combine_quaternion_cc {
+namespace blender::nodes::node_fn_quaternion_to_rotation_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -21,7 +21,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
   static auto fn = mf::build::SI4_SO<float, float, float, float, math::Quaternion>(
-      "Combine Quaternion", [](float w, float x, float y, float z) {
+      "Quaternion to Rotation", [](float w, float x, float y, float z) {
         math::Quaternion combined(w, x, y, z);
         return math::normalize(combined);
       });
@@ -32,11 +32,11 @@ static void node_register()
 {
   static bNodeType ntype;
   fn_node_type_base(
-      &ntype, FN_NODE_COMBINE_QUATERNION, "Combine Quaternion", NODE_CLASS_CONVERTER);
+      &ntype, FN_NODE_QUATERNION_TO_ROTATION, "Quaternion to Rotation", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.build_multi_function = node_build_multi_function;
   nodeRegisterType(&ntype);
 }
 NOD_REGISTER_NODE(node_register)
 
-}  // namespace blender::nodes::node_fn_combine_quaternion_cc
+}  // namespace blender::nodes::node_fn_quaternion_to_rotation_cc
