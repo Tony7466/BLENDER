@@ -6,10 +6,6 @@
 vec2 shadow_page_uv_transform(
     vec2 atlas_size, uvec3 page, uint lod, vec2 unormalized_uv, ivec2 tile_lod0_coord)
 {
-  /* Bias uv sample for LODs since custom raster aligns LOD pixels instead of centering them. */
-  if (lod != 0) {
-    unormalized_uv += 0.5 / float(SHADOW_PAGE_RES * SHADOW_TILEMAP_RES);
-  }
   float lod_scaling = exp2(-float(lod));
   vec2 target_tile = vec2(tile_lod0_coord >> lod);
   vec2 page_uv = unormalized_uv * lod_scaling - target_tile;
