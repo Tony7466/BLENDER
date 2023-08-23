@@ -87,8 +87,14 @@ static void shapekey_free_data(ID *id)
 
 static void shapekey_foreach_id(ID *id, LibraryForeachIDData *data)
 {
-  Key *key = (Key *)id;
+  Key *key = reinterpret_cast<Key *>(id);
+  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
+
   BKE_LIB_FOREACHID_PROCESS_ID(data, key->from, IDWALK_CB_LOOPBACK);
+
+  if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
+    BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, key->ipo, IDWALK_CB_USER);
+  }
 }
 
 static ID **shapekey_owner_pointer_get(ID *id)
@@ -109,10 +115,6 @@ static void shapekey_blend_write(BlendWriter *writer, ID *id, const void *id_add
   /* write LibData */
   BLO_write_id_struct(writer, Key, id_address, &key->id);
   BKE_id_blend_write(writer, &key->id);
-
-  if (key->adt) {
-    BKE_animdata_blend_write(writer, key->adt);
-  }
 
   /* direct data */
   LISTBASE_FOREACH (KeyBlock *, kb, &key->block) {
@@ -165,9 +167,6 @@ static void shapekey_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Key *key = (Key *)id;
   BLO_read_list(reader, &(key->block));
-
-  BLO_read_data_address(reader, &key->adt);
-  BKE_animdata_blend_read_data(reader, key->adt);
 
   BLO_read_data_address(reader, &key->refkey);
 

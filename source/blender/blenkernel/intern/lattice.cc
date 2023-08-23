@@ -117,8 +117,14 @@ static void lattice_free_data(ID *id)
 
 static void lattice_foreach_id(ID *id, LibraryForeachIDData *data)
 {
-  Lattice *lattice = (Lattice *)id;
+  Lattice *lattice = reinterpret_cast<Lattice *>(id);
+  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
+
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, lattice->key, IDWALK_CB_USER);
+
+  if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
+    BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, lattice->ipo, IDWALK_CB_USER);
+  }
 }
 
 static void lattice_blend_write(BlendWriter *writer, ID *id, const void *id_address)
@@ -132,11 +138,6 @@ static void lattice_blend_write(BlendWriter *writer, ID *id, const void *id_addr
   /* write LibData */
   BLO_write_id_struct(writer, Lattice, id_address, &lt->id);
   BKE_id_blend_write(writer, &lt->id);
-
-  /* write animdata */
-  if (lt->adt) {
-    BKE_animdata_blend_write(writer, lt->adt);
-  }
 
   /* direct data */
   BLO_write_struct_array(writer, BPoint, lt->pntsu * lt->pntsv * lt->pntsw, lt->def);
@@ -156,9 +157,6 @@ static void lattice_blend_read_data(BlendDataReader *reader, ID *id)
 
   lt->editlatt = nullptr;
   lt->batch_cache = nullptr;
-
-  BLO_read_data_address(reader, &lt->adt);
-  BKE_animdata_blend_read_data(reader, lt->adt);
 }
 
 static void lattice_blend_read_lib(BlendLibReader *reader, ID *id)

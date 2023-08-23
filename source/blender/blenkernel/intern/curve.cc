@@ -134,7 +134,9 @@ static void curve_free_data(ID *id)
 
 static void curve_foreach_id(ID *id, LibraryForeachIDData *data)
 {
-  Curve *curve = (Curve *)id;
+  Curve *curve = reinterpret_cast<Curve *>(id);
+  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
+
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, curve->bevobj, IDWALK_CB_NOP);
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, curve->taperobj, IDWALK_CB_NOP);
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, curve->textoncurve, IDWALK_CB_NOP);
@@ -146,6 +148,10 @@ static void curve_foreach_id(ID *id, LibraryForeachIDData *data)
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, curve->vfontb, IDWALK_CB_USER);
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, curve->vfonti, IDWALK_CB_USER);
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, curve->vfontbi, IDWALK_CB_USER);
+
+  if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
+    BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, curve->ipo, IDWALK_CB_USER);
+  }
 }
 
 static void curve_blend_write(BlendWriter *writer, ID *id, const void *id_address)
@@ -163,9 +169,6 @@ static void curve_blend_write(BlendWriter *writer, ID *id, const void *id_addres
 
   /* direct data */
   BLO_write_pointer_array(writer, cu->totcol, cu->mat);
-  if (cu->adt) {
-    BKE_animdata_blend_write(writer, cu->adt);
-  }
 
   if (cu->vfont) {
     BLO_write_raw(writer, cu->len + 1, cu->str);
@@ -211,8 +214,6 @@ static void switch_endian_knots(Nurb *nu)
 static void curve_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Curve *cu = (Curve *)id;
-  BLO_read_data_address(reader, &cu->adt);
-  BKE_animdata_blend_read_data(reader, cu->adt);
 
   /* Protect against integer overflow vulnerability. */
   CLAMP(cu->len_char32, 0, INT_MAX - 4);

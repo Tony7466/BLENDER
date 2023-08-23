@@ -167,7 +167,8 @@ static void action_free_data(ID *id)
 
 static void action_foreach_id(ID *id, LibraryForeachIDData *data)
 {
-  bAction *act = (bAction *)id;
+  bAction *act = reinterpret_cast<bAction *>(id);
+  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
 
   LISTBASE_FOREACH (FCurve *, fcu, &act->curves) {
     BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data, BKE_fcurve_foreach_id(fcu, data));
@@ -175,6 +176,15 @@ static void action_foreach_id(ID *id, LibraryForeachIDData *data)
 
   LISTBASE_FOREACH (TimeMarker *, marker, &act->markers) {
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, marker->camera, IDWALK_CB_NOP);
+  }
+
+  if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
+    LISTBASE_FOREACH (bActionChannel *, chan, &act->chanbase) {
+      BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, chan->ipo, IDWALK_CB_USER);
+      LISTBASE_FOREACH (bConstraintChannel *, chan_constraint, &chan->constraintChannels) {
+        BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, chan_constraint->ipo, IDWALK_CB_USER);
+      }
+    }
   }
 }
 
@@ -1870,7 +1880,7 @@ void BKE_pose_blend_write(BlendWriter *writer, bPose *pose, bArmature *arm)
   BLO_write_struct(writer, bPose, pose);
 }
 
-void BKE_pose_blend_read_data(BlendDataReader *reader, bPose *pose)
+void BKE_pose_blend_read_data(BlendDataReader *reader, ID *id_owner, bPose *pose)
 {
   if (!pose) {
     return;
@@ -1894,7 +1904,7 @@ void BKE_pose_blend_read_data(BlendDataReader *reader, bPose *pose)
     BLO_read_data_address(reader, &pchan->bbone_prev);
     BLO_read_data_address(reader, &pchan->bbone_next);
 
-    BKE_constraint_blend_read_data(reader, &pchan->constraints);
+    BKE_constraint_blend_read_data(reader, id_owner, &pchan->constraints);
 
     BLO_read_data_address(reader, &pchan->prop);
     IDP_BlendDataRead(reader, &pchan->prop);

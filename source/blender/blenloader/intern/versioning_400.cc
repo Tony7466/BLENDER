@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,6 +13,7 @@
 #include "CLG_log.h"
 
 #include "DNA_brush_types.h"
+#include "DNA_camera_types.h"
 #include "DNA_light_types.h"
 #include "DNA_lightprobe_types.h"
 #include "DNA_modifier_types.h"
@@ -22,6 +23,7 @@
 
 #include "DNA_defaults.h"
 #include "DNA_genfile.h"
+#include "DNA_particle_types.h"
 
 #include "BLI_assert.h"
 #include "BLI_listbase.h"
@@ -29,6 +31,7 @@
 #include "BLI_set.hh"
 #include "BLI_string_ref.hh"
 
+#include "BKE_effect.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idprop.hh"
 #include "BKE_main.h"
@@ -38,6 +41,9 @@
 #include "BKE_scene.h"
 #include "BKE_tracking.h"
 
+#include "BLT_translation.h"
+
+#include "BLO_read_write.h"
 #include "BLO_readfile.h"
 
 #include "readfile.h"
@@ -46,7 +52,19 @@
 
 // static CLG_LogRef LOG = {"blo.readfile.doversion"};
 
-void do_versions_after_linking_400(FileData * /*fd*/, Main *bmain)
+static void version_composite_nodetree_null_id(bNodeTree *ntree, Scene *scene)
+{
+  for (bNode *node : ntree->all_nodes()) {
+    if (node->id == nullptr &&
+        ((node->type == CMP_NODE_R_LAYERS) ||
+         (node->type == CMP_NODE_CRYPTOMATTE && node->custom1 == CMP_CRYPTOMATTE_SRC_RENDER)))
+    {
+      node->id = &scene->id;
+    }
+  }
+}
+
+void do_versions_after_linking_400(FileData *fd, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 9)) {
     /* Fix area light scaling. */
@@ -54,6 +72,53 @@ void do_versions_after_linking_400(FileData * /*fd*/, Main *bmain)
       light->energy = light->energy_deprecated;
       if (light->type == LA_AREA) {
         light->energy *= M_PI_4;
+      }
+    }
+
+    /* XXX This was added several years ago in 'lib_link` code of Scene... Should be safe enough
+     * here. */
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (scene->nodetree) {
+        version_composite_nodetree_null_id(scene->nodetree, scene);
+      }
+    }
+
+    /* XXX This was added many years ago (1c19940198) in 'lib_link` code of particles as a bug-fix.
+     * But this is actually versioning. Should be safe enough here. */
+    LISTBASE_FOREACH (ParticleSettings *, part, &bmain->particles) {
+      if (!part->effector_weights) {
+        part->effector_weights = BKE_effector_add_weights(part->force_group);
+      }
+    }
+
+    /* Object proxies have been deprecated sine 3.x era, so their update & sanity check can now
+     * happen in do_versions code. */
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      if (ob->proxy) {
+        /* Paranoia check, actually a proxy_from pointer should never be written... */
+        if (!ID_IS_LINKED(ob->proxy)) {
+          ob->proxy->proxy_from = nullptr;
+          ob->proxy = nullptr;
+
+          if (ob->id.lib) {
+            BLO_reportf_wrap(fd->reports,
+                             RPT_INFO,
+                             TIP_("Proxy lost from object %s lib %s\n"),
+                             ob->id.name + 2,
+                             ob->id.lib->filepath);
+          }
+          else {
+            BLO_reportf_wrap(fd->reports,
+                             RPT_INFO,
+                             TIP_("Proxy lost from object %s lib <NONE>\n"),
+                             ob->id.name + 2);
+          }
+          fd->reports->count.missing_obproxies++;
+        }
+        else {
+          /* This triggers object_update to always use a copy. */
+          ob->proxy->proxy_from = ob;
+        }
       }
     }
   }
@@ -340,6 +405,21 @@ static void version_principled_bsdf_sheen(bNodeTree *ntree)
   }
 }
 
+/* Replace old Principled Hair BSDF as a variant in the new Principled Hair BSDF. */
+static void version_replace_principled_hair_model(bNodeTree *ntree)
+{
+  LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+    if (node->type != SH_NODE_BSDF_HAIR_PRINCIPLED) {
+      continue;
+    }
+    NodeShaderHairPrincipled *data = MEM_cnew<NodeShaderHairPrincipled>(__func__);
+    data->model = SHD_PRINCIPLED_HAIR_CHIANG;
+    data->parametrization = node->custom1;
+
+    node->storage = data;
+  }
+}
+
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -582,18 +662,79 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  /**
-   * Versioning code until next subversion bump goes here.
-   *
-   * \note Be sure to check when bumping the version:
-   * - #do_versions_after_linking_400 in this file.
-   * - `versioning_userdef.cc`, #blo_do_versions_userdef
-   * - `versioning_userdef.cc`, #do_versions_theme
-   *
-   * \note Keep this message at the bottom of the function.
-   */
-  {
-    /* Keep this block, even when empty. */
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 16)) {
+    /* Set Normalize property of Noise Texture node to true. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type != NTREE_CUSTOM) {
+        LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+          if (node->type == SH_NODE_TEX_NOISE) {
+            ((NodeTexNoise *)node->storage)->normalize = true;
+          }
+        }
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 17)) {
+    if (!DNA_struct_find(fd->filesdna, "NodeShaderHairPrincipled")) {
+      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+        if (ntree->type == NTREE_SHADER) {
+          version_replace_principled_hair_model(ntree);
+        }
+      }
+      FOREACH_NODETREE_END;
+    }
+
+    /* Panorama properties shared with Eevee. */
+    if (!DNA_struct_elem_find(fd->filesdna, "Camera", "float", "fisheye_fov")) {
+      Camera default_cam = *DNA_struct_default_get(Camera);
+      LISTBASE_FOREACH (Camera *, camera, &bmain->cameras) {
+        IDProperty *ccam = version_cycles_properties_from_ID(&camera->id);
+        if (ccam) {
+          camera->panorama_type = version_cycles_property_int(
+              ccam, "panorama_type", default_cam.panorama_type);
+          camera->fisheye_fov = version_cycles_property_float(
+              ccam, "fisheye_fov", default_cam.fisheye_fov);
+          camera->fisheye_lens = version_cycles_property_float(
+              ccam, "fisheye_lens", default_cam.fisheye_lens);
+          camera->latitude_min = version_cycles_property_float(
+              ccam, "latitude_min", default_cam.latitude_min);
+          camera->latitude_max = version_cycles_property_float(
+              ccam, "latitude_max", default_cam.latitude_max);
+          camera->longitude_min = version_cycles_property_float(
+              ccam, "longitude_min", default_cam.longitude_min);
+          camera->longitude_max = version_cycles_property_float(
+              ccam, "longitude_max", default_cam.longitude_max);
+          /* Fit to match default projective camera with focal_length 50 and sensor_width 36. */
+          camera->fisheye_polynomial_k0 = version_cycles_property_float(
+              ccam, "fisheye_polynomial_k0", default_cam.fisheye_polynomial_k0);
+          camera->fisheye_polynomial_k1 = version_cycles_property_float(
+              ccam, "fisheye_polynomial_k1", default_cam.fisheye_polynomial_k1);
+          camera->fisheye_polynomial_k2 = version_cycles_property_float(
+              ccam, "fisheye_polynomial_k2", default_cam.fisheye_polynomial_k2);
+          camera->fisheye_polynomial_k3 = version_cycles_property_float(
+              ccam, "fisheye_polynomial_k3", default_cam.fisheye_polynomial_k3);
+          camera->fisheye_polynomial_k4 = version_cycles_property_float(
+              ccam, "fisheye_polynomial_k4", default_cam.fisheye_polynomial_k4);
+        }
+        else {
+          camera->panorama_type = default_cam.panorama_type;
+          camera->fisheye_fov = default_cam.fisheye_fov;
+          camera->fisheye_lens = default_cam.fisheye_lens;
+          camera->latitude_min = default_cam.latitude_min;
+          camera->latitude_max = default_cam.latitude_max;
+          camera->longitude_min = default_cam.longitude_min;
+          camera->longitude_max = default_cam.longitude_max;
+          /* Fit to match default projective camera with focal_length 50 and sensor_width 36. */
+          camera->fisheye_polynomial_k0 = default_cam.fisheye_polynomial_k0;
+          camera->fisheye_polynomial_k1 = default_cam.fisheye_polynomial_k1;
+          camera->fisheye_polynomial_k2 = default_cam.fisheye_polynomial_k2;
+          camera->fisheye_polynomial_k3 = default_cam.fisheye_polynomial_k3;
+          camera->fisheye_polynomial_k4 = default_cam.fisheye_polynomial_k4;
+        }
+      }
+    }
 
     if (!DNA_struct_elem_find(fd->filesdna, "LightProbe", "float", "grid_flag")) {
       LISTBASE_FOREACH (LightProbe *, lightprobe, &bmain->lightprobes) {
@@ -608,5 +749,19 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         scene->eevee.gi_irradiance_pool_size = 16;
       }
     }
+  }
+
+  /**
+   * Versioning code until next subversion bump goes here.
+   *
+   * \note Be sure to check when bumping the version:
+   * - #do_versions_after_linking_400 in this file.
+   * - `versioning_userdef.cc`, #blo_do_versions_userdef
+   * - `versioning_userdef.cc`, #do_versions_theme
+   *
+   * \note Keep this message at the bottom of the function.
+   */
+  {
+    /* Keep this block, even when empty. */
   }
 }
