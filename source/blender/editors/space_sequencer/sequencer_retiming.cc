@@ -9,6 +9,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_map.hh"
 #include "BLI_math.h"
 
 #include "DNA_anim_types.h"
@@ -192,11 +193,11 @@ void SEQUENCER_OT_retiming_key_add(wmOperatorType *ot)
 /** \name Retiming Add Freeze Frame
  * \{ */
 
-bool freeze_frame_add_new_for_seq(const bContext *C,
-                                  const wmOperator *op,
-                                  Sequence *seq,
-                                  const int timeline_frame,
-                                  const int duration)
+static bool freeze_frame_add_new_for_seq(const bContext *C,
+                                         const wmOperator *op,
+                                         Sequence *seq,
+                                         const int timeline_frame,
+                                         const int duration)
 {
   Scene *scene = CTX_data_scene(C);
   SEQ_retiming_data_ensure(scene, seq);
@@ -315,11 +316,11 @@ void SEQUENCER_OT_retiming_freeze_frame_add(wmOperatorType *ot)
 /** \name Retiming Add Speed Transition
  * \{ */
 
-bool transition_add_new_for_seq(const bContext *C,
-                                const wmOperator *op,
-                                Sequence *seq,
-                                const int timeline_frame,
-                                const int duration)
+static bool transition_add_new_for_seq(const bContext *C,
+                                       const wmOperator *op,
+                                       Sequence *seq,
+                                       const int timeline_frame,
+                                       const int duration)
 {
   Scene *scene = CTX_data_scene(C);
   SEQ_retiming_data_ensure(scene, seq);
@@ -683,6 +684,8 @@ static int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op)
   UI_view2d_region_to_view_rctf(v2d, &rectf, &rectf);
 
   for (const Sequence *seq : sequencer_visible_strips_get(C)) {
+    blender::Map<const SeqRetimingKey *, const Sequence *> and_keys;
+
     for (const SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
       if (seq->machine < rectf.ymin || seq->machine > rectf.ymax) {
         continue;
@@ -715,6 +718,21 @@ static int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op)
             SEQ_retiming_selection_append(ed, seq, &key);
           }
           break;
+          case SEL_OP_AND: {
+            if (SEQ_retiming_selection_contains(ed, seq, &key)) {
+              and_keys.add(&key, seq);
+            }
+            break;
+          }
+        }
+      }
+
+      if (and_keys.size() > 0) {
+        and_keys.remove_if(
+            [&](auto item) { return !SEQ_retiming_selection_contains(ed, seq, item.key); });
+        SEQ_retiming_selection_clear(ed);
+        for (auto and_key : and_keys.keys()) {
+          SEQ_retiming_selection_append(ed, seq, and_key);
         }
       }
 

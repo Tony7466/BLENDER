@@ -883,10 +883,10 @@ static void seq_retiming_fix_transitions(const Scene *scene, Sequence *seq, SeqR
   }
 }
 
-void seq_retiming_key_offset(const Scene *scene,
-                             Sequence *seq,
-                             SeqRetimingKey *key,
-                             const int offset)
+static void seq_retiming_key_offset(const Scene *scene,
+                                    Sequence *seq,
+                                    SeqRetimingKey *key,
+                                    const int offset)
 {
   if ((key->flag & SPEED_TRANSITION_IN) != 0) {
     seq_retiming_transition_offset(scene, seq, key, offset);
@@ -913,7 +913,7 @@ void SEQ_retiming_key_timeline_frame_set(const Scene *scene,
 
   if (orig_timeline_frame == SEQ_time_right_handle_frame_get(scene, seq)) {
     MutableSpan keys = SEQ_retiming_keys_get(seq);
-    for (key; key < keys.end(); key++) {
+    for (; key < keys.end(); key++) {
       seq_retiming_key_offset(scene, seq, key, offset);
     }
   }

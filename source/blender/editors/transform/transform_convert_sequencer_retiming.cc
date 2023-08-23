@@ -137,7 +137,7 @@ static void recalcData_sequencer_retiming(TransInfo *t)
     /* Calculate translation. */
 
     const blender::MutableSpan keys = SEQ_retiming_keys_get(seq);
-    SeqRetimingKey *key = seq->retiming_keys + tdseq->key_index;
+    SeqRetimingKey *key = &keys[tdseq->key_index];
 
     if (SEQ_retiming_key_is_transition_type(key) &&
         !SEQ_retiming_selection_has_whole_transition(t->scene, key))

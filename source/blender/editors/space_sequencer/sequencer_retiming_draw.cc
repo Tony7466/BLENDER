@@ -97,12 +97,6 @@ static float strip_end_screenspace_get(const bContext *C, const Sequence *seq)
   return UI_view2d_view_to_region_x(v2d, SEQ_time_right_handle_frame_get(scene, seq));
 }
 
-static Sequence *active_seq_from_context(const bContext *C)
-{
-  const Editing *ed = SEQ_editing_get(CTX_data_scene(C));
-  return ed->act_seq;
-}
-
 static rctf strip_box_get(const bContext *C, const Sequence *seq)
 {
   const View2D *v2d = UI_view2d_fromcontext(C);
@@ -302,7 +296,7 @@ static void retime_key_draw(const bContext *C, const Sequence *seq, const SeqRet
   GPU_blend(GPU_BLEND_NONE);
 }
 
-const void draw_continuity(const bContext *C, const Sequence *seq, const SeqRetimingKey *key)
+static void draw_continuity(const bContext *C, const Sequence *seq, const SeqRetimingKey *key)
 {
   if (!sequencer_retiming_tool_is_active(C)) {
     return;
