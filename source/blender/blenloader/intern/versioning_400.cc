@@ -463,7 +463,10 @@ static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *nt
     MEM_SAFE_FREE(new_socket->identifier);
     new_socket->identifier = BLI_strdup(socket->identifier);
   }
+}
 
+static void versioning_free_legacy_node_tree_socket_lists(bNodeTree *ntree)
+{
   /* Clear legacy data after conversion. */
   LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, &ntree->inputs_legacy) {
     legacy_socket_interface_free(sock);
@@ -806,12 +809,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         scene->eevee.gi_irradiance_pool_size = 16;
       }
     }
-
-    /* Convert old socket lists into new interface items. */
-    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-      versioning_convert_node_tree_socket_lists_to_interface(ntree);
-    }
-    FOREACH_NODETREE_END;
   }
 
   /**
@@ -826,5 +823,22 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    if (!DNA_struct_find(fd->filesdna, "bNodeTreeInterface")) {
+      /* Convert old socket lists into new interface items. */
+      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+        versioning_convert_node_tree_socket_lists_to_interface(ntree);
+        versioning_free_legacy_node_tree_socket_lists(ntree);
+      }
+      FOREACH_NODETREE_END;
+    }
+    else {
+      /* Legacy node tree sockets are created for forward compatibilty,
+       * but have to be freed after loading and versioning. */
+      FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+        versioning_free_legacy_node_tree_socket_lists(ntree);
+      }
+      FOREACH_NODETREE_END;
+    }
   }
 }
