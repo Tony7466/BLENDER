@@ -510,26 +510,41 @@ static void construct_interface_as_legacy_sockets(bNodeTree *ntree)
   BLI_assert(BLI_listbase_is_empty(&ntree->inputs_legacy));
   BLI_assert(BLI_listbase_is_empty(&ntree->outputs_legacy));
 
+  auto make_legacy_socket = [&](const bNodeTreeInterfaceSocket &socket,
+                                eNodeSocketInOut in_out) -> bNodeSocket * {
+    bNodeSocket *iosock = make_socket(
+        ntree, in_out, socket.socket_type, socket.name, socket.identifier);
+    if (socket.description) {
+      BLI_strncpy(iosock->description, socket.description, sizeof(iosock->description));
+    }
+    node_socket_copy_default_value_data(
+        eNodeSocketDatatype(iosock->typeinfo->type), iosock->default_value, socket.socket_data);
+    if (socket.properties) {
+      iosock->prop = IDP_CopyProperty(socket.properties);
+    }
+    SET_FLAG_FROM_TEST(
+        iosock->flag, socket.flag & NODE_INTERFACE_SOCKET_HIDE_VALUE, SOCK_HIDE_VALUE);
+    SET_FLAG_FROM_TEST(
+        iosock->flag, socket.flag & NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER, SOCK_HIDE_IN_MODIFIER);
+    iosock->attribute_domain = socket.attribute_domain;
+    if (socket.default_attribute_name) {
+      BLI_strncpy(iosock->default_attribute_name,
+                  socket.default_attribute_name,
+                  sizeof(iosock->default_attribute_name));
+    }
+    return iosock;
+  };
+
   /* Construct inputs/outputs socket lists in the node tree. */
   ntree->tree_interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
     if (const bNodeTreeInterfaceSocket *socket =
             node_interface::get_item_as<bNodeTreeInterfaceSocket>(&item))
     {
       if (socket->flag & NODE_INTERFACE_SOCKET_INPUT) {
-        bNodeSocket *iosock = make_socket(
-            ntree, SOCK_IN, socket->socket_type, socket->name, socket->identifier);
-        node_socket_copy_default_value_data(eNodeSocketDatatype(iosock->typeinfo->type),
-                                            iosock->default_value,
-                                            socket->socket_data);
-        BLI_addtail(&ntree->inputs_legacy, iosock);
+        BLI_addtail(&ntree->inputs_legacy, make_legacy_socket(*socket, SOCK_IN));
       }
       if (socket->flag & NODE_INTERFACE_SOCKET_OUTPUT) {
-        bNodeSocket *iosock = make_socket(
-            ntree, SOCK_OUT, socket->socket_type, socket->name, socket->identifier);
-        node_socket_copy_default_value_data(eNodeSocketDatatype(iosock->typeinfo->type),
-                                            iosock->default_value,
-                                            socket->socket_data);
-        BLI_addtail(&ntree->outputs_legacy, iosock);
+        BLI_addtail(&ntree->outputs_legacy, make_legacy_socket(*socket, SOCK_OUT));
       }
     }
     return true;
