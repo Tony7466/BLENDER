@@ -59,7 +59,6 @@ void ntreeLocalMerge(Main *bmain, bNodeTree *localtree, bNodeTree *ntree);
 void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree);
 void ntreeBlendReadLib(BlendLibReader *reader, bNodeTree *ntree);
 
-void ntreeBlendReadExpand(BlendExpander *expander, bNodeTree *ntree);
 
 bool node_type_is_undefined(const bNode *node);
 
@@ -68,8 +67,6 @@ bool nodeIsStaticSocketType(const bNodeSocketType *stype);
 const char *nodeSocketSubTypeLabel(int subtype);
 
 void nodeRemoveSocketEx(bNodeTree *ntree, bNode *node, bNodeSocket *sock, bool do_id_user);
-
-void nodeRemoveAllSockets(bNodeTree *ntree, bNode *node);
 
 void nodeModifySocketType(bNodeTree *ntree, bNode *node, bNodeSocket *sock, const char *idname);
 
