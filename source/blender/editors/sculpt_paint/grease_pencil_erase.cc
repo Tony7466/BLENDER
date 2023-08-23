@@ -476,12 +476,12 @@ struct EraseOperationExecutor {
     Vector<int> dst_to_src_curve;
     dst_curves_offset.append(0);
     for (int src_curve : src.curves_range()) {
-      const IndexRange dst_points_range(dst_interm_curves_offsets[src_curve],
-                                        dst_interm_curves_offsets[src_curve + 1] -
-                                            dst_interm_curves_offsets[src_curve]);
+      const IndexRange dst_points(dst_interm_curves_offsets[src_curve],
+                                  dst_interm_curves_offsets[src_curve + 1] -
+                                      dst_interm_curves_offsets[src_curve]);
       int length_of_current = 0;
 
-      for (int dst_point : dst_points_range) {
+      for (int dst_point : dst_points) {
 
         if ((length_of_current > 0) && dst_transfer_data[dst_point].is_cut) {
           /* This is the new first point of a curve. */
@@ -494,7 +494,7 @@ struct EraseOperationExecutor {
 
       if (length_of_current != 0) {
         /* End of a source curve. */
-        dst_curves_offset.append(dst_points_range.one_after_last());
+        dst_curves_offset.append(dst_points.one_after_last());
         dst_to_src_curve.append(src_curve);
       }
     }
@@ -564,8 +564,8 @@ struct EraseOperationExecutor {
         auto src_attr = attribute.src.typed<T>();
         auto dst_attr = attribute.dst.span.typed<T>();
 
-        threading::parallel_for(dst.points_range(), 4096, [&](const IndexRange dst_points_range) {
-          for (const int dst_point : dst_points_range) {
+        threading::parallel_for(dst.points_range(), 4096, [&](const IndexRange dst_points) {
+          for (const int dst_point : dst_points) {
             const PointTransferData &point_transfer = dst_transfer_data[dst_point];
             if (point_transfer.is_src_point) {
               dst_attr[dst_point] = src_attr[point_transfer.src_point];
