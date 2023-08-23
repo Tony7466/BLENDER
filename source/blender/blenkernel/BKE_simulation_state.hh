@@ -11,6 +11,7 @@
 #include "BLI_sub_frame.hh"
 
 struct bNodeTree;
+struct Scene;
 
 namespace blender::bke::sim {
 
