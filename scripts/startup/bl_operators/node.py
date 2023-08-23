@@ -376,12 +376,14 @@ class NODE_OT_interface_item_move(NodeInterfaceOperator, Operator):
         tree = snode.edit_tree
         interface = tree.interface
         item = interface.active
+        if item is None:
+            return {'CANCELLED'}
 
         if self.direction == 'UP':
-            interface.move(item, interface.active_index - 1)
+            interface.move(item, item.position - 1)
             interface.active_index -= 1
         elif self.direction == 'DOWN':
-            interface.move(item, interface.active_index + 1)
+            interface.move(item, item.position + 1)
             interface.active_index += 1
 
         return {'FINISHED'}

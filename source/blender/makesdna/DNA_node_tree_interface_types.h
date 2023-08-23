@@ -232,7 +232,19 @@ typedef struct bNodeTreeInterface {
   void active_item_set(bNodeTreeInterfaceItem *item);
 
   /**
-   * Get the index of the item in the interface.
+   * Get the position of the item in its parent panel.
+   * \return Position if the item was found or -1 otherwise.
+   */
+  int find_item_position(const bNodeTreeInterfaceItem &item) const
+  {
+    /* const_cast to avoid a const version of #find_parent_recursive. */
+    const bNodeTreeInterfacePanel *parent =
+        const_cast<bNodeTreeInterfacePanel &>(root_panel).find_parent_recursive(item);
+    BLI_assert(parent != nullptr);
+    return parent->item_position(item);
+  }
+  /**
+   * Get the global index of the item in the interface.
    * \return Index if the item was found or -1 otherwise.
    */
   int find_item_index(const bNodeTreeInterfaceItem &item) const

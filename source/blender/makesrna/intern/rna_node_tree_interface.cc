@@ -84,6 +84,30 @@ static char *rna_NodeTreeInterfaceItem_path(const PointerRNA *ptr)
   return nullptr;
 }
 
+static PointerRNA rna_NodeTreeInterfaceItem_parent_get(PointerRNA *ptr)
+{
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  const bNodeTreeInterfaceItem *item = static_cast<const bNodeTreeInterfaceItem *>(ptr->data);
+  bNodeTreeInterfacePanel *parent = ntree->tree_interface.find_item_parent(*item);
+  PointerRNA result;
+  RNA_pointer_create(&ntree->id, &RNA_NodeTreeInterfacePanel, parent, &result);
+  return result;
+}
+
+static int rna_NodeTreeInterfaceItem_position_get(PointerRNA *ptr)
+{
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  const bNodeTreeInterfaceItem *item = static_cast<const bNodeTreeInterfaceItem *>(ptr->data);
+  return ntree->tree_interface.find_item_position(*item);
+}
+
+static int rna_NodeTreeInterfaceItem_index_get(PointerRNA *ptr)
+{
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  const bNodeTreeInterfaceItem *item = static_cast<const bNodeTreeInterfaceItem *>(ptr->data);
+  return ntree->tree_interface.find_item_index(*item);
+}
+
 static bool rna_NodeTreeInterfaceSocket_unregister(Main * /*bmain*/, StructRNA *type)
 {
   bNodeSocketType *st = static_cast<bNodeSocketType *>(RNA_struct_blender_type_get(type));
@@ -559,10 +583,13 @@ static void rna_NodeTreeInterfaceItems_clear(ID *id, bNodeTreeInterface *interfa
   WM_main_add_notifier(NC_NODE | NA_EDITED, ntree);
 }
 
-static void rna_NodeTreeInterfaceItems_move(
-    ID *id, bNodeTreeInterface *interface, Main *bmain, bNodeTreeInterfaceItem *item, int to_index)
+static void rna_NodeTreeInterfaceItems_move(ID *id,
+                                            bNodeTreeInterface *interface,
+                                            Main *bmain,
+                                            bNodeTreeInterfaceItem *item,
+                                            int to_position)
 {
-  interface->move_item(*item, to_index);
+  interface->move_item(*item, to_position);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
   BKE_ntree_update_tag_interface(ntree);
@@ -576,7 +603,7 @@ static void rna_NodeTreeInterfaceItems_move_to_parent(ID *id,
                                                       ReportList *reports,
                                                       bNodeTreeInterfaceItem *item,
                                                       bNodeTreeInterfacePanel *parent,
-                                                      int to_index)
+                                                      int to_position)
 {
   if (item->item_type == NODE_INTERFACE_PANEL &&
       !(parent->flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS))
@@ -585,7 +612,7 @@ static void rna_NodeTreeInterfaceItems_move_to_parent(ID *id,
     return;
   }
 
-  interface->move_item_to_parent(*item, parent, to_index);
+  interface->move_item_to_parent(*item, parent, to_position);
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
   BKE_ntree_update_tag_interface(ntree);
@@ -759,6 +786,26 @@ static void rna_def_node_interface_item(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, rna_enum_node_tree_interface_item_type_items);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Item Type", "Type of interface item");
+
+  prop = RNA_def_property(srna, "parent", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "NodeTreeInterfacePanel");
+  RNA_def_property_pointer_funcs(
+      prop, "rna_NodeTreeInterfaceItem_parent_get", nullptr, nullptr, nullptr);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Parent", "Panel that contains the item");
+
+  prop = RNA_def_property(srna, "position", PROP_INT, PROP_NONE);
+  RNA_def_property_int_funcs(prop, "rna_NodeTreeInterfaceItem_position_get", nullptr, nullptr);
+  RNA_def_property_range(prop, -1, INT_MAX);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Position", "Position of the item in its parent panel");
+
+  prop = RNA_def_property(srna, "index", PROP_INT, PROP_NONE);
+  RNA_def_property_int_funcs(prop, "rna_NodeTreeInterfaceItem_index_get", nullptr, nullptr);
+  RNA_def_property_range(prop, -1, INT_MAX);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(
+      prop, "Index", "Global index of the item among all items in the interface");
 }
 
 static void rna_def_node_interface_socket(BlenderRNA *brna)
@@ -1010,8 +1057,15 @@ static void rna_def_node_tree_interface_items_api(StructRNA *srna)
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
   parm = RNA_def_pointer(func, "item", "NodeTreeInterfaceItem", "Item", "The item to remove");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
-  parm = RNA_def_int(
-      func, "to_index", -1, 0, INT_MAX, "To Index", "Target index for the item", 0, 10000);
+  parm = RNA_def_int(func,
+                     "to_position",
+                     -1,
+                     0,
+                     INT_MAX,
+                     "To Position",
+                     "Target position for the item in its current panel",
+                     0,
+                     10000);
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
   func = RNA_def_function(srna, "move_to_parent", "rna_NodeTreeInterfaceItems_move_to_parent");
@@ -1022,8 +1076,15 @@ static void rna_def_node_tree_interface_items_api(StructRNA *srna)
   parm = RNA_def_pointer(
       func, "parent", "NodeTreeInterfacePanel", "Parent", "New parent of the item");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  parm = RNA_def_int(
-      func, "to_index", -1, 0, INT_MAX, "To Index", "Target index for the item", 0, 10000);
+  parm = RNA_def_int(func,
+                     "to_position",
+                     -1,
+                     0,
+                     INT_MAX,
+                     "To Position",
+                     "Target position for the item in the new parent panel",
+                     0,
+                     10000);
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 }
 
