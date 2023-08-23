@@ -391,8 +391,9 @@ struct EraseOperationExecutor {
   int64_t curves_intersections_and_points_sides(
       const bke::CurvesGeometry &src,
       const Span<float2> screen_space_positions,
+      const int intersections_max_per_segment,
       MutableSpan<std::pair<int, PointCircleSide>> r_point_ring,
-      MutableSpan<Vector<SegmentCircleIntersection>> r_intersections,
+      MutableSpan<SegmentCircleIntersection> r_intersections,
       const Span<EraserRing> rings) const
   {
     const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
@@ -432,6 +433,8 @@ struct EraseOperationExecutor {
 
         for (const int64_t src_point : src_curve_points.drop_back(1)) {
           int ring_index = 0;
+          int intersection_offset = src_point * intersections_max_per_segment;
+
           for (const EraserRing &eraser_point : rings) {
             SegmentCircleIntersection inter0;
             SegmentCircleIntersection inter1;
@@ -474,11 +477,11 @@ struct EraseOperationExecutor {
 
             if (nb_inter > 0) {
               inter0.inside_outside_intersection = (inter0.factor > inter1.factor);
-              r_intersections[src_point].append(inter0);
+              r_intersections[++intersection_offset] = inter0;
 
               if (nb_inter > 1) {
                 inter1.inside_outside_intersection = true;
-                r_intersections[src_point].append(inter1);
+                r_intersections[++intersection_offset] = inter1;
               }
             }
 
@@ -491,6 +494,7 @@ struct EraseOperationExecutor {
           const int64_t src_last_point = src_curve_points.last();
           const int64_t src_first_point = src_curve_points.first();
           int ring_index = 0;
+          int intersection_offset = src_last_point * intersections_max_per_segment;
 
           for (const EraserRing &eraser_point : rings) {
             SegmentCircleIntersection inter0;
@@ -513,11 +517,11 @@ struct EraseOperationExecutor {
 
             if (nb_inter > 0) {
               inter0.inside_outside_intersection = (inter0.factor > inter1.factor);
-              r_intersections[src_last_point].append(inter0);
+              r_intersections[++intersection_offset];
 
               if (nb_inter > 1) {
                 inter1.inside_outside_intersection = true;
-                r_intersections[src_last_point].append(inter1);
+                r_intersections[++intersection_offset];
               }
             }
 
@@ -529,8 +533,10 @@ struct EraseOperationExecutor {
 
     /* Compute total number of intersections. */
     int64_t total_intersections = 0;
-    for (const int64_t src_point : src.points_range()) {
-      total_intersections += r_intersections[src_point].size();
+    for (const SegmentCircleIntersection &intersection : r_intersections) {
+      if (intersection.is_valid()) {
+        total_intersections++;
+      }
     }
 
     return total_intersections;
@@ -969,15 +975,21 @@ struct EraseOperationExecutor {
     /* The soft eraser changes the opacity of the strokes underneath it using a curve falloff. We
      * sample this curve to get a set of rings in the brush. */
     const Vector<EraserRing> eraser_rings = compute_piecewise_linear_falloff();
+    const int intersections_max_per_segment = eraser_rings.size() * 2;
 
     /* Compute intersections between the source curves geometry and all the rings of the eraser.
      */
     const int src_points_num = src.points_num();
     Array<std::pair<int, PointCircleSide>> src_point_ring(src_points_num,
                                                           {-1, PointCircleSide::Outside});
-    Array<Vector<SegmentCircleIntersection>> src_intersections(src_points_num);
-    curves_intersections_and_points_sides(
-        src, screen_space_positions, src_point_ring, src_intersections, eraser_rings);
+    Array<SegmentCircleIntersection> src_intersections(src_points_num *
+                                                       intersections_max_per_segment);
+    curves_intersections_and_points_sides(src,
+                                          screen_space_positions,
+                                          intersections_max_per_segment,
+                                          src_point_ring,
+                                          src_intersections,
+                                          eraser_rings);
 
     /* Function to get the resulting opacity at a specific point in the source. */
     const VArray<float> &src_opacity = *(
@@ -1020,14 +1032,24 @@ struct EraseOperationExecutor {
               {src_point, src_next_point, 0.0f, true, point_is_cut, compute_opacity(src_point)});
         }
 
-        std::sort(src_intersections[src_point].begin(),
-                  src_intersections[src_point].end(),
+        const IndexRange src_point_intersections(src_point * intersections_max_per_segment,
+                                                 intersections_max_per_segment);
+
+        std::sort(src_intersections.begin() + src_point_intersections.first(),
+                  src_intersections.begin() + src_point_intersections.last() + 1,
                   [](SegmentCircleIntersection a, SegmentCircleIntersection b) {
                     return a.factor < b.factor;
                   });
 
         /* Add all intersections with the rings. */
-        for (const SegmentCircleIntersection &intersection : src_intersections[src_point]) {
+        for (const SegmentCircleIntersection &intersection :
+             src_intersections.as_span().slice(src_point_intersections))
+        {
+          if (!intersection.is_valid()) {
+            /* Stop at the first non valid intersection. */
+            break;
+          }
+
           const EraserRing &ring = eraser_rings[intersection.ring_index];
           const bool is_cut = intersection.inside_outside_intersection && ring.hard_erase;
           const float initial_opacity = math::interpolate(
