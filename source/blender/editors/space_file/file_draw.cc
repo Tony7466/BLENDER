@@ -118,12 +118,12 @@ void ED_file_path_button(bScreen *screen,
 typedef struct file_tooltip_data {
   const SpaceFile *sfile;
   const FileDirEntry *file;
-  ImBuf *preview;
+  const ImBuf *preview;
 } file_tooltip_data;
 
 static file_tooltip_data *file_tooltip_data_create(const SpaceFile *sfile,
                                                    const FileDirEntry *file,
-                                                   ImBuf *preview)
+                                                   const ImBuf *preview)
 {
   file_tooltip_data *data = (file_tooltip_data *)MEM_mallocN(sizeof(file_tooltip_data),
                                                              "tooltip_data");
