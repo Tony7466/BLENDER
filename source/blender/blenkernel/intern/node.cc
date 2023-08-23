@@ -138,9 +138,7 @@ static void node_socket_set_typeinfo(bNodeTree *ntree,
                                      bNodeSocketType *typeinfo);
 static void node_socket_copy(bNodeSocket *sock_dst, const bNodeSocket *sock_src, const int flag);
 static void free_localized_node_groups(bNodeTree *ntree);
-static void node_socket_interface_free(bNodeTree * /*ntree*/,
-                                       bNodeSocket *sock,
-                                       const bool do_id_user);
+static bool socket_id_user_decrement(bNodeSocket *sock);
 
 static void ntree_init_data(ID *id)
 {
@@ -507,13 +505,10 @@ static bNodeSocket *make_socket(bNodeTree *ntree,
  * This discards any information about panels and alternating input/output order,
  * but all functional information is preserved for executing node trees.
  */
-static void write_interface_as_sockets(BlendWriter *writer, bNodeTree *ntree)
+static void construct_interface_as_legacy_sockets(bNodeTree *ntree)
 {
-  /* Store reference to old sockets before replacing pointers. */
-  ListBase old_inputs = ntree->inputs_legacy;
-  ListBase old_outputs = ntree->outputs_legacy;
-  BLI_listbase_clear(&ntree->inputs_legacy);
-  BLI_listbase_clear(&ntree->outputs_legacy);
+  BLI_assert(BLI_listbase_is_empty(&ntree->inputs_legacy));
+  BLI_assert(BLI_listbase_is_empty(&ntree->outputs_legacy));
 
   /* Construct inputs/outputs socket lists in the node tree. */
   ntree->tree_interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
@@ -539,7 +534,10 @@ static void write_interface_as_sockets(BlendWriter *writer, bNodeTree *ntree)
     }
     return true;
   });
+}
 
+static void write_legacy_sockets(BlendWriter *writer, bNodeTree *ntree)
+{
   /* Write inputs/outputs */
   LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->inputs_legacy) {
     write_node_socket_interface(writer, sock);
@@ -547,22 +545,36 @@ static void write_interface_as_sockets(BlendWriter *writer, bNodeTree *ntree)
   LISTBASE_FOREACH (bNodeSocket *, sock, &ntree->outputs_legacy) {
     write_node_socket_interface(writer, sock);
   }
+}
 
+static void legacy_socket_interface_free(bNodeSocket *sock)
+{
+  if (sock->prop) {
+    IDP_FreeProperty_ex(sock->prop, false);
+  }
+
+  if (sock->default_value) {
+    MEM_freeN(sock->default_value);
+  }
+  if (sock->default_attribute_name) {
+    MEM_freeN(sock->default_attribute_name);
+  }
+  MEM_delete(sock->runtime);
+}
+
+static void cleanup_legacy_sockets(bNodeTree *ntree)
+{
   /* Clean up temporary inputs/outputs. */
   LISTBASE_FOREACH_MUTABLE (bNodeSocket *, socket, &ntree->inputs_legacy) {
-    node_socket_interface_free(ntree, socket, false);
+    legacy_socket_interface_free(socket);
     MEM_freeN(socket);
   }
   LISTBASE_FOREACH_MUTABLE (bNodeSocket *, socket, &ntree->outputs_legacy) {
-    node_socket_interface_free(ntree, socket, false);
+    legacy_socket_interface_free(socket);
     MEM_freeN(socket);
   }
   BLI_listbase_clear(&ntree->inputs_legacy);
   BLI_listbase_clear(&ntree->outputs_legacy);
-
-  /* Restore old data */
-  ntree->inputs_legacy = old_inputs;
-  ntree->outputs_legacy = old_outputs;
 }
 
 }  // namespace blender::bke::forward_compat
@@ -774,7 +786,7 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
 
   ntree->tree_interface.write(writer);
   if (!BLO_write_is_undo(writer)) {
-    blender::bke::forward_compat::write_interface_as_sockets(writer, ntree);
+    blender::bke::forward_compat::write_legacy_sockets(writer, ntree);
   }
 
   BLO_write_struct_array(
@@ -793,9 +805,20 @@ static void ntree_blend_write(BlendWriter *writer, ID *id, const void *id_addres
   ntree->typeinfo = nullptr;
   ntree->runtime->execdata = nullptr;
 
+  if (!BLO_write_is_undo(writer)) {
+    /* Generate legacy inputs/outputs socket ListBase for forward compatibility.
+     * Note: this has to happen before writing the ntree struct itself so that the ListBase
+     * first/last pointers are valid. */
+    blender::bke::forward_compat::construct_interface_as_legacy_sockets(ntree);
+  }
+
   BLO_write_id_struct(writer, bNodeTree, id_address, &ntree->id);
 
   ntreeBlendWrite(writer, ntree);
+
+  if (!BLO_write_is_undo(writer)) {
+    blender::bke::forward_compat::cleanup_legacy_sockets(ntree);
+  }
 }
 
 static void direct_link_node_socket(BlendDataReader *reader, bNodeSocket *sock)
@@ -3496,26 +3519,6 @@ void nodeRemoveNode(Main *bmain, bNodeTree *ntree, bNode *node, const bool do_id
 }
 
 namespace blender::bke {
-
-static void node_socket_interface_free(bNodeTree * /*ntree*/,
-                                       bNodeSocket *sock,
-                                       const bool do_id_user)
-{
-  if (sock->prop) {
-    IDP_FreeProperty_ex(sock->prop, do_id_user);
-  }
-
-  if (sock->default_value) {
-    if (do_id_user) {
-      socket_id_user_decrement(sock);
-    }
-    MEM_freeN(sock->default_value);
-  }
-  if (sock->default_attribute_name) {
-    MEM_freeN(sock->default_attribute_name);
-  }
-  MEM_delete(sock->runtime);
-}
 
 static void free_localized_node_groups(bNodeTree *ntree)
 {

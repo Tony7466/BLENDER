@@ -420,6 +420,21 @@ static void version_replace_principled_hair_model(bNodeTree *ntree)
   }
 }
 
+static void legacy_socket_interface_free(bNodeSocket *sock)
+{
+  if (sock->prop) {
+    IDP_FreeProperty_ex(sock->prop, false);
+  }
+
+  if (sock->default_value) {
+    MEM_freeN(sock->default_value);
+  }
+  if (sock->default_attribute_name) {
+    MEM_freeN(sock->default_attribute_name);
+  }
+  MEM_delete(sock->runtime);
+}
+
 static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *ntree)
 {
   bNodeTreeInterface &tree_interface = ntree->tree_interface;
@@ -448,6 +463,18 @@ static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *nt
     MEM_SAFE_FREE(new_socket->identifier);
     new_socket->identifier = BLI_strdup(socket->identifier);
   }
+
+  /* Clear legacy data after conversion. */
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, &ntree->inputs_legacy) {
+    legacy_socket_interface_free(sock);
+    MEM_freeN(sock);
+  }
+  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, &ntree->outputs_legacy) {
+    legacy_socket_interface_free(sock);
+    MEM_freeN(sock);
+  }
+  BLI_listbase_clear(&ntree->inputs_legacy);
+  BLI_listbase_clear(&ntree->outputs_legacy);
 }
 
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
