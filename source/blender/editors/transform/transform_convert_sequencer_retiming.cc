@@ -85,7 +85,7 @@ static void createTransSeqRetimingData(bContext * /*C*/, TransInfo *t)
     return;
   }
 
-  const blender::Vector selection = SEQ_retiming_selection_get(t->scene);
+  const blender::Map selection = SEQ_retiming_selection_get(t->scene);
 
   if (selection.size() == 0) {
     return;
@@ -102,8 +102,8 @@ static void createTransSeqRetimingData(bContext * /*C*/, TransInfo *t)
   TransData2D *td2d = tc->data_2d;
 
   /*for elem*/
-  for (const RetimingSelectionElem elem : selection) {
-    SeqToTransData(t->scene, elem.seq, elem.key, td++, td2d++, tdseq++);
+  for (auto item : selection.items()) {
+    SeqToTransData(t->scene, item.value, item.key, td++, td2d++, tdseq++);
   }
 }
 

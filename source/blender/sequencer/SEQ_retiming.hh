@@ -8,16 +8,11 @@
  * \ingroup sequencer
  */
 
+#include "BLI_map.hh"
 #include "BLI_span.hh"
 
 struct Sequence;
 struct SeqRetimingKey;
 
-typedef struct RetimingSelectionElem {
-  Sequence *seq;
-  SeqRetimingKey *key;
-  RetimingSelectionElem(Sequence *seq, SeqRetimingKey *key) : seq(seq), key(key) {}
-} RetimingSelectionElem;
-
 blender::MutableSpan<SeqRetimingKey> SEQ_retiming_keys_get(const Sequence *seq);
-blender::Vector<RetimingSelectionElem> SEQ_retiming_selection_get(const struct Scene *scene);
+blender::Map<SeqRetimingKey *, Sequence *> SEQ_retiming_selection_get(const struct Scene *scene);

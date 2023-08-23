@@ -12,6 +12,7 @@
 #include "DNA_sequence_types.h"
 
 #include "BLI_listbase.h"
+#include "BLI_map.hh"
 #include "BLI_math.h"
 #include "BLI_span.hh"
 #include "BLI_vector.hh"
@@ -993,10 +994,10 @@ static Sequence *seq_retiming_selection_strip_get(const Scene *scene,
   return SEQ_sequence_lookup_seq_by_name(scene, elem->strip_name + 2);
 }
 
-blender::Vector<RetimingSelectionElem> SEQ_retiming_selection_get(const Scene *scene)
+blender::Map<SeqRetimingKey *, Sequence *> SEQ_retiming_selection_get(const Scene *scene)
 {
   Editing *ed = SEQ_editing_get(scene);
-  blender::Vector<RetimingSelectionElem> selection;
+  blender::Map<SeqRetimingKey *, Sequence *> selection;
 
   LISTBASE_FOREACH (SeqRetimingKeySelection *, elem, &ed->retiming_selection) {
     Sequence *seq = seq_retiming_selection_strip_get(scene, elem);
@@ -1009,7 +1010,7 @@ blender::Vector<RetimingSelectionElem> SEQ_retiming_selection_get(const Scene *s
     }
 
     key = seq->retiming_keys + elem->index;
-    selection.append(RetimingSelectionElem(seq, key));
+    selection.add(key, seq);
   }
   return selection;
 }
@@ -1036,11 +1037,11 @@ bool SEQ_retiming_selection_has_whole_transition(Scene *scene, SeqRetimingKey *k
   SeqRetimingKey *key_end = key_start + 1;
   bool has_start = false, has_end = false;
 
-  for (RetimingSelectionElem elem : SEQ_retiming_selection_get(scene)) {
-    if (elem.key == key_start) {
+  for (auto item : SEQ_retiming_selection_get(scene).items()) {
+    if (item.key == key_start) {
       has_start = true;
     }
-    if (elem.key == key_end) {
+    if (item.key == key_end) {
       has_end = true;
     }
     if (has_start && has_end) {

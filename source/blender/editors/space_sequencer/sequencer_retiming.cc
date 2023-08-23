@@ -252,10 +252,10 @@ static bool freeze_frame_add_from_retiming_selection(const bContext *C,
   Scene *scene = CTX_data_scene(C);
   bool success = false;
 
-  for (const RetimingSelectionElem elem : SEQ_retiming_selection_get(scene)) {
-    const int timeline_frame = SEQ_retiming_key_timeline_frame_get(scene, elem.seq, elem.key);
-    success |= freeze_frame_add_new_for_seq(C, op, elem.seq, timeline_frame, duration);
-    SEQ_relations_invalidate_cache_raw(scene, elem.seq);
+  for (auto item: SEQ_retiming_selection_get(scene).items()) {
+    const int timeline_frame = SEQ_retiming_key_timeline_frame_get(scene, item.value, item.key);
+    success |= freeze_frame_add_new_for_seq(C, op, item.value, timeline_frame, duration);
+    SEQ_relations_invalidate_cache_raw(scene, item.value);
   }
   return success;
 }
@@ -348,9 +348,9 @@ static bool transition_add_from_retiming_selection(const bContext *C,
   Scene *scene = CTX_data_scene(C);
   bool success = false;
 
-  for (const RetimingSelectionElem elem : SEQ_retiming_selection_get(scene)) {
-    const int timeline_frame = SEQ_retiming_key_timeline_frame_get(scene, elem.seq, elem.key);
-    success |= transition_add_new_for_seq(C, op, elem.seq, timeline_frame, duration);
+  for (auto item: SEQ_retiming_selection_get(scene).items()) {
+    const int timeline_frame = SEQ_retiming_key_timeline_frame_get(scene, item.value, item.key);
+    success |= transition_add_new_for_seq(C, op, item.value, timeline_frame, duration);
   }
   return success;
 }
@@ -418,9 +418,9 @@ static int sequencer_retiming_key_remove_exec(bContext *C, wmOperator * /* op */
 
   blender::Vector<Sequence *> strips_to_handle;
 
-  for (const RetimingSelectionElem elem : SEQ_retiming_selection_get(scene)) {
-    strips_to_handle.append_non_duplicates(elem.seq);
-    elem.key->flag |= DELETE_KEY;
+  for (auto item: SEQ_retiming_selection_get(scene).items()) {
+    strips_to_handle.append_non_duplicates(item.value);
+    item.key->flag |= DELETE_KEY;
   }
 
   for (Sequence *seq : strips_to_handle) {
@@ -499,9 +499,9 @@ static int segment_speed_set_exec(const bContext *C, const wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  for (const RetimingSelectionElem elem : SEQ_retiming_selection_get(scene)) {
-    SEQ_retiming_key_speed_set(scene, elem.seq, elem.key, RNA_float_get(op->ptr, "speed"));
-    SEQ_relations_invalidate_cache_raw(scene, elem.seq);
+  for (auto item: SEQ_retiming_selection_get(scene).items()) {
+    SEQ_retiming_key_speed_set(scene, item.value, item.key, RNA_float_get(op->ptr, "speed"));
+    SEQ_relations_invalidate_cache_raw(scene, item.value);
   }
 
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
