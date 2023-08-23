@@ -18,7 +18,6 @@ extern "C" {
 
 struct BPathForeachPathData;
 struct BlendDataReader;
-struct BlendExpander;
 struct BlendLibReader;
 struct BlendWriter;
 struct ID;
@@ -102,7 +101,6 @@ typedef void (*IDTypeBlendWriteFunction)(struct BlendWriter *writer,
                                          const void *id_address);
 typedef void (*IDTypeBlendReadDataFunction)(struct BlendDataReader *reader, struct ID *id);
 typedef void (*IDTypeBlendReadLibFunction)(struct BlendLibReader *reader, struct ID *id);
-typedef void (*IDTypeBlendReadExpandFunction)(struct BlendExpander *expander, struct ID *id);
 
 typedef void (*IDTypeBlendReadUndoPreserve)(struct BlendLibReader *reader,
                                             struct ID *id_new,
@@ -212,11 +210,6 @@ typedef struct IDTypeInfo {
   IDTypeBlendReadLibFunction blend_read_lib;
 
   /**
-   * Specify which other id data blocks should be loaded when the current one is loaded.
-   */
-  IDTypeBlendReadExpandFunction blend_read_expand;
-
-  /**
    * Allow an ID type to preserve some of its data across (memfile) undo steps.
    *
    * \note Called from #setup_app_data when undoing or redoing a memfile step.
@@ -277,7 +270,6 @@ extern IDTypeInfo IDType_ID_LP;
 extern IDTypeInfo IDType_ID_CV;
 extern IDTypeInfo IDType_ID_PT;
 extern IDTypeInfo IDType_ID_VO;
-extern IDTypeInfo IDType_ID_SIM;
 extern IDTypeInfo IDType_ID_GP;
 
 /** Empty shell mostly, but needed for read code. */

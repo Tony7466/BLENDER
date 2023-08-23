@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,8 +12,8 @@
 #include "DNA_movieclip_types.h"
 #include "DNA_scene_types.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "GPU_shader.h"
 #include "GPU_texture.h"
@@ -63,7 +63,7 @@ static void node_composit_init_keying(bNodeTree * /*ntree*/, bNode *node)
 
 static void node_composit_buts_keying(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  /* bNode *node = (bNode*)ptr->data; */ /* UNUSED */
+  // bNode *node = (bNode*)ptr->data; /* UNUSED */
 
   uiItemR(layout, ptr, "blur_pre", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
   uiItemR(layout, ptr, "screen_balance", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -47,7 +47,7 @@ void VolumePass::object_sync_volume(Manager &manager,
 
   active_ = true;
 
-  PassMain::Sub &sub_ps = ps_.sub(ob->id.name);
+  PassMain::Sub &sub_ps = ps_.sub("Volume Object SubPass");
 
   const bool use_slice = (volume->display.axis_slice_method == AXIS_SLICE_SINGLE);
 
@@ -113,7 +113,7 @@ void VolumePass::object_sync_modifier(Manager &manager,
 
   active_ = true;
 
-  PassMain::Sub &sub_ps = ps_.sub(ob->id.name);
+  PassMain::Sub &sub_ps = ps_.sub("Volume Modifier SubPass");
 
   const bool use_slice = settings.axis_slice_method == AXIS_SLICE_SINGLE;
 

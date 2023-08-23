@@ -104,7 +104,7 @@
 #include "BKE_idtype.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
 #include "BKE_node.hh"
@@ -934,6 +934,10 @@ static void write_userdef(BlendWriter *writer, const UserDef *userdef)
     BLO_write_struct(writer, bUserAssetLibrary, asset_library_ref);
   }
 
+  LISTBASE_FOREACH (const bUserExtensionRepo *, repo_ref, &userdef->extension_repos) {
+    BLO_write_struct(writer, bUserExtensionRepo, repo_ref);
+  }
+
   LISTBASE_FOREACH (const uiStyle *, style, &userdef->uistyles) {
     BLO_write_struct(writer, uiStyle, style);
   }
@@ -1020,7 +1024,7 @@ static void write_libraries(WriteData *wd, Main *main)
 }
 
 #ifdef WITH_BUILDINFO
-extern "C" unsigned long build_commit_timestamp;
+extern "C" ulong build_commit_timestamp;
 extern "C" char build_hash[];
 #endif
 
@@ -1094,11 +1098,11 @@ static void write_thumb(WriteData *wd, const BlendThumbnail *thumb)
 
 #define ID_BUFFER_STATIC_SIZE 8192
 
-typedef struct BLO_Write_IDBuffer {
+struct BLO_Write_IDBuffer {
   const IDTypeInfo *id_type;
   ID *temp_id;
   char id_buffer_static[ID_BUFFER_STATIC_SIZE];
-} BLO_Write_IDBuffer;
+};
 
 static void id_buffer_init_for_id_type(BLO_Write_IDBuffer *id_buffer, const IDTypeInfo *id_type)
 {
@@ -1160,7 +1164,7 @@ static void id_buffer_init_from_id(BLO_Write_IDBuffer *id_buffer, ID *id, const 
   temp_id->newid = nullptr;
   /* Even though in theory we could be able to preserve this python instance across undo even
    * when we need to re-read the ID into its original address, this is currently cleared in
-   * #direct_link_id_common in `readfile.c` anyway. */
+   * #direct_link_id_common in `readfile.cc` anyway. */
   temp_id->py_instance = nullptr;
 }
 
@@ -1219,16 +1223,6 @@ static bool write_file_handle(Main *mainvar,
           /* Forces all linked data to be considered as directly linked.
            * FIXME: Workaround some BAT tool limitations for Heist production, should be removed
            * asap afterward. */
-          id_lib_extern(id_iter);
-        }
-        else if (ID_FAKE_USERS(id_iter) > 0 && id_iter->asset_data == nullptr) {
-          /* Even though fake user is not directly editable by the user on linked data, it is a
-           * common 'work-around' to set it in library files on data-blocks that need to be linked
-           * but typically do not have an actual real user (e.g. texts, etc.).
-           * See e.g. #105687 and #103867.
-           *
-           * Would be good to find a better solution, but for now consider these as directly linked
-           * as well. */
           id_lib_extern(id_iter);
         }
         else {

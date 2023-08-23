@@ -182,6 +182,13 @@ class GHOST_SystemWin32 : public GHOST_System {
    */
   GHOST_TSuccess setCursorPosition(int32_t x, int32_t y);
 
+  /**
+   * Get the color of the pixel at the current mouse cursor location
+   * \param r_color: returned sRGB float colors
+   * \return Success value (true == successful and supported by platform)
+   */
+  GHOST_TSuccess getPixelAtCursor(float r_color[3]) const;
+
   /***************************************************************************************
    ** Access to mouse button and keyboard states.
    ***************************************************************************************/
@@ -455,8 +462,6 @@ class GHOST_SystemWin32 : public GHOST_System {
    */
   bool setConsoleWindowState(GHOST_TConsoleWindowState action);
 
-  /** The virtual-key code (VKey) of the last press event. Used to detect repeat events. */
-  unsigned short m_keycode_last_repeat_key;
   /** State variable set at initialization. */
   bool m_hasPerformanceCounter;
   /** High frequency timer variable. */

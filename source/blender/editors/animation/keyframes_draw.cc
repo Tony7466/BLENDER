@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,9 +8,11 @@
 
 /* System includes ----------------------------------------------------- */
 
-#include <float.h>
+#include <cfloat>
 
 #include "MEM_guardedalloc.h"
+
+#include "BKE_grease_pencil.hh"
 
 #include "BLI_dlrbTree.h"
 #include "BLI_listbase.h"
@@ -18,6 +20,7 @@
 
 #include "DNA_anim_types.h"
 #include "DNA_gpencil_legacy_types.h"
+#include "DNA_grease_pencil_types.h"
 #include "DNA_mask_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -26,13 +29,13 @@
 #include "GPU_shader_shared.h"
 #include "GPU_state.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
-#include "ED_anim_api.h"
-#include "ED_keyframes_draw.h"
-#include "ED_keyframes_keylist.h"
+#include "ED_anim_api.hh"
+#include "ED_keyframes_draw.hh"
+#include "ED_keyframes_keylist.hh"
 
 /* *************************** Keyframe Drawing *************************** */
 
@@ -202,7 +205,7 @@ static void draw_keylist_ui_data_init(DrawKeylistUIData *ctx,
   ctx->smaller_size = 0.35f * ctx->icon_size;
   ctx->ipo_size = 0.1f * ctx->icon_size;
   ctx->gpencil_size = ctx->smaller_size * 0.8f;
-  ctx->screenspace_margin = (0.35f * (float)UI_UNIT_X) / UI_view2d_scale_get_x(v2d);
+  ctx->screenspace_margin = (0.35f * float(UI_UNIT_X)) / UI_view2d_scale_get_x(v2d);
 
   ctx->show_ipo = (saction_flag & SACTION_SHOW_INTERPOLATION) != 0;
 
@@ -248,7 +251,7 @@ static void draw_keylist_block_gpencil(const DrawKeylistUIData *ctx,
   box.ymax = ypos + ctx->gpencil_size;
 
   UI_draw_roundbox_4fv(
-      &box, true, 0.25f * (float)UI_UNIT_X, (ab->block.sel) ? ctx->sel_mhcol : ctx->unsel_mhcol);
+      &box, true, 0.25f * float(UI_UNIT_X), (ab->block.sel) ? ctx->sel_mhcol : ctx->unsel_mhcol);
 }
 
 static void draw_keylist_block_moving_hold(const DrawKeylistUIData *ctx,
@@ -381,13 +384,16 @@ enum eAnimKeylistDrawListElemType {
   ANIM_KEYLIST_FCURVE,
   ANIM_KEYLIST_ACTION,
   ANIM_KEYLIST_AGROUP,
+  ANIM_KEYLIST_GREASE_PENCIL_CELS,
+  ANIM_KEYLIST_GREASE_PENCIL_GROUP,
+  ANIM_KEYLIST_GREASE_PENCIL_DATA,
   ANIM_KEYLIST_GP_LAYER,
   ANIM_KEYLIST_MASK_LAYER,
 };
 
 struct AnimKeylistDrawListElem {
-  struct AnimKeylistDrawListElem *next, *prev;
-  struct AnimKeylist *keylist;
+  AnimKeylistDrawListElem *next, *prev;
+  AnimKeylist *keylist;
   eAnimKeylistDrawListElemType type;
 
   float yscale_fac;
@@ -404,6 +410,9 @@ struct AnimKeylistDrawListElem {
   bAction *act;
   bActionGroup *agrp;
   bGPDlayer *gpl;
+  const GreasePencilLayer *grease_pencil_layer;
+  const GreasePencilLayerTreeGroup *grease_pencil_layer_group;
+  const GreasePencil *grease_pencil;
   MaskLayer *masklay;
 };
 
@@ -432,6 +441,21 @@ static void ED_keylist_draw_list_elem_build_keylist(AnimKeylistDrawListElem *ele
     }
     case ANIM_KEYLIST_AGROUP: {
       agroup_to_keylist(elem->adt, elem->agrp, elem->keylist, elem->saction_flag);
+      break;
+    }
+    case ANIM_KEYLIST_GREASE_PENCIL_CELS: {
+      grease_pencil_cels_to_keylist(
+          elem->adt, elem->grease_pencil_layer, elem->keylist, elem->saction_flag);
+      break;
+    }
+    case ANIM_KEYLIST_GREASE_PENCIL_GROUP: {
+      grease_pencil_layer_group_to_keylist(
+          elem->adt, elem->grease_pencil_layer_group, elem->keylist, elem->saction_flag);
+      break;
+    }
+    case ANIM_KEYLIST_GREASE_PENCIL_DATA: {
+      grease_pencil_data_block_to_keylist(
+          elem->adt, elem->grease_pencil, elem->keylist, elem->saction_flag);
       break;
     }
     case ANIM_KEYLIST_GP_LAYER: {
@@ -476,7 +500,7 @@ struct AnimKeylistDrawList {
   ListBase /*AnimKeylistDrawListElem*/ channels;
 };
 
-AnimKeylistDrawList *ED_keylist_draw_list_create(void)
+AnimKeylistDrawList *ED_keylist_draw_list_create()
 {
   return static_cast<AnimKeylistDrawList *>(MEM_callocN(sizeof(AnimKeylistDrawList), __func__));
 }
@@ -696,6 +720,46 @@ void draw_action_channel(AnimKeylistDrawList *draw_list,
   draw_elem->adt = adt;
   draw_elem->act = act;
   draw_elem->channel_locked = locked;
+}
+
+void draw_grease_pencil_datablock_channel(AnimKeylistDrawList *draw_list,
+                                          bDopeSheet * /*ads*/,
+                                          const GreasePencil *grease_pencil,
+                                          const float ypos,
+                                          const float yscale_fac,
+                                          int saction_flag)
+{
+  AnimKeylistDrawListElem *draw_elem = ed_keylist_draw_list_add_elem(
+      draw_list, ANIM_KEYLIST_GREASE_PENCIL_DATA, ypos, yscale_fac, eSAction_Flag(saction_flag));
+  draw_elem->grease_pencil = grease_pencil;
+}
+
+void draw_grease_pencil_cels_channel(AnimKeylistDrawList *draw_list,
+                                     bDopeSheet *ads,
+                                     const GreasePencilLayer *layer,
+                                     const float ypos,
+                                     const float yscale_fac,
+                                     int saction_flag)
+{
+  AnimKeylistDrawListElem *draw_elem = ed_keylist_draw_list_add_elem(
+      draw_list, ANIM_KEYLIST_GREASE_PENCIL_CELS, ypos, yscale_fac, eSAction_Flag(saction_flag));
+  draw_elem->ads = ads;
+  draw_elem->grease_pencil_layer = layer;
+  draw_elem->channel_locked = layer->wrap().is_locked();
+}
+
+void draw_grease_pencil_layer_group_channel(AnimKeylistDrawList *draw_list,
+                                            bDopeSheet *ads,
+                                            const GreasePencilLayerTreeGroup *layer_group,
+                                            const float ypos,
+                                            const float yscale_fac,
+                                            int saction_flag)
+{
+  AnimKeylistDrawListElem *draw_elem = ed_keylist_draw_list_add_elem(
+      draw_list, ANIM_KEYLIST_GREASE_PENCIL_GROUP, ypos, yscale_fac, eSAction_Flag(saction_flag));
+  draw_elem->ads = ads;
+  draw_elem->grease_pencil_layer_group = layer_group;
+  draw_elem->channel_locked = layer_group->wrap().is_locked();
 }
 
 void draw_gpl_channel(AnimKeylistDrawList *draw_list,

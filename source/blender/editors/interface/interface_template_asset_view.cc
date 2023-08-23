@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,7 +6,6 @@
  * \ingroup edinterface
  */
 
-#include "AS_asset_representation.h"
 #include "AS_asset_representation.hh"
 
 #include "DNA_space_types.h"
@@ -20,19 +19,18 @@
 
 #include "BLO_readfile.h"
 
-#include "ED_asset.h"
-#include "ED_screen.h"
+#include "ED_asset.hh"
+#include "ED_screen.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "UI_interface.h"
 #include "UI_interface.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "interface_intern.hh"
 
@@ -47,16 +45,17 @@ struct AssetViewListData {
 
 static void asset_view_item_but_drag_set(uiBut *but, AssetHandle *asset_handle)
 {
-  AssetRepresentation *asset = ED_asset_handle_get_representation(asset_handle);
+  blender::asset_system::AssetRepresentation *asset = ED_asset_handle_get_representation(
+      asset_handle);
 
-  ID *id = AS_asset_representation_local_id_get(asset);
+  ID *id = asset->local_id();
   if (id != nullptr) {
     UI_but_drag_set_id(but, id);
     return;
   }
 
-  const eAssetImportMethod import_method =
-      AS_asset_representation_import_method_get(asset).value_or(ASSET_IMPORT_APPEND_REUSE);
+  const eAssetImportMethod import_method = asset->get_import_method().value_or(
+      ASSET_IMPORT_APPEND_REUSE);
 
   ImBuf *imbuf = ED_assetlist_asset_image_get(asset_handle);
   UI_but_drag_set_asset(
@@ -90,21 +89,22 @@ static void asset_view_draw_item(uiList *ui_list,
   const bool show_names = list_data->show_names;
   const float size_x = UI_preview_tile_size_x();
   const float size_y = show_names ? UI_preview_tile_size_y() : UI_preview_tile_size_y_no_label();
-  uiBut *but = uiDefIconTextBut(block,
-                                UI_BTYPE_PREVIEW_TILE,
-                                0,
-                                ED_asset_handle_get_preview_icon_id(&asset_handle),
-                                show_names ? ED_asset_handle_get_name(&asset_handle) : "",
-                                0,
-                                0,
-                                size_x,
-                                size_y,
-                                nullptr,
-                                0,
-                                0,
-                                0,
-                                0,
-                                "");
+  uiBut *but = uiDefIconTextBut(
+      block,
+      UI_BTYPE_PREVIEW_TILE,
+      0,
+      ED_asset_handle_get_preview_icon_id(&asset_handle),
+      show_names ? ED_asset_handle_get_representation(&asset_handle)->get_name().c_str() : "",
+      0,
+      0,
+      size_x,
+      size_y,
+      nullptr,
+      0,
+      0,
+      0,
+      0,
+      "");
   ui_def_but_icon(but,
                   ED_asset_handle_get_preview_icon_id(&asset_handle),
                   /* NOLINTNEXTLINE: bugprone-suspicious-enum-usage */
@@ -244,7 +244,14 @@ void uiTemplateAssetView(uiLayout *layout,
 
   uiLayout *row = uiLayoutRow(col, true);
   if ((display_flags & UI_TEMPLATE_ASSET_DRAW_NO_LIBRARY) == 0) {
-    uiItemFullR(row, asset_library_dataptr, asset_library_prop, RNA_NO_INDEX, 0, 0, "", 0);
+    uiItemFullR(row,
+                asset_library_dataptr,
+                asset_library_prop,
+                RNA_NO_INDEX,
+                0,
+                UI_ITEM_NONE,
+                "",
+                ICON_NONE);
     if (asset_library_ref.type != ASSET_LIBRARY_LOCAL) {
       uiItemO(row, "", ICON_FILE_REFRESH, "ASSET_OT_library_refresh");
     }
