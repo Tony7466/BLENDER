@@ -683,9 +683,9 @@ static int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op)
   WM_operator_properties_border_to_rctf(op, &rectf);
   UI_view2d_region_to_view_rctf(v2d, &rectf, &rectf);
 
-  for (const Sequence *seq : sequencer_visible_strips_get(C)) {
-    blender::Map<const SeqRetimingKey *, const Sequence *> and_keys;
+  blender::Map<const SeqRetimingKey *, const Sequence *> and_keys;
 
+  for (const Sequence *seq : sequencer_visible_strips_get(C)) {
     for (const SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
       if (seq->machine < rectf.ymin || seq->machine > rectf.ymax) {
         continue;
@@ -726,17 +726,14 @@ static int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op)
           }
         }
       }
-
-      if (and_keys.size() > 0) {
-        and_keys.remove_if(
-            [&](auto item) { return !SEQ_retiming_selection_contains(ed, seq, item.key); });
-        SEQ_retiming_selection_clear(ed);
-        for (auto and_key : and_keys.keys()) {
-          SEQ_retiming_selection_append(ed, seq, and_key);
-        }
-      }
-
       changed = true;
+    }
+  }
+
+  if (and_keys.size() > 0) {
+    SEQ_retiming_selection_clear(ed);
+    for (auto item : and_keys.items()) {
+      SEQ_retiming_selection_append(ed, item.value, item.key);
     }
   }
 
