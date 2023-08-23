@@ -659,7 +659,7 @@ static void node_update_basis(const bContext &C,
   /* Header. */
   dy -= NODE_DY;
 
-  if (node.declaration()) {
+  if (node.declaration() && node.declaration()->use_custom_socket_order) {
     node_update_basis_from_declaration(C, ntree, node, block, loc.x, dy);
   }
   else {

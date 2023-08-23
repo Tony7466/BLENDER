@@ -543,6 +543,10 @@ class NodeDeclaration {
    * available again in the future. */
   bool skip_updating_sockets = false;
 
+  /** Use order of socket declarations for socket order instead of conventional
+   * outputs | buttons | inputs order. Panels are only supported when using custom socket order. */
+  bool use_custom_socket_order = false;
+
   friend NodeDeclarationBuilder;
 
   bool matches(const bNode &node) const;

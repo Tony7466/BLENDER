@@ -341,6 +341,9 @@ void node_group_declare_dynamic(const bNodeTree & /*node_tree*/,
   }
   r_declaration.skip_updating_sockets = false;
 
+  /* Allow the node group interface to define the socket order. */
+  r_declaration.use_custom_socket_order = true;
+
   group->tree_interface.foreach_item([&](const bNodeTreeInterfaceItem &item) {
     switch (item.item_type) {
       case NODE_INTERFACE_SOCKET: {
