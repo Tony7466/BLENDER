@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blenloader
@@ -98,7 +99,7 @@ typedef struct FileData {
   /**
    * Store mapping from old ID pointers (the values they have in the .blend file) to new ones,
    * typically from value in `bhead->old` to address in memory where the ID was read.
-   * Used during liblinking process (see #lib_link_all).
+   * Used during library-linking process (see #lib_link_all).
    */
   struct OldNewMap *libmap;
 
@@ -115,9 +116,19 @@ typedef struct FileData {
   /** Used for undo. */
   ListBase *old_mainlist;
   /**
-   * IDMap using uuids as keys of all the old IDs in the old bmain. Used during undo to find a
+   * IDMap using UUID's as keys of all the old IDs in the old bmain. Used during undo to find a
    * matching old data when reading a new ID. */
   struct IDNameLib_Map *old_idmap_uuid;
+  /**
+   * IDMap using uuids as keys of the IDs read (or moved) in the new main(s).
+   *
+   * Used during undo to ensure that the ID pointers from the 'no undo' IDs remain valid (these
+   * IDs are re-used from old main even if their content is not the same as in the memfile undo
+   * step, so they could point e.g. to an ID that does not exist in the newly read undo step).
+   *
+   * Also used to find current valid pointers (or none) of these 'no undo' IDs existing in
+   * read memfile. */
+  struct IDNameLib_Map *new_idmap_uuid;
 
   struct BlendFileReadReport *reports;
 } FileData;
@@ -150,10 +161,6 @@ void blo_make_packed_pointer_map(FileData *fd, struct Main *oldmain);
  * this works because freeing old main only happens after this call.
  */
 void blo_end_packed_pointer_map(FileData *fd, struct Main *oldmain);
-/**
- * Undo file support: add all library pointers in lookup.
- */
-void blo_add_library_pointer_map(ListBase *old_mainlist, FileData *fd);
 /**
  * Build a #GSet of old main (we only care about local data here,
  * so we can do that after #blo_split_main() call.
@@ -236,6 +243,8 @@ void do_versions_after_linking_290(struct FileData *fd, struct Main *bmain);
 void do_versions_after_linking_300(struct FileData *fd, struct Main *bmain);
 void do_versions_after_linking_400(struct FileData *fd, struct Main *bmain);
 void do_versions_after_linking_cycles(struct Main *bmain);
+
+void do_versions_after_setup(struct Main *new_bmain, struct BlendFileReadReport *reports);
 
 /**
  * Direct data-blocks with global linking.

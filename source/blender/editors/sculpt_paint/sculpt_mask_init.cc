@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -8,7 +9,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_hash.h"
-#include "BLI_math.h"
 #include "BLI_task.h"
 
 #include "PIL_time.h"
@@ -20,17 +20,17 @@
 
 #include "BKE_ccg.h"
 #include "BKE_context.h"
-#include "BKE_multires.h"
-#include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_multires.hh"
+#include "BKE_paint.hh"
+#include "BKE_pbvh_api.hh"
 
 #include "DEG_depsgraph.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "sculpt_intern.hh"
 
@@ -117,7 +117,7 @@ static int sculpt_mask_init_exec(bContext *C, wmOperator *op)
   BKE_sculpt_update_object_for_edit(depsgraph, ob, true, true, false);
 
   PBVH *pbvh = ob->sculpt->pbvh;
-  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(pbvh, nullptr, nullptr);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(pbvh, {});
 
   if (nodes.is_empty()) {
     return OPERATOR_CANCELLED;

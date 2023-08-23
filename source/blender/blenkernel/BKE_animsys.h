@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2009 Blender Foundation, Joshua Leung. All rights reserved. */
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -16,7 +17,6 @@ extern "C" {
 
 struct AnimData;
 struct BlendDataReader;
-struct BlendExpander;
 struct BlendLibReader;
 struct BlendWriter;
 struct Depsgraph;
@@ -105,7 +105,6 @@ void BKE_keyingsets_blend_read_data(struct BlendDataReader *reader, struct ListB
 void BKE_keyingsets_blend_read_lib(struct BlendLibReader *reader,
                                    struct ID *id,
                                    struct ListBase *list);
-void BKE_keyingsets_blend_read_expand(struct BlendExpander *expander, struct ListBase *list);
 
 /* ************************************* */
 /* Path Fixing API */
@@ -229,7 +228,7 @@ void BKE_fcurves_main_cb(struct Main *bmain, ID_FCurve_Edit_Callback func, void 
 void BKE_fcurves_id_cb(struct ID *id, ID_FCurve_Edit_Callback func, void *user_data);
 
 /* ************************************* */
-// TODO: overrides, remapping, and path-finding api's
+/* TODO: overrides, remapping, and path-finding API's. */
 
 /* ------------ NLA Keyframing --------------- */
 

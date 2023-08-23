@@ -1,11 +1,14 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_math_matrix.hh"
 #include "BLI_task.hh"
 
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_volume.h"
+#include "BKE_volume_openvdb.hh"
 
 #include "GEO_mesh_to_volume.hh"
 
@@ -111,7 +114,7 @@ static openvdb::FloatGrid::Ptr mesh_to_fog_volume_grid(
     const float interior_band_width,
     const float density)
 {
-  if (voxel_size < 1e-5f || interior_band_width <= 0.0f) {
+  if (voxel_size < 1e-5f) {
     return nullptr;
   }
 

@@ -1,14 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup shdnodes
  */
 
 #include "node_shader_util.hh"
+#include "node_util.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 static void node_combsep_color_init(bNodeTree * /*tree*/, bNode *node)
 {

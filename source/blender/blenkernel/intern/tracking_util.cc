@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -8,7 +9,7 @@
  * by multiple tracking files but which should not be public.
  */
 
-#include <stddef.h>
+#include <cstddef>
 
 #include "MEM_guardedalloc.h"
 
@@ -16,7 +17,8 @@
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
 #include "BLI_threads.h"
@@ -630,7 +632,7 @@ static ImBuf *make_grayscale_ibuf_copy(ImBuf *ibuf)
     IMB_assign_float_buffer(grayscale, rect_float, IB_TAKE_OWNERSHIP);
 
     for (int i = 0; i < grayscale->x * grayscale->y; i++) {
-      const float *pixel = rect_float + ibuf->channels * i;
+      const float *pixel = ibuf->float_buffer.data + ibuf->channels * i;
 
       rect_float[i] = 0.2126f * pixel[0] + 0.7152f * pixel[1] + 0.0722f * pixel[2];
     }
@@ -672,7 +674,7 @@ static ImBuf *accessor_get_ibuf(TrackingImageAccessor *accessor,
 {
   /* First try to get fully processed image from the cache. */
   CACHE_PRINTF("Calculate new buffer for frame %d\n", frame);
-  /* And now we do postprocessing of the original frame. */
+  /* And now we do post-processing of the original frame. */
   ImBuf *orig_ibuf = accessor_get_preprocessed_ibuf(accessor, clip_index, frame);
   if (orig_ibuf == nullptr) {
     return nullptr;
@@ -780,7 +782,7 @@ static ImBuf *accessor_get_ibuf(TrackingImageAccessor *accessor,
   return final_ibuf;
 }
 
-static libmv_CacheKey accessor_get_image_callback(struct libmv_FrameAccessorUserData *user_data,
+static libmv_CacheKey accessor_get_image_callback(libmv_FrameAccessorUserData *user_data,
                                                   int clip_index,
                                                   int frame,
                                                   libmv_InputMode input_mode,

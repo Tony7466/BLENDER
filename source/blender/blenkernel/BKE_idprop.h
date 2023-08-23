@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -14,7 +16,6 @@ extern "C" {
 #endif
 
 struct BlendDataReader;
-struct BlendExpander;
 struct BlendLibReader;
 struct BlendWriter;
 struct ID;
@@ -86,13 +87,11 @@ struct IDProperty *IDP_NewString(const char *st, const char *name) ATTR_WARN_UNU
  */
 void IDP_AssignStringMaxSize(struct IDProperty *prop, const char *st, int maxncpy) ATTR_NONNULL();
 void IDP_AssignString(struct IDProperty *prop, const char *st) ATTR_NONNULL();
-void IDP_ConcatStringC(struct IDProperty *prop, const char *st) ATTR_NONNULL();
-void IDP_ConcatString(struct IDProperty *str1, struct IDProperty *append) ATTR_NONNULL();
 void IDP_FreeString(struct IDProperty *prop) ATTR_NONNULL();
 
 /*-------- ID Type -------*/
 
-typedef void (*IDPWalkFunc)(void *userData, struct IDProperty *idp);
+typedef void (*IDPWalkFunc)(void *user_data, struct IDProperty *idp);
 
 void IDP_AssignID(struct IDProperty *prop, struct ID *id, int flag);
 
@@ -316,7 +315,6 @@ void IDP_BlendReadData_impl(struct BlendDataReader *reader,
                             const char *caller_func_id);
 #define IDP_BlendDataRead(reader, prop) IDP_BlendReadData_impl(reader, prop, __func__)
 void IDP_BlendReadLib(struct BlendLibReader *reader, struct ID *self_id, struct IDProperty *prop);
-void IDP_BlendReadExpand(struct BlendExpander *expander, struct IDProperty *prop);
 
 typedef enum eIDPropertyUIDataType {
   /** Other properties types that don't support RNA UI data. */

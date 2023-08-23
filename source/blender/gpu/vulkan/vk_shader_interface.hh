@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -45,6 +46,11 @@ class VKShaderInterface : public ShaderInterface {
   const VKPushConstants::Layout &push_constants_layout_get() const
   {
     return push_constants_layout_;
+  }
+
+  shader::Type get_attribute_type(int location) const
+  {
+    return static_cast<shader::Type>(attr_types_[location]);
   }
 
  private:
