@@ -142,10 +142,6 @@ ccl_device void light_tree_importance(const float3 N_or_D,
   max_importance = 0.0f;
   min_importance = 0.0f;
 
-  if (!isfinite_safe(N_or_D)) {
-    return;
-  }
-
   const float sin_theta_u = sin_from_cos(cos_theta_u);
 
   /* cos(theta_i') in the paper, omitted for volume. */
@@ -514,7 +510,7 @@ ccl_device void light_tree_child_importance(KernelGlobals kg,
 }
 
 /* Select an element from the reservoir with probability proportional to its weight.
- * Expect `selected_index` to be initialized to -1, and stays -1 if all the weights are zero. */
+ * Expect `selected_index` to be initialized to -1, and stays -1 if all the weights are invalid. */
 ccl_device void sample_reservoir(const int current_index,
                                  const float current_weight,
                                  ccl_private int &selected_index,
@@ -522,7 +518,7 @@ ccl_device void sample_reservoir(const int current_index,
                                  ccl_private float &total_weight,
                                  ccl_private float &rand)
 {
-  if (current_weight == 0.0f) {
+  if (!(current_weight > 0.0f)) {
     return;
   }
   total_weight += current_weight;
@@ -572,8 +568,8 @@ ccl_device int light_tree_cluster_select_emitter(KernelGlobals kg,
   const ccl_global KernelLightTreeNode *knode = &kernel_data_fetch(light_tree_nodes, *node_index);
   *node_index = -1;
 
-  /* Mark emitters with zero importance. Used for reservoir when total minimum importance = 0. */
   kernel_assert(knode->num_emitters <= sizeof(uint) * 8);
+  /* Mark emitters with valid importance. Used for reservoir when total minimum importance = 0. */
   uint has_importance = 0;
 
   const bool sample_max = (rand > 0.5f); /* Sampling using the maximum importance. */
@@ -602,7 +598,7 @@ ccl_device int light_tree_cluster_select_emitter(KernelGlobals kg,
     has_importance |= ((importance[0] > 0) << i);
   }
 
-  if (total_importance[0] == 0.0f) {
+  if (!has_importance) {
     return -1;
   }
 
