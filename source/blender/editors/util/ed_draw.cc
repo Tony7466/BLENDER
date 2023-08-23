@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -28,20 +28,20 @@
 #include "IMB_imbuf_types.h"
 #include "IMB_metadata.h"
 
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_util.h"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_util.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
-#include "WM_api.h"
-#include "WM_types.h"
+#include "RNA_access.hh"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Generic Slider
@@ -359,7 +359,7 @@ static void slider_draw(const bContext * /*C*/, ARegion *region, void *arg)
                        &factor_string_pixel_size[1]);
 
   BLF_position(fontid,
-               main_line_rect.xmin - 24.0 * U.pixelsize - factor_string_pixel_size[0] / 2,
+               main_line_rect.xmin - 12.0 * U.pixelsize - factor_string_pixel_size[0],
                (region->winy / 2) - factor_string_pixel_size[1] / 2,
                0.0f);
   BLF_draw(fontid, factor_string, sizeof(factor_string));
@@ -543,7 +543,7 @@ void ED_slider_factor_set(tSlider *slider, const float factor)
   slider->raw_factor = factor;
   slider->factor = factor;
   if (!slider->overshoot) {
-    slider->factor = clamp_f(slider->factor, 0, 1);
+    slider->factor = clamp_f(slider->factor, slider->factor_bounds[0], slider->factor_bounds[1]);
   }
 }
 
@@ -574,6 +574,11 @@ void ED_slider_factor_bounds_set(tSlider *slider,
 void ED_slider_mode_set(tSlider *slider, SliderMode mode)
 {
   slider->slider_mode = mode;
+}
+
+SliderMode ED_slider_mode_get(tSlider *slider)
+{
+  return slider->slider_mode;
 }
 
 void ED_slider_unit_set(tSlider *slider, const char *unit)

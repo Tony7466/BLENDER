@@ -10,6 +10,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_bitmap.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
@@ -22,21 +24,21 @@
 #include "BKE_ccg.h"
 #include "BKE_context.h"
 #include "BKE_mesh.hh"
-#include "BKE_multires.h"
-#include "BKE_paint.h"
+#include "BKE_multires.hh"
+#include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
-#include "BKE_subsurf.h"
+#include "BKE_subsurf.hh"
 
 #include "DEG_depsgraph.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "bmesh.h"
 
@@ -303,25 +305,22 @@ static void clip_planes_from_rect(bContext *C,
  * all nodes. */
 static Vector<PBVHNode *> get_pbvh_nodes(PBVH *pbvh, float clip_planes[4][4], PartialVisArea mode)
 {
-  BKE_pbvh_SearchCallback cb = nullptr;
-
-  /* Select search callback. */
-  switch (mode) {
-    case PARTIALVIS_INSIDE:
-      cb = BKE_pbvh_node_frustum_contain_AABB;
-      break;
-    case PARTIALVIS_OUTSIDE:
-      cb = BKE_pbvh_node_frustum_exclude_AABB;
-      break;
-    case PARTIALVIS_ALL:
-    case PARTIALVIS_MASKED:
-      break;
-  }
-
   PBVHFrustumPlanes frustum{};
   frustum.planes = clip_planes;
   frustum.num_planes = 4;
-  return blender::bke::pbvh::search_gather(pbvh, cb, &frustum);
+  return blender::bke::pbvh::search_gather(pbvh, [&](PBVHNode &node) {
+    switch (mode) {
+      case PARTIALVIS_INSIDE:
+        return BKE_pbvh_node_frustum_contain_AABB(&node, &frustum);
+      case PARTIALVIS_OUTSIDE:
+        return BKE_pbvh_node_frustum_exclude_AABB(&node, &frustum);
+      case PARTIALVIS_ALL:
+      case PARTIALVIS_MASKED:
+        return true;
+    }
+    BLI_assert_unreachable();
+    return true;
+  });
 }
 
 static int hide_show_exec(bContext *C, wmOperator *op)

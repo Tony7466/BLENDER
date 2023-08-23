@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2010 Blender Foundation
+/* SPDX-FileCopyrightText: 2010 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -25,7 +25,7 @@
 #include "BLI_blenlib.h"
 #include "BLI_math_color.h"
 
-#include "BIF_glutil.h"
+#include "BIF_glutil.hh"
 
 #include "BKE_context.h"
 #include "BKE_global.h"
@@ -39,9 +39,9 @@
 
 #include "BLO_readfile.h"
 
-#include "ED_asset.h"
-#include "ED_fileselect.h"
-#include "ED_screen.h"
+#include "ED_asset.hh"
+#include "ED_fileselect.hh"
+#include "ED_screen.hh"
 
 #include "GPU_shader.h"
 #include "GPU_state.h"
@@ -49,16 +49,16 @@
 
 #include "IMB_imbuf_types.h"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 #include "wm_event_system.h"
-#include "wm_window.h"
+#include "wm_window.hh"
 
 /* ****************************************************** */
 
@@ -246,21 +246,21 @@ void WM_event_start_drag(
 
 void wm_drags_exit(wmWindowManager *wm, wmWindow *win)
 {
-  bool any_active = false;
-  LISTBASE_FOREACH (const wmDrag *, drag, &wm->drags) {
-    if (drag->drop_state.active_dropbox) {
-      any_active = true;
-      break;
-    }
+  /* Turn off modal cursor for all windows. */
+  LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
+    WM_cursor_modal_restore(win);
   }
 
-  /* If there is no active drop-box #wm_drags_check_ops() set a stop-cursor, which needs to be
-   * restored. */
-  if (!any_active) {
-    WM_cursor_modal_restore(win);
+  /* Active area should always redraw, even if cancelled. */
+  int event_xy_target[2];
+  wmWindow *target_win = WM_window_find_under_cursor(win, win->eventstate->xy, event_xy_target);
+  if (target_win) {
+    const bScreen *screen = WM_window_get_active_screen(target_win);
+    ED_region_tag_redraw_no_rebuild(screen->active_region);
+
     /* Ensure the correct area cursor is restored. */
-    win->tag_cursor_refresh = true;
-    WM_event_add_mousemove(win);
+    target_win->tag_cursor_refresh = true;
+    WM_event_add_mousemove(target_win);
   }
 }
 
@@ -343,8 +343,7 @@ void WM_drag_free(wmDrag *drag)
 
 void WM_drag_free_list(ListBase *lb)
 {
-  wmDrag *drag;
-  while ((drag = static_cast<wmDrag *>(BLI_pophead(lb)))) {
+  while (wmDrag *drag = static_cast<wmDrag *>(BLI_pophead(lb))) {
     WM_drag_free(drag);
   }
 }
@@ -356,7 +355,7 @@ static char *dropbox_tooltip(bContext *C, wmDrag *drag, const int xy[2], wmDropB
     tooltip = drop->tooltip(C, drag, xy, drop);
   }
   if (!tooltip) {
-    tooltip = BLI_strdup(WM_operatortype_name(drop->ot, drop->ptr));
+    tooltip = BLI_strdup(WM_operatortype_name(drop->ot, drop->ptr).c_str());
   }
   /* XXX Doing translation here might not be ideal, but later we have no more
    *     access to ot (and hence op context)... */
@@ -415,14 +414,22 @@ static wmDropBox *dropbox_active(bContext *C,
 static wmDropBox *wm_dropbox_active(bContext *C, wmDrag *drag, const wmEvent *event)
 {
   wmWindow *win = CTX_wm_window(C);
-  wmDropBox *drop = dropbox_active(C, &win->handlers, drag, event);
-  if (!drop) {
-    ScrArea *area = CTX_wm_area(C);
-    drop = dropbox_active(C, &area->handlers, drag, event);
+  bScreen *screen = WM_window_get_active_screen(win);
+  ScrArea *area = BKE_screen_find_area_xy(screen, SPACE_TYPE_ANY, event->xy);
+  wmDropBox *drop = nullptr;
+
+  if (area) {
+    ARegion *region = BKE_area_find_region_xy(area, RGN_TYPE_ANY, event->xy);
+    if (region) {
+      drop = dropbox_active(C, &region->handlers, drag, event);
+    }
+
+    if (!drop) {
+      drop = dropbox_active(C, &area->handlers, drag, event);
+    }
   }
   if (!drop) {
-    ARegion *region = CTX_wm_region(C);
-    drop = dropbox_active(C, &region->handlers, drag, event);
+    drop = dropbox_active(C, &win->handlers, drag, event);
   }
   return drop;
 }

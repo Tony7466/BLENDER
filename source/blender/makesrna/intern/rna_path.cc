@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,9 +23,9 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #include "rna_access_internal.h"
@@ -125,9 +125,12 @@ static char *rna_path_token_in_brackets(const char **path,
     return nullptr;
   }
 
-  /* Empty, return. */
-  if (UNLIKELY(len == 0)) {
-    return nullptr;
+  /* Support empty strings in quotes, as this is a valid key for an ID-property. */
+  if (!quoted) {
+    /* Empty, return. */
+    if (UNLIKELY(len == 0)) {
+      return nullptr;
+    }
   }
 
   /* Try to use fixed buffer if possible. */

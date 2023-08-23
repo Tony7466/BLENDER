@@ -56,7 +56,8 @@
 #include "BLI_kdtree.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
@@ -110,12 +111,12 @@
 #include "BKE_material.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_wrapper.h"
+#include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.h"
-#include "BKE_multires.h"
+#include "BKE_multires.hh"
 #include "BKE_node.hh"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 #include "BKE_pointcloud.h"
@@ -125,8 +126,8 @@
 #include "BKE_shader_fx.h"
 #include "BKE_softbody.h"
 #include "BKE_speaker.h"
-#include "BKE_subdiv_ccg.h"
-#include "BKE_subsurf.h"
+#include "BKE_subdiv_ccg.hh"
+#include "BKE_subsurf.hh"
 #include "BKE_vfont.h"
 #include "BKE_volume.h"
 
@@ -280,8 +281,11 @@ static void object_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const in
     }
   }
   else {
-    /* Do not copy lightprobe's cache. */
-    ob_dst->lightprobe_cache = nullptr;
+    if (ob_src->lightprobe_cache) {
+      /* Duplicate the original object data. */
+      ob_dst->lightprobe_cache = BKE_lightprobe_cache_copy(ob_src->lightprobe_cache);
+      ob_dst->lightprobe_cache->shared = false;
+    }
   }
 }
 
@@ -392,7 +396,8 @@ static void library_foreach_particlesystemsObjectLooper(ParticleSystem * /*psys*
 
 static void object_foreach_id(ID *id, LibraryForeachIDData *data)
 {
-  Object *object = (Object *)id;
+  Object *object = reinterpret_cast<Object *>(id);
+  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
 
   /* object data special case */
   if (object->type == OB_EMPTY) {
@@ -409,20 +414,16 @@ static void object_foreach_id(ID *id, LibraryForeachIDData *data)
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, object->parent, IDWALK_CB_NEVER_SELF);
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, object->track, IDWALK_CB_NEVER_SELF);
 
-  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, object->poselib, IDWALK_CB_USER);
-
   for (int i = 0; i < object->totcol; i++) {
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, object->mat[i], IDWALK_CB_USER);
   }
 
-  /* Note that `ob->gpd` is deprecated, so no need to handle it here. */
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, object->instance_collection, IDWALK_CB_USER);
 
   if (object->pd) {
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, object->pd->tex, IDWALK_CB_USER);
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, object->pd->f_source, IDWALK_CB_NOP);
   }
-  /* Note that ob->effect is deprecated, so no need to handle it here. */
 
   if (object->pose) {
     LISTBASE_FOREACH (bPoseChannel *, pchan, &object->pose->chanbase) {
@@ -437,7 +438,7 @@ static void object_foreach_id(ID *id, LibraryForeachIDData *data)
       BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
           data,
           BKE_constraints_id_loop(
-              &pchan->constraints, library_foreach_constraintObjectLooper, data));
+              &pchan->constraints, library_foreach_constraintObjectLooper, flag, data));
     }
   }
 
@@ -456,7 +457,8 @@ static void object_foreach_id(ID *id, LibraryForeachIDData *data)
           object, library_foreach_gpencil_modifiersForeachIDLink, data));
   BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
       data,
-      BKE_constraints_id_loop(&object->constraints, library_foreach_constraintObjectLooper, data));
+      BKE_constraints_id_loop(
+          &object->constraints, library_foreach_constraintObjectLooper, flag, data));
   BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
       data, BKE_shaderfx_foreach_ID_link(object, library_foreach_shaderfxForeachIDLink, data));
 
@@ -479,6 +481,44 @@ static void object_foreach_id(ID *id, LibraryForeachIDData *data)
         data, object->light_linking->receiver_collection, IDWALK_CB_USER);
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(
         data, object->light_linking->blocker_collection, IDWALK_CB_USER);
+  }
+
+  if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
+    BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, object->ipo, IDWALK_CB_USER);
+    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, object->action, IDWALK_CB_USER);
+
+    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, object->poselib, IDWALK_CB_USER);
+
+    LISTBASE_FOREACH (bConstraintChannel *, chan, &object->constraintChannels) {
+      BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, chan->ipo, IDWALK_CB_USER);
+    }
+
+    LISTBASE_FOREACH (bActionStrip *, strip, &object->nlastrips) {
+      BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, strip->object, IDWALK_CB_NOP);
+      BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, strip->act, IDWALK_CB_USER);
+      BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, strip->ipo, IDWALK_CB_USER);
+      LISTBASE_FOREACH (bActionModifier *, amod, &strip->modifiers) {
+        BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, amod->ob, IDWALK_CB_NOP);
+      }
+    }
+
+    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, object->gpd, IDWALK_CB_USER);
+
+    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, object->proxy, IDWALK_CB_NOP);
+    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, object->proxy_group, IDWALK_CB_NOP);
+    /* Note that `proxy_from` is purposefully skipped here, as this should be considered as pure
+     * runtime data. */
+
+    PartEff *paf = BKE_object_do_version_give_parteff_245(object);
+    if (paf && paf->group) {
+      BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, paf->group, IDWALK_CB_USER);
+    }
+
+    FluidsimModifierData *fluidmd = reinterpret_cast<FluidsimModifierData *>(
+        BKE_modifiers_findby_type(object, eModifierType_Fluidsim));
+    if (fluidmd && fluidmd->fss) {
+      BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, fluidmd->fss->ipo, IDWALK_CB_USER);
+    }
   }
 }
 
@@ -563,10 +603,6 @@ static void object_blend_write(BlendWriter *writer, ID *id, const void *id_addre
   /* write LibData */
   BLO_write_id_struct(writer, Object, id_address, &ob->id);
   BKE_id_blend_write(writer, &ob->id);
-
-  if (ob->adt) {
-    BKE_animdata_blend_write(writer, ob->adt);
-  }
 
   /* direct data */
   BLO_write_pointer_array(writer, ob->totcol, ob->mat);
@@ -661,11 +697,8 @@ static void object_blend_read_data(BlendDataReader *reader, ID *id)
     ob->mode &= ~(OB_MODE_EDIT | OB_MODE_PARTICLE_EDIT);
   }
 
-  BLO_read_data_address(reader, &ob->adt);
-  BKE_animdata_blend_read_data(reader, ob->adt);
-
   BLO_read_data_address(reader, &ob->pose);
-  BKE_pose_blend_read_data(reader, ob->pose);
+  BKE_pose_blend_read_data(reader, &ob->id, ob->pose);
 
   BLO_read_data_address(reader, &ob->mpath);
   if (ob->mpath) {
@@ -685,8 +718,8 @@ static void object_blend_read_data(BlendDataReader *reader, ID *id)
 
   /* do it here, below old data gets converted */
   BKE_modifier_blend_read_data(reader, &ob->modifiers, ob);
-  BKE_gpencil_modifier_blend_read_data(reader, &ob->greasepencil_modifiers);
-  BKE_shaderfx_blend_read_data(reader, &ob->shader_fx);
+  BKE_gpencil_modifier_blend_read_data(reader, &ob->greasepencil_modifiers, ob);
+  BKE_shaderfx_blend_read_data(reader, &ob->shader_fx, ob);
 
   BLO_read_list(reader, &ob->effect);
   paf = (PartEff *)ob->effect.first;
@@ -791,7 +824,7 @@ static void object_blend_read_data(BlendDataReader *reader, ID *id)
   BLO_read_list(reader, &ob->particlesystem);
   BKE_particle_system_blend_read_data(reader, &ob->particlesystem);
 
-  BKE_constraint_blend_read_data(reader, &ob->constraints);
+  BKE_constraint_blend_read_data(reader, &ob->id, &ob->constraints);
 
   BLO_read_list(reader, &ob->hooks);
   while (ob->hooks.first) {
@@ -890,51 +923,12 @@ static void object_blend_read_lib(BlendLibReader *reader, ID *id)
   /* XXX deprecated - old pose library, deprecated in Blender 3.5. */
   BLO_read_id_address(reader, id, &ob->poselib);
 
-  /* 2.8x drops support for non-empty dupli instances. */
-  if (ob->type == OB_EMPTY) {
-    BLO_read_id_address(reader, id, &ob->instance_collection);
-  }
-  else {
-    if (ob->instance_collection != nullptr) {
-      ID *new_id = BLO_read_get_new_id_address(
-          reader, id, ID_IS_LINKED(id), &ob->instance_collection->id);
-      BLO_reportf_wrap(reports,
-                       RPT_INFO,
-                       TIP_("Non-Empty object '%s' cannot duplicate collection '%s' "
-                            "anymore in Blender 2.80, removed instancing"),
-                       ob->id.name + 2,
-                       new_id->name + 2);
-    }
-    ob->instance_collection = nullptr;
-    ob->transflag &= ~OB_DUPLICOLLECTION;
-  }
+  BLO_read_id_address(reader, id, &ob->instance_collection);
 
+  /* XXX deprecated - old proxy system. <<< */
   BLO_read_id_address(reader, id, &ob->proxy);
-  if (ob->proxy) {
-    /* paranoia check, actually a proxy_from pointer should never be written... */
-    if (!ID_IS_LINKED(ob->proxy)) {
-      ob->proxy->proxy_from = nullptr;
-      ob->proxy = nullptr;
-
-      if (ob->id.lib) {
-        BLO_reportf_wrap(reports,
-                         RPT_INFO,
-                         TIP_("Proxy lost from object %s lib %s\n"),
-                         ob->id.name + 2,
-                         ob->id.lib->filepath);
-      }
-      else {
-        BLO_reportf_wrap(
-            reports, RPT_INFO, TIP_("Proxy lost from object %s lib <NONE>\n"), ob->id.name + 2);
-      }
-      reports->count.missing_obproxies++;
-    }
-    else {
-      /* this triggers object_update to always use a copy */
-      ob->proxy->proxy_from = ob;
-    }
-  }
   BLO_read_id_address(reader, id, &ob->proxy_group);
+  /* >>> XXX deprecated - old proxy system . */
 
   void *poin = ob->data;
   BLO_read_id_address(reader, id, &ob->data);
@@ -1005,22 +999,6 @@ static void object_blend_read_lib(BlendLibReader *reader, ID *id)
     if (fluidmd && fluidmd->fss) {
       /* XXX: deprecated - old animation system. */
       BLO_read_id_address(reader, id, &fluidmd->fss->ipo);
-    }
-  }
-
-  {
-    FluidModifierData *fmd = (FluidModifierData *)BKE_modifiers_findby_type(ob,
-                                                                            eModifierType_Fluid);
-
-    if (fmd && (fmd->type == MOD_FLUID_TYPE_DOMAIN) && fmd->domain) {
-      /* Flag for refreshing the simulation after loading */
-      fmd->domain->flags |= FLUID_DOMAIN_FILE_LOAD;
-    }
-    else if (fmd && (fmd->type == MOD_FLUID_TYPE_FLOW) && fmd->flow) {
-      fmd->flow->flags &= ~FLUID_FLOW_NEEDS_UPDATE;
-    }
-    else if (fmd && (fmd->type == MOD_FLUID_TYPE_EFFEC) && fmd->effector) {
-      fmd->effector->flags &= ~FLUID_EFFECTOR_NEEDS_UPDATE;
     }
   }
 
@@ -1314,9 +1292,7 @@ void BKE_object_workob_clear(Object *workob)
 
 void BKE_object_free_particlesystems(Object *ob)
 {
-  ParticleSystem *psys;
-
-  while ((psys = (ParticleSystem *)BLI_pophead(&ob->particlesystem))) {
+  while (ParticleSystem *psys = (ParticleSystem *)BLI_pophead(&ob->particlesystem)) {
     psys_free(ob, psys);
   }
 }
@@ -1342,14 +1318,13 @@ void BKE_object_free_curve_cache(Object *ob)
 
 void BKE_object_free_modifiers(Object *ob, const int flag)
 {
-  ModifierData *md;
-  GpencilModifierData *gp_md;
-
-  while ((md = (ModifierData *)BLI_pophead(&ob->modifiers))) {
+  while (ModifierData *md = (ModifierData *)BLI_pophead(&ob->modifiers)) {
     BKE_modifier_free_ex(md, flag);
   }
 
-  while ((gp_md = (GpencilModifierData *)BLI_pophead(&ob->greasepencil_modifiers))) {
+  while (
+      GpencilModifierData *gp_md = (GpencilModifierData *)BLI_pophead(&ob->greasepencil_modifiers))
+  {
     BKE_gpencil_modifier_free_ex(gp_md, flag);
   }
   /* Particle modifiers were freed, so free the particle-systems as well. */
@@ -1364,9 +1339,7 @@ void BKE_object_free_modifiers(Object *ob, const int flag)
 
 void BKE_object_free_shaderfx(Object *ob, const int flag)
 {
-  ShaderFxData *fx;
-
-  while ((fx = (ShaderFxData *)BLI_pophead(&ob->shader_fx))) {
+  while (ShaderFxData *fx = (ShaderFxData *)BLI_pophead(&ob->shader_fx)) {
     BKE_shaderfx_free_ex(fx, flag);
   }
 }
@@ -4496,7 +4469,7 @@ Mesh *BKE_object_get_evaluated_mesh_no_subsurf(const Object *object)
      * this should be avoided, or at least protected with a lock, so a const mesh could be returned
      * from this function. We use a const_cast instead of #get_mesh_for_write, because that might
      * result in a copy of the mesh when it is shared. */
-    Mesh *mesh = const_cast<Mesh *>(geometry_set_eval->get_mesh_for_read());
+    Mesh *mesh = const_cast<Mesh *>(geometry_set_eval->get_mesh());
     if (mesh) {
       return mesh;
     }
@@ -5255,8 +5228,7 @@ static Object *obrel_armature_find(Object *ob)
     ob_arm = ob->parent;
   }
   else {
-    ModifierData *mod;
-    for (mod = (ModifierData *)ob->modifiers.first; mod; mod = mod->next) {
+    LISTBASE_FOREACH (ModifierData *, mod, &ob->modifiers) {
       if (mod->type == eModifierType_Armature) {
         ob_arm = ((ArmatureModifierData *)mod)->object;
       }

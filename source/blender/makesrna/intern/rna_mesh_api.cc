@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,7 +9,7 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "DNA_customdata_types.h"
 
@@ -23,17 +23,17 @@
 #  include "DNA_mesh_types.h"
 
 #  include "BKE_anim_data.h"
-#  include "BKE_mesh.h"
-#  include "BKE_mesh_mapping.h"
-#  include "BKE_mesh_runtime.h"
-#  include "BKE_mesh_tangent.h"
+#  include "BKE_mesh.hh"
+#  include "BKE_mesh_mapping.hh"
+#  include "BKE_mesh_runtime.hh"
+#  include "BKE_mesh_tangent.hh"
 #  include "BKE_report.h"
 
-#  include "ED_mesh.h"
+#  include "ED_mesh.hh"
 
 #  include "DEG_depsgraph.h"
 
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
 static const char *rna_Mesh_unit_test_compare(Mesh *mesh, Mesh *mesh2, float threshold)
 {

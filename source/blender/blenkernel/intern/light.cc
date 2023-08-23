@@ -22,7 +22,6 @@
 #include "DNA_scene_types.h"
 #include "DNA_texture_types.h"
 
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_anim_data.h"
@@ -105,11 +104,17 @@ static void light_free_data(ID *id)
 
 static void light_foreach_id(ID *id, LibraryForeachIDData *data)
 {
-  Light *lamp = (Light *)id;
+  Light *lamp = reinterpret_cast<Light *>(id);
+  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
+
   if (lamp->nodetree) {
     /* nodetree **are owned by IDs**, treat them as mere sub-data and not real ID! */
     BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
         data, BKE_library_foreach_ID_embedded(data, (ID **)&lamp->nodetree));
+  }
+
+  if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
+    BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, lamp->ipo, IDWALK_CB_USER);
   }
 }
 
@@ -126,10 +131,6 @@ static void light_blend_write(BlendWriter *writer, ID *id, const void *id_addres
   /* write LibData */
   BLO_write_id_struct(writer, Light, id_address, &la->id);
   BKE_id_blend_write(writer, &la->id);
-
-  if (la->adt) {
-    BKE_animdata_blend_write(writer, la->adt);
-  }
 
   /* Node-tree is integral part of lights, no libdata. */
   if (la->nodetree) {
@@ -148,8 +149,6 @@ static void light_blend_write(BlendWriter *writer, ID *id, const void *id_addres
 static void light_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Light *la = (Light *)id;
-  BLO_read_data_address(reader, &la->adt);
-  BKE_animdata_blend_read_data(reader, la->adt);
 
   BLO_read_data_address(reader, &la->preview);
   BKE_previewimg_blend_read(reader, la->preview);
