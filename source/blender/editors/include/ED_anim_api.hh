@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -232,6 +232,7 @@ enum eAnim_ChannelType {
   ANIMTYPE_GPLAYER,
 
   ANIMTYPE_GREASE_PENCIL_DATABLOCK,
+  ANIMTYPE_GREASE_PENCIL_LAYER_GROUP,
   ANIMTYPE_GREASE_PENCIL_LAYER,
 
   ANIMTYPE_MASKDATABLOCK,
@@ -248,18 +249,21 @@ enum eAnim_ChannelType {
 
 /* types of keyframe data in bAnimListElem */
 enum eAnim_KeyType {
-  ALE_NONE = 0,           /* no keyframe data */
-  ALE_FCURVE,             /* F-Curve */
-  ALE_GPFRAME,            /* Grease Pencil Frames (Legacy) */
-  ALE_GREASE_PENCIL_CELS, /* Grease Pencil Cels */
-  ALE_MASKLAY,            /* Mask */
-  ALE_NLASTRIP,           /* NLA Strips */
+  ALE_NONE = 0, /* no keyframe data */
+  ALE_FCURVE,   /* F-Curve */
+  ALE_GPFRAME,  /* Grease Pencil Frames (Legacy) */
+  ALE_MASKLAY,  /* Mask */
+  ALE_NLASTRIP, /* NLA Strips */
 
   ALE_ALL,   /* All channels summary */
   ALE_SCE,   /* Scene summary */
   ALE_OB,    /* Object summary */
   ALE_ACT,   /* Action summary */
   ALE_GROUP, /* Action Group summary */
+
+  ALE_GREASE_PENCIL_CEL,   /* Grease Pencil Cels. */
+  ALE_GREASE_PENCIL_DATA,  /* Grease Pencil Cels summary. */
+  ALE_GREASE_PENCIL_GROUP, /* Grease Pencil Layer Groups. */
 };
 
 /**

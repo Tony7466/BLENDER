@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,8 +17,8 @@
 #include <cfloat> /* FLT_MIN/MAX */
 #include <cstddef>
 
-#include "RNA_path.h"
-#include "RNA_types.h"
+#include "RNA_path.hh"
+#include "RNA_types.hh"
 
 #include "BLI_bitmap.h"
 #include "BLI_dynstr.h"
@@ -41,9 +41,9 @@
 #  include "BLI_ghash.h"
 #endif
 
-#include "RNA_access.h"
-#include "RNA_define.h" /* RNA_def_property_free_identifier */
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh" /* RNA_def_property_free_identifier */
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "CLG_log.h"
@@ -6583,9 +6583,12 @@ static PyObject *pyrna_func_call(BPy_FunctionRNA *self, PyObject *args, PyObject
 
 #ifdef DEBUG_STRING_FREE
 #  if 0
-if (PyList_GET_SIZE(string_free_ls)) {
-printf("%.200s.%.200s():  has %d strings\n", RNA_struct_identifier(self_ptr->type), RNA_function_identifier(self_func), int(PyList_GET_SIZE(string_free_ls)));
-}
+  if (PyList_GET_SIZE(string_free_ls)) {
+    printf("%.200s.%.200s():  has %d strings\n",
+           RNA_struct_identifier(self_ptr->type),
+           RNA_function_identifier(self_func),
+           int(PyList_GET_SIZE(string_free_ls)));
+  }
 #  endif
   Py_DECREF(string_free_ls);
 #  undef DEBUG_STRING_FREE
@@ -8559,8 +8562,8 @@ static int bpy_class_call(bContext *C, PointerRNA *ptr, FunctionRNA *func, Param
 /* 'almost' all the time calling the class isn't needed.
  * We could just do... */
 #  if 0
-py_class_instance = py_srna;
-Py_INCREF(py_class_instance);
+      py_class_instance = py_srna;
+      Py_INCREF(py_class_instance);
 #  endif
       /*
        * This would work fine, but means __init__ functions wouldn't run.

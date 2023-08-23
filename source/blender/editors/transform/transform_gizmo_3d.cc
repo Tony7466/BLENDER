@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,6 +11,8 @@
  */
 
 #include "BLI_function_ref.hh"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
 
 #include "DNA_armature_types.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -45,8 +47,8 @@
 
 #include "UI_resources.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 /* local module include */
 #include "transform.hh"
@@ -532,7 +534,6 @@ static int gizmo_3d_foreach_selected(const bContext *C,
   Depsgraph *depsgraph = CTX_data_expect_evaluated_depsgraph(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   View3D *v3d = static_cast<View3D *>(area->spacedata.first);
-  Base *base;
   bGPdata *gpd = CTX_data_gpencil_data(C);
   const bool is_gp_edit = GPENCIL_ANY_MODE(gpd);
   const bool is_curve_edit = GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd);
@@ -878,15 +879,15 @@ static int gizmo_3d_foreach_selected(const bContext *C,
 
     /* we need the one selected object, if its not active */
     BKE_view_layer_synced_ensure(scene, view_layer);
-    base = BKE_view_layer_active_base_get(view_layer);
-    ob = base ? base->object : nullptr;
-    if (base && ((base->flag & BASE_SELECTED) == 0)) {
-      ob = nullptr;
+    {
+      Base *base = BKE_view_layer_active_base_get(view_layer);
+      ob = base ? base->object : nullptr;
+      if (base && ((base->flag & BASE_SELECTED) == 0)) {
+        ob = nullptr;
+      }
     }
 
-    for (base = static_cast<Base *>(BKE_view_layer_object_bases_get(view_layer)->first); base;
-         base = base->next)
-    {
+    LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
       if (!BASE_SELECTED_EDITABLE(v3d, base)) {
         continue;
       }

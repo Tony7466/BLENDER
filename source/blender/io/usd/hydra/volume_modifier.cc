@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * SPDX-FileCopyrightText: 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "volume_modifier.h"
 
@@ -123,8 +124,7 @@ std::string VolumeModifierData::get_cached_file_path(std::string directory, int 
 {
   char file_path[FILE_MAX];
   char file_name[32];
-  snprintf(
-      file_name, sizeof(file_name), "%s_####%s", FLUID_NAME_DATA, FLUID_DOMAIN_EXTENSION_OPENVDB);
+  SNPRINTF(file_name, "%s_####%s", FLUID_NAME_DATA, FLUID_DOMAIN_EXTENSION_OPENVDB);
   BLI_path_frame(file_name, sizeof(file_name), frame, 0);
   BLI_path_join(file_path, sizeof(file_path), directory.c_str(), FLUID_DOMAIN_DIR_DATA, file_name);
 

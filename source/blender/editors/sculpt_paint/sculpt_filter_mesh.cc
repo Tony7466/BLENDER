@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,7 +12,8 @@
 
 #include "BLI_hash.h"
 #include "BLI_index_range.hh"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_task.h"
 
@@ -38,8 +39,8 @@
 #include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "UI_interface.hh"
@@ -134,7 +135,7 @@ void SCULPT_filter_cache_init(bContext *C,
   search_data.ignore_fully_ineffective = true;
 
   ss->filter_cache->nodes = blender::bke::pbvh::search_gather(
-      pbvh, SCULPT_search_sphere_cb, &search_data);
+      pbvh, [&](PBVHNode &node) { return SCULPT_search_sphere(&node, &search_data); });
 
   for (PBVHNode *node : ss->filter_cache->nodes) {
     BKE_pbvh_node_mark_normals_update(node);
@@ -202,7 +203,8 @@ void SCULPT_filter_cache_init(bContext *C,
     search_data2.radius_squared = radius * radius;
     search_data2.ignore_fully_ineffective = true;
 
-    nodes = blender::bke::pbvh::search_gather(pbvh, SCULPT_search_sphere_cb, &search_data2);
+    nodes = blender::bke::pbvh::search_gather(
+        pbvh, [&](PBVHNode &node) { return SCULPT_search_sphere(&node, &search_data2); });
 
     if (BKE_paint_brush(&sd->paint) &&
         SCULPT_pbvh_calc_area_normal(brush, ob, nodes, true, ss->filter_cache->initial_normal))
@@ -874,7 +876,7 @@ static void sculpt_mesh_filter_cancel(bContext *C, wmOperator * /*op*/)
   }
 
   /* Gather all PBVH leaf nodes. */
-  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
 
   for (PBVHNode *node : nodes) {
     PBVHVertexIter vd;
