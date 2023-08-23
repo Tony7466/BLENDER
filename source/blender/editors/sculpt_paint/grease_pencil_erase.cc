@@ -433,7 +433,7 @@ struct EraseOperationExecutor {
 
         for (const int64_t src_point : src_curve_points.drop_back(1)) {
           int ring_index = 0;
-          int intersection_offset = src_point * intersections_max_per_segment;
+          int intersection_offset = src_point * intersections_max_per_segment - 1;
 
           for (const EraserRing &eraser_point : rings) {
             SegmentCircleIntersection inter0;
@@ -494,7 +494,7 @@ struct EraseOperationExecutor {
           const int64_t src_last_point = src_curve_points.last();
           const int64_t src_first_point = src_curve_points.first();
           int ring_index = 0;
-          int intersection_offset = src_last_point * intersections_max_per_segment;
+          int intersection_offset = src_last_point * intersections_max_per_segment - 1;
 
           for (const EraserRing &eraser_point : rings) {
             SegmentCircleIntersection inter0;
