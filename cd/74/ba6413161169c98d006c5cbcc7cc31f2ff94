@@ -5,3 +5,4 @@ Referenced by issue #111273, Regression: Edit mode weights panel shows incorrect
 Referenced by issue #111336, Incorrect vertex weights shown in context menu
 Referenced by issue #111335, Vertex weight table in edit mode completely useless in 3.6.2
 Referenced by issue #111306, Item panel displays incorrect weights for active vertex
+Referenced by pull request #111421, Fix #111273: multiple vertex weight sliders show the same value
