@@ -1220,8 +1220,6 @@ void EraseOperation::on_stroke_done(const bContext & /*C*/)
       IndexRange range_to_simplify(range.one_before_start(), range.size() + 2);
       const int nb_pts_removed = ed::greasepencil::ramer_douglas_peucker_simplify(
           range_to_simplify, epsilon, opacity_distance, remove_points);
-      std::cout << "Range : (" << range_to_simplify.first() << "," << range_to_simplify.last()
-                << ") -> remove " << nb_pts_removed << " points." << std::endl;
     });
 
     /* Remove the points. */
