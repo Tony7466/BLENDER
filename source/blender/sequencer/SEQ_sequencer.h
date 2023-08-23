@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004 Blender Foundation
+/* SPDX-FileCopyrightText: 2004 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,6 @@ extern "C" {
 #endif
 
 struct BlendDataReader;
-struct BlendExpander;
 struct BlendLibReader;
 struct BlendWriter;
 struct Depsgraph;
@@ -111,7 +110,7 @@ void SEQ_blend_read_lib(struct BlendLibReader *reader,
                         struct Scene *scene,
                         struct ListBase *seqbase);
 
-void SEQ_blend_read_expand(struct BlendExpander *expander, struct ListBase *seqbase);
+void SEQ_doversion_250_sound_proxy_update(struct Main *bmain, struct Editing *ed);
 
 /* Depsgraph update function. */
 

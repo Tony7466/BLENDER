@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -115,16 +115,11 @@ static void curves_blend_write(BlendWriter *writer, ID *id, const void *id_addre
   BLO_write_string(writer, curves->surface_uv_map);
 
   BLO_write_pointer_array(writer, curves->totcol, curves->mat);
-  if (curves->adt) {
-    BKE_animdata_blend_write(writer, curves->adt);
-  }
 }
 
 static void curves_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Curves *curves = (Curves *)id;
-  BLO_read_data_address(reader, &curves->adt);
-  BKE_animdata_blend_read_data(reader, curves->adt);
 
   /* Geometry */
   curves->geometry.wrap().blend_read(*reader);
@@ -142,15 +137,6 @@ static void curves_blend_read_lib(BlendLibReader *reader, ID *id)
     BLO_read_id_address(reader, id, &curves->mat[a]);
   }
   BLO_read_id_address(reader, id, &curves->surface);
-}
-
-static void curves_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  Curves *curves = (Curves *)id;
-  for (int a = 0; a < curves->totcol; a++) {
-    BLO_expand(expander, curves->mat[a]);
-  }
-  BLO_expand(expander, curves->surface);
 }
 
 IDTypeInfo IDType_ID_CV = {
@@ -176,7 +162,6 @@ IDTypeInfo IDType_ID_CV = {
     /*blend_write*/ curves_blend_write,
     /*blend_read_data*/ curves_blend_read_data,
     /*blend_read_lib*/ curves_blend_read_lib,
-    /*blend_read_expand*/ curves_blend_read_expand,
 
     /*blend_read_undo_preserve*/ nullptr,
 

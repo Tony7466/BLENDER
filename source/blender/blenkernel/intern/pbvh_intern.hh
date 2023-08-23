@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -176,7 +176,7 @@ struct PBVH {
   /* Grid Data */
   CCGKey gridkey;
   CCGElem **grids;
-  blender::Span<int> gridfaces;
+  void **gridfaces;
   const DMFlagMat *grid_flag_mats;
   int totgrid;
   BLI_bitmap **grid_hidden;

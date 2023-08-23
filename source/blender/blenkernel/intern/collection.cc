@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -173,7 +173,9 @@ static void collection_foreach_id(ID *id, LibraryForeachIDData *data)
   const int data_flags = BKE_lib_query_foreachid_process_flags_get(data);
 
   BKE_LIB_FOREACHID_PROCESS_ID(
-      data, collection->runtime.owner_id, IDWALK_CB_LOOPBACK | IDWALK_CB_NEVER_SELF);
+      data,
+      collection->runtime.owner_id,
+      (IDWALK_CB_LOOPBACK | IDWALK_CB_NEVER_SELF | IDWALK_CB_READFILE_IGNORE));
 
   LISTBASE_FOREACH (CollectionObject *, cob, &collection->gobject) {
     Object *cob_ob_old = cob->ob;
@@ -329,23 +331,6 @@ static void collection_blend_read_lib(BlendLibReader *reader, ID *id)
   BKE_collection_blend_read_lib(reader, collection);
 }
 
-void BKE_collection_blend_read_expand(BlendExpander *expander, Collection *collection)
-{
-  LISTBASE_FOREACH (CollectionObject *, cob, &collection->gobject) {
-    BLO_expand(expander, cob->ob);
-  }
-
-  LISTBASE_FOREACH (CollectionChild *, child, &collection->children) {
-    BLO_expand(expander, child->collection);
-  }
-}
-
-static void collection_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  Collection *collection = (Collection *)id;
-  BKE_collection_blend_read_expand(expander, collection);
-}
-
 IDTypeInfo IDType_ID_GR = {
     /*id_code*/ ID_GR,
     /*id_filter*/ FILTER_ID_GR,
@@ -369,7 +354,6 @@ IDTypeInfo IDType_ID_GR = {
     /*blend_write*/ collection_blend_write,
     /*blend_read_data*/ collection_blend_read_data,
     /*blend_read_lib*/ collection_blend_read_lib,
-    /*blend_read_expand*/ collection_blend_read_expand,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -2200,7 +2184,7 @@ static void scene_objects_iterator_begin(BLI_Iterator *iter, Scene *scene, GSet 
     data->visited = BLI_gset_ptr_new(__func__);
   }
 
-  /* We wrap the scenecollection iterator here to go over the scene collections. */
+  /* We wrap the scene-collection iterator here to go over the scene collections. */
   BKE_scene_collections_iterator_begin(&data->scene_collection_iter, scene);
 
   Collection *collection = static_cast<Collection *>(data->scene_collection_iter.current);

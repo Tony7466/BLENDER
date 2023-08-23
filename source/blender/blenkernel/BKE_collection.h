@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -24,7 +24,6 @@ extern "C" {
 struct BLI_Iterator;
 struct Base;
 struct BlendDataReader;
-struct BlendExpander;
 struct BlendLibReader;
 struct BlendWriter;
 struct Collection;
@@ -318,8 +317,6 @@ void BKE_collection_blend_read_data(struct BlendDataReader *reader,
                                     struct Collection *collection,
                                     struct ID *owner_id);
 void BKE_collection_blend_read_lib(struct BlendLibReader *reader, struct Collection *collection);
-void BKE_collection_blend_read_expand(struct BlendExpander *expander,
-                                      struct Collection *collection);
 
 /* Iteration callbacks. */
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -274,11 +274,13 @@ class LightBake {
 
 }  // namespace blender::eevee
 
-using namespace blender::eevee;
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Light Bake Job
  * \{ */
+
+using namespace blender::eevee;
 
 wmJob *EEVEE_NEXT_lightbake_job_create(wmWindowManager *wm,
                                        wmWindow *win,

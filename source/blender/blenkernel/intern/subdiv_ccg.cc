@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation
+/* SPDX-FileCopyrightText: 2018 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,7 +13,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_enumerable_thread_specific.hh"
 #include "BLI_ghash.h"
 #include "BLI_math_bits.h"
 #include "BLI_math_geom.h"
@@ -29,6 +28,9 @@
 
 #include "opensubdiv_topology_refiner_capi.h"
 
+using blender::Array;
+using blender::Vector;
+
 /* -------------------------------------------------------------------- */
 /** \name Various forward declarations
  * \{ */
@@ -41,7 +43,8 @@ static void subdiv_ccg_average_inner_face_grids(SubdivCCG *subdiv_ccg,
 
 void subdiv_ccg_average_faces_boundaries_and_corners(SubdivCCG *subdiv_ccg,
                                                      CCGKey *key,
-                                                     const blender::IndexMask &face_mask);
+                                                     CCGFace **effected_faces,
+                                                     int num_effected_faces);
 
 /** \} */
 
@@ -152,7 +155,8 @@ static void subdiv_ccg_alloc_elements(SubdivCCG *subdiv_ccg, Subdiv *subdiv)
   if (num_faces) {
     subdiv_ccg->faces = static_cast<SubdivCCGFace *>(
         MEM_calloc_arrayN(num_faces, sizeof(SubdivCCGFace), "Subdiv CCG faces"));
-    subdiv_ccg->grid_faces.reinitialize(num_grids);
+    subdiv_ccg->grid_faces = static_cast<SubdivCCGFace **>(
+        MEM_calloc_arrayN(num_grids, sizeof(SubdivCCGFace *), "Subdiv CCG grid faces"));
   }
 }
 
@@ -231,7 +235,7 @@ static void subdiv_ccg_eval_regular_grid(CCGEvalGridsData *data, const int face_
   const float grid_size_1_inv = 1.0f / (grid_size - 1);
   const int element_size = element_size_bytes_get(subdiv_ccg);
   SubdivCCGFace *faces = subdiv_ccg->faces;
-  blender::MutableSpan<int> grid_faces = subdiv_ccg->grid_faces;
+  SubdivCCGFace **grid_faces = subdiv_ccg->grid_faces;
   const SubdivCCGFace *face = &faces[face_index];
   for (int corner = 0; corner < face->num_grids; corner++) {
     const int grid_index = face->start_grid_index + corner;
@@ -248,7 +252,7 @@ static void subdiv_ccg_eval_regular_grid(CCGEvalGridsData *data, const int face_
       }
     }
     /* Assign grid's face. */
-    grid_faces[grid_index] = face_index;
+    grid_faces[grid_index] = &faces[face_index];
     /* Assign material flags. */
     subdiv_ccg->grid_flag_mats[grid_index] = data->material_flags_evaluator->eval_material_flags(
         data->material_flags_evaluator, face_index);
@@ -262,7 +266,7 @@ static void subdiv_ccg_eval_special_grid(CCGEvalGridsData *data, const int face_
   const float grid_size_1_inv = 1.0f / (grid_size - 1);
   const int element_size = element_size_bytes_get(subdiv_ccg);
   SubdivCCGFace *faces = subdiv_ccg->faces;
-  blender::MutableSpan<int> grid_faces = subdiv_ccg->grid_faces;
+  SubdivCCGFace **grid_faces = subdiv_ccg->grid_faces;
   const SubdivCCGFace *face = &faces[face_index];
   for (int corner = 0; corner < face->num_grids; corner++) {
     const int grid_index = face->start_grid_index + corner;
@@ -278,7 +282,7 @@ static void subdiv_ccg_eval_special_grid(CCGEvalGridsData *data, const int face_
       }
     }
     /* Assign grid's face. */
-    grid_faces[grid_index] = face_index;
+    grid_faces[grid_index] = &faces[face_index];
     /* Assign material flags. */
     subdiv_ccg->grid_flag_mats[grid_index] = data->material_flags_evaluator->eval_material_flags(
         data->material_flags_evaluator, face_index);
@@ -343,42 +347,6 @@ static void subdiv_ccg_init_faces(SubdivCCG *subdiv_ccg)
   }
 }
 
-/* TODO(sergey): Consider making it generic enough to be fit into BLI. */
-struct StaticOrHeapIntStorage {
-  int static_storage[64];
-  int static_storage_len;
-  int *heap_storage;
-  int heap_storage_len;
-};
-
-static void static_or_heap_storage_init(StaticOrHeapIntStorage *storage)
-{
-  storage->static_storage_len = ARRAY_SIZE(storage->static_storage);
-  storage->heap_storage = nullptr;
-  storage->heap_storage_len = 0;
-}
-
-static int *static_or_heap_storage_get(StaticOrHeapIntStorage *storage, int heap_len)
-{
-  /* Requested size small enough to be fit into stack allocated memory. */
-  if (heap_len <= storage->static_storage_len) {
-    return storage->static_storage;
-  }
-  /* Make sure heap is big enough. */
-  if (heap_len > storage->heap_storage_len) {
-    MEM_SAFE_FREE(storage->heap_storage);
-    storage->heap_storage = static_cast<int *>(
-        MEM_malloc_arrayN(heap_len, sizeof(int), "int storage"));
-    storage->heap_storage_len = heap_len;
-  }
-  return storage->heap_storage;
-}
-
-static void static_or_heap_storage_free(StaticOrHeapIntStorage *storage)
-{
-  MEM_SAFE_FREE(storage->heap_storage);
-}
-
 static void subdiv_ccg_allocate_adjacent_edges(SubdivCCG *subdiv_ccg, const int num_edges)
 {
   subdiv_ccg->num_adjacent_edges = num_edges;
@@ -430,25 +398,22 @@ static void subdiv_ccg_init_faces_edge_neighborhood(SubdivCCG *subdiv_ccg)
     return;
   }
   subdiv_ccg_allocate_adjacent_edges(subdiv_ccg, num_edges);
-  /* Initialize storage. */
-  StaticOrHeapIntStorage face_vertices_storage;
-  StaticOrHeapIntStorage face_edges_storage;
-  static_or_heap_storage_init(&face_vertices_storage);
-  static_or_heap_storage_init(&face_edges_storage);
+
+  Vector<int, 64> face_vertices;
+  Vector<int, 64> face_edges;
   /* Store adjacency for all faces. */
   const int num_faces = subdiv_ccg->num_faces;
   for (int face_index = 0; face_index < num_faces; face_index++) {
     SubdivCCGFace *face = &faces[face_index];
     const int num_face_grids = face->num_grids;
-    const int num_face_edges = num_face_grids;
-    int *face_vertices = static_or_heap_storage_get(&face_vertices_storage, num_face_edges);
-    topology_refiner->getFaceVertices(topology_refiner, face_index, face_vertices);
+    face_vertices.reinitialize(num_face_grids);
+    topology_refiner->getFaceVertices(topology_refiner, face_index, face_vertices.data());
     /* Note that order of edges is same as order of MLoops, which also
      * means it's the same as order of grids. */
-    int *face_edges = static_or_heap_storage_get(&face_edges_storage, num_face_edges);
-    topology_refiner->getFaceEdges(topology_refiner, face_index, face_edges);
+    face_edges.reinitialize(num_face_grids);
+    topology_refiner->getFaceEdges(topology_refiner, face_index, face_edges.data());
     /* Store grids adjacency for this edge. */
-    for (int corner = 0; corner < num_face_edges; corner++) {
+    for (int corner = 0; corner < num_face_grids; corner++) {
       const int vertex_index = face_vertices[corner];
       const int edge_index = face_edges[corner];
       int edge_vertices[2];
@@ -486,9 +451,6 @@ static void subdiv_ccg_init_faces_edge_neighborhood(SubdivCCG *subdiv_ccg)
       }
     }
   }
-  /* Free possibly heap-allocated storage. */
-  static_or_heap_storage_free(&face_vertices_storage);
-  static_or_heap_storage_free(&face_edges_storage);
 }
 
 static void subdiv_ccg_allocate_adjacent_vertices(SubdivCCG *subdiv_ccg, const int num_vertices)
@@ -526,9 +488,7 @@ static void subdiv_ccg_init_faces_vertex_neighborhood(SubdivCCG *subdiv_ccg)
     return;
   }
   subdiv_ccg_allocate_adjacent_vertices(subdiv_ccg, num_vertices);
-  /* Initialize storage. */
-  StaticOrHeapIntStorage face_vertices_storage;
-  static_or_heap_storage_init(&face_vertices_storage);
+  Vector<int, 64> face_vertices;
   /* Key to access elements. */
   CCGKey key;
   BKE_subdiv_ccg_key_top_level(&key, subdiv_ccg);
@@ -537,10 +497,9 @@ static void subdiv_ccg_init_faces_vertex_neighborhood(SubdivCCG *subdiv_ccg)
   for (int face_index = 0; face_index < num_faces; face_index++) {
     SubdivCCGFace *face = &faces[face_index];
     const int num_face_grids = face->num_grids;
-    const int num_face_edges = num_face_grids;
-    int *face_vertices = static_or_heap_storage_get(&face_vertices_storage, num_face_edges);
-    topology_refiner->getFaceVertices(topology_refiner, face_index, face_vertices);
-    for (int corner = 0; corner < num_face_edges; corner++) {
+    face_vertices.reinitialize(num_face_grids);
+    topology_refiner->getFaceVertices(topology_refiner, face_index, face_vertices.data());
+    for (int corner = 0; corner < num_face_grids; corner++) {
       const int vertex_index = face_vertices[corner];
       /* Grid which is adjacent to the current corner. */
       const int grid_index = face->start_grid_index + corner;
@@ -550,8 +509,6 @@ static void subdiv_ccg_init_faces_vertex_neighborhood(SubdivCCG *subdiv_ccg)
       *corner_coord = subdiv_ccg_coord(grid_index, grid_size - 1, grid_size - 1);
     }
   }
-  /* Free possibly heap-allocated storage. */
-  static_or_heap_storage_free(&face_vertices_storage);
 }
 
 static void subdiv_ccg_init_faces_neighborhood(SubdivCCG *subdiv_ccg)
@@ -572,7 +529,7 @@ SubdivCCG *BKE_subdiv_to_ccg(Subdiv *subdiv,
                              SubdivCCGMaterialFlagsEvaluator *material_flags_evaluator)
 {
   BKE_subdiv_stats_begin(&subdiv->stats, SUBDIV_STATS_SUBDIV_TO_CCG);
-  SubdivCCG *subdiv_ccg = MEM_new<SubdivCCG>(__func__);
+  SubdivCCG *subdiv_ccg = MEM_cnew<SubdivCCG>(__func__);
   subdiv_ccg->subdiv = subdiv;
   subdiv_ccg->level = bitscan_forward_i(settings->resolution - 1);
   subdiv_ccg->grid_size = BKE_subdiv_grid_size_from_level(subdiv_ccg->level);
@@ -639,6 +596,7 @@ void BKE_subdiv_ccg_destroy(SubdivCCG *subdiv_ccg)
     BKE_subdiv_free(subdiv_ccg->subdiv);
   }
   MEM_SAFE_FREE(subdiv_ccg->faces);
+  MEM_SAFE_FREE(subdiv_ccg->grid_faces);
   /* Free map of adjacent edges. */
   for (int i = 0; i < subdiv_ccg->num_adjacent_edges; i++) {
     SubdivCCGAdjacentEdge *adjacent_edge = &subdiv_ccg->adjacent_edges[i];
@@ -655,7 +613,7 @@ void BKE_subdiv_ccg_destroy(SubdivCCG *subdiv_ccg)
   }
   MEM_SAFE_FREE(subdiv_ccg->adjacent_vertices);
   MEM_SAFE_FREE(subdiv_ccg->cache_.start_face_grid_index);
-  MEM_delete(subdiv_ccg);
+  MEM_freeN(subdiv_ccg);
 }
 
 void BKE_subdiv_ccg_key(CCGKey *key, const SubdivCCG *subdiv_ccg, int level)
@@ -684,20 +642,32 @@ void BKE_subdiv_ccg_key_top_level(CCGKey *key, const SubdivCCG *subdiv_ccg)
 /** \name Normals
  * \{ */
 
+struct RecalcInnerNormalsData {
+  SubdivCCG *subdiv_ccg;
+  CCGKey *key;
+};
+
+struct RecalcInnerNormalsTLSData {
+  float (*face_normals)[3];
+};
+
 /* Evaluate high-res face normals, for faces which corresponds to grid elements
  *
  *   {(x, y), {x + 1, y}, {x + 1, y + 1}, {x, y + 1}}
  *
  * The result is stored in normals storage from TLS. */
-static void subdiv_ccg_recalc_inner_face_normals(
-    SubdivCCG *subdiv_ccg,
-    CCGKey *key,
-    blender::MutableSpan<blender::float3> face_normals,
-    const int grid_index)
+static void subdiv_ccg_recalc_inner_face_normals(SubdivCCG *subdiv_ccg,
+                                                 CCGKey *key,
+                                                 RecalcInnerNormalsTLSData *tls,
+                                                 const int grid_index)
 {
   const int grid_size = subdiv_ccg->grid_size;
   const int grid_size_1 = grid_size - 1;
   CCGElem *grid = subdiv_ccg->grids[grid_index];
+  if (tls->face_normals == nullptr) {
+    tls->face_normals = static_cast<float(*)[3]>(
+        MEM_malloc_arrayN(grid_size_1 * grid_size_1, sizeof(float[3]), "CCG TLS normals"));
+  }
   for (int y = 0; y < grid_size - 1; y++) {
     for (int x = 0; x < grid_size - 1; x++) {
       CCGElem *grid_elements[4] = {
@@ -713,22 +683,22 @@ static void subdiv_ccg_recalc_inner_face_normals(
           CCG_elem_co(key, grid_elements[3]),
       };
       const int face_index = y * grid_size_1 + x;
-      float *face_normal = face_normals[face_index];
+      float *face_normal = tls->face_normals[face_index];
       normal_quad_v3(face_normal, co[0], co[1], co[2], co[3]);
     }
   }
 }
 
 /* Average normals at every grid element, using adjacent faces normals. */
-static void subdiv_ccg_average_inner_face_normals(
-    SubdivCCG *subdiv_ccg,
-    CCGKey *key,
-    const blender::Span<blender::float3> face_normals,
-    const int grid_index)
+static void subdiv_ccg_average_inner_face_normals(SubdivCCG *subdiv_ccg,
+                                                  CCGKey *key,
+                                                  RecalcInnerNormalsTLSData *tls,
+                                                  const int grid_index)
 {
   const int grid_size = subdiv_ccg->grid_size;
   const int grid_size_1 = grid_size - 1;
   CCGElem *grid = subdiv_ccg->grids[grid_index];
+  const float(*face_normals)[3] = tls->face_normals;
   for (int y = 0; y < grid_size; y++) {
     for (int x = 0; x < grid_size; x++) {
       float normal_acc[3] = {0.0f, 0.0f, 0.0f};
@@ -758,25 +728,42 @@ static void subdiv_ccg_average_inner_face_normals(
   }
 }
 
+static void subdiv_ccg_recalc_inner_normal_task(void *__restrict userdata_v,
+                                                const int grid_index,
+                                                const TaskParallelTLS *__restrict tls_v)
+{
+  RecalcInnerNormalsData *data = static_cast<RecalcInnerNormalsData *>(userdata_v);
+  RecalcInnerNormalsTLSData *tls = static_cast<RecalcInnerNormalsTLSData *>(tls_v->userdata_chunk);
+  subdiv_ccg_recalc_inner_face_normals(data->subdiv_ccg, data->key, tls, grid_index);
+  subdiv_ccg_average_inner_face_normals(data->subdiv_ccg, data->key, tls, grid_index);
+}
+
+static void subdiv_ccg_recalc_inner_normal_free(const void *__restrict /*userdata*/,
+                                                void *__restrict tls_v)
+{
+  RecalcInnerNormalsTLSData *tls = static_cast<RecalcInnerNormalsTLSData *>(tls_v);
+  MEM_SAFE_FREE(tls->face_normals);
+}
+
 /* Recalculate normals which corresponds to non-boundaries elements of grids. */
 static void subdiv_ccg_recalc_inner_grid_normals(SubdivCCG *subdiv_ccg)
 {
-  using namespace blender;
-  const int grid_size_1 = subdiv_ccg->grid_size - 1;
-
-  threading::EnumerableThreadSpecific<Array<float3>> face_normals_tls(
-      [&]() { return Array<float3>(grid_size_1 * grid_size_1); });
-
   CCGKey key;
   BKE_subdiv_ccg_key_top_level(&key, subdiv_ccg);
-
-  threading::parallel_for(IndexRange(subdiv_ccg->num_grids), 512, [&](const IndexRange range) {
-    MutableSpan<float3> face_normals = face_normals_tls.local();
-    for (const int grid_index : range) {
-      subdiv_ccg_recalc_inner_face_normals(subdiv_ccg, &key, face_normals, grid_index);
-      subdiv_ccg_average_inner_face_normals(subdiv_ccg, &key, face_normals, grid_index);
-    }
-  });
+  RecalcInnerNormalsData data{};
+  data.subdiv_ccg = subdiv_ccg;
+  data.key = &key;
+  RecalcInnerNormalsTLSData tls_data = {nullptr};
+  TaskParallelSettings parallel_range_settings;
+  BLI_parallel_range_settings_defaults(&parallel_range_settings);
+  parallel_range_settings.userdata_chunk = &tls_data;
+  parallel_range_settings.userdata_chunk_size = sizeof(tls_data);
+  parallel_range_settings.func_free = subdiv_ccg_recalc_inner_normal_free;
+  BLI_task_parallel_range(0,
+                          subdiv_ccg->num_grids,
+                          &data,
+                          subdiv_ccg_recalc_inner_normal_task,
+                          &parallel_range_settings);
 }
 
 void BKE_subdiv_ccg_recalc_normals(SubdivCCG *subdiv_ccg)
@@ -789,48 +776,80 @@ void BKE_subdiv_ccg_recalc_normals(SubdivCCG *subdiv_ccg)
   BKE_subdiv_ccg_average_grids(subdiv_ccg);
 }
 
-static void subdiv_ccg_recalc_modified_inner_grid_normals(SubdivCCG *subdiv_ccg,
-                                                          const blender::IndexMask &face_mask)
+struct RecalcModifiedInnerNormalsData {
+  SubdivCCG *subdiv_ccg;
+  CCGKey *key;
+  SubdivCCGFace **effected_ccg_faces;
+};
+
+static void subdiv_ccg_recalc_modified_inner_normal_task(void *__restrict userdata_v,
+                                                         const int face_index,
+                                                         const TaskParallelTLS *__restrict tls_v)
 {
-  using namespace blender;
-  const int grid_size_1 = subdiv_ccg->grid_size - 1;
-
-  threading::EnumerableThreadSpecific<Array<float3>> face_normals_tls(
-      [&]() { return Array<float3>(grid_size_1 * grid_size_1); });
-
-  CCGKey key;
-  BKE_subdiv_ccg_key_top_level(&key, subdiv_ccg);
-  const SubdivCCGFace *faces = subdiv_ccg->faces;
-  face_mask.foreach_segment(GrainSize(512), [&](const IndexMaskSegment segment) {
-    MutableSpan<float3> face_normals = face_normals_tls.local();
-    for (const int face_index : segment) {
-      const SubdivCCGFace &face = faces[face_index];
-      const int num_face_grids = face.num_grids;
-      for (int i = 0; i < num_face_grids; i++) {
-        const int grid_index = face.start_grid_index + i;
-        subdiv_ccg_recalc_inner_face_normals(subdiv_ccg, &key, face_normals, grid_index);
-        subdiv_ccg_average_inner_face_normals(subdiv_ccg, &key, face_normals, grid_index);
-      }
-    }
-  });
+  RecalcModifiedInnerNormalsData *data = static_cast<RecalcModifiedInnerNormalsData *>(userdata_v);
+  SubdivCCG *subdiv_ccg = data->subdiv_ccg;
+  CCGKey *key = data->key;
+  RecalcInnerNormalsTLSData *tls = static_cast<RecalcInnerNormalsTLSData *>(tls_v->userdata_chunk);
+  SubdivCCGFace **faces = data->effected_ccg_faces;
+  SubdivCCGFace *face = faces[face_index];
+  const int num_face_grids = face->num_grids;
+  for (int i = 0; i < num_face_grids; i++) {
+    const int grid_index = face->start_grid_index + i;
+    subdiv_ccg_recalc_inner_face_normals(data->subdiv_ccg, data->key, tls, grid_index);
+    subdiv_ccg_average_inner_face_normals(data->subdiv_ccg, data->key, tls, grid_index);
+  }
+  subdiv_ccg_average_inner_face_grids(subdiv_ccg, key, face);
 }
 
-void BKE_subdiv_ccg_update_normals(SubdivCCG *subdiv_ccg, const blender::IndexMask &face_mask)
+static void subdiv_ccg_recalc_modified_inner_normal_free(const void *__restrict /*userdata*/,
+                                                         void *__restrict tls_v)
+{
+  RecalcInnerNormalsTLSData *tls = static_cast<RecalcInnerNormalsTLSData *>(tls_v);
+  MEM_SAFE_FREE(tls->face_normals);
+}
+
+static void subdiv_ccg_recalc_modified_inner_grid_normals(SubdivCCG *subdiv_ccg,
+                                                          CCGFace **effected_faces,
+                                                          int num_effected_faces)
+{
+  CCGKey key;
+  BKE_subdiv_ccg_key_top_level(&key, subdiv_ccg);
+  RecalcModifiedInnerNormalsData data{};
+  data.subdiv_ccg = subdiv_ccg;
+  data.key = &key;
+  data.effected_ccg_faces = (SubdivCCGFace **)effected_faces;
+  RecalcInnerNormalsTLSData tls_data = {nullptr};
+  TaskParallelSettings parallel_range_settings;
+  BLI_parallel_range_settings_defaults(&parallel_range_settings);
+  parallel_range_settings.userdata_chunk = &tls_data;
+  parallel_range_settings.userdata_chunk_size = sizeof(tls_data);
+  parallel_range_settings.func_free = subdiv_ccg_recalc_modified_inner_normal_free;
+  BLI_task_parallel_range(0,
+                          num_effected_faces,
+                          &data,
+                          subdiv_ccg_recalc_modified_inner_normal_task,
+                          &parallel_range_settings);
+}
+
+void BKE_subdiv_ccg_update_normals(SubdivCCG *subdiv_ccg,
+                                   CCGFace **effected_faces,
+                                   int num_effected_faces)
 {
   if (!subdiv_ccg->has_normal) {
     /* Grids don't have normals, can do early output. */
     return;
   }
-  if (face_mask.is_empty()) {
+  if (num_effected_faces == 0) {
     /* No faces changed, so nothing to do here. */
     return;
   }
-  subdiv_ccg_recalc_modified_inner_grid_normals(subdiv_ccg, face_mask);
+  subdiv_ccg_recalc_modified_inner_grid_normals(subdiv_ccg, effected_faces, num_effected_faces);
 
   CCGKey key;
   BKE_subdiv_ccg_key_top_level(&key, subdiv_ccg);
 
-  subdiv_ccg_average_faces_boundaries_and_corners(subdiv_ccg, &key, face_mask);
+  subdiv_ccg_average_faces_boundaries_and_corners(
+      subdiv_ccg, &key, effected_faces, num_effected_faces);
 }
 
 /** \} */
@@ -1164,31 +1183,29 @@ void BKE_subdiv_ccg_average_grids(SubdivCCG *subdiv_ccg)
 }
 
 static void subdiv_ccg_affected_face_adjacency(SubdivCCG *subdiv_ccg,
-                                               const blender::IndexMask &face_mask,
+                                               CCGFace **effected_faces,
+                                               int num_effected_faces,
                                                GSet *r_adjacent_vertices,
                                                GSet *r_adjacent_edges)
 {
   Subdiv *subdiv = subdiv_ccg->subdiv;
   OpenSubdiv_TopologyRefiner *topology_refiner = subdiv->topology_refiner;
 
-  StaticOrHeapIntStorage face_vertices_storage;
-  StaticOrHeapIntStorage face_edges_storage;
+  Vector<int, 64> face_vertices;
+  Vector<int, 64> face_edges;
 
-  static_or_heap_storage_init(&face_vertices_storage);
-  static_or_heap_storage_init(&face_edges_storage);
-
-  face_mask.foreach_index([&](const int face_index) {
-    SubdivCCGFace *face = &subdiv_ccg->faces[face_index];
+  for (int i = 0; i < num_effected_faces; i++) {
+    SubdivCCGFace *face = (SubdivCCGFace *)effected_faces[i];
+    int face_index = face - subdiv_ccg->faces;
     const int num_face_grids = face->num_grids;
-    const int num_face_edges = num_face_grids;
-    int *face_vertices = static_or_heap_storage_get(&face_vertices_storage, num_face_edges);
-    topology_refiner->getFaceVertices(topology_refiner, face_index, face_vertices);
+    face_vertices.reinitialize(num_face_grids);
+    topology_refiner->getFaceVertices(topology_refiner, face_index, face_vertices.data());
 
     /* Note that order of edges is same as order of MLoops, which also
      * means it's the same as order of grids. */
-    int *face_edges = static_or_heap_storage_get(&face_edges_storage, num_face_edges);
-    topology_refiner->getFaceEdges(topology_refiner, face_index, face_edges);
-    for (int corner = 0; corner < num_face_edges; corner++) {
+    face_edges.reinitialize(num_face_grids);
+    topology_refiner->getFaceEdges(topology_refiner, face_index, face_edges.data());
+    for (int corner = 0; corner < num_face_grids; corner++) {
       const int vertex_index = face_vertices[corner];
       const int edge_index = face_edges[corner];
 
@@ -1201,69 +1218,83 @@ static void subdiv_ccg_affected_face_adjacency(SubdivCCG *subdiv_ccg,
       SubdivCCGAdjacentVertex *adjacent_vertex = &subdiv_ccg->adjacent_vertices[vertex_index];
       BLI_gset_add(r_adjacent_vertices, adjacent_vertex);
     }
-  });
-
-  static_or_heap_storage_free(&face_vertices_storage);
-  static_or_heap_storage_free(&face_edges_storage);
+  }
 }
 
 void subdiv_ccg_average_faces_boundaries_and_corners(SubdivCCG *subdiv_ccg,
                                                      CCGKey *key,
-                                                     const blender::IndexMask &face_mask)
+                                                     CCGFace **effected_faces,
+                                                     int num_effected_faces)
 {
   GSet *adjacent_vertices = BLI_gset_ptr_new(__func__);
   GSet *adjacent_edges = BLI_gset_ptr_new(__func__);
   GSetIterator gi;
 
-  subdiv_ccg_affected_face_adjacency(subdiv_ccg, face_mask, adjacent_vertices, adjacent_edges);
-
-  int *adjacent_vertex_index_map;
-  int *adjacent_edge_index_map;
-
-  StaticOrHeapIntStorage index_heap;
-  static_or_heap_storage_init(&index_heap);
+  subdiv_ccg_affected_face_adjacency(
+      subdiv_ccg, effected_faces, num_effected_faces, adjacent_vertices, adjacent_edges);
 
   int i = 0;
 
   /* Average boundaries. */
-
-  adjacent_edge_index_map = static_or_heap_storage_get(&index_heap, BLI_gset_len(adjacent_edges));
+  Array<int, 64> adjacent_edge_index_map(BLI_gset_len(adjacent_edges));
   GSET_ITER_INDEX (gi, adjacent_edges, i) {
     SubdivCCGAdjacentEdge *adjacent_edge = static_cast<SubdivCCGAdjacentEdge *>(
         BLI_gsetIterator_getKey(&gi));
     adjacent_edge_index_map[i] = adjacent_edge - subdiv_ccg->adjacent_edges;
   }
   subdiv_ccg_average_boundaries(
-      subdiv_ccg, key, adjacent_edge_index_map, BLI_gset_len(adjacent_edges));
+      subdiv_ccg, key, adjacent_edge_index_map.data(), BLI_gset_len(adjacent_edges));
 
   /* Average corners. */
-
-  adjacent_vertex_index_map = static_or_heap_storage_get(&index_heap,
-                                                         BLI_gset_len(adjacent_vertices));
+  Array<int, 64> adjacent_vertex_index_map(BLI_gset_len(adjacent_vertices));
   GSET_ITER_INDEX (gi, adjacent_vertices, i) {
     SubdivCCGAdjacentVertex *adjacent_vertex = static_cast<SubdivCCGAdjacentVertex *>(
         BLI_gsetIterator_getKey(&gi));
     adjacent_vertex_index_map[i] = adjacent_vertex - subdiv_ccg->adjacent_vertices;
   }
   subdiv_ccg_average_corners(
-      subdiv_ccg, key, adjacent_vertex_index_map, BLI_gset_len(adjacent_vertices));
+      subdiv_ccg, key, adjacent_vertex_index_map.data(), BLI_gset_len(adjacent_vertices));
 
   BLI_gset_free(adjacent_vertices, nullptr);
   BLI_gset_free(adjacent_edges, nullptr);
-  static_or_heap_storage_free(&index_heap);
+}
+
+struct StitchFacesInnerGridsData {
+  SubdivCCG *subdiv_ccg;
+  CCGKey *key;
+  CCGFace **effected_ccg_faces;
+};
+
+static void subdiv_ccg_stitch_face_inner_grids_task(void *__restrict userdata_v,
+                                                    const int face_index,
+                                                    const TaskParallelTLS *__restrict /*tls_v*/)
+{
+  StitchFacesInnerGridsData *data = static_cast<StitchFacesInnerGridsData *>(userdata_v);
+  SubdivCCG *subdiv_ccg = data->subdiv_ccg;
+  CCGKey *key = data->key;
+  CCGFace **effected_ccg_faces = data->effected_ccg_faces;
+  CCGFace *effected_ccg_face = effected_ccg_faces[face_index];
+  SubdivCCGFace *face = (SubdivCCGFace *)effected_ccg_face;
+  subdiv_ccg_average_inner_face_grids(subdiv_ccg, key, face);
 }
 
 void BKE_subdiv_ccg_average_stitch_faces(SubdivCCG *subdiv_ccg,
-                                         const blender::IndexMask &face_mask)
+                                         CCGFace **effected_faces,
+                                         int num_effected_faces)
 {
-  using namespace blender;
   CCGKey key;
   BKE_subdiv_ccg_key_top_level(&key, subdiv_ccg);
-
-  face_mask.foreach_index(GrainSize(512), [&](const int face_index) {
-    subdiv_ccg_average_inner_face_grids(subdiv_ccg, &key, &subdiv_ccg->faces[face_index]);
-  });
-
+  StitchFacesInnerGridsData data{};
+  data.subdiv_ccg = subdiv_ccg;
+  data.key = &key;
+  data.effected_ccg_faces = effected_faces;
+  TaskParallelSettings parallel_range_settings;
+  BLI_parallel_range_settings_defaults(&parallel_range_settings);
+  BLI_task_parallel_range(0,
+                          num_effected_faces,
+                          &data,
+                          subdiv_ccg_stitch_face_inner_grids_task,
+                          &parallel_range_settings);
   /* TODO(sergey): Only average elements which are adjacent to modified
    * faces. */
   subdiv_ccg_average_all_boundaries_and_corners(subdiv_ccg, &key);
@@ -1421,7 +1452,7 @@ static SubdivCCGCoord coord_step_inside_from_boundary(const SubdivCCG *subdiv_cc
 BLI_INLINE
 int next_grid_index_from_coord(const SubdivCCG *subdiv_ccg, const SubdivCCGCoord *coord)
 {
-  SubdivCCGFace *face = &subdiv_ccg->faces[subdiv_ccg->grid_faces[coord->grid_index]];
+  SubdivCCGFace *face = subdiv_ccg->grid_faces[coord->grid_index];
   const int face_grid_index = coord->grid_index;
   int next_face_grid_index = face_grid_index + 1 - face->start_grid_index;
   if (next_face_grid_index == face->num_grids) {
@@ -1431,7 +1462,7 @@ int next_grid_index_from_coord(const SubdivCCG *subdiv_ccg, const SubdivCCGCoord
 }
 BLI_INLINE int prev_grid_index_from_coord(const SubdivCCG *subdiv_ccg, const SubdivCCGCoord *coord)
 {
-  SubdivCCGFace *face = &subdiv_ccg->faces[subdiv_ccg->grid_faces[coord->grid_index]];
+  SubdivCCGFace *face = subdiv_ccg->grid_faces[coord->grid_index];
   const int face_grid_index = coord->grid_index;
   int prev_face_grid_index = face_grid_index - 1 - face->start_grid_index;
   if (prev_face_grid_index < 0) {
@@ -1447,7 +1478,7 @@ static void neighbor_coords_corner_center_get(const SubdivCCG *subdiv_ccg,
                                               const bool include_duplicates,
                                               SubdivCCGNeighbors *r_neighbors)
 {
-  const SubdivCCGFace *face = &subdiv_ccg->faces[subdiv_ccg->grid_faces[coord->grid_index]];
+  SubdivCCGFace *face = subdiv_ccg->grid_faces[coord->grid_index];
   const int num_adjacent_grids = face->num_grids;
 
   subdiv_ccg_neighbors_init(
@@ -1475,20 +1506,15 @@ static int adjacent_vertex_index_from_coord(const SubdivCCG *subdiv_ccg,
   Subdiv *subdiv = subdiv_ccg->subdiv;
   OpenSubdiv_TopologyRefiner *topology_refiner = subdiv->topology_refiner;
 
-  const SubdivCCGFace *face = &subdiv_ccg->faces[subdiv_ccg->grid_faces[coord->grid_index]];
+  const SubdivCCGFace *face = subdiv_ccg->grid_faces[coord->grid_index];
   const int face_index = face - subdiv_ccg->faces;
   const int face_grid_index = coord->grid_index - face->start_grid_index;
   const int num_face_grids = face->num_grids;
-  const int num_face_vertices = num_face_grids;
 
-  StaticOrHeapIntStorage face_vertices_storage;
-  static_or_heap_storage_init(&face_vertices_storage);
-
-  int *face_vertices = static_or_heap_storage_get(&face_vertices_storage, num_face_vertices);
-  topology_refiner->getFaceVertices(topology_refiner, face_index, face_vertices);
+  Array<int, 64> face_vertices(num_face_grids);
+  topology_refiner->getFaceVertices(topology_refiner, face_index, face_vertices.data());
 
   const int adjacent_vertex_index = face_vertices[face_grid_index];
-  static_or_heap_storage_free(&face_vertices_storage);
   return adjacent_vertex_index;
 }
 
@@ -1513,11 +1539,8 @@ static void neighbor_coords_corner_vertex_get(const SubdivCCG *subdiv_ccg,
   subdiv_ccg_neighbors_init(
       r_neighbors, num_vertex_edges, (include_duplicates) ? num_adjacent_faces - 1 : 0);
 
-  StaticOrHeapIntStorage vertex_edges_storage;
-  static_or_heap_storage_init(&vertex_edges_storage);
-
-  int *vertex_edges = static_or_heap_storage_get(&vertex_edges_storage, num_vertex_edges);
-  topology_refiner->getVertexEdges(topology_refiner, adjacent_vertex_index, vertex_edges);
+  Array<int, 64> vertex_edges(num_vertex_edges);
+  topology_refiner->getVertexEdges(topology_refiner, adjacent_vertex_index, vertex_edges.data());
 
   for (int i = 0; i < num_vertex_edges; ++i) {
     const int edge_index = vertex_edges[i];
@@ -1554,37 +1577,31 @@ static void neighbor_coords_corner_vertex_get(const SubdivCCG *subdiv_ccg,
       }
     }
   }
-
-  static_or_heap_storage_free(&vertex_edges_storage);
 }
 
 static int adjacent_edge_index_from_coord(const SubdivCCG *subdiv_ccg, const SubdivCCGCoord *coord)
 {
   Subdiv *subdiv = subdiv_ccg->subdiv;
   OpenSubdiv_TopologyRefiner *topology_refiner = subdiv->topology_refiner;
-  const SubdivCCGFace *face = &subdiv_ccg->faces[subdiv_ccg->grid_faces[coord->grid_index]];
+  SubdivCCGFace *face = subdiv_ccg->grid_faces[coord->grid_index];
 
   const int face_grid_index = coord->grid_index - face->start_grid_index;
   const int face_index = face - subdiv_ccg->faces;
   const int num_face_edges = topology_refiner->getNumFaceEdges(topology_refiner, face_index);
 
-  StaticOrHeapIntStorage face_edges_storage;
-  static_or_heap_storage_init(&face_edges_storage);
-  int *face_edges_indices = static_or_heap_storage_get(&face_edges_storage, num_face_edges);
-  topology_refiner->getFaceEdges(topology_refiner, face_index, face_edges_indices);
+  Array<int, 64> face_edges(num_face_edges);
+  topology_refiner->getFaceEdges(topology_refiner, face_index, face_edges.data());
 
   const int grid_size_1 = subdiv_ccg->grid_size - 1;
   int adjacent_edge_index = -1;
   if (coord->x == grid_size_1) {
-    adjacent_edge_index = face_edges_indices[face_grid_index];
+    adjacent_edge_index = face_edges[face_grid_index];
   }
   else {
     BLI_assert(coord->y == grid_size_1);
     adjacent_edge_index =
-        face_edges_indices[face_grid_index == 0 ? face->num_grids - 1 : face_grid_index - 1];
+        face_edges[face_grid_index == 0 ? face->num_grids - 1 : face_grid_index - 1];
   }
-
-  static_or_heap_storage_free(&face_edges_storage);
 
   return adjacent_edge_index;
 }
@@ -1859,7 +1876,9 @@ void BKE_subdiv_ccg_neighbor_coords_get(const SubdivCCG *subdiv_ccg,
 
 int BKE_subdiv_ccg_grid_to_face_index(const SubdivCCG *subdiv_ccg, const int grid_index)
 {
-  return subdiv_ccg->grid_faces[grid_index];
+  const SubdivCCGFace *face = subdiv_ccg->grid_faces[grid_index];
+  const int face_index = face - subdiv_ccg->faces;
+  return face_index;
 }
 
 const int *BKE_subdiv_ccg_start_face_grid_index_ensure(SubdivCCG *subdiv_ccg)

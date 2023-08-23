@@ -26,6 +26,7 @@
 #include "BLI_bitmap.h"
 #include "BLI_hash.h"
 #include "BLI_listbase.h"
+#include "BLI_math_color.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 #include "BLI_string_utf8.h"
@@ -160,7 +161,6 @@ IDTypeInfo IDType_ID_PAL = {
     /*blend_write*/ palette_blend_write,
     /*blend_read_data*/ palette_blend_read_data,
     /*blend_read_lib*/ nullptr,
-    /*blend_read_expand*/ nullptr,
 
     /*blend_read_undo_preserve*/ palette_undo_preserve,
 
@@ -228,7 +228,6 @@ IDTypeInfo IDType_ID_PC = {
     /*blend_write*/ paint_curve_blend_write,
     /*blend_read_data*/ paint_curve_blend_read_data,
     /*blend_read_lib*/ nullptr,
-    /*blend_read_expand*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -1274,6 +1273,7 @@ void BKE_paint_blend_read_data(BlendDataReader *reader, const Scene *scene, Pain
     p->tool_slots = static_cast<PaintToolSlot *>(MEM_callocN(expected_size, "PaintToolSlot"));
   }
 
+  p->paint_cursor = nullptr;
   BKE_paint_runtime_init(scene->toolsettings, p);
 }
 
@@ -1287,18 +1287,7 @@ void BKE_paint_blend_read_lib(BlendLibReader *reader, Scene *sce, Paint *p)
       }
     }
     BLO_read_id_address(reader, &sce->id, &p->palette);
-    p->paint_cursor = nullptr;
-
-    BKE_paint_runtime_init(sce->toolsettings, p);
   }
-}
-
-bool paint_is_face_hidden(const int *looptri_faces, const bool *hide_poly, const int tri_index)
-{
-  if (!hide_poly) {
-    return false;
-  }
-  return hide_poly[looptri_faces[tri_index]];
 }
 
 bool paint_is_grid_face_hidden(const uint *grid_hidden, int gridsize, int x, int y)
@@ -1936,7 +1925,7 @@ void BKE_sculpt_update_object_before_eval(Object *ob_eval)
       BKE_sculptsession_free_vwpaint_data(ob_eval->sculpt);
     }
     else if (ss->pbvh) {
-      Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
+      Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
 
       for (PBVHNode *node : nodes) {
         BKE_pbvh_node_mark_update(node);
@@ -2260,7 +2249,7 @@ static PBVH *build_pbvh_from_ccg(Object *ob, SubdivCCG *subdiv_ccg)
                        subdiv_ccg->grids,
                        subdiv_ccg->num_grids,
                        &key,
-                       subdiv_ccg->grid_faces,
+                       (void **)subdiv_ccg->grid_faces,
                        subdiv_ccg->grid_flag_mats,
                        subdiv_ccg->grid_hidden,
                        base_mesh,
@@ -2349,7 +2338,7 @@ void BKE_sculpt_bvh_update_from_ccg(PBVH *pbvh, SubdivCCG *subdiv_ccg)
 
   BKE_pbvh_grids_update(pbvh,
                         subdiv_ccg->grids,
-                        subdiv_ccg->grid_faces,
+                        (void **)subdiv_ccg->grid_faces,
                         subdiv_ccg->grid_flag_mats,
                         subdiv_ccg->grid_hidden,
                         &key);

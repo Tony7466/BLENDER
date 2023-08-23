@@ -160,7 +160,9 @@ static void material_free_data(ID *id)
 
 static void material_foreach_id(ID *id, LibraryForeachIDData *data)
 {
-  Material *material = (Material *)id;
+  Material *material = reinterpret_cast<Material *>(id);
+  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
+
   /* Node-trees **are owned by IDs**, treat them as mere sub-data and not real ID! */
   BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
       data, BKE_library_foreach_ID_embedded(data, (ID **)&material->nodetree));
@@ -170,6 +172,10 @@ static void material_foreach_id(ID *id, LibraryForeachIDData *data)
   if (material->gp_style != nullptr) {
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, material->gp_style->sima, IDWALK_CB_USER);
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, material->gp_style->ima, IDWALK_CB_USER);
+  }
+
+  if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
+    BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, material->ipo, IDWALK_CB_USER);
   }
 }
 
@@ -184,10 +190,6 @@ static void material_blend_write(BlendWriter *writer, ID *id, const void *id_add
   /* write LibData */
   BLO_write_id_struct(writer, Material, id_address, &ma->id);
   BKE_id_blend_write(writer, &ma->id);
-
-  if (ma->adt) {
-    BKE_animdata_blend_write(writer, ma->adt);
-  }
 
   /* nodetree is integral part of material, no libdata */
   if (ma->nodetree) {
@@ -213,8 +215,6 @@ static void material_blend_write(BlendWriter *writer, ID *id, const void *id_add
 static void material_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Material *ma = (Material *)id;
-  BLO_read_data_address(reader, &ma->adt);
-  BKE_animdata_blend_read_data(reader, ma->adt);
 
   ma->texpaintslot = nullptr;
 
@@ -243,18 +243,6 @@ static void material_blend_read_lib(BlendLibReader *reader, ID *id)
   }
 }
 
-static void material_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  Material *ma = (Material *)id;
-  BLO_expand(expander, ma->ipo); /* XXX deprecated - old animation system */
-
-  if (ma->gp_style) {
-    MaterialGPencilStyle *gp_style = ma->gp_style;
-    BLO_expand(expander, gp_style->sima);
-    BLO_expand(expander, gp_style->ima);
-  }
-}
-
 IDTypeInfo IDType_ID_MA = {
     /*id_code*/ ID_MA,
     /*id_filter*/ FILTER_ID_MA,
@@ -278,7 +266,6 @@ IDTypeInfo IDType_ID_MA = {
     /*blend_write*/ material_blend_write,
     /*blend_read_data*/ material_blend_read_data,
     /*blend_read_lib*/ material_blend_read_lib,
-    /*blend_read_expand*/ material_blend_read_expand,
 
     /*blend_read_undo_preserve*/ nullptr,
 
