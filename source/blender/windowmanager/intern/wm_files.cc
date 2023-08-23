@@ -856,13 +856,13 @@ static uiBlock *wm_block_create_loading(bContext *C, ARegion *region, void *arg)
   if (!ibuf) {
     /* Not in cache, so extract from the blend file itself. */
     BlendThumbnail *data = BLO_thumbnail_from_file(filepath);
-    ibuf = data ? BKE_main_thumbnail_to_imbuf(NULL, data) : NULL;
+    ibuf = data ? BKE_main_thumbnail_to_imbuf(nullptr, data) : nullptr;
     if (data) {
       MEM_freeN(data);
     }
   }
 
-  const uchar *color = NULL;
+  const uchar *color = nullptr;
 
   if (!ibuf) {
     /* No thumbnails found, so just use Blender logo. */
@@ -1073,19 +1073,19 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
   if (!G.background) {
     wmWindowManager *wm = CTX_wm_manager(C);
     wmWindow *win = CTX_wm_window(C);
-    bool win_was_null = (win == NULL);
+    bool win_was_null = (win == nullptr);
     if (win_was_null) {
       win = static_cast<wmWindow *>(wm->windows.first);
       CTX_wm_window_set(C, win);
     }
-    if (win != NULL) {
-      UI_popup_block_invoke(C, wm_block_create_loading, (void *)filepath, NULL);
+    if (win != nullptr) {
+      UI_popup_block_invoke(C, wm_block_create_loading, (void *)filepath, nullptr);
 
       /* Redraw to remove any open menus and show loading block. */
       WM_redraw_windows(C);
 
       if (win_was_null) {
-        CTX_wm_window_set(C, NULL);
+        CTX_wm_window_set(C, nullptr);
       }
     }
   }
