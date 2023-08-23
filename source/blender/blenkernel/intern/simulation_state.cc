@@ -147,7 +147,7 @@ ModifierSimulationState &ModifierSimulationCache::get_state_at_frame_for_write(
     return states_at_frames_[i]->state;
   }
 
-  /* No cached frame found: need to insert it just before i to keep ordering. */
+  /* No cached frame found: need to insert it just before `i` to keep ordering. */
   BLI_assert(frame < states_at_frames_[i]->frame);
 
   states_at_frames_.insert(i, std::make_unique<ModifierSimulationStateAtFrame>());
