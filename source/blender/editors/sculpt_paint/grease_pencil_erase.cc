@@ -454,10 +454,10 @@ struct EraseOperationExecutor {
                 point_side,
                 point_after_side);
 
-            /* The point belongs in the ring of the highest radius circle it is in.
-             * Since our rings are stored in increasing radius order, we can simply update the
-             * ring each time the point is inside or at the boundary. We include the outside
-             * boundary of the ring, that is why we do not check for LeftBoundary.
+            /* The point belongs in the ring of the smallest radius circle it is in.
+             * Since our rings are stored in increasing radius order, it corresponds to the first
+             * ring that contains the point. We only include the InsideOutside boundary of the
+             * ring, that is why we do not check for OutsideInsideBoundary.
              */
             if ((r_point_ring[src_point].first == -1) &&
                 ELEM(point_side, PointCircleSide::Inside, PointCircleSide::InsideOutsideBoundary))
