@@ -137,13 +137,12 @@ struct EraseOperationExecutor {
    *
    * \param point, point_after: coordinates of the first (resp. second) endpoint in the segment.
    *
-   * \param r_mu0, r_mu0: output factor of the two intersections if they exists, otherwise (-1).
+   * \param squared_radius: squared radius of the brush in pixels.
    *
-   * \param point_inside, point_after_inside: output boolean true if the first (resp. second)
-   * endpoint lies inside the eraser, false if it lies outside or at the boundary of the eraser.
+   * \param r_mu0, r_mu0: (output) factor of the two intersections if they exists, otherwise (-1).
    *
-   * \param point_cut, point_after_cut: output boolean true if the first (resp. second) endpoint
-   * lies at the boundary of the eraser.
+   * \param point_side, point_after_side: (output) enum describing where the first (resp. second)
+   * endpoint lies relatively to the eraser: inside, outside or at the boundary of the eraser.
    *
    * \returns total number of intersections lying inside the segment (ie whose factor is in ]0,1[).
    *
@@ -222,7 +221,7 @@ struct EraseOperationExecutor {
     }
 
     if (is_mu0_inside && is_mu1_inside) {
-      /* Both intersections lie within the segment, none of the points are inside the circle */
+      /* Both intersections lie within the segment, none of the points are inside the circle. */
       r_point_side = PointCircleSide::Outside;
       r_point_after_side = PointCircleSide::Outside;
       return 2;
@@ -244,23 +243,21 @@ struct EraseOperationExecutor {
   }
 
   /**
-   * Compute intersections between the eraser and the input Curves Geometry.
+   * Compute intersections between the eraser and the input \a src Curves Geometry.
    * Also computes if the points of the geometry lie inside/outside, or in the boundary of the
    * eraser.
    *
    * \param screen_space_positions: 2D positions of the geometry in screen space.
    *
-   * \param r_nb_intersections: (output) number of intersections per-segment. Note that this number
-   * does not account for curves points that fall exactly at the eraser boundary.
-   * Should be the size of the source point range (cyclic curves get an extra segment).
-   * \param r_intersections_factors: (output) factors of the potential intersections with each
-   * segment. Should be the size of the source point range (cyclic curves get an extra segment).
+   * \param intersections_max_per_segment: maximum number of intersections per-segment.
    *
-   * \param r_is_point_inside: (output) true if the point lies inside the eraser, and thus should
-   * be removed. Note that if the point lies exactly on the boundary of the eraser, it will not be
-   * marked as inside. Should be the size of the source point range.
-   * \param r_is_point_cut: (output) true if the point falls exactly on the boundary of the
-   * eraser. Should be the size of the source point range.
+   * \param r_point_side: (output) for each point in the source, enum describing where the point
+   * lies relatively to the eraser: inside, outside or at the boundary of the eraser.
+   *
+   * \param r_intersections: (output) array containing all the intersections found in the curves
+   * geometry. The size of the array should be `src.points_num*intersections_max_per_segment`.
+   * Initially all intersections are set as invalid, and the function fills valid intersections at
+   * an offset of `src_point*intersections_max_per_segment`.
    *
    * \returns total number of intersections found.
    */
@@ -396,8 +393,8 @@ struct EraseOperationExecutor {
    * equal to the number of points in the source.
    * For each point in the source, the corresponding vector in \a src_to_dst_points contains a set
    * of destination points (PointTransferData), which can correspond to points of the source, or
-   * linear combination of them. Note that this vector can be empty if we want to remove points for
-   * example. Curves can also be splitted if a destination point is marked as a cut.
+   * linear combination of them. Note that this vector can be empty, if we want to remove points
+   * for example. Curves can also be splitted if a destination point is marked as a cut.
    *
    * \returns an array containing the same elements as \a src_to_dst_points, but in the destination
    * points domain.
