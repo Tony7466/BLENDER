@@ -826,11 +826,18 @@ GHOST_TSuccess GHOST_SystemCocoa::getPixelAtCursor(float r_color[3]) const
     @autoreleasepool {
         CGPoint cursorPosition = [NSEvent mouseLocation];
     
+         uint32_t count = 0;
+        CGDirectDisplayID displayForPoint;
+        if (CGGetDisplaysWithPoint(cursorPosition, 1, &displayForPoint, &count) != kCGErrorSuccess)
+        {
+            return GHOST_kFailure;
+        }
+
         // Create rect to get color at location
-        CGRect rect = CGRectMake(cursorPosition.x, cursorPosition.y, 1, 1);
-    
+        CGRect rect = CGRectMake(cursorPosition.x, cursorPosition.y - 2, 1, 1);
+
         // Create Image from rect
-        CGImageRef image = CGDisplayCreateImageForRect(kCGDirectMainDisplay, rect);
+        CGImageRef image = CGDisplayCreateImageForRect(displayForPoint, rect);
     
         // Create bitmap from image & free it
         NSBitmapImageRep *bitmap = [[NSBitmapImageRep alloc] initWithCGImage:image];
