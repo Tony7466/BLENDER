@@ -192,8 +192,11 @@ void SEQUENCER_OT_retiming_key_add(wmOperatorType *ot)
 /** \name Retiming Add Freeze Frame
  * \{ */
 
-bool freeze_frame_add_new_for_seq(
-    bContext *C, wmOperator *op, Sequence *seq, const int timeline_frame, const int duration)
+bool freeze_frame_add_new_for_seq(const bContext *C,
+                                  const wmOperator *op,
+                                  Sequence *seq,
+                                  const int timeline_frame,
+                                  const int duration)
 {
   Scene *scene = CTX_data_scene(C);
   SEQ_retiming_data_ensure(scene, seq);
@@ -223,7 +226,9 @@ bool freeze_frame_add_new_for_seq(
   return true;
 }
 
-static bool freeze_frame_add_from_strip_selection(bContext *C, wmOperator *op, const int duration)
+static bool freeze_frame_add_from_strip_selection(bContext *C,
+                                                  const wmOperator *op,
+                                                  const int duration)
 {
   Scene *scene = CTX_data_scene(C);
   SeqCollection *strips = selected_strips_from_context(C);
@@ -233,13 +238,14 @@ static bool freeze_frame_add_from_strip_selection(bContext *C, wmOperator *op, c
   Sequence *seq;
   SEQ_ITERATOR_FOREACH (seq, strips) {
     success |= freeze_frame_add_new_for_seq(C, op, seq, timeline_frame, duration);
+    SEQ_relations_invalidate_cache_raw(scene, seq);
   }
   SEQ_collection_free(strips);
   return success;
 }
 
-static bool freeze_frame_add_from_retiming_selection(bContext *C,
-                                                     wmOperator *op,
+static bool freeze_frame_add_from_retiming_selection(const bContext *C,
+                                                     const wmOperator *op,
                                                      const int duration)
 {
   Scene *scene = CTX_data_scene(C);
@@ -248,6 +254,7 @@ static bool freeze_frame_add_from_retiming_selection(bContext *C,
   for (const RetimingSelectionElem elem : SEQ_retiming_selection_get(scene)) {
     const int timeline_frame = SEQ_retiming_key_timeline_frame_get(scene, elem.seq, elem.key);
     success |= freeze_frame_add_new_for_seq(C, op, elem.seq, timeline_frame, duration);
+    SEQ_relations_invalidate_cache_raw(scene, elem.seq);
   }
   return success;
 }
@@ -308,8 +315,11 @@ void SEQUENCER_OT_retiming_freeze_frame_add(wmOperatorType *ot)
 /** \name Retiming Add Speed Transition
  * \{ */
 
-bool transition_add_new_for_seq(
-    bContext *C, wmOperator *op, Sequence *seq, const int timeline_frame, const int duration)
+bool transition_add_new_for_seq(const bContext *C,
+                                const wmOperator *op,
+                                Sequence *seq,
+                                const int timeline_frame,
+                                const int duration)
 {
   Scene *scene = CTX_data_scene(C);
   SEQ_retiming_data_ensure(scene, seq);
@@ -330,7 +340,9 @@ bool transition_add_new_for_seq(
   return true;
 }
 
-static bool transition_add_from_retiming_selection(bContext *C, wmOperator *op, const int duration)
+static bool transition_add_from_retiming_selection(const bContext *C,
+                                                   const wmOperator *op,
+                                                   const int duration)
 {
   Scene *scene = CTX_data_scene(C);
   bool success = false;
@@ -410,6 +422,7 @@ static int sequencer_retiming_key_remove_exec(bContext *C, wmOperator * /* op */
     elem.key->flag |= DELETE_KEY;
   }
 
+  // xxx unsafe
   for (Sequence *seq : strips_to_handle) {
     for (int i = 0; i < seq->retiming_keys_num;) {
       SeqRetimingKey *key = seq->retiming_keys + i;
@@ -451,7 +464,7 @@ void SEQUENCER_OT_retiming_key_remove(wmOperatorType *ot)
 /** \name Retiming Set Segment Speed
  * \{ */
 
-static int strip_speed_set_exec(bContext *C, wmOperator *op)
+static int strip_speed_set_exec(bContext *C, const wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   SeqCollection *strips = selected_strips_from_context(C);
@@ -476,7 +489,7 @@ static int strip_speed_set_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int segment_speed_set_exec(bContext *C, wmOperator *op)
+static int segment_speed_set_exec(const bContext *C, const wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   const Editing *ed = SEQ_editing_get(scene);
@@ -560,19 +573,19 @@ static int sequencer_retiming_key_select_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   Editing *ed = SEQ_editing_get(scene);
-  int mval[2] = {RNA_int_get(op->ptr, "mouse_x"), RNA_int_get(op->ptr, "mouse_y")};
+  const int mval[2] = {RNA_int_get(op->ptr, "mouse_x"), RNA_int_get(op->ptr, "mouse_y")};
 
   int hand;
-  Sequence *seq_click_exact = find_nearest_seq(scene, UI_view2d_fromcontext(C), &hand, mval);
+  const Sequence *seq_click_exact = find_nearest_seq(scene, UI_view2d_fromcontext(C), &hand, mval);
   Sequence *seq_key_owner = nullptr;
   const SeqRetimingKey *key = retiming_mousover_key_get(C, mval, &seq_key_owner);
 
   const bool wait_to_deselect_others = RNA_boolean_get(op->ptr, "wait_to_deselect_others");
   const bool toggle = RNA_boolean_get(op->ptr, "toggle");
 
-  bool clicked_on_strip = seq_click_exact != nullptr;
-  bool clicked_on_selected_key = key != nullptr &&
-                                 SEQ_retiming_selection_contains(ed, seq_key_owner, key);
+  const bool clicked_on_strip = seq_click_exact != nullptr;
+  const bool clicked_on_selected_key = key != nullptr &&
+                                       SEQ_retiming_selection_contains(ed, seq_key_owner, key);
 
   /* Clicking on already selected element falls on modal operation.
    * All strips are deselected on mouse button release unless extend mode is used. */
@@ -651,8 +664,8 @@ void SEQUENCER_OT_retiming_key_select(wmOperatorType *ot)
 static int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op)
 {
 
-  Scene *scene = CTX_data_scene(C);
-  View2D *v2d = UI_view2d_fromcontext(C);
+  const Scene *scene = CTX_data_scene(C);
+  const View2D *v2d = UI_view2d_fromcontext(C);
   Editing *ed = SEQ_editing_get(scene);
 
   if (ed == nullptr) {

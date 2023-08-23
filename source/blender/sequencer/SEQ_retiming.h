@@ -69,7 +69,7 @@ SeqRetimingKey *SEQ_retiming_find_segment_start_key(const struct Sequence *seq,
                                                     const int frame_index);
 bool SEQ_retiming_key_is_transition_type(const struct SeqRetimingKey *key);
 bool SEQ_retiming_key_is_transition_start(const struct SeqRetimingKey *key);
-SeqRetimingKey *SEQ_retiming_transition_start_get(struct SeqRetimingKey *key);
+SeqRetimingKey *SEQ_retiming_transition_start_get(const struct SeqRetimingKey *key);
 
 bool SEQ_retiming_key_is_freeze_frame(const struct SeqRetimingKey *key);
 
@@ -80,7 +80,7 @@ void SEQ_retiming_selection_append(struct Editing *ed,
 void SEQ_retiming_selection_remove(struct Editing *ed,
                                    const struct Sequence *seq,
                                    const struct SeqRetimingKey *key);
-bool SEQ_retiming_selection_contains(struct Editing *ed,
+bool SEQ_retiming_selection_contains(const struct Editing *ed,
                                      const struct Sequence *seq,
                                      const struct SeqRetimingKey *key);
 bool SEQ_retiming_selection_has_whole_transition(struct Scene *scene, struct SeqRetimingKey *key);

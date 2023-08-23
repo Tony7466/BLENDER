@@ -41,7 +41,7 @@ typedef struct TransDataSeq {
 
 static TransData *SeqToTransData(const Scene *scene,
                                  Sequence *seq,
-                                 SeqRetimingKey *key,
+                                 const SeqRetimingKey *key,
                                  TransData *td,
                                  TransData2D *td2d,
                                  TransDataSeq *tdseq)
@@ -80,12 +80,12 @@ static void freeSeqData(TransInfo * /*t*/,
 
 static void createTransSeqRetimingData(bContext * /*C*/, TransInfo *t)
 {
-  Editing *ed = SEQ_editing_get(t->scene);
+  const Editing *ed = SEQ_editing_get(t->scene);
   if (ed == nullptr) {
     return;
   }
 
-  blender::Vector selection = SEQ_retiming_selection_get(t->scene);
+  const blender::Vector selection = SEQ_retiming_selection_get(t->scene);
 
   if (selection.size() == 0) {
     return;
@@ -107,8 +107,8 @@ static void createTransSeqRetimingData(bContext * /*C*/, TransInfo *t)
   }
 }
 
-static void seq_resize_speed_translation(Scene *scene,
-                                         Sequence *seq,
+static void seq_resize_speed_translation(const Scene *scene,
+                                         const Sequence *seq,
                                          SeqRetimingKey *key,
                                          const float loc)
 {
@@ -125,18 +125,18 @@ static void seq_resize_speed_translation(Scene *scene,
 
 static void recalcData_sequencer_retiming(TransInfo *t)
 {
-  TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
-  TransData *td = NULL;
-  TransData2D *td2d = NULL;
+  const TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
+  const TransData *td = NULL;
+  const TransData2D *td2d = NULL;
   int i;
 
   for (i = 0, td = tc->data, td2d = tc->data_2d; i < tc->data_len; i++, td++, td2d++) {
-    TransDataSeq *tdseq = static_cast<TransDataSeq *>(td->extra);
+    const TransDataSeq *tdseq = static_cast<TransDataSeq *>(td->extra);
     Sequence *seq = tdseq->seq;
 
     /* Calculate translation. */
 
-    blender::MutableSpan keys = SEQ_retiming_keys_get(seq);
+    const blender::MutableSpan keys = SEQ_retiming_keys_get(seq);
     SeqRetimingKey *key = seq->retiming_keys + tdseq->key_index;
 
     if (SEQ_retiming_key_is_transition_type(key) &&

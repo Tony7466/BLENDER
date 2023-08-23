@@ -55,8 +55,6 @@
 #include "sequencer_intern.h"
 #include "sequencer_intern.hh"
 
-using blender::MutableSpan;
-
 #define KEY_SIZE (10 * U.pixelsize)
 #define KEY_CENTER (UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 0.0f)) + 4 + KEY_SIZE / 2)
 
@@ -163,9 +161,9 @@ static bool mouse_is_inside_box(const rctf *box, const int mval[2])
          mval[1] <= box->ymax;
 }
 
-bool retiming_last_key_is_clicked(bContext *C, const Sequence *seq, const int mval[2])
+bool retiming_last_key_is_clicked(const bContext *C, const Sequence *seq, const int mval[2])
 {
-  Scene *scene = CTX_data_scene(C);
+  const Scene *scene = CTX_data_scene(C);
   const View2D *v2d = UI_view2d_fromcontext(C);
 
   rctf box = keys_box_get(C, seq);
@@ -174,17 +172,17 @@ bool retiming_last_key_is_clicked(bContext *C, const Sequence *seq, const int mv
     return false;
   }
 
-  float right_handle_pos = UI_view2d_view_to_region_x(v2d,
-                                                      SEQ_time_right_handle_frame_get(scene, seq));
-  float distance = fabs(right_handle_pos - mval[0]);
+  const float right_handle_pos = UI_view2d_view_to_region_x(
+      v2d, SEQ_time_right_handle_frame_get(scene, seq));
+  const float distance = fabs(right_handle_pos - mval[0]);
   return distance < RETIME_KEY_MOUSEOVER_THRESHOLD;
 }
 
-static const SeqRetimingKey *mouse_over_key_get_from_strip(bContext *C,
+static const SeqRetimingKey *mouse_over_key_get_from_strip(const bContext *C,
                                                            const Sequence *seq,
                                                            const int mval[2])
 {
-  Scene *scene = CTX_data_scene(C);
+  const Scene *scene = CTX_data_scene(C);
   const View2D *v2d = UI_view2d_fromcontext(C);
 
   int best_distance = INT_MAX;
@@ -203,9 +201,11 @@ static const SeqRetimingKey *mouse_over_key_get_from_strip(bContext *C,
   return best_key;
 }
 
-const SeqRetimingKey *retiming_mousover_key_get(bContext *C, const int mval[2], Sequence **r_seq)
+const SeqRetimingKey *retiming_mousover_key_get(const bContext *C,
+                                                const int mval[2],
+                                                Sequence **r_seq)
 {
-  Scene *scene = CTX_data_scene(C);
+  const Scene *scene = CTX_data_scene(C);
   for (Sequence *seq : sequencer_visible_strips_get(C)) {
 
     rctf box = keys_box_get(C, seq);
@@ -244,7 +244,7 @@ static void draw_half_keyframe(const bContext *C, const Sequence *seq)
 {
   const Scene *scene = CTX_data_scene(C);
   const View2D *v2d = UI_view2d_fromcontext(C);
-  Editing *ed = SEQ_editing_get(scene);
+  const Editing *ed = SEQ_editing_get(scene);
 
   float x;
   const float y = KEY_CENTER;
@@ -321,14 +321,6 @@ static void retime_key_draw(const bContext *C, const Sequence *seq, const SeqRet
     return; /* Key out of strip bounds. */
   }
 
-  float col[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-
-  bool is_selected = SEQ_retiming_selection_contains(SEQ_editing_get(scene), seq, key);
-
-  const int size = KEY_SIZE;
-  const float key_position = UI_view2d_view_to_region_x(v2d, key_x);
-  const float bottom = KEY_CENTER;
-
   GPUVertFormat *format = immVertexFormat();
   KeyframeShaderBindings sh_bindings;
 
@@ -355,6 +347,11 @@ static void retime_key_draw(const bContext *C, const Sequence *seq, const SeqRet
     key_type = BEZT_KEYTYPE_MOVEHOLD;
   }
 
+  const bool is_selected = SEQ_retiming_selection_contains(SEQ_editing_get(scene), seq, key);
+  const int size = KEY_SIZE;
+  const float key_position = UI_view2d_view_to_region_x(v2d, key_x);
+  const float bottom = KEY_CENTER;
+
   draw_keyframe_shape(key_position,
                       bottom,
                       size,
@@ -378,16 +375,15 @@ const void draw_continuity(const bContext *C, const Sequence *seq, const SeqReti
   }
   const View2D *v2d = UI_view2d_fromcontext(C);
   const Scene *scene = CTX_data_scene(C);
-  Editing *ed = SEQ_editing_get(scene);
-
-  float key_position = UI_view2d_view_to_region_x(v2d, key_x_get(scene, seq, key));
-  float prev_key_position = UI_view2d_view_to_region_x(v2d, key_x_get(scene, seq, key - 1));
+  const Editing *ed = SEQ_editing_get(scene);
 
   const float left_handle_position = UI_view2d_view_to_region_x(
       v2d, SEQ_time_left_handle_frame_get(scene, seq));
   const float right_handle_position = UI_view2d_view_to_region_x(
       v2d, SEQ_time_right_handle_frame_get(scene, seq));
 
+  float key_position = UI_view2d_view_to_region_x(v2d, key_x_get(scene, seq, key));
+  float prev_key_position = UI_view2d_view_to_region_x(v2d, key_x_get(scene, seq, key - 1));
   prev_key_position = max_ff(prev_key_position, left_handle_position);
   key_position = min_ff(key_position, right_handle_position);
 
@@ -444,7 +440,7 @@ static void draw_backdrop(const bContext *C, const Sequence *seq)
 
 static void retime_keys_draw(const bContext *C)
 {
-  SpaceSeq *sseq = CTX_wm_space_seq(C);
+  const SpaceSeq *sseq = CTX_wm_space_seq(C);
   if (!sequencer_retiming_tool_is_active(C) &&
       (sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_RETIMING) == 0)
   {
@@ -506,7 +502,7 @@ static bool label_rect_get(const bContext *C,
                            const Sequence *seq,
                            const SeqRetimingKey *key,
                            char *label_str,
-                           size_t label_len,
+                           const size_t label_len,
                            rctf *rect)
 {
   const Scene *scene = CTX_data_scene(C);
@@ -559,7 +555,7 @@ static void retime_speed_text_draw(const bContext *C,
 
 static void retime_speed_draw(const bContext *C)
 {
-  SpaceSeq *sseq = CTX_wm_space_seq(C);
+  const SpaceSeq *sseq = CTX_wm_space_seq(C);
   if (!sequencer_retiming_tool_is_active(C) &&
       (sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_RETIMING) == 0)
   {
@@ -573,7 +569,7 @@ static void retime_speed_draw(const bContext *C)
   GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-  for (Sequence *seq : sequencer_visible_strips_get(C)) {
+  for (const Sequence *seq : sequencer_visible_strips_get(C)) {
     for (const SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
       retime_speed_text_draw(C, seq, &key);
     }

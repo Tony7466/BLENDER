@@ -1013,7 +1013,9 @@ blender::Vector<RetimingSelectionElem> SEQ_retiming_selection_get(const Scene *s
   return selection;
 }
 
-bool SEQ_retiming_selection_contains(Editing *ed, const Sequence *seq, const SeqRetimingKey *key)
+bool SEQ_retiming_selection_contains(const Editing *ed,
+                                     const Sequence *seq,
+                                     const SeqRetimingKey *key)
 {
   LISTBASE_FOREACH (SeqRetimingKeySelection *, elem, &ed->retiming_selection) {
     if (!STREQ(elem->strip_name, seq->name)) {
