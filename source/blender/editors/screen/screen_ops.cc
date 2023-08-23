@@ -5673,7 +5673,7 @@ static void SCREEN_OT_space_type_set_or_cycle(wmOperatorType *ot)
 static const EnumPropertyItem area_space_cycle_direction[] = {
     {0, "BACK", 0, "Back", ""},
     {1, "FORWARD", 0, "Forward", ""},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 static bool area_space_cycle_poll(bContext *C)
@@ -5685,19 +5685,20 @@ static bool area_space_cycle_poll(bContext *C)
 
 static int area_space_cycle_exec(bContext *C, wmOperator *op)
 {
-  const eScreenCycle direction = RNA_enum_get(op->ptr, "direction");
+  const eScreenCycle direction = eScreenCycle(RNA_enum_get(op->ptr, "direction"));
 
   ScrArea *area = CTX_wm_area(C);
   wmWindow *win = CTX_wm_window(C);
-  SpaceLink *slold = area->spacedata.first;
+  SpaceLink *slold = static_cast<SpaceLink *>(area->spacedata.first);
   SpaceLink *slnew;
 
   /* XXX: No attempt to deal with header alignment. */
 
   bool skip_region_exit = true;
-  void *area_exit = area->type ? area->type->exit : NULL;
+  void (*area_exit)(wmWindowManager *, ScrArea *) = area->type ? area->type->exit : nullptr;
+
   if (skip_region_exit && area->type) {
-    area->type->exit = NULL;
+    area->type->exit = nullptr;
   }
   ED_area_exit(C, area);
   if (skip_region_exit && area->type) {
@@ -5707,10 +5708,10 @@ static int area_space_cycle_exec(bContext *C, wmOperator *op)
   if (direction == SPACE_CONTEXT_CYCLE_PREV) {
     BLI_remlink(&area->spacedata, slold);
     BLI_addtail(&area->spacedata, slold);
-    slnew = area->spacedata.first;
+    slnew = static_cast<SpaceLink *>(area->spacedata.first);
   }
   else {
-    slnew = area->spacedata.last;
+    slnew = static_cast<SpaceLink *>(area->spacedata.last);
     BLI_remlink(&area->spacedata, slnew);
     BLI_addhead(&area->spacedata, slnew);
   }

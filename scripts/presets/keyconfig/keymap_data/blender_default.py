@@ -706,8 +706,8 @@ def km_window(params):
 
         # Fast editor switching
 
-        ("screen.area_space_cycle", {"type": 'F1', "value": 'PRESS', "ctrl": True}, {"properties": [("direction", 'BACK')]}),
-        ("screen.area_space_cycle", {"type": 'F2', "value": 'PRESS', "ctrl": True}, {"properties": [("direction", 'FORWARD')]}),
+        ("screen.area_space_cycle", {"type": 'F1', "value": 'PRESS', "alt": True}, {"properties": [("direction", 'BACK')]}),
+        ("screen.area_space_cycle", {"type": 'F2', "value": 'PRESS', "alt": True}, {"properties": [("direction", 'FORWARD')]}),
 
         *(
             ("screen.space_type_set_or_cycle",
