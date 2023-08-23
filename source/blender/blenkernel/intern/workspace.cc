@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -122,6 +122,12 @@ static void workspace_blend_read_data(BlendDataReader *reader, ID *id)
 
   workspace->status_text = nullptr;
 
+  /* Do not keep the scene reference when appending a workspace. Setting a scene for a workspace is
+   * a convenience feature, but the workspace should never truly depend on scene data. */
+  if (ID_IS_LINKED(workspace)) {
+    workspace->pin_scene = nullptr;
+  }
+
   id_us_ensure_real(&workspace->id);
 
   BKE_viewer_path_blend_read_data(reader, &workspace->viewer_path);
@@ -132,14 +138,7 @@ static void workspace_blend_read_lib(BlendLibReader *reader, ID *id)
   WorkSpace *workspace = (WorkSpace *)id;
   Main *bmain = BLO_read_lib_get_main(reader);
 
-  /* Do not keep the scene reference when appending a workspace. Setting a scene for a workspace is
-   * a convenience feature, but the workspace should never truly depend on scene data. */
-  if (ID_IS_LINKED(id)) {
-    workspace->pin_scene = nullptr;
-  }
-  else {
-    BLO_read_id_address(reader, id, &workspace->pin_scene);
-  }
+  BLO_read_id_address(reader, id, &workspace->pin_scene);
 
   /* Restore proper 'parent' pointers to relevant data, and clean up unused/invalid entries. */
   LISTBASE_FOREACH_MUTABLE (WorkSpaceDataRelation *, relation, &workspace->hook_layout_relations) {
@@ -541,7 +540,7 @@ void BKE_workspace_tool_id_replace_table(WorkSpace *workspace,
       }
       idname_suffix += idname_prefix_len;
     }
-    BLI_str_replace_table_exact(
+    BLI_string_replace_table_exact(
         idname_suffix, idname_suffix_len, replace_table, replace_table_num);
   }
 }

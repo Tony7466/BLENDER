@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -124,7 +124,7 @@ class MESH_UL_shape_keys(UIList):
             row = split.row(align=True)
             row.emboss = 'NONE_OR_STATUS'
             if key_block.mute or (obj.mode == 'EDIT' and not (obj.use_shape_key_edit_mode and obj.type == 'MESH')):
-                row.active = False
+                split.active = False
             if not item.id_data.use_relative:
                 row.prop(key_block, "frame", text="")
             elif index > 0:
@@ -548,7 +548,8 @@ class DATA_PT_mesh_attributes(MeshButtonsPanel, Panel):
         if not colliding_names:
             return
 
-        layout.label(text=tip_("Name collisions: ") + ", ".join(set(colliding_names)), icon='ERROR')
+        layout.label(text=tip_("Name collisions: ") + ", ".join(set(colliding_names)),
+                     icon='ERROR', translate=False)
 
 
 class ColorAttributesListBase():

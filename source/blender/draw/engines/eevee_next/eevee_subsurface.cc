@@ -1,6 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -77,7 +77,7 @@ void SubsurfaceModule::precompute_samples_location()
   for (auto i : IndexRange(data_.sample_len)) {
     float theta = golden_angle * i + M_PI * 2.0f * rand_u;
     /* Scale using rand_v in order to keep first sample always at center. */
-    float x = (1.0f + (rand_v / data_.sample_len)) * (i / (float)data_.sample_len);
+    float x = (1.0f + (rand_v / data_.sample_len)) * (i / float(data_.sample_len));
     float r = burley_sample(d, x);
     data_.samples[i].x = cosf(theta) * r;
     data_.samples[i].y = sinf(theta) * r;
@@ -209,7 +209,7 @@ float SubsurfaceModule::burley_eval(float d, float r)
   /* Slide 33. */
   float exp_r_3_d = expf(-r / (3.0f * d));
   float exp_r_d = exp_r_3_d * exp_r_3_d * exp_r_3_d;
-  return (exp_r_d + exp_r_3_d) / (8.0f * (float)M_PI * d);
+  return (exp_r_d + exp_r_3_d) / (8.0f * float(M_PI) * d);
 }
 
 float SubsurfaceModule::burley_pdf(float d, float r)
