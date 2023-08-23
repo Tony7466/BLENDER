@@ -97,17 +97,19 @@ void socket_declarations_for_repeat_items(const Span<NodeRepeatItem> items,
   for (const int i : items.index_range()) {
     const NodeRepeatItem &item = items[i];
     SocketDeclarationPtr input_decl = socket_declaration_for_repeat_item(item, SOCK_IN);
-    SocketDeclarationPtr output_decl = socket_declaration_for_repeat_item(
-        item, SOCK_OUT, r_declaration.inputs.size() - 1);
     r_declaration.inputs.append(input_decl.get());
     r_declaration.items.append(std::move(input_decl));
+
+    SocketDeclarationPtr output_decl = socket_declaration_for_repeat_item(
+        item, SOCK_OUT, r_declaration.inputs.size() - 1);
     r_declaration.outputs.append(output_decl.get());
     r_declaration.items.append(std::move(output_decl));
   }
   SocketDeclarationPtr input_extend_decl = decl::create_extend_declaration(SOCK_IN);
-  SocketDeclarationPtr output_extend_decl = decl::create_extend_declaration(SOCK_OUT);
   r_declaration.inputs.append(input_extend_decl.get());
   r_declaration.items.append(std::move(input_extend_decl));
+
+  SocketDeclarationPtr output_extend_decl = decl::create_extend_declaration(SOCK_OUT);
   r_declaration.outputs.append(output_extend_decl.get());
   r_declaration.items.append(std::move(output_extend_decl));
 }
