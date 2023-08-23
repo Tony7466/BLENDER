@@ -148,8 +148,8 @@ struct EraseOperationExecutor {
                                                 const int64_t squared_radius,
                                                 float &r_mu0,
                                                 float &r_mu1,
-                                                PointCircleSide &point_side,
-                                                PointCircleSide &point_after_side) const
+                                                PointCircleSide &r_point_side,
+                                                PointCircleSide &r_point_after_side) const
   {
 
     /* Compute the integer values of the intersection. */
@@ -165,8 +165,8 @@ struct EraseOperationExecutor {
        * account for intersections in this case.
        */
       r_mu0 = r_mu1 = -1.0f;
-      point_side = PointCircleSide::Outside;
-      point_after_side = PointCircleSide::Outside;
+      r_point_side = PointCircleSide::Outside;
+      r_point_after_side = PointCircleSide::Outside;
       return 0;
     }
 
@@ -184,13 +184,13 @@ struct EraseOperationExecutor {
 
     /* The endpoints are on the circle's boundary if one of the intersection falls exactly on them.
      */
-    point_side = (mu0 == 0) ? PointCircleSide::OutsideInsideBoundary :
-                              ((mu1 == 0) ? PointCircleSide::InsideOutsideBoundary :
-                                            PointCircleSide::Inside);
-    point_after_side = (mu0 == segment_length) ?
-                           PointCircleSide::OutsideInsideBoundary :
-                           ((mu1 == segment_length) ? PointCircleSide::InsideOutsideBoundary :
-                                                      PointCircleSide::Inside);
+    r_point_side = (mu0 == 0) ? PointCircleSide::OutsideInsideBoundary :
+                                ((mu1 == 0) ? PointCircleSide::InsideOutsideBoundary :
+                                              PointCircleSide::Inside);
+    r_point_after_side = (mu0 == segment_length) ?
+                             PointCircleSide::OutsideInsideBoundary :
+                             ((mu1 == segment_length) ? PointCircleSide::InsideOutsideBoundary :
+                                                        PointCircleSide::Inside);
 
     /* Compute the normalized position of the intersection in the curve. */
     r_mu0 = mu0 / float(segment_length);
@@ -204,8 +204,8 @@ struct EraseOperationExecutor {
       if (side_mu0 == side_mu1) {
         /* If they are on the same side of the line, then none of the point are inside the circle.
          */
-        point_side = PointCircleSide::Outside;
-        point_after_side = PointCircleSide::Outside;
+        r_point_side = PointCircleSide::Outside;
+        r_point_after_side = PointCircleSide::Outside;
         return 0;
       }
 
@@ -216,8 +216,8 @@ struct EraseOperationExecutor {
 
     if (is_mu0_inside && is_mu1_inside) {
       /* Both intersections lie within the segment, none of the points are inside the circle */
-      point_side = PointCircleSide::Outside;
-      point_after_side = PointCircleSide::Outside;
+      r_point_side = PointCircleSide::Outside;
+      r_point_after_side = PointCircleSide::Outside;
       return 2;
     }
 
@@ -226,9 +226,9 @@ struct EraseOperationExecutor {
     const int8_t side_outside_intersection = is_mu0_inside ? side_mu1 : side_mu0;
 
     /* If the other intersection lies before the first endpoint, the first endpoint is inside. */
-    point_side = (side_outside_intersection == -1) ? point_side : PointCircleSide::Outside;
-    point_after_side = (side_outside_intersection == 1) ? point_after_side :
-                                                          PointCircleSide::Outside;
+    r_point_side = (side_outside_intersection == -1) ? r_point_side : PointCircleSide::Outside;
+    r_point_after_side = (side_outside_intersection == 1) ? r_point_after_side :
+                                                            PointCircleSide::Outside;
 
     if (is_mu1_inside) {
       std::swap(r_mu0, r_mu1);
