@@ -11,7 +11,9 @@
 
 #include "BLI_ghash.h"
 #include "BLI_gsqueue.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_span.hh"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
@@ -22,15 +24,15 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_ccg.h"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_kelvinlet.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
 #include "paint_intern.hh"
 #include "sculpt_intern.hh"
@@ -1117,6 +1119,8 @@ void SCULPT_do_clay_strips_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 
   float temp[3];
   float mat[4][4];
+  float scale[4][4];
+  float tmat[4][4];
 
   SCULPT_calc_brush_plane(sd, ob, nodes, area_no_sp, area_co);
   SCULPT_tilt_apply_to_normal(area_no_sp, ss->cache, brush->tilt_strength_factor);
@@ -1126,6 +1130,10 @@ void SCULPT_do_clay_strips_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
   }
   else {
     copy_v3_v3(area_no, area_no_sp);
+  }
+
+  if (is_zero_v3(ss->cache->grab_delta_symmetry)) {
+    return;
   }
 
   mul_v3_v3v3(temp, area_no_sp, ss->cache->scale);
@@ -1143,21 +1151,6 @@ void SCULPT_do_clay_strips_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
   float area_co_displaced[3];
   madd_v3_v3v3fl(area_co_displaced, area_co, area_no, -radius * 0.7f);
 
-  /* Initialize brush local-space matrix. */
-  SCULPT_cube_tip_init(sd, ob, brush, mat, area_co, area_no);
-
-  /* Deform the local space in Z to scale the test cube. As the test cube does not have falloff in
-   * Z this does not produce artifacts in the falloff cube and allows to deform extra vertices
-   * during big deformation while keeping the surface as uniform as possible. */
-  invert_m4(mat);
-  mul_v3_fl(mat[2], 1.25f);
-  invert_m4(mat);
-
-#if 0 /* The original matrix construction code, preserved here for reference. */
-  if (is_zero_v3(ss->cache->grab_delta_symmetry)) {
-    return;
-  }
-
   cross_v3_v3v3(mat[0], area_no, ss->cache->grab_delta_symmetry);
   mat[0][3] = 0.0f;
   cross_v3_v3v3(mat[1], area_no, mat[0]);
@@ -1172,8 +1165,14 @@ void SCULPT_do_clay_strips_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
   scale_m4_fl(scale, ss->cache->radius);
   mul_m4_m4m4(tmat, mat, scale);
 
+  mul_v3_fl(tmat[1], brush->tip_scale_x);
+
+  /* Deform the local space in Z to scale the test cube. As the test cube does not have falloff in
+   * Z this does not produce artifacts in the falloff cube and allows to deform extra vertices
+   * during big deformation while keeping the surface as uniform as possible. */
+  mul_v3_fl(tmat[2], 1.25f);
+
   invert_m4_m4(mat, tmat);
-#endif
 
   SculptThreadedTaskData data{};
   data.sd = sd;

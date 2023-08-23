@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -153,10 +153,7 @@ void TreeDisplayViewLayer::add_layer_collections_recursive(ListBase &tree,
     else {
       ID *id = &lc->collection->id;
       ten = outliner_add_element(
-          &space_outliner_, &tree, id, &parent_ten, TSE_LAYER_COLLECTION, 0);
-
-      ten->name = id->name + 2;
-      ten->directdata = lc;
+          &space_outliner_, &tree, lc, &parent_ten, TSE_LAYER_COLLECTION, 0);
 
       /* Open by default, except linked collections, which may contain many elements. */
       TreeStoreElem *tselem = TREESTORE(ten);

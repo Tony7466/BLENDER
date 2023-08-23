@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,13 +16,13 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_rand.h"
 
 #include "BLT_translation.h"
 
 #include "BKE_bpath.h"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_gpencil_legacy.h"
@@ -33,7 +33,7 @@
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_texture.h"
 
 #include "IMB_colormanagement.h"
@@ -386,19 +386,6 @@ static void brush_blend_read_lib(BlendLibReader *reader, ID *id)
   }
 }
 
-static void brush_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  Brush *brush = (Brush *)id;
-  BLO_expand(expander, brush->mtex.tex);
-  BLO_expand(expander, brush->mask_mtex.tex);
-  BLO_expand(expander, brush->clone.image);
-  BLO_expand(expander, brush->paint_curve);
-  if (brush->gpencil_settings != nullptr) {
-    BLO_expand(expander, brush->gpencil_settings->material);
-    BLO_expand(expander, brush->gpencil_settings->material_alt);
-  }
-}
-
 static int brush_undo_preserve_cb(LibraryIDLinkCallbackData *cb_data)
 {
   BlendLibReader *reader = (BlendLibReader *)cb_data->user_data;
@@ -455,7 +442,6 @@ IDTypeInfo IDType_ID_BR = {
     /*blend_write*/ brush_blend_write,
     /*blend_read_data*/ brush_blend_read_data,
     /*blend_read_lib*/ brush_blend_read_lib,
-    /*blend_read_expand*/ brush_blend_read_expand,
 
     /*blend_read_undo_preserve*/ brush_undo_preserve,
 
