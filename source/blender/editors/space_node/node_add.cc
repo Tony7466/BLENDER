@@ -380,7 +380,7 @@ void NODE_OT_add_group(wmOperatorType *ot)
   PropertyRNA *prop = RNA_def_boolean(ot->srna,
                                       "show_datablock_in_node",
                                       true,
-                                      "Show the datablock selector in the node (not for assets)",
+                                      "Show the datablock selector in the node",
                                       "");
   RNA_def_property_flag(prop, (PropertyFlag)(PROP_SKIP_SAVE | PROP_HIDDEN));
 }
