@@ -422,7 +422,6 @@ static int sequencer_retiming_key_remove_exec(bContext *C, wmOperator * /* op */
     elem.key->flag |= DELETE_KEY;
   }
 
-  // xxx unsafe
   for (Sequence *seq : strips_to_handle) {
     for (int i = 0; i < seq->retiming_keys_num;) {
       SeqRetimingKey *key = seq->retiming_keys + i;

@@ -105,10 +105,11 @@ SeqRetimingKey *SEQ_retiming_ensure_last_key(const Scene *scene, Sequence *seq)
   if (!SEQ_retiming_is_allowed(seq)) {
     return nullptr;
   }
-
-  if (seq->retiming_keys != nullptr) {
-    return SEQ_retiming_add_key(scene, seq, SEQ_time_right_handle_frame_get(scene, seq));
+  if (seq->retiming_keys == nullptr) {
+    return nullptr;
   }
+
+  return SEQ_retiming_add_key(scene, seq, SEQ_time_right_handle_frame_get(scene, seq));
 }
 
 void SEQ_retiming_data_ensure(const Scene *scene, Sequence *seq)
