@@ -144,7 +144,6 @@ set(SRC
   nodes/node_geo_offset_point_in_curve.cc
   nodes/node_geo_offset_sdf_volume.cc
   nodes/node_geo_points.cc
-  nodes/node_geo_points_to_curves.cc
   nodes/node_geo_points_to_sdf_volume.cc
   nodes/node_geo_points_to_vertices.cc
   nodes/node_geo_points_to_volume.cc
@@ -214,7 +213,6 @@ set(LIB
   PRIVATE bf::intern::guardedalloc
   bf_nodes
   extern_fmtlib
-  PRIVATE bf::intern::atomic
 )
 
 if(WITH_BULLET)
