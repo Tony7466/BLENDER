@@ -9,7 +9,6 @@
 
 #include "BLI_array_utils.hh"
 
-#include "BLI_group_deduce.hh"
 #include "BLI_sort.hh"
 #include "BLI_task.hh"
 
@@ -79,6 +78,66 @@ static void copy_attributes(const AttributeAccessor src_attributes,
   });
 }
 
+static void deduce_curves(const Span<int> indices_of_curves,
+                          MutableSpan<int> r_offsets,
+                          MutableSpan<int> r_indices)
+{
+  offset_indices::build_reverse_offsets(indices_of_curves, r_offsets);
+  Array<int> counts(r_offsets.size(), 0);
+
+  for (const int64_t index : indices_of_curves.index_range()) {
+    const int curve_index = indices_of_curves[index];
+    r_indices[r_offsets[curve_index] + counts[curve_index]] = int(index);
+    counts[curve_index]++;
+  }
+}
+
+int identifiers_to_indices(MutableSpan<int> r_identifiers_to_indices)
+{
+  const VectorSet<int> deduplicated_groups(r_identifiers_to_indices);
+  threading::parallel_for(
+      r_identifiers_to_indices.index_range(), 2048, [&](const IndexRange range) {
+        for (int &value : r_identifiers_to_indices.slice(range)) {
+          value = deduplicated_groups.index_of(value);
+        }
+      });
+
+  Array<int> indices(deduplicated_groups.size());
+  std::iota(indices.begin(), indices.end(), 0);
+  parallel_sort(indices.begin(), indices.end(), [&](const int index_a, const int index_b) {
+    return deduplicated_groups[index_a] < deduplicated_groups[index_b];
+  });
+
+  threading::parallel_for(
+      r_identifiers_to_indices.index_range(), 2048, [&](const IndexRange range) {
+        for (int &value : r_identifiers_to_indices.slice(range)) {
+          value = indices[value];
+        }
+      });
+
+  return deduplicated_groups.size();
+}
+
+static Curves *curve_from_points(const AttributeAccessor attributes,
+                                 const bool weights_is_single,
+                                 const Span<float> weights,
+                                 const bke::AnonymousAttributePropagationInfo &propagation_info)
+{
+  Curves *curves_id = bke::curves_new_nomain_single(weights.size(), CURVE_TYPE_POLY);
+  bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+  curves.cyclic_for_write().fill(false);
+  if (weights_is_single) {
+    bke::copy_attributes(
+        attributes, ATTR_DOMAIN_POINT, propagation_info, {}, curves.attributes_for_write());
+    return curves_id;
+  }
+  Array<int> indices(weights.size());
+  std::iota(indices.begin(), indices.end(), 0);
+  grouped_sort(OffsetIndices<int>({0, int(weights.size())}), weights, indices);
+  copy_attributes(attributes, propagation_info, indices, curves.attributes_for_write());
+  return curves_id;
+}
+
 static Curves *curves_from_points(const PointCloud *points,
                                   const Field<int> &group_id_field,
                                   const Field<float> &weight_field,
@@ -89,41 +148,34 @@ static Curves *curves_from_points(const PointCloud *points,
   }
   const int domain_size = points->totpoint;
 
-  Array<int> group_ids(domain_size);
-  Array<float> weights(domain_size);
-
   const bke::PointCloudFieldContext context(*points);
   fn::FieldEvaluator evaluator(context, domain_size);
-  evaluator.add_with_destination(group_id_field, group_ids.as_mutable_span());
-  evaluator.add_with_destination(weight_field, weights.as_mutable_span());
+  evaluator.add(group_id_field);
+  evaluator.add(weight_field);
   evaluator.evaluate();
 
-  const bool curves_is_single = evaluator.get_evaluated<int>(0).is_single();
-  const bool weights_is_single = evaluator.get_evaluated<float>(1).is_single();
+  const VArray<int> group_ids_varray = evaluator.get_evaluated<int>(0);
+  const VArray<float> weights_varray = evaluator.get_evaluated<float>(1);
+
+  const bool curves_is_single = group_ids_varray.is_single();
+  const bool weights_is_single = weights_varray.is_single();
 
   if (curves_is_single) {
-    Curves *curves_id = bke::curves_new_nomain(domain_size, CURVE_TYPE_POLY);
-    bke::CurvesGeometry &curves = curves_id->geometry.wrap();
-    curves.cyclic_for_write().fill(false);
-    if (weights_is_single) {
-      bke::copy_attributes(points->attributes(),
-                           ATTR_DOMAIN_POINT,
-                           propagation_info,
-                           {},
-                           curves.attributes_for_write());
-      return curves_id;
-    }
-    const Array<int, 2> offset({0, domain_size});
-    Array<int> indices(domain_size);
-    std::iota(indices.begin(), indices.end(), 0);
-    grouped_sort(OffsetIndices<int>(offset), weights, indices);
-    copy_attributes(
-        points->attributes(), propagation_info, indices, curves.attributes_for_write());
-    return curves_id;
+    Array<float> weights(domain_size);
+    weights_varray.materialize(weights.as_mutable_span());
+    return curve_from_points(points->attributes(), weights_is_single, weights, propagation_info);
   }
 
-  const int total_curves = grouped_indices::identifiers_to_indices(group_ids, true);
-  const Span<int> indices_of_curves(group_ids);
+  Array<int> group_ids(domain_size);
+  group_ids_varray.materialize(group_ids.as_mutable_span());
+  const int total_curves = identifiers_to_indices(group_ids);
+  Array<float> weights(domain_size);
+  weights_varray.materialize(weights.as_mutable_span());
+  if (total_curves == 1) {
+    Array<float> weights(domain_size);
+    weights_varray.materialize(weights.as_mutable_span());
+    return curve_from_points(points->attributes(), weights_is_single, weights, propagation_info);
+  }
 
   Curves *curves_id = bke::curves_new_nomain(domain_size, total_curves);
   bke::CurvesGeometry &curves = curves_id->geometry.wrap();
@@ -132,12 +184,8 @@ static Curves *curves_from_points(const PointCloud *points,
   MutableSpan<int> offset = curves.offsets_for_write();
   offset.fill(0);
 
-  Array<int> indices(group_ids.size());
-  grouped_indices::from_indices(indices_of_curves,
-                                offset,
-                                indices.as_mutable_span(),
-                                grouped_indices::is_fragmented(indices_of_curves, total_curves),
-                                weights_is_single);
+  Array<int> indices(domain_size);
+  deduce_curves(group_ids, offset, indices.as_mutable_span());
   if (!weights_is_single) {
     grouped_sort(OffsetIndices<int>(offset), weights, indices);
   }
