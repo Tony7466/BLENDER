@@ -76,7 +76,6 @@ set(SRC
   intern/generic_vector_array.cc
   intern/generic_virtual_array.cc
   intern/generic_virtual_vector_array.cc
-  intern/group_deduce.cc
   intern/gsqueue.c
   intern/hash_md5.c
   intern/hash_mm2a.c
@@ -242,7 +241,6 @@ set(SRC
   BLI_generic_virtual_array.hh
   BLI_generic_virtual_vector_array.hh
   BLI_ghash.h
-  BLI_group_deduce.hh
   BLI_gsqueue.h
   BLI_hash.h
   BLI_hash.hh
@@ -508,7 +506,6 @@ if(WITH_GTESTS)
     tests/BLI_generic_span_test.cc
     tests/BLI_generic_vector_array_test.cc
     tests/BLI_ghash_test.cc
-    tests/BLI_group_deduce_test.cc
     tests/BLI_hash_mm2a_test.cc
     tests/BLI_heap_simple_test.cc
     tests/BLI_heap_test.cc
