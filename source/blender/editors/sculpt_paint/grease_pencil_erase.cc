@@ -288,6 +288,7 @@ struct EraseOperationExecutor {
       MutableSpan<std::pair<int, PointCircleSide>> r_point_ring,
       MutableSpan<SegmentCircleIntersection> r_intersections) const
   {
+    /* Each ring can generate zero, one or two intersections per segment. */
     const int intersections_max_per_segment = rings.size() * 2;
     const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
     const VArray<bool> src_cyclic = src.cyclic();
