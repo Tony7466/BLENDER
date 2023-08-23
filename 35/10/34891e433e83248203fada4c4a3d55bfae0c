@@ -1,2 +1,3 @@
 Referenced by issue #110328, The symmetry of the brush in sculpture mode only mirrors position but not rotation.
 Referenced by pull request #111425, Fix #110328: Clay Strip symmetry does not mirror rotation
+Referenced by commit beaf4854b1684275088daf47554cb259662c82ca, Fix #110328: Clay Strip symmetry does not mirror rotation
