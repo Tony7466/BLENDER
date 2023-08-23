@@ -119,12 +119,17 @@ static void world_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int
 
 static void world_foreach_id(ID *id, LibraryForeachIDData *data)
 {
-  World *world = (World *)id;
+  World *world = reinterpret_cast<World *>(id);
+  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
 
   if (world->nodetree) {
     /* nodetree **are owned by IDs**, treat them as mere sub-data and not real ID! */
     BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
         data, BKE_library_foreach_ID_embedded(data, (ID **)&world->nodetree));
+  }
+
+  if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
+    BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, world->ipo, IDWALK_CB_USER);
   }
 }
 
@@ -138,10 +143,6 @@ static void world_blend_write(BlendWriter *writer, ID *id, const void *id_addres
   /* write LibData */
   BLO_write_id_struct(writer, World, id_address, &wrld->id);
   BKE_id_blend_write(writer, &wrld->id);
-
-  if (wrld->adt) {
-    BKE_animdata_blend_write(writer, wrld->adt);
-  }
 
   /* nodetree is integral part of world, no libdata */
   if (wrld->nodetree) {
@@ -166,8 +167,6 @@ static void world_blend_write(BlendWriter *writer, ID *id, const void *id_addres
 static void world_blend_read_data(BlendDataReader *reader, ID *id)
 {
   World *wrld = (World *)id;
-  BLO_read_data_address(reader, &wrld->adt);
-  BKE_animdata_blend_read_data(reader, wrld->adt);
 
   BLO_read_data_address(reader, &wrld->preview);
   BKE_previewimg_blend_read(reader, wrld->preview);

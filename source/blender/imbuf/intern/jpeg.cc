@@ -27,6 +27,7 @@
 #include "IMB_metadata.h"
 #include "imbuf.h"
 
+#include <cstring>
 #include <jerror.h>
 #include <jpeglib.h>
 
@@ -85,13 +86,6 @@ static void jpeg_error(j_common_ptr cinfo)
 /*----------------------------------------------------------
  * INPUT HANDLER FROM MEMORY
  *---------------------------------------------------------- */
-
-#if 0
-typedef struct {
-  uchar *buffer;
-  int filled;
-} buffer_struct;
-#endif
 
 struct my_source_mgr {
   jpeg_source_mgr pub; /* public fields */

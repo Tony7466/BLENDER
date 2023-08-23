@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -282,11 +282,23 @@ static bool library_foreach_ID_link(Main *bmain,
       data.cb_flag_clear = inherit_data->cb_flag_clear;
     }
 
-    if (bmain != nullptr && bmain->relations != nullptr && (flag & IDWALK_READONLY) &&
-        (flag & (IDWALK_DO_INTERNAL_RUNTIME_POINTERS | IDWALK_DO_LIBRARY_POINTER)) == 0 &&
-        (((bmain->relations->flag & MAINIDRELATIONS_INCLUDE_UI) == 0) ==
-         ((data.flag & IDWALK_INCLUDE_UI) == 0)))
+    bool use_bmain_relations = bmain != nullptr && bmain->relations != nullptr &&
+                               (flag & IDWALK_READONLY);
+    /* Including UI-related ID pointers should match with the relevant setting in Main relations
+     * cache. */
+    if (use_bmain_relations && (((bmain->relations->flag & MAINIDRELATIONS_INCLUDE_UI) == 0) !=
+                                ((data.flag & IDWALK_INCLUDE_UI) == 0)))
     {
+      use_bmain_relations = false;
+    }
+    /* No special 'internal' handling of ID pointers is covered by Main relations cache. */
+    if (use_bmain_relations &&
+        (flag & (IDWALK_DO_INTERNAL_RUNTIME_POINTERS | IDWALK_DO_LIBRARY_POINTER |
+                 IDWALK_DO_DEPRECATED_POINTERS)))
+    {
+      use_bmain_relations = false;
+    }
+    if (use_bmain_relations) {
       /* Note that this is minor optimization, even in worst cases (like id being an object with
        * lots of drivers and constraints and modifiers, or material etc. with huge node tree),
        * but we might as well use it (Main->relations is always assumed valid,
@@ -323,6 +335,14 @@ static bool library_foreach_ID_link(Main *bmain,
                          IDWALK_CB_USER | IDWALK_CB_OVERRIDE_LIBRARY_REFERENCE);
 
       CALLBACK_INVOKE_ID(id->override_library->hierarchy_root, IDWALK_CB_LOOPBACK);
+      LISTBASE_FOREACH (IDOverrideLibraryProperty *, op, &id->override_library->properties) {
+        LISTBASE_FOREACH (IDOverrideLibraryPropertyOperation *, opop, &op->operations) {
+          CALLBACK_INVOKE_ID(opop->subitem_reference_id,
+                             IDWALK_CB_DIRECT_WEAK_LINK | IDWALK_CB_OVERRIDE_LIBRARY_REFERENCE);
+          CALLBACK_INVOKE_ID(opop->subitem_local_id,
+                             IDWALK_CB_DIRECT_WEAK_LINK | IDWALK_CB_OVERRIDE_LIBRARY_REFERENCE);
+        }
+      }
     }
 
     IDP_foreach_property(id->properties,

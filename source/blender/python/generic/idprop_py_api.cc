@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -222,7 +222,7 @@ static int BPy_IDGroup_SetData(BPy_IDProperty *self, IDProperty *prop, PyObject 
       break;
     }
     case IDP_FLOAT: {
-      float fvalue = (float)PyFloat_AsDouble(value);
+      float fvalue = float(PyFloat_AsDouble(value));
       if (fvalue == -1 && PyErr_Occurred()) {
         PyErr_SetString(PyExc_TypeError, "expected a float");
         return -1;
@@ -1739,21 +1739,30 @@ PyDoc_STRVAR(BPy_IDArray_get_typecode_doc,
              "The type of the data in the array {'f': float, 'd': double, 'i': int, 'b': bool}.");
 static PyObject *BPy_IDArray_get_typecode(BPy_IDArray *self, void * /*closure*/)
 {
+  const char *typecode;
   switch (self->prop->subtype) {
     case IDP_FLOAT:
-      return PyUnicode_FromString("f");
+      typecode = "f";
+      break;
     case IDP_DOUBLE:
-      return PyUnicode_FromString("d");
+      typecode = "d";
+      break;
     case IDP_INT:
-      return PyUnicode_FromString("i");
+      typecode = "i";
+      break;
     case IDP_BOOLEAN:
-      return PyUnicode_FromString("b");
+      typecode = "b";
+      break;
+    default: {
+      PyErr_Format(PyExc_RuntimeError,
+                   "%s: invalid/corrupt array type '%d'!",
+                   __func__,
+                   self->prop->subtype);
+
+      return nullptr;
+    }
   }
-
-  PyErr_Format(
-      PyExc_RuntimeError, "%s: invalid/corrupt array type '%d'!", __func__, self->prop->subtype);
-
-  return nullptr;
+  return PyUnicode_FromString(typecode);
 }
 
 static PyGetSetDef BPy_IDArray_getseters[] = {
@@ -1807,9 +1816,9 @@ static PyObject *BPy_IDArray_GetItem(BPy_IDArray *self, Py_ssize_t index)
     case IDP_DOUBLE:
       return PyFloat_FromDouble(((double *)IDP_Array(self->prop))[index]);
     case IDP_INT:
-      return PyLong_FromLong((long)((int *)IDP_Array(self->prop))[index]);
+      return PyLong_FromLong(long(((int *)IDP_Array(self->prop))[index]));
     case IDP_BOOLEAN:
-      return PyBool_FromLong((long)((int8_t *)IDP_Array(self->prop))[index]);
+      return PyBool_FromLong(long(((int8_t *)IDP_Array(self->prop))[index]));
   }
 
   PyErr_Format(
@@ -2225,7 +2234,7 @@ static PyObject *BPyInit_idprop_types()
   IDProp_Init_Types();
   IDPropertyUIData_Init_Types();
 
-  /* bmesh_py_types.c */
+  /* `bmesh_py_types.cc` */
   PyModule_AddType(submodule, &BPy_IDGroup_Type);
 
   PyModule_AddType(submodule, &BPy_IDGroup_ViewKeys_Type);

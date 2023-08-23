@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -24,12 +24,16 @@ struct Scene;
 struct ScrArea;
 struct View3D;
 struct bContext;
+struct Object;
+struct PointerRNA;
 struct rcti;
 struct wmEvent;
 struct wmKeyConfig;
 struct wmKeyMap;
 struct wmOperator;
 struct wmOperatorType;
+struct wmTimer;
+struct wmWindow;
 struct wmWindowManager;
 
 enum eV3D_OpPropFlag {
@@ -71,12 +75,10 @@ enum eViewOpsFlag {
    * Some operations don't require this (view zoom/pan or NDOF where subtle rotation is common
    * so we don't want it to trigger auto-perspective). */
   VIEWOPS_FLAG_PERSP_ENSURE = (1 << 2),
-  /** When set, ignore any options that depend on initial cursor location. */
-  VIEWOPS_FLAG_USE_MOUSE_INIT = (1 << 3),
 
-  VIEWOPS_FLAG_ZOOM_TO_MOUSE = (1 << 4),
+  VIEWOPS_FLAG_ZOOM_TO_MOUSE = (1 << 3),
 
-  VIEWOPS_FLAG_INIT_ZFAC = (1 << 5),
+  VIEWOPS_FLAG_INIT_ZFAC = (1 << 4),
 };
 ENUM_OPERATORS(eViewOpsFlag, VIEWOPS_FLAG_INIT_ZFAC);
 
@@ -126,8 +128,8 @@ struct ViewOpsData {
 
     /** #wmEvent.xy. */
     int event_xy[2];
-    /** Offset to use when #VIEWOPS_FLAG_USE_MOUSE_INIT is not set.
-     * so we can simulate pressing in the middle of the screen. */
+    /* Offset used when "use_cursor_init" is false to simulate pressing in the middle of the
+     * region. */
     int event_xy_offset[2];
     /** #wmEvent.type that triggered the operator. */
     int event_type;
@@ -141,7 +143,7 @@ struct ViewOpsData {
     float mousevec[3];
 
     /** Used for roll */
-    struct Dial *dial;
+    Dial *dial;
   } init;
 
   /** Previous state (previous modal event handled). */
@@ -184,7 +186,8 @@ struct ViewOpsData {
   void init_navigation(bContext *C,
                        const wmEvent *event,
                        const ViewOpsType *nav_type,
-                       const bool use_cursor_init);
+                       const float dyn_ofs_override[3] = nullptr,
+                       const bool use_cursor_init = false);
   void end_navigation(bContext *C);
 
 #ifdef WITH_CXX_GUARDEDALLOC
@@ -305,7 +308,7 @@ extern const ViewOpsType ViewOpsType_rotate;
  * Each of the struct members may be NULL to signify they aren't to be adjusted.
  */
 struct V3D_SmoothParams {
-  struct Object *camera_old, *camera;
+  Object *camera_old, *camera;
   const float *ofs, *quat, *dist, *lens;
 
   /** Alternate rotation center, when set `ofs` must be NULL. */
