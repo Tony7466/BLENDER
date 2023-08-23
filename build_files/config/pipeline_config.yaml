@@ -21,12 +21,12 @@ buildbot:
     cmake:
         default:
             version: any
-            overrides: {"WITH_CYCLES_DEVICE_ONEAPI": "OFF"}
+            overrides: {}
         darwin-arm64:
-            overrides: {"WITH_CYCLES_DEVICE_ONEAPI": "OFF"}
+            overrides: {}
         darwin-x86_64:
-            overrides: {"WITH_CYCLES_DEVICE_ONEAPI": "OFF"}
+            overrides: {}
         linux-x86_64:
-            overrides: {"WITH_CYCLES_DEVICE_ONEAPI": "OFF"}
+            overrides: {}
         windows-amd64:
-            overrides: {"WITH_CYCLES_DEVICE_ONEAPI": "OFF"}
+            overrides: {}
