@@ -4323,7 +4323,6 @@ static void ui_def_but_rna__menu(bContext *C, uiLayout *layout, void *but_p)
   int col_rows = 0;
   float col_width = 0.0f;
 
-
   for (const EnumPropertyItem *item = item_array; item->identifier; item++, totitems++) {
     col_rows++;
     if (col_rows > 1 && (col_rows > max_rows || (!item->identifier[0] && item->name))) {
