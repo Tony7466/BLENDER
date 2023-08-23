@@ -121,7 +121,7 @@ struct EraseOperationExecutor {
      * circle, false if it corresponds to an outside/inside transition . */
     bool inside_outside_intersection = false;
   };
-  enum PointCircleSide { Outside, OutsideInsideBoundary, InsideOutsideBoundary, Inside };
+  enum class PointCircleSide { Outside, OutsideInsideBoundary, InsideOutsideBoundary, Inside };
 
   /**
    * Computes the intersection between the eraser tool and a 2D segment, using integer values.
@@ -165,8 +165,8 @@ struct EraseOperationExecutor {
        * account for intersections in this case.
        */
       r_mu0 = r_mu1 = -1.0f;
-      point_side = Outside;
-      point_after_side = Outside;
+      point_side = PointCircleSide::Outside;
+      point_after_side = PointCircleSide::Outside;
       return 0;
     }
 
@@ -184,11 +184,13 @@ struct EraseOperationExecutor {
 
     /* The endpoints are on the circle's boundary if one of the intersection falls exactly on them.
      */
-    point_side = (mu0 == 0) ? OutsideInsideBoundary :
-                              ((mu1 == 0) ? InsideOutsideBoundary : Inside);
+    point_side = (mu0 == 0) ? PointCircleSide::OutsideInsideBoundary :
+                              ((mu1 == 0) ? PointCircleSide::InsideOutsideBoundary :
+                                            PointCircleSide::Inside);
     point_after_side = (mu0 == segment_length) ?
-                           OutsideInsideBoundary :
-                           ((mu1 == segment_length) ? InsideOutsideBoundary : Inside);
+                           PointCircleSide::OutsideInsideBoundary :
+                           ((mu1 == segment_length) ? PointCircleSide::InsideOutsideBoundary :
+                                                      PointCircleSide::Inside);
 
     /* Compute the normalized position of the intersection in the curve. */
     r_mu0 = mu0 / float(segment_length);
@@ -202,8 +204,8 @@ struct EraseOperationExecutor {
       if (side_mu0 == side_mu1) {
         /* If they are on the same side of the line, then none of the point are inside the circle.
          */
-        point_side = Outside;
-        point_after_side = Outside;
+        point_side = PointCircleSide::Outside;
+        point_after_side = PointCircleSide::Outside;
         return 0;
       }
 
@@ -214,8 +216,8 @@ struct EraseOperationExecutor {
 
     if (is_mu0_inside && is_mu1_inside) {
       /* Both intersections lie within the segment, none of the points are inside the circle */
-      point_side = Outside;
-      point_after_side = Outside;
+      point_side = PointCircleSide::Outside;
+      point_after_side = PointCircleSide::Outside;
       return 2;
     }
 
@@ -224,8 +226,9 @@ struct EraseOperationExecutor {
     const int8_t side_outside_intersection = is_mu0_inside ? side_mu1 : side_mu0;
 
     /* If the other intersection lies before the first endpoint, the first endpoint is inside. */
-    point_side = (side_outside_intersection == -1) ? point_side : Outside;
-    point_after_side = (side_outside_intersection == 1) ? point_after_side : Outside;
+    point_side = (side_outside_intersection == -1) ? point_side : PointCircleSide::Outside;
+    point_after_side = (side_outside_intersection == 1) ? point_after_side :
+                                                          PointCircleSide::Outside;
 
     if (is_mu1_inside) {
       std::swap(r_mu0, r_mu1);
@@ -286,8 +289,8 @@ struct EraseOperationExecutor {
           /* Note: We don't account for boundaries here, since we are not going to split any
            * curve. */
           r_point_side[src_point] = (squared_distance <= this->eraser_squared_radius_pixels) ?
-                                        Inside :
-                                        Outside;
+                                        PointCircleSide::Inside :
+                                        PointCircleSide::Outside;
           continue;
         }
 
@@ -596,7 +599,7 @@ struct EraseOperationExecutor {
     const int64_t src_points_num = src.points_num();
 
     /* Compute intersections between the eraser and the curves in the source domain. */
-    Array<PointCircleSide> src_point_side(src_points_num, Outside);
+    Array<PointCircleSide> src_point_side(src_points_num, PointCircleSide::Outside);
     Array<Vector<SegmentCircleIntersection>> src_intersections(src_points_num);
     curves_intersections_and_points_sides(
         src, screen_space_positions, src_point_side, src_intersections);
@@ -613,9 +616,12 @@ struct EraseOperationExecutor {
         const PointCircleSide point_side = src_point_side[src_point];
 
         /* Add the source point only if it does not lie inside of the eraser. */
-        if (point_side != Inside) {
-          dst_points.append(
-              {src_point, src_next_point, 0.0f, true, (point_side == InsideOutsideBoundary)});
+        if (point_side != PointCircleSide::Inside) {
+          dst_points.append({src_point,
+                             src_next_point,
+                             0.0f,
+                             true,
+                             (point_side == PointCircleSide::InsideOutsideBoundary)});
         }
 
         /* Add all intersections with the eraser. */
