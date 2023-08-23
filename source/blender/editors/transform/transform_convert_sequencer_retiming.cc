@@ -11,7 +11,6 @@
 #include "DNA_space_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 
 #include "BKE_context.h"
 #include "BKE_report.h"
@@ -26,7 +25,7 @@
 
 #include "UI_view2d.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "transform.hh"

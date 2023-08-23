@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "usd_writer_abstract.h"
@@ -113,6 +113,7 @@ pxr::UsdShadeMaterial USDAbstractWriter::ensure_usd_material(const HierarchyCont
   if (usd_material) {
     return usd_material;
   }
+
   std::string active_uv = get_mesh_active_uvlayer_name(context.object);
   return create_usd_material(usd_export_context_, usd_path, material, active_uv);
 }

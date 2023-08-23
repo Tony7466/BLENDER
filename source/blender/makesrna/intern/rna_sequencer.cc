@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,7 +18,7 @@
 
 #include "BLI_iterator.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_string_utf8_symbols.h"
 #include "BLI_string_utils.h"
 
@@ -32,9 +32,9 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -503,7 +503,7 @@ static void rna_Sequence_frame_offset_start_range(
     PointerRNA *ptr, float *min, float *max, float * /*softmin*/, float * /*softmax*/)
 {
   Sequence *seq = (Sequence *)ptr->data;
-  *min = ELEM(seq->type, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD) ? 0 : INT_MIN;
+  *min = (seq->type == SEQ_TYPE_SOUND_RAM) ? 0 : INT_MIN;
   *max = seq->len - seq->endofs - 1;
 }
 
@@ -511,7 +511,7 @@ static void rna_Sequence_frame_offset_end_range(
     PointerRNA *ptr, float *min, float *max, float * /*softmin*/, float * /*softmax*/)
 {
   Sequence *seq = (Sequence *)ptr->data;
-  *min = ELEM(seq->type, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD) ? 0 : INT_MIN;
+  *min = (seq->type == SEQ_TYPE_SOUND_RAM) ? 0 : INT_MIN;
   *max = seq->len - seq->startofs - 1;
 }
 
@@ -710,7 +710,8 @@ static void rna_Sequence_name_set(PointerRNA *ptr, const char *value)
 
   /* Don't rename everywhere because these are per scene. */
 #  if 0
-  BKE_animdata_fix_paths_rename_all(nullptr, "sequence_editor.sequences_all", oldname, seq->name + 2);
+  BKE_animdata_fix_paths_rename_all(
+      nullptr, "sequence_editor.sequences_all", oldname, seq->name + 2);
 #  endif
   adt = BKE_animdata_from_id(&scene->id);
   if (adt) {
@@ -985,10 +986,10 @@ static void rna_SoundSequence_filename_set(PointerRNA *ptr, const char *value)
 {
   Sequence *seq = (Sequence *)(ptr->data);
   BLI_path_split_dir_file(value,
-                    seq->strip->dirpath,
-                    sizeof(seq->strip->dirpath),
-                    seq->strip->stripdata->name,
-                    sizeof(seq->strip->stripdata->name));
+                          seq->strip->dirpath,
+                          sizeof(seq->strip->dirpath),
+                          seq->strip->stripdata->name,
+                          sizeof(seq->strip->stripdata->name));
 }
 
 static void rna_SequenceElement_filename_set(PointerRNA *ptr, const char *value)

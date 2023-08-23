@@ -10,7 +10,6 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_map.hh"
-#include "BLI_math.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
@@ -33,7 +32,7 @@
 #include "WM_api.hh"
 #include "WM_toolsystem.h"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "UI_interface.hh"
 #include "UI_view2d.hh"
@@ -252,7 +251,7 @@ static bool freeze_frame_add_from_retiming_selection(const bContext *C,
   Scene *scene = CTX_data_scene(C);
   bool success = false;
 
-  for (auto item: SEQ_retiming_selection_get(scene).items()) {
+  for (auto item : SEQ_retiming_selection_get(scene).items()) {
     const int timeline_frame = SEQ_retiming_key_timeline_frame_get(scene, item.value, item.key);
     success |= freeze_frame_add_new_for_seq(C, op, item.value, timeline_frame, duration);
     SEQ_relations_invalidate_cache_raw(scene, item.value);
@@ -348,7 +347,7 @@ static bool transition_add_from_retiming_selection(const bContext *C,
   Scene *scene = CTX_data_scene(C);
   bool success = false;
 
-  for (auto item: SEQ_retiming_selection_get(scene).items()) {
+  for (auto item : SEQ_retiming_selection_get(scene).items()) {
     const int timeline_frame = SEQ_retiming_key_timeline_frame_get(scene, item.value, item.key);
     success |= transition_add_new_for_seq(C, op, item.value, timeline_frame, duration);
   }
@@ -418,7 +417,7 @@ static int sequencer_retiming_key_remove_exec(bContext *C, wmOperator * /* op */
 
   blender::Vector<Sequence *> strips_to_handle;
 
-  for (auto item: SEQ_retiming_selection_get(scene).items()) {
+  for (auto item : SEQ_retiming_selection_get(scene).items()) {
     strips_to_handle.append_non_duplicates(item.value);
     item.key->flag |= DELETE_KEY;
   }
@@ -499,7 +498,7 @@ static int segment_speed_set_exec(const bContext *C, const wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  for (auto item: SEQ_retiming_selection_get(scene).items()) {
+  for (auto item : SEQ_retiming_selection_get(scene).items()) {
     SEQ_retiming_key_speed_set(scene, item.value, item.key, RNA_float_get(op->ptr, "speed"));
     SEQ_relations_invalidate_cache_raw(scene, item.value);
   }
