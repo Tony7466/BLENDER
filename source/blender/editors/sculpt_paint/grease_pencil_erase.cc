@@ -391,11 +391,11 @@ struct EraseOperationExecutor {
   int64_t curves_intersections_and_points_sides(
       const bke::CurvesGeometry &src,
       const Span<float2> screen_space_positions,
-      const int intersections_max_per_segment,
+      const Span<EraserRing> rings,
       MutableSpan<std::pair<int, PointCircleSide>> r_point_ring,
-      MutableSpan<SegmentCircleIntersection> r_intersections,
-      const Span<EraserRing> rings) const
+      MutableSpan<SegmentCircleIntersection> r_intersections) const
   {
+    const int intersections_max_per_segment = rings.size() * 2;
     const OffsetIndices<int> src_points_by_curve = src.points_by_curve();
     const VArray<bool> src_cyclic = src.cyclic();
 
@@ -984,12 +984,8 @@ struct EraseOperationExecutor {
                                                           {-1, PointCircleSide::Outside});
     Array<SegmentCircleIntersection> src_intersections(src_points_num *
                                                        intersections_max_per_segment);
-    curves_intersections_and_points_sides(src,
-                                          screen_space_positions,
-                                          intersections_max_per_segment,
-                                          src_point_ring,
-                                          src_intersections,
-                                          eraser_rings);
+    curves_intersections_and_points_sides(
+        src, screen_space_positions, eraser_rings, src_point_ring, src_intersections);
 
     /* Function to get the resulting opacity at a specific point in the source. */
     const VArray<float> &src_opacity = *(
