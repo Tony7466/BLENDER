@@ -41,6 +41,8 @@
 #include "BKE_scene.h"
 #include "BKE_tracking.h"
 
+#include "NOD_socket.hh"
+
 #include "BLT_translation.h"
 
 #include "BLO_read_write.h"
@@ -454,6 +456,9 @@ static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *nt
     new_socket->attribute_domain = socket->attribute_domain;
     MEM_SAFE_FREE(new_socket->default_attribute_name);
     new_socket->default_attribute_name = BLI_strdup_null(socket->default_attribute_name);
+
+    node_socket_copy_default_value_data(
+        eNodeSocketDatatype(socket->type), new_socket->socket_data, socket->default_value);
   }
   LISTBASE_FOREACH (const bNodeSocket *, socket, &ntree->inputs_legacy) {
     NodeTreeInterfaceSocketFlag flag = NODE_INTERFACE_SOCKET_INPUT;
@@ -469,6 +474,9 @@ static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *nt
     new_socket->attribute_domain = socket->attribute_domain;
     MEM_SAFE_FREE(new_socket->default_attribute_name);
     new_socket->default_attribute_name = BLI_strdup_null(socket->default_attribute_name);
+
+    node_socket_copy_default_value_data(
+        eNodeSocketDatatype(socket->type), new_socket->socket_data, socket->default_value);
   }
 }
 
