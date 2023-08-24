@@ -40,7 +40,6 @@ static void lightprobe_foreach_id(ID *id, LibraryForeachIDData *data)
 {
   LightProbe *probe = (LightProbe *)id;
 
-  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, probe->image, IDWALK_CB_USER);
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, probe->visibility_grp, IDWALK_CB_NOP);
 }
 
@@ -82,7 +81,6 @@ IDTypeInfo IDType_ID_LP = {
     /*blend_write*/ lightprobe_blend_write,
     /*blend_read_data*/ nullptr,
     /*blend_read_lib*/ lightprobe_blend_read_lib,
-    /*blend_read_expand*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 

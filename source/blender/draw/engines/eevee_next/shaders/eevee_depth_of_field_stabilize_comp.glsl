@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Temporal Stabilization of the Depth of field input.
@@ -12,7 +15,7 @@
  * - Output of setup pass (halfres).
  * Outputs:
  * - Stabilized Color and CoC (halfres).
- **/
+ */
 
 #pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
