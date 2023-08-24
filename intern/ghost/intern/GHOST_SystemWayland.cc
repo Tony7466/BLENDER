@@ -1,3 +1,4 @@
+#include "GHOST_SystemWayland.hh"
 /* SPDX-FileCopyrightText: 2020-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -6284,6 +6285,12 @@ GHOST_TSuccess GHOST_SystemWayland::setCursorPosition(const int32_t x, const int
     return setCursorPositionClientRelative_impl(seat, win, x, y);
   }
   return GHOST_kFailure;
+}
+
+GHOST_TSuccess GHOST_SystemWayland::getPixelAtCursor(float r_color[3]) const
+{
+  wl_display *wlDisplay = display_->wl.display;
+  
 }
 
 void GHOST_SystemWayland::getMainDisplayDimensions(uint32_t &width, uint32_t &height) const

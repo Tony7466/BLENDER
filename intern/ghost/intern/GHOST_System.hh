@@ -62,6 +62,8 @@ class GHOST_System : public GHOST_ISystem {
    */
   virtual uint64_t getMilliSeconds() const;
 
+  
+
   /**
    * Installs a timer.
    *
