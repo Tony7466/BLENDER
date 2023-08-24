@@ -199,8 +199,8 @@ static bool get_keyframe_extents(bAnimContext *ac, float *min, float *max, const
         }
       }
       else if (ale->datatype == ALE_GREASE_PENCIL_CEL) {
-        using namespace blender::bke::greasepencil;
-        const Layer &layer = static_cast<GreasePencilLayer *>(ale->data)->wrap();
+        const blender::bke::greasepencil::Layer &layer =
+            static_cast<GreasePencilLayer *>(ale->data)->wrap();
 
         for (const auto [key, frame] : layer.frames().items()) {
           if (onlySel && !frame.is_selected()) {
