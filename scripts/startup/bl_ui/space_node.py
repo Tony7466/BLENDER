@@ -896,12 +896,6 @@ class NODE_PT_node_tree_declaration(Panel):
 
         ops_col.separator()
 
-        up_down_col = ops_col.column(align=True)
-        props = up_down_col.operator("node.interface_item_move", icon='TRIA_UP', text="")
-        props.direction = 'UP'
-        props = up_down_col.operator("node.interface_item_move", icon='TRIA_DOWN', text="")
-        props.direction = 'DOWN'
-
         active_item = tree.interface.active
         if active_item is not None:
             if active_item.item_type == 'SOCKET':

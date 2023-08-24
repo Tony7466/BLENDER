@@ -359,35 +359,6 @@ class NODE_OT_interface_item_remove(NodeInterfaceOperator, Operator):
         return {'FINISHED'}
 
 
-class NODE_OT_interface_item_move(NodeInterfaceOperator, Operator):
-    '''Move an item up or down in the interface'''
-    bl_idname = "node.interface_item_move"
-    bl_label = "Move Item"
-    bl_options = {'REGISTER', 'UNDO'}
-
-    direction: EnumProperty(
-        name="Direction",
-        items=[('UP', "Up", ""), ('DOWN', "Down", "")],
-        default='UP',
-    )
-
-    def execute(self, context):
-        snode = context.space_data
-        tree = snode.edit_tree
-        interface = tree.interface
-        item = interface.active
-        if item is None:
-            return {'CANCELLED'}
-
-        if self.direction == 'UP':
-            interface.move(item, item.position - 1)
-        elif self.direction == 'DOWN':
-            interface.move(item, item.position + 1)
-        interface.active = item
-
-        return {'FINISHED'}
-
-
 classes = (
     NodeSetting,
 
@@ -398,6 +369,5 @@ classes = (
     NODE_OT_interface_item_new,
     NODE_OT_interface_item_copy,
     NODE_OT_interface_item_remove,
-    NODE_OT_interface_item_move,
     NODE_OT_tree_path_parent,
 )
