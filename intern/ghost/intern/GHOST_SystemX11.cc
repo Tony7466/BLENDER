@@ -1526,6 +1526,36 @@ void GHOST_SystemX11::processEvent(XEvent *xe)
   }
 }
 
+GHOST_TSuccess GHOST_SystemX11::getPixelAtCursor(float r_color[3]) const
+{
+  XColor c;
+  int32_t x, y;
+
+  if (getCursorPosition(x, y) == GHOST_kFailure) {
+    return GHOST_kFailure;
+  }
+  auto *image = XGetImage(m_display,
+                          XRootWindow(m_display, XDefaultScreen(m_display)),
+                          x,
+                          y,
+                          1,
+                          1,
+                          AllPlanes,
+                          XYPixmap);
+  if (image == nullptr) {
+    return GHOST_kFailure;
+  }
+  c.pixel = XGetPixel(image, 0, 0);
+  XFree(image);
+  XQueryColor(m_display, XDefaultColormap(m_display, XDefaultScreen(m_display)), &c);
+
+  /* X11 returns colors in the [0, 65535] range, so we need to scale back to [0, 1] for Blender. */
+  r_color[0] = c.red / 65535.0f;
+  r_color[1] = c.green / 65535.0f;
+  r_color[2] = c.blue / 65535.0f;
+  return GHOST_kSuccess;
+}
+
 GHOST_TSuccess GHOST_SystemX11::getModifierKeys(GHOST_ModifierKeys &keys) const
 {
 
@@ -1693,8 +1723,6 @@ GHOST_TCapabilityFlag GHOST_SystemX11::getCapabilities() const
 {
   return GHOST_TCapabilityFlag(GHOST_CAPABILITY_FLAG_ALL &
                                ~(
-                                   /* No support yet for desktop sampling. */
-                                   GHOST_kCapabilityDesktopSample |
                                    /* No support yet for image copy/paste. */
                                    GHOST_kCapabilityClipboardImages));
 }
