@@ -3243,7 +3243,7 @@ static bool keyframe_jump_poll(bContext *C)
   ScrArea *area = CTX_wm_area(C);
   /* The area can be a nullptr when the search menu is called while the cursor is outside the
    * blender window. */
-  return ED_operator_screenactive_norender(C) && (area && area->spacetype != SPACE_GRAPH);
+  return ED_operator_screenactive_norender(C) && (!area || area->spacetype != SPACE_GRAPH);
 }
 
 static void SCREEN_OT_keyframe_jump(wmOperatorType *ot)
