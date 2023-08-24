@@ -514,6 +514,10 @@ static void construct_interface_as_legacy_sockets(bNodeTree *ntree)
                                 eNodeSocketInOut in_out) -> bNodeSocket * {
     bNodeSocket *iosock = make_socket(
         ntree, in_out, socket.socket_type, socket.name, socket.identifier);
+    if (!iosock) {
+      return nullptr;
+    }
+
     if (socket.description) {
       BLI_strncpy(iosock->description, socket.description, sizeof(iosock->description));
     }
@@ -541,10 +545,14 @@ static void construct_interface_as_legacy_sockets(bNodeTree *ntree)
             node_interface::get_item_as<bNodeTreeInterfaceSocket>(&item))
     {
       if (socket->flag & NODE_INTERFACE_SOCKET_INPUT) {
-        BLI_addtail(&ntree->inputs_legacy, make_legacy_socket(*socket, SOCK_IN));
+        if (bNodeSocket *legacy_socket = make_legacy_socket(*socket, SOCK_IN)) {
+          BLI_addtail(&ntree->inputs_legacy, legacy_socket);
+        }
       }
       if (socket->flag & NODE_INTERFACE_SOCKET_OUTPUT) {
-        BLI_addtail(&ntree->outputs_legacy, make_legacy_socket(*socket, SOCK_OUT));
+        if (bNodeSocket *legacy_socket = make_legacy_socket(*socket, SOCK_OUT)) {
+          BLI_addtail(&ntree->outputs_legacy, legacy_socket);
+        }
       }
     }
     return true;
