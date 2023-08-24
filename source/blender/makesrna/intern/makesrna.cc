@@ -28,12 +28,6 @@
 
 #include "rna_internal.h"
 
-#ifdef _WIN32
-#  ifndef snprintf
-#    define snprintf _snprintf
-#  endif
-#endif
-
 #include "CLG_log.h"
 
 static CLG_LogRef LOG = {"makesrna"};
@@ -67,10 +61,10 @@ static bool file_older(const char *file1, const char *file2)
   }
 
   if (stat(file1, &st1)) {
-    return 0;
+    return false;
   }
   if (stat(file2, &st2)) {
-    return 0;
+    return false;
   }
 
   return (st1.st_mtime < st2.st_mtime);
@@ -426,17 +420,17 @@ static void rna_print_id_get(FILE *f, PropertyDefRNA * /*dp*/)
 static void rna_construct_function_name(
     char *buffer, int size, const char *structname, const char *propname, const char *type)
 {
-  snprintf(buffer, size, "%s_%s_%s", structname, propname, type);
+  BLI_snprintf(buffer, size, "%s_%s_%s", structname, propname, type);
 }
 
 static void rna_construct_wrapper_function_name(
     char *buffer, int size, const char *structname, const char *propname, const char *type)
 {
   if (type == nullptr || type[0] == '\0') {
-    snprintf(buffer, size, "%s_%s", structname, propname);
+    BLI_snprintf(buffer, size, "%s_%s", structname, propname);
   }
   else {
-    snprintf(buffer, size, "%s_%s_%s", structname, propname, type);
+    BLI_snprintf(buffer, size, "%s_%s_%s", structname, propname, type);
   }
 }
 
@@ -4736,6 +4730,7 @@ static RNAProcessItem PROCESS_ITEMS[] = {
     {"rna_nla.cc", nullptr, RNA_def_nla},
     {"rna_nodetree.cc", nullptr, RNA_def_nodetree},
     {"rna_node_socket.cc", nullptr, RNA_def_node_socket_subtypes},
+    {"rna_node_tree_interface.cc", nullptr, RNA_def_node_tree_interface},
     {"rna_object.cc", "rna_object_api.cc", RNA_def_object},
     {"rna_object_force.cc", nullptr, RNA_def_object_force},
     {"rna_depsgraph.cc", nullptr, RNA_def_depsgraph},

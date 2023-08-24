@@ -2217,16 +2217,16 @@ static void grease_pencil_node_fn(int event,
   bke::greasepencil::TreeNode &node = tree_element_cast<TreeElementGreasePencilNode>(te)->node();
 
   if (event == OL_DOP_SELECT) {
-    node.flag |= GP_LAYER_TREE_NODE_SELECT;
+    node.set_selected(true);
   }
   else if (event == OL_DOP_DESELECT) {
-    node.flag &= ~GP_LAYER_TREE_NODE_SELECT;
+    node.set_selected(false);
   }
   else if (event == OL_DOP_HIDE) {
-    node.flag |= GP_LAYER_TREE_NODE_HIDE;
+    node.set_visible(false);
   }
   else if (event == OL_DOP_UNHIDE) {
-    node.flag &= ~GP_LAYER_TREE_NODE_HIDE;
+    node.set_visible(true);
   }
 }
 
@@ -2594,7 +2594,7 @@ void OUTLINER_OT_object_operation(wmOperatorType *ot)
 
 using OutlinerDeleteFn = void (*)(bContext *C, ReportList *reports, Scene *scene, Object *ob);
 
-using ObjectEditData = struct ObjectEditData {
+struct ObjectEditData {
   GSet *objects_set;
   bool is_liboverride_allowed;
   bool is_liboverride_hierarchy_root_allowed;

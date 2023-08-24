@@ -7,6 +7,7 @@
 import os
 import subprocess
 import datetime
+import re
 
 from typing import (
     List,
@@ -14,6 +15,9 @@ from typing import (
     Optional,
     Tuple,
 )
+
+
+_GIT_COMMIT_COAUTHORS_RE = re.compile(r"^Co-authored-by:[ \t]*([^\n]+)$", re.MULTILINE)
 
 
 class GitCommit:
@@ -24,7 +28,6 @@ class GitCommit:
 
         # cached values
         "_author",
-        "_email",
         "_date",
         "_body",
         "_files",
@@ -37,7 +40,6 @@ class GitCommit:
         self._git_dir = git_dir
 
         self._author: Optional[str] = None
-        self._email: Optional[str] = None
         self._date: Optional[datetime.datetime] = None
         self._body: Optional[str] = None
         self._files: Optional[List[bytes]] = None
@@ -50,23 +52,29 @@ class GitCommit:
         (except for diff as it's significantly larger than other members).
         """
         self.author
-        self.email
         self.date
         self.body
         self.files
         self.files_status
 
-    def _log_format(self, format: str, args: Tuple[Union[str, bytes], ...] = ()) -> bytes:
+    def _log_format(
+            self,
+            format: str,
+            *,
+            args_prefix: Tuple[Union[str, bytes], ...] = (),
+            args_suffix: Tuple[Union[str, bytes], ...] = (),
+    ) -> bytes:
         # sha1 = self.sha1.decode('ascii')
         cmd: Tuple[Union[str, bytes], ...] = (
             "git",
+            *args_prefix,
             "--git-dir",
             self._git_dir,
             "log",
             "-1",  # only this rev
             self.sha1,
             "--format=" + format,
-            *args,
+            *args_suffix,
         )
 
         # print(" ".join(cmd))
@@ -99,19 +107,20 @@ class GitCommit:
     def author(self) -> str:
         ret = self._author
         if ret is None:
-            content = self._log_format("%an")[:-1]
+            content = self._log_format("%an <%ae>")[:-1]
             ret = content.decode("utf8", errors="ignore")
             self._author = ret
         return ret
 
     @property
-    def email(self) -> str:
-        ret = self._email
-        if ret is None:
-            content = self._log_format("%ae")[:-1]
-            ret = content.decode("utf8", errors="ignore")
-            self._email = ret
-        return ret
+    def co_authors(self) -> List[str]:
+        authors = []
+        for author in _GIT_COMMIT_COAUTHORS_RE.findall(self.body):
+            if not ("<" in author and ">" in author):
+                # Always follow `Name <>` spec, even when no email is given.
+                author = author + " <>"
+            authors.append(author)
+        return authors
 
     @property
     def date(self) -> datetime.datetime:
@@ -139,7 +148,13 @@ class GitCommit:
     def files(self) -> List[bytes]:
         ret = self._files
         if ret is None:
-            ret = [f for f in self._log_format("format:", args=("--name-only",)).split(b"\n") if f]
+            ret = [
+                f for f in self._log_format(
+                    "format:",
+                    args_prefix=("-c", "diff.renameLimit=10000"),
+                    args_suffix=("--name-only",),
+                ).split(b"\n") if f
+            ]
             self._files = ret
         return ret
 
@@ -147,7 +162,14 @@ class GitCommit:
     def files_status(self) -> List[List[bytes]]:
         ret = self._files_status
         if ret is None:
-            ret = [f.split(None, 1) for f in self._log_format("format:", args=("--name-status",)).split(b"\n") if f]
+            ret = [
+                f.split(None, 1) for f in self._log_format(
+                    "format:",
+                    args_prefix=("-c", "diff.renameLimit=10000"),
+                    args_suffix=("--name-status",),
+                ).split(b"\n")
+                if f
+            ]
             self._files_status = ret
         return ret
 
@@ -155,7 +177,11 @@ class GitCommit:
     def diff(self) -> str:
         ret = self._diff
         if ret is None:
-            content = self._log_format("", args=("-p",))
+            content = self._log_format(
+                "",
+                args_prefix=("-c", "diff.renameLimit=10000"),
+                args_suffix=("-p",),
+            )
             ret = content.decode("utf8", errors="ignore")
             self._diff = ret
         return ret
