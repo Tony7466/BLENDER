@@ -12,9 +12,8 @@
 #pragma BLENDER_REQUIRE(eevee_reflection_probe_eval_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_lightprobe_eval_lib.glsl)
 
-float depth_reconstruction_precision(float depth)
+float depth_reconstruction_precision(vec3 P, float depth)
 {
-  vec3 P = get_world_space_from_depth(uvcoordsvar.xy, depth);
   float nextafter2 = uintBitsToFloat(floatBitsToUint(depth) + 2);
   vec3 offset_P = get_world_space_from_depth(uvcoordsvar.xy, nextafter2);
   return distance(P, offset_P);
@@ -26,8 +25,7 @@ void main()
 
   float depth = texelFetch(hiz_tx, texel, 0).r;
   vec3 P = get_world_space_from_depth(uvcoordsvar.xy, depth);
-
-  float reconstruction_precision = depth_reconstruction_precision(depth);
+  float reconstruction_precision = depth_reconstruction_precision(P, depth);
 
   /* TODO(fclem): High precision derivative. */
   vec3 Ng = safe_normalize(cross(dFdx(P), dFdy(P)));
