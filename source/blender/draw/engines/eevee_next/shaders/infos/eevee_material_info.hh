@@ -182,7 +182,6 @@ GPU_SHADER_CREATE_INFO(eevee_surf_world)
     .push_constant(Type::FLOAT, "world_opacity_fade")
     .fragment_out(0, Type::VEC4, "out_background")
     .fragment_source("eevee_surf_world_frag.glsl")
-    .builtins(BuiltinBits::VIEWPORT_INDEX | BuiltinBits::LAYER)
     .additional_info("eevee_render_pass_out",
                      "eevee_cryptomatte_out",
                      "eevee_camera",
