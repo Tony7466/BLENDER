@@ -944,6 +944,8 @@ class SEQUENCER_MT_strip_retiming(Menu):
         layout.operator("sequencer.retiming_key_add")
         layout.operator("sequencer.retiming_freeze_frame_add")
         layout.separator()
+        layout.operator("sequencer.retiming_reset")
+        layout.separator()
         layout.menu("SEQUENCER_MT_strip_retiming_speed")
 
     def draw_retiming_context(self, context):
