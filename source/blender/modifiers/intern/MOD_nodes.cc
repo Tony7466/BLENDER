@@ -878,14 +878,20 @@ static void modifyGeometry(ModifierData *md,
 
   bke::ModifierComputeContext modifier_compute_context{nullptr, nmd->modifier.name};
 
+  Vector<std::string> fallbacks;
   geometry_set = nodes::execute_geometry_nodes_on_geometry(
       tree,
       nmd->settings.properties,
       modifier_compute_context,
       std::move(geometry_set),
+      fallbacks,
       [&](nodes::GeoNodesLFUserData &user_data) {
         user_data.modifier_data = &modifier_eval_data;
       });
+
+  for (const std::string error : fallbacks) {
+    BKE_modifier_set_error(ctx->object, md, error.data());
+  }
 
   if (logging_enabled(ctx)) {
     nmd_orig->runtime->eval_log = std::move(eval_log);

@@ -24,6 +24,8 @@
 #include "FN_field_cpp_type.hh"
 #include "FN_lazy_function_execute.hh"
 
+#include <fmt/format.h>
+
 namespace lf = blender::fn::lazy_function;
 namespace geo_log = blender::nodes::geo_eval_log;
 
@@ -442,13 +444,36 @@ static MultiValueMap<eAttrDomain, OutputAttributeInfo> find_output_attributes_to
   return outputs_by_domain;
 }
 
+static StringRefNull component_name(const bke::GeometryComponent::Type type)
+{
+  switch (type) {
+    case bke::GeometryComponent::Type::Mesh:
+      return "Mesh";
+    case bke::GeometryComponent::Type::PointCloud:
+      return "PointCloud";
+    case bke::GeometryComponent::Type::Curve:
+      return "Curve";
+    case bke::GeometryComponent::Type::Instance:
+      return "Instance";
+    case bke::GeometryComponent::Type::Edit:
+      return "Edit";
+    case bke::GeometryComponent::Type::GreasePencil:
+      return "GreasePencil";
+    case bke::GeometryComponent::Type::Volume:
+      return "Volume";
+  }
+  BLI_assert_unreachable();
+  return "";
+}
+
 /**
  * The computed values are stored in newly allocated arrays. They still have to be moved to the
  * actual geometry.
  */
 static Vector<OutputAttributeToStore> compute_attributes_to_store(
     const bke::GeometrySet &geometry,
-    const MultiValueMap<eAttrDomain, OutputAttributeInfo> &outputs_by_domain)
+    const MultiValueMap<eAttrDomain, OutputAttributeInfo> &outputs_by_domain,
+    Vector<std::string> &r_fallback)
 {
   Vector<OutputAttributeToStore> attributes_to_store;
   for (const auto component_type : {bke::GeometryComponent::Type::Mesh,
@@ -472,7 +497,15 @@ static Vector<OutputAttributeToStore> compute_attributes_to_store(
       fn::FieldEvaluator field_evaluator{field_context, domain_size};
       for (const OutputAttributeInfo &output_info : outputs_info) {
         const CPPType &type = output_info.field.cpp_type();
+        const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(type);
         const bke::AttributeValidator validator = attributes.lookup_validator(output_info.name);
+        if (!validator.validate_meta_data_if_necessary({domain, data_type})) {
+          r_fallback.append_as(
+              fmt::format(TIP_("Output Attribute {} can not be captured by {} component"),
+                          output_info.name.data(),
+                          component_name(component_type).data()));
+          continue;
+        }
         OutputAttributeToStore store{
             component_type,
             domain,
@@ -534,6 +567,7 @@ static void store_computed_output_attributes(
 static void store_output_attributes(bke::GeometrySet &geometry,
                                     const bNodeTree &tree,
                                     const IDProperty *properties,
+                                    Vector<std::string> &r_fallback,
                                     Span<GMutablePointer> output_values)
 {
   /* All new attribute values have to be computed before the geometry is actually changed. This is
@@ -541,7 +575,7 @@ static void store_output_attributes(bke::GeometrySet &geometry,
   MultiValueMap<eAttrDomain, OutputAttributeInfo> outputs_by_domain =
       find_output_attributes_to_store(tree, properties, output_values);
   Vector<OutputAttributeToStore> attributes_to_store = compute_attributes_to_store(
-      geometry, outputs_by_domain);
+      geometry, outputs_by_domain, r_fallback);
   store_computed_output_attributes(geometry, attributes_to_store);
 }
 
@@ -550,6 +584,7 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
     const IDProperty *properties,
     const ComputeContext &base_compute_context,
     bke::GeometrySet input_geometry,
+    Vector<std::string> &r_fallback,
     const FunctionRef<void(nodes::GeoNodesLFUserData &)> fill_user_data)
 {
   const nodes::GeometryNodesLazyFunctionGraphInfo &lf_graph_info =
@@ -636,7 +671,7 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
   }
 
   bke::GeometrySet output_geometry = std::move(*param_outputs[0].get<bke::GeometrySet>());
-  store_output_attributes(output_geometry, btree, properties, param_outputs);
+  store_output_attributes(output_geometry, btree, properties, r_fallback, param_outputs);
 
   for (GMutablePointer &ptr : param_outputs) {
     ptr.destruct();
