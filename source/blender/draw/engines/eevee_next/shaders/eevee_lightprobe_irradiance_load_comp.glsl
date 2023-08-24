@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Load an input lightgrid cache texture into the atlas.
@@ -81,7 +84,7 @@ void main()
             continue;
           }
           float dist_sqr = length_squared(vec3(offset));
-          if (dist_sqr > square_f(dilation_radius)) {
+          if (dist_sqr > square(dilation_radius)) {
             continue;
           }
           float weight = 1.0 / dist_sqr;

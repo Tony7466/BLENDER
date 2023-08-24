@@ -31,7 +31,6 @@ extern "C" {
 #define MAX_SOCKET 512
 
 struct BlendDataReader;
-struct BlendExpander;
 struct BlendLibReader;
 struct BlendWriter;
 struct FreestyleLineStyle;
@@ -755,6 +754,7 @@ bool nodeGroupPoll(const struct bNodeTree *nodetree,
 void node_type_base_custom(struct bNodeType *ntype,
                            const char *idname,
                            const char *name,
+                           const char *enum_name,
                            short nclass);
 
 /**

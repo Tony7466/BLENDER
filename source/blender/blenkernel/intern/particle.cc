@@ -48,7 +48,7 @@
 #include "BKE_anim_data.h"
 #include "BKE_anim_path.h"
 #include "BKE_boids.h"
-#include "BKE_cloth.h"
+#include "BKE_cloth.hh"
 #include "BKE_collection.h"
 #include "BKE_colortools.h"
 #include "BKE_deform.h"
@@ -167,7 +167,9 @@ static void particle_settings_free_data(ID *id)
 
 static void particle_settings_foreach_id(ID *id, LibraryForeachIDData *data)
 {
-  ParticleSettings *psett = (ParticleSettings *)id;
+  ParticleSettings *psett = reinterpret_cast<ParticleSettings *>(id);
+  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
+
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, psett->instance_collection, IDWALK_CB_USER);
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, psett->instance_object, IDWALK_CB_NOP);
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, psett->bb_ob, IDWALK_CB_NOP);
@@ -210,6 +212,10 @@ static void particle_settings_foreach_id(ID *id, LibraryForeachIDData *data)
 
   LISTBASE_FOREACH (ParticleDupliWeight *, dw, &psett->instance_weights) {
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, dw->ob, IDWALK_CB_NOP);
+  }
+
+  if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
+    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, psett->force_group, IDWALK_CB_NOP);
   }
 }
 
@@ -390,9 +396,6 @@ static void particle_settings_blend_read_lib(BlendLibReader *reader, ID *id)
   if (part->effector_weights) {
     BLO_read_id_address(reader, id, &part->effector_weights->group);
   }
-  else {
-    part->effector_weights = BKE_effector_add_weights(part->force_group);
-  }
 
   if (part->instance_weights.first && part->instance_collection) {
     LISTBASE_FOREACH (ParticleDupliWeight *, dw, &part->instance_weights) {
@@ -400,7 +403,7 @@ static void particle_settings_blend_read_lib(BlendLibReader *reader, ID *id)
     }
   }
   else {
-    BLI_listbase_clear(&part->instance_weights);
+    BLI_freelistN(&part->instance_weights);
   }
 
   if (part->boids) {
@@ -432,55 +435,6 @@ static void particle_settings_blend_read_lib(BlendLibReader *reader, ID *id)
   }
 }
 
-static void particle_settings_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  ParticleSettings *part = (ParticleSettings *)id;
-  BLO_expand(expander, part->instance_object);
-  BLO_expand(expander, part->instance_collection);
-  BLO_expand(expander, part->force_group);
-  BLO_expand(expander, part->bb_ob);
-  BLO_expand(expander, part->collision_group);
-
-  for (int a = 0; a < MAX_MTEX; a++) {
-    if (part->mtex[a]) {
-      BLO_expand(expander, part->mtex[a]->tex);
-      BLO_expand(expander, part->mtex[a]->object);
-    }
-  }
-
-  if (part->effector_weights) {
-    BLO_expand(expander, part->effector_weights->group);
-  }
-
-  if (part->pd) {
-    BLO_expand(expander, part->pd->tex);
-    BLO_expand(expander, part->pd->f_source);
-  }
-  if (part->pd2) {
-    BLO_expand(expander, part->pd2->tex);
-    BLO_expand(expander, part->pd2->f_source);
-  }
-
-  if (part->boids) {
-    LISTBASE_FOREACH (BoidState *, state, &part->boids->states) {
-      LISTBASE_FOREACH (BoidRule *, rule, &state->rules) {
-        if (rule->type == eBoidRuleType_Avoid) {
-          BoidRuleGoalAvoid *gabr = (BoidRuleGoalAvoid *)rule;
-          BLO_expand(expander, gabr->ob);
-        }
-        else if (rule->type == eBoidRuleType_FollowLeader) {
-          BoidRuleFollowLeader *flbr = (BoidRuleFollowLeader *)rule;
-          BLO_expand(expander, flbr->ob);
-        }
-      }
-    }
-  }
-
-  LISTBASE_FOREACH (ParticleDupliWeight *, dw, &part->instance_weights) {
-    BLO_expand(expander, dw->ob);
-  }
-}
-
 IDTypeInfo IDType_ID_PA = {
     /*id_code*/ ID_PA,
     /*id_filter*/ FILTER_ID_PA,
@@ -504,7 +458,6 @@ IDTypeInfo IDType_ID_PA = {
     /*blend_write*/ particle_settings_blend_write,
     /*blend_read_data*/ particle_settings_blend_read_data,
     /*blend_read_lib*/ particle_settings_blend_read_lib,
-    /*blend_read_expand*/ particle_settings_blend_read_expand,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -3935,7 +3888,7 @@ static void psys_face_mat(Object *ob, Mesh *mesh, ParticleData *pa, float mat[4]
     /* ugly hack to use non-transformed orcos, since only those
      * give symmetric results for mirroring in particle mode */
     if (CustomData_get_layer(&mesh->vert_data, CD_ORIGINDEX)) {
-      BKE_mesh_orco_verts_transform(static_cast<Mesh *>(ob->data), v, 3, 1);
+      BKE_mesh_orco_verts_transform(static_cast<Mesh *>(ob->data), v, 3, true);
     }
   }
   else {

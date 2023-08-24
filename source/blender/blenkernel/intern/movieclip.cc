@@ -124,6 +124,9 @@ static void movie_clip_foreach_id(ID *id, LibraryForeachIDData *data)
     LISTBASE_FOREACH (MovieTrackingTrack *, track, &object->tracks) {
       BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, track->gpd, IDWALK_CB_USER);
     }
+    LISTBASE_FOREACH (MovieTrackingPlaneTrack *, plane_track, &object->plane_tracks) {
+      BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, plane_track->image, IDWALK_CB_USER);
+    }
   }
 }
 
@@ -326,7 +329,6 @@ IDTypeInfo IDType_ID_MC = {
     /*blend_write*/ movieclip_blend_write,
     /*blend_read_data*/ movieclip_blend_read_data,
     /*blend_read_lib*/ movieclip_blend_read_lib,
-    /*blend_read_expand*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -2066,7 +2068,7 @@ void BKE_movieclip_free_gputexture(MovieClip *clip)
     MovieClip_RuntimeGPUTexture *tex = (MovieClip_RuntimeGPUTexture *)BLI_pophead(
         &clip->runtime.gputextures);
     for (int i = 0; i < TEXTARGET_COUNT; i++) {
-      /* free glsl image binding */
+      /* Free GLSL image binding. */
       if (tex->gputexture[i]) {
         GPU_texture_free(tex->gputexture[i]);
         tex->gputexture[i] = nullptr;

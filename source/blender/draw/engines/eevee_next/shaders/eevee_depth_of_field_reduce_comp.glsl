@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Reduce copy pass: filter fireflies and split color between scatter and gather input.
@@ -10,7 +13,7 @@
  * Outputs:
  * - Halfres padded to avoid mipmap misalignment (so possibly not matching input size).
  * - Gather input color (whole mip chain), Scatter rect list, Signed CoC (whole mip chain).
- **/
+ */
 
 #pragma BLENDER_REQUIRE(eevee_depth_of_field_lib.glsl)
 

@@ -136,13 +136,19 @@ static void texture_free_data(ID *id)
 
 static void texture_foreach_id(ID *id, LibraryForeachIDData *data)
 {
-  Tex *texture = (Tex *)id;
+  Tex *texture = reinterpret_cast<Tex *>(id);
+  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
+
   if (texture->nodetree) {
     /* nodetree **are owned by IDs**, treat them as mere sub-data and not real ID! */
     BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
         data, BKE_library_foreach_ID_embedded(data, (ID **)&texture->nodetree));
   }
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, texture->ima, IDWALK_CB_USER);
+
+  if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
+    BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, texture->ipo, IDWALK_CB_USER);
+  }
 }
 
 static void texture_blend_write(BlendWriter *writer, ID *id, const void *id_address)
@@ -195,13 +201,6 @@ static void texture_blend_read_lib(BlendLibReader *reader, ID *id)
   BLO_read_id_address(reader, id, &tex->ipo); /* XXX deprecated - old animation system */
 }
 
-static void texture_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  Tex *tex = (Tex *)id;
-  BLO_expand(expander, tex->ima);
-  BLO_expand(expander, tex->ipo); /* XXX deprecated - old animation system */
-}
-
 IDTypeInfo IDType_ID_TE = {
     /*id_code*/ ID_TE,
     /*id_filter*/ FILTER_ID_TE,
@@ -225,7 +224,6 @@ IDTypeInfo IDType_ID_TE = {
     /*blend_write*/ texture_blend_write,
     /*blend_read_data*/ texture_blend_read_data,
     /*blend_read_lib*/ texture_blend_read_lib,
-    /*blend_read_expand*/ texture_blend_read_expand,
 
     /*blend_read_undo_preserve*/ nullptr,
 

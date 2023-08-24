@@ -28,6 +28,9 @@ if(WITH_HYDRA)
   add_definitions(-DWITH_HYDRA)
 endif()
 
+set(INC_SYS
+)
+
 set(SRC
   nodes/node_shader_add_shader.cc
   nodes/node_shader_ambient_occlusion.cc
