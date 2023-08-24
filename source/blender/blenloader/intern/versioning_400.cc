@@ -439,18 +439,7 @@ static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *nt
 {
   bNodeTreeInterface &tree_interface = ntree->tree_interface;
 
-  LISTBASE_FOREACH (const bNodeSocket *, socket, &ntree->inputs_legacy) {
-    NodeTreeInterfaceSocketFlag flag = NODE_INTERFACE_SOCKET_INPUT;
-    SET_FLAG_FROM_TEST(flag, socket->flag & SOCK_HIDE_VALUE, NODE_INTERFACE_SOCKET_HIDE_VALUE);
-    SET_FLAG_FROM_TEST(
-        flag, socket->flag & SOCK_HIDE_IN_MODIFIER, NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER);
-    bNodeTreeInterfaceSocket *new_socket = tree_interface.add_socket(
-        socket->name, socket->description, socket->idname, flag, nullptr);
-    BLI_assert(new_socket != nullptr);
-
-    MEM_SAFE_FREE(new_socket->identifier);
-    new_socket->identifier = BLI_strdup(socket->identifier);
-  }
+  /* Convert outputs first to retain old outputs/inputs ordering. */
   LISTBASE_FOREACH (const bNodeSocket *, socket, &ntree->outputs_legacy) {
     NodeTreeInterfaceSocketFlag flag = NODE_INTERFACE_SOCKET_OUTPUT;
     SET_FLAG_FROM_TEST(flag, socket->flag & SOCK_HIDE_VALUE, NODE_INTERFACE_SOCKET_HIDE_VALUE);
@@ -462,6 +451,24 @@ static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *nt
 
     MEM_SAFE_FREE(new_socket->identifier);
     new_socket->identifier = BLI_strdup(socket->identifier);
+    new_socket->attribute_domain = socket->attribute_domain;
+    MEM_SAFE_FREE(new_socket->default_attribute_name);
+    new_socket->default_attribute_name = BLI_strdup_null(socket->default_attribute_name);
+  }
+  LISTBASE_FOREACH (const bNodeSocket *, socket, &ntree->inputs_legacy) {
+    NodeTreeInterfaceSocketFlag flag = NODE_INTERFACE_SOCKET_INPUT;
+    SET_FLAG_FROM_TEST(flag, socket->flag & SOCK_HIDE_VALUE, NODE_INTERFACE_SOCKET_HIDE_VALUE);
+    SET_FLAG_FROM_TEST(
+        flag, socket->flag & SOCK_HIDE_IN_MODIFIER, NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER);
+    bNodeTreeInterfaceSocket *new_socket = tree_interface.add_socket(
+        socket->name, socket->description, socket->idname, flag, nullptr);
+    BLI_assert(new_socket != nullptr);
+
+    MEM_SAFE_FREE(new_socket->identifier);
+    new_socket->identifier = BLI_strdup(socket->identifier);
+    new_socket->attribute_domain = socket->attribute_domain;
+    MEM_SAFE_FREE(new_socket->default_attribute_name);
+    new_socket->default_attribute_name = BLI_strdup_null(socket->default_attribute_name);
   }
 }
 
