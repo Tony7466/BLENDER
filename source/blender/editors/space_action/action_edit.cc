@@ -202,8 +202,8 @@ static bool get_keyframe_extents(bAnimContext *ac, float *min, float *max, const
         using namespace blender::bke::greasepencil;
         const Layer &layer = static_cast<GreasePencilLayer *>(ale->data)->wrap();
 
-        for (const FramesMapKey key : layer.sorted_keys()) {
-          if (onlySel && !layer.frames().lookup(key).is_selected()) {
+        for (const auto [key, frame] : layer.frames().items()) {
+          if (onlySel && !frame.is_selected()) {
             continue;
           }
           *min = min_ff(*min, float(key));
