@@ -211,16 +211,24 @@ bool GHOST_System::getFullScreen()
 GHOST_IWindow *GHOST_System::getWindowUnderCursor(int32_t x, int32_t y)
 {
   /* TODO: This solution should follow the order of the activated windows (Z-order).
-   * It is imperfect but usable in most cases. */
-  for (GHOST_IWindow *iwindow : m_windowManager->getWindows()) {
-    if (iwindow->getState() == GHOST_kWindowStateMinimized) {
+   * It is imperfect but usable in most cases. Ideally each platform should provide
+   * a custom version of this function that properly considers z-order. */
+
+  std::vector<GHOST_IWindow *> windows = m_windowManager->getWindows();
+  std::vector<GHOST_IWindow *>::reverse_iterator iwindow;
+
+  /* Search through the windows in reverse order because in most cases
+   * the window that is on top was created after those that are below it. */
+
+  for (iwindow = windows.rbegin(); iwindow != windows.rend(); ++iwindow) {
+    if ((*iwindow)->getState() == GHOST_kWindowStateMinimized) {
       continue;
     }
 
     GHOST_Rect bounds;
-    iwindow->getClientBounds(bounds);
+    (*iwindow)->getClientBounds(bounds);
     if (bounds.isInside(x, y)) {
-      return iwindow;
+      return (*iwindow);
     }
   }
 
