@@ -824,21 +824,19 @@ GHOST_IWindow *GHOST_SystemCocoa::getWindowUnderCursor(int32_t x, int32_t y)
 GHOST_TSuccess GHOST_SystemCocoa::getPixelAtCursor(float r_color[3]) const 
 {
     @autoreleasepool {
-        CGPoint cursorPosition = [NSEvent mouseLocation];
-    
-         uint32_t count = 0;
-        CGDirectDisplayID displayForPoint;
-        if (CGGetDisplaysWithPoint(cursorPosition, 1, &displayForPoint, &count) != kCGErrorSuccess)
-        {
+        CGPoint cursorPosition = CGEventGetLocation(CGEventCreate(NULL));
+        
+        cursorPosition.y = mainScreen().frame.y - cursorPosition.y + 20; 
+
+        // Create rect to get color at location
+        CGRect rect = CGRectMake(cursorPosition.x, cursorPosition.y, 1, 1);
+
+        // Create Image from rect
+        CGImageRef image = CGDisplayCreateImageForRect(CGMainDisplayID(), rect);
+        if (image == nil) {
             return GHOST_kFailure;
         }
 
-        // Create rect to get color at location
-        CGRect rect = CGRectMake(cursorPosition.x, cursorPosition.y - 2, 1, 1);
-
-        // Create Image from rect
-        CGImageRef image = CGDisplayCreateImageForRect(displayForPoint, rect);
-    
         // Create bitmap from image & free it
         NSBitmapImageRep *bitmap = [[NSBitmapImageRep alloc] initWithCGImage:image];
         if (bitmap == nil) {
@@ -860,6 +858,8 @@ GHOST_TSuccess GHOST_SystemCocoa::getPixelAtCursor(float r_color[3]) const
         r_color[1] = (float)green;
         r_color[2] = (float)blue;
     
+        [bitmap release];
+
         return GHOST_kSuccess; 
     }
 }
