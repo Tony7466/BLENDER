@@ -159,7 +159,7 @@ StatesAroundFrame ModifierSimulationCache::get_states_around_frame(const SubFram
   if (i > 0) {
     states_around_frame.prev = states_at_frames_[i - 1].get();
   }
-  if (i < states_at_frames_.size() - 2) {
+  if (i < states_at_frames_.size() - 1) {
     states_around_frame.next = states_at_frames_[i + 1].get();
   }
   return states_around_frame;
