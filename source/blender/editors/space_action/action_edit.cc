@@ -198,6 +198,19 @@ static bool get_keyframe_extents(bAnimContext *ac, float *min, float *max, const
           found = true;
         }
       }
+      else if (ale->datatype == ALE_GREASE_PENCIL_CEL) {
+        using namespace blender::bke::greasepencil;
+        const Layer &layer = static_cast<GreasePencilLayer *>(ale->data)->wrap();
+
+        for (const FramesMapKey key : layer.sorted_keys()) {
+          if (onlySel && !layer.frames().lookup(key).is_selected()) {
+            continue;
+          }
+          *min = min_ff(*min, float(key));
+          *max = max_ff(*max, float(key));
+          found = true;
+        }
+      }
       else {
         FCurve *fcu = (FCurve *)ale->key_data;
         float tmin, tmax;
