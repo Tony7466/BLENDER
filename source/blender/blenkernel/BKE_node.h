@@ -169,6 +169,7 @@ typedef struct bNodeSocketType {
                      struct PointerRNA *ptr,
                      struct PointerRNA *node_ptr,
                      float *r_color);
+  void (*draw_color_simple)(const bNodeSocketType *socket_type, float *r_color);
 
   void (*interface_draw)(struct ID *id,
                          struct bNodeTreeInterfaceSocket *socket,

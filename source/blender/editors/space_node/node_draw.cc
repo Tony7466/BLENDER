@@ -800,16 +800,13 @@ static int node_get_colorid(TreeDrawContext &tree_draw_ctx, const bNode &node)
   }
 }
 
-static void node_draw_mute_line(const bContext &C,
-                                const View2D &v2d,
-                                const SpaceNode &snode,
-                                const bNode &node)
+static void node_draw_mute_line(const View2D &v2d, const SpaceNode &snode, const bNode &node)
 {
   GPU_blend(GPU_BLEND_ALPHA);
 
   for (const bNodeLink &link : node.internal_links()) {
     if (!nodeLinkIsHidden(&link)) {
-      node_draw_link_bezier(C, v2d, snode, link, TH_WIRE_INNER, TH_WIRE_INNER, TH_WIRE, false);
+      node_draw_link_bezier(v2d, snode, link, TH_WIRE_INNER, TH_WIRE_INNER, TH_WIRE, false);
     }
   }
 
@@ -907,18 +904,9 @@ static void node_socket_outline_color_get(const bool selected,
   }
 }
 
-void node_socket_color_get(const bContext &C,
-                           const bNodeTree &ntree,
-                           PointerRNA &node_ptr,
-                           const bNodeSocket &sock,
-                           float r_color[4])
+void node_socket_color_get(const bNodeSocketType &type, float r_color[4])
 {
-  PointerRNA ptr;
-  BLI_assert(RNA_struct_is_a(node_ptr.type, &RNA_Node));
-  RNA_pointer_create(
-      &const_cast<ID &>(ntree.id), &RNA_NodeSocket, &const_cast<bNodeSocket &>(sock), &ptr);
-
-  sock.typeinfo->draw_color((bContext *)&C, &ptr, &node_ptr, r_color);
+  type.draw_color_simple(&type, r_color);
 }
 
 static void create_inspection_string_for_generic_value(const bNodeSocket &socket,
@@ -1343,9 +1331,7 @@ void node_socket_add_tooltip(const bNodeTree &ntree, const bNodeSocket &sock, ui
       MEM_freeN);
 }
 
-static void node_socket_draw_nested(const bContext &C,
-                                    const bNodeTree &ntree,
-                                    PointerRNA &node_ptr,
+static void node_socket_draw_nested(const bNodeTree &ntree,
                                     uiBlock &block,
                                     const bNodeSocket &sock,
                                     const uint pos_id,
@@ -1360,7 +1346,7 @@ static void node_socket_draw_nested(const bContext &C,
 
   float color[4];
   float outline_color[4];
-  node_socket_color_get(C, ntree, node_ptr, sock, color);
+  node_socket_color_get(*sock.typeinfo, color);
   node_socket_outline_color_get(selected, sock.type, outline_color);
 
   node_socket_draw(sock,
@@ -1555,7 +1541,6 @@ static void node_draw_shadow(const SpaceNode &snode,
 }
 
 static void node_draw_sockets(const View2D &v2d,
-                              const bContext &C,
                               const bNodeTree &ntree,
                               const bNode &node,
                               uiBlock &block,
@@ -1614,18 +1599,8 @@ static void node_draw_sockets(const View2D &v2d,
       continue;
     }
 
-    node_socket_draw_nested(C,
-                            ntree,
-                            node_ptr,
-                            block,
-                            *sock,
-                            pos_id,
-                            col_id,
-                            shape_id,
-                            size_id,
-                            outline_col_id,
-                            scale,
-                            selected);
+    node_socket_draw_nested(
+        ntree, block, *sock, pos_id, col_id, shape_id, size_id, outline_col_id, scale, selected);
   }
 
   /* Socket outputs. */
@@ -1640,18 +1615,8 @@ static void node_draw_sockets(const View2D &v2d,
         continue;
       }
 
-      node_socket_draw_nested(C,
-                              ntree,
-                              node_ptr,
-                              block,
-                              *sock,
-                              pos_id,
-                              col_id,
-                              shape_id,
-                              size_id,
-                              outline_col_id,
-                              scale,
-                              selected);
+      node_socket_draw_nested(
+          ntree, block, *sock, pos_id, col_id, shape_id, size_id, outline_col_id, scale, selected);
     }
   }
 
@@ -1678,9 +1643,7 @@ static void node_draw_sockets(const View2D &v2d,
           continue;
         }
         if (select_all || (sock->flag & SELECT)) {
-          node_socket_draw_nested(C,
-                                  ntree,
-                                  node_ptr,
+          node_socket_draw_nested(ntree,
                                   block,
                                   *sock,
                                   pos_id,
@@ -1705,9 +1668,7 @@ static void node_draw_sockets(const View2D &v2d,
           continue;
         }
         if (select_all || (sock->flag & SELECT)) {
-          node_socket_draw_nested(C,
-                                  ntree,
-                                  node_ptr,
+          node_socket_draw_nested(ntree,
                                   block,
                                   *sock,
                                   pos_id,
@@ -1749,7 +1710,7 @@ static void node_draw_sockets(const View2D &v2d,
 
     float color[4];
     float outline_color[4];
-    node_socket_color_get(C, ntree, node_ptr, *socket, color);
+    node_socket_color_get(*socket->typeinfo, color);
     node_socket_outline_color_get(socket->flag & SELECT, socket->type, outline_color);
 
     const float2 location = socket->runtime->location;
@@ -1769,7 +1730,6 @@ static void node_panel_toggle_button_cb(bContext *C, void *panel_state_argv, voi
 }
 
 static void node_draw_panels(const View2D & /*v2d*/,
-                             const bContext & /*C*/,
                              TreeDrawContext &tree_draw_ctx,
                              bNodeTree &ntree,
                              const bNode &node,
@@ -2710,7 +2670,7 @@ static void node_draw_basis(const bContext &C,
 
   /* Wire across the node when muted/disabled. */
   if (node.flag & NODE_MUTED) {
-    node_draw_mute_line(C, v2d, snode, node);
+    node_draw_mute_line(v2d, snode, node);
   }
 
   /* Body. */
@@ -2814,11 +2774,11 @@ static void node_draw_basis(const bContext &C,
 
   /* Skip slow socket drawing if zoom is small. */
   if (scale > 0.2f) {
-    node_draw_sockets(v2d, C, ntree, node, block, true, false);
+    node_draw_sockets(v2d, ntree, node, block, true, false);
   }
 
   if (node.declaration() != nullptr) {
-    node_draw_panels(v2d, C, tree_draw_ctx, ntree, node, block);
+    node_draw_panels(v2d, tree_draw_ctx, ntree, node, block);
   }
 
   UI_block_end(&C, &block);
@@ -2849,7 +2809,7 @@ static void node_draw_hidden(const bContext &C,
 
   /* Wire across the node when muted/disabled. */
   if (node.flag & NODE_MUTED) {
-    node_draw_mute_line(C, v2d, snode, node);
+    node_draw_mute_line(v2d, snode, node);
   }
 
   /* Body. */
@@ -2999,7 +2959,7 @@ static void node_draw_hidden(const bContext &C,
   immUnbindProgram();
   GPU_blend(GPU_BLEND_NONE);
 
-  node_draw_sockets(v2d, C, ntree, node, block, true, false);
+  node_draw_sockets(v2d, ntree, node, block, true, false);
 
   UI_block_end(&C, &block);
   UI_block_draw(&C, &block);
@@ -3374,7 +3334,7 @@ static void reroute_node_draw(
 
   /* Only draw input socket as they all are placed on the same position highlight
    * if node itself is selected, since we don't display the node body separately. */
-  node_draw_sockets(region.v2d, C, ntree, node, block, false, node.flag & SELECT);
+  node_draw_sockets(region.v2d, ntree, node, block, false, node.flag & SELECT);
 
   UI_block_end(&C, &block);
   UI_block_draw(&C, &block);
@@ -3634,14 +3594,14 @@ static void node_draw_nodetree(const bContext &C,
 
   for (const bNodeLink *link : ntree.all_links()) {
     if (!nodeLinkIsHidden(link) && !bke::nodeLinkIsSelected(link)) {
-      node_draw_link(C, region.v2d, snode, *link, false);
+      node_draw_link(region.v2d, snode, *link, false);
     }
   }
 
   /* Draw selected node links after the unselected ones, so they are shown on top. */
   for (const bNodeLink *link : ntree.all_links()) {
     if (!nodeLinkIsHidden(link) && bke::nodeLinkIsSelected(link)) {
-      node_draw_link(C, region.v2d, snode, *link, true);
+      node_draw_link(region.v2d, snode, *link, true);
     }
   }
 
@@ -3892,7 +3852,7 @@ void node_draw_space(const bContext &C, ARegion &region)
     GPU_line_smooth(true);
     if (snode.runtime->linkdrag) {
       for (const bNodeLink &link : snode.runtime->linkdrag->links) {
-        node_draw_link_dragged(C, v2d, snode, link);
+        node_draw_link_dragged(v2d, snode, link);
       }
     }
     GPU_line_smooth(false);

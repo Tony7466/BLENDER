@@ -50,6 +50,7 @@ const EnumPropertyItem rna_enum_node_socket_type_items[] = {
 
 extern FunctionRNA rna_NodeSocket_draw_func;
 extern FunctionRNA rna_NodeSocket_draw_color_func;
+extern FunctionRNA rna_NodeSocket_draw_color_simple_func;
 
 /* ******** Node Socket ******** */
 
@@ -95,6 +96,27 @@ static void rna_NodeSocket_draw_color(bContext *C,
   RNA_parameter_list_free(&list);
 }
 
+static void rna_NodeSocket_draw_color_simple(const bNodeSocketType *socket_type, float *r_color)
+{
+  ParameterList list;
+  FunctionRNA *func;
+  void *ret;
+
+  func = &rna_NodeSocket_draw_color_simple_func; /* RNA_struct_find_function(&ptr,
+                                                    "draw_color_simple"); */
+
+  PointerRNA ptr;
+  RNA_pointer_create(nullptr, socket_type->ext_socket.srna, nullptr, &ptr);
+  RNA_parameter_list_create(&list, &ptr, func);
+  RNA_parameter_set_lookup(&list, "type", socket_type);
+  socket_type->ext_socket.call(nullptr, &ptr, func, &list);
+
+  RNA_parameter_get_lookup(&list, "color", &ret);
+  copy_v4_v4(r_color, static_cast<float *>(ret));
+
+  RNA_parameter_list_free(&list);
+}
+
 static bool rna_NodeSocket_unregister(Main * /*bmain*/, StructRNA *type)
 {
   bNodeSocketType *st = static_cast<bNodeSocketType *>(RNA_struct_blender_type_get(type));
@@ -123,7 +145,7 @@ static StructRNA *rna_NodeSocket_register(Main * /*bmain*/,
   bNodeSocketType *st, dummy_st;
   bNodeSocket dummy_sock;
   PointerRNA dummy_sock_ptr;
-  bool have_function[2];
+  bool have_function[3];
 
   /* setup dummy socket & socket type to store static properties in */
   memset(&dummy_st, 0, sizeof(bNodeSocketType));
@@ -176,6 +198,7 @@ static StructRNA *rna_NodeSocket_register(Main * /*bmain*/,
 
   st->draw = (have_function[0]) ? rna_NodeSocket_draw : nullptr;
   st->draw_color = (have_function[1]) ? rna_NodeSocket_draw_color : nullptr;
+  st->draw_color_simple = (have_function[2]) ? rna_NodeSocket_draw_color_simple : nullptr;
 
   /* update while blender is running */
   WM_main_add_notifier(NC_NODE | NA_EDITED, nullptr);
@@ -301,6 +324,13 @@ static void rna_NodeSocketStandard_draw_color(
   PointerRNA ptr;
   RNA_pointer_create(id, &RNA_NodeSocket, sock, &ptr);
   sock->typeinfo->draw_color(C, &ptr, nodeptr, r_color);
+}
+
+static void rna_NodeSocketStandard_draw_color_simple(struct StructRNA *type, float r_color[4])
+{
+  const bNodeSocketType *typeinfo = static_cast<const bNodeSocketType *>(
+      RNA_struct_blender_type_get(type));
+  typeinfo->draw_color_simple(typeinfo, r_color);
 }
 
 /* ******** Node Socket Subtypes ******** */
@@ -542,13 +572,20 @@ static void rna_def_node_socket(BlenderRNA *brna)
 
   func = RNA_def_function(srna, "draw_color", nullptr);
   RNA_def_function_ui_description(func, "Color of the socket icon");
-  RNA_def_function_flag(func, FUNC_REGISTER);
+  RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL);
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_property(func, "node", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(parm, "Node");
   RNA_def_property_ui_text(parm, "Node", "Node the socket belongs to");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  parm = RNA_def_float_array(
+      func, "color", 4, default_draw_color, 0.0f, 1.0f, "Color", "", 0.0f, 1.0f);
+  RNA_def_function_output(func, parm);
+
+  func = RNA_def_function(srna, "draw_color_simple", nullptr);
+  RNA_def_function_ui_description(func, "Color of the socket icon");
+  RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_USE_SELF_TYPE | FUNC_REGISTER_OPTIONAL);
   parm = RNA_def_float_array(
       func, "color", 4, default_draw_color, 0.0f, 1.0f, "Color", "", 0.0f, 1.0f);
   RNA_def_function_output(func, parm);
@@ -601,6 +638,13 @@ static void rna_def_node_socket_standard(BlenderRNA *brna)
   RNA_def_property_struct_type(parm, "Node");
   RNA_def_property_ui_text(parm, "Node", "Node the socket belongs to");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+  parm = RNA_def_float_array(
+      func, "color", 4, default_draw_color, 0.0f, 1.0f, "Color", "", 0.0f, 1.0f);
+  RNA_def_function_output(func, parm);
+
+  func = RNA_def_function(srna, "draw_color_simple", "rna_NodeSocketStandard_draw_color_simple");
+  RNA_def_function_ui_description(func, "Color of the socket icon");
+  RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_USE_SELF_TYPE | FUNC_REGISTER_OPTIONAL);
   parm = RNA_def_float_array(
       func, "color", 4, default_draw_color, 0.0f, 1.0f, "Color", "", 0.0f, 1.0f);
   RNA_def_function_output(func, parm);
