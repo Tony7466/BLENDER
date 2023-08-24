@@ -211,10 +211,16 @@ static void mesh_free_data(ID *id)
 static void mesh_foreach_id(ID *id, LibraryForeachIDData *data)
 {
   Mesh *mesh = reinterpret_cast<Mesh *>(id);
+  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
+
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, mesh->texcomesh, IDWALK_CB_NEVER_SELF);
   BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, mesh->key, IDWALK_CB_USER);
   for (int i = 0; i < mesh->totcol; i++) {
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, mesh->mat[i], IDWALK_CB_USER);
+  }
+
+  if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
+    BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, mesh->ipo, IDWALK_CB_USER);
   }
 }
 
@@ -365,17 +371,6 @@ static void mesh_blend_read_lib(BlendLibReader *reader, ID *id)
   BLO_read_id_address(reader, id, &me->texcomesh);
 }
 
-static void mesh_read_expand(BlendExpander *expander, ID *id)
-{
-  Mesh *me = reinterpret_cast<Mesh *>(id);
-  for (int a = 0; a < me->totcol; a++) {
-    BLO_expand(expander, me->mat[a]);
-  }
-
-  BLO_expand(expander, me->key);
-  BLO_expand(expander, me->texcomesh);
-}
-
 IDTypeInfo IDType_ID_ME = {
     /*id_code*/ ID_ME,
     /*id_filter*/ FILTER_ID_ME,
@@ -399,7 +394,6 @@ IDTypeInfo IDType_ID_ME = {
     /*blend_write*/ mesh_blend_write,
     /*blend_read_data*/ mesh_blend_read_data,
     /*blend_read_lib*/ mesh_blend_read_lib,
-    /*blend_read_expand*/ mesh_read_expand,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -1287,7 +1281,7 @@ float (*BKE_mesh_orco_verts_get(Object *ob))[3]
   return vcos;
 }
 
-void BKE_mesh_orco_verts_transform(Mesh *me, float (*orco)[3], int totvert, int invert)
+void BKE_mesh_orco_verts_transform(Mesh *me, float (*orco)[3], int totvert, const bool invert)
 {
   float texspace_location[3], texspace_size[3];
 
