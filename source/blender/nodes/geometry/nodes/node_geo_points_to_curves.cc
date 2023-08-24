@@ -6,8 +6,11 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_attribute_math.hh"
+#include "BKE_curves.hh"
 
 #include "BLI_array_utils.hh"
+
+#include "DNA_pointcloud_types.h"
 
 #include "BLI_sort.hh"
 #include "BLI_task.hh"
@@ -47,40 +50,17 @@ static void grouped_sort(const OffsetIndices<int> offsets,
     return weight_a > weight_b;
   };
 
-  threading::parallel_for_each(offsets.index_range(), [&](const int group_index) {
-    MutableSpan<int> group = indices.slice(offsets[group_index]);
-    parallel_sort(group.begin(), group.end(), comparator);
+  threading::parallel_for(offsets.index_range(), 250, [&](const IndexRange range) {
+    for (const int group_index : range) {
+      MutableSpan<int> group = indices.slice(offsets[group_index]);
+      parallel_sort(group.begin(), group.end(), comparator);
+    }
   });
 }
 
-static void copy_attributes(const AttributeAccessor src_attributes,
-                            const bke::AnonymousAttributePropagationInfo &propagation_info,
-                            const Span<int> indices,
-                            MutableAttributeAccessor dst_attributes)
-{
-  src_attributes.for_all([&](const AttributeIDRef &id, const AttributeMetaData meta_data) {
-    if (id.is_anonymous() && !propagation_info.propagate(id.anonymous_id())) {
-      return true;
-    }
-    const bke::GAttributeReader src = src_attributes.lookup(id);
-    bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
-        id, ATTR_DOMAIN_POINT, meta_data.data_type);
-    if (!dst) {
-      return true;
-    }
-    const GVArraySpan src_span(src.varray);
-    bke::attribute_math::convert_to_static_type(meta_data.data_type, [&](auto dummy) {
-      using T = decltype(dummy);
-      array_utils::gather<T, int>(src_span.typed<T>(), indices, dst.span.typed<T>());
-    });
-    dst.finish();
-    return true;
-  });
-}
-
-static void deduce_curves(const Span<int> indices_of_curves,
-                          MutableSpan<int> r_offsets,
-                          MutableSpan<int> r_indices)
+static void find_points_by_group_index(const Span<int> indices_of_curves,
+                                       MutableSpan<int> r_offsets,
+                                       MutableSpan<int> r_indices)
 {
   offset_indices::build_reverse_offsets(indices_of_curves, r_offsets);
   Array<int> counts(r_offsets.size(), 0);
@@ -101,25 +81,11 @@ int identifiers_to_indices(MutableSpan<int> r_identifiers_to_indices)
           value = deduplicated_groups.index_of(value);
         }
       });
-
-  Array<int> indices(deduplicated_groups.size());
-  std::iota(indices.begin(), indices.end(), 0);
-  parallel_sort(indices.begin(), indices.end(), [&](const int index_a, const int index_b) {
-    return deduplicated_groups[index_a] < deduplicated_groups[index_b];
-  });
-
-  threading::parallel_for(
-      r_identifiers_to_indices.index_range(), 2048, [&](const IndexRange range) {
-        for (int &value : r_identifiers_to_indices.slice(range)) {
-          value = indices[value];
-        }
-      });
-
   return deduplicated_groups.size();
 }
 
 static Curves *curve_from_points(const AttributeAccessor attributes,
-                                 const VArray<float> weights_varray,
+                                 const VArray<float> &weights_varray,
                                  const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   const int domain_size = weights_varray.size();
@@ -135,7 +101,8 @@ static Curves *curve_from_points(const AttributeAccessor attributes,
   std::iota(indices.begin(), indices.end(), 0);
   const VArraySpan<float> weights(weights_varray);
   grouped_sort(OffsetIndices<int>({0, domain_size}), weights, indices);
-  copy_attributes(attributes, propagation_info, indices, curves.attributes_for_write());
+  bke::gather_attributes(
+      attributes, ATTR_DOMAIN_POINT, propagation_info, {}, indices, curves.attributes_for_write());
   return curves_id;
 }
 
@@ -159,14 +126,14 @@ static Curves *curves_from_points(const PointCloud *points,
   const VArray<float> weights_varray = evaluator.get_evaluated<float>(1);
 
   if (group_ids_varray.is_single()) {
-    return curve_from_points(points->attributes(), std::move(weights_varray), propagation_info);
+    return curve_from_points(points->attributes(), weights_varray, propagation_info);
   }
 
   Array<int> group_ids(domain_size);
   group_ids_varray.materialize(group_ids.as_mutable_span());
   const int total_curves = identifiers_to_indices(group_ids);
   if (total_curves == 1) {
-    return curve_from_points(points->attributes(), std::move(weights_varray), propagation_info);
+    return curve_from_points(points->attributes(), weights_varray, propagation_info);
   }
 
   Curves *curves_id = bke::curves_new_nomain(domain_size, total_curves);
@@ -177,13 +144,18 @@ static Curves *curves_from_points(const PointCloud *points,
   offset.fill(0);
 
   Array<int> indices(domain_size);
-  deduce_curves(group_ids, offset, indices.as_mutable_span());
+  find_points_by_group_index(group_ids, offset, indices.as_mutable_span());
 
   if (!weights_varray.is_single()) {
     const VArraySpan<float> weights(weights_varray);
     grouped_sort(OffsetIndices<int>(offset), weights, indices);
   }
-  copy_attributes(points->attributes(), propagation_info, indices, curves.attributes_for_write());
+  bke::gather_attributes(points->attributes(),
+                         ATTR_DOMAIN_POINT,
+                         propagation_info,
+                         {},
+                         indices,
+                         curves.attributes_for_write());
   return curves_id;
 }
 
@@ -193,10 +165,11 @@ static void node_geo_exec(GeoNodeExecParams params)
   const Field<int> group_id_field = params.extract_input<Field<int>>("Curve Group ID");
   const Field<float> weight_field = params.extract_input<Field<float>>("Weight");
 
+  const bke::AnonymousAttributePropagationInfo propagation_info =
+      params.get_output_propagation_info("Curves");
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     const PointCloud *points = geometry_set.get_pointcloud();
-    Curves *curves_id = curves_from_points(
-        points, group_id_field, weight_field, params.get_output_propagation_info("Curves"));
+    Curves *curves_id = curves_from_points(points, group_id_field, weight_field, propagation_info);
     geometry_set.replace_curves(curves_id);
     geometry_set.keep_only_during_modify({GeometryComponent::Type::Curve});
   });

@@ -927,6 +927,13 @@ void gather_attributes(AttributeAccessor src_attributes,
                        const IndexMask &selection,
                        MutableAttributeAccessor dst_attributes);
 
+void gather_attributes(AttributeAccessor src_attributes,
+                       eAttrDomain domain,
+                       const AnonymousAttributePropagationInfo &propagation_info,
+                       const Set<std::string> &skip,
+                       const Span<int> indices,
+                       MutableAttributeAccessor dst_attributes);
+
 /**
  * Copy attribute values from groups defined by \a src_offsets to groups defined by \a
  * dst_offsets. The group indices are gathered to the result by \a selection. The size of each
