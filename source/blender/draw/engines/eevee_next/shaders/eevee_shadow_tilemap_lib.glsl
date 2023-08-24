@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_shape_lib.glsl)
@@ -243,6 +246,21 @@ Pyramid shadow_tilemap_cubeface_bounds(ShadowTileMapData tilemap,
   shape.corners[3] = shadow_tile_corner_persp(tilemap, tile_start + extent);
   shape.corners[4] = shadow_tile_corner_persp(tilemap, tile_start + ivec2(0, extent.y));
   return shape;
+}
+
+/** \} */
+
+/* ---------------------------------------------------------------------- */
+/** \name Render map layout.
+ *
+ * Since a view can cover at most the number of tile contained in LOD0,
+ * index every LOD like they were LOD0.
+ * \{ */
+
+int shadow_render_page_index_get(int view_index, ivec2 tile_coordinate_in_lod)
+{
+  return view_index * SHADOW_TILEMAP_LOD0_LEN + tile_coordinate_in_lod.y * SHADOW_TILEMAP_RES +
+         tile_coordinate_in_lod.x;
 }
 
 /** \} */

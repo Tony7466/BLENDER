@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ltc_lib.glsl)
@@ -110,11 +113,10 @@ float light_point_light(LightData ld, const bool is_directional, vec3 L, float d
   if (is_directional) {
     return 1.0;
   }
-  /**
-   * Using "Point Light Attenuation Without Singularity" from Cem Yuksel
+  /* Using "Point Light Attenuation Without Singularity" from Cem Yuksel
    * http://www.cemyuksel.com/research/pointlightattenuation/pointlightattenuation.pdf
    * http://www.cemyuksel.com/research/pointlightattenuation/
-   **/
+   */
   float d_sqr = sqr(dist);
   float r_sqr = ld.radius_squared;
   /* Using reformulation that has better numerical precision. */
