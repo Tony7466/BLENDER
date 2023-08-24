@@ -9,7 +9,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_map.hh"
+#include "BLI_set.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
@@ -577,14 +577,13 @@ static int sequencer_retiming_key_select_exec(bContext *C, wmOperator *op)
   int hand;
   const Sequence *seq_click_exact = find_nearest_seq(scene, UI_view2d_fromcontext(C), &hand, mval);
   Sequence *seq_key_owner = nullptr;
-  const SeqRetimingKey *key = retiming_mousover_key_get(C, mval, &seq_key_owner);
+  SeqRetimingKey *key = retiming_mousover_key_get(C, mval, &seq_key_owner);
 
   const bool wait_to_deselect_others = RNA_boolean_get(op->ptr, "wait_to_deselect_others");
   const bool toggle = RNA_boolean_get(op->ptr, "toggle");
 
   const bool clicked_on_strip = seq_click_exact != nullptr;
-  const bool clicked_on_selected_key = key != nullptr &&
-                                       SEQ_retiming_selection_contains(ed, seq_key_owner, key);
+  const bool clicked_on_selected_key = key != nullptr && SEQ_retiming_selection_contains(ed, key);
 
   /* Clicking on already selected element falls on modal operation.
    * All strips are deselected on mouse button release unless extend mode is used. */
@@ -614,11 +613,11 @@ static int sequencer_retiming_key_select_exec(bContext *C, wmOperator *op)
   }
 
   if (seq_key_owner != nullptr) {
-    if (toggle && SEQ_retiming_selection_contains(ed, seq_key_owner, key)) {
-      SEQ_retiming_selection_remove(ed, seq_key_owner, key);
+    if (toggle && SEQ_retiming_selection_contains(ed, key)) {
+      SEQ_retiming_selection_remove(key);
     }
     else {
-      SEQ_retiming_selection_append(ed, seq_key_owner, key);
+      SEQ_retiming_selection_append(key);
     }
   }
 
@@ -682,10 +681,10 @@ static int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op)
   WM_operator_properties_border_to_rctf(op, &rectf);
   UI_view2d_region_to_view_rctf(v2d, &rectf, &rectf);
 
-  blender::Map<const SeqRetimingKey *, const Sequence *> and_keys;
+  blender::Set<SeqRetimingKey *> and_keys;
 
   for (const Sequence *seq : sequencer_visible_strips_get(C)) {
-    for (const SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
+    for (SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
       if (seq->machine < rectf.ymin || seq->machine > rectf.ymax) {
         continue;
       }
@@ -702,24 +701,24 @@ static int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op)
       switch (sel_op) {
         case SEL_OP_ADD:
         case SEL_OP_SET: {
-          SEQ_retiming_selection_append(ed, seq, &key);
+          SEQ_retiming_selection_append(&key);
           break;
         }
         case SEL_OP_SUB: {
-          SEQ_retiming_selection_remove(ed, seq, &key);
+          SEQ_retiming_selection_remove(&key);
           break;
         }
         case SEL_OP_XOR: { /* Toggle */
-          if (SEQ_retiming_selection_contains(ed, seq, &key)) {
-            SEQ_retiming_selection_remove(ed, seq, &key);
+          if (SEQ_retiming_selection_contains(ed, &key)) {
+            SEQ_retiming_selection_remove(&key);
           }
           else {
-            SEQ_retiming_selection_append(ed, seq, &key);
+            SEQ_retiming_selection_append(&key);
           }
           break;
           case SEL_OP_AND: {
-            if (SEQ_retiming_selection_contains(ed, seq, &key)) {
-              and_keys.add(&key, seq);
+            if (SEQ_retiming_selection_contains(ed, &key)) {
+              and_keys.add(&key);
             }
             break;
           }
@@ -731,8 +730,8 @@ static int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op)
 
   if (and_keys.size() > 0) {
     SEQ_retiming_selection_clear(ed);
-    for (auto item : and_keys.items()) {
-      SEQ_retiming_selection_append(ed, item.value, item.key);
+    for (auto key : and_keys) {
+      SEQ_retiming_selection_append(key);
     }
   }
 

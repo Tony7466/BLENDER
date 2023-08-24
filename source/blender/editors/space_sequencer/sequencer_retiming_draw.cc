@@ -172,17 +172,17 @@ bool retiming_last_key_is_clicked(const bContext *C, const Sequence *seq, const 
   return distance < RETIME_KEY_MOUSEOVER_THRESHOLD;
 }
 
-static const SeqRetimingKey *mouse_over_key_get_from_strip(const bContext *C,
-                                                           const Sequence *seq,
-                                                           const int mval[2])
+static SeqRetimingKey *mouse_over_key_get_from_strip(const bContext *C,
+                                                     const Sequence *seq,
+                                                     const int mval[2])
 {
   const Scene *scene = CTX_data_scene(C);
   const View2D *v2d = UI_view2d_fromcontext(C);
 
   int best_distance = INT_MAX;
-  const SeqRetimingKey *best_key = nullptr;
+  SeqRetimingKey *best_key = nullptr;
 
-  for (const SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
+  for (SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
     int distance = round_fl_to_int(
         fabsf(UI_view2d_view_to_region_x(v2d, key_x_get(scene, seq, &key)) - mval[0]));
 
@@ -195,9 +195,7 @@ static const SeqRetimingKey *mouse_over_key_get_from_strip(const bContext *C,
   return best_key;
 }
 
-const SeqRetimingKey *retiming_mousover_key_get(const bContext *C,
-                                                const int mval[2],
-                                                Sequence **r_seq)
+SeqRetimingKey *retiming_mousover_key_get(const bContext *C, const int mval[2], Sequence **r_seq)
 {
   const Scene *scene = CTX_data_scene(C);
   for (Sequence *seq : sequencer_visible_strips_get(C)) {
@@ -212,7 +210,7 @@ const SeqRetimingKey *retiming_mousover_key_get(const bContext *C,
       *r_seq = seq;
     }
 
-    const SeqRetimingKey *key = mouse_over_key_get_from_strip(C, seq, mval);
+    SeqRetimingKey *key = mouse_over_key_get_from_strip(C, seq, mval);
 
     if (key == nullptr) {
       continue;
@@ -275,7 +273,7 @@ static void retime_key_draw(const bContext *C, const Sequence *seq, const SeqRet
     key_type = BEZT_KEYTYPE_MOVEHOLD;
   }
 
-  const bool is_selected = SEQ_retiming_selection_contains(SEQ_editing_get(scene), seq, key);
+  const bool is_selected = SEQ_retiming_selection_contains(SEQ_editing_get(scene), key);
   const int size = KEY_SIZE;
   const float key_position = UI_view2d_view_to_region_x(v2d, key_x);
   const float bottom = KEY_CENTER;
@@ -326,9 +324,7 @@ static void draw_continuity(const bContext *C, const Sequence *seq, const SeqRet
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-  if (SEQ_retiming_selection_contains(ed, seq, key) ||
-      SEQ_retiming_selection_contains(ed, seq, key - 1))
-  {
+  if (SEQ_retiming_selection_contains(ed, key) || SEQ_retiming_selection_contains(ed, key - 1)) {
     immUniform4f("color", 0.65f, 0.5f, 0.2f, 1.0f);
   }
   else {

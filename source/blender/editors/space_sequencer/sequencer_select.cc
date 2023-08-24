@@ -973,7 +973,7 @@ static int sequencer_select_exec(bContext *C, wmOperator *op)
   }
 
   Sequence *seq_key_test = nullptr;
-  const SeqRetimingKey *key = retiming_mousover_key_get(C, mval, &seq_key_test);
+  SeqRetimingKey *key = retiming_mousover_key_get(C, mval, &seq_key_test);
   bool retiming_key_clicked = (key != nullptr);
 
   // XXX this should be handled on retiming side, not here.
@@ -989,7 +989,7 @@ static int sequencer_select_exec(bContext *C, wmOperator *op)
   if (seq_key_test && retiming_key_clicked) {
     WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
     WM_toolsystem_ref_set_by_id(C, "builtin.retime");
-    SEQ_retiming_selection_append(ed, seq_key_test, key);
+    SEQ_retiming_selection_append(key);
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
 

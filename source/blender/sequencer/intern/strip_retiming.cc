@@ -953,46 +953,27 @@ void SEQ_retiming_key_speed_set(const Scene *scene,
 
 bool SEQ_retiming_selection_clear(Editing *ed)
 {
-  bool was_empty = BLI_listbase_is_empty(&ed->retiming_selection);
-  BLI_freelistN(&ed->retiming_selection);
+  bool was_empty = true;
+
+  LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
+    for (SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
+      was_empty &= (key.flag & KEY_SELECTED) == 0;
+      key.flag &= ~KEY_SELECTED;
+    }
+  }
   return !was_empty;
 }
 
-void SEQ_retiming_selection_append(Editing *ed, const Sequence *seq, const SeqRetimingKey *key)
+void SEQ_retiming_selection_append(
+
+    SeqRetimingKey *key)
 {
-  SeqRetimingKeySelection *elem = MEM_cnew<SeqRetimingKeySelection>(__func__);
-  elem->index = SEQ_retiming_key_index_get(seq, key);
-  memcpy(&elem->strip_name, &seq->name, sizeof(elem->strip_name));
-
-  /* Ensure unique elements in selection. */
-  LISTBASE_FOREACH (SeqRetimingKeySelection *, existing, &ed->retiming_selection) {
-    if (elem->index == existing->index && STREQ(elem->strip_name, existing->strip_name)) {
-      return;
-    }
-  }
-
-  BLI_addtail(&ed->retiming_selection, elem);
+  key->flag |= KEY_SELECTED;
 }
 
-void SEQ_retiming_selection_remove(Editing *ed, const Sequence *seq, const SeqRetimingKey *key)
+void SEQ_retiming_selection_remove(SeqRetimingKey *key)
 {
-  LISTBASE_FOREACH (SeqRetimingKeySelection *, elem, &ed->retiming_selection) {
-    if (!STREQ(elem->strip_name, seq->name + 2)) {
-      continue;
-    }
-    if (elem->index != SEQ_retiming_key_index_get(seq, key)) {
-      continue;
-    }
-    BLI_remlink(&ed->retiming_selection, elem);
-    MEM_freeN(elem);
-    break;
-  }
-}
-
-static Sequence *seq_retiming_selection_strip_get(const Scene *scene,
-                                                  const SeqRetimingKeySelection *elem)
-{
-  return SEQ_sequence_lookup_seq_by_name(scene, elem->strip_name + 2);
+  key->flag &= ~KEY_SELECTED;
 }
 
 blender::Map<SeqRetimingKey *, Sequence *> SEQ_retiming_selection_get(const Scene *scene)
@@ -1000,34 +981,24 @@ blender::Map<SeqRetimingKey *, Sequence *> SEQ_retiming_selection_get(const Scen
   Editing *ed = SEQ_editing_get(scene);
   blender::Map<SeqRetimingKey *, Sequence *> selection;
 
-  LISTBASE_FOREACH (SeqRetimingKeySelection *, elem, &ed->retiming_selection) {
-    Sequence *seq = seq_retiming_selection_strip_get(scene, elem);
-    SeqRetimingKey *key;
-    if (seq == nullptr) {
-      continue;
+  LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
+    for (SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
+      if ((key.flag & KEY_SELECTED) != 0) {
+        selection.add(&key, seq);
+      }
     }
-    if (seq->retiming_keys_num <= elem->index) {
-      continue;
-    }
-
-    key = seq->retiming_keys + elem->index;
-    selection.add(key, seq);
   }
   return selection;
 }
 
-bool SEQ_retiming_selection_contains(const Editing *ed,
-                                     const Sequence *seq,
-                                     const SeqRetimingKey *key)
+bool SEQ_retiming_selection_contains(const Editing *ed, const SeqRetimingKey *key)
 {
-  LISTBASE_FOREACH (SeqRetimingKeySelection *, elem, &ed->retiming_selection) {
-    if (!STREQ(elem->strip_name, seq->name)) {
-      continue;
+  LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
+    for (SeqRetimingKey &key_iter : SEQ_retiming_keys_get(seq)) {
+      if ((key_iter.flag & KEY_SELECTED) != 0 && &key_iter == key) {
+        return true;
+      }
     }
-    if (elem->index != SEQ_retiming_key_index_get(seq, key)) {
-      continue;
-    }
-    return true;
   }
   return false;
 }

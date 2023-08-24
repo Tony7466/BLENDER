@@ -293,7 +293,6 @@ void SEQ_editing_free(Scene *scene, const bool do_id_user)
   BLI_freelistN(&ed->metastack);
   SEQ_sequence_lookup_free(scene);
   SEQ_channels_free(&ed->channels);
-  SEQ_retiming_selection_clear(ed);
 
   MEM_freeN(ed);
 

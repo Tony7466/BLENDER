@@ -74,15 +74,9 @@ SeqRetimingKey *SEQ_retiming_transition_start_get(struct SeqRetimingKey *key);
 bool SEQ_retiming_key_is_freeze_frame(const struct SeqRetimingKey *key);
 
 bool SEQ_retiming_selection_clear(struct Editing *ed);
-void SEQ_retiming_selection_append(struct Editing *ed,
-                                   const struct Sequence *seq,
-                                   const struct SeqRetimingKey *key);
-void SEQ_retiming_selection_remove(struct Editing *ed,
-                                   const struct Sequence *seq,
-                                   const struct SeqRetimingKey *key);
-bool SEQ_retiming_selection_contains(const struct Editing *ed,
-                                     const struct Sequence *seq,
-                                     const struct SeqRetimingKey *key);
+void SEQ_retiming_selection_append(struct SeqRetimingKey *key);
+void SEQ_retiming_selection_remove(struct SeqRetimingKey *key);
+bool SEQ_retiming_selection_contains(const struct Editing *ed, const struct SeqRetimingKey *key);
 bool SEQ_retiming_selection_has_whole_transition(struct Scene *scene, struct SeqRetimingKey *key);
 #ifdef __cplusplus
 }
