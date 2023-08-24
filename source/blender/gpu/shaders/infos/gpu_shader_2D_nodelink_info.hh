@@ -17,6 +17,7 @@ GPU_SHADER_INTERFACE_INFO(nodelink_iface, "")
     .flat(Type::FLOAT, "dashLength")
     .flat(Type::FLOAT, "dashFactor")
     .flat(Type::FLOAT, "dashAlpha")
+    .flat(Type::FLOAT, "dashLevel")
     .flat(Type::INT, "isMainLine")
     .flat(Type::FLOAT, "aspect");
 

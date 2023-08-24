@@ -108,6 +108,7 @@ void main(void)
   float expand_dist = line_thickness * (uv.y * 2.0 - 1.0);
   colorGradient = expand_dist;
   lineThickness = line_thickness;
+  dashLevel = max(1.0, log(node_link_data.aspect) / log(2.0));
 
   finalColor[3] *= dim_factor;
 
