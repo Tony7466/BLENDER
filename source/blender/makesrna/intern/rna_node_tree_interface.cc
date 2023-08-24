@@ -902,7 +902,7 @@ static void rna_def_node_interface_socket(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Socket Type Name", "Name of the socket type");
 
   func = RNA_def_function(srna, "draw", nullptr);
-  RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL | FUNC_USE_SELF_ID);
+  RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL);
   RNA_def_function_ui_description(func, "Draw properties of the socket interface");
   parm = RNA_def_pointer(func, "context", "Context", "", "");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
@@ -913,7 +913,7 @@ static void rna_def_node_interface_socket(BlenderRNA *brna)
 
   func = RNA_def_function(srna, "init_socket", nullptr);
   RNA_def_function_ui_description(func, "Initialize a node socket instance");
-  RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL | FUNC_USE_SELF_ID | FUNC_ALLOW_WRITE);
+  RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL | FUNC_ALLOW_WRITE);
   parm = RNA_def_pointer(func, "node", "Node", "Node", "Node of the socket to initialize");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_pointer(func, "socket", "NodeSocket", "Socket", "Socket to initialize");
@@ -924,7 +924,7 @@ static void rna_def_node_interface_socket(BlenderRNA *brna)
 
   func = RNA_def_function(srna, "from_socket", nullptr);
   RNA_def_function_ui_description(func, "Setup template parameters from an existing socket");
-  RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL | FUNC_USE_SELF_ID | FUNC_ALLOW_WRITE);
+  RNA_def_function_flag(func, FUNC_REGISTER_OPTIONAL | FUNC_ALLOW_WRITE);
   parm = RNA_def_pointer(func, "node", "Node", "Node", "Node of the original socket");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_pointer(func, "socket", "NodeSocket", "Socket", "Original socket");
