@@ -29,6 +29,8 @@ MaterialX::NodePtr MaterialXTexImageNode::convert()
   Scene *scene = DEG_get_input_scene(depsgraph);
   Main *bmain = DEG_get_bmain(depsgraph);
   std::string image_path;
+  /* TODO: What if Blender built without Hydra? Also io::hydra::cache_or_get_image_file contain
+   * pretty general code, so could be moved from bf_usd project. */
 #ifdef WITH_HYDRA
   image_path = io::hydra::cache_or_get_image_file(bmain, scene, image, &tex->iuser);
 #endif
