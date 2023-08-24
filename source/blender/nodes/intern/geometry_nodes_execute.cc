@@ -473,7 +473,7 @@ static StringRefNull component_name(const bke::GeometryComponent::Type type)
 static Vector<OutputAttributeToStore> compute_attributes_to_store(
     const bke::GeometrySet &geometry,
     const MultiValueMap<eAttrDomain, OutputAttributeInfo> &outputs_by_domain,
-    Vector<std::string> &r_fallback)
+    Vector<std::string> &r_errors)
 {
   Vector<OutputAttributeToStore> attributes_to_store;
   for (const auto component_type : {bke::GeometryComponent::Type::Mesh,
@@ -500,7 +500,7 @@ static Vector<OutputAttributeToStore> compute_attributes_to_store(
         const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(type);
         const bke::AttributeValidator validator = attributes.lookup_validator(output_info.name);
         if (!validator.validate_meta_data_if_necessary({domain, data_type})) {
-          r_fallback.append_as(
+          r_errors.append(
               fmt::format(TIP_("Output Attribute {} can not be captured by {} component"),
                           output_info.name.data(),
                           component_name(component_type).data()));
@@ -567,7 +567,7 @@ static void store_computed_output_attributes(
 static void store_output_attributes(bke::GeometrySet &geometry,
                                     const bNodeTree &tree,
                                     const IDProperty *properties,
-                                    Vector<std::string> &r_fallback,
+                                    Vector<std::string> &r_errors,
                                     Span<GMutablePointer> output_values)
 {
   /* All new attribute values have to be computed before the geometry is actually changed. This is
@@ -575,7 +575,7 @@ static void store_output_attributes(bke::GeometrySet &geometry,
   MultiValueMap<eAttrDomain, OutputAttributeInfo> outputs_by_domain =
       find_output_attributes_to_store(tree, properties, output_values);
   Vector<OutputAttributeToStore> attributes_to_store = compute_attributes_to_store(
-      geometry, outputs_by_domain, r_fallback);
+      geometry, outputs_by_domain, r_errors);
   store_computed_output_attributes(geometry, attributes_to_store);
 }
 
@@ -584,7 +584,7 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
     const IDProperty *properties,
     const ComputeContext &base_compute_context,
     bke::GeometrySet input_geometry,
-    Vector<std::string> &r_fallback,
+    Vector<std::string> &r_errors,
     const FunctionRef<void(nodes::GeoNodesLFUserData &)> fill_user_data)
 {
   const nodes::GeometryNodesLazyFunctionGraphInfo &lf_graph_info =
@@ -671,7 +671,7 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
   }
 
   bke::GeometrySet output_geometry = std::move(*param_outputs[0].get<bke::GeometrySet>());
-  store_output_attributes(output_geometry, btree, properties, r_fallback, param_outputs);
+  store_output_attributes(output_geometry, btree, properties, r_errors, param_outputs);
 
   for (GMutablePointer &ptr : param_outputs) {
     ptr.destruct();

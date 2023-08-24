@@ -54,7 +54,7 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
     const IDProperty *properties,
     const ComputeContext &base_compute_context,
     bke::GeometrySet input_geometry,
-    Vector<std::string> &r_fallback,
+    Vector<std::string> &r_errors,
     FunctionRef<void(nodes::GeoNodesLFUserData &)> fill_user_data);
 
 void update_input_properties_from_node_tree(const bNodeTree &tree,

@@ -336,19 +336,19 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
 
     bke::GeometrySet geometry_orig = get_original_geometry_eval_copy(*object);
 
-    Vector<std::string> fallbacks;
+    Vector<std::string> r_errors;
     bke::GeometrySet new_geometry = nodes::execute_geometry_nodes_on_geometry(
         *node_tree,
         op->properties,
         compute_context,
         std::move(geometry_orig),
-        fallbacks,
+        r_errors,
         [&](nodes::GeoNodesLFUserData &user_data) {
           user_data.operator_data = &operator_eval_data;
           user_data.log_socket_values = false;
         });
 
-    for (const std::string error : fallbacks) {
+    for (const std::string &error : r_errors) {
       BKE_report(op->reports, RPT_ERROR, error.data());
     }
 
