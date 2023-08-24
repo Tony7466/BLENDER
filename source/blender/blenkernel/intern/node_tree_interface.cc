@@ -798,21 +798,53 @@ bNodeTreeInterfacePanel *bNodeTreeInterfacePanel::find_parent_recursive(
   return nullptr;
 }
 
+int bNodeTreeInterfacePanel::find_valid_position_for_item(const bNodeTreeInterfaceItem &item,
+                                                          const int initial_pos) const
+{
+  const bool sockets_above_panels = !(this->flag &
+                                      NODE_INTERFACE_PANEL_ALLOW_SOCKETS_AFTER_PANELS);
+  const blender::Span<const bNodeTreeInterfaceItem *> items = this->items();
+
+  int pos = initial_pos;
+
+  if (sockets_above_panels) {
+    if (item.item_type == NODE_INTERFACE_PANEL) {
+      /* Find the closest valid position from the end, only panels at or after #position. */
+      for (int test_pos = items.size() - 1; test_pos >= initial_pos; test_pos--) {
+        if (test_pos < 0) {
+          /* Initial position is out of range but valid. */
+          break;
+        }
+        if (items[test_pos]->item_type != NODE_INTERFACE_PANEL) {
+          /* Found valid position */
+          pos = test_pos + 1;
+          break;
+        }
+      }
+    }
+    else {
+      /* Find the closest valid position from the start, no panels at or after #position . */
+      for (int test_pos = 0; test_pos <= initial_pos; test_pos++) {
+        if (test_pos >= items.size()) {
+          /* Initial position is out of range but valid. */
+          break;
+        }
+        if (items[test_pos]->item_type == NODE_INTERFACE_PANEL) {
+          /* Found valid position */
+          pos = test_pos - 1;
+          break;
+        }
+      }
+    }
+  }
+
+  return pos;
+}
+
 void bNodeTreeInterfacePanel::add_item(bNodeTreeInterfaceItem &item)
 {
-  /* Are child panels allowed? */
-  BLI_assert(item.item_type != NODE_INTERFACE_PANEL ||
-             (flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS));
-
-  blender::MutableSpan<bNodeTreeInterfaceItem *> old_items = this->items();
-  items_num++;
-  items_array = MEM_cnew_array<bNodeTreeInterfaceItem *>(items_num, __func__);
-  this->items().drop_back(1).copy_from(old_items);
-  this->items().last() = &item;
-
-  if (old_items.data()) {
-    MEM_freeN(old_items.data());
-  }
+  /* Same as inserting at the end. */
+  insert_item(item, this->items_num);
 }
 
 void bNodeTreeInterfacePanel::insert_item(bNodeTreeInterfaceItem &item, int position)
@@ -821,6 +853,8 @@ void bNodeTreeInterfacePanel::insert_item(bNodeTreeInterfaceItem &item, int posi
   BLI_assert(item.item_type != NODE_INTERFACE_PANEL ||
              (flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS));
 
+  /* Apply any constraints on the item positions. */
+  position = find_valid_position_for_item(item, position);
   position = std::min(std::max(position, 0), items_num);
 
   blender::MutableSpan<bNodeTreeInterfaceItem *> old_items = this->items();
@@ -835,7 +869,7 @@ void bNodeTreeInterfacePanel::insert_item(bNodeTreeInterfaceItem &item, int posi
   }
 }
 
-bool bNodeTreeInterfacePanel::remove_item(bNodeTreeInterfaceItem &item, bool free)
+bool bNodeTreeInterfacePanel::remove_item(bNodeTreeInterfaceItem &item, const bool free)
 {
   const int position = this->item_position(item);
   if (!this->items().index_range().contains(position)) {
@@ -868,20 +902,21 @@ void bNodeTreeInterfacePanel::clear(bool do_id_user)
   items_num = 0;
 }
 
-bool bNodeTreeInterfacePanel::move_item(bNodeTreeInterfaceItem &item, const int new_position)
+bool bNodeTreeInterfacePanel::move_item(bNodeTreeInterfaceItem &item, int new_position)
 {
   const int old_position = this->item_position(item);
-  if (!this->items().index_range().contains(old_position) ||
-      !this->items().index_range().contains(new_position))
-  {
+  if (!this->items().index_range().contains(old_position)) {
     return false;
   }
-
   if (old_position == new_position) {
     /* Nothing changes. */
     return true;
   }
-  else if (old_position < new_position) {
+
+  new_position = find_valid_position_for_item(item, new_position);
+  new_position = std::min(std::max(new_position, 0), items_num - 1);
+
+  if (old_position < new_position) {
     const blender::Span<bNodeTreeInterfaceItem *> moved_items = this->items().slice(
         old_position + 1, new_position - old_position);
     bNodeTreeInterfaceItem *tmp = this->items()[old_position];
@@ -1292,9 +1327,16 @@ bool bNodeTreeInterface::move_item_to_parent(bNodeTreeInterfaceItem &item,
     /* Parent does not allow adding child panels. */
     return false;
   }
-  if (parent->remove_item(item, false)) {
-    new_parent->insert_item(item, new_position);
-    return true;
+  if (parent == new_parent) {
+    return parent->move_item(item, new_position);
+  }
+  else {
+    /* Note: only remove and reinsert when parents different, otherwise removing the item can
+     * change the desired target position! */
+    if (parent->remove_item(item, false)) {
+      new_parent->insert_item(item, new_position);
+      return true;
+    }
   }
   return false;
 }

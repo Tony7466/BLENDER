@@ -106,6 +106,8 @@ typedef enum NodeTreeInterfacePanelFlag {
   NODE_INTERFACE_PANEL_DEFAULT_CLOSED = 1 << 0,
   /* Allow child panels inside this panel. */
   NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS = 1 << 1,
+  /* Allow adding sockets after panels. */
+  NODE_INTERFACE_PANEL_ALLOW_SOCKETS_AFTER_PANELS = 1 << 2,
 } NodeTreeInterfacePanelFlag;
 ENUM_OPERATORS(NodeTreeInterfacePanelFlag, NODE_INTERFACE_PANEL_DEFAULT_CLOSED);
 
@@ -159,6 +161,9 @@ typedef struct bNodeTreeInterfacePanel {
    * \return Parent panel containing the item.
    */
   bNodeTreeInterfacePanel *find_parent_recursive(const bNodeTreeInterfaceItem &item);
+
+  /** Find a valid position in the items span based on whether sockets are kept above panels. */
+  int find_valid_position_for_item(const bNodeTreeInterfaceItem &item, int initial_position) const;
 
   /** Create a copy of items in the span and add them to the interface. */
   void copy_from(blender::Span<const bNodeTreeInterfaceItem *> items_src, int flag);

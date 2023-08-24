@@ -458,7 +458,7 @@ bool NodePanelDropTarget::on_drop(bContext *C, const DragInfo &drag_info) const
       /* Insert into same panel as the target. */
       parent = interface.find_item_parent(panel_.item);
       BLI_assert(parent != nullptr);
-      index = parent->items().as_span().first_index_try(&panel_.item);
+      index = parent->items().as_span().first_index_try(&panel_.item) - 1;
       break;
     }
     case DropLocation::After: {
