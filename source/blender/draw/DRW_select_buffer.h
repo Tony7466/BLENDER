@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -70,7 +70,7 @@ typedef struct SELECTID_Context {
   bool is_dirty;
 } SELECTID_Context;
 
-/* draw_select_buffer.c */
+/* `draw_select_buffer.cc` */
 
 bool DRW_select_buffer_elem_get(uint sel_id, uint *r_elem, uint *r_base_index, char *r_elem_type);
 uint DRW_select_buffer_context_offset_for_object_elem(struct Depsgraph *depsgraph,

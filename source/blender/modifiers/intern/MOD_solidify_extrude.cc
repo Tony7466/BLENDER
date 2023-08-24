@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,10 +6,11 @@
  * \ingroup modifiers
  */
 
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLI_bitmap.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
 #include "BLI_utildefines_stack.h"
 
 #include "DNA_mesh_types.h"
@@ -158,7 +159,7 @@ Mesh *MOD_solidify_extrude_modifyMesh(ModifierData *md, const ModifierEvalContex
   const short mat_ofs_rim = mat_nr_max ? smd->mat_ofs_rim : 0;
 
   /* use for edges */
-  /* over-alloc new_vert_arr, old_vert_arr */
+  /* Over-allocate new_vert_arr, old_vert_arr. */
   uint *new_vert_arr = nullptr;
   STACK_DECLARE(new_vert_arr);
 

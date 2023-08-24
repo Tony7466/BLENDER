@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,6 +9,7 @@
 #include <cstdio>
 
 #include "BLI_listbase.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
@@ -32,10 +33,10 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "MOD_gpencil_legacy_modifiertypes.h"
 #include "MOD_gpencil_legacy_ui_common.h"
@@ -164,7 +165,7 @@ static void foreach_ID_link(GpencilModifierData *md, Object *ob, IDWalkFunc walk
   walk(user_data, ob, (ID **)&mmd->material, IDWALK_CB_USER);
 }
 
-static bool is_disabled(GpencilModifierData *md, int /*user_render_params*/)
+static bool is_disabled(GpencilModifierData *md, bool /*use_render_params*/)
 {
   WeightAngleGpencilModifierData *mmd = (WeightAngleGpencilModifierData *)md;
 
@@ -186,14 +187,14 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   bool has_output = RNA_string_length(ptr, "target_vertex_group") != 0;
   uiLayoutSetPropDecorate(sub, false);
   uiLayoutSetActive(sub, has_output);
-  uiItemR(sub, ptr, "use_invert_output", 0, "", ICON_ARROW_LEFTRIGHT);
+  uiItemR(sub, ptr, "use_invert_output", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
 
-  uiItemR(layout, ptr, "angle", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "axis", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "space", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "angle", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "axis", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "space", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  uiItemR(layout, ptr, "minimum_weight", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "use_multiply", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "minimum_weight", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_multiply", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   gpencil_modifier_panel_end(layout, ptr);
 }

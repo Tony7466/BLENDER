@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -63,7 +63,7 @@ void AbstractView::update_from_old(uiBlock &new_block)
 /** \} */
 
 /* ---------------------------------------------------------------------- */
-/** \name State Managment
+/** \name State Management
  * \{ */
 
 void AbstractView::change_state_delayed()

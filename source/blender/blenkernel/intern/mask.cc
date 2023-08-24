@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation
+/* SPDX-FileCopyrightText: 2012 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,7 +16,9 @@
 #include "BLI_endian_switch.h"
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
@@ -79,6 +81,7 @@ static void mask_foreach_id(ID *id, LibraryForeachIDData *data)
 
   LISTBASE_FOREACH (MaskLayer *, mask_layer, &mask->masklayers) {
     LISTBASE_FOREACH (MaskSpline *, mask_spline, &mask_layer->splines) {
+      BKE_LIB_FOREACHID_PROCESS_ID(data, mask_spline->parent.id, IDWALK_CB_USER);
       for (int i = 0; i < mask_spline->tot_point; i++) {
         MaskSplinePoint *point = &mask_spline->points[i];
         BKE_LIB_FOREACHID_PROCESS_ID(data, point->parent.id, IDWALK_CB_USER);
@@ -93,10 +96,6 @@ static void mask_blend_write(BlendWriter *writer, ID *id, const void *id_address
 
   BLO_write_id_struct(writer, Mask, id_address, &mask->id);
   BKE_id_blend_write(writer, &mask->id);
-
-  if (mask->adt) {
-    BKE_animdata_blend_write(writer, mask->adt);
-  }
 
   LISTBASE_FOREACH (MaskLayer *, masklay, &mask->masklayers) {
     BLO_write_struct(writer, MaskLayer, masklay);
@@ -206,28 +205,6 @@ static void mask_blend_read_lib(BlendLibReader *reader, ID *id)
   }
 }
 
-static void expand_mask_parent(BlendExpander *expander, MaskParent *parent)
-{
-  if (parent->id) {
-    BLO_expand(expander, parent->id);
-  }
-}
-
-static void mask_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  Mask *mask = (Mask *)id;
-  LISTBASE_FOREACH (MaskLayer *, mask_layer, &mask->masklayers) {
-    LISTBASE_FOREACH (MaskSpline *, spline, &mask_layer->splines) {
-      for (int i = 0; i < spline->tot_point; i++) {
-        MaskSplinePoint *point = &spline->points[i];
-        expand_mask_parent(expander, &point->parent);
-      }
-
-      expand_mask_parent(expander, &spline->parent);
-    }
-  }
-}
-
 IDTypeInfo IDType_ID_MSK = {
     /*id_code*/ ID_MSK,
     /*id_filter*/ FILTER_ID_MSK,
@@ -251,7 +228,6 @@ IDTypeInfo IDType_ID_MSK = {
     /*blend_write*/ mask_blend_write,
     /*blend_read_data*/ mask_blend_read_data,
     /*blend_read_lib*/ mask_blend_read_lib,
-    /*blend_read_expand*/ mask_blend_read_expand,
 
     /*blend_read_undo_preserve*/ nullptr,
 

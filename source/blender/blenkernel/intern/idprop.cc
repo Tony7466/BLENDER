@@ -6,6 +6,7 @@
  * \ingroup bke
  */
 
+#include <cfloat>
 #include <climits>
 #include <cstddef>
 #include <cstdio>
@@ -14,7 +15,7 @@
 
 #include "BLI_endian_switch.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_base.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -1511,31 +1512,6 @@ void IDP_BlendReadLib(BlendLibReader *reader, ID *self_id, IDProperty *prop)
     }
     default:
       break; /* Nothing to do for other IDProps. */
-  }
-}
-
-void IDP_BlendReadExpand(BlendExpander *expander, IDProperty *prop)
-{
-  if (!prop) {
-    return;
-  }
-
-  switch (prop->type) {
-    case IDP_ID:
-      BLO_expand(expander, IDP_Id(prop));
-      break;
-    case IDP_IDPARRAY: {
-      IDProperty *idp_array = IDP_IDPArray(prop);
-      for (int i = 0; i < prop->len; i++) {
-        IDP_BlendReadExpand(expander, &idp_array[i]);
-      }
-      break;
-    }
-    case IDP_GROUP:
-      LISTBASE_FOREACH (IDProperty *, loop, &prop->data.group) {
-        IDP_BlendReadExpand(expander, loop);
-      }
-      break;
   }
 }
 

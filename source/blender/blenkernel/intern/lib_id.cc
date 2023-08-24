@@ -50,7 +50,7 @@
 #include "BKE_idtype.h"
 #include "BKE_key.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
@@ -62,7 +62,7 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "BLO_read_write.h"
 
@@ -101,7 +101,6 @@ IDTypeInfo IDType_ID_LINK_PLACEHOLDER = {
     /*blend_write*/ nullptr,
     /*blend_read_data*/ nullptr,
     /*blend_read_lib*/ nullptr,
-    /*blend_read_expand*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -2225,6 +2224,8 @@ void BKE_id_blend_write(BlendWriter *writer, ID *id)
   if (id->properties && !ELEM(GS(id->name), ID_WM)) {
     IDP_BlendWrite(writer, id->properties);
   }
+
+  BKE_animdata_blend_write(writer, id);
 
   if (id->override_library) {
     BLO_write_struct(writer, IDOverrideLibrary, id->override_library);

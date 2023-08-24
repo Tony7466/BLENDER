@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2018-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2018-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -265,7 +265,7 @@ class Prefs(bpy.types.KeyConfigPreferences):
         name="Transform Navigation with Alt",
         description=(
             "During transformations, use Alt to navigate in the 3D View. "
-            "Note that if disabled, Proportional Influence, Automatic Constraints and Auto IK Chain Length hotkeys will require holding Alt"),
+            "Note that if disabled, hotkeys for Proportional Editing, Automatic Constraints, and Auto IK Chain Length will require holding Alt"),
         default=True,
         update=update_fn,
     )

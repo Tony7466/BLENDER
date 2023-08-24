@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -38,7 +38,6 @@ extern "C" {
 #endif
 
 typedef struct BlendDataReader BlendDataReader;
-typedef struct BlendExpander BlendExpander;
 typedef struct BlendLibReader BlendLibReader;
 typedef struct BlendWriter BlendWriter;
 
@@ -165,7 +164,7 @@ void blo_write_id_struct(BlendWriter *writer,
  * Required for writing properly embedded IDs currently.
  *
  * \note Once there is a better generic handling of embedded IDs,
- * this may go back to private code in `writefile.c`.
+ * this may go back to private code in `writefile.cc`.
  */
 typedef struct BLO_Write_IDBuffer BLO_Write_IDBuffer;
 
@@ -310,19 +309,6 @@ struct ID *BLO_read_get_new_id_address_from_session_uuid(BlendLibReader *reader,
 bool BLO_read_lib_is_undo(BlendLibReader *reader);
 struct Main *BLO_read_lib_get_main(BlendLibReader *reader);
 struct BlendFileReadReport *BLO_read_lib_reports(BlendLibReader *reader);
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Blend Expand API
- *
- * BLO_expand has to be called for every data block that should be loaded. If the data block is in
- * a separate `.blend` file, it will be pulled from there.
- * \{ */
-
-void BLO_expand_id(BlendExpander *expander, struct ID *id);
-
-#define BLO_expand(expander, id) BLO_expand_id(expander, (struct ID *)id)
 
 /** \} */
 
