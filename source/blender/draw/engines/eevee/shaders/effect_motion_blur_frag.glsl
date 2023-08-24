@@ -1,5 +1,6 @@
-
-#pragma BLENDER_REQUIRE(common_utiltex_lib.glsl)
+/* SPDX-FileCopyrightText: 2017-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /*
  * Based on:
@@ -10,6 +11,8 @@
  * Next Generation Post Processing in Call of Duty Advanced Warfare
  * by Jorge Jimenez
  */
+
+#pragma BLENDER_REQUIRE(common_utiltex_lib.glsl)
 
 #define KERNEL 8
 

@@ -1,5 +1,6 @@
-#pragma BLENDER_REQUIRE(gpu_shader_common_hash.glsl)
-#pragma BLENDER_REQUIRE(gpu_shader_material_noise.glsl)
+/* SPDX-FileCopyrightText: 2019-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /* 1D Musgrave fBm
  *
@@ -9,6 +10,9 @@
  *
  * from "Texturing and Modelling: A procedural approach"
  */
+
+#pragma BLENDER_REQUIRE(gpu_shader_common_hash.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_material_noise.glsl)
 
 void node_tex_musgrave_fBm_1d(vec3 co,
                               float w,
