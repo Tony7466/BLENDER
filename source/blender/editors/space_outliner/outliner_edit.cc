@@ -2264,7 +2264,7 @@ static void wm_block_orphans_cancel_button(uiBlock *block)
 {
   uiBut *but = uiDefIconTextBut(
       block, UI_BTYPE_BUT, 0, 0, IFACE_("Cancel"), 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, "");
-  UI_but_func_set(but, wm_block_orphans_cancel, block, NULL);
+  UI_but_func_set(but, wm_block_orphans_cancel, block, nullptr);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
   UI_but_flag_enable(but, UI_BUT_ACTIVE_DEFAULT);
 }
@@ -2452,7 +2452,7 @@ static uiBlock *wm_block_create_orphans_cleanup(bContext *C, ARegion *region, vo
 
 static int outliner_orphans_cleanup_exec(bContext *C, wmOperator *op)
 {
-  UI_popup_block_invoke(C, wm_block_create_orphans_cleanup, op, NULL);
+  UI_popup_block_invoke(C, wm_block_create_orphans_cleanup, op, nullptr);
   return OPERATOR_FINISHED;
 }
 
