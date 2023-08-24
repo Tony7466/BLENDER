@@ -193,7 +193,6 @@ void normals_calc_faces(const Span<float3> positions,
                         const Span<int> corner_verts,
                         MutableSpan<float3> face_normals)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
   BLI_assert(faces.size() == face_normals.size());
   threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
@@ -202,76 +201,94 @@ void normals_calc_faces(const Span<float3> positions,
   });
 }
 
+static void normalize_and_validate(MutableSpan<float3> normals, const Span<float3> positions)
+{
+  threading::parallel_for(normals.index_range(), 1024, [&](const IndexRange range) {
+    for (const int vert_i : range) {
+      float *no = normals[vert_i];
+      if (UNLIKELY(normalize_v3(no) == 0.0f)) {
+        /* Following Mesh convention; we use vertex coordinate itself for normal in this case. */
+        normalize_v3_v3(no, positions[vert_i]);
+      }
+    }
+  });
+}
+
+static void accumulate_face_normal_to_vert(const Span<float3> positions,
+                                           const Span<int> face_verts,
+                                           const float3 &face_normal,
+                                           MutableSpan<float3> vert_normals)
+{
+  const int i_end = face_verts.size() - 1;
+
+  /* Accumulate angle weighted face normal into the vertex normal. */
+  /* Inline version of #accumulate_vertex_normals_poly_v3. */
+  {
+    float edvec_prev[3], edvec_next[3], edvec_end[3];
+    const float *v_curr = positions[face_verts[i_end]];
+    sub_v3_v3v3(edvec_prev, positions[face_verts[i_end - 1]], v_curr);
+    normalize_v3(edvec_prev);
+    copy_v3_v3(edvec_end, edvec_prev);
+
+    for (int i_next = 0, i_curr = i_end; i_next <= i_end; i_curr = i_next++) {
+      const float *v_next = positions[face_verts[i_next]];
+
+      /* Skip an extra normalization by reusing the first calculated edge. */
+      if (i_next != i_end) {
+        sub_v3_v3v3(edvec_next, v_curr, v_next);
+        normalize_v3(edvec_next);
+      }
+      else {
+        copy_v3_v3(edvec_next, edvec_end);
+      }
+
+      /* Calculate angle between the two face edges incident on this vertex. */
+      const float fac = saacos(-dot_v3v3(edvec_prev, edvec_next));
+      const float vnor_add[3] = {face_normal[0] * fac, face_normal[1] * fac, face_normal[2] * fac};
+
+      float *vnor = vert_normals[face_verts[i_curr]];
+      add_v3_v3_atomic(vnor, vnor_add);
+      v_curr = v_next;
+      copy_v3_v3(edvec_prev, edvec_next);
+    }
+  }
+}
+
 void normals_calc_verts(const Span<float3> positions,
                         const OffsetIndices<int> faces,
                         const Span<int> corner_verts,
                         const Span<float3> face_normals,
                         MutableSpan<float3> vert_normals)
 {
-  SCOPED_TIMER_AVERAGED(__func__);
-  /* Zero the vertex normal array for accumulation. */
-  {
-    memset(vert_normals.data(), 0, vert_normals.as_span().size_in_bytes());
-  }
+  memset(vert_normals.data(), 0, vert_normals.as_span().size_in_bytes());
 
-  /* Accumulate face normals into vertex normals. */
-  {
-    threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
-      for (const int face_i : range) {
-        const Span<int> face_verts = corner_verts.slice(faces[face_i]);
+  threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
+    for (const int face_i : range) {
+      const Span<int> face_verts = corner_verts.slice(faces[face_i]);
+      accumulate_face_normal_to_vert(positions, face_verts, face_normals[face_i], vert_normals);
+    }
+  });
 
-        const float3 &pnor = face_normals[face_i];
+  normalize_and_validate(vert_normals, positions);
+}
 
-        const int i_end = face_verts.size() - 1;
+static void normals_calc_faces_verts(const Span<float3> positions,
+                                     const OffsetIndices<int> faces,
+                                     const Span<int> corner_verts,
+                                     MutableSpan<float3> face_normals,
+                                     MutableSpan<float3> vert_normals)
+{
+  memset(vert_normals.data(), 0, vert_normals.as_span().size_in_bytes());
 
-        /* Accumulate angle weighted face normal into the vertex normal. */
-        /* Inline version of #accumulate_vertex_normals_poly_v3. */
-        {
-          float edvec_prev[3], edvec_next[3], edvec_end[3];
-          const float *v_curr = positions[face_verts[i_end]];
-          sub_v3_v3v3(edvec_prev, positions[face_verts[i_end - 1]], v_curr);
-          normalize_v3(edvec_prev);
-          copy_v3_v3(edvec_end, edvec_prev);
+  threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
+    for (const int face_i : range) {
+      const Span<int> face_verts = corner_verts.slice(faces[face_i]);
+      face_normals[face_i] = face_normal_calc(positions, face_verts);
+      accumulate_face_normal_to_vert(positions, face_verts, face_normals[face_i], vert_normals);
+    }
+  });
 
-          for (int i_next = 0, i_curr = i_end; i_next <= i_end; i_curr = i_next++) {
-            const float *v_next = positions[face_verts[i_next]];
-
-            /* Skip an extra normalization by reusing the first calculated edge. */
-            if (i_next != i_end) {
-              sub_v3_v3v3(edvec_next, v_curr, v_next);
-              normalize_v3(edvec_next);
-            }
-            else {
-              copy_v3_v3(edvec_next, edvec_end);
-            }
-
-            /* Calculate angle between the two face edges incident on this vertex. */
-            const float fac = saacos(-dot_v3v3(edvec_prev, edvec_next));
-            const float vnor_add[3] = {pnor[0] * fac, pnor[1] * fac, pnor[2] * fac};
-
-            float *vnor = vert_normals[face_verts[i_curr]];
-            add_v3_v3_atomic(vnor, vnor_add);
-            v_curr = v_next;
-            copy_v3_v3(edvec_prev, edvec_next);
-          }
-        }
-      }
-    });
-  }
-
-  /* Normalize and validate computed vertex normals. */
-  {
-    threading::parallel_for(positions.index_range(), 1024, [&](const IndexRange range) {
-      for (const int vert_i : range) {
-        float *no = vert_normals[vert_i];
-
-        if (UNLIKELY(normalize_v3(no) == 0.0f)) {
-          /* Following Mesh convention; we use vertex coordinate itself for normal in this case. */
-          normalize_v3_v3(no, positions[vert_i]);
-        }
-      }
-    });
-  }
+  normalize_and_validate(vert_normals, positions);
 }
 
 /** \} */
@@ -285,16 +302,34 @@ void normals_calc_verts(const Span<float3> positions,
 blender::Span<blender::float3> Mesh::vert_normals() const
 {
   using namespace blender;
-  this->runtime->vert_normals_cache.ensure([&](Vector<float3> &r_data) {
-    SCOPED_TIMER_AVERAGED(__func__);
-    const Span<float3> positions = this->vert_positions();
-    const OffsetIndices faces = this->faces();
-    const Span<int> corner_verts = this->corner_verts();
-    const Span<float3> face_normals = this->face_normals();
+  if (this->runtime->vert_normals_cache.is_cached()) {
+    return this->runtime->vert_normals_cache.data();
+  }
 
-    r_data.reinitialize(positions.size());
-    bke::mesh::normals_calc_verts(positions, faces, corner_verts, face_normals, r_data);
-  });
+  const Span<float3> positions = this->vert_positions();
+  const OffsetIndices faces = this->faces();
+  const Span<int> corner_verts = this->corner_verts();
+
+  /* Calculating only vertex normals based on precalculated face normals is faster, but if face
+   * normals are dirty, calculating both at the same time can be slightly faster. Since normal
+   * calculation commonly has a significant performance impact, we maintain both code paths. */
+  if (this->runtime->face_normals_cache.is_cached()) {
+    const Span<float3> face_normals = this->face_normals();
+    this->runtime->vert_normals_cache.ensure([&](Vector<float3> &r_data) {
+      r_data.reinitialize(positions.size());
+      bke::mesh::normals_calc_verts(positions, faces, corner_verts, face_normals, r_data);
+    });
+  }
+  else {
+    Vector<float3> face_normals(faces.size());
+    this->runtime->vert_normals_cache.ensure([&](Vector<float3> &r_data) {
+      r_data.reinitialize(positions.size());
+      bke::mesh::normals_calc_faces_verts(positions, faces, corner_verts, face_normals, r_data);
+    });
+    this->runtime->face_normals_cache.ensure(
+        [&](Vector<float3> &r_data) { r_data = std::move(face_normals); });
+  }
+
   return this->runtime->vert_normals_cache.data();
 }
 
