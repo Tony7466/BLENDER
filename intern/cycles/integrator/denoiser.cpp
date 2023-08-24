@@ -131,8 +131,8 @@ static DeviceInfo find_best_denoiser_device_info(const vector<DeviceInfo> &devic
       continue;
     }
 
-    /* TODO(sergey): Use one of the already configured devices, so that OptiX denoising can happen
-     * on a physical CUDA device which is already used for rendering. */
+    /* TODO(sergey): Use one of the already configured devices, so that GPU denoising can happen
+     * on a physical device which is already used for rendering. */
 
     /* TODO(sergey): Choose fastest device for denoising. */
 
