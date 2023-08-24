@@ -768,29 +768,47 @@ const ListBase *WM_drag_asset_list_get(const wmDrag *drag)
   return &drag->asset_items;
 }
 
-wmDragPath *WM_drag_create_path_data(const char *path)
+wmDragPath *WM_drag_create_path_data(blender::Span<const char *> paths)
 {
-  wmDragPath *path_data = MEM_new<wmDragPath>("wmDragPath");
-  path_data->path = BLI_strdup(path);
-  path_data->file_type = ED_path_extension_type(path);
+  const char *extension = BLI_path_extension(paths[0]);
+  blender::Vector<std::string> filtered_paths;
+  for (auto path : paths) {
+    const char *test_ext = BLI_path_extension(path);
+    if (extension == test_ext || (extension && test_ext && STREQ(extension, test_ext))) {
+      filtered_paths.append(path);
+    }
+  }
+  const char *tooltip = paths[0];
+  char tooltip_buffer[256];
+  if (filtered_paths.size() > 1) {
+    BLI_snprintf(tooltip_buffer,
+                 ARRAY_SIZE(tooltip_buffer),
+                 TIP_("Dragging %d %s files."),
+                 filtered_paths.size(),
+                 extension ? extension : TIP_("Folder"));
+    tooltip = tooltip_buffer;
+  }
+
+  wmDragPath *path_data = MEM_new<wmDragPath>(
+      "wmDragPath", filtered_paths, tooltip, ED_path_extension_type(paths[0]));
+
   return path_data;
 }
 
 static void wm_drag_free_path_data(wmDragPath **path_data)
 {
-  MEM_freeN((*path_data)->path);
   MEM_delete(*path_data);
   *path_data = nullptr;
 }
 
-const char *WM_drag_get_path(const wmDrag *drag)
+const blender::Span<std::string> WM_drag_get_paths(const wmDrag *drag)
 {
   if (drag->type != WM_DRAG_PATH) {
-    return nullptr;
+    return blender::Span<std::string>();
   }
 
   const wmDragPath *path_data = static_cast<const wmDragPath *>(drag->poin);
-  return path_data->path;
+  return path_data->paths.as_span();
 }
 
 int WM_drag_get_path_file_type(const wmDrag *drag)
@@ -854,7 +872,7 @@ const char *WM_drag_get_item_name(wmDrag *drag)
     }
     case WM_DRAG_PATH: {
       const wmDragPath *path_drag_data = static_cast<const wmDragPath *>(drag->poin);
-      return path_drag_data->path;
+      return path_drag_data->tooltip.c_str();
     }
     case WM_DRAG_NAME:
       return static_cast<const char *>(drag->poin);

@@ -3494,6 +3494,76 @@ class WM_OT_drop_blend_file(Operator):
         col.operator("wm.append", text="Append...", icon='APPEND_BLEND').filepath = self.filepath
 
 
+class WM_FDT_alembic(bpy.types.FileDrop):
+    bl_space_type = "VIEW_3D"
+    bl_idname = "WM_FDT_alembic"
+    bl_operator = "WM_OT_alembic_import"
+
+    @classmethod
+    def poll_extension(cls, context, extension):
+        return extension == ".abc"
+
+
+class WM_FDT_collada(bpy.types.FileDrop):
+    bl_space_type = "VIEW_3D"
+    bl_idname = "WM_FDT_collada"
+    bl_operator = "WM_OT_collada_import"
+
+    @classmethod
+    def poll_extension(cls, context, extension):
+        return extension == ".dae"
+
+
+class WM_FDT_gpencil(bpy.types.FileDrop):
+    bl_space_type = "VIEW_3D"
+    bl_idname = "WM_FDT_gpencil"
+    bl_operator = "WM_OT_gpencil_import_svg"
+
+    @classmethod
+    def poll_extension(cls, context, extension):
+        return extension == ".svg"
+
+
+class WM_FDT_obj(bpy.types.FileDrop):
+    bl_space_type = "VIEW_3D"
+    bl_idname = "WM_FDT_obj"
+    bl_operator = "WM_OT_obj_import"
+
+    @classmethod
+    def poll_extension(cls, context, extension):
+        return extension == ".obj"
+
+
+class WM_FDT_ply(bpy.types.FileDrop):
+    bl_space_type = "VIEW_3D"
+    bl_idname = "WM_FDT_ply"
+    bl_operator = "WM_OT_ply_import"
+
+    @classmethod
+    def poll_extension(cls, context, extension):
+        return extension == ".ply"
+
+
+class WM_FDT_stl(bpy.types.FileDrop):
+    bl_space_type = "VIEW_3D"
+    bl_idname = "WM_FDT_stl"
+    bl_operator = "WM_OT_stl_import"
+
+    @classmethod
+    def poll_extension(cls, context, extension):
+        return extension == ".stl"
+
+
+class WM_FDT_usd(bpy.types.FileDrop):
+    bl_space_type = "VIEW_3D"
+    bl_idname = "WM_FDT_usd"
+    bl_operator = "WM_OT_usd_import"
+
+    @classmethod
+    def poll_extension(cls, context, extension):
+        return extension == ".usd"
+
+
 classes = (
     WM_OT_context_collection_boolean_set,
     WM_OT_context_cycle_array,
@@ -3539,5 +3609,13 @@ classes = (
     WM_MT_splash_quick_setup,
     WM_MT_splash,
     WM_MT_splash_about,
-    WM_MT_region_toggle_pie
+    WM_MT_region_toggle_pie,
+
+    WM_FDT_alembic,
+    WM_FDT_collada,
+    WM_FDT_gpencil,
+    WM_FDT_obj,
+    WM_FDT_ply,
+    WM_FDT_stl,
+    WM_FDT_usd,
 )

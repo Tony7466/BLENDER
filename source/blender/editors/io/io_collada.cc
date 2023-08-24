@@ -22,6 +22,7 @@
 
 #  include "ED_fileselect.hh"
 #  include "ED_object.hh"
+#  include "ED_outliner.hh"
 
 #  include "RNA_access.hh"
 #  include "RNA_define.hh"
@@ -35,6 +36,7 @@
 #  include "collada.h"
 
 #  include "io_collada.hh"
+#  include "io_utils.hh"
 
 static int wm_collada_export_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
@@ -747,6 +749,11 @@ static int wm_collada_import_exec(bContext *C, wmOperator *op)
 
   if (collada_import(C, &import_settings)) {
     DEG_id_tag_update(&CTX_data_scene(C)->id, ID_RECALC_BASE_FLAGS);
+    Scene *scene = CTX_data_scene(C);
+    WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
+    WM_event_add_notifier(C, NC_SCENE | ND_OB_ACTIVE, scene);
+    WM_event_add_notifier(C, NC_SCENE | ND_LAYER_CONTENT, scene);
+    ED_outliner_select_sync_from_object_tag(C);
     return OPERATOR_FINISHED;
   }
 
@@ -782,8 +789,9 @@ static void uiCollada_importSettings(uiLayout *layout, PointerRNA *imfptr)
   uiItemR(box, imfptr, "keep_bind_info", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
-static void wm_collada_import_draw(bContext * /*C*/, wmOperator *op)
+static void wm_collada_import_draw(bContext *C, wmOperator *op)
 {
+  files_drop_label_draw(C, op, ICON_FILE_3D, "dae");
   uiCollada_importSettings(op->layout, op->ptr);
 }
 
@@ -792,9 +800,9 @@ void WM_OT_collada_import(wmOperatorType *ot)
   ot->name = "Import COLLADA";
   ot->description = "Load a Collada file";
   ot->idname = "WM_OT_collada_import";
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_PRESET;
+  ot->flag = OPTYPE_UNDO | OPTYPE_PRESET;
 
-  ot->invoke = WM_operator_filesel;
+  ot->invoke = wm_io_import_invoke;
   ot->exec = wm_collada_import_exec;
   ot->poll = WM_operator_winactive;
 
@@ -807,6 +815,7 @@ void WM_OT_collada_import(wmOperatorType *ot)
                                  WM_FILESEL_FILEPATH | WM_FILESEL_SHOW_PROPS,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
+  skip_filesel_props(ot, WM_FILESEL_FILEPATH);
 
   PropertyRNA *prop = RNA_def_string(ot->srna, "filter_glob", "*.dae", 0, "", "");
   RNA_def_property_flag(prop, PROP_HIDDEN);

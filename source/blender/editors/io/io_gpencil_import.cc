@@ -36,6 +36,7 @@
 #  include "ED_gpencil_legacy.hh"
 
 #  include "io_gpencil.hh"
+#  include "io_utils.hh"
 
 #  include "gpencil_io.h"
 
@@ -53,13 +54,6 @@ static bool wm_gpencil_import_svg_common_check(bContext * /*C*/, wmOperator *op)
   }
 
   return false;
-}
-
-static int wm_gpencil_import_svg_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
-{
-  WM_event_add_fileselect(C, op);
-
-  return OPERATOR_RUNNING_MODAL;
 }
 
 static int wm_gpencil_import_svg_exec(bContext *C, wmOperator *op)
@@ -136,13 +130,15 @@ static void ui_gpencil_import_svg_settings(uiLayout *layout, PointerRNA *imfptr)
 {
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
-  uiLayout *col = uiLayoutColumn(layout, false);
+  uiLayout *box = uiLayoutBox(layout);
+  uiLayout *col = uiLayoutColumn(box, false);
   uiItemR(col, imfptr, "resolution", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, imfptr, "scale", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
-static void wm_gpencil_import_svg_draw(bContext * /*C*/, wmOperator *op)
+static void wm_gpencil_import_svg_draw(bContext *C, wmOperator *op)
 {
+  files_drop_label_draw(C, op, ICON_FILE_3D, ".svg");
   ui_gpencil_import_svg_settings(op->layout, op->ptr);
 }
 
@@ -161,7 +157,7 @@ void WM_OT_gpencil_import_svg(wmOperatorType *ot)
   ot->description = "Import SVG into grease pencil";
   ot->idname = "WM_OT_gpencil_import_svg";
 
-  ot->invoke = wm_gpencil_import_svg_invoke;
+  ot->invoke = wm_io_import_invoke;
   ot->exec = wm_gpencil_import_svg_exec;
   ot->poll = wm_gpencil_import_svg_poll;
   ot->ui = wm_gpencil_import_svg_draw;
@@ -175,6 +171,8 @@ void WM_OT_gpencil_import_svg(wmOperatorType *ot)
                                      WM_FILESEL_DIRECTORY | WM_FILESEL_FILES,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
+  skip_filesel_props(
+      ot, WM_FILESEL_FILEPATH | WM_FILESEL_RELPATH | WM_FILESEL_DIRECTORY | WM_FILESEL_FILES);
 
   RNA_def_int(ot->srna,
               "resolution",

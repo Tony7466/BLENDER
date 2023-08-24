@@ -139,6 +139,9 @@ typedef struct SpaceType {
   /** Asset shelf type definitions. */
   ListBase asset_shelf_types; /* #AssetShelfType */
 
+  /** File drop type definitions. */
+  ListBase file_drop_types; /* #FileDropType */
+
   /* read and write... */
 
   /** Default key-maps to add. */
@@ -460,6 +463,28 @@ typedef struct AssetShelfType {
   /* RNA integration */
   ExtensionRNA rna_ext;
 } AssetShelfType;
+
+typedef struct FileDropType {
+  struct FileDropType *next, *prev;
+
+  char idname[BKE_ST_MAXNAME]; /* unique name */
+
+  char op_name[BKE_ST_MAXNAME]; /* operator name */
+
+  int space_type;
+
+  /** Determine if the operator can handle a specific file extension. */
+  bool (*poll_extension)(const struct bContext *C,
+                         FileDropType *file_drop_type,
+                         const char *extension);
+
+  /* RNA integration */
+  ExtensionRNA rna_ext;
+} FileDropType;
+
+typedef struct FileDrop {
+  struct FileDropType *type; /* runtime */
+} FileDrop;
 
 /* Space-types. */
 

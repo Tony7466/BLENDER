@@ -5913,7 +5913,7 @@ static bool blend_file_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent *
 static void blend_file_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
 {
   /* copy drag path to properties */
-  RNA_string_set(drop->ptr, "filepath", WM_drag_get_path(drag));
+  RNA_string_set(drop->ptr, "filepath", WM_drag_get_paths(drag)[0].c_str());
 }
 
 void ED_keymap_screen(wmKeyConfig *keyconf)

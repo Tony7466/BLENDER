@@ -8,6 +8,8 @@
 
 #ifdef WITH_IO_STL
 
+#  include "BLT_translation.h"
+
 #  include "BKE_context.h"
 #  include "BKE_report.h"
 
@@ -21,13 +23,12 @@
 #  include "RNA_access.hh"
 #  include "RNA_define.hh"
 
+#  include "UI_interface.hh"
+#  include "UI_resources.hh"
+
 #  include "IO_stl.h"
 #  include "io_stl_ops.hh"
-
-static int wm_stl_import_invoke(bContext *C, wmOperator *op, const wmEvent *event)
-{
-  return WM_operator_filesel(C, op, event);
-}
+#  include "io_utils.hh"
 
 static int wm_stl_import_exec(bContext *C, wmOperator *op)
 {
@@ -85,6 +86,29 @@ static bool wm_stl_import_check(bContext * /*C*/, wmOperator *op)
   }
   return false;
 }
+static void ui_stl_import_settings(uiLayout *layout, PointerRNA *imfptr)
+{
+  uiLayoutSetPropSep(layout, true);
+  uiLayoutSetPropDecorate(layout, false);
+
+  uiLayout *box = uiLayoutBox(layout);
+  uiLayout *col = uiLayoutColumn(box, false);
+  uiItemR(col, imfptr, "global_scale", UI_ITEM_NONE, NULL, ICON_NONE);
+  uiItemR(col, imfptr, "use_scene_unit", UI_ITEM_NONE, NULL, ICON_NONE);
+  uiItemR(col, imfptr, "use_facet_normal", UI_ITEM_NONE, NULL, ICON_NONE);
+  uiItemR(col, imfptr, "forward_axis", UI_ITEM_NONE, IFACE_("Forward Axis"), ICON_NONE);
+  uiItemR(col, imfptr, "up_axis", UI_ITEM_NONE, NULL, ICON_NONE);
+  uiItemR(col, imfptr, "use_mesh_validate", UI_ITEM_NONE, NULL, ICON_NONE);
+}
+
+static void wm_stl_import_draw(bContext *C, wmOperator *op)
+{
+  PointerRNA ptr;
+  wmWindowManager *wm = CTX_wm_manager(C);
+  RNA_pointer_create(&wm->id, op->type->srna, op->properties, &ptr);
+  files_drop_label_draw(C, op, ICON_FILE_3D, ".stl");
+  ui_stl_import_settings(op->layout, &ptr);
+}
 
 void WM_OT_stl_import(wmOperatorType *ot)
 {
@@ -94,11 +118,12 @@ void WM_OT_stl_import(wmOperatorType *ot)
   ot->description = "Import an STL file as an object";
   ot->idname = "WM_OT_stl_import";
 
-  ot->invoke = wm_stl_import_invoke;
+  ot->invoke = wm_io_import_invoke;
   ot->exec = wm_stl_import_exec;
   ot->poll = WM_operator_winactive;
   ot->check = wm_stl_import_check;
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_PRESET;
+  ot->ui = wm_stl_import_draw;
+  ot->flag = OPTYPE_UNDO | OPTYPE_PRESET;
 
   WM_operator_properties_filesel(ot,
                                  FILE_TYPE_FOLDER,
@@ -108,6 +133,7 @@ void WM_OT_stl_import(wmOperatorType *ot)
                                      WM_FILESEL_SHOW_PROPS,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
+  skip_filesel_props(ot, WM_FILESEL_FILEPATH | WM_FILESEL_FILES | WM_FILESEL_DIRECTORY);
 
   RNA_def_float(ot->srna, "global_scale", 1.0f, 1e-6f, 1e6f, "Scale", "", 0.001f, 1000.0f);
   RNA_def_boolean(ot->srna,

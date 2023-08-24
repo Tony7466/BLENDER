@@ -1282,6 +1282,138 @@ static void rna_Menu_bl_description_set(PointerRNA *ptr, const char *value)
 
 /* UILayout */
 
+/* File Drop */
+
+static bool file_drop_poll(const bContext *C, FileDropType *file_drop_type, const char *extension)
+{
+  extern FunctionRNA rna_FileDrop_poll_extension_func;
+
+  PointerRNA ptr;
+  RNA_pointer_create(nullptr, file_drop_type->rna_ext.srna, nullptr, &ptr); /* dummy */
+  /* RNA_struct_find_function(&ptr, "poll"); */
+  FunctionRNA *func = &rna_FileDrop_poll_extension_func;
+
+  ParameterList list;
+  RNA_parameter_list_create(&list, &ptr, func);
+  RNA_parameter_set_lookup(&list, "context", &C);
+  RNA_parameter_set_lookup(&list, "extension", &extension);
+  file_drop_type->rna_ext.call((bContext *)C, &ptr, func, &list);
+
+  void *ret;
+  RNA_parameter_get_lookup(&list, "visible", &ret);
+  /* Get the value before freeing. */
+  const bool is_visible = *(bool *)ret;
+
+  RNA_parameter_list_free(&list);
+
+  return is_visible;
+}
+
+static bool rna_FileDrop_unregister(Main * /*bmain*/, StructRNA *type)
+{
+  FileDropType *file_drop_type = static_cast<FileDropType *>(RNA_struct_blender_type_get(type));
+
+  if (!file_drop_type) {
+    return false;
+  }
+
+  SpaceType *space_type = BKE_spacetype_from_id(file_drop_type->space_type);
+  if (!space_type) {
+    return false;
+  }
+
+  RNA_struct_free_extension(type, &file_drop_type->rna_ext);
+  RNA_struct_free(&BLENDER_RNA, type);
+
+  BLI_freelinkN(&space_type->file_drop_types, file_drop_type);
+
+  /* update while blender is running */
+  WM_main_add_notifier(NC_WINDOW, nullptr);
+
+  return true;
+}
+
+static StructRNA *rna_FileDrop_register(Main *bmain,
+                                        ReportList *reports,
+                                        void *data,
+                                        const char *identifier,
+                                        StructValidateFunc validate,
+                                        StructCallbackFunc call,
+                                        StructFreeFunc free)
+{
+  FileDropType dummy_file_drop_type = {};
+  FileDrop dummy_file_drop = {};
+  PointerRNA dummy_file_drop_ptr;
+  dummy_file_drop.type = &dummy_file_drop_type;
+  /* setup dummy file drop type to store static properties in */
+  RNA_pointer_create(nullptr, &RNA_FileDrop, &dummy_file_drop, &dummy_file_drop_ptr);
+
+  bool have_function[1];
+
+  /* validate the python class */
+  if (validate(&dummy_file_drop_ptr, data, have_function) != 0) {
+    return nullptr;
+  }
+
+  if (strlen(identifier) >= sizeof(dummy_file_drop_type.idname)) {
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "Registering file drop class: '%s' is too long, maximum length is %d",
+                identifier,
+                (int)sizeof(dummy_file_drop_type.idname));
+    return nullptr;
+  }
+
+  SpaceType *space_type = BKE_spacetype_from_id(dummy_file_drop_type.space_type);
+  if (!space_type) {
+    BLI_assert_unreachable();
+    return nullptr;
+  }
+
+  /* Check if we have registered this file drop type before, and remove it. */
+  LISTBASE_FOREACH (FileDropType *, iter_file_drop_type, &space_type->file_drop_types) {
+    if (STREQ(iter_file_drop_type->idname, dummy_file_drop_type.idname)) {
+      if (iter_file_drop_type->rna_ext.srna) {
+        rna_FileDrop_unregister(bmain, iter_file_drop_type->rna_ext.srna);
+      }
+      break;
+    }
+  }
+  if (!RNA_struct_available_or_report(reports, dummy_file_drop_type.idname)) {
+    return nullptr;
+  }
+  if (!RNA_struct_bl_idname_ok_or_report(reports, dummy_file_drop_type.idname, "_FDT_")) {
+    return nullptr;
+  }
+
+  /* Create the new file drop type. */
+  FileDropType *file_drop_type = MEM_cnew<FileDropType>(__func__);
+  memcpy(file_drop_type, &dummy_file_drop_type, sizeof(*file_drop_type));
+
+  file_drop_type->rna_ext.srna = RNA_def_struct_ptr(
+      &BLENDER_RNA, file_drop_type->idname, &RNA_FileDrop);
+  file_drop_type->rna_ext.data = data;
+  file_drop_type->rna_ext.call = call;
+  file_drop_type->rna_ext.free = free;
+  RNA_struct_blender_type_set(file_drop_type->rna_ext.srna, file_drop_type);
+
+  file_drop_type->poll_extension = have_function[0] ? file_drop_poll : nullptr;
+
+  BLI_addtail(&space_type->file_drop_types, file_drop_type);
+
+  /* update while blender is running */
+  WM_main_add_notifier(NC_WINDOW, nullptr);
+
+  return file_drop_type->rna_ext.srna;
+}
+
+static StructRNA *rna_FileDrop_refine(PointerRNA *file_drop_ptr)
+{
+  FileDrop *file_drop = (FileDrop *)file_drop_ptr->data;
+  return (file_drop && file_drop->type->rna_ext.srna) ? file_drop->type->rna_ext.srna :
+                                                        &RNA_FileDrop;
+}
+
 static bool rna_UILayout_active_get(PointerRNA *ptr)
 {
   return uiLayoutGetActive(static_cast<uiLayout *>(ptr->data));
@@ -2073,6 +2205,61 @@ static void rna_def_menu(BlenderRNA *brna)
   RNA_define_verify_sdna(true);
 }
 
+static void rna_def_file_drop(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "FileDrop", nullptr);
+  RNA_def_struct_ui_text(srna, "File Drop Type", "File drop polling function class");
+  RNA_def_struct_sdna(srna, "FileDrop");
+  RNA_def_struct_refine_func(srna, "rna_FileDrop_refine");
+  RNA_def_struct_register_funcs(srna, "rna_FileDrop_register", "rna_FileDrop_unregister", nullptr);
+  RNA_def_struct_translation_context(srna, BLT_I18NCONTEXT_DEFAULT_BPYRNA);
+  RNA_def_struct_flag(srna, STRUCT_PUBLIC_NAMESPACE_INHERIT);
+  /* registration */
+  RNA_define_verify_sdna(false); /* not in sdna */
+  prop = RNA_def_property(srna, "bl_idname", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "type->idname");
+  RNA_def_property_flag(prop, PROP_REGISTER);
+  RNA_def_property_ui_text(prop,
+                           "ID Name",
+                           "If this is set, the asset gets a custom ID, otherwise it takes the "
+                           "name of the class used to define the menu (for example, if the "
+                           "class name is \"OBJECT_FDT_hello\", and bl_idname is not set by the "
+                           "script, then bl_idname = \"OBJECT_FDT_hello\")");
+
+  prop = RNA_def_property(srna, "bl_space_type", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "type->space_type");
+  RNA_def_property_enum_items(prop, rna_enum_space_type_items);
+  RNA_def_property_flag(prop, PROP_REGISTER);
+  RNA_def_property_ui_text(
+      prop, "Space Type", "The space type where file dropped cin be used by the operator");
+
+  prop = RNA_def_property(srna, "bl_operator", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "type->op_name");
+  RNA_def_property_flag(prop, PROP_REGISTER);
+  RNA_def_property_ui_text(
+      prop, "Operator", "Operator to call if the poll_extension is successful");
+
+  PropertyRNA *parm;
+  FunctionRNA *func;
+
+  func = RNA_def_function(srna, "poll_extension", nullptr);
+  RNA_def_function_ui_description(
+      func, "If this method returns a non-null output, the file importer will be used");
+  RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_REGISTER_OPTIONAL);
+  RNA_def_function_return(func, RNA_def_boolean(func, "visible", true, "", ""));
+  parm = RNA_def_pointer(func, "context", "Context", "", "");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  parm = RNA_def_string(
+      func, "extension", nullptr, 256, "extension", "Extension to test for dropped file");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  RNA_define_verify_sdna(true);
+}
+
 static void rna_def_asset_shelf(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -2182,6 +2369,7 @@ void RNA_def_ui(BlenderRNA *brna)
   rna_def_header(brna);
   rna_def_menu(brna);
   rna_def_asset_shelf(brna);
+  rna_def_file_drop(brna);
 }
 
 #endif /* RNA_RUNTIME */

@@ -41,6 +41,7 @@
 #  include "IO_wavefront_obj.h"
 
 #  include "io_obj.hh"
+#  include "io_utils.hh"
 
 static const EnumPropertyItem io_obj_export_evaluation_mode[] = {
     {DAG_EVAL_RENDER, "DAG_EVAL_RENDER", 0, "Render", "Export objects as they appear in render"},
@@ -386,12 +387,6 @@ void WM_OT_obj_export(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 
-static int wm_obj_import_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
-{
-  WM_event_add_fileselect(C, op);
-  return OPERATOR_RUNNING_MODAL;
-}
-
 static int wm_obj_import_exec(bContext *C, wmOperator *op)
 {
   OBJImportParams import_params{};
@@ -473,6 +468,7 @@ static void wm_obj_import_draw(bContext *C, wmOperator *op)
   PointerRNA ptr;
   wmWindowManager *wm = CTX_wm_manager(C);
   RNA_pointer_create(&wm->id, op->type->srna, op->properties, &ptr);
+  files_drop_label_draw(C, op, ICON_FILE_3D, ".obj");
   ui_obj_import_settings(op->layout, &ptr);
 }
 
@@ -483,9 +479,9 @@ void WM_OT_obj_import(wmOperatorType *ot)
   ot->name = "Import Wavefront OBJ";
   ot->description = "Load a Wavefront OBJ scene";
   ot->idname = "WM_OT_obj_import";
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_PRESET;
+  ot->flag = OPTYPE_UNDO | OPTYPE_PRESET;
 
-  ot->invoke = wm_obj_import_invoke;
+  ot->invoke = wm_io_import_invoke;
   ot->exec = wm_obj_import_exec;
   ot->poll = WM_operator_winactive;
   ot->ui = wm_obj_import_draw;
@@ -498,6 +494,8 @@ void WM_OT_obj_import(wmOperatorType *ot)
                                      WM_FILESEL_DIRECTORY | WM_FILESEL_FILES,
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
+
+  skip_filesel_props(ot, WM_FILESEL_FILEPATH | WM_FILESEL_DIRECTORY | WM_FILESEL_FILES);
 
   RNA_def_float(
       ot->srna,

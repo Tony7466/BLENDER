@@ -726,9 +726,9 @@ static void node_id_path_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
     return;
   }
 
-  const char *path = WM_drag_get_path(drag);
-  if (path) {
-    RNA_string_set(drop->ptr, "filepath", path);
+  const auto paths = WM_drag_get_paths(drag);
+  if (paths.begin()) {
+    RNA_string_set(drop->ptr, "filepath", paths[0].c_str());
     RNA_struct_property_unset(drop->ptr, "name");
     return;
   }

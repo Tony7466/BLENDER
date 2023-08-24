@@ -225,6 +225,7 @@ static void spacetype_free(SpaceType *st)
 
   BLI_freelistN(&st->regiontypes);
   BLI_freelistN(&st->asset_shelf_types);
+  BLI_freelistN(&st->file_drop_types);
 }
 
 void BKE_spacetypes_free()
