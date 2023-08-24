@@ -129,7 +129,7 @@ void init_interface()
 }
 
 #ifdef MAT_SHADOW
-#ifdef GPU_VERTEX_SHADER
+#  ifdef GPU_VERTEX_SHADER
 void shadow_viewport_layer_set(int view_id, int lod)
 {
   /* We still render to a layered framebuffer in the case of Metal + Tile Based Renderer.
@@ -138,12 +138,12 @@ void shadow_viewport_layer_set(int view_id, int lod)
   gpu_Layer = view_id;
   gpu_ViewportIndex = lod;
 }
-#endif
+#  endif
 
-#ifdef GPU_FRAGMENT_SHADER
+#  ifdef GPU_FRAGMENT_SHADER
 int shadow_view_id_get()
 {
   return gpu_Layer;
 }
-#endif
+#  endif
 #endif

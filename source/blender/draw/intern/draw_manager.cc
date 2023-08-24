@@ -198,7 +198,7 @@ void Manager::submit(PassMain &pass, View &view)
   state.cleanup();
 }
 
-void Manager::submit_prepare_visibility(PassMain &pass, View &view, command::RecordingState* state)
+void Manager::submit_prepare_visibility(PassMain &pass, View &view, command::RecordingState *state)
 {
   view.bind();
 
@@ -220,20 +220,20 @@ void Manager::submit_prepare_visibility(PassMain &pass, View &view, command::Rec
                                pass.use_custom_ids);
 }
 
-void Manager::submit_pass_only(PassMain &pass, View &view, command::RecordingState* state)
+void Manager::submit_pass_only(PassMain &pass, View &view, command::RecordingState *state)
 {
   view.bind();
 
   debug_bind();
 
   pass.draw_commands_buf_.bind_no_comp(*state,
-                               pass.headers_,
-                               pass.commands_,
-                               view.get_visibility_buffer(),
-                               view.visibility_word_per_draw(),
-                               view.view_len_,
-                               pass.use_custom_ids);
-  
+                                       pass.headers_,
+                                       pass.commands_,
+                                       view.get_visibility_buffer(),
+                                       view.visibility_word_per_draw(),
+                                       view.view_len_,
+                                       pass.use_custom_ids);
+
   resource_bind();
 
   pass.submit(*state);

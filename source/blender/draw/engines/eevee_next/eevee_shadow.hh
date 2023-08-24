@@ -261,7 +261,7 @@ class ShadowModule {
   View shadow_multi_view_ = {"ShadowMultiView", SHADOW_VIEW_MAX, true};
   /** Framebuffer with the atlas_tx attached. */
   Framebuffer render_fb_ = {"shadow_write_framebuffer"};
-  #ifdef WITH_METAL_BACKEND
+#ifdef WITH_METAL_BACKEND
   /* NOTE(Metal): Metal requires memoryless textures to be created which represent attachments in
    * the shadow write framebuffer. These textures do not occupy any physical memory, but require a
    * Texture object containing its parameters.*/

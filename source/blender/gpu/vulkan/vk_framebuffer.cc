@@ -220,10 +220,7 @@ void VKFrameBuffer::clear_attachment(GPUAttachmentType /*type*/,
 /** \name Load/Store operations
  * \{ */
 
-void VKFrameBuffer::attachment_set_loadstore_op(GPUAttachmentType /*type*/,
-                                                GPULoadStore /*ls*/)
-{
-}
+void VKFrameBuffer::attachment_set_loadstore_op(GPUAttachmentType /*type*/, GPULoadStore /*ls*/) {}
 
 /** \} */
 

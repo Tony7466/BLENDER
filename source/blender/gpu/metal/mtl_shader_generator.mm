@@ -1001,7 +1001,7 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
                                 std::string::npos;
   msl_iface.uses_gpu_layer = bool(info->builtins_ & BuiltinBits::LAYER);
   msl_iface.uses_gpu_viewport_index = bool(info->builtins_ & BuiltinBits::VIEWPORT_INDEX);
-  
+
   /** Identify usage of fragment-shader builtins. */
   if (!msl_iface.uses_transform_feedback) {
     std::smatch gl_special_cases;

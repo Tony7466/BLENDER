@@ -121,9 +121,9 @@ void ShaderCreateInfo::finalize()
     fragment_outputs_.extend_non_duplicates(info.fragment_outputs_);
     vertex_out_interfaces_.extend_non_duplicates(info.vertex_out_interfaces_);
     geometry_out_interfaces_.extend_non_duplicates(info.geometry_out_interfaces_);
-  #ifdef WITH_METAL_BACKEND
+#ifdef WITH_METAL_BACKEND
     fragment_tile_inputs_.extend_non_duplicates(info.fragment_tile_inputs_);
-  #endif
+#endif
 
     validate_vertex_attributes(&info);
 

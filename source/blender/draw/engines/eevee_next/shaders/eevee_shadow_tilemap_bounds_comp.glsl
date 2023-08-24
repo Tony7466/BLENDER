@@ -27,7 +27,7 @@ void main()
   uint resource_id = casters_id_buf[index];
   /* TODO(Metal): Determine correct resource ID unpacking to avoid OOB read. */
   resource_id = (resource_id & 0x7FFFFFFFu);
-  
+
   ObjectBounds bounds = bounds_buf[resource_id];
   IsectBox box = isect_data_setup(bounds.bounding_corners[0].xyz,
                                   bounds.bounding_corners[1].xyz,

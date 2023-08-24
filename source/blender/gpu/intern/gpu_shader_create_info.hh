@@ -979,9 +979,9 @@ struct ShaderCreateInfo {
     TEST_VECTOR_EQUAL(*this, b, geometry_out_interfaces_);
     TEST_VECTOR_EQUAL(*this, b, push_constants_);
     TEST_VECTOR_EQUAL(*this, b, typedef_sources_);
-  #ifdef WITH_METAL_BACKEND
-  TEST_VECTOR_EQUAL(*this, b, fragment_tile_inputs_);
-  #endif
+#ifdef WITH_METAL_BACKEND
+    TEST_VECTOR_EQUAL(*this, b, fragment_tile_inputs_);
+#endif
     TEST_EQUAL(*this, b, vertex_source_);
     TEST_EQUAL(*this, b, geometry_source_);
     TEST_EQUAL(*this, b, fragment_source_);
