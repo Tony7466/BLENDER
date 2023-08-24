@@ -31,6 +31,7 @@ vec4 closure_to_rgba(Closure cl)
              cameraVec(g_data.P),
              vP_z,
              0.01 /* TODO(fclem) thickness. */,
+             0.0,
              diffuse_light,
              reflection_light,
              shadow);
@@ -81,6 +82,7 @@ void main()
              cameraVec(g_data.P),
              vP_z,
              thickness,
+             0.0,
              diffuse_light,
              reflection_light,
              shadow);
