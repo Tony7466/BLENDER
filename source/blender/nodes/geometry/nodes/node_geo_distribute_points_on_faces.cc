@@ -4,6 +4,7 @@
 
 #include "BLI_kdtree.h"
 #include "BLI_math_geom.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_rotation.hh"
 #include "BLI_noise.hh"
 #include "BLI_rand.hh"
@@ -91,6 +92,16 @@ static void node_point_distribute_points_on_faces_update(bNodeTree *ntree, bNode
                                  sock_density_factor,
                                  node->custom1 ==
                                      GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_POISSON);
+}
+
+/**
+ * Use an arbitrary choice of axes for a usable rotation attribute directly out of this node.
+ */
+static math::Quaternion normal_to_euler_rotation(const float3 normal)
+{
+  float quat[4];
+  vec_to_quat(quat, normal, OB_NEGZ, OB_POSY);
+  return math::normalize(math::Quaternion(quat));
 }
 
 static void sample_mesh_surface(const Mesh &mesh,
@@ -366,8 +377,7 @@ static void compute_rotation_output(const Span<float3> normals,
 {
   threading::parallel_for(normals.index_range(), 512, [&](const IndexRange range) {
     for (const int i : range) {
-      /* Use an arbitrary choice of axes. */
-      r_rotations[i] = math::from_vector(normals[i], math::AxisSigned::Z_NEG, math::Axis::Y);
+      r_rotations[i] = normal_to_euler_rotation(normals[i]);
     }
   });
 }
