@@ -129,7 +129,6 @@ set(SRC_DNA_DEFAULTS_INC
   ${CMAKE_CURRENT_SOURCE_DIR}/makesdna/DNA_world_defaults.h
 )
 
-add_subdirectory(pch)
 add_subdirectory(datatoc)
 add_subdirectory(editors)
 add_subdirectory(windowmanager)
@@ -160,6 +159,7 @@ add_subdirectory(functions)
 add_subdirectory(makesdna)
 add_subdirectory(makesrna)
 add_subdirectory(compositor)
+add_subdirectory(pch)
 
 if(WITH_BLENDER_THUMBNAILER)
   add_subdirectory(blendthumb)
