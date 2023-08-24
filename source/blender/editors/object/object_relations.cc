@@ -1528,11 +1528,12 @@ static int make_links_data_exec(bContext *C, wmOperator *op)
           case MAKE_LINKS_ANIMDATA:
             BKE_animdata_copy_id(bmain, (ID *)ob_dst, (ID *)ob_src, 0);
             if (ob_dst->data && ob_src->data) {
-              if (!BKE_id_is_editable(bmain, obdata_id)) {
-                is_lib = true;
-                break;
+              if (BKE_id_is_editable(bmain, obdata_id)) {
+                BKE_animdata_copy_id(bmain, (ID *)ob_dst->data, (ID *)ob_src->data, 0);
               }
-              BKE_animdata_copy_id(bmain, (ID *)ob_dst->data, (ID *)ob_src->data, 0);
+              else {
+                is_lib = true;
+              }
             }
             DEG_id_tag_update(&ob_dst->id,
                               ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
@@ -2110,17 +2111,20 @@ static void tag_localizable_objects(bContext *C, const int mode)
 
   /* Also forbid making objects local if other library objects are using
    * them for modifiers or constraints.
+   *
+   * FIXME This is ignoring all other linked ID types potentially using the selected tagged
+   * objects! Probably works fine in most 'usual' cases though.
    */
   for (Object *object = static_cast<Object *>(bmain->objects.first); object;
        object = static_cast<Object *>(object->id.next))
   {
-    if ((object->id.tag & LIB_TAG_DOIT) == 0) {
+    if ((object->id.tag & LIB_TAG_DOIT) == 0 && ID_IS_LINKED(object)) {
       BKE_library_foreach_ID_link(
           nullptr, &object->id, tag_localizable_looper, nullptr, IDWALK_READONLY);
     }
     if (object->data) {
       ID *data_id = (ID *)object->data;
-      if ((data_id->tag & LIB_TAG_DOIT) == 0) {
+      if ((data_id->tag & LIB_TAG_DOIT) == 0 && ID_IS_LINKED(data_id)) {
         BKE_library_foreach_ID_link(
             nullptr, data_id, tag_localizable_looper, nullptr, IDWALK_READONLY);
       }
