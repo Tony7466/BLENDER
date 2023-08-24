@@ -21,6 +21,12 @@ set(INC
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
 
+if(WITH_HYDRA)
+  list(APPEND INC
+    ../../io/usd
+  )
+  add_definitions(-DWITH_HYDRA)
+endif()
 
 set(SRC
   nodes/node_shader_add_shader.cc
@@ -138,8 +144,16 @@ if(WITH_MATERIALX)
   list(APPEND LIB MaterialXCore)
   list(APPEND SRC
     materialx/material.cc
+    materialx/nodes/node.cc
+    materialx/nodes/material_output.cc
+    materialx/nodes/principled_bsdf.cc
+    materialx/nodes/image.cc
 
     materialx/material.h
+    materialx/nodes/node.h
+    materialx/nodes/material_output.h
+    materialx/nodes/principled_bsdf.h
+    materialx/nodes/image.h
   )
 endif()
 

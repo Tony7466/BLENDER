@@ -6,11 +6,11 @@
 
 #include <MaterialXCore/Document.h>
 
+#include "DEG_depsgraph.h"
 #include "DNA_material_types.h"
 
 namespace blender::nodes::materialx {
 
-MaterialX::DocumentPtr export_to_materialx(Material *material);
+MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph, Material *material);
 
-}  // namespace blender::materialx
-
+}  // namespace blender::nodes::materialx
