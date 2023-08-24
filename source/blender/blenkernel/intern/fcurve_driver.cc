@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -34,8 +34,8 @@
 #include "BKE_global.h"
 #include "BKE_object.h"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #include "atomic_ops.h"
@@ -48,7 +48,7 @@
 #  include "BPY_extern.h"
 #endif
 
-#include <string.h>
+#include <cstring>
 
 #ifdef WITH_PYTHON
 static ThreadMutex python_driver_lock = BLI_MUTEX_INITIALIZER;

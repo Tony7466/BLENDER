@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -50,9 +50,9 @@
 #include "ED_select_utils.hh"
 #include "ED_viewer_path.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
@@ -738,7 +738,7 @@ void ED_node_set_active(
     ED_node_tree_propagate_change(nullptr, bmain, ntree);
 
     if ((node->flag & NODE_ACTIVE_TEXTURE) && !was_active_texture) {
-      /* If active texture changed, free glsl materials. */
+      /* If active texture changed, free GLSL materials. */
       LISTBASE_FOREACH (Material *, ma, &bmain->materials) {
         if (ma->nodetree && ma->use_nodes && ntreeContainsTree(ma->nodetree, ntree)) {
           GPU_material_free(&ma->gpumaterial);
@@ -1132,9 +1132,7 @@ bool node_is_previewable(const SpaceNode &snode, const bNodeTree &ntree, const b
     return false;
   }
   if (ntree.type == NTREE_SHADER) {
-    return U.experimental.use_shader_node_previews &&
-           !(node.is_frame() || node.is_group_input() || node.is_group_output() ||
-             node.type == SH_NODE_OUTPUT_MATERIAL);
+    return U.experimental.use_shader_node_previews && !(node.is_frame());
   }
   return node.typeinfo->flag & NODE_PREVIEW;
 }
@@ -2399,10 +2397,6 @@ static bool socket_change_poll_type(void *userdata, bNodeSocketType *socket_type
 
   /* Only use basic socket types for this enum. */
   if (socket_type->subtype != PROP_NONE) {
-    return false;
-  }
-
-  if (!U.experimental.use_rotation_socket && socket_type->type == SOCK_ROTATION) {
     return false;
   }
 

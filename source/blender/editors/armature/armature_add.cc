@@ -34,8 +34,8 @@
 #include "BKE_library.h"
 #include "BKE_main.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -1179,7 +1179,7 @@ static int armature_symmetrize_exec(bContext *C, wmOperator *op)
       EditBone *ebone = ED_armature_ebone_find_name(arm->edbo, name_flip);
 
       if (!ebone) {
-        /* The ebone_iter is unique and mirrorable. */
+        /* The ebone_iter is unique and mirror-able. */
         continue;
       }
 

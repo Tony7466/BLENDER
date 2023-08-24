@@ -20,7 +20,7 @@
 
 #include "ED_screen.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "UI_interface.hh"
 
@@ -275,8 +275,7 @@ static void applyResize(TransInfo *t)
         ElementResize(t, tc, td, mat);
       }
 
-      /* XXX(@dg): In proportional edit it can happen that vertices
-       * in the radius of the brush end outside the clipping area. */
+      /* Not ideal, see #clipUVData code-comment. */
       if (t->flag & T_PROP_EDIT) {
         clipUVData(t);
       }

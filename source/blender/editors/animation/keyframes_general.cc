@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -30,9 +30,9 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 
-#include "RNA_access.h"
-#include "RNA_enum_types.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_path.hh"
 
 #include "ED_anim_api.hh"
 #include "ED_keyframes_edit.hh"
@@ -706,10 +706,11 @@ void blend_offset_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const floa
 
 static float s_curve(float x, float slope, float width, float height, float xshift, float yshift)
 {
-  /* Formula for 'S' curve we use for the "ease" sliders. The shift values move the curve verticaly
-   * or horizontaly. The range of the curve used is from 0 to 1 on "x" and "y" so we can scale it
-   * (width and height) and move it (xshift and y yshift) to crop the part of the curve we need.
-   * Slope determins how curvy the shape is. */
+  /* Formula for 'S' curve we use for the "ease" sliders.
+   * The shift values move the curve vertically or horizontally.
+   * The range of the curve used is from 0 to 1 on "x" and "y"
+   * so we can scale it (width and height) and move it (`xshift` and y `yshift`)
+   * to crop the part of the curve we need. Slope determines how curvy the shape is. */
   float y = height * pow((x - xshift), slope) /
                 (pow((x - xshift), slope) + pow((width - (x - xshift)), slope)) +
             yshift;
@@ -769,6 +770,58 @@ void blend_to_ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const flo
     const float key_y_value = fcu->bezt[i].vec[1][1] + y_delta * factor;
     BKE_fcurve_keyframe_move_value_with_handles(&fcu->bezt[i], key_y_value);
   }
+}
+
+/* ---------------- */
+
+bool match_slope_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+{
+  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
+  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
+
+  BezTriple beyond_key;
+  const BezTriple *reference_key;
+
+  if (factor >= 0) {
+    /* Stop the function if there is no key beyond the the right neighboring one. */
+    if (segment->start_index + segment->length >= fcu->totvert - 1) {
+      return false;
+    }
+    reference_key = right_key;
+    beyond_key = fcu->bezt[segment->start_index + segment->length + 1];
+  }
+  else {
+    /* Stop the function if there is no key beyond the left neighboring one. */
+    if (segment->start_index <= 1) {
+      return false;
+    }
+    reference_key = left_key;
+    beyond_key = fcu->bezt[segment->start_index - 2];
+  }
+
+  /* This delta values are used to get the relationship between the bookend keys and the
+   * reference keys beyond those. */
+  const float y_delta = beyond_key.vec[1][1] - reference_key->vec[1][1];
+  const float x_delta = beyond_key.vec[1][0] - reference_key->vec[1][0];
+
+  /* Avoids dividing by 0. */
+  if (x_delta == 0) {
+    return false;
+  }
+
+  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
+
+    /* These new deltas are used to determine the relationship between the current key and the
+     * bookend ones. */
+    const float new_x_delta = fcu->bezt[i].vec[1][0] - reference_key->vec[1][0];
+    const float new_y_delta = new_x_delta * y_delta / x_delta;
+
+    const float delta = reference_key->vec[1][1] + new_y_delta - fcu->bezt[i].vec[1][1];
+
+    const float key_y_value = fcu->bezt[i].vec[1][1] + delta * fabs(factor);
+    BKE_fcurve_keyframe_move_value_with_handles(&fcu->bezt[i], key_y_value);
+  }
+  return true;
 }
 
 /* ---------------- */

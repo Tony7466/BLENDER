@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -1280,8 +1280,7 @@ class VIEW3D_MT_view(Menu):
         layout.prop(view, "show_region_toolbar")
         layout.prop(view, "show_region_ui")
         layout.prop(view, "show_region_tool_header")
-        if prefs.experimental.use_asset_shelf:
-            layout.prop(view, "show_region_asset_shelf")
+        layout.prop(view, "show_region_asset_shelf")
         layout.prop(view, "show_region_hud")
 
         layout.separator()
@@ -4813,6 +4812,10 @@ class VIEW3D_MT_edit_greasepencil_delete(Menu):
 
     def draw(self, _context):
         layout = self.layout
+
+        layout.operator_enum("grease_pencil.dissolve", "type")
+        
+        layout.separator()
 
         layout.operator("grease_pencil.delete_frame", text="Delete Active Keyframe (Active Layer)").type = 'ACTIVE_FRAME'
         layout.operator("grease_pencil.delete_frame", text="Delete Active Keyframes (All Layers)").type = 'ALL_FRAMES'
@@ -8489,6 +8492,7 @@ classes = (
     VIEW3D_MT_gpencil_autoweights,
     VIEW3D_MT_gpencil_edit_context_menu,
     VIEW3D_MT_edit_greasepencil,
+    VIEW3D_MT_edit_greasepencil_delete,
     VIEW3D_MT_edit_greasepencil_stroke,
     VIEW3D_MT_edit_greasepencil_delete,
     VIEW3D_MT_edit_curve,

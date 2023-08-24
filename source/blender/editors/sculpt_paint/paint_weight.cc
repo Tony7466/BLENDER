@@ -29,7 +29,7 @@
 #include "DNA_particle_types.h"
 #include "DNA_scene_types.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "BKE_attribute.h"
 #include "BKE_attribute.hh"
@@ -1641,6 +1641,8 @@ void PAINT_OT_weight_paint_toggle(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
 
+/** \} */
+
 /** \name Weight Paint Operator
  * \{ */
 
@@ -1970,4 +1972,5 @@ void PAINT_OT_weight_paint(wmOperatorType *ot)
 
   paint_stroke_operator_properties(ot);
 }
+
 /** \} */

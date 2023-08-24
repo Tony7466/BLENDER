@@ -22,8 +22,8 @@
 #include "DNA_scene_types.h"
 #include "DNA_texture_types.h"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.hh"
@@ -139,7 +139,7 @@ static const EnumPropertyItem part_fluid_type_items[] = {
 #  include "BLI_string_utils.h"
 
 #  include "BKE_boids.h"
-#  include "BKE_cloth.h"
+#  include "BKE_cloth.hh"
 #  include "BKE_colortools.h"
 #  include "BKE_context.h"
 #  include "BKE_deform.h"

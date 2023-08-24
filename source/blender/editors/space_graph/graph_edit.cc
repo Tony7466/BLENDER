@@ -27,9 +27,9 @@
 #include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "BLT_translation.h"
@@ -603,17 +603,17 @@ static int graphkeys_paste_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static char *graphkeys_paste_description(bContext * /*C*/,
-                                         wmOperatorType * /*op*/,
-                                         PointerRNA *ptr)
+static std::string graphkeys_paste_description(bContext * /*C*/,
+                                               wmOperatorType * /*op*/,
+                                               PointerRNA *ptr)
 {
   /* Custom description if the 'flipped' option is used. */
   if (RNA_boolean_get(ptr, "flipped")) {
-    return BLI_strdup(TIP_("Paste keyframes from mirrored bones if they exist"));
+    return TIP_("Paste keyframes from mirrored bones if they exist");
   }
 
   /* Use the default description in the other cases. */
-  return nullptr;
+  return "";
 }
 
 void GRAPH_OT_paste(wmOperatorType *ot)
@@ -2284,6 +2284,8 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
   }
 
   BKE_scene_frame_set(scene, closest_frame);
+
+  ANIM_animdata_freelist(&anim_data);
 
   /* Set notifier that things have changed. */
   WM_event_add_notifier(C, NC_SCENE | ND_FRAME, ac.scene);

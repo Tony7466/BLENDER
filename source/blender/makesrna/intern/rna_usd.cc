@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,9 +6,9 @@
  * \ingroup RNA
  */
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -131,7 +131,7 @@ static void rna_def_usd_hook(BlenderRNA *brna)
 
   ///* Properties --------------------- */
 
-  RNA_define_verify_sdna(0); /* not in sdna */
+  RNA_define_verify_sdna(false); /* not in sdna */
 
   prop = RNA_def_property(srna, "bl_idname", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "idname");

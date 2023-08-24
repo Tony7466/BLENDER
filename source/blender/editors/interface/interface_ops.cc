@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -41,12 +41,12 @@
 
 #include "DEG_depsgraph.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "UI_interface.hh"
 
@@ -1326,7 +1326,7 @@ bool UI_context_copy_to_selected_check(PointerRNA *ptr,
   }
 
   if (lptr.data == ptr->data) {
-    /* temp_ptr might not be the same as ptr_link! */
+    /* The source & destination are the same, so there is nothing to copy. */
     return false;
   }
 

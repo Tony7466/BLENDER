@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -47,8 +47,8 @@
 #include "DNA_view3d_types.h"
 #include "DNA_workspace_types.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "rna_internal.h"
 
@@ -62,7 +62,7 @@
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
-#include "RNA_enum_types.h"
+#include "RNA_enum_types.hh"
 
 const EnumPropertyItem rna_enum_geometry_component_type_items[] = {
     {int(blender::bke::GeometryComponent::Type::Mesh),
@@ -6695,10 +6695,10 @@ static void rna_def_fileselect_asset_idfilter(BlenderRNA *brna)
     const char *identifier = rna_enum_id_type_filter_items[i].identifier;
     if (is_experimental) {
       /* Create name for experimental property and store in static buffer. */
-      snprintf(experimental_prop_names[i],
-               ARRAY_SIZE(experimental_prop_names[i]),
-               "experimental_%s",
-               identifier);
+      BLI_snprintf(experimental_prop_names[i],
+                   ARRAY_SIZE(experimental_prop_names[i]),
+                   "experimental_%s",
+                   identifier);
       identifier = experimental_prop_names[i];
     }
 
@@ -7400,6 +7400,16 @@ static void rna_def_space_node_overlay(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
+  static const EnumPropertyItem preview_shapes[] = {
+      {SN_OVERLAY_PREVIEW_FLAT, "FLAT", ICON_MESH_PLANE, "Flat", "Use the default flat previews"},
+      {SN_OVERLAY_PREVIEW_3D,
+       "3D",
+       ICON_SPHERE,
+       "3D",
+       "Use the material preview scene for the node previews"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   srna = RNA_def_struct(brna, "SpaceNodeOverlay", nullptr);
   RNA_def_struct_sdna(srna, "SpaceNode");
   RNA_def_struct_nested(brna, srna, "SpaceNodeEditor");
@@ -7444,6 +7454,13 @@ static void rna_def_space_node_overlay(BlenderRNA *brna)
   RNA_def_property_boolean_default(prop, false);
   RNA_def_property_ui_text(
       prop, "Show Node Previews", "Display each node's preview if node is toggled");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE, nullptr);
+
+  prop = RNA_def_property(srna, "preview_shape", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "overlay.preview_shape");
+  RNA_def_property_enum_items(prop, preview_shapes);
+  RNA_def_property_enum_default(prop, SN_OVERLAY_PREVIEW_FLAT);
+  RNA_def_property_ui_text(prop, "Preview Shape", "Preview shape used by the node previews");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE, nullptr);
 }
 

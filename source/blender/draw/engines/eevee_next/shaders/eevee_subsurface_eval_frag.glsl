@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Postprocess diffuse radiance output from the diffuse evaluation pass to mimic subsurface
@@ -9,7 +12,7 @@
  *
  * But, instead of having all the precomputed weights for all three color primaries,
  * we precompute a weight profile texture to be able to support per pixel AND per channel radius.
- **/
+ */
 
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)

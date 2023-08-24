@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -32,8 +32,8 @@
 #include "ED_util.hh"
 #include "ED_viewer_path.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "DEG_depsgraph.h"
@@ -67,8 +67,6 @@ struct NodeInsertOfsData {
 };
 
 namespace blender::ed::space_node {
-
-bNodeSocket *get_main_socket(bNodeTree &ntree, bNode &node, eNodeSocketInOut in_out);
 
 static void clear_picking_highlight(ListBase *links)
 {

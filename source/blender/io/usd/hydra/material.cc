@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2011-2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,9 +17,9 @@
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "DEG_depsgraph_query.h"
 
@@ -49,6 +49,7 @@ void MaterialData::init()
   /* Create temporary in memory stage. */
   pxr::UsdStageRefPtr stage = pxr::UsdStage::CreateInMemory();
   pxr::UsdTimeCode time = pxr::UsdTimeCode::Default();
+  auto get_time_code = [time]() { return time; };
   pxr::SdfPath material_library_path("/_materials");
   pxr::SdfPath material_path = material_library_path.AppendChild(
       pxr::TfToken(prim_id.GetElementString()));
@@ -63,7 +64,7 @@ void MaterialData::init()
                                          scene_delegate_->depsgraph,
                                          stage,
                                          material_library_path,
-                                         time,
+                                         get_time_code,
                                          export_params,
                                          image_cache_file_path()};
 

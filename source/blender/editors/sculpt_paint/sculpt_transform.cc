@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -31,8 +31,8 @@
 #include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "bmesh.h"
 
@@ -418,7 +418,7 @@ static int sculpt_set_pivot_position_exec(bContext *C, wmOperator *op)
     }
   }
   else {
-    Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
+    Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
 
     float avg[3];
     int total = 0;
