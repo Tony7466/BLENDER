@@ -4,7 +4,7 @@
 
 #include "BLI_kdtree.h"
 #include "BLI_math_geom.h"
-#include "BLI_math_rotation.h"
+#include "BLI_math_rotation.hh"
 #include "BLI_noise.hh"
 #include "BLI_rand.hh"
 #include "BLI_task.hh"
@@ -60,7 +60,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 
   b.add_output<decl::Geometry>("Points").propagate_all();
   b.add_output<decl::Vector>("Normal").field_on_all();
-  b.add_output<decl::Vector>("Rotation").subtype(PROP_EULER).field_on_all();
+  b.add_output<decl::Rotation>("Rotation").field_on_all();
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -91,18 +91,6 @@ static void node_point_distribute_points_on_faces_update(bNodeTree *ntree, bNode
                                  sock_density_factor,
                                  node->custom1 ==
                                      GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_POISSON);
-}
-
-/**
- * Use an arbitrary choice of axes for a usable rotation attribute directly out of this node.
- */
-static float3 normal_to_euler_rotation(const float3 normal)
-{
-  float quat[4];
-  vec_to_quat(quat, normal, OB_NEGZ, OB_POSY);
-  float3 rotation;
-  quat_to_eul(rotation, quat);
-  return rotation;
 }
 
 static void sample_mesh_surface(const Mesh &mesh,
@@ -373,11 +361,13 @@ static void compute_legacy_normal_outputs(const Mesh &mesh,
   }
 }
 
-static void compute_rotation_output(const Span<float3> normals, MutableSpan<float3> r_rotations)
+static void compute_rotation_output(const Span<float3> normals,
+                                    MutableSpan<math::Quaternion> r_rotations)
 {
-  threading::parallel_for(normals.index_range(), 256, [&](const IndexRange range) {
+  threading::parallel_for(normals.index_range(), 512, [&](const IndexRange range) {
     for (const int i : range) {
-      r_rotations[i] = normal_to_euler_rotation(normals[i]);
+      /* Use an arbitrary choice of axes. */
+      r_rotations[i] = math::from_vector(normals[i], math::AxisSigned::Z_NEG, math::Axis::Y);
     }
   });
 }
@@ -395,14 +385,14 @@ BLI_NOINLINE static void compute_attribute_outputs(const Mesh &mesh,
       "id", ATTR_DOMAIN_POINT);
 
   SpanAttributeWriter<float3> normals;
-  SpanAttributeWriter<float3> rotations;
+  SpanAttributeWriter<math::Quaternion> rotations;
 
   if (attribute_outputs.normal_id) {
     normals = point_attributes.lookup_or_add_for_write_only_span<float3>(
         attribute_outputs.normal_id.get(), ATTR_DOMAIN_POINT);
   }
   if (attribute_outputs.rotation_id) {
-    rotations = point_attributes.lookup_or_add_for_write_only_span<float3>(
+    rotations = point_attributes.lookup_or_add_for_write_only_span<math::Quaternion>(
         attribute_outputs.rotation_id.get(), ATTR_DOMAIN_POINT);
   }
 
