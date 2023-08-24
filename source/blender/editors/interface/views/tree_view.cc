@@ -263,7 +263,6 @@ std::optional<DropLocation> TreeViewItemDropTarget::choose_drop_location(
   const float segment_height = item_height / segment_count;
 
   const uiStyle *style = UI_style_get_dpi();
-  int gap_size = style->buttonspacey;
 
   if (event.xy[1] - win_rect->ymin > (item_height - segment_height)) {
 
@@ -275,7 +274,7 @@ std::optional<DropLocation> TreeViewItemDropTarget::choose_drop_location(
              win_rect->xmin,
              win_rect->ymax - U.pixelsize,
              win_rect->xmax,
-             win_rect->ymax + gap_size - U.pixelsize);
+             win_rect->ymax + style->buttonspacey - U.pixelsize);
     immUnbindProgram();
 
     return DropLocation::Before;
@@ -297,7 +296,7 @@ std::optional<DropLocation> TreeViewItemDropTarget::choose_drop_location(
              win_rect->xmin,
              win_rect->ymin + U.pixelsize,
              win_rect->xmax,
-             win_rect->ymin - gap_size + U.pixelsize);
+             win_rect->ymin - style->buttonspacey + U.pixelsize);
     immUnbindProgram();
 
     return DropLocation::After;
