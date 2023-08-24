@@ -44,6 +44,7 @@
 #include "BKE_global.h"
 #include "BKE_idtype.h"
 #include "BKE_lib_id.h"
+#include "BKE_lib_query.h"
 #include "BKE_main.h"
 #include "BKE_packedFile.h"
 #include "BKE_scene.h"
@@ -101,6 +102,16 @@ static void sound_free_data(ID *id)
     BLI_spin_end(static_cast<SpinLock *>(sound->spinlock));
     MEM_freeN(sound->spinlock);
     sound->spinlock = nullptr;
+  }
+}
+
+static void sound_foreach_id(ID *id, LibraryForeachIDData *data)
+{
+  bSound *sound = reinterpret_cast<bSound *>(id);
+  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
+
+  if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
+    BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, sound->ipo, IDWALK_CB_USER);
   }
 }
 
@@ -185,12 +196,6 @@ static void sound_blend_read_lib(BlendLibReader *reader, ID *id)
   BLO_read_id_address(reader, id, &sound->ipo);
 }
 
-static void sound_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  bSound *snd = (bSound *)id;
-  BLO_expand(expander, snd->ipo); /* XXX deprecated - old animation system */
-}
-
 IDTypeInfo IDType_ID_SO = {
     /*id_code*/ ID_SO,
     /*id_filter*/ FILTER_ID_SO,
@@ -207,7 +212,7 @@ IDTypeInfo IDType_ID_SO = {
     /*copy_data*/ sound_copy_data,
     /*free_data*/ sound_free_data,
     /*make_local*/ nullptr,
-    /*foreach_id*/ nullptr,
+    /*foreach_id*/ sound_foreach_id,
     /*foreach_cache*/ sound_foreach_cache,
     /*foreach_path*/ sound_foreach_path,
     /*owner_pointer_get*/ nullptr,
@@ -215,7 +220,6 @@ IDTypeInfo IDType_ID_SO = {
     /*blend_write*/ sound_blend_write,
     /*blend_read_data*/ sound_blend_read_data,
     /*blend_read_lib*/ sound_blend_read_lib,
-    /*blend_read_expand*/ sound_blend_read_expand,
 
     /*blend_read_undo_preserve*/ nullptr,
 
