@@ -1329,7 +1329,6 @@ static void pbvh_faces_update_normals(PBVH *pbvh, Span<PBVHNode *> nodes, Mesh &
           }
         });
         mesh.runtime->face_normals_dirty = false;
-        pbvh->face_normals = mesh.runtime->face_normals;
       },
       [&]() {
         /* Update all normals connected to affected faces, even if not explicitly tagged. */
@@ -1358,7 +1357,6 @@ static void pbvh_faces_update_normals(PBVH *pbvh, Span<PBVHNode *> nodes, Mesh &
     }
   });
   mesh.runtime->vert_normals_dirty = false;
-  pbvh->vert_normals = mesh.runtime->vert_normals;
 }
 
 static void node_update_mask_redraw(PBVH &pbvh, PBVHNode &node)
