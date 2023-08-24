@@ -951,7 +951,7 @@ void SEQ_retiming_key_speed_set(const Scene *scene,
   seq_retiming_key_offset(scene, seq, key, offset);
 }
 
-bool SEQ_retiming_selection_clear(Editing *ed)
+bool SEQ_retiming_selection_clear(const Editing *ed)
 {
   bool was_empty = true;
 

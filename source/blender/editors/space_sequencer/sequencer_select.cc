@@ -976,16 +976,6 @@ static int sequencer_select_exec(bContext *C, wmOperator *op)
   SeqRetimingKey *key = retiming_mousover_key_get(C, mval, &seq_key_test);
   bool retiming_key_clicked = (key != nullptr);
 
-  // XXX this should be handled on retiming side, not here.
-  /* Ensure key selection even if data is not initialized yet. */
-  /*
-  if (seq_key_test != nullptr && retiming_last_key_is_clicked(C, seq_key_test, mval)) {
-    retiming_key_clicked = true;
-    SEQ_retiming_data_ensure(scene, seq_key_test);
-    key = SEQ_retiming_last_key_get(seq_key_test);
-  }
-  */
-
   if (seq_key_test && retiming_key_clicked) {
     WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
     WM_toolsystem_ref_set_by_id(C, "builtin.retime");

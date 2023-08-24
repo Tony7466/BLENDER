@@ -381,6 +381,17 @@ static void retime_keys_draw(const bContext *C)
     draw_backdrop(C, seq);
 
     blender::MutableSpan keys = SEQ_retiming_keys_get(seq);
+
+    /* If there are no keys, draw fake one and create real key when it is clicked. */
+    if (sequencer_retiming_tool_is_active(C) && keys.size() == 0) {
+      SeqRetimingKey fake_key;
+      fake_key.strip_frame_index = SEQ_time_strip_length_get(CTX_data_scene(C), seq);
+      fake_key.flag = 0;
+      draw_continuity(C, seq, &fake_key);
+      retime_key_draw(C, seq, &fake_key);
+      continue;
+    }
+
     for (const SeqRetimingKey &key : keys) {
       if (&key == keys.begin()) {
         continue; /* Ignore first key. */

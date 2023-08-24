@@ -568,6 +568,31 @@ void SEQUENCER_OT_retiming_segment_speed_set(wmOperatorType *ot)
 /** \name Retiming Key Select
  * \{ */
 
+static bool select_key(const Editing *ed,
+                       SeqRetimingKey *key,
+                       const bool toggle,
+                       const bool deselect_all)
+{
+  bool changed = false;
+
+  if (deselect_all) {
+    changed = SEQ_retiming_selection_clear(ed);
+  }
+
+  if (key == nullptr) {
+    return changed;
+  }
+
+  if (toggle && SEQ_retiming_selection_contains(ed, key)) {
+    SEQ_retiming_selection_remove(key);
+  }
+  else {
+    SEQ_retiming_selection_append(key);
+  }
+
+  return true;
+}
+
 static int sequencer_retiming_key_select_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
@@ -575,51 +600,39 @@ static int sequencer_retiming_key_select_exec(bContext *C, wmOperator *op)
   const int mval[2] = {RNA_int_get(op->ptr, "mouse_x"), RNA_int_get(op->ptr, "mouse_y")};
 
   int hand;
-  const Sequence *seq_click_exact = find_nearest_seq(scene, UI_view2d_fromcontext(C), &hand, mval);
   Sequence *seq_key_owner = nullptr;
   SeqRetimingKey *key = retiming_mousover_key_get(C, mval, &seq_key_owner);
 
+  /* Realize "fake" key, since it is clicked on. */
+  if (seq_key_owner != nullptr && retiming_last_key_is_clicked(C, seq_key_owner, mval)) {
+    SEQ_retiming_data_ensure(scene, seq_key_owner);
+    key = SEQ_retiming_last_key_get(seq_key_owner);
+  }
+
+  const bool deselect_all = RNA_boolean_get(op->ptr, "deselect_all");
   const bool wait_to_deselect_others = RNA_boolean_get(op->ptr, "wait_to_deselect_others");
   const bool toggle = RNA_boolean_get(op->ptr, "toggle");
 
-  const bool clicked_on_strip = seq_click_exact != nullptr;
-  const bool clicked_on_selected_key = key != nullptr && SEQ_retiming_selection_contains(ed, key);
+  /* Click on unselected key. */
+  if (key != nullptr && !SEQ_retiming_selection_contains(ed, key) && !toggle) {
+    select_key(ed, key, false, deselect_all);
+  }
 
-  /* Clicking on already selected element falls on modal operation.
-   * All strips are deselected on mouse button release unless extend mode is used. */
-  if (clicked_on_selected_key && wait_to_deselect_others && !toggle) {
+  /* Clicked on any key, waiting to click release. */
+  if (key != nullptr && wait_to_deselect_others && !toggle) {
     return OPERATOR_RUNNING_MODAL;
   }
 
-  /* Make it possible for box select to begin on strip. */
-  if (clicked_on_strip && wait_to_deselect_others && !toggle) {
-    SEQ_retiming_selection_clear(ed);
-    return OPERATOR_RUNNING_MODAL;
-  }
-
-  if (clicked_on_strip && key == nullptr) {
+  /* Click on strip to change tool to select. */
+  const Sequence *seq_click_exact = find_nearest_seq(scene, UI_view2d_fromcontext(C), &hand, mval);
+  if (seq_click_exact != nullptr && key == nullptr) {
     WM_toolsystem_ref_set_by_id(C, "builtin.select");
     WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
     return OPERATOR_FINISHED;
   }
 
-  bool changed = false;
-  if (RNA_boolean_get(op->ptr, "deselect_all")) {
-    changed = SEQ_retiming_selection_clear(ed);
-  }
-
-  if (seq_key_owner == nullptr && !changed) {
-    return OPERATOR_CANCELLED;
-  }
-
-  if (seq_key_owner != nullptr) {
-    if (toggle && SEQ_retiming_selection_contains(ed, key)) {
-      SEQ_retiming_selection_remove(key);
-    }
-    else {
-      SEQ_retiming_selection_append(key);
-    }
-  }
+  /* Selection after click is released. */
+  const bool changed = select_key(ed, key, toggle, deselect_all);
 
   WM_toolsystem_ref_set_by_id(C, "builtin.retime"); /* Switch to retiming tool. */
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
@@ -683,11 +696,18 @@ static int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op)
 
   blender::Set<SeqRetimingKey *> and_keys;
 
-  for (const Sequence *seq : sequencer_visible_strips_get(C)) {
+  for (Sequence *seq : sequencer_visible_strips_get(C)) {
+    if (seq->machine < rectf.ymin || seq->machine > rectf.ymax) {
+      continue;
+    }
+    /* Realize "fake" key, since it is clicked on. */
+    if (!SEQ_retiming_is_active(seq) && SEQ_time_content_end_frame_get(scene, seq) > rectf.xmin &&
+        SEQ_time_content_end_frame_get(scene, seq) < rectf.xmax)
+    {
+      SEQ_retiming_data_ensure(scene, seq);
+    }
+
     for (SeqRetimingKey &key : SEQ_retiming_keys_get(seq)) {
-      if (seq->machine < rectf.ymin || seq->machine > rectf.ymax) {
-        continue;
-      }
       const int key_frame = SEQ_retiming_key_timeline_frame_get(scene, seq, &key);
       const int strip_start = SEQ_time_left_handle_frame_get(scene, seq);
       const int strip_end = SEQ_time_right_handle_frame_get(scene, seq);

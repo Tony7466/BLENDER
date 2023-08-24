@@ -73,7 +73,7 @@ SeqRetimingKey *SEQ_retiming_transition_start_get(struct SeqRetimingKey *key);
 
 bool SEQ_retiming_key_is_freeze_frame(const struct SeqRetimingKey *key);
 
-bool SEQ_retiming_selection_clear(struct Editing *ed);
+bool SEQ_retiming_selection_clear(const struct Editing *ed);
 void SEQ_retiming_selection_append(struct SeqRetimingKey *key);
 void SEQ_retiming_selection_remove(struct SeqRetimingKey *key);
 bool SEQ_retiming_selection_contains(const struct Editing *ed, const struct SeqRetimingKey *key);
