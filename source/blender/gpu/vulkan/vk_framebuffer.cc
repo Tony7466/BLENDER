@@ -27,6 +27,7 @@ VKFrameBuffer::VKFrameBuffer(const char *name) : FrameBuffer(name)
 
 VKFrameBuffer::VKFrameBuffer(const char *name,
                              VkImage vk_image,
+                             VkImageLayout vk_image_layout,
                              VkFramebuffer vk_framebuffer,
                              VkRenderPass vk_render_pass,
                              VkExtent2D vk_extent)
@@ -37,6 +38,7 @@ VKFrameBuffer::VKFrameBuffer(const char *name,
   /* Never update an internal frame-buffer. */
   dirty_attachments_ = false;
   vk_image_ = vk_image;
+  vk_image_layout_ = vk_image_layout;
   vk_framebuffer_ = vk_framebuffer;
   vk_render_pass_ = vk_render_pass;
 
@@ -118,6 +120,18 @@ Array<VkRect2D, 16> VKFrameBuffer::vk_render_areas_get() const
     }
   }
   return render_areas;
+}
+
+void VKFrameBuffer::ensure_image_layout(VKContext &context, VkImageLayout vk_image_layout)
+{
+  if (vk_image_layout_ == vk_image_layout) {
+    return;
+  }
+  /* TODO: Consider storing image and layout in a VKTexture instance. */
+  VKTexture tmp_texture(__func__);
+  tmp_texture.init(vk_image_get(), vk_image_layout_get());
+  tmp_texture.layout_ensure(context, vk_image_layout);
+  vk_image_layout_ = vk_image_layout;
 }
 
 bool VKFrameBuffer::check(char /*err_out*/[256])
@@ -302,7 +316,7 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
     dst_texture->layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   }
   else {
-    tmp_texture.init(dst_framebuffer.vk_image_get(), VK_IMAGE_LAYOUT_GENERAL);
+    tmp_texture.init(dst_framebuffer.vk_image_get(), dst_framebuffer.vk_image_layout_get());
     dst_texture = &tmp_texture;
   }
 

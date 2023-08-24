@@ -40,6 +40,7 @@ enum class eImageViewUsage {
 
 VkImageAspectFlagBits to_vk_image_aspect_flag_bits(const eGPUTextureFormat format);
 VkFormat to_vk_format(const eGPUTextureFormat format);
+eGPUTextureFormat to_gpu_format(const VkFormat format);
 VkFormat to_vk_format(const GPUVertCompType type,
                       const uint32_t size,
                       const GPUVertFetchMode fetch_mode);

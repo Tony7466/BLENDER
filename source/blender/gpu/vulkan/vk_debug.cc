@@ -296,7 +296,7 @@ messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
   if (do_labels) {
     debugging_tools.print_labels(callback_data);
   }
-
+  BLI_assert(callback_data->messageIdNumber != 0x362a65a9);
   return VK_FALSE;
 };
 

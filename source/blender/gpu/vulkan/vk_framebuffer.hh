@@ -19,6 +19,7 @@
 #include "vk_image_view.hh"
 
 namespace blender::gpu {
+class VKContext;
 
 class VKFrameBuffer : public FrameBuffer {
  private:
@@ -29,6 +30,7 @@ class VKFrameBuffer : public FrameBuffer {
   /* Base render pass used for framebuffer creation. */
   VkRenderPass vk_render_pass_ = VK_NULL_HANDLE;
   VkImage vk_image_ = VK_NULL_HANDLE;
+  VkImageLayout vk_image_layout_ = VK_IMAGE_LAYOUT_PREINITIALIZED;
   /* Number of layers if the attachments are layered textures. */
   int depth_ = 1;
   /** Internal frame-buffers are immutable. */
@@ -57,6 +59,7 @@ class VKFrameBuffer : public FrameBuffer {
    **/
   VKFrameBuffer(const char *name,
                 VkImage vk_image,
+                VkImageLayout vk_image_layout,
                 VkFramebuffer vk_framebuffer,
                 VkRenderPass vk_render_pass,
                 VkExtent2D vk_extent);
@@ -115,6 +118,15 @@ class VKFrameBuffer : public FrameBuffer {
     BLI_assert(vk_image_ != VK_NULL_HANDLE);
     return vk_image_;
   }
+  VkImageLayout vk_image_layout_get() const
+  {
+    return vk_image_layout_;
+  }
+
+  /**
+   * Ensure that the image of the framebuffer is in the given layout.
+   */
+  void ensure_image_layout(VKContext &context, VkImageLayout vk_image_layout);
 
   /**
    * Is this frame-buffer immutable?

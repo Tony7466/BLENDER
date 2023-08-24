@@ -1243,15 +1243,32 @@ void GHOST_GetVulkanCommandBuffer(GHOST_ContextHandle contexthandle, void *r_com
   context->getVulkanCommandBuffer(r_command_buffer);
 }
 
+void GHOST_SetVulkanSwapBuffersCallbacks(GHOST_ContextHandle contexthandle,
+                                         void (*swap_buffers_pre_callback)(void),
+                                         void (*swap_buffers_post_callback)(void))
+{
+  GHOST_IContext *context = (GHOST_IContext *)contexthandle;
+  context->setVulkanSwapBuffersCallbacks(swap_buffers_pre_callback, swap_buffers_post_callback);
+}
+
 void GHOST_GetVulkanBackbuffer(GHOST_WindowHandle windowhandle,
                                void *image,
+                               void *r_surface_format,
                                void *framebuffer,
                                void *render_pass,
                                void *extent,
                                uint32_t *fb_id)
 {
   GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
-  window->getVulkanBackbuffer(image, framebuffer, render_pass, extent, fb_id);
+  window->getVulkanBackbuffer(image, r_surface_format, framebuffer, render_pass, extent, fb_id);
+}
+
+void GHOST_GetVulkanBackbufferFormat(GHOST_WindowHandle windowhandle,
+                                     void *r_surface_format,
+                                     void *r_extent)
+{
+  GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
+  window->getVulkanBackbufferFormat(r_surface_format, r_extent);
 }
 
 #endif /* WITH_VULKAN_BACKEND */

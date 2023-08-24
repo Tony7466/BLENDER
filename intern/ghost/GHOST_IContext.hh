@@ -9,6 +9,8 @@
 
 #pragma once
 
+#include <functional>
+
 #include "GHOST_Types.h"
 
 /**
@@ -113,10 +115,16 @@ class GHOST_IContext {
    *     handles have been set.
    */
   virtual GHOST_TSuccess getVulkanBackbuffer(void *r_image,
+                                             void *r_surface_format,
                                              void *r_framebuffer,
                                              void *r_render_pass,
                                              void *r_extent,
                                              uint32_t *r_fb_id) = 0;
+  virtual GHOST_TSuccess getVulkanBackbufferFormat(void *r_surface_format, void *r_extent) = 0;
+
+  virtual GHOST_TSuccess setVulkanSwapBuffersCallbacks(
+      std::function<void(void)> swap_buffers_pre_callback,
+      std::function<void(void)> swap_buffers_post_callback) = 0;
 
   virtual GHOST_TSuccess swapBuffers() = 0;
 

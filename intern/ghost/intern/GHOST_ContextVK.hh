@@ -124,8 +124,17 @@ class GHOST_ContextVK : public GHOST_Context {
    * Needs to be called after each swap events as the framebuffer will change.
    * \return  A boolean success indicator.
    */
-  GHOST_TSuccess getVulkanBackbuffer(
-      void *image, void *framebuffer, void *render_pass, void *extent, uint32_t *fb_id);
+  GHOST_TSuccess getVulkanBackbuffer(void *image,
+                                     void *r_surface_format,
+                                     void *framebuffer,
+                                     void *render_pass,
+                                     void *extent,
+                                     uint32_t *fb_id) override;
+  GHOST_TSuccess getVulkanBackbufferFormat(void *r_surface_format, void *r_extent) override;
+
+  GHOST_TSuccess setVulkanSwapBuffersCallbacks(
+      std::function<void(void)> swap_buffers_pre_callback,
+      std::function<void(void)> swap_buffers_post_callback) override;
 
   /**
    * Sets the swap interval for `swapBuffers`.
@@ -180,6 +189,7 @@ class GHOST_ContextVK : public GHOST_Context {
   std::vector<VkCommandBuffer> m_command_buffers;
   VkRenderPass m_render_pass;
   VkExtent2D m_render_extent;
+  VkSurfaceFormatKHR m_surface_format;
   std::vector<VkSemaphore> m_image_available_semaphores;
   std::vector<VkSemaphore> m_render_finished_semaphores;
   std::vector<VkFence> m_in_flight_fences;
@@ -198,6 +208,9 @@ class GHOST_ContextVK : public GHOST_Context {
   uint32_t m_currentImage = 0;
   /** Used to unique framebuffer ids to return when swapchain is recreated. */
   uint32_t m_swapchain_id = 0;
+
+  std::function<void(void)> swap_buffers_pre_callback_;
+  std::function<void(void)> swap_buffers_post_callback_;
 
   const char *getPlatformSpecificSurfaceExtension() const;
   GHOST_TSuccess createSwapchain();

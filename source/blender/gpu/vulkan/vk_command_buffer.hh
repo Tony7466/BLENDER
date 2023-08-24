@@ -24,6 +24,7 @@ class VKPushConstants;
 class VKStorageBuffer;
 class VKTexture;
 class VKVertexBuffer;
+class VKDevice;
 
 /** Command buffer to keep track of the life-time of a command buffer. */
 class VKCommandBuffer : NonCopyable, NonMovable {
@@ -132,7 +133,8 @@ class VKCommandBuffer : NonCopyable, NonMovable {
 
  public:
   virtual ~VKCommandBuffer();
-  void init(const VkDevice vk_device, const VkQueue vk_queue, VkCommandBuffer vk_command_buffer);
+  bool is_initialized() const;
+  void init(const VKDevice &vk_device);
   void begin_recording();
   void end_recording();
 

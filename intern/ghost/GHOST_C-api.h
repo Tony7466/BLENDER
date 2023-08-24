@@ -1277,6 +1277,13 @@ void GHOST_GetVulkanHandles(GHOST_ContextHandle context,
 void GHOST_GetVulkanCommandBuffer(GHOST_ContextHandle context, void *r_command_buffer);
 
 /**
+ * Set the pre and post callbacks for vulkan swap chain.
+ */
+void GHOST_SetVulkanSwapBuffersCallbacks(GHOST_ContextHandle context,
+                                         void (*swap_buffers_pre_callback)(void),
+                                         void (*swap_buffers_post_callback)(void));
+
+/**
  * Gets the Vulkan back-buffer related resource handles associated with the Vulkan context.
  * Needs to be called after each swap event as the back-buffer will change.
  *
@@ -1288,6 +1295,10 @@ void GHOST_GetVulkanCommandBuffer(GHOST_ContextHandle context, void *r_command_b
  * \param r_image: After calling this function the VkImage
  *     referenced by this parameter will contain the VKImage handle
  *     of the current back buffer.
+ * \param r_surface_format: After calling this function the VkSurfaceFormatKHR
+ *     referenced by this parameter will contain the surface format of the
+ *     surface. The format is the same as the image returned in the r_image
+ *     parameter.
  * \param r_framebuffer: After calling this function the VkFramebuffer
  *     referenced by this parameter will contain the VKFramebuffer handle
  *     of the current back buffer.
@@ -1303,10 +1314,14 @@ void GHOST_GetVulkanCommandBuffer(GHOST_ContextHandle context, void *r_command_b
  */
 void GHOST_GetVulkanBackbuffer(GHOST_WindowHandle windowhandle,
                                void *r_image,
+                               void *r_surface_format,
                                void *r_framebuffer,
                                void *r_render_pass,
                                void *r_extent,
                                uint32_t *r_fb_id);
+void GHOST_GetVulkanBackbufferFormat(GHOST_WindowHandle windowhandle,
+                                     void *r_surface_format,
+                                     void *r_extent);
 
 #endif
 

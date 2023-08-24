@@ -9,6 +9,7 @@
 #include "vk_command_buffer.hh"
 #include "vk_buffer.hh"
 #include "vk_context.hh"
+#include "vk_device.hh"
 #include "vk_framebuffer.hh"
 #include "vk_index_buffer.hh"
 #include "vk_memory.hh"
@@ -23,6 +24,8 @@ namespace blender::gpu {
 
 VKCommandBuffer::~VKCommandBuffer()
 {
+  // TODO: free command buffer.
+
   if (vk_device_ != VK_NULL_HANDLE) {
     VK_ALLOCATION_CALLBACKS;
     vkDestroyFence(vk_device_, vk_fence_, vk_allocation_callbacks);
@@ -30,22 +33,37 @@ VKCommandBuffer::~VKCommandBuffer()
   }
 }
 
-void VKCommandBuffer::init(const VkDevice vk_device,
-                           const VkQueue vk_queue,
-                           VkCommandBuffer vk_command_buffer)
+bool VKCommandBuffer::is_initialized() const
 {
-  vk_device_ = vk_device;
-  vk_queue_ = vk_queue;
-  vk_command_buffer_ = vk_command_buffer;
-  submission_id_.reset();
-  state.stage = Stage::Initial;
+  return vk_command_buffer_ != VK_NULL_HANDLE;
+}
+
+void VKCommandBuffer::init(const VKDevice &device)
+{
+  if (is_initialized()) {
+    return;
+  }
+
+  std::cout << __func__ << "\n";
+  vk_device_ = device.device_get();
+  vk_queue_ = device.queue_get();
 
   /* When a the last GHOST context is destroyed the device is deallocate. A moment later the GPU
    * context is destroyed. The first step is to activate it. Activating would retrieve the device
    * from GHOST which in that case is a #VK_NULL_HANDLE. */
-  if (vk_device == VK_NULL_HANDLE) {
+  if (vk_device_ == VK_NULL_HANDLE) {
     return;
   }
+
+  VkCommandBufferAllocateInfo alloc_info = {};
+  alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+  alloc_info.commandPool = device.vk_command_pool_get();
+  alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+  alloc_info.commandBufferCount = 1;
+  vkAllocateCommandBuffers(vk_device_, &alloc_info, &vk_command_buffer_);
+
+  submission_id_.reset();
+  state.stage = Stage::Initial;
 
   if (vk_fence_ == VK_NULL_HANDLE) {
     VK_ALLOCATION_CALLBACKS;
@@ -60,6 +78,8 @@ void VKCommandBuffer::init(const VkDevice vk_device,
 
 void VKCommandBuffer::begin_recording()
 {
+  std::cout << __func__ << "\n";
+  ensure_no_active_framebuffer();
   if (is_in_stage(Stage::Submitted)) {
     vkWaitForFences(vk_device_, 1, &vk_fence_, VK_TRUE, FenceTimeout);
     vkResetFences(vk_device_, 1, &vk_fence_);
@@ -78,6 +98,7 @@ void VKCommandBuffer::begin_recording()
 
 void VKCommandBuffer::end_recording()
 {
+  std::cout << __func__ << "\n";
   ensure_no_active_framebuffer();
   vkEndCommandBuffer(vk_command_buffer_);
   stage_transfer(Stage::Recording, Stage::BetweenRecordingAndSubmitting);
@@ -384,6 +405,7 @@ void VKCommandBuffer::ensure_no_active_framebuffer()
 {
   state.checks_++;
   if (state.framebuffer_ && state.framebuffer_active_) {
+    std::cout << __func__ << " n";
     vkCmdEndRenderPass(vk_command_buffer_);
     state.framebuffer_active_ = false;
     state.switches_++;
@@ -395,6 +417,7 @@ void VKCommandBuffer::ensure_active_framebuffer()
   BLI_assert(state.framebuffer_);
   state.checks_++;
   if (!state.framebuffer_active_) {
+    std::cout << __func__ << " n";
     VkRenderPassBeginInfo render_pass_begin_info = {};
     render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     render_pass_begin_info.renderPass = state.framebuffer_->vk_render_pass_get();

@@ -101,6 +101,19 @@ VkImageAspectFlagBits to_vk_image_aspect_flag_bits(const eGPUTextureFormat forma
   return static_cast<VkImageAspectFlagBits>(0);
 }
 
+eGPUTextureFormat to_gpu_format(const VkFormat format)
+{
+  switch (format) {
+    case VK_FORMAT_R8G8B8A8_UNORM:
+    case VK_FORMAT_B8G8R8A8_UNORM:
+      return GPU_RGBA8;
+
+    default:
+      BLI_assert_unreachable();
+  }
+  return GPU_RGBA32F;
+}
+
 VkFormat to_vk_format(const eGPUTextureFormat format)
 {
   switch (format) {

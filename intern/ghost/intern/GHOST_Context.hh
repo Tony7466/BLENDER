@@ -210,10 +210,24 @@ class GHOST_Context : public GHOST_IContext {
    *     handles have been set.
    */
   virtual GHOST_TSuccess getVulkanBackbuffer(void * /*r_image*/,
+                                             void * /*r_surface_format*/,
                                              void * /*r_framebuffer*/,
                                              void * /*r_render_pass*/,
                                              void * /*r_extent*/,
                                              uint32_t * /*fb_id*/) override
+  {
+    return GHOST_kFailure;
+  }
+
+  virtual GHOST_TSuccess getVulkanBackbufferFormat(void * /*r_surface_format*/,
+                                                   void * /*r_extent*/) override
+  {
+    return GHOST_kFailure;
+  }
+
+  virtual GHOST_TSuccess setVulkanSwapBuffersCallbacks(
+      std::function<void(void)> /*swap_buffers_pre_callback*/,
+      std::function<void(void)> /*swap_buffers_post_callback*/) override
   {
     return GHOST_kFailure;
   }
