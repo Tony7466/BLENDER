@@ -5,10 +5,6 @@
 import bpy
 from bpy.types import Menu
 from bl_ui import node_add_menu
-from bpy.app.translations import (
-    pgettext_iface as iface_,
-    contexts as i18n_contexts,
-)
 
 
 class NODE_MT_category_COMP_INPUT(Menu):
@@ -203,6 +199,7 @@ class NODE_MT_category_COMP_LAYOUT(Menu):
         layout = self.layout
         node_add_menu.add_node_type(layout, "NodeFrame")
         node_add_menu.add_node_type(layout, "NodeReroute")
+
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
@@ -224,6 +221,7 @@ class NODE_MT_compositing_node_add_all(Menu):
         layout.separator()
         layout.menu("NODE_MT_category_COMP_GROUP")
         layout.menu("NODE_MT_category_COMP_LAYOUT")
+
         node_add_menu.draw_root_assets(layout)
 
 
