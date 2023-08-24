@@ -67,6 +67,7 @@ set(SRC
   interface_style.cc
   interface_template_asset_view.cc
   interface_template_attribute_search.cc
+  interface_template_collection_tree.cc
   interface_template_grease_pencil_layer_tree.cc
   interface_template_light_linking.cc
   interface_template_list.cc

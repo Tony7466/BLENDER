@@ -612,6 +612,8 @@ void TreeViewLayoutBuilder::build_row(AbstractTreeViewItem &item) const
   eUIEmbossType previous_emboss = UI_block_emboss_get(&block_);
 
   uiLayout *overlap = uiLayoutOverlap(&prev_layout);
+  uiLayoutSetPropSep(overlap, false);
+  uiLayoutSetPropDecorate(overlap, false);
 
   if (!item.is_interactive_) {
     uiLayoutSetActive(overlap, false);

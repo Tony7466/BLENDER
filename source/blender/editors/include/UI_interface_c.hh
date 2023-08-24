@@ -2583,6 +2583,8 @@ void uiTemplateLightLinkingCollection(uiLayout *layout, PointerRNA *ptr, const c
 
 void uiTemplateGreasePencilLayerTree(uiLayout *layout, bContext *C);
 
+void uiTemplateCollectionTree(uiLayout *layout, bContext *C);
+
 /**
  * \return: A RNA pointer for the operator properties.
  */
