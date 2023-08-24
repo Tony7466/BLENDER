@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -1017,7 +1017,7 @@ static bool rna_property_override_collection_subitem_name_id_match(
   if (do_id_pointer) {
     if (*item_id != static_cast<ID *>(ptr_item_name->data)) {
       /* If the ID pointer does not match, then there is no match, no need to check the
-       * name iteself. */
+       * name itself. */
       return is_match;
     }
   }

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -490,6 +490,19 @@ class USERPREF_PT_edit_text_editor(EditingPanel, CenterAlignMixIn, Panel):
         layout.prop(edit, "use_text_edit_auto_close")
 
 
+class USERPREF_PT_edit_node_editor(EditingPanel, CenterAlignMixIn, Panel):
+    bl_label = "Node Editor"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw_centered(self, context, layout):
+        prefs = context.preferences
+        edit = prefs.edit
+
+        col = layout.column()
+        col.prop(edit, "node_margin", text="Auto-Offset Margin")
+        col.prop(edit, "node_preview_resolution", text="Preview Resolution")
+
+
 class USERPREF_PT_edit_misc(EditingPanel, CenterAlignMixIn, Panel):
     bl_label = "Miscellaneous"
     bl_options = {'DEFAULT_CLOSED'}
@@ -500,8 +513,6 @@ class USERPREF_PT_edit_misc(EditingPanel, CenterAlignMixIn, Panel):
 
         col = layout.column()
         col.prop(edit, "sculpt_paint_overlay_color", text="Sculpt Overlay Color")
-        col.prop(edit, "node_margin", text="Node Auto-Offset Margin")
-        col.prop(edit, "node_preview_resolution", text="Node Preview Resolution")
 
 
 # -----------------------------------------------------------------------------
@@ -1146,14 +1157,6 @@ class PreferenceThemeSpacePanel:
             "handle_vertex_select",
         },
     }
-
-    @classmethod
-    def poll(cls, context):
-        # Special exception: Hide asset shelf theme settings depending on experimental "Asset Shelf" option.
-        if cls.datapath.endswith(".asset_shelf"):
-            prefs = context.preferences
-            return prefs.experimental.use_asset_shelf
-        return True
 
     # TODO theme_area should be deprecated
     @staticmethod
@@ -2459,10 +2462,8 @@ class USERPREF_PT_experimental_new_features(ExperimentalPanel, Panel):
                 ({"property": "use_sculpt_tools_tilt"}, ("blender/blender/issues/82877", "#82877")),
                 ({"property": "use_extended_asset_browser"},
                  ("blender/blender/projects/10", "Pipeline, Assets & IO Project Page")),
-                ({"property": "use_asset_shelf"}, ("blender/blender/issues/102879", "#102879")),
                 ({"property": "use_override_templates"}, ("blender/blender/issues/73318", "Milestone 4")),
                 ({"property": "use_new_volume_nodes"}, ("blender/blender/issues/103248", "#103248")),
-                ({"property": "use_rotation_socket"}, ("/blender/blender/issues/92967", "#92967")),
                 ({"property": "use_node_group_operators"}, ("/blender/blender/issues/101778", "#101778")),
                 ({"property": "use_shader_node_previews"}, ("blender/blender/issues/110353", "#110353")),
             ),
@@ -2480,7 +2481,6 @@ class USERPREF_PT_experimental_prototypes(ExperimentalPanel, Panel):
                 ({"property": "use_sculpt_texture_paint"}, ("blender/blender/issues/96225", "#96225")),
                 ({"property": "use_experimental_compositors"}, ("blender/blender/issues/88150", "#88150")),
                 ({"property": "enable_eevee_next"}, ("blender/blender/issues/93220", "#93220")),
-                ({"property": "enable_workbench_next"}, ("blender/blender/issues/101619", "#101619")),
                 ({"property": "use_grease_pencil_version3"}, ("blender/blender/projects/6", "Grease Pencil 3.0")),
                 ({"property": "enable_overlay_next"}, ("blender/blender/issues/102179", "#102179")),
                 ({"property": "use_extension_repos"}, ("/blender/blender/issues/106254", "#106254")),
@@ -2565,6 +2565,7 @@ classes = (
     USERPREF_PT_edit_weight_paint,
     USERPREF_PT_edit_gpencil,
     USERPREF_PT_edit_text_editor,
+    USERPREF_PT_edit_node_editor,
     USERPREF_PT_edit_misc,
 
     USERPREF_PT_animation_timeline,

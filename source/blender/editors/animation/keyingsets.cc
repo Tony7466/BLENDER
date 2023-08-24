@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -384,7 +384,7 @@ static int remove_keyingset_button_exec(bContext *C, wmOperator *op)
   bool changed = false;
   int index = 0;
 
-  if (UI_context_active_but_prop_get(C, &ptr, &prop, &index)) {
+  if (!UI_context_active_but_prop_get(C, &ptr, &prop, &index)) {
     /* pass event on if no active button found */
     return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
   }

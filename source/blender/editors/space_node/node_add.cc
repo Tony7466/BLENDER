@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -312,6 +312,11 @@ static int node_add_group_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_WARNING, "Could not add node group");
     return OPERATOR_CANCELLED;
   }
+  if (!RNA_boolean_get(op->ptr, "show_datablock_in_node")) {
+    /* By default, don't show the data-block selector since it's not usually necessary for assets.
+     */
+    group_node->flag &= ~NODE_OPTIONS;
+  }
 
   group_node->id = &node_group->id;
   id_us_plus(group_node->id);
@@ -371,6 +376,13 @@ void NODE_OT_add_group(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
 
   WM_operator_properties_id_lookup(ot, true);
+
+  PropertyRNA *prop = RNA_def_boolean(ot->srna,
+                                      "show_datablock_in_node",
+                                      true,
+                                      "Show the datablock selector in the node",
+                                      "");
+  RNA_def_property_flag(prop, (PropertyFlag)(PROP_SKIP_SAVE | PROP_HIDDEN));
 }
 
 /** \} */
@@ -547,8 +559,7 @@ static int node_add_object_invoke(bContext *C, wmOperator *op, const wmEvent *ev
 static bool node_add_object_poll(bContext *C)
 {
   const SpaceNode *snode = CTX_wm_space_node(C);
-  return ED_operator_node_editable(C) && ELEM(snode->nodetree->type, NTREE_GEOMETRY) &&
-         !UI_but_active_drop_name(C);
+  return ED_operator_node_editable(C) && ELEM(snode->nodetree->type, NTREE_GEOMETRY);
 }
 
 void NODE_OT_add_object(wmOperatorType *ot)
@@ -634,8 +645,7 @@ static int node_add_collection_invoke(bContext *C, wmOperator *op, const wmEvent
 static bool node_add_collection_poll(bContext *C)
 {
   const SpaceNode *snode = CTX_wm_space_node(C);
-  return ED_operator_node_editable(C) && ELEM(snode->nodetree->type, NTREE_GEOMETRY) &&
-         !UI_but_active_drop_name(C);
+  return ED_operator_node_editable(C) && ELEM(snode->nodetree->type, NTREE_GEOMETRY);
 }
 
 void NODE_OT_add_collection(wmOperatorType *ot)

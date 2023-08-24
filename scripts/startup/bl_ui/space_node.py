@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -235,6 +235,10 @@ class NODE_MT_add(bpy.types.Menu):
             props = layout.operator("node.add_search", text="Search...", icon='VIEWZOOM')
             layout.separator()
             layout.menu_contents("NODE_MT_geometry_node_add_all")
+        elif snode.tree_type == 'CompositorNodeTree':
+            props = layout.operator("node.add_search", text="Search...", icon='VIEWZOOM')
+            layout.separator()
+            layout.menu_contents("NODE_MT_compositing_node_add_all")
         elif nodeitems_utils.has_node_categories(context):
             props = layout.operator("node.add_search", text="Search...", icon='VIEWZOOM')
             props.use_transform = True

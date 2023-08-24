@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "usd_writer_mesh.h"
@@ -11,6 +11,7 @@
 #include <pxr/usd/usdShade/materialBindingAPI.h>
 
 #include "BLI_assert.h"
+#include "BLI_math_color.hh"
 #include "BLI_math_quaternion_types.hh"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
@@ -292,7 +293,7 @@ void USDGenericMeshWriter::write_uv_data(const Mesh *mesh,
 
   const blender::StringRef active_ref(active_set_name);
 
-  /* Because primvars don't have a notion of "active" for data like
+  /* Because prim-vars don't have a notion of "active" for data like
    * UVs, but a specific UV set may be considered "active" by target
    * applications, the [ ---- ] is to name the active set "st". */
   const std::string name = active_set_name && (active_ref == attribute_id.name()) ?

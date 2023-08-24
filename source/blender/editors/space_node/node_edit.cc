@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -738,7 +738,7 @@ void ED_node_set_active(
     ED_node_tree_propagate_change(nullptr, bmain, ntree);
 
     if ((node->flag & NODE_ACTIVE_TEXTURE) && !was_active_texture) {
-      /* If active texture changed, free glsl materials. */
+      /* If active texture changed, free GLSL materials. */
       LISTBASE_FOREACH (Material *, ma, &bmain->materials) {
         if (ma->nodetree && ma->use_nodes && ntreeContainsTree(ma->nodetree, ntree)) {
           GPU_material_free(&ma->gpumaterial);
@@ -2397,10 +2397,6 @@ static bool socket_change_poll_type(void *userdata, bNodeSocketType *socket_type
 
   /* Only use basic socket types for this enum. */
   if (socket_type->subtype != PROP_NONE) {
-    return false;
-  }
-
-  if (!U.experimental.use_rotation_socket && socket_type->type == SOCK_ROTATION) {
     return false;
   }
 
