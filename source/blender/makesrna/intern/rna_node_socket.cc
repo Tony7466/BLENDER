@@ -585,7 +585,7 @@ static void rna_def_node_socket(BlenderRNA *brna)
 
   func = RNA_def_function(srna, "draw_color_simple", nullptr);
   RNA_def_function_ui_description(func, "Color of the socket icon");
-  RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_USE_SELF_TYPE | FUNC_REGISTER_OPTIONAL);
+  RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_REGISTER_OPTIONAL);
   parm = RNA_def_float_array(
       func, "color", 4, default_draw_color, 0.0f, 1.0f, "Color", "", 0.0f, 1.0f);
   RNA_def_function_output(func, parm);
