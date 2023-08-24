@@ -25,19 +25,9 @@ class MyCustomSocket(NodeSocket):
     # Label for nice name display
     bl_label = "Custom Node Socket"
 
-    # Enum items list
-    my_items = (
-        ('DOWN', "Down", "Where your feet are"),
-        ('UP', "Up", "Where your head should be"),
-        ('LEFT', "Left", "Not right"),
-        ('RIGHT', "Right", "Not left"),
-    )
-
-    my_enum_prop: bpy.props.EnumProperty(
-        name="Direction",
-        description="Just an example",
-        items=my_items,
-        default='UP',
+    input_value: bpy.props.FloatProperty(
+        name="Value",
+        description="Value when the socket is not connected",
     )
 
     # Optional function for drawing the socket input value
@@ -45,10 +35,11 @@ class MyCustomSocket(NodeSocket):
         if self.is_output or self.is_linked:
             layout.label(text=text)
         else:
-            layout.prop(self, "my_enum_prop", text=text)
+            layout.prop(self, "input_value", text=text)
 
     # Socket color
-    def draw_color(self, context, node):
+    @classmethod
+    def draw_color_simple(cls):
         return (1.0, 0.4, 0.216, 0.5)
 
 
@@ -57,16 +48,20 @@ class MyCustomInterfaceSocket(NodeTreeInterfaceSocket):
     # The type of socket that is generated.
     bl_socket_idname = 'CustomSocketType'
 
-    mean_value: bpy.props.FloatProperty(default=10.0)
-    randomize: bpy.props.BoolProperty(default=False)
+    default_value: bpy.props.FloatProperty(default=1.0, description="Default input value for new sockets",)
 
     def draw(self, context, layout):
-        layout.label(text="Here we can display properties of the socket")
-        layout.prop(self, "mean_value")
-        layout.prop(self, "randomize")
+        # Display properties of the interface.
+        layout.prop(self, "default_value")
 
+    # Set properties of newly created sockets
     def init_socket(self, node, socket, data_path):
-        print("I am doing the socket thing")
+        socket.input_value = self.default_value
+
+    # Use an existing socket to initialize the group interface
+    def from_socket(self, node, socket):
+        # Current value of the socket becomes the default
+        self.default_value = socket.input_value
 
 
 # Mix-in class for all custom nodes in this tree type.
