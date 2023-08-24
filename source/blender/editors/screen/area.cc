@@ -1905,6 +1905,28 @@ bool ED_area_has_shared_border(ScrArea *a, ScrArea *b)
   return area_getorientation(a, b) != -1;
 }
 
+/**
+ * Restores the #ARegion.type pointer from the given #ARegion.regiontype value. If no valid region
+ * type was found for the given area, the region is removed. This is especially relevant when
+ * reading files from new versions, where new region types may be introduced.
+ */
+static void area_regions_restore_type_remove_invalid(ScrArea *area)
+{
+  LISTBASE_FOREACH_MUTABLE (ARegion *, region, &area->regionbase) {
+    region->type = BKE_regiontype_from_id(area->type, region->regiontype);
+
+    if (region->type == nullptr) {
+      printf("Error, region type %d missing in \"%s\" (id: %d) - removing region\n",
+             region->regiontype,
+             area->type->name,
+             area->type->spaceid);
+
+      BKE_area_region_free(area->type, region);
+      BLI_freelinkN(&area->regionbase, region);
+    }
+  }
+}
+
 void ED_area_init(wmWindowManager *wm, wmWindow *win, ScrArea *area)
 {
   WorkSpace *workspace = WM_window_get_active_workspace(win);
@@ -1927,9 +1949,7 @@ void ED_area_init(wmWindowManager *wm, wmWindow *win, ScrArea *area)
     area->type = BKE_spacetype_from_id(area->spacetype);
   }
 
-  LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
-    region->type = BKE_regiontype_from_id_or_first(area->type, region->regiontype);
-  }
+  area_regions_restore_type_remove_invalid(area);
 
   /* area sizes */
   area_calc_totrct(area, &window_rect);
@@ -1995,9 +2015,7 @@ static void area_offscreen_init(ScrArea *area)
     area->type = BKE_spacetype_from_id(area->spacetype);
   }
 
-  LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
-    region->type = BKE_regiontype_from_id_or_first(area->type, region->regiontype);
-  }
+  area_regions_restore_type_remove_invalid(area);
 }
 
 ScrArea *ED_area_offscreen_create(wmWindow *win, eSpace_Type space_type)
