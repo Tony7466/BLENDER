@@ -381,10 +381,9 @@ class NODE_OT_interface_item_move(NodeInterfaceOperator, Operator):
 
         if self.direction == 'UP':
             interface.move(item, item.position - 1)
-            interface.active_index -= 1
         elif self.direction == 'DOWN':
             interface.move(item, item.position + 1)
-            interface.active_index += 1
+        interface.active = item
 
         return {'FINISHED'}
 
