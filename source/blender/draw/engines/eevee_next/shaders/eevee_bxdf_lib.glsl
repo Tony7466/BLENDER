@@ -1,7 +1,10 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * BxDF evaluation functions.
- **/
+ */
 
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 
