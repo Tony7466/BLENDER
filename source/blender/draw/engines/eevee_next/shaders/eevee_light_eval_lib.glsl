@@ -11,6 +11,7 @@
  * - utility_tx
  */
 
+#pragma BLENDER_REQUIRE(eevee_shadow_tracing_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_light_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
@@ -35,25 +36,18 @@ void light_eval_ex(ClosureDiffuse diffuse,
   float dist;
   light_vector_get(light, P, L, dist);
 
-  float visibility = light_attenuation(light, L, dist);
+  float visibility = is_directional ? 1.0 : light_attenuation(light, L, dist);
 
   if (light.tilemap_index != LIGHT_NO_SHADOW && (visibility > 0.0)) {
     vec3 lL = light_world_to_local(light, -L) * dist;
     vec3 lNg = light_world_to_local(light, Ng);
 
 #ifdef EEVEE_SAMPLING_DATA
-    ShadowSample samp = shadow_map_trace(
-        8, is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, lL, lNg, P);
-#else
-    /* TODO(fclem): Support soft shadows in surfel light eval. */
-    ShadowSample samp = shadow_sample(
-        is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, lL, lNg, P);
-#endif
-
-#ifdef SSS_TRANSMITTANCE
+    ShadowEvalResult shadow = shadow_eval(light, is_directional, lL, 1, 16);
+#  ifdef SSS_TRANSMITTANCE
     /* Transmittance evaluation first to use initial visibility without shadow. */
     if (diffuse.sss_id != 0u && light.diffuse_power > 0.0) {
-      float delta = max(thickness, -(samp.occluder_delta + samp.bias));
+      float delta = max(thickness, shadow.occluder_distance);
 
       vec3 intensity = visibility * light.transmit_power *
                        light_translucent(sss_transmittance_tx,
@@ -66,9 +60,16 @@ void light_eval_ex(ClosureDiffuse diffuse,
                                          delta);
       out_diffuse += light.color * intensity;
     }
-#endif
+#  endif
+    visibility *= shadow.visibilty;
+    out_shadow *= shadow.visibilty;
+#else
+    /* TODO(fclem): Support soft shadows in surfel light eval. */
+    ShadowSample samp = shadow_sample(
+        is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, lL, lNg, P);
     visibility *= float(samp.occluder_delta + samp.bias >= 0.0);
     out_shadow *= float(samp.occluder_delta + samp.bias >= 0.0);
+#endif
   }
 
   if (visibility < 1e-6) {

@@ -63,6 +63,12 @@ vec3 light_world_to_local(LightData ld, vec3 L)
   return lL;
 }
 
+/* Transform position from light's local space to world space. Does translation. */
+vec3 light_local_position_to_world(LightData light, vec3 lP)
+{
+  return mat3(light.object_mat) * lP + light._position;
+}
+
 /* From Frostbite PBR Course
  * Distance based attenuation
  * http://www.frostbite.com/wp-content/uploads/2014/11/course_notes_moving_frostbite_to_pbr.pdf */
@@ -92,14 +98,11 @@ float light_attenuation(LightData ld, vec3 L, float dist)
     vis *= step(0.0, -dot(L, -ld._back));
   }
 
-  /* TODO(fclem): Static branching. */
-  if (!is_sun_light(ld.type)) {
 #ifdef VOLUME_LIGHTING
-    vis *= light_influence_attenuation(dist, ld.influence_radius_invsqr_volume);
+  vis *= light_influence_attenuation(dist, ld.influence_radius_invsqr_volume);
 #else
-    vis *= light_influence_attenuation(dist, ld.influence_radius_invsqr_surface);
+  vis *= light_influence_attenuation(dist, ld.influence_radius_invsqr_surface);
 #endif
-  }
   return vis;
 }
 

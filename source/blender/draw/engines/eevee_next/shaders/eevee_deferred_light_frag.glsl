@@ -7,10 +7,10 @@
  */
 
 #pragma BLENDER_REQUIRE(eevee_gbuffer_lib.glsl)
-#pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_light_eval_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_reflection_probe_eval_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_lightprobe_eval_lib.glsl)
+#pragma BLENDER_REQUIRE(common_view_lib.glsl)
 
 void main()
 {
@@ -40,6 +40,7 @@ void main()
 
   drw_debug_draw_enable = (ivec2(gl_FragCoord.xy) == ivec2(1000, 512));
   drw_debug_print_enable = (ivec2(gl_FragCoord.xy) == ivec2(1000, 512));
+  drw_print(" ");
 
   ClosureRefraction refraction_data;
   refraction_data.N = diffuse_data.N;
