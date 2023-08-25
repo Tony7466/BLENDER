@@ -91,7 +91,7 @@ class NodeSocketViewItem : public BasicTreeViewItem {
                      bNodeTreeInterfaceSocket &socket)
       : BasicTreeViewItem(socket.name, ICON_NONE), nodetree_(nodetree), socket_(socket)
   {
-    set_is_active_fn([interface, socket]() { return interface.active_item() == &socket.item; });
+    set_is_active_fn([interface, &socket]() { return interface.active_item() == &socket.item; });
     set_on_activate_fn([&interface](bContext & /*C*/, BasicTreeViewItem &new_active) {
       NodeSocketViewItem &self = static_cast<NodeSocketViewItem &>(new_active);
       interface.active_item_set(&self.socket_.item);
@@ -171,7 +171,7 @@ class NodePanelViewItem : public BasicTreeViewItem {
                     bNodeTreeInterfacePanel &panel)
       : BasicTreeViewItem(panel.name, ICON_NONE), nodetree_(nodetree), panel_(panel)
   {
-    set_is_active_fn([interface, panel]() { return interface.active_item() == &panel.item; });
+    set_is_active_fn([interface, &panel]() { return interface.active_item() == &panel.item; });
     set_on_activate_fn([&interface](bContext & /*C*/, BasicTreeViewItem &new_active) {
       NodePanelViewItem &self = static_cast<NodePanelViewItem &>(new_active);
       interface.active_item_set(&self.panel_.item);
