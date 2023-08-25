@@ -751,6 +751,16 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 18)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type == NTREE_GEOMETRY) {
+        version_node_id(ntree, GEO_NODE_EVALUATE_AT_INDEX, "GeometryNodeEvaluateAtIndex");
+        version_node_id(ntree, GEO_NODE_EVALUATE_ON_DOMAIN, "GeometryNodeEvaluateOnDomain");
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
