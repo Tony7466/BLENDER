@@ -823,18 +823,19 @@ static bool azone_clipped_rect_calc(const AZone *az, rcti *r_rect_clip)
 static void area_actionzone_get_rect(AZone *az, rcti *rect)
 {
   if (az->type == AZONE_REGION_SCROLL) {
+    const bool is_horizontal = az->direction == AZ_SCROLL_HOR;
+    const bool is_vertical = az->direction == AZ_SCROLL_VERT;
+    const bool is_right = is_vertical && bool(az->region->v2d.scroll & V2D_SCROLL_RIGHT);
+    const bool is_left = is_vertical && bool(az->region->v2d.scroll & V2D_SCROLL_LEFT);
+    const bool is_top = is_horizontal && bool(az->region->v2d.scroll & V2D_SCROLL_TOP);
+    const bool is_botton = is_horizontal && bool(az->region->v2d.scroll & V2D_SCROLL_BOTTOM);
     /* For scroll azones use the area around the region's scroll-bar location. */
-    rcti scroller_vert = (az->direction == AZ_SCROLL_HOR) ? az->region->v2d.hor :
-                                                            az->region->v2d.vert;
+    rcti scroller_vert = is_horizontal ? az->region->v2d.hor : az->region->v2d.vert;
     BLI_rcti_translate(&scroller_vert, az->region->winrct.xmin, az->region->winrct.ymin);
-    rect->xmin = scroller_vert.xmin -
-                 ((az->direction == AZ_SCROLL_VERT) ? V2D_SCROLL_HIDE_HEIGHT : 0);
-    rect->ymin = scroller_vert.ymin -
-                 ((az->direction == AZ_SCROLL_HOR) ? V2D_SCROLL_HIDE_WIDTH : 0);
-    rect->xmax = scroller_vert.xmax +
-                 ((az->direction == AZ_SCROLL_VERT) ? V2D_SCROLL_HIDE_HEIGHT : 0);
-    rect->ymax = scroller_vert.ymax +
-                 ((az->direction == AZ_SCROLL_HOR) ? V2D_SCROLL_HIDE_WIDTH : 0);
+    rect->xmin = scroller_vert.xmin - (is_right ? V2D_SCROLL_HIDE_HEIGHT : 0);
+    rect->ymin = scroller_vert.ymin - (is_top ? V2D_SCROLL_HIDE_WIDTH : 0);
+    rect->xmax = scroller_vert.xmax + (is_left ? V2D_SCROLL_HIDE_HEIGHT : 0);
+    rect->ymax = scroller_vert.ymax + (is_botton ? V2D_SCROLL_HIDE_WIDTH : 0);
   }
   else {
     azone_clipped_rect_calc(az, rect);
@@ -4871,7 +4872,7 @@ static int screen_animation_step_invoke(bContext *C, wmOperator * /*op*/, const 
    * NOTE: this may not be accurate enough, since we might need this after modifiers/etc.
    * have been calculated instead of just before updates have been done?
    */
-  ED_refresh_viewport_fps(C);
+  ED_scene_fps_average_accumulate(scene, wt->ltime);
 
   /* Recalculate the time-step for the timer now that we've finished calculating this,
    * since the frames-per-second value may have been changed.
@@ -4941,6 +4942,7 @@ int ED_screen_animation_play(bContext *C, int sync, int mode)
   if (ED_screen_animation_playing(CTX_wm_manager(C))) {
     /* stop playback now */
     ED_screen_animation_timer(C, 0, 0, 0);
+    ED_scene_fps_average_clear(scene);
     BKE_sound_stop_scene(scene_eval);
 
     BKE_callback_exec_id_depsgraph(
@@ -4962,6 +4964,7 @@ int ED_screen_animation_play(bContext *C, int sync, int mode)
     }
 
     ED_screen_animation_timer(C, screen->redraws_flag, sync, mode);
+    ED_scene_fps_average_clear(scene);
 
     if (screen->animtimer) {
       wmTimer *wt = screen->animtimer;
