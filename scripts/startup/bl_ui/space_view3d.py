@@ -6092,7 +6092,7 @@ class VIEW3D_PT_collections(Panel):
         # We pass index 0 here because the index is increased
         # so the first real index is 1
         # And we start with index as 1 because we skip the master collection
-        layout.template_collection_tree()
+        layout.template_scene_collection_tree()
         # self._draw_collection(layout, view_layer, view.use_local_collections, view_layer.layer_collection, 0)
 
 

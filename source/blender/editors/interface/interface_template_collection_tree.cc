@@ -141,10 +141,11 @@ void CollectionTreeView::build_tree()
 
 using namespace blender;
 
-void uiTemplateCollectionTree(uiLayout *layout, bContext *C)
+void uiTemplateSceneCollectionTree(uiLayout *layout, bContext *C)
 {
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
+  /* May me null if this is not displayed in a 3D view! */
   View3D *view3d = CTX_wm_view3d(C);
 
   uiBlock *block = uiLayoutGetBlock(layout);
@@ -152,7 +153,8 @@ void uiTemplateCollectionTree(uiLayout *layout, bContext *C)
   std::unique_ptr collection_view = std::make_unique<ui::CollectionTreeView>(
       *scene, *view_layer, view3d);
   collection_view->set_min_rows(5);
-  /* TODO: Pass the following as template options? */
+  /* These things could be turned into options for the template (or there could be multiple
+   * templates displaying the tree in different ways). For now keep it entirely context based. */
   collection_view->set_use_local_collections(view3d && (view3d->flag & V3D_LOCAL_COLLECTIONS));
   collection_view->enable_viewport_visibility_toggle();
 

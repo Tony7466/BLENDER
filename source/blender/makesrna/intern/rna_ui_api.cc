@@ -2081,7 +2081,7 @@ void RNA_api_ui_layout(StructRNA *srna)
                                   "Visualization of a content of a light linking collection");
   api_ui_item_rna_common(func);
 
-  func = RNA_def_function(srna, "template_collection_tree", "uiTemplateCollectionTree");
+  func = RNA_def_function(srna, "template_scene_collection_tree", "uiTemplateSceneCollectionTree");
   RNA_def_function_ui_description(func, "Display the current scene's collection hierarchy");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
 
