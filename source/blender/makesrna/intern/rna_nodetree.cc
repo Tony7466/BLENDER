@@ -143,7 +143,7 @@ static const EnumPropertyItem rna_enum_execution_mode_items[] = {
     {NTREE_EXECUTION_MODE_REALTIME,
      "REALTIME",
      0,
-     "Realtime GPU",
+     "GPU",
      "Use GPU accelerated compositing with more limited functionality"},
     {0, nullptr, 0, nullptr, nullptr},
 };
@@ -604,7 +604,6 @@ static const EnumPropertyItem node_cryptomatte_layer_name_items[] = {
 #  include "DNA_scene_types.h"
 #  include "WM_api.hh"
 
-extern "C" {
 extern FunctionRNA rna_NodeTree_poll_func;
 extern FunctionRNA rna_NodeTree_update_func;
 extern FunctionRNA rna_NodeTree_get_from_context_func;
@@ -619,7 +618,6 @@ extern FunctionRNA rna_Node_free_func;
 extern FunctionRNA rna_Node_draw_buttons_func;
 extern FunctionRNA rna_Node_draw_buttons_ext_func;
 extern FunctionRNA rna_Node_draw_label_func;
-}
 
 void rna_Node_socket_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr);
 
@@ -687,6 +685,20 @@ const EnumPropertyItem *rna_node_tree_type_itemf(void *data,
   *r_free = true;
 
   return item;
+}
+
+int rna_node_socket_idname_to_enum(const char *idname)
+{
+  int i = 0, result = -1;
+  NODE_SOCKET_TYPES_BEGIN (stype) {
+    if (STREQ(stype->idname, idname)) {
+      result = i;
+      break;
+    }
+    i++;
+  }
+  NODE_SOCKET_TYPES_END;
+  return result;
 }
 
 bNodeSocketType *rna_node_socket_type_from_enum(int value)
@@ -1919,9 +1931,6 @@ static const EnumPropertyItem *itemf_function_check(
 
 static bool switch_type_supported(const EnumPropertyItem *item)
 {
-  if (!U.experimental.use_rotation_socket && item->value == SOCK_ROTATION) {
-    return false;
-  }
   return ELEM(item->value,
               SOCK_FLOAT,
               SOCK_INT,
@@ -2051,9 +2060,6 @@ static const EnumPropertyItem *rna_GeoNodeAccumulateField_type_itemf(bContext * 
 
 static bool generic_attribute_type_supported(const EnumPropertyItem *item)
 {
-  if (!U.experimental.use_rotation_socket && item->value == CD_PROP_QUATERNION) {
-    return false;
-  }
   return ELEM(item->value,
               CD_PROP_FLOAT,
               CD_PROP_FLOAT2,
@@ -2946,7 +2952,7 @@ static const EnumPropertyItem *rna_ShaderNodeMix_data_type_itemf(bContext * /*C*
 
   const auto rotation_supported_mix = [&](const EnumPropertyItem *item) -> bool {
     const eNodeSocketDatatype data_type = eNodeSocketDatatype(item->value);
-    if (U.experimental.use_rotation_socket && data_type == SOCK_ROTATION) {
+    if (data_type == SOCK_ROTATION) {
       const bNodeTree *tree = reinterpret_cast<const bNodeTree *>(ptr->owner_id);
       if (tree->type == NTREE_GEOMETRY) {
         return true;
@@ -4280,7 +4286,24 @@ static const EnumPropertyItem node_hair_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static const EnumPropertyItem node_principled_hair_items[] = {
+static const EnumPropertyItem node_principled_hair_model_items[] = {
+    {SHD_PRINCIPLED_HAIR_CHIANG,
+     "CHIANG",
+     0,
+     "Chiang",
+     "Near-field hair scattering model by Chiang et. al 2016, suitable for close-up looks, but is "
+     "more noisy when viewing from a distance"},
+    {SHD_PRINCIPLED_HAIR_HUANG,
+     "HUANG",
+     0,
+     "Huang",
+     "Far-field hair scattering model by Huang et. al 2022, suitable for viewing from a distance, "
+     "supports elliptical cross-sections and has more precise highlight in forward scattering "
+     "directions"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+static const EnumPropertyItem node_principled_hair_parametrization_items[] = {
     {SHD_PRINCIPLED_HAIR_DIRECT_ABSORPTION,
      "ABSORPTION",
      0,
@@ -4291,8 +4314,8 @@ static const EnumPropertyItem node_principled_hair_items[] = {
      "MELANIN",
      0,
      "Melanin Concentration",
-     "Define the melanin concentrations below to get the most realistic-looking hair "
-     "(you can get the concentrations for different types of hair online)"},
+     "Define the melanin concentrations below to get the most realistic-looking hair (you can get "
+     "the concentrations for different types of hair online)"},
     {SHD_PRINCIPLED_HAIR_REFLECTANCE,
      "COLOR",
      0,
@@ -5157,7 +5180,7 @@ static void def_sh_tex_noise(StructRNA *srna)
   RNA_def_property_update(prop, 0, "rna_ShaderNode_socket_update");
 
   prop = RNA_def_property(srna, "normalize", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, NULL, "normalize", 0);
+  RNA_def_property_boolean_sdna(prop, nullptr, "normalize", 0);
   RNA_def_property_ui_text(prop, "Normalize", "Normalize outputs to 0.0 to 1.0 range");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
@@ -5735,19 +5758,28 @@ static void def_hair(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
-/* RNA initialization for the custom property. */
+/* RNA initialization for the custom properties. */
 static void def_hair_principled(StructRNA *srna)
 {
   PropertyRNA *prop;
 
-  prop = RNA_def_property(srna, "parametrization", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
-  RNA_def_property_ui_text(
-      prop, "Color Parametrization", "Select the shader's color parametrization");
-  RNA_def_property_enum_items(prop, node_principled_hair_items);
-  RNA_def_property_enum_default(prop, SHD_PRINCIPLED_HAIR_REFLECTANCE);
+  RNA_def_struct_sdna_from(srna, "NodeShaderHairPrincipled", "storage");
+
+  prop = RNA_def_property(srna, "model", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "model");
+  RNA_def_property_ui_text(prop, "Scattering model", "Select from Chiang or Huang model");
+  RNA_def_property_enum_items(prop, node_principled_hair_model_items);
+  RNA_def_property_enum_default(prop, SHD_PRINCIPLED_HAIR_HUANG);
   /* Upon editing, update both the node data AND the UI representation */
   /* (This effectively shows/hides the relevant sockets) */
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_ShaderNode_socket_update");
+
+  prop = RNA_def_property(srna, "parametrization", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "parametrization");
+  RNA_def_property_ui_text(
+      prop, "Color Parametrization", "Select the shader's color parametrization");
+  RNA_def_property_enum_items(prop, node_principled_hair_parametrization_items);
+  RNA_def_property_enum_default(prop, SHD_PRINCIPLED_HAIR_REFLECTANCE);
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_ShaderNode_socket_update");
 }
 
