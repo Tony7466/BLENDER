@@ -429,9 +429,6 @@ GHOST_TSuccess GHOST_ContextVK::destroySwapchain()
   for (auto semaphore : m_image_available_semaphores) {
     vkDestroySemaphore(device, semaphore, nullptr);
   }
-  for (auto semaphore : m_render_finished_semaphores) {
-    vkDestroySemaphore(device, semaphore, nullptr);
-  }
   if (m_swapchain != VK_NULL_HANDLE) {
     vkDestroySwapchainKHR(device, m_swapchain, nullptr);
   }
@@ -628,7 +625,7 @@ static void enableLayer(vector<VkLayerProperties> &layers_available,
                         const bool display_warning)
 {
 #define PUSH_VKLAYER(name, name2) \
-  if (/*vklayer_config_exist("VkLayer_" #name ".json") && */ \
+  if (vklayer_config_exist("VkLayer_" #name ".json") && \
       checkLayerSupport(layers_available, "VK_LAYER_" #name2)) \
   { \
     layers_enabled.push_back("VK_LAYER_" #name2); \
@@ -829,16 +826,12 @@ GHOST_TSuccess GHOST_ContextVK::createSwapchain()
   vkGetSwapchainImagesKHR(device, m_swapchain, &image_count, m_swapchain_images.data());
 
   m_image_available_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
-  m_render_finished_semaphores.resize(MAX_FRAMES_IN_FLIGHT);
 
   VkSemaphoreCreateInfo semaphore_info = {};
   semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
   for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
     VK_CHECK(
         vkCreateSemaphore(device, &semaphore_info, nullptr, &m_image_available_semaphores[i]));
-    VK_CHECK(
-        vkCreateSemaphore(device, &semaphore_info, nullptr, &m_render_finished_semaphores[i]));
   }
 
   // VK_IMAGE_LAYOUT_UNDEFINED -> PRESENT_SRC

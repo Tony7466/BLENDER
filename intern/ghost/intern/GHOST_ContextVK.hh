@@ -185,7 +185,6 @@ class GHOST_ContextVK : public GHOST_Context {
   VkExtent2D m_render_extent;
   VkSurfaceFormatKHR m_surface_format;
   std::vector<VkSemaphore> m_image_available_semaphores;
-  std::vector<VkSemaphore> m_render_finished_semaphores;
   /** frame modulo swapchain_len. Used as index for sync objects. */
   int m_currentFrame = 0;
   /**
