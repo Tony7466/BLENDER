@@ -26,10 +26,6 @@ class AbstractNodeGroupInterfaceTest(unittest.TestCase):
         # Make sure we always start with a known-empty file.
         bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "empty.blend"))
 
-        # XXX Will fail when rotation sockets are no longer experimental.
-        # Once that happens just remove this line.
-        bpy.context.preferences.experimental.use_rotation_socket = True
-
     def tearDown(self):
         self._tempdir.cleanup()
 
@@ -225,14 +221,15 @@ class NodeGroupInterfaceTests:
         tree.interface.new_socket("Output 1", socket_type=socket_type, is_output=True)
         tree.interface.new_panel("Panel 3")
 
+        # Panels after sockets
         self.assertSequenceEqual([(s.name, s.item_type) for s in tree.interface.ui_items], [
-            ("Panel 0", 'PANEL'),
             ("Input 0", 'SOCKET'),
             ("Output 0", 'SOCKET'),
-            ("Panel 1", 'PANEL'),
             ("Input 1", 'SOCKET'),
-            ("Panel 2", 'PANEL'),
             ("Output 1", 'SOCKET'),
+            ("Panel 0", 'PANEL'),
+            ("Panel 1", 'PANEL'),
+            ("Panel 2", 'PANEL'),
             ("Panel 3", 'PANEL'),
         ])
         self.assertSequenceEqual([s.name for s in group_node.inputs], [
@@ -338,6 +335,16 @@ class NodeGroupInterfaceTests:
         self.assertSequenceEqual(tree.interface.ui_items, [in1, out1])
         self.assertSequenceEqual([s.name for s in group_node.inputs], ["Input 1"])
         self.assertSequenceEqual([s.name for s in group_node.outputs], ["Output 1"])
+
+    def do_test_move(self, socket_type):
+        tree, group_node = self.make_group_and_instance()
+
+        in0 = tree.interface.new_socket("Input 0", socket_type=socket_type, is_input=True)
+        in1 = tree.interface.new_socket("Input 1", socket_type=socket_type, is_input=True, parent=panel0)
+        out0 = tree.interface.new_socket("Output 0", socket_type=socket_type, is_output=True)
+        out1 = tree.interface.new_socket("Output 1", socket_type=socket_type, is_output=True, parent=panel0)
+        panel0 = tree.interface.new_panel("Panel 0")
+        panel1 = tree.interface.new_panel("Panel 1")
 
 
 class GeometryNodeGroupInterfaceTest(AbstractNodeGroupInterfaceTest, NodeGroupInterfaceTests):
