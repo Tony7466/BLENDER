@@ -582,7 +582,7 @@ static void node_update_basis_from_declaration(
         break;
       }
       /* Finalize the vertical extent of the content. */
-      top_panel.runtime->min_content_y = round(locy);
+      top_panel.runtime->min_content_y = round(locy - NODE_DYS / 4);
       /* Close panel and continue checking parent. */
       panel_updates.pop();
     }
