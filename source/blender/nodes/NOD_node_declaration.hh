@@ -492,7 +492,7 @@ using SocketDeclarationPtr = std::unique_ptr<SocketDeclaration>;
  */
 class PanelDeclaration : public ItemDeclaration {
  public:
-  int uid;
+  int identifier;
   std::string name;
   std::string description;
   std::string translation_context;

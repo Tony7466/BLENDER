@@ -319,7 +319,7 @@ static PanelDeclarationPtr declaration_for_interface_panel(const bNodeTree & /*n
                                                            const bNodeTreeInterfacePanel &io_panel)
 {
   PanelDeclarationPtr dst = std::make_unique<PanelDeclaration>();
-  dst->uid = io_panel.identifier;
+  dst->identifier = io_panel.identifier;
   dst->name = io_panel.name ? io_panel.name : "";
   dst->description = io_panel.description ? io_panel.description : "";
   dst->default_collapsed = (io_panel.flag & NODE_INTERFACE_PANEL_DEFAULT_CLOSED);

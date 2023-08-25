@@ -240,13 +240,13 @@ bool SocketDeclaration::matches_common_data(const bNodeSocket &socket) const
 void PanelDeclaration::build(bNodePanelState &panel) const
 {
   panel = {0};
-  panel.uid = this->uid;
+  panel.identifier = this->identifier;
   SET_FLAG_FROM_TEST(panel.flag, this->default_collapsed, NODE_PANEL_COLLAPSED);
 }
 
 bool PanelDeclaration::matches(const bNodePanelState &panel) const
 {
-  return panel.uid == this->uid;
+  return panel.identifier == this->identifier;
 }
 
 void PanelDeclaration::update_or_build(const bNodePanelState &old_panel,

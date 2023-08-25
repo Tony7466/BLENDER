@@ -247,7 +247,7 @@ static void refresh_node_panel(const PanelDeclaration &panel_decl,
   bNodePanelState *old_panel_with_same_identifier = nullptr;
   for (const int i : old_panels.index_range()) {
     bNodePanelState &old_panel = old_panels[i];
-    if (old_panel.uid == panel_decl.uid) {
+    if (old_panel.identifier == panel_decl.identifier) {
       /* Panel is removed after copying to #new_panel. */
       old_panel_with_same_identifier = &old_panel;
       break;
@@ -265,7 +265,7 @@ static void refresh_node_panel(const PanelDeclaration &panel_decl,
     }
     else {
       /* Clear out identifier to avoid name collisions when a new panel is created. */
-      old_panel_with_same_identifier->uid = -1;
+      old_panel_with_same_identifier->identifier = -1;
       panel_decl.update_or_build(*old_panel_with_same_identifier, new_panel);
     }
 
@@ -287,6 +287,10 @@ static void refresh_node_sockets_and_panels(bNodeTree &ntree,
       ++new_num_panels;
     }
   }
+  Vector<bNodeSocket *> old_inputs = node.inputs;
+  Vector<bNodeSocket *> old_outputs = node.outputs;
+  Vector<bNodePanelState> old_panels = Vector<bNodePanelState>(node.panel_states());
+
   /* New panel states buffer. */
   MEM_SAFE_FREE(node.panel_states_array);
   node.num_panel_states = new_num_panels;
@@ -296,27 +300,22 @@ static void refresh_node_sockets_and_panels(bNodeTree &ntree,
   VectorSet<bNodeSocket *> new_inputs;
   VectorSet<bNodeSocket *> new_outputs;
   bNodePanelState *new_panel = node.panel_states_array;
-  {
-    Vector<bNodeSocket *> old_inputs = node.inputs;
-    Vector<bNodeSocket *> old_outputs = node.outputs;
-    Vector<bNodePanelState> old_panels = Vector<bNodePanelState>(node.panel_states());
-    for (const ItemDeclarationPtr &item_decl : item_decls) {
-      if (const SocketDeclaration *socket_decl = dynamic_cast<const SocketDeclaration *>(
-              item_decl.get()))
-      {
-        if (socket_decl->in_out == SOCK_IN) {
-          refresh_node_socket(ntree, node, *socket_decl, old_inputs, new_inputs);
-        }
-        else {
-          refresh_node_socket(ntree, node, *socket_decl, old_outputs, new_outputs);
-        }
+  for (const ItemDeclarationPtr &item_decl : item_decls) {
+    if (const SocketDeclaration *socket_decl = dynamic_cast<const SocketDeclaration *>(
+            item_decl.get()))
+    {
+      if (socket_decl->in_out == SOCK_IN) {
+        refresh_node_socket(ntree, node, *socket_decl, old_inputs, new_inputs);
       }
-      else if (const PanelDeclaration *panel_decl = dynamic_cast<const PanelDeclaration *>(
-                   item_decl.get()))
-      {
-        refresh_node_panel(*panel_decl, old_panels, *new_panel);
-        ++new_panel;
+      else {
+        refresh_node_socket(ntree, node, *socket_decl, old_outputs, new_outputs);
       }
+    }
+    else if (const PanelDeclaration *panel_decl = dynamic_cast<const PanelDeclaration *>(
+                 item_decl.get()))
+    {
+      refresh_node_panel(*panel_decl, old_panels, *new_panel);
+      ++new_panel;
     }
   }
 

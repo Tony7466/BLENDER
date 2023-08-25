@@ -319,10 +319,10 @@ typedef enum eNodePanelFlag {
 
 typedef struct bNodePanelState {
   /* Unique identifier for validating state against panels in node declaration. */
-  short uid;
+  int identifier;
   /* eNodePanelFlag */
   char flag;
-  char _pad;
+  char _pad[3];
 
 #ifdef __cplusplus
   bool is_collapsed() const;
