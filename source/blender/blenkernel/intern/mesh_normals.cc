@@ -387,34 +387,19 @@ blender::Span<blender::float3> Mesh::face_normals() const
 blender::Span<blender::float3> Mesh::corner_normals() const
 {
   using namespace blender;
-  using namespace blender::bke;
-  if (!this->runtime->corner_normals_dirty) {
-    BLI_assert(this->runtime->corner_normals.size() == this->totloop);
-    return this->runtime->corner_normals;
-  }
-
-  const Span<float3> vert_normals = this->vert_normals();
-  const Span<float3> face_normals = this->face_normals();
-  std::lock_guard lock{this->runtime->normals_mutex};
-  if (!this->runtime->corner_normals_dirty) {
-    BLI_assert(this->runtime->corner_normals.size() == this->totloop);
-    return this->runtime->corner_normals;
-  }
-
-  /* Isolate task because a mutex is locked and computing normals is multi-threaded. */
-  threading::isolate_task([&]() {
+  this->runtime->corner_normals_cache.ensure([&](Vector<float3> &r_data) {
     const OffsetIndices faces = this->faces();
-    this->runtime->corner_normals.reinitialize(this->totloop);
-    MutableSpan<float3> corner_normals = this->runtime->corner_normals;
+    r_data.reinitialize(faces.total_size());
     switch (this->normal_domain_all_info()) {
       case ATTR_DOMAIN_POINT: {
-        array_utils::gather(vert_normals, this->corner_verts(), corner_normals);
+        array_utils::gather(this->vert_normals(), this->corner_verts(), r_data.as_mutable_span());
         break;
       }
       case ATTR_DOMAIN_FACE: {
-        threading::parallel_for(face_normals.index_range(), 1024, [&](const IndexRange range) {
+        const Span<float3> face_normals = this->face_normals();
+        threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
           for (const int i : range) {
-            corner_normals.slice(faces[i]).fill(face_normals[i]);
+            r_data.as_mutable_span().slice(faces[i]).fill(face_normals[i]);
           }
         });
         break;
@@ -432,23 +417,20 @@ blender::Span<blender::float3> Mesh::corner_normals() const
                                      this->corner_verts(),
                                      this->corner_edges(),
                                      {},
-                                     vert_normals,
-                                     face_normals,
+                                     this->vert_normals(),
+                                     this->face_normals(),
                                      sharp_edges,
                                      sharp_faces,
                                      custom_normals,
                                      nullptr,
-                                     this->runtime->corner_normals);
+                                     r_data);
         break;
       }
       default:
         BLI_assert_unreachable();
     }
-
-    this->runtime->corner_normals_dirty = false;
   });
-
-  return this->runtime->corner_normals;
+  return this->runtime->corner_normals_cache.data();
 }
 
 void BKE_lnor_spacearr_init(MLoopNorSpaceArray *lnors_spacearr,
