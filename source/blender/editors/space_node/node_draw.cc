@@ -346,6 +346,11 @@ float2 node_from_view(const bNode &node, const float2 &co)
   ;
 }
 
+static bool is_node_panels_supported(const bNode &node)
+{
+  return node.declaration() && node.declaration()->use_custom_socket_order;
+}
+
 /* Draw UI for options, buttons, and previews. */
 static bool node_update_basis_buttons(
     const bContext &C, bNodeTree &ntree, bNode &node, uiBlock &block, int &dy)
@@ -474,7 +479,7 @@ static void node_update_basis_from_declaration(
 {
   namespace nodes = blender::nodes;
 
-  BLI_assert(node.declaration() != nullptr);
+  BLI_assert(is_node_panels_supported(node));
   BLI_assert(node.runtime->panels.size() == node.num_panel_states);
 
   const nodes::NodeDeclaration &decl = *node.declaration();
@@ -495,6 +500,8 @@ static void node_update_basis_from_declaration(
     int remaining_items;
     /* True if the panel or its parent is collapsed. */
     bool is_collapsed;
+    /* Location data, needed to finalize the panel when all items have been added. */
+    bke::bNodePanelRuntime *runtime;
   };
 
   Stack<PanelUpdate> panel_updates;
@@ -523,10 +530,11 @@ static void node_update_basis_from_declaration(
           current_panel_state->flag, is_parent_collapsed, NODE_PANEL_PARENT_COLLAPSED);
       /* New top panel is collapsed if self or parent is collapsed. */
       const bool is_collapsed = is_parent_collapsed || current_panel_state->is_collapsed();
-      panel_updates.push({panel_decl->num_items, is_collapsed});
+      panel_updates.push({panel_decl->num_items, is_collapsed, current_panel_runtime});
 
       /* Round the socket location to stop it from jiggling. */
-      current_panel_runtime->location = float2(locx, round(locy + NODE_DYS));
+      current_panel_runtime->location_y = round(locy + NODE_DYS);
+      current_panel_runtime->max_content_y = current_panel_runtime->min_content_y = round(locy);
       ++current_panel_state;
       ++current_panel_runtime;
     }
@@ -568,10 +576,13 @@ static void node_update_basis_from_declaration(
 
     /* Close parent panels that have all items added. */
     while (!panel_updates.is_empty()) {
-      if (panel_updates.peek().remaining_items > 0) {
+      PanelUpdate &top_panel = panel_updates.peek();
+      if (top_panel.remaining_items > 0) {
         /* Incomplete panel, continue adding items. */
         break;
       }
+      /* Finalize the vertical extent of the content. */
+      top_panel.runtime->min_content_y = round(locy);
       /* Close panel and continue checking parent. */
       panel_updates.pop();
     }
@@ -659,7 +670,7 @@ static void node_update_basis(const bContext &C,
   /* Header. */
   dy -= NODE_DY;
 
-  if (node.declaration() && node.declaration()->use_custom_socket_order) {
+  if (is_node_panels_supported(node)) {
     node_update_basis_from_declaration(C, ntree, node, block, loc.x, dy);
   }
   else {
@@ -1729,21 +1740,64 @@ static void node_panel_toggle_button_cb(bContext *C, void *panel_state_argv, voi
   ED_node_tree_propagate_change(C, bmain, ntree);
 }
 
-static void node_draw_panels(const View2D & /*v2d*/,
-                             TreeDrawContext &tree_draw_ctx,
-                             bNodeTree &ntree,
-                             const bNode &node,
-                             uiBlock &block)
+/* Draw panel backgrounds first, so other node elements can be rendered on top. */
+static void node_draw_panels_background(const bNode &node, uiBlock &block)
 {
   namespace nodes = blender::nodes;
 
-  BLI_assert(node.declaration() != nullptr);
-  //  BLI_assert(node.panel_states().size() == node.declaration().num_panels);
+  BLI_assert(is_node_panels_supported(node));
   BLI_assert(node.runtime->panels.size() == node.panel_states().size());
 
   const nodes::NodeDeclaration &decl = *node.declaration();
   const rctf &rct = node.runtime->totr;
-  const int color_id = node_get_colorid(tree_draw_ctx, node);
+
+  int panel_i = 0;
+  for (const nodes::ItemDeclarationPtr &item_decl : decl.items) {
+    const nodes::PanelDeclaration *panel_decl = dynamic_cast<nodes::PanelDeclaration *>(
+        item_decl.get());
+    if (panel_decl == nullptr) {
+      /* Not a panel. */
+      continue;
+    }
+
+    const bNodePanelState &state = node.panel_states()[panel_i];
+    /* Don't draw hidden or collapsed panels. */
+    if (state.is_collapsed() || state.is_parent_collapsed()) {
+      ++panel_i;
+      continue;
+    }
+    const bke::bNodePanelRuntime &runtime = node.runtime->panels[panel_i];
+
+    const rctf content_rect = {
+        rct.xmin,
+        rct.xmax,
+        runtime.min_content_y,
+        runtime.max_content_y,
+    };
+
+    UI_block_emboss_set(&block, UI_EMBOSS_NONE);
+
+    /* Panel background. */
+    float color_panel[4];
+    UI_GetThemeColorBlend4f(TH_BACK, TH_NODE, 0.2f, color_panel);
+    UI_draw_roundbox_corner_set(UI_CNR_NONE);
+    UI_draw_roundbox_4fv(&content_rect, true, BASIS_RAD, color_panel);
+
+    UI_block_emboss_set(&block, UI_EMBOSS);
+
+    ++panel_i;
+  }
+}
+
+static void node_draw_panels(bNodeTree &ntree, const bNode &node, uiBlock &block)
+{
+  namespace nodes = blender::nodes;
+
+  BLI_assert(is_node_panels_supported(node));
+  BLI_assert(node.runtime->panels.size() == node.panel_states().size());
+
+  const nodes::NodeDeclaration &decl = *node.declaration();
+  const rctf &rct = node.runtime->totr;
 
   int panel_i = 0;
   for (const nodes::ItemDeclarationPtr &item_decl : decl.items) {
@@ -1757,6 +1811,7 @@ static void node_draw_panels(const View2D & /*v2d*/,
     const bNodePanelState &state = node.panel_states()[panel_i];
     /* Don't draw hidden panels. */
     if (state.is_parent_collapsed()) {
+      ++panel_i;
       continue;
     }
     const bke::bNodePanelRuntime &runtime = node.runtime->panels[panel_i];
@@ -1764,22 +1819,11 @@ static void node_draw_panels(const View2D & /*v2d*/,
     const rctf rect = {
         rct.xmin,
         rct.xmax,
-        runtime.location.y - NODE_DYS,
-        runtime.location.y + NODE_DYS,
+        runtime.location_y - NODE_DYS,
+        runtime.location_y + NODE_DYS,
     };
 
     UI_block_emboss_set(&block, UI_EMBOSS_NONE);
-
-    /* Panel background. */
-    float color_panel[4];
-    if (node.flag & NODE_MUTED) {
-      UI_GetThemeColorBlend4f(TH_BACK, color_id, 0.1f, color_panel);
-    }
-    else {
-      UI_GetThemeColorBlend4f(TH_NODE, color_id, 0.2f, color_panel);
-    }
-    UI_draw_roundbox_corner_set(UI_CNR_NONE);
-    UI_draw_roundbox_4fv(&rect, true, BASIS_RAD, color_panel);
 
     /* Collapse/expand icon. */
     const int but_size = U.widget_unit * 0.8f;
@@ -1788,7 +1832,7 @@ static void node_draw_panels(const View2D & /*v2d*/,
                  0,
                  state.is_collapsed() ? ICON_RIGHTARROW : ICON_DOWNARROW_HLT,
                  rct.xmin + (NODE_MARGIN_X / 3),
-                 runtime.location.y - but_size / 2,
+                 runtime.location_y - but_size / 2,
                  but_size,
                  but_size,
                  nullptr,
@@ -1804,7 +1848,7 @@ static void node_draw_panels(const View2D & /*v2d*/,
                           0,
                           panel_decl->name.c_str(),
                           int(rct.xmin + NODE_MARGIN_X + 0.4f),
-                          int(runtime.location.y - NODE_DYS),
+                          int(runtime.location_y - NODE_DYS),
                           short(rct.xmax - rct.xmin - 0.35f * U.widget_unit),
                           short(NODE_DY),
                           nullptr,
@@ -2710,6 +2754,10 @@ static void node_draw_basis(const bContext &C,
 
     UI_draw_roundbox_corner_set(UI_CNR_BOTTOM_LEFT | UI_CNR_BOTTOM_RIGHT);
     UI_draw_roundbox_4fv(&rect, true, BASIS_RAD, color);
+
+    if (is_node_panels_supported(node)) {
+      node_draw_panels_background(node, block);
+    }
   }
 
   /* Header underline. */
@@ -2777,8 +2825,8 @@ static void node_draw_basis(const bContext &C,
     node_draw_sockets(v2d, ntree, node, block, true, false);
   }
 
-  if (node.declaration() != nullptr) {
-    node_draw_panels(v2d, tree_draw_ctx, ntree, node, block);
+  if (is_node_panels_supported(node)) {
+    node_draw_panels(ntree, node, block);
   }
 
   UI_block_end(&C, &block);
