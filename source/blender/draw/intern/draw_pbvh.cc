@@ -512,7 +512,7 @@ struct PBVHBatches {
           foreach_grids([&](int /*x*/, int /*y*/, int /*grid_index*/, CCGElem *elems[4], int i) {
             float *mask = CCG_elem_mask(&args.ccg_key, elems[i]);
 
-            *static_cast<uchar *>(GPU_vertbuf_raw_step(&access)) = *mask;
+            GPU_vertbuf_raw_step(&access) = *mask;
           });
         }
         else {
@@ -814,7 +814,7 @@ struct PBVHBatches {
           foreach_bmesh([&](BMLoop *l) {
             float mask = BM_ELEM_CD_GET_FLOAT(l->v, cd_mask);
 
-            *static_cast<uchar *>(GPU_vertbuf_raw_step(&access)) = mask;
+            GPU_vertbuf_raw_step(&access) = mask;
           });
         }
         break;
