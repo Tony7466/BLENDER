@@ -167,26 +167,6 @@ class GHOST_Context : public GHOST_IContext {
   };
 
   /**
-   * Return Vulkan command buffer.
-   *
-   * Command buffers are different for each image in the swap chain.
-   * At the start of each frame the correct command buffer should be
-   * retrieved with this function.
-   *
-   * \param r_command_buffer: After calling this function the VkCommandBuffer
-   *     referenced by this parameter will contain the VKCommandBuffer handle
-   *     of the current back buffer (when swap chains are enabled) or
-   *     it will contain a general VkCommandQueue.
-   * \returns GHOST_kFailure when context isn't a Vulkan context.
-   *     GHOST_kSuccess when the context is a Vulkan context and the
-   *     handles have been set.
-   */
-  virtual GHOST_TSuccess getVulkanCommandBuffer(void * /*r_command_buffer*/) override
-  {
-    return GHOST_kFailure;
-  };
-
-  /**
    * Gets the Vulkan back-buffer related resource handles associated with the Vulkan context.
    * Needs to be called after each swap event as the back-buffer will change.
    *
@@ -209,18 +189,15 @@ class GHOST_Context : public GHOST_IContext {
    *     GHOST_kSuccess when the context is a Vulkan context and the
    *     handles have been set.
    */
-  virtual GHOST_TSuccess getVulkanBackbuffer(void * /*r_image*/,
-                                             void * /*r_surface_format*/,
-                                             void * /*r_framebuffer*/,
-                                             void * /*r_render_pass*/,
-                                             void * /*r_extent*/,
-                                             uint32_t * /*fb_id*/) override
+  virtual GHOST_TSuccess acquireVulkanSwapChainImage(void * /*r_image*/,
+                                                     void * /*r_surface_format*/,
+                                                     void * /*r_extent*/) override
   {
     return GHOST_kFailure;
   }
 
-  virtual GHOST_TSuccess getVulkanBackbufferFormat(void * /*r_surface_format*/,
-                                                   void * /*r_extent*/) override
+  virtual GHOST_TSuccess getVulkanSwapChainFormat(void * /*r_surface_format*/,
+                                                  void * /*r_extent*/) override
   {
     return GHOST_kFailure;
   }

@@ -403,6 +403,10 @@ GHOST_ContextVK::~GHOST_ContextVK()
 
     destroySwapchain();
 
+    if (m_command_buffer != VK_NULL_HANDLE) {
+      vkFreeCommandBuffers(device_vk.device, m_command_pool, 1, &m_command_buffer);
+      m_command_buffer = VK_NULL_HANDLE;
+    }
     if (m_command_pool != VK_NULL_HANDLE) {
       vkDestroyCommandPool(device_vk.device, m_command_pool, nullptr);
     }
@@ -427,9 +431,6 @@ GHOST_TSuccess GHOST_ContextVK::destroySwapchain()
   }
   for (auto semaphore : m_render_finished_semaphores) {
     vkDestroySemaphore(device, semaphore, nullptr);
-  }
-  if (m_command_buffer != VK_NULL_HANDLE) {
-    vkFreeCommandBuffers(device, m_command_pool, 1, &m_command_buffer);
   }
   if (m_swapchain != VK_NULL_HANDLE) {
     vkDestroySwapchainKHR(device, m_swapchain, nullptr);
@@ -489,7 +490,7 @@ GHOST_TSuccess GHOST_ContextVK::swapBuffers()
   return GHOST_kSuccess;
 }
 
-GHOST_TSuccess GHOST_ContextVK::getVulkanBackbufferFormat(void *r_surface_format, void *r_extent)
+GHOST_TSuccess GHOST_ContextVK::getVulkanSwapChainFormat(void *r_surface_format, void *r_extent)
 {
   *((VkSurfaceFormatKHR *)r_surface_format) = m_surface_format;
   *((VkExtent2D *)r_extent) = m_render_extent;
@@ -497,12 +498,9 @@ GHOST_TSuccess GHOST_ContextVK::getVulkanBackbufferFormat(void *r_surface_format
   return GHOST_kSuccess;
 }
 
-GHOST_TSuccess GHOST_ContextVK::getVulkanBackbuffer(void *image,
-                                                    void *r_surface_format,
-                                                    void *framebuffer,
-                                                    void *render_pass,
-                                                    void *extent,
-                                                    uint32_t *fb_id)
+GHOST_TSuccess GHOST_ContextVK::acquireVulkanSwapChainImage(void *image,
+                                                            void *r_surface_format,
+                                                            void *extent)
 {
   if (m_swapchain == VK_NULL_HANDLE) {
     return GHOST_kFailure;
@@ -523,10 +521,7 @@ GHOST_TSuccess GHOST_ContextVK::getVulkanBackbuffer(void *image,
 
   *((VkImage *)image) = m_swapchain_images[m_currentImage];
   *((VkSurfaceFormatKHR *)r_surface_format) = m_surface_format;
-  *((VkFramebuffer *)framebuffer) = VK_NULL_HANDLE;
-  *((VkRenderPass *)render_pass) = VK_NULL_HANDLE;
   *((VkExtent2D *)extent) = m_render_extent;
-  *fb_id = 0;
 
   return GHOST_kSuccess;
 }
@@ -550,13 +545,6 @@ GHOST_TSuccess GHOST_ContextVK::getVulkanHandles(void *r_instance,
 
   *((VkQueue *)r_queue) = m_graphic_queue;
 
-  return GHOST_kSuccess;
-}
-
-GHOST_TSuccess GHOST_ContextVK::getVulkanCommandBuffer(void *r_command_buffer)
-{
-  // TODO: Phase out.
-  *((VkCommandBuffer *)r_command_buffer) = m_command_buffer;
   return GHOST_kSuccess;
 }
 

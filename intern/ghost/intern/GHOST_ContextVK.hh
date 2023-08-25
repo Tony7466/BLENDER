@@ -117,20 +117,16 @@ class GHOST_ContextVK : public GHOST_Context {
                                   void *r_device,
                                   uint32_t *r_graphic_queue_family,
                                   void *r_queue);
-  GHOST_TSuccess getVulkanCommandBuffer(void *r_command_buffer);
 
   /**
    * Gets the Vulkan framebuffer related resource handles associated with the Vulkan context.
    * Needs to be called after each swap events as the framebuffer will change.
    * \return  A boolean success indicator.
    */
-  GHOST_TSuccess getVulkanBackbuffer(void *image,
-                                     void *r_surface_format,
-                                     void *framebuffer,
-                                     void *render_pass,
-                                     void *extent,
-                                     uint32_t *fb_id) override;
-  GHOST_TSuccess getVulkanBackbufferFormat(void *r_surface_format, void *r_extent) override;
+  GHOST_TSuccess acquireVulkanSwapChainImage(void *image,
+                                             void *r_surface_format,
+                                             void *extent) override;
+  GHOST_TSuccess getVulkanSwapChainFormat(void *r_surface_format, void *r_extent) override;
 
   GHOST_TSuccess setVulkanSwapBuffersCallbacks(
       std::function<void(void)> swap_buffers_pre_callback,

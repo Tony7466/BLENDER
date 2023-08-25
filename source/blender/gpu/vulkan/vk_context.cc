@@ -49,12 +49,6 @@ VKContext::~VKContext()
 void VKContext::sync_backbuffer()
 {
   if (ghost_context_) {
-    /* TODO: Only needed when command buffer isn't initialized. Or when we create our own command
-     * buffer.*/
-    /*
-    VkCommandBuffer command_buffer = VK_NULL_HANDLE;
-    GHOST_GetVulkanCommandBuffer(static_cast<GHOST_ContextHandle>(ghost_context_),
-                                 &command_buffer);*/
     VKDevice &device = VKBackend::get().device_;
     if (!command_buffer_.is_initialized()) {
       command_buffer_.init(device);
@@ -68,8 +62,7 @@ void VKContext::sync_backbuffer()
     VkSurfaceFormatKHR vk_surface_format;
     VkExtent2D extent;
 
-    GHOST_GetVulkanBackbufferFormat(
-        (GHOST_WindowHandle)ghost_window_, &vk_surface_format, &extent);
+    GHOST_GetVulkanSwapChainFormat((GHOST_WindowHandle)ghost_window_, &vk_surface_format, &extent);
 
     const bool reset_framebuffer = vk_surface_format_.format != vk_surface_format.format ||
                                    vk_extent_.width != extent.width ||
@@ -247,17 +240,9 @@ void VKContext::swap_buffers_pre_handler()
   /* Get swapchain image. */
   VkImage vk_image = VK_NULL_HANDLE;
   VkSurfaceFormatKHR vk_surface_format = {};
-  VkFramebuffer vk_framebuffer = VK_NULL_HANDLE;
-  VkRenderPass vk_render_pass = VK_NULL_HANDLE;
   VkExtent2D vk_extent = {};
-  uint32_t framebuffer_id = 0;
-  GHOST_GetVulkanBackbuffer(static_cast<GHOST_WindowHandle>(ghost_window_),
-                            &vk_image,
-                            &vk_surface_format,
-                            &vk_framebuffer,
-                            &vk_render_pass,
-                            &vk_extent,
-                            &framebuffer_id);
+  GHOST_AcquireVulkanSwapChainImage(
+      static_cast<GHOST_WindowHandle>(ghost_window_), &vk_image, &vk_surface_format, &vk_extent);
 
   VKTexture wrapper("display_texture");
   wrapper.init(vk_image, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, to_gpu_format(vk_surface_format.format));

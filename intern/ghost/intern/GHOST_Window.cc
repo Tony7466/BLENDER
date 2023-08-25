@@ -107,19 +107,15 @@ uint GHOST_Window::getDefaultFramebuffer()
   return (m_context) ? m_context->getDefaultFramebuffer() : 0;
 }
 
-GHOST_TSuccess GHOST_Window::getVulkanBackbuffer(void *image,
-                                                 void *r_surface_format,
-                                                 void *framebuffer,
-                                                 void *render_pass,
-                                                 void *extent,
-                                                 uint32_t *fb_id)
+GHOST_TSuccess GHOST_Window::acquireVulkanSwapChainImage(void *image,
+                                                         void *r_surface_format,
+                                                         void *extent)
 {
-  return m_context->getVulkanBackbuffer(
-      image, r_surface_format, framebuffer, render_pass, extent, fb_id);
+  return m_context->acquireVulkanSwapChainImage(image, r_surface_format, extent);
 }
-GHOST_TSuccess GHOST_Window::getVulkanBackbufferFormat(void *r_surface_format, void *r_extent)
+GHOST_TSuccess GHOST_Window::getVulkanSwapChainFormat(void *r_surface_format, void *r_extent)
 {
-  return m_context->getVulkanBackbufferFormat(r_surface_format, r_extent);
+  return m_context->getVulkanSwapChainFormat(r_surface_format, r_extent);
 }
 
 GHOST_TSuccess GHOST_Window::activateDrawingContext()
