@@ -196,7 +196,7 @@ void normals_calc_faces(const Span<float3> positions,
   BLI_assert(faces.size() == face_normals.size());
   threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
-      face_normals[i] = face_normal_calc(positions, corner_verts.slice(faces[i]));
+      face_normals[i] = normal_calc_ngon(positions, corner_verts.slice(faces[i]));
     }
   });
 }
@@ -283,7 +283,7 @@ static void normals_calc_faces_and_verts(const Span<float3> positions,
   threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
     for (const int face_i : range) {
       const Span<int> face_verts = corner_verts.slice(faces[face_i]);
-      face_normals[face_i] = face_normal_calc(positions, face_verts);
+      face_normals[face_i] = normal_calc_ngon(positions, face_verts);
       accumulate_face_normal_to_vert(positions, face_verts, face_normals[face_i], vert_normals);
     }
   });
