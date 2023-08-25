@@ -1648,6 +1648,7 @@ static bool surfacedeformBind(bContext *C,
           if (smd_orig->layers[l].frames[f].frame_number == framenum)
           {
             free_frame(smd_orig, smd_eval, &(smd_orig->layers[l]), framenum);
+            curr_gpf->key_type = BEZT_KEYTYPE_KEYFRAME;
             break;
           }
           curr_gpf->key_type = BEZT_KEYTYPE_KEYFRAME;
