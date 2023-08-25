@@ -32,10 +32,12 @@ def guess_player_path(preset):
             try:
                 with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, reg_path, 0, winreg.KEY_READ) as regkey:
                     reg_value = winreg.QueryValue(regkey, None)
-            except:
+            except OSError:
                 pass
 
             if reg_value:
+                # Remove trailing command line arguments from the path. The
+                # registry value looks like: <full path>\djv.exe "%1"
                 index = reg_value.find("djv.exe")
                 if index > 0:
                     player_path = reg_value[:index + 7]
