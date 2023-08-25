@@ -20,7 +20,6 @@ class NODE_MT_geometry_node_GEO_ATTRIBUTE(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeAttributeStatistic")
         node_add_menu.add_node_type(layout, "GeometryNodeAttributeDomainSize")
         layout.separator()
-        node_add_menu.add_node_type(layout, "GeometryNodeBlurAttribute")
         node_add_menu.add_node_type(layout, "GeometryNodeCaptureAttribute")
         node_add_menu.add_node_type(layout, "GeometryNodeRemoveAttribute")
         node_add_menu.add_node_type(layout, "GeometryNodeStoreNamedAttribute")
@@ -553,6 +552,7 @@ class NODE_MT_category_GEO_UTILITIES_FIELD(Menu):
         layout = self.layout
         node_add_menu.add_node_type(layout, "GeometryNodeAccumulateField")
         node_add_menu.add_node_type(layout, "GeometryNodeFieldAtIndex")
+        node_add_menu.add_node_type(layout, "GeometryNodeBlurAttribute")
         node_add_menu.add_node_type(layout, "GeometryNodeFieldOnDomain")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 

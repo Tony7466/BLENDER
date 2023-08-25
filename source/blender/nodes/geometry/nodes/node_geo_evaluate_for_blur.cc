@@ -27,7 +27,7 @@
 
 #include "node_geometry_util.hh"
 
-namespace blender::nodes::node_geo_blur_attribute_cc {
+namespace blender::nodes::node_geo_evaluate_for_blur_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -386,14 +386,14 @@ static GSpan blur_on_curves(const bke::CurvesGeometry &curves,
   return result_buffer;
 }
 
-class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
+class EvaluateForBlurFieldInput final : public bke::GeometryFieldInput {
  private:
   const Field<float> weight_field_;
   const GField value_field_;
   const int iterations_;
 
  public:
-  BlurAttributeFieldInput(Field<float> weight_field, GField value_field, const int iterations)
+  EvaluateForBlurFieldInput(Field<float> weight_field, GField value_field, const int iterations)
       : bke::GeometryFieldInput(value_field.cpp_type(), "Blur Attribute"),
         weight_field_(std::move(weight_field)),
         value_field_(std::move(value_field)),
@@ -468,7 +468,7 @@ class BlurAttributeFieldInput final : public bke::GeometryFieldInput {
 
   bool is_equal_to(const fn::FieldNode &other) const override
   {
-    if (const BlurAttributeFieldInput *other_blur = dynamic_cast<const BlurAttributeFieldInput *>(
+    if (const EvaluateForBlurFieldInput *other_blur = dynamic_cast<const EvaluateForBlurFieldInput *>(
             &other))
     {
       return weight_field_ == other_blur->weight_field_ &&
@@ -511,7 +511,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     using T = decltype(dummy);
     static const std::string identifier = "Value_" + identifier_suffix(data_type);
     Field<T> value_field = params.extract_input<Field<T>>(identifier);
-    Field<T> output_field{std::make_shared<BlurAttributeFieldInput>(
+    Field<T> output_field{std::make_shared<EvaluateForBlurFieldInput>(
         std::move(weight_field), std::move(value_field), iterations)};
     params.set_output(identifier, std::move(output_field));
   });
@@ -520,7 +520,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 static void node_register()
 {
   static bNodeType ntype;
-  geo_node_type_base(&ntype, GEO_NODE_BLUR_ATTRIBUTE, "Blur Attribute", NODE_CLASS_ATTRIBUTE);
+  geo_node_type_base(&ntype, GEO_NODE_EVALUATE_FOR_BLUR, "Evaluate for Attribute", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
@@ -531,4 +531,4 @@ static void node_register()
 }
 NOD_REGISTER_NODE(node_register)
 
-}  // namespace blender::nodes::node_geo_blur_attribute_cc
+}  // namespace blender::nodes::node_geo_evaluate_for_blur_cc

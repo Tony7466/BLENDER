@@ -31,7 +31,6 @@ set(SRC
   nodes/node_geo_attribute_capture.cc
   nodes/node_geo_attribute_domain_size.cc
   nodes/node_geo_attribute_statistic.cc
-  nodes/node_geo_blur_attribute.cc
   nodes/node_geo_boolean.cc
   nodes/node_geo_bounding_box.cc
   nodes/node_geo_collection_info.cc
@@ -73,6 +72,7 @@ set(SRC
   nodes/node_geo_edge_split.cc
   nodes/node_geo_edges_to_face_groups.cc
   nodes/node_geo_evaluate_at_index.cc
+  nodes/node_geo_evaluate_for_blur.cc
   nodes/node_geo_evaluate_on_domain.cc
   nodes/node_geo_extrude_mesh.cc
   nodes/node_geo_flip_faces.cc
