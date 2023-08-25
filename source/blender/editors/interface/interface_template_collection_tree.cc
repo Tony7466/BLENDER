@@ -16,6 +16,8 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
+#include "WM_api.hh"
+
 #include "UI_tree_view.hh"
 
 namespace blender::ui {
@@ -60,6 +62,21 @@ class CollectionTreeViewItem : public BasicTreeViewItem {
         collection_(collection),
         parent_collection_(parent_collection)
   {
+  }
+
+  std::optional<bool> should_be_active() const override
+  {
+    const CollectionTreeView &view = static_cast<CollectionTreeView &>(get_tree_view());
+    return BKE_view_layer_active_collection_get(&view.view_layer_) == &collection_;
+  }
+
+  void on_activate(bContext &C) override
+  {
+    CollectionTreeView &view = static_cast<CollectionTreeView &>(get_tree_view());
+    BKE_layer_collection_activate(&view.view_layer_, &collection_);
+    /* A very precise notifier - ND_LAYER alone is quite vague, we want to avoid unnecessary
+     * work when only the active collection changes. */
+    WM_event_add_notifier(&C, NC_SCENE | ND_LAYER | NS_LAYER_COLLECTION | NA_ACTIVATED, nullptr);
   }
 
   void add_viewport_visibility_toggle(uiLayout &layout, PointerRNA &collection_ptr)
