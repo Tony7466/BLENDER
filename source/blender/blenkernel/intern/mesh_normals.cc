@@ -272,11 +272,11 @@ void normals_calc_verts(const Span<float3> positions,
   normalize_and_validate(vert_normals, positions);
 }
 
-static void normals_calc_faces_verts(const Span<float3> positions,
-                                     const OffsetIndices<int> faces,
-                                     const Span<int> corner_verts,
-                                     MutableSpan<float3> face_normals,
-                                     MutableSpan<float3> vert_normals)
+static void normals_calc_faces_and_verts(const Span<float3> positions,
+                                         const OffsetIndices<int> faces,
+                                         const Span<int> corner_verts,
+                                         MutableSpan<float3> face_normals,
+                                         MutableSpan<float3> vert_normals)
 {
   memset(vert_normals.data(), 0, vert_normals.as_span().size_in_bytes());
 
@@ -324,7 +324,8 @@ blender::Span<blender::float3> Mesh::vert_normals() const
     Vector<float3> face_normals(faces.size());
     this->runtime->vert_normals_cache.ensure([&](Vector<float3> &r_data) {
       r_data.reinitialize(positions.size());
-      bke::mesh::normals_calc_faces_verts(positions, faces, corner_verts, face_normals, r_data);
+      bke::mesh::normals_calc_faces_and_verts(
+          positions, faces, corner_verts, face_normals, r_data);
     });
     this->runtime->face_normals_cache.ensure(
         [&](Vector<float3> &r_data) { r_data = std::move(face_normals); });
