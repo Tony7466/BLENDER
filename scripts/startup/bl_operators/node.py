@@ -334,8 +334,8 @@ class NODE_OT_interface_item_copy(NodeInterfaceOperator, Operator):
         item = interface.active
 
         if item:
-            interface.copy(item)
-            interface.active = item
+            item_copy = interface.copy(item)
+            interface.active = item_copy
 
         return {'FINISHED'}
 
@@ -354,7 +354,7 @@ class NODE_OT_interface_item_remove(NodeInterfaceOperator, Operator):
 
         if item:
             interface.remove(item)
-            interface.active_index -= 1
+            interface.active_index = min(interface.active_index, len(interface.ui_items) - 1)
 
         return {'FINISHED'}
 
