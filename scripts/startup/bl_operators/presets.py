@@ -51,6 +51,12 @@ class AddPresetBase:
         default=False,
         options={'HIDDEN', 'SKIP_SAVE'},
     )
+    overwrite_active: BoolProperty(
+        default=False,
+        options={'HIDDEN', 'SKIP_SAVE'},
+    )
+
+    ask_overwrite = False
 
     @staticmethod
     def as_filename(name):  # could reuse for other presets
@@ -72,8 +78,16 @@ class AddPresetBase:
         # Strip surrounding "_" as they are displayed as spaces.
         return name.translate(trans).strip("_")
 
+    def draw(self, _context):
+        layout = self.layout
+        if self.ask_overwrite:
+            layout.label(text="Overwrite existing preset?")
+        else:
+            layout.prop(self, "name")
+
     def execute(self, context):
         import os
+        import rna_xml
         from bpy.utils import is_path_builtin
 
         if hasattr(self, "pre_cb"):
@@ -82,7 +96,7 @@ class AddPresetBase:
         preset_menu_class = getattr(bpy.types, self.preset_menu)
 
         is_xml = getattr(preset_menu_class, "preset_type", None) == 'XML'
-        is_preset_add = not (self.remove_name or self.remove_active)
+        is_preset_add = not (self.remove_name or self.remove_active or self.overwrite_active)
 
         if is_xml:
             ext = ".xml"
@@ -117,7 +131,6 @@ class AddPresetBase:
                 print("Writing Preset: %r" % filepath)
 
                 if is_xml:
-                    import rna_xml
                     rna_xml.xml_file_write(context,
                                            filepath,
                                            preset_menu_class.preset_xml_map)
@@ -162,9 +175,8 @@ class AddPresetBase:
 
             preset_menu_class.bl_label = bpy.path.display_name(filename)
 
-        else:
-            if self.remove_active:
-                name = preset_menu_class.bl_label
+        elif self.remove_active or self.overwrite_active:
+            name = preset_menu_class.bl_label
 
             # fairly sloppy but convenient.
             filepath = bpy.utils.preset_find(name,
@@ -182,22 +194,34 @@ class AddPresetBase:
 
             # Do not remove bundled presets
             if is_path_builtin(filepath):
-                self.report({'WARNING'}, "Unable to remove default presets")
+                self.report({'WARNING'}, "Unable to modify default presets")
                 return {'CANCELLED'}
 
-            try:
-                if hasattr(self, "remove"):
-                    self.remove(context, filepath)
-                else:
-                    os.remove(filepath)
-            except BaseException as ex:
-                self.report({'ERROR'}, tip_("Unable to remove preset: %r") % ex)
-                import traceback
-                traceback.print_exc()
-                return {'CANCELLED'}
+            if self.remove_active:
+                try:
+                    if hasattr(self, "remove"):
+                        self.remove(context, filepath)
+                    else:
+                        os.remove(filepath)
+                except BaseException as ex:
+                    self.report({'ERROR'}, tip_("Unable to remove preset: %r") % ex)
+                    import traceback
+                    traceback.print_exc()
+                    return {'CANCELLED'}
 
-            # XXX, stupid!
-            preset_menu_class.bl_label = "Presets"
+                # XXX, stupid!
+                preset_menu_class.bl_label = "Presets"
+
+            elif self.overwrite_active:
+                # Reset the flag so preset name prompt works again
+                self.ask_overwrite = False
+                try:
+                    rna_xml.xml_file_write(context, filepath, preset_menu_class.preset_xml_map)
+                except BaseException as ex:
+                    self.report({'ERROR'}, f"Unable to overwrite preset: {ex}")
+                    import traceback
+                    traceback.print_exc()
+                    return {'CANCELLED'}
 
         if hasattr(self, "post_cb"):
             self.post_cb(context)
@@ -208,8 +232,11 @@ class AddPresetBase:
         self.name = self.as_filename(self.name.strip())
 
     def invoke(self, context, _event):
-        if not (self.remove_active or self.remove_name):
-            wm = context.window_manager
+        wm = context.window_manager
+        if self.overwrite_active:
+            self.ask_overwrite = True
+            return wm.invoke_props_dialog(self)
+        elif not (self.remove_active or self.remove_name):
             return wm.invoke_props_dialog(self)
         else:
             return self.execute(context)
@@ -534,9 +561,9 @@ class AddPresetNodeColor(AddPresetBase, Operator):
 
 
 class AddPresetInterfaceTheme(AddPresetBase, Operator):
-    """Add or remove a theme preset"""
+    """Add, remove or save a theme preset"""
     bl_idname = "wm.interface_theme_preset_add"
-    bl_label = "Add Theme Preset"
+    bl_label = "Edit Theme Preset"
     preset_menu = "USERPREF_MT_interface_theme_presets"
     preset_subdir = "interface_theme"
 

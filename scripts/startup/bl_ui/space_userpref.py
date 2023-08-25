@@ -826,6 +826,7 @@ class USERPREF_PT_theme(ThemePanel, Panel):
 
         row = split.row(align=True)
         row.menu("USERPREF_MT_interface_theme_presets", text=USERPREF_MT_interface_theme_presets.bl_label)
+        row.operator("wm.interface_theme_preset_add", text="", icon='FILE_TICK').overwrite_active = True
         row.operator("wm.interface_theme_preset_add", text="", icon='ADD')
         row.operator("wm.interface_theme_preset_add", text="", icon='REMOVE').remove_active = True
 
