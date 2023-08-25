@@ -303,9 +303,9 @@ class NODE_OT_interface_item_new(NodeInterfaceOperator, Operator):
             position = -1
         
         if self.item_type == 'INPUT':
-            item = interface.new_socket("Socket", socket_type=self.socket_type, is_input=True)
+            item = interface.new_socket("Socket", socket_type=self.socket_type, in_out={'INPUT'})
         elif self.item_type == 'OUTPUT':
-            item = interface.new_socket("Socket", socket_type=self.socket_type, is_output=True)
+            item = interface.new_socket("Socket", socket_type=self.socket_type, in_out={'OUTPUT'})
         elif self.item_type == 'PANEL':
             item = interface.new_panel("Panel")
         else:

@@ -905,8 +905,7 @@ class NODE_PT_node_tree_declaration(Panel):
             if active_item.item_type == 'SOCKET':
                 layout.prop(active_item, "name")
                 layout.prop(active_item, "description")
-                layout.prop(active_item, "is_input", toggle=True)
-                layout.prop(active_item, "is_output", toggle=True)
+                layout.prop(active_item, "in_out", text="")
                 layout.prop(active_item, "socket_type")
 
                 active_item.draw(context, layout)
@@ -921,7 +920,7 @@ class NODE_PT_node_tree_declaration(Panel):
                         "NodeSocketFloat",
                     }
                     if active_item.socket_type in field_socket_types:
-                        if active_item.is_output:
+                        if 'OUTPUT' in active_item.in_out:
                             layout.prop(active_item, "attribute_domain")
                         layout.prop(active_item, "default_attribute_name")
             if active_item.item_type == 'PANEL':
