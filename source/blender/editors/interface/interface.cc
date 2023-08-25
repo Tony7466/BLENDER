@@ -4291,9 +4291,6 @@ static void ui_def_but_rna__menu(bContext * /*C*/, uiLayout *layout, void *but_p
   uiPopupBlockHandle *handle = block->handle;
   uiBut *but = (uiBut *)but_p;
 
-  /* Show title if the calling button has icon and blank text. */
-  const bool show_title = but->icon && !but->str[0];
-
   /* see comment in ui_item_enum_expand, re: `uiname`. */
   const EnumPropertyItem *item_array;
 
@@ -4349,8 +4346,8 @@ static void ui_def_but_rna__menu(bContext * /*C*/, uiLayout *layout, void *but_p
 
   const char *title = RNA_property_ui_name(but->rnaprop);
 
-  if (show_title && title[0] && (categories == 0)) {
-    /* Title at the top for menus with categories. */
+  if (title[0] && !but->str[0] && (categories == 0)) {
+    /* Show title when no categories and calling button has no text. */
     uiDefBut(block,
              UI_BTYPE_LABEL,
              0,
