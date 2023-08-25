@@ -293,15 +293,16 @@ static int view_pan_modal(bContext *C, wmOperator *op, const wmEvent *event)
         deltay = view2d_scroll_delta_y_snap_page_size(*v2d, deltay);
       }
 
-      RNA_int_set(op->ptr, "deltax", deltax);
-      vpd->lastx = event->xy[0];
-
-      RNA_int_set(op->ptr, "deltay", deltay);
+      if (deltax != 0) {
+        vpd->lastx = event->xy[0];
+      }
       if (deltay != 0) {
         vpd->lasty = event->xy[1];
       }
 
       if (deltax || deltay) {
+        RNA_int_set(op->ptr, "deltax", deltax);
+        RNA_int_set(op->ptr, "deltay", deltay);
         view_pan_apply(C, op);
       }
       break;
