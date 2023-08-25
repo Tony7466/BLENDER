@@ -19,6 +19,7 @@
 
 #include "ED_grease_pencil.hh"
 #include "ED_keyframes_edit.hh"
+#include "ED_markers.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -26,6 +27,69 @@
 #include "WM_api.hh"
 
 namespace blender::ed::greasepencil {
+
+static int get_mirrored_frame_number(const int frame_number,
+                                     Scene &scene,
+                                     const eEditKeyframes_Mirror mode,
+                                     const TimeMarker *first_selected_marker)
+{
+  switch (mode) {
+    case MIRROR_KEYS_CURFRAME: /* Mirror over current frame. */
+      return 2 * scene.r.cfra - frame_number;
+
+    case MIRROR_KEYS_XAXIS:
+    case MIRROR_KEYS_YAXIS: /* Mirror over frame 0. */
+      return -frame_number;
+
+    case MIRROR_KEYS_MARKER: /* Mirror over marker. */
+      if (first_selected_marker == nullptr) {
+        break;
+      }
+      return 2 * first_selected_marker->frame - frame_number;
+
+    default:
+      break;
+  }
+  return frame_number;
+}
+
+bool mirror_selected_frames(GreasePencil &grease_pencil,
+                            bke::greasepencil::Layer &layer,
+                            Scene &scene,
+                            const eEditKeyframes_Mirror mode)
+{
+  bool changed = false;
+  blender::Map<int, int> frame_number_destinations;
+
+  const TimeMarker *first_selected_marker = nullptr;
+  bool marker_initialized = false;
+
+  for (auto [frame_number, frame] : layer.frames().items()) {
+    if (!frame.is_selected()) {
+      continue;
+    }
+
+    if ((mode == MIRROR_KEYS_MARKER) && !marker_initialized) {
+      /* Pre-compute the first selected marker, so that we don't compute it for each frame. */
+      first_selected_marker = ED_markers_get_first_selected(&scene.markers);
+      marker_initialized = true;
+    }
+
+    const int mirrored = get_mirrored_frame_number(
+        frame_number, scene, mode, first_selected_marker);
+
+    if (mirrored != frame_number) {
+      frame_number_destinations.add(frame_number, mirrored);
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    grease_pencil.move_frames(layer, frame_number_destinations);
+  }
+
+  return changed;
+}
 
 bool remove_all_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::Layer &layer)
 {

@@ -47,6 +47,11 @@ eAttrDomain ED_grease_pencil_selection_domain_get(bContext *C);
 
 namespace blender::ed::greasepencil {
 
+bool mirror_selected_frames(GreasePencil &grease_pencil,
+                            bke::greasepencil::Layer &layer,
+                            Scene &scene,
+                            const eEditKeyframes_Mirror mode);
+
 bool remove_all_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::Layer &layer);
 
 void select_layer_channel(GreasePencil &grease_pencil, bke::greasepencil::Layer *layer);
