@@ -377,11 +377,8 @@ void NODE_OT_add_group(wmOperatorType *ot)
 
   WM_operator_properties_id_lookup(ot, true);
 
-  PropertyRNA *prop = RNA_def_boolean(ot->srna,
-                                      "show_datablock_in_node",
-                                      true,
-                                      "Show the datablock selector in the node",
-                                      "");
+  PropertyRNA *prop = RNA_def_boolean(
+      ot->srna, "show_datablock_in_node", true, "Show the datablock selector in the node", "");
   RNA_def_property_flag(prop, (PropertyFlag)(PROP_SKIP_SAVE | PROP_HIDDEN));
 }
 
@@ -934,7 +931,7 @@ void NODE_OT_new_node_tree(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  prop = RNA_def_enum(ot->srna, "type", DummyRNA_NULL_items, 0, "Tree Type", "");
+  prop = RNA_def_enum(ot->srna, "type", rna_enum_dummy_NULL_items, 0, "Tree Type", "");
   RNA_def_enum_funcs(prop, new_node_tree_type_itemf);
   RNA_def_string(ot->srna, "name", "NodeTree", MAX_ID_NAME - 2, "Name", "");
 }
