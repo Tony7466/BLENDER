@@ -311,7 +311,7 @@ typedef struct bNodeTreeInterface {
    */
   bNodeTreeInterfacePanel *add_panel(blender::StringRefNull name,
                                      blender::StringRefNull description,
-                                     const NodeTreeInterfacePanelFlag flag,
+                                     NodeTreeInterfacePanelFlag flag,
                                      bNodeTreeInterfacePanel *parent);
   /**
    * Insert a new panel.
@@ -321,7 +321,7 @@ typedef struct bNodeTreeInterface {
    */
   bNodeTreeInterfacePanel *insert_panel(blender::StringRefNull name,
                                         blender::StringRefNull description,
-                                        const NodeTreeInterfacePanelFlag flag,
+                                        NodeTreeInterfacePanelFlag flag,
                                         bNodeTreeInterfacePanel *parent,
                                         int position);
 
