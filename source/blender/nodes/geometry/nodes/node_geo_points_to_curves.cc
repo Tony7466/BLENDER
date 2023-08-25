@@ -23,15 +23,15 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Points")
       .supported_type(GeometryComponent::Type::PointCloud)
-      .description("Points to build curves");
+      .description("Points to generate curves from");
   b.add_input<decl::Int>("Curve Group ID")
       .field_on_all()
       .hide_value()
       .description(
-          "Index of curve for each point. ID groups will be converted to curves indices without "
-          "gaps");
+          "A curve is created for every distinct group ID. All points with the same ID are put "
+          "into the same curve");
   b.add_input<decl::Float>("Weight").field_on_all().hide_value().description(
-      "Weight to sort points of curve");
+      "Determines the order of points in each curve");
 
   b.add_output<decl::Geometry>("Curves").propagate_all();
 }
@@ -72,7 +72,7 @@ static void find_points_by_group_index(const Span<int> indices_of_curves,
   }
 }
 
-int identifiers_to_indices(MutableSpan<int> r_identifiers_to_indices)
+static int identifiers_to_indices(MutableSpan<int> r_identifiers_to_indices)
 {
   const VectorSet<int> deduplicated_groups(r_identifiers_to_indices);
   threading::parallel_for(
