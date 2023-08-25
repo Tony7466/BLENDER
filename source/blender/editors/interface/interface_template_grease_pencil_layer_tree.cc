@@ -19,6 +19,8 @@
 
 #include "ED_undo.hh"
 
+#include "WM_api.hh"
+
 #include <fmt/format.h>
 
 namespace blender::ui::greasepencil {
@@ -74,7 +76,7 @@ class LayerNodeDropTarget : public TreeViewItemDropTarget {
     return "";
   }
 
-  bool on_drop(bContext * /*C*/, const DragInfo &drag_info) const override
+  bool on_drop(bContext *C, const DragInfo &drag_info) const override
   {
     const wmDragGreasePencilLayer *drag_grease_pencil =
         static_cast<const wmDragGreasePencilLayer *>(drag_info.drag_data.poin);
@@ -82,6 +84,7 @@ class LayerNodeDropTarget : public TreeViewItemDropTarget {
 
     LayerGroup &drag_parent = drag_layer.parent_group();
     LayerGroup *drop_parent_group = drop_tree_node_.parent_group();
+    bool is_dropped = false;
     if (!drop_parent_group) {
       /* Root node is not added to the tree view, so there should never be a drop target for this.
        */
@@ -102,21 +105,28 @@ class LayerNodeDropTarget : public TreeViewItemDropTarget {
         LayerGroup &drop_group = drop_tree_node_.as_group();
         drag_parent.unlink_node(&drag_layer.as_node());
         drop_group.add_layer(&drag_layer);
-        return true;
+        is_dropped = true;
+        break;
       }
-      case DropLocation::Before:
+      case DropLocation::Before: {
         drag_parent.unlink_node(&drag_layer.as_node());
         /* Draw order is inverted, so inserting before means inserting below. */
         drop_parent_group->add_layer_after(&drag_layer, &drop_tree_node_);
-        return true;
-      case DropLocation::After:
+        is_dropped = true;
+        break;
+      }
+      case DropLocation::After: {
         drag_parent.unlink_node(&drag_layer.as_node());
         /* Draw order is inverted, so inserting after means inserting above. */
         drop_parent_group->add_layer_before(&drag_layer, &drop_tree_node_);
-        return true;
+        is_dropped = true;
+        break;
+      }
     }
-
-    return false;
+    if (is_dropped) {
+      WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
+    }
+    return is_dropped;
   }
 };
 
