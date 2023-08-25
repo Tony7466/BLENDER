@@ -1872,8 +1872,6 @@ void DepsgraphNodeBuilder::build_nodetree(bNodeTree *ntree)
     return;
   }
 
-  ntree->ensure_topology_cache();
-
   /* nodetree itself */
   add_id_node(&ntree->id);
   /* General parameters. */
@@ -1956,6 +1954,8 @@ void DepsgraphNodeBuilder::build_nodetree(bNodeTree *ntree)
     }
   }
 
+  /* Needed for interface cache. */
+  ntree->ensure_topology_cache();
   for (bNodeTreeInterfaceSocket *socket : ntree->interface_cache().inputs) {
     build_idproperties(socket->properties);
   }
