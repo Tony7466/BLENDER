@@ -294,8 +294,14 @@ class NODE_OT_interface_item_new(NodeInterfaceOperator, Operator):
         tree = snode.edit_tree
         interface = tree.interface
 
-        # Remember index to move the item.
-        dst_index = interface.active_index + 1
+        # Remember parent and position to move the item.
+        if interface.active:
+            parent = interface.active.parent
+            position = interface.active.position + 1
+        else:
+            parent = None
+            position = -1
+        
         if self.item_type == 'INPUT':
             item = interface.new_socket("Socket", socket_type=self.socket_type, is_input=True)
         elif self.item_type == 'OUTPUT':
@@ -305,7 +311,8 @@ class NODE_OT_interface_item_new(NodeInterfaceOperator, Operator):
         else:
             return {'CANCELLED'}
 
-        interface.move(item, dst_index)
+        if parent:
+            interface.move_to_parent(item, parent, position)
         interface.active = item
 
         return {'FINISHED'}
