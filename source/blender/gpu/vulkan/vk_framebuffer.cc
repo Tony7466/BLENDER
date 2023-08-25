@@ -285,7 +285,7 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
   image_blit.dstOffsets[0].y = dst_offset_y;
   image_blit.dstOffsets[0].z = 0;
   image_blit.dstOffsets[1].x = dst_offset_x + src_texture.width_get();
-  image_blit.dstOffsets[1].y = dst_offset_x + src_texture.height_get();
+  image_blit.dstOffsets[1].y = dst_offset_y + src_texture.height_get();
   image_blit.dstOffsets[1].z = 1;
 
   context.command_buffer_get().blit(dst_texture, src_texture, Span<VkImageBlit>(&image_blit, 1));
