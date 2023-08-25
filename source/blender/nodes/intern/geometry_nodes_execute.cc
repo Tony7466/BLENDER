@@ -334,6 +334,31 @@ static void init_socket_cpp_value_from_property(const IDProperty &property,
   }
 }
 
+std::optional<StringRef> input_attribute_name_get(const IDProperty &props,
+                                                  const bNodeTreeInterfaceSocket &io_input)
+{
+  IDProperty *use_attribute = IDP_GetPropertyFromGroup(
+      &props, (std::string(io_input.identifier) + input_use_attribute_suffix()).c_str());
+  if (!use_attribute) {
+    return std::nullopt;
+  }
+  if (use_attribute->type == IDP_INT) {
+    if (IDP_Int(use_attribute) == 0) {
+      return std::nullopt;
+    }
+  }
+  if (use_attribute->type == IDP_BOOLEAN) {
+    if (!IDP_Bool(use_attribute)) {
+      return std::nullopt;
+    }
+  }
+
+  const IDProperty *property_attribute_name = IDP_GetPropertyFromGroup(
+      &props, (io_input.identifier + input_attribute_name_suffix()).c_str());
+
+  return IDP_String(property_attribute_name);
+}
+
 static void initialize_group_input(const bNodeTree &tree,
                                    const IDProperty *properties,
                                    const int input_index,
@@ -362,23 +387,9 @@ static void initialize_group_input(const bNodeTree &tree,
     return;
   }
 
-  const IDProperty *property_use_attribute = IDP_GetPropertyFromGroup(
-      properties, (std::string(io_input.identifier) + input_use_attribute_suffix()).c_str());
-  const IDProperty *property_attribute_name = IDP_GetPropertyFromGroup(
-      properties, (std::string(io_input.identifier) + input_attribute_name_suffix()).c_str());
-  if (property_use_attribute == nullptr || property_attribute_name == nullptr) {
-    init_socket_cpp_value_from_property(*property, socket_data_type, r_value);
-    return;
-  }
-
-  const bool use_attribute = IDP_Int(property_use_attribute) != 0;
-  if (use_attribute) {
-    const StringRef attribute_name{IDP_String(property_attribute_name)};
-    if (!bke::allow_procedural_attribute_access(attribute_name)) {
-      init_socket_cpp_value_from_property(*property, socket_data_type, r_value);
-      return;
-    }
-    fn::GField attribute_field = bke::AttributeFieldInput::Create(attribute_name,
+  const std::optional<StringRef> attribute_name = input_attribute_name_get(*properties, io_input);
+  if (attribute_name && bke::allow_procedural_attribute_access(*attribute_name)) {
+    fn::GField attribute_field = bke::AttributeFieldInput::Create(*attribute_name,
                                                                   *typeinfo->base_cpp_type);
     const auto *value_or_field_cpp_type = fn::ValueOrFieldCPPType::get_from_self(
         *typeinfo->geometry_nodes_cpp_type);
