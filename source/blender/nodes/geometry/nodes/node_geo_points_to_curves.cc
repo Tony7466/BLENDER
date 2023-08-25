@@ -45,9 +45,9 @@ static void grouped_sort(const OffsetIndices<int> offsets,
     const float weight_b = weights[index_b];
     if (UNLIKELY(weight_a == weight_b)) {
       /* Approach to make it stable. */
-      return index_a > index_b;
+      return index_a < index_b;
     }
-    return weight_a > weight_b;
+    return weight_a < weight_b;
   };
 
   threading::parallel_for(offsets.index_range(), 250, [&](const IndexRange range) {

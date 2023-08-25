@@ -927,6 +927,9 @@ void gather_attributes(AttributeAccessor src_attributes,
                        const IndexMask &selection,
                        MutableAttributeAccessor dst_attributes);
 
+/**
+ * Fill the destination attribute by gathering indexed values from src attributes.
+ */
 void gather_attributes(AttributeAccessor src_attributes,
                        eAttrDomain domain,
                        const AnonymousAttributePropagationInfo &propagation_info,
