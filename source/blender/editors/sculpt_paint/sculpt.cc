@@ -1489,9 +1489,7 @@ static void paint_mesh_restore_co_task_cb(void *__restrict userdata,
   SculptThreadedTaskData *data = static_cast<SculptThreadedTaskData *>(userdata);
   SculptSession *ss = data->ob->sculpt;
 
-  SculptUndoNode *unode;
   SculptUndoType type;
-
   switch (data->brush->sculpt_tool) {
     case SCULPT_TOOL_MASK:
       type = SCULPT_UNDO_MASK;
@@ -1508,6 +1506,7 @@ static void paint_mesh_restore_co_task_cb(void *__restrict userdata,
       break;
   }
 
+  SculptUndoNode *unode;
   if (ss->bm) {
     unode = SCULPT_undo_push_node(data->ob, data->nodes[n], type);
   }
@@ -1520,70 +1519,62 @@ static void paint_mesh_restore_co_task_cb(void *__restrict userdata,
   }
 
   switch (type) {
-    case SCULPT_UNDO_MASK:
+    case SCULPT_UNDO_MASK: {
+      SculptOrigVertData orig_vert_data;
+      SCULPT_orig_vert_data_unode_init(&orig_vert_data, data->ob, unode);
+      PBVHVertexIter vd;
+      BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
+        SCULPT_orig_vert_data_update(&orig_vert_data, &vd);
+        *vd.mask = orig_vert_data.mask;
+      }
+      BKE_pbvh_vertex_iter_end;
       BKE_pbvh_node_mark_update_mask(data->nodes[n]);
       break;
-    case SCULPT_UNDO_COLOR:
+    }
+    case SCULPT_UNDO_COLOR: {
+      SculptOrigVertData orig_vert_data;
+      SCULPT_orig_vert_data_unode_init(&orig_vert_data, data->ob, unode);
+      PBVHVertexIter vd;
+      BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
+        SCULPT_orig_vert_data_update(&orig_vert_data, &vd);
+        SCULPT_vertex_color_set(ss, vd.vertex, orig_vert_data.col);
+      }
+      BKE_pbvh_vertex_iter_end;
       BKE_pbvh_node_mark_update_color(data->nodes[n]);
       break;
-    case SCULPT_UNDO_FACE_SETS:
+    }
+    case SCULPT_UNDO_FACE_SETS: {
+      SculptOrigFaceData orig_face_data;
+      SCULPT_orig_face_data_unode_init(&orig_face_data, data->ob, unode);
+      PBVHFaceIter fd;
+      BKE_pbvh_face_iter_begin (ss->pbvh, data->nodes[n], fd) {
+        SCULPT_orig_face_data_update(&orig_face_data, &fd);
+        if (fd.face_set) {
+          *fd.face_set = orig_face_data.face_set;
+        }
+      }
+      BKE_pbvh_face_iter_end(fd);
       BKE_pbvh_node_mark_update_face_sets(data->nodes[n]);
       break;
-    case SCULPT_UNDO_COORDS:
+    }
+    case SCULPT_UNDO_COORDS: {
+      SculptOrigVertData orig_vert_data;
+      SCULPT_orig_vert_data_unode_init(&orig_vert_data, data->ob, unode);
+      PBVHVertexIter vd;
+      BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
+        SCULPT_orig_vert_data_update(&orig_vert_data, &vd);
+        copy_v3_v3(vd.co, orig_vert_data.co);
+        if (vd.is_mesh) {
+          BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
+        }
+      }
+      BKE_pbvh_vertex_iter_end;
       BKE_pbvh_node_mark_update(data->nodes[n]);
       break;
+    }
     default:
       break;
   }
-
-  PBVHVertexIter vd;
-  SculptOrigVertData orig_vert_data;
-  SculptOrigFaceData orig_face_data;
-
-  if (type != SCULPT_UNDO_FACE_SETS) {
-    SCULPT_orig_vert_data_unode_init(&orig_vert_data, data->ob, unode);
-  }
-  else {
-    SCULPT_orig_face_data_unode_init(&orig_face_data, data->ob, unode);
-  }
-
-  if (unode->type == SCULPT_UNDO_FACE_SETS) {
-    PBVHFaceIter fd;
-    BKE_pbvh_face_iter_begin (ss->pbvh, data->nodes[n], fd) {
-      SCULPT_orig_face_data_update(&orig_face_data, &fd);
-
-      if (fd.face_set) {
-        *fd.face_set = orig_face_data.face_set;
-      }
-    }
-
-    BKE_pbvh_face_iter_end(fd);
-    return;
-  }
-
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
-    SCULPT_orig_vert_data_update(&orig_vert_data, &vd);
-
-    if (orig_vert_data.unode->type == SCULPT_UNDO_COORDS) {
-      copy_v3_v3(vd.co, orig_vert_data.co);
-      if (vd.no) {
-        copy_v3_v3(vd.no, orig_vert_data.no);
-      }
-      else {
-        copy_v3_v3(vd.fno, orig_vert_data.no);
-      }
-      if (vd.is_mesh) {
-        BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
-      }
-    }
-    else if (orig_vert_data.unode->type == SCULPT_UNDO_MASK) {
-      *vd.mask = orig_vert_data.mask;
-    }
-    else if (orig_vert_data.unode->type == SCULPT_UNDO_COLOR) {
-      SCULPT_vertex_color_set(ss, vd.vertex, orig_vert_data.col);
-    }
-  }
-  BKE_pbvh_vertex_iter_end;
 }
 
 static void paint_mesh_restore_co(Sculpt *sd, Object *ob)
@@ -2964,9 +2955,7 @@ static void calc_local_y(ViewContext *vc, const float center[3], float y[3])
 static void calc_brush_local_mat(const float rotation,
                                  Object *ob,
                                  float local_mat[4][4],
-                                 float local_mat_inv[4][4],
-                                 const float *co,
-                                 const float *no)
+                                 float local_mat_inv[4][4])
 {
   const StrokeCache *cache = ob->sculpt->cache;
   float tmat[4][4];
@@ -2974,13 +2963,6 @@ static void calc_brush_local_mat(const float rotation,
   float scale[4][4];
   float angle, v[3];
   float up[3];
-
-  if (!co) {
-    co = cache->location;
-  }
-  if (!no) {
-    no = cache->sculpt_normal;
-  }
 
   /* Ensure `ob->world_to_object` is up to date. */
   invert_m4_m4(ob->world_to_object, ob->object_to_world);
@@ -2992,20 +2974,20 @@ static void calc_brush_local_mat(const float rotation,
   mat[3][3] = 1.0f;
 
   /* Get view's up vector in object-space. */
-  calc_local_y(cache->vc, co, up);
+  calc_local_y(cache->vc, cache->location, up);
 
   /* Calculate the X axis of the local matrix. */
-  cross_v3_v3v3(v, up, no);
+  cross_v3_v3v3(v, up, cache->sculpt_normal);
   /* Apply rotation (user angle, rake, etc.) to X axis. */
   angle = rotation - cache->special_rotation;
-  rotate_v3_v3v3fl(mat[0], v, no, angle);
+  rotate_v3_v3v3fl(mat[0], v, cache->sculpt_normal, angle);
 
   /* Get other axes. */
-  cross_v3_v3v3(mat[1], no, mat[0]);
-  copy_v3_v3(mat[2], no);
+  cross_v3_v3v3(mat[1], cache->sculpt_normal, mat[0]);
+  copy_v3_v3(mat[2], cache->sculpt_normal);
 
   /* Set location. */
-  copy_v3_v3(mat[3], co);
+  copy_v3_v3(mat[3], cache->location);
 
   /* Scale by brush radius. */
   float radius = cache->radius;
@@ -3050,8 +3032,7 @@ static void update_brush_local_mat(Sculpt *sd, Object *ob)
   if (cache->mirror_symmetry_pass == 0 && cache->radial_symmetry_pass == 0) {
     const Brush *brush = BKE_paint_brush(&sd->paint);
     const MTex *mask_tex = BKE_brush_mask_texture_get(brush, OB_MODE_SCULPT);
-    calc_brush_local_mat(
-        mask_tex->rot, ob, cache->brush_local_mat, cache->brush_local_mat_inv, nullptr, nullptr);
+    calc_brush_local_mat(mask_tex->rot, ob, cache->brush_local_mat, cache->brush_local_mat_inv);
   }
 }
 
@@ -6393,8 +6374,7 @@ void SCULPT_topology_islands_ensure(Object *ob)
   ss->islands_valid = true;
 }
 
-void SCULPT_cube_tip_init(
-    Sculpt * /*sd*/, Object *ob, Brush *brush, float mat[4][4], const float *co, const float *no)
+void SCULPT_cube_tip_init(Sculpt * /*sd*/, Object *ob, Brush *brush, float mat[4][4])
 {
   SculptSession *ss = ob->sculpt;
   float scale[4][4];
@@ -6402,7 +6382,7 @@ void SCULPT_cube_tip_init(
   float unused[4][4];
 
   zero_m4(mat);
-  calc_brush_local_mat(0.0, ob, unused, mat, co, no);
+  calc_brush_local_mat(0.0, ob, unused, mat);
 
   /* Note: we ignore the radius scaling done inside of calc_brush_local_mat to
    * duplicate prior behavior.
