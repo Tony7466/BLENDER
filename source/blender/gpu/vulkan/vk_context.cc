@@ -264,17 +264,27 @@ void VKContext::swap_buffers_pre_handler()
   wrapper.layout_ensure(*this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   VKTexture *color_attachment = unwrap(unwrap(framebuffer.color_tex(0)));
   color_attachment->layout_ensure(*this, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-  VkImageCopy vk_image_copy = {};
-  vk_image_copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  vk_image_copy.srcSubresource.mipLevel = 0;
-  vk_image_copy.srcSubresource.layerCount = 1;
-  vk_image_copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-  vk_image_copy.dstSubresource.mipLevel = 0;
-  vk_image_copy.dstSubresource.layerCount = 1;
-  vk_image_copy.extent.width = vk_extent.width;
-  vk_image_copy.extent.height = vk_extent.height;
-  vk_image_copy.extent.depth = 1;
-  command_buffer_.copy(wrapper, *color_attachment, Span<VkImageCopy>(&vk_image_copy, 1));
+
+  VkImageBlit image_blit = {};
+  image_blit.srcOffsets[0] = {0, int32_t(vk_extent.height) - 1, 0};
+  image_blit.srcOffsets[1] = {int32_t(vk_extent.width), 0, 1};
+  image_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  image_blit.srcSubresource.mipLevel = 0;
+  image_blit.srcSubresource.baseArrayLayer = 0;
+  image_blit.srcSubresource.layerCount = 1;
+
+  image_blit.dstOffsets[0] = {0, 0, 0};
+  image_blit.dstOffsets[1] = {int32_t(vk_extent.width), int32_t(vk_extent.height), 1};
+  image_blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  image_blit.dstSubresource.mipLevel = 0;
+  image_blit.dstSubresource.baseArrayLayer = 0;
+  image_blit.dstSubresource.layerCount = 1;
+
+  command_buffer_.blit(wrapper,
+                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                       *color_attachment,
+                       VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                       Span<VkImageBlit>(&image_blit, 1));
   wrapper.layout_ensure(*this, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
   command_buffer_.submit();
 }
