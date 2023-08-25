@@ -436,23 +436,18 @@ bool mode_toggle_poll_test(bContext *C)
 void smooth_brush_toggle_off(const bContext *C, Paint *paint, StrokeCache *cache)
 {
   Main *bmain = CTX_data_main(C);
-  Scene *scene = CTX_data_scene(C);
   Brush *brush = BKE_paint_brush(paint);
   /* The current brush should match with what we have stored in the cache. */
   BLI_assert(brush == cache->brush);
 
-  /* Note: used for both vertexpaint and weightpaint, VPAINT_TOOL_BLUR & WPAINT_TOOL_BLUR are the
-   * same, see comments for eBrushVertexPaintTool & eBrushWeightPaintTool. */
-  /* If the smooth (blur) brush is missing, brush was not switched/affected in
+  /* If saved_active_brush_name is not set, brush was not switched/affected in
    * smooth_brush_toggle_on(). */
-  if (!BKE_paint_toolslots_brush_get(paint, WPAINT_TOOL_BLUR)) {
-    return;
-  }
-
-  BKE_brush_size_set(scene, brush, cache->saved_smooth_size);
-  brush = (Brush *)BKE_libblock_find_name(bmain, ID_BR, cache->saved_active_brush_name);
-  if (brush) {
-    BKE_paint_brush_set(paint, brush);
+  Brush *saved_active_brush = (Brush *)BKE_libblock_find_name(
+      bmain, ID_BR, cache->saved_active_brush_name);
+  if (saved_active_brush) {
+    Scene *scene = CTX_data_scene(C);
+    BKE_brush_size_set(scene, brush, cache->saved_smooth_size);
+    BKE_paint_brush_set(paint, saved_active_brush);
   }
 }
 /* Initialize the stroke cache invariants from operator properties */
@@ -606,6 +601,7 @@ void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache *cache)
     printf(
         "WARNING: Switching to the blur (smooth) brush not possible, corresponding brush not "
         "found\n");
+    cache->saved_active_brush_name[0] = '\0';
     return;
   }
 

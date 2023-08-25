@@ -4365,6 +4365,7 @@ static void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache 
   Brush *smooth_brush = BKE_paint_toolslots_brush_get(paint, SCULPT_TOOL_SMOOTH);
   if (!smooth_brush) {
     printf("WARNING: Switching to the smooth brush not possible, corresponding brush not found\n");
+    cache->saved_active_brush_name[0] = '\0';
     return;
   }
 
@@ -4381,7 +4382,6 @@ static void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache 
 static void smooth_brush_toggle_off(const bContext *C, Paint *paint, StrokeCache *cache)
 {
   Main *bmain = CTX_data_main(C);
-  Scene *scene = CTX_data_scene(C);
   Brush *brush = BKE_paint_brush(paint);
 
   if (brush->sculpt_tool == SCULPT_TOOL_MASK) {
@@ -4398,17 +4398,14 @@ static void smooth_brush_toggle_off(const bContext *C, Paint *paint, StrokeCache
 
   /* Note: used for both vertexpaint and weightpaint, VPAINT_TOOL_BLUR & WPAINT_TOOL_BLUR are the
    * same, see comments for eBrushVertexPaintTool & eBrushWeightPaintTool. */
-  /* If the smooth brush is missing, brush was not switched/affected in smooth_brush_toggle_on().
-   */
-  if (!BKE_paint_toolslots_brush_get(paint, SCULPT_TOOL_SMOOTH)) {
-    return;
-  }
-
-  BKE_brush_size_set(scene, brush, cache->saved_smooth_size);
-
-  brush = (Brush *)BKE_libblock_find_name(bmain, ID_BR, cache->saved_active_brush_name);
-  if (brush) {
-    BKE_paint_brush_set(paint, brush);
+  /* If saved_active_brush_name is not set, brush was not switched/affected in
+   * smooth_brush_toggle_on(). */
+  Brush *saved_active_brush = (Brush *)BKE_libblock_find_name(
+      bmain, ID_BR, cache->saved_active_brush_name);
+  if (saved_active_brush) {
+    Scene *scene = CTX_data_scene(C);
+    BKE_brush_size_set(scene, brush, cache->saved_smooth_size);
+    BKE_paint_brush_set(paint, saved_active_brush);
   }
 }
 
