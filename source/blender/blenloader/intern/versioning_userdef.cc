@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -850,6 +850,10 @@ void blo_do_versions_userdef(UserDef *userdef)
 
   if (!USER_VERSION_ATLEAST(400, 15)) {
     userdef->node_preview_res = 120;
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 18)) {
+    userdef->playback_fps_samples = 8;
   }
 
   /**

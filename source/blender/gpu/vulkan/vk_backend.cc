@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -90,14 +90,13 @@ void VKBackend::detect_workarounds(VKDevice &device)
 void VKBackend::platform_exit()
 {
   GPG.clear();
-}
-
-void VKBackend::delete_resources()
-{
-  if (device_.is_initialized()) {
-    device_.deinit();
+  VKDevice &device = VKBackend::get().device_;
+  if (device.is_initialized()) {
+    device.deinit();
   }
 }
+
+void VKBackend::delete_resources() {}
 
 void VKBackend::samplers_update() {}
 
@@ -217,6 +216,7 @@ void VKBackend::capabilities_init(VKDevice &device)
   /* Reset all capabilities from previous context. */
   GCaps = {};
   GCaps.compute_shader_support = true;
+  GCaps.geometry_shader_support = true;
   GCaps.shader_storage_buffer_objects_support = true;
   GCaps.shader_image_load_store_support = true;
 

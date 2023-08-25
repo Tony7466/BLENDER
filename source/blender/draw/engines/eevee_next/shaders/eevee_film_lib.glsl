@@ -1,7 +1,10 @@
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Film accumulation utils functions.
- **/
+ */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_geom_lib.glsl)
@@ -448,7 +451,7 @@ void film_store_combined(
   vec4 color_src, color_dst;
   float weight_src, weight_dst;
 
-  /* Undo the weighting to get final spatialy-filtered color. */
+  /* Undo the weighting to get final spatially-filtered color. */
   color_src = color / color_weight;
 
   if (film_buf.use_reprojection) {

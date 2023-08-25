@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2019-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -108,6 +108,7 @@ const UserDef U_default = {
     .gp_euclideandist = 2,
     .gp_eraser = 25,
     .gp_settings = 0,
+    .playback_fps_samples = 8,
 #ifdef __APPLE__
     .gpu_backend = GPU_BACKEND_METAL,
 #else

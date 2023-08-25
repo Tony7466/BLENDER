@@ -87,8 +87,14 @@ static void shapekey_free_data(ID *id)
 
 static void shapekey_foreach_id(ID *id, LibraryForeachIDData *data)
 {
-  Key *key = (Key *)id;
+  Key *key = reinterpret_cast<Key *>(id);
+  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
+
   BKE_LIB_FOREACHID_PROCESS_ID(data, key->from, IDWALK_CB_LOOPBACK);
+
+  if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
+    BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, key->ipo, IDWALK_CB_USER);
+  }
 }
 
 static ID **shapekey_owner_pointer_get(ID *id)
@@ -109,10 +115,6 @@ static void shapekey_blend_write(BlendWriter *writer, ID *id, const void *id_add
   /* write LibData */
   BLO_write_id_struct(writer, Key, id_address, &key->id);
   BKE_id_blend_write(writer, &key->id);
-
-  if (key->adt) {
-    BKE_animdata_blend_write(writer, key->adt);
-  }
 
   /* direct data */
   LISTBASE_FOREACH (KeyBlock *, kb, &key->block) {
@@ -166,9 +168,6 @@ static void shapekey_blend_read_data(BlendDataReader *reader, ID *id)
   Key *key = (Key *)id;
   BLO_read_list(reader, &(key->block));
 
-  BLO_read_data_address(reader, &key->adt);
-  BKE_animdata_blend_read_data(reader, key->adt);
-
   BLO_read_data_address(reader, &key->refkey);
 
   LISTBASE_FOREACH (KeyBlock *, kb, &key->block) {
@@ -180,19 +179,12 @@ static void shapekey_blend_read_data(BlendDataReader *reader, ID *id)
   }
 }
 
-static void shapekey_blend_read_lib(BlendLibReader *reader, ID *id)
+static void shapekey_blend_read_after_liblink(BlendLibReader * /*reader*/, ID *id)
 {
-  Key *key = (Key *)id;
-  BLI_assert((key->id.tag & LIB_TAG_EXTERN) == 0);
-
-  BLO_read_id_address(reader, id, &key->ipo); /* XXX deprecated - old animation system */
-  BLO_read_id_address(reader, id, &key->from);
-}
-
-static void shapekey_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  Key *key = (Key *)id;
-  BLO_expand(expander, key->ipo); /* XXX deprecated - old animation system */
+  /* ShapeKeys should always only be linked indirectly through their user ID (mesh, Curve etc.), or
+   * be fully local data. */
+  BLI_assert((id->tag & LIB_TAG_EXTERN) == 0);
+  UNUSED_VARS_NDEBUG(id);
 }
 
 IDTypeInfo IDType_ID_KE = {
@@ -219,8 +211,7 @@ IDTypeInfo IDType_ID_KE = {
 
     /*blend_write*/ shapekey_blend_write,
     /*blend_read_data*/ shapekey_blend_read_data,
-    /*blend_read_lib*/ shapekey_blend_read_lib,
-    /*blend_read_expand*/ shapekey_blend_read_expand,
+    /*blend_read_after_liblink*/ shapekey_blend_read_after_liblink,
 
     /*blend_read_undo_preserve*/ nullptr,
 
