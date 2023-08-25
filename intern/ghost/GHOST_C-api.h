@@ -256,10 +256,10 @@ extern GHOST_TSuccess GHOST_EndFullScreen(GHOST_SystemHandle systemhandle);
 extern bool GHOST_GetFullScreen(GHOST_SystemHandle systemhandle);
 
 /**
- * Get the Window under the cursor. Although coordinates of the mouse are supplied,
- * these could be incorrect on some platforms under some conditions, for example when
- * using multiple monitors that vary in scale or DPI). It is best to ignore these
- * and ask the OS for the position of the mouse instead.
+ * Get the Window under the cursor. Although coordinates of the mouse are supplied, platform-
+ * specific implementations are free to ignore these and query the mouse location themselves, due
+ * to them possibly being incorrect under certain conditions, for example when using multiple
+ * monitors that vary in scale and/or DPI.
  * \param x: The x-coordinate of the cursor.
  * \param y: The y-coordinate of the cursor.
  * \return The window under the cursor or nullptr in none.
