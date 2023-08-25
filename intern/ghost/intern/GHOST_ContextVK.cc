@@ -456,9 +456,9 @@ GHOST_TSuccess GHOST_ContextVK::swapBuffers()
     return GHOST_kFailure;
   }
 
-  if (m_lastFrame != m_currentFrame) {
-    return GHOST_kSuccess;
-  }
+  //if (m_lastFrame != m_currentFrame) {
+    //return GHOST_kSuccess;
+  //}
 
   if (swap_buffers_pre_callback_) {
     swap_buffers_pre_callback_();
@@ -662,7 +662,7 @@ static void enableLayer(vector<VkLayerProperties> &layers_available,
                         const bool display_warning)
 {
 #define PUSH_VKLAYER(name, name2) \
-  if (vklayer_config_exist("VkLayer_" #name ".json") && \
+  if (/*vklayer_config_exist("VkLayer_" #name ".json") && */ \
       checkLayerSupport(layers_available, "VK_LAYER_" #name2)) \
   { \
     layers_enabled.push_back("VK_LAYER_" #name2); \
@@ -981,49 +981,50 @@ GHOST_TSuccess GHOST_ContextVK::createSwapchain()
   VkCommandBufferBeginInfo begin_info = {};
   begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   VK_CHECK(vkBeginCommandBuffer(m_command_buffers[m_currentImage], &begin_info));
+  /*
+    VkImageMemoryBarrier *barriers = new VkImageMemoryBarrier[image_count];
+    for (int i = 0; i < image_count; i++) {
+      VkImageMemoryBarrier &barrier = barriers[i];
 
-  VkImageMemoryBarrier *barriers = new VkImageMemoryBarrier[image_count];
-  for (int i = 0; i < image_count; i++) {
-    VkImageMemoryBarrier &barrier = barriers[i];
+      barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+      barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+      barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+      barrier.image = m_swapchain_images[i];
+      barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+      barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
+      barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+    }
+    vkCmdPipelineBarrier(m_command_buffers[m_currentImage],
+                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                         VK_DEPENDENCY_BY_REGION_BIT,
+                         0,
+                         nullptr,
+                         0,
+                         nullptr,
+                         image_count,
+                         barriers);
+    VK_CHECK(vkEndCommandBuffer(m_command_buffers[m_currentImage]));
 
-    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    barrier.image = m_swapchain_images[i];
-    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    barrier.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
-    barrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
-  }
-  vkCmdPipelineBarrier(m_command_buffers[m_currentImage],
-                       VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                       VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                       VK_DEPENDENCY_BY_REGION_BIT,
-                       0,
-                       nullptr,
-                       0,
-                       nullptr,
-                       image_count,
-                       barriers);
-  VK_CHECK(vkEndCommandBuffer(m_command_buffers[m_currentImage]));
+    VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT};
+    VkSubmitInfo submit_info = {};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.pWaitDstStageMask = wait_stages;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &m_command_buffers[m_currentImage];
+    submit_info.signalSemaphoreCount = 0;
+    submit_info.pSignalSemaphores = &m_render_finished_semaphores[m_currentFrame];
+    VkResult result;
+    VK_CHECK(vkQueueSubmit(m_graphic_queue, 1, &submit_info, m_in_flight_fences[m_currentFrame]));
+    do {
+      result = vkWaitForFences(device, 1, &m_in_flight_fences[m_currentFrame], VK_TRUE, 10000);
+    } while (result == VK_TIMEOUT);
 
-  VkPipelineStageFlags wait_stages[] = {VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT};
-  VkSubmitInfo submit_info = {};
-  submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-  submit_info.pWaitDstStageMask = wait_stages;
-  submit_info.commandBufferCount = 1;
-  submit_info.pCommandBuffers = &m_command_buffers[m_currentImage];
-  submit_info.signalSemaphoreCount = 0;
-  submit_info.pSignalSemaphores = &m_render_finished_semaphores[m_currentFrame];
-  VkResult result;
-  VK_CHECK(vkQueueSubmit(m_graphic_queue, 1, &submit_info, m_in_flight_fences[m_currentFrame]));
-  do {
-    result = vkWaitForFences(device, 1, &m_in_flight_fences[m_currentFrame], VK_TRUE, 10000);
-  } while (result == VK_TIMEOUT);
+    VK_CHECK(vkQueueWaitIdle(m_graphic_queue));
+    vkResetFences(device, 1, &m_in_flight_fences[m_currentFrame]);
 
-  VK_CHECK(vkQueueWaitIdle(m_graphic_queue));
-  vkResetFences(device, 1, &m_in_flight_fences[m_currentFrame]);
-
-  delete barriers;
+    delete barriers;
+  */
   return GHOST_kSuccess;
 }
 

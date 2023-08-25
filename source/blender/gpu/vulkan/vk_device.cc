@@ -114,7 +114,10 @@ void VKDevice::init_dummy_buffer(VKContext &context)
     return;
   }
 
-  dummy_buffer_.create(sizeof(float4x4), GPU_USAGE_DEVICE_ONLY, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+  dummy_buffer_.create(sizeof(float4x4),
+                       GPU_USAGE_DEVICE_ONLY,
+                       static_cast<VkBufferUsageFlagBits>(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                                                          VK_BUFFER_USAGE_TRANSFER_DST_BIT));
   dummy_buffer_.clear(context, 0);
 }
 

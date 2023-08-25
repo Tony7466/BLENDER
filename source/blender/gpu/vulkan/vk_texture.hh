@@ -42,7 +42,7 @@ class VKTexture : public Texture, public VKBindableResource {
 
   virtual ~VKTexture() override;
 
-  void init(VkImage vk_image, VkImageLayout layout);
+  void init(VkImage vk_image, VkImageLayout layout, eGPUTextureFormat texture_format);
 
   void generate_mipmap() override;
   void copy_to(Texture *tex) override;

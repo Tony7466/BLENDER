@@ -124,11 +124,6 @@ class VKFrameBuffer : public FrameBuffer {
   }
 
   /**
-   * Ensure that the image of the framebuffer is in the given layout.
-   */
-  void ensure_image_layout(VKContext &context, VkImageLayout vk_image_layout);
-
-  /**
    * Is this frame-buffer immutable?
    *
    * Frame-buffers that are owned by GHOST are immutable and

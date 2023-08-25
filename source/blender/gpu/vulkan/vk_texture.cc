@@ -31,10 +31,11 @@ VKTexture::~VKTexture()
   }
 }
 
-void VKTexture::init(VkImage vk_image, VkImageLayout layout)
+void VKTexture::init(VkImage vk_image, VkImageLayout layout, eGPUTextureFormat texture_format)
 {
   vk_image_ = vk_image;
   current_layout_ = layout;
+  format_ = texture_format;
 }
 
 void VKTexture::generate_mipmap()
@@ -499,7 +500,7 @@ void VKTexture::current_layout_set(const VkImageLayout new_layout)
 
 void VKTexture::layout_ensure(VKContext &context, const VkImageLayout requested_layout)
 {
-  BLI_assert(is_allocated());
+  // BLI_assert(is_allocated());
   const VkImageLayout current_layout = current_layout_get();
   if (current_layout == requested_layout) {
     return;
@@ -513,7 +514,6 @@ void VKTexture::layout_ensure(VKContext &context,
                               const VkImageLayout current_layout,
                               const VkImageLayout requested_layout)
 {
-  BLI_assert(is_allocated());
   VkImageMemoryBarrier barrier{};
   barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
   barrier.oldLayout = current_layout;

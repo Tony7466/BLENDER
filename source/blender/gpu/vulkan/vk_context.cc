@@ -243,15 +243,45 @@ void VKContext::swap_buffers_post_callback()
 void VKContext::swap_buffers_pre_handler()
 {
   VKFrameBuffer &framebuffer = *unwrap(back_left);
-  framebuffer.ensure_image_layout(*this, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
+  /* Get swapchain image. */
+  VkImage vk_image = VK_NULL_HANDLE;
+  VkSurfaceFormatKHR vk_surface_format = {};
+  VkFramebuffer vk_framebuffer = VK_NULL_HANDLE;
+  VkRenderPass vk_render_pass = VK_NULL_HANDLE;
+  VkExtent2D vk_extent = {};
+  uint32_t framebuffer_id = 0;
+  GHOST_GetVulkanBackbuffer(static_cast<GHOST_WindowHandle>(ghost_window_),
+                            &vk_image,
+                            &vk_surface_format,
+                            &vk_framebuffer,
+                            &vk_render_pass,
+                            &vk_extent,
+                            &framebuffer_id);
+
+  VKTexture wrapper("display_texture");
+  wrapper.init(vk_image, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, to_gpu_format(vk_surface_format.format));
+  wrapper.layout_ensure(*this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  VKTexture *color_attachment = unwrap(unwrap(framebuffer.color_tex(0)));
+  color_attachment->layout_ensure(*this, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+  VkImageCopy vk_image_copy = {};
+  vk_image_copy.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  vk_image_copy.srcSubresource.mipLevel = 0;
+  vk_image_copy.srcSubresource.layerCount = 1;
+  vk_image_copy.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  vk_image_copy.dstSubresource.mipLevel = 0;
+  vk_image_copy.dstSubresource.layerCount = 1;
+  vk_image_copy.extent.width = vk_extent.width;
+  vk_image_copy.extent.height = vk_extent.height;
+  vk_image_copy.extent.depth = 1;
+  command_buffer_.copy(wrapper, *color_attachment, Span<VkImageCopy>(&vk_image_copy, 1));
+  wrapper.layout_ensure(*this, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
   command_buffer_.submit();
-  command_buffer_.end_recording();
 }
 
 void VKContext::swap_buffers_post_handler()
 {
   sync_backbuffer();
-  command_buffer_.begin_recording();
 }
 
 /** \} */

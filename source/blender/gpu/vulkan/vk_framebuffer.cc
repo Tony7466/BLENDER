@@ -122,18 +122,6 @@ Array<VkRect2D, 16> VKFrameBuffer::vk_render_areas_get() const
   return render_areas;
 }
 
-void VKFrameBuffer::ensure_image_layout(VKContext &context, VkImageLayout vk_image_layout)
-{
-  if (vk_image_layout_ == vk_image_layout) {
-    return;
-  }
-  /* TODO: Consider storing image and layout in a VKTexture instance. */
-  VKTexture tmp_texture(__func__);
-  tmp_texture.init(vk_image_get(), vk_image_layout_get());
-  tmp_texture.layout_ensure(context, vk_image_layout);
-  vk_image_layout_ = vk_image_layout;
-}
-
 bool VKFrameBuffer::check(char /*err_out*/[256])
 {
   return true;
@@ -311,14 +299,8 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
       dst_framebuffer.attachments_[GPU_FB_COLOR_ATTACHMENT0 + dst_slot];
   VKTexture *dst_texture = nullptr;
   VKTexture tmp_texture("FramebufferTexture");
-  if (dst_attachment.tex) {
-    dst_texture = unwrap(unwrap(dst_attachment.tex));
-    dst_texture->layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-  }
-  else {
-    tmp_texture.init(dst_framebuffer.vk_image_get(), dst_framebuffer.vk_image_layout_get());
-    dst_texture = &tmp_texture;
-  }
+  dst_texture = unwrap(unwrap(dst_attachment.tex));
+  dst_texture->layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
   VkImageBlit image_blit = {};
   image_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
