@@ -75,6 +75,9 @@ void normals_calc_faces(Span<float3> vert_positions,
 /**
  * Calculate vertex normals directly into the result array.
  *
+ * \note Vertex and face normals can be calculated at the same time with
+ * #normals_calc_faces_and_verts, which can have performance benefits in some cases.
+ *
  * \note Usually #Mesh::vert_normals() is the preferred way to access vertex normals,
  * since they may already be calculated and cached on the mesh.
  */
