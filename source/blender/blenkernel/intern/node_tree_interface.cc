@@ -730,8 +730,8 @@ bNodeTreeInterfacePanel *bNodeTreeInterfacePanel::find_parent_recursive(
   return nullptr;
 }
 
-int bNodeTreeInterfacePanel::find_valid_position_for_item(const bNodeTreeInterfaceItem &item,
-                                                          const int initial_pos) const
+int bNodeTreeInterfacePanel::find_valid_insert_position_for_item(
+    const bNodeTreeInterfaceItem &item, const int initial_pos) const
 {
   const bool sockets_above_panels = !(this->flag &
                                       NODE_INTERFACE_PANEL_ALLOW_SOCKETS_AFTER_PANELS);
@@ -748,7 +748,7 @@ int bNodeTreeInterfacePanel::find_valid_position_for_item(const bNodeTreeInterfa
           break;
         }
         if (items[test_pos]->item_type != NODE_INTERFACE_PANEL) {
-          /* Found valid position */
+          /* Found valid position, insert after the last socket item */
           pos = test_pos + 1;
           break;
         }
@@ -762,8 +762,8 @@ int bNodeTreeInterfacePanel::find_valid_position_for_item(const bNodeTreeInterfa
           break;
         }
         if (items[test_pos]->item_type == NODE_INTERFACE_PANEL) {
-          /* Found valid position */
-          pos = test_pos - 1;
+          /* Found valid position, insering moves the first panel. */
+          pos = test_pos;
           break;
         }
       }
@@ -786,7 +786,7 @@ void bNodeTreeInterfacePanel::insert_item(bNodeTreeInterfaceItem &item, int posi
              (flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS));
 
   /* Apply any constraints on the item positions. */
-  position = find_valid_position_for_item(item, position);
+  position = find_valid_insert_position_for_item(item, position);
   position = std::min(std::max(position, 0), items_num);
 
   blender::MutableSpan<bNodeTreeInterfaceItem *> old_items = this->items();
@@ -845,7 +845,7 @@ bool bNodeTreeInterfacePanel::move_item(bNodeTreeInterfaceItem &item, int new_po
     return true;
   }
 
-  new_position = find_valid_position_for_item(item, new_position);
+  new_position = find_valid_insert_position_for_item(item, new_position);
   new_position = std::min(std::max(new_position, 0), items_num - 1);
 
   if (old_position < new_position) {

@@ -162,9 +162,6 @@ typedef struct bNodeTreeInterfacePanel {
    */
   bNodeTreeInterfacePanel *find_parent_recursive(const bNodeTreeInterfaceItem &item);
 
-  /** Find a valid position in the items span based on whether sockets are kept above panels. */
-  int find_valid_position_for_item(const bNodeTreeInterfaceItem &item, int initial_position) const;
-
   /** Create a copy of items in the span and add them to the interface. */
   void copy_from(blender::Span<const bNodeTreeInterfaceItem *> items_src, int flag);
   /** Remove all items from the panel. */
@@ -204,6 +201,11 @@ typedef struct bNodeTreeInterfacePanel {
   /** Same as above but for a const interface. */
   void foreach_item(blender::FunctionRef<bool(const bNodeTreeInterfaceItem &item)> fn,
                     bool include_self = false) const;
+
+ private:
+  /** Find a valid position for inserting in the items span. */
+  int find_valid_insert_position_for_item(const bNodeTreeInterfaceItem &item,
+                                          int initial_position) const;
 #endif
 } bNodeTreeInterfacePanel;
 
