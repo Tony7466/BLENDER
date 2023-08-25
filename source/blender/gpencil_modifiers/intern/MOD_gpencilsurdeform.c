@@ -47,6 +47,8 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "WM_api.h"
+
 /* HEADER FROM MOD_surfacedeform.c */
 
 #include "BLI_alloca.h"
@@ -127,9 +129,58 @@ struct SurDeformGpencilModifierData *get_original_modifier(Object *ob, SurDeform
 }
 
 
+/*Free a single frame*/
+static bool free_frame_b(SurDeformGpencilModifierData *smd_orig,
+                       SurDeformGpencilModifierData *smd_eval,
+                       SDefGPLayer *sdef_layer,
+                       uint framenum)
+{
+  if (sdef_layer->frames == NULL)
+    return true;
+  /* If we're not on the first frame, rollback the pointer*/
+  if (sdef_layer->frames->frame_idx > 0) {
+    rollback_frames(smd_orig, sdef_layer);
+  }
+  /*Do the same thing as add, but in reverse */
+  sdef_layer->num_of_frames--;
+  SDefGPFrame *temp_frames_pointer = MEM_calloc_arrayN(
+      sdef_layer->num_of_frames, sizeof(*sdef_layer->frames), "SDefGPFrames");
 
+  if (temp_frames_pointer == NULL) {
+    BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
+    return false;
+  }
+  SDefGPFrame *first_frame = temp_frames_pointer;
+  /*if this was the last frame, so num_of_frame has just become 0, we don't need to copy
+   * anything.*/
+  if (sdef_layer->num_of_frames > 0) {
+    /* Copy one frame at a time, except the one we are unbinding*/
+    int g = 0;
+    for (int f = 0; f < sdef_layer->num_of_frames; f++) {
+      if (sdef_layer->frames[g].frame_number == framenum) {
+        g++;
+        f--;
+        continue;
+      }
+      memcpy(&temp_frames_pointer[f], &(sdef_layer->frames[g]), sizeof(*sdef_layer->frames));
+      g++;
+    }
+    MEM_SAFE_FREE(sdef_layer->frames);
+    sdef_layer->frames = first_frame;
+    /*Set the first frame again if the first was the one being removed*/
+    if (sdef_layer->frames->first != first_frame) {
+      for (int f = 0; f < sdef_layer->num_of_frames; f++) {
+        sdef_layer->frames[f].first = first_frame;
+      }
+    }
+  }
+  else
+    MEM_SAFE_FREE(sdef_layer->frames);
 
-/* NEW UTILS END */
+  return true;
+}
+
+/* HEADER END */
 
 static void initData(GpencilModifierData *md)
 {
@@ -183,7 +234,6 @@ static void freeData(GpencilModifierData *md)
   }
   smd->num_of_layers = 0;
   smd->bound_flags = 0;
-
 
 }
 
@@ -278,14 +328,13 @@ static void check_bind_situation(SurDeformGpencilModifierData *smd,
   {return;}
   rollback_layers(smd);
 
-  /*IMPORTANT TODO: Check if frame number changed and update it*/
   
   smd->bound_flags |= GP_MOD_SDEF_SOMETHING_BOUND;
 
   Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
   bGPdata *gpd = ob_orig->data;
   bGPDlayer *gpl_active = BKE_gpencil_layer_active_get(gpd);
-  bGPDlayer *blender_layer;
+  bGPDlayer *blender_layer = NULL;
   //bGPDframe *blender_frame;
 
   int num_of_layers_with_all_their_frames_bound = 0;
@@ -301,7 +350,7 @@ static void check_bind_situation(SurDeformGpencilModifierData *smd,
         break;
       }
     }
-    if (blender_layer == NULL) 
+     if (blender_layer == NULL) 
     {
       printf("NULL blender LAYER IN CHECK bind situation");
       continue;
@@ -318,10 +367,12 @@ static void check_bind_situation(SurDeformGpencilModifierData *smd,
     
     for (int f = 0; f < smd->layers[l].num_of_frames; f++)
     {
-     
-      if (BKE_gpencil_frame_retime_get(depsgraph, scene, ob, blender_layer)->framenum
+      smd->layers[l].frames[f].blender_frame = NULL;
+      bGPDframe *blender_frame = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, blender_layer);
+      if (blender_frame->framenum
           == smd->layers[l].frames[f].frame_number    )
       {
+        smd->layers[l].frames[f].blender_frame = blender_frame;
         if (blender_layer == gpl_active)
         {smd->bound_flags |= GP_MOD_SDEF_CURRENT_LAYER_CURRENT_FRAME_BOUND;}
         num_of_layers_with_their_curr_frame_bound++;
@@ -506,33 +557,15 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   
   
   /*Check only one time. Once the evaluation is over, the flag data will be copied again from 
-  the original modifier, so the flag will hopefully became 0 again on its own.*/
+  the original modifier, so the flag will hopefully became 0 again on its own.
   smd->bound_flags = smd_orig->bound_flags;
   if (!(smd->flags & GP_MOD_SDEF_CHECKED))
   {
-    check_bind_situation(smd_orig, depsgraph, DEG_get_evaluated_scene(depsgraph), ob);
-    smd->bound_flags = smd_orig->bound_flags;
+    check_bind_situation(smd, depsgraph, DEG_get_evaluated_scene(depsgraph), ob);
     smd->flags |= GP_MOD_SDEF_CHECKED;
-  }
+  }*/
  
-  /* Exit function if bind flag is not set  and free bind data if any. */
-  if (smd->bound_flags == 0 && !(smd->flags & GP_MOD_SDEF_DO_BIND)) { 
-    
-    
-    if (smd->layers != NULL) {
-      printf("Flag disabled, verts not null \n");
-      if (!DEG_is_active(depsgraph)) {
-        BKE_gpencil_modifier_set_error(md,  "Attempt to bind from inactive dependency graph");
-        return;
-      } 
-      GpencilModifierData *md_orig = (GpencilModifierData *)get_original_modifier(ob, smd, md);
-      freeData(md_orig);
-    }
-    printf("Flag disabled, verts null \n");
-    return;
-  }
-  
-  
+
 
   Object *ob_target = DEG_get_evaluated_object(depsgraph, smd->target);
   target = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_target);
@@ -552,19 +585,54 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   {
     int i = 0;
     while (smd->layers->frames->frame_number != gpf->framenum &&
-          smd->layers->frames->frame_idx < smd->layers->num_of_frames)
-    { 
+           smd->layers->frames->frame_idx < smd->layers->num_of_frames) {
       i++;
-      if (i == smd->layers->num_of_frames) 
-      {
+      if (i == smd->layers->num_of_frames) {
         /*We are on a frame thats not bound*/
-       /*No end of stroke evaluation. All the strokes won't be evaluated till a new, bound frame 
-       is accessed.*/
-        return;
-      }
-      else
-      {
-        smd->layers->frames++;
+        /*No end of stroke evaluation. All the strokes won't be evaluated till a new, bound frame
+        is accessed.*/
+
+        /*Though we need to make sure this is not an actual bound frame that was moved.*/
+        if (gpf->key_type == BEZT_KEYTYPE_SURDEFBOUND) {
+          /*Dang, this was a bound frame! Someone moved it!*/
+          Scene *scene = DEG_get_evaluated_scene(depsgraph);
+          bGPDlayer *gpl_orig = BKE_gpencil_layer_active_get(gpd_orig);
+          rollback_frames(smd, smd->layers);
+          /*Let's try to find which SDefGPFrame doesnt have an associated bGPDframe, and remove
+           * it.*/
+          for (int f = 0; f < smd->layers->num_of_frames; f++) {
+            bool found = false;
+            LISTBASE_FOREACH (bGPDframe *, curr_gpf, &gpl_orig->frames) {
+              if (curr_gpf->framenum == smd->layers->frames[f].frame_number) {
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              /*Free this frame*/
+              for (int l = 0; strcmp(smd->layers->layer_info, smd_orig->layers->layer_info); l++) {
+                if (l > smd->num_of_layers) {
+                  BKE_gpencil_modifier_set_error(md,
+                                                 "Layers mismatch between original and evaluated "
+                                                 "modifier. Deleting all data");
+                  freeData(md);
+                  return;
+                }
+                smd_orig->layers++;
+              }
+              free_frame_b(smd_orig, smd, smd_orig->layers, smd->layers->frames->frame_number);
+              /*Clean the bound color*/
+              bGPDframe *gpf_orig = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl_orig);
+              gpf_orig->key_type = BEZT_KEYTYPE_KEYFRAME;
+              return;
+            }
+          }
+
+          return;
+        }
+        else {
+          smd->layers->frames++;
+        }
       }
     }
   }
@@ -598,15 +666,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
     return;
   }
 
-  /*Check that the frame still exists in its time position; if not, free the data.*/
-  if (smd->layers->frames->frame_number != gpf->framenum)
-  {
-    BKE_gpencil_modifier_set_error(
-          md, "Frame number changed from %u to %i", smd->layers->frames->frame_number, gpf->framenum);
-      //free_frame_b(smd_orig, smd, smd->layers, gpf);
-    // TODO: RUN FREE FRAME OPERATOR
-      return;
-  }
+  
 
   /* Strokes count on the deforming Frame. */
   if (!(BLI_listbase_is_empty(&gpf->strokes)))
@@ -765,9 +825,8 @@ static void deformStroke(GpencilModifierData *md, // every time deform stroke is
   SurDeformGpencilModifierData *smd = (SurDeformGpencilModifierData *)md;
   if (smd->flags & GP_MOD_SDEF_WITHHOLD_EVALUATION) return;
 
-
   surfacedeformModifier_do(md, smd, depsgraph, gps, gpf, gpl, ob, NULL /*, mesh_src*/);
- 
+
   /*if (!ELEM(mesh_src, NULL, mesh)) {
     BKE_id_free(NULL, mesh_src);
   }*/
@@ -797,12 +856,26 @@ static bool isDisabled(GpencilModifierData *md, bool UNUSED(useRenderParams))
          (smd->layers == NULL || smd->bound_flags ==0);
 }
 
+static void frame_list_item(struct uiList *UNUSED(ui_list),
+                              const struct bContext *UNUSED(C),
+                              struct uiLayout *layout,
+                              struct PointerRNA *UNUSED(idataptr),
+                              struct PointerRNA *itemptr,
+                              int UNUSED(icon),
+                              struct PointerRNA *UNUSED(active_dataptr),
+                              const char *UNUSED(active_propname),
+                              int UNUSED(index),
+                              int UNUSED(flt_flag))
+{
+  uiLayout *row = uiLayoutRow(layout, true);
+  uiItemR(row, itemptr, "name", UI_ITEM_R_NO_BG, "", ICON_OUTLINER_DATA_GP_LAYER);
+}
 
-
-static void panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *sub, *row, *col;
   uiLayout *layout = panel->layout;
+  char label[128];
 
   PointerRNA op_ptr_all;
   PointerRNA op_ptr_curr;
@@ -874,7 +947,7 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
   RNA_enum_set(&op_ptr_curr, "curr_frame_or_all_frames", 1);
 
   row = uiLayoutRow(col, true);
-  char label[50];
+  
   if (smd->layers) 
   {
     for (int l = 0; l < smd->num_of_layers; l++)
@@ -889,25 +962,82 @@ static void panel_draw(const bContext *UNUSED(C), Panel *panel)
     
   }
   else uiItemL(row, "No bound frames", ICON_INFO);
-  
+  /*
+  row = uiLayoutRow(col, true);
+  uiTemplateList(row,
+                 (bContext *)C,
+                 "MOD_UL_gpsurdef",
+                 "",
+                 ptr,
+                 "uilist_frames",
+                 ptr,
+                 "uilist_frame_active_index",
+                 NULL,
+                 3,
+                 10,
+                 0,
+                 1,
+                 UI_TEMPLATE_LIST_FLAG_NONE);
+  if (smd->uilist_frame_active_index != NULL) {
+
+    /*Show layers
+    row = uiLayoutRow(col, true);
+    BLI_sprintf(label,
+                "Layers: %s,",
+                smd->layers[l].layer_info,);
+    uiItemL(row, label, ICON_NONE);
+
+    // OPERATOR unbind frame
+    row = uiLayoutRow(col, true);
+    RNA_enum_set(&op_ptr_all, "curr_frame_or_all_frames", 0);
+    uiItemFullO(row,
+                "GPENCIL_OT_gpencilsurdeform_unbind",
+                IFACE_("Unbind"),
+                ICON_NONE,
+                NULL,
+                WM_OP_INVOKE_DEFAULT,
+                0,
+                &op_ptr_curr);
+  }
+    */
 
   gpencil_modifier_panel_end(layout, ptr);
 }
 
 
-static void mask_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void bake_panel_draw(const bContext *UNUSED(C), Panel *panel)
 {
-  uiLayout *row, *col;
+  uiLayout *row, *col, *sub;
   uiLayout *layout = panel->layout;
+
+  PointerRNA op_ptr;
+
   int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
 
   PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
 
+  col = uiLayoutColumn(layout, false);
+
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "target", 0, NULL, ICON_NONE);
-  gpencil_modifier_panel_end(layout, ptr);
+  row = uiLayoutRow(col, true);
+  uiItemFullO(row,
+              "GPENCIL_OT_gpencilsurdeform_bake",
+              IFACE_("Bake Range"),
+              ICON_NONE,
+              NULL,
+              WM_OP_INVOKE_DEFAULT,
+              0,
+              &op_ptr);
 
+  row = uiLayoutRow(col, true);
+  uiItemL(row, "Range:", ICON_NONE);
+  row = uiLayoutRow(col, true);
+  uiItemR(row, ptr, "bake_range_start", 0, "Start", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiItemR(sub, ptr, "bake_range_end", 0, "End", ICON_NONE);
+
+  gpencil_modifier_panel_end(layout, ptr);
 
   /*gpencil_modifier_masking_panel_draw(panel, true, true);*/
 }
@@ -916,6 +1046,13 @@ static void panelRegister(ARegionType *region_type)
 {
   PanelType *panel_type = gpencil_modifier_panel_register(
       region_type, eGpencilModifierType_SurDeform, panel_draw);
+  gpencil_modifier_subpanel_register(
+      region_type, "bake", "Bake", NULL, bake_panel_draw, panel_type);
+
+  uiListType *list_type = MEM_callocN(sizeof(uiListType), "dash modifier segment uilist");
+  strcpy(list_type->idname, "MOD_UL_gpsurdef");
+  list_type->draw_item = frame_list_item;
+  WM_uilisttype_add(list_type);
 
 }
 
@@ -937,7 +1074,7 @@ GpencilModifierTypeInfo modifierType_Gpencil_SurDeform = {
 
     /* deformStroke */ deformStroke,
     /* generateStrokes */ NULL,
-    /* bakeModifier */ NULL,
+    /* bakeModifier */ bakeModifier,
     /* remapTime */ NULL,
 
     /* initData */ initData,

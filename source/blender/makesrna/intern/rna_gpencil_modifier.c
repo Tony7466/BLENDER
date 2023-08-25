@@ -831,7 +831,14 @@ static void rna_GpencilDash_segments_begin(CollectionPropertyIterator *iter, Poi
   rna_iterator_array_begin(
       iter, dmd->segments, sizeof(DashGpencilModifierSegment), dmd->segments_len, false, NULL);
 }
-
+/*
+static void rna_GpencilSurDef_frames_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
+{
+  SurDeformGpencilModifierData *smd = (SurDeformGpencilModifierData *)ptr->data;
+  rna_iterator_array_begin(
+      iter, smd->uilist_frame_active, sizeof(SurDeformGpencilModifierData), smd->uilist_totframes, false, NULL);
+}
+*/
 static void rna_GpencilTime_segments_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
   TimeGpencilModifierData *gpmd = (TimeGpencilModifierData *)ptr->data;
@@ -4650,6 +4657,7 @@ static void rna_def_modifier_gpencilenvelope(BlenderRNA *brna)
 static void rna_def_modifier_gpencilsurdeform(BlenderRNA *brna)
 {
   StructRNA *srna;
+  StructRNA *srna_framelist;
   PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "SurDeformGpencilModifier", "GpencilModifier");
@@ -4669,6 +4677,15 @@ static void rna_def_modifier_gpencilsurdeform(BlenderRNA *brna)
   RNA_def_property_range(prop, 2.0f, 16.0f);
   RNA_def_property_ui_text(
       prop, "Interpolation Falloff", "Controls how much nearby polygons influence deformation");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "bake_range_start", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop, "Range Start", "The first timeline frame to start baking");
+  RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  prop = RNA_def_property(srna, "bake_range_end", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Range End", "The last timeline frame to bake");
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
 
   prop = RNA_def_property(srna, "is_bound", PROP_BOOLEAN, PROP_NONE);
@@ -4729,6 +4746,34 @@ static void rna_def_modifier_gpencilsurdeform(BlenderRNA *brna)
   prop = RNA_def_property(srna, "current_layer_current_frame_bound", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, NULL, "bound_flags", GP_MOD_SDEF_CURRENT_LAYER_CURRENT_FRAME_BOUND);
   RNA_def_property_update(prop, 0, "rna_GpencilModifier_update");
+
+  /*UI list frames*/
+  /*
+  prop = RNA_def_property(srna, "uilist_frames", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_struct_type(prop, "SDefGPBoundFrame");
+  RNA_def_property_collection_sdna(prop, NULL, "uilist_frame_active", NULL);
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_GpencilSurDef_frames_begin",
+                                    "rna_iterator_array_next",
+                                    "rna_iterator_array_end",
+                                    "rna_iterator_array_get",
+                                    NULL,
+                                    NULL,
+                                    NULL,
+                                    NULL);
+  RNA_def_property_ui_text(prop, "Frames", "");
+
+  prop = RNA_def_property(srna, "frame_active_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(prop, "Active Surface Deform Frame Index", "Active index in the segment list");
+
+  RNA_define_lib_overridable(false);
+  
+  srna_framelist = RNA_def_struct(brna, "SDefGPBoundFrame", NULL);
+  RNA_def_struct_ui_text(
+      srna, "Surface Deform GP Modifier Frame", "Bound frames to be displayed in the UI list.");
+  RNA_def_struct_sdna(srna, "SDefGPBoundFrame");
+  // RNA_def_struct_path_func(srna, "rna_DashGpencilModifierSegment_path");*/
 
   RNA_define_lib_overridable(false);
 

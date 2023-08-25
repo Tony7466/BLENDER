@@ -1341,7 +1341,7 @@ typedef struct SDefGPStroke {
   unsigned int stroke_idx;
   /* Number of of vertices on the deformed stroke upon the bind process. former bind_verts_num */
   int stroke_verts_num;
-  /*Keep a pointer to the bGPDstroke*/
+  /*Keep a pointer to the bGPDstroke UNUSED*/
   bGPDstroke *blender_stroke;
 } SDefGPStroke;
 
@@ -1355,8 +1355,9 @@ typedef struct SDefGPFrame{
   unsigned int frame_idx;
   /* Number of strokes */
   unsigned int strokes_num;
+
   unsigned int _paddypad;
-  /*Keep a pointer to the bGPDframe*/
+  /*Keep a pointer to the bGPDframe UNUSED */
   bGPDframe *blender_frame;
 } SDefGPFrame;
 
@@ -1369,9 +1370,25 @@ typedef struct SDefGPLayer{
   char layer_info[128]; //unused for now
   /* Number of frames */
   unsigned int num_of_frames;
-  /*Keep a pointer to the bGPDlayer*/
+  /*Keep a pointer to the bGPDlayer UNUSED */
   bGPDlayer *blender_layer;
 } SDefGPLayer;
+
+/*Bound frames to be displayed in the UI list.
+typedef struct SDefGPBoundFrame {
+  struct SDefGPBoundFrame *first;
+  /*name for list ui
+  char name[128];
+  /*index for list ui
+  unsigned int index;
+  /* layers involved in the frame 
+  bGPDlayer *layers[64];
+  /* Frame number. This is how we match it with its SDefGPFrame.
+  We could use the UI to move the frame, and change the data in SDefGPFrame with no risk.  
+  int framenum;
+  }
+  SDefGPBoundFrame;
+  */
 
 typedef struct SurDeformGpencilModifierData {
   GpencilModifierData modifier;
@@ -1384,9 +1401,14 @@ typedef struct SurDeformGpencilModifierData {
   
   void *_pad1;
 
+  /*frame list ui*/
+  //unsigned int uilist_frame_active_index;
+  //unsigned int uilist_totframes;
+  //SDefGPBoundFrame *uilist_frame_active;
   
   
-  
+  int bake_range_start;
+  int bake_range_end;
   float falloff;
 
   /* Number of layers in the `frames` array of this modifier. */
@@ -1398,12 +1420,11 @@ typedef struct SurDeformGpencilModifierData {
 
   int bound_flags;
   int bind_modes;
-  int _pad2;
   float strength;
 
   char curr_frame_or_all_frames;
   char curr_layer_or_all_layers;
-  char _pad3[2];
+  char _pad3[6];
 
   float mat[4][4];
   char defgrp_name[64];

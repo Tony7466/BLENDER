@@ -27,6 +27,8 @@
 #include "BKE_mesh_wrapper.h"
 #include "BKE_report.h"
 
+#include "MOD_gpencil_util.h"
+
 #include "DEG_depsgraph_query.h"
 #include "ED_object.h"
 #include "WM_api.h"
@@ -48,6 +50,53 @@ static void freeData_a(SurDeformGpencilModifierData *smd)
   mti->freeData(md);
   return;
 }
+
+/*Populate the liste each time a operator that alters the bind state is exectuted
+static void uilist_populate(SurDeformGpencilModifierData *smd, SurDeformGpencilModifierData *smd_eval )
+{
+  if (smd->uilist_frame_active != NULL) {
+    smd->uilist_frame_active -= smd->uilist_frame_active_index;
+    MEM_SAFE_FREE(smd->uilist_frame_active);
+  }
+
+  smd->uilist_totframes = 0;
+
+  /*Iterate layers twice: once to know how many frames there are so how much memory to
+  allocate, second time to actually fill in the data.
+  uint prev_frame_num = 0;
+  for (int l = 0; l < smd->num_of_layers; smd->layers++) {
+    for (int f = 0; f < smd->layers[l].num_of_frames; smd->layers[l].frames++) {
+      if (smd->layers[l].frames[f].frame_number > prev_frame_num) {
+        smd->uilist_totframes++;
+      }
+      prev_frame_num = smd->layers[l].frames[f].frame_number;
+    }
+  }
+
+  smd->uilist_frame_active = MEM_calloc_arrayN(
+      smd->uilist_totframes, sizeof(*smd->uilist_frame_active), "SDefBoundFrames");
+
+  if (smd->uilist_frame_active == NULL) {
+    BKE_gpencil_modifier_set_error((GpencilModifierData *)smd_eval, "Out of memory");
+    MEM_SAFE_FREE(smd->uilist_frame_active);
+    smd->uilist_totframes = 0;
+    smd->uilist_frame_active_index = 0;
+    return;
+  }
+  SDefGPBoundFrame *first_bound_frame = smd->uilist_frame_active;
+
+  for (int l = 0; l < smd->num_of_layers; smd->layers++) {
+    for (int f = 0; f < smd->layers[l].num_of_frames; smd->layers[l].frames++) {
+      if (smd->layers[l].frames[f].frame_number > smd->uilist_frame_active->framenum) {
+        /*Add a new frame
+        smd->uilist_frame_active->framenum = smd->layers[l].frames[f].frame_number;
+      }
+    }
+  }
+  
+}
+  * /
+
 /* STRUCTS FROM MOD_surfacedeform.c */
 
 typedef struct SDefAdjacency {
@@ -1579,9 +1628,20 @@ static bool surfacedeformBind(bContext *C,
     {
       /*Just free al of the data*/
       freeData_a(smd_orig);
+
+      /*Set all bound keyframes back to normal*/
+      LISTBASE_FOREACH (bGPDlayer *, curr_gpl, &gpd->layers) {
+        LISTBASE_FOREACH (bGPDframe *, curr_gpf, &curr_gpl->frames) {
+          if (curr_gpf->key_type == BEZT_KEYTYPE_SURDEFBOUND) {
+            curr_gpf->key_type = BEZT_KEYTYPE_KEYFRAME;
+          }
+        }
+      }
+      
     }
     else {
-      uint framenum = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl_active)->framenum;
+      bGPDframe *curr_gpf = BKE_gpencil_frame_retime_get(depsgraph, scene, ob, gpl_active);
+          uint framenum = curr_gpf->framenum;
       for (int l = 0; l < smd_orig->num_of_layers; l++) {
         /*EXIT IF FRAME IS NOT ALREADY BOUND*/
         for (int f = 0; f < smd_orig->layers[l].num_of_frames; f++) {
@@ -1590,6 +1650,7 @@ static bool surfacedeformBind(bContext *C,
             free_frame(smd_orig, smd_eval, &(smd_orig->layers[l]), framenum);
             break;
           }
+          curr_gpf->key_type = BEZT_KEYTYPE_KEYFRAME;
           /*If last frame of layer was removed, free the layer data (todo) 
           if (!smd_orig->layers[l].frames[f]) {
 
@@ -1767,6 +1828,7 @@ static bool surfacedeformBind(bContext *C,
           smd_orig->layers->frames->strokes = first_stroke;
         }
         free_bvhtree_from_mesh(&treeData);
+        curr_gpf->key_type = BEZT_KEYTYPE_SURDEFBOUND;
         //freeAdjacencyMap(vert_edges, adj_array, edge_polys);
       }
       BKE_scene_frame_set(scene, current_frame);
@@ -1851,6 +1913,8 @@ static bool surfacedeformBind(bContext *C,
         if (smd_orig->layers->frames->strokes != NULL) {
           smd_orig->layers->frames->strokes = first_stroke;
         }
+
+        curr_frame->key_type = BEZT_KEYTYPE_SURDEFBOUND;
       }
       //free_bvhtree_from_mesh(&treeData);
       //freeAdjacencyMap(vert_edges, adj_array, edge_polys);
@@ -2059,9 +2123,63 @@ static int gpencil_surfacedeform_bind_or_unbind(bContext *C, wmOperator *op)
 
   /*printf("smd flag 3 %i\n", smd->flags);
   printf("smd_eval flag 3 %i\n", smd_eval->flags);*/
+  smd_orig->bound_flags = 0;
   return OPERATOR_FINISHED;
 }
 
+
+/*  BAKE */
+
+static int bake_frames(bContext *C, wmOperator *op)
+{
+  Object *ob = ED_object_active_context(C);
+  bGPdata *gpd = ob->data;
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+  SurDeformGpencilModifierData *smd_orig = (SurDeformGpencilModifierData *)
+      gpencil_edit_modifier_property_get(op, ob, eGpencilModifierType_SurDeform);
+  GpencilModifierData *md = &(smd_orig->modifier);
+  GpencilModifierData *md_eval;
+  const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
+  Scene *scene = DEG_get_evaluated_scene(depsgraph);
+  Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
+
+  PointerRNA ob_ptr;
+  bGPDframe *gpf;
+
+  int frame_start = smd_orig->bake_range_start;
+  int frame_end = smd_orig->bake_range_end;
+
+  /*Iterate the frames in the range*/
+
+  smd_orig->flags |= GP_MOD_SDEF_WITHHOLD_EVALUATION;
+
+  for (int frame = frame_start; frame < frame_end; frame++) {
+    BKE_scene_frame_set(scene, frame);
+    BKE_scene_graph_update_for_newframe(depsgraph);
+    /*Iterate all the layers*/
+    LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+      /* get the current state in current frame */
+      gpf = BKE_gpencil_layer_frame_get(gpl, frame, GP_GETFRAME_ADD_NEW);
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes)
+      {
+        mti->deformStroke(md, depsgraph, ob, gpl, gpf, gps);
+      }
+    }
+  }
+  smd_orig->flags &= ~GP_MOD_SDEF_WITHHOLD_EVALUATION;
+  return OPERATOR_FINISHED;
+}
+
+
+/* OPERATORS */
+
+static int gpencil_surfacedeform_bake_exec(bContext *C, wmOperator *op)
+{
+  Object *ob = ED_object_active_context(C);
+  SurDeformGpencilModifierData *smd_orig = (SurDeformGpencilModifierData *)
+      gpencil_edit_modifier_property_get(op, ob, eGpencilModifierType_SurDeform);
+  return bake_frames(C, op);
+}
 
 static int gpencil_surfacedeform_bind_exec(bContext *C, wmOperator *op)
 {
@@ -2098,6 +2216,16 @@ static int gpencil_surfacedeform_unbind_invoke(bContext *C,
 {
   if (gpencil_edit_modifier_invoke_properties(C, op, NULL, NULL)) {
     return gpencil_surfacedeform_unbind_exec(C, op);
+  }
+  return OPERATOR_CANCELLED;
+}
+
+static int gpencil_surfacedeform_bake_invoke(bContext *C,
+                                               wmOperator *op,
+                                               const wmEvent *UNUSED(event))
+{
+  if (gpencil_edit_modifier_invoke_properties(C, op, NULL, NULL)) {
+    return gpencil_surfacedeform_bake_exec(C, op);
   }
   return OPERATOR_CANCELLED;
 }
@@ -2140,7 +2268,7 @@ void GPENCIL_OT_gpencilsurdeform_bind(wmOperatorType *ot)
 void GPENCIL_OT_gpencilsurdeform_unbind(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Surface Deform Unind";
+  ot->name = "Surface Deform Unbind";
   ot->description = "Unbind a GP with a surface deform modifier from its mesh";
   ot->idname = "GPENCIL_OT_gpencilsurdeform_unbind";
 
@@ -2159,11 +2287,33 @@ void GPENCIL_OT_gpencilsurdeform_unbind(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
   gpencil_edit_modifier_properties(ot);
 }
+
+
+void GPENCIL_OT_gpencilsurdeform_bake(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Surface Deform Bake";
+  ot->description = "Bake the chosen frame range. The frames are removed from the modifier's memory";
+  ot->idname = "GPENCIL_OT_gpencilsurdeform_bake";
+
+  /* api callbacks */
+  // ot->poll = gpencil_surfacedeform_bind_poll;
+  ot->invoke = gpencil_surfacedeform_bake_invoke;
+  ot->exec = gpencil_surfacedeform_bake_exec;
+
+  /* parameters */
+  // RNA_def_boolean(ot->srna, "current_frame_only", true, "Only current frame", "");
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
+  gpencil_edit_modifier_properties(ot);
+}
+
 void WM_operatortypes_gpencilsurdeform(void)
 {
   WM_operatortype_append(GPENCIL_OT_gpencilsurdeform_bind);
   WM_operatortype_append(GPENCIL_OT_gpencilsurdeform_unbind);
+  WM_operatortype_append(GPENCIL_OT_gpencilsurdeform_bake);
 }
 
 
-/** \} */
