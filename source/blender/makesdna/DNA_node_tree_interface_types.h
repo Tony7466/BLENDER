@@ -68,7 +68,7 @@ typedef struct bNodeTreeInterfaceSocket {
   char *description;
   /* Type idname of the socket to generate, e.g. "NodeSocketFloat". */
   char *socket_type;
-  /* eNodeTreeInterfaceSocketFlag */
+  /* NodeTreeInterfaceSocketFlag */
   int flag;
 
   /* eAttrDomain */
@@ -117,7 +117,7 @@ typedef struct bNodeTreeInterfacePanel {
   /* UI name of the panel. */
   char *name;
   char *description;
-  /* eNodeTreeInterfacePanelFlag */
+  /* NodeTreeInterfacePanelFlag */
   int flag;
   char _pad[4];
 
