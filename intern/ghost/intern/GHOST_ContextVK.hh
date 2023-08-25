@@ -176,6 +176,7 @@ class GHOST_ContextVK : public GHOST_Context {
   const int m_debug;
 
   VkCommandPool m_command_pool;
+  VkCommandBuffer m_command_buffer = VK_NULL_HANDLE;
 
   VkQueue m_graphic_queue;
   VkQueue m_present_queue;
@@ -184,15 +185,11 @@ class GHOST_ContextVK : public GHOST_Context {
   VkSurfaceKHR m_surface;
   VkSwapchainKHR m_swapchain;
   std::vector<VkImage> m_swapchain_images;
-  std::vector<VkImageView> m_swapchain_image_views;
-  std::vector<VkFramebuffer> m_swapchain_framebuffers;
-  std::vector<VkCommandBuffer> m_command_buffers;
-  VkRenderPass m_render_pass;
+
   VkExtent2D m_render_extent;
   VkSurfaceFormatKHR m_surface_format;
   std::vector<VkSemaphore> m_image_available_semaphores;
   std::vector<VkSemaphore> m_render_finished_semaphores;
-  std::vector<VkFence> m_in_flight_fences;
   /** frame modulo swapchain_len. Used as index for sync objects. */
   int m_currentFrame = 0;
   /**
@@ -206,8 +203,6 @@ class GHOST_ContextVK : public GHOST_Context {
   int m_lastFrame = -1;
   /** Image index in the swapchain. Used as index for render objects. */
   uint32_t m_currentImage = 0;
-  /** Used to unique framebuffer ids to return when swapchain is recreated. */
-  uint32_t m_swapchain_id = 0;
 
   std::function<void(void)> swap_buffers_pre_callback_;
   std::function<void(void)> swap_buffers_post_callback_;
