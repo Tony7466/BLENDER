@@ -355,10 +355,10 @@ class NODE_MT_node(Menu):
 
         layout.separator()
 
-        layout.operator("node.group_edit").exit = False
-        layout.operator("node.group_ungroup")
         layout.operator("node.group_make")
         layout.operator("node.group_insert")
+        layout.operator("node.group_edit").exit = False
+        layout.operator("node.group_ungroup")
 
         layout.separator()
 
