@@ -783,7 +783,7 @@ void bNodeTreeInterfacePanel::insert_item(bNodeTreeInterfaceItem &item, int posi
 {
   /* Are child panels allowed? */
   BLI_assert(item.item_type != NODE_INTERFACE_PANEL ||
-             (flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS));
+             (this->flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS));
 
   /* Apply any constraints on the item positions. */
   position = find_valid_insert_position_for_item(item, position);
