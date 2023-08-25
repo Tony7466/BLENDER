@@ -846,15 +846,16 @@ bool bNodeTreeInterfacePanel::move_item(bNodeTreeInterfaceItem &item, int new_po
   }
 
   new_position = find_valid_insert_position_for_item(item, new_position);
-  new_position = std::min(std::max(new_position, 0), items_num - 1);
+  new_position = std::min(std::max(new_position, 0), items_num);
 
   if (old_position < new_position) {
+    /* Actual target position and all existing items shifted by 1. */
     const blender::Span<bNodeTreeInterfaceItem *> moved_items = this->items().slice(
-        old_position + 1, new_position - old_position);
+        old_position + 1, new_position - old_position - 1);
     bNodeTreeInterfaceItem *tmp = this->items()[old_position];
     std::copy(
         moved_items.begin(), moved_items.end(), this->items().drop_front(old_position).data());
-    this->items()[new_position] = tmp;
+    this->items()[new_position - 1] = tmp;
   }
   else /* old_position > new_position */ {
     const blender::Span<bNodeTreeInterfaceItem *> moved_items = this->items().slice(
