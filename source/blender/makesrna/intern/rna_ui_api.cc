@@ -2086,8 +2086,8 @@ void RNA_api_ui_layout(StructRNA *srna)
   RNA_def_function_ui_description(func, "View of the active grease pencil layer tree");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
 
-  func = RNA_def_function(srna, "template_node_tree_declaration", "uiTemplateNodeTreeDeclaration");
-  RNA_def_function_ui_description(func, "Show a node tree interface declaration");
+  func = RNA_def_function(srna, "template_node_tree_interface", "uiTemplateNodeTreeInterface");
+  RNA_def_function_ui_description(func, "Show a node tree interface");
   parm = RNA_def_pointer(func,
                          "interface",
                          "NodeTreeInterface",

@@ -494,7 +494,7 @@ wmDragNodeTreeInterface *NodePanelDropTarget::get_drag_node_tree_declaration(
 
 namespace ui = blender::ui;
 
-void uiTemplateNodeTreeDeclaration(struct uiLayout *layout, struct PointerRNA *ptr)
+void uiTemplateNodeTreeInterface(struct uiLayout *layout, struct PointerRNA *ptr)
 {
   if (!ptr->data) {
     return;
