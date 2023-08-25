@@ -318,6 +318,10 @@ static SocketDeclarationPtr declaration_for_interface_socket(
 static PanelDeclarationPtr declaration_for_interface_panel(const bNodeTree & /*ntree*/,
                                                            const bNodeTreeInterfacePanel &io_panel)
 {
+  if (io_panel.items_num == 0) {
+    return nullptr;
+  }
+
   PanelDeclarationPtr dst = std::make_unique<PanelDeclaration>();
   dst->identifier = io_panel.identifier;
   dst->name = io_panel.name ? io_panel.name : "";
@@ -350,24 +354,27 @@ void node_group_declare_dynamic(const bNodeTree & /*node_tree*/,
         const bNodeTreeInterfaceSocket &socket =
             node_interface::get_item_as<bNodeTreeInterfaceSocket>(item);
         if (socket.flag & NODE_INTERFACE_SOCKET_OUTPUT) {
-          SocketDeclarationPtr socket_decl = declaration_for_interface_socket(
-              *group, socket, SOCK_OUT);
-          r_declaration.outputs.append(socket_decl.get());
-          r_declaration.items.append(std::move(socket_decl));
+          if (SocketDeclarationPtr socket_decl = declaration_for_interface_socket(
+                  *group, socket, SOCK_OUT)) {
+            r_declaration.outputs.append(socket_decl.get());
+            r_declaration.items.append(std::move(socket_decl));
+          }
         }
         if (socket.flag & NODE_INTERFACE_SOCKET_INPUT) {
-          SocketDeclarationPtr socket_decl = declaration_for_interface_socket(
-              *group, socket, SOCK_IN);
-          r_declaration.inputs.append(socket_decl.get());
-          r_declaration.items.append(std::move(socket_decl));
+          if (SocketDeclarationPtr socket_decl = declaration_for_interface_socket(
+                  *group, socket, SOCK_IN)) {
+            r_declaration.inputs.append(socket_decl.get());
+            r_declaration.items.append(std::move(socket_decl));
+          }
         }
         break;
       }
       case NODE_INTERFACE_PANEL: {
         const bNodeTreeInterfacePanel &panel =
             node_interface::get_item_as<bNodeTreeInterfacePanel>(item);
-        PanelDeclarationPtr panel_decl = declaration_for_interface_panel(*group, panel);
-        r_declaration.items.append(std::move(panel_decl));
+        if (PanelDeclarationPtr panel_decl = declaration_for_interface_panel(*group, panel)) {
+          r_declaration.items.append(std::move(panel_decl));
+        }
         break;
       }
     }
