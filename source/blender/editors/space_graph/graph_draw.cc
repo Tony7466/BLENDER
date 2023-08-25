@@ -156,7 +156,7 @@ static void set_fcurve_vertex_color(FCurve *fcu, bool sel)
   }
   else {
     /* Curve's points CANNOT BE edited */
-    UI_GetThemeColor3fv(TH_VERTEX, color);
+    UI_GetThemeColorShade4fv(TH_HEADER, 50, color);
   }
 
   /* Fade the 'intensity' of the vertices based on the selection of the curves too
@@ -221,37 +221,6 @@ static void draw_fcurve_selected_keyframe_vertices(FCurve *fcu, View2D *v2d, boo
   immEnd();
 }
 
-static void draw_locked_keyframe_vertices(FCurve *fcu,
-                                          View2D *v2d,
-                                          const uint attr_id,
-                                          const float unit_scale)
-{
-  const float correction_factor = 0.05f * BLI_rctf_size_x(&v2d->cur);
-
-  /* get view settings */
-  const float vertex_size = UI_GetThemeValuef(TH_VERTEX_SIZE);
-  float scale[2];
-  UI_view2d_scale_get(v2d, &scale[0], &scale[1]);
-  scale[0] /= vertex_size;
-  /* Dividing by the unit scale is needed to display euler correctly (internally they are radians
-   * but displayed as degrees) and all curves when normalization is turned on. */
-  scale[1] = scale[1] / vertex_size * unit_scale;
-
-  set_fcurve_vertex_color(fcu, false);
-
-  for (int i = 0; i < fcu->totvert; i++) {
-    BezTriple *bezt = &fcu->bezt[i];
-    if (!IN_RANGE(bezt->vec[1][0],
-                  (v2d->cur.xmin - correction_factor),
-                  (v2d->cur.xmax + correction_factor)))
-    {
-      continue;
-    }
-    float position[2] = {bezt->vec[1][0], bezt->vec[1][1]};
-    draw_cross(position, scale, attr_id);
-  }
-}
-
 /**
  * Draw the extra indicator for the active point.
  */
@@ -282,32 +251,15 @@ static void draw_fcurve_active_vertex(const FCurve *fcu, const View2D *v2d, cons
 static void draw_fcurve_keyframe_vertices(
     FCurve *fcu, View2D *v2d, bool edit, const uint pos, const float unit_scale)
 {
-  if (edit) {
-    immBindBuiltinProgram(GPU_SHADER_2D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_AA);
+  immBindBuiltinProgram(GPU_SHADER_2D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_AA);
 
-    immUniform1f("size", UI_GetThemeValuef(TH_VERTEX_SIZE) * UI_SCALE_FAC);
+  immUniform1f("size", UI_GetThemeValuef(TH_VERTEX_SIZE) * UI_SCALE_FAC);
 
-    draw_fcurve_selected_keyframe_vertices(fcu, v2d, false, pos);
-    draw_fcurve_selected_keyframe_vertices(fcu, v2d, true, pos);
-    draw_fcurve_active_vertex(fcu, v2d, pos);
+  draw_fcurve_selected_keyframe_vertices(fcu, v2d, false, pos);
+  draw_fcurve_selected_keyframe_vertices(fcu, v2d, true, pos);
+  draw_fcurve_active_vertex(fcu, v2d, pos);
 
-    immUnbindProgram();
-  }
-  else {
-    if (U.animation_flag & USER_ANIM_HIGH_QUALITY_DRAWING) {
-      GPU_line_smooth(true);
-    }
-    GPU_blend(GPU_BLEND_ALPHA);
-    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-
-    draw_locked_keyframe_vertices(fcu, v2d, pos, unit_scale);
-
-    immUnbindProgram();
-    GPU_blend(GPU_BLEND_NONE);
-    if (U.animation_flag & USER_ANIM_HIGH_QUALITY_DRAWING) {
-      GPU_line_smooth(false);
-    }
-  }
+  immUnbindProgram();
 }
 
 /* helper func - draw handle vertices only for an F-Curve (if it is not protected) */
