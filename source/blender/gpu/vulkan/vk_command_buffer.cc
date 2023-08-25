@@ -44,7 +44,6 @@ void VKCommandBuffer::init(const VKDevice &device)
     return;
   }
 
-  std::cout << __func__ << "\n";
   vk_device_ = device.device_get();
   vk_queue_ = device.queue_get();
 
@@ -78,7 +77,6 @@ void VKCommandBuffer::init(const VKDevice &device)
 
 void VKCommandBuffer::begin_recording()
 {
-  std::cout << __func__ << "\n";
   ensure_no_active_framebuffer();
   if (is_in_stage(Stage::Submitted)) {
     vkWaitForFences(vk_device_, 1, &vk_fence_, VK_TRUE, FenceTimeout);
@@ -98,7 +96,6 @@ void VKCommandBuffer::begin_recording()
 
 void VKCommandBuffer::end_recording()
 {
-  std::cout << __func__ << "\n";
   ensure_no_active_framebuffer();
   vkEndCommandBuffer(vk_command_buffer_);
   stage_transfer(Stage::Recording, Stage::BetweenRecordingAndSubmitting);
@@ -405,7 +402,6 @@ void VKCommandBuffer::ensure_no_active_framebuffer()
 {
   state.checks_++;
   if (state.framebuffer_ && state.framebuffer_active_) {
-    std::cout << __func__ << " n";
     vkCmdEndRenderPass(vk_command_buffer_);
     state.framebuffer_active_ = false;
     state.switches_++;
@@ -417,7 +413,6 @@ void VKCommandBuffer::ensure_active_framebuffer()
   BLI_assert(state.framebuffer_);
   state.checks_++;
   if (!state.framebuffer_active_) {
-    std::cout << __func__ << " n";
     VkRenderPassBeginInfo render_pass_begin_info = {};
     render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     render_pass_begin_info.renderPass = state.framebuffer_->vk_render_pass_get();

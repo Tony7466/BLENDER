@@ -29,21 +29,8 @@ class VKFrameBuffer : public FrameBuffer {
   VkDevice vk_device_ = VK_NULL_HANDLE;
   /* Base render pass used for framebuffer creation. */
   VkRenderPass vk_render_pass_ = VK_NULL_HANDLE;
-  VkImage vk_image_ = VK_NULL_HANDLE;
-  VkImageLayout vk_image_layout_ = VK_IMAGE_LAYOUT_PREINITIALIZED;
   /* Number of layers if the attachments are layered textures. */
   int depth_ = 1;
-  /** Internal frame-buffers are immutable. */
-  bool immutable_;
-
-  /**
-   * Should we flip the viewport to match Blenders coordinate system. We flip the viewport for
-   * off-screen frame-buffers.
-   *
-   * When two frame-buffers are blitted we also check if the coordinate system should be flipped
-   * during blitting.
-   */
-  bool flip_viewport_ = false;
 
   Vector<VKImageView, GPU_FB_MAX_ATTACHMENT> image_views_;
 
@@ -52,17 +39,6 @@ class VKFrameBuffer : public FrameBuffer {
    * Create a conventional framebuffer to attach texture to.
    **/
   VKFrameBuffer(const char *name);
-
-  /**
-   * Special frame-buffer encapsulating internal window frame-buffer.
-   * This just act as a wrapper, the actual allocations are done by GHOST_ContextVK.
-   **/
-  VKFrameBuffer(const char *name,
-                VkImage vk_image,
-                VkImageLayout vk_image_layout,
-                VkFramebuffer vk_framebuffer,
-                VkRenderPass vk_render_pass,
-                VkExtent2D vk_extent);
 
   ~VKFrameBuffer();
 
@@ -113,27 +89,6 @@ class VKFrameBuffer : public FrameBuffer {
   }
   Array<VkViewport, 16> vk_viewports_get() const;
   Array<VkRect2D, 16> vk_render_areas_get() const;
-  VkImage vk_image_get() const
-  {
-    BLI_assert(vk_image_ != VK_NULL_HANDLE);
-    return vk_image_;
-  }
-  VkImageLayout vk_image_layout_get() const
-  {
-    return vk_image_layout_;
-  }
-
-  /**
-   * Is this frame-buffer immutable?
-   *
-   * Frame-buffers that are owned by GHOST are immutable and
-   * don't have any attachments assigned. It should be assumed that there is a single color texture
-   * in slot 0.
-   */
-  bool is_immutable() const
-  {
-    return immutable_;
-  }
 
  private:
   void update_attachments();

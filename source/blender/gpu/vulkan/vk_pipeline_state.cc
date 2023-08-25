@@ -78,29 +78,21 @@ void VKPipelineStateManager::force_state(const GPUState &state,
 void VKPipelineStateManager::finalize_color_blend_state(const VKFrameBuffer &framebuffer)
 {
   color_blend_attachments.clear();
-  if (framebuffer.is_immutable()) {
-    /* Immutable frame-buffers are owned by GHOST and don't have any attachments assigned. In this
-     * case we assume that there is a single color texture assigned. */
-    color_blend_attachments.append(color_blend_attachment_template);
-  }
-  else {
-
-    bool is_sequential = true;
-    for (int color_slot = 0; color_slot < GPU_FB_MAX_COLOR_ATTACHMENT; color_slot++) {
-      VKTexture *texture = unwrap(unwrap(framebuffer.color_tex(color_slot)));
-      if (texture) {
-        BLI_assert(is_sequential);
-        color_blend_attachments.append(color_blend_attachment_template);
-      }
-      else {
-        /* Test to detect if all color textures are sequential attached from the first slot. We
-         * assume at this moment that this is the case. Otherwise we need to rewire how attachments
-         * and bindings work. */
-        is_sequential = false;
-      }
+  bool is_sequential = true;
+  for (int color_slot = 0; color_slot < GPU_FB_MAX_COLOR_ATTACHMENT; color_slot++) {
+    VKTexture *texture = unwrap(unwrap(framebuffer.color_tex(color_slot)));
+    if (texture) {
+      BLI_assert(is_sequential);
+      color_blend_attachments.append(color_blend_attachment_template);
     }
-    UNUSED_VARS_NDEBUG(is_sequential);
+    else {
+      /* Test to detect if all color textures are sequential attached from the first slot. We
+       * assume at this moment that this is the case. Otherwise we need to rewire how attachments
+       * and bindings work. */
+      is_sequential = false;
+    }
   }
+  UNUSED_VARS_NDEBUG(is_sequential);
 
   pipeline_color_blend_state.attachmentCount = color_blend_attachments.size();
   pipeline_color_blend_state.pAttachments = color_blend_attachments.data();

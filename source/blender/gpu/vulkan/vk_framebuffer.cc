@@ -20,38 +20,12 @@ namespace blender::gpu {
 
 VKFrameBuffer::VKFrameBuffer(const char *name) : FrameBuffer(name)
 {
-  immutable_ = false;
-  flip_viewport_ = false;
   size_set(1, 1);
-}
-
-VKFrameBuffer::VKFrameBuffer(const char *name,
-                             VkImage vk_image,
-                             VkImageLayout vk_image_layout,
-                             VkFramebuffer vk_framebuffer,
-                             VkRenderPass vk_render_pass,
-                             VkExtent2D vk_extent)
-    : FrameBuffer(name)
-{
-  immutable_ = true;
-  flip_viewport_ = true;
-  /* Never update an internal frame-buffer. */
-  dirty_attachments_ = false;
-  vk_image_ = vk_image;
-  vk_image_layout_ = vk_image_layout;
-  vk_framebuffer_ = vk_framebuffer;
-  vk_render_pass_ = vk_render_pass;
-
-  size_set(vk_extent.width, vk_extent.height);
-  viewport_reset();
-  scissor_reset();
 }
 
 VKFrameBuffer::~VKFrameBuffer()
 {
-  if (!immutable_) {
-    render_pass_free();
-  }
+  render_pass_free();
 }
 
 /** \} */
@@ -85,15 +59,6 @@ Array<VkViewport, 16> VKFrameBuffer::vk_viewports_get() const
     viewport.height = viewport_[index][3];
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
-    /*
-     * Vulkan has origin to the top left, Blender bottom left. We counteract this by using a
-     * negative viewport when flip_viewport_ is set. This flips the viewport making any draw/blit
-     * use the correct orientation.
-     */
-    if (flip_viewport_) {
-      viewport.y = height_ - viewport_[index][1];
-      viewport.height = -viewport_[index][3];
-    }
     index++;
   }
   return viewports;
@@ -297,10 +262,8 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
   const VKFrameBuffer &dst_framebuffer = *unwrap(dst);
   const GPUAttachment &dst_attachment =
       dst_framebuffer.attachments_[GPU_FB_COLOR_ATTACHMENT0 + dst_slot];
-  VKTexture *dst_texture = nullptr;
-  VKTexture tmp_texture("FramebufferTexture");
-  dst_texture = unwrap(unwrap(dst_attachment.tex));
-  dst_texture->layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  VKTexture &dst_texture = *unwrap(unwrap(dst_attachment.tex));
+  dst_texture.layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
   VkImageBlit image_blit = {};
   image_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -325,13 +288,7 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
   image_blit.dstOffsets[1].y = dst_offset_x + src_texture.height_get();
   image_blit.dstOffsets[1].z = 1;
 
-  const bool should_flip = flip_viewport_ != dst_framebuffer.flip_viewport_;
-  if (should_flip) {
-    image_blit.dstOffsets[0].y = dst_framebuffer.height_ - dst_offset_y;
-    image_blit.dstOffsets[1].y = dst_framebuffer.height_ - dst_offset_y - src_texture.height_get();
-  }
-
-  context.command_buffer_get().blit(*dst_texture, src_texture, Span<VkImageBlit>(&image_blit, 1));
+  context.command_buffer_get().blit(dst_texture, src_texture, Span<VkImageBlit>(&image_blit, 1));
 }
 
 /** \} */
@@ -342,9 +299,6 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
 
 void VKFrameBuffer::update_attachments()
 {
-  if (immutable_) {
-    return;
-  }
   if (!dirty_attachments_) {
     return;
   }
@@ -357,7 +311,6 @@ void VKFrameBuffer::update_attachments()
 
 void VKFrameBuffer::render_pass_create()
 {
-  BLI_assert(!immutable_);
   BLI_assert(vk_render_pass_ == VK_NULL_HANDLE);
   BLI_assert(vk_framebuffer_ == VK_NULL_HANDLE);
 
@@ -490,7 +443,6 @@ void VKFrameBuffer::render_pass_create()
 
 void VKFrameBuffer::render_pass_free()
 {
-  BLI_assert(!immutable_);
   if (vk_render_pass_ == VK_NULL_HANDLE) {
     return;
   }
