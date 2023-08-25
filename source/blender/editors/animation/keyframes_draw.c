@@ -99,10 +99,18 @@ void draw_keyframe_shape(float x,
         UI_GetThemeColor4ubv(sel ? TH_KEYTYPE_MOVEHOLD_SELECT : TH_KEYTYPE_MOVEHOLD, fill_col);
         break;
       case BEZT_KEYTYPE_SURDEFBOUND: /* surface defrom GP bound */
-        fill_col[0] = 234;
-        fill_col[1] = 40;
-        fill_col[2] = 188;
-        fill_col[3] = 255;
+        if (sel) {
+          fill_col[0] = 255;
+          fill_col[1] = 130;
+          fill_col[2] = 237;
+          fill_col[3] = 255;
+        }
+        else {
+          fill_col[0] = 234;
+          fill_col[1] = 40;
+          fill_col[2] = 188;
+          fill_col[3] = 255;
+        }
       //  UI_GetThemeColor4ubv(sel ? TH_KEYTYPE_MOVEHOLD_SELECT : TH_KEYTYPE_MOVEHOLD, fill_col);
         break;
       case BEZT_KEYTYPE_KEYFRAME: /* traditional yellowish frames (default theme) */
