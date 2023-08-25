@@ -527,7 +527,7 @@ void do_versions_after_setup(Main *new_bmain, BlendFileReadReport *reports)
     BKE_lib_override_library_main_hierarchy_root_ensure(new_bmain);
   }
 
-  if (!blendfile_or_libraries_versions_atleast(new_bmain, 400, 17)) {
+  if (!blendfile_or_libraries_versions_atleast(new_bmain, 400, 19)) {
     BKE_main_mesh_legacy_convert_auto_smooth(*new_bmain);
   }
 }
