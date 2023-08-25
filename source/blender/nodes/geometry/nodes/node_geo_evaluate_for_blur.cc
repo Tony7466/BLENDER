@@ -468,8 +468,8 @@ class EvaluateForBlurFieldInput final : public bke::GeometryFieldInput {
 
   bool is_equal_to(const fn::FieldNode &other) const override
   {
-    if (const EvaluateForBlurFieldInput *other_blur = dynamic_cast<const EvaluateForBlurFieldInput *>(
-            &other))
+    if (const EvaluateForBlurFieldInput *other_blur =
+            dynamic_cast<const EvaluateForBlurFieldInput *>(&other))
     {
       return weight_field_ == other_blur->weight_field_ &&
              value_field_ == other_blur->value_field_ && iterations_ == other_blur->iterations_;
@@ -520,7 +520,8 @@ static void node_geo_exec(GeoNodeExecParams params)
 static void node_register()
 {
   static bNodeType ntype;
-  geo_node_type_base(&ntype, GEO_NODE_EVALUATE_FOR_BLUR, "Evaluate for Attribute", NODE_CLASS_CONVERTER);
+  geo_node_type_base(
+      &ntype, GEO_NODE_EVALUATE_FOR_BLUR, "Evaluate for Blur", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
