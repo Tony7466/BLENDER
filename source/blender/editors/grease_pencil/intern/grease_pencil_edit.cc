@@ -715,16 +715,24 @@ static void GREASE_PENCIL_OT_dissolve(wmOperatorType *ot)
 /** \name Delete Frame Operator
  * \{ */
 
-enum DeleteFrameMode {
+enum class DeleteFrameMode {
   /* delete active frame for the current layer */
-  ACTIVE_FRAME = 0,
+  ACTIVE_FRAME,
   /* delete active frames for all layers */
-  ALL_FRAMES = 1,
+  ALL_FRAMES,
 };
 
 static const EnumPropertyItem prop_greasepencil_deleteframe_types[] = {
-    {ACTIVE_FRAME, "ACTIVE_FRAME", 0, "Active Frame", "Deletes current frame in the active layer"},
-    {ALL_FRAMES, "ALL_FRAMES", 0, "All Active Frames", "Delete active frames for all layers"},
+    {int(DeleteFrameMode::ACTIVE_FRAME),
+     "ACTIVE_FRAME",
+     0,
+     "Active Frame",
+     "Deletes current frame in the active layer"},
+    {int(DeleteFrameMode::ALL_FRAMES),
+     "ALL_FRAMES",
+     0,
+     "All Active Frames",
+     "Delete active frames for all layers"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -739,13 +747,13 @@ static int grease_pencil_delete_frame_exec(bContext *C, wmOperator *op)
   const DeleteFrameMode mode = DeleteFrameMode(RNA_enum_get(op->ptr, "type"));
 
   bool changed = false;
-  if (mode == ACTIVE_FRAME && grease_pencil.has_active_layer()) {
+  if (mode == DeleteFrameMode::ACTIVE_FRAME && grease_pencil.has_active_layer()) {
     bke::greasepencil::Layer &layer = *grease_pencil.get_active_layer_for_write();
     if (layer.is_editable()) {
       changed |= grease_pencil.remove_frames(layer, {layer.frame_key_at(current_frame)});
     }
   }
-  else if (mode == ALL_FRAMES) {
+  else if (mode == DeleteFrameMode::ALL_FRAMES) {
     for (bke::greasepencil::Layer *layer : grease_pencil.layers_for_write()) {
       if (layer->is_editable()) {
         changed |= grease_pencil.remove_frames(*layer, {layer->frame_key_at(current_frame)});
