@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation
+/* SPDX-FileCopyrightText: 2018 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,10 +18,10 @@
 #include "DNA_screen_types.h"
 #include "DNA_shader_fx_types.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "FX_shader_types.h"
 #include "FX_ui_common.h"
@@ -50,18 +50,18 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "mode", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   if (ELEM(mode, eShaderFxColorizeMode_Custom, eShaderFxColorizeMode_Duotone)) {
     const char *text = (mode == eShaderFxColorizeMode_Duotone) ? IFACE_("Low Color") :
                                                                  IFACE_("Color");
-    uiItemR(layout, ptr, "low_color", 0, text, ICON_NONE);
+    uiItemR(layout, ptr, "low_color", UI_ITEM_NONE, text, ICON_NONE);
   }
   if (mode == eShaderFxColorizeMode_Duotone) {
-    uiItemR(layout, ptr, "high_color", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "high_color", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
-  uiItemR(layout, ptr, "factor", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "factor", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   shaderfx_panel_end(layout, ptr);
 }

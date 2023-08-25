@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,7 +12,8 @@
 
 #include "BLI_utildefines.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_span.hh"
 
 #include "BLT_translation.h"
@@ -37,10 +38,10 @@
 #include "BKE_object_deform.h"
 #include "BKE_screen.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "MOD_ui_common.hh"
@@ -159,7 +160,7 @@ static void dm_mvert_map_doubles(int *doubles_map,
                                  const int source_verts_num,
                                  const float dist)
 {
-  const float dist3 = (float(M_SQRT3) + 0.00005f) * dist; /* Just above sqrt(3) */
+  const float dist3 = (float(M_SQRT3) + 0.00005f) * dist; /* Just above `sqrt(3)`. */
   int i_source, i_target, i_target_low_bound, target_end, source_end;
   SortVertsElem *sve_source, *sve_target, *sve_target_low_bound;
   bool target_scan_completed;
@@ -282,7 +283,7 @@ static void mesh_merge_transform(Mesh *result,
                                  int cap_nfaces,
                                  int *remap,
                                  int remap_len,
-                                 const bool recalc_normals_later)
+                                 MutableSpan<float3> dst_vert_normals)
 {
   using namespace blender;
   int *index_orig;
@@ -305,8 +306,7 @@ static void mesh_merge_transform(Mesh *result,
   }
 
   /* We have to correct normals too, if we do not tag them as dirty later! */
-  if (!recalc_normals_later) {
-    float(*dst_vert_normals)[3] = BKE_mesh_vert_normals_for_write(result);
+  if (!dst_vert_normals.is_empty()) {
     for (i = 0; i < cap_nverts; i++) {
       mul_mat3_m4_v3(cap_offset, dst_vert_normals[cap_verts_index + i]);
       normalize_v3(dst_vert_normals[cap_verts_index + i]);
@@ -583,11 +583,10 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
 
   unit_m4(current_offset);
   blender::Span<blender::float3> src_vert_normals;
-  float(*dst_vert_normals)[3] = nullptr;
+  Vector<float3> dst_vert_normals;
   if (!use_recalc_normals) {
     src_vert_normals = mesh->vert_normals();
-    dst_vert_normals = BKE_mesh_vert_normals_for_write(result);
-    BKE_mesh_vert_normals_clear_dirty(result);
+    dst_vert_normals.reinitialize(result->totvert);
   }
 
   for (c = 1; c < count; c++) {
@@ -608,7 +607,7 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
       mul_m4_v3(current_offset, result_positions[i_dst]);
 
       /* We have to correct normals too, if we do not tag them as dirty! */
-      if (!use_recalc_normals) {
+      if (!dst_vert_normals.is_empty()) {
         copy_v3_v3(dst_vert_normals[i_dst], src_vert_normals[i]);
         mul_mat3_m4_v3(current_offset, dst_vert_normals[i_dst]);
         normalize_v3(dst_vert_normals[i_dst]);
@@ -758,7 +757,7 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
                          start_cap_nfaces,
                          vgroup_start_cap_remap,
                          vgroup_start_cap_remap_len,
-                         use_recalc_normals);
+                         dst_vert_normals);
     /* Identify doubles with first chunk */
     if (use_merge) {
       dm_mvert_map_doubles(full_doubles_map,
@@ -788,7 +787,7 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
                          end_cap_nfaces,
                          vgroup_end_cap_remap,
                          vgroup_end_cap_remap_len,
-                         use_recalc_normals);
+                         dst_vert_normals);
     /* Identify doubles with last chunk */
     if (use_merge) {
       dm_mvert_map_doubles(full_doubles_map,
@@ -801,6 +800,10 @@ static Mesh *arrayModifier_doArray(ArrayModifierData *amd,
     }
   }
   /* done capping */
+
+  if (!dst_vert_normals.is_empty()) {
+    blender::bke::mesh_vert_normals_assign(*result, std::move(dst_vert_normals));
+  }
 
   /* Handle merging */
   tot_doubles = 0;
@@ -880,17 +883,17 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "fit_type", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "fit_type", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   int fit_type = RNA_enum_get(ptr, "fit_type");
   if (fit_type == MOD_ARR_FIXEDCOUNT) {
-    uiItemR(layout, ptr, "count", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "count", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   else if (fit_type == MOD_ARR_FITLENGTH) {
-    uiItemR(layout, ptr, "fit_length", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "fit_length", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   else if (fit_type == MOD_ARR_FITCURVE) {
-    uiItemR(layout, ptr, "curve", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "curve", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
   modifier_panel_end(layout, ptr);
@@ -902,7 +905,7 @@ static void relative_offset_header_draw(const bContext * /*C*/, Panel *panel)
 
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
 
-  uiItemR(layout, ptr, "use_relative_offset", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_relative_offset", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void relative_offset_draw(const bContext * /*C*/, Panel *panel)
@@ -916,7 +919,7 @@ static void relative_offset_draw(const bContext * /*C*/, Panel *panel)
   uiLayout *col = uiLayoutColumn(layout, false);
 
   uiLayoutSetActive(col, RNA_boolean_get(ptr, "use_relative_offset"));
-  uiItemR(col, ptr, "relative_offset_displace", 0, IFACE_("Factor"), ICON_NONE);
+  uiItemR(col, ptr, "relative_offset_displace", UI_ITEM_NONE, IFACE_("Factor"), ICON_NONE);
 }
 
 static void constant_offset_header_draw(const bContext * /*C*/, Panel *panel)
@@ -925,7 +928,7 @@ static void constant_offset_header_draw(const bContext * /*C*/, Panel *panel)
 
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
 
-  uiItemR(layout, ptr, "use_constant_offset", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_constant_offset", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void constant_offset_draw(const bContext * /*C*/, Panel *panel)
@@ -939,7 +942,7 @@ static void constant_offset_draw(const bContext * /*C*/, Panel *panel)
   uiLayout *col = uiLayoutColumn(layout, false);
 
   uiLayoutSetActive(col, RNA_boolean_get(ptr, "use_constant_offset"));
-  uiItemR(col, ptr, "constant_offset_displace", 0, IFACE_("Distance"), ICON_NONE);
+  uiItemR(col, ptr, "constant_offset_displace", UI_ITEM_NONE, IFACE_("Distance"), ICON_NONE);
 }
 
 /**
@@ -951,7 +954,7 @@ static void object_offset_header_draw(const bContext * /*C*/, Panel *panel)
 
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
 
-  uiItemR(layout, ptr, "use_object_offset", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_object_offset", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void object_offset_draw(const bContext * /*C*/, Panel *panel)
@@ -965,7 +968,7 @@ static void object_offset_draw(const bContext * /*C*/, Panel *panel)
   uiLayout *col = uiLayoutColumn(layout, false);
 
   uiLayoutSetActive(col, RNA_boolean_get(ptr, "use_object_offset"));
-  uiItemR(col, ptr, "offset_object", 0, IFACE_("Object"), ICON_NONE);
+  uiItemR(col, ptr, "offset_object", UI_ITEM_NONE, IFACE_("Object"), ICON_NONE);
 }
 
 static void symmetry_panel_header_draw(const bContext * /*C*/, Panel *panel)
@@ -974,7 +977,7 @@ static void symmetry_panel_header_draw(const bContext * /*C*/, Panel *panel)
 
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
 
-  uiItemR(layout, ptr, "use_merge_vertices", 0, IFACE_("Merge"), ICON_NONE);
+  uiItemR(layout, ptr, "use_merge_vertices", UI_ITEM_NONE, IFACE_("Merge"), ICON_NONE);
 }
 
 static void symmetry_panel_draw(const bContext * /*C*/, Panel *panel)
@@ -987,8 +990,13 @@ static void symmetry_panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayout *col = uiLayoutColumn(layout, false);
   uiLayoutSetActive(col, RNA_boolean_get(ptr, "use_merge_vertices"));
-  uiItemR(col, ptr, "merge_threshold", 0, IFACE_("Distance"), ICON_NONE);
-  uiItemR(col, ptr, "use_merge_vertices_cap", 0, IFACE_("First and Last Copies"), ICON_NONE);
+  uiItemR(col, ptr, "merge_threshold", UI_ITEM_NONE, IFACE_("Distance"), ICON_NONE);
+  uiItemR(col,
+          ptr,
+          "use_merge_vertices_cap",
+          UI_ITEM_NONE,
+          IFACE_("First and Last Copies"),
+          ICON_NONE);
 }
 
 static void uv_panel_draw(const bContext * /*C*/, Panel *panel)
@@ -1015,8 +1023,8 @@ static void caps_panel_draw(const bContext * /*C*/, Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, ptr, "start_cap", 0, IFACE_("Cap Start"), ICON_NONE);
-  uiItemR(col, ptr, "end_cap", 0, IFACE_("End"), ICON_NONE);
+  uiItemR(col, ptr, "start_cap", UI_ITEM_NONE, IFACE_("Cap Start"), ICON_NONE);
+  uiItemR(col, ptr, "end_cap", UI_ITEM_NONE, IFACE_("End"), ICON_NONE);
 }
 
 static void panel_register(ARegionType *region_type)

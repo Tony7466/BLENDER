@@ -9,7 +9,6 @@
 #include "BLI_utildefines.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 
 #include "BLT_translation.h"
 
@@ -29,10 +28,10 @@
 #include "BKE_screen.h"
 #include "BKE_texture.h" /* Texture masking. */
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "DEG_depsgraph_build.h"
@@ -459,15 +458,15 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiItemS(layout);
 
-  uiItemR(layout, ptr, "default_weight_a", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "default_weight_b", 0, IFACE_("B"), ICON_NONE);
+  uiItemR(layout, ptr, "default_weight_a", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "default_weight_b", UI_ITEM_NONE, IFACE_("B"), ICON_NONE);
 
   uiItemS(layout);
 
-  uiItemR(layout, ptr, "mix_set", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "mix_mode", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "mix_set", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "mix_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  uiItemR(layout, ptr, "normalize", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "normalize", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   modifier_panel_end(layout, ptr);
 }

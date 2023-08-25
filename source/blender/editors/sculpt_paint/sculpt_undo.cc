@@ -36,7 +36,6 @@
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_string.h"
 #include "BLI_task.h"
 #include "BLI_threads.h"
@@ -57,27 +56,27 @@
 #include "BKE_layer.h"
 #include "BKE_main.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
-#include "BKE_multires.h"
+#include "BKE_mesh_runtime.hh"
+#include "BKE_multires.hh"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_scene.h"
-#include "BKE_subdiv_ccg.h"
-#include "BKE_subsurf.h"
+#include "BKE_subdiv_ccg.hh"
+#include "BKE_subsurf.hh"
 #include "BKE_undo_system.h"
 
 /* TODO(sergey): Ideally should be no direct call to such low level things. */
-#include "BKE_subdiv_eval.h"
+#include "BKE_subdiv_eval.hh"
 
 #include "DEG_depsgraph.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_geometry.h"
-#include "ED_object.h"
-#include "ED_sculpt.h"
-#include "ED_undo.h"
+#include "ED_geometry.hh"
+#include "ED_object.hh"
+#include "ED_sculpt.hh"
+#include "ED_undo.hh"
 
 #include "bmesh.h"
 #include "sculpt_intern.hh"
@@ -303,7 +302,7 @@ static void update_cb_partial(PBVHNode *node, void *userdata)
 {
   PartialUpdateData *data = static_cast<PartialUpdateData *>(userdata);
   if (BKE_pbvh_type(data->pbvh) == PBVH_GRIDS) {
-    int *node_grid_indices;
+    const int *node_grid_indices;
     int totgrid;
     bool update = false;
     BKE_pbvh_node_get_grids(
@@ -659,7 +658,7 @@ static void sculpt_undo_bmesh_restore_generic(SculptUndoNode *unode, Object *ob,
   }
 
   if (unode->type == SCULPT_UNDO_MASK) {
-    Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
+    Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
 
     TaskParallelSettings settings;
     BKE_pbvh_parallel_range_settings(&settings, true, nodes.size());
@@ -878,14 +877,13 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase
   Object *ob = BKE_view_layer_active_object_get(view_layer);
   SculptSession *ss = ob->sculpt;
   SubdivCCG *subdiv_ccg = ss->subdiv_ccg;
-  SculptUndoNode *unode;
   bool update = false, rebuild = false, update_mask = false, update_visibility = false;
   bool update_face_sets = false;
   bool need_mask = false;
   bool need_refine_subdiv = false;
   bool clear_automask_cache = false;
 
-  for (unode = static_cast<SculptUndoNode *>(lb->first); unode; unode = unode->next) {
+  LISTBASE_FOREACH (SculptUndoNode *, unode, lb) {
     if (!ELEM(unode->type, SCULPT_UNDO_COLOR, SCULPT_UNDO_MASK)) {
       clear_automask_cache = true;
     }
@@ -933,7 +931,7 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase
   char *undo_modified_grids = nullptr;
   bool use_multires_undo = false;
 
-  for (unode = static_cast<SculptUndoNode *>(lb->first); unode; unode = unode->next) {
+  LISTBASE_FOREACH (SculptUndoNode *, unode, lb) {
 
     if (!STREQ(unode->idname, ob->id.name)) {
       continue;
@@ -1016,7 +1014,7 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase
   }
 
   if (use_multires_undo) {
-    for (unode = static_cast<SculptUndoNode *>(lb->first); unode; unode = unode->next) {
+    LISTBASE_FOREACH (SculptUndoNode *, unode, lb) {
       if (!STREQ(unode->idname, ob->id.name)) {
         continue;
       }
@@ -1052,7 +1050,7 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase
     data.modified_mask_verts = modified_mask_verts;
     data.modified_color_verts = modified_color_verts;
     data.modified_face_set_faces = modified_face_set_faces;
-    BKE_pbvh_search_callback(ss->pbvh, nullptr, nullptr, update_cb_partial, &data);
+    BKE_pbvh_search_callback(ss->pbvh, {}, update_cb_partial, &data);
     BKE_pbvh_update_bounds(ss->pbvh, PBVH_UpdateBB | PBVH_UpdateOriginalBB | PBVH_UpdateRedraw);
 
     if (update_mask) {
@@ -1067,8 +1065,6 @@ static void sculpt_undo_restore_list(bContext *C, Depsgraph *depsgraph, ListBase
       if (ELEM(BKE_pbvh_type(ss->pbvh), PBVH_FACES, PBVH_GRIDS)) {
         Mesh *me = (Mesh *)ob->data;
         BKE_pbvh_sync_visibility_from_verts(ss->pbvh, me);
-
-        BKE_pbvh_update_hide_attributes_from_mesh(ss->pbvh);
       }
 
       BKE_pbvh_update_visibility(ss->pbvh);
@@ -1229,7 +1225,8 @@ static size_t sculpt_undo_alloc_and_store_hidden(PBVH *pbvh, SculptUndoNode *uno
   PBVHNode *node = static_cast<PBVHNode *>(unode->node);
   BLI_bitmap **grid_hidden = BKE_pbvh_grid_hidden(pbvh);
 
-  int *grid_indices, totgrid;
+  const int *grid_indices;
+  int totgrid;
   BKE_pbvh_node_get_grids(pbvh, node, &grid_indices, &totgrid, nullptr, nullptr, nullptr);
 
   size_t alloc_size = sizeof(*unode->grid_hidden) * size_t(totgrid);
@@ -1308,7 +1305,7 @@ static SculptUndoNode *sculpt_undo_alloc_node(Object *ob, PBVHNode *node, Sculpt
   int totgrid = 0;
   int maxgrid = 0;
   int gridsize = 0;
-  int *grids = nullptr;
+  const int *grids = nullptr;
 
   SculptUndoNode *unode = sculpt_undo_alloc_node_type(ob, type);
   unode->node = node;
@@ -1652,7 +1649,8 @@ SculptUndoNode *SCULPT_undo_push_node(Object *ob, PBVHNode *node, SculptUndoType
    */
 
   if (unode->grids) {
-    int totgrid, *grids;
+    int totgrid;
+    const int *grids;
     BKE_pbvh_node_get_grids(ss->pbvh, node, &grids, &totgrid, nullptr, nullptr, nullptr);
     memcpy(unode->grids, grids, sizeof(int) * totgrid);
   }
@@ -1794,10 +1792,9 @@ void SCULPT_undo_push_end(Object *ob)
 void SCULPT_undo_push_end_ex(Object *ob, const bool use_nested_undo)
 {
   UndoSculpt *usculpt = sculpt_undo_get_nodes();
-  SculptUndoNode *unode;
 
   /* We don't need normals in the undo stack. */
-  for (unode = static_cast<SculptUndoNode *>(usculpt->nodes.first); unode; unode = unode->next) {
+  LISTBASE_FOREACH (SculptUndoNode *, unode, &usculpt->nodes) {
     if (unode->no) {
       usculpt->undo_size -= MEM_allocN_len(unode->no);
       MEM_freeN(unode->no);
@@ -2145,7 +2142,7 @@ static void sculpt_undo_push_all_grids(Object *object)
     return;
   }
 
-  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
   for (PBVHNode *node : nodes) {
     SculptUndoNode *unode = SCULPT_undo_push_node(object, node, SCULPT_UNDO_COORDS);
     unode->node = nullptr;

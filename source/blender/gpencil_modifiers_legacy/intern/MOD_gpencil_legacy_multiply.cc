@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,6 +18,7 @@
 #include "DNA_screen_types.h"
 
 #include "BLI_listbase.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
@@ -36,10 +37,10 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "MOD_gpencil_legacy_modifiertypes.h"
 #include "MOD_gpencil_legacy_ui_common.h"
@@ -182,9 +183,8 @@ static void duplicateStroke(Object *ob,
 static void generate_geometry(GpencilModifierData *md, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
   MultiplyGpencilModifierData *mmd = (MultiplyGpencilModifierData *)md;
-  bGPDstroke *gps;
-  ListBase duplicates = {0};
-  for (gps = static_cast<bGPDstroke *>(gpf->strokes.first); gps; gps = gps->next) {
+  ListBase duplicates = {nullptr};
+  LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
     if (!is_stroke_affected_by_modifier(ob,
                                         mmd->layername,
                                         mmd->material,
@@ -263,11 +263,11 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "duplicates", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "duplicates", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   col = uiLayoutColumn(layout, false);
   uiLayoutSetActive(layout, RNA_int_get(ptr, "duplicates") > 0);
-  uiItemR(col, ptr, "distance", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "distance", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "offset", UI_ITEM_R_SLIDER, nullptr, ICON_NONE);
 
   gpencil_modifier_panel_end(layout, ptr);
@@ -279,7 +279,7 @@ static void fade_header_draw(const bContext * /*C*/, Panel *panel)
 
   PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
-  uiItemR(layout, ptr, "use_fade", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_fade", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void fade_panel_draw(const bContext * /*C*/, Panel *panel)
@@ -294,7 +294,7 @@ static void fade_panel_draw(const bContext * /*C*/, Panel *panel)
   uiLayoutSetActive(layout, RNA_boolean_get(ptr, "use_fade"));
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, ptr, "fading_center", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "fading_center", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(col, ptr, "fading_thickness", UI_ITEM_R_SLIDER, nullptr, ICON_NONE);
   uiItemR(col, ptr, "fading_opacity", UI_ITEM_R_SLIDER, nullptr, ICON_NONE);
 }

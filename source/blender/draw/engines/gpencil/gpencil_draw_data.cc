@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -187,7 +187,8 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
                        V3D_SHADING_VERTEX_COLOR :
                        pd->v3d_color_type;
   const eV3DShadingLightingMode lighting_mode = eV3DShadingLightingMode(
-      (pd->v3d != nullptr) ? pd->v3d->shading.light : V3D_LIGHTING_STUDIO);
+      (pd->v3d != nullptr) ? eV3DShadingLightingMode(pd->v3d->shading.light) :
+                             V3D_LIGHTING_STUDIO);
 
   GPENCIL_MaterialPool *pool = matpool;
   for (int i = 0; i < mat_len; i++) {
@@ -233,13 +234,6 @@ GPENCIL_MaterialPool *gpencil_material_pool_create(GPENCIL_PrivateData *pd, Obje
     }
     if (gp_style->flag & GP_MATERIAL_IS_FILL_HOLDOUT) {
       mat_data->flag |= GP_FILL_HOLDOUT;
-    }
-
-    if (gp_style->flag & GP_MATERIAL_STROKE_SHOW) {
-      mat_data->flag |= GP_SHOW_STROKE;
-    }
-    if (gp_style->flag & GP_MATERIAL_FILL_SHOW) {
-      mat_data->flag |= GP_SHOW_FILL;
     }
 
     gp_style = gpencil_viewport_material_overrides(pd, ob, color_type, gp_style, lighting_mode);
@@ -465,7 +459,7 @@ static void gpencil_view_layer_data_free(void *storage)
   BLI_memblock_destroy(vldata->gp_vfx_pool, nullptr);
 }
 
-GPENCIL_ViewLayerData *GPENCIL_view_layer_data_ensure(void)
+GPENCIL_ViewLayerData *GPENCIL_view_layer_data_ensure()
 {
   GPENCIL_ViewLayerData **vldata = (GPENCIL_ViewLayerData **)DRW_view_layer_engine_data_ensure(
       &draw_engine_gpencil_type, gpencil_view_layer_data_free);

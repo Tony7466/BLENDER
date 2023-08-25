@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -27,10 +27,10 @@
 #include "GPU_material.h"
 #include "GPU_shader.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "wm_window.h"
+#include "wm_window.hh"
 
 #include "draw_manager.h"
 
@@ -633,7 +633,7 @@ struct DRWShaderLibrary {
   uint64_t libs_deps[MAX_LIB];
 };
 
-DRWShaderLibrary *DRW_shader_library_create(void)
+DRWShaderLibrary *DRW_shader_library_create()
 {
   return static_cast<DRWShaderLibrary *>(
       MEM_callocN(sizeof(DRWShaderLibrary), "DRWShaderLibrary"));
@@ -689,7 +689,7 @@ static uint64_t drw_shader_dependencies_get(const DRWShaderLibrary *lib,
                 dbg_name);
     }
     else {
-      deps |= 1llu << ((uint64_t)dep);
+      deps |= 1llu << uint64_t(dep);
     }
   }
   return deps;
@@ -724,7 +724,7 @@ char *DRW_shader_library_create_shader_string(const DRWShaderLibrary *lib, const
   DynStr *ds = BLI_dynstr_new();
   /* Add all dependencies recursively. */
   for (int i = MAX_LIB - 1; i > -1; i--) {
-    if (lib->libs[i] && (deps & (1llu << (uint64_t)i))) {
+    if (lib->libs[i] && (deps & (1llu << uint64_t(i)))) {
       deps |= lib->libs_deps[i];
     }
   }
