@@ -864,11 +864,11 @@ class NODE_PT_overlay(Panel):
             col.prop(overlay, "show_named_attributes", text="Named Attributes")
 
 
-class NODE_PT_node_tree_declaration(Panel):
+class NODE_PT_node_tree_interface(Panel):
     bl_space_type = 'NODE_EDITOR'
     bl_region_type = 'UI'
     bl_category = "Group"
-    bl_label = "Sockets"
+    bl_label = "Interface"
 
     @classmethod
     def poll(cls, context):
@@ -1135,7 +1135,7 @@ classes = (
     NODE_PT_material_slots,
     NODE_PT_geometry_node_asset_traits,
     NODE_PT_node_color_presets,
-    NODE_PT_node_tree_declaration,
+    NODE_PT_node_tree_interface,
     NODE_PT_active_node_generic,
     NODE_PT_active_node_color,
     NODE_PT_texture_mapping,
