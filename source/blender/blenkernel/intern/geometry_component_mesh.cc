@@ -861,7 +861,7 @@ static void tag_component_positions_changed(void *owner)
 static void tag_component_corner_normals_dirty(void *owner)
 {
   if (Mesh *mesh = static_cast<Mesh *>(owner)) {
-    mesh->runtime->corner_normals_dirty = true;
+    mesh->runtime->corner_normals_cache.tag_dirty();
   }
 }
 
