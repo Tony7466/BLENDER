@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Virtual shadowmapping: Usage tagging
@@ -23,7 +26,7 @@ void main()
     return;
   }
 
-  vec2 uv = vec2(texel) / vec2(tex_size);
+  vec2 uv = (vec2(texel) + 0.5) / vec2(tex_size);
   vec3 vP = get_view_space_from_depth(uv, depth);
   vec3 P = transform_point(ViewMatrixInverse, vP);
   vec2 pixel = vec2(gl_GlobalInvocationID.xy);

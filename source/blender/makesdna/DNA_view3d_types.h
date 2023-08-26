@@ -10,7 +10,7 @@
 
 struct BoundBox;
 struct Object;
-struct RenderEngine;
+struct ViewRender;
 struct SmoothView3DStore;
 struct SpaceLink;
 struct bGPdata;
@@ -40,7 +40,7 @@ typedef struct RegionView3D {
   float persmat[4][4];
   /** Inverse of persmat. */
   float persinv[4][4];
-  /** Offset/scale for camera glsl texcoords. */
+  /** Offset/scale for camera GLSL texture-coordinates. */
   float viewcamtexcofac[4];
 
   /** viewmat/persmat multiplied with object matrix, while drawing and selection. */
@@ -58,7 +58,7 @@ typedef struct RegionView3D {
 
   /** Allocated backup of itself while in local-view. */
   struct RegionView3D *localvd;
-  struct RenderEngine *render_engine;
+  struct ViewRender *view_render;
 
   /** Animated smooth view. */
   struct SmoothView3DStore *sms;
@@ -252,6 +252,7 @@ typedef enum eHandleDisplay {
 typedef struct View3D_Runtime {
   /** Nkey panel stores stuff here. */
   void *properties_storage;
+  void (*properties_storage_free)(void *properties_storage);
   /** Runtime only flags. */
   int flag;
 

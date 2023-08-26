@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,14 +6,14 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "BLI_path_util.h"
 #include "BLI_utildefines.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "rna_internal.h"
 
@@ -21,7 +21,7 @@
 
 #  include "BKE_global.h"
 #  include "BKE_main.h"
-#  include "BKE_mesh.h"
+#  include "BKE_mesh.hh"
 
 /* all the list begin functions are added manually here, Main is not in SDNA */
 
@@ -120,9 +120,6 @@ RNA_MAIN_LISTBASE_FUNCS_DEF(pointclouds)
 RNA_MAIN_LISTBASE_FUNCS_DEF(scenes)
 RNA_MAIN_LISTBASE_FUNCS_DEF(screens)
 RNA_MAIN_LISTBASE_FUNCS_DEF(shapekeys)
-#  ifdef WITH_SIMULATION_DATABLOCK
-RNA_MAIN_LISTBASE_FUNCS_DEF(simulations)
-#  endif
 RNA_MAIN_LISTBASE_FUNCS_DEF(sounds)
 RNA_MAIN_LISTBASE_FUNCS_DEF(speakers)
 RNA_MAIN_LISTBASE_FUNCS_DEF(texts)
@@ -157,7 +154,7 @@ static PointerRNA rna_Test_test_get(PointerRNA *ptr)
 #else
 
 /* local convenience types */
-typedef void(CollectionDefFunc)(BlenderRNA *brna, PropertyRNA *cprop);
+using CollectionDefFunc = void(BlenderRNA *brna, PropertyRNA *cprop);
 
 struct MainCollectionDef {
   const char *identifier;
@@ -173,7 +170,7 @@ void RNA_def_main(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  /* plural must match idtypes in readblenentry.c */
+  /* Plural must match ID-types in `readblenentry.cc`. */
   MainCollectionDef lists[] = {
       {"cameras",
        "Camera",
@@ -408,14 +405,6 @@ void RNA_def_main(BlenderRNA *brna)
        "Volumes",
        "Volume data-blocks",
        RNA_def_main_volumes},
-#  ifdef WITH_SIMULATION_DATABLOCK
-      {"simulations",
-       "Simulation",
-       "rna_Main_simulations_begin",
-       "Simulations",
-       "Simulation data-blocks",
-       RNA_def_main_simulations},
-#  endif
       {nullptr, nullptr, nullptr, nullptr, nullptr, nullptr},
   };
 
@@ -430,7 +419,7 @@ void RNA_def_main(BlenderRNA *brna)
   prop = RNA_def_property(srna, "filepath", PROP_STRING, PROP_FILEPATH);
   RNA_def_property_string_maxlength(prop, FILE_MAX);
   RNA_def_property_string_funcs(
-      prop, "rna_Main_filepath_get", "rna_Main_filepath_length", "rna_Main_filepath_set");
+      prop, "rna_Main_filepath_get", "rna_Main_filepath_length", nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Filename", "Path to the .blend file");
 

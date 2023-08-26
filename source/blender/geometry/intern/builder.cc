@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+//#include <iostream>
+
 #include "BLI_linear_allocator.hh"
 #include "BLI_map.hh"
 #include "BLI_offset_indices.hh"
@@ -115,33 +117,33 @@ Mesh &Builder::mesh() const
   return *result;
 }
 
-void Builder::status(std::stringstream &stream) const
+void Builder::status(std::stringstream &/*stream*/) const
 {
-  stream << "Status:\n";
-  stream << "  Has mesh: " << ((result != nullptr) ? "True" : "False") << ";\n";
-  stream << "  Customs{\n";
-  mesh_primitives_.lookup("Vertices").status(stream, "    Vertices");
-  mesh_primitives_.lookup("Edges").status(stream, "    Edges");
-  mesh_primitives_.lookup("Corners").status(stream, "    Corners");
-  mesh_primitives_.lookup("Faces").status(stream, "    Faces");
-  stream << "};\n";
+  //stream << "Status:\n";
+  //stream << "  Has mesh: " << ((result != nullptr) ? "True" : "False") << ";\n";
+  //stream << "  Customs{\n";
+  //mesh_primitives_.lookup("Vertices").status(stream, "    Vertices");
+  //mesh_primitives_.lookup("Edges").status(stream, "    Edges");
+  //mesh_primitives_.lookup("Corners").status(stream, "    Corners");
+  //mesh_primitives_.lookup("Faces").status(stream, "    Faces");
+  //stream << "};\n";
 }
 
-void Builder::Branch::status(std::stringstream &stream, const char *pref) const
+void Builder::Branch::status(std::stringstream &/*stream*/, const char */*pref*/) const
 {
-  for (const int index : this->ordered_elements.index_range()) {
-    const Builder::OffsetRange &offset_range = this->ordered_elements[index];
-    std::stringstream prefix;
-    prefix << pref << ": " << index << ": ";
-    offset_range.status(stream, prefix.str().data());
-  }
+  //for (const int index : this->ordered_elements.index_range()) {
+  //  const Builder::OffsetRange &offset_range = this->ordered_elements[index];
+  //  std::stringstream prefix;
+  //  prefix << pref << ": " << index << ": ";
+  //  offset_range.status(stream, prefix.str().data());
+  //}
 }
 
-void Builder::OffsetRange::status(std::stringstream &stream, const char *pref) const
+void Builder::OffsetRange::status(std::stringstream &/*stream*/, const char */*pref*/) const
 {
-  stream << pref << "{Start: " << range.start();
-  stream << " : Size: " << range.size();
-  stream << ", End: " << range.one_after_last() << "}\n";
+  //stream << pref << "{Start: " << range.start();
+  //stream << " : Size: " << range.size();
+  //stream << ", End: " << range.one_after_last() << "}\n";
 }
 
 }  // namespace blender::geometry::builder

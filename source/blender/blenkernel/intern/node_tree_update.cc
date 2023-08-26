@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -25,8 +25,9 @@
 #include "BKE_node_tree_anonymous_attributes.hh"
 #include "BKE_node_tree_update.h"
 
-#include "MOD_nodes.h"
+#include "MOD_nodes.hh"
 
+#include "NOD_geometry_nodes_lazy_function.hh"
 #include "NOD_node_declaration.hh"
 #include "NOD_socket.hh"
 #include "NOD_texture.h"
@@ -368,6 +369,10 @@ class NodeTreeMainUpdater {
         }
       }
 
+      if (result.output_changed) {
+        ntree->runtime->geometry_nodes_lazy_function_graph_info.reset();
+      }
+
       if (params_) {
         relations_.ensure_owner_ids();
         ID *id = relations_.get_owner_id(ntree);
@@ -473,6 +478,7 @@ class NodeTreeMainUpdater {
     this->update_internal_links(ntree);
     this->update_generic_callback(ntree);
     this->remove_unused_previews_when_necessary(ntree);
+    this->make_node_previews_dirty(ntree);
 
     this->propagate_runtime_flags(ntree);
     if (ntree.type == NTREE_GEOMETRY) {
@@ -581,6 +587,15 @@ class NodeTreeMainUpdater {
     /* Check paired simulation zone nodes. */
     if (node.type == GEO_NODE_SIMULATION_INPUT) {
       const NodeGeometrySimulationInput *data = static_cast<const NodeGeometrySimulationInput *>(
+          node.storage);
+      if (const bNode *output_node = ntree.node_by_id(data->output_node_id)) {
+        if (output_node->runtime->changed_flag & NTREE_CHANGED_NODE_PROPERTY) {
+          return true;
+        }
+      }
+    }
+    if (node.type == GEO_NODE_REPEAT_INPUT) {
+      const NodeGeometryRepeatInput *data = static_cast<const NodeGeometryRepeatInput *>(
           node.storage);
       if (const bNode *output_node = ntree.node_by_id(data->output_node_id)) {
         if (output_node->runtime->changed_flag & NTREE_CHANGED_NODE_PROPERTY) {
@@ -707,6 +722,19 @@ class NodeTreeMainUpdater {
       return;
     }
     blender::bke::node_preview_remove_unused(&ntree);
+  }
+
+  void make_node_previews_dirty(bNodeTree &ntree)
+  {
+    ntree.runtime->previews_refresh_state++;
+    for (bNode *node : ntree.all_nodes()) {
+      if (node->type != NODE_GROUP) {
+        continue;
+      }
+      if (bNodeTree *nested_tree = reinterpret_cast<bNodeTree *>(node->id)) {
+        this->make_node_previews_dirty(*nested_tree);
+      }
+    }
   }
 
   void propagate_runtime_flags(const bNodeTree &ntree)

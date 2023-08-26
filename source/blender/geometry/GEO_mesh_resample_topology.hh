@@ -19,8 +19,7 @@ namespace blender::geometry {
  */
 Mesh *resample_topology(const Mesh &mesh,
                         const Span<int> resample_edge_num,
-                        const IndexMask &mask,
-                        const bool fill_grid,
+                        const IndexMask &face_mask,
                         Map<bke::AttributeIDRef, bke::AttributeKind> attributes);
 
 }  // namespace blender::geometry

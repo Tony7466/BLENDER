@@ -330,7 +330,7 @@ void attribute_on_domain(const eAttrDomain domain,
 
           MutableSpan<T> poly_dst_vert_vertices = dst_typed_values.slice(poly_vert_mapping);
           polys_have_created_new_verts<T>(face_vertices_offsets,
-                                          src_mesh.polys(),
+                                          src_mesh.faces(),
                                           src_mesh.corner_verts(),
                                           src_mesh.corner_edges(),
                                           resample_edge_num,
@@ -520,11 +520,11 @@ void compute_mesh(const Mesh &mesh,
     /* Face grid. */
     builder.push_element_by_size("Corners", "of Grid Resampled Face", 0);
 
-    const OffsetIndices<int> src_polys = mesh.polys();
+    const OffsetIndices<int> src_polys = mesh.faces();
     const Span<int> src_loop_edges = mesh.corner_edges();
 
     VArray<int> new_verts_for_original_faces = VArray<int>::ForFunc(
-        mesh.totpoly, [resample_edge_num, src_loop_edges, src_polys](const int poly_index) -> int {
+        mesh.faces_num, [resample_edge_num, src_loop_edges, src_polys](const int poly_index) -> int {
           const Span<int> poly_edges = src_loop_edges.slice(src_polys[poly_index]);
 
           if (poly_edges.size() != 4) {
@@ -565,7 +565,7 @@ void compute_mesh(const Mesh &mesh,
         "Corners", "of Non-Grid Resampled Face", std::move(new_corners_for_original_faces));
 
     /* New faces for original faces. */
-    builder.push_element_by_size("Faces", "of Face N-gon", mesh.totpoly);
+    builder.push_element_by_size("Faces", "of Face N-gon", mesh.faces_num);
   }
 
   builder.finalize();
@@ -590,9 +590,9 @@ void build_topology(const Mesh &mesh,
     /* pass */
   }
   else {
-    build_faces(mesh.polys(),
+    build_faces(mesh.faces(),
                 builder.lookup_offsets("Corners", "of Non-Grid Resampled Face"),
-                result.poly_offsets_for_write());
+                result.face_offsets_for_write());
     build_faces_loops(mesh.edges(),
                       mesh.corner_verts(),
                       mesh.corner_edges(),
@@ -656,17 +656,16 @@ static void propagate_attributes(const Mesh &src_mesh,
 
 Mesh *resample_topology(const Mesh &mesh,
                         const Span<int> resample_edge_num,
-                        const IndexMask & /*mask*/,
-                        const bool fill_grid,
+                        const IndexMask &/*face_mask*/,
                         Map<bke::AttributeIDRef, bke::AttributeKind> attributes)
 {
   builder::MeshBuilder builder;
-  compute_mesh(mesh, resample_edge_num, fill_grid, builder);
-  build_topology(mesh, resample_edge_num, fill_grid, builder);
+  compute_mesh(mesh, resample_edge_num, false, builder);
+  build_topology(mesh, resample_edge_num, false, builder);
   attributes.remove(".edge_verts");
   attributes.remove(".corner_edge");
   attributes.remove(".corner_vert");
-  propagate_attributes(mesh, resample_edge_num, fill_grid, builder, attributes);
+  propagate_attributes(mesh, resample_edge_num, false, builder, attributes);
 
   return &builder.mesh();
 }
