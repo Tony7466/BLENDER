@@ -178,23 +178,6 @@ class DATA_PT_context_mesh(MeshButtonsPanel, Panel):
             layout.template_ID(space, "pin_id")
 
 
-class DATA_PT_normals(MeshButtonsPanel, Panel):
-    bl_label = "Normals"
-    bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'BLENDER_WORKBENCH_NEXT'}
-
-    def draw(self, context):
-        layout = self.layout
-        layout.use_property_split = True
-
-        mesh = context.mesh
-
-        if mesh.has_custom_normals:
-            layout.operator("mesh.customdata_custom_splitnormals_clear", icon='X')
-        else:
-            layout.operator("mesh.customdata_custom_splitnormals_add", icon='ADD')
-
-
 class DATA_PT_texture_space(MeshButtonsPanel, Panel):
     bl_label = "Texture Space"
     bl_options = {'DEFAULT_CLOSED'}
@@ -434,6 +417,11 @@ class DATA_PT_customdata(MeshButtonsPanel, Panel):
         col.operator("mesh.customdata_mask_clear", icon='X')
         col.operator("mesh.customdata_skin_clear", icon='X')
 
+        if me.has_custom_normals:
+            col.operator("mesh.customdata_custom_splitnormals_clear", icon='X')
+        else:
+            col.operator("mesh.customdata_custom_splitnormals_add", icon='ADD')
+
 
 class DATA_PT_custom_props_mesh(MeshButtonsPanel, PropertyPanel, Panel):
     COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE', 'BLENDER_WORKBENCH', 'BLENDER_WORKBENCH_NEXT'}
@@ -655,7 +643,6 @@ classes = (
     DATA_PT_uv_texture,
     DATA_PT_vertex_colors,
     DATA_PT_mesh_attributes,
-    DATA_PT_normals,
     DATA_PT_texture_space,
     DATA_PT_remesh,
     DATA_PT_customdata,
