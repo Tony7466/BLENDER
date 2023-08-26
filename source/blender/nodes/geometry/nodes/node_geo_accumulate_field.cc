@@ -443,30 +443,22 @@ static void node_geo_exec(GeoNodeExecParams params)
   });
 }
 
-static bool accumulate_field_type_supported(const EnumPropertyItem &item)
-{
-  return ELEM(item.value, CD_PROP_FLOAT, CD_PROP_FLOAT3, CD_PROP_INT32);
-}
-
-const EnumPropertyItem *rna_GeoNodeAccumulateField_type_itemf(bContext * /*C*/,
-                                                              PointerRNA * /*ptr*/,
-                                                              PropertyRNA * /*prop*/,
-                                                              bool *r_free)
-{
-  *r_free = true;
-  return enum_items_filter(rna_enum_attribute_type_items, accumulate_field_type_supported);
-}
-
 static void node_rna(StructRNA *srna)
 {
-  RNA_def_node_enum(srna,
-                    "data_type",
-                    "Data Type",
-                    "Type of data stored in attribute",
-                    rna_enum_attribute_type_items,
-                    NOD_storage_enum_accessors(data_type),
-                    CD_PROP_FLOAT,
-                    rna_GeoNodeAccumulateField_type_itemf);
+  RNA_def_node_enum(
+      srna,
+      "data_type",
+      "Data Type",
+      "Type of data stored in attribute",
+      rna_enum_attribute_type_items,
+      NOD_storage_enum_accessors(data_type),
+      CD_PROP_FLOAT,
+      [](bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free) {
+        *r_free = true;
+        return enum_items_filter(rna_enum_attribute_type_items, [](const EnumPropertyItem &item) {
+          return ELEM(item.value, CD_PROP_FLOAT, CD_PROP_FLOAT3, CD_PROP_INT32);
+        });
+      });
 
   RNA_def_node_enum(srna,
                     "domain",

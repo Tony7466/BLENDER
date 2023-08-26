@@ -206,28 +206,26 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Geometry", std::move(geometry_set));
 }
 
-static const EnumPropertyItem *rna_GeometryNodeAttributeType_type_itemf(bContext * /*C*/,
-                                                                        PointerRNA * /*ptr*/,
-                                                                        PropertyRNA * /*prop*/,
-                                                                        bool *r_free)
-{
-  *r_free = true;
-  return enum_items_filter(rna_enum_attribute_type_items, enums::generic_attribute_type_supported);
-}
-
 static void node_rna(StructRNA *srna)
 {
-  RNA_def_node_enum(srna,
-                    "data_type",
-                    "Data Type", "Type of data stored in attribute",
-                    rna_enum_attribute_type_items,
-                    NOD_storage_enum_accessors(data_type),
-                    CD_PROP_FLOAT,
-                    rna_GeometryNodeAttributeType_type_itemf);
+  RNA_def_node_enum(
+      srna,
+      "data_type",
+      "Data Type",
+      "Type of data stored in attribute",
+      rna_enum_attribute_type_items,
+      NOD_storage_enum_accessors(data_type),
+      CD_PROP_FLOAT,
+      [](bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free) {
+        *r_free = true;
+        return enum_items_filter(rna_enum_attribute_type_items,
+                                 enums::generic_attribute_type_supported);
+      });
 
   RNA_def_node_enum(srna,
                     "domain",
-                    "Domain", "Which domain to store the data in",
+                    "Domain",
+                    "Which domain to store the data in",
                     rna_enum_attribute_domain_items,
                     NOD_storage_enum_accessors(domain),
                     ATTR_DOMAIN_POINT);

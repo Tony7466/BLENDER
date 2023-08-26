@@ -90,9 +90,6 @@ const EnumPropertyItem *attribute_type_type_with_socket_fn(bContext * /*C*/,
 
 bool generic_attribute_type_supported(const EnumPropertyItem &item)
 {
-  if (!U.experimental.use_rotation_socket && item.value == CD_PROP_QUATERNION) {
-    return false;
-  }
   return ELEM(item.value,
               CD_PROP_FLOAT,
               CD_PROP_FLOAT2,
