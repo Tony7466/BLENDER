@@ -356,8 +356,8 @@ ShadowRayPrototype shadow_ray_generate_punctual(LightData light, vec2 random_2d,
   vec3 direction = point_on_light_shape - lP;
   /* Clip the ray to not cross the near plane. */
   float clip_near = intBitsToFloat(light.clip_near);
-  /* Scale it so that it encompass the whole cube. */
-  float clip_distance = clip_near * M_SQRT3;
+  /* Scale it so that it encompass the whole cube (with a safety margin). */
+  float clip_distance = clip_near * M_SQRT3 * 1.05 + 0.01;
   float ray_length = length(direction);
   direction *= saturate((ray_length - clip_distance) / ray_length);
 
@@ -388,7 +388,7 @@ ShadowRay shadow_ray_project_punctual(LightData light, int face_id, ShadowRayPro
   ShadowRay ray;
   ray.origin = uv_ray_start;
   ray.direction = uv_ray_end - uv_ray_start;
-  ray.tilemap_index = face_id;
+  ray.tilemap_index = light.tilemap_index + face_id;
   /* Debug. */
   ray.viewinv = mat4x4(mat4x3(light.object_mat));
   ray.wininv = invert(winmat);
