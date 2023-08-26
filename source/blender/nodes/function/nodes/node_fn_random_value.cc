@@ -2,14 +2,14 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-// #include "BLI_hash.h"
 #include "BLI_noise.hh"
 
 #include "node_function_util.hh"
 
 #include "NOD_socket_search_link.hh"
 
-#include "BLI_math_quaternion.hh"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 namespace blender::nodes::node_fn_random_value_cc {
 
@@ -41,10 +41,9 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Float>("Value", "Value_001").dependent_field();
   b.add_output<decl::Int>("Value", "Value_002").dependent_field();
   b.add_output<decl::Bool>("Value", "Value_003").dependent_field();
-  b.add_output<decl::Rotation>("Value", "Value_004").dependent_field();
 }
 
-static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+static void node_layout(uiLayout* layout, bContext* /*C*/, PointerRNA* ptr)
 {
   uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
 }
@@ -73,7 +72,6 @@ static void fn_node_random_value_update(bNodeTree *ntree, bNode *node)
   bNodeSocket *sock_out_float = sock_out_vector->next;
   bNodeSocket *sock_out_int = sock_out_float->next;
   bNodeSocket *sock_out_bool = sock_out_int->next;
-  bNodeSocket* sock_out_rotation = sock_out_bool->next;
 
   bke::nodeSetSocketAvailability(ntree, sock_min_vector, data_type == CD_PROP_FLOAT3);
   bke::nodeSetSocketAvailability(ntree, sock_max_vector, data_type == CD_PROP_FLOAT3);
@@ -87,7 +85,6 @@ static void fn_node_random_value_update(bNodeTree *ntree, bNode *node)
   bke::nodeSetSocketAvailability(ntree, sock_out_float, data_type == CD_PROP_FLOAT);
   bke::nodeSetSocketAvailability(ntree, sock_out_int, data_type == CD_PROP_INT32);
   bke::nodeSetSocketAvailability(ntree, sock_out_bool, data_type == CD_PROP_BOOL);
-  bke::nodeSetSocketAvailability(ntree, sock_out_rotation, data_type == CD_PROP_QUATERNION);
 }
 
 static std::optional<eCustomDataType> node_type_from_other_socket(const bNodeSocket &socket)
@@ -102,8 +99,6 @@ static std::optional<eCustomDataType> node_type_from_other_socket(const bNodeSoc
     case SOCK_VECTOR:
     case SOCK_RGBA:
       return CD_PROP_FLOAT3;
-    case SOCK_ROTATION:
-      return CD_PROP_QUATERNION;
     default:
       return {};
   }
@@ -190,25 +185,6 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
             return noise::hash_to_float(id, seed) <= probability;
           },
           mf::build::exec_presets::SomeSpanOrSingle<1>());
-      builder.set_matching_fn(fn);
-      break;
-    }
-    case CD_PROP_QUATERNION: {
-      static auto fn = mf::build::SI2_SO<int, int, math::Quaternion>(
-        "Random Quaternion",
-        [](int id, int seed) -> math::Quaternion {
-          const float s = noise::hash_to_float(seed, id, 0);
-          const float sigma1 = math::sqrt(1.0f - s);
-          const float sigma2 = math::sqrt(s);
-          const float theta1 = M_PI * 2 * noise::hash_to_float(seed, id, 1);
-          const float theta2 = M_PI * 2 * noise::hash_to_float(seed, id, 2);
-          const float w = math::cos(theta2) * sigma2;
-          const float x = math::sin(theta1) * sigma1;
-          const float y = math::cos(theta1) * sigma1;
-          const float z = math::sin(theta2) * sigma2;
-          return math::Quaternion(w, x, y, z);
-        },
-        mf::build::exec_presets::SomeSpanOrSingle<2>());
       builder.set_matching_fn(fn);
       break;
     }

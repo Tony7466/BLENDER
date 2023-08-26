@@ -2040,9 +2040,6 @@ static const EnumPropertyItem *rna_FunctionNodeRandomValue_type_itemf(bContext *
 
   const auto type_supported = [&](const EnumPropertyItem* item) -> bool {
     const eCustomDataType data_type = eCustomDataType(item->value);
-    if (U.experimental.use_rotation_socket && data_type == CD_PROP_QUATERNION) {
-        return true;
-    }
     return ELEM(data_type, CD_PROP_FLOAT, CD_PROP_FLOAT3, CD_PROP_BOOL, CD_PROP_INT32);
   };
 
