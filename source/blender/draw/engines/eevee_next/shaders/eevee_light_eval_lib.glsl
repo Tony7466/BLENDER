@@ -42,9 +42,13 @@ void light_eval_ex(ClosureDiffuse diffuse,
     vec3 lL = light_world_to_local(light, -L) * dist;
     vec3 lNg = light_world_to_local(light, Ng);
 
-#ifdef EEVEE_SAMPLING_DATA
+#ifdef SURFEL_LIGHT
+    ShadowEvalResult shadow = shadow_eval(light, is_directional, lL, 16, 8);
+#else
     ShadowEvalResult shadow = shadow_eval(light, is_directional, lL, 1, 16);
-#  ifdef SSS_TRANSMITTANCE
+#endif
+
+#ifdef SSS_TRANSMITTANCE
     /* Transmittance evaluation first to use initial visibility without shadow. */
     if (diffuse.sss_id != 0u && light.diffuse_power > 0.0) {
       float delta = max(thickness, shadow.occluder_distance);
@@ -60,16 +64,9 @@ void light_eval_ex(ClosureDiffuse diffuse,
                                          delta);
       out_diffuse += light.color * intensity;
     }
-#  endif
+#endif
     visibility *= shadow.visibilty;
     out_shadow *= shadow.visibilty;
-#else
-    /* TODO(fclem): Support soft shadows in surfel light eval. */
-    ShadowSample samp = shadow_sample(
-        is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, lL, lNg, P);
-    visibility *= float(samp.occluder_delta + samp.bias >= 0.0);
-    out_shadow *= float(samp.occluder_delta + samp.bias >= 0.0);
-#endif
   }
 
   if (visibility < 1e-6) {
