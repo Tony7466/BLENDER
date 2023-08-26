@@ -48,7 +48,7 @@ static float3 face_center_calc_ngon(const Span<float3> vert_positions, const Spa
   const float w = 1.0f / float(face_verts.size());
 
   float3 center(0);
-  for (const auto i : face_verts.index_range()) {
+  for (const int64_t i : face_verts.index_range()) {
     center += vert_positions[face_verts[i]] * w;
   }
   return center;
@@ -84,7 +84,7 @@ float face_area_calc(const Span<float3> vert_positions, const Span<int> face_ver
                        vert_positions[face_verts[2]]);
   }
   Array<float3, 32> coords(face_verts.size());
-  for (const auto i : face_verts.index_range()) {
+  for (const int64_t i : face_verts.index_range()) {
     coords[i] = vert_positions[face_verts[i]];
   }
   return area_poly_v3((const float(*)[3])coords.data(), face_verts.size());
@@ -99,7 +99,7 @@ float BKE_mesh_calc_area(const Mesh *me)
   const Span<int> corner_verts = me->corner_verts();
 
   float total_area = 0.0f;
-  for (const auto i : faces.index_range()) {
+  for (const int64_t i : faces.index_range()) {
     total_area += blender::bke::mesh::face_area_calc(positions, corner_verts.slice(faces[i]));
   }
   return total_area;

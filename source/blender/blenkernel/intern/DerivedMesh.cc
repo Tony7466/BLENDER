@@ -1744,7 +1744,7 @@ static void mesh_init_origspace(Mesh *mesh)
 
   blender::Vector<blender::float2, 64> vcos_2d;
 
-  for (const auto i : faces.index_range()) {
+  for (const int64_t i : faces.index_range()) {
     const blender::IndexRange face = faces[i];
     OrigSpaceLoop *lof = lof_array + face.start();
 

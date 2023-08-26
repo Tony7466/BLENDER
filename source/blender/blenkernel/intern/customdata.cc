@@ -3905,14 +3905,14 @@ void CustomData_bmesh_copy_data_exclude_by_type(const CustomData *source,
 
   BitVector<> copied_layers(dest->totlayer);
 
-  for (auto layer_src_i : IndexRange(source->totlayer)) {
+  for (int64_t layer_src_i : IndexRange(source->totlayer)) {
     const CustomDataLayer &layer_src = source->layers[layer_src_i];
 
     if (CD_TYPE_AS_MASK(layer_src.type) & mask_exclude) {
       continue;
     }
 
-    for (auto layer_dst_i : IndexRange(dest->totlayer)) {
+    for (int64_t layer_dst_i : IndexRange(dest->totlayer)) {
       CustomDataLayer &layer_dst = dest->layers[layer_dst_i];
 
       if (!customdata_layer_copy_check(layer_src, layer_dst)) {

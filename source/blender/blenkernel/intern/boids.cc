@@ -486,7 +486,7 @@ static bool rule_follow_leader(BoidRule *rule,
   float vec[3] = {0.0f, 0.0f, 0.0f}, loc[3] = {0.0f, 0.0f, 0.0f};
   float mul, len;
   int i, n = (flbr->queue_size <= 1) ? bbd->sim->psys->totpart : flbr->queue_size;
-  auto p = pa - bbd->sim->psys->particles;
+  intptr_t p = pa - bbd->sim->psys->particles;
   bool ret = false;
 
   if (flbr->ob) {
