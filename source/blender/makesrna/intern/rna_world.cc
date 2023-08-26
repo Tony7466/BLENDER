@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,10 +6,10 @@
  * \ingroup RNA
  */
 
-#include <float.h>
-#include <stdlib.h>
+#include <cfloat>
+#include <cstdlib>
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "rna_internal.h"
 
@@ -18,7 +18,7 @@
 #include "DNA_texture_types.h"
 #include "DNA_world_types.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 #ifdef RNA_RUNTIME
 
@@ -32,9 +32,9 @@
 #  include "DEG_depsgraph.h"
 #  include "DEG_depsgraph_build.h"
 
-#  include "ED_node.h"
+#  include "ED_node.hh"
 
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
 static PointerRNA rna_World_lighting_get(PointerRNA *ptr)
 {
@@ -130,14 +130,6 @@ static void rna_def_lighting(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "Lighting", "Lighting for a World data-block");
 
   /* ambient occlusion */
-  prop = RNA_def_property(srna, "use_ambient_occlusion", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "mode", WO_AMB_OCC);
-  RNA_def_property_ui_text(
-      prop,
-      "Use Ambient Occlusion",
-      "Use Ambient Occlusion to add shadowing based on distance between objects");
-  RNA_def_property_update(prop, 0, "rna_World_update");
-
   prop = RNA_def_property(srna, "ao_factor", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, nullptr, "aoenergy");
   RNA_def_property_range(prop, 0, INT_MAX);

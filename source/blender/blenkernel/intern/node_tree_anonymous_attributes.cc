@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,6 +12,8 @@
 #include "BLI_bit_span_ops.hh"
 
 #include "BLI_resource_scope.hh"
+
+#include <sstream>
 
 namespace blender::bke::anonymous_attribute_inferencing {
 namespace aal = nodes::aal;
@@ -93,6 +95,48 @@ static const aal::RelationsInNode &get_relations_in_node(const bNode &node, Reso
           }
           else {
             relations.available_relations.append({i, last_geometry_index});
+          }
+        }
+      }
+    }
+    return relations;
+  }
+  if (ELEM(node.type, GEO_NODE_REPEAT_INPUT, GEO_NODE_REPEAT_OUTPUT)) {
+    aal::RelationsInNode &relations = scope.construct<aal::RelationsInNode>();
+    /* TODO: Add a smaller set of relations. This requires changing the inferencing algorithm to
+     * make it aware of loops. */
+    for (const bNodeSocket *socket : node.output_sockets()) {
+      if (socket->type == SOCK_GEOMETRY) {
+        for (const bNodeSocket *other_output : node.output_sockets()) {
+          if (socket_is_field(*other_output)) {
+            relations.available_relations.append({other_output->index(), socket->index()});
+          }
+        }
+        for (const bNodeSocket *input_socket : node.input_sockets()) {
+          if (input_socket->type == SOCK_GEOMETRY) {
+            relations.propagate_relations.append({input_socket->index(), socket->index()});
+          }
+        }
+      }
+      else if (socket_is_field(*socket)) {
+        /* Reference relations are not added for the output node, because then nodes after the
+         * repeat zone would have to know about the individual field sources within the repeat
+         * zone. This is not necessary, because the field outputs of a repeat zone already serve as
+         * field sources and anonymous attributes are extracted from them. */
+        if (node.type == GEO_NODE_REPEAT_INPUT) {
+          for (const bNodeSocket *input_socket : node.input_sockets()) {
+            if (socket_is_field(*input_socket)) {
+              relations.reference_relations.append({input_socket->index(), socket->index()});
+            }
+          }
+        }
+      }
+    }
+    for (const bNodeSocket *socket : node.input_sockets()) {
+      if (socket->type == SOCK_GEOMETRY) {
+        for (const bNodeSocket *other_input : node.input_sockets()) {
+          if (socket_is_field(*other_input)) {
+            relations.eval_relations.append({other_input->index(), socket->index()});
           }
         }
       }

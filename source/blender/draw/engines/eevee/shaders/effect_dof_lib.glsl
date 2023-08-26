@@ -1,9 +1,12 @@
+/* SPDX-FileCopyrightText: 2021-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 
-#define cocMul cocParams[0]  /* distance * aperturesize * invsensorsize */
-#define cocBias cocParams[1] /* aperturesize * invsensorsize */
+#define cocMul cocParams[0]  /* `distance * aperturesize * invsensorsize`. */
+#define cocBias cocParams[1] /* `aperturesize * invsensorsize`. */
 #define cocNear cocParams[2] /* Near view depths value. */
 #define cocFar cocParams[3]  /* Far view depths value. */
 
@@ -42,7 +45,7 @@
 
 /* -------------- Utils ------------- */
 /* For performance on macOS, constants declared within function scope utilize constant uniform
-   register space rather than per-thread, reducing spill and incrasing
+   register space rather than per-thread, reducing spill and increasing
    thread execution width - and thus performance */
 #define DEFINE_DOF_QUAD_OFFSETS \
   const vec2 quad_offsets[4] = vec2[4]( \
@@ -386,11 +389,13 @@ void dof_gather_accumulate_sample_pair(DofGatherData pair_data[2],
   /* TODO(@fclem): Promote to parameter? dither with Noise? */
   const float mirroring_min_distance = 15.0;
   if (pair_data[0].coc < mirroring_threshold &&
-      (pair_data[1].coc - mirroring_min_distance) > pair_data[0].coc) {
+      (pair_data[1].coc - mirroring_min_distance) > pair_data[0].coc)
+  {
     pair_data[1].coc = pair_data[0].coc;
   }
   else if (pair_data[1].coc < mirroring_threshold &&
-           (pair_data[0].coc - mirroring_min_distance) > pair_data[1].coc) {
+           (pair_data[0].coc - mirroring_min_distance) > pair_data[1].coc)
+  {
     pair_data[0].coc = pair_data[1].coc;
   }
 #endif

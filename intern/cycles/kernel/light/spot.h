@@ -27,7 +27,7 @@ ccl_device void spot_light_uv(const float3 ray,
                               ccl_private float *u,
                               ccl_private float *v)
 {
-  /* Ensures that the spot light projects the full image regarless of the spot angle. */
+  /* Ensures that the spot light projects the full image regardless of the spot angle. */
   const float factor = half_cot_half_spot_angle / ray.z;
 
   /* NOTE: Return barycentric coordinates in the same notation as Embree and OptiX. */
@@ -61,13 +61,12 @@ ccl_device_inline bool spot_light_sample(const ccl_global KernelLight *klight,
 
     if (in_volume_segment || one_minus_cos_half_angle < one_minus_cos_half_spot_spread) {
       /* Sample visible part of the sphere. */
-      sample_uniform_cone_concentric(
-          -lightN, one_minus_cos_half_angle, rand, &cos_theta, &ls->D, &ls->pdf);
+      ls->D = sample_uniform_cone(-lightN, one_minus_cos_half_angle, rand, &cos_theta, &ls->pdf);
     }
     else {
       /* Sample spread cone. */
-      sample_uniform_cone_concentric(
-          -klight->spot.dir, one_minus_cos_half_spot_spread, rand, &cos_theta, &ls->D, &ls->pdf);
+      ls->D = sample_uniform_cone(
+          -klight->spot.dir, one_minus_cos_half_spot_spread, rand, &cos_theta, &ls->pdf);
 
       if (!ray_sphere_intersect(P, ls->D, 0.0f, FLT_MAX, center, radius, &ls->P, &ls->t)) {
         /* Sampled direction does not intersect with the light. */

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -33,6 +33,7 @@
 
 struct Object;
 struct Depsgraph;
+struct Scene;
 
 namespace blender::nodes {
 
@@ -60,6 +61,12 @@ struct GeoNodesModifierData {
   float simulation_time_delta = 0.0f;
 
   /**
+   * The same as #prev_simulation_state, but the cached values can be moved from,
+   * to keep data managed by implicit sharing mutable.
+   */
+  bke::sim::ModifierSimulationState *prev_simulation_state_mutable = nullptr;
+
+  /**
    * Some nodes should be executed even when their output is not used (e.g. active viewer nodes and
    * the node groups they are contained in).
    */
@@ -79,6 +86,7 @@ struct GeoNodesOperatorData {
   const Object *self_object = nullptr;
   /** Current evaluated depsgraph. */
   Depsgraph *depsgraph = nullptr;
+  Scene *scene = nullptr;
 };
 
 /**
@@ -256,8 +264,8 @@ std::unique_ptr<LazyFunction> get_simulation_input_lazy_function(
     GeometryNodesLazyFunctionGraphInfo &own_lf_graph_info);
 std::unique_ptr<LazyFunction> get_switch_node_lazy_function(const bNode &node);
 
-bke::sim::SimulationZoneID get_simulation_zone_id(const GeoNodesLFUserData &user_data,
-                                                  const int output_node_id);
+std::optional<bke::sim::SimulationZoneID> get_simulation_zone_id(
+    const GeoNodesLFUserData &user_data, const int output_node_id);
 
 /**
  * An anonymous attribute created by a node.

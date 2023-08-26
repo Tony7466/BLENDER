@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2014 Blender Foundation
+# SPDX-FileCopyrightText: 2014 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -6,8 +6,6 @@ set(INC
   .
   ..
   ../..
-  ../../../makesdna
-  ../../../../../intern/guardedalloc
 )
 
 set(INC_SYS
@@ -15,7 +13,8 @@ set(INC_SYS
 
 set(LIB
   PRIVATE bf_blenlib
-  PRIVATE bf_intern_guardedalloc
+  PRIVATE bf::dna
+  PRIVATE PRIVATE bf::intern::guardedalloc
   PRIVATE bf::intern::atomic
 )
 

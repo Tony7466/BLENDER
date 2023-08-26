@@ -6,9 +6,9 @@
  * \ingroup edobj
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -33,7 +33,8 @@
 #include "BLI_kdtree.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -58,7 +59,7 @@
 #include "BKE_lattice.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_light.h"
@@ -66,7 +67,7 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mball.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_node.h"
 #include "BKE_object.h"
@@ -81,26 +82,26 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "ED_armature.h"
-#include "ED_curve.h"
-#include "ED_gpencil_legacy.h"
-#include "ED_keyframing.h"
-#include "ED_mesh.h"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_armature.hh"
+#include "ED_curve.hh"
+#include "ED_gpencil_legacy.hh"
+#include "ED_keyframing.hh"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
-#include "MOD_nodes.h"
+#include "MOD_nodes.hh"
 
 #include "object_intern.h"
 
@@ -810,7 +811,7 @@ struct ParentingContext {
   bool keep_transform;
 };
 
-static bool parent_set_nonvertex_parent(bContext *C, struct ParentingContext *parenting_context)
+static bool parent_set_nonvertex_parent(bContext *C, ParentingContext *parenting_context)
 {
   CTX_DATA_BEGIN (C, Object *, ob, selected_editable_objects) {
     if (ob == parenting_context->par) {
@@ -838,7 +839,7 @@ static bool parent_set_nonvertex_parent(bContext *C, struct ParentingContext *pa
 }
 
 static bool parent_set_vertex_parent_with_kdtree(bContext *C,
-                                                 struct ParentingContext *parenting_context,
+                                                 ParentingContext *parenting_context,
                                                  KDTree_3d *tree)
 {
   int vert_par[3] = {0, 0, 0};
@@ -868,7 +869,7 @@ static bool parent_set_vertex_parent_with_kdtree(bContext *C,
   return true;
 }
 
-static bool parent_set_vertex_parent(bContext *C, struct ParentingContext *parenting_context)
+static bool parent_set_vertex_parent(bContext *C, ParentingContext *parenting_context)
 {
   KDTree_3d *tree = nullptr;
   int tree_tot;
@@ -926,9 +927,10 @@ static int parent_set_invoke_menu(bContext *C, wmOperatorType *ot)
 
   PointerRNA opptr;
 #if 0
-  uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_OBJECT);
+  uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_OBJECT);
 #else
-  uiItemFullO_ptr(layout, ot, IFACE_("Object"), ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, 0, &opptr);
+  uiItemFullO_ptr(
+      layout, ot, IFACE_("Object"), ICON_NONE, nullptr, WM_OP_EXEC_DEFAULT, UI_ITEM_NONE, &opptr);
   RNA_enum_set(&opptr, "type", PAR_OBJECT);
   RNA_boolean_set(&opptr, "keep_transform", false);
 
@@ -938,7 +940,7 @@ static int parent_set_invoke_menu(bContext *C, wmOperatorType *ot)
                   ICON_NONE,
                   nullptr,
                   WM_OP_EXEC_DEFAULT,
-                  0,
+                  UI_ITEM_NONE,
                   &opptr);
   RNA_enum_set(&opptr, "type", PAR_OBJECT);
   RNA_boolean_set(&opptr, "keep_transform", true);
@@ -960,7 +962,7 @@ static int parent_set_invoke_menu(bContext *C, wmOperatorType *ot)
 
   struct {
     bool mesh, gpencil, curves;
-  } has_children_of_type = {0};
+  } has_children_of_type = {false};
 
   CTX_DATA_BEGIN (C, Object *, child, selected_editable_objects) {
     if (child == parent) {
@@ -979,24 +981,24 @@ static int parent_set_invoke_menu(bContext *C, wmOperatorType *ot)
   CTX_DATA_END;
 
   if (parent->type == OB_ARMATURE) {
-    uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_ARMATURE);
-    uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_ARMATURE_NAME);
+    uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_ARMATURE);
+    uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_ARMATURE_NAME);
     if (!has_children_of_type.gpencil) {
-      uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_ARMATURE_ENVELOPE);
+      uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_ARMATURE_ENVELOPE);
     }
     if (has_children_of_type.mesh || has_children_of_type.gpencil) {
-      uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_ARMATURE_AUTO);
+      uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_ARMATURE_AUTO);
     }
-    uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_BONE);
-    uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_BONE_RELATIVE);
+    uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_BONE);
+    uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_BONE_RELATIVE);
   }
   else if (parent->type == OB_CURVES_LEGACY) {
-    uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_CURVE);
-    uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_FOLLOW);
-    uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_PATH_CONST);
+    uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_CURVE);
+    uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_FOLLOW);
+    uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_PATH_CONST);
   }
   else if (parent->type == OB_LATTICE) {
-    uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_LATTICE);
+    uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_LATTICE);
   }
   else if (parent->type == OB_MESH) {
     if (has_children_of_type.curves) {
@@ -1006,8 +1008,8 @@ static int parent_set_invoke_menu(bContext *C, wmOperatorType *ot)
 
   /* vertex parenting */
   if (OB_TYPE_SUPPORT_PARVERT(parent->type)) {
-    uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_VERTEX);
-    uiItemEnumO_ptr(layout, ot, nullptr, 0, "type", PAR_VERTEX_TRI);
+    uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_VERTEX);
+    uiItemEnumO_ptr(layout, ot, nullptr, ICON_NONE, "type", PAR_VERTEX_TRI);
   }
 
   UI_popup_menu_end(C, pup);
@@ -1353,7 +1355,7 @@ void OBJECT_OT_track_set(wmOperatorType *ot)
  * \{ */
 
 #if 0
-static void link_to_scene(Main * /*bmain*/, ushort  /*nr*/)
+static void link_to_scene(Main * /*bmain*/, ushort /*nr*/)
 {
   Scene *sce = (Scene *)BLI_findlink(&bmain->scene, G.curscreen->scenenr - 1);
   Base *base, *nbase;
@@ -1402,6 +1404,8 @@ static int make_links_scene_exec(bContext *C, wmOperator *op)
     BKE_collection_object_add(bmain, collection_to, base->object);
   }
   CTX_DATA_END;
+
+  DEG_id_tag_update(&collection_to->id, ID_RECALC_HIERARCHY);
 
   DEG_relations_tag_update(bmain);
 
@@ -1524,11 +1528,12 @@ static int make_links_data_exec(bContext *C, wmOperator *op)
           case MAKE_LINKS_ANIMDATA:
             BKE_animdata_copy_id(bmain, (ID *)ob_dst, (ID *)ob_src, 0);
             if (ob_dst->data && ob_src->data) {
-              if (!BKE_id_is_editable(bmain, obdata_id)) {
-                is_lib = true;
-                break;
+              if (BKE_id_is_editable(bmain, obdata_id)) {
+                BKE_animdata_copy_id(bmain, (ID *)ob_dst->data, (ID *)ob_src->data, 0);
               }
-              BKE_animdata_copy_id(bmain, (ID *)ob_dst->data, (ID *)ob_src->data, 0);
+              else {
+                is_lib = true;
+              }
             }
             DEG_id_tag_update(&ob_dst->id,
                               ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION);
@@ -1650,7 +1655,7 @@ void OBJECT_OT_make_links_scene(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  prop = RNA_def_enum(ot->srna, "scene", DummyRNA_NULL_items, 0, "Scene", "");
+  prop = RNA_def_enum(ot->srna, "scene", rna_enum_dummy_NULL_items, 0, "Scene", "");
   RNA_def_enum_funcs(prop, RNA_scene_local_itemf);
   RNA_def_property_flag(prop, PROP_ENUM_NO_TRANSLATE);
   ot->prop = prop;
@@ -2106,17 +2111,20 @@ static void tag_localizable_objects(bContext *C, const int mode)
 
   /* Also forbid making objects local if other library objects are using
    * them for modifiers or constraints.
+   *
+   * FIXME This is ignoring all other linked ID types potentially using the selected tagged
+   * objects! Probably works fine in most 'usual' cases though.
    */
   for (Object *object = static_cast<Object *>(bmain->objects.first); object;
        object = static_cast<Object *>(object->id.next))
   {
-    if ((object->id.tag & LIB_TAG_DOIT) == 0) {
+    if ((object->id.tag & LIB_TAG_DOIT) == 0 && ID_IS_LINKED(object)) {
       BKE_library_foreach_ID_link(
           nullptr, &object->id, tag_localizable_looper, nullptr, IDWALK_READONLY);
     }
     if (object->data) {
       ID *data_id = (ID *)object->data;
-      if ((data_id->tag & LIB_TAG_DOIT) == 0) {
+      if ((data_id->tag & LIB_TAG_DOIT) == 0 && ID_IS_LINKED(data_id)) {
         BKE_library_foreach_ID_link(
             nullptr, data_id, tag_localizable_looper, nullptr, IDWALK_READONLY);
       }
@@ -2160,9 +2168,7 @@ static bool make_local_all__instance_indirect_unused(Main *bmain,
 
 static void make_local_animdata_tag_strips(ListBase *strips)
 {
-  NlaStrip *strip;
-
-  for (strip = static_cast<NlaStrip *>(strips->first); strip; strip = strip->next) {
+  LISTBASE_FOREACH (NlaStrip *, strip, strips) {
     if (strip->act) {
       strip->act->id.tag &= ~LIB_TAG_PRE_EXISTING;
     }
@@ -2207,7 +2213,6 @@ static void make_local_material_tag(Material *ma)
 static int make_local_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  ParticleSystem *psys;
   Material *ma, ***matarar;
   const int mode = RNA_enum_get(op->ptr, "type");
   int a;
@@ -2240,8 +2245,7 @@ static int make_local_exec(bContext *C, wmOperator *op)
 
       ob->id.tag &= ~LIB_TAG_PRE_EXISTING;
       make_local_animdata_tag(BKE_animdata_from_id(&ob->id));
-      for (psys = static_cast<ParticleSystem *>(ob->particlesystem.first); psys; psys = psys->next)
-      {
+      LISTBASE_FOREACH (ParticleSystem *, psys, &ob->particlesystem) {
         psys->part->id.tag &= ~LIB_TAG_PRE_EXISTING;
       }
 
@@ -2846,17 +2850,18 @@ void OBJECT_OT_make_single_user(wmOperatorType *ot)
   /* properties */
   ot->prop = RNA_def_enum(ot->srna, "type", type_items, MAKE_SINGLE_USER_SELECTED, "Type", "");
 
-  RNA_def_boolean(ot->srna, "object", 0, "Object", "Make single user objects");
-  RNA_def_boolean(ot->srna, "obdata", 0, "Object Data", "Make single user object data");
-  RNA_def_boolean(ot->srna, "material", 0, "Materials", "Make materials local to each data-block");
+  RNA_def_boolean(ot->srna, "object", false, "Object", "Make single user objects");
+  RNA_def_boolean(ot->srna, "obdata", false, "Object Data", "Make single user object data");
+  RNA_def_boolean(
+      ot->srna, "material", false, "Materials", "Make materials local to each data-block");
   RNA_def_boolean(ot->srna,
                   "animation",
-                  0,
+                  false,
                   "Object Animation",
                   "Make object animation data local to each object");
   RNA_def_boolean(ot->srna,
                   "obdata_animation",
-                  0,
+                  false,
                   "Object Data Animation",
                   "Make object data (mesh, curve etc.) animation data local to each object");
 }

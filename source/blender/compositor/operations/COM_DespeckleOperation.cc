@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -203,8 +203,8 @@ void DespeckleOperation::update_memory_buffer_partial(MemoryBuffer *output,
     COLOR_ADD(TOT_DIV_ONE)
 
 #if 0
-  const float* in2 = image->get_elem(x2, y2);
-  madd_v4_v4fl(color_mid, in2, filter_[4]);
+    const float *in2 = image->get_elem(x2, y2);
+    madd_v4_v4fl(color_mid, in2, filter_[4]);
 #endif
 
     in1 = image->get_elem(x3, y2);

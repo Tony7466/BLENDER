@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(eevee_cubemap_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_octahedron_lib.glsl)
@@ -13,5 +16,6 @@ vec4 reflection_probes_sample(vec3 L, float lod, ReflectionProbeData probe_data)
 
 vec3 reflection_probes_world_sample(vec3 L, float lod)
 {
-  return reflection_probes_sample(L, lod, reflection_probe_buf[0]).rgb;
+  ReflectionProbeData probe_data = reflection_probe_buf[0];
+  return reflection_probes_sample(L, lod, probe_data).rgb;
 }
