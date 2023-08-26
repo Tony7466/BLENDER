@@ -4813,7 +4813,12 @@ class VIEW3D_MT_edit_greasepencil_delete(Menu):
     def draw(self, _context):
         layout = self.layout
 
+        layout.operator_enum("grease_pencil.delete", "type")
+        
+        layout.separator()
+
         layout.operator_enum("grease_pencil.dissolve", "type")
+
 
 # Edit Curve
 # draw_curve is used by VIEW3D_MT_edit_curve and VIEW3D_MT_edit_surface
