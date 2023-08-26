@@ -111,7 +111,7 @@ def argparse_create() -> argparse.ArgumentParser:
     parser.add_argument(
         "--base",
         dest="base",
-        metavar='BASE',
+        metavar='BASE_PATH',
         default="",
         required=False,
         help="Base path.",
@@ -136,7 +136,7 @@ def argparse_create() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "backtraces",
-        nargs='?',
+        nargs="*",
         help="Back-trace files to scan for addresses.",
     )
 
@@ -198,10 +198,10 @@ def main() -> None:
     if args.backtraces:
         for backtrace_filepath in args.backtraces:
             try:
-                with open(backtrace_filepath, "utf-8", encoding="surrogateescape") as fh:
+                with open(backtrace_filepath, 'r', encoding="utf-8", errors="surrogateescape") as fh:
                     bactrace_data = fh.read()
             except BaseException as ex:
-                print("Filed to open {:r}, {:s}".format(backtrace_filepath, str(ex)))
+                print("Filed to open {!r}, {:s}".format(backtrace_filepath, str(ex)))
                 continue
 
             addr2line_for_filedata(args.exe, base_path, args.time_command, jobs, bactrace_data)
