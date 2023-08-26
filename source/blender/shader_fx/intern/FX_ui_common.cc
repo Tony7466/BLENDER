@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -21,18 +21,18 @@
 #include "DNA_screen_types.h"
 #include "DNA_shader_fx_types.h"
 
-#include "ED_object.h"
+#include "ED_object.hh"
 
 #include "BLT_translation.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "FX_ui_common.h" /* Self include */
 
@@ -121,6 +121,8 @@ static void gpencil_shaderfx_ops_extra_draw(bContext *C, uiLayout *layout, void 
   uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
 
   uiLayoutSetUnitsX(layout, 4.0f);
+
+  UI_block_flag_enable(uiLayoutGetBlock(layout), UI_BLOCK_IS_FLIP);
 
   /* Duplicate. */
   uiItemO(layout,

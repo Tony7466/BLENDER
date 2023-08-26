@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -765,6 +765,11 @@ class VIEW3D_HT_header(Header):
                     depress=(tool_settings.gpencil_selectmode_edit == 'STROKE'),
                 ).mode = 'STROKE'
 
+            if object_mode == 'PAINT_GREASE_PENCIL':
+                row = layout.row()
+                sub = row.row(align=True)
+                sub.prop(tool_settings, "use_gpencil_draw_additive", text="", icon='FREEZE')
+
         # Grease Pencil (legacy)
         if obj and obj.type == 'GPENCIL' and context.gpencil_data:
             gpd = context.gpencil_data
@@ -1015,9 +1020,12 @@ class VIEW3D_MT_editor_menus(Menu):
                 layout.menu("VIEW3D_MT_edit_mesh_edges")
                 layout.menu("VIEW3D_MT_edit_mesh_faces")
                 layout.menu("VIEW3D_MT_uv_map", text="UV")
+                layout.template_node_operator_asset_root_items()
             elif mode_string in {'EDIT_CURVE', 'EDIT_SURFACE'}:
                 layout.menu("VIEW3D_MT_edit_curve_ctrlpoints")
                 layout.menu("VIEW3D_MT_edit_curve_segments")
+            elif mode_string in {'EDIT_CURVES', 'EDIT_POINT_CLOUD'}:
+                layout.template_node_operator_asset_root_items()
             elif mode_string == 'EDIT_GREASE_PENCIL':
                 layout.menu("VIEW3D_MT_edit_greasepencil_stroke")
 
@@ -1027,6 +1035,7 @@ class VIEW3D_MT_editor_menus(Menu):
             if mode_string == 'SCULPT':
                 layout.menu("VIEW3D_MT_mask")
                 layout.menu("VIEW3D_MT_face_sets")
+                layout.template_node_operator_asset_root_items()
             if mode_string == 'SCULPT_CURVES':
                 layout.menu("VIEW3D_MT_select_sculpt_curves")
                 layout.menu("VIEW3D_MT_sculpt_curves")
@@ -1254,6 +1263,8 @@ class VIEW3D_MT_uv_map(Menu):
 
         layout.operator("uv.reset")
 
+        layout.template_node_operator_asset_menu_items(catalog_path="UV")
+
 
 # ********** View menus **********
 
@@ -1264,10 +1275,12 @@ class VIEW3D_MT_view(Menu):
     def draw(self, context):
         layout = self.layout
         view = context.space_data
+        prefs = context.preferences
 
         layout.prop(view, "show_region_toolbar")
         layout.prop(view, "show_region_ui")
         layout.prop(view, "show_region_tool_header")
+        layout.prop(view, "show_region_asset_shelf")
         layout.prop(view, "show_region_hud")
 
         layout.separator()
@@ -1763,6 +1776,8 @@ class VIEW3D_MT_select_edit_mesh(Menu):
         layout.operator("mesh.select_axis", text="Side of Active")
         layout.operator("mesh.select_mirror")
 
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
+
 
 class VIEW3D_MT_select_edit_curve(Menu):
     bl_label = "Select"
@@ -2133,8 +2148,9 @@ class VIEW3D_MT_select_paint_mask_vertex(Menu):
 class VIEW3D_MT_select_edit_point_cloud(Menu):
     bl_label = "Select"
 
-    def draw(_self, _context):
-        pass
+    def draw(self, _context):
+        layout = self.layout
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
 
 
 class VIEW3D_MT_edit_curves_select_more_less(Menu):
@@ -2166,6 +2182,8 @@ class VIEW3D_MT_select_edit_curves(Menu):
         layout.separator()
 
         layout.menu("VIEW3D_MT_edit_curves_select_more_less")
+
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
 
 
 class VIEW3D_MT_select_sculpt_curves(Menu):
@@ -2206,6 +2224,8 @@ class VIEW3D_MT_mesh_add(Menu):
 
         layout.operator("mesh.primitive_grid_add", text="Grid", icon='MESH_GRID')
         layout.operator("mesh.primitive_monkey_add", text="Monkey", icon='MESH_MONKEY')
+
+        layout.template_node_operator_asset_menu_items(catalog_path="Add")
 
 
 class VIEW3D_MT_curve_add(Menu):
@@ -3542,6 +3562,8 @@ class VIEW3D_MT_mask(Menu):
 
         layout.menu("VIEW3D_MT_random_mask", text="Random Mask")
 
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
+
 
 class VIEW3D_MT_face_sets(Menu):
     bl_label = "Face Sets"
@@ -3599,6 +3621,8 @@ class VIEW3D_MT_face_sets(Menu):
         layout.separator()
 
         props = layout.operator("sculpt.face_sets_randomize_colors", text="Randomize Colors")
+
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
 
 
 class VIEW3D_MT_sculpt_set_pivot(Menu):
@@ -4099,6 +4123,8 @@ class VIEW3D_MT_edit_mesh(Menu):
 
         layout.menu("VIEW3D_MT_edit_mesh_delete")
 
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
+
 
 class VIEW3D_MT_edit_mesh_context_menu(Menu):
     bl_label = ""
@@ -4418,6 +4444,8 @@ class VIEW3D_MT_edit_mesh_vertices(Menu):
 
         layout.operator("object.vertex_parent_set")
 
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
+
 
 class VIEW3D_MT_edit_mesh_edges(Menu):
     bl_label = "Edge"
@@ -4477,6 +4505,8 @@ class VIEW3D_MT_edit_mesh_edges(Menu):
 
             layout.operator("mesh.mark_freestyle_edge").clear = False
             layout.operator("mesh.mark_freestyle_edge", text="Clear Freestyle Edge").clear = True
+
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
 
 
 class VIEW3D_MT_edit_mesh_faces_data(Menu):
@@ -4562,6 +4592,8 @@ class VIEW3D_MT_edit_mesh_faces(Menu):
         layout.separator()
 
         layout.menu("VIEW3D_MT_edit_mesh_faces_data")
+
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
 
 
 class VIEW3D_MT_edit_mesh_normals_select_strength(Menu):
@@ -4773,6 +4805,15 @@ class VIEW3D_MT_edit_gpencil_delete(Menu):
 
         layout.operator("gpencil.delete", text="Delete Active Keyframe (Active Layer)").type = 'FRAME'
         layout.operator("gpencil.active_frames_delete_all", text="Delete Active Keyframes (All Layers)")
+
+
+class VIEW3D_MT_edit_greasepencil_delete(Menu):
+    bl_label = "Delete"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator_enum("grease_pencil.dissolve", "type")
 
 # Edit Curve
 # draw_curve is used by VIEW3D_MT_edit_curve and VIEW3D_MT_edit_surface
@@ -5540,7 +5581,8 @@ class VIEW3D_MT_edit_greasepencil(Menu):
     bl_label = "Grease Pencil"
 
     def draw(self, _context):
-        pass
+        layout = self.layout
+        layout.menu("VIEW3D_MT_edit_greasepencil_delete")
 
 
 class VIEW3D_MT_edit_greasepencil_stroke(Menu):
@@ -5561,13 +5603,15 @@ class VIEW3D_MT_edit_curves(Menu):
         layout.menu("VIEW3D_MT_transform")
         layout.separator()
         layout.operator("curves.delete")
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
 
 
 class VIEW3D_MT_edit_pointcloud(Menu):
     bl_label = "Point Cloud"
 
-    def draw(_self, _context):
-        pass
+    def draw(self, context):
+        layout = self.layout
+        layout.template_node_operator_asset_menu_items(catalog_path=self.bl_label)
 
 
 class VIEW3D_MT_object_mode_pie(Menu):
@@ -6054,8 +6098,8 @@ class VIEW3D_PT_collections(Panel):
 class VIEW3D_PT_object_type_visibility(Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'HEADER'
-    bl_label = "View Object Types"
-    bl_ui_units_x = 7
+    bl_label = "Selectability & Visibility"
+    bl_ui_units_x = 8
 
     # Allows derived classes to pass view data other than context.space_data.
     # This is used by the official VR add-on, which passes XrSessionSettings
@@ -6065,33 +6109,30 @@ class VIEW3D_PT_object_type_visibility(Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        layout.label(text="Object Types Visibility")
+        layout.label(text="Selectability & Visibility")
         layout.separator()
-        col = layout.column()
+        col = layout.column(align=True)
 
         attr_object_types = (
-            # Geometry
-            ("mesh", "Mesh"),
-            ("curve", "Curve"),
-            ("surf", "Surface"),
-            ("meta", "Meta"),
-            ("font", "Text"),
-            ("curves", "Hair Curves"),
-            ("pointcloud", "Point Cloud"),
-            ("volume", "Volume"),
-            ("grease_pencil", "Grease Pencil"),
-            (None, None),
-            # Other
-            ("armature", "Armature"),
-            ("lattice", "Lattice"),
-            ("empty", "Empty"),
-            ("light", "Light"),
-            ("light_probe", "Light Probe"),
-            ("camera", "Camera"),
-            ("speaker", "Speaker"),
+            ("mesh", "Mesh", "OUTLINER_OB_MESH"),
+            ("curve", "Curve", "OUTLINER_OB_CURVE"),
+            ("surf", "Surface", "OUTLINER_OB_SURFACE"),
+            ("meta", "Meta", "OUTLINER_OB_META"),
+            ("font", "Text", "OUTLINER_OB_FONT"),
+            ("curves", "Hair Curves", "OUTLINER_OB_CURVES"),
+            ("pointcloud", "Point Cloud", "OUTLINER_OB_POINTCLOUD"),
+            ("volume", "Volume", "OUTLINER_OB_VOLUME"),
+            ("grease_pencil", "Grease Pencil", "OUTLINER_OB_GREASEPENCIL"),
+            ("armature", "Armature", "OUTLINER_OB_ARMATURE"),
+            ("lattice", "Lattice", "OUTLINER_OB_LATTICE"),
+            ("empty", "Empty", "OUTLINER_OB_EMPTY"),
+            ("light", "Light", "OUTLINER_OB_LIGHT"),
+            ("light_probe", "Light Probe", "OUTLINER_OB_LIGHTPROBE"),
+            ("camera", "Camera", "OUTLINER_OB_CAMERA"),
+            ("speaker", "Speaker", "OUTLINER_OB_SPEAKER"),
         )
 
-        for attr, attr_name in attr_object_types:
+        for attr, attr_name, attr_icon in attr_object_types:
             if attr is None:
                 col.separator()
                 continue
@@ -6105,10 +6146,7 @@ class VIEW3D_PT_object_type_visibility(Panel):
             icon_v = 'HIDE_OFF' if getattr(view, attr_v) else 'HIDE_ON'
 
             row = col.row(align=True)
-            row.alignment = 'RIGHT'
-
-            row.label(text=attr_name)
-            row.prop(view, attr_v, text="", icon=icon_v, emboss=False)
+            row.label(text=attr_name, icon=attr_icon)
 
             if show_select:
                 attr_s = "show_object_select_" + attr
@@ -6117,6 +6155,8 @@ class VIEW3D_PT_object_type_visibility(Panel):
                 rowsub = row.row(align=True)
                 rowsub.active = getattr(view, attr_v)
                 rowsub.prop(view, attr_s, text="", icon=icon_s, emboss=False)
+
+            row.prop(view, attr_v, text="", icon=icon_v, emboss=False)
 
     def draw(self, context):
         view = context.space_data
@@ -8278,6 +8318,26 @@ class VIEW3D_PT_viewport_debug(Panel):
         layout.prop(overlay, "use_debug_freeze_view_culling")
 
 
+class VIEW3D_AST_sculpt_brushes(bpy.types.AssetShelf):
+    # Experimental: Asset shelf for sculpt brushes, only shows up if both the
+    # "Asset Shelf" and the "Extended Asset Browser" experimental features are
+    # enabled.
+
+    bl_space_type = "VIEW_3D"
+
+    @classmethod
+    def poll(cls, context):
+        prefs = context.preferences
+        if not prefs.experimental.use_extended_asset_browser:
+            return False
+
+        return context.mode == 'SCULPT'
+
+    @classmethod
+    def asset_poll(cls, asset):
+        return asset.file_data.id_type == 'BRUSH'
+
+
 classes = (
     VIEW3D_HT_header,
     VIEW3D_HT_tool_header,
@@ -8422,6 +8482,7 @@ classes = (
     VIEW3D_MT_gpencil_autoweights,
     VIEW3D_MT_gpencil_edit_context_menu,
     VIEW3D_MT_edit_greasepencil,
+    VIEW3D_MT_edit_greasepencil_delete,
     VIEW3D_MT_edit_greasepencil_stroke,
     VIEW3D_MT_edit_curve,
     VIEW3D_MT_edit_curve_ctrlpoints,
@@ -8527,6 +8588,7 @@ classes = (
     VIEW3D_PT_curves_sculpt_parameter_falloff,
     VIEW3D_PT_curves_sculpt_grow_shrink_scaling,
     VIEW3D_PT_viewport_debug,
+    VIEW3D_AST_sculpt_brushes,
 )
 
 

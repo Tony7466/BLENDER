@@ -106,8 +106,11 @@ typedef struct IDPropertyUIDataString {
 typedef struct IDPropertyUIDataID {
   IDPropertyUIData base;
   /**
-   * #ID_Type. This type is not enforced. It is just a hint to the ui for what kind of ID is
-   * expected. If this is zero, any id type is expected.
+   * #ID_Type. With python-defined properties, this type is not enforced. A value of `0` means any
+   * ID type.
+   *
+   * However, when defined/edited from the UI (Custom Properties panel), it must/will be defined,
+   * as generic 'Any ID type' selection is a TODO UI-wise.
    */
   short id_type;
   char _pad[6];
@@ -244,6 +247,11 @@ typedef struct IDOverrideLibraryPropertyOperation {
   char *subitem_local_name;
   int subitem_reference_index;
   int subitem_local_index;
+  /** Additional pointer to an ID. Only used and relevant when the related RNA collection stores ID
+   * pointers, to help disambiguate cases where several IDs from different libraries have the exact
+   * same name. */
+  struct ID *subitem_reference_id;
+  struct ID *subitem_local_id;
 } IDOverrideLibraryPropertyOperation;
 
 /* IDOverrideLibraryPropertyOperation->operation. */
@@ -278,6 +286,12 @@ enum {
    * reference linked data.
    */
   LIBOVERRIDE_OP_FLAG_IDPOINTER_MATCH_REFERENCE = 1 << 8,
+  /**
+   * For overrides of ID pointers within RNA collections: this override is using the ID
+   * pointer in addition to the item name (to fully disambiguate the reference, since IDs from
+   * different libraries can have a same name).
+   */
+  LIBOVERRIDE_OP_FLAG_IDPOINTER_ITEM_USE_ID = 1 << 9,
 };
 
 /** A single overridden property, contain all operations on this one. */

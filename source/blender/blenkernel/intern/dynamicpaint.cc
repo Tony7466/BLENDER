@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,7 +13,10 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_kdtree.h"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string_utils.h"
 #include "BLI_task.h"
 #include "BLI_threads.h"
@@ -51,8 +54,8 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_mapping.hh"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_particle.h"
@@ -5691,7 +5694,7 @@ static void dynamic_paint_wave_step_cb(void *__restrict userdata,
     wPoint->height = (dt * wave_speed * avg_n_height + wPoint->height * avg_dist) /
                      (avg_dist + dt * wave_speed);
   }
-  /* else do wave eq */
+  /* Else do wave equation. */
   else {
     /* add force towards zero height based on average dist */
     if (avg_dist) {

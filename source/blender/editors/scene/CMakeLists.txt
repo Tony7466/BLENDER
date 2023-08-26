@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -18,6 +18,7 @@ set(INC_SYS
 
 set(SRC
   scene_edit.cc
+  scene_fps.cc
 )
 
 set(LIB
