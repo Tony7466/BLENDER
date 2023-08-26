@@ -6315,11 +6315,6 @@ class VIEW3D_PT_shading_color(Panel):
     bl_label = "Wire Color"
     bl_parent_id = 'VIEW3D_PT_shading'
 
-    @classmethod
-    def poll(cls, context):
-        shading = VIEW3D_PT_shading.get_shading(context)
-        return shading.type in {'WIREFRAME', 'SOLID', 'MATERIAL', 'RENDERED'}
-
     def _draw_color_type(self, context):
         layout = self.layout
         shading = VIEW3D_PT_shading.get_shading(context)
