@@ -301,13 +301,21 @@ bool imb_oiio_write(const WriteContext &ctx, const char *filepath, const ImageSp
 
   /* Grayscale images need to be based on luminance weights rather than only
    * using a single channel from the source. */
-  if (file_spec.nchannels == 1) {
+  if (ctx.ibuf->channels > 1 && file_spec.nchannels == 1) {
     float weights[4]{};
     IMB_colormanagement_get_luminance_coefficients(weights);
     ImageBufAlgo::channel_sum(final_buf, orig_buf, {weights, orig_buf.nchannels()});
   }
   else {
-    final_buf = std::move(orig_buf);
+    /* If we are moving from an 1-channel format to n-channel we need to
+     * ensure the orignal data is copied into the higher channels. */
+    if (ctx.ibuf->channels == 1 && file_spec.nchannels > 1) {
+      ImageBufAlgo::channels(
+          final_buf, orig_buf, file_spec.nchannels, {0, 0, 0, -1}, {0, 0, 0, 1.0f});
+    }
+    else {
+      final_buf = std::move(orig_buf);
+    }
   }
 
   bool write_ok = false;
