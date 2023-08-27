@@ -70,17 +70,6 @@ ShadowMapTracingState shadow_map_trace_init(int sample_count, float step_offset)
   return state;
 }
 
-struct ShadowRay {
-  /* Ray in tilemap normalized coordinates [0..1]. */
-  vec3 origin;
-  vec3 direction;
-  /* Tilemap to sample. */
-  int tilemap_index;
-  /* Debug. */
-  mat4 viewinv;
-  mat4 wininv;
-};
-
 struct ShadowTracingSample {
   float receiver_depth;
   float occluder_depth;
@@ -198,29 +187,159 @@ ShadowMapTraceResult shadow_map_trace_finish(ShadowMapTracingState state)
  * \{ */
 
 struct ShadowRayDirectional {
-  ShadowRay ray;
+  /* Ray in local translated coordinate, with depth in [0..1] range in W component. */
+  vec4 origin;
+  vec4 direction;
+  LightData light;
 };
 
-ShadowTracingSample shadow_map_trace_sample(ShadowMapTracingState state,
-                                            inout ShadowRayDirectional r)
+ShadowRayDirectional shadow_ray_generate_directional(LightData light, vec2 random_2d, vec3 lP)
 {
-  ShadowRay ray = r.ray;
-  vec3 ray_pos = ray.origin + ray.direction * state.ray_time;
-  vec2 tilemap_uv = saturate(ray_pos.xy);
+  float clip_near = orderedIntBitsToFloat(light.clip_near);
+  float clip_far = orderedIntBitsToFloat(light.clip_far);
+  /* Assumed to be non-null. */
+  float z_range = clip_far - clip_near;
+  float dist_to_near_plane = -lP.z - clip_near;
+
+  /* `lP` is supposed to be in light rotated space. But not translated. */
+  vec4 origin = vec4(lP, dist_to_near_plane / z_range);
+
+  vec2 disk_point = sample_disk(random_2d) * light._radius;
+  /* Light shape is 1 unit away from the shading point. Trace in  */
+  vec4 direction = vec4(disk_point, 1.0, -1.0 / z_range);
+  /* TODO(fclem) Option. */
+  float max_trace_distance = dist_to_near_plane;
+  float ray_length = max_trace_distance / length(direction.xyz);
+  /* It only make sense to trace where there can be occluder. Clamp by distance to near plane. */
+  direction *= min(ray_length, dist_to_near_plane);
+
+  ShadowRayDirectional ray;
+  ray.origin = origin;
+  ray.direction = direction;
+  ray.light = light;
+  return ray;
+}
+
+ShadowTracingSample shadow_map_trace_sample(ShadowMapTracingState state,
+                                            inout ShadowRayDirectional ray)
+{
+  /* Ray position is ray local position with origin at light origin. */
+  vec4 ray_pos = ray.origin + ray.direction * state.ray_time;
+
+  int level = shadow_directional_level(ray.light, ray_pos.xyz - ray.light._position);
+  /* This difference needs to be less than 32 for the later shift to be valid.
+   * This is ensured by ShadowDirectional::clipmap_level_range(). */
+  int level_relative = level - ray.light.clipmap_lod_min;
+
+  int lod_relative = (ray.light.type == LIGHT_SUN_ORTHO) ? ray.light.clipmap_lod_min : level;
+
+  vec2 clipmap_origin = vec2(ray.light._clipmap_origin_x, ray.light._clipmap_origin_y);
+  vec2 clipmap_pos = ray_pos.xy - clipmap_origin;
+  vec2 tilemap_uv = clipmap_pos * exp2(-float(lod_relative)) + 0.5;
+
+  /* Compute offset in tile. */
+  ivec2 clipmap_offset = shadow_decompress_grid_offset(
+      ray.light.type, ray.light.clipmap_base_offset, level_relative);
+  /* Translate tilemap UVs to its origin. */
+  tilemap_uv -= vec2(clipmap_offset) / float(SHADOW_TILEMAP_RES);
+  /* Clamp to avoid out of tilemap access. */
+  tilemap_uv = saturate(tilemap_uv);
 
   ShadowTracingSample samp;
   samp.reset_interpolation = false;
-  samp.receiver_depth = ray_pos.z;
-  samp.occluder_depth = shadow_read_depth_at_tilemap_uv(ray.tilemap_index, tilemap_uv);
+  samp.receiver_depth = ray_pos.w;
+  samp.occluder_depth = shadow_read_depth_at_tilemap_uv(ray.light.tilemap_index + level_relative,
+                                                        tilemap_uv);
   samp.skip_sample = (samp.occluder_depth == -1.0);
   return samp;
 }
+
+SHADOW_MAP_TRACE_FN(ShadowRayDirectional)
 
 /** \} */
 
 /* ---------------------------------------------------------------------- */
 /** \name Punctual Shadow Map Tracing
  * \{ */
+
+struct ShadowRayPrototype {
+  /* Ray in local space coordinates. */
+  vec3 start;
+  vec3 end;
+};
+
+/* Returns a ray in light local space. */
+ShadowRayPrototype shadow_ray_generate_punctual(LightData light, vec2 random_2d, vec3 lP)
+{
+  if (light.type == LIGHT_RECT) {
+    random_2d = random_2d * 2.0 - 1.0;
+  }
+  else {
+    random_2d = sample_disk(random_2d);
+  }
+  vec3 right = vec3(1.0, 0.0, 0.0), up = vec3(0.0, 1.0, 0.0);
+  if (is_area_light(light.type)) {
+    random_2d *= vec2(light._area_size_x, light._area_size_y);
+  }
+  else {
+    /* Disk rotated towards light vector. */
+    /* TODO: Can we avoid this normalize? */
+    make_orthonormal_basis(normalize(lP), right, up);
+    random_2d *= light._radius;
+  }
+  vec3 point_on_light_shape = right * random_2d.x + up * random_2d.y;
+  vec3 direction = point_on_light_shape - lP;
+  /* Clip the ray to not cross the near plane. */
+  float clip_near = intBitsToFloat(light.clip_near);
+  /* Scale it so that it encompass the whole cube (with a safety margin). */
+  float clip_distance = clip_near * M_SQRT3 * 1.05 + 0.01;
+  float ray_length = length(direction);
+  direction *= saturate((ray_length - clip_distance) / ray_length);
+
+  ShadowRayPrototype ray;
+  ray.start = lP;
+  ray.end = lP + direction;
+  return ray;
+}
+
+struct ShadowRay {
+  /* Ray in tilemap normalized coordinates [0..1]. */
+  vec3 origin;
+  vec3 direction;
+  /* Tilemap to sample. */
+  int tilemap_index;
+  /* Debug. */
+  mat4 viewinv;
+  mat4 wininv;
+};
+
+/* Return ray in UV clip space [0..1]. */
+ShadowRay shadow_ray_project_punctual(LightData light, int face_id, ShadowRayPrototype local_ray)
+{
+  /* Local Light Space > Face Local (View) Space. */
+  vec3 view_ray_start = shadow_punctual_local_position_to_face_local(face_id, local_ray.start);
+  vec3 view_ray_end = shadow_punctual_local_position_to_face_local(face_id, local_ray.end);
+  /* Face Local (View) Space > Clip Space. */
+  /* TODO: Could be simplified since it is completely symetrical. */
+  float clip_far = intBitsToFloat(light.clip_far);
+  float clip_near = intBitsToFloat(light.clip_near);
+  mat4 winmat = projection_perspective(
+      -clip_near, clip_near, -clip_near, clip_near, clip_near, clip_far);
+  vec3 clip_ray_start = project_point(winmat, view_ray_start);
+  vec3 clip_ray_end = project_point(winmat, view_ray_end);
+  /* Clip Space > UV Space. */
+  vec3 uv_ray_start = clip_ray_start * 0.5 + 0.5;
+  vec3 uv_ray_end = clip_ray_end * 0.5 + 0.5;
+  /* Compute the ray again. */
+  ShadowRay ray;
+  ray.origin = uv_ray_start;
+  ray.direction = uv_ray_end - uv_ray_start;
+  ray.tilemap_index = light.tilemap_index + face_id;
+  /* Debug. */
+  ray.viewinv = mat4x4(mat4x3(light.object_mat));
+  ray.wininv = invert(winmat);
+  return ray;
+}
 
 struct ShadowRaySingleCubeFace {
   ShadowRay ray;
@@ -238,35 +357,6 @@ ShadowTracingSample shadow_map_trace_sample(ShadowMapTracingState state,
   samp.receiver_depth = ray_pos.z;
   samp.occluder_depth = shadow_read_depth_at_tilemap_uv(ray.tilemap_index, tilemap_uv);
   samp.skip_sample = (samp.occluder_depth == -1.0);
-
-#ifdef DRW_DEBUG_DRAW
-/*
-  vec3 ray_pos_threshold = vec3(ray_pos.xy, state.receiver_depth_history);
-  vec3 tracing_P = transform_point(ray.viewinv, project_point(ray.wininv, ray_pos * 2.0 - 1.0));
-  vec3 tracing_P_threshold = transform_point(
-      ray.viewinv, project_point(ray.wininv, ray_pos_threshold * 2.0 - 1.0));
-  vec3 sample_P = transform_point(
-      ray.viewinv, project_point(ray.wininv, vec3(ray_pos.xy, samp.occluder_depth) * 2.0 - 1.0));
-  drw_debug_point(tracing_P);
-  drw_debug_point(sample_P, 0.01, vec4(0.0, 1.0, 0.0, 1.0));
-
-  if (state.ray_time_history != -1.0) {
-    vec3 occluder_history = vec3((ray.origin + ray.direction * state.ray_time_history).xy,
-                                 state.occluder_depth_history);
-    float occluder_depth_extrapolate = state.occluder_depth_history +
-                                       state.occluder_depth_slope *
-                                           (state.ray_time - state.ray_time_history);
-    vec3 occluder_extrpolate = vec3(ray_pos.xy, occluder_depth_extrapolate);
-
-    occluder_history = transform_point(ray.viewinv,
-                                       project_point(ray.wininv, occluder_history * 2.0 - 1.0));
-    occluder_extrpolate = transform_point(
-        ray.viewinv, project_point(ray.wininv, occluder_extrpolate * 2.0 - 1.0));
-    drw_debug_line(tracing_P, tracing_P_threshold, vec4(1.0, 1.0, 0.0, 1.0));
-    drw_debug_line(occluder_history, occluder_extrpolate, vec4(0.0, 1.0, 1.0, 1.0));
-  }
-  */
-#endif
   return samp;
 }
 
@@ -308,96 +398,6 @@ SHADOW_MAP_TRACE_FN(ShadowRayDualCubeFace)
 /** \} */
 
 /* ---------------------------------------------------------------------- */
-/** \name Shadow Ray Generation
- * \{ */
-
-struct ShadowRayPrototype {
-  /* Ray in local space coordinates. */
-  vec3 start;
-  vec3 end;
-};
-
-ShadowRayPrototype shadow_ray_generate_directional(LightData light, vec2 random_2d, vec3 lP)
-{
-  random_2d = sample_disk(random_2d) * light._radius;
-
-  vec3 point_on_light_shape = light._back + light._right * random_2d.x + light._up * random_2d.y;
-  vec3 direction = point_on_light_shape - lP;
-
-  /* TODO(fclem): Correct Penumbra search radius:
-   * - Scale by distance to camera. (because texel density diminishes).
-   * - Limit by scene / light maximum parameter. */
-
-  ShadowRayPrototype ray;
-  ray.start = lP;
-  ray.end = lP + direction;
-  return ray;
-}
-
-ShadowRayPrototype shadow_ray_generate_punctual(LightData light, vec2 random_2d, vec3 lP)
-{
-  if (light.type == LIGHT_RECT) {
-    random_2d = random_2d * 2.0 - 1.0;
-  }
-  else {
-    random_2d = sample_disk(random_2d);
-  }
-  vec3 right = vec3(1.0, 0.0, 0.0), up = vec3(0.0, 1.0, 0.0);
-  if (is_area_light(light.type)) {
-    random_2d *= vec2(light._area_size_x, light._area_size_y);
-  }
-  else {
-    /* Disk rotated towards light vector. */
-    /* TODO: Can we avoid this normalize? */
-    make_orthonormal_basis(normalize(lP), right, up);
-    random_2d *= light._radius;
-  }
-  vec3 point_on_light_shape = right * random_2d.x + up * random_2d.y;
-  vec3 direction = point_on_light_shape - lP;
-  /* Clip the ray to not cross the near plane. */
-  float clip_near = intBitsToFloat(light.clip_near);
-  /* Scale it so that it encompass the whole cube (with a safety margin). */
-  float clip_distance = clip_near * M_SQRT3 * 1.05 + 0.01;
-  float ray_length = length(direction);
-  direction *= saturate((ray_length - clip_distance) / ray_length);
-
-  ShadowRayPrototype ray;
-  ray.start = lP;
-  ray.end = lP + direction;
-  return ray;
-}
-
-/* Return ray in UV clip space [0..1]. */
-ShadowRay shadow_ray_project_punctual(LightData light, int face_id, ShadowRayPrototype local_ray)
-{
-  /* Local Light Space > Face Local (View) Space. */
-  vec3 view_ray_start = shadow_punctual_local_position_to_face_local(face_id, local_ray.start);
-  vec3 view_ray_end = shadow_punctual_local_position_to_face_local(face_id, local_ray.end);
-  /* Face Local (View) Space > Clip Space. */
-  /* TODO: Could be simplified since it is completely symetrical. */
-  float clip_far = intBitsToFloat(light.clip_far);
-  float clip_near = intBitsToFloat(light.clip_near);
-  mat4 winmat = projection_perspective(
-      -clip_near, clip_near, -clip_near, clip_near, clip_near, clip_far);
-  vec3 clip_ray_start = project_point(winmat, view_ray_start);
-  vec3 clip_ray_end = project_point(winmat, view_ray_end);
-  /* Clip Space > UV Space. */
-  vec3 uv_ray_start = clip_ray_start * 0.5 + 0.5;
-  vec3 uv_ray_end = clip_ray_end * 0.5 + 0.5;
-  /* Compute the ray again. */
-  ShadowRay ray;
-  ray.origin = uv_ray_start;
-  ray.direction = uv_ray_end - uv_ray_start;
-  ray.tilemap_index = light.tilemap_index + face_id;
-  /* Debug. */
-  ray.viewinv = mat4x4(mat4x3(light.object_mat));
-  ray.wininv = invert(winmat);
-  return ray;
-}
-
-/** \} */
-
-/* ---------------------------------------------------------------------- */
 /** \name Shadow Evalutation
  * \{ */
 
@@ -422,7 +422,6 @@ ShadowEvalResult shadow_eval(
   vec3 random_shadow_3d = interlieved_gradient_noise(pixel, vec3(1.0, 2.0, 3.0), vec3(0.0));
   // vec3 random_shadow_3d = vec3(0.4, 0.4, 0.4);
 
-  /* TODO(fclem): Support soft shadows in surfel light eval. */
 #ifdef EEVEE_SAMPLING_DATA
   random_shadow_3d += sampling_rng_3D_get(SAMPLING_SHADOW_U);
 #endif
@@ -432,22 +431,17 @@ ShadowEvalResult shadow_eval(
   for (int ray_index = 0; ray_index < ray_count; ray_index++) {
     vec2 random_ray_2d = fract(hammersley_2d(ray_index, ray_count) + random_shadow_3d.xy);
 
-    ShadowRayPrototype ray_proto = (is_directional) ?
-                                       shadow_ray_generate_directional(light, random_ray_2d, lP) :
-                                       shadow_ray_generate_punctual(light, random_ray_2d, lP);
-
     /* TODO(fclem): Screen space trace of a few pixels. Allows to leave the surface. Can assume
      * hard shadow for it as it is only required for a few pixels [1..3] and do it outside of this
      * loop. */
 
     ShadowMapTraceResult trace;
     if (is_directional) {
-      /* TODO */
-      //   ShadowRayClipmap clip_ray;
-      //   clip_ray.ray = shadow_ray_project_directional(light, face_start, ray_proto);
-      //   trace = shadow_map_trace(clip_ray, ray_step_count, random_shadow_3d.z);
+      ShadowRayDirectional clip_ray = shadow_ray_generate_directional(light, random_ray_2d, lP);
+      trace = shadow_map_trace(clip_ray, ray_step_count, random_shadow_3d.z);
     }
     else {
+      ShadowRayPrototype ray_proto = shadow_ray_generate_punctual(light, random_ray_2d, lP);
       int face_start = shadow_punctual_face_index_get(ray_proto.start);
       int face_end = shadow_punctual_face_index_get(ray_proto.end);
       /* TODO(fclem): Can reduce register pressure by having a path that only trace one ray.

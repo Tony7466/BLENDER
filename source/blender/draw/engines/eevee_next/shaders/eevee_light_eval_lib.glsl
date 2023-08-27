@@ -16,7 +16,6 @@
 #pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 
-/* TODO(fclem): We could reduce register pressure by only having static branches for sun lights. */
 void light_eval_ex(ClosureDiffuse diffuse,
                    ClosureReflection reflection,
                    const bool is_directional,
@@ -39,13 +38,14 @@ void light_eval_ex(ClosureDiffuse diffuse,
   float visibility = is_directional ? 1.0 : light_attenuation(light, L, dist);
 
   if (light.tilemap_index != LIGHT_NO_SHADOW && (visibility > 0.0)) {
-    vec3 lL = light_world_to_local(light, -L) * dist;
+    vec3 lL = is_directional ? light_world_to_local(light, P) :
+                               light_world_to_local(light, -L) * dist;
     vec3 lNg = light_world_to_local(light, Ng);
 
 #ifdef SURFEL_LIGHT
     ShadowEvalResult shadow = shadow_eval(light, is_directional, lL, 16, 8);
 #else
-    ShadowEvalResult shadow = shadow_eval(light, is_directional, lL, 1, 16);
+    ShadowEvalResult shadow = shadow_eval(light, is_directional, lL, 1, 8);
 #endif
 
 #ifdef SSS_TRANSMITTANCE
