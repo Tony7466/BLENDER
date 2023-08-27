@@ -81,8 +81,8 @@ float btdf_ggx(vec3 N, vec3 L, vec3 V, float roughness, float eta)
   float NH = max(dot(N, H), 1e-8);
   float NL = max(dot(N, -L), 1e-8);
   float NV = max(dot(N, V), 1e-8);
-  float VH = max(dot(V, H), 1e-8);
-  float LH = max(dot(-L, H), 1e-8);
+  float VH = saturate(dot(V, H));
+  float LH = saturate(dot(-L, H));
 
   float a2 = square(roughness);
   float G = bxdf_ggx_smith_G1(NV, a2) * bxdf_ggx_smith_G1(NL, a2);
