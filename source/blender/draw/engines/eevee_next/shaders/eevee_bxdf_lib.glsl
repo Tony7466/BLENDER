@@ -77,6 +77,7 @@ float btdf_ggx(vec3 N, vec3 L, vec3 V, float roughness, float eta)
   float inv_len_H = safe_rcp(length(H));
   H *= inv_len_H;
 
+  /* For transmission, `L` lies in the opposite hemisphere as `H`, therefore negate `L`. */
   float NH = max(dot(N, H), 1e-8);
   float NL = max(dot(N, -L), 1e-8);
   float NV = max(dot(N, V), 1e-8);
