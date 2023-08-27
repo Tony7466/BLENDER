@@ -4691,7 +4691,7 @@ static uiWidgetType *widget_type(uiWidgetTypeEnum type)
       break;
 
     case UI_WTYPE_VIEW_ITEM:
-      wt.wcol_theme = &btheme->tui.wcol_view_item;
+      wt.wcol_theme = &btheme->tui.wcol_list_item;
       wt.draw = widget_view_item;
       break;
 
