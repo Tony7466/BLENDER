@@ -63,7 +63,7 @@ float btdf_ggx(vec3 N, vec3 L, vec3 V, float roughness, float eta)
   float LV = dot(L, V);
   if (is_equal(eta, 1.0, 1e-4)) {
     /* Only valid when `L` and `V` point in the opposite directions. */
-    return is_equal(LV, -1.0, 1e-3);
+    return float(is_equal(LV, -1.0, 1e-3));
   }
 
   bool valid = (eta < 1.0) ? (LV < -eta) : (LV * eta < -1.0);
