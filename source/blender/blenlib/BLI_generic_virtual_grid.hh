@@ -39,7 +39,10 @@ class GVGridImpl {
   // virtual void get(int64_t index, void *r_value) const;
   // virtual void get_to_uninitialized(int64_t index, void *r_value) const = 0;
 
-  virtual CommonVGridInfo common_info() const;
+  virtual CommonVGridInfo common_info() const
+  {
+    return {};
+  }
 
   // virtual void materialize(const IndexMask &mask, void *dst) const;
   // virtual void materialize_to_uninitialized(const IndexMask &mask, void *dst) const;
@@ -47,7 +50,10 @@ class GVGridImpl {
   // virtual void materialize_compressed(const IndexMask &mask, void *dst) const;
   // virtual void materialize_compressed_to_uninitialized(const IndexMask &mask, void *dst) const;
 
-  virtual bool try_assign_VGrid(void *vgrid) const;
+  virtual bool try_assign_VGrid(void * /*vgrid*/) const
+  {
+    return false;
+  }
 };
 
 /* A generic version of #VMutableGridImpl. */
@@ -61,7 +67,10 @@ class GVMutableGridImpl : public GVGridImpl {
 
   // virtual void set_all(const void *src);
 
-  virtual bool try_assign_VMutableGrid(void *vgrid) const;
+  virtual bool try_assign_VMutableGrid(void * /*vgrid*/) const
+  {
+    return false;
+  }
 };
 
 /** \} */
@@ -121,7 +130,10 @@ class GVGridCommon {
   operator bool() const;
 
   template<typename T> bool try_assign_VGrid(VGrid<T> &vgrid) const;
-  bool may_have_ownership() const;
+  bool may_have_ownership() const
+  {
+    return impl_->common_info().may_have_ownership;
+  }
 
   // void materialize(void *dst) const;
   // void materialize(const IndexMask &mask, void *dst) const;
@@ -188,7 +200,9 @@ class GVGrid : public GVGridCommon {
   GVGrid(const GVGridImpl *impl);
   GVGrid(std::shared_ptr<const GVGridImpl> impl);
 
+#ifdef WITH_OPENVDB
   GVGrid(vgrid_tag::grid /* tag */, const GridType &grid);
+#endif
   GVGrid(vgrid_tag::single_ref /* tag */, const CPPType &type, const void *value);
   GVGrid(vgrid_tag::single /* tag */, const CPPType &type, const void *value);
 
@@ -200,8 +214,10 @@ class GVGrid : public GVGridCommon {
   static GVGrid ForSingle(const CPPType &type, const void *value);
   static GVGrid ForSingleRef(const CPPType &type, const void *value);
   static GVGrid ForSingleDefault(const CPPType &type);
+#ifdef WITH_OPENVDB
   static GVGrid ForGrid(const GridType &grid);
   static GVGrid ForEmpty(const CPPType &type);
+#endif
 
   GVGrid &operator=(const GVGrid &other);
   GVGrid &operator=(GVGrid &&other) noexcept;
@@ -231,7 +247,9 @@ class GVMutableGrid : public GVGridCommon {
 
   template<typename ImplT, typename... Args> static GVMutableGrid For(Args &&...args);
 
+#ifdef WITH_OPENVDB
   static GVMutableGrid ForGrid(GridType &grid);
+#endif
 
   operator GVGrid() const &;
   operator GVGrid() &&noexcept;
@@ -239,7 +257,9 @@ class GVMutableGrid : public GVGridCommon {
   GVMutableGrid &operator=(const GVMutableGrid &other);
   GVMutableGrid &operator=(GVMutableGrid &&other) noexcept;
 
+#ifdef WITH_OPENVDB
   GridType *get_internal_grid() const;
+#endif
 
   template<typename T> bool try_assign_VMutableGrid(VMutableGrid<T> &vgrid) const;
 
@@ -378,26 +398,25 @@ template<typename T> class VMutableGridImpl_For_GVMutableGrid : public VMutableG
 /** \name #GVGridImpl_For_GSpan.
  * \{ */
 
+#ifdef WITH_OPENVDB
 class GVGridImpl_For_Grid : public GVMutableGridImpl {
  public:
-#ifdef WITH_OPENVDB
   using GridType = openvdb::GridBase;
-#endif
 
  protected:
   const GridType *grid_ = nullptr;
 
  public:
-  GVGridImpl_For_Grid(const GridType &grid)
-      : GVMutableGridImpl(volume::grid_attribute_type(grid)), grid_(&grid)
-  {
-  }
+  GVGridImpl_For_Grid(const GridType &grid);
 
  protected:
   GVGridImpl_For_Grid(const CPPType &type) : GVMutableGridImpl(type) {}
 
  public:
-  CommonVGridInfo common_info() const override;
+  CommonVGridInfo common_info() const override
+  {
+    return CommonVGridInfo{CommonVGridInfo::Type::Grid, true, grid_};
+  }
 };
 
 class GVGridImpl_For_Grid_final final : public GVGridImpl_For_Grid {
@@ -405,10 +424,14 @@ class GVGridImpl_For_Grid_final final : public GVGridImpl_For_Grid {
   using GVGridImpl_For_Grid::GVGridImpl_For_Grid;
 
  private:
-  CommonVGridInfo common_info() const override;
+  CommonVGridInfo common_info() const override
+  {
+    return CommonVGridInfo(CommonVGridInfo::Type::Grid, false, grid_);
+  }
 };
 
 template<> inline constexpr bool is_trivial_extended_v<GVGridImpl_For_Grid> = true;
+#endif /* WITH_OPENVDB */
 
 /** \} */
 
@@ -519,6 +542,7 @@ inline CommonVGridInfo GVGridCommon::common_info() const
 /** \name Inline methods for #GVGrid.
  * \{ */
 
+#ifdef WITH_OPENVDB
 inline GVGrid::GVGrid(vgrid_tag::grid /* tag */, const GridType &grid)
 {
   /* Use const-cast because the underlying virtual grid implementation is shared between const
@@ -526,6 +550,7 @@ inline GVGrid::GVGrid(vgrid_tag::grid /* tag */, const GridType &grid)
   GridType &mutable_grid = const_cast<GridType &>(grid);
   this->emplace<GVGridImpl_For_Grid_final>(mutable_grid);
 }
+#endif
 
 inline GVGrid::GVGrid(vgrid_tag::single_ref /* tag */, const CPPType &type, const void *value)
 {
@@ -571,13 +596,15 @@ template<typename T> inline GVGrid::GVGrid(const VGrid<T> &vgrid)
   }
   const CommonVGridInfo info = vgrid.common_info();
   if (info.type == CommonVGridInfo::Type::Single) {
-    *this = GVGrid::ForSingle(CPPType::get<T>(), vgrid.size(), info.data);
+    *this = GVGrid::ForSingle(CPPType::get<T>(), info.data);
     return;
   }
   /* Need to check for ownership, because otherwise the referenced data can be destructed when
    * #this is destructed. */
   if (info.type == CommonVGridInfo::Type::Grid && !info.may_have_ownership) {
+#ifdef WITH_OPENVDB
     *this = GVGrid::ForGrid(*static_cast<const GridType *>(info.data));
+#endif
     return;
   }
   if (vgrid.try_assign_GVGrid(*this)) {
@@ -588,8 +615,6 @@ template<typename T> inline GVGrid::GVGrid(const VGrid<T> &vgrid)
 
 template<typename T> inline VGrid<T> GVGrid::typed() const
 {
-  using GridType = typename VGrid<T>::GridType;
-
   if (!*this) {
     return {};
   }
@@ -601,7 +626,12 @@ template<typename T> inline VGrid<T> GVGrid::typed() const
   /* Need to check for ownership, because otherwise the referenced data can be destructed when
    * #this is destructed. */
   if (info.type == CommonVGridInfo::Type::Grid && !info.may_have_ownership) {
+#ifdef WITH_OPENVDB
+    using GridType = typename VGrid<T>::GridType;
     return VGrid<T>::ForGrid(static_cast<const GridType *>(info.data));
+#else
+    return {};
+#endif
   }
   VGrid<T> vgrid;
   if (this->try_assign_VGrid(vgrid)) {
@@ -631,7 +661,9 @@ template<typename T> inline GVMutableGrid::GVMutableGrid(const VMutableGrid<T> &
   }
   const CommonVGridInfo info = vgrid.common_info();
   if (info.type == CommonVGridInfo::Type::Grid && !info.may_have_ownership) {
+#ifdef WITH_OPENVDB
     *this = GVMutableGrid::ForGrid(*static_cast<GridType *>(const_cast<void *>(info.data)));
+#endif
     return;
   }
   if (vgrid.try_assign_GVMutableGrid(*this)) {
@@ -648,7 +680,11 @@ template<typename T> inline VMutableGrid<T> GVMutableGrid::typed() const
   BLI_assert(this->type().is<T>());
   const CommonVGridInfo info = this->common_info();
   if (info.type == CommonVGridInfo::Type::Grid && !info.may_have_ownership) {
+#ifdef WITH_OPENVDB
     return VMutableGrid<T>::ForGrid(const_cast<GridType *>(static_cast<const T *>(info.data)));
+#else
+    return {};
+#endif
   }
   VMutableGrid<T> vgrid;
   if (this->try_assign_VMutableGrid(vgrid)) {

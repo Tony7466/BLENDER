@@ -153,17 +153,17 @@ template<typename T> class VMutableGridImpl : public VGridImpl<T> {
   }
 };
 
+#ifdef WITH_OPENVDB
+
 /**
  * A virtual grid implementation that wraps a OpenVDB grid. This implementation is used by
  * mutable and immutable grids to avoid code duplication.
  */
 template<typename T> class VGridImpl_For_Grid : public VMutableGridImpl<T> {
  protected:
-#ifdef WITH_OPENVDB
   using GridType = volume::grid_types::AttributeGrid<T>;
 
   GridType *grid_ = nullptr;
-#endif
 
  public:
   VGridImpl_For_Grid(GridType &grid) : grid_(&grid) {}
@@ -182,9 +182,7 @@ template<typename T> class VGridImpl_For_Grid : public VMutableGridImpl<T> {
 template<typename T> class VGridImpl_For_Grid_final final : public VGridImpl_For_Grid<T> {
  public:
   using VGridImpl_For_Grid<T>::VGridImpl_For_Grid;
-#ifdef WITH_OPENVDB
   using GridType = typename VGridImpl_For_Grid<T>::GridType;
-#endif
 
   VGridImpl_For_Grid_final(GridType &grid)
       /* Cast const away, because the implementation for const and non const spans is shared. */
@@ -198,6 +196,7 @@ template<typename T> class VGridImpl_For_Grid_final final : public VGridImpl_For
     return CommonVGridInfo(CommonVGridInfo::Type::Grid, false, this->grid_);
   }
 };
+#endif
 
 /**
  * A virtual array implementation that returns the same value for every location. This class is
@@ -431,11 +430,11 @@ template<typename T> class VGridCommon {
    * Returns the internally used grid of the virtual grid. This invokes undefined behavior if the
    * virtual grid is not stored as a grid internally.
    */
-  GridType *get_internal_grid() const
+  const GridType *get_internal_grid() const
   {
-    BLI_assert(this->is_span());
+    BLI_assert(this->is_grid());
     const CommonVGridInfo info = impl_->common_info();
-    return static_cast<GridType *>(info.data);
+    return static_cast<const GridType *>(info.data);
   }
 #endif
 
@@ -492,12 +491,9 @@ template<typename T> class VMutableGrid;
  * construct the virtual grid first and then move it into the vector.
  */
 namespace vgrid_tag {
-struct grid {
-};
-struct single_ref {
-};
-struct single {
-};
+struct grid {};
+struct single_ref {};
+struct single {};
 }  // namespace vgrid_tag
 
 /**
@@ -527,10 +523,12 @@ template<typename T> class VGrid : public VGridCommon<T> {
 
   VGrid(std::shared_ptr<const VGridImpl<T>> impl) : VGridCommon<T>(std::move(impl)) {}
 
+#ifdef WITH_OPENVDB
   VGrid(vgrid_tag::grid /* tag */, const GridType &grid)
   {
     this->template emplace<VGridImpl_For_Grid_final<T>>(const_cast<GridType &>(grid));
   }
+#endif
 
   VGrid(vgrid_tag::single /* tag */, T value)
   {
@@ -556,6 +554,7 @@ template<typename T> class VGrid : public VGridCommon<T> {
     return VGrid(vgrid_tag::single{}, std::move(value));
   }
 
+#ifdef WITH_OPENVDB
   /**
    * Construct a new virtual array for an existing span. This does not take ownership of the
    * underlying memory.
@@ -564,6 +563,7 @@ template<typename T> class VGrid : public VGridCommon<T> {
   {
     return VGrid(vgrid_tag::grid{}, grid);
   }
+#endif
 
   /**
    * Construct a new virtual that will invoke the provided function whenever an element is
@@ -623,6 +623,7 @@ template<typename T> class VMutableGrid : public VGridCommon<T> {
     return VGrid;
   }
 
+#ifdef WITH_OPENVDB
   /**
    * Construct a new virtual array for an existing span. This does not take ownership of the span.
    */
@@ -630,6 +631,7 @@ template<typename T> class VMutableGrid : public VGridCommon<T> {
   {
     return VMutableGrid::For<VGridImpl_For_Grid_final<T>>(grid);
   }
+#endif
 
   /** Convert to a #VGrid by copying. */
   operator VGrid<T>() const &
@@ -659,16 +661,18 @@ template<typename T> class VMutableGrid : public VGridCommon<T> {
     return *this;
   }
 
+#ifdef WITH_OPENVDB
   /**
    * Get access to the internal grid. This invokes undefined behavior if the #is_grid returned
    * false.
    */
   GridType &get_internal_grid() const
   {
-    BLI_assert(this->is_span());
+    BLI_assert(this->is_grid());
     const CommonVGridInfo info = this->get_impl()->common_info();
     return *const_cast<GridType *>(static_cast<const GridType *>(info.data));
   }
+#endif
 
   /** See #GVMutableGridImpl::try_assign_GVMutableGrid. */
   bool try_assign_GVMutableGrid(GVMutableGrid &vgrid) const

@@ -190,7 +190,7 @@ struct VGridReader_For_Accessor : public VGridReader<GridType> {
   }
 };
 
-template<typename GridType, typename MaskGridType> struct EvalPerLeafOp {
+template<typename GridType, typename MaskGridType = openvdb::MaskGrid> struct EvalPerLeafOp {
   using GGrid = GVGrid;
   using GMutableGrid = GVMutableGrid;
   using TreeType = typename GridType::TreeType;
@@ -207,7 +207,7 @@ template<typename GridType, typename MaskGridType> struct EvalPerLeafOp {
 
   /* Each thread gets its own copy of the functor,
    * so the accessor and context don't have to be thread-safe. */
-  mutable typename MaskGridType::ConstAccessor mask_accessor_;
+  mutable std::optional<typename MaskGridType::ConstAccessor> mask_accessor_;
   mutable IndexMaskMemory index_mask_memory_;
   mutable mf::ContextBuilder mf_context_;
 
@@ -222,16 +222,17 @@ template<typename GridType, typename MaskGridType> struct EvalPerLeafOp {
     input_readers_.reinitialize(field_context_inputs.size());
 
     for (const int i : field_context_inputs.index_range()) {
-      volume::grid_to_static_type(field_context_inputs[i].grid_, [&](auto &input_grid) {
-        using InputGridType = typename std::decay<decltype(input_grid)>::type;
-        using AccessorType = typename InputGridType::ConstAccessor;
-        using Converter = volume::grid_types::Converter<InputGridType>;
+      volume::grid_to_static_type(
+          *field_context_inputs[i].get_internal_grid(), [&](auto &input_grid) {
+            using InputGridType = typename std::decay<decltype(input_grid)>::type;
+            using AccessorType = typename InputGridType::ConstAccessor;
+            using Converter = volume::grid_types::Converter<InputGridType>;
 
-        GridReaderPtr reader_ptr =
-            std::make_shared<VGridReader_For_Accessor<GridType, AccessorType, Converter>>(
-                input_grid.getConstAccessor());
-        input_readers_[i] = std::move(reader_ptr);
-      });
+            GridReaderPtr reader_ptr =
+                std::make_shared<VGridReader_For_Accessor<GridType, AccessorType, Converter>>(
+                    input_grid.getConstAccessor());
+            input_readers_[i] = std::move(reader_ptr);
+          });
     }
   }
 
@@ -242,6 +243,13 @@ template<typename GridType, typename MaskGridType> struct EvalPerLeafOp {
   {
     make_input_accessors(field_context_inputs);
   }
+
+  EvalPerLeafOp(Span<GGrid> field_context_inputs, const mf::ProcedureExecutor &procedure_executor)
+      : procedure_executor_(procedure_executor)
+  {
+    make_input_accessors(field_context_inputs);
+  }
+
   EvalPerLeafOp(const EvalPerLeafOp &other)
       : procedure_executor_(other.procedure_executor_),
         mask_accessor_(other.mask_accessor_),
@@ -253,16 +261,18 @@ template<typename GridType, typename MaskGridType> struct EvalPerLeafOp {
   {
     LeafNode &leaf = *leaf_iter;
 
-    /* TODO direct construction from the mask could be faster,
-     * not sure how to do that best. */
-    IndexMask index_mask = IndexMask::from_predicate(
-        IndexMask(leaf_size),
-        GrainSize(leaf_size),
-        index_mask_memory_,
-        [this, leaf](const int64_t index) -> bool {
-          const Coord coord = leaf.offsetToGlobalCoord(index);
-          return mask_accessor_.isValueOn(coord);
-        });
+    IndexMask index_mask(leaf_size);
+    if (mask_accessor_) {
+      /* TODO direct construction from the mask could be faster,
+       * not sure how to do that best. */
+      index_mask = IndexMask::from_predicate(IndexMask(leaf_size),
+                                             GrainSize(leaf_size),
+                                             index_mask_memory_,
+                                             [this, leaf](const int64_t index) -> bool {
+                                               const Coord coord = leaf.offsetToGlobalCoord(index);
+                                               return mask_accessor_.value().isValueOn(coord);
+                                             });
+    }
 
     mf::ParamsBuilder mf_params{procedure_executor_, &index_mask};
 
@@ -321,27 +331,25 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
 
     /* Try to get an existing virtual grid that the result should be written into. */
     GVMutableGrid dst_grid = get_dst_grid(out_index);
-    {
-      if (!dst_grid) {
-        /* Create a destination grid pointer in the resource scope. */
-        openvdb::GridBase *buffer = scope.construct<openvdb::GridBase>(volume::make_grid_for_attribute_type(type);
-        GVMutableGrid &dst_grid = scope.add_value<GVMutableGrid>(std::move(grid_base));
-        GVMutableGrid grid_base = GVMutableGrid::ForGrid(*buffer);
-        dst_grid_ptr = &dst_grid;
-      }
-      else {
-        /* Write the result into the existing grid. */
-        *dst_grid_ptr = std::move(grid_base);
-        r_is_output_written_to_dst[out_index] = true;
-      }
-      r_grids[out_index] = *dst_grid_ptr;
+    openvdb::GridBase *buffer;
+    if (!dst_grid || !dst_grid.is_grid()) {
+      /* Create a destination grid pointer in the resource scope. */
+      buffer = &volume::make_grid_for_attribute_type(scope, type);
+      r_grids[out_index] = GVMutableGrid::ForGrid(*buffer);
+      dst_grid = GVMutableGrid::ForGrid(*buffer);
+    }
+    else {
+      /* Write the result into the existing grid. */
+      buffer = dst_grid.get_internal_grid();
+      r_grids[out_index] = dst_grid;
+      r_is_output_written_to_dst[out_index] = true;
     }
 
     /* Execute the multifunction procedure on each leaf buffer of the mask.
      * Each leaf buffer is a contiguous array that can be used as a span.
      * The leaf buffers' active voxel masks are used as index masks. */
 
-    volume::grid_to_static_type(dst_grid_ptr->grid_, [&](auto &dst_grid) {
+    volume::grid_to_static_type(*buffer, [&](auto &dst_grid) {
       using GridType = typename std::decay<decltype(dst_grid)>::type;
 
       /* Make sure every active tile has leaf node buffers to write into.
@@ -353,16 +361,32 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
        */
       dst_grid.tree().voxelizeActiveTiles();
 
-      volume::grid_to_static_type(mask.grid_, [&](auto &mask_grid) {
-        using MaskGridType = typename std::decay<decltype(mask_grid)>::type;
+      const CommonVGridInfo mask_info = mask.common_info();
+      switch (mask_info.type) {
+        case CommonVGridInfo::Type::Single:
+        case CommonVGridInfo::Type::Any: {
+          /* Ignore mask, counts as active everywhere */
+          EvalPerLeafOp<GridType> func(field_context_inputs, procedure_executor);
+          openvdb::tools::foreach (dst_grid.tree().beginLeaf(),
+                                   func,
+                                   /*threaded=*/true,
+                                   /*shareOp=*/false);
+          break;
+        }
+        case CommonVGridInfo::Type::Grid: {
+          volume::grid_to_static_type(*mask.get_internal_grid(), [&](auto &mask_grid) {
+            using MaskGridType = typename std::decay<decltype(mask_grid)>::type;
 
-        EvalPerLeafOp<GridType, MaskGridType> func(
-            field_context_inputs, procedure_executor, mask_grid);
-        openvdb::tools::foreach (dst_grid.tree().beginLeaf(),
-                                 func,
-                                 /*threaded=*/true,
-                                 /*shareOp=*/false);
-      });
+            EvalPerLeafOp<GridType, MaskGridType> func(
+                field_context_inputs, procedure_executor, mask_grid);
+            openvdb::tools::foreach (dst_grid.tree().beginLeaf(),
+                                     func,
+                                     /*threaded=*/true,
+                                     /*shareOp=*/false);
+          });
+          break;
+        }
+      }
     });
   }
 }
@@ -381,21 +405,12 @@ void evaluate_procedure_on_constant_volume_fields(ResourceScope & /*scope*/,
 
   /* Provide inputs to the procedure executor. */
   for (const int i : field_context_inputs.index_range()) {
-    volume::grid_to_static_type(field_context_inputs[i].grid_, [&](auto &input_grid) {
-      using InputGridType = typename std::decay<decltype(input_grid)>::type;
-      using ValueType = typename InputGridType::ValueType;
-      using Converter = volume::grid_types::Converter<InputGridType>;
-      using AttributeValueType = typename Converter::AttributeValueType;
-
-      /* XXX not all grid types have a background property. */
-      // const ValueType input_value = input_grid.background();
-      typename InputGridType::ConstAccessor accessor = input_grid.getAccessor();
-      const ValueType input_value = accessor.getValue(openvdb::Coord(0, 0, 0));
-
-      VArray<AttributeValueType> varray = VArray<AttributeValueType>::ForSingle(
-          Converter::single_value_to_attribute(input_value), 1);
-      mf_params.add_readonly_single_input(varray);
-    });
+    BLI_assert(field_context_inputs[i].is_single());
+    const CPPType &type = field_context_inputs[i].type();
+    BUFFER_FOR_CPP_TYPE_VALUE(type, buffer);
+    field_context_inputs[i].get_internal_single_to_uninitialized(buffer);
+    GVArray varray = GVArray::ForSingle(field_context_inputs[i].type(), 1, buffer);
+    mf_params.add_readonly_single_input(varray);
   }
 
   /* Temporary buffers for output values, these are stored as background values on empty grids
@@ -418,16 +433,9 @@ void evaluate_procedure_on_constant_volume_fields(ResourceScope & /*scope*/,
     const CPPType &type = field.cpp_type();
     const int out_index = field_indices[i];
 
-    volume::field_to_static_type(type, [&](auto type_tag) {
-      using T = typename decltype(type_tag)::type;
-      using GridType = volume::grid_types::AttributeGrid<T>;
-      using Converter = volume::grid_types::Converter<GridType>;
+    r_grids[out_index] = GVGrid::ForSingle(type, output_buffers[out_index]);
 
-      const T &value = *static_cast<T *>(output_buffers[i]);
-      r_grids[out_index] = GVGrid{GridType::create(Converter::single_value_to_grid(value))};
-    });
-
-    /* Destruct output value buffers, value is stored in grid backgrounds now. */
+    /* Destruct output value buffers, value is stored in #r_grids now. */
     type.destruct(output_buffers[i]);
   }
 }

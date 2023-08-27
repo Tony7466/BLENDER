@@ -82,7 +82,7 @@ VolumeGrid *fog_volume_grid_add_from_points(Volume *volume,
                              iter.modifyValue([&](float &value) { value *= density; });
                            });
 
-  return BKE_volume_grid_add_vdb(*volume, name, {std::move(new_grid)});
+  return &BKE_volume_grid_add_vdb(*volume, name, std::move(new_grid));
 }
 
 VolumeGrid *sdf_volume_grid_add_from_points(Volume *volume,
@@ -95,7 +95,7 @@ VolumeGrid *sdf_volume_grid_add_from_points(Volume *volume,
   new_grid->transform().postScale(voxel_size);
   new_grid->setGridClass(openvdb::GRID_LEVEL_SET);
 
-  return BKE_volume_grid_add_vdb(*volume, name, {std::move(new_grid)});
+  return &BKE_volume_grid_add_vdb(*volume, name, std::move(new_grid));
 }
 
 }  // namespace blender::geometry

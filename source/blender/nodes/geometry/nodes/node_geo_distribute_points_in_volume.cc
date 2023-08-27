@@ -223,8 +223,7 @@ static void node_geo_exec(GeoNodeExecParams params)
         continue;
       }
 
-      openvdb::GridBase::ConstPtr base_grid =
-          BKE_volume_grid_openvdb_for_read(volume, volume_grid).grid_;
+      openvdb::GridBase::Ptr base_grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid);
       if (!base_grid) {
         continue;
       }
@@ -233,8 +232,7 @@ static void node_geo_exec(GeoNodeExecParams params)
         continue;
       }
 
-      const openvdb::FloatGrid::ConstPtr grid = openvdb::gridConstPtrCast<openvdb::FloatGrid>(
-          base_grid);
+      const openvdb::FloatGrid::Ptr grid = openvdb::GridBase::grid<openvdb::FloatGrid>(base_grid);
 
       if (mode == GEO_NODE_DISTRIBUTE_POINTS_IN_VOLUME_DENSITY_RANDOM) {
         point_scatter_density_random(*grid, density, seed, positions);

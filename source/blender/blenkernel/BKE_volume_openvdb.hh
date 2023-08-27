@@ -16,11 +16,15 @@
 
 struct VolumeGrid;
 
-VolumeGrid *BKE_volume_grid_add_vdb(Volume &volume,
-                                    blender::StringRef name,
-                                    blender::volume::GVMutableGrid vdb_grid);
+/* Same as openvdb::GridBase::Ptr (cannot be forward-declared). */
+using GridBasePtr = std::shared_ptr<openvdb::GridBase>;
+using GridBaseConstPtr = std::shared_ptr<const openvdb::GridBase>;
 
-bool BKE_volume_grid_bounds(blender::volume::GVGrid grid,
+VolumeGrid &BKE_volume_grid_add_vdb(Volume &volume,
+                                    blender::StringRef name,
+                                    const GridBasePtr &vdb_grid);
+
+bool BKE_volume_grid_bounds(const openvdb::GridBase &grid,
                             blender::float3 &r_min,
                             blender::float3 &r_max);
 
@@ -29,15 +33,12 @@ bool BKE_volume_grid_bounds(blender::volume::GVGrid grid,
  * This is useful for instances, where there is a separate transform on top of the original
  * grid transform that must be applied for some operations that only take a grid argument.
  */
-blender::volume::GVGrid BKE_volume_grid_shallow_transform(blender::volume::GVGrid grid,
-                                                          const blender::float4x4 &transform);
+GridBaseConstPtr BKE_volume_grid_shallow_transform(const openvdb::GridBase &grid,
+                                                   const blender::float4x4 &transform);
 
-blender::volume::GVGrid BKE_volume_grid_openvdb_for_metadata(const VolumeGrid *grid);
-blender::volume::GVGrid BKE_volume_grid_openvdb_for_read(const Volume *volume,
-                                                         const VolumeGrid *grid);
-blender::volume::GVMutableGrid BKE_volume_grid_openvdb_for_write(const Volume *volume,
-                                                                 VolumeGrid *grid,
-                                                                 bool clear);
+GridBasePtr BKE_volume_grid_openvdb_for_metadata(const VolumeGrid *grid);
+GridBasePtr BKE_volume_grid_openvdb_for_read(const Volume *volume, const VolumeGrid *grid);
+GridBasePtr BKE_volume_grid_openvdb_for_write(const Volume *volume, VolumeGrid *grid, bool clear);
 
 void BKE_volume_grid_clear_tree(Volume &volume, VolumeGrid &volume_grid);
 void BKE_volume_grid_clear_tree(openvdb::GridBase &grid);
@@ -77,7 +78,8 @@ auto BKE_volume_grid_type_operation(const VolumeGridType grid_type, OpType &&op)
   return op.template operator()<openvdb::FloatGrid>();
 }
 
-blender::volume::GVMutableGrid BKE_volume_grid_create_with_changed_resolution(
-    const VolumeGridType grid_type, const openvdb::GridBase &old_grid, float resolution_factor);
+GridBasePtr BKE_volume_grid_create_with_changed_resolution(const VolumeGridType grid_type,
+                                                           const openvdb::GridBase &old_grid,
+                                                           float resolution_factor);
 
 #endif

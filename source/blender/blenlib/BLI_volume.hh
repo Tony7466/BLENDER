@@ -96,6 +96,10 @@ using VectorGrid = Vec3fGrid;
 }  // namespace openvdb
 #endif
 
+namespace blender {
+class ResourceScope;
+}
+
 namespace blender::volume {
 
 #ifdef WITH_OPENVDB
@@ -199,7 +203,8 @@ struct Converter<openvdb::Vec3IGrid>
 /* Specialization for MaskGrid: Leaf buffers directly expose the activation state bit fields. */
 template<> struct Converter<openvdb::MaskGrid> {
   using GridValueType = openvdb::ValueMask;
-  using LeafBufferValueType = unsigned long int;
+  // using LeafBufferValueType = unsigned long int;
+  using LeafBufferValueType = uint64_t;
   using AttributeValueType = bool;
 
   static GridValueType single_value_to_grid(const AttributeValueType & /*value*/)
@@ -223,7 +228,8 @@ template<> struct Converter<openvdb::MaskGrid> {
 /* Specialization for BoolGrid: Leaf buffers directly expose the activation state bit fields. */
 template<> struct Converter<openvdb::BoolGrid> {
   using GridValueType = bool;
-  using LeafBufferValueType = unsigned long int;
+  // using LeafBufferValueType = unsigned long int;
+  using LeafBufferValueType = uint64_t;
   using AttributeValueType = bool;
 
   static GridValueType single_value_to_grid(const AttributeValueType &value)
@@ -277,10 +283,7 @@ using SupportedGridTypes = openvdb::TypeList<openvdb::BoolGrid,
 
 }  // namespace grid_types
 
-const CPPType &grid_attribute_type(const openvdb::GridBase &grid);
-
-template<typename GridType> const CPPType &grid_attribute_type(const GridType &grid);
-
+openvdb::GridBase &make_grid_for_attribute_type(ResourceScope &scope, const CPPType &type);
 openvdb::GridBase *make_grid_for_attribute_type(const CPPType &type);
 
 #endif

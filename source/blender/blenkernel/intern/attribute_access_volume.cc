@@ -27,7 +27,10 @@ GAttributeGridReader VolumeCustomAttributeGridProvider::try_get_grid_for_read(
 {
   const VolumeGridVector &grids = grid_access_.get_const_grids(owner);
   const VolumeGrid *grid = grids.find_grid(attribute_id);
-  return {{grid ? grid->grid() : nullptr}, domain_, nullptr};
+  if (!grid) {
+    return {};
+  }
+  return {GVGrid::ForGrid(*grid->grid()), domain_, nullptr};
 }
 
 GAttributeGridWriter VolumeCustomAttributeGridProvider::try_get_grid_for_write(
@@ -35,7 +38,10 @@ GAttributeGridWriter VolumeCustomAttributeGridProvider::try_get_grid_for_write(
 {
   VolumeGridVector &grids = grid_access_.get_grids(owner);
   VolumeGrid *grid = grids.find_grid(attribute_id);
-  return {{grid ? grid->grid() : nullptr}, domain_, nullptr};
+  if (!grid) {
+    return {};
+  }
+  return {GVMutableGrid::ForGrid(*grid->grid()), domain_, nullptr};
 }
 
 bool VolumeCustomAttributeGridProvider::try_delete(void *owner,
@@ -103,15 +109,9 @@ template<typename ToTreeType> struct ConvertGridOp<ToTreeType, openvdb::MaskTree
   }
 };
 
-static openvdb::GridBase::Ptr add_generic_grid_copy(const CPPType &value_type,
-                                                    const volume::GVGrid &data)
+static openvdb::GridBase::Ptr add_generic_grid_copy(const CPPType &value_type, const GVGrid &data)
 {
-  /* Template build sanitization: nested static type dispatch creates a lot of code, which can
-   * easily make builds run out of memory. Capturing a functor allows doing the 2nd type dispatch
-   * for the grid template separately, avoiding combinatorial explosion. */
-  std::function<openvdb::GridBase::Ptr(const openvdb::GridBase::ConstPtr &from_grid)> copy_fn =
-      nullptr;
-
+  openvdb::GridBase::Ptr result = nullptr;
   volume::field_to_static_type(value_type, [&](auto tag) {
     using ValueType = typename decltype(tag)::type;
     using GridType = volume::grid_types::AttributeGrid<ValueType>;
@@ -121,40 +121,31 @@ static openvdb::GridBase::Ptr add_generic_grid_copy(const CPPType &value_type,
     const ValueType &background_value = *static_cast<const ValueType *>(
         value_type.default_value());
 
-    copy_fn = [background_value](
-                  const openvdb::GridBase::ConstPtr &from_grid) -> openvdb::GridBase::Ptr {
-      openvdb::GridBase::Ptr result = nullptr;
-      if (from_grid) {
-        volume::grid_to_static_type(from_grid, [&](auto &typed_data) {
-          using FromGridType = typename std::decay<decltype(typed_data)>::type;
-          using FromTreeType = typename FromGridType::TreeType;
-          using FromValueType = typename FromTreeType::ValueType;
-          ConvertGridOp<TreeType, FromTreeType, std::is_convertible_v<FromValueType, ValueType>>
-              convert;
-          result = convert(typed_data.tree());
-        });
-      }
-      else {
-        result = GridType::create(Converter::single_value_to_grid(background_value));
-      }
-      return result;
-    };
+    if (data) {
+      volume::grid_to_static_type(*data.get_internal_grid(), [&](auto &typed_data) {
+        using FromGridType = typename std::decay<decltype(typed_data)>::type;
+        using FromTreeType = typename FromGridType::TreeType;
+        using FromValueType = typename FromTreeType::ValueType;
+        ConvertGridOp<TreeType, FromTreeType, std::is_convertible_v<FromValueType, ValueType>>
+            convert;
+        result = convert(typed_data.tree());
+      });
+    }
+    else {
+      result = GridType::create(Converter::single_value_to_grid(background_value));
+    }
   });
-
-  if (copy_fn) {
-    return copy_fn(data.grid_);
-  }
-  return nullptr;
+  return result;
 }
 
 static openvdb::GridBase::Ptr add_generic_grid_move(const CPPType & /*value_type*/,
-                                                    const volume::GVMutableGrid &data)
+                                                    const GVMutableGrid &data)
 {
-  return data.grid_;
+  return openvdb::GridBase::Ptr(data.get_internal_grid());
 }
 
 static openvdb::GridBase::Ptr add_generic_grid_shared(const CPPType &value_type,
-                                                      const volume::GVMutableGrid &data,
+                                                      const GVMutableGrid &data,
                                                       const ImplicitSharingInfo *sharing_info)
 {
   /* XXX May eventually use this, for now just rely on shared_ptr. */
@@ -167,9 +158,8 @@ static openvdb::GridBase::Ptr add_generic_grid_shared(const CPPType &value_type,
 
     if (data) {
       /* Data must be same grid type */
-      BLI_assert(data.grid_->isType<GridType>());
-      typename GridType::Ptr typed_data = openvdb::GridBase::grid<GridType>(data.grid_);
-      BLI_assert(typed_data != nullptr);
+      BLI_assert(data.get_internal_grid()->isType<GridType>());
+      GridType *typed_data = static_cast<GridType *>(data.get_internal_grid());
 
       /* Create grid that shares the tree. */
       result = std::make_shared<GridType>(typed_data->treePtr());
@@ -202,25 +192,24 @@ static bool add_grid_from_attribute_init(const AttributeIDRef &attribute_id,
     case AttributeInit::Type::Shared:
       break;
     case AttributeInit::Type::Grid: {
-      const volume::GVGrid &data =
-          static_cast<const blender::bke::AttributeInitGrid &>(initializer).grid;
+      const GVGrid &data = static_cast<const blender::bke::AttributeInitGrid &>(initializer).grid;
       result = add_generic_grid_copy(value_type, data);
 #ifdef DEBUG_GRID_ATTRIBUTES
       std::cout << "Copied grid to attribute " << attribute_id << std::endl;
-      if (data.grid_) {
-        data.grid_->print(std::cout, 3);
+      if (data) {
+        data.get_internal_grid()->print(std::cout, 3);
       }
 #endif
       break;
     }
     case AttributeInit::Type::MoveGrid: {
-      const volume::GVMutableGrid &data =
+      const GVMutableGrid &data =
           static_cast<const blender::bke::AttributeInitMoveGrid &>(initializer).grid;
       result = add_generic_grid_move(value_type, data);
 #ifdef DEBUG_GRID_ATTRIBUTES
       std::cout << "Moved grid to attribute " << attribute_id << std::endl;
-      if (data.grid_) {
-        data.grid_->print(std::cout, 3);
+      if (data) {
+        data.get_internal_grid()->print(std::cout, 3);
       }
 #endif
       break;
@@ -232,8 +221,8 @@ static bool add_grid_from_attribute_init(const AttributeIDRef &attribute_id,
           value_type, init.grid, init.sharing_info);
 #ifdef DEBUG_GRID_ATTRIBUTES
       std::cout << "Shared grid to attribute " << attribute_id << std::endl;
-      if (init.grid.grid_) {
-        init.grid.grid_->print(std::cout, 3);
+      if (init.grid) {
+        init.grid.get_internal_grid()->print(std::cout, 3);
       }
 #endif
       break;
@@ -294,11 +283,8 @@ bool VolumeCustomAttributeGridProvider::foreach_attribute(
 
   for (const VolumeGrid &grid : grids) {
     const AttributeIDRef attribute_id{grid.name()};
-    const CPPType *type = volume::GVGrid{grid.grid()}.value_type();
-    if (type == nullptr) {
-      continue;
-    }
-    const eCustomDataType data_type = cpp_type_to_custom_data_type(*type);
+    const CPPType &type = volume::grid_base_attribute_type(*grid.grid());
+    const eCustomDataType data_type = cpp_type_to_custom_data_type(type);
     if (data_type == CD_NUMTYPES) {
       continue;
     }

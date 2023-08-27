@@ -284,8 +284,8 @@ class AccumulateFieldInput final : public bke::GeometryFieldInput {
     return attributes.adapt_domain(std::move(g_output), source_domain_, context.domain());
   }
 
-  volume::GVGrid get_volume_grid_for_context(const bke::GeometryFieldContext & /*context*/,
-                                             const volume::GVGrid & /*mask*/) const final
+  GVGrid get_volume_grid_for_context(const bke::GeometryFieldContext & /*context*/,
+                                     const GVGrid & /*mask*/) const final
   {
     /* XXX Grids don't have a simple axis over which to accumulate. */
     return {};
@@ -380,8 +380,8 @@ class TotalFieldInput final : public bke::GeometryFieldInput {
     return attributes.adapt_domain(std::move(g_outputs), source_domain_, context.domain());
   }
 
-  volume::GVGrid get_volume_grid_for_context(const bke::GeometryFieldContext & /*context*/,
-                                             const volume::GVGrid & /*mask*/) const final
+  GVGrid get_volume_grid_for_context(const bke::GeometryFieldContext & /*context*/,
+                                     const GVGrid & /*mask*/) const final
   {
     /* TODO */
     return {};

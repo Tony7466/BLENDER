@@ -97,7 +97,7 @@ bool BKE_volume_grid_dense_floats(const Volume *volume,
 {
 #ifdef WITH_OPENVDB
   const VolumeGridType grid_type = BKE_volume_grid_type(volume_grid);
-  openvdb::GridBase::ConstPtr grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid).grid_;
+  openvdb::GridBase::ConstPtr grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid);
 
   const openvdb::CoordBBox bbox = grid->evalActiveVoxelBoundingBox();
   if (bbox.empty()) {
@@ -331,7 +331,7 @@ void BKE_volume_grid_wireframe(const Volume *volume,
   }
 
 #ifdef WITH_OPENVDB
-  openvdb::GridBase::ConstPtr grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid).grid_;
+  openvdb::GridBase::ConstPtr grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid);
 
   if (volume->display.wireframe_type == VOLUME_WIREFRAME_BOUNDS) {
     /* Bounding box. */
@@ -403,7 +403,7 @@ void BKE_volume_grid_selection_surface(const Volume *volume,
                                        void *cb_userdata)
 {
 #ifdef WITH_OPENVDB
-  openvdb::GridBase::ConstPtr grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid).grid_;
+  openvdb::GridBase::ConstPtr grid = BKE_volume_grid_openvdb_for_read(volume, volume_grid);
   blender::Vector<openvdb::CoordBBox> boxes = get_bounding_boxes(
       BKE_volume_grid_type(volume_grid), *grid, true);
 

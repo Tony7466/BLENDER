@@ -179,8 +179,7 @@ class GFieldRef : public GFieldBase<const FieldNode *> {
 
 namespace detail {
 /* Utility class to make #is_field_v work. */
-struct TypedFieldBase {
-};
+struct TypedFieldBase {};
 }  // namespace detail
 
 /**
@@ -499,7 +498,7 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
 
   ResourceScope scope_;
   const FieldContext &context_;
-  const openvdb::MaskGrid &domain_mask_;
+  GVGrid domain_mask_;
   Vector<GField> fields_to_evaluate_;
   Vector<GVMutableGrid> dst_grids_;
   Vector<GVGrid> evaluated_grids_;
@@ -511,15 +510,8 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
 
  public:
   /** Takes #mask by pointer because the mask has to live longer than the evaluator. */
-  VolumeFieldEvaluator(const FieldContext &context, const openvdb::MaskGrid &domain_mask)
-      : context_(context), domain_mask_(domain_mask)
-  {
-  }
-
-  VolumeFieldEvaluator(const FieldContext &context)
-      : context_(context), domain_mask_(scope_.construct<openvdb::MaskGrid>())
-  {
-  }
+  VolumeFieldEvaluator(const FieldContext &context, const GVGrid &domain_mask);
+  VolumeFieldEvaluator(const FieldContext &context);
 
   ~VolumeFieldEvaluator()
   {
@@ -544,10 +536,10 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
    * \param field: Field to add to the evaluator.
    * \param dst: Mutable grid that the evaluated result for this field is written into.
    */
-  int add_with_destination(GField field, GVMutableGrid &dst);
+  int add_with_destination(GField field, const GVMutableGrid &dst);
 
   /** Same as #add_with_destination but typed. */
-  template<typename T> int add_with_destination(Field<T> field, VMutableGrid<T> &dst)
+  template<typename T> int add_with_destination(Field<T> field, const VMutableGrid<T> &dst)
   {
     return this->add_with_destination(GField(std::move(field)), std::move(dst));
   }

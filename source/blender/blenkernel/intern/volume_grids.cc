@@ -53,8 +53,7 @@ openvdb::GridBase::Ptr VolumeFileCache::Entry::simplified_grid(const int simplif
     simple_grid = simplified_grids.lookup_or_add_cb(simplify_level, [&]() {
       const float resolution_factor = 1.0f / (1 << simplify_level);
       const VolumeGridType grid_type = BKE_volume_grid_type_openvdb(*grid);
-      return BKE_volume_grid_create_with_changed_resolution(grid_type, *grid, resolution_factor)
-          .grid_;
+      return BKE_volume_grid_create_with_changed_resolution(grid_type, *grid, resolution_factor);
     });
   });
   return simple_grid;
@@ -378,7 +377,7 @@ static AttributeAccessorFunctions get_volume_accessor_functions()
     return grids.domain_size(domain);
   };
   fn.domain_grid_mask =
-      [](const void *owner, const eAttrDomain /*domain*/, const int main_grid) -> volume::GVGrid {
+      [](const void *owner, const eAttrDomain /*domain*/, const int main_grid) -> GVGrid {
     if (owner == nullptr || main_grid < 0) {
       return {nullptr};
     }
@@ -389,11 +388,11 @@ static AttributeAccessorFunctions get_volume_accessor_functions()
     for (const VolumeGrid &grid : grids) {
       int index = main_grid;
       if (index-- == 0) {
-        return {grid.grid()};
+        return GVGrid::ForGrid(*grid.grid());
       }
     }
     /* Default if main_grid is invalid. */
-    return {grids.front().grid()};
+    return GVGrid::ForGrid(*grids.front().grid());
   };
   fn.domain_supported = [](const void * /*owner*/, const eAttrDomain domain) {
     return ELEM(domain, ATTR_DOMAIN_VOXEL);

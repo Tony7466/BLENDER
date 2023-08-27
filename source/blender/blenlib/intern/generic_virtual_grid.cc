@@ -49,16 +49,6 @@ namespace blender {
 //   this->get_to_uninitialized(index, r_value);
 // }
 
-CommonVGridInfo GVGridImpl::common_info() const
-{
-  return {};
-}
-
-bool GVGridImpl::try_assign_VGrid(void * /*vgrid*/) const
-{
-  return false;
-}
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -105,20 +95,15 @@ bool GVGridImpl::try_assign_VGrid(void * /*vgrid*/) const
 //   }
 // }
 
-bool GVMutableGridImpl::try_assign_VMutableGrid(void * /*vgrid*/) const
-{
-  return false;
-}
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name #GVGridImpl_For_GSpan
+/** \name #GVGridImpl_For_Grid
  * \{ */
 
-CommonVGridInfo GVGridImpl_For_Grid::common_info() const
+GVGridImpl_For_Grid::GVGridImpl_For_Grid(const GridType &grid)
+    : GVMutableGridImpl(volume::grid_base_attribute_type(grid)), grid_(&grid)
 {
-  return CommonVGridInfo{CommonVGridInfo::Type::Grid, true, grid_};
 }
 
 /** \} */
@@ -352,6 +337,7 @@ GVGrid GVGrid::ForSingleDefault(const CPPType &type)
   return GVGrid::ForSingleRef(type, type.default_value());
 }
 
+#ifdef WITH_OPENVDB
 GVGrid GVGrid::ForGrid(const GridType &grid)
 {
   return GVGrid(vgrid_tag::grid{}, grid);
@@ -372,6 +358,7 @@ GVGrid GVGrid::ForEmpty(const CPPType &type)
 
   return GVGrid::ForGrid(*grid);
 }
+#endif
 
 GVGrid &GVGrid::operator=(const GVGrid &other)
 {
@@ -401,10 +388,12 @@ GVMutableGrid::GVMutableGrid(std::shared_ptr<GVMutableGridImpl> impl)
 {
 }
 
+#ifdef WITH_OPENVDB
 GVMutableGrid GVMutableGrid::ForGrid(GridType &grid)
 {
   return GVMutableGrid::For<GVGridImpl_For_Grid_final>(grid);
 }
+#endif
 
 GVMutableGrid::operator GVGrid() const &
 {
@@ -442,19 +431,16 @@ GVMutableGridImpl *GVMutableGrid::get_implementation() const
 //   this->get_impl()->set_all(src);
 // }
 
+#ifdef WITH_OPENVDB
 GVMutableGrid::GridType *GVMutableGrid::get_internal_grid() const
 {
   BLI_assert(this->is_grid());
   const CommonVGridInfo info = impl_->common_info();
   return static_cast<GridType *>(const_cast<void *>(info.data));
 }
+#endif
 
 /** \} */
-
-CommonVGridInfo GVGridImpl_For_Grid_final::common_info() const
-{
-  return CommonVGridInfo(CommonVGridInfo::Type::Grid, false, grid_);
-}
 
 CommonVGridInfo GVGridImpl_For_SingleValueRef_final::common_info() const
 {

@@ -193,7 +193,8 @@ struct DisplaceGridOp {
   template<typename GridType> void operator()()
   {
     if constexpr (blender::
-                      is_same_any_v<GridType, openvdb::points::PointDataGrid, openvdb::MaskGrid>) {
+                      is_same_any_v<GridType, openvdb::points::PointDataGrid, openvdb::MaskGrid>)
+    {
       /* We don't support displacing these grid types yet. */
       return;
     }
@@ -289,8 +290,7 @@ static void displace_volume(ModifierData *md, const ModifierEvalContext *ctx, Vo
     VolumeGrid *volume_grid = BKE_volume_grid_get_for_write(volume, grid_index);
     BLI_assert(volume_grid != nullptr);
 
-    openvdb::GridBase::Ptr grid =
-        BKE_volume_grid_openvdb_for_write(volume, volume_grid, false).grid_;
+    openvdb::GridBase::Ptr grid = BKE_volume_grid_openvdb_for_write(volume, volume_grid, false);
     VolumeGridType grid_type = BKE_volume_grid_type(volume_grid);
 
     DisplaceGridOp displace_grid_op{*grid, *vdmd, *ctx};

@@ -16,6 +16,7 @@
 
 #ifdef WITH_OPENVDB
 #  include <openvdb/openvdb.h>
+#  include <openvdb/tree/Tree.h>
 #endif
 
 /**
@@ -66,14 +67,6 @@ template<typename Func> void grid_to_static_type(const openvdb::GridBase &grid, 
   grid.apply<grid_types::SupportedGridTypes>(func);
 }
 
-const CPPType &grid_attribute_type(const openvdb::GridBase &grid)
-{
-  const CPPType *type = &CPPType::get<float>();
-  volume::grid_to_static_type(grid,
-                              [&](auto &typed_grid) { type = &grid_attribute_type(typed_grid); });
-  return *type;
-}
-
 template<typename GridType> const CPPType &grid_attribute_type(const GridType & /*grid*/)
 {
   using Converter = grid_types::Converter<GridType>;
@@ -81,6 +74,8 @@ template<typename GridType> const CPPType &grid_attribute_type(const GridType & 
 
   return CPPType::get<AttributeValueType>();
 }
+
+const CPPType &grid_base_attribute_type(const openvdb::GridBase &grid);
 
 #else
 

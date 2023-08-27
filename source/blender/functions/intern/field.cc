@@ -121,11 +121,9 @@ static Vector<GVGrid> get_volume_field_context_inputs(
     GVGrid grid = context.get_volume_grid_for_input(field_input, mask, scope);
     if (!grid) {
       const CPPType &type = field_input.cpp_type();
-      const void *default_value = type.default_value();
       /* Move ownership to the resource scope. */
-      openvdb::GridBase::Ptr buffer{volume::make_grid_for_attribute_type(type)};
-      buffer = scope.add_value<openvdb::GridBase::Ptr>(std::move(buffer));
-      grid = GVMutableGrid::ForGrid(*buffer);
+      openvdb::GridBase &buffer = volume::make_grid_for_attribute_type(scope, type);
+      grid = GVMutableGrid::ForGrid(buffer);
     }
     field_context_inputs.append(grid);
   }
@@ -186,7 +184,7 @@ static Set<GFieldRef> find_varying_fields(const FieldTreeInfo &field_tree_info,
    * depend on them. */
   for (const int i : field_context_inputs.index_range()) {
     const GVGrid &grid = field_context_inputs[i];
-    if (!grid) {
+    if (grid.is_single()) {
       continue;
     }
     const FieldInput &field_input = field_tree_info.deduplicated_field_inputs[i];
@@ -1063,41 +1061,110 @@ struct BoolGridToMask {
   }
 };
 
-static GVMutableGrid grid_mask_from_selection(const GVGrid &full_mask,
-                                              const VGrid<bool> &selection,
-                                              ResourceScope & /*scope*/)
+static GVGrid grid_mask_from_selection(const GVGrid &full_mask,
+                                       const VGrid<bool> &selection,
+                                       ResourceScope &scope)
 {
   if (!full_mask) {
     return {};
   }
 
-  /* Empty bool grid with same transform and metadata as the full mask */
-  VMutableGrid<bool> result = {openvdb::BoolGrid::create(*full_mask.grid_)};
-  volume::grid_to_static_type(full_mask.grid_, [&](auto &typed_full_mask) {
-    result.grid_->topologyUnion(typed_full_mask);
-  });
-  if (selection) {
-    BoolGridToMask op{selection.grid_->getConstAccessor()};
-    openvdb::tools::foreach (result.grid_->beginValueOn(), op);
+  const CommonVGridInfo mask_info = full_mask.common_info();
+  if (mask_info.type == CommonVGridInfo::Type::Grid) {
+    /* Empty bool grid with same transform and metadata as the full mask */
+    openvdb::GridBase *mask_grid = full_mask.get_internal_grid();
+
+    VMutableGrid<bool> mask_for_write = VMutableGrid<bool>::ForGrid(
+        scope.construct<openvdb::BoolGrid>(*mask_grid));
+    /* Initializes result with mask topology, only needed in some cases. */
+    auto apply_mask_topology = [&]() {
+      volume::grid_to_static_type(*mask_grid, [&](auto &typed_mask_grid) {
+        mask_for_write.get_internal_grid().topologyUnion(typed_mask_grid);
+      });
+    };
+
+    /* Merge mask with the selection field. */
+    if (selection) {
+      const CommonVGridInfo selection_info = selection.common_info();
+      switch (selection_info.type) {
+        case CommonVGridInfo::Type::Grid: {
+          apply_mask_topology();
+
+          BoolGridToMask op{selection.get_internal_grid()->getConstAccessor()};
+          openvdb::tools::foreach (mask_for_write.get_internal_grid().beginValueOn(), op);
+          break;
+        }
+        case CommonVGridInfo::Type::Single: {
+          const bool is_selected = selection.get_internal_single();
+          if (is_selected) {
+            apply_mask_topology();
+          }
+        }
+        case CommonVGridInfo::Type::Any: {
+          // TODO
+          // selection.materialize_to_grid();
+        }
+      }
+    }
+    else {
+      /* All selected by default. */
+      apply_mask_topology();
+    }
+    return VGrid<bool>(mask_for_write);
   }
-  return result;
+  else {
+    /* Mask is infinite. */
+    if (selection) {
+      const CommonVGridInfo selection_info = selection.common_info();
+      switch (selection_info.type) {
+        case CommonVGridInfo::Type::Grid: {
+          return GVGrid::ForGrid(
+              scope.construct<openvdb::MaskGrid>(*selection.get_internal_grid()));
+        }
+        case CommonVGridInfo::Type::Single: {
+          const bool is_selected = selection.get_internal_single();
+          return GVGrid::ForSingle(CPPType::get<bool>(), &is_selected);
+        }
+        case CommonVGridInfo::Type::Any: {
+          // TODO No topology source, assume infinite mask.
+          static const bool is_selected = true;
+          return GVGrid::ForSingle(CPPType::get<bool>(), &is_selected);
+        }
+      }
+    }
+    else {
+      static const bool is_selected = true;
+      return GVGrid::ForSingle(CPPType::get<bool>(), &is_selected);
+    }
+  }
+  return {};
 }
 
-int VolumeFieldEvaluator::add_with_destination(GField field, GMutableGrid &dst)
+VolumeFieldEvaluator::VolumeFieldEvaluator(const FieldContext &context, const GVGrid &domain_mask)
+    : context_(context), domain_mask_(domain_mask)
+{
+}
+
+VolumeFieldEvaluator::VolumeFieldEvaluator(const FieldContext &context)
+    : context_(context), domain_mask_(GVGrid::ForGrid(scope_.construct<openvdb::MaskGrid>()))
+{
+}
+
+int VolumeFieldEvaluator::add_with_destination(GField field, const GVMutableGrid &dst)
 {
   const int field_index = fields_to_evaluate_.append_and_get_index(std::move(field));
-  dst_grids_.append(&dst);
+  dst_grids_.append(dst);
   output_pointer_infos_.append({});
   return field_index;
 }
 
-int VolumeFieldEvaluator::add(GField field, GGrid *grid_ptr)
+int VolumeFieldEvaluator::add(GField field, GVGrid *grid_ptr)
 {
   const int field_index = fields_to_evaluate_.append_and_get_index(std::move(field));
   dst_grids_.append({});
   output_pointer_infos_.append(
-      OutputPointerInfo{grid_ptr, [](void *dst, const GGrid &varray, ResourceScope & /*scope*/) {
-                          *static_cast<GGrid *>(dst) = varray;
+      OutputPointerInfo{grid_ptr, [](void *dst, const GVGrid &grid, ResourceScope & /*scope*/) {
+                          *static_cast<GVGrid *>(dst) = grid;
                         }});
   return field_index;
 }
@@ -1116,9 +1183,12 @@ static GVGrid evaluate_selection(const Field<bool> &selection_field,
                                  ResourceScope &scope)
 {
   if (selection_field) {
-    VGrid<bool> selection =
-        evaluate_volume_fields(scope, {selection_field}, domain_mask, context)[0].typed<bool>();
-    return grid_mask_from_selection(domain_mask, selection, scope);
+    // XXX Why does this not compile? - Lukas
+    // VGrid<bool> selection =
+    //    evaluate_volume_fields(scope, {selection_field}, domain_mask, context)[0].typed<bool>();
+    // return grid_mask_from_selection(domain_mask, selection, scope);
+    UNUSED_VARS(scope, context);
+    return {};
   }
   return domain_mask;
 }
@@ -1146,7 +1216,10 @@ void VolumeFieldEvaluator::evaluate()
 
 GVGrid VolumeFieldEvaluator::get_evaluated_as_mask(const int field_index)
 {
-  VGrid<bool> grid = this->get_evaluated(field_index).typed<bool>();
+  // XXX Why does this not compile? - Lukas
+  // VGrid<bool> grid = this->get_evaluated(field_index).typed<bool>();
+  VGrid<bool> grid = {};
+  UNUSED_VARS(field_index);
   return grid_mask_from_selection(domain_mask_, grid, scope_);
 }
 

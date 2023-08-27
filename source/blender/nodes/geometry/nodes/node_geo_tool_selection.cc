@@ -46,8 +46,8 @@ class ToolSelectionFieldInput final : public bke::GeometryFieldInput {
         return {};
     }
   }
-  volume::GVGrid get_volume_grid_for_context(const bke::GeometryFieldContext & /*context*/,
-                                             const volume::GVGrid & /*mask*/) const final
+  GVGrid get_volume_grid_for_context(const bke::GeometryFieldContext & /*context*/,
+                                     const GVGrid & /*mask*/) const final
   {
     return {};
   }

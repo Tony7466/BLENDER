@@ -8,6 +8,7 @@
 
 #include "BLI_cpp_type.hh"
 #include "BLI_math_base.hh"
+#include "BLI_resource_scope.hh"
 #include "BLI_volume_openvdb.hh"
 
 #ifdef WITH_OPENVDB
@@ -18,6 +19,21 @@ namespace blender::volume {
 
 #ifdef WITH_OPENVDB
 
+openvdb::GridBase &make_grid_for_attribute_type(ResourceScope &scope, const CPPType &type)
+{
+  openvdb::GridBase *result = nullptr;
+  volume::field_to_static_type(type, [&](auto tag) {
+    using ValueType = typename decltype(tag)::type;
+    using GridType = volume::grid_types::AttributeGrid<ValueType>;
+    using Converter = volume::grid_types::Converter<GridType>;
+
+    const ValueType &background_value = *static_cast<const ValueType *>(type.default_value());
+    result = &scope.construct<GridType>(Converter::single_value_to_grid(background_value));
+  });
+  BLI_assert(result != nullptr);
+  return *result;
+}
+
 openvdb::GridBase *make_grid_for_attribute_type(const CPPType &type)
 {
   openvdb::GridBase *result = nullptr;
@@ -27,10 +43,18 @@ openvdb::GridBase *make_grid_for_attribute_type(const CPPType &type)
     using Converter = volume::grid_types::Converter<GridType>;
 
     const ValueType &background_value = *static_cast<const ValueType *>(type.default_value());
-    result = new GridType(Converter::single_value_to_grid(background_value));
+    result = MEM_new<GridType>(__func__, Converter::single_value_to_grid(background_value));
   });
   BLI_assert(result != nullptr);
   return result;
+}
+
+const CPPType &grid_base_attribute_type(const openvdb::GridBase &grid)
+{
+  const CPPType *type = &CPPType::get<float>();
+  volume::grid_to_static_type(grid,
+                              [&](auto &typed_grid) { type = &grid_attribute_type(typed_grid); });
+  return *type;
 }
 
 // int64_t GVGrid::voxel_count() const

@@ -401,7 +401,7 @@ struct OutputAttributeToStore {
   eAttrDomain domain;
   StringRefNull name;
   GMutableSpan data;
-  volume::GVMutableGrid *grid_data;
+  openvdb::GridBase *grid_data;
 };
 
 /**
@@ -480,7 +480,7 @@ static Vector<OutputAttributeToStore> compute_attributes_to_store(
         continue;
       }
       const int domain_size = attributes.domain_size(domain);
-      const volume::GVGrid domain_mask = attributes.domain_grid_mask(domain, main_grid);
+      const GVGrid domain_mask = attributes.domain_grid_mask(domain, main_grid);
       bke::GeometryFieldContext field_context{component, domain};
       fn::FieldEvaluator field_evaluator{field_context, domain_size};
       fn::VolumeFieldEvaluator volume_field_evaluator{field_context, domain_mask};
@@ -496,8 +496,9 @@ static Vector<OutputAttributeToStore> compute_attributes_to_store(
             field_evaluator.add_with_destination(std::move(field), store.data);
             break;
           case bke::GeometryComponent::AttributeType::Grid:
-            store.grid_data = MEM_new<volume::GVMutableGrid>(__func__);
-            volume_field_evaluator.add_with_destination(std::move(field), *store.grid_data);
+            store.grid_data = volume::make_grid_for_attribute_type(type);
+            volume_field_evaluator.add_with_destination(std::move(field),
+                                                        GVMutableGrid::ForGrid(*store.grid_data));
             break;
         }
 
@@ -554,8 +555,8 @@ static void store_computed_output_attributes(
         break;
       }
       case bke::GeometryComponent::AttributeType::Grid: {
-        const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(
-            *store.grid_data->value_type());
+        GVMutableGrid grid = GVMutableGrid::ForGrid(*store.grid_data);
+        const eCustomDataType data_type = bke::cpp_type_to_custom_data_type(grid.type());
         const std::optional<bke::AttributeMetaData> meta_data = attributes.lookup_meta_data(
             store.name);
 
@@ -567,10 +568,7 @@ static void store_computed_output_attributes(
           attributes.remove(store.name);
         }
 
-        if (attributes.add(store.name,
-                           store.domain,
-                           bke::cpp_type_to_custom_data_type(*store.grid_data->value_type()),
-                           bke::AttributeInitMoveGrid(*store.grid_data)))
+        if (attributes.add(store.name, store.domain, data_type, bke::AttributeInitMoveGrid(grid)))
         {
           continue;
         }
@@ -578,7 +576,7 @@ static void store_computed_output_attributes(
         bke::GAttributeGridWriter attribute = attributes.lookup_or_add_grid_for_write(
             store.name, store.domain, data_type);
         if (attribute) {
-          attribute.grid = *store.grid_data;
+          attribute.grid = grid;
           attribute.finish();
         }
 
