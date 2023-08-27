@@ -306,7 +306,7 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
    * Each leaf buffer is a contiguous array that can be used as a span.
    * The leaf buffers' active voxel masks are used as index masks. */
 
-  if (mask) {
+  if (!mask) {
     return;
   }
 

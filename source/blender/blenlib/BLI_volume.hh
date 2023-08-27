@@ -283,8 +283,10 @@ using SupportedGridTypes = openvdb::TypeList<openvdb::BoolGrid,
 
 }  // namespace grid_types
 
-openvdb::GridBase &make_grid_for_attribute_type(ResourceScope &scope, const CPPType &type);
-openvdb::GridBase *make_grid_for_attribute_type(const CPPType &type);
+openvdb::GridBase &make_grid_for_attribute_type(ResourceScope &scope,
+                                                const CPPType &type,
+                                                const void *value = nullptr);
+openvdb::GridBase *make_grid_for_attribute_type(const CPPType &type, const void *value = nullptr);
 
 #endif
 

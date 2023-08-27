@@ -19,34 +19,58 @@ namespace blender::volume {
 
 #ifdef WITH_OPENVDB
 
-openvdb::GridBase &make_grid_for_attribute_type(ResourceScope &scope, const CPPType &type)
+openvdb::TreeBase::Ptr make_tree_for_attribute_type(const CPPType &type,
+                                                    const void *value,
+                                                    std::optional<ResourceScope> scope)
 {
-  openvdb::GridBase *result = nullptr;
+  if (value == nullptr) {
+    value = type.default_value();
+  }
+
+  openvdb::TreeBase::Ptr result = nullptr;
   volume::field_to_static_type(type, [&](auto tag) {
     using ValueType = typename decltype(tag)::type;
     using GridType = volume::grid_types::AttributeGrid<ValueType>;
+    using TreeType = volume::grid_types::AttributeTree<ValueType>;
     using Converter = volume::grid_types::Converter<GridType>;
 
-    const ValueType &background_value = *static_cast<const ValueType *>(type.default_value());
-    result = &scope.construct<GridType>(Converter::single_value_to_grid(background_value));
-  });
-  BLI_assert(result != nullptr);
-  return *result;
-}
-
-openvdb::GridBase *make_grid_for_attribute_type(const CPPType &type)
-{
-  openvdb::GridBase *result = nullptr;
-  volume::field_to_static_type(type, [&](auto tag) {
-    using ValueType = typename decltype(tag)::type;
-    using GridType = volume::grid_types::AttributeGrid<ValueType>;
-    using Converter = volume::grid_types::Converter<GridType>;
-
-    const ValueType &background_value = *static_cast<const ValueType *>(type.default_value());
-    result = MEM_new<GridType>(__func__, Converter::single_value_to_grid(background_value));
+    const ValueType &background_value = *static_cast<const ValueType *>(value);
+    TreeType::Ptr tree = TreeType::create(Converter::single_value_to_grid(background_value));
+    if (scope) {
+      result = scope.add_value(std::move(tree));
+    }
+    else {
+      result = tree;
+    }
   });
   BLI_assert(result != nullptr);
   return result;
+}
+
+openvdb::GridBase &make_grid_for_attribute_type(const CPPType &type,
+                                                const void *value,
+                                                std::optional<ResourceScope> scope)
+{
+  if (value == nullptr) {
+    value = type.default_value();
+  }
+
+  openvdb::GridBase *result = nullptr;
+  volume::field_to_static_type(type, [&](auto tag) {
+    using ValueType = typename decltype(tag)::type;
+    using GridType = volume::grid_types::AttributeGrid<ValueType>;
+    using Converter = volume::grid_types::Converter<GridType>;
+
+    const ValueType &background_value = *static_cast<const ValueType *>(value);
+    if (scope) {
+      result = &scope.construct<GridType>(Converter::single_value_to_grid(background_value));
+    }
+    else {
+      result = MEM_new<GridType>(__func__, Converter::single_value_to_grid(background_value));
+    }
+  });
+  BLI_assert(result != nullptr);
+  return *result;
 }
 
 const CPPType &grid_base_attribute_type(const openvdb::GridBase &grid)
