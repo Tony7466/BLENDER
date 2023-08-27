@@ -61,20 +61,21 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     else {
       BSDF = diffuse_color * diffuse(Normal);
     }
+    if (IOR != 1.0) {
+      color f0 = color(F0_from_ior(IOR));
+      color f90 = color(1.0);
 
-    color f0 = color(F0_from_ior(IOR));
-    color f90 = color(1.0);
+      /* Apply specular tint */
+      float m_cdlum = luminance(BaseColor);
+      color m_ctint = m_cdlum > 0.0 ? BaseColor / m_cdlum : color(1.0);
+      color specTint = mix(color(1.0), m_ctint, SpecularTint);
+      f0 *= (specTint * 2.0 * Specular);
 
-    /* Apply specular tint */
-    float m_cdlum = luminance(BaseColor);
-    color m_ctint = m_cdlum > 0.0 ? BaseColor / m_cdlum : color(1.0);
-    color specTint = mix(color(1.0), m_ctint, SpecularTint);
-    f0 *= (specTint * 2.0 * Specular);
-
-    BSDF = layer(
-        generalized_schlick_bsdf(
-            Normal, T, color(1.0), color(0.0), alpha_x, alpha_y, f0, f90, -IOR, distribution),
-        BSDF);
+      BSDF = layer(
+          generalized_schlick_bsdf(
+              Normal, T, color(1.0), color(0.0), alpha_x, alpha_y, f0, f90, -IOR, distribution),
+          BSDF);
+    }
   }
 
   closure color TransmissionBSDF = 0;

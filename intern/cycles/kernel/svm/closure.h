@@ -263,7 +263,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       }
 
       /* Specular component */
-      if (reflective_caustics) {
+      if (reflective_caustics && eta != 1.0f) {
         ccl_private MicrofacetBsdf *bsdf = (ccl_private MicrofacetBsdf *)bsdf_alloc(
             sd, sizeof(MicrofacetBsdf), weight);
         ccl_private FresnelGeneralizedSchlick *fresnel =
