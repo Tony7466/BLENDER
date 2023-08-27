@@ -559,7 +559,7 @@ template<typename T> class VGrid : public VGridCommon<T> {
    * Construct a new virtual array for an existing span. This does not take ownership of the
    * underlying memory.
    */
-  static VGrid ForGrid(const openvdb::Grid<T> &grid)
+  static VGrid ForGrid(const GridType &grid)
   {
     return VGrid(vgrid_tag::grid{}, grid);
   }

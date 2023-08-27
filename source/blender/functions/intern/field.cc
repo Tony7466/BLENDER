@@ -1183,12 +1183,9 @@ static GVGrid evaluate_selection(const Field<bool> &selection_field,
                                  ResourceScope &scope)
 {
   if (selection_field) {
-    // XXX Why does this not compile? - Lukas
-    // VGrid<bool> selection =
-    //    evaluate_volume_fields(scope, {selection_field}, domain_mask, context)[0].typed<bool>();
-    // return grid_mask_from_selection(domain_mask, selection, scope);
-    UNUSED_VARS(scope, context);
-    return {};
+    VGrid<bool> selection =
+        evaluate_volume_fields(scope, {selection_field}, domain_mask, context)[0].typed<bool>();
+    return grid_mask_from_selection(domain_mask, selection, scope);
   }
   return domain_mask;
 }
@@ -1216,10 +1213,7 @@ void VolumeFieldEvaluator::evaluate()
 
 GVGrid VolumeFieldEvaluator::get_evaluated_as_mask(const int field_index)
 {
-  // XXX Why does this not compile? - Lukas
-  // VGrid<bool> grid = this->get_evaluated(field_index).typed<bool>();
-  VGrid<bool> grid = {};
-  UNUSED_VARS(field_index);
+  VGrid<bool> grid = this->get_evaluated(field_index).typed<bool>();
   return grid_mask_from_selection(domain_mask_, grid, scope_);
 }
 

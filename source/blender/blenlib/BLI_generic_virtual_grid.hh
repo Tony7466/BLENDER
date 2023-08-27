@@ -627,8 +627,8 @@ template<typename T> inline VGrid<T> GVGrid::typed() const
    * #this is destructed. */
   if (info.type == CommonVGridInfo::Type::Grid && !info.may_have_ownership) {
 #ifdef WITH_OPENVDB
-    using GridType = typename VGrid<T>::GridType;
-    return VGrid<T>::ForGrid(static_cast<const GridType *>(info.data));
+    using ResultGridType = typename VGrid<T>::GridType;
+    return VGrid<T>::ForGrid(*static_cast<const ResultGridType *>(info.data));
 #else
     return {};
 #endif
