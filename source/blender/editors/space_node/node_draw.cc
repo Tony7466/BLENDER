@@ -445,8 +445,8 @@ static bool node_update_basis_socket(const bContext &C,
   uiLayoutSetContextPointer(layout, "socket", &sockptr);
 
   uiLayout *row = uiLayoutRow(layout, true);
-  /* Alignment based on input/output. */
-  uiLayoutSetAlignment(row, in_out == SOCK_IN ? UI_LAYOUT_ALIGN_LEFT : UI_LAYOUT_ALIGN_RIGHT);
+  /* Align output buttons to the right. */
+  uiLayoutSetAlignment(row, in_out == SOCK_IN ? UI_LAYOUT_ALIGN_EXPAND : UI_LAYOUT_ALIGN_RIGHT);
 
   const char *socket_label = bke::nodeSocketLabel(&socket);
   const char *socket_translation_context = node_socket_get_translation_context(socket);
