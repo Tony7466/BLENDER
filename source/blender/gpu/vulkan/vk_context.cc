@@ -59,14 +59,12 @@ void VKContext::sync_backbuffer()
   }
 
   if (ghost_window_) {
-    VkSurfaceFormatKHR vk_surface_format;
-    VkExtent2D extent;
+    GHOST_VulkanSwapChainData swap_chain_data = {};
+    GHOST_GetVulkanSwapChainFormat((GHOST_WindowHandle)ghost_window_, &swap_chain_data);
 
-    GHOST_GetVulkanSwapChainFormat((GHOST_WindowHandle)ghost_window_, &vk_surface_format, &extent);
-
-    const bool reset_framebuffer = vk_surface_format_.format != vk_surface_format.format ||
-                                   vk_extent_.width != extent.width ||
-                                   vk_extent_.height != extent.height;
+    const bool reset_framebuffer = swap_chain_format_ != swap_chain_data.format ||
+                                   vk_extent_.width != swap_chain_data.extent.width ||
+                                   vk_extent_.height != swap_chain_data.extent.height;
     if (reset_framebuffer) {
       if (has_active_framebuffer()) {
         deactivate_framebuffer();
@@ -76,10 +74,10 @@ void VKContext::sync_backbuffer()
         surface_texture_ = nullptr;
       }
       surface_texture_ = GPU_texture_create_2d("back-left",
-                                               extent.width,
-                                               extent.height,
+                                               swap_chain_data.extent.width,
+                                               swap_chain_data.extent.height,
                                                1,
-                                               to_gpu_format(vk_surface_format.format),
+                                               to_gpu_format(swap_chain_data.format),
                                                GPU_TEXTURE_USAGE_ATTACHMENT,
                                                nullptr);
 
@@ -88,8 +86,8 @@ void VKContext::sync_backbuffer()
 
       back_left->bind(false);
 
-      vk_surface_format_ = vk_surface_format;
-      vk_extent_ = extent;
+      swap_chain_format_ = swap_chain_data.format;
+      vk_extent_ = swap_chain_data.extent;
     }
   }
 }
@@ -219,11 +217,11 @@ void VKContext::bind_graphics_pipeline(const GPUPrimType prim_type,
 /** \name Graphics pipeline
  * \{ */
 
-void VKContext::swap_buffers_pre_callback()
+void VKContext::swap_buffers_pre_callback(const GHOST_VulkanSwapChainData *swap_chain_data)
 {
   VKContext *context = VKContext::get();
   BLI_assert(context);
-  context->swap_buffers_pre_handler();
+  context->swap_buffers_pre_handler(*swap_chain_data);
 }
 
 void VKContext::swap_buffers_post_callback()
@@ -233,33 +231,29 @@ void VKContext::swap_buffers_post_callback()
   context->swap_buffers_post_handler();
 }
 
-void VKContext::swap_buffers_pre_handler()
+void VKContext::swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &swap_chain_data)
 {
   VKFrameBuffer &framebuffer = *unwrap(back_left);
 
-  /* Get swapchain image. */
-  VkImage vk_image = VK_NULL_HANDLE;
-  VkSurfaceFormatKHR vk_surface_format = {};
-  VkExtent2D vk_extent = {};
-  GHOST_AcquireVulkanSwapChainImage(
-      static_cast<GHOST_WindowHandle>(ghost_window_), &vk_image, &vk_surface_format, &vk_extent);
-
   VKTexture wrapper("display_texture");
-  wrapper.init(vk_image, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, to_gpu_format(vk_surface_format.format));
+  wrapper.init(swap_chain_data.image,
+               VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+               to_gpu_format(swap_chain_data.format));
   wrapper.layout_ensure(*this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   VKTexture *color_attachment = unwrap(unwrap(framebuffer.color_tex(0)));
   color_attachment->layout_ensure(*this, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
   VkImageBlit image_blit = {};
-  image_blit.srcOffsets[0] = {0, int32_t(vk_extent.height) - 1, 0};
-  image_blit.srcOffsets[1] = {int32_t(vk_extent.width), 0, 1};
+  image_blit.srcOffsets[0] = {0, int32_t(swap_chain_data.extent.height) - 1, 0};
+  image_blit.srcOffsets[1] = {int32_t(swap_chain_data.extent.width), 0, 1};
   image_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   image_blit.srcSubresource.mipLevel = 0;
   image_blit.srcSubresource.baseArrayLayer = 0;
   image_blit.srcSubresource.layerCount = 1;
 
   image_blit.dstOffsets[0] = {0, 0, 0};
-  image_blit.dstOffsets[1] = {int32_t(vk_extent.width), int32_t(vk_extent.height), 1};
+  image_blit.dstOffsets[1] = {
+      int32_t(swap_chain_data.extent.width), int32_t(swap_chain_data.extent.height), 1};
   image_blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
   image_blit.dstSubresource.mipLevel = 0;
   image_blit.dstSubresource.baseArrayLayer = 0;

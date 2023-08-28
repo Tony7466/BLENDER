@@ -444,9 +444,27 @@ GHOST_TSuccess GHOST_ContextVK::swapBuffers()
   // if (m_lastFrame != m_currentFrame) {
   // return GHOST_kSuccess;
   //}
+  GHOST_VulkanSwapChainData swap_chain_data;
+
+  if (m_currentFrame != m_lastFrame) {
+    assert(vulkan_device.has_value() && vulkan_device->device != VK_NULL_HANDLE);
+    VkDevice device = vulkan_device->device;
+    vkAcquireNextImageKHR(device,
+                          m_swapchain,
+                          UINT64_MAX,
+                          m_image_available_semaphores[m_currentFrame],
+                          VK_NULL_HANDLE,
+                          &m_currentImage);
+
+    m_lastFrame = m_currentFrame;
+  }
+
+  swap_chain_data.image = m_swapchain_images[m_currentImage];
+  swap_chain_data.format = m_surface_format.format;
+  swap_chain_data.extent = m_render_extent;
 
   if (swap_buffers_pre_callback_) {
-    swap_buffers_pre_callback_();
+    swap_buffers_pre_callback_(&swap_chain_data);
   }
 
   VkPresentInfoKHR present_info = {};
@@ -487,38 +505,12 @@ GHOST_TSuccess GHOST_ContextVK::swapBuffers()
   return GHOST_kSuccess;
 }
 
-GHOST_TSuccess GHOST_ContextVK::getVulkanSwapChainFormat(void *r_surface_format, void *r_extent)
+GHOST_TSuccess GHOST_ContextVK::getVulkanSwapChainFormat(
+    GHOST_VulkanSwapChainData *r_swap_chain_data)
 {
-  *((VkSurfaceFormatKHR *)r_surface_format) = m_surface_format;
-  *((VkExtent2D *)r_extent) = m_render_extent;
-
-  return GHOST_kSuccess;
-}
-
-GHOST_TSuccess GHOST_ContextVK::acquireVulkanSwapChainImage(void *image,
-                                                            void *r_surface_format,
-                                                            void *extent)
-{
-  if (m_swapchain == VK_NULL_HANDLE) {
-    return GHOST_kFailure;
-  }
-
-  if (m_currentFrame != m_lastFrame) {
-    assert(vulkan_device.has_value() && vulkan_device->device != VK_NULL_HANDLE);
-    VkDevice device = vulkan_device->device;
-    vkAcquireNextImageKHR(device,
-                          m_swapchain,
-                          UINT64_MAX,
-                          m_image_available_semaphores[m_currentFrame],
-                          VK_NULL_HANDLE,
-                          &m_currentImage);
-
-    m_lastFrame = m_currentFrame;
-  }
-
-  *((VkImage *)image) = m_swapchain_images[m_currentImage];
-  *((VkSurfaceFormatKHR *)r_surface_format) = m_surface_format;
-  *((VkExtent2D *)extent) = m_render_extent;
+  r_swap_chain_data->image = VK_NULL_HANDLE;
+  r_swap_chain_data->format = m_surface_format.format;
+  r_swap_chain_data->extent = m_render_extent;
 
   return GHOST_kSuccess;
 }
@@ -546,7 +538,7 @@ GHOST_TSuccess GHOST_ContextVK::getVulkanHandles(void *r_instance,
 }
 
 GHOST_TSuccess GHOST_ContextVK::setVulkanSwapBuffersCallbacks(
-    std::function<void(void)> swap_buffers_pre_callback,
+    std::function<void(const GHOST_VulkanSwapChainData *)> swap_buffers_pre_callback,
     std::function<void(void)> swap_buffers_post_callback)
 {
   swap_buffers_pre_callback_ = swap_buffers_pre_callback;

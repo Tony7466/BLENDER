@@ -299,7 +299,7 @@ messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
   // Invalid blit regions.
   BLI_assert(callback_data->messageIdNumber != 0x7a4e4265);
 
-  //BLI_assert(callback_data->messageIdNumber != 0x4dae5635);
+  // BLI_assert(callback_data->messageIdNumber != 0x4dae5635);
   return VK_FALSE;
 };
 

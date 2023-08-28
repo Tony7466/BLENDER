@@ -1270,29 +1270,11 @@ void GHOST_GetVulkanHandles(GHOST_ContextHandle context,
  *     can recreate the swap chain. When this is done the application should be informed by those
  *     changes.
  */
-void GHOST_SetVulkanSwapBuffersCallbacks(GHOST_ContextHandle context,
-                                         void (*swap_buffers_pre_callback)(void),
-                                         void (*swap_buffers_post_callback)(void));
+void GHOST_SetVulkanSwapBuffersCallbacks(
+    GHOST_ContextHandle context,
+    void (*swap_buffers_pre_callback)(const GHOST_VulkanSwapChainData *),
+    void (*swap_buffers_post_callback)(void));
 
-/**
- * Acquire the swap chain image that will be presented next to the user.
- *
- * \param windowhandle:  GHOST window handle to a window to get the resource from.
- * \param r_image: After calling this function the VkImage
- *     referenced by this parameter will contain the VKImage handle
- *     of the current back buffer.
- * \param r_surface_format: After calling this function the VkSurfaceFormatKHR
- *     referenced by this parameter will contain the surface format of the
- *     surface. The format is the same as the image returned in the r_image
- *     parameter.
- * \param r_extent: After calling this function the VkExtent2D
- *     referenced by this parameter will contain the size of the
- *     frame buffer and image in pixels.
- */
-void GHOST_AcquireVulkanSwapChainImage(GHOST_WindowHandle windowhandle,
-                                       void *r_image,
-                                       void *r_surface_format,
-                                       void *r_extent);
 /**
  * Acquire the current swap chain format.
  *
@@ -1306,8 +1288,7 @@ void GHOST_AcquireVulkanSwapChainImage(GHOST_WindowHandle windowhandle,
  *     frame buffer and image in pixels.
  */
 void GHOST_GetVulkanSwapChainFormat(GHOST_WindowHandle windowhandle,
-                                    void *r_surface_format,
-                                    void *r_extent);
+                                    GHOST_VulkanSwapChainData *r_swap_chain_data);
 
 #endif
 

@@ -107,15 +107,9 @@ uint GHOST_Window::getDefaultFramebuffer()
   return (m_context) ? m_context->getDefaultFramebuffer() : 0;
 }
 
-GHOST_TSuccess GHOST_Window::acquireVulkanSwapChainImage(void *image,
-                                                         void *r_surface_format,
-                                                         void *extent)
+GHOST_TSuccess GHOST_Window::getVulkanSwapChainFormat(GHOST_VulkanSwapChainData *r_swap_chain_data)
 {
-  return m_context->acquireVulkanSwapChainImage(image, r_surface_format, extent);
-}
-GHOST_TSuccess GHOST_Window::getVulkanSwapChainFormat(void *r_surface_format, void *r_extent)
-{
-  return m_context->getVulkanSwapChainFormat(r_surface_format, r_extent);
+  return m_context->getVulkanSwapChainFormat(r_swap_chain_data);
 }
 
 GHOST_TSuccess GHOST_Window::activateDrawingContext()

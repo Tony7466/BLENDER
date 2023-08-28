@@ -74,24 +74,6 @@ class GHOST_IContext {
                                           void *r_queue) = 0;
 
   /**
-   * Acquire the swap chain image that will be presented next to the user.
-   *
-   * \param windowhandle:  GHOST window handle to a window to get the resource from.
-   * \param r_image: After calling this function the VkImage
-   *     referenced by this parameter will contain the VKImage handle
-   *     of the current back buffer.
-   * \param r_surface_format: After calling this function the VkSurfaceFormatKHR
-   *     referenced by this parameter will contain the surface format of the
-   *     surface. The format is the same as the image returned in the r_image
-   *     parameter.
-   * \param r_extent: After calling this function the VkExtent2D
-   *     referenced by this parameter will contain the size of the
-   *     frame buffer and image in pixels.
-   */
-  virtual GHOST_TSuccess acquireVulkanSwapChainImage(void *r_image,
-                                                     void *r_surface_format,
-                                                     void *r_extent) = 0;
-  /**
    * Acquire the current swap chain format.
    *
    * \param windowhandle:  GHOST window handle to a window to get the resource from.
@@ -103,7 +85,8 @@ class GHOST_IContext {
    *     referenced by this parameter will contain the size of the
    *     frame buffer and image in pixels.
    */
-  virtual GHOST_TSuccess getVulkanSwapChainFormat(void *r_surface_format, void *r_extent) = 0;
+  virtual GHOST_TSuccess getVulkanSwapChainFormat(
+      GHOST_VulkanSwapChainData *r_swap_chain_data) = 0;
 
   /**
    * Set the pre and post callbacks for vulkan swap chain in the given context.
@@ -117,7 +100,7 @@ class GHOST_IContext {
    *     changes.
    */
   virtual GHOST_TSuccess setVulkanSwapBuffersCallbacks(
-      std::function<void(void)> swap_buffers_pre_callback,
+      std::function<void(const GHOST_VulkanSwapChainData *)> swap_buffers_pre_callback,
       std::function<void(void)> swap_buffers_post_callback) = 0;
 
   virtual GHOST_TSuccess swapBuffers() = 0;

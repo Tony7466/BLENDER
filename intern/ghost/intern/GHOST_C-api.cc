@@ -1237,29 +1237,20 @@ void GHOST_GetVulkanHandles(GHOST_ContextHandle contexthandle,
       r_instance, r_physical_device, r_device, r_graphic_queue_family, r_queue);
 }
 
-void GHOST_SetVulkanSwapBuffersCallbacks(GHOST_ContextHandle contexthandle,
-                                         void (*swap_buffers_pre_callback)(void),
-                                         void (*swap_buffers_post_callback)(void))
+void GHOST_SetVulkanSwapBuffersCallbacks(
+    GHOST_ContextHandle contexthandle,
+    void (*swap_buffers_pre_callback)(const GHOST_VulkanSwapChainData *),
+    void (*swap_buffers_post_callback)(void))
 {
   GHOST_IContext *context = (GHOST_IContext *)contexthandle;
   context->setVulkanSwapBuffersCallbacks(swap_buffers_pre_callback, swap_buffers_post_callback);
 }
 
-void GHOST_AcquireVulkanSwapChainImage(GHOST_WindowHandle windowhandle,
-                                       void *r_image,
-                                       void *r_surface_format,
-                                       void *r_extent)
-{
-  GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
-  window->acquireVulkanSwapChainImage(r_image, r_surface_format, r_extent);
-}
-
 void GHOST_GetVulkanSwapChainFormat(GHOST_WindowHandle windowhandle,
-                                    void *r_surface_format,
-                                    void *r_extent)
+                                    GHOST_VulkanSwapChainData *r_swap_chain_data)
 {
   GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
-  window->getVulkanSwapChainFormat(r_surface_format, r_extent);
+  window->getVulkanSwapChainFormat(r_swap_chain_data);
 }
 
 #endif /* WITH_VULKAN_BACKEND */

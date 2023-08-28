@@ -9,6 +9,9 @@
 #pragma once
 
 #include "gpu_context_private.hh"
+
+#include "GHOST_Types.h"
+
 #include "vk_command_buffer.hh"
 #include "vk_common.hh"
 #include "vk_debug.hh"
@@ -25,7 +28,7 @@ class VKContext : public Context, NonCopyable {
   VKCommandBuffer command_buffer_;
 
   VkExtent2D vk_extent_ = {};
-  VkSurfaceFormatKHR vk_surface_format_ = {};
+  VkFormat swap_chain_format_ = {};
   GPUTexture *surface_texture_ = nullptr;
   void *ghost_context_;
 
@@ -73,11 +76,11 @@ class VKContext : public Context, NonCopyable {
 
   VKStateManager &state_manager_get() const;
 
-  static void swap_buffers_pre_callback();
+  static void swap_buffers_pre_callback(const GHOST_VulkanSwapChainData *data);
   static void swap_buffers_post_callback();
 
  private:
-  void swap_buffers_pre_handler();
+  void swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &data);
   void swap_buffers_post_handler();
 };
 

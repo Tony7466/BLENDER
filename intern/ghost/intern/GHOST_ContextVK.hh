@@ -26,12 +26,6 @@
 
 #include <vector>
 
-#ifdef __APPLE__
-#  include <MoltenVK/vk_mvk_moltenvk.h>
-#else
-#  include <vulkan/vulkan.h>
-#endif
-
 #ifndef GHOST_OPENGL_VK_CONTEXT_FLAGS
 /* leave as convenience define for the future */
 #  define GHOST_OPENGL_VK_CONTEXT_FLAGS 0
@@ -118,18 +112,10 @@ class GHOST_ContextVK : public GHOST_Context {
                                   uint32_t *r_graphic_queue_family,
                                   void *r_queue);
 
-  /**
-   * Gets the Vulkan framebuffer related resource handles associated with the Vulkan context.
-   * Needs to be called after each swap events as the framebuffer will change.
-   * \return  A boolean success indicator.
-   */
-  GHOST_TSuccess acquireVulkanSwapChainImage(void *image,
-                                             void *r_surface_format,
-                                             void *extent) override;
-  GHOST_TSuccess getVulkanSwapChainFormat(void *r_surface_format, void *r_extent) override;
+  GHOST_TSuccess getVulkanSwapChainFormat(GHOST_VulkanSwapChainData *r_swap_chain_data) override;
 
   GHOST_TSuccess setVulkanSwapBuffersCallbacks(
-      std::function<void(void)> swap_buffers_pre_callback,
+      std::function<void(const GHOST_VulkanSwapChainData *)> swap_buffers_pre_callback,
       std::function<void(void)> swap_buffers_post_callback) override;
 
   /**
@@ -199,7 +185,7 @@ class GHOST_ContextVK : public GHOST_Context {
   /** Image index in the swapchain. Used as index for render objects. */
   uint32_t m_currentImage = 0;
 
-  std::function<void(void)> swap_buffers_pre_callback_;
+  std::function<void(const GHOST_VulkanSwapChainData *)> swap_buffers_pre_callback_;
   std::function<void(void)> swap_buffers_post_callback_;
 
   const char *getPlatformSpecificSurfaceExtension() const;
