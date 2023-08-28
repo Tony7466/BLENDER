@@ -3486,7 +3486,7 @@ static PointerRNA rna_NodeGeometryForEachGroupInput_paired_output_get(PointerRNA
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
   bNode *node = static_cast<bNode *>(ptr->data);
-  bNode *output_node = ntree->node_by_id(int(node->custom3));
+  bNode *output_node = ntree->node_by_id(reinterpret_cast<const int &>(node->custom3));
   PointerRNA r_ptr;
   RNA_pointer_create(&ntree->id, &RNA_Node, output_node, &r_ptr);
   return r_ptr;
@@ -3506,7 +3506,7 @@ static bool rna_GeometryNodeForEachGroupInput_pair_with_output(ID *id, bNode *no
     return false;
   }
 
-  std::cout << ">> >> >> >> " << int(node->custom3) << std::endl;
+  std::cout << ">> >> >> >> " << reinterpret_cast<const int &>(node->custom3) << std::endl;
 
   BKE_ntree_update_tag_node_property(ntree, node);
   ED_node_tree_propagate_change(C, CTX_data_main(C), ntree);

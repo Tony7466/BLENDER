@@ -604,7 +604,7 @@ class NodeTreeMainUpdater {
       }
     }
     if (node.type == GEO_NODE_FOR_EACH_GROUP_INPUT) {
-      if (const bNode *output_node = ntree.node_by_id(int(node.custom3))) {
+      if (const bNode *output_node = ntree.node_by_id(reinterpret_cast<const int &>(node.custom3))) {
         if (output_node->runtime->changed_flag & NTREE_CHANGED_NODE_PROPERTY) {
           return true;
         }

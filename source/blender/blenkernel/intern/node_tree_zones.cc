@@ -64,8 +64,8 @@ static Vector<std::unique_ptr<bNodeTreeZone>> find_zone_nodes(
     }
   }
   for (const bNode *node : tree.nodes_by_type("GeometryNodeForEachGroupInput")) {
-    printf(">> %d;\n", int(node->custom3));
-    if (const bNode *feg_output_node = tree.node_by_id(int(node->custom3))) {
+    printf(">> %d;\n", reinterpret_cast<const int &>(node->custom3));
+    if (const bNode *feg_output_node = tree.node_by_id(reinterpret_cast<const int &>(node->custom3))) {
       if (bNodeTreeZone *zone = r_zone_by_inout_node.lookup_default(feg_output_node, nullptr)) {
         zone->input_node = node;
         r_zone_by_inout_node.add(node, zone);
