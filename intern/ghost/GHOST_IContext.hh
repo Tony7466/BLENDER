@@ -40,7 +40,9 @@ class GHOST_IContext {
   virtual GHOST_TSuccess releaseDrawingContext() = 0;
 
   virtual unsigned int getDefaultFramebuffer() = 0;
+  virtual GHOST_TSuccess swapBuffers() = 0;
 
+#ifdef WITH_VULKAN_BACKEND
   /**
    * Get Vulkan handles for the given context.
    *
@@ -102,8 +104,7 @@ class GHOST_IContext {
   virtual GHOST_TSuccess setVulkanSwapBuffersCallbacks(
       std::function<void(const GHOST_VulkanSwapChainData *)> swap_buffers_pre_callback,
       std::function<void(void)> swap_buffers_post_callback) = 0;
-
-  virtual GHOST_TSuccess swapBuffers() = 0;
+#endif
 
 #ifdef WITH_CXX_GUARDEDALLOC
   MEM_CXX_CLASS_ALLOC_FUNCS("GHOST:GHOST_IContext")

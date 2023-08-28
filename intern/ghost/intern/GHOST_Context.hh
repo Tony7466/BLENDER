@@ -130,6 +130,7 @@ class GHOST_Context : public GHOST_IContext {
     return 0;
   }
 
+#ifdef WITH_VULKAN_BACKEND
   /**
    * Get Vulkan handles for the given context.
    *
@@ -178,6 +179,7 @@ class GHOST_Context : public GHOST_IContext {
   {
     return GHOST_kFailure;
   }
+#endif
 
  protected:
   bool m_stereoVisual;

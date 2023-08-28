@@ -270,8 +270,10 @@ class GHOST_Window : public GHOST_IWindow {
    */
   virtual unsigned int getDefaultFramebuffer() override;
 
+#ifdef WITH_VULKAN_BACKEND
   virtual GHOST_TSuccess getVulkanSwapChainFormat(
       GHOST_VulkanSwapChainData *r_swap_chain_data) override;
+#endif
 
   /**
    * Returns the window user data.

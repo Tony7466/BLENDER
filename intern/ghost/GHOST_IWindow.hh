@@ -209,8 +209,10 @@ class GHOST_IWindow {
    */
   virtual unsigned int getDefaultFramebuffer() = 0;
 
+#ifdef WITH_VULKAN_BACKEND
   virtual GHOST_TSuccess getVulkanSwapChainFormat(
       GHOST_VulkanSwapChainData *r_swap_chain_data) = 0;
+#endif
 
   /**
    * Invalidates the contents of this window.
