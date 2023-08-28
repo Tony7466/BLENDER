@@ -301,7 +301,7 @@ class NODE_OT_interface_item_new(NodeInterfaceOperator, Operator):
         else:
             parent = None
             position = -1
-        
+
         if self.item_type == 'INPUT':
             item = interface.new_socket("Socket", socket_type=self.socket_type, in_out={'INPUT'})
         elif self.item_type == 'OUTPUT':

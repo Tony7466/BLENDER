@@ -58,7 +58,6 @@ void ntreeLocalMerge(Main *bmain, bNodeTree *localtree, bNodeTree *ntree);
  */
 void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree);
 
-
 bool node_type_is_undefined(const bNode *node);
 
 bool nodeIsStaticSocketType(const bNodeSocketType *stype);
