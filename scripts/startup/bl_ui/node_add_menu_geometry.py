@@ -169,6 +169,7 @@ class NODE_MT_geometry_node_GEO_GEOMETRY(Menu):
         layout.separator()
         node_add_menu.add_node_type(layout, "GeometryNodeGeometryToInstance")
         node_add_menu.add_node_type(layout, "GeometryNodeJoinGeometry")
+        node_add_menu.add_for_each_group_zone(layout, label="For Each Group Zone")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 

@@ -209,6 +209,16 @@ class NODE_OT_add_repeat_zone(NodeAddZoneOperator, Operator):
     output_node_type = "GeometryNodeRepeatOutput"
 
 
+class NODE_OT_add_for_each_group_zone(NodeAddZoneOperator, Operator):
+    """Add a repeat zone that allows executing nodes a dynamic number of times"""
+    bl_idname = "node.add_for_each_group_zone"
+    bl_label = "Add For Each Group Zone"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    input_node_type = "GeometryNodeForEachGroupInput"
+    output_node_type = "GeometryNodeForEachGroupOutput"
+
+
 class NODE_OT_collapse_hide_unused_toggle(Operator):
     """Toggle collapsed nodes and hide unused sockets"""
     bl_idname = "node.collapse_hide_unused_toggle"
@@ -266,6 +276,7 @@ classes = (
     NODE_OT_add_node,
     NODE_OT_add_simulation_zone,
     NODE_OT_add_repeat_zone,
+    NODE_OT_add_for_each_group_zone,
     NODE_OT_collapse_hide_unused_toggle,
     NODE_OT_tree_path_parent,
 )

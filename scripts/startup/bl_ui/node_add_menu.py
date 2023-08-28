@@ -71,6 +71,12 @@ def add_repeat_zone(layout, label):
     return props
 
 
+def add_for_each_group_zone(layout, label):
+    props = layout.operator("node.add_for_each_group_zone", text=label, text_ctxt=i18n_contexts.default)
+    props.use_transform = True
+    return props
+
+
 classes = (
 )
 
