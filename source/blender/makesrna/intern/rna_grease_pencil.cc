@@ -292,6 +292,8 @@ static void rna_def_grease_pencil_data(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
+  static float default_line_color[4] = {0.6f, 0.6f, 0.6f, 0.5f};
+
   srna = RNA_def_struct(brna, "GreasePencilv3", "ID");
   RNA_def_struct_sdna(srna, "GreasePencil");
   RNA_def_struct_ui_text(srna, "Grease Pencil", "Grease Pencil data-block");
@@ -328,6 +330,15 @@ static void rna_def_grease_pencil_data(BlenderRNA *brna)
                                     nullptr, /* TODO */
                                     nullptr);
   RNA_def_property_ui_text(prop, "Layer Groups", "Grease Pencil layer groups");
+
+  /* Line Color (Edit Mode) */
+  prop = RNA_def_property(srna, "edit_line_color", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, nullptr, "line_color");
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_float_array_default(prop, default_line_color);
+  RNA_def_property_ui_text(prop, "Edit Line Color", "Color for editing line");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 }
 
 void RNA_def_grease_pencil(BlenderRNA *brna)

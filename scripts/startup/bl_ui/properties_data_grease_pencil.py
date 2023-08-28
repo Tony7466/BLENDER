@@ -71,9 +71,25 @@ class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):
             col.prop(layer, "opacity", text="Opacity", slider=True)
 
 
+class DATA_PT_grease_pencil_display(DataButtonsPanel, Panel):
+    bl_label = "Viewport Display"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        ob = context.object
+        grease_pencil = context.grease_pencil
+
+        layout.prop(grease_pencil, "edit_line_color", text="Edit Line Color")
+
+
 classes = (
     DATA_PT_context_grease_pencil,
     DATA_PT_grease_pencil_layers,
+    DATA_PT_grease_pencil_display,
     GREASE_PENCIL_MT_grease_pencil_add_layer_extra,
 )
 

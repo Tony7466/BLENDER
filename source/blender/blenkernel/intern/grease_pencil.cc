@@ -73,6 +73,8 @@ static void grease_pencil_init_data(ID *id)
   grease_pencil->root_group_ptr = MEM_new<greasepencil::LayerGroup>(__func__);
   grease_pencil->active_layer = nullptr;
   grease_pencil->flag |= GREASE_PENCIL_ANIM_CHANNEL_EXPANDED;
+
+  ARRAY_SET_ITEMS(grease_pencil->line_color, 0.6f, 0.6f, 0.6f, 0.5f);
 }
 
 static void grease_pencil_copy_data(Main * /*bmain*/,
@@ -122,6 +124,8 @@ static void grease_pencil_copy_data(Main * /*bmain*/,
     grease_pencil_dst->set_active_layer(
         grease_pencil_dst->find_layer_by_name(grease_pencil_src->active_layer->wrap().name()));
   }
+
+  copy_v4_v4(grease_pencil_dst->line_color, grease_pencil_src->line_color);
 
   /* Make sure the runtime pointer exists. */
   grease_pencil_dst->runtime = MEM_new<bke::GreasePencilRuntime>(__func__);

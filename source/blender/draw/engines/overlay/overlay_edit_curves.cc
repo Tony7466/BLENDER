@@ -54,11 +54,16 @@ void OVERLAY_edit_curves_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     }
 
+    float empty_color[4];
+    zero_v4(empty_color);
+
     DRW_PASS_CREATE(psl->edit_curves_lines_ps[i], (state | pd->clipping_state));
     sh = OVERLAY_shader_edit_particle_strand();
     grp = pd->edit_curves_lines_grp[i] = DRW_shgroup_create(sh, psl->edit_curves_lines_ps[i]);
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     DRW_shgroup_uniform_bool_copy(grp, "useWeight", false);
+    /* Set to zero so that `globalsBlock.color_wire` will be used. */
+    DRW_shgroup_uniform_vec4_copy(grp, "replaceColor", empty_color);
   }
 }
 

@@ -37,11 +37,16 @@ void OVERLAY_edit_particle_cache_init(OVERLAY_Data *vedata)
   DRWState state = DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS_EQUAL;
   DRW_PASS_CREATE(psl->edit_particle_ps, state | pd->clipping_state);
 
+  float empty_color[4];
+  zero_v4(empty_color);
+
   sh = OVERLAY_shader_edit_particle_strand();
   pd->edit_particle_strand_grp = grp = DRW_shgroup_create(sh, psl->edit_particle_ps);
   DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
   DRW_shgroup_uniform_bool_copy(grp, "useWeight", pd->edit_particle.use_weight);
   DRW_shgroup_uniform_texture(grp, "weightTex", G_draw.weight_ramp);
+  /* Set to zero so that `globalsBlock.color_wire` will be used. */
+  DRW_shgroup_uniform_vec4_copy(grp, "replaceColor", empty_color);
 
   sh = OVERLAY_shader_edit_particle_point();
   pd->edit_particle_point_grp = grp = DRW_shgroup_create(sh, psl->edit_particle_ps);
