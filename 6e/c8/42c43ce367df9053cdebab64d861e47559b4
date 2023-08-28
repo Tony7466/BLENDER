@@ -1,2 +1,3 @@
 Referenced by issue #111592, Regression: Merge modifier crashes Blender in this scene
 Referenced by commit a0c5467b7da9f042cb13a426e245af9269050ef0, Fix #111592: Merge modifier may crash in some cases
+Referenced by pull request #110982, Fix Weld modifier generating invalid mesh
