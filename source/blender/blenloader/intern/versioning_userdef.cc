@@ -854,7 +854,10 @@ void blo_do_versions_userdef(UserDef *userdef)
 
   if (!USER_VERSION_ATLEAST(400, 18)) {
     userdef->playback_fps_samples = 8;
-    userdef->uiflag &= ~(USER_NODE_AUTO_OFFSET);
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 19)) {
+    userdef->uiflag |= USER_NODE_AUTO_OFFSET;
   }
 
   /**
