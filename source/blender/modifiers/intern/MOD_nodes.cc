@@ -809,6 +809,9 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
       if (depsgraph_is_active_) {
         if (zone_cache.frame_caches.is_empty()) {
           zone_info.input.info.emplace<nodes::SimulationInputInfo::PassThrough>();
+          if (!is_start_frame_) {
+            zone_cache.cache_state = CacheState::Invalid;
+          }
           this->store_frame_cache(zone_cache, zone_info);
           return;
         }
@@ -818,6 +821,9 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
               *zone_cache.frame_caches[*frame_indices.prev];
           const float delta_frames = std::min(
               max_delta_frames, float(current_frame_) - float(prev_frame_cache.frame));
+          if (delta_frames != 1) {
+            zone_cache.cache_state = CacheState::Invalid;
+          }
           output_copy_info.delta_time = delta_frames / fps_;
           output_copy_info.prev_items = this->to_readonly_items_map(prev_frame_cache.state);
           zone_info.input.info = std::move(output_copy_info);
