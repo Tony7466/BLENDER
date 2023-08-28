@@ -339,24 +339,23 @@ static Array<int2> calc_new_edges(const OffsetIndices<int> faces,
                                   MutableSpan<int> corner_edges,
                                   MutableSpan<int> r_new_edge_offsets)
 {
+  /* Calculate the offset of new edges assuming no new edges are identical and are merged. */
   int no_merge_count = 0;
-  Array<int> offset_no_merge(selected_edges.size() + 1);
+  Array<int> offsets_no_merge(selected_edges.size() + 1);
   selected_edges.foreach_index([&](const int edge, const int mask) {
-    offset_no_merge[mask] = no_merge_count;
+    offsets_no_merge[mask] = no_merge_count;
     no_merge_count += edge_to_corner_map[edge].size() - 1;
   });
-  offset_no_merge.last() = no_merge_count;
+  offsets_no_merge.last() = no_merge_count;
 
   Array<int2> no_merge_new_edges(no_merge_count);
 
+  /* Calculate per-original split edge deduplication of new edges, which are stored by the
+   * corner vertices of connected faces. Update corner verts to store the indices local to
+   * each deduplication, and count the number of new edges to globalize the indices next. */
   selected_edges.foreach_index(GrainSize(1024), [&](const int edge, const int mask) {
-    const Span<int> edge_corners = edge_to_corner_map[edge];
-    if (edge_corners.is_empty()) {
-      return;
-    }
-
     Vector<OrderedEdge> deduplication;
-    for (const int corner : edge_corners) {
+    for (const int corner : edge_to_corner_map[edge]) {
       const OrderedEdge new_edge = edge_from_corner(
           faces, corner_verts, corner_to_face_map, corner);
       const int index = add_edge_or_find_index(deduplication, new_edge);
@@ -367,19 +366,23 @@ static Array<int2> calc_new_edges(const OffsetIndices<int> faces,
         corner_edges[corner] = index - 1;
       }
     }
+    if (deduplication.is_empty()) {
+      return;
+    }
 
     // TODO: Need to update neighboring unselected edges too.
     edges[edge] = int2(deduplication.first().v_low, deduplication.first().v_high);
 
     const Span<int2> new_edges = deduplication.as_span().drop_front(1).cast<int2>();
-    const int dst_offset = offset_no_merge[mask];
+    const int dst_offset = offsets_no_merge[mask];
     uninitialized_copy_n(new_edges.data(), new_edges.size(), &no_merge_new_edges[dst_offset]);
     r_new_edge_offsets[mask] = new_edges.size();
   });
 
-  const OffsetIndices offsets = offset_indices::accumulate_counts_to_offsets(r_new_edge_offsets);
+  const OffsetIndices merged_offsets = offset_indices::accumulate_counts_to_offsets(
+      r_new_edge_offsets);
   selected_edges.foreach_index(GrainSize(1024), [&](const int edge, const int mask) {
-    const int new_edge_offset = offsets[mask].start() + edges.size();
+    const int new_edge_offset = merged_offsets[mask].start() + edges.size();
     const Span<int> edge_corners = edge_to_corner_map[edge];
     for (const int i : edge_corners.index_range()) {
       const int corner = edge_corners[i];
@@ -394,16 +397,18 @@ static Array<int2> calc_new_edges(const OffsetIndices<int> faces,
     std::cout << ' ';
   });
 
-  if (offsets.total_size() == no_merge_new_edges.size()) {
+  if (merged_offsets.total_size() == no_merge_new_edges.size()) {
+    /* No edges were merged, we can use the existing output array. */
     return no_merge_new_edges;
   }
 
-  Array<int2> new_edges(offsets.total_size());
-  threading::parallel_for(offsets.index_range(), 1024, [&](const IndexRange range) {
+  /* Some edges have been merged. Create a new edges without the empty slots for the duplicates */
+  Array<int2> new_edges(merged_offsets.total_size());
+  threading::parallel_for(merged_offsets.index_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
-      uninitialized_copy_n(&no_merge_new_edges[offset_no_merge[i]],
-                           offsets[i].size(),
-                           &new_edges[offsets[i].start()]);
+      uninitialized_copy_n(&no_merge_new_edges[offsets_no_merge[i]],
+                           merged_offsets[i].size(),
+                           &new_edges[merged_offsets[i].start()]);
     }
   });
 
@@ -538,6 +543,7 @@ void split_edges(Mesh &mesh,
                                          mesh.edges_for_write(),
                                          mesh.corner_edges_for_write(),
                                          new_edge_offsets);
+  // update_unselected_edges();
 
   if (loose_edges.count > 0) {
     reassign_loose_edge_verts(orig_verts_num,
