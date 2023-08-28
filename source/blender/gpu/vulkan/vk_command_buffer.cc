@@ -157,8 +157,7 @@ void VKCommandBuffer::end_render_pass(const VKFrameBuffer &framebuffer)
 {
   std::cout << __func__ << "\n";
   UNUSED_VARS_NDEBUG(framebuffer);
-  validate_framebuffer_exists();
-  BLI_assert(state.framebuffer_ == &framebuffer);
+  BLI_assert(state.framebuffer_ == nullptr || state.framebuffer_ == &framebuffer);
   ensure_no_active_framebuffer();
   state.framebuffer_ = nullptr;
 }
