@@ -756,9 +756,9 @@ void UI_popup_block_ex(bContext *C,
                        void *arg,
                        wmOperator *op);
 #if 0 /* UNUSED */
-void uiPupBlockOperator( bContext *C,
+void uiPupBlockOperator(bContext *C,
                         uiBlockCreateFunc func,
-                         wmOperator *op,
+                        wmOperator *op,
                         wmOperatorCallContext opcontext);
 #endif
 
@@ -2025,7 +2025,7 @@ enum eUI_Item_Flag {
   /**
    * Don't attempt to use an icon when the icon is set to #ICON_NONE.
    *
-   * Use for boolean's, causes the buttons to always show as a checkbox
+   * Use for booleans, causes the buttons to always show as a checkbox
    * even when there is an icon (which would normally show the button as a toggle).
    */
   UI_ITEM_R_ICON_NEVER = 1 << 4,

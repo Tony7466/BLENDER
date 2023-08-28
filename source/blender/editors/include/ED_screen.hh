@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -442,10 +442,6 @@ void ED_workspace_do_listen(bContext *C, const wmNotifier *note);
  */
 void ED_update_for_newframe(Main *bmain, Depsgraph *depsgraph);
 
-/**
- * Update frame rate info for viewport drawing.
- */
-void ED_refresh_viewport_fps(bContext *C);
 /**
  * Toggle operator.
  */

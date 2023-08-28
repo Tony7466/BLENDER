@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006-2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2006-2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -47,7 +47,7 @@
 #include "IMB_imbuf_types.h"
 #include "IMB_thumbs.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "atomic_ops.h"
 

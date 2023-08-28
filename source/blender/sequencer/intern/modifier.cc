@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation
+/* SPDX-FileCopyrightText: 2012 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,7 +12,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
@@ -32,7 +31,7 @@
 #include "SEQ_modifier.h"
 #include "SEQ_render.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "render.h"
 
@@ -1554,12 +1553,18 @@ void SEQ_modifier_list_copy(Sequence *seqn, Sequence *seq)
 
     smdn->next = smdn->prev = nullptr;
     BLI_addtail(&seqn->modifiers, smdn);
+    BLI_uniquename(&seqn->modifiers,
+                   smdn,
+                   "Strip Modifier",
+                   '.',
+                   offsetof(SequenceModifierData, name),
+                   sizeof(SequenceModifierData::name));
   }
 }
 
 int SEQ_sequence_supports_modifiers(Sequence *seq)
 {
-  return !ELEM(seq->type, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD);
+  return (seq->type != SEQ_TYPE_SOUND_RAM);
 }
 
 /** \} */
@@ -1611,15 +1616,6 @@ void SEQ_modifier_blend_read_data(BlendDataReader *reader, ListBase *lb)
       HueCorrectModifierData *hcmd = (HueCorrectModifierData *)smd;
 
       BKE_curvemapping_blend_read(reader, &hcmd->curve_mapping);
-    }
-  }
-}
-
-void SEQ_modifier_blend_read_lib(BlendLibReader *reader, Scene *scene, ListBase *lb)
-{
-  LISTBASE_FOREACH (SequenceModifierData *, smd, lb) {
-    if (smd->mask_id) {
-      BLO_read_id_address(reader, &scene->id, &smd->mask_id);
     }
   }
 }

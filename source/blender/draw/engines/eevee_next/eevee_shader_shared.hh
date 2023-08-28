@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -47,7 +47,7 @@ enum eDebugMode : uint32_t {
    */
   DEBUG_LIGHT_CULLING = 1u,
   /**
-   * Show incorrectly downsample tiles in red.
+   * Show incorrectly down-sample tiles in red.
    */
   DEBUG_HIZ_VALIDATION = 2u,
   /**
@@ -55,11 +55,13 @@ enum eDebugMode : uint32_t {
    */
   DEBUG_IRRADIANCE_CACHE_SURFELS_NORMAL = 3u,
   DEBUG_IRRADIANCE_CACHE_SURFELS_IRRADIANCE = 4u,
-  DEBUG_IRRADIANCE_CACHE_SURFELS_CLUSTER = 5u,
+  DEBUG_IRRADIANCE_CACHE_SURFELS_VISIBILITY = 5u,
+  DEBUG_IRRADIANCE_CACHE_SURFELS_CLUSTER = 6u,
   /**
    * Display IrradianceCache virtual offset.
    */
-  DEBUG_IRRADIANCE_CACHE_VIRTUAL_OFFSET = 6u,
+  DEBUG_IRRADIANCE_CACHE_VIRTUAL_OFFSET = 7u,
+  DEBUG_IRRADIANCE_CACHE_VALIDITY = 8u,
   /**
    * Show tiles depending on their status.
    */
@@ -795,7 +797,9 @@ static inline int2 shadow_cascade_grid_offset(int2 base_offset, int level_relati
  */
 struct ShadowTileMapData {
   /** Cached, used for rendering. */
-  float4x4 viewmat, winmat;
+  float4x4 viewmat;
+  /** Precomputed matrix, not used for rendering but for tagging. */
+  float4x4 winmat;
   /** Punctual : Corners of the frustum. (vec3 padded to vec4) */
   float4 corners[4];
   /** Integer offset of the center of the 16x16 tiles from the origin of the tile space. */
@@ -810,6 +814,16 @@ struct ShadowTileMapData {
   int clip_data_index;
   /** Bias LOD to tag for usage to lower the amount of tile used. */
   float lod_bias;
+  int _pad0;
+  int _pad1;
+  int _pad2;
+  /** Near and far clip distances for punctual. */
+  float clip_near;
+  float clip_far;
+  /** Half of the tilemap size in world units. Used to compute directional window matrix. */
+  float half_size;
+  /** Offset in local space to the tilemap center in world units. Used for directional winmat. */
+  float2 center_offset;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowTileMapData, 16)
 
@@ -821,6 +835,7 @@ struct ShadowTileMapClip {
   float clip_near_stored;
   float clip_far_stored;
   /** Near and far clip distances for directional. Float stored as int for atomic operations. */
+  /** NOTE: These are positive just like camera parameters. */
   int clip_near;
   int clip_far;
 };
@@ -837,12 +852,10 @@ struct ShadowPagesInfoData {
   uint page_cached_start;
   /** Index of the last page in the buffer since the last defrag. */
   uint page_cached_end;
-  /** Number of views to be rendered during the shadow update pass. */
-  int view_count;
-  /** Physical page size in pixel. Pages are all squares. */
-  int page_size;
 
   int _pad0;
+  int _pad1;
+  int _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowPagesInfoData, 16)
 
@@ -852,13 +865,17 @@ struct ShadowStatistics {
   int page_update_count;
   int page_allocated_count;
   int page_rendered_count;
+  int view_needed_count;
+  int _pad0;
+  int _pad1;
+  int _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowStatistics, 16)
 
 /** Decoded tile data structure. */
 struct ShadowTileData {
   /** Page inside the virtual shadow map atlas. */
-  uint2 page;
+  uint3 page;
   /** Page index inside pages_cached_buf. Only valid if `is_cached` is true. */
   uint cache_index;
   /** LOD pointed to LOD 0 tile page. (cube-map only). */
@@ -886,12 +903,29 @@ enum eShadowFlag : uint32_t {
   SHADOW_IS_USED = (1u << 31u)
 };
 
+static inline uint shadow_page_pack(uint3 page)
+{
+  /* NOTE: Trust the input to be in valid range.
+   * But sometime this is used to encode invalid pages uint3(-1) and it needs to output uint(-1).
+   */
+  return (page.x << 0u) | (page.y << 2u) | (page.z << 4u);
+}
+
+static inline uint3 shadow_page_unpack(uint data)
+{
+  uint3 page;
+  /* Tweaked for SHADOW_PAGE_PER_ROW = 4. */
+  page.x = data & uint(SHADOW_PAGE_PER_ROW - 1);
+  page.y = (data >> 2u) & uint(SHADOW_PAGE_PER_COL - 1);
+  page.z = (data >> 4u);
+  return page;
+}
+
 static inline ShadowTileData shadow_tile_unpack(ShadowTileDataPacked data)
 {
   ShadowTileData tile;
-  /* Tweaked for SHADOW_PAGE_PER_ROW = 64. */
-  tile.page.x = data & 63u;
-  tile.page.y = (data >> 6u) & 63u;
+  /* Tweaked for SHADOW_MAX_PAGE = 4096. */
+  tile.page = shadow_page_unpack(data & uint(SHADOW_MAX_PAGE - 1));
   /* -- 12 bits -- */
   /* Tweaked for SHADOW_TILEMAP_LOD < 8. */
   tile.lod = (data >> 12u) & 7u;
@@ -909,9 +943,7 @@ static inline ShadowTileData shadow_tile_unpack(ShadowTileDataPacked data)
 
 static inline ShadowTileDataPacked shadow_tile_pack(ShadowTileData tile)
 {
-  uint data;
-  data = (tile.page.x & 63u);
-  data |= (tile.page.y & 63u) << 6u;
+  uint data = shadow_page_pack(tile.page) & uint(SHADOW_MAX_PAGE - 1);
   data |= (tile.lod & 7u) << 12u;
   data |= (tile.cache_index & 4095u) << 15u;
   data |= (tile.is_used ? uint(SHADOW_IS_USED) : 0);
@@ -929,8 +961,14 @@ static inline ShadowTileDataPacked shadow_tile_pack(ShadowTileData tile)
  * \{ */
 
 struct SurfelRadiance {
+  /* Actually stores radiance and world (sky) visibility. Stored normalized. */
   float4 front;
   float4 back;
+  /* Accumulated weights per face. */
+  float front_weight;
+  float back_weight;
+  float _pad0;
+  float _pad1;
 };
 BLI_STATIC_ASSERT_ALIGN(SurfelRadiance, 16)
 
@@ -991,6 +1029,14 @@ struct CaptureInfoData {
   float max_virtual_offset;
   /** Radius of surfels. */
   float surfel_radius;
+  /** Capture options. */
+  bool1 capture_world_direct;
+  bool1 capture_world_indirect;
+  bool1 capture_visibility_direct;
+  bool1 capture_visibility_indirect;
+  bool1 capture_indirect;
+  bool1 capture_emission;
+  int _pad0;
 };
 BLI_STATIC_ASSERT_ALIGN(CaptureInfoData, 16)
 
@@ -1082,7 +1128,7 @@ struct RayTraceData {
   int2 full_resolution;
   /** Inverse of input resolution to get screen UVs. */
   float2 full_resolution_inv;
-  /** Scale and bias to go from raytrace resolution to input resolution. */
+  /** Scale and bias to go from ray-trace resolution to input resolution. */
   int2 resolution_bias;
   int resolution_scale;
   /** View space thickness the objects. */
@@ -1194,12 +1240,13 @@ BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
 #define UTIL_TEX_UV_BIAS (0.5f / UTIL_TEX_SIZE)
 
 #define UTIL_BLUE_NOISE_LAYER 0
-#define UTIL_LTC_MAT_LAYER 1
-#define UTIL_LTC_MAG_LAYER 2
-#define UTIL_BSDF_LAYER 2
-#define UTIL_BTDF_LAYER 3
-#define UTIL_DISK_INTEGRAL_LAYER 3
-#define UTIL_DISK_INTEGRAL_COMP 2
+#define UTIL_SSS_TRANSMITTANCE_PROFILE_LAYER 1
+#define UTIL_LTC_MAT_LAYER 2
+#define UTIL_LTC_MAG_LAYER 3
+#define UTIL_BSDF_LAYER 3
+#define UTIL_BTDF_LAYER 4
+#define UTIL_DISK_INTEGRAL_LAYER 4
+#define UTIL_DISK_INTEGRAL_COMP 3
 
 /* __cplusplus is true when compiling with MSL, so include if inside a shader. */
 #if !defined(__cplusplus) || defined(GPU_SHADER)

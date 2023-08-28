@@ -20,15 +20,16 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "BLT_translation.h"
@@ -602,17 +603,17 @@ static int graphkeys_paste_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static char *graphkeys_paste_description(bContext * /*C*/,
-                                         wmOperatorType * /*op*/,
-                                         PointerRNA *ptr)
+static std::string graphkeys_paste_description(bContext * /*C*/,
+                                               wmOperatorType * /*op*/,
+                                               PointerRNA *ptr)
 {
   /* Custom description if the 'flipped' option is used. */
   if (RNA_boolean_get(ptr, "flipped")) {
-    return BLI_strdup(TIP_("Paste keyframes from mirrored bones if they exist"));
+    return TIP_("Paste keyframes from mirrored bones if they exist");
   }
 
   /* Use the default description in the other cases. */
-  return nullptr;
+  return "";
 }
 
 void GRAPH_OT_paste(wmOperatorType *ot)
@@ -646,7 +647,7 @@ void GRAPH_OT_paste(wmOperatorType *ot)
                "Paste time offset of keys");
   RNA_def_enum(ot->srna,
                "value_offset",
-               rna_enum_keyframe_paste_offset_value,
+               rna_enum_keyframe_paste_offset_value_items,
                KEYFRAME_PASTE_VALUE_OFFSET_NONE,
                "Value Offset",
                "Paste keys with a value offset");
@@ -729,7 +730,7 @@ void GRAPH_OT_duplicate(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* To give to transform. */
-  RNA_def_enum(ot->srna, "mode", rna_enum_transform_mode_types, TFM_TRANSLATION, "Mode", "");
+  RNA_def_enum(ot->srna, "mode", rna_enum_transform_mode_type_items, TFM_TRANSLATION, "Mode", "");
 }
 
 /** \} */
@@ -2259,10 +2260,12 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
 
   const float current_frame = BKE_scene_frame_get(scene);
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    const FCurve *fcu = static_cast<const FCurve *>(ale->key_data);
+    FCurve *fcu = static_cast<FCurve *>(ale->key_data);
     if (!fcu->bezt) {
       continue;
     }
+    AnimData *adt = ANIM_nla_mapping_get(&ac, ale);
+    ANIM_nla_mapping_apply_fcurve(adt, fcu, false, true);
     float closest_fcu_frame;
     if (!find_closest_frame(fcu, current_frame, next, &closest_fcu_frame)) {
       continue;
@@ -2272,6 +2275,7 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
       closest_frame = closest_fcu_frame;
       found = true;
     }
+    ANIM_nla_mapping_apply_fcurve(adt, fcu, true, true);
   }
 
   if (!found) {
@@ -2280,6 +2284,8 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
   }
 
   BKE_scene_frame_set(scene, closest_frame);
+
+  ANIM_animdata_freelist(&anim_data);
 
   /* Set notifier that things have changed. */
   WM_event_add_notifier(C, NC_SCENE | ND_FRAME, ac.scene);

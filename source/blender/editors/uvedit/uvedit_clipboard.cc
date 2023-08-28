@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,8 +17,6 @@
  *   * Each iso_edge connects two iso_verts.
  *   * An iso_edge is undirected.
  */
-
-#include "BLI_math.h"
 
 #include "BKE_context.h"
 #include "BKE_customdata.h"

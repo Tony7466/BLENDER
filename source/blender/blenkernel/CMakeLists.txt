@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -235,6 +235,7 @@ set(SRC
   intern/node_tree_anonymous_attributes.cc
   intern/node_tree_dot_export.cc
   intern/node_tree_field_inferencing.cc
+  intern/node_tree_interface.cc
   intern/node_tree_update.cc
   intern/node_tree_zones.cc
   intern/object.cc
@@ -350,7 +351,7 @@ set(SRC
   BKE_camera.h
   BKE_ccg.h
   BKE_cdderivedmesh.h
-  BKE_cloth.h
+  BKE_cloth.hh
   BKE_collection.h
   BKE_collision.h
   BKE_colorband.h
@@ -454,6 +455,7 @@ set(SRC
   BKE_node_runtime.hh
   BKE_node_tree_anonymous_attributes.hh
   BKE_node_tree_dot_export.hh
+  BKE_node_tree_interface.hh
   BKE_node_tree_update.h
   BKE_node_tree_zones.hh
   BKE_object.h

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,7 +18,8 @@
 #include "BLI_ghash.h"
 #include "BLI_hash.h"
 #include "BLI_lasso_2d.h"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
+#include "BLI_math_matrix.h"
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
 #include "BLT_translation.h"
@@ -55,9 +56,9 @@
 #include "WM_toolsystem.h"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "UI_resources.hh"
@@ -349,7 +350,7 @@ const EnumPropertyItem *ED_gpencil_layers_enum_itemf(bContext *C,
   int i = 0;
 
   if (ELEM(nullptr, C, gpd)) {
-    return DummyRNA_DEFAULT_items;
+    return rna_enum_dummy_DEFAULT_items;
   }
 
   /* Existing layers */
@@ -386,7 +387,7 @@ const EnumPropertyItem *ED_gpencil_layers_with_new_enum_itemf(bContext *C,
   int i = 0;
 
   if (ELEM(nullptr, C, gpd)) {
-    return DummyRNA_DEFAULT_items;
+    return rna_enum_dummy_DEFAULT_items;
   }
 
   /* Create new layer */
@@ -437,7 +438,7 @@ const EnumPropertyItem *ED_gpencil_material_enum_itemf(bContext *C,
   int i = 0;
 
   if (ELEM(nullptr, C, ob)) {
-    return DummyRNA_DEFAULT_items;
+    return rna_enum_dummy_DEFAULT_items;
   }
 
   /* Existing materials */

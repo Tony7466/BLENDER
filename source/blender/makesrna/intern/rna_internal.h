@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -175,6 +175,7 @@ void RNA_def_modifier(struct BlenderRNA *brna);
 void RNA_def_nla(struct BlenderRNA *brna);
 void RNA_def_nodetree(struct BlenderRNA *brna);
 void RNA_def_node_socket_subtypes(struct BlenderRNA *brna);
+void RNA_def_node_tree_interface(struct BlenderRNA *brna);
 void RNA_def_object(struct BlenderRNA *brna);
 void RNA_def_object_force(struct BlenderRNA *brna);
 void RNA_def_packedfile(struct BlenderRNA *brna);
@@ -202,6 +203,7 @@ void RNA_def_texture(struct BlenderRNA *brna);
 void RNA_def_timeline_marker(struct BlenderRNA *brna);
 void RNA_def_sound(struct BlenderRNA *brna);
 void RNA_def_ui(struct BlenderRNA *brna);
+void RNA_def_usd(struct BlenderRNA *brna);
 void RNA_def_userdef(struct BlenderRNA *brna);
 void RNA_def_vfont(struct BlenderRNA *brna);
 void RNA_def_volume(struct BlenderRNA *brna);
@@ -401,6 +403,9 @@ bool rna_GPencil_datablocks_obdata_poll(struct PointerRNA *ptr, const struct Poi
 char *rna_TextureSlot_path(const struct PointerRNA *ptr);
 char *rna_Node_ImageUser_path(const struct PointerRNA *ptr);
 char *rna_CameraBackgroundImage_image_or_movieclip_user_path(const struct PointerRNA *ptr);
+
+/* Node socket subtypes for group interface. */
+void rna_def_node_socket_interface_subtypes(BlenderRNA *brna);
 
 /* Set U.is_dirty and redraw. */
 

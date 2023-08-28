@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,6 +17,8 @@
 #include "BKE_material.h"
 #include "BKE_object.h"
 #include "BKE_scene.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "DEG_depsgraph_query.h"
 #include "DNA_collection_types.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -1160,7 +1162,7 @@ bool lineart_main_try_generate_shadow(Depsgraph *depsgraph,
   }
 
   LineartData *ld = static_cast<LineartData *>(
-      MEM_callocN(sizeof(LineartData), "LineArt render buffer copied"));
+      MEM_mallocN(sizeof(LineartData), "LineArt render buffer copied"));
   memcpy(ld, original_ld, sizeof(LineartData));
 
   BLI_spin_init(&ld->lock_task);

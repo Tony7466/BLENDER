@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -28,8 +28,8 @@
 #include "BLI_lasso_2d.h"
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_math_bits.h"
+#include "BLI_math_geom.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_task.hh"
@@ -67,9 +67,9 @@
 #include "WM_toolsystem.h"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "ED_armature.hh"
 #include "ED_curve.hh"
@@ -1532,7 +1532,7 @@ static const EnumPropertyItem *object_select_menu_enum_itemf(bContext *C,
 
   /* Don't need context but avoid API doc-generation using this. */
   if (C == nullptr || object_mouse_select_menu_data[i].idname[0] == '\0') {
-    return DummyRNA_NULL_items;
+    return rna_enum_dummy_NULL_items;
   }
 
   for (; i < SEL_MENU_SIZE && object_mouse_select_menu_data[i].idname[0] != '\0'; i++) {
@@ -1644,7 +1644,7 @@ void VIEW3D_OT_select_menu(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* #Object.id.name to select (dynamic enum). */
-  prop = RNA_def_enum(ot->srna, "name", DummyRNA_NULL_items, 0, "Object Name", "");
+  prop = RNA_def_enum(ot->srna, "name", rna_enum_dummy_NULL_items, 0, "Object Name", "");
   RNA_def_enum_funcs(prop, object_select_menu_enum_itemf);
   RNA_def_property_flag(prop, (PropertyFlag)(PROP_HIDDEN | PROP_ENUM_NO_TRANSLATE));
   ot->prop = prop;
@@ -1859,7 +1859,7 @@ void VIEW3D_OT_bone_select_menu(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* #Object.id.name to select (dynamic enum). */
-  prop = RNA_def_enum(ot->srna, "name", DummyRNA_NULL_items, 0, "Bone Name", "");
+  prop = RNA_def_enum(ot->srna, "name", rna_enum_dummy_NULL_items, 0, "Bone Name", "");
   RNA_def_enum_funcs(prop, object_select_menu_enum_itemf);
   RNA_def_property_flag(prop, (PropertyFlag)(PROP_HIDDEN | PROP_ENUM_NO_TRANSLATE));
   ot->prop = prop;

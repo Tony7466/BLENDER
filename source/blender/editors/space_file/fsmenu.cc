@@ -6,10 +6,10 @@
  * \ingroup spfile
  */
 
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
@@ -42,7 +42,7 @@ struct FSMenu {
 
 static FSMenu *g_fsmenu = nullptr;
 
-FSMenu *ED_fsmenu_get(void)
+FSMenu *ED_fsmenu_get()
 {
   if (!g_fsmenu) {
     g_fsmenu = MEM_cnew<FSMenu>(__func__);
@@ -537,7 +537,7 @@ static void fsmenu_free_ex(FSMenu **fsmenu)
   *fsmenu = nullptr;
 }
 
-void fsmenu_free(void)
+void fsmenu_free()
 {
   fsmenu_free_ex(&g_fsmenu);
 }
@@ -594,9 +594,10 @@ int fsmenu_get_active_indices(FSMenu *fsmenu, enum FSMenuCategory category, cons
   return -1;
 }
 
-/* Thanks to some bookmarks sometimes being network drives that can have tens of seconds of delay
- * before being defined as unreachable by the OS, we need to validate the bookmarks in an async
- * job...
+/**
+ * Thanks to some bookmarks sometimes being network drives that can have tens of seconds of delay
+ * before being defined as unreachable by the OS, we need to validate the bookmarks in an
+ * asynchronous job.
  */
 static void fsmenu_bookmark_validate_job_startjob(
     void *fsmenuv,

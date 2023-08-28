@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,13 +13,14 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -150,8 +151,6 @@ static const EnumPropertyItem curve2d_fill_mode_items[] = {
 #ifdef RNA_RUNTIME
 
 #  include "DNA_object_types.h"
-
-#  include "BLI_math.h"
 
 #  include "BKE_curve.h"
 #  include "BKE_curveprofile.h"
@@ -594,10 +593,10 @@ static void rna_Curve_body_set(PointerRNA *ptr, const char *value)
   }
 
   cu->str = static_cast<char *>(MEM_mallocN(len_bytes + sizeof(char32_t), "str"));
+  memcpy(cu->str, value, len_bytes + 1);
+
   cu->strinfo = static_cast<CharInfo *>(
       MEM_callocN((len_chars + 4) * sizeof(CharInfo), "strinfo"));
-
-  memcpy(cu->str, value, len_bytes + 1);
 }
 
 static void rna_Nurb_update_cyclic_u(Main *bmain, Scene *scene, PointerRNA *ptr)

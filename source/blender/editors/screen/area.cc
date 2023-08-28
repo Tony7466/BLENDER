@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,6 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_linklist_stack.h"
-#include "BLI_math.h"
 #include "BLI_rand.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
@@ -26,8 +25,8 @@
 #include "BKE_screen.h"
 #include "BKE_workspace.h"
 
-#include "RNA_access.h"
-#include "RNA_types.h"
+#include "RNA_access.hh"
+#include "RNA_types.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
@@ -1297,15 +1296,27 @@ bool ED_region_is_overlap(int spacetype, int regiontype)
         return true;
       }
     }
-    else if (ELEM(spacetype, SPACE_VIEW3D, SPACE_IMAGE)) {
+    else if (spacetype == SPACE_VIEW3D) {
       if (ELEM(regiontype,
                RGN_TYPE_TOOLS,
                RGN_TYPE_UI,
                RGN_TYPE_TOOL_PROPS,
                RGN_TYPE_FOOTER,
+               RGN_TYPE_HEADER,
                RGN_TYPE_TOOL_HEADER,
                RGN_TYPE_ASSET_SHELF,
                RGN_TYPE_ASSET_SHELF_HEADER))
+      {
+        return true;
+      }
+    }
+    else if (spacetype == SPACE_IMAGE) {
+      if (ELEM(regiontype,
+               RGN_TYPE_TOOLS,
+               RGN_TYPE_UI,
+               RGN_TYPE_TOOL_PROPS,
+               RGN_TYPE_FOOTER,
+               RGN_TYPE_TOOL_HEADER))
       {
         return true;
       }
@@ -2734,7 +2745,7 @@ static ThemeColorID region_background_color_id(const bContext *C, const ARegion 
   switch (region->regiontype) {
     case RGN_TYPE_HEADER:
     case RGN_TYPE_TOOL_HEADER:
-      if (ED_screen_area_active(C) || ED_area_is_global(area)) {
+      if (ED_screen_area_active(C) && !ED_area_is_global(area)) {
         return TH_HEADER_ACTIVE;
       }
       else {
@@ -3554,7 +3565,7 @@ bool ED_area_is_global(const ScrArea *area)
   return area->global != nullptr;
 }
 
-ScrArea *ED_area_find_under_cursor(const bContext *C, int spacetype, const int xy[2])
+ScrArea *ED_area_find_under_cursor(const bContext *C, int spacetype, const int event_xy[2])
 {
   bScreen *screen = CTX_wm_screen(C);
   wmWindow *win = CTX_wm_window(C);
@@ -3563,23 +3574,23 @@ ScrArea *ED_area_find_under_cursor(const bContext *C, int spacetype, const int x
 
   if (win->parent) {
     /* If active window is a child, check itself first. */
-    area = BKE_screen_find_area_xy(screen, spacetype, xy);
+    area = BKE_screen_find_area_xy(screen, spacetype, event_xy);
   }
 
   if (!area) {
     /* Check all windows except the active one. */
-    int scr_pos[2];
-    wmWindow *win_other = WM_window_find_under_cursor(win, xy, scr_pos);
+    int event_xy_other[2];
+    wmWindow *win_other = WM_window_find_under_cursor(win, event_xy, event_xy_other);
     if (win_other && win_other != win) {
       win = win_other;
       screen = WM_window_get_active_screen(win);
-      area = BKE_screen_find_area_xy(screen, spacetype, scr_pos);
+      area = BKE_screen_find_area_xy(screen, spacetype, event_xy_other);
     }
   }
 
   if (!area && !win->parent) {
     /* If active window is a parent window, check itself last. */
-    area = BKE_screen_find_area_xy(screen, spacetype, xy);
+    area = BKE_screen_find_area_xy(screen, spacetype, event_xy);
   }
 
   return area;

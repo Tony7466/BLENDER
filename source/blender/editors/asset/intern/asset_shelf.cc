@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,6 +11,8 @@
 #include <algorithm>
 
 #include "AS_asset_catalog_path.hh"
+
+#include "BLI_string.h"
 
 #include "BKE_context.h"
 #include "BKE_screen.h"
@@ -200,10 +202,6 @@ void ED_asset_shelf_region_free(ARegion *region)
  */
 static bool asset_shelf_space_poll(const bContext *C, const SpaceLink *space_link)
 {
-  if (!U.experimental.use_asset_shelf) {
-    return false;
-  }
-
   const SpaceType *space_type = BKE_spacetype_from_id(space_link->spacetype);
 
   /* Is there any asset shelf type registered that returns true for it's poll? */
@@ -382,7 +380,7 @@ void ED_asset_shelf_region_layout(const bContext *C, ARegion *region)
 
   RegionAssetShelf *shelf_regiondata = RegionAssetShelf::get_from_asset_shelf_region(*region);
   if (!shelf_regiondata) {
-    /* Regiondata should've been created by a previously called ED_asset_shelf_region_init(). */
+    /* Region-data should've been created by a previously called #ED_asset_shelf_region_init(). */
     BLI_assert_unreachable();
     return;
   }

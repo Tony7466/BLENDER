@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Blender Foundation
+/* SPDX-FileCopyrightText: Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,7 +16,10 @@
 
 #include "BLI_edgehash.h"
 #include "BLI_linklist.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_rand.h"
 #include "BLI_utildefines.h"
 
@@ -24,7 +27,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include "BKE_bvhutils.h"
-#include "BKE_cloth.h"
+#include "BKE_cloth.hh"
 #include "BKE_effect.h"
 #include "BKE_global.h"
 #include "BKE_lib_id.h"
@@ -98,7 +101,7 @@ static BVHTree *bvhtree_build_from_cloth(ClothModifierData *clmd, float epsilon)
     }
   }
   else {
-    const blender::int2 *edges = reinterpret_cast<const blender::int2 *>(cloth->edges);
+    const blender::int2 *edges = cloth->edges;
 
     for (int i = 0; i < cloth->primitive_num; i++) {
       float co[2][3];
@@ -370,7 +373,7 @@ void clothModifier_do(ClothModifierData *clmd,
 
   /* Since implicit sharing is introduced, mesh data can be moved to other places.
    * Therefore some fields in simulation data need to be updated accordingly */
-  clmd->clothObject->edges = reinterpret_cast<const vec2i *>(mesh->edges().data());
+  clmd->clothObject->edges = mesh->edges().data();
 
   /* try to read from cache */
   bool can_simulate = (framenr == clmd->clothObject->last_frame + 1) &&
@@ -880,7 +883,7 @@ static void cloth_from_mesh(ClothModifierData *clmd, const Object *ob, Mesh *mes
   BKE_mesh_runtime_verttri_from_looptri(
       clmd->clothObject->tri, corner_verts.data(), looptris.data(), looptris.size());
 
-  clmd->clothObject->edges = reinterpret_cast<const vec2i *>(mesh->edges().data());
+  clmd->clothObject->edges = mesh->edges().data();
 
   /* Free the springs since they can't be correct if the vertices
    * changed.

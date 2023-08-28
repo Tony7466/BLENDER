@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,7 +9,7 @@
 #pragma once
 
 #include "DNA_anim_types.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 struct ID;
 struct ListBase;
@@ -199,7 +199,7 @@ int delete_keyframe(Main *bmain,
 /** \name Keying Sets
  * \{ */
 
-/* forward decl. for this struct which is declared a bit later... */
+/* Forward declaration. For this struct which is declared a bit later. */
 struct ExtensionRNA;
 struct KeyingSetInfo;
 
@@ -218,7 +218,7 @@ struct KeyingSetInfo {
   KeyingSetInfo *next, *prev;
 
   /* info */
-  /* identifier used for class name, which KeyingSet instances reference as "Typeinfo Name" */
+  /* identifier used for class name, which KeyingSet instances reference as "Type-info Name" */
   char idname[64];
   /* identifier so that user can hook this up to a KeyingSet (used as label). */
   char name[64];
@@ -252,18 +252,18 @@ struct KeyingSetInfo {
 void ANIM_relative_keyingset_add_source(ListBase *dsources, ID *id, StructRNA *srna, void *data);
 
 /* mode for modify_keyframes */
-typedef enum eModifyKey_Modes {
+enum eModifyKey_Modes {
   MODIFYKEY_MODE_INSERT = 0,
   MODIFYKEY_MODE_DELETE,
-} eModifyKey_Modes;
+};
 
 /* return codes for errors (with Relative KeyingSets) */
-typedef enum eModifyKey_Returns {
-  /* context info was invalid for using the Keying Set */
+enum eModifyKey_Returns {
+  /** Context info was invalid for using the Keying Set. */
   MODIFYKEY_INVALID_CONTEXT = -1,
-  /* there isn't any typeinfo for generating paths from context */
+  /** There isn't any type-info for generating paths from context. */
   MODIFYKEY_MISSING_TYPEINFO = -2,
-} eModifyKey_Returns;
+};
 
 /**
  * Given a #KeyingSet and context info, validate Keying Set's paths.
@@ -322,7 +322,7 @@ void ANIM_keyingset_info_unregister(Main *bmain, KeyingSetInfo *ksi);
 /* cleanup on exit */
 /* --------------- */
 
-void ANIM_keyingset_infos_exit(void);
+void ANIM_keyingset_infos_exit();
 
 /* -------- */
 
@@ -389,7 +389,7 @@ bool ANIM_keyingset_context_ok_poll(bContext *C, KeyingSet *ks);
 enum eCreateDriverFlags {
   /** create drivers with a default variable for nicer UI */
   CREATEDRIVER_WITH_DEFAULT_DVAR = (1 << 0),
-  /** create drivers with Generator FModifier (for backwards compat) */
+  /** Create drivers with Generator FModifier (for backwards compatibility). */
   CREATEDRIVER_WITH_FMODIFIER = (1 << 1),
 };
 
@@ -418,12 +418,12 @@ extern EnumPropertyItem prop_driver_create_mapping_types[];
 
 /* -------- */
 
-typedef enum eDriverFCurveCreationMode {
+enum eDriverFCurveCreationMode {
   DRIVER_FCURVE_LOOKUP_ONLY = 0, /* Don't add anything if not found. */
   DRIVER_FCURVE_KEYFRAMES = 1,   /* Add with keyframes, for visual tweaking. */
   DRIVER_FCURVE_GENERATOR = 2,   /* Add with generator, for script backwards compatibility. */
   DRIVER_FCURVE_EMPTY = 3        /* Add without data, for pasting. */
-} eDriverFCurveCreationMode;
+};
 
 /**
  * Get (or add relevant data to be able to do so) F-Curve from the driver stack,
@@ -491,20 +491,20 @@ bool ANIM_remove_driver(
  * Clear copy-paste buffer for drivers.
  * \note This function frees any MEM_calloc'ed copy/paste buffer data.
  */
-void ANIM_drivers_copybuf_free(void);
+void ANIM_drivers_copybuf_free();
 
 /**
  * Clear copy-paste buffer for driver variable sets.
  * \note This function frees any MEM_calloc'ed copy/paste buffer data.
  */
-void ANIM_driver_vars_copybuf_free(void);
+void ANIM_driver_vars_copybuf_free();
 
 /* -------- */
 
 /**
  * Returns whether there is a driver in the copy/paste buffer to paste.
  */
-bool ANIM_driver_can_paste(void);
+bool ANIM_driver_can_paste();
 
 /**
  * \brief Main Driver Management API calls.
@@ -528,7 +528,7 @@ bool ANIM_paste_driver(
 /**
  * Checks if there are driver variables in the copy/paste buffer.
  */
-bool ANIM_driver_vars_can_paste(void);
+bool ANIM_driver_vars_can_paste();
 
 /**
  * Copy the given driver's variables to the buffer.

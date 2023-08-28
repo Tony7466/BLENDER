@@ -1,5 +1,8 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 void main()
 {
-  out_color = vec4(0.0, 1.0, 1.0, 0.0);
+  out_color = interp_color;
 }

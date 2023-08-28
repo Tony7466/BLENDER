@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -28,7 +28,9 @@
 #include "ED_text.hh"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_sys_types.h"
 #include "BLI_uuid.h"
@@ -45,8 +47,8 @@
 #include "DNA_view3d_types.h"
 #include "DNA_workspace_types.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "rna_internal.h"
 
@@ -60,7 +62,7 @@
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
-#include "RNA_enum_types.h"
+#include "RNA_enum_types.hh"
 
 const EnumPropertyItem rna_enum_geometry_component_type_items[] = {
     {int(blender::bke::GeometryComponent::Type::Mesh),
@@ -435,6 +437,17 @@ static const EnumPropertyItem rna_enum_shading_color_type_items[] = {
      0,
      "Texture",
      "Show the texture from the active image texture node using the active UV map coordinates"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+static const EnumPropertyItem rna_enum_shading_wire_color_type_items[] = {
+    {V3D_SHADING_SINGLE_COLOR,
+     "THEME",
+     0,
+     "Theme",
+     "Show scene wireframes with the theme's wire color"},
+    {V3D_SHADING_OBJECT_COLOR, "OBJECT", 0, "Object", "Show object color on wireframe"},
+    {V3D_SHADING_RANDOM_COLOR, "RANDOM", 0, "Random", "Show random object color on wireframe"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -1320,34 +1333,6 @@ static PointerRNA rna_View3DShading_selected_studio_light_get(PointerRNA *ptr)
 }
 
 /* shading.light */
-static const EnumPropertyItem *rna_View3DShading_color_type_itemf(bContext * /*C*/,
-                                                                  PointerRNA *ptr,
-                                                                  PropertyRNA * /*prop*/,
-                                                                  bool *r_free)
-{
-  View3DShading *shading = (View3DShading *)ptr->data;
-
-  int totitem = 0;
-
-  if (shading->type == OB_WIRE) {
-    EnumPropertyItem *item = nullptr;
-    RNA_enum_items_add_value(
-        &item, &totitem, rna_enum_shading_color_type_items, V3D_SHADING_SINGLE_COLOR);
-    RNA_enum_items_add_value(
-        &item, &totitem, rna_enum_shading_color_type_items, V3D_SHADING_OBJECT_COLOR);
-    RNA_enum_items_add_value(
-        &item, &totitem, rna_enum_shading_color_type_items, V3D_SHADING_RANDOM_COLOR);
-    RNA_enum_item_end(&item, &totitem);
-    *r_free = true;
-    return item;
-  }
-  else {
-    /* Solid mode, or lookdev mode for workbench engine. */
-    *r_free = false;
-    return rna_enum_shading_color_type_items;
-  }
-}
-
 static void rna_View3DShading_studio_light_get_storage(View3DShading *shading,
                                                        char **dna_storage,
                                                        int *flag)
@@ -1617,8 +1602,11 @@ static int rna_SpaceView3D_icon_from_show_object_viewport_get(PointerRNA *ptr)
                                                     &v3d->object_type_exclude_select);
 }
 
-static char *rna_View3DShading_path(const PointerRNA * /*ptr*/)
+static char *rna_View3DShading_path(const PointerRNA *ptr)
 {
+  if (GS(ptr->owner_id->name) == ID_SCE) {
+    return BLI_strdup("display.shading");
+  }
   return BLI_strdup("shading");
 }
 
@@ -1911,7 +1899,7 @@ static const EnumPropertyItem *rna_SpaceImageEditor_pivot_itemf(bContext * /*C*/
   SpaceImage *sima = (SpaceImage *)ptr->data;
 
   if (sima->mode == SI_MODE_PAINT) {
-    return rna_enum_transform_pivot_items_full;
+    return rna_enum_transform_pivot_full_items;
   }
   else {
     return pivot_items;
@@ -4188,7 +4176,6 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
   prop = RNA_def_property(srna, "color_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "color_type");
   RNA_def_property_enum_items(prop, rna_enum_shading_color_type_items);
-  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_View3DShading_color_type_itemf");
   RNA_def_property_ui_text(prop, "Color", "Color Type");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_update(
@@ -4196,9 +4183,8 @@ static void rna_def_space_view3d_shading(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "wireframe_color_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "wire_color_type");
-  RNA_def_property_enum_items(prop, rna_enum_shading_color_type_items);
-  RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_View3DShading_color_type_itemf");
-  RNA_def_property_ui_text(prop, "Color", "Color Type");
+  RNA_def_property_enum_items(prop, rna_enum_shading_wire_color_type_items);
+  RNA_def_property_ui_text(prop, "Wire Color", "Wire Color Type");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_VIEW3D | NS_VIEW3D_SHADING, nullptr);
 
   prop = RNA_def_property(srna, "single_color", PROP_FLOAT, PROP_COLOR);
@@ -5641,7 +5627,7 @@ static void rna_def_space_image(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "pivot_point", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "around");
-  RNA_def_property_enum_items(prop, rna_enum_transform_pivot_items_full);
+  RNA_def_property_enum_items(prop, rna_enum_transform_pivot_full_items);
   RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_SpaceImageEditor_pivot_itemf");
   RNA_def_property_ui_text(prop, "Pivot", "Rotation/Scaling Pivot");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, nullptr);
@@ -6690,10 +6676,10 @@ static void rna_def_fileselect_asset_idfilter(BlenderRNA *brna)
     const char *identifier = rna_enum_id_type_filter_items[i].identifier;
     if (is_experimental) {
       /* Create name for experimental property and store in static buffer. */
-      snprintf(experimental_prop_names[i],
-               ARRAY_SIZE(experimental_prop_names[i]),
-               "experimental_%s",
-               identifier);
+      BLI_snprintf(experimental_prop_names[i],
+                   ARRAY_SIZE(experimental_prop_names[i]),
+                   "experimental_%s",
+                   identifier);
       identifier = experimental_prop_names[i];
     }
 
@@ -7395,6 +7381,16 @@ static void rna_def_space_node_overlay(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
+  static const EnumPropertyItem preview_shapes[] = {
+      {SN_OVERLAY_PREVIEW_FLAT, "FLAT", ICON_MESH_PLANE, "Flat", "Use the default flat previews"},
+      {SN_OVERLAY_PREVIEW_3D,
+       "3D",
+       ICON_SPHERE,
+       "3D",
+       "Use the material preview scene for the node previews"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   srna = RNA_def_struct(brna, "SpaceNodeOverlay", nullptr);
   RNA_def_struct_sdna(srna, "SpaceNode");
   RNA_def_struct_nested(brna, srna, "SpaceNodeEditor");
@@ -7439,6 +7435,13 @@ static void rna_def_space_node_overlay(BlenderRNA *brna)
   RNA_def_property_boolean_default(prop, false);
   RNA_def_property_ui_text(
       prop, "Show Node Previews", "Display each node's preview if node is toggled");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE, nullptr);
+
+  prop = RNA_def_property(srna, "preview_shape", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "overlay.preview_shape");
+  RNA_def_property_enum_items(prop, preview_shapes);
+  RNA_def_property_enum_default(prop, SN_OVERLAY_PREVIEW_FLAT);
+  RNA_def_property_ui_text(prop, "Preview Shape", "Preview shape used by the node previews");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_NODE, nullptr);
 }
 
@@ -7659,9 +7662,12 @@ static void rna_def_space_node(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Overlay Settings", "Settings for display of overlays in the Node Editor");
 
-  prop = RNA_def_property(srna, "supports_preview", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "supports_previews", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(prop, "rna_SpaceNode_supports_previews", nullptr);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop,
+                           "Supports Previews",
+                           "Whether the node editor's type supports displaying node previews");
 
   rna_def_space_node_overlay(brna);
   RNA_api_space_node(srna);
@@ -7909,7 +7915,7 @@ static void rna_def_space_clip(BlenderRNA *brna)
   prop = RNA_def_property(srna, "show_graph_hidden", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SC_SHOW_GRAPH_HIDDEN);
   RNA_def_property_ui_text(
-      prop, "Display Hidden", "Include channels from objects/bone that aren't visible");
+      prop, "Display Hidden", "Include channels from objects/bone that are not visible");
   RNA_def_property_ui_icon(prop, ICON_GHOST_ENABLED, 0);
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_CLIP, nullptr);
 

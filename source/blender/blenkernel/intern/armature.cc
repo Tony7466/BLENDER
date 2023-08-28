@@ -18,7 +18,10 @@
 #include "BLI_alloca.h"
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 #include "BLT_translation.h"
@@ -50,7 +53,7 @@
 
 #include "BIK_api.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "CLG_log.h"
 
@@ -216,10 +219,6 @@ static void armature_blend_write(BlendWriter *writer, ID *id, const void *id_add
   BLO_write_id_struct(writer, bArmature, id_address, &arm->id);
   BKE_id_blend_write(writer, &arm->id);
 
-  if (arm->adt) {
-    BKE_animdata_blend_write(writer, arm->adt);
-  }
-
   /* Direct data */
   LISTBASE_FOREACH (Bone *, bone, &arm->bonebase) {
     write_bone(writer, bone);
@@ -253,9 +252,6 @@ static void armature_blend_read_data(BlendDataReader *reader, ID *id)
   /* Must always be cleared (armatures don't have their own edit-data). */
   arm->needs_flush_to_id = 0;
 
-  BLO_read_data_address(reader, &arm->adt);
-  BKE_animdata_blend_read_data(reader, arm->adt);
-
   LISTBASE_FOREACH (Bone *, bone, &arm->bonebase) {
     direct_link_bones(reader, bone);
   }
@@ -264,40 +260,6 @@ static void armature_blend_read_data(BlendDataReader *reader, ID *id)
   arm->act_edbone = nullptr;
 
   BKE_armature_bone_hash_make(arm);
-}
-
-static void lib_link_bones(BlendLibReader *reader, ID *self_id, Bone *bone)
-{
-  IDP_BlendReadLib(reader, self_id, bone->prop);
-
-  LISTBASE_FOREACH (Bone *, curbone, &bone->childbase) {
-    lib_link_bones(reader, self_id, curbone);
-  }
-}
-
-static void armature_blend_read_lib(BlendLibReader *reader, ID *id)
-{
-  bArmature *arm = (bArmature *)id;
-  LISTBASE_FOREACH (Bone *, curbone, &arm->bonebase) {
-    lib_link_bones(reader, id, curbone);
-  }
-}
-
-static void expand_bones(BlendExpander *expander, Bone *bone)
-{
-  IDP_BlendReadExpand(expander, bone->prop);
-
-  LISTBASE_FOREACH (Bone *, curBone, &bone->childbase) {
-    expand_bones(expander, curBone);
-  }
-}
-
-static void armature_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  bArmature *arm = (bArmature *)id;
-  LISTBASE_FOREACH (Bone *, curBone, &arm->bonebase) {
-    expand_bones(expander, curBone);
-  }
 }
 
 IDTypeInfo IDType_ID_AR = {
@@ -322,8 +284,7 @@ IDTypeInfo IDType_ID_AR = {
 
     /*blend_write*/ armature_blend_write,
     /*blend_read_data*/ armature_blend_read_data,
-    /*blend_read_lib*/ armature_blend_read_lib,
-    /*blend_read_expand*/ armature_blend_read_expand,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -40,6 +40,8 @@
 
 void workbench_engine_init(void *ved)
 {
+  BLI_assert_unreachable();
+
   GPU_render_begin();
   WORKBENCH_Data *vedata = static_cast<WORKBENCH_Data *>(ved);
   WORKBENCH_StorageList *stl = vedata->stl;

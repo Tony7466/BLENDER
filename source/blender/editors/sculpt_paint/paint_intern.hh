@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,8 @@
 #include "BKE_paint.hh"
 
 #include "BLI_compiler_compat.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_rect.h"
 
 #include "ED_select_utils.hh"
@@ -445,25 +446,25 @@ BLI_INLINE void flip_qt(float quat[4], const ePaintSymmetryFlags symm)
 }
 
 /* stroke operator */
-typedef enum BrushStrokeMode {
+enum BrushStrokeMode {
   BRUSH_STROKE_NORMAL,
   BRUSH_STROKE_INVERT,
   BRUSH_STROKE_SMOOTH,
-} BrushStrokeMode;
+};
 
 /* paint_hide.cc */
 
-typedef enum {
+enum PartialVisAction {
   PARTIALVIS_HIDE,
   PARTIALVIS_SHOW,
-} PartialVisAction;
+};
 
-typedef enum {
+enum PartialVisArea {
   PARTIALVIS_INSIDE,
   PARTIALVIS_OUTSIDE,
   PARTIALVIS_ALL,
   PARTIALVIS_MASKED,
-} PartialVisArea;
+};
 
 void PAINT_OT_hide_show(wmOperatorType *ot);
 
@@ -476,11 +477,11 @@ void PAINT_OT_hide_show(wmOperatorType *ot);
  *
  * Fixes #102349.
  */
-typedef enum {
+enum PaintMaskFloodMode {
   PAINT_MASK_FLOOD_VALUE = SEL_OP_SUB,
   PAINT_MASK_FLOOD_VALUE_INVERSE = SEL_OP_ADD,
   PAINT_MASK_INVERT = SEL_OP_XOR,
-} PaintMaskFloodMode;
+};
 
 void PAINT_OT_mask_flood_fill(wmOperatorType *ot);
 void PAINT_OT_mask_lasso_gesture(wmOperatorType *ot);

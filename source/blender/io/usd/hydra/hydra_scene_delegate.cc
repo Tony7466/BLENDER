@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * SPDX-FileCopyrightText: 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "hydra_scene_delegate.h"
 
@@ -238,7 +239,7 @@ pxr::SdfPath HydraSceneDelegate::prim_id(const ID *id, const char *prefix) const
 {
   /* Making id of object in form like <prefix>_<pointer in 16 hex digits format> */
   char name[32];
-  snprintf(name, sizeof(name), "%s_%p", prefix, id);
+  BLI_snprintf(name, sizeof(name), "%s_%p", prefix, id);
   return GetDelegateID().AppendElementString(name);
 }
 

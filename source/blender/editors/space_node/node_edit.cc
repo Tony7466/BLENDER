@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -50,9 +50,9 @@
 #include "ED_select_utils.hh"
 #include "ED_viewer_path.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
@@ -504,7 +504,8 @@ bool ED_node_is_geometry(SpaceNode *snode)
 
 bool ED_node_supports_preview(SpaceNode *snode)
 {
-  return ED_node_is_compositor(snode);
+  return ED_node_is_compositor(snode) ||
+         (U.experimental.use_shader_node_previews && ED_node_is_shader(snode));
 }
 
 void ED_node_shader_default(const bContext *C, ID *id)
@@ -737,7 +738,7 @@ void ED_node_set_active(
     ED_node_tree_propagate_change(nullptr, bmain, ntree);
 
     if ((node->flag & NODE_ACTIVE_TEXTURE) && !was_active_texture) {
-      /* If active texture changed, free glsl materials. */
+      /* If active texture changed, free GLSL materials. */
       LISTBASE_FOREACH (Material *, ma, &bmain->materials) {
         if (ma->nodetree && ma->use_nodes && ntreeContainsTree(ma->nodetree, ntree)) {
           GPU_material_free(&ma->gpumaterial);
@@ -1121,6 +1122,19 @@ void node_set_hidden_sockets(bNode *node, int set)
       }
     }
   }
+}
+
+bool node_is_previewable(const SpaceNode &snode, const bNodeTree &ntree, const bNode &node)
+{
+  if (!(snode.overlay.flag & SN_OVERLAY_SHOW_OVERLAYS) ||
+      !(snode.overlay.flag & SN_OVERLAY_SHOW_PREVIEWS))
+  {
+    return false;
+  }
+  if (ntree.type == NTREE_SHADER) {
+    return U.experimental.use_shader_node_previews && !(node.is_frame());
+  }
+  return node.typeinfo->flag & NODE_PREVIEW;
 }
 
 static bool cursor_isect_multi_input_socket(const float2 &cursor, const bNodeSocket &socket)
@@ -1567,7 +1581,7 @@ static void node_flag_toggle_exec(SpaceNode *snode, int toggle_flag)
   for (bNode *node : snode->edittree->all_nodes()) {
     if (node->flag & SELECT) {
 
-      if (toggle_flag == NODE_PREVIEW && (node->typeinfo->flag & NODE_PREVIEW) == 0) {
+      if (toggle_flag == NODE_PREVIEW && !node_is_previewable(*snode, *snode->edittree, *node)) {
         continue;
       }
       if (toggle_flag == NODE_OPTIONS &&
@@ -1587,7 +1601,7 @@ static void node_flag_toggle_exec(SpaceNode *snode, int toggle_flag)
   for (bNode *node : snode->edittree->all_nodes()) {
     if (node->flag & SELECT) {
 
-      if (toggle_flag == NODE_PREVIEW && (node->typeinfo->flag & NODE_PREVIEW) == 0) {
+      if (toggle_flag == NODE_PREVIEW && !node_is_previewable(*snode, *snode->edittree, *node)) {
         continue;
       }
       if (toggle_flag == NODE_OPTIONS &&
@@ -1646,13 +1660,22 @@ static int node_preview_toggle_exec(bContext *C, wmOperator * /*op*/)
     return OPERATOR_CANCELLED;
   }
 
-  ED_preview_kill_jobs(CTX_wm_manager(C), CTX_data_main(C));
-
   node_flag_toggle_exec(snode, NODE_PREVIEW);
 
   ED_node_tree_propagate_change(C, CTX_data_main(C), snode->edittree);
 
   return OPERATOR_FINISHED;
+}
+
+static bool node_previewable(bContext *C)
+{
+  if (ED_operator_node_active(C)) {
+    SpaceNode *snode = CTX_wm_space_node(C);
+    if (ED_node_supports_preview(snode)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void NODE_OT_preview_toggle(wmOperatorType *ot)
@@ -1664,7 +1687,7 @@ void NODE_OT_preview_toggle(wmOperatorType *ot)
 
   /* callbacks */
   ot->exec = node_preview_toggle_exec;
-  ot->poll = composite_node_active;
+  ot->poll = node_previewable;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -2230,8 +2253,6 @@ static int ntree_socket_add_exec(bContext *C, wmOperator *op)
         ntree, in_out, active_sock->idname, active_sock->next, active_sock->name);
     /* XXX this only works for actual sockets, not interface templates! */
     // nodeSocketCopyValue(sock, &ntree_ptr, active_sock, &ntree_ptr);
-    /* Inherit socket panel from the active socket interface. */
-    sock->panel = active_sock->panel;
   }
   else {
     /* XXX TODO: define default socket type for a tree! */
@@ -2379,10 +2400,6 @@ static bool socket_change_poll_type(void *userdata, bNodeSocketType *socket_type
     return false;
   }
 
-  if (!U.experimental.use_rotation_socket && socket_type->type == SOCK_ROTATION) {
-    return false;
-  }
-
   return true;
 }
 
@@ -2392,12 +2409,12 @@ static const EnumPropertyItem *socket_change_type_itemf(bContext *C,
                                                         bool *r_free)
 {
   if (!C) {
-    return DummyRNA_NULL_items;
+    return rna_enum_dummy_NULL_items;
   }
 
   SpaceNode *snode = CTX_wm_space_node(C);
   if (!snode || !snode->edittree) {
-    return DummyRNA_NULL_items;
+    return rna_enum_dummy_NULL_items;
   }
 
   return rna_node_socket_type_itemf(snode->edittree->typeinfo, socket_change_poll_type, r_free);
@@ -2421,7 +2438,7 @@ void NODE_OT_tree_socket_change_type(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   RNA_def_enum(ot->srna, "in_out", rna_enum_node_socket_in_out_items, SOCK_IN, "Socket Type", "");
-  prop = RNA_def_enum(ot->srna, "socket_type", DummyRNA_DEFAULT_items, 0, "Socket Type", "");
+  prop = RNA_def_enum(ot->srna, "socket_type", rna_enum_dummy_DEFAULT_items, 0, "Socket Type", "");
   RNA_def_enum_funcs(prop, socket_change_type_itemf);
   ot->prop = prop;
 }
@@ -2507,23 +2524,23 @@ static const EnumPropertyItem *socket_change_subtype_itemf(bContext *C,
                                                            bool *r_free)
 {
   if (!C) {
-    return DummyRNA_NULL_items;
+    return rna_enum_dummy_NULL_items;
   }
   SpaceNode *snode = CTX_wm_space_node(C);
   if (!snode || !snode->edittree) {
-    return DummyRNA_NULL_items;
+    return rna_enum_dummy_NULL_items;
   }
 
   PointerRNA active_socket_ptr = CTX_data_pointer_get_type(
       C, "interface_socket", &RNA_NodeSocketInterface);
   const bNodeSocket *active_socket = static_cast<const bNodeSocket *>(active_socket_ptr.data);
   if (!active_socket) {
-    return DummyRNA_NULL_items;
+    return rna_enum_dummy_NULL_items;
   }
 
   const Set<int> subtypes = socket_type_get_subtypes(eNodeSocketDatatype(active_socket->type));
   if (subtypes.is_empty()) {
-    return DummyRNA_NULL_items;
+    return rna_enum_dummy_NULL_items;
   }
 
   EnumPropertyItem *items = nullptr;
@@ -2536,7 +2553,7 @@ static const EnumPropertyItem *socket_change_subtype_itemf(bContext *C,
   }
 
   if (items_count == 0) {
-    return DummyRNA_NULL_items;
+    return rna_enum_dummy_NULL_items;
   }
 
   RNA_enum_item_end(&items, &items_count);
@@ -2571,7 +2588,7 @@ void NODE_OT_tree_socket_change_subtype(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   ot->prop = RNA_def_enum(
-      ot->srna, "socket_subtype", DummyRNA_DEFAULT_items, 0, "Socket Subtype", "");
+      ot->srna, "socket_subtype", rna_enum_dummy_DEFAULT_items, 0, "Socket Subtype", "");
   RNA_def_enum_funcs(ot->prop, socket_change_subtype_itemf);
 }
 
@@ -2626,8 +2643,6 @@ static int ntree_socket_move_exec(bContext *C, wmOperator *op)
       break;
     }
   }
-
-  ntreeEnsureSocketInterfacePanelOrder(ntree);
 
   BKE_ntree_update_tag_interface(ntree);
   ED_node_tree_propagate_change(C, CTX_data_main(C), ntree);

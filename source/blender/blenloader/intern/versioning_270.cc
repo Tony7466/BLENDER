@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -58,7 +58,9 @@
 #include "SEQ_iterator.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
 
@@ -70,7 +72,7 @@
 #include "NOD_composite.h"
 #include "NOD_socket.hh"
 
-#include "readfile.h"
+#include "readfile.hh"
 
 #include "MEM_guardedalloc.h"
 
