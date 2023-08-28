@@ -1205,25 +1205,33 @@ static std::optional<ThumbSource> file_thumbnail_source_get(const FileDirEntry *
   return std::nullopt;
 }
 
-static PreviewImage *filelist_file_request_preview(const FileList *filelist, FileDirEntry *file)
+BIFIconID filelist_file_request_preview(const FileList *filelist, FileDirEntry *file)
 {
-  BLI_assert(filelist_file_supports_preview(file));
+  if (!filelist_file_supports_preview(file)) {
+    return ICON_NONE;
+  }
 
-  if (file->preview) {
+  PreviewImage *preview = [filelist, file]() -> PreviewImage * {
+    if (file->preview) {
+      return file->preview;
+    }
+
+    const std::optional thumb_source = file_thumbnail_source_get(file);
+    if (!thumb_source) {
+      return nullptr;
+    }
+
+    char fullpath[FILE_MAX_LIBEXTRA];
+    filelist_file_get_full_path(filelist, file, fullpath);
+    /* Creates the preview image, but doesn't actually read the thumbnail. */
+    file->preview = BKE_previewimg_cached_thumbnail_read(fullpath, fullpath, *thumb_source, false);
+
     return file->preview;
-  }
+  }();
+  BLI_assert(preview != nullptr);
 
-  const std::optional thumb_source = file_thumbnail_source_get(file);
-  if (!thumb_source) {
-    return nullptr;
-  }
-
-  char fullpath[FILE_MAX_LIBEXTRA];
-  filelist_file_get_full_path(filelist, file, fullpath);
-  /* Creates the preview image, but doesn't actually read the thumbnail. */
-  file->preview = BKE_previewimg_cached_thumbnail_read(fullpath, fullpath, *thumb_source, false);
-
-  return file->preview;
+  file->preview_icon_id = BKE_icon_preview_ensure(file->id, file->preview);
+  return file->preview_icon_id;
 }
 
 bool filelist_file_is_preview_pending(const FileList *filelist, const FileDirEntry *file)
@@ -1572,15 +1580,12 @@ static void filelist_cache_preview_request(const bContext *C,
                                            FileList *filelist,
                                            FileDirEntry *entry)
 {
-  if (!filelist_file_supports_preview(entry)) {
+  BIFIconID icon_id = filelist_file_request_preview(filelist, entry);
+  if (icon_id == ICON_NONE) {
     return;
   }
 
-  PreviewImage *preview = filelist_file_request_preview(filelist, entry);
-  BLI_assert(preview != nullptr);
-
-  entry->preview_icon_id = BKE_icon_preview_ensure(entry->id, preview);
-  UI_icon_ensure_deferred(C, entry->preview_icon_id, true);
+  UI_icon_ensure_deferred(C, icon_id, true);
 }
 
 static void filelist_cache_init(FileListEntryCache *cache, size_t cache_size)

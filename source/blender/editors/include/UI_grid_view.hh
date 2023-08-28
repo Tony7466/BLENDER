@@ -190,19 +190,21 @@ class PreviewGridItem : public AbstractGridViewItem {
  public:
   using IsActiveFn = std::function<bool()>;
   using ActivateFn = std::function<void(bContext &C, PreviewGridItem &new_active)>;
+  using PreviewLoadFn = std::function<BIFIconID()>;
 
  protected:
   /** See #set_on_activate_fn() */
   ActivateFn activate_fn_;
   /** See #set_is_active_fn() */
   IsActiveFn is_active_fn_;
+  PreviewLoadFn preview_load_fn_;
   bool hide_label_ = false;
 
  public:
   std::string label{};
   int preview_icon_id = ICON_NONE;
 
-  PreviewGridItem(StringRef identifier, StringRef label, int preview_icon_id);
+  PreviewGridItem(StringRef identifier, StringRef label, int preview_icon_id = ICON_NONE);
 
   void build_grid_tile(uiLayout &layout) const override;
 
@@ -216,6 +218,13 @@ class PreviewGridItem : public AbstractGridViewItem {
    * Set a custom callback to check if this item should be active.
    */
   void set_is_active_fn(IsActiveFn fn);
+  /**
+   * Set a custom callback to load the preview image, returning the icon-id of the preview. This
+   * should be used instead of passing an icon-id to the constructor whenever previews should be
+   * lazy loaded. That is, only previews that are currently visible in the grid view will be
+   * loaded.
+   */
+  void set_preview_load_fn(PreviewLoadFn fn);
 
   void hide_label();
 

@@ -97,6 +97,7 @@ class AssetList : NonCopyable {
   AssetHandle asset_get_by_index(int index) const;
 
   bool needsRefetch() const;
+  BIFIconID requestPreview(AssetHandle &asset) const;
   bool isLoaded() const;
   bool isAssetPreviewLoading(const AssetHandle &asset) const;
   asset_system::AssetLibrary *asset_library() const;
@@ -164,6 +165,11 @@ void AssetList::fetch(const bContext &C)
 bool AssetList::needsRefetch() const
 {
   return filelist_needs_force_reset(filelist_) || filelist_needs_reading(filelist_);
+}
+
+BIFIconID AssetList::requestPreview(AssetHandle &asset) const
+{
+  return filelist_file_request_preview(filelist_, const_cast<FileDirEntry *>(asset.file_data));
 }
 
 bool AssetList::isLoaded() const
@@ -478,6 +484,13 @@ asset_system::AssetRepresentation *ED_assetlist_asset_get_by_index(
   AssetHandle asset_handle = ED_assetlist_asset_handle_get_by_index(&library_reference,
                                                                     asset_index);
   return reinterpret_cast<asset_system::AssetRepresentation *>(asset_handle.file_data->asset);
+}
+
+BIFIconID ED_assetlist_asset_preview_request(const AssetLibraryReference *library_reference,
+                                             AssetHandle *asset_handle)
+{
+  const AssetList *list = AssetListStorage::lookup_list(*library_reference);
+  return list->requestPreview(*asset_handle);
 }
 
 bool ED_assetlist_asset_image_is_loading(const AssetLibraryReference *library_reference,

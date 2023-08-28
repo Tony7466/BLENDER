@@ -62,10 +62,7 @@ class AssetViewItem : public ui::PreviewGridItem {
   bool allow_asset_drag_ = true;
 
  public:
-  AssetViewItem(const AssetHandle &asset,
-                StringRef identifier,
-                StringRef label,
-                int preview_icon_id);
+  AssetViewItem(const AssetHandle &asset, StringRef identifier, StringRef label);
 
   void disable_asset_drag();
   void build_grid_tile(uiLayout &layout) const override;
@@ -119,15 +116,8 @@ void AssetView::build_items()
     const bool show_names = (shelf_.settings.display_flag & ASSETSHELF_SHOW_NAMES);
 
     const StringRef identifier = asset->get_identifier().library_relative_identifier();
-    const int preview_id = [this, &asset_handle]() -> int {
-      if (ED_assetlist_asset_image_is_loading(&library_ref_, &asset_handle)) {
-        return ICON_TEMP;
-      }
-      return ED_asset_handle_get_preview_or_type_icon_id(&asset_handle);
-    }();
 
-    AssetViewItem &item = add_item<AssetViewItem>(
-        asset_handle, identifier, asset->get_name(), preview_id);
+    AssetViewItem &item = add_item<AssetViewItem>(asset_handle, identifier, asset->get_name());
     if (!show_names) {
       item.hide_label();
     }
@@ -180,12 +170,24 @@ static std::optional<asset_system::AssetCatalogFilter> catalog_filter_from_shelf
 
 /* ---------------------------------------------------------------------- */
 
-AssetViewItem::AssetViewItem(const AssetHandle &asset,
-                             StringRef identifier,
-                             StringRef label,
-                             int preview_icon_id)
-    : ui::PreviewGridItem(identifier, label, preview_icon_id), asset_(asset)
+AssetViewItem::AssetViewItem(const AssetHandle &asset, StringRef identifier, StringRef label)
+    : ui::PreviewGridItem(identifier, label), asset_(asset)
 {
+  set_preview_load_fn([this]() -> BIFIconID {
+    const AssetView &asset_view = dynamic_cast<const AssetView &>(get_view());
+    const AssetLibraryReference &library_ref = asset_view.library_ref_;
+
+    const BIFIconID preview_icon_id = ED_assetlist_asset_preview_request(&library_ref, &asset_);
+
+    if (ED_assetlist_asset_image_is_loading(&library_ref, &asset_)) {
+      return ICON_TEMP;
+    }
+
+    if (preview_icon_id != ICON_NONE) {
+      return preview_icon_id;
+    }
+    return ED_asset_handle_get_type_icon(&asset_);
+  });
 }
 
 void AssetViewItem::disable_asset_drag()

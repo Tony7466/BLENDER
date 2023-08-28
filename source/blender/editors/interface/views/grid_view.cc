@@ -409,6 +409,10 @@ PreviewGridItem::PreviewGridItem(StringRef identifier, StringRef label, int prev
 
 void PreviewGridItem::build_grid_tile(uiLayout &layout) const
 {
+  if (preview_load_fn_) {
+    const_cast<int &>(preview_icon_id) = preview_load_fn_();
+  }
+
   const GridViewStyle &style = get_view().get_style();
   uiBlock *block = uiLayoutGetBlock(&layout);
 
@@ -448,6 +452,11 @@ void PreviewGridItem::set_on_activate_fn(ActivateFn fn)
 void PreviewGridItem::set_is_active_fn(IsActiveFn fn)
 {
   is_active_fn_ = fn;
+}
+
+void PreviewGridItem::set_preview_load_fn(PreviewLoadFn fn)
+{
+  preview_load_fn_ = fn;
 }
 
 void PreviewGridItem::hide_label()

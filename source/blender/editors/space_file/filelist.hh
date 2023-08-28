@@ -24,6 +24,9 @@ struct FileDirEntry;
 
 typedef uint32_t FileUID;
 
+/* From `UI_resources.hh`. */
+using BIFIconID = int;
+
 enum FileSelType {
   FILE_SEL_REMOVE = 0,
   FILE_SEL_ADD = 1,
@@ -75,6 +78,7 @@ void filelist_free_icons();
 void filelist_file_get_full_path(const FileList *filelist,
                                  const FileDirEntry *file,
                                  char r_filepath[/*FILE_MAX_LIBEXTRA*/]);
+BIFIconID filelist_file_request_preview(const FileList *filelist, FileDirEntry *entry);
 bool filelist_file_is_preview_pending(const FileList *filelist, const FileDirEntry *file);
 struct ImBuf *filelist_getimage(struct FileList *filelist, int index);
 struct ImBuf *filelist_file_getimage(const FileDirEntry *file);

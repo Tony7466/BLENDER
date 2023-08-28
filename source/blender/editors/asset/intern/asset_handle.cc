@@ -40,7 +40,7 @@ int ED_asset_handle_get_preview_icon_id(const AssetHandle *asset)
   return asset->file_data->preview_icon_id;
 }
 
-int ED_asset_handle_get_preview_or_type_icon_id(const AssetHandle *asset)
+int ED_asset_handle_get_type_icon(const AssetHandle *asset)
 {
   return ED_file_icon(asset->file_data);
 }
