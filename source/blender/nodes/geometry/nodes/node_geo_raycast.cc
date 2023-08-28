@@ -393,13 +393,15 @@ static void node_rna(StructRNA *srna)
 
   RNA_def_node_enum(srna,
                     "mapping",
-                    "Mapping", "Mapping from the target geometry to hit points",
+                    "Mapping",
+                    "Mapping from the target geometry to hit points",
                     mapping_items,
                     NOD_storage_enum_accessors(mapping),
                     GEO_NODE_RAYCAST_INTERPOLATED);
   RNA_def_node_enum(srna,
                     "data_type",
-                    "Data Type", "Type of data stored in attribute",
+                    "Data Type",
+                    "Type of data stored in attribute",
                     rna_enum_attribute_type_items,
                     NOD_storage_enum_accessors(data_type),
                     CD_PROP_FLOAT,

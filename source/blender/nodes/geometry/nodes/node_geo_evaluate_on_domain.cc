@@ -176,14 +176,16 @@ static void node_rna(StructRNA *srna)
 {
   RNA_def_node_enum(srna,
                     "domain",
-                    "Domain", "Domain the field is evaluated in",
+                    "Domain",
+                    "Domain the field is evaluated in",
                     rna_enum_attribute_domain_items,
                     NOD_inline_enum_accessors(custom1),
                     ATTR_DOMAIN_POINT);
-                    
+
   RNA_def_node_enum(srna,
                     "data_type",
-                    "Data Type", "",
+                    "Data Type",
+                    "",
                     rna_enum_attribute_type_items,
                     NOD_inline_enum_accessors(custom2),
                     CD_PROP_FLOAT,

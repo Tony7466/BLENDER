@@ -143,7 +143,8 @@ static void node_rna(StructRNA *srna)
 {
   RNA_def_node_enum(srna,
                     "data_type",
-                    "Data Type", "The data type used to read the attribute values",
+                    "Data Type",
+                    "The data type used to read the attribute values",
                     rna_enum_attribute_type_items,
                     NOD_storage_enum_accessors(data_type),
                     CD_PROP_FLOAT,
