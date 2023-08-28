@@ -80,7 +80,7 @@ static openvdb::GridBase *make_grid_for_attribute_type(ResourceScope *scope,
       result = &scope->construct<GridType>(Converter::single_value_to_grid(background_value));
     }
     else {
-      result = MEM_new<GridType>(__func__, Converter::single_value_to_grid(background_value));
+      result = new GridType(Converter::single_value_to_grid(background_value));
     }
   });
   BLI_assert(result != nullptr);

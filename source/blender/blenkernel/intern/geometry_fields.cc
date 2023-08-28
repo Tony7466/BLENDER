@@ -698,7 +698,7 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
     }
     const GVGrid domain_mask = {attributes.domain_grid_mask(domain, main_grid)};
     fn::VolumeFieldEvaluator evaluator{field_context, domain_mask};
-    openvdb::GridBase *buffer = volume::make_grid_for_attribute_type(type, {});
+    openvdb::GridBase *buffer = volume::make_grid_for_attribute_type(type);
     GVMutableGrid grid = GVMutableGrid::ForGrid(*buffer);
     evaluator.add_with_destination(validator.validate_field_if_necessary(field), grid);
     evaluator.set_selection(selection);

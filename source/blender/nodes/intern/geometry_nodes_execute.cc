@@ -496,7 +496,7 @@ static Vector<OutputAttributeToStore> compute_attributes_to_store(
             field_evaluator.add_with_destination(std::move(field), store.data);
             break;
           case bke::GeometryComponent::AttributeType::Grid:
-            store.grid_data = volume::make_grid_for_attribute_type(type, {});
+            store.grid_data = volume::make_grid_for_attribute_type(type);
             volume_field_evaluator.add_with_destination(std::move(field),
                                                         GVMutableGrid::ForGrid(*store.grid_data));
             break;
