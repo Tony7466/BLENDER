@@ -98,7 +98,7 @@ static void calculate_simulation_job_startjob(void *customdata,
     LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
       if (md->type == eModifierType_Nodes) {
         NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-        nmd->runtime->simulation_cache->reset();
+        // nmd->runtime->simulation_cache->reset();
       }
     }
     objects_to_calc.append(object);
@@ -258,7 +258,7 @@ static void bake_simulation_job_startjob(void *customdata,
     LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
       if (md->type == eModifierType_Nodes) {
         NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-        nmd->runtime->simulation_cache->reset();
+        // nmd->runtime->simulation_cache->reset();
         char absolute_bake_dir[FILE_MAX];
         STRNCPY(absolute_bake_dir, nmd->simulation_bake_directory);
         BLI_path_abs(absolute_bake_dir, base_path);
@@ -301,38 +301,6 @@ static void bake_simulation_job_startjob(void *customdata,
         if (!nmd.runtime->simulation_cache) {
           continue;
         }
-        ModifierSimulationCache &sim_cache = *nmd.runtime->simulation_cache;
-        const ModifierSimulationState *sim_state = sim_cache.get_state_at_exact_frame(frame);
-        if (sim_state == nullptr || sim_state->zone_states_.is_empty()) {
-          continue;
-        }
-
-        const std::string bdata_file_name = frame_file_str + ".bdata";
-        const std::string meta_file_name = frame_file_str + ".json";
-
-        char bdata_path[FILE_MAX];
-        BLI_path_join(bdata_path,
-                      sizeof(bdata_path),
-                      modifier_bake_data.absolute_bake_dir.c_str(),
-                      "bdata",
-                      bdata_file_name.c_str());
-        char meta_path[FILE_MAX];
-        BLI_path_join(meta_path,
-                      sizeof(meta_path),
-                      modifier_bake_data.absolute_bake_dir.c_str(),
-                      "meta",
-                      meta_file_name.c_str());
-
-        BLI_file_ensure_parent_dir_exists(bdata_path);
-        fstream bdata_file{bdata_path, std::ios::out | std::ios::binary};
-        bke::DiskBDataWriter bdata_writer{bdata_file_name, bdata_file, 0};
-
-        io::serialize::DictionaryValue io_root;
-        bke::sim::serialize_modifier_simulation_state(
-            *sim_state, bdata_writer, *modifier_bake_data.bdata_sharing, io_root);
-
-        BLI_file_ensure_parent_dir_exists(meta_path);
-        io::serialize::write_json_file(meta_path, io_root);
       }
     }
 
@@ -345,7 +313,7 @@ static void bake_simulation_job_startjob(void *customdata,
       NodesModifierData &nmd = *modifier_bake_data.nmd;
       if (nmd.runtime->simulation_cache) {
         /* Tag the caches as being baked so that they are not changed anymore. */
-        nmd.runtime->simulation_cache->cache_state = CacheState::Baked;
+        // nmd.runtime->simulation_cache->cache_state = CacheState::Baked;
       }
     }
     DEG_id_tag_update(&object_bake_data.object->id, ID_RECALC_GEOMETRY);
@@ -597,7 +565,7 @@ static int delete_baked_simulation_exec(bContext *C, wmOperator *op)
     LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
       if (md->type == eModifierType_Nodes) {
         NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-        nmd->runtime->simulation_cache->reset();
+        // nmd->runtime->simulation_cache->reset();
         if (StringRef(nmd->simulation_bake_directory).is_empty()) {
           continue;
         }
