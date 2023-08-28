@@ -42,8 +42,6 @@ void VKFrameBuffer::bind(bool /*enabled_srgb*/)
     context.deactivate_framebuffer();
   }
 
-  update_attachments();
-
   context.activate_framebuffer(*this);
 }
 
@@ -191,6 +189,7 @@ void VKFrameBuffer::attachment_set_loadstore_op(GPUAttachmentType /*type*/,
                                                 eGPULoadOp /*load_action*/,
                                                 eGPUStoreOp /*store_action*/)
 {
+  NOT_YET_IMPLEMENTED;
 }
 
 /** \} */
@@ -297,12 +296,11 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
 /** \name Update attachments
  * \{ */
 
-void VKFrameBuffer::update_attachments()
+void VKFrameBuffer::vk_render_pass_ensure()
 {
   if (!dirty_attachments_) {
     return;
   }
-
   render_pass_free();
   render_pass_create();
 
@@ -456,6 +454,23 @@ void VKFrameBuffer::render_pass_free()
   image_views_.clear();
   vk_render_pass_ = VK_NULL_HANDLE;
   vk_framebuffer_ = VK_NULL_HANDLE;
+}
+
+void VKFrameBuffer::color_attachment_layout_ensure(VKContext &context,
+                                                   int color_attachment,
+                                                   VkImageLayout requested_layout)
+{
+  VKTexture *color_texture = unwrap(unwrap(color_tex(color_attachment)));
+  if (color_texture == nullptr) {
+    return;
+  }
+
+  if (color_texture->current_layout_get() == requested_layout) {
+    return;
+  }
+
+  color_texture->layout_ensure(context, requested_layout);
+  dirty_attachments_ = true;
 }
 
 /** \} */

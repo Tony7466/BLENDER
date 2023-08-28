@@ -78,7 +78,7 @@ class VKCommandBuffer : NonCopyable, NonMovable {
    */
   struct {
     /* Reference to the last_framebuffer where begin_render_pass was called for. */
-    const VKFrameBuffer *framebuffer_ = nullptr;
+    VKFrameBuffer *framebuffer_ = nullptr;
     /* Is last_framebuffer_ currently bound. Each call should ensure the correct state. */
     bool framebuffer_active_ = false;
     /* Amount of times a check has been requested. */
@@ -151,7 +151,7 @@ class VKCommandBuffer : NonCopyable, NonMovable {
   /* Bind the given buffer as an index buffer. */
   void bind(const VKBufferWithOffset &index_buffer, VkIndexType index_type);
 
-  void begin_render_pass(const VKFrameBuffer &framebuffer);
+  void begin_render_pass(VKFrameBuffer &framebuffer);
   void end_render_pass(const VKFrameBuffer &framebuffer);
 
   /**

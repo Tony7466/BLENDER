@@ -78,6 +78,7 @@ void VKCommandBuffer::init(const VKDevice &device)
 void VKCommandBuffer::begin_recording()
 {
   ensure_no_active_framebuffer();
+  std::cout << __func__ << "\n";
   if (is_in_stage(Stage::Submitted)) {
     vkWaitForFences(vk_device_, 1, &vk_fence_, VK_TRUE, FenceTimeout);
     vkResetFences(vk_device_, 1, &vk_fence_);
@@ -96,6 +97,7 @@ void VKCommandBuffer::begin_recording()
 
 void VKCommandBuffer::end_recording()
 {
+  std::cout << __func__ << "\n";
   ensure_no_active_framebuffer();
   vkEndCommandBuffer(vk_command_buffer_);
   stage_transfer(Stage::Recording, Stage::BetweenRecordingAndSubmitting);
@@ -144,14 +146,16 @@ void VKCommandBuffer::bind(const VKBufferWithOffset &index_buffer, VkIndexType i
       vk_command_buffer_, index_buffer.buffer.vk_handle(), index_buffer.offset, index_type);
 }
 
-void VKCommandBuffer::begin_render_pass(const VKFrameBuffer &framebuffer)
+void VKCommandBuffer::begin_render_pass(VKFrameBuffer &framebuffer)
 {
+  std::cout << __func__ << "\n";
   validate_framebuffer_not_exists();
   state.framebuffer_ = &framebuffer;
 }
 
 void VKCommandBuffer::end_render_pass(const VKFrameBuffer &framebuffer)
 {
+  std::cout << __func__ << "\n";
   UNUSED_VARS_NDEBUG(framebuffer);
   validate_framebuffer_exists();
   BLI_assert(state.framebuffer_ == &framebuffer);
@@ -197,6 +201,7 @@ void VKCommandBuffer::copy(VKTexture &dst_texture,
                            Span<VkBufferImageCopy> regions)
 {
   ensure_no_active_framebuffer();
+  std::cout << __func__ << "\n";
   vkCmdCopyBufferToImage(vk_command_buffer_,
                          src_buffer.vk_handle(),
                          dst_texture.vk_image_handle(),
@@ -210,6 +215,7 @@ void VKCommandBuffer::copy(VKTexture &dst_texture,
                            Span<VkImageCopy> regions)
 {
   ensure_no_active_framebuffer();
+  std::cout << __func__ << "\n";
   vkCmdCopyImage(vk_command_buffer_,
                  src_texture.vk_image_handle(),
                  src_texture.current_layout_get(),
@@ -236,6 +242,7 @@ void VKCommandBuffer::blit(VKTexture &dst_texture,
                            VkImageLayout src_layout,
                            Span<VkImageBlit> regions)
 {
+  std::cout << __func__ << "\n";
   ensure_no_active_framebuffer();
   vkCmdBlitImage(vk_command_buffer_,
                  src_texture.vk_image_handle(),
@@ -265,6 +272,7 @@ void VKCommandBuffer::clear(Span<VkClearAttachment> attachments, Span<VkClearRec
 {
   validate_framebuffer_exists();
   ensure_active_framebuffer();
+  std::cout << __func__ << "\n";
   vkCmdClearAttachments(
       vk_command_buffer_, attachments.size(), attachments.data(), areas.size(), areas.data());
 }
@@ -273,6 +281,7 @@ void VKCommandBuffer::draw(int v_first, int v_count, int i_first, int i_count)
 {
   validate_framebuffer_exists();
   ensure_active_framebuffer();
+  std::cout << __func__ << "\n";
   vkCmdDraw(vk_command_buffer_, v_count, i_count, v_first, i_first);
   state.draw_counts++;
 }
@@ -282,6 +291,7 @@ void VKCommandBuffer::draw_indexed(
 {
   validate_framebuffer_exists();
   ensure_active_framebuffer();
+  std::cout << __func__ << "\n";
   vkCmdDrawIndexed(
       vk_command_buffer_, index_count, instance_count, first_index, vertex_offset, first_instance);
   state.draw_counts++;
@@ -294,6 +304,7 @@ void VKCommandBuffer::draw_indirect(const VKStorageBuffer &buffer,
 {
   validate_framebuffer_exists();
   ensure_active_framebuffer();
+  std::cout << __func__ << "\n";
   vkCmdDrawIndirect(vk_command_buffer_, buffer.vk_handle(), offset, draw_count, stride);
   state.draw_counts++;
 }
@@ -306,6 +317,7 @@ void VKCommandBuffer::draw_indexed_indirect(const VKStorageBuffer &buffer,
 {
   validate_framebuffer_exists();
   ensure_active_framebuffer();
+  std::cout << __func__ << "\n";
   vkCmdDrawIndexedIndirect(vk_command_buffer_, buffer.vk_handle(), offset, draw_count, stride);
   state.draw_counts++;
 }
@@ -316,6 +328,7 @@ void VKCommandBuffer::pipeline_barrier(VkPipelineStageFlags source_stages,
   if (state.framebuffer_) {
     ensure_active_framebuffer();
   }
+  std::cout << __func__ << "\n";
   vkCmdPipelineBarrier(vk_command_buffer_,
                        source_stages,
                        destination_stages,
@@ -331,6 +344,7 @@ void VKCommandBuffer::pipeline_barrier(VkPipelineStageFlags source_stages,
 void VKCommandBuffer::pipeline_barrier(Span<VkImageMemoryBarrier> image_memory_barriers)
 {
   ensure_no_active_framebuffer();
+  std::cout << __func__ << "\n";
   vkCmdPipelineBarrier(vk_command_buffer_,
                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -378,6 +392,7 @@ void VKCommandBuffer::submit_encoded_commands()
   submit_info.commandBufferCount = 1;
   submit_info.pCommandBuffers = &vk_command_buffer_;
 
+  std::cout << __func__ << "\n";
   vkQueueSubmit(vk_queue_, 1, &submit_info, vk_fence_);
   submission_id_.next();
   stage_transfer(Stage::BetweenRecordingAndSubmitting, Stage::Submitted);
@@ -402,6 +417,7 @@ void VKCommandBuffer::ensure_no_active_framebuffer()
 {
   state.checks_++;
   if (state.framebuffer_ && state.framebuffer_active_) {
+    std::cout << __func__ << "\n";
     vkCmdEndRenderPass(vk_command_buffer_);
     state.framebuffer_active_ = false;
     state.switches_++;
@@ -415,6 +431,7 @@ void VKCommandBuffer::ensure_active_framebuffer()
   if (!state.framebuffer_active_) {
     VkRenderPassBeginInfo render_pass_begin_info = {};
     render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    state.framebuffer_->vk_render_pass_ensure();
     render_pass_begin_info.renderPass = state.framebuffer_->vk_render_pass_get();
     render_pass_begin_info.framebuffer = state.framebuffer_->vk_framebuffer_get();
     render_pass_begin_info.renderArea = state.framebuffer_->vk_render_areas_get()[0];
@@ -423,6 +440,7 @@ void VKCommandBuffer::ensure_active_framebuffer()
     render_pass_begin_info.clearValueCount = 1;
     render_pass_begin_info.pClearValues = &clear_value;
 
+    std::cout << __func__ << "\n";
     vkCmdBeginRenderPass(vk_command_buffer_, &render_pass_begin_info, VK_SUBPASS_CONTENTS_INLINE);
     state.framebuffer_active_ = true;
     state.switches_++;

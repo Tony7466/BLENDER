@@ -82,13 +82,20 @@ class VKFrameBuffer : public FrameBuffer {
     return vk_framebuffer_;
   }
 
+  void vk_render_pass_ensure();
   VkRenderPass vk_render_pass_get() const
   {
     BLI_assert(vk_render_pass_ != VK_NULL_HANDLE);
+    BLI_assert(!dirty_attachments_);
     return vk_render_pass_;
   }
+
   Array<VkViewport, 16> vk_viewports_get() const;
   Array<VkRect2D, 16> vk_render_areas_get() const;
+
+  void color_attachment_layout_ensure(VKContext &context,
+                                      int color_attachment,
+                                      VkImageLayout requested_layout);
 
  private:
   void update_attachments();

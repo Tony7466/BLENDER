@@ -514,6 +514,9 @@ void VKTexture::layout_ensure(VKContext &context,
                               const VkImageLayout current_layout,
                               const VkImageLayout requested_layout)
 {
+  if (requested_layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+    std::cout << __func__ << "(image:" << vk_image_ << " new_layout:" << requested_layout << ")\n";
+  }
   VkImageMemoryBarrier barrier{};
   barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
   barrier.oldLayout = current_layout;

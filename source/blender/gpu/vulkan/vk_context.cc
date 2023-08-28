@@ -172,9 +172,7 @@ void VKContext::deactivate_framebuffer()
 {
   VKFrameBuffer *framebuffer = active_framebuffer_get();
   BLI_assert(framebuffer != nullptr);
-  if (framebuffer->is_valid()) {
-    command_buffer_.end_render_pass(*framebuffer);
-  }
+  command_buffer_.end_render_pass(*framebuffer);
   active_fb = nullptr;
 }
 
@@ -233,6 +231,7 @@ void VKContext::swap_buffers_post_callback()
 
 void VKContext::swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &swap_chain_data)
 {
+  std::cout << __func__ << "\n";
   VKFrameBuffer &framebuffer = *unwrap(back_left);
 
   VKTexture wrapper("display_texture");
@@ -240,6 +239,7 @@ void VKContext::swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &swap_c
                VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                to_gpu_format(swap_chain_data.format));
   wrapper.layout_ensure(*this, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  framebuffer.color_attachment_layout_ensure(*this, 0, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
   VKTexture *color_attachment = unwrap(unwrap(framebuffer.color_tex(0)));
   color_attachment->layout_ensure(*this, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
