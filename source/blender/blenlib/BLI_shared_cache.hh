@@ -30,6 +30,7 @@ template<typename T> class SharedCache {
   struct CacheData {
     CacheMutex mutex;
     T data;
+    CacheData(T data) : data(std::move(data)) {}
   };
   std::shared_ptr<CacheData> cache_;
 
@@ -57,6 +58,23 @@ template<typename T> class SharedCache {
    */
   void ensure(FunctionRef<void(T &data)> compute_cache)
   {
+    cache_->mutex.ensure([&]() { compute_cache(this->cache_->data); });
+  }
+
+  /**
+   * Represents a combination of "tag dirty" and "update cache for new data." Existing cached
+   * values are kept available (copied from shared data if necessary). This can be helpful when
+   * the recalculation is only expected to make a small change to the cached data, since using
+   * #tag_dirty() and #ensure() separately may require rebuilding the cache from scratch.
+   */
+  void update(FunctionRef<void(T &data)> compute_cache)
+  {
+    if (cache_.unique()) {
+      cache_->mutex.tag_dirty();
+    }
+    else {
+      cache_ = std::make_shared<CacheData>(cache_->data);
+    }
     cache_->mutex.ensure([&]() { compute_cache(this->cache_->data); });
   }
 
