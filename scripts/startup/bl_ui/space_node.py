@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -849,6 +849,10 @@ class NODE_PT_overlay(Panel):
         if snode.supports_previews:
             col.separator()
             col.prop(overlay, "show_previews", text="Previews")
+            if snode.tree_type == 'ShaderNodeTree':
+                row = col.row()
+                row.prop(overlay, "preview_shape", expand=True)
+                row.active = overlay.show_previews
 
         if snode.tree_type == 'GeometryNodeTree':
             col.separator()
