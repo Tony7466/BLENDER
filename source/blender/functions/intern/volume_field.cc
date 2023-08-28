@@ -334,7 +334,7 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
     openvdb::GridBase *buffer;
     if (!dst_grid || !dst_grid.is_grid()) {
       /* Create a destination grid pointer in the resource scope. */
-      buffer = &volume::make_grid_for_attribute_type(scope, type);
+      buffer = volume::make_grid_for_attribute_type(scope, type);
       r_grids[out_index] = GVMutableGrid::ForGrid(*buffer);
       dst_grid = GVMutableGrid::ForGrid(*buffer);
     }

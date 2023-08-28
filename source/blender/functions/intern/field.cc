@@ -122,7 +122,7 @@ static Vector<GVGrid> get_volume_field_context_inputs(
     if (!grid) {
       const CPPType &type = field_input.cpp_type();
       /* Move ownership to the resource scope. */
-      openvdb::GridBase &buffer = volume::make_grid_for_attribute_type(scope, type);
+      openvdb::GridBase &buffer = *volume::make_grid_for_attribute_type(scope, type);
       grid = GVMutableGrid::ForGrid(buffer);
     }
     field_context_inputs.append(grid);
@@ -698,19 +698,14 @@ Vector<GVGrid> evaluate_volume_fields(ResourceScope &scope,
               computed_grid.get_internal_grid()->baseTree().copy());
         }
         else if (computed_grid.is_single()) {
-          volume::grid_to_static_type(*dst_grid.get_internal_grid(), [&](auto &typed_dst_grid) {
-            using DstGridType = typename std::decay<decltype(typed_dst_grid)>::type;
-            using DstTreeType = typename DstGridType::TreeType;
-            computed_grid.get_internal_single()
-            typename DstTreeType::Ptr dst_tree = DstTreeType::create(;
-            dst_grid.get_internal_grid()->setTree(dst_tree);
-          });
-
-              computed_grid.get_internal_grid()->baseTree().copy());
+          BUFFER_FOR_CPP_TYPE_VALUE(dst_grid.type(), buffer);
+          computed_grid.get_internal_single(buffer);
+          dst_grid.get_internal_grid()->setTree(
+              volume::make_tree_for_attribute_type(dst_grid.type(), buffer));
         }
         else {
-              /* Output grids should be grids or single values. */
-              BLI_assert_unreachable();
+          /* TODO materialize into the grid? What's the topology? */
+          BLI_assert_unreachable();
         }
       }
       r_grids[out_index] = dst_grid;
@@ -1104,21 +1099,21 @@ static GVGrid grid_mask_from_selection(const GVGrid &full_mask,
       const CommonVGridInfo selection_info = selection.common_info();
       switch (selection_info.type) {
         case CommonVGridInfo::Type::Grid: {
-              apply_mask_topology();
+          apply_mask_topology();
 
-              BoolGridToMask op{selection.get_internal_grid()->getConstAccessor()};
-              openvdb::tools::foreach (mask_for_write.get_internal_grid().beginValueOn(), op);
-              break;
+          BoolGridToMask op{selection.get_internal_grid()->getConstAccessor()};
+          openvdb::tools::foreach (mask_for_write.get_internal_grid().beginValueOn(), op);
+          break;
         }
         case CommonVGridInfo::Type::Single: {
-              const bool is_selected = selection.get_internal_single();
-              if (is_selected) {
-                apply_mask_topology();
-              }
+          const bool is_selected = selection.get_internal_single();
+          if (is_selected) {
+            apply_mask_topology();
+          }
         }
         case CommonVGridInfo::Type::Any: {
-              // TODO
-              // selection.materialize_to_grid();
+          // TODO
+          // selection.materialize_to_grid();
         }
       }
     }
@@ -1134,17 +1129,17 @@ static GVGrid grid_mask_from_selection(const GVGrid &full_mask,
       const CommonVGridInfo selection_info = selection.common_info();
       switch (selection_info.type) {
         case CommonVGridInfo::Type::Grid: {
-              return GVGrid::ForGrid(
-                  scope.construct<openvdb::MaskGrid>(*selection.get_internal_grid()));
+          return GVGrid::ForGrid(
+              scope.construct<openvdb::MaskGrid>(*selection.get_internal_grid()));
         }
         case CommonVGridInfo::Type::Single: {
-              const bool is_selected = selection.get_internal_single();
-              return GVGrid::ForSingle(CPPType::get<bool>(), &is_selected);
+          const bool is_selected = selection.get_internal_single();
+          return GVGrid::ForSingle(CPPType::get<bool>(), &is_selected);
         }
         case CommonVGridInfo::Type::Any: {
-              // TODO No topology source, assume infinite mask.
-              static const bool is_selected = true;
-              return GVGrid::ForSingle(CPPType::get<bool>(), &is_selected);
+          // TODO No topology source, assume infinite mask.
+          static const bool is_selected = true;
+          return GVGrid::ForSingle(CPPType::get<bool>(), &is_selected);
         }
       }
     }

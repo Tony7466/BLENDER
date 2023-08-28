@@ -28,10 +28,11 @@ OPENVDB_USE_VERSION_NAMESPACE
 namespace OPENVDB_VERSION_NAME {
 
 class GridBase;
-template<typename TreeType> class Grid;
 class MetaMap;
+template<typename TreeType> class Grid;
 
 namespace tree {
+class TreeBase;
 template<typename T, Index Log2Dim> class LeafNode;
 template<typename ChildNodeType, Index Log2Dim> class InternalNode;
 template<typename ChildNodeType> class RootNode;
@@ -283,7 +284,13 @@ using SupportedGridTypes = openvdb::TypeList<openvdb::BoolGrid,
 
 }  // namespace grid_types
 
-openvdb::GridBase &make_grid_for_attribute_type(ResourceScope &scope,
+std::shared_ptr<openvdb::tree::TreeBase> make_tree_for_attribute_type(ResourceScope &scope,
+                                                                      const CPPType &type,
+                                                                      const void *value = nullptr);
+std::shared_ptr<openvdb::tree::TreeBase> make_tree_for_attribute_type(const CPPType &type,
+                                                                      const void *value = nullptr);
+
+openvdb::GridBase *make_grid_for_attribute_type(ResourceScope &scope,
                                                 const CPPType &type,
                                                 const void *value = nullptr);
 openvdb::GridBase *make_grid_for_attribute_type(const CPPType &type, const void *value = nullptr);

@@ -160,8 +160,7 @@ static void volume_foreach_path(ID *id, BPathForeachPathData *bpath_data)
   Volume *volume = reinterpret_cast<Volume *>(id);
 
   if (volume->packedfile != nullptr &&
-      (bpath_data->flag & BKE_BPATH_FOREACH_PATH_SKIP_PACKED) != 0)
-  {
+      (bpath_data->flag & BKE_BPATH_FOREACH_PATH_SKIP_PACKED) != 0) {
     return;
   }
 
@@ -1237,7 +1236,7 @@ bool BKE_volume_grid_bounds(const openvdb::GridBase &grid, float3 &r_min, float3
   return true;
 }
 
-openvdb::GridBase::ConstPtr BKE_volume_grid_shallow_transform(openvdb::GridBase &grid,
+openvdb::GridBase::ConstPtr BKE_volume_grid_shallow_transform(const openvdb::GridBase &grid,
                                                               const blender::float4x4 &transform)
 {
   openvdb::math::Transform::Ptr grid_transform = grid.transform().copy();

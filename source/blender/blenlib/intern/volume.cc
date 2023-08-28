@@ -19,15 +19,15 @@ namespace blender::volume {
 
 #ifdef WITH_OPENVDB
 
-openvdb::TreeBase::Ptr make_tree_for_attribute_type(const CPPType &type,
-                                                    const void *value,
-                                                    std::optional<ResourceScope> scope)
+static std::shared_ptr<openvdb::tree::TreeBase> make_tree_for_attribute_type(ResourceScope *scope,
+                                                                             const CPPType &type,
+                                                                             const void *value)
 {
   if (value == nullptr) {
     value = type.default_value();
   }
 
-  openvdb::TreeBase::Ptr result = nullptr;
+  std::shared_ptr<openvdb::tree::TreeBase> result = nullptr;
   volume::field_to_static_type(type, [&](auto tag) {
     using ValueType = typename decltype(tag)::type;
     using GridType = volume::grid_types::AttributeGrid<ValueType>;
@@ -35,9 +35,10 @@ openvdb::TreeBase::Ptr make_tree_for_attribute_type(const CPPType &type,
     using Converter = volume::grid_types::Converter<GridType>;
 
     const ValueType &background_value = *static_cast<const ValueType *>(value);
-    TreeType::Ptr tree = TreeType::create(Converter::single_value_to_grid(background_value));
+    std::shared_ptr<openvdb::tree::TreeBase> tree = std::make_shared<TreeType>(
+        Converter::single_value_to_grid(background_value));
     if (scope) {
-      result = scope.add_value(std::move(tree));
+      result = scope->add_value(std::move(tree));
     }
     else {
       result = tree;
@@ -47,9 +48,22 @@ openvdb::TreeBase::Ptr make_tree_for_attribute_type(const CPPType &type,
   return result;
 }
 
-openvdb::GridBase &make_grid_for_attribute_type(const CPPType &type,
-                                                const void *value,
-                                                std::optional<ResourceScope> scope)
+std::shared_ptr<openvdb::tree::TreeBase> make_tree_for_attribute_type(ResourceScope &scope,
+                                                                      const CPPType &type,
+                                                                      const void *value)
+{
+  return make_tree_for_attribute_type(&scope, type, value);
+}
+
+std::shared_ptr<openvdb::tree::TreeBase> make_tree_for_attribute_type(const CPPType &type,
+                                                                      const void *value)
+{
+  return make_tree_for_attribute_type(nullptr, type, value);
+}
+
+static openvdb::GridBase *make_grid_for_attribute_type(ResourceScope *scope,
+                                                       const CPPType &type,
+                                                       const void *value)
 {
   if (value == nullptr) {
     value = type.default_value();
@@ -63,14 +77,26 @@ openvdb::GridBase &make_grid_for_attribute_type(const CPPType &type,
 
     const ValueType &background_value = *static_cast<const ValueType *>(value);
     if (scope) {
-      result = &scope.construct<GridType>(Converter::single_value_to_grid(background_value));
+      result = &scope->construct<GridType>(Converter::single_value_to_grid(background_value));
     }
     else {
       result = MEM_new<GridType>(__func__, Converter::single_value_to_grid(background_value));
     }
   });
   BLI_assert(result != nullptr);
-  return *result;
+  return result;
+}
+
+openvdb::GridBase *make_grid_for_attribute_type(ResourceScope &scope,
+                                                const CPPType &type,
+                                                const void *value)
+{
+  return make_grid_for_attribute_type(&scope, type, value);
+}
+
+openvdb::GridBase *make_grid_for_attribute_type(const CPPType &type, const void *value)
+{
+  return make_grid_for_attribute_type(nullptr, type, value);
 }
 
 const CPPType &grid_base_attribute_type(const openvdb::GridBase &grid)
