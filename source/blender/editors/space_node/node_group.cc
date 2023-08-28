@@ -1026,6 +1026,30 @@ static void node_group_make_insert_selected(const bContext &C,
 
   ntree.ensure_topology_cache();
   for (bNode *node : nodes_to_move) {
+    for (bNodeSocket *output_socket : node->output_sockets()) {
+      for (bNodeLink *link : output_socket->directly_linked_links()) {
+        if (nodeLinkIsHidden(link)) {
+          links_to_remove.add(link);
+          continue;
+        }
+        if (link->tonode == gnode) {
+          links_to_remove.add(link);
+          continue;
+        }
+        if (nodes_to_move.contains(link->tonode)) {
+          internal_links_to_move.add(link);
+          continue;
+        }
+        bNodeTreeInterfaceSocket *io_socket = add_interface_from_socket(
+            ntree, group, *link->fromsock);
+        if (io_socket) {
+          output_links.append({link, io_socket});
+        }
+        else {
+          links_to_remove.add(link);
+        }
+      }
+    }
     for (bNodeSocket *input_socket : node->input_sockets()) {
       for (bNodeLink *link : input_socket->directly_linked_links()) {
         if (nodeLinkIsHidden(link)) {
@@ -1045,30 +1069,6 @@ static void node_group_make_insert_selected(const bContext &C,
         info.links.append(link);
         if (!info.interface_socket) {
           info.interface_socket = add_interface_from_socket(ntree, group, *link->tosock);
-        }
-        else {
-          links_to_remove.add(link);
-        }
-      }
-    }
-    for (bNodeSocket *output_socket : node->output_sockets()) {
-      for (bNodeLink *link : output_socket->directly_linked_links()) {
-        if (nodeLinkIsHidden(link)) {
-          links_to_remove.add(link);
-          continue;
-        }
-        if (link->tonode == gnode) {
-          links_to_remove.add(link);
-          continue;
-        }
-        if (nodes_to_move.contains(link->tonode)) {
-          internal_links_to_move.add(link);
-          continue;
-        }
-        bNodeTreeInterfaceSocket *io_socket = add_interface_from_socket(
-            ntree, group, *link->fromsock);
-        if (io_socket) {
-          output_links.append({link, io_socket});
         }
         else {
           links_to_remove.add(link);
