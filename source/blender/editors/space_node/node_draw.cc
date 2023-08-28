@@ -506,15 +506,17 @@ static void node_update_basis_from_declaration(
 
   Stack<PanelUpdate> panel_updates;
   for (const nodes::ItemDeclarationPtr &item_decl : decl.items) {
-    /* Space after header and between items. */
-    locy -= NODE_SOCKDY;
-
     bool is_parent_collapsed = false;
     if (PanelUpdate *parent_update = panel_updates.is_empty() ? nullptr : &panel_updates.peek()) {
       /* Adding an item to the parent panel, will be popped when reaching 0. */
       BLI_assert(parent_update->remaining_items > 0);
       --parent_update->remaining_items;
       is_parent_collapsed = parent_update->is_collapsed;
+    }
+
+    /* Space after header and between items. */
+    if (!is_parent_collapsed) {
+      locy -= NODE_SOCKDY;
     }
 
     if (nodes::PanelDeclaration *panel_decl = dynamic_cast<nodes::PanelDeclaration *>(
