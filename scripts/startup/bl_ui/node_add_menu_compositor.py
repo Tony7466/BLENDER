@@ -5,7 +5,10 @@
 import bpy
 from bpy.types import Menu
 from bl_ui import node_add_menu
-
+from bpy.app.translations import (
+    pgettext_iface as iface_,
+    contexts as i18n_contexts,
+)
 
 class NODE_MT_category_COMP_INPUT(Menu):
     bl_idname = "NODE_MT_category_COMP_INPUT"
@@ -18,9 +21,11 @@ class NODE_MT_category_COMP_INPUT(Menu):
         layout = self.layout
         layout.menu("NODE_MT_category_COMP_INPUT_CONSTANT")
         layout.separator()
+        node_add_menu.add_node_type(layout, "CompositorNodeBokehImage")
         node_add_menu.add_node_type(layout, "CompositorNodeImage")
         node_add_menu.add_node_type(layout, "CompositorNodeMask")
         node_add_menu.add_node_type(layout, "CompositorNodeMovieClip")
+        node_add_menu.add_node_type(layout, "CompositorNodeTexture")
 
         if is_group:
             layout.separator()
@@ -86,14 +91,12 @@ class NODE_MT_category_COMP_COLOR(Menu):
         layout = self.layout
         layout.menu("NODE_MT_category_COMP_COLOR_ADJUST")
         layout.separator()
-        layout.menu("NODE_MT_category_COMP_COLOR_MIX")
-        layout.separator()
         node_add_menu.add_node_type(layout, "CompositorNodePremulKey")
         node_add_menu.add_node_type(layout, "CompositorNodeValToRGB")
         node_add_menu.add_node_type(layout, "CompositorNodeConvertColorSpace")
+        node_add_menu.add_node_type(layout, "CompositorNodeSetAlpha")
         layout.separator()
         node_add_menu.add_node_type(layout, "CompositorNodeInvert")
-        node_add_menu.add_node_type(layout, "CompositorNodePosterize")
         node_add_menu.add_node_type(layout, "CompositorNodeRGBToBW")
 
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
@@ -108,7 +111,6 @@ class NODE_MT_category_COMP_COLOR_ADJUST(Menu):
         node_add_menu.add_node_type(layout, "CompositorNodeBrightContrast")
         node_add_menu.add_node_type(layout, "CompositorNodeColorBalance")
         node_add_menu.add_node_type(layout, "CompositorNodeColorCorrection")
-        node_add_menu.add_node_type(layout, "CompositorNodeColorSpill")
         node_add_menu.add_node_type(layout, "CompositorNodeExposure")
         node_add_menu.add_node_type(layout, "CompositorNodeGamma")
         node_add_menu.add_node_type(layout, "CompositorNodeHueCorrect")
@@ -119,8 +121,8 @@ class NODE_MT_category_COMP_COLOR_ADJUST(Menu):
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
-class NODE_MT_category_COMP_COLOR_MIX(Menu):
-    bl_idname = "NODE_MT_category_COMP_COLOR_MIX"
+class NODE_MT_category_COMP_MIX(Menu):
+    bl_idname = "NODE_MT_category_COMP_MIX"
     bl_label = "Mix"
 
     def draw(self, _context):
@@ -128,8 +130,9 @@ class NODE_MT_category_COMP_COLOR_MIX(Menu):
         node_add_menu.add_node_type(layout, "CompositorNodeAlphaOver")
         layout.separator()
         node_add_menu.add_node_type(layout, "CompositorNodeCombineColor")
-        node_add_menu.add_node_type(layout, "CompositorNodeMixRGB")
         node_add_menu.add_node_type(layout, "CompositorNodeSeparateColor")
+        layout.separator()
+        node_add_menu.add_node_type(layout, "CompositorNodeMixRGB", label=iface_("Mix Color"))
         node_add_menu.add_node_type(layout, "CompositorNodeZcombine")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
@@ -153,6 +156,7 @@ class NODE_MT_category_COMP_FILTER(Menu):
         node_add_menu.add_node_type(layout, "CompositorNodeGlare")
         node_add_menu.add_node_type(layout, "CompositorNodeKuwahara")
         node_add_menu.add_node_type(layout, "CompositorNodePixelate")
+        node_add_menu.add_node_type(layout, "CompositorNodePosterize")
         node_add_menu.add_node_type(layout, "CompositorNodeSunBeams")
 
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
@@ -193,6 +197,7 @@ class NODE_MT_category_COMP_KEYING(Menu):
         node_add_menu.add_node_type(layout, "CompositorNodeChannelMatte")
         node_add_menu.add_node_type(layout, "CompositorNodeChromaMatte")
         node_add_menu.add_node_type(layout, "CompositorNodeColorMatte")
+        node_add_menu.add_node_type(layout, "CompositorNodeColorSpill")
         node_add_menu.add_node_type(layout, "CompositorNodeDiffMatte")
         node_add_menu.add_node_type(layout, "CompositorNodeDistanceMatte")
         node_add_menu.add_node_type(layout, "CompositorNodeKeying")
@@ -216,20 +221,6 @@ class NODE_MT_category_COMP_MASK(Menu):
         layout.separator()
         node_add_menu.add_node_type(layout, "CompositorNodeDoubleEdgeMask")
         node_add_menu.add_node_type(layout, "CompositorNodeIDMask")
-        layout.separator()
-        node_add_menu.add_node_type(layout, "CompositorNodeSetAlpha")
-
-        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
-
-
-class NODE_MT_category_COMP_TEXTURE(Menu):
-    bl_idname = "NODE_MT_category_COMP_TEXTURE"
-    bl_label = "Texture"
-
-    def draw(self, _context):
-        layout = self.layout
-        node_add_menu.add_node_type(layout, "CompositorNodeBokehImage")
-        node_add_menu.add_node_type(layout, "CompositorNodeTexture")
 
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
@@ -340,7 +331,7 @@ class NODE_MT_compositing_node_add_all(Menu):
         layout.separator()
         layout.menu("NODE_MT_category_COMP_COLOR")
         layout.menu("NODE_MT_category_COMP_FILTER")
-        layout.menu("NODE_MT_category_COMP_TEXTURE")
+        layout.menu("NODE_MT_category_COMP_MIX")
         layout.separator()
         layout.menu("NODE_MT_category_COMP_KEYING")
         layout.menu("NODE_MT_category_COMP_MASK")
@@ -365,12 +356,11 @@ classes = (
     NODE_MT_category_COMP_OUTPUT,
     NODE_MT_category_COMP_COLOR,
     NODE_MT_category_COMP_COLOR_ADJUST,
-    NODE_MT_category_COMP_COLOR_MIX,
+    NODE_MT_category_COMP_MIX,
     NODE_MT_category_COMP_FILTER,
     NODE_MT_category_COMP_FILTER_BLUR,
     NODE_MT_category_COMP_KEYING,
     NODE_MT_category_COMP_MASK,
-    NODE_MT_category_COMP_TEXTURE,
     NODE_MT_category_COMP_TRACKING,
     NODE_MT_category_COMP_TRANSFORM,
     NODE_MT_category_COMP_UTIL,
