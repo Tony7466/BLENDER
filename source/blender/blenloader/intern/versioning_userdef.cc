@@ -42,7 +42,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "readfile.h" /* Own include. */
+#include "readfile.hh" /* Own include. */
 
 #include "WM_types.hh"
 #include "wm_event_types.hh"
@@ -850,6 +850,10 @@ void blo_do_versions_userdef(UserDef *userdef)
 
   if (!USER_VERSION_ATLEAST(400, 15)) {
     userdef->node_preview_res = 120;
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 18)) {
+    userdef->playback_fps_samples = 8;
   }
 
   /**
