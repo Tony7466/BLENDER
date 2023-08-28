@@ -145,18 +145,19 @@ set(LIB
 
 if(WITH_MATERIALX)
   list(APPEND LIB MaterialXCore)
+  list(APPEND LIB MaterialXFormat)
   list(APPEND SRC
     materialx/material.cc
-    materialx/nodes/node.cc
-    materialx/nodes/material_output.cc
-    materialx/nodes/principled_bsdf.cc
-    materialx/nodes/image.cc
+    materialx/nodes/bsdf_principled.cc
+    materialx/nodes/node_parser.cc
+    materialx/nodes/output_material.cc
+    materialx/nodes/tex_image.cc
 
     materialx/material.h
-    materialx/nodes/node.h
-    materialx/nodes/material_output.h
-    materialx/nodes/principled_bsdf.h
-    materialx/nodes/image.h
+    materialx/nodes/bsdf_principled.h
+    materialx/nodes/node_parser.h
+    materialx/nodes/output_material.h
+    materialx/nodes/tex_image.h
   )
 endif()
 

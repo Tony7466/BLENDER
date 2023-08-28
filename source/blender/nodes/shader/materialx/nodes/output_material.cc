@@ -1,0 +1,20 @@
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+#include "output_material.h"
+
+namespace blender::nodes::materialx {
+
+NodeItem OutputMaterialNodeParser::compute()
+{
+  NodeItem node = empty_value();
+  NodeItem surface = get_input_link("Surface");
+  if (surface) {
+    node = create_node("surfacematerial", "material");
+    node.set_input("surfaceshader", surface);
+  }
+  return node;
+}
+
+}  // namespace blender::nodes::materialx

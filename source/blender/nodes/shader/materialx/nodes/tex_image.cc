@@ -1,0 +1,34 @@
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+#include "tex_image.h"
+#include "node_parser.h"
+
+#include "hydra/image.h"
+
+#include "DEG_depsgraph_query.h"
+
+namespace blender::nodes::materialx {
+
+NodeItem TexImageNodeParser::compute()
+{
+  Image *image = (Image *)node->id;
+  NodeTexImage *tex = static_cast<NodeTexImage *>(node->storage);
+  Scene *scene = DEG_get_input_scene(depsgraph);
+  Main *bmain = DEG_get_bmain(depsgraph);
+  std::string image_path;
+  /* TODO: What if Blender built without Hydra? Also io::hydra::cache_or_get_image_file contain
+   * pretty general code, so could be moved from bf_usd project. */
+#ifdef WITH_HYDRA
+  image_path = io::hydra::cache_or_get_image_file(bmain, scene, image, &tex->iuser);
+#endif
+
+  NodeItem texcoord = create_node("texcoord", "vector2", true);
+  NodeItem res = create_node("image", "color3");
+  res.set_input("file", image_path, "filename");
+  res.set_input("texcoord", texcoord);
+  return res;
+}
+
+}  // namespace blender::nodes::materialx

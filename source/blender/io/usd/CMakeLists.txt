@@ -209,6 +209,10 @@ if(WITH_OPENVDB)
   )
 endif()
 
+if(WITH_MATERIALX)
+  list(APPEND LIB MaterialXCore)
+endif()
+
 blender_add_lib(bf_usd "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
 # RNA_prototypes.h

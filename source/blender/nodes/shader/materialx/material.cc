@@ -3,34 +3,37 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "material.h"
-#include "nodes/material_output.h"
+#include "nodes/output_material.h"
 
 #include <MaterialXCore/Node.h>
+#include <MaterialXFormat/XmlIo.h>
 
 #include "NOD_shader.h"
 
 namespace blender::nodes::materialx {
 
-static void export_nodegraph(MaterialX::DocumentPtr doc, Depsgraph *depsgraph, Material *material)
+static void export_nodegraph(MaterialX::GraphElement *graph,
+                             Depsgraph *depsgraph,
+                             Material *material)
 {
   material->nodetree->ensure_topology_cache();
 
   bNode *output_node = ntreeShaderOutputNode(material->nodetree, SHD_OUTPUT_ALL);
-  MaterialXMaterialOutputNode material_node(doc, depsgraph, material, output_node);
-  material_node.convert();
+  OutputMaterialNodeParser parser(graph, depsgraph, material, output_node);
+  parser.compute();
 }
 
-static void create_standard_surface(MaterialX::DocumentPtr doc, Material *material)
+static void create_standard_surface(MaterialX::GraphElement *graph, Material *material)
 {
-  MaterialX::NodePtr surfacematerial = doc->addNode(
-      "surfacematerial", MaterialX::EMPTY_STRING, "material");
-  MaterialX::NodePtr standard_surface = doc->addNode(
+  MaterialX::NodePtr standard_surface = graph->addNode(
       "standard_surface", MaterialX::EMPTY_STRING, "surfaceshader");
 
   standard_surface->addInput("base", "float")->setValue(1.0);
   standard_surface->addInput("base_color", "color3")
       ->setValue(MaterialX::Color3(material->r, material->g, material->b));
 
+  MaterialX::NodePtr surfacematerial = graph->addNode(
+      "surfacematerial", MaterialX::EMPTY_STRING, "material");
   surfacematerial->addInput(standard_surface->getType(), standard_surface->getType())
       ->setNodeName(standard_surface->getName());
 }
@@ -39,11 +42,13 @@ MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph, Material *mater
 {
   MaterialX::DocumentPtr doc = MaterialX::createDocument();
   if (material->use_nodes) {
-    export_nodegraph(doc, depsgraph, material);
+    export_nodegraph(doc.get(), depsgraph, material);
   }
   else {
-    create_standard_surface(doc, material);
+    create_standard_surface(doc.get(), material);
   }
+  std::string str = MaterialX::writeToXmlString(doc);
+  printf("\nMaterial: %s\n%s\n", material->id.name, str.c_str());
   return doc;
 }
 
