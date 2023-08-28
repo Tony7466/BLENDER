@@ -132,7 +132,7 @@ class NodeGroupInterfaceTests:
         out1 = tree.interface.new_socket("Output 1", socket_type=socket_type, in_out={'OUTPUT'})
         self.assertIsNotNone(out1, f"Could not create socket of type {socket_type}")
 
-        inout0 = tree.interface.new_socket("Input/Output 0", socket_type=socket_type, in_out={'OUTPUT'}, in_out={'INPUT'})
+        inout0 = tree.interface.new_socket("Input/Output 0", socket_type=socket_type, in_out={'OUTPUT', 'INPUT'})
         self.assertIsNotNone(inout0, f"Could not create socket of type {socket_type}")
 
         self.assertSequenceEqual([(s.name, s.bl_idname) for s in group_node.inputs], [
