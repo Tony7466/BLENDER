@@ -13,6 +13,8 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "CLG_log.h"
+
 #include "BLI_array_utils.h"
 #include "BLI_color.hh"
 #include "BLI_color_mix.hh"
@@ -75,6 +77,8 @@ using namespace blender;
 using namespace blender::color;
 using namespace blender::ed::sculpt_paint; /* For vwpaint namespace. */
 using blender::ed::sculpt_paint::vwpaint::NormalAnglePrecalc;
+
+static CLG_LogRef LOG = {"ed.sculpt_paint"};
 
 /* -------------------------------------------------------------------- */
 /** \name Internal Utilities
@@ -598,9 +602,7 @@ void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache *cache)
    * same, see comments for eBrushVertexPaintTool & eBrushWeightPaintTool. */
   Brush *smooth_brush = BKE_paint_toolslots_brush_get(paint, WPAINT_TOOL_BLUR);
   if (!smooth_brush) {
-    printf(
-        "WARNING: Switching to the blur (smooth) brush not possible, corresponding brush not "
-        "found\n");
+    CLOG_WARN(&LOG, "Switching to the blur (smooth) brush not possible, corresponding brush not");
     cache->saved_active_brush_name[0] = '\0';
     return;
   }

@@ -13,6 +13,8 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "CLG_log.h"
+
 #include "BLI_array_utils.hh"
 #include "BLI_blenlib.h"
 #include "BLI_dial_2d.h"
@@ -84,6 +86,8 @@ using blender::MutableSpan;
 using blender::Set;
 using blender::Span;
 using blender::Vector;
+
+static CLG_LogRef LOG = {"ed.sculpt_paint"};
 
 static float sculpt_calc_radius(ViewContext *vc,
                                 const Brush *brush,
@@ -4364,7 +4368,7 @@ static void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache 
   /* Switch to the smooth brush if possible. */
   Brush *smooth_brush = BKE_paint_toolslots_brush_get(paint, SCULPT_TOOL_SMOOTH);
   if (!smooth_brush) {
-    printf("WARNING: Switching to the smooth brush not possible, corresponding brush not found\n");
+    CLOG_WARN(&LOG, "Switching to the smooth brush not possible, corresponding brush not");
     cache->saved_active_brush_name[0] = '\0';
     return;
   }
