@@ -1947,15 +1947,6 @@ static bool switch_type_supported(const EnumPropertyItem *item)
               SOCK_IMAGE);
 }
 
-static const EnumPropertyItem *rna_GeometryNodeSwitch_type_itemf(bContext * /*C*/,
-                                                                 PointerRNA * /*ptr*/,
-                                                                 PropertyRNA * /*prop*/,
-                                                                 bool *r_free)
-{
-  *r_free = true;
-  return itemf_function_check(rna_enum_node_socket_data_type_items, switch_type_supported);
-}
-
 static bool geometry_node_asset_trait_flag_get(PointerRNA *ptr,
                                                const GeometryNodeAssetTraitFlag flag)
 {
@@ -2056,20 +2047,13 @@ static bool generic_attribute_type_supported(const EnumPropertyItem *item)
               CD_PROP_BYTE_COLOR,
               CD_PROP_QUATERNION);
 }
-static const EnumPropertyItem *rna_GeometryNodeAttributeType_type_itemf(bContext * /*C*/,
-                                                                        PointerRNA * /*ptr*/,
-                                                                        PropertyRNA * /*prop*/,
-                                                                        bool *r_free)
-{
-  *r_free = true;
-  return itemf_function_check(rna_enum_attribute_type_items, generic_attribute_type_supported);
-}
 
 static bool generic_attribute_type_supported_with_socket(const EnumPropertyItem *item)
 {
   return generic_attribute_type_supported(item) &&
          !ELEM(item->value, CD_PROP_BYTE_COLOR, CD_PROP_FLOAT2);
 }
+
 static const EnumPropertyItem *rna_GeometryNodeAttributeType_type_with_socket_itemf(
     bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free)
 {
@@ -3890,11 +3874,6 @@ static void rna_ShaderNode_socket_update(Main *bmain, Scene *scene, PointerRNA *
 }
 
 void rna_Node_socket_update(Main *bmain, Scene *scene, PointerRNA *ptr)
-{
-  rna_Node_update(bmain, scene, ptr);
-}
-
-static void rna_GeometryNode_socket_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   rna_Node_update(bmain, scene, ptr);
 }
