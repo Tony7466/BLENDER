@@ -515,11 +515,6 @@ struct WORKBENCH_Data {
 
 static void workbench_engine_init(void *vedata)
 {
-  /* TODO(fclem): Remove once it is minimum required. */
-  if (!GPU_shader_storage_buffer_objects_support()) {
-    return;
-  }
-
   WORKBENCH_Data *ved = reinterpret_cast<WORKBENCH_Data *>(vedata);
   if (ved->instance == nullptr) {
     ved->instance = new workbench::Instance();
@@ -530,17 +525,11 @@ static void workbench_engine_init(void *vedata)
 
 static void workbench_cache_init(void *vedata)
 {
-  if (!GPU_shader_storage_buffer_objects_support()) {
-    return;
-  }
   reinterpret_cast<WORKBENCH_Data *>(vedata)->instance->begin_sync();
 }
 
 static void workbench_cache_populate(void *vedata, Object *object)
 {
-  if (!GPU_shader_storage_buffer_objects_support()) {
-    return;
-  }
   draw::Manager *manager = DRW_manager_get();
 
   draw::ObjectRef ref;
@@ -553,9 +542,6 @@ static void workbench_cache_populate(void *vedata, Object *object)
 
 static void workbench_cache_finish(void *vedata)
 {
-  if (!GPU_shader_storage_buffer_objects_support()) {
-    return;
-  }
   reinterpret_cast<WORKBENCH_Data *>(vedata)->instance->end_sync();
 }
 
@@ -573,9 +559,6 @@ static void workbench_draw_scene(void *vedata)
 
 static void workbench_instance_free(void *instance)
 {
-  if (!GPU_shader_storage_buffer_objects_support()) {
-    return;
-  }
   delete reinterpret_cast<workbench::Instance *>(instance);
 }
 
@@ -715,11 +698,6 @@ static void workbench_render_to_image(void *vedata,
                                       RenderLayer *layer,
                                       const rcti *rect)
 {
-  /* TODO(fclem): Remove once it is minimum required. */
-  if (!GPU_shader_storage_buffer_objects_support()) {
-    return;
-  }
-
   if (!workbench_render_framebuffers_init()) {
     RE_engine_report(engine, RPT_ERROR, "Failed to allocate GPU buffers");
     return;
