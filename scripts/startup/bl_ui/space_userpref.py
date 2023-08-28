@@ -720,6 +720,9 @@ class USERPREF_PT_viewport_display(ViewportPanel, CenterAlignMixIn, Panel):
         col.prop(view, "show_object_info", text="Object Info")
         col.prop(view, "show_view_name", text="View Name")
         col.prop(view, "show_playback_fps", text="Playback Frame Rate (FPS)")
+        row = col.row()
+        row.active = view.show_playback_fps
+        row.prop(view, "playback_fps_samples", text="Frame Rate Samples")
 
         layout.separator()
 
@@ -2464,7 +2467,6 @@ class USERPREF_PT_experimental_new_features(ExperimentalPanel, Panel):
                  ("blender/blender/projects/10", "Pipeline, Assets & IO Project Page")),
                 ({"property": "use_override_templates"}, ("blender/blender/issues/73318", "Milestone 4")),
                 ({"property": "use_new_volume_nodes"}, ("blender/blender/issues/103248", "#103248")),
-                ({"property": "use_rotation_socket"}, ("/blender/blender/issues/92967", "#92967")),
                 ({"property": "use_node_group_operators"}, ("/blender/blender/issues/101778", "#101778")),
                 ({"property": "use_shader_node_previews"}, ("blender/blender/issues/110353", "#110353")),
             ),
