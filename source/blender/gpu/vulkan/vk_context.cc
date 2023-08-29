@@ -231,7 +231,6 @@ void VKContext::swap_buffers_post_callback()
 
 void VKContext::swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &swap_chain_data)
 {
-  std::cout << __func__ << "\n";
   VKFrameBuffer &framebuffer = *unwrap(back_left);
 
   VKTexture wrapper("display_texture");

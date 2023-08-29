@@ -222,7 +222,12 @@ class GHOST_DeviceVK {
     device_features.multiViewport = VK_TRUE;
 #endif
 
+    VkPhysicalDeviceMaintenance4FeaturesKHR maintenance_4 = {};
+    maintenance_4.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES_KHR;
+    maintenance_4.maintenance4 = VK_TRUE;
+
     VkDeviceCreateInfo device_create_info = {};
+    device_create_info.pNext = &maintenance_4;
     device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     device_create_info.queueCreateInfoCount = static_cast<uint32_t>(queue_create_infos.size());
     device_create_info.pQueueCreateInfos = queue_create_infos.data();
@@ -922,6 +927,8 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
   }
   extensions_device.push_back("VK_KHR_dedicated_allocation");
   extensions_device.push_back("VK_KHR_get_memory_requirements2");
+  /* Allow relaxed interface matching between shader stages.*/
+  extensions_device.push_back("VK_KHR_maintenance4");
   /* Enable MoltenVK required instance extensions. */
 #ifdef VK_MVK_MOLTENVK_EXTENSION_NAME
   requireExtension(
