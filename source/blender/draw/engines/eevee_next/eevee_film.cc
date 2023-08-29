@@ -249,6 +249,7 @@ void Film::init(const int2 &extent, const rcti *output_rect)
     }
 
     display_offset = int2(output_rect->xmin, output_rect->ymin);
+    display_extent = extent;
 
     FilmData data = data_;
     data.extent = int2(BLI_rcti_size_x(output_rect), BLI_rcti_size_y(output_rect));

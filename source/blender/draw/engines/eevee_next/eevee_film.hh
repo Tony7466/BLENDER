@@ -67,6 +67,7 @@ class Film {
 
   FilmDataBuf data_;
   int2 display_offset;
+  int2 display_extent;
 
   eViewLayerEEVEEPassType enabled_passes_ = eViewLayerEEVEEPassType(0);
 
@@ -100,7 +101,7 @@ class Film {
   /** Returns render output resolution. */
   int2 display_extent_get() const
   {
-    return data_.extent;
+    return display_extent;
   }
 
   float2 pixel_jitter_get() const;
