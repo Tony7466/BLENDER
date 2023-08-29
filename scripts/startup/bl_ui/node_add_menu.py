@@ -41,9 +41,24 @@ def draw_node_group_add_menu(context, layout):
                 not group.contains_tree(node_tree) and
                 not group.name.startswith('.'))
         ]
-        if groups:
+        
+        nearest_groups = [node.node_tree for node in node_tree.nodes if node.bl_idname in node_tree_group_type.values()]
+        other_groups = [group for group in groups if not group in nearest_groups]
+        
+        if nearest_groups:
             layout.separator()
-            for group in groups:
+            for group in nearest_groups:
+                props = add_node_type(layout, node_tree_group_type[group.bl_idname], label=group.name)
+                ops = props.settings.add()
+                ops.name = "node_tree"
+                ops.value = "bpy.data.node_groups[%r]" % group.name
+
+        if other_groups and nearest_groups:
+            layout.separator()
+
+        if other_groups:
+            layout.separator()
+            for group in other_groups:
                 props = add_node_type(layout, node_tree_group_type[group.bl_idname], label=group.name)
                 ops = props.settings.add()
                 ops.name = "node_tree"
