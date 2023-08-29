@@ -91,7 +91,6 @@ static Curves *curve_from_points(const AttributeAccessor attributes,
   const int domain_size = weights_varray.size();
   Curves *curves_id = bke::curves_new_nomain_single(domain_size, CURVE_TYPE_POLY);
   bke::CurvesGeometry &curves = curves_id->geometry.wrap();
-  curves.cyclic_for_write().fill(false);
   if (weights_varray.is_single()) {
     bke::copy_attributes(
         attributes, ATTR_DOMAIN_POINT, propagation_info, {}, curves.attributes_for_write());
@@ -106,17 +105,14 @@ static Curves *curve_from_points(const AttributeAccessor attributes,
   return curves_id;
 }
 
-static Curves *curves_from_points(const PointCloud *points,
+static Curves *curves_from_points(const PointCloud &points,
                                   const Field<int> &group_id_field,
                                   const Field<float> &weight_field,
                                   const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
-  if (points == nullptr) {
-    return nullptr;
-  }
-  const int domain_size = points->totpoint;
+  const int domain_size = points.totpoint;
 
-  const bke::PointCloudFieldContext context(*points);
+  const bke::PointCloudFieldContext context(points);
   fn::FieldEvaluator evaluator(context, domain_size);
   evaluator.add(group_id_field);
   evaluator.add(weight_field);
@@ -126,20 +122,19 @@ static Curves *curves_from_points(const PointCloud *points,
   const VArray<float> weights_varray = evaluator.get_evaluated<float>(1);
 
   if (group_ids_varray.is_single()) {
-    return curve_from_points(points->attributes(), weights_varray, propagation_info);
+    return curve_from_points(points.attributes(), weights_varray, propagation_info);
   }
 
   Array<int> group_ids(domain_size);
   group_ids_varray.materialize(group_ids.as_mutable_span());
   const int total_curves = identifiers_to_indices(group_ids);
   if (total_curves == 1) {
-    return curve_from_points(points->attributes(), weights_varray, propagation_info);
+    return curve_from_points(points.attributes(), weights_varray, propagation_info);
   }
 
   Curves *curves_id = bke::curves_new_nomain(domain_size, total_curves);
   bke::CurvesGeometry &curves = curves_id->geometry.wrap();
   curves.fill_curve_types(CURVE_TYPE_POLY);
-  curves.cyclic_for_write().fill(false);
   MutableSpan<int> offset = curves.offsets_for_write();
   offset.fill(0);
 
@@ -150,7 +145,7 @@ static Curves *curves_from_points(const PointCloud *points,
     const VArraySpan<float> weights(weights_varray);
     grouped_sort(OffsetIndices<int>(offset), weights, indices);
   }
-  bke::gather_attributes(points->attributes(),
+  bke::gather_attributes(points.attributes(),
                          ATTR_DOMAIN_POINT,
                          propagation_info,
                          {},
@@ -169,8 +164,12 @@ static void node_geo_exec(GeoNodeExecParams params)
       params.get_output_propagation_info("Curves");
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     const PointCloud *points = geometry_set.get_pointcloud();
-    Curves *curves_id = curves_from_points(points, group_id_field, weight_field, propagation_info);
-    geometry_set.replace_curves(curves_id);
+    geometry_set.replace_curves(nullptr);
+    if (points != nullptr) {
+      Curves *curves_id = curves_from_points(
+          *points, group_id_field, weight_field, propagation_info);
+      geometry_set.replace_curves(curves_id);
+    }
     geometry_set.keep_only_during_modify({GeometryComponent::Type::Curve});
   });
 

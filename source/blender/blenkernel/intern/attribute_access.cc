@@ -1056,10 +1056,7 @@ void gather_attributes(const AttributeAccessor src_attributes,
     if (!dst) {
       return true;
     }
-    bke::attribute_math::convert_to_static_type(meta_data.data_type, [&](auto dummy) {
-      using T = decltype(dummy);
-      array_utils::gather<T, int>(src.varray.typed<T>(), indices, dst.span.typed<T>());
-    });
+    attribute_math::gather(src.varray, indices, dst.span);
     dst.finish();
     return true;
   });
