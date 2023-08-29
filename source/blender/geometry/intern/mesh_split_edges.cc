@@ -370,7 +370,6 @@ static Array<int2> calc_new_edges(const OffsetIndices<int> faces,
       return;
     }
 
-    // TODO: Need to update neighboring unselected edges too.
     edges[edge] = int2(deduplication.first().v_low, deduplication.first().v_high);
 
     const Span<int2> new_edges = deduplication.as_span().drop_front(1).cast<int2>();
@@ -394,7 +393,6 @@ static Array<int2> calc_new_edges(const OffsetIndices<int> faces,
         corner_edges[corner] += new_edge_offset;
       }
     }
-    std::cout << ' ';
   });
 
   if (merged_offsets.total_size() == no_merge_new_edges.size()) {
@@ -413,6 +411,17 @@ static Array<int2> calc_new_edges(const OffsetIndices<int> faces,
   });
 
   return new_edges;
+}
+
+static void update_unselected_edges(const OffsetIndices<int> faces,
+                                    const Span<int> corner_verts,
+                                    const GroupedSpan<int> edge_to_corner_map,
+                                    const Span<int> corner_to_face_map,
+                                    const IndexMask &unselected_edges)
+{
+  unselected_edges.foreach_index(GrainSize(1024), [&](const int edge) {
+
+  });
 }
 
 static void swap_edge_vert(int2 &edge, const int old_vert, const int new_vert)
@@ -543,7 +552,7 @@ void split_edges(Mesh &mesh,
                                          mesh.edges_for_write(),
                                          mesh.corner_edges_for_write(),
                                          new_edge_offsets);
-  // update_unselected_edges();
+  update_unselected_edges();
 
   if (loose_edges.count > 0) {
     reassign_loose_edge_verts(orig_verts_num,
