@@ -313,10 +313,7 @@ typedef struct Mesh {
    */
   std::optional<blender::Bounds<blender::float3>> bounds_min_max() const;
 
-  /**
-   * After positions are changed, set cached mesh bounds to a known-correct value to avoid their
-   * lazy calculation later on.
-   */
+  /** Set cached mesh bounds to a known-correct value to avoid their lazy calculation later on. */
   void bounds_set_eager(const blender::Bounds<blender::float3> &bounds);
 
   /**
