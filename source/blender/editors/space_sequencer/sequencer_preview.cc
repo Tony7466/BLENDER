@@ -9,6 +9,8 @@
 #include "DNA_sequence_types.h"
 #include "DNA_sound_types.h"
 
+#include "atomic_ops.h"
+
 #include "BLI_listbase.h"
 #include "BLI_task.h"
 #include "BLI_threads.h"
@@ -61,12 +63,12 @@ static void free_preview_job(void *data)
   MEM_freeN(pj);
 }
 
-static void clear_sound_waveform_loading_tag(bSound *sound)
+static void clear_waveform_segment_loading_tag(SoundWaveformSegment *segment)
 {
-  SpinLock *spinlock = static_cast<SpinLock *>(sound->spinlock);
-  BLI_spin_lock(spinlock);
-  sound->tags &= ~SOUND_TAGS_WAVEFORM_LOADING;
-  BLI_spin_unlock(spinlock);
+  uint32_t old_tags;
+  do {
+    old_tags = atomic_load_uint32(&segment->tags);
+  } while (atomic_cas_uint32(&segment->tags, old_tags, old_tags & ~SOUND_TAGS_WAVEFORM_LOADING) != old_tags);
 }
 
 static void free_read_sound_waveform_task(TaskPool *__restrict task_pool, void *data)
@@ -92,7 +94,7 @@ static void execute_read_sound_waveform_task(TaskPool *__restrict task_pool, voi
   ReadSoundWaveformTask *task = static_cast<ReadSoundWaveformTask *>(task_data);
 
   if (BLI_task_pool_current_canceled(task_pool)) {
-    clear_sound_waveform_loading_tag(task->preview_job_audio->sound);
+    clear_waveform_segment_loading_tag(task->preview_job_audio->segment);
     return;
   }
 
@@ -149,7 +151,7 @@ static void preview_startjob(void *data, bool *stop, bool *do_update, float *pro
 
       LISTBASE_FOREACH (PreviewJobAudio *, previewjb, &pj->previews)
       {
-        clear_sound_waveform_loading_tag(previewjb->sound);
+        clear_waveform_segment_loading_tag(previewjb->segment);
       }
 
       BLI_freelistN(&pj->previews);
@@ -207,8 +209,8 @@ void sequencer_preview_add_sound_segment(const bContext *C,
     if (!pj->running) {
       BLI_mutex_unlock(pj->mutex);
 
-      /* Clear the sound loading tag to that it can be reattempted. */
-      clear_sound_waveform_loading_tag(seq->sound);
+      /* Clear the sound segment loading tag so that it can be reattempted. */
+      clear_waveform_segment_loading_tag(segment_to_load);
       WM_event_add_notifier(C, NC_SCENE | ND_SPACE_SEQUENCER, CTX_data_scene(C));
       return;
     }

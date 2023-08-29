@@ -191,10 +191,6 @@ int BKE_sound_scene_playing(struct Scene *scene);
 
 void BKE_sound_init_waveform(struct Main *bmain, struct bSound *sound);
 
-bool BKE_sound_is_waveform_segment_loaded(struct bSound *sound,
-                                          float segment_start,
-                                          float segment_end);
-
 void BKE_sound_free_waveform(struct bSound *sound);
 
 void BKE_sound_read_waveform(struct Main *bmain, struct bSound *sound, bool *stop);

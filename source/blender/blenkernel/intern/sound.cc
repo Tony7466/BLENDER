@@ -1165,43 +1165,6 @@ void BKE_sound_free_waveform(bSound *sound)
   sound->tags &= ~SOUND_TAGS_WAVEFORM_NO_RELOAD;
 }
 
-bool BKE_sound_is_waveform_segment_loaded(bSound *sound, float segment_start, float segment_end)
-{
-  SoundWaveform *waveform = static_cast<SoundWaveform *>(sound->waveform);
-
-  if (!waveform) {
-    return false;
-  }
-
-  int start_sample_index = round_fl_to_int(sound->length * segment_start);
-  int end_sample_index = round_fl_to_int(sound->length * segment_end);
-
-  SoundWaveformSegment *node = sound_waveform_get_lowest_containing_node(
-      waveform->segments, start_sample_index, end_sample_index);
-
-  if (!node) {
-    return false;
-  }
-
-  return (node->tags & SOUND_TAGS_WAVEFORM_LOADED);
-}
-
-static void mark_waveform_segment_parents_as_loaded(SoundWaveformSegment *segment)
-{
-  if (!segment) {
-    return;
-  }
-
-  bool left_is_loaded = segment->left->tags & SOUND_TAGS_WAVEFORM_LOADED;
-  bool right_is_loaded = segment->right->tags & SOUND_TAGS_WAVEFORM_LOADED;
-
-  if (left_is_loaded && right_is_loaded) {
-    segment->tags |= SOUND_TAGS_WAVEFORM_LOADED;
-    segment->tags &= ~SOUND_TAGS_WAVEFORM_LOADING;
-    mark_waveform_segment_parents_as_loaded(segment->parent);
-  }
-}
-
 void BKE_sound_read_waveform_segment(struct Main * /* bmain */,
                                      struct bSound *sound,
                                      SoundWaveformSegment *segment,
@@ -1210,6 +1173,8 @@ void BKE_sound_read_waveform_segment(struct Main * /* bmain */,
   SoundWaveform *waveform = static_cast<SoundWaveform *>(sound->waveform);
   BLI_assert_msg(waveform,
                  "cannot be called before initializing the waveform with BKE_sound_init_waveform");
+  BLI_assert_msg(segment->left == nullptr && segment->right == nullptr,
+                 "Only leaf segments should be submitted for loading");
 
   int start_offset = segment->low * 3 * SOUND_WAVE_SAMPLES_PER_SECOND;
   float *data = waveform->data + start_offset;
@@ -1222,20 +1187,20 @@ void BKE_sound_read_waveform_segment(struct Main * /* bmain */,
 
   *stop = stop_i16 != 0;
 
+  uint32_t new_tags = segment->tags;
+  new_tags &= ~SOUND_TAGS_WAVEFORM_LOADING;
+  new_tags |= SOUND_TAGS_WAVEFORM_LOADED;
+  atomic_store_uint32(&segment->tags, new_tags);
+
+  atomic_fetch_and_update_max_float(&waveform->maximum_sample_value, result.maximum_sample_value);
+
   BLI_spin_lock(static_cast<SpinLock *>(sound->spinlock));
-
-  segment->tags |= SOUND_TAGS_WAVEFORM_LOADED;
-  segment->tags &= ~SOUND_TAGS_WAVEFORM_LOADING;
-  mark_waveform_segment_parents_as_loaded(segment->parent);
-
   // Release the playback handle if all segments have been loaded
   SoundWaveformSegment *rootSegment = waveform->segments;
   if (rootSegment->tags & SOUND_TAGS_WAVEFORM_LOADED) {
     sound_free_audio(sound);
   }
   BLI_spin_unlock(static_cast<SpinLock *>(sound->spinlock));
-
-  atomic_fetch_and_update_max_float(&waveform->maximum_sample_value, result.maximum_sample_value);
 }
 
 static void sound_update_base(Scene *scene, Object *object, void *new_set)
@@ -1250,8 +1215,10 @@ static void sound_update_base(Scene *scene, Object *object, void *new_set)
     return;
   }
 
-  LISTBASE_FOREACH (NlaTrack *, track, &object->adt->nla_tracks) {
-    LISTBASE_FOREACH (NlaStrip *, strip, &track->strips) {
+  LISTBASE_FOREACH (NlaTrack *, track, &object->adt->nla_tracks)
+  {
+    LISTBASE_FOREACH (NlaStrip *, strip, &track->strips)
+    {
       if (strip->type != NLASTRIP_TYPE_SOUND) {
         continue;
       }

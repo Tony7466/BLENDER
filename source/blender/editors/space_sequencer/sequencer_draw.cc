@@ -275,11 +275,15 @@ static bool waveform_segment_is_loaded(Sequence *seq, float range_start, float r
 {
   bSound *sound = seq->sound;
 
-  BLI_spin_lock(static_cast<SpinLock *>(sound->spinlock));
-  bool is_loaded = BKE_sound_is_waveform_segment_loaded(sound, range_start, range_end);
-  BLI_spin_unlock(static_cast<SpinLock *>(sound->spinlock));
+  SoundWaveformSegment *segment = BKE_sound_get_containing_waveform_segment(
+      sound, range_start, range_end);
 
-  return is_loaded;
+  if (!segment) {
+    return false;
+  }
+
+  uint32_t tags = atomic_load_uint32(&segment->tags);
+  return (tags & SOUND_TAGS_WAVEFORM_LOADED);
 }
 
 static void waveform_job_start_all_needed_segments(const bContext *C,
@@ -293,15 +297,30 @@ static void waveform_job_start_all_needed_segments(const bContext *C,
   constexpr unsigned int loaded_or_loading = SOUND_TAGS_WAVEFORM_LOADED |
                                              SOUND_TAGS_WAVEFORM_LOADING;
 
-  if (!(segment->tags & loaded_or_loading)) {
-    if (!segment->left && !segment->right) {
-      segment->tags |= SOUND_TAGS_WAVEFORM_LOADING;
-      sequencer_preview_add_sound_segment(C, seq, segment);
+  /* Leaf node */
+  if (!segment->left && !segment->right) {
+    if (atomic_load_uint32(&segment->tags) & loaded_or_loading) {
+      return;
     }
-    else {
-      waveform_job_start_all_needed_segments(C, seq, segment->left);
-      waveform_job_start_all_needed_segments(C, seq, segment->right);
+
+    segment->tags |= SOUND_TAGS_WAVEFORM_LOADING;
+    sequencer_preview_add_sound_segment(C, seq, segment);
+  }
+  else {
+    if (segment->tags & loaded_or_loading) {
+      return;
     }
+
+    bool left_loaded = atomic_load_uint32(&segment->left->tags) & SOUND_TAGS_WAVEFORM_LOADED;
+    bool right_loaded = atomic_load_uint32(&segment->right->tags) & SOUND_TAGS_WAVEFORM_LOADED;
+
+    if (left_loaded && right_loaded) {
+      segment->tags |= SOUND_TAGS_WAVEFORM_LOADED;
+      return;
+    }
+
+    waveform_job_start_all_needed_segments(C, seq, segment->left);
+    waveform_job_start_all_needed_segments(C, seq, segment->right);
   }
 }
 
@@ -323,9 +342,7 @@ static void waveform_job_start_if_needed(const bContext *C,
     return;
   }
 
-  BLI_spin_lock(static_cast<SpinLock *>(sound->spinlock));
   waveform_job_start_all_needed_segments(C, seq, segment);
-  BLI_spin_unlock(static_cast<SpinLock *>(sound->spinlock));
 }
 
 static size_t get_vertex_count(WaveVizData *waveform_data)
