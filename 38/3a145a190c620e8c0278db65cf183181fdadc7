@@ -1,3 +1,3 @@
-Referenced by issue #111545, Crash when clicking on some Workspace tabs --Intel MacOS--
+Referenced by issue #111545, Regression: Crash when drawing all view layers in outliner
 Referenced by issue #111563, Regression: Crash in sculpt mode
 Referenced by issue #111638, Crash when sculpting mesh with edge creases
