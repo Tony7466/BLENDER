@@ -258,11 +258,12 @@ void Film::init(const int2 &extent, const rcti *output_rect)
      * We need to figure out LOD bias first in order to preserve texture crispiness. */
     data.scaling_factor = 1;
     data.render_extent = math::divide_ceil(extent, int2(data.scaling_factor));
+    data.render_offset = data.offset;
 
     if (inst_.camera.overscan() != 0.0f) {
       int2 overscan = int2(inst_.camera.overscan() * math::max(UNPACK2(data.render_extent)));
       data.render_extent += overscan * 2;
-      data.offset += overscan;
+      data.render_offset += overscan;
     }
 
     /* Disable filtering if sample count is 1. */
