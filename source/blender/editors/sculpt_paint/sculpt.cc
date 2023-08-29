@@ -4354,8 +4354,6 @@ static void smooth_brush_toggle_off(const bContext *C, Paint *paint, StrokeCache
     /* Do nothing. */
   }
 
-  /* Note: used for both vertexpaint and weightpaint, VPAINT_TOOL_BLUR & WPAINT_TOOL_BLUR are the
-   * same, see comments for eBrushVertexPaintTool & eBrushWeightPaintTool. */
   /* If saved_active_brush_name is not set, brush was not switched/affected in
    * smooth_brush_toggle_on(). */
   Brush *saved_active_brush = (Brush *)BKE_libblock_find_name(
