@@ -217,10 +217,10 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
     case SHADOW_TILEMAP_TAG_USAGE_TRANSPARENT:
       return "eevee_shadow_tag_usage_transparent";
 #ifdef WITH_METAL_BACKEND
-    case SHADOW_DEPTH_METAL_TILE_CLEAR:
-      return "eevee_surf_shadow_metal_tile_clear";
-    case SHADOW_DEPTH_METAL_TILE_ACCUM:
-      return "eevee_surf_shadow_metal_tile_accumulation";
+    case SHADOW_DEPTH_METAL_PAGE_CLEAR:
+      return "eevee_shadow_page_clear_metal_tbdr";
+    case SHADOW_DEPTH_METAL_PAGE_STORE:
+      return "eevee_shadow_page_store_metal_tbdr";
 #endif
     case SUBSURFACE_EVAL:
       return "eevee_subsurface_eval";

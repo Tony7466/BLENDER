@@ -206,7 +206,7 @@ GPU_SHADER_INTERFACE_INFO(eevee_surf_shadow_accum_iface, "")
     .flat(Type::USHORT, "out_page_z");
 
 /* 2nd tile pass to store shadow depths in atlas. */
-GPU_SHADER_CREATE_INFO(eevee_surf_shadow_metal_tile_pass_common)
+GPU_SHADER_CREATE_INFO(eevee_shadow_page_metal_tbdr_common)
     .early_fragment_test(true)
     .metal_backend_only(true)
     .define("DRW_VIEW_LEN", "64")
@@ -227,23 +227,23 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow_metal_tile_pass_common)
            Qualifier::READ_WRITE,
            ImageType::FLOAT_2D_ARRAY,
            "shadow_atlas_img")
-    .vertex_source("eevee_surf_shadow_accum_vert.glsl")
-    .fragment_source("eevee_surf_shadow_accum_frag.glsl")
+    .vertex_source("eevee_shadow_page_metal_tbdr_vert.glsl")
+    .fragment_source("eevee_shadow_page_metal_tbdr_frag.glsl")
     .additional_info("eevee_shared");
 
-GPU_SHADER_CREATE_INFO(eevee_surf_shadow_metal_tile_clear)
+GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear_metal_tbdr)
     .do_static_compilation(true)
     .early_fragment_test(true)
     .metal_backend_only(true)
-    .additional_info("eevee_surf_shadow_metal_tile_pass_common")
+    .additional_info("eevee_shadow_page_metal_tbdr_common")
     .define("PASS_CLEAR")
     .fragment_out(0, Type::FLOAT, "out_tile_depth", DualBlend::NONE, 0);
 
-GPU_SHADER_CREATE_INFO(eevee_surf_shadow_metal_tile_accumulation)
+GPU_SHADER_CREATE_INFO(eevee_shadow_page_store_metal_tbdr)
     .do_static_compilation(true)
     .early_fragment_test(true)
     .metal_backend_only(true)
-    .additional_info("eevee_surf_shadow_metal_tile_pass_common")
+    .additional_info("eevee_shadow_page_metal_tbdr_common")
     .define("PASS_ACCUMULATION_STORE")
     .vertex_out(eevee_surf_shadow_accum_iface)
     .fragment_tile_in(0, Type::FLOAT, "in_tile_depth", DualBlend::NONE, 0);

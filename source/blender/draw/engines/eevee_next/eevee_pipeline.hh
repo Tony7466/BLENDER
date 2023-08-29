@@ -103,8 +103,8 @@ class ShadowPipeline {
 
   PassMain surface_ps_ = {"Shadow.Surface"};
 #ifdef WITH_METAL_BACKEND
-  PassSimple tile_clear_ps_ = {"Shadow.MetalTileClear"};
-  PassSimple tile_accum_store_ps = {"Shadow.MetalTileAccum"};
+  PassSimple tbdr_page_clear_ps_ = {"Shadow.MetalPageClear"};
+  PassSimple tbdr_page_write_ps_ = {"Shadow.MetalPageWrite"};
 #endif
 
  public:
