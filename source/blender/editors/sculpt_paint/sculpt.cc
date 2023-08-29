@@ -38,6 +38,7 @@
 #include "BKE_attribute.h"
 #include "BKE_attribute.hh"
 #include "BKE_brush.hh"
+#include "BKE_bvhutils.h"
 #include "BKE_ccg.h"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
@@ -5430,6 +5431,10 @@ void SCULPT_flush_update_step(bContext *C, SculptUpdateType update_flags)
       Bounds<float3> bounds;
       BKE_pbvh_bounding_box(ob->sculpt->pbvh, bounds.min, bounds.max);
       mesh->bounds_set_eager(bounds);
+      if (mesh->runtime->batch_cache) {
+        bvhcache_free(mesh->runtime->bvh_cache);
+      }
+      mesh->runtime->looptris_cache.tag_dirty();
     }
   }
 }
