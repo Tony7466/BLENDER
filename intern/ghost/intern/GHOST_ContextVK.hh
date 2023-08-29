@@ -158,7 +158,7 @@ class GHOST_ContextVK : public GHOST_Context {
   const int m_debug;
 
   VkCommandPool m_command_pool;
-  VkCommandBuffer m_command_buffer = VK_NULL_HANDLE;
+  VkCommandBuffer m_command_buffer;
 
   VkQueue m_graphic_queue;
   VkQueue m_present_queue;
@@ -170,18 +170,10 @@ class GHOST_ContextVK : public GHOST_Context {
 
   VkExtent2D m_render_extent;
   VkSurfaceFormatKHR m_surface_format;
-  std::vector<VkSemaphore> m_image_available_semaphores;
+  VkFence m_fence;
+
   /** frame modulo swapchain_len. Used as index for sync objects. */
   int m_currentFrame = 0;
-  /**
-   * Last frame where the vulkan handles where retrieved from. This attribute is used to determine
-   * if a new image from the swap chain needs to be acquired.
-   *
-   * In a regular vulkan application this is done in the same method, but due to GHOST API this
-   * isn't possible. Swap chains are triggered by the window manager and the GPUBackend isn't
-   * informed about these changes.
-   */
-  int m_lastFrame = -1;
   /** Image index in the swapchain. Used as index for render objects. */
   uint32_t m_currentImage = 0;
 

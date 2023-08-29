@@ -254,15 +254,19 @@ void VKFrameBuffer::blit_to(eGPUFrameBufferBits planes,
   if (src_attachment.tex == nullptr) {
     return;
   }
+  color_attachment_layout_ensure(context, src_slot, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
   VKTexture &src_texture = *unwrap(unwrap(src_attachment.tex));
-  src_texture.layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
   /* Retrieve destination texture. */
-  const VKFrameBuffer &dst_framebuffer = *unwrap(dst);
+  VKFrameBuffer &dst_framebuffer = *unwrap(dst);
+  dst_framebuffer.color_attachment_layout_ensure(
+      context, dst_slot, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
   const GPUAttachment &dst_attachment =
       dst_framebuffer.attachments_[GPU_FB_COLOR_ATTACHMENT0 + dst_slot];
+  if (dst_attachment.tex == nullptr) {
+    return;
+  }
   VKTexture &dst_texture = *unwrap(unwrap(dst_attachment.tex));
-  dst_texture.layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
   VkImageBlit image_blit = {};
   image_blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;

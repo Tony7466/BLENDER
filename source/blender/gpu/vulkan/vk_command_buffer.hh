@@ -216,8 +216,7 @@ class VKCommandBuffer : NonCopyable, NonMovable {
   }
 
  private:
-  void encode_recorded_commands();
-  void submit_encoded_commands();
+  void submit_commands();
 
   /**
    * Validate that there isn't a framebuffer being tracked (bound or not bound).
