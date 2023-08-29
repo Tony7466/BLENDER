@@ -342,14 +342,16 @@ static Array<int2> calc_new_edges(const OffsetIndices<int> faces,
                                   MutableSpan<int> corner_edges,
                                   MutableSpan<int> r_new_edge_offsets)
 {
+  /* First we count the number of deduplicated new edges, then accumulate the counts as offsets. */
+  MutableSpan<int> num_new_edges_per_edge = r_new_edge_offsets;
+
   /* Calculate the offset of new edges assuming no new edges are identical and are merged. */
   int no_merge_count = 0;
-  Array<int> offsets_no_merge(selected_edges.size() + 1);
+  Array<int> offsets_no_merge(selected_edges.size());
   selected_edges.foreach_index([&](const int edge, const int mask) {
     offsets_no_merge[mask] = no_merge_count;
     no_merge_count += std::max<int>(edge_to_corner_map[edge].size() - 1, 0);
   });
-  offsets_no_merge.last() = no_merge_count;
 
   Array<int2> no_merge_new_edges(no_merge_count);
 
@@ -375,7 +377,7 @@ static Array<int2> calc_new_edges(const OffsetIndices<int> faces,
       }
     }
     if (deduplication.is_empty()) {
-      r_new_edge_offsets[mask] = 0;
+      num_new_edges_per_edge[mask] = 0;
       return;
     }
     edges[edge] = int2(deduplication.first().v_low, deduplication.first().v_high);
@@ -384,13 +386,13 @@ static Array<int2> calc_new_edges(const OffsetIndices<int> faces,
       const int dst_offset = offsets_no_merge[mask];
       uninitialized_copy_n(new_edges.data(), new_edges.size(), &no_merge_new_edges[dst_offset]);
     }
-    r_new_edge_offsets[mask] = new_edges.size();
+    num_new_edges_per_edge[mask] = new_edges.size();
   });
 
   /* Use the merged offsets (potentially different from the first offsets) to globalize the new
    * edge indices per selected edge. */
   const OffsetIndices merged_offsets = offset_indices::accumulate_counts_to_offsets(
-      r_new_edge_offsets);
+      num_new_edges_per_edge);
   selected_edges.foreach_index(GrainSize(1024), [&](const int edge, const int mask) {
     const int new_edge_offset = merged_offsets[mask].start() + edges.size();
     for (const int corner : edge_to_corner_map[edge]) {
