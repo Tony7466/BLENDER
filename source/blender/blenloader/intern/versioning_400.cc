@@ -46,8 +46,6 @@
 #include "ANIM_armature_iter.hh"
 #include "ANIM_bone_collections.h"
 
-#include "NOD_socket.hh"
-
 #include "ED_armature.hh"
 
 #include "BLT_translation.h"
