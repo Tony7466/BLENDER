@@ -924,9 +924,9 @@ typedef struct UserDef {
   short gpu_backend;
 
   /** Number of samples for FPS display calculations. */
-  uchar playback_fps_samples;
+  short playback_fps_samples;
 
-  char _pad7[3];
+  char _pad7[2];
 
   /** Private, defaults to 20 for 72 DPI setting. */
   short widget_unit;
@@ -1186,7 +1186,7 @@ typedef enum eUserpref_UI_Flag {
   USER_MENUOPENAUTO = (1 << 9),
   USER_DEPTH_CURSOR = (1 << 10),
   USER_AUTOPERSP = (1 << 11),
-  USER_UIFLAG_UNUSED_12 = (1 << 12), /* cleared */
+  USER_NODE_AUTO_OFFSET = (1 << 12),
   USER_GLOBALUNDO = (1 << 13),
   USER_ORBIT_SELECTION = (1 << 14),
   USER_DEPTH_NAVIGATE = (1 << 15),
@@ -1230,6 +1230,7 @@ typedef enum eUserpref_GPU_Flag {
   USER_GPU_FLAG_NO_EDIT_MODE_SMOOTH_WIRE = (1 << 1),
   USER_GPU_FLAG_OVERLAY_SMOOTH_WIRE = (1 << 2),
   USER_GPU_FLAG_SUBDIVISION_EVALUATION = (1 << 3),
+  USER_GPU_FLAG_FRESNEL_EDIT = (1 << 4),
 } eUserpref_GPU_Flag;
 
 /** #UserDef.tablet_api */
