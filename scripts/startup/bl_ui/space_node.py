@@ -914,7 +914,7 @@ class NODE_PT_node_tree_interface(Panel):
 
             if active_item.item_type == 'SOCKET':
                 layout.prop(active_item, "description")
-                layout.prop(active_item, "in_out", text="Kind")
+                layout.prop(active_item, "in_out", text="Input/Output Type")
                 layout.prop(active_item, "socket_type")
 
                 active_item.draw(context, layout)
