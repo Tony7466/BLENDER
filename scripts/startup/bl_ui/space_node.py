@@ -910,9 +910,11 @@ class NODE_PT_node_tree_interface(Panel):
 
         active_item = tree.interface.active
         if active_item is not None:
+            layout.use_property_split = True
+
             if active_item.item_type == 'SOCKET':
                 layout.prop(active_item, "description")
-                layout.prop(active_item, "in_out", text="")
+                layout.prop(active_item, "in_out", text="Kind")
                 layout.prop(active_item, "socket_type")
 
                 active_item.draw(context, layout)
@@ -934,6 +936,8 @@ class NODE_PT_node_tree_interface(Panel):
                 layout.prop(active_item, "name")
                 layout.prop(active_item, "description")
                 layout.prop(active_item, "default_closed", text="Closed by Default")
+
+            layout.use_property_split = False
 
 
 class NODE_UL_simulation_zone_items(bpy.types.UIList):
