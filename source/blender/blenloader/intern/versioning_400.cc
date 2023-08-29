@@ -640,20 +640,6 @@ static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *nt
   }
 }
 
-static void versioning_free_legacy_node_tree_socket_lists(bNodeTree *ntree)
-{
-  /* Clear legacy sockets after conversion.
-   * Internal data pointers have been moved or freed already. */
-  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, &ntree->inputs_legacy) {
-    MEM_freeN(sock);
-  }
-  LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, &ntree->outputs_legacy) {
-    MEM_freeN(sock);
-  }
-  BLI_listbase_clear(&ntree->inputs_legacy);
-  BLI_listbase_clear(&ntree->outputs_legacy);
-}
-
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -989,7 +975,10 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     /* Convert old socket lists into new interface items. */
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       versioning_convert_node_tree_socket_lists_to_interface(ntree);
-      versioning_free_legacy_node_tree_socket_lists(ntree);
+      /* Clear legacy sockets after conversion.
+       * Internal data pointers have been moved or freed already. */
+      BLI_freelistN(&ntree->inputs_legacy);
+      BLI_freelistN(&ntree->outputs_legacy);
     }
     FOREACH_NODETREE_END;
   }
@@ -997,7 +986,10 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     /* Legacy node tree sockets are created for forward compatibilty,
      * but have to be freed after loading and versioning. */
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
-      versioning_free_legacy_node_tree_socket_lists(ntree);
+      /* Clear legacy sockets after conversion.
+       * Internal data pointers have been moved or freed already. */
+      BLI_freelistN(&ntree->inputs_legacy);
+      BLI_freelistN(&ntree->outputs_legacy);
     }
     FOREACH_NODETREE_END;
   }
