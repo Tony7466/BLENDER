@@ -82,6 +82,7 @@ set(SRC
   tree/tree_element_rna.cc
   tree/tree_element_scene_objects.cc
   tree/tree_element_seq.cc
+  tree/tree_element_view_collection.cc
   tree/tree_element_view_layer.cc
   tree/tree_iterator.cc
 
@@ -124,11 +125,13 @@ set(SRC
   tree/tree_element_rna.hh
   tree/tree_element_scene_objects.hh
   tree/tree_element_seq.hh
+  tree/tree_element_view_collection.hh
   tree/tree_element_view_layer.hh
   tree/tree_iterator.hh
 )
 
 set(LIB
+  PRIVATE bf::animrig
   bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna

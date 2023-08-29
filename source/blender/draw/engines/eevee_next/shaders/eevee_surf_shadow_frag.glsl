@@ -5,8 +5,8 @@
 /**
  * Virtual Shadow map output.
  *
- * Meshes are rasterize onto an empty framebuffer. Each generated fragment then checks which
- * virtual page it is supposed to go and load the physical page adress.
+ * Meshes are rasterize onto an empty frame-buffer. Each generated fragment then checks which
+ * virtual page it is supposed to go and load the physical page address.
  * If a physical page exists, we then use atomicMin to mimic a less-than depth test and write to
  * the destination texel.
  */
