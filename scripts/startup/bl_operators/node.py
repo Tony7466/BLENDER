@@ -281,8 +281,8 @@ class NODE_OT_interface_item_new(NodeInterfaceOperator, Operator):
         name="Item Type",
         description="Type of the item to create",
         items=[
-            ('INPUT', "Input Socket", ""),
-            ('OUTPUT', "Output Socket", ""),
+            ('INPUT', "Input", ""),
+            ('OUTPUT', "Output", ""),
             ('PANEL', "Panel", "")],
         default='INPUT',
     )
