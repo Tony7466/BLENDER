@@ -51,7 +51,7 @@
 #include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static void shapekey_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int /*flag*/)
 {
@@ -2258,11 +2258,11 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         {reinterpret_cast<blender::float3 *>(face_normals), faces.size()});
   }
   if (vert_normals_needed) {
-    blender::bke::mesh::normals_calc_face_vert(
+    blender::bke::mesh::normals_calc_verts(
         positions,
         faces,
         corner_verts,
-        {reinterpret_cast<blender::float3 *>(face_normals), faces.size()},
+        {reinterpret_cast<const blender::float3 *>(face_normals), faces.size()},
         {reinterpret_cast<blender::float3 *>(vert_normals), mesh->totvert});
   }
   if (loop_normals_needed) {
