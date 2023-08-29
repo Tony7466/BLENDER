@@ -294,15 +294,15 @@ template<typename T> class GVGridImpl_For_VGrid : public GVGridImpl {
   GVGridImpl_For_VGrid(VGrid<T> vgrid) : GVGridImpl(CPPType::get<T>()), vgrid_(std::move(vgrid)) {}
 
  protected:
+  CommonVGridInfo common_info() const override
+  {
+    return vgrid_.common_info();
+  }
+
   bool try_assign_VGrid(void *vgrid) const override
   {
     *(VGrid<T> *)vgrid = vgrid_;
     return true;
-  }
-
-  CommonVGridInfo common_info() const override
-  {
-    return vgrid_.common_info();
   }
 };
 

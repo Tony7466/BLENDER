@@ -206,7 +206,8 @@ GVGrid GeometryFieldInput::get_volume_grid_for_context(const fn::FieldContext &c
     return this->get_volume_grid_for_context(*geometry_context, mask);
   }
   if (const VolumeFieldContext *volume_context = dynamic_cast<const VolumeFieldContext *>(
-          &context)) {
+          &context))
+  {
     return this->get_volume_grid_for_context(GeometryFieldContext{volume_context->grids()}, mask);
   }
   return {};
@@ -252,7 +253,8 @@ GVArray CurvesFieldInput::get_varray_for_context(const fn::FieldContext &context
     }
   }
   if (const CurvesFieldContext *curves_context = dynamic_cast<const CurvesFieldContext *>(
-          &context)) {
+          &context))
+  {
     return this->get_varray_for_context(curves_context->curves(), curves_context->domain(), mask);
   }
   return {};
@@ -314,7 +316,8 @@ GVGrid VolumeFieldInput::get_volume_grid_for_context(const fn::FieldContext &con
     }
   }
   if (const VolumeFieldContext *volume_context = dynamic_cast<const VolumeFieldContext *>(
-          &context)) {
+          &context))
+  {
     return this->get_volume_grid_for_context(volume_context->grids(), mask);
   }
   return {};
@@ -629,9 +632,10 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
         const auto &volume_component = static_cast<const bke::VolumeComponent &>(component);
         main_grid = volume_component.get()->active_grid;
       }
-      const GVGrid domain_mask = {attributes.domain_grid_mask(domain, main_grid)};
+      const float4x4 domain_transform = attributes.domain_grid_transform(domain);
+      const GVGrid domain_mask = attributes.domain_grid_mask(domain, main_grid);
       const bke::GeometryFieldContext field_context{component, domain};
-      fn::VolumeFieldEvaluator evaluator{field_context, domain_mask};
+      fn::VolumeFieldEvaluator evaluator{field_context, domain_transform, domain_mask};
       evaluator.add(validator.validate_field_if_necessary(field));
       evaluator.set_selection(selection);
       evaluator.evaluate();
@@ -696,9 +700,10 @@ bool try_capture_field_on_geometry(GeometryComponent &component,
       const auto &volume_component = static_cast<const bke::VolumeComponent &>(component);
       main_grid = volume_component.get()->active_grid;
     }
-    const GVGrid domain_mask = {attributes.domain_grid_mask(domain, main_grid)};
-    fn::VolumeFieldEvaluator evaluator{field_context, domain_mask};
-    openvdb::GridBase *buffer = volume::make_grid_for_attribute_type(type);
+    const GVGrid domain_mask = attributes.domain_grid_mask(domain, main_grid);
+    const float4x4 domain_transform = attributes.domain_grid_transform(domain);
+    fn::VolumeFieldEvaluator evaluator{field_context, domain_transform, domain_mask};
+    openvdb::GridBase *buffer = volume::make_grid_for_attribute_type(type, domain_transform);
     GVMutableGrid grid = GVMutableGrid::ForGrid(*buffer);
     evaluator.add_with_destination(validator.validate_field_if_necessary(field), grid);
     evaluator.set_selection(selection);
@@ -775,7 +780,8 @@ std::optional<eAttrDomain> try_detect_field_domain(const GeometryComponent &comp
     }
     for (const fn::FieldInput &field_input : field_inputs->deduplicated_nodes) {
       if (const auto *geometry_field_input = dynamic_cast<const GeometryFieldInput *>(
-              &field_input)) {
+              &field_input))
+      {
         if (!handle_domain(geometry_field_input->preferred_domain(component))) {
           return std::nullopt;
         }
@@ -798,13 +804,15 @@ std::optional<eAttrDomain> try_detect_field_domain(const GeometryComponent &comp
     }
     for (const fn::FieldInput &field_input : field_inputs->deduplicated_nodes) {
       if (const auto *geometry_field_input = dynamic_cast<const GeometryFieldInput *>(
-              &field_input)) {
+              &field_input))
+      {
         if (!handle_domain(geometry_field_input->preferred_domain(component))) {
           return std::nullopt;
         }
       }
       else if (const auto *curves_field_input = dynamic_cast<const CurvesFieldInput *>(
-                   &field_input)) {
+                   &field_input))
+      {
         if (!handle_domain(curves_field_input->preferred_domain(curves->geometry.wrap()))) {
           return std::nullopt;
         }

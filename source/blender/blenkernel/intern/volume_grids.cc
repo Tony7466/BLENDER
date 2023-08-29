@@ -376,6 +376,10 @@ static AttributeAccessorFunctions get_volume_accessor_functions()
     const VolumeGridVector &grids = *static_cast<const VolumeGridVector *>(owner);
     return grids.domain_size(domain);
   };
+  fn.domain_grid_transform = [](const void *owner, const eAttrDomain domain) -> float4x4 {
+    const VolumeGridVector &grids = *static_cast<const VolumeGridVector *>(owner);
+    return grids.domain_transform(domain);
+  };
   fn.domain_grid_mask =
       [](const void *owner, const eAttrDomain /*domain*/, const int main_grid) -> GVGrid {
     if (owner == nullptr || main_grid < 0) {
@@ -420,13 +424,27 @@ static const AttributeAccessorFunctions &get_volume_accessor_functions_ref()
 
 }  // namespace blender::bke
 
-int VolumeGridVector::domain_size(eAttrDomain domain) const
+int VolumeGridVector::domain_size(const eAttrDomain domain) const
 {
   switch (domain) {
     case ATTR_DOMAIN_VOXEL:
       return empty() ? 0 : front().grid()->activeVoxelCount();
     default:
       return 0;
+  }
+}
+
+blender::float4x4 VolumeGridVector::domain_transform(const eAttrDomain domain) const {
+  switch (domain) {
+    case ATTR_DOMAIN_VOXEL:
+      if (empty()) {
+        return blender::float4x4::identity();
+      }
+      blender::float4x4 result;
+      BKE_volume_grid_transform_matrix(&front(), result.ptr());
+      return result;
+    default:
+      return blender::float4x4::identity();
   }
 }
 

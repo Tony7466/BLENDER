@@ -10,6 +10,7 @@
 
 #include "BLI_cpp_type.hh"
 #include "BLI_math_base.hh"
+#include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_parameter_pack_utils.hh"
 
@@ -292,8 +293,11 @@ std::shared_ptr<openvdb::tree::TreeBase> make_tree_for_attribute_type(const CPPT
 
 openvdb::GridBase *make_grid_for_attribute_type(ResourceScope &scope,
                                                 const CPPType &type,
+                                                const float4x4 &transform,
                                                 const void *value = nullptr);
-openvdb::GridBase *make_grid_for_attribute_type(const CPPType &type, const void *value = nullptr);
+openvdb::GridBase *make_grid_for_attribute_type(const CPPType &type,
+                                                const float4x4 &transform,
+                                                const void *value = nullptr);
 
 #endif
 

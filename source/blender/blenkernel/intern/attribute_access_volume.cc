@@ -30,6 +30,12 @@ GAttributeGridReader VolumeCustomAttributeGridProvider::try_get_grid_for_read(
   if (!grid) {
     return {};
   }
+#ifdef DEBUG_GRID_ATTRIBUTES
+  std::cout << "Grid for attribute " << attribute_id << std::endl;
+  if (grid) {
+    grid->grid()->print(std::cout, 3);
+  }
+#endif
   return {GVGrid::ForGrid(*grid->grid()), domain_, nullptr};
 }
 

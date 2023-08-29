@@ -580,6 +580,9 @@ static AttributeAccessorFunctions get_curves_accessor_functions()
         return 0;
     }
   };
+  fn.domain_grid_transform = [](const void * /*owner*/, const eAttrDomain /*domain*/) -> float4x4 {
+    return {};
+  };
   fn.domain_grid_mask = [](const void * /*owner*/,
                            const eAttrDomain /*domain*/,
                            const int /*main_grid*/) -> GVGrid { return {}; };

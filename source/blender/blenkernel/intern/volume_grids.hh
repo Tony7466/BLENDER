@@ -10,6 +10,7 @@
 
 #include "BLI_ghash.h"
 #include "BLI_map.hh"
+#include "BLI_math_matrix_types.hh"
 #include "BLI_path_util.h"
 #include "BLI_volume.hh"
 
@@ -182,6 +183,7 @@ struct VolumeGridVector : public std::list<VolumeGrid> {
   bool is_loaded() const;
   void clear_all();
 
+  blender::float4x4 domain_transform(const eAttrDomain domain) const;
   int domain_size(eAttrDomain domain) const;
 
   VolumeGrid *find_grid(const blender::bke::AttributeIDRef &attribute_id);

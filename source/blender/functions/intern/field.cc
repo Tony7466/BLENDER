@@ -121,9 +121,7 @@ static Vector<GVGrid> get_volume_field_context_inputs(
     GVGrid grid = context.get_volume_grid_for_input(field_input, mask, scope);
     if (!grid) {
       const CPPType &type = field_input.cpp_type();
-      /* Move ownership to the resource scope. */
-      openvdb::GridBase &buffer = *volume::make_grid_for_attribute_type(scope, type);
-      grid = GVMutableGrid::ForGrid(buffer);
+      grid = GVGrid::ForSingleDefault(type);
     }
     field_context_inputs.append(grid);
   }
@@ -565,6 +563,7 @@ Vector<GVArray> evaluate_fields(ResourceScope &scope,
 
 Vector<GVGrid> evaluate_volume_fields(ResourceScope &scope,
                                       Span<GFieldRef> fields_to_evaluate,
+                                      const float4x4 &transform,
                                       const GVGrid &mask,
                                       const FieldContext &context,
                                       Span<GVMutableGrid> dst_grids)
@@ -651,6 +650,7 @@ Vector<GVGrid> evaluate_volume_fields(ResourceScope &scope,
         procedure, scope, field_tree_info, varying_fields_to_evaluate);
 
     evaluate_procedure_on_varying_volume_fields(scope,
+                                                transform,
                                                 mask,
                                                 procedure,
                                                 field_context_inputs,
@@ -1151,13 +1151,18 @@ static GVGrid grid_mask_from_selection(const GVGrid &full_mask,
   return {};
 }
 
-VolumeFieldEvaluator::VolumeFieldEvaluator(const FieldContext &context, const GVGrid &domain_mask)
-    : context_(context), domain_mask_(domain_mask)
+VolumeFieldEvaluator::VolumeFieldEvaluator(const FieldContext &context,
+                                           const float4x4 &domain_transform,
+                                           const GVGrid &domain_mask)
+    : context_(context), domain_transform_(domain_transform), domain_mask_(domain_mask)
 {
 }
 
-VolumeFieldEvaluator::VolumeFieldEvaluator(const FieldContext &context)
-    : context_(context), domain_mask_(GVGrid::ForGrid(scope_.construct<openvdb::MaskGrid>()))
+VolumeFieldEvaluator::VolumeFieldEvaluator(const FieldContext &context,
+                                           const float4x4 &domain_transform)
+    : context_(context),
+      domain_transform_(domain_transform),
+      domain_mask_(GVGrid::ForGrid(scope_.construct<openvdb::MaskGrid>()))
 {
 }
 
@@ -1190,12 +1195,14 @@ int VolumeFieldEvaluator::add(GField field)
 
 static GVGrid evaluate_selection(const Field<bool> &selection_field,
                                  const FieldContext &context,
+                                 const float4x4 &domain_transform,
                                  const GVGrid &domain_mask,
                                  ResourceScope &scope)
 {
   if (selection_field) {
     VGrid<bool> selection =
-        evaluate_volume_fields(scope, {selection_field}, domain_mask, context)[0].typed<bool>();
+        evaluate_volume_fields(scope, {selection_field}, domain_transform, domain_mask, context)[0]
+            .typed<bool>();
     return grid_mask_from_selection(domain_mask, selection, scope);
   }
   return domain_mask;
@@ -1205,13 +1212,15 @@ void VolumeFieldEvaluator::evaluate()
 {
   BLI_assert_msg(!is_evaluated_, "Cannot evaluate fields twice.");
 
-  selection_mask_ = evaluate_selection(selection_field_, context_, domain_mask_, scope_);
+  selection_mask_ = evaluate_selection(
+      selection_field_, context_, domain_transform_, domain_mask_, scope_);
 
   Array<GFieldRef> fields(fields_to_evaluate_.size());
   for (const int i : fields_to_evaluate_.index_range()) {
     fields[i] = fields_to_evaluate_[i];
   }
-  evaluated_grids_ = evaluate_volume_fields(scope_, fields, selection_mask_, context_, dst_grids_);
+  evaluated_grids_ = evaluate_volume_fields(
+      scope_, fields, domain_transform_, selection_mask_, context_, dst_grids_);
   BLI_assert(fields_to_evaluate_.size() == evaluated_grids_.size());
   for (const int i : fields_to_evaluate_.index_range()) {
     OutputPointerInfo &info = output_pointer_infos_[i];

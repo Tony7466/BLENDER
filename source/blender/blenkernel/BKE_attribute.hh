@@ -9,6 +9,7 @@
 #include "BLI_function_ref.hh"
 #include "BLI_generic_span.hh"
 #include "BLI_generic_virtual_array.hh"
+#include "BLI_math_matrix_types.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_set.hh"
 #include "BLI_volume.hh"
@@ -440,6 +441,7 @@ struct AttributeAccessorFunctions {
                                                        const AttributeIDRef &attribute_id);
   bool (*domain_supported)(const void *owner, eAttrDomain domain);
   int (*domain_size)(const void *owner, eAttrDomain domain);
+  float4x4 (*domain_grid_transform)(const void *owner, const eAttrDomain domain);
   GVGrid (*domain_grid_mask)(const void *owner, eAttrDomain domain, int main_grid);
   bool (*is_builtin)(const void *owner, const AttributeIDRef &attribute_id);
   GAttributeReader (*lookup)(const void *owner, const AttributeIDRef &attribute_id);
@@ -521,6 +523,14 @@ class AttributeAccessor {
   int domain_size(const eAttrDomain domain) const
   {
     return fn_->domain_size(owner_, domain);
+  }
+
+  /**
+   * \return Grid transform for the domain.
+   */
+  float4x4 domain_grid_transform(const eAttrDomain domain) const
+  {
+    return fn_->domain_grid_transform(owner_, domain);
   }
 
   /**

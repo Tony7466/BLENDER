@@ -498,6 +498,7 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
 
   ResourceScope scope_;
   const FieldContext &context_;
+  float4x4 domain_transform_;
   GVGrid domain_mask_;
   Vector<GField> fields_to_evaluate_;
   Vector<GVMutableGrid> dst_grids_;
@@ -510,8 +511,10 @@ class VolumeFieldEvaluator : NonMovable, NonCopyable {
 
  public:
   /** Takes #mask by pointer because the mask has to live longer than the evaluator. */
-  VolumeFieldEvaluator(const FieldContext &context, const GVGrid &domain_mask);
-  VolumeFieldEvaluator(const FieldContext &context);
+  VolumeFieldEvaluator(const FieldContext &context,
+                       const float4x4 &domain_transform,
+                       const GVGrid &domain_mask);
+  VolumeFieldEvaluator(const FieldContext &context, const float4x4 &domain_transform);
 
   ~VolumeFieldEvaluator()
   {
@@ -638,6 +641,7 @@ Vector<GVArray> evaluate_fields(ResourceScope &scope,
  */
 Vector<GVGrid> evaluate_volume_fields(ResourceScope &scope,
                                       Span<GFieldRef> fields_to_evaluate,
+                                      const float4x4 &transform,
                                       const GVGrid &mask,
                                       const FieldContext &context,
                                       Span<GVMutableGrid> dst_grids = {});

@@ -63,6 +63,7 @@ std::shared_ptr<openvdb::tree::TreeBase> make_tree_for_attribute_type(const CPPT
 
 static openvdb::GridBase *make_grid_for_attribute_type(ResourceScope *scope,
                                                        const CPPType &type,
+                                                       const float4x4 &transform,
                                                        const void *value)
 {
   if (value == nullptr) {
@@ -89,14 +90,17 @@ static openvdb::GridBase *make_grid_for_attribute_type(ResourceScope *scope,
 
 openvdb::GridBase *make_grid_for_attribute_type(ResourceScope &scope,
                                                 const CPPType &type,
+                                                const float4x4 &transform,
                                                 const void *value)
 {
-  return make_grid_for_attribute_type(&scope, type, value);
+  return make_grid_for_attribute_type(&scope, type, transform, value);
 }
 
-openvdb::GridBase *make_grid_for_attribute_type(const CPPType &type, const void *value)
+openvdb::GridBase *make_grid_for_attribute_type(const CPPType &type,
+                                                const float4x4 &transform,
+                                                const void *value)
 {
-  return make_grid_for_attribute_type(nullptr, type, value);
+  return make_grid_for_attribute_type(nullptr, type, transform, value);
 }
 
 const CPPType &grid_base_attribute_type(const openvdb::GridBase &grid)

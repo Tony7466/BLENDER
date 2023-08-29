@@ -509,6 +509,7 @@ inline AttributeAccessorFunctions accessor_functions_for_providers()
                                     nullptr,
                                     nullptr,
                                     nullptr,
+                                    nullptr,
                                     is_builtin<providers>,
                                     lookup<providers>,
                                     lookup_grid<providers>,

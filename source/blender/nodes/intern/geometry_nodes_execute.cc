@@ -481,10 +481,12 @@ static Vector<OutputAttributeToStore> compute_attributes_to_store(
         continue;
       }
       const int domain_size = attributes.domain_size(domain);
+      const float4x4 domain_transform = attributes.domain_grid_transform(domain);
       const GVGrid domain_mask = attributes.domain_grid_mask(domain, main_grid);
       bke::GeometryFieldContext field_context{component, domain};
       fn::FieldEvaluator field_evaluator{field_context, domain_size};
-      fn::VolumeFieldEvaluator volume_field_evaluator{field_context, domain_mask};
+      fn::VolumeFieldEvaluator volume_field_evaluator{
+          field_context, domain_transform, domain_mask};
       for (const OutputAttributeInfo &output_info : outputs_info) {
         const CPPType &type = output_info.field.cpp_type();
         const bke::AttributeValidator validator = attributes.lookup_validator(output_info.name);
@@ -497,7 +499,7 @@ static Vector<OutputAttributeToStore> compute_attributes_to_store(
             field_evaluator.add_with_destination(std::move(field), store.data);
             break;
           case bke::GeometryComponent::AttributeType::Grid:
-            store.grid_data = volume::make_grid_for_attribute_type(type);
+            store.grid_data = volume::make_grid_for_attribute_type(type, domain_transform);
             volume_field_evaluator.add_with_destination(std::move(field),
                                                         GVMutableGrid::ForGrid(*store.grid_data));
             break;
