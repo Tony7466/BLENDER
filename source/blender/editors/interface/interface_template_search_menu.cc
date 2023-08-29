@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -299,7 +299,7 @@ static bool menu_items_to_ui_button(MenuSearch_Item *item, uiBut *but)
       *drawstr_sep = '\0';
     }
 
-    but->icon = (BIFIconID)item->icon;
+    but->icon = item->icon;
     but->str = but->strdata;
   }
 
@@ -436,7 +436,7 @@ static MenuSearch_Data *menu_items_from_ui_create(
   const uiStyle *style = UI_style_get_dpi();
 
   /* Convert into non-ui structure. */
-  MenuSearch_Data *data = (MenuSearch_Data *)MEM_callocN(sizeof(*data), __func__);
+  MenuSearch_Data *data = MEM_new<MenuSearch_Data>(__func__);
 
   DynStr *dyn_str = BLI_dynstr_new_memarena();
 

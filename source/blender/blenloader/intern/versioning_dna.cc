@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,7 @@
 #include "DNA_listBase.h"
 
 #include "BLO_readfile.h"
-#include "readfile.h"
+#include "readfile.hh"
 
 void blo_do_versions_dna(SDNA *sdna, const int versionfile, const int subversionfile)
 {

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -76,7 +76,7 @@
 
 #include "BLO_readfile.h"
 
-#include "readfile.h"
+#include "readfile.hh"
 
 /** Without empty statements, clang-format fails (tested with v12 & v15). */
 #define CLANG_FORMAT_NOP_WORKAROUND ((void)0)

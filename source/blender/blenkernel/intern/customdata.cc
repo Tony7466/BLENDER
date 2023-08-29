@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -52,7 +52,7 @@
 #include "BKE_multires.hh"
 #include "BKE_subsurf.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "bmesh.h"
 

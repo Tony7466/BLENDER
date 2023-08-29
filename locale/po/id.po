@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'd4d0daa934cd')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'5ba692898e63')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-08-07 09:03:59\n"
+"POT-Creation-Date: 2023-08-28 16:05:16\n"
 "PO-Revision-Date: 2021-12-25 23:57-0800\n"
 "Last-Translator: Adriel Tristanputra <ultimexport@gmail.com>\n"
 "Language-Team: Indonesian <>\n"
@@ -9302,10 +9302,6 @@ msgid "Clip Start"
 msgstr "Klip Mulai"
 
 
-msgid "Cycles camera settings"
-msgstr "Kamera"
-
-
 msgid "Depth Of Field"
 msgstr "Kedalaman Lapangan"
 
@@ -9316,6 +9312,22 @@ msgstr "Unit mengedit lensa untuk antarmuka pengguna"
 
 msgid "Millimeters"
 msgstr "Milimeter"
+
+
+msgid "Panorama Type"
+msgstr "Induk"
+
+
+msgid "Distortion to use for the calculation"
+msgstr "Distorsi yang digunakan untuk kalkulasi"
+
+
+msgid "Mirror Ball"
+msgstr "Warna"
+
+
+msgid "Ideal for fulldomes, ignore the sensor dimensions"
+msgstr "Saluran"
 
 
 msgid "Vertical"
@@ -14306,10 +14318,6 @@ msgid "Projection"
 msgstr "Objek"
 
 
-msgid "Mirror Ball"
-msgstr "Warna"
-
-
 msgid "Gradient Texture"
 msgstr "Tekstur"
 
@@ -16092,10 +16100,6 @@ msgstr "Menimpna Material yang ada (berdasarkan nama material)"
 
 msgid "Decal Offset"
 msgstr "Decal Offset"
-
-
-msgid "Clamp Size"
-msgstr "Ukurang"
 
 
 msgctxt "Operator"
@@ -20222,6 +20226,10 @@ msgid "Analyze"
 msgstr "Analisis"
 
 
+msgid "Wire Color"
+msgstr "Warna Kabel"
+
+
 msgctxt "Operator"
 msgid "Push"
 msgstr "Dorong"
@@ -20371,18 +20379,6 @@ msgstr "Metode untuk membuat render teks antarmuka pengguna lancip"
 
 msgid "Temperature"
 msgstr "Temperatur"
-
-
-msgid "Panorama Type"
-msgstr "Induk"
-
-
-msgid "Distortion to use for the calculation"
-msgstr "Distorsi yang digunakan untuk kalkulasi"
-
-
-msgid "Ideal for fulldomes, ignore the sensor dimensions"
-msgstr "Saluran"
 
 
 msgid "AO Bounces"
@@ -21361,10 +21357,6 @@ msgstr "Dalam Jarak"
 
 msgid "Node Selected"
 msgstr "Modus Sunting"
-
-
-msgid "Wire Color"
-msgstr "Warna Kabel"
 
 
 msgid "Wire Select"

@@ -256,7 +256,10 @@ extern GHOST_TSuccess GHOST_EndFullScreen(GHOST_SystemHandle systemhandle);
 extern bool GHOST_GetFullScreen(GHOST_SystemHandle systemhandle);
 
 /**
- * Get the Window under the cursor.
+ * Get the Window under the cursor. Although coordinates of the mouse are supplied, platform-
+ * specific implementations are free to ignore these and query the mouse location themselves, due
+ * to them possibly being incorrect under certain conditions, for example when using multiple
+ * monitors that vary in scale and/or DPI.
  * \param x: The x-coordinate of the cursor.
  * \param y: The y-coordinate of the cursor.
  * \return The window under the cursor or nullptr in none.
@@ -763,6 +766,13 @@ extern void GHOST_SetMultitouchGestures(GHOST_SystemHandle systemhandle, const b
  * \param api: Enum indicating which API to use.
  */
 extern void GHOST_SetTabletAPI(GHOST_SystemHandle systemhandle, GHOST_TTabletAPI api);
+
+/**
+ * Get the color of the pixel at the current mouse cursor location
+ * \param r_color: returned sRGB float colors
+ * \return Success value (true == successful and supported by platform)
+ */
+extern GHOST_TSuccess GHOST_GetPixelAtCursor(float r_color[3]);
 
 /**
  * Access to rectangle width.

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -55,7 +55,7 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static CLG_LogRef LOG = {"bke.gpencil"};
 
@@ -150,10 +150,6 @@ static void greasepencil_blend_write(BlendWriter *writer, ID *id, const void *id
   BLO_write_id_struct(writer, bGPdata, id_address, &gpd->id);
   BKE_id_blend_write(writer, &gpd->id);
 
-  if (gpd->adt) {
-    BKE_animdata_blend_write(writer, gpd->adt);
-  }
-
   BKE_defbase_blend_write(writer, &gpd->vertex_group_names);
 
   BLO_write_pointer_array(writer, gpd->totcol, gpd->mat);
@@ -189,10 +185,6 @@ void BKE_gpencil_blend_read_data(BlendDataReader *reader, bGPdata *gpd)
   if (gpd == nullptr) {
     return;
   }
-
-  /* Relink anim-data. */
-  BLO_read_data_address(reader, &gpd->adt);
-  BKE_animdata_blend_read_data(reader, gpd->adt);
 
   /* Ensure full object-mode for linked grease pencil. */
   if (ID_IS_LINKED(gpd)) {
@@ -270,35 +262,6 @@ static void greasepencil_blend_read_data(BlendDataReader *reader, ID *id)
   BKE_gpencil_blend_read_data(reader, gpd);
 }
 
-static void greasepencil_blend_read_lib(BlendLibReader *reader, ID *id)
-{
-  bGPdata *gpd = (bGPdata *)id;
-
-  /* Relink all data-block linked by GP data-block. */
-  /* Layers */
-  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-    /* Layer -> Parent References */
-    BLO_read_id_address(reader, id, &gpl->parent);
-  }
-
-  /* materials */
-  for (int a = 0; a < gpd->totcol; a++) {
-    BLO_read_id_address(reader, id, &gpd->mat[a]);
-  }
-}
-
-static void greasepencil_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  bGPdata *gpd = (bGPdata *)id;
-  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-    BLO_expand(expander, gpl->parent);
-  }
-
-  for (int a = 0; a < gpd->totcol; a++) {
-    BLO_expand(expander, gpd->mat[a]);
-  }
-}
-
 IDTypeInfo IDType_ID_GD_LEGACY = {
     /*id_code*/ ID_GD_LEGACY,
     /*id_filter*/ FILTER_ID_GD_LEGACY,
@@ -321,8 +284,7 @@ IDTypeInfo IDType_ID_GD_LEGACY = {
 
     /*blend_write*/ greasepencil_blend_write,
     /*blend_read_data*/ greasepencil_blend_read_data,
-    /*blend_read_lib*/ greasepencil_blend_read_lib,
-    /*blend_read_expand*/ greasepencil_blend_read_expand,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 

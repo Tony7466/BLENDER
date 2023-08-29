@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,7 +23,7 @@
 
 #include "UI_interface.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"

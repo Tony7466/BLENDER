@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Blender Foundation
+/* SPDX-FileCopyrightText: Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -34,7 +34,7 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "WM_types.hh" /* For UI free bake operator. */
 

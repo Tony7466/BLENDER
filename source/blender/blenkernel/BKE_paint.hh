@@ -218,10 +218,6 @@ bool BKE_paint_always_hide_test(Object *ob);
 /* Partial visibility. */
 
 /**
- * Returns non-zero if any of the face's vertices are hidden, zero otherwise.
- */
-bool paint_is_face_hidden(const int *looptri_faces, const bool *hide_poly, int tri_index);
-/**
  * Returns non-zero if any of the corners of the grid
  * face whose inner corner is at (x, y) are hidden, zero otherwise.
  */
@@ -265,7 +261,6 @@ Brush *BKE_paint_toolslots_brush_get(Paint *paint, int slot_index);
 
 void BKE_paint_blend_write(BlendWriter *writer, Paint *paint);
 void BKE_paint_blend_read_data(BlendDataReader *reader, const Scene *scene, Paint *paint);
-void BKE_paint_blend_read_lib(BlendLibReader *reader, Scene *scene, Paint *paint);
 
 #define SCULPT_FACE_SET_NONE 0
 

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -63,8 +63,9 @@ set(DEFSRC
   rna_modifier.cc
   rna_movieclip.cc
   rna_nla.cc
-  rna_nodetree.cc
   rna_node_socket.cc
+  rna_node_tree_interface.cc
+  rna_nodetree.cc
   rna_object.cc
   rna_object_force.cc
   rna_packedfile.cc

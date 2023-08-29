@@ -1,9 +1,11 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 #include "usd_writer_abstract.h"
+
+#include "BLI_map.hh"
 
 #include "BKE_attribute.hh"
 
@@ -27,7 +29,7 @@ class USDGenericMeshWriter : public USDAbstractWriter {
 
  private:
   /* Mapping from material slot number to array of face indices with that material. */
-  typedef std::map<short, pxr::VtIntArray> MaterialFaceGroups;
+  using MaterialFaceGroups = Map<short, pxr::VtIntArray>;
 
   void write_mesh(HierarchyContext &context, Mesh *mesh);
   void get_geometry_data(const Mesh *mesh, struct USDMeshData &usd_mesh_data);

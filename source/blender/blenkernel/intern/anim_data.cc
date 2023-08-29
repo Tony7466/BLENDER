@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -41,7 +41,7 @@
 
 #include "DEG_depsgraph.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
@@ -1439,8 +1439,13 @@ void BKE_animdata_fix_paths_rename_all_ex(Main *bmain,
 
 /* .blend file API -------------------------------------------- */
 
-void BKE_animdata_blend_write(BlendWriter *writer, AnimData *adt)
+void BKE_animdata_blend_write(BlendWriter *writer, ID *id)
 {
+  AnimData *adt = BKE_animdata_from_id(id);
+  if (!adt) {
+    return;
+  }
+
   /* firstly, just write the AnimData block */
   BLO_write_struct(writer, AnimData, adt);
 
@@ -1461,9 +1466,14 @@ void BKE_animdata_blend_write(BlendWriter *writer, AnimData *adt)
   BKE_nla_blend_write(writer, &adt->nla_tracks);
 }
 
-void BKE_animdata_blend_read_data(BlendDataReader *reader, AnimData *adt)
+void BKE_animdata_blend_read_data(BlendDataReader *reader, ID *id)
 {
-  /* NOTE: must have called BLO_read_data_address already before doing this... */
+  IdAdtTemplate *iat = id_can_have_animdata(id) ? reinterpret_cast<IdAdtTemplate *>(id) : nullptr;
+  if (!iat || !iat->adt) {
+    return;
+  }
+
+  AnimData *adt = static_cast<AnimData *>(BLO_read_data_address(reader, &iat->adt));
   if (adt == nullptr) {
     return;
   }
@@ -1478,7 +1488,7 @@ void BKE_animdata_blend_read_data(BlendDataReader *reader, AnimData *adt)
 
   /* link NLA-data */
   BLO_read_list(reader, &adt->nla_tracks);
-  BKE_nla_blend_read_data(reader, &adt->nla_tracks);
+  BKE_nla_blend_read_data(reader, id, &adt->nla_tracks);
 
   /* relink active track/strip - even though strictly speaking this should only be used
    * if we're in 'tweaking mode', we need to be able to have this loaded back for
@@ -1488,36 +1498,4 @@ void BKE_animdata_blend_read_data(BlendDataReader *reader, AnimData *adt)
    *       state, but it's going to be too hard to enforce this single case. */
   BLO_read_data_address(reader, &adt->act_track);
   BLO_read_data_address(reader, &adt->actstrip);
-}
-
-void BKE_animdata_blend_read_lib(BlendLibReader *reader, ID *id, AnimData *adt)
-{
-  if (adt == nullptr) {
-    return;
-  }
-
-  /* link action data */
-  BLO_read_id_address(reader, id, &adt->action);
-  BLO_read_id_address(reader, id, &adt->tmpact);
-
-  /* link drivers */
-  BKE_fcurve_blend_read_lib(reader, id, &adt->drivers);
-
-  /* overrides don't have lib-link for now, so no need to do anything */
-
-  /* link NLA-data */
-  BKE_nla_blend_read_lib(reader, id, &adt->nla_tracks);
-}
-
-void BKE_animdata_blend_read_expand(BlendExpander *expander, AnimData *adt)
-{
-  /* own action */
-  BLO_expand(expander, adt->action);
-  BLO_expand(expander, adt->tmpact);
-
-  /* drivers - assume that these F-Curves have driver data to be in this list... */
-  BKE_fcurve_blend_read_expand(expander, &adt->drivers);
-
-  /* NLA data - referenced actions. */
-  BKE_nla_blend_read_expand(expander, &adt->nla_tracks);
 }

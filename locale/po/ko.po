@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'd4d0daa934cd')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'5ba692898e63')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-08-07 09:03:59\n"
+"POT-Creation-Date: 2023-08-28 16:05:16\n"
 "PO-Revision-Date: 2020-01-04 05:04+0900\n"
 "Last-Translator: Geuntak Jeong <beroberos@gmail.com>\n"
 "Language-Team: Korean (http://www.transifex.com/lxlalexlxl/blender/language/ko/)\n"
@@ -15630,20 +15630,40 @@ msgid "Camera near clipping distance"
 msgstr "카메라 근거리 클리핑 거리"
 
 
-msgid "Cycles Camera Settings"
-msgstr "Cycles 카메라 설정"
-
-
-msgid "Cycles camera settings"
-msgstr "Cycles 카메라 설정"
-
-
 msgid "Apparent size of the Camera object in the 3D View"
 msgstr "3D 뷰에서 카메라 오브젝트의 외관상 크기"
 
 
 msgid "Depth Of Field"
 msgstr "피사계 심도 (DOF)"
+
+
+msgid "Field of view for the fisheye lens"
+msgstr "피쉬아이 렌즈에 대한 시야"
+
+
+msgid "Fisheye Lens"
+msgstr "피쉬아이 렌즈"
+
+
+msgid "Lens focal length (mm)"
+msgstr "렌즈 초점의 길이 (mm)"
+
+
+msgid "Max Latitude"
+msgstr "최대 위도"
+
+
+msgid "Maximum latitude (vertical angle) for the equirectangular lens"
+msgstr "등장방향도법 렌즈에 대한 최대 위도 (수직 각도)"
+
+
+msgid "Min Latitude"
+msgstr "최소 위도"
+
+
+msgid "Minimum latitude (vertical angle) for the equirectangular lens"
+msgstr "등장방향도법 렌즈에 대한 최소 위도 (수직 각도)"
 
 
 msgid "Focal Length"
@@ -15666,12 +15686,60 @@ msgid "Specify the lens as the field of view's angle"
 msgstr "시야각으로 렌즈를 지정"
 
 
+msgid "Max Longitude"
+msgstr "최대 경도"
+
+
+msgid "Maximum longitude (horizontal angle) for the equirectangular lens"
+msgstr "등장방향도법 렌즈에 대한 최대 경도 (수평 각도)"
+
+
+msgid "Min Longitude"
+msgstr "최소 경도"
+
+
+msgid "Minimum longitude (horizontal angle) for the equirectangular lens"
+msgstr "등장방향도법 렌즈에 대한 최소 경도 (수평 각도)"
+
+
 msgid "Orthographic Scale"
 msgstr "정사법 축적"
 
 
 msgid "Orthographic Camera scale (similar to zoom)"
 msgstr "정사법 카메라 축적 (줌과 유사)"
+
+
+msgid "Panorama Type"
+msgstr "파노라마 유형"
+
+
+msgid "Distortion to use for the calculation"
+msgstr "계산에 사용하는 왜곡"
+
+
+msgid "Equirectangular"
+msgstr "등장방향도법"
+
+
+msgid "Mirror Ball"
+msgstr "미러 볼"
+
+
+msgid "Fisheye Equidistant"
+msgstr "피쉬아이 등거리"
+
+
+msgid "Ideal for fulldomes, ignore the sensor dimensions"
+msgstr "전체 돔에 대해 이상적이며, 센서의 크기를 무시합니다"
+
+
+msgid "Fisheye Equisolid"
+msgstr "피쉬아이 등입체"
+
+
+msgid "Similar to most fisheye modern lens, takes sensor dimensions into consideration"
+msgstr "대부분의 어안 모던 렌즈와 유사하게 센서 크기가 고려됩니다"
 
 
 msgid "Passepartout Alpha"
@@ -22405,20 +22473,12 @@ msgid "Insert After"
 msgstr "이후에 삽입"
 
 
-msgid "Insert a new item into collection after the one referenced in subitem_reference_name or _index"
-msgstr "subitem_reference_name 또는 _index에서 참조된 항목 다음에 새 항목을 컬렉션에 삽입하십시오"
-
-
 msgid "Insert Before"
 msgstr "이전에 삽입"
 
 
 msgid "Subitem Local Index"
 msgstr "하위항목 로컬 색인"
-
-
-msgid "Used to handle insertions into collection"
-msgstr "컬렉션에 삽입을 처리하는 데 사용됩니다"
 
 
 msgid "Subitem Local Name"
@@ -30838,10 +30898,6 @@ msgid "Display Hidden"
 msgstr "숨긴 대상을 표시"
 
 
-msgid "Include channels from objects/bone that aren't visible"
-msgstr "보이지 않는 오브젝트/본으로부터의 채널을 포함"
-
-
 msgid "Dopesheet Sort Field"
 msgstr "도프시트 분류 필드"
 
@@ -33079,8 +33135,8 @@ msgid "Tracking Object"
 msgstr "트래킹 오브젝트"
 
 
-msgid "Smoothing"
-msgstr "스무딩"
+msgid "Eccentricity"
+msgstr "이심율"
 
 
 msgid "Anisotropic"
@@ -34336,16 +34392,8 @@ msgid "Projection of the input image"
 msgstr "입력 이미지의 투영"
 
 
-msgid "Equirectangular"
-msgstr "등장방향도법"
-
-
 msgid "Equirectangular or latitude-longitude projection"
 msgstr "등장방향도법 또는 위도-경도 투영"
-
-
-msgid "Mirror Ball"
-msgstr "미러 볼"
 
 
 msgid "Projection from an orthographic photo of a mirror ball"
@@ -35094,6 +35142,10 @@ msgstr "노드 트리 입력"
 
 msgid "Collection of Node Tree Sockets"
 msgstr "노드 트리 소켓의 컬렉션"
+
+
+msgid "Socket Type"
+msgstr "소켓 유형"
 
 
 msgid "Node Tree Outputs"
@@ -39400,12 +39452,20 @@ msgstr "오일러 ZYX에 회전을 변환"
 
 
 msgctxt "Operator"
-msgid "Export PLY"
-msgstr "PLY를 내보내기"
+msgid "Export STL"
+msgstr "STL을 내보내기"
 
 
-msgid "Export as a Stanford PLY with normals, vertex colors and texture coordinates"
-msgstr "노멀, 버텍스 컬러 및 텍스처 좌표를 사용하여 Stanford PLY로 내보내기"
+msgid "Save STL triangle mesh data"
+msgstr "STL 삼각형 메쉬 데이터를 저장"
+
+
+msgid "Ascii"
+msgstr "아스키"
+
+
+msgid "Save the file in ASCII file format"
+msgstr "ASCII 파일 형식으로 파일을 저장"
 
 
 msgid "X Forward"
@@ -39452,43 +39512,6 @@ msgid "-Z Up"
 msgstr "-Z 위쪽"
 
 
-msgid "Export the active vertex color layer"
-msgstr "활성 버텍스 컬러 레이어를 내보내기"
-
-
-msgid "Apply Modifiers"
-msgstr "모디파이어를 적용"
-
-
-msgid "Apply Modifiers to the exported mesh"
-msgstr "내보낸 메쉬에 모디파이어를 적용"
-
-
-msgid "Selection Only"
-msgstr "선택 만"
-
-
-msgid "Export selected objects only"
-msgstr "선택된 오브젝트 만 내보내기"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "STL을 내보내기"
-
-
-msgid "Save STL triangle mesh data"
-msgstr "STL 삼각형 메쉬 데이터를 저장"
-
-
-msgid "Ascii"
-msgstr "아스키"
-
-
-msgid "Save the file in ASCII file format"
-msgstr "ASCII 파일 형식으로 파일을 저장"
-
-
 msgid "Batch Mode"
 msgstr "일괄 모드"
 
@@ -39501,6 +39524,10 @@ msgid "Each object as a file"
 msgstr "각 오브젝트를 파일로"
 
 
+msgid "Apply Modifiers"
+msgstr "모디파이어를 적용"
+
+
 msgid "Apply the modifiers before saving"
 msgstr "저장하기 이전에 모디파이어를 적용"
 
@@ -39511,6 +39538,14 @@ msgstr "씬 단위"
 
 msgid "Apply current scene's unit (as defined by unit scale) to exported data"
 msgstr "내보내기된 데이터로 현재 씬의 단위(단위 축적으로 한정된)를 적용"
+
+
+msgid "Selection Only"
+msgstr "선택 만"
+
+
+msgid "Export selected objects only"
+msgstr "선택된 오브젝트 만 내보내기"
 
 
 msgctxt "Operator"
@@ -39688,6 +39723,10 @@ msgstr "FBX 바이너리 파일에 내장된 텍스처 (\"복사\"경로 모드�
 
 msgid "Scale all data (Some importers do not support scaled armatures!)"
 msgstr "모든 데이터를 축적 조정 (일부 가져오기 도구는 축적이 변경된 아마튜어를 지원하지 않음!)"
+
+
+msgid "Smoothing"
+msgstr "스무딩"
 
 
 msgid "Export smoothing information (prefer 'Normals Only' option if your target importer understand split normals)"
@@ -40089,87 +40128,6 @@ msgstr "내보내기 설정 저장"
 
 msgid "Store glTF export settings in the Blender project"
 msgstr "블렌더 프로젝트에 glTF 내보내기 설정을 저장"
-
-
-msgctxt "Operator"
-msgid "Export OBJ"
-msgstr "OBJ를 내보내기"
-
-
-msgid "Save a Wavefront OBJ File"
-msgstr "웨이브프론트 OBJ 파일을 저장"
-
-
-msgid "Material Groups"
-msgstr "매테리얼 그룹"
-
-
-msgid "Keep Vertex Order"
-msgstr "버텍스 순서를 유지"
-
-
-msgid "Write out an OBJ for each frame"
-msgstr "각 프레임에 대한 OBJ를 작성"
-
-
-msgid "Include Edges"
-msgstr "에지를 포함"
-
-
-msgid "Write Materials"
-msgstr "매테리얼을 작성"
-
-
-msgid "Write out the MTL file"
-msgstr "MTL 파일을 작성"
-
-
-msgid "Apply modifiers"
-msgstr "모디파이어를 적용"
-
-
-msgid "Write Normals"
-msgstr "노멀을 작성"
-
-
-msgid "Export one normal per vertex and per face, to represent flat faces and sharp edges"
-msgstr "버텍스 및 페이스 마다 하나의 노멀을 내보내기, 플랫 페이스 및 샤프 에지 표현하는"
-
-
-msgid "Write Nurbs"
-msgstr "넙스를 쓰기"
-
-
-msgid "Write nurbs curves as OBJ nurbs rather than converting to geometry"
-msgstr "지오메트리로 변환하는 대신 OBJ 넙스로 넙스 커브를 작성"
-
-
-msgid "Smooth Groups"
-msgstr "스무스 그룹"
-
-
-msgid "Write sharp edges as smooth groups"
-msgstr "샤프 에지를 스무스 그룹으로 작성"
-
-
-msgid "Bitflag Smooth Groups"
-msgstr "비트플래그 스무스 그룹"
-
-
-msgid "Same as 'Smooth Groups', but generate smooth groups IDs as bitflags (produces at most 32 different smooth groups, usually much less)"
-msgstr "'스무스 그룹'과 동일하지만, 비트 플래그로 매끈한 그룹 ID를 생성 (대부분 32 가지 스무스 그룹으로 생산, 일반적으로 훨씬 적은)"
-
-
-msgid "Include UVs"
-msgstr "UV를 포함"
-
-
-msgid "Write out the active UV coordinates"
-msgstr "활성 UV 좌표를 작성"
-
-
-msgid "Polygroups"
-msgstr "폴리그룹"
 
 
 msgctxt "Operator"
@@ -43413,19 +43371,6 @@ msgstr "투명도를 위해 알파 채널을 사용"
 
 
 msgctxt "Operator"
-msgid "Import PLY"
-msgstr "PLY를 가져오기"
-
-
-msgid "Load a PLY geometry file"
-msgstr "PLY 지오메트리 파일을 불러오기"
-
-
-msgid "File path used for importing the PLY file"
-msgstr "PLY 파일을 가져오기에 사용된 파일 경로"
-
-
-msgctxt "Operator"
 msgid "Import STL"
 msgstr "STL을 가져오기"
 
@@ -43598,59 +43543,6 @@ msgstr "플랫 셰이딩"
 
 msgid "Log Level"
 msgstr "로그 레벨"
-
-
-msgctxt "Operator"
-msgid "Import OBJ"
-msgstr "OBJ를 가져오기"
-
-
-msgid "Load a Wavefront OBJ File"
-msgstr "파면의 OBJ 파일을 불러오기"
-
-
-msgid "Clamp Size"
-msgstr "클램프 크기"
-
-
-msgid "Clamp bounds under this value (zero to disable)"
-msgstr "이 값보다 아래 경계를 클램프 (사용 중지할 때 제로)"
-
-
-msgid "Keep Vert Order"
-msgstr "버텍스 순서를 유지"
-
-
-msgid "Keep vertex order from file"
-msgstr "파일에서 버텍스 순서를 유지"
-
-
-msgid "Import lines and faces with 2 verts as edge"
-msgstr "에지로 2개 버텍스와 페이스 및 라인을 가져오기"
-
-
-msgid "Poly Groups"
-msgstr "폴리 그룹"
-
-
-msgid "Import OBJ groups as vertex groups"
-msgstr "버텍스 그룹으로 OBJ 그룹을 가져오기"
-
-
-msgid "Search subdirs for any associated images (Warning, may be slow)"
-msgstr "연관된 이미지를 위해 하위 디렉터리를 검색 (경고: 속도가 느려질 수 있습니다)"
-
-
-msgid "Surround smooth groups by sharp edges"
-msgstr "샤프 에지로 스무스 그룹을 둘러싸기"
-
-
-msgid "Import OBJ Groups into Blender Objects"
-msgstr "OBJ 그룹을 블렌더 오브젝트로 가져오기"
-
-
-msgid "Import OBJ Objects into Blender Objects"
-msgstr "OBJ 오브젝트를 블렌더 오브젝트로 가져오기"
 
 
 msgctxt "Operator"
@@ -47729,10 +47621,6 @@ msgstr "부모 노드 트리로 이동"
 msgctxt "Operator"
 msgid "Add Node Tree Interface Socket"
 msgstr "노드 트리 인터페이스 소켓을 추가"
-
-
-msgid "Socket Type"
-msgstr "소켓 유형"
 
 
 msgctxt "Operator"
@@ -58418,6 +58306,10 @@ msgid "Object Properties"
 msgstr "오브젝트 프로퍼티스"
 
 
+msgid "Import OBJ groups as vertex groups"
+msgstr "버텍스 그룹으로 OBJ 그룹을 가져오기"
+
+
 msgctxt "Operator"
 msgid "Open"
 msgstr "열기"
@@ -58484,6 +58376,16 @@ msgstr "UI 테그"
 
 msgid "Open a path in a file browser"
 msgstr "파일 브라우저에서 경로를 열기"
+
+
+msgctxt "Operator"
+msgid "Export PLY"
+msgstr "PLY를 내보내기"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "PLY를 가져오기"
 
 
 msgctxt "Operator"
@@ -58618,6 +58520,10 @@ msgstr "컨텍스트"
 msgctxt "Operator"
 msgid "Edit Property"
 msgstr "속성을 편집"
+
+
+msgid "Speaker"
+msgstr "스피커"
 
 
 msgid "Property Name"
@@ -59656,10 +59562,6 @@ msgstr "적분기 프리셋"
 
 msgid "Sampling Presets"
 msgstr "샘플링 프리셋"
-
-
-msgid "View Object Types"
-msgstr "오브젝트 유형을 보기"
 
 
 msgid "Film"
@@ -60749,6 +60651,10 @@ msgstr "분석"
 
 msgid "Quad View"
 msgstr "쿼드 뷰"
+
+
+msgid "Wire Color"
+msgstr "와이어 컬러"
 
 
 msgid "Shadow Settings"
@@ -63990,74 +63896,6 @@ msgid "Use regular expressions to match text in the 'Find' field"
 msgstr "'찾기'필드의 텍스트와 일치 시키려면 정규식을 사용하십시오"
 
 
-msgid "Field of view for the fisheye lens"
-msgstr "피쉬아이 렌즈에 대한 시야"
-
-
-msgid "Fisheye Lens"
-msgstr "피쉬아이 렌즈"
-
-
-msgid "Lens focal length (mm)"
-msgstr "렌즈 초점의 길이 (mm)"
-
-
-msgid "Max Latitude"
-msgstr "최대 위도"
-
-
-msgid "Maximum latitude (vertical angle) for the equirectangular lens"
-msgstr "등장방향도법 렌즈에 대한 최대 위도 (수직 각도)"
-
-
-msgid "Min Latitude"
-msgstr "최소 위도"
-
-
-msgid "Minimum latitude (vertical angle) for the equirectangular lens"
-msgstr "등장방향도법 렌즈에 대한 최소 위도 (수직 각도)"
-
-
-msgid "Max Longitude"
-msgstr "최대 경도"
-
-
-msgid "Maximum longitude (horizontal angle) for the equirectangular lens"
-msgstr "등장방향도법 렌즈에 대한 최대 경도 (수평 각도)"
-
-
-msgid "Min Longitude"
-msgstr "최소 경도"
-
-
-msgid "Minimum longitude (horizontal angle) for the equirectangular lens"
-msgstr "등장방향도법 렌즈에 대한 최소 경도 (수평 각도)"
-
-
-msgid "Panorama Type"
-msgstr "파노라마 유형"
-
-
-msgid "Distortion to use for the calculation"
-msgstr "계산에 사용하는 왜곡"
-
-
-msgid "Fisheye Equidistant"
-msgstr "피쉬아이 등거리"
-
-
-msgid "Ideal for fulldomes, ignore the sensor dimensions"
-msgstr "전체 돔에 대해 이상적이며, 센서의 크기를 무시합니다"
-
-
-msgid "Fisheye Equisolid"
-msgstr "피쉬아이 등입체"
-
-
-msgid "Similar to most fisheye modern lens, takes sensor dimensions into consideration"
-msgstr "대부분의 어안 모던 렌즈와 유사하게 센서 크기가 고려됩니다"
-
-
 msgid "Number of subdivisions used in Cardinal curve intersection (power of 2)"
 msgstr "카디날 커브 교차 지점에서 사용된 섭디비젼들의 수 (2의 파워)"
 
@@ -65762,8 +65600,8 @@ msgid "Render at 12.5% resolution"
 msgstr "12.5% 해상도로 렌더"
 
 
-msgid "Resolution %"
-msgstr "해상도 %"
+msgid "Resolution Scale"
+msgstr "해상도 축적"
 
 
 msgid "Percentage scale for render resolution"
@@ -71021,10 +70859,6 @@ msgid "Gizmo to adjust location"
 msgstr "기즈모로 위치를 조정합니다"
 
 
-msgid "Speaker"
-msgstr "스피커"
-
-
 msgid "Show Reconstruction"
 msgstr "복원을 표시"
 
@@ -72479,10 +72313,6 @@ msgstr "벡터 노드"
 
 msgid "Wires"
 msgstr "와이어"
-
-
-msgid "Wire Color"
-msgstr "와이어 컬러"
 
 
 msgid "Wire Select"
@@ -74574,6 +74404,10 @@ msgid "Make the lighting fixed and not follow the camera"
 msgstr "조명을 고정시키고 카메라를 따르지 않도록 만들기"
 
 
+msgid "Theme"
+msgstr "테마"
+
+
 msgid "X-Ray Alpha"
 msgstr "X-Ray 알파"
 
@@ -75816,10 +75650,6 @@ msgstr "활성 오브젝트는 메쉬가 아님"
 
 msgid "Built without Fluid modifier"
 msgstr "유체 모디파이어 없이 작성"
-
-
-msgid "Theme"
-msgstr "테마"
 
 
 msgctxt "Operator"
@@ -77285,10 +77115,6 @@ msgstr "사분할"
 
 msgid "Multiply R"
 msgstr "곱하기 R"
-
-
-msgid "Eccentricity"
-msgstr "이심율"
 
 
 msgid "Enable the Color Ramp first"
@@ -78918,10 +78744,6 @@ msgid "Revert to Saved Preferences"
 msgstr "저장된 환경 설정으로 되돌리기"
 
 
-msgid "Resolution Scale"
-msgstr "해상도 축적"
-
-
 msgid "Splash Screen"
 msgstr "스플래쉬 화면"
 
@@ -79852,10 +79674,6 @@ msgstr "기즈모를 표시"
 
 msgid "Toggle Overlays"
 msgstr "오버레이를 토글"
-
-
-msgid "Object Types Visibility"
-msgstr "오브젝트 유형 가시성"
 
 
 msgid "Object Gizmos"
@@ -80848,10 +80666,6 @@ msgid "[Action Stash]"
 msgstr "[액션 제외]"
 
 
-msgid "Non-Empty object '%s' cannot duplicate collection '%s' anymore in Blender 2.80, removed instancing"
-msgstr "비 엠프티 오브젝트 '%s'은 블렌더 2.80에서 더 이상 콜렉션 '%s'를 복제 할 수 없으며 인스턴싱을 제거했습니다"
-
-
 msgid "Surf"
 msgstr "서프"
 
@@ -81165,16 +80979,16 @@ msgid "Checking sanity of current .blend file *BEFORE* save to disk"
 msgstr "현재 .blend 파일의 온전성 검사 *이전* 디스크에 저장"
 
 
+msgid "Checking sanity of current .blend file *AFTER* save to disk"
+msgstr "현재 .blend 파일의 온전성 검사 *이후* 디스크에 저장"
+
+
 msgid "Version backup failed (file saved with @)"
 msgstr "버전 백업 실패함 (file saved with @)"
 
 
 msgid "Cannot change old file (file saved with @)"
 msgstr "이전 파일을 변경할 수 없습니다. (@로 저장된 파일)"
-
-
-msgid "Checking sanity of current .blend file *AFTER* save to disk"
-msgstr "현재 .blend 파일의 온전성 검사 *이후* 디스크에 저장"
 
 
 msgid "Cannot open file %s for writing: %s"
@@ -82742,6 +82556,14 @@ msgstr "내보내기 중 오류 (콘솔 참조)"
 
 msgid "Parsing errors in Document (see Blender Console)"
 msgstr "문서의 구문 분석 오류 (Blender Console 참조)"
+
+
+msgid "Material Groups"
+msgstr "매테리얼 그룹"
+
+
+msgid "Smooth Groups"
+msgstr "스무스 그룹"
 
 
 msgctxt "Mesh"
@@ -85122,18 +84944,6 @@ msgid "). Click here to proceed..."
 msgstr "). 진행하려면 여기를 클릭하십시오..."
 
 
-msgid "Cannot edit builtin name"
-msgstr "내장 이름을 편집 할 수 없습니다"
-
-
-msgid "Cannot edit sequence name"
-msgstr "시퀀스 이름을 편집 할 수 없습니다"
-
-
-msgid "Cannot edit name of master collection"
-msgstr "마스터 컬렉션의 이름을 편집 할 수 없습니다"
-
-
 msgid "Cannot edit the path of an indirectly linked library"
 msgstr "간접적으로 연결된 라이브러리의 경로를 편집할 수 없습니다"
 
@@ -86500,16 +86310,16 @@ msgid "Registering node socket class: '%s' is too long, maximum length is %d"
 msgstr "등록하는 노드 소켓 클래스: '%s' 는 너무 깁니다, 최대 길이는 %d"
 
 
+msgid "Unable to create socket"
+msgstr "소켓을 만들 수 없음"
+
+
 msgid "Same input/output direction of sockets"
 msgstr "소켓의 동일한 입력/출력 방향"
 
 
 msgid "Unable to locate link in node tree"
 msgstr "노드 트리에서 연결을 찾을 수 없음"
-
-
-msgid "Unable to create socket"
-msgstr "소켓을 만들 수 없음"
 
 
 msgid "Node tree '%s' has undefined type %s"
