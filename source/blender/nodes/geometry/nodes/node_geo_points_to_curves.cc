@@ -8,10 +8,10 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
 
-#include "BLI_array_utils.hh"
-
 #include "DNA_pointcloud_types.h"
 
+#include "BLI_array_utils.hh"
+#include "BLI_group_deduce.hh"
 #include "BLI_sort.hh"
 #include "BLI_task.hh"
 
@@ -58,32 +58,6 @@ static void grouped_sort(const OffsetIndices<int> offsets,
   });
 }
 
-static void find_points_by_group_index(const Span<int> indices_of_curves,
-                                       MutableSpan<int> r_offsets,
-                                       MutableSpan<int> r_indices)
-{
-  offset_indices::build_reverse_offsets(indices_of_curves, r_offsets);
-  Array<int> counts(r_offsets.size(), 0);
-
-  for (const int64_t index : indices_of_curves.index_range()) {
-    const int curve_index = indices_of_curves[index];
-    r_indices[r_offsets[curve_index] + counts[curve_index]] = int(index);
-    counts[curve_index]++;
-  }
-}
-
-static int identifiers_to_indices(MutableSpan<int> r_identifiers_to_indices)
-{
-  const VectorSet<int> deduplicated_groups(r_identifiers_to_indices);
-  threading::parallel_for(
-      r_identifiers_to_indices.index_range(), 2048, [&](const IndexRange range) {
-        for (int &value : r_identifiers_to_indices.slice(range)) {
-          value = deduplicated_groups.index_of(value);
-        }
-      });
-  return deduplicated_groups.size();
-}
-
 static Curves *curve_from_points(const AttributeAccessor attributes,
                                  const VArray<float> &weights_varray,
                                  const bke::AnonymousAttributePropagationInfo &propagation_info)
@@ -127,7 +101,7 @@ static Curves *curves_from_points(const PointCloud &points,
 
   Array<int> group_ids(domain_size);
   group_ids_varray.materialize(group_ids.as_mutable_span());
-  const int total_curves = identifiers_to_indices(group_ids);
+  const int total_curves = grouped_indices::identifiers_to_indices(group_ids, false);
   if (total_curves == 1) {
     return curve_from_points(points.attributes(), weights_varray, propagation_info);
   }
@@ -138,10 +112,16 @@ static Curves *curves_from_points(const PointCloud &points,
   MutableSpan<int> offset = curves.offsets_for_write();
   offset.fill(0);
 
-  Array<int> indices(domain_size);
-  find_points_by_group_index(group_ids, offset, indices.as_mutable_span());
+  const bool sequential_indices = weights_varray.is_single();
 
-  if (!weights_varray.is_single()) {
+  Array<int> indices(domain_size);
+  grouped_indices::from_indices(group_ids,
+                                offset,
+                                indices.as_mutable_span(),
+                                grouped_indices::is_fragmented(group_ids, total_curves),
+                                sequential_indices);
+
+  if (!sequential_indices) {
     const VArraySpan<float> weights(weights_varray);
     grouped_sort(OffsetIndices<int>(offset), weights, indices);
   }
