@@ -623,7 +623,7 @@ static void rna_NodeTreeInterfaceItems_move_to_parent(ID *id,
 
 /* ******** Node Socket Subtypes ******** */
 
-static const EnumPropertyItem *rna_subtype_filter_itemf(const blender::Set<int> subtypes,
+static const EnumPropertyItem *rna_subtype_filter_itemf(const blender::Set<int> &subtypes,
                                                         bool *r_free)
 {
   if (subtypes.is_empty()) {
