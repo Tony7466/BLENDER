@@ -47,7 +47,7 @@ enum eDebugMode : uint32_t {
    */
   DEBUG_LIGHT_CULLING = 1u,
   /**
-   * Show incorrectly downsample tiles in red.
+   * Show incorrectly down-sample tiles in red.
    */
   DEBUG_HIZ_VALIDATION = 2u,
   /**
@@ -1240,12 +1240,13 @@ BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
 #define UTIL_TEX_UV_BIAS (0.5f / UTIL_TEX_SIZE)
 
 #define UTIL_BLUE_NOISE_LAYER 0
-#define UTIL_LTC_MAT_LAYER 1
-#define UTIL_LTC_MAG_LAYER 2
-#define UTIL_BSDF_LAYER 2
-#define UTIL_BTDF_LAYER 3
-#define UTIL_DISK_INTEGRAL_LAYER 3
-#define UTIL_DISK_INTEGRAL_COMP 2
+#define UTIL_SSS_TRANSMITTANCE_PROFILE_LAYER 1
+#define UTIL_LTC_MAT_LAYER 2
+#define UTIL_LTC_MAG_LAYER 3
+#define UTIL_BSDF_LAYER 3
+#define UTIL_BTDF_LAYER 4
+#define UTIL_DISK_INTEGRAL_LAYER 4
+#define UTIL_DISK_INTEGRAL_COMP 3
 
 /* __cplusplus is true when compiling with MSL, so include if inside a shader. */
 #if !defined(__cplusplus) || defined(GPU_SHADER)
