@@ -734,7 +734,7 @@ static Mesh *cutEdges(ExplodeModifierData *emd, Mesh *mesh)
   }
 
   split_m = BKE_mesh_new_nomain_from_template_ex(
-      mesh, edgehash.size(), 0, totface + totfsplit, 0, 0, CD_MASK_EVERYTHING);
+      mesh, totvert + edgehash.size(), 0, totface + totfsplit, 0, 0, CD_MASK_EVERYTHING);
 
   layers_num = CustomData_number_of_layers(&split_m->fdata_legacy, CD_MTFACE);
 
@@ -911,7 +911,7 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
   float ctime;
   // float timestep;
   const int *facepa = emd->facepa;
-  int totdup = 0, totvert = 0, totface = 0, totpart = 0, delface = 0;
+  int totvert = 0, totface = 0, totpart = 0, delface = 0;
   int i, u;
   uint mindex = 0;
 
@@ -971,7 +971,7 @@ static Mesh *explodeMesh(ExplodeModifierData *emd,
 
   /* the final duplicated vertices */
   explode = BKE_mesh_new_nomain_from_template_ex(
-      mesh, totdup, 0, totface - delface, 0, 0, CD_MASK_EVERYTHING);
+      mesh, vertpahash.size(), 0, totface - delface, 0, 0, CD_MASK_EVERYTHING);
 
   MTFace *mtface = static_cast<MTFace *>(CustomData_get_layer_named_for_write(
       &explode->fdata_legacy, CD_MTFACE, emd->uvname, explode->totface_legacy));
