@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'd4d0daa934cd')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'5ba692898e63')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-08-07 09:03:59\n"
+"POT-Creation-Date: 2023-08-28 16:05:16\n"
 "PO-Revision-Date: 2012-09-07 22:32+0100\n"
 "Last-Translator: Nikola Radovanovic <cobisimo@gmail.com>\n"
 "Language-Team: Nikola Radovanovic\n"
@@ -5654,6 +5654,14 @@ msgid "Depth Of Field"
 msgstr "Дубинско замућење"
 
 
+msgid "Fisheye Lens"
+msgstr "Завршено"
+
+
+msgid "Lens focal length (mm)"
+msgstr "Величина објектива камере"
+
+
 msgid "Focal Length"
 msgstr "Дужина фокуса"
 
@@ -5676,6 +5684,10 @@ msgstr "Ортогонална размера"
 
 msgid "Orthographic Camera scale (similar to zoom)"
 msgstr "Размера ортогоналне камере (увећање)"
+
+
+msgid "Panorama Type"
+msgstr "Врста панораме"
 
 
 msgid "Passepartout Alpha"
@@ -10691,10 +10703,6 @@ msgid "Display Hidden"
 msgstr "Прикажи сакривено"
 
 
-msgid "Include channels from objects/bone that aren't visible"
-msgstr "Укључи приказ канала анимације објеката/костију који нису видљиви"
-
-
 msgid "Longest"
 msgstr "Најдужа"
 
@@ -11341,10 +11349,6 @@ msgstr "Исеци црну"
 
 msgid "Tracking Object"
 msgstr "Објекат за праћење"
-
-
-msgid "Smoothing"
-msgstr "Умекшање"
 
 
 msgid "Lens Distortion"
@@ -14057,8 +14061,12 @@ msgstr "Ојлер (ZYX)"
 
 
 msgctxt "Operator"
-msgid "Export PLY"
-msgstr "Извоз PLY"
+msgid "Export STL"
+msgstr "Извоз у STL"
+
+
+msgid "Ascii"
+msgstr "Ascii"
 
 
 msgid "Y Up"
@@ -14079,15 +14087,6 @@ msgstr "Горе по -Z"
 
 msgid "Selection Only"
 msgstr "Само изабрано"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "Извоз у STL"
-
-
-msgid "Ascii"
-msgstr "Ascii"
 
 
 msgctxt "Operator"
@@ -14113,6 +14112,10 @@ msgstr "Активна сцена у датотеку"
 
 msgid "Each scene as a file"
 msgstr "Свака сцена као датотека"
+
+
+msgid "Smoothing"
+msgstr "Умекшање"
 
 
 msgid "Write face smoothing"
@@ -14181,39 +14184,6 @@ msgstr "Троугласте странице"
 
 msgid "Convert all faces to triangles"
 msgstr "Претврои све странице у троуглове"
-
-
-msgctxt "Operator"
-msgid "Export OBJ"
-msgstr "Извоз OBJ"
-
-
-msgid "Material Groups"
-msgstr "Група материјала"
-
-
-msgid "Keep Vertex Order"
-msgstr "Сачувај низ темена"
-
-
-msgid "Include Edges"
-msgstr "Укључи ивице"
-
-
-msgid "Write Materials"
-msgstr "Уписуј материјал"
-
-
-msgid "Write Normals"
-msgstr "Уписуј нормале"
-
-
-msgid "Smooth Groups"
-msgstr "Групе умекшања"
-
-
-msgid "Include UVs"
-msgstr "Укључи UV"
 
 
 msgid "Compress"
@@ -15166,15 +15136,6 @@ msgstr "Сенчења"
 
 
 msgctxt "Operator"
-msgid "Import PLY"
-msgstr "Увоз PLY"
-
-
-msgid "File path used for importing the PLY file"
-msgstr "Путања за упис датотеке"
-
-
-msgctxt "Operator"
 msgid "Import STL"
 msgstr "Увоз у STL"
 
@@ -15190,11 +15151,6 @@ msgstr "Претрага слика"
 
 msgid "Manual Orientation"
 msgstr "Ручна оријентација"
-
-
-msgctxt "Operator"
-msgid "Import OBJ"
-msgstr "Увоз OBJ"
 
 
 msgctxt "Operator"
@@ -20364,6 +20320,16 @@ msgstr "Отвори путању у прегледачу датотека"
 
 
 msgctxt "Operator"
+msgid "Export PLY"
+msgstr "Извоз PLY"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "Увоз PLY"
+
+
+msgctxt "Operator"
 msgid "Add Property"
 msgstr "Додај особину"
 
@@ -20383,6 +20349,10 @@ msgstr "Контекст"
 msgctxt "Operator"
 msgid "Edit Property"
 msgstr "Измени особину"
+
+
+msgid "Speaker"
+msgstr "Звучник"
 
 
 msgid "Property Name"
@@ -21989,18 +21959,6 @@ msgid "Case"
 msgstr "Велика/мала слова"
 
 
-msgid "Fisheye Lens"
-msgstr "Завршено"
-
-
-msgid "Lens focal length (mm)"
-msgstr "Величина објектива камере"
-
-
-msgid "Panorama Type"
-msgstr "Врста панораме"
-
-
 msgid "Cast Shadow"
 msgstr "Бачена сенка"
 
@@ -22271,10 +22229,6 @@ msgstr "Режим дебљине линије при слободоручном
 
 msgid "Pixel Size"
 msgstr "Величина пиксела"
-
-
-msgid "Resolution %"
-msgstr "Резолуција %"
 
 
 msgid "Percentage scale for render resolution"
@@ -23445,10 +23399,6 @@ msgstr "Прикажи путању камере"
 
 msgid "Show reconstructed camera path"
 msgstr "Прикажи реконструисану путању камере"
-
-
-msgid "Speaker"
-msgstr "Звучник"
 
 
 msgid "3D"
@@ -26756,6 +26706,14 @@ msgstr "Ново"
 
 msgid "%d items"
 msgstr "%d ставки"
+
+
+msgid "Material Groups"
+msgstr "Група материјала"
+
+
+msgid "Smooth Groups"
+msgstr "Групе умекшања"
 
 
 msgctxt "Mesh"

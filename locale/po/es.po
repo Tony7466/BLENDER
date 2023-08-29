@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'd4d0daa934cd')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'5ba692898e63')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-08-07 09:03:59\n"
+"POT-Creation-Date: 2023-08-28 16:05:16\n"
 "PO-Revision-Date: \n"
 "Last-Translator: Gabriel Gazzán <gabcorreo@gmail.com>\n"
 "Language-Team: Español <gabcorreo@gmail.com>\n"
@@ -5919,36 +5919,8 @@ msgid "sRGB display space with Filmic view transform"
 msgstr "Espacio de visualización sRGB con transformación fílmica"
 
 
-msgid "Rec. 709 (Full Range), Blender native linear space"
-msgstr "Rec. 709 (rango completo), espacio nativo de Blender"
-
-
-msgid "Linear ACES"
-msgstr "ACES lineal"
-
-
-msgid "ACES2065-1 linear space"
-msgstr "Espacio lineal ACES2065-1"
-
-
-msgid "Linear ACEScg"
-msgstr "ACEScg lineal"
-
-
-msgid "ACEScg linear space"
-msgstr "Espacio lineal ACEScg"
-
-
 msgid "Non-Color"
 msgstr "No es color"
-
-
-msgid "sRGB display space"
-msgstr "Espacio de visualización sRGB"
-
-
-msgid "XYZ"
-msgstr "XYZ"
 
 
 msgid "Do not perform any color transform on load, treat colors as in scene linear space already"
@@ -21496,20 +21468,80 @@ msgid "Camera near clipping distance"
 msgstr "Distancia mínima de recorte de la cámara"
 
 
-msgid "Cycles Camera Settings"
-msgstr "Cycles - Opciones de cámara"
-
-
-msgid "Cycles camera settings"
-msgstr "Opciones de cámara de Cycles"
-
-
 msgid "Apparent size of the Camera object in the 3D View"
 msgstr "Tamaño aparente de la cámara en la vista 3D"
 
 
 msgid "Depth Of Field"
 msgstr "Profundidad de campo"
+
+
+msgid "Field of view for the fisheye lens"
+msgstr "Campo de visión para la lente ojo de pez"
+
+
+msgid "Fisheye Lens"
+msgstr "Lente ojo de pez"
+
+
+msgid "Lens focal length (mm)"
+msgstr "Distancia focal de la lente (mm)"
+
+
+msgid "Fisheye Polynomial K0"
+msgstr "K0 (ojo de pez polinómico)"
+
+
+msgid "Coefficient K0 of the lens polynomial"
+msgstr "Coeficiente K0 del polinomio de la lente"
+
+
+msgid "Fisheye Polynomial K1"
+msgstr "K1 (ojo de pez polinómico)"
+
+
+msgid "Coefficient K1 of the lens polynomial"
+msgstr "Coeficiente K1 del polinomio de la lente"
+
+
+msgid "Fisheye Polynomial K2"
+msgstr "K2 (ojo de pez polinómico)"
+
+
+msgid "Coefficient K2 of the lens polynomial"
+msgstr "Coeficiente K2 del polinomio de la lente"
+
+
+msgid "Fisheye Polynomial K3"
+msgstr "K3 (ojo de pez polinómico)"
+
+
+msgid "Coefficient K3 of the lens polynomial"
+msgstr "Coeficiente K3 del polinomio de la lente"
+
+
+msgid "Fisheye Polynomial K4"
+msgstr "K4 (ojo de pez polinómico)"
+
+
+msgid "Coefficient K4 of the lens polynomial"
+msgstr "Coeficiente K4 del polinomio de la lente"
+
+
+msgid "Max Latitude"
+msgstr "Latitud máxima"
+
+
+msgid "Maximum latitude (vertical angle) for the equirectangular lens"
+msgstr "Latitud máxima (ángulo vertical) para la lente equirrectangular"
+
+
+msgid "Min Latitude"
+msgstr "Latitud mínima"
+
+
+msgid "Minimum latitude (vertical angle) for the equirectangular lens"
+msgstr "Latitud mínima (ángulo vertical) para la lente equirrectangular"
 
 
 msgid "Focal Length"
@@ -21540,12 +21572,84 @@ msgid "Specify the lens as the field of view's angle"
 msgstr "Especificar la lente como ángulo de campo visual"
 
 
+msgid "Max Longitude"
+msgstr "Longitud máxima"
+
+
+msgid "Maximum longitude (horizontal angle) for the equirectangular lens"
+msgstr "Longitud máxima (ángulo hoarizontal) para la lente equirrectangular"
+
+
+msgid "Min Longitude"
+msgstr "Longitud mínima"
+
+
+msgid "Minimum longitude (horizontal angle) for the equirectangular lens"
+msgstr "Longitud mínima (ángulo hoarizontal) para la lente equirrectangular"
+
+
 msgid "Orthographic Scale"
 msgstr "Escala ortogonal"
 
 
 msgid "Orthographic Camera scale (similar to zoom)"
 msgstr "Escala de la cámara ortogonal (similar al zoom)"
+
+
+msgid "Panorama Type"
+msgstr "Tipo de Panorámica"
+
+
+msgid "Distortion to use for the calculation"
+msgstr "Distorsión a usar para los calculos"
+
+
+msgid "Equirectangular"
+msgstr "Equirectangular"
+
+
+msgid "Spherical camera for environment maps, also known as Lat Long panorama"
+msgstr "Cámara esférica útil para mapeos de entorno, también conocido como panorama Lat Long"
+
+
+msgid "Equiangular Cubemap Face"
+msgstr "Cara de mapa cúbico equiangular"
+
+
+msgid "Single face of an equiangular cubemap"
+msgstr "Cara individual de un mapa cúbico equiangular"
+
+
+msgid "Mirror Ball"
+msgstr "Esfera espejada"
+
+
+msgid "Mirror ball mapping for environment maps"
+msgstr "Mapeo de tipo esfera espejada para mapeos de entorno"
+
+
+msgid "Fisheye Equidistant"
+msgstr "Ojo de pez equidistante"
+
+
+msgid "Ideal for fulldomes, ignore the sensor dimensions"
+msgstr "Ideal para bóvedas completas, ignora las dimensiones del sensor"
+
+
+msgid "Fisheye Equisolid"
+msgstr "Ojo de pez equisólido"
+
+
+msgid "Similar to most fisheye modern lens, takes sensor dimensions into consideration"
+msgstr "Similar a la mayoría de las lentes ojo de pez modernas, toma las dimensiones del sensor en consideración"
+
+
+msgid "Fisheye Lens Polynomial"
+msgstr "Ojo de pez polinómico"
+
+
+msgid "Defines the lens projection as polynomial to allow real world camera lenses to be mimicked"
+msgstr "Define la proyección de la lente como polinómica, para permitir simular lentes de cámara reales"
 
 
 msgid "Passepartout Alpha"
@@ -25578,10 +25682,6 @@ msgstr "Imagen completa"
 
 msgid "Composites full image result as fast as possible"
 msgstr "Se compondrá la imagen completa, tan rápido como sea posible"
-
-
-msgid "Realtime GPU"
-msgstr "Tiempo real por GPU"
 
 
 msgid "Use GPU accelerated compositing with more limited functionality"
@@ -29985,24 +30085,12 @@ msgid "Insert After"
 msgstr "Insertar después"
 
 
-msgid "Insert a new item into collection after the one referenced in subitem_reference_name or _index"
-msgstr "Inserta un nuevo elemento en la colección después del referenciado en subitem_reference_name o _index"
-
-
 msgid "Insert Before"
 msgstr "Insertar antes"
 
 
-msgid "Insert a new item into collection before the one referenced in subitem_reference_name or _index (NOT USED)"
-msgstr "Inserta un nuevo elemento en la colección antes del referenciado en subitem_reference_name o en _index (NO USADO)"
-
-
 msgid "Subitem Local Index"
 msgstr "Identificador de subsistema local"
-
-
-msgid "Used to handle insertions into collection"
-msgstr "Usado para manipular la inserción en una colección"
 
 
 msgid "Subitem Local Name"
@@ -40443,10 +40531,6 @@ msgid "Display Hidden"
 msgstr "Mostrar ocultos"
 
 
-msgid "Include channels from objects/bone that aren't visible"
-msgstr "Incluir canales de objetos o huesos ocultos"
-
-
 msgid "Dopesheet Sort Field"
 msgstr "Orden de los campos"
 
@@ -43067,16 +43151,12 @@ msgid "Kuwahara"
 msgstr "Kuwahara"
 
 
+msgid "Eccentricity"
+msgstr "Excentricidad"
+
+
 msgid "Size of filter. Larger values give stronger stylized effect"
 msgstr "Tamaño del filtro. Valores mayores producirán un efecto con un estilizado más marcado"
-
-
-msgid "Smoothing"
-msgstr "Suavizado"
-
-
-msgid "Smoothing degree before applying filter. Higher values remove details and give smoother edges"
-msgstr "Grado de suavizado antes de aplicar el filtro. Valores mayores eliminarán detalles y producirán bordes más suaves"
 
 
 msgid "Variation of Kuwahara filter to use"
@@ -43447,15 +43527,6 @@ msgstr "Fracción"
 
 msgid "The fraction part of A"
 msgstr "La parte fraccionaria de A"
-
-
-msgctxt "NodeTree"
-msgid "Modulo"
-msgstr "Resto"
-
-
-msgid "Modulo using fmod(A,B)"
-msgstr "Resto de dividir dos valores, fmod(A,B)"
 
 
 msgctxt "NodeTree"
@@ -47185,16 +47256,8 @@ msgid "Projection of the input image"
 msgstr "Proyección de la imagen de entrada"
 
 
-msgid "Equirectangular"
-msgstr "Equirectangular"
-
-
 msgid "Equirectangular or latitude-longitude projection"
 msgstr "Proyección tipo equirectangular o latitud-longitud"
-
-
-msgid "Mirror Ball"
-msgstr "Esfera espejada"
 
 
 msgid "Projection from an orthographic photo of a mirror ball"
@@ -47911,6 +47974,11 @@ msgid "The fraction part of A entry-wise"
 msgstr "La parte fraccionaria Hadamard de A"
 
 
+msgctxt "NodeTree"
+msgid "Modulo"
+msgstr "Resto"
+
+
 msgid "Entry-wise modulo using fmod(A,B)"
 msgstr "Resto Hadamard usando fmod(A,B)"
 
@@ -48594,6 +48662,10 @@ msgstr "Entradas de árbol de nodos"
 
 msgid "Collection of Node Tree Sockets"
 msgstr "Colección de conectores de árbol de nodos"
+
+
+msgid "Socket Type"
+msgstr "Tipo de conector"
 
 
 msgid "Node Tree Outputs"
@@ -54013,12 +54085,20 @@ msgstr "Convetir rotaciones a Euler ZYX"
 
 
 msgctxt "Operator"
-msgid "Export PLY"
-msgstr "Exportar PLY"
+msgid "Export STL"
+msgstr "Exportar STL"
 
 
-msgid "Export as a Stanford PLY with normals, vertex colors and texture coordinates"
-msgstr "Exportar como PLY de Stanford con normales, colores de vértices y coordenadas de texturizado"
+msgid "Save STL triangle mesh data"
+msgstr "Guardar datos de malla triangulada STL"
+
+
+msgid "Ascii"
+msgstr "ASCII"
+
+
+msgid "Save the file in ASCII file format"
+msgstr "Guarda el archivo en formato ASCII"
 
 
 msgid "X Forward"
@@ -54065,59 +54145,6 @@ msgid "-Z Up"
 msgstr "-Z hacia arriba"
 
 
-msgid "ASCII"
-msgstr "ASCII"
-
-
-msgid "Export using ASCII file format, otherwise use binary"
-msgstr "Exportar usando un formato de archivo ASCII, de otro modo se usará uno binario"
-
-
-msgid "Export the active vertex color layer"
-msgstr "Exporta la capa activa de colores de vértices"
-
-
-msgid "Apply Modifiers"
-msgstr "Aplicar modificadores"
-
-
-msgid "Apply Modifiers to the exported mesh"
-msgstr "Aplica los modificadores a la malla exportada"
-
-
-msgid "Export vertex normals"
-msgstr "Exporta las normales de los vértices"
-
-
-msgid "Selection Only"
-msgstr "Sólo lo seleccionado"
-
-
-msgid "Export selected objects only"
-msgstr "Exportar sólo objetos seleccionados"
-
-
-msgid "Export the active UV layer (will split edges by seams)"
-msgstr "Exportar la capa activa de UV (separará los bordes por sus costuras)"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "Exportar STL"
-
-
-msgid "Save STL triangle mesh data"
-msgstr "Guardar datos de malla triangulada STL"
-
-
-msgid "Ascii"
-msgstr "ASCII"
-
-
-msgid "Save the file in ASCII file format"
-msgstr "Guarda el archivo en formato ASCII"
-
-
 msgid "Batch Mode"
 msgstr "Proceso por lotes"
 
@@ -54138,6 +54165,10 @@ msgid "Export in this reference space"
 msgstr "Exporta en este espacio de referencia"
 
 
+msgid "Apply Modifiers"
+msgstr "Aplicar modificadores"
+
+
 msgid "Apply the modifiers before saving"
 msgstr "Aplicar los modificadores antes de guardar"
 
@@ -54148,6 +54179,14 @@ msgstr "Unidades de la escena"
 
 msgid "Apply current scene's unit (as defined by unit scale) to exported data"
 msgstr "Aplicar las unidades de la escena actual a los datos exportados"
+
+
+msgid "Selection Only"
+msgstr "Sólo lo seleccionado"
+
+
+msgid "Export selected objects only"
+msgstr "Exportar sólo objetos seleccionados"
 
 
 msgctxt "Operator"
@@ -54357,6 +54396,10 @@ msgstr "Incorpora las texturas al archivo binario FBX (sólo para el modo de rut
 
 msgid "Scale all data (Some importers do not support scaled armatures!)"
 msgstr "Escalar todos los datos (¡algunos importadores no soportan esqueletos escalados!)"
+
+
+msgid "Smoothing"
+msgstr "Suavizado"
 
 
 msgid "Export smoothing information (prefer 'Normals Only' option if your target importer understand split normals)"
@@ -55110,107 +55153,6 @@ msgstr "Recordar opciones de exportación"
 
 msgid "Store glTF export settings in the Blender project"
 msgstr "Almacenar opciones de exportación de glTF en el proyecto de Blender"
-
-
-msgctxt "Operator"
-msgid "Export OBJ"
-msgstr "Exportar OBJ"
-
-
-msgid "Save a Wavefront OBJ File"
-msgstr "Guarda un archivo OBJ de Wavefront"
-
-
-msgid "Material Groups"
-msgstr "Grupos de material"
-
-
-msgid "Generate an OBJ group for each part of a geometry using a different material"
-msgstr "Genera un grupo dentro del OBJ para cada parte de una geometría que use un material distinto"
-
-
-msgid "OBJ Groups"
-msgstr "Grupos en OBJ"
-
-
-msgid "Export Blender objects as OBJ groups"
-msgstr "Exporta los objetos de Blender como grupos en el OBJ"
-
-
-msgid "Keep Vertex Order"
-msgstr "Mantener orden de vértices"
-
-
-msgid "Write out an OBJ for each frame"
-msgstr "Guarda un OBJ por cada fotograma"
-
-
-msgid "OBJ Objects"
-msgstr "Objetos en OBJ"
-
-
-msgid "Export Blender objects as OBJ objects"
-msgstr "Exporta los objetos de Blender como objetos en el OBJ"
-
-
-msgid "Include Edges"
-msgstr "Incluir bordes"
-
-
-msgid "Write Materials"
-msgstr "Guardar materiales"
-
-
-msgid "Write out the MTL file"
-msgstr "Guarda el archivo MTL"
-
-
-msgid "Apply modifiers"
-msgstr "Aplicar modificadores"
-
-
-msgid "Write Normals"
-msgstr "Guardar normales"
-
-
-msgid "Export one normal per vertex and per face, to represent flat faces and sharp edges"
-msgstr "Exporta una normal por vértice y por cara, para representar caras planas y bordes definidos"
-
-
-msgid "Write Nurbs"
-msgstr "Guardar NURBS"
-
-
-msgid "Write nurbs curves as OBJ nurbs rather than converting to geometry"
-msgstr "Guarda las curvas NURBS como NURBS de OBJ en vez de convertirlas en geometría"
-
-
-msgid "Smooth Groups"
-msgstr "Grupos de suavizado"
-
-
-msgid "Write sharp edges as smooth groups"
-msgstr "Guarda los bordes definidos como grupos de suavizado"
-
-
-msgid "Bitflag Smooth Groups"
-msgstr "Grupos de suavizado (indicadores)"
-
-
-msgid "Same as 'Smooth Groups', but generate smooth groups IDs as bitflags (produces at most 32 different smooth groups, usually much less)"
-msgstr "Similar a los 'Grupos de suavizado', pero genera ID de grupos de suavizado en forma de indicadores de bits (puede producir como máximo 32 grupos de suavizado distintos, usualmente muchos menos)"
-
-
-msgid "Include UVs"
-msgstr "Incluir UV"
-
-
-msgid "Write out the active UV coordinates"
-msgstr "Guarda las coordenadas UV activas"
-
-
-msgid "Polygroups"
-msgstr "Grupos poligonales"
 
 
 msgctxt "Operator"
@@ -58856,6 +58798,14 @@ msgid "How much to blend to the default value"
 msgstr "Cuánto fundir hacia el valor predefinido"
 
 
+msgid "Curve Bend"
+msgstr "Flexión de la curva"
+
+
+msgid "Control the bend of the curve"
+msgstr "Controla la flexión de la curva"
+
+
 msgctxt "Operator"
 msgid "Blend to Neighbor"
 msgstr "Fundir a cercano"
@@ -58995,14 +58945,6 @@ msgstr "Aceleración de claves"
 
 msgid "Align keyframes on a ease-in or ease-out curve"
 msgstr "Alinea los claves para formar una curva de partida o llegada suave"
-
-
-msgid "Curve Bend"
-msgstr "Flexión de la curva"
-
-
-msgid "Control the bend of the curve"
-msgstr "Controla la flexión de la curva"
 
 
 msgctxt "Operator"
@@ -60364,19 +60306,6 @@ msgstr "Usar el canal alfa para definir la transparencia"
 
 
 msgctxt "Operator"
-msgid "Import PLY"
-msgstr "Importar PLY"
-
-
-msgid "Load a PLY geometry file"
-msgstr "Carga un archivo de geometría PLY"
-
-
-msgid "File path used for importing the PLY file"
-msgstr "Ruta usada para importar el archivo PLY"
-
-
-msgctxt "Operator"
 msgid "Import STL"
 msgstr "Importar STL"
 
@@ -60617,63 +60546,6 @@ msgstr "Nivel de registro"
 
 msgid "The glTF format requires discontinuous normals, UVs, and other vertex attributes to be stored as separate vertices, as required for rendering on typical graphics hardware. This option attempts to combine co-located vertices where possible. Currently cannot combine verts with different normals"
 msgstr "El formato glTF requiere que las normales discontinuas, UV y otros atributos de vértices sean almacenados como vértices separados, tal como se requiere para ser procesado por el hardware gráfico usual. Esta opción intentará combinar, cuando sea posible, vértices que compartan la misma ubicación. Actualmente no es posible combinar vértices con distintas normales"
-
-
-msgctxt "Operator"
-msgid "Import OBJ"
-msgstr "Importar OBJ"
-
-
-msgid "Load a Wavefront OBJ File"
-msgstr "Cargar un archivo Wavefront OBJ"
-
-
-msgid "Clamp Size"
-msgstr "Limitar tamaño"
-
-
-msgid "Clamp bounds under this value (zero to disable)"
-msgstr "Impone un tope a los límites por debajo de este valor (cero para deshabilitar)"
-
-
-msgid "Split geometry, omits vertices unused by edges or faces"
-msgstr "Dividir la geometría, omitiendo los vértices no usados por bordes o caras"
-
-
-msgid "Keep Vert Order"
-msgstr "Mant. orden vért."
-
-
-msgid "Keep vertex order from file"
-msgstr "Mantiene el orden de los vértices del archivo"
-
-
-msgid "Import lines and faces with 2 verts as edge"
-msgstr "Importa líneas y caras de 2 vértices como bordes"
-
-
-msgid "Poly Groups"
-msgstr "Grupos poligonales"
-
-
-msgid "Import OBJ groups as vertex groups"
-msgstr "Importa grupos OBJ como grupos de vértices"
-
-
-msgid "Search subdirs for any associated images (Warning, may be slow)"
-msgstr "Busca cualquier imagen asociada en los subdirectorios (Advertencia, puede ser lento)"
-
-
-msgid "Surround smooth groups by sharp edges"
-msgstr "Rodear grupos de suavizado por bordes definidos"
-
-
-msgid "Import OBJ Groups into Blender Objects"
-msgstr "Importar grupos OBJ como objetos de Blender"
-
-
-msgid "Import OBJ Objects into Blender Objects"
-msgstr "Importar objetos OBJ como objetos de Blender"
 
 
 msgctxt "Operator"
@@ -65615,10 +65487,6 @@ msgid "Add an input or output to the active node tree"
 msgstr "Agrega un conector de entrada o salida al árbol de nodos actual"
 
 
-msgid "Socket Type"
-msgstr "Tipo de conector"
-
-
 msgctxt "Operator"
 msgid "Change Node Tree Socket Subtype"
 msgstr "Cambiar subtipo de conector del árbol de nodos"
@@ -66314,10 +66182,6 @@ msgstr "Alternar atributo de entrada"
 
 msgid "Switch between an attribute and a single value to define the data for every element"
 msgstr "Permite cambiar entre un atributo y un valor para definir los datos para cada elemento"
-
-
-msgid "Prop Path"
-msgstr "Ruta prop"
 
 
 msgctxt "Operator"
@@ -80937,6 +80801,10 @@ msgid "Export Material Groups"
 msgstr "Exportar grupos de materiales"
 
 
+msgid "Generate an OBJ group for each part of a geometry using a different material"
+msgstr "Genera un grupo dentro del OBJ para cada parte de una geometría que use un material distinto"
+
+
 msgid "Export Materials"
 msgstr "Exportar materiales"
 
@@ -81062,6 +80930,10 @@ msgid "Resize the objects to keep bounding box under this value. Value 0 disable
 msgstr "Redimensiona los objetos para mantener el volumen delimitador por debajo de este valor. Un valor de 0 deshabilita la limitación"
 
 
+msgid "Import OBJ groups as vertex groups"
+msgstr "Importa grupos OBJ como grupos de vértices"
+
+
 msgid "Split By Group"
 msgstr "Dividir por grupo"
 
@@ -81167,6 +81039,11 @@ msgid "Open a path in a file browser"
 msgstr "Abre una ruta en el explorador de archivos"
 
 
+msgctxt "Operator"
+msgid "Export PLY"
+msgstr "Exportar PLY"
+
+
 msgid "Save the scene to a PLY file"
 msgstr "Guarda la escena a un archivo PLY"
 
@@ -81201,6 +81078,11 @@ msgstr "Exportar normales de vértices"
 
 msgid "Export specific vertex normals if available, export calculated normals otherwise"
 msgstr "Exporta normales de vértices específicas, si estuvieran disponibles, de otro modo se exportarán normales calculadas"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "Importar PLY"
 
 
 msgid "Import an PLY file as an object"
@@ -81391,6 +81273,10 @@ msgstr "Longitud de matriz"
 
 msgid "Python value for unsupported custom property types"
 msgstr "Valor Python para tipos de propiedades personalizadas no soportados"
+
+
+msgid "Speaker"
+msgstr "Altavoz"
 
 
 msgid "Library Overridable"
@@ -83276,10 +83162,6 @@ msgid "Viewport Sampling Presets"
 msgstr "Ajustes muestreo vista"
 
 
-msgid "View Object Types"
-msgstr "Ver tipos de objeto"
-
-
 msgid "Film"
 msgstr "Opciones de película"
 
@@ -84642,6 +84524,10 @@ msgstr "Vista cuádruple"
 
 msgid "Auto-Masking"
 msgstr "Autoenmascarar"
+
+
+msgid "Wire Color"
+msgstr "Conexión color"
 
 
 msgid "Compositor"
@@ -86899,14 +86785,6 @@ msgid "Enable the new Overlay codebase, requires restart"
 msgstr "Habilitar el nuevo código de Overlay, requiere reiniciar"
 
 
-msgid "Workbench Next"
-msgstr "Workbench Next"
-
-
-msgid "Enable the new Workbench codebase, requires restart"
-msgstr "Habilita el nuevo código de Workbench, requiere reiniciar"
-
-
 msgid "Override Auto Resync"
 msgstr "Auto resincronizar redefiniciones"
 
@@ -87001,14 +86879,6 @@ msgstr "Plantillas de redefinición"
 
 msgid "Enable library override template in the Python API"
 msgstr "Habilitar plantillas de redefinición de bibliotecas en la API de Python"
-
-
-msgid "Rotation Socket"
-msgstr "Conector de rotación"
-
-
-msgid "Enable the new rotation node socket type"
-msgstr "Habilita el nuevo tipo de conector de rotación de nodos"
 
 
 msgid "Sculpt Texture Paint"
@@ -89137,6 +89007,10 @@ msgid "Axis-Angle"
 msgstr "Eje y ángulo"
 
 
+msgid "XYZ"
+msgstr "XYZ"
+
+
 msgid "XYZ Length"
 msgstr "Longitud XYZ"
 
@@ -89283,138 +89157,6 @@ msgstr "Buscar con expresión regular"
 
 msgid "Use regular expressions to match text in the 'Find' field"
 msgstr "Usa una expresión regular para buscar coincidencias en el campo 'Buscar'"
-
-
-msgid "Field of view for the fisheye lens"
-msgstr "Campo de visión para la lente ojo de pez"
-
-
-msgid "Fisheye Lens"
-msgstr "Lente ojo de pez"
-
-
-msgid "Lens focal length (mm)"
-msgstr "Distancia focal de la lente (mm)"
-
-
-msgid "Fisheye Polynomial K0"
-msgstr "K0 (ojo de pez polinómico)"
-
-
-msgid "Coefficient K0 of the lens polynomial"
-msgstr "Coeficiente K0 del polinomio de la lente"
-
-
-msgid "Fisheye Polynomial K1"
-msgstr "K1 (ojo de pez polinómico)"
-
-
-msgid "Coefficient K1 of the lens polynomial"
-msgstr "Coeficiente K1 del polinomio de la lente"
-
-
-msgid "Fisheye Polynomial K2"
-msgstr "K2 (ojo de pez polinómico)"
-
-
-msgid "Coefficient K2 of the lens polynomial"
-msgstr "Coeficiente K2 del polinomio de la lente"
-
-
-msgid "Fisheye Polynomial K3"
-msgstr "K3 (ojo de pez polinómico)"
-
-
-msgid "Coefficient K3 of the lens polynomial"
-msgstr "Coeficiente K3 del polinomio de la lente"
-
-
-msgid "Fisheye Polynomial K4"
-msgstr "K4 (ojo de pez polinómico)"
-
-
-msgid "Coefficient K4 of the lens polynomial"
-msgstr "Coeficiente K4 del polinomio de la lente"
-
-
-msgid "Max Latitude"
-msgstr "Latitud máxima"
-
-
-msgid "Maximum latitude (vertical angle) for the equirectangular lens"
-msgstr "Latitud máxima (ángulo vertical) para la lente equirrectangular"
-
-
-msgid "Min Latitude"
-msgstr "Latitud mínima"
-
-
-msgid "Minimum latitude (vertical angle) for the equirectangular lens"
-msgstr "Latitud mínima (ángulo vertical) para la lente equirrectangular"
-
-
-msgid "Max Longitude"
-msgstr "Longitud máxima"
-
-
-msgid "Maximum longitude (horizontal angle) for the equirectangular lens"
-msgstr "Longitud máxima (ángulo hoarizontal) para la lente equirrectangular"
-
-
-msgid "Min Longitude"
-msgstr "Longitud mínima"
-
-
-msgid "Minimum longitude (horizontal angle) for the equirectangular lens"
-msgstr "Longitud mínima (ángulo hoarizontal) para la lente equirrectangular"
-
-
-msgid "Panorama Type"
-msgstr "Tipo de Panorámica"
-
-
-msgid "Distortion to use for the calculation"
-msgstr "Distorsión a usar para los calculos"
-
-
-msgid "Spherical camera for environment maps, also known as Lat Long panorama"
-msgstr "Cámara esférica útil para mapeos de entorno, también conocido como panorama Lat Long"
-
-
-msgid "Equiangular Cubemap Face"
-msgstr "Cara de mapa cúbico equiangular"
-
-
-msgid "Single face of an equiangular cubemap"
-msgstr "Cara individual de un mapa cúbico equiangular"
-
-
-msgid "Mirror ball mapping for environment maps"
-msgstr "Mapeo de tipo esfera espejada para mapeos de entorno"
-
-
-msgid "Fisheye Equidistant"
-msgstr "Ojo de pez equidistante"
-
-
-msgid "Ideal for fulldomes, ignore the sensor dimensions"
-msgstr "Ideal para bóvedas completas, ignora las dimensiones del sensor"
-
-
-msgid "Fisheye Equisolid"
-msgstr "Ojo de pez equisólido"
-
-
-msgid "Similar to most fisheye modern lens, takes sensor dimensions into consideration"
-msgstr "Similar a la mayoría de las lentes ojo de pez modernas, toma las dimensiones del sensor en consideración"
-
-
-msgid "Fisheye Lens Polynomial"
-msgstr "Ojo de pez polinómico"
-
-
-msgid "Defines the lens projection as polynomial to allow real world camera lenses to be mimicked"
-msgstr "Define la proyección de la lente como polinómica, para permitir simular lentes de cámara reales"
 
 
 msgid "Form of curves"
@@ -91975,8 +91717,8 @@ msgid "Render at 12.5% resolution"
 msgstr "Procesar al 12,5% de resolución"
 
 
-msgid "Resolution %"
-msgstr "% de resolución"
+msgid "Resolution Scale"
+msgstr "Escalar resolución"
 
 
 msgid "Percentage scale for render resolution"
@@ -98461,10 +98203,6 @@ msgid "Gizmo to adjust location"
 msgstr "Manipulador para ajustar la posición de objetos"
 
 
-msgid "Speaker"
-msgstr "Altavoz"
-
-
 msgid "Show Reconstruction"
 msgstr "Mostrar reconstrucción"
 
@@ -100520,10 +100258,6 @@ msgstr "Nodo vectorial"
 
 msgid "Wires"
 msgstr "Conexiones"
-
-
-msgid "Wire Color"
-msgstr "Conexión color"
 
 
 msgid "Wire Select"
@@ -103460,6 +103194,10 @@ msgstr "Mostrar puntos de referencia"
 
 msgid "Show VR Camera"
 msgstr "Mostrar cámara de RV"
+
+
+msgid "Theme"
+msgstr "Tema"
 
 
 msgid "X-Ray Alpha"
@@ -107254,11 +106992,6 @@ msgstr "Generando un material compatible con Cycles/EEVEE, pero no será visible
 
 
 msgctxt "Operator"
-msgid "Stanford (.ply)"
-msgstr "Stanford (.ply)"
-
-
-msgctxt "Operator"
 msgid "Stl (.stl)"
 msgstr "STL (.stl)"
 
@@ -107401,27 +107134,6 @@ msgstr "Por favor crear antes una variante"
 msgctxt "Operator"
 msgid "Add a new Variant Slot"
 msgstr "Agrega un nuevo contenedor de variante"
-
-
-msgctxt "Operator"
-msgid "Wavefront (.obj) (legacy)"
-msgstr "Wavefront (.obj) (antiguo)"
-
-
-msgid "Objects as"
-msgstr "Objetos como"
-
-
-msgid "Curves as NURBS"
-msgstr "Curvas como NURBS"
-
-
-msgid "Split by Object"
-msgstr "Dividir por objeto"
-
-
-msgid "Split by Group"
-msgstr "Dividir por grupo"
 
 
 msgctxt "Operator"
@@ -108466,10 +108178,6 @@ msgstr "Se renombró %d de %d %s"
 
 msgid "Shortcuts"
 msgstr "Atajos"
-
-
-msgid "Theme"
-msgstr "Tema"
 
 
 msgctxt "Operator"
@@ -110738,10 +110446,6 @@ msgstr "Cuarto"
 
 msgid "Multiply R"
 msgstr "Multiplicar  R"
-
-
-msgid "Eccentricity"
-msgstr "Excentricidad"
 
 
 msgid "Enable the Color Ramp first"
@@ -113155,10 +112859,6 @@ msgid "Revert to Saved Preferences"
 msgstr "Revertir a preferencias guardadas"
 
 
-msgid "Resolution Scale"
-msgstr "Escalar resolución"
-
-
 msgid "Splash Screen"
 msgstr "Imagen de bienvenida"
 
@@ -113233,10 +112933,6 @@ msgstr "Usar colores personalizados"
 
 msgid "Sculpt Overlay Color"
 msgstr "Color de superposición de esculpido"
-
-
-msgid "Node Auto-Offset Margin"
-msgstr "Margen autodesplazamiento de nodos"
 
 
 msgid "Minimum Grid Spacing"
@@ -114646,10 +114342,6 @@ msgstr "Cámara local"
 
 msgid "Camera to View"
 msgstr "Cámara a la vista"
-
-
-msgid "Object Types Visibility"
-msgstr "Visibilidad por tipo"
 
 
 msgid "Object Gizmos"
@@ -116268,18 +115960,6 @@ msgid "[Action Stash]"
 msgstr "[Esconder acción]"
 
 
-msgid "Non-Empty object '%s' cannot duplicate collection '%s' anymore in Blender 2.80, removed instancing"
-msgstr "Objeto no vacío '%s' ya no es posible duplicar la colección '%s' en Blender 2.80, instancia removida"
-
-
-msgid "Proxy lost from object %s lib %s"
-msgstr "Reemplazo del objeto %s bibl %s perdido"
-
-
-msgid "Proxy lost from object %s lib <NONE>"
-msgstr "Reemplazo del objeto %s bibl <Ninguna> perdido"
-
-
 msgid "Can't find object data of %s lib %s"
 msgstr "No es posible encontrar datos del objeto %s bibl %s"
 
@@ -116673,6 +116353,14 @@ msgid "Eevee material conversion problem. Error in console"
 msgstr "Problema en conversión de material de Eevee (ver error en consola)"
 
 
+msgid "Proxy lost from object %s lib %s"
+msgstr "Reemplazo del objeto %s bibl %s perdido"
+
+
+msgid "Proxy lost from object %s lib <NONE>"
+msgstr "Reemplazo del objeto %s bibl <Ninguna> perdido"
+
+
 msgid "2D_Animation"
 msgstr "2D"
 
@@ -116705,16 +116393,16 @@ msgid "Checking sanity of current .blend file *BEFORE* save to disk"
 msgstr "Comprobando la sanidad del archivo .blend actual *ANTES* de guardarlo en el disco"
 
 
+msgid "Checking sanity of current .blend file *AFTER* save to disk"
+msgstr "Comprobando la sanidad del archivo .blend actual *DESPUÉS* de guardarlo en el disco"
+
+
 msgid "Version backup failed (file saved with @)"
 msgstr "La versión de respaldo falló (archivo guardado con @)"
 
 
 msgid "Cannot change old file (file saved with @)"
 msgstr "No es posible cambiar archivo antiguo (archivo guardado con @)"
-
-
-msgid "Checking sanity of current .blend file *AFTER* save to disk"
-msgstr "Comprobando la sanidad del archivo .blend actual *DESPUÉS* de guardarlo en el disco"
 
 
 msgid "Cannot open file %s for writing: %s"
@@ -119252,6 +118940,10 @@ msgid "Triangulated Mesh"
 msgstr "Malla triangulada"
 
 
+msgid "Curves as NURBS"
+msgstr "Curvas como NURBS"
+
+
 msgid "Grouping"
 msgstr "Grupos"
 
@@ -119260,8 +118952,20 @@ msgid "Object Groups"
 msgstr "Grupos de objetos"
 
 
+msgid "Material Groups"
+msgstr "Grupos de material"
+
+
+msgid "Smooth Groups"
+msgstr "Grupos de suavizado"
+
+
 msgid "Smooth Group Bitflags"
 msgstr "Indicadores grupos suavizado"
+
+
+msgid "ASCII"
+msgstr "ASCII"
 
 
 msgid "File References"
@@ -119989,10 +119693,6 @@ msgstr "El directorio de captura del objeto %s, modificador %s, se encuentra vac
 
 msgid "Path conflict: %d caches set to path %s"
 msgstr "Conflicto en la ruta: cachés de %d definidos a la ruta %s"
-
-
-msgid "Failed to remove bake directory %s"
-msgstr "No fue posible eliminar el directorio de captura %s"
 
 
 msgid "File has to be saved"
@@ -123318,28 +123018,8 @@ msgid "). Click here to proceed..."
 msgstr "). Hacer clic aquí para proceder..."
 
 
-msgid "Cannot edit builtin name"
-msgstr "No es posible editar un nombre predefinido"
-
-
-msgid "Cannot edit sequence name"
-msgstr "No es posible editar el nombre de la secuencia"
-
-
-msgid "Cannot edit name of an override data-block"
-msgstr "No es posible editar el nombre de un bloque de datos redefinido"
-
-
-msgid "Cannot edit name of master collection"
-msgstr "No es posible editar el nombre de la colección principal"
-
-
 msgid "Cannot edit the path of an indirectly linked library"
 msgstr "No es posible editar la ruta de una biblioteca vinculada indirectamente"
-
-
-msgid "Library path is not editable from here anymore, please use Relocate operation instead"
-msgstr "La ruta de la biblioteca ya no es editable desde aquí, por favor usar la operación Reubicar"
 
 
 msgid "No active item to rename"
@@ -125229,10 +124909,6 @@ msgid "USD Import: unable to open stage to read %s"
 msgstr "Importación de USD: No es posible abrir un stage para leer %s"
 
 
-msgid "USD Import: couldn't compute values for color attribute '%s'"
-msgstr "Importación de USD: No fue posible calcular los valores para el atributo de color '%s'"
-
-
 msgid "USD Import: color attribute value '%s' count inconsistent with interpolation type"
 msgstr "Importación de USD: cantidad de valores del atributo de color '%s' inconsistente con el tipo de interpolación"
 
@@ -126028,6 +125704,10 @@ msgid "Registering node socket class: '%s' is too long, maximum length is %d"
 msgstr "Registrando clase de conector de nodo: '%s' es demasiado largo, la longitud máxima es %d"
 
 
+msgid "Unable to create socket"
+msgstr "No es posible crear el conector"
+
+
 msgid "CustomGroup"
 msgstr "Grupo_personalizado"
 
@@ -126071,10 +125751,6 @@ msgstr "Conectores con la misma dirección (de entrada o salida)"
 
 msgid "Unable to locate link in node tree"
 msgstr "No es posible localizar el vínculo en el árbol de nodos"
-
-
-msgid "Unable to create socket"
-msgstr "No es posible crear el conector"
 
 
 msgid "Cannot add socket to built-in node"
@@ -128597,6 +128273,10 @@ msgid "Half the width of the narrow band in voxel units"
 msgstr "La mitad del ancho de la banda angosta, en vóxeles"
 
 
+msgid "Corner Index"
+msgstr "Identificador de esquina"
+
+
 msgid "The edge to retrieve data from. Defaults to the edge from the context"
 msgstr "El borde del cual proporcionar datos. De forma predefinida se usará el borde del contexto"
 
@@ -128607,10 +128287,6 @@ msgstr "Valores que ordenan las esquinas ancladas al borde"
 
 msgid "Which of the sorted corners to output"
 msgstr "Cuál de las esquinas ordenadas devolver"
-
-
-msgid "Corner Index"
-msgstr "Identificador de esquina"
 
 
 msgid "A corner of the input edge in its face's winding order, chosen by the sort index"
@@ -130631,18 +130307,6 @@ msgid "Import SVG as curves"
 msgstr "Importar SVG como curvas"
 
 
-msgid "Stanford PLY format"
-msgstr "Formato PLY de Stanford"
-
-
-msgid "File > Import/Export"
-msgstr "Archivo > Importar / Exportar"
-
-
-msgid "Import-Export PLY mesh data with UVs and vertex colors"
-msgstr "Importa y exporta datos de malla PLY como las UV y los colores de vértices"
-
-
 msgid "UV Layout"
 msgstr "Organización de UV"
 
@@ -130653,14 +130317,6 @@ msgstr "Editor de UV > UV > Exportar organización de UV"
 
 msgid "Export the UV layout as a 2D graphic"
 msgstr "Exporta la organización de UV como una imagen 2D"
-
-
-msgid "Wavefront OBJ format (legacy)"
-msgstr "Formato OBJ de Wavefront (antiguo)"
-
-
-msgid "Import-Export OBJ, Import OBJ mesh, UVs, materials and textures"
-msgstr "Importa y exporta OBJ, importa mallas, UV, materiales y texturas"
 
 
 msgid "glTF 2.0 format"

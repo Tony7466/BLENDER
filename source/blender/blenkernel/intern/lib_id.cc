@@ -64,7 +64,7 @@
 
 #include "RNA_access.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "atomic_ops.h"
 
@@ -100,8 +100,7 @@ IDTypeInfo IDType_ID_LINK_PLACEHOLDER = {
 
     /*blend_write*/ nullptr,
     /*blend_read_data*/ nullptr,
-    /*blend_read_lib*/ nullptr,
-    /*blend_read_expand*/ nullptr,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -2225,6 +2224,8 @@ void BKE_id_blend_write(BlendWriter *writer, ID *id)
   if (id->properties && !ELEM(GS(id->name), ID_WM)) {
     IDP_BlendWrite(writer, id->properties);
   }
+
+  BKE_animdata_blend_write(writer, id);
 
   if (id->override_library) {
     BLO_write_struct(writer, IDOverrideLibrary, id->override_library);

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,7 +23,7 @@
 #include "BKE_main.h"
 #include "BKE_report.h"
 
-#include "BLO_writefile.h"
+#include "BLO_writefile.hh"
 
 #include "RNA_types.hh"
 

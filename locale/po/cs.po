@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'd4d0daa934cd')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'5ba692898e63')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-08-07 09:03:59\n"
+"POT-Creation-Date: 2023-08-28 16:05:16\n"
 "PO-Revision-Date: \n"
 "Last-Translator: Martin Tabačan <tabycz@gmail.com>\n"
 "Language-Team: Taby <tabycz@gmail.com>\n"
@@ -9074,20 +9074,24 @@ msgid "Camera near clipping distance"
 msgstr "Ořezová vzdálenost pro 3D pohled v popředí"
 
 
-msgid "Cycles Camera Settings"
-msgstr "Nastavení kamery Cycles"
-
-
-msgid "Cycles camera settings"
-msgstr "Nastavení kamery Cycles"
-
-
 msgid "Apparent size of the Camera object in the 3D View"
 msgstr "Zdánlivá velikost Objektu Kamery ve 3D Pohledu"
 
 
 msgid "Depth Of Field"
 msgstr "Hloubka Ostrosti"
+
+
+msgid "Field of view for the fisheye lens"
+msgstr "Zobrazí mód ze seznamu souborů"
+
+
+msgid "Fisheye Lens"
+msgstr "Objektiv fisheye"
+
+
+msgid "Lens focal length (mm)"
+msgstr "Původní velikost"
 
 
 msgid "Focal Length"
@@ -9108,6 +9112,26 @@ msgstr "Milimetry"
 
 msgid "Orthographic Scale"
 msgstr "Rovnoběžné promítání"
+
+
+msgid "Panorama Type"
+msgstr "Rodič"
+
+
+msgid "Distortion to use for the calculation"
+msgstr "Počáteční snímek animace"
+
+
+msgid "Equirectangular"
+msgstr "Trojúhleníky"
+
+
+msgid "Mirror Ball"
+msgstr "Zrcadlit"
+
+
+msgid "Ideal for fulldomes, ignore the sensor dimensions"
+msgstr "Vybrat cestu"
 
 
 msgid "Passepartout Alpha"
@@ -12663,10 +12687,6 @@ msgstr "Diferenciální"
 
 msgid "Insert After"
 msgstr "Vložit po"
-
-
-msgid "Insert a new item into collection after the one referenced in subitem_reference_name or _index"
-msgstr "Vložte novou položku do kolekce za tu, na kterou odkazuje subitem_reference_name nebo _index"
 
 
 msgid "IK Solver"
@@ -17548,8 +17568,8 @@ msgid "Tracking Object"
 msgstr "Přidat objekt"
 
 
-msgid "Smoothing"
-msgstr "Vyhlazování"
+msgid "Eccentricity"
+msgstr "Výstřednost"
 
 
 msgid "Lens Distortion"
@@ -18341,14 +18361,6 @@ msgid "Projection of the input image"
 msgstr "Nastaví umístění 3D kurzoru"
 
 
-msgid "Equirectangular"
-msgstr "Trojúhleníky"
-
-
-msgid "Mirror Ball"
-msgstr "Zrcadlit"
-
-
 msgid "Gradient Texture"
 msgstr "Textura přechodu"
 
@@ -18715,6 +18727,10 @@ msgstr "Výchozí hodnota"
 
 msgid "Geometry socket of a node"
 msgstr "Soket geometrického uzlu"
+
+
+msgid "Socket Type"
+msgstr "Stejné typy"
 
 
 msgid "Collection of Nodes"
@@ -21643,8 +21659,16 @@ msgstr "Původni rotace"
 
 
 msgctxt "Operator"
-msgid "Export PLY"
+msgid "Export STL"
 msgstr "Exportovat"
+
+
+msgid "Ascii"
+msgstr "Ascii"
+
+
+msgid "Save the file in ASCII file format"
+msgstr "Uložit současný soubor na vybrané umístění"
 
 
 msgid "X Forward"
@@ -21691,43 +21715,6 @@ msgid "-Z Up"
 msgstr "-Z nahoru"
 
 
-msgid "ASCII"
-msgstr "ASCII"
-
-
-msgid "Export the active vertex color layer"
-msgstr "Načíst uložené Render Hladiny"
-
-
-msgid "Apply Modifiers"
-msgstr "Aplikovat modifikátor"
-
-
-msgid "Apply Modifiers to the exported mesh"
-msgstr "Vazby objektu"
-
-
-msgid "Selection Only"
-msgstr "Pouze vybrané"
-
-
-msgid "Export selected objects only"
-msgstr "Ostranit označené Objekt(y) Globálně"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "Exportovat"
-
-
-msgid "Ascii"
-msgstr "Ascii"
-
-
-msgid "Save the file in ASCII file format"
-msgstr "Uložit současný soubor na vybrané umístění"
-
-
 msgid "Batch Mode"
 msgstr "Pózy kostí"
 
@@ -21736,8 +21723,20 @@ msgid "All data in one file"
 msgstr "Všechna data v jednom souboru"
 
 
+msgid "Apply Modifiers"
+msgstr "Aplikovat modifikátor"
+
+
 msgid "Apply the modifiers before saving"
 msgstr "Před kreslením aplikovat normály vertexů"
+
+
+msgid "Selection Only"
+msgstr "Pouze vybrané"
+
+
+msgid "Export selected objects only"
+msgstr "Ostranit označené Objekt(y) Globálně"
 
 
 msgctxt "Operator"
@@ -21775,6 +21774,10 @@ msgstr "Aktivní scénu do souboru"
 
 msgid "Each scene as a file"
 msgstr "Každá scéna jako soubor"
+
+
+msgid "Smoothing"
+msgstr "Vyhlazování"
 
 
 msgid "Normals Only"
@@ -21908,59 +21911,6 @@ msgstr "Vykreslovatelné objekty"
 
 msgid "Remember Export Settings"
 msgstr "Zapamatovat si Nastavení Exportu"
-
-
-msgctxt "Operator"
-msgid "Export OBJ"
-msgstr "Exportovat"
-
-
-msgid "Save a Wavefront OBJ File"
-msgstr "Uložit soubor OBJ Wavefront"
-
-
-msgid "Material Groups"
-msgstr "Materiál"
-
-
-msgid "Export Blender objects as OBJ groups"
-msgstr "Exportovat objekty Blenderu jako skupiny OBJ"
-
-
-msgid "Keep Vertex Order"
-msgstr "Nová vertexová barva"
-
-
-msgid "Include Edges"
-msgstr "Auto Úchop"
-
-
-msgid "Write Materials"
-msgstr "Aktivovat materiálové uzly"
-
-
-msgid "Write out the MTL file"
-msgstr "Nelze uložit soubor"
-
-
-msgid "Write Nurbs"
-msgstr "Obnovit Křivku"
-
-
-msgid "Smooth Groups"
-msgstr "Přidat do skupiny"
-
-
-msgid "Include UVs"
-msgstr "Auto Úchop"
-
-
-msgid "Write out the active UV coordinates"
-msgstr "Smazat koordináty nálepky textury"
-
-
-msgid "Polygroups"
-msgstr "Polyskupiny"
 
 
 msgctxt "Operator"
@@ -23365,19 +23315,6 @@ msgstr "Shader záření"
 
 
 msgctxt "Operator"
-msgid "Import PLY"
-msgstr "Importovat"
-
-
-msgid "Load a PLY geometry file"
-msgstr "Skrýt skryté soubory"
-
-
-msgid "File path used for importing the PLY file"
-msgstr "Typ filtru"
-
-
-msgctxt "Operator"
 msgid "Import STL"
 msgstr "Importovat"
 
@@ -23418,31 +23355,6 @@ msgstr "Data Dělení"
 msgctxt "Operator"
 msgid "Import glTF 2.0"
 msgstr "Importovat glTF 2.0"
-
-
-msgctxt "Operator"
-msgid "Import OBJ"
-msgstr "Importovat"
-
-
-msgid "Load a Wavefront OBJ File"
-msgstr "Skrýt skryté soubory"
-
-
-msgid "Clamp Size"
-msgstr "Vyčistit změnu měřítka"
-
-
-msgid "Poly Groups"
-msgstr "Žádné skupiny"
-
-
-msgid "Import OBJ groups as vertex groups"
-msgstr "Odstranit ze skupiny vertexů"
-
-
-msgid "Import OBJ Groups into Blender Objects"
-msgstr "Importuje OBJ skupiny do objektů Blenderu"
 
 
 msgctxt "Operator"
@@ -25884,10 +25796,6 @@ msgstr "Aktualizovat Pohledy"
 msgctxt "Operator"
 msgid "Move and Attach"
 msgstr "Přemístit a Připojit"
-
-
-msgid "Socket Type"
-msgstr "Stejné typy"
 
 
 msgid "Resize view so you can see all nodes"
@@ -31874,6 +31782,10 @@ msgid "Object Properties"
 msgstr "Vlastnosti objektu"
 
 
+msgid "Import OBJ groups as vertex groups"
+msgstr "Odstranit ze skupiny vertexů"
+
+
 msgctxt "Operator"
 msgid "Open"
 msgstr "Otevřít"
@@ -31911,6 +31823,16 @@ msgstr "Přidat, nebo odstranit přednastavení operátoru"
 
 msgid "Open a path in a file browser"
 msgstr "Skrýt skryté soubory"
+
+
+msgctxt "Operator"
+msgid "Export PLY"
+msgstr "Exportovat"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "Importovat"
 
 
 msgid "Save Backups"
@@ -31953,6 +31875,10 @@ msgstr "Kontex"
 msgctxt "Operator"
 msgid "Edit Property"
 msgstr "Upravit Vlastnost"
+
+
+msgid "Speaker"
+msgstr "Reproduktor"
 
 
 msgid "Property Name"
@@ -32536,10 +32462,6 @@ msgstr "Generátory"
 
 msgid "Sampling Presets"
 msgstr "Přednastavení vzorkování"
-
-
-msgid "View Object Types"
-msgstr "Zobrazit Typy Objektů"
 
 
 msgid "Film"
@@ -35258,30 +35180,6 @@ msgid "Find"
 msgstr "Hledat"
 
 
-msgid "Field of view for the fisheye lens"
-msgstr "Zobrazí mód ze seznamu souborů"
-
-
-msgid "Fisheye Lens"
-msgstr "Objektiv fisheye"
-
-
-msgid "Lens focal length (mm)"
-msgstr "Původní velikost"
-
-
-msgid "Panorama Type"
-msgstr "Rodič"
-
-
-msgid "Distortion to use for the calculation"
-msgstr "Počáteční snímek animace"
-
-
-msgid "Ideal for fulldomes, ignore the sensor dimensions"
-msgstr "Vybrat cestu"
-
-
 msgid "Rounded Ribbons"
 msgstr "Zaoblené Stužky"
 
@@ -35934,8 +35832,8 @@ msgid "Pixel Size"
 msgstr "Velikost Pixelu"
 
 
-msgid "Resolution %"
-msgstr "Rozlišení %"
+msgid "Resolution Scale"
+msgstr "Měřítko rozlišení"
 
 
 msgid "Percentage scale for render resolution"
@@ -38351,10 +38249,6 @@ msgid "Show reconstructed camera path"
 msgstr "Jemnost dělení"
 
 
-msgid "Speaker"
-msgstr "Reproduktor"
-
-
 msgid "Show Reconstruction"
 msgstr "Jemnost dělení"
 
@@ -40015,6 +39909,10 @@ msgid "Method to display/shade objects in the 3D View"
 msgstr "Metoda zobrazení/stínování objektů ve 3D zobrazení"
 
 
+msgid "Theme"
+msgstr "Motiv"
+
+
 msgid "View layer"
 msgstr "Zobrazit vrstvu"
 
@@ -40562,10 +40460,6 @@ msgstr "Nastavit aktivní objekt jako kameru"
 
 msgid "Shortcuts"
 msgstr "Zkratky"
-
-
-msgid "Theme"
-msgstr "Motiv"
 
 
 msgctxt "Operator"
@@ -41594,10 +41488,6 @@ msgstr "Čtvrté"
 
 msgid "Multiply R"
 msgstr "Násobit R"
-
-
-msgid "Eccentricity"
-msgstr "Výstřednost"
 
 
 msgid "Odd"
@@ -42828,10 +42718,6 @@ msgid "Auto-Save Preferences"
 msgstr "Auto-Ukládat Předvolby"
 
 
-msgid "Resolution Scale"
-msgstr "Měřítko rozlišení"
-
-
 msgid "Splash Screen"
 msgstr "Uvítací okno"
 
@@ -43663,10 +43549,6 @@ msgstr "Zobrazit označené"
 
 msgid "Local Camera"
 msgstr "Místní Kamera"
-
-
-msgid "Object Types Visibility"
-msgstr "Viditelnost Typů Objektů"
 
 
 msgid "Look At"
@@ -45221,6 +45103,18 @@ msgstr "Nelze vytvořit exportní soubor"
 
 msgid "Can't overwrite export file"
 msgstr "Nelze přepsat exportní soubor"
+
+
+msgid "Material Groups"
+msgstr "Materiál"
+
+
+msgid "Smooth Groups"
+msgstr "Přidat do skupiny"
+
+
+msgid "ASCII"
+msgstr "ASCII"
 
 
 msgctxt "Mesh"

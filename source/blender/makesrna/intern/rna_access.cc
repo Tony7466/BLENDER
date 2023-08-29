@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -4309,6 +4309,12 @@ int RNA_property_collection_lookup_string_index(
   CollectionPropertyRNA *cprop = (CollectionPropertyRNA *)rna_ensure_property(prop);
 
   BLI_assert(RNA_property_type(prop) == PROP_COLLECTION);
+
+  if (!key) {
+    *r_index = -1;
+    *r_ptr = PointerRNA_NULL;
+    return false;
+  }
 
   if (cprop->lookupstring) {
     /* we have a callback defined, use it */

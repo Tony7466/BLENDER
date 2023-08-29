@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -39,20 +39,6 @@ enum {
   ANIMPLAY_FLAG_NO_SYNC = (1 << 3),
   /** Use #ScreenAnimData::nextfra at next timer update. */
   ANIMPLAY_FLAG_USE_NEXT_FRAME = (1 << 4),
-};
-
-/* ----------------------------------------------------- */
-
-#define REDRAW_FRAME_AVERAGE 8
-
-/**
- * For playback frame-rate info stored during runtime as `scene->fps_info`.
- */
-struct ScreenFrameRateInfo {
-  double redrawtime;
-  double lredrawtime;
-  float redrawtimes_fps[REDRAW_FRAME_AVERAGE];
-  short redrawtime_index;
 };
 
 /* ----------------------------------------------------- */

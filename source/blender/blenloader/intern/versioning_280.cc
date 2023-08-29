@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -57,7 +57,7 @@
 #include "BKE_animsys.h"
 #include "BKE_blender.h"
 #include "BKE_brush.hh"
-#include "BKE_cloth.h"
+#include "BKE_cloth.hh"
 #include "BKE_collection.h"
 #include "BKE_colortools.h"
 #include "BKE_constraint.h"
@@ -101,10 +101,11 @@
 
 #include "BLT_translation.h"
 
+#include "BLO_read_write.hh"
 #include "BLO_readfile.h"
-#include "readfile.h"
+#include "readfile.hh"
 
-#include "versioning_common.h"
+#include "versioning_common.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -2911,6 +2912,22 @@ void do_versions_after_linking_280(FileData *fd, Main *bmain)
       if (brush->sculpt_tool == SCULPT_TOOL_POSE && brush->disconnected_distance_max == 0.0f) {
         brush->flag2 |= BRUSH_USE_CONNECTED_ONLY;
         brush->disconnected_distance_max = 0.1f;
+      }
+    }
+
+    /* 2.8x dropped support for non-empty dupli instances. but proper do-versioning was never
+     * done correctly. So added here as a 'safe' place version wise, always better than in
+     * readfile lib-linking code! */
+    LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
+      if (ob->type != OB_EMPTY && ob->instance_collection != nullptr) {
+        BLO_reportf_wrap(fd->reports,
+                         RPT_INFO,
+                         TIP_("Non-Empty object '%s' cannot duplicate collection '%s' "
+                              "anymore in Blender 2.80 and later, removed instancing"),
+                         ob->id.name + 2,
+                         ob->instance_collection->id.name + 2);
+        ob->instance_collection = nullptr;
+        ob->transflag &= ~OB_DUPLICOLLECTION;
       }
     }
   }

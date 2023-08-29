@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'd4d0daa934cd')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'5ba692898e63')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-08-07 09:03:59\n"
+"POT-Creation-Date: 2023-08-28 16:05:16\n"
 "PO-Revision-Date: 2016-04-23 22:41+0300\n"
 "Last-Translator: Yousef Harfoush <bat3a@msn.com>\n"
 "Language-Team: Yousef Harfoush, Amine Moussaoui <bat3a@msn.com>\n"
@@ -9851,20 +9851,24 @@ msgid "Camera near clipping distance"
 msgstr "ﺍﺮﻴﻣﺎﻜﻠﻟ ﺎﻴﻧﺪﻟﺍ ﻢﻴﻠﻘﺘﻟﺍ ﺔﻓﺎﺴﻣ"
 
 
-msgid "Cycles Camera Settings"
-msgstr "ﺰﻠﻜﻳﺎﺳ ﺓﺮﻴﻣﺎﻛ ﺕﺍﺩﺍﺪﻋﺇ"
-
-
-msgid "Cycles camera settings"
-msgstr "ﺰﻠﻜﻳﺎﺳ ﺓﺮﻴﻣﺎﻛ ﺕﺍﺩﺍﺪﻋﺇ"
-
-
 msgid "Apparent size of the Camera object in the 3D View"
 msgstr "ﻲﺛﻼ﻿ﺜﻟﺍ ﺮﻈﻨﻣ ﻲﻓ ﻱﺮﻫﺎﻈﻟﺍ ﺍﺮﻴﻣﺎﻜﻟﺍ ﻦﺋﺎﻛ ﻢﺠﺣ"
 
 
 msgid "Depth Of Field"
 msgstr "ﻞﻘﺤﻟﺍ ﻖﻤﻋ"
+
+
+msgid "Field of view for the fisheye lens"
+msgstr "ﺔﻜﻤﺴﻟﺍ ﻦﻴﻋ ﺔﺳﺪﻌﻟ ﺮﻈﻨﻟﺍ ﻞﻘﺣ"
+
+
+msgid "Fisheye Lens"
+msgstr "ﺔﻜﻤﺴﻟﺍ ﻦﻴﻋ ﺔﺳﺪﻫ"
+
+
+msgid "Lens focal length (mm)"
+msgstr "(ﻢﻣ) ﺔﺳﺪﻌﻠﻟ ﻱﺮﺼﺒﻟﺍ ﻝﻮﻄﻟﺍ"
 
 
 msgid "Focal Length"
@@ -9893,6 +9897,26 @@ msgstr "ﻲﺋﻼ﻿ﻣﻻ﻿ﺍ ﻢﻴﺠﺤﺘﻟﺍ"
 
 msgid "Orthographic Camera scale (similar to zoom)"
 msgstr "(ﺮﻴﺒﻜﺘﻠﻟ ﻪﺑﺎﺸﻣ) ﺍﺮﻴﻣﺎﻜﻠﻟ ﻲﺋﻼ﻿ﻣﻻ﻿ﺍ ﻢﻴﺠﺤﺘﻟﺍ"
+
+
+msgid "Panorama Type"
+msgstr "ﺮﻈﻨﻤﻟﺍ ﻉﻮﻧ"
+
+
+msgid "Distortion to use for the calculation"
+msgstr "ﺏﺎﺴﺤﻠﻟ ﻡﺪﺨﺘﺴﻤﻟﺍ ﻪﻳﻮﺸﺘﻟﺍ"
+
+
+msgid "Equirectangular"
+msgstr "ﺎﻳﺍﻭﺰﻟﺍ ﻱﻭﺎﺴﺘﻣ ﻞﻴﻄﺘﺴﻣ"
+
+
+msgid "Mirror Ball"
+msgstr "ﺱﺎﻜﻌﻧﺍ ﺓﺮﻛ"
+
+
+msgid "Ideal for fulldomes, ignore the sensor dimensions"
+msgstr "ﻪﺟﻮﻟﺍ ﻩﺎﺠﺗﺍ ﺲﻜﻋﺍ"
 
 
 msgid "Passepartout Alpha"
@@ -18844,10 +18868,6 @@ msgid "Display Hidden"
 msgstr "ﻲﻔﺨﻟﺍ ﺮﻬﻇﺃ"
 
 
-msgid "Include channels from objects/bone that aren't visible"
-msgstr "ﺔﻴﺋﺮﻣ ﺮﻴﻐﻟﺍ ﻡﺎﻈﻌﻟﺍ/ﺕﺎﻨﺋﺎﻜﻟﺍ ﻦﻣ ﺕﺍﻮﻨﻗ ﻦﻤﻀﺘﻳ"
-
-
 msgid "Dopesheet Sort Field"
 msgstr "ﻂﻴﻄﺨﺘﻟﺍ ﺭﺮﺤﻤﻠﻟ ﻞﻘﺤﻟﺍ ﺐﺗﺭ"
 
@@ -20117,8 +20137,8 @@ msgid "Tracking Object"
 msgstr "ﻦﺋﺎﻜﻟﺍ ﺔﻘﺣﻼ﻿ﻣ"
 
 
-msgid "Smoothing"
-msgstr "ﺔﻣﻮﻌﻨﻟﺍ"
+msgid "Eccentricity"
+msgstr "ﻑﻼ﻿ﺘﺧﻹ﻿ﺍ"
 
 
 msgid "Anisotropic"
@@ -20695,14 +20715,6 @@ msgstr "ﻁﺎﻘﺳﻹ﻿ﺍ"
 
 msgid "Projection of the input image"
 msgstr "ﻞﺧﺪﻟﺍ ﺓﺭﻮﺻ ﻁﺎﻘﺳﺍ"
-
-
-msgid "Equirectangular"
-msgstr "ﺎﻳﺍﻭﺰﻟﺍ ﻱﻭﺎﺴﺘﻣ ﻞﻴﻄﺘﺴﻣ"
-
-
-msgid "Mirror Ball"
-msgstr "ﺱﺎﻜﻌﻧﺍ ﺓﺮﻛ"
 
 
 msgid "Gradient Texture"
@@ -23055,8 +23067,8 @@ msgstr "(ZYX) ﺮﻟﻮﻳ"
 
 
 msgctxt "Operator"
-msgid "Export PLY"
-msgstr "PLY ﺭﺪّﺻ"
+msgid "Export STL"
+msgstr "STL ﺭﺪّﺻ"
 
 
 msgid "Z Forward"
@@ -23071,17 +23083,8 @@ msgid "-Y Up"
 msgstr "-Y ﻕﻮﻔﻟ"
 
 
-msgid "Export the active vertex color layer"
-msgstr "ﺔﻟﺎﻌﻔﻟﺍ ﺔﻄﻘﻨﻟﺍ ﻥﻮﻟ ﺔﻘﺒﻃ ﺭﺪّﺻ"
-
-
 msgid "Apply Modifiers"
 msgstr "ﺕﺍﺮﻴّﻐﻤﻟﺍ ﻖﺒّﻃ"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "STL ﺭﺪّﺻ"
 
 
 msgctxt "Operator"
@@ -23111,6 +23114,10 @@ msgstr "ﺔﺠﺴﻧﻷ﻿ﺍ ﻦﻤّﺿ"
 
 msgid "Scale all data (Some importers do not support scaled armatures!)"
 msgstr "(ﺔﻤﺠﺤﻤﻟﺍ ﻞﻛﺎﻴﻬﻟﺍ ﻢﻋﺪﺗ ﻻ﻿ ﺕﺍﺩﺭﻮﺘﺴﻤﻟﺍ ﺾﻌﺑ) ﺕﺎﻧﺎﻴﺒﻟﺍ ﻞﻛ ﻢﺠّﺣ"
+
+
+msgid "Smoothing"
+msgstr "ﺔﻣﻮﻌﻨﻟﺍ"
 
 
 msgid "Lamp"
@@ -23151,19 +23158,6 @@ msgstr "ﺔﺼﺼﺨﻣ ﺺﺋﺎﺼﺧ"
 
 msgid "Loose Edges"
 msgstr "ﺔﻘﻠﻄﻣ ﻑﺍﻮﺣ"
-
-
-msgctxt "Operator"
-msgid "Export OBJ"
-msgstr "OBJ ﺭﺪّﺻ"
-
-
-msgid "Write Normals"
-msgstr "ﻢﻇﺍﻮﻨﻟﺍ ﺐﺘﻛﺍ"
-
-
-msgid "Include UVs"
-msgstr "UV's ـﻟﺍ ﻦﻤّﺿ"
 
 
 msgid "Compress"
@@ -24023,11 +24017,6 @@ msgid "Shadeless"
 msgstr "ﻞﻠﻈﻣ ﺮﻴﻏ"
 
 
-msgctxt "Operator"
-msgid "Import PLY"
-msgstr "PLY ﺩﺭﻮﺘﺳﺍ"
-
-
 msgid "Load STL triangle mesh data"
 msgstr "STL ـﻟ ﻲﺜﻠﺜﻣ ﻢﺴﺠﻣ ﺕﺎﻧﺎﻴﺑ ﻞﻤّﺣ"
 
@@ -24059,18 +24048,6 @@ msgstr "ﻚﻳﺮﺤﺘﻟﺍ ﺩﺭﻮﺘﺳﺇ"
 
 msgid "Manual Orientation"
 msgstr "ﻱﻭﺪﻳ ﻪﻴﺟﻮﺗ"
-
-
-msgid "Clamp Size"
-msgstr "X ﻢﻠﻗ"
-
-
-msgid "Keep vertex order from file"
-msgstr "ﻒﻠﻤﻟﺍ ﻦﻣ ﻂﻘﻨﻟﺍ ﺐﻴﺗﺮﺗ ﻲﻘﺑﺍ"
-
-
-msgid "Import OBJ groups as vertex groups"
-msgstr "ﻂﻘﻧ ﺕﺎﻋﻮﻤﺠﻤﻛ OBJ ﺕﺎﻋﻮﻤﺠﻣ ﺩﺭﻮﺘﺳﺇ"
 
 
 msgctxt "Operator"
@@ -29578,6 +29555,10 @@ msgid "Memory Statistics"
 msgstr "ﺓﺮﻛﺍﺬﻟﺍ ﺕﺎﻴﺋﺎﺼﺣﺍ"
 
 
+msgid "Import OBJ groups as vertex groups"
+msgstr "ﻂﻘﻧ ﺕﺎﻋﻮﻤﺠﻤﻛ OBJ ﺕﺎﻋﻮﻤﺠﻣ ﺩﺭﻮﺘﺳﺇ"
+
+
 msgid "Load UI"
 msgstr "ﺔﻬﺟﺍﻮﻟﺍ ﻞﻤّﺣ"
 
@@ -29601,6 +29582,16 @@ msgstr "ﻞﻣﺎﻌﻟ ﻖﺒﺴﻣ ﺩﺍﺪﻋﺇ ﻎﻟﺍ ﻭﺃ ﻒﺿﺍ"
 
 
 msgctxt "Operator"
+msgid "Export PLY"
+msgstr "PLY ﺭﺪّﺻ"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "PLY ﺩﺭﻮﺘﺳﺍ"
+
+
+msgctxt "Operator"
 msgid "Add Property"
 msgstr "ﺔﻤﺳ ﻒﺿﺃ"
 
@@ -29620,6 +29611,10 @@ msgstr "ﻕﺎﻴﺳ"
 msgctxt "Operator"
 msgid "Edit Property"
 msgstr "ﺔﻤﺴﻟﺍ ﻝﺪﻋ"
+
+
+msgid "Speaker"
+msgstr "ﺕﻮﺻ ﺮﺒﻜﻣ"
 
 
 msgid "Property Name"
@@ -30280,6 +30275,10 @@ msgstr "ﺔﻛﺮﺤﻟﺍ ﺔﻘﺣﻼ﻿ﻣ"
 
 msgid "Pose Library"
 msgstr "ﺕﺎﻔﻗﻮﻟﺍ ﺔﺒﺘﻜﻣ"
+
+
+msgid "Wire Color"
+msgstr "ﻂﺑﺍﺮﻟﺍ ﻥﻮﻟ"
 
 
 msgid "Comb hairs"
@@ -32308,30 +32307,6 @@ msgid "Group of ID properties"
 msgstr "ﻑﺮﻌﻣ ﺹﺍﻮﺧ ﻦﻣ ﺔﻋﻮﻤﺠﻣ"
 
 
-msgid "Field of view for the fisheye lens"
-msgstr "ﺔﻜﻤﺴﻟﺍ ﻦﻴﻋ ﺔﺳﺪﻌﻟ ﺮﻈﻨﻟﺍ ﻞﻘﺣ"
-
-
-msgid "Fisheye Lens"
-msgstr "ﺔﻜﻤﺴﻟﺍ ﻦﻴﻋ ﺔﺳﺪﻫ"
-
-
-msgid "Lens focal length (mm)"
-msgstr "(ﻢﻣ) ﺔﺳﺪﻌﻠﻟ ﻱﺮﺼﺒﻟﺍ ﻝﻮﻄﻟﺍ"
-
-
-msgid "Panorama Type"
-msgstr "ﺮﻈﻨﻤﻟﺍ ﻉﻮﻧ"
-
-
-msgid "Distortion to use for the calculation"
-msgstr "ﺏﺎﺴﺤﻠﻟ ﻡﺪﺨﺘﺴﻤﻟﺍ ﻪﻳﻮﺸﺘﻟﺍ"
-
-
-msgid "Ideal for fulldomes, ignore the sensor dimensions"
-msgstr "ﻪﺟﻮﻟﺍ ﻩﺎﺠﺗﺍ ﺲﻜﻋﺍ"
-
-
 msgid "Cast Shadow"
 msgstr "ﻞﻈﻟﺍ ﻲﻘﻟﺍ"
 
@@ -32954,10 +32929,6 @@ msgstr "ﻞﺴﻜﺒﻠﻟ ﺔﻳﺩﻮﻤﻌﻟﺍ ﺔﺒﺴﻨﻟﺍ"
 
 msgid "Vertical aspect ratio - for anamorphic or non-square pixel output"
 msgstr "ﻞﺴﻜﺒﻟﺍ ﺔﻌﺑﺮﻤﻟﺍ ﺮﻴﻐﻟﺍ ﺝﺭﺎﺨﻤﻟﺍ ﻭ ﺔﻫﻮﺸﻤﻟﺍ ﺭﻮﺼﻠﻟ - ﺔﻳﺩﻮﻤﻌﻟﺍ ﺔﺒﺴﻨﻟﺍ ﻝﺪﻌﻣ"
-
-
-msgid "Resolution %"
-msgstr "% ﺩﺎﻌﺑﺃ "
 
 
 msgid "Percentage scale for render resolution"
@@ -34460,10 +34431,6 @@ msgid "Show reconstructed camera path"
 msgstr "ﻩﺅﺎﻨﺑ ﺩﺎﻌﻤﻟﺍ ﺍﺮﻴﻣﺎﻜﻟﺍ ﺭﺎﺴﻣ ﺮﻬﻇﺇ"
 
 
-msgid "Speaker"
-msgstr "ﺕﻮﺻ ﺮﺒﻜﻣ"
-
-
 msgid "Show Reconstruction"
 msgstr "ءﺎﻨﺒﻟﺍ ﺓﺩﺎﻋﺍ ﺮﻬﻇﺇ"
 
@@ -35066,10 +35033,6 @@ msgstr "ﺭﺎﺘﺨﻤﻟﺍ ﺺﻨﻟﺍ"
 
 msgid "Vector Node"
 msgstr "ﻪﺠﺘﻤﻟﺍ ﺓﺪﻘﻋ"
-
-
-msgid "Wire Color"
-msgstr "ﻂﺑﺍﺮﻟﺍ ﻥﻮﻟ"
 
 
 msgid "Filter Match"
@@ -36819,10 +36782,6 @@ msgstr "ﺏﺎﺴﺣ"
 
 msgid "Dimension"
 msgstr "ﺪﻌﺑُ"
-
-
-msgid "Eccentricity"
-msgstr "ﻑﻼ﻿ﺘﺧﻹ﻿ﺍ"
 
 
 msgid "Odd"
@@ -39923,12 +39882,12 @@ msgid "Unable to create new strip"
 msgstr "ﻒﻠﻤﻟﺍ ﺢﺘﻓ ﻰﻠﻋ ﺭﺩﺎﻗ ﺮﻴﻏ"
 
 
-msgid "Unable to locate link in node tree"
-msgstr "ﺪﻘﻋ ﺓﺮﺠﺷ ﻲﻓ ﺪﻘﻋ ﻦﻴﺑ ﻂﺑﺍﺭ"
-
-
 msgid "Unable to create socket"
 msgstr "ﺔﺤﺘﻓ ءﺎﺸﻧﺇ ﻰﻠﻋ ﺭﺩﺎﻗ ﺮﻴﻏ"
+
+
+msgid "Unable to locate link in node tree"
+msgstr "ﺪﻘﻋ ﺓﺮﺠﺷ ﻲﻓ ﺪﻘﻋ ﻦﻴﺑ ﻂﺑﺍﺭ"
 
 
 msgid "Unable to locate socket '%s' in node"
