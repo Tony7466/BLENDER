@@ -329,6 +329,9 @@ static int add_edge_or_find_index(Vector<OrderedEdge> &vector, const OrderedEdge
 /**
  * Based on updated corner vertex indices, update the edges in each face. This includes updating
  * corner edge indices, adding new edges, and reusing original edges for the first "split" edge.
+ * The main complexity comes from the fact that in the case of single isolated split edges, no new
+ * edges are created because they all end up identical. We need to handle this case, but since it's
+ * rare, we optimize for the case that it doesn't happen first.
  */
 static Array<int2> calc_new_edges(const OffsetIndices<int> faces,
                                   const Span<int> corner_verts,
@@ -344,11 +347,16 @@ static Array<int2> calc_new_edges(const OffsetIndices<int> faces,
   Array<int> offsets_no_merge(selected_edges.size() + 1);
   selected_edges.foreach_index([&](const int edge, const int mask) {
     offsets_no_merge[mask] = no_merge_count;
-    no_merge_count += edge_to_corner_map[edge].size() - 1;
+    no_merge_count += std::max<int>(edge_to_corner_map[edge].size() - 1, 0);
   });
   offsets_no_merge.last() = no_merge_count;
 
   Array<int2> no_merge_new_edges(no_merge_count);
+
+  /* The first new edge for each selected edge is reused, instead we modify the existing edge in
+   * place. Just reusing the first new edge isn't enough because the deduplication might make
+   * multiple new edges reuse the original. */
+  Array<bool> is_reused(corner_verts.size(), false);
 
   /* Calculate per-original split edge deduplication of new edges, which are stored by the
    * corner vertices of connected faces. Update corner verts to store the indices local to
@@ -360,37 +368,33 @@ static Array<int2> calc_new_edges(const OffsetIndices<int> faces,
           faces, corner_verts, corner_to_face_map, corner);
       const int index = add_edge_or_find_index(deduplication, new_edge);
       if (index == 0) {
-        /* Mark the first edge as reused. */
-        corner_edges[corner] *= -1;
+        is_reused[corner] = true;
       }
       else {
         corner_edges[corner] = index - 1;
       }
     }
     if (deduplication.is_empty()) {
+      r_new_edge_offsets[mask] = 0;
       return;
     }
-
     edges[edge] = int2(deduplication.first().v_low, deduplication.first().v_high);
-
     const Span<int2> new_edges = deduplication.as_span().drop_front(1).cast<int2>();
-    const int dst_offset = offsets_no_merge[mask];
-    uninitialized_copy_n(new_edges.data(), new_edges.size(), &no_merge_new_edges[dst_offset]);
+    if (!new_edges.is_empty()) {
+      const int dst_offset = offsets_no_merge[mask];
+      uninitialized_copy_n(new_edges.data(), new_edges.size(), &no_merge_new_edges[dst_offset]);
+    }
     r_new_edge_offsets[mask] = new_edges.size();
   });
 
+  /* Use the merged offsets (potentially different from the first offsets) to globalize the new
+   * edge indices per selected edge. */
   const OffsetIndices merged_offsets = offset_indices::accumulate_counts_to_offsets(
       r_new_edge_offsets);
   selected_edges.foreach_index(GrainSize(1024), [&](const int edge, const int mask) {
     const int new_edge_offset = merged_offsets[mask].start() + edges.size();
-    const Span<int> edge_corners = edge_to_corner_map[edge];
-    for (const int i : edge_corners.index_range()) {
-      const int corner = edge_corners[i];
-      if (corner_edges[corner] < 0) {
-        /* The original edge was reused. */
-        corner_edges[corner] *= -1;
-      }
-      else {
+    for (const int corner : edge_to_corner_map[edge]) {
+      if (!is_reused[corner]) {
         corner_edges[corner] += new_edge_offset;
       }
     }
@@ -405,9 +409,10 @@ static Array<int2> calc_new_edges(const OffsetIndices<int> faces,
   Array<int2> new_edges(merged_offsets.total_size());
   threading::parallel_for(merged_offsets.index_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
-      uninitialized_copy_n(&no_merge_new_edges[offsets_no_merge[i]],
-                           merged_offsets[i].size(),
-                           &new_edges[merged_offsets[i].start()]);
+      const IndexRange merged_range = merged_offsets[i];
+      new_edges.as_mutable_span()
+          .slice(merged_range)
+          .copy_from(no_merge_new_edges.as_span().slice(offsets_no_merge[i], merged_range.size()));
     }
   });
 
