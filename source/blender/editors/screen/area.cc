@@ -345,13 +345,22 @@ static void region_draw_azones(ScrArea *area, ARegion *region)
 
 static void region_draw_status_text(ScrArea *area, ARegion *region)
 {
-  bool overlap = ED_region_is_overlap(area->spacetype, region->regiontype);
+  const bool overlap = ED_region_is_overlap(area->spacetype, region->regiontype);
 
-  if (overlap) {
+  uchar header_color[4];
+  UI_GetThemeColor4ubv(TH_HEADER_ACTIVE, header_color);
+
+  /* Clear the area to transparent if an overlapping area, is a tool_header (since that
+   * is below the header) that has some transparency, or header with full transparent. */
+  const bool transparent = overlap &&
+                           (region->regiontype == RGN_TYPE_HEADER && header_color[3] == 0 ||
+                            region->regiontype == RGN_TYPE_TOOL_HEADER && header_color[3] != 255);
+
+  if (transparent) {
     GPU_clear_color(0.0f, 0.0f, 0.0f, 0.0f);
   }
   else {
-    UI_ThemeClearColor(TH_HEADER);
+    UI_ThemeClearColor(TH_HEADER_ACTIVE);
   }
 
   int fontid = BLF_set_default();
@@ -360,7 +369,7 @@ static void region_draw_status_text(ScrArea *area, ARegion *region)
   const float x = UI_UNIT_X;
   const float y = 0.4f * UI_UNIT_Y;
 
-  if (overlap) {
+  if (transparent) {
     const float pad = 2.0f * UI_SCALE_FAC;
     const float x1 = x - (UI_UNIT_X - pad);
     const float x2 = x + width + (UI_UNIT_X - pad);
@@ -818,20 +827,30 @@ void ED_area_status_text(ScrArea *area, const char *str)
     return;
   }
 
+  ARegion *ar = nullptr;
+
   LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
-    if (region->regiontype == RGN_TYPE_HEADER) {
-      if (str) {
-        if (region->headerstr == nullptr) {
-          region->headerstr = static_cast<char *>(MEM_mallocN(UI_MAX_DRAW_STR, "headerprint"));
-        }
-        BLI_strncpy(region->headerstr, str, UI_MAX_DRAW_STR);
-        BLI_str_rstrip(region->headerstr);
-      }
-      else {
-        MEM_SAFE_FREE(region->headerstr);
-      }
-      ED_region_tag_redraw(region);
+    if (region->regiontype == RGN_TYPE_HEADER && region->visible) {
+      ar = region;
     }
+    else if (region->regiontype == RGN_TYPE_TOOL_HEADER && region->visible) {
+      ar = region;
+      break;
+    }
+  }
+
+  if (ar) {
+    if (str) {
+      if (ar->headerstr == nullptr) {
+        ar->headerstr = static_cast<char *>(MEM_mallocN(UI_MAX_DRAW_STR, "headerprint"));
+      }
+      BLI_strncpy(ar->headerstr, str, UI_MAX_DRAW_STR);
+      BLI_str_rstrip(ar->headerstr);
+    }
+    else {
+      MEM_SAFE_FREE(ar->headerstr);
+    }
+    ED_region_tag_redraw(ar);
   }
 }
 
