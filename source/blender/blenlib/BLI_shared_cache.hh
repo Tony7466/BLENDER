@@ -30,7 +30,8 @@ template<typename T> class SharedCache {
   struct CacheData {
     CacheMutex mutex;
     T data;
-    CacheData(T data) : data(std::move(data)) {}
+    CacheData() = default;
+    CacheData(const T &data) : data(data) {}
   };
   std::shared_ptr<CacheData> cache_;
 
