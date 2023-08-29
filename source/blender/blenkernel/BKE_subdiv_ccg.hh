@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include "BLI_array.hh"
 #include "BLI_bitmap.h"
 #include "BLI_offset_indices.hh"
 #include "BLI_sys_types.h"
@@ -160,7 +159,7 @@ struct SubdivCCG {
   int num_faces;
   SubdivCCGFace *faces;
   /* Indexed by grid index, points to corresponding face from `faces`. */
-  blender::Array<int> grid_faces;
+  SubdivCCGFace **grid_faces;
 
   /* Edges which are adjacent to faces.
    * Used for faster grid stitching, in the cost of extra memory.

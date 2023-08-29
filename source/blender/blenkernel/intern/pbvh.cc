@@ -914,7 +914,7 @@ void BKE_pbvh_build_grids(PBVH *pbvh,
                           CCGElem **grids,
                           int totgrid,
                           CCGKey *key,
-                          blender::Span<int> gridfaces,
+                          void **gridfaces,
                           DMFlagMat *flagmats,
                           BLI_bitmap **grid_hidden,
                           Mesh *me,
@@ -1709,11 +1709,14 @@ blender::IndexMask BKE_pbvh_get_grid_updates(const PBVH *pbvh,
                                              blender::IndexMaskMemory &memory)
 {
   using namespace blender;
+  /* Using a #VectorSet for index deduplication would also work, but the performance gets much
+   * worse with large selections since the loop would be single-threaded. A boolean array has an
+   * overhead regardless of selection size, but that is small. */
   Array<bool> faces_to_update(pbvh->faces_num, false);
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     for (const PBVHNode *node : nodes.slice(range)) {
       for (const int grid : node->prim_indices) {
-        const int face = pbvh->gridfaces[grid];
+        const int face = BKE_subdiv_ccg_grid_to_face_index(pbvh->subdiv_ccg, grid);
         faces_to_update[face] = true;
       }
     }
@@ -2783,20 +2786,18 @@ void BKE_pbvh_update_normals(PBVH *pbvh, SubdivCCG *subdiv_ccg)
   Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(
       pbvh, [&](PBVHNode &node) { return update_search(&node, PBVH_UpdateNormals); });
 
-  if (!nodes.is_empty()) {
-    if (pbvh->header.type == PBVH_BMESH) {
-      pbvh_bmesh_normals_update(nodes);
-    }
-    else if (pbvh->header.type == PBVH_FACES) {
-      pbvh_faces_update_normals(pbvh, nodes, *pbvh->mesh);
-    }
-    else if (pbvh->header.type == PBVH_GRIDS) {
-      IndexMaskMemory memory;
-      const IndexMask faces_to_update = BKE_pbvh_get_grid_updates(pbvh, nodes, memory);
-      BKE_subdiv_ccg_update_normals(subdiv_ccg, faces_to_update);
-      for (PBVHNode *node : nodes) {
-        node->flag &= ~PBVH_UpdateNormals;
-      }
+  if (pbvh->header.type == PBVH_BMESH) {
+    pbvh_bmesh_normals_update(nodes);
+  }
+  else if (pbvh->header.type == PBVH_FACES) {
+    pbvh_faces_update_normals(pbvh, nodes, *pbvh->mesh);
+  }
+  else if (pbvh->header.type == PBVH_GRIDS) {
+    IndexMaskMemory memory;
+    const IndexMask faces_to_update = BKE_pbvh_get_grid_updates(pbvh, nodes, memory);
+    BKE_subdiv_ccg_update_normals(subdiv_ccg, faces_to_update);
+    for (PBVHNode *node : nodes) {
+      node->flag &= ~PBVH_UpdateNormals;
     }
   }
 }
@@ -2915,7 +2916,7 @@ void BKE_pbvh_draw_debug_cb(PBVH *pbvh,
 
 void BKE_pbvh_grids_update(PBVH *pbvh,
                            CCGElem **grids,
-                           blender::Span<int> gridfaces,
+                           void **gridfaces,
                            DMFlagMat *flagmats,
                            BLI_bitmap **grid_hidden,
                            CCGKey *key)

@@ -175,7 +175,7 @@ struct PBVH {
   /* Grid Data */
   CCGKey gridkey;
   CCGElem **grids;
-  blender::Span<int> gridfaces;
+  void **gridfaces;
   const DMFlagMat *grid_flag_mats;
   int totgrid;
   BLI_bitmap **grid_hidden;
