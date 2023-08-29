@@ -746,6 +746,7 @@ static void rna_def_node_socket_interface_float(BlenderRNA *brna,
   RNA_def_property_enum_sdna(prop, nullptr, "subtype");
   RNA_def_property_enum_funcs(
       prop, nullptr, nullptr, "rna_NodeTreeInterfaceSocketFloat_subtype_itemf");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Subtype", "Subtype of the default value");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceSocket_value_update");
 
@@ -831,6 +832,7 @@ static void rna_def_node_socket_interface_int(BlenderRNA *brna,
   RNA_def_property_enum_sdna(prop, nullptr, "subtype");
   RNA_def_property_enum_funcs(
       prop, nullptr, nullptr, "rna_NodeTreeInterfaceSocketInt_subtype_itemf");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Subtype", "Subtype of the default value");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceSocket_value_update");
 
@@ -1002,6 +1004,7 @@ static void rna_def_node_socket_interface_vector(BlenderRNA *brna,
   RNA_def_property_enum_sdna(prop, nullptr, "subtype");
   RNA_def_property_enum_funcs(
       prop, nullptr, nullptr, "rna_NodeTreeInterfaceSocketVector_subtype_itemf");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(prop, "Subtype", "Subtype of the default value");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeTreeInterfaceSocket_value_update");
 
