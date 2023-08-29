@@ -337,6 +337,17 @@ static std::unique_ptr<bNodeTreeZones> discover_tree_zones(const bNodeTree &tree
     tree_zones->zones[zone_i]->child_nodes.append(node);
   }
 
+  std::cout << std::endl;
+
+  for (std::unique_ptr<bNodeTreeZone> &zone : tree_zones->zones) {
+    if (const bNode *zone_input_node = zone->input_node) {
+      std::cout << zone.get()->index << ": " << zone_input_node->name << std::endl;
+    }
+    if (const bNode *zone_input_node = zone->output_node) {
+      std::cout << zone.get()->index << ": " << zone_input_node->name << std::endl;
+    }
+  }
+
   update_zone_border_links(tree, *tree_zones);
 
   return tree_zones;
