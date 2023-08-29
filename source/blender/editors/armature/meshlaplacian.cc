@@ -106,7 +106,7 @@ static void laplacian_increase_edge_count(blender::Map<blender::OrderedEdge, int
                                           int v2)
 {
   edgehash.add_or_modify(
-      {v1, v2}, [](int *value) { *value = 1; }, *[](int *value) { (*value)++; });
+      {v1, v2}, [](int *value) { *value = 1; }, [](int *value) { (*value)++; });
 }
 
 static int laplacian_edge_count(const blender::Map<blender::OrderedEdge, int> &edgehash,
