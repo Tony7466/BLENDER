@@ -741,10 +741,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
   {
     using namespace bke::sim;
 
-    const Depsgraph *depsgraph = ctx_.depsgraph;
-
-    ModifierSimulationCache &simulation_cache = *nmd_.runtime->simulation_cache;
-    SimulationZoneCache &zone_cache = *simulation_cache.cache_by_zone_id.lookup_or_add_cb(
+    SimulationZoneCache &zone_cache = *simulation_cache_->cache_by_zone_id.lookup_or_add_cb(
         zone_id, []() { return std::make_unique<SimulationZoneCache>(); });
 
     /* Try load baked data. */
@@ -835,7 +832,41 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
       return;
     }
 
-    // TODO: realtime cache
+    if (zone_cache.prev_state) {
+      if (zone_cache.prev_state->frame < current_frame_) {
+        const float delta_frames = std::min(
+            max_delta_frames, float(zone_cache.prev_state->frame) - float(current_frame_));
+        nodes::SimulationInputInfo::OutputMove output_move_info;
+        output_move_info.delta_time = delta_frames / fps_;
+        output_move_info.prev_items = std::move(zone_cache.prev_state->items);
+        zone_info.input.info = std::move(output_move_info);
+        this->store_as_prev_items(zone_cache, zone_info);
+        return;
+      }
+      if (zone_cache.prev_state->frame == current_frame_) {
+        nodes::SimulationInputInfo::OutputCopy output_copy_info;
+        output_copy_info.delta_time = 0.0f;
+        output_copy_info.prev_items = this->to_readonly_items_map(zone_cache.prev_state->items);
+        zone_info.input.info = std::move(output_copy_info);
+        nodes::SimulationOutputInfo::ReadSingle read_single_info;
+        read_single_info.items = this->to_readonly_items_map(zone_cache.prev_state->items);
+        zone_info.output.info = std::move(read_single_info);
+        return;
+      }
+      if (!depsgraph_is_active_) {
+        zone_info.input.info.emplace<nodes::SimulationInputInfo::PassThrough>();
+        zone_info.output.info.emplace<nodes::SimulationOutputInfo::PassThrough>();
+        return;
+      }
+      zone_cache.prev_state.reset();
+    }
+    zone_info.input.info.emplace<nodes::SimulationInputInfo::PassThrough>();
+    if (depsgraph_is_active_) {
+      this->store_as_prev_items(zone_cache, zone_info);
+    }
+    else {
+      zone_info.output.info.emplace<nodes::SimulationOutputInfo::PassThrough>();
+    }
   }
 
   void store_frame_cache(bke::sim::SimulationZoneCache &zone_cache,
@@ -851,6 +882,24 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
           frame_cache->frame = current_frame;
           frame_cache->items = std::move(items);
           zone_cache->frame_caches.append(std::move(frame_cache));
+        };
+    zone_info.output.info = std::move(store_and_pass_through_info);
+  }
+
+  void store_as_prev_items(bke::sim::SimulationZoneCache &zone_cache,
+                           nodes::SimulationZoneInfo &zone_info) const
+  {
+    nodes::SimulationOutputInfo::StoreAndPassThrough store_and_pass_through_info;
+    store_and_pass_through_info.store_fn =
+        [simulation_cache = simulation_cache_,
+         zone_cache = &zone_cache,
+         current_frame = current_frame_](Map<int, std::unique_ptr<bke::BakeItem>> items) {
+          std::lock_guard lock{simulation_cache->mutex};
+          if (!zone_cache->prev_state) {
+            zone_cache->prev_state.emplace();
+          }
+          zone_cache->prev_state->items = std::move(items);
+          zone_cache->prev_state->frame = current_frame;
         };
     zone_info.output.info = std::move(store_and_pass_through_info);
   }

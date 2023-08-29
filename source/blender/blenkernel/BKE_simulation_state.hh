@@ -35,14 +35,15 @@ struct SimulationZoneFrameCache {
   std::optional<std::string> meta_path;
 };
 
-struct SimulationZoneRealtimeCache {
-  Map<int, std::unique_ptr<BakeItem>> prev_items;
-  SubFrame prev_frame;
+struct SimulationZonePrevState {
+  Map<int, std::unique_ptr<BakeItem>> items;
+  SubFrame frame;
 };
 
 struct SimulationZoneCache {
   Vector<std::unique_ptr<SimulationZoneFrameCache>> frame_caches;
-  SimulationZoneRealtimeCache realtime;
+  std::optional<SimulationZonePrevState> prev_state;
+
   std::optional<std::string> bdata_dir;
   std::unique_ptr<BDataSharing> bdata_sharing;
   bool failed_finding_bake = false;
