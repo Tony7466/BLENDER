@@ -31,7 +31,6 @@ extern "C" {
 #define MAX_SOCKET 512
 
 struct BlendDataReader;
-struct BlendExpander;
 struct BlendLibReader;
 struct BlendWriter;
 struct FreestyleLineStyle;
@@ -1323,6 +1322,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_TOOL_3D_CURSOR 2111
 #define GEO_NODE_TOOL_FACE_SET 2112
 #define GEO_NODE_TOOL_SET_FACE_SET 2113
+#define GEO_NODE_POINTS_TO_CURVES 2114
 
 /** \} */
 
@@ -1349,6 +1349,15 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define FN_NODE_INPUT_INT 1220
 #define FN_NODE_SEPARATE_COLOR 1221
 #define FN_NODE_COMBINE_COLOR 1222
+#define FN_NODE_AXIS_ANGLE_TO_ROTATION 1223
+#define FN_NODE_EULER_TO_ROTATION 1224
+#define FN_NODE_QUATERNION_TO_ROTATION 1225
+#define FN_NODE_ROTATION_TO_AXIS_ANGLE 1226
+#define FN_NODE_ROTATION_TO_EULER 1227
+#define FN_NODE_ROTATION_TO_QUATERNION 1228
+#define FN_NODE_ROTATE_VECTOR 1229
+#define FN_NODE_ROTATE_ROTATION 1230
+#define FN_NODE_INVERT_ROTATION 1231
 
 /** \} */
 
