@@ -66,11 +66,6 @@ void main()
   btdf /= sampleCount * sampleCount;
   brdf /= sampleCount * sampleCount;
 
-  if (ior == 1) {
-    btdf = 1.0;
-    brdf = 0.0;
-  }
-
   /* There is place to put multi-scatter result (which is a little bit different still)
    * and / or lobe fitting for better sampling of. */
   FragColor = vec4(btdf, brdf, 0.0, 1.0);
