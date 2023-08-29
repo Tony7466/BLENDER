@@ -99,7 +99,14 @@ static void calculate_simulation_job_startjob(void *customdata,
     LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
       if (md->type == eModifierType_Nodes) {
         NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-        // nmd->runtime->simulation_cache->reset();
+        if (!nmd->runtime->simulation_cache) {
+          continue;
+        }
+        for (auto item : nmd->runtime->simulation_cache->cache_by_zone_id.items()) {
+          if (item.value->cache_state != CacheState::Baked) {
+            item.value->frame_caches.clear();
+          }
+        }
       }
     }
     objects_to_calc.append(object);
