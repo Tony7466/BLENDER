@@ -93,11 +93,11 @@
 
 #include "DEG_depsgraph.h"
 
-#include "BLO_blend_defs.h"
-#include "BLO_blend_validate.h"
-#include "BLO_read_write.h"
+#include "BLO_blend_defs.hh"
+#include "BLO_blend_validate.hh"
+#include "BLO_read_write.hh"
 #include "BLO_readfile.h"
-#include "BLO_undofile.h"
+#include "BLO_undofile.hh"
 
 #include "SEQ_clipboard.h"
 #include "SEQ_iterator.h"
@@ -105,7 +105,7 @@
 #include "SEQ_sequencer.h"
 #include "SEQ_utils.h"
 
-#include "readfile.h"
+#include "readfile.hh"
 
 /* Make preferences read-only. */
 #define U (*((const UserDef *)&U))
@@ -3268,7 +3268,7 @@ static void do_versions_after_linking(FileData *fd, Main *main)
 /** \name Read Library Data Block (all)
  * \{ */
 
-static int lib_link_cb(struct LibraryIDLinkCallbackData *cb_data)
+static int lib_link_cb(LibraryIDLinkCallbackData *cb_data)
 {
   /* Embedded IDs are not known by lib_link code, so they would be remapped to `nullptr`. But there
    * is no need to process them anyway, as they are already handled during the 'read_data' phase.
