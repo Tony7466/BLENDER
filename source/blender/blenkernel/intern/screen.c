@@ -1479,7 +1479,7 @@ static void regions_remove_invalid(SpaceType *space_type, ListBase *regionbase)
       continue;
     }
 
-    printf("Error, region type %d missing in space type \"%s\" (id: %d) - removing region\n",
+    printf("Warning: region type %d missing in space type \"%s\" (id: %d) - removing region\n",
            region->regiontype,
            space_type->name,
            space_type->spaceid);
