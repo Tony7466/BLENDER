@@ -1125,7 +1125,6 @@ void ED_mesh_split_faces(Mesh *mesh)
 {
   using namespace blender;
   const OffsetIndices polys = mesh->faces();
-  const Span<int> corner_verts = mesh->corner_verts();
   const Span<int> corner_edges = mesh->corner_edges();
   const bke::AttributeAccessor attributes = mesh->attributes();
   const VArray<bool> mesh_sharp_edges = *attributes.lookup_or_default<bool>(
