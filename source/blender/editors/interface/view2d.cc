@@ -1331,7 +1331,7 @@ void UI_view2d_dot_grid_draw(const View2D *v2d,
         clamp_f(point_size_precise, min_point_size, max_point_size));
 
     /* Offset point by this amount to better align centers as size changes. */
-    const float point_size_offset = point_size_draw / 2.0f;
+    const float point_size_offset = (point_size_draw / 2.0f) - U.pixelsize;
 
     /* To compensate the for the clamped point_size we adjust the alpha to make the overall
      * brightness of the grid background more consistent. */
@@ -1356,13 +1356,14 @@ void UI_view2d_dot_grid_draw(const View2D *v2d,
     const float step = min_step * level_scale;
     int count_x;
     float start_x;
+
     /* Count points that fit in viewport minus space for the scrollbars. */
     grid_axis_start_and_count(
-        step, v2d->cur.xmin, v2d->cur.xmax - (1.5f * U.widget_unit), &start_x, &count_x);
+        step, v2d->cur.xmin, v2d->cur.xmax - V2D_SCROLL_WIDTH, &start_x, &count_x);
     int count_y;
     float start_y;
     grid_axis_start_and_count(
-        step, v2d->cur.ymin + (1.2f * U.widget_unit), v2d->cur.ymax, &start_y, &count_y);
+        step, v2d->cur.ymin + V2D_SCROLL_HEIGHT, v2d->cur.ymax, &start_y, &count_y);
     if (count_x == 0 || count_y == 0) {
       continue;
     }
