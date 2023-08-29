@@ -2188,6 +2188,10 @@ static int gpencil_surfacedeform_bind_exec(bContext *C, wmOperator *op)
   SurDeformGpencilModifierData *smd_orig = (SurDeformGpencilModifierData *)
       gpencil_edit_modifier_property_get(op, ob, eGpencilModifierType_SurDeform);
   smd_orig->bind_modes &= ~GP_MOD_SDEF_UNBIND_MODE;
+
+  /* set notifier that keyframe properties have changed */
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME_PROP, NULL);
+
   return gpencil_surfacedeform_bind_or_unbind(C,  op);
 }
 
@@ -2197,6 +2201,10 @@ static int gpencil_surfacedeform_unbind_exec(bContext *C, wmOperator *op)
   SurDeformGpencilModifierData *smd_orig = (SurDeformGpencilModifierData *)
       gpencil_edit_modifier_property_get(op, ob, eGpencilModifierType_SurDeform);
   smd_orig->bind_modes |= GP_MOD_SDEF_UNBIND_MODE;
+
+  /* set notifier that keyframe properties have changed */
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME_PROP, NULL);
+
   return gpencil_surfacedeform_bind_or_unbind(C,  op);
 }
 
