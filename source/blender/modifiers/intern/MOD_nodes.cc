@@ -825,7 +825,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
             zone_cache.cache_state = CacheState::Invalid;
           }
           output_copy_info.delta_time = delta_frames / fps_;
-          output_copy_info.prev_items = this->to_readonly_items_map(prev_frame_cache.state);
+          output_copy_info.prev_items = this->to_readonly_items_map(prev_frame_cache.items);
           zone_info.input.info = std::move(output_copy_info);
           this->store_frame_cache(zone_cache, zone_info);
           return;
@@ -834,6 +834,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
       this->read_from_cache(frame_indices, zone_cache, zone_info);
       return;
     }
+
     // TODO: realtime cache
   }
 
@@ -848,7 +849,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
           std::lock_guard lock{simulation_cache->mutex};
           auto frame_cache = std::make_unique<bke::sim::SimulationZoneFrameCache>();
           frame_cache->frame = current_frame;
-          frame_cache->state.item_by_identifier = std::move(items);
+          frame_cache->items = std::move(items);
           zone_cache->frame_caches.append(std::move(frame_cache));
         };
     zone_info.output.info = std::move(store_and_pass_through_info);
@@ -865,7 +866,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
       const float delta_frames = std::min(max_delta_frames,
                                           float(current_frame_) - float(frame_cache.frame));
       output_copy_info.delta_time = delta_frames / fps_;
-      for (auto item : frame_cache.state.item_by_identifier.items()) {
+      for (auto item : frame_cache.items.items()) {
         output_copy_info.prev_items.add_new(item.key, item.value.get());
       }
       zone_info.input.info = std::move(output_copy_info);
@@ -904,7 +905,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     bke::sim::SimulationZoneFrameCache &frame_cache = *zone_cache.frame_caches[frame_index];
     this->ensure_bake_loaded(zone_cache, frame_cache);
     nodes::SimulationOutputInfo::ReadSingle read_single_info;
-    read_single_info.items = this->to_readonly_items_map(frame_cache.state);
+    read_single_info.items = this->to_readonly_items_map(frame_cache.items);
     zone_info.output.info = std::move(read_single_info);
   }
 
@@ -923,16 +924,16 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     read_interpolated_info.mix_factor = (float(current_frame_) - float(prev_frame_cache.frame)) /
                                         (float(next_frame_cache.frame) -
                                          float(prev_frame_cache.frame));
-    read_interpolated_info.prev_items = this->to_readonly_items_map(prev_frame_cache.state);
-    read_interpolated_info.next_items = this->to_readonly_items_map(next_frame_cache.state);
+    read_interpolated_info.prev_items = this->to_readonly_items_map(prev_frame_cache.items);
+    read_interpolated_info.next_items = this->to_readonly_items_map(next_frame_cache.items);
     zone_info.output.info = std::move(read_interpolated_info);
   }
 
   Map<int, const bke::BakeItem *> to_readonly_items_map(
-      const bke::sim::SimulationZoneState &state) const
+      const Map<int, std::unique_ptr<bke::BakeItem>> &items) const
   {
     Map<int, const bke::BakeItem *> map;
-    for (auto item : state.item_by_identifier.items()) {
+    for (auto item : items.items()) {
       map.add_new(item.key, item.value.get());
     }
     return map;
@@ -941,7 +942,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
   void ensure_bake_loaded(bke::sim::SimulationZoneCache &zone_cache,
                           bke::sim::SimulationZoneFrameCache &frame_cache) const
   {
-    if (!frame_cache.state.item_by_identifier.is_empty()) {
+    if (!frame_cache.items.is_empty()) {
       return;
     }
     if (!zone_cache.bdata_dir) {
@@ -975,7 +976,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
       std::unique_ptr<bke::BakeItem> item = bke::deserialize_bake_item(
           *io_item, bdata_reader, *zone_cache.bdata_sharing);
       if (item) {
-        frame_cache.state.item_by_identifier.add(zone_id, std::move(item));
+        frame_cache.items.add(zone_id, std::move(item));
       }
     }
   }

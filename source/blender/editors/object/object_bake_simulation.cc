@@ -356,7 +356,7 @@ static void bake_simulation_job_startjob(void *customdata,
           io::serialize::DictionaryValue io_root;
           io_root.append_int("version", 3);
           io::serialize::DictionaryValue &io_items = *io_root.append_dict("items");
-          for (auto item : frame_cache.state.item_by_identifier.items()) {
+          for (auto item : frame_cache.items.items()) {
             io::serialize::DictionaryValue &io_item = *io_items.append_dict(
                 std::to_string(item.key));
             bke::serialize_bake_item(

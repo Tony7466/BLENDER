@@ -17,16 +17,6 @@ struct Main;
 
 namespace blender::bke::sim {
 
-/**
- * Storage of values for a single simulation input and output node pair.
- * Used as a cache to allow random access in time, and as an intermediate form before data is
- * baked.
- */
-class SimulationZoneState {
- public:
-  Map<int, std::unique_ptr<BakeItem>> item_by_identifier;
-};
-
 enum class CacheState {
   /** The cache is up-to-date with the inputs. */
   Valid,
@@ -41,12 +31,12 @@ enum class CacheState {
 
 struct SimulationZoneFrameCache {
   SubFrame frame;
-  SimulationZoneState state;
+  Map<int, std::unique_ptr<BakeItem>> items;
   std::optional<std::string> meta_path;
 };
 
 struct SimulationZoneRealtimeCache {
-  std::unique_ptr<SimulationZoneState> prev_state;
+  Map<int, std::unique_ptr<BakeItem>> prev_items;
   SubFrame prev_frame;
 };
 
