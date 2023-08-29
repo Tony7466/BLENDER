@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -25,9 +25,11 @@
 #include "eevee_irradiance_cache.hh"
 #include "eevee_light.hh"
 #include "eevee_lightprobe.hh"
+#include "eevee_lookdev.hh"
 #include "eevee_material.hh"
 #include "eevee_motion_blur.hh"
 #include "eevee_pipeline.hh"
+#include "eevee_raytrace.hh"
 #include "eevee_reflection_probes.hh"
 #include "eevee_renderbuffers.hh"
 #include "eevee_sampling.hh"
@@ -36,6 +38,7 @@
 #include "eevee_subsurface.hh"
 #include "eevee_sync.hh"
 #include "eevee_view.hh"
+#include "eevee_volume.hh"
 #include "eevee_world.hh"
 
 namespace blender::eevee {
@@ -57,6 +60,7 @@ class Instance {
   ShadowModule shadows;
   LightModule lights;
   AmbientOcclusion ambient_occlusion;
+  RayTraceModule raytracing;
   ReflectionProbeModule reflection_probes;
   VelocityModule velocity;
   MotionBlurModule motion_blur;
@@ -71,8 +75,10 @@ class Instance {
   MainView main_view;
   CaptureView capture_view;
   World world;
+  LookdevModule lookdev;
   LightProbeModule light_probes;
   IrradianceCache irradiance_cache;
+  VolumeModule volume;
 
   /** Input data. */
   Depsgraph *depsgraph;
@@ -90,6 +96,9 @@ class Instance {
   const DRWView *drw_view;
   const View3D *v3d;
   const RegionView3D *rv3d;
+  /** Only available when baking irradiance volume. */
+  Collection *visibility_collection = nullptr;
+  bool visibility_collection_invert = false;
 
   /** True if the grease pencil engine might be running. */
   bool gpencil_engine_enabled;
@@ -111,6 +120,7 @@ class Instance {
         shadows(*this),
         lights(*this),
         ambient_occlusion(*this),
+        raytracing(*this),
         reflection_probes(*this),
         velocity(*this),
         motion_blur(*this),
@@ -124,8 +134,10 @@ class Instance {
         main_view(*this),
         capture_view(*this),
         world(*this),
+        lookdev(*this),
         light_probes(*this),
-        irradiance_cache(*this){};
+        irradiance_cache(*this),
+        volume(*this){};
   ~Instance(){};
 
   /* Render & Viewport. */
@@ -143,6 +155,11 @@ class Instance {
   void begin_sync();
   void object_sync(Object *ob);
   void end_sync();
+
+  /**
+   * Return true when probe pipeline is used during this sample.
+   */
+  bool do_probe_sync() const;
 
   /* Render. */
 

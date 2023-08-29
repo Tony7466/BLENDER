@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -42,8 +42,8 @@ class ShadingView {
   const float4x4 &face_matrix_;
 
   /** Ray-tracing persistent buffers. Only opaque and refraction can have surface tracing. */
-  // RaytraceBuffer rt_buffer_opaque_;
-  // RaytraceBuffer rt_buffer_refract_;
+  RayTraceBuffer rt_buffer_opaque_;
+  RayTraceBuffer rt_buffer_refract_;
   DepthOfFieldBuffer dof_buffer_;
 
   Framebuffer prepass_fb_;
@@ -145,7 +145,7 @@ class MainView {
 /* -------------------------------------------------------------------- */
 /** \name Capture View
  *
- * View for capturing cubemap renders outside a ShadingView.
+ * View for capturing cube-map renders outside a ShadingView.
  * \{ */
 
 class CaptureView {
@@ -155,7 +155,8 @@ class CaptureView {
 
  public:
   CaptureView(Instance &inst) : inst_(inst) {}
-  void render();
+  void render_world();
+  void render_probes();
 };
 
 /** \} */

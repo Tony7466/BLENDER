@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,7 +6,7 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "DNA_action_types.h"
 #include "DNA_anim_types.h"
@@ -16,14 +16,14 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 /* Enum defines exported for `rna_animation.cc`. */
 
@@ -81,7 +81,7 @@ const EnumPropertyItem rna_enum_nla_mode_extend_items[] = {
 
 #  include "DNA_object_types.h"
 
-#  include "ED_anim_api.h"
+#  include "ED_anim_api.hh"
 
 #  include "DEG_depsgraph.h"
 #  include "DEG_depsgraph_build.h"
@@ -658,7 +658,7 @@ static void rna_def_strip_fcurves(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_struct_sdna(srna, "NlaStrip");
   RNA_def_struct_ui_text(srna, "NLA-Strip F-Curves", "Collection of NLA strip F-Curves");
 
-  /* Strip.fcurves.find(...) */
+  /* `Strip.fcurves.find(...)`. */
   func = RNA_def_function(srna, "find", "rna_NlaStrip_fcurve_find");
   RNA_def_function_ui_description(
       func,
@@ -679,7 +679,7 @@ static void rna_def_nlastrip(BlenderRNA *brna)
   StructRNA *srna;
   PropertyRNA *prop;
 
-  /* enum defs */
+  /* Enum definitions. */
   static const EnumPropertyItem prop_type_items[] = {
       {NLASTRIP_TYPE_CLIP, "CLIP", 0, "Action Clip", "NLA Strip references some Action"},
       {NLASTRIP_TYPE_TRANSITION,

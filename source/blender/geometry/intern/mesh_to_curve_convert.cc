@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -58,7 +58,9 @@ BLI_NOINLINE bke::CurvesGeometry create_curve_from_vert_indices(
     curves.cyclic_for_write().slice(cyclic_curves).fill(true);
   }
 
-  const bool share_vert_data = indices_are_full_ordered_copy(vert_indices);
+  const int src_total_points = mesh_attributes.domain_size(ATTR_DOMAIN_POINT);
+  const bool share_vert_data = vert_indices.size() == src_total_points &&
+                               indices_are_full_ordered_copy(vert_indices);
   if (share_vert_data) {
     bke::copy_attributes(
         mesh_attributes, ATTR_DOMAIN_POINT, propagation_info, {}, curves_attributes);
@@ -115,10 +117,7 @@ BLI_NOINLINE static CurveFromEdgesOutput edges_to_curve_point_indices(const int 
 {
   /* Compute the number of edges connecting to each vertex. */
   Array<int> neighbor_offsets_data(verts_num + 1, 0);
-  for (const int vert : edges.cast<int>()) {
-    neighbor_offsets_data[vert]++;
-  }
-  offset_indices::accumulate_counts_to_offsets(neighbor_offsets_data);
+  offset_indices::build_reverse_offsets(edges.cast<int>(), neighbor_offsets_data);
   const OffsetIndices<int> neighbor_offsets(neighbor_offsets_data);
 
   /* Use as an index into the "neighbor group" for each vertex. */

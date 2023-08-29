@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2018-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2018-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -88,6 +88,15 @@ class Prefs(bpy.types.KeyConfigPreferences):
         update=update_fn,
     )
 
+    # Experimental: only show with developer extras, see: #107785.
+    use_region_toggle_pie: BoolProperty(
+        name="Region Toggle Pie",
+        description=(
+            "N-key opens a pie menu to toggle regions"
+        ),
+        default=False,
+        update=update_fn,
+    )
     # Experimental: only show with developer extras, see: #96544.
     use_tweak_select_passthrough: BoolProperty(
         name="Tweak Select: Mouse Select & Move",
@@ -252,6 +261,15 @@ class Prefs(bpy.types.KeyConfigPreferences):
         update=update_fn,
     )
 
+    use_alt_navigation: BoolProperty(
+        name="Transform Navigation with Alt",
+        description=(
+            "During transformations, use Alt to navigate in the 3D View. "
+            "Note that if disabled, hotkeys for Proportional Editing, Automatic Constraints, and Auto IK Chain Length will require holding Alt"),
+        default=True,
+        update=update_fn,
+    )
+
     def draw(self, layout):
         from bpy import context
 
@@ -301,6 +319,9 @@ class Prefs(bpy.types.KeyConfigPreferences):
         if show_developer_ui and (not is_select_left):
             row = sub.row()
             row.prop(self, "use_tweak_tool_lmb_interaction")
+        if show_developer_ui:
+            row = sub.row()
+            row.prop(self, "use_region_toggle_pie")
 
         # 3DView settings.
         col = layout.column()
@@ -315,6 +336,7 @@ class Prefs(bpy.types.KeyConfigPreferences):
         sub.prop(self, "use_v3d_tab_menu")
         sub.prop(self, "use_pie_click_drag")
         sub.prop(self, "use_v3d_shade_ex_pie")
+        sub.prop(self, "use_alt_navigation")
 
         # File Browser settings.
         col = layout.column()
@@ -347,6 +369,7 @@ def load():
             use_mouse_emulate_3_button=use_mouse_emulate_3_button,
             spacebar_action=kc_prefs.spacebar_action,
             use_key_activate_tools=(kc_prefs.tool_key_mode == 'TOOL'),
+            use_region_toggle_pie=(show_developer_ui and kc_prefs.use_region_toggle_pie),
             v3d_tilde_action=kc_prefs.v3d_tilde_action,
             use_v3d_mmb_pan=(kc_prefs.v3d_mmb_action == 'PAN'),
             v3d_alt_mmb_drag_action=kc_prefs.v3d_alt_mmb_drag_action,
@@ -375,6 +398,7 @@ def load():
             use_pie_click_drag=kc_prefs.use_pie_click_drag,
             use_file_single_click=kc_prefs.use_file_single_click,
             experimental=prefs.experimental,
+            use_alt_navigation=kc_prefs.use_alt_navigation,
         ),
     )
 

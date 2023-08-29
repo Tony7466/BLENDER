@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -31,10 +33,6 @@ class AmbientOcclusion {
 
   AODataBuf data_;
   PassSimple render_pass_ps_ = {"AO Render Pass"};
-
-  /* Used as pointers for texture views in the AO Render Pass. */
-  GPUTexture *rp_normal_tx_ = nullptr;
-  GPUTexture *rp_ao_tx_ = nullptr;
 
  public:
   AmbientOcclusion(Instance &inst) : inst_(inst){};
