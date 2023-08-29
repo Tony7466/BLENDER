@@ -707,8 +707,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
              simulation_cache_->cache_by_zone_id.values())
         {
           if (zone_cache->cache_state == bke::sim::CacheState::Invalid) {
-            zone_cache->frame_caches.clear();
-            zone_cache->cache_state = bke::sim::CacheState::Valid;
+            zone_cache->reset();
           }
         }
       }
@@ -754,8 +753,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
           Vector<bke::bake_paths::MetaFile> meta_files = bke::bake_paths::find_sorted_meta_files(
               zone_bake_path->meta_dir);
           if (!meta_files.is_empty()) {
-            zone_cache.frame_caches.clear();
-            zone_cache.bdata_sharing.reset();
+            zone_cache.reset();
 
             for (const bke::bake_paths::MetaFile &meta_file : meta_files) {
               auto frame_cache = std::make_unique<SimulationZoneFrameCache>();

@@ -22,6 +22,16 @@
 
 namespace blender::bke::sim {
 
+void SimulationZoneCache::reset()
+{
+  this->frame_caches.clear();
+  this->prev_state.reset();
+  this->bdata_dir.reset();
+  this->bdata_sharing.reset();
+  this->failed_finding_bake = false;
+  this->cache_state = CacheState::Valid;
+}
+
 void scene_simulation_states_reset(Scene &scene)
 {
   FOREACH_SCENE_OBJECT_BEGIN (&scene, ob) {
@@ -30,8 +40,12 @@ void scene_simulation_states_reset(Scene &scene)
         continue;
       }
       NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-      // TODO
-      // nmd->runtime->simulation_cache->reset();
+      if (!nmd->runtime->simulation_cache) {
+        continue;
+      }
+      for (auto item : nmd->runtime->simulation_cache->cache_by_zone_id.items()) {
+        item.value->reset();
+      }
     }
   }
   FOREACH_SCENE_OBJECT_END;

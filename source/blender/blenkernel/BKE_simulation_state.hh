@@ -48,6 +48,8 @@ struct SimulationZoneCache {
   std::unique_ptr<BDataSharing> bdata_sharing;
   bool failed_finding_bake = false;
   CacheState cache_state = CacheState::Valid;
+
+  void reset();
 };
 
 class ModifierSimulationCache {

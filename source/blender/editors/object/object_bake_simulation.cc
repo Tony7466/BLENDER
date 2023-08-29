@@ -104,7 +104,7 @@ static void calculate_simulation_job_startjob(void *customdata,
         }
         for (auto item : nmd->runtime->simulation_cache->cache_by_zone_id.items()) {
           if (item.value->cache_state != CacheState::Baked) {
-            item.value->frame_caches.clear();
+            item.value->reset();
           }
         }
       }
@@ -279,8 +279,7 @@ static void bake_simulation_job_startjob(void *customdata,
         modifier_bake_data.nmd = nmd;
 
         for (auto item : nmd->runtime->simulation_cache->cache_by_zone_id.items()) {
-          item.value->frame_caches.clear();
-          item.value->cache_state = CacheState::Valid;
+          item.value->reset();
         }
 
         for (const bNestedNodeRef &nested_node_ref : nmd->node_group->nested_node_refs_span()) {
@@ -642,8 +641,7 @@ static int delete_baked_simulation_exec(bContext *C, wmOperator *op)
           continue;
         }
         for (auto item : nmd->runtime->simulation_cache->cache_by_zone_id.items()) {
-          item.value->frame_caches.clear();
-          item.value->cache_state = bke::sim::CacheState::Valid;
+          item.value->reset();
 
           const std::optional<bke::bake_paths::BakePath> bake_path =
               bke::sim::get_simulation_zone_bake_path(*bmain, *object, *nmd, item.key);
