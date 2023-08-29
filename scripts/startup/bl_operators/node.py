@@ -318,10 +318,10 @@ class NODE_OT_interface_item_new(NodeInterfaceOperator, Operator):
         return {'FINISHED'}
 
 
-class NODE_OT_interface_item_copy(NodeInterfaceOperator, Operator):
+class NODE_OT_interface_item_duplicate(NodeInterfaceOperator, Operator):
     '''Add a copy of the active item to the interface'''
-    bl_idname = "node.interface_item_copy"
-    bl_label = "Copy Item"
+    bl_idname = "node.interface_item_duplicate"
+    bl_label = "Duplicate Item"
     bl_options = {'REGISTER', 'UNDO'}
 
     @classmethod
@@ -374,7 +374,7 @@ classes = (
     NODE_OT_add_repeat_zone,
     NODE_OT_collapse_hide_unused_toggle,
     NODE_OT_interface_item_new,
-    NODE_OT_interface_item_copy,
+    NODE_OT_interface_item_duplicate,
     NODE_OT_interface_item_remove,
     NODE_OT_tree_path_parent,
 )

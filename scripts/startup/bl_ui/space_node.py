@@ -864,6 +864,15 @@ class NODE_PT_overlay(Panel):
             col.prop(overlay, "show_named_attributes", text="Named Attributes")
 
 
+class NODE_MT_node_tree_interface_context_menu(Menu):
+    bl_label = "Node Tree Interface Specials"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("node.interface_item_duplicate", icon='DUPLICATE')
+
+
 class NODE_PT_node_tree_interface(Panel):
     bl_space_type = 'NODE_EDITOR'
     bl_region_type = 'UI'
@@ -891,12 +900,11 @@ class NODE_PT_node_tree_interface(Panel):
 
         split.template_node_tree_interface(tree.interface)
 
-        ops_col = split.column()
-
-        add_remove_col = ops_col.column(align=True)
-        add_remove_col.operator_menu_enum("node.interface_item_new", "item_type", icon='ADD', text="")
-        add_remove_col.operator("node.interface_item_copy", icon='DUPLICATE', text="")
-        add_remove_col.operator("node.interface_item_remove", icon='REMOVE', text="")
+        ops_col = split.column(align=True)
+        ops_col.operator_menu_enum("node.interface_item_new", "item_type", icon='ADD', text="")
+        ops_col.operator("node.interface_item_remove", icon='REMOVE', text="")
+        ops_col.separator()
+        ops_col.menu("NODE_MT_node_tree_interface_context_menu", icon='DOWNARROW_HLT', text="")
 
         ops_col.separator()
 
@@ -1135,6 +1143,7 @@ classes = (
     NODE_PT_material_slots,
     NODE_PT_geometry_node_asset_traits,
     NODE_PT_node_color_presets,
+    NODE_MT_node_tree_interface_context_menu,
     NODE_PT_node_tree_interface,
     NODE_PT_active_node_generic,
     NODE_PT_active_node_color,
