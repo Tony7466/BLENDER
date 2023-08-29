@@ -630,9 +630,10 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
 
           return;
         }
-        else {
-          smd->layers->frames++;
-        }
+        
+      }
+      else {
+        smd->layers->frames++;
       }
     }
   }
