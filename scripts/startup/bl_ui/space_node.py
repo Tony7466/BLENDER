@@ -356,7 +356,7 @@ class NODE_MT_node(Menu):
         layout.separator()
 
         layout.operator("node.group_make")
-        layout.operator("node.group_insert")
+        layout.operator("node.group_insert", text="Insert Into Group")
         layout.operator("node.group_edit").exit = False
         layout.operator("node.group_ungroup")
 
@@ -593,7 +593,7 @@ class NODE_MT_context_menu(Menu):
         layout.operator("node.group_insert", text="Insert Into Group")
 
         if active_node and active_node.type == 'GROUP':
-            layout.operator("node.group_edit", text="Edit").exit = False
+            layout.operator("node.group_edit").exit = False
             layout.operator("node.group_ungroup", text="Ungroup")
 
         if is_nested:
