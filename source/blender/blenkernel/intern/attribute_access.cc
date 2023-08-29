@@ -1033,13 +1033,13 @@ void gather_attributes(const AttributeAccessor src_attributes,
   });
 }
 
-static bool indices_are_full_ordered_copy(const Span<int> indices, const int src_size)
+static bool indices_are_range(const Span<int> indices, const IndexRange range)
 {
-  if (indices.size() != src_size) {
+  if (indices.size() != range.size()) {
     return false;
   }
   return threading::parallel_reduce(
-      indices.index_range(),
+      range,
       4096,
       true,
       [&](const IndexRange range, const bool init) {
@@ -1063,7 +1063,7 @@ void gather_attributes(const AttributeAccessor src_attributes,
                        const Span<int> indices,
                        MutableAttributeAccessor dst_attributes)
 {
-  if (indices_are_full_ordered_copy(indices, src_attributes.domain_size(domain))) {
+  if (indices_are_range(indices, IndexRange(src_attributes.domain_size(domain)))) {
     copy_attributes(src_attributes, domain, propagation_info, skip, dst_attributes);
   }
   else {
