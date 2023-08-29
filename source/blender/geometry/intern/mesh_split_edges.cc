@@ -317,6 +317,10 @@ static OrderedEdge edge_from_corner(const OffsetIndices<int> faces,
   return OrderedEdge(corner_verts[corner], corner_verts[corner_next]);
 }
 
+/**
+ * Add a new edge to the vector (which is expected to be small), detecting duplicates and storing
+ * them in the same index.
+ */
 static int add_edge_or_find_index(Vector<OrderedEdge> &vector, const OrderedEdge value)
 {
   const int index = vector.first_index_of_try(value);
