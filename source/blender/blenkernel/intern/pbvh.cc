@@ -2838,7 +2838,6 @@ bool BKE_pbvh_node_frustum_exclude_AABB(PBVHNode *node, PBVHFrustumPlanes *data)
 
 void BKE_pbvh_update_normals(PBVH *pbvh, SubdivCCG *subdiv_ccg)
 {
-  using namespace blender;
   /* Update normals */
   Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(
       pbvh, [&](PBVHNode &node) { return update_search(&node, PBVH_UpdateNormals); });
