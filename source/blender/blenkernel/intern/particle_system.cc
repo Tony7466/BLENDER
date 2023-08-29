@@ -55,7 +55,7 @@
 #include "BKE_particle.h"
 
 #include "BKE_bvhutils.h"
-#include "BKE_cloth.h"
+#include "BKE_cloth.hh"
 #include "BKE_collection.h"
 #include "BKE_lattice.h"
 #include "BKE_material.h"
@@ -4031,7 +4031,7 @@ static void dynamics_step(ParticleSimulationData *sim, float cfra)
 
       if (part->fluid->solver == SPH_SOLVER_DDR) {
         /* Apply SPH forces using double-density relaxation algorithm
-         * (Clavat et. al.) */
+         * (Clavat et al.) */
 
         TaskParallelSettings settings;
         BLI_parallel_range_settings_defaults(&settings);

@@ -32,7 +32,7 @@
 #include "SEQ_render.h"
 #include "SEQ_sound.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "render.h"
 
@@ -1564,6 +1564,12 @@ void SEQ_modifier_list_copy(Sequence *seqn, Sequence *seq)
 
     smdn->next = smdn->prev = nullptr;
     BLI_addtail(&seqn->modifiers, smdn);
+    BLI_uniquename(&seqn->modifiers,
+                   smdn,
+                   "Strip Modifier",
+                   '.',
+                   offsetof(SequenceModifierData, name),
+                   sizeof(SequenceModifierData::name));
   }
 }
 
@@ -1635,15 +1641,6 @@ void SEQ_modifier_blend_read_data(BlendDataReader *reader, ListBase *lb)
       LISTBASE_FOREACH (EQCurveMappingData *, eqcmd, &semd->graphics) {
         BKE_curvemapping_blend_read(reader, &eqcmd->curve_mapping);
       }
-    }
-  }
-}
-
-void SEQ_modifier_blend_read_lib(BlendLibReader *reader, Scene *scene, ListBase *lb)
-{
-  LISTBASE_FOREACH (SequenceModifierData *, smd, lb) {
-    if (smd->mask_id) {
-      BLO_read_id_address(reader, &scene->id, &smd->mask_id);
     }
   }
 }
