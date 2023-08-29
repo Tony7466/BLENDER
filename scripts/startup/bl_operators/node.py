@@ -294,13 +294,9 @@ class NODE_OT_interface_item_new(NodeInterfaceOperator, Operator):
         tree = snode.edit_tree
         interface = tree.interface
 
-        # Remember parent and position to move the item.
-        if interface.active:
-            parent = interface.active.parent
-            position = interface.active.position + 1
-        else:
-            parent = None
-            position = -1
+        # Remember active item and position to determine target position.
+        active_item = interface.active
+        active_pos = active_item.position if active_item else -1
 
         if self.item_type == 'INPUT':
             item = interface.new_socket("Socket", socket_type=self.socket_type, in_out={'INPUT'})
@@ -311,8 +307,12 @@ class NODE_OT_interface_item_new(NodeInterfaceOperator, Operator):
         else:
             return {'CANCELLED'}
 
-        if parent:
-            interface.move_to_parent(item, parent, position)
+        if active_item:
+            # Insert into active panel if possible, otherwise insert after active item.
+            if active_item.item_type == 'PANEL' and item.item_type != 'PANEL':
+                interface.move_to_parent(item, active_item, len(active_item.interface_items))
+            else:
+                interface.move_to_parent(item, active_item.parent, active_pos + 1)
         interface.active = item
 
         return {'FINISHED'}
