@@ -80,20 +80,25 @@ vec3 F_brdf_single_scatter(vec3 f0, vec3 f90, vec2 lut)
   return f0 * lut.x + f90 * lut.y;
 }
 
-/* Multi-scattering brdf approximation from:
+/* Multi-scattering brdf approximation from
  * "A Multiple-Scattering Microfacet Model for Real-Time Image-based Lighting"
- * https://jcgt.org/published/0008/01/03/paper.pdf by Carmelo J. Fdez-Agüera
- * with radiance/irradiance simplification from
- * "A Journey Through Implementing Multiscattering BRDFs and Area Lights" by Steve McAuley. */
+ * https://jcgt.org/published/0008/01/03/paper.pdf by Carmelo J. Fdez-Agüera. */
 vec3 F_brdf_multi_scatter(vec3 f0, vec3 f90, vec2 lut)
 {
   vec3 FssEss = F_brdf_single_scatter(f0, f90, lut);
 
   float Ess = lut.x + lut.y;
+  float Ems = 1.0 - Ess;
   vec3 Favg = f0 + (1.0 - f0) / 21.0;
 
-  /* Simple albedo scaling. */
-  return FssEss / (1.0 - (1.0 - Ess) * Favg);
+  /* The original paper uses `FssEss * radiance + Fms*Ems * irradiance`, but
+   * "A Journey Through Implementing Multiscattering BRDFs and Area Lights" by Steve McAuley
+   * suggests to use `FssEss * radiance + Fms*Ems * radiance` which results in comparible quality.
+   * We handle `radiance` outside of this function, so the result simplifies to:
+   * `FssEss + Fms*Ems = FssEss * (1 + Ems*Favg / (1 - Ems*Favg)) = FssEss / (1 - Ems*Favg)`.
+   * This is a simple albedo scaling very similar to the approach used by Cycles:
+   * "Practical multiple scattering compensation for microfacet model". */
+  return FssEss / (1.0 - Ems * Favg);
 }
 
 /* GGX */
