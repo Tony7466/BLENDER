@@ -583,15 +583,13 @@ static void version_replace_principled_hair_model(bNodeTree *ntree)
   }
 }
 
-static void legacy_socket_move_to_interface(bNodeTreeInterfaceItem *&new_item_ptr,
-                                            bNodeSocket &legacy_socket,
-                                            const eNodeSocketInOut in_out)
+static bNodeTreeInterfaceItem *legacy_socket_move_to_interface(bNodeSocket &legacy_socket,
+                                                               const eNodeSocketInOut in_out)
 {
-  new_item_ptr = static_cast<bNodeTreeInterfaceItem *>(
+  bNodeTreeInterfaceItem *new_item = static_cast<bNodeTreeInterfaceItem *>(
       MEM_mallocN(sizeof(bNodeTreeInterfaceSocket), __func__));
-  new_item_ptr->item_type = NODE_INTERFACE_SOCKET;
-  bNodeTreeInterfaceSocket &new_socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(
-      *new_item_ptr);
+  new_item->item_type = NODE_INTERFACE_SOCKET;
+  bNodeTreeInterfaceSocket &new_socket = *reinterpret_cast<bNodeTreeInterfaceSocket *>(new_item);
 
   /* Move reusable data. */
   new_socket.name = BLI_strdup(legacy_socket.name);
@@ -616,6 +614,8 @@ static void legacy_socket_move_to_interface(bNodeTreeInterfaceItem *&new_item_pt
 
   /* Unused data */
   MEM_delete(legacy_socket.runtime);
+
+  return new_item;
 }
 
 static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *ntree)
@@ -631,12 +631,12 @@ static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *nt
   /* Convert outputs first to retain old outputs/inputs ordering. */
   int index;
   LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &ntree->outputs_legacy, index) {
-    legacy_socket_move_to_interface(
-        tree_interface.root_panel.items_array[index], *socket, SOCK_OUT);
+    tree_interface.root_panel.items_array[index] = legacy_socket_move_to_interface(*socket,
+                                                                                   SOCK_OUT);
   }
   LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &ntree->inputs_legacy, index) {
-    legacy_socket_move_to_interface(
-        tree_interface.root_panel.items_array[num_outputs + index], *socket, SOCK_IN);
+    tree_interface.root_panel.items_array[num_outputs + index] = legacy_socket_move_to_interface(
+        *socket, SOCK_IN);
   }
 }
 
