@@ -2,9 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "bsdf_principled.h"
-
-#include <BKE_node_runtime.hh>
+#include "node_parser.h"
 
 namespace blender::nodes::materialx {
 

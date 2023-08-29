@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "material.h"
-#include "nodes/output_material.h"
+#include "nodes/node_parser.h"
 
 #include <MaterialXCore/Node.h>
 #include <MaterialXFormat/XmlIo.h>

@@ -2,16 +2,14 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#pragma once
-
 #include "node_parser.h"
 
 namespace blender::nodes::materialx {
 
-class OutputMaterialNodeParser : public NodeParser {
- public:
-  using NodeParser::NodeParser;
-  NodeItem compute() override;
-};
+NodeItem MixRGBNodeParser::compute()
+{
+  /* TODO: implement */
+  return empty_value();
+}
 
 }  // namespace blender::nodes::materialx

@@ -149,15 +149,15 @@ if(WITH_MATERIALX)
   list(APPEND SRC
     materialx/material.cc
     materialx/nodes/bsdf_principled.cc
+    materialx/nodes/invert.cc
+    materialx/nodes/math.cc
+    materialx/nodes/mix_rgb.cc
     materialx/nodes/node_parser.cc
     materialx/nodes/output_material.cc
     materialx/nodes/tex_image.cc
 
     materialx/material.h
-    materialx/nodes/bsdf_principled.h
     materialx/nodes/node_parser.h
-    materialx/nodes/output_material.h
-    materialx/nodes/tex_image.h
   )
 endif()
 
