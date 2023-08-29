@@ -355,7 +355,7 @@ static Array<int2> calc_new_edges(const OffsetIndices<int> faces,
 
   Array<int2> no_merge_new_edges(no_merge_count);
 
-  /* The first new edge for each selected edge is reused, instead we modify the existing edge in
+  /* The first new edge for each selected edge is reused-- we modify the existing edge in
    * place. Just reusing the first new edge isn't enough because the deduplication might make
    * multiple new edges reuse the original. */
   Array<bool> is_reused(corner_verts.size(), false);
