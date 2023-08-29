@@ -913,9 +913,9 @@ class NODE_PT_node_tree_interface(Panel):
             layout.use_property_split = True
 
             if active_item.item_type == 'SOCKET':
+                layout.prop(active_item, "socket_type", text="Type")
                 layout.prop(active_item, "description")
                 layout.prop(active_item, "in_out", text="Input/Output Type")
-                layout.prop(active_item, "socket_type")
                 # Display descriptions only for Geometry Nodes, since it's only used in the modifier panel.
                 if tree.type == 'GEOMETRY':
                     field_socket_types = {
