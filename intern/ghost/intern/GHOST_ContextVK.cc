@@ -816,10 +816,9 @@ GHOST_TSuccess GHOST_ContextVK::createSwapchain()
 
   VkFenceCreateInfo fence_info = {};
   fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-  // fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
   VK_CHECK(vkCreateFence(device, &fence_info, nullptr, &m_fence));
 
-  // VK_IMAGE_LAYOUT_UNDEFINED -> PRESENT_SRC
+  /* Change image layout from VK_IMAGE_LAYOUT_UNDEFINED to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR. */
   VkCommandBufferBeginInfo begin_info = {};
   begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
   VK_CHECK(vkBeginCommandBuffer(m_command_buffer, &begin_info));
