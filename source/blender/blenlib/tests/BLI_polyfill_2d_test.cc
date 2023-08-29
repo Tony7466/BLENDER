@@ -101,7 +101,7 @@ static void test_polyfill_topology(const float /*poly*/[][2],
       const uint v1 = tris[i][j];
       const uint v2 = tris[i][(j + 1) % 3];
       edgehash.add_or_modify(
-          {v1, v2}, [](int *value) { *value = 1; }, *[](int *value) { (*value)++; });
+          {v1, v2}, [](int *value) { *value = 1; }, [](int *value) { (*value)++; });
     }
   }
   EXPECT_EQ(edgehash.size(), poly_num + (poly_num - 3));
