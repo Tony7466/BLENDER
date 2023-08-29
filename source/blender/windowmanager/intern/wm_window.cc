@@ -1669,13 +1669,7 @@ static bool wm_window_timers_process(const bContext *C, int *sleep_us_p)
     const double sleep_sec_next = ntime_min - time;
 
     if (sleep_sec_next < sleep_sec) {
-#ifdef WIN32
-      /* Windows doesn't support microsecond sleep, round to milliseconds.
-       * Use floor as a way of looping until the time has been reached (not ideal!). */
-      *sleep_us_p = int(std::floor(sleep_sec_next * 1000)) * 1000;
-#else
       *sleep_us_p = int(std::ceil(sleep_sec_next * microseconds));
-#endif
     }
   }
 
@@ -1710,20 +1704,19 @@ void wm_window_events_process(const bContext *C)
   /* Skip sleeping when simulating events so tests don't idle unnecessarily as simulated
    * events are typically generated from a timer that runs in the main loop. */
   if ((has_event == false) && (sleep_us != 0) && !(G.f & G_FLAG_EVENT_SIMULATE)) {
-    const int sleep_ms = sleep_us / 1000;
-    const bool is_ms = (sleep_ms * 1000) == sleep_us;
-    if (is_ms) {
+    if (sleep_us == sleep_us_default) {
       /* NOTE(@ideasman42): prefer #PIL_sleep_ms over `sleep_for(..)` in the common case
        * because this function uses lower resolution (millisecond) resolution sleep timers
        * which are tried & true for the idle loop. We could move to C++ `sleep_for(..)`
        * if this works well on all platforms but this needs further testing. */
-      PIL_sleep_ms(sleep_ms);
+      PIL_sleep_ms(sleep_us_default / 1000);
     }
     else {
-      /* The time was shortened to resume for the upcoming timer, use a high resolution timer.
+      /* The time was shortened to resume for the upcoming timer, use a high resolution sleep.
+       * Mainly happens during animation playback but could happen immediately before any timer.
        *
-       * This typically happens during animation playback
-       * but could happen immediately before any timer. */
+       * NOTE(@ideasman42): At time of writing Windows-10-22H2 doesn't give higher precision sleep.
+       * Keep the functionality as it doesn't have noticeable down sides either. */
       std::this_thread::sleep_for(std::chrono::microseconds(sleep_us));
     }
   }
