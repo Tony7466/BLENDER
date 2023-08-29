@@ -1468,6 +1468,7 @@ static void std_node_socket_interface_draw(ID *id,
 
   switch (type) {
     case SOCK_FLOAT: {
+      uiItemR(col, &ptr, "subtype", DEFAULT_FLAGS, IFACE_("Subtype"), ICON_NONE);
       uiItemR(col, &ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), ICON_NONE);
       uiLayout *sub = uiLayoutColumn(col, true);
       uiItemR(sub, &ptr, "min_value", DEFAULT_FLAGS, IFACE_("Min"), ICON_NONE);
@@ -1475,6 +1476,7 @@ static void std_node_socket_interface_draw(ID *id,
       break;
     }
     case SOCK_INT: {
+      uiItemR(col, &ptr, "subtype", DEFAULT_FLAGS, IFACE_("Subtype"), ICON_NONE);
       uiItemR(col, &ptr, "default_value", DEFAULT_FLAGS, IFACE_("Default"), ICON_NONE);
       uiLayout *sub = uiLayoutColumn(col, true);
       uiItemR(sub, &ptr, "min_value", DEFAULT_FLAGS, IFACE_("Min"), ICON_NONE);
@@ -1482,6 +1484,7 @@ static void std_node_socket_interface_draw(ID *id,
       break;
     }
     case SOCK_VECTOR: {
+      uiItemR(col, &ptr, "subtype", DEFAULT_FLAGS, IFACE_("Subtype"), ICON_NONE);
       uiItemR(col, &ptr, "default_value", UI_ITEM_R_EXPAND, IFACE_("Default"), ICON_NONE);
       uiLayout *sub = uiLayoutColumn(col, true);
       uiItemR(sub, &ptr, "min_value", DEFAULT_FLAGS, IFACE_("Min"), ICON_NONE);

@@ -37,6 +37,7 @@ static const EnumPropertyItem node_tree_interface_socket_in_out_items[] = {
 #  include "BKE_node_runtime.hh"
 #  include "BKE_node_tree_interface.hh"
 #  include "BKE_node_tree_update.h"
+#  include "BLI_set.hh"
 #  include "DNA_material_types.h"
 #  include "ED_node.hh"
 #  include "WM_api.hh"
@@ -623,6 +624,44 @@ static void rna_NodeTreeInterfaceItems_move_to_parent(ID *id,
 
 /* ******** Node Socket Subtypes ******** */
 
+static const EnumPropertyItem *rna_subtype_filter_itemf(const blender::Set<int> subtypes,
+                                                        bool *r_free)
+{
+  if (subtypes.is_empty()) {
+    return rna_enum_dummy_NULL_items;
+  }
+
+  EnumPropertyItem *items = nullptr;
+  int items_count = 0;
+  for (const EnumPropertyItem *item = rna_enum_property_subtype_items; item->name != nullptr;
+       item++) {
+    if (subtypes.contains(item->value)) {
+      RNA_enum_item_add(&items, &items_count, item);
+    }
+  }
+
+  if (items_count == 0) {
+    return rna_enum_dummy_NULL_items;
+  }
+
+  RNA_enum_item_end(&items, &items_count);
+  *r_free = true;
+  return items;
+}
+
+static const EnumPropertyItem *rna_NodeTreeInterfaceSocketFloat_subtype_itemf(
+    bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free)
+{
+  return rna_subtype_filter_itemf({PROP_PERCENTAGE,
+                                   PROP_FACTOR,
+                                   PROP_ANGLE,
+                                   PROP_TIME,
+                                   PROP_TIME_ABSOLUTE,
+                                   PROP_DISTANCE,
+                                   PROP_NONE},
+                                  r_free);
+}
+
 void rna_NodeTreeInterfaceSocketFloat_default_value_range(
     PointerRNA *ptr, float *min, float *max, float *softmin, float *softmax)
 {
@@ -641,6 +680,14 @@ void rna_NodeTreeInterfaceSocketFloat_default_value_range(
   *softmax = dval->max;
 }
 
+static const EnumPropertyItem *rna_NodeTreeInterfaceSocketInt_subtype_itemf(bContext * /*C*/,
+                                                                            PointerRNA * /*ptr*/,
+                                                                            PropertyRNA * /*prop*/,
+                                                                            bool *r_free)
+{
+  return rna_subtype_filter_itemf({PROP_PERCENTAGE, PROP_FACTOR, PROP_NONE}, r_free);
+}
+
 void rna_NodeTreeInterfaceSocketInt_default_value_range(
     PointerRNA *ptr, int *min, int *max, int *softmin, int *softmax)
 {
@@ -657,6 +704,19 @@ void rna_NodeTreeInterfaceSocketInt_default_value_range(
   *max = INT_MAX;
   *softmin = dval->min;
   *softmax = dval->max;
+}
+
+static const EnumPropertyItem *rna_NodeTreeInterfaceSocketVector_subtype_itemf(
+    bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free)
+{
+  return rna_subtype_filter_itemf({PROP_TRANSLATION,
+                                   PROP_DIRECTION,
+                                   PROP_VELOCITY,
+                                   PROP_ACCELERATION,
+                                   PROP_EULER,
+                                   PROP_XYZ,
+                                   PROP_NONE},
+                                  r_free);
 }
 
 void rna_NodeTreeInterfaceSocketVector_default_value_range(
