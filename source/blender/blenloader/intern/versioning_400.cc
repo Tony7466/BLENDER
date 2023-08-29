@@ -422,73 +422,71 @@ static void version_replace_principled_hair_model(bNodeTree *ntree)
   }
 }
 
-static void legacy_socket_interface_free(bNodeSocket *sock)
+static void legacy_socket_move_to_interface(bNodeTreeInterfaceItem *&new_item_ptr,
+                                            bNodeSocket &legacy_socket,
+                                            const eNodeSocketInOut in_out)
 {
-  if (sock->prop) {
-    IDP_FreeProperty_ex(sock->prop, false);
-  }
+  new_item_ptr = static_cast<bNodeTreeInterfaceItem *>(
+      MEM_mallocN(sizeof(bNodeTreeInterfaceSocket), __func__));
+  new_item_ptr->item_type = NODE_INTERFACE_SOCKET;
+  bNodeTreeInterfaceSocket &new_socket = reinterpret_cast<bNodeTreeInterfaceSocket &>(
+      *new_item_ptr);
 
-  if (sock->default_value) {
-    MEM_freeN(sock->default_value);
-  }
-  if (sock->default_attribute_name) {
-    MEM_freeN(sock->default_attribute_name);
-  }
-  MEM_delete(sock->runtime);
+  /* Move reusable data. */
+  new_socket.name = BLI_strdup(legacy_socket.name);
+  new_socket.identifier = BLI_strdup(legacy_socket.identifier);
+  new_socket.description = BLI_strdup(legacy_socket.description);
+  new_socket.socket_type = BLI_strdup(legacy_socket.idname);
+  new_socket.flag = (in_out == SOCK_IN ? NODE_INTERFACE_SOCKET_INPUT :
+                                         NODE_INTERFACE_SOCKET_OUTPUT);
+  SET_FLAG_FROM_TEST(
+      new_socket.flag, legacy_socket.flag & SOCK_HIDE_VALUE, NODE_INTERFACE_SOCKET_HIDE_VALUE);
+  SET_FLAG_FROM_TEST(new_socket.flag,
+                     legacy_socket.flag & SOCK_HIDE_IN_MODIFIER,
+                     NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER);
+  new_socket.attribute_domain = legacy_socket.attribute_domain;
+  new_socket.default_attribute_name = BLI_strdup_null(legacy_socket.default_attribute_name);
+  new_socket.socket_data = legacy_socket.default_value;
+  new_socket.properties = legacy_socket.prop;
+
+  /* Clear moved pointers in legacy data. */
+  legacy_socket.default_value = nullptr;
+  legacy_socket.prop = nullptr;
+
+  /* Unused data */
+  MEM_delete(legacy_socket.runtime);
 }
 
 static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *ntree)
 {
   bNodeTreeInterface &tree_interface = ntree->tree_interface;
 
+  const int num_inputs = BLI_listbase_count(&ntree->inputs_legacy);
+  const int num_outputs = BLI_listbase_count(&ntree->outputs_legacy);
+  tree_interface.root_panel.items_num = num_inputs + num_outputs;
+  tree_interface.root_panel.items_array = static_cast<bNodeTreeInterfaceItem **>(MEM_malloc_arrayN(
+      tree_interface.root_panel.items_num, sizeof(bNodeTreeInterfaceItem *), __func__));
+
   /* Convert outputs first to retain old outputs/inputs ordering. */
-  LISTBASE_FOREACH (const bNodeSocket *, socket, &ntree->outputs_legacy) {
-    NodeTreeInterfaceSocketFlag flag = NODE_INTERFACE_SOCKET_OUTPUT;
-    SET_FLAG_FROM_TEST(flag, socket->flag & SOCK_HIDE_VALUE, NODE_INTERFACE_SOCKET_HIDE_VALUE);
-    SET_FLAG_FROM_TEST(
-        flag, socket->flag & SOCK_HIDE_IN_MODIFIER, NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER);
-    bNodeTreeInterfaceSocket *new_socket = tree_interface.add_socket(
-        socket->name, socket->description, socket->idname, flag, nullptr);
-    BLI_assert(new_socket != nullptr);
-
-    MEM_SAFE_FREE(new_socket->identifier);
-    new_socket->identifier = BLI_strdup(socket->identifier);
-    new_socket->attribute_domain = socket->attribute_domain;
-    MEM_SAFE_FREE(new_socket->default_attribute_name);
-    new_socket->default_attribute_name = BLI_strdup_null(socket->default_attribute_name);
-
-    node_socket_copy_default_value_data(
-        eNodeSocketDatatype(socket->type), new_socket->socket_data, socket->default_value);
+  int index;
+  LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &ntree->outputs_legacy, index) {
+    legacy_socket_move_to_interface(
+        tree_interface.root_panel.items_array[index], *socket, SOCK_OUT);
   }
-  LISTBASE_FOREACH (const bNodeSocket *, socket, &ntree->inputs_legacy) {
-    NodeTreeInterfaceSocketFlag flag = NODE_INTERFACE_SOCKET_INPUT;
-    SET_FLAG_FROM_TEST(flag, socket->flag & SOCK_HIDE_VALUE, NODE_INTERFACE_SOCKET_HIDE_VALUE);
-    SET_FLAG_FROM_TEST(
-        flag, socket->flag & SOCK_HIDE_IN_MODIFIER, NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER);
-    bNodeTreeInterfaceSocket *new_socket = tree_interface.add_socket(
-        socket->name, socket->description, socket->idname, flag, nullptr);
-    BLI_assert(new_socket != nullptr);
-
-    MEM_SAFE_FREE(new_socket->identifier);
-    new_socket->identifier = BLI_strdup(socket->identifier);
-    new_socket->attribute_domain = socket->attribute_domain;
-    MEM_SAFE_FREE(new_socket->default_attribute_name);
-    new_socket->default_attribute_name = BLI_strdup_null(socket->default_attribute_name);
-
-    node_socket_copy_default_value_data(
-        eNodeSocketDatatype(socket->type), new_socket->socket_data, socket->default_value);
+  LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &ntree->inputs_legacy, index) {
+    legacy_socket_move_to_interface(
+        tree_interface.root_panel.items_array[num_outputs + index], *socket, SOCK_IN);
   }
 }
 
 static void versioning_free_legacy_node_tree_socket_lists(bNodeTree *ntree)
 {
-  /* Clear legacy data after conversion. */
+  /* Clear legacy sockets after conversion.
+   * Internal data pointers have been moved or freed already. */
   LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, &ntree->inputs_legacy) {
-    legacy_socket_interface_free(sock);
     MEM_freeN(sock);
   }
   LISTBASE_FOREACH_MUTABLE (bNodeSocket *, sock, &ntree->outputs_legacy) {
-    legacy_socket_interface_free(sock);
     MEM_freeN(sock);
   }
   BLI_listbase_clear(&ntree->inputs_legacy);
