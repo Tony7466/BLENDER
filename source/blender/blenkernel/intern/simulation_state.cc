@@ -131,7 +131,7 @@ ModifierSimulationState &ModifierSimulationCache::get_state_at_frame_for_write(
   const int64_t i = find_state_at_frame(states_at_frames_, frame);
   if (i == -1) {
     /* Either we have an empty container, or the last frame < than the requested frame
-     in both cases we can just append a new state at the end. */
+     * in both cases we can just append a new state at the end. */
     if (!states_at_frames_.is_empty()) {
       BLI_assert(frame > states_at_frames_.last()->frame);
     }
