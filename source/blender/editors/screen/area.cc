@@ -350,11 +350,10 @@ static void region_draw_status_text(ScrArea *area, ARegion *region)
   uchar header_color[4];
   UI_GetThemeColor4ubv(TH_HEADER_ACTIVE, header_color);
 
-  /* Clear the area to transparent if an overlapping area, is a tool_header (since that
-   * is below the header) that has some transparency, or header with full transparent. */
+  /* Clear the region to transparent if it has any transparency. */
   const bool transparent = overlap &&
-                           (region->regiontype == RGN_TYPE_HEADER && header_color[3] == 0 ||
-                            region->regiontype == RGN_TYPE_TOOL_HEADER && header_color[3] != 255);
+                           ELEM(region->regiontype, RGN_TYPE_HEADER, RGN_TYPE_TOOL_HEADER) &&
+                           header_color[3] < 255;
 
   if (transparent) {
     GPU_clear_color(0.0f, 0.0f, 0.0f, 0.0f);
