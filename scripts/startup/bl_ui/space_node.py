@@ -911,7 +911,6 @@ class NODE_PT_node_tree_interface(Panel):
         active_item = tree.interface.active
         if active_item is not None:
             if active_item.item_type == 'SOCKET':
-                layout.prop(active_item, "name")
                 layout.prop(active_item, "description")
                 layout.prop(active_item, "in_out", text="")
                 layout.prop(active_item, "socket_type")
