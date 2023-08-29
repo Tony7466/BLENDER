@@ -10,6 +10,7 @@
 #include "vk_backend.hh"
 #include "vk_context.hh"
 #include "vk_memory.hh"
+#include "vk_state_manager.hh"
 #include "vk_texture.hh"
 
 namespace blender::gpu {
@@ -152,14 +153,35 @@ void VKFrameBuffer::clear(const eGPUFrameBufferBits buffers,
 {
   Vector<VkClearAttachment> attachments;
   if (buffers & (GPU_DEPTH_BIT | GPU_STENCIL_BIT)) {
-    build_clear_attachments_depth_stencil(buffers, clear_depth, clear_stencil, attachments);
+    VKContext &context = *VKContext::get();
+    /* Clearing depth via vkCmdClearAttachments requires a render pass with write depth enabled.
+     * When not enabled, clearing should be done via texture directly. */
+    if (context.state_manager_get().state.write_mask & GPU_WRITE_DEPTH) {
+      build_clear_attachments_depth_stencil(buffers, clear_depth, clear_stencil, attachments);
+    }
+    else {
+      VKTexture *depth_texture = unwrap(unwrap(depth_tex()));
+      if (depth_texture != nullptr) {
+        if (G.debug & G_DEBUG_GPU) {
+          std::cout
+              << "PERFORMANCE: impact clearing depth texture in render pass that doesn't allow "
+                 "depth writes.\n";
+        }
+        depth_texture->ensure_allocated();
+        depth_attachment_layout_ensure(context, VK_IMAGE_LAYOUT_GENERAL);
+        depth_texture->clear_depth_stencil(buffers, clear_depth, clear_stencil);
+      }
+    }
   }
   if (buffers & GPU_COLOR_BIT) {
     float clear_color_single[4];
     copy_v4_v4(clear_color_single, clear_color);
     build_clear_attachments_color(&clear_color_single, false, attachments);
   }
-  clear(attachments);
+
+  if (!attachments.is_empty()) {
+    clear(attachments);
+  }
 }
 
 void VKFrameBuffer::clear_multi(const float (*clear_color)[4])
@@ -475,6 +497,39 @@ void VKFrameBuffer::color_attachment_layout_ensure(VKContext &context,
 
   color_texture->layout_ensure(context, requested_layout);
   dirty_attachments_ = true;
+}
+
+void VKFrameBuffer::depth_attachment_layout_ensure(VKContext &context,
+                                                   VkImageLayout requested_layout)
+{
+  VKTexture *depth_texture = unwrap(unwrap(depth_tex()));
+  if (depth_texture == nullptr) {
+    return;
+  }
+
+  if (depth_texture->current_layout_get() == requested_layout) {
+    return;
+  }
+  depth_texture->layout_ensure(context, requested_layout);
+  dirty_attachments_ = true;
+}
+
+void VKFrameBuffer::update_size()
+{
+  if (!dirty_attachments_) {
+    return;
+  }
+
+  for (int i = 0; i < GPU_FB_MAX_ATTACHMENT; i++) {
+    GPUAttachment &attachment = attachments_[i];
+    if (attachment.tex) {
+      int size[3];
+      GPU_texture_get_mipmap_size(attachment.tex, attachment.mip, size);
+      size_set(size[0], size[1]);
+      return;
+    }
+  }
+  size_set(1, 1);
 }
 
 /** \} */

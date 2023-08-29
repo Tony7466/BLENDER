@@ -145,6 +145,32 @@ void VKTexture::clear(eGPUDataFormat format, const void *data)
       vk_image_, current_layout_get(), clear_color, Span<VkImageSubresourceRange>(&range, 1));
 }
 
+void VKTexture::clear_depth_stencil(const eGPUFrameBufferBits buffers,
+                                    float clear_depth,
+                                    uint clear_stencil)
+{
+  BLI_assert(buffers & (GPU_DEPTH_BIT | GPU_STENCIL_BIT));
+
+  if (!is_allocated()) {
+    allocate();
+  }
+  VKContext &context = *VKContext::get();
+  VKCommandBuffer &command_buffer = context.command_buffer_get();
+  VkClearDepthStencilValue clear_depth_stencil;
+  clear_depth_stencil.depth = clear_depth;
+  clear_depth_stencil.stencil = clear_stencil;
+  VkImageSubresourceRange range = {0};
+  range.aspectMask = to_vk_image_aspect_flag_bits(buffers & (GPU_DEPTH_BIT | GPU_STENCIL_BIT));
+  range.levelCount = VK_REMAINING_MIP_LEVELS;
+  range.layerCount = VK_REMAINING_ARRAY_LAYERS;
+
+  layout_ensure(context, VK_IMAGE_LAYOUT_GENERAL);
+  command_buffer.clear(vk_image_,
+                       current_layout_get(),
+                       clear_depth_stencil,
+                       Span<VkImageSubresourceRange>(&range, 1));
+}
+
 void VKTexture::swizzle_set(const char /*swizzle_mask*/[4])
 {
   NOT_YET_IMPLEMENTED;

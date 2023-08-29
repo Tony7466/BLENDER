@@ -260,6 +260,20 @@ void VKCommandBuffer::clear(VkImage vk_image,
                        ranges.data());
 }
 
+void VKCommandBuffer::clear(VkImage vk_image,
+                            VkImageLayout vk_image_layout,
+                            const VkClearDepthStencilValue &vk_clear_value,
+                            Span<VkImageSubresourceRange> ranges)
+{
+  ensure_no_active_framebuffer();
+  vkCmdClearDepthStencilImage(vk_command_buffer_,
+                              vk_image,
+                              vk_image_layout,
+                              &vk_clear_value,
+                              ranges.size(),
+                              ranges.data());
+}
+
 void VKCommandBuffer::clear(Span<VkClearAttachment> attachments, Span<VkClearRect> areas)
 {
   validate_framebuffer_exists();

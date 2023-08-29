@@ -93,9 +93,20 @@ class VKFrameBuffer : public FrameBuffer {
   Array<VkViewport, 16> vk_viewports_get() const;
   Array<VkRect2D, 16> vk_render_areas_get() const;
 
+  void depth_attachment_layout_ensure(VKContext &context, VkImageLayout requested_layout);
   void color_attachment_layout_ensure(VKContext &context,
                                       int color_attachment,
                                       VkImageLayout requested_layout);
+  /**
+   * Ensure that the size of the framebuffer matches the first attachment resolution.
+   *
+   * Frame buffers attachments are updated when actually used as the image layout has to be
+   * correct. After binding framebuffers the layout of images can still be modified.
+   *
+   * But for correct behavior of blit/clear operation the size of the framebuffer should be
+   * set, when activating the frame buffer.
+   */
+  void update_size();
 
  private:
   void update_attachments();

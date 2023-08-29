@@ -47,6 +47,9 @@ class VKTexture : public Texture, public VKBindableResource {
   void generate_mipmap() override;
   void copy_to(Texture *tex) override;
   void clear(eGPUDataFormat format, const void *data) override;
+  void clear_depth_stencil(const eGPUFrameBufferBits buffer,
+                           float clear_depth,
+                           uint clear_stencil);
   void swizzle_set(const char swizzle_mask[4]) override;
   void mip_range_set(int min, int max) override;
   void *read(int mip, eGPUDataFormat format) override;
