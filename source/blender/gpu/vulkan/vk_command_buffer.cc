@@ -24,8 +24,6 @@ namespace blender::gpu {
 
 VKCommandBuffer::~VKCommandBuffer()
 {
-  // TODO: free command buffer.
-
   if (vk_device_ != VK_NULL_HANDLE) {
     VK_ALLOCATION_CALLBACKS;
     vkDestroyFence(vk_device_, vk_fence_, vk_allocation_callbacks);

@@ -526,7 +526,6 @@ void VKTexture::current_layout_set(const VkImageLayout new_layout)
 
 void VKTexture::layout_ensure(VKContext &context, const VkImageLayout requested_layout)
 {
-  // BLI_assert(is_allocated());
   const VkImageLayout current_layout = current_layout_get();
   if (current_layout == requested_layout) {
     return;

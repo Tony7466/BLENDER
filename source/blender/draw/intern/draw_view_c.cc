@@ -43,7 +43,7 @@ void DRW_draw_region_info()
   const DRWContextState *draw_ctx = DRW_context_state_get();
   ARegion *region = draw_ctx->region;
 
-  // Not supported by rx480 DRW_draw_cursor();
+  DRW_draw_cursor();
 
   view3d_draw_region_info(draw_ctx->evil_C, region);
 }

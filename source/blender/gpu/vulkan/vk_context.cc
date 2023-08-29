@@ -110,15 +110,9 @@ void VKContext::deactivate()
   is_active_ = false;
 }
 
-void VKContext::begin_frame()
-{
-  // sync_backbuffer();
-}
+void VKContext::begin_frame() {}
 
-void VKContext::end_frame()
-{
-  // command_buffer_.end_recording();
-}
+void VKContext::end_frame() {}
 
 void VKContext::flush()
 {
