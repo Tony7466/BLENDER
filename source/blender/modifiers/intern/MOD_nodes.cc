@@ -622,8 +622,8 @@ static void check_property_socket_sync(const Object *ob, ModifierData *md)
 
   int geometry_socket_count = 0;
 
-  for (const int i : nmd->node_group->interface_cache().inputs.index_range()) {
-    const bNodeTreeInterfaceSocket *socket = nmd->node_group->interface_cache().inputs[i];
+  for (const int i : nmd->node_group->interface_inputs().index_range()) {
+    const bNodeTreeInterfaceSocket *socket = nmd->node_group->interface_inputs()[i];
     const bNodeSocketType *typeinfo = socket->socket_typeinfo();
     const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
     /* The first socket is the special geometry socket for the modifier object. */
@@ -651,7 +651,7 @@ static void check_property_socket_sync(const Object *ob, ModifierData *md)
   }
 
   if (geometry_socket_count == 1) {
-    const bNodeTreeInterfaceSocket *first_socket = nmd->node_group->interface_cache().inputs[0];
+    const bNodeTreeInterfaceSocket *first_socket = nmd->node_group->interface_inputs()[0];
     const bNodeSocketType *typeinfo = first_socket->socket_typeinfo();
     const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
     if (type != SOCK_GEOMETRY) {
@@ -1299,9 +1299,8 @@ static void panel_draw(const bContext *C, Panel *panel)
 
     nmd->node_group->ensure_topology_cache();
 
-    for (const int socket_index : nmd->node_group->interface_cache().inputs.index_range()) {
-      const bNodeTreeInterfaceSocket *socket =
-          nmd->node_group->interface_cache().inputs[socket_index];
+    for (const int socket_index : nmd->node_group->interface_inputs().index_range()) {
+      const bNodeTreeInterfaceSocket *socket = nmd->node_group->interface_inputs()[socket_index];
       if (!(socket->flag & NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER)) {
         draw_property_for_socket(*C, layout, nmd, &bmain_ptr, ptr, *socket, socket_index);
       }
@@ -1334,7 +1333,7 @@ static void output_attribute_panel_draw(const bContext *C, Panel *panel)
 
   bool has_output_attribute = false;
   if (nmd->node_group != nullptr && nmd->settings.properties != nullptr) {
-    for (const bNodeTreeInterfaceSocket *socket : nmd->node_group->interface_cache().outputs) {
+    for (const bNodeTreeInterfaceSocket *socket : nmd->node_group->interface_outputs()) {
       const bNodeSocketType *typeinfo = socket->socket_typeinfo();
       const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                   SOCK_CUSTOM;

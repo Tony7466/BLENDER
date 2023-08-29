@@ -338,8 +338,8 @@ static Vector<NodeLinkItem> ui_node_link_items(NodeLinkArg *arg,
       }
 
       Span<bNodeTreeInterfaceSocket *> iosockets = (in_out == SOCK_IN ?
-                                                        ngroup->interface_cache().inputs :
-                                                        ngroup->interface_cache().outputs);
+                                                        ngroup->interface_inputs() :
+                                                        ngroup->interface_outputs());
       for (const int index : iosockets.index_range()) {
         bNodeTreeInterfaceSocket *iosock = iosockets[index];
         NodeLinkItem item;

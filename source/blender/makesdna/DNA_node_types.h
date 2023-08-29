@@ -767,7 +767,10 @@ typedef struct bNodeTree {
   /** Zones in the node tree. Currently there are only simulation zones in geometry nodes. */
   const blender::bke::bNodeTreeZones *zones() const;
 
-  const blender::bke::bNodeTreeInterfaceCache &interface_cache() const;
+  /* Cached interface item lists. */
+  blender::Span<bNodeTreeInterfaceSocket *> interface_inputs() const;
+  blender::Span<bNodeTreeInterfaceSocket *> interface_outputs() const;
+  blender::Span<bNodeTreeInterfaceItem *> interface_items() const;
 #endif
 } bNodeTree;
 

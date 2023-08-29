@@ -204,8 +204,6 @@ static AnonymousAttributeInferencingResult analyse_anonymous_attribute_usages(
 {
   BLI_assert(!tree.has_available_link_cycle());
 
-  const bNodeTreeInterfaceCache &interface_cache = tree.interface_cache();
-
   ResourceScope scope;
   const Array<const aal::RelationsInNode *> relations_by_node = get_relations_by_node(tree, scope);
 
@@ -213,8 +211,8 @@ static AnonymousAttributeInferencingResult analyse_anonymous_attribute_usages(
   Vector<GeometrySource> all_geometry_sources;
 
   /* Find input field and geometry sources. */
-  for (const int i : interface_cache.inputs.index_range()) {
-    const bNodeTreeInterfaceSocket &interface_socket = *interface_cache.inputs[i];
+  for (const int i : tree.interface_inputs().index_range()) {
+    const bNodeTreeInterfaceSocket &interface_socket = *tree.interface_inputs()[i];
     const bNodeSocketType *typeinfo = nodeSocketTypeFind(interface_socket.socket_type);
     const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
     if (type == SOCK_GEOMETRY) {
@@ -456,8 +454,8 @@ static AnonymousAttributeInferencingResult analyse_anonymous_attribute_usages(
   /* Create #EvalRelation for the tree. */
   tree.ensure_topology_cache();
 
-  for (const int interface_i : interface_cache.inputs.index_range()) {
-    const bNodeTreeInterfaceSocket &interface_socket = *interface_cache.inputs[interface_i];
+  for (const int interface_i : tree.interface_inputs().index_range()) {
+    const bNodeTreeInterfaceSocket &interface_socket = *tree.interface_inputs()[interface_i];
     const bNodeSocketType *typeinfo = interface_socket.socket_typeinfo();
     eNodeSocketDatatype socket_type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
     if (socket_type != SOCK_GEOMETRY) {

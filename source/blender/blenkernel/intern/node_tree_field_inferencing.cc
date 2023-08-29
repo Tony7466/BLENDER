@@ -500,8 +500,8 @@ static void determine_group_input_states(
 {
   {
     /* Non-field inputs never support fields. */
-    for (const int index : tree.interface_cache().inputs.index_range()) {
-      const bNodeTreeInterfaceSocket *group_input = tree.interface_cache().inputs[index];
+    for (const int index : tree.interface_inputs().index_range()) {
+      const bNodeTreeInterfaceSocket *group_input = tree.interface_inputs()[index];
       const bNodeSocketType *typeinfo = group_input->socket_typeinfo();
       const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                   SOCK_CUSTOM;
@@ -698,9 +698,9 @@ bool update_field_inferencing(const bNodeTree &tree)
   /* Create new inferencing interface for this node group. */
   std::unique_ptr<FieldInferencingInterface> new_inferencing_interface =
       std::make_unique<FieldInferencingInterface>();
-  new_inferencing_interface->inputs.resize(tree.interface_cache().inputs.size(),
+  new_inferencing_interface->inputs.resize(tree.interface_inputs().size(),
                                            InputSocketFieldType::IsSupported);
-  new_inferencing_interface->outputs.resize(tree.interface_cache().outputs.size(),
+  new_inferencing_interface->outputs.resize(tree.interface_outputs().size(),
                                             OutputFieldDependency::ForDataSource());
 
   /* Keep track of the state of all sockets. The index into this array is #SocketRef::id(). */

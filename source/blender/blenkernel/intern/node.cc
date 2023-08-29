@@ -1104,11 +1104,11 @@ static void node_tree_asset_pre_save(void *asset_ptr, AssetMetaData *asset_data)
   auto inputs = idprop::create_group("inputs");
   auto outputs = idprop::create_group("outputs");
   node_tree.ensure_topology_cache();
-  for (const bNodeTreeInterfaceSocket *socket : node_tree.interface_cache().inputs) {
+  for (const bNodeTreeInterfaceSocket *socket : node_tree.interface_inputs()) {
     auto property = idprop::create(socket->name, socket->socket_type);
     IDP_AddToGroup(inputs.get(), property.release());
   }
-  for (const bNodeTreeInterfaceSocket *socket : node_tree.interface_cache().outputs) {
+  for (const bNodeTreeInterfaceSocket *socket : node_tree.interface_outputs()) {
     auto property = idprop::create(socket->name, socket->socket_type);
     IDP_AddToGroup(outputs.get(), property.release());
   }

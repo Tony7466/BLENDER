@@ -364,7 +364,7 @@ static void initialize_group_input(const bNodeTree &tree,
                                    const int input_index,
                                    void *r_value)
 {
-  const bNodeTreeInterfaceSocket &io_input = *tree.interface_cache().inputs[input_index];
+  const bNodeTreeInterfaceSocket &io_input = *tree.interface_inputs()[input_index];
   const bNodeSocketType *typeinfo = io_input.socket_typeinfo();
   const eNodeSocketDatatype socket_data_type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                           SOCK_CUSTOM;
@@ -446,7 +446,7 @@ static MultiValueMap<eAttrDomain, OutputAttributeInfo> find_output_attributes_to
     BLI_assert(value_or_field_type != nullptr);
     const fn::GField field = value_or_field_type->as_field(value.get());
 
-    const bNodeTreeInterfaceSocket *interface_socket = tree.interface_cache().outputs[index];
+    const bNodeTreeInterfaceSocket *interface_socket = tree.interface_outputs()[index];
     const eAttrDomain domain = (eAttrDomain)interface_socket->attribute_domain;
     OutputAttributeInfo output_info;
     output_info.field = std::move(field);
@@ -597,9 +597,9 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
   Vector<GMutablePointer> inputs_to_destruct;
 
   int input_index = -1;
-  for (const int i : btree.interface_cache().inputs.index_range()) {
+  for (const int i : btree.interface_inputs().index_range()) {
     input_index++;
-    const bNodeTreeInterfaceSocket &interface_socket = *btree.interface_cache().inputs[i];
+    const bNodeTreeInterfaceSocket &interface_socket = *btree.interface_inputs()[i];
     const bNodeSocketType *typeinfo = interface_socket.socket_typeinfo();
     const eNodeSocketDatatype socket_type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                        SOCK_CUSTOM;
@@ -616,8 +616,8 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
     inputs_to_destruct.append({type, value});
   }
 
-  Array<bool> output_used_inputs(btree.interface_cache().outputs.size(), true);
-  for (const int i : btree.interface_cache().outputs.index_range()) {
+  Array<bool> output_used_inputs(btree.interface_outputs().size(), true);
+  for (const int i : btree.interface_outputs().index_range()) {
     input_index++;
     param_inputs[input_index] = &output_used_inputs[i];
   }
@@ -668,7 +668,7 @@ void update_input_properties_from_node_tree(const bNodeTree &tree,
                                             IDProperty &properties)
 {
   tree.ensure_topology_cache();
-  const Span<const bNodeTreeInterfaceSocket *> tree_inputs = tree.interface_cache().inputs;
+  const Span<const bNodeTreeInterfaceSocket *> tree_inputs = tree.interface_inputs();
   for (const int i : tree_inputs.index_range()) {
     const bNodeTreeInterfaceSocket &socket = *tree_inputs[i];
     const StringRefNull socket_identifier = socket.identifier;
@@ -753,7 +753,7 @@ void update_output_properties_from_node_tree(const bNodeTree &tree,
                                              IDProperty &properties)
 {
   tree.ensure_topology_cache();
-  const Span<const bNodeTreeInterfaceSocket *> tree_outputs = tree.interface_cache().outputs;
+  const Span<const bNodeTreeInterfaceSocket *> tree_outputs = tree.interface_outputs();
   for (const int i : tree_outputs.index_range()) {
     const bNodeTreeInterfaceSocket &socket = *tree_outputs[i];
     const StringRefNull socket_identifier = socket.identifier;

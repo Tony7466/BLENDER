@@ -2621,8 +2621,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   void build_group_input_node(lf::Graph &lf_graph)
   {
     Vector<const CPPType *, 16> input_cpp_types;
-    const Span<const bNodeTreeInterfaceSocket *> interface_inputs =
-        btree_.interface_cache().inputs;
+    const Span<const bNodeTreeInterfaceSocket *> interface_inputs = btree_.interface_inputs();
     for (const bNodeTreeInterfaceSocket *interface_input : interface_inputs) {
       const bNodeSocketType *typeinfo = interface_input->socket_typeinfo();
       input_cpp_types.append(typeinfo->geometry_nodes_cpp_type);
@@ -2646,7 +2645,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   {
     Vector<const CPPType *, 16> output_cpp_types;
     auto &debug_info = scope_.construct<GroupOutputDebugInfo>();
-    for (const bNodeTreeInterfaceSocket *interface_output : btree_.interface_cache().outputs) {
+    for (const bNodeTreeInterfaceSocket *interface_output : btree_.interface_outputs()) {
       const bNodeSocketType *typeinfo = interface_output->socket_typeinfo();
       output_cpp_types.append(typeinfo->geometry_nodes_cpp_type);
       debug_info.socket_names.append(interface_output->name);
@@ -2803,7 +2802,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
   void handle_group_input_node(const bNode &bnode, BuildGraphParams &graph_params)
   {
-    for (const int i : btree_.interface_cache().inputs.index_range()) {
+    for (const int i : btree_.interface_inputs().index_range()) {
       const bNodeSocket &bsocket = bnode.output_socket(i);
       lf::OutputSocket &lf_socket = group_input_lf_node_->output(i);
       graph_params.lf_output_by_bsocket.add_new(&bsocket, &lf_socket);
@@ -2816,7 +2815,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   {
     Vector<const CPPType *, 16> output_cpp_types;
     auto &debug_info = scope_.construct<GroupOutputDebugInfo>();
-    for (const bNodeTreeInterfaceSocket *interface_input : btree_.interface_cache().outputs) {
+    for (const bNodeTreeInterfaceSocket *interface_input : btree_.interface_outputs()) {
       const bNodeSocketType *typeinfo = interface_input->socket_typeinfo();
       output_cpp_types.append(typeinfo->geometry_nodes_cpp_type);
       debug_info.socket_names.append(interface_input->name);
@@ -3537,7 +3536,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     for (const int i : output_indices.index_range()) {
       const int output_index = output_indices[i];
       mapping_->attribute_set_by_geometry_output.add(output_index, &lf_node.output(i));
-      debug_info.output_names.append(btree_.interface_cache().outputs[output_index]->name);
+      debug_info.output_names.append(btree_.interface_outputs()[output_index]->name);
     }
   }
 
@@ -3546,8 +3545,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
    */
   lf::DummyNode &build_output_usage_input_node(lf::Graph &lf_graph)
   {
-    const Span<const bNodeTreeInterfaceSocket *> interface_outputs =
-        btree_.interface_cache().outputs;
+    const Span<const bNodeTreeInterfaceSocket *> interface_outputs = btree_.interface_outputs();
 
     Vector<const CPPType *> cpp_types;
     cpp_types.append_n_times(&CPPType::get<bool>(), interface_outputs.size());
@@ -3567,8 +3565,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
    */
   void build_input_usage_output_node(lf::Graph &lf_graph)
   {
-    const Span<const bNodeTreeInterfaceSocket *> interface_inputs =
-        btree_.interface_cache().inputs;
+    const Span<const bNodeTreeInterfaceSocket *> interface_inputs = btree_.interface_inputs();
 
     Vector<const CPPType *> cpp_types;
     cpp_types.append_n_times(&CPPType::get<bool>(), interface_inputs.size());
@@ -3636,7 +3633,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   void build_group_input_usages(BuildGraphParams &graph_params)
   {
     const Span<const bNode *> group_input_nodes = btree_.group_input_nodes();
-    for (const int i : btree_.interface_cache().inputs.index_range()) {
+    for (const int i : btree_.interface_inputs().index_range()) {
       Vector<lf::OutputSocket *> target_usages;
       for (const bNode *group_input_node : group_input_nodes) {
         if (lf::OutputSocket *lf_socket = graph_params.usage_by_bsocket.lookup_default(
@@ -3828,13 +3825,13 @@ const GeometryNodesLazyFunctionGraphInfo *ensure_geometry_nodes_lazy_function_gr
       return nullptr;
     }
   }
-  for (const bNodeTreeInterfaceSocket *interface_bsocket : btree.interface_cache().inputs) {
+  for (const bNodeTreeInterfaceSocket *interface_bsocket : btree.interface_inputs()) {
     const bNodeSocketType *typeinfo = interface_bsocket->socket_typeinfo();
     if (typeinfo->geometry_nodes_cpp_type == nullptr) {
       return nullptr;
     }
   }
-  for (const bNodeTreeInterfaceSocket *interface_bsocket : btree.interface_cache().outputs) {
+  for (const bNodeTreeInterfaceSocket *interface_bsocket : btree.interface_outputs()) {
     const bNodeSocketType *typeinfo = interface_bsocket->socket_typeinfo();
     if (typeinfo->geometry_nodes_cpp_type == nullptr) {
       return nullptr;

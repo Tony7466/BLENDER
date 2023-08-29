@@ -86,9 +86,8 @@ static char *rna_NodeTreeInterfaceItem_path(const PointerRNA *ptr)
   }
 
   ntree->ensure_topology_cache();
-  const blender::bke::bNodeTreeInterfaceCache &cache = ntree->interface_cache();
-  for (const int index : cache.items.index_range()) {
-    if (cache.items[index] == item) {
+  for (const int index : ntree->interface_items().index_range()) {
+    if (ntree->interface_items()[index] == item) {
       return BLI_sprintfN("interface.ui_items[%d]", index);
     }
   }
@@ -758,11 +757,10 @@ static void rna_NodeTreeInterface_items_begin(CollectionPropertyIterator *iter, 
   }
 
   ntree->ensure_topology_cache();
-  const blender::bke::bNodeTreeInterfaceCache &cache = ntree->interface_cache();
   rna_iterator_array_begin(iter,
-                           const_cast<bNodeTreeInterfaceItem **>(cache.items.data()),
+                           const_cast<bNodeTreeInterfaceItem **>(ntree->interface_items().data()),
                            sizeof(bNodeTreeInterfaceItem *),
-                           cache.items.size(),
+                           ntree->interface_items().size(),
                            false,
                            nullptr);
 }
@@ -775,7 +773,7 @@ static int rna_NodeTreeInterface_items_length(PointerRNA *ptr)
   }
 
   ntree->ensure_topology_cache();
-  return ntree->interface_cache().items.size();
+  return ntree->interface_items().size();
 }
 
 static int rna_NodeTreeInterface_items_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
@@ -786,12 +784,12 @@ static int rna_NodeTreeInterface_items_lookup_int(PointerRNA *ptr, int index, Po
   }
 
   ntree->ensure_topology_cache();
-  const blender::bke::bNodeTreeInterfaceCache &cache = ntree->interface_cache();
-  if (!cache.items.index_range().contains(index)) {
+  if (!ntree->interface_items().index_range().contains(index)) {
     return false;
   }
 
-  RNA_pointer_create(ptr->owner_id, &RNA_NodeTreeInterfaceItem, cache.items[index], r_ptr);
+  RNA_pointer_create(
+      ptr->owner_id, &RNA_NodeTreeInterfaceItem, ntree->interface_items()[index], r_ptr);
   return true;
 }
 
@@ -805,8 +803,7 @@ static int rna_NodeTreeInterface_items_lookup_string(struct PointerRNA *ptr,
   }
 
   ntree->ensure_topology_cache();
-  const blender::bke::bNodeTreeInterfaceCache &cache = ntree->interface_cache();
-  for (bNodeTreeInterfaceItem *item : cache.items) {
+  for (bNodeTreeInterfaceItem *item : ntree->interface_items()) {
     switch (item->item_type) {
       case NODE_INTERFACE_SOCKET: {
         bNodeTreeInterfaceSocket *socket = reinterpret_cast<bNodeTreeInterfaceSocket *>(item);

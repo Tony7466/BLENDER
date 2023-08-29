@@ -1956,10 +1956,10 @@ void DepsgraphNodeBuilder::build_nodetree(bNodeTree *ntree)
 
   /* Needed for interface cache. */
   ntree->ensure_topology_cache();
-  for (bNodeTreeInterfaceSocket *socket : ntree->interface_cache().inputs) {
+  for (bNodeTreeInterfaceSocket *socket : ntree->interface_inputs()) {
     build_idproperties(socket->properties);
   }
-  for (bNodeTreeInterfaceSocket *socket : ntree->interface_cache().outputs) {
+  for (bNodeTreeInterfaceSocket *socket : ntree->interface_outputs()) {
     build_idproperties(socket->properties);
   }
 
