@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,10 +15,10 @@
 #include "BLI_alloca.h"
 
 #include "BKE_editmesh.h"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_particle.h"
 
 #include "DNA_curves_types.h"
@@ -29,7 +29,7 @@
 #include "DNA_node_types.h"
 #include "DNA_pointcloud_types.h"
 
-#include "ED_paint.h"
+#include "ED_paint.hh"
 
 #include "GPU_context.h"
 
@@ -40,6 +40,8 @@
 
 void workbench_engine_init(void *ved)
 {
+  BLI_assert_unreachable();
+
   GPU_render_begin();
   WORKBENCH_Data *vedata = static_cast<WORKBENCH_Data *>(ved);
   WORKBENCH_StorageList *stl = vedata->stl;

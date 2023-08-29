@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -30,6 +30,9 @@ namespace blender::nodes {
 StringRef input_use_attribute_suffix();
 StringRef input_attribute_name_suffix();
 
+std::optional<StringRef> input_attribute_name_get(const IDProperty &props,
+                                                  const bNodeSocket &io_input);
+
 /**
  * \return Whether using an attribute to input values of this type is supported.
  */
@@ -55,6 +58,7 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(
 
 void update_input_properties_from_node_tree(const bNodeTree &tree,
                                             const IDProperty *old_properties,
+                                            bool use_bool_for_use_attribute,
                                             IDProperty &properties);
 
 void update_output_properties_from_node_tree(const bNodeTree &tree,

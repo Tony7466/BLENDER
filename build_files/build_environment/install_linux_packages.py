@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -280,7 +280,7 @@ DEPS_CRITICAL_SUBPACKAGES = (
             distro_package_names={DISTRO_ID_DEBIAN: "libegl-dev",
                                   DISTRO_ID_FEDORA: "mesa-libEGL-devel",
                                   DISTRO_ID_SUSE: "Mesa-libEGL-devel",
-                                  DISTRO_ID_ARCH: None, # Included in libglvnd.
+                                  DISTRO_ID_ARCH: None,  # Included in `libglvnd`.
                                   },
             ),
 )
@@ -770,7 +770,7 @@ PACKAGES_ALL = (
                                   DISTRO_ID_ARCH: "openimageio",
                                   },
             ),
-    Package(name="LLVM Library", is_mandatory=False, version="12.0.0", version_short="12.0", version_min="11.0", version_mex="16.0",
+    Package(name="LLVM Library", is_mandatory=False, version="15.0.7", version_short="15.0", version_min="11.0", version_mex="16.0",
             sub_packages=(
                 Package(name="Clang Compiler", is_mandatory=False,
                         distro_package_names={DISTRO_ID_DEBIAN: "clang",

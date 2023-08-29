@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -33,7 +33,7 @@
 #include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
-#include "BKE_mesh_wrapper.h"
+#include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_pointcloud.h"
@@ -42,7 +42,7 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 using blender::float3;
 using blender::IndexRange;
@@ -126,16 +126,11 @@ static void pointcloud_blend_write(BlendWriter *writer, ID *id, const void *id_a
                          &pointcloud->id);
 
   BLO_write_pointer_array(writer, pointcloud->totcol, pointcloud->mat);
-  if (pointcloud->adt) {
-    BKE_animdata_blend_write(writer, pointcloud->adt);
-  }
 }
 
 static void pointcloud_blend_read_data(BlendDataReader *reader, ID *id)
 {
   PointCloud *pointcloud = (PointCloud *)id;
-  BLO_read_data_address(reader, &pointcloud->adt);
-  BKE_animdata_blend_read_data(reader, pointcloud->adt);
 
   /* Geometry */
   CustomData_blend_read(reader, &pointcloud->pdata, pointcloud->totpoint);
@@ -144,22 +139,6 @@ static void pointcloud_blend_read_data(BlendDataReader *reader, ID *id)
   BLO_read_pointer_array(reader, (void **)&pointcloud->mat);
 
   pointcloud->runtime = new blender::bke::PointCloudRuntime();
-}
-
-static void pointcloud_blend_read_lib(BlendLibReader *reader, ID *id)
-{
-  PointCloud *pointcloud = (PointCloud *)id;
-  for (int a = 0; a < pointcloud->totcol; a++) {
-    BLO_read_id_address(reader, id, &pointcloud->mat[a]);
-  }
-}
-
-static void pointcloud_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  PointCloud *pointcloud = (PointCloud *)id;
-  for (int a = 0; a < pointcloud->totcol; a++) {
-    BLO_expand(expander, pointcloud->mat[a]);
-  }
 }
 
 IDTypeInfo IDType_ID_PT = {
@@ -184,8 +163,7 @@ IDTypeInfo IDType_ID_PT = {
 
     /*blend_write*/ pointcloud_blend_write,
     /*blend_read_data*/ pointcloud_blend_read_data,
-    /*blend_read_lib*/ pointcloud_blend_read_lib,
-    /*blend_read_expand*/ pointcloud_blend_read_expand,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -385,7 +363,7 @@ void BKE_pointcloud_data_update(Depsgraph *depsgraph, Scene *scene, Object *obje
 
   /* Evaluate modifiers. */
   PointCloud *pointcloud = static_cast<PointCloud *>(object->data);
-  blender::bke::GeometrySet geometry_set = blender::bke::GeometrySet::create_with_pointcloud(
+  blender::bke::GeometrySet geometry_set = blender::bke::GeometrySet::from_pointcloud(
       pointcloud, blender::bke::GeometryOwnershipType::ReadOnly);
   pointcloud_evaluate_modifiers(depsgraph, scene, object, geometry_set);
 

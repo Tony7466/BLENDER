@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,6 +15,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_multi_value_map.hh"
 #include "BLI_path_util.h"
@@ -62,7 +64,7 @@
 #include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_main.h"
 #include "BKE_main_namemap.h"
 #include "BKE_mesh.hh"
@@ -72,13 +74,13 @@
 #include "BKE_simulation_state_serialize.hh"
 #include "BKE_workspace.h"
 
-#include "RNA_access.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "BLO_readfile.h"
 
-#include "readfile.h"
+#include "readfile.hh"
 
 #include "SEQ_channels.h"
 #include "SEQ_effects.h"
@@ -87,7 +89,7 @@
 #include "SEQ_sequencer.h"
 #include "SEQ_time.h"
 
-#include "versioning_common.h"
+#include "versioning_common.hh"
 
 static CLG_LogRef LOG = {"blo.readfile.doversion"};
 

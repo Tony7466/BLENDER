@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -161,7 +161,9 @@ class NODE_HT_header(Header):
                     else:
                         row.template_ID(snode, "node_tree", new="node.new_geometry_nodes_modifier")
             else:
-                layout.template_ID(snode, "node_tree", new="node.new_geometry_node_group_assign")
+                layout.template_ID(snode, "node_tree", new="node.new_geometry_node_group_tool")
+                if snode.node_tree and snode.node_tree.asset_data:
+                    layout.popover(panel="NODE_PT_geometry_node_asset_traits")
         else:
             # Custom node tree is edited as independent ID block
             NODE_MT_editor_menus.draw_collapsible(context, layout)
@@ -233,6 +235,10 @@ class NODE_MT_add(bpy.types.Menu):
             props = layout.operator("node.add_search", text="Search...", icon='VIEWZOOM')
             layout.separator()
             layout.menu_contents("NODE_MT_geometry_node_add_all")
+        elif snode.tree_type == 'CompositorNodeTree':
+            props = layout.operator("node.add_search", text="Search...", icon='VIEWZOOM')
+            layout.separator()
+            layout.menu_contents("NODE_MT_compositing_node_add_all")
         elif nodeitems_utils.has_node_categories(context):
             props = layout.operator("node.add_search", text="Search...", icon='VIEWZOOM')
             props.use_transform = True
@@ -253,11 +259,6 @@ class NODE_MT_view(Menu):
 
         layout.prop(snode, "show_region_toolbar")
         layout.prop(snode, "show_region_ui")
-
-        layout.separator()
-
-        # Auto-offset nodes (called "insert_offset" in code)
-        layout.prop(snode, "use_insert_offset")
 
         layout.separator()
 
@@ -428,6 +429,33 @@ class NODE_PT_material_slots(Panel):
             row.operator("object.material_slot_assign", text="Assign")
             row.operator("object.material_slot_select", text="Select")
             row.operator("object.material_slot_deselect", text="Deselect")
+
+
+class NODE_PT_geometry_node_asset_traits(Panel):
+    bl_space_type = 'NODE_EDITOR'
+    bl_region_type = 'HEADER'
+    bl_label = "Asset"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        snode = context.space_data
+        group = snode.node_tree
+
+        col = layout.column(heading="Type")
+        col.prop(group, "is_tool")
+        col = layout.column(heading="Mode")
+        col.active = group.is_tool
+        col.prop(group, "is_mode_edit")
+        col.prop(group, "is_mode_sculpt")
+        col = layout.column(heading="Geometry")
+        col.active = group.is_tool
+        col.prop(group, "is_type_mesh")
+        col.prop(group, "is_type_curve")
+        if context.preferences.experimental.use_new_point_cloud_type:
+            col.prop(group, "is_type_point_cloud")
 
 
 class NODE_PT_node_color_presets(PresetPanel, Panel):
@@ -817,9 +845,13 @@ class NODE_PT_overlay(Panel):
         col.prop(overlay, "show_context_path", text="Context Path")
         col.prop(snode, "show_annotation", text="Annotations")
 
-        if snode.supports_preview:
+        if snode.supports_previews:
             col.separator()
             col.prop(overlay, "show_previews", text="Previews")
+            if snode.tree_type == 'ShaderNodeTree':
+                row = col.row()
+                row.prop(overlay, "preview_shape", expand=True)
+                row.active = overlay.show_previews
 
         if snode.tree_type == 'GeometryNodeTree':
             col.separator()
@@ -969,67 +1001,6 @@ class NODE_PT_node_tree_interface_outputs(NodeTreeInterfacePanel):
 
     def draw(self, context):
         self.draw_socket_list(context, "OUT", "outputs", "active_output")
-
-
-class NODE_UL_panels(bpy.types.UIList):
-    def draw_item(self, context, layout, _data, item, icon, _active_data, _active_propname, _index):
-        row = layout.row(align=True)
-        row.prop(item, "name", text="", emboss=False, icon_value=icon)
-
-
-class NODE_PT_panels(Panel):
-    bl_space_type = 'NODE_EDITOR'
-    bl_region_type = 'UI'
-    bl_category = "Group"
-    bl_label = "Node Panels"
-
-    @classmethod
-    def poll(cls, context):
-        if not context.preferences.experimental.use_node_panels:
-            return False
-
-        snode = context.space_data
-        if snode is None:
-            return False
-        tree = snode.edit_tree
-        if tree is None:
-            return False
-        if tree.is_embedded_data:
-            return False
-        return True
-
-    def draw(self, context):
-        layout = self.layout
-        snode = context.space_data
-        tree = snode.edit_tree
-
-        split = layout.row()
-
-        split.template_list(
-            "NODE_UL_panels",
-            "",
-            tree,
-            "panels",
-            tree.panels,
-            "active_index")
-
-        ops_col = split.column()
-
-        add_remove_col = ops_col.column(align=True)
-        add_remove_col.operator("node.panel_add", icon='ADD', text="")
-        add_remove_col.operator("node.panel_remove", icon='REMOVE', text="")
-
-        ops_col.separator()
-
-        up_down_col = ops_col.column(align=True)
-        props = up_down_col.operator("node.panel_move", icon='TRIA_UP', text="")
-        props.direction = 'UP'
-        props = up_down_col.operator("node.panel_move", icon='TRIA_DOWN', text="")
-        props.direction = 'DOWN'
-
-        active_panel = tree.panels.active
-        if active_panel is not None:
-            layout.prop(active_panel, "name")
 
 
 class NODE_UL_simulation_zone_items(bpy.types.UIList):
@@ -1236,6 +1207,7 @@ classes = (
     NODE_MT_context_menu,
     NODE_MT_view_pie,
     NODE_PT_material_slots,
+    NODE_PT_geometry_node_asset_traits,
     NODE_PT_node_color_presets,
     NODE_PT_active_node_generic,
     NODE_PT_active_node_color,
@@ -1248,8 +1220,6 @@ classes = (
     NODE_UL_interface_sockets,
     NODE_PT_node_tree_interface_inputs,
     NODE_PT_node_tree_interface_outputs,
-    NODE_UL_panels,
-    NODE_PT_panels,
     NODE_UL_simulation_zone_items,
     NODE_PT_simulation_zone_items,
     NODE_UL_repeat_zone_items,

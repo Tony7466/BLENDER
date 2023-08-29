@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -28,7 +28,7 @@ eSnapMode snapObjectsTransform(TransInfo *t,
                                float r_loc[3],
                                float r_no[3]);
 bool snapNodesTransform(TransInfo *t,
-                        const int mval[2],
+                        const blender::float2 &mval,
                         /* return args */
                         float r_loc[2],
                         float *r_dist_px,
@@ -55,7 +55,7 @@ void transform_snap_project_individual_apply(TransInfo *t);
 void transform_snap_mixed_apply(TransInfo *t, float *vec);
 void resetSnapping(TransInfo *t);
 eRedrawFlag handleSnapping(TransInfo *t, const wmEvent *event);
-void drawSnapping(const bContext *C, TransInfo *t);
+void drawSnapping(TransInfo *t);
 bool usingSnappingNormal(const TransInfo *t);
 bool validSnappingNormal(const TransInfo *t);
 
