@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 #pragma once
 
 /** \file
@@ -19,6 +21,7 @@
  */
 
 #include "BLI_compiler_attrs.h"
+#include "BLI_utildefines.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -73,21 +76,35 @@ enum {
    */
   ID_REMAP_FORCE_OBDATA_IN_EDITMODE = 1 << 7,
 
-  /** Don't touch the special user counts (use when the 'old' remapped ID remains in use):
+  /**
+   * Don't touch the special user counts (use when the 'old' remapped ID remains in use):
    * - Do not transfer 'fake user' status from old to new ID.
-   * - Do not clear 'extra user' from old ID. */
+   * - Do not clear 'extra user' from old ID.
+   */
   ID_REMAP_SKIP_USER_CLEAR = 1 << 16,
-  /** Force handling user count even for IDs that are outside of Main (used in some cases when
+  /**
+   * Force handling user count even for IDs that are outside of Main (used in some cases when
    * dealing with IDs temporarily out of Main, but which will be put in it ultimately).
    */
   ID_REMAP_FORCE_USER_REFCOUNT = 1 << 17,
-  /** Do NOT handle user count for IDs (used in some cases when dealing with IDs from different
-   * BMains, if usercount will be recomputed anyway afterwards, like e.g. in memfile reading during
-   * undo step decoding). */
+  /**
+   * Do NOT handle user count for IDs (used in some cases when dealing with IDs from different
+   * BMains, if user-count will be recomputed anyway afterwards, like e.g.
+   * in memfile reading during undo step decoding).
+   */
   ID_REMAP_SKIP_USER_REFCOUNT = 1 << 18,
-  /** Do NOT tag IDs which had some of their ID pointers updated for update in the depsgraph, or ID
-   * type specific updates, like e.g. with node trees. */
+  /**
+   * Do NOT tag IDs which had some of their ID pointers updated for update in the depsgraph, or ID
+   * type specific updates, like e.g. with node trees.
+   */
   ID_REMAP_SKIP_UPDATE_TAGGING = 1 << 19,
+  /**
+   * Do not attempt to access original ID pointers (triggers usages of
+   * `IDWALK_NO_ORIG_POINTERS_ACCESS` too).
+   *
+   * Use when original ID pointers values are (probably) not valid, e.g. during read-file process.
+   */
+  ID_REMAP_NO_ORIG_POINTERS_ACCESS = 1 << 20,
 };
 
 typedef enum eIDRemapType {
@@ -210,7 +227,7 @@ typedef enum IDRemapperApplyOptions {
    * NOTE: Currently unused by main remapping code, since user-count is handled by
    * `foreach_libblock_remap_callback_apply` there, depending on whether the remapped pointer does
    * use it or not. Need for rare cases in UI handling though (see e.g. `image_id_remap` in
-   * `space_image.c`).
+   * `space_image.cc`).
    */
   ID_REMAP_APPLY_UPDATE_REFCOUNT = (1 << 0),
 
@@ -230,6 +247,7 @@ typedef enum IDRemapperApplyOptions {
 
   ID_REMAP_APPLY_DEFAULT = 0,
 } IDRemapperApplyOptions;
+ENUM_OPERATORS(IDRemapperApplyOptions, ID_REMAP_APPLY_UNMAP_WHEN_REMAPPING_TO_SELF)
 
 typedef void (*IDRemapperIterFunction)(struct ID *old_id, struct ID *new_id, void *user_data);
 

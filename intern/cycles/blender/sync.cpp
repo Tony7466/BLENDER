@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "scene/background.h"
 #include "scene/camera.h"
@@ -169,7 +170,8 @@ void BlenderSync::sync_recalc(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d
           }
 
           if (updated_geometry ||
-              (object_subdivision_type(b_ob, preview, experimental) != Mesh::SUBDIVISION_NONE)) {
+              (object_subdivision_type(b_ob, preview, experimental) != Mesh::SUBDIVISION_NONE))
+          {
             BL::ID key = BKE_object_is_modified(b_ob) ? b_ob : b_ob.data();
             geometry_map.set_recalc(key);
 
@@ -277,7 +279,8 @@ void BlenderSync::sync_data(BL::RenderSettings &b_render,
   geometry_synced.clear(); /* use for objects and motion sync */
 
   if (scene->need_motion() == Scene::MOTION_PASS || scene->need_motion() == Scene::MOTION_NONE ||
-      scene->camera->get_motion_position() == MOTION_POSITION_CENTER) {
+      scene->camera->get_motion_position() == MOTION_POSITION_CENTER)
+  {
     sync_objects(b_depsgraph, b_v3d);
   }
   sync_motion(b_render, b_depsgraph, b_v3d, b_override, width, height, python_thread_state);
@@ -438,6 +441,13 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer, bool background)
     GuidingDistributionType guiding_distribution_type = (GuidingDistributionType)get_enum(
         cscene, "guiding_distribution_type", GUIDING_NUM_TYPES, GUIDING_TYPE_PARALLAX_AWARE_VMM);
     integrator->set_guiding_distribution_type(guiding_distribution_type);
+    GuidingDirectionalSamplingType guiding_directional_sampling_type =
+        (GuidingDirectionalSamplingType)get_enum(cscene,
+                                                 "guiding_directional_sampling_type",
+                                                 GUIDING_DIRECTIONAL_SAMPLING_NUM_TYPES,
+                                                 GUIDING_DIRECTIONAL_SAMPLING_TYPE_RIS);
+    integrator->set_guiding_directional_sampling_type(guiding_directional_sampling_type);
+    integrator->set_guiding_roughness_threshold(get_float(cscene, "guiding_roughness_threshold"));
   }
 
   DenoiseParams denoise_params = get_denoise_params(b_scene, b_view_layer, background);
@@ -445,7 +455,8 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer, bool background)
   /* No denoising support for vertex color baking, vertices packed into image
    * buffer have no relation to neighbors. */
   if (scene->bake_manager->get_baking() &&
-      b_scene.render().bake().target() != BL::BakeSettings::target_IMAGE_TEXTURES) {
+      b_scene.render().bake().target() != BL::BakeSettings::target_IMAGE_TEXTURES)
+  {
     denoise_params.use = false;
   }
 
@@ -709,7 +720,8 @@ void BlenderSync::sync_render_passes(BL::RenderLayer &b_rlay, BL::ViewLayer &b_v
   BL::ViewLayer::lightgroups_iterator b_lightgroup_iter;
   for (b_view_layer.lightgroups.begin(b_lightgroup_iter);
        b_lightgroup_iter != b_view_layer.lightgroups.end();
-       ++b_lightgroup_iter) {
+       ++b_lightgroup_iter)
+  {
     BL::Lightgroup b_lightgroup(*b_lightgroup_iter);
 
     string name = string_printf("Combined_%s", b_lightgroup.name().c_str());
@@ -732,7 +744,8 @@ void BlenderSync::sync_render_passes(BL::RenderLayer &b_rlay, BL::ViewLayer &b_v
     }
 
     if (pass_type == PASS_MOTION &&
-        (b_view_layer.use_motion_blur() && b_scene.render().use_motion_blur())) {
+        (b_view_layer.use_motion_blur() && b_scene.render().use_motion_blur()))
+    {
       continue;
     }
 

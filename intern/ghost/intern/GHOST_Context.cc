@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -10,6 +11,9 @@
 #include "GHOST_Context.hh"
 
 #ifdef _WIN32
+#  define WIN32_LEAN_AND_MEAN
+#  include <windows.h>
+
 #  include <epoxy/wgl.h>
 #  include <tchar.h>
 #
@@ -17,6 +21,8 @@
 #    define ERROR_PROFILE_DOES_NOT_MATCH_DEVICE 0x7E7
 #  endif
 #endif
+
+#include <epoxy/gl.h>
 
 #include <cstdio>
 #include <cstring>

@@ -1,11 +1,7 @@
-/* SPDX-License-Identifier: Apache-2.0
+/* SPDX-FileCopyrightText: 2011 Morten S. Mikkelsen
+ * SPDX-FileCopyrightText: 2022 Blender Authors
  *
- * Original C code:
- * Copyright 2011 by Morten S. Mikkelsen.
- *
- * C++ rewrite:
- * Copyright 2022 Blender Foundation
- */
+ * SPDX-License-Identifier: Apache-2.0 */
 
 /** \file
  * \ingroup mikktspace
@@ -13,6 +9,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <unordered_map>
 
 #ifdef WITH_TBB
 #  include <tbb/parallel_for.h>
@@ -701,7 +698,8 @@ template<typename Mesh> class Mikktspace {
       // determines its orientation.
       // This is the only existing order dependency in the code!!
       if (triangle.group[0] == UNSET_ENTRY && triangle.group[1] == UNSET_ENTRY &&
-          triangle.group[2] == UNSET_ENTRY) {
+          triangle.group[2] == UNSET_ENTRY)
+      {
         triangle.orientPreserving = group.orientPreserving;
       }
     }

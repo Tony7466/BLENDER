@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -15,7 +17,7 @@
 
 #include "DNA_node_types.h"
 
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 struct bNode;
 struct bNodeSocket;
@@ -31,6 +33,12 @@ struct RelationsInNode;
 }
 namespace aal = anonymous_attribute_lifetime;
 }  // namespace blender::nodes
+namespace blender::bke {
+class bNodeTreeZones;
+}
+namespace blender::bke::anonymous_attribute_inferencing {
+struct AnonymousAttributeInferencingResult;
+};
 
 namespace blender {
 
@@ -64,6 +72,8 @@ struct NodeIDEquality {
 
 namespace blender::bke {
 
+using NodeIDVectorSet = VectorSet<bNode *, DefaultProbingStrategy, NodeIDHash, NodeIDEquality>;
+
 class bNodeTreeRuntime : NonCopyable, NonMovable {
  public:
   /**
@@ -85,13 +95,20 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
   uint8_t runtime_flag = 0;
 
   /**
+   * Contains a number increased for each node-tree update.
+   * Store a state variable in the #NestedTreePreviews structure to compare if they differ.
+   */
+  uint32_t previews_refresh_state = 0;
+
+  /**
    * Storage of nodes based on their identifier. Also used as a contiguous array of nodes to
    * allow simpler and more cache friendly iteration. Supports lookup by integer or by node.
    * Unlike other caches, this is maintained eagerly while changing the tree.
    */
-  VectorSet<bNode *, DefaultProbingStrategy, NodeIDHash, NodeIDEquality> nodes_by_id;
+  NodeIDVectorSet nodes_by_id;
 
-  /** Execution data.
+  /**
+   * Execution data.
    *
    * XXX It would be preferable to completely move this data out of the underlying node tree,
    * so node tree execution could finally run independent of the tree itself.
@@ -100,7 +117,7 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
    * Execution data is generated from the tree once at execution start and can then be used
    * as long as necessary, even while the tree is being modified.
    */
-  struct bNodeTreeExec *execdata = nullptr;
+  bNodeTreeExec *execdata = nullptr;
 
   /* Callbacks. */
   void (*progress)(void *, float progress) = nullptr;
@@ -113,7 +130,8 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
   /** Information about how inputs and outputs of the node group interact with fields. */
   std::unique_ptr<nodes::FieldInferencingInterface> field_inferencing_interface;
   /** Information about usage of anonymous attributes within the group. */
-  std::unique_ptr<nodes::aal::RelationsInNode> anonymous_attribute_relations;
+  std::unique_ptr<anonymous_attribute_inferencing::AnonymousAttributeInferencingResult>
+      anonymous_attribute_inferencing;
 
   /**
    * For geometry nodes, a lazy function graph with some additional info is cached. This is used to
@@ -135,6 +153,9 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
    * #bNodeTree. By default, this is protected against using an assert.
    */
   mutable std::atomic<int> allow_use_dirty_topology_cache = 0;
+
+  CacheMutex tree_zones_cache_mutex;
+  std::unique_ptr<bNodeTreeZones> tree_zones;
 
   /** Only valid when #topology_cache_is_dirty is false. */
   Vector<bNodeLink *> links;
@@ -229,11 +250,12 @@ class bNodeRuntime : NonCopyable, NonMovable {
   uint8_t need_exec = 0;
 
   /** The original node in the tree (for localized tree). */
-  struct bNode *original = nullptr;
+  bNode *original = nullptr;
 
   /**
-   * XXX TODO
-   * Node totr size depends on the prvr size, which in turn is determined from preview size.
+   * XXX:
+   * TODO: `prvr` does not exist!
+   * Node totr size depends on the `prvr` size, which in turn is determined from preview size.
    * In earlier versions bNodePreview was stored directly in nodes, but since now there can be
    * multiple instances using different preview images it is possible that required node size
    * varies between instances. preview_xsize, preview_ysize defines a common reserved size for
@@ -244,8 +266,6 @@ class bNodeRuntime : NonCopyable, NonMovable {
   short preview_xsize, preview_ysize = 0;
   /** Entire bound-box (world-space). */
   rctf totr{};
-  /** Optional preview area. */
-  rctf prvr{};
 
   /** Used at runtime when going through the tree. Initialize before use. */
   short tmp_flag = 0;
@@ -276,6 +296,9 @@ class bNodeRuntime : NonCopyable, NonMovable {
   bool has_available_linked_outputs = false;
   Vector<bNode *> direct_children_in_frame;
   bNodeTree *owner_tree = nullptr;
+  /** Can be used to toposort a subset of nodes. */
+  int toposort_left_to_right_index = -1;
+  int toposort_right_to_left_index = -1;
 };
 
 namespace node_tree_runtime {
@@ -338,11 +361,6 @@ inline bool topology_cache_is_available(const bNodeSocket &socket)
 namespace node_field_inferencing {
 bool update_field_inferencing(const bNodeTree &tree);
 }
-namespace anonymous_attribute_inferencing {
-Array<const nodes::aal::RelationsInNode *> get_relations_by_node(const bNodeTree &tree,
-                                                                 ResourceScope &scope);
-bool update_anonymous_attribute_relations(bNodeTree &tree);
-}  // namespace anonymous_attribute_inferencing
 }  // namespace blender::bke
 
 /* -------------------------------------------------------------------- */
@@ -361,12 +379,14 @@ inline blender::Span<bNode *> bNodeTree::all_nodes()
 
 inline bNode *bNodeTree::node_by_id(const int32_t identifier)
 {
+  BLI_assert(identifier >= 0);
   bNode *const *node = this->runtime->nodes_by_id.lookup_key_ptr_as(identifier);
   return node ? *node : nullptr;
 }
 
 inline const bNode *bNodeTree::node_by_id(const int32_t identifier) const
 {
+  BLI_assert(identifier >= 0);
   const bNode *const *node = this->runtime->nodes_by_id.lookup_key_ptr_as(identifier);
   return node ? *node : nullptr;
 }
@@ -501,6 +521,28 @@ inline blender::Span<bNode *> bNodeTree::root_frames() const
 {
   BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
   return this->runtime->root_frames;
+}
+
+inline blender::Span<bNodeLink *> bNodeTree::all_links()
+{
+  BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
+  return this->runtime->links;
+}
+
+inline blender::Span<const bNodeLink *> bNodeTree::all_links() const
+{
+  BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
+  return this->runtime->links;
+}
+
+inline blender::MutableSpan<bNestedNodeRef> bNodeTree::nested_node_refs_span()
+{
+  return {this->nested_node_refs, this->nested_node_refs_num};
+}
+
+inline blender::Span<bNestedNodeRef> bNodeTree::nested_node_refs_span() const
+{
+  return {this->nested_node_refs, this->nested_node_refs_num};
 }
 
 /** \} */

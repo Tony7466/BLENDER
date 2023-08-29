@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup stl
@@ -15,6 +17,8 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_fileops.hh"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_memory_utils.hh"
 
@@ -75,7 +79,7 @@ void importer_main(Main *bmain,
 
   /* Name used for both mesh and object. */
   char ob_name[FILE_MAX];
-  BLI_strncpy(ob_name, BLI_path_basename(import_params.filepath), FILE_MAX);
+  STRNCPY(ob_name, BLI_path_basename(import_params.filepath));
   BLI_path_extension_strip(ob_name);
 
   Mesh *mesh = is_ascii_stl ?
