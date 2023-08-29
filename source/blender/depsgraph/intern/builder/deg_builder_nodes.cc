@@ -1879,7 +1879,6 @@ void DepsgraphNodeBuilder::build_nodetree(bNodeTree *ntree)
   if (built_map_.checkIsBuiltAndTag(ntree)) {
     return;
   }
-
   /* nodetree itself */
   add_id_node(&ntree->id);
   /* General parameters. */
