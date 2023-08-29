@@ -916,9 +916,6 @@ class NODE_PT_node_tree_interface(Panel):
                 layout.prop(active_item, "description")
                 layout.prop(active_item, "in_out", text="Input/Output Type")
                 layout.prop(active_item, "socket_type")
-
-                active_item.draw(context, layout)
-
                 # Display descriptions only for Geometry Nodes, since it's only used in the modifier panel.
                 if tree.type == 'GEOMETRY':
                     field_socket_types = {
@@ -932,6 +929,8 @@ class NODE_PT_node_tree_interface(Panel):
                         if 'OUTPUT' in active_item.in_out:
                             layout.prop(active_item, "attribute_domain")
                         layout.prop(active_item, "default_attribute_name")
+                active_item.draw(context, layout)
+
             if active_item.item_type == 'PANEL':
                 layout.prop(active_item, "name")
                 layout.prop(active_item, "description")
