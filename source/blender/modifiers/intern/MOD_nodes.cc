@@ -902,7 +902,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
                    nodes::SimulationZoneInfo &zone_info) const
   {
     bke::sim::SimulationZoneFrameCache &frame_cache = *zone_cache.frame_caches[frame_index];
-    this->ensure_bake_loaded(frame_cache);
+    this->ensure_bake_loaded(zone_cache, frame_cache);
     nodes::SimulationOutputInfo::ReadSingle read_single_info;
     read_single_info.items = this->to_readonly_items_map(frame_cache.state);
     zone_info.output.info = std::move(read_single_info);
@@ -917,8 +917,8 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
         *zone_cache.frame_caches[prev_frame_index];
     bke::sim::SimulationZoneFrameCache &next_frame_cache =
         *zone_cache.frame_caches[next_frame_index];
-    this->ensure_bake_loaded(prev_frame_cache);
-    this->ensure_bake_loaded(next_frame_cache);
+    this->ensure_bake_loaded(zone_cache, prev_frame_cache);
+    this->ensure_bake_loaded(zone_cache, next_frame_cache);
     nodes::SimulationOutputInfo::ReadInterpolated read_interpolated_info;
     read_interpolated_info.mix_factor = (float(current_frame_) - float(prev_frame_cache.frame)) /
                                         (float(next_frame_cache.frame) -
@@ -938,7 +938,47 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     return map;
   }
 
-  void ensure_bake_loaded(bke::sim::SimulationZoneFrameCache &frame_cache) const {}
+  void ensure_bake_loaded(bke::sim::SimulationZoneCache &zone_cache,
+                          bke::sim::SimulationZoneFrameCache &frame_cache) const
+  {
+    if (!frame_cache.state.item_by_identifier.is_empty()) {
+      return;
+    }
+    if (!zone_cache.bdata_dir) {
+      return;
+    }
+    if (!frame_cache.meta_path) {
+      return;
+    }
+    std::shared_ptr<io::serialize::Value> io_root_value = io::serialize::read_json_file(
+        *frame_cache.meta_path);
+    const io::serialize::DictionaryValue *io_root = io_root_value->as_dictionary_value();
+    if (!io_root) {
+      return;
+    }
+    if (io_root->lookup_int("version").value_or(0) != 3) {
+      return;
+    }
+    const io::serialize::DictionaryValue *io_items = io_root->lookup_dict("items");
+    if (!io_items) {
+      return;
+    }
+
+    bke::DiskBDataReader bdata_reader{*zone_cache.bdata_dir};
+
+    for (const auto &io_item_value : io_items->elements()) {
+      const io::serialize::DictionaryValue *io_item = io_item_value.second->as_dictionary_value();
+      if (!io_item) {
+        continue;
+      }
+      const int zone_id = std::stoi(io_item_value.first);
+      std::unique_ptr<bke::BakeItem> item = bke::deserialize_bake_item(
+          *io_item, bdata_reader, *zone_cache.bdata_sharing);
+      if (item) {
+        frame_cache.state.item_by_identifier.add(zone_id, std::move(item));
+      }
+    }
+  }
 };
 
 static void modifyGeometry(ModifierData *md,
