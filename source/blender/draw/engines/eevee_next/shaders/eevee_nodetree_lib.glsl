@@ -295,7 +295,7 @@ vec3 F_brdf_multi_scatter(vec3 f0, vec3 f90, vec2 lut)
 
   float Ess = lut.x + lut.y;
   float Ems = 1.0 - Ess;
-  vec3 Favg = f0 + (1.0 - f0) / 21.0;
+  vec3 Favg = f0 + (f90 - f0) / 21.0;
 
   /* The original paper uses `FssEss * radiance + Fms*Ems * irradiance`, but
    * "A Journey Through Implementing Multiscattering BRDFs and Area Lights" by Steve McAuley
@@ -310,9 +310,7 @@ vec3 F_brdf_multi_scatter(vec3 f0, vec3 f90, vec2 lut)
 vec2 brdf_lut(float cos_theta, float roughness)
 {
 #ifdef EEVEE_UTILITY_TX
-  /* Parametrizing with `sqrt(1.0 - cos(theta))` for more precision near grazing incidence. */
-  vec2 coords = vec2(roughness, sqrt(1.0 - cos_theta));
-  return utility_tx_sample_lut(utility_tx, coords, UTIL_BSDF_LAYER).rg;
+  return utility_tx_sample_lut(utility_tx, cos_theta, roughness, UTIL_BSDF_LAYER).rg;
 #else
   return vec2(1.0, 0.0);
 #endif
