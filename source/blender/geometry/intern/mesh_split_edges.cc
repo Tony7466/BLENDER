@@ -360,6 +360,7 @@ static Array<int2> calc_new_edges(const OffsetIndices<int> faces,
           faces, corner_verts, corner_to_face_map, corner);
       const int index = add_edge_or_find_index(deduplication, new_edge);
       if (index == 0) {
+        /* Mark the first edge as reused. */
         corner_edges[corner] *= -1;
       }
       else {
@@ -417,10 +418,17 @@ static void update_unselected_edges(const OffsetIndices<int> faces,
                                     const Span<int> corner_verts,
                                     const GroupedSpan<int> edge_to_corner_map,
                                     const Span<int> corner_to_face_map,
-                                    const IndexMask &unselected_edges)
+                                    const IndexMask &unselected_edges,
+                                    MutableSpan<int2> edges)
 {
   unselected_edges.foreach_index(GrainSize(1024), [&](const int edge) {
-
+    const Span<int> edge_corners = edge_to_corner_map[edge];
+    if (edge_corners.is_empty()) {
+      return;
+    }
+    const int corner = edge_corners.first();
+    const OrderedEdge new_edge = edge_from_corner(faces, corner_verts, corner_to_face_map, corner);
+    edges[edge] = int2(new_edge.v_low, new_edge.v_high);
   });
 }
 
@@ -552,7 +560,13 @@ void split_edges(Mesh &mesh,
                                          mesh.edges_for_write(),
                                          mesh.corner_edges_for_write(),
                                          new_edge_offsets);
-  update_unselected_edges();
+  const IndexMask unselected_edges = selected_edges.complement(orig_edges.index_range(), memory);
+  update_unselected_edges(faces,
+                          corner_verts,
+                          edge_to_corner_map,
+                          corner_to_face_map,
+                          unselected_edges,
+                          mesh.edges_for_write());
 
   if (loose_edges.count > 0) {
     reassign_loose_edge_verts(orig_verts_num,
