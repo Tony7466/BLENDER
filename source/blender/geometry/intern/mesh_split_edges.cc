@@ -491,14 +491,14 @@ static void reassign_loose_edge_verts(const int orig_verts_num,
 }
 
 /**
- * Transform the #OffsetIndices storage of new vertices per source vertex into a more
- * standard index map which can be used with existing utilities to copy vertex attributes.
+ * Transform the #OffsetIndices storage of new elements per source element into a more
+ * standard index map which can be used with existing utilities to copy attributes.
  */
 static Array<int> offsets_to_map(const IndexMask &mask, const OffsetIndices<int> offsets)
 {
   Array<int> map(offsets.total_size());
-  mask.foreach_index(GrainSize(1024), [&](const int vert, const int mask) {
-    map.as_mutable_span().slice(offsets[mask]).fill(vert);
+  mask.foreach_index(GrainSize(1024), [&](const int i, const int mask) {
+    map.as_mutable_span().slice(offsets[mask]).fill(i);
   });
   return map;
 }
