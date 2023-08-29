@@ -145,8 +145,6 @@ enum {
 /** #uiBlock.flag (controls) */
 enum {
   UI_BLOCK_LOOP = 1 << 0,
-  UI_BLOCK_UNUSED_1 = 1 << 1,
-  UI_BLOCK_UNUSED_2 = 1 << 2,
   UI_BLOCK_NUMSELECT = 1 << 3,
   /** Don't apply window clipping. */
   UI_BLOCK_NO_WIN_CLIP = 1 << 4,
