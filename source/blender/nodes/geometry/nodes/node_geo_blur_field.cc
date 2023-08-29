@@ -20,14 +20,18 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 
+#include "NOD_rna_define.hh"
+
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+
+#include "RNA_enum_types.hh"
 
 #include "NOD_socket_search_link.hh"
 
 #include "node_geometry_util.hh"
 
-namespace blender::nodes::node_geo_evaluate_for_blur_cc {
+namespace blender::nodes::node_geo_blur_field_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -386,14 +390,14 @@ static GSpan blur_on_curves(const bke::CurvesGeometry &curves,
   return result_buffer;
 }
 
-class EvaluateForBlurFieldInput final : public bke::GeometryFieldInput {
+class BlurFieldInput final : public bke::GeometryFieldInput {
  private:
   const Field<float> weight_field_;
   const GField value_field_;
   const int iterations_;
 
  public:
-  EvaluateForBlurFieldInput(Field<float> weight_field, GField value_field, const int iterations)
+  BlurFieldInput(Field<float> weight_field, GField value_field, const int iterations)
       : bke::GeometryFieldInput(value_field.cpp_type(), "Blur Attribute"),
         weight_field_(std::move(weight_field)),
         value_field_(std::move(value_field)),
@@ -468,8 +472,8 @@ class EvaluateForBlurFieldInput final : public bke::GeometryFieldInput {
 
   bool is_equal_to(const fn::FieldNode &other) const override
   {
-    if (const EvaluateForBlurFieldInput *other_blur =
-            dynamic_cast<const EvaluateForBlurFieldInput *>(&other))
+    if (const BlurFieldInput *other_blur =
+            dynamic_cast<const BlurFieldInput *>(&other))
     {
       return weight_field_ == other_blur->weight_field_ &&
              value_field_ == other_blur->value_field_ && iterations_ == other_blur->iterations_;
@@ -511,17 +515,35 @@ static void node_geo_exec(GeoNodeExecParams params)
     using T = decltype(dummy);
     static const std::string identifier = "Value_" + identifier_suffix(data_type);
     Field<T> value_field = params.extract_input<Field<T>>(identifier);
-    Field<T> output_field{std::make_shared<EvaluateForBlurFieldInput>(
+    Field<T> output_field{std::make_shared<BlurFieldInput>(
         std::move(weight_field), std::move(value_field), iterations)};
     params.set_output(identifier, std::move(output_field));
   });
+}
+
+static void node_rna(StructRNA *srna)
+{
+  RNA_def_node_enum(
+      srna,
+      "data_type",
+      "Data Type",
+      "",
+      rna_enum_attribute_type_items,
+      NOD_inline_enum_accessors(custom1),
+      CD_PROP_FLOAT,
+      [](bContext * /*C*/, PointerRNA * /*ptr*/, PropertyRNA * /*prop*/, bool *r_free) {
+        *r_free = true;
+        return enum_items_filter(rna_enum_attribute_type_items, [](const EnumPropertyItem &item) {
+          return ELEM(item.value, CD_PROP_FLOAT, CD_PROP_FLOAT3, CD_PROP_COLOR, CD_PROP_INT32);
+        });
+      });
 }
 
 static void node_register()
 {
   static bNodeType ntype;
   geo_node_type_base(
-      &ntype, GEO_NODE_EVALUATE_FOR_BLUR, "Evaluate for Blur", NODE_CLASS_CONVERTER);
+      &ntype, GEO_NODE_BLUR_FIELD, "Blur Field", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
   ntype.updatefunc = node_update;
@@ -529,7 +551,9 @@ static void node_register()
   ntype.geometry_node_execute = node_geo_exec;
   ntype.gather_link_search_ops = node_gather_link_searches;
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 
-}  // namespace blender::nodes::node_geo_evaluate_for_blur_cc
+}  // namespace blender::nodes::node_geo_blur_field_cc
