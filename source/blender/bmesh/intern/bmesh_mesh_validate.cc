@@ -72,8 +72,6 @@ bool BM_mesh_validate(BMesh *bm)
 
   /* check edges */
   BM_ITER_MESH_INDEX (e, &iter, bm, BM_EDGES_OF_MESH, i) {
-    void **val_p;
-
     if (e->v1 == e->v2) {
       ERRMSG("edge %d: duplicate index: %d", i, BM_elem_index_get(e->v1));
     }
