@@ -350,8 +350,7 @@ static void region_draw_status_text(ScrArea *area, ARegion *region)
   float header_color[4];
   UI_GetThemeColor4fv(TH_HEADER_ACTIVE, header_color);
 
-  int fontid = BLF_set_default();
-
+  /* Clear the region from the buffer. */
   GPU_clear_color(0.0f, 0.0f, 0.0f, 0.0f);
 
   /* Fill with header color. */
@@ -360,12 +359,13 @@ static void region_draw_status_text(ScrArea *area, ARegion *region)
     UI_draw_roundbox_4fv(&rect, true, 0.0f, header_color);
   }
 
-  GPU_blend(GPU_BLEND_ALPHA);
+  const int fontid = BLF_set_default();
   const float x = 12.0f * UI_SCALE_FAC;
   const float y = 0.4f * UI_UNIT_Y;
+  GPU_blend(GPU_BLEND_ALPHA);
 
   if (header_color[3] < 0.3f) {
-    /* Draw a background behind the text. */
+    /* Draw a background behind the text for extra contrast. */
     const float width = BLF_width(fontid, region->headerstr, BLF_DRAW_STR_DUMMY_MAX);
     const float pad = 5.0f * UI_SCALE_FAC;
     const float x1 = x - pad;
@@ -380,7 +380,6 @@ static void region_draw_status_text(ScrArea *area, ARegion *region)
   }
 
   UI_FontThemeColor(fontid, TH_TEXT);
-
   BLF_position(fontid, x, y, 0.0f);
   BLF_draw(fontid, region->headerstr, BLF_DRAW_STR_DUMMY_MAX);
 }
@@ -821,6 +820,7 @@ void ED_area_status_text(ScrArea *area, const char *str)
       ar = region;
     }
     else if (region->regiontype == RGN_TYPE_TOOL_HEADER && region->visible) {
+      /* Prefer tool header when we also have a header. */
       ar = region;
       break;
     }
