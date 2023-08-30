@@ -981,6 +981,8 @@ void GRAPH_OT_ease(wmOperatorType *ot)
                        1.0f);
 }
 
+/** \} */
+
 /* -------------------------------------------------------------------- */
 /** \name Blend Offset Operator
  * \{ */
@@ -1071,6 +1073,8 @@ void GRAPH_OT_blend_offset(wmOperatorType *ot)
                        -1.0f,
                        1.0f);
 }
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Blend to Ease Operator
@@ -1164,6 +1168,8 @@ void GRAPH_OT_blend_to_ease(wmOperatorType *ot)
                        1.0f);
 }
 
+/** \} */
+
 /* -------------------------------------------------------------------- */
 /** \name Match Slope
  * \{ */
@@ -1190,10 +1196,10 @@ static void match_slope_graph_keys(bAnimContext *ac, const float factor)
 
   if (!all_segments_valid) {
     if (factor >= 0) {
-      WM_report(RPT_WARNING, "You need at least 2 keys to the right side of the selection.");
+      WM_report(RPT_WARNING, "You need at least 2 keys to the right side of the selection");
     }
     else {
-      WM_report(RPT_WARNING, "You need at least 2 keys to the left side of the selection.");
+      WM_report(RPT_WARNING, "You need at least 2 keys to the left side of the selection");
     }
   }
 

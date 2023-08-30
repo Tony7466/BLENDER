@@ -65,7 +65,7 @@
 
 #include "BLT_translation.h"
 
-#include "versioning_common.h"
+#include "versioning_common.hh"
 
 /* Make preferences read-only, use `versioning_userdef.cc`. */
 #define U (*((const UserDef *)&U))
@@ -536,6 +536,9 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       STRNCPY(scene->view_settings.look, "None");
     }
     else {
+      /* Default to AgX view transform. */
+      STRNCPY(scene->view_settings.view_transform, "AgX");
+
       /* AV Sync break physics sim caching, disable until that is fixed. */
       scene->audio.flag &= ~AUDIO_SYNC;
       scene->flag &= ~SCE_FRAME_DROP;
