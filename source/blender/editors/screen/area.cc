@@ -343,7 +343,7 @@ static void region_draw_azones(ScrArea *area, ARegion *region)
   GPU_blend(GPU_BLEND_NONE);
 }
 
-static void region_draw_status_text(ScrArea *area, ARegion *region)
+static void region_draw_status_text(ScrArea * /*area*/, ARegion *region)
 {
   float header_color[4];
   UI_GetThemeColor4fv(TH_HEADER_ACTIVE, header_color);
@@ -353,7 +353,7 @@ static void region_draw_status_text(ScrArea *area, ARegion *region)
 
   /* Fill with header color. */
   if (header_color[3] > 0.0f) {
-    const rctf rect = {0, region->winx, 0, region->winy};
+    const rctf rect = {0.0f, float(region->winx), 0.0f, float(region->winy)};
     UI_draw_roundbox_4fv(&rect, true, 0.0f, header_color);
   }
 
