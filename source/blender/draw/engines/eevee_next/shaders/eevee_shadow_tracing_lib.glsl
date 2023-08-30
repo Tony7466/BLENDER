@@ -153,6 +153,7 @@ void shadow_map_trace_hit_check(inout ShadowMapTracingState state, ShadowTracing
   }
 
   if (samp.occluder_depth < samp.receiver_depth) {
+    state.occluder_depth_history = samp.occluder_depth;
     state.hit = true;
     return;
   }
@@ -162,19 +163,18 @@ void shadow_map_trace_hit_check(inout ShadowMapTracingState state, ShadowTracing
 
 struct ShadowMapTraceResult {
   bool has_hit;
-  float occluder_distance;
+  float occluder_depth;
 };
 
 ShadowMapTraceResult shadow_map_trace_finish(ShadowMapTracingState state)
 {
   ShadowMapTraceResult result;
   if (state.hit) {
-    /* TODO(fclem): Correct distance for translucency. */
-    result.occluder_distance = 1.0;
+    result.occluder_depth = state.occluder_depth_history;
     result.has_hit = true;
   }
   else {
-    result.occluder_distance = 0.0;
+    result.occluder_depth = 0.0;
     result.has_hit = false;
   }
   return result;
@@ -409,6 +409,23 @@ SHADOW_MAP_TRACE_FN(ShadowRayDualCubeFace)
 /** \name Shadow Evalutation
  * \{ */
 
+/* Assuming the occluder is above the shading point in direction to the shadow projection center.
+ */
+float shadow_linear_occluder_distance(LightData light,
+                                      const bool is_directional,
+                                      vec3 lP,
+                                      float occluder)
+{
+  float near = shadow_orderedIntBitsToFloat(light.clip_near);
+  float far = shadow_orderedIntBitsToFloat(light.clip_far);
+
+  float occluder_z = (is_directional) ? (occluder * (far - near) + near) :
+                                        ((near * far) / (occluder * (near - far) + far));
+  float receiver_z = (is_directional) ? -lP.z : max(abs(lP.x), max(abs(lP.y), abs(lP.z)));
+
+  return occluder_z - receiver_z;
+}
+
 struct ShadowEvalResult {
   /* Visibility of the light above the horizon. */
   float surface_light_visibilty;
@@ -441,7 +458,7 @@ ShadowEvalResult shadow_eval(LightData light,
 
   float surface_hit = 0.0;
   float surface_ray_count = 0.0;
-  float subsurface_occluder_distance = 0.0;
+  float subsurface_occluder_depth = 0.0;
   float subsurface_ray_count = 0.0;
   for (int ray_index = 0; ray_index < ray_count; ray_index++) {
     vec2 random_ray_2d = fract(hammersley_2d(ray_index, ray_count) + random_shadow_3d.xy);
@@ -495,15 +512,16 @@ ShadowEvalResult shadow_eval(LightData light,
       surface_ray_count += 1.0;
     }
     else {
-      subsurface_occluder_distance += trace.occluder_distance;
+      subsurface_occluder_depth += trace.occluder_depth;
       subsurface_ray_count += 1.0;
     }
   }
   /* Average samples. */
   ShadowEvalResult result;
   result.surface_light_visibilty = saturate(1.0 - (surface_hit * safe_rcp(surface_ray_count)));
-  result.subsurface_occluder_distance = subsurface_occluder_distance *
-                                        safe_rcp(subsurface_ray_count);
+  subsurface_occluder_depth *= safe_rcp(subsurface_ray_count);
+  result.subsurface_occluder_distance = shadow_linear_occluder_distance(
+      light, is_directional, lP, subsurface_occluder_depth);
   return result;
 }
 
