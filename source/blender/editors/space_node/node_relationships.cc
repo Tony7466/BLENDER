@@ -2201,7 +2201,7 @@ void node_insert_on_link_flags(Main &bmain, SpaceNode &snode)
   }
 
   /* Set up insert offset data, it needs stuff from here. */
-  if ((snode.flag & SNODE_SKIP_INSOFFSET) == 0) {
+  if (U.uiflag & USER_NODE_AUTO_OFFSET) {
     BLI_assert(snode.runtime->iofsd == nullptr);
     NodeInsertOfsData *iofsd = MEM_cnew<NodeInsertOfsData>(__func__);
 
@@ -2259,8 +2259,8 @@ bNodeSocket *get_main_socket(bNodeTree &ntree, bNode &node, eNodeSocketInOut in_
   bke::nodeDeclarationEnsure(&ntree, &node);
   const nodes::NodeDeclaration *node_decl = node.declaration();
   if (node_decl != nullptr) {
-    Span<nodes::SocketDeclarationPtr> socket_decls = (in_out == SOCK_IN) ? node_decl->inputs :
-                                                                           node_decl->outputs;
+    Span<nodes::SocketDeclaration *> socket_decls = (in_out == SOCK_IN) ? node_decl->inputs :
+                                                                          node_decl->outputs;
     int index;
     LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, sockets, index) {
       const nodes::SocketDeclaration &socket_decl = *socket_decls[index];
@@ -2600,7 +2600,7 @@ static int node_insert_offset_invoke(bContext *C, wmOperator *op, const wmEvent 
     return OPERATOR_CANCELLED;
   }
 
-  BLI_assert((snode->flag & SNODE_SKIP_INSOFFSET) == 0);
+  BLI_assert(U.uiflag & USER_NODE_AUTO_OFFSET);
 
   iofsd->ntree = snode->edittree;
   iofsd->anim_timer = WM_event_timer_add(CTX_wm_manager(C), CTX_wm_window(C), TIMER, 0.02);
