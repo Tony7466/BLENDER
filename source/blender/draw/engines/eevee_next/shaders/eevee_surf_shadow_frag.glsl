@@ -37,12 +37,7 @@ void main()
   }
 #endif
 
-#ifdef GPU_METAL
-  /* Store output depth in tile memory using F32 attachment. NOTE: As depth testing is enabled,
-   * only the closest fragment will store the result. */
-  out_depth = gl_FragCoord.z + fwidth(gl_FragCoord.z);
-#else
-#  ifdef USE_ATOMIC
+#ifdef SHADOW_UPDATE_ATOMIC_RASTER
   ivec2 texel_co = ivec2(gl_FragCoord.xy);
 
   /* Using bitwise ops is way faster than integer ops. */
@@ -63,6 +58,11 @@ void main()
   /* Quantization bias. Equivalent to `nextafter()` in C without all the safety. */
   u_depth += 2;
   imageAtomicMin(shadow_atlas_img, out_texel, u_depth);
-#  endif
+#endif
+
+#ifdef SHADOW_UPDATE_TBDR_ROG
+  /* Store output depth in tile memory using F32 attachment. NOTE: As depth testing is enabled,
+   * only the closest fragment will store the result. */
+  out_depth = gl_FragCoord.z + fwidth(gl_FragCoord.z);
 #endif
 }

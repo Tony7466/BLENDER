@@ -43,7 +43,7 @@ void main()
     tile_start += lod_len;
   }
 
-#ifdef GPU_METAL
+#ifdef SHADOW_UPDATE_TBDR_ROG
   if (gl_GlobalInvocationID.z == 0) {
     /* Temp: Clear render_map_buf in Metal, as we need to ensure that only the tiles updated in the
      * current pass are marked with valid IDs. */

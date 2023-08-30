@@ -189,7 +189,6 @@ GPU_SHADER_CREATE_INFO(eevee_surf_world)
 GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
     .define("DRW_VIEW_LEN", "64")
     .define("MAT_SHADOW")
-    .define("USE_ATOMIC")
     .vertex_out(eevee_surf_iface)
     .vertex_out(eevee_surf_flat_iface)
     .builtins(BuiltinBits::VIEWPORT_INDEX)
@@ -198,8 +197,13 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
                  Qualifier::READ,
                  "uint",
                  "viewport_index_buf[SHADOW_VIEW_MAX]")
-#ifndef WITH_METAL_BACKEND
-    /* We do not need all of the shadow information for depth write in Metal. */
+    .fragment_source("eevee_surf_shadow_frag.glsl")
+    .additional_info("eevee_camera", "eevee_utility_texture", "eevee_sampling_data");
+
+GPU_SHADER_CREATE_INFO(eevee_surf_shadow_atomic_update)
+
+    .additional_info("eevee_surf_shadow")
+    .define("SHADOW_UPDATE_ATOMIC_RASTER")
     .storage_buf(SHADOW_RENDER_MAP_BUF_SLOT,
                  Qualifier::READ,
                  "uint",
@@ -210,15 +214,14 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
            GPU_R32UI,
            Qualifier::READ_WRITE,
            ImageType::UINT_2D_ARRAY,
-           "shadow_atlas_img")
-#endif
-    .fragment_source("eevee_surf_shadow_frag.glsl")
-#ifdef WITH_METAL_BACKEND
+           "shadow_atlas_img");
+
+GPU_SHADER_CREATE_INFO(eevee_surf_shadow_tbdr_rog_update)
+    .additional_info("eevee_surf_shadow")
+    .define("SHADOW_UPDATE_TBDR_ROG")
     /* F32 colour attachment with raster order group for on-tile depth accumulation without
-       atomics. */
-    .fragment_out(0, Type::FLOAT, "out_depth", DualBlend::NONE, 0)
-#endif
-    .additional_info("eevee_camera", "eevee_utility_texture", "eevee_sampling_data");
+     * atomics. */
+    .fragment_out(0, Type::FLOAT, "out_depth", DualBlend::NONE, 0);
 
 #undef image_out
 #undef image_array_out
@@ -340,7 +343,9 @@ GPU_SHADER_CREATE_INFO(eevee_material_stub)
     EEVEE_MAT_GEOM_VARIATIONS(name##_deferred, "eevee_surf_deferred", __VA_ARGS__) \
     EEVEE_MAT_GEOM_VARIATIONS(name##_forward, "eevee_surf_forward", __VA_ARGS__) \
     EEVEE_MAT_GEOM_VARIATIONS(name##_capture, "eevee_surf_capture", __VA_ARGS__) \
-    EEVEE_MAT_GEOM_VARIATIONS(name##_shadow, "eevee_surf_shadow", __VA_ARGS__)
+    EEVEE_MAT_GEOM_VARIATIONS( \
+        name##_shadow_atomic, "eevee_surf_shadow_atomic_update", __VA_ARGS__) \
+    EEVEE_MAT_GEOM_VARIATIONS(name##_shadow_tbdr, "eevee_surf_shadow_tbdr_rog_update", __VA_ARGS__)
 
 EEVEE_MAT_PIPE_VARIATIONS(eevee_surface, "eevee_material_stub")
 

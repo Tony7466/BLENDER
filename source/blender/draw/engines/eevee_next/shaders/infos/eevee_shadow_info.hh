@@ -154,11 +154,14 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_allocate)
     .storage_buf(3, Qualifier::READ_WRITE, "uint", "pages_free_buf[]")
     .storage_buf(4, Qualifier::READ_WRITE, "uvec2", "pages_cached_buf[]")
     .storage_buf(6, Qualifier::READ_WRITE, "ShadowStatistics", "statistics_buf")
-#ifdef WITH_METAL_BACKEND
-    .storage_buf(7, Qualifier::WRITE, "uint", "render_map_buf[SHADOW_RENDER_MAP_SIZE]")
-#endif
     .additional_info("eevee_shared")
     .compute_source("eevee_shadow_page_allocate_comp.glsl");
+
+GPU_SHADER_CREATE_INFO(eevee_shadow_page_allocate_renderbuf_clear)
+    .do_static_compilation(true)
+    .additional_info("eevee_shadow_page_allocate")
+    .storage_buf(7, Qualifier::WRITE, "uint", "render_map_buf[SHADOW_RENDER_MAP_SIZE]")
+    .define("SHADOW_UPDATE_TBDR_ROG");
 
 GPU_SHADER_CREATE_INFO(eevee_shadow_tilemap_finalize)
     .do_static_compilation(true)
@@ -211,7 +214,6 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_metal_tbdr_common)
     .metal_backend_only(true)
     .define("DRW_VIEW_LEN", "64")
     .define("MAT_SHADOW")
-    .define("USE_ATOMIC")
     .builtins(BuiltinBits::VIEWPORT_INDEX)
     .builtins(BuiltinBits::LAYER)
     .storage_buf(SHADOW_RENDER_MAP_BUF_SLOT,

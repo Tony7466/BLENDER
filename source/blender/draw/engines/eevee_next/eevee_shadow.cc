@@ -1030,7 +1030,10 @@ void ShadowModule::end_sync()
       {
         /** Assign pages to tiles that have been marked as used but possess no page. */
         PassSimple::Sub &sub = pass.sub("AllocatePages");
-        sub.shader_set(inst_.shaders.static_shader_get(SHADOW_PAGE_ALLOCATE));
+        sub.shader_set(inst_.shaders.static_shader_get(
+            (shadow_technique == eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG) ?
+                SHADOW_PAGE_ALLOCATE_RBUF_CLEAR :
+                SHADOW_PAGE_ALLOCATE));
         sub.bind_ssbo("tilemaps_buf", tilemap_pool.tilemaps_data);
         sub.bind_ssbo("tiles_buf", tilemap_pool.tiles_data);
         sub.bind_ssbo("statistics_buf", statistics_buf_.current());

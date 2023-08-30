@@ -15,6 +15,8 @@
 
 #include "eevee_shader.hh"
 
+#include "eevee_shadow.hh"
+
 namespace blender::eevee {
 
 /* -------------------------------------------------------------------- */
@@ -194,6 +196,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_shadow_debug";
     case SHADOW_PAGE_ALLOCATE:
       return "eevee_shadow_page_allocate";
+    case SHADOW_PAGE_ALLOCATE_RBUF_CLEAR:
+      return "eevee_shadow_page_allocate_renderbuf_clear";
     case SHADOW_PAGE_CLEAR:
       return "eevee_shadow_page_clear";
     case SHADOW_PAGE_DEFRAG:
@@ -540,7 +544,18 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
           info.additional_info("eevee_surf_depth");
           break;
         case MAT_PIPE_SHADOW:
-          info.additional_info("eevee_surf_shadow");
+          /* Determine surface shadow shader depending on used update technique. */
+          switch (ShadowModule::shadow_technique) {
+            case eShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER: {
+              info.additional_info("eevee_surf_shadow_atomic_update");
+            } break;
+            case eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG: {
+              info.additional_info("eevee_surf_shadow_tbdr_rog_update");
+            } break;
+            default: {
+              BLI_assert_unreachable();
+            } break;
+          }
           break;
         case MAT_PIPE_CAPTURE:
           info.additional_info("eevee_surf_capture");

@@ -15,9 +15,11 @@
 
 #include "GPU_batch.h"
 
+#include "eevee_camera.hh"
 #include "eevee_material.hh"
 #include "eevee_shader.hh"
 #include "eevee_shader_shared.hh"
+#include "eevee_sync.hh"
 
 namespace blender::eevee {
 
