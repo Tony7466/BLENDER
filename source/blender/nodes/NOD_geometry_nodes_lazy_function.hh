@@ -42,26 +42,6 @@ namespace blender::nodes {
 using lf::LazyFunction;
 using mf::MultiFunction;
 
-enum class SimulationEvalType {
-  /**
-   * Used when the simulation is disabled e.g. because the current time is before the simulation
-   * starts.
-   */
-  PassThrough,
-  /**
-   * First frame of the simulation needs to be initialized.
-   */
-  Initialize,
-  /**
-   * Create a new simulation state based on the previous simulation state.
-   */
-  Solve,
-  /**
-   * Read cached data. Note that the solve step could still run if there is e.g. a viewer node.
-   */
-  Read,
-};
-
 struct SimulationInputInfo {
   struct PassThrough {
   };
