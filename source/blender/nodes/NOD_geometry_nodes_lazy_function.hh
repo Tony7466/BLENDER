@@ -42,66 +42,57 @@ namespace blender::nodes {
 using lf::LazyFunction;
 using mf::MultiFunction;
 
-struct SimulationInputInfo {
-  struct PassThrough {
-  };
-  struct OutputCopy {
-    float delta_time;
-    Map<int, const bke::BakeItem *> prev_items;
-  };
-  struct OutputMove {
-    float delta_time;
-    Map<int, std::unique_ptr<bke::BakeItem>> prev_items;
-  };
-  std::variant<PassThrough, OutputCopy, OutputMove> info;
+namespace sim_input_behavior {
+
+struct PassThrough {
 };
 
-struct SimulationOutputInfo {
-  struct PassThrough {
-  };
-  struct StoreAndPassThrough {
-    std::function<void(Map<int, std::unique_ptr<bke::BakeItem>>)> store_fn;
-  };
-  struct ReadSingle {
-    Map<int, const bke::BakeItem *> items;
-  };
-  struct ReadInterpolated {
-    float mix_factor;
-    Map<int, const bke::BakeItem *> prev_items;
-    Map<int, const bke::BakeItem *> next_items;
-  };
-  std::variant<PassThrough, StoreAndPassThrough, ReadSingle, ReadInterpolated> info;
+struct OutputCopy {
+  float delta_time;
+  Map<int, const bke::BakeItem *> prev_items;
 };
+
+struct OutputMove {
+  float delta_time;
+  Map<int, std::unique_ptr<bke::BakeItem>> prev_items;
+};
+
+using SimInputBehavior = std::variant<PassThrough, OutputCopy, OutputMove>;
+
+}  // namespace sim_input_behavior
+
+namespace sim_output_behavior {
+
+struct PassThrough {
+};
+
+struct StoreAndPassThrough {
+  std::function<void(Map<int, std::unique_ptr<bke::BakeItem>>)> store_fn;
+};
+
+struct ReadSingle {
+  Map<int, const bke::BakeItem *> items;
+};
+
+struct ReadInterpolated {
+  float mix_factor;
+  Map<int, const bke::BakeItem *> prev_items;
+  Map<int, const bke::BakeItem *> next_items;
+};
+
+using SimOutputBehavior =
+    std::variant<PassThrough, StoreAndPassThrough, ReadSingle, ReadInterpolated>;
+
+}  // namespace sim_output_behavior
 
 struct SimulationZoneInfo {
-  SimulationInputInfo input;
-  SimulationOutputInfo output;
+  sim_input_behavior::SimInputBehavior input;
+  sim_output_behavior::SimOutputBehavior output;
 };
 
 class GeoNodesSimulationParams {
  public:
   virtual SimulationZoneInfo *get(const int zone_id) const = 0;
-};
-
-enum class BakeEvalType {
-  PassThrough,
-  Bake,
-  ReadSingle,
-  ReadInterpolated,
-};
-
-struct BakeInfo {
-  BakeEvalType eval_type;
-
-  struct ReadSingle {
-    Map<int, const bke::BakeItem *> items;
-  };
-  struct ReadInterpolated {
-    float mix_factor;
-    Map<int, const bke::BakeItem *> prev_items;
-    Map<int, const bke::BakeItem *> next_items;
-  };
-  std::variant<std::monostate, ReadSingle, ReadInterpolated> info;
 };
 
 /**

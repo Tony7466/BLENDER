@@ -912,13 +912,12 @@ class LazyFunctionForSimulationInputsUsage : public LazyFunction {
       solve_contains_side_effect = !side_effect_nodes.is_empty();
     }
 
-    params.set_output(0,
-                      std::holds_alternative<SimulationInputInfo::PassThrough>(info->input.info));
+    params.set_output(0, std::holds_alternative<sim_input_behavior::PassThrough>(info->input));
     params.set_output(
         1,
         solve_contains_side_effect ||
-            std::holds_alternative<SimulationOutputInfo::PassThrough>(info->output.info) ||
-            std::holds_alternative<SimulationOutputInfo::StoreAndPassThrough>(info->output.info));
+            std::holds_alternative<sim_output_behavior::PassThrough>(info->output) ||
+            std::holds_alternative<sim_output_behavior::StoreAndPassThrough>(info->output));
   }
 };
 
