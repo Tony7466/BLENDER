@@ -318,19 +318,6 @@ static OrderedEdge edge_from_corner(const OffsetIndices<int> faces,
 }
 
 /**
- * Add a new edge to the vector (which is expected to be small), detecting duplicates and storing
- * them in the same index.
- */
-static int add_edge_or_find_index(Vector<OrderedEdge> &vector, const OrderedEdge value)
-{
-  const int index = vector.first_index_of_try(value);
-  if (UNLIKELY(index != -1)) {
-    return index;
-  }
-  return vector.append_and_get_index(value);
-}
-
-/**
  * Based on updated corner vertex indices, update the edges in each face. This includes updating
  * corner edge indices, adding new edges, and reusing original edges for the first "split" edge.
  * The main complexity comes from the fact that in the case of single isolated split edges, no new
@@ -346,83 +333,92 @@ static Array<int2> calc_new_edges(const OffsetIndices<int> faces,
                                   MutableSpan<int> corner_edges,
                                   MutableSpan<int> r_new_edge_offsets)
 {
-  /* First we count the number of deduplicated new edges, then accumulate the counts as offsets. */
-  MutableSpan<int> num_new_edges_per_edge = r_new_edge_offsets;
-
   /* Calculate the offset of new edges assuming no new edges are identical and are merged. */
-  int no_merge_count = 0;
-  Array<int> offsets_no_merge(selected_edges.size());
-  selected_edges.foreach_index([&](const int edge, const int mask) {
-    offsets_no_merge[mask] = no_merge_count;
-    no_merge_count += std::max<int>(edge_to_corner_map[edge].size() - 1, 0);
-  });
+  selected_edges.foreach_index_optimized<int>(
+      GrainSize(4096), [&](const int edge, const int mask) {
+        r_new_edge_offsets[mask] = std::max<int>(edge_to_corner_map[edge].size() - 1, 0);
+      });
+  const OffsetIndices offsets = offset_indices::accumulate_counts_to_offsets(r_new_edge_offsets);
 
-  Array<int2> no_merge_new_edges(no_merge_count);
+  Array<int2> new_edges(offsets.total_size());
+
+  /* Count the number of final new edges per edge, to use as offsets if there are duplicates. */
+  Array<int> num_edges_per_edge_merged(r_new_edge_offsets.size());
+  std::atomic<bool> found_duplicate = false;
 
   /* The first new edge for each selected edge is reused-- we modify the existing edge in
-   * place. Just reusing the first new edge isn't enough because the deduplication might make
+   * place. Simply reusing the first new edge isn't enough because deduplication might make
    * multiple new edges reuse the original. */
   Array<bool> is_reused(corner_verts.size(), false);
 
   /* Calculate per-original split edge deduplication of new edges, which are stored by the
-   * corner vertices of connected faces. Update corner verts to store the indices local to
-   * each deduplication, and count the number of new edges to globalize the indices next. */
+   * corner vertices of connected faces. Update corner verts to store the updated indices. */
   selected_edges.foreach_index(GrainSize(1024), [&](const int edge, const int mask) {
+    if (edge_to_corner_map[edge].is_empty()) {
+      /* Handle loose edges. */
+      num_edges_per_edge_merged[mask] = 0;
+      return;
+    }
+
+    const int new_edges_start = offsets[mask].start();
     Vector<OrderedEdge> deduplication;
     for (const int corner : edge_to_corner_map[edge]) {
-      const OrderedEdge new_edge = edge_from_corner(
-          faces, corner_verts, corner_to_face_map, corner);
-      const int index = add_edge_or_find_index(deduplication, new_edge);
+      const OrderedEdge edge = edge_from_corner(faces, corner_verts, corner_to_face_map, corner);
+      int index = deduplication.first_index_of_try(edge);
+      if (UNLIKELY(index != -1)) {
+        found_duplicate.store(true, std::memory_order_relaxed);
+      }
+      else {
+        index = deduplication.append_and_get_index(edge);
+      }
+
       if (index == 0) {
         is_reused[corner] = true;
       }
       else {
-        corner_edges[corner] = index - 1;
+        corner_edges[corner] = edges.size() + new_edges_start + index - 1;
       }
     }
-    if (deduplication.is_empty()) {
-      num_new_edges_per_edge[mask] = 0;
-      return;
-    }
+
+    const int new_edges_num = deduplication.size() - 1;
+
     edges[edge] = int2(deduplication.first().v_low, deduplication.first().v_high);
-    const Span<int2> new_edges = deduplication.as_span().drop_front(1).cast<int2>();
-    if (!new_edges.is_empty()) {
-      const int dst_offset = offsets_no_merge[mask];
-      uninitialized_copy_n(new_edges.data(), new_edges.size(), &no_merge_new_edges[dst_offset]);
-    }
-    num_new_edges_per_edge[mask] = new_edges.size();
+    new_edges.as_mutable_span()
+        .slice(new_edges_start, new_edges_num)
+        .copy_from(deduplication.as_span().drop_front(1).cast<int2>());
+
+    num_edges_per_edge_merged[mask] = new_edges_num;
   });
 
-  /* Use the merged offsets (potentially different from the first offsets) to globalize the new
-   * edge indices per selected edge. */
-  const OffsetIndices merged_offsets = offset_indices::accumulate_counts_to_offsets(
-      num_new_edges_per_edge);
-  selected_edges.foreach_index(GrainSize(1024), [&](const int edge, const int mask) {
-    const int new_edge_offset = merged_offsets[mask].start() + edges.size();
-    for (const int corner : edge_to_corner_map[edge]) {
-      if (!is_reused[corner]) {
-        corner_edges[corner] += new_edge_offset;
-      }
-    }
-  });
-
-  if (merged_offsets.total_size() == no_merge_new_edges.size()) {
-    /* No edges were merged, we can use the existing output array. */
-    return no_merge_new_edges;
+  if (!found_duplicate) {
+    /* No edges were merged, we can use the existing output array and offsets. */
+    return new_edges;
   }
 
-  /* Some edges have been merged. Create a new edges without the empty slots for the duplicates */
-  Array<int2> new_edges(merged_offsets.total_size());
-  threading::parallel_for(merged_offsets.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : range) {
-      const IndexRange merged_range = merged_offsets[i];
-      new_edges.as_mutable_span()
-          .slice(merged_range)
-          .copy_from(no_merge_new_edges.as_span().slice(offsets_no_merge[i], merged_range.size()));
+  /* Update corner edges to remove the "holes" left by merged new edges. */
+  const OffsetIndices offsets_merged = offset_indices::accumulate_counts_to_offsets(
+      num_edges_per_edge_merged);
+  selected_edges.foreach_index(GrainSize(2048), [&](const int edge, const int mask) {
+    const int difference = offsets[mask].start() - offsets_merged[mask].start();
+    for (const int corner : edge_to_corner_map[edge]) {
+      if (!is_reused[corner]) {
+        corner_edges[corner] -= difference;
+      }
     }
   });
 
-  return new_edges;
+  /* Create new edges without the empty slots for the duplicates */
+  Array<int2> new_edges_merged(offsets_merged.total_size());
+  threading::parallel_for(offsets_merged.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      new_edges_merged.as_mutable_span()
+          .slice(offsets_merged[i])
+          .copy_from(new_edges.as_span().slice(offsets[i].start(), offsets_merged[i].size()));
+    }
+  });
+
+  r_new_edge_offsets.copy_from(num_edges_per_edge_merged);
+  return new_edges_merged;
 }
 
 static void update_unselected_edges(const OffsetIndices<int> faces,
