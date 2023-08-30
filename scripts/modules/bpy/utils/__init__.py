@@ -189,7 +189,7 @@ _global_loaded_modules = []  # store loaded module names for reloading.
 import bpy_types as _bpy_types  # keep for comparisons, never ever reload this.
 
 
-def load_scripts(*, reload_scripts=False, refresh_scripts=False, extended=True):
+def load_scripts(*, reload_scripts=False, refresh_scripts=False, extensions=True):
     """
     Load scripts and run each modules register function.
 
@@ -199,8 +199,8 @@ def load_scripts(*, reload_scripts=False, refresh_scripts=False, extended=True):
     :arg refresh_scripts: only load scripts which are not already loaded
        as modules.
     :type refresh_scripts: bool
-    :arg: extended: Loads additional scripts (add-ons & app-templates).
-    :type: extended: bool
+    :arg: extensions: Loads additional scripts (add-ons & app-templates).
+    :type: extensions: bool
     """
     use_time = use_class_register_check = _bpy.app.debug_python
     use_user = not _is_factory_startup
@@ -308,8 +308,8 @@ def load_scripts(*, reload_scripts=False, refresh_scripts=False, extended=True):
                         for mod in modules_from_path(path, loaded_modules):
                             test_register(mod)
 
-    if extended:
-        load_scripts_extended(reload_scripts=reload_scripts)
+    if extensions:
+        load_scripts_extensions(reload_scripts=reload_scripts)
 
     if reload_scripts:
         _bpy.context.window_manager.tag_script_reload()
@@ -331,9 +331,9 @@ def load_scripts(*, reload_scripts=False, refresh_scripts=False, extended=True):
                         )
 
 
-def load_scripts_extended(*, reload_scripts=False):
+def load_scripts_extensions(*, reload_scripts=False):
     """
-    Load extended scripts (add-ons and app-templates)
+    Load extensions scripts (add-ons and app-templates)
 
     :arg reload_scripts: Causes all scripts to have their unregister method
        called before loading.
