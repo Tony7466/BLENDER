@@ -1029,7 +1029,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     if (!io_root) {
       return;
     }
-    if (io_root->lookup_int("version").value_or(0) != 3) {
+    if (io_root->lookup_int("version").value_or(0) != bke::sim::simulation_file_storage_version) {
       return;
     }
     const io::serialize::DictionaryValue *io_items = io_root->lookup_dict("items");

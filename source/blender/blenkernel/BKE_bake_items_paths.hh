@@ -19,7 +19,12 @@ struct MetaFile {
 };
 
 struct BakePath {
+  /** Path to the directory containing the meta data per frame. */
   std::string meta_dir;
+  /**
+   * Path to the directory that contains the binary data. Could be shared between multiple bakes
+   * to reduce memory consumption.
+   */
   std::string bdata_dir;
   /**
    * Folder that is allowed to be deleted when the bake is deleted and it doesn't contain anything

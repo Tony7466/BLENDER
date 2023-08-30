@@ -360,7 +360,7 @@ static void bake_simulation_job_startjob(void *customdata,
           bke::DiskBDataWriter bdata_writer{bdata_file_name, bdata_file, 0};
 
           io::serialize::DictionaryValue io_root;
-          io_root.append_int("version", 3);
+          io_root.append_int("version", simulation_file_storage_version);
           io::serialize::DictionaryValue &io_items = *io_root.append_dict("items");
           for (auto item : frame_cache.items.items()) {
             io::serialize::DictionaryValue &io_item = *io_items.append_dict(

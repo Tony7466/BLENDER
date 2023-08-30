@@ -28,4 +28,6 @@ std::string get_default_modifier_bake_directory(const Main &bmain,
                                                 const Object &object,
                                                 const ModifierData &md);
 
+constexpr int simulation_file_storage_version = 3;
+
 }  // namespace blender::bke::sim
