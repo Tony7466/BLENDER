@@ -356,7 +356,7 @@ class VArrayImpl_For_SharpFace : public VArrayImpl<bool> {
   }
   void materialize_to_uninitialized(const IndexMask &mask, bool *dst) const override
   {
-    mask.foreach_index([&](const int64_t i) { dst[i] = this->get(i); });
+    materialize(mask, dst);
   }
   void materialize_compressed(const IndexMask &mask, bool *dst) const override
   {
@@ -364,7 +364,7 @@ class VArrayImpl_For_SharpFace : public VArrayImpl<bool> {
   }
   void materialize_compressed_to_uninitialized(const IndexMask &mask, bool *dst) const override
   {
-    mask.foreach_index([&](const int64_t i, const int64_t pos) { dst[pos] = this->get(i); });
+    materialize_compressed(mask, dst);
   }
 };
 
@@ -386,7 +386,7 @@ class VArrayImpl_For_SharpEdge : public VArrayImpl<bool> {
   }
   void materialize_to_uninitialized(const IndexMask &mask, bool *dst) const override
   {
-    mask.foreach_index([&](const int64_t i) { dst[i] = this->get(i); });
+    materialize(mask, dst);
   }
   void materialize_compressed(const IndexMask &mask, bool *dst) const override
   {
@@ -394,7 +394,7 @@ class VArrayImpl_For_SharpEdge : public VArrayImpl<bool> {
   }
   void materialize_compressed_to_uninitialized(const IndexMask &mask, bool *dst) const override
   {
-    mask.foreach_index([&](const int64_t i, const int64_t pos) { dst[pos] = this->get(i); });
+    materialize_compressed(mask, dst);
   }
 };
 
