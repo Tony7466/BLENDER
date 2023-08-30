@@ -1058,10 +1058,6 @@ void ntreeBlendReadData(BlendDataReader *reader, ID *owner_id, bNodeTree *ntree)
   }
 
   BLO_read_data_address(reader, &ntree->geometry_node_asset_traits);
-  std::cout << ntree->id.name << ": ";
-  std::cout << bool(ntree->geometry_node_asset_traits &&
-                    (ntree->geometry_node_asset_traits->flag & GEO_NODE_ASSET_MODIFIER))
-            << '\n';
   BLO_read_data_address(reader, &ntree->nested_node_refs);
 
   /* TODO: should be dealt by new generic cache handling of IDs... */
