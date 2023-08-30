@@ -842,13 +842,28 @@ static void wm_file_read_post(bContext *C,
 static uiBlock *wm_block_create_loading(bContext *C, ARegion *region, void *arg)
 {
   const char *filepath = static_cast<const char *>(arg);
-  const int dialog_width = int((256.0f * UI_SCALE_FAC));
+
+  const short preview_width = int((114.0f * UI_SCALE_FAC));
+  const uiStyle *style = UI_style_get_dpi();
+  const int text_points_max = MAX2(style->widget.points, style->widgetlabel.points);
+  const int dialog_width = preview_width + (text_points_max * 23 * UI_SCALE_FAC);
+  const float padding = 5.0f * UI_SCALE_FAC;
+  const float split_factor = (float(preview_width) + padding) /
+                             float(dialog_width - style->columnspace);
 
   uiBlock *block = UI_block_begin(C, region, "file_open_loading_popup", UI_EMBOSS);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 
-  uiLayout *layout = UI_block_layout(
-      block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, dialog_width, 0, 0, UI_style_get_dpi());
+  uiLayout *block_layout = UI_block_layout(
+      block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, dialog_width, 0, 0, style);
+
+  /* Split layout to put preview on left side. */
+  uiLayout *split_block = uiLayoutSplit(block_layout, split_factor, false);
+
+  /* Preview on the left. */
+  uiLayout *layout = uiLayoutRow(split_block, false);
+  /* Using 'align_left' with 'row' avoids stretching the icon along the width of column. */
+  uiLayoutSetAlignment(layout, UI_LAYOUT_ALIGN_LEFT);
 
   /* First look in local thumbnail cache folder. */
   ImBuf *ibuf = IMB_thumb_read(filepath, THB_LARGE);
@@ -871,18 +886,23 @@ static uiBlock *wm_block_create_loading(bContext *C, ARegion *region, void *arg)
     IMB_premultiply_alpha(ibuf);
   }
 
-  IMB_scaleImBuf(ibuf, dialog_width, (dialog_width * ibuf->y) / ibuf->x);
+  IMB_scaleImBuf(ibuf, preview_width, (preview_width * ibuf->y) / ibuf->x);
   uiDefButImage(block, ibuf, 0, U.widget_unit, ibuf->x, ibuf->y, color);
 
-  uiItemS_ex(layout, 1.0f);
+  /* The rest of the content on the right. */
+  layout = uiLayoutColumn(split_block, false);
+
+  //uiItemS_ex(layout, 1.0f);
+
+  uiItemL_ex(layout, N_("Opening file..."), ICON_NONE, false, false);
 
   char filename[FILE_MAX];
   BLI_path_split_file_part(filepath, filename, sizeof(filename));
-  uiItemL(layout, filename, ICON_NONE);
+  uiItemL_ex(layout, filename, ICON_NONE, true, false);
 
-  uiItemL_ex(layout, N_("Loading. Please wait..."), ICON_NONE, true, false);
+  uiItemL_ex(layout, N_("789 MB"), ICON_NONE, false, false);
 
-  UI_block_bounds_set_centered(block, 10 * UI_SCALE_FAC);
+  UI_block_bounds_set_centered(block, 5 * UI_SCALE_FAC);
 
   return block;
 }
