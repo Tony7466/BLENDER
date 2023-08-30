@@ -1,2 +1,3 @@
 Referenced by pull request #104830, File Browser: Make full file name label draggable
 Referenced by issue #111645, Regression: Pressing Enter on the file name text will not confirm file selection.
+Referenced by pull request #111693, Fix: Enter on the filebrowser filename label skips operator
