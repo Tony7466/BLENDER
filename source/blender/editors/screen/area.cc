@@ -361,22 +361,22 @@ static void region_draw_status_text(ScrArea *area, ARegion *region)
   }
 
   GPU_blend(GPU_BLEND_ALPHA);
-  const float x = UI_UNIT_X;
+  const float x = 12.0f * UI_SCALE_FAC;
   const float y = 0.4f * UI_UNIT_Y;
 
   if (header_color[3] < 0.3f) {
     /* Draw a background behind the text. */
     const float width = BLF_width(fontid, region->headerstr, BLF_DRAW_STR_DUMMY_MAX);
-    const float pad = 2.0f * UI_SCALE_FAC;
-    const float x1 = x - (UI_UNIT_X - pad);
-    const float x2 = x + width + (UI_UNIT_X - pad);
-    const float y1 = pad;
-    const float y2 = region->winy - pad;
+    const float pad = 5.0f * UI_SCALE_FAC;
+    const float x1 = x - pad;
+    const float x2 = x + width + pad;
+    const float y1 = 3.0f * UI_SCALE_FAC;
+    const float y2 = region->winy - (4.0f * UI_SCALE_FAC);
     float color[4] = {0.0f, 0.0f, 0.0f, 0.3f};
     UI_GetThemeColor3fv(TH_BACK, color);
     UI_draw_roundbox_corner_set(UI_CNR_ALL);
     rctf rect = {x1, x2, y1, y2};
-    UI_draw_roundbox_4fv(&rect, true, 4.0f, color);
+    UI_draw_roundbox_4fv(&rect, true, 4.0f * UI_SCALE_FAC, color);
   }
 
   UI_FontThemeColor(fontid, TH_TEXT);
