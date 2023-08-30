@@ -571,8 +571,8 @@ bool ED_object_parent_set(ReportList *reports,
     }
     case PAR_BONE:
     case PAR_BONE_RELATIVE:
-      pchan = BKE_pose_channel_active_if_layer_visible(par);
-      pchan_eval = BKE_pose_channel_active_if_layer_visible(parent_eval);
+      pchan = BKE_pose_channel_active_if_bonecoll_visible(par);
+      pchan_eval = BKE_pose_channel_active_if_bonecoll_visible(parent_eval);
 
       if (pchan == nullptr || pchan_eval == nullptr) {
         /* If pchan_eval is nullptr, pchan should also be nullptr. */
@@ -1655,7 +1655,7 @@ void OBJECT_OT_make_links_scene(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  prop = RNA_def_enum(ot->srna, "scene", DummyRNA_NULL_items, 0, "Scene", "");
+  prop = RNA_def_enum(ot->srna, "scene", rna_enum_dummy_NULL_items, 0, "Scene", "");
   RNA_def_enum_funcs(prop, RNA_scene_local_itemf);
   RNA_def_property_flag(prop, PROP_ENUM_NO_TRANSLATE);
   ot->prop = prop;
