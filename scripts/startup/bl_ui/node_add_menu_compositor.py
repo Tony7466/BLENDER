@@ -280,19 +280,9 @@ class NODE_MT_category_COMP_UTIL(Menu):
         node_add_menu.add_node_type(layout, "CompositorNodeNormalize")
         layout.separator()
         node_add_menu.add_node_type(layout, "CompositorNodeSwitch")
-        layout.separator()
-        layout.menu('NODE_MT_category_COMP_UTIL_STEREO')
-
-        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
-
-
-class NODE_MT_category_COMP_UTIL_STEREO(Menu):
-    bl_idname = "NODE_MT_category_COMP_UTIL_STEREO"
-    bl_label = "Stereoscopy"
-
-    def draw(self, _context):
-        layout = self.layout
-        node_add_menu.add_node_type(layout, "CompositorNodeSwitchView")
+        node_add_menu.add_node_type(
+            layout, "CompositorNodeSwitchView",
+            label=iface_("Switch Stereo View"))
 
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
@@ -367,7 +357,6 @@ classes = (
     NODE_MT_category_COMP_TRACKING,
     NODE_MT_category_COMP_TRANSFORM,
     NODE_MT_category_COMP_UTIL,
-    NODE_MT_category_COMP_UTIL_STEREO,
     NODE_MT_category_COMP_VECTOR,
     NODE_MT_category_COMP_GROUP,
     NODE_MT_category_COMP_LAYOUT,
