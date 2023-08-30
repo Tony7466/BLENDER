@@ -93,12 +93,10 @@ void main()
 
 #ifdef PASS_ACCUMULATION_STORE
   /** Interpolate output texel  */
-  /* Using bitwise ops is way faster than integer ops. */
-  const int page_shift = SHADOW_PAGE_LOD;
-  const int page_mask = ~(0xFFFFFFFF << SHADOW_PAGE_LOD);
+  const float page_size = float(int(1 << SHADOW_PAGE_LOD));
 
   uint3 page = uint3(shadow_page_unpack(page_packed));
-  out_texel_xy = (vec2(page.xy) * vec2(256.0)) + vec2(pos);
+  out_texel_xy = (vec2(page.xy) * vec2(page_size)) + vec2(pos);
   out_page_z = page.z;
 #endif
 

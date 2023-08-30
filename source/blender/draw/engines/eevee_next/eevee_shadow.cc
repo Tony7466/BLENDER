@@ -18,6 +18,9 @@
 
 namespace blender::eevee {
 
+eShadowUpdateTechnique ShadowModule::shadow_technique =
+    eShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER;
+
 /* -------------------------------------------------------------------- */
 /** \name Tile map
  *
@@ -636,6 +639,18 @@ ShadowModule::ShadowModule(Instance &inst) : inst_(inst)
 
 void ShadowModule::init()
 {
+  /* Determine shadow update technique and atlas format.
+   * NOTE(Metal): Metal utilizes a tile-optimized approach. */
+  bool is_metal_backend = (GPU_backend_get_type() == GPU_BACKEND_METAL);
+  if (is_metal_backend) {
+    ShadowModule::shadow_technique = eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG;
+    ShadowModule::atlas_type_ = GPU_R32F;
+  }
+  else {
+    ShadowModule::shadow_technique = eShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER;
+    ShadowModule::atlas_type_ = GPU_R32UI;
+  }
+
   ::Scene &scene = *inst_.scene;
   bool enabled = (scene.eevee.flag & SCE_EEVEE_SHADOW_ENABLED) != 0;
   if (assign_if_different(enabled_, enabled)) {
@@ -663,14 +678,14 @@ void ShadowModule::init()
   const int atlas_layers = divide_ceil_u(shadow_page_len_, SHADOW_PAGE_PER_LAYER);
 
   eGPUTextureUsage tex_usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
-  if (atlas_tx_.ensure_2d_array(atlas_type, atlas_extent, atlas_layers, tex_usage)) {
+  if (atlas_tx_.ensure_2d_array(atlas_type_, atlas_extent, atlas_layers, tex_usage)) {
     /* Global update. */
     do_full_update = true;
   }
 
   /* Make allocation safe. Avoids crash later on. */
   if (!atlas_tx_.is_valid()) {
-    atlas_tx_.ensure_2d_array(atlas_type, int2(1), 1);
+    atlas_tx_.ensure_2d_array(atlas_type_, int2(1), 1);
     inst_.info = "Error: Could not allocate shadow atlas. Most likely out of GPU memory.";
   }
 
@@ -1022,11 +1037,12 @@ void ShadowModule::end_sync()
         sub.bind_ssbo("pages_infos_buf", pages_infos_data_);
         sub.bind_ssbo("pages_free_buf", pages_free_data_);
         sub.bind_ssbo("pages_cached_buf", pages_cached_data_);
-#ifdef WITH_METAL_BACKEND
-        if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+
+        /* For the tile optimized update, we need to clear tiles being updated early. */
+        if (shadow_technique == eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG) {
           sub.bind_ssbo("render_map_buf", render_map_buf_);
         }
-#endif
+
         sub.dispatch(int3(1, 1, tilemap_pool.tilemaps_data.size()));
         sub.barrier(GPU_BARRIER_SHADER_STORAGE);
       }
@@ -1050,9 +1066,9 @@ void ShadowModule::end_sync()
                     GPU_BARRIER_SHADER_IMAGE_ACCESS);
       }
 
-      /* NOTE: We do not need to run the clear pass in Metal, as tiles will be fully cleared as
-       * part of the shadow raster step.*/
-      if (GPU_backend_get_type() != GPU_BACKEND_METAL) {
+      /* NOTE: We do not need to run the clear pass when using the TBDR update variant, as tiles
+       * will be fully cleared as part of the shadow raster step. */
+      if (shadow_technique != eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG) {
         /** Clear pages that need to be rendered. */
         PassSimple::Sub &sub = pass.sub("RenderClear");
         sub.framebuffer_set(&render_fb_);
@@ -1161,27 +1177,27 @@ void ShadowModule::set_view(View &view)
                                                int2(std::exp2(usage_tag_fb_lod_)));
   usage_tag_fb.ensure(usage_tag_fb_resolution_);
 
-#ifdef WITH_METAL_BACKEND
-  if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
-    /* Create memoryless depth attachment for on-tile surface depth accumulation.*/
-    shadow_depth_fb_tx_.ensure_2d_array(GPU_DEPTH_COMPONENT32F,
-                                        int2(SHADOW_TILEMAP_RES * shadow_page_size_),
-                                        SHADOW_VIEW_MAX,
-                                        GPU_TEXTURE_USAGE_ATTACHMENT |
-                                            GPU_TEXTURE_USAGE_MEMORYLESS);
-    shadow_depth_accum_tx_.ensure_2d_array(GPU_R32F,
-                                           int2(SHADOW_TILEMAP_RES * shadow_page_size_),
-                                           SHADOW_VIEW_MAX,
-                                           GPU_TEXTURE_USAGE_ATTACHMENT |
-                                               GPU_TEXTURE_USAGE_MEMORYLESS);
-    render_fb_.ensure(GPU_ATTACHMENT_TEXTURE(shadow_depth_fb_tx_),
-                      GPU_ATTACHMENT_TEXTURE(shadow_depth_accum_tx_));
-  }
-  else
-#endif
-  {
-    render_fb_.ensure(int2(SHADOW_TILEMAP_RES * shadow_page_size_));
-    GPU_framebuffer_bind(render_fb_);
+  switch (shadow_technique) {
+    case eShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER: {
+      render_fb_.ensure(int2(SHADOW_TILEMAP_RES * shadow_page_size_));
+      GPU_framebuffer_bind(render_fb_);
+    } break;
+
+    case eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG: {
+      /* Create memoryless depth attachment for on-tile surface depth accumulation.*/
+      shadow_depth_fb_tx_.ensure_2d_array(GPU_DEPTH_COMPONENT32F,
+                                          int2(SHADOW_TILEMAP_RES * shadow_page_size_),
+                                          SHADOW_VIEW_MAX,
+                                          GPU_TEXTURE_USAGE_ATTACHMENT |
+                                              GPU_TEXTURE_USAGE_MEMORYLESS);
+      shadow_depth_accum_tx_.ensure_2d_array(GPU_R32F,
+                                             int2(SHADOW_TILEMAP_RES * shadow_page_size_),
+                                             SHADOW_VIEW_MAX,
+                                             GPU_TEXTURE_USAGE_ATTACHMENT |
+                                                 GPU_TEXTURE_USAGE_MEMORYLESS);
+      render_fb_.ensure(GPU_ATTACHMENT_TEXTURE(shadow_depth_fb_tx_),
+                        GPU_ATTACHMENT_TEXTURE(shadow_depth_accum_tx_));
+    } break;
   }
 
   GPU_framebuffer_multi_viewports_set(render_fb_,
@@ -1203,38 +1219,39 @@ void ShadowModule::set_view(View &view)
 
       shadow_multi_view_.compute_procedural_bounds();
 
-#ifdef WITH_METAL_BACKEND
-      /* Specify load-store config right before render to ensure flags are retained. */
-      if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
-        GPU_framebuffer_bind_ex(
-            render_fb_,
-            {{GPU_LOADACTION_CLEAR, GPU_STOREACTION_DONT_CARE, {0.0f, 0.0f, 0.0f, 0.0f}},
-             {GPU_LOADACTION_CLEAR, GPU_STOREACTION_DONT_CARE, {1.0f, 1.0f, 1.0f, 1.0f}}});
+      switch (shadow_technique) {
+        case eShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER: {
+
+          /* Main shadow geometry pass. */
+          inst_.pipelines.shadow.render(shadow_multi_view_);
+
+        } break;
+
+        case eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG: {
+
+          /* Specify explicit load-store config for memoryless attachments, and defining
+           * explicit clear values for this pass. */
+          GPU_framebuffer_bind_ex(
+              render_fb_,
+              {{GPU_LOADACTION_CLEAR, GPU_STOREACTION_DONT_CARE, {0.0f, 0.0f, 0.0f, 0.0f}},
+               {GPU_LOADACTION_CLEAR, GPU_STOREACTION_DONT_CARE, {1.0f, 1.0f, 1.0f, 1.0f}}});
+
+          /* Shadow pass visibility computation and preparation. */
+          command::RecordingState state;
+          inst_.pipelines.shadow.render_prepare_visibility(shadow_multi_view_, &state);
+
+          /* Perform tile-based clear to ensure only tiles being updated are cleared to 1.0f.
+           * All other tiles will be cleared to 0.0f to ensure depth test fails and unneeded
+           * raster work is efficiently skipped.  */
+          inst_.pipelines.shadow.render_tile_clear(shadow_multi_view_);
+
+          /* Main shadow geometry pass. */
+          inst_.pipelines.shadow.render_main_pass(shadow_multi_view_, &state);
+
+          /* Perform tile-based shadow atlas storage pass. */
+          inst_.pipelines.shadow.render_tile_store(shadow_multi_view_);
+        } break;
       }
-#endif
-
-      /* Shadow pass visibility computation and preparation. */
-      command::RecordingState state;
-      inst_.pipelines.shadow.render_prepare_visibility(shadow_multi_view_, &state);
-
-#ifdef WITH_METAL_BACKEND
-      /* Perform tile-based clear to ensure only tiles being updated are cleared to 1.0f.
-       * All other tiles will be cleared to 0.0f to ensure depth test fails and unneeded
-       * raster work is efficiently skipped.  */
-      if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
-        inst_.pipelines.shadow.render_tile_clear(shadow_multi_view_);
-      }
-#endif
-
-      /* Main shadow geometry pass*/
-      inst_.pipelines.shadow.render_main_pass(shadow_multi_view_, &state);
-
-#ifdef WITH_METAL_BACKEND
-      /* Perform tile-based shadow accumulation pass. */
-      if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
-        inst_.pipelines.shadow.render_tile_accum(shadow_multi_view_);
-      }
-#endif
 
       GPU_memory_barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS | GPU_BARRIER_TEXTURE_FETCH);
     }

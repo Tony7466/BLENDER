@@ -52,6 +52,22 @@ constexpr static const float shadow_clipmap_scale_mat[4][4] = {{SHADOW_TILEMAP_R
                                                                {0, 0, 0.5, 0},
                                                                {0, 0, 0.5, 1}};
 
+/* Technique used for updating the virtual shadow map contents. */
+enum eShadowUpdateTechnique {
+  /* Default virtual shadow map update using large virtual framebuffer to rasterize geometry with
+   * per-fragment textureAtomicMin to perform depth-test and indirectly store nearest depth value
+   * in the shadow atlas. */
+  SHADOW_UPDATE_ATOMIC_RASTER = 0,
+
+  /* Tile-architecture optimized virtual shadow map update, leveraging on-tile memory for clearing
+   * and depth-testing during geometry rasterization to avoid atomic operations, simplify mesh
+   * depth shader and only perform a single storage operation per pixel. This technique performs
+   * a 3-pass solution, first clearing tiles, updating depth and storing final results.
+   * NOTE: This is currently only supported on Apple Silicon as it requires rasterization order
+   * groups to perform ordered attachment operations. */
+  SHADOW_UPDATE_TBDR_ROG = 1,
+};
+
 /* -------------------------------------------------------------------- */
 /** \name Tile-Map
  *
@@ -175,6 +191,9 @@ class ShadowModule {
   friend ShadowTileMapPool;
 
  public:
+  /* Shadowing technique. */
+  static eShadowUpdateTechnique shadow_technique;
+
   /** Need to be first because of destructor order. */
   ShadowTileMapPool tilemap_pool;
 
@@ -230,11 +249,8 @@ class ShadowModule {
   /* -------------------------------------------------------------------- */
   /** \name Page Management
    * \{ */
-#ifdef WITH_METAL_BACKEND
-  static constexpr eGPUTextureFormat atlas_type = GPU_R32F;
-#else
-  static constexpr eGPUTextureFormat atlas_type = GPU_R32UI;
-#endif
+  eGPUTextureFormat atlas_type_ = GPU_R32UI;
+
   /** Atlas containing all physical pages. */
   Texture atlas_tx_ = {"shadow_atlas_tx_"};
 
@@ -261,13 +277,13 @@ class ShadowModule {
   View shadow_multi_view_ = {"ShadowMultiView", SHADOW_VIEW_MAX, true};
   /** Framebuffer with the atlas_tx attached. */
   Framebuffer render_fb_ = {"shadow_write_framebuffer"};
-#ifdef WITH_METAL_BACKEND
+
   /* NOTE(Metal): Metal requires memoryless textures to be created which represent attachments in
    * the shadow write framebuffer. These textures do not occupy any physical memory, but require a
    * Texture object containing its parameters.*/
   Texture shadow_depth_fb_tx_ = {"shadow_depth_fb_tx_"};
   Texture shadow_depth_accum_tx_ = {"shadow_depth_accum_tx_"};
-#endif
+
   /** Arrays of viewports to rendering each tile to. */
   std::array<int4, 16> multi_viewports_;
 
