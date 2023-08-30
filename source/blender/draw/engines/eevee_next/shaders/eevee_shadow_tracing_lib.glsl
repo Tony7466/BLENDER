@@ -331,7 +331,7 @@ ShadowRay shadow_ray_project_punctual(LightData light, int face_id, ShadowRayPro
   vec3 view_ray_start = shadow_punctual_local_position_to_face_local(face_id, local_ray.start);
   vec3 view_ray_end = shadow_punctual_local_position_to_face_local(face_id, local_ray.end);
   /* Face Local (View) Space > Clip Space. */
-  /* TODO: Could be simplified since it is completely symetrical. */
+  /* TODO: Could be simplified since frustum is completely symetrical. */
   float clip_far = intBitsToFloat(light.clip_far);
   float clip_near = intBitsToFloat(light.clip_near);
   mat4 winmat = projection_perspective(
