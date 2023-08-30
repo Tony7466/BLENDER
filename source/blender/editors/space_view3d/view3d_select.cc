@@ -603,8 +603,9 @@ static bool do_lasso_select_objects(ViewContext *vc,
 
   if (changed) {
     DEG_id_tag_update(&vc->scene->id, ID_RECALC_SELECT);
-    WM_main_add_notifier(NC_SCENE | ND_OB_SELECT, vc->scene);
   }
+  WM_main_add_notifier(NC_SCENE | ND_OB_SELECT, vc->scene);
+
   return changed;
 }
 
@@ -1380,9 +1381,7 @@ static bool view3d_lasso_select(bContext *C,
     }
     else {
       changed_multi |= do_lasso_select_objects(vc, mcoords, mcoords_len, sel_op);
-      if (changed_multi) {
-        ED_outliner_select_sync_from_object_tag(C);
-      }
+      ED_outliner_select_sync_from_object_tag(C);
     }
   }
   else { /* Edit Mode */
@@ -2876,9 +2875,10 @@ static bool ed_object_select_pick(bContext *C,
       else if (found || params->deselect_all) {
         /* Deselect everything. */
         /* `basact` may be nullptr. */
-        if (object_deselect_all_except(scene, view_layer, basact)) {
-          changed_object = true;
-        }
+        changed_object = object_deselect_all_except(scene, view_layer, basact);
+
+        WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
+        ED_outliner_select_sync_from_object_tag(C);
       }
     }
   }
@@ -4105,8 +4105,9 @@ finally:
 
   if (changed) {
     DEG_id_tag_update(&vc->scene->id, ID_RECALC_SELECT);
-    WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, vc->scene);
   }
+  WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, vc->scene);
+
   return changed;
 }
 
@@ -4338,9 +4339,8 @@ static int view3d_box_select_exec(bContext *C, wmOperator *op)
     }
     else { /* object mode with none active */
       changed_multi = do_object_box_select(C, &vc, &rect, sel_op);
-      if (changed_multi) {
-        ED_outliner_select_sync_from_object_tag(C);
-      }
+      changed_multi = do_object_box_select(C, &vc, &rect, sel_op);
+      ED_outliner_select_sync_from_object_tag(C);
     }
   }
 
