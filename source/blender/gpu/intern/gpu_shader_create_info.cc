@@ -473,6 +473,7 @@ void gpu_shader_create_info_init()
     info->builtins_ |= gpu_shader_dependency_get_builtins(info->geometry_source_);
     info->builtins_ |= gpu_shader_dependency_get_builtins(info->compute_source_);
 
+#ifdef DEBUG
     /* Automatically amend the create info for ease of use of the debug feature. */
     if ((info->builtins_ & BuiltinBits::USE_DEBUG_DRAW) == BuiltinBits::USE_DEBUG_DRAW) {
       info->additional_info("draw_debug_draw");
@@ -480,6 +481,7 @@ void gpu_shader_create_info_init()
     if ((info->builtins_ & BuiltinBits::USE_DEBUG_PRINT) == BuiltinBits::USE_DEBUG_PRINT) {
       info->additional_info("draw_debug_print");
     }
+#endif
   }
 
   /* TEST */
