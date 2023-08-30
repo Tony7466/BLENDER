@@ -43,15 +43,15 @@ void light_eval_ex(ClosureDiffuse diffuse,
     vec3 lNg = light_world_to_local(light, Ng);
 
 #ifdef SURFEL_LIGHT
-    ShadowEvalResult shadow = shadow_eval(light, is_directional, lL, 16, 8);
+    ShadowEvalResult shadow = shadow_eval(light, is_directional, lL, lNg, 16, 8);
 #else
-    ShadowEvalResult shadow = shadow_eval(light, is_directional, lL, 1, 8);
+    ShadowEvalResult shadow = shadow_eval(light, is_directional, lL, lNg, 1, 8);
 #endif
 
 #ifdef SSS_TRANSMITTANCE
     /* Transmittance evaluation first to use initial visibility without shadow. */
     if (diffuse.sss_id != 0u && light.diffuse_power > 0.0) {
-      float delta = max(thickness, shadow.occluder_distance);
+      float delta = max(thickness, shadow.subsurface_occluder_distance);
 
       vec3 intensity = visibility * light.transmit_power *
                        light_translucent(sss_transmittance_tx,
@@ -65,8 +65,8 @@ void light_eval_ex(ClosureDiffuse diffuse,
       out_diffuse += light.color * intensity;
     }
 #endif
-    visibility *= shadow.visibilty;
-    out_shadow *= shadow.visibilty;
+    visibility *= shadow.surface_light_visibilty;
+    out_shadow *= shadow.surface_light_visibilty;
   }
 
   if (visibility < 1e-6) {

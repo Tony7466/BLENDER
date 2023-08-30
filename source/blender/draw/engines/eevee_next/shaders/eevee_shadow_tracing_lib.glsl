@@ -193,7 +193,8 @@ struct ShadowRayDirectional {
   LightData light;
 };
 
-ShadowRayDirectional shadow_ray_generate_directional(LightData light, vec2 random_2d, vec3 lP)
+ShadowRayDirectional shadow_ray_generate_directional(
+    LightData light, vec2 random_2d, vec3 lP, vec3 lNg, out bool r_is_above_surface)
 {
   float clip_near = orderedIntBitsToFloat(light.clip_near);
   float clip_far = orderedIntBitsToFloat(light.clip_far);
@@ -205,8 +206,11 @@ ShadowRayDirectional shadow_ray_generate_directional(LightData light, vec2 rando
   vec4 origin = vec4(lP, dist_to_near_plane / z_range);
 
   vec2 disk_point = sample_disk(random_2d) * light._radius;
-  /* Light shape is 1 unit away from the shading point. Trace in  */
+  /* Light shape is 1 unit away from the shading point. */
   vec4 direction = vec4(disk_point, 1.0, -1.0 / z_range);
+
+  r_is_above_surface = dot(lNg, direction.xyz) > 0.0;
+
   /* TODO(fclem) Option. */
   float max_trace_distance = dist_to_near_plane;
   float ray_length = max_trace_distance / length(direction.xyz);
@@ -269,7 +273,8 @@ struct ShadowRayPrototype {
 };
 
 /* Returns a ray in light local space. */
-ShadowRayPrototype shadow_ray_generate_punctual(LightData light, vec2 random_2d, vec3 lP)
+ShadowRayPrototype shadow_ray_generate_punctual(
+    LightData light, vec2 random_2d, vec3 lP, vec3 lNg, out bool r_is_above_surface)
 {
   if (light.type == LIGHT_RECT) {
     random_2d = random_2d * 2.0 - 1.0;
@@ -289,6 +294,9 @@ ShadowRayPrototype shadow_ray_generate_punctual(LightData light, vec2 random_2d,
   }
   vec3 point_on_light_shape = right * random_2d.x + up * random_2d.y;
   vec3 direction = point_on_light_shape - lP;
+
+  r_is_above_surface = dot(direction, lNg) > 0.0;
+
   /* Clip the ray to not cross the near plane. */
   float clip_near = intBitsToFloat(light.clip_near);
   /* Scale it so that it encompass the whole cube (with a safety margin). */
@@ -402,15 +410,21 @@ SHADOW_MAP_TRACE_FN(ShadowRayDualCubeFace)
  * \{ */
 
 struct ShadowEvalResult {
-  float visibilty;
-  float occluder_distance;
+  /* Visibility of the light above the horizon. */
+  float surface_light_visibilty;
+  /* Average occluder distance for rays below the horizon. In world space linear distance. */
+  float subsurface_occluder_distance;
 };
 
 /**
  * Evaluate shadowing by casting rays toward the light direction.
  */
-ShadowEvalResult shadow_eval(
-    LightData light, const bool is_directional, vec3 lP, int ray_count, int ray_step_count)
+ShadowEvalResult shadow_eval(LightData light,
+                             const bool is_directional,
+                             vec3 lP,
+                             vec3 lNg,
+                             int ray_count,
+                             int ray_step_count)
 {
 #ifdef EEVEE_SAMPLING_DATA
 #  ifdef GPU_FRAGMENT_SHADER
@@ -425,8 +439,10 @@ ShadowEvalResult shadow_eval(
   vec3 random_shadow_3d = vec3(0.5);
 #endif
 
-  float hit_count = 0.0;
-  float accum_occluder_distance = 0.0;
+  float surface_hit = 0.0;
+  float surface_ray_count = 0.0;
+  float subsurface_occluder_distance = 0.0;
+  float subsurface_ray_count = 0.0;
   for (int ray_index = 0; ray_index < ray_count; ray_index++) {
     vec2 random_ray_2d = fract(hammersley_2d(ray_index, ray_count) + random_shadow_3d.xy);
 
@@ -434,13 +450,19 @@ ShadowEvalResult shadow_eval(
      * hard shadow for it as it is only required for a few pixels [1..3] and do it outside of this
      * loop. */
 
+    /* We only consider rays above the surface for shadowing. This is because the LTC evaluation
+     * already accounts for the clipping of the light shape. */
+    bool is_above_surface;
+
     ShadowMapTraceResult trace;
     if (is_directional) {
-      ShadowRayDirectional clip_ray = shadow_ray_generate_directional(light, random_ray_2d, lP);
+      ShadowRayDirectional clip_ray = shadow_ray_generate_directional(
+          light, random_ray_2d, lP, lNg, is_above_surface);
       trace = shadow_map_trace(clip_ray, ray_step_count, random_shadow_3d.z);
     }
     else {
-      ShadowRayPrototype ray_proto = shadow_ray_generate_punctual(light, random_ray_2d, lP);
+      ShadowRayPrototype ray_proto = shadow_ray_generate_punctual(
+          light, random_ray_2d, lP, lNg, is_above_surface);
       int face_start = shadow_punctual_face_index_get(ray_proto.start);
       int face_end = shadow_punctual_face_index_get(ray_proto.end);
       /* TODO(fclem): Can reduce register pressure by having a path that only trace one ray.
@@ -467,13 +489,21 @@ ShadowEvalResult shadow_eval(
         trace = shadow_map_trace(clip_ray, ray_step_count, random_shadow_3d.z);
       }
     }
-    hit_count += float(trace.has_hit);
-    accum_occluder_distance += trace.occluder_distance;
+
+    if (is_above_surface) {
+      surface_hit += float(trace.has_hit);
+      surface_ray_count += 1.0;
+    }
+    else {
+      subsurface_occluder_distance += trace.occluder_distance;
+      subsurface_ray_count += 1.0;
+    }
   }
   /* Average samples. */
   ShadowEvalResult result;
-  result.visibilty = saturate(1.0 - (hit_count / float(ray_count)));
-  result.occluder_distance = accum_occluder_distance * safe_rcp(hit_count);
+  result.surface_light_visibilty = saturate(1.0 - (surface_hit * safe_rcp(surface_ray_count)));
+  result.subsurface_occluder_distance = subsurface_occluder_distance *
+                                        safe_rcp(subsurface_ray_count);
   return result;
 }
 
