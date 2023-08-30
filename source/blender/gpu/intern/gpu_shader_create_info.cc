@@ -140,6 +140,8 @@ void ShaderCreateInfo::finalize()
       depth_write_ = info.depth_write_;
     }
 
+    builtins_ |= info.builtins_;
+
     validate_merge(info);
 
     auto assert_no_overlap = [&](const bool test, const StringRefNull error) {
