@@ -412,18 +412,17 @@ struct ShadowEvalResult {
 ShadowEvalResult shadow_eval(
     LightData light, const bool is_directional, vec3 lP, int ray_count, int ray_step_count)
 {
-#ifdef GPU_FRAGMENT_SHADER
-  vec2 pixel = gl_FragCoord.xy;
-#elif defined(GPU_COMPUTE_SHADER)
-  vec2 pixel = vec2(gl_GlobalInvocationID.xy) + 0.5;
-#else
-  vec2 pixel = vec2(0.0);
-#endif
-  vec3 random_shadow_3d = interlieved_gradient_noise(pixel, vec3(1.0, 2.0, 3.0), vec3(0.0));
-  // vec3 random_shadow_3d = vec3(0.4, 0.4, 0.4);
-
 #ifdef EEVEE_SAMPLING_DATA
+#  ifdef GPU_FRAGMENT_SHADER
+  vec2 pixel = floor(gl_FragCoord.xy);
+#  elif defined(GPU_COMPUTE_SHADER)
+  vec2 pixel = vec2(gl_GlobalInvocationID.xy);
+#  endif
+  vec3 random_shadow_3d = utility_tx_fetch(utility_tx, pixel, UTIL_BLUE_NOISE_LAYER).rgb;
   random_shadow_3d += sampling_rng_3D_get(SAMPLING_SHADOW_U);
+#else
+  /* Case of surfel light eval. */
+  vec3 random_shadow_3d = vec3(0.5);
 #endif
 
   float hit_count = 0.0;
