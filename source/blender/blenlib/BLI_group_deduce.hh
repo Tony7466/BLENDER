@@ -24,9 +24,11 @@
  * average group size grade for algorithm.
  */
 
-namespace blender::grouped_indices {
-
+namespace blender::index_mask {
 class IndexMask;
+}
+
+namespace blender::grouped_indices {
 
 /**
  * Deduce the fragmentation threshold for a given span of indices. A constant cost is assumed.
@@ -59,7 +61,7 @@ GroupedSpan<int> from_indices(const Span<int> group_indices,
  * filled in as in #from_indices.
  */
 GroupedSpan<int> from_identifiers(const Span<int> groups_ids,
-                                  const IndexMask &universe,
+                                  const index_mask::IndexMask &universe,
                                   Array<int> &r_offsets,
                                   Array<int> &r_indices,
                                   bool stable = true);
