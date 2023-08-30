@@ -194,7 +194,9 @@ void ShadowPipeline::sync()
         GPU_PRIM_TRIS, (SHADOW_TILEMAP_RES) * (SHADOW_TILEMAP_RES)*SHADOW_VIEW_MAX, 6);
 
     tbdr_page_store_ps_.init();
-    tbdr_page_store_ps_.shader_set(inst_.shaders.static_shader_get(SHADOW_DEPTH_TBDR_PAGE_STORE));
+    tbdr_page_store_ps_.shader_set(inst_.shaders.static_shader_get(
+        (ShadowModule::atlas_type == GPU_R32UI) ? SHADOW_DEPTH_TBDR_PAGE_STORE_U32 :
+                                                  SHADOW_DEPTH_TBDR_PAGE_STORE_F32));
     /* NOTE: Setting to DRW_STATE_DEPTH_ALWAYS allows removal of the SHADOW_PAGE_CLEAR pass as
      * all tile texels are cleared within tile memory and stored.
      * DRW_STATE_DEPTH_GREATER/GREATER_EQUAL is the most optimal for the update pass itself, as it

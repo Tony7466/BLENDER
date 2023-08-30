@@ -181,30 +181,33 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_tilemap_finalize)
     .additional_info("eevee_shared")
     .compute_source("eevee_shadow_tilemap_finalize_comp.glsl");
 
-GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear)
-    .do_static_compilation(true)
+GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear_common)
     .local_group_size(SHADOW_PAGE_CLEAR_GROUP_SIZE, SHADOW_PAGE_CLEAR_GROUP_SIZE)
     .storage_buf(2, Qualifier::READ, "ShadowPagesInfoData", "pages_infos_buf")
     .storage_buf(6, Qualifier::READ, SHADOW_PAGE_PACKED, "clear_list_buf[SHADOW_RENDER_MAP_SIZE]")
-#ifdef WITH_METAL_BACKEND
-    .image(SHADOW_ATLAS_IMG_SLOT,
-           GPU_R32F,
-           Qualifier::READ_WRITE,
-           ImageType::FLOAT_2D_ARRAY,
-           "shadow_atlas_img")
-#else
+    .additional_info("eevee_shared")
+    .compute_source("eevee_shadow_page_clear_comp.glsl");
+
+GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear_u32)
+    .do_static_compilation(true)
+    .additional_info("eevee_shadow_page_clear_common")
     .image(SHADOW_ATLAS_IMG_SLOT,
            GPU_R32UI,
            Qualifier::READ_WRITE,
            ImageType::UINT_2D_ARRAY,
-           "shadow_atlas_img")
-#endif
-    .additional_info("eevee_shared")
-    .compute_source("eevee_shadow_page_clear_comp.glsl");
+           "shadow_atlas_img");
 
-#ifdef WITH_METAL_BACKEND
+GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear_f32)
+    .do_static_compilation(true)
+    .additional_info("eevee_shadow_page_clear_common")
+    .image(SHADOW_ATLAS_IMG_SLOT,
+           GPU_R32F,
+           Qualifier::READ_WRITE,
+           ImageType::UINT_2D_ARRAY,
+           "shadow_atlas_img");
+
 /* Interface for passing precalculated values in accumulation vertex to frag. */
-GPU_SHADER_INTERFACE_INFO(eevee_surf_shadow_accum_iface, "")
+GPU_SHADER_INTERFACE_INFO(eevee_shadow_tbdr_store_iface, "")
     .no_perspective(Type::VEC2, "out_texel_xy")
     .flat(Type::USHORT, "out_page_z");
 
@@ -224,11 +227,6 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_metal_tbdr_common)
                  Qualifier::READ,
                  "uint",
                  "viewport_index_buf[SHADOW_VIEW_MAX]")
-    .image(SHADOW_ATLAS_IMG_SLOT,
-           GPU_R32F,
-           Qualifier::READ_WRITE,
-           ImageType::FLOAT_2D_ARRAY,
-           "shadow_atlas_img")
     .vertex_source("eevee_shadow_page_metal_tbdr_vert.glsl")
     .fragment_source("eevee_shadow_page_metal_tbdr_frag.glsl")
     .additional_info("eevee_shared");
@@ -241,16 +239,36 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear_metal_tbdr)
     .define("PASS_CLEAR")
     .fragment_out(0, Type::FLOAT, "out_tile_depth", DualBlend::NONE, 0);
 
-GPU_SHADER_CREATE_INFO(eevee_shadow_page_store_metal_tbdr)
+GPU_SHADER_CREATE_INFO(eevee_shadow_page_store_metal_tbdr_common)
     .do_static_compilation(true)
     .early_fragment_test(true)
     .metal_backend_only(true)
     .additional_info("eevee_shadow_page_metal_tbdr_common")
     .define("PASS_ACCUMULATION_STORE")
-    .vertex_out(eevee_surf_shadow_accum_iface)
+    .vertex_out(eevee_shadow_tbdr_store_iface)
     .fragment_tile_in(0, Type::FLOAT, "in_tile_depth", DualBlend::NONE, 0);
 
-#endif
+GPU_SHADER_CREATE_INFO(eevee_shadow_page_store_metal_tbdr_u32)
+    .do_static_compilation(true)
+    .early_fragment_test(true)
+    .metal_backend_only(true)
+    .additional_info("eevee_shadow_page_store_metal_tbdr_common")
+    .image(SHADOW_ATLAS_IMG_SLOT,
+           GPU_R32UI,
+           Qualifier::READ_WRITE,
+           ImageType::UINT_2D_ARRAY,
+           "shadow_atlas_img");
+
+GPU_SHADER_CREATE_INFO(eevee_shadow_page_store_metal_tbdr_f32)
+    .do_static_compilation(true)
+    .early_fragment_test(true)
+    .metal_backend_only(true)
+    .additional_info("eevee_shadow_page_store_metal_tbdr_common")
+    .image(SHADOW_ATLAS_IMG_SLOT,
+           GPU_R32F,
+           Qualifier::READ_WRITE,
+           ImageType::FLOAT_2D_ARRAY,
+           "shadow_atlas_img");
 
 /** \} */
 

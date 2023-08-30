@@ -20,6 +20,7 @@ namespace blender::eevee {
 
 eShadowUpdateTechnique ShadowModule::shadow_technique =
     eShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER;
+eGPUTextureFormat ShadowModule::atlas_type = GPU_R32UI;
 
 /* -------------------------------------------------------------------- */
 /** \name Tile map
@@ -644,11 +645,11 @@ void ShadowModule::init()
   bool is_metal_backend = (GPU_backend_get_type() == GPU_BACKEND_METAL);
   if (is_metal_backend) {
     ShadowModule::shadow_technique = eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG;
-    ShadowModule::atlas_type_ = GPU_R32F;
+    ShadowModule::atlas_type = GPU_R32F;
   }
   else {
     ShadowModule::shadow_technique = eShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER;
-    ShadowModule::atlas_type_ = GPU_R32UI;
+    ShadowModule::atlas_type = GPU_R32UI;
   }
 
   ::Scene &scene = *inst_.scene;
@@ -678,14 +679,14 @@ void ShadowModule::init()
   const int atlas_layers = divide_ceil_u(shadow_page_len_, SHADOW_PAGE_PER_LAYER);
 
   eGPUTextureUsage tex_usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
-  if (atlas_tx_.ensure_2d_array(atlas_type_, atlas_extent, atlas_layers, tex_usage)) {
+  if (atlas_tx_.ensure_2d_array(ShadowModule::atlas_type, atlas_extent, atlas_layers, tex_usage)) {
     /* Global update. */
     do_full_update = true;
   }
 
   /* Make allocation safe. Avoids crash later on. */
   if (!atlas_tx_.is_valid()) {
-    atlas_tx_.ensure_2d_array(atlas_type_, int2(1), 1);
+    atlas_tx_.ensure_2d_array(ShadowModule::atlas_type, int2(1), 1);
     inst_.info = "Error: Could not allocate shadow atlas. Most likely out of GPU memory.";
   }
 
@@ -1071,12 +1072,14 @@ void ShadowModule::end_sync()
 
       /* NOTE: We do not need to run the clear pass when using the TBDR update variant, as tiles
        * will be fully cleared as part of the shadow raster step. */
-      if (shadow_technique != eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG) {
+      if (ShadowModule::shadow_technique != eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG) {
         /** Clear pages that need to be rendered. */
         PassSimple::Sub &sub = pass.sub("RenderClear");
         sub.framebuffer_set(&render_fb_);
         sub.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
-        sub.shader_set(inst_.shaders.static_shader_get(SHADOW_PAGE_CLEAR));
+        sub.shader_set(inst_.shaders.static_shader_get((ShadowModule::atlas_type == GPU_R32UI) ?
+                                                           SHADOW_PAGE_CLEAR_U32 :
+                                                           SHADOW_PAGE_CLEAR_F32));
         sub.bind_ssbo("pages_infos_buf", pages_infos_data_);
         sub.bind_ssbo("clear_list_buf", clear_list_buf_);
         sub.bind_image("shadow_atlas_img", atlas_tx_);

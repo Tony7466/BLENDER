@@ -195,6 +195,7 @@ class ShadowModule {
  public:
   /* Shadowing technique. */
   static eShadowUpdateTechnique shadow_technique;
+  static eGPUTextureFormat atlas_type;
 
   /** Need to be first because of destructor order. */
   ShadowTileMapPool tilemap_pool;
@@ -251,7 +252,6 @@ class ShadowModule {
   /* -------------------------------------------------------------------- */
   /** \name Page Management
    * \{ */
-  eGPUTextureFormat atlas_type_ = GPU_R32UI;
 
   /** Atlas containing all physical pages. */
   Texture atlas_tx_ = {"shadow_atlas_tx_"};
