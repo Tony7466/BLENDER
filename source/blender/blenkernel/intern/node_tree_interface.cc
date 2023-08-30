@@ -9,7 +9,6 @@
 #include "BKE_node_tree_interface.hh"
 
 #include "BLI_math_vector.h"
-#include "BLI_set.hh"
 #include "BLI_stack.hh"
 #include "BLI_string.h"
 #include "BLI_vector.hh"
@@ -20,9 +19,6 @@
 #include "DNA_material_types.h"
 #include "DNA_node_tree_interface_types.h"
 #include "DNA_node_types.h"
-
-#include "RNA_access.hh"
-#include "RNA_prototypes.h"
 
 namespace blender::bke::node_interface {
 
