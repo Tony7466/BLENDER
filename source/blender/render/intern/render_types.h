@@ -160,7 +160,6 @@ struct Render : public BaseRender {
   bool prepare_viewlayer(struct ViewLayer *view_layer, struct Depsgraph *depsgraph) override;
 
   char name[RE_MAXNAME] = "";
-  int slot = 0;
 
   /* state settings */
   short flag = 0;
