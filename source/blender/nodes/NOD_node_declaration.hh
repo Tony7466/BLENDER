@@ -513,15 +513,28 @@ class PanelDeclaration : public ItemDeclaration {
 
 class PanelDeclarationBuilder {
  protected:
+  using Self = PanelDeclarationBuilder;
   NodeDeclarationBuilder *node_decl_builder_ = nullptr;
   PanelDeclaration *decl_;
 
   friend class NodeDeclarationBuilder;
 
  public:
-  PanelDeclarationBuilder &default_closed(bool collapsed)
+  Self &description(std::string value = "")
   {
-    decl_->default_collapsed = collapsed;
+    decl_->description = std::move(value);
+    return *this;
+  }
+
+  Self &items(int count)
+  {
+    decl_->num_items = count;
+    return *this;
+  }
+
+  Self &default_closed(bool closed)
+  {
+    decl_->default_collapsed = closed;
     return *this;
   }
 };
@@ -565,6 +578,7 @@ class NodeDeclarationBuilder {
   NodeDeclaration &declaration_;
   Vector<std::unique_ptr<BaseSocketDeclarationBuilder>> input_builders_;
   Vector<std::unique_ptr<BaseSocketDeclarationBuilder>> output_builders_;
+  Vector<std::unique_ptr<PanelDeclarationBuilder>> panel_builders_;
   bool is_function_node_ = false;
 
  public:
@@ -581,10 +595,13 @@ class NodeDeclarationBuilder {
 
   void finalize();
 
+  void use_custom_socket_order(bool enable = true);
+
   template<typename DeclType>
   typename DeclType::Builder &add_input(StringRef name, StringRef identifier = "");
   template<typename DeclType>
   typename DeclType::Builder &add_output(StringRef name, StringRef identifier = "");
+  PanelDeclarationBuilder &add_panel(StringRef name, int identifier = -1);
 
   aal::RelationsInNode &get_anonymous_attribute_relations()
   {
@@ -767,6 +784,11 @@ inline NodeDeclarationBuilder::NodeDeclarationBuilder(NodeDeclaration &declarati
 {
 }
 
+inline void NodeDeclarationBuilder::use_custom_socket_order(bool enable)
+{
+  declaration_.use_custom_socket_order = enable;
+}
+
 template<typename DeclType>
 inline typename DeclType::Builder &NodeDeclarationBuilder::add_input(StringRef name,
                                                                      StringRef identifier)
@@ -806,6 +828,28 @@ inline typename DeclType::Builder &NodeDeclarationBuilder::add_socket(StringRef 
   ((in_out == SOCK_IN) ? input_builders_ : output_builders_)
       .append(std::move(socket_decl_builder));
   return socket_decl_builder_ref;
+}
+
+inline PanelDeclarationBuilder &NodeDeclarationBuilder::add_panel(StringRef name, int identifier)
+{
+  std::unique_ptr<PanelDeclaration> panel_decl = std::make_unique<PanelDeclaration>();
+  std::unique_ptr<PanelDeclarationBuilder> panel_decl_builder =
+      std::make_unique<PanelDeclarationBuilder>();
+  panel_decl_builder->decl_ = &*panel_decl;
+
+  if (identifier >= 0) {
+    panel_decl->identifier = identifier;
+  }
+  else {
+    /* Use index as identifier. */
+    panel_decl->identifier = declaration_.items.size();
+  }
+  panel_decl->name = name;
+  declaration_.items.append(std::move(panel_decl));
+
+  PanelDeclarationBuilder &builder_ref = *panel_decl_builder;
+  panel_builders_.append(std::move(panel_decl_builder));
+  return builder_ref;
 }
 
 /** \} */
