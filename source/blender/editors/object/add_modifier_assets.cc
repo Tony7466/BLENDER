@@ -205,7 +205,7 @@ static int modifier_add_asset_exec(bContext *C, wmOperator *op)
   id_us_plus(&node_group->id);
   MOD_nodes_update_interface(object, nmd);
 
-  STRNCPY(nmd->modifier.name, DATA_(node_group->id.name));
+  STRNCPY(nmd->modifier.name, DATA_(node_group->id.name + 2));
 
   WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, object);
 
