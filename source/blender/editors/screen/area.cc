@@ -2956,7 +2956,7 @@ static void ed_panel_draw(const bContext *C,
 
         /* Use a unique identifier for instanced panels, otherwise an old block for a different
          * panel of the same type might be found. */
-        char unique_child_panel_str[INSTANCED_PANEL_UNIQUE_STR_LEN];
+        char unique_child_panel_str[INSTANCED_PANEL_UNIQUE_STR_SIZE];
         UI_list_panel_unique_str(child_panel, unique_child_panel_str);
         ed_panel_draw(C,
                       region,
