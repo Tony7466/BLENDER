@@ -614,6 +614,7 @@ static bNodeTreeInterfaceItem *legacy_socket_move_to_interface(bNodeSocket &lega
 
   /* Unused data */
   MEM_delete(legacy_socket.runtime);
+  legacy_socket.runtime = nullptr;
 
   return new_item;
 }
