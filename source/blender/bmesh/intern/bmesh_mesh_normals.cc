@@ -876,6 +876,7 @@ static void bm_mesh_loops_calc_normals_for_vert_with_clnors(
     const short (*clnors_data)[2],
     const int cd_loop_clnors_offset,
     const bool do_rebuild,
+    const float split_angle_cos,
     /* TLS */
     MLoopNorSpaceArray *r_lnors_spacearr,
     blender::Vector<blender::float3, 16> *edge_vectors,
@@ -894,6 +895,8 @@ static void bm_mesh_loops_calc_normals_for_vert_with_clnors(
   const bool has_clnors = true;
   LinkNode *loops_of_vert = nullptr;
   int loops_of_vert_count = 0;
+  /* When false the caller must have already tagged the edges. */
+  const bool do_edge_tag = (split_angle_cos != EDGE_TAG_FROM_SPLIT_ANGLE_BYPASS);
 
   /* The loop with the lowest index. */
   {
@@ -904,6 +907,10 @@ static void bm_mesh_loops_calc_normals_for_vert_with_clnors(
       BMLoop *l_curr = e_curr_iter->l;
       if (l_curr == nullptr) {
         continue;
+      }
+
+      if (do_edge_tag) {
+        bm_edge_tag_from_smooth(fnos, e_curr_iter, split_angle_cos);
       }
 
       do { /* Radial loops. */
@@ -989,6 +996,7 @@ static void bm_mesh_loops_calc_normals_for_vert_without_clnors(
     const float (*fnos)[3],
     float (*r_lnos)[3],
     const bool do_rebuild,
+    const float split_angle_cos,
     /* TLS */
     MLoopNorSpaceArray *r_lnors_spacearr,
     blender::Vector<blender::float3, 16> *edge_vectors,
@@ -997,6 +1005,8 @@ static void bm_mesh_loops_calc_normals_for_vert_without_clnors(
 {
   const bool has_clnors = false;
   const short(*clnors_data)[2] = nullptr;
+  /* When false the caller must have already tagged the edges. */
+  const bool do_edge_tag = (split_angle_cos != EDGE_TAG_FROM_SPLIT_ANGLE_BYPASS);
   const int cd_loop_clnors_offset = -1;
 
   BMEdge *e_curr_iter;
@@ -1007,6 +1017,10 @@ static void bm_mesh_loops_calc_normals_for_vert_without_clnors(
     BMLoop *l_curr = e_curr_iter->l;
     if (l_curr == nullptr) {
       continue;
+    }
+
+    if (do_edge_tag) {
+      bm_edge_tag_from_smooth(fnos, e_curr_iter, split_angle_cos);
     }
 
     do { /* Radial loops. */
@@ -1061,11 +1075,14 @@ static void bm_mesh_loops_calc_normals__single_threaded(BMesh *bm,
                                                         MLoopNorSpaceArray *r_lnors_spacearr,
                                                         const short (*clnors_data)[2],
                                                         const int cd_loop_clnors_offset,
-                                                        const bool do_rebuild)
+                                                        const bool do_rebuild,
+                                                        const float split_angle_cos)
 {
   BMIter fiter;
   BMFace *f_curr;
   const bool has_clnors = clnors_data || (cd_loop_clnors_offset != -1);
+  /* When false the caller must have already tagged the edges. */
+  const bool do_edge_tag = (split_angle_cos != EDGE_TAG_FROM_SPLIT_ANGLE_BYPASS);
 
   MLoopNorSpaceArray _lnors_spacearr = {nullptr};
 
@@ -1103,6 +1120,12 @@ static void bm_mesh_loops_calc_normals__single_threaded(BMesh *bm,
     } while ((l_curr = l_curr->next) != l_first);
   }
   bm->elem_index_dirty &= ~(BM_FACE | BM_LOOP);
+
+  /* Always tag edges based on winding & sharp edge flag
+   * (even when the auto-smooth angle doesn't need to be calculated). */
+  if (do_edge_tag) {
+    bm_mesh_edges_sharp_tag(bm, fnos, has_clnors ? -1.0f : split_angle_cos, false);
+  }
 
   /* We now know edges that can be smoothed (they are tagged),
    * and edges that will be hard (they aren't).
@@ -1146,6 +1169,7 @@ struct BMLoopsCalcNormalsWithCoordsData {
   const short (*clnors_data)[2];
   int cd_loop_clnors_offset;
   bool do_rebuild;
+  float split_angle_cos;
 
   /* Output. */
   float (*r_lnos)[3];
@@ -1215,6 +1239,7 @@ static void bm_mesh_loops_calc_normals_for_vert_with_clnors_fn(
                                                   data->clnors_data,
                                                   data->cd_loop_clnors_offset,
                                                   data->do_rebuild,
+                                                  data->split_angle_cos,
                                                   /* Thread local. */
                                                   tls_data->lnors_spacearr,
                                                   tls_data->edge_vectors,
@@ -1237,6 +1262,7 @@ static void bm_mesh_loops_calc_normals_for_vert_without_clnors_fn(
                                                      data->r_lnos,
 
                                                      data->do_rebuild,
+                                                     data->split_angle_cos,
                                                      /* Thread local. */
                                                      tls_data->lnors_spacearr,
                                                      tls_data->edge_vectors,
@@ -1251,7 +1277,8 @@ static void bm_mesh_loops_calc_normals__multi_threaded(BMesh *bm,
                                                        MLoopNorSpaceArray *r_lnors_spacearr,
                                                        const short (*clnors_data)[2],
                                                        const int cd_loop_clnors_offset,
-                                                       const bool do_rebuild)
+                                                       const bool do_rebuild,
+                                                       const float split_angle_cos)
 {
   const bool has_clnors = clnors_data || (cd_loop_clnors_offset != -1);
   MLoopNorSpaceArray _lnors_spacearr = {nullptr};
@@ -1302,6 +1329,7 @@ static void bm_mesh_loops_calc_normals__multi_threaded(BMesh *bm,
   data.clnors_data = clnors_data;
   data.cd_loop_clnors_offset = cd_loop_clnors_offset;
   data.do_rebuild = do_rebuild;
+  data.split_angle_cos = split_angle_cos;
 
   BM_iter_parallel(bm,
                    BM_VERTS_OF_MESH,
@@ -1324,15 +1352,30 @@ static void bm_mesh_loops_calc_normals(BMesh *bm,
                                        MLoopNorSpaceArray *r_lnors_spacearr,
                                        const short (*clnors_data)[2],
                                        const int cd_loop_clnors_offset,
-                                       const bool do_rebuild)
+                                       const bool do_rebuild,
+                                       const float split_angle_cos)
 {
   if (bm->totloop < BM_OMP_LIMIT) {
-    bm_mesh_loops_calc_normals__single_threaded(
-        bm, vcos, fnos, r_lnos, r_lnors_spacearr, clnors_data, cd_loop_clnors_offset, do_rebuild);
+    bm_mesh_loops_calc_normals__single_threaded(bm,
+                                                vcos,
+                                                fnos,
+                                                r_lnos,
+                                                r_lnors_spacearr,
+                                                clnors_data,
+                                                cd_loop_clnors_offset,
+                                                do_rebuild,
+                                                split_angle_cos);
   }
   else {
-    bm_mesh_loops_calc_normals__multi_threaded(
-        bm, vcos, fnos, r_lnos, r_lnors_spacearr, clnors_data, cd_loop_clnors_offset, do_rebuild);
+    bm_mesh_loops_calc_normals__multi_threaded(bm,
+                                               vcos,
+                                               fnos,
+                                               r_lnos,
+                                               r_lnors_spacearr,
+                                               clnors_data,
+                                               cd_loop_clnors_offset,
+                                               do_rebuild,
+                                               split_angle_cos);
   }
 }
 
@@ -1551,8 +1594,15 @@ static void bm_mesh_loops_custom_normals_set(BMesh *bm,
 
   /* Finish computing lnos by accumulating face normals
    * in each fan of faces defined by sharp edges. */
-  bm_mesh_loops_calc_normals(
-      bm, vcos, fnos, cur_lnors, r_lnors_spacearr, r_clnors_data, cd_loop_clnors_offset, false);
+  bm_mesh_loops_calc_normals(bm,
+                             vcos,
+                             fnos,
+                             cur_lnors,
+                             r_lnors_spacearr,
+                             r_clnors_data,
+                             cd_loop_clnors_offset,
+                             false,
+                             EDGE_TAG_FROM_SPLIT_ANGLE_BYPASS);
 
   /* Extract new normals from the data layer if necessary. */
   float(*custom_lnors)[3] = new_lnors;
@@ -1586,8 +1636,15 @@ static void bm_mesh_loops_custom_normals_set(BMesh *bm,
      * spacearr/smooth fans matching the given custom lnors. */
     BKE_lnor_spacearr_clear(r_lnors_spacearr);
 
-    bm_mesh_loops_calc_normals(
-        bm, vcos, fnos, cur_lnors, r_lnors_spacearr, r_clnors_data, cd_loop_clnors_offset, false);
+    bm_mesh_loops_calc_normals(bm,
+                               vcos,
+                               fnos,
+                               cur_lnors,
+                               r_lnors_spacearr,
+                               r_clnors_data,
+                               cd_loop_clnors_offset,
+                               false,
+                               EDGE_TAG_FROM_SPLIT_ANGLE_BYPASS);
   }
 
   /* And we just have to convert plain object-space custom normals to our
@@ -1648,8 +1705,15 @@ void BM_loops_calc_normal_vcos(BMesh *bm,
 {
 
   if (use_split_normals) {
-    bm_mesh_loops_calc_normals(
-        bm, vcos, fnos, r_lnos, r_lnors_spacearr, clnors_data, cd_loop_clnors_offset, do_rebuild);
+    bm_mesh_loops_calc_normals(bm,
+                               vcos,
+                               fnos,
+                               r_lnos,
+                               r_lnors_spacearr,
+                               clnors_data,
+                               cd_loop_clnors_offset,
+                               do_rebuild,
+                               -1.0f);
   }
   else {
     BLI_assert(!r_lnors_spacearr);
