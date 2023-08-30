@@ -22,7 +22,7 @@
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "BKE_colortools.h"
 #include "BKE_main.h"
