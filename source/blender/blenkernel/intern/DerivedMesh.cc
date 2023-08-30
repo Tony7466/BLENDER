@@ -466,11 +466,7 @@ static void mesh_calc_modifier_final_normals(const bool sculpt_dyntopo, Mesh *me
   }
   else {
     if (sculpt_dyntopo == false) {
-      /* without this, drawing ngon tri's faces will show ugly tessellated face
-       * normals and will also have to calculate normals on the fly, try avoid
-       * this where possible since calculating face normals isn't fast,
-       * note that this isn't a problem for subsurf (only quads) or edit-mode
-       * which deals with drawing differently. */
+      /* Eager normal calculation can potentially be faster than deferring the to drawing code. */
       if (domain == ATTR_DOMAIN_FACE) {
         mesh_final->face_normals();
       }
