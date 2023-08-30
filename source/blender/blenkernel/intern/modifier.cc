@@ -72,7 +72,7 @@
 
 #include "MOD_modifiertypes.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "CLG_log.h"
 
@@ -1513,11 +1513,6 @@ void BKE_modifier_blend_read_data(BlendDataReader *reader, ListBase *lb, Object 
       mti->blend_read(reader, md);
     }
   }
-}
-
-void BKE_modifier_blend_read_lib(BlendLibReader *reader, Object *ob)
-{
-  BKE_modifiers_foreach_ID_link(ob, BKE_object_modifiers_lib_link_common, reader);
 }
 
 namespace blender::bke {
