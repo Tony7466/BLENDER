@@ -1058,42 +1058,19 @@ bool editbmesh_modifier_is_enabled(const Scene *scene,
 
 static void editbmesh_calc_modifier_final_normals(Mesh *mesh_final)
 {
-  const eAttrDomain domain = eAttrDomain(mesh_final->normal_domain_all_info());
-
-  SubsurfRuntimeData *subsurf_runtime_data = mesh_final->runtime->subsurf_runtime_data;
-  if (subsurf_runtime_data) {
-    subsurf_runtime_data->calc_loop_normals = domain == ATTR_DOMAIN_CORNER;
-  }
-
-  if (domain == ATTR_DOMAIN_CORNER) {
-    /* Compute loop normals. In case of deferred CPU subdivision, this will be computed when the
-     * wrapper is generated. */
-    if (!subsurf_runtime_data || subsurf_runtime_data->resolution == 0) {
-      mesh_final->corner_normals();
-    }
-  }
-  else {
-    switch (mesh_final->runtime->wrapper_type) {
-      case ME_WRAPPER_TYPE_SUBD:
-        break;
-      case ME_WRAPPER_TYPE_MDATA:
-        /* Same as #mesh_calc_modifiers. */
-        if (domain == ATTR_DOMAIN_FACE) {
-          mesh_final->face_normals();
-        }
-        else if (domain == ATTR_DOMAIN_FACE) {
-          mesh_final->vert_normals();
-        }
-        break;
-      case ME_WRAPPER_TYPE_BMESH: {
-        BMEditMesh *em = mesh_final->edit_mesh;
-        blender::bke::EditMeshData *emd = mesh_final->runtime->edit_data;
-        if (!emd->vertexCos.is_empty()) {
-          BKE_editmesh_cache_ensure_vert_normals(em, emd);
-          BKE_editmesh_cache_ensure_face_normals(em, emd);
-        }
-        return;
+  switch (mesh_final->runtime->wrapper_type) {
+    case ME_WRAPPER_TYPE_SUBD:
+    case ME_WRAPPER_TYPE_MDATA:
+      mesh_calc_modifier_final_normals(false, mesh_final);
+      break;
+    case ME_WRAPPER_TYPE_BMESH: {
+      BMEditMesh *em = mesh_final->edit_mesh;
+      blender::bke::EditMeshData *emd = mesh_final->runtime->edit_data;
+      if (!emd->vertexCos.is_empty()) {
+        BKE_editmesh_cache_ensure_vert_normals(em, emd);
+        BKE_editmesh_cache_ensure_face_normals(em, emd);
       }
+      return;
     }
   }
 }

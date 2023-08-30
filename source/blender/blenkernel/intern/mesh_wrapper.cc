@@ -130,14 +130,15 @@ void BKE_mesh_wrapper_ensure_mdata(Mesh *me)
           me->vert_positions_for_write().copy_from(edit_data->vertexCos);
           me->runtime->is_original_bmesh = false;
         }
+
+        if (me->runtime->wrapper_type_finalize) {
+          BKE_mesh_wrapper_deferred_finalize_mdata(me);
+        }
+
         MEM_delete(me->runtime->edit_data);
         me->runtime->edit_data = nullptr;
         break;
       }
-    }
-
-    if (me->runtime->wrapper_type_finalize) {
-      BKE_mesh_wrapper_deferred_finalize_mdata(me);
     }
 
     /* Keep type assignment last, so that read-only access only uses the mdata code paths after all
