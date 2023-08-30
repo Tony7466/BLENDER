@@ -775,10 +775,94 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
       }
     }
 
+    const FrameIndices frame_indices = this->get_frame_indices(zone_cache);
+    if (zone_cache.cache_state == CacheState::Baked) {
+      this->read_from_cache(frame_indices, zone_cache, zone_info);
+      return;
+    }
+    if (use_frame_cache_) {
+      /* If the depsgraph is active, we allow creating new simulation states. Otherwise, the access
+       * is read-only. */
+      if (depsgraph_is_active_) {
+        if (zone_cache.frame_caches.is_empty()) {
+          /* Initialize the simulation. */
+          this->input_pass_through(zone_info);
+          this->output_store_frame_cache(zone_cache, zone_info);
+          if (!is_start_frame_) {
+            /* If we initialize at a frame that is not the start frame, the simulation is not
+             * valid. */
+            zone_cache.cache_state = CacheState::Invalid;
+          }
+          return;
+        }
+        if (frame_indices.prev && !frame_indices.current && !frame_indices.next) {
+          /* Read the previous frame's data and store the newly computed simulation state. */
+          auto &output_copy_info = zone_info.input.emplace<sim_input::OutputCopy>();
+          const bke::sim::SimulationZoneFrameCache &prev_frame_cache =
+              *zone_cache.frame_caches[*frame_indices.prev];
+          const float delta_frames = std::min(
+              max_delta_frames, float(current_frame_) - float(prev_frame_cache.frame));
+          if (delta_frames != 1) {
+            zone_cache.cache_state = CacheState::Invalid;
+          }
+          output_copy_info.delta_time = delta_frames / fps_;
+          output_copy_info.prev_items = this->to_readonly_items_map(prev_frame_cache.items);
+          this->output_store_frame_cache(zone_cache, zone_info);
+          return;
+        }
+      }
+      this->read_from_cache(frame_indices, zone_cache, zone_info);
+      return;
+    }
+
+    /* When there is no per-frame cache, check if there is a previous state. */
+    if (zone_cache.prev_state) {
+      if (zone_cache.prev_state->frame < current_frame_) {
+        /* Do a simulation step. */
+        const float delta_frames = std::min(
+            max_delta_frames, float(zone_cache.prev_state->frame) - float(current_frame_));
+        auto &output_move_info = zone_info.input.emplace<sim_input::OutputMove>();
+        output_move_info.delta_time = delta_frames / fps_;
+        output_move_info.prev_items = std::move(zone_cache.prev_state->items);
+        this->store_as_prev_items(zone_cache, zone_info);
+        return;
+      }
+      if (zone_cache.prev_state->frame == current_frame_) {
+        /* Just read from the previous state if the frame has not changed. */
+        auto &output_copy_info = zone_info.input.emplace<sim_input::OutputCopy>();
+        output_copy_info.delta_time = 0.0f;
+        output_copy_info.prev_items = this->to_readonly_items_map(zone_cache.prev_state->items);
+        auto &read_single_info = zone_info.output.emplace<sim_output::ReadSingle>();
+        read_single_info.items = this->to_readonly_items_map(zone_cache.prev_state->items);
+        return;
+      }
+      if (!depsgraph_is_active_) {
+        /* There is no previous state, and it's not possible to initialize the simulation because
+         * the depsgraph is not active. */
+        zone_info.input.emplace<sim_input::PassThrough>();
+        zone_info.output.emplace<sim_output::PassThrough>();
+        return;
+      }
+      /* Reset the simulation when the scene time moved backwards. */
+      zone_cache.prev_state.reset();
+    }
+    zone_info.input.emplace<sim_input::PassThrough>();
+    if (depsgraph_is_active_) {
+      /* Initialize the simulation. */
+      this->store_as_prev_items(zone_cache, zone_info);
+    }
+    else {
+      zone_info.output.emplace<sim_output::PassThrough>();
+    }
+  }
+
+  FrameIndices get_frame_indices(const bke::sim::SimulationZoneCache &zone_cache) const
+  {
     FrameIndices frame_indices;
     if (!zone_cache.frame_caches.is_empty()) {
       const int first_future_frame_index = binary_search::find_predicate_begin(
-          zone_cache.frame_caches, [&](const std::unique_ptr<SimulationZoneFrameCache> &value) {
+          zone_cache.frame_caches,
+          [&](const std::unique_ptr<bke::sim::SimulationZoneFrameCache> &value) {
             return value->frame > current_frame_;
           });
       frame_indices.next = (first_future_frame_index == zone_cache.frame_caches.size()) ?
@@ -798,77 +882,16 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
         }
       }
     }
-    if (zone_cache.cache_state == CacheState::Baked) {
-      this->read_from_cache(frame_indices, zone_cache, zone_info);
-      return;
-    }
-
-    if (use_frame_cache_) {
-      if (depsgraph_is_active_) {
-        if (zone_cache.frame_caches.is_empty()) {
-          zone_info.input.emplace<sim_input::PassThrough>();
-          if (!is_start_frame_) {
-            zone_cache.cache_state = CacheState::Invalid;
-          }
-          this->store_frame_cache(zone_cache, zone_info);
-          return;
-        }
-        if (frame_indices.prev && !frame_indices.current && !frame_indices.next) {
-          sim_input::OutputCopy output_copy_info;
-          const bke::sim::SimulationZoneFrameCache &prev_frame_cache =
-              *zone_cache.frame_caches[*frame_indices.prev];
-          const float delta_frames = std::min(
-              max_delta_frames, float(current_frame_) - float(prev_frame_cache.frame));
-          if (delta_frames != 1) {
-            zone_cache.cache_state = CacheState::Invalid;
-          }
-          output_copy_info.delta_time = delta_frames / fps_;
-          output_copy_info.prev_items = this->to_readonly_items_map(prev_frame_cache.items);
-          zone_info.input = std::move(output_copy_info);
-          this->store_frame_cache(zone_cache, zone_info);
-          return;
-        }
-      }
-      this->read_from_cache(frame_indices, zone_cache, zone_info);
-      return;
-    }
-
-    if (zone_cache.prev_state) {
-      if (zone_cache.prev_state->frame < current_frame_) {
-        const float delta_frames = std::min(
-            max_delta_frames, float(zone_cache.prev_state->frame) - float(current_frame_));
-        auto &output_move_info = zone_info.input.emplace<sim_input::OutputMove>();
-        output_move_info.delta_time = delta_frames / fps_;
-        output_move_info.prev_items = std::move(zone_cache.prev_state->items);
-        this->store_as_prev_items(zone_cache, zone_info);
-        return;
-      }
-      if (zone_cache.prev_state->frame == current_frame_) {
-        auto &output_copy_info = zone_info.input.emplace<sim_input::OutputCopy>();
-        output_copy_info.delta_time = 0.0f;
-        output_copy_info.prev_items = this->to_readonly_items_map(zone_cache.prev_state->items);
-        auto &read_single_info = zone_info.output.emplace<sim_output::ReadSingle>();
-        read_single_info.items = this->to_readonly_items_map(zone_cache.prev_state->items);
-        return;
-      }
-      if (!depsgraph_is_active_) {
-        zone_info.input.emplace<sim_input::PassThrough>();
-        zone_info.output.emplace<sim_output::PassThrough>();
-        return;
-      }
-      zone_cache.prev_state.reset();
-    }
-    zone_info.input.emplace<sim_input::PassThrough>();
-    if (depsgraph_is_active_) {
-      this->store_as_prev_items(zone_cache, zone_info);
-    }
-    else {
-      zone_info.output.emplace<sim_output::PassThrough>();
-    }
+    return frame_indices;
   }
 
-  void store_frame_cache(bke::sim::SimulationZoneCache &zone_cache,
-                         nodes::SimulationZoneInfo &zone_info) const
+  void input_pass_through(nodes::SimulationZoneInfo &zone_info) const
+  {
+    zone_info.input.emplace<sim_input::PassThrough>();
+  }
+
+  void output_store_frame_cache(bke::sim::SimulationZoneCache &zone_cache,
+                                nodes::SimulationZoneInfo &zone_info) const
   {
     auto &store_and_pass_through_info =
         zone_info.output.emplace<sim_output::StoreAndPassThrough>();
