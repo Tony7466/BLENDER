@@ -38,9 +38,11 @@ class OBJECT_MT_modifier_add(Menu):
         layout.menu("OBJECT_MT_modifier_add_deform")
         layout.menu("OBJECT_MT_modifier_add_physics")
 
+        layout.menu_contents("OBJECT_MT_modifier_add_root_catalogs")
+
 
 class OBJECT_MT_modifier_add_edit(Menu):
-    bl_label = "Generate"
+    bl_label = "Edit"
 
     def draw(self, context):
         layout = self.layout
@@ -54,6 +56,7 @@ class OBJECT_MT_modifier_add_edit(Menu):
         layout.operator("object.modifier_add", text="Vertex Weight Edit", icon='MOD_VERTEX_WEIGHT').type='VERTEX_WEIGHT_EDIT'
         layout.operator("object.modifier_add", text="Vertex Weight Mix", icon='MOD_VERTEX_WEIGHT').type='VERTEX_WEIGHT_MIX'
         layout.operator("object.modifier_add", text="Vertex Weight Proximity", icon='MOD_VERTEX_WEIGHT').type='VERTEX_WEIGHT_PROXIMITY'
+        layout.template_modifier_asset_menu_items(catalog_path=self.bl_label)
 
 
 class OBJECT_MT_modifier_add_generate(Menu):
@@ -82,6 +85,7 @@ class OBJECT_MT_modifier_add_generate(Menu):
             layout.operator("object.modifier_add", text="Volume to Mesh", icon='VOLUME_DATA').type='VOLUME_TO_MESH'
         layout.operator("object.modifier_add", text="Weld", icon='AUTOMERGE_OFF').type='WELD'
         layout.operator("object.modifier_add", text="Wireframe", icon='MOD_WIREFRAME').type='WIREFRAME'
+        layout.template_modifier_asset_menu_items(catalog_path=self.bl_label)
 
 
 class OBJECT_MT_modifier_add_deform(Menu):
@@ -107,6 +111,7 @@ class OBJECT_MT_modifier_add_deform(Menu):
         layout.operator("object.modifier_add", text="Wave", icon='MOD_WAVE').type='WAVE'
         if context.object.type == 'VOLUME':
             layout.operator("object.modifier_add", text="Volume Displace", icon='VOLUME_DATA').type='VOLUME_DISPLACE'
+        layout.template_modifier_asset_menu_items(catalog_path=self.bl_label)
 
 
 class OBJECT_MT_modifier_add_physics(Menu):
@@ -123,6 +128,7 @@ class OBJECT_MT_modifier_add_physics(Menu):
         layout.operator("object.modifier_add", text="Particle Instance", icon='MOD_PARTICLE_INSTANCE').type='PARTICLE_INSTANCE'
         layout.operator("object.modifier_add", text="Particle System", icon='MOD_PARTICLES').type='PARTICLE_SYSTEM'
         layout.operator("object.modifier_add", text="Soft Body", icon='MOD_SOFT').type='SOFT_BODY'
+        layout.template_modifier_asset_menu_items(catalog_path=self.bl_label)
 
 
 class DATA_PT_gpencil_modifiers(ModifierButtonsPanel, Panel):

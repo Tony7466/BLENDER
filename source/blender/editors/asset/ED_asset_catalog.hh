@@ -25,6 +25,7 @@
 
 struct AssetLibrary;
 struct bScreen;
+struct uiLayout;
 
 namespace blender::asset_system {
 class AssetCatalogTreeItem;
@@ -70,5 +71,11 @@ namespace blender::ed::asset {
 PointerRNA persistent_catalog_path_rna_pointer(const bScreen &owner_screen,
                                                const asset_system::AssetLibrary &library,
                                                const asset_system::AssetCatalogTreeItem &item);
+
+void draw_menu_for_catalog(const bScreen &owner_screen,
+                           const asset_system::AssetLibrary &library,
+                           const asset_system::AssetCatalogTreeItem &item,
+                           StringRefNull menu_name,
+                           uiLayout &layout);
 
 }  // namespace blender::ed::asset

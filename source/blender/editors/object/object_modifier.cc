@@ -38,7 +38,6 @@
 #include "BKE_DerivedMesh.h"
 #include "BKE_animsys.h"
 #include "BKE_armature.h"
-#include "BKE_asset.h"
 #include "BKE_context.h"
 #include "BKE_curve.h"
 #include "BKE_curves.h"
@@ -1265,7 +1264,6 @@ static const EnumPropertyItem *modifier_add_itemf(bContext *C,
                                                   PropertyRNA * /*prop*/,
                                                   bool *r_free)
 {
-  using namespace blender;
   Object *ob = ED_object_active_context(C);
 
   if (!ob) {
@@ -1302,45 +1300,6 @@ static const EnumPropertyItem *modifier_add_itemf(bContext *C,
 
     RNA_enum_item_add(&items, &totitem, md_item);
   }
-
-  const AssetLibraryReference library_ref = asset_system::all_library_reference();
-
-  AssetFilterSettings filter_settings{};
-  filter_settings.id_types = FILTER_ID_NT;
-
-  int i = 200;
-
-  ED_assetlist_storage_fetch(&library_ref, C);
-  ED_assetlist_ensure_previews_job(&library_ref, C);
-  ED_assetlist_iterate(library_ref, [&](asset_system::AssetRepresentation &asset) {
-    if (!ED_asset_filter_matches_asset(&filter_settings, asset)) {
-      return true;
-    }
-
-    const AssetMetaData &asset_data = asset.get_metadata();
-    const IDProperty *tree_type = BKE_asset_metadata_idprop_find(&asset_data, "type");
-    if (tree_type == nullptr || IDP_Int(tree_type) != NTREE_GEOMETRY) {
-      return true;
-    }
-    const IDProperty *traits = BKE_asset_metadata_idprop_find(&asset_data,
-                                                              "geometry_node_asset_traits_flag");
-    if (traits == nullptr ||
-        (IDP_Int(traits) & (GEO_NODE_ASSET_MODIFIER | GEO_NODE_ASSET_MESH | GEO_NODE_ASSET_MESH |
-                            GEO_NODE_ASSET_POINT_CLOUD)) == 0)
-    {
-      return true;
-    }
-
-    EnumPropertyItem item{};
-    item.value = i;
-    item.identifier = asset.get_name().c_str();
-    item.icon = ICON_GEOMETRY_NODES;
-    item.name = asset.get_name().c_str();
-    item.description = asset_data.description;
-    RNA_enum_item_add(&items, &totitem, &item);
-    i++;
-    return true;
-  });
 
   RNA_enum_item_end(&items, &totitem);
   *r_free = true;

@@ -21,6 +21,10 @@
 #include "ED_asset_catalog.h"
 #include "ED_asset_catalog.hh"
 
+#include "UI_interface.hh"
+
+#include "BLT_translation.h"
+
 #include "WM_api.hh"
 
 using namespace blender;
@@ -223,6 +227,22 @@ PointerRNA persistent_catalog_path_rna_pointer(const bScreen &owner_screen,
   return {&const_cast<ID &>(owner_screen.id),
           &RNA_AssetCatalogPath,
           const_cast<asset_system::AssetCatalogPath *>(&path)};
+}
+
+void draw_menu_for_catalog(const bScreen &owner_screen,
+                           const asset_system::AssetLibrary &library,
+                           const asset_system::AssetCatalogTreeItem &item,
+                           const StringRefNull menu_name,
+                           uiLayout &layout)
+{
+  PointerRNA path_ptr = asset::persistent_catalog_path_rna_pointer(owner_screen, library, item);
+  if (path_ptr.data == nullptr) {
+    return;
+  }
+
+  uiLayout *col = uiLayoutColumn(&layout, false);
+  uiLayoutSetContextPointer(col, "asset_catalog_path", &path_ptr);
+  uiItemM(col, menu_name.c_str(), IFACE_(item.get_name().c_str()), ICON_NONE);
 }
 
 }  // namespace blender::ed::asset
