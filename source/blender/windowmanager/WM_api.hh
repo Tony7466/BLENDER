@@ -95,6 +95,8 @@ void WM_init_state_start_with_console_set(bool value);
 void WM_init_window_focus_set(bool do_it);
 void WM_init_native_pixels(bool do_it);
 void WM_init_input_devices();
+/** Load add-ons & app-templates once on startup. */
+void WM_init_scripts_extended_once(struct bContext *C);
 
 /**
  * Initialize Blender and load the startup file & preferences

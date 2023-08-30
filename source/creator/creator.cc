@@ -554,6 +554,10 @@ int main(int argc,
   FRS_set_context(C);
 #endif
 
+  /* Load add-ons after key-maps have been initialized (but before the blend file has been read),
+   * important to guarantee default key-maps have been declared. */
+  WM_init_scripts_extended_once(C);
+
 /* OK we are ready for it */
 #ifndef WITH_PYTHON_MODULE
   /* Handles #ARG_PASS_FINAL. */

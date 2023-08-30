@@ -414,6 +414,12 @@ void WM_init_splash(bContext *C)
   CTX_wm_window_set(C, prevwin);
 }
 
+void WM_init_scripts_extended_once(bContext *C)
+{
+  const char *imports[] = {"bpy", nullptr};
+  BPY_run_string_eval(C, imports, "bpy.utils.load_scripts_extended()");
+}
+
 /* free strings of open recent files */
 static void free_openrecent()
 {
