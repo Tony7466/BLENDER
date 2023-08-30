@@ -31,12 +31,17 @@ class OBJECT_MT_modifier_add(Menu):
 
     def draw(self, context):
         layout = self.layout
-
-        # layout.operator("node.new_geometry_nodes_modifier", text="New", icon='ADD')
-        layout.menu("OBJECT_MT_modifier_add_edit")
-        layout.menu("OBJECT_MT_modifier_add_generate")
-        layout.menu("OBJECT_MT_modifier_add_deform")
-        layout.menu("OBJECT_MT_modifier_add_physics")
+        ob_type = context.object.type
+        if ob_type in {'MESH', 'CURVE', 'FONT', 'SURFACE', 'VOLUME', 'POINTCLOUD'}:
+            layout.operator("object.modifier_add", text="Empty", icon='GEOMETRY_NODES').type='NODES'
+        if ob_type in {'MESH', 'CURVE', 'FONT', 'SURFACE', 'LATTICE'}:
+            layout.menu("OBJECT_MT_modifier_add_edit")
+        if ob_type in {'MESH', 'CURVE', 'FONT', 'SURFACE', 'VOLUME'}:
+            layout.menu("OBJECT_MT_modifier_add_generate")
+        if ob_type in {'MESH', 'CURVE', 'FONT', 'SURFACE', 'LATTICE', 'VOLUME'}:
+            layout.menu("OBJECT_MT_modifier_add_deform")
+        if ob_type in {'MESH', 'CURVE', 'FONT', 'SURFACE', 'LATTICE'}:
+            layout.menu("OBJECT_MT_modifier_add_physics")
 
         layout.menu_contents("OBJECT_MT_modifier_add_root_catalogs")
 
@@ -79,7 +84,6 @@ class OBJECT_MT_modifier_add_generate(Menu):
             layout.operator("object.modifier_add", text="Build", icon='MOD_BUILD').type='BUILD'
             layout.operator("object.modifier_add", text="Decimate", icon='MOD_DECIM').type='DECIMATE'
             layout.operator("object.modifier_add", text="Edge Split", icon='MOD_EDGESPLIT').type='EDGE_SPLIT'
-            layout.operator("object.modifier_add", text="Geometry Nodes", icon='GEOMETRY_NODES').type='NODES'
         if ob_type == 'MESH':
             layout.operator("object.modifier_add", text="Mask", icon='MOD_MASK').type='MASK'
         if ob_type in {'MESH', 'CURVE', 'FONT', 'SURFACE'}:

@@ -122,6 +122,10 @@ static void catalog_assets_draw(const bContext *C, Menu *menu)
 
 static void root_catalogs_draw(const bContext *C, Menu *menu)
 {
+  const Object *object = ED_object_active_context(C);
+  if (!object) {
+    return;
+  }
   bScreen &screen = *CTX_wm_screen(C);
   uiLayout *layout = menu->layout;
 
@@ -139,12 +143,20 @@ static void root_catalogs_draw(const bContext *C, Menu *menu)
     uiItemL(layout, IFACE_("Loading Asset Libraries"), ICON_INFO);
   }
 
-  static Set<std::string> all_builtin_menus = []() {
+  static Set<std::string> all_builtin_menus = [&]() {
     Set<std::string> menus;
-    menus.add_new("Edit");
-    menus.add_new("Generate");
-    menus.add_new("Deform");
-    menus.add_new("Physics");
+    if (ELEM(object->type, OB_MESH, OB_CURVES_LEGACY, OB_FONT, OB_SURF, OB_LATTICE)) {
+      menus.add_new("Edit");
+    }
+    if (ELEM(object->type, OB_MESH, OB_CURVES_LEGACY, OB_FONT, OB_SURF, OB_VOLUME)) {
+      menus.add_new("Generate");
+    }
+    if (ELEM(object->type, OB_MESH, OB_CURVES_LEGACY, OB_FONT, OB_SURF, OB_LATTICE, OB_VOLUME)) {
+      menus.add_new("Deform");
+    }
+    if (ELEM(object->type, OB_MESH, OB_CURVES_LEGACY, OB_FONT, OB_SURF, OB_LATTICE)) {
+      menus.add_new("Physics");
+    }
     return menus;
   }();
 
