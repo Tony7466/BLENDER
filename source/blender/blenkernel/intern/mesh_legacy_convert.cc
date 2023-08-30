@@ -2198,7 +2198,7 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
     }
 
     md->settings.properties = bke::idprop::create_group("Nodes Modifier Settings").release();
-    IDProperty *angle_prop = bke::idprop::create(DATA_("Input_1"), mesh->smoothresh).release();
+    IDProperty *angle_prop = bke::idprop::create(DATA_("Socket_1"), mesh->smoothresh).release();
     auto *ui_data = reinterpret_cast<IDPropertyUIDataFloat *>(IDP_ui_data_ensure(angle_prop));
     ui_data->base.rna_subtype = PROP_ANGLE;
     IDP_AddToGroup(md->settings.properties, angle_prop);
