@@ -91,6 +91,8 @@ class NODE_MT_category_COMP_COLOR(Menu):
         layout = self.layout
         layout.menu("NODE_MT_category_COMP_COLOR_ADJUST")
         layout.separator()
+        layout.menu("NODE_MT_category_COMP_COLOR_MIX")
+        layout.separator()
         node_add_menu.add_node_type(layout, "CompositorNodePremulKey")
         node_add_menu.add_node_type(layout, "CompositorNodeValToRGB")
         node_add_menu.add_node_type(layout, "CompositorNodeConvertColorSpace")
@@ -121,8 +123,8 @@ class NODE_MT_category_COMP_COLOR_ADJUST(Menu):
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
-class NODE_MT_category_COMP_MIX(Menu):
-    bl_idname = "NODE_MT_category_COMP_MIX"
+class NODE_MT_category_COMP_COLOR_MIX(Menu):
+    bl_idname = "NODE_MT_category_COMP_COLOR_MIX"
     bl_label = "Mix"
 
     def draw(self, _context):
@@ -132,7 +134,9 @@ class NODE_MT_category_COMP_MIX(Menu):
         node_add_menu.add_node_type(layout, "CompositorNodeCombineColor")
         node_add_menu.add_node_type(layout, "CompositorNodeSeparateColor")
         layout.separator()
-        node_add_menu.add_node_type(layout, "CompositorNodeMixRGB", label=iface_("Mix Color"))
+        node_add_menu.add_node_type(
+            layout, "CompositorNodeMixRGB",
+            label=iface_("Mix Color"))
         node_add_menu.add_node_type(layout, "CompositorNodeZcombine")
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
@@ -331,7 +335,6 @@ class NODE_MT_compositing_node_add_all(Menu):
         layout.separator()
         layout.menu("NODE_MT_category_COMP_COLOR")
         layout.menu("NODE_MT_category_COMP_FILTER")
-        layout.menu("NODE_MT_category_COMP_MIX")
         layout.separator()
         layout.menu("NODE_MT_category_COMP_KEYING")
         layout.menu("NODE_MT_category_COMP_MASK")
@@ -356,7 +359,7 @@ classes = (
     NODE_MT_category_COMP_OUTPUT,
     NODE_MT_category_COMP_COLOR,
     NODE_MT_category_COMP_COLOR_ADJUST,
-    NODE_MT_category_COMP_MIX,
+    NODE_MT_category_COMP_COLOR_MIX,
     NODE_MT_category_COMP_FILTER,
     NODE_MT_category_COMP_FILTER_BLUR,
     NODE_MT_category_COMP_KEYING,
