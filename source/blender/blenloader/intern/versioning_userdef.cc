@@ -860,6 +860,10 @@ void blo_do_versions_userdef(UserDef *userdef)
     userdef->uiflag |= USER_NODE_AUTO_OFFSET;
   }
 
+  if (!USER_VERSION_ATLEAST(400, 20)) {
+    userdef->uiflag &= ~USER_MENUFIXEDORDER_DEPRECATED;
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
