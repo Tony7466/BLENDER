@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006-2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2006-2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -47,7 +47,7 @@
 #include "IMB_imbuf_types.h"
 #include "IMB_thumbs.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "atomic_ops.h"
 
@@ -858,6 +858,18 @@ Icon *BKE_icon_get(const int icon_id)
   }
 
   return icon;
+}
+
+bool BKE_icon_is_preview(const int icon_id)
+{
+  const Icon *icon = BKE_icon_get(icon_id);
+  return icon->obj_type == ICON_DATA_PREVIEW;
+}
+
+bool BKE_icon_is_image(const int icon_id)
+{
+  const Icon *icon = BKE_icon_get(icon_id);
+  return icon->obj_type == ICON_DATA_IMBUF;
 }
 
 void BKE_icon_set(const int icon_id, Icon *icon)

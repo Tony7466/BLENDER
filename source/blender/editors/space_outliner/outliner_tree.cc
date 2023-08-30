@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004 Blender Foundation
+/* SPDX-FileCopyrightText: 2004 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -24,9 +24,9 @@
 #include "BKE_modifier.h"
 #include "BKE_outliner_treehash.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "outliner_intern.hh"
 #include "tree/common.hh"
@@ -237,6 +237,10 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
     /* idv is the layer itself */
     id = TREESTORE(parent)->id;
   }
+  else if (type == TSE_GREASE_PENCIL_NODE) {
+    /* idv is the layer itself */
+    id = TREESTORE(parent)->id;
+  }
   else if (ELEM(type, TSE_GENERIC_LABEL)) {
     id = nullptr;
   }
@@ -257,6 +261,24 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
   }
   else if (type == TSE_LINKED_PSYS) {
     id = &static_cast<ParticleSystemElementCreateData *>(idv)->object->id;
+  }
+  else if (type == TSE_CONSTRAINT) {
+    id = &static_cast<ConstraintElementCreateData *>(idv)->object->id;
+  }
+  else if (type == TSE_POSEGRP) {
+    id = &static_cast<PoseGroupElementCreateData *>(idv)->object->id;
+  }
+  else if (type == TSE_R_LAYER) {
+    id = &static_cast<ViewLayerElementCreateData *>(idv)->scene->id;
+  }
+  else if (type == TSE_POSE_CHANNEL) {
+    id = &static_cast<PoseChannelElementCreateData *>(idv)->object->id;
+  }
+  else if (type == TSE_LAYER_COLLECTION) {
+    id = &static_cast<LayerCollection *>(idv)->collection->id;
+  }
+  else if (type == TSE_MODIFIER) {
+    id = &static_cast<ModifierCreateElementData *>(idv)->object->id;
   }
 
   /* exceptions */
@@ -304,7 +326,7 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
   else if (ELEM(type, TSE_ANIM_DATA, TSE_NLA, TSE_NLA_TRACK, TSE_DRIVER_BASE)) {
     /* pass */
   }
-  else if (type == TSE_GP_LAYER) {
+  else if (ELEM(type, TSE_GP_LAYER, TSE_GREASE_PENCIL_NODE)) {
     /* pass */
   }
   else if (ELEM(type, TSE_LAYER_COLLECTION, TSE_SCENE_COLLECTION_BASE, TSE_VIEW_COLLECTION_BASE)) {
@@ -323,6 +345,24 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
     /* pass */
   }
   else if (type == TSE_LINKED_PSYS) {
+    /* pass */
+  }
+  else if (ELEM(type, TSE_CONSTRAINT, TSE_CONSTRAINT_BASE)) {
+    /* pass */
+  }
+  else if (ELEM(type, TSE_POSE_BASE, TSE_POSE_CHANNEL)) {
+    /* pass */
+  }
+  else if (ELEM(type, TSE_POSEGRP, TSE_POSEGRP_BASE)) {
+    /* pass */
+  }
+  else if (ELEM(type, TSE_R_LAYER, TSE_R_LAYER_BASE)) {
+    /* pass */
+  }
+  else if (ELEM(type, TSE_MODIFIER, TSE_MODIFIER_BASE)) {
+    /* pass */
+  }
+  else if (type == TSE_LINKED_OB) {
     /* pass */
   }
   else if (type == TSE_SOME_ID) {
@@ -375,8 +415,24 @@ TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
                 TSE_SEQ_STRIP,
                 TSE_SEQUENCE_DUP,
                 TSE_GENERIC_LABEL) ||
-           ELEM(
-               type, TSE_DEFGROUP, TSE_DEFGROUP_BASE, TSE_GPENCIL_EFFECT, TSE_GPENCIL_EFFECT_BASE))
+           ELEM(type,
+                TSE_DEFGROUP,
+                TSE_DEFGROUP_BASE,
+                TSE_GPENCIL_EFFECT,
+                TSE_GPENCIL_EFFECT_BASE,
+                TSE_CONSTRAINT,
+                TSE_CONSTRAINT_BASE,
+                TSE_POSE_BASE,
+                TSE_POSE_CHANNEL,
+                TSE_POSEGRP,
+                TSE_POSEGRP_BASE,
+                TSE_R_LAYER,
+                TSE_R_LAYER_BASE,
+                TSE_MODIFIER,
+                TSE_MODIFIER_BASE,
+                TSE_GREASE_PENCIL_NODE,
+                TSE_LINKED_OB) ||
+           ELEM(type, TSE_LAYER_COLLECTION, TSE_VIEW_COLLECTION_BASE))
   {
     BLI_assert_msg(false, "Element type should already use new AbstractTreeElement design");
   }

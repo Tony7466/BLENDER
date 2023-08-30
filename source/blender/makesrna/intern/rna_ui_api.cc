@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,14 +13,14 @@
 
 #include "BLT_translation.h"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "DNA_screen_types.h"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
+#include "UI_resources.hh"
 
 #include "rna_internal.h"
 
@@ -29,7 +29,7 @@
 #define DEF_ICON_COLOR(name) {ICON_##name, (#name), 0, (#name), ""},
 #define DEF_ICON_BLANK(name)
 const EnumPropertyItem rna_enum_icon_items[] = {
-#include "UI_icons.h"
+#include "UI_icons.hh"
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -37,7 +37,7 @@ const EnumPropertyItem rna_enum_icon_items[] = {
 
 #  include "DNA_asset_types.h"
 
-#  include "ED_geometry.h"
+#  include "ED_geometry.hh"
 
 const char *rna_translate_ui_text(
     const char *text, const char *text_ctxt, StructRNA *type, PropertyRNA *prop, bool translate)
@@ -2034,7 +2034,7 @@ void RNA_api_ui_layout(StructRNA *srna)
       "Identifier of the integer property in active_data, index of the active item");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_property(func, "filter_id_types", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(parm, DummyRNA_NULL_items);
+  RNA_def_property_enum_items(parm, rna_enum_dummy_NULL_items);
   RNA_def_property_enum_funcs(
       parm, nullptr, nullptr, "rna_uiTemplateAssetView_filter_id_types_itemf");
   RNA_def_property_flag(parm, PROP_ENUM_FLAG);
@@ -2085,6 +2085,15 @@ void RNA_api_ui_layout(StructRNA *srna)
       srna, "template_grease_pencil_layer_tree", "uiTemplateGreasePencilLayerTree");
   RNA_def_function_ui_description(func, "View of the active grease pencil layer tree");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
+
+  func = RNA_def_function(srna, "template_node_tree_interface", "uiTemplateNodeTreeInterface");
+  RNA_def_function_ui_description(func, "Show a node tree interface");
+  parm = RNA_def_pointer(func,
+                         "interface",
+                         "NodeTreeInterface",
+                         "Node Tree Interface",
+                         "Interface of a node tree to display");
+  RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
 }
 
 #endif

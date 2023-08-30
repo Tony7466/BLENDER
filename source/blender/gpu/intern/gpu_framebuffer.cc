@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,6 +9,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math_base.h"
+#include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "GPU_batch.h"
@@ -108,16 +109,15 @@ void FrameBuffer::attachment_set(GPUAttachmentType type, const GPUAttachment &ne
     reinterpret_cast<Texture *>(attachment.tex)->detach_from(this);
   }
 
-  attachment = new_attachment;
-
   /* Might be null if this is for unbinding. */
-  if (attachment.tex) {
-    reinterpret_cast<Texture *>(attachment.tex)->attach_to(this, type);
+  if (new_attachment.tex) {
+    reinterpret_cast<Texture *>(new_attachment.tex)->attach_to(this, type);
   }
   else {
     /* GPU_ATTACHMENT_NONE */
   }
 
+  attachment = new_attachment;
   dirty_attachments_ = true;
 }
 
@@ -389,6 +389,12 @@ void GPU_framebuffer_viewport_set(GPUFrameBuffer *gpu_fb, int x, int y, int widt
 {
   int viewport_rect[4] = {x, y, width, height};
   unwrap(gpu_fb)->viewport_set(viewport_rect);
+}
+
+void GPU_framebuffer_multi_viewports_set(GPUFrameBuffer *gpu_fb,
+                                         const int viewport_rects[GPU_MAX_VIEWPORTS][4])
+{
+  unwrap(gpu_fb)->viewport_multi_set(viewport_rects);
 }
 
 void GPU_framebuffer_viewport_get(GPUFrameBuffer *gpu_fb, int r_viewport[4])
@@ -783,6 +789,11 @@ int GPU_offscreen_height(const GPUOffScreen *ofs)
 GPUTexture *GPU_offscreen_color_texture(const GPUOffScreen *ofs)
 {
   return ofs->color;
+}
+
+eGPUTextureFormat GPU_offscreen_format(const GPUOffScreen *offscreen)
+{
+  return GPU_texture_format(offscreen->color);
 }
 
 void GPU_offscreen_viewport_data_get(GPUOffScreen *ofs,

@@ -15,7 +15,6 @@
 #include "DNA_meshdata_types.h"
 
 #include "BKE_customdata.h"
-#include "BKE_mesh_types.h"
 
 struct BMesh;
 struct BMeshCreateParams;
@@ -42,12 +41,28 @@ struct Scene;
 extern "C" {
 #endif
 
+/* TODO: Move to `BKE_mesh_types.hh` when possible. */
+typedef enum eMeshBatchDirtyMode {
+  BKE_MESH_BATCH_DIRTY_ALL = 0,
+  BKE_MESH_BATCH_DIRTY_SELECT,
+  BKE_MESH_BATCH_DIRTY_SELECT_PAINT,
+  BKE_MESH_BATCH_DIRTY_SHADING,
+  BKE_MESH_BATCH_DIRTY_UVEDIT_ALL,
+  BKE_MESH_BATCH_DIRTY_UVEDIT_SELECT,
+} eMeshBatchDirtyMode;
+
 /*  mesh_runtime.cc  */
 
 /**
  * Call after changing vertex positions to tag lazily calculated caches for recomputation.
  */
 void BKE_mesh_tag_positions_changed(struct Mesh *mesh);
+
+/**
+ * The same as #BKE_mesh_tag_positions_changed but doesn't tag normals dirty, instead expecting
+ * them to be updated separately.
+ */
+void BKE_mesh_tag_positions_changed_no_normals(struct Mesh *mesh);
 
 /**
  * Call after moving every mesh vertex by the same translation.
@@ -179,7 +194,7 @@ struct Mesh *BKE_mesh_new_nomain_from_curve_displist(const struct Object *ob,
 bool BKE_mesh_attribute_required(const char *name);
 
 float (*BKE_mesh_orco_verts_get(struct Object *ob))[3];
-void BKE_mesh_orco_verts_transform(struct Mesh *me, float (*orco)[3], int totvert, int invert);
+void BKE_mesh_orco_verts_transform(struct Mesh *me, float (*orco)[3], int totvert, bool invert);
 
 /**
  * Add a #CD_ORCO layer to the Mesh if there is none already.
@@ -305,31 +320,6 @@ void BKE_mesh_recalc_looptri(const int *corner_verts,
                              struct MLoopTri *mlooptri);
 
 /* *** mesh_normals.cc *** */
-
-/**
- * See #Mesh::vert_normals().
- * \warning May return null if the mesh is empty.
- */
-const float (*BKE_mesh_vert_normals_ensure(const struct Mesh *mesh))[3];
-
-/**
- * Retrieve write access to the cached vertex normals, ensuring that they are allocated but *not*
- * that they are calculated. The provided vertex normals should be the same as if they were
- * calculated automatically.
- *
- * \note In order to clear the dirty flag, this function should be followed by a call to
- * #BKE_mesh_vert_normals_clear_dirty. This is separate so that normals are still tagged dirty
- * while they are being assigned.
- *
- * \warning The memory returned by this function is not initialized if it was not previously
- * allocated.
- */
-float (*BKE_mesh_vert_normals_for_write(struct Mesh *mesh))[3];
-
-/**
- * Mark the mesh's vertex normals non-dirty, for when they are calculated or assigned manually.
- */
-void BKE_mesh_vert_normals_clear_dirty(struct Mesh *mesh);
 
 /**
  * Return true if the mesh vertex normals either are not stored or are dirty.
@@ -479,7 +469,7 @@ void BKE_mesh_calc_normals_split(struct Mesh *mesh);
  * That data, among other things, contains 'smooth fan' info, useful e.g.
  * to split geometry along sharp edges.
  */
-void BKE_mesh_calc_normals_split_ex(struct Mesh *mesh,
+void BKE_mesh_calc_normals_split_ex(const struct Mesh *mesh,
                                     struct MLoopNorSpaceArray *r_lnors_spacearr,
                                     float (*r_corner_normals)[3]);
 
