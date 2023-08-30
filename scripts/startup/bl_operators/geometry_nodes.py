@@ -266,7 +266,8 @@ class NewGeometryNodeGroupTool(Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.space_data.type == 'NODE_EDITOR' and context.space_data.geometry_nodes_type == 'TOOL'
+        space = context.space_data
+        return space and space.type == 'NODE_EDITOR' and space.geometry_nodes_type == 'TOOL'
 
     def execute(self, context):
         group = geometry_node_group_empty_new()
