@@ -163,7 +163,7 @@ blender::GroupedSpan<int> Mesh::vert_to_face_map() const
                           r_data.as_mutable_span());
     }
     else {
-      bke::mesh::build_vert_to_poly_indices(this->faces(), this->corner_verts(), offsets, r_data);
+      bke::mesh::build_vert_to_face_indices(this->faces(), this->corner_verts(), offsets, r_data);
     }
   });
   return {offsets, this->runtime->vert_to_face_map_cache.data()};

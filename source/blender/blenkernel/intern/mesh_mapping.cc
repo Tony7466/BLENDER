@@ -379,15 +379,15 @@ GroupedSpan<int> build_vert_to_edge_map(const Span<int2> edges,
   return {OffsetIndices<int>(r_offsets), r_indices};
 }
 
-void build_vert_to_face_indices(const OffsetIndices<int> polys,
+void build_vert_to_face_indices(const OffsetIndices<int> faces,
                                 const Span<int> corner_verts,
                                 const OffsetIndices<int> offsets,
                                 MutableSpan<int> r_indices)
 {
   Array<int> counts(offsets.size(), 0);
-  for (const int64_t poly_i : polys.index_range()) {
-    for (const int vert : corner_verts.slice(polys[poly_i])) {
-      r_indices[offsets[vert].start() + counts[vert]] = int(poly_i);
+  for (const int64_t face_i : faces.index_range()) {
+    for (const int vert : corner_verts.slice(faces[face_i])) {
+      r_indices[offsets[vert].start() + counts[vert]] = int(face_i);
       counts[vert]++;
     }
   }
