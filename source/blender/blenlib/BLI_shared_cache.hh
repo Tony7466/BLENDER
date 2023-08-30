@@ -57,9 +57,9 @@ template<typename T> class SharedCache {
    * If the cache is dirty, trigger its computation with the provided function which should set
    * the proper data.
    */
-  void ensure(FunctionRef<void(T &data)> compute_cache)
+  void ensure(FunctionRef<void(T &data)> compute_cache, const bool is_expensive = false)
   {
-    cache_->mutex.ensure([&]() { compute_cache(this->cache_->data); });
+    cache_->mutex.ensure([&]() { compute_cache(this->cache_->data); }, is_expensive);
   }
 
   /**
@@ -68,7 +68,7 @@ template<typename T> class SharedCache {
    * the recalculation is only expected to make a small change to the cached data, since using
    * #tag_dirty() and #ensure() separately may require rebuilding the cache from scratch.
    */
-  void update(FunctionRef<void(T &data)> compute_cache)
+  void update(FunctionRef<void(T &data)> compute_cache, const bool is_expensive = false)
   {
     if (cache_.unique()) {
       cache_->mutex.tag_dirty();
@@ -76,7 +76,7 @@ template<typename T> class SharedCache {
     else {
       cache_ = std::make_shared<CacheData>(cache_->data);
     }
-    cache_->mutex.ensure([&]() { compute_cache(this->cache_->data); });
+    cache_->mutex.ensure([&]() { compute_cache(this->cache_->data); }, is_expensive);
   }
 
   /** Retrieve the cached data. */

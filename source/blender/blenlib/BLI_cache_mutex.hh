@@ -63,14 +63,23 @@
 
 #include "BLI_function_ref.hh"
 
+namespace tbb {
+class task_group;
+}
+
 namespace blender {
 
 class CacheMutex {
  private:
   std::mutex mutex_;
   std::atomic<bool> cache_valid_ = false;
+  bool is_computing_in_group_ = false;
+  std::unique_ptr<tbb::task_group> task_group_;
 
  public:
+  CacheMutex();
+  ~CacheMutex();
+
   /**
    * Make sure the cache exists and is up to date. This calls `compute_cache` once to update the
    * cache (which is stored outside of this class) if it is dirty, otherwise it does nothing.
@@ -78,7 +87,7 @@ class CacheMutex {
    * This function is thread-safe under the assumption that the same parameters are passed from
    * every thread.
    */
-  void ensure(FunctionRef<void()> compute_cache);
+  void ensure(FunctionRef<void()> compute_cache, bool is_expensive = false);
 
   /**
    * Reset the cache. The next time #ensure is called, it will recompute that code.
