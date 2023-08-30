@@ -2088,9 +2088,13 @@ static bNodeTree *add_auto_smooth_node_tree(Main &bmain)
 {
   bNodeTree *node_tree = ntreeAddTree(&bmain, DATA_("Auto Smooth"), "GeometryNodeTree");
 
-  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketGeometry", DATA_("Geometry"));
-  ntreeAddSocketInterface(node_tree, SOCK_IN, "NodeSocketFloatAngle", DATA_("Angle"));
-  ntreeAddSocketInterface(node_tree, SOCK_OUT, "NodeSocketGeometry", DATA_("Geometry"));
+  node_tree->tree_interface.add_socket(DATA_("Geometry"),
+                                       "",
+                                       "NodeSocketGeometry",
+                                       NODE_INTERFACE_SOCKET_INPUT | NODE_INTERFACE_SOCKET_OUTPUT,
+                                       nullptr);
+  node_tree->tree_interface.add_socket(
+      DATA_("Angle"), "", "NodeSocketFloatAngle", NODE_INTERFACE_SOCKET_INPUT, nullptr);
 
   bNode *group_input = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
   group_input->locx = -380.0f;
