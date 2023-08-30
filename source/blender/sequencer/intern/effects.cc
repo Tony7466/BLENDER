@@ -1980,7 +1980,7 @@ static void RVBlurBitmap2_float(float *map, int width, int height, float blur, i
     return;
   }
 
-  /* If result would be no blurring, early out (preferred fix). */
+  /* If result would be no blurring, early out. */
   halfWidth = ((quality + 1) * blur);
   if (halfWidth == 0) {
     return;
@@ -2011,10 +2011,7 @@ static void RVBlurBitmap2_float(float *map, int width, int height, float blur, i
     filter[halfWidth - ix] = weight;
     filter[halfWidth + ix] = weight;
   }
-  // alternative fix if we dont want to alter old behavior AT ALL (only fix the crash, keep [buggy] output)
-  if (halfWidth != 0) {
-    filter[0] = weight;
-  }
+  filter[0] = weight;
 
   /* Normalize the array */
   fval = 0;
