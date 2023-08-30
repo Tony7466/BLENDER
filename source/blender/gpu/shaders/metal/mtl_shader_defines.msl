@@ -308,6 +308,9 @@ struct SStruct {
 #define imageStore(_tex, _coord, _value) _texture_write_internal(_tex, _coord, _value)
 #define imageStoreFast(_tex, _coord, _value) _texture_write_internal_fast(_tex, _coord, _value)
 
+/* Placeholder for missing imageAtomicMin to ensure implementation is runnable. */
+#define imageAtomicMin imageStore
+
 /* Cube-map support always available when using Metal. */
 #define textureLod_cubemapArray(tex, co, lod) textureLod(tex, co, lod)
 

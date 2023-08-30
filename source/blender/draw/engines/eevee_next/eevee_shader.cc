@@ -551,7 +551,12 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
           /* Determine surface shadow shader depending on used update technique. */
           switch (ShadowModule::shadow_technique) {
             case eShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER: {
-              info.additional_info("eevee_surf_shadow_atomic_update");
+              if (ShadowModule::atlas_type == GPU_R32UI) {
+                info.additional_info("eevee_surf_shadow_atomic_update_u32");
+              }
+              else {
+                info.additional_info("eevee_surf_shadow_atomic_update_f32");
+              }
             } break;
             case eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG: {
               info.additional_info("eevee_surf_shadow_tbdr_rog_update");

@@ -54,10 +54,17 @@ void main()
 
   ivec3 page = ivec3(shadow_page_unpack(page_packed));
   ivec3 out_texel = ivec3((page.xy << page_shift) | texel_page, page.z);
+
+#  ifdef SHADOW_ATLAS_U32
   uint u_depth = floatBitsToUint(gl_FragCoord.z + fwidth(gl_FragCoord.z));
   /* Quantization bias. Equivalent to `nextafter()` in C without all the safety. */
   u_depth += 2;
-  imageAtomicMin(shadow_atlas_img, out_texel, u_depth);
+  imageAtomicMin(shadow_atlas_img, out_texel, uvec4(u_depth));
+#  endif
+#  ifdef SHADOW_ATLAS_F32
+  float f_depth = gl_FragCoord.z + fwidth(gl_FragCoord.z);
+  imageAtomicMin(shadow_atlas_img, out_texel, vec4(f_depth));
+#  endif
 #endif
 
 #ifdef SHADOW_UPDATE_TBDR_ROG

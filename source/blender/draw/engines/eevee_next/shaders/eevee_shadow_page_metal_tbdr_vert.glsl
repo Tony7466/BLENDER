@@ -59,7 +59,7 @@ void main()
     gpu_Layer = 0;
     gpu_ViewportIndex = 0;
     gl_Position = vec4(0.0) / vec4(0.0);
-#ifdef PASS_ACCUMULATION_STORE
+#ifdef PASS_DEPTH_STORE
     out_texel_xy = vec2(-1000.0);
     out_page_z = 0;
 #endif
@@ -91,7 +91,7 @@ void main()
       break;
   };
 
-#ifdef PASS_ACCUMULATION_STORE
+#ifdef PASS_DEPTH_STORE
   /** Interpolate output texel  */
   const float page_size = float(int(1 << SHADOW_PAGE_LOD));
 
@@ -110,7 +110,7 @@ void main()
                                                clamp(gpu_ViewportIndex, 0, SHADOW_TILEMAP_LOD)));
   pos = pos * vec2(viewport_dim_inv * 2.0) - vec2(1.0);
 
-#ifdef PASS_ACCUMULATION_STORE
+#ifdef PASS_DEPTH_STORE
   /* NOTE: To avoid redundant writes, we still enable the depth test and configure the accumulation
    * pass quad depth such that only the fragments updated during the surface depth pass will run.
    *

@@ -190,6 +190,7 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear_common)
 
 GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear_u32)
     .do_static_compilation(true)
+    .define("SHADOW_ATLAS_U32")
     .additional_info("eevee_shadow_page_clear_common")
     .image(SHADOW_ATLAS_IMG_SLOT,
            GPU_R32UI,
@@ -199,11 +200,12 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear_u32)
 
 GPU_SHADER_CREATE_INFO(eevee_shadow_page_clear_f32)
     .do_static_compilation(true)
+    .define("SHADOW_ATLAS_F32")
     .additional_info("eevee_shadow_page_clear_common")
     .image(SHADOW_ATLAS_IMG_SLOT,
            GPU_R32F,
            Qualifier::READ_WRITE,
-           ImageType::UINT_2D_ARRAY,
+           ImageType::FLOAT_2D_ARRAY,
            "shadow_atlas_img");
 
 /* Interface for passing precalculated values in accumulation vertex to frag. */
@@ -244,7 +246,7 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_store_metal_tbdr_common)
     .early_fragment_test(true)
     .metal_backend_only(true)
     .additional_info("eevee_shadow_page_metal_tbdr_common")
-    .define("PASS_ACCUMULATION_STORE")
+    .define("PASS_DEPTH_STORE")
     .vertex_out(eevee_shadow_tbdr_store_iface)
     .fragment_tile_in(0, Type::FLOAT, "in_tile_depth", DualBlend::NONE, 0);
 
@@ -253,6 +255,7 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_store_metal_tbdr_u32)
     .early_fragment_test(true)
     .metal_backend_only(true)
     .additional_info("eevee_shadow_page_store_metal_tbdr_common")
+    .define("SHADOW_ATLAS_U32")
     .image(SHADOW_ATLAS_IMG_SLOT,
            GPU_R32UI,
            Qualifier::READ_WRITE,
@@ -264,6 +267,7 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_store_metal_tbdr_f32)
     .early_fragment_test(true)
     .metal_backend_only(true)
     .additional_info("eevee_shadow_page_store_metal_tbdr_common")
+    .define("SHADOW_ATLAS_F32")
     .image(SHADOW_ATLAS_IMG_SLOT,
            GPU_R32F,
            Qualifier::READ_WRITE,

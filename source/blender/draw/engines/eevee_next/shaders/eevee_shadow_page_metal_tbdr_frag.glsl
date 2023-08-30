@@ -43,16 +43,22 @@ void main()
   out_tile_depth = FLT_MAX;
 #endif
 
-#ifdef PASS_ACCUMULATION_STORE
-  /* For Metal accumulation pass, we store the result from depth in tile memory. */
-  // uint u_depth = floatBitsToUint(in_tile_depth);
-
-  /* Quantization bias. Equivalent to nextafter in C without all the safety. 1 is not enough. */
-  // u_depth += 2;
-
+#ifdef PASS_DEPTH_STORE
   /* Write result to altas. As tiles outside of valid update regions are discarded, we can use the
    * NOTE: As this shader is only used in Metal, we can use the fastest possible write function
    * without any parameter wrapping or conversion.*/
+
+#  ifdef SHADOW_ATLAS_U32
+  /* For Metal accumulation pass, we store the result from depth in tile memory. */
+  uint u_depth = floatBitsToUint(in_tile_depth);
+
+  /* Quantization bias. Equivalent to nextafter in C without all the safety. 1 is not enough. */
+  u_depth += 2;
+  shadow_atlas_img.texture->write(u_depth, ushort2(out_texel_xy), out_page_z);
+#  endif
+
+#  ifdef SHADOW_ATLAS_F32
   shadow_atlas_img.texture->write(in_tile_depth, ushort2(out_texel_xy), out_page_z);
+#  endif
 #endif
 }
