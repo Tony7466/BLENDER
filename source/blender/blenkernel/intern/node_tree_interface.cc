@@ -748,14 +748,14 @@ int bNodeTreeInterfacePanel::find_valid_insert_position_for_item(
           break;
         }
         if (items[test_pos]->item_type != NODE_INTERFACE_PANEL) {
-          /* Found valid position, insert after the last socket item */
+          /* Found valid position, insert after the last socket item. */
           pos = test_pos + 1;
           break;
         }
       }
     }
     else {
-      /* Find the closest valid position from the start, no panels at or after #position . */
+      /* Find the closest valid position from the start, no panels at or after #position. */
       for (int test_pos = 0; test_pos <= initial_pos; test_pos++) {
         if (test_pos >= items.size()) {
           /* Initial position is out of range but valid. */
