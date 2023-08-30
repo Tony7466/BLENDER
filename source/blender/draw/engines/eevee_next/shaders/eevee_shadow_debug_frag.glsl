@@ -66,11 +66,11 @@ ShadowSample debug_tile_get(vec3 P, LightData light)
 {
   vec3 lNg = vec3(1.0, 0.0, 0.0);
   if (is_sun_light(light.type)) {
-    return shadow_directional_sample_get(shadow_atlas_tx, shadow_tilemaps_tx, light, P, lNg, 0.0);
+    return shadow_directional_sample_get(shadow_atlas_tx, shadow_tilemaps_tx, light, P, lNg);
   }
   else {
     vec3 lL = light_world_to_local(light, P - light._position);
-    return shadow_punctual_sample_get(shadow_atlas_tx, shadow_tilemaps_tx, light, lL, lNg, 0.0);
+    return shadow_punctual_sample_get(shadow_atlas_tx, shadow_tilemaps_tx, light, lL, lNg);
   }
 }
 

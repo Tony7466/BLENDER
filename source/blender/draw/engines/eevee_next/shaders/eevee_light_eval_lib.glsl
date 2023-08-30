@@ -26,7 +26,6 @@ void light_eval_ex(ClosureDiffuse diffuse,
                    vec3 V,
                    float vP_z, /* TODO(fclem): Remove, is unused. */
                    float thickness,
-                   float shadow_bias,
                    vec4 ltc_mat,
                    uint l_idx,
                    inout vec3 out_diffuse,
@@ -45,7 +44,7 @@ void light_eval_ex(ClosureDiffuse diffuse,
     vec3 lNg = light_world_to_local(light, Ng);
 
     ShadowSample samp = shadow_sample(
-        is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, lL, lNg, P, shadow_bias);
+        is_directional, shadow_atlas_tx, shadow_tilemaps_tx, light, lL, lNg, P);
 
 #ifdef SSS_TRANSMITTANCE
     /* Transmittance evaluation first to use initial visibility without shadow. */
@@ -87,7 +86,6 @@ void light_eval(ClosureDiffuse diffuse,
                 vec3 V,
                 float vP_z,
                 float thickness,
-                float shadow_bias,
                 inout vec3 out_diffuse,
                 inout vec3 out_specular,
                 inout float out_shadow)
@@ -104,7 +102,6 @@ void light_eval(ClosureDiffuse diffuse,
                   V,
                   vP_z,
                   thickness,
-                  shadow_bias,
                   ltc_mat,
                   l_idx,
                   out_diffuse,
@@ -127,7 +124,6 @@ void light_eval(ClosureDiffuse diffuse,
                   V,
                   vP_z,
                   thickness,
-                  shadow_bias,
                   ltc_mat,
                   l_idx,
                   out_diffuse,

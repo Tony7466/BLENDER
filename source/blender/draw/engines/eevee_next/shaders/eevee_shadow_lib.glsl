@@ -143,12 +143,12 @@ float shadow_directional_linear_depth(float z, float near, float far)
   return z * (far - near) + near;
 }
 
-ShadowSample shadow_punctual_sample_get(usampler2DArray atlas_tx,
-                                        usampler2D tilemaps_tx,
-                                        LightData light,
-                                        vec3 lP,
-                                        vec3 lNg,
-                                        float bias)
+#ifdef ADDITIONAL_SHADOW_BIAS
+float g_additional_shadow_bias = 0.0;
+#endif
+
+ShadowSample shadow_punctual_sample_get(
+    usampler2DArray atlas_tx, usampler2D tilemaps_tx, LightData light, vec3 lP, vec3 lNg)
 {
   int face_id = shadow_punctual_face_index_get(lP);
   lNg = shadow_punctual_local_position_to_face_local(face_id, lNg);
@@ -178,17 +178,15 @@ ShadowSample shadow_punctual_sample_get(usampler2DArray atlas_tx,
   float radius_divisor = receiver_dist / abs(lP.z);
   samp.occluder_dist = occluder_z.x * radius_divisor;
   samp.bias = (occluder_z.y - occluder_z.x) * radius_divisor;
-  samp.bias += bias;
+#ifdef ADDITIONAL_SHADOW_BIAS
+  samp.bias += g_additional_shadow_bias;
+#endif
   samp.occluder_delta = samp.occluder_dist - receiver_dist;
   return samp;
 }
 
-ShadowSample shadow_directional_sample_get(usampler2DArray atlas_tx,
-                                           usampler2D tilemaps_tx,
-                                           LightData light,
-                                           vec3 P,
-                                           vec3 lNg,
-                                           float bias)
+ShadowSample shadow_directional_sample_get(
+    usampler2DArray atlas_tx, usampler2D tilemaps_tx, LightData light, vec3 P, vec3 lNg)
 {
   vec3 lP = shadow_world_to_local(light, P);
   ShadowCoordinates coord = shadow_directional_coordinates(light, lP);
@@ -211,7 +209,9 @@ ShadowSample shadow_directional_sample_get(usampler2DArray atlas_tx,
    * Negate since Z distance follows blender camera convention of -Z as forward. */
   float receiver_dist = -lP.z;
   samp.bias *= far - near;
-  samp.bias += bias;
+#ifdef ADDITIONAL_SHADOW_BIAS
+  samp.bias += g_additional_shadow_bias;
+#endif
   samp.occluder_delta = samp.occluder_dist - receiver_dist;
   return samp;
 }
@@ -222,14 +222,13 @@ ShadowSample shadow_sample(const bool is_directional,
                            LightData light,
                            vec3 lL,
                            vec3 lNg,
-                           vec3 P,
-                           float bias)
+                           vec3 P)
 {
   if (is_directional) {
-    return shadow_directional_sample_get(atlas_tx, tilemaps_tx, light, P, lNg, bias);
+    return shadow_directional_sample_get(atlas_tx, tilemaps_tx, light, P, lNg);
   }
   else {
-    return shadow_punctual_sample_get(atlas_tx, tilemaps_tx, light, lL, lNg, bias);
+    return shadow_punctual_sample_get(atlas_tx, tilemaps_tx, light, lL, lNg);
   }
 }
 

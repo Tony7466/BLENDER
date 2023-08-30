@@ -45,6 +45,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light_base)
            ImageType::FLOAT_2D,
            "indirect_refraction_img")
     .define("SSS_TRANSMITTANCE")
+    .define("ADDITIONAL_SHADOW_BIAS")
     .additional_info("eevee_shared",
                      "eevee_utility_texture",
                      "eevee_sampling_data",

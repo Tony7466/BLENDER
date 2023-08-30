@@ -28,7 +28,7 @@ void main()
 
   float depth = texelFetch(hiz_tx, texel, 0).r;
   vec3 P = get_world_space_from_depth(uvcoordsvar.xy, depth);
-  float reconstruction_precision = depth_reconstruction_precision(P, depth);
+  g_additional_shadow_bias = depth_reconstruction_precision(P, depth);
 
   /* TODO(fclem): High precision derivative. */
   vec3 Ng = safe_normalize(cross(dFdx(P), dFdy(P)));
@@ -86,7 +86,6 @@ void main()
              V,
              vP_z,
              thickness,
-             reconstruction_precision,
              diffuse_light,
              reflection_light,
              shadow);
