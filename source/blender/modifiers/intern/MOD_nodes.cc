@@ -655,6 +655,9 @@ static void check_property_socket_sync(const Object *ob, ModifierData *md)
   }
 }
 
+namespace sim_input = nodes::sim_input_behavior;
+namespace sim_output = nodes::sim_output_behavior;
+
 class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
  private:
   static constexpr float max_delta_frames = 1.0f;
@@ -803,7 +806,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     if (use_frame_cache_) {
       if (depsgraph_is_active_) {
         if (zone_cache.frame_caches.is_empty()) {
-          zone_info.input.emplace<nodes::sim_input_behavior::PassThrough>();
+          zone_info.input.emplace<sim_input::PassThrough>();
           if (!is_start_frame_) {
             zone_cache.cache_state = CacheState::Invalid;
           }
@@ -811,7 +814,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
           return;
         }
         if (frame_indices.prev && !frame_indices.current && !frame_indices.next) {
-          nodes::sim_input_behavior::OutputCopy output_copy_info;
+          sim_input::OutputCopy output_copy_info;
           const bke::sim::SimulationZoneFrameCache &prev_frame_cache =
               *zone_cache.frame_caches[*frame_indices.prev];
           const float delta_frames = std::min(
@@ -834,34 +837,33 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
       if (zone_cache.prev_state->frame < current_frame_) {
         const float delta_frames = std::min(
             max_delta_frames, float(zone_cache.prev_state->frame) - float(current_frame_));
-        auto &output_move_info = zone_info.input.emplace<nodes::sim_input_behavior::OutputMove>();
+        auto &output_move_info = zone_info.input.emplace<sim_input::OutputMove>();
         output_move_info.delta_time = delta_frames / fps_;
         output_move_info.prev_items = std::move(zone_cache.prev_state->items);
         this->store_as_prev_items(zone_cache, zone_info);
         return;
       }
       if (zone_cache.prev_state->frame == current_frame_) {
-        auto &output_copy_info = zone_info.input.emplace<nodes::sim_input_behavior::OutputCopy>();
+        auto &output_copy_info = zone_info.input.emplace<sim_input::OutputCopy>();
         output_copy_info.delta_time = 0.0f;
         output_copy_info.prev_items = this->to_readonly_items_map(zone_cache.prev_state->items);
-        auto &read_single_info =
-            zone_info.output.emplace<nodes::sim_output_behavior::ReadSingle>();
+        auto &read_single_info = zone_info.output.emplace<sim_output::ReadSingle>();
         read_single_info.items = this->to_readonly_items_map(zone_cache.prev_state->items);
         return;
       }
       if (!depsgraph_is_active_) {
-        zone_info.input.emplace<nodes::sim_input_behavior::PassThrough>();
-        zone_info.output.emplace<nodes::sim_output_behavior::PassThrough>();
+        zone_info.input.emplace<sim_input::PassThrough>();
+        zone_info.output.emplace<sim_output::PassThrough>();
         return;
       }
       zone_cache.prev_state.reset();
     }
-    zone_info.input.emplace<nodes::sim_input_behavior::PassThrough>();
+    zone_info.input.emplace<sim_input::PassThrough>();
     if (depsgraph_is_active_) {
       this->store_as_prev_items(zone_cache, zone_info);
     }
     else {
-      zone_info.output.emplace<nodes::sim_output_behavior::PassThrough>();
+      zone_info.output.emplace<sim_output::PassThrough>();
     }
   }
 
@@ -869,7 +871,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
                          nodes::SimulationZoneInfo &zone_info) const
   {
     auto &store_and_pass_through_info =
-        zone_info.output.emplace<nodes::sim_output_behavior::StoreAndPassThrough>();
+        zone_info.output.emplace<sim_output::StoreAndPassThrough>();
     store_and_pass_through_info.store_fn =
         [simulation_cache = simulation_cache_,
          zone_cache = &zone_cache,
@@ -886,7 +888,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
                            nodes::SimulationZoneInfo &zone_info) const
   {
     auto &store_and_pass_through_info =
-        zone_info.output.emplace<nodes::sim_output_behavior::StoreAndPassThrough>();
+        zone_info.output.emplace<sim_output::StoreAndPassThrough>();
     store_and_pass_through_info.store_fn =
         [simulation_cache = simulation_cache_,
          zone_cache = &zone_cache,
@@ -905,7 +907,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
                        nodes::SimulationZoneInfo &zone_info) const
   {
     if (frame_indices.prev) {
-      auto &output_copy_info = zone_info.input.emplace<nodes::sim_input_behavior::OutputCopy>();
+      auto &output_copy_info = zone_info.input.emplace<sim_input::OutputCopy>();
       bke::sim::SimulationZoneFrameCache &frame_cache =
           *zone_cache.frame_caches[*frame_indices.prev];
       const float delta_frames = std::min(max_delta_frames,
@@ -916,7 +918,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
       }
     }
     else {
-      zone_info.input.emplace<nodes::sim_input_behavior::PassThrough>();
+      zone_info.input.emplace<sim_input::PassThrough>();
     }
     if (frame_indices.current) {
       this->read_single(*frame_indices.current, zone_cache, zone_info);
@@ -939,7 +941,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
 
   void read_empty(nodes::SimulationZoneInfo &zone_info) const
   {
-    zone_info.output.emplace<nodes::sim_output_behavior::ReadSingle>();
+    zone_info.output.emplace<sim_output::ReadSingle>();
   }
 
   void read_single(const int frame_index,
@@ -948,7 +950,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
   {
     bke::sim::SimulationZoneFrameCache &frame_cache = *zone_cache.frame_caches[frame_index];
     this->ensure_bake_loaded(zone_cache, frame_cache);
-    auto &read_single_info = zone_info.output.emplace<nodes::sim_output_behavior::ReadSingle>();
+    auto &read_single_info = zone_info.output.emplace<sim_output::ReadSingle>();
     read_single_info.items = this->to_readonly_items_map(frame_cache.items);
   }
 
@@ -963,8 +965,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
         *zone_cache.frame_caches[next_frame_index];
     this->ensure_bake_loaded(zone_cache, prev_frame_cache);
     this->ensure_bake_loaded(zone_cache, next_frame_cache);
-    auto &read_interpolated_info =
-        zone_info.output.emplace<nodes::sim_output_behavior::ReadInterpolated>();
+    auto &read_interpolated_info = zone_info.output.emplace<sim_output::ReadInterpolated>();
     read_interpolated_info.mix_factor = (float(current_frame_) - float(prev_frame_cache.frame)) /
                                         (float(next_frame_cache.frame) -
                                          float(prev_frame_cache.frame));
