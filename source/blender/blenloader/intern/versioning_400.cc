@@ -971,7 +971,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 18)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 20)) {
     /* Convert old socket lists into new interface items. */
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       versioning_convert_node_tree_socket_lists_to_interface(ntree);
