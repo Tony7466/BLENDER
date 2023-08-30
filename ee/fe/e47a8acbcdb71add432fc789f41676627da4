@@ -1,1 +1,2 @@
 Referenced by commit ce8e9c6a372b200594294daafc3fc19770342905, Fix error in preview image freeing, own earlier commit
+Referenced by commit 8c193180d300ae0e78c71b4cc9c6beb6a6aa246a, Fix memory leak when freeing custom preview icons
