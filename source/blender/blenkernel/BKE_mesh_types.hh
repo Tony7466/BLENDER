@@ -141,15 +141,15 @@ struct MeshRuntime {
   SharedCache<Vector<float3>> face_normals_cache;
 
   /**
-   * Cache of offsets for vert to poly/corner maps. The same offsets array is used to group
-   * indices for both the vertex to poly and vertex to corner maps.
+   * Cache of offsets for vert to face/corner maps. The same offsets array is used to group
+   * indices for both the vertex to face and vertex to corner maps.
    */
   SharedCache<Array<int>> vert_to_face_offset_cache;
-  /** Cache of indices for vert to poly map. */
+  /** Cache of indices for vert to face map. */
   SharedCache<Array<int>> vert_to_face_map_cache;
   /** Cache of indices for vert to corner map. */
   SharedCache<Array<int>> vert_to_corner_map_cache;
-  /** Cache of poly indices for each face corner. */
+  /** Cache of face indices for each face corner. */
   SharedCache<Array<int>> corner_to_face_map_cache;
   /** Cache of data about edges not used by faces. See #Mesh::loose_edges(). */
   SharedCache<LooseEdgeCache> loose_edges_cache;
