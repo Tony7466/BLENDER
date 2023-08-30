@@ -42,8 +42,6 @@ namespace blender::nodes {
 using lf::LazyFunction;
 using mf::MultiFunction;
 
-using NestedNodeID = int;
-
 enum class SimulationEvalType {
   /**
    * Used when the simulation is disabled e.g. because the current time is before the simulation
@@ -102,7 +100,7 @@ struct SimulationZoneInfo {
 
 class GeoNodesSimulationParams {
  public:
-  virtual SimulationZoneInfo *get(NestedNodeID id) const = 0;
+  virtual SimulationZoneInfo *get(const int zone_id) const = 0;
 };
 
 enum class BakeEvalType {
@@ -126,13 +124,6 @@ struct BakeInfo {
   std::variant<std::monostate, ReadSingle, ReadInterpolated> info;
 };
 
-class GeoNodesBakeParams {
- public:
-  virtual BakeInfo get_info(NestedNodeID id) const = 0;
-  virtual void store_bake_state(NestedNodeID id,
-                                Map<int, std::unique_ptr<bke::BakeItem>> items) const = 0;
-};
-
 /**
  * Data that is passed into geometry nodes evaluation from the modifier.
  */
@@ -145,7 +136,6 @@ struct GeoNodesModifierData {
   geo_eval_log::GeoModifierLog *eval_log = nullptr;
 
   GeoNodesSimulationParams *simulation_params = nullptr;
-  GeoNodesBakeParams *bake_params = nullptr;
 
   /**
    * Some nodes should be executed even when their output is not used (e.g. active viewer nodes and
@@ -346,7 +336,7 @@ std::unique_ptr<LazyFunction> get_simulation_input_lazy_function(
 std::unique_ptr<LazyFunction> get_switch_node_lazy_function(const bNode &node);
 
 struct FoundNestedNodeID {
-  NestedNodeID id;
+  int id;
   bool is_in_simulation = false;
   bool is_in_loop = false;
 };

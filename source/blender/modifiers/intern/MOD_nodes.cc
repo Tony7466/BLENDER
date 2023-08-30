@@ -659,7 +659,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
  private:
   static constexpr float max_delta_frames = 1.0f;
 
-  mutable Map<nodes::NestedNodeID, std::unique_ptr<nodes::SimulationZoneInfo>> map_;
+  mutable Map<int, std::unique_ptr<nodes::SimulationZoneInfo>> map_;
   const NodesModifierData &nmd_;
   const ModifierEvalContext &ctx_;
   const Main *bmain_;
@@ -714,17 +714,17 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     }
   }
 
-  nodes::SimulationZoneInfo *get(nodes::NestedNodeID id) const override
+  nodes::SimulationZoneInfo *get(const int zone_id) const override
   {
     if (!simulation_cache_) {
       return nullptr;
     }
     std::lock_guard lock{simulation_cache_->mutex};
     return map_
-        .lookup_or_add_cb(id,
+        .lookup_or_add_cb(zone_id,
                           [&]() {
                             auto info = std::make_unique<nodes::SimulationZoneInfo>();
-                            this->init_simulation_info(id, *info);
+                            this->init_simulation_info(zone_id, *info);
                             return info;
                           })
         .get();
