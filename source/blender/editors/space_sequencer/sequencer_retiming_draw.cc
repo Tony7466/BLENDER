@@ -275,8 +275,14 @@ static void retime_key_draw(const bContext *C, const Sequence *seq, const SeqRet
 
   const bool is_selected = SEQ_retiming_selection_contains(SEQ_editing_get(scene), key);
   const int size = KEY_SIZE;
-  const float key_position = UI_view2d_view_to_region_x(v2d, key_x);
   const float bottom = KEY_CENTER;
+
+  /* Ensure, that key is always inside of strip. */
+  const float right_pos_max = UI_view2d_view_to_region_x(
+                                  v2d, SEQ_time_right_handle_frame_get(scene, seq)) -
+                              (size / 2);
+  float key_position = UI_view2d_view_to_region_x(v2d, key_x);
+  key_position = min_ff(key_position, right_pos_max);
 
   draw_keyframe_shape(key_position,
                       bottom,
@@ -296,9 +302,6 @@ static void retime_key_draw(const bContext *C, const Sequence *seq, const SeqRet
 
 static void draw_continuity(const bContext *C, const Sequence *seq, const SeqRetimingKey *key)
 {
-  if (!sequencer_retiming_tool_is_active(C)) {
-    return;
-  }
   const View2D *v2d = UI_view2d_fromcontext(C);
   const Scene *scene = CTX_data_scene(C);
   const Editing *ed = SEQ_editing_get(scene);
