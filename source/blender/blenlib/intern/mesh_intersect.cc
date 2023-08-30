@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -20,6 +22,8 @@
 #  include "BLI_kdopbvh.h"
 #  include "BLI_map.hh"
 #  include "BLI_math_boolean.hh"
+#  include "BLI_math_geom.h"
+#  include "BLI_math_matrix.h"
 #  include "BLI_math_mpq.hh"
 #  include "BLI_math_vector.h"
 #  include "BLI_math_vector_mpq_types.hh"
@@ -1583,7 +1587,8 @@ struct CDT_data {
   Vector<bool> is_reversed;
   /** Result of running CDT on input with (vert, edge, face). */
   CDT_result<mpq_class> cdt_out;
-  /** To speed up get_cdt_edge_orig, sometimes populate this map from vertex pair to output edge.
+  /**
+   * To speed up get_cdt_edge_orig, sometimes populate this map from vertex pair to output edge.
    */
   Map<std::pair<int, int>, int> verts_to_edge;
   int proj_axis;
@@ -1962,17 +1967,19 @@ static Face *cdt_tri_as_imesh_face(
   return facep;
 }
 
-/* Like BLI_math's is_quad_flip_v3_first_third_fast_with_normal, with const double3's. */
+/* Like BLI_math's is_quad_flip_v3_first_third_fast, with const double3's. */
 static bool is_quad_flip_first_third(const double3 &v1,
                                      const double3 &v2,
                                      const double3 &v3,
-                                     const double3 &v4,
-                                     const double3 &normal)
+                                     const double3 &v4)
 {
-  double3 dir_v3v1 = v3 - v1;
-  double3 tangent = math::cross(dir_v3v1, normal);
-  double dot = math::dot(v1, tangent);
-  return (math::dot(v4, tangent) >= dot) || (math::dot(v2, tangent) <= dot);
+  const double3 d_12 = v2 - v1;
+  const double3 d_13 = v3 - v1;
+  const double3 d_14 = v4 - v1;
+
+  const double3 cross_a = math::cross(d_12, d_13);
+  const double3 cross_b = math::cross(d_14, d_13);
+  return math::dot(cross_a, cross_b) > 0.0f;
 }
 
 /**
@@ -2008,7 +2015,7 @@ static Array<Face *> polyfill_triangulate_poly(Face *f, IMeshArena *arena)
     int eo_23 = f->edge_orig[2];
     int eo_30 = f->edge_orig[3];
     Face *f0, *f1;
-    if (UNLIKELY(is_quad_flip_first_third(v0->co, v1->co, v2->co, v3->co, f->plane->norm))) {
+    if (UNLIKELY(is_quad_flip_first_third(v0->co, v1->co, v2->co, v3->co))) {
       f0 = arena->add_face({v0, v1, v3}, f->orig, {eo_01, -1, eo_30}, {false, false, false});
       f1 = arena->add_face({v1, v2, v3}, f->orig, {eo_12, eo_23, -1}, {false, false, false});
     }
@@ -2093,7 +2100,7 @@ static Array<Face *> exact_triangulate_poly(Face *f, IMeshArena *arena)
   const double3 &poly_normal = f->plane->norm;
   int axis = math::dominant_axis(poly_normal);
   /* If project down y axis as opposed to x or z, the orientation
-   * of the polygon will be reversed.
+   * of the face will be reversed.
    * Yet another reversal happens if the poly normal in the dominant
    * direction is opposite that of the positive dominant axis. */
   bool rev1 = (axis == 1);
@@ -3120,7 +3127,6 @@ void write_obj_mesh(IMesh &m, const std::string &objname)
     const double3 dv = v->co;
     f << "v " << dv[0] << " " << dv[1] << " " << dv[2] << "\n";
   }
-  int i = 0;
   for (const Face *face : m.faces()) {
     /* OBJ files use 1-indexing for vertices. */
     f << "f ";
@@ -3131,7 +3137,6 @@ void write_obj_mesh(IMesh &m, const std::string &objname)
       f << i + 1 << " ";
     }
     f << "\n";
-    ++i;
   }
   f.close();
 }

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2017-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # For documentation on tool definitions: see "bl_ui.space_toolsystem_common.ToolDef"
@@ -31,21 +33,45 @@ def generate_from_enum_ex(
         type,
         attr,
         cursor='DEFAULT',
-        tooldef_keywords={},
-        exclude_filter={},
+        tooldef_keywords=None,
+        icon_map=None,
+        use_separators=True,
 ):
+    if tooldef_keywords is None:
+        tooldef_keywords = {}
+
     tool_defs = []
-    for enum in type.bl_rna.properties[attr].enum_items_static:
-        name = enum.name
-        idname = enum.identifier
-        if idname in exclude_filter:
-            continue
+
+    enum_items = getattr(
+        type.bl_rna.properties[attr],
+        "enum_items_static_ui" if use_separators else
+        "enum_items_static",
+    )
+
+    for enum in enum_items:
+        if use_separators:
+            if not (name := enum.name):
+                # Empty string for a UI Separator.
+                tool_defs.append(None)
+                continue
+            if not (idname := enum.identifier):
+                # This is a heading, there is no purpose in showing headings here.
+                continue
+        else:
+            name = enum.name
+            idname = enum.identifier
+
+        icon = icon_prefix + idname.lower()
+        if icon_map is not None:
+            icon = icon_map.get(icon, icon)
+
         tool_defs.append(
             ToolDef.from_dict(
                 dict(
                     idname=idname_prefix + name,
                     label=name,
-                    icon=icon_prefix + idname.lower(),
+                    description=enum.description,
+                    icon=icon,
                     cursor=cursor,
                     data_block=idname,
                     **tooldef_keywords,
@@ -476,23 +502,21 @@ class _defs_view3d_add:
     # Layout tweaks here would be good to avoid,
     # this shows limits in layout engine, as buttons are using a lot of space.
     @staticmethod
-    def draw_settings_interactive_add(layout, tool, extra):
+    def draw_settings_interactive_add(layout, tool_settings, tool, extra):
         show_extra = False
-        props = tool.operator_properties("view3d.interactive_add")
         if not extra:
             row = layout.row()
             row.label(text="Depth:")
             row = layout.row()
-            row.prop(props, "plane_depth", text="")
+            row.prop(tool_settings, "plane_depth", text="")
             row = layout.row()
             row.label(text="Orientation:")
             row = layout.row()
-            row.prop(props, "plane_orientation", text="")
+            row.prop(tool_settings, "plane_orientation", text="")
             row = layout.row()
-            row.prop(props, "snap_target")
+            row.prop(tool_settings, "snap_elements_tool")
 
             region_is_header = bpy.context.region.type == 'TOOL_HEADER'
-
             if region_is_header:
                 # Don't draw the "extra" popover here as we might have other settings & this should be last.
                 show_extra = True
@@ -500,9 +524,10 @@ class _defs_view3d_add:
                 extra = True
 
         if extra:
+            props = tool.operator_properties("view3d.interactive_add")
             layout.use_property_split = True
-            layout.row().prop(props, "plane_axis", expand=True)
-            layout.row().prop(props, "plane_axis_auto")
+            layout.row().prop(tool_settings, "plane_axis", expand=True)
+            layout.row().prop(tool_settings, "plane_axis_auto")
 
             layout.label(text="Base")
             layout.row().prop(props, "plane_origin_base", expand=True)
@@ -514,8 +539,8 @@ class _defs_view3d_add:
 
     @ToolDef.from_fn
     def cube_add():
-        def draw_settings(_context, layout, tool, *, extra=False):
-            show_extra = _defs_view3d_add.draw_settings_interactive_add(layout, tool, extra)
+        def draw_settings(context, layout, tool, *, extra=False):
+            show_extra = _defs_view3d_add.draw_settings_interactive_add(layout, context.tool_settings, tool, extra)
             if show_extra:
                 layout.popover("TOPBAR_PT_tool_settings_extra", text="...")
 
@@ -533,8 +558,8 @@ class _defs_view3d_add:
 
     @ToolDef.from_fn
     def cone_add():
-        def draw_settings(_context, layout, tool, *, extra=False):
-            show_extra = _defs_view3d_add.draw_settings_interactive_add(layout, tool, extra)
+        def draw_settings(context, layout, tool, *, extra=False):
+            show_extra = _defs_view3d_add.draw_settings_interactive_add(layout, context.tool_settings, tool, extra)
             if extra:
                 return
 
@@ -559,8 +584,8 @@ class _defs_view3d_add:
 
     @ToolDef.from_fn
     def cylinder_add():
-        def draw_settings(_context, layout, tool, *, extra=False):
-            show_extra = _defs_view3d_add.draw_settings_interactive_add(layout, tool, extra)
+        def draw_settings(context, layout, tool, *, extra=False):
+            show_extra = _defs_view3d_add.draw_settings_interactive_add(layout, context.tool_settings, tool, extra)
             if extra:
                 return
 
@@ -584,8 +609,8 @@ class _defs_view3d_add:
 
     @ToolDef.from_fn
     def uv_sphere_add():
-        def draw_settings(_context, layout, tool, *, extra=False):
-            show_extra = _defs_view3d_add.draw_settings_interactive_add(layout, tool, extra)
+        def draw_settings(context, layout, tool, *, extra=False):
+            show_extra = _defs_view3d_add.draw_settings_interactive_add(layout, context.tool_settings, tool, extra)
             if extra:
                 return
 
@@ -609,8 +634,8 @@ class _defs_view3d_add:
 
     @ToolDef.from_fn
     def ico_sphere_add():
-        def draw_settings(_context, layout, tool, *, extra=False):
-            show_extra = _defs_view3d_add.draw_settings_interactive_add(layout, tool, extra)
+        def draw_settings(context, layout, tool, *, extra=False):
+            show_extra = _defs_view3d_add.draw_settings_interactive_add(layout, context.tool_settings, tool, extra)
             if extra:
                 return
 
@@ -1260,6 +1285,20 @@ class _defs_edit_curve:
         )
 
 
+class _defs_edit_text:
+
+    @ToolDef.from_fn
+    def select_text():
+        return dict(
+            idname="builtin.select_text",
+            label="Select Text",
+            cursor='TEXT',
+            icon="ops.generic.select_box",
+            widget=None,
+            keymap=(),
+        )
+
+
 class _defs_pose:
 
     @ToolDef.from_fn
@@ -1316,6 +1355,9 @@ class _defs_sculpt:
             icon_prefix="brush.sculpt.",
             type=bpy.types.Brush,
             attr="sculpt_tool",
+            # TODO(@ideasman42): we may want to enable this,
+            # it causes awkward grouping with 2x column button layout.
+            use_separators=False,
         )
 
     @ToolDef.from_fn
@@ -1685,6 +1727,37 @@ class _defs_weight_paint:
             icon="ops.paint.weight_gradient",
             widget=None,
             keymap=(),
+            draw_settings=draw_settings,
+        )
+
+
+class _defs_paint_grease_pencil:
+
+    @ToolDef.from_fn
+    def draw():
+        return dict(
+            idname="builtin_brush.Draw",
+            label="Draw",
+            icon="brush.gpencil_draw.draw",
+            data_block='DRAW',
+        )
+
+    @ToolDef.from_fn
+    def erase():
+        def draw_settings(context, layout, _tool):
+            paint = context.tool_settings.gpencil_paint
+            brush = paint.brush
+            if not brush:
+                return
+            layout.prop(brush.gpencil_settings, "eraser_mode", expand=True)
+            if brush.gpencil_settings.eraser_mode == "HARD":
+                layout.prop(brush.gpencil_settings, "use_keep_caps_eraser")
+            layout.prop(brush.gpencil_settings, "use_active_layer_only")
+        return dict(
+            idname="builtin_brush.Erase",
+            label="Erase",
+            icon="brush.gpencil_draw.erase",
+            data_block='ERASE',
             draw_settings=draw_settings,
         )
 
@@ -2326,103 +2399,18 @@ class _defs_gpencil_weight:
 
 class _defs_curves_sculpt:
 
-    @ToolDef.from_fn
-    def selection_paint():
-        return dict(
-            idname="builtin_brush.selection_paint",
-            label="Selection Paint",
-            icon="ops.generic.select_paint",
-            data_block="SELECTION_PAINT",
-        )
-
-    @ToolDef.from_fn
-    def comb():
-        return dict(
-            idname="builtin_brush.comb",
-            label="Comb",
-            icon="ops.curves.sculpt_comb",
-            data_block='COMB',
-        )
-
-    @ToolDef.from_fn
-    def add():
-        return dict(
-            idname="builtin_brush.add",
-            label="Add",
-            icon="ops.curves.sculpt_add",
-            data_block='ADD',
-        )
-
-    @ToolDef.from_fn
-    def delete():
-        return dict(
-            idname="builtin_brush.delete",
-            label="Delete",
-            icon="ops.curves.sculpt_delete",
-            data_block='DELETE',
-        )
-
-    @ToolDef.from_fn
-    def snake_hook():
-        return dict(
-            idname="builtin_brush.snake_hook",
-            label="Snake Hook",
-            icon="ops.curves.sculpt_snake_hook",
-            data_block='SNAKE_HOOK',
-        )
-
-    @ToolDef.from_fn
-    def grow_shrink():
-        return dict(
-            idname="builtin_brush.grow_shrink",
-            label="Grow/Shrink",
-            icon="ops.curves.sculpt_grow_shrink",
-            data_block='GROW_SHRINK',
-        )
-
-    @ToolDef.from_fn
-    def pinch():
-        return dict(
-            idname="builtin_brush.pinch",
-            label="Pinch",
-            icon="ops.curves.sculpt_pinch",
-            data_block='PINCH',
-        )
-
-    @ToolDef.from_fn
-    def smooth():
-        return dict(
-            idname="builtin_brush.smooth",
-            label="Smooth",
-            icon="ops.curves.sculpt_smooth",
-            data_block='SMOOTH',
-        )
-
-    @ToolDef.from_fn
-    def puff():
-        return dict(
-            idname="builtin_brush.puff",
-            label="Puff",
-            icon="ops.curves.sculpt_puff",
-            data_block='PUFF',
-        )
-
-    @ToolDef.from_fn
-    def density():
-        return dict(
-            idname="builtin_brush.density",
-            label="Density",
-            icon="ops.curves.sculpt_density",
-            data_block="DENSITY",
-        )
-
-    @ToolDef.from_fn
-    def slide():
-        return dict(
-            idname="builtin_brush.slide",
-            label="Slide",
-            icon="ops.curves.sculpt_slide",
-            data_block="SLIDE",
+    @staticmethod
+    def generate_from_brushes(context):
+        return generate_from_enum_ex(
+            context,
+            idname_prefix="builtin_brush.",
+            icon_prefix="ops.curves.sculpt_",
+            type=bpy.types.Brush,
+            attr="curves_sculpt_tool",
+            icon_map={
+                # Use the generic icon for selection painting.
+                "ops.curves.sculpt_selection_paint": "ops.generic.select_paint",
+            },
         )
 
 
@@ -2679,7 +2667,7 @@ class IMAGE_PT_tools_active(ToolSelectPanelHelper, Panel):
     bl_label = "Tools"  # not visible
     bl_options = {'HIDE_HEADER'}
 
-    # Satisfy the 'ToolSelectPanelHelper' API.
+    # Satisfy the `ToolSelectPanelHelper` API.
     keymap_prefix = "Image Editor Tool:"
 
     # Default group to use as a fallback.
@@ -2774,7 +2762,7 @@ class NODE_PT_tools_active(ToolSelectPanelHelper, Panel):
     bl_label = "Tools"  # not visible
     bl_options = {'HIDE_HEADER'}
 
-    # Satisfy the 'ToolSelectPanelHelper' API.
+    # Satisfy the `ToolSelectPanelHelper` API.
     keymap_prefix = "Node Editor Tool:"
 
     # Default group to use as a fallback.
@@ -2838,7 +2826,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
     bl_label = "Tools"  # not visible
     bl_options = {'HIDE_HEADER'}
 
-    # Satisfy the 'ToolSelectPanelHelper' API.
+    # Satisfy the `ToolSelectPanelHelper` API.
     keymap_prefix = "3D View Tool:"
 
     # Default group to use as a fallback.
@@ -3038,10 +3026,14 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             _defs_transform.shear,
         ],
         'EDIT_TEXT': [
+            _defs_edit_text.select_text,
             _defs_view3d_generic.cursor,
             None,
             *_tools_annotate,
             _defs_view3d_generic.ruler,
+        ],
+        'EDIT_GREASE_PENCIL': [
+            *_tools_select,
         ],
         'PARTICLE': [
             *_tools_select,
@@ -3128,6 +3120,12 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             ),
             *_tools_annotate,
         ],
+        'PAINT_GREASE_PENCIL': [
+            _defs_view3d_generic.cursor,
+            None,
+            _defs_paint_grease_pencil.draw,
+            _defs_paint_grease_pencil.erase,
+        ],
         'PAINT_GPENCIL': [
             _defs_view3d_generic.cursor,
             None,
@@ -3193,19 +3191,7 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             ),
         ],
         'SCULPT_CURVES': [
-            _defs_curves_sculpt.selection_paint,
-            None,
-            _defs_curves_sculpt.add,
-            _defs_curves_sculpt.delete,
-            _defs_curves_sculpt.density,
-            None,
-            _defs_curves_sculpt.comb,
-            _defs_curves_sculpt.snake_hook,
-            _defs_curves_sculpt.grow_shrink,
-            _defs_curves_sculpt.pinch,
-            _defs_curves_sculpt.puff,
-            _defs_curves_sculpt.smooth,
-            _defs_curves_sculpt.slide,
+            _defs_curves_sculpt.generate_from_brushes,
             None,
             *_tools_annotate,
         ],
@@ -3218,7 +3204,7 @@ class SEQUENCER_PT_tools_active(ToolSelectPanelHelper, Panel):
     bl_label = "Tools"  # not visible
     bl_options = {'HIDE_HEADER'}
 
-    # Satisfy the 'ToolSelectPanelHelper' API.
+    # Satisfy the `ToolSelectPanelHelper` API.
     keymap_prefix = "Sequence Editor Tool:"
 
     # Default group to use as a fallback.

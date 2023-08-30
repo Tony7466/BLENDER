@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.types import Panel
 from bpy.app.translations import contexts as i18n_contexts
@@ -103,7 +106,7 @@ class EEVEE_WORLD_PT_surface(WorldButtonsPanel, Panel):
             node = ntree.get_output_node('EEVEE')
 
             if node:
-                input = find_node_input(node, 'Surface')
+                input = find_node_input(node, "Surface")
                 if input:
                     layout.template_node_view(ntree, node, input)
                 else:
@@ -136,13 +139,34 @@ class EEVEE_WORLD_PT_volume(WorldButtonsPanel, Panel):
         layout.use_property_split = True
 
         if node:
-            input = find_node_input(node, 'Volume')
+            input = find_node_input(node, "Volume")
             if input:
                 layout.template_node_view(ntree, node, input)
             else:
                 layout.label(text="Incompatible output node")
         else:
             layout.label(text="No output node")
+
+
+class EEVEE_WORLD_PT_probe(WorldButtonsPanel, Panel):
+    bl_label = "Probe"
+    bl_translation_context = i18n_contexts.id_id
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
+
+    @classmethod
+    def poll(cls, context):
+        engine = context.engine
+        world = context.world
+        return world and (engine in cls.COMPAT_ENGINES)
+
+    def draw(self, context):
+        layout = self.layout
+
+        world = context.world
+
+        layout.use_property_split = True
+        layout.prop(world, "probe_resolution")
 
 
 class WORLD_PT_viewport_display(WorldButtonsPanel, Panel):
@@ -166,6 +190,7 @@ classes = (
     EEVEE_WORLD_PT_surface,
     EEVEE_WORLD_PT_volume,
     EEVEE_WORLD_PT_mist,
+    EEVEE_WORLD_PT_probe,
     WORLD_PT_viewport_display,
     WORLD_PT_custom_props,
 )

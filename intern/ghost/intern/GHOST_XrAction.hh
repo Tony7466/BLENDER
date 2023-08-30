@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2021-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -89,11 +91,13 @@ class GHOST_XrAction {
                    const XrTime &predicted_display_time);
   void applyHapticFeedback(XrSession session,
                            const char *action_name,
-                           const char *subaction_path,
+                           const char *subaction_path_str,
                            const int64_t &duration,
                            const float &frequency,
                            const float &amplitude);
-  void stopHapticFeedback(XrSession session, const char *action_name, const char *subaction_path);
+  void stopHapticFeedback(XrSession session,
+                          const char *action_name,
+                          const char *subaction_path_str);
 
   void *getCustomdata();
   void getBindings(std::map<XrPath, std::vector<XrActionSuggestedBinding>> &r_bindings) const;

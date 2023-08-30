@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_string_utf8.h"
 
@@ -8,10 +10,10 @@ namespace blender::nodes::node_fn_slice_string_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::String>(N_("String"));
-  b.add_input<decl::Int>(N_("Position"));
-  b.add_input<decl::Int>(N_("Length")).min(0).default_value(10);
-  b.add_output<decl::String>(N_("String"));
+  b.add_input<decl::String>("String");
+  b.add_input<decl::Int>("Position");
+  b.add_input<decl::Int>("Length").min(0).default_value(10);
+  b.add_output<decl::String>("String");
 }
 
 static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
@@ -26,16 +28,15 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   builder.set_matching_fn(&slice_fn);
 }
 
-}  // namespace blender::nodes::node_fn_slice_string_cc
-
-void register_node_type_fn_slice_string()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_fn_slice_string_cc;
-
   static bNodeType ntype;
 
   fn_node_type_base(&ntype, FN_NODE_SLICE_STRING, "Slice String", NODE_CLASS_CONVERTER);
-  ntype.declare = file_ns::node_declare;
-  ntype.build_multi_function = file_ns::node_build_multi_function;
+  ntype.declare = node_declare;
+  ntype.build_multi_function = node_build_multi_function;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_fn_slice_string_cc

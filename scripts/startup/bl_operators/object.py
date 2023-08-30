@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
@@ -284,7 +286,7 @@ class SubdivisionSet(Operator):
                 else:
                     mod = obj.modifiers.new("Subdivision", 'SUBSURF')
                     mod.levels = level
-            except:
+            except BaseException:
                 self.report({'WARNING'},
                             "Modifiers cannot be added to object: " + obj.name)
 
@@ -654,6 +656,11 @@ class IsolateTypeRender(Operator):
     bl_idname = "object.isolate_type_render"
     bl_label = "Restrict Render Unselected"
     bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        ob = context.object
+        return (ob is not None)
 
     def execute(self, context):
         act_type = context.object.type

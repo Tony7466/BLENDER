@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2020-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # Some useful operations from utils' I18nMessages class exposed as a CLI.
@@ -131,7 +133,7 @@ def main():
     settings = settings_i18n.I18nSettings()
     settings.load(args.settings)
 
-    if getattr(args, 'template', None) is not None:
+    if getattr(args, "template", None) is not None:
         settings.FILE_NAME_POT = args.template
 
     args.func(args=args, settings=settings)

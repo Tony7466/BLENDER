@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -59,7 +60,7 @@ struct CCGElem;
 struct CCGKey;
 struct CustomData_MeshMasks;
 struct Depsgraph;
-struct MEdge;
+struct vec2i;
 struct MFace;
 struct Mesh;
 struct ModifierData;
@@ -89,7 +90,7 @@ struct DerivedMesh {
   int numVertData, numEdgeData, numTessFaceData, numLoopData, numPolyData;
   DerivedMeshType type;
   /* Always owned by this object. */
-  int *poly_offsets;
+  int *face_offsets;
 
   short tangent_mask; /* which tangent layers are calculated */
 
@@ -110,7 +111,7 @@ struct DerivedMesh {
    * \warning The real return type is `float(*)[3]`.
    */
   float *(*getVertArray)(DerivedMesh *dm);
-  struct MEdge *(*getEdgeArray)(DerivedMesh *dm);
+  struct vec2i *(*getEdgeArray)(DerivedMesh *dm);
   int *(*getCornerVertArray)(DerivedMesh *dm);
   int *(*getCornerEdgeArray)(DerivedMesh *dm);
   int *(*getPolyArray)(DerivedMesh *dm);
@@ -119,10 +120,10 @@ struct DerivedMesh {
    * *{vert/edge/face}_r (must point to a buffer large enough)
    */
   void (*copyVertArray)(DerivedMesh *dm, float (*r_positions)[3]);
-  void (*copyEdgeArray)(DerivedMesh *dm, struct MEdge *r_edge);
+  void (*copyEdgeArray)(DerivedMesh *dm, struct vec2i *r_edge);
   void (*copyCornerVertArray)(DerivedMesh *dm, int *r_corner_verts);
   void (*copyCornerEdgeArray)(DerivedMesh *dm, int *r_corner_edges);
-  void (*copyPolyArray)(DerivedMesh *dm, int *r_poly_offsets);
+  void (*copyPolyArray)(DerivedMesh *dm, int *r_face_offsets);
 
   /** Return a pointer to the entire array of vert/edge/face custom data
    * from the derived mesh (this gives a pointer to the actual data, not
@@ -142,9 +143,9 @@ struct DerivedMesh {
   DMFlagMat *(*getGridFlagMats)(DerivedMesh *dm);
   unsigned int **(*getGridHidden)(DerivedMesh *dm);
 
-  /** Direct Access Operations
+  /* Direct Access Operations
    * - Can be undefined
-   * - Must be defined for modifiers that only deform however */
+   * - Must be defined for modifiers that only deform however. */
 
   /** Release reference to the DerivedMesh. This function decides internally
    * if the DerivedMesh will be freed, or cached for later use. */
@@ -245,7 +246,6 @@ struct Mesh *editbmesh_get_eval_cage_from_orig(struct Depsgraph *depsgraph,
                                                struct Object *obedit,
                                                const struct CustomData_MeshMasks *dataMask);
 
-float (*editbmesh_vert_coords_alloc(struct BMEditMesh *em, int *r_vert_len))[3];
 bool editbmesh_modifier_is_enabled(const struct Scene *scene,
                                    const struct Object *ob,
                                    struct ModifierData *md,

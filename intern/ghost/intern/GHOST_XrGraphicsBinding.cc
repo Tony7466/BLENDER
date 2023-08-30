@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2020-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -94,10 +96,11 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
     s_xrGetOpenGLGraphicsRequirementsKHR_fn = nullptr;
     //}
     if (!s_xrGetOpenGLGraphicsRequirementsKHR_fn &&
-        XR_FAILED(xrGetInstanceProcAddr(
-            instance,
-            "xrGetOpenGLGraphicsRequirementsKHR",
-            (PFN_xrVoidFunction *)&s_xrGetOpenGLGraphicsRequirementsKHR_fn))) {
+        XR_FAILED(
+            xrGetInstanceProcAddr(instance,
+                                  "xrGetOpenGLGraphicsRequirementsKHR",
+                                  (PFN_xrVoidFunction *)&s_xrGetOpenGLGraphicsRequirementsKHR_fn)))
+    {
       s_xrGetOpenGLGraphicsRequirementsKHR_fn = nullptr;
       return false;
     }
@@ -141,7 +144,7 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
 #  if defined(WITH_GHOST_WAYLAND)
         /* #GHOST_SystemWayland */
         oxr_binding.wl.type = XR_TYPE_GRAPHICS_BINDING_OPENGL_WAYLAND_KHR;
-        oxr_binding.wl.display = (struct wl_display *)ctx_egl.m_nativeDisplay;
+        oxr_binding.wl.display = (wl_display *)ctx_egl.m_nativeDisplay;
 #  else
         GHOST_ASSERT(false, "Unexpected State: logical error, unreachable!");
 #  endif /* !WITH_GHOST_WAYLAND */
@@ -352,10 +355,11 @@ class GHOST_XrGraphicsBindingD3D : public GHOST_IXrGraphicsBinding {
     s_xrGetD3D11GraphicsRequirementsKHR_fn = nullptr;
     //}
     if (!s_xrGetD3D11GraphicsRequirementsKHR_fn &&
-        XR_FAILED(xrGetInstanceProcAddr(
-            instance,
-            "xrGetD3D11GraphicsRequirementsKHR",
-            (PFN_xrVoidFunction *)&s_xrGetD3D11GraphicsRequirementsKHR_fn))) {
+        XR_FAILED(
+            xrGetInstanceProcAddr(instance,
+                                  "xrGetD3D11GraphicsRequirementsKHR",
+                                  (PFN_xrVoidFunction *)&s_xrGetD3D11GraphicsRequirementsKHR_fn)))
+    {
       s_xrGetD3D11GraphicsRequirementsKHR_fn = nullptr;
       return false;
     }

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2012-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # Some misc utilities...
@@ -235,8 +237,8 @@ def enable_addons(addons=None, support=None, disable=False, check_only=False):
                         continue
                     print("    Enabling module ", module_name)
                     bpy.ops.preferences.addon_enable(module=module_name)
-            except Exception as e:  # XXX TEMP WORKAROUND
-                print(e)
+            except BaseException as ex:  # XXX TEMP WORKAROUND
+                print(ex)
 
         # XXX There are currently some problems with bpy/rna...
         #     *Very* tricky to solve!
@@ -473,7 +475,7 @@ class I18nMessages:
 
     @staticmethod
     def _new_messages():
-        return getattr(collections, 'OrderedDict', dict)()
+        return getattr(collections, "OrderedDict", dict)()
 
     @classmethod
     def gen_empty_messages(cls, uid, blender_ver, blender_hash, time, year, default_copyright=True, settings=settings):
@@ -1046,7 +1048,7 @@ class I18nMessages:
         self.unescape()
 
     def write(self, kind, dest):
-        self.writers[kind](self, dest)
+        return self.writers[kind](self, dest)
 
     def write_messages_to_po(self, fname, compact=False):
         """
@@ -1126,8 +1128,8 @@ class I18nMessages:
                 "-o",
                 fname,
             )
-            ret = subprocess.call(cmd)
-            return
+            ret = subprocess.run(cmd, capture_output=True)
+            return ret
         # XXX Code below is currently broken (generates corrupted mo files it seems :( )!
         # Using http://www.gnu.org/software/gettext/manual/html_node/MO-Files.html notation.
         # Not generating hash table!
@@ -1427,7 +1429,7 @@ class I18n:
         self.unescape()
 
     def write(self, kind, langs=set()):
-        self.writers[kind](self, langs)
+        return self.writers[kind](self, langs)
 
     def write_to_po(self, langs=set()):
         """

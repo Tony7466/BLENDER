@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006-2007 Blender Foundation */
+/* SPDX-FileCopyrightText: 2006-2007 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -19,6 +20,7 @@ extern "C" {
 #endif
 
 #include "BLI_compiler_attrs.h"
+#include "BLI_sys_types.h"
 
 #include "DNA_ID_enums.h"
 
@@ -33,7 +35,7 @@ enum {
   ICON_DATA_PREVIEW,
   /** 2D triangles: obj is #Icon_Geom */
   ICON_DATA_GEOM,
-  /** Studiolight */
+  /** Studio-light. */
   ICON_DATA_STUDIOLIGHT,
   /** GPencil Layer color preview (annotations): obj is #bGPDlayer */
   ICON_DATA_GPLAYER,
@@ -108,6 +110,9 @@ struct ImBuf *BKE_icon_imbuf_get_buffer(int icon_id) ATTR_WARN_UNUSED_RESULT;
  * Retrieve icon for id.
  */
 struct Icon *BKE_icon_get(int icon_id);
+
+bool BKE_icon_is_preview(int icon_id);
+bool BKE_icon_is_image(int icon_id);
 
 /**
  * Set icon for id if not already defined.

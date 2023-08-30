@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include <optional>
 
@@ -246,10 +247,10 @@ static void fill_generic_attribute(BL::Mesh &b_mesh,
         if (polys_num == 0) {
           return;
         }
-        const int *poly_offsets = static_cast<const int *>(b_mesh.polygons[0].ptr.data);
+        const int *face_offsets = static_cast<const int *>(b_mesh.polygons[0].ptr.data);
         for (int i = 0; i < polys_num; i++) {
-          const int poly_start = poly_offsets[i];
-          const int poly_size = poly_offsets[i + 1] - poly_start;
+          const int poly_start = face_offsets[i];
+          const int poly_size = face_offsets[i + 1] - poly_start;
           for (int j = 0; j < poly_size; j++) {
             *data = get_value_at_index(poly_start + j);
             data++;
@@ -280,7 +281,7 @@ static void fill_generic_attribute(BL::Mesh &b_mesh,
         assert(0);
       }
       else {
-        const MEdge *edges = static_cast<const MEdge *>(b_mesh.edges[0].ptr.data);
+        const int2 *edges = static_cast<const int2 *>(b_mesh.edges[0].ptr.data);
         const size_t verts_num = b_mesh.vertices.length();
         vector<int> count(verts_num, 0);
 
@@ -288,11 +289,11 @@ static void fill_generic_attribute(BL::Mesh &b_mesh,
         for (int i = 0; i < edges_num; i++) {
           TypeInCycles value = get_value_at_index(i);
 
-          const MEdge &b_edge = edges[i];
-          data[b_edge.v1] += value;
-          data[b_edge.v2] += value;
-          count[b_edge.v1]++;
-          count[b_edge.v2]++;
+          const int2 &b_edge = edges[i];
+          data[b_edge[0]] += value;
+          data[b_edge[1]] += value;
+          count[b_edge[0]]++;
+          count[b_edge[1]]++;
         }
 
         for (size_t i = 0; i < verts_num; i++) {
@@ -319,10 +320,10 @@ static void fill_generic_attribute(BL::Mesh &b_mesh,
       }
       else {
         const int tris_num = b_mesh.loop_triangles.length();
-        const MLoopTri *looptris = static_cast<const MLoopTri *>(
-            b_mesh.loop_triangles[0].ptr.data);
+        const int *looptri_faces = static_cast<const int *>(
+            b_mesh.loop_triangle_polygons[0].ptr.data);
         for (int i = 0; i < tris_num; i++) {
-          data[i] = get_value_at_index(looptris[i].poly);
+          data[i] = get_value_at_index(looptri_faces[i]);
         }
       }
       break;
@@ -337,7 +338,8 @@ static void fill_generic_attribute(BL::Mesh &b_mesh,
 static void attr_create_motion(Mesh *mesh, BL::Attribute &b_attribute, const float motion_scale)
 {
   if (!(b_attribute.domain() == BL::Attribute::domain_POINT) &&
-      (b_attribute.data_type() == BL::Attribute::data_type_FLOAT_VECTOR)) {
+      (b_attribute.data_type() == BL::Attribute::data_type_FLOAT_VECTOR))
+  {
     return;
   }
 
@@ -384,7 +386,8 @@ static void attr_create_generic(Scene *scene,
     }
 
     if (!(mesh->need_attribute(scene, name) ||
-          (is_render_color && mesh->need_attribute(scene, ATTR_STD_VERTEX_COLOR)))) {
+          (is_render_color && mesh->need_attribute(scene, ATTR_STD_VERTEX_COLOR))))
+    {
       continue;
     }
     if (attributes.find(name)) {
@@ -528,6 +531,19 @@ static void attr_create_generic(Scene *scene,
         });
         break;
       }
+      case BL::Attribute::data_type_INT32_2D: {
+        BL::Int2Attribute b_int2_attribute{b_attribute};
+        if (b_int2_attribute.data.length() == 0) {
+          continue;
+        }
+        const int2 *src = static_cast<const int2 *>(b_int2_attribute.data[0].ptr.data);
+        Attribute *attr = attributes.add(name, TypeFloat2, element);
+        float2 *data = attr->data_float2();
+        fill_generic_attribute(b_mesh, data, b_domain, subdivision, [&](int i) {
+          return make_float2(float(src[i][0]), float(src[i][1]));
+        });
+        break;
+      }
       default:
         /* Not supported. */
         break;
@@ -608,7 +624,7 @@ static void attr_create_subd_uv_map(Scene *scene, Mesh *mesh, BL::Mesh &b_mesh, 
   if (polys_num == 0) {
     return;
   }
-  const int *poly_offsets = static_cast<const int *>(b_mesh.polygons[0].ptr.data);
+  const int *face_offsets = static_cast<const int *>(b_mesh.polygons[0].ptr.data);
 
   if (!b_mesh.uv_layers.empty()) {
     BL::Mesh::uv_layers_iterator l;
@@ -644,8 +660,8 @@ static void attr_create_subd_uv_map(Scene *scene, Mesh *mesh, BL::Mesh &b_mesh, 
         float2 *fdata = uv_attr->data_float2();
 
         for (int i = 0; i < polys_num; i++) {
-          const int poly_start = poly_offsets[i];
-          const int poly_size = poly_offsets[i + 1] - poly_start;
+          const int poly_start = face_offsets[i];
+          const int poly_size = face_offsets[i + 1] - poly_start;
           for (int j = 0; j < poly_size; j++) {
             *(fdata++) = get_float2(l->data[poly_start + j].uv());
           }
@@ -728,13 +744,15 @@ static void attr_create_pointiness(Scene *scene, Mesh *mesh, BL::Mesh &b_mesh, b
     const float3 &vert_co = mesh->get_verts()[vert_index];
     bool found = false;
     for (int other_sorted_vert_index = sorted_vert_index + 1; other_sorted_vert_index < num_verts;
-         ++other_sorted_vert_index) {
+         ++other_sorted_vert_index)
+    {
       const int other_vert_index = sorted_vert_indeices[other_sorted_vert_index];
       const float3 &other_vert_co = mesh->get_verts()[other_vert_index];
       /* We are too far away now, we wouldn't have duplicate. */
       if ((other_vert_co.x + other_vert_co.y + other_vert_co.z) -
               (vert_co.x + vert_co.y + vert_co.z) >
-          3 * FLT_EPSILON) {
+          3 * FLT_EPSILON)
+      {
         break;
       }
       /* Found duplicate. */
@@ -783,13 +801,13 @@ static void attr_create_pointiness(Scene *scene, Mesh *mesh, BL::Mesh &b_mesh, b
   EdgeMap visited_edges;
   memset(&counter[0], 0, sizeof(int) * counter.size());
 
-  const MEdge *edges = static_cast<MEdge *>(b_mesh.edges[0].ptr.data);
+  const int2 *edges = static_cast<int2 *>(b_mesh.edges[0].ptr.data);
   const int edges_num = b_mesh.edges.length();
 
   for (int i = 0; i < edges_num; i++) {
-    const MEdge &b_edge = edges[i];
-    const int v0 = vert_orig_index[b_edge.v1];
-    const int v1 = vert_orig_index[b_edge.v2];
+    const int2 &b_edge = edges[i];
+    const int v0 = vert_orig_index[b_edge[0]];
+    const int v1 = vert_orig_index[b_edge[1]];
     if (visited_edges.exists(v0, v1)) {
       continue;
     }
@@ -825,9 +843,9 @@ static void attr_create_pointiness(Scene *scene, Mesh *mesh, BL::Mesh &b_mesh, b
   memset(&counter[0], 0, sizeof(int) * counter.size());
   visited_edges.clear();
   for (int i = 0; i < edges_num; i++) {
-    const MEdge &b_edge = edges[i];
-    const int v0 = vert_orig_index[b_edge.v1];
-    const int v1 = vert_orig_index[b_edge.v2];
+    const int2 &b_edge = edges[i];
+    const int v0 = vert_orig_index[b_edge[0]];
+    const int v1 = vert_orig_index[b_edge[1]];
     if (visited_edges.exists(v0, v1)) {
       continue;
     }
@@ -894,12 +912,12 @@ static void attr_create_random_per_island(Scene *scene,
 
   DisjointSet vertices_sets(number_of_vertices);
 
-  const MEdge *edges = static_cast<MEdge *>(b_mesh.edges[0].ptr.data);
+  const int2 *edges = static_cast<int2 *>(b_mesh.edges[0].ptr.data);
   const int edges_num = b_mesh.edges.length();
   const int *corner_verts = find_corner_vert_attribute(b_mesh);
 
   for (int i = 0; i < edges_num; i++) {
-    vertices_sets.join(edges[i].v1, edges[i].v2);
+    vertices_sets.join(edges[i][0], edges[i][1]);
   }
 
   AttributeSet &attributes = (subdivision) ? mesh->subd_attributes : mesh->attributes;
@@ -919,9 +937,9 @@ static void attr_create_random_per_island(Scene *scene,
   else {
     const int polys_num = b_mesh.polygons.length();
     if (polys_num != 0) {
-      const int *poly_offsets = static_cast<const int *>(b_mesh.polygons[0].ptr.data);
+      const int *face_offsets = static_cast<const int *>(b_mesh.polygons[0].ptr.data);
       for (int i = 0; i < polys_num; i++) {
-        const int vert = corner_verts[poly_offsets[i]];
+        const int vert = corner_verts[face_offsets[i]];
         data[i] = hash_uint_to_float(vertices_sets.find(vert));
       }
     }
@@ -972,6 +990,48 @@ static const bool *find_sharp_face_attribute(BL::Mesh b_mesh)
   return nullptr;
 }
 
+static const float *find_edge_crease_attribute(BL::Mesh b_mesh)
+{
+  for (BL::Attribute &b_attribute : b_mesh.attributes) {
+    if (b_attribute.domain() != BL::Attribute::domain_EDGE) {
+      continue;
+    }
+    if (b_attribute.data_type() != BL::Attribute::data_type_FLOAT) {
+      continue;
+    }
+    if (b_attribute.name() != "crease_edge") {
+      continue;
+    }
+    BL::FloatAttribute b_float_attribute{b_attribute};
+    if (b_float_attribute.data.length() == 0) {
+      return nullptr;
+    }
+    return static_cast<const float *>(b_float_attribute.data[0].ptr.data);
+  }
+  return nullptr;
+}
+
+static const float *find_vert_crease_attribute(BL::Mesh b_mesh)
+{
+  for (BL::Attribute &b_attribute : b_mesh.attributes) {
+    if (b_attribute.domain() != BL::Attribute::domain_POINT) {
+      continue;
+    }
+    if (b_attribute.data_type() != BL::Attribute::data_type_FLOAT) {
+      continue;
+    }
+    if (b_attribute.name() != "crease_vert") {
+      continue;
+    }
+    BL::FloatAttribute b_float_attribute{b_attribute};
+    if (b_float_attribute.data.length() == 0) {
+      return nullptr;
+    }
+    return static_cast<const float *>(b_float_attribute.data[0].ptr.data);
+  }
+  return nullptr;
+}
+
 static void create_mesh(Scene *scene,
                         Mesh *mesh,
                         BL::Mesh &b_mesh,
@@ -1008,10 +1068,10 @@ static void create_mesh(Scene *scene,
     numtris = numfaces;
   }
   else {
-    const int *poly_offsets = static_cast<const int *>(b_mesh.polygons[0].ptr.data);
+    const int *face_offsets = static_cast<const int *>(b_mesh.polygons[0].ptr.data);
     for (int i = 0; i < polys_num; i++) {
-      const int poly_start = poly_offsets[i];
-      const int poly_size = poly_offsets[i + 1] - poly_start;
+      const int poly_start = face_offsets[i];
+      const int poly_size = face_offsets[i + 1] - poly_start;
       numngons += (poly_size == 4) ? 0 : 1;
     }
   }
@@ -1078,9 +1138,10 @@ static void create_mesh(Scene *scene,
     }
 
     if (material_indices) {
+      const int *looptri_faces = static_cast<const int *>(
+          b_mesh.loop_triangle_polygons[0].ptr.data);
       for (int i = 0; i < numtris; i++) {
-        const int poly_index = looptris[i].poly;
-        shader[i] = clamp_material_index(material_indices[poly_index]);
+        shader[i] = clamp_material_index(material_indices[looptri_faces[i]]);
       }
     }
     else {
@@ -1088,9 +1149,10 @@ static void create_mesh(Scene *scene,
     }
 
     if (sharp_faces && !(use_loop_normals && corner_normals)) {
+      const int *looptri_faces = static_cast<const int *>(
+          b_mesh.loop_triangle_polygons[0].ptr.data);
       for (int i = 0; i < numtris; i++) {
-        const int poly_index = looptris[i].poly;
-        smooth[i] = !sharp_faces[poly_index];
+        smooth[i] = !sharp_faces[looptri_faces[i]];
       }
     }
     else {
@@ -1141,11 +1203,11 @@ static void create_mesh(Scene *scene,
 
     std::copy(corner_verts, corner_verts + numcorners, subd_face_corners);
 
-    const int *poly_offsets = static_cast<const int *>(b_mesh.polygons[0].ptr.data);
+    const int *face_offsets = static_cast<const int *>(b_mesh.polygons[0].ptr.data);
     int ptex_offset = 0;
     for (int i = 0; i < numfaces; i++) {
-      const int poly_start = poly_offsets[i];
-      const int poly_size = poly_offsets[i + 1] - poly_start;
+      const int poly_start = face_offsets[i];
+      const int poly_size = face_offsets[i + 1] - poly_start;
 
       subd_start_corner[i] = poly_start;
       subd_num_corners[i] = poly_size;
@@ -1207,11 +1269,12 @@ static void create_subd_mesh(Scene *scene,
 
   create_mesh(scene, mesh, b_mesh, used_shaders, need_motion, motion_scale, true, subdivide_uvs);
 
+  const int verts_num = b_mesh.vertices.length();
   const int edges_num = b_mesh.edges.length();
 
-  if (edges_num != 0 && b_mesh.edge_creases.length() > 0) {
-    const float *creases = static_cast<const float *>(b_mesh.edge_creases[0].data[0].ptr.data);
+  const float *creases = find_edge_crease_attribute(b_mesh);
 
+  if (edges_num != 0 && creases != nullptr) {
     size_t num_creases = 0;
     for (int i = 0; i < edges_num; i++) {
       if (creases[i] != 0.0f) {
@@ -1221,21 +1284,20 @@ static void create_subd_mesh(Scene *scene,
 
     mesh->reserve_subd_creases(num_creases);
 
-    const MEdge *edges = static_cast<MEdge *>(b_mesh.edges[0].ptr.data);
+    const int2 *edges = static_cast<int2 *>(b_mesh.edges[0].ptr.data);
     for (int i = 0; i < edges_num; i++) {
       const float crease = creases[i];
       if (crease != 0.0f) {
-        const MEdge &b_edge = edges[i];
-        mesh->add_edge_crease(b_edge.v1, b_edge.v2, crease);
+        const int2 &b_edge = edges[i];
+        mesh->add_edge_crease(b_edge[0], b_edge[1], crease);
       }
     }
   }
 
-  for (BL::MeshVertexCreaseLayer &layer : b_mesh.vertex_creases) {
-    const float *creases = static_cast<const float *>(layer.data[0].ptr.data);
-    for (int i = 0; i < layer.data.length(); ++i) {
-      if (creases[i] != 0.0f) {
-        mesh->add_vertex_crease(i, creases[i]);
+  if (const float *vert_creases = find_vert_crease_attribute(b_mesh)) {
+    for (int i = 0; i < verts_num; i++) {
+      if (vert_creases[i] != 0.0f) {
+        mesh->add_vertex_crease(i, vert_creases[i]);
       }
     }
   }
@@ -1312,7 +1374,8 @@ void BlenderSync::sync_mesh(BL::Depsgraph b_depsgraph, BObjectInfo &b_ob_info, M
   for (const SocketType &socket : new_mesh.type->inputs) {
     /* Those sockets are updated in sync_object, so do not modify them. */
     if (socket.name == "use_motion_blur" || socket.name == "motion_steps" ||
-        socket.name == "used_shaders") {
+        socket.name == "used_shaders")
+    {
       continue;
     }
     mesh->set_value(socket, new_mesh, socket);

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -14,28 +16,28 @@ namespace blender::nodes::node_geo_mesh_primitive_cube_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Vector>(N_("Size"))
+  b.add_input<decl::Vector>("Size")
       .default_value(float3(1))
       .min(0.0f)
       .subtype(PROP_TRANSLATION)
-      .description(N_("Side length along each axis"));
-  b.add_input<decl::Int>(N_("Vertices X"))
+      .description("Side length along each axis");
+  b.add_input<decl::Int>("Vertices X")
       .default_value(2)
       .min(2)
       .max(1000)
-      .description(N_("Number of vertices for the X side of the shape"));
-  b.add_input<decl::Int>(N_("Vertices Y"))
+      .description("Number of vertices for the X side of the shape");
+  b.add_input<decl::Int>("Vertices Y")
       .default_value(2)
       .min(2)
       .max(1000)
-      .description(N_("Number of vertices for the Y side of the shape"));
-  b.add_input<decl::Int>(N_("Vertices Z"))
+      .description("Number of vertices for the Y side of the shape");
+  b.add_input<decl::Int>("Vertices Z")
       .default_value(2)
       .min(2)
       .max(1000)
-      .description(N_("Number of vertices for the Z side of the shape"));
-  b.add_output<decl::Geometry>(N_("Mesh"));
-  b.add_output<decl::Vector>(N_("UV Map")).field_on_all();
+      .description("Number of vertices for the Z side of the shape");
+  b.add_output<decl::Geometry>("Mesh");
+  b.add_output<decl::Vector>("UV Map").field_on_all();
 }
 
 static Mesh *create_cuboid_mesh(const float3 &size,
@@ -107,30 +109,22 @@ static void node_geo_exec(GeoNodeExecParams params)
     return;
   }
 
-  AutoAnonymousAttributeID uv_map_id = params.get_output_anonymous_attribute_id_if_needed(
-      "UV Map");
+  AnonymousAttributeIDPtr uv_map_id = params.get_output_anonymous_attribute_id_if_needed("UV Map");
 
   Mesh *mesh = create_cube_mesh(size, verts_x, verts_y, verts_z, uv_map_id.get());
 
-  params.set_output("Mesh", GeometrySet::create_with_mesh(mesh));
-
-  if (uv_map_id) {
-    params.set_output("UV Map",
-                      AnonymousAttributeFieldInput::Create<float3>(
-                          std::move(uv_map_id), params.attribute_producer_name()));
-  }
+  params.set_output("Mesh", GeometrySet::from_mesh(mesh));
 }
 
-}  // namespace blender::nodes::node_geo_mesh_primitive_cube_cc
-
-void register_node_type_geo_mesh_primitive_cube()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_mesh_primitive_cube_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_MESH_PRIMITIVE_CUBE, "Cube", NODE_CLASS_GEOMETRY);
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_mesh_primitive_cube_cc

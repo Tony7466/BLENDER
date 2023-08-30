@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2012-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 from bpy.types import Menu
 
 
@@ -632,6 +635,9 @@ def brush_settings(layout, context, brush, popover=False):
             row = layout.row()
             row.prop(brush, "tip_roundness")
 
+            row = layout.row()
+            row.prop(brush, "tip_scale_x")
+
         elif sculpt_tool == 'ELASTIC_DEFORM':
             layout.separator()
             layout.prop(brush, "elastic_deform_type")
@@ -937,7 +943,6 @@ def brush_settings_advanced(layout, context, brush, popover=False):
 
         col = layout.column(heading="Auto-Masking", align=True)
 
-        col = layout.column(align=True)
         col.prop(brush, "use_automasking_topology", text="Topology")
         col.prop(brush, "use_automasking_face_sets", text="Face Sets")
 
@@ -964,7 +969,7 @@ def brush_settings_advanced(layout, context, brush, popover=False):
 
         if is_cavity_active:
             props = row.operator("sculpt.mask_from_cavity", text="Create Mask")
-            props.settings_source = "BRUSH"
+            props.settings_source = 'BRUSH'
 
         col.prop(brush, "use_automasking_cavity_inverted", text="Cavity (inverted)")
 
@@ -1415,7 +1420,11 @@ def brush_basic_gpencil_weight_settings(layout, _context, brush, *, compact=Fals
     row.prop(brush, "strength", slider=True)
     row.prop(brush, "use_pressure_strength", text="")
 
-    layout.prop(brush, "weight", slider=True)
+    if brush.gpencil_weight_tool in {'WEIGHT'}:
+        layout.prop(brush, "weight", slider=True)
+
+        gp_settings = brush.gpencil_settings
+        layout.prop(gp_settings, "direction", expand=True, text="" if compact else "Direction")
 
 
 def brush_basic_gpencil_vertex_settings(layout, _context, brush, *, compact=False):

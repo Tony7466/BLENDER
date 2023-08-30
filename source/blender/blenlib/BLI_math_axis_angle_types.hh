@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -18,7 +20,7 @@
  * the fastest and more correct option.
  */
 
-#include <iostream>
+#include <ostream>
 
 #include "BLI_math_angle_types.hh"
 #include "BLI_math_base.hh"
@@ -97,5 +99,3 @@ using AxisAngle = AxisAngleBase<float, AngleRadianBase<float>>;
 using AxisAngleCartesian = AxisAngleBase<float, AngleCartesianBase<float>>;
 
 }  // namespace blender::math
-
-/** \} */

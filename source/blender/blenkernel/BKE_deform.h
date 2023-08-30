@@ -1,9 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
 #ifdef __cplusplus
+#  include "BLI_math_vector_types.hh"
 #  include "BLI_offset_indices.hh"
 #endif
 
@@ -21,10 +23,10 @@ struct BlendWriter;
 struct ID;
 struct ListBase;
 struct MDeformVert;
-struct MEdge;
 struct Object;
 struct bDeformGroup;
 
+bool BKE_id_supports_vertex_groups(const struct ID *id);
 bool BKE_object_supports_vertex_groups(const struct Object *ob);
 const struct ListBase *BKE_object_defgroup_list(const struct Object *ob);
 struct ListBase *BKE_object_defgroup_list_mutable(struct Object *ob);
@@ -88,6 +90,7 @@ int *BKE_object_defgroup_flip_map_single(const struct Object *ob,
 int BKE_object_defgroup_flip_index(const struct Object *ob, int index, bool use_default);
 int BKE_object_defgroup_name_index(const struct Object *ob, const char *name);
 void BKE_object_defgroup_unique_name(struct bDeformGroup *dg, struct Object *ob);
+bool BKE_defgroup_unique_name_check(void *arg, const char *name);
 
 struct MDeformWeight *BKE_defvert_find_index(const struct MDeformVert *dv, int defgroup);
 /**
@@ -251,13 +254,16 @@ void BKE_defvert_normalize_lock_map(struct MDeformVert *dvert,
                                     int defbase_num);
 
 /* Utilities to 'extract' a given vgroup into a simple float array,
- * for verts, but also edges/polys/loops. */
+ * for verts, but also edges/faces/loops. */
 
 void BKE_defvert_extract_vgroup_to_vertweights(const struct MDeformVert *dvert,
                                                int defgroup,
                                                int verts_num,
                                                bool invert_vgroup,
                                                float *r_weights);
+
+#ifdef __cplusplus
+
 /**
  * The following three make basic interpolation,
  * using temp vert_weights array to avoid looking up same weight several times.
@@ -265,7 +271,7 @@ void BKE_defvert_extract_vgroup_to_vertweights(const struct MDeformVert *dvert,
 void BKE_defvert_extract_vgroup_to_edgeweights(const struct MDeformVert *dvert,
                                                int defgroup,
                                                int verts_num,
-                                               const struct MEdge *edges,
+                                               const blender::int2 *edges,
                                                int edges_num,
                                                bool invert_vgroup,
                                                float *r_weights);
@@ -277,14 +283,12 @@ void BKE_defvert_extract_vgroup_to_loopweights(const struct MDeformVert *dvert,
                                                bool invert_vgroup,
                                                float *r_weights);
 
-#ifdef __cplusplus
-
-void BKE_defvert_extract_vgroup_to_polyweights(const struct MDeformVert *dvert,
+void BKE_defvert_extract_vgroup_to_faceweights(const struct MDeformVert *dvert,
                                                int defgroup,
                                                int verts_num,
                                                const int *corner_verts,
                                                int loops_num,
-                                               blender::OffsetIndices<int> polys,
+                                               blender::OffsetIndices<int> faces,
                                                bool invert_vgroup,
                                                float *r_weights);
 

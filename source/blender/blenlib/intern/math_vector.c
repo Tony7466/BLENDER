@@ -1,12 +1,15 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
  */
 
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 
+#include "BLI_math_geom.h"
+#include "BLI_math_rotation.h"
 #include "BLI_strict_flags.h"
 
 /* -------------------------------------------------------------------- */
@@ -134,10 +137,6 @@ void interp_v2_v2v2_slerp_safe(float target[2], const float a[2], const float b[
   }
 }
 
-/* -------------------------------------------------------------------- */
-/** \name Cubic curve interpolation (bezier spline).
- * \{ */
-
 void interp_v2_v2v2v2v2_cubic(float p[2],
                               const float v1[2],
                               const float v2[2],
@@ -156,8 +155,6 @@ void interp_v2_v2v2v2v2_cubic(float p[2],
 
   interp_v2_v2v2(p, r0, r1, u);
 }
-
-/** \} */
 
 void interp_v3_v3v3v3(
     float p[3], const float v1[3], const float v2[3], const float v3[3], const float w[3])
@@ -1005,7 +1002,7 @@ double len_squared_vn(const float *array, const int size)
   const float *array_pt = array + (size - 1);
   int i = size;
   while (i--) {
-    d += sqr_db((double)(*(array_pt--)));
+    d += sqr_db((double)*(array_pt--));
   }
   return d;
 }
@@ -1276,6 +1273,8 @@ void copy_vn_fl(float *array_tar, const int size, const float val)
     *(tar--) = val;
   }
 }
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Double precision versions 'db'.

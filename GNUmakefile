@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2011-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # This Makefile does an out-of-source CMake build in ../build_`OS`_`CPU`
@@ -57,10 +59,8 @@ Static Source Code Checking
 
    * check_cppcheck:        Run blender source through cppcheck (C & C++).
    * check_clang_array:     Run blender source through clang array checking script (C & C++).
+   * check_struct_comments: Check struct member comments are correct (C & C++).
    * check_deprecated:      Check if there is any deprecated code to remove.
-   * check_splint:          Run blenders source through splint (C only).
-   * check_sparse:          Run blenders source through sparse (C only).
-   * check_smatch:          Run blenders source through smatch (C only).
    * check_descriptions:    Check for duplicate/invalid descriptions.
    * check_licenses:        Check license headers follow the SPDX license specification,
                             using one of the accepted licenses in 'doc/license/SPDX-license-identifiers.txt'
@@ -469,25 +469,17 @@ check_cppcheck: .FORCE
 	    "$(BLENDER_DIR)/check_cppcheck.txt"
 	@echo "written: check_cppcheck.txt"
 
+check_struct_comments: .FORCE
+	@$(CMAKE_CONFIG)
+	@cd "$(BUILD_DIR)" ; \
+	$(PYTHON) \
+	    "$(BLENDER_DIR)/build_files/cmake/cmake_static_check_clang.py" \
+	    --checks=struct_comments --match=".*" --jobs=$(NPROCS)
+
 check_clang_array: .FORCE
 	@$(CMAKE_CONFIG)
 	@cd "$(BUILD_DIR)" ; \
 	$(PYTHON) "$(BLENDER_DIR)/build_files/cmake/cmake_static_check_clang_array.py"
-
-check_splint: .FORCE
-	@$(CMAKE_CONFIG)
-	@cd "$(BUILD_DIR)" ; \
-	$(PYTHON) "$(BLENDER_DIR)/build_files/cmake/cmake_static_check_splint.py"
-
-check_sparse: .FORCE
-	@$(CMAKE_CONFIG)
-	@cd "$(BUILD_DIR)" ; \
-	$(PYTHON) "$(BLENDER_DIR)/build_files/cmake/cmake_static_check_sparse.py"
-
-check_smatch: .FORCE
-	@$(CMAKE_CONFIG)
-	@cd "$(BUILD_DIR)" ; \
-	$(PYTHON) "$(BLENDER_DIR)/build_files/cmake/cmake_static_check_smatch.py"
 
 check_mypy: .FORCE
 	@$(PYTHON) "$(BLENDER_DIR)/tools/check_source/check_mypy.py"
@@ -554,7 +546,6 @@ source_archive_complete: .FORCE
 	    -DCMAKE_BUILD_TYPE_INIT:STRING=$(BUILD_TYPE) -DPACKAGE_USE_UPSTREAM_SOURCES=OFF
 # This assumes CMake is still using a default `PACKAGE_DIR` variable:
 	@$(PYTHON) ./build_files/utils/make_source_archive.py --include-packages "$(BUILD_DIR)/source_archive/packages"
-
 
 INKSCAPE_BIN?="inkscape"
 icons: .FORCE

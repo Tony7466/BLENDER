@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.types import (
     Header,
@@ -434,6 +437,7 @@ class SEQUENCER_MT_view(Menu):
         if is_sequencer_view:
             layout.operator_context = 'INVOKE_REGION_WIN'
             layout.operator("sequencer.view_all")
+            layout.operator("sequencer.view_frame")
             layout.operator("view2d.zoom_border", text="Zoom")
             layout.prop(st, "use_clamp_view")
 
@@ -1651,7 +1655,7 @@ class SEQUENCER_PT_source(SequencerButtonsPanel, Panel):
                 col = col.column(align=True)
                 split = col.split(factor=0.5, align=False)
                 split.alignment = 'RIGHT'
-                split.label(text="Samplerate")
+                split.label(text="Sample Rate")
                 split.alignment = 'LEFT'
                 if sound.samplerate <= 0:
                     split.label(text="Unknown")
@@ -1769,7 +1773,7 @@ class SEQUENCER_PT_scene(SequencerButtonsPanel, Panel):
             layout.prop(strip, "use_annotations", text="Annotations")
             if scene:
                 # Warning, this is not a good convention to follow.
-                # Expose here because setting the alpha from the 'Render' menu is very inconvenient.
+                # Expose here because setting the alpha from the "Render" menu is very inconvenient.
                 layout.prop(scene.render, "film_transparent")
 
 
@@ -2486,6 +2490,7 @@ class SEQUENCER_PT_view_safe_areas_center_cut(SequencerButtonsPanel_Output, Pane
 
         col = layout.column()
         col.prop(safe_data, "title_center", slider=True)
+        col.prop(safe_data, "action_center", slider=True)
 
 
 class SEQUENCER_PT_modifiers(SequencerButtonsPanel, Panel):

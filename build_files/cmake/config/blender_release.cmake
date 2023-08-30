@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2014-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # Turn everything ON that's expected for an official release builds.
@@ -56,7 +58,8 @@ set(WITH_QUADRIFLOW          ON  CACHE BOOL "" FORCE)
 set(WITH_SDL                 ON  CACHE BOOL "" FORCE)
 set(WITH_TBB                 ON  CACHE BOOL "" FORCE)
 set(WITH_USD                 ON  CACHE BOOL "" FORCE)
-set(WITH_MATERIALX           OFF CACHE BOOL "" FORCE)
+set(WITH_MATERIALX           ON  CACHE BOOL "" FORCE)
+set(WITH_HYDRA               ON  CACHE BOOL "" FORCE)
 
 set(WITH_MEM_JEMALLOC          ON  CACHE BOOL "" FORCE)
 
@@ -81,8 +84,10 @@ if(NOT APPLE)
 
   set(WITH_CYCLES_DEVICE_OPTIX    ON  CACHE BOOL "" FORCE)
   set(WITH_CYCLES_CUDA_BINARIES   ON  CACHE BOOL "" FORCE)
-  set(WITH_CYCLES_CUBIN_COMPILER  OFF CACHE BOOL "" FORCE)
-  set(WITH_CYCLES_HIP_BINARIES    OFF CACHE BOOL "" FORCE)
+  set(WITH_CYCLES_HIP_BINARIES    ON  CACHE BOOL "" FORCE)
   set(WITH_CYCLES_DEVICE_ONEAPI   ON  CACHE BOOL "" FORCE)
   set(WITH_CYCLES_ONEAPI_BINARIES ON  CACHE BOOL "" FORCE)
+endif()
+if(WIN32)
+  set(WITH_CYCLES_DEVICE_HIPRT    ON  CACHE BOOL "" FORCE)
 endif()
