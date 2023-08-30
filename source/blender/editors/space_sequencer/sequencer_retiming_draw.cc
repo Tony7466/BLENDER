@@ -327,7 +327,9 @@ static void draw_continuity(const bContext *C, const Sequence *seq, const SeqRet
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-  if (SEQ_retiming_selection_contains(ed, key) || SEQ_retiming_selection_contains(ed, key - 1)) {
+  if (sequencer_retiming_tool_is_active(C) &&
+      (SEQ_retiming_selection_contains(ed, key) || SEQ_retiming_selection_contains(ed, key - 1)))
+  {
     immUniform4f("color", 0.65f, 0.5f, 0.2f, 1.0f);
   }
   else {

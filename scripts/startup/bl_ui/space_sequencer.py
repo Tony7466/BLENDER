@@ -972,10 +972,10 @@ class SEQUENCER_MT_strip(Menu):
         has_sequencer, _has_preview = _space_view_types(st)
 
         layout.menu("SEQUENCER_MT_strip_transform")
-        layout.menu("SEQUENCER_MT_strip_retiming")
-        layout.separator()
 
         if has_sequencer:
+            layout.menu("SEQUENCER_MT_strip_retiming")
+            layout.separator()
 
             props = layout.operator("sequencer.split", text="Split")
             props.type = 'SOFT'
@@ -987,11 +987,11 @@ class SEQUENCER_MT_strip(Menu):
 
             layout.separator()
 
-        if has_sequencer:
             layout.operator("sequencer.copy", text="Copy")
             layout.operator("sequencer.paste", text="Paste")
             layout.operator("sequencer.duplicate_move")
 
+        layout.separator()
         layout.operator("sequencer.delete", text="Delete")
 
         strip = context.active_sequence_strip
@@ -1216,10 +1216,8 @@ class SEQUENCER_MT_context_menu(Menu):
         layout = self.layout
         layout.operator_context = 'INVOKE_REGION_WIN'
 
-        layout.operator("sequencer.retiming_key_add")
-        layout.operator("sequencer.retiming_freeze_frame_add")
-
         if context.scene.sequence_editor.selected_retiming_keys:
+            layout.operator("sequencer.retiming_freeze_frame_add")
             layout.operator("sequencer.retiming_transition_add")
             layout.separator()
 

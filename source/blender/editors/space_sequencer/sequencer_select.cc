@@ -978,8 +978,10 @@ static int sequencer_select_exec(bContext *C, wmOperator *op)
 
   if (seq_key_test && retiming_key_clicked) {
     WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
-    WM_toolsystem_ref_set_by_id(C, "builtin.retime");
+    ED_sequencer_deselect_all(scene);
+    SEQ_retiming_selection_clear(ed);
     SEQ_retiming_selection_append(key);
+    WM_toolsystem_ref_set_by_id(C, "builtin.retime");
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
 
