@@ -29,6 +29,8 @@ set(SRC
   src/config_hurd.h
   src/config_linux.h
   src/config_mac.h
+  src/config_netbsd.h
+  src/config_openbsd.h
 
   src/base/commandlineflags.h
   src/base/googleinit.h
@@ -45,6 +47,11 @@ set(SRC
 
 set(LIB
 )
+
+# Suppress warnings as GLOG has it's own define.
+if(HAVE_EXECINFO_H)
+  remove_definitions(-DHAVE_EXECINFO_H)
+endif()
 
 if(NOT WITH_SYSTEM_GFLAGS)
   list(APPEND LIB

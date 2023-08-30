@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -33,8 +33,8 @@ struct RelationsInNode;
 }
 namespace aal = anonymous_attribute_lifetime;
 }  // namespace blender::nodes
-namespace blender::bke::node_tree_zones {
-class TreeZones;
+namespace blender::bke {
+class bNodeTreeZones;
 }
 namespace blender::bke::anonymous_attribute_inferencing {
 struct AnonymousAttributeInferencingResult;
@@ -95,6 +95,12 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
   uint8_t runtime_flag = 0;
 
   /**
+   * Contains a number increased for each node-tree update.
+   * Store a state variable in the #NestedTreePreviews structure to compare if they differ.
+   */
+  uint32_t previews_refresh_state = 0;
+
+  /**
    * Storage of nodes based on their identifier. Also used as a contiguous array of nodes to
    * allow simpler and more cache friendly iteration. Supports lookup by integer or by node.
    * Unlike other caches, this is maintained eagerly while changing the tree.
@@ -111,7 +117,7 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
    * Execution data is generated from the tree once at execution start and can then be used
    * as long as necessary, even while the tree is being modified.
    */
-  struct bNodeTreeExec *execdata = nullptr;
+  bNodeTreeExec *execdata = nullptr;
 
   /* Callbacks. */
   void (*progress)(void *, float progress) = nullptr;
@@ -149,7 +155,7 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
   mutable std::atomic<int> allow_use_dirty_topology_cache = 0;
 
   CacheMutex tree_zones_cache_mutex;
-  std::unique_ptr<node_tree_zones::TreeZones> tree_zones;
+  std::unique_ptr<bNodeTreeZones> tree_zones;
 
   /** Only valid when #topology_cache_is_dirty is false. */
   Vector<bNodeLink *> links;
@@ -244,11 +250,12 @@ class bNodeRuntime : NonCopyable, NonMovable {
   uint8_t need_exec = 0;
 
   /** The original node in the tree (for localized tree). */
-  struct bNode *original = nullptr;
+  bNode *original = nullptr;
 
   /**
-   * XXX TODO
-   * Node totr size depends on the prvr size, which in turn is determined from preview size.
+   * XXX:
+   * TODO: `prvr` does not exist!
+   * Node totr size depends on the `prvr` size, which in turn is determined from preview size.
    * In earlier versions bNodePreview was stored directly in nodes, but since now there can be
    * multiple instances using different preview images it is possible that required node size
    * varies between instances. preview_xsize, preview_ysize defines a common reserved size for
@@ -259,8 +266,6 @@ class bNodeRuntime : NonCopyable, NonMovable {
   short preview_xsize, preview_ysize = 0;
   /** Entire bound-box (world-space). */
   rctf totr{};
-  /** Optional preview area. */
-  rctf prvr{};
 
   /** Used at runtime when going through the tree. Initialize before use. */
   short tmp_flag = 0;
@@ -291,6 +296,9 @@ class bNodeRuntime : NonCopyable, NonMovable {
   bool has_available_linked_outputs = false;
   Vector<bNode *> direct_children_in_frame;
   bNodeTree *owner_tree = nullptr;
+  /** Can be used to toposort a subset of nodes. */
+  int toposort_left_to_right_index = -1;
+  int toposort_right_to_left_index = -1;
 };
 
 namespace node_tree_runtime {
@@ -515,15 +523,29 @@ inline blender::Span<bNode *> bNodeTree::root_frames() const
   return this->runtime->root_frames;
 }
 
-inline blender::Span<const bNodePanel *> bNodeTree::panels() const
+inline blender::Span<bNodeLink *> bNodeTree::all_links()
 {
-  return blender::Span(panels_array, panels_num);
+  BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
+  return this->runtime->links;
 }
 
-inline blender::MutableSpan<bNodePanel *> bNodeTree::panels_for_write()
+inline blender::Span<const bNodeLink *> bNodeTree::all_links() const
 {
-  return blender::MutableSpan(panels_array, panels_num);
+  BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
+  return this->runtime->links;
 }
+
+inline blender::MutableSpan<bNestedNodeRef> bNodeTree::nested_node_refs_span()
+{
+  return {this->nested_node_refs, this->nested_node_refs_num};
+}
+
+inline blender::Span<bNestedNodeRef> bNodeTree::nested_node_refs_span() const
+{
+  return {this->nested_node_refs, this->nested_node_refs_num};
+}
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name #bNode Inline Methods

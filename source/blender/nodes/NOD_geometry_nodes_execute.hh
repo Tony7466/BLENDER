@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,7 +13,9 @@
 struct bNodeTree;
 struct bNodeSocket;
 struct Depsgraph;
+namespace blender::bke {
 struct GeometrySet;
+}
 struct IDProperty;
 struct Object;
 namespace blender::nodes {
@@ -27,6 +29,9 @@ namespace blender::nodes {
 
 StringRef input_use_attribute_suffix();
 StringRef input_attribute_name_suffix();
+
+std::optional<StringRef> input_attribute_name_get(const IDProperty &props,
+                                                  const bNodeSocket &io_input);
 
 /**
  * \return Whether using an attribute to input values of this type is supported.
@@ -44,15 +49,16 @@ bool id_property_type_matches_socket(const bNodeSocket &socket, const IDProperty
 std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_from_socket(
     const bNodeSocket &socket);
 
-GeometrySet execute_geometry_nodes_on_geometry(
+bke::GeometrySet execute_geometry_nodes_on_geometry(
     const bNodeTree &btree,
     const IDProperty *properties,
     const ComputeContext &base_compute_context,
-    GeometrySet input_geometry,
+    bke::GeometrySet input_geometry,
     FunctionRef<void(nodes::GeoNodesLFUserData &)> fill_user_data);
 
 void update_input_properties_from_node_tree(const bNodeTree &tree,
                                             const IDProperty *old_properties,
+                                            bool use_bool_for_use_attribute,
                                             IDProperty &properties);
 
 void update_output_properties_from_node_tree(const bNodeTree &tree,

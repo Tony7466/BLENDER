@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2002-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2002-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -15,7 +15,7 @@ if(NOT WIN32)
     INSTALL_DIR ${LIBDIR}/ogg
   )
 else()
-    ExternalProject_Add(external_ogg
+  ExternalProject_Add(external_ogg
     URL file://${PACKAGE_DIR}/${OGG_FILE}
     DOWNLOAD_DIR ${DOWNLOAD_DIR}
     URL_HASH ${OGG_HASH_TYPE}=${OGG_HASH}

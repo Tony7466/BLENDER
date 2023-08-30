@@ -15,7 +15,7 @@
 
 #include "DNA_listBase.h"
 #include "DNA_object_enums.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #ifdef __cplusplus
 #  include "BLI_string_ref.hh"
@@ -105,6 +105,10 @@ struct bContextStore {
   bool used = false;
 };
 
+namespace blender::asset_system {
+class AssetRepresentation;
+}
+
 #endif
 
 /* for the context's rna mode enum
@@ -118,6 +122,8 @@ typedef enum eContextObjectMode {
   CTX_MODE_EDIT_METABALL,
   CTX_MODE_EDIT_LATTICE,
   CTX_MODE_EDIT_CURVES,
+  CTX_MODE_EDIT_GREASE_PENCIL,
+  CTX_MODE_EDIT_POINT_CLOUD,
   CTX_MODE_POSE,
   CTX_MODE_SCULPT,
   CTX_MODE_PAINT_WEIGHT,
@@ -125,14 +131,15 @@ typedef enum eContextObjectMode {
   CTX_MODE_PAINT_TEXTURE,
   CTX_MODE_PARTICLE,
   CTX_MODE_OBJECT,
-  CTX_MODE_PAINT_GPENCIL,
-  CTX_MODE_EDIT_GPENCIL,
-  CTX_MODE_SCULPT_GPENCIL,
-  CTX_MODE_WEIGHT_GPENCIL,
-  CTX_MODE_VERTEX_GPENCIL,
+  CTX_MODE_PAINT_GPENCIL_LEGACY,
+  CTX_MODE_EDIT_GPENCIL_LEGACY,
+  CTX_MODE_SCULPT_GPENCIL_LEGACY,
+  CTX_MODE_WEIGHT_GPENCIL_LEGACY,
+  CTX_MODE_VERTEX_GPENCIL_LEGACY,
   CTX_MODE_SCULPT_CURVES,
+  CTX_MODE_PAINT_GREASE_PENCIL,
 } eContextObjectMode;
-#define CTX_MODE_NUM (CTX_MODE_SCULPT_CURVES + 1)
+#define CTX_MODE_NUM (CTX_MODE_PAINT_GREASE_PENCIL + 1)
 
 /* Context */
 
@@ -254,6 +261,21 @@ PointerRNA CTX_data_pointer_get_type_silent(const bContext *C,
                                             const char *member,
                                             StructRNA *type);
 ListBase CTX_data_collection_get(const bContext *C, const char *member);
+
+/**
+ * For each pointer in collection_pointers, remap it to point to `ptr->propname`.
+ *
+ * Example:
+ *
+ *   lb = CTX_data_collection_get(C, "selected_pose_bones"); // lb contains pose bones.
+ *   CTX_data_collection_remap_property(lb, "color");        // lb now contains bone colors.
+ *
+ * NOTE: this alters the items contained in the given listbase.
+ * It does not change the listbase itself.
+ */
+void CTX_data_collection_remap_property(ListBase /*CollectionPointerLink*/ collection_pointers,
+                                        const char *propname);
+
 /**
  * \param C: Context.
  * \param use_store: Use 'C->wm.store'.
@@ -397,7 +419,9 @@ bool CTX_data_editable_gpencil_strokes(const bContext *C, ListBase *list);
 const struct AssetLibraryReference *CTX_wm_asset_library_ref(const bContext *C);
 struct AssetHandle CTX_wm_asset_handle(const bContext *C, bool *r_is_valid);
 
-struct AssetRepresentation *CTX_wm_asset(const bContext *C);
+#ifdef __cplusplus
+class blender::asset_system::AssetRepresentation *CTX_wm_asset(const bContext *C);
+#endif
 
 bool CTX_wm_interface_locked(const bContext *C);
 

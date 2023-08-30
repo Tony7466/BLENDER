@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -28,13 +28,13 @@
 #include "DNA_collection_types.h"
 #include "DNA_material_types.h"
 
-#include "RNA_access.h"
-#include "RNA_types.h"
+#include "RNA_access.hh"
+#include "RNA_types.hh"
 
 #include "MEM_guardedalloc.h"
 
 #include "NOD_node_declaration.hh"
-#include "NOD_socket.h"
+#include "NOD_socket.hh"
 
 #include "FN_field.hh"
 
@@ -544,7 +544,7 @@ static void standard_node_socket_interface_from_socket(bNodeTree * /*ntree*/,
   node_socket_copy_default_value(stemp, sock);
 }
 
-extern "C" void ED_init_standard_node_socket_type(bNodeSocketType *);
+void ED_init_standard_node_socket_type(bNodeSocketType *);
 
 static bNodeSocketType *make_standard_socket_type(int type, int subtype)
 {
@@ -591,7 +591,7 @@ static bNodeSocketType *make_standard_socket_type(int type, int subtype)
   return stype;
 }
 
-extern "C" void ED_init_node_socket_type_virtual(bNodeSocketType *);
+void ED_init_node_socket_type_virtual(bNodeSocketType *);
 
 static bNodeSocketType *make_socket_type_virtual()
 {
@@ -753,9 +753,9 @@ static bNodeSocketType *make_socket_type_object()
 static bNodeSocketType *make_socket_type_geometry()
 {
   bNodeSocketType *socktype = make_standard_socket_type(SOCK_GEOMETRY, PROP_NONE);
-  socktype->base_cpp_type = &blender::CPPType::get<GeometrySet>();
+  socktype->base_cpp_type = &blender::CPPType::get<blender::bke::GeometrySet>();
   socktype->get_base_cpp_value = [](const bNodeSocket & /*socket*/, void *r_value) {
-    new (r_value) GeometrySet();
+    new (r_value) blender::bke::GeometrySet();
   };
   socktype->geometry_nodes_cpp_type = socktype->base_cpp_type;
   socktype->get_geometry_nodes_cpp_value = socktype->get_base_cpp_value;
@@ -812,7 +812,7 @@ static bNodeSocketType *make_socket_type_material()
 
 void register_standard_node_socket_types()
 {
-  /* Draw callbacks are set in `drawnode.c` to avoid bad-level calls. */
+  /* Draw callbacks are set in `drawnode.cc` to avoid bad-level calls. */
 
   nodeRegisterSocketType(make_socket_type_float(PROP_NONE));
   nodeRegisterSocketType(make_socket_type_float(PROP_UNSIGNED));
