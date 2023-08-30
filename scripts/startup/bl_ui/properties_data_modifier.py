@@ -79,6 +79,7 @@ class OBJECT_MT_modifier_add_generate(Menu):
             layout.operator("object.modifier_add", text="Build", icon='MOD_BUILD').type='BUILD'
             layout.operator("object.modifier_add", text="Decimate", icon='MOD_DECIM').type='DECIMATE'
             layout.operator("object.modifier_add", text="Edge Split", icon='MOD_EDGESPLIT').type='EDGE_SPLIT'
+            layout.operator("object.modifier_add", text="Geometry Nodes", icon='GEOMETRY_NODES').type='NODES'
         if ob_type == 'MESH':
             layout.operator("object.modifier_add", text="Mask", icon='MOD_MASK').type='MASK'
         if ob_type in {'MESH', 'CURVE', 'TEXT', 'SURFACE'}:
