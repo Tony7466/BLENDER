@@ -345,8 +345,6 @@ static void region_draw_azones(ScrArea *area, ARegion *region)
 
 static void region_draw_status_text(ScrArea *area, ARegion *region)
 {
-  const bool overlap = ED_region_is_overlap(area->spacetype, region->regiontype);
-
   float header_color[4];
   UI_GetThemeColor4fv(TH_HEADER_ACTIVE, header_color);
 
@@ -355,7 +353,7 @@ static void region_draw_status_text(ScrArea *area, ARegion *region)
 
   /* Fill with header color. */
   if (header_color[3] > 0.0f) {
-    rctf rect = {0, region->winx, 0, region->winy};
+    const rctf rect = {0, region->winx, 0, region->winy};
     UI_draw_roundbox_4fv(&rect, true, 0.0f, header_color);
   }
 
@@ -375,7 +373,7 @@ static void region_draw_status_text(ScrArea *area, ARegion *region)
     float color[4] = {0.0f, 0.0f, 0.0f, 0.3f};
     UI_GetThemeColor3fv(TH_BACK, color);
     UI_draw_roundbox_corner_set(UI_CNR_ALL);
-    rctf rect = {x1, x2, y1, y2};
+    const rctf rect = {x1, x2, y1, y2};
     UI_draw_roundbox_4fv(&rect, true, 4.0f * UI_SCALE_FAC, color);
   }
 
