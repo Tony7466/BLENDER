@@ -11,7 +11,9 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_array.hh"
+#include "BLI_array_utils.hh"
 #include "BLI_enumerable_thread_specific.hh"
+#include "BLI_index_mask.hh"
 #include "BLI_math_matrix.h"
 #include "BLI_task.hh"
 
@@ -334,6 +336,108 @@ void mesh_render_data_update_looptris(MeshRenderData &mr,
   }
 }
 
+namespace blender {
+
+class VArrayImpl_For_SharpFace : public VArrayImpl<bool> {
+  const BMFace *const *faces_;
+
+ public:
+  VArrayImpl_For_SharpFace(const Span<const BMFace *> faces)
+      : VArrayImpl<bool>(faces.size()), faces_(faces.data())
+  {
+  }
+  bool get(const int64_t index) const final
+  {
+    return !BM_elem_flag_test(faces_[index], BM_ELEM_SMOOTH);
+  }
+  void materialize(const IndexMask &mask, bool *dst) const override
+  {
+    mask.foreach_index([&](const int64_t i) { dst[i] = this->get(i); });
+  }
+  void materialize_to_uninitialized(const IndexMask &mask, bool *dst) const override
+  {
+    mask.foreach_index([&](const int64_t i) { dst[i] = this->get(i); });
+  }
+  void materialize_compressed(const IndexMask &mask, bool *dst) const override
+  {
+    mask.foreach_index([&](const int64_t i, const int64_t pos) { dst[pos] = this->get(i); });
+  }
+  void materialize_compressed_to_uninitialized(const IndexMask &mask, bool *dst) const override
+  {
+    mask.foreach_index([&](const int64_t i, const int64_t pos) { dst[pos] = this->get(i); });
+  }
+};
+
+class VArrayImpl_For_SharpEdge : public VArrayImpl<bool> {
+  const BMEdge *const *edges_;
+
+ public:
+  VArrayImpl_For_SharpEdge(const Span<const BMEdge *> edges)
+      : VArrayImpl<bool>(edges.size()), edges_(edges.data())
+  {
+  }
+  bool get(const int64_t index) const final
+  {
+    return !BM_elem_flag_test(edges_[index], BM_ELEM_SMOOTH);
+  }
+  void materialize(const IndexMask &mask, bool *dst) const override
+  {
+    mask.foreach_index([&](const int64_t i) { dst[i] = this->get(i); });
+  }
+  void materialize_to_uninitialized(const IndexMask &mask, bool *dst) const override
+  {
+    mask.foreach_index([&](const int64_t i) { dst[i] = this->get(i); });
+  }
+  void materialize_compressed(const IndexMask &mask, bool *dst) const override
+  {
+    mask.foreach_index([&](const int64_t i, const int64_t pos) { dst[pos] = this->get(i); });
+  }
+  void materialize_compressed_to_uninitialized(const IndexMask &mask, bool *dst) const override
+  {
+    mask.foreach_index([&](const int64_t i, const int64_t pos) { dst[pos] = this->get(i); });
+  }
+};
+
+}  // namespace blender
+
+/**
+ * Returns whether loop normals are required because of mixed sharp and smooth flags.
+ * Similar to #Mesh::normal_domain_all_info().
+ */
+static bool bm_loop_normals_required(BMesh *bm)
+{
+  using namespace blender;
+  using namespace blender::bke;
+  if (bm->totface == 0) {
+    return false;
+  }
+
+  if (CustomData_has_layer(&bm->ldata, CD_CUSTOMLOOPNORMAL)) {
+    return true;
+  }
+
+  BM_mesh_elem_table_ensure(bm, BM_FACE);
+  const VArrayImpl_For_SharpFace sharp_faces({bm->ftable, bm->totface});
+  const array_utils::BooleanMix face_mix = array_utils::booleans_mix_calc(VArray(&sharp_faces));
+  if (face_mix == array_utils::BooleanMix::AllTrue) {
+    return false;
+  }
+
+  BM_mesh_elem_table_ensure(bm, BM_EDGE);
+  const VArrayImpl_For_SharpEdge sharp_edges({bm->etable, bm->totedge});
+  const array_utils::BooleanMix edge_mix = array_utils::booleans_mix_calc(VArray(&sharp_edges));
+  if (edge_mix == array_utils::BooleanMix::AllTrue) {
+    return false;
+  }
+
+  if (edge_mix == array_utils::BooleanMix::AllFalse &&
+      face_mix == array_utils::BooleanMix::AllFalse) {
+    return false;
+  }
+
+  return true;
+}
+
 void mesh_render_data_update_normals(MeshRenderData &mr, const eMRDataType data_flag)
 {
   if (mr.extract_type != MR_EXTRACT_BMESH) {
@@ -354,7 +458,9 @@ void mesh_render_data_update_normals(MeshRenderData &mr, const eMRDataType data_
     if (data_flag & MR_DATA_POLY_NOR) {
       /* Use #BMFace.no instead. */
     }
-    if (((data_flag & MR_DATA_LOOP_NOR)) || (data_flag & MR_DATA_TAN_LOOP_NOR)) {
+    if (((data_flag & MR_DATA_LOOP_NOR) && bm_loop_normals_required(mr.bm)) ||
+        (data_flag & MR_DATA_TAN_LOOP_NOR))
+    {
 
       const float(*vert_coords)[3] = nullptr;
       const float(*vert_normals)[3] = nullptr;
