@@ -69,6 +69,7 @@ BakePath BakePath::from_single_root(StringRefNull root_dir)
   BakePath bake_path;
   bake_path.meta_dir = meta_dir;
   bake_path.bdata_dir = bdata_dir;
+  bake_path.bake_dir = root_dir;
   return bake_path;
 }
 

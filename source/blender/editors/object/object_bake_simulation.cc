@@ -648,22 +648,31 @@ static int delete_baked_simulation_exec(bContext *C, wmOperator *op)
           if (!bake_path) {
             continue;
           }
-          if (BLI_exists(bake_path->meta_dir.c_str())) {
-            if (BLI_delete(bake_path->meta_dir.c_str(), true, true)) {
-              BKE_reportf(op->reports,
-                          RPT_ERROR,
-                          "Failed to remove meta directory %s",
-                          bake_path->meta_dir.c_str());
+
+          const char *meta_dir = bake_path->meta_dir.c_str();
+          if (BLI_exists(meta_dir)) {
+            if (BLI_delete(meta_dir, true, true)) {
+              BKE_reportf(op->reports, RPT_ERROR, "Failed to remove meta directory %s", meta_dir);
             }
           }
-          if (BLI_exists(bake_path->bdata_dir.c_str())) {
-            if (BLI_delete(bake_path->bdata_dir.c_str(), true, true)) {
-              BKE_reportf(op->reports,
-                          RPT_ERROR,
-                          "Failed to remove bdata directory %s",
-                          bake_path->bdata_dir.c_str());
+          const char *bdata_dir = bake_path->bdata_dir.c_str();
+          if (BLI_exists(bdata_dir)) {
+            if (BLI_delete(bdata_dir, true, true)) {
+              BKE_reportf(
+                  op->reports, RPT_ERROR, "Failed to remove bdata directory %s", bdata_dir);
             }
           }
+          if (bake_path->bake_dir.has_value()) {
+            const char *zone_bake_dir = bake_path->bake_dir->c_str();
+            /* Try to delete zone bake directory if it is empty. */
+            BLI_delete(zone_bake_dir, true, false);
+          }
+        }
+        if (const std::optional<std::string> modifier_bake_dir =
+                bke::sim::get_modifier_simulation_bake_path(*bmain, *object, *nmd))
+        {
+          /* Try to delete modifier bake directory if it is empty. */
+          BLI_delete(modifier_bake_dir->c_str(), true, false);
         }
       }
     }

@@ -758,6 +758,8 @@ static void timeline_cache_draw_simulation_nodes(
   if (cache.cache_by_zone_id.is_empty()) {
     return;
   }
+  /* Draw the state if one of the simulation zones. This is fine for now, because there is no ui
+   * that allows caching zones independently. */
   const blender::bke::sim::SimulationZoneCache &zone_cache =
       **cache.cache_by_zone_id.values().begin();
   if (zone_cache.frame_caches.is_empty()) {

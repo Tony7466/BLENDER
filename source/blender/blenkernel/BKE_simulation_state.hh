@@ -32,6 +32,7 @@ enum class CacheState {
 struct SimulationZoneFrameCache {
   SubFrame frame;
   Map<int, std::unique_ptr<BakeItem>> items;
+  /** Used when the baked data is loaded lazily. */
   std::optional<std::string> meta_path;
 };
 
@@ -68,5 +69,8 @@ std::optional<bake_paths::BakePath> get_simulation_zone_bake_path(const Main &bm
                                                                   const Object &object,
                                                                   const NodesModifierData &nmd,
                                                                   int zone_id);
+std::optional<std::string> get_modifier_simulation_bake_path(const Main &bmain,
+                                                             const Object &object,
+                                                             const NodesModifierData &nmd);
 
 }  // namespace blender::bke::sim

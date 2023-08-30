@@ -21,6 +21,11 @@ struct MetaFile {
 struct BakePath {
   std::string meta_dir;
   std::string bdata_dir;
+  /**
+   * Folder that is allowed to be deleted when the bake is deleted and it doesn't contain anything
+   * else. Typically, this contains the meta and bdata directories.
+   */
+  std::optional<std::string> bake_dir;
 
   static BakePath from_single_root(StringRefNull root_dir);
 };
