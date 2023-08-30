@@ -224,7 +224,7 @@ static std::string modifier_add_asset_get_description(bContext *C,
   if (!asset->get_metadata().description) {
     return "";
   }
-  return asset->get_metadata().description;
+  return TIP_(asset->get_metadata().description);
 }
 
 static void OBJECT_OT_modifier_add_asset(wmOperatorType *ot)
