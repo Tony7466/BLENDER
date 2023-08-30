@@ -65,10 +65,10 @@ class CornerIndexInFaceInput final : public bke::MeshFieldInput {
       return {};
     }
     const OffsetIndices faces = mesh.faces();
-    const Span<int> loop_to_face_map = mesh.corner_to_face_map();
-    return VArray<int>::ForFunc(mesh.totloop, [faces, loop_to_face_map](const int corner_i) {
-      const int face_i = loop_to_face_map[corner_i];
-      return corner_i - faces[face_i].start();
+    const Span<int> corner_to_face = mesh.corner_to_face_map();
+    return VArray<int>::ForFunc(mesh.totloop, [faces, corner_to_face](const int corner) {
+      const int face_i = corner_to_face[corner];
+      return corner - faces[face_i].start();
     });
   }
 
