@@ -254,22 +254,56 @@ static void accumulate_face_normal_to_vert(const Span<float3> positions,
   }
 }
 
-void normals_calc_verts(const Span<float3> positions,
+void normals_calc_verts(const Span<float3> vert_positions,
                         const OffsetIndices<int> faces,
                         const Span<int> corner_verts,
+                        const GroupedSpan<int> vert_to_face_map,
                         const Span<float3> face_normals,
                         MutableSpan<float3> vert_normals)
 {
-  memset(vert_normals.data(), 0, vert_normals.as_span().size_in_bytes());
+  const Span<float3> positions = vert_positions;
+  threading::parallel_for(positions.index_range(), 1024, [&](const IndexRange range) {
+    for (const int vert : range) {
+      const Span<int> vert_faces = vert_to_face_map[vert];
+      if (vert_faces.is_empty()) {
+        vert_normals[vert] = math::normalize(positions[vert]);
+        continue;
+      }
 
-  threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
-    for (const int face_i : range) {
-      const Span<int> face_verts = corner_verts.slice(faces[face_i]);
-      accumulate_face_normal_to_vert(positions, face_verts, face_normals[face_i], vert_normals);
+      float3 vert_normal(0);
+      for (const int face : vert_faces) {
+        const int2 adjacent_verts = face_find_adjecent_verts(faces[face], corner_verts, vert);
+
+        const float3 dir_prev = math::normalize(positions[adjacent_verts[0]] - positions[vert]);
+        const float3 dir_next = math::normalize(positions[adjacent_verts[1]] - positions[vert]);
+        const float factor = math::safe_acos(math::dot(dir_prev, dir_next));
+
+        vert_normal += face_normals[face] * factor;
+      }
+      vert_normals[vert] = vert_normal / vert_faces.size();
     }
   });
+}
 
-  normalize_and_validate(vert_normals, positions);
+void normals_calc_verts_fast(const Span<float3> positions,
+                             const GroupedSpan<int> vert_to_face_map,
+                             const Span<float3> face_normals,
+                             MutableSpan<float3> vert_normals)
+{
+  threading::parallel_for(positions.index_range(), 1024, [&](const IndexRange range) {
+    for (const int vert : range) {
+      const Span<int> vert_faces = vert_to_face_map[vert];
+      if (vert_faces.is_empty()) {
+        vert_normals[vert] = math::normalize(positions[vert]);
+        continue;
+      }
+      float3 vert_normal(0);
+      for (const int face : vert_faces) {
+        vert_normal += face_normals[face];
+      }
+      vert_normals[vert] = vert_normal / vert_faces.size();
+    }
+  });
 }
 
 static void normals_calc_faces_and_verts(const Span<float3> positions,
@@ -315,9 +349,16 @@ blender::Span<blender::float3> Mesh::vert_normals() const
    * calculation commonly has a significant performance impact, we maintain both code paths. */
   if (this->runtime->face_normals_cache.is_cached()) {
     const Span<float3> face_normals = this->face_normals();
+    const GroupedSpan<int> vert_to_face_map = this->vert_to_face_map();
     this->runtime->vert_normals_cache.ensure([&](Vector<float3> &r_data) {
       r_data.reinitialize(positions.size());
-      bke::mesh::normals_calc_verts(positions, faces, corner_verts, face_normals, r_data);
+      if (true) {
+        bke::mesh::normals_calc_verts_fast(positions, vert_to_face_map, face_normals, r_data);
+      }
+      else {
+        bke::mesh::normals_calc_verts(
+            positions, faces, corner_verts, vert_to_face_map, face_normals, r_data);
+      }
     });
   }
   else {
