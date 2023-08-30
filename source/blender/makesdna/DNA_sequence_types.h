@@ -319,8 +319,6 @@ typedef struct Editing {
   ListBase metastack;
   ListBase channels; /* SeqTimelineChannel */
 
-  ListBase retiming_selection; /* SeqRetimingKeySelection */
-
   /* Context vars, used to be static */
   Sequence *act_seq;
   /** 1024 = FILE_MAX. */

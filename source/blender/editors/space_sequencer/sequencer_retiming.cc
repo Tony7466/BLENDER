@@ -488,17 +488,14 @@ static int strip_speed_set_exec(bContext *C, const wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int segment_speed_set_exec(const bContext *C, const wmOperator *op)
+static int segment_speed_set_exec(const bContext *C,
+                                  const wmOperator *op,
+                                  blender::Map<SeqRetimingKey *, Sequence *> selection)
 {
   Scene *scene = CTX_data_scene(C);
   const Editing *ed = SEQ_editing_get(scene);
 
-  if (BLI_listbase_is_empty(&ed->retiming_selection)) {
-    BKE_report(op->reports, RPT_ERROR, "No key available");
-    return OPERATOR_CANCELLED;
-  }
-
-  for (auto item : SEQ_retiming_selection_get(scene).items()) {
+  for (auto item : selection.items()) {
     SEQ_retiming_key_speed_set(scene, item.value, item.key, RNA_float_get(op->ptr, "speed"));
     SEQ_relations_invalidate_cache_raw(scene, item.value);
   }
@@ -509,16 +506,19 @@ static int segment_speed_set_exec(const bContext *C, const wmOperator *op)
 
 static int sequencer_retiming_segment_speed_set_exec(bContext *C, wmOperator *op)
 {
-  const Editing *ed = SEQ_editing_get(CTX_data_scene(C));
+  const Scene *scene = CTX_data_scene(C);
+  const Editing *ed = SEQ_editing_get(scene);
 
   /* Strip mode. */
   if (!sequencer_retiming_tool_is_active(C)) {
     return strip_speed_set_exec(C, op);
   }
 
+  blender::Map selection = SEQ_retiming_selection_get(scene);
+
   /* Retiming mode. */
-  if (!BLI_listbase_is_empty(&ed->retiming_selection)) {
-    return segment_speed_set_exec(C, op);
+  if (selection.size() > 0) {
+    return segment_speed_set_exec(C, op, selection);
   }
 
   BKE_report(op->reports, RPT_ERROR, "No keys or strips selected");

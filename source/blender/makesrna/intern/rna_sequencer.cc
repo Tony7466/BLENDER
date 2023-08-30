@@ -47,6 +47,7 @@
 #include "SEQ_proxy.h"
 #include "SEQ_relations.h"
 #include "SEQ_retiming.h"
+#include "SEQ_retiming.hh"
 #include "SEQ_select.h"
 #include "SEQ_sequencer.h"
 #include "SEQ_sound.h"
@@ -368,8 +369,7 @@ static void rna_Sequence_retiming_key_frame_set(PointerRNA *ptr, int value)
 static bool rna_SequenceEditor_selected_retiming_key_get(PointerRNA *ptr)
 {
   Scene *scene = (Scene *)ptr->owner_id;
-  Editing *ed = SEQ_editing_get(scene);
-  return !BLI_listbase_is_empty(&ed->retiming_selection);
+  return SEQ_retiming_selection_get(scene).size() != 0;
 }
 
 static void rna_Sequence_views_format_update(Main *bmain, Scene *scene, PointerRNA *ptr)
