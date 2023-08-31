@@ -59,7 +59,7 @@ void ED_add_fcurve_channel(ChannelDrawList *draw_list,
                          float yscale_fac,
                          int saction_flag);
 /* Action Group Summary */
-void ED_add_agroup_channel(ChannelDrawList *draw_list,
+void ED_add_action_group_channel(ChannelDrawList *draw_list,
                          AnimData *adt,
                          bActionGroup *agrp,
                          float ypos,
