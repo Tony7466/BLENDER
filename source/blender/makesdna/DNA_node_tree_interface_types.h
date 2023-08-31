@@ -246,7 +246,10 @@ typedef struct bNodeTreeInterface {
     /* const_cast to avoid a const version of #find_parent_recursive. */
     const bNodeTreeInterfacePanel *parent =
         const_cast<bNodeTreeInterfacePanel &>(root_panel).find_parent_recursive(item);
-    BLI_assert(parent != nullptr);
+    if (parent == nullptr) {
+      /* Panel is the root panel. */
+      return 0;
+    }
     return parent->item_position(item);
   }
   /**
