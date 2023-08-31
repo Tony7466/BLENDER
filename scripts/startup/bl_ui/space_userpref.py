@@ -499,6 +499,7 @@ class USERPREF_PT_edit_node_editor(EditingPanel, CenterAlignMixIn, Panel):
         edit = prefs.edit
 
         col = layout.column()
+        col.prop(edit, "node_use_insert_offset", text="Auto-Offset")
         col.prop(edit, "node_margin", text="Auto-Offset Margin")
         col.prop(edit, "node_preview_resolution", text="Preview Resolution")
 
@@ -720,6 +721,9 @@ class USERPREF_PT_viewport_display(ViewportPanel, CenterAlignMixIn, Panel):
         col.prop(view, "show_object_info", text="Object Info")
         col.prop(view, "show_view_name", text="View Name")
         col.prop(view, "show_playback_fps", text="Playback Frame Rate (FPS)")
+        row = col.row()
+        row.active = view.show_playback_fps
+        row.prop(view, "playback_fps_samples", text="Frame Rate Samples")
 
         layout.separator()
 
@@ -737,6 +741,10 @@ class USERPREF_PT_viewport_display(ViewportPanel, CenterAlignMixIn, Panel):
 
         if view.mini_axis_type == 'GIZMO':
             col.prop(view, "gizmo_size_navigate_v3d", text="Size")
+
+        layout.separator()
+        col = layout.column(heading="Fresnel")
+        col.prop(view, "use_fresnel_edit")
 
 
 class USERPREF_PT_viewport_quality(ViewportPanel, CenterAlignMixIn, Panel):
@@ -2464,7 +2472,6 @@ class USERPREF_PT_experimental_new_features(ExperimentalPanel, Panel):
                  ("blender/blender/projects/10", "Pipeline, Assets & IO Project Page")),
                 ({"property": "use_override_templates"}, ("blender/blender/issues/73318", "Milestone 4")),
                 ({"property": "use_new_volume_nodes"}, ("blender/blender/issues/103248", "#103248")),
-                ({"property": "use_rotation_socket"}, ("/blender/blender/issues/92967", "#92967")),
                 ({"property": "use_node_group_operators"}, ("/blender/blender/issues/101778", "#101778")),
                 ({"property": "use_shader_node_previews"}, ("blender/blender/issues/110353", "#110353")),
             ),
@@ -2482,7 +2489,6 @@ class USERPREF_PT_experimental_prototypes(ExperimentalPanel, Panel):
                 ({"property": "use_sculpt_texture_paint"}, ("blender/blender/issues/96225", "#96225")),
                 ({"property": "use_experimental_compositors"}, ("blender/blender/issues/88150", "#88150")),
                 ({"property": "enable_eevee_next"}, ("blender/blender/issues/93220", "#93220")),
-                ({"property": "enable_workbench_next"}, ("blender/blender/issues/101619", "#101619")),
                 ({"property": "use_grease_pencil_version3"}, ("blender/blender/projects/6", "Grease Pencil 3.0")),
                 ({"property": "enable_overlay_next"}, ("blender/blender/issues/102179", "#102179")),
                 ({"property": "use_extension_repos"}, ("/blender/blender/issues/106254", "#106254")),
