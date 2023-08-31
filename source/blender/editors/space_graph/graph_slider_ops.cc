@@ -1372,8 +1372,8 @@ void GRAPH_OT_scale_average(wmOperatorType *ot)
                        1.0f,
                        -FLT_MAX,
                        FLT_MAX,
-                       "Curve Bend",
-                       "Control the bend of the curve",
+                       "Scale Factor",
+                       "The scale factor applied to the curve segments",
                        0.0f,
                        2.0f);
 }
