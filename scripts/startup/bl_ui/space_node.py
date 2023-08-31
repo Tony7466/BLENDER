@@ -446,21 +446,21 @@ class NODE_PT_geometry_node_asset_traits(Panel):
         snode = context.space_data
         group = snode.node_tree
 
-        col = layout.column(heading="Type")
-        if snode.geometry_nodes_type == 'TOOL':
+        if snode.geometry_nodes_type == 'MODIFIER':
+            layout.prop(group, "is_modifier")
+        else:
+            col = layout.column(heading="Type")
             col.prop(group, "is_tool")
             col = layout.column(heading="Mode")
             col.active = group.is_tool
             col.prop(group, "is_mode_edit")
             col.prop(group, "is_mode_sculpt")
-        elif snode.geometry_nodes_type == 'MODIFIER':
-            col.prop(group, "is_modifier")
-        col = layout.column(heading="Geometry")
-        col.active = group.is_tool if snode.geometry_nodes_type == 'TOOL' else group.is_modifier
-        col.prop(group, "is_type_mesh")
-        col.prop(group, "is_type_curve")
-        if context.preferences.experimental.use_new_point_cloud_type:
-            col.prop(group, "is_type_point_cloud")
+            col = layout.column(heading="Geometry")
+            col.active = group.is_tool
+            col.prop(group, "is_type_mesh")
+            col.prop(group, "is_type_curve")
+            if context.preferences.experimental.use_new_point_cloud_type:
+                col.prop(group, "is_type_point_cloud")
 
 
 class NODE_PT_node_color_presets(PresetPanel, Panel):
