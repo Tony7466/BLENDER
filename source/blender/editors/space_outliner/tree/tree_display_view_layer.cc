@@ -57,12 +57,12 @@ TreeDisplayViewLayer::TreeDisplayViewLayer(SpaceOutliner &space_outliner)
 {
 }
 
-bool TreeDisplayViewLayer::supportsModeColumn() const
+bool TreeDisplayViewLayer::supports_mode_column() const
 {
   return true;
 }
 
-ListBase TreeDisplayViewLayer::buildTree(const TreeSourceData &source_data)
+ListBase TreeDisplayViewLayer::build_tree(const TreeSourceData &source_data)
 {
   ListBase tree = {nullptr};
   Scene *scene = source_data.scene;
@@ -80,8 +80,9 @@ ListBase TreeDisplayViewLayer::buildTree(const TreeSourceData &source_data)
       add_view_layer(*scene, tree, (TreeElement *)nullptr);
     }
     else {
+      ViewLayerElementCreateData view_layer_data = {scene, view_layer};
       TreeElement &te_view_layer = *outliner_add_element(
-          &space_outliner_, &tree, view_layer, nullptr, TSE_R_LAYER, 0);
+          &space_outliner_, &tree, &view_layer_data, nullptr, TSE_R_LAYER, 0);
 
       TreeStoreElem *tselem = TREESTORE(&te_view_layer);
 

@@ -1316,13 +1316,13 @@ static void pbvh_faces_update_normals(PBVH *pbvh, Span<PBVHNode *> nodes, Mesh &
   VectorSet<int> verts_to_update;
   threading::parallel_invoke(
       [&]() {
-        MutableSpan<float3> face_normals = mesh.runtime->face_normals;
-        threading::parallel_for(faces_to_update.index_range(), 512, [&](const IndexRange range) {
-          for (const int i : faces_to_update.as_span().slice(range)) {
-            face_normals[i] = mesh::face_normal_calc(positions, corner_verts.slice(faces[i]));
-          }
+        mesh.runtime->face_normals_cache.update([&](Vector<float3> &r_data) {
+          threading::parallel_for(faces_to_update.index_range(), 512, [&](const IndexRange range) {
+            for (const int i : faces_to_update.as_span().slice(range)) {
+              r_data[i] = mesh::face_normal_calc(positions, corner_verts.slice(faces[i]));
+            }
+          });
         });
-        mesh.runtime->face_normals_dirty = false;
       },
       [&]() {
         /* Update all normals connected to affected faces, even if not explicitly tagged. */
@@ -1339,18 +1339,18 @@ static void pbvh_faces_update_normals(PBVH *pbvh, Span<PBVHNode *> nodes, Mesh &
         }
       });
 
-  const Span<float3> face_normals = mesh.runtime->face_normals;
-  MutableSpan<float3> vert_normals = mesh.runtime->vert_normals;
-  threading::parallel_for(verts_to_update.index_range(), 1024, [&](const IndexRange range) {
-    for (const int vert : verts_to_update.as_span().slice(range)) {
-      float3 normal(0.0f);
-      for (const int face : pbvh->pmap[vert]) {
-        normal += face_normals[face];
+  const Span<float3> face_normals = mesh.face_normals();
+  mesh.runtime->vert_normals_cache.update([&](Vector<float3> &r_data) {
+    threading::parallel_for(verts_to_update.index_range(), 1024, [&](const IndexRange range) {
+      for (const int vert : verts_to_update.as_span().slice(range)) {
+        float3 normal(0.0f);
+        for (const int face : pbvh->pmap[vert]) {
+          normal += face_normals[face];
+        }
+        r_data[vert] = math::normalize(normal);
       }
-      vert_normals[vert] = math::normalize(normal);
-    }
+    });
   });
-  mesh.runtime->vert_normals_dirty = false;
 }
 
 static void node_update_mask_redraw(PBVH &pbvh, PBVHNode &node)
@@ -1381,26 +1381,6 @@ static void node_update_mask_redraw(PBVH &pbvh, PBVHNode &node)
   }
   BKE_pbvh_node_fully_masked_set(&node, !has_unmasked);
   BKE_pbvh_node_fully_unmasked_set(&node, has_masked);
-}
-
-static void node_update_visibility_redraw(PBVH &pbvh, PBVHNode &node)
-{
-  if (!(node.flag & PBVH_UpdateVisibility)) {
-    return;
-  }
-  node.flag &= ~PBVH_UpdateVisibility;
-
-  BKE_pbvh_node_fully_hidden_set(&node, true);
-  if (node.flag & PBVH_Leaf) {
-    PBVHVertexIter vd;
-    BKE_pbvh_vertex_iter_begin (&pbvh, &node, vd, PBVH_ITER_ALL) {
-      if (vd.visible) {
-        BKE_pbvh_node_fully_hidden_set(&node, false);
-        return;
-      }
-    }
-    BKE_pbvh_vertex_iter_end;
-  }
 }
 
 static void node_update_bounds(PBVH &pbvh, PBVHNode &node, const PBVHNodeFlags flag)
@@ -1584,14 +1564,6 @@ void BKE_pbvh_update_vertex_data(PBVH *pbvh, int flag)
     for (PBVHNode *node : nodes) {
       node->flag |= PBVH_UpdateRedraw | PBVH_UpdateDrawBuffers | PBVH_UpdateColor;
     }
-  }
-
-  if (flag & (PBVH_UpdateVisibility)) {
-    threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-      for (PBVHNode *node : nodes.as_span().slice(range)) {
-        node_update_visibility_redraw(*pbvh, *node);
-      }
-    });
   }
 }
 
