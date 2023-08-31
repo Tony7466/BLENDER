@@ -727,11 +727,17 @@ static int constant_type_size(Type type)
     case Type::UCHAR4:
     case Type::CHAR4:
     case blender::gpu::shader::Type::VEC3_101010I2:
+    case blender::gpu::shader::Type::USHORT2:
+    case blender::gpu::shader::Type::SHORT2:
       return 4;
       break;
     case Type::VEC2:
     case Type::UVEC2:
     case Type::IVEC2:
+    case blender::gpu::shader::Type::USHORT3:
+    case blender::gpu::shader::Type::SHORT3:
+    case blender::gpu::shader::Type::USHORT4:
+    case blender::gpu::shader::Type::SHORT4:
       return 8;
       break;
     case Type::VEC3:
@@ -755,6 +761,8 @@ static int constant_type_size(Type type)
       break;
     case blender::gpu::shader::Type::UCHAR2:
     case blender::gpu::shader::Type::CHAR2:
+    case blender::gpu::shader::Type::USHORT:
+    case blender::gpu::shader::Type::SHORT:
       return 2;
       break;
     case blender::gpu::shader::Type::UCHAR3:

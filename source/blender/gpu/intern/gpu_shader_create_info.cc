@@ -121,6 +121,7 @@ void ShaderCreateInfo::finalize()
     fragment_outputs_.extend_non_duplicates(info.fragment_outputs_);
     vertex_out_interfaces_.extend_non_duplicates(info.vertex_out_interfaces_);
     geometry_out_interfaces_.extend_non_duplicates(info.geometry_out_interfaces_);
+    fragment_tile_inputs_.extend_non_duplicates(info.fragment_tile_inputs_);
 
     validate_vertex_attributes(&info);
 
@@ -176,6 +177,9 @@ void ShaderCreateInfo::finalize()
       assert_no_overlap(compute_source_.is_empty(), "Compute source already existing");
       compute_source_ = info.compute_source_;
     }
+
+    /* Inherit builtin usage bits. */
+    builtins_ |= info.builtins_;
   }
 
   if (auto_resource_location_) {
