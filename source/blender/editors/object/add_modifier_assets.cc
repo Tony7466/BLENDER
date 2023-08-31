@@ -260,6 +260,7 @@ static MenuType modifier_add_catalog_assets_menu_type()
   STRNCPY(type.idname, "OBJECT_MT_add_modifier_catalog_assets");
   type.draw = catalog_assets_draw;
   type.listener = asset::asset_reading_region_listen_fn;
+  type.context_dependent = true;
   return type;
 }
 
@@ -269,6 +270,7 @@ static MenuType modifier_add_root_catalogs_menu_type()
   STRNCPY(type.idname, "OBJECT_MT_modifier_add_root_catalogs");
   type.draw = root_catalogs_draw;
   type.listener = asset::asset_reading_region_listen_fn;
+  type.context_dependent = true;
   return type;
 }
 
