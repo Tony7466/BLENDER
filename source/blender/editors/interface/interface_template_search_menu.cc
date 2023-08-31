@@ -309,7 +309,7 @@ struct MenuStackEntry {
   /** Used as parent in submenus. */
   MenuSearch_Parent *self_as_parent = nullptr;
   /** The menu might be context dependent. */
-  blender::Vector<bContextStoreEntry> entries;
+  std::optional<bContextStore> context;
 };
 
 /**
@@ -671,12 +671,11 @@ static MenuSearch_Data *menu_items_from_ui_create(
       uiLayout *layout = UI_block_layout(
           block, UI_LAYOUT_VERTICAL, UI_LAYOUT_MENU, 0, 0, 200, 0, UI_MENU_PADDING, style);
 
-      bContextStore tmp_context_store;
-      tmp_context_store.entries = std::move(current_menu.entries);
-      uiLayoutContextCopy(layout, &tmp_context_store);
-
       UI_block_flag_enable(block, UI_BLOCK_SHOW_SHORTCUT_ALWAYS);
 
+      if (current_menu.context.has_value()) {
+        uiLayoutContextCopy(layout, &*current_menu.context);
+      }
       uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_REGION_WIN);
       UI_menutype_draw(C, mt, layout);
 
@@ -754,7 +753,7 @@ static MenuSearch_Data *menu_items_from_ui_create(
             }
 
             if (uses_context) {
-              menu_stack.push({mt_from_but, menu_parent, but->context->entries});
+              menu_stack.push({mt_from_but, menu_parent, *but->context});
             }
             else {
               menu_stack.push({mt_from_but, menu_parent});
