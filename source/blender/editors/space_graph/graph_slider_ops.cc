@@ -1162,8 +1162,8 @@ void GRAPH_OT_blend_to_ease(wmOperatorType *ot)
                        0.0f,
                        -FLT_MAX,
                        FLT_MAX,
-                       "Curve Bend",
-                       "Control the bend of the curve",
+                       "Blend",
+                       "Favor either original data or ease curve",
                        -1.0f,
                        1.0f);
 }
@@ -1196,10 +1196,10 @@ static void match_slope_graph_keys(bAnimContext *ac, const float factor)
 
   if (!all_segments_valid) {
     if (factor >= 0) {
-      WM_report(RPT_WARNING, "You need at least 2 keys to the right side of the selection.");
+      WM_report(RPT_WARNING, "You need at least 2 keys to the right side of the selection");
     }
     else {
-      WM_report(RPT_WARNING, "You need at least 2 keys to the left side of the selection.");
+      WM_report(RPT_WARNING, "You need at least 2 keys to the left side of the selection");
     }
   }
 
