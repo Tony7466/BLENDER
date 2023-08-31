@@ -9,7 +9,7 @@ namespace blender::nodes::materialx {
 NodeItem MixRGBNodeParser::compute()
 {
   /* TODO: implement */
-  return empty_value();
+  return empty();
 }
 
 }  // namespace blender::nodes::materialx

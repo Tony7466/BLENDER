@@ -8,7 +8,7 @@ namespace blender::nodes::materialx {
 
 NodeItem OutputMaterialNodeParser::compute()
 {
-  NodeItem node = empty_value();
+  NodeItem node = empty();
   NodeItem surface = get_input_link("Surface");
   if (surface) {
     node = create_node("surfacematerial", "material");

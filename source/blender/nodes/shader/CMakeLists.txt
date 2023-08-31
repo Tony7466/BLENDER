@@ -152,11 +152,13 @@ if(WITH_MATERIALX)
     materialx/nodes/invert.cc
     materialx/nodes/math.cc
     materialx/nodes/mix_rgb.cc
+    materialx/nodes/node_item.cc
     materialx/nodes/node_parser.cc
     materialx/nodes/output_material.cc
     materialx/nodes/tex_image.cc
 
     materialx/material.h
+    materialx/nodes/node_item.h
     materialx/nodes/node_parser.h
   )
 endif()
