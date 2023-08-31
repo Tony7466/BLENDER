@@ -853,9 +853,9 @@ void shear_fcurve_segment(FCurve *fcu,
       normalized_x = (right_key->vec[1][0] - fcu->bezt[i].vec[1][0]) / key_x_range;
     }
 
-    const float lineal = key_y_range * normalized_x;
+    const float y_delta = key_y_range * normalized_x;
 
-    const float key_y_value = fcu->bezt[i].vec[1][1] + lineal * factor;
+    const float key_y_value = fcu->bezt[i].vec[1][1] + y_delta * factor;
     BKE_fcurve_keyframe_move_value_with_handles(&fcu->bezt[i], key_y_value);
   }
 }
