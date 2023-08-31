@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -33,7 +33,7 @@ TreeDisplayOverrideLibraryProperties::TreeDisplayOverrideLibraryProperties(
 {
 }
 
-ListBase TreeDisplayOverrideLibraryProperties::buildTree(const TreeSourceData &source_data)
+ListBase TreeDisplayOverrideLibraryProperties::build_tree(const TreeSourceData &source_data)
 {
   ListBase tree = add_library_contents(*source_data.bmain);
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,19 +6,19 @@
  * \ingroup edobj
  */
 
-#include <math.h>
-#include <stdlib.h>
+#include <cmath>
+#include <cstdlib>
 
 #include "DNA_object_types.h"
 
 #include "BKE_context.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_object.h"
+#include "ED_object.hh"
 
 #include "object_intern.h"
 
@@ -332,7 +332,7 @@ void ED_keymap_object(wmKeyConfig *keyconf)
   keymap = WM_keymap_ensure(keyconf, "Object Non-modal", 0, 0);
 
   /* Object Mode ---------------------------------------------------------------- */
-  /* NOTE: this keymap gets disabled in non-objectmode. */
+  /* NOTE: this keymap gets disabled in non-object-mode. */
   keymap = WM_keymap_ensure(keyconf, "Object Mode", 0, 0);
   keymap->poll = object_mode_poll;
 }

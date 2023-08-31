@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -318,6 +318,19 @@ bool MTLBackend::metal_is_supported()
       }
     }
 
+    /* If Intel, we must be on macOS 11.2+ for full Metal backend support. */
+    NSString *gpu_name = [device name];
+    const char *vendor = [gpu_name UTF8String];
+    if ((strstr(vendor, "Intel") || strstr(vendor, "INTEL"))) {
+      if (@available(macOS 11.2, *)) {
+        /* Intel device supported -- Carry on.
+         * NOTE: @available syntax cannot be negated. */
+      }
+      else {
+        return false;
+      }
+    }
+
     /* Metal Viewport requires argument buffer tier-2 support and Barycentric Coordinates.
      * These are available on most hardware configurations supporting Metal 2.2. */
     bool supports_argument_buffers_tier2 = ([device argumentBuffersSupport] ==
@@ -407,6 +420,7 @@ void MTLBackend::capabilities_init(MTLContext *ctx)
   GCaps.compute_shader_support = true;
   GCaps.shader_storage_buffer_objects_support = true;
   GCaps.shader_draw_parameters_support = true;
+  GCaps.hdr_viewport_support = true;
 
   GCaps.geometry_shader_support = false;
 

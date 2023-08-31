@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,7 +7,7 @@
  */
 
 #include "BKE_collection.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 
 #include "BLI_function_ref.hh"
 #include "BLI_listbase_wrapper.hh"
@@ -18,13 +18,15 @@
 
 #include "DNA_space_types.h"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 
 #include "../outliner_intern.hh"
 
 #include "tree_element_label.hh"
 #include "tree_element_overrides.hh"
+
+#include <stdexcept>
 
 namespace blender::ed::outliner {
 
@@ -71,7 +73,7 @@ TreeElementOverridesBase::TreeElementOverridesBase(TreeElement &legacy_te, ID &i
   }
 }
 
-StringRefNull TreeElementOverridesBase::getWarning() const
+StringRefNull TreeElementOverridesBase::get_warning() const
 {
   if (id.flag & LIB_LIB_OVERRIDE_RESYNC_LEFTOVER) {
     return TIP_("This override data-block is not needed anymore, but was detected as user-edited");
@@ -180,7 +182,7 @@ TreeElementOverridesProperty::TreeElementOverridesProperty(TreeElement &legacy_t
   legacy_te.name = RNA_property_ui_name(&override_data.override_rna_prop);
 }
 
-StringRefNull TreeElementOverridesProperty::getWarning() const
+StringRefNull TreeElementOverridesProperty::get_warning() const
 {
   if (!is_rna_path_valid) {
     return TIP_(
@@ -228,7 +230,7 @@ TreeElementOverridesPropertyOperation::TreeElementOverridesPropertyOperation(
   }
 }
 
-StringRefNull TreeElementOverridesPropertyOperation::getOverrideOperationLabel() const
+StringRefNull TreeElementOverridesPropertyOperation::get_override_operation_label() const
 {
   switch (operation_->operation) {
     case LIBOVERRIDE_OP_INSERT_AFTER:
@@ -244,7 +246,7 @@ StringRefNull TreeElementOverridesPropertyOperation::getOverrideOperationLabel()
     case LIBOVERRIDE_OP_ADD:
       return TIP_("Additive override");
     case LIBOVERRIDE_OP_SUBTRACT:
-      return TIP_("Substractive override");
+      return TIP_("Subtractive override");
     case LIBOVERRIDE_OP_MULTIPLY:
       return TIP_("Multiplicative override");
     default:
@@ -253,10 +255,10 @@ StringRefNull TreeElementOverridesPropertyOperation::getOverrideOperationLabel()
   }
 }
 
-std::optional<BIFIconID> TreeElementOverridesPropertyOperation::getIcon() const
+std::optional<BIFIconID> TreeElementOverridesPropertyOperation::get_icon() const
 {
   if (const std::optional<PointerRNA> col_item_ptr = get_collection_ptr()) {
-    return (BIFIconID)RNA_struct_ui_icon(col_item_ptr->type);
+    return RNA_struct_ui_icon(col_item_ptr->type);
   }
 
   return {};
@@ -403,8 +405,15 @@ void OverrideRNAPathTreeBuilder::ensure_entire_collection(
                                                  item_idx,
                                                  nullptr);
     IDOverrideLibraryPropertyOperation *item_operation =
-        BKE_lib_override_library_property_operation_find(
-            &override_data.override_property, nullptr, nullptr, -1, item_idx, false, nullptr);
+        BKE_lib_override_library_property_operation_find(&override_data.override_property,
+                                                         nullptr,
+                                                         nullptr,
+                                                         {},
+                                                         {},
+                                                         -1,
+                                                         item_idx,
+                                                         false,
+                                                         nullptr);
     TreeElement *current_te = nullptr;
 
     TreeElement *existing_te = path_te_map.lookup_default(coll_item_path, nullptr);
@@ -444,7 +453,7 @@ void OverrideRNAPathTreeBuilder::ensure_entire_collection(
 
 static BIFIconID get_property_icon(PointerRNA &ptr, PropertyRNA &prop)
 {
-  BIFIconID icon = (BIFIconID)RNA_property_ui_icon(&prop);
+  BIFIconID icon = RNA_property_ui_icon(&prop);
   if (icon) {
     return icon;
   }
@@ -453,7 +462,7 @@ static BIFIconID get_property_icon(PointerRNA &ptr, PropertyRNA &prop)
    * #Object.modifiers property). */
   if (RNA_property_type(&prop) == PROP_COLLECTION) {
     const StructRNA *coll_ptr_type = RNA_property_pointer_type(&ptr, &prop);
-    icon = (BIFIconID)RNA_struct_ui_icon(coll_ptr_type);
+    icon = RNA_struct_ui_icon(coll_ptr_type);
     if (icon != ICON_DOT) {
       return icon;
     }
@@ -475,7 +484,7 @@ TreeElement &OverrideRNAPathTreeBuilder::ensure_label_element_for_prop(
                                                false);
     TreeElementLabel *te_label = tree_element_cast<TreeElementLabel>(new_te);
 
-    te_label->setIcon(get_property_icon(ptr, prop));
+    te_label->set_icon(get_property_icon(ptr, prop));
     return new_te;
   });
 }
@@ -496,7 +505,7 @@ TreeElement &OverrideRNAPathTreeBuilder::ensure_label_element_for_ptr(TreeElemen
         TSE_GENERIC_LABEL,
         index++);
     TreeElementLabel *te_label = tree_element_cast<TreeElementLabel>(new_te);
-    te_label->setIcon((BIFIconID)RNA_struct_ui_icon(ptr.type));
+    te_label->set_icon(RNA_struct_ui_icon(ptr.type));
 
     MEM_delete(dyn_name);
 

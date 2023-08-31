@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -58,7 +58,7 @@ class OBJCurve : NonCopyable {
   /**
    * Set the final transform after applying axes settings and an Object's world transform.
    */
-  void set_world_axes_transform(eIOAxis forward, eIOAxis up);
+  void set_world_axes_transform(math::AxisSigned forward, math::AxisSigned up);
 };
 
 }  // namespace blender::io::obj

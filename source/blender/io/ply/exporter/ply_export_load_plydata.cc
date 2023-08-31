@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,7 +7,7 @@
  */
 
 #include "ply_export_load_plydata.hh"
-#include "IO_ply.h"
+#include "IO_ply.hh"
 #include "ply_data.hh"
 
 #include "BKE_attribute.hh"
@@ -15,7 +15,11 @@
 #include "BKE_mesh.hh"
 #include "BKE_object.h"
 #include "BLI_hash.hh"
-#include "BLI_math.h"
+#include "BLI_math_color.hh"
+#include "BLI_math_matrix.h"
+#include "BLI_math_matrix.hh"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_vector.hh"
 #include "DEG_depsgraph_query.h"
 #include "DNA_layer_types.h"
@@ -42,18 +46,16 @@ static Mesh *do_triangulation(const Mesh *mesh, bool force_triangulation)
 }
 
 static void set_world_axes_transform(Object *object,
-                                     const eIOAxis forward,
-                                     const eIOAxis up,
+                                     const math::AxisSigned forward,
+                                     const math::AxisSigned up,
                                      float r_world_and_axes_transform[4][4],
                                      float r_world_and_axes_normal_transform[3][3])
 {
-  float axes_transform[3][3];
-  unit_m3(axes_transform);
-  /* +Y-forward and +Z-up are the default Blender axis settings. */
-  mat3_from_axis_conversion(forward, up, IO_AXIS_Y, IO_AXIS_Z, axes_transform);
-  mul_m4_m3m4(r_world_and_axes_transform, axes_transform, object->object_to_world);
+  const math::CartesianBasis basis = math::from_orthonormal_axes(forward, up);
+  const float3x3 axes_transform = math::from_rotation<float3x3>(basis);
+  mul_m4_m3m4(r_world_and_axes_transform, axes_transform.ptr(), object->object_to_world);
   /* mul_m4_m3m4 does not transform last row of obmat, i.e. location data. */
-  mul_v3_m3v3(r_world_and_axes_transform[3], axes_transform, object->object_to_world[3]);
+  mul_v3_m3v3(r_world_and_axes_transform[3], axes_transform.ptr(), object->object_to_world[3]);
   r_world_and_axes_transform[3][3] = object->object_to_world[3][3];
 
   /* Normals need inverse transpose of the regular matrix to handle non-uniform scale. */
@@ -88,7 +90,7 @@ static void generate_vertex_map(const Mesh *mesh,
   bool export_uv = false;
   VArraySpan<float2> uv_map;
   if (export_params.export_uv) {
-    const StringRef uv_name = CustomData_get_active_layer_name(&mesh->ldata, CD_PROP_FLOAT2);
+    const StringRef uv_name = CustomData_get_active_layer_name(&mesh->loop_data, CD_PROP_FLOAT2);
     if (!uv_name.is_empty()) {
       const bke::AttributeAccessor attributes = mesh->attributes();
       uv_map = *attributes.lookup<float2>(uv_name, ATTR_DOMAIN_CORNER);
@@ -170,9 +172,9 @@ void load_plydata(PlyData &plyData, Depsgraph *depsgraph, const PLYExportParams 
                      BKE_object_get_pre_modified_mesh(&export_object_eval_);
 
     bool force_triangulation = false;
-    const OffsetIndices polys = mesh->polys();
-    for (const int i : polys.index_range()) {
-      if (polys[i].size() > 255) {
+    const OffsetIndices faces = mesh->faces();
+    for (const int i : faces.index_range()) {
+      if (faces[i].size() > 255) {
         force_triangulation = true;
         break;
       }
@@ -205,10 +207,10 @@ void load_plydata(PlyData &plyData, Depsgraph *depsgraph, const PLYExportParams 
       plyData.face_vertices.append_unchecked(ply_index + vertex_offset);
     }
 
-    plyData.face_sizes.reserve(plyData.face_sizes.size() + mesh->totpoly);
-    for (const int i : polys.index_range()) {
-      const IndexRange poly = polys[i];
-      plyData.face_sizes.append_unchecked(poly.size());
+    plyData.face_sizes.reserve(plyData.face_sizes.size() + mesh->faces_num);
+    for (const int i : faces.index_range()) {
+      const IndexRange face = faces[i];
+      plyData.face_sizes.append_unchecked(face.size());
     }
 
     /* Vertices */

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -27,9 +27,10 @@
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_idprop.h"
+#include "BKE_idtype.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_lib_remap.h"
 #include "BKE_material.h"
 #include "BKE_node.hh"
@@ -41,32 +42,31 @@
 
 #include "DEG_depsgraph.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
-#include "UI_interface.h"
 #include "UI_interface.hh"
 
 #include "interface_intern.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_object.h"
-#include "ED_paint.h"
+#include "ED_object.hh"
+#include "ED_paint.hh"
 
 /* for Copy As Driver */
-#include "ED_keyframing.h"
+#include "ED_keyframing.hh"
 
 /* only for UI_OT_editsource */
 #include "BKE_main.h"
 #include "BLI_ghash.h"
-#include "ED_screen.h"
-#include "ED_text.h"
+#include "ED_screen.hh"
+#include "ED_text.hh"
 
 using namespace blender::ui;
 
@@ -700,7 +700,7 @@ static int override_remove_button_exec(bContext *C, wmOperator *op)
     /* Remove override operation for given item,
      * add singular operations for the other items as needed. */
     IDOverrideLibraryPropertyOperation *opop = BKE_lib_override_library_property_operation_find(
-        oprop, nullptr, nullptr, index, index, false, &is_strict_find);
+        oprop, nullptr, nullptr, {}, {}, index, index, false, &is_strict_find);
     BLI_assert(opop != nullptr);
     if (!is_strict_find) {
       /* No specific override operation, we have to get generic one,
@@ -709,7 +709,7 @@ static int override_remove_button_exec(bContext *C, wmOperator *op)
       for (int idx = RNA_property_array_length(&ptr, prop); idx--;) {
         if (idx != index) {
           BKE_lib_override_library_property_operation_get(
-              oprop, opop->operation, nullptr, nullptr, idx, idx, true, nullptr, nullptr);
+              oprop, opop->operation, nullptr, nullptr, {}, {}, idx, idx, true, nullptr, nullptr);
         }
       }
     }
@@ -1132,6 +1132,44 @@ bool UI_context_copy_to_selected_list(bContext *C,
   else if (RNA_struct_is_a(ptr->type, &RNA_Bone)) {
     ui_context_selected_bones_via_pose(C, r_lb);
   }
+  else if (RNA_struct_is_a(ptr->type, &RNA_BoneColor)) {
+    /* Get the things that own the bone color (bones, pose bones, or edit bones). */
+    ListBase list_of_things = {}; /* First this will be bones, then gets remapped to colors. */
+    switch (GS(ptr->owner_id->name)) {
+      case ID_OB:
+        list_of_things = CTX_data_collection_get(C, "selected_pose_bones");
+        break;
+      case ID_AR: {
+        /* Armature-owned bones can be accessed from both edit mode and pose mode.
+         * - Edit mode: visit selected edit bones.
+         * - Pose mode: visit the armature bones of selected pose bones.
+         */
+        const bArmature *arm = reinterpret_cast<bArmature *>(ptr->owner_id);
+        if (arm->edbo) {
+          list_of_things = CTX_data_collection_get(C, "selected_editable_bones");
+        }
+        else {
+          list_of_things = CTX_data_collection_get(C, "selected_pose_bones");
+          CTX_data_collection_remap_property(list_of_things, "bone");
+        }
+        break;
+      }
+      default:
+        printf("BoneColor is unexpectedly owned by %s '%s'\n",
+               BKE_idtype_idcode_to_name(GS(ptr->owner_id->name)),
+               ptr->owner_id->name + 2);
+        BLI_assert(!"expected BoneColor to be owned by the Armature (bone & edit bone) or the Object (pose bone)");
+        return false;
+    }
+
+    /* Remap from some bone to its color, to ensure the items of r_lb are of
+     * type ptr->type. Since all three structs `bPoseChan`, `Bone`, and
+     * `EditBone` have the same name for their embedded `BoneColor` struct, this
+     * code is suitable for all of them. */
+    CTX_data_collection_remap_property(list_of_things, "color");
+
+    *r_lb = list_of_things;
+  }
   else if (RNA_struct_is_a(ptr->type, &RNA_Sequence)) {
     /* Special case when we do this for 'Sequence.lock'.
      * (if the sequence is locked, it won't be in "selected_editable_sequences"). */
@@ -1327,7 +1365,7 @@ bool UI_context_copy_to_selected_check(PointerRNA *ptr,
   }
 
   if (lptr.data == ptr->data) {
-    /* temp_ptr might not be the same as ptr_link! */
+    /* The source & destination are the same, so there is nothing to copy. */
     return false;
   }
 
@@ -1853,7 +1891,7 @@ static void edittranslation_find_po_file(const char *root,
     return;
   }
 
-  /* Now try without the second iso code part (_ES in es_ES). */
+  /* Now try without the second ISO code part (`_ES` in `es_ES`). */
   {
     const char *tc = nullptr;
     size_t szt = 0;
@@ -2404,15 +2442,17 @@ static int ui_view_drop_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
 
-  const ARegion *region = CTX_wm_region(C);
+  ARegion *region = CTX_wm_region(C);
   std::unique_ptr<DropTargetInterface> drop_target = region_views_find_drop_target_at(region,
                                                                                       event->xy);
 
-  if (!drop_target_apply_drop(*C, *drop_target, *static_cast<const ListBase *>(event->customdata)))
+  if (!drop_target_apply_drop(
+          *C, *region, *event, *drop_target, *static_cast<const ListBase *>(event->customdata)))
   {
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
 
+  ED_region_tag_redraw(region);
   return OPERATOR_FINISHED;
 }
 
