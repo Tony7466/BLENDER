@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -21,11 +21,16 @@ unset(OPENCOLLADA_ANIMATION_CLIP CACHE)
 
 set(INC
   .
+  ../../blenkernel
+  ../../blentranslation
+  ../../depsgraph
   ../../editors/include
+  ../../ikplugin
   ../../imbuf
   ../../makesrna
-  ../../ikplugin
+  ../../windowmanager
   ../../../../intern/iksolver/extern
+  ../../bmesh
 )
 
 set(INC_SYS
@@ -109,14 +114,10 @@ set(LIB
   ${OPENCOLLADA_LIBRARIES}
   ${PCRE_LIBRARIES}
   ${XML2_LIBRARIES}
-  PRIVATE bf::blenkernel
+  PRIVATE bf::animrig
   PRIVATE bf::blenlib
-  PRIVATE bf::blentranslation
-  PRIVATE bf::bmesh
-  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::windowmanager
 )
 
 if(WITH_BUILDINFO)

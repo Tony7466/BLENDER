@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -21,13 +21,12 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
 #include "BLF_api.h"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "BKE_context.h"
 #include "BKE_global.h"
@@ -38,13 +37,13 @@
 
 #include "BLT_translation.h"
 
-#include "RNA_access.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 #include "wm_event_system.h"
-#include "wm_event_types.h"
+#include "wm_event_types.hh"
 
 struct wmKeyMapItemFind_Params {
   bool (*filter_fn)(const wmKeyMap *km, const wmKeyMapItem *kmi, void *user_data);
@@ -262,6 +261,22 @@ static void wm_keymap_diff_item_free(wmKeyMapDiffItem *kmdi)
 
 wmKeyConfig *WM_keyconfig_new(wmWindowManager *wm, const char *idname, bool user_defined)
 {
+  BLI_assert(!BLI_findstring(&wm->keyconfigs, idname, offsetof(wmKeyConfig, idname)));
+  /* Create new configuration. */
+  wmKeyConfig *keyconf = static_cast<wmKeyConfig *>(
+      MEM_callocN(sizeof(wmKeyConfig), "wmKeyConfig"));
+  STRNCPY(keyconf->idname, idname);
+  BLI_addtail(&wm->keyconfigs, keyconf);
+
+  if (user_defined) {
+    keyconf->flag |= KEYCONF_USER;
+  }
+
+  return keyconf;
+}
+
+wmKeyConfig *WM_keyconfig_ensure(wmWindowManager *wm, const char *idname, bool user_defined)
+{
   wmKeyConfig *keyconf = static_cast<wmKeyConfig *>(
       BLI_findstring(&wm->keyconfigs, idname, offsetof(wmKeyConfig, idname)));
   if (keyconf) {
@@ -280,21 +295,7 @@ wmKeyConfig *WM_keyconfig_new(wmWindowManager *wm, const char *idname, bool user
     return keyconf;
   }
 
-  /* Create new configuration. */
-  keyconf = static_cast<wmKeyConfig *>(MEM_callocN(sizeof(wmKeyConfig), "wmKeyConfig"));
-  STRNCPY(keyconf->idname, idname);
-  BLI_addtail(&wm->keyconfigs, keyconf);
-
-  if (user_defined) {
-    keyconf->flag |= KEYCONF_USER;
-  }
-
-  return keyconf;
-}
-
-wmKeyConfig *WM_keyconfig_new_user(wmWindowManager *wm, const char *idname)
-{
-  return WM_keyconfig_new(wm, idname, true);
+  return WM_keyconfig_new(wm, idname, user_defined);
 }
 
 bool WM_keyconfig_remove(wmWindowManager *wm, wmKeyConfig *keyconf)
@@ -454,7 +455,10 @@ bool WM_keymap_poll(bContext *C, wmKeyMap *keymap)
         !BLI_str_endswith(keymap->idname, " (fallback)") &&
         /* This is an exception which may be empty.
          * Longer term we might want a flag to indicate an empty key-map is intended. */
-        !STREQ(keymap->idname, "Node Tool: Tweak"))
+        !STREQ(keymap->idname, "Node Tool: Tweak") &&
+        /* Another exception: Asset shelf keymap is meant for add-ons to use, it's empty by
+         * default. */
+        !STREQ(keymap->idname, "Asset Shelf"))
     {
       CLOG_WARN(WM_LOG_KEYMAPS, "empty keymap '%s'", keymap->idname);
     }
@@ -827,8 +831,8 @@ static void wm_keymap_diff_update(ListBase *lb,
  *
  * Name id's are for storing general or multiple keymaps.
  *
- * - Space/region ids are same as DNA_space_types.h
- * - Gets freed in wm.c
+ * - Space/region ids are same as `DNA_space_types.h`.
+ * - Gets freed in `wm.cc`.
  * \{ */
 
 wmKeyMap *WM_keymap_list_find(ListBase *lb, const char *idname, int spaceid, int regionid)
@@ -1844,26 +1848,12 @@ void WM_keyconfig_update(wmWindowManager *wm)
   }
 
   if (wm_keymap_update_flag & WM_KEYMAP_UPDATE_OPERATORTYPE) {
-    /* an operatortype has been removed, this won't happen often
-     * but when it does we have to check _every_ keymap item */
-    ListBase *keymaps_lb[] = {
-        &U.user_keymaps,
-        &wm->userconf->keymaps,
-        &wm->defaultconf->keymaps,
-        &wm->addonconf->keymaps,
-        nullptr,
-    };
-
-    int i;
-
-    for (i = 0; keymaps_lb[i]; i++) {
-      wm_keymap_item_properties_update_ot_from_list(keymaps_lb[i]);
-    }
-
+    /* One or more operator-types have been removed, this won't happen often
+     * but when it does we have to check _every_ key-map item. */
+    wm_keymap_item_properties_update_ot_from_list(&U.user_keymaps);
     LISTBASE_FOREACH (wmKeyConfig *, kc, &wm->keyconfigs) {
       wm_keymap_item_properties_update_ot_from_list(&kc->keymaps);
     }
-
     wm_keymap_update_flag &= ~WM_KEYMAP_UPDATE_OPERATORTYPE;
   }
 

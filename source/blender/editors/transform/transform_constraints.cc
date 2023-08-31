@@ -21,19 +21,20 @@
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
 
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
 #include "BLT_translation.h"
 
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
 #include "transform.hh"
 #include "transform_gizmo.hh"
@@ -873,13 +874,19 @@ void drawConstraint(TransInfo *t)
   }
 }
 
-void drawPropCircle(const bContext *C, TransInfo *t)
+void drawPropCircle(TransInfo *t)
 {
   if (t->flag & T_PROP_EDIT) {
-    RegionView3D *rv3d = CTX_wm_region_view3d(C);
+    const RegionView3D *rv3d = nullptr;
     float tmat[4][4], imat[4][4];
 
-    if (t->spacetype == SPACE_VIEW3D && rv3d != nullptr) {
+    if (t->spacetype == SPACE_VIEW3D) {
+      if (t->region && (t->region->regiontype == RGN_TYPE_WINDOW)) {
+        rv3d = static_cast<const RegionView3D *>(t->region->regiondata);
+      }
+    }
+
+    if (rv3d != nullptr) {
       copy_m4_m4(tmat, rv3d->viewmat);
       invert_m4_m4(imat, tmat);
     }
@@ -1071,7 +1078,8 @@ static void setNearestAxis2d(TransInfo *t)
   t->con.mode &= ~(CON_AXIS0 | CON_AXIS1 | CON_AXIS2);
 
   /* no correction needed... just use whichever one is lower */
-  if (abs(t->mval[0] - t->mouse.imval[0]) < abs(t->mval[1] - t->mouse.imval[1])) {
+  blender::float2 dvec = t->mval - t->mouse.imval;
+  if (abs(dvec.x) < abs(dvec.y)) {
     t->con.mode |= CON_AXIS1;
     STRNCPY(t->con.text, TIP_(" along Y axis"));
   }
@@ -1092,8 +1100,8 @@ static void setNearestAxis3d(TransInfo *t)
   int i;
 
   /* calculate mouse movement */
-  mvec[0] = float(t->mval[0] - t->mouse.imval[0]);
-  mvec[1] = float(t->mval[1] - t->mouse.imval[1]);
+  mvec[0] = t->mval[0] - t->mouse.imval[0];
+  mvec[1] = t->mval[1] - t->mouse.imval[1];
   mvec[2] = 0.0f;
 
   /* We need to correct axis length for the current zoom-level of view,

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006-2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2006-2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,10 +16,14 @@
  */
 
 #ifdef __cplusplus
+
+#  include <optional>
+
 extern "C" {
 #endif
 
 #include "BLI_compiler_attrs.h"
+#include "BLI_sys_types.h"
 
 #include "DNA_ID_enums.h"
 
@@ -109,6 +113,9 @@ struct ImBuf *BKE_icon_imbuf_get_buffer(int icon_id) ATTR_WARN_UNUSED_RESULT;
  * Retrieve icon for id.
  */
 struct Icon *BKE_icon_get(int icon_id);
+
+bool BKE_icon_is_preview(int icon_id);
+bool BKE_icon_is_image(int icon_id);
 
 /**
  * Set icon for id if not already defined.
@@ -206,6 +213,12 @@ struct PreviewImage *BKE_previewimg_id_ensure(struct ID *id);
  * For now, only used with file thumbnails.
  */
 void BKE_previewimg_ensure(struct PreviewImage *prv, int size);
+
+const char *BKE_previewimg_deferred_filepath_get(const struct PreviewImage *prv);
+#ifdef __cplusplus
+extern "C++" std::optional<int> BKE_previewimg_deferred_thumb_source_get(
+    const struct PreviewImage *prv);
+#endif
 
 /**
  * Create an #ImBuf holding a copy of the preview image buffer in \a prv.

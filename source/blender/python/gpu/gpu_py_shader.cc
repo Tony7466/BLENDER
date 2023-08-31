@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,7 +18,9 @@
 #include "GPU_uniform_buffer.h"
 
 #include "../generic/py_capi_utils.h"
+#include "../generic/python_compat.h"
 #include "../generic/python_utildefines.h"
+
 #include "../mathutils/mathutils.h"
 
 #include "gpu_py.h"
@@ -104,11 +106,12 @@ static PyObject *pygpu_shader__tp_new(PyTypeObject * /*type*/, PyObject *args, P
     const char *libcode;
     const char *defines;
     const char *name;
-  } params = {0};
+  } params = {nullptr};
 
   static const char *_keywords[] = {
       "vertexcode", "fragcode", "geocode", "libcode", "defines", "name", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "s"  /* `vertexcode` */
       "s"  /* `fragcode` */
       "|$" /* Optional keyword only arguments. */
@@ -118,7 +121,7 @@ static PyObject *pygpu_shader__tp_new(PyTypeObject * /*type*/, PyObject *args, P
       "s"  /* `name` */
       ":GPUShader.__new__",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args,
                                         kwds,
@@ -881,12 +884,13 @@ static PyObject *pygpu_shader_from_builtin(PyObject * /*self*/, PyObject *args, 
 
   static const char *_keywords[] = {"shader_name", "config", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `shader_name` */
       "|$" /* Optional keyword only arguments. */
       "O&" /* `config` */
       ":from_builtin",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args,
                                         kwds,

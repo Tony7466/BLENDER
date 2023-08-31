@@ -41,7 +41,7 @@
 #include "BKE_node.h"
 #include "BKE_text.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
@@ -170,7 +170,7 @@ static void text_blend_write(BlendWriter *writer, ID *id, const void *id_address
     text->flags &= ~TXT_ISEXT;
   }
 
-  /* Clean up, important in undo case to reduce false detection of changed datablocks. */
+  /* Clean up, important in undo case to reduce false detection of changed data-blocks. */
   text->compiled = nullptr;
 
   /* write LibData */
@@ -182,7 +182,7 @@ static void text_blend_write(BlendWriter *writer, ID *id, const void *id_address
   }
 
   if (!(text->flags & TXT_ISEXT)) {
-    /* now write the text data, in two steps for optimization in the readfunction */
+    /* Now write the text data, in two steps for optimization in the read-function. */
     LISTBASE_FOREACH (TextLine *, tmp, &text->lines) {
       BLO_write_struct(writer, TextLine, tmp);
     }
@@ -247,8 +247,7 @@ IDTypeInfo IDType_ID_TXT = {
 
     /*blend_write*/ text_blend_write,
     /*blend_read_data*/ text_blend_read_data,
-    /*blend_read_lib*/ nullptr,
-    /*blend_read_expand*/ nullptr,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 

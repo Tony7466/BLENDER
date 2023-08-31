@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,14 +8,22 @@
 
 #include <cstdlib>
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "DNA_asset_types.h"
 #include "DNA_defs.h"
 #include "DNA_space_types.h"
 
 #include "rna_internal.h"
+
+const EnumPropertyItem rna_enum_aset_library_type_items[] = {
+    {ASSET_LIBRARY_LOCAL, "LOCAL", 0, "Local", ""},
+    {ASSET_LIBRARY_ALL, "ALL", 0, "All", ""},
+    {ASSET_LIBRARY_ESSENTIALS, "ESSENTIALS", 0, "Essentials", ""},
+    {ASSET_LIBRARY_CUSTOM, "CUSTOM", 0, "Custom", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
 
 #ifdef RNA_RUNTIME
 
@@ -29,10 +37,10 @@
 #  include "BLI_listbase.h"
 #  include "BLI_uuid.h"
 
-#  include "ED_asset.h"
-#  include "ED_fileselect.h"
+#  include "ED_asset.hh"
+#  include "ED_fileselect.hh"
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
 static char *rna_AssetMetaData_path(const PointerRNA * /*ptr*/)
 {
@@ -603,7 +611,7 @@ PropertyRNA *rna_def_asset_library_reference_common(StructRNA *srna,
                                                     const char *set)
 {
   PropertyRNA *prop = RNA_def_property(srna, "asset_library_ref", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, DummyRNA_NULL_items);
+  RNA_def_property_enum_items(prop, rna_enum_dummy_NULL_items);
   RNA_def_property_enum_funcs(prop, get, set, "rna_asset_library_reference_itemf");
 
   return prop;

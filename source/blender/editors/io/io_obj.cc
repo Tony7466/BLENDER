@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,25 +20,25 @@
 
 #  include "BLT_translation.h"
 
-#  include "ED_fileselect.h"
-#  include "ED_outliner.h"
+#  include "ED_fileselect.hh"
+#  include "ED_outliner.hh"
 
 #  include "MEM_guardedalloc.h"
 
-#  include "RNA_access.h"
-#  include "RNA_define.h"
+#  include "RNA_access.hh"
+#  include "RNA_define.hh"
 
-#  include "UI_interface.h"
-#  include "UI_resources.h"
+#  include "UI_interface.hh"
+#  include "UI_resources.hh"
 
-#  include "WM_api.h"
-#  include "WM_types.h"
+#  include "WM_api.hh"
+#  include "WM_types.hh"
 
 #  include "DEG_depsgraph.h"
 
-#  include "IO_orientation.h"
-#  include "IO_path_util_types.h"
-#  include "IO_wavefront_obj.h"
+#  include "IO_orientation.hh"
+#  include "IO_path_util_types.hh"
+#  include "IO_wavefront_obj.hh"
 
 #  include "io_obj.hh"
 
@@ -82,8 +82,9 @@ static int wm_obj_export_exec(bContext *C, wmOperator *op)
   export_params.start_frame = RNA_int_get(op->ptr, "start_frame");
   export_params.end_frame = RNA_int_get(op->ptr, "end_frame");
 
-  export_params.forward_axis = eIOAxis(RNA_enum_get(op->ptr, "forward_axis"));
-  export_params.up_axis = eIOAxis(RNA_enum_get(op->ptr, "up_axis"));
+  export_params.forward_axis = blender::math::AxisSigned::from_int(
+      RNA_enum_get(op->ptr, "forward_axis"));
+  export_params.up_axis = blender::math::AxisSigned::from_int(RNA_enum_get(op->ptr, "up_axis"));
   export_params.global_scale = RNA_float_get(op->ptr, "global_scale");
   export_params.apply_modifiers = RNA_boolean_get(op->ptr, "apply_modifiers");
   export_params.export_eval_mode = eEvaluationMode(RNA_enum_get(op->ptr, "export_eval_mode"));
@@ -124,58 +125,71 @@ static void ui_obj_export_settings(uiLayout *layout, PointerRNA *imfptr)
   box = uiLayoutBox(layout);
   col = uiLayoutColumn(box, false);
   sub = uiLayoutColumnWithHeading(col, false, IFACE_("Limit to"));
-  uiItemR(sub, imfptr, "export_selected_objects", 0, IFACE_("Selected Only"), ICON_NONE);
-  uiItemR(sub, imfptr, "global_scale", 0, nullptr, ICON_NONE);
-  uiItemR(sub, imfptr, "forward_axis", 0, IFACE_("Forward Axis"), ICON_NONE);
-  uiItemR(sub, imfptr, "up_axis", 0, IFACE_("Up Axis"), ICON_NONE);
+  uiItemR(
+      sub, imfptr, "export_selected_objects", UI_ITEM_NONE, IFACE_("Selected Only"), ICON_NONE);
+  uiItemR(sub, imfptr, "global_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+  uiItemR(sub, imfptr, "up_axis", UI_ITEM_NONE, IFACE_("Up Axis"), ICON_NONE);
 
   col = uiLayoutColumn(box, false);
   sub = uiLayoutColumn(col, false);
   sub = uiLayoutColumnWithHeading(col, false, IFACE_("Objects"));
-  uiItemR(sub, imfptr, "apply_modifiers", 0, IFACE_("Apply Modifiers"), ICON_NONE);
-  uiItemR(sub, imfptr, "export_eval_mode", 0, IFACE_("Properties"), ICON_NONE);
+  uiItemR(sub, imfptr, "apply_modifiers", UI_ITEM_NONE, IFACE_("Apply Modifiers"), ICON_NONE);
+  uiItemR(sub, imfptr, "export_eval_mode", UI_ITEM_NONE, IFACE_("Properties"), ICON_NONE);
 
   /* Geometry options. */
   box = uiLayoutBox(layout);
   col = uiLayoutColumn(box, false);
   sub = uiLayoutColumnWithHeading(col, false, IFACE_("Geometry"));
-  uiItemR(sub, imfptr, "export_uv", 0, IFACE_("UV Coordinates"), ICON_NONE);
-  uiItemR(sub, imfptr, "export_normals", 0, IFACE_("Normals"), ICON_NONE);
-  uiItemR(sub, imfptr, "export_colors", 0, IFACE_("Colors"), ICON_NONE);
-  uiItemR(sub, imfptr, "export_triangulated_mesh", 0, IFACE_("Triangulated Mesh"), ICON_NONE);
-  uiItemR(sub, imfptr, "export_curves_as_nurbs", 0, IFACE_("Curves as NURBS"), ICON_NONE);
+  uiItemR(sub, imfptr, "export_uv", UI_ITEM_NONE, IFACE_("UV Coordinates"), ICON_NONE);
+  uiItemR(sub, imfptr, "export_normals", UI_ITEM_NONE, IFACE_("Normals"), ICON_NONE);
+  uiItemR(sub, imfptr, "export_colors", UI_ITEM_NONE, IFACE_("Colors"), ICON_NONE);
+  uiItemR(sub,
+          imfptr,
+          "export_triangulated_mesh",
+          UI_ITEM_NONE,
+          IFACE_("Triangulated Mesh"),
+          ICON_NONE);
+  uiItemR(
+      sub, imfptr, "export_curves_as_nurbs", UI_ITEM_NONE, IFACE_("Curves as NURBS"), ICON_NONE);
 
   /* Material options. */
   box = uiLayoutBox(layout);
   col = uiLayoutColumn(box, false);
   sub = uiLayoutColumnWithHeading(col, false, IFACE_("Materials"));
-  uiItemR(sub, imfptr, "export_materials", 0, IFACE_("Export"), ICON_NONE);
+  uiItemR(sub, imfptr, "export_materials", UI_ITEM_NONE, IFACE_("Export"), ICON_NONE);
   sub = uiLayoutColumn(sub, false);
   uiLayoutSetEnabled(sub, export_materials);
-  uiItemR(sub, imfptr, "export_pbr_extensions", 0, IFACE_("PBR Extensions"), ICON_NONE);
-  uiItemR(sub, imfptr, "path_mode", 0, IFACE_("Path Mode"), ICON_NONE);
+  uiItemR(sub, imfptr, "export_pbr_extensions", UI_ITEM_NONE, IFACE_("PBR Extensions"), ICON_NONE);
+  uiItemR(sub, imfptr, "path_mode", UI_ITEM_NONE, IFACE_("Path Mode"), ICON_NONE);
 
   /* Grouping options. */
   box = uiLayoutBox(layout);
   col = uiLayoutColumn(box, false);
   sub = uiLayoutColumnWithHeading(col, false, IFACE_("Grouping"));
-  uiItemR(sub, imfptr, "export_object_groups", 0, IFACE_("Object Groups"), ICON_NONE);
-  uiItemR(sub, imfptr, "export_material_groups", 0, IFACE_("Material Groups"), ICON_NONE);
-  uiItemR(sub, imfptr, "export_vertex_groups", 0, IFACE_("Vertex Groups"), ICON_NONE);
-  uiItemR(sub, imfptr, "export_smooth_groups", 0, IFACE_("Smooth Groups"), ICON_NONE);
+  uiItemR(sub, imfptr, "export_object_groups", UI_ITEM_NONE, IFACE_("Object Groups"), ICON_NONE);
+  uiItemR(
+      sub, imfptr, "export_material_groups", UI_ITEM_NONE, IFACE_("Material Groups"), ICON_NONE);
+  uiItemR(sub, imfptr, "export_vertex_groups", UI_ITEM_NONE, IFACE_("Vertex Groups"), ICON_NONE);
+  uiItemR(sub, imfptr, "export_smooth_groups", UI_ITEM_NONE, IFACE_("Smooth Groups"), ICON_NONE);
   sub = uiLayoutColumn(sub, false);
   uiLayoutSetEnabled(sub, export_smooth_groups);
-  uiItemR(sub, imfptr, "smooth_group_bitflags", 0, IFACE_("Smooth Group Bitflags"), ICON_NONE);
+  uiItemR(sub,
+          imfptr,
+          "smooth_group_bitflags",
+          UI_ITEM_NONE,
+          IFACE_("Smooth Group Bitflags"),
+          ICON_NONE);
 
   /* Animation options. */
   box = uiLayoutBox(layout);
   col = uiLayoutColumn(box, false);
   sub = uiLayoutColumnWithHeading(col, false, IFACE_("Animation"));
-  uiItemR(sub, imfptr, "export_animation", 0, IFACE_("Export"), ICON_NONE);
+  uiItemR(sub, imfptr, "export_animation", UI_ITEM_NONE, IFACE_("Export"), ICON_NONE);
   sub = uiLayoutColumn(sub, true);
   uiLayoutSetEnabled(sub, export_animation);
-  uiItemR(sub, imfptr, "start_frame", 0, IFACE_("Frame Start"), ICON_NONE);
-  uiItemR(sub, imfptr, "end_frame", 0, IFACE_("End"), ICON_NONE);
+  uiItemR(sub, imfptr, "start_frame", UI_ITEM_NONE, IFACE_("Frame Start"), ICON_NONE);
+  uiItemR(sub, imfptr, "end_frame", UI_ITEM_NONE, IFACE_("End"), ICON_NONE);
 }
 
 static void wm_obj_export_draw(bContext * /*C*/, wmOperator *op)
@@ -273,11 +287,7 @@ void WM_OT_obj_export(wmOperatorType *ot)
               INT_MIN,
               INT_MAX);
   /* Object transform options. */
-  prop = RNA_def_enum(
-      ot->srna, "forward_axis", io_transform_axis, IO_AXIS_NEGATIVE_Z, "Forward Axis", "");
-  RNA_def_property_update_runtime(prop, (void *)io_ui_forward_axis_update);
-  prop = RNA_def_enum(ot->srna, "up_axis", io_transform_axis, IO_AXIS_Y, "Up Axis", "");
-  RNA_def_property_update_runtime(prop, (void *)io_ui_up_axis_update);
+  io_ui_axes_register(*ot->srna);
   RNA_def_float(
       ot->srna,
       "global_scale",
@@ -385,8 +395,9 @@ static int wm_obj_import_exec(bContext *C, wmOperator *op)
   RNA_string_get(op->ptr, "filepath", import_params.filepath);
   import_params.global_scale = RNA_float_get(op->ptr, "global_scale");
   import_params.clamp_size = RNA_float_get(op->ptr, "clamp_size");
-  import_params.forward_axis = eIOAxis(RNA_enum_get(op->ptr, "forward_axis"));
-  import_params.up_axis = eIOAxis(RNA_enum_get(op->ptr, "up_axis"));
+  import_params.forward_axis = blender::math::AxisSigned::from_int(
+      RNA_enum_get(op->ptr, "forward_axis"));
+  import_params.up_axis = blender::math::AxisSigned::from_int(RNA_enum_get(op->ptr, "up_axis"));
   import_params.use_split_objects = RNA_boolean_get(op->ptr, "use_split_objects");
   import_params.use_split_groups = RNA_boolean_get(op->ptr, "use_split_groups");
   import_params.import_vertex_groups = RNA_boolean_get(op->ptr, "import_vertex_groups");
@@ -439,20 +450,20 @@ static void ui_obj_import_settings(uiLayout *layout, PointerRNA *imfptr)
   uiItemL(box, IFACE_("Transform"), ICON_OBJECT_DATA);
   uiLayout *col = uiLayoutColumn(box, false);
   uiLayout *sub = uiLayoutColumn(col, false);
-  uiItemR(sub, imfptr, "global_scale", 0, nullptr, ICON_NONE);
-  uiItemR(sub, imfptr, "clamp_size", 0, nullptr, ICON_NONE);
+  uiItemR(sub, imfptr, "global_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(sub, imfptr, "clamp_size", UI_ITEM_NONE, nullptr, ICON_NONE);
   sub = uiLayoutColumn(col, false);
 
-  uiItemR(sub, imfptr, "forward_axis", 0, IFACE_("Forward Axis"), ICON_NONE);
-  uiItemR(sub, imfptr, "up_axis", 0, IFACE_("Up Axis"), ICON_NONE);
+  uiItemR(sub, imfptr, "forward_axis", UI_ITEM_NONE, IFACE_("Forward Axis"), ICON_NONE);
+  uiItemR(sub, imfptr, "up_axis", UI_ITEM_NONE, IFACE_("Up Axis"), ICON_NONE);
 
   box = uiLayoutBox(layout);
   uiItemL(box, IFACE_("Options"), ICON_EXPORT);
   col = uiLayoutColumn(box, false);
-  uiItemR(col, imfptr, "use_split_objects", 0, nullptr, ICON_NONE);
-  uiItemR(col, imfptr, "use_split_groups", 0, nullptr, ICON_NONE);
-  uiItemR(col, imfptr, "import_vertex_groups", 0, nullptr, ICON_NONE);
-  uiItemR(col, imfptr, "validate_meshes", 0, nullptr, ICON_NONE);
+  uiItemR(col, imfptr, "use_split_objects", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, imfptr, "use_split_groups", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, imfptr, "import_vertex_groups", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, imfptr, "validate_meshes", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void wm_obj_import_draw(bContext *C, wmOperator *op)
@@ -506,11 +517,7 @@ void WM_OT_obj_import(wmOperatorType *ot)
       "Resize the objects to keep bounding box under this value. Value 0 disables clamping",
       0.0f,
       1000.0f);
-  prop = RNA_def_enum(
-      ot->srna, "forward_axis", io_transform_axis, IO_AXIS_NEGATIVE_Z, "Forward Axis", "");
-  RNA_def_property_update_runtime(prop, (void *)io_ui_forward_axis_update);
-  prop = RNA_def_enum(ot->srna, "up_axis", io_transform_axis, IO_AXIS_Y, "Up Axis", "");
-  RNA_def_property_update_runtime(prop, (void *)io_ui_up_axis_update);
+  io_ui_axes_register(*ot->srna);
   RNA_def_boolean(ot->srna,
                   "use_split_objects",
                   true,

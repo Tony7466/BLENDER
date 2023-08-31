@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,18 +6,18 @@
  * \ingroup spview3d
  */
 
-#include "BLI_math.h"
-
 #include "BKE_context.h"
 #include "BKE_report.h"
 
+#include "BLI_math_vector.h"
+
 #include "DEG_depsgraph.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "view3d_intern.h"
 #include "view3d_navigate.hh" /* own include */
@@ -331,10 +331,9 @@ void VIEW3D_OT_dolly(wmOperatorType *ot)
 /** \} */
 
 ViewOpsType ViewOpsType_dolly = {
-    /*flag*/ (VIEWOPS_FLAG_DEPTH_NAVIGATE | VIEWOPS_FLAG_ZOOM_TO_MOUSE |
-              VIEWOPS_FLAG_USE_MOUSE_INIT),
+    /*flag*/ (VIEWOPS_FLAG_DEPTH_NAVIGATE | VIEWOPS_FLAG_ZOOM_TO_MOUSE),
     /*idname*/ "VIEW3D_OT_dolly",
+    /*poll_fn*/ nullptr,
     /*init_fn*/ nullptr,
     /*apply_fn*/ nullptr,
-    /*cancel_fn*/ nullptr,
 };

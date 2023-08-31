@@ -183,7 +183,7 @@ static void seq_cache_unlock(Scene *scene)
 
 static size_t seq_cache_get_mem_total()
 {
-  return (size_t(U.memcachelimit)) * 1024 * 1024;
+  return size_t(U.memcachelimit) * 1024 * 1024;
 }
 
 static void seq_cache_keyfree(void *val)
@@ -579,7 +579,9 @@ void seq_cache_free_temp_cache(Scene *scene, short id, int timeline_frame)
       {
         seq_cache_key_unlink(key);
         BLI_ghash_remove(cache->hash, key, seq_cache_keyfree, seq_cache_valfree);
-        BLI_assert(key != cache->last_key);
+        if (key == cache->last_key) {
+          cache->last_key = nullptr;
+        }
       }
     }
   }
