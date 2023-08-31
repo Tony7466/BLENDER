@@ -1,30 +1,31 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_shader_util.hh"
 
 #include "DNA_customdata_types.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 namespace blender::nodes::node_shader_tex_coord_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_output<decl::Vector>(N_("Generated"));
-  b.add_output<decl::Vector>(N_("Normal"));
-  b.add_output<decl::Vector>(N_("UV"));
-  b.add_output<decl::Vector>(N_("Object"));
-  b.add_output<decl::Vector>(N_("Camera"));
-  b.add_output<decl::Vector>(N_("Window"));
-  b.add_output<decl::Vector>(N_("Reflection"));
+  b.add_output<decl::Vector>("Generated");
+  b.add_output<decl::Vector>("Normal");
+  b.add_output<decl::Vector>("UV");
+  b.add_output<decl::Vector>("Object");
+  b.add_output<decl::Vector>("Camera");
+  b.add_output<decl::Vector>("Window");
+  b.add_output<decl::Vector>("Reflection");
 }
 
 static void node_shader_buts_tex_coord(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "object", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, 0);
-  uiItemR(layout, ptr, "from_instancer", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, 0);
+  uiItemR(layout, ptr, "object", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "from_instancer", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
 }
 
 static int node_shader_gpu_tex_coord(GPUMaterial *mat,

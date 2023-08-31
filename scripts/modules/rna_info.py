@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # classes for extracting info from blenders internal classes
@@ -735,7 +737,7 @@ def BuildRNAInfo():
                     i += 1
 
                 if not ok:
-                    print('Dependancy "%s" could not be found for "%s"' % (identifier, rna_base))
+                    print("Dependency \"%s\" could not be found for \"%s\"" % (identifier, rna_base))
 
                 break
 

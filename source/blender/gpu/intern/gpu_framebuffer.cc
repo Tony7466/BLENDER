@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -8,6 +9,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math_base.h"
+#include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "GPU_batch.h"
@@ -30,7 +32,7 @@ namespace blender::gpu {
 FrameBuffer::FrameBuffer(const char *name)
 {
   if (name) {
-    BLI_strncpy(name_, name, sizeof(name_));
+    STRNCPY(name_, name);
   }
   else {
     name_[0] = '\0';
@@ -97,7 +99,8 @@ void FrameBuffer::attachment_set(GPUAttachmentType type, const GPUAttachment &ne
   GPUAttachment &attachment = attachments_[type];
 
   if (attachment.tex == new_attachment.tex && attachment.layer == new_attachment.layer &&
-      attachment.mip == new_attachment.mip) {
+      attachment.mip == new_attachment.mip)
+  {
     return; /* Exact same texture already bound here. */
   }
   /* Unbind previous and bind new. */
@@ -106,16 +109,15 @@ void FrameBuffer::attachment_set(GPUAttachmentType type, const GPUAttachment &ne
     reinterpret_cast<Texture *>(attachment.tex)->detach_from(this);
   }
 
-  attachment = new_attachment;
-
   /* Might be null if this is for unbinding. */
-  if (attachment.tex) {
-    reinterpret_cast<Texture *>(attachment.tex)->attach_to(this, type);
+  if (new_attachment.tex) {
+    reinterpret_cast<Texture *>(new_attachment.tex)->attach_to(this, type);
   }
   else {
     /* GPU_ATTACHMENT_NONE */
   }
 
+  attachment = new_attachment;
   dirty_attachments_ = true;
 }
 
@@ -163,8 +165,8 @@ uint FrameBuffer::get_bits_per_pixel()
 }
 
 void FrameBuffer::recursive_downsample(int max_lvl,
-                                       void (*callback)(void *userData, int level),
-                                       void *userData)
+                                       void (*callback)(void *user_data, int level),
+                                       void *user_data)
 {
   /* Bind to make sure the frame-buffer is up to date. */
   this->bind(true);
@@ -202,7 +204,7 @@ void FrameBuffer::recursive_downsample(int max_lvl,
       ++type;
     }
 
-    callback(userData, mip_lvl);
+    callback(user_data, mip_lvl);
   }
 
   for (GPUAttachment &attachment : attachments_) {
@@ -378,7 +380,7 @@ void GPU_framebuffer_config_array(GPUFrameBuffer *gpu_fb,
 
 void GPU_framebuffer_default_size(GPUFrameBuffer *gpu_fb, int width, int height)
 {
-  unwrap(gpu_fb)->size_set(width, height);
+  unwrap(gpu_fb)->default_size_set(width, height);
 }
 
 /* ---------- Viewport & Scissor Region ----------- */
@@ -387,6 +389,12 @@ void GPU_framebuffer_viewport_set(GPUFrameBuffer *gpu_fb, int x, int y, int widt
 {
   int viewport_rect[4] = {x, y, width, height};
   unwrap(gpu_fb)->viewport_set(viewport_rect);
+}
+
+void GPU_framebuffer_multi_viewports_set(GPUFrameBuffer *gpu_fb,
+                                         const int viewport_rects[GPU_MAX_VIEWPORTS][4])
+{
+  unwrap(gpu_fb)->viewport_multi_set(viewport_rects);
 }
 
 void GPU_framebuffer_viewport_get(GPUFrameBuffer *gpu_fb, int r_viewport[4])
@@ -484,8 +492,7 @@ void GPU_framebuffer_read_color(GPUFrameBuffer *gpu_fb,
   unwrap(gpu_fb)->read(GPU_COLOR_BIT, format, rect, channels, slot, data);
 }
 
-/* TODO(fclem): rename to read_color. */
-void GPU_frontbuffer_read_pixels(
+void GPU_frontbuffer_read_color(
     int x, int y, int w, int h, int channels, eGPUDataFormat format, void *data)
 {
   int rect[4] = {x, y, w, h};
@@ -535,10 +542,10 @@ void GPU_framebuffer_blit(GPUFrameBuffer *gpufb_read,
 
 void GPU_framebuffer_recursive_downsample(GPUFrameBuffer *gpu_fb,
                                           int max_lvl,
-                                          void (*callback)(void *userData, int level),
-                                          void *userData)
+                                          void (*callback)(void *user_data, int level),
+                                          void *user_data)
 {
-  unwrap(gpu_fb)->recursive_downsample(max_lvl, callback, userData);
+  unwrap(gpu_fb)->recursive_downsample(max_lvl, callback, user_data);
 }
 
 #ifndef GPU_NO_USE_PY_REFERENCES
@@ -652,8 +659,12 @@ static GPUFrameBuffer *gpu_offscreen_fb_get(GPUOffScreen *ofs)
   return gpu_offscreen_fb_get(ofs);
 }
 
-GPUOffScreen *GPU_offscreen_create(
-    int width, int height, bool depth, eGPUTextureFormat format, char err_out[256])
+GPUOffScreen *GPU_offscreen_create(int width,
+                                   int height,
+                                   bool depth,
+                                   eGPUTextureFormat format,
+                                   eGPUTextureUsage usage,
+                                   char err_out[256])
 {
   GPUOffScreen *ofs = MEM_cnew<GPUOffScreen>(__func__);
 
@@ -662,7 +673,9 @@ GPUOffScreen *GPU_offscreen_create(
   height = max_ii(1, height);
   width = max_ii(1, width);
 
-  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_ATTACHMENT;
+  /* Always add GPU_TEXTURE_USAGE_ATTACHMENT for convenience. */
+  usage |= GPU_TEXTURE_USAGE_ATTACHMENT;
+
   ofs->color = GPU_texture_create_2d("ofs_color", width, height, 1, format, usage, nullptr);
 
   if (depth) {
@@ -673,10 +686,10 @@ GPUOffScreen *GPU_offscreen_create(
   if ((depth && !ofs->depth) || !ofs->color) {
     const char error[] = "GPUTexture: Texture allocation failed.";
     if (err_out) {
-      BLI_snprintf(err_out, 256, error);
+      BLI_strncpy(err_out, error, 256);
     }
     else {
-      fprintf(stderr, error);
+      fprintf(stderr, "%s", error);
     }
     GPU_offscreen_free(ofs);
     return nullptr;
@@ -741,15 +754,26 @@ void GPU_offscreen_draw_to_screen(GPUOffScreen *ofs, int x, int y)
   ofs_fb->blit_to(GPU_COLOR_BIT, 0, ctx->active_fb, 0, x, y);
 }
 
-void GPU_offscreen_read_pixels(GPUOffScreen *ofs, eGPUDataFormat format, void *pixels)
+void GPU_offscreen_read_color_region(
+    GPUOffScreen *ofs, eGPUDataFormat format, int x, int y, int w, int h, void *r_data)
+{
+  BLI_assert(ELEM(format, GPU_DATA_UBYTE, GPU_DATA_FLOAT));
+  BLI_assert(x >= 0 && y >= 0 && w > 0 && h > 0);
+  BLI_assert(x + w <= GPU_texture_width(ofs->color));
+  BLI_assert(y + h <= GPU_texture_height(ofs->color));
+
+  GPUFrameBuffer *ofs_fb = gpu_offscreen_fb_get(ofs);
+  GPU_framebuffer_read_color(ofs_fb, x, y, w, h, 4, 0, format, r_data);
+}
+
+void GPU_offscreen_read_color(GPUOffScreen *ofs, eGPUDataFormat format, void *r_data)
 {
   BLI_assert(ELEM(format, GPU_DATA_UBYTE, GPU_DATA_FLOAT));
 
   const int w = GPU_texture_width(ofs->color);
   const int h = GPU_texture_height(ofs->color);
 
-  GPUFrameBuffer *ofs_fb = gpu_offscreen_fb_get(ofs);
-  GPU_framebuffer_read_color(ofs_fb, 0, 0, w, h, 4, 0, format, pixels);
+  GPU_offscreen_read_color_region(ofs, format, 0, 0, w, h, r_data);
 }
 
 int GPU_offscreen_width(const GPUOffScreen *ofs)
@@ -765,6 +789,11 @@ int GPU_offscreen_height(const GPUOffScreen *ofs)
 GPUTexture *GPU_offscreen_color_texture(const GPUOffScreen *ofs)
 {
   return ofs->color;
+}
+
+eGPUTextureFormat GPU_offscreen_format(const GPUOffScreen *offscreen)
+{
+  return GPU_texture_format(offscreen->color);
 }
 
 void GPU_offscreen_viewport_data_get(GPUOffScreen *ofs,

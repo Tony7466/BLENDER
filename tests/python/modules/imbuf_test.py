@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import os
@@ -73,12 +75,14 @@ class AbstractImBufTest(unittest.TestCase):
             shutil.copy(out_filepath, ref_filepath)
             failed = False
 
-        # Generate diff image.
+        # Generate diff image (set fail thresholds high to reduce output spam).
         diff_img = str(self.diff_dir.joinpath(out_name + ".diff.png"))
         command = (
             str(self.idiff),
-            "-o", diff_img,
+            "-fail", "1",
+            "-failpercent", "100",
             "-abs", "-scale", "16",
+            "-o", diff_img,
             ref_filepath,
             out_filepath
         )

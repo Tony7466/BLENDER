@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "device/device.h"
 
@@ -22,17 +23,11 @@ CCL_NAMESPACE_BEGIN
 
 /* Shader Manager */
 
-SVMShaderManager::SVMShaderManager()
-{
-}
+SVMShaderManager::SVMShaderManager() {}
 
-SVMShaderManager::~SVMShaderManager()
-{
-}
+SVMShaderManager::~SVMShaderManager() {}
 
-void SVMShaderManager::reset(Scene * /*scene*/)
-{
-}
+void SVMShaderManager::reset(Scene * /*scene*/) {}
 
 void SVMShaderManager::device_update_shader(Scene *scene,
                                             Shader *shader,
@@ -268,7 +263,8 @@ int SVMCompiler::stack_assign(ShaderInput *input)
         add_node(NODE_VALUE_F, node->get_int(input->socket_type), input->stack_offset);
       }
       else if (input->type() == SocketType::VECTOR || input->type() == SocketType::NORMAL ||
-               input->type() == SocketType::POINT || input->type() == SocketType::COLOR) {
+               input->type() == SocketType::POINT || input->type() == SocketType::COLOR)
+      {
 
         add_node(NODE_VALUE_V, input->stack_offset);
         add_node(NODE_VALUE_V, node->get_float3(input->socket_type));
@@ -419,7 +415,8 @@ void SVMCompiler::find_dependencies(ShaderNodeSet &dependencies,
 {
   ShaderNode *node = (input->link) ? input->link->parent : NULL;
   if (node != NULL && done.find(node) == done.end() && node != skip_node &&
-      dependencies.find(node) == dependencies.end()) {
+      dependencies.find(node) == dependencies.end())
+  {
     foreach (ShaderInput *in, node->inputs) {
       find_dependencies(dependencies, done, in, skip_node);
     }
@@ -444,10 +441,6 @@ void SVMCompiler::generate_node(ShaderNode *node, ShaderNodeSet &done)
       current_shader->has_volume_spatial_varying = true;
     if (node->has_attribute_dependency())
       current_shader->has_volume_attribute_dependency = true;
-  }
-
-  if (node->has_integrator_dependency()) {
-    current_shader->has_integrator_dependency = true;
   }
 }
 
@@ -777,39 +770,38 @@ void SVMCompiler::compile_type(Shader *shader, ShaderGraph *graph, ShaderType ty
 
   if (shader->reference_count()) {
     CompilerState state(graph);
-    if (clin->link) {
-      bool generate = false;
 
-      switch (type) {
-        case SHADER_TYPE_SURFACE: /* generate surface shader */
-          generate = true;
+    switch (type) {
+      case SHADER_TYPE_SURFACE: /* generate surface shader */
+        find_aov_nodes_and_dependencies(state.aov_nodes, graph, &state);
+        if (clin->link || state.aov_nodes.size() > 0) {
           shader->has_surface = true;
           state.node_feature_mask = KERNEL_FEATURE_NODE_MASK_SURFACE;
-          break;
-        case SHADER_TYPE_VOLUME: /* generate volume shader */
-          generate = true;
+        }
+        break;
+      case SHADER_TYPE_VOLUME: /* generate volume shader */
+        if (clin->link) {
           shader->has_volume = true;
           state.node_feature_mask = KERNEL_FEATURE_NODE_MASK_VOLUME;
-          break;
-        case SHADER_TYPE_DISPLACEMENT: /* generate displacement shader */
-          generate = true;
+        }
+        break;
+      case SHADER_TYPE_DISPLACEMENT: /* generate displacement shader */
+        if (clin->link) {
           shader->has_displacement = true;
           state.node_feature_mask = KERNEL_FEATURE_NODE_MASK_DISPLACEMENT;
-          break;
-        case SHADER_TYPE_BUMP: /* generate bump shader */
-          generate = true;
-          state.node_feature_mask = KERNEL_FEATURE_NODE_MASK_BUMP;
-          break;
-        default:
-          break;
-      }
-
-      if (generate) {
-        if (type == SHADER_TYPE_SURFACE) {
-          find_aov_nodes_and_dependencies(state.aov_nodes, graph, &state);
         }
-        generate_multi_closure(clin->link->parent, clin->link->parent, &state);
-      }
+        break;
+      case SHADER_TYPE_BUMP: /* generate bump shader */
+        if (clin->link) {
+          state.node_feature_mask = KERNEL_FEATURE_NODE_MASK_BUMP;
+        }
+        break;
+      default:
+        break;
+    }
+
+    if (clin->link) {
+      generate_multi_closure(clin->link->parent, clin->link->parent, &state);
     }
 
     /* compile output node */
@@ -862,10 +854,7 @@ void SVMCompiler::compile(Shader *shader, array<int4> &svm_nodes, int index, Sum
   /* finalize */
   {
     scoped_timer timer((summary != NULL) ? &summary->time_finalize : NULL);
-    shader->graph->finalize(scene,
-                            has_bump,
-                            shader->has_integrator_dependency,
-                            shader->get_displacement_method() == DISPLACE_BOTH);
+    shader->graph->finalize(scene, has_bump, shader->get_displacement_method() == DISPLACE_BOTH);
   }
 
   current_shader = shader;
@@ -881,7 +870,6 @@ void SVMCompiler::compile(Shader *shader, array<int4> &svm_nodes, int index, Sum
   shader->has_surface_spatial_varying = false;
   shader->has_volume_spatial_varying = false;
   shader->has_volume_attribute_dependency = false;
-  shader->has_integrator_dependency = false;
 
   /* generate bump shader */
   if (has_bump) {

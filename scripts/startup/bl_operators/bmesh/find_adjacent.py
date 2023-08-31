@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2016-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # Utilities to detect the next matching element (vert/edge/face)
@@ -239,7 +241,6 @@ def find_next(ele_dst, ele_src):
 
 # expose for operators
 def select_next(bm, report):
-    import bmesh
     ele_pair = [None, None]
     for i, ele in enumerate(reversed(bm.select_history)):
         ele_pair[i] = ele

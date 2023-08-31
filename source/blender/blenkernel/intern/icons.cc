@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006-2007 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2006-2007 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -14,6 +15,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "DNA_ID.h"
 #include "DNA_brush_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -46,7 +48,7 @@
 #include "IMB_imbuf_types.h"
 #include "IMB_thumbs.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "atomic_ops.h"
 
@@ -78,38 +80,57 @@ static GHash *gCachedPreviews = nullptr;
 
 /* Queue of icons for deferred deletion. */
 struct DeferredIconDeleteNode {
-  struct DeferredIconDeleteNode *next;
+  DeferredIconDeleteNode *next;
   int icon_id;
 };
 /* Protected by gIconMutex. */
 static LockfreeLinkList g_icon_delete_queue;
 
+class PreviewImageDeferred : public PreviewImage {
+ public:
+  const std::string filepath;
+  const ThumbSource source;
+
+  /* Behavior is undefined if \a prv is not a deferred preview (#PRV_TAG_DEFFERED not set). */
+  static PreviewImageDeferred &from_base(PreviewImage &prv);
+  static const PreviewImageDeferred &from_base(const PreviewImage &prv);
+
+  PreviewImageDeferred(blender::StringRef filepath, ThumbSource source);
+  PreviewImageDeferred(const PreviewImageDeferred &) = delete;
+  /* Delete through #BKE_previewimg_free()! */
+  ~PreviewImageDeferred() = delete;
+  /* Keep this type non-copyable since ownership of #PreviewImage can be ambiguous (#PreviewImage
+   * allows shallow copies). */
+  PreviewImageDeferred &operator=(const PreviewImageDeferred &) = delete;
+};
+
 static void icon_free(void *val)
 {
   Icon *icon = (Icon *)val;
-
-  if (icon) {
-    if (icon->obj_type == ICON_DATA_GEOM) {
-      struct Icon_Geom *obj = (struct Icon_Geom *)icon->obj;
-      if (obj->mem) {
-        /* coords & colors are part of this memory. */
-        MEM_freeN((void *)obj->mem);
-      }
-      else {
-        MEM_freeN((void *)obj->coords);
-        MEM_freeN((void *)obj->colors);
-      }
-      MEM_freeN(icon->obj);
-    }
-
-    if (icon->drawinfo_free) {
-      icon->drawinfo_free(icon->drawinfo);
-    }
-    else if (icon->drawinfo) {
-      MEM_freeN(icon->drawinfo);
-    }
-    MEM_freeN(icon);
+  if (!icon) {
+    return;
   }
+
+  if (icon->obj_type == ICON_DATA_GEOM) {
+    Icon_Geom *obj = (Icon_Geom *)icon->obj;
+    if (obj->mem) {
+      /* coords & colors are part of this memory. */
+      MEM_freeN((void *)obj->mem);
+    }
+    else {
+      MEM_freeN((void *)obj->coords);
+      MEM_freeN((void *)obj->colors);
+    }
+    MEM_freeN(icon->obj);
+  }
+
+  if (icon->drawinfo_free) {
+    icon->drawinfo_free(icon->drawinfo);
+  }
+  else if (icon->drawinfo) {
+    MEM_freeN(icon->drawinfo);
+  }
+  MEM_freeN(icon);
 }
 
 static void icon_free_data(int icon_id, Icon *icon)
@@ -132,7 +153,7 @@ static void icon_free_data(int icon_id, Icon *icon)
       ((bGPDlayer *)(icon->obj))->runtime.icon_id = 0;
       break;
     case ICON_DATA_GEOM:
-      ((struct Icon_Geom *)(icon->obj))->icon_id = 0;
+      ((Icon_Geom *)(icon->obj))->icon_id = 0;
       break;
     case ICON_DATA_STUDIOLIGHT: {
       StudioLight *sl = (StudioLight *)icon->obj;
@@ -221,74 +242,88 @@ void BKE_icons_deferred_free()
   for (DeferredIconDeleteNode *node =
            (DeferredIconDeleteNode *)BLI_linklist_lockfree_begin(&g_icon_delete_queue);
        node != nullptr;
-       node = node->next) {
+       node = node->next)
+  {
     BLI_ghash_remove(gIcons, POINTER_FROM_INT(node->icon_id), nullptr, icon_free);
   }
   BLI_linklist_lockfree_clear(&g_icon_delete_queue, MEM_freeN);
 }
 
-static PreviewImage *previewimg_create_ex(size_t deferred_data_size)
+PreviewImage::PreviewImage()
 {
-  PreviewImage *prv_img = (PreviewImage *)MEM_mallocN(sizeof(PreviewImage) + deferred_data_size,
-                                                      "img_prv");
-  memset(prv_img, 0, sizeof(*prv_img)); /* leave deferred data dirty */
-
-  if (deferred_data_size) {
-    prv_img->tag |= PRV_TAG_DEFFERED;
-  }
+  /* Zero initialize */
+  memset(this, 0, sizeof(*this));
 
   for (int i = 0; i < NUM_ICON_SIZES; i++) {
-    prv_img->flag[i] |= PRV_CHANGED;
-    prv_img->changed_timestamp[i] = 0;
+    flag[i] |= PRV_CHANGED;
+    changed_timestamp[i] = 0;
   }
-  return prv_img;
 }
 
-static PreviewImage *previewimg_deferred_create(const char *filepath, int source)
+PreviewImageDeferred &PreviewImageDeferred::from_base(PreviewImage &prv)
 {
-  /* We pack needed data for lazy loading (source type, in a single char, and filepath). */
-  const size_t deferred_data_size = strlen(filepath) + 2;
-  char *deferred_data;
+  return static_cast<PreviewImageDeferred &>(prv);
+}
+const PreviewImageDeferred &PreviewImageDeferred::from_base(const PreviewImage &prv)
+{
+  return static_cast<const PreviewImageDeferred &>(prv);
+}
 
-  PreviewImage *prv = previewimg_create_ex(deferred_data_size);
-  deferred_data = (char *)PRV_DEFERRED_DATA(prv);
-  deferred_data[0] = source;
-  memcpy(&deferred_data[1], filepath, deferred_data_size - 1);
+PreviewImageDeferred::PreviewImageDeferred(blender::StringRef filepath, ThumbSource source)
+    : PreviewImage(), filepath(filepath), source(source)
+{
+  tag |= PRV_TAG_DEFFERED;
+}
 
-  return prv;
+static PreviewImageDeferred *previewimg_deferred_create(const char *filepath, ThumbSource source)
+{
+  return MEM_new<PreviewImageDeferred>(__func__, filepath, source);
 }
 
 PreviewImage *BKE_previewimg_create()
 {
-  return previewimg_create_ex(0);
+  return MEM_new<PreviewImage>(__func__);
 }
 
 void BKE_previewimg_freefunc(void *link)
 {
   PreviewImage *prv = (PreviewImage *)link;
-  if (prv) {
-    for (int i = 0; i < NUM_ICON_SIZES; i++) {
-      if (prv->rect[i]) {
-        MEM_freeN(prv->rect[i]);
-      }
-      if (prv->gputexture[i]) {
-        GPU_texture_free(prv->gputexture[i]);
-      }
-    }
-
-    MEM_freeN(prv);
+  if (!prv) {
+    return;
   }
+  BKE_previewimg_free(&prv);
 }
 
 void BKE_previewimg_free(PreviewImage **prv)
 {
   if (prv && (*prv)) {
-    BKE_previewimg_freefunc(*prv);
+    for (int i = 0; i < NUM_ICON_SIZES; i++) {
+      if ((*prv)->rect[i]) {
+        MEM_freeN((*prv)->rect[i]);
+      }
+      if ((*prv)->gputexture[i]) {
+        GPU_texture_free((*prv)->gputexture[i]);
+      }
+    }
+
+    if ((*prv)->tag & PRV_TAG_DEFFERED) {
+      PreviewImageDeferred &this_deferred = PreviewImageDeferred::from_base(**prv);
+      std::destroy_at(&this_deferred.filepath);
+    }
+    MEM_delete(*prv);
     *prv = nullptr;
   }
 }
 
-void BKE_previewimg_clear_single(struct PreviewImage *prv, enum eIconSizes size)
+/** Handy override for the deferred type (derives from #PreviewImage). */
+static void BKE_previewimg_free(PreviewImageDeferred **prv)
+{
+  PreviewImage *prv_base = *prv;
+  BKE_previewimg_free(&prv_base);
+  *prv = nullptr;
+}
+
+void BKE_previewimg_clear_single(PreviewImage *prv, enum eIconSizes size)
 {
   MEM_SAFE_FREE(prv->rect[size]);
   if (prv->gputexture[size]) {
@@ -300,7 +335,7 @@ void BKE_previewimg_clear_single(struct PreviewImage *prv, enum eIconSizes size)
   prv->changed_timestamp[size] = 0;
 }
 
-void BKE_previewimg_clear(struct PreviewImage *prv)
+void BKE_previewimg_clear(PreviewImage *prv)
 {
   for (int i = 0; i < NUM_ICON_SIZES; i++) {
     BKE_previewimg_clear_single(prv, (eIconSizes)i);
@@ -309,17 +344,19 @@ void BKE_previewimg_clear(struct PreviewImage *prv)
 
 PreviewImage *BKE_previewimg_copy(const PreviewImage *prv)
 {
-  PreviewImage *prv_img = nullptr;
-
-  if (prv) {
-    prv_img = (PreviewImage *)MEM_dupallocN(prv);
-    for (int i = 0; i < NUM_ICON_SIZES; i++) {
-      if (prv->rect[i]) {
-        prv_img->rect[i] = (uint *)MEM_dupallocN(prv->rect[i]);
-      }
-      prv_img->gputexture[i] = nullptr;
-    }
+  if (!prv) {
+    return nullptr;
   }
+
+  PreviewImage *prv_img = (PreviewImage *)MEM_dupallocN(prv);
+
+  for (int i = 0; i < NUM_ICON_SIZES; i++) {
+    if (prv->rect[i]) {
+      prv_img->rect[i] = (uint *)MEM_dupallocN(prv->rect[i]);
+    }
+    prv_img->gputexture[i] = nullptr;
+  }
+
   return prv_img;
 }
 
@@ -385,15 +422,14 @@ void BKE_previewimg_id_free(ID *id)
 PreviewImage *BKE_previewimg_id_ensure(ID *id)
 {
   PreviewImage **prv_p = BKE_previewimg_id_get_p(id);
-
-  if (prv_p) {
-    if (*prv_p == nullptr) {
-      *prv_p = BKE_previewimg_create();
-    }
-    return *prv_p;
+  if (!prv_p) {
+    return nullptr;
   }
 
-  return nullptr;
+  if (*prv_p == nullptr) {
+    *prv_p = BKE_previewimg_create();
+  }
+  return *prv_p;
 }
 
 void BKE_previewimg_id_custom_set(ID *id, const char *filepath)
@@ -424,17 +460,19 @@ bool BKE_previewimg_id_supports_jobs(const ID *id)
 
 void BKE_previewimg_deferred_release(PreviewImage *prv)
 {
-  if (prv) {
-    if (prv->tag & PRV_TAG_DEFFERED_RENDERING) {
-      /* We cannot delete the preview while it is being loaded in another thread... */
-      prv->tag |= PRV_TAG_DEFFERED_DELETE;
-      return;
-    }
-    if (prv->icon_id) {
-      BKE_icon_delete(prv->icon_id);
-    }
-    BKE_previewimg_freefunc(prv);
+  if (!prv) {
+    return;
   }
+
+  if (prv->tag & PRV_TAG_DEFFERED_RENDERING) {
+    /* We cannot delete the preview while it is being loaded in another thread... */
+    prv->tag |= PRV_TAG_DEFFERED_DELETE;
+    return;
+  }
+  if (prv->icon_id) {
+    BKE_icon_delete(prv->icon_id);
+  }
+  BKE_previewimg_free(&prv);
 }
 
 PreviewImage *BKE_previewimg_cached_get(const char *name)
@@ -467,19 +505,19 @@ PreviewImage *BKE_previewimg_cached_thumbnail_read(const char *name,
 {
   BLI_assert(BLI_thread_is_main());
 
-  PreviewImage *prv = nullptr;
+  PreviewImageDeferred *prv = nullptr;
   void **prv_p;
 
   prv_p = BLI_ghash_lookup_p(gCachedPreviews, name);
 
   if (prv_p) {
-    prv = *(PreviewImage **)prv_p;
+    prv = static_cast<PreviewImageDeferred *>(*prv_p);
     BLI_assert(prv);
+    BLI_assert(prv->tag & PRV_TAG_DEFFERED);
   }
 
   if (prv && force_update) {
-    const char *prv_deferred_data = (char *)PRV_DEFERRED_DATA(prv);
-    if ((int(prv_deferred_data[0]) == source) && STREQ(&prv_deferred_data[1], filepath)) {
+    if ((prv->source == source) && (prv->filepath == filepath)) {
       /* If same filepath, no need to re-allocate preview, just clear it up. */
       BKE_previewimg_clear(prv);
     }
@@ -489,7 +527,7 @@ PreviewImage *BKE_previewimg_cached_thumbnail_read(const char *name,
   }
 
   if (!prv) {
-    prv = previewimg_deferred_create(filepath, source);
+    prv = previewimg_deferred_create(filepath, ThumbSource(source));
     force_update = true;
   }
 
@@ -516,52 +554,75 @@ void BKE_previewimg_cached_release(const char *name)
 
 void BKE_previewimg_ensure(PreviewImage *prv, const int size)
 {
-  if ((prv->tag & PRV_TAG_DEFFERED) != 0) {
-    const bool do_icon = ((size == ICON_SIZE_ICON) && !prv->rect[ICON_SIZE_ICON]);
-    const bool do_preview = ((size == ICON_SIZE_PREVIEW) && !prv->rect[ICON_SIZE_PREVIEW]);
-
-    if (do_icon || do_preview) {
-      ImBuf *thumb;
-      char *prv_deferred_data = (char *)PRV_DEFERRED_DATA(prv);
-      int source = prv_deferred_data[0];
-      char *filepath = &prv_deferred_data[1];
-      int icon_w, icon_h;
-
-      thumb = IMB_thumb_manage(filepath, THB_LARGE, (ThumbSource)source);
-
-      if (thumb) {
-        /* #PreviewImage assumes pre-multiplied alpha. */
-        IMB_premultiply_alpha(thumb);
-
-        if (do_preview) {
-          prv->w[ICON_SIZE_PREVIEW] = thumb->x;
-          prv->h[ICON_SIZE_PREVIEW] = thumb->y;
-          prv->rect[ICON_SIZE_PREVIEW] = (uint *)MEM_dupallocN(thumb->rect);
-          prv->flag[ICON_SIZE_PREVIEW] &= ~(PRV_CHANGED | PRV_USER_EDITED | PRV_RENDERING);
-        }
-        if (do_icon) {
-          if (thumb->x > thumb->y) {
-            icon_w = ICON_RENDER_DEFAULT_HEIGHT;
-            icon_h = (thumb->y * icon_w) / thumb->x + 1;
-          }
-          else if (thumb->x < thumb->y) {
-            icon_h = ICON_RENDER_DEFAULT_HEIGHT;
-            icon_w = (thumb->x * icon_h) / thumb->y + 1;
-          }
-          else {
-            icon_w = icon_h = ICON_RENDER_DEFAULT_HEIGHT;
-          }
-
-          IMB_scaleImBuf(thumb, icon_w, icon_h);
-          prv->w[ICON_SIZE_ICON] = icon_w;
-          prv->h[ICON_SIZE_ICON] = icon_h;
-          prv->rect[ICON_SIZE_ICON] = (uint *)MEM_dupallocN(thumb->rect);
-          prv->flag[ICON_SIZE_ICON] &= ~(PRV_CHANGED | PRV_USER_EDITED | PRV_RENDERING);
-        }
-        IMB_freeImBuf(thumb);
-      }
-    }
+  if ((prv->tag & PRV_TAG_DEFFERED) == 0) {
+    return;
   }
+
+  const bool do_icon = ((size == ICON_SIZE_ICON) && !prv->rect[ICON_SIZE_ICON]);
+  const bool do_preview = ((size == ICON_SIZE_PREVIEW) && !prv->rect[ICON_SIZE_PREVIEW]);
+
+  if (!(do_icon || do_preview)) {
+    /* Nothing to do. */
+    return;
+  }
+
+  PreviewImageDeferred &prv_deferred = PreviewImageDeferred::from_base(*prv);
+  int icon_w, icon_h;
+
+  ImBuf *thumb = IMB_thumb_manage(prv_deferred.filepath.c_str(), THB_LARGE, prv_deferred.source);
+  if (!thumb) {
+    return;
+  }
+
+  /* #PreviewImage assumes pre-multiplied alpha. */
+  IMB_premultiply_alpha(thumb);
+
+  if (do_preview) {
+    prv->w[ICON_SIZE_PREVIEW] = thumb->x;
+    prv->h[ICON_SIZE_PREVIEW] = thumb->y;
+    prv->rect[ICON_SIZE_PREVIEW] = (uint *)MEM_dupallocN(thumb->byte_buffer.data);
+    prv->flag[ICON_SIZE_PREVIEW] &= ~(PRV_CHANGED | PRV_USER_EDITED | PRV_RENDERING);
+  }
+  if (do_icon) {
+    if (thumb->x > thumb->y) {
+      icon_w = ICON_RENDER_DEFAULT_HEIGHT;
+      icon_h = (thumb->y * icon_w) / thumb->x + 1;
+    }
+    else if (thumb->x < thumb->y) {
+      icon_h = ICON_RENDER_DEFAULT_HEIGHT;
+      icon_w = (thumb->x * icon_h) / thumb->y + 1;
+    }
+    else {
+      icon_w = icon_h = ICON_RENDER_DEFAULT_HEIGHT;
+    }
+
+    IMB_scaleImBuf(thumb, icon_w, icon_h);
+    prv->w[ICON_SIZE_ICON] = icon_w;
+    prv->h[ICON_SIZE_ICON] = icon_h;
+    prv->rect[ICON_SIZE_ICON] = (uint *)MEM_dupallocN(thumb->byte_buffer.data);
+    prv->flag[ICON_SIZE_ICON] &= ~(PRV_CHANGED | PRV_USER_EDITED | PRV_RENDERING);
+  }
+  IMB_freeImBuf(thumb);
+}
+
+const char *BKE_previewimg_deferred_filepath_get(const PreviewImage *prv)
+{
+  if ((prv->tag & PRV_TAG_DEFFERED) == 0) {
+    return nullptr;
+  }
+
+  const PreviewImageDeferred &prv_deferred = PreviewImageDeferred::from_base(*prv);
+  return prv_deferred.filepath.c_str();
+}
+
+std::optional<int> BKE_previewimg_deferred_thumb_source_get(const PreviewImage *prv)
+{
+  if ((prv->tag & PRV_TAG_DEFFERED) == 0) {
+    return std::nullopt;
+  }
+
+  const PreviewImageDeferred &prv_deferred = PreviewImageDeferred::from_base(*prv);
+  return prv_deferred.source;
 }
 
 ImBuf *BKE_previewimg_to_imbuf(PreviewImage *prv, const int size)
@@ -575,7 +636,7 @@ ImBuf *BKE_previewimg_to_imbuf(PreviewImage *prv, const int size)
   if (w > 0 && h > 0 && rect) {
     /* first allocate imbuf for copying preview into it */
     ima = IMB_allocImBuf(w, h, 32, IB_rect);
-    memcpy(ima->rect, rect, w * h * sizeof(*ima->rect));
+    memcpy(ima->byte_buffer.data, rect, w * h * sizeof(uint8_t) * 4);
   }
 
   return ima;
@@ -643,23 +704,24 @@ void BKE_icon_changed(const int icon_id)
   }
 
   icon = icon_ghash_lookup(icon_id);
+  if (!icon) {
+    return;
+  }
 
-  if (icon) {
-    /* We *only* expect ID-tied icons here, not non-ID icon/preview! */
-    BLI_assert(icon->id_type != 0);
-    BLI_assert(icon->obj_type == ICON_DATA_ID);
+  /* We *only* expect ID-tied icons here, not non-ID icon/preview! */
+  BLI_assert(icon->id_type != 0);
+  BLI_assert(icon->obj_type == ICON_DATA_ID);
 
-    /* Do not enforce creation of previews for valid ID types using BKE_previewimg_id_ensure()
-     * here, we only want to ensure *existing* preview images are properly tagged as
-     * changed/invalid, that's all. */
-    PreviewImage **p_prv = BKE_previewimg_id_get_p((ID *)icon->obj);
+  /* Do not enforce creation of previews for valid ID types using BKE_previewimg_id_ensure()
+   * here, we only want to ensure *existing* preview images are properly tagged as
+   * changed/invalid, that's all. */
+  PreviewImage **p_prv = BKE_previewimg_id_get_p((ID *)icon->obj);
 
-    /* If we have previews, they all are now invalid changed. */
-    if (p_prv && *p_prv) {
-      for (int i = 0; i < NUM_ICON_SIZES; i++) {
-        (*p_prv)->flag[i] |= PRV_CHANGED;
-        (*p_prv)->changed_timestamp[i]++;
-      }
+  /* If we have previews, they all are now invalid changed. */
+  if (p_prv && *p_prv) {
+    for (int i = 0; i < NUM_ICON_SIZES; i++) {
+      (*p_prv)->flag[i] |= PRV_CHANGED;
+      (*p_prv)->changed_timestamp[i]++;
     }
   }
 }
@@ -685,7 +747,7 @@ static Icon *icon_create(int icon_id, int obj_type, void *obj)
   return new_icon;
 }
 
-static int icon_id_ensure_create_icon(struct ID *id)
+static int icon_id_ensure_create_icon(ID *id)
 {
   BLI_assert(BLI_thread_is_main());
 
@@ -696,7 +758,7 @@ static int icon_id_ensure_create_icon(struct ID *id)
   return id->icon_id;
 }
 
-int BKE_icon_id_ensure(struct ID *id)
+int BKE_icon_id_ensure(ID *id)
 {
   /* Never handle icons in non-main thread! */
   BLI_assert(BLI_thread_is_main());
@@ -731,7 +793,7 @@ static int icon_gplayer_color_ensure_create_icon(bGPDlayer *gpl)
   BLI_assert(BLI_thread_is_main());
 
   /* NOTE: The color previews for GP Layers don't really need
-   * to be "rendered" to image per se (as it will just be a plain
+   * to be "rendered" to image per-se (as it will just be a plain
    * colored rectangle), we need to define icon data here so that
    * we can store a pointer to the layer data in icon->obj.
    */
@@ -845,7 +907,19 @@ Icon *BKE_icon_get(const int icon_id)
   return icon;
 }
 
-void BKE_icon_set(const int icon_id, struct Icon *icon)
+bool BKE_icon_is_preview(const int icon_id)
+{
+  const Icon *icon = BKE_icon_get(icon_id);
+  return icon->obj_type == ICON_DATA_PREVIEW;
+}
+
+bool BKE_icon_is_image(const int icon_id)
+{
+  const Icon *icon = BKE_icon_get(icon_id);
+  return icon->obj_type == ICON_DATA_IMBUF;
+}
+
+void BKE_icon_set(const int icon_id, Icon *icon)
 {
   void **val_p;
 
@@ -867,7 +941,7 @@ static void icon_add_to_deferred_delete_queue(int icon_id)
   BLI_linklist_lockfree_insert(&g_icon_delete_queue, (LockfreeLinkNode *)node);
 }
 
-void BKE_icon_id_delete(struct ID *id)
+void BKE_icon_id_delete(ID *id)
 {
   const int icon_id = id->icon_id;
   if (!icon_id) {
@@ -930,7 +1004,7 @@ bool BKE_icon_delete_unmanaged(const int icon_id)
 /** \name Geometry Icon
  * \{ */
 
-int BKE_icon_geom_ensure(struct Icon_Geom *geom)
+int BKE_icon_geom_ensure(Icon_Geom *geom)
 {
   BLI_assert(BLI_thread_is_main());
 
@@ -946,7 +1020,7 @@ int BKE_icon_geom_ensure(struct Icon_Geom *geom)
   return geom->icon_id;
 }
 
-struct Icon_Geom *BKE_icon_geom_from_memory(uchar *data, size_t data_len)
+Icon_Geom *BKE_icon_geom_from_memory(uchar *data, size_t data_len)
 {
   BLI_assert(BLI_thread_is_main());
   if (data_len <= 8) {
@@ -970,7 +1044,7 @@ struct Icon_Geom *BKE_icon_geom_from_memory(uchar *data, size_t data_len)
   }
   p += 4;
 
-  struct Icon_Geom *geom = (struct Icon_Geom *)MEM_mallocN(sizeof(*geom), __func__);
+  Icon_Geom *geom = (Icon_Geom *)MEM_mallocN(sizeof(*geom), __func__);
   geom->coords_range[0] = int(*p++);
   geom->coords_range[1] = int(*p++);
   /* x, y ignored for now */
@@ -985,7 +1059,7 @@ struct Icon_Geom *BKE_icon_geom_from_memory(uchar *data, size_t data_len)
   return geom;
 }
 
-struct Icon_Geom *BKE_icon_geom_from_file(const char *filename)
+Icon_Geom *BKE_icon_geom_from_file(const char *filename)
 {
   BLI_assert(BLI_thread_is_main());
   size_t data_len;
@@ -1002,7 +1076,7 @@ struct Icon_Geom *BKE_icon_geom_from_file(const char *filename)
 /** \name Studio Light Icon
  * \{ */
 
-int BKE_icon_ensure_studio_light(struct StudioLight *sl, int id_type)
+int BKE_icon_ensure_studio_light(StudioLight *sl, int id_type)
 {
   int icon_id = get_next_free_id();
   Icon *icon = icon_create(icon_id, ICON_DATA_STUDIOLIGHT, sl);

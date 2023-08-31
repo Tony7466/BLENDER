@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.types import Menu, Panel
 from bpy.app.translations import contexts as i18n_contexts
@@ -168,6 +171,7 @@ class TIME_MT_cache(Menu):
         col.prop(st, "cache_softbody")
         col.prop(st, "cache_particles")
         col.prop(st, "cache_cloth")
+        col.prop(st, "cache_simulation_nodes")
         col.prop(st, "cache_smoke")
         col.prop(st, "cache_dynamicpaint")
         col.prop(st, "cache_rigidbody")
@@ -256,6 +260,7 @@ class TIME_PT_playback(TimelinePanelButtons, Panel):
         col.prop(screen, "use_play_clip_editors", text="Movie Clip Editor")
         col.prop(screen, "use_play_node_editors", text="Node Editors")
         col.prop(screen, "use_play_sequence_editors", text="Video Sequencer")
+        col.prop(screen, "use_play_spreadsheet_editors", text="Spreadsheet")
 
         col = layout.column(heading="Show")
         col.prop(scene, "show_subframe", text="Subframes")

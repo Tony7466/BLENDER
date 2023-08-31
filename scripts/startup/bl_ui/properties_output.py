@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2018-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.types import Menu, Panel, UIList
 from bl_ui.utils import PresetPanel
@@ -17,7 +20,7 @@ class RENDER_PT_format_presets(PresetPanel, Panel):
 
 
 class RENDER_PT_ffmpeg_presets(PresetPanel, Panel):
-    bl_label = "FFMPEG Presets"
+    bl_label = "FFmpeg Presets"
     preset_subdir = "ffmpeg"
     preset_operator = "script.python_file_run"
 
@@ -164,8 +167,8 @@ class RENDER_PT_time_stretching(RenderOutputButtonsPanel, Panel):
         rd = context.scene.render
 
         col = layout.column(align=True)
-        col.prop(rd, "frame_map_old", text="Old")
-        col.prop(rd, "frame_map_new", text="New")
+        col.prop(rd, "frame_map_old", text="Old", text_ctxt=i18n_contexts.time)
+        col.prop(rd, "frame_map_new", text="New", text_ctxt=i18n_contexts.time)
 
 
 class RENDER_PT_post_processing(RenderOutputButtonsPanel, Panel):

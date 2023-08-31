@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2021-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Gather pass: Convolve foreground and background parts in separate passes.
@@ -160,7 +163,8 @@ void dof_gather_accumulator(float base_radius,
     first_ring = false;
 
     if (do_density_change && (ring == change_density_at_ring) &&
-        (density_change < gather_max_density_change)) {
+        (density_change < gather_max_density_change))
+    {
       if (dof_do_density_change(base_radius, min_intersectable_radius)) {
         base_radius *= radius_downscale_factor;
         ring += gather_density_change_ring;

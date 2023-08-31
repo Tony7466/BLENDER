@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -96,9 +98,7 @@ template<typename T> void uninitialized_fill_n(T *dst, int64_t n, const T &value
 template<typename T> struct DestructValueAtAddress {
   DestructValueAtAddress() = default;
 
-  template<typename U> DestructValueAtAddress(const U &)
-  {
-  }
+  template<typename U> DestructValueAtAddress(const U &) {}
 
   void operator()(T *ptr)
   {

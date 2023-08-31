@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "renderdoc_api.hh"
 
@@ -61,17 +62,6 @@ void Renderdoc::load()
     RENDERDOC_GetAPI(eRENDERDOC_API_Version_1_1_2, (void **)&renderdoc_api_);
   }
 #endif
-
-  if (renderdoc_api_ != nullptr) {
-    int major;
-    int minor;
-    int patch;
-    renderdoc_api_->GetAPIVersion(&major, &minor, &patch);
-    std::cout << "Found renderdoc API [" << major << "." << minor << "." << patch << "]";
-  }
-  else {
-    std::cerr << "Unable to load renderdoc API.\n";
-  }
 }
 
 }  // namespace renderdoc::api

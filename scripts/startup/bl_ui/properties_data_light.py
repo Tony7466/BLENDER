@@ -1,5 +1,9 @@
+# SPDX-FileCopyrightText: 2018-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
+from bpy.app.translations import contexts as i18n_contexts
 from bpy.types import Panel
 from rna_prop_ui import PropertyPanel
 
@@ -89,7 +93,7 @@ class DATA_PT_EEVEE_light(DataButtonsPanel, Panel):
 
         col.prop(light, "diffuse_factor", text="Diffuse")
         col.prop(light, "specular_factor", text="Specular")
-        col.prop(light, "volume_factor", text="Volume")
+        col.prop(light, "volume_factor", text="Volume", text_ctxt=i18n_contexts.id_id)
 
         col.separator()
 
@@ -263,28 +267,6 @@ class DATA_PT_spot(DataButtonsPanel, Panel):
         col.prop(light, "show_cone")
 
 
-class DATA_PT_falloff_curve(DataButtonsPanel, Panel):
-    bl_label = "Falloff Curve"
-    bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE'}
-
-    @classmethod
-    def poll(cls, context):
-        light = context.light
-        engine = context.engine
-
-        return (
-            (light and light.type in {'POINT', 'SPOT'} and light.falloff_type == 'CUSTOM_CURVE') and
-            (engine in cls.COMPAT_ENGINES)
-        )
-
-    def draw(self, context):
-        light = context.light
-
-        self.layout.template_curve_mapping(
-            light, "falloff_curve", use_negative_slope=True)
-
-
 class DATA_PT_custom_props_light(DataButtonsPanel, PropertyPanel, Panel):
     COMPAT_ENGINES = {
         'BLENDER_RENDER',
@@ -306,7 +288,6 @@ classes = (
     DATA_PT_EEVEE_shadow_cascaded_shadow_map,
     DATA_PT_EEVEE_shadow_contact,
     DATA_PT_spot,
-    DATA_PT_falloff_curve,
     DATA_PT_custom_props_light,
 )
 

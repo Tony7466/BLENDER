@@ -1,20 +1,16 @@
-/* SPDX-License-Identifier: MIT
- * Copyright 2013 Jorge Jimenez <jorge@iryoku.com>
- *           2013 Jose I. Echevarria <joseignacioechevarria@gmail.com>
- *           2013 Belen Masia <bmasia@unizar.es>
- *           2013 Fernando Navarro <fernandn@microsoft.com>
- *           2013 Diego Gutierrez <diegog@unizar.es> */
+/* SPDX-FileCopyrightText: 2013 Jorge Jimenez <jorge@iryoku.com>
+ * SPDX-FileCopyrightText: 2013 Jose I. Echevarria <joseignacioechevarria@gmail.com>
+ * SPDX-FileCopyrightText: 2013 Belen Masia <bmasia@unizar.es>
+ * SPDX-FileCopyrightText: 2013 Fernando Navarro <fernandn@microsoft.com>
+ * SPDX-FileCopyrightText: 2013 Diego Gutierrez <diegog@unizar.es>
+ *
+ * SPDX-License-Identifier: MIT */
 
 #include "BLI_smaa_textures.h"
 
 /* Don't re-wrap large data definitions. */
 /* clang-format off */
 
-/**
- * Stored in R8G8 format. Load it in the following format:
- *  - DX10: DXGI_FORMAT_R8G8_UNORM
- *  - GPU: GPU_RG8 texture format and GPU_DATA_UBYTE data format.
- */
 const unsigned char areaTexBytes[] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -14952,11 +14948,6 @@ const unsigned char areaTexBytes[] = {
     0x00, 0x00, 0x00, 0x00
 };
 
-/**
- * Stored in R8 format. Load it in the following format:
- *  - DX10: DXGI_FORMAT_R8_UNORM
- *  - GPU: GPU_R8 texture format and GPU_DATA_UBYTE data format.
- */
 const unsigned char searchTexBytes[] = {
     0xfe, 0xfe, 0x00, 0x7f, 0x7f, 0x00, 0x00, 0xfe, 0xfe, 0x00, 0x7f, 0x7f,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x7f, 0x7f, 0x00,

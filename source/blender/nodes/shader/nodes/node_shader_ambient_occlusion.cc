@@ -1,20 +1,21 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_shader_util.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 namespace blender::nodes::node_shader_ambient_occlusion_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>(N_("Color")).default_value({1.0f, 1.0f, 1.0f, 1.0f});
-  b.add_input<decl::Float>(N_("Distance")).default_value(1.0f).min(0.0f).max(1000.0f);
-  b.add_input<decl::Vector>(N_("Normal")).min(-1.0f).max(1.0f).hide_value();
-  b.add_output<decl::Color>(N_("Color"));
-  b.add_output<decl::Float>(N_("AO"));
+  b.add_input<decl::Color>("Color").default_value({1.0f, 1.0f, 1.0f, 1.0f});
+  b.add_input<decl::Float>("Distance").default_value(1.0f).min(0.0f).max(1000.0f);
+  b.add_input<decl::Vector>("Normal").min(-1.0f).max(1.0f).hide_value();
+  b.add_output<decl::Color>("Color");
+  b.add_output<decl::Float>("AO");
 }
 
 static void node_shader_buts_ambient_occlusion(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)

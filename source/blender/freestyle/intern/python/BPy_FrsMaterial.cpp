@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2004-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -7,6 +9,8 @@
 #include "BPy_FrsMaterial.h"
 
 #include "BPy_Convert.h"
+
+#include "BLI_math_vector.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -105,7 +109,8 @@ static int FrsMaterial_init(BPy_FrsMaterial *self, PyObject *args, PyObject *kwd
                                        convert_v4,
                                        emission,
                                        &shininess,
-                                       &priority)) {
+                                       &priority))
+  {
     self->m = new FrsMaterial(line, diffuse, ambient, specular, emission, shininess, priority);
   }
   else {
@@ -522,7 +527,7 @@ static Py_hash_t FrsMaterial_hash(PyObject *self)
 /*-----------------------BPy_FrsMaterial type definition ------------------------------*/
 
 PyTypeObject FrsMaterial_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "Material",
     /*tp_basicsize*/ sizeof(BPy_FrsMaterial),
     /*tp_itemsize*/ 0,
