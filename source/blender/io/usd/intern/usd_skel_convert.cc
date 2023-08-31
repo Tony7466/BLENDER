@@ -23,6 +23,7 @@
 
 #include "BKE_action.h"
 #include "BKE_armature.h"
+#include "BKE_attribute.hh"
 #include "BKE_deform.h"
 #include "BKE_fcurve.h"
 #include "BKE_key.h"
@@ -1003,9 +1004,21 @@ void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim
   /* Create a deform group per joint. */
   std::vector<bDeformGroup *> joint_def_grps(joints.size(), nullptr);
 
+  /* We must be careful about name collisions with existing attributes when creating
+   * deform groups, because in the call to BKE_object_defgroup_add_name() below
+   * the deform group is given a unique name if there is already an attribute with
+   * the same name. To ensure that deform groups preserve the required bone names, we
+   * will remove attributes with colliding names before adding the groups. */
+  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+
   for (int idx : used_indices) {
     std::string joint_name = pxr::SdfPath(joints[idx]).GetName();
     if (!BKE_object_defgroup_find_name(mesh_obj, joint_name.c_str())) {
+      /* If there is an attribute with the same name, remove it. */
+      bke::AttributeIDRef attr_id(joint_name);
+      if (attributes.contains(attr_id)) {
+        attributes.remove(attr_id);
+      }
       bDeformGroup *def_grp = BKE_object_defgroup_add_name(mesh_obj, joint_name.c_str());
       joint_def_grps[idx] = def_grp;
     }
