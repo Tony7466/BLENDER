@@ -44,7 +44,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "GPU_framebuffer.h"
 #include "file_indexer.hh"
@@ -884,8 +884,8 @@ static void file_space_blend_read_data(BlendDataReader *reader, SpaceLink *sl)
 }
 
 static void file_space_blend_read_after_liblink(BlendLibReader * /*reader*/,
-                                      ID * /*parent_id*/,
-                                      SpaceLink *sl)
+                                                ID * /*parent_id*/,
+                                                SpaceLink *sl)
 {
   SpaceFile *sfile = reinterpret_cast<SpaceFile *>(sl);
 

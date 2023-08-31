@@ -39,7 +39,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "buttons_intern.h" /* own include */
 
@@ -946,8 +946,8 @@ static void buttons_space_blend_read_data(BlendDataReader * /*reader*/, SpaceLin
 }
 
 static void buttons_space_blend_read_after_liblink(BlendLibReader * /*reader*/,
-                                         ID * /*parent_id*/,
-                                         SpaceLink *sl)
+                                                   ID * /*parent_id*/,
+                                                   SpaceLink *sl)
 {
   SpaceProperties *sbuts = reinterpret_cast<SpaceProperties *>(sl);
 

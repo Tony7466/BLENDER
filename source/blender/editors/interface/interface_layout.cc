@@ -549,23 +549,6 @@ static void ui_item_array(uiLayout *layout,
     const int butw = UI_UNIT_X * 0.75;
     const int buth = UI_UNIT_X * 0.75;
 
-    if (ptr->type == &RNA_Armature) {
-      bArmature *arm = static_cast<bArmature *>(ptr->data);
-
-      layer_used = arm->layer_used;
-
-      if (arm->edbo) {
-        if (arm->act_edbone) {
-          layer_active |= arm->act_edbone->layer;
-        }
-      }
-      else {
-        if (arm->act_bone) {
-          layer_active |= arm->act_bone->layer;
-        }
-      }
-    }
-
     for (int b = 0; b < cols; b++) {
       UI_block_align_begin(block);
 
@@ -1664,7 +1647,7 @@ void uiItemsFullEnumO(uiLayout *layout,
     }
     else {
       bContext *C = static_cast<bContext *>(block->evil_C);
-      bContextStore *previous_ctx = CTX_store_get(C);
+      const bContextStore *previous_ctx = CTX_store_get(C);
       CTX_store_set(C, layout->context);
       RNA_property_enum_items_gettexted(C, &ptr, prop, &item_array, &totitem, &free);
       CTX_store_set(C, previous_ctx);
@@ -3113,7 +3096,7 @@ void uiItemMContents(uiLayout *layout, const char *menuname)
     return;
   }
 
-  bContextStore *previous_ctx = CTX_store_get(C);
+  const bContextStore *previous_ctx = CTX_store_get(C);
   UI_menutype_draw(C, mt, layout);
 
   /* Restore context that was cleared by `UI_menutype_draw`. */
@@ -5720,7 +5703,7 @@ void ui_layout_add_but(uiLayout *layout, uiBut *but)
 
   if (layout->context) {
     but->context = layout->context;
-    but->context->used = true;
+    layout->context->used = true;
   }
 
   if (layout->emboss != UI_EMBOSS_UNDEFINED) {
@@ -5849,7 +5832,7 @@ bool UI_block_layout_needs_resolving(const uiBlock *block)
 void uiLayoutSetContextPointer(uiLayout *layout, const char *name, PointerRNA *ptr)
 {
   uiBlock *block = layout->root->block;
-  layout->context = CTX_store_add(&block->contexts, name, ptr);
+  layout->context = CTX_store_add(block->contexts, name, ptr);
 }
 
 bContextStore *uiLayoutGetContextStore(uiLayout *layout)
@@ -5857,10 +5840,10 @@ bContextStore *uiLayoutGetContextStore(uiLayout *layout)
   return layout->context;
 }
 
-void uiLayoutContextCopy(uiLayout *layout, bContextStore *context)
+void uiLayoutContextCopy(uiLayout *layout, const bContextStore *context)
 {
   uiBlock *block = layout->root->block;
-  layout->context = CTX_store_add_all(&block->contexts, context);
+  layout->context = CTX_store_add_all(block->contexts, context);
 }
 
 void uiLayoutSetTooltipFunc(uiLayout *layout,
