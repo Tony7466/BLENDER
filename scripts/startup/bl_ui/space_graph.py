@@ -302,6 +302,7 @@ class GRAPH_MT_key_blending(Menu):
         layout.operator("graph.blend_offset", text="Blend Offset")
         layout.operator("graph.blend_to_ease", text="Blend to Ease")
         layout.operator("graph.match_slope", text="Match Slope")
+        layout.operator("graph.scale_average", text="Scale Average")
 
 
 class GRAPH_MT_key_smoothing(Menu):
