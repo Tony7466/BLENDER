@@ -1322,11 +1322,35 @@ static void shear_graph_keys(bAnimContext *ac, const float factor, tShearDirecti
   ANIM_animdata_freelist(&anim_data);
 }
 
+static void shear_draw_status_header(bContext *C, tGraphSliderOp *gso)
+{
+  char status_str[UI_MAX_DRAW_STR];
+  char mode_str[32];
+  char slider_string[UI_MAX_DRAW_STR];
+  ED_slider_status_string_get(gso->slider, slider_string, UI_MAX_DRAW_STR);
+
+  STRNCPY(mode_str, TIP_("Shear Keys"));
+
+  if (hasNumInput(&gso->num)) {
+    char str_ofs[NUM_STR_REP_LEN];
+
+    outputNumInput(&gso->num, str_ofs, &gso->scene->unit);
+
+    SNPRINTF(status_str, "%s: %s", mode_str, str_ofs);
+  }
+  else {
+    const char *operator_string = "D - Toggle Direction";
+    SNPRINTF(status_str, "%s: %s | %s", mode_str, slider_string, operator_string);
+  }
+
+  ED_workspace_status_text(C, status_str);
+}
+
 static void shear_modal_update(bContext *C, wmOperator *op)
 {
   tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
 
-  common_draw_status_header(C, gso, "Shear Keys");
+  shear_draw_status_header(C, gso);
 
   /* Reset keyframes to the state at invoke. */
   reset_bezts(gso);
@@ -1373,7 +1397,7 @@ static int shear_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
   gso->modal_update = shear_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
-  common_draw_status_header(C, gso, "Shear Keys");
+  shear_draw_status_header(C, gso);
   ED_slider_factor_bounds_set(gso->slider, -1, 1);
   ED_slider_factor_set(gso->slider, 0.0f);
 
