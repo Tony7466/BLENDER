@@ -769,12 +769,12 @@ void ED_add_grease_pencil_layer_group_channel(ChannelDrawList *channel_list,
   draw_elem->channel_locked = layer_group->wrap().is_locked();
 }
 
-void ED_add_gp_layer_legacy_channel(ChannelDrawList *channel_list,
-                                    bDopeSheet *ads,
-                                    bGPDlayer *gpl,
-                                    float ypos,
-                                    float yscale_fac,
-                                    int saction_flag)
+void ED_add_grease_pencil_layer_legacy_channel(ChannelDrawList *channel_list,
+                                               bDopeSheet *ads,
+                                               bGPDlayer *gpl,
+                                               float ypos,
+                                               float yscale_fac,
+                                               int saction_flag)
 {
   bool locked = (gpl->flag & GP_LAYER_LOCKED) != 0;
   ChannelListElement *draw_elem = channel_list_add_element(
