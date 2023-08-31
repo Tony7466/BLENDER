@@ -826,7 +826,10 @@ bool match_slope_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float
 
 /* ---------------- */
 
-void shear_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
+void shear_fcurve_segment(FCurve *fcu,
+                          FCurveSegment *segment,
+                          const float factor,
+                          tShearDirection direction)
 {
   const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
   const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
@@ -842,7 +845,13 @@ void shear_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float facto
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
     /* For easy calculation of the curve, the  values are normalized. */
-    const float normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
+    float normalized_x;
+    if (direction == SHEAR_FROM_LEFT) {
+      normalized_x = (fcu->bezt[i].vec[1][0] - left_key->vec[1][0]) / key_x_range;
+    }
+    else {
+      normalized_x = (right_key->vec[1][0] - fcu->bezt[i].vec[1][0]) / key_x_range;
+    }
 
     const float lineal = key_y_range * normalized_x;
 

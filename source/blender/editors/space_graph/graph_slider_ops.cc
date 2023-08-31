@@ -1291,12 +1291,35 @@ void GRAPH_OT_match_slope(wmOperatorType *ot)
 }
 
 /* -------------------------------------------------------------------- */
-/** \name Shear from Left Operator
+/** \name Shear Operator
  * \{ */
 
-static void shear_graph_keys(bAnimContext *ac, const float factor)
+static const EnumPropertyItem shear_direction_items[] = {
+    {SHEAR_FROM_LEFT, "FROM_LEFT", 0, "From Left", "foo"},
+    {SHEAR_FROM_RIGHT, "FROM_RIGHT", 0, "From Right", "foo"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+static void shear_graph_keys(bAnimContext *ac, const float factor, tShearDirection direction)
 {
-  apply_fcu_segment_function(ac, factor, shear_fcurve_segment);
+  ListBase anim_data = {nullptr, nullptr};
+
+  ANIM_animdata_filter(
+      ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, eAnimCont_Types(ac->datatype));
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    FCurve *fcu = (FCurve *)ale->key_data;
+    ListBase segments = find_fcurve_segments(fcu);
+
+    LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
+      shear_fcurve_segment(fcu, segment, factor, direction);
+    }
+
+    ale->update |= ANIM_UPDATE_DEFAULT;
+    BLI_freelistN(&segments);
+  }
+
+  ANIM_animdata_update(ac, &anim_data);
+  ANIM_animdata_freelist(&anim_data);
 }
 
 static void shear_modal_update(bContext *C, wmOperator *op)
@@ -1308,8 +1331,9 @@ static void shear_modal_update(bContext *C, wmOperator *op)
   /* Reset keyframes to the state at invoke. */
   reset_bezts(gso);
   const float factor = slider_factor_get_and_remember(op);
+  const tShearDirection direction = tShearDirection(RNA_enum_get(op->ptr, "direction"));
 
-  shear_graph_keys(&gso->ac, factor);
+  shear_graph_keys(&gso->ac, factor, direction);
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
 }
 
@@ -1341,8 +1365,9 @@ static int shear_exec(bContext *C, wmOperator *op)
   }
 
   const float factor = RNA_float_get(op->ptr, "factor");
+  const tShearDirection direction = tShearDirection(RNA_enum_get(op->ptr, "direction"));
 
-  shear_graph_keys(&ac, factor);
+  shear_graph_keys(&ac, factor, direction);
 
   /* Set notifier that keyframes have changed. */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
@@ -1377,6 +1402,13 @@ void GRAPH_OT_shear(wmOperatorType *ot)
                        "Control the bend of the curve",
                        -1.0f,
                        1.0f);
+
+  RNA_def_enum(ot->srna,
+               "direction",
+               shear_direction_items,
+               SHEAR_FROM_LEFT,
+               "Direction",
+               "Which end of the segment to use as a reference to shear from");
 }
 
 /** \} */
