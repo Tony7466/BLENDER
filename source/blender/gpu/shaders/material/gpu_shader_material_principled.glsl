@@ -76,11 +76,11 @@ void node_bsdf_principled(vec4 base_color,
   diffuse_data.color = sheen_color;
   diffuse_data.N = N;
   /* Attenuate lower layers */
-  float remaining_weight = (1.0 - max_v3(sheen_color));
+  weight *= (1.0 - max_v3(sheen_color));
 
   /* Second layer: Clearcoat */
   ClosureReflection clearcoat_data;
-  clearcoat_data.weight = weight * remaining_weight * clearcoat;
+  clearcoat_data.weight = weight * clearcoat;
   clearcoat_data.N = CN;
   clearcoat_data.roughness = clearcoat_roughness;
   if (true) {
@@ -89,7 +89,7 @@ void node_bsdf_principled(vec4 base_color,
     float reflectance = btdf_lut(NV, clearcoat_data.roughness, clearcoat_ior, false).y;
     clearcoat_data.color = vec3(reflectance);
     /* Attenuate lower layers */
-    remaining_weight *= (1.0 - reflectance * clearcoat);
+    weight *= (1.0 - reflectance * clearcoat);
   }
 
   /* TODO: attenuate emission by sheen and clearcoat. */
@@ -99,7 +99,7 @@ void node_bsdf_principled(vec4 base_color,
 
   /* Metallic component */
   ClosureReflection reflection_data;
-  reflection_data.weight = weight * remaining_weight;
+  reflection_data.weight = weight;
   reflection_data.N = N;
   reflection_data.roughness = roughness;
   vec2 split_sum = brdf_lut(NV, roughness);
@@ -113,7 +113,7 @@ void node_bsdf_principled(vec4 base_color,
 
   /* Transmission component */
   ClosureRefraction refraction_data;
-  refraction_data.weight = weight * remaining_weight * transmission;
+  refraction_data.weight = weight * transmission;
   /* TODO: change `specular_tint` to rgb. */
   vec3 reflection_tint = mix(vec3(1.0), base_color.rgb, specular_tint);
   if (true) {
@@ -126,7 +126,7 @@ void node_bsdf_principled(vec4 base_color,
     refraction_data.roughness = roughness;
     refraction_data.ior = ior;
     /* Attenuate lower layers */
-    remaining_weight *= specular_weight;
+    weight *= specular_weight;
   }
 
   /* Specular component */
@@ -137,7 +137,7 @@ void node_bsdf_principled(vec4 base_color,
                                                     F_brdf_single_scatter(f0, f90, split_sum);
     reflection_data.color += specular_brdf * specular_weight;
     /* Attenuate lower layers */
-    remaining_weight *= (1.0 - max_v3(specular_brdf));
+    weight *= (1.0 - max_v3(specular_brdf));
   }
 
   /* Diffuse component */
@@ -145,7 +145,7 @@ void node_bsdf_principled(vec4 base_color,
     vec3 diffuse_color = mix(base_color.rgb, subsurface_color.rgb, subsurface);
     diffuse_data.sss_radius = subsurface_radius * subsurface;
     diffuse_data.sss_id = uint(do_sss);
-    diffuse_data.color += diffuse_color * remaining_weight;
+    diffuse_data.color += diffuse_color * (weight / diffuse_data.weight);
   }
 
   /* Ref. #98190: Defines are optimizations for old compilers.
