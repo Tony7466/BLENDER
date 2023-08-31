@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -30,15 +32,15 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
 
-#include "ED_keyframing.h"
+#include "ED_keyframing.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "interface_intern.hh"
 
@@ -207,7 +209,7 @@ bool ui_but_anim_expression_set(uiBut *but, const char *str)
     if (driver && (driver->type == DRIVER_TYPE_PYTHON)) {
       bContext *C = static_cast<bContext *>(but->block->evil_C);
 
-      BLI_strncpy_utf8(driver->expression, str, sizeof(driver->expression));
+      STRNCPY_UTF8(driver->expression, str);
 
       /* tag driver as needing to be recompiled */
       BKE_driver_invalidate_expression(driver, true, false);
@@ -281,7 +283,7 @@ bool ui_but_anim_expression_create(uiBut *but, const char *str)
 
       /* set the expression */
       /* TODO: need some way of identifying variables used */
-      BLI_strncpy_utf8(driver->expression, str, sizeof(driver->expression));
+      STRNCPY_UTF8(driver->expression, str);
 
       /* updates */
       BKE_driver_invalidate_expression(driver, true, false);

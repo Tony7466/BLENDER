@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.6.0 Alpha (b'ae1c52b3f2e0')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'5ba692898e63')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-05-08 10:27:51\n"
+"POT-Creation-Date: 2023-08-28 16:05:16\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Ainhize & Miriam <agoenaga006@ikasle.ehu.eus>\n"
 "Language-Team: Euskara <agoenaga006@ikasle.ehu.eus>\n"
@@ -479,6 +479,10 @@ msgid "Cube"
 msgstr "Kuboa"
 
 
+msgid "Edit"
+msgstr "Editatu"
+
+
 msgid "Cylinder"
 msgstr "Zilindroa"
 
@@ -572,10 +576,6 @@ msgid "Show/Hide Faces"
 msgstr "Aurpegiak erakutsi/ezkutatu"
 
 
-msgid "Edit"
-msgstr "Editatu"
-
-
 msgid "Text"
 msgstr "Testua"
 
@@ -639,6 +639,10 @@ msgstr "Y Ardatza"
 
 msgid "Original"
 msgstr "Jatorrizkoa"
+
+
+msgid "Selection"
+msgstr "Hautaketa"
 
 
 msgid "Reflection"
@@ -821,10 +825,6 @@ msgid "Paste text from clipboard"
 msgstr "Arbeletik testua itsatsi"
 
 
-msgid "Selection"
-msgstr "Hautaketa"
-
-
 msgid "Console output type"
 msgstr "Kontsolaren irteera-mota"
 
@@ -945,15 +945,6 @@ msgstr "-Z ardatza"
 
 msgid "Use Metadata"
 msgstr "Metadata erabili"
-
-
-msgctxt "Operator"
-msgid "Export OBJ"
-msgstr "Esportatu OBJ"
-
-
-msgid "Include UVs"
-msgstr "Gehitu UVs"
 
 
 msgid "Hierarchy"
@@ -1670,6 +1661,10 @@ msgid "Prev"
 msgstr "Aurrekoa"
 
 
+msgid "Speaker"
+msgstr "Bozgorailua"
+
+
 msgctxt "Operator"
 msgid "Load Factory Settings"
 msgstr "Lehenetsitako ezarpenak kargatu"
@@ -1683,6 +1678,10 @@ msgstr "Azken Saioa Berreskuratu"
 msgctxt "Operator"
 msgid "Save System Info"
 msgstr "Sistemaren Informazioa Gorde"
+
+
+msgid "Refraction"
+msgstr "Errefrakzioa"
 
 
 msgctxt "Operator"
@@ -1717,6 +1716,10 @@ msgstr "Irudi Editorea"
 
 msgid "Continue"
 msgstr "Jarraitu"
+
+
+msgid "Temperature"
+msgstr "Tenperatura"
 
 
 msgctxt "Sequence"
@@ -1793,10 +1796,6 @@ msgstr "Blender Fitxategia"
 
 msgid "Sort Alphabetically"
 msgstr "Alfabetikoki Ordenatu"
-
-
-msgid "Speaker"
-msgstr "Bozgorailua"
 
 
 msgid "3D"
@@ -1911,14 +1910,6 @@ msgstr "Baxua"
 
 msgid "Upper"
 msgstr "Altua"
-
-
-msgid "Refraction"
-msgstr "Errefrakzioa"
-
-
-msgid "Temperature"
-msgstr "Tenperatura"
 
 
 msgctxt "Image"
@@ -2216,12 +2207,12 @@ msgid "AO"
 msgstr "Inguruneko Oklusioa"
 
 
-msgid "Anisotropy"
-msgstr "Anisotropia"
-
-
 msgid "BSDF"
 msgstr "BSDF"
+
+
+msgid "Anisotropy"
+msgstr "Anisotropia"
 
 
 msgid "View Vector"
@@ -2400,10 +2391,6 @@ msgid "Japanese (日本語)"
 msgstr "Japoniera (日本語)"
 
 
-msgid "Dutch (Nederlandse taal)"
-msgstr "Nederlandera (Nederlandse taal)"
-
-
 msgid "Italian (Italiano)"
 msgstr "Italiera (Italiano)"
 
@@ -2512,10 +2499,6 @@ msgid "Hebrew (תירִבְעִ)"
 msgstr "Hebreera (תירִבְעִ)"
 
 
-msgid "Estonian (Eestlane)"
-msgstr "Estoniera (Eestlane)"
-
-
 msgid "Esperanto (Esperanto)"
 msgstr "Esperantoa (Esperanto)"
 
@@ -2534,14 +2517,6 @@ msgstr "Uzbekera (Oʻzbek)"
 
 msgid "Uzbek Cyrillic (Ўзбек)"
 msgstr "Uzbekera Zirilikoa (Ўзбек)"
-
-
-msgid "Hindi (मानक हिन्दी)"
-msgstr "Hindi (मानक हिन्दी)"
-
-
-msgid "Vietnamese (tiếng Việt)"
-msgstr "Vietnamera (tiếng Việt)"
 
 
 msgid "Complete"

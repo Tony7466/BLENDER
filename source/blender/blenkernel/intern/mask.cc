@@ -1,12 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2012 Blender Foundation */
+/* SPDX-FileCopyrightText: 2012 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
  */
 
-#include <stddef.h>
-#include <string.h>
+#include <cstddef>
+#include <cstring>
 
 #include "CLG_log.h"
 
@@ -15,7 +16,9 @@
 #include "BLI_endian_switch.h"
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
@@ -42,7 +45,7 @@
 
 #include "DRW_engine.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static CLG_LogRef LOG = {"bke.mask"};
 
@@ -78,6 +81,7 @@ static void mask_foreach_id(ID *id, LibraryForeachIDData *data)
 
   LISTBASE_FOREACH (MaskLayer *, mask_layer, &mask->masklayers) {
     LISTBASE_FOREACH (MaskSpline *, mask_spline, &mask_layer->splines) {
+      BKE_LIB_FOREACHID_PROCESS_ID(data, mask_spline->parent.id, IDWALK_CB_USER);
       for (int i = 0; i < mask_spline->tot_point; i++) {
         MaskSplinePoint *point = &mask_spline->points[i];
         BKE_LIB_FOREACHID_PROCESS_ID(data, point->parent.id, IDWALK_CB_USER);
@@ -92,10 +96,6 @@ static void mask_blend_write(BlendWriter *writer, ID *id, const void *id_address
 
   BLO_write_id_struct(writer, Mask, id_address, &mask->id);
   BKE_id_blend_write(writer, &mask->id);
-
-  if (mask->adt) {
-    BKE_animdata_blend_write(writer, mask->adt);
-  }
 
   LISTBASE_FOREACH (MaskLayer *, masklay, &mask->masklayers) {
     BLO_write_struct(writer, MaskLayer, masklay);
@@ -181,52 +181,6 @@ static void mask_blend_read_data(BlendDataReader *reader, ID *id)
   }
 }
 
-static void lib_link_mask_parent(BlendLibReader *reader, Mask *mask, MaskParent *parent)
-{
-  BLO_read_id_address(reader, mask->id.lib, &parent->id);
-}
-
-static void mask_blend_read_lib(BlendLibReader *reader, ID *id)
-{
-  Mask *mask = (Mask *)id;
-  LISTBASE_FOREACH (MaskLayer *, masklay, &mask->masklayers) {
-    MaskSpline *spline = static_cast<MaskSpline *>(masklay->splines.first);
-    while (spline) {
-      for (int i = 0; i < spline->tot_point; i++) {
-        MaskSplinePoint *point = &spline->points[i];
-
-        lib_link_mask_parent(reader, mask, &point->parent);
-      }
-
-      lib_link_mask_parent(reader, mask, &spline->parent);
-
-      spline = spline->next;
-    }
-  }
-}
-
-static void expand_mask_parent(BlendExpander *expander, MaskParent *parent)
-{
-  if (parent->id) {
-    BLO_expand(expander, parent->id);
-  }
-}
-
-static void mask_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  Mask *mask = (Mask *)id;
-  LISTBASE_FOREACH (MaskLayer *, mask_layer, &mask->masklayers) {
-    LISTBASE_FOREACH (MaskSpline *, spline, &mask_layer->splines) {
-      for (int i = 0; i < spline->tot_point; i++) {
-        MaskSplinePoint *point = &spline->points[i];
-        expand_mask_parent(expander, &point->parent);
-      }
-
-      expand_mask_parent(expander, &spline->parent);
-    }
-  }
-}
-
 IDTypeInfo IDType_ID_MSK = {
     /*id_code*/ ID_MSK,
     /*id_filter*/ FILTER_ID_MSK,
@@ -249,8 +203,7 @@ IDTypeInfo IDType_ID_MSK = {
 
     /*blend_write*/ mask_blend_write,
     /*blend_read_data*/ mask_blend_read_data,
-    /*blend_read_lib*/ mask_blend_read_lib,
-    /*blend_read_expand*/ mask_blend_read_expand,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -259,7 +212,7 @@ IDTypeInfo IDType_ID_MSK = {
 
 static struct {
   ListBase splines;
-  struct GHash *id_hash;
+  GHash *id_hash;
 } mask_clipboard = {{nullptr}};
 
 static MaskSplinePoint *mask_spline_point_next(MaskSpline *spline,
@@ -335,12 +288,7 @@ MaskLayer *BKE_mask_layer_new(Mask *mask, const char *name)
 {
   MaskLayer *masklay = MEM_cnew<MaskLayer>(__func__);
 
-  if (name && name[0]) {
-    BLI_strncpy(masklay->name, name, sizeof(masklay->name));
-  }
-  else {
-    strcpy(masklay->name, DATA_("MaskLayer"));
-  }
+  STRNCPY(masklay->name, name && name[0] ? name : DATA_("MaskLayer"));
 
   BLI_addtail(&mask->masklayers, masklay);
 
@@ -389,7 +337,7 @@ void BKE_mask_layer_unique_name(Mask *mask, MaskLayer *masklay)
 
 void BKE_mask_layer_rename(Mask *mask, MaskLayer *masklay, char *oldname, char *newname)
 {
-  BLI_strncpy(masklay->name, newname, sizeof(masklay->name));
+  STRNCPY(masklay->name, newname);
 
   BKE_mask_layer_unique_name(mask, masklay);
 
@@ -401,7 +349,7 @@ MaskLayer *BKE_mask_layer_copy(const MaskLayer *masklay)
 {
   MaskLayer *masklay_new = MEM_cnew<MaskLayer>("new mask layer");
 
-  BLI_strncpy(masklay_new->name, masklay->name, sizeof(masklay_new->name));
+  STRNCPY(masklay_new->name, masklay->name);
 
   masklay_new->alpha = masklay->alpha;
   masklay_new->blend = masklay->blend;
@@ -1010,12 +958,7 @@ Mask *BKE_mask_new(Main *bmain, const char *name)
   Mask *mask;
   char mask_name[MAX_ID_NAME - 2];
 
-  if (name && name[0]) {
-    BLI_strncpy(mask_name, name, sizeof(mask_name));
-  }
-  else {
-    strcpy(mask_name, "Mask");
-  }
+  STRNCPY(mask_name, (name && name[0]) ? name : "Mask");
 
   mask = mask_alloc(bmain, mask_name);
 
@@ -1350,7 +1293,7 @@ static void mask_calc_point_handle(MaskSplinePoint *point,
 
 #if 1
   if (bezt_prev || bezt_next) {
-    BKE_nurb_handle_calc(bezt, bezt_prev, bezt_next, 0, 0);
+    BKE_nurb_handle_calc(bezt, bezt_prev, bezt_next, false, 0);
   }
 #else
   if (handle_type == HD_VECT) {
@@ -2013,7 +1956,7 @@ static void mask_clipboard_free_ex(bool final_free)
   }
 }
 
-void BKE_mask_clipboard_free(void)
+void BKE_mask_clipboard_free()
 {
   mask_clipboard_free_ex(true);
 }
@@ -2039,7 +1982,7 @@ void BKE_mask_clipboard_copy_from_layer(MaskLayer *mask_layer)
           if (!BLI_ghash_lookup(mask_clipboard.id_hash, point->parent.id)) {
             int len = strlen(point->parent.id->name);
             char *name_copy = static_cast<char *>(MEM_mallocN(len + 1, "mask clipboard ID name"));
-            strcpy(name_copy, point->parent.id->name);
+            memcpy(name_copy, point->parent.id->name, len + 1);
             BLI_ghash_insert(mask_clipboard.id_hash, point->parent.id, name_copy);
           }
         }
@@ -2050,7 +1993,7 @@ void BKE_mask_clipboard_copy_from_layer(MaskLayer *mask_layer)
   }
 }
 
-bool BKE_mask_clipboard_is_empty(void)
+bool BKE_mask_clipboard_is_empty()
 {
   return BLI_listbase_is_empty(&mask_clipboard.splines);
 }

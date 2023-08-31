@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -143,26 +144,25 @@ CryptomatteSession *BKE_cryptomatte_init()
   return session;
 }
 
-struct CryptomatteSession *BKE_cryptomatte_init_from_render_result(
-    const struct RenderResult *render_result)
+CryptomatteSession *BKE_cryptomatte_init_from_render_result(const RenderResult *render_result)
 {
   CryptomatteSession *session = new CryptomatteSession(render_result->stamp_data);
   return session;
 }
 
-struct CryptomatteSession *BKE_cryptomatte_init_from_scene(const struct Scene *scene)
+CryptomatteSession *BKE_cryptomatte_init_from_scene(const Scene *scene)
 {
   CryptomatteSession *session = new CryptomatteSession(scene);
   return session;
 }
 
-struct CryptomatteSession *BKE_cryptomatte_init_from_view_layer(const struct ViewLayer *view_layer)
+CryptomatteSession *BKE_cryptomatte_init_from_view_layer(const ViewLayer *view_layer)
 {
   CryptomatteSession *session = new CryptomatteSession(view_layer);
   return session;
 }
 
-void BKE_cryptomatte_add_layer(struct CryptomatteSession *session, const char *layer_name)
+void BKE_cryptomatte_add_layer(CryptomatteSession *session, const char *layer_name)
 {
   session->add_layer(layer_name);
 }
@@ -219,14 +219,14 @@ float BKE_cryptomatte_hash_to_float(uint32_t cryptomatte_hash)
 bool BKE_cryptomatte_find_name(const CryptomatteSession *session,
                                const float encoded_hash,
                                char *r_name,
-                               int name_len)
+                               int name_maxncpy)
 {
   std::optional<std::string> name = (*session)[encoded_hash];
   if (!name) {
     return false;
   }
 
-  BLI_strncpy(r_name, name->c_str(), name_len);
+  BLI_strncpy(r_name, name->c_str(), name_maxncpy);
   return true;
 }
 
@@ -326,7 +326,7 @@ static void add_render_result_meta_data(RenderResult *render_result,
       value.data());
 }
 
-void BKE_cryptomatte_store_metadata(const struct CryptomatteSession *session,
+void BKE_cryptomatte_store_metadata(const CryptomatteSession *session,
                                     RenderResult *render_result,
                                     const ViewLayer *view_layer)
 {
@@ -580,7 +580,7 @@ blender::StringRef CryptomatteStampDataCallbackData::extract_layer_hash(blender:
 void CryptomatteStampDataCallbackData::extract_layer_names(void *_data,
                                                            const char *propname,
                                                            char *propvalue,
-                                                           int /*len*/)
+                                                           int /*propvalue_maxncpy*/)
 {
   CryptomatteStampDataCallbackData *data = static_cast<CryptomatteStampDataCallbackData *>(_data);
 
@@ -598,7 +598,7 @@ void CryptomatteStampDataCallbackData::extract_layer_names(void *_data,
 void CryptomatteStampDataCallbackData::extract_layer_manifest(void *_data,
                                                               const char *propname,
                                                               char *propvalue,
-                                                              int /*len*/)
+                                                              int /*propvalue_maxncpy*/)
 {
   CryptomatteStampDataCallbackData *data = static_cast<CryptomatteStampDataCallbackData *>(_data);
 

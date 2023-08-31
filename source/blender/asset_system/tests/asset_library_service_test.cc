@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "asset_library_service.hh"
 
@@ -123,7 +124,7 @@ TEST_F(AssetLibraryServiceTest, library_from_reference)
 
   Main dummy_main{};
   std::string dummy_filepath = asset_library_root_ + SEP + "dummy.blend";
-  BLI_strncpy(dummy_main.filepath, dummy_filepath.c_str(), sizeof(dummy_main.filepath));
+  STRNCPY(dummy_main.filepath, dummy_filepath.c_str());
   EXPECT_EQ(lib, service->get_asset_library(&dummy_main, ref))
       << "Getting the local (current file) reference with a main saved on disk should return "
          "the an asset library for this directory";

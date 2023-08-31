@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -18,7 +19,7 @@ class VKContext;
  * Class for handing vulkan buffers (allocation/updating/binding).
  */
 class VKBuffer {
-  int64_t size_in_bytes_;
+  int64_t size_in_bytes_ = 0;
   VkBuffer vk_buffer_ = VK_NULL_HANDLE;
   VmaAllocation allocation_ = VK_NULL_HANDLE;
   /* Pointer to the virtually mapped memory. */
@@ -59,6 +60,19 @@ class VKBuffer {
   bool is_mapped() const;
   bool map();
   void unmap();
+};
+
+/**
+ * Helper struct to enable buffers to be bound with an offset.
+ *
+ * VKImmediate mode uses a single VKBuffer with multiple vertex layouts. Those layouts are send to
+ * the command buffer containing an offset.
+ *
+ * VKIndexBuffer uses this when it is a subrange of another buffer.
+ */
+struct VKBufferWithOffset {
+  const VKBuffer &buffer;
+  VkDeviceSize offset;
 };
 
 }  // namespace blender::gpu

@@ -1,11 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <cstring>
 
 #include "DNA_node_types.h"
 
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 
 #include "COM_Converter.h"

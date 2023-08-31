@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -12,6 +13,7 @@
 #pragma once
 
 #include "DNA_ID.h"
+#include "DNA_armature_types.h"
 #include "DNA_listBase.h"
 #include "DNA_session_uuid_types.h"
 #include "DNA_userdef_types.h" /* ThemeWireColor */
@@ -212,6 +214,8 @@ typedef struct bPoseChannel_Runtime {
  * with respect to the rest-position of #bArmature bones.
  */
 typedef struct bPoseChannel {
+  DNA_DEFINE_CXX_METHODS(bPoseChannel)
+
   struct bPoseChannel *next, *prev;
 
   /** User-Defined Properties on this PoseChannel. */
@@ -349,6 +353,8 @@ typedef struct bPoseChannel {
   /** Points to an original pose channel. */
   struct bPoseChannel *orig_pchan;
 
+  BoneColor color; /* MUST be named the same as in Bone and EditBone structs. */
+
   /** Runtime data (keep last). */
   struct bPoseChannel_Runtime runtime;
 } bPoseChannel;
@@ -441,7 +447,7 @@ typedef enum ePchan_BBoneFlag {
 typedef enum eRotationModes {
   /* quaternion rotations (default, and for older Blender versions) */
   ROT_MODE_QUAT = 0,
-  /* euler rotations - keep in sync with enum in BLI_math.h */
+  /* euler rotations - keep in sync with enum in BLI_math_rotation.h */
   /** Blender 'default' (classic) - must be as 1 to sync with BLI_math_rotation.h defines */
   ROT_MODE_EUL = 1,
   ROT_MODE_XYZ = 1,
@@ -567,6 +573,11 @@ typedef enum eItasc_Flags {
   ITASC_INITIAL_REITERATION = (1 << 1),
   ITASC_REITERATION = (1 << 2),
   ITASC_SIMULATION = (1 << 3),
+  /**
+   * Set this flag to always translate root bones (i.e. bones without a parent) to (0, 0, 0).
+   * This was the pre-3.6 behavior, and this flag was introduced for backward compatibility.
+   */
+  ITASC_TRANSLATE_ROOT_BONES = (1 << 4),
 } eItasc_Flags;
 
 /* bItasc->solver */
@@ -644,12 +655,13 @@ typedef enum eActionGroup_Flag {
 
 /* Actions -------------------------------------- */
 
-/* Action - reusable F-Curve 'bag'  (act)
+/**
+ * Action - reusable F-Curve 'bag'  (act)
  *
- * This contains F-Curves that may affect settings from more than one ID blocktype and/or datablock
- * (i.e. sub-data linked/used directly to the ID block that the animation data is linked to),
- * but with the restriction that the other unrelated data (i.e. data that is not directly used or
- * linked to by the source ID block).
+ * This contains F-Curves that may affect settings from more than one ID block-type and/or
+ * data-block (i.e. sub-data linked/used directly to the ID block that the animation data is linked
+ * to), but with the restriction that the other unrelated data (i.e. data that is not directly used
+ * or linked to by the source ID block).
  *
  * It serves as a 'unit' of reusable animation information (i.e. keyframes/motion data),
  * that affects a group of related settings (as defined by the user).
@@ -934,6 +946,7 @@ typedef enum eTimeline_Cache_Flag {
   TIME_CACHE_SMOKE = (1 << 4),
   TIME_CACHE_DYNAMICPAINT = (1 << 5),
   TIME_CACHE_RIGIDBODY = (1 << 6),
+  TIME_CACHE_SIMULATION_NODES = (1 << 7),
 } eTimeline_Cache_Flag;
 
 /* ************************************************ */

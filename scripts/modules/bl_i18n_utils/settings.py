@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2012-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # Global settings used by all scripts in this dir.
@@ -34,7 +36,7 @@ LANGUAGES = (
     (0, "Automatic (Automatic)", "DEFAULT"),
     (1, "English (English)", "en_US"),
     (2, "Japanese (日本語)", "ja_JP"),
-    (3, "Dutch (Nederlandse taal)", "nl_NL"),
+    (3, "Dutch (Nederlands)", "nl_NL"),
     (4, "Italian (Italiano)", "it_IT"),
     (5, "German (Deutsch)", "de_DE"),
     (6, "Finnish (Suomi)", "fi_FI"),
@@ -68,17 +70,17 @@ LANGUAGES = (
     (32, "Brazilian Portuguese (Português do Brasil)", "pt_BR"),
     # Using the utf8 flipped form of Hebrew (עִבְרִית)).
     (33, "Hebrew (תירִבְעִ)", "he_IL"),
-    (34, "Estonian (Eestlane)", "et_EE"),
+    (34, "Estonian (Eesti keel)", "et_EE"),
     (35, "Esperanto (Esperanto)", "eo"),
     (36, "Spanish from Spain (Español de España)", "es_ES"),
     (37, "Amharic (አማርኛ)", "am_ET"),
     (38, "Uzbek (Oʻzbek)", "uz_UZ"),
     (39, "Uzbek Cyrillic (Ўзбек)", "uz_UZ@cyrillic"),
-    (40, "Hindi (मानक हिन्दी)", "hi_IN"),
-    (41, "Vietnamese (tiếng Việt)", "vi_VN"),
+    (40, "Hindi (हिन्दी)", "hi_IN"),
+    (41, "Vietnamese (Tiếng Việt)", "vi_VN"),
     (42, "Basque (Euskara)", "eu_EU"),
     (43, "Hausa (Hausa)", "ha"),
-    (44, "Kazakh (қазақша)", "kk_KZ"),
+    (44, "Kazakh (Қазақша)", "kk_KZ"),
     (45, "Abkhaz (Аԥсуа бызшәа)", "ab"),
     (46, "Thai (ภาษาไทย)", "th_TH"),
     (47, "Slovak (Slovenčina)", "sk_SK"),
@@ -156,7 +158,7 @@ PO_HEADER_MSGSTR = (
 )
 PO_HEADER_COMMENT_COPYRIGHT = (
     "# Blender's translation file (po format).\n"
-    "# Copyright (C) {year} The Blender Foundation.\n"
+    "# Copyright (C) {year} The Blender Authors.\n"
     "# This file is distributed under the same license as the Blender package.\n"
     "#\n"
 )
@@ -206,7 +208,7 @@ _str_base = (
             r"(?:(?!<\\)(?:\\\\)*\\(?=(?P={_}2)))|"
             # The most common case.
             ".(?!(?P={_}2))"
-        ")+.)"  # Don't forget the last char!
+        ")*.)"  # Don't forget the last char!
     "(?P={_}2)"  # And closing quote.
 )
 str_clean_re = _str_base.format(_="g", capt="P<clean>")
@@ -256,12 +258,32 @@ PYGETTEXT_KEYWORDS = (() +
     tuple(("{}\\((?:[^,]+,){{2}}\\s*" + _msg_re + r"\s*(?:\)|,)").format(it)
           for it in ("modifier_subpanel_register", "gpencil_modifier_subpanel_register")) +
 
+    # Node socket declarations: contextless names
+    tuple((r"\.{}<decl::.*?>\(\s*" + _msg_re + r"(?:,[^),]+)*\s*\)"
+           r"(?![^;]*\.translation_context\()").format(it)
+          for it in ("add_input", "add_output")) +
+
+    # Node socket declarations: names with contexts
+    tuple((r"\.{}<decl::.*?>\(\s*" + _msg_re + r"[^;]*\.translation_context\(\s*" + _ctxt_re + r"\s*\)").format(it)
+          for it in ("add_input", "add_output")) +
+
+    # Node socket declarations: description and error messages
+    tuple((r"\.{}\(\s*" + _msg_re + r"\s*\)").format(it)
+          for it in ("description", "error_message_add")) +
+
+    # Node socket labels
+    tuple((r"{}\(\s*[^,]+,\s*" + _msg_re + r"\s*\)").format(it)
+          for it in ("node_sock_label",)) +
+
+    # Geometry Nodes field inputs
+    ((r"FieldInput\(CPPType::get<.*?>\(\),\s*" + _msg_re + r"\s*\)"),) +
+
     # bUnitDef unit names.
     # NOTE: regex is a bit more complex than it would need too. Since the actual
     # identifier (`B_UNIT_DEF_`) is at the end, if it's simpler/too general it
     # becomes extremely slow to process some (unrelated) source files.
-    ((r"\{(?:(?:\s*\"[^\",]+\"\s*,)|(?:\s*\"\\\"\",)|(?:\s*NULL\s*,)){4}\s*" +
-      _msg_re + r"\s*,(?:(?:\s*\"[^\"',]+\"\s*,)|(?:\s*NULL\s*,))(?:[^,]+,){2}"
+    ((r"\{(?:(?:\s*\"[^\",]+\"\s*,)|(?:\s*\"\\\"\",)|(?:\s*nullptr\s*,)){4}\s*" +
+      _msg_re + r"\s*,(?:(?:\s*\"[^\"',]+\"\s*,)|(?:\s*nullptr\s*,))(?:[^,]+,){2}"
       + "(?:\|?\s*B_UNIT_DEF_[_A-Z]+\s*)+\}"),) +
 
     tuple((r"{}\(\s*" + _msg_re + r"\s*,\s*(?:" +
@@ -351,6 +373,7 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "sRGB",
     "sRGB display space",
     "sRGB display space with Filmic view transform",
+    "sRGB IEC 61966-2-1 compound (piece-wise) encoding",
     "tan(A)",
     "tanh(A)",
     "utf-8",
@@ -396,6 +419,7 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "in %i hours",
     "in %i minutes",
     "in memory to enable editing!",
+    "in the asset shelf.",
     "insufficient content",
     "into",
     "jumps over",
@@ -408,6 +432,7 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "normal",
     "on {:%Y-%m-%d}",
     "or AMD with macOS %s or newer",
+    "parent",
     "performance impact!",
     "positions", "no positions",
     "read",
@@ -424,7 +449,7 @@ WARN_MSGID_NOT_CAPITALIZED_ALLOWED = {
     "unable to load text",
     "unable to open the file",
     "unknown error reading file",
-    "unknown error stating file",
+    "unknown error statting file",
     "unknown error writing file",
     "unselected",
     "unsupported font format",
@@ -456,6 +481,8 @@ WARN_MSGID_END_POINT_ALLOWED = {
     "Your graphics card or driver has limited support. It may work, but with issues.",
     "Your graphics card or driver is not supported.",
     "Invalid surface UVs on %d curves.",
+    "The pose library moved.",
+    "in the asset shelf.",
 }
 
 PARSER_CACHE_HASH = 'sha1'

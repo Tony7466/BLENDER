@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2008-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup freestyle
@@ -32,7 +34,7 @@ void getPathName(const string &path, const string &base, vector<string> &pathnam
 
     dir = path.substr(pos, sep - pos);
 
-    BLI_strncpy(cleaned, dir.c_str(), FILE_MAX);
+    STRNCPY(cleaned, dir.c_str());
     BLI_path_normalize(cleaned);
     res = string(cleaned);
 

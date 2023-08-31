@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2015 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2015 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_OutputFileMultiViewOperation.h"
 
@@ -36,7 +37,6 @@ void *OutputOpenExrSingleLayerMultiViewOperation::get_handle(const char *filepat
 {
   size_t width = this->get_width();
   size_t height = this->get_height();
-  SceneRenderView *srv;
 
   if (width != 0 && height != 0) {
     void *exrhandle;
@@ -49,7 +49,7 @@ void *OutputOpenExrSingleLayerMultiViewOperation::get_handle(const char *filepat
 
     IMB_exr_clear_channels(exrhandle);
 
-    for (srv = (SceneRenderView *)rd_->views.first; srv; srv = srv->next) {
+    LISTBASE_FOREACH (SceneRenderView *, srv, &rd_->views) {
       if (BKE_scene_multiview_is_render_view_active(rd_, srv) == false) {
         continue;
       }
@@ -138,12 +138,8 @@ void *OutputOpenExrMultiLayerMultiViewOperation::get_handle(const char *filepath
   uint height = this->get_height();
 
   if (width != 0 && height != 0) {
-
-    void *exrhandle;
-    SceneRenderView *srv;
-
-    /* get a new global handle */
-    exrhandle = IMB_exr_get_handle_name(filepath);
+    /* Get a new global handle. */
+    void *exrhandle = IMB_exr_get_handle_name(filepath);
 
     if (!BKE_scene_multiview_is_render_view_first(rd_, view_name_)) {
       return exrhandle;
@@ -152,7 +148,7 @@ void *OutputOpenExrMultiLayerMultiViewOperation::get_handle(const char *filepath
     IMB_exr_clear_channels(exrhandle);
 
     /* check renderdata for amount of views */
-    for (srv = (SceneRenderView *)rd_->views.first; srv; srv = srv->next) {
+    LISTBASE_FOREACH (SceneRenderView *, srv, &rd_->views) {
 
       if (BKE_scene_multiview_is_render_view_active(rd_, srv) == false) {
         continue;
@@ -253,7 +249,7 @@ OutputStereoOperation::OutputStereoOperation(const Scene *scene,
     : OutputSingleLayerOperation(
           scene, rd, tree, datatype, format, path, view_name, save_as_render)
 {
-  BLI_strncpy(pass_name_, pass_name, sizeof(pass_name_));
+  STRNCPY(pass_name_, pass_name);
   channels_ = get_datatype_size(datatype);
 }
 
@@ -321,9 +317,9 @@ void OutputStereoOperation::deinit_execution()
         ibuf[i] = IMB_allocImBuf(width, height, format_.planes, 0);
 
         ibuf[i]->channels = channels_;
-        ibuf[i]->rect_float = rectf;
-        ibuf[i]->mall |= IB_rectfloat;
         ibuf[i]->dither = rd_->dither_intensity;
+
+        IMB_assign_float_buffer(ibuf[i], rectf, IB_TAKE_OWNERSHIP);
 
         /* do colormanagement in the individual views, so it doesn't need to do in the stereo */
         IMB_colormanagement_imbuf_for_write(ibuf[i], true, false, &format_);

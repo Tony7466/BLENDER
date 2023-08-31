@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
@@ -42,7 +43,7 @@
 #  define POISON_REDZONE_SIZE 0
 #endif
 
-/* NOTE: copied from BLO_blend_defs.h, don't use here because we're in BLI. */
+/* NOTE: copied from BLO_blend_defs.hh, don't use here because we're in BLI. */
 #ifdef __BIG_ENDIAN__
 /* Big Endian */
 #  define MAKE_ID(a, b, c, d) ((int)(a) << 24 | (int)(b) << 16 | (c) << 8 | (d))
@@ -290,7 +291,11 @@ static BLI_freenode *mempool_chunk_add(BLI_mempool *pool,
 
 static void mempool_chunk_free(BLI_mempool_chunk *mpchunk, BLI_mempool *pool)
 {
+#ifdef WITH_ASAN
   BLI_asan_unpoison(mpchunk, sizeof(BLI_mempool_chunk) + pool->esize * pool->csize);
+#else
+  UNUSED_VARS(pool);
+#endif
   MEM_freeN(mpchunk);
 }
 

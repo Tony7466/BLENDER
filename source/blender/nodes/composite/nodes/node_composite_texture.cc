@@ -1,11 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation */
+/* SPDX-FileCopyrightText: 2006 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup cmpnodes
  */
-
-#include "BLT_translation.h"
 
 #include "COM_cached_texture.hh"
 #include "COM_node_operation.hh"
@@ -19,19 +18,19 @@ namespace blender::nodes::node_composite_texture_cc {
 
 static void cmp_node_texture_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Vector>(N_("Offset"))
+  b.add_input<decl::Vector>("Offset")
       .min(-2.0f)
       .max(2.0f)
       .subtype(PROP_TRANSLATION)
       .compositor_expects_single_value();
-  b.add_input<decl::Vector>(N_("Scale"))
+  b.add_input<decl::Vector>("Scale")
       .default_value({1.0f, 1.0f, 1.0f})
       .min(-10.0f)
       .max(10.0f)
       .subtype(PROP_XYZ)
       .compositor_expects_single_value();
-  b.add_output<decl::Float>(N_("Value"));
-  b.add_output<decl::Color>(N_("Color"));
+  b.add_output<decl::Float>("Value");
+  b.add_output<decl::Color>("Color");
 }
 
 using namespace blender::realtime_compositor;
@@ -58,7 +57,7 @@ class TextureOperation : public NodeOperation {
     CachedTexture &cached_texture = context().cache_manager().cached_textures.get(
         context(),
         get_texture(),
-        context().get_scene(),
+        true,
         domain.size,
         get_input("Offset").get_vector_value_default(float4(0.0f)).xy(),
         get_input("Scale").get_vector_value_default(float4(0.0f)).xy());

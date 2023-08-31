@@ -1,7 +1,8 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2018 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2018 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 #include "NOD_composite.h"
 

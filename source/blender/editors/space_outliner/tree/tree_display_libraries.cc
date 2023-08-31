@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -29,7 +31,7 @@ TreeDisplayLibraries::TreeDisplayLibraries(SpaceOutliner &space_outliner)
 {
 }
 
-ListBase TreeDisplayLibraries::buildTree(const TreeSourceData &source_data)
+ListBase TreeDisplayLibraries::build_tree(const TreeSourceData &source_data)
 {
   ListBase tree = {nullptr};
 
@@ -49,7 +51,7 @@ ListBase TreeDisplayLibraries::buildTree(const TreeSourceData &source_data)
   for (ID *id : List<ID>(source_data.bmain->libraries)) {
     Library *lib = reinterpret_cast<Library *>(id);
     TreeElement *ten = add_library_contents(*source_data.bmain, tree, lib);
-    /* NULL-check matters, due to filtering there may not be a new element. */
+    /* Null-check matters, due to filtering there may not be a new element. */
     if (ten) {
       lib->id.newid = (ID *)ten;
     }

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -26,7 +28,7 @@
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_object.h"
 
 #include "DNA_ID.h"
@@ -51,7 +53,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static CLG_LogRef LOG = {"bke.layercollection"};
 
@@ -161,7 +163,7 @@ static ViewLayer *view_layer_add(const char *name)
   ViewLayer *view_layer = MEM_cnew<ViewLayer>("View Layer");
   view_layer->flag = VIEW_LAYER_RENDER | VIEW_LAYER_FREESTYLE;
 
-  BLI_strncpy_utf8(view_layer->name, name, sizeof(view_layer->name));
+  STRNCPY_UTF8(view_layer->name, name);
 
   /* Pure rendering pipeline settings. */
   view_layer->layflag = SCE_LAY_FLAG_DEFAULT;
@@ -210,7 +212,7 @@ ViewLayer *BKE_view_layer_add(Scene *scene,
       BKE_view_layer_copy_data(scene, scene, view_layer_new, view_layer_source, 0);
       BLI_addtail(&scene->view_layers, view_layer_new);
 
-      BLI_strncpy_utf8(view_layer_new->name, name, sizeof(view_layer_new->name));
+      STRNCPY_UTF8(view_layer_new->name, name);
       break;
     }
     case VIEWLAYER_ADD_EMPTY: {
@@ -553,9 +555,9 @@ void BKE_view_layer_rename(Main *bmain, Scene *scene, ViewLayer *view_layer, con
 {
   char oldname[sizeof(view_layer->name)];
 
-  BLI_strncpy(oldname, view_layer->name, sizeof(view_layer->name));
+  STRNCPY(oldname, view_layer->name);
 
-  BLI_strncpy_utf8(view_layer->name, newname, sizeof(view_layer->name));
+  STRNCPY_UTF8(view_layer->name, newname);
   BLI_uniquename(&scene->view_layers,
                  view_layer,
                  DATA_("ViewLayer"),
@@ -564,13 +566,12 @@ void BKE_view_layer_rename(Main *bmain, Scene *scene, ViewLayer *view_layer, con
                  sizeof(view_layer->name));
 
   if (scene->nodetree) {
-    bNode *node;
     int index = BLI_findindex(&scene->view_layers, view_layer);
 
-    for (node = static_cast<bNode *>(scene->nodetree->nodes.first); node; node = node->next) {
+    LISTBASE_FOREACH (bNode *, node, &scene->nodetree->nodes) {
       if (node->type == CMP_NODE_R_LAYERS && node->id == nullptr) {
         if (node->custom1 == index) {
-          BLI_strncpy(node->name, view_layer->name, NODE_MAXSTR);
+          STRNCPY(node->name, view_layer->name);
         }
       }
     }
@@ -776,18 +777,18 @@ int BKE_layer_collection_findindex(ViewLayer *view_layer, const LayerCollection 
 
 static bool no_resync = false;
 
-void BKE_layer_collection_resync_forbid(void)
+void BKE_layer_collection_resync_forbid()
 {
   no_resync = true;
 }
 
-void BKE_layer_collection_resync_allow(void)
+void BKE_layer_collection_resync_allow()
 {
   no_resync = false;
 }
 
 struct LayerCollectionResync {
-  LayerCollectionResync *prev, *next;
+  LayerCollectionResync *next, *prev;
 
   /* Temp data used to generate a queue during valid layer search. See
    * #layer_collection_resync_find. */
@@ -1006,7 +1007,7 @@ void BKE_main_view_layers_synced_ensure(const Main *bmain)
     BKE_scene_view_layers_synced_ensure(scene);
   }
 
-  /* NOTE: This is not (yet?) covered by the dirty tag and differed re-sync system */
+  /* NOTE: This is not (yet?) covered by the dirty tag and deferred re-sync system. */
   BKE_layer_collection_local_sync_all(bmain);
 }
 
@@ -1315,7 +1316,7 @@ void BKE_layer_collection_sync(const Scene *scene, ViewLayer *view_layer)
 
 #ifndef NDEBUG
   {
-    BLI_assert_msg(BLI_listbase_count_at_most(&view_layer->layer_collections, 2) == 1,
+    BLI_assert_msg(BLI_listbase_is_single(&view_layer->layer_collections),
                    "ViewLayer's first level of children layer collections should always have "
                    "exactly one item");
 
@@ -2398,10 +2399,6 @@ static void direct_link_layer_collections(BlendDataReader *reader, ListBase *lb,
 {
   BLO_read_list(reader, lb);
   LISTBASE_FOREACH (LayerCollection *, lc, lb) {
-#ifdef USE_COLLECTION_COMPAT_28
-    BLO_read_data_address(reader, &lc->scene_collection);
-#endif
-
     /* Master collection is not a real data-block. */
     if (master) {
       BLO_read_data_address(reader, &lc->collection);
@@ -2437,37 +2434,11 @@ void BKE_view_layer_blend_read_data(BlendDataReader *reader, ViewLayer *view_lay
   view_layer->object_bases_hash = nullptr;
 }
 
-static void lib_link_layer_collection(BlendLibReader *reader,
-                                      Library *lib,
-                                      LayerCollection *layer_collection,
-                                      bool master)
+void BKE_view_layer_blend_read_after_liblink(BlendLibReader * /*reader*/,
+                                             ID * /*self_id*/,
+                                             ViewLayer *view_layer)
 {
-  /* Master collection is not a real data-block. */
-  if (!master) {
-    BLO_read_id_address(reader, lib, &layer_collection->collection);
-  }
-
-  LISTBASE_FOREACH (
-      LayerCollection *, layer_collection_nested, &layer_collection->layer_collections) {
-    lib_link_layer_collection(reader, lib, layer_collection_nested, false);
-  }
-}
-
-void BKE_view_layer_blend_read_lib(BlendLibReader *reader, Library *lib, ViewLayer *view_layer)
-{
-  LISTBASE_FOREACH (FreestyleModuleConfig *, fmc, &view_layer->freestyle_config.modules) {
-    BLO_read_id_address(reader, lib, &fmc->script);
-  }
-
-  LISTBASE_FOREACH (FreestyleLineSet *, fls, &view_layer->freestyle_config.linesets) {
-    BLO_read_id_address(reader, lib, &fls->linestyle);
-    BLO_read_id_address(reader, lib, &fls->group);
-  }
-
   LISTBASE_FOREACH_MUTABLE (Base *, base, &view_layer->object_bases) {
-    /* we only bump the use count for the collection objects */
-    BLO_read_id_address(reader, lib, &base->object);
-
     if (base->object == nullptr) {
       /* Free in case linked object got lost. */
       BLI_freelinkN(&view_layer->object_bases, base);
@@ -2476,14 +2447,6 @@ void BKE_view_layer_blend_read_lib(BlendLibReader *reader, Library *lib, ViewLay
       }
     }
   }
-
-  LISTBASE_FOREACH (LayerCollection *, layer_collection, &view_layer->layer_collections) {
-    lib_link_layer_collection(reader, lib, layer_collection, true);
-  }
-
-  BLO_read_id_address(reader, lib, &view_layer->mat_override);
-
-  IDP_BlendReadLib(reader, lib, view_layer->id_properties);
 }
 
 /** \} */
@@ -2501,7 +2464,7 @@ static void viewlayer_aov_make_name_unique(ViewLayer *view_layer)
 
   /* Don't allow dots, it's incompatible with OpenEXR convention to store channels
    * as "layer.pass.channel". */
-  BLI_str_replace_char(aov->name, '.', '_');
+  BLI_string_replace_char(aov->name, '.', '_');
   BLI_uniquename(
       &view_layer->aovs, aov, DATA_("AOV"), '_', offsetof(ViewLayerAOV, name), sizeof(aov->name));
 }
@@ -2522,7 +2485,7 @@ ViewLayerAOV *BKE_view_layer_add_aov(ViewLayer *view_layer)
   ViewLayerAOV *aov;
   aov = MEM_cnew<ViewLayerAOV>(__func__);
   aov->type = AOV_TYPE_COLOR;
-  BLI_strncpy(aov->name, DATA_("AOV"), sizeof(aov->name));
+  STRNCPY_UTF8(aov->name, DATA_("AOV"));
   BLI_addtail(&view_layer->aovs, aov);
   viewlayer_aov_active_set(view_layer, aov);
   viewlayer_aov_make_name_unique(view_layer);
@@ -2618,7 +2581,7 @@ static void viewlayer_lightgroup_make_name_unique(ViewLayer *view_layer,
 {
   /* Don't allow dots, it's incompatible with OpenEXR convention to store channels
    * as "layer.pass.channel". */
-  BLI_str_replace_char(lightgroup->name, '.', '_');
+  BLI_string_replace_char(lightgroup->name, '.', '_');
   BLI_uniquename(&view_layer->lightgroups,
                  lightgroup,
                  DATA_("Lightgroup"),
@@ -2642,12 +2605,7 @@ ViewLayerLightgroup *BKE_view_layer_add_lightgroup(ViewLayer *view_layer, const 
 {
   ViewLayerLightgroup *lightgroup;
   lightgroup = MEM_cnew<ViewLayerLightgroup>(__func__);
-  if (name && name[0]) {
-    BLI_strncpy(lightgroup->name, name, sizeof(lightgroup->name));
-  }
-  else {
-    BLI_strncpy(lightgroup->name, DATA_("Lightgroup"), sizeof(lightgroup->name));
-  }
+  STRNCPY_UTF8(lightgroup->name, (name && name[0]) ? name : DATA_("Lightgroup"));
   BLI_addtail(&view_layer->lightgroups, lightgroup);
   viewlayer_lightgroup_active_set(view_layer, lightgroup);
   viewlayer_lightgroup_make_name_unique(view_layer, lightgroup);
@@ -2690,8 +2648,8 @@ void BKE_view_layer_rename_lightgroup(Scene *scene,
                                       const char *name)
 {
   char old_name[64];
-  BLI_strncpy_utf8(old_name, lightgroup->name, sizeof(old_name));
-  BLI_strncpy_utf8(lightgroup->name, name, sizeof(lightgroup->name));
+  STRNCPY_UTF8(old_name, lightgroup->name);
+  STRNCPY_UTF8(lightgroup->name, name);
   viewlayer_lightgroup_make_name_unique(view_layer, lightgroup);
 
   if (scene != nullptr) {
@@ -2700,7 +2658,7 @@ void BKE_view_layer_rename_lightgroup(Scene *scene,
       if (!ID_IS_LINKED(ob) && ob->lightgroup != nullptr) {
         LightgroupMembership *lgm = ob->lightgroup;
         if (STREQ(lgm->name, old_name)) {
-          BLI_strncpy_utf8(lgm->name, lightgroup->name, sizeof(lgm->name));
+          STRNCPY_UTF8(lgm->name, lightgroup->name);
         }
       }
     }
@@ -2711,7 +2669,7 @@ void BKE_view_layer_rename_lightgroup(Scene *scene,
         scene->world->lightgroup != nullptr) {
       LightgroupMembership *lgm = scene->world->lightgroup;
       if (STREQ(lgm->name, old_name)) {
-        BLI_strncpy_utf8(lgm->name, lightgroup->name, sizeof(lgm->name));
+        STRNCPY_UTF8(lgm->name, lightgroup->name);
       }
     }
   }
