@@ -12,18 +12,67 @@
 #include <queue>
 #include <type_traits>
 
+#include "BLI_cache_mutex.hh"
 #include "BLI_parameter_pack_utils.hh"
 #include "BLI_vector.hh"
 
 namespace blender::bke {
 
-/* Runtime topology cache for linear access to items. */
-struct bNodeTreeInterfaceCache {
-  Vector<bNodeTreeInterfaceItem *> items;
-  Vector<bNodeTreeInterfaceSocket *> inputs;
-  Vector<bNodeTreeInterfaceSocket *> outputs;
+class NodeTreeMainUpdater;
 
-  void rebuild(bNodeTreeInterface &tree_interface);
+class bNodeTreeInterfaceRuntime {
+  friend struct bNodeTreeInterface;
+  friend class NodeTreeMainUpdater;
+
+ private:
+  /**
+   * Keeps track of what changed in the node tree until the next update.
+   * Should not be changed directly, instead use the functions in `BKE_node_tree_update.h`.
+   * #eNodeTreeChangedFlag.
+   */
+  uint32_t changed_flag_ = 0;
+
+  /**
+   * Protects access to item cache variables below. This is necessary so that the cache can be
+   * updated on a const #bNodeTreeInterface.
+   */
+  CacheMutex items_cache_mutex_;
+
+  /* Runtime topology cache for linear access to items. */
+  Vector<bNodeTreeInterfaceItem *> items_;
+  /* Socket-only lists for input/output access by index. */
+  Vector<bNodeTreeInterfaceSocket *> inputs_;
+  Vector<bNodeTreeInterfaceSocket *> outputs_;
+
+ public:
+  /* Add update tag and invalidate the cache. */
+  void tag_changed_flag(uint32_t flag);
+
+  /* True if any #changed_flag is set. */
+  bool is_changed() const;
+
+  /* True if the items cache is ready to use. */
+  bool items_cache_is_available() const;
+
+  /* Rebuild items lists from the interface. */
+  void ensure_items_cache(const bNodeTreeInterface &tree_interface);
+
+  blender::Span<bNodeTreeInterfaceItem *> items() const
+  {
+    return items_;
+  }
+  blender::Span<bNodeTreeInterfaceSocket *> inputs() const
+  {
+    return inputs_;
+  }
+  blender::Span<bNodeTreeInterfaceSocket *> outputs() const
+  {
+    return outputs_;
+  }
+
+ protected:
+  /* Reset #changed_flag after updates have been processed. */
+  void reset_changed_flags();
 };
 
 namespace node_interface {

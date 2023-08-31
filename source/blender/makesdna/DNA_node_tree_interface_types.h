@@ -20,6 +20,15 @@
 #endif
 
 #ifdef __cplusplus
+namespace blender::bke {
+class bNodeTreeInterfaceRuntime;
+}
+using bNodeTreeInterfaceRuntimeHandle = blender::bke::bNodeTreeInterfaceRuntime;
+#else
+typedef struct bNodeTreeInterfaceRuntimeHandle bNodeTreeInterfaceRuntimeHandle;
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -216,6 +225,8 @@ typedef struct bNodeTreeInterface {
   int active_index;
   int next_uid;
 
+  bNodeTreeInterfaceRuntimeHandle *runtime;
+
 #ifdef __cplusplus
 
   /** Initialize data of new interface instance. */
@@ -391,7 +402,20 @@ typedef struct bNodeTreeInterface {
     root_panel.foreach_item(fn, /*include_self=*/include_root);
   }
 
+  /** Callback for every ID pointer in the interface data. */
   void foreach_id(LibraryForeachIDData *cb);
+
+  /** Ensure the items cache can be accessed. */
+  void ensure_items_cache() const;
+
+  /**
+   * Tag runtime data and invalidate the cache.
+   * Must be called after any direct change to interface DNA data.
+   */
+  void tag_items_changed();
+
+ protected:
+  void tag_missing_runtime_data();
 
 #endif
 } bNodeTreeInterface;
