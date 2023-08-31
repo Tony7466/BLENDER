@@ -206,9 +206,6 @@ void ED_screen_user_menu_item_remove(ListBase *lb, bUserMenuItem *umi)
 
 static void screen_user_menu_draw(const bContext *C, Menu *menu)
 {
-  uiBlock *block = uiLayoutGetBlock(menu->layout);
-  UI_block_flag_enable(block, UI_BLOCK_ACCELERATOR_KEYS);
-
   /* Enable when we have the ability to edit menus. */
   const bool show_missing = false;
   char label[512];

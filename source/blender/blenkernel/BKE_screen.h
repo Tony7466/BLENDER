@@ -419,6 +419,10 @@ typedef struct MenuType {
    * dependent, menu search has to scan it in different contexts.
    */
   bool context_dependent;
+  /**
+   * Automatically start searching in the menu when pressing a key.
+   */
+  bool search_on_key_press;
 
   /* RNA integration */
   ExtensionRNA rna_ext;

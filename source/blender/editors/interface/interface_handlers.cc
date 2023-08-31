@@ -10720,6 +10720,23 @@ static int ui_handle_menu_event(bContext *C,
               break;
             }
 
+            if (menu->menu_idname[0]) {
+              MenuType *mt = WM_menutype_find(menu->menu_idname, false);
+              if (mt->search_on_key_press) {
+                uiAfterFunc *after = ui_afterfunc_new();
+                wmOperatorType *ot = WM_operatortype_find("WM_OT_search_single_menu", false);
+                after->optype = ot;
+                after->opcontext = WM_OP_INVOKE_DEFAULT;
+                after->opptr = MEM_cnew<PointerRNA>(__func__);
+                WM_operator_properties_create_ptr(after->opptr, ot);
+                RNA_string_set(after->opptr, "menu_idname", menu->menu_idname);
+                RNA_string_set(after->opptr, "initial_query", event->utf8_buf);
+                menu->menuretval = UI_RETURN_OK;
+                retval = WM_UI_HANDLER_BREAK;
+                break;
+              }
+            }
+
             for (but = static_cast<uiBut *>(block->buttons.first); but; but = but->next) {
               if (!(but->flag & UI_BUT_DISABLED) && but->menu_key == event->type) {
                 if (but->type == UI_BTYPE_BUT) {
@@ -10731,19 +10748,6 @@ static int ui_handle_menu_event(bContext *C,
                 retval = WM_UI_HANDLER_BREAK;
                 break;
               }
-            }
-
-            if (menu->menu_idname[0] && retval == WM_UI_HANDLER_CONTINUE) {
-              uiAfterFunc *after = ui_afterfunc_new();
-              wmOperatorType *ot = WM_operatortype_find("WM_OT_search_single_menu", false);
-              after->optype = ot;
-              after->opcontext = WM_OP_INVOKE_DEFAULT;
-              after->opptr = MEM_cnew<PointerRNA>(__func__);
-              WM_operator_properties_create_ptr(after->opptr, ot);
-              RNA_string_set(after->opptr, "menu_idname", menu->menu_idname);
-              RNA_string_set(after->opptr, "initial_query", event->utf8_buf);
-              menu->menuretval = UI_RETURN_OK;
-              retval = WM_UI_HANDLER_BREAK;
             }
           }
           break;

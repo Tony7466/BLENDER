@@ -2074,6 +2074,10 @@ static void rna_def_menu(BlenderRNA *brna)
   RNA_def_property_string_sdna(prop, nullptr, "type->owner_id");
   RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
 
+  prop = RNA_def_property(srna, "bl_search_on_key_press", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "type->search_on_key_press", 1);
+  RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
+
   RNA_define_verify_sdna(true);
 }
 

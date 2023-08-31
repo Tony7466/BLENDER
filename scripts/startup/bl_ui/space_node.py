@@ -223,6 +223,7 @@ class NODE_MT_add(bpy.types.Menu):
     bl_space_type = 'NODE_EDITOR'
     bl_label = "Add"
     bl_translation_context = i18n_contexts.operator_default
+    bl_search_on_key_press = True
 
     def draw(self, context):
         import nodeitems_utils

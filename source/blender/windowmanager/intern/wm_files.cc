@@ -4140,9 +4140,8 @@ static uiBlock *block_create__close_file_dialog(bContext *C, ARegion *region, vo
   Main *bmain = CTX_data_main(C);
 
   uiBlock *block = UI_block_begin(C, region, close_file_dialog_name, UI_EMBOSS);
-  UI_block_flag_enable(block,
-                       UI_BLOCK_KEEP_OPEN | UI_BLOCK_LOOP | UI_BLOCK_NO_WIN_CLIP |
-                           UI_BLOCK_NUMSELECT | UI_BLOCK_ACCELERATOR_KEYS);
+  UI_block_flag_enable(
+      block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_LOOP | UI_BLOCK_NO_WIN_CLIP | UI_BLOCK_NUMSELECT);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 
   uiLayout *layout = uiItemsAlertBox(block, 34, ALERT_ICON_QUESTION);
