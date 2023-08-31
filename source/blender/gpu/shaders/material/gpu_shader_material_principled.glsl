@@ -88,7 +88,7 @@ void node_bsdf_principled(vec4 base_color,
   /* Attenuate lower layers */
   weight *= (1.0 - reflectance * clearcoat);
 
-  /* TODO: attenuate emission by sheen and clearcoat. */
+  /* Attenuated by sheen and clearcoat. */
   ClosureEmission emission_data;
   emission_data.weight = weight;
   emission_data.emission = emission.rgb * emission_strength;
