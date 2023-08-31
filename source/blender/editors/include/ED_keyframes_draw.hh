@@ -118,19 +118,19 @@ void ED_add_grease_pencil_datablock_channel(ChannelDrawList *draw_list,
                                           int saction_flag);
 
 /* Grease Pencil Layer */
-void ED_add_gpl_channel(ChannelDrawList *draw_list,
-                      bDopeSheet *ads,
-                      bGPDlayer *gpl,
-                      float ypos,
-                      float yscale_fac,
-                      int saction_flag);
+void ED_add_grease_pencil_layer_legacy_channel(ChannelDrawList *draw_list,
+                                               bDopeSheet *ads,
+                                               bGPDlayer *gpl,
+                                               float ypos,
+                                               float yscale_fac,
+                                               int saction_flag);
 /* Mask Layer */
-void ED_add_masklay_channel(ChannelDrawList *draw_list,
-                          bDopeSheet *ads,
-                          MaskLayer *masklay,
-                          float ypos,
-                          float yscale_fac,
-                          int saction_flag);
+void ED_add_mask_layer_channel(ChannelDrawList *draw_list,
+                               bDopeSheet *ads,
+                               MaskLayer *masklay,
+                               float ypos,
+                               float yscale_fac,
+                               int saction_flag);
 
 ChannelDrawList *ED_channel_draw_list_create();
 void ED_channel_list_flush(ChannelDrawList *draw_list, View2D *v2d);

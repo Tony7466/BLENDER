@@ -435,12 +435,12 @@ static void draw_keyframes(bAnimContext *ac,
                               action_flag);
         break;
       case ALE_GROUP:
-        ED_add_agroup_channel(draw_list,
-                              adt,
-                              static_cast<bActionGroup *>(ale->data),
-                              ycenter,
-                              scale_factor,
-                              action_flag);
+        ED_add_action_group_channel(draw_list,
+                                    adt,
+                                    static_cast<bActionGroup *>(ale->data),
+                                    ycenter,
+                                    scale_factor,
+                                    action_flag);
         break;
       case ALE_FCURVE:
         ED_add_fcurve_channel(draw_list,
@@ -476,20 +476,20 @@ static void draw_keyframes(bAnimContext *ac,
                                                action_flag);
         break;
       case ALE_GPFRAME:
-        ED_add_gpl_channel(draw_list,
-                           ads,
-                           static_cast<bGPDlayer *>(ale->data),
-                           ycenter,
-                           scale_factor,
-                           action_flag);
+        ED_add_grease_pencil_layer_legacy_channel(draw_list,
+                                                  ads,
+                                                  static_cast<bGPDlayer *>(ale->data),
+                                                  ycenter,
+                                                  scale_factor,
+                                                  action_flag);
         break;
       case ALE_MASKLAY:
-        ED_add_masklay_channel(draw_list,
-                               ads,
-                               static_cast<MaskLayer *>(ale->data),
-                               ycenter,
-                               scale_factor,
-                               action_flag);
+        ED_add_mask_layer_channel(draw_list,
+                                  ads,
+                                  static_cast<MaskLayer *>(ale->data),
+                                  ycenter,
+                                  scale_factor,
+                                  action_flag);
         break;
     }
   }
