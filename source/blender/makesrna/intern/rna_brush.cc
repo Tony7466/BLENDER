@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,7 +6,7 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "DNA_brush_types.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -18,19 +18,19 @@
 
 #include "BKE_layer.h"
 
-#include "BLI_math.h"
+#include "BLI_math_base.h"
 #include "BLI_string_utf8_symbols.h"
 
 #include "BLT_translation.h"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
 #include "IMB_imbuf.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 static const EnumPropertyItem prop_direction_items[] = {
     {0, "ADD", ICON_ADD, "Add", "Add effect of brush"},
@@ -450,16 +450,16 @@ static EnumPropertyItem rna_enum_gpencil_brush_vertex_icons_items[] = {
 
 #  include "MEM_guardedalloc.h"
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
-#  include "BKE_brush.h"
+#  include "BKE_brush.hh"
 #  include "BKE_colorband.h"
 #  include "BKE_gpencil_legacy.h"
 #  include "BKE_icons.h"
 #  include "BKE_material.h"
-#  include "BKE_paint.h"
+#  include "BKE_paint.hh"
 
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
 static bool rna_BrushCapabilitiesSculpt_has_accumulate_get(PointerRNA *ptr)
 {
@@ -759,7 +759,7 @@ static void rna_Brush_reset_icon(Brush *br)
     return;
   }
 
-  if (id->icon_id >= BIFICONID_LAST) {
+  if (id->icon_id >= BIFICONID_LAST_STATIC) {
     BKE_icon_id_delete(id);
     BKE_previewimg_id_free(id);
   }
@@ -956,10 +956,10 @@ static const EnumPropertyItem *rna_Brush_direction_itemf(bContext *C,
               return prop_direction_items;
 
             case BRUSH_MASK_SMOOTH:
-              return DummyRNA_DEFAULT_items;
+              return rna_enum_dummy_DEFAULT_items;
 
             default:
-              return DummyRNA_DEFAULT_items;
+              return rna_enum_dummy_DEFAULT_items;
           }
 
         case SCULPT_TOOL_FLATTEN:
@@ -978,7 +978,7 @@ static const EnumPropertyItem *rna_Brush_direction_itemf(bContext *C,
           return prop_inflate_deflate_items;
 
         default:
-          return DummyRNA_DEFAULT_items;
+          return rna_enum_dummy_DEFAULT_items;
       }
 
     case PAINT_MODE_TEXTURE_2D:
@@ -988,7 +988,7 @@ static const EnumPropertyItem *rna_Brush_direction_itemf(bContext *C,
           return prop_soften_sharpen_items;
 
         default:
-          return DummyRNA_DEFAULT_items;
+          return rna_enum_dummy_DEFAULT_items;
       }
     case PAINT_MODE_SCULPT_CURVES:
       switch (me->curves_sculpt_tool) {
@@ -997,10 +997,10 @@ static const EnumPropertyItem *rna_Brush_direction_itemf(bContext *C,
         case CURVES_SCULPT_TOOL_PINCH:
           return prop_direction_items;
         default:
-          return DummyRNA_DEFAULT_items;
+          return rna_enum_dummy_DEFAULT_items;
       }
     default:
-      return DummyRNA_DEFAULT_items;
+      return rna_enum_dummy_DEFAULT_items;
   }
 }
 
@@ -2099,6 +2099,17 @@ static void rna_def_gpencil_options(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_occlude_eraser", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_BRUSH_OCCLUDE_ERASER);
   RNA_def_property_ui_text(prop, "Occlude Eraser", "Erase only strokes visible and not occluded");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+
+  prop = RNA_def_property(srna, "use_keep_caps_eraser", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_BRUSH_ERASER_KEEP_CAPS);
+  RNA_def_property_ui_text(
+      prop, "Keep caps", "Keep the caps as they are and don't flatten them when erasing");
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+
+  prop = RNA_def_property(srna, "use_active_layer_only", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_BRUSH_ACTIVE_LAYER_ONLY);
+  RNA_def_property_ui_text(prop, "Active Layer", "Only edit the active layer of the object");
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
 }
 

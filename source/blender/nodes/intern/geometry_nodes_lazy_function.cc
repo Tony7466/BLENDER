@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -49,6 +49,7 @@
 #include "DEG_depsgraph_query.h"
 
 #include <fmt/format.h>
+#include <sstream>
 
 namespace blender::nodes {
 
@@ -234,6 +235,18 @@ class LazyFunctionForGeometryNode : public LazyFunction {
     std::destroy_at(s);
   }
 
+  static const Object *get_self_object(const GeoNodesLFUserData &user_data)
+  {
+    if (user_data.modifier_data) {
+      return user_data.modifier_data->self_object;
+    }
+    if (user_data.operator_data) {
+      return user_data.operator_data->self_object;
+    }
+    BLI_assert_unreachable();
+    return nullptr;
+  }
+
   void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
     Storage *storage = static_cast<Storage *>(context.storage);
@@ -251,7 +264,7 @@ class LazyFunctionForGeometryNode : public LazyFunction {
       const bNodeSocket &bsocket = node_.output_socket(output_bsocket_index);
       AnonymousAttributeIDPtr attribute_id = MEM_new<NodeAnonymousAttributeID>(
           __func__,
-          *user_data->modifier_data->self_object,
+          *this->get_self_object(*user_data),
           *user_data->compute_context,
           node_,
           bsocket.identifier,
@@ -838,6 +851,10 @@ class LazyFunctionForViewerInputUsage : public LazyFunction {
   {
     GeoNodesLFUserData *user_data = dynamic_cast<GeoNodesLFUserData *>(context.user_data);
     BLI_assert(user_data != nullptr);
+    if (!user_data->modifier_data) {
+      params.set_default_remaining_outputs();
+      return;
+    }
     const ComputeContextHash &context_hash = user_data->compute_context->hash();
     const GeoNodesModifierData &modifier_data = *user_data->modifier_data;
     const Span<const lf::FunctionNode *> nodes_with_side_effects =
@@ -861,6 +878,10 @@ class LazyFunctionForSimulationInputsUsage : public LazyFunction {
   void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
     const GeoNodesLFUserData &user_data = *static_cast<GeoNodesLFUserData *>(context.user_data);
+    if (!user_data.modifier_data) {
+      params.set_default_remaining_outputs();
+      return;
+    }
     const GeoNodesModifierData &modifier_data = *user_data.modifier_data;
 
     params.set_output(0,
@@ -923,7 +944,6 @@ class LazyFunctionForGroupNode : public LazyFunction {
           group_lf_graph_info.mapping.group_output_used_sockets[i]);
       inputs_.append_as("Output is Used", CPPType::get<bool>(), lf::ValueUsage::Maybe);
     }
-    graph_inputs.extend(group_lf_graph_info.mapping.group_output_used_sockets);
 
     /* Add an attribute set input for every output geometry socket that can propagate attributes
      * from inputs. */
@@ -1065,7 +1085,7 @@ static GMutablePointer get_socket_default_value(LinearAllocator<> &allocator,
     return {};
   }
   void *buffer = allocator.allocate(type->size(), type->alignment());
-  typeinfo.get_geometry_nodes_cpp_value(bsocket, buffer);
+  typeinfo.get_geometry_nodes_cpp_value(bsocket.default_value, buffer);
   return {type, buffer};
 }
 
@@ -1329,7 +1349,7 @@ class LazyFunctionForSimulationZone : public LazyFunction {
 
     GeoNodesLFUserData zone_user_data = user_data;
     zone_user_data.compute_context = &compute_context;
-    if (user_data.modifier_data->socket_log_contexts) {
+    if (user_data.modifier_data && user_data.modifier_data->socket_log_contexts) {
       zone_user_data.log_socket_values = user_data.modifier_data->socket_log_contexts->contains(
           compute_context.hash());
     }
@@ -1642,7 +1662,7 @@ class LazyFunctionForRepeatZone : public LazyFunction {
           user_data.compute_context, repeat_output_bnode_, iteration};
       GeoNodesLFUserData body_user_data = user_data;
       body_user_data.compute_context = &body_compute_context;
-      if (user_data.modifier_data->socket_log_contexts) {
+      if (user_data.modifier_data && user_data.modifier_data->socket_log_contexts) {
         body_user_data.log_socket_values = user_data.modifier_data->socket_log_contexts->contains(
             body_compute_context.hash());
       }
@@ -2601,9 +2621,10 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   void build_group_input_node(lf::Graph &lf_graph)
   {
     Vector<const CPPType *, 16> input_cpp_types;
-    const Span<const bNodeSocket *> interface_inputs = btree_.interface_inputs();
-    for (const bNodeSocket *interface_input : interface_inputs) {
-      input_cpp_types.append(interface_input->typeinfo->geometry_nodes_cpp_type);
+    const Span<const bNodeTreeInterfaceSocket *> interface_inputs = btree_.interface_inputs();
+    for (const bNodeTreeInterfaceSocket *interface_input : interface_inputs) {
+      const bNodeSocketType *typeinfo = interface_input->socket_typeinfo();
+      input_cpp_types.append(typeinfo->geometry_nodes_cpp_type);
     }
 
     /* Create a dummy node for the group inputs. */
@@ -2624,8 +2645,9 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   {
     Vector<const CPPType *, 16> output_cpp_types;
     auto &debug_info = scope_.construct<GroupOutputDebugInfo>();
-    for (const bNodeSocket *interface_output : btree_.interface_outputs()) {
-      output_cpp_types.append(interface_output->typeinfo->geometry_nodes_cpp_type);
+    for (const bNodeTreeInterfaceSocket *interface_output : btree_.interface_outputs()) {
+      const bNodeSocketType *typeinfo = interface_output->socket_typeinfo();
+      output_cpp_types.append(typeinfo->geometry_nodes_cpp_type);
       debug_info.socket_names.append(interface_output->name);
     }
 
@@ -2793,8 +2815,9 @@ struct GeometryNodesLazyFunctionGraphBuilder {
   {
     Vector<const CPPType *, 16> output_cpp_types;
     auto &debug_info = scope_.construct<GroupOutputDebugInfo>();
-    for (const bNodeSocket *interface_input : btree_.interface_outputs()) {
-      output_cpp_types.append(interface_input->typeinfo->geometry_nodes_cpp_type);
+    for (const bNodeTreeInterfaceSocket *interface_input : btree_.interface_outputs()) {
+      const bNodeSocketType *typeinfo = interface_input->socket_typeinfo();
+      output_cpp_types.append(typeinfo->geometry_nodes_cpp_type);
       debug_info.socket_names.append(interface_input->name);
     }
 
@@ -3522,7 +3545,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
    */
   lf::DummyNode &build_output_usage_input_node(lf::Graph &lf_graph)
   {
-    const Span<const bNodeSocket *> interface_outputs = btree_.interface_outputs();
+    const Span<const bNodeTreeInterfaceSocket *> interface_outputs = btree_.interface_outputs();
 
     Vector<const CPPType *> cpp_types;
     cpp_types.append_n_times(&CPPType::get<bool>(), interface_outputs.size());
@@ -3542,7 +3565,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
    */
   void build_input_usage_output_node(lf::Graph &lf_graph)
   {
-    const Span<const bNodeSocket *> interface_inputs = btree_.interface_inputs();
+    const Span<const bNodeTreeInterfaceSocket *> interface_inputs = btree_.interface_inputs();
 
     Vector<const CPPType *> cpp_types;
     cpp_types.append_n_times(&CPPType::get<bool>(), interface_inputs.size());
@@ -3802,13 +3825,15 @@ const GeometryNodesLazyFunctionGraphInfo *ensure_geometry_nodes_lazy_function_gr
       return nullptr;
     }
   }
-  for (const bNodeSocket *interface_bsocket : btree.interface_inputs()) {
-    if (interface_bsocket->typeinfo->geometry_nodes_cpp_type == nullptr) {
+  for (const bNodeTreeInterfaceSocket *interface_bsocket : btree.interface_inputs()) {
+    const bNodeSocketType *typeinfo = interface_bsocket->socket_typeinfo();
+    if (typeinfo->geometry_nodes_cpp_type == nullptr) {
       return nullptr;
     }
   }
-  for (const bNodeSocket *interface_bsocket : btree.interface_outputs()) {
-    if (interface_bsocket->typeinfo->geometry_nodes_cpp_type == nullptr) {
+  for (const bNodeTreeInterfaceSocket *interface_bsocket : btree.interface_outputs()) {
+    const bNodeSocketType *typeinfo = interface_bsocket->socket_typeinfo();
+    if (typeinfo->geometry_nodes_cpp_type == nullptr) {
       return nullptr;
     }
   }
