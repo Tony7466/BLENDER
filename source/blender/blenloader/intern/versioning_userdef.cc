@@ -42,7 +42,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "readfile.h" /* Own include. */
+#include "readfile.hh" /* Own include. */
 
 #include "WM_types.hh"
 #include "wm_event_types.hh"
@@ -554,7 +554,7 @@ void blo_do_versions_userdef(UserDef *userdef)
 
     userdef->flag &= ~(USER_FLAG_UNUSED_4);
 
-    userdef->uiflag &= ~(USER_HEADER_FROM_PREF | USER_UIFLAG_UNUSED_12 | USER_REGISTER_ALL_USERS);
+    userdef->uiflag &= ~(USER_HEADER_FROM_PREF | USER_REGISTER_ALL_USERS);
   }
 
   if (!USER_VERSION_ATLEAST(280, 41)) {
@@ -852,6 +852,14 @@ void blo_do_versions_userdef(UserDef *userdef)
     userdef->node_preview_res = 120;
   }
 
+  if (!USER_VERSION_ATLEAST(400, 18)) {
+    userdef->playback_fps_samples = 8;
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 19)) {
+    userdef->uiflag |= USER_NODE_AUTO_OFFSET;
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -863,6 +871,9 @@ void blo_do_versions_userdef(UserDef *userdef)
    */
   {
     /* Keep this block, even when empty. */
+
+    /* Clear deprecated USER_MENUFIXEDORDER user flag for reuse. */
+    userdef->uiflag &= ~USER_UIFLAG_UNUSED_4;
   }
 
   LISTBASE_FOREACH (bTheme *, btheme, &userdef->themes) {
