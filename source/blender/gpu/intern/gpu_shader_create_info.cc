@@ -177,9 +177,6 @@ void ShaderCreateInfo::finalize()
       assert_no_overlap(compute_source_.is_empty(), "Compute source already existing");
       compute_source_ = info.compute_source_;
     }
-
-    /* Inherit builtin usage bits. */
-    builtins_ |= info.builtins_;
   }
 
   if (auto_resource_location_) {
