@@ -1296,55 +1296,14 @@ void GRAPH_OT_match_slope(wmOperatorType *ot)
 
 static void scale_average_graph_keys(bAnimContext *ac, const float factor)
 {
-  ListBase anim_data = {NULL, NULL};
-
-  ANIM_animdata_filter(
-      ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, eAnimCont_Types(ac->datatype));
-  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    FCurve *fcu = (FCurve *)ale->key_data;
-    ListBase segments = find_fcurve_segments(fcu);
-
-    LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
-      scale_average_fcurve_segment(fcu, segment, factor);
-    }
-
-    ale->update |= ANIM_UPDATE_DEFAULT;
-    BLI_freelistN(&segments);
-  }
-
-  ANIM_animdata_update(ac, &anim_data);
-  ANIM_animdata_freelist(&anim_data);
-}
-
-static void scale_average_draw_status_header(bContext *C, tGraphSliderOp *gso)
-{
-  char status_str[UI_MAX_DRAW_STR];
-  char mode_str[32];
-  char slider_string[UI_MAX_DRAW_STR];
-
-  ED_slider_status_string_get(gso->slider, slider_string, UI_MAX_DRAW_STR);
-
-  strcpy(mode_str, TIP_("Scale Average Keys"));
-
-  if (hasNumInput(&gso->num)) {
-    char str_ofs[NUM_STR_REP_LEN];
-
-    outputNumInput(&gso->num, str_ofs, &gso->scene->unit);
-
-    BLI_snprintf(status_str, sizeof(status_str), "%s: %s", mode_str, str_ofs);
-  }
-  else {
-    BLI_snprintf(status_str, sizeof(status_str), "%s: %s", mode_str, slider_string);
-  }
-
-  ED_workspace_status_text(C, status_str);
+  apply_fcu_segment_function(ac, factor, scale_average_fcurve_segment);
 }
 
 static void scale_average_modal_update(bContext *C, wmOperator *op)
 {
   tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
 
-  scale_average_draw_status_header(C, gso);
+  common_draw_status_header(C, gso, "Scale to Average");
 
   /* Reset keyframes to the state at invoke. */
   reset_bezts(gso);
@@ -1364,8 +1323,7 @@ static int scale_average_invoke(bContext *C, wmOperator *op, const wmEvent *even
   tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
   gso->modal_update = scale_average_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
-  scale_average_draw_status_header(C, gso);
-  ED_slider_factor_bounds_set(gso->slider, -1, 1);
+  common_draw_status_header(C, gso, "Scale to Average");
   ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
