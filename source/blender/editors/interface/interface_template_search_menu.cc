@@ -185,7 +185,7 @@ static bool menu_items_from_ui_create_item_from_button(MenuSearch_Data *data,
 
     item->op.type = but->optype;
     item->op.opcontext = but->opcontext;
-    item->op.context = but->context;
+    item->op.context = but->context ? CTX_store_copy(but->context) : nullptr;
     item->op.opptr = but->opptr;
     but->opptr = nullptr;
   }
@@ -307,6 +307,12 @@ static bool menu_items_to_ui_button(MenuSearch_Item *item, uiBut *but)
   return changed;
 }
 
+struct MenuStackEntry {
+  MenuType *mt = nullptr;
+  /** The menu might be context dependent. */
+  blender::Vector<bContextStoreEntry> entries;
+};
+
 /**
  * Populate \a menu_stack with menus from inspecting active key-maps for this context.
  */
@@ -314,7 +320,7 @@ static void menu_types_add_from_keymap_items(bContext *C,
                                              wmWindow *win,
                                              ScrArea *area,
                                              ARegion *region,
-                                             blender::Stack<MenuType *> &menu_stack,
+                                             blender::Stack<MenuStackEntry> &menu_stack,
                                              blender::Map<MenuType *, wmKeyMapItem *> &menu_to_kmi,
                                              blender::Set<MenuType *> &menu_tagged)
 {
@@ -356,7 +362,7 @@ static void menu_types_add_from_keymap_items(bContext *C,
 
                 if (mt && menu_tagged.add(mt)) {
                   /* Unlikely, but possible this will be included twice. */
-                  menu_stack.push(mt);
+                  menu_stack.push({mt});
                   menu_to_kmi.add(mt, kmi);
                 }
               }
@@ -437,7 +443,7 @@ static MenuSearch_Data *menu_items_from_ui_create(
   DynStr *dyn_str = BLI_dynstr_new_memarena();
 
   /* Use a stack of menus to handle and discover new menus in passes. */
-  blender::Stack<MenuType *> menu_stack;
+  blender::Stack<MenuStackEntry> menu_stack;
 
   /* Tag menu types not to add, either because they have already been added
    * or they have been blacklisted. */
@@ -646,7 +652,7 @@ static MenuSearch_Data *menu_items_from_ui_create(
         if (mt != nullptr) {
           /* Check if this exists because of 'include_all_areas'. */
           if (menu_tagged.add(mt)) {
-            menu_stack.push(mt);
+            menu_stack.push({mt});
           }
         }
       }
@@ -657,7 +663,8 @@ static MenuSearch_Data *menu_items_from_ui_create(
     bool has_keymap_menu_items = false;
 
     while (!menu_stack.is_empty()) {
-      MenuType *mt = menu_stack.pop();
+      MenuStackEntry current_menu = menu_stack.pop();
+      MenuType *mt = current_menu.mt;
       if (!WM_menutype_poll(C, mt)) {
         continue;
       }
@@ -665,6 +672,10 @@ static MenuSearch_Data *menu_items_from_ui_create(
       uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
       uiLayout *layout = UI_block_layout(
           block, UI_LAYOUT_VERTICAL, UI_LAYOUT_MENU, 0, 0, 200, 0, UI_MENU_PADDING, style);
+
+      bContextStore tmp_context_store;
+      tmp_context_store.entries = std::move(current_menu.entries);
+      uiLayoutContextCopy(layout, &tmp_context_store);
 
       UI_block_flag_enable(block, UI_BLOCK_SHOW_SHORTCUT_ALWAYS);
 
@@ -694,9 +705,15 @@ static MenuSearch_Data *menu_items_from_ui_create(
           /* pass */
         }
         else if ((mt_from_but = UI_but_menutype_get(but))) {
-
-          if (menu_tagged.add(mt_from_but)) {
-            menu_stack.push(mt_from_but);
+          const bool first_found = menu_tagged.add(mt_from_but);
+          const bool uses_context = but->context && mt_from_but->context_dependent;
+          if (first_found || uses_context) {
+            if (uses_context) {
+              menu_stack.push({mt_from_but, but->context->entries});
+            }
+            else {
+              menu_stack.push({mt_from_but});
+            }
           }
 
           if (!menu_parent_map.contains(mt_from_but)) {
@@ -902,6 +919,9 @@ static void menu_search_arg_free_fn(void *data_v)
         if (item->op.opptr != nullptr) {
           WM_operator_properties_free(item->op.opptr);
           MEM_freeN(item->op.opptr);
+        }
+        if (item->op.context != nullptr) {
+          CTX_store_free(item->op.context);
         }
         break;
       }
