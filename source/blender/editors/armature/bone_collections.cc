@@ -88,10 +88,7 @@ static int bone_collection_add_exec(bContext *C, wmOperator * /* op */)
 
   bArmature *armature = static_cast<bArmature *>(ob->data);
   BoneCollection *bcoll = ANIM_armature_bonecoll_new(armature, nullptr);
-
-  if (armature->active_collection == nullptr) {
-    ANIM_armature_bonecoll_active_set(armature, bcoll);
-  }
+  ANIM_armature_bonecoll_active_set(armature, bcoll);
 
   WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
   return OPERATOR_FINISHED;
