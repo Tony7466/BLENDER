@@ -883,12 +883,46 @@ class VIEW3D_HT_header(Header):
                     text="",
                     icon='MOD_MASK',
                 )
+
         elif object_mode == 'SCULPT':
+            # If the active tool supports it, show the canvas selector popover.
+            from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
+            tool = ToolSelectPanelHelper.tool_active_from_context(context)
+            color_tools = {'builtin_brush.Paint', 'builtin_brush.Smear', 'builtin.color_filter'}
+
+            row = layout.row()
+            row.ui_units_x = 6
+            row.active = tool and tool.idname in color_tools
+
+            if context.preferences.experimental.use_sculpt_texture_paint:
+                row.popover(panel="VIEW3D_PT_slots_paint_canvas", icon="GROUP_VCOL")
+            else:
+                row.popover(panel="VIEW3D_PT_color_attributes_slots", icon="GROUP_VCOL")
+
             layout.popover(
                 panel="VIEW3D_PT_sculpt_automasking",
                 text="",
                 icon='MOD_MASK',
             )
+
+        elif object_mode == 'VERTEX_PAINT':
+            row = layout.row()
+            row.ui_units_x = 6
+            row.popover(panel="VIEW3D_PT_slots_color_attributes", icon="GROUP_VCOL")
+
+        elif object_mode == 'WEIGHT_PAINT':
+            row = layout.row()
+            row.ui_units_x = 6
+            row.popover(panel="VIEW3D_PT_slots_vertex_groups", icon="GROUP_VERTEX")
+
+        elif object_mode == 'TEXTURE_PAINT':
+            tool_mode = context.tool_settings.image_paint.mode
+            icon = 'MATERIAL' if tool_mode == 'MATERIAL' else 'IMAGE_DATA'
+
+            row = layout.row()
+            row.ui_units_x = 9
+            row.popover(panel="VIEW3D_PT_slots_projectpaint", icon=icon)
+            row.popover(panel="VIEW3D_PT_mask", icon="MOD_MASK", text="")
         else:
             # Transform settings depending on tool header visibility
             VIEW3D_HT_header.draw_xform_template(layout, context)
