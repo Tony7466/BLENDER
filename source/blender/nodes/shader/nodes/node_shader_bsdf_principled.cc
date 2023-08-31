@@ -131,8 +131,8 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_shader_buts_principled(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "distribution", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
-  uiItemR(layout, ptr, "subsurface_method", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
+  uiItemR(layout, ptr, "distribution", UI_ITEM_NONE, "Distribution", ICON_NONE);
+  uiItemR(layout, ptr, "subsurface_method", UI_ITEM_NONE, "Subsurface Method", ICON_NONE);
 }
 
 static void node_shader_init_principled(bNodeTree * /*ntree*/, bNode *node)
