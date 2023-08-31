@@ -767,7 +767,7 @@ int bNodeTreeInterfacePanel::find_valid_insert_position_for_item(
           break;
         }
         if (items[test_pos]->item_type == NODE_INTERFACE_PANEL) {
-          /* Found valid position, insering moves the first panel. */
+          /* Found valid position, inserting moves the first panel. */
           pos = test_pos;
           break;
         }
