@@ -85,7 +85,7 @@ static char *rna_NodeTreeInterfaceItem_path(const PointerRNA *ptr)
     return nullptr;
   }
 
-  ntree->ensure_topology_cache();
+  ntree->ensure_interface_cache();
   for (const int index : ntree->interface_items().index_range()) {
     if (ntree->interface_items()[index] == item) {
       return BLI_sprintfN("interface.ui_items[%d]", index);
@@ -749,7 +749,7 @@ static void rna_NodeTreeInterface_items_begin(CollectionPropertyIterator *iter, 
     return;
   }
 
-  ntree->ensure_topology_cache();
+  ntree->ensure_interface_cache();
   rna_iterator_array_begin(iter,
                            const_cast<bNodeTreeInterfaceItem **>(ntree->interface_items().data()),
                            sizeof(bNodeTreeInterfaceItem *),
@@ -765,7 +765,7 @@ static int rna_NodeTreeInterface_items_length(PointerRNA *ptr)
     return 0;
   }
 
-  ntree->ensure_topology_cache();
+  ntree->ensure_interface_cache();
   return ntree->interface_items().size();
 }
 
@@ -776,7 +776,7 @@ static int rna_NodeTreeInterface_items_lookup_int(PointerRNA *ptr, int index, Po
     return 0;
   }
 
-  ntree->ensure_topology_cache();
+  ntree->ensure_interface_cache();
   if (!ntree->interface_items().index_range().contains(index)) {
     return false;
   }
@@ -795,7 +795,7 @@ static int rna_NodeTreeInterface_items_lookup_string(struct PointerRNA *ptr,
     return 0;
   }
 
-  ntree->ensure_topology_cache();
+  ntree->ensure_interface_cache();
   for (bNodeTreeInterfaceItem *item : ntree->interface_items()) {
     switch (item->item_type) {
       case NODE_INTERFACE_SOCKET: {
