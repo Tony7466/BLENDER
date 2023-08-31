@@ -1,1 +1,2 @@
 Referenced by commit 9600b74318c25a580ed1d963b6cdd112d215df5f, Fix: geometry nodes asset traits not written to file
+Referenced by issue #111713, Crash when library overriding specific object (related to `bNodeTreeInterfacePanel`)
