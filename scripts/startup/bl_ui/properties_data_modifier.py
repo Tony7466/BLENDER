@@ -32,8 +32,8 @@ class OBJECT_MT_modifier_add(Menu):
     def draw(self, context):
         layout = self.layout
         ob_type = context.object.type
-        if ob_type in {'MESH', 'CURVE', 'FONT', 'SURFACE', 'VOLUME', 'POINTCLOUD'}:
-            layout.operator("object.modifier_add", text="Empty", icon='GEOMETRY_NODES').type='NODES'
+        if ob_type in {'MESH', 'CURVE', 'CURVES', 'FONT', 'SURFACE', 'VOLUME', 'POINTCLOUD'}:
+            layout.operator("object.modifier_add", text="Empty").type='NODES'
         if ob_type in {'MESH', 'CURVE', 'FONT', 'SURFACE', 'LATTICE'}:
             layout.menu("OBJECT_MT_modifier_add_edit")
         if ob_type in {'MESH', 'CURVE', 'FONT', 'SURFACE', 'VOLUME'}:
