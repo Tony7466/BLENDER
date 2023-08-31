@@ -396,14 +396,13 @@ void scale_average_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const flo
 
   /* Find first the average of the y values to then use it in the final calculation. */
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
-    y = y + fcu->bezt[i].vec[1][1];
+    y += fcu->bezt[i].vec[1][1];
   }
 
-  float y_average = y / segment->length;
+  const float y_average = y / segment->length;
 
   for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
-    const float delta = fcu->bezt[i].vec[1][1] - y_average;
-    const float key_y_value = fcu->bezt[i].vec[1][1] + delta * factor;
+    const float key_y_value = interpf(y_average, fcu->bezt[i].vec[1][1], 1 - factor);
     BKE_fcurve_keyframe_move_value_with_handles(&fcu->bezt[i], key_y_value);
   }
 }

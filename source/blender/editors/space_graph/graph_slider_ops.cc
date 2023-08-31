@@ -1324,7 +1324,8 @@ static int scale_average_invoke(bContext *C, wmOperator *op, const wmEvent *even
   gso->modal_update = scale_average_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
   common_draw_status_header(C, gso, "Scale to Average");
-  ED_slider_factor_set(gso->slider, 0.0f);
+  ED_slider_factor_bounds_set(gso->slider, 0, 2);
+  ED_slider_factor_set(gso->slider, 1.0f);
 
   return invoke_result;
 }
@@ -1368,13 +1369,13 @@ void GRAPH_OT_scale_average(wmOperatorType *ot)
 
   RNA_def_float_factor(ot->srna,
                        "factor",
-                       0.0f,
+                       1.0f,
                        -FLT_MAX,
                        FLT_MAX,
                        "Curve Bend",
                        "Control the bend of the curve",
-                       -1.0f,
-                       1.0f);
+                       0.0f,
+                       2.0f);
 }
 
 /** \} */
