@@ -51,7 +51,7 @@ namespace lemon {
       }
 
       int addIndex(int idx) {
-        size_t n;
+        int n;
         if (first_free_item == -1) {
           n = items.size();
           items.push_back(ItemT());

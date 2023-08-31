@@ -54,7 +54,7 @@ public:
 	 * Creates a new ring buffer.
 	 * \param size The size of the buffer in bytes.
 	 */
-	RingBuffer(size_t size = 0);
+	RingBuffer(int size = 0);
 
 	/**
 	 * Returns the pointer to the ring buffer in memory.
@@ -64,7 +64,7 @@ public:
 	/**
 	 * Returns the size of the ring buffer in bytes.
 	 */
-    size_t getSize() const;
+	int getSize() const;
 
 	size_t getReadSize() const;
 
@@ -83,7 +83,7 @@ public:
 	 * Resizes the ring buffer.
 	 * \param size The new size of the ring buffer, measured in bytes.
 	 */
-	void resize(size_t size);
+	void resize(int size);
 
 	/**
 	 * Makes sure the ring buffer has a minimum size.
@@ -91,7 +91,7 @@ public:
 	 * Otherwise the ring buffer is resized with keep as parameter.
 	 * \param size The new minimum size of the ring buffer, measured in bytes.
 	 */
-	void assureSize(size_t size);
+	void assureSize(int size);
 };
 
 AUD_NAMESPACE_END

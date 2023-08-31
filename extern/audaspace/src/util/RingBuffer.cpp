@@ -25,7 +25,7 @@
 
 AUD_NAMESPACE_BEGIN
 
-RingBuffer::RingBuffer(size_t size) :
+RingBuffer::RingBuffer(int size) :
 	m_buffer(size),
 	m_read(0),
 	m_write(0)
@@ -37,7 +37,7 @@ sample_t* RingBuffer::getBuffer() const
 	return m_buffer.getBuffer();
 }
 
-size_t RingBuffer::getSize() const
+int RingBuffer::getSize() const
 {
 	return m_buffer.getSize();
 }
@@ -122,13 +122,13 @@ void RingBuffer::reset()
 	m_write = 0;
 }
 
-void RingBuffer::resize(size_t size)
+void RingBuffer::resize(int size)
 {
 	m_buffer.resize(size);
 	reset();
 }
 
-void RingBuffer::assureSize(size_t size)
+void RingBuffer::assureSize(int size)
 {
 	m_buffer.assureSize(size);
 	reset();
