@@ -52,6 +52,7 @@ void CacheMutex::ensure(const FunctionRef<void()> compute_cache, const bool is_e
 
     std::scoped_lock lock{mutex_};
     is_computing_in_group_ = false;
+    cache_valid_.store(true, std::memory_order_release);
   }
   else {
     /* Use task isolation because a mutex is locked and the cache computation might use
