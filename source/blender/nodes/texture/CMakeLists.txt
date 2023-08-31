@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -9,12 +9,12 @@ set(INC
   ../../editors/include
   ../../blenkernel
   ../../blentranslation
+  ../../bmesh
   ../../depsgraph
   ../../imbuf
   ../../makesrna
   ../../render
   ../../windowmanager
-  ../../bmesh
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )

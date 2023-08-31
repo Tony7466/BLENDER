@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -29,7 +29,8 @@
 #include "BLI_alloca.h"
 #include "BLI_fnmatch.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
+#include "BLI_math_vector.h"
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
@@ -81,7 +82,7 @@
 
 #include "RE_engine.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
@@ -1311,7 +1312,7 @@ static void template_ID(const bContext *C,
     type = idptr.type;
   }
 
-  if (text) {
+  if (text && text[0]) {
     /* Add label respecting the separated layout property split state. */
     uiItemL_respect_property_split(layout, text, ICON_NONE);
   }
@@ -2717,7 +2718,7 @@ static eAutoPropButsReturn template_operator_property_buts_draw_single(
   UI_block_lock_clear(block);
 
   if (layout_flags & UI_TEMPLATE_OP_PROPS_SHOW_TITLE) {
-    uiItemL(layout, WM_operatortype_name(op->type, op->ptr), ICON_NONE);
+    uiItemL(layout, WM_operatortype_name(op->type, op->ptr).c_str(), ICON_NONE);
   }
 
   /* menu */
@@ -2984,6 +2985,8 @@ static void constraint_ops_extra_draw(bContext *C, uiLayout *layout, void *con_v
   uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
 
   uiLayoutSetUnitsX(layout, 4.0f);
+
+  UI_block_flag_enable(uiLayoutGetBlock(layout), UI_BLOCK_IS_FLIP);
 
   /* Apply. */
   uiItemO(layout,
@@ -4741,20 +4744,28 @@ static void curvemap_buttons_layout(uiLayout *layout,
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), nullptr);
 
   if (brush && neg_slope) {
-    bt = uiDefIconBlockBut(
-        block, curvemap_brush_tools_negslope_func, cumap, 0, 0, 0, 0, dx, dx, TIP_("Tools"));
+    bt = uiDefIconBlockBut(block,
+                           curvemap_brush_tools_negslope_func,
+                           cumap,
+                           0,
+                           ICON_NONE,
+                           0,
+                           0,
+                           dx,
+                           dx,
+                           TIP_("Tools"));
   }
   else if (brush) {
     bt = uiDefIconBlockBut(
-        block, curvemap_brush_tools_func, cumap, 0, 0, 0, 0, dx, dx, TIP_("Tools"));
+        block, curvemap_brush_tools_func, cumap, 0, ICON_NONE, 0, 0, dx, dx, TIP_("Tools"));
   }
   else if (neg_slope) {
     bt = uiDefIconBlockBut(
-        block, curvemap_tools_negslope_func, cumap, 0, 0, 0, 0, dx, dx, TIP_("Tools"));
+        block, curvemap_tools_negslope_func, cumap, 0, ICON_NONE, 0, 0, dx, dx, TIP_("Tools"));
   }
   else {
     bt = uiDefIconBlockBut(
-        block, curvemap_tools_posslope_func, cumap, 0, 0, 0, 0, dx, dx, TIP_("Tools"));
+        block, curvemap_tools_posslope_func, cumap, 0, ICON_NONE, 0, 0, dx, dx, TIP_("Tools"));
   }
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), nullptr);
 
@@ -5407,8 +5418,16 @@ static void CurveProfile_buttons_layout(uiLayout *layout, PointerRNA *ptr, RNAUp
   UI_but_funcN_set(bt, CurveProfile_clipping_toggle, MEM_dupallocN(cb), profile);
 
   /* Reset view, reset curve */
-  bt = uiDefIconBlockBut(
-      block, CurveProfile_buttons_tools, profile, 0, 0, 0, 0, UI_UNIT_X, UI_UNIT_X, TIP_("Tools"));
+  bt = uiDefIconBlockBut(block,
+                         CurveProfile_buttons_tools,
+                         profile,
+                         0,
+                         ICON_NONE,
+                         0,
+                         0,
+                         UI_UNIT_X,
+                         UI_UNIT_X,
+                         TIP_("Tools"));
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), nullptr);
 
   UI_block_funcN_set(block, rna_update_cb, MEM_dupallocN(cb), nullptr);
@@ -6310,7 +6329,7 @@ void uiTemplateRunningJobs(uiLayout *layout, bContext *C)
       uiButProgress *but_progress = (uiButProgress *)uiDefIconTextBut(block,
                                                                       UI_BTYPE_PROGRESS,
                                                                       0,
-                                                                      0,
+                                                                      ICON_NONE,
                                                                       text,
                                                                       UI_UNIT_X,
                                                                       0,
@@ -6452,7 +6471,7 @@ void uiTemplateReportsBanner(uiLayout *layout, bContext *C)
                       0,
                       UI_UNIT_X,
                       UI_UNIT_Y,
-                      TIP_("Click to see the remaining reports in text block: 'Recent Reports'"));
+                      TIP_("Click to open the info editor"));
   UI_GetThemeColorType4ubv(UI_text_colorid_from_report_type(report->type), SPACE_INFO, but->col);
   but->col[3] = 255; /* This theme color is RBG only, so have to set alpha here. */
 

@@ -35,7 +35,8 @@
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
@@ -92,9 +93,9 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "UI_interface.hh"
 
@@ -416,7 +417,7 @@ void ED_object_add_generic_props(wmOperatorType *ot, bool do_editmode)
   /* NOTE: this property gets hidden for add-camera operator. */
   prop = RNA_def_enum(
       ot->srna, "align", align_options, ALIGN_WORLD, "Align", "The alignment of the new object");
-  RNA_def_property_update_runtime(prop, (void *)view_align_update);
+  RNA_def_property_update_runtime(prop, view_align_update);
 
   prop = RNA_def_float_vector_xyz(ot->srna,
                                   "location",
@@ -1902,7 +1903,7 @@ void OBJECT_OT_collection_instance_add(wmOperatorType *ot)
   /* properties */
   RNA_def_string(
       ot->srna, "name", "Collection", MAX_ID_NAME - 2, "Name", "Collection name to add");
-  prop = RNA_def_enum(ot->srna, "collection", DummyRNA_NULL_items, 0, "Collection", "");
+  prop = RNA_def_enum(ot->srna, "collection", rna_enum_dummy_NULL_items, 0, "Collection", "");
   RNA_def_enum_funcs(prop, RNA_collection_itemf);
   RNA_def_property_flag(prop, PROP_ENUM_NO_TRANSLATE);
   ot->prop = prop;
@@ -2019,7 +2020,7 @@ void OBJECT_OT_collection_external_asset_drop(wmOperatorType *ot)
 
   object_add_drop_xy_props(ot);
 
-  prop = RNA_def_enum(ot->srna, "collection", DummyRNA_NULL_items, 0, "Collection", "");
+  prop = RNA_def_enum(ot->srna, "collection", rna_enum_dummy_NULL_items, 0, "Collection", "");
   RNA_def_enum_funcs(prop, RNA_collection_itemf);
   RNA_def_property_flag(prop,
                         (PropertyFlag)(PROP_SKIP_SAVE | PROP_HIDDEN | PROP_ENUM_NO_TRANSLATE));
@@ -4029,7 +4030,7 @@ void OBJECT_OT_duplicate(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   prop = RNA_def_enum(
-      ot->srna, "mode", rna_enum_transform_mode_types, TFM_TRANSLATION, "Mode", "");
+      ot->srna, "mode", rna_enum_transform_mode_type_items, TFM_TRANSLATION, "Mode", "");
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }
 

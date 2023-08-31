@@ -763,9 +763,9 @@ void UI_popup_block_ex(bContext *C,
                        void *arg,
                        wmOperator *op);
 #if 0 /* UNUSED */
-void uiPupBlockOperator( bContext *C,
+void uiPupBlockOperator(bContext *C,
                         uiBlockCreateFunc func,
-                         wmOperator *op,
+                        wmOperator *op,
                         wmOperatorCallContext opcontext);
 #endif
 
@@ -2590,6 +2590,8 @@ void uiTemplateAssetView(uiLayout *layout,
 void uiTemplateLightLinkingCollection(uiLayout *layout, PointerRNA *ptr, const char *propname);
 
 void uiTemplateGreasePencilLayerTree(uiLayout *layout, bContext *C);
+
+void uiTemplateNodeTreeInterface(struct uiLayout *layout, struct PointerRNA *ptr);
 
 /**
  * \return: A RNA pointer for the operator properties.

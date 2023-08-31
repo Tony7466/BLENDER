@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,8 +10,8 @@
 
 #include "ED_paint.hh"
 
-#include "BLI_math.h"
 #include "BLI_math_color_blend.h"
+#include "BLI_math_geom.h"
 #include "BLI_task.h"
 #ifdef DEBUG_PIXEL_NODES
 #  include "BLI_hash.h"

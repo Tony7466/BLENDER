@@ -16,7 +16,10 @@
 #include "BLI_array_utils.h"
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "BLT_translation.h"
 
@@ -59,9 +62,9 @@ extern "C" {
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 void selectend_nurb(Object *obedit, enum eEndPoint_Types selfirst, bool doswap, bool selstatus);
 static void adduplicateflagNurb(
@@ -3527,13 +3530,11 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
     else if (nu->pntsv == 1) {
       BPoint *nextbp;
 
-      /*
-       * All flat lines (ie. co-planar), except flat Nurbs. Flat NURB curves
+      /* NOTE(@nzc): All flat lines (ie. co-planar), except flat Nurbs. Flat NURB curves
        * are handled together with the regular NURB plane division, as it
-       * should be. I split it off just now, let's see if it is
-       * stable... nzc 30-5-'00
-       */
-      /* count */
+       * should be. I split it off just now, let's see if it is stable. */
+
+      /* Count. */
       a = nu->pntsu;
       bp = nu->bp;
       while (a--) {
@@ -3593,7 +3594,7 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
     else if (nu->type == CU_NURBS) {
       /* This is a very strange test ... */
       /**
-       * Subdivide NURB surfaces - nzc 30-5-'00 -
+       * NOTE(@nzc): Subdivide NURB surfaces
        *
        * Subdivision of a NURB curve can be effected by adding a
        * control point (insertion of a knot), or by raising the
@@ -5795,7 +5796,7 @@ void CURVE_OT_extrude(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* to give to transform */
-  RNA_def_enum(ot->srna, "mode", rna_enum_transform_mode_types, TFM_TRANSLATION, "Mode", "");
+  RNA_def_enum(ot->srna, "mode", rna_enum_transform_mode_type_items, TFM_TRANSLATION, "Mode", "");
 }
 
 /** \} */

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,6 +18,7 @@
 #include "UI_interface.hh"
 
 #include "NOD_common.h"
+#include "NOD_geometry.hh"
 #include "NOD_socket.hh"
 
 #include "FN_field_cpp_type.hh"
@@ -96,11 +97,19 @@ void socket_declarations_for_simulation_items(const Span<NodeSimulationItem> ite
 {
   for (const int i : items.index_range()) {
     const NodeSimulationItem &item = items[i];
-    r_declaration.inputs.append(socket_declaration_for_simulation_item(item, SOCK_IN, i));
-    r_declaration.outputs.append(socket_declaration_for_simulation_item(item, SOCK_OUT, i));
+    SocketDeclarationPtr input_decl = socket_declaration_for_simulation_item(item, SOCK_IN, i);
+    SocketDeclarationPtr output_decl = socket_declaration_for_simulation_item(item, SOCK_OUT, i);
+    r_declaration.inputs.append(input_decl.get());
+    r_declaration.items.append(std::move(input_decl));
+    r_declaration.outputs.append(output_decl.get());
+    r_declaration.items.append(std::move(output_decl));
   }
-  r_declaration.inputs.append(decl::create_extend_declaration(SOCK_IN));
-  r_declaration.outputs.append(decl::create_extend_declaration(SOCK_OUT));
+  SocketDeclarationPtr input_extend_decl = decl::create_extend_declaration(SOCK_IN);
+  SocketDeclarationPtr output_extend_decl = decl::create_extend_declaration(SOCK_OUT);
+  r_declaration.inputs.append(input_extend_decl.get());
+  r_declaration.items.append(std::move(input_extend_decl));
+  r_declaration.outputs.append(output_extend_decl.get());
+  r_declaration.items.append(std::move(output_extend_decl));
 }
 
 struct SimulationItemsUniqueNameArgs {
@@ -859,27 +868,23 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
   return true;
 }
 
-}  // namespace blender::nodes::node_geo_simulation_output_cc
-
-void register_node_type_geo_simulation_output()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_simulation_output_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_SIMULATION_OUTPUT, "Simulation Output", NODE_CLASS_INTERFACE);
-  ntype.initfunc = file_ns::node_init;
-  ntype.declare_dynamic = file_ns::node_declare_dynamic;
-  ntype.gather_add_node_search_ops = file_ns::search_node_add_ops;
+  ntype.initfunc = node_init;
+  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.gather_add_node_search_ops = search_node_add_ops;
   ntype.gather_link_search_ops = nullptr;
-  ntype.insert_link = file_ns::node_insert_link;
-  node_type_storage(&ntype,
-                    "NodeGeometrySimulationOutput",
-                    file_ns::node_free_storage,
-                    file_ns::node_copy_storage);
+  ntype.insert_link = node_insert_link;
+  node_type_storage(&ntype, "NodeGeometrySimulationOutput", node_free_storage, node_copy_storage);
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_simulation_output_cc
 
 blender::Span<NodeSimulationItem> NodeGeometrySimulationOutput::items_span() const
 {

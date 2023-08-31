@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -32,9 +32,9 @@
 #include "BKE_lib_id.h"
 #include "BKE_report.h"
 
-#include "RNA_access.h"
-#include "RNA_enum_types.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
@@ -260,7 +260,7 @@ static int pyrna_struct_keyframe_parse(PointerRNA *ptr,
   if (r_options) {
     if (pyoptions &&
         (pyrna_enum_bitfield_from_set(
-             rna_enum_keying_flag_items_api, pyoptions, r_options, error_prefix) == -1))
+             rna_enum_keying_flag_api_items, pyoptions, r_options, error_prefix) == -1))
     {
       return -1;
     }

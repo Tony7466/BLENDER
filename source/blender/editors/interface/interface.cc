@@ -23,7 +23,6 @@
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_string_search.hh"
@@ -61,7 +60,7 @@
 #include "WM_message.hh"
 #include "WM_types.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern_run.h"
@@ -1692,7 +1691,7 @@ static PointerRNA *ui_but_extra_operator_icon_add_ptr(uiBut *but,
 {
   uiButExtraOpIcon *extra_op_icon = MEM_new<uiButExtraOpIcon>(__func__);
 
-  extra_op_icon->icon = (BIFIconID)icon;
+  extra_op_icon->icon = icon;
   extra_op_icon->optype_params = MEM_cnew<wmOperatorCallParams>(__func__);
   extra_op_icon->optype_params->optype = optype;
   extra_op_icon->optype_params->opptr = MEM_cnew<PointerRNA>(__func__);
@@ -1848,7 +1847,7 @@ static void ui_but_predefined_extra_operator_icons_add(uiBut *but)
         return;
       }
     }
-    ui_but_extra_operator_icon_add_ptr(but, optype, WM_OP_INVOKE_DEFAULT, int(icon));
+    ui_but_extra_operator_icon_add_ptr(but, optype, WM_OP_INVOKE_DEFAULT, icon);
   }
 }
 
@@ -3858,7 +3857,7 @@ static void ui_but_update_ex(uiBut *but, const bool validate)
               const size_t slen = strlen(item.name);
               ui_but_string_free_internal(but);
               ui_but_string_set_internal(but, item.name, slen);
-              but->icon = (BIFIconID)item.icon;
+              but->icon = item.icon;
             }
           }
         }
@@ -4271,7 +4270,7 @@ void ui_def_but_icon(uiBut *but, const int icon, const int flag)
                             icon,
                             (flag & UI_BUT_ICON_PREVIEW) != 0);
   }
-  but->icon = (BIFIconID)icon;
+  but->icon = icon;
   but->flag |= flag;
 
   if (but->str && but->str[0]) {
@@ -4812,9 +4811,11 @@ static uiBut *ui_def_but_operator_ptr(uiBlock *block,
                                       short height,
                                       const char *tip)
 {
+  std::string operator_name;
   if (!str) {
     if (ot && ot->srna) {
-      str = WM_operatortype_name(ot, nullptr);
+      operator_name = WM_operatortype_name(ot, nullptr);
+      str = operator_name.c_str();
     }
     else {
       str = "";
@@ -6667,12 +6668,12 @@ void UI_but_string_info_get(bContext *C, uiBut *but, ...)
       }
       else if (but->optype) {
         if (type == BUT_GET_RNA_LABEL) {
-          tmp = BLI_strdup(WM_operatortype_name(but->optype, opptr));
+          tmp = BLI_strdup(WM_operatortype_name(but->optype, opptr).c_str());
         }
         else {
           bContextStore *previous_ctx = CTX_store_get(C);
           CTX_store_set(C, but->context);
-          tmp = WM_operatortype_description(C, but->optype, opptr);
+          tmp = BLI_strdup(WM_operatortype_description(C, but->optype, opptr).c_str());
           CTX_store_set(C, previous_ctx);
         }
       }
@@ -6699,10 +6700,10 @@ void UI_but_string_info_get(bContext *C, uiBut *but, ...)
           wmOperatorType *ot = UI_but_operatortype_get_from_enum_menu(but, nullptr);
           if (ot) {
             if (type == BUT_GET_RNA_LABEL) {
-              tmp = BLI_strdup(WM_operatortype_name(ot, nullptr));
+              tmp = BLI_strdup(WM_operatortype_name(ot, nullptr).c_str());
             }
             else {
-              tmp = WM_operatortype_description(C, ot, nullptr);
+              tmp = BLI_strdup(WM_operatortype_description(C, ot, nullptr).c_str());
             }
           }
         }
@@ -6839,10 +6840,10 @@ void UI_but_extra_icon_string_info_get(bContext *C, uiButExtraOpIcon *extra_icon
 
     switch (si->type) {
       case BUT_GET_LABEL:
-        tmp = BLI_strdup(WM_operatortype_name(optype, opptr));
+        tmp = BLI_strdup(WM_operatortype_name(optype, opptr).c_str());
         break;
       case BUT_GET_TIP:
-        tmp = WM_operatortype_description(C, optype, opptr);
+        tmp = BLI_strdup(WM_operatortype_description(C, optype, opptr).c_str());
         break;
       case BUT_GET_OP_KEYMAP: {
         char buf[128];

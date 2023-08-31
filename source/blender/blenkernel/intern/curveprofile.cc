@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,6 +13,7 @@
 #include "DNA_curve_types.h"
 #include "DNA_curveprofile_types.h"
 
+#include "BLI_math_geom.h"
 #include "BLI_math_vector.h"
 #include "BLI_rect.h"
 #include "BLI_utildefines.h"
@@ -20,7 +21,7 @@
 #include "BKE_curve.h"
 #include "BKE_curveprofile.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 /** Number of points in high resolution table is dynamic up to a maximum. */
 #define PROF_TABLE_MAX 512

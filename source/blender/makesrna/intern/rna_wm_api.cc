@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,8 +12,8 @@
 
 #include "BLI_utildefines.h"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
@@ -490,6 +490,11 @@ static void rna_KeyMap_remove(wmKeyConfig *keyconfig, ReportList *reports, Point
   }
 
   RNA_POINTER_INVALIDATE(keymap_ptr);
+}
+
+wmKeyConfig *rna_KeyConfig_new(wmWindowManager *wm, const char *idname)
+{
+  return WM_keyconfig_ensure(wm, idname, true);
 }
 
 static void rna_KeyConfig_remove(wmWindowManager *wm, ReportList *reports, PointerRNA *keyconf_ptr)
@@ -1294,7 +1299,7 @@ void RNA_api_keyconfigs(StructRNA *srna)
   FunctionRNA *func;
   PropertyRNA *parm;
 
-  func = RNA_def_function(srna, "new", "WM_keyconfig_new_user"); /* add_keyconfig */
+  func = RNA_def_function(srna, "new", "rna_KeyConfig_new"); /* add_keyconfig */
   parm = RNA_def_string(func, "name", nullptr, 0, "Name", "");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(

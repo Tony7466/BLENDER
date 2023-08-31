@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,11 +19,11 @@
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "UI_interface.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"

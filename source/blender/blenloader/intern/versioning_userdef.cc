@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,8 @@
 #include <cstring>
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_string_utils.h"
@@ -41,7 +42,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "readfile.h" /* Own include. */
+#include "readfile.hh" /* Own include. */
 
 #include "WM_types.hh"
 #include "wm_event_types.hh"
@@ -126,6 +127,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
    */
   {
     /* Keep this block, even when empty. */
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.transition);
   }
 
 #undef FROM_DEFAULT_V4_UCHAR
@@ -552,7 +554,7 @@ void blo_do_versions_userdef(UserDef *userdef)
 
     userdef->flag &= ~(USER_FLAG_UNUSED_4);
 
-    userdef->uiflag &= ~(USER_HEADER_FROM_PREF | USER_UIFLAG_UNUSED_12 | USER_REGISTER_ALL_USERS);
+    userdef->uiflag &= ~(USER_HEADER_FROM_PREF | USER_REGISTER_ALL_USERS);
   }
 
   if (!USER_VERSION_ATLEAST(280, 41)) {
@@ -844,6 +846,18 @@ void blo_do_versions_userdef(UserDef *userdef)
       userdef->gpu_backend = GPU_BACKEND_METAL;
     }
 #endif
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 15)) {
+    userdef->node_preview_res = 120;
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 18)) {
+    userdef->playback_fps_samples = 8;
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 19)) {
+    userdef->uiflag |= USER_NODE_AUTO_OFFSET;
   }
 
   /**

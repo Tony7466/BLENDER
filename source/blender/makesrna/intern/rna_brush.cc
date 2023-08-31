@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,13 +18,13 @@
 
 #include "BKE_layer.h"
 
-#include "BLI_math.h"
+#include "BLI_math_base.h"
 #include "BLI_string_utf8_symbols.h"
 
 #include "BLT_translation.h"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -450,7 +450,7 @@ static EnumPropertyItem rna_enum_gpencil_brush_vertex_icons_items[] = {
 
 #  include "MEM_guardedalloc.h"
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
 #  include "BKE_brush.hh"
 #  include "BKE_colorband.h"
@@ -759,7 +759,7 @@ static void rna_Brush_reset_icon(Brush *br)
     return;
   }
 
-  if (id->icon_id >= BIFICONID_LAST) {
+  if (id->icon_id >= BIFICONID_LAST_STATIC) {
     BKE_icon_id_delete(id);
     BKE_previewimg_id_free(id);
   }
@@ -956,10 +956,10 @@ static const EnumPropertyItem *rna_Brush_direction_itemf(bContext *C,
               return prop_direction_items;
 
             case BRUSH_MASK_SMOOTH:
-              return DummyRNA_DEFAULT_items;
+              return rna_enum_dummy_DEFAULT_items;
 
             default:
-              return DummyRNA_DEFAULT_items;
+              return rna_enum_dummy_DEFAULT_items;
           }
 
         case SCULPT_TOOL_FLATTEN:
@@ -978,7 +978,7 @@ static const EnumPropertyItem *rna_Brush_direction_itemf(bContext *C,
           return prop_inflate_deflate_items;
 
         default:
-          return DummyRNA_DEFAULT_items;
+          return rna_enum_dummy_DEFAULT_items;
       }
 
     case PAINT_MODE_TEXTURE_2D:
@@ -988,7 +988,7 @@ static const EnumPropertyItem *rna_Brush_direction_itemf(bContext *C,
           return prop_soften_sharpen_items;
 
         default:
-          return DummyRNA_DEFAULT_items;
+          return rna_enum_dummy_DEFAULT_items;
       }
     case PAINT_MODE_SCULPT_CURVES:
       switch (me->curves_sculpt_tool) {
@@ -997,10 +997,10 @@ static const EnumPropertyItem *rna_Brush_direction_itemf(bContext *C,
         case CURVES_SCULPT_TOOL_PINCH:
           return prop_direction_items;
         default:
-          return DummyRNA_DEFAULT_items;
+          return rna_enum_dummy_DEFAULT_items;
       }
     default:
-      return DummyRNA_DEFAULT_items;
+      return rna_enum_dummy_DEFAULT_items;
   }
 }
 

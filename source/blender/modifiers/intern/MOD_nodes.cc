@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,6 +8,7 @@
 
 #include <cstring>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 #include "MEM_guardedalloc.h"
@@ -59,7 +60,7 @@
 #include "BKE_simulation_state_serialize.hh"
 #include "BKE_workspace.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -68,8 +69,8 @@
 
 #include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "DEG_depsgraph_build.h"
@@ -621,17 +622,19 @@ static void check_property_socket_sync(const Object *ob, ModifierData *md)
 
   int geometry_socket_count = 0;
 
-  int i;
-  LISTBASE_FOREACH_INDEX (const bNodeSocket *, socket, &nmd->node_group->inputs, i) {
+  for (const int i : nmd->node_group->interface_inputs().index_range()) {
+    const bNodeTreeInterfaceSocket *socket = nmd->node_group->interface_inputs()[i];
+    const bNodeSocketType *typeinfo = socket->socket_typeinfo();
+    const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
     /* The first socket is the special geometry socket for the modifier object. */
-    if (i == 0 && socket->type == SOCK_GEOMETRY) {
+    if (i == 0 && type == SOCK_GEOMETRY) {
       geometry_socket_count++;
       continue;
     }
 
     IDProperty *property = IDP_GetPropertyFromGroup(nmd->settings.properties, socket->identifier);
     if (property == nullptr) {
-      if (socket->type == SOCK_GEOMETRY) {
+      if (type == SOCK_GEOMETRY) {
         geometry_socket_count++;
       }
       else {
@@ -648,7 +651,10 @@ static void check_property_socket_sync(const Object *ob, ModifierData *md)
   }
 
   if (geometry_socket_count == 1) {
-    if (((bNodeSocket *)nmd->node_group->inputs.first)->type != SOCK_GEOMETRY) {
+    const bNodeTreeInterfaceSocket *first_socket = nmd->node_group->interface_inputs()[0];
+    const bNodeSocketType *typeinfo = first_socket->socket_typeinfo();
+    const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
+    if (type != SOCK_GEOMETRY) {
       BKE_modifier_set_error(ob, md, "Node group's geometry input must be the first");
     }
   }
@@ -1052,7 +1058,7 @@ static void add_attribute_search_button(const bContext &C,
                                         const NodesModifierData &nmd,
                                         PointerRNA *md_ptr,
                                         const StringRefNull rna_path_attribute_name,
-                                        const bNodeSocket &socket,
+                                        const bNodeTreeInterfaceSocket &socket,
                                         const bool is_output)
 {
   if (!nmd.runtime->eval_log) {
@@ -1115,13 +1121,14 @@ static void add_attribute_search_or_value_buttons(const bContext &C,
                                                   uiLayout *layout,
                                                   const NodesModifierData &nmd,
                                                   PointerRNA *md_ptr,
-                                                  const bNodeSocket &socket)
+                                                  const bNodeTreeInterfaceSocket &socket)
 {
-  char socket_id_esc[sizeof(socket.identifier) * 2];
-  BLI_str_escape(socket_id_esc, socket.identifier, sizeof(socket_id_esc));
+  const StringRefNull identifier = socket.identifier;
+  const bNodeSocketType *typeinfo = socket.socket_typeinfo();
+  const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
+  char socket_id_esc[MAX_NAME * 2];
+  BLI_str_escape(socket_id_esc, identifier.c_str(), sizeof(socket_id_esc));
   const std::string rna_path = "[\"" + std::string(socket_id_esc) + "\"]";
-  const std::string rna_path_use_attribute = "[\"" + std::string(socket_id_esc) +
-                                             nodes::input_use_attribute_suffix() + "\"]";
   const std::string rna_path_attribute_name = "[\"" + std::string(socket_id_esc) +
                                               nodes::input_attribute_name_suffix() + "\"]";
 
@@ -1132,8 +1139,9 @@ static void add_attribute_search_or_value_buttons(const bContext &C,
   uiLayout *name_row = uiLayoutRow(split, false);
   uiLayoutSetAlignment(name_row, UI_LAYOUT_ALIGN_RIGHT);
 
-  const int use_attribute = RNA_int_get(md_ptr, rna_path_use_attribute.c_str()) != 0;
-  if (socket.type == SOCK_BOOLEAN && !use_attribute) {
+  const std::optional<StringRef> attribute_name = nodes::input_attribute_name_get(
+      *nmd.settings.properties, socket);
+  if (type == SOCK_BOOLEAN && !attribute_name) {
     uiItemL(name_row, "", ICON_NONE);
   }
   else {
@@ -1141,17 +1149,17 @@ static void add_attribute_search_or_value_buttons(const bContext &C,
   }
 
   uiLayout *prop_row = uiLayoutRow(split, true);
-  if (socket.type == SOCK_BOOLEAN) {
+  if (type == SOCK_BOOLEAN) {
     uiLayoutSetPropSep(prop_row, false);
     uiLayoutSetAlignment(prop_row, UI_LAYOUT_ALIGN_EXPAND);
   }
 
-  if (use_attribute) {
+  if (attribute_name) {
     add_attribute_search_button(C, prop_row, nmd, md_ptr, rna_path_attribute_name, socket, false);
     uiItemL(layout, "", ICON_BLANK1);
   }
   else {
-    const char *name = socket.type == SOCK_BOOLEAN ? socket.name : "";
+    const char *name = type == SOCK_BOOLEAN ? socket.name : "";
     uiItemR(prop_row, md_ptr, rna_path.c_str(), UI_ITEM_NONE, name, ICON_NONE);
     uiItemDecoratorR(layout, md_ptr, rna_path.c_str(), -1);
   }
@@ -1166,7 +1174,7 @@ static void add_attribute_search_or_value_buttons(const bContext &C,
               UI_ITEM_NONE,
               &props);
   RNA_string_set(&props, "modifier_name", nmd.modifier.name);
-  RNA_string_set(&props, "prop_path", rna_path_use_attribute.c_str());
+  RNA_string_set(&props, "input_name", socket.identifier);
 }
 
 /* Drawing the properties manually with #uiItemR instead of #uiDefAutoButsRNA allows using
@@ -1177,11 +1185,12 @@ static void draw_property_for_socket(const bContext &C,
                                      NodesModifierData *nmd,
                                      PointerRNA *bmain_ptr,
                                      PointerRNA *md_ptr,
-                                     const bNodeSocket &socket,
+                                     const bNodeTreeInterfaceSocket &socket,
                                      const int socket_index)
 {
+  const StringRefNull identifier = socket.identifier;
   /* The property should be created in #MOD_nodes_update_interface with the correct type. */
-  IDProperty *property = IDP_GetPropertyFromGroup(nmd->settings.properties, socket.identifier);
+  IDProperty *property = IDP_GetPropertyFromGroup(nmd->settings.properties, identifier.c_str());
 
   /* IDProperties can be removed with python, so there could be a situation where
    * there isn't a property for a socket or it doesn't have the correct type. */
@@ -1189,8 +1198,8 @@ static void draw_property_for_socket(const bContext &C,
     return;
   }
 
-  char socket_id_esc[sizeof(socket.identifier) * 2];
-  BLI_str_escape(socket_id_esc, socket.identifier, sizeof(socket_id_esc));
+  char socket_id_esc[MAX_NAME * 2];
+  BLI_str_escape(socket_id_esc, identifier.c_str(), sizeof(socket_id_esc));
 
   char rna_path[sizeof(socket_id_esc) + 4];
   SNPRINTF(rna_path, "[\"%s\"]", socket_id_esc);
@@ -1201,7 +1210,9 @@ static void draw_property_for_socket(const bContext &C,
   /* Use #uiItemPointerR to draw pointer properties because #uiItemR would not have enough
    * information about what type of ID to select for editing the values. This is because
    * pointer IDProperties contain no information about their type. */
-  switch (socket.type) {
+  const bNodeSocketType *typeinfo = socket.socket_typeinfo();
+  const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
+  switch (type) {
     case SOCK_OBJECT: {
       uiItemPointerR(row, md_ptr, rna_path, bmain_ptr, "objects", socket.name, ICON_OBJECT_DATA);
       break;
@@ -1241,10 +1252,11 @@ static void draw_property_for_output_socket(const bContext &C,
                                             uiLayout *layout,
                                             const NodesModifierData &nmd,
                                             PointerRNA *md_ptr,
-                                            const bNodeSocket &socket)
+                                            const bNodeTreeInterfaceSocket &socket)
 {
-  char socket_id_esc[sizeof(socket.identifier) * 2];
-  BLI_str_escape(socket_id_esc, socket.identifier, sizeof(socket_id_esc));
+  const StringRefNull identifier = socket.identifier;
+  char socket_id_esc[MAX_NAME * 2];
+  BLI_str_escape(socket_id_esc, identifier.c_str(), sizeof(socket_id_esc));
   const std::string rna_path_attribute_name = "[\"" + StringRef(socket_id_esc) +
                                               nodes::input_attribute_name_suffix() + "\"]";
 
@@ -1285,9 +1297,11 @@ static void panel_draw(const bContext *C, Panel *panel)
     PointerRNA bmain_ptr;
     RNA_main_pointer_create(bmain, &bmain_ptr);
 
-    int socket_index;
-    LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &nmd->node_group->inputs, socket_index) {
-      if (!(socket->flag & SOCK_HIDE_IN_MODIFIER)) {
+    nmd->node_group->ensure_topology_cache();
+
+    for (const int socket_index : nmd->node_group->interface_inputs().index_range()) {
+      const bNodeTreeInterfaceSocket *socket = nmd->node_group->interface_inputs()[socket_index];
+      if (!(socket->flag & NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER)) {
         draw_property_for_socket(*C, layout, nmd, &bmain_ptr, ptr, *socket, socket_index);
       }
     }
@@ -1319,8 +1333,11 @@ static void output_attribute_panel_draw(const bContext *C, Panel *panel)
 
   bool has_output_attribute = false;
   if (nmd->node_group != nullptr && nmd->settings.properties != nullptr) {
-    LISTBASE_FOREACH (bNodeSocket *, socket, &nmd->node_group->outputs) {
-      if (nodes::socket_type_has_attribute_toggle(*socket)) {
+    for (const bNodeTreeInterfaceSocket *socket : nmd->node_group->interface_outputs()) {
+      const bNodeSocketType *typeinfo = socket->socket_typeinfo();
+      const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
+                                                  SOCK_CUSTOM;
+      if (nodes::socket_type_has_attribute_toggle(type)) {
         has_output_attribute = true;
         draw_property_for_output_socket(*C, layout, *nmd, ptr, *socket);
       }

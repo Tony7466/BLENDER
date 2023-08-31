@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,9 +18,9 @@
 
 #include "BLI_listbase.h"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
-#include "RNA_enum_types.h"
+#include "RNA_enum_types.hh"
 #include "rna_internal.h"
 
 #include "UI_interface.hh"
@@ -56,7 +56,7 @@ const EnumPropertyItem rna_enum_uilist_layout_type_items[] = {
 
 #  include "MEM_guardedalloc.h"
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
 #  include "BLI_dynstr.h"
 
@@ -64,6 +64,8 @@ const EnumPropertyItem rna_enum_uilist_layout_type_items[] = {
 #  include "BKE_main.h"
 #  include "BKE_report.h"
 #  include "BKE_screen.h"
+
+#  include "ED_asset_shelf.h"
 
 #  include "WM_api.hh"
 
@@ -1135,8 +1137,9 @@ static void asset_shelf_draw_context_menu(const bContext *C,
 
   PointerRNA ptr;
   RNA_pointer_create(nullptr, shelf_type->rna_ext.srna, nullptr, &ptr); /* dummy */
-  FunctionRNA *func = &rna_AssetShelf_draw_context_menu_func; /* RNA_struct_find_function(&ptr,
-                                                                     "draw_context_menu"); */
+
+  FunctionRNA *func = &rna_AssetShelf_draw_context_menu_func;
+  // RNA_struct_find_function(&ptr, "draw_context_menu");
 
   ParameterList list;
   RNA_parameter_list_create(&list, &ptr, func);
@@ -1148,7 +1151,7 @@ static void asset_shelf_draw_context_menu(const bContext *C,
   RNA_parameter_list_free(&list);
 }
 
-static bool rna_AssetShelf_unregister(Main * /*bmain*/, StructRNA *type)
+static bool rna_AssetShelf_unregister(Main *bmain, StructRNA *type)
 {
   AssetShelfType *shelf_type = static_cast<AssetShelfType *>(RNA_struct_blender_type_get(type));
 
@@ -1160,6 +1163,8 @@ static bool rna_AssetShelf_unregister(Main * /*bmain*/, StructRNA *type)
   if (!space_type) {
     return false;
   }
+
+  ED_asset_shelf_type_unlink(*bmain, *shelf_type);
 
   RNA_struct_free_extension(type, &shelf_type->rna_ext);
   RNA_struct_free(&BLENDER_RNA, type);
@@ -1344,22 +1349,22 @@ static void rna_UILayout_enabled_set(PointerRNA *ptr, bool value)
 #  if 0
 static int rna_UILayout_red_alert_get(PointerRNA *ptr)
 {
-  return uiLayoutGetRedAlert(static_cast<  uiLayout*>(ptr->data));
+  return uiLayoutGetRedAlert(static_cast<uiLayout *>(ptr->data));
 }
 
 static void rna_UILayout_red_alert_set(PointerRNA *ptr, bool value)
 {
-  uiLayoutSetRedAlert(static_cast<  uiLayout*>(ptr->data), value);
+  uiLayoutSetRedAlert(static_cast<uiLayout *>(ptr->data), value);
 }
 
 static bool rna_UILayout_keep_aspect_get(PointerRNA *ptr)
 {
-  return uiLayoutGetKeepAspect(static_cast<  uiLayout*>(ptr->data));
+  return uiLayoutGetKeepAspect(static_cast<uiLayout *>(ptr->data));
 }
 
 static void rna_UILayout_keep_aspect_set(PointerRNA *ptr, int value)
 {
-  uiLayoutSetKeepAspect(static_cast<  uiLayout*>(ptr->data), value);
+  uiLayoutSetKeepAspect(static_cast<uiLayout *>(ptr->data), value);
 }
 #  endif
 

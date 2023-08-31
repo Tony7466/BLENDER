@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_compute_context.hh"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector.hh"
 #include "BLI_vector.hh"
@@ -39,6 +40,7 @@ struct AssetItemTree;
 }
 
 namespace blender::ed::space_node {
+struct NestedTreePreviews;
 
 /** Temporary data used in node link drag modal operator. */
 struct bNodeLinkDrag {
@@ -107,6 +109,13 @@ struct SpaceNode_Runtime {
   NodeInsertOfsData *iofsd;
 
   /**
+   * Use this to store data for the displayed node tree. It has an entry for every distinct
+   * nested node-group.
+   */
+  Map<ComputeContextHash, std::unique_ptr<space_node::NestedTreePreviews>>
+      tree_previews_per_context;
+
+  /**
    * Temporary data for node add menu in order to provide longer-term storage for context pointers.
    * Recreated every time the root menu is opened. In the future this will be replaced with an "all
    * libraries" cache in the asset system itself.
@@ -153,11 +162,7 @@ int node_get_resize_cursor(NodeResizeDirection directions);
  * Usual convention here would be #node_socket_get_color(),
  * but that's already used (for setting a color property socket).
  */
-void node_socket_color_get(const bContext &C,
-                           const bNodeTree &ntree,
-                           PointerRNA &node_ptr,
-                           const bNodeSocket &sock,
-                           float r_color[4]);
+void node_socket_color_get(const bNodeSocketType &type, float r_color[4]);
 
 /* `node_draw.cc` */
 
@@ -235,20 +240,15 @@ void nodelink_batch_end(SpaceNode &snode);
 /**
  * \note this is used for fake links in groups too.
  */
-void node_draw_link(const bContext &C,
-                    const View2D &v2d,
+void node_draw_link(const View2D &v2d,
                     const SpaceNode &snode,
                     const bNodeLink &link,
                     bool selected);
-void node_draw_link_dragged(const bContext &C,
-                            const View2D &v2d,
-                            const SpaceNode &snode,
-                            const bNodeLink &link);
+void node_draw_link_dragged(const View2D &v2d, const SpaceNode &snode, const bNodeLink &link);
 /**
  * Don't do shadows if th_col3 is -1.
  */
-void node_draw_link_bezier(const bContext &C,
-                           const View2D &v2d,
+void node_draw_link_bezier(const View2D &v2d,
                            const SpaceNode &snode,
                            const bNodeLink &link,
                            int th_col1,
@@ -281,6 +281,7 @@ void NODE_OT_add_object(wmOperatorType *ot);
 void NODE_OT_add_collection(wmOperatorType *ot);
 void NODE_OT_add_file(wmOperatorType *ot);
 void NODE_OT_add_mask(wmOperatorType *ot);
+void NODE_OT_add_material(wmOperatorType *ot);
 void NODE_OT_new_node_tree(wmOperatorType *ot);
 
 /* `node_group.cc` */
@@ -296,6 +297,7 @@ void NODE_OT_group_edit(wmOperatorType *ot);
 
 void update_multi_input_indices_for_removed_links(bNode &node);
 bool all_links_muted(const bNodeSocket &socket);
+bNodeSocket *get_main_socket(bNodeTree &ntree, bNode &node, eNodeSocketInOut in_out);
 
 void NODE_OT_link(wmOperatorType *ot);
 void NODE_OT_link_make(wmOperatorType *ot);
@@ -330,6 +332,7 @@ bool composite_node_editable(bContext *C);
 
 bool node_has_hidden_sockets(bNode *node);
 void node_set_hidden_sockets(bNode *node, int set);
+bool node_is_previewable(const SpaceNode &snode, const bNodeTree &ntree, const bNode &node);
 int node_render_changed_exec(bContext *, wmOperator *);
 bNodeSocket *node_find_indicated_socket(SpaceNode &snode,
                                         const float2 &cursor,
@@ -366,12 +369,6 @@ void NODE_OT_switch_view_update(wmOperatorType *ot);
  */
 void NODE_OT_clipboard_copy(wmOperatorType *ot);
 void NODE_OT_clipboard_paste(wmOperatorType *ot);
-
-void NODE_OT_tree_socket_add(wmOperatorType *ot);
-void NODE_OT_tree_socket_remove(wmOperatorType *ot);
-void NODE_OT_tree_socket_change_type(wmOperatorType *ot);
-void NODE_OT_tree_socket_change_subtype(wmOperatorType *ot);
-void NODE_OT_tree_socket_move(wmOperatorType *ot);
 
 void NODE_OT_shader_script_update(wmOperatorType *ot);
 

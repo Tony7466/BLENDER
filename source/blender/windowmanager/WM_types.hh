@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -104,13 +104,15 @@ struct wmEvent;
 struct wmOperator;
 struct wmWindowManager;
 
+#include <string>
+
 #include "BLI_compiler_attrs.h"
 #include "BLI_utildefines.h"
 #include "DNA_listBase.h"
 #include "DNA_uuid_types.h"
 #include "DNA_vec_types.h"
 #include "DNA_xr_types.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 /* exported types for WM */
 #include "gizmo/WM_gizmo_types.h"
@@ -982,14 +984,16 @@ struct wmOperatorType {
   /**
    * Return a different name to use in the user interface, based on property values.
    * The returned string does not need to be freed.
+   * The returned string is expected to be translated if needed.
    */
-  const char *(*get_name)(wmOperatorType *, PointerRNA *);
+  std::string (*get_name)(wmOperatorType *, PointerRNA *);
 
   /**
    * Return a different description to use in the user interface, based on property values.
    * The returned string must be freed by the caller, unless NULL.
+   * The returned string is expected to be translated if needed.
    */
-  char *(*get_description)(bContext *C, wmOperatorType *, PointerRNA *);
+  std::string (*get_description)(bContext *C, wmOperatorType *, PointerRNA *);
 
   /** rna for properties */
   StructRNA *srna;
@@ -1080,6 +1084,7 @@ enum eWM_DragDataType {
   WM_DRAG_DATASTACK,
   WM_DRAG_ASSET_CATALOG,
   WM_DRAG_GREASE_PENCIL_LAYER,
+  WM_DRAG_NODE_TREE_INTERFACE,
 };
 
 enum eWM_DragFlags {
@@ -1104,6 +1109,10 @@ struct wmDragAsset {
 struct wmDragAssetCatalog {
   bUUID drag_catalog_id;
 };
+
+typedef struct wmDragNodeTreeInterface {
+  struct bNodeTreeInterfaceItem *item;
+} wmDragNodeTreeInterface;
 
 /**
  * For some specific cases we support dragging multiple assets (#WM_DRAG_ASSET_LIST). There is no

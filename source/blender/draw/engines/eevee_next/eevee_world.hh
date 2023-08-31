@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -49,7 +49,6 @@ class World {
   Instance &inst_;
 
   DefaultWorldNodeTree default_tree;
-  bool has_volume_ = false;
 
   /* Used to detect if world change. */
   ::World *prev_original_world = nullptr;

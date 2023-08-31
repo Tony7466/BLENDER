@@ -1,30 +1,18 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
-#include <string.h>
-
-#include "BLI_bounds_types.hh"
-#include "BLI_math_matrix_types.hh"
-#include "BLI_math_vector_types.hh"
-#include "BLI_utildefines.h"
-
 #include "MEM_guardedalloc.h"
-
-#include "DNA_node_types.h"
 
 #include "BKE_node.hh"
 
-#include "NOD_geometry.hh"
 #include "NOD_geometry_exec.hh"
+#include "NOD_register.hh"
 #include "NOD_socket_declarations.hh"
 #include "NOD_socket_declarations_geometry.hh"
 
-#include "RNA_access.h"
-
-#include "node_geometry_register.hh"
 #include "node_util.hh"
 
 #ifdef WITH_OPENVDB
@@ -32,6 +20,7 @@
 #endif
 
 struct BVHTreeFromMesh;
+struct GeometrySet;
 namespace blender::nodes {
 class GatherAddNodeSearchParams;
 class GatherLinkSearchOpParams;
@@ -170,5 +159,16 @@ void copy_with_checked_indices(const GVArray &src,
 
 void socket_declarations_for_repeat_items(const Span<NodeRepeatItem> items,
                                           NodeDeclaration &r_declaration);
+
+namespace enums {
+
+const EnumPropertyItem *attribute_type_type_with_socket_fn(bContext * /*C*/,
+                                                           PointerRNA * /*ptr*/,
+                                                           PropertyRNA * /*prop*/,
+                                                           bool *r_free);
+
+bool generic_attribute_type_supported(const EnumPropertyItem &item);
+
+}  // namespace enums
 
 }  // namespace blender::nodes

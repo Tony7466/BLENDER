@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,6 +12,7 @@
 
 #include "BLI_array.hh"
 #include "BLI_enumerable_thread_specific.hh"
+#include "BLI_math_matrix.h"
 #include "BLI_task.hh"
 
 #include "BKE_attribute.hh"
@@ -356,7 +357,7 @@ void mesh_render_data_update_normals(MeshRenderData &mr, const eMRDataType data_
                                             mr.faces,
                                             mr.corner_verts,
                                             mr.corner_edges,
-                                            {},
+                                            mr.me->corner_to_face_map(),
                                             mr.vert_normals,
                                             mr.face_normals,
                                             sharp_edges,

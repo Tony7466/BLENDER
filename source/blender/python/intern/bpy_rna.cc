@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,8 +17,8 @@
 #include <cfloat> /* FLT_MIN/MAX */
 #include <cstddef>
 
-#include "RNA_path.h"
-#include "RNA_types.h"
+#include "RNA_path.hh"
+#include "RNA_types.hh"
 
 #include "BLI_bitmap.h"
 #include "BLI_dynstr.h"
@@ -41,9 +41,9 @@
 #  include "BLI_ghash.h"
 #endif
 
-#include "RNA_access.h"
-#include "RNA_define.h" /* RNA_def_property_free_identifier */
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh" /* RNA_def_property_free_identifier */
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "CLG_log.h"
@@ -66,6 +66,7 @@
 #include "../generic/idprop_py_ui_api.h"
 #include "../generic/py_capi_rna.h"
 #include "../generic/py_capi_utils.h"
+#include "../generic/python_compat.h"
 #include "../generic/python_utildefines.h"
 
 #define USE_PEDANTIC_WRITE
@@ -1333,9 +1334,9 @@ static PyObject *pyrna_enum_to_py(PointerRNA *ptr, PropertyRNA *prop, int val)
       RNA_property_enum_items_ex(nullptr, ptr, prop, true, &enum_item, nullptr, &free_dummy);
       BLI_assert(!free_dummy);
 
-      /* Do not print warning in case of DummyRNA_NULL_items,
+      /* Do not print warning in case of #rna_enum_dummy_NULL_items,
        * this one will never match any value... */
-      if (enum_item != DummyRNA_NULL_items) {
+      if (enum_item != rna_enum_dummy_NULL_items) {
         const char *ptr_name = RNA_struct_name_get_alloc(ptr, nullptr, 0, nullptr);
 
         /* Prefer not to fail silently in case of API errors, maybe disable it later. */
@@ -3632,6 +3633,7 @@ static PyObject *pyrna_struct_is_property_set(BPy_StructRNA *self, PyObject *arg
 
   static const char *_keywords[] = {"", "ghost", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "s"  /* `name` (positional). */
       "|$" /* Optional keyword only arguments. */
       "O&" /* `ghost` */
@@ -4017,7 +4019,7 @@ static PyObject *pyrna_struct_type_recast(BPy_StructRNA *self)
 static PyObject *pyrna_struct_bl_rna_find_subclass_recursive(PyObject *cls, const char *id)
 {
   PyObject *ret_test = nullptr;
-  PyObject *subclasses = ((PyTypeObject *)cls)->tp_subclasses;
+  PyObject *subclasses = (PyObject *)((PyTypeObject *)cls)->tp_subclasses;
   if (subclasses) {
     /* Unfortunately we can't use the dict key because Python class names
      * don't match the bl_idname used internally. */
@@ -6583,9 +6585,12 @@ static PyObject *pyrna_func_call(BPy_FunctionRNA *self, PyObject *args, PyObject
 
 #ifdef DEBUG_STRING_FREE
 #  if 0
-if (PyList_GET_SIZE(string_free_ls)) {
-printf("%.200s.%.200s():  has %d strings\n", RNA_struct_identifier(self_ptr->type), RNA_function_identifier(self_func), int(PyList_GET_SIZE(string_free_ls)));
-}
+  if (PyList_GET_SIZE(string_free_ls)) {
+    printf("%.200s.%.200s():  has %d strings\n",
+           RNA_struct_identifier(self_ptr->type),
+           RNA_function_identifier(self_func),
+           int(PyList_GET_SIZE(string_free_ls)));
+  }
 #  endif
   Py_DECREF(string_free_ls);
 #  undef DEBUG_STRING_FREE
@@ -8559,8 +8564,8 @@ static int bpy_class_call(bContext *C, PointerRNA *ptr, FunctionRNA *func, Param
 /* 'almost' all the time calling the class isn't needed.
  * We could just do... */
 #  if 0
-py_class_instance = py_srna;
-Py_INCREF(py_class_instance);
+      py_class_instance = py_srna;
+      Py_INCREF(py_class_instance);
 #  endif
       /*
        * This would work fine, but means __init__ functions wouldn't run.

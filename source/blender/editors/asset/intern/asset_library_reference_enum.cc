@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,7 +19,7 @@
 
 #include "UI_resources.hh"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "ED_asset_library.h"
 

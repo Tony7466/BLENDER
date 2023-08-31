@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,7 +22,9 @@ struct bActionGroup;
 struct bAnimContext;
 struct bDopeSheet;
 struct bGPDlayer;
+struct GreasePencil;
 struct GreasePencilLayer;
+struct GreasePencilLayerTreeGroup;
 
 /* draw simple diamond-shape keyframe */
 /* caller should set up vertex format, bind GPU_SHADER_KEYFRAME_SHAPE,
@@ -94,10 +96,26 @@ void draw_summary_channel(AnimKeylistDrawList *draw_list,
 /* Grease Pencil cels channels */
 void draw_grease_pencil_cels_channel(AnimKeylistDrawList *draw_list,
                                      bDopeSheet *ads,
-                                     GreasePencilLayer *layer,
+                                     const GreasePencilLayer *layer,
                                      float ypos,
                                      float yscale_fac,
                                      int saction_flag);
+
+/* Grease Pencil layer group channels */
+void draw_grease_pencil_layer_group_channel(AnimKeylistDrawList *draw_list,
+                                            bDopeSheet *ads,
+                                            const GreasePencilLayerTreeGroup *layer,
+                                            float ypos,
+                                            float yscale_fac,
+                                            int saction_flag);
+
+/* Grease Pencil data channels */
+void draw_grease_pencil_datablock_channel(AnimKeylistDrawList *draw_list,
+                                          bDopeSheet *ads,
+                                          const GreasePencil *grease_pencil,
+                                          const float ypos,
+                                          const float yscale_fac,
+                                          int saction_flag);
 
 /* Grease Pencil Layer */
 void draw_gpl_channel(AnimKeylistDrawList *draw_list,

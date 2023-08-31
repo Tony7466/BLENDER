@@ -15,7 +15,9 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string_utils.h"
 
 #include "BKE_action.h"
@@ -34,8 +36,8 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
@@ -794,7 +796,14 @@ static int pose_copy_exec(bContext *C, wmOperator *op)
 
   Object ob_copy = blender::dna::shallow_copy(*ob);
   ob_copy.adt = nullptr;
-  bArmature arm_copy = *((bArmature *)ob->data);
+
+  /* Copy the armature without using the default copy constructor. This prevents
+   * the compiler from complaining that the `layer`, `layer_used`, and
+   * `layer_protected` fields are DNA_DEPRECATED.
+   */
+  bArmature arm_copy;
+  memcpy(&arm_copy, ob->data, sizeof(arm_copy));
+
   arm_copy.adt = nullptr;
   ob_copy.data = &arm_copy;
   BLI_addtail(&temp_bmain->objects, &ob_copy);

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
+/* SPDX-FileCopyrightText: 2013 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -28,9 +28,9 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
@@ -556,7 +556,7 @@ void RIGIDBODY_OT_mass_calculate(wmOperatorType *ot)
   ot->prop = prop = RNA_def_enum(
       ot->srna,
       "material",
-      DummyRNA_DEFAULT_items,
+      rna_enum_dummy_DEFAULT_items,
       0,
       "Material Preset",
       "Type of material that objects are made of (determines material density)");

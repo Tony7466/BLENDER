@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -586,6 +586,7 @@ void Instance::light_bake_irradiance(
   sampling.init(probe);
   while (!sampling.finished()) {
     context_wrapper([&]() {
+      GPU_debug_capture_begin();
       /* Batch ray cast by pack of 16. Avoids too much overhead of the update function & context
        * switch. */
       /* TODO(fclem): Could make the number of iteration depend on the computation time. */
@@ -613,6 +614,7 @@ void Instance::light_bake_irradiance(
 
       float progress = sampling.sample_index() / float(sampling.sample_count());
       result_update(cache_frame, progress);
+      GPU_debug_capture_end();
     });
 
     if (stop()) {

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,10 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_action.h"
 #include "BKE_armature.h"
@@ -32,8 +35,8 @@
 #include "WM_api.hh"
 #include "WM_message.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "ED_screen.hh"
 #include "ED_transform.hh"
@@ -124,7 +127,7 @@ static int view_lock_to_active_exec(bContext *C, wmOperator * /*op*/)
       if (obact->mode & OB_MODE_POSE) {
         Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
         Object *obact_eval = DEG_get_evaluated_object(depsgraph, obact);
-        bPoseChannel *pcham_act = BKE_pose_channel_active_if_layer_visible(obact_eval);
+        bPoseChannel *pcham_act = BKE_pose_channel_active_if_bonecoll_visible(obact_eval);
         if (pcham_act) {
           STRNCPY(v3d->ob_center_bone, pcham_act->name);
         }

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -70,6 +70,7 @@ set(SRC
   interface_template_grease_pencil_layer_tree.cc
   interface_template_light_linking.cc
   interface_template_list.cc
+  interface_template_node_tree_interface.cc
   interface_template_search_menu.cc
   interface_template_search_operator.cc
   interface_templates.cc

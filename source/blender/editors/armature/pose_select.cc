@@ -31,8 +31,8 @@
 
 #include "DEG_depsgraph.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -45,6 +45,8 @@
 #include "ED_screen.hh"
 #include "ED_select_utils.hh"
 #include "ED_view3d.hh"
+
+#include "ANIM_bone_collections.h"
 
 #include "armature_intern.h"
 
@@ -751,7 +753,7 @@ static int pose_select_hierarchy_exec(bContext *C, wmOperator *op)
   const bool add_to_sel = RNA_boolean_get(op->ptr, "extend");
   bool changed = false;
 
-  pchan_act = BKE_pose_channel_active_if_layer_visible(ob);
+  pchan_act = BKE_pose_channel_active_if_bonecoll_visible(ob);
   if (pchan_act == nullptr) {
     return OPERATOR_CANCELLED;
   }

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: Blender Foundation
+/* SPDX-FileCopyrightText: Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,7 +7,9 @@
  */
 
 #include "BLI_array.hh"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -412,7 +414,7 @@ Mesh *BKE_mesh_mirror_apply_mirror_on_axis_for_modifier(MirrorModifierData *mmd,
                                           result_faces,
                                           result_corner_verts,
                                           result_corner_edges,
-                                          {},
+                                          result->corner_to_face_map(),
                                           result->vert_normals(),
                                           result->face_normals(),
                                           sharp_edges,

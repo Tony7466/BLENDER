@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -42,7 +42,7 @@
 
 #include "RE_engine.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "CLG_log.h"
@@ -498,6 +498,16 @@ ListBase CTX_data_collection_get(const bContext *C, const char *member)
 
   ListBase list = {nullptr, nullptr};
   return list;
+}
+
+void CTX_data_collection_remap_property(ListBase /*CollectionPointerLink*/ collection_pointers,
+                                        const char *propname)
+{
+  LISTBASE_FOREACH (CollectionPointerLink *, link, &collection_pointers) {
+    PointerRNA original_ptr = link->ptr;
+    PointerRNA remapped_ptr = RNA_pointer_get(&original_ptr, propname);
+    link->ptr = remapped_ptr;
+  }
 }
 
 int /*eContextResult*/ CTX_data_get(const bContext *C,

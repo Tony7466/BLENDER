@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -49,10 +49,7 @@ class CornersOfVertInput final : public bke::MeshFieldInput {
                                  const IndexMask &mask) const final
   {
     const IndexRange vert_range(mesh.totvert);
-    Array<int> map_offsets;
-    Array<int> map_indices;
-    const GroupedSpan<int> vert_to_loop_map = bke::mesh::build_vert_to_loop_map(
-        mesh.corner_verts(), mesh.totvert, map_offsets, map_indices);
+    const GroupedSpan<int> vert_to_corner_map = mesh.vert_to_corner_map();
 
     const bke::MeshFieldContext context{mesh, domain};
     fn::FieldEvaluator evaluator{context, &mask};
@@ -83,7 +80,7 @@ class CornersOfVertInput final : public bke::MeshFieldInput {
           continue;
         }
 
-        const Span<int> corners = vert_to_loop_map[vert_i];
+        const Span<int> corners = vert_to_corner_map[vert_i];
         if (corners.is_empty()) {
           corner_of_vertex[selection_i] = 0;
           continue;
@@ -197,16 +194,16 @@ static void node_geo_exec(GeoNodeExecParams params)
                           params.extract_input<Field<float>>("Weights"))));
   }
 }
-}  // namespace blender::nodes::node_geo_mesh_topology_corners_of_vertex_cc
 
-void register_node_type_geo_mesh_topology_corners_of_vertex()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_mesh_topology_corners_of_vertex_cc;
-
   static bNodeType ntype;
   geo_node_type_base(
       &ntype, GEO_NODE_MESH_TOPOLOGY_CORNERS_OF_VERTEX, "Corners of Vertex", NODE_CLASS_INPUT);
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.declare = file_ns::node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.declare = node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_mesh_topology_corners_of_vertex_cc

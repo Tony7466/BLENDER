@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -57,16 +57,11 @@ Mesh *create_grid_mesh(const int verts_x,
                                    edges_x * edges_y * 4);
   MutableSpan<float3> positions = mesh->vert_positions_for_write();
   MutableSpan<int2> edges = mesh->edges_for_write();
-  MutableSpan<int> face_offsets = mesh->face_offsets_for_write();
   MutableSpan<int> corner_verts = mesh->corner_verts_for_write();
   MutableSpan<int> corner_edges = mesh->corner_edges_for_write();
   BKE_mesh_smooth_flag_set(mesh, false);
 
-  threading::parallel_for(face_offsets.index_range(), 4096, [face_offsets](IndexRange range) {
-    for (const int i : range) {
-      face_offsets[i] = i * 4;
-    }
-  });
+  offset_indices::fill_constant_group_size(4, 0, mesh->face_offsets_for_write());
 
   {
     const float dx = edges_x == 0 ? 0.0f : size_x / edges_x;
@@ -99,9 +94,7 @@ Mesh *create_grid_mesh(const int verts_x,
       threading::parallel_for(IndexRange(edges_y), 512, [&](IndexRange y_range) {
         for (const int y : y_range) {
           const int vert_index = y_vert_offset + y;
-          int2 &edge = edges[y_edge_offset + y];
-          edge[0] = vert_index;
-          edge[1] = vert_index + 1;
+          edges[y_edge_offset + y] = int2(vert_index, vert_index + 1);
         }
       });
     }
@@ -114,9 +107,7 @@ Mesh *create_grid_mesh(const int verts_x,
       threading::parallel_for(IndexRange(edges_x), 512, [&](IndexRange x_range) {
         for (const int x : x_range) {
           const int vert_index = x * verts_y + y;
-          int2 &edge = edges[x_edge_offset + x];
-          edge[0] = vert_index;
-          edge[1] = vert_index + verts_y;
+          edges[x_edge_offset + x] = int2(vert_index, vert_index + verts_y);
         }
       });
     }
@@ -209,16 +200,15 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Mesh", GeometrySet::from_mesh(mesh));
 }
 
-}  // namespace blender::nodes::node_geo_mesh_primitive_grid_cc
-
-void register_node_type_geo_mesh_primitive_grid()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_mesh_primitive_grid_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_MESH_PRIMITIVE_GRID, "Grid", NODE_CLASS_GEOMETRY);
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_mesh_primitive_grid_cc

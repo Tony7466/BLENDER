@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -42,7 +42,7 @@
 
 #include "ED_screen.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
@@ -168,7 +168,7 @@ static bool menu_items_from_ui_create_item_from_button(MenuSearch_Data *data,
   MenuSearch_Item *item = nullptr;
 
   /* Use override if the name is empty, this can happen with popovers. */
-  const char *drawstr_override = nullptr;
+  std::string drawstr_override;
   const char *drawstr_sep = (but->flag & UI_BUT_HAS_SEP_CHAR) ?
                                 strrchr(but->drawstr, UI_SEP_CHAR) :
                                 nullptr;
@@ -237,7 +237,7 @@ static bool menu_items_from_ui_create_item_from_button(MenuSearch_Data *data,
 
   if (item != nullptr) {
     /* Handle shared settings. */
-    if (drawstr_override != nullptr) {
+    if (!drawstr_override.empty()) {
       const char *drawstr_suffix = drawstr_sep ? drawstr_sep : "";
       std::string drawstr = std::string("(") + drawstr_override + ")" + drawstr_suffix;
       item->drawstr = strdup_memarena(memarena, drawstr.c_str());
@@ -299,7 +299,7 @@ static bool menu_items_to_ui_button(MenuSearch_Item *item, uiBut *but)
       *drawstr_sep = '\0';
     }
 
-    but->icon = (BIFIconID)item->icon;
+    but->icon = item->icon;
     but->str = but->strdata;
   }
 
@@ -440,7 +440,7 @@ static MenuSearch_Data *menu_items_from_ui_create(bContext *C,
   const uiStyle *style = UI_style_get_dpi();
 
   /* Convert into non-ui structure. */
-  MenuSearch_Data *data = (MenuSearch_Data *)MEM_callocN(sizeof(*data), __func__);
+  MenuSearch_Data *data = MEM_new<MenuSearch_Data>(__func__);
 
   DynStr *dyn_str = BLI_dynstr_new_memarena();
 

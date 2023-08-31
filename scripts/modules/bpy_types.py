@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -942,6 +942,10 @@ class KeyingSetInfo(StructRNA, metaclass=RNAMeta):
     __slots__ = ()
 
 
+class USDHook(StructRNA, metaclass=RNAMeta):
+    __slots__ = ()
+
+
 class AddonPreferences(StructRNA, metaclass=RNAMeta):
     __slots__ = ()
 
@@ -1214,7 +1218,11 @@ class NodeSocket(StructRNA, metaclass=RNAMetaPropGroup):
                 link.to_socket == self))
 
 
-class NodeSocketInterface(StructRNA, metaclass=RNAMetaPropGroup):
+class NodeTreeInterfaceItem(StructRNA):
+    __slots__ = ()
+
+
+class NodeTreeInterfaceSocket(NodeTreeInterfaceItem, metaclass=RNAMetaPropGroup):
     __slots__ = ()
 
 
