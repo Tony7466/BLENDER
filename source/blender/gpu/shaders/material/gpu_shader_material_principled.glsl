@@ -86,7 +86,7 @@ void node_bsdf_principled(vec4 base_color,
   if (true) {
     float NV = dot(clearcoat_data.N, V);
     float clearcoat_ior = 1.5;
-    float reflectance = btdf_lut(NV, clearcoat_data.roughness, clearcoat_ior, false).y;
+    float reflectance = btdf_lut(NV, clearcoat_data.roughness, clearcoat_ior, 0.0).y;
     clearcoat_data.color = vec3(reflectance);
     /* Attenuate lower layers */
     weight *= (1.0 - reflectance * clearcoat);
