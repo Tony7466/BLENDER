@@ -460,28 +460,6 @@ static wmKeyMap *rna_keymap_new(wmKeyConfig *keyconf,
   return keymap;
 }
 
-static wmKeyMap *rna_keymap_ensure_from_default(wmKeyConfig *keyconf,
-                                                ReportList *reports,
-                                                const char *idname)
-{
-  wmWindowManager *wm = static_cast<wmWindowManager *>(G_MAIN->wm.first);
-  if (keyconf == wm->defaultconf) {
-    BKE_report(
-        reports, RPT_ERROR, "ensure_from_default cannot be used from the default configuration");
-    return nullptr;
-  }
-  wmKeyMap *km = static_cast<wmKeyMap *>(
-      BLI_findstring(&wm->defaultconf->keymaps, idname, offsetof(wmKeyMap, idname)));
-  if (km == nullptr) {
-    BKE_reportf(reports, RPT_ERROR, "\"%s\" not part of the default key-map", idname);
-    return nullptr;
-  }
-
-  const bool modal = (km->flag & KEYMAP_MODAL);
-  const bool tool = (km->flag & KEYMAP_TOOL);
-  return rna_keymap_new(keyconf, reports, idname, km->spaceid, km->regionid, modal, tool);
-}
-
 static wmKeyMap *rna_keymap_find(wmKeyConfig *keyconf,
                                  const char *idname,
                                  int spaceid,
@@ -1302,15 +1280,6 @@ void RNA_api_keymaps(StructRNA *srna)
   RNA_def_enum(
       func, "region_type", rna_enum_region_type_items, RGN_TYPE_WINDOW, "Region Type", "");
   parm = RNA_def_pointer(func, "keymap", "KeyMap", "Key Map", "Corresponding key map");
-  RNA_def_function_return(func, parm);
-
-  func = RNA_def_function(srna, "ensure_from_default", "rna_keymap_ensure_from_default");
-  RNA_def_function_flag(func, FUNC_USE_REPORTS);
-  RNA_def_function_ui_description(func, "Ensure the keymap exists based on the default key-map.");
-
-  parm = RNA_def_string(func, "name", nullptr, 0, "Name", "");
-  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  parm = RNA_def_pointer(func, "keymap", "KeyMap", "Key Map", "Added key map");
   RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "find_modal", "rna_keymap_find_modal"); /* find_keymap_modal */
