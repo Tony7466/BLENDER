@@ -1447,8 +1447,8 @@ void GRAPH_OT_shear(wmOperatorType *ot)
                        0.0f,
                        -FLT_MAX,
                        FLT_MAX,
-                       "Curve Bend",
-                       "Control the bend of the curve",
+                       "Shear Factor",
+                       "The amount of shear to apply",
                        -1.0f,
                        1.0f);
 
