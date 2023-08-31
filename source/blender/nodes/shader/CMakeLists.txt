@@ -156,6 +156,9 @@ if(WITH_MATERIALX)
     materialx/nodes/node_parser.cc
     materialx/nodes/output_material.cc
     materialx/nodes/tex_image.cc
+    materialx/nodes/tex_environment.cc
+    materialx/nodes/tex_noise.cc
+    materialx/nodes/tex_checker.cc
 
     materialx/material.h
     materialx/nodes/node_item.h

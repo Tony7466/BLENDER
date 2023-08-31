@@ -31,7 +31,7 @@ class NodeParser {
  protected:
   NodeItem create_node(const std::string &mx_category,
                        const std::string &mx_type,
-                       bool accessory = false);
+                       bool noname = true);
   NodeItem get_input_default(const std::string &name);
   NodeItem get_input_default(int index);
   NodeItem get_input_link(const std::string &name);
@@ -64,6 +64,9 @@ DECLARE_PARSER(InvertNodeParser)
 DECLARE_PARSER(MathNodeParser)
 DECLARE_PARSER(MixRGBNodeParser)
 DECLARE_PARSER(OutputMaterialNodeParser)
+DECLARE_PARSER(TexCheckerNodeParser)
+DECLARE_PARSER(TexEnvironmentNodeParser)
 DECLARE_PARSER(TexImageNodeParser)
+DECLARE_PARSER(TexNoiseNodeParser)
 
 }  // namespace blender::nodes::materialx

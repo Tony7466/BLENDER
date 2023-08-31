@@ -16,13 +16,15 @@ NodeItem NodeItem::empty() const
   return NodeItem(graph_);
 }
 
-void NodeItem::set_input(const std::string &name, const NodeItem &item)
+void NodeItem::set_input(const std::string &name,
+                         const NodeItem &item,
+                         const std::string &output_name)
 {
   if (item.value) {
     set_input(name, item.value);
   }
   else if (item.node) {
-    set_input(name, item.node);
+    set_input(name, item.node, output_name);
   }
 }
 
@@ -58,9 +60,19 @@ void NodeItem::set_input(const std::string &name, const MaterialX::ValuePtr valu
   }
 }
 
-void NodeItem::set_input(const std::string &name, const MaterialX::NodePtr node)
+void NodeItem::set_input(const std::string &name,
+                         const MaterialX::NodePtr node,
+                         const std::string &output_name)
 {
   this->node->setConnectedNode(name, node);
+  if (output_name != "") {
+    this->node->setConnectedOutput("in1", node->getOutput(output_name));
+  }
+}
+
+void NodeItem::add_output(const std::string &name, const std::string &mx_type)
+{
+  node->addOutput(name, mx_type);
 }
 
 NodeItem::operator bool() const
@@ -550,7 +562,9 @@ MaterialX::ValuePtr NodeItem::float_to_type(float v, std::string mx_type)
   return nullptr;
 }
 
-bool NodeItem::adjust_types(MaterialX::ValuePtr &val1, MaterialX::ValuePtr &val2, std::string &mx_type)
+bool NodeItem::adjust_types(MaterialX::ValuePtr &val1,
+                            MaterialX::ValuePtr &val2,
+                            std::string &mx_type)
 {
   std::string t1 = val1->getTypeString();
   std::string t2 = val2->getTypeString();

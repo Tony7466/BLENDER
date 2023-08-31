@@ -25,9 +25,14 @@ class NodeItem {
 
   template<class T>
   void set_input(const std::string &name, const T &value, const std::string &mx_type);
-  void set_input(const std::string &name, const NodeItem &item);
+  void set_input(const std::string &name,
+                 const NodeItem &item,
+                 const std::string &output_name = "");
   void set_input(const std::string &name, const MaterialX::ValuePtr value);
-  void set_input(const std::string &name, const MaterialX::NodePtr node);
+  void set_input(const std::string &name,
+                 const MaterialX::NodePtr node,
+                 const std::string &output_name = "");
+  void add_output(const std::string &name, const std::string &mx_type);
 
   operator bool() const;
   NodeItem operator+(const NodeItem &other) const;
@@ -79,7 +84,9 @@ class NodeItem {
                       std::function<float(float, float)> func) const;
   static MaterialX::ValuePtr float_to_type(float v, std::string mx_type);
   /* Functions for adjusting values to make equal types  */
-  static bool adjust_types(MaterialX::ValuePtr &val1, MaterialX::ValuePtr &val2, std::string &mx_type);
+  static bool adjust_types(MaterialX::ValuePtr &val1,
+                           MaterialX::ValuePtr &val2,
+                           std::string &mx_type);
   static bool adjust_types(NodeItem &val1, NodeItem &val2, std::string &mx_type);
 };
 

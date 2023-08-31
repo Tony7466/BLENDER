@@ -18,12 +18,12 @@ NodeParser::NodeParser(MaterialX::GraphElement *graph,
 
 NodeItem NodeParser::create_node(const std::string &mx_category,
                                  const std::string &mx_type,
-                                 bool accessory)
+                                 bool noname)
 {
   NodeItem res = empty();
   res.node = graph->addNode(mx_category,
-                            accessory ? MaterialX::EMPTY_STRING :
-                                        MaterialX::createValidName(node->name),
+                            noname ? MaterialX::EMPTY_STRING :
+                                     MaterialX::createValidName(node->name),
                             mx_type);
   return res;
 }
@@ -110,7 +110,7 @@ NodeItem NodeParser::get_input_link(const bNodeSocket &socket)
 
   /* Getting required NodeParser object */
   std::unique_ptr<NodeParser> parser;
-  switch (in_node->type) {
+  switch (in_node->typeinfo->type) {
     case SH_NODE_BSDF_PRINCIPLED:
       parser = std::make_unique<BSDFPrincipledNodeParser>(graph, depsgraph, material, in_node);
       break;
@@ -125,6 +125,15 @@ NodeItem NodeParser::get_input_link(const bNodeSocket &socket)
       break;
     case SH_NODE_TEX_IMAGE:
       parser = std::make_unique<TexImageNodeParser>(graph, depsgraph, material, in_node);
+      break;
+    case SH_NODE_TEX_ENVIRONMENT:
+      parser = std::make_unique<TexEnvironmentNodeParser>(graph, depsgraph, material, in_node);
+      break;
+    case SH_NODE_TEX_NOISE:
+      parser = std::make_unique<TexNoiseNodeParser>(graph, depsgraph, material, in_node);
+      break;
+    case SH_NODE_TEX_CHECKER:
+      parser = std::make_unique<TexCheckerNodeParser>(graph, depsgraph, material, in_node);
       break;
     default:
       // TODO: warning log

@@ -10,10 +10,10 @@
 
 namespace blender::nodes::materialx {
 
-NodeItem TexImageNodeParser::compute()
+NodeItem TexEnvironmentNodeParser::compute()
 {
   Image *image = (Image *)node->id;
-  NodeTexImage *tex = static_cast<NodeTexImage *>(node->storage);
+  NodeTexEnvironment *tex = static_cast<NodeTexEnvironment *>(node->storage);
   Scene *scene = DEG_get_input_scene(depsgraph);
   Main *bmain = DEG_get_bmain(depsgraph);
   std::string image_path;

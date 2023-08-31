@@ -11,7 +11,7 @@ NodeItem OutputMaterialNodeParser::compute()
   NodeItem node = empty();
   NodeItem surface = get_input_link("Surface");
   if (surface) {
-    node = create_node("surfacematerial", "material");
+    node = create_node("surfacematerial", "material", false);
     node.set_input("surfaceshader", surface);
   }
   return node;
