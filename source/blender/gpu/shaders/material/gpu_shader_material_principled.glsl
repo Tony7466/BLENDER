@@ -53,9 +53,8 @@ void node_bsdf_principled(vec4 base_color,
 {
   /* Match cycles. */
   metallic = clamp(metallic, 0.0, 1.0);
-  transmission = clamp(transmission, 0.0, 1.0) * (1.0 - metallic);
+  transmission = clamp(transmission, 0.0, 1.0);
   clearcoat = max(clearcoat, 0.0) * 0.25;
-  float specular_weight = (1.0 - metallic) * (1.0 - transmission);
 
   N = safe_normalize(N);
   CN = safe_normalize(CN);
@@ -72,25 +71,22 @@ void node_bsdf_principled(vec4 base_color,
   /* TODO: Maybe sheen should be specular. */
   vec3 sheen_color = sheen * sheen_tint.rgb * principled_sheen(NV, sheen_roughness);
   ClosureDiffuse diffuse_data;
-  diffuse_data.weight = weight;
-  diffuse_data.color = sheen_color;
+  diffuse_data.color = weight * sheen_color;
   diffuse_data.N = N;
   /* Attenuate lower layers */
   weight *= (1.0 - max_v3(sheen_color));
 
   /* Second layer: Clearcoat */
   ClosureReflection clearcoat_data;
-  clearcoat_data.weight = weight * clearcoat;
   clearcoat_data.N = CN;
   clearcoat_data.roughness = clearcoat_roughness;
-  if (true) {
-    float NV = dot(clearcoat_data.N, V);
-    float clearcoat_ior = 1.5;
-    float reflectance = btdf_lut(NV, clearcoat_data.roughness, clearcoat_ior, 0.0).y;
-    clearcoat_data.color = vec3(reflectance);
-    /* Attenuate lower layers */
-    weight *= (1.0 - reflectance * clearcoat);
-  }
+  float coat_ior = 1.5;
+  float coat_NV = dot(clearcoat_data.N, V);
+  float reflectance = btdf_lut(coat_NV, clearcoat_data.roughness, coat_ior, 0.0).y;
+  clearcoat_data.weight = weight * clearcoat * reflectance;
+  clearcoat_data.color = vec3(1.0);
+  /* Attenuate lower layers */
+  weight *= (1.0 - reflectance * clearcoat);
 
   /* TODO: attenuate emission by sheen and clearcoat. */
   ClosureEmission emission_data;
@@ -99,7 +95,6 @@ void node_bsdf_principled(vec4 base_color,
 
   /* Metallic component */
   ClosureReflection reflection_data;
-  reflection_data.weight = weight;
   reflection_data.N = N;
   reflection_data.roughness = roughness;
   vec2 split_sum = brdf_lut(NV, roughness);
@@ -108,25 +103,27 @@ void node_bsdf_principled(vec4 base_color,
     vec3 f90 = vec3(1.0);
     vec3 metallic_brdf = (do_multiscatter != 0.0) ? F_brdf_multi_scatter(f0, f90, split_sum) :
                                                     F_brdf_single_scatter(f0, f90, split_sum);
-    reflection_data.color = metallic_brdf * metallic;
+    reflection_data.color = weight * metallic * metallic_brdf;
+    /* Attenuate lower layers */
+    weight *= (1.0 - metallic);
   }
 
   /* Transmission component */
   ClosureRefraction refraction_data;
-  refraction_data.weight = weight * transmission;
   /* TODO: change `specular_tint` to rgb. */
   vec3 reflection_tint = mix(vec3(1.0), base_color.rgb, specular_tint);
   if (true) {
     vec2 bsdf = btdf_lut(NV, roughness, ior, do_multiscatter);
 
-    reflection_data.color += reflection_tint * bsdf.y * transmission;
+    reflection_data.color += weight * transmission * bsdf.y * reflection_tint;
 
-    refraction_data.color = base_color.rgb * bsdf.x;
+    refraction_data.weight = weight * transmission * bsdf.x;
+    refraction_data.color = base_color.rgb;
     refraction_data.N = N;
     refraction_data.roughness = roughness;
     refraction_data.ior = ior;
     /* Attenuate lower layers */
-    weight *= specular_weight;
+    weight *= (1.0 - transmission);
   }
 
   /* Specular component */
@@ -135,7 +132,7 @@ void node_bsdf_principled(vec4 base_color,
     vec3 f90 = vec3(1.0);
     vec3 specular_brdf = (do_multiscatter != 0.0) ? F_brdf_multi_scatter(f0, f90, split_sum) :
                                                     F_brdf_single_scatter(f0, f90, split_sum);
-    reflection_data.color += specular_brdf * specular_weight;
+    reflection_data.color += weight * specular_brdf;
     /* Attenuate lower layers */
     weight *= (1.0 - max_v3(specular_brdf));
   }
@@ -145,8 +142,14 @@ void node_bsdf_principled(vec4 base_color,
     vec3 diffuse_color = mix(base_color.rgb, subsurface_color.rgb, subsurface);
     diffuse_data.sss_radius = subsurface_radius * subsurface;
     diffuse_data.sss_id = uint(do_sss);
-    diffuse_data.color += diffuse_color * (weight / diffuse_data.weight);
+    diffuse_data.color += weight * diffuse_color;
   }
+
+  /* Adjust the weight of picking the closure. */
+  reflection_data.weight = avg(reflection_data.color);
+  reflection_data.color *= safe_rcp(reflection_data.weight);
+  diffuse_data.weight = avg(diffuse_data.color);
+  diffuse_data.color *= safe_rcp(diffuse_data.weight);
 
   /* Ref. #98190: Defines are optimizations for old compilers.
    * Might become unnecessary with EEVEE-Next. */
