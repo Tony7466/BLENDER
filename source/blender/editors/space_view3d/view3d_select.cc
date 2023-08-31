@@ -4339,7 +4339,6 @@ static int view3d_box_select_exec(bContext *C, wmOperator *op)
     }
     else { /* object mode with none active */
       changed_multi = do_object_box_select(C, &vc, &rect, sel_op);
-      changed_multi = do_object_box_select(C, &vc, &rect, sel_op);
       ED_outliner_select_sync_from_object_tag(C);
     }
   }
