@@ -260,7 +260,7 @@ void normals_calc_verts(const Span<float3> positions,
                         const Span<float3> face_normals,
                         MutableSpan<float3> vert_normals)
 {
-  memset(vert_normals.data(), 0, vert_normals.as_span().size_in_bytes());
+  threading::parallel_memset(vert_normals.data(), 0, vert_normals.as_span().size_in_bytes());
 
   threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
     for (const int face_i : range) {
@@ -278,7 +278,7 @@ static void normals_calc_faces_and_verts(const Span<float3> positions,
                                          MutableSpan<float3> face_normals,
                                          MutableSpan<float3> vert_normals)
 {
-  memset(vert_normals.data(), 0, vert_normals.as_span().size_in_bytes());
+  threading::parallel_memset(vert_normals.data(), 0, vert_normals.size_in_bytes());
 
   threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
     for (const int face_i : range) {

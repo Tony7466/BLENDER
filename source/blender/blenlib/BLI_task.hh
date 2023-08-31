@@ -197,6 +197,8 @@ inline void parallel_invoke(const bool use_threading, Functions &&...functions)
   }
 }
 
+void parallel_memset(void *dst, uint8_t value, int64_t size);
+
 /** See #BLI_task_isolate for a description of what isolating a task means. */
 template<typename Function> inline void isolate_task(const Function &function)
 {

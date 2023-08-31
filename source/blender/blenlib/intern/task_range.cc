@@ -182,3 +182,14 @@ void parallel_for_impl(const IndexRange range,
 }
 
 }  // namespace blender::threading::detail
+
+namespace blender::threading {
+
+void parallel_memset(void *dst, const uint8_t value, const int64_t size)
+{
+  parallel_for(IndexRange(size), 8192, [&](const IndexRange range) {
+    memset(POINTER_OFFSET(dst, range.start()), value, range.size());
+  });
+}
+
+}  // namespace blender::threading
