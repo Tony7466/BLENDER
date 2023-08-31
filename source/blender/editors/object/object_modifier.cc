@@ -84,14 +84,10 @@
 #include "RNA_prototypes.h"
 
 #include "ED_armature.hh"
-#include "ED_asset.hh"
 #include "ED_mesh.hh"
 #include "ED_object.hh"
 #include "ED_screen.hh"
 #include "ED_sculpt.hh"
-
-#include "AS_asset_library.hh"
-#include "AS_asset_representation.hh"
 
 #include "ANIM_bone_collections.h"
 
