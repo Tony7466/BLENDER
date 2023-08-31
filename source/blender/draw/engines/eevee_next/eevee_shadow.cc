@@ -1185,7 +1185,19 @@ void ShadowModule::set_view(View &view)
 
   switch (shadow_technique) {
     case eShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER: {
-      render_fb_.ensure(int2(SHADOW_TILEMAP_RES * shadow_page_size_));
+      if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
+        /* Metal requires a memoryless attachment to create an empty framebuffer. */
+        shadow_depth_fb_tx_.ensure_2d_array(GPU_DEPTH_COMPONENT32F,
+                                            int2(SHADOW_TILEMAP_RES * shadow_page_size_),
+                                            SHADOW_VIEW_MAX,
+                                            GPU_TEXTURE_USAGE_ATTACHMENT |
+                                                GPU_TEXTURE_USAGE_MEMORYLESS);
+        render_fb_.ensure(GPU_ATTACHMENT_TEXTURE(shadow_depth_fb_tx_));
+      }
+      else {
+        /* Create attachment-less framebuffer.*/
+        render_fb_.ensure(int2(SHADOW_TILEMAP_RES * shadow_page_size_));
+      }
       GPU_framebuffer_bind(render_fb_);
     } break;
 

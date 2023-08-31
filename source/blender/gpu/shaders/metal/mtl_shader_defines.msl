@@ -308,8 +308,14 @@ struct SStruct {
 #define imageStore(_tex, _coord, _value) _texture_write_internal(_tex, _coord, _value)
 #define imageStoreFast(_tex, _coord, _value) _texture_write_internal_fast(_tex, _coord, _value)
 
-/* Placeholder for missing imageAtomicMin to ensure implementation is runnable. */
-#define imageAtomicMin imageStore
+/* Placeholder for missing imageAtomicMin to ensure implementation is runnable. This will not work
+ * for general concurrent thread access, but will allow inter-thread writing.
+ * This assumes 2D texture array. */
+#define imageAtomicMin(tex, coord, data) \
+  auto val = _texelFetch_internal(tex, coord, 0).r; \
+  tex.texture->fence(); \
+  tex.texture->write(min(val, data), uint2(coord.xy), uint(coord.z)); \
+  tex.texture->fence();
 
 /* Cube-map support always available when using Metal. */
 #define textureLod_cubemapArray(tex, co, lod) textureLod(tex, co, lod)
