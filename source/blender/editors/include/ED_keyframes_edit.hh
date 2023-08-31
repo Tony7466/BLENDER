@@ -458,9 +458,7 @@ void smooth_fcurve_segment(FCurve *fcu,
                            int kernel_size,
                            double *kernel);
 void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float factor);
-void shear_from_left_fcurve_segment(struct FCurve *fcu,
-                                    struct FCurveSegment *segment,
-                                    float factor);
+void shear_fcurve_segment(struct FCurve *fcu, struct FCurveSegment *segment, float factor);
 /**
  * Shift the FCurve segment up/down so that it aligns with the key before/after
  * the segment.

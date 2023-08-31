@@ -1294,66 +1294,26 @@ void GRAPH_OT_match_slope(wmOperatorType *ot)
 /** \name Shear from Left Operator
  * \{ */
 
-static void shear_from_left_graph_keys(bAnimContext *ac, const float factor)
+static void shear_graph_keys(bAnimContext *ac, const float factor)
 {
-  ListBase anim_data = {NULL, NULL};
-
-  ANIM_animdata_filter(
-      ac, &anim_data, OPERATOR_DATA_FILTER, ac->data, eAnimCont_Types(ac->datatype));
-  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    FCurve *fcu = (FCurve *)ale->key_data;
-    ListBase segments = find_fcurve_segments(fcu);
-
-    LISTBASE_FOREACH (FCurveSegment *, segment, &segments) {
-      shear_from_left_fcurve_segment(fcu, segment, factor);
-    }
-
-    ale->update |= ANIM_UPDATE_DEFAULT;
-    BLI_freelistN(&segments);
-  }
-
-  ANIM_animdata_update(ac, &anim_data);
-  ANIM_animdata_freelist(&anim_data);
+  apply_fcu_segment_function(ac, factor, shear_fcurve_segment);
 }
 
-static void shear_from_left_draw_status_header(bContext *C, tGraphSliderOp *gso)
-{
-  char status_str[UI_MAX_DRAW_STR];
-  char mode_str[32];
-  char slider_string[UI_MAX_DRAW_STR];
-
-  ED_slider_status_string_get(gso->slider, slider_string, UI_MAX_DRAW_STR);
-
-  strcpy(mode_str, TIP_("Shear from Left Keys"));
-
-  if (hasNumInput(&gso->num)) {
-    char str_ofs[NUM_STR_REP_LEN];
-
-    outputNumInput(&gso->num, str_ofs, &gso->scene->unit);
-
-    BLI_snprintf(status_str, sizeof(status_str), "%s: %s", mode_str, str_ofs);
-  }
-  else {
-    BLI_snprintf(status_str, sizeof(status_str), "%s: %s", mode_str, slider_string);
-  }
-
-  ED_workspace_status_text(C, status_str);
-}
-
-static void shear_from_left_modal_update(bContext *C, wmOperator *op)
+static void shear_modal_update(bContext *C, wmOperator *op)
 {
   tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
 
-  shear_from_left_draw_status_header(C, gso);
+  common_draw_status_header(C, gso, "Shear Keys");
 
   /* Reset keyframes to the state at invoke. */
   reset_bezts(gso);
   const float factor = slider_factor_get_and_remember(op);
-  shear_from_left_graph_keys(&gso->ac, factor);
+
+  shear_graph_keys(&gso->ac, factor);
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
 }
 
-static int shear_from_left_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int shear_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   const int invoke_result = graph_slider_invoke(C, op, event);
 
@@ -1362,16 +1322,16 @@ static int shear_from_left_invoke(bContext *C, wmOperator *op, const wmEvent *ev
   }
 
   tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
-  gso->modal_update = shear_from_left_modal_update;
+  gso->modal_update = shear_modal_update;
   gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
-  shear_from_left_draw_status_header(C, gso);
+  common_draw_status_header(C, gso, "Shear Keys");
   ED_slider_factor_bounds_set(gso->slider, -1, 1);
   ED_slider_factor_set(gso->slider, 0.0f);
 
   return invoke_result;
 }
 
-static int shear_from_left_exec(bContext *C, wmOperator *op)
+static int shear_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
 
@@ -1382,7 +1342,7 @@ static int shear_from_left_exec(bContext *C, wmOperator *op)
 
   const float factor = RNA_float_get(op->ptr, "factor");
 
-  shear_from_left_graph_keys(&ac, factor);
+  shear_graph_keys(&ac, factor);
 
   /* Set notifier that keyframes have changed. */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
@@ -1390,19 +1350,19 @@ static int shear_from_left_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void GRAPH_OT_shear_from_left(wmOperatorType *ot)
+void GRAPH_OT_shear(wmOperatorType *ot)
 {
   /* Identifiers. */
-  ot->name = "Shear from Left Keyframes";
-  ot->idname = "GRAPH_OT_shear_from_left";
+  ot->name = "Shear Keyframes";
+  ot->idname = "GRAPH_OT_shear";
   ot->description =
       "Affects the value of the keys linearly keeping the same \n\
-  relationship between them using the left key as reference";
+  relationship between them using either the left or the right key as reference";
 
   /* API callbacks. */
-  ot->invoke = shear_from_left_invoke;
+  ot->invoke = shear_invoke;
   ot->modal = graph_slider_modal;
-  ot->exec = shear_from_left_exec;
+  ot->exec = shear_exec;
   ot->poll = graphop_editable_keyframes_poll;
 
   /* Flags. */
