@@ -18,35 +18,33 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "UI_interface.hh"
+
 #include "io_drop_import_helper.hh"
 
-static wmOperatorType *get_operator_type_for_extension(const bContext *C, const char *extension)
+static blender::Vector<wmOperatorType *> poll_operators_for_extension(const bContext *C,
+                                                                      const char *extension)
 {
-  ScrArea *area = CTX_wm_area(C);
-  SpaceType *st = area->type;
+  const ScrArea *area = CTX_wm_area(C);
+  const SpaceType *st = area->type;
 
-  FileDropType *file_drop_type = nullptr;
+  blender::Vector<wmOperatorType *> operators;
 
   LISTBASE_FOREACH (FileDropType *, file_drop_test, &st->file_drop_types) {
     if (file_drop_test->poll_extension &&
         file_drop_test->poll_extension(C, file_drop_test, extension)) {
-      file_drop_type = file_drop_test;
+      wmOperatorType *test_operator = WM_operatortype_find(file_drop_test->op_name, false);
+      if (!test_operator) {
+        continue;
+      }
+      operators.append(test_operator);
     }
   };
-  return file_drop_type ? WM_operatortype_find(file_drop_type->op_name, false) : nullptr;
+  return operators;
 }
 
-static int wm_drop_import_helper_exec(bContext *C, wmOperator *op)
+static PointerRNA copy_file_properties_to_operator_type_pointer(wmOperator *op, wmOperatorType *ot)
 {
-  char extension[MAX_NAME];
-  RNA_string_get(op->ptr, "extension", extension);
-
-  wmOperatorType *ot = get_operator_type_for_extension(C, extension);
-
-  if (!ot) {
-    return OPERATOR_CANCELLED;
-  }
-
   PointerRNA op_props;
   WM_operator_properties_create_ptr(&op_props, ot);
 
@@ -74,12 +72,58 @@ static int wm_drop_import_helper_exec(bContext *C, wmOperator *op)
       RNA_string_set(&itemptr, "name", filepath);
     }
   }
+  return op_props;
+}
+
+static int wm_drop_import_helper_exec(bContext *C, wmOperator *op)
+{
+  char extension[MAX_NAME];
+  RNA_string_get(op->ptr, "extension", extension);
+  blender::Vector<wmOperatorType *> operators = poll_operators_for_extension(C, extension);
+  
+  if (operators.size() == 0) {
+    return OPERATOR_CANCELLED;
+  }
+  
+  wmOperatorType *ot = operators[0];
+
+  PointerRNA op_props = copy_file_properties_to_operator_type_pointer(op, ot);
 
   WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, &op_props, nullptr);
   WM_operator_properties_free(&op_props);
   return OPERATOR_FINISHED;
 }
 
+static int wm_drop_import_helper_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  char extension[MAX_NAME];
+  RNA_string_get(op->ptr, "extension", extension);
+
+  blender::Vector<wmOperatorType *> operators = poll_operators_for_extension(C, extension);
+
+  if (operators.size() <= 1) {
+    return wm_drop_import_helper_exec(C, op);
+  }
+
+  uiPopupMenu *pup = UI_popup_menu_begin(C, "", ICON_NONE);
+  uiLayout *layout = UI_popup_menu_layout(pup);
+  uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
+
+  for (auto *ot : operators) {
+    PointerRNA op_props = copy_file_properties_to_operator_type_pointer(op, ot);
+    uiItemFullO_ptr(layout,
+                    ot,
+                    nullptr,
+                    ICON_NONE,
+                    static_cast<IDProperty *>(op_props.data),
+                    WM_OP_INVOKE_DEFAULT,
+                    UI_ITEM_NONE,
+                    nullptr);
+  }
+
+  UI_popup_menu_end(C, pup);
+  return OPERATOR_INTERFACE;
+}
 void WM_OT_drop_import_helper(wmOperatorType *ot)
 {
   ot->name = "Drop Import Herlper";
@@ -89,6 +133,7 @@ void WM_OT_drop_import_helper(wmOperatorType *ot)
   ot->idname = "WM_OT_drop_import_helper";
 
   ot->exec = wm_drop_import_helper_exec;
+  ot->invoke = wm_drop_import_helper_invoke;
   PropertyRNA *prop;
 
   prop = RNA_def_string(ot->srna, "extension", nullptr, MAX_NAME, "extension", "extension");
@@ -133,19 +178,22 @@ static bool poll(bContext *C, wmDrag *drag, const wmEvent * /*event*/)
   const auto paths = WM_drag_get_paths(drag);
   const char *extension = BLI_path_extension(paths[0].c_str());
 
-  return extension && get_operator_type_for_extension(C, extension);
+  return extension && poll_operators_for_extension(C, extension).size() > 0;
 }
 static char *tooltip(bContext *C, wmDrag *drag, const int /*xy*/[2], wmDropBox * /*drop*/)
 {
   const auto paths = WM_drag_get_paths(drag);
   const char *extension = BLI_path_extension(paths[0].c_str());
 
-  wmOperatorType *ot = get_operator_type_for_extension(C, extension);
-
-  if (!ot || (!ot->name || !ot->description)) {
+  blender::Vector<wmOperatorType *> operators = poll_operators_for_extension(C, extension);
+  if (operators.size() == 0) {
     return nullptr;
   }
-  return BLI_strdup(ot->name ? ot->name : ot->description);
+  if (operators.size() == 1) {
+    return BLI_strdup(operators[0]->name);
+  }
+
+  return BLI_strdup("Multiple operators can handle this file(s), drop to pick which to use");
 }
 
 void ED_dropbox_import_helper()

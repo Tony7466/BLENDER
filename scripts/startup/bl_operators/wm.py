@@ -3553,6 +3553,14 @@ class WM_FDT_stl(bpy.types.FileDrop):
     def poll_extension(cls, context, extension):
         return extension == ".stl"
 
+class WM_FDT_import_mesh_stl(bpy.types.FileDrop):
+    bl_space_type = "VIEW_3D"
+    bl_idname = "WM_FDT_import_mesh_stl"
+    bl_operator = "import_mesh.stl"
+
+    @classmethod
+    def poll_extension(cls, context, extension):
+        return extension == ".stl"
 
 class WM_FDT_usd(bpy.types.FileDrop):
     bl_space_type = "VIEW_3D"
@@ -3617,5 +3625,6 @@ classes = (
     WM_FDT_obj,
     WM_FDT_ply,
     WM_FDT_stl,
+    WM_FDT_import_mesh_stl,
     WM_FDT_usd,
 )

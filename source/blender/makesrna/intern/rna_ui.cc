@@ -1284,11 +1284,9 @@ static void rna_Menu_bl_description_set(PointerRNA *ptr, const char *value)
   }
 }
 
-/* UILayout */
-
 /* File Drop */
 
-static bool file_drop_poll(const bContext *C, FileDropType *file_drop_type, const char *extension)
+static bool file_drop_poll_extension(const bContext *C, FileDropType *file_drop_type, const char *extension)
 {
   extern FunctionRNA rna_FileDrop_poll_extension_func;
 
@@ -1401,7 +1399,7 @@ static StructRNA *rna_FileDrop_register(Main *bmain,
   file_drop_type->rna_ext.free = free;
   RNA_struct_blender_type_set(file_drop_type->rna_ext.srna, file_drop_type);
 
-  file_drop_type->poll_extension = have_function[0] ? file_drop_poll : nullptr;
+  file_drop_type->poll_extension = have_function[0] ? file_drop_poll_extension : nullptr;
 
   BLI_addtail(&space_type->file_drop_types, file_drop_type);
 
@@ -1417,6 +1415,8 @@ static StructRNA *rna_FileDrop_refine(PointerRNA *file_drop_ptr)
   return (file_drop && file_drop->type->rna_ext.srna) ? file_drop->type->rna_ext.srna :
                                                         &RNA_FileDrop;
 }
+
+/* UILayout */
 
 static bool rna_UILayout_active_get(PointerRNA *ptr)
 {
