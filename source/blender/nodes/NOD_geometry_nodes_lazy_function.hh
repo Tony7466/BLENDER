@@ -42,42 +42,70 @@ namespace blender::nodes {
 using lf::LazyFunction;
 using mf::MultiFunction;
 
+/** The structs in here describe the different possible behaviors of a simulation input node. */
 namespace sim_input {
 
+/**
+ * The data is just passed through the node. Data that is incompatible with simulations (like
+ * anonymous attributes), is removed though.
+ */
 struct PassThrough {
 };
 
+/**
+ * The input is not evaluated, instead the values provided here are output by the node.
+ */
 struct OutputCopy {
   float delta_time;
-  Map<int, const bke::BakeItem *> prev_items;
+  Map<int, const bke::BakeItem *> items_by_id;
 };
 
+/**
+ * Same as above, but the values can be output by move, instead of copy. This can reduce the amount
+ * of unnecessary copies, when the old simulation state is not needed anymore.
+ */
 struct OutputMove {
   float delta_time;
-  Map<int, std::unique_ptr<bke::BakeItem>> prev_items;
+  Map<int, std::unique_ptr<bke::BakeItem>> items_by_id;
 };
 
 using Behavior = std::variant<PassThrough, OutputCopy, OutputMove>;
 
 }  // namespace sim_input
 
+/** The structs in here describe the different possible behaviors of a simulation output node. */
 namespace sim_output {
 
+/**
+ * The data is just passed through the node. Data that is incompatible with simulations (like
+ * anonymous attributes), is removed though.
+ */
 struct PassThrough {
 };
 
+/**
+ * Same as above, but also calls the given function with the data that is passed through the node.
+ * This allows the caller of geometry nodes (e.g. the modifier), to cache the new simulation state.
+ */
 struct StoreAndPassThrough {
-  std::function<void(Map<int, std::unique_ptr<bke::BakeItem>>)> store_fn;
+  std::function<void(Map<int, std::unique_ptr<bke::BakeItem>> items_by_id)> store_fn;
 };
 
+/**
+ * The inputs are not evaluated, instead the given cached items are output directly.
+ */
 struct ReadSingle {
-  Map<int, const bke::BakeItem *> items;
+  Map<int, const bke::BakeItem *> items_by_id;
 };
 
+/**
+ * The inputs are not evaluated, instead of a mix of the two given states is output.
+ */
 struct ReadInterpolated {
+  /** Factor between 0 and 1 that determines the influence of the two simulation states. */
   float mix_factor;
-  Map<int, const bke::BakeItem *> prev_items;
-  Map<int, const bke::BakeItem *> next_items;
+  Map<int, const bke::BakeItem *> prev_items_by_id;
+  Map<int, const bke::BakeItem *> next_items_by_id;
 };
 
 using Behavior = std::variant<PassThrough, StoreAndPassThrough, ReadSingle, ReadInterpolated>;
@@ -91,6 +119,11 @@ struct SimulationZoneInfo {
 
 class GeoNodesSimulationParams {
  public:
+  /**
+   * Get the expected behavior for the simulation zone with the given id (see #bNestedNodeRef).
+   * It's possible that this method called multiple times for the same id. In this case, the same
+   * pointer should be returned in each call.
+   */
   virtual SimulationZoneInfo *get(const int zone_id) const = 0;
 };
 

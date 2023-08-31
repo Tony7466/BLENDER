@@ -567,14 +567,14 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
     }
     sim_output::Behavior &output_info = info->output;
     if (auto *info = std::get_if<sim_output::ReadSingle>(&output_info)) {
-      this->output_cached_state(params, user_data, info->items);
+      this->output_cached_state(params, user_data, info->items_by_id);
     }
     else if (auto *info = std::get_if<sim_output::ReadInterpolated>(&output_info)) {
       this->output_mixed_cached_state(params,
                                       *modifier_data.self_object,
                                       *user_data.compute_context,
-                                      info->prev_items,
-                                      info->next_items,
+                                      info->prev_items_by_id,
+                                      info->next_items_by_id,
                                       info->mix_factor);
     }
     else if (std::get_if<sim_output::PassThrough>(&output_info)) {

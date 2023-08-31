@@ -86,11 +86,11 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
     float delta_time = 0.0f;
     if (auto *info = std::get_if<sim_input::OutputCopy>(&input_info)) {
       delta_time = info->delta_time;
-      this->output_simulation_state_copy(params, user_data, info->prev_items);
+      this->output_simulation_state_copy(params, user_data, info->items_by_id);
     }
     else if (auto *info = std::get_if<sim_input::OutputMove>(&input_info)) {
       delta_time = info->delta_time;
-      this->output_simulation_state_move(params, user_data, std::move(info->prev_items));
+      this->output_simulation_state_move(params, user_data, std::move(info->items_by_id));
     }
     else if (std::get_if<sim_input::PassThrough>(&input_info)) {
       delta_time = 0.0f;

@@ -811,7 +811,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
             zone_cache.cache_state = CacheState::Invalid;
           }
           output_copy_info.delta_time = delta_frames / fps_;
-          output_copy_info.prev_items = this->to_readonly_items_map(prev_frame_cache.items);
+          output_copy_info.items_by_id = this->to_readonly_items_map(prev_frame_cache.items);
           this->output_store_frame_cache(zone_cache, zone_info);
           return;
         }
@@ -828,7 +828,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
             max_delta_frames, float(zone_cache.prev_state->frame) - float(current_frame_));
         auto &output_move_info = zone_info.input.emplace<sim_input::OutputMove>();
         output_move_info.delta_time = delta_frames / fps_;
-        output_move_info.prev_items = std::move(zone_cache.prev_state->items);
+        output_move_info.items_by_id = std::move(zone_cache.prev_state->items);
         this->store_as_prev_items(zone_cache, zone_info);
         return;
       }
@@ -836,9 +836,9 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
         /* Just read from the previous state if the frame has not changed. */
         auto &output_copy_info = zone_info.input.emplace<sim_input::OutputCopy>();
         output_copy_info.delta_time = 0.0f;
-        output_copy_info.prev_items = this->to_readonly_items_map(zone_cache.prev_state->items);
+        output_copy_info.items_by_id = this->to_readonly_items_map(zone_cache.prev_state->items);
         auto &read_single_info = zone_info.output.emplace<sim_output::ReadSingle>();
-        read_single_info.items = this->to_readonly_items_map(zone_cache.prev_state->items);
+        read_single_info.items_by_id = this->to_readonly_items_map(zone_cache.prev_state->items);
         return;
       }
       if (!depsgraph_is_active_) {
@@ -942,7 +942,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
                                           float(current_frame_) - float(frame_cache.frame));
       output_copy_info.delta_time = delta_frames / fps_;
       for (auto item : frame_cache.items.items()) {
-        output_copy_info.prev_items.add_new(item.key, item.value.get());
+        output_copy_info.items_by_id.add_new(item.key, item.value.get());
       }
     }
     else {
@@ -979,7 +979,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     bke::sim::SimulationZoneFrameCache &frame_cache = *zone_cache.frame_caches[frame_index];
     this->ensure_bake_loaded(zone_cache, frame_cache);
     auto &read_single_info = zone_info.output.emplace<sim_output::ReadSingle>();
-    read_single_info.items = this->to_readonly_items_map(frame_cache.items);
+    read_single_info.items_by_id = this->to_readonly_items_map(frame_cache.items);
   }
 
   void read_interpolated(const int prev_frame_index,
@@ -997,8 +997,8 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     read_interpolated_info.mix_factor = (float(current_frame_) - float(prev_frame_cache.frame)) /
                                         (float(next_frame_cache.frame) -
                                          float(prev_frame_cache.frame));
-    read_interpolated_info.prev_items = this->to_readonly_items_map(prev_frame_cache.items);
-    read_interpolated_info.next_items = this->to_readonly_items_map(next_frame_cache.items);
+    read_interpolated_info.prev_items_by_id = this->to_readonly_items_map(prev_frame_cache.items);
+    read_interpolated_info.next_items_by_id = this->to_readonly_items_map(next_frame_cache.items);
   }
 
   Map<int, const bke::BakeItem *> to_readonly_items_map(
