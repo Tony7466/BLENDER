@@ -1337,6 +1337,31 @@ static void shear_modal_update(bContext *C, wmOperator *op)
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
 }
 
+static int shear_modal(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  if (event->val != KM_PRESS) {
+    return graph_slider_modal(C, op, event);
+  }
+
+  switch (event->type) {
+    {
+      case EVT_DKEY: {
+        tShearDirection direction = tShearDirection(RNA_enum_get(op->ptr, "direction"));
+        RNA_enum_set(op->ptr,
+                     "direction",
+                     (direction == SHEAR_FROM_LEFT) ? SHEAR_FROM_RIGHT : SHEAR_FROM_LEFT);
+        shear_modal_update(C, op);
+        break;
+      }
+
+      default:
+        return graph_slider_modal(C, op, event);
+        break;
+    }
+  }
+  return OPERATOR_RUNNING_MODAL;
+}
+
 static int shear_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   const int invoke_result = graph_slider_invoke(C, op, event);
@@ -1386,7 +1411,7 @@ void GRAPH_OT_shear(wmOperatorType *ot)
 
   /* API callbacks. */
   ot->invoke = shear_invoke;
-  ot->modal = graph_slider_modal;
+  ot->modal = shear_modal;
   ot->exec = shear_exec;
   ot->poll = graphop_editable_keyframes_poll;
 
