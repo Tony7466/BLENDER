@@ -3,16 +3,14 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_parser.h"
+#include "../material.h"
 
 namespace blender::nodes::materialx {
 
 NodeItem MathNodeParser::compute()
 {
   /* TODO: finish some math operations */
-
   auto op = node->custom1;
-  printf("%d\n", int(op));
-
   NodeItem res = empty();
 
   /* Single operand operations */
@@ -123,13 +121,13 @@ NodeItem MathNodeParser::compute()
           res = x.atan2(y);
           break;
         case NODE_MATH_SNAP:
-          // res = ;
+          CLOG_WARN(LOG_MATERIALX_SHADER, "Unimplemented math operation %d", op);
           break;
         case NODE_MATH_PINGPONG:
-          // res = ;
+          CLOG_WARN(LOG_MATERIALX_SHADER, "Unimplemented math operation %d", op);
           break;
         case NODE_MATH_FLOORED_MODULO:
-          // res = ;
+          CLOG_WARN(LOG_MATERIALX_SHADER, "Unimplemented math operation %d", op);
           break;
 
         default: {
@@ -137,7 +135,7 @@ NodeItem MathNodeParser::compute()
           NodeItem z = get_input_value(2);
           switch (op) {
             case NODE_MATH_WRAP:
-              // res = ;
+              CLOG_WARN(LOG_MATERIALX_SHADER, "Unimplemented math operation %d", op);
               break;
             case NODE_MATH_COMPARE:
               res = z.if_else("<", (x - y).abs(), value(1.0f), value(0.0f));
@@ -146,10 +144,10 @@ NodeItem MathNodeParser::compute()
               res = x * y + z;
               break;
             case NODE_MATH_SMOOTH_MIN:
-              // res = ;
+              CLOG_WARN(LOG_MATERIALX_SHADER, "Unimplemented math operation %d", op);
               break;
             case NODE_MATH_SMOOTH_MAX:
-              // res = ;
+              CLOG_WARN(LOG_MATERIALX_SHADER, "Unimplemented math operation %d", op);
               break;
 
             default:

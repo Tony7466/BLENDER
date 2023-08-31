@@ -6,10 +6,14 @@
 
 #include <MaterialXCore/Document.h>
 
-#include "DEG_depsgraph.h"
-#include "DNA_material_types.h"
+#include "CLG_log.h"
+
+struct Depsgraph;
+struct Material;
 
 namespace blender::nodes::materialx {
+
+extern struct CLG_LogRef *LOG_MATERIALX_SHADER;
 
 MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph, Material *material);
 

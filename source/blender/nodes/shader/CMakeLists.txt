@@ -24,7 +24,8 @@ set(INC
 if(WITH_HYDRA)
   list(APPEND INC
     ../../io/usd
-  )
+    ../../../../intern/clog
+)
   add_definitions(-DWITH_HYDRA)
 endif()
 
@@ -144,8 +145,6 @@ set(LIB
 )
 
 if(WITH_MATERIALX)
-  list(APPEND LIB MaterialXCore)
-  list(APPEND LIB MaterialXFormat)
   list(APPEND SRC
     materialx/material.cc
     materialx/nodes/bsdf_principled.cc
@@ -163,6 +162,10 @@ if(WITH_MATERIALX)
     materialx/material.h
     materialx/nodes/node_item.h
     materialx/nodes/node_parser.h
+  )
+  list(APPEND LIB
+    MaterialXCore
+    MaterialXFormat
   )
 endif()
 

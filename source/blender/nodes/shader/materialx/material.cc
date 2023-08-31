@@ -5,12 +5,17 @@
 #include "material.h"
 #include "nodes/node_parser.h"
 
-#include <MaterialXCore/Node.h>
 #include <MaterialXFormat/XmlIo.h>
+
+#include "DEG_depsgraph.h"
+
+#include "DNA_material_types.h"
 
 #include "NOD_shader.h"
 
 namespace blender::nodes::materialx {
+
+CLG_LOGREF_DECLARE_GLOBAL(LOG_MATERIALX_SHADER, "materialx.shader");
 
 static void export_nodegraph(MaterialX::GraphElement *graph,
                              Depsgraph *depsgraph,
@@ -48,7 +53,7 @@ MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph, Material *mater
     create_standard_surface(doc.get(), material);
   }
   std::string str = MaterialX::writeToXmlString(doc);
-  printf("\nMaterial: %s\n%s\n", material->id.name, str.c_str());
+  CLOG_INFO(LOG_MATERIALX_SHADER, 1, "Material: %s\n%s", material->id.name, str.c_str());
   return doc;
 }
 

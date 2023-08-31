@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_item.h"
+#include "../material.h"
 
 #include "BLI_assert.h"
 #include "BLI_utildefines.h"
@@ -25,6 +26,9 @@ void NodeItem::set_input(const std::string &name,
   }
   else if (item.node) {
     set_input(name, item.node, output_name);
+  }
+  else {
+    CLOG_WARN(LOG_MATERIALX_SHADER, "Empty item to input: %s", name.c_str());
   }
 }
 
@@ -218,6 +222,9 @@ NodeItem NodeItem::dotproduct(const NodeItem &other) const
       auto v = value->asA<MaterialX::Vector4>();
       f = v[0] + v[1] + v[2] + v[3];
     }
+    else {
+      BLI_assert_unreachable();
+    }
     d.value = MaterialX::Value::createValue(f);
   }
   return d;
@@ -369,27 +376,27 @@ NodeItem NodeItem::exp() const
 
 NodeItem NodeItem::to_color3() const
 {
-  std::string t = type();
+  std::string mx_type = type();
   NodeItem res = empty();
   if (value) {
     MaterialX::Color3 c;
-    if (t == "float") {
+    if (mx_type == "float") {
       float v = value->asA<float>();
       c = {v, v, v};
     }
-    else if (t == "color3") {
+    else if (mx_type == "color3") {
       auto v = value->asA<MaterialX::Color3>();
       c = {v[0], v[1], v[2]};
     }
-    else if (t == "color4") {
+    else if (mx_type == "color4") {
       auto v = value->asA<MaterialX::Color4>();
       c = {v[0], v[1], v[2]};
     }
-    else if (t == "vector3") {
+    else if (mx_type == "vector3") {
       auto v = value->asA<MaterialX::Vector3>();
       c = {v[0], v[1], v[2]};
     }
-    else if (t == "vector4") {
+    else if (mx_type == "vector4") {
       auto v = value->asA<MaterialX::Vector4>();
       c = {v[0], v[1], v[2]};
     }
@@ -399,7 +406,7 @@ NodeItem NodeItem::to_color3() const
     res.value = MaterialX::Value::createValue<MaterialX::Color3>(c);
   }
   else if (node) {
-    if (t != "color3") {
+    if (mx_type != "color3") {
       return res;
     }
     res.node = node;

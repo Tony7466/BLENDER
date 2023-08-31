@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_parser.h"
+#include "../material.h"
 
-#include <BKE_node_runtime.hh>
+#include "BKE_node_runtime.hh"
 
 namespace blender::nodes::materialx {
 
@@ -82,7 +83,7 @@ NodeItem NodeParser::get_input_default(const bNodeSocket &socket)
           MaterialX::Color4(v[0], v[1], v[2], v[3]));
     } break;
     default: {
-      // TODO log warn
+      CLOG_WARN(LOG_MATERIALX_SHADER, "Unsupported socket type: %d", socket.type);
     }
   }
   return res;
@@ -136,7 +137,7 @@ NodeItem NodeParser::get_input_link(const bNodeSocket &socket)
       parser = std::make_unique<TexCheckerNodeParser>(graph, depsgraph, material, in_node);
       break;
     default:
-      // TODO: warning log
+      CLOG_WARN(LOG_MATERIALX_SHADER, "Unsupported node: %s (%d)", in_node->name, in_node->type);
       return res;
   }
 
