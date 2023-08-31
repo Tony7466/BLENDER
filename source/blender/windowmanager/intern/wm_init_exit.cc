@@ -358,6 +358,9 @@ void WM_init(bContext *C, int argc, const char **argv)
 
   STRNCPY(G.lib, BKE_main_blendfile_path_from_global());
 
+  CTX_py_init_set(C, true);
+  WM_keyconfig_init(C);
+
   /* Load add-ons after key-maps have been initialized (but before the blend file has been read),
    * important to guarantee default key-maps have been declared & before post-read handlers run. */
   wm_init_scripts_extensions_once(C);
