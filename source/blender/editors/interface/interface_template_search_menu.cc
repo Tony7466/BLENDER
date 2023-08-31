@@ -454,16 +454,15 @@ static MenuSearch_Data *menu_items_from_ui_create(bContext *C,
 
   /* Blacklist menus we don't want to show. */
   {
-    blender::Vector<const char *> ignored_idnames;
-    /* Showing undo history is not helpful since users may accidentally undo
-     * an action they intend to run. */
-    ignored_idnames.append("TOPBAR_MT_undo_history");
-    if (single_menu_idname == nullptr) {
-      /* While we could include this, it's just showing filenames to load. */
-      ignored_idnames.append("TOPBAR_MT_file_open_recent");
-    }
-    for (const char *idname : ignored_idnames) {
-      MenuType *mt = WM_menutype_find(idname, false);
+    const char *idname_array[] = {
+        /* While we could include this, it's just showing filenames to load. */
+        "TOPBAR_MT_file_open_recent",
+        /* Showing undo history is not helpful since users may accidentally undo
+         * an action they intend to run. */
+        "TOPBAR_MT_undo_history",
+    };
+    for (int i = 0; i < ARRAY_SIZE(idname_array); i++) {
+      MenuType *mt = WM_menutype_find(idname_array[i], false);
       if (mt != nullptr) {
         menu_tagged.add(mt);
       }
