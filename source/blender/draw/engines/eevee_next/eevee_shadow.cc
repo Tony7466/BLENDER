@@ -645,12 +645,18 @@ void ShadowModule::init()
   bool is_metal_backend = (GPU_backend_get_type() == GPU_BACKEND_METAL);
   if (is_metal_backend) {
     ShadowModule::shadow_technique = eShadowUpdateTechnique::SHADOW_UPDATE_TBDR_ROG;
-    ShadowModule::atlas_type = GPU_R32F;
   }
   else {
     ShadowModule::shadow_technique = eShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER;
-    ShadowModule::atlas_type = GPU_R32UI;
   }
+
+#if SHADOW_USE_FLOAT_ATLAS == 1
+  ShadowModule::atlas_type = GPU_R32F;
+  BLI_assert_msg(is_metal_backend,
+                 "Floating point shadow atlas is currently only supported by the Metal backend.");
+#else
+  ShadowModule::atlas_type = GPU_R32UI;
+#endif
 
   ::Scene &scene = *inst_.scene;
   bool enabled = (scene.eevee.flag & SCE_EEVEE_SHADOW_ENABLED) != 0;
