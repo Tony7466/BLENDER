@@ -82,17 +82,17 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
       params.set_default_remaining_outputs();
       return;
     }
-    sim_input_behavior::SimInputBehavior &input_info = info->input;
+    sim_input::Behavior &input_info = info->input;
     float delta_time = 0.0f;
-    if (auto *info = std::get_if<sim_input_behavior::OutputCopy>(&input_info)) {
+    if (auto *info = std::get_if<sim_input::OutputCopy>(&input_info)) {
       delta_time = info->delta_time;
       this->output_simulation_state_copy(params, user_data, info->prev_items);
     }
-    else if (auto *info = std::get_if<sim_input_behavior::OutputMove>(&input_info)) {
+    else if (auto *info = std::get_if<sim_input::OutputMove>(&input_info)) {
       delta_time = info->delta_time;
       this->output_simulation_state_move(params, user_data, std::move(info->prev_items));
     }
-    else if (std::get_if<sim_input_behavior::PassThrough>(&input_info)) {
+    else if (std::get_if<sim_input::PassThrough>(&input_info)) {
       delta_time = 0.0f;
       this->pass_through(params, user_data);
     }

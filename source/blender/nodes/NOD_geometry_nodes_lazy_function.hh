@@ -42,7 +42,7 @@ namespace blender::nodes {
 using lf::LazyFunction;
 using mf::MultiFunction;
 
-namespace sim_input_behavior {
+namespace sim_input {
 
 struct PassThrough {
 };
@@ -57,11 +57,11 @@ struct OutputMove {
   Map<int, std::unique_ptr<bke::BakeItem>> prev_items;
 };
 
-using SimInputBehavior = std::variant<PassThrough, OutputCopy, OutputMove>;
+using Behavior = std::variant<PassThrough, OutputCopy, OutputMove>;
 
-}  // namespace sim_input_behavior
+}  // namespace sim_input
 
-namespace sim_output_behavior {
+namespace sim_output {
 
 struct PassThrough {
 };
@@ -80,14 +80,13 @@ struct ReadInterpolated {
   Map<int, const bke::BakeItem *> next_items;
 };
 
-using SimOutputBehavior =
-    std::variant<PassThrough, StoreAndPassThrough, ReadSingle, ReadInterpolated>;
+using Behavior = std::variant<PassThrough, StoreAndPassThrough, ReadSingle, ReadInterpolated>;
 
-}  // namespace sim_output_behavior
+}  // namespace sim_output
 
 struct SimulationZoneInfo {
-  sim_input_behavior::SimInputBehavior input;
-  sim_output_behavior::SimOutputBehavior output;
+  sim_input::Behavior input;
+  sim_output::Behavior output;
 };
 
 class GeoNodesSimulationParams {

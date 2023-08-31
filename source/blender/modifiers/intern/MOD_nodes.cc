@@ -660,8 +660,8 @@ static void check_property_socket_sync(const Object *ob, ModifierData *md)
   }
 }
 
-namespace sim_input = nodes::sim_input_behavior;
-namespace sim_output = nodes::sim_output_behavior;
+namespace sim_input = nodes::sim_input;
+namespace sim_output = nodes::sim_output;
 
 class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
  private:
