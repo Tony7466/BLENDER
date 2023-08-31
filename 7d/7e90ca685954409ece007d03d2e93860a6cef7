@@ -1,3 +1,4 @@
 Referenced by commit 15c433d7d56, Fix: Missing UI context members after recent refactor
 Referenced by issue #103417, Regression: Submenus in toolbar are empty
 Referenced by issue #103405, Regression: Some modifiers not working
+Referenced by commit 1763a46cbf96d70b99e8029aba5e74a92d296fb6, Cleanup: UI: Store uiBlock context stores in vector instead of list
