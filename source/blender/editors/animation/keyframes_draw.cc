@@ -377,24 +377,24 @@ static void draw_keylist_keys(const DrawKeylistUIData *ctx,
 }
 
 /* *************************** Drawing Stack *************************** */
-enum eAnimKeylistDrawListElemType {
-  ANIM_KEYLIST_SUMMARY,
-  ANIM_KEYLIST_SCENE,
-  ANIM_KEYLIST_OBJECT,
-  ANIM_KEYLIST_FCURVE,
-  ANIM_KEYLIST_ACTION,
-  ANIM_KEYLIST_AGROUP,
-  ANIM_KEYLIST_GREASE_PENCIL_CELS,
-  ANIM_KEYLIST_GREASE_PENCIL_GROUP,
-  ANIM_KEYLIST_GREASE_PENCIL_DATA,
-  ANIM_KEYLIST_GP_LAYER,
-  ANIM_KEYLIST_MASK_LAYER,
+enum class eChannelType {
+  SUMMARY,
+  SCENE,
+  OBJECT,
+  FCURVE,
+  ACTION,
+  AGROUP,
+  GREASE_PENCIL_CELS,
+  GREASE_PENCIL_GROUP,
+  GREASE_PENCIL_DATA,
+  GP_LAYER,
+  MASK_LAYER,
 };
 
 struct ChannelListElement {
   ChannelListElement *next, *prev;
   AnimKeylist *keylist;
-  eAnimKeylistDrawListElemType type;
+  eChannelType type;
 
   float yscale_fac;
   float ypos;
@@ -419,50 +419,50 @@ struct ChannelListElement {
 static void build_channel_keylist(ChannelListElement *elem)
 {
   switch (elem->type) {
-    case ANIM_KEYLIST_SUMMARY: {
+    case eChannelType::SUMMARY: {
       summary_to_keylist(elem->ac, elem->keylist, elem->saction_flag);
       break;
     }
-    case ANIM_KEYLIST_SCENE: {
+    case eChannelType::SCENE: {
       scene_to_keylist(elem->ads, elem->sce, elem->keylist, elem->saction_flag);
       break;
     }
-    case ANIM_KEYLIST_OBJECT: {
+    case eChannelType::OBJECT: {
       ob_to_keylist(elem->ads, elem->ob, elem->keylist, elem->saction_flag);
       break;
     }
-    case ANIM_KEYLIST_FCURVE: {
+    case eChannelType::FCURVE: {
       fcurve_to_keylist(elem->adt, elem->fcu, elem->keylist, elem->saction_flag);
       break;
     }
-    case ANIM_KEYLIST_ACTION: {
+    case eChannelType::ACTION: {
       action_to_keylist(elem->adt, elem->act, elem->keylist, elem->saction_flag);
       break;
     }
-    case ANIM_KEYLIST_AGROUP: {
+    case eChannelType::AGROUP: {
       agroup_to_keylist(elem->adt, elem->agrp, elem->keylist, elem->saction_flag);
       break;
     }
-    case ANIM_KEYLIST_GREASE_PENCIL_CELS: {
+    case eChannelType::GREASE_PENCIL_CELS: {
       grease_pencil_cels_to_keylist(
           elem->adt, elem->grease_pencil_layer, elem->keylist, elem->saction_flag);
       break;
     }
-    case ANIM_KEYLIST_GREASE_PENCIL_GROUP: {
+    case eChannelType::GREASE_PENCIL_GROUP: {
       grease_pencil_layer_group_to_keylist(
           elem->adt, elem->grease_pencil_layer_group, elem->keylist, elem->saction_flag);
       break;
     }
-    case ANIM_KEYLIST_GREASE_PENCIL_DATA: {
+    case eChannelType::GREASE_PENCIL_DATA: {
       grease_pencil_data_block_to_keylist(
           elem->adt, elem->grease_pencil, elem->keylist, elem->saction_flag);
       break;
     }
-    case ANIM_KEYLIST_GP_LAYER: {
+    case eChannelType::GP_LAYER: {
       gpl_to_keylist(elem->ads, elem->gpl, elem->keylist);
       break;
     }
-    case ANIM_KEYLIST_MASK_LAYER: {
+    case eChannelType::MASK_LAYER: {
       mask_to_keylist(elem->ads, elem->masklay, elem->keylist);
       break;
     }
@@ -608,7 +608,7 @@ void ED_channel_list_free(ChannelDrawList *channel_list)
 }
 
 static ChannelListElement *channel_list_add_element(ChannelDrawList *channel_list,
-                                                    eAnimKeylistDrawListElemType elem_type,
+                                                    eChannelType elem_type,
                                                     float ypos,
                                                     float yscale_fac,
                                                     eSAction_Flag saction_flag)
@@ -634,7 +634,7 @@ void ED_add_summary_channel(ChannelDrawList *channel_list,
 {
   saction_flag &= ~SACTION_SHOW_EXTREMES;
   ChannelListElement *draw_elem = channel_list_add_element(
-      channel_list, ANIM_KEYLIST_SUMMARY, ypos, yscale_fac, eSAction_Flag(saction_flag));
+      channel_list, eChannelType::SUMMARY, ypos, yscale_fac, eSAction_Flag(saction_flag));
   draw_elem->ac = ac;
 }
 
@@ -647,7 +647,7 @@ void ED_add_scene_channel(ChannelDrawList *channel_list,
 {
   saction_flag &= ~SACTION_SHOW_EXTREMES;
   ChannelListElement *draw_elem = channel_list_add_element(
-      channel_list, ANIM_KEYLIST_SCENE, ypos, yscale_fac, eSAction_Flag(saction_flag));
+      channel_list, eChannelType::SCENE, ypos, yscale_fac, eSAction_Flag(saction_flag));
   draw_elem->ads = ads;
   draw_elem->sce = sce;
 }
@@ -661,7 +661,7 @@ void ED_add_object_channel(ChannelDrawList *channel_list,
 {
   saction_flag &= ~SACTION_SHOW_EXTREMES;
   ChannelListElement *draw_elem = channel_list_add_element(
-      channel_list, ANIM_KEYLIST_OBJECT, ypos, yscale_fac, eSAction_Flag(saction_flag));
+      channel_list, eChannelType::OBJECT, ypos, yscale_fac, eSAction_Flag(saction_flag));
   draw_elem->ads = ads;
   draw_elem->ob = ob;
 }
@@ -679,7 +679,7 @@ void ED_add_fcurve_channel(ChannelDrawList *channel_list,
                        (ID_IS_LINKED(adt->action) || ID_IS_OVERRIDE_LIBRARY(adt->action)));
 
   ChannelListElement *draw_elem = channel_list_add_element(
-      channel_list, ANIM_KEYLIST_FCURVE, ypos, yscale_fac, eSAction_Flag(saction_flag));
+      channel_list, eChannelType::FCURVE, ypos, yscale_fac, eSAction_Flag(saction_flag));
   draw_elem->adt = adt;
   draw_elem->fcu = fcu;
   draw_elem->channel_locked = locked;
@@ -697,7 +697,7 @@ void ED_add_agroup_channel(ChannelDrawList *channel_list,
                  (ID_IS_LINKED(adt->action) || ID_IS_OVERRIDE_LIBRARY(adt->action)));
 
   ChannelListElement *draw_elem = channel_list_add_element(
-      channel_list, ANIM_KEYLIST_AGROUP, ypos, yscale_fac, eSAction_Flag(saction_flag));
+      channel_list, eChannelType::AGROUP, ypos, yscale_fac, eSAction_Flag(saction_flag));
   draw_elem->adt = adt;
   draw_elem->agrp = agrp;
   draw_elem->channel_locked = locked;
@@ -714,7 +714,7 @@ void ED_add_action_channel(ChannelDrawList *channel_list,
   saction_flag &= ~SACTION_SHOW_EXTREMES;
 
   ChannelListElement *draw_elem = channel_list_add_element(
-      channel_list, ANIM_KEYLIST_ACTION, ypos, yscale_fac, eSAction_Flag(saction_flag));
+      channel_list, eChannelType::ACTION, ypos, yscale_fac, eSAction_Flag(saction_flag));
   draw_elem->adt = adt;
   draw_elem->act = act;
   draw_elem->channel_locked = locked;
@@ -728,7 +728,7 @@ void ED_add_grease_pencil_datablock_channel(ChannelDrawList *channel_list,
                                             int saction_flag)
 {
   ChannelListElement *draw_elem = channel_list_add_element(channel_list,
-                                                           ANIM_KEYLIST_GREASE_PENCIL_DATA,
+                                                           eChannelType::GREASE_PENCIL_DATA,
                                                            ypos,
                                                            yscale_fac,
                                                            eSAction_Flag(saction_flag));
@@ -743,7 +743,7 @@ void ED_add_grease_pencil_cels_channel(ChannelDrawList *channel_list,
                                        int saction_flag)
 {
   ChannelListElement *draw_elem = channel_list_add_element(channel_list,
-                                                           ANIM_KEYLIST_GREASE_PENCIL_CELS,
+                                                           eChannelType::GREASE_PENCIL_CELS,
                                                            ypos,
                                                            yscale_fac,
                                                            eSAction_Flag(saction_flag));
@@ -760,7 +760,7 @@ void ED_add_grease_pencil_layer_group_channel(ChannelDrawList *channel_list,
                                               int saction_flag)
 {
   ChannelListElement *draw_elem = channel_list_add_element(channel_list,
-                                                           ANIM_KEYLIST_GREASE_PENCIL_GROUP,
+                                                           eChannelType::GREASE_PENCIL_GROUP,
                                                            ypos,
                                                            yscale_fac,
                                                            eSAction_Flag(saction_flag));
@@ -769,31 +769,31 @@ void ED_add_grease_pencil_layer_group_channel(ChannelDrawList *channel_list,
   draw_elem->channel_locked = layer_group->wrap().is_locked();
 }
 
-void ED_add_gpl_channel(ChannelDrawList *channel_list,
-                        bDopeSheet *ads,
-                        bGPDlayer *gpl,
-                        float ypos,
-                        float yscale_fac,
-                        int saction_flag)
+void ED_add_gp_layer_legacy_channel(ChannelDrawList *channel_list,
+                                    bDopeSheet *ads,
+                                    bGPDlayer *gpl,
+                                    float ypos,
+                                    float yscale_fac,
+                                    int saction_flag)
 {
   bool locked = (gpl->flag & GP_LAYER_LOCKED) != 0;
   ChannelListElement *draw_elem = channel_list_add_element(
-      channel_list, ANIM_KEYLIST_GP_LAYER, ypos, yscale_fac, eSAction_Flag(saction_flag));
+      channel_list, eChannelType::GP_LAYER, ypos, yscale_fac, eSAction_Flag(saction_flag));
   draw_elem->ads = ads;
   draw_elem->gpl = gpl;
   draw_elem->channel_locked = locked;
 }
 
-void ED_add_masklay_channel(ChannelDrawList *channel_list,
-                            bDopeSheet *ads,
-                            MaskLayer *masklay,
-                            float ypos,
-                            float yscale_fac,
-                            int saction_flag)
+void ED_add_mask_layer_channel(ChannelDrawList *channel_list,
+                               bDopeSheet *ads,
+                               MaskLayer *masklay,
+                               float ypos,
+                               float yscale_fac,
+                               int saction_flag)
 {
   bool locked = (masklay->flag & MASK_LAYERFLAG_LOCKED) != 0;
   ChannelListElement *draw_elem = channel_list_add_element(
-      channel_list, ANIM_KEYLIST_MASK_LAYER, ypos, yscale_fac, eSAction_Flag(saction_flag));
+      channel_list, eChannelType::MASK_LAYER, ypos, yscale_fac, eSAction_Flag(saction_flag));
   draw_elem->ads = ads;
   draw_elem->masklay = masklay;
   draw_elem->channel_locked = locked;
