@@ -899,8 +899,8 @@ class LazyFunctionForSimulationInputsUsage : public LazyFunction {
       params.set_default_remaining_outputs();
       return;
     }
-    SimulationZoneInfo *info = modifier_data.simulation_params->get(found_id->id);
-    if (!info) {
+    SimulationZoneBehavior *zone_behavior = modifier_data.simulation_params->get(found_id->id);
+    if (!zone_behavior) {
       params.set_default_remaining_outputs();
       return;
     }
@@ -912,11 +912,12 @@ class LazyFunctionForSimulationInputsUsage : public LazyFunction {
       solve_contains_side_effect = !side_effect_nodes.is_empty();
     }
 
-    params.set_output(0, std::holds_alternative<sim_input::PassThrough>(info->input));
-    params.set_output(1,
-                      solve_contains_side_effect ||
-                          std::holds_alternative<sim_output::PassThrough>(info->output) ||
-                          std::holds_alternative<sim_output::StoreAndPassThrough>(info->output));
+    params.set_output(0, std::holds_alternative<sim_input::PassThrough>(zone_behavior->input));
+    params.set_output(
+        1,
+        solve_contains_side_effect ||
+            std::holds_alternative<sim_output::PassThrough>(zone_behavior->output) ||
+            std::holds_alternative<sim_output::StoreAndPassThrough>(zone_behavior->output));
   }
 };
 

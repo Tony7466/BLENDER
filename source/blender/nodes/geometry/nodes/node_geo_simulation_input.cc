@@ -77,22 +77,22 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
       params.set_default_remaining_outputs();
       return;
     }
-    SimulationZoneInfo *info = modifier_data.simulation_params->get(found_id->id);
-    if (!info) {
+    SimulationZoneBehavior *zone_behavior = modifier_data.simulation_params->get(found_id->id);
+    if (!zone_behavior) {
       params.set_default_remaining_outputs();
       return;
     }
-    sim_input::Behavior &input_info = info->input;
+    sim_input::Behavior &input_behavior = zone_behavior->input;
     float delta_time = 0.0f;
-    if (auto *info = std::get_if<sim_input::OutputCopy>(&input_info)) {
+    if (auto *info = std::get_if<sim_input::OutputCopy>(&input_behavior)) {
       delta_time = info->delta_time;
       this->output_simulation_state_copy(params, user_data, info->items_by_id);
     }
-    else if (auto *info = std::get_if<sim_input::OutputMove>(&input_info)) {
+    else if (auto *info = std::get_if<sim_input::OutputMove>(&input_behavior)) {
       delta_time = info->delta_time;
       this->output_simulation_state_move(params, user_data, std::move(info->items_by_id));
     }
-    else if (std::get_if<sim_input::PassThrough>(&input_info)) {
+    else if (std::get_if<sim_input::PassThrough>(&input_behavior)) {
       delta_time = 0.0f;
       this->pass_through(params, user_data);
     }

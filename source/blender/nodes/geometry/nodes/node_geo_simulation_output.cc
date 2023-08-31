@@ -560,16 +560,16 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
       params.set_default_remaining_outputs();
       return;
     }
-    SimulationZoneInfo *info = modifier_data.simulation_params->get(found_id->id);
-    if (!info) {
+    SimulationZoneBehavior *zone_behavior = modifier_data.simulation_params->get(found_id->id);
+    if (!zone_behavior) {
       params.set_default_remaining_outputs();
       return;
     }
-    sim_output::Behavior &output_info = info->output;
-    if (auto *info = std::get_if<sim_output::ReadSingle>(&output_info)) {
+    sim_output::Behavior &output_behavior = zone_behavior->output;
+    if (auto *info = std::get_if<sim_output::ReadSingle>(&output_behavior)) {
       this->output_cached_state(params, user_data, info->items_by_id);
     }
-    else if (auto *info = std::get_if<sim_output::ReadInterpolated>(&output_info)) {
+    else if (auto *info = std::get_if<sim_output::ReadInterpolated>(&output_behavior)) {
       this->output_mixed_cached_state(params,
                                       *modifier_data.self_object,
                                       *user_data.compute_context,
@@ -577,10 +577,10 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
                                       info->next_items_by_id,
                                       info->mix_factor);
     }
-    else if (std::get_if<sim_output::PassThrough>(&output_info)) {
+    else if (std::get_if<sim_output::PassThrough>(&output_behavior)) {
       this->pass_through(params, user_data);
     }
-    else if (auto *info = std::get_if<sim_output::StoreAndPassThrough>(&output_info)) {
+    else if (auto *info = std::get_if<sim_output::StoreAndPassThrough>(&output_behavior)) {
       this->store_and_pass_through(params, user_data, *info);
     }
     else {

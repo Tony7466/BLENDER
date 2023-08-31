@@ -112,7 +112,8 @@ using Behavior = std::variant<PassThrough, StoreAndPassThrough, ReadSingle, Read
 
 }  // namespace sim_output
 
-struct SimulationZoneInfo {
+/** Controls the behavior of one simulation zone. */
+struct SimulationZoneBehavior {
   sim_input::Behavior input;
   sim_output::Behavior output;
 };
@@ -124,7 +125,7 @@ class GeoNodesSimulationParams {
    * It's possible that this method called multiple times for the same id. In this case, the same
    * pointer should be returned in each call.
    */
-  virtual SimulationZoneInfo *get(const int zone_id) const = 0;
+  virtual SimulationZoneBehavior *get(const int zone_id) const = 0;
 };
 
 /**
