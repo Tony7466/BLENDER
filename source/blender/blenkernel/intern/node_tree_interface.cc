@@ -1248,10 +1248,10 @@ bool bNodeTreeInterface::remove_item(bNodeTreeInterfaceItem &item, bool move_con
     }
   }
   if (parent->remove_item(item, true)) {
+    tag_items_changed();
     return true;
   }
 
-  tag_items_changed();
   return false;
 }
 
@@ -1268,8 +1268,11 @@ bool bNodeTreeInterface::move_item(bNodeTreeInterfaceItem &item, const int new_p
     return false;
   }
 
-  tag_items_changed();
-  return parent->move_item(item, new_position);
+  if (parent->move_item(item, new_position)) {
+    tag_items_changed();
+    return true;
+  }
+  return false;
 }
 
 bool bNodeTreeInterface::move_item_to_parent(bNodeTreeInterfaceItem &item,
