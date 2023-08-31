@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2018 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2018 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -15,15 +16,13 @@
 
 #include "BKE_animsys.h"
 
-#include "RNA_path.h"
+#include "RNA_path.hh"
 
 namespace blender::deg {
 
 /* Animated property storage. */
 
-AnimatedPropertyID::AnimatedPropertyID() : data(nullptr), property_rna(nullptr)
-{
-}
+AnimatedPropertyID::AnimatedPropertyID() : data(nullptr), property_rna(nullptr) {}
 
 AnimatedPropertyID::AnimatedPropertyID(const PointerRNA *pointer_rna,
                                        const PropertyRNA *property_rna)
@@ -98,9 +97,7 @@ void animated_property_cb(ID * /*id*/, FCurve *fcurve, void *data_v)
 
 }  // namespace
 
-AnimatedPropertyStorage::AnimatedPropertyStorage() : is_fully_initialized(false)
-{
-}
+AnimatedPropertyStorage::AnimatedPropertyStorage() : is_fully_initialized(false) {}
 
 void AnimatedPropertyStorage::initializeFromID(DepsgraphBuilderCache *builder_cache, const ID *id)
 {

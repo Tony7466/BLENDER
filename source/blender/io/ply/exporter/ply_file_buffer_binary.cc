@@ -1,10 +1,14 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup ply
  */
 
 #include "ply_file_buffer_binary.hh"
+
+#include "BLI_math_vector_types.hh"
 
 namespace blender::io::ply {
 void FileBufferBinary::write_vertex(float x, float y, float z)

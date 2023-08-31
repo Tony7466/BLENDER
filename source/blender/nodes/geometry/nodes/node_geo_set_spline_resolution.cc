@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_curves.hh"
 
@@ -8,10 +10,10 @@ namespace blender::nodes::node_geo_set_spline_resolution_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(N_("Geometry")).supported_type(GEO_COMPONENT_TYPE_CURVE);
-  b.add_input<decl::Bool>(N_("Selection")).default_value(true).hide_value().field_on_all();
-  b.add_input<decl::Int>(N_("Resolution")).min(1).default_value(12).field_on_all();
-  b.add_output<decl::Geometry>(N_("Geometry")).propagate_all();
+  b.add_input<decl::Geometry>("Geometry").supported_type(GeometryComponent::Type::Curve);
+  b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
+  b.add_input<decl::Int>("Resolution").min(1).default_value(12).field_on_all();
+  b.add_output<decl::Geometry>("Geometry").propagate_all();
 }
 
 static void set_resolution(bke::CurvesGeometry &curves,
@@ -26,7 +28,7 @@ static void set_resolution(bke::CurvesGeometry &curves,
                                                                              ATTR_DOMAIN_CURVE);
   bke::AttributeValidator validator = attributes.lookup_validator("resolution");
 
-  bke::CurvesFieldContext field_context{curves, ATTR_DOMAIN_CURVE};
+  const bke::CurvesFieldContext field_context{curves, ATTR_DOMAIN_CURVE};
   fn::FieldEvaluator evaluator{field_context, curves.curves_num()};
   evaluator.set_selection(selection_field);
   evaluator.add_with_destination(validator.validate_field_if_necessary(resolution_field),
@@ -51,17 +53,16 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Geometry", std::move(geometry_set));
 }
 
-}  // namespace blender::nodes::node_geo_set_spline_resolution_cc
-
-void register_node_type_geo_set_spline_resolution()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_set_spline_resolution_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_SET_SPLINE_RESOLUTION, "Set Spline Resolution", NODE_CLASS_GEOMETRY);
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.declare = file_ns::node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.declare = node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_set_spline_resolution_cc

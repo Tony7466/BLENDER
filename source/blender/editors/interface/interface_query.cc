@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -7,22 +9,23 @@
  */
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_screen_types.h"
 
-#include "UI_interface.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_view2d.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "interface_intern.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Button (#uiBut) State
@@ -36,7 +39,7 @@ bool ui_but_is_editable(const uiBut *but)
                UI_BTYPE_SEPR_LINE,
                UI_BTYPE_ROUNDBOX,
                UI_BTYPE_LISTBOX,
-               UI_BTYPE_PROGRESS_BAR);
+               UI_BTYPE_PROGRESS);
 }
 
 bool ui_but_is_editable_as_text(const uiBut *but)
@@ -84,11 +87,16 @@ bool ui_but_is_interactive_ex(const uiBut *but, const bool labeledit, const bool
     return false;
   }
   if ((but->type == UI_BTYPE_TEXT) &&
-      ELEM(but->emboss, UI_EMBOSS_NONE, UI_EMBOSS_NONE_OR_STATUS) && !labeledit) {
+      ELEM(but->emboss, UI_EMBOSS_NONE, UI_EMBOSS_NONE_OR_STATUS) && !labeledit)
+  {
     return false;
   }
   if ((but->type == UI_BTYPE_LISTROW) && labeledit) {
     return false;
+  }
+  if (but->type == UI_BTYPE_VIEW_ITEM) {
+    const uiButViewItem *but_item = static_cast<const uiButViewItem *>(but);
+    return UI_view_item_is_interactive(but_item->view_item);
   }
 
   return true;
@@ -117,21 +125,7 @@ bool ui_but_is_popover_once_compat(const uiBut *but)
 
 bool ui_but_has_array_value(const uiBut *but)
 {
-  return (but->rnapoin.data && but->rnaprop &&
-          ELEM(RNA_property_subtype(but->rnaprop),
-               PROP_COLOR,
-               PROP_TRANSLATION,
-               PROP_DIRECTION,
-               PROP_VELOCITY,
-               PROP_ACCELERATION,
-               PROP_MATRIX,
-               PROP_EULER,
-               PROP_QUATERNION,
-               PROP_AXISANGLE,
-               PROP_XYZ,
-               PROP_XYZ_LENGTH,
-               PROP_COLOR_GAMMA,
-               PROP_COORDS));
+  return (but->rnapoin.data && but->rnaprop && RNA_property_array_check(but->rnaprop));
 }
 
 static wmOperatorType *g_ot_tool_set_by_id = nullptr;
@@ -151,10 +145,7 @@ bool UI_but_is_tool(const uiBut *but)
 
 bool UI_but_has_tooltip_label(const uiBut *but)
 {
-  if ((but->drawstr[0] == '\0') && !ui_block_is_popover(but->block)) {
-    return UI_but_is_tool(but);
-  }
-  return false;
+  return (but->drawflag & UI_BUT_HAS_TOOLTIP_LABEL) != 0;
 }
 
 int ui_but_icon(const uiBut *but)
@@ -330,7 +321,7 @@ uiBut *ui_but_find_mouse_over(const ARegion *region, const wmEvent *event)
       region, event->xy, event->modifier & KM_CTRL, false, nullptr, nullptr);
 }
 
-uiBut *ui_but_find_rect_over(const struct ARegion *region, const rcti *rect_px)
+uiBut *ui_but_find_rect_over(const ARegion *region, const rcti *rect_px)
 {
   if (!ui_region_contains_rect_px(region, rect_px)) {
     return nullptr;
@@ -447,7 +438,7 @@ static bool ui_but_is_listrow_at_index(const uiBut *but, const void *customdata)
          (but->hardmax == find_data->index);
 }
 
-uiBut *ui_list_row_find_from_index(const ARegion *region, const int index, uiBut *listbox)
+uiBut *ui_list_row_find_index(const ARegion *region, const int index, uiBut *listbox)
 {
   BLI_assert(listbox->type == UI_BTYPE_LISTBOX);
   ListRowFindIndexData data = {};
@@ -541,7 +532,8 @@ bool ui_but_is_cursor_warp(const uiBut *but)
              UI_BTYPE_HSVCUBE,
              UI_BTYPE_HSVCIRCLE,
              UI_BTYPE_CURVE,
-             UI_BTYPE_CURVEPROFILE)) {
+             UI_BTYPE_CURVEPROFILE))
+    {
       return true;
     }
   }
@@ -571,10 +563,10 @@ size_t ui_but_drawstr_len_without_sep_char(const uiBut *but)
   return strlen(but->drawstr);
 }
 
-size_t ui_but_drawstr_without_sep_char(const uiBut *but, char *str, size_t str_maxlen)
+size_t ui_but_drawstr_without_sep_char(const uiBut *but, char *str, size_t str_maxncpy)
 {
   size_t str_len_clip = ui_but_drawstr_len_without_sep_char(but);
-  return BLI_strncpy_rlen(str, but->drawstr, min_zz(str_len_clip + 1, str_maxlen));
+  return BLI_strncpy_rlen(str, but->drawstr, min_zz(str_len_clip + 1, str_maxncpy));
 }
 
 size_t ui_but_tip_len_only_first_line(const uiBut *but)
@@ -582,12 +574,8 @@ size_t ui_but_tip_len_only_first_line(const uiBut *but)
   if (but->tip == nullptr) {
     return 0;
   }
-
-  const char *str_sep = strchr(but->tip, '\n');
-  if (str_sep != nullptr) {
-    return (str_sep - but->tip);
-  }
-  return strlen(but->tip);
+  const char *str_sep = BLI_strchr_or_end(but->tip, '\n');
+  return (str_sep - but->tip);
 }
 
 /** \} */
@@ -754,7 +742,8 @@ bool ui_region_contains_point_px(const ARegion *region, const int xy[2])
 
     ui_window_to_region(region, &mx, &my);
     if (!BLI_rcti_isect_pt(&v2d->mask, mx, my) ||
-        UI_view2d_mouse_in_scrollers(region, &region->v2d, xy)) {
+        UI_view2d_mouse_in_scrollers(region, &region->v2d, xy))
+    {
       return false;
     }
   }
@@ -776,7 +765,8 @@ bool ui_region_contains_rect_px(const ARegion *region, const rcti *rect_px)
     rcti rect_region;
     ui_window_to_region_rcti(region, &rect_region, rect_px);
     if (!BLI_rcti_isect(&v2d->mask, &rect_region, nullptr) ||
-        UI_view2d_rect_in_scrollers(region, &region->v2d, rect_px)) {
+        UI_view2d_rect_in_scrollers(region, &region->v2d, rect_px))
+    {
       return false;
     }
   }

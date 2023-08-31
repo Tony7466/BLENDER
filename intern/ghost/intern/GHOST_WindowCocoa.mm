@@ -1,10 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "GHOST_WindowCocoa.h"
-#include "GHOST_ContextNone.h"
-#include "GHOST_Debug.h"
-#include "GHOST_SystemCocoa.h"
+#include "GHOST_WindowCocoa.hh"
+#include "GHOST_ContextNone.hh"
+#include "GHOST_Debug.hh"
+#include "GHOST_SystemCocoa.hh"
 
 /* Don't generate OpenGL deprecation warning. This is a known thing, and is not something easily
  * solvable in a short term. */
@@ -12,10 +13,12 @@
 #  pragma clang diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
-#include "GHOST_ContextCGL.h"
+#ifdef WITH_METAL_BACKEND
+#  include "GHOST_ContextCGL.hh"
+#endif
 
 #ifdef WITH_VULKAN_BACKEND
-#  include "GHOST_ContextVK.h"
+#  include "GHOST_ContextVK.hh"
 #endif
 
 #include <Cocoa/Cocoa.h>
@@ -264,13 +267,13 @@
 /* NSView for handling input and drawing. */
 #define COCOA_VIEW_CLASS CocoaOpenGLView
 #define COCOA_VIEW_BASE_CLASS NSOpenGLView
-#include "GHOST_WindowViewCocoa.h"
+#include "GHOST_WindowViewCocoa.hh"
 #undef COCOA_VIEW_CLASS
 #undef COCOA_VIEW_BASE_CLASS
 
 #define COCOA_VIEW_CLASS CocoaMetalView
 #define COCOA_VIEW_BASE_CLASS NSView
-#include "GHOST_WindowViewCocoa.h"
+#include "GHOST_WindowViewCocoa.hh"
 #undef COCOA_VIEW_CLASS
 #undef COCOA_VIEW_BASE_CLASS
 
@@ -343,6 +346,21 @@ GHOST_WindowCocoa::GHOST_WindowCocoa(GHOST_SystemCocoa *systemCocoa,
     [m_metalLayer setPresentsWithTransaction:NO];
     [m_metalLayer removeAllAnimations];
     [m_metalLayer setDevice:metalDevice];
+
+    if (type == GHOST_kDrawingContextTypeMetal) {
+      /* Enable EDR support. This is done by:
+       * 1. Using a floating point render target, so that values outside 0..1 can be used
+       * 2. Informing the OS that we are EDR aware, and intend to use values outside 0..1
+       * 3. Setting the extended sRGB color space so that the OS knows how to interpret the
+       *    values.
+       */
+      m_metalLayer.wantsExtendedDynamicRangeContent = YES;
+      m_metalLayer.pixelFormat = MTLPixelFormatRGBA16Float;
+      const CFStringRef name = kCGColorSpaceExtendedSRGB;
+      CGColorSpaceRef colorspace = CGColorSpaceCreateWithName(name);
+      m_metalLayer.colorspace = colorspace;
+      CGColorSpaceRelease(colorspace);
+    }
 
     m_metalView = [[CocoaMetalView alloc] initWithFrame:rect];
     [m_metalView setWantsLayer:YES];
@@ -455,7 +473,7 @@ GHOST_WindowCocoa::~GHOST_WindowCocoa()
 bool GHOST_WindowCocoa::getValid() const
 {
   NSView *view = (m_openGLView) ? m_openGLView : m_metalView;
-  return GHOST_Window::getValid() && m_window != NULL && view != NULL;
+  return GHOST_Window::getValid() && m_window != nullptr && view != nullptr;
 }
 
 void *GHOST_WindowCocoa::getOSWindow() const
@@ -484,10 +502,12 @@ void GHOST_WindowCocoa::setTitle(const char *title)
       associatedFileName = [windowTitle substringWithRange:fileStrRange];
       [m_window setTitle:[associatedFileName lastPathComponent]];
 
-      @try {
+      @try
+      {
         [m_window setRepresentedFilename:associatedFileName];
       }
-      @catch (NSException *e) {
+      @catch (NSException *e)
+      {
         printf("\nInvalid file path given in window title");
       }
     }
@@ -813,31 +833,34 @@ GHOST_TSuccess GHOST_WindowCocoa::setOrder(GHOST_TWindowOrder order)
 
 GHOST_Context *GHOST_WindowCocoa::newDrawingContext(GHOST_TDrawingContextType type)
 {
+  switch (type) {
 #ifdef WITH_VULKAN_BACKEND
-  if (type == GHOST_kDrawingContextTypeVulkan) {
-    GHOST_Context *context = new GHOST_ContextVK(m_wantStereoVisual, m_metalLayer, 1, 0, true);
-
-    if (!context->initializeDrawingContext()) {
+    case GHOST_kDrawingContextTypeVulkan: {
+      GHOST_Context *context = new GHOST_ContextVK(m_wantStereoVisual, m_metalLayer, 1, 2, true);
+      if (context->initializeDrawingContext()) {
+        return context;
+      }
       delete context;
-      return NULL;
+      return nullptr;
     }
-
-    return context;
-  }
 #endif
 
-  if (type == GHOST_kDrawingContextTypeOpenGL || type == GHOST_kDrawingContextTypeMetal) {
-
-    GHOST_Context *context = new GHOST_ContextCGL(
-        m_wantStereoVisual, m_metalView, m_metalLayer, m_openGLView, type);
-
-    if (context->initializeDrawingContext())
-      return context;
-    else
+#ifdef WITH_METAL_BACKEND
+    case GHOST_kDrawingContextTypeMetal: {
+      GHOST_Context *context = new GHOST_ContextCGL(
+          m_wantStereoVisual, m_metalView, m_metalLayer, false);
+      if (context->initializeDrawingContext()) {
+        return context;
+      }
       delete context;
-  }
+      return nullptr;
+    }
+#endif
 
-  return NULL;
+    default:
+      /* Unsupported backend. */
+      return nullptr;
+  }
 }
 
 #pragma mark invalidate
@@ -932,7 +955,7 @@ static NSCursor *getImageCursor(GHOST_TStandardCursor shape, NSString *name, NSP
     @autoreleasepool {
       /* clang-format on */
       NSImage *image = [NSImage imageNamed:name];
-      if (image != NULL) {
+      if (image != nullptr) {
         cursors[index] = [[NSCursor alloc] initWithImage:image hotSpot:hotspot];
       }
     }
@@ -951,7 +974,7 @@ NSCursor *GHOST_WindowCocoa::getStandardCursor(GHOST_TStandardCursor shape) cons
         return m_customCursor;
       }
       else {
-        return NULL;
+        return nullptr;
       }
     case GHOST_kStandardCursorDestroy:
       return [NSCursor disappearingItemCursor];
@@ -1016,7 +1039,7 @@ NSCursor *GHOST_WindowCocoa::getStandardCursor(GHOST_TStandardCursor shape) cons
     case GHOST_kStandardCursorCrosshairC:
       return getImageCursor(shape, @"crossc.pdf", NSMakePoint(16, 16));
     default:
-      return NULL;
+      return nullptr;
   }
 }
 
@@ -1035,7 +1058,7 @@ void GHOST_WindowCocoa::loadCursor(bool visible, GHOST_TStandardCursor shape) co
   }
 
   NSCursor *cursor = getStandardCursor(shape);
-  if (cursor == NULL) {
+  if (cursor == nullptr) {
     cursor = getStandardCursor(GHOST_kStandardCursorDefault);
   }
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2006 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -24,7 +25,6 @@ extern "C" {
  * as in `stepsPerFrame` compared to the time step in the paper, I've used
  * variables with different names to minimize confusion.
  */
-
 typedef struct ClothSimSettings {
   /** UNUSED. */
   struct LinkNode *cache;
@@ -218,7 +218,7 @@ typedef struct ClothCollSettings {
   float selfepsilon;
   float repel_force DNA_DEPRECATED;
   float distance_repel DNA_DEPRECATED;
-  /** Collision flags defined in BKE_cloth.h. */
+  /** Collision flags defined in BKE_cloth.hh. */
   int flags;
   /** How many iterations for the selfcollision loop. */
   short self_loop_count DNA_DEPRECATED;

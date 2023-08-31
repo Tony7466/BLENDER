@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -7,22 +8,20 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_edgehash.h"
-#include "BLI_math.h"
 #include "BLI_task.h"
 
 #include "DNA_brush_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_ccg.h"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
-#include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_paint.hh"
+#include "BKE_pbvh_api.hh"
 
-#include "paint_intern.h"
+#include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
 #include "GPU_immediate.h"
@@ -199,7 +198,6 @@ static bool sculpt_boundary_is_vertex_in_editable_boundary(SculptSession *ss,
 struct BoundaryFloodFillData {
   SculptBoundary *boundary;
   GSet *included_verts;
-  EdgeSet *preview_edges;
 
   PBVHVertRef last_visited_vertex;
 };
@@ -269,11 +267,13 @@ static void sculpt_boundary_indices_init(SculptSession *ss,
 
   /* Check if the boundary loops into itself and add the extra preview edge to close the loop. */
   if (fdata.last_visited_vertex.i != BOUNDARY_VERTEX_NONE &&
-      sculpt_boundary_is_vertex_in_editable_boundary(ss, fdata.last_visited_vertex)) {
+      sculpt_boundary_is_vertex_in_editable_boundary(ss, fdata.last_visited_vertex))
+  {
     SculptVertexNeighborIter ni;
     SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, fdata.last_visited_vertex, ni) {
       if (BLI_gset_haskey(included_verts, POINTER_FROM_INT(ni.index)) &&
-          sculpt_boundary_is_vertex_in_editable_boundary(ss, ni.vertex)) {
+          sculpt_boundary_is_vertex_in_editable_boundary(ss, ni.vertex))
+      {
         sculpt_boundary_preview_edge_add(boundary, fdata.last_visited_vertex, ni.vertex);
         boundary->forms_loop = true;
       }
@@ -396,7 +396,8 @@ static void sculpt_boundary_edit_data_init(SculptSession *ss,
           /* Check the distance using the vertex that was propagated from the initial vertex that
            * was used to initialize the boundary. */
           if (boundary->edit_info[from_v_i].original_vertex_i ==
-              BKE_pbvh_vertex_to_index(ss->pbvh, initial_vertex)) {
+              BKE_pbvh_vertex_to_index(ss->pbvh, initial_vertex))
+          {
             boundary->pivot_vertex = ni.vertex;
             copy_v3_v3(boundary->initial_pivot_position, SCULPT_vertex_co_get(ss, ni.vertex));
             accum_distance += len_v3v3(SCULPT_vertex_co_get(ss, from_v),
@@ -441,7 +442,8 @@ static void sculpt_boundary_falloff_factor_init(SculptSession *ss,
     }
 
     if (boundary->edit_info[i].original_vertex_i ==
-        BKE_pbvh_vertex_to_index(ss->pbvh, boundary->initial_vertex)) {
+        BKE_pbvh_vertex_to_index(ss->pbvh, boundary->initial_vertex))
+    {
       /* All vertices that are propagated from the original vertex won't be affected by the
        * boundary falloff, so there is no need to calculate anything else. */
       continue;
@@ -613,15 +615,15 @@ static void sculpt_boundary_slide_data_init(SculptSession *ss, SculptBoundary *b
 static void sculpt_boundary_twist_data_init(SculptSession *ss, SculptBoundary *boundary)
 {
   zero_v3(boundary->twist.pivot_position);
-  float(*poly_verts)[3] = static_cast<float(*)[3]>(
-      MEM_malloc_arrayN(boundary->verts_num, sizeof(float[3]), "poly verts"));
+  float(*face_verts)[3] = static_cast<float(*)[3]>(
+      MEM_malloc_arrayN(boundary->verts_num, sizeof(float[3]), "face verts"));
   for (int i = 0; i < boundary->verts_num; i++) {
     add_v3_v3(boundary->twist.pivot_position, SCULPT_vertex_co_get(ss, boundary->verts[i]));
-    copy_v3_v3(poly_verts[i], SCULPT_vertex_co_get(ss, boundary->verts[i]));
+    copy_v3_v3(face_verts[i], SCULPT_vertex_co_get(ss, boundary->verts[i]));
   }
   mul_v3_fl(boundary->twist.pivot_position, 1.0f / boundary->verts_num);
   if (boundary->forms_loop) {
-    normal_poly_v3(boundary->twist.rotation_axis, poly_verts, boundary->verts_num);
+    normal_poly_v3(boundary->twist.rotation_axis, face_verts, boundary->verts_num);
   }
   else {
     sub_v3_v3v3(boundary->twist.rotation_axis,
@@ -629,7 +631,7 @@ static void sculpt_boundary_twist_data_init(SculptSession *ss, SculptBoundary *b
                 SCULPT_vertex_co_get(ss, boundary->initial_vertex));
     normalize_v3(boundary->twist.rotation_axis);
   }
-  MEM_freeN(poly_verts);
+  MEM_freeN(face_verts);
 }
 
 static float sculpt_boundary_displacement_from_grab_delta_get(SculptSession *ss,
@@ -645,23 +647,18 @@ static float sculpt_boundary_displacement_from_grab_delta_get(SculptSession *ss,
   return dist_signed_to_plane_v3(pos, plane);
 }
 
-/* Deformation tasks callbacks. */
-static void do_boundary_brush_bend_task_cb_ex(void *__restrict userdata,
-                                              const int n,
-                                              const TaskParallelTLS *__restrict /*tls*/)
+static void do_boundary_brush_bend_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
-  SculptThreadedTaskData *data = static_cast<SculptThreadedTaskData *>(userdata);
-  SculptSession *ss = data->ob->sculpt;
+  SculptSession *ss = ob->sculpt;
   const int symm_area = ss->cache->mirror_symmetry_pass;
   SculptBoundary *boundary = ss->cache->boundaries[symm_area];
-  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(data->ob);
-  const Brush *brush = data->brush;
+  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
 
   const float strength = ss->cache->bstrength;
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(&orig_data, data->ob, data->nodes[n], SCULPT_UNDO_COORDS);
+  SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
 
   const float disp = strength * sculpt_boundary_displacement_from_grab_delta_get(ss, boundary);
   float angle_factor = disp / ss->cache->radius;
@@ -671,18 +668,17 @@ static void do_boundary_brush_bend_task_cb_ex(void *__restrict userdata,
   }
   const float angle = angle_factor * M_PI;
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(
-      data->ob, ss, ss->cache->automasking, &automask_data, data->nodes[n]);
+  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
 
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (boundary->edit_info[vd.index].propagation_steps_num == -1) {
       continue;
     }
 
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
     SCULPT_orig_vert_data_update(&orig_data, &vd);
-    if (!SCULPT_check_vertex_pivot_symmetry(
-            orig_data.co, boundary->initial_vertex_position, symm)) {
+    if (!SCULPT_check_vertex_pivot_symmetry(orig_data.co, boundary->initial_vertex_position, symm))
+    {
       continue;
     }
 
@@ -705,37 +701,32 @@ static void do_boundary_brush_bend_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-static void do_boundary_brush_slide_task_cb_ex(void *__restrict userdata,
-                                               const int n,
-                                               const TaskParallelTLS *__restrict /*tls*/)
+static void do_boundary_brush_slide_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
-  SculptThreadedTaskData *data = static_cast<SculptThreadedTaskData *>(userdata);
-  SculptSession *ss = data->ob->sculpt;
+  SculptSession *ss = ob->sculpt;
   const int symm_area = ss->cache->mirror_symmetry_pass;
   SculptBoundary *boundary = ss->cache->boundaries[symm_area];
-  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(data->ob);
-  const Brush *brush = data->brush;
+  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
 
   const float strength = ss->cache->bstrength;
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(&orig_data, data->ob, data->nodes[n], SCULPT_UNDO_COORDS);
+  SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
 
   const float disp = sculpt_boundary_displacement_from_grab_delta_get(ss, boundary);
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(
-      data->ob, ss, ss->cache->automasking, &automask_data, data->nodes[n]);
+  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
 
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (boundary->edit_info[vd.index].propagation_steps_num == -1) {
       continue;
     }
 
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
     SCULPT_orig_vert_data_update(&orig_data, &vd);
-    if (!SCULPT_check_vertex_pivot_symmetry(
-            orig_data.co, boundary->initial_vertex_position, symm)) {
+    if (!SCULPT_check_vertex_pivot_symmetry(orig_data.co, boundary->initial_vertex_position, symm))
+    {
       continue;
     }
 
@@ -756,37 +747,32 @@ static void do_boundary_brush_slide_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-static void do_boundary_brush_inflate_task_cb_ex(void *__restrict userdata,
-                                                 const int n,
-                                                 const TaskParallelTLS *__restrict /*tls*/)
+static void do_boundary_brush_inflate_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
-  SculptThreadedTaskData *data = static_cast<SculptThreadedTaskData *>(userdata);
-  SculptSession *ss = data->ob->sculpt;
+  SculptSession *ss = ob->sculpt;
   const int symm_area = ss->cache->mirror_symmetry_pass;
   SculptBoundary *boundary = ss->cache->boundaries[symm_area];
-  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(data->ob);
-  const Brush *brush = data->brush;
+  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
 
   const float strength = ss->cache->bstrength;
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(&orig_data, data->ob, data->nodes[n], SCULPT_UNDO_COORDS);
+  SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(
-      data->ob, ss, ss->cache->automasking, &automask_data, data->nodes[n]);
+  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
 
   const float disp = sculpt_boundary_displacement_from_grab_delta_get(ss, boundary);
 
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (boundary->edit_info[vd.index].propagation_steps_num == -1) {
       continue;
     }
 
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
     SCULPT_orig_vert_data_update(&orig_data, &vd);
-    if (!SCULPT_check_vertex_pivot_symmetry(
-            orig_data.co, boundary->initial_vertex_position, symm)) {
+    if (!SCULPT_check_vertex_pivot_symmetry(orig_data.co, boundary->initial_vertex_position, symm))
+    {
       continue;
     }
 
@@ -807,35 +793,30 @@ static void do_boundary_brush_inflate_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-static void do_boundary_brush_grab_task_cb_ex(void *__restrict userdata,
-                                              const int n,
-                                              const TaskParallelTLS *__restrict /*tls*/)
+static void do_boundary_brush_grab_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
-  SculptThreadedTaskData *data = static_cast<SculptThreadedTaskData *>(userdata);
-  SculptSession *ss = data->ob->sculpt;
+  SculptSession *ss = ob->sculpt;
   const int symm_area = ss->cache->mirror_symmetry_pass;
   SculptBoundary *boundary = ss->cache->boundaries[symm_area];
-  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(data->ob);
-  const Brush *brush = data->brush;
+  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
 
   const float strength = ss->cache->bstrength;
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(&orig_data, data->ob, data->nodes[n], SCULPT_UNDO_COORDS);
+  SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(
-      data->ob, ss, ss->cache->automasking, &automask_data, data->nodes[n]);
+  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
 
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (boundary->edit_info[vd.index].propagation_steps_num == -1) {
       continue;
     }
 
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
     SCULPT_orig_vert_data_update(&orig_data, &vd);
-    if (!SCULPT_check_vertex_pivot_symmetry(
-            orig_data.co, boundary->initial_vertex_position, symm)) {
+    if (!SCULPT_check_vertex_pivot_symmetry(orig_data.co, boundary->initial_vertex_position, symm))
+    {
       continue;
     }
 
@@ -855,25 +836,20 @@ static void do_boundary_brush_grab_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-static void do_boundary_brush_twist_task_cb_ex(void *__restrict userdata,
-                                               const int n,
-                                               const TaskParallelTLS *__restrict /*tls*/)
+static void do_boundary_brush_twist_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
-  SculptThreadedTaskData *data = static_cast<SculptThreadedTaskData *>(userdata);
-  SculptSession *ss = data->ob->sculpt;
+  SculptSession *ss = ob->sculpt;
   const int symm_area = ss->cache->mirror_symmetry_pass;
   SculptBoundary *boundary = ss->cache->boundaries[symm_area];
-  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(data->ob);
-  const Brush *brush = data->brush;
+  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
 
   const float strength = ss->cache->bstrength;
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(&orig_data, data->ob, data->nodes[n], SCULPT_UNDO_COORDS);
+  SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(
-      data->ob, ss, ss->cache->automasking, &automask_data, data->nodes[n]);
+  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
 
   const float disp = strength * sculpt_boundary_displacement_from_grab_delta_get(ss, boundary);
   float angle_factor = disp / ss->cache->radius;
@@ -883,15 +859,15 @@ static void do_boundary_brush_twist_task_cb_ex(void *__restrict userdata,
   }
   const float angle = angle_factor * M_PI;
 
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (boundary->edit_info[vd.index].propagation_steps_num == -1) {
       continue;
     }
 
     SCULPT_automasking_node_update(ss, &automask_data, &vd);
     SCULPT_orig_vert_data_update(&orig_data, &vd);
-    if (!SCULPT_check_vertex_pivot_symmetry(
-            orig_data.co, boundary->initial_vertex_position, symm)) {
+    if (!SCULPT_check_vertex_pivot_symmetry(orig_data.co, boundary->initial_vertex_position, symm))
+    {
       continue;
     }
 
@@ -914,31 +890,27 @@ static void do_boundary_brush_twist_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-static void do_boundary_brush_smooth_task_cb_ex(void *__restrict userdata,
-                                                const int n,
-                                                const TaskParallelTLS *__restrict /*tls*/)
+static void do_boundary_brush_smooth_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
-  SculptThreadedTaskData *data = static_cast<SculptThreadedTaskData *>(userdata);
-  SculptSession *ss = data->ob->sculpt;
+  SculptSession *ss = ob->sculpt;
   const int symmetry_pass = ss->cache->mirror_symmetry_pass;
   const SculptBoundary *boundary = ss->cache->boundaries[symmetry_pass];
-  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(data->ob);
-  const Brush *brush = data->brush;
+  const ePaintSymmetryFlags symm = SCULPT_mesh_symmetry_xyz_get(ob);
 
   const float strength = ss->cache->bstrength;
 
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
-  SCULPT_orig_vert_data_init(&orig_data, data->ob, data->nodes[n], SCULPT_UNDO_COORDS);
+  SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
 
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (boundary->edit_info[vd.index].propagation_steps_num == -1) {
       continue;
     }
 
     SCULPT_orig_vert_data_update(&orig_data, &vd);
-    if (!SCULPT_check_vertex_pivot_symmetry(
-            orig_data.co, boundary->initial_vertex_position, symm)) {
+    if (!SCULPT_check_vertex_pivot_symmetry(orig_data.co, boundary->initial_vertex_position, symm))
+    {
       continue;
     }
 
@@ -973,8 +945,9 @@ static void do_boundary_brush_smooth_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_boundary_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
+void SCULPT_do_boundary_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
+  using namespace blender;
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
@@ -1024,33 +997,48 @@ void SCULPT_do_boundary_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totn
     return;
   }
 
-  SculptThreadedTaskData data{};
-  data.sd = sd;
-  data.ob = ob;
-  data.brush = brush;
-  data.nodes = nodes;
-
-  TaskParallelSettings settings;
-  BKE_pbvh_parallel_range_settings(&settings, true, totnode);
-
   switch (brush->boundary_deform_type) {
     case BRUSH_BOUNDARY_DEFORM_BEND:
-      BLI_task_parallel_range(0, totnode, &data, do_boundary_brush_bend_task_cb_ex, &settings);
+      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        for (const int i : range) {
+          do_boundary_brush_bend_task(ob, brush, nodes[i]);
+        }
+      });
       break;
     case BRUSH_BOUNDARY_DEFORM_EXPAND:
-      BLI_task_parallel_range(0, totnode, &data, do_boundary_brush_slide_task_cb_ex, &settings);
+      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        for (const int i : range) {
+          do_boundary_brush_slide_task(ob, brush, nodes[i]);
+        }
+      });
       break;
     case BRUSH_BOUNDARY_DEFORM_INFLATE:
-      BLI_task_parallel_range(0, totnode, &data, do_boundary_brush_inflate_task_cb_ex, &settings);
+      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        for (const int i : range) {
+          do_boundary_brush_inflate_task(ob, brush, nodes[i]);
+        }
+      });
       break;
     case BRUSH_BOUNDARY_DEFORM_GRAB:
-      BLI_task_parallel_range(0, totnode, &data, do_boundary_brush_grab_task_cb_ex, &settings);
+      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        for (const int i : range) {
+          do_boundary_brush_grab_task(ob, brush, nodes[i]);
+        }
+      });
       break;
     case BRUSH_BOUNDARY_DEFORM_TWIST:
-      BLI_task_parallel_range(0, totnode, &data, do_boundary_brush_twist_task_cb_ex, &settings);
+      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        for (const int i : range) {
+          do_boundary_brush_twist_task(ob, brush, nodes[i]);
+        }
+      });
       break;
     case BRUSH_BOUNDARY_DEFORM_SMOOTH:
-      BLI_task_parallel_range(0, totnode, &data, do_boundary_brush_smooth_task_cb_ex, &settings);
+      threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+        for (const int i : range) {
+          do_boundary_brush_smooth_task(ob, brush, nodes[i]);
+        }
+      });
       break;
   }
 }

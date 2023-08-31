@@ -1,20 +1,25 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2015 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2015 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_shader_util.hh"
 
+#include "BKE_texture.h"
+
 #include "RE_texture.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "RNA_access.hh"
+
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 namespace blender::nodes::node_shader_tex_pointdensity_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Vector>(N_("Vector")).hide_value();
-  b.add_output<decl::Color>(N_("Color"));
-  b.add_output<decl::Float>(N_("Density"));
+  b.add_input<decl::Vector>("Vector").hide_value();
+  b.add_output<decl::Color>("Color");
+  b.add_output<decl::Float>("Density");
 }
 
 static void node_shader_buts_tex_pointdensity(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)

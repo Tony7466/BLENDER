@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # Copyright (c) 2009 www.stani.be
@@ -123,7 +125,7 @@ def expand(line, cursor, namespace, *, private=True):
                 [white_space + m[len(word_prefix):]
                  if (word_prefix and m.startswith(word_prefix))
                  else
-                 white_space + m.split('.')[-1]
+                 white_space + m.rsplit('.', 1)[-1]
                  for m in matches])
 
         no_calltip = True

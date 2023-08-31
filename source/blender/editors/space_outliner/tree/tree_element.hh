@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -10,7 +12,7 @@
 #include <optional>
 
 #include "BLI_string_ref.hh"
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 struct ListBase;
 struct SpaceOutliner;
@@ -34,28 +36,19 @@ class AbstractTreeElement {
  public:
   virtual ~AbstractTreeElement() = default;
 
-  static std::unique_ptr<AbstractTreeElement> createFromType(int type,
-                                                             TreeElement &legacy_te,
-                                                             void *idv);
+  static std::unique_ptr<AbstractTreeElement> create_from_type(int type,
+                                                               TreeElement &legacy_te,
+                                                               void *idv);
 
   /**
    * Check if the type is expandable in current context.
    */
-  virtual bool expandPoll(const SpaceOutliner &) const
+  virtual bool expand_poll(const SpaceOutliner &) const
   {
     return true;
   }
 
-  /**
-   * Just while transitioning to the new tree-element design: Some types are only partially ported,
-   * and the expanding isn't done yet.
-   */
-  virtual bool isExpandValid() const
-  {
-    return true;
-  }
-
-  TreeElement &getLegacyElement()
+  TreeElement &get_legacy_element()
   {
     return legacy_te_;
   }
@@ -64,7 +57,7 @@ class AbstractTreeElement {
    * By letting this return a warning message, the tree element will display a warning icon with
    * the message in the tooltip.
    */
-  virtual StringRefNull getWarning() const;
+  virtual StringRefNull get_warning() const;
 
   /**
    * Define the icon to be displayed for this element. If this returns an icon, this will be
@@ -73,7 +66,7 @@ class AbstractTreeElement {
    *
    * All elements should be ported to use this over #tree_element_get_icon().
    */
-  virtual std::optional<BIFIconID> getIcon() const;
+  virtual std::optional<BIFIconID> get_icon() const;
 
   /**
    * Debugging helper: Print effective path of this tree element, constructed out of the
@@ -98,16 +91,12 @@ class AbstractTreeElement {
 
  protected:
   /* Pseudo-abstract: Only allow creation through derived types. */
-  AbstractTreeElement(TreeElement &legacy_te) : legacy_te_(legacy_te)
-  {
-  }
+  AbstractTreeElement(TreeElement &legacy_te) : legacy_te_(legacy_te) {}
 
   /**
    * Let the type add its own children.
    */
-  virtual void expand(SpaceOutliner &) const
-  {
-  }
+  virtual void expand(SpaceOutliner &) const {}
 };
 
 /**
@@ -122,13 +111,13 @@ class AbstractTreeElement {
  *                noise, and can be expensive to add in big scenes. So prefer setting this to
  *                false.
  */
-struct TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
-                                         ListBase *lb,
-                                         void *idv,
-                                         struct TreeElement *parent,
-                                         short type,
-                                         short index,
-                                         const bool expand = true);
+TreeElement *outliner_add_element(SpaceOutliner *space_outliner,
+                                  ListBase *lb,
+                                  void *idv,
+                                  TreeElement *parent,
+                                  short type,
+                                  short index,
+                                  const bool expand = true);
 
 void tree_element_expand(const AbstractTreeElement &tree_element, SpaceOutliner &space_outliner);
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -177,6 +178,11 @@ enum class BuiltinBits {
   VERTEX_ID = (1 << 14),
   WORK_GROUP_ID = (1 << 15),
   WORK_GROUP_SIZE = (1 << 16),
+  /**
+   * Allow setting the target viewport when using multi viewport feature.
+   * \note Emulated through geometry shader on older hardware.
+   */
+  VIEWPORT_INDEX = (1 << 17),
 
   /* Not a builtin but a flag we use to tag shaders that use the debug features. */
   USE_DEBUG_DRAW = (1 << 29),
@@ -444,7 +450,7 @@ struct ShaderCreateInfo {
 
   struct Sampler {
     ImageType type;
-    eGPUSamplerState sampler;
+    GPUSamplerState sampler;
     StringRefNull name;
   };
 
@@ -689,7 +695,7 @@ struct ShaderCreateInfo {
                 ImageType type,
                 StringRefNull name,
                 Frequency freq = Frequency::PASS,
-                eGPUSamplerState sampler = (eGPUSamplerState)-1)
+                GPUSamplerState sampler = GPUSamplerState::internal_sampler())
   {
     Resource res(Resource::BindType::SAMPLER, slot);
     res.sampler.type = type;
@@ -876,6 +882,7 @@ struct ShaderCreateInfo {
   void finalize();
 
   std::string check_error() const;
+  bool is_vulkan_compatible() const;
 
   /** Error detection that some backend compilers do not complain about. */
   void validate_merge(const ShaderCreateInfo &other_info);

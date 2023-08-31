@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2006 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -16,6 +17,7 @@
 extern "C" {
 #endif
 
+struct bDeformGroup;
 struct CustomData;
 struct CustomDataLayer;
 struct ID;
@@ -57,8 +59,11 @@ bool BKE_attribute_allow_procedural_access(const char *attribute_name);
 /**
  * Create a new attribute layer.
  */
-struct CustomDataLayer *BKE_id_attribute_new(
-    struct ID *id, const char *name, int type, eAttrDomain domain, struct ReportList *reports);
+struct CustomDataLayer *BKE_id_attribute_new(struct ID *id,
+                                             const char *name,
+                                             eCustomDataType type,
+                                             eAttrDomain domain,
+                                             struct ReportList *reports);
 bool BKE_id_attribute_remove(struct ID *id, const char *name, struct ReportList *reports);
 
 /**
@@ -70,7 +75,7 @@ struct CustomDataLayer *BKE_id_attribute_duplicate(struct ID *id,
 
 struct CustomDataLayer *BKE_id_attribute_find(const struct ID *id,
                                               const char *name,
-                                              int type,
+                                              eCustomDataType type,
                                               eAttrDomain domain);
 
 struct CustomDataLayer *BKE_id_attribute_search(struct ID *id,
@@ -111,8 +116,14 @@ const char *BKE_id_attributes_default_color_name(const struct ID *id);
 void BKE_id_attributes_active_color_set(struct ID *id, const char *name);
 void BKE_id_attributes_default_color_set(struct ID *id, const char *name);
 
-struct CustomDataLayer *BKE_id_attributes_color_find(const struct ID *id, const char *name);
+const struct CustomDataLayer *BKE_id_attributes_color_find(const struct ID *id, const char *name);
 
+typedef struct AttributeAndDefgroupUniqueNameData {
+  struct ID *id;
+  struct bDeformGroup *dg;
+} AttributeAndDefgroupUniqueNameData;
+
+bool BKE_id_attribute_and_defgroup_unique_name_check(void *arg, const char *name);
 bool BKE_id_attribute_calc_unique_name(struct ID *id, const char *name, char *outname);
 
 const char *BKE_uv_map_vert_select_name_get(const char *uv_map_name, char *buffer);

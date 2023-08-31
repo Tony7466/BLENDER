@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -78,7 +79,7 @@ void GPU_debug_capture_end(void);
  * Frame capture tool can perform a deferred capture of GPU API calls within the boundary upon user
  * request.
  *
- * \param name Unique name of capture scope displayed within capture tool.
+ * \param name: Unique name of capture scope displayed within capture tool.
  * \return pointer wrapping an API-specific capture scope object.
  * \note a capture scope should be created a single time and only used within one begin/end pair.
  */
@@ -87,7 +88,7 @@ void *GPU_debug_capture_scope_create(const char *name);
 /**
  * Used to declare the region within which GPU calls are captured when the scope is triggered.
  *
- * \param scope Pointer to capture scope object created with GPU_debug_capture_scope_create.
+ * \param scope: Pointer to capture scope object created with GPU_debug_capture_scope_create.
  * \return True if the capture tool is actively capturing this scope when function is executed.
  * Otherwise, False.
  */

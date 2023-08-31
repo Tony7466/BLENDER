@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2016 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw_engine
@@ -269,7 +270,7 @@ typedef struct WORKBENCH_PrivateData {
   /** If the shadow has changed direction and ob bboxes needs to be updated. */
   bool shadow_changed;
 
-  /* Temporal Antialiasing */
+  /* Temporal Anti-aliasing. */
   /** Total number of samples to after which TAA stops accumulating samples. */
   int taa_sample_len;
   /** Total number of samples of the previous TAA. When changed TAA will be reset. */
@@ -392,12 +393,12 @@ BLI_INLINE bool workbench_is_specular_highlight_enabled(WORKBENCH_PrivateData *w
   return false;
 }
 
-/* workbench_opaque.c */
+/* `workbench_opaque.cc` */
 
 void workbench_opaque_engine_init(WORKBENCH_Data *data);
 void workbench_opaque_cache_init(WORKBENCH_Data *data);
 
-/* workbench_transparent.c */
+/* `workbench_transparent.cc` */
 
 void workbench_transparent_engine_init(WORKBENCH_Data *data);
 void workbench_transparent_cache_init(WORKBENCH_Data *data);
@@ -407,13 +408,13 @@ void workbench_transparent_cache_init(WORKBENCH_Data *data);
  */
 void workbench_transparent_draw_depth_pass(WORKBENCH_Data *data);
 
-/* workbench_shadow.c */
+/* `workbench_shadow.cc` */
 
 void workbench_shadow_data_update(WORKBENCH_PrivateData *wpd, WORKBENCH_UBO_World *wd);
 void workbench_shadow_cache_init(WORKBENCH_Data *data);
 void workbench_shadow_cache_populate(WORKBENCH_Data *data, Object *ob, bool has_transp_mat);
 
-/* workbench_shader.c */
+/* `workbench_shader.cc` */
 
 GPUShader *workbench_shader_opaque_get(WORKBENCH_PrivateData *wpd, eWORKBENCH_DataType data);
 GPUShader *workbench_shader_opaque_image_get(WORKBENCH_PrivateData *wpd,
@@ -450,7 +451,7 @@ void workbench_shader_depth_of_field_get(GPUShader **prepare_sh,
 
 void workbench_shader_free(void);
 
-/* workbench_effect_antialiasing.c */
+/* `workbench_effect_antialiasing.cc` */
 
 int workbench_antialiasing_sample_count_get(WORKBENCH_PrivateData *wpd);
 void workbench_antialiasing_engine_init(WORKBENCH_Data *vedata);
@@ -462,22 +463,22 @@ void workbench_antialiasing_view_updated(WORKBENCH_Data *vedata);
 bool workbench_antialiasing_setup(WORKBENCH_Data *vedata);
 void workbench_antialiasing_draw_pass(WORKBENCH_Data *vedata);
 
-/* workbench_effect_cavity.c */
+/* `workbench_effect_cavity.cc` */
 
 void workbench_cavity_data_update(WORKBENCH_PrivateData *wpd, WORKBENCH_UBO_World *wd);
 void workbench_cavity_samples_ubo_ensure(WORKBENCH_PrivateData *wpd);
 void workbench_cavity_cache_init(WORKBENCH_Data *data);
 
-/* workbench_effect_outline.c */
+/* `workbench_effect_outline.cc` */
 
 void workbench_outline_cache_init(WORKBENCH_Data *data);
-/* workbench_effect_dof.c */
+/* `workbench_effect_dof.cc` */
 
 void workbench_dof_engine_init(WORKBENCH_Data *vedata);
 void workbench_dof_cache_init(WORKBENCH_Data *vedata);
 void workbench_dof_draw_pass(WORKBENCH_Data *vedata);
 
-/* workbench_materials.c */
+/* `workbench_materials.cc` */
 
 void workbench_material_ubo_data(WORKBENCH_PrivateData *wpd,
                                  Object *ob,
@@ -499,7 +500,7 @@ DRWShadingGroup *workbench_image_setup_ex(WORKBENCH_PrivateData *wpd,
                                           int mat_nr,
                                           Image *ima,
                                           ImageUser *iuser,
-                                          eGPUSamplerState sampler,
+                                          GPUSamplerState sampler,
                                           eWORKBENCH_DataType datatype);
 
 #define WORKBENCH_OBJECT_DATATYPE(ob) \
@@ -520,7 +521,7 @@ DRWShadingGroup *workbench_image_setup_ex(WORKBENCH_PrivateData *wpd,
 #define workbench_image_ptcloud_setup(wpd, ob, mat_nr, ima, iuser, interp) \
   workbench_image_setup_ex(wpd, ob, mat_nr, ima, iuser, interp, WORKBENCH_DATATYPE_POINTCLOUD)
 
-/* workbench_data.c */
+/* `workbench_data.cc` */
 
 void workbench_private_data_alloc(WORKBENCH_StorageList *stl);
 void workbench_private_data_init(WORKBENCH_PrivateData *wpd);
@@ -528,7 +529,7 @@ void workbench_update_world_ubo(WORKBENCH_PrivateData *wpd);
 void workbench_update_material_ubos(WORKBENCH_PrivateData *wpd);
 struct GPUUniformBuf *workbench_material_ubo_alloc(WORKBENCH_PrivateData *wpd);
 
-/* workbench_volume.c */
+/* `workbench_volume.cc` */
 
 void workbench_volume_engine_init(WORKBENCH_Data *vedata);
 void workbench_volume_cache_init(WORKBENCH_Data *vedata);
@@ -539,7 +540,7 @@ void workbench_volume_cache_populate(WORKBENCH_Data *vedata,
                                      eV3DShadingColorType color_type);
 void workbench_volume_draw_pass(WORKBENCH_Data *vedata);
 
-/* workbench_engine.c */
+/* `workbench_engine.cc` */
 
 void workbench_engine_init(void *ved);
 void workbench_cache_init(void *ved);
@@ -552,7 +553,7 @@ void workbench_cache_finish(void *ved);
 void workbench_draw_sample(void *ved);
 void workbench_draw_finish(void *ved);
 
-/* workbench_render.c */
+/* `workbench_render.cc` */
 
 void workbench_render(void *ved,
                       struct RenderEngine *engine,

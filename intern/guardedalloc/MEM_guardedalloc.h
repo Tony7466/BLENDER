@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup intern_mem
@@ -172,13 +173,13 @@ extern void (*MEM_reset_peak_memory)(void);
 /** Get the peak memory usage in bytes, including `mmap` allocations. */
 extern size_t (*MEM_get_peak_memory)(void) ATTR_WARN_UNUSED_RESULT;
 
-#ifdef __GNUC__
+#ifdef __cplusplus
 #  define MEM_SAFE_FREE(v) \
     do { \
-      typeof(&(v)) _v = &(v); \
+      static_assert(std::is_pointer_v<std::decay_t<decltype(v)>>); \
+      void **_v = (void **)&(v); \
       if (*_v) { \
-        /* Cast so we can free constant arrays. */ \
-        MEM_freeN((void *)*_v); \
+        MEM_freeN(*_v); \
         *_v = NULL; \
       } \
     } while (0)
@@ -362,9 +363,7 @@ template<typename T> inline T *MEM_cnew(const char *allocation_name, const T &ot
     } \
     /* This is the matching delete operator to the placement-new operator above. Both parameters \
      * will have the same value. Without this, we get the warning C4291 on windows. */ \
-    void operator delete(void * /*ptr_to_free*/, void * /*ptr*/) \
-    { \
-    }
+    void operator delete(void * /*ptr_to_free*/, void * /*ptr*/) {}
 
 #endif /* __cplusplus */
 

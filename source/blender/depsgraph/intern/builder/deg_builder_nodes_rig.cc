@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -27,6 +28,7 @@
 #include "BKE_action.h"
 #include "BKE_armature.h"
 #include "BKE_constraint.h"
+#include "BKE_lib_query.h"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -47,7 +49,7 @@ void DepsgraphNodeBuilder::build_pose_constraints(Object *object,
   /* Pull indirect dependencies via constraints. */
   BuilderWalkUserData data;
   data.builder = this;
-  BKE_constraints_id_loop(&pchan->constraints, constraint_walk, &data);
+  BKE_constraints_id_loop(&pchan->constraints, constraint_walk, IDWALK_NOP, &data);
 
   /* Create node for constraint stack. */
   Scene *scene_cow = get_cow_datablock(scene_);
@@ -74,7 +76,8 @@ void DepsgraphNodeBuilder::build_ik_pose(Object *object, bPoseChannel *pchan, bC
   }
 
   if (has_operation_node(
-          &object->id, NodeType::EVAL_POSE, rootchan->name, OperationCode::POSE_IK_SOLVER)) {
+          &object->id, NodeType::EVAL_POSE, rootchan->name, OperationCode::POSE_IK_SOLVER))
+  {
     return;
   }
 
@@ -103,10 +106,9 @@ void DepsgraphNodeBuilder::build_splineik_pose(Object *object,
   /* Find the chain's root. */
   bPoseChannel *rootchan = BKE_armature_splineik_solver_find_root(pchan, data);
 
-  if (has_operation_node(&object->id,
-                         NodeType::EVAL_POSE,
-                         rootchan->name,
-                         OperationCode::POSE_SPLINE_IK_SOLVER)) {
+  if (has_operation_node(
+          &object->id, NodeType::EVAL_POSE, rootchan->name, OperationCode::POSE_SPLINE_IK_SOLVER))
+  {
     return;
   }
 

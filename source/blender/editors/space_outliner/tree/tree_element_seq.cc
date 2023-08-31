@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -20,17 +22,10 @@ TreeElementSequence::TreeElementSequence(TreeElement &legacy_te, Sequence &seque
     : AbstractTreeElement(legacy_te), sequence_(sequence)
 {
   BLI_assert(legacy_te.store_elem->type == TSE_SEQUENCE);
-
-  /*
-   * The idcode is a little hack, but the outliner
-   * only check te->idcode if te->type is equal to zero,
-   * so this is "safe".
-   */
-  legacy_te.idcode = sequence_.type;
   legacy_te.name = sequence_.name + 2;
 }
 
-bool TreeElementSequence::expandPoll(const SpaceOutliner & /*space_outliner*/) const
+bool TreeElementSequence::expand_poll(const SpaceOutliner & /*space_outliner*/) const
 {
   return !(sequence_.type & SEQ_TYPE_EFFECT);
 }
@@ -55,9 +50,14 @@ void TreeElementSequence::expand(SpaceOutliner &space_outliner) const
   }
 }
 
-Sequence &TreeElementSequence::getSequence() const
+Sequence &TreeElementSequence::get_sequence() const
 {
   return sequence_;
+}
+
+SequenceType TreeElementSequence::get_sequence_type() const
+{
+  return SequenceType(sequence_.type);
 }
 
 /* -------------------------------------------------------------------- */
@@ -68,8 +68,8 @@ TreeElementSequenceStrip::TreeElementSequenceStrip(TreeElement &legacy_te, Strip
 {
   BLI_assert(legacy_te.store_elem->type == TSE_SEQ_STRIP);
 
-  if (strip.dir[0] != '\0') {
-    legacy_te_.name = strip.dir;
+  if (strip.dirpath[0] != '\0') {
+    legacy_te_.name = strip.dirpath;
   }
   else {
     legacy_te_.name = IFACE_("Strip None");
@@ -84,12 +84,10 @@ TreeElementSequenceStripDuplicate::TreeElementSequenceStripDuplicate(TreeElement
     : AbstractTreeElement(legacy_te), sequence_(sequence)
 {
   BLI_assert(legacy_te.store_elem->type == TSE_SEQUENCE_DUP);
-
-  legacy_te_.idcode = sequence.type;
-  legacy_te_.name = sequence.strip->stripdata->name;
+  legacy_te_.name = sequence.strip->stripdata->filename;
 }
 
-Sequence &TreeElementSequenceStripDuplicate::getSequence() const
+Sequence &TreeElementSequenceStripDuplicate::get_sequence() const
 {
   return sequence_;
 }

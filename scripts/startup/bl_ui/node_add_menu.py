@@ -1,6 +1,8 @@
+# SPDX-FileCopyrightText: 2022-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
-from bpy.types import Menu
 from bpy.app.translations import (
     pgettext_iface as iface_,
     contexts as i18n_contexts,
@@ -25,8 +27,6 @@ def draw_node_group_add_menu(context, layout):
     node_tree = space_node.edit_tree
     all_node_groups = context.blend_data.node_groups
 
-    layout.operator("node.group_make")
-    layout.operator("node.group_ungroup")
     if node_tree in all_node_groups.values():
         layout.separator()
         add_node_type(layout, "NodeGroupInput")
@@ -56,6 +56,19 @@ def draw_assets_for_catalog(layout, catalog_path):
 
 def draw_root_assets(layout):
     layout.menu_contents("NODE_MT_node_add_root_catalogs")
+
+
+def add_simulation_zone(layout, label):
+    """Add simulation zone to a menu."""
+    props = layout.operator("node.add_simulation_zone", text=label, text_ctxt=i18n_contexts.default)
+    props.use_transform = True
+    return props
+
+
+def add_repeat_zone(layout, label):
+    props = layout.operator("node.add_repeat_zone", text=label, text_ctxt=i18n_contexts.default)
+    props.use_transform = True
+    return props
 
 
 classes = (

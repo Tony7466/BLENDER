@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2010-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # This file defines a set of methods that are useful for various
@@ -93,7 +95,7 @@ def RKS_ITER_selected_bones(ksi, context, ks):
 # Generate Callbacks
 
 
-# 'Available' F-Curves
+# "Available" F-Curves.
 def RKS_GEN_available(_ksi, _context, ks, data):
     # try to get the animation data associated with the closest
     # ID-block to the data (neither of which may exist/be easy to find)

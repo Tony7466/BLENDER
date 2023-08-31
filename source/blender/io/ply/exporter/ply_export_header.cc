@@ -1,11 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup ply
  */
 
 #include "BKE_blender_version.h"
-#include "BKE_customdata.h"
 
 #include "IO_ply.h"
 #include "ply_data.hh"

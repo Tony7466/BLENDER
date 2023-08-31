@@ -1,15 +1,20 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bli
  */
 
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 
+#include "BLI_math_geom.h"
+#include "BLI_math_rotation.h"
 #include "BLI_strict_flags.h"
 
-//******************************* Interpolation *******************************/
+/* -------------------------------------------------------------------- */
+/** \name Interpolation
+ * \{ */
 
 void interp_v2_v2v2(float r[2], const float a[2], const float b[2], const float t)
 {
@@ -132,10 +137,6 @@ void interp_v2_v2v2_slerp_safe(float target[2], const float a[2], const float b[
   }
 }
 
-/* -------------------------------------------------------------------- */
-/** \name Cubic curve interpolation (bezier spline).
- * \{ */
-
 void interp_v2_v2v2v2v2_cubic(float p[2],
                               const float v1[2],
                               const float v2[2],
@@ -154,8 +155,6 @@ void interp_v2_v2v2v2v2_cubic(float p[2],
 
   interp_v2_v2v2(p, r0, r1, u);
 }
-
-/** \} */
 
 void interp_v3_v3v3v3(
     float p[3], const float v1[3], const float v2[3], const float v3[3], const float w[3])
@@ -339,7 +338,11 @@ void flip_v2_v2v2(float v[2], const float v1[2], const float v2[2])
   v[1] = v1[1] + (v1[1] - v2[1]);
 }
 
-/********************************* Comparison ********************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Comparison
+ * \{ */
 
 bool is_finite_v2(const float v[2])
 {
@@ -356,7 +359,11 @@ bool is_finite_v4(const float v[4])
   return (isfinite(v[0]) && isfinite(v[1]) && isfinite(v[2]) && isfinite(v[3]));
 }
 
-/********************************** Angles ***********************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Angles
+ * \{ */
 
 float angle_v3v3v3(const float a[3], const float b[3], const float c[3])
 {
@@ -584,7 +591,11 @@ void angle_poly_v3(float *angles, const float *verts[3], int len)
   }
 }
 
-/********************************* Geometry **********************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Geometry
+ * \{ */
 
 void project_v2_v2v2(float out[2], const float p[2], const float v_proj[2])
 {
@@ -808,7 +819,11 @@ void rotate_v3_v3v3fl(float r[3], const float p[3], const float axis[3], const f
   rotate_normalized_v3_v3v3fl(r, p, axis_n, angle);
 }
 
-/*********************************** Other ***********************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Other
+ * \{ */
 
 void print_v2(const char *str, const float v[2])
 {
@@ -958,7 +973,11 @@ void axis_sort_v3(const float axis_values[3], int r_axis_order[3])
 #undef SWAP_AXIS
 }
 
-/***************************** Array Functions *******************************/
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Array Functions
+ * \{ */
 
 MINLINE double sqr_db(double f)
 {
@@ -983,7 +1002,7 @@ double len_squared_vn(const float *array, const int size)
   const float *array_pt = array + (size - 1);
   int i = size;
   while (i--) {
-    d += sqr_db((double)(*(array_pt--)));
+    d += sqr_db((double)*(array_pt--));
   }
   return d;
 }
@@ -1254,6 +1273,8 @@ void copy_vn_fl(float *array_tar, const int size, const float val)
     *(tar--) = val;
   }
 }
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Double precision versions 'db'.

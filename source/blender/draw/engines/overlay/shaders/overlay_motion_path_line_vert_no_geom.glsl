@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma USE_SSBO_VERTEX_FETCH(TriangleList, 6)
 
@@ -118,10 +121,10 @@ void main()
   vec4 finalColor_geom[2];
 
   do_vertex_shader(out_pos0, base_vertex_id, ssPos[0], finalColor_geom[0]);
-  do_vertex_shader(out_pos1, base_vertex_id + 1, ssPos[0], finalColor_geom[0]);
+  do_vertex_shader(out_pos1, base_vertex_id + 1, ssPos[1], finalColor_geom[1]);
 
-  /* Geometry shader alternative -- Output is trianglelist consisting of 6 vertices.
-   * Each vertex shader invocation is one vertex in the output primitive, so outptut
+  /* Geometry shader alternative -- Output is triangle-list consisting of 6 vertices.
+   * Each vertex shader invocation is one vertex in the output primitive, so output
    * required ID. */
   vec2 t;
   vec2 edge_dir = compute_dir(ssPos[0], ssPos[1]) * sizeViewportInv;

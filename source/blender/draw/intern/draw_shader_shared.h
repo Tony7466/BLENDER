@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #ifndef GPU_SHADER
 #  pragma once
@@ -21,6 +23,8 @@ typedef struct DispatchCommand DispatchCommand;
 typedef struct DRWDebugPrintBuffer DRWDebugPrintBuffer;
 typedef struct DRWDebugVert DRWDebugVert;
 typedef struct DRWDebugDrawBuffer DRWDebugDrawBuffer;
+typedef struct FrustumCorners FrustumCorners;
+typedef struct FrustumPlanes FrustumPlanes;
 
 /* __cplusplus is true when compiling with MSL. */
 #  if defined(__cplusplus) && !defined(GPU_SHADER)
@@ -41,6 +45,10 @@ struct ObjectRef;
 typedef enum eObjectInfoFlag eObjectInfoFlag;
 
 #  endif
+#endif
+
+#if defined(__cplusplus) && !defined(GPU_SHADER)
+extern "C" {
 #endif
 
 #define DRW_SHADER_SHARED_H
@@ -91,14 +99,30 @@ uint drw_view_id = 0;
      (DRW_VIEW_LEN > 2)  ? 2 : \
                            1)
 #  define DRW_VIEW_MASK ~(0xFFFFFFFFu << DRW_VIEW_SHIFT)
-#  define DRW_VIEW_FROM_RESOURCE_ID drw_view_id = (drw_ResourceID & DRW_VIEW_MASK)
+#  define DRW_VIEW_FROM_RESOURCE_ID drw_view_id = (uint(drw_ResourceID) & DRW_VIEW_MASK)
 #endif
+
+struct FrustumCorners {
+  float4 corners[8];
+};
+BLI_STATIC_ASSERT_ALIGN(FrustumCorners, 16)
+
+struct FrustumPlanes {
+  /* [0] left
+   * [1] right
+   * [2] bottom
+   * [3] top
+   * [4] near
+   * [5] far */
+  float4 planes[6];
+};
+BLI_STATIC_ASSERT_ALIGN(FrustumPlanes, 16)
 
 struct ViewCullingData {
   /** \note vec3 array padded to vec4. */
   /** Frustum corners. */
-  float4 corners[8];
-  float4 planes[6];
+  FrustumCorners frustum_corners;
+  FrustumPlanes frustum_planes;
   float4 bound_sphere;
 };
 BLI_STATIC_ASSERT_ALIGN(ViewCullingData, 16)
@@ -149,15 +173,15 @@ enum eObjectInfoFlag {
 
 struct ObjectInfos {
 #if defined(GPU_SHADER) && !defined(DRAW_FINALIZE_SHADER)
-  /* TODO Rename to struct member for glsl too. */
+  /* TODO Rename to struct member for GLSL too. */
   float4 orco_mul_bias[2];
   float4 ob_color;
   float4 infos;
 #else
   /** Uploaded as center + size. Converted to mul+bias to local coord. */
-  float3 orco_add;
+  packed_float3 orco_add;
   uint object_attrs_offset;
-  float3 orco_mul;
+  packed_float3 orco_mul;
   uint object_attrs_len;
 
   float4 ob_color;
@@ -332,6 +356,16 @@ struct DRWDebugVert {
 };
 BLI_STATIC_ASSERT_ALIGN(DRWDebugVert, 16)
 
+inline DRWDebugVert debug_vert_make(uint in_pos0, uint in_pos1, uint in_pos2, uint in_vert_color)
+{
+  DRWDebugVert debug_vert;
+  debug_vert.pos0 = in_pos0;
+  debug_vert.pos1 = in_pos1;
+  debug_vert.pos2 = in_pos2;
+  debug_vert.vert_color = in_vert_color;
+  return debug_vert;
+}
+
 /* Take the header (DrawCommand) into account. */
 #define DRW_DEBUG_DRAW_VERT_MAX (64 * 8192) - 1
 
@@ -350,3 +384,7 @@ BLI_STATIC_ASSERT_ALIGN(DRWDebugPrintBuffer, 16)
 #define drw_debug_draw_offset 2
 
 /** \} */
+
+#if defined(__cplusplus) && !defined(GPU_SHADER)
+}
+#endif

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifndef __BLENDER_UTIL_H__
 #define __BLENDER_UTIL_H__
@@ -21,8 +22,12 @@
 
 extern "C" {
 void BKE_image_user_frame_calc(void *ima, void *iuser, int cfra);
-void BKE_image_user_file_path_ex(
-    void *bmain, void *iuser, void *ima, char *path, bool resolve_udim, bool resolve_multiview);
+void BKE_image_user_file_path_ex(void *bmain,
+                                 void *iuser,
+                                 void *ima,
+                                 char *filepath,
+                                 bool resolve_udim,
+                                 bool resolve_multiview);
 unsigned char *BKE_image_get_pixels_for_frame(void *image, int frame, int tile);
 float *BKE_image_get_float_pixels_for_frame(void *image, int frame, int tile);
 }
@@ -84,7 +89,7 @@ static inline BL::Mesh object_to_mesh(BL::BlendData & /*data*/,
 
   if (b_ob_info.is_real_object_data()) {
     if (mesh) {
-      /* Make a copy to split faces if we use autosmooth, otherwise not needed.
+      /* Make a copy to split faces if we use auto-smooth, otherwise not needed.
        * Also in edit mode do we need to make a copy, to ensure data layers like
        * UV are not empty. */
       if (mesh.is_editmode() ||
@@ -114,7 +119,7 @@ static inline BL::Mesh object_to_mesh(BL::BlendData & /*data*/,
   if ((bool)mesh && subdivision_type == Mesh::SUBDIVISION_NONE) {
     if (mesh.use_auto_smooth()) {
       mesh.calc_normals_split();
-      mesh.split_faces(false);
+      mesh.split_faces();
     }
 
     mesh.calc_loop_triangles();
@@ -142,13 +147,14 @@ static inline void colorramp_to_array(BL::ColorRamp &ramp,
                                       array<float> &ramp_alpha,
                                       int size)
 {
-  ramp_color.resize(size);
-  ramp_alpha.resize(size);
+  const int full_size = size + 1;
+  ramp_color.resize(full_size);
+  ramp_alpha.resize(full_size);
 
-  for (int i = 0; i < size; i++) {
+  for (int i = 0; i < full_size; i++) {
     float color[4];
 
-    ramp.evaluate((float)i / (float)(size - 1), color);
+    ramp.evaluate(float(i) / float(size), color);
     ramp_color[i] = make_float3(color[0], color[1], color[2]);
     ramp_alpha[i] = color[3];
   }
@@ -178,9 +184,10 @@ static inline void curvemapping_to_array(BL::CurveMapping &cumap, array<float> &
 {
   cumap.update();
   BL::CurveMap curve = cumap.curves[0];
-  data.resize(size);
-  for (int i = 0; i < size; i++) {
-    float t = (float)i / (float)(size - 1);
+  const int full_size = size + 1;
+  data.resize(full_size);
+  for (int i = 0; i < full_size; i++) {
+    float t = float(i) / float(size);
     data[i] = cumap.evaluate(curve, t);
   }
 }
@@ -199,10 +206,11 @@ static inline void curvemapping_float_to_array(BL::CurveMapping &cumap,
 
   BL::CurveMap map = cumap.curves[0];
 
-  data.resize(size);
+  const int full_size = size + 1;
+  data.resize(full_size);
 
-  for (int i = 0; i < size; i++) {
-    float t = min + (float)i / (float)(size - 1) * range;
+  for (int i = 0; i < full_size; i++) {
+    float t = min + float(i) / float(size) * range;
     data[i] = cumap.evaluate(map, t);
   }
 }
@@ -236,20 +244,21 @@ static inline void curvemapping_color_to_array(BL::CurveMapping &cumap,
   BL::CurveMap mapG = cumap.curves[1];
   BL::CurveMap mapB = cumap.curves[2];
 
-  data.resize(size);
+  const int full_size = size + 1;
+  data.resize(full_size);
 
   if (rgb_curve) {
     BL::CurveMap mapI = cumap.curves[3];
-    for (int i = 0; i < size; i++) {
-      const float t = min_x + (float)i / (float)(size - 1) * range_x;
+    for (int i = 0; i < full_size; i++) {
+      const float t = min_x + float(i) / float(size) * range_x;
       data[i] = make_float3(cumap.evaluate(mapR, cumap.evaluate(mapI, t)),
                             cumap.evaluate(mapG, cumap.evaluate(mapI, t)),
                             cumap.evaluate(mapB, cumap.evaluate(mapI, t)));
     }
   }
   else {
-    for (int i = 0; i < size; i++) {
-      float t = min_x + (float)i / (float)(size - 1) * range_x;
+    for (int i = 0; i < full_size; i++) {
+      float t = min_x + float(i) / float(size) * range_x;
       data[i] = make_float3(
           cumap.evaluate(mapR, t), cumap.evaluate(mapG, t), cumap.evaluate(mapB, t));
     }
@@ -588,7 +597,8 @@ static inline BL::FluidDomainSettings object_fluid_gas_domain_find(BL::Object &b
       BL::FluidModifier b_mmd(b_mod);
 
       if (b_mmd.fluid_type() == BL::FluidModifier::fluid_type_DOMAIN &&
-          b_mmd.domain_settings().domain_type() == BL::FluidDomainSettings::domain_type_GAS) {
+          b_mmd.domain_settings().domain_type() == BL::FluidDomainSettings::domain_type_GAS)
+      {
         return b_mmd.domain_settings();
       }
     }
@@ -637,7 +647,8 @@ static inline Mesh::SubdivisionType object_subdivision_type(BL::Object &b_ob,
     bool enabled = preview ? mod.show_viewport() : mod.show_render();
 
     if (enabled && mod.type() == BL::Modifier::type_SUBSURF &&
-        RNA_boolean_get(&cobj, "use_adaptive_subdivision")) {
+        RNA_boolean_get(&cobj, "use_adaptive_subdivision"))
+    {
       BL::SubsurfModifier subsurf(mod);
 
       if (subsurf.subdivision_type() == BL::SubsurfModifier::subdivision_type_CATMULL_CLARK) {
@@ -702,9 +713,7 @@ static inline bool object_need_motion_attribute(BObjectInfo &b_ob_info, Scene *s
 
 class EdgeMap {
  public:
-  EdgeMap()
-  {
-  }
+  EdgeMap() {}
 
   void clear()
   {

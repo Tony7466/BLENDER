@@ -1,9 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #ifdef WITH_OPENVDB
 #  include <openvdb/openvdb.h>
 #endif
 
+#include "BLI_math_matrix.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_task.hh"
@@ -17,6 +20,7 @@
 #include "BKE_mesh.hh"
 #include "BKE_pointcloud.h"
 #include "BKE_volume.h"
+#include "BKE_volume_openvdb.hh"
 
 #include "DEG_depsgraph_query.h"
 
@@ -30,7 +34,8 @@ static bool use_translate(const float3 rotation, const float3 scale)
     return false;
   }
   if (compare_ff(scale.x, 1.0f, 1e-9f) != 1 || compare_ff(scale.y, 1.0f, 1e-9f) != 1 ||
-      compare_ff(scale.z, 1.0f, 1e-9f) != 1) {
+      compare_ff(scale.z, 1.0f, 1e-9f) != 1)
+  {
     return false;
   }
   return true;
@@ -132,7 +137,7 @@ static void transform_volume(GeoNodeExecParams &params,
     VolumeGrid *volume_grid = BKE_volume_grid_get_for_write(&volume, i);
     float4x4 grid_matrix;
     BKE_volume_grid_transform_matrix(volume_grid, grid_matrix.ptr());
-    grid_matrix *= transform;
+    grid_matrix = transform * grid_matrix;
     const float determinant = math::determinant(grid_matrix);
     if (!BKE_volume_grid_determinant_valid(determinant)) {
       found_too_small_scale = true;
@@ -262,11 +267,11 @@ namespace blender::nodes::node_geo_transform_geometry_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Geometry>(N_("Geometry"));
-  b.add_input<decl::Vector>(N_("Translation")).subtype(PROP_TRANSLATION);
-  b.add_input<decl::Vector>(N_("Rotation")).subtype(PROP_EULER);
-  b.add_input<decl::Vector>(N_("Scale")).default_value({1, 1, 1}).subtype(PROP_XYZ);
-  b.add_output<decl::Geometry>(N_("Geometry")).propagate_all();
+  b.add_input<decl::Geometry>("Geometry");
+  b.add_input<decl::Vector>("Translation").subtype(PROP_TRANSLATION);
+  b.add_input<decl::Vector>("Rotation").subtype(PROP_EULER);
+  b.add_input<decl::Vector>("Scale").default_value({1, 1, 1}).subtype(PROP_XYZ);
+  b.add_output<decl::Geometry>("Geometry").propagate_all();
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -289,17 +294,17 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   params.set_output("Geometry", std::move(geometry_set));
 }
-}  // namespace blender::nodes::node_geo_transform_geometry_cc
 
-void register_node_type_geo_transform_geometry()
+static void register_node()
 {
-  namespace file_ns = blender::nodes::node_geo_transform_geometry_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_TRANSFORM_GEOMETRY, "Transform Geometry", NODE_CLASS_GEOMETRY);
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(register_node)
+
+}  // namespace blender::nodes::node_geo_transform_geometry_cc

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup shdnodes
@@ -7,8 +8,8 @@
 
 #include "node_shader_util.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 /* **************** BUMP ******************** */
 
@@ -16,24 +17,20 @@ namespace blender::nodes::node_shader_bump_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Float>(N_("Strength"))
+  b.add_input<decl::Float>("Strength")
       .default_value(1.0f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR);
-  b.add_input<decl::Float>(N_("Distance")).default_value(1.0f).min(0.0f).max(1000.0f);
-  b.add_input<decl::Float>(N_("Height"))
-      .default_value(1.0f)
-      .min(-1000.0f)
-      .max(1000.0f)
-      .hide_value();
-  b.add_input<decl::Vector>(N_("Normal")).min(-1.0f).max(1.0f).hide_value();
-  b.add_output<decl::Vector>(N_("Normal"));
+  b.add_input<decl::Float>("Distance").default_value(1.0f).min(0.0f).max(1000.0f);
+  b.add_input<decl::Float>("Height").default_value(1.0f).min(-1000.0f).max(1000.0f).hide_value();
+  b.add_input<decl::Vector>("Normal").min(-1.0f).max(1.0f).hide_value();
+  b.add_output<decl::Vector>("Normal");
 }
 
 static void node_shader_buts_bump(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "invert", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, 0);
+  uiItemR(layout, ptr, "invert", UI_ITEM_R_SPLIT_EMPTY_NAME, nullptr, ICON_NONE);
 }
 
 static int gpu_shader_bump(GPUMaterial *mat,
