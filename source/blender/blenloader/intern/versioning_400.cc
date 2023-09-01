@@ -1007,5 +1007,14 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+
+    if (!DNA_struct_elem_find(fd->filesdna, "SceneEEVEE", "float", "shadow_normal_bias")) {
+      SceneEEVEE default_scene_eevee = *DNA_struct_default_get(SceneEEVEE);
+      LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+        scene->eevee.shadow_ray_count = default_scene_eevee.shadow_ray_count;
+        scene->eevee.shadow_step_count = default_scene_eevee.shadow_step_count;
+        scene->eevee.shadow_normal_bias = default_scene_eevee.shadow_normal_bias;
+      }
+    }
   }
 }

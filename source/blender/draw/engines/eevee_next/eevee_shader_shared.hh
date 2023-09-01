@@ -956,6 +956,17 @@ static inline ShadowTileDataPacked shadow_tile_pack(ShadowTileData tile)
   return data;
 }
 
+struct ShadowSceneData {
+  /* Number of shadow rays to shoot for each light. */
+  int ray_count;
+  /* Number of shadow samples to take for each shadow ray. */
+  int step_count;
+  /* Bias the shading point by using the normal to avoid self intersection. */
+  float normal_bias;
+  int _pad2;
+};
+BLI_STATIC_ASSERT_ALIGN(ShadowSceneData, 16)
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1099,6 +1110,9 @@ struct HiZData {
   float2 uv_scale;
 
   float2 _pad0;
+
+  /* FIXME: Here to avoid taking another UBO slot. */
+  ShadowSceneData shadow;
 };
 BLI_STATIC_ASSERT_ALIGN(HiZData, 16)
 

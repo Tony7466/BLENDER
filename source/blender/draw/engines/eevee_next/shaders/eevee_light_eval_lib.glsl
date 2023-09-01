@@ -43,7 +43,8 @@ void light_eval_ex(ClosureDiffuse diffuse,
 #ifdef SURFEL_LIGHT
     ShadowEvalResult shadow = shadow_eval(light, is_directional, P, Ng, 16, 8);
 #else
-    ShadowEvalResult shadow = shadow_eval(light, is_directional, P, Ng, 3, 7);
+    ShadowEvalResult shadow = shadow_eval(
+        light, is_directional, P, Ng, hiz_buf.shadow.ray_count, hiz_buf.shadow.step_count);
 #endif
 
 #ifdef SSS_TRANSMITTANCE

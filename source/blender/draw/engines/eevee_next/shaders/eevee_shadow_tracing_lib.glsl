@@ -89,7 +89,7 @@ struct ShadowTracingSample {
   ShadowMapTraceResult shadow_map_trace(ShadowRayType ray, int sample_count, float step_offset) \
   { \
     ShadowMapTracingState state = shadow_map_trace_init(sample_count, step_offset); \
-    for (int i = 0; (i <= sample_count) && (state.hit == false); i++) { \
+    for (int i = 0; (i <= sample_count) && (i <= SHADOW_MAX_STEP) && (state.hit == false); i++) { \
       /* Saturate to always cover the shading point position when i == sample_count. */ \
       state.ray_time = square(saturate(float(i) * state.ray_step_mul + state.ray_step_bias)); \
 \
@@ -430,16 +430,19 @@ ShadowEvalResult shadow_eval(
 #  endif
   vec3 random_shadow_3d = utility_tx_fetch(utility_tx, pixel, UTIL_BLUE_NOISE_LAYER).rgb;
   random_shadow_3d += sampling_rng_3D_get(SAMPLING_SHADOW_U);
+  float normal_offset = hiz_buf.shadow.normal_bias;
 #else
   /* Case of surfel light eval. */
   vec3 random_shadow_3d = vec3(0.5);
+  /* TODO(fclem): Parameter on irradiance volumes? */
+  float normal_offset = 0.02;
 #endif
 
   /* Avoid self intersection. */
   P = offset_ray(P, Ng);
   /* The above offset isn't enough in most situation. Still add a bigger bias. */
-  /* TODO(fclem): Scale based on depth and user parameter. */
-  P += Ng * 0.01;
+  /* TODO(fclem): Scale based on depth. */
+  P += Ng * normal_offset;
 
   vec3 lP = is_directional ? light_world_to_local(light, P) :
                              light_world_to_local(light, P - light._position);
@@ -449,7 +452,7 @@ ShadowEvalResult shadow_eval(
   float surface_ray_count = 0.0;
   float subsurface_occluder_depth = 0.0;
   float subsurface_ray_count = 0.0;
-  for (int ray_index = 0; ray_index < ray_count; ray_index++) {
+  for (int ray_index = 0; ray_index < ray_count && ray_index < SHADOW_MAX_RAY; ray_index++) {
     vec2 random_ray_2d = fract(hammersley_2d(ray_index, ray_count) + random_shadow_3d.xy);
 
     /* We only consider rays above the surface for shadowing. This is because the LTC evaluation
@@ -491,7 +494,9 @@ ShadowEvalResult shadow_eval(
   }
   /* Average samples. */
   ShadowEvalResult result;
-  result.surface_light_visibilty = saturate(1.0 - (surface_hit * safe_rcp(surface_ray_count)));
+  result.surface_light_visibilty = (surface_ray_count == 0.0) ?
+                                       1.0 :
+                                       saturate(1.0 - (surface_hit * safe_rcp(surface_ray_count)));
   subsurface_occluder_depth *= safe_rcp(subsurface_ray_count);
   result.subsurface_occluder_distance = shadow_linear_occluder_distance(
       light, is_directional, lP, subsurface_occluder_depth);
