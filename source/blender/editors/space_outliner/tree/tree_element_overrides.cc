@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -25,6 +25,8 @@
 
 #include "tree_element_label.hh"
 #include "tree_element_overrides.hh"
+
+#include <stdexcept>
 
 namespace blender::ed::outliner {
 
@@ -71,7 +73,7 @@ TreeElementOverridesBase::TreeElementOverridesBase(TreeElement &legacy_te, ID &i
   }
 }
 
-StringRefNull TreeElementOverridesBase::getWarning() const
+StringRefNull TreeElementOverridesBase::get_warning() const
 {
   if (id.flag & LIB_LIB_OVERRIDE_RESYNC_LEFTOVER) {
     return TIP_("This override data-block is not needed anymore, but was detected as user-edited");
@@ -180,7 +182,7 @@ TreeElementOverridesProperty::TreeElementOverridesProperty(TreeElement &legacy_t
   legacy_te.name = RNA_property_ui_name(&override_data.override_rna_prop);
 }
 
-StringRefNull TreeElementOverridesProperty::getWarning() const
+StringRefNull TreeElementOverridesProperty::get_warning() const
 {
   if (!is_rna_path_valid) {
     return TIP_(
@@ -228,7 +230,7 @@ TreeElementOverridesPropertyOperation::TreeElementOverridesPropertyOperation(
   }
 }
 
-StringRefNull TreeElementOverridesPropertyOperation::getOverrideOperationLabel() const
+StringRefNull TreeElementOverridesPropertyOperation::get_override_operation_label() const
 {
   switch (operation_->operation) {
     case LIBOVERRIDE_OP_INSERT_AFTER:
@@ -253,7 +255,7 @@ StringRefNull TreeElementOverridesPropertyOperation::getOverrideOperationLabel()
   }
 }
 
-std::optional<BIFIconID> TreeElementOverridesPropertyOperation::getIcon() const
+std::optional<BIFIconID> TreeElementOverridesPropertyOperation::get_icon() const
 {
   if (const std::optional<PointerRNA> col_item_ptr = get_collection_ptr()) {
     return RNA_struct_ui_icon(col_item_ptr->type);
@@ -482,7 +484,7 @@ TreeElement &OverrideRNAPathTreeBuilder::ensure_label_element_for_prop(
                                                false);
     TreeElementLabel *te_label = tree_element_cast<TreeElementLabel>(new_te);
 
-    te_label->setIcon(get_property_icon(ptr, prop));
+    te_label->set_icon(get_property_icon(ptr, prop));
     return new_te;
   });
 }
@@ -503,7 +505,7 @@ TreeElement &OverrideRNAPathTreeBuilder::ensure_label_element_for_ptr(TreeElemen
         TSE_GENERIC_LABEL,
         index++);
     TreeElementLabel *te_label = tree_element_cast<TreeElementLabel>(new_te);
-    te_label->setIcon(RNA_struct_ui_icon(ptr.type));
+    te_label->set_icon(RNA_struct_ui_icon(ptr.type));
 
     MEM_delete(dyn_name);
 

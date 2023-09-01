@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -149,5 +149,14 @@ void serialize_bake_item(const BakeItem &item,
 std::unique_ptr<BakeItem> deserialize_bake_item(const io::serialize::DictionaryValue &io_item,
                                                 const BDataReader &bdata_reader,
                                                 const BDataSharing &bdata_sharing);
+
+void serialize_bake(const BakeState &bake_state,
+                    BDataWriter &bdata_writer,
+                    BDataSharing &bdata_sharing,
+                    std::ostream &r_stream);
+
+std::optional<BakeState> deserialize_bake(std::istream &stream,
+                                          const BDataReader &bdata_reader,
+                                          const BDataSharing &bdata_sharing);
 
 }  // namespace blender::bke

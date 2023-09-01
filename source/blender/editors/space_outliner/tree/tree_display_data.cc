@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -24,7 +24,7 @@ TreeDisplayDataAPI::TreeDisplayDataAPI(SpaceOutliner &space_outliner)
 {
 }
 
-ListBase TreeDisplayDataAPI::buildTree(const TreeSourceData &source_data)
+ListBase TreeDisplayDataAPI::build_tree(const TreeSourceData &source_data)
 {
   ListBase tree = {nullptr};
 

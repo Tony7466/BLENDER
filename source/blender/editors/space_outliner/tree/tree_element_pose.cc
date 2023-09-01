@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -37,10 +37,10 @@ void TreeElementPoseBase::expand(SpaceOutliner &space_outliner) const
     int const_index = 1000; /* ensure unique id for bone constraints */
     int a;
     LISTBASE_FOREACH_INDEX (bPoseChannel *, pchan, &object_.pose->chanbase, a) {
+      PoseChannelElementCreateData pchan_data = {&object_, pchan};
+
       TreeElement *ten = outliner_add_element(
-          &space_outliner, &legacy_te_.subtree, &object_, &legacy_te_, TSE_POSE_CHANNEL, a);
-      ten->name = pchan->name;
-      ten->directdata = pchan;
+          &space_outliner, &legacy_te_.subtree, &pchan_data, &legacy_te_, TSE_POSE_CHANNEL, a);
       pchan->temp = (void *)ten;
 
       if (!BLI_listbase_is_empty(&pchan->constraints)) {
@@ -51,7 +51,7 @@ void TreeElementPoseBase::expand(SpaceOutliner &space_outliner) const
 
         LISTBASE_FOREACH (bConstraint *, con, &pchan->constraints) {
           ConstraintElementCreateData con_data = {&object_, con};
-          
+
           outliner_add_element(
               &space_outliner, &tenla1->subtree, &con_data, tenla1, TSE_CONSTRAINT, const_index);
           /* possible add all other types links? */
@@ -76,6 +76,18 @@ void TreeElementPoseBase::expand(SpaceOutliner &space_outliner) const
       ten = nten;
     }
   }
+}
+
+/* -------------------------------------------------------------------- */
+
+TreeElementPoseChannel::TreeElementPoseChannel(TreeElement &legacy_te,
+                                               Object & /* object */,
+                                               bPoseChannel &pchan)
+    : AbstractTreeElement(legacy_te), /* object_(object), */ pchan_(pchan)
+{
+  BLI_assert(legacy_te.store_elem->type == TSE_POSE_CHANNEL);
+  legacy_te.name = pchan_.name;
+  legacy_te.directdata = &pchan_;
 }
 
 }  // namespace blender::ed::outliner

@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2019-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 vec3 tint_from_color(vec3 color)
 {
@@ -52,113 +55,115 @@ void node_bsdf_principled(vec4 base_color,
 {
   /* Match cycles. */
   metallic = clamp(metallic, 0.0, 1.0);
-  transmission = clamp(transmission, 0.0, 1.0) * (1.0 - metallic);
-  float diffuse_weight = (1.0 - transmission) * (1.0 - metallic);
-  float specular_weight = (1.0 - transmission);
-  float coat_weight = max(coat, 0.0);
-  specular = max(0.0, specular);
+  transmission = clamp(transmission, 0.0, 1.0);
+  coat = max(coat, 0.0);
+  coat_ior = max(coat_ior, 1.0);
 
   N = safe_normalize(N);
   CN = safe_normalize(CN);
   vec3 V = cameraVec(g_data.P);
   float NV = dot(N, V);
 
-  float fresnel = (do_multiscatter != 0.0) ? btdf_lut(NV, roughness, ior).y : F_eta(ior, NV);
-  float glass_reflection_weight = fresnel * transmission;
-  float glass_transmission_weight = (1.0 - fresnel) * transmission;
-
-  vec3 base_color_tint = tint_from_color(base_color.rgb);
-
-  if (coat == 0.0) {
-    coat_tint.rgb = vec3(1.0);
-  }
-  else if (!all(equal(coat_tint.rgb, vec3(1.0)))) {
-    float coat_neta = 1.0 / max(coat_ior, 1.0);
-    float NV = dot(V, CN);
-    float NT = fast_sqrt(1.0 - coat_neta * coat_neta * (1 - NV * NV));
-    coat_tint.rgb = pow(coat_tint.rgb, vec3(coat / NT));
-  }
-
-  vec2 split_sum = brdf_lut(NV, roughness);
-
   ClosureTransparency transparency_data;
   transparency_data.weight = weight;
   transparency_data.transmittance = vec3(1.0 - alpha);
   transparency_data.holdout = 0.0;
-
   weight *= alpha;
 
-  ClosureEmission emission_data;
-  emission_data.weight = weight;
-  emission_data.emission = emission.rgb * emission_strength;
-
-  /* Diffuse. */
+  /* First layer: Sheen */
+  /* TODO: Maybe sheen should be specular. */
+  vec3 sheen_color = sheen * sheen_tint.rgb * principled_sheen(NV, sheen_roughness);
   ClosureDiffuse diffuse_data;
-  diffuse_data.weight = diffuse_weight * weight;
-  diffuse_data.color = coat_tint.rgb * mix(base_color.rgb, subsurface_color.rgb, subsurface);
-  /* Sheen Coarse approximation: We reuse the diffuse radiance and just scale it. */
-  diffuse_data.color += sheen * sheen_tint.rgb * principled_sheen(NV, sheen_roughness);
+  diffuse_data.color = weight * sheen_color;
   diffuse_data.N = N;
-  diffuse_data.sss_radius = subsurface_radius * subsurface;
-  diffuse_data.sss_id = uint(do_sss);
+  /* Attenuate lower layers */
+  weight *= (1.0 - max_v3(sheen_color));
 
-  /* NOTE(@fclem): We need to blend the reflection color but also need to avoid applying the
-   * weights so we compute the ratio. */
-  float reflection_weight = specular_weight + glass_reflection_weight;
-  float reflection_weight_inv = safe_rcp(reflection_weight);
-  specular_weight *= reflection_weight_inv;
-  glass_reflection_weight *= reflection_weight_inv;
-
-  /* Reflection. */
-  ClosureReflection reflection_data;
-  reflection_data.weight = reflection_weight * weight;
-  reflection_data.N = N;
-  reflection_data.roughness = roughness;
-  if (true) {
-    vec3 dielectric_f0_color = mix(vec3(1.0), base_color_tint, specular_tint);
-    vec3 metallic_f0_color = base_color.rgb;
-    vec3 f0 = mix((0.08 * specular) * dielectric_f0_color, metallic_f0_color, metallic);
-    /* Cycles does this blending using the microfacet fresnel factor. However, our fresnel
-     * is already baked inside the split sum LUT. We approximate by changing the f90 color
-     * directly in a non linear fashion. */
-    vec3 f90 = mix(f0, vec3(1.0), fast_sqrt(specular));
-
-    vec3 reflection_brdf = (do_multiscatter != 0.0) ? F_brdf_multi_scatter(f0, f90, split_sum) :
-                                                      F_brdf_single_scatter(f0, f90, split_sum);
-    reflection_data.color = coat_tint.rgb * reflection_brdf * specular_weight;
-  }
-  if (true) {
-    /* Poor approximation since we baked the LUT using a fixed IOR. */
-    vec3 f0 = mix(vec3(1.0), base_color.rgb, specular_tint);
-    vec3 f90 = vec3(1.0);
-
-    vec3 glass_brdf = (do_multiscatter != 0.0) ? F_brdf_multi_scatter(f0, f90, split_sum) :
-                                                 F_brdf_single_scatter(f0, f90, split_sum);
-
-    /* Avoid 3 glossy evaluation. Use the same closure for glass reflection. */
-    reflection_data.color += coat_tint.rgb * glass_brdf * glass_reflection_weight;
-  }
-
+  /* Second layer: Coat */
   ClosureReflection coat_data;
-  coat_data.weight = coat_weight * weight;
   coat_data.N = CN;
   coat_data.roughness = coat_roughness;
-  if (true) {
-    float NV = dot(coat_data.N, V);
-    vec2 split_sum = brdf_lut(NV, coat_data.roughness);
-    vec3 brdf = F_brdf_single_scatter(vec3(0.04), vec3(1.0), split_sum);
-    coat_data.color = brdf;
+  float coat_NV = dot(coat_data.N, V);
+  float reflectance = btdf_lut(coat_NV, coat_data.roughness, coat_ior, 0.0).y;
+  coat_data.weight = weight * coat * reflectance;
+  coat_data.color = vec3(1.0);
+  /* Attenuate lower layers */
+  weight *= (1.0 - reflectance * coat);
+
+  if (coat == 0) {
+    coat_tint.rgb = vec3(1.0);
+  }
+  else if (!all(equal(coat_tint.rgb, vec3(1.0)))) {
+    float coat_neta = 1.0 / coat_ior;
+    float NT = fast_sqrt(1.0 - coat_neta * coat_neta * (1 - NV * NV));
+    /* Tint lower layers. */
+    coat_tint.rgb = pow(coat_tint.rgb, vec3(coat / NT));
   }
 
-  /* Refraction. */
-  ClosureRefraction refraction_data;
-  refraction_data.weight = glass_transmission_weight * weight;
-  float btdf = (do_multiscatter != 0.0) ? 1.0 : btdf_lut(NV, roughness, ior).x;
+  /* Attenuated by sheen and coat. */
+  ClosureEmission emission_data;
+  emission_data.weight = weight;
+  emission_data.emission = coat_tint.rgb * emission.rgb * emission_strength;
 
-  refraction_data.color = coat_tint.rgb * base_color.rgb * btdf;
-  refraction_data.N = N;
-  refraction_data.roughness = roughness;
-  refraction_data.ior = ior;
+  /* Metallic component */
+  ClosureReflection reflection_data;
+  reflection_data.N = N;
+  reflection_data.roughness = roughness;
+  vec2 split_sum = brdf_lut(NV, roughness);
+  if (true) {
+    vec3 f0 = base_color.rgb;
+    vec3 f90 = vec3(1.0);
+    vec3 metallic_brdf = (do_multiscatter != 0.0) ? F_brdf_multi_scatter(f0, f90, split_sum) :
+                                                    F_brdf_single_scatter(f0, f90, split_sum);
+    reflection_data.color = weight * metallic * metallic_brdf;
+    /* Attenuate lower layers */
+    weight *= (1.0 - metallic);
+  }
+
+  /* Transmission component */
+  ClosureRefraction refraction_data;
+  /* TODO: change `specular_tint` to rgb. */
+  vec3 reflection_tint = mix(vec3(1.0), base_color.rgb, specular_tint);
+  if (true) {
+    vec2 bsdf = btdf_lut(NV, roughness, ior, do_multiscatter);
+
+    reflection_data.color += weight * transmission * bsdf.y * reflection_tint;
+
+    refraction_data.weight = weight * transmission * bsdf.x;
+    refraction_data.color = base_color.rgb * coat_tint.rgb;
+    refraction_data.N = N;
+    refraction_data.roughness = roughness;
+    refraction_data.ior = ior;
+    /* Attenuate lower layers */
+    weight *= (1.0 - transmission);
+  }
+
+  /* Specular component */
+  if (true) {
+    vec3 f0 = F0_from_ior(ior) * 2.0 * specular * reflection_tint;
+    vec3 f90 = vec3(1.0);
+    vec3 specular_brdf = (do_multiscatter != 0.0) ? F_brdf_multi_scatter(f0, f90, split_sum) :
+                                                    F_brdf_single_scatter(f0, f90, split_sum);
+    reflection_data.color += weight * specular_brdf;
+    /* Attenuate lower layers */
+    weight *= (1.0 - max_v3(specular_brdf));
+  }
+
+  /* Diffuse component */
+  if (true) {
+    vec3 diffuse_color = mix(base_color.rgb, subsurface_color.rgb, subsurface);
+    diffuse_data.sss_radius = subsurface_radius * subsurface;
+    diffuse_data.sss_id = uint(do_sss);
+    diffuse_data.color += weight * diffuse_color * coat_tint.rgb;
+  }
+
+  /* Adjust the weight of picking the closure. */
+  reflection_data.color *= coat_tint.rgb;
+  reflection_data.weight = avg(reflection_data.color);
+  reflection_data.color *= safe_rcp(reflection_data.weight);
+
+  diffuse_data.weight = avg(diffuse_data.color);
+  diffuse_data.color *= safe_rcp(diffuse_data.weight);
 
   /* Ref. #98190: Defines are optimizations for old compilers.
    * Might become unnecessary with EEVEE-Next. */

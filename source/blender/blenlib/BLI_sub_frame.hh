@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -84,11 +84,6 @@ struct SubFrame {
   friend bool operator>=(const SubFrame &a, const SubFrame &b)
   {
     return a.frame_ >= b.frame_ || (a.frame_ == b.frame_ && a.subframe_ >= b.subframe_);
-  }
-
-  friend std::ostream &operator<<(std::ostream &stream, const SubFrame &a)
-  {
-    return stream << float(a);
   }
 };
 

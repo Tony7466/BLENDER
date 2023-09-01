@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2011-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2011-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -13,6 +13,7 @@ if "bpy" in locals():
 _modules = [
     "asset_shelf",
     "node_add_menu",
+    "node_add_menu_compositor",
     "node_add_menu_geometry",
     "properties_animviz",
     "properties_constraint",

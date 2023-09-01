@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -104,6 +104,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .default_value(0.03f)
       .min(0.0f)
       .max(1.0f)
+
       .subtype(PROP_FACTOR)
       .description("The roughness of the coat layer");
 #define SOCK_COAT_ROUGHNESS_ID 16
@@ -123,7 +124,7 @@ static void node_declare(NodeDeclarationBuilder &b)
           "medium "
           "(depending on the Coat IOR)");
 #define SOCK_COAT_TINT_ID 18
-  b.add_input<decl::Float>("IOR").default_value(1.45f).min(0.0f).max(1000.0f);
+  b.add_input<decl::Float>("IOR").default_value(1.45f).min(1.0f).max(1000.0f);
 #define SOCK_IOR_ID 19
   b.add_input<decl::Float>("Transmission")
       .default_value(0.0f)
@@ -157,7 +158,7 @@ static void node_shader_buts_principled(uiLayout *layout, bContext * /*C*/, Poin
 
 static void node_shader_init_principled(bNodeTree * /*ntree*/, bNode *node)
 {
-  node->custom1 = SHD_GLOSSY_GGX;
+  node->custom1 = SHD_GLOSSY_MULTI_GGX;
   node->custom2 = SHD_SUBSURFACE_RANDOM_WALK;
 }
 
@@ -190,11 +191,12 @@ static int node_shader_gpu_bsdf_principled(GPUMaterial *mat,
   }
 #endif
 
-  bool use_diffuse = socket_not_one(SOCK_METALLIC_ID) && socket_not_one(SOCK_TRANSMISSION_ID);
+  bool use_diffuse = socket_not_zero(SOCK_SHEEN_ID) ||
+                     (socket_not_one(SOCK_METALLIC_ID) && socket_not_one(SOCK_TRANSMISSION_ID));
   bool use_subsurf = socket_not_zero(SOCK_SUBSURFACE_ID) && use_diffuse;
   bool use_refract = socket_not_one(SOCK_METALLIC_ID) && socket_not_zero(SOCK_TRANSMISSION_ID);
   bool use_transparency = socket_not_one(SOCK_ALPHA_ID);
-  bool use_clear = socket_not_zero(SOCK_COAT_ID);
+  bool use_coat = socket_not_zero(SOCK_COAT_ID);
 
   eGPUMaterialFlag flag = GPU_MATFLAG_GLOSSY;
   if (use_diffuse) {
@@ -209,22 +211,22 @@ static int node_shader_gpu_bsdf_principled(GPUMaterial *mat,
   if (use_transparency) {
     flag |= GPU_MATFLAG_TRANSPARENT;
   }
-  if (use_clear) {
+  if (use_coat) {
     flag |= GPU_MATFLAG_COAT;
   }
 
   /* Ref. #98190: Defines are optimizations for old compilers.
    * Might become unnecessary with EEVEE-Next. */
-  if (use_diffuse == false && use_refract == false && use_clear == true) {
+  if (use_diffuse == false && use_refract == false && use_coat == true) {
     flag |= GPU_MATFLAG_PRINCIPLED_COAT;
   }
-  else if (use_diffuse == false && use_refract == false && use_clear == false) {
+  else if (use_diffuse == false && use_refract == false && use_coat == false) {
     flag |= GPU_MATFLAG_PRINCIPLED_METALLIC;
   }
-  else if (use_diffuse == true && use_refract == false && use_clear == false) {
+  else if (use_diffuse == true && use_refract == false && use_coat == false) {
     flag |= GPU_MATFLAG_PRINCIPLED_DIELECTRIC;
   }
-  else if (use_diffuse == false && use_refract == true && use_clear == false) {
+  else if (use_diffuse == false && use_refract == true && use_coat == false) {
     flag |= GPU_MATFLAG_PRINCIPLED_GLASS;
   }
   else {
@@ -242,7 +244,7 @@ static int node_shader_gpu_bsdf_principled(GPUMaterial *mat,
   float use_multi_scatter = (node->custom1 == SHD_GLOSSY_MULTI_GGX) ? 1.0f : 0.0f;
   float use_sss = (use_subsurf) ? 1.0f : 0.0f;
   float use_diffuse_f = (use_diffuse) ? 1.0f : 0.0f;
-  float use_clear_f = (use_clear) ? 1.0f : 0.0f;
+  float use_coat_f = (use_coat) ? 1.0f : 0.0f;
   float use_refract_f = (use_refract) ? 1.0f : 0.0f;
 
   GPU_material_flag_set(mat, flag);
@@ -253,7 +255,7 @@ static int node_shader_gpu_bsdf_principled(GPUMaterial *mat,
                         in,
                         out,
                         GPU_constant(&use_diffuse_f),
-                        GPU_constant(&use_clear_f),
+                        GPU_constant(&use_coat_f),
                         GPU_constant(&use_refract_f),
                         GPU_constant(&use_multi_scatter),
                         GPU_uniform(&use_sss));

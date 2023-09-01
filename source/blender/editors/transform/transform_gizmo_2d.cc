@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -395,6 +395,9 @@ static bool gizmo2d_calc_transform_pivot(const bContext *C, float r_pivot[2])
       SEQ_filter_selected_strips(strips);
       has_select = SEQ_collection_len(strips) != 0;
       SEQ_collection_free(strips);
+    }
+    else if (pivot_point == V3D_AROUND_CENTER_BOUNDS) {
+      has_select = gizmo2d_calc_bounds(C, r_pivot, nullptr, nullptr);
     }
     else {
       has_select = seq_get_strip_pivot_median(scene, r_pivot);
