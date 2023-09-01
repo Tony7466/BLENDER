@@ -14,7 +14,6 @@
 
 #include "DNA_brush_types.h"
 #include "DNA_camera_types.h"
-#include "DNA_defaults.h"
 #include "DNA_light_types.h"
 #include "DNA_lightprobe_types.h"
 #include "DNA_modifier_types.h"
@@ -993,50 +992,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       BLI_freelistN(&ntree->outputs_legacy);
     }
     FOREACH_NODETREE_END;
-  }
-
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 21)) {
-    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-      ToolSettings *ts = scene->toolsettings;
-      auto versioning_snap_to = [](short snap_to_old, bool is_node = false) {
-        short snap_to_new = SCE_SNAP_TO_NONE;
-        if (snap_to_old & (1 << 0)) {
-          snap_to_new |= is_node ? SCE_SNAP_TO_NODE_X : SCE_SNAP_TO_VERTEX;
-        }
-        if (snap_to_old & (1 << 1)) {
-          snap_to_new |= is_node ? SCE_SNAP_TO_NODE_Y : SCE_SNAP_TO_EDGE;
-        }
-        if (snap_to_old & (1 << 2)) {
-          snap_to_new |= SCE_SNAP_TO_FACE;
-        }
-        if (snap_to_old & (1 << 3)) {
-          snap_to_new |= SCE_SNAP_TO_VOLUME;
-        }
-        if (snap_to_old & (1 << 4)) {
-          snap_to_new |= SCE_SNAP_TO_EDGE_MIDPOINT;
-        }
-        if (snap_to_old & (1 << 5)) {
-          snap_to_new |= SCE_SNAP_TO_EDGE_PERPENDICULAR;
-        }
-        if (snap_to_old & (1 << 6)) {
-          snap_to_new |= SCE_SNAP_TO_INCREMENT;
-        }
-        if (snap_to_old & (1 << 7)) {
-          snap_to_new |= SCE_SNAP_TO_GRID;
-        }
-        if (snap_to_old & (1 << 8)) {
-          snap_to_new |= SCE_SNAP_INDIVIDUAL_PROJECT;
-        }
-        if (snap_to_old & (1 << 9)) {
-          snap_to_new |= SCE_SNAP_INDIVIDUAL_NEAREST;
-        }
-        return snap_to_new;
-      };
-
-      ts->snap_mode = versioning_snap_to(ts->snap_mode);
-      ts->snap_uv_mode = versioning_snap_to(ts->snap_uv_mode);
-      ts->snap_node_mode = versioning_snap_to(ts->snap_node_mode, true);
-    }
   }
 
   /**

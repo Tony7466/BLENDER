@@ -155,12 +155,6 @@ static const EnumPropertyItem rna_enum_preference_gpu_backend_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-static const EnumPropertyItem snap_cursor_stype_items[] = {
-    {0, "MINIMALIST", 0, "Minimalist", "Draw geometric and minimalistic snap symbols"},
-    {1, "INDUSTRY", 0, "Industry Standard", "Draw snap symbols based on industry standard"},
-    {0, nullptr, 0, nullptr, nullptr},
-};
-
 #ifdef RNA_RUNTIME
 
 #  include "BLI_math_vector.h"
@@ -7036,10 +7030,6 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
       "These paths are exposed as add-ons, package management is not yet integrated");
   RNA_def_property_boolean_funcs(
       prop, nullptr, "rna_PreferencesExperimental_use_extension_repos_set");
-
-  prop = RNA_def_property(srna, "snap_cursor_style", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, snap_cursor_stype_items);
-  RNA_def_property_ui_text(prop, "Snap Cursor Style", "Snap symbols drawing style");
 }
 
 static void rna_def_userdef_addon_collection(BlenderRNA *brna, PropertyRNA *cprop)

@@ -374,79 +374,7 @@ static void cursor_box_draw(const float dimensions[3], uchar color[4])
   GPU_blend(GPU_BLEND_NONE);
 }
 
-static void cursor_point_draw__industry(
-    uint attr_pos, const float loc[3], const float size, eSnapMode snap_type, const uchar color[4])
-{
-  immUniformColor4ubv(color);
-
-  GPU_matrix_push();
-
-  float model_view_new[4][4];
-  GPU_matrix_model_view_get(model_view_new);
-  translate_m4(model_view_new, UNPACK3(loc));
-  copy_v3_fl3(model_view_new[0], size, 0.0f, 0.0f);
-  copy_v3_fl3(model_view_new[1], 0.0f, size, 0.0f);
-  copy_v3_fl3(model_view_new[2], 0.0f, 0.0f, size);
-  GPU_matrix_set(model_view_new);
-
-  float size_b = 1.0f;
-  switch (snap_type) {
-    case SCE_SNAP_TO_POINT:
-      imm_draw_circle_wire_3d(attr_pos, 0.0f, 0.0f, 1.0f, 24);
-
-      immBegin(GPU_PRIM_LINES, 4);
-      immVertex3f(attr_pos, -size_b, -size_b, 0.0f);
-      immVertex3f(attr_pos, +size_b, +size_b, 0.0f);
-      immVertex3f(attr_pos, -size_b, +size_b, 0.0f);
-      immVertex3f(attr_pos, +size_b, -size_b, 0.0f);
-      immEnd();
-      break;
-    case SCE_SNAP_TO_EDGE_ENDPOINT:
-      immBegin(GPU_PRIM_LINE_LOOP, 4);
-      immVertex3f(attr_pos, -size_b, -size_b, 0.0f);
-      immVertex3f(attr_pos, -size_b, +size_b, 0.0f);
-      immVertex3f(attr_pos, +size_b, +size_b, 0.0f);
-      immVertex3f(attr_pos, +size_b, -size_b, 0.0f);
-      immEnd();
-      break;
-    case SCE_SNAP_TO_EDGE_MIDPOINT:
-      immBegin(GPU_PRIM_LINE_LOOP, 3);
-      immVertex3f(attr_pos, -size_b, -size_b, 0.0f);
-      immVertex3f(attr_pos, 0.0f, 0.866f * size_b, 0.0f);
-      immVertex3f(attr_pos, +size_b, -size_b, 0.0f);
-      immEnd();
-      break;
-    case SCE_SNAP_TO_EDGE_PERPENDICULAR:
-      immBegin(GPU_PRIM_LINE_STRIP, 3);
-      immVertex3f(attr_pos, -size_b, +size_b, 0.0f);
-      immVertex3f(attr_pos, -size_b, -size_b, 0.0f);
-      immVertex3f(attr_pos, +size_b, -size_b, 0.0f);
-      immEnd();
-
-      immBegin(GPU_PRIM_LINE_STRIP, 3);
-      immVertex3f(attr_pos, -size_b, 0.0f, 0.0f);
-      immVertex3f(attr_pos, 0.0f, 0.0f, 0.0f);
-      immVertex3f(attr_pos, 0.0f, -size_b, 0.0f);
-      immEnd();
-      break;
-    case SCE_SNAP_TO_EDGE:
-      immBegin(GPU_PRIM_LINE_LOOP, 4);
-      immVertex3f(attr_pos, -size_b, -size_b, 0.0f);
-      immVertex3f(attr_pos, +size_b, +size_b, 0.0f);
-      immVertex3f(attr_pos, -size_b, +size_b, 0.0f);
-      immVertex3f(attr_pos, +size_b, -size_b, 0.0f);
-      immEnd();
-      break;
-    case SCE_SNAP_TO_FACE:
-    default:
-      imm_draw_circle_wire_3d(attr_pos, 0.0f, 0.0f, 1.0f, 24);
-      break;
-  }
-
-  GPU_matrix_pop();
-}
-
-static void cursor_point_draw__minimalist(uint attr_pos,
+static void cursor_point_draw(uint attr_pos,
                               const float loc[3],
                               const float nor[3],
                               const float size,
@@ -539,30 +467,13 @@ static void cursor_point_draw__minimalist(uint attr_pos,
   GPU_matrix_pop();
 }
 
-static void cursor_point_draw(uint attr_pos,
-                                          const float loc[3],
-                                          const float nor[3],
-                                          const float size,
-                                          eSnapMode snap_type,
-                                          const uchar color[4],
-                                          bool is_persp)
-{
-  if (U.experimental.snap_cursor_style == 0) {
-    return cursor_point_draw__minimalist(attr_pos, loc, nor, size, snap_type, color, is_persp);
-  }
-  else {
-    return cursor_point_draw__industry(attr_pos, loc, size, snap_type, color);
-  }
-}
-
 void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
                                      const float source_loc[3],
                                      const float target_loc[3],
                                      const float target_normal[3],
-                                     const eSnapMode source_type,
-                                     const eSnapMode target_type,
                                      const uchar source_color[4],
-                                     const uchar target_color[4])
+                                     const uchar target_color[4],
+                                     const eSnapMode target_type)
 {
   if (!source_loc && !target_loc) {
     return;
@@ -593,7 +504,7 @@ void ED_view3d_cursor_snap_draw_util(RegionView3D *rv3d,
                       source_loc,
                       target_normal,
                       radius * ED_view3d_pixel_size(rv3d, source_loc),
-                      U.experimental.snap_cursor_style == 0 ? SCE_SNAP_TO_NONE : source_type,
+                      SCE_SNAP_TO_NONE,
                       source_color,
                       rv3d->is_persp);
 
@@ -770,7 +681,7 @@ static void v3d_cursor_snap_update(V3DSnapCursorState *state,
     if (snap_data->is_snap_invert != !(tool_settings->snap_flag & SCE_SNAP)) {
       snap_data->is_enabled = false;
       if (!calc_plane_omat) {
-        snap_data->type_target = SCE_SNAP_TO_NONE;
+        snap_data->snap_elem = SCE_SNAP_TO_NONE;
         return;
       }
       snap_elements = SCE_SNAP_TO_NONE;
@@ -941,7 +852,7 @@ static void v3d_cursor_snap_update(V3DSnapCursorState *state,
     snap_elem_index[2] = index;
   }
 
-  snap_data->type_target = snap_elem;
+  snap_data->snap_elem = snap_elem;
   copy_v3_v3(snap_data->loc, co);
   copy_v3_v3(snap_data->nor, no);
   copy_m4_m4(snap_data->obmat, obmat);
@@ -1019,7 +930,7 @@ static void v3d_cursor_snap_draw_fn(bContext *C, int x, int y, void * /*customda
   }
 
   const bool draw_plane = state->draw_plane || state->draw_box;
-  if (snap_data->type_target == SCE_SNAP_TO_NONE && !draw_plane) {
+  if (snap_data->snap_elem == SCE_SNAP_TO_NONE && !draw_plane) {
     return;
   }
 
@@ -1037,8 +948,8 @@ static void v3d_cursor_snap_draw_fn(bContext *C, int x, int y, void * /*customda
     v3d_cursor_plane_draw(rv3d, scene->toolsettings->plane_axis, matrix);
   }
 
-  if (snap_data->type_target != SCE_SNAP_TO_NONE && (state->draw_point || state->draw_box)) {
-    const float *source_loc = (snap_data->type_target & SCE_SNAP_TO_EDGE_PERPENDICULAR) ?
+  if (snap_data->snap_elem != SCE_SNAP_TO_NONE && (state->draw_point || state->draw_box)) {
+    const float *source_loc = (snap_data->snap_elem & SCE_SNAP_TO_EDGE_PERPENDICULAR) ?
                                   state->prevpoint :
                                   nullptr;
 
@@ -1046,10 +957,9 @@ static void v3d_cursor_snap_draw_fn(bContext *C, int x, int y, void * /*customda
                                     source_loc,
                                     snap_data->loc,
                                     snap_data->nor,
-                                    snap_data->type_source,
-                                    snap_data->type_target,
                                     state->source_color,
-                                    state->target_color);
+                                    state->target_color,
+                                    snap_data->snap_elem);
   }
 
   if (state->draw_box) {
