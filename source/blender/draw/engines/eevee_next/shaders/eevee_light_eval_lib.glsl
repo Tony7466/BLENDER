@@ -40,14 +40,10 @@ void light_eval_ex(ClosureDiffuse diffuse,
   float visibility = is_directional ? 1.0 : light_attenuation(light, L, dist);
 
   if (light.tilemap_index != LIGHT_NO_SHADOW && (visibility > 0.0)) {
-    vec3 lL = is_directional ? light_world_to_local(light, P) :
-                               light_world_to_local(light, -L) * dist;
-    vec3 lNg = light_world_to_local(light, Ng);
-
 #ifdef SURFEL_LIGHT
-    ShadowEvalResult shadow = shadow_eval(light, is_directional, lL, lNg, 16, 8);
+    ShadowEvalResult shadow = shadow_eval(light, is_directional, P, Ng, 16, 8);
 #else
-    ShadowEvalResult shadow = shadow_eval(light, is_directional, lL, lNg, 1, 8);
+    ShadowEvalResult shadow = shadow_eval(light, is_directional, P, Ng, 3, 7);
 #endif
 
 #ifdef SSS_TRANSMITTANCE

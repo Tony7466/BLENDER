@@ -37,7 +37,6 @@ float shadow_read_depth_at_tilemap_uv(int tilemap_index, vec2 tilemap_uv)
 
 /* ---------------------------------------------------------------------- */
 /** \name Shadow Map Tracing loop
- *
  * \{ */
 
 #define SHADOW_TRACING_INVALID_HISTORY -999.0
@@ -439,12 +438,8 @@ struct ShadowEvalResult {
 /**
  * Evaluate shadowing by casting rays toward the light direction.
  */
-ShadowEvalResult shadow_eval(LightData light,
-                             const bool is_directional,
-                             vec3 lP,
-                             vec3 lNg,
-                             int ray_count,
-                             int ray_step_count)
+ShadowEvalResult shadow_eval(
+    LightData light, const bool is_directional, vec3 P, vec3 Ng, int ray_count, int ray_step_count)
 {
 #ifdef EEVEE_SAMPLING_DATA
 #  ifdef GPU_FRAGMENT_SHADER
@@ -459,16 +454,22 @@ ShadowEvalResult shadow_eval(LightData light,
   vec3 random_shadow_3d = vec3(0.5);
 #endif
 
+  /* Avoid self intersection. */
+  P = offset_ray(P, Ng);
+  /* The above offset isn't enough in most situation. Still add a bigger bias. */
+  /* TODO(fclem): Scale based on depth and user parameter. */
+  P += Ng * 0.01;
+
+  vec3 lP = is_directional ? light_world_to_local(light, P) :
+                             light_world_to_local(light, P - light._position);
+  vec3 lNg = light_world_to_local(light, Ng);
+
   float surface_hit = 0.0;
   float surface_ray_count = 0.0;
   float subsurface_occluder_depth = 0.0;
   float subsurface_ray_count = 0.0;
   for (int ray_index = 0; ray_index < ray_count; ray_index++) {
     vec2 random_ray_2d = fract(hammersley_2d(ray_index, ray_count) + random_shadow_3d.xy);
-
-    /* TODO(fclem): Screen space trace of a few pixels. Allows to leave the surface. Can assume
-     * hard shadow for it as it is only required for a few pixels [1..3] and do it outside of this
-     * loop. */
 
     /* We only consider rays above the surface for shadowing. This is because the LTC evaluation
      * already accounts for the clipping of the light shape. */
