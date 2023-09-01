@@ -189,8 +189,8 @@ const bTheme U_theme_default = {
     },
     .wcol_list_item = {
       .outline = RGBA(0x2d2d2dff),
-      .inner = RGBA(0x2d2d2d00),
-      .inner_sel = RGBA(0x484a4fff),
+      .inner = RGBA(0xffffff00),
+      .inner_sel = RGBA(0x4772b3ff),
       .item = RGBA(0x4772b3ff),
       .text = RGBA(0xccccccff),
       .text_sel = RGBA(0xffffffff),
