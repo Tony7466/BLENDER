@@ -4301,6 +4301,10 @@ static int channels_bake_exec(bContext *C, wmOperator *op)
   }
 
   Scene *scene = CTX_data_scene(C);
+
+  /* The range will default to the scene or preview range, but only if it hasn't been set before.
+   * If a range is set here, the redo panel wouldn't work properly because the range would
+   * constantly be overridden. */
   blender::int2 frame_range;
   RNA_int_get_array(op->ptr, "range", frame_range);
   const float step = RNA_float_get(op->ptr, "step");
