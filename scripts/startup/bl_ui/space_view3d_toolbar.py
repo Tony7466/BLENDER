@@ -460,7 +460,8 @@ class VIEW3D_MT_tools_projectpaint_uvlayer(Menu):
 
 
 class SelectPaintSlotHelper:
-    bl_category = "Tool"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
 
     canvas_source_attr_name = "canvas_source"
     canvas_image_attr_name = "canvas_image"
@@ -554,7 +555,6 @@ class SelectPaintSlotHelper:
 
 
 class VIEW3D_PT_slots_projectpaint(SelectPaintSlotHelper, View3DPanel, Panel):
-    bl_category = "Tool"
     bl_label = "Texture Slots"
 
     canvas_source_attr_name = "mode"
@@ -588,7 +588,6 @@ class VIEW3D_PT_slots_projectpaint(SelectPaintSlotHelper, View3DPanel, Panel):
 
 
 class VIEW3D_PT_slots_paint_canvas(SelectPaintSlotHelper, View3DPanel, Panel):
-    bl_category = "Tool"
     bl_label = "Canvas"
 
     @classmethod
