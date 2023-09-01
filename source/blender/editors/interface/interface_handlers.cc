@@ -10482,19 +10482,18 @@ static int ui_handle_menu_event(bContext *C,
             if (val == KM_PRESS) {
               /* Determine scroll operation. */
               uiMenuScrollType scrolltype;
-              const bool ui_block_flipped = (block->flag & UI_BLOCK_IS_FLIP) != 0;
 
               if (ELEM(type, EVT_PAGEUPKEY, EVT_HOMEKEY)) {
-                scrolltype = ui_block_flipped ? MENU_SCROLL_TOP : MENU_SCROLL_BOTTOM;
+                scrolltype = MENU_SCROLL_TOP;
               }
               else if (ELEM(type, EVT_PAGEDOWNKEY, EVT_ENDKEY)) {
-                scrolltype = ui_block_flipped ? MENU_SCROLL_BOTTOM : MENU_SCROLL_TOP;
+                scrolltype = MENU_SCROLL_BOTTOM;
               }
               else if (ELEM(type, EVT_UPARROWKEY, WHEELUPMOUSE)) {
-                scrolltype = ui_block_flipped ? MENU_SCROLL_UP : MENU_SCROLL_DOWN;
+                scrolltype = MENU_SCROLL_UP;
               }
               else {
-                scrolltype = ui_block_flipped ? MENU_SCROLL_DOWN : MENU_SCROLL_UP;
+                scrolltype = MENU_SCROLL_DOWN;
               }
 
               if (ui_menu_pass_event_to_parent_if_nonactive(
@@ -11052,10 +11051,10 @@ static int ui_pie_handler(bContext *C, const wmEvent *event, uiPopupBlockHandle 
   if (menu->scrolltimer == nullptr) {
     menu->scrolltimer = WM_event_timer_add(
         CTX_wm_manager(C), CTX_wm_window(C), TIMER, PIE_MENU_INTERVAL);
-    menu->scrolltimer->duration = 0.0;
+    menu->scrolltimer->time_duration = 0.0;
   }
 
-  const double duration = menu->scrolltimer->duration;
+  const double duration = menu->scrolltimer->time_duration;
 
   float event_xy[2] = {float(event->xy[0]), float(event->xy[1])};
 
