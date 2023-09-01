@@ -351,27 +351,6 @@ ShadowRay shadow_ray_project_punctual(LightData light, int face_id, ShadowRayPro
   return ray;
 }
 
-struct ShadowRaySingleCubeFace {
-  ShadowRay ray;
-};
-
-ShadowTracingSample shadow_map_trace_sample(ShadowMapTracingState state,
-                                            inout ShadowRaySingleCubeFace ray_single)
-{
-  ShadowRay ray = ray_single.ray;
-  vec3 ray_pos = ray.origin + ray.direction * state.ray_time;
-  vec2 tilemap_uv = saturate(ray_pos.xy);
-
-  ShadowTracingSample samp;
-  samp.reset_interpolation = false;
-  samp.receiver_depth = ray_pos.z;
-  samp.occluder_depth = shadow_read_depth_at_tilemap_uv(ray.tilemap_index, tilemap_uv);
-  samp.skip_sample = (samp.occluder_depth == -1.0);
-  return samp;
-}
-
-SHADOW_MAP_TRACE_FN(ShadowRaySingleCubeFace)
-
 struct ShadowRayDualCubeFace {
   ShadowRay rays[2];
   int active_ray;
@@ -411,7 +390,9 @@ SHADOW_MAP_TRACE_FN(ShadowRayDualCubeFace)
 /** \name Shadow Evalutation
  * \{ */
 
-/* Assuming the occluder is above the shading point in direction to the shadow projection center.
+/**
+ * Convert occluder distance in shadow space to world space distance.
+ * Assuming the occluder is above the shading point in direction to the shadow projection center.
  */
 float shadow_linear_occluder_distance(LightData light,
                                       const bool is_directional,
@@ -486,29 +467,17 @@ ShadowEvalResult shadow_eval(
           light, random_ray_2d, lP, lNg, is_above_surface);
       int face_start = shadow_punctual_face_index_get(ray_proto.start);
       int face_end = shadow_punctual_face_index_get(ray_proto.end);
-      /* TODO(fclem): Can reduce register pressure by having a path that only trace one ray.
-       * But to do that efficiently we need GL_ARB_shader_ballot otherwise it would create huge
-       * branches. */
-#define SINGLE_SHADOW_RAY_OPTI 0
-#if SINGLE_SHADOW_RAY_OPTI
-      if (ballotARB(face_start != face_end) == 0u) {
-#else
-      if (false) {
-#endif
-        ShadowRaySingleCubeFace clip_ray;
-        clip_ray.ray = shadow_ray_project_punctual(light, face_start, ray_proto);
-        trace = shadow_map_trace(clip_ray, ray_step_count, random_shadow_3d.z);
-      }
-      else {
-        /* While a ray can potentially cross 3 faces, this is rather rare and covers a very small
-         * part of the tracing with low amount of samples. */
-        ShadowRayDualCubeFace clip_ray;
-        /* Start from end. */
-        clip_ray.active_ray = (face_start != face_end) ? 1 : 0;
-        clip_ray.rays[0] = shadow_ray_project_punctual(light, face_start, ray_proto);
-        clip_ray.rays[1] = shadow_ray_project_punctual(light, face_end, ray_proto);
-        trace = shadow_map_trace(clip_ray, ray_step_count, random_shadow_3d.z);
-      }
+      /* TODO(fclem): Remove the need to trace multiple faces by capturing the light shape inside
+       * the frustum. */
+
+      /* While a ray can potentially cross 3 faces, this is rather rare and covers a very small
+       * part of the tracing with low amount of samples. */
+      ShadowRayDualCubeFace clip_ray;
+      /* Start from end. */
+      clip_ray.active_ray = (face_start != face_end) ? 1 : 0;
+      clip_ray.rays[0] = shadow_ray_project_punctual(light, face_start, ray_proto);
+      clip_ray.rays[1] = shadow_ray_project_punctual(light, face_end, ray_proto);
+      trace = shadow_map_trace(clip_ray, ray_step_count, random_shadow_3d.z);
     }
 
     if (is_above_surface) {
