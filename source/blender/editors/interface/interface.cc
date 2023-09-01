@@ -5843,7 +5843,7 @@ void UI_but_flag_enable(uiBut *but, int flag)
   but->flag |= flag;
 }
 
-void UI_but_flag2_enable(uiBut *but, UIButFlag2 flag)
+void UI_but_flag2_enable(uiBut *but, int flag)
 {
   but->flag2 |= flag;
 }

@@ -1780,7 +1780,7 @@ static uiBlock *wm_block_search_menu(bContext *C, ARegion *region, void *userdat
   }
   else if (init_data->search_type == SEARCH_TYPE_SINGLE_MENU) {
     UI_but_func_menu_search(but, init_data->single_menu_idname.c_str());
-    UI_but_flag2_enable(but, UIButFlag2::ACTIVATE_ON_INIT_SKIP_SELECT);
+    UI_but_flag2_enable(but, UI_BUT2_ACTIVATE_ON_INIT_SKIP_SELECT);
   }
   else {
     BLI_assert_unreachable();

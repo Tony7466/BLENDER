@@ -249,10 +249,14 @@ enum {
   UI_BUT_OVERRIDDEN = 1u << 31u,
 };
 
-enum class UIButFlag2 {
-  ACTIVATE_ON_INIT_SKIP_SELECT = 1 << 0,
+enum {
+  /**
+   * This is used when `UI_BUT_ACTIVATE_ON_INIT` is used, which is used to activate e.g. a search
+   * box as soon as a popup opens. Usually, the text in the search box is selected by default.
+   * However, sometimes this behavior is not desired, so it can be disabled with this flag.
+   */
+  UI_BUT2_ACTIVATE_ON_INIT_SKIP_SELECT = 1 << 0,
 };
-ENUM_OPERATORS(UIButFlag2, UIButFlag2::ACTIVATE_ON_INIT_SKIP_SELECT)
 
 /** #uiBut.dragflag */
 enum {
@@ -894,7 +898,7 @@ bool UI_but_active_drop_color(bContext *C);
 void UI_but_flag_enable(uiBut *but, int flag);
 void UI_but_flag_disable(uiBut *but, int flag);
 bool UI_but_flag_is_set(uiBut *but, int flag);
-void UI_but_flag2_enable(uiBut *but, UIButFlag2 flag);
+void UI_but_flag2_enable(uiBut *but, int flag);
 
 void UI_but_drawflag_enable(uiBut *but, int flag);
 void UI_but_drawflag_disable(uiBut *but, int flag);
