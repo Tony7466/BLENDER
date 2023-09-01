@@ -43,10 +43,6 @@ void main()
    * Ng is only used for shadow biases and subsurface check in this case. */
   vec3 Ng = reflection_data.N;
 
-  drw_debug_draw_enable = (ivec2(gl_FragCoord.xy) == ivec2(1000, 512));
-  drw_debug_print_enable = (ivec2(gl_FragCoord.xy) == ivec2(1000, 512));
-  drw_print(" ");
-
   ClosureRefraction refraction_data;
   refraction_data.N = diffuse_data.N;
   refraction_data.roughness = gbuffer_1_packed.z;
