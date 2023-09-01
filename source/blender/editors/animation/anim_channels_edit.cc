@@ -4319,7 +4319,7 @@ static int channels_bake_exec(bContext *C, wmOperator *op)
   }
 
   const bool remove_existing = RNA_boolean_get(op->ptr, "remove_existing");
-  const int key_type = RNA_enum_get(op->ptr, "key_type");
+  const int interpolation_type = RNA_enum_get(op->ptr, "interpolation_type");
   const bool bake_modifiers = RNA_boolean_get(op->ptr, "bake_modifiers");
 
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
@@ -4349,7 +4349,7 @@ static int channels_bake_exec(bContext *C, wmOperator *op)
       }
     }
 
-    if (key_type == CHANNEL_BAKE_KEEP) {
+    if (interpolation_type == CHANNEL_BAKE_KEEP) {
       continue;
     }
     for (int i = 0; i < fcu->totvert; i++) {
@@ -4360,7 +4360,7 @@ static int channels_bake_exec(bContext *C, wmOperator *op)
       if (key->vec[1][0] > frame_range[1]) {
         break;
       }
-      key->ipo = key_type;
+      key->ipo = interpolation_type;
     }
   }
 
@@ -4410,11 +4410,11 @@ static void ANIM_OT_channels_bake(wmOperatorType *ot)
                   "If enabled removes the keys that currently make up the curve");
 
   RNA_def_enum(ot->srna,
-               "key_type",
+               "interpolation_type",
                channel_bake_key_options,
                CHANNEL_BAKE_KEEP,
-               "Key Type",
-               "Choose the key type with which new keys will be added");
+               "Interpolation Type",
+               "Choose the interpolation type with which new keys will be added");
 
   RNA_def_boolean(ot->srna,
                   "bake_modifiers",
