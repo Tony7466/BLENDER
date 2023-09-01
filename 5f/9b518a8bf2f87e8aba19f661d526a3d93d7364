@@ -1,2 +1,3 @@
 Referenced by issue #108211, Cycles All Transmission Render Passes wrong over bright image data with GlassBSDF
 Referenced by pull request #111687, EEVEE: change Glass BSDF behaviour to match Cycles
+Referenced by commit be9555d11816206448d2c23419a90d5470bc3a49, EEVEE: change Glass BSDF to match Cycles
