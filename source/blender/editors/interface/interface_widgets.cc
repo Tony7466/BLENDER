@@ -2747,7 +2747,7 @@ static void widget_state_menu_item(uiWidgetType *wt,
   else if ((state->but_flag & (UI_SELECT | UI_BUT_ICON_PREVIEW)) ==
            (UI_SELECT | UI_BUT_ICON_PREVIEW))
   {
-    /* Currently-selected list or menu item that is large preview. */
+    /* Currently-selected list or menu item that is large icon preview. */
     copy_v4_v4_uchar(wt->wcol.inner, wt->wcol.inner_sel);
     copy_v4_v4_uchar(wt->wcol.text, wt->wcol.text_sel);
   }
