@@ -2416,7 +2416,7 @@ void uiTemplateRunningJobs(uiLayout *layout, bContext *C);
 void UI_but_func_operator_search(uiBut *but);
 void uiTemplateOperatorSearch(uiLayout *layout);
 
-void UI_but_func_menu_search(uiBut *but, const char *single_menu_idname);
+void UI_but_func_menu_search(uiBut *but, const char *single_menu_idname = nullptr);
 void uiTemplateMenuSearch(uiLayout *layout);
 
 /**

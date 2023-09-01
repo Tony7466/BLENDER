@@ -1776,7 +1776,7 @@ static uiBlock *wm_block_search_menu(bContext *C, ARegion *region, void *userdat
     UI_but_func_operator_search(but);
   }
   else if (init_data->search_type == SEARCH_TYPE_MENU) {
-    UI_but_func_menu_search(but, nullptr);
+    UI_but_func_menu_search(but);
   }
   else if (init_data->search_type == SEARCH_TYPE_SINGLE_MENU) {
     UI_but_func_menu_search(but, init_data->single_menu_idname.c_str());
