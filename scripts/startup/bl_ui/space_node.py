@@ -235,8 +235,6 @@ class NODE_MT_add(bpy.types.Menu):
         if snode.tree_type == 'GeometryNodeTree':
             layout.menu_contents("NODE_MT_geometry_node_add_all")
         elif snode.tree_type == 'CompositorNodeTree':
-            props = layout.operator("node.add_search", text="Search...", icon='VIEWZOOM')
-            layout.separator()
             layout.menu_contents("NODE_MT_compositing_node_add_all")
         elif nodeitems_utils.has_node_categories(context):
             # actual node submenus are defined by draw functions from node categories
