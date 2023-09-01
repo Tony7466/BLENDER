@@ -70,7 +70,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
     case CLOSURE_BSDF_PRINCIPLED_ID: {
       uint specular_offset, roughness_offset, specular_tint_offset, anisotropic_offset,
           sheen_offset, sheen_tint_offset, clearcoat_offset, clearcoat_roughness_offset,
-          eta_offset, transmission_offset, anisotropic_rotation_offset, pad1;
+          eta_offset, transmission_offset, transmission_depth_offset, anisotropic_rotation_offset;
       uint4 data_node2 = read_node(kg, &offset);
 
       float3 T = stack_load_float3(stack, data_node.y);
@@ -84,8 +84,11 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
                              &sheen_tint_offset,
                              &clearcoat_offset,
                              &clearcoat_roughness_offset);
-      svm_unpack_node_uchar4(
-          data_node2.x, &eta_offset, &transmission_offset, &anisotropic_rotation_offset, &pad1);
+      svm_unpack_node_uchar4(data_node2.x,
+                             &eta_offset,
+                             &transmission_offset,
+                             &transmission_depth_offset,
+                             &anisotropic_rotation_offset);
 
       // get Disney principled parameters
       float metallic = saturatef(param1);
@@ -100,6 +103,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       float clearcoat = stack_load_float(stack, clearcoat_offset);
       float clearcoat_roughness = stack_load_float(stack, clearcoat_roughness_offset);
       float transmission = saturatef(stack_load_float(stack, transmission_offset));
+      float transmission_depth = stack_load_float(stack, transmission_depth_offset);
       float anisotropic_rotation = stack_load_float(stack, anisotropic_rotation_offset);
       float eta = fmaxf(stack_load_float(stack, eta_offset), 1e-5f);
 
@@ -250,7 +254,20 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
 
           fresnel->reflection_tint = mix(
               one_spectrum(), rgb_to_spectrum(base_color), specular_tint);
-          fresnel->transmission_tint = rgb_to_spectrum(base_color);
+          if (transmission_depth == 0.0f) {
+            fresnel->transmission_tint = rgb_to_spectrum(base_color);
+          }
+          else if (sd->flag & SD_BACKFACING) {
+            /* Use Beer-Lambert opsorption law. Clamp to avoid singularity when some color channel
+             * is zero. */
+            fresnel->reflection_tint = power(
+                max(rgb_to_spectrum(base_color), make_spectrum(1e-5f)),
+                sd->ray_length / transmission_depth);
+            fresnel->transmission_tint = fresnel->reflection_tint;
+          }
+          else {
+            fresnel->transmission_tint = one_spectrum();
+          }
 
           /* setup bsdf */
           sd->flag |= bsdf_microfacet_ggx_glass_setup(bsdf);

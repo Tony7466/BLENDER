@@ -2678,6 +2678,7 @@ NODE_DEFINE(PrincipledBsdfNode)
   SOCKET_IN_FLOAT(clearcoat_roughness, "Clearcoat Roughness", 0.03f);
   SOCKET_IN_FLOAT(ior, "IOR", 0.0f);
   SOCKET_IN_FLOAT(transmission, "Transmission", 0.0f);
+  SOCKET_IN_FLOAT(transmission_depth, "Transmission Depth", 0.0f);
   SOCKET_IN_FLOAT(anisotropic_rotation, "Anisotropic Rotation", 0.0f);
   SOCKET_IN_COLOR(emission, "Emission", zero_float3());
   SOCKET_IN_FLOAT(emission_strength, "Emission Strength", 1.0f);
@@ -2789,6 +2790,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
                                  ShaderInput *p_clearcoat_roughness,
                                  ShaderInput *p_ior,
                                  ShaderInput *p_transmission,
+                                 ShaderInput *p_transmission_depth,
                                  ShaderInput *p_anisotropic_rotation)
 {
   ShaderInput *base_color_in = input("Base Color");
@@ -2815,6 +2817,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
   int clearcoat_roughness_offset = compiler.stack_assign(p_clearcoat_roughness);
   int ior_offset = compiler.stack_assign(p_ior);
   int transmission_offset = compiler.stack_assign(p_transmission);
+  int transmission_depth_offset = compiler.stack_assign(p_transmission_depth);
   int anisotropic_rotation_offset = compiler.stack_assign(p_anisotropic_rotation);
   int subsurface_radius_offset = compiler.stack_assign(p_subsurface_radius);
   int subsurface_ior_offset = compiler.stack_assign(p_subsurface_ior);
@@ -2838,7 +2841,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler,
 
   compiler.add_node(
       compiler.encode_uchar4(
-          ior_offset, transmission_offset, anisotropic_rotation_offset, SVM_STACK_INVALID),
+          ior_offset, transmission_offset, transmission_depth_offset, anisotropic_rotation_offset),
       distribution,
       subsurface_method,
       sheen_roughness_offset);
@@ -2884,6 +2887,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler)
           input("Clearcoat Roughness"),
           input("IOR"),
           input("Transmission"),
+          input("Transmission Depth"),
           input("Anisotropic Rotation"));
 }
 

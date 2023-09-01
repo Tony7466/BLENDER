@@ -111,22 +111,31 @@ static void node_declare(NodeDeclarationBuilder &b)
       .max(1.0f)
       .subtype(PROP_FACTOR);
 #define SOCK_TRANSMISSION_ID 18
+  b.add_input<decl::Float>("Transmission Depth")
+      .default_value(0.0f)
+      .min(0.0f)
+      .max(1000000.0f)
+      .description(
+          "Distance traveled inside the medium by white light before its color becomes exactly "
+          "base color, determining the extinction coefficient of the interior medium based on "
+          "Beer-Lambert law; if zero, base color acts as a constant transmission tint");
+#define SOCK_TRANSMISSION_DEPTH_ID 19
   b.add_input<decl::Color>("Emission").default_value({0.0f, 0.0f, 0.0f, 1.0f});
-#define SOCK_EMISSION_ID 19
+#define SOCK_EMISSION_ID 20
   b.add_input<decl::Float>("Emission Strength").default_value(1.0).min(0.0f).max(1000000.0f);
-#define SOCK_EMISSION_STRENGTH_ID 20
+#define SOCK_EMISSION_STRENGTH_ID 21
   b.add_input<decl::Float>("Alpha").default_value(1.0f).min(0.0f).max(1.0f).subtype(PROP_FACTOR);
-#define SOCK_ALPHA_ID 21
+#define SOCK_ALPHA_ID 22
   b.add_input<decl::Vector>("Normal").hide_value();
-#define SOCK_NORMAL_ID 22
+#define SOCK_NORMAL_ID 23
   b.add_input<decl::Vector>("Clearcoat Normal").hide_value();
-#define SOCK_CLEARCOAT_NORMAL_ID 23
+#define SOCK_CLEARCOAT_NORMAL_ID 24
   b.add_input<decl::Vector>("Tangent").hide_value();
-#define SOCK_TANGENT_ID 24
+#define SOCK_TANGENT_ID 25
   b.add_input<decl::Float>("Weight").unavailable();
-#define SOCK_WEIGHT_ID 25
+#define SOCK_WEIGHT_ID 26
   b.add_output<decl::Shader>("BSDF");
-#define SOCK_BSDF_ID 26
+#define SOCK_BSDF_ID 27
 }
 
 static void node_shader_buts_principled(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)

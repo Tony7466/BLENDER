@@ -26,6 +26,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
                             float ClearcoatRoughness = 0.03,
                             float IOR = 1.45,
                             float Transmission = 0.0,
+                            float TransmissionDepth = 0.0,
                             normal Normal = N,
                             normal ClearcoatNormal = N,
                             normal Tangent = normalize(dPdu),
@@ -83,8 +84,21 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     float eta = max(IOR, 1e-5);
     eta = backfacing() ? 1.0 / eta : eta;
 
+    color refractTint = BaseColor;
+    if (TransmissionDepth > 0) {
+      if (backfacing()) {
+        float RayLength;
+        getattribute("path:ray_length", RayLength);
+        reflectTint = pow(max(BaseColor, color(1e-5)), RayLength / TransmissionDepth);
+        refractTint = reflectTint;
+      }
+      else {
+        refractTint = color(1.0);
+      }
+    }
+
     TransmissionBSDF = dielectric_bsdf(
-        Normal, vector(0.0), reflectTint, BaseColor, r2, r2, eta, distribution);
+        Normal, vector(0.0), reflectTint, refractTint, r2, r2, eta, distribution);
     BSDF = mix(BSDF, TransmissionBSDF, clamp(Transmission, 0.0, 1.0));
   }
 
