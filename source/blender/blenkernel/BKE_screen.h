@@ -397,6 +397,19 @@ typedef struct Header {
   struct uiLayout *layout; /* runtime for drawing */
 } Header;
 
+enum class MenuTypeFlag {
+  /**
+   * Whether the menu depends on data retrieved via #CTX_data_pointer_get. If it is context
+   * dependent, menu search has to scan it in different contexts.
+   */
+  ContextDependent = (1 << 0),
+  /**
+   * Automatically start searching in the menu when pressing a key.
+   */
+  SearchOnKeyPress = (1 << 1),
+};
+ENUM_OPERATORS(MenuTypeFlag, MenuTypeFlag::SearchOnKeyPress)
+
 /* menu types */
 
 typedef struct MenuType {
@@ -414,15 +427,7 @@ typedef struct MenuType {
   void (*draw)(const struct bContext *C, struct Menu *menu);
   void (*listener)(const wmRegionListenerParams *params);
 
-  /**
-   * True if the menu depends on data retrieved via #CTX_data_pointer_get. If it is context
-   * dependent, menu search has to scan it in different contexts.
-   */
-  bool context_dependent;
-  /**
-   * Automatically start searching in the menu when pressing a key.
-   */
-  bool search_on_key_press;
+  MenuTypeFlag flag;
 
   /* RNA integration */
   ExtensionRNA rna_ext;

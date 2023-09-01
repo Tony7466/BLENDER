@@ -2409,7 +2409,7 @@ class VIEW3D_MT_grease_pencil_add(Menu):
 class VIEW3D_MT_add(Menu):
     bl_label = "Add"
     bl_translation_context = i18n_contexts.operator_default
-    bl_search_on_key_press = True
+    bl_options = {'SEARCH_ON_KEY_PRESS'}
 
     def draw(self, context):
         layout = self.layout

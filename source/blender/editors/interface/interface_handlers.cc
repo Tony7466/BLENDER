@@ -10284,7 +10284,7 @@ static int ui_handle_menu_letter_press(
   /* Start menu search on key press if enabled. */
   if (menu->menu_idname[0]) {
     MenuType *mt = WM_menutype_find(menu->menu_idname, false);
-    if (mt->search_on_key_press) {
+    if (bool(mt->flag & MenuTypeFlag::SearchOnKeyPress)) {
       uiAfterFunc *after = ui_afterfunc_new();
       wmOperatorType *ot = WM_operatortype_find("WM_OT_search_single_menu", false);
       after->optype = ot;

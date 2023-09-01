@@ -5918,7 +5918,7 @@ void UI_menutype_draw(bContext *C, MenuType *mt, uiLayout *layout)
   }
 
   uiBlock *block = uiLayoutGetBlock(layout);
-  if (mt->search_on_key_press) {
+  if (bool(mt->flag & MenuTypeFlag::SearchOnKeyPress)) {
     UI_block_flag_enable(block, UI_BLOCK_NO_ACCELERATOR_KEYS);
   }
   if (mt->listener) {
