@@ -87,7 +87,8 @@ static int bone_collection_add_exec(bContext *C, wmOperator * /* op */)
   }
 
   bArmature *armature = static_cast<bArmature *>(ob->data);
-  ANIM_armature_bonecoll_new(armature, nullptr);
+  BoneCollection *bcoll = ANIM_armature_bonecoll_new(armature, nullptr);
+  ANIM_armature_bonecoll_active_set(armature, bcoll);
 
   WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
   return OPERATOR_FINISHED;
@@ -166,7 +167,7 @@ void ARMATURE_OT_collection_move(wmOperatorType *ot)
   static const EnumPropertyItem bcoll_slot_move[] = {
       {-1, "UP", 0, "Up", ""},
       {1, "DOWN", 0, "Down", ""},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   /* identifiers */
@@ -371,7 +372,7 @@ void ARMATURE_OT_collection_assign(wmOperatorType *ot)
   /* properties */
   RNA_def_string(ot->srna,
                  "name",
-                 NULL,
+                 nullptr,
                  MAX_NAME,
                  "Bone Collection",
                  "Name of the bone collection to assign this bone to; empty to assign to the "
@@ -432,7 +433,7 @@ void ARMATURE_OT_collection_unassign(wmOperatorType *ot)
 
   RNA_def_string(ot->srna,
                  "name",
-                 NULL,
+                 nullptr,
                  MAX_NAME,
                  "Bone Collection",
                  "Name of the bone collection to unassign this bone from; empty to unassign from "
@@ -465,13 +466,7 @@ static void bone_collection_select(bContext *C,
       if (!editbone_is_member(ebone, bcoll)) {
         continue;
       }
-
-      if (select) {
-        ebone->flag |= BONE_SELECTED;
-      }
-      else {
-        ebone->flag &= ~BONE_SELECTED;
-      }
+      ED_armature_ebone_select_set(ebone, select);
     }
   }
   else {
@@ -494,7 +489,12 @@ static void bone_collection_select(bContext *C,
   }
 
   DEG_id_tag_update(&armature->id, ID_RECALC_SELECT);
-  WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
+  if (is_editmode) {
+    WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, ob);
+  }
+  else {
+    WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
+  }
 
   if (is_editmode) {
     ED_outliner_select_sync_from_edit_bone_tag(C);
@@ -537,7 +537,7 @@ void ARMATURE_OT_collection_select(wmOperatorType *ot)
   PropertyRNA *prop = RNA_def_string(
       ot->srna,
       "name",
-      NULL,
+      nullptr,
       MAX_NAME,
       "Bone Collection",
       "Name of the bone collection to select bones from; empty use the active bone collection");
@@ -577,7 +577,7 @@ void ARMATURE_OT_collection_deselect(wmOperatorType *ot)
   PropertyRNA *prop = RNA_def_string(
       ot->srna,
       "name",
-      NULL,
+      nullptr,
       MAX_NAME,
       "Bone Collection",
       "Name of the bone collection to deselect bones from; empty use the active bone collection");

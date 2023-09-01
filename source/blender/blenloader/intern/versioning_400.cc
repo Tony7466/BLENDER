@@ -144,17 +144,16 @@ static void version_bonelayers_to_bonecollections(Main *bmain)
       if (arm_idprops) {
         /* See if we can use the layer name from the Bone Manager add-on. This is a popular add-on
          * for managing bone layers and giving them names. */
-        BLI_snprintf(custom_prop_name, sizeof(custom_prop_name), "layer_name_%u", layer);
+        SNPRINTF(custom_prop_name, "layer_name_%u", layer);
         IDProperty *prop = IDP_GetPropertyFromGroup(arm_idprops, custom_prop_name);
         if (prop != nullptr && prop->type == IDP_STRING && IDP_String(prop)[0] != '\0') {
-          BLI_snprintf(
-              bcoll_name, sizeof(bcoll_name), "Layer %u - %s", layer + 1, IDP_String(prop));
+          SNPRINTF(bcoll_name, "Layer %u - %s", layer + 1, IDP_String(prop));
         }
       }
       if (bcoll_name[0] == '\0') {
         /* Either there was no name defined in the custom property, or
          * it was the empty string. */
-        BLI_snprintf(bcoll_name, sizeof(bcoll_name), "Layer %u", layer + 1);
+        SNPRINTF(bcoll_name, "Layer %u", layer + 1);
       }
 
       /* Create a new bone collection for this layer. */
@@ -984,7 +983,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     FOREACH_NODETREE_END;
   }
   else {
-    /* Legacy node tree sockets are created for forward compatibilty,
+    /* Legacy node tree sockets are created for forward compatibility,
      * but have to be freed after loading and versioning. */
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       /* Clear legacy sockets after conversion.
