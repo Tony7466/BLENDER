@@ -1,0 +1,1 @@
+Referenced by commit 68440742ce812e5da2852596eeee76fabfa7b50a, Revert "Fix #111713: Nodes crash when overriding due to item.parent nullptr"
