@@ -75,8 +75,8 @@ def add_repeat_zone(layout, label):
     return props
 
 
-class NODE_MT_category_LAYOUT(Menu):
-    bl_idname = "NODE_MT_category_LAYOUT"
+class NODE_MT_category_layout(Menu):
+    bl_idname = "NODE_MT_category_layout"
     bl_label = "Layout"
 
     def draw(self, _context):
@@ -87,7 +87,7 @@ class NODE_MT_category_LAYOUT(Menu):
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 classes = (
-    NODE_MT_category_LAYOUT,
+    NODE_MT_category_layout,
 )
 
 if __name__ == "__main__":  # only for live edit.

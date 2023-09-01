@@ -203,6 +203,16 @@ class NODE_MT_category_SHADE_SCRIPT(Menu):
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
+class NODE_MT_category_SHADE_GROUP(Menu):
+    bl_idname = "NODE_MT_category_SHADE_GROUP"
+    bl_label = "Group"
+
+    def draw(self, context):
+        layout = self.layout
+        node_add_menu.draw_node_group_add_menu(context, layout)
+        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
+
+
 class NODE_MT_shading_node_add_all(Menu):
     bl_idname = "NODE_MT_shading_node_add_all"
     bl_label = "Add"
@@ -220,7 +230,8 @@ class NODE_MT_shading_node_add_all(Menu):
         layout.separator()
         layout.menu("NODE_MT_category_SHADE_SCRIPT")
         layout.separator()
-        layout.menu("NODE_MT_category_LAYOUT")
+        layout.menu("NODE_MT_category_SHADE_GROUP")
+        layout.menu("NODE_MT_category_layout")
 
         node_add_menu.draw_root_assets(layout)
 
@@ -235,6 +246,7 @@ classes = (
     NODE_MT_category_SHADE_TEXTURE,
     NODE_MT_category_SHADE_VECTOR,
     NODE_MT_category_SHADE_SCRIPT,
+    NODE_MT_category_SHADE_GROUP,
 )
 
 
