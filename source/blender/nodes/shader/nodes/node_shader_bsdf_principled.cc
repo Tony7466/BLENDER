@@ -7,6 +7,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "BKE_context.h"
 #include "BKE_node_runtime.hh"
 
 namespace blender::nodes::node_shader_bsdf_principled_cc {
@@ -129,10 +130,17 @@ static void node_declare(NodeDeclarationBuilder &b)
 #define SOCK_BSDF_ID 26
 }
 
-static void node_shader_buts_principled(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+static void node_shader_buts_principled(uiLayout *layout, bContext *C, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "distribution", UI_ITEM_NONE, "Distribution", ICON_NONE);
-  uiItemR(layout, ptr, "subsurface_method", UI_ITEM_NONE, "Subsurface Method", ICON_NONE);
+  if (CTX_wm_space_properties(C) != nullptr) {
+    /* We only want to display the names as labels in the Properties editor. */
+    uiItemR(layout, ptr, "distribution", UI_ITEM_NONE, "Distribution", ICON_NONE);
+    uiItemR(layout, ptr, "subsurface_method", UI_ITEM_NONE, "Subsurface Method", ICON_NONE);
+  }
+  else {
+    uiItemR(layout, ptr, "distribution", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
+    uiItemR(layout, ptr, "subsurface_method", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
+  }
 }
 
 static void node_shader_init_principled(bNodeTree * /*ntree*/, bNode *node)
