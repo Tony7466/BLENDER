@@ -1,2 +1,3 @@
 Referenced by pull request #111081, BLI: Group Deduce functions for GroupedSpan
 Referenced by issue #111811, Regression: Crash during open of Charge open movie project
+Referenced by pull request #111815, Fix (unreported): Asset for mesh without corners
