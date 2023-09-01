@@ -10278,6 +10278,41 @@ float ui_block_calc_pie_segment(uiBlock *block, const float event_xy[2])
   return len;
 }
 
+static int ui_handle_menu_letter_press(
+    bContext *C, ARegion *region, uiPopupBlockHandle *menu, const wmEvent *event, uiBlock *block)
+{
+  /* Start menu search on key press if enabled. */
+  if (menu->menu_idname[0]) {
+    MenuType *mt = WM_menutype_find(menu->menu_idname, false);
+    if (mt->search_on_key_press) {
+      uiAfterFunc *after = ui_afterfunc_new();
+      wmOperatorType *ot = WM_operatortype_find("WM_OT_search_single_menu", false);
+      after->optype = ot;
+      after->opcontext = WM_OP_INVOKE_DEFAULT;
+      after->opptr = MEM_cnew<PointerRNA>(__func__);
+      WM_operator_properties_create_ptr(after->opptr, ot);
+      RNA_string_set(after->opptr, "menu_idname", menu->menu_idname);
+      RNA_string_set(after->opptr, "initial_query", event->utf8_buf);
+      menu->menuretval = UI_RETURN_OK;
+      return WM_UI_HANDLER_BREAK;
+    }
+  }
+
+  /* Handle accelerator keys that allow "pressing" a menu entry by pressing a single key. */
+  LISTBASE_FOREACH (uiBut *, but, &block->buttons) {
+    if (!(but->flag & UI_BUT_DISABLED) && but->menu_key == event->type) {
+      if (but->type == UI_BTYPE_BUT) {
+        UI_but_execute(C, region, but);
+      }
+      else {
+        ui_handle_button_activate_by_type(C, region, but);
+      }
+      return WM_UI_HANDLER_BREAK;
+    }
+  }
+  return WM_UI_HANDLER_CONTINUE;
+}
+
 static int ui_handle_menu_event(bContext *C,
                                 const wmEvent *event,
                                 uiPopupBlockHandle *menu,
@@ -10718,36 +10753,7 @@ static int ui_handle_menu_event(bContext *C,
                     menu, but, level, is_parent_menu, retval)) {
               break;
             }
-
-            if (menu->menu_idname[0]) {
-              MenuType *mt = WM_menutype_find(menu->menu_idname, false);
-              if (mt->search_on_key_press) {
-                uiAfterFunc *after = ui_afterfunc_new();
-                wmOperatorType *ot = WM_operatortype_find("WM_OT_search_single_menu", false);
-                after->optype = ot;
-                after->opcontext = WM_OP_INVOKE_DEFAULT;
-                after->opptr = MEM_cnew<PointerRNA>(__func__);
-                WM_operator_properties_create_ptr(after->opptr, ot);
-                RNA_string_set(after->opptr, "menu_idname", menu->menu_idname);
-                RNA_string_set(after->opptr, "initial_query", event->utf8_buf);
-                menu->menuretval = UI_RETURN_OK;
-                retval = WM_UI_HANDLER_BREAK;
-                break;
-              }
-            }
-
-            for (but = static_cast<uiBut *>(block->buttons.first); but; but = but->next) {
-              if (!(but->flag & UI_BUT_DISABLED) && but->menu_key == event->type) {
-                if (but->type == UI_BTYPE_BUT) {
-                  UI_but_execute(C, region, but);
-                }
-                else {
-                  ui_handle_button_activate_by_type(C, region, but);
-                }
-                retval = WM_UI_HANDLER_BREAK;
-                break;
-              }
-            }
+            retval = ui_handle_menu_letter_press(C, region, menu, event, block);
           }
           break;
         }
