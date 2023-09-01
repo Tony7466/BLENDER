@@ -55,51 +55,6 @@ int shadow_punctual_face_index_get(vec3 lL)
   }
 }
 
-mat4x4 shadow_load_normal_matrix(LightData light)
-{
-  if (!is_sun_light(light.type)) {
-    /* FIXME: Why? */
-    float scale = 0.5;
-    return mat4x4(vec4(scale, 0.0, 0.0, 0.0),
-                  vec4(0.0, scale, 0.0, 0.0),
-                  vec4(0.0, 0.0, 0.0, -1.0),
-                  vec4(0.0, 0.0, light.normal_mat_packed.x, light.normal_mat_packed.y));
-  }
-  else {
-    float near = shadow_orderedIntBitsToFloat(light.clip_near);
-    float far = shadow_orderedIntBitsToFloat(light.clip_far);
-    /* Could be store precomputed inside the light struct. Just have to find a how to update it. */
-    float z_scale = (far - near) * 0.5;
-    return mat4x4(vec4(light.normal_mat_packed.x, 0.0, 0.0, 0.0),
-                  vec4(0.0, light.normal_mat_packed.x, 0.0, 0.0),
-                  vec4(0.0, 0.0, z_scale, 0.0),
-                  vec4(0.0, 0.0, 0.0, 1.0));
-  }
-}
-
-/* Returns minimum bias (in world space unit) needed for a given geometry normal and a shadow-map
- * page to avoid self shadowing artifacts. Note that this can return a negative bias to better
- * match the surface. */
-float shadow_slope_bias_get(vec2 atlas_size, LightData light, vec3 lNg, vec3 lP, vec2 uv, uint lod)
-{
-  /* Compute coordinate inside the pixel we are sampling. */
-  vec2 uv_subpixel_coord = fract(uv * atlas_size);
-  /* Compute delta to the texel center (where the sample is). */
-  vec2 ndc_texel_center_delta = uv_subpixel_coord * 2.0 - 1.0;
-  /* Create a normal plane equation and go through the normal projection matrix. */
-  vec4 lNg_plane = vec4(lNg, -dot(lNg, lP));
-  vec4 ndc_Ng = shadow_load_normal_matrix(light) * lNg_plane;
-  /* Get slope from normal vector. Note that this is signed. */
-  vec2 ndc_slope = ndc_Ng.xy / abs(ndc_Ng.z);
-  /* Clamp out to avoid the bias going to infinity. Remember this is in NDC space. */
-  ndc_slope = clamp(ndc_slope, -100.0, 100.0);
-  /* Compute slope to where the receiver should be by extending the plane to the texel center. */
-  float bias = dot(ndc_slope, ndc_texel_center_delta);
-  /* Bias for 1 pixel of the sampled LOD. */
-  bias /= float((SHADOW_TILEMAP_RES * SHADOW_PAGE_RES) >> lod);
-  return bias;
-}
-
 struct ShadowSample {
   /* Signed delta in world units from the shading point to the occluder. Negative if occluded. */
   float occluder_delta;
@@ -171,7 +126,7 @@ ShadowSample shadow_punctual_sample_get(
   samp.tile = shadow_tile_load(tilemaps_tx, coord.tile_coord, coord.tilemap_index);
   samp.uv = shadow_page_uv_transform(
       atlas_size, samp.tile.page, samp.tile.lod, coord.uv, coord.tile_coord);
-  samp.bias = shadow_slope_bias_get(atlas_size, light, lNg, lP, samp.uv, samp.tile.lod);
+  samp.bias = 0.0;
 
   samp.raw_depth = shadow_tile_depth_get(atlas_tx, samp.tile, samp.uv);
   /* Depth is cleared to FLT_MAX, clamp it to 1 to avoid issues when converting to linear. */
@@ -207,8 +162,7 @@ ShadowSample shadow_directional_sample_get(
   samp.tile = shadow_tile_load(tilemaps_tx, coord.tile_coord, coord.tilemap_index);
   samp.uv = shadow_page_uv_transform(
       atlas_size, samp.tile.page, samp.tile.lod, coord.uv, coord.tile_coord);
-  samp.bias = shadow_slope_bias_get(atlas_size, light, lNg, lP, samp.uv, samp.tile.lod);
-  samp.bias *= exp2(float(coord.lod_relative));
+  samp.bias = 0.0;
 
   samp.raw_depth = shadow_tile_depth_get(atlas_tx, samp.tile, samp.uv);
 

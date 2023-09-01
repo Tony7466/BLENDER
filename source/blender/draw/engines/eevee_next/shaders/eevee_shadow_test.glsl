@@ -356,15 +356,12 @@ void main()
   {
     float near = 0.5, far = 1.0;
     mat4 pers_mat = projection_perspective(-near, near, -near, near, near, far);
-    mat4 normal_mat = invert(transpose(pers_mat));
 
     LightData light;
     light.clip_near = floatBitsToInt(near);
     light.clip_far = floatBitsToInt(far);
     light.influence_radius_max = far;
     light.type = LIGHT_SPOT;
-    light.normal_mat_packed.x = normal_mat[3][2];
-    light.normal_mat_packed.y = normal_mat[3][3];
     light._clipmap_origin_x = 0.0;
     light._clipmap_origin_y = 0.0;
 

@@ -755,8 +755,10 @@ struct LightData {
   int tilemap_index;
   /** Directional : Offset of the LOD min in LOD min tile units. */
   int2 clipmap_base_offset;
-  /** Punctual & Directional : Normal matrix packed for automatic bias. */
-  float2 normal_mat_packed;
+  /** Number of step for shadow map tracing. */
+  int shadow_ray_step_count;
+
+  float _pad;
 };
 BLI_STATIC_ASSERT_ALIGN(LightData, 16)
 

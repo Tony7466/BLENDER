@@ -282,12 +282,6 @@ void ShadowPunctual::end_sync(Light &light, float lod_bias)
     tilemaps_[Z_POS]->sync_cubeface(obmat_tmp, near_, far_, Z_POS, lod_bias);
   }
 
-  /* Normal matrix to convert geometric normal to optimal bias. */
-  float4x4 &winmat = tilemaps_[Z_NEG]->winmat;
-  float4x4 normal_mat = math::invert(math::transpose(winmat));
-  light.normal_mat_packed.x = normal_mat[3][2];
-  light.normal_mat_packed.y = normal_mat[3][3];
-
   light.tilemap_index = tilemap_pool.tilemaps_data.size();
 
   /* A bit weird give we are inside a punctual shadow, but this is
@@ -447,10 +441,6 @@ void ShadowDirectional::cascade_tilemaps_distribution(Light &light, const Camera
    * Using clipmap_lod_min here simplify code in shadow_directional_level().
    * Minus 1 because of the ceil(). */
   light._clipmap_lod_bias = light.clipmap_lod_min - 1;
-
-  /* Scaling is handled by ShadowCoordinates.lod_relative. */
-  /* NOTE: Not sure why 0.25 is needed here. Some zero level scaling. */
-  light.normal_mat_packed.x = 0.25f;
 }
 
 /************************************************************************
@@ -541,9 +531,6 @@ void ShadowDirectional::clipmap_tilemaps_distribution(Light &light,
   light.clipmap_lod_max = levels_range.last();
 
   light._clipmap_lod_bias = lod_bias;
-
-  /* Half size of the min level. */
-  light.normal_mat_packed.x = ShadowDirectional::tile_size_get(levels_range.first()) / 2.0f;
 }
 
 void ShadowDirectional::sync(const float4x4 &object_mat, float min_resolution)
