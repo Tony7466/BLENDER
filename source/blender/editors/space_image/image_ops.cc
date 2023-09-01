@@ -1337,7 +1337,6 @@ static int image_open_exec(bContext *C, wmOperator *op)
   int frame_seq_len = 0;
   int frame_ofs = 1;
 
-  const bool is_relative_path = RNA_boolean_get(op->ptr, "relative_path");
   const bool use_multiview = RNA_boolean_get(op->ptr, "use_multiview");
   const bool use_udim = RNA_boolean_get(op->ptr, "use_udim_detecting");
 
