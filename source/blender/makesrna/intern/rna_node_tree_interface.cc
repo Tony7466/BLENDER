@@ -554,9 +554,6 @@ static bNodeTreeInterfaceItem *rna_NodeTreeInterfaceItems_copy(ID *id,
 {
   /* Copy to same parent as the item. */
   bNodeTreeInterfacePanel *parent = interface->find_item_parent(*item);
-  if (parent == nullptr) {
-    return nullptr;
-  }
   return rna_NodeTreeInterfaceItems_copy_to_parent(id, interface, bmain, reports, item, parent);
 }
 
