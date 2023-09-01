@@ -22,8 +22,6 @@ void main()
   float depth = texelFetch(hiz_tx, texel, 0).r;
   vec3 P = get_world_space_from_depth(uvcoordsvar.xy, depth);
 
-  /* TODO(fclem): High precision derivative. */
-  vec3 Ng = safe_normalize(cross(dFdx(P), dFdy(P)));
   vec3 V = cameraVec(P);
   float vP_z = dot(cameraForward, P) - dot(cameraForward, cameraPos);
 
@@ -40,6 +38,10 @@ void main()
   diffuse_data.sss_radius = vec3(0.0);
   diffuse_data.sss_id = 0u;
   float thickness = 0.0;
+
+  /* Assume reflection closure normal is always somewhat representative of the geometric normal.
+   * Ng is only used for shadow biases and subsurface check in this case. */
+  vec3 Ng = reflection_data.N;
 
   drw_debug_draw_enable = (ivec2(gl_FragCoord.xy) == ivec2(1000, 512));
   drw_debug_print_enable = (ivec2(gl_FragCoord.xy) == ivec2(1000, 512));
