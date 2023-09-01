@@ -601,81 +601,72 @@ static void widget_init(uiWidgetBase *wtb)
 
 /* helper call, makes shadow rect, with 'sun' above menu, so only shadow to left/right/bottom */
 /* return tot */
-static int round_box_shadow_edges(
-    float (*vert)[2], const rcti *rect, float rad, int roundboxalign, float step)
+static int round_box_shadow_edges(float (*vert)[2],
+                                  const rcti *rect,
+                                  const float round_box_radius,
+                                  const int roundboxalign,
+                                  const float shadow_width,
+                                  const float step)
 {
-  float vec[WIDGET_CURVE_RESOLU][2];
   int tot = 0;
-
-  rad += step;
-
-  if (2.0f * rad > BLI_rcti_size_y(rect)) {
-    rad = 0.5f * BLI_rcti_size_y(rect);
-  }
 
   const float minx = rect->xmin - step;
   const float miny = rect->ymin - step;
   const float maxx = rect->xmax + step;
-  const float maxy = rect->ymax + step;
 
-  /* Multiply. */
-  for (int a = 0; a < WIDGET_CURVE_RESOLU; a++) {
-    vec[a][0] = rad * cornervec[a][0];
-    vec[a][1] = rad * cornervec[a][1];
-  }
+  auto get_maxy = [=, ymax = rect->ymax](const int corner) {
+    const bool corner_is_rounded = (roundboxalign & corner);
+    /* Small corner radii compared to the shadow width can create a sharp shadow edge at the top.
+     * So handle this specifically for sharp corners.
+     */
+    const bool use_offset = corner_is_rounded && (round_box_radius > 0.0f);
+    return ymax - (use_offset ? 0.0f : (shadow_width - step));
+  };
 
-  /* start with left-top, anti clockwise */
-  if (roundboxalign & UI_CNR_TOP_LEFT) {
-    for (int a = 0; a < WIDGET_CURVE_RESOLU; a++, tot++) {
-      vert[tot][0] = minx + rad - vec[a][0];
-      vert[tot][1] = maxy - vec[a][1];
-    }
-  }
-  else {
-    for (int a = 0; a < WIDGET_CURVE_RESOLU; a++, tot++) {
-      vert[tot][0] = minx;
-      vert[tot][1] = maxy;
-    }
-  }
+  auto get_shadow_radius = [=](const int corner) {
+    const bool corner_is_rounded = (roundboxalign & corner);
+    const float inner_radius = corner_is_rounded ? round_box_radius : 0.0f;
+    return inner_radius + step;
+  };
 
-  if (roundboxalign & UI_CNR_BOTTOM_LEFT) {
+  /* Start with top-left corner. Anti clockwise. */
+  {
+    const float shadow_radius = get_shadow_radius(UI_CNR_TOP_LEFT);
+    const float maxy = get_maxy(UI_CNR_TOP_LEFT);
     for (int a = 0; a < WIDGET_CURVE_RESOLU; a++, tot++) {
-      vert[tot][0] = minx + vec[a][1];
-      vert[tot][1] = miny + rad - vec[a][0];
-    }
-  }
-  else {
-    for (int a = 0; a < WIDGET_CURVE_RESOLU; a++, tot++) {
-      vert[tot][0] = minx;
-      vert[tot][1] = miny;
+      vert[tot][0] = minx - (shadow_radius * cornervec[a][0]) + shadow_radius;
+      vert[tot][1] = maxy - (shadow_radius * cornervec[a][1]);
     }
   }
 
-  if (roundboxalign & UI_CNR_BOTTOM_RIGHT) {
+  /* bottom-left */
+  {
+    const float shadow_radius = get_shadow_radius(UI_CNR_BOTTOM_LEFT);
     for (int a = 0; a < WIDGET_CURVE_RESOLU; a++, tot++) {
-      vert[tot][0] = maxx - rad + vec[a][0];
-      vert[tot][1] = miny + vec[a][1];
-    }
-  }
-  else {
-    for (int a = 0; a < WIDGET_CURVE_RESOLU; a++, tot++) {
-      vert[tot][0] = maxx;
-      vert[tot][1] = miny;
+      vert[tot][0] = minx + (shadow_radius * cornervec[a][1]);
+      vert[tot][1] = miny - (shadow_radius * cornervec[a][0]) + shadow_radius;
     }
   }
 
-  if (roundboxalign & UI_CNR_TOP_RIGHT) {
+  /* bottom-right */
+  {
+    const float shadow_radius = get_shadow_radius(UI_CNR_BOTTOM_RIGHT);
     for (int a = 0; a < WIDGET_CURVE_RESOLU; a++, tot++) {
-      vert[tot][0] = maxx - vec[a][1];
-      vert[tot][1] = maxy - rad + vec[a][0];
+      vert[tot][0] = maxx + (shadow_radius * cornervec[a][0]) - shadow_radius;
+      vert[tot][1] = miny + (shadow_radius * cornervec[a][1]);
     }
   }
-  else {
+
+  /* top-right */
+  {
+    const float shadow_radius = get_shadow_radius(UI_CNR_TOP_RIGHT);
+    const float maxy = get_maxy(UI_CNR_TOP_RIGHT);
     for (int a = 0; a < WIDGET_CURVE_RESOLU; a++, tot++) {
-      vert[tot][0] = maxx;
-      vert[tot][1] = maxy;
+      vert[tot][0] = maxx - (shadow_radius * cornervec[a][1]);
+      vert[tot][1] = maxy + (shadow_radius * cornervec[a][0]) - shadow_radius;
     }
   }
+
   return tot;
 }
 
@@ -2830,43 +2821,30 @@ static void widget_softshadow(const rcti *rect, int roundboxalign, const float r
 {
   bTheme *btheme = UI_GetTheme();
   uiWidgetBase wtb;
-  rcti rect1 = *rect;
   float triangle_strip[WIDGET_SIZE_MAX * 2 + 2][2];
-  const float radout = UI_ThemeMenuShadowWidth();
+  const float shadow_width = min_ff(UI_ThemeMenuShadowWidth(), BLI_rcti_size_y(rect));
 
   /* disabled shadow */
-  if (radout == 0.0f) {
+  if (shadow_width == 0.0f) {
     return;
   }
 
-  /* prevent tooltips to not show round shadow */
-  if (radout > 0.2f * BLI_rcti_size_y(&rect1)) {
-    rect1.ymax -= 0.2f * BLI_rcti_size_y(&rect1);
-  }
-  else {
-    rect1.ymax -= radout;
-  }
-
   /* inner part */
-  const int totvert = round_box_shadow_edges(wtb.inner_v,
-                                             &rect1,
-                                             radin,
-                                             roundboxalign &
-                                                 (UI_CNR_BOTTOM_RIGHT | UI_CNR_BOTTOM_LEFT),
-                                             0.0f);
+  const int totvert = round_box_shadow_edges(
+      wtb.inner_v, rect, radin, roundboxalign, shadow_width, 0.0f);
 
   /* we draw a number of increasing size alpha quad strips */
-  const float alphastep = 3.0f * btheme->tui.menu_shadow_fac / radout;
+  const float alphastep = 3.0f * btheme->tui.menu_shadow_fac / shadow_width;
 
   const uint pos = GPU_vertformat_attr_add(
       immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-  for (int step = 1; step <= int(radout); step++) {
-    const float expfac = sqrtf(step / radout);
+  for (int step = 1; step <= int(shadow_width); step++) {
+    const float expfac = sqrtf(step / shadow_width);
 
-    round_box_shadow_edges(wtb.outer_v, &rect1, radin, UI_CNR_ALL, float(step));
+    round_box_shadow_edges(wtb.outer_v, rect, radin, roundboxalign, shadow_width, float(step));
 
     immUniformColor4f(0.0f, 0.0f, 0.0f, alphastep * (1.0f - expfac));
 
