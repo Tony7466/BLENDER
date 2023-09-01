@@ -33,8 +33,6 @@ extern "C" {
 #endif
 
 struct AssetHandle;
-struct bContext;
-struct ReportList;
 
 AssetRepresentationHandle *ED_asset_handle_get_representation(const struct AssetHandle *asset);
 ID_Type ED_asset_handle_get_id_type(const struct AssetHandle *asset);
@@ -48,21 +46,4 @@ void ED_asset_handle_get_full_library_path(
 
 #ifdef __cplusplus
 }
-#endif
-
-#ifdef __cplusplus
-
-namespace blender::ed::asset {
-
-PointerRNA create_asset_rna_ptr(const asset_system::AssetRepresentation *asset);
-
-void operator_asset_reference_props_set(const asset_system::AssetRepresentation &asset,
-                                        PointerRNA &ptr);
-void operator_asset_reference_props_register(StructRNA &srna);
-
-const asset_system::AssetRepresentation *operator_asset_reference_props_get_asset(
-    const bContext &C, PointerRNA &ptr, ReportList *reports);
-
-}  // namespace blender::ed::asset
-
 #endif

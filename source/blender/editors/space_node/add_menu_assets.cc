@@ -21,6 +21,7 @@
 #include "RNA_access.hh"
 
 #include "ED_asset.hh"
+#include "ED_asset_menu_utils.hh"
 #include "ED_screen.hh"
 
 #include "node_intern.hh"
