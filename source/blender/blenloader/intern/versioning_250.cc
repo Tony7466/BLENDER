@@ -78,7 +78,6 @@
 #include "versioning_common.hh"
 
 #include <cerrno>
-#include <iostream>
 
 /* Make preferences read-only, use `versioning_userdef.cc`. */
 #define U (*((const UserDef *)&U))
@@ -1857,17 +1856,6 @@ void blo_do_versions_250(FileData *fd, Library * /*lib*/, Main *bmain)
 
       /* add ntree->inputs/ntree->outputs sockets for all unlinked sockets in the group tree. */
       LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-        {
-          const int identifier = node->identifier;
-          const bNode *exists_node = ntree->node_by_id(identifier);
-          const char *exists_msg = (exists_node == nullptr ?
-                                        "new" :
-                                        (exists_node == node ? "SAME NODE!" : "DIFFERENT NODE!!"));
-          std::cout << "ADDING NODE " << node->name << " [" << identifier << "]: " << exists_msg
-                    << std::endl;
-          //          nodeUniqueID(ntree, node);
-        }
-
         LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
           if (!sock->link && !((sock->flag & (SOCK_HIDDEN | SOCK_UNAVAIL)) != 0)) {
 
