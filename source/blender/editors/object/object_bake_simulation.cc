@@ -42,7 +42,6 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_simulation_state.hh"
-#include "BKE_simulation_state_serialize.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -358,17 +357,9 @@ static void bake_simulation_job_startjob(void *customdata,
           BLI_file_ensure_parent_dir_exists(bdata_path);
           fstream bdata_file{bdata_path, std::ios::out | std::ios::binary};
           bke::DiskBDataWriter bdata_writer{bdata_file_name, bdata_file, 0};
-
-          io::serialize::DictionaryValue io_root;
-          io_root.append_int("version", simulation_file_storage_version);
-          io::serialize::DictionaryValue &io_items = *io_root.append_dict("items");
-          for (auto item : frame_cache.items.items()) {
-            io::serialize::DictionaryValue &io_item = *io_items.append_dict(
-                std::to_string(item.key));
-            bke::serialize_bake_item(
-                *item.value, bdata_writer, *zone_bake_data.bdata_sharing, io_item);
-          }
-          io::serialize::write_json_file(meta_path, io_root);
+          fstream meta_file{meta_path, std::ios::out};
+          bke::serialize_bake(
+              frame_cache.state, bdata_writer, *zone_bake_data.bdata_sharing, meta_file);
         }
       }
     }
