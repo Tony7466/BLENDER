@@ -667,18 +667,10 @@ struct ShaderCreateInfo {
   Self &fragment_out(int slot,
                      Type type,
                      StringRefNull name,
-                     DualBlend blend = DualBlend::NONE
-                     ,
-                     int raster_order_group = -1
-  )
+                     DualBlend blend = DualBlend::NONE,
+                     int raster_order_group = -1)
   {
-    fragment_outputs_.append({slot,
-                              type,
-                              blend,
-                              name
-                              ,
-                              raster_order_group
-    });
+    fragment_outputs_.append({slot, type, blend, name, raster_order_group});
     return *(Self *)this;
   }
 
