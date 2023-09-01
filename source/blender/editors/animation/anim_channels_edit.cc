@@ -4273,10 +4273,10 @@ static void ANIM_OT_channel_view_pick(wmOperatorType *ot)
 #define CHANNEL_BAKE_KEEP 255
 
 static const EnumPropertyItem channel_bake_key_options[] = {
-    {CHANNEL_BAKE_KEEP, "KEEP", 0, "Keep", ""},
-    {BEZT_IPO_BEZ, "BEZIER", 0, "Bezier", ""},
-    {BEZT_IPO_LIN, "LIN", 0, "Linear", ""},
-    {BEZT_IPO_CONST, "CONST", 0, "Constant", ""},
+    {CHANNEL_BAKE_KEEP, "KEEP", 0, "Keep", "Keep the current key types"},
+    {BEZT_IPO_BEZ, "BEZIER", 0, "Bezier", "New keys will be beziers"},
+    {BEZT_IPO_LIN, "LIN", 0, "Linear", "New keys will be linear"},
+    {BEZT_IPO_CONST, "CONST", 0, "Constant", "New keys will be constant"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -4316,12 +4316,35 @@ static int channels_bake_exec(bContext *C, wmOperator *op)
 
   const bool remove_existing = RNA_boolean_get(op->ptr, "remove_existing");
   const int key_type = RNA_enum_get(op->ptr, "key_type");
+  const bool bake_modifiers = RNA_boolean_get(op->ptr, "bake_modifiers");
+
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = static_cast<FCurve *>(ale->data);
     if (!fcu->bezt) {
       continue;
     }
+    /* Save current state of modifier flags so they can be reapplied after baking. */
+    blender::Vector<short> modifier_flags;
+    if (!bake_modifiers) {
+      LISTBASE_FOREACH (FModifier *, modifier, &fcu->modifiers) {
+        modifier_flags.append(modifier->flag);
+        modifier->flag |= FMODIFIER_FLAG_MUTED;
+      }
+    }
+
     bake_fcurve(fcu, frame_range, step, remove_existing);
+
+    if (bake_modifiers) {
+      free_fmodifiers(&fcu->modifiers);
+    }
+    else {
+      int modifier_index = 0;
+      LISTBASE_FOREACH (FModifier *, modifier, &fcu->modifiers) {
+        modifier->flag = modifier_flags[modifier_index];
+        modifier_index++;
+      }
+    }
+
     if (key_type == CHANNEL_BAKE_KEEP) {
       continue;
     }
@@ -4388,6 +4411,12 @@ static void ANIM_OT_channels_bake(wmOperatorType *ot)
                CHANNEL_BAKE_KEEP,
                "Key Type",
                "Choose the key type with which new keys will be added");
+
+  RNA_def_boolean(ot->srna,
+                  "bake_modifiers",
+                  true,
+                  "Bake Modifiers",
+                  "Bake Modifiers into keyframes and delete them after");
 }
 
 /** \} */
