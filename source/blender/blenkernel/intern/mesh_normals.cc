@@ -902,6 +902,7 @@ void edges_sharp_from_angle_set(const OffsetIndices<int> faces,
                                 const Span<int> corner_verts,
                                 const Span<int> corner_edges,
                                 const Span<float3> face_normals,
+                                const Span<int> loop_to_face,
                                 const bool *sharp_faces,
                                 const float split_angle,
                                 MutableSpan<bool> sharp_edges)
@@ -913,9 +914,6 @@ void edges_sharp_from_angle_set(const OffsetIndices<int> faces,
 
   /* Mapping edge -> loops. See #bke::mesh::normals_calc_loop for details. */
   Array<int2> edge_to_loops(sharp_edges.size(), int2(0));
-
-  /* Simple mapping from a loop to its face index. */
-  const Array<int> loop_to_face = build_loop_to_face_map(faces);
 
   mesh_edges_sharp_tag(faces,
                        corner_verts,
@@ -1341,17 +1339,6 @@ void normals_calc_loop(const Span<float3> vert_positions,
    * Note also that loose edges always have both values set to 0! */
   Array<int2> edge_to_loops(edges.size(), int2(0));
 
-  /* Simple mapping from a loop to its face index. */
-  Span<int> loop_to_face;
-  Array<int> local_loop_to_face_map;
-  if (loop_to_face_map.is_empty()) {
-    local_loop_to_face_map = build_loop_to_face_map(faces);
-    loop_to_face = local_loop_to_face_map;
-  }
-  else {
-    loop_to_face = loop_to_face_map;
-  }
-
   CornerNormalSpaceArray _lnors_spacearr;
 
 #ifdef DEBUG_TIME
@@ -1374,7 +1361,7 @@ void normals_calc_loop(const Span<float3> vert_positions,
   common_data.corner_verts = corner_verts;
   common_data.corner_edges = corner_edges;
   common_data.edge_to_loops = edge_to_loops;
-  common_data.loop_to_face = loop_to_face;
+  common_data.loop_to_face = loop_to_face_map;
   common_data.face_normals = face_normals;
   common_data.vert_normals = vert_normals;
 

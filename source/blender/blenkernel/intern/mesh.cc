@@ -139,6 +139,10 @@ static void mesh_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int 
   mesh_dst->runtime->loose_edges_cache = mesh_src->runtime->loose_edges_cache;
   mesh_dst->runtime->looptris_cache = mesh_src->runtime->looptris_cache;
   mesh_dst->runtime->looptri_faces_cache = mesh_src->runtime->looptri_faces_cache;
+  mesh_dst->runtime->vert_to_face_offset_cache = mesh_src->runtime->vert_to_face_offset_cache;
+  mesh_dst->runtime->vert_to_face_map_cache = mesh_src->runtime->vert_to_face_map_cache;
+  mesh_dst->runtime->vert_to_corner_map_cache = mesh_src->runtime->vert_to_corner_map_cache;
+  mesh_dst->runtime->corner_to_face_map_cache = mesh_src->runtime->corner_to_face_map_cache;
 
   /* Only do tessface if we have no faces. */
   const bool do_tessface = ((mesh_src->totface_legacy != 0) && (mesh_src->faces_num == 0));
@@ -1052,9 +1056,6 @@ Mesh *BKE_mesh_new_nomain_from_template_ex(const Mesh *me_src,
   if (do_tessface && !CustomData_get_layer(&me_dst->fdata_legacy, CD_MFACE)) {
     CustomData_add_layer(&me_dst->fdata_legacy, CD_MFACE, CD_SET_DEFAULT, me_dst->totface_legacy);
   }
-
-  /* Expect that normals aren't copied at all, since the destination mesh is new. */
-  BLI_assert(BKE_mesh_vert_normals_are_dirty(me_dst));
 
   return me_dst;
 }

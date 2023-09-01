@@ -758,7 +758,7 @@ int bNodeTreeInterfacePanel::find_valid_insert_position_for_item(
           break;
         }
         if (items[test_pos]->item_type == NODE_INTERFACE_PANEL) {
-          /* Found valid position, insering moves the first panel. */
+          /* Found valid position, inserting moves the first panel. */
           pos = test_pos;
           break;
         }
@@ -1205,7 +1205,7 @@ bNodeTreeInterfaceItem *bNodeTreeInterface::insert_item_copy(const bNodeTreeInte
 
 bool bNodeTreeInterface::remove_item(bNodeTreeInterfaceItem &item, bool move_content_to_parent)
 {
-  bNodeTreeInterfacePanel *parent = this->find_item_parent(item);
+  bNodeTreeInterfacePanel *parent = this->find_item_parent(item, true);
   if (parent == nullptr) {
     return false;
   }
