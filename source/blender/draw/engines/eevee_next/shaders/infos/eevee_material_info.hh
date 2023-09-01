@@ -157,7 +157,6 @@ GPU_SHADER_CREATE_INFO(eevee_surf_forward)
                      // "eevee_render_pass_out",
                      // "eevee_cryptomatte_out",
                      // "eevee_raytrace_data",
-                     // "eevee_transmittance_data",
     );
 
 GPU_SHADER_CREATE_INFO(eevee_surf_capture)
@@ -187,21 +186,26 @@ GPU_SHADER_CREATE_INFO(eevee_surf_world)
                      "eevee_camera",
                      "eevee_utility_texture");
 
-GPU_SHADER_INTERFACE_INFO(eevee_shadow_iface, "shadow_interp").flat(Type::UINT, "view_id");
-
 GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
     .define("DRW_VIEW_LEN", "64")
     .define("MAT_SHADOW")
+    .define("USE_ATOMIC")
     .vertex_out(eevee_surf_iface)
     .vertex_out(eevee_surf_flat_iface)
-    .vertex_out(eevee_shadow_iface)
-    .sampler(SHADOW_RENDER_MAP_SLOT, ImageType::UINT_2D_ARRAY, "shadow_render_map_tx")
-    .image(SHADOW_ATLAS_SLOT,
+    .storage_buf(SHADOW_RENDER_MAP_BUF_SLOT,
+                 Qualifier::READ,
+                 "uint",
+                 "render_map_buf[SHADOW_RENDER_MAP_SIZE]")
+    .storage_buf(SHADOW_VIEWPORT_INDEX_BUF_SLOT,
+                 Qualifier::READ,
+                 "uint",
+                 "viewport_index_buf[SHADOW_VIEW_MAX]")
+    .storage_buf(SHADOW_PAGE_INFO_SLOT, Qualifier::READ, "ShadowPagesInfoData", "pages_infos_buf")
+    .image(SHADOW_ATLAS_IMG_SLOT,
            GPU_R32UI,
            Qualifier::READ_WRITE,
-           ImageType::UINT_2D,
+           ImageType::UINT_2D_ARRAY,
            "shadow_atlas_img")
-    .storage_buf(SHADOW_PAGE_INFO_SLOT, Qualifier::READ, "ShadowPagesInfoData", "pages_infos_buf")
     .fragment_source("eevee_surf_shadow_frag.glsl")
     .additional_info("eevee_camera", "eevee_utility_texture", "eevee_sampling_data");
 
@@ -219,7 +223,8 @@ GPU_SHADER_CREATE_INFO(eevee_volume_material_common)
     .local_group_size(VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE)
     .define("VOLUMETRICS")
     .uniform_buf(VOLUMES_INFO_BUF_SLOT, "VolumesInfoData", "volumes_info_buf")
-    .additional_info("draw_resource_id_uniform",
+    .additional_info("draw_modelmat_new_common",
+                     "draw_resource_id_uniform",
                      "draw_view",
                      "eevee_shared",
                      "eevee_sampling_data",
@@ -249,10 +254,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_object)
            Qualifier::READ_WRITE,
            ImageType::FLOAT_3D,
            "out_phase_img")
-    .additional_info("eevee_volume_material_common",
-                     "draw_object_infos_new",
-                     "draw_volume_infos",
-                     "draw_modelmat_new_common");
+    .additional_info("eevee_volume_material_common", "draw_object_infos_new", "draw_volume_infos");
 
 GPU_SHADER_CREATE_INFO(eevee_volume_world)
     .image(VOLUME_PROP_SCATTERING_IMG_SLOT,
