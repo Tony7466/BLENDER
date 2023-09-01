@@ -416,7 +416,7 @@ blender::Span<blender::float3> Mesh::corner_normals() const
                                      this->faces(),
                                      this->corner_verts(),
                                      this->corner_edges(),
-                                     {},
+                                     this->corner_to_face_map(),
                                      this->vert_normals(),
                                      this->face_normals(),
                                      sharp_edges,

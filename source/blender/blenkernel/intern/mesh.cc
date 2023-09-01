@@ -1470,6 +1470,7 @@ void BKE_mesh_sharp_edges_set_from_angle(Mesh *me, const float angle)
                                         me->corner_verts(),
                                         me->corner_edges(),
                                         me->face_normals(),
+                                        me->corner_to_face_map(),
                                         sharp_faces,
                                         angle,
                                         sharp_edges.span);
