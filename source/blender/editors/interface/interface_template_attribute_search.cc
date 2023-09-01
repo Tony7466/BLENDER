@@ -16,7 +16,7 @@
 #include "BLT_translation.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_string_search.hh"
+#include "UI_string_search.hh"
 
 #include "NOD_geometry_nodes_log.hh"
 
@@ -91,7 +91,7 @@ void attribute_search_add_items(StringRefNull str,
    * so the items are in the same order they will appear in while searching. */
   const char *string = is_first ? "" : str.c_str();
 
-  bke::string_search::StringSearch<const GeometryAttributeInfo> search;
+  ui::string_search::StringSearch<const GeometryAttributeInfo> search;
   for (const GeometryAttributeInfo *item : infos) {
     if (!bke::allow_procedural_attribute_access(item->name)) {
       continue;

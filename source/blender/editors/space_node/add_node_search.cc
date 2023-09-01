@@ -19,7 +19,7 @@
 #include "BKE_main.h"
 #include "BKE_node_tree_update.h"
 #include "BKE_screen.h"
-#include "BKE_string_search.hh"
+#include "UI_string_search.hh"
 
 #include "DEG_depsgraph_build.h"
 
@@ -185,7 +185,7 @@ static void add_node_search_update_fn(
     storage.update_items_tag = false;
   }
 
-  bke::string_search::StringSearch<nodes::AddNodeItem> search;
+  ui::string_search::StringSearch<nodes::AddNodeItem> search;
 
   for (nodes::AddNodeItem &item : storage.search_add_items) {
     search.add(item.ui_name, &item, item.weight);

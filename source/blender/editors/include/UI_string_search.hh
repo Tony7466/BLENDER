@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,7 +6,7 @@
 
 #include "BLI_string_search.hh"
 
-namespace blender::bke::string_search {
+namespace blender::ui::string_search {
 
 /**
  * Remember the string that the user chose. This allows us to put it higher up in the search items
@@ -28,4 +28,4 @@ template<typename T> class StringSearch : public blender::string_search::StringS
   StringSearch() : blender::string_search::StringSearch<T>(get_recent_cache()) {}
 };
 
-}  // namespace blender::bke::string_search
+}  // namespace blender::ui::string_search

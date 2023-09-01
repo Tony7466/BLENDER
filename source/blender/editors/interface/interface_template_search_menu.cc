@@ -39,7 +39,7 @@
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_screen.h"
-#include "BKE_string_search.hh"
+#include "UI_string_search.hh"
 
 #include "ED_screen.hh"
 
@@ -990,7 +990,7 @@ static void menu_search_update_fn(const bContext * /*C*/,
 {
   MenuSearch_Data *data = (MenuSearch_Data *)arg;
 
-  blender::bke::string_search::StringSearch<MenuSearch_Item> search;
+  blender::ui::string_search::StringSearch<MenuSearch_Item> search;
 
   LISTBASE_FOREACH (MenuSearch_Item *, item, &data->items) {
     search.add(item->drawwstr_full, item);

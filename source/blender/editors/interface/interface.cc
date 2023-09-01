@@ -39,8 +39,8 @@
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
-#include "BKE_string_search.hh"
 #include "BKE_unit.h"
+#include "UI_string_search.hh"
 
 #include "ED_asset.hh"
 
@@ -6375,7 +6375,7 @@ static void operator_enum_search_update_fn(
     const EnumPropertyItem *all_items;
     RNA_property_enum_items_gettexted((bContext *)C, ptr, prop, &all_items, nullptr, &do_free);
 
-    blender::bke::string_search::StringSearch<const EnumPropertyItem> search;
+    blender::ui::string_search::StringSearch<const EnumPropertyItem> search;
 
     for (const EnumPropertyItem *item = all_items; item->identifier; item++) {
       search.add(item->name, item);

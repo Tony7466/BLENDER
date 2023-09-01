@@ -67,7 +67,7 @@
 #include "BKE_scene.h"
 #include "BKE_screen.h"
 #include "BKE_shader_fx.h"
-#include "BKE_string_search.hh"
+#include "UI_string_search.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -426,7 +426,7 @@ static void id_search_cb(const bContext *C,
   ListBase *lb = template_ui->idlb;
   const int flag = RNA_property_flag(template_ui->prop);
 
-  blender::bke::string_search::StringSearch<ID> search;
+  blender::ui::string_search::StringSearch<ID> search;
 
   /* ID listbase */
   LISTBASE_FOREACH (ID *, id, lb) {

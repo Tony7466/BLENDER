@@ -1,17 +1,18 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <sstream>
 
 #include "BKE_appdir.h"
-#include "BKE_string_search.hh"
+
+#include "UI_string_search.hh"
 
 #include "BLI_fileops.hh"
 #include "BLI_map.hh"
 #include "BLI_path_util.h"
 
-namespace blender::bke::string_search {
+namespace blender::ui::string_search {
 
 using blender::string_search::RecentCache;
 
@@ -94,4 +95,4 @@ void read_recent_searches_file()
   }
 }
 
-}  // namespace blender::bke::string_search
+}  // namespace blender::ui::string_search

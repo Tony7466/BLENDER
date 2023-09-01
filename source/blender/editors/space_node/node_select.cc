@@ -24,8 +24,8 @@
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
-#include "BKE_string_search.hh"
 #include "BKE_workspace.h"
+#include "UI_string_search.hh"
 
 #include "ED_node.hh" /* own include */
 #include "ED_screen.hh"
@@ -1356,7 +1356,7 @@ static void node_find_update_fn(const bContext *C,
 {
   SpaceNode *snode = CTX_wm_space_node(C);
 
-  bke::string_search::StringSearch<bNode> search;
+  ui::string_search::StringSearch<bNode> search;
 
   for (bNode *node : snode->edittree->all_nodes()) {
     char name[256];

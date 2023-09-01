@@ -28,7 +28,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_report.h"
 #include "BKE_screen.h"
-#include "BKE_string_search.hh"
+#include "UI_string_search.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -519,7 +519,7 @@ void ui_rna_collection_search_update_fn(
   char *name;
   bool has_id_icon = false;
 
-  blender::bke::string_search::StringSearch<CollItemSearch> search;
+  blender::ui::string_search::StringSearch<CollItemSearch> search;
 
   if (data->search_prop != nullptr) {
     /* build a temporary list of relevant items first */
