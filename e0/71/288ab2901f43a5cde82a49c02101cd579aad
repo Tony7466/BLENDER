@@ -1,3 +1,4 @@
 Referenced by commit 9600b74318c25a580ed1d963b6cdd112d215df5f, Fix: geometry nodes asset traits not written to file
 Referenced by issue #111713, Crash when library overriding specific object (related to `bNodeTreeInterfacePanel`)
 Referenced by issue #111769, Curves Sculpt Tool menu appears in UV Sculpt Brush Specials menu after entering Curves Sculpt mode for the first time
+Referenced by commit 1bcd812a75d50ede6256ad72b385a6b3b6322daf, Fix (unreported) memory leak in Nodes versioning code.
