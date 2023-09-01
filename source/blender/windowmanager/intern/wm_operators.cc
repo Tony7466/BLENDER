@@ -1903,7 +1903,7 @@ static void WM_OT_search_operator(wmOperatorType *ot)
 static void WM_OT_search_single_menu(wmOperatorType *ot)
 {
   ot->name = "Search Single Menu";
-  ot->idname = __func__;
+  ot->idname = "WM_OT_search_single_menu";
   ot->description = "Pop-up a search for a menu in current context";
 
   ot->invoke = wm_search_menu_invoke;
