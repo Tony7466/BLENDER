@@ -130,8 +130,7 @@ static const asset_system::AssetRepresentation *find_asset_from_weak_ref(
   return matching_asset;
 }
 
-/** \note Does not check asset type or meta data. */
-const asset_system::AssetRepresentation *operator_asset_reference_props_get_asset(
+const asset_system::AssetRepresentation *operator_asset_reference_props_get_asset_from_all_library(
     const bContext &C, PointerRNA &ptr, ReportList *reports)
 {
   AssetWeakReference weak_ref{};

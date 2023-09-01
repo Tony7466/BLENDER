@@ -72,8 +72,8 @@ namespace blender::ed::geometry {
 
 static const bNodeTree *get_node_group(const bContext &C, PointerRNA &ptr, ReportList *reports)
 {
-  const asset_system::AssetRepresentation *asset = asset::operator_asset_reference_props_get_asset(
-      C, ptr, reports);
+  const asset_system::AssetRepresentation *asset =
+      asset::operator_asset_reference_props_get_asset_from_all_library(C, ptr, reports);
   if (!asset) {
     return nullptr;
   }
@@ -292,8 +292,8 @@ static std::string run_node_group_get_description(bContext *C,
                                                   wmOperatorType * /*ot*/,
                                                   PointerRNA *ptr)
 {
-  const asset_system::AssetRepresentation *asset = asset::operator_asset_reference_props_get_asset(
-      *C, *ptr, nullptr);
+  const asset_system::AssetRepresentation *asset =
+      asset::operator_asset_reference_props_get_asset_from_all_library(*C, *ptr, nullptr);
   if (!asset) {
     return "";
   }

@@ -54,7 +54,14 @@ void operator_asset_reference_props_set(const asset_system::AssetRepresentation 
                                         PointerRNA &ptr);
 void operator_asset_reference_props_register(StructRNA &srna);
 
-const asset_system::AssetRepresentation *operator_asset_reference_props_get_asset(
+/**
+ * Load all asset libraries to find an asset from the #operator_asset_reference_props_register
+ * properties. The loading happens in the background, so there may be no result immediately. In
+ * that case an "Asset loading is unfinished" report is added.
+ *
+ * \note Does not check asset type or meta data.
+ */
+const asset_system::AssetRepresentation *operator_asset_reference_props_get_asset_from_all_library(
     const bContext &C, PointerRNA &ptr, ReportList *reports);
 
 }  // namespace blender::ed::asset
