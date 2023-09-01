@@ -166,22 +166,13 @@ static void subdiv_ccg_alloc_elements(SubdivCCG *subdiv_ccg, Subdiv *subdiv)
 /** \name Grids evaluation
  * \{ */
 
-struct CCGEvalGridsData {
-  SubdivCCG *subdiv_ccg;
-  Subdiv *subdiv;
-  int *face_ptex_offset;
-  SubdivCCGMaskEvaluator *mask_evaluator;
-  SubdivCCGMaterialFlagsEvaluator *material_flags_evaluator;
-};
-
-static void subdiv_ccg_eval_grid_element_limit(CCGEvalGridsData *data,
+static void subdiv_ccg_eval_grid_element_limit(Subdiv *subdiv,
+                                               SubdivCCG *subdiv_ccg,
                                                const int ptex_face_index,
                                                const float u,
                                                const float v,
                                                uchar *element)
 {
-  Subdiv *subdiv = data->subdiv;
-  SubdivCCG *subdiv_ccg = data->subdiv_ccg;
   if (subdiv->displacement_evaluator != nullptr) {
     BKE_subdiv_eval_final_point(subdiv, ptex_face_index, u, v, (float *)element);
   }
@@ -198,39 +189,45 @@ static void subdiv_ccg_eval_grid_element_limit(CCGEvalGridsData *data,
   }
 }
 
-static void subdiv_ccg_eval_grid_element_mask(CCGEvalGridsData *data,
+static void subdiv_ccg_eval_grid_element_mask(SubdivCCG *subdiv_ccg,
+                                              SubdivCCGMaskEvaluator *mask_evaluator,
                                               const int ptex_face_index,
                                               const float u,
                                               const float v,
                                               uchar *element)
 {
-  SubdivCCG *subdiv_ccg = data->subdiv_ccg;
   if (!subdiv_ccg->has_mask) {
     return;
   }
   float *mask_value_ptr = (float *)(element + subdiv_ccg->mask_offset);
-  if (data->mask_evaluator != nullptr) {
-    *mask_value_ptr = data->mask_evaluator->eval_mask(data->mask_evaluator, ptex_face_index, u, v);
+  if (mask_evaluator != nullptr) {
+    *mask_value_ptr = mask_evaluator->eval_mask(mask_evaluator, ptex_face_index, u, v);
   }
   else {
     *mask_value_ptr = 0.0f;
   }
 }
 
-static void subdiv_ccg_eval_grid_element(CCGEvalGridsData *data,
+static void subdiv_ccg_eval_grid_element(Subdiv *subdiv,
+                                         SubdivCCG *subdiv_ccg,
+                                         SubdivCCGMaskEvaluator *mask_evaluator,
                                          const int ptex_face_index,
                                          const float u,
                                          const float v,
                                          uchar *element)
 {
-  subdiv_ccg_eval_grid_element_limit(data, ptex_face_index, u, v, element);
-  subdiv_ccg_eval_grid_element_mask(data, ptex_face_index, u, v, element);
+  subdiv_ccg_eval_grid_element_limit(subdiv, subdiv_ccg, ptex_face_index, u, v, element);
+  subdiv_ccg_eval_grid_element_mask(subdiv_ccg, mask_evaluator, ptex_face_index, u, v, element);
 }
 
-static void subdiv_ccg_eval_regular_grid(CCGEvalGridsData *data, const int face_index)
+static void subdiv_ccg_eval_regular_grid(Subdiv *subdiv,
+                                         SubdivCCG *subdiv_ccg,
+                                         const int *face_ptex_offset,
+                                         SubdivCCGMaskEvaluator *mask_evaluator,
+                                         SubdivCCGMaterialFlagsEvaluator *material_flags_evaluator,
+                                         const int face_index)
 {
-  SubdivCCG *subdiv_ccg = data->subdiv_ccg;
-  const int ptex_face_index = data->face_ptex_offset[face_index];
+  const int ptex_face_index = face_ptex_offset[face_index];
   const int grid_size = subdiv_ccg->grid_size;
   const float grid_size_1_inv = 1.0f / (grid_size - 1);
   const int element_size = element_size_bytes_get(subdiv_ccg);
@@ -248,20 +245,25 @@ static void subdiv_ccg_eval_regular_grid(CCGEvalGridsData *data, const int face_
         BKE_subdiv_rotate_grid_to_quad(corner, grid_u, grid_v, &u, &v);
         const size_t grid_element_index = size_t(y) * grid_size + x;
         const size_t grid_element_offset = grid_element_index * element_size;
-        subdiv_ccg_eval_grid_element(data, ptex_face_index, u, v, &grid[grid_element_offset]);
+        subdiv_ccg_eval_grid_element(
+            subdiv, subdiv_ccg, mask_evaluator, ptex_face_index, u, v, &grid[grid_element_offset]);
       }
     }
     /* Assign grid's face. */
     grid_to_face_map[grid_index] = face_index;
     /* Assign material flags. */
-    subdiv_ccg->grid_flag_mats[grid_index] = data->material_flags_evaluator->eval_material_flags(
-        data->material_flags_evaluator, face_index);
+    subdiv_ccg->grid_flag_mats[grid_index] = material_flags_evaluator->eval_material_flags(
+        material_flags_evaluator, face_index);
   }
 }
 
-static void subdiv_ccg_eval_special_grid(CCGEvalGridsData *data, const int face_index)
+static void subdiv_ccg_eval_special_grid(Subdiv *subdiv,
+                                         SubdivCCG *subdiv_ccg,
+                                         const int *face_ptex_offset,
+                                         SubdivCCGMaskEvaluator *mask_evaluator,
+                                         SubdivCCGMaterialFlagsEvaluator *material_flags_evaluator,
+                                         const int face_index)
 {
-  SubdivCCG *subdiv_ccg = data->subdiv_ccg;
   const int grid_size = subdiv_ccg->grid_size;
   const float grid_size_1_inv = 1.0f / (grid_size - 1);
   const int element_size = element_size_bytes_get(subdiv_ccg);
@@ -270,7 +272,7 @@ static void subdiv_ccg_eval_special_grid(CCGEvalGridsData *data, const int face_
   const SubdivCCGFace *face = &faces[face_index];
   for (int corner = 0; corner < face->num_grids; corner++) {
     const int grid_index = face->start_grid_index + corner;
-    const int ptex_face_index = data->face_ptex_offset[face_index] + corner;
+    const int ptex_face_index = face_ptex_offset[face_index] + corner;
     uchar *grid = (uchar *)subdiv_ccg->grids[grid_index];
     for (int y = 0; y < grid_size; y++) {
       const float u = 1.0f - (y * grid_size_1_inv);
@@ -278,14 +280,15 @@ static void subdiv_ccg_eval_special_grid(CCGEvalGridsData *data, const int face_
         const float v = 1.0f - (x * grid_size_1_inv);
         const size_t grid_element_index = size_t(y) * grid_size + x;
         const size_t grid_element_offset = grid_element_index * element_size;
-        subdiv_ccg_eval_grid_element(data, ptex_face_index, u, v, &grid[grid_element_offset]);
+        subdiv_ccg_eval_grid_element(
+            subdiv, subdiv_ccg, mask_evaluator, ptex_face_index, u, v, &grid[grid_element_offset]);
       }
     }
     /* Assign grid's face. */
     grid_to_face_map[grid_index] = face_index;
     /* Assign material flags. */
-    subdiv_ccg->grid_flag_mats[grid_index] = data->material_flags_evaluator->eval_material_flags(
-        data->material_flags_evaluator, face_index);
+    subdiv_ccg->grid_flag_mats[grid_index] = material_flags_evaluator->eval_material_flags(
+        material_flags_evaluator, face_index);
   }
 }
 
@@ -297,21 +300,24 @@ static bool subdiv_ccg_evaluate_grids(SubdivCCG *subdiv_ccg,
   using namespace blender;
   OpenSubdiv_TopologyRefiner *topology_refiner = subdiv->topology_refiner;
   const int num_faces = topology_refiner->getNumFaces(topology_refiner);
-  /* Initialize data passed to all the tasks. */
-  CCGEvalGridsData data;
-  data.subdiv_ccg = subdiv_ccg;
-  data.subdiv = subdiv;
-  data.face_ptex_offset = BKE_subdiv_face_ptex_offset_get(subdiv);
-  data.mask_evaluator = mask_evaluator;
-  data.material_flags_evaluator = material_flags_evaluator;
-  /* Threaded grids evaluation. */
+  const int *face_ptex_offset = BKE_subdiv_face_ptex_offset_get(subdiv);
   threading::parallel_for(IndexRange(num_faces), 1024, [&](const IndexRange range) {
     for (const int face_index : range) {
       if (subdiv_ccg->faces[face_index].num_grids == 4) {
-        subdiv_ccg_eval_regular_grid(&data, face_index);
+        subdiv_ccg_eval_regular_grid(subdiv,
+                                     subdiv_ccg,
+                                     face_ptex_offset,
+                                     mask_evaluator,
+                                     material_flags_evaluator,
+                                     face_index);
       }
       else {
-        subdiv_ccg_eval_special_grid(&data, face_index);
+        subdiv_ccg_eval_special_grid(subdiv,
+                                     subdiv_ccg,
+                                     face_ptex_offset,
+                                     mask_evaluator,
+                                     material_flags_evaluator,
+                                     face_index);
       }
     }
   });
