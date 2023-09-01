@@ -229,10 +229,11 @@ BLI_STATIC_ASSERT_ALIGN(FilmSample, 16)
 struct FilmData {
   /** Size of the film in pixels. */
   int2 extent;
-  /** Offset of the film in the full-res frame, in pixels. */
+  /** Offset to convert from Display space to Film space, in pixels. */
   int2 offset;
-  /** Extent used by the render buffers when rendering the main views. */
+  /** Size of the render buffers when rendering the main views, in pixels. */
   int2 render_extent;
+  /** Offset to convert from Film space to Render space, in pixels. */
   int2 render_offset;
   /**
    * Sub-pixel offset applied to the window matrix.

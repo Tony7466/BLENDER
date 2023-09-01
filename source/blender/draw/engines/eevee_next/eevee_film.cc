@@ -5,7 +5,7 @@
 /** \file
  * \ingroup eevee
  *
- * A film is a full-screen buffer (usually at output extent)
+ * A film is a buffer (usually at display extent)
  * that will be able to accumulate sample in any distorted camera_type
  * using a pixel filter.
  *
@@ -249,12 +249,11 @@ void Film::init(const int2 &extent, const rcti *output_rect)
       output_rect = &fallback_rect;
     }
 
-    display_offset = int2(output_rect->xmin, output_rect->ymin);
     display_extent = extent;
 
     FilmData data = data_;
     data.extent = int2(BLI_rcti_size_x(output_rect), BLI_rcti_size_y(output_rect));
-    data.offset = display_offset;
+    data.offset = int2(output_rect->xmin, output_rect->ymin);
     data.extent_inv = 1.0f / float2(data.extent);
     /* TODO(fclem): parameter hidden in experimental.
      * We need to figure out LOD bias first in order to preserve texture crispiness. */
@@ -639,7 +638,7 @@ void Film::accumulate(const DRWView *view, GPUTexture *combined_final_tx)
       float4 clear_color = {0.0f, 0.0f, 0.0f, 0.0f};
       GPU_framebuffer_clear_color(dfbl->default_fb, clear_color);
     }
-    GPU_framebuffer_viewport_set(dfbl->default_fb, UNPACK2(display_offset), UNPACK2(data_.extent));
+    GPU_framebuffer_viewport_set(dfbl->default_fb, UNPACK2(data.offset), UNPACK2(data_.extent));
   }
 
   update_sample_table();
@@ -671,7 +670,7 @@ void Film::display()
 
   DefaultFramebufferList *dfbl = DRW_viewport_framebuffer_list_get();
   GPU_framebuffer_bind(dfbl->default_fb);
-  GPU_framebuffer_viewport_set(dfbl->default_fb, UNPACK2(display_offset), UNPACK2(data_.extent));
+  GPU_framebuffer_viewport_set(dfbl->default_fb, UNPACK2(data.offset), UNPACK2(data_.extent));
 
   combined_final_tx_ = inst_.render_buffers.combined_tx;
 
