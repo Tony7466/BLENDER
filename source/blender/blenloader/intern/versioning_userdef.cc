@@ -94,10 +94,6 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(space_sequencer.list_text_hi);
   }
 
-  if (!USER_VERSION_ATLEAST(303, 6)) {
-    btheme->tui.wcol_view_item = U_theme_default.tui.wcol_view_item;
-  }
-
   if (!USER_VERSION_ATLEAST(306, 3)) {
     FROM_DEFAULT_V4_UCHAR(space_view3d.face_retopology);
   }
@@ -871,6 +867,9 @@ void blo_do_versions_userdef(UserDef *userdef)
    */
   {
     /* Keep this block, even when empty. */
+
+    /* Clear deprecated USER_MENUFIXEDORDER user flag for reuse. */
+    userdef->uiflag &= ~USER_UIFLAG_UNUSED_4;
   }
 
   LISTBASE_FOREACH (bTheme *, btheme, &userdef->themes) {

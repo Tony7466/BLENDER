@@ -239,6 +239,10 @@ class NODE_MT_add(bpy.types.Menu):
             props = layout.operator("node.add_search", text="Search...", icon='VIEWZOOM')
             layout.separator()
             layout.menu_contents("NODE_MT_compositing_node_add_all")
+        elif snode.tree_type == 'ShaderNodeTree':
+            props = layout.operator("node.add_search", text="Search...", icon='VIEWZOOM')
+            layout.separator()
+            layout.menu_contents("NODE_MT_shading_node_add_all")
         elif nodeitems_utils.has_node_categories(context):
             props = layout.operator("node.add_search", text="Search...", icon='VIEWZOOM')
             props.use_transform = True
@@ -906,6 +910,7 @@ class NODE_PT_node_tree_interface(Panel):
         active_item = tree.interface.active
         if active_item is not None:
             layout.use_property_split = True
+            layout.use_property_decorate = False
 
             if active_item.item_type == 'SOCKET':
                 layout.prop(active_item, "socket_type", text="Type")

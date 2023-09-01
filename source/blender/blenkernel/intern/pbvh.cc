@@ -914,7 +914,7 @@ void BKE_pbvh_build_grids(PBVH *pbvh,
                           CCGElem **grids,
                           int totgrid,
                           CCGKey *key,
-                          void **gridfaces,
+                          blender::Span<int> grid_to_face_map,
                           DMFlagMat *flagmats,
                           BLI_bitmap **grid_hidden,
                           Mesh *me,
@@ -924,7 +924,7 @@ void BKE_pbvh_build_grids(PBVH *pbvh,
 
   pbvh->header.type = PBVH_GRIDS;
   pbvh->grids = grids;
-  pbvh->gridfaces = gridfaces;
+  pbvh->grid_to_face_map = grid_to_face_map;
   pbvh->grid_flag_mats = flagmats;
   pbvh->totgrid = totgrid;
   pbvh->gridkey = *key;
@@ -1351,6 +1351,10 @@ static void pbvh_faces_update_normals(PBVH *pbvh, Span<PBVHNode *> nodes, Mesh &
       }
     });
   });
+
+  /* #SharedCache::update() reallocates the cached vectors if they were shared initially. */
+  pbvh->face_normals = mesh.runtime->face_normals_cache.data();
+  pbvh->vert_normals = mesh.runtime->vert_normals_cache.data();
 }
 
 static void node_update_mask_redraw(PBVH &pbvh, PBVHNode &node)
@@ -1715,10 +1719,11 @@ void BKE_pbvh_get_grid_updates(PBVH *pbvh, bool clear, void ***r_gridfaces, int 
 
   pbvh_iter_begin(&iter, pbvh, {});
 
+  SubdivCCGFace *all_faces = pbvh->subdiv_ccg->faces;
   while ((node = pbvh_iter_next(&iter, PBVH_Leaf))) {
     if (node->flag & PBVH_UpdateNormals) {
       for (const int grid : node->prim_indices) {
-        void *face = pbvh->gridfaces[grid];
+        void *face = &all_faces[pbvh->grid_to_face_map[grid]];
         BLI_gset_add(face_set, face);
       }
 
@@ -2944,14 +2949,14 @@ void BKE_pbvh_draw_debug_cb(PBVH *pbvh,
 
 void BKE_pbvh_grids_update(PBVH *pbvh,
                            CCGElem **grids,
-                           void **gridfaces,
+                           blender::Span<int> grid_to_face_map,
                            DMFlagMat *flagmats,
                            BLI_bitmap **grid_hidden,
                            CCGKey *key)
 {
   pbvh->gridkey = *key;
   pbvh->grids = grids;
-  pbvh->gridfaces = gridfaces;
+  pbvh->grid_to_face_map = grid_to_face_map;
 
   if (flagmats != pbvh->grid_flag_mats || pbvh->grid_hidden != grid_hidden) {
     pbvh->grid_flag_mats = flagmats;
