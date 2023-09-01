@@ -19,6 +19,7 @@
 #include "BKE_main.h"
 #include "BKE_node_tree_update.h"
 #include "BKE_screen.h"
+
 #include "UI_string_search.hh"
 
 #include "DEG_depsgraph_build.h"

@@ -15,6 +15,7 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_screen.h"
+
 #include "UI_string_search.hh"
 
 #include "NOD_socket.hh"

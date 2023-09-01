@@ -47,7 +47,6 @@
 #include "BKE_screen.h"
 #include "BKE_tracking.h"
 #include "BKE_unit.h"
-#include "UI_string_search.hh"
 
 #include "GHOST_C-api.h"
 
@@ -57,6 +56,7 @@
 #include "ED_undo.hh"
 
 #include "UI_interface.hh"
+#include "UI_string_search.hh"
 #include "UI_view2d.hh"
 
 #include "BLF_api.h"

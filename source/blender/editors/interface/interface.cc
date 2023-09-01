@@ -40,7 +40,6 @@
 #include "BKE_scene.h"
 #include "BKE_screen.h"
 #include "BKE_unit.h"
-#include "UI_string_search.hh"
 
 #include "ED_asset.hh"
 
@@ -52,6 +51,7 @@
 
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
+#include "UI_string_search.hh"
 #include "UI_view2d.hh"
 
 #include "IMB_imbuf.h"

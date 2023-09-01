@@ -39,7 +39,6 @@
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_screen.h"
-#include "UI_string_search.hh"
 
 #include "ED_screen.hh"
 
@@ -50,6 +49,7 @@
 #include "WM_types.hh"
 
 #include "UI_interface.hh"
+#include "UI_string_search.hh"
 #include "interface_intern.hh"
 
 /* For key-map item access. */

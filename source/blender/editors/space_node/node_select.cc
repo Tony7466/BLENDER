@@ -25,7 +25,6 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_workspace.h"
-#include "UI_string_search.hh"
 
 #include "ED_node.hh" /* own include */
 #include "ED_screen.hh"
@@ -41,6 +40,7 @@
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+#include "UI_string_search.hh"
 #include "UI_view2d.hh"
 
 #include "DEG_depsgraph.h"

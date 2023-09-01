@@ -16,12 +16,12 @@
 #include "BLT_translation.h"
 
 #include "BKE_attribute.hh"
-#include "UI_string_search.hh"
 
 #include "NOD_geometry_nodes_log.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+#include "UI_string_search.hh"
 
 using blender::nodes::geo_eval_log::GeometryAttributeInfo;
 

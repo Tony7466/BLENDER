@@ -28,7 +28,6 @@
 #include "BKE_lib_id.h"
 #include "BKE_report.h"
 #include "BKE_screen.h"
-#include "UI_string_search.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -37,6 +36,7 @@
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
 #include "UI_resources.hh"
+#include "UI_string_search.hh"
 #include "UI_view2d.hh"
 
 #include "WM_api.hh"

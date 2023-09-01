@@ -55,7 +55,6 @@
 #include "BKE_screen.h"
 #include "BKE_sound.h"
 #include "BKE_vfont.h"
-#include "UI_string_search.hh"
 
 #include "BKE_addon.h"
 #include "BKE_appdir.h"
@@ -111,8 +110,10 @@
 
 #include "BLF_api.h"
 #include "BLT_lang.h"
+
 #include "UI_interface.hh"
 #include "UI_resources.hh"
+#include "UI_string_search.hh"
 
 #include "GPU_context.h"
 #include "GPU_init_exit.h"

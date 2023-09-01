@@ -67,7 +67,6 @@
 #include "BKE_scene.h"
 #include "BKE_screen.h"
 #include "BKE_shader_fx.h"
-#include "UI_string_search.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_build.h"
@@ -90,6 +89,7 @@
 
 #include "UI_interface.hh"
 #include "UI_interface_icons.hh"
+#include "UI_string_search.hh"
 #include "UI_view2d.hh"
 #include "interface_intern.hh"
 
