@@ -62,6 +62,7 @@
 #include "ED_keyframes_keylist.hh"
 #include "ED_mesh.hh"
 #include "ED_object.hh"
+#include "ED_scene.hh"
 #include "ED_screen.hh"
 #include "ED_screen_types.hh"
 #include "ED_sequencer.hh"
@@ -3240,7 +3241,7 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
 static bool keyframe_jump_poll(bContext *C)
 {
   /* There is a keyframe jump operator specifically for the Graph Editor. */
-  return ED_operator_screenactive_norender(C) && CTX_wm_area(C)->spacetype != SPACE_GRAPH;
+  return ED_operator_screenactive_norender(C) && !ED_operator_graphedit_active(C);
 }
 
 static void SCREEN_OT_keyframe_jump(wmOperatorType *ot)
@@ -4750,7 +4751,7 @@ static int screen_animation_step_invoke(bContext *C, wmOperator * /*op*/, const 
       /* Try to keep the playback in realtime by dropping frames. */
 
       /* How much time (in frames) has passed since the last frame was drawn? */
-      double delta_frames = wt->delta * FPS;
+      double delta_frames = wt->time_delta * FPS;
 
       /* Add the remaining fraction from the last time step. */
       delta_frames += sad->lagging_frame_count;
@@ -4868,18 +4869,19 @@ static int screen_animation_step_invoke(bContext *C, wmOperator * /*op*/, const 
     }
   }
 
-  /* update frame rate info too
-   * NOTE: this may not be accurate enough, since we might need this after modifiers/etc.
-   * have been calculated instead of just before updates have been done?
-   */
-  ED_refresh_viewport_fps(C);
+  if (U.uiflag & USER_SHOW_FPS) {
+    /* Update frame rate info too.
+     * NOTE: this may not be accurate enough, since we might need this after modifiers/etc.
+     * have been calculated instead of just before updates have been done? */
+    ED_scene_fps_average_accumulate(scene, U.playback_fps_samples, wt->time_last);
+  }
 
   /* Recalculate the time-step for the timer now that we've finished calculating this,
    * since the frames-per-second value may have been changed.
    */
   /* TODO: this may make evaluation a bit slower if the value doesn't change...
    * any way to avoid this? */
-  wt->timestep = (1.0 / FPS);
+  wt->time_step = (1.0 / FPS);
 
   return OPERATOR_FINISHED;
 }
@@ -4942,6 +4944,7 @@ int ED_screen_animation_play(bContext *C, int sync, int mode)
   if (ED_screen_animation_playing(CTX_wm_manager(C))) {
     /* stop playback now */
     ED_screen_animation_timer(C, 0, 0, 0);
+    ED_scene_fps_average_clear(scene);
     BKE_sound_stop_scene(scene_eval);
 
     BKE_callback_exec_id_depsgraph(
@@ -4963,6 +4966,7 @@ int ED_screen_animation_play(bContext *C, int sync, int mode)
     }
 
     ED_screen_animation_timer(C, screen->redraws_flag, sync, mode);
+    ED_scene_fps_average_clear(scene);
 
     if (screen->animtimer) {
       wmTimer *wt = screen->animtimer;
@@ -5477,7 +5481,7 @@ float ED_region_blend_alpha(ARegion *region)
     RegionAlphaInfo *rgi = static_cast<RegionAlphaInfo *>(region->regiontimer->customdata);
     float alpha;
 
-    alpha = float(region->regiontimer->duration) / TIMEOUT;
+    alpha = float(region->regiontimer->time_duration) / TIMEOUT;
     /* makes sure the blend out works 100% - without area redraws */
     if (rgi->hidden) {
       alpha = 0.9f - TIMESTEP - alpha;
@@ -5573,7 +5577,7 @@ static int region_blend_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *
   }
 
   /* end timer? */
-  if (rgi->region->regiontimer->duration > double(TIMEOUT)) {
+  if (rgi->region->regiontimer->time_duration > double(TIMEOUT)) {
     region_blend_end(C, rgi->region, false);
     return (OPERATOR_FINISHED | OPERATOR_PASS_THROUGH);
   }

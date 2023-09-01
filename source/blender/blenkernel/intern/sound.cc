@@ -53,7 +53,7 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "SEQ_sequencer.h"
 #include "SEQ_sound.h"
@@ -189,19 +189,6 @@ static void sound_blend_read_data(BlendDataReader *reader, ID *id)
   BKE_packedfile_blend_read(reader, &sound->newpackedfile);
 }
 
-static void sound_blend_read_lib(BlendLibReader *reader, ID *id)
-{
-  bSound *sound = (bSound *)id;
-  /* XXX: deprecated - old animation system. */
-  BLO_read_id_address(reader, id, &sound->ipo);
-}
-
-static void sound_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  bSound *snd = (bSound *)id;
-  BLO_expand(expander, snd->ipo); /* XXX deprecated - old animation system */
-}
-
 IDTypeInfo IDType_ID_SO = {
     /*id_code*/ ID_SO,
     /*id_filter*/ FILTER_ID_SO,
@@ -225,8 +212,7 @@ IDTypeInfo IDType_ID_SO = {
 
     /*blend_write*/ sound_blend_write,
     /*blend_read_data*/ sound_blend_read_data,
-    /*blend_read_lib*/ sound_blend_read_lib,
-    /*blend_read_expand*/ sound_blend_read_expand,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -802,6 +788,19 @@ void BKE_sound_update_scene_sound(void *handle, bSound *sound)
 {
   AUD_SequenceEntry_setSound(handle, sound->playback_handle);
 }
+
+#endif /* WITH_AUDASPACE */
+
+void BKE_sound_update_sequence_handle(void *handle, void *sound_handle)
+{
+#ifdef WITH_AUDASPACE
+  AUD_SequenceEntry_setSound(handle, sound_handle);
+#else
+  UNUSED_VARS(handle, sound_handle);
+#endif
+}
+
+#ifdef WITH_AUDASPACE
 
 void BKE_sound_set_cfra(int cfra)
 {

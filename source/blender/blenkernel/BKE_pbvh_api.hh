@@ -210,7 +210,7 @@ void BKE_pbvh_build_grids(PBVH *pbvh,
                           CCGElem **grids,
                           int totgrid,
                           CCGKey *key,
-                          void **gridfaces,
+                          blender::Span<int> grid_to_face_map,
                           DMFlagMat *flagmats,
                           unsigned int **grid_hidden,
                           Mesh *me,
@@ -445,7 +445,7 @@ void BKE_pbvh_redraw_BB(PBVH *pbvh, float bb_min[3], float bb_max[3]);
 void BKE_pbvh_get_grid_updates(PBVH *pbvh, bool clear, void ***r_gridfaces, int *r_totface);
 void BKE_pbvh_grids_update(PBVH *pbvh,
                            CCGElem **grids,
-                           void **gridfaces,
+                           blender::Span<int> grid_to_face_map,
                            DMFlagMat *flagmats,
                            unsigned int **grid_hidden,
                            CCGKey *key);
@@ -499,7 +499,7 @@ struct PBVHVertexIter {
 
   /* mesh */
   blender::MutableSpan<blender::float3> vert_positions;
-  blender::MutableSpan<blender::float3> vert_normals;
+  blender::Span<blender::float3> vert_normals;
   const bool *hide_vert;
   int totvert;
   const int *vert_indices;
@@ -516,8 +516,8 @@ struct PBVHVertexIter {
    * that compiler optimization's will skip the ones we don't use */
   BMVert *bm_vert;
   float *co;
-  float *no;
-  float *fno;
+  const float *no;
+  const float *fno;
   float *mask;
   bool visible;
 };

@@ -73,6 +73,7 @@ set(SRC
   intern/attribute_math.cc
   intern/autoexec.cc
   intern/bake_items.cc
+  intern/bake_items_paths.cc
   intern/bake_items_serialize.cc
   intern/bake_items_socket.cc
   intern/blender.cc
@@ -270,7 +271,6 @@ set(SRC
   intern/shader_fx.cc
   intern/shrinkwrap.cc
   intern/simulation_state.cc
-  intern/simulation_state_serialize.cc
   intern/softbody.c
   intern/sound.cc
   intern/speaker.cc
@@ -334,6 +334,7 @@ set(SRC
   BKE_attribute_math.hh
   BKE_autoexec.h
   BKE_bake_items.hh
+  BKE_bake_items_paths.hh
   BKE_bake_items_serialize.hh
   BKE_bake_items_socket.hh
   BKE_blender.h
@@ -481,7 +482,6 @@ set(SRC
   BKE_shader_fx.h
   BKE_shrinkwrap.h
   BKE_simulation_state.hh
-  BKE_simulation_state_serialize.hh
   BKE_softbody.h
   BKE_sound.h
   BKE_speaker.h
@@ -536,6 +536,7 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::animrig
   bf_asset_system
   bf_blenfont
   PRIVATE bf::blenlib

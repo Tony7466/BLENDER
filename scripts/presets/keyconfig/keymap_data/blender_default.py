@@ -41,7 +41,6 @@ class Params:
         # - Click selects only the item at the cursor position.
         # See: #97032.
         "use_tweak_select_passthrough",
-        "use_tweak_tool_lmb_interaction",
         "use_mouse_emulate_3_button",
 
         # User preferences:
@@ -78,6 +77,14 @@ class Params:
         # File selector actions on single click.
         "use_file_single_click",
 
+        # Experimental variables:
+        # Options for experimental features.
+        #
+        # NOTE: don't pass the experimental struct directly as this makes it less
+        # clear which experimental options impact shortcuts. Further, any experimental option
+        # that adjust shortcuts need to reload the key-configuration (see: `rna_userdef.cc`).
+        "use_experimental_grease_pencil_version3",
+
         # Convenience variables:
         # (derived from other settings).
         #
@@ -99,8 +106,6 @@ class Params:
         # Since this means with RMB select enabled in edit-mode for e.g.
         # `Ctrl-LMB` would be caught by box-select instead of add/extrude.
         "tool_maybe_tweak_event",
-        # Access to bpy.context.preferences.experimental
-        "experimental",
         # Changes some transformers modal key-map items to avoid conflicts with navigation operations
         "use_alt_navigation",
     )
@@ -120,8 +125,6 @@ class Params:
             use_gizmo_drag=True,
             use_fallback_tool=False,
             use_fallback_tool_select_handled=True,
-            use_tweak_select_passthrough=False,
-            use_tweak_tool_lmb_interaction=False,
             use_v3d_tab_menu=False,
             use_v3d_shade_ex_pie=False,
             use_v3d_mmb_pan=False,
@@ -131,8 +134,8 @@ class Params:
             use_file_single_click=False,
             v3d_tilde_action='VIEW',
             v3d_alt_mmb_drag_action='RELATIVE',
-            experimental=None,
             use_alt_navigation=True,
+            use_experimental_grease_pencil_version3=False,
     ):
         from sys import platform
         self.apple = platform == 'darwin'
@@ -151,8 +154,6 @@ class Params:
                 self.tool_maybe_tweak_value = 'PRESS'
             else:
                 self.tool_maybe_tweak_value = 'CLICK_DRAG'
-
-            self.use_tweak_tool_lmb_interaction = use_tweak_tool_lmb_interaction
 
             self.context_menu_event = {"type": 'W', "value": 'PRESS'}
 
@@ -174,7 +175,6 @@ class Params:
             self.action_mouse = 'RIGHTMOUSE'
             self.tool_mouse = 'LEFTMOUSE'
             self.tool_maybe_tweak_value = 'CLICK_DRAG'
-            self.use_tweak_tool_lmb_interaction = False
 
             if self.legacy:
                 self.context_menu_event = {"type": 'W', "value": 'PRESS'}
@@ -211,9 +211,12 @@ class Params:
 
         self.use_file_single_click = use_file_single_click
 
-        self.use_tweak_select_passthrough = use_tweak_select_passthrough
+        self.use_tweak_select_passthrough = not legacy
 
         self.use_fallback_tool = use_fallback_tool
+
+        # Experimental variables:
+        self.use_experimental_grease_pencil_version3 = use_experimental_grease_pencil_version3
 
         # Convenience variables:
         self.use_fallback_tool_select_handled = (
@@ -233,8 +236,6 @@ class Params:
         self.tool_tweak_event = {"type": self.tool_mouse, "value": 'CLICK_DRAG'}
         self.tool_maybe_tweak_event = {"type": self.tool_mouse, "value": self.tool_maybe_tweak_value}
         self.use_alt_navigation = use_alt_navigation
-
-        self.experimental = experimental
 
 
 # ------------------------------------------------------------------------------
@@ -579,7 +580,7 @@ def _template_items_tool_select(
             select_passthrough = params.use_tweak_select_passthrough
         else:
             if not cursor_prioritize:
-                select_passthrough = params.use_tweak_tool_lmb_interaction
+                select_passthrough = True
 
         if select_passthrough:
             return [
@@ -1811,6 +1812,8 @@ def km_graph_editor_generic(params):
             sidebar_key={"type": 'N', "value": 'PRESS'},
         ),
         ("graph.extrapolation_type", {"type": 'E', "value": 'PRESS', "shift": True}, None),
+        ("graph.fmodifier_add", {"type": 'M', "value": 'PRESS', "shift": True, "ctrl": True},
+         {"properties": [("only_active", False)]}),
         ("anim.channels_select_filter", {"type": 'F', "value": 'PRESS', "ctrl": True}, None),
         *_template_items_hide_reveal_actions("graph.hide", "graph.reveal"),
         ("wm.context_set_enum", {"type": 'TAB', "value": 'PRESS', "ctrl": True},
@@ -1915,8 +1918,6 @@ def km_graph_editor(params):
         ("graph.view_selected", {"type": 'NUMPAD_PERIOD', "value": 'PRESS'}, None),
         ("graph.view_frame", {"type": 'NUMPAD_0', "value": 'PRESS'}, None),
         op_menu_pie("GRAPH_MT_view_pie", {"type": 'ACCENT_GRAVE', "value": 'PRESS'}),
-        ("graph.fmodifier_add", {"type": 'M', "value": 'PRESS', "shift": True, "ctrl": True},
-         {"properties": [("only_active", False)]}),
         ("anim.channels_editable_toggle", {"type": 'TAB', "value": 'PRESS'}, None),
         ("transform.translate", {"type": 'G', "value": 'PRESS'}, None),
         ("transform.translate", {"type": params.select_mouse, "value": 'CLICK_DRAG'}, None),
@@ -3884,7 +3885,7 @@ def km_grease_pencil_stroke_paint_draw_brush(params):
     )
 
     # Draw
-    if params.experimental and params.experimental.use_grease_pencil_version3:
+    if params.use_experimental_grease_pencil_version3:
         items.extend([
             ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
             ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
@@ -4562,6 +4563,12 @@ def km_grease_pencil_edit(params):
         ("grease_pencil.select_linked", {"type": 'L', "value": 'PRESS', "ctrl": True}, None),
         ("grease_pencil.select_more", {"type": 'NUMPAD_PLUS', "value": 'PRESS', "ctrl": True, "repeat": True}, None),
         ("grease_pencil.select_less", {"type": 'NUMPAD_MINUS', "value": 'PRESS', "ctrl": True, "repeat": True}, None),
+        # Delete menu
+        op_menu("VIEW3D_MT_edit_greasepencil_delete", {"type": 'X', "value": 'PRESS'}),
+        op_menu("VIEW3D_MT_edit_greasepencil_delete", {"type": 'DEL', "value": 'PRESS'}),
+        # Dissolve
+        ("grease_pencil.dissolve", {"type": 'X', "value": 'PRESS', "ctrl": True}, None),
+        ("grease_pencil.dissolve", {"type": 'DEL', "value": 'PRESS', "ctrl": True}, None),
     ])
 
     return keymap
@@ -4755,13 +4762,13 @@ def km_pose(params):
         ("pose.constraints_clear", {"type": 'C', "value": 'PRESS', "ctrl": True, "alt": True}, None),
         ("pose.ik_add", {"type": 'I', "value": 'PRESS', "shift": True}, None),
         ("pose.ik_clear", {"type": 'I', "value": 'PRESS', "ctrl": True, "alt": True}, None),
-        op_menu("VIEW3D_MT_pose_group", {"type": 'G', "value": 'PRESS', "ctrl": True}),
+        op_menu("VIEW3D_MT_bone_collections", {"type": 'G', "value": 'PRESS', "ctrl": True}),
         op_menu("VIEW3D_MT_bone_options_toggle", {"type": 'W', "value": 'PRESS', "shift": True}),
         op_menu("VIEW3D_MT_bone_options_enable", {"type": 'W', "value": 'PRESS', "shift": True, "ctrl": True}),
         op_menu("VIEW3D_MT_bone_options_disable", {"type": 'W', "value": 'PRESS', "alt": True}),
         ("armature.layers_show_all", {"type": 'ACCENT_GRAVE', "value": 'PRESS', "ctrl": True}, None),
-        ("armature.armature_layers", {"type": 'M', "value": 'PRESS', "shift": True}, None),
-        ("pose.bone_layers", {"type": 'M', "value": 'PRESS'}, None),
+        ("armature.assign_to_collection", {"type": 'M', "value": 'PRESS', "shift": True}, None),
+        ("armature.move_to_collection", {"type": 'M', "value": 'PRESS'}, None),
         ("transform.bbone_resize", {"type": 'S', "value": 'PRESS', "shift": True, "ctrl": True, "alt": True}, None),
         ("anim.keyframe_insert_menu", {"type": 'I', "value": 'PRESS'}, None),
         ("anim.keyframe_delete_v3d", {"type": 'I', "value": 'PRESS', "alt": True}, None),
