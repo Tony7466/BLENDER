@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edarmature
@@ -85,7 +87,8 @@ static int bone_collection_add_exec(bContext *C, wmOperator * /* op */)
   }
 
   bArmature *armature = static_cast<bArmature *>(ob->data);
-  ANIM_armature_bonecoll_new(armature, nullptr);
+  BoneCollection *bcoll = ANIM_armature_bonecoll_new(armature, nullptr);
+  ANIM_armature_bonecoll_active_set(armature, bcoll);
 
   WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
   return OPERATOR_FINISHED;
@@ -164,7 +167,7 @@ void ARMATURE_OT_collection_move(wmOperatorType *ot)
   static const EnumPropertyItem bcoll_slot_move[] = {
       {-1, "UP", 0, "Up", ""},
       {1, "DOWN", 0, "Down", ""},
-      {0, NULL, 0, NULL, NULL},
+      {0, nullptr, 0, nullptr, nullptr},
   };
 
   /* identifiers */
@@ -369,7 +372,7 @@ void ARMATURE_OT_collection_assign(wmOperatorType *ot)
   /* properties */
   RNA_def_string(ot->srna,
                  "name",
-                 NULL,
+                 nullptr,
                  MAX_NAME,
                  "Bone Collection",
                  "Name of the bone collection to assign this bone to; empty to assign to the "
@@ -430,7 +433,7 @@ void ARMATURE_OT_collection_unassign(wmOperatorType *ot)
 
   RNA_def_string(ot->srna,
                  "name",
-                 NULL,
+                 nullptr,
                  MAX_NAME,
                  "Bone Collection",
                  "Name of the bone collection to unassign this bone from; empty to unassign from "
@@ -463,13 +466,7 @@ static void bone_collection_select(bContext *C,
       if (!editbone_is_member(ebone, bcoll)) {
         continue;
       }
-
-      if (select) {
-        ebone->flag |= BONE_SELECTED;
-      }
-      else {
-        ebone->flag &= ~BONE_SELECTED;
-      }
+      ED_armature_ebone_select_set(ebone, select);
     }
   }
   else {
@@ -492,7 +489,12 @@ static void bone_collection_select(bContext *C,
   }
 
   DEG_id_tag_update(&armature->id, ID_RECALC_SELECT);
-  WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
+  if (is_editmode) {
+    WM_event_add_notifier(C, NC_OBJECT | ND_BONE_SELECT, ob);
+  }
+  else {
+    WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
+  }
 
   if (is_editmode) {
     ED_outliner_select_sync_from_edit_bone_tag(C);
@@ -535,7 +537,7 @@ void ARMATURE_OT_collection_select(wmOperatorType *ot)
   PropertyRNA *prop = RNA_def_string(
       ot->srna,
       "name",
-      NULL,
+      nullptr,
       MAX_NAME,
       "Bone Collection",
       "Name of the bone collection to select bones from; empty use the active bone collection");
@@ -575,7 +577,7 @@ void ARMATURE_OT_collection_deselect(wmOperatorType *ot)
   PropertyRNA *prop = RNA_def_string(
       ot->srna,
       "name",
-      NULL,
+      nullptr,
       MAX_NAME,
       "Bone Collection",
       "Name of the bone collection to deselect bones from; empty use the active bone collection");
@@ -648,28 +650,29 @@ static bool move_to_collection_poll(bContext *C)
   return ED_operator_object_active_local_editable_posemode_exclusive(C);
 }
 
-static const EnumPropertyItem *bone_collection_enum_items(bContext *C,
+static const EnumPropertyItem *bone_collection_enum_itemf(bContext *C,
                                                           PointerRNA * /*ptr*/,
                                                           PropertyRNA * /*prop*/,
                                                           bool *r_free)
 {
   EnumPropertyItem *item = nullptr, item_tmp = {0};
   int totitem = 0;
-  int bcoll_index = 0;
 
   if (C) {
-    Object *obpose = ED_pose_object_from_context(C);
-    bArmature *arm = static_cast<bArmature *>(obpose->data);
+    if (Object *obpose = ED_pose_object_from_context(C)) {
+      bArmature *arm = static_cast<bArmature *>(obpose->data);
 
-    LISTBASE_FOREACH_INDEX (BoneCollection *, bcoll, &arm->collections, bcoll_index) {
-      item_tmp.identifier = bcoll->name;
-      item_tmp.name = bcoll->name;
-      item_tmp.value = bcoll_index;
-      RNA_enum_item_add(&item, &totitem, &item_tmp);
+      int bcoll_index = 0;
+      LISTBASE_FOREACH_INDEX (BoneCollection *, bcoll, &arm->collections, bcoll_index) {
+        item_tmp.identifier = bcoll->name;
+        item_tmp.name = bcoll->name;
+        item_tmp.value = bcoll_index;
+        RNA_enum_item_add(&item, &totitem, &item_tmp);
+      }
+
+      RNA_enum_item_add_separator(&item, &totitem);
     }
   }
-
-  RNA_enum_item_add_separator(&item, &totitem);
 
   /* New Collection. */
   item_tmp.identifier = "__NEW__";
@@ -730,7 +733,7 @@ void ARMATURE_OT_move_to_collection(wmOperatorType *ot)
                       0,
                       "Collection",
                       "The bone collection to move the selected bones to");
-  RNA_def_enum_funcs(prop, bone_collection_enum_items);
+  RNA_def_enum_funcs(prop, bone_collection_enum_itemf);
   RNA_def_property_flag(prop, PROP_SKIP_SAVE | PROP_HIDDEN);
 
   prop = RNA_def_string(ot->srna,
@@ -769,7 +772,7 @@ void ARMATURE_OT_assign_to_collection(wmOperatorType *ot)
                       0,
                       "Collection",
                       "The bone collection to move the selected bones to");
-  RNA_def_enum_funcs(prop, bone_collection_enum_items);
+  RNA_def_enum_funcs(prop, bone_collection_enum_itemf);
   RNA_def_property_flag(prop, PROP_SKIP_SAVE | PROP_HIDDEN);
 
   prop = RNA_def_string(ot->srna,

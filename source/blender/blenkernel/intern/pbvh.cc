@@ -914,7 +914,7 @@ void BKE_pbvh_build_grids(PBVH *pbvh,
                           CCGElem **grids,
                           int totgrid,
                           CCGKey *key,
-                          void **gridfaces,
+                          blender::Span<int> grid_to_face_map,
                           DMFlagMat *flagmats,
                           BLI_bitmap **grid_hidden,
                           Mesh *me,
@@ -924,7 +924,7 @@ void BKE_pbvh_build_grids(PBVH *pbvh,
 
   pbvh->header.type = PBVH_GRIDS;
   pbvh->grids = grids;
-  pbvh->gridfaces = gridfaces;
+  pbvh->grid_to_face_map = grid_to_face_map;
   pbvh->grid_flag_mats = flagmats;
   pbvh->totgrid = totgrid;
   pbvh->gridkey = *key;
@@ -1716,7 +1716,7 @@ blender::IndexMask BKE_pbvh_get_grid_updates(const PBVH *pbvh,
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     for (const PBVHNode *node : nodes.slice(range)) {
       for (const int grid : node->prim_indices) {
-        const int face = BKE_subdiv_ccg_grid_to_face_index(pbvh->subdiv_ccg, grid);
+        const int face = pbvh->grid_to_face_map[grid];
         faces_to_update[face] = true;
       }
     }
@@ -2916,14 +2916,14 @@ void BKE_pbvh_draw_debug_cb(PBVH *pbvh,
 
 void BKE_pbvh_grids_update(PBVH *pbvh,
                            CCGElem **grids,
-                           void **gridfaces,
+                           blender::Span<int> grid_to_face_map,
                            DMFlagMat *flagmats,
                            BLI_bitmap **grid_hidden,
                            CCGKey *key)
 {
   pbvh->gridkey = *key;
   pbvh->grids = grids;
-  pbvh->gridfaces = gridfaces;
+  pbvh->grid_to_face_map = grid_to_face_map;
 
   if (flagmats != pbvh->grid_flag_mats || pbvh->grid_hidden != grid_hidden) {
     pbvh->grid_flag_mats = flagmats;
