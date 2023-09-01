@@ -374,7 +374,7 @@ void OBJMesh::store_normal_coords_and_indices()
 
   for (int face_index = 0; face_index < export_mesh_->faces_num; ++face_index) {
     const IndexRange face = mesh_faces_[face_index];
-    bool need_per_loop_normals = !corner_normals.is_empty() && !(sharp_faces_[face_index]);
+    bool need_per_loop_normals = !corner_normals.is_empty() || !(sharp_faces_[face_index]);
     if (need_per_loop_normals) {
       for (const int corner : face) {
         float3 loop_normal;
