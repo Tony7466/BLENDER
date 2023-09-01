@@ -104,7 +104,6 @@ static void node_declare(NodeDeclarationBuilder &b)
       .default_value(0.03f)
       .min(0.0f)
       .max(1.0f)
-
       .subtype(PROP_FACTOR)
       .description("The roughness of the coat layer");
 #define SOCK_COAT_ROUGHNESS_ID 16
