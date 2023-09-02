@@ -2822,7 +2822,8 @@ static void widget_softshadow(const rcti *rect, int roundboxalign, const float r
   bTheme *btheme = UI_GetTheme();
   uiWidgetBase wtb;
   float triangle_strip[WIDGET_SIZE_MAX * 2 + 2][2];
-  const float shadow_width = min_ff(UI_ThemeMenuShadowWidth(), BLI_rcti_size_y(rect));
+  const float max_shadow_width = BLI_rcti_size_y(rect) - 2.0f * radin;
+  const float shadow_width = min_ff(UI_ThemeMenuShadowWidth(), max_shadow_width);
 
   /* disabled shadow */
   if (shadow_width == 0.0f) {
