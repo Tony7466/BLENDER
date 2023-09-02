@@ -1018,6 +1018,13 @@ void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim
       /* If there is an attribute with the same name, remove it. */
       bke::AttributeIDRef attr_id(joint_name);
       if (attributes.contains(attr_id)) {
+        WM_reportf(
+            RPT_WARNING,
+            "%s: Removing attribute '%s' from mesh '%s', as it conflicts with a deform group "
+            "for a bone with the same name",
+            __func__,
+            joint_name.c_str(),
+            mesh->id.name + 2);
         attributes.remove(attr_id);
       }
       bDeformGroup *def_grp = BKE_object_defgroup_add_name(mesh_obj, joint_name.c_str());
