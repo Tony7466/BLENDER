@@ -35,6 +35,7 @@
 #include "BKE_object_deform.h"
 
 #include "BLI_math_vector.h"
+#include "BLI_string.h"
 
 #include "ED_armature.hh"
 #include "ED_keyframing.hh"
