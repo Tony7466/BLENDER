@@ -82,7 +82,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
 
     grease_pencil.foreach_editable_drawing(
         scene->r.cfra, [&](int /*drawing_index*/, blender::bke::greasepencil::Drawing &drawing) {
-          bke::CurvesGeometry &curves = drawing.strokes_for_write();
+          const bke::CurvesGeometry &curves = drawing.strokes();
 
           if (use_proportional_edit) {
             tc.data_len += curves.point_num;
