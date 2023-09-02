@@ -701,4 +701,12 @@ GeometryDeformation get_evaluated_grease_pencil_drawing_deformation(const Object
   return deformation;
 }
 
+GeometryDeformation get_evaluated_grease_pencil_drawing_deformation(const Depsgraph &depsgraph,
+                                                                    const Object &ob_orig,
+                                                                    const int drawing_index)
+{
+  const Object *ob_eval = DEG_get_evaluated_object(&depsgraph, const_cast<Object *>(&ob_orig));
+  return get_evaluated_grease_pencil_drawing_deformation(ob_eval, ob_orig, drawing_index);
+}
+
 }  // namespace blender::bke::crazyspace
