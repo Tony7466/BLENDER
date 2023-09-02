@@ -316,15 +316,9 @@ static GroupedSpan<int> gather_groups(const Span<int> group_indices,
 {
   r_offsets.reinitialize(groups_num + 1);
   r_offsets.as_mutable_span().fill(0);
-  if (group_indices.is_empty()) {
-    return {OffsetIndices<int>(r_offsets), {}};
-  }
   r_indices.reinitialize(group_indices.size());
-  return grouped_indices::from_indices(group_indices,
-                                       r_offsets,
-                                       r_indices,
-                                       grouped_indices::is_fragmented(group_indices, groups_num),
-                                       true);
+  const bool fragmented = grouped_indices::is_fragmented(group_indices, groups_num);
+  return grouped_indices::from_indices(group_indices, r_offsets, r_indices, fragmented, true);
 }
 
 Array<int> build_loop_to_face_map(const OffsetIndices<int> faces)
@@ -352,6 +346,20 @@ GroupedSpan<int> build_vert_to_edge_map(const Span<int2> edges,
   return {OffsetIndices<int>(r_offsets), r_indices};
 }
 
+void build_vert_to_face_indices(const OffsetIndices<int> faces,
+                                const Span<int> corner_verts,
+                                const OffsetIndices<int> offsets,
+                                MutableSpan<int> r_indices)
+{
+  Array<int> counts(offsets.size(), 0);
+  for (const int64_t face_i : faces.index_range()) {
+    for (const int vert : corner_verts.slice(faces[face_i])) {
+      r_indices[offsets[vert].start() + counts[vert]] = int(face_i);
+      counts[vert]++;
+    }
+  }
+}
+
 GroupedSpan<int> build_vert_to_face_map(const OffsetIndices<int> faces,
                                         const Span<int> corner_verts,
                                         const int verts_num,
@@ -360,15 +368,14 @@ GroupedSpan<int> build_vert_to_face_map(const OffsetIndices<int> faces,
 {
   r_offsets = create_reverse_offsets(corner_verts, verts_num);
   r_indices.reinitialize(r_offsets.last());
-  Array<int> counts(verts_num, 0);
-
-  for (const int64_t face_i : faces.index_range()) {
-    for (const int vert : corner_verts.slice(faces[face_i])) {
-      r_indices[r_offsets[vert] + counts[vert]] = int(face_i);
-      counts[vert]++;
-    }
-  }
+  build_vert_to_face_indices(faces, corner_verts, OffsetIndices<int>(r_offsets), r_indices);
   return {OffsetIndices<int>(r_offsets), r_indices};
+}
+
+Array<int> build_vert_to_corner_indices(const Span<int> corner_verts,
+                                        const OffsetIndices<int> offsets)
+{
+  return reverse_indices_in_groups(corner_verts, offsets);
 }
 
 GroupedSpan<int> build_vert_to_loop_map(const Span<int> corner_verts,

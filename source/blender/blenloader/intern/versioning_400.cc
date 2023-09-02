@@ -30,6 +30,7 @@
 #include "BLI_map.hh"
 #include "BLI_math_vector.h"
 #include "BLI_set.hh"
+#include "BLI_string.h"
 #include "BLI_string_ref.hh"
 
 #include "BKE_armature.h"
@@ -144,17 +145,16 @@ static void version_bonelayers_to_bonecollections(Main *bmain)
       if (arm_idprops) {
         /* See if we can use the layer name from the Bone Manager add-on. This is a popular add-on
          * for managing bone layers and giving them names. */
-        BLI_snprintf(custom_prop_name, sizeof(custom_prop_name), "layer_name_%u", layer);
+        SNPRINTF(custom_prop_name, "layer_name_%u", layer);
         IDProperty *prop = IDP_GetPropertyFromGroup(arm_idprops, custom_prop_name);
         if (prop != nullptr && prop->type == IDP_STRING && IDP_String(prop)[0] != '\0') {
-          BLI_snprintf(
-              bcoll_name, sizeof(bcoll_name), "Layer %u - %s", layer + 1, IDP_String(prop));
+          SNPRINTF(bcoll_name, "Layer %u - %s", layer + 1, IDP_String(prop));
         }
       }
       if (bcoll_name[0] == '\0') {
         /* Either there was no name defined in the custom property, or
          * it was the empty string. */
-        BLI_snprintf(bcoll_name, sizeof(bcoll_name), "Layer %u", layer + 1);
+        SNPRINTF(bcoll_name, "Layer %u", layer + 1);
       }
 
       /* Create a new bone collection for this layer. */
@@ -277,6 +277,17 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
     }
   }
 
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 21)) {
+    if (!DNA_struct_elem_find(fd->filesdna, "bPoseChannel", "BoneColor", "color")) {
+      version_bonegroup_migrate_color(bmain);
+    }
+
+    if (!DNA_struct_elem_find(fd->filesdna, "bArmature", "ListBase", "collections")) {
+      version_bonelayers_to_bonecollections(bmain);
+      version_bonegroups_to_bonecollections(bmain);
+    }
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -289,15 +300,6 @@ void do_versions_after_linking_400(FileData *fd, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
-
-    if (!DNA_struct_elem_find(fd->filesdna, "bPoseChannel", "BoneColor", "color")) {
-      version_bonegroup_migrate_color(bmain);
-    }
-
-    if (!DNA_struct_elem_find(fd->filesdna, "bArmature", "ListBase", "collections")) {
-      version_bonelayers_to_bonecollections(bmain);
-      version_bonegroups_to_bonecollections(bmain);
-    }
   }
 }
 
@@ -580,6 +582,66 @@ static void version_replace_principled_hair_model(bNodeTree *ntree)
     data->parametrization = node->custom1;
 
     node->storage = data;
+  }
+}
+
+static bNodeTreeInterfaceItem *legacy_socket_move_to_interface(bNodeSocket &legacy_socket,
+                                                               const eNodeSocketInOut in_out)
+{
+  bNodeTreeInterfaceItem *new_item = static_cast<bNodeTreeInterfaceItem *>(
+      MEM_mallocN(sizeof(bNodeTreeInterfaceSocket), __func__));
+  new_item->item_type = NODE_INTERFACE_SOCKET;
+  bNodeTreeInterfaceSocket &new_socket = *reinterpret_cast<bNodeTreeInterfaceSocket *>(new_item);
+
+  /* Move reusable data. */
+  new_socket.name = BLI_strdup(legacy_socket.name);
+  new_socket.identifier = BLI_strdup(legacy_socket.identifier);
+  new_socket.description = BLI_strdup(legacy_socket.description);
+  new_socket.socket_type = BLI_strdup(legacy_socket.idname);
+  new_socket.flag = (in_out == SOCK_IN ? NODE_INTERFACE_SOCKET_INPUT :
+                                         NODE_INTERFACE_SOCKET_OUTPUT);
+  SET_FLAG_FROM_TEST(
+      new_socket.flag, legacy_socket.flag & SOCK_HIDE_VALUE, NODE_INTERFACE_SOCKET_HIDE_VALUE);
+  SET_FLAG_FROM_TEST(new_socket.flag,
+                     legacy_socket.flag & SOCK_HIDE_IN_MODIFIER,
+                     NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER);
+  new_socket.attribute_domain = legacy_socket.attribute_domain;
+
+  /* The following data are stolen from the old data, the ownership of their memory is directly
+   * transferred to the new data. */
+  new_socket.default_attribute_name = legacy_socket.default_attribute_name;
+  legacy_socket.default_attribute_name = nullptr;
+  new_socket.socket_data = legacy_socket.default_value;
+  legacy_socket.default_value = nullptr;
+  new_socket.properties = legacy_socket.prop;
+  legacy_socket.prop = nullptr;
+
+  /* Unused data. */
+  MEM_delete(legacy_socket.runtime);
+  legacy_socket.runtime = nullptr;
+
+  return new_item;
+}
+
+static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *ntree)
+{
+  bNodeTreeInterface &tree_interface = ntree->tree_interface;
+
+  const int num_inputs = BLI_listbase_count(&ntree->inputs_legacy);
+  const int num_outputs = BLI_listbase_count(&ntree->outputs_legacy);
+  tree_interface.root_panel.items_num = num_inputs + num_outputs;
+  tree_interface.root_panel.items_array = static_cast<bNodeTreeInterfaceItem **>(MEM_malloc_arrayN(
+      tree_interface.root_panel.items_num, sizeof(bNodeTreeInterfaceItem *), __func__));
+
+  /* Convert outputs first to retain old outputs/inputs ordering. */
+  int index;
+  LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &ntree->outputs_legacy, index) {
+    tree_interface.root_panel.items_array[index] = legacy_socket_move_to_interface(*socket,
+                                                                                   SOCK_OUT);
+  }
+  LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, &ntree->inputs_legacy, index) {
+    tree_interface.root_panel.items_array[num_outputs + index] = legacy_socket_move_to_interface(
+        *socket, SOCK_IN);
   }
 }
 
@@ -912,6 +974,45 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         scene->eevee.gi_irradiance_pool_size = 16;
       }
     }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 20)) {
+    /* Convert old socket lists into new interface items. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      versioning_convert_node_tree_socket_lists_to_interface(ntree);
+      /* Clear legacy sockets after conversion.
+       * Internal data pointers have been moved or freed already. */
+      BLI_freelistN(&ntree->inputs_legacy);
+      BLI_freelistN(&ntree->outputs_legacy);
+    }
+    FOREACH_NODETREE_END;
+  }
+  else {
+    /* Legacy node tree sockets are created for forward compatibility,
+     * but have to be freed after loading and versioning. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      /* Clear legacy sockets after conversion.
+       * Internal data pointers have been moved or freed already. */
+      LISTBASE_FOREACH_MUTABLE (bNodeSocket *, legacy_socket, &ntree->inputs_legacy) {
+        MEM_delete(legacy_socket->runtime);
+        MEM_freeN(legacy_socket);
+      }
+      LISTBASE_FOREACH_MUTABLE (bNodeSocket *, legacy_socket, &ntree->outputs_legacy) {
+        MEM_delete(legacy_socket->runtime);
+        MEM_freeN(legacy_socket);
+      }
+      BLI_listbase_clear(&ntree->inputs_legacy);
+      BLI_listbase_clear(&ntree->outputs_legacy);
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 22)) {
+    /* Initialize root panel flags in files created before these flags were added. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      ntree->tree_interface.root_panel.flag |= NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS;
+    }
+    FOREACH_NODETREE_END;
   }
 
   /**
