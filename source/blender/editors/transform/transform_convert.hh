@@ -143,6 +143,10 @@ extern TransConvertTypeInfo TransConvertType_Graph;
 
 extern TransConvertTypeInfo TransConvertType_GPencil;
 
+/* `transform_convert_greasepencil.cc` */
+
+extern TransConvertTypeInfo TransConvertType_GreasePencil;
+
 /* `transform_convert_lattice.cc` */
 
 extern TransConvertTypeInfo TransConvertType_Lattice;

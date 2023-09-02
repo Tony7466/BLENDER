@@ -724,23 +724,24 @@ static int countAndCleanTransDataContainer(TransInfo *t)
 static void init_proportional_edit(TransInfo *t)
 {
   /* NOTE: Proportional editing is not usable in pose mode yet #32444. */
-  if (!ELEM(t->data_type,
-            &TransConvertType_Action,
-            &TransConvertType_Curve,
-            &TransConvertType_Curves,
-            &TransConvertType_Graph,
-            &TransConvertType_GPencil,
-            &TransConvertType_Lattice,
-            &TransConvertType_Mask,
-            &TransConvertType_MBall,
-            &TransConvertType_Mesh,
-            &TransConvertType_MeshEdge,
-            &TransConvertType_MeshSkin,
-            &TransConvertType_MeshUV,
-            &TransConvertType_MeshVertCData,
-            &TransConvertType_Node,
-            &TransConvertType_Object,
-            &TransConvertType_Particle))
+  if (!(ELEM(t->data_type,
+             &TransConvertType_Action,
+             &TransConvertType_Curve,
+             &TransConvertType_Curves,
+             &TransConvertType_Graph,
+             &TransConvertType_GPencil,
+             &TransConvertType_GreasePencil,
+             &TransConvertType_Lattice,
+             &TransConvertType_Mask,
+             &TransConvertType_MBall,
+             &TransConvertType_Mesh,
+             &TransConvertType_MeshEdge,
+             &TransConvertType_MeshSkin,
+             &TransConvertType_MeshUV,
+             &TransConvertType_MeshVertCData,
+             &TransConvertType_Node,
+             &TransConvertType_Object) ||
+        ELEM(t->data_type, &TransConvertType_Particle)))
   {
     /* Disable proportional editing */
     t->options |= CTX_NO_PET;
@@ -803,6 +804,7 @@ static void init_TransDataContainers(TransInfo *t,
             &TransConvertType_Curve,
             &TransConvertType_Curves,
             &TransConvertType_GPencil,
+            &TransConvertType_GreasePencil,
             &TransConvertType_Lattice,
             &TransConvertType_MBall,
             &TransConvertType_Mesh,
@@ -819,6 +821,7 @@ static void init_TransDataContainers(TransInfo *t,
   const short object_type = obact ? obact->type : -1;
 
   if ((object_mode & OB_MODE_EDIT) || (t->data_type == &TransConvertType_GPencil) ||
+      (t->data_type == &TransConvertType_GreasePencil) ||
       ((object_mode & OB_MODE_POSE) && (object_type == OB_ARMATURE)))
   {
     if (t->data_container) {
@@ -864,6 +867,9 @@ static void init_TransDataContainers(TransInfo *t,
         tc->use_local_mat = true;
       }
       else if (t->data_type == &TransConvertType_GPencil) {
+        tc->use_local_mat = true;
+      }
+      else if (t->data_type == &TransConvertType_GreasePencil) {
         tc->use_local_mat = true;
       }
 
@@ -916,7 +922,13 @@ static TransConvertTypeInfo *convert_type_get(const TransInfo *t, Object **r_obj
     return &TransConvertType_MeshEdge;
   }
   if (t->options & CTX_GPENCIL_STROKES) {
-    return &TransConvertType_GPencil;
+    if (t->obedit_type == OB_GREASE_PENCIL) {
+      return &TransConvertType_GreasePencil;
+    }
+    else if (t->obedit_type == OB_GPENCIL_LEGACY) {
+      return &TransConvertType_GPencil;
+    }
+    return nullptr;
   }
   if (t->spacetype == SPACE_IMAGE) {
     if (t->options & CTX_MASK) {

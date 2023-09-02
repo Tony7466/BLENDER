@@ -3034,6 +3034,17 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
         ],
         'EDIT_GREASE_PENCIL': [
             *_tools_select,
+            _defs_view3d_generic.cursor,
+            None,
+            *_tools_transform,
+            None,
+            _defs_edit_curve.curve_radius,
+            (
+                _defs_gpencil_edit.shear,
+                _defs_gpencil_edit.tosphere,
+            ),
+            None,
+            *_tools_annotate,
         ],
         'PARTICLE': [
             *_tools_select,
