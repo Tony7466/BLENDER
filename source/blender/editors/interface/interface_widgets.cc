@@ -2819,26 +2819,22 @@ static void widget_softshadow(const rcti *rect, int roundboxalign, const float r
   immUnbindProgram();
 }
 
-static void widget_menu_back(
-    uiWidgetColors *wcol, rcti *rect, const int block_flag, const int direction, const float zoom)
+static void widget_menu_back(uiWidgetColors *wcol,
+                             rcti *rect,
+                             const int /*block_flag*/,
+                             const int direction,
+                             const float zoom)
 {
   uiWidgetBase wtb;
   int roundboxalign = UI_CNR_ALL;
 
   widget_init(&wtb);
 
-  /* menu is 2nd level or deeper */
-  if (block_flag & UI_BLOCK_POPUP) {
-    // rect->ymin -= 4.0;
-    // rect->ymax += 4.0;
-  }
-  else if (direction == UI_DIR_DOWN) {
+  if (direction == UI_DIR_DOWN) {
     roundboxalign = (UI_CNR_BOTTOM_RIGHT | UI_CNR_BOTTOM_LEFT);
-    rect->ymin -= 0.1f * U.widget_unit;
   }
   else if (direction == UI_DIR_UP) {
     roundboxalign = UI_CNR_TOP_LEFT | UI_CNR_TOP_RIGHT;
-    rect->ymax += 0.1f * U.widget_unit;
   }
 
   GPU_blend(GPU_BLEND_ALPHA);
