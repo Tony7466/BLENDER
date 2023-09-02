@@ -2830,6 +2830,13 @@ static void widget_softshadow(const rcti *rect, int roundboxalign, const float r
     return;
   }
 
+  /* The way rounded corners at the top are handled, they can look bad when small corner radii are
+   * paired with large shadows. So for those we draw the shadow as if the top corners were sharp.
+   */
+  if ((radin < 15.0f) && (radin < 0.75f * shadow_width)) {
+    roundboxalign &= ~(UI_CNR_TOP_LEFT | UI_CNR_TOP_RIGHT);
+  }
+
   /* inner part */
   const int totvert = round_box_shadow_edges(
       wtb.inner_v, rect, radin, roundboxalign, shadow_width, 0.0f);
