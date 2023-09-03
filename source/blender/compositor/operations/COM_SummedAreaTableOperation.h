@@ -49,6 +49,9 @@ class SummedAreaTableOperation : public SingleThreadedOperation {
   eMode mode_;
 };
 
+/* Computes the sum of the rectangular region defined by the given area from the
+ * given summed area table. All coordinates within the area are included. */
 float4 summed_area_table_sum(MemoryBuffer *buffer, const rcti &area);
+float4 summed_area_table_sum_tiled(SocketReader *buffer, const rcti &area);
 
 }  // namespace blender::compositor

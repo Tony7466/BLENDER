@@ -152,6 +152,33 @@ SummedAreaTableOperation::eMode SummedAreaTableOperation::get_mode()
 
 float4 summed_area_table_sum_tiled(SocketReader *buffer, const rcti &area)
 {
+  /*
+   * a, b, c and d are the bounding box of the given area. They are defined as follows:
+   *
+   * y
+   * ▲
+   * │
+   * │
+   * │
+   * ├────────x────────────────x
+   * │        │c              d│
+   * │        │                │
+   * │        │                │
+   * │        │                │
+   * │        │                │
+   * ├────────x────────────────x
+   * │        │a              b│
+   * │        │                │
+   * │        │                │
+   * └────────┴────────────────┴─────────► x
+   *
+   * Note: this is the same definition as in https://en.wikipedia.org/wiki/Summed-area_table
+   * but using the blender convention with the origin being at the lower left.
+   *
+   */
+
+  BLI_assert(area.xmin <= area.xmax && area.ymin <= area.ymax);
+
   int2 lower_bound(area.xmin, area.ymin);
   int2 upper_bound(area.xmax, area.ymax);
 
@@ -180,6 +207,33 @@ float4 summed_area_table_sum_tiled(SocketReader *buffer, const rcti &area)
 
 float4 summed_area_table_sum(MemoryBuffer *buffer, const rcti &area)
 {
+  /*
+   * a, b, c and d are the bounding box of the given area. They are defined as follows:
+   *
+   * y
+   * ▲
+   * │
+   * │
+   * │
+   * ├────────x────────────────x
+   * │        │c              d│
+   * │        │                │
+   * │        │                │
+   * │        │                │
+   * │        │                │
+   * ├────────x────────────────x
+   * │        │a              b│
+   * │        │                │
+   * │        │                │
+   * └────────┴────────────────┴─────────► x
+   *
+   * Note: this is the same definition as in https://en.wikipedia.org/wiki/Summed-area_table
+   * but using the blender convention with the origin being at the lower left.
+   *
+   */
+
+  BLI_assert(area.xmin <= area.xmax && area.ymin <= area.ymax);
+
   int2 lower_bound(area.xmin, area.ymin);
   int2 upper_bound(area.xmax, area.ymax);
 

@@ -43,11 +43,6 @@ void KuwaharaNode::convert_to_operations(NodeConverter &converter,
         converter.map_input_socket(get_input_socket(0), sat_squared->get_input_socket(0));
         converter.add_link(sat_squared->get_output_socket(0),
                            kuwahara_classic->get_input_socket(2));
-
-        // todo: remove
-        // debug
-        converter.map_output_socket(get_output_socket(1), sat->get_output_socket(0));
-        converter.map_output_socket(get_output_socket(2), sat_squared->get_output_socket(0));
       }
 
       converter.map_output_socket(get_output_socket(0), kuwahara_classic->get_output_socket(0));
