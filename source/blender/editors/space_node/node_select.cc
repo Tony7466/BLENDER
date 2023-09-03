@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -148,7 +148,7 @@ static bNode *node_under_mouse_select(const SpaceNode &snode, const float2 mouse
 
 static bool node_under_mouse_tweak(const SpaceNode &snode, const float2 &mouse)
 {
-  const bNodeTree ntree = *snode.edittree;
+  const bNodeTree &ntree = *snode.edittree;
   LISTBASE_FOREACH_BACKWARD (const bNode *, node, &ntree.nodes) {
     switch (node->type) {
       case NODE_REROUTE: {

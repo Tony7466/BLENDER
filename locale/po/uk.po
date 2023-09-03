@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'd4d0daa934cd')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'5ba692898e63')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-08-07 09:03:59\n"
+"POT-Creation-Date: 2023-08-28 16:05:16\n"
 "PO-Revision-Date: 2021-03-01 19:15+0000\n"
 "Last-Translator: lxlalexlxl <lxlalexlxl@ukr.net>\n"
 "Language-Team: Ukrainian (Ukraine) (http://www.transifex.com/lxlalexlxl/blender/language/uk_UA/)\n"
@@ -18215,20 +18215,40 @@ msgid "Camera near clipping distance"
 msgstr "Ближня відстань відсікання для камери"
 
 
-msgid "Cycles Camera Settings"
-msgstr "Параметри Cycles для камери"
-
-
-msgid "Cycles camera settings"
-msgstr "Параметри Cycles для камери"
-
-
 msgid "Apparent size of the Camera object in the 3D View"
 msgstr "Видимий розмір об'єкта-камери у 3D-огляді"
 
 
 msgid "Depth Of Field"
 msgstr "Глибина різкості"
+
+
+msgid "Field of view for the fisheye lens"
+msgstr "Поле зору об'єктиву 'риб'яче око'"
+
+
+msgid "Fisheye Lens"
+msgstr "Об'єктив 'риб'яче око'"
+
+
+msgid "Lens focal length (mm)"
+msgstr "Фокусна відстань об'єктива (мм)"
+
+
+msgid "Max Latitude"
+msgstr "Найбільша широта"
+
+
+msgid "Maximum latitude (vertical angle) for the equirectangular lens"
+msgstr "Максимальна широта (вертикальний кут) для рівнопроміжкових об'єктивів"
+
+
+msgid "Min Latitude"
+msgstr "Найменша широта"
+
+
+msgid "Minimum latitude (vertical angle) for the equirectangular lens"
+msgstr "Мінімальна широта (вертикальний кут) для рівнопроміжкових об'єктивів"
 
 
 msgid "Focal Length"
@@ -18251,12 +18271,60 @@ msgid "Specify the lens as the field of view's angle"
 msgstr "Задати об'єктив кутом поля зору"
 
 
+msgid "Max Longitude"
+msgstr "Найбільша довгота"
+
+
+msgid "Maximum longitude (horizontal angle) for the equirectangular lens"
+msgstr "Максимальна довгота (горизонтальний кут) для рівнопроміжкових об'єктивів"
+
+
+msgid "Min Longitude"
+msgstr "Найменша довгота"
+
+
+msgid "Minimum longitude (horizontal angle) for the equirectangular lens"
+msgstr "Мінімальна довгота (горизонтальний кут) для рівнопроміжкових об'єктивів"
+
+
 msgid "Orthographic Scale"
 msgstr "Ортогональний масштаб"
 
 
 msgid "Orthographic Camera scale (similar to zoom)"
 msgstr "Масштаб ортогональної камери (подібно до зумування)"
+
+
+msgid "Panorama Type"
+msgstr "Тип панорами"
+
+
+msgid "Distortion to use for the calculation"
+msgstr "Спотворення, що використовується для обчислень"
+
+
+msgid "Equirectangular"
+msgstr "Еквідистантна"
+
+
+msgid "Mirror Ball"
+msgstr "Дзеркальна куля"
+
+
+msgid "Fisheye Equidistant"
+msgstr "Еквідистантне 'риб'яче око'"
+
+
+msgid "Ideal for fulldomes, ignore the sensor dimensions"
+msgstr "Ідеально для куполів, ігноруються розміри датчика"
+
+
+msgid "Fisheye Equisolid"
+msgstr "Еквітілесне 'риб'яче око'"
+
+
+msgid "Similar to most fisheye modern lens, takes sensor dimensions into consideration"
+msgstr "Подібний до більшості сучасних об'єктивів 'риб'яче око', враховує розміри сенсора"
 
 
 msgid "Passepartout Alpha"
@@ -25630,20 +25698,12 @@ msgid "Insert After"
 msgstr "Вставити після"
 
 
-msgid "Insert a new item into collection after the one referenced in subitem_reference_name or _index"
-msgstr "Вставити новий елемент у колекцію після зазначеного в subitem_reference_name або _index"
-
-
 msgid "Insert Before"
 msgstr "Вставити перед"
 
 
 msgid "Subitem Local Index"
 msgstr "Локальний індекс піделемента"
-
-
-msgid "Used to handle insertions into collection"
-msgstr "Використовується для керування вставлянням у колекцію"
 
 
 msgid "Subitem Local Name"
@@ -35011,10 +35071,6 @@ msgid "Display Hidden"
 msgstr "Показати приховане"
 
 
-msgid "Include channels from objects/bone that aren't visible"
-msgstr "Включити канали з невидимих об'єктів/кісток"
-
-
 msgid "Dopesheet Sort Field"
 msgstr "Поле сортування Аркуша експозицій"
 
@@ -37384,8 +37440,8 @@ msgid "Tracking Object"
 msgstr "Об'єкт відстеження"
 
 
-msgid "Smoothing"
-msgstr "Згладжування"
+msgid "Eccentricity"
+msgstr "Ексцентриситет"
 
 
 msgid "Anisotropic"
@@ -37606,10 +37662,6 @@ msgstr "Цілочислова частина A, вилучає дробові �
 
 msgid "The fraction part of A"
 msgstr "Дробова частина від A"
-
-
-msgid "Modulo using fmod(A,B)"
-msgstr "Модуль використовує fmod(A,B)"
 
 
 msgid "Wrap value to range, wrap(A,B)"
@@ -38965,16 +39017,8 @@ msgid "Projection of the input image"
 msgstr "Проєкція ввідного зображення"
 
 
-msgid "Equirectangular"
-msgstr "Еквідистантна"
-
-
 msgid "Equirectangular or latitude-longitude projection"
 msgstr "Еквідистантна або проєкція широта-довгота"
-
-
-msgid "Mirror Ball"
-msgstr "Дзеркальна куля"
 
 
 msgid "Projection from an orthographic photo of a mirror ball"
@@ -40023,6 +40067,10 @@ msgstr "Вводи дерева вузлів"
 
 msgid "Collection of Node Tree Sockets"
 msgstr "Колекція ввідних роз'ємів дерева вузлів"
+
+
+msgid "Socket Type"
+msgstr "Тип роз'єму"
 
 
 msgid "Node Tree Outputs"
@@ -44739,12 +44787,20 @@ msgstr "Конвертувати оберти в Ейлерові - ZYX"
 
 
 msgctxt "Operator"
-msgid "Export PLY"
-msgstr "Експорт PLY"
+msgid "Export STL"
+msgstr "Експорт STL"
 
 
-msgid "Export as a Stanford PLY with normals, vertex colors and texture coordinates"
-msgstr "Експорт як Stanford PLY з нормалями, кольорами вершин та координатами текстур"
+msgid "Save STL triangle mesh data"
+msgstr "Зберегти трикутникові дані сіті STL"
+
+
+msgid "Ascii"
+msgstr "ASCII"
+
+
+msgid "Save the file in ASCII file format"
+msgstr "Записати файл формату ASCII"
 
 
 msgid "X Forward"
@@ -44791,51 +44847,6 @@ msgid "-Z Up"
 msgstr "-Z Уверх"
 
 
-msgid "ASCII"
-msgstr "ASCII"
-
-
-msgid "Export using ASCII file format, otherwise use binary"
-msgstr "Експорт, використовуючи формат ASCII для файлів, інакше використовувати двійковий формат"
-
-
-msgid "Export the active vertex color layer"
-msgstr "Експорт активного шару кольору вершин"
-
-
-msgid "Apply Modifiers"
-msgstr "Застосувати модифікатори"
-
-
-msgid "Apply Modifiers to the exported mesh"
-msgstr "Застосувати модифікатори до експортованої сіті"
-
-
-msgid "Selection Only"
-msgstr "Лише вибране"
-
-
-msgid "Export selected objects only"
-msgstr "Експортувати лише вибрані об'єкти"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "Експорт STL"
-
-
-msgid "Save STL triangle mesh data"
-msgstr "Зберегти трикутникові дані сіті STL"
-
-
-msgid "Ascii"
-msgstr "ASCII"
-
-
-msgid "Save the file in ASCII file format"
-msgstr "Записати файл формату ASCII"
-
-
 msgid "Batch Mode"
 msgstr "Пакетний Режим"
 
@@ -44848,6 +44859,10 @@ msgid "Each object as a file"
 msgstr "Кожен об'єкт як файл"
 
 
+msgid "Apply Modifiers"
+msgstr "Застосувати модифікатори"
+
+
 msgid "Apply the modifiers before saving"
 msgstr "Перед збереженням застосувати модифікатори"
 
@@ -44858,6 +44873,14 @@ msgstr "Одиниці сцени"
 
 msgid "Apply current scene's unit (as defined by unit scale) to exported data"
 msgstr "Застосувати до експортованих даних поточні одиниці сцени (як вказує масштаб одиниць)"
+
+
+msgid "Selection Only"
+msgstr "Лише вибране"
+
+
+msgid "Export selected objects only"
+msgstr "Експортувати лише вибрані об'єкти"
 
 
 msgctxt "Operator"
@@ -45039,6 +45062,10 @@ msgstr "Включити текстури у бінарний файл FBX (ли
 
 msgid "Scale all data (Some importers do not support scaled armatures!)"
 msgstr "Масштабувати всі дані (деякі імпортери не підтримують масштабованих арматур!)"
+
+
+msgid "Smoothing"
+msgstr "Згладжування"
 
 
 msgid "Export smoothing information (prefer 'Normals Only' option if your target importer understand split normals)"
@@ -45508,107 +45535,6 @@ msgstr "Пам'ятати Устави Експорту"
 
 msgid "Store glTF export settings in the Blender project"
 msgstr "Зберігати устави експорту glTF у прокті Blender'а"
-
-
-msgctxt "Operator"
-msgid "Export OBJ"
-msgstr "Експорт OBJ"
-
-
-msgid "Save a Wavefront OBJ File"
-msgstr "Записати файл Wavefront OBJ"
-
-
-msgid "Material Groups"
-msgstr "Групи матеріалів"
-
-
-msgid "Generate an OBJ group for each part of a geometry using a different material"
-msgstr "Генерувати групу OBJ для кожної частини геометрії, використовуючи інший матеріал"
-
-
-msgid "OBJ Groups"
-msgstr "Групи OBJ"
-
-
-msgid "Export Blender objects as OBJ groups"
-msgstr "Експорт об'єктів Blender як груп OBJ"
-
-
-msgid "Keep Vertex Order"
-msgstr "Зберегти порядок вершин"
-
-
-msgid "Write out an OBJ for each frame"
-msgstr "Записати OBJ для кожного кадру"
-
-
-msgid "OBJ Objects"
-msgstr "Об'єкти OBJ"
-
-
-msgid "Export Blender objects as OBJ objects"
-msgstr "Експорт об'єктів Blender як об'єктів OBJ"
-
-
-msgid "Include Edges"
-msgstr "Включити ребра"
-
-
-msgid "Write Materials"
-msgstr "Записати матеріали"
-
-
-msgid "Write out the MTL file"
-msgstr "Записати файл MTL"
-
-
-msgid "Apply modifiers"
-msgstr "Застосувати модифікатори"
-
-
-msgid "Write Normals"
-msgstr "Записати нормалі"
-
-
-msgid "Export one normal per vertex and per face, to represent flat faces and sharp edges"
-msgstr "Експортувати по одній нормалі на вершину та грань, для задання плоских граней та гострих ребер"
-
-
-msgid "Write Nurbs"
-msgstr "Записати NURBS"
-
-
-msgid "Write nurbs curves as OBJ nurbs rather than converting to geometry"
-msgstr "Записати NURBS-криві як OBJ NURBS, а не перетворювати у геометричні"
-
-
-msgid "Smooth Groups"
-msgstr "Групи згладжування"
-
-
-msgid "Write sharp edges as smooth groups"
-msgstr "Записати гострі ребра як м'які групи"
-
-
-msgid "Bitflag Smooth Groups"
-msgstr "Групи згладжування з біт-прапорцем"
-
-
-msgid "Same as 'Smooth Groups', but generate smooth groups IDs as bitflags (produces at most 32 different smooth groups, usually much less)"
-msgstr "Те саме, що й «Групи згладжування», але генерувати ідентифікатори груп згладжування за допомогою бітових прапорців (дає не більше 32 різних груп згладжування, але цього зазвичай вистачає)"
-
-
-msgid "Include UVs"
-msgstr "Включити UV"
-
-
-msgid "Write out the active UV coordinates"
-msgstr "Записати активні UV-координати"
-
-
-msgid "Polygroups"
-msgstr "Полігрупи"
 
 
 msgctxt "Operator"
@@ -49651,19 +49577,6 @@ msgstr "Вжити канал альфа для прозорості"
 
 
 msgctxt "Operator"
-msgid "Import PLY"
-msgstr "Імпорт PLY"
-
-
-msgid "Load a PLY geometry file"
-msgstr "Завантажте файл геометрії PLY"
-
-
-msgid "File path used for importing the PLY file"
-msgstr "Шлях, що використовується для імпорту PLY-файлу"
-
-
-msgctxt "Operator"
 msgid "Import STL"
 msgstr "Імпорт STL"
 
@@ -49888,59 +49801,6 @@ msgstr "Рівень Протоколу"
 
 msgid "The glTF format requires discontinuous normals, UVs, and other vertex attributes to be stored as separate vertices, as required for rendering on typical graphics hardware. This option attempts to combine co-located vertices where possible. Currently cannot combine verts with different normals"
 msgstr "Формат glTF вимагає дискретних атрибутів нормалей, UVт, та інших елементів вершин, щоб зберігатися як окремі вершини, як вимагається для рендерингу на типовому графічному апаратному забезпеченні. Ця опція пробує комбінувати спів-розміщені вершини, де це можливо. Поточно не може комбінувати вершини з різними нормалями"
-
-
-msgctxt "Operator"
-msgid "Import OBJ"
-msgstr "Імпортувати OBJ"
-
-
-msgid "Load a Wavefront OBJ File"
-msgstr "Завантажити файл Wavefront OBJ"
-
-
-msgid "Clamp Size"
-msgstr "Розмір відсікання"
-
-
-msgid "Clamp bounds under this value (zero to disable)"
-msgstr "Обмежити цим значенням (нуль - відключити)"
-
-
-msgid "Keep Vert Order"
-msgstr "Зберегти порядок вершин"
-
-
-msgid "Keep vertex order from file"
-msgstr "Зберегти порядок вершин з файлу"
-
-
-msgid "Import lines and faces with 2 verts as edge"
-msgstr "Імпортувати лінії та грані з 2 вершинами як ребра"
-
-
-msgid "Poly Groups"
-msgstr "Полігрупи"
-
-
-msgid "Import OBJ groups as vertex groups"
-msgstr "Імпортувати OBJ-групи як групи вершин"
-
-
-msgid "Search subdirs for any associated images (Warning, may be slow)"
-msgstr "Пошук у підкаталогах будь-яких зв'язаних зображень (попередження: може бути повільним)"
-
-
-msgid "Surround smooth groups by sharp edges"
-msgstr "Оточити групи згладжування гострими ребрами"
-
-
-msgid "Import OBJ Groups into Blender Objects"
-msgstr "Імпортувати OBJ-групи у об'єкти Blender"
-
-
-msgid "Import OBJ Objects into Blender Objects"
-msgstr "Імпортувати OBJ-об'єкти у об'єкти Blender"
 
 
 msgctxt "Operator"
@@ -54385,10 +54245,6 @@ msgstr "Перейти до батьківського дерева вузлів
 msgctxt "Operator"
 msgid "Add Node Tree Interface Socket"
 msgstr "Додати інтерфейсний роз'єм до дерева вузлів"
-
-
-msgid "Socket Type"
-msgstr "Тип роз'єму"
 
 
 msgctxt "Operator"
@@ -67192,6 +67048,14 @@ msgid "Object Properties"
 msgstr "Властивості Об'єкта"
 
 
+msgid "Generate an OBJ group for each part of a geometry using a different material"
+msgstr "Генерувати групу OBJ для кожної частини геометрії, використовуючи інший матеріал"
+
+
+msgid "Import OBJ groups as vertex groups"
+msgstr "Імпортувати OBJ-групи як групи вершин"
+
+
 msgctxt "Operator"
 msgid "Open"
 msgstr "Відкриття"
@@ -67267,6 +67131,16 @@ msgstr "Значник Інтерфейсу Користувача"
 
 msgid "Open a path in a file browser"
 msgstr "Відкрити шлях в оглядачі файлів"
+
+
+msgctxt "Operator"
+msgid "Export PLY"
+msgstr "Експорт PLY"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "Імпорт PLY"
 
 
 msgctxt "Operator"
@@ -67413,6 +67287,10 @@ msgstr "Контекст"
 msgctxt "Operator"
 msgid "Edit Property"
 msgstr "Редагувати властивість"
+
+
+msgid "Speaker"
+msgstr "Гучномовець"
 
 
 msgid "Allow the property to be overridden when the data-block is linked"
@@ -68627,10 +68505,6 @@ msgid "Sampling Presets"
 msgstr "Передустави Відбору"
 
 
-msgid "View Object Types"
-msgstr "Типи Об'єктів Огляду"
-
-
 msgid "Film"
 msgstr "Фільм"
 
@@ -69827,6 +69701,10 @@ msgstr "Чотирибічний Огляд"
 
 msgid "Auto-Masking"
 msgstr "Авто-Маскування"
+
+
+msgid "Wire Color"
+msgstr "Колір зв'язку"
 
 
 msgid "Shadow Settings"
@@ -73490,74 +73368,6 @@ msgid "Use regular expressions to match text in the 'Find' field"
 msgstr "Використати регулярні вирази для узгодження тексту у полі 'Знаходження'"
 
 
-msgid "Field of view for the fisheye lens"
-msgstr "Поле зору об'єктиву 'риб'яче око'"
-
-
-msgid "Fisheye Lens"
-msgstr "Об'єктив 'риб'яче око'"
-
-
-msgid "Lens focal length (mm)"
-msgstr "Фокусна відстань об'єктива (мм)"
-
-
-msgid "Max Latitude"
-msgstr "Найбільша широта"
-
-
-msgid "Maximum latitude (vertical angle) for the equirectangular lens"
-msgstr "Максимальна широта (вертикальний кут) для рівнопроміжкових об'єктивів"
-
-
-msgid "Min Latitude"
-msgstr "Найменша широта"
-
-
-msgid "Minimum latitude (vertical angle) for the equirectangular lens"
-msgstr "Мінімальна широта (вертикальний кут) для рівнопроміжкових об'єктивів"
-
-
-msgid "Max Longitude"
-msgstr "Найбільша довгота"
-
-
-msgid "Maximum longitude (horizontal angle) for the equirectangular lens"
-msgstr "Максимальна довгота (горизонтальний кут) для рівнопроміжкових об'єктивів"
-
-
-msgid "Min Longitude"
-msgstr "Найменша довгота"
-
-
-msgid "Minimum longitude (horizontal angle) for the equirectangular lens"
-msgstr "Мінімальна довгота (горизонтальний кут) для рівнопроміжкових об'єктивів"
-
-
-msgid "Panorama Type"
-msgstr "Тип панорами"
-
-
-msgid "Distortion to use for the calculation"
-msgstr "Спотворення, що використовується для обчислень"
-
-
-msgid "Fisheye Equidistant"
-msgstr "Еквідистантне 'риб'яче око'"
-
-
-msgid "Ideal for fulldomes, ignore the sensor dimensions"
-msgstr "Ідеально для куполів, ігноруються розміри датчика"
-
-
-msgid "Fisheye Equisolid"
-msgstr "Еквітілесне 'риб'яче око'"
-
-
-msgid "Similar to most fisheye modern lens, takes sensor dimensions into consideration"
-msgstr "Подібний до більшості сучасних об'єктивів 'риб'яче око', враховує розміри сенсора"
-
-
 msgid "Rounded Ribbons"
 msgstr "Округлені Стрічки"
 
@@ -75442,8 +75252,8 @@ msgid "Render at 12.5% resolution"
 msgstr "Рендер з 12.5% роздільністю"
 
 
-msgid "Resolution %"
-msgstr "Роздільність %"
+msgid "Resolution Scale"
+msgstr "Масштаб Роздільності"
 
 
 msgid "Percentage scale for render resolution"
@@ -81163,10 +80973,6 @@ msgid "Gizmo to adjust location"
 msgstr "Гізмо для наладнання локації "
 
 
-msgid "Speaker"
-msgstr "Гучномовець"
-
-
 msgid "Show Reconstruction"
 msgstr "Показати реконструкцію"
 
@@ -82937,10 +82743,6 @@ msgstr "Векторний вузол"
 
 msgid "Wires"
 msgstr "Зв'язки"
-
-
-msgid "Wire Color"
-msgstr "Колір зв'язку"
 
 
 msgid "Wire Select"
@@ -85404,6 +85206,10 @@ msgid "Show VR Camera"
 msgstr "Показ Камери ВР"
 
 
+msgid "Theme"
+msgstr "Тема"
+
+
 msgid "X-Ray Alpha"
 msgstr "Альфа Просвічення"
 
@@ -87484,10 +87290,6 @@ msgid "Shortcuts"
 msgstr "Скорочення"
 
 
-msgid "Theme"
-msgstr "Тема"
-
-
 msgctxt "Operator"
 msgid "Open..."
 msgstr "Відкриття..."
@@ -89350,10 +89152,6 @@ msgstr "Четверте"
 
 msgid "Multiply R"
 msgstr "Множення R"
-
-
-msgid "Eccentricity"
-msgstr "Ексцентриситет"
 
 
 msgid "Enable the Color Ramp first"
@@ -91403,10 +91201,6 @@ msgid "Revert to Saved Preferences"
 msgstr "Повернення до Збережених Уподобань"
 
 
-msgid "Resolution Scale"
-msgstr "Масштаб Роздільності"
-
-
 msgid "Splash Screen"
 msgstr "Екран Заставки"
 
@@ -91477,10 +91271,6 @@ msgstr "Вжити власні кольори"
 
 msgid "Sculpt Overlay Color"
 msgstr "Колір Накладки Ліплення"
-
-
-msgid "Node Auto-Offset Margin"
-msgstr "Припуск Авто-Зсуву Вузла"
 
 
 msgid "Minimum Grid Spacing"
@@ -92624,10 +92414,6 @@ msgstr "Локальна Камера"
 
 msgid "Camera to View"
 msgstr "Камера за Оглядом"
-
-
-msgid "Object Types Visibility"
-msgstr "Видимість Типів Об'єктів"
 
 
 msgid "Object Gizmos"
@@ -93834,10 +93620,6 @@ msgid "[Action Stash]"
 msgstr "[Запас Дій]"
 
 
-msgid "Non-Empty object '%s' cannot duplicate collection '%s' anymore in Blender 2.80, removed instancing"
-msgstr "Непорожній об'єкт  '%s' не може більше дублювати колекцію '%s' у Blender 2.80, вилучається примірникування"
-
-
 msgid "Surf"
 msgstr "Поверхня"
 
@@ -94163,16 +93945,16 @@ msgid "Checking sanity of current .blend file *BEFORE* save to disk"
 msgstr "Перевірка справності поточного .blend файлу *ПЕРЕД* збереженням на диск"
 
 
+msgid "Checking sanity of current .blend file *AFTER* save to disk"
+msgstr "Перевірка справності поточного .blend файлу *ПІСЛЯ* збереження на диск"
+
+
 msgid "Version backup failed (file saved with @)"
 msgstr "Не вдалося зберегти версію (файл збережено з @)"
 
 
 msgid "Cannot change old file (file saved with @)"
 msgstr "Неможливо змінити старий файл (файл збережено з @)"
-
-
-msgid "Checking sanity of current .blend file *AFTER* save to disk"
-msgstr "Перевірка справності поточного .blend файлу *ПІСЛЯ* збереження на диск"
 
 
 msgid "Cannot open file %s for writing: %s"
@@ -96058,6 +95840,18 @@ msgstr "Помилка експорту (див. консоль)"
 
 msgid "Parsing errors in Document (see Blender Console)"
 msgstr "Виявлення помилок у Документів (дивіться Blender Console)"
+
+
+msgid "Material Groups"
+msgstr "Групи матеріалів"
+
+
+msgid "Smooth Groups"
+msgstr "Групи згладжування"
+
+
+msgid "ASCII"
+msgstr "ASCII"
 
 
 msgctxt "Mesh"
@@ -98891,22 +98685,6 @@ msgid "). Click here to proceed..."
 msgstr "). Клацніть тут, щоб продовжити..."
 
 
-msgid "Cannot edit builtin name"
-msgstr "Неможливо редагувати вбудовану назву"
-
-
-msgid "Cannot edit sequence name"
-msgstr "Неможливо редагувати назву послідовності"
-
-
-msgid "Cannot edit name of an override data-block"
-msgstr "Неможливо змінити назву блоку даних заміщення"
-
-
-msgid "Cannot edit name of master collection"
-msgstr "Неможливо змінити назву головної колекції"
-
-
 msgid "Cannot edit the path of an indirectly linked library"
 msgstr "Неможливо редагувати шлях до опосередковано зв'язаної бібліотеки"
 
@@ -100417,16 +100195,16 @@ msgid "Registering node socket class: '%s' is too long, maximum length is %d"
 msgstr "Реєстрація класу роз'єму вузла: назва '%s' задовга, найбільша довжина - %d"
 
 
+msgid "Unable to create socket"
+msgstr "Неможливо створити роз'єм"
+
+
 msgid "Same input/output direction of sockets"
 msgstr "Однаковий напрям вводу/виводу роз'ємів"
 
 
 msgid "Unable to locate link in node tree"
 msgstr "Не вдалося відшукати зв'язок у дереві вузлів"
-
-
-msgid "Unable to create socket"
-msgstr "Неможливо створити роз'єм"
 
 
 msgid "Node tree '%s' has undefined type %s"

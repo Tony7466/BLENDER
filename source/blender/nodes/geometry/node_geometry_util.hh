@@ -1,29 +1,17 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
-#include <string.h>
-
-#include "BLI_bounds_types.hh"
-#include "BLI_math_matrix_types.hh"
-#include "BLI_math_vector_types.hh"
-#include "BLI_utildefines.h"
-
 #include "MEM_guardedalloc.h"
-
-#include "DNA_node_types.h"
 
 #include "BKE_node.hh"
 
-#include "NOD_geometry.hh"
 #include "NOD_geometry_exec.hh"
 #include "NOD_register.hh"
 #include "NOD_socket_declarations.hh"
 #include "NOD_socket_declarations_geometry.hh"
-
-#include "RNA_access.hh"
 
 #include "node_util.hh"
 
@@ -32,6 +20,7 @@
 #endif
 
 struct BVHTreeFromMesh;
+struct GeometrySet;
 namespace blender::nodes {
 class GatherAddNodeSearchParams;
 class GatherLinkSearchOpParams;
@@ -147,17 +136,17 @@ void socket_declarations_for_simulation_items(Span<NodeSimulationItem> items,
                                               NodeDeclaration &r_declaration);
 const CPPType &get_simulation_item_cpp_type(eNodeSocketDatatype socket_type);
 const CPPType &get_simulation_item_cpp_type(const NodeSimulationItem &item);
-void move_values_to_simulation_state(const Span<NodeSimulationItem> node_simulation_items,
-                                     const Span<void *> input_values,
-                                     bke::sim::SimulationZoneState &r_zone_state);
+
+Map<int, std::unique_ptr<bke::BakeItem>> move_values_to_simulation_state(
+    const Span<NodeSimulationItem> node_simulation_items, const Span<void *> input_values);
 void move_simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_items,
-                                     bke::sim::SimulationZoneState &zone_state,
+                                     Map<int, std::unique_ptr<bke::BakeItem>> zone_state,
                                      const Object &self_object,
                                      const ComputeContext &compute_context,
                                      const bNode &sim_output_node,
                                      Span<void *> r_output_values);
 void copy_simulation_state_to_values(const Span<NodeSimulationItem> node_simulation_items,
-                                     const bke::sim::SimulationZoneState &zone_state,
+                                     const Map<int, const bke::BakeItem *> &zone_state,
                                      const Object &self_object,
                                      const ComputeContext &compute_context,
                                      const bNode &sim_output_node,
@@ -170,5 +159,16 @@ void copy_with_checked_indices(const GVArray &src,
 
 void socket_declarations_for_repeat_items(const Span<NodeRepeatItem> items,
                                           NodeDeclaration &r_declaration);
+
+namespace enums {
+
+const EnumPropertyItem *attribute_type_type_with_socket_fn(bContext * /*C*/,
+                                                           PointerRNA * /*ptr*/,
+                                                           PropertyRNA * /*prop*/,
+                                                           bool *r_free);
+
+bool generic_attribute_type_supported(const EnumPropertyItem &item);
+
+}  // namespace enums
 
 }  // namespace blender::nodes

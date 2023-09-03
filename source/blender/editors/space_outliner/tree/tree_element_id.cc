@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -25,6 +25,7 @@
 #include "tree_element_id_collection.hh"
 #include "tree_element_id_curve.hh"
 #include "tree_element_id_gpencil_legacy.hh"
+#include "tree_element_id_grease_pencil.hh"
 #include "tree_element_id_library.hh"
 #include "tree_element_id_linestyle.hh"
 #include "tree_element_id_mesh.hh"
@@ -37,7 +38,7 @@
 
 namespace blender::ed::outliner {
 
-std::unique_ptr<TreeElementID> TreeElementID::createFromID(TreeElement &legacy_te, ID &id)
+std::unique_ptr<TreeElementID> TreeElementID::create_from_id(TreeElement &legacy_te, ID &id)
 {
   if (ID_TYPE_IS_DEPRECATED(GS(id.name))) {
     BLI_assert_msg(0, "Outliner trying to build tree-element for deprecated ID type");
@@ -61,6 +62,8 @@ std::unique_ptr<TreeElementID> TreeElementID::createFromID(TreeElement &legacy_t
       return std::make_unique<TreeElementIDLineStyle>(legacy_te, (FreestyleLineStyle &)id);
     case ID_GD_LEGACY:
       return std::make_unique<TreeElementIDGPLegacy>(legacy_te, (bGPdata &)id);
+    case ID_GP:
+      return std::make_unique<TreeElementIDGreasePencil>(legacy_te, (GreasePencil &)id);
     case ID_GR:
       return std::make_unique<TreeElementIDCollection>(legacy_te, (Collection &)id);
     case ID_AR:
@@ -94,7 +97,6 @@ std::unique_ptr<TreeElementID> TreeElementID::createFromID(TreeElement &legacy_t
     case ID_PAL:
     case ID_PC:
     case ID_CF:
-    case ID_GP:
       return std::make_unique<TreeElementID>(legacy_te, id);
     case ID_IP:
       BLI_assert_unreachable();
@@ -118,7 +120,7 @@ TreeElementID::TreeElementID(TreeElement &legacy_te, ID &id)
   legacy_te_.idcode = GS(id.name);
 }
 
-bool TreeElementID::expandPoll(const SpaceOutliner &space_outliner) const
+bool TreeElementID::expand_poll(const SpaceOutliner &space_outliner) const
 {
   const TreeStoreElem *tsepar = legacy_te_.parent ? TREESTORE(legacy_te_.parent) : nullptr;
   return (tsepar == nullptr || tsepar->type != TSE_ID_BASE || space_outliner.filter_id_type);

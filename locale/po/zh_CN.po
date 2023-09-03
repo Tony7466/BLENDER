@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'd4d0daa934cd')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'5ba692898e63')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-08-07 09:03:59\n"
+"POT-Creation-Date: 2023-08-28 16:05:16\n"
 "PO-Revision-Date: \n"
 "Last-Translator: DeathBlood\n"
 "Language-Team: \n"
@@ -5743,36 +5743,8 @@ msgid "sRGB display space with Filmic view transform"
 msgstr "带有Filmic视图变换的sRGB显示空间"
 
 
-msgid "Rec. 709 (Full Range), Blender native linear space"
-msgstr "Rec. 709 (全范围), Blender 原生线性空间"
-
-
-msgid "Linear ACES"
-msgstr "线性ACES"
-
-
-msgid "ACES2065-1 linear space"
-msgstr "ACES2065-1 线性空间"
-
-
-msgid "Linear ACEScg"
-msgstr "线性 ACEScg"
-
-
-msgid "ACEScg linear space"
-msgstr "ACEScg 线性空间"
-
-
 msgid "Non-Color"
 msgstr "非彩色"
-
-
-msgid "sRGB display space"
-msgstr "sRGB 显示空间"
-
-
-msgid "XYZ"
-msgstr "XYZ"
 
 
 msgid "Do not perform any color transform on load, treat colors as in scene linear space already"
@@ -20831,20 +20803,80 @@ msgid "Camera near clipping distance"
 msgstr "摄像机近裁距离"
 
 
-msgid "Cycles Camera Settings"
-msgstr "Cycles 摄像机设置"
-
-
-msgid "Cycles camera settings"
-msgstr "Cycles 摄像机设置"
-
-
 msgid "Apparent size of the Camera object in the 3D View"
 msgstr "摄像机物体在 3D 视图中的感官尺寸"
 
 
 msgid "Depth Of Field"
 msgstr "景深"
+
+
+msgid "Field of view for the fisheye lens"
+msgstr "鱼眼焦距的视野范围"
+
+
+msgid "Fisheye Lens"
+msgstr "鱼眼焦距"
+
+
+msgid "Lens focal length (mm)"
+msgstr "镜头的焦距(mm)"
+
+
+msgid "Fisheye Polynomial K0"
+msgstr "鱼眼多项式 K0"
+
+
+msgid "Coefficient K0 of the lens polynomial"
+msgstr "镜头多项式的系数K0"
+
+
+msgid "Fisheye Polynomial K1"
+msgstr "鱼眼多项式 K1"
+
+
+msgid "Coefficient K1 of the lens polynomial"
+msgstr "镜头多项式的系数K1"
+
+
+msgid "Fisheye Polynomial K2"
+msgstr "鱼眼多项式 K2"
+
+
+msgid "Coefficient K2 of the lens polynomial"
+msgstr "镜头多项式的系数K2"
+
+
+msgid "Fisheye Polynomial K3"
+msgstr "鱼眼多项式 K3"
+
+
+msgid "Coefficient K3 of the lens polynomial"
+msgstr "镜头多项式的系数K3"
+
+
+msgid "Fisheye Polynomial K4"
+msgstr "鱼眼多项式 K4"
+
+
+msgid "Coefficient K4 of the lens polynomial"
+msgstr "镜头多项式的系数K4"
+
+
+msgid "Max Latitude"
+msgstr "最大纬度"
+
+
+msgid "Maximum latitude (vertical angle) for the equirectangular lens"
+msgstr "全景镜头的最大纬度(垂直角度)"
+
+
+msgid "Min Latitude"
+msgstr "最小纬度"
+
+
+msgid "Minimum latitude (vertical angle) for the equirectangular lens"
+msgstr "全景镜头的最小纬度(垂直角度)"
 
 
 msgid "Focal Length"
@@ -20875,12 +20907,84 @@ msgid "Specify the lens as the field of view's angle"
 msgstr "使用焦距定义视野角度"
 
 
+msgid "Max Longitude"
+msgstr "最大经度"
+
+
+msgid "Maximum longitude (horizontal angle) for the equirectangular lens"
+msgstr "全景镜头的最大经度(水平角度)"
+
+
+msgid "Min Longitude"
+msgstr "最小经度"
+
+
+msgid "Minimum longitude (horizontal angle) for the equirectangular lens"
+msgstr "全景镜头的最小经度(水平角度)"
+
+
 msgid "Orthographic Scale"
 msgstr "正交比例"
 
 
 msgid "Orthographic Camera scale (similar to zoom)"
 msgstr "正交摄像机缩放(类似放大缩小)"
+
+
+msgid "Panorama Type"
+msgstr "全景类型"
+
+
+msgid "Distortion to use for the calculation"
+msgstr "用于计算的畸变方式"
+
+
+msgid "Equirectangular"
+msgstr "等距圆柱(ERP)"
+
+
+msgid "Spherical camera for environment maps, also known as Lat Long panorama"
+msgstr "用于环境地图的球面相机，也称为Lat Long全景"
+
+
+msgid "Equiangular Cubemap Face"
+msgstr "等角立方体贴图面"
+
+
+msgid "Single face of an equiangular cubemap"
+msgstr "等角立方体贴图的单个面"
+
+
+msgid "Mirror Ball"
+msgstr "镜像球"
+
+
+msgid "Mirror ball mapping for environment maps"
+msgstr "环境贴图的镜像球映射"
+
+
+msgid "Fisheye Equidistant"
+msgstr "鱼眼等距"
+
+
+msgid "Ideal for fulldomes, ignore the sensor dimensions"
+msgstr "反转面的位置"
+
+
+msgid "Fisheye Equisolid"
+msgstr "等立体角型鱼眼"
+
+
+msgid "Similar to most fisheye modern lens, takes sensor dimensions into consideration"
+msgstr "与现代多数的鱼眼镜头相仿, 将触发器的规格考虑在内"
+
+
+msgid "Fisheye Lens Polynomial"
+msgstr "鱼眼镜头多项式"
+
+
+msgid "Defines the lens projection as polynomial to allow real world camera lenses to be mimicked"
+msgstr "定义镜头投影为多项式，以允许模拟真实世界的相机镜头"
 
 
 msgid "Passepartout Alpha"
@@ -29028,24 +29132,12 @@ msgid "Insert After"
 msgstr "在之后插入"
 
 
-msgid "Insert a new item into collection after the one referenced in subitem_reference_name or _index"
-msgstr "在 subitem_reference_name 或 _index 中引用的项之后插入一个新条目到集合"
-
-
 msgid "Insert Before"
 msgstr "在之前插入"
 
 
-msgid "Insert a new item into collection before the one referenced in subitem_reference_name or _index (NOT USED)"
-msgstr "在 subitem_reference_name 或 _index 中引用的项之前插入一个新条目到集合(未使用)"
-
-
 msgid "Subitem Local Index"
 msgstr "子条目自身编号"
-
-
-msgid "Used to handle insertions into collection"
-msgstr "用于处理集合中的插入"
 
 
 msgid "Subitem Local Name"
@@ -39330,10 +39422,6 @@ msgid "Display Hidden"
 msgstr "显示隐藏"
 
 
-msgid "Include channels from objects/bone that aren't visible"
-msgstr "包含不可见物体 / 骨头的通道"
-
-
 msgid "Dopesheet Sort Field"
 msgstr "动画编辑器排序部分"
 
@@ -41913,8 +42001,8 @@ msgid "Tracking Object"
 msgstr "追踪物体"
 
 
-msgid "Smoothing"
-msgstr "平滑"
+msgid "Eccentricity"
+msgstr "偏移"
 
 
 msgid "Anisotropic"
@@ -42269,15 +42357,6 @@ msgstr "分数"
 
 msgid "The fraction part of A"
 msgstr "A的分数部分"
-
-
-msgctxt "NodeTree"
-msgid "Modulo"
-msgstr "模数"
-
-
-msgid "Modulo using fmod(A,B)"
-msgstr "使用fmod(A,B)求模运算"
 
 
 msgctxt "NodeTree"
@@ -45875,16 +45954,8 @@ msgid "Projection of the input image"
 msgstr "输入图像的投影"
 
 
-msgid "Equirectangular"
-msgstr "等距圆柱(ERP)"
-
-
 msgid "Equirectangular or latitude-longitude projection"
 msgstr "等距圆柱型或经纬型投影"
-
-
-msgid "Mirror Ball"
-msgstr "镜像球"
 
 
 msgid "Projection from an orthographic photo of a mirror ball"
@@ -46543,6 +46614,11 @@ msgid "The fraction part of A entry-wise"
 msgstr "对A逐项取小数部分"
 
 
+msgctxt "NodeTree"
+msgid "Modulo"
+msgstr "模数"
+
+
 msgid "Entry-wise modulo using fmod(A,B)"
 msgstr "使用fmod(A,B)逐项求模运算"
 
@@ -47197,6 +47273,10 @@ msgstr "节点树输入"
 
 msgid "Collection of Node Tree Sockets"
 msgstr "节点树接口集合"
+
+
+msgid "Socket Type"
+msgstr "接口类型"
 
 
 msgid "Node Tree Outputs"
@@ -52510,12 +52590,20 @@ msgstr "转换转动至欧拉 ZYX"
 
 
 msgctxt "Operator"
-msgid "Export PLY"
-msgstr "导出PLY"
+msgid "Export STL"
+msgstr "导出STL"
 
 
-msgid "Export as a Stanford PLY with normals, vertex colors and texture coordinates"
-msgstr "导出为带有法线、顶点颜色和纹理坐标的斯坦福 PLY"
+msgid "Save STL triangle mesh data"
+msgstr "保存 STL 三角网格数据"
+
+
+msgid "Ascii"
+msgstr "Ascii"
+
+
+msgid "Save the file in ASCII file format"
+msgstr "保存文件为 ASCII 文件格式"
 
 
 msgid "X Forward"
@@ -52562,59 +52650,6 @@ msgid "-Z Up"
 msgstr "-Z 向上"
 
 
-msgid "ASCII"
-msgstr "ASCII"
-
-
-msgid "Export using ASCII file format, otherwise use binary"
-msgstr "使用ASCII文件格式导出，否则使用二进制"
-
-
-msgid "Export the active vertex color layer"
-msgstr "导出活动顶点颜色色层"
-
-
-msgid "Apply Modifiers"
-msgstr "应用修改器"
-
-
-msgid "Apply Modifiers to the exported mesh"
-msgstr "为输出的网格应用修改器"
-
-
-msgid "Export vertex normals"
-msgstr "导出顶点法向"
-
-
-msgid "Selection Only"
-msgstr "仅导出选中的物体"
-
-
-msgid "Export selected objects only"
-msgstr "仅导出选择的物体"
-
-
-msgid "Export the active UV layer (will split edges by seams)"
-msgstr "导出活动 UV 层(将按缝合线拆分边)"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "导出STL"
-
-
-msgid "Save STL triangle mesh data"
-msgstr "保存 STL 三角网格数据"
-
-
-msgid "Ascii"
-msgstr "Ascii"
-
-
-msgid "Save the file in ASCII file format"
-msgstr "保存文件为 ASCII 文件格式"
-
-
 msgid "Batch Mode"
 msgstr "批量模式"
 
@@ -52635,6 +52670,10 @@ msgid "Export in this reference space"
 msgstr "在此参考空间中导出"
 
 
+msgid "Apply Modifiers"
+msgstr "应用修改器"
+
+
 msgid "Apply the modifiers before saving"
 msgstr "保存前应用修改器"
 
@@ -52645,6 +52684,14 @@ msgstr "场景单位"
 
 msgid "Apply current scene's unit (as defined by unit scale) to exported data"
 msgstr "应用当前场景单位 (由单位比例定义) 输出数据"
+
+
+msgid "Selection Only"
+msgstr "仅导出选中的物体"
+
+
+msgid "Export selected objects only"
+msgstr "仅导出选择的物体"
 
 
 msgctxt "Operator"
@@ -52854,6 +52901,10 @@ msgstr "FBX 二进制文件的内嵌纹理 (仅供 \"复制\" 路径模式!)"
 
 msgid "Scale all data (Some importers do not support scaled armatures!)"
 msgstr "缩放所有数据 (某些导入器不支持经缩放的骨架!)"
+
+
+msgid "Smoothing"
+msgstr "平滑"
 
 
 msgid "Export smoothing information (prefer 'Normals Only' option if your target importer understand split normals)"
@@ -53459,107 +53510,6 @@ msgstr "记住导出设置"
 
 msgid "Store glTF export settings in the Blender project"
 msgstr "将 glTF 导出设置存储在 Blender 中"
-
-
-msgctxt "Operator"
-msgid "Export OBJ"
-msgstr "导出OBJ"
-
-
-msgid "Save a Wavefront OBJ File"
-msgstr "保存一个Wavefront的OBJ文件"
-
-
-msgid "Material Groups"
-msgstr "材质组"
-
-
-msgid "Generate an OBJ group for each part of a geometry using a different material"
-msgstr "为几何中使用不同材质的每个部分生成OBJ组"
-
-
-msgid "OBJ Groups"
-msgstr "OBJ组"
-
-
-msgid "Export Blender objects as OBJ groups"
-msgstr "导出Blender物体为OBJ组"
-
-
-msgid "Keep Vertex Order"
-msgstr "保持顶点顺序"
-
-
-msgid "Write out an OBJ for each frame"
-msgstr "为每帧写出一个OBJ"
-
-
-msgid "OBJ Objects"
-msgstr "OBJ物体"
-
-
-msgid "Export Blender objects as OBJ objects"
-msgstr "导出Blender物体为OBJ物体"
-
-
-msgid "Include Edges"
-msgstr "包括边"
-
-
-msgid "Write Materials"
-msgstr "写入材质"
-
-
-msgid "Write out the MTL file"
-msgstr "写入为 MTL 文件"
-
-
-msgid "Apply modifiers"
-msgstr "应用修改器"
-
-
-msgid "Write Normals"
-msgstr "写入法线"
-
-
-msgid "Export one normal per vertex and per face, to represent flat faces and sharp edges"
-msgstr "逐点逐面导出法向, 已显示平直面和锐利边线"
-
-
-msgid "Write Nurbs"
-msgstr "写入Nurbs"
-
-
-msgid "Write nurbs curves as OBJ nurbs rather than converting to geometry"
-msgstr "将 Nurbs 曲线作为 OBJ Nurbs 写入, 而不是转换为几何体"
-
-
-msgid "Smooth Groups"
-msgstr "平滑组"
-
-
-msgid "Write sharp edges as smooth groups"
-msgstr "写出锐边为平滑组"
-
-
-msgid "Bitflag Smooth Groups"
-msgstr "Bitflag 平滑组"
-
-
-msgid "Same as 'Smooth Groups', but generate smooth groups IDs as bitflags (produces at most 32 different smooth groups, usually much less)"
-msgstr "与'平滑组'相同，但生成平滑组 ID 为位标记(最多生成 32 个不同的平滑组，通常要少得多)"
-
-
-msgid "Include UVs"
-msgstr "包括UV"
-
-
-msgid "Write out the active UV coordinates"
-msgstr "写入活动UV 坐标轴"
-
-
-msgid "Polygroups"
-msgstr "多边形组"
 
 
 msgctxt "Operator"
@@ -57047,6 +56997,14 @@ msgid "How much to blend to the default value"
 msgstr "混合到默认值的程度"
 
 
+msgid "Curve Bend"
+msgstr "曲线弯曲"
+
+
+msgid "Control the bend of the curve"
+msgstr "控制曲线的弯曲"
+
+
 msgctxt "Operator"
 msgid "Blend to Neighbor"
 msgstr "混合至邻帧"
@@ -57182,14 +57140,6 @@ msgstr "缓动关键帧"
 
 msgid "Align keyframes on a ease-in or ease-out curve"
 msgstr "在渐入或渐出曲线上对齐关键帧"
-
-
-msgid "Curve Bend"
-msgstr "曲线弯曲"
-
-
-msgid "Control the bend of the curve"
-msgstr "控制曲线的弯曲"
 
 
 msgctxt "Operator"
@@ -58348,19 +58298,6 @@ msgstr "将Alpha 通道用于透明"
 
 
 msgctxt "Operator"
-msgid "Import PLY"
-msgstr "导入PLY"
-
-
-msgid "Load a PLY geometry file"
-msgstr "加载 PLY 几何体文件"
-
-
-msgid "File path used for importing the PLY file"
-msgstr "导入 PLY 文件的路径"
-
-
-msgctxt "Operator"
 msgid "Import STL"
 msgstr "导入STL"
 
@@ -58601,63 +58538,6 @@ msgstr "日志级别"
 
 msgid "The glTF format requires discontinuous normals, UVs, and other vertex attributes to be stored as separate vertices, as required for rendering on typical graphics hardware. This option attempts to combine co-located vertices where possible. Currently cannot combine verts with different normals"
 msgstr "glTF 格式要求将不连续法向、UV以及其他顶点属性存储为单独的顶点，这是在典型图形硬件上渲染所需的。此选项将尽可能合并同一位置的顶点。当前无法合并具有不同法向的顶点"
-
-
-msgctxt "Operator"
-msgid "Import OBJ"
-msgstr "导入OBJ"
-
-
-msgid "Load a Wavefront OBJ File"
-msgstr "加载 OBJ 文件"
-
-
-msgid "Clamp Size"
-msgstr "钳制尺寸"
-
-
-msgid "Clamp bounds under this value (zero to disable)"
-msgstr "钳制的下界(0为禁用)"
-
-
-msgid "Split geometry, omits vertices unused by edges or faces"
-msgstr "拆分几何体，忽略未被边或面使用的顶点"
-
-
-msgid "Keep Vert Order"
-msgstr "保留顶点顺序"
-
-
-msgid "Keep vertex order from file"
-msgstr "保留文件中的顶点顺序"
-
-
-msgid "Import lines and faces with 2 verts as edge"
-msgstr "将线条以及含有 2 个顶点的面作为线元素导入"
-
-
-msgid "Poly Groups"
-msgstr "多边形组"
-
-
-msgid "Import OBJ groups as vertex groups"
-msgstr "将 OBJ 组导入为顶点组"
-
-
-msgid "Search subdirs for any associated images (Warning, may be slow)"
-msgstr "为所有关联图像搜索子目录(警告, 速度可能会慢)"
-
-
-msgid "Surround smooth groups by sharp edges"
-msgstr "使用锐边包围光滑组"
-
-
-msgid "Import OBJ Groups into Blender Objects"
-msgstr "将OBJ组导入到Blender物体"
-
-
-msgid "Import OBJ Objects into Blender Objects"
-msgstr "将OBJ物体导入到Blender物体"
 
 
 msgctxt "Operator"
@@ -63510,10 +63390,6 @@ msgid "Add an input or output to the active node tree"
 msgstr "将输入或输出添加到活动节点树"
 
 
-msgid "Socket Type"
-msgstr "接口类型"
-
-
 msgctxt "Operator"
 msgid "Change Node Tree Interface Socket Type"
 msgstr "更改节点树界面接口类型"
@@ -64176,10 +64052,6 @@ msgstr "输入属性切换"
 
 msgid "Switch between an attribute and a single value to define the data for every element"
 msgstr "在属性和单个值之间切换以定义每个元素的数据"
-
-
-msgid "Prop Path"
-msgstr "属性路径"
 
 
 msgid "Stroke offset for the line art modifier"
@@ -78115,6 +77987,10 @@ msgid "Export Material Groups"
 msgstr "导出材质组"
 
 
+msgid "Generate an OBJ group for each part of a geometry using a different material"
+msgstr "为几何中使用不同材质的每个部分生成OBJ组"
+
+
 msgid "Export Materials"
 msgstr "导出材质"
 
@@ -78240,6 +78116,10 @@ msgid "Resize the objects to keep bounding box under this value. Value 0 disable
 msgstr "调整物体大小以使边界框保持在该值以下。数值为0禁用钳制"
 
 
+msgid "Import OBJ groups as vertex groups"
+msgstr "将 OBJ 组导入为顶点组"
+
+
 msgid "Split By Group"
 msgstr "按组拆分"
 
@@ -78339,6 +78219,16 @@ msgstr "启用工作区的插件"
 
 msgid "Open a path in a file browser"
 msgstr "在文件浏览器中打开路径"
+
+
+msgctxt "Operator"
+msgid "Export PLY"
+msgstr "导出PLY"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "导入PLY"
 
 
 msgctxt "Operator"
@@ -78513,6 +78403,10 @@ msgstr "数组长度"
 
 msgid "Python value for unsupported custom property types"
 msgstr "用于不受支持的自定义属性类型的Python值"
+
+
+msgid "Speaker"
+msgstr "扬声器"
 
 
 msgid "Library Overridable"
@@ -80366,10 +80260,6 @@ msgid "Viewport Sampling Presets"
 msgstr "视图采样预设"
 
 
-msgid "View Object Types"
-msgstr "查看物体类型"
-
-
 msgid "Film"
 msgstr "胶片"
 
@@ -81665,6 +81555,10 @@ msgstr "四格视图"
 
 msgid "Auto-Masking"
 msgstr "自动遮罩"
+
+
+msgid "Wire Color"
+msgstr "线框颜色"
 
 
 msgid "Compositor"
@@ -83874,14 +83768,6 @@ msgid "Enable the new EEVEE codebase, requires restart"
 msgstr "启用新的EEVEE代码库，需要重启"
 
 
-msgid "Workbench Next"
-msgstr "Workbench Next"
-
-
-msgid "Enable the new Workbench codebase, requires restart"
-msgstr "启用新的工作台代码库，需要重启"
-
-
 msgid "Override Auto Resync"
 msgstr "覆写自动重新同步"
 
@@ -85776,6 +85662,10 @@ msgid "Temperature"
 msgstr "温度"
 
 
+msgid "XYZ"
+msgstr "XYZ"
+
+
 msgid "ID Property Group"
 msgstr "ID 属性组"
 
@@ -85882,138 +85772,6 @@ msgstr "正则表达式查找"
 
 msgid "Use regular expressions to match text in the 'Find' field"
 msgstr "使用正则表达式匹配\"查找\"框中的文本"
-
-
-msgid "Field of view for the fisheye lens"
-msgstr "鱼眼焦距的视野范围"
-
-
-msgid "Fisheye Lens"
-msgstr "鱼眼焦距"
-
-
-msgid "Lens focal length (mm)"
-msgstr "镜头的焦距(mm)"
-
-
-msgid "Fisheye Polynomial K0"
-msgstr "鱼眼多项式 K0"
-
-
-msgid "Coefficient K0 of the lens polynomial"
-msgstr "镜头多项式的系数K0"
-
-
-msgid "Fisheye Polynomial K1"
-msgstr "鱼眼多项式 K1"
-
-
-msgid "Coefficient K1 of the lens polynomial"
-msgstr "镜头多项式的系数K1"
-
-
-msgid "Fisheye Polynomial K2"
-msgstr "鱼眼多项式 K2"
-
-
-msgid "Coefficient K2 of the lens polynomial"
-msgstr "镜头多项式的系数K2"
-
-
-msgid "Fisheye Polynomial K3"
-msgstr "鱼眼多项式 K3"
-
-
-msgid "Coefficient K3 of the lens polynomial"
-msgstr "镜头多项式的系数K3"
-
-
-msgid "Fisheye Polynomial K4"
-msgstr "鱼眼多项式 K4"
-
-
-msgid "Coefficient K4 of the lens polynomial"
-msgstr "镜头多项式的系数K4"
-
-
-msgid "Max Latitude"
-msgstr "最大纬度"
-
-
-msgid "Maximum latitude (vertical angle) for the equirectangular lens"
-msgstr "全景镜头的最大纬度(垂直角度)"
-
-
-msgid "Min Latitude"
-msgstr "最小纬度"
-
-
-msgid "Minimum latitude (vertical angle) for the equirectangular lens"
-msgstr "全景镜头的最小纬度(垂直角度)"
-
-
-msgid "Max Longitude"
-msgstr "最大经度"
-
-
-msgid "Maximum longitude (horizontal angle) for the equirectangular lens"
-msgstr "全景镜头的最大经度(水平角度)"
-
-
-msgid "Min Longitude"
-msgstr "最小经度"
-
-
-msgid "Minimum longitude (horizontal angle) for the equirectangular lens"
-msgstr "全景镜头的最小经度(水平角度)"
-
-
-msgid "Panorama Type"
-msgstr "全景类型"
-
-
-msgid "Distortion to use for the calculation"
-msgstr "用于计算的畸变方式"
-
-
-msgid "Spherical camera for environment maps, also known as Lat Long panorama"
-msgstr "用于环境地图的球面相机，也称为Lat Long全景"
-
-
-msgid "Equiangular Cubemap Face"
-msgstr "等角立方体贴图面"
-
-
-msgid "Single face of an equiangular cubemap"
-msgstr "等角立方体贴图的单个面"
-
-
-msgid "Mirror ball mapping for environment maps"
-msgstr "环境贴图的镜像球映射"
-
-
-msgid "Fisheye Equidistant"
-msgstr "鱼眼等距"
-
-
-msgid "Ideal for fulldomes, ignore the sensor dimensions"
-msgstr "反转面的位置"
-
-
-msgid "Fisheye Equisolid"
-msgstr "等立体角型鱼眼"
-
-
-msgid "Similar to most fisheye modern lens, takes sensor dimensions into consideration"
-msgstr "与现代多数的鱼眼镜头相仿, 将触发器的规格考虑在内"
-
-
-msgid "Fisheye Lens Polynomial"
-msgstr "鱼眼镜头多项式"
-
-
-msgid "Defines the lens projection as polynomial to allow real world camera lenses to be mimicked"
-msgstr "定义镜头投影为多项式，以允许模拟真实世界的相机镜头"
 
 
 msgid "Form of curves"
@@ -88461,8 +88219,8 @@ msgid "Render at 12.5% resolution"
 msgstr "渲染为12.5%分辨率"
 
 
-msgid "Resolution %"
-msgstr "分辨率 %"
+msgid "Resolution Scale"
+msgstr "分辨率缩放"
 
 
 msgid "Percentage scale for render resolution"
@@ -94812,10 +94570,6 @@ msgid "Gizmo to adjust location"
 msgstr "调整位置的Gizmo"
 
 
-msgid "Speaker"
-msgstr "扬声器"
-
-
 msgid "Show Reconstruction"
 msgstr "显示重建"
 
@@ -96847,10 +96601,6 @@ msgstr "矢量节点"
 
 msgid "Wires"
 msgstr "线框"
-
-
-msgid "Wire Color"
-msgstr "线框颜色"
 
 
 msgid "Wire Select"
@@ -99707,6 +99457,10 @@ msgstr "显示地标"
 
 msgid "Show VR Camera"
 msgstr "显示VR摄像机"
+
+
+msgid "Theme"
+msgstr "主题"
 
 
 msgid "X-Ray Alpha"
@@ -103303,10 +103057,6 @@ msgid "Add a new Variant Slot"
 msgstr "添加新的变量槽"
 
 
-msgid "Curves as NURBS"
-msgstr "曲线为NURBS"
-
-
 msgid "untitled"
 msgstr "无标题"
 
@@ -104243,10 +103993,6 @@ msgstr "已重命名 %d of %d %s"
 
 msgid "Shortcuts"
 msgstr "快捷键"
-
-
-msgid "Theme"
-msgstr "主题"
 
 
 msgctxt "Operator"
@@ -106445,10 +106191,6 @@ msgstr "第四"
 
 msgid "Multiply R"
 msgstr "正片叠底 R"
-
-
-msgid "Eccentricity"
-msgstr "偏移"
 
 
 msgid "Enable the Color Ramp first"
@@ -108823,10 +108565,6 @@ msgid "Revert to Saved Preferences"
 msgstr "恢复至自动保存的设置"
 
 
-msgid "Resolution Scale"
-msgstr "分辨率缩放"
-
-
 msgid "Splash Screen"
 msgstr "启动画面"
 
@@ -108897,10 +108635,6 @@ msgstr "使用自定义颜色"
 
 msgid "Sculpt Overlay Color"
 msgstr "雕刻叠加颜色"
-
-
-msgid "Node Auto-Offset Margin"
-msgstr "节点自动偏移间距"
 
 
 msgid "Minimum Grid Spacing"
@@ -110198,10 +109932,6 @@ msgstr "局部摄像机"
 
 msgid "Camera to View"
 msgstr "锁定摄像机到视图方位"
-
-
-msgid "Object Types Visibility"
-msgstr "物体类型可见性"
 
 
 msgid "Object Gizmos"
@@ -111717,18 +111447,6 @@ msgid "[Action Stash]"
 msgstr "[Action Stash]"
 
 
-msgid "Non-Empty object '%s' cannot duplicate collection '%s' anymore in Blender 2.80, removed instancing"
-msgstr "非空物体 '%s' 无法在 Blender 2.80 中再复制集合 '%s'，已移除实例"
-
-
-msgid "Proxy lost from object %s lib %s"
-msgstr "从物体 %s 库 %s 丢失代理"
-
-
-msgid "Proxy lost from object %s lib <NONE>"
-msgstr "从物体%s 库 <NONE> 中丢失代理"
-
-
 msgid "Can't find object data of %s lib %s"
 msgstr "找不到 %s 库 %s 的物体数据"
 
@@ -112110,6 +111828,14 @@ msgid "Eevee material conversion problem. Error in console"
 msgstr "Eevee材质转换错误，错误详见控制台"
 
 
+msgid "Proxy lost from object %s lib %s"
+msgstr "从物体 %s 库 %s 丢失代理"
+
+
+msgid "Proxy lost from object %s lib <NONE>"
+msgstr "从物体%s 库 <NONE> 中丢失代理"
+
+
 msgid "2D_Animation"
 msgstr "二维动画"
 
@@ -112142,16 +111868,16 @@ msgid "Checking sanity of current .blend file *BEFORE* save to disk"
 msgstr "保存到磁盘 *之前* 检查当前 .blend 文件的完整性"
 
 
+msgid "Checking sanity of current .blend file *AFTER* save to disk"
+msgstr "保存到磁盘 *之后* 检查当前 .blend 文件的完整性"
+
+
 msgid "Version backup failed (file saved with @)"
 msgstr "版本备份失败 (文件以@保存)"
 
 
 msgid "Cannot change old file (file saved with @)"
 msgstr "无法改变旧文件(文件以@保存)"
-
-
-msgid "Checking sanity of current .blend file *AFTER* save to disk"
-msgstr "保存到磁盘 *之后* 检查当前 .blend 文件的完整性"
 
 
 msgid "Cannot open file %s for writing: %s"
@@ -114488,6 +114214,10 @@ msgid "Triangulated Mesh"
 msgstr "三角化网格"
 
 
+msgid "Curves as NURBS"
+msgstr "曲线为NURBS"
+
+
 msgid "Grouping"
 msgstr "分组"
 
@@ -114496,8 +114226,20 @@ msgid "Object Groups"
 msgstr "物体组"
 
 
+msgid "Material Groups"
+msgstr "材质组"
+
+
+msgid "Smooth Groups"
+msgstr "平滑组"
+
+
 msgid "Smooth Group Bitflags"
 msgstr "平滑组位标记"
+
+
+msgid "ASCII"
+msgstr "ASCII"
 
 
 msgid "File References"
@@ -118182,28 +117924,8 @@ msgid "). Click here to proceed..."
 msgstr "). 点击此处继续..."
 
 
-msgid "Cannot edit builtin name"
-msgstr "无法编辑内建名称"
-
-
-msgid "Cannot edit sequence name"
-msgstr "无法编辑序列的名称"
-
-
-msgid "Cannot edit name of an override data-block"
-msgstr "无法编辑被覆写的数据块的名称"
-
-
-msgid "Cannot edit name of master collection"
-msgstr "无法主集合的名称"
-
-
 msgid "Cannot edit the path of an indirectly linked library"
 msgstr "无法编辑这个间接链接库的路径"
-
-
-msgid "Library path is not editable from here anymore, please use Relocate operation instead"
-msgstr "库路径不再可从此处编辑，请使用重新定位操作"
 
 
 msgid "No active item to rename"
@@ -120484,6 +120206,10 @@ msgid "Registering node socket class: '%s' is too long, maximum length is %d"
 msgstr "注册节点插口类: '%s' 过长, 最大长度为 %d"
 
 
+msgid "Unable to create socket"
+msgstr "无法创建接口"
+
+
 msgid "CustomGroup"
 msgstr "自定义组"
 
@@ -120502,10 +120228,6 @@ msgstr "相同的输入 / 输出接口方向"
 
 msgid "Unable to locate link in node tree"
 msgstr "启用合成节点树"
-
-
-msgid "Unable to create socket"
-msgstr "无法创建接口"
 
 
 msgid "Cannot add socket to built-in node"
@@ -122734,12 +122456,12 @@ msgid "Disabled, Blender was compiled without OpenSubdiv"
 msgstr "已禁用, 未使用OpenSubdiv编译Blender"
 
 
-msgid "Which of the sorted corners to output"
-msgstr "要输出的排序后的拐角"
-
-
 msgid "Corner Index"
 msgstr "拐角编号"
+
+
+msgid "Which of the sorted corners to output"
+msgstr "要输出的排序后的拐角"
 
 
 msgid "The face to retrieve data from. Defaults to the face from the context"
@@ -124519,18 +124241,6 @@ msgid "Import SVG as curves"
 msgstr "导入SVG为曲线"
 
 
-msgid "Stanford PLY format"
-msgstr "斯坦福PLY格式"
-
-
-msgid "File > Import/Export"
-msgstr "文件 > 导入/导出"
-
-
-msgid "Import-Export PLY mesh data with UVs and vertex colors"
-msgstr "导入-导出带有UV和顶点颜色的PLY网格数据"
-
-
 msgid "UV Layout"
 msgstr "UV布局"
 
@@ -124541,10 +124251,6 @@ msgstr "UV 编辑器 > UV > 导出 UV 布局"
 
 msgid "Export the UV layout as a 2D graphic"
 msgstr "将 UV 布局导出为二维图形"
-
-
-msgid "Wavefront OBJ format (legacy)"
-msgstr "Wavefront OBJ 格式 (旧版)"
 
 
 msgid "glTF 2.0 format"

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2010 Blender Foundation
+/* SPDX-FileCopyrightText: 2010 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -169,7 +169,7 @@ static void wm_dropbox_invoke(bContext *C, wmDrag *drag)
     }
     LISTBASE_FOREACH (wmDropBox *, drop, &dm->dropboxes) {
       if (drag->drop_state.ui_context) {
-        CTX_store_set(C, drag->drop_state.ui_context);
+        CTX_store_set(C, drag->drop_state.ui_context.get());
       }
 
       if (drop->on_drag_start) {
@@ -183,7 +183,7 @@ static void wm_dropbox_invoke(bContext *C, wmDrag *drag)
 wmDrag *WM_drag_data_create(
     bContext *C, int icon, eWM_DragDataType type, void *poin, double value, uint flags)
 {
-  wmDrag *drag = MEM_cnew<wmDrag>(__func__);
+  wmDrag *drag = MEM_new<wmDrag>(__func__);
 
   /* Keep track of future multi-touch drag too, add a mouse-pointer id or so. */
   /* if multiple drags are added, they're drawn as list */
@@ -246,46 +246,37 @@ void WM_event_start_drag(
 
 void wm_drags_exit(wmWindowManager *wm, wmWindow *win)
 {
-  bool any_active = false;
-  LISTBASE_FOREACH (const wmDrag *, drag, &wm->drags) {
-    if (drag->drop_state.active_dropbox) {
-      any_active = true;
-      break;
-    }
+  /* Turn off modal cursor for all windows. */
+  LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
+    WM_cursor_modal_restore(win);
   }
 
-  /* If there is no active drop-box #wm_drags_check_ops() set a stop-cursor, which needs to be
-   * restored. */
-  if (!any_active) {
-    WM_cursor_modal_restore(win);
+  /* Active area should always redraw, even if cancelled. */
+  int event_xy_target[2];
+  wmWindow *target_win = WM_window_find_under_cursor(win, win->eventstate->xy, event_xy_target);
+  if (target_win) {
+    const bScreen *screen = WM_window_get_active_screen(target_win);
+    ED_region_tag_redraw_no_rebuild(screen->active_region);
+
     /* Ensure the correct area cursor is restored. */
-    win->tag_cursor_refresh = true;
-    WM_event_add_mousemove(win);
+    target_win->tag_cursor_refresh = true;
+    WM_event_add_mousemove(target_win);
   }
 }
 
-static bContextStore *wm_drop_ui_context_create(const bContext *C)
+static std::unique_ptr<bContextStore> wm_drop_ui_context_create(const bContext *C)
 {
   uiBut *active_but = UI_region_active_but_get(CTX_wm_region(C));
   if (!active_but) {
     return nullptr;
   }
 
-  bContextStore *but_context = UI_but_context_get(active_but);
+  const bContextStore *but_context = UI_but_context_get(active_but);
   if (!but_context) {
     return nullptr;
   }
 
-  return CTX_store_copy(but_context);
-}
-
-static void wm_drop_ui_context_free(bContextStore **context_store)
-{
-  if (!*context_store) {
-    return;
-  }
-  CTX_store_free(*context_store);
-  *context_store = nullptr;
+  return std::make_unique<bContextStore>(*but_context);
 }
 
 void WM_event_drag_image(wmDrag *drag, const ImBuf *imb, float scale)
@@ -327,7 +318,7 @@ void WM_drag_free(wmDrag *drag)
   if (drag->flags & WM_DRAG_FREE_DATA) {
     WM_drag_data_free(drag->type, drag->poin);
   }
-  wm_drop_ui_context_free(&drag->drop_state.ui_context);
+  drag->drop_state.ui_context.reset();
   if (drag->drop_state.free_disabled_info) {
     MEM_SAFE_FREE(drag->drop_state.disabled_info);
   }
@@ -338,7 +329,7 @@ void WM_drag_free(wmDrag *drag)
     }
     BLI_freelinkN(&drag->asset_items, asset_item);
   }
-  MEM_freeN(drag);
+  MEM_delete(drag);
 }
 
 void WM_drag_free_list(ListBase *lb)
@@ -378,7 +369,7 @@ static wmDropBox *dropbox_active(bContext *C,
       if (handler->dropboxes) {
         LISTBASE_FOREACH (wmDropBox *, drop, handler->dropboxes) {
           if (drag->drop_state.ui_context) {
-            CTX_store_set(C, drag->drop_state.ui_context);
+            CTX_store_set(C, drag->drop_state.ui_context.get());
           }
 
           if (!drop->poll(C, drag, event)) {
@@ -414,14 +405,22 @@ static wmDropBox *dropbox_active(bContext *C,
 static wmDropBox *wm_dropbox_active(bContext *C, wmDrag *drag, const wmEvent *event)
 {
   wmWindow *win = CTX_wm_window(C);
-  wmDropBox *drop = dropbox_active(C, &win->handlers, drag, event);
-  if (!drop) {
-    ScrArea *area = CTX_wm_area(C);
-    drop = dropbox_active(C, &area->handlers, drag, event);
+  bScreen *screen = WM_window_get_active_screen(win);
+  ScrArea *area = BKE_screen_find_area_xy(screen, SPACE_TYPE_ANY, event->xy);
+  wmDropBox *drop = nullptr;
+
+  if (area) {
+    ARegion *region = BKE_area_find_region_xy(area, RGN_TYPE_ANY, event->xy);
+    if (region) {
+      drop = dropbox_active(C, &region->handlers, drag, event);
+    }
+
+    if (!drop) {
+      drop = dropbox_active(C, &area->handlers, drag, event);
+    }
   }
   if (!drop) {
-    ARegion *region = CTX_wm_region(C);
-    drop = dropbox_active(C, &region->handlers, drag, event);
+    drop = dropbox_active(C, &win->handlers, drag, event);
   }
   return drop;
 }
@@ -442,7 +441,7 @@ static void wm_drop_update_active(bContext *C, wmDrag *drag, const wmEvent *even
   }
 
   /* Update UI context, before polling so polls can query this context. */
-  wm_drop_ui_context_free(&drag->drop_state.ui_context);
+  drag->drop_state.ui_context.reset();
   drag->drop_state.ui_context = wm_drop_ui_context_create(C);
 
   wmDropBox *drop_prev = drag->drop_state.active_dropbox;
@@ -461,7 +460,7 @@ static void wm_drop_update_active(bContext *C, wmDrag *drag, const wmEvent *even
   }
 
   if (!drag->drop_state.active_dropbox) {
-    wm_drop_ui_context_free(&drag->drop_state.ui_context);
+    drag->drop_state.ui_context.reset();
   }
 }
 
@@ -470,7 +469,7 @@ void wm_drop_prepare(bContext *C, wmDrag *drag, wmDropBox *drop)
   const wmOperatorCallContext opcontext = wm_drop_operator_context_get(drop);
 
   if (drag->drop_state.ui_context) {
-    CTX_store_set(C, drag->drop_state.ui_context);
+    CTX_store_set(C, drag->drop_state.ui_context.get());
   }
 
   /* Optionally copy drag information to operator properties. Don't call it if the
@@ -1031,7 +1030,7 @@ void wm_drags_draw(bContext *C, wmWindow *win)
     if (drag->drop_state.active_dropbox) {
       CTX_wm_area_set(C, drag->drop_state.area_from);
       CTX_wm_region_set(C, drag->drop_state.region_from);
-      CTX_store_set(C, drag->drop_state.ui_context);
+      CTX_store_set(C, drag->drop_state.ui_context.get());
 
       if (region && drag->drop_state.active_dropbox->draw_in_view) {
         wmViewport(&region->winrct);

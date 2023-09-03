@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -284,6 +284,13 @@ def load_scripts(*, reload_scripts=False, refresh_scripts=False):
             test_reload(mod)
 
         del _global_loaded_modules[:]
+
+        # Update key-maps to account for operators no longer existing.
+        # Typically unloading operators would refresh the event system (such as disabling an add-on)
+        # however reloading scripts re-enable all add-ons immediately (which may inspect key-maps).
+        # For this reason it's important to update key-maps which will have been tagged to update.
+        # Without this, add-on register functions accessing key-map properties can crash, see: #111702.
+        _bpy.context.window_manager.keyconfigs.update()
 
     from bpy_restrict_state import RestrictBlend
 

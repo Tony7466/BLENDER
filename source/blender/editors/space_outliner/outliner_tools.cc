@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004 Blender Foundation
+/* SPDX-FileCopyrightText: 2004 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -45,6 +45,7 @@
 #include "BKE_context.h"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
+#include "BKE_grease_pencil.hh"
 #include "BKE_idtype.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
@@ -86,6 +87,7 @@
 #include "SEQ_sequencer.h"
 
 #include "outliner_intern.hh"
+#include "tree/tree_element_grease_pencil_node.hh"
 #include "tree/tree_element_rna.hh"
 #include "tree/tree_element_seq.hh"
 #include "tree/tree_iterator.hh"
@@ -2161,7 +2163,7 @@ static void ebone_fn(int event, TreeElement *te, TreeStoreElem * /*tselem*/, voi
 static void sequence_fn(int event, TreeElement *te, TreeStoreElem * /*tselem*/, void *scene_ptr)
 {
   TreeElementSequence *te_seq = tree_element_cast<TreeElementSequence>(te);
-  Sequence *seq = &te_seq->getSequence();
+  Sequence *seq = &te_seq->get_sequence();
   Scene *scene = (Scene *)scene_ptr;
   Editing *ed = SEQ_editing_get(scene);
   if (BLI_findindex(ed->seqbasep, seq) != -1) {
@@ -2207,6 +2209,27 @@ static void gpencil_layer_fn(int event,
   }
 }
 
+static void grease_pencil_node_fn(int event,
+                                  TreeElement *te,
+                                  TreeStoreElem * /*tselem*/,
+                                  void * /*arg*/)
+{
+  bke::greasepencil::TreeNode &node = tree_element_cast<TreeElementGreasePencilNode>(te)->node();
+
+  if (event == OL_DOP_SELECT) {
+    node.set_selected(true);
+  }
+  else if (event == OL_DOP_DESELECT) {
+    node.set_selected(false);
+  }
+  else if (event == OL_DOP_HIDE) {
+    node.set_visible(false);
+  }
+  else if (event == OL_DOP_UNHIDE) {
+    node.set_visible(true);
+  }
+}
+
 static void data_select_linked_fn(int event,
                                   TreeElement *te,
                                   TreeStoreElem * /*tselem*/,
@@ -2218,7 +2241,7 @@ static void data_select_linked_fn(int event,
   }
 
   if (event == OL_DOP_SELECT_LINKED) {
-    const PointerRNA &ptr = te_rna_struct->getPointerRNA();
+    const PointerRNA &ptr = te_rna_struct->get_pointer_rna();
     if (RNA_struct_is_ID(ptr.type)) {
       bContext *C = (bContext *)C_v;
       ID *id = static_cast<ID *>(ptr.data);
@@ -2571,7 +2594,7 @@ void OUTLINER_OT_object_operation(wmOperatorType *ot)
 
 using OutlinerDeleteFn = void (*)(bContext *C, ReportList *reports, Scene *scene, Object *ob);
 
-using ObjectEditData = struct ObjectEditData {
+struct ObjectEditData {
   GSet *objects_set;
   bool is_liboverride_allowed;
   bool is_liboverride_hierarchy_root_allowed;
@@ -3245,7 +3268,7 @@ void OUTLINER_OT_action_set(wmOperatorType *ot)
 
   /* props */
   /* TODO: this would be nicer as an ID-pointer... */
-  prop = RNA_def_enum(ot->srna, "action", DummyRNA_NULL_items, 0, "Action", "");
+  prop = RNA_def_enum(ot->srna, "action", rna_enum_dummy_NULL_items, 0, "Action", "");
   RNA_def_enum_funcs(prop, RNA_action_itemf);
   RNA_def_property_flag(prop, PROP_ENUM_NO_TRANSLATE);
   ot->prop = prop;
@@ -3529,6 +3552,12 @@ static int outliner_data_operation_exec(bContext *C, wmOperator *op)
 
       break;
     }
+    case TSE_GREASE_PENCIL_NODE: {
+      outliner_do_data_operation(space_outliner, datalevel, event, grease_pencil_node_fn, nullptr);
+      WM_event_add_notifier(C, NC_GPENCIL | ND_DATA, nullptr);
+      ED_undo_push(C, "Grease Pencil Node operation");
+      break;
+    }
     case TSE_RNA_STRUCT:
       if (event == OL_DOP_SELECT_LINKED) {
         outliner_do_data_operation(space_outliner, datalevel, event, data_select_linked_fn, C);
@@ -3552,17 +3581,17 @@ static const EnumPropertyItem *outliner_data_op_sets_enum_item_fn(bContext *C,
 {
   /* Check for invalid states. */
   if (C == nullptr) {
-    return DummyRNA_DEFAULT_items;
+    return rna_enum_dummy_DEFAULT_items;
   }
 
   SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
   if (space_outliner == nullptr) {
-    return DummyRNA_DEFAULT_items;
+    return rna_enum_dummy_DEFAULT_items;
   }
 
   TreeElement *te = get_target_element(space_outliner);
   if (te == nullptr) {
-    return DummyRNA_NULL_items;
+    return rna_enum_dummy_NULL_items;
   }
 
   TreeStoreElem *tselem = TREESTORE(te);
@@ -3598,7 +3627,7 @@ void OUTLINER_OT_data_operation(wmOperatorType *ot)
 
   ot->flag = 0;
 
-  ot->prop = RNA_def_enum(ot->srna, "type", DummyRNA_DEFAULT_items, 0, "Data Operation", "");
+  ot->prop = RNA_def_enum(ot->srna, "type", rna_enum_dummy_DEFAULT_items, 0, "Data Operation", "");
   RNA_def_enum_funcs(ot->prop, outliner_data_op_sets_enum_item_fn);
 }
 

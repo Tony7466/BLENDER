@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -140,8 +140,6 @@ static void animchan_sync_group(bAnimContext *ac, bAnimListElem *ale, bActionGro
       bArmature *arm = static_cast<bArmature *>(ob->data);
 
       if (pchan) {
-        bActionGroup *bgrp;
-
         /* if one matches, sync the selection status */
         if ((pchan->bone) && (pchan->bone->flag & BONE_SELECTED)) {
           agrp->flag |= AGRP_SELECTED;
@@ -167,12 +165,8 @@ static void animchan_sync_group(bAnimContext *ac, bAnimListElem *ale, bActionGro
           agrp->flag &= ~AGRP_ACTIVE;
         }
 
-        /* sync group colors */
-        bgrp = (bActionGroup *)BLI_findlink(&ob->pose->agroups, (pchan->agrp_index - 1));
-        if (bgrp) {
-          agrp->customCol = bgrp->customCol;
-          action_group_colors_sync(agrp, bgrp);
-        }
+        /* sync bone color */
+        action_group_colors_set_from_posebone(agrp, pchan);
       }
     }
   }
@@ -295,12 +289,7 @@ void ANIM_sync_animchannels_to_data(const bContext *C)
         using namespace blender::bke::greasepencil;
         GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
         Layer *layer = static_cast<Layer *>(ale->data);
-        if (grease_pencil->is_layer_active(layer)) {
-          layer->base.flag |= GP_LAYER_TREE_NODE_SELECT;
-        }
-        else {
-          layer->base.flag &= ~GP_LAYER_TREE_NODE_SELECT;
-        }
+        layer->set_selected(grease_pencil->is_layer_active(layer));
         break;
     }
   }

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -276,6 +276,7 @@ void SEQUENCER_OT_strip_modifier_add(struct wmOperatorType *ot);
 void SEQUENCER_OT_strip_modifier_remove(struct wmOperatorType *ot);
 void SEQUENCER_OT_strip_modifier_move(struct wmOperatorType *ot);
 void SEQUENCER_OT_strip_modifier_copy(struct wmOperatorType *ot);
+void SEQUENCER_OT_strip_modifier_equalizer_redefine(struct wmOperatorType *ot);
 
 /* `sequencer_view.cc` */
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,6 +6,7 @@
  * \ingroup spoutliner
  */
 
+#include <iostream>
 #include <string>
 #include <string_view>
 
@@ -20,20 +21,27 @@
 #include "tree_element_anim_data.hh"
 #include "tree_element_bone.hh"
 #include "tree_element_collection.hh"
+#include "tree_element_constraint.hh"
 #include "tree_element_defgroup.hh"
 #include "tree_element_driver.hh"
 #include "tree_element_edit_bone.hh"
 #include "tree_element_gpencil_effect.hh"
 #include "tree_element_gpencil_layer.hh"
+#include "tree_element_grease_pencil_node.hh"
 #include "tree_element_id.hh"
 #include "tree_element_label.hh"
+#include "tree_element_layer_collection.hh"
+#include "tree_element_linked_object.hh"
+#include "tree_element_modifier.hh"
 #include "tree_element_nla.hh"
 #include "tree_element_overrides.hh"
 #include "tree_element_particle_system.hh"
+#include "tree_element_pose.hh"
 #include "tree_element_pose_group.hh"
 #include "tree_element_rna.hh"
 #include "tree_element_scene_objects.hh"
 #include "tree_element_seq.hh"
+#include "tree_element_view_collection.hh"
 #include "tree_element_view_layer.hh"
 
 #include "../outliner_intern.hh"
@@ -41,9 +49,9 @@
 
 namespace blender::ed::outliner {
 
-std::unique_ptr<AbstractTreeElement> AbstractTreeElement::createFromType(const int type,
-                                                                         TreeElement &legacy_te,
-                                                                         void *idv)
+std::unique_ptr<AbstractTreeElement> AbstractTreeElement::create_from_type(const int type,
+                                                                           TreeElement &legacy_te,
+                                                                           void *idv)
 {
   if (idv == nullptr) {
     return nullptr;
@@ -63,7 +71,7 @@ std::unique_ptr<AbstractTreeElement> AbstractTreeElement::createFromType(const i
 
   switch (type) {
     case TSE_SOME_ID:
-      return TreeElementID::createFromID(legacy_te, *static_cast<ID *>(idv));
+      return TreeElementID::create_from_id(legacy_te, *static_cast<ID *>(idv));
     case TSE_GENERIC_LABEL:
       return std::make_unique<TreeElementLabel>(legacy_te, static_cast<const char *>(idv));
     case TSE_ANIM_DATA:
@@ -79,6 +87,9 @@ std::unique_ptr<AbstractTreeElement> AbstractTreeElement::createFromType(const i
       return std::make_unique<TreeElementNLAAction>(legacy_te, *static_cast<bAction *>(idv));
     case TSE_GP_LAYER:
       return std::make_unique<TreeElementGPencilLayer>(legacy_te, *static_cast<bGPDlayer *>(idv));
+    case TSE_GREASE_PENCIL_NODE:
+      return std::make_unique<TreeElementGreasePencilNode>(
+          legacy_te, *static_cast<bke::greasepencil::TreeNode *>(idv));
     case TSE_R_LAYER_BASE:
       return std::make_unique<TreeElementViewLayerBase>(legacy_te, *static_cast<Scene *>(idv));
     case TSE_R_LAYER: {
@@ -146,6 +157,19 @@ std::unique_ptr<AbstractTreeElement> AbstractTreeElement::createFromType(const i
       return std::make_unique<TreeElementParticleSystem>(
           legacy_te, *psys_data->object, *psys_data->psys);
     }
+    case TSE_CONSTRAINT_BASE:
+      return std::make_unique<TreeElementConstraintBase>(legacy_te, *static_cast<Object *>(idv));
+    case TSE_CONSTRAINT: {
+      ConstraintElementCreateData *con_data = static_cast<ConstraintElementCreateData *>(idv);
+      return std::make_unique<TreeElementConstraint>(legacy_te, *con_data->object, *con_data->con);
+    }
+    case TSE_POSE_BASE:
+      return std::make_unique<TreeElementPoseBase>(legacy_te, *static_cast<Object *>(idv));
+    case TSE_POSE_CHANNEL: {
+      PoseChannelElementCreateData *pchan_data = static_cast<PoseChannelElementCreateData *>(idv);
+      return std::make_unique<TreeElementPoseChannel>(
+          legacy_te, *pchan_data->object, *pchan_data->pchan);
+    }
     case TSE_POSEGRP_BASE:
       return std::make_unique<TreeElementPoseGroupBase>(legacy_te, *static_cast<Object *>(idv));
     case TSE_POSEGRP: {
@@ -153,6 +177,20 @@ std::unique_ptr<AbstractTreeElement> AbstractTreeElement::createFromType(const i
       return std::make_unique<TreeElementPoseGroup>(
           legacy_te, *posegrp_data->object, *posegrp_data->agrp);
     }
+    case TSE_MODIFIER_BASE:
+      return std::make_unique<TreeElementModifierBase>(legacy_te, *static_cast<Object *>(idv));
+    case TSE_MODIFIER: {
+      ModifierCreateElementData *md_data = static_cast<ModifierCreateElementData *>(idv);
+      return std::make_unique<TreeElementModifier>(legacy_te, *md_data->object, *md_data->md);
+    }
+    case TSE_LINKED_OB:
+      return std::make_unique<TreeElementLinkedObject>(legacy_te, *static_cast<ID *>(idv));
+    case TSE_VIEW_COLLECTION_BASE:
+      return std::make_unique<TreeElementViewCollectionBase>(legacy_te,
+                                                             *static_cast<Scene *>(idv));
+    case TSE_LAYER_COLLECTION:
+      return std::make_unique<TreeElementLayerCollection>(legacy_te,
+                                                          *static_cast<LayerCollection *>(idv));
     default:
       break;
   }
@@ -160,12 +198,12 @@ std::unique_ptr<AbstractTreeElement> AbstractTreeElement::createFromType(const i
   return nullptr;
 }
 
-StringRefNull AbstractTreeElement::getWarning() const
+StringRefNull AbstractTreeElement::get_warning() const
 {
   return "";
 }
 
-std::optional<BIFIconID> AbstractTreeElement::getIcon() const
+std::optional<BIFIconID> AbstractTreeElement::get_icon() const
 {
   return {};
 }
@@ -193,7 +231,7 @@ void tree_element_expand(const AbstractTreeElement &tree_element, SpaceOutliner 
   /* Most types can just expand. IDs optionally expand (hence the poll) and do additional, common
    * expanding. Could be done nicer, we could request a small "expander" helper object from the
    * element type, that the IDs have a more advanced implementation for. */
-  if (!tree_element.expandPoll(space_outliner)) {
+  if (!tree_element.expand_poll(space_outliner)) {
     return;
   }
   tree_element.expand(space_outliner);

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -493,7 +493,9 @@ std::optional<Mesh *> mesh_copy_selection_keep_verts(
 
   /* Positions are not changed by the operation, so the bounds are the same. */
   dst_mesh->runtime->bounds_cache = src_mesh.runtime->bounds_cache;
-  copy_loose_vert_hint(src_mesh, *dst_mesh);
+  if (selection_domain == ATTR_DOMAIN_FACE) {
+    copy_loose_edge_hint(src_mesh, *dst_mesh);
+  }
   return dst_mesh;
 }
 

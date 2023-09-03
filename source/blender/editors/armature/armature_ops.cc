@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -62,6 +62,17 @@ void ED_operatortypes_armature()
   WM_operatortype_append(ARMATURE_OT_layers_show_all);
   WM_operatortype_append(ARMATURE_OT_armature_layers);
   WM_operatortype_append(ARMATURE_OT_bone_layers);
+
+  WM_operatortype_append(ARMATURE_OT_collection_add);
+  WM_operatortype_append(ARMATURE_OT_collection_remove);
+  WM_operatortype_append(ARMATURE_OT_collection_move);
+  WM_operatortype_append(ARMATURE_OT_collection_assign);
+  WM_operatortype_append(ARMATURE_OT_collection_unassign);
+  WM_operatortype_append(ARMATURE_OT_collection_select);
+  WM_operatortype_append(ARMATURE_OT_collection_deselect);
+
+  WM_operatortype_append(ARMATURE_OT_move_to_collection);
+  WM_operatortype_append(ARMATURE_OT_assign_to_collection);
 
   /* POSE */
   WM_operatortype_append(POSE_OT_hide);

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -36,9 +36,9 @@
 
 #  include "DEG_depsgraph.h"
 
-#  include "IO_orientation.h"
-#  include "IO_path_util_types.h"
-#  include "IO_wavefront_obj.h"
+#  include "IO_orientation.hh"
+#  include "IO_path_util_types.hh"
+#  include "IO_wavefront_obj.hh"
 
 #  include "io_obj.hh"
 

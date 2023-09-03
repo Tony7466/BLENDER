@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -132,7 +132,7 @@ TEST(greasepencil, layer_tree_pre_order_iteration)
   Span<const TreeNode *> children = ex.root.nodes();
   for (const int i : children.index_range()) {
     const TreeNode &child = *children[i];
-    EXPECT_STREQ(child.name, ex.names[i].data());
+    EXPECT_STREQ(child.name().data(), ex.names[i].data());
   }
 }
 
@@ -144,7 +144,7 @@ TEST(greasepencil, layer_tree_pre_order_iteration2)
   char name[64];
   for (const int i : layers.index_range()) {
     const Layer &layer = *layers[i];
-    snprintf(name, 64, "%s%d", "Layer", i + 1);
+    SNPRINTF(name, "%s%d", "Layer", i + 1);
     EXPECT_STREQ(layer.name().data(), name);
   }
 }
