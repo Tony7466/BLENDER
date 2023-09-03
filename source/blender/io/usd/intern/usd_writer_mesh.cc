@@ -18,6 +18,7 @@
 
 #include "BKE_attribute.h"
 #include "BKE_customdata.h"
+#include "BKE_deform.h"
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
@@ -100,6 +101,10 @@ void USDGenericMeshWriter::write_custom_data(const Mesh *mesh, pxr::UsdGeomMesh 
             meta_data.domain == ATTR_DOMAIN_EDGE ||
             ELEM(attribute_id.name(), "position", "material_index"))
         {
+          return true;
+        }
+
+        if (BKE_id_defgroup_name_find(&mesh->id, attribute_id.name().data(), nullptr, nullptr)) {
           return true;
         }
 
