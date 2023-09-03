@@ -6,6 +6,8 @@
 #include <pxr/base/tf/staticTokens.h>
 #include <pxr/imaging/hd/tokens.h>
 
+#include "BLI_string.h"
+
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
@@ -203,7 +205,7 @@ void MeshData::write_materials()
 pxr::SdfPath MeshData::submesh_prim_id(int index) const
 {
   char name[16];
-  snprintf(name, sizeof(name), "SM_%04d", index);
+  SNPRINTF(name, "SM_%04d", index);
   return prim_id.AppendElementString(name);
 }
 

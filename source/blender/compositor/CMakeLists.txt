@@ -348,9 +348,9 @@ if(WITH_COMPOSITOR_CPU)
     operations/COM_SummedAreaTableOperation.h
     operations/COM_SummedAreaTableOperation.cc
     operations/COM_KuwaharaAnisotropicOperation.cc
-    operations/COM_KuwaharaAnisotropicStructureTensorOperation.h
-    operations/COM_KuwaharaAnisotropicStructureTensorOperation.cc
     operations/COM_KuwaharaAnisotropicOperation.h
+    operations/COM_KuwaharaAnisotropicStructureTensorOperation.cc
+    operations/COM_KuwaharaAnisotropicStructureTensorOperation.h
     operations/COM_KuwaharaClassicOperation.cc
     operations/COM_KuwaharaClassicOperation.h
     operations/COM_MovieClipAttributeOperation.cc

@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
 /* Two variants, split pass, generates either 2 triangles or 6 triangles depending on input
  * geometry manifold type */
 
@@ -31,7 +35,7 @@ VertexData vData[4];
 
 void extrude_edge(bool invert, int output_vertex_id)
 {
-  /* Reverse order if backfacing the light. */
+  /* Reverse order if back-facing the light. */
   ivec2 idx = (invert) ? ivec2(1, 2) : ivec2(2, 1);
 
   /* Either outputs first or second quad, depending on double manifold status. */

@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2018-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
@@ -302,6 +305,6 @@ void main()
                                  length(vs_ray_dir) * stepLength);
 #endif
 
-  /* Convert transmitance to alpha so we can use premul blending. */
+  /* Convert transmittance to alpha so we can use pre-multiply blending. */
   fragColor.a = 1.0 - fragColor.a;
 }

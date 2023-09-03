@@ -57,7 +57,7 @@
 #include "BKE_animsys.h"
 #include "BKE_blender.h"
 #include "BKE_brush.hh"
-#include "BKE_cloth.h"
+#include "BKE_cloth.hh"
 #include "BKE_collection.h"
 #include "BKE_colortools.h"
 #include "BKE_constraint.h"
@@ -101,11 +101,11 @@
 
 #include "BLT_translation.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 #include "BLO_readfile.h"
-#include "readfile.h"
+#include "readfile.hh"
 
-#include "versioning_common.h"
+#include "versioning_common.hh"
 
 #include "MEM_guardedalloc.h"
 
