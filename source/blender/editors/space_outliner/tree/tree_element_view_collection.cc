@@ -25,4 +25,8 @@ TreeElementViewCollectionBase::TreeElementViewCollectionBase(TreeElement &legacy
   legacy_te.name = IFACE_("Scene Collection");
 }
 
+std::optional<BIFIconID> TreeElementViewCollectionBase::get_icon() const
+{
+  return ICON_OUTLINER_COLLECTION;
+}
 }  // namespace blender::ed::outliner

@@ -52,4 +52,9 @@ void TreeElementDriverBase::expand(SpaceOutliner & /*space_outliner*/) const
   }
 }
 
+std::optional<BIFIconID> TreeElementDriverBase::get_icon() const
+{
+  return ICON_DRIVER;
+}
+
 }  // namespace blender::ed::outliner

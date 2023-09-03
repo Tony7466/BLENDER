@@ -23,4 +23,9 @@ TreeElementLinkedObject::TreeElementLinkedObject(TreeElement &legacy_te, ID &id)
   legacy_te.idcode = GS(id.name);
 }
 
+std::optional<BIFIconID> TreeElementLinkedObject::get_icon() const
+{
+  return ICON_OBJECT_DATA;
+}
+
 }  // namespace blender::ed::outliner

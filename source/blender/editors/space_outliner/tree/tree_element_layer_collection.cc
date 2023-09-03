@@ -24,4 +24,9 @@ TreeElementLayerCollection::TreeElementLayerCollection(TreeElement &legacy_te, L
   legacy_te.directdata = &lc_;
 }
 
+std::optional<BIFIconID> TreeElementLayerCollection::get_icon() const
+{
+  return ICON_OUTLINER_COLLECTION;
+}
+
 }  // namespace blender::ed::outliner

@@ -47,6 +47,11 @@ void TreeElementAnimData::expand(SpaceOutliner & /*space_outliner*/) const
   expand_NLA_tracks();
 }
 
+std::optional<BIFIconID> TreeElementAnimData::get_icon() const
+{
+  return ICON_ANIM_DATA;
+}
+
 void TreeElementAnimData::expand_drivers() const
 {
   if (BLI_listbase_is_empty(&anim_data_.drivers)) {

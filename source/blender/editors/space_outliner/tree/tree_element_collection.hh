@@ -19,6 +19,8 @@ class TreeElementCollectionBase final : public AbstractTreeElement {
   TreeElementCollectionBase(TreeElement &legacy_te, Scene &scene);
 
   void expand(SpaceOutliner &) const override;
+
+  std::optional<BIFIconID> get_icon() const override;
 };
 
 }  // namespace blender::ed::outliner

@@ -35,6 +35,11 @@ void TreeElementPoseGroupBase::expand(SpaceOutliner & /*space_outliner*/) const
   }
 }
 
+std::optional<BIFIconID> TreeElementPoseGroupBase::get_icon() const
+{
+  return ICON_GROUP_BONE;
+}
+
 TreeElementPoseGroup::TreeElementPoseGroup(TreeElement &legacy_te,
                                            Object & /* object */,
                                            bActionGroup &agrp)
@@ -43,6 +48,11 @@ TreeElementPoseGroup::TreeElementPoseGroup(TreeElement &legacy_te,
   BLI_assert(legacy_te.store_elem->type == TSE_POSEGRP);
   legacy_te.name = agrp_.name;
   legacy_te.directdata = &agrp_;
+}
+
+std::optional<BIFIconID> TreeElementPoseGroup::get_icon() const
+{
+  return ICON_GROUP_BONE;
 }
 
 }  // namespace blender::ed::outliner

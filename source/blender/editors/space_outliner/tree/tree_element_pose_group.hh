@@ -21,6 +21,7 @@ class TreeElementPoseGroupBase final : public AbstractTreeElement {
  public:
   TreeElementPoseGroupBase(TreeElement &legacy_te, Object &object);
   void expand(SpaceOutliner &) const override;
+  std::optional<BIFIconID> get_icon() const override;
 };
 
 class TreeElementPoseGroup final : public AbstractTreeElement {
@@ -30,6 +31,7 @@ class TreeElementPoseGroup final : public AbstractTreeElement {
 
  public:
   TreeElementPoseGroup(TreeElement &legacy_te, Object &object, bActionGroup &agrp);
+  std::optional<BIFIconID> get_icon() const override;
 };
 
 }  // namespace blender::ed::outliner

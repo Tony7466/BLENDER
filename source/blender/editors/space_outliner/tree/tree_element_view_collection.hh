@@ -18,6 +18,8 @@ class TreeElementViewCollectionBase final : public AbstractTreeElement {
 
  public:
   TreeElementViewCollectionBase(TreeElement &legacy_te, Scene &scene);
+
+  std::optional<BIFIconID> get_icon() const override;
 };
 
 }  // namespace blender::ed::outliner

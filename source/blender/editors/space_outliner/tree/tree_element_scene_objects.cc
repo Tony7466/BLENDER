@@ -38,4 +38,9 @@ void TreeElementSceneObjectsBase::expand(SpaceOutliner & /*space_outliner*/) con
   outliner_make_object_parent_hierarchy(&legacy_te_.subtree);
 }
 
+std::optional<BIFIconID> TreeElementSceneObjectsBase::get_icon() const
+{
+  return ICON_OUTLINER_OB_GROUP_INSTANCE;
+}
+
 }  // namespace blender::ed::outliner

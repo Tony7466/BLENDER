@@ -17,6 +17,7 @@ namespace blender::ed::outliner {
 class TreeElementGPencilLayer final : public AbstractTreeElement {
  public:
   TreeElementGPencilLayer(TreeElement &legacy_te, bGPDlayer &gplayer);
+  std::optional<BIFIconID> get_icon() const override;
 };
 
 }  // namespace blender::ed::outliner

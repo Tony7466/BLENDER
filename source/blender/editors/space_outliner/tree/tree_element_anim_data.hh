@@ -20,6 +20,8 @@ class TreeElementAnimData final : public AbstractTreeElement {
 
   void expand(SpaceOutliner &space_outliner) const override;
 
+  std::optional<BIFIconID> get_icon() const override;
+
  private:
   void expand_drivers() const;
   void expand_NLA_tracks() const;

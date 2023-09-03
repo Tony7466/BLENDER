@@ -26,4 +26,9 @@ TreeElementGPencilLayer::TreeElementGPencilLayer(TreeElement &legacy_te, bGPDlay
   legacy_te.directdata = &gplayer;
 }
 
+std::optional<BIFIconID> TreeElementGPencilLayer::get_icon() const
+{
+  return ICON_OUTLINER_DATA_GP_LAYER;
+}
+
 }  // namespace blender::ed::outliner

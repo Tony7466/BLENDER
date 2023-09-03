@@ -160,6 +160,11 @@ void TreeElementOverridesBase::expand(SpaceOutliner &space_outliner) const
   });
 }
 
+std::optional<BIFIconID> TreeElementOverridesBase::get_icon() const
+{
+  return tree_element_get_icon_from_id(&id);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -192,6 +197,11 @@ StringRefNull TreeElementOverridesProperty::get_warning() const
   }
 
   return {};
+}
+
+std::optional<BIFIconID> TreeElementOverridesProperty::get_icon() const
+{
+  return ICON_LIBRARY_DATA_OVERRIDE;
 }
 
 /** \} */

@@ -38,6 +38,11 @@ void TreeElementDeformGroupBase::expand(SpaceOutliner & /*space_outliner*/) cons
   }
 }
 
+std::optional<BIFIconID> TreeElementDeformGroupBase::get_icon() const
+{
+  return ICON_GROUP_VERTEX;
+}
+
 TreeElementDeformGroup::TreeElementDeformGroup(TreeElement &legacy_te,
                                                Object & /* object */,
                                                bDeformGroup &defgroup)
@@ -46,6 +51,11 @@ TreeElementDeformGroup::TreeElementDeformGroup(TreeElement &legacy_te,
   BLI_assert(legacy_te.store_elem->type == TSE_DEFGROUP);
   legacy_te.name = defgroup_.name;
   legacy_te.directdata = &defgroup_;
+}
+
+std::optional<BIFIconID> TreeElementDeformGroup::get_icon() const
+{
+  return ICON_GROUP_VERTEX;
 }
 
 }  // namespace blender::ed::outliner

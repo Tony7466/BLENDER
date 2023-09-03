@@ -2381,7 +2381,7 @@ static void outliner_draw_warning_column(uiBlock *block,
 /** \name Normal Drawing
  * \{ */
 
-static BIFIconID tree_element_get_icon_from_id(const ID *id)
+BIFIconID tree_element_get_icon_from_id(const ID *id)
 {
   if (GS(id->name) == ID_OB) {
     const Object *ob = (Object *)id;
@@ -2567,377 +2567,38 @@ TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te)
 {
   TreeElementIcon data = {nullptr};
 
-  if (tselem->type != TSE_SOME_ID) {
-    switch (tselem->type) {
-      case TSE_ANIM_DATA:
-        data.icon = ICON_ANIM_DATA; /* XXX */
-        break;
-      case TSE_NLA:
-        data.icon = ICON_NLA;
-        break;
-      case TSE_NLA_TRACK:
-        data.icon = ICON_NLA; /* XXX */
-        break;
-      case TSE_NLA_ACTION:
-        data.icon = ICON_ACTION;
-        break;
-      case TSE_DRIVER_BASE:
-        data.icon = ICON_DRIVER;
-        break;
-      case TSE_DEFGROUP_BASE:
-        data.icon = ICON_GROUP_VERTEX;
-        break;
-      case TSE_DEFGROUP:
-        data.icon = ICON_GROUP_VERTEX;
-        break;
-      case TSE_BONE:
-      case TSE_EBONE:
-        data.icon = ICON_BONE_DATA;
-        break;
-      case TSE_CONSTRAINT_BASE:
-        data.icon = ICON_CONSTRAINT;
-        data.drag_id = tselem->id;
-        break;
-      case TSE_CONSTRAINT: {
-        bConstraint *con = static_cast<bConstraint *>(te->directdata);
-        data.drag_id = tselem->id;
-        switch ((eBConstraint_Types)con->type) {
-          case CONSTRAINT_TYPE_CAMERASOLVER:
-            data.icon = ICON_CON_CAMERASOLVER;
-            break;
-          case CONSTRAINT_TYPE_FOLLOWTRACK:
-            data.icon = ICON_CON_FOLLOWTRACK;
-            break;
-          case CONSTRAINT_TYPE_OBJECTSOLVER:
-            data.icon = ICON_CON_OBJECTSOLVER;
-            break;
-          case CONSTRAINT_TYPE_LOCLIKE:
-            data.icon = ICON_CON_LOCLIKE;
-            break;
-          case CONSTRAINT_TYPE_ROTLIKE:
-            data.icon = ICON_CON_ROTLIKE;
-            break;
-          case CONSTRAINT_TYPE_SIZELIKE:
-            data.icon = ICON_CON_SIZELIKE;
-            break;
-          case CONSTRAINT_TYPE_TRANSLIKE:
-            data.icon = ICON_CON_TRANSLIKE;
-            break;
-          case CONSTRAINT_TYPE_DISTLIMIT:
-            data.icon = ICON_CON_DISTLIMIT;
-            break;
-          case CONSTRAINT_TYPE_LOCLIMIT:
-            data.icon = ICON_CON_LOCLIMIT;
-            break;
-          case CONSTRAINT_TYPE_ROTLIMIT:
-            data.icon = ICON_CON_ROTLIMIT;
-            break;
-          case CONSTRAINT_TYPE_SIZELIMIT:
-            data.icon = ICON_CON_SIZELIMIT;
-            break;
-          case CONSTRAINT_TYPE_SAMEVOL:
-            data.icon = ICON_CON_SAMEVOL;
-            break;
-          case CONSTRAINT_TYPE_TRANSFORM:
-            data.icon = ICON_CON_TRANSFORM;
-            break;
-          case CONSTRAINT_TYPE_TRANSFORM_CACHE:
-            data.icon = ICON_CON_TRANSFORM_CACHE;
-            break;
-          case CONSTRAINT_TYPE_CLAMPTO:
-            data.icon = ICON_CON_CLAMPTO;
-            break;
-          case CONSTRAINT_TYPE_DAMPTRACK:
-            data.icon = ICON_CON_TRACKTO;
-            break;
-          case CONSTRAINT_TYPE_KINEMATIC:
-            data.icon = ICON_CON_KINEMATIC;
-            break;
-          case CONSTRAINT_TYPE_LOCKTRACK:
-            data.icon = ICON_CON_LOCKTRACK;
-            break;
-          case CONSTRAINT_TYPE_SPLINEIK:
-            data.icon = ICON_CON_SPLINEIK;
-            break;
-          case CONSTRAINT_TYPE_STRETCHTO:
-            data.icon = ICON_CON_STRETCHTO;
-            break;
-          case CONSTRAINT_TYPE_TRACKTO:
-            data.icon = ICON_CON_TRACKTO;
-            break;
-          case CONSTRAINT_TYPE_ACTION:
-            data.icon = ICON_CON_ACTION;
-            break;
-          case CONSTRAINT_TYPE_ARMATURE:
-            data.icon = ICON_CON_ARMATURE;
-            break;
-          case CONSTRAINT_TYPE_CHILDOF:
-            data.icon = ICON_CON_CHILDOF;
-            break;
-          case CONSTRAINT_TYPE_MINMAX:
-            data.icon = ICON_CON_FLOOR;
-            break;
-          case CONSTRAINT_TYPE_FOLLOWPATH:
-            data.icon = ICON_CON_FOLLOWPATH;
-            break;
-          case CONSTRAINT_TYPE_PIVOT:
-            data.icon = ICON_CON_PIVOT;
-            break;
-          case CONSTRAINT_TYPE_SHRINKWRAP:
-            data.icon = ICON_CON_SHRINKWRAP;
-            break;
-
-          default:
-            data.icon = ICON_DOT;
-            break;
-        }
-        break;
-      }
-      case TSE_MODIFIER_BASE:
-        data.icon = ICON_MODIFIER_DATA;
-        data.drag_id = tselem->id;
-        break;
-      case TSE_LIBRARY_OVERRIDE_BASE: {
-        TreeElementOverridesBase *base_te = tree_element_cast<TreeElementOverridesBase>(te);
-        data.icon = tree_element_get_icon_from_id(&base_te->id);
-        break;
-      }
-      case TSE_LIBRARY_OVERRIDE:
-        data.icon = ICON_LIBRARY_DATA_OVERRIDE;
-        break;
-      case TSE_LINKED_OB:
-        data.icon = ICON_OBJECT_DATA;
-        break;
-      case TSE_LINKED_PSYS:
-        data.icon = ICON_PARTICLES;
-        break;
-      case TSE_MODIFIER: {
-        Object *ob = (Object *)tselem->id;
-        data.drag_id = tselem->id;
-
-        if (ob->type != OB_GPENCIL_LEGACY) {
-          ModifierData *md = static_cast<ModifierData *>(BLI_findlink(&ob->modifiers, tselem->nr));
-          const ModifierTypeInfo *modifier_type = static_cast<const ModifierTypeInfo *>(
-              BKE_modifier_get_info((ModifierType)md->type));
-          if (modifier_type != nullptr) {
-            data.icon = modifier_type->icon;
-          }
-          else {
-            data.icon = ICON_DOT;
-          }
-        }
-        else {
-          /* grease pencil modifiers */
-          GpencilModifierData *md = static_cast<GpencilModifierData *>(
-              BLI_findlink(&ob->greasepencil_modifiers, tselem->nr));
-          switch ((GpencilModifierType)md->type) {
-            case eGpencilModifierType_Noise:
-              data.icon = ICON_MOD_NOISE;
-              break;
-            case eGpencilModifierType_Subdiv:
-              data.icon = ICON_MOD_SUBSURF;
-              break;
-            case eGpencilModifierType_Thick:
-              data.icon = ICON_MOD_THICKNESS;
-              break;
-            case eGpencilModifierType_Tint:
-              data.icon = ICON_MOD_TINT;
-              break;
-            case eGpencilModifierType_Array:
-              data.icon = ICON_MOD_ARRAY;
-              break;
-            case eGpencilModifierType_Build:
-              data.icon = ICON_MOD_BUILD;
-              break;
-            case eGpencilModifierType_Opacity:
-              data.icon = ICON_MOD_MASK;
-              break;
-            case eGpencilModifierType_Color:
-              data.icon = ICON_MOD_HUE_SATURATION;
-              break;
-            case eGpencilModifierType_Lattice:
-              data.icon = ICON_MOD_LATTICE;
-              break;
-            case eGpencilModifierType_Mirror:
-              data.icon = ICON_MOD_MIRROR;
-              break;
-            case eGpencilModifierType_Simplify:
-              data.icon = ICON_MOD_SIMPLIFY;
-              break;
-            case eGpencilModifierType_Smooth:
-              data.icon = ICON_MOD_SMOOTH;
-              break;
-            case eGpencilModifierType_Hook:
-              data.icon = ICON_HOOK;
-              break;
-            case eGpencilModifierType_Offset:
-              data.icon = ICON_MOD_OFFSET;
-              break;
-            case eGpencilModifierType_Armature:
-              data.icon = ICON_MOD_ARMATURE;
-              break;
-            case eGpencilModifierType_Multiply:
-              data.icon = ICON_GP_MULTIFRAME_EDITING;
-              break;
-            case eGpencilModifierType_Time:
-              data.icon = ICON_MOD_TIME;
-              break;
-            case eGpencilModifierType_Texture:
-              data.icon = ICON_TEXTURE;
-              break;
-            case eGpencilModifierType_WeightProximity:
-              data.icon = ICON_MOD_VERTEX_WEIGHT;
-              break;
-            case eGpencilModifierType_WeightAngle:
-              data.icon = ICON_MOD_VERTEX_WEIGHT;
-              break;
-            case eGpencilModifierType_Shrinkwrap:
-              data.icon = ICON_MOD_SHRINKWRAP;
-              break;
-
-              /* Default */
-            default:
-              data.icon = ICON_DOT;
-              break;
-          }
-        }
-        break;
-      }
-      case TSE_POSE_BASE:
-        data.icon = ICON_ARMATURE_DATA;
-        break;
-      case TSE_POSE_CHANNEL:
-        data.icon = ICON_BONE_DATA;
-        break;
-      case TSE_R_LAYER_BASE:
-        data.icon = ICON_RENDERLAYERS;
-        break;
-      case TSE_SCENE_OBJECTS_BASE:
-        data.icon = ICON_OUTLINER_OB_GROUP_INSTANCE;
-        break;
-      case TSE_R_LAYER:
-        data.icon = ICON_RENDER_RESULT;
-        break;
-      case TSE_POSEGRP_BASE:
-      case TSE_POSEGRP:
-        data.icon = ICON_GROUP_BONE;
-        break;
-      case TSE_SEQUENCE: {
-        const TreeElementSequence *te_seq = tree_element_cast<TreeElementSequence>(te);
-        switch (te_seq->get_sequence_type()) {
-          case SEQ_TYPE_SCENE:
-            data.icon = ICON_SCENE_DATA;
-            break;
-          case SEQ_TYPE_MOVIECLIP:
-            data.icon = ICON_TRACKER;
-            break;
-          case SEQ_TYPE_MASK:
-            data.icon = ICON_MOD_MASK;
-            break;
-          case SEQ_TYPE_MOVIE:
-            data.icon = ICON_FILE_MOVIE;
-            break;
-          case SEQ_TYPE_SOUND_RAM:
-            data.icon = ICON_SOUND;
-            break;
-          case SEQ_TYPE_IMAGE:
-            data.icon = ICON_FILE_IMAGE;
-            break;
-          case SEQ_TYPE_COLOR:
-          case SEQ_TYPE_ADJUSTMENT:
-            data.icon = ICON_COLOR;
-            break;
-          case SEQ_TYPE_TEXT:
-            data.icon = ICON_FONT_DATA;
-            break;
-          case SEQ_TYPE_ADD:
-          case SEQ_TYPE_SUB:
-          case SEQ_TYPE_MUL:
-          case SEQ_TYPE_OVERDROP:
-          case SEQ_TYPE_ALPHAOVER:
-          case SEQ_TYPE_ALPHAUNDER:
-          case SEQ_TYPE_COLORMIX:
-          case SEQ_TYPE_MULTICAM:
-          case SEQ_TYPE_TRANSFORM:
-          case SEQ_TYPE_SPEED:
-          case SEQ_TYPE_GLOW:
-          case SEQ_TYPE_GAUSSIAN_BLUR:
-            data.icon = ICON_SHADERFX;
-            break;
-          case SEQ_TYPE_CROSS:
-          case SEQ_TYPE_GAMCROSS:
-          case SEQ_TYPE_WIPE:
-            data.icon = ICON_ARROW_LEFTRIGHT;
-            break;
-          case SEQ_TYPE_META:
-            data.icon = ICON_SEQ_STRIP_META;
-            break;
-          default:
-            data.icon = ICON_DOT;
-            break;
-        }
-        break;
-      }
-      case TSE_SEQ_STRIP:
-        data.icon = ICON_LIBRARY_DATA_DIRECT;
-        break;
-      case TSE_SEQUENCE_DUP:
-        data.icon = ICON_SEQ_STRIP_DUPLICATE;
-        break;
-      case TSE_RNA_STRUCT: {
-        const TreeElementRNAStruct *te_rna_struct = tree_element_cast<TreeElementRNAStruct>(te);
-        const PointerRNA &ptr = te_rna_struct->get_pointer_rna();
-
-        if (RNA_struct_is_ID(ptr.type)) {
-          data.drag_id = static_cast<ID *>(ptr.data);
-          data.icon = RNA_struct_ui_icon(ptr.type);
-        }
-        else {
-          data.icon = RNA_struct_ui_icon(ptr.type);
-        }
-        break;
-      }
-      case TSE_LAYER_COLLECTION:
-      case TSE_SCENE_COLLECTION_BASE:
-      case TSE_VIEW_COLLECTION_BASE: {
-        Collection *collection = outliner_collection_from_tree_element(te);
-        if (collection && !(collection->flag & COLLECTION_IS_MASTER)) {
-          data.drag_id = tselem->id;
-          data.drag_parent = (data.drag_id && te->parent) ? TREESTORE(te->parent)->id : nullptr;
-        }
-
-        data.icon = ICON_OUTLINER_COLLECTION;
-        break;
-      }
-      case TSE_GP_LAYER: {
-        data.icon = ICON_OUTLINER_DATA_GP_LAYER;
-        break;
-      }
-      case TSE_GREASE_PENCIL_NODE: {
-        bke::greasepencil::TreeNode &node =
-            tree_element_cast<TreeElementGreasePencilNode>(te)->node();
-        if (node.is_layer()) {
-          data.icon = ICON_OUTLINER_DATA_GP_LAYER;
-        }
-        else if (node.is_group()) {
-          data.icon = ICON_FILE_FOLDER;
-        }
-        break;
-      }
-      case TSE_GPENCIL_EFFECT_BASE:
-      case TSE_GPENCIL_EFFECT:
-        data.drag_id = tselem->id;
-        data.icon = ICON_SHADERFX;
-        break;
-      default:
-        data.icon = ICON_DOT;
-        break;
-    }
+  if (ELEM(tselem->type,
+           TSE_CONSTRAINT_BASE,
+           TSE_CONSTRAINT,
+           TSE_MODIFIER_BASE,
+           TSE_MODIFIER,
+           TSE_GPENCIL_EFFECT_BASE,
+           TSE_GPENCIL_EFFECT))
+  {
+    data.drag_id = tselem->id;
   }
-  else if (tselem->id) {
+  else if (tselem->type == TSE_SOME_ID && tselem->id) {
     data.drag_id = tselem->id;
     data.drag_parent = (data.drag_id && te->parent) ? TREESTORE(te->parent)->id : nullptr;
-    data.icon = tree_element_get_icon_from_id(tselem->id);
+  }
+  else if (tselem->type == TSE_RNA_STRUCT) {
+    const TreeElementRNAStruct *te_rna_struct = tree_element_cast<TreeElementRNAStruct>(te);
+    const PointerRNA &ptr = te_rna_struct->get_pointer_rna();
+
+    if (RNA_struct_is_ID(ptr.type)) {
+      data.drag_id = static_cast<ID *>(ptr.data);
+    }
+  }
+  else if (ELEM(tselem->type,
+                TSE_LAYER_COLLECTION,
+                TSE_SCENE_COLLECTION_BASE,
+                TSE_VIEW_COLLECTION_BASE))
+  {
+    Collection *collection = outliner_collection_from_tree_element(te);
+    if (collection && !(collection->flag & COLLECTION_IS_MASTER)) {
+      data.drag_id = tselem->id;
+      data.drag_parent = (data.drag_id && te->parent) ? TREESTORE(te->parent)->id : nullptr;
+    }
   }
 
   if (!te->abstract_element) {

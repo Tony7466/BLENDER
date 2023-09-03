@@ -17,6 +17,7 @@ class TreeElementLayerCollection final : public AbstractTreeElement {
 
  public:
   TreeElementLayerCollection(TreeElement &legacy_te, LayerCollection &lc);
+  std::optional<BIFIconID> get_icon() const override;
 };
 
 }  // namespace blender::ed::outliner

@@ -25,4 +25,9 @@ TreeElementParticleSystem::TreeElementParticleSystem(TreeElement &legacy_te,
   legacy_te.name = psys_.part->id.name + 2;
 }
 
+std::optional<BIFIconID> TreeElementParticleSystem::get_icon() const
+{
+  return ICON_PARTICLES;
+}
+
 }  // namespace blender::ed::outliner

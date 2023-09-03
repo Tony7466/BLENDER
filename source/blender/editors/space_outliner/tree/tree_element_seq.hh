@@ -25,6 +25,7 @@ class TreeElementSequence : public AbstractTreeElement {
 
   bool expand_poll(const SpaceOutliner &) const override;
   void expand(SpaceOutliner &) const override;
+  std::optional<BIFIconID> get_icon() const override;
 
   Sequence &get_sequence() const;
   SequenceType get_sequence_type() const;
@@ -35,6 +36,7 @@ class TreeElementSequence : public AbstractTreeElement {
 class TreeElementSequenceStrip : public AbstractTreeElement {
  public:
   TreeElementSequenceStrip(TreeElement &legacy_te, Strip &strip);
+  std::optional<BIFIconID> get_icon() const override;
 };
 
 /* -------------------------------------------------------------------- */
@@ -44,6 +46,7 @@ class TreeElementSequenceStripDuplicate : public AbstractTreeElement {
 
  public:
   TreeElementSequenceStripDuplicate(TreeElement &legacy_te, Sequence &sequence);
+  std::optional<BIFIconID> get_icon() const override;
 
   Sequence &get_sequence() const;
 };

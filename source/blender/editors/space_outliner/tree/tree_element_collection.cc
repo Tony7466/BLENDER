@@ -30,4 +30,9 @@ void TreeElementCollectionBase::expand(SpaceOutliner &space_outliner) const
   outliner_add_collection_recursive(&space_outliner, scene_.master_collection, &legacy_te_);
 }
 
+std::optional<BIFIconID> TreeElementCollectionBase::get_icon() const
+{
+  return ICON_OUTLINER_COLLECTION;
+}
+
 }  // namespace blender::ed::outliner

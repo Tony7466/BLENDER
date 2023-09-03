@@ -28,6 +28,8 @@ class TreeElementGreasePencilNode final : public AbstractTreeElement {
 
   void expand(SpaceOutliner &) const override;
 
+  std::optional<BIFIconID> get_icon() const override;
+
   blender::bke::greasepencil::TreeNode &node() const;
 };
 

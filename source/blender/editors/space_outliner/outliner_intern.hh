@@ -304,6 +304,8 @@ void draw_outliner(const bContext *C);
 
 void outliner_tree_dimensions(SpaceOutliner *space_outliner, int *r_width, int *r_height);
 
+BIFIconID tree_element_get_icon_from_id(const ID *id);
+
 TreeElementIcon tree_element_get_icon(TreeStoreElem *tselem, TreeElement *te);
 
 void outliner_collection_isolate_flag(Scene *scene,

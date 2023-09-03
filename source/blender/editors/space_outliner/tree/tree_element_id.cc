@@ -135,6 +135,11 @@ void TreeElementID::expand(SpaceOutliner & /*space_outliner*/) const
   }
 }
 
+std::optional<BIFIconID> TreeElementID::get_icon() const
+{
+  return tree_element_get_icon_from_id(&id_);
+}
+
 void TreeElementID::expand_animation_data(AnimData *anim_data) const
 {
   if (outliner_animdata_test(anim_data)) {

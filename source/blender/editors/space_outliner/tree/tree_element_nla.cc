@@ -37,6 +37,11 @@ void TreeElementNLA::expand(SpaceOutliner & /*space_outliner*/) const
   }
 }
 
+std::optional<BIFIconID> TreeElementNLA::get_icon() const
+{
+  return ICON_NLA;
+}
+
 /* -------------------------------------------------------------------- */
 
 TreeElementNLATrack::TreeElementNLATrack(TreeElement &legacy_te, NlaTrack &track)
@@ -60,6 +65,11 @@ void TreeElementNLATrack::expand(SpaceOutliner & /*space_outliner*/) const
   }
 }
 
+std::optional<BIFIconID> TreeElementNLATrack::get_icon() const
+{
+  return ICON_NLA;
+}
+
 /* -------------------------------------------------------------------- */
 
 TreeElementNLAAction::TreeElementNLAAction(TreeElement &legacy_te, const bAction &action)
@@ -67,6 +77,11 @@ TreeElementNLAAction::TreeElementNLAAction(TreeElement &legacy_te, const bAction
 {
   BLI_assert(legacy_te.store_elem->type == TSE_NLA_ACTION);
   legacy_te.name = action.id.name + 2;
+}
+
+std::optional<BIFIconID> TreeElementNLAAction::get_icon() const
+{
+  return ICON_ACTION;
 }
 
 }  // namespace blender::ed::outliner

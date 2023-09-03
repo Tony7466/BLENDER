@@ -44,6 +44,8 @@ class TreeElementOverridesBase final : public AbstractTreeElement {
   void expand(SpaceOutliner &) const override;
 
   StringRefNull get_warning() const override;
+
+  std::optional<BIFIconID> get_icon() const override;
 };
 
 /**
@@ -63,6 +65,8 @@ class TreeElementOverridesProperty : public AbstractTreeElement {
   TreeElementOverridesProperty(TreeElement &legacy_te, TreeElementOverridesData &override_data);
 
   StringRefNull get_warning() const override;
+
+  std::optional<BIFIconID> get_icon() const override;
 };
 
 /**

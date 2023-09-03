@@ -124,6 +124,10 @@ void TreeElementRNAStruct::expand(SpaceOutliner &space_outliner) const
   }
 }
 
+std::optional<BIFIconID> TreeElementRNAStruct::get_icon() const
+{
+  return RNA_struct_ui_icon(rna_ptr_.type);
+}
 /* -------------------------------------------------------------------- */
 /* RNA Property */
 

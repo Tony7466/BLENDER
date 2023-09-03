@@ -73,6 +73,11 @@ void TreeElementPoseBase::expand(SpaceOutliner & /*space_outliner*/) const
   }
 }
 
+std::optional<BIFIconID> TreeElementPoseBase::get_icon() const
+{
+  return ICON_ARMATURE_DATA;
+}
+
 /* -------------------------------------------------------------------- */
 
 TreeElementPoseChannel::TreeElementPoseChannel(TreeElement &legacy_te,
@@ -83,6 +88,11 @@ TreeElementPoseChannel::TreeElementPoseChannel(TreeElement &legacy_te,
   BLI_assert(legacy_te.store_elem->type == TSE_POSE_CHANNEL);
   legacy_te.name = pchan_.name;
   legacy_te.directdata = &pchan_;
+}
+
+std::optional<BIFIconID> TreeElementPoseChannel::get_icon() const
+{
+  return ICON_BONE_DATA;
 }
 
 }  // namespace blender::ed::outliner

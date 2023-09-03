@@ -35,6 +35,7 @@ class TreeElementModifierBase final : public AbstractTreeElement {
  public:
   TreeElementModifierBase(TreeElement &legacy_te, Object &object);
   void expand(SpaceOutliner &) const override;
+  std::optional<BIFIconID> get_icon() const override;
 };
 
 class TreeElementModifier final : public AbstractTreeElement {
@@ -45,6 +46,7 @@ class TreeElementModifier final : public AbstractTreeElement {
  public:
   TreeElementModifier(TreeElement &legacy_te, Object &object, ModifierDataStoreElem &md);
   void expand(SpaceOutliner &) const override;
+  std::optional<BIFIconID> get_icon() const override;
 };
 
 }  // namespace blender::ed::outliner

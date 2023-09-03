@@ -213,7 +213,7 @@ StringRefNull AbstractTreeElement::get_warning() const
 
 std::optional<BIFIconID> AbstractTreeElement::get_icon() const
 {
-  return {};
+  return ICON_DOT;
 }
 
 void AbstractTreeElement::print_path()

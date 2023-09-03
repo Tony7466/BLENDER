@@ -48,6 +48,49 @@ void TreeElementSequence::expand(SpaceOutliner & /*space_outliner*/) const
   }
 }
 
+std::optional<BIFIconID> TreeElementSequence::get_icon() const
+{
+  switch (sequence_.type) {
+    case SEQ_TYPE_SCENE:
+      return ICON_SCENE_DATA;
+    case SEQ_TYPE_MOVIECLIP:
+      return ICON_TRACKER;
+    case SEQ_TYPE_MASK:
+      return ICON_MOD_MASK;
+    case SEQ_TYPE_MOVIE:
+      return ICON_FILE_MOVIE;
+    case SEQ_TYPE_SOUND_RAM:
+      return ICON_SOUND;
+    case SEQ_TYPE_IMAGE:
+      return ICON_FILE_IMAGE;
+    case SEQ_TYPE_COLOR:
+    case SEQ_TYPE_ADJUSTMENT:
+      return ICON_COLOR;
+    case SEQ_TYPE_TEXT:
+      return ICON_FONT_DATA;
+    case SEQ_TYPE_ADD:
+    case SEQ_TYPE_SUB:
+    case SEQ_TYPE_MUL:
+    case SEQ_TYPE_OVERDROP:
+    case SEQ_TYPE_ALPHAOVER:
+    case SEQ_TYPE_ALPHAUNDER:
+    case SEQ_TYPE_COLORMIX:
+    case SEQ_TYPE_MULTICAM:
+    case SEQ_TYPE_TRANSFORM:
+    case SEQ_TYPE_SPEED:
+    case SEQ_TYPE_GLOW:
+    case SEQ_TYPE_GAUSSIAN_BLUR:
+      return ICON_SHADERFX;
+    case SEQ_TYPE_GAMCROSS:
+    case SEQ_TYPE_WIPE:
+      return ICON_ARROW_LEFTRIGHT;
+    case SEQ_TYPE_META:
+      return ICON_SEQ_STRIP_META;
+    default:
+      return ICON_DOT;
+  }
+}
+
 Sequence &TreeElementSequence::get_sequence() const
 {
   return sequence_;
@@ -74,6 +117,11 @@ TreeElementSequenceStrip::TreeElementSequenceStrip(TreeElement &legacy_te, Strip
   }
 }
 
+std::optional<BIFIconID> TreeElementSequenceStrip::get_icon() const
+{
+  return ICON_LIBRARY_DATA_DIRECT;
+}
+
 /* -------------------------------------------------------------------- */
 /* Strip Duplicate */
 
@@ -83,6 +131,11 @@ TreeElementSequenceStripDuplicate::TreeElementSequenceStripDuplicate(TreeElement
 {
   BLI_assert(legacy_te.store_elem->type == TSE_SEQUENCE_DUP);
   legacy_te_.name = sequence.strip->stripdata->filename;
+}
+
+std::optional<BIFIconID> TreeElementSequenceStripDuplicate::get_icon() const
+{
+  return ICON_SEQ_STRIP_DUPLICATE;
 }
 
 Sequence &TreeElementSequenceStripDuplicate::get_sequence() const

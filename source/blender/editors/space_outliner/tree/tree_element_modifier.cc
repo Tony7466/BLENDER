@@ -15,6 +15,8 @@
 
 #include "BLT_translation.h"
 
+#include "BKE_modifier.h"
+
 #include "../outliner_intern.hh"
 
 #include "tree_element_modifier.hh"
@@ -40,6 +42,11 @@ void TreeElementModifierBase::expand(SpaceOutliner & /*space_outliner*/) const
 
     add_element(&legacy_te_.subtree, &object_.id, &md_store, &legacy_te_, TSE_MODIFIER, index);
   }
+}
+
+std::optional<BIFIconID> TreeElementModifierBase::get_icon() const
+{
+  return ICON_MODIFIER_DATA;
 }
 
 TreeElementModifier::TreeElementModifier(TreeElement &legacy_te,
@@ -124,6 +131,76 @@ void TreeElementModifier::expand(SpaceOutliner & /*space_outliner*/) const
                   &legacy_te_,
                   TSE_LINKED_OB,
                   0);
+    }
+  }
+}
+
+std::optional<BIFIconID> TreeElementModifier::get_icon() const
+{
+  TreeStoreElem *tselem = TREESTORE(&legacy_te_);
+  if (object_.type != OB_GPENCIL_LEGACY) {
+    ModifierData *md = static_cast<ModifierData *>(BLI_findlink(&object_.modifiers, tselem->nr));
+    ;
+    const ModifierTypeInfo *modifier_type = static_cast<const ModifierTypeInfo *>(
+        BKE_modifier_get_info((ModifierType)md->type));
+    if (modifier_type != nullptr) {
+      return modifier_type->icon;
+    }
+    else {
+      return ICON_DOT;
+    }
+  }
+  else {
+    /* grease pencil modifiers */
+    GpencilModifierData *md = static_cast<GpencilModifierData *>(
+        BLI_findlink(&object_.greasepencil_modifiers, tselem->nr));
+    switch ((GpencilModifierType)md->type) {
+      case eGpencilModifierType_Noise:
+        return ICON_MOD_NOISE;
+      case eGpencilModifierType_Subdiv:
+        return ICON_MOD_SUBSURF;
+      case eGpencilModifierType_Thick:
+        return ICON_MOD_THICKNESS;
+      case eGpencilModifierType_Tint:
+        return ICON_MOD_TINT;
+      case eGpencilModifierType_Array:
+        return ICON_MOD_ARRAY;
+      case eGpencilModifierType_Build:
+        return ICON_MOD_BUILD;
+      case eGpencilModifierType_Opacity:
+        return ICON_MOD_MASK;
+      case eGpencilModifierType_Color:
+        return ICON_MOD_HUE_SATURATION;
+      case eGpencilModifierType_Lattice:
+        return ICON_MOD_LATTICE;
+      case eGpencilModifierType_Mirror:
+        return ICON_MOD_MIRROR;
+      case eGpencilModifierType_Simplify:
+        return ICON_MOD_SIMPLIFY;
+      case eGpencilModifierType_Smooth:
+        return ICON_MOD_SMOOTH;
+      case eGpencilModifierType_Hook:
+        return ICON_HOOK;
+      case eGpencilModifierType_Offset:
+        return ICON_MOD_OFFSET;
+      case eGpencilModifierType_Armature:
+        return ICON_MOD_ARMATURE;
+      case eGpencilModifierType_Multiply:
+        return ICON_GP_MULTIFRAME_EDITING;
+      case eGpencilModifierType_Time:
+        return ICON_MOD_TIME;
+      case eGpencilModifierType_Texture:
+        return ICON_TEXTURE;
+      case eGpencilModifierType_WeightProximity:
+        return ICON_MOD_VERTEX_WEIGHT;
+      case eGpencilModifierType_WeightAngle:
+        return ICON_MOD_VERTEX_WEIGHT;
+      case eGpencilModifierType_Shrinkwrap:
+        return ICON_MOD_SHRINKWRAP;
+
+        /* Default */
+      default:
+        return ICON_DOT;
     }
   }
 }

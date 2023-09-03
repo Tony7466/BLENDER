@@ -20,6 +20,7 @@ class TreeElementPoseBase final : public AbstractTreeElement {
  public:
   TreeElementPoseBase(TreeElement &legacy_te, Object &object);
   void expand(SpaceOutliner &) const override;
+  std::optional<BIFIconID> get_icon() const override;
 };
 
 class TreeElementPoseChannel final : public AbstractTreeElement {
@@ -29,6 +30,7 @@ class TreeElementPoseChannel final : public AbstractTreeElement {
 
  public:
   TreeElementPoseChannel(TreeElement &legacy_te, Object &object, bPoseChannel &pchan);
+  std::optional<BIFIconID> get_icon() const override;
 };
 
 }  // namespace blender::ed::outliner

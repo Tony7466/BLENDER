@@ -42,6 +42,17 @@ void TreeElementGreasePencilNode::expand(SpaceOutliner & /*space_outliner*/) con
   }
 }
 
+std::optional<BIFIconID> TreeElementGreasePencilNode::get_icon() const
+{
+  if (node_.is_layer()) {
+    return ICON_OUTLINER_DATA_GP_LAYER;
+  }
+  else if (node_.is_group()) {
+    return ICON_FILE_FOLDER;
+  }
+  return {};
+}
+
 blender::bke::greasepencil::TreeNode &TreeElementGreasePencilNode::node() const
 {
   return node_;

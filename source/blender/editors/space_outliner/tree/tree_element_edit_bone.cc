@@ -26,4 +26,9 @@ TreeElementEditBone::TreeElementEditBone(TreeElement &legacy_te,
   legacy_te.name = ebone_.name;
 }
 
+std::optional<BIFIconID> TreeElementEditBone::get_icon() const
+{
+  return ICON_BONE_DATA;
+}
+
 }  // namespace blender::ed::outliner

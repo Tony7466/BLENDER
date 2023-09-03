@@ -35,6 +35,11 @@ void TreeElementGPencilEffectBase::expand(SpaceOutliner & /*space_outliner*/) co
   }
 }
 
+std::optional<BIFIconID> TreeElementGPencilEffectBase::get_icon() const
+{
+  return ICON_SHADERFX;
+}
+
 TreeElementGPencilEffect::TreeElementGPencilEffect(TreeElement &legacy_te,
                                                    Object & /* object */,
                                                    ShaderFxData &fx)
@@ -55,6 +60,11 @@ void TreeElementGPencilEffect::expand(SpaceOutliner & /*space_outliner*/) const
                 TSE_LINKED_OB,
                 0);
   }
+}
+
+std::optional<BIFIconID> TreeElementGPencilEffect::get_icon() const
+{
+  return ICON_SHADERFX;
 }
 
 }  // namespace blender::ed::outliner

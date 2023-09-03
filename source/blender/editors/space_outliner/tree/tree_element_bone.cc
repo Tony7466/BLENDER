@@ -23,4 +23,8 @@ TreeElementBone::TreeElementBone(TreeElement &legacy_te, ID & /*armature_id*/, B
   legacy_te.directdata = &bone_;
 }
 
+std::optional<BIFIconID> TreeElementBone::get_icon() const
+{
+  return ICON_BONE_DATA;
+}
 }  // namespace blender::ed::outliner

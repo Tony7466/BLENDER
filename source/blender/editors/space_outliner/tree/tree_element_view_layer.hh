@@ -19,6 +19,8 @@ class TreeElementViewLayerBase final : public AbstractTreeElement {
   TreeElementViewLayerBase(TreeElement &legacy_te, Scene &scene);
 
   void expand(SpaceOutliner &) const override;
+
+  std::optional<BIFIconID> get_icon() const override;
 };
 
 class TreeElementViewLayer final : public AbstractTreeElement {
@@ -28,6 +30,8 @@ class TreeElementViewLayer final : public AbstractTreeElement {
 
  public:
   TreeElementViewLayer(TreeElement &legacy_te, Scene &scene, ViewLayer &view_layer);
+
+  std::optional<BIFIconID> get_icon() const override;
 };
 
 }  // namespace blender::ed::outliner

@@ -34,6 +34,11 @@ void TreeElementViewLayerBase::expand(SpaceOutliner & /*space_outliner*/) const
   }
 }
 
+std::optional<BIFIconID> TreeElementViewLayerBase::get_icon() const
+{
+  return ICON_RENDERLAYERS;
+}
+
 TreeElementViewLayer::TreeElementViewLayer(TreeElement &legacy_te,
                                            Scene & /* scene */,
                                            ViewLayer &view_layer)
@@ -42,6 +47,11 @@ TreeElementViewLayer::TreeElementViewLayer(TreeElement &legacy_te,
   BLI_assert(legacy_te.store_elem->type == TSE_R_LAYER);
   legacy_te.name = view_layer_.name;
   legacy_te.directdata = &view_layer_;
+}
+
+std::optional<BIFIconID> TreeElementViewLayer::get_icon() const
+{
+  return ICON_RENDER_RESULT;
 }
 
 }  // namespace blender::ed::outliner

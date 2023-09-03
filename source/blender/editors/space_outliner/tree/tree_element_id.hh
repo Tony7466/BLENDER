@@ -35,6 +35,8 @@ class TreeElementID : public AbstractTreeElement {
     return id_;
   }
 
+  std::optional<BIFIconID> get_icon() const override;
+
  protected:
   /* ID types with animation data can use this. */
   void expand_animation_data(AnimData *) const;
