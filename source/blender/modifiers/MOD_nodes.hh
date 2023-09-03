@@ -8,7 +8,7 @@ struct NodesModifierData;
 struct Object;
 
 namespace blender::bke::bake {
-class ModifierCache;
+struct ModifierCache;
 }
 namespace blender::nodes::geo_eval_log {
 class GeoModifierLog;
