@@ -3529,6 +3529,10 @@ static int text_insert_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   SpaceText *st = CTX_wm_space_text(C);
   uint auto_close_char = 0;
   int ret;
+  TextLine *sell = nullptr;
+  TextLine *curl = nullptr;
+  int selc = 0;
+  int curc = 0;
 
   /* NOTE: the "text" property is always set from key-map,
    * so we can't use #RNA_struct_property_is_set, check the length instead. */
@@ -3549,6 +3553,21 @@ static int text_insert_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
     if (U.text_flag & USER_TEXT_EDIT_AUTO_CLOSE) {
       auto_close_char = BLI_str_utf8_as_unicode(str);
+
+      if (txt_has_sel(st->text)) {
+        sell = st->text->sell;
+        curl = st->text->curl;
+        selc = st->text->selc;
+        curc = st->text->curc;
+
+        /* Move the cursor to the start of the selection. */
+        if (txt_get_span(curl, sell) > 0 || (curl == sell && selc > curc)) {
+          txt_move_to(st->text, BLI_findindex(&st->text->lines, curl), curc, false);
+        }
+        else {
+          txt_move_to(st->text, BLI_findindex(&st->text->lines, sell), selc, false);
+        }
+      }
     }
   }
 
@@ -3557,9 +3576,31 @@ static int text_insert_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   if ((ret == OPERATOR_FINISHED) && (auto_close_char != 0)) {
     const uint auto_close_match = text_closing_character_pair_get(auto_close_char);
     if (auto_close_match != 0) {
+      /* If there was a selection, move cursor to the end of it. */
+      if (sell) {
+        /* Move the cursor to the end of the selection. */
+        if (txt_get_span(curl, sell) < 0) {
+          txt_move_to(st->text, BLI_findindex(&st->text->lines, curl), curc, false);
+        }
+        else if (curl == sell) {
+          int ch = curc > selc ? curc : selc;
+          txt_move_to(st->text, BLI_findindex(&st->text->lines, sell), ch + 1, false);
+        }
+        else {
+          txt_move_to(st->text, BLI_findindex(&st->text->lines, sell), selc, false);
+        }
+      }
       Text *text = CTX_data_edit_text(C);
       txt_add_char(text, auto_close_match);
       txt_move_left(text, false);
+
+      /* If there was a selection, bring it back. */
+      if (sell) {
+        st->text->sell = sell;
+        st->text->curl = curl;
+        st->text->selc = (sell == curl || txt_get_span(curl, sell) < 0) ? selc + 1 : selc;
+        st->text->curc = (sell == curl || txt_get_span(curl, sell) > 0) ? curc + 1 : curc;
+      }
     }
   }
 
