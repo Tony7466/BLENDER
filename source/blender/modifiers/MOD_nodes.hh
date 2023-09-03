@@ -7,11 +7,8 @@
 struct NodesModifierData;
 struct Object;
 
-namespace blender::bke {
-class GeometryNodesModifierBakes;
-}
-namespace blender::bke::sim {
-class ModifierSimulationCache;
+namespace blender::bke::bake {
+struct ModifierCache;
 }
 namespace blender::nodes::geo_eval_log {
 class GeoModifierLog;
@@ -37,11 +34,7 @@ struct NodesModifierRuntime {
    * original modifier to be removed, without also removing the simulation state which may still be
    * used by the evaluated modifier.
    */
-  std::shared_ptr<bke::sim::ModifierSimulationCache> simulation_cache;
-  /**
-   * Stores baked data at run-time.
-   */
-  std::shared_ptr<bke::GeometryNodesModifierBakes> bakes;
+  std::shared_ptr<bke::bake::ModifierCache> cache;
 };
 
 }  // namespace blender
