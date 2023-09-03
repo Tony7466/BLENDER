@@ -30,7 +30,7 @@
 
 #include "BLI_compute_context.hh"
 
-#include "BKE_bake_geometry_nodes_modifier.hh"
+#include "BKE_bake_items.hh"
 #include "BKE_node_tree_zones.hh"
 
 struct Object;
