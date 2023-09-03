@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -55,9 +55,10 @@ static void context_path_add_node_tree_and_node_groups(const SpaceNode &snode,
                                                        Vector<ui::ContextPathItem> &path,
                                                        const bool skip_base = false)
 {
-  Vector<const bNodeTreePath *> tree_path = snode.treepath;
-  for (const bNodeTreePath *path_item : tree_path.as_span().drop_front(int(skip_base))) {
-    ui::context_path_add_generic(path, RNA_NodeTree, path_item->nodetree, ICON_NODETREE);
+  LISTBASE_FOREACH (const bNodeTreePath *, path_item, &snode.treepath) {
+    if (skip_base && path_item == snode.treepath.first) {
+      ui::context_path_add_generic(path, RNA_NodeTree, path_item->nodetree, ICON_NODETREE);
+    }
   }
 }
 

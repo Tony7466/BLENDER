@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -26,13 +26,13 @@
 
 /* Reuse for dynamic types. */
 
-const EnumPropertyItem DummyRNA_NULL_items[] = {
+const EnumPropertyItem rna_enum_dummy_NULL_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
 /* Reuse for dynamic types with default value. */
 
-const EnumPropertyItem DummyRNA_DEFAULT_items[] = {
+const EnumPropertyItem rna_enum_dummy_DEFAULT_items[] = {
     {0, "DEFAULT", 0, "Default", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
@@ -993,7 +993,7 @@ static const EnumPropertyItem *rna_EnumProperty_default_itemf(bContext *C,
 
   /* incompatible default attributes */
   if ((prop_parent->flag & PROP_ENUM_FLAG) != (prop->flag & PROP_ENUM_FLAG)) {
-    return DummyRNA_NULL_items;
+    return rna_enum_dummy_NULL_items;
   }
 
   if ((eprop->item_fn == nullptr) || (eprop->item_fn == rna_EnumProperty_default_itemf) ||
@@ -1369,7 +1369,7 @@ static void rna_property_override_diff_propptr_validate_diffing(
       ptrdiff_ctx.rna_itemname_b = rna_itemname_b;
     }
 
-    /* Note: This will always assign nullptr to these libpointers in case `do_id_lib` is false,
+    /* Note: This will always assign nullptr to these lib-pointers in case `do_id_lib` is false,
      * which ensures that they will not affect the result of `ptrdiff_ctx.is_valid_for_diffing` in
      * the last check below. */
     ID *rna_itemid_a = (do_id_pointer && propptr_a->data) ? static_cast<ID *>(propptr_a->data) :
@@ -3161,7 +3161,7 @@ static void rna_def_property(BlenderRNA *brna)
   prop = RNA_def_property(srna, "is_enum_flag", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_boolean_funcs(prop, "rna_Property_is_enum_flag_get", nullptr);
-  RNA_def_property_ui_text(prop, "Enum Flag", "True when multiple enums ");
+  RNA_def_property_ui_text(prop, "Enum Flag", "True when multiple enums");
 
   prop = RNA_def_property(srna, "is_library_editable", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);

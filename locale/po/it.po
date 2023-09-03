@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'd4d0daa934cd')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'5ba692898e63')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-08-07 09:03:59\n"
+"POT-Creation-Date: 2023-08-28 16:05:16\n"
 "PO-Revision-Date: 2022-01-21 16:08+0100\n"
 "Last-Translator: MT\n"
 "Language-Team: blend-it <https://developer.blender.org/T42765>\n"
@@ -3632,10 +3632,6 @@ msgstr "Impostazioni spazio colore input"
 
 msgid "Input Color Space"
 msgstr "Spazio Colore Input"
-
-
-msgid "XYZ"
-msgstr "XYZ"
 
 
 msgid "Color Space"
@@ -11004,20 +11000,28 @@ msgid "Camera near clipping distance"
 msgstr "Distanza di taglio iniziale della camera (non mostra ciò che è più vicino)"
 
 
-msgid "Cycles Camera Settings"
-msgstr "Impostazioni Camera Cycles"
-
-
-msgid "Cycles camera settings"
-msgstr "Impostazioni camera Cycles"
-
-
 msgid "Apparent size of the Camera object in the 3D View"
 msgstr "Dimensione apparente dell'oggetto Camera nella vista 3D"
 
 
 msgid "Depth Of Field"
 msgstr "Profondità di Campo"
+
+
+msgid "Fisheye Lens"
+msgstr "Fisheye"
+
+
+msgid "Lens focal length (mm)"
+msgstr "Lunghezza focale lenti (mm)"
+
+
+msgid "Max Latitude"
+msgstr "Max Latitudine"
+
+
+msgid "Min Latitude"
+msgstr "Min Latitudine"
 
 
 msgid "Focal Length"
@@ -11036,12 +11040,40 @@ msgid "Millimeters"
 msgstr "Millimetri"
 
 
+msgid "Max Longitude"
+msgstr "Max Longitudine"
+
+
+msgid "Min Longitude"
+msgstr "Min Longitudine"
+
+
 msgid "Orthographic Scale"
 msgstr "Scala Ortografica"
 
 
 msgid "Orthographic Camera scale (similar to zoom)"
 msgstr "Scala della Camera Ortografica (simile allo Zoom)"
+
+
+msgid "Panorama Type"
+msgstr "Tipo Panorama"
+
+
+msgid "Equirectangular"
+msgstr "Equirettangolare"
+
+
+msgid "Mirror Ball"
+msgstr "Sfera a Specchio"
+
+
+msgid "Fisheye Equidistant"
+msgstr "Fisheye Equidistante"
+
+
+msgid "Fisheye Equisolid"
+msgstr "Fisheye Equisolido"
 
 
 msgid "Passepartout Alpha"
@@ -21771,10 +21803,6 @@ msgid "Display Hidden"
 msgstr "Mostra Nascosti"
 
 
-msgid "Include channels from objects/bone that aren't visible"
-msgstr "Include i canali da oggetti/ossa che non sono visibili"
-
-
 msgid "Dopesheet Sort Field"
 msgstr "Campo Ordinamento Dopesheet"
 
@@ -23228,8 +23256,8 @@ msgid "Tracking Object"
 msgstr "Oggetto Tracciamento"
 
 
-msgid "Smoothing"
-msgstr "Levigatura"
+msgid "Eccentricity"
+msgstr "Eccentricità"
 
 
 msgid "Anisotropic"
@@ -23981,16 +24009,8 @@ msgid "Projection of the input image"
 msgstr "Proiezione dell'immagine in entrata"
 
 
-msgid "Equirectangular"
-msgstr "Equirettangolare"
-
-
 msgid "Equirectangular or latitude-longitude projection"
 msgstr "Equirettangolare o proiezione latitudine-longitudine"
-
-
-msgid "Mirror Ball"
-msgstr "Sfera a Specchio"
 
 
 msgid "Projection from an orthographic photo of a mirror ball"
@@ -24431,6 +24451,10 @@ msgstr "Valore minimo"
 
 msgid "Node Tree Inputs"
 msgstr "Ingressi Alberi Nodi"
+
+
+msgid "Socket Type"
+msgstr "Tipo di Connettore"
 
 
 msgid "Node Tree Outputs"
@@ -27968,8 +27992,16 @@ msgstr "Converte le rotazioni nell'euleriana ZYX"
 
 
 msgctxt "Operator"
-msgid "Export PLY"
-msgstr "Esporta PLY"
+msgid "Export STL"
+msgstr "Esporta STL"
+
+
+msgid "Ascii"
+msgstr "Ascii"
+
+
+msgid "Save the file in ASCII file format"
+msgstr "Salva il file nel formato di file ASCII"
 
 
 msgid "X Forward"
@@ -28016,39 +28048,6 @@ msgid "-Z Up"
 msgstr "-Z In Alto"
 
 
-msgid "Export the active vertex color layer"
-msgstr "Esporta il livello colori vertice attivo"
-
-
-msgid "Apply Modifiers"
-msgstr "Applica Modificatori"
-
-
-msgid "Apply Modifiers to the exported mesh"
-msgstr "Applica i modificatori alle mesh esportate"
-
-
-msgid "Selection Only"
-msgstr "Solo Selezione"
-
-
-msgid "Export selected objects only"
-msgstr "Esporta solo gli oggetti selezionati"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "Esporta STL"
-
-
-msgid "Ascii"
-msgstr "Ascii"
-
-
-msgid "Save the file in ASCII file format"
-msgstr "Salva il file nel formato di file ASCII"
-
-
 msgid "Batch Mode"
 msgstr "Modo Batch"
 
@@ -28061,12 +28060,24 @@ msgid "Each object as a file"
 msgstr "Ogni oggetto come un file"
 
 
+msgid "Apply Modifiers"
+msgstr "Applica Modificatori"
+
+
 msgid "Apply the modifiers before saving"
 msgstr "Applica i modificatori prima di salvare"
 
 
 msgid "Scene Unit"
 msgstr "Unità Scena"
+
+
+msgid "Selection Only"
+msgstr "Solo Selezione"
+
+
+msgid "Export selected objects only"
+msgstr "Esporta solo gli oggetti selezionati"
 
 
 msgctxt "Operator"
@@ -28132,6 +28143,10 @@ msgstr "Incorpora Texture"
 
 msgid "Scale all data (Some importers do not support scaled armatures!)"
 msgstr "Scala tutti i dati (Alcuni importatori non supportano le armature scalate!)"
+
+
+msgid "Smoothing"
+msgstr "Levigatura"
 
 
 msgid "Normals Only"
@@ -28248,67 +28263,6 @@ msgstr "Converte tutte le facce in triangoli"
 
 msgid "General"
 msgstr "Generale"
-
-
-msgctxt "Operator"
-msgid "Export OBJ"
-msgstr "Esporta OBJ"
-
-
-msgid "Save a Wavefront OBJ File"
-msgstr "Salva in un file Wavefront OBJ"
-
-
-msgid "Material Groups"
-msgstr "Gruppi Materiale"
-
-
-msgid "Keep Vertex Order"
-msgstr "Mantieni Ordine Vertici"
-
-
-msgid "Write out an OBJ for each frame"
-msgstr "Scrive un OBJ per ogni fotogramma"
-
-
-msgid "Include Edges"
-msgstr "Includi Spigoli"
-
-
-msgid "Write Materials"
-msgstr "Scrivi Materiali"
-
-
-msgid "Write out the MTL file"
-msgstr "Scrive il file MTL"
-
-
-msgid "Apply modifiers"
-msgstr "Applica modificatori"
-
-
-msgid "Write Normals"
-msgstr "Scrivi Normali"
-
-
-msgid "Write Nurbs"
-msgstr "Scrivi Nurbs"
-
-
-msgid "Write nurbs curves as OBJ nurbs rather than converting to geometry"
-msgstr "Scrivi curve nurbs come OBJ nurbs anziché convertire la geometria"
-
-
-msgid "Include UVs"
-msgstr "Includi UV"
-
-
-msgid "Write out the active UV coordinates"
-msgstr "Esporta le coordinate UV attive"
-
-
-msgid "Polygroups"
-msgstr "Gruppi Multipli"
 
 
 msgid "Compress"
@@ -30183,19 +30137,6 @@ msgstr "Senza ombre"
 
 
 msgctxt "Operator"
-msgid "Import PLY"
-msgstr "Importa PLY"
-
-
-msgid "Load a PLY geometry file"
-msgstr "Carica un file geometria PLY"
-
-
-msgid "File path used for importing the PLY file"
-msgstr "Percorso usato per importare il file PLY"
-
-
-msgctxt "Operator"
 msgid "Import STL"
 msgstr "Importa STL"
 
@@ -30271,55 +30212,6 @@ msgstr "Specifica orientamento e scala, anzichè usare quelli inclusi nel file F
 
 msgid "Use Pre/Post Rotation"
 msgstr "Usa Pre/Post Rotazione"
-
-
-msgctxt "Operator"
-msgid "Import OBJ"
-msgstr "Importa OBJ"
-
-
-msgid "Load a Wavefront OBJ File"
-msgstr "Carica un file Wavefront OBJ"
-
-
-msgid "Clamp Size"
-msgstr "Blocca Dimensione"
-
-
-msgid "Clamp bounds under this value (zero to disable)"
-msgstr "Blocca i confini al di sotto di questo valore (zero per disabilitare)"
-
-
-msgid "Keep Vert Order"
-msgstr "Mantieni Ordine Vertici"
-
-
-msgid "Keep vertex order from file"
-msgstr "Mantiene l'ordine dei vertici del file"
-
-
-msgid "Import lines and faces with 2 verts as edge"
-msgstr "Importa linee e facce con 2 vertici come spigoli"
-
-
-msgid "Poly Groups"
-msgstr "Gruppi Poly"
-
-
-msgid "Import OBJ groups as vertex groups"
-msgstr "Importa gruppi OBJ come gruppo di vertici"
-
-
-msgid "Search subdirs for any associated images (Warning, may be slow)"
-msgstr "Ricerca nelle sottodrectory per qualsiasi immagine associata (Attenzione, può essere lento)"
-
-
-msgid "Import OBJ Groups into Blender Objects"
-msgstr "Importa Gruppi OBJ in Oggetti Blender"
-
-
-msgid "Import OBJ Objects into Blender Objects"
-msgstr "Importa Oggetti OBJ in Oggetti Blender"
 
 
 msgctxt "Operator"
@@ -33366,10 +33258,6 @@ msgstr "Albero Nodi Genitore"
 
 msgid "Go to parent node tree"
 msgstr "Torna all'albero nodi genitore"
-
-
-msgid "Socket Type"
-msgstr "Tipo di Connettore"
 
 
 msgctxt "Operator"
@@ -41000,6 +40888,10 @@ msgid "Print memory statistics to the console"
 msgstr "Stampa la statistica della memoria nella console"
 
 
+msgid "Import OBJ groups as vertex groups"
+msgstr "Importa gruppi OBJ come gruppo di vertici"
+
+
 msgid "Open a Blender file"
 msgstr "Apre un file Blender"
 
@@ -41044,6 +40936,16 @@ msgstr "Aggiunge o rimuove una Preimpostazione Operatore"
 
 msgid "Open a path in a file browser"
 msgstr "Apre un percorso nel file browser"
+
+
+msgctxt "Operator"
+msgid "Export PLY"
+msgstr "Esporta PLY"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "Importa PLY"
 
 
 msgctxt "Operator"
@@ -41106,6 +41008,10 @@ msgstr "Contesto"
 msgctxt "Operator"
 msgid "Edit Property"
 msgstr "Modifica Proprietà"
+
+
+msgid "Speaker"
+msgstr "Altoparlante"
 
 
 msgid "Property Name"
@@ -42513,6 +42419,10 @@ msgstr "Libreria Pose"
 
 msgid "3D-Print"
 msgstr "Stampa 3D"
+
+
+msgid "Wire Color"
+msgstr "Colore Reticolo"
 
 
 msgid "Compositor"
@@ -44725,48 +44635,16 @@ msgid "Temperature"
 msgstr "Temperatura"
 
 
+msgid "XYZ"
+msgstr "XYZ"
+
+
 msgid "Group of ID properties"
 msgstr "Gruppo di proprietà ID"
 
 
 msgid "Case"
 msgstr "Maiuscolo/Minuscolo"
-
-
-msgid "Fisheye Lens"
-msgstr "Fisheye"
-
-
-msgid "Lens focal length (mm)"
-msgstr "Lunghezza focale lenti (mm)"
-
-
-msgid "Max Latitude"
-msgstr "Max Latitudine"
-
-
-msgid "Min Latitude"
-msgstr "Min Latitudine"
-
-
-msgid "Max Longitude"
-msgstr "Max Longitudine"
-
-
-msgid "Min Longitude"
-msgstr "Min Longitudine"
-
-
-msgid "Panorama Type"
-msgstr "Tipo Panorama"
-
-
-msgid "Fisheye Equidistant"
-msgstr "Fisheye Equidistante"
-
-
-msgid "Fisheye Equisolid"
-msgstr "Fisheye Equisolido"
 
 
 msgid "CPU"
@@ -45857,8 +45735,8 @@ msgid "Render at 12.5% resolution"
 msgstr "Renderizza al 12.5% della risoluzione"
 
 
-msgid "Resolution %"
-msgstr "Risoluzione %"
+msgid "Resolution Scale"
+msgstr "Risoluzione Scala"
 
 
 msgid "Percentage scale for render resolution"
@@ -48726,10 +48604,6 @@ msgid "Show Camera Focus Distance"
 msgstr "Mostra Distanza Focale Camera"
 
 
-msgid "Speaker"
-msgstr "Altoparlante"
-
-
 msgid "Show Reconstruction"
 msgstr "Mostra Ricostruzione"
 
@@ -49752,10 +49626,6 @@ msgstr "Nodo Vettore"
 
 msgid "Wires"
 msgstr "Reticoli (fil di ferro)"
-
-
-msgid "Wire Color"
-msgstr "Colore Reticolo"
 
 
 msgid "Wire Select"
@@ -52249,10 +52119,6 @@ msgid "Dimension"
 msgstr "Dimensione"
 
 
-msgid "Eccentricity"
-msgstr "Eccentricità"
-
-
 msgid "Odd"
 msgstr "Dispari"
 
@@ -53434,10 +53300,6 @@ msgstr "Documentazione per Sviluppatori"
 
 msgid "Auto-Save Preferences"
 msgstr "Auto Salva Preferenze"
-
-
-msgid "Resolution Scale"
-msgstr "Risoluzione Scala"
 
 
 msgid "Splash Screen"
@@ -56130,6 +55992,10 @@ msgstr "Errore durante l'esportazione (vedi Console)"
 
 msgid "Object Groups"
 msgstr "Gruppi Oggetto"
+
+
+msgid "Material Groups"
+msgstr "Gruppi Materiale"
 
 
 msgid "Mesh Data"

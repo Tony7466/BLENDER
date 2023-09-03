@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -518,7 +518,7 @@ const EnumPropertyItem rna_enum_operator_return_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-const EnumPropertyItem rna_enum_operator_property_tags[] = {
+const EnumPropertyItem rna_enum_operator_property_tag_items[] = {
     {OP_PROP_TAG_ADVANCED,
      "ADVANCED",
      0,
@@ -1267,14 +1267,14 @@ static void rna_wmKeyMapItem_name_get(PointerRNA *ptr, char *value)
 {
   wmKeyMapItem *kmi = static_cast<wmKeyMapItem *>(ptr->data);
   wmOperatorType *ot = WM_operatortype_find(kmi->idname, 1);
-  strcpy(value, ot ? WM_operatortype_name(ot, kmi->ptr) : kmi->idname);
+  strcpy(value, ot ? WM_operatortype_name(ot, kmi->ptr).c_str() : kmi->idname);
 }
 
 static int rna_wmKeyMapItem_name_length(PointerRNA *ptr)
 {
   wmKeyMapItem *kmi = static_cast<wmKeyMapItem *>(ptr->data);
   wmOperatorType *ot = WM_operatortype_find(kmi->idname, 1);
-  return strlen(ot ? WM_operatortype_name(ot, kmi->ptr) : kmi->idname);
+  return strlen(ot ? WM_operatortype_name(ot, kmi->ptr).c_str() : kmi->idname);
 }
 
 static bool rna_KeyMapItem_userdefined_get(PointerRNA *ptr)
@@ -1465,7 +1465,9 @@ static void rna_operator_cancel_cb(bContext *C, wmOperator *op)
   RNA_parameter_list_free(&list);
 }
 
-static char *rna_operator_description_cb(bContext *C, wmOperatorType *ot, PointerRNA *prop_ptr)
+static std::string rna_operator_description_cb(bContext *C,
+                                               wmOperatorType *ot,
+                                               PointerRNA *prop_ptr)
 {
   extern FunctionRNA rna_Operator_description_func;
 
@@ -1473,7 +1475,6 @@ static char *rna_operator_description_cb(bContext *C, wmOperatorType *ot, Pointe
   ParameterList list;
   FunctionRNA *func;
   void *ret;
-  char *result;
 
   RNA_pointer_create(nullptr, ot->rna_ext.srna, nullptr, &ptr); /* dummy */
   func = &rna_Operator_description_func; /* RNA_struct_find_function(&ptr, "description"); */
@@ -1484,14 +1485,7 @@ static char *rna_operator_description_cb(bContext *C, wmOperatorType *ot, Pointe
   ot->rna_ext.call(C, &ptr, func, &list);
 
   RNA_parameter_get_lookup(&list, "result", &ret);
-  result = (char *)ret;
-
-  if (result && result[0]) {
-    result = BLI_strdup(result);
-  }
-  else {
-    result = nullptr;
-  }
+  std::string result = ret ? std::string(static_cast<const char *>(ret)) : "";
 
   RNA_parameter_list_free(&list);
 
@@ -1612,7 +1606,7 @@ static StructRNA *rna_Operator_register(Main *bmain,
   /* Operator properties are registered separately. */
   RNA_def_struct_flag(dummy_ot.rna_ext.srna, STRUCT_NO_IDPROPERTIES);
 
-  RNA_def_struct_property_tags(dummy_ot.rna_ext.srna, rna_enum_operator_property_tags);
+  RNA_def_struct_property_tags(dummy_ot.rna_ext.srna, rna_enum_operator_property_tag_items);
   RNA_def_struct_translation_context(dummy_ot.rna_ext.srna, dummy_ot.translation_context);
   dummy_ot.rna_ext.data = data;
   dummy_ot.rna_ext.call = call;
@@ -2040,7 +2034,7 @@ static void rna_def_operator(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "Operator Properties", "Input properties of an operator");
   RNA_def_struct_refine_func(srna, "rna_OperatorProperties_refine");
   RNA_def_struct_idprops_func(srna, "rna_OperatorProperties_idprops");
-  RNA_def_struct_property_tags(srna, rna_enum_operator_property_tags);
+  RNA_def_struct_property_tags(srna, rna_enum_operator_property_tag_items);
   RNA_def_struct_flag(srna, STRUCT_NO_DATABLOCK_IDPROPERTIES | STRUCT_NO_CONTEXT_WITHOUT_OWNER_ID);
   RNA_def_struct_clear_flag(srna, STRUCT_UNDO);
 }
@@ -2317,19 +2311,19 @@ static void rna_def_timer(BlenderRNA *brna)
 
   /* could wrap more, for now this is enough */
   prop = RNA_def_property(srna, "time_step", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, nullptr, "timestep");
+  RNA_def_property_float_sdna(prop, nullptr, "time_step");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Time Step", "");
 
   prop = RNA_def_property(srna, "time_delta", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, nullptr, "delta");
+  RNA_def_property_float_sdna(prop, nullptr, "time_delta");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Delta", "Time since last step in seconds");
 
   prop = RNA_def_property(srna, "time_duration", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, nullptr, "duration");
+  RNA_def_property_float_sdna(prop, nullptr, "time_duration");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_ui_text(prop, "Delta", "Time since last step in seconds");
+  RNA_def_property_ui_text(prop, "Delta", "Time since the timer started seconds");
 
   RNA_define_verify_sdna(true); /* not in sdna */
 }

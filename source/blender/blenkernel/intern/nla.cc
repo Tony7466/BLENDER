@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -39,7 +39,7 @@
 #include "BKE_nla.h"
 #include "BKE_sound.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
@@ -573,6 +573,9 @@ void BKE_nla_strip_foreach_id(NlaStrip *strip, LibraryForeachIDData *data)
   LISTBASE_FOREACH (FCurve *, fcu, &strip->fcurves) {
     BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data, BKE_fcurve_foreach_id(fcu, data));
   }
+
+  BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data,
+                                          BKE_fmodifiers_foreach_id(&strip->modifiers, data));
 
   LISTBASE_FOREACH (NlaStrip *, substrip, &strip->strips) {
     BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(data, BKE_nla_strip_foreach_id(substrip, data));
@@ -2354,37 +2357,6 @@ static void blend_data_read_nla_strips(BlendDataReader *reader, ListBase *strips
   }
 }
 
-static void blend_lib_read_nla_strips(BlendLibReader *reader, ID *id, ListBase *strips)
-{
-  LISTBASE_FOREACH (NlaStrip *, strip, strips) {
-    /* check strip's children */
-    blend_lib_read_nla_strips(reader, id, &strip->strips);
-
-    /* check strip's F-Curves */
-    BKE_fcurve_blend_read_lib(reader, id, &strip->fcurves);
-
-    /* reassign the counted-reference to action */
-    BLO_read_id_address(reader, id, &strip->act);
-  }
-}
-
-static void blend_read_expand_nla_strips(BlendExpander *expander, ListBase *strips)
-{
-  LISTBASE_FOREACH (NlaStrip *, strip, strips) {
-    /* check child strips */
-    blend_read_expand_nla_strips(expander, &strip->strips);
-
-    /* check F-Curves */
-    BKE_fcurve_blend_read_expand(expander, &strip->fcurves);
-
-    /* check F-Modifiers */
-    BKE_fmodifiers_blend_read_expand(expander, &strip->modifiers);
-
-    /* relink referenced action */
-    BLO_expand(expander, strip->act);
-  }
-}
-
 void BKE_nla_blend_write(BlendWriter *writer, ListBase *tracks)
 {
   /* write all the tracks */
@@ -2397,34 +2369,18 @@ void BKE_nla_blend_write(BlendWriter *writer, ListBase *tracks)
   }
 }
 
-void BKE_nla_blend_read_data(BlendDataReader *reader, ListBase *tracks)
+void BKE_nla_blend_read_data(BlendDataReader *reader, ID *id_owner, ListBase *tracks)
 {
   LISTBASE_FOREACH (NlaTrack *, nlt, tracks) {
+    /* If linking from a library, clear 'local' library override flag. */
+    if (ID_IS_LINKED(id_owner)) {
+      nlt->flag &= ~NLATRACK_OVERRIDELIBRARY_LOCAL;
+    }
+
     /* relink list of strips */
     BLO_read_list(reader, &nlt->strips);
 
     /* relink strip data */
     blend_data_read_nla_strips(reader, &nlt->strips);
-  }
-}
-
-void BKE_nla_blend_read_lib(BlendLibReader *reader, ID *id, ListBase *tracks)
-{
-  /* we only care about the NLA strips inside the tracks */
-  LISTBASE_FOREACH (NlaTrack *, nlt, tracks) {
-    /* If linking from a library, clear 'local' library override flag. */
-    if (ID_IS_LINKED(id)) {
-      nlt->flag &= ~NLATRACK_OVERRIDELIBRARY_LOCAL;
-    }
-
-    blend_lib_read_nla_strips(reader, id, &nlt->strips);
-  }
-}
-
-void BKE_nla_blend_read_expand(BlendExpander *expander, ListBase *tracks)
-{
-  /* nla-data - referenced actions */
-  LISTBASE_FOREACH (NlaTrack *, nlt, tracks) {
-    blend_read_expand_nla_strips(expander, &nlt->strips);
   }
 }

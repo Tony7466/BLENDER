@@ -1,10 +1,12 @@
-/* SPDX-FileCopyrightText: 2022-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
  */
+
+#include "BLI_string.h"
 
 #include "BKE_global.h"
 
@@ -789,7 +791,12 @@ void MTLFrameBuffer::apply_state()
     }
 
     /* Update Context State. */
-    mtl_ctx->set_viewport(viewport_[0][0], viewport_[0][1], viewport_w, viewport_h);
+    if (multi_viewport_) {
+      mtl_ctx->set_viewports(GPU_MAX_VIEWPORTS, viewport_);
+    }
+    else {
+      mtl_ctx->set_viewport(viewport_[0][0], viewport_[0][1], viewport_w, viewport_h);
+    }
     mtl_ctx->set_scissor(scissor_[0], scissor_[1], scissor_[2], scissor_[3]);
     mtl_ctx->set_scissor_enabled(scissor_test_);
 

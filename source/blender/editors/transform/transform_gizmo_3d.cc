@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -49,6 +49,8 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
+
+#include "ANIM_bone_collections.h"
 
 /* local module include */
 #include "transform.hh"

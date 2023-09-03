@@ -1559,6 +1559,8 @@ typedef struct bNodeTreePath {
 typedef struct SpaceNodeOverlay {
   /* eSpaceNodeOverlay_Flag */
   int flag;
+  /* eSpaceNodeOverlay_preview_shape */
+  int preview_shape;
 } SpaceNodeOverlay;
 
 typedef enum eSpaceNodeOverlay_Flag {
@@ -1569,6 +1571,11 @@ typedef enum eSpaceNodeOverlay_Flag {
   SN_OVERLAY_SHOW_NAMED_ATTRIBUTES = (1 << 5),
   SN_OVERLAY_SHOW_PREVIEWS = (1 << 6),
 } eSpaceNodeOverlay_Flag;
+
+typedef enum eSpaceNodeOverlay_preview_shape {
+  SN_OVERLAY_PREVIEW_FLAT = 0,
+  SN_OVERLAY_PREVIEW_3D = 1,
+} eSpaceNodeOverlay_preview_shape;
 
 typedef struct SpaceNode {
   SpaceLink *next, *prev;
@@ -1629,7 +1636,6 @@ typedef struct SpaceNode {
   struct bGPdata *gpd;
 
   SpaceNodeOverlay overlay;
-  char _pad2[4];
 
   SpaceNode_Runtime *runtime;
 } SpaceNode;
@@ -1648,8 +1654,7 @@ typedef enum eSpaceNode_Flag {
   SNODE_FLAG_UNUSED_10 = (1 << 10), /* cleared */
   SNODE_FLAG_UNUSED_11 = (1 << 11), /* cleared */
   SNODE_PIN = (1 << 12),
-  /** automatically offset following nodes in a chain on insertion */
-  SNODE_SKIP_INSOFFSET = (1 << 13),
+  SNODE_FLAG_UNUSED_12 = (1 << 13),
 } eSpaceNode_Flag;
 
 /** #SpaceNode.texfrom */

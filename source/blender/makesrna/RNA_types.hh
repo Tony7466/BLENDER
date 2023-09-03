@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -346,7 +346,7 @@ typedef enum PropertyOverrideFlag {
   /**
    * Only use indices to compare items in the property, never names (collections only).
    *
-   * Useful when nameprop of the items is generated from other data
+   * Useful when #StructRNA::nameproperty of the items is generated from other data
    * (e.g. name of material slots is actually name of assigned material).
    */
   PROPOVERRIDE_NO_PROP_NAME = (1 << 11),

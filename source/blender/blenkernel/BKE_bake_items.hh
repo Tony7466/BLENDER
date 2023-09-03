@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,6 +17,22 @@ namespace blender::bke {
 class BakeItem {
  public:
   virtual ~BakeItem() = default;
+};
+
+struct BakeState {
+  /**
+   * The ids are usually correspond to socket ids, so that the mapping stays intact even if socket
+   * order changes.
+   */
+  Map<int, std::unique_ptr<BakeItem>> items_by_id;
+};
+
+/** Same as above, but does not own the bake items. */
+struct BakeStateRef {
+  Map<int, const BakeItem *> items_by_id;
+
+  BakeStateRef() = default;
+  BakeStateRef(const BakeState &bake_state);
 };
 
 class GeometryBakeItem : public BakeItem {

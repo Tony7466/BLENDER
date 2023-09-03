@@ -1,9 +1,10 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   .
+  dummy
   intern
   metal
   opengl
@@ -142,6 +143,12 @@ set(SRC
   intern/gpu_uniform_buffer_private.hh
   intern/gpu_vertex_buffer_private.hh
   intern/gpu_vertex_format_private.h
+
+  dummy/dummy_backend.hh
+  dummy/dummy_batch.hh
+  dummy/dummy_context.hh
+  dummy/dummy_framebuffer.hh
+  dummy/dummy_vertex_buffer.hh
 )
 
 set(OPENGL_SRC
@@ -603,13 +610,13 @@ if(WITH_METAL_BACKEND)
 
   set(MSL_C)
   foreach(MSL_FILE ${MSL_SRC})
-    data_to_c_simple(${MSL_FILE} MSL_C)
+    data_to_c_simple(${MSL_FILE} MSL_C STRIP_LEADING_C_COMMENTS)
   endforeach()
 endif()
 
 set(GLSL_C)
 foreach(GLSL_FILE ${GLSL_SRC})
-  data_to_c_simple(${GLSL_FILE} GLSL_C)
+  data_to_c_simple(${GLSL_FILE} GLSL_C STRIP_LEADING_C_COMMENTS)
 endforeach()
 
 set(SHADER_C)
@@ -649,8 +656,8 @@ set(SRC_SHADER_CREATE_INFOS
   ../draw/engines/eevee_next/shaders/infos/eevee_motion_blur_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_reflection_probe_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_shadow_info.hh
-  ../draw/engines/eevee_next/shaders/infos/eevee_tracing_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_subsurface_info.hh
+  ../draw/engines/eevee_next/shaders/infos/eevee_tracing_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_velocity_info.hh
   ../draw/engines/eevee_next/shaders/infos/eevee_volume_info.hh
   ../draw/engines/gpencil/shaders/infos/gpencil_info.hh

@@ -1,6 +1,8 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
+
+#include "BLI_string.h"
 
 #include "node_shader_util.hh"
 
@@ -103,7 +105,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .max(1.0f)
       .subtype(PROP_FACTOR);
 #define SOCK_CLEARCOAT_ROUGHNESS_ID 16
-  b.add_input<decl::Float>("IOR").default_value(1.45f).min(0.0f).max(1000.0f);
+  b.add_input<decl::Float>("IOR").default_value(1.45f).min(1.0f).max(1000.0f);
 #define SOCK_IOR_ID 17
   b.add_input<decl::Float>("Transmission")
       .default_value(0.0f)
@@ -137,7 +139,7 @@ static void node_shader_buts_principled(uiLayout *layout, bContext * /*C*/, Poin
 
 static void node_shader_init_principled(bNodeTree * /*ntree*/, bNode *node)
 {
-  node->custom1 = SHD_GLOSSY_GGX;
+  node->custom1 = SHD_GLOSSY_MULTI_GGX;
   node->custom2 = SHD_SUBSURFACE_RANDOM_WALK;
 }
 
@@ -170,7 +172,8 @@ static int node_shader_gpu_bsdf_principled(GPUMaterial *mat,
   }
 #endif
 
-  bool use_diffuse = socket_not_one(SOCK_METALLIC_ID) && socket_not_one(SOCK_TRANSMISSION_ID);
+  bool use_diffuse = socket_not_zero(SOCK_SHEEN_ID) ||
+                     (socket_not_one(SOCK_METALLIC_ID) && socket_not_one(SOCK_TRANSMISSION_ID));
   bool use_subsurf = socket_not_zero(SOCK_SUBSURFACE_ID) && use_diffuse;
   bool use_refract = socket_not_one(SOCK_METALLIC_ID) && socket_not_zero(SOCK_TRANSMISSION_ID);
   bool use_transparency = socket_not_one(SOCK_ALPHA_ID);

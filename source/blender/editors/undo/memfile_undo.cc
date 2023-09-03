@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -41,7 +41,7 @@
 #include "ED_undo.hh"
 #include "ED_util.hh"
 
-#include "../blenloader/BLO_undofile.h"
+#include "../blenloader/BLO_undofile.hh"
 
 #include "undo_intern.hh"
 

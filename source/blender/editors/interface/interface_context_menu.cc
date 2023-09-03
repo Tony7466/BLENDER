@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -423,7 +423,7 @@ static void ui_but_user_menu_add(bContext *C, uiBut *but, bUserMenu *um)
   }
   else if ((ot = UI_but_operatortype_get_from_enum_menu(but, &prop))) {
     ED_screen_user_menu_item_add_operator(&um->items,
-                                          WM_operatortype_name(ot, nullptr),
+                                          WM_operatortype_name(ot, nullptr).c_str(),
                                           ot,
                                           nullptr,
                                           RNA_property_identifier(prop),
@@ -489,7 +489,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
 
   uiPopupMenu *pup;
   uiLayout *layout;
-  bContextStore *previous_ctx = CTX_store_get(C);
+  const bContextStore *previous_ctx = CTX_store_get(C);
   {
     uiStringInfo label = {BUT_GET_LABEL, nullptr};
 
@@ -946,7 +946,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
     if (view_item_but) {
       BLI_assert(view_item_but->type == UI_BTYPE_VIEW_ITEM);
 
-      bContextStore *prev_ctx = CTX_store_get(C);
+      const bContextStore *prev_ctx = CTX_store_get(C);
       /* Sub-layout for context override. */
       uiLayout *sub = uiLayoutColumn(layout, false);
       set_layout_context_from_button(C, sub, view_item_but);

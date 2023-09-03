@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -24,6 +24,7 @@ set(INC
   ../../../intern/clog
   ../../../intern/ghost
   ../../../intern/memutil
+  ../../../extern/fmtlib/include
   ../bmesh
 
   # RNA_prototypes.h

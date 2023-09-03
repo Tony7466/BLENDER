@@ -1,10 +1,12 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edcurves
  */
+
+#include "BLI_string.h"
 
 #include "ED_curves.hh"
 #include "ED_object.hh"
@@ -370,24 +372,28 @@ static int run_node_group_invoke(bContext *C, wmOperator *op, const wmEvent * /*
   return run_node_group_exec(C, op);
 }
 
-static char *run_node_group_get_description(bContext *C, wmOperatorType * /*ot*/, PointerRNA *ptr)
+static std::string run_node_group_get_description(bContext *C,
+                                                  wmOperatorType * /*ot*/,
+                                                  PointerRNA *ptr)
 {
   const asset_system::AssetRepresentation *asset = get_asset(*C, *ptr, nullptr);
   if (!asset) {
-    return nullptr;
+    return "";
   }
-  const char *description = asset->get_metadata().description;
-  if (!description) {
-    return nullptr;
+  if (!asset->get_metadata().description) {
+    return "";
   }
-  return BLI_strdup(description);
+  return asset->get_metadata().description;
 }
 
 static void add_attribute_search_or_value_buttons(uiLayout *layout,
                                                   PointerRNA *md_ptr,
-                                                  const bNodeSocket &socket)
+                                                  const bNodeTreeInterfaceSocket &socket)
 {
-  char socket_id_esc[sizeof(socket.identifier) * 2];
+  bNodeSocketType *typeinfo = nodeSocketTypeFind(socket.socket_type);
+  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(typeinfo->type);
+
+  char socket_id_esc[MAX_NAME * 2];
   BLI_str_escape(socket_id_esc, socket.identifier, sizeof(socket_id_esc));
   const std::string rna_path = "[\"" + std::string(socket_id_esc) + "\"]";
   const std::string rna_path_use_attribute = "[\"" + std::string(socket_id_esc) +
@@ -403,7 +409,7 @@ static void add_attribute_search_or_value_buttons(uiLayout *layout,
   uiLayoutSetAlignment(name_row, UI_LAYOUT_ALIGN_RIGHT);
 
   const bool use_attribute = RNA_boolean_get(md_ptr, rna_path_use_attribute.c_str());
-  if (socket.type == SOCK_BOOLEAN && !use_attribute) {
+  if (socket_type == SOCK_BOOLEAN && !use_attribute) {
     uiItemL(name_row, "", ICON_NONE);
   }
   else {
@@ -411,7 +417,7 @@ static void add_attribute_search_or_value_buttons(uiLayout *layout,
   }
 
   uiLayout *prop_row = uiLayoutRow(split, true);
-  if (socket.type == SOCK_BOOLEAN) {
+  if (socket_type == SOCK_BOOLEAN) {
     uiLayoutSetPropSep(prop_row, false);
     uiLayoutSetAlignment(prop_row, UI_LAYOUT_ALIGN_EXPAND);
   }
@@ -421,7 +427,7 @@ static void add_attribute_search_or_value_buttons(uiLayout *layout,
     uiItemR(prop_row, md_ptr, rna_path_attribute_name.c_str(), UI_ITEM_NONE, "", ICON_NONE);
   }
   else {
-    const char *name = socket.type == SOCK_BOOLEAN ? socket.name : "";
+    const char *name = socket_type == SOCK_BOOLEAN ? socket.name : "";
     uiItemR(prop_row, md_ptr, rna_path.c_str(), UI_ITEM_NONE, name, ICON_NONE);
   }
 
@@ -434,9 +440,12 @@ static void draw_property_for_socket(const bNodeTree &node_tree,
                                      IDProperty *op_properties,
                                      PointerRNA *bmain_ptr,
                                      PointerRNA *op_ptr,
-                                     const bNodeSocket &socket,
+                                     const bNodeTreeInterfaceSocket &socket,
                                      const int socket_index)
 {
+  bNodeSocketType *typeinfo = nodeSocketTypeFind(socket.socket_type);
+  const eNodeSocketDatatype socket_type = eNodeSocketDatatype(typeinfo->type);
+
   /* The property should be created in #MOD_nodes_update_interface with the correct type. */
   IDProperty *property = IDP_GetPropertyFromGroup(op_properties, socket.identifier);
 
@@ -446,7 +455,7 @@ static void draw_property_for_socket(const bNodeTree &node_tree,
     return;
   }
 
-  char socket_id_esc[sizeof(socket.identifier) * 2];
+  char socket_id_esc[MAX_NAME * 2];
   BLI_str_escape(socket_id_esc, socket.identifier, sizeof(socket_id_esc));
 
   char rna_path[sizeof(socket_id_esc) + 4];
@@ -458,7 +467,7 @@ static void draw_property_for_socket(const bNodeTree &node_tree,
   /* Use #uiItemPointerR to draw pointer properties because #uiItemR would not have enough
    * information about what type of ID to select for editing the values. This is because
    * pointer IDProperties contain no information about their type. */
-  switch (socket.type) {
+  switch (socket_type) {
     case SOCK_OBJECT:
       uiItemPointerR(row, op_ptr, rna_path, bmain_ptr, "objects", socket.name, ICON_OBJECT_DATA);
       break;
@@ -502,10 +511,12 @@ static void run_node_group_ui(bContext *C, wmOperator *op)
     return;
   }
 
-  int input_index;
-  LISTBASE_FOREACH_INDEX (bNodeSocket *, io_socket, &node_tree->inputs, input_index) {
+  node_tree->ensure_topology_cache();
+  int input_index = 0;
+  for (bNodeTreeInterfaceSocket *io_socket : node_tree->interface_inputs()) {
     draw_property_for_socket(
         *node_tree, layout, op->properties, &bmain_ptr, op->ptr, *io_socket, input_index);
+    ++input_index;
   }
 }
 
@@ -695,7 +706,7 @@ static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)
   for (const asset_system::AssetRepresentation *asset : assets) {
     uiLayout *col = uiLayoutColumn(layout, false);
     wmOperatorType *ot = WM_operatortype_find("GEOMETRY_OT_execute_node_group", true);
-    const std::unique_ptr<AssetWeakReference> weak_ref = asset->make_weak_reference();
+    AssetWeakReference *weak_ref = asset->make_weak_reference();
     PointerRNA props_ptr;
     uiItemFullO_ptr(col,
                     ot,
@@ -708,6 +719,8 @@ static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)
     RNA_enum_set(&props_ptr, "asset_library_type", weak_ref->asset_library_type);
     RNA_string_set(&props_ptr, "asset_library_identifier", weak_ref->asset_library_identifier);
     RNA_string_set(&props_ptr, "relative_asset_identifier", weak_ref->relative_asset_identifier);
+
+    BKE_asset_weak_reference_free(&weak_ref);
   }
 
   asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
@@ -738,6 +751,7 @@ MenuType node_group_operator_assets_menu()
   type.poll = asset_menu_poll;
   type.draw = node_add_catalog_assets_draw;
   type.listener = asset::asset_reading_region_listen_fn;
+  type.context_dependent = true;
   return type;
 }
 

@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'd4d0daa934cd')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'5ba692898e63')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-08-07 09:03:59\n"
+"POT-Creation-Date: 2023-08-28 16:05:16\n"
 "PO-Revision-Date: 2022-08-19 12:33+0700\n"
 "Last-Translator: HỒ NHỰT CHÂU <su_huynh@yahoo.com>\n"
 "Language-Team: Tỉnh An Giang, Đình Bình Phú\n"
@@ -5558,36 +5558,8 @@ msgid "sRGB display space with Filmic view transform"
 msgstr "Không gian hiển thị sRGB áp dụng biến hóa hiển thị Filmic"
 
 
-msgid "Rec. 709 (Full Range), Blender native linear space"
-msgstr "Rec. 709 (Toàn Bộ Phạm vi), không gian tuyến tính thuộc địa của Blender"
-
-
-msgid "Linear ACES"
-msgstr "ACES Tuyến Tính"
-
-
-msgid "ACES2065-1 linear space"
-msgstr "Không gian tuyến tính ACES2065-1"
-
-
-msgid "Linear ACEScg"
-msgstr "ACEScg Tuyến Tính"
-
-
-msgid "ACEScg linear space"
-msgstr "Không gian tuyến tính ACEScg"
-
-
 msgid "Non-Color"
 msgstr "Vô Màu Sắc"
-
-
-msgid "sRGB display space"
-msgstr "Không gian hiển thị sRGB"
-
-
-msgid "XYZ"
-msgstr "XYZ"
 
 
 msgid "Do not perform any color transform on load, treat colors as in scene linear space already"
@@ -20224,20 +20196,80 @@ msgid "Camera near clipping distance"
 msgstr "Khoảng cách gần nhất cho hiển thị đồ trong máy quay phim"
 
 
-msgid "Cycles Camera Settings"
-msgstr "Cài Đặt Máy Quay Phim Cycles"
-
-
-msgid "Cycles camera settings"
-msgstr "Cài đặt mảy quay phim Cycles"
-
-
 msgid "Apparent size of the Camera object in the 3D View"
 msgstr "Kích cỡ của vật thể Máy Quay Phim trong màn 3D"
 
 
 msgid "Depth Of Field"
 msgstr "Độ Sâu Trường"
+
+
+msgid "Field of view for the fisheye lens"
+msgstr "Trường nhìn cho thấu kính mắt cá"
+
+
+msgid "Fisheye Lens"
+msgstr "Thấu Kính Mắt Cá"
+
+
+msgid "Lens focal length (mm)"
+msgstr "Tiêu điểm thấu kính (mm)"
+
+
+msgid "Fisheye Polynomial K0"
+msgstr "Đa Thức Mắt Cá K0"
+
+
+msgid "Coefficient K0 of the lens polynomial"
+msgstr "Hệ số K0 của đa thức thấu kính"
+
+
+msgid "Fisheye Polynomial K1"
+msgstr "Đa Thức Mắt Cá K1"
+
+
+msgid "Coefficient K1 of the lens polynomial"
+msgstr "Hệ số K1 của đa thức thấu kính"
+
+
+msgid "Fisheye Polynomial K2"
+msgstr "Đa Thức Mắt Cá K2"
+
+
+msgid "Coefficient K2 of the lens polynomial"
+msgstr "Hệ số K2 của đa thức thấu kính"
+
+
+msgid "Fisheye Polynomial K3"
+msgstr "Đa Thức Mắt Cá K3"
+
+
+msgid "Coefficient K3 of the lens polynomial"
+msgstr "Hệ số K3 của đa thức thấu kính"
+
+
+msgid "Fisheye Polynomial K4"
+msgstr "Đa Thức Mắt Cá K4"
+
+
+msgid "Coefficient K4 of the lens polynomial"
+msgstr "Hệ số K4 của đa thức thấu kính"
+
+
+msgid "Max Latitude"
+msgstr "Vĩ Độ Cực Đại"
+
+
+msgid "Maximum latitude (vertical angle) for the equirectangular lens"
+msgstr "Vĩ độ cực đại (góc dọc) cho thấu kính tuyến vuông"
+
+
+msgid "Min Latitude"
+msgstr "Vĩ Độ Cực Tiểu"
+
+
+msgid "Minimum latitude (vertical angle) for the equirectangular lens"
+msgstr "Vĩ độ cực tiểu (góc dọc) cho thấu kính tuyến vuông"
 
 
 msgid "Focal Length"
@@ -20268,12 +20300,68 @@ msgid "Specify the lens as the field of view's angle"
 msgstr "Xác định thấu kính cho đặt góc của trường màn"
 
 
+msgid "Max Longitude"
+msgstr "Kinh Độ Cực Đại"
+
+
+msgid "Maximum longitude (horizontal angle) for the equirectangular lens"
+msgstr "Kinh độ cực đại (góc ngang) cho thấu kính tuyến vuông"
+
+
+msgid "Min Longitude"
+msgstr "Kinh Độ Cực Tiểu"
+
+
+msgid "Minimum longitude (horizontal angle) for the equirectangular lens"
+msgstr "Kinh độ cực tiểu (góc ngang) cho thấu kính tuyến vuông"
+
+
 msgid "Orthographic Scale"
 msgstr "Phóng To Trực Giao"
 
 
 msgid "Orthographic Camera scale (similar to zoom)"
 msgstr "Phong to cho Máy Quay Phim trực giao (như phóng vào)"
+
+
+msgid "Panorama Type"
+msgstr "Loại Toàn Cảnh"
+
+
+msgid "Distortion to use for the calculation"
+msgstr "Dùng méo hóa cho tính toán"
+
+
+msgid "Equirectangular"
+msgstr "Kinh Vĩ Tuyến Vuông"
+
+
+msgid "Mirror Ball"
+msgstr "Trái Banh Gương"
+
+
+msgid "Fisheye Equidistant"
+msgstr "Mắt Cá Đều Khoảng Cách"
+
+
+msgid "Ideal for fulldomes, ignore the sensor dimensions"
+msgstr "Tốt cho toàn vòm, không quan tâm kích thước cảm biến"
+
+
+msgid "Fisheye Equisolid"
+msgstr "Mắt Cá Đều Rắn"
+
+
+msgid "Similar to most fisheye modern lens, takes sensor dimensions into consideration"
+msgstr "Tương tự thấu kính mắt cá hiện đại, mà dùng kích thước cảm biến"
+
+
+msgid "Fisheye Lens Polynomial"
+msgstr "Đa Thức Thấu Kính Mắt Cá"
+
+
+msgid "Defines the lens projection as polynomial to allow real world camera lenses to be mimicked"
+msgstr "Chỉ định phép chiếu của thấu kính bằng một đa thức cho xấp xỉ thấu kính máy quay phim thế giới thật"
 
 
 msgid "Passepartout Alpha"
@@ -28282,20 +28370,12 @@ msgid "Insert After"
 msgstr "Chèn Phía Sau"
 
 
-msgid "Insert a new item into collection after the one referenced in subitem_reference_name or _index"
-msgstr "Chèn một mặt hàng vào sưu tập sau mặt hàng được tham chiếu trong subitem_reference_name hoặc _index"
-
-
 msgid "Insert Before"
 msgstr "Chèn Phía Trước"
 
 
 msgid "Subitem Local Index"
 msgstr "Chỉ Số địa Phương Hạ Mặt Hàng"
-
-
-msgid "Used to handle insertions into collection"
-msgstr "Sử dụng để xử lý chèn vào sưu tập"
 
 
 msgid "Subitem Local Name"
@@ -38376,10 +38456,6 @@ msgid "Display Hidden"
 msgstr "Hiển Thị Ẩn"
 
 
-msgid "Include channels from objects/bone that aren't visible"
-msgstr "Gồm các kênh từ vật thể/xương không hiển thị"
-
-
 msgid "Dopesheet Sort Field"
 msgstr "Trường Sắp Thứ Tự Bảng Hoạt Hình"
 
@@ -40929,8 +41005,8 @@ msgid "Tracking Object"
 msgstr "Vật Thể Theo Dõi"
 
 
-msgid "Smoothing"
-msgstr "Mịn Hóa"
+msgid "Eccentricity"
+msgstr "Lệch Tâm"
 
 
 msgid "Anisotropic"
@@ -41276,15 +41352,6 @@ msgstr "Phân Số"
 
 msgid "The fraction part of A"
 msgstr "Phần phân số của A"
-
-
-msgctxt "NodeTree"
-msgid "Modulo"
-msgstr "Phần Dư"
-
-
-msgid "Modulo using fmod(A,B)"
-msgstr "Phần Dư dùng fmod(A,B)"
 
 
 msgctxt "NodeTree"
@@ -44567,16 +44634,8 @@ msgid "Projection of the input image"
 msgstr "Phép chiếu của ảnh ngõ vào"
 
 
-msgid "Equirectangular"
-msgstr "Kinh Vĩ Tuyến Vuông"
-
-
 msgid "Equirectangular or latitude-longitude projection"
 msgstr "Phép chiếu chữ nhật đều hay vĩ tuyến-kinh tuyến"
-
-
-msgid "Mirror Ball"
-msgstr "Trái Banh Gương"
 
 
 msgid "Projection from an orthographic photo of a mirror ball"
@@ -45231,6 +45290,11 @@ msgid "The fraction part of A entry-wise"
 msgstr "Phân dư của A từng thành phần"
 
 
+msgctxt "NodeTree"
+msgid "Modulo"
+msgstr "Phần Dư"
+
+
 msgid "Entry-wise modulo using fmod(A,B)"
 msgstr "hân dư của A từng thành phần dùng fmod(A,B)"
 
@@ -45869,6 +45933,10 @@ msgstr "Ngõ Vào Cây Giao Điểm"
 
 msgid "Collection of Node Tree Sockets"
 msgstr "Sưu Tập Ổ Cấm Cây Giao Điểm"
+
+
+msgid "Socket Type"
+msgstr "Loại Ổ Cắm"
 
 
 msgid "Node Tree Outputs"
@@ -51092,12 +51160,20 @@ msgstr "Biến đổi xoay thành Euler ZYX"
 
 
 msgctxt "Operator"
-msgid "Export PLY"
-msgstr "Xuất PLY"
+msgid "Export STL"
+msgstr "Xuất STL"
 
 
-msgid "Export as a Stanford PLY with normals, vertex colors and texture coordinates"
-msgstr "Xuất một vật thể trong tập tin PLY Stanford, có màu, và tọa độ chất liệu"
+msgid "Save STL triangle mesh data"
+msgstr "Lưu dữ liệu mạng lưới tam giác STL"
+
+
+msgid "Ascii"
+msgstr "Ascii"
+
+
+msgid "Save the file in ASCII file format"
+msgstr "Lưu tập tin bằng định dạng tập tin ASCII"
 
 
 msgid "X Forward"
@@ -51144,59 +51220,6 @@ msgid "-Z Up"
 msgstr "-Z Trên"
 
 
-msgid "ASCII"
-msgstr "ASCII"
-
-
-msgid "Export using ASCII file format, otherwise use binary"
-msgstr "Xuất dùng định dạng ASCII, nếu không dùng nhị phận"
-
-
-msgid "Export the active vertex color layer"
-msgstr "Xuất lớp màu đỉnh hoạt động"
-
-
-msgid "Apply Modifiers"
-msgstr "Áp Dụng Bộ Điều Chỉnh"
-
-
-msgid "Apply Modifiers to the exported mesh"
-msgstr "Áp dụng cuự sửa đổi với mạng lưới xuất"
-
-
-msgid "Export vertex normals"
-msgstr "Xuất pháp tuyến đỉnh"
-
-
-msgid "Selection Only"
-msgstr "Chỉ Vật Chọn"
-
-
-msgid "Export selected objects only"
-msgstr "Chỉ xuất vật thể được chọn"
-
-
-msgid "Export the active UV layer (will split edges by seams)"
-msgstr "Xuất lớp UV hoạt động (sẽ chẻ cạnh tại vết sẹo)"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "Xuất STL"
-
-
-msgid "Save STL triangle mesh data"
-msgstr "Lưu dữ liệu mạng lưới tam giác STL"
-
-
-msgid "Ascii"
-msgstr "Ascii"
-
-
-msgid "Save the file in ASCII file format"
-msgstr "Lưu tập tin bằng định dạng tập tin ASCII"
-
-
 msgid "Batch Mode"
 msgstr "Chế Độ Xấp"
 
@@ -51217,6 +51240,10 @@ msgid "Export in this reference space"
 msgstr "Xuất bằng không gian tham chiếu"
 
 
+msgid "Apply Modifiers"
+msgstr "Áp Dụng Bộ Điều Chỉnh"
+
+
 msgid "Apply the modifiers before saving"
 msgstr "Áp dụng bộ điều chỉnh trước lưu"
 
@@ -51227,6 +51254,14 @@ msgstr "Đơn Vị Cảnh"
 
 msgid "Apply current scene's unit (as defined by unit scale) to exported data"
 msgstr "Áp dụng đơn vị của cảnh (tùy chỉ định bằng phóng to đơn vị) với dữ liệu xuất"
+
+
+msgid "Selection Only"
+msgstr "Chỉ Vật Chọn"
+
+
+msgid "Export selected objects only"
+msgstr "Chỉ xuất vật thể được chọn"
 
 
 msgctxt "Operator"
@@ -51408,6 +51443,10 @@ msgstr "Nhét chất liệu trong tập tin FBX nhị phận (chỉ cho mẫu đ
 
 msgid "Scale all data (Some importers do not support scaled armatures!)"
 msgstr "Phóng to hết dữ liệu (có vài bộ nhập không hỗ trợ cốt phóng to!)"
+
+
+msgid "Smoothing"
+msgstr "Mịn Hóa"
 
 
 msgid "Export smoothing information (prefer 'Normals Only' option if your target importer understand split normals)"
@@ -51941,107 +51980,6 @@ msgstr "Ghi Nhớ Cài Đặt Xuất"
 
 msgid "Store glTF export settings in the Blender project"
 msgstr "Chứa cài đặt xuất glTF trong dự án Blender"
-
-
-msgctxt "Operator"
-msgid "Export OBJ"
-msgstr "Xuất OBJ"
-
-
-msgid "Save a Wavefront OBJ File"
-msgstr "Lưu tập tin OBJ Wavefront"
-
-
-msgid "Material Groups"
-msgstr "Nhóm Vật Liệu"
-
-
-msgid "Generate an OBJ group for each part of a geometry using a different material"
-msgstr "Chế tạo một nhóm OBJ cho mỗi bộ phận của một hình dạng bằng dùng một vật liệu khác"
-
-
-msgid "OBJ Groups"
-msgstr "Nhóm OBJ"
-
-
-msgid "Export Blender objects as OBJ groups"
-msgstr "Xuất vật thể Blender bằng nhóm OBJ"
-
-
-msgid "Keep Vertex Order"
-msgstr "Giữ Thứ Tự Đỉnh"
-
-
-msgid "Write out an OBJ for each frame"
-msgstr "Lưu một tập tin OBJ cho mỗi bức ảnh"
-
-
-msgid "OBJ Objects"
-msgstr "Vật Thể OBJ"
-
-
-msgid "Export Blender objects as OBJ objects"
-msgstr "Xuất vật thể Blender bằng vật thể OBJ"
-
-
-msgid "Include Edges"
-msgstr "Gồm Cạnh"
-
-
-msgid "Write Materials"
-msgstr "Lưu Vật Liệu"
-
-
-msgid "Write out the MTL file"
-msgstr "Lưu tập tin MTL"
-
-
-msgid "Apply modifiers"
-msgstr "Áp dụng bộ điều chỉnh"
-
-
-msgid "Write Normals"
-msgstr "Lưu Pháp Tuyến"
-
-
-msgid "Export one normal per vertex and per face, to represent flat faces and sharp edges"
-msgstr "Xuất một pháp tuyến cho mỗi đỉnh và mặt, cho biểu diễn mặt bằng phẳng và cạnh bén"
-
-
-msgid "Write Nurbs"
-msgstr "Lưu NURBS"
-
-
-msgid "Write nurbs curves as OBJ nurbs rather than converting to geometry"
-msgstr "Lưu cong NURBS thành NURBS OBJ thay biến đổi hình dạng"
-
-
-msgid "Smooth Groups"
-msgstr "Nhóm Mịn"
-
-
-msgid "Write sharp edges as smooth groups"
-msgstr "Lưu cạnh bén thành nhóm mịn"
-
-
-msgid "Bitflag Smooth Groups"
-msgstr "Nhóm Cờ Bit Mịn"
-
-
-msgid "Same as 'Smooth Groups', but generate smooth groups IDs as bitflags (produces at most 32 different smooth groups, usually much less)"
-msgstr "Giống 'Nhóm Mịn' nhưng chế tạo các ID nhóm mịn bằng cờ bit (chỉ được sản xuất nhiều nhất 32 nhóm mịn, thường ít hơn nhiều)"
-
-
-msgid "Include UVs"
-msgstr "Gồm UV"
-
-
-msgid "Write out the active UV coordinates"
-msgstr "Lưu tọa độ UV hoạt động"
-
-
-msgid "Polygroups"
-msgstr "Nhóm đa giác"
 
 
 msgctxt "Operator"
@@ -56678,19 +56616,6 @@ msgstr "Sử dụng kênh độ đục cho trong suốt"
 
 
 msgctxt "Operator"
-msgid "Import PLY"
-msgstr "Nhập PLY"
-
-
-msgid "Load a PLY geometry file"
-msgstr "Nhập một tập tin hình dạng PLY"
-
-
-msgid "File path used for importing the PLY file"
-msgstr "Đường dẫn tập tin cho nhập tập tin PLY"
-
-
-msgctxt "Operator"
 msgid "Import STL"
 msgstr "Nhập STL"
 
@@ -56915,63 +56840,6 @@ msgstr "Mức Log"
 
 msgid "The glTF format requires discontinuous normals, UVs, and other vertex attributes to be stored as separate vertices, as required for rendering on typical graphics hardware. This option attempts to combine co-located vertices where possible. Currently cannot combine verts with different normals"
 msgstr "Định dạng glTF yêu cầu những pháp tuyến không liên tiếp, tọa độ UV, và đặc trưng điểm khác được chứa bởi đỉnh riêng biệt, theo như cầu của phần cứng đồ họa bình thường. Tùy chọn này thử gồm lại đỉnh ở cùng chỗ. Hiện tại chưa được gồm đỉnh có pháp tuyến khác nhau"
-
-
-msgctxt "Operator"
-msgid "Import OBJ"
-msgstr "Nhập OBJ"
-
-
-msgid "Load a Wavefront OBJ File"
-msgstr "Nhập một tập tin OBJ Wavefront"
-
-
-msgid "Clamp Size"
-msgstr "Kẹp Lại Kích Cỡ"
-
-
-msgid "Clamp bounds under this value (zero to disable)"
-msgstr "Kẹp lại dưới giá trị này (đặt = 0 để tắt)"
-
-
-msgid "Split geometry, omits vertices unused by edges or faces"
-msgstr "Chẻ hình dạng, bỏ qua những đỉnh các cạnh và mặt không sử dụng"
-
-
-msgid "Keep Vert Order"
-msgstr "Giữ thứ tự đỉnh"
-
-
-msgid "Keep vertex order from file"
-msgstr "Giữ thứ tự đỉnh từ tập tin"
-
-
-msgid "Import lines and faces with 2 verts as edge"
-msgstr "Nhập các đường và mặt có 2 đỉnh làm cạnh"
-
-
-msgid "Poly Groups"
-msgstr "Nhóm Đa Giác"
-
-
-msgid "Import OBJ groups as vertex groups"
-msgstr "Nhập nhóm OBJ thành nhóm đỉnh"
-
-
-msgid "Search subdirs for any associated images (Warning, may be slow)"
-msgstr "Tìm ảnh liên quan trong thư mục phụ (Cảnh báo, có thể rất chậm)"
-
-
-msgid "Surround smooth groups by sharp edges"
-msgstr "Đặt cạnh bén quanh nhóm mịn"
-
-
-msgid "Import OBJ Groups into Blender Objects"
-msgstr "Nhập Vật Thể OBJ vào trong Vật Thể Blender"
-
-
-msgid "Import OBJ Objects into Blender Objects"
-msgstr "Nhập Vật Thể OBJ vào trong Vật Thể Blender"
 
 
 msgctxt "Operator"
@@ -61592,10 +61460,6 @@ msgid "Add Node Tree Interface Socket"
 msgstr "Thêm Ổ Cắm Giao Diện Cây Giao Điểm"
 
 
-msgid "Socket Type"
-msgstr "Loại Ổ Cắm"
-
-
 msgctxt "Operator"
 msgid "Change Node Tree Interface Socket Type"
 msgstr "Đổi Loại Ổ Cắm Giao Diện Cây Giao Điểm"
@@ -62228,10 +62092,6 @@ msgstr "Bật/Tắt Ngõ Vào Đặc Điểm"
 
 msgid "Switch between an attribute and a single value to define the data for every element"
 msgstr "Trao đổi giữa đặc điểm và một cái giá trị cho chỉ định dữ liệu từng phần tử"
-
-
-msgid "Prop Path"
-msgstr "Đường Dẫn Đặc Tính"
 
 
 msgid "Stroke offset for the line art modifier"
@@ -75858,6 +75718,10 @@ msgid "Export Material Groups"
 msgstr "Xuất Nhóm Vật Liệu"
 
 
+msgid "Generate an OBJ group for each part of a geometry using a different material"
+msgstr "Chế tạo một nhóm OBJ cho mỗi bộ phận của một hình dạng bằng dùng một vật liệu khác"
+
+
 msgid "Export Materials"
 msgstr "Xuất vật liệu"
 
@@ -75975,6 +75839,10 @@ msgid "Resize the objects to keep bounding box under this value. Value 0 disable
 msgstr "Đổi cỡ thước vật thể cho giữ hộp bao Quang nhỏ hơn giá trị này. Đặc = 0 để tắt kẹp lại"
 
 
+msgid "Import OBJ groups as vertex groups"
+msgstr "Nhập nhóm OBJ thành nhóm đỉnh"
+
+
 msgctxt "Operator"
 msgid "Open"
 msgstr "Mở"
@@ -76050,6 +75918,16 @@ msgstr "Nhãn Giao Diện"
 
 msgid "Open a path in a file browser"
 msgstr "Mở một đường dẫn trong một trình duyệt tập tin"
+
+
+msgctxt "Operator"
+msgid "Export PLY"
+msgstr "Xuất PLY"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "Nhập PLY"
 
 
 msgctxt "Operator"
@@ -76224,6 +76102,10 @@ msgstr "Độ Dài Mảng"
 
 msgid "Python value for unsupported custom property types"
 msgstr "Giá trị Python cho loại đặc tính tùy chọn không được hỗ trợ"
+
+
+msgid "Speaker"
+msgstr "Loa"
 
 
 msgid "Library Overridable"
@@ -77989,10 +77871,6 @@ msgid "Viewport Sampling Presets"
 msgstr "Đặt Sẵn Mẫu Màn Chiếu"
 
 
-msgid "View Object Types"
-msgstr "Loại Vật Thể Màn"
-
-
 msgid "Film"
 msgstr "Phim"
 
@@ -79266,6 +79144,10 @@ msgstr "Tư Phân Màn"
 
 msgid "Auto-Masking"
 msgstr "Tự Động-Mặt Nạ"
+
+
+msgid "Wire Color"
+msgstr "Màu Sợi Dây"
 
 
 msgid "Compositor"
@@ -83283,6 +83165,10 @@ msgid "Temperature"
 msgstr "Nhiệt Độ"
 
 
+msgid "XYZ"
+msgstr "XYZ"
+
+
 msgid "ID Property Group"
 msgstr "Nhóm Đặc Tính ID"
 
@@ -83389,122 +83275,6 @@ msgstr "Biểu Thức Chính Quy Tìm"
 
 msgid "Use regular expressions to match text in the 'Find' field"
 msgstr "Dùng biểu thức chính quy để tìm văn bản trong hộp 'Tìm'"
-
-
-msgid "Field of view for the fisheye lens"
-msgstr "Trường nhìn cho thấu kính mắt cá"
-
-
-msgid "Fisheye Lens"
-msgstr "Thấu Kính Mắt Cá"
-
-
-msgid "Lens focal length (mm)"
-msgstr "Tiêu điểm thấu kính (mm)"
-
-
-msgid "Fisheye Polynomial K0"
-msgstr "Đa Thức Mắt Cá K0"
-
-
-msgid "Coefficient K0 of the lens polynomial"
-msgstr "Hệ số K0 của đa thức thấu kính"
-
-
-msgid "Fisheye Polynomial K1"
-msgstr "Đa Thức Mắt Cá K1"
-
-
-msgid "Coefficient K1 of the lens polynomial"
-msgstr "Hệ số K1 của đa thức thấu kính"
-
-
-msgid "Fisheye Polynomial K2"
-msgstr "Đa Thức Mắt Cá K2"
-
-
-msgid "Coefficient K2 of the lens polynomial"
-msgstr "Hệ số K2 của đa thức thấu kính"
-
-
-msgid "Fisheye Polynomial K3"
-msgstr "Đa Thức Mắt Cá K3"
-
-
-msgid "Coefficient K3 of the lens polynomial"
-msgstr "Hệ số K3 của đa thức thấu kính"
-
-
-msgid "Fisheye Polynomial K4"
-msgstr "Đa Thức Mắt Cá K4"
-
-
-msgid "Coefficient K4 of the lens polynomial"
-msgstr "Hệ số K4 của đa thức thấu kính"
-
-
-msgid "Max Latitude"
-msgstr "Vĩ Độ Cực Đại"
-
-
-msgid "Maximum latitude (vertical angle) for the equirectangular lens"
-msgstr "Vĩ độ cực đại (góc dọc) cho thấu kính tuyến vuông"
-
-
-msgid "Min Latitude"
-msgstr "Vĩ Độ Cực Tiểu"
-
-
-msgid "Minimum latitude (vertical angle) for the equirectangular lens"
-msgstr "Vĩ độ cực tiểu (góc dọc) cho thấu kính tuyến vuông"
-
-
-msgid "Max Longitude"
-msgstr "Kinh Độ Cực Đại"
-
-
-msgid "Maximum longitude (horizontal angle) for the equirectangular lens"
-msgstr "Kinh độ cực đại (góc ngang) cho thấu kính tuyến vuông"
-
-
-msgid "Min Longitude"
-msgstr "Kinh Độ Cực Tiểu"
-
-
-msgid "Minimum longitude (horizontal angle) for the equirectangular lens"
-msgstr "Kinh độ cực tiểu (góc ngang) cho thấu kính tuyến vuông"
-
-
-msgid "Panorama Type"
-msgstr "Loại Toàn Cảnh"
-
-
-msgid "Distortion to use for the calculation"
-msgstr "Dùng méo hóa cho tính toán"
-
-
-msgid "Fisheye Equidistant"
-msgstr "Mắt Cá Đều Khoảng Cách"
-
-
-msgid "Ideal for fulldomes, ignore the sensor dimensions"
-msgstr "Tốt cho toàn vòm, không quan tâm kích thước cảm biến"
-
-
-msgid "Fisheye Equisolid"
-msgstr "Mắt Cá Đều Rắn"
-
-
-msgid "Similar to most fisheye modern lens, takes sensor dimensions into consideration"
-msgstr "Tương tự thấu kính mắt cá hiện đại, mà dùng kích thước cảm biến"
-
-
-msgid "Fisheye Lens Polynomial"
-msgstr "Đa Thức Thấu Kính Mắt Cá"
-
-
-msgid "Defines the lens projection as polynomial to allow real world camera lenses to be mimicked"
-msgstr "Chỉ định phép chiếu của thấu kính bằng một đa thức cho xấp xỉ thấu kính máy quay phim thế giới thật"
 
 
 msgid "Form of curves"
@@ -85783,8 +85553,8 @@ msgid "Render at 12.5% resolution"
 msgstr "Kết xuất ảnh dùng 12.5% độ phân giải"
 
 
-msgid "Resolution %"
-msgstr "Độ Phân Giải %"
+msgid "Resolution Scale"
+msgstr "Tỉ Số Độ Phân Giải"
 
 
 msgid "Percentage scale for render resolution"
@@ -91944,10 +91714,6 @@ msgid "Gizmo to adjust location"
 msgstr "Đồ đạc để chỉnh vị trí"
 
 
-msgid "Speaker"
-msgstr "Loa"
-
-
 msgid "Show Reconstruction"
 msgstr "Hiện Sự Xây Dựng Lại"
 
@@ -93890,10 +93656,6 @@ msgstr "Giao Điểm Vectơ"
 
 msgid "Wires"
 msgstr "Sợi Dây"
-
-
-msgid "Wire Color"
-msgstr "Màu Sợi Dây"
 
 
 msgid "Wire Select"
@@ -96622,6 +96384,10 @@ msgstr "Hiện Mốc Bờ"
 
 msgid "Show VR Camera"
 msgstr "Hiện Máy Quay Phim Sự Thật Ảo"
+
+
+msgid "Theme"
+msgstr "Phong Cách"
 
 
 msgid "X-Ray Alpha"
@@ -99871,10 +99637,6 @@ msgid "Add a new Variant Slot"
 msgstr "Thêm một Lhe Biến Thể mới"
 
 
-msgid "Curves as NURBS"
-msgstr "Đường Cong sang NURBS"
-
-
 msgid "Multiple selected objects. Only the active one will be evaluated"
 msgstr "Được chọn nhiều vật thể. Chỉ sẽ đánh giá vật thể hoạt động"
 
@@ -100658,10 +100420,6 @@ msgstr "Đã đặt lại tên cho %d của %d %s"
 
 msgid "Shortcuts"
 msgstr "Phím Tắt"
-
-
-msgid "Theme"
-msgstr "Phong Cách"
 
 
 msgctxt "Operator"
@@ -102817,10 +102575,6 @@ msgstr "Tứ Tư"
 
 msgid "Multiply R"
 msgstr "Nhân R"
-
-
-msgid "Eccentricity"
-msgstr "Lệch Tâm"
 
 
 msgid "Enable the Color Ramp first"
@@ -105086,10 +104840,6 @@ msgid "Revert to Saved Preferences"
 msgstr "Hoàn Lại đến Tùy Chọn Được Lưu"
 
 
-msgid "Resolution Scale"
-msgstr "Tỉ Số Độ Phân Giải"
-
-
 msgid "Splash Screen"
 msgstr "Ảnh Quảng Cáo"
 
@@ -105160,10 +104910,6 @@ msgstr "Dùng Màu Tùy Chọn"
 
 msgid "Sculpt Overlay Color"
 msgstr "Khắc Màu Lớp Che"
-
-
-msgid "Node Auto-Offset Margin"
-msgstr "Lề Dịch Tự Động Của Giao Điểm"
 
 
 msgid "Minimum Grid Spacing"
@@ -106443,10 +106189,6 @@ msgstr "Máy Quay Phim Địa Phương"
 
 msgid "Camera to View"
 msgstr "Khóa Máy Quy Phim với Màn"
-
-
-msgid "Object Types Visibility"
-msgstr "Sự Hiển Thị Loại Vật Thể"
 
 
 msgid "Object Gizmos"
@@ -107869,10 +107611,6 @@ msgid "[Action Stash]"
 msgstr "[Hành Động Cất Chứa]"
 
 
-msgid "Non-Empty object '%s' cannot duplicate collection '%s' anymore in Blender 2.80, removed instancing"
-msgstr "Vật Thể không phải Vật Thể Rỗng '%s' không thể sao chép nữa sưu tập '%s' trong Blender 2.80"
-
-
 msgid "Can't find object data of %s lib %s"
 msgstr "Không thể tìm dữ liệu của %s thư viện %s"
 
@@ -108270,16 +108008,16 @@ msgid "Checking sanity of current .blend file *BEFORE* save to disk"
 msgstr "Đang xem sự hợp lệ của tập tin .blend hiện tại *TRƯỚC* lưu vào đĩa"
 
 
+msgid "Checking sanity of current .blend file *AFTER* save to disk"
+msgstr "Đang xem sự hợp lệ của tập tin .blend hiện tại *SAU* lưu vào đĩa"
+
+
 msgid "Version backup failed (file saved with @)"
 msgstr "Phiên bản dự phòng bị thất bại (tập tin lưu có @)"
 
 
 msgid "Cannot change old file (file saved with @)"
 msgstr "Không thể đổi tập tin cũ (tập tin được lưu với @)"
-
-
-msgid "Checking sanity of current .blend file *AFTER* save to disk"
-msgstr "Đang xem sự hợp lệ của tập tin .blend hiện tại *SAU* lưu vào đĩa"
 
 
 msgid "Cannot open file %s for writing: %s"
@@ -110516,6 +110254,10 @@ msgid "Triangulated Mesh"
 msgstr "Mạng Lưới Tam Giác Hóa"
 
 
+msgid "Curves as NURBS"
+msgstr "Đường Cong sang NURBS"
+
+
 msgid "Grouping"
 msgstr "Nhóm Hóa"
 
@@ -110524,8 +110266,20 @@ msgid "Object Groups"
 msgstr "Nhóm Vật Thể"
 
 
+msgid "Material Groups"
+msgstr "Nhóm Vật Liệu"
+
+
+msgid "Smooth Groups"
+msgstr "Nhóm Mịn"
+
+
 msgid "Smooth Group Bitflags"
 msgstr "Cờ Bit Nhóm Mịn"
+
+
+msgid "ASCII"
+msgstr "ASCII"
 
 
 msgid "File References"
@@ -114024,28 +113778,8 @@ msgid "). Click here to proceed..."
 msgstr "). Bấm đầy để làm tiếp theo..."
 
 
-msgid "Cannot edit builtin name"
-msgstr "Không thể biên tập tên nội bộ"
-
-
-msgid "Cannot edit sequence name"
-msgstr "Không thể biên tập tên trình tự"
-
-
-msgid "Cannot edit name of an override data-block"
-msgstr "Không thể biên tập tên của một cục dữ liệu vượt quyền"
-
-
-msgid "Cannot edit name of master collection"
-msgstr "Không thể biên tập tên của sưu tập chủ"
-
-
 msgid "Cannot edit the path of an indirectly linked library"
 msgstr "Không thể biên tập đường dẫn của thư viện được liên kết gián tiếp"
-
-
-msgid "Library path is not editable from here anymore, please use Relocate operation instead"
-msgstr "Đường dẫn thư viện không thể biên tập từ đây nữa, làm ơn dùng thao tác Di Chuyển Tới thay thế"
 
 
 msgid "No active item to rename"
@@ -116052,16 +115786,16 @@ msgid "Registering node socket class: '%s' is too long, maximum length is %d"
 msgstr "Đăng ký lớp ổ cắm giao điểm: '%s' quá dài, bề dài tối đa là %d"
 
 
+msgid "Unable to create socket"
+msgstr "Không thể chế tạo ổ cắm"
+
+
 msgid "Same input/output direction of sockets"
 msgstr "Ổ cắm có cùng hướng ngõ vào/ngõ ra"
 
 
 msgid "Unable to locate link in node tree"
 msgstr "Không tìm được liên kết trong cây giao điểm"
-
-
-msgid "Unable to create socket"
-msgstr "Không thể chế tạo ổ cắm"
 
 
 msgid "Node tree '%s' has undefined type %s"

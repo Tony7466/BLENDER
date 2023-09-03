@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -752,7 +752,7 @@ void NLA_OT_actionclip_add(wmOperatorType *ot)
 
   /* props */
   /* TODO: this would be nicer as an ID-pointer. */
-  prop = RNA_def_enum(ot->srna, "action", DummyRNA_NULL_items, 0, "Action", "");
+  prop = RNA_def_enum(ot->srna, "action", rna_enum_dummy_NULL_items, 0, "Action", "");
   RNA_def_enum_funcs(prop, RNA_action_itemf);
   RNA_def_property_flag(prop, PROP_ENUM_NO_TRANSLATE);
   ot->prop = prop;
@@ -1669,7 +1669,7 @@ static int nlaedit_swap_exec(bContext *C, wmOperator *op)
 
       /* check if the track has room for the strips to be swapped */
       if (BKE_nlastrips_has_space(&nlt->strips, nsa[0], nsa[1]) &&
-          BKE_nlastrips_has_space(&nlt->strips, nsb[0], nsb[1]))
+          BKE_nlastrips_has_space(&nlt->strips, nsb[0], nsb[1]) && (nsb[1] <= nsa[0]))
       {
         /* set new extents for strips then */
         area->start = nsa[0];
@@ -1682,7 +1682,13 @@ static int nlaedit_swap_exec(bContext *C, wmOperator *op)
       }
       else {
         /* not enough room to swap, so show message */
-        if ((area->flag & NLASTRIP_FLAG_TEMP_META) || (sb->flag & NLASTRIP_FLAG_TEMP_META)) {
+        if (nsb[1] > nsa[0]) {
+          BKE_report(op->reports,
+                     RPT_WARNING,
+                     "Cannot swap selected strips because they will overlap each other in their "
+                     "new places");
+        }
+        else if ((area->flag & NLASTRIP_FLAG_TEMP_META) || (sb->flag & NLASTRIP_FLAG_TEMP_META)) {
           BKE_report(
               op->reports,
               RPT_WARNING,
