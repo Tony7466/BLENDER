@@ -10,7 +10,6 @@
 #include "BKE_bake_items_paths.hh"
 #include "BKE_bake_items_serialize.hh"
 
-struct bNodeTree;
 struct NodesModifierData;
 struct Main;
 struct Object;
