@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,7 +23,6 @@
 #include "BLI_color.hh"
 #include "BLI_endian_switch.h"
 #include "BLI_index_range.hh"
-#include "BLI_math.h"
 #include "BLI_math_color_blend.h"
 #include "BLI_math_quaternion_types.hh"
 #include "BLI_math_vector.hh"
@@ -48,12 +47,12 @@
 #include "BKE_customdata_file.h"
 #include "BKE_deform.h"
 #include "BKE_main.h"
-#include "BKE_mesh_mapping.h"
-#include "BKE_mesh_remap.h"
-#include "BKE_multires.h"
-#include "BKE_subsurf.h"
+#include "BKE_mesh_mapping.hh"
+#include "BKE_mesh_remap.hh"
+#include "BKE_multires.hh"
+#include "BKE_subsurf.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "bmesh.h"
 
@@ -2231,7 +2230,9 @@ static bool customdata_merge_internal(const CustomData *source,
     const int src_layer_flag = src_layer.flag;
 
     if (type != last_type) {
-      current_type_layer_count = 0;
+      /* Don't exceed layer count on destination. */
+      const int layernum_dst = CustomData_number_of_layers(dest, type);
+      current_type_layer_count = layernum_dst;
       max_current_type_layer_count = CustomData_layertype_layers_max(type);
       last_active = src_layer.active;
       last_render = src_layer.active_rnd;
@@ -2589,8 +2590,8 @@ int CustomData_get_layer_index_n(const CustomData *data, const eCustomDataType t
   int i = CustomData_get_layer_index(data, type);
 
   if (i != -1) {
-    BLI_assert(i + n < data->totlayer);
-    i = (data->layers[i + n].type == type) ? (i + n) : (-1);
+    /* If the value of n goes past the block of layers of the correct type, return -1. */
+    i = (i + n < data->totlayer && data->layers[i + n].type == type) ? (i + n) : (-1);
   }
 
   return i;
@@ -3505,33 +3506,6 @@ void CustomData_swap_corners(CustomData *data, const int index, const int *corne
   }
 }
 
-void CustomData_swap(CustomData *data, const int index_a, const int index_b)
-{
-  char buff_static[256];
-
-  if (index_a == index_b) {
-    return;
-  }
-
-  for (int i = 0; i < data->totlayer; i++) {
-    const LayerTypeInfo *typeInfo = layerType_getInfo(eCustomDataType(data->layers[i].type));
-    const size_t size = typeInfo->size;
-    const size_t offset_a = size * index_a;
-    const size_t offset_b = size * index_b;
-
-    void *buff = size <= sizeof(buff_static) ? buff_static : MEM_mallocN(size, __func__);
-    memcpy(buff, POINTER_OFFSET(data->layers[i].data, offset_a), size);
-    memcpy(POINTER_OFFSET(data->layers[i].data, offset_a),
-           POINTER_OFFSET(data->layers[i].data, offset_b),
-           size);
-    memcpy(POINTER_OFFSET(data->layers[i].data, offset_b), buff, size);
-
-    if (buff != buff_static) {
-      MEM_freeN(buff);
-    }
-  }
-}
-
 void *CustomData_get_for_write(CustomData *data,
                                const int index,
                                const eCustomDataType type,
@@ -4285,11 +4259,10 @@ void CustomData_blend_write_prepare(CustomData &data,
   data.totlayer = layers_to_write.size();
   data.maxlayer = data.totlayer;
 
-  /* Note: data->layers may be null, this happens when adding
-   * a legacy MPoly struct to a mesh with no other face attributes.
+  /* NOTE: `data->layers` may be null, this happens when adding
+   * a legacy #MPoly struct to a mesh with no other face attributes.
    * This leaves us with no unique ID for DNA to identify the old
-   * data with when loading the file.
-   */
+   * data with when loading the file. */
   if (!data.layers && layers_to_write.size() > 0) {
     /* We just need an address that's unique. */
     data.layers = reinterpret_cast<CustomDataLayer *>(&data.layers);
@@ -5214,14 +5187,14 @@ static void blend_read_mdisps(BlendDataReader *reader,
         /* this calculation is only correct for loop mdisps;
          * if loading pre-BMesh face mdisps this will be
          * overwritten with the correct value in
-         * bm_corners_to_loops() */
+         * #bm_corners_to_loops() */
         float gridsize = sqrtf(mdisps[i].totdisp);
         mdisps[i].level = int(logf(gridsize - 1.0f) / float(M_LN2)) + 1;
       }
 
       if (BLO_read_requires_endian_switch(reader) && (mdisps[i].disps)) {
-        /* DNA_struct_switch_endian doesn't do endian swap for (*disps)[] */
-        /* this does swap for data written at write_mdisps() - readfile.c */
+        /* #DNA_struct_switch_endian doesn't do endian swap for `(*disps)[]` */
+        /* this does swap for data written at #write_mdisps() - `readfile.cc`. */
         BLI_endian_switch_float_array(*mdisps[i].disps, mdisps[i].totdisp * 3);
       }
       if (!external && !mdisps[i].disps) {

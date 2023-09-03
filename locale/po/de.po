@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'5aff5bc0e72b')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'5ba692898e63')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-07-17 12:39:59\n"
+"POT-Creation-Date: 2023-08-28 16:05:16\n"
 "PO-Revision-Date: \n"
 "Last-Translator: Martin Reininger <martinreininger@gmx.net>\n"
 "Language-Team: German translation team\n"
@@ -1016,6 +1016,22 @@ msgstr "Schilder"
 
 msgid "Custom tags (name tokens) for the asset, used for filtering and general asset management"
 msgstr "Benutzerdefiniertes Schild (Namenskürzel) für das Vermögen, verwendet für das Filtern und das generelle Vermögensmanagement"
+
+
+msgid "ID Name"
+msgstr "ID Name"
+
+
+msgid "Options"
+msgstr "Optionen"
+
+
+msgid "Display Filter"
+msgstr "Anzeigefilter"
+
+
+msgid "Show Names"
+msgstr "Namen anzeigen"
 
 
 msgid "Asset Tag"
@@ -3814,6 +3830,10 @@ msgid "Factor of Simplify using adaptive algorithm"
 msgstr "Faktor der Vereinfachung mit adaptivem Algorithmus"
 
 
+msgid "Active Layer"
+msgstr "Aktive Ebene"
+
+
 msgid "Default Eraser"
 msgstr "Standard Radierer"
 
@@ -4008,10 +4028,6 @@ msgstr "Ebene ausblenden"
 
 msgid "Cache Layers"
 msgstr "Cache-Ebenen"
-
-
-msgid "Active Layer"
-msgstr "Aktive Ebene"
 
 
 msgid "Object Path"
@@ -5156,14 +5172,6 @@ msgstr "Eingabe-Farbraum"
 
 msgid "Color space in the image file, to convert to and from when saving and loading the image"
 msgstr "Farbraum in der Bilddatei, von dem oder in das Bild konvertiert wird, wenn das Bild gespeichert und geladen wird"
-
-
-msgid "Raw"
-msgstr "Raw"
-
-
-msgid "XYZ"
-msgstr "XYZ"
 
 
 msgid "Do not perform any color transform on load, treat colors as in scene linear space already"
@@ -11577,10 +11585,6 @@ msgid "GizmoGroup"
 msgstr "GizmoGruppe"
 
 
-msgid "Options"
-msgstr "Optionen"
-
-
 msgid "Use in 3D viewport"
 msgstr "3D Ansichtsfenster verwenden"
 
@@ -11609,8 +11613,8 @@ msgid "Temporary"
 msgstr "Temporär"
 
 
-msgid "UI"
-msgstr "UI"
+msgid "Sidebar"
+msgstr "Seitenleiste"
 
 
 msgid "Tools"
@@ -13508,16 +13512,20 @@ msgid "Camera near clipping distance"
 msgstr "Kamera nahe Clipping-Entfernung"
 
 
-msgid "Cycles Camera Settings"
-msgstr "Cycles Kameraeinstellungen"
-
-
-msgid "Cycles camera settings"
-msgstr "Cycles Kameraeinstellungen"
-
-
 msgid "Depth Of Field"
 msgstr "Schärfentiefe"
+
+
+msgid "Field of view for the fisheye lens"
+msgstr "Anzeigemodus für die Dateiliste"
+
+
+msgid "Fisheye Lens"
+msgstr "Fischaugenlinse"
+
+
+msgid "Lens focal length (mm)"
+msgstr "Linsen-Brennweite (mm)"
 
 
 msgid "Focal Length"
@@ -13538,6 +13546,22 @@ msgstr "Millimeter"
 
 msgid "Orthographic Scale"
 msgstr "Orthographisch skalieren"
+
+
+msgid "Distortion to use for the calculation"
+msgstr "Rauch aus Simulation löschen"
+
+
+msgid "Equirectangular"
+msgstr "Equirectangular"
+
+
+msgid "Mirror Ball"
+msgstr "Ball spiegeln"
+
+
+msgid "Ideal for fulldomes, ignore the sensor dimensions"
+msgstr "Flächenausrichtung umkehren"
 
 
 msgid "Passepartout Alpha"
@@ -15283,10 +15307,6 @@ msgid "Loops"
 msgstr "Schleifen"
 
 
-msgid "Loops of the mesh (polygon corners)"
-msgstr "Masse des Objekts"
-
-
 msgid "Polygons"
 msgstr "Polygone"
 
@@ -15479,10 +15499,6 @@ msgid "Index of the active output"
 msgstr "Index, der aktiven Ausgabe"
 
 
-msgid "ID Name"
-msgstr "ID Name"
-
-
 msgid "Label"
 msgstr "Beschriftung"
 
@@ -15597,6 +15613,26 @@ msgstr "GPU-Berechnung zulassen"
 
 msgid "Viewer Region"
 msgstr "Ansichtsregion"
+
+
+msgid "Edit"
+msgstr "Bearbeiten"
+
+
+msgid "Sculpt"
+msgstr "Skulptur"
+
+
+msgid "Tool"
+msgstr "Werkzeug"
+
+
+msgid "Mesh"
+msgstr "Masche"
+
+
+msgid "Point Cloud"
+msgstr "Punkt Wolke"
 
 
 msgid "Shader Node Tree"
@@ -16700,10 +16736,6 @@ msgstr "Partikel/Fläche"
 
 msgid "Virtual Parents"
 msgstr "Virtuelle Eltern"
-
-
-msgid "Point Cloud"
-msgstr "Punkt Wolke"
 
 
 msgid "Point cloud data-block"
@@ -20501,10 +20533,6 @@ msgid "NLA Context Menu"
 msgstr "NLA-Kontextmenü"
 
 
-msgid "Edit"
-msgstr "Bearbeiten"
-
-
 msgid "Converter"
 msgstr "Konverter"
 
@@ -20547,10 +20575,6 @@ msgstr "Schreiben"
 
 msgid "Instances"
 msgstr "Instanzen"
-
-
-msgid "Mesh"
-msgstr "Masche"
 
 
 msgid "Node"
@@ -20852,10 +20876,6 @@ msgstr "Proportionaler Bearbeitungsabfall"
 
 msgid "Random Mask"
 msgstr "Zufällige Maske"
-
-
-msgid "Sculpt"
-msgstr "Skulptur"
 
 
 msgid "Mask Edit"
@@ -23424,10 +23444,6 @@ msgid "Display Hidden"
 msgstr "Ausgeblendete anzeigen"
 
 
-msgid "Include channels from objects/bone that aren't visible"
-msgstr "Einschließlich Kanäle von Objekten/Knochen die unsichtbar sind"
-
-
 msgid "Dopesheet Sort Field"
 msgstr "Anfang der Datei"
 
@@ -25012,10 +25028,6 @@ msgid "Despill Factor"
 msgstr "Dichte-Faktor"
 
 
-msgid "Matte dilate/erode side"
-msgstr "Maske Seite erweitern/verkleinern"
-
-
 msgid "Edge Kernel Radius"
 msgstr "Kantenradius"
 
@@ -25233,11 +25245,6 @@ msgstr "1 if (A == B) mit Tolleranz C else 0"
 
 msgid "The fraction part of A"
 msgstr "Der Bruchteil von A"
-
-
-msgctxt "NodeTree"
-msgid "Modulo"
-msgstr "Modulo"
 
 
 msgid "sin(A)"
@@ -25946,6 +25953,10 @@ msgid "Subdivide Mesh"
 msgstr "Masche unterteilen"
 
 
+msgid "Selection"
+msgstr "Auswahl"
+
+
 msgid "Translate Instances"
 msgstr "Instanzen übersetzen"
 
@@ -26085,10 +26096,6 @@ msgstr "Transluzent BSDF"
 
 msgid "Transparent BSDF"
 msgstr "Transparent"
-
-
-msgid "Velvet BSDF"
-msgstr "Samt BSDF"
 
 
 msgid "Bump"
@@ -26329,14 +26336,6 @@ msgstr "Projektion"
 
 msgid "Projection of the input image"
 msgstr "Projektion vom Eingangsbild"
-
-
-msgid "Equirectangular"
-msgstr "Equirectangular"
-
-
-msgid "Mirror Ball"
-msgstr "Ball spiegeln"
 
 
 msgid "Gradient Texture"
@@ -26595,6 +26594,11 @@ msgid "Normalize A"
 msgstr "Normalisiere A"
 
 
+msgctxt "NodeTree"
+msgid "Modulo"
+msgstr "Modulo"
+
+
 msgid "Vector Rotate"
 msgstr "Vektor Rotieren"
 
@@ -26849,6 +26853,10 @@ msgstr "Minimalwert"
 
 msgid "Node Tree Inputs"
 msgstr "Knotenbaumeingaben"
+
+
+msgid "Socket Type"
+msgstr "Buchsentype"
 
 
 msgid "Node Tree Outputs"
@@ -27385,8 +27393,8 @@ msgstr "Nach Unten"
 
 
 msgctxt "Operator"
-msgid "Rename Channels"
-msgstr "Kanäle umbenennen"
+msgid "Rename Channel"
+msgstr "Kanal umbenennen"
 
 
 msgid "Extend selection instead of deselecting everything first"
@@ -28124,10 +28132,6 @@ msgstr "Pinsel auf Voreinstellung, basierend auf aktivem Werkzeug, zurücksetzen
 
 msgid "Scalar"
 msgstr "Skalar"
-
-
-msgid "Tool"
-msgstr "Werkzeug"
 
 
 msgid "Translation"
@@ -29203,10 +29207,6 @@ msgid "Paste text from clipboard"
 msgstr "Text aus der Zwischenablage einfügen"
 
 
-msgid "Selection"
-msgstr "Auswahl"
-
-
 msgid "Information"
 msgstr "Information"
 
@@ -30023,8 +30023,20 @@ msgstr "Rotationen zu Euler-ZYX konvertieren"
 
 
 msgctxt "Operator"
-msgid "Export PLY"
-msgstr "PLY exportieren"
+msgid "Export STL"
+msgstr "STL exportieren"
+
+
+msgid "Save STL triangle mesh data"
+msgstr "Speichern von STL-Dreiecksmaschendaten"
+
+
+msgid "Ascii"
+msgstr "ASCII"
+
+
+msgid "Save the file in ASCII file format"
+msgstr "Speichern der Datei im ASCII-Dateiformat"
 
 
 msgid "X Forward"
@@ -30071,39 +30083,6 @@ msgid "-Z Up"
 msgstr "-Z Oben"
 
 
-msgid "ASCII"
-msgstr "ASCII"
-
-
-msgid "Export the active vertex color layer"
-msgstr "Aktive Punkt-Farbebene exportieren"
-
-
-msgid "Selection Only"
-msgstr "Nur Auswahl"
-
-
-msgid "Export selected objects only"
-msgstr "Nur ausgewählte Objekte exportieren"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "STL exportieren"
-
-
-msgid "Save STL triangle mesh data"
-msgstr "Speichern von STL-Dreiecksmaschendaten"
-
-
-msgid "Ascii"
-msgstr "ASCII"
-
-
-msgid "Save the file in ASCII file format"
-msgstr "Speichern der Datei im ASCII-Dateiformat"
-
-
 msgid "Batch Mode"
 msgstr "Batch-Modus"
 
@@ -30130,6 +30109,14 @@ msgstr "Szeneneinheit"
 
 msgid "Apply current scene's unit (as defined by unit scale) to exported data"
 msgstr "Anwenden der Aktuellen Szeneneinheit (wie durch Einheitenmaßstab definiert) auf exportierte Daten"
+
+
+msgid "Selection Only"
+msgstr "Nur Auswahl"
+
+
+msgid "Export selected objects only"
+msgstr "Nur ausgewählte Objekte exportieren"
 
 
 msgctxt "Operator"
@@ -30328,47 +30315,6 @@ msgstr "Renderfähige Objekte"
 
 msgid "Remember Export Settings"
 msgstr "Exporteinstellungen merken"
-
-
-msgctxt "Operator"
-msgid "Export OBJ"
-msgstr "OBJ exportieren"
-
-
-msgid "Material Groups"
-msgstr "Materialgruppe"
-
-
-msgid "OBJ Groups"
-msgstr "OBJ Gruppen"
-
-
-msgid "Keep Vertex Order"
-msgstr "Punktordnung beibehalten"
-
-
-msgid "OBJ Objects"
-msgstr "OBJ Objekte"
-
-
-msgid "Include Edges"
-msgstr "Kanten einschließen"
-
-
-msgid "Write Materials"
-msgstr "Schreiben von Materialien"
-
-
-msgid "Apply modifiers"
-msgstr "Modifizierer anwenden"
-
-
-msgid "Write Normals"
-msgstr "Normale schreiben"
-
-
-msgid "Include UVs"
-msgstr "UV's einschließen"
 
 
 msgctxt "Operator"
@@ -31555,14 +31501,6 @@ msgid "Grease Pencil Box Shape"
 msgstr "Wachsstift Feldform"
 
 
-msgid "Number of points by edge"
-msgstr "Anzahl der Punkte nach Kante"
-
-
-msgid "Number of subdivision by edges"
-msgstr "Anzahl der Unterteilung nach Kanten"
-
-
 msgid "Type of shape"
 msgstr "Typ der Form"
 
@@ -32659,19 +32597,6 @@ msgstr "Alphakanal für Transparenz verwenden"
 
 
 msgctxt "Operator"
-msgid "Import PLY"
-msgstr "PLY importieren"
-
-
-msgid "Load a PLY geometry file"
-msgstr "Laden einer PLY-Geometriedatei"
-
-
-msgid "File path used for importing the PLY file"
-msgstr "Dateipfad, der zum Importieren der PLY-Datei verwendet wird"
-
-
-msgctxt "Operator"
 msgid "Import STL"
 msgstr "STL importieren"
 
@@ -32728,31 +32653,6 @@ msgstr "Normale Daten verwenden"
 
 msgid "Flat Shading"
 msgstr "Flaches Shading"
-
-
-msgctxt "Operator"
-msgid "Import OBJ"
-msgstr "OBJ importieren"
-
-
-msgid "Clamp Size"
-msgstr "Schrittweite"
-
-
-msgid "Keep vertex order from file"
-msgstr "Punkt-Ordnung von der Datei beibehalten"
-
-
-msgid "Import OBJ groups as vertex groups"
-msgstr "OBJ-Gruppen als Punktgruppen importieren"
-
-
-msgid "Import OBJ Groups into Blender Objects"
-msgstr "OBJ-Gruppen in Blender-Objekte importieren"
-
-
-msgid "Import OBJ Objects into Blender Objects"
-msgstr "OBJ-Objekte in Blender-Objekte importieren"
 
 
 msgctxt "Operator"
@@ -32878,11 +32778,6 @@ msgstr "Zeitmarker duplizieren"
 
 msgid "Duplicate selected time marker(s)"
 msgstr "Dupliziert ausgewählte Zeitmarker"
-
-
-msgctxt "Operator"
-msgid "Make Links to Scene"
-msgstr "Verknüpfungen zu Szene erzeugen"
 
 
 msgid "Copy selected markers to another scene"
@@ -34209,10 +34104,6 @@ msgid "Select Faces by Sides"
 msgstr "Berichte nach Index auswählen"
 
 
-msgid "Select vertices or faces by the number of polygon sides"
-msgstr "Auswahl von Punkt, Kanten oder Flächen an der Begrenzung jeder ausgewählten Region aufheben"
-
-
 msgid "Number of Vertices"
 msgstr "Anzahl von Punkten"
 
@@ -34602,10 +34493,6 @@ msgstr "Streifen duplizieren"
 msgctxt "Operator"
 msgid "Duplicate Linked"
 msgstr "Verknüpfte duplizieren"
-
-
-msgid "Duplicate selected strips and move them"
-msgstr "Ausgewählte Objekte duplizieren"
 
 
 msgid "Duplicate Strips"
@@ -35188,10 +35075,6 @@ msgstr "Zum Elternknoten springen"
 msgctxt "Operator"
 msgid "Add Node Tree Interface Socket"
 msgstr "Knotenbaum-Schnittstellenbuchse hinzufügen"
-
-
-msgid "Socket Type"
-msgstr "Buchsentype"
 
 
 msgctxt "Operator"
@@ -39119,6 +39002,10 @@ msgid "Delete Data"
 msgstr "Daten löschen"
 
 
+msgid "Duplicate selected strips and move them"
+msgstr "Ausgewählte Objekte duplizieren"
+
+
 msgctxt "Operator"
 msgid "Add Effect Strip"
 msgstr "Effektstreifen hinzufügen"
@@ -39269,11 +39156,6 @@ msgstr "Streifen neu laden"
 
 msgid "Adjust Length"
 msgstr "Länge anpassen"
-
-
-msgctxt "Operator"
-msgid "Rename Channel"
-msgstr "Kanal umbenennen"
 
 
 msgctxt "Operator"
@@ -41744,6 +41626,10 @@ msgid "Negative Z axis"
 msgstr "Negative Z Achse"
 
 
+msgid "Import OBJ groups as vertex groups"
+msgstr "OBJ-Gruppen als Punktgruppen importieren"
+
+
 msgctxt "Operator"
 msgid "Open"
 msgstr "Öffnen"
@@ -41809,6 +41695,16 @@ msgstr "Einen Pfad in einem Dateibrowser öffnen"
 
 
 msgctxt "Operator"
+msgid "Export PLY"
+msgstr "PLY exportieren"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "PLY importieren"
+
+
+msgctxt "Operator"
 msgid "Batch-Clear Previews"
 msgstr "Batch-Bereinige-Vorschau"
 
@@ -41854,6 +41750,10 @@ msgstr "Eigenschaft bearbeiten"
 
 msgid "Array Length"
 msgstr "Arraylänge"
+
+
+msgid "Speaker"
+msgstr "Lautsprecher"
 
 
 msgid "Property Name"
@@ -42551,6 +42451,14 @@ msgid "Active Palette Color"
 msgstr "Aktive Farbpalette"
 
 
+msgid "Refraction"
+msgstr "Strahlenbrechnung"
+
+
+msgid "Denoising"
+msgstr "Rauschreduzierung"
+
+
 msgid "Integrator Presets"
 msgstr "Integrator-Voreinstellungen"
 
@@ -42563,8 +42471,12 @@ msgid "Viewport Sampling Presets"
 msgstr "Viewport-Sampling-Vorgabe"
 
 
-msgid "View Object Types"
-msgstr "Objekttypen anzeigen"
+msgid "Film"
+msgstr "Film"
+
+
+msgid "Passes"
+msgstr "Durchgänge"
 
 
 msgid "Asset Metadata"
@@ -42688,10 +42600,6 @@ msgid "Post Processing"
 msgstr "Nachbearbeitung"
 
 
-msgid "Film"
-msgstr "Film"
-
-
 msgid "Pixel Filter"
 msgstr "Pixel Filter"
 
@@ -42714,10 +42622,6 @@ msgstr "Maximaler Aufprall"
 
 msgid "Shutter Curve"
 msgstr "Verschlusskurve"
-
-
-msgid "Passes"
-msgstr "Durchgänge"
 
 
 msgid "Performance"
@@ -43510,6 +43414,10 @@ msgstr "Vierfenster-Ansicht"
 
 msgid "Auto-Masking"
 msgstr "Automatisches Maskieren"
+
+
+msgid "Wire Color"
+msgstr "Drahtfarbe"
 
 
 msgid "Compositor"
@@ -45961,6 +45869,10 @@ msgid "Temperature"
 msgstr "Temperatur"
 
 
+msgid "XYZ"
+msgstr "XYZ"
+
+
 msgid "ID Property Group"
 msgstr "ID Eigenschaftsgruppe"
 
@@ -46007,26 +45919,6 @@ msgstr "Name setzen"
 
 msgid "Change Case"
 msgstr "Fall ändern"
-
-
-msgid "Field of view for the fisheye lens"
-msgstr "Anzeigemodus für die Dateiliste"
-
-
-msgid "Fisheye Lens"
-msgstr "Fischaugenlinse"
-
-
-msgid "Lens focal length (mm)"
-msgstr "Linsen-Brennweite (mm)"
-
-
-msgid "Distortion to use for the calculation"
-msgstr "Rauch aus Simulation löschen"
-
-
-msgid "Ideal for fulldomes, ignore the sensor dimensions"
-msgstr "Flächenausrichtung umkehren"
 
 
 msgid "3D Curves"
@@ -47037,8 +46929,8 @@ msgid "Render at 12.5% resolution"
 msgstr "Mit 12.5% Auflösung rendern"
 
 
-msgid "Resolution %"
-msgstr "Auflösung %"
+msgid "Resolution Scale"
+msgstr "Auflösungsskalierung"
 
 
 msgid "Percentage scale for render resolution"
@@ -48460,16 +48352,8 @@ msgid "Wipe Sequence"
 msgstr "Sequenzblende"
 
 
-msgid "Edge angle"
-msgstr "Kantenwinkel"
-
-
 msgid "Blur Width"
 msgstr "Skripte filtern"
-
-
-msgid "Wipe direction"
-msgstr "Blendenrichtung"
 
 
 msgctxt "Sequence"
@@ -49278,10 +49162,6 @@ msgid "Show search boundbox for markers"
 msgstr "Suchbegrenzung für Marker anzeigen"
 
 
-msgid "Show Names"
-msgstr "Namen anzeigen"
-
-
 msgid "Show track names and status"
 msgstr "Spurnamen und Zustand anzeigen"
 
@@ -49296,10 +49176,6 @@ msgstr "Rotkanal im Einzelbild anzeigen"
 
 msgid "Toolbar"
 msgstr "Werkzeugleiste"
-
-
-msgid "Sidebar"
-msgstr "Seitenleiste"
 
 
 msgid "Show Seconds"
@@ -49813,10 +49689,6 @@ msgid "Show only selectable objects"
 msgstr "Nur selektierbare Objekte anzeigen"
 
 
-msgid "Display Filter"
-msgstr "Anzeigefilter"
-
-
 msgid "Live search filtering string"
 msgstr "Suchfilter-Zeichenkette"
 
@@ -50243,10 +50115,6 @@ msgstr "Objektskalierung anzeigen"
 
 msgid "Show Object Location"
 msgstr "Objektposition anzeigen"
-
-
-msgid "Speaker"
-msgstr "Lautsprecher"
 
 
 msgid "Show Reconstruction"
@@ -51183,10 +51051,6 @@ msgstr "Vektorknoten"
 
 msgid "Wires"
 msgstr "Draht"
-
-
-msgid "Wire Color"
-msgstr "Drahtfarbe"
 
 
 msgid "Wire Select"
@@ -52458,6 +52322,10 @@ msgid "Show VR Camera"
 msgstr "VR Kamera anzeigen"
 
 
+msgid "Theme"
+msgstr "Thema"
+
+
 msgid "X-Ray Alpha"
 msgstr "X-Ray Alpha"
 
@@ -53582,10 +53450,6 @@ msgid "Surfaces"
 msgstr "Oberfläche"
 
 
-msgid "Denoising"
-msgstr "Rauschreduzierung"
-
-
 msgid "Denoising Data"
 msgstr "Rauschreduzierungsdaten"
 
@@ -54243,10 +54107,6 @@ msgstr "Umbenannt %d of %d %s"
 
 msgid "Shortcuts"
 msgstr "Tastenkürzel"
-
-
-msgid "Theme"
-msgstr "Thema"
 
 
 msgctxt "Operator"
@@ -55692,10 +55552,6 @@ msgid "Auto-Step"
 msgstr "Auto-Schritt"
 
 
-msgid "Refraction"
-msgstr "Strahlenbrechnung"
-
-
 msgctxt "Operator"
 msgid "Bake Indirect Lighting"
 msgstr "Indirekte Beleuchtung backen"
@@ -56667,11 +56523,6 @@ msgstr "Umbenennen..."
 
 
 msgctxt "Operator"
-msgid "Linked Duplicate"
-msgstr "Verknüpftes Duplikat"
-
-
-msgctxt "Operator"
 msgid "Add Tracks Above Selected"
 msgstr "Spur über Auswahl hinzufügen"
 
@@ -56968,6 +56819,10 @@ msgstr "Position X"
 
 msgid "Convert to Float"
 msgstr "In Float umwandeln"
+
+
+msgid "Raw"
+msgstr "Raw"
 
 
 msgid "Storage"
@@ -57595,10 +57450,6 @@ msgstr "Einstellungen automatisch speichern"
 msgctxt "Operator"
 msgid "Revert to Saved Preferences"
 msgstr "Zurückkehren zu gespeicherten Einstellungen"
-
-
-msgid "Resolution Scale"
-msgstr "Auflösungsskalierung"
 
 
 msgid "Splash Screen"
@@ -61002,6 +60853,14 @@ msgid "Object Groups"
 msgstr "Objektgruppen"
 
 
+msgid "Material Groups"
+msgstr "Materialgruppe"
+
+
+msgid "ASCII"
+msgstr "ASCII"
+
+
 msgid "File References"
 msgstr "Datei-Verweise"
 
@@ -61161,10 +61020,6 @@ msgstr "Kurven können im Bearbeitungsmodus nicht hinzugefügt werden"
 
 msgid "Cannot add loops in edit mode"
 msgstr "Schleifen können im Bearbeitungsmodus nicht hinzugefügt werden"
-
-
-msgid "Cannot add polygons in edit mode"
-msgstr "Polygone können im Bearbeitungsmodus nicht hinzugefügt werden"
 
 
 msgid "Cannot remove vertices in edit mode"
@@ -62490,14 +62345,6 @@ msgid "). Click here to proceed..."
 msgstr "). Klicke hier um fortzufahren..."
 
 
-msgid "Cannot edit builtin name"
-msgstr "BuiltIn-name kann nicht bearbeitet werden"
-
-
-msgid "Cannot edit sequence name"
-msgstr "Sequenzname kann nicht bearbeitet werden"
-
-
 msgid "Cannot edit the path of an indirectly linked library"
 msgstr "Pfad der indirekt verknüpften Bibliothek kann nicht bearbeitet werden"
 
@@ -63328,16 +63175,16 @@ msgid "Unable to create new strip"
 msgstr "Neuer Streifen kann nicht erzeugt werden"
 
 
+msgid "Unable to create socket"
+msgstr "Buchse kann nicht erstellt werden"
+
+
 msgid "Same input/output direction of sockets"
 msgstr "Gleiche Eingangs-/Ausgangsrichtung von Sockeln"
 
 
 msgid "Unable to locate link in node tree"
 msgstr "Position kann nicht mit dem Knotenbaum verbunden werden"
-
-
-msgid "Unable to create socket"
-msgstr "Buchse kann nicht erstellt werden"
 
 
 msgid "Unable to locate socket '%s' in node"
@@ -64024,10 +63871,6 @@ msgstr "Klarlack"
 
 msgid "Clearcoat Roughness"
 msgstr "Klarlack-Rauheit"
-
-
-msgid "Transmission Roughness"
-msgstr "Transmission-Rauheit"
 
 
 msgid "Emission Strength"

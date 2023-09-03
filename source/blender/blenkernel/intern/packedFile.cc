@@ -6,8 +6,8 @@
  * \ingroup bke
  */
 
+#include <cstdio>
 #include <fcntl.h>
-#include <stdio.h>
 #include <sys/stat.h>
 
 #ifndef WIN32
@@ -16,7 +16,7 @@
 #  include <io.h>
 #endif
 #include "MEM_guardedalloc.h"
-#include <string.h>
+#include <cstring>
 
 #include "DNA_ID.h"
 #include "DNA_image_types.h"
@@ -40,7 +40,7 @@
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 int BKE_packedfile_seek(PackedFile *pf, int offset, int whence)
 {

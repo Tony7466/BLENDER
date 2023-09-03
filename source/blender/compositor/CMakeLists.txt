@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2011 Blender Foundation
+# SPDX-FileCopyrightText: 2011 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -10,6 +10,7 @@ if(WITH_COMPOSITOR_CPU)
     intern
     nodes
     operations
+    ../blenkernel
     ../blentranslation
     ../depsgraph
     ../imbuf
@@ -346,6 +347,8 @@ if(WITH_COMPOSITOR_CPU)
     operations/COM_GaussianYBlurOperation.h
     operations/COM_KuwaharaAnisotropicOperation.cc
     operations/COM_KuwaharaAnisotropicOperation.h
+    operations/COM_KuwaharaAnisotropicStructureTensorOperation.cc
+    operations/COM_KuwaharaAnisotropicStructureTensorOperation.h
     operations/COM_KuwaharaClassicOperation.cc
     operations/COM_KuwaharaClassicOperation.h
     operations/COM_MovieClipAttributeOperation.cc
@@ -593,7 +596,7 @@ if(WITH_COMPOSITOR_CPU)
   )
 
   set(LIB
-    PRIVATE bf::blenkernel
+    bf_blenkernel
     PRIVATE bf::blenlib
     PRIVATE bf::dna
     PRIVATE bf::intern::guardedalloc
@@ -609,6 +612,7 @@ if(WITH_COMPOSITOR_CPU)
     ${CMAKE_CURRENT_SOURCE_DIR}/operations/COM_OpenCLKernels.cl
     ${CMAKE_CURRENT_BINARY_DIR}/operations/COM_OpenCLKernels.cl.h
     SRC
+    STRIP_LEADING_C_COMMENTS
   )
 
   add_definitions(-DCL_USE_DEPRECATED_OPENCL_1_1_APIS)

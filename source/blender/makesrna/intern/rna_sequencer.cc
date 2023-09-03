@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,8 +6,8 @@
  * \ingroup RNA
  */
 
-#include <limits.h>
-#include <stdlib.h>
+#include <climits>
+#include <cstdlib>
 
 #include "DNA_anim_types.h"
 #include "DNA_movieclip_types.h"
@@ -18,7 +18,7 @@
 
 #include "BLI_iterator.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_string_utf8_symbols.h"
 #include "BLI_string_utils.h"
 
@@ -32,9 +32,9 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -54,7 +54,7 @@
 #include "SEQ_transform.h"
 #include "SEQ_utils.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 struct EffectInfo {
   const char *struct_name;
@@ -72,6 +72,23 @@ const EnumPropertyItem rna_enum_sequence_modifier_type_items[] = {
     {seqModifierType_Mask, "MASK", ICON_NONE, "Mask", ""},
     {seqModifierType_Tonemap, "TONEMAP", ICON_NONE, "Tone Map", ""},
     {seqModifierType_WhiteBalance, "WHITE_BALANCE", ICON_NONE, "White Balance", ""},
+    {seqModifierType_SoundEqualizer, "SOUND_EQUALIZER", ICON_NONE, "Sound Equalizer", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+const EnumPropertyItem rna_enum_sequence_video_modifier_type_items[] = {
+    {seqModifierType_BrightContrast, "BRIGHT_CONTRAST", ICON_NONE, "Bright/Contrast", ""},
+    {seqModifierType_ColorBalance, "COLOR_BALANCE", ICON_NONE, "Color Balance", ""},
+    {seqModifierType_Curves, "CURVES", ICON_NONE, "Curves", ""},
+    {seqModifierType_HueCorrect, "HUE_CORRECT", ICON_NONE, "Hue Correct", ""},
+    {seqModifierType_Mask, "MASK", ICON_NONE, "Mask", ""},
+    {seqModifierType_Tonemap, "TONEMAP", ICON_NONE, "Tone Map", ""},
+    {seqModifierType_WhiteBalance, "WHITE_BALANCE", ICON_NONE, "White Balance", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+const EnumPropertyItem rna_enum_sequence_sound_modifier_type_items[] = {
+    {seqModifierType_SoundEqualizer, "SOUND_EQUALIZER", ICON_NONE, "Equalizer", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -96,7 +113,7 @@ const EnumPropertyItem rna_enum_strip_color_items[] = {
 #  include "BKE_movieclip.h"
 #  include "BKE_report.h"
 
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
 #  include "DEG_depsgraph.h"
 #  include "DEG_depsgraph_build.h"
@@ -269,10 +286,10 @@ static int rna_SequenceEditor_elements_length(PointerRNA *ptr)
 {
   Sequence *seq = (Sequence *)ptr->data;
 
-  /* Hack? copied from sequencer.c::reload_sequence_new_file() */
+  /* Hack? copied from `sequencer.cc`, #reload_sequence_new_file(). */
   size_t olen = MEM_allocN_len(seq->strip->stripdata) / sizeof(StripElem);
 
-  /* The problem with seq->strip->len and seq->len is that it's discounted from the offset
+  /* The problem with `seq->strip->len` and `seq->len` is that it's discounted from the offset
    * (hard cut trim). */
   return int(olen);
 }
@@ -498,7 +515,7 @@ static void rna_Sequence_frame_offset_start_range(
     PointerRNA *ptr, float *min, float *max, float * /*softmin*/, float * /*softmax*/)
 {
   Sequence *seq = (Sequence *)ptr->data;
-  *min = ELEM(seq->type, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD) ? 0 : INT_MIN;
+  *min = (seq->type == SEQ_TYPE_SOUND_RAM) ? 0 : INT_MIN;
   *max = seq->len - seq->endofs - 1;
 }
 
@@ -506,7 +523,7 @@ static void rna_Sequence_frame_offset_end_range(
     PointerRNA *ptr, float *min, float *max, float * /*softmin*/, float * /*softmax*/)
 {
   Sequence *seq = (Sequence *)ptr->data;
-  *min = ELEM(seq->type, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD) ? 0 : INT_MIN;
+  *min = (seq->type == SEQ_TYPE_SOUND_RAM) ? 0 : INT_MIN;
   *max = seq->len - seq->startofs - 1;
 }
 
@@ -705,7 +722,8 @@ static void rna_Sequence_name_set(PointerRNA *ptr, const char *value)
 
   /* Don't rename everywhere because these are per scene. */
 #  if 0
-  BKE_animdata_fix_paths_rename_all(nullptr, "sequence_editor.sequences_all", oldname, seq->name + 2);
+  BKE_animdata_fix_paths_rename_all(
+      nullptr, "sequence_editor.sequences_all", oldname, seq->name + 2);
 #  endif
   adt = BKE_animdata_from_id(&scene->id);
   if (adt) {
@@ -980,10 +998,10 @@ static void rna_SoundSequence_filename_set(PointerRNA *ptr, const char *value)
 {
   Sequence *seq = (Sequence *)(ptr->data);
   BLI_path_split_dir_file(value,
-                    seq->strip->dirpath,
-                    sizeof(seq->strip->dirpath),
-                    seq->strip->stripdata->name,
-                    sizeof(seq->strip->stripdata->name));
+                          seq->strip->dirpath,
+                          sizeof(seq->strip->dirpath),
+                          seq->strip->stripdata->name,
+                          sizeof(seq->strip->stripdata->name));
 }
 
 static void rna_SequenceElement_filename_set(PointerRNA *ptr, const char *value)
@@ -1285,6 +1303,8 @@ static StructRNA *rna_SequenceModifier_refine(PointerRNA *ptr)
       return &RNA_WhiteBalanceModifier;
     case seqModifierType_Tonemap:
       return &RNA_SequencerTonemapModifierData;
+    case seqModifierType_SoundEqualizer:
+      return &RNA_SoundEqualizerModifier;
     default:
       return &RNA_SequenceModifier;
   }
@@ -1343,14 +1363,34 @@ static void rna_SequenceModifier_name_set(PointerRNA *ptr, const char *value)
   }
 }
 
-static void rna_SequenceModifier_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
+static void rna_SequenceModifier_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
   /* strip from other scenes could be modified, so using active scene is not reliable */
   Scene *scene = (Scene *)ptr->owner_id;
   Editing *ed = SEQ_editing_get(scene);
   Sequence *seq = sequence_get_by_modifier(ed, static_cast<SequenceModifierData *>(ptr->data));
 
-  SEQ_relations_invalidate_cache_preprocessed(scene, seq);
+  if (ELEM(seq->type, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD)) {
+    DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS | ID_RECALC_AUDIO);
+    DEG_relations_tag_update(bmain);
+  }
+  else {
+    SEQ_relations_invalidate_cache_preprocessed(scene, seq);
+  }
+}
+
+/*
+ * Update of Curve in an EQ Sound Modifier
+ */
+static void rna_SequenceModifier_EQCurveMapping_update(Main *bmain,
+                                                       Scene * /*scene*/,
+                                                       PointerRNA *ptr)
+{
+  Scene *scene = (Scene *)ptr->owner_id;
+
+  DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS | ID_RECALC_AUDIO);
+  DEG_relations_tag_update(bmain);
+  WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, NULL);
 }
 
 static bool rna_SequenceModifier_otherSequence_poll(PointerRNA *ptr, PointerRNA value)
@@ -1551,6 +1591,23 @@ static char *rna_SeqTimelineChannel_path(const PointerRNA *ptr)
                         owner_name_esc,
                         channel_name_esc);
   }
+}
+
+static EQCurveMappingData *rna_Sequence_SoundEqualizer_Curve_add(SoundEqualizerModifierData *semd,
+                                                                 bContext * /* C */,
+                                                                 float min_freq,
+                                                                 float max_freq)
+{
+  EQCurveMappingData *eqcmd = SEQ_sound_equalizermodifier_add_graph(semd, min_freq, max_freq);
+  WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, NULL);
+  return eqcmd;
+}
+
+static void rna_Sequence_SoundEqualizer_Curve_clear(SoundEqualizerModifierData *semd,
+                                                    bContext * /* C */)
+{
+  SEQ_sound_equalizermodifier_free((SequenceModifierData *)semd);
+  WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, NULL);
 }
 
 #else
@@ -2066,7 +2123,7 @@ static void rna_def_sequence(BlenderRNA *brna)
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
   RNA_def_property_string_funcs(
       prop, "rna_Sequence_name_get", "rna_Sequence_name_length", "rna_Sequence_name_set");
-  RNA_def_property_string_maxlength(prop, sizeof(((Sequence *)nullptr)->name) - 2);
+  RNA_def_property_string_maxlength(prop, sizeof(Sequence::name) - 2);
   RNA_def_property_ui_text(prop, "Name", "");
   RNA_def_struct_name_property(srna, prop);
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, nullptr);
@@ -2297,7 +2354,7 @@ static void rna_def_channel(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "Channel", "");
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
-  RNA_def_property_string_maxlength(prop, sizeof(((SeqTimelineChannel *)nullptr)->name));
+  RNA_def_property_string_maxlength(prop, sizeof(SeqTimelineChannel::name));
   RNA_def_property_ui_text(prop, "Name", "");
   RNA_def_struct_name_property(srna, prop);
   RNA_def_property_string_funcs(prop, nullptr, nullptr, "rna_SequenceTimelineChannel_name_set");
@@ -2870,8 +2927,11 @@ static void rna_def_movie(BlenderRNA *brna)
   func = RNA_def_function(srna, "reload_if_needed", "rna_MovieSequence_reload_if_needed");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN);
   /* return type */
-  parm = RNA_def_boolean(
-      func, "can_produce_frames", 0, "True if the strip can produce frames, False otherwise", "");
+  parm = RNA_def_boolean(func,
+                         "can_produce_frames",
+                         false,
+                         "True if the strip can produce frames, False otherwise",
+                         "");
   RNA_def_function_return(func, parm);
 
   /* metadata */
@@ -3050,18 +3110,20 @@ static void rna_def_wipe(StructRNA *srna)
   RNA_def_property_float_sdna(prop, nullptr, "edgeWidth");
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_ui_text(
-      prop, "Blur Width", "Width of the blur edge, in percentage relative to the image size");
+      prop,
+      "Blur Width",
+      "Width of the blur for the transition, in percentage relative to the image size");
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
 
   prop = RNA_def_property(srna, "angle", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_range(prop, DEG2RADF(-90.0f), DEG2RADF(90.0f));
-  RNA_def_property_ui_text(prop, "Angle", "Edge angle");
+  RNA_def_property_ui_text(prop, "Angle", "Angle of the transition");
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
 
   prop = RNA_def_property(srna, "direction", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "forward");
   RNA_def_property_enum_items(prop, wipe_direction_items);
-  RNA_def_property_ui_text(prop, "Direction", "Wipe direction");
+  RNA_def_property_ui_text(prop, "Direction", "Whether to fade in or out");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_SEQUENCE);
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_Sequence_invalidate_raw_update");
 
@@ -3751,6 +3813,89 @@ static void rna_def_modifiers(BlenderRNA *brna)
   rna_def_tonemap_modifier(brna);
 }
 
+static void rna_def_graphical_sound_equalizer(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  /* Define Sound EQ */
+  srna = RNA_def_struct(brna, "EQCurveMappingData", nullptr);
+  RNA_def_struct_sdna(srna, "EQCurveMappingData");
+  RNA_def_struct_ui_text(srna, "EQCurveMappingData", "EQCurveMappingData");
+
+  prop = RNA_def_property(srna, "curve_mapping", PROP_POINTER, PROP_NONE);
+  RNA_def_property_pointer_sdna(prop, nullptr, "curve_mapping");
+  RNA_def_property_struct_type(prop, "CurveMapping");
+  RNA_def_property_ui_text(prop, "Curve Mapping", "");
+  RNA_def_property_update(
+      prop, NC_SCENE | ND_SEQUENCER, "rna_SequenceModifier_EQCurveMapping_update");
+}
+
+static void rna_def_sound_equalizer_modifier(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  srna = RNA_def_struct(brna, "SoundEqualizerModifier", "SequenceModifier");
+  RNA_def_struct_sdna(srna, "SoundEqualizerModifierData");
+  RNA_def_struct_ui_text(srna, "SoundEqualizerModifier", "Equalize audio");
+
+  /* Sound Equalizers*/
+  prop = RNA_def_property(srna, "graphics", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_struct_type(prop, "EQCurveMappingData");
+  RNA_def_property_ui_text(
+      prop, "Graphical definition equalization", "Graphical definition equalization");
+
+  /* add band*/
+  func = RNA_def_function(srna, "new_graphic", "rna_Sequence_SoundEqualizer_Curve_add");
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT);
+  RNA_def_function_ui_description(func, "Add a new EQ band");
+
+  parm = RNA_def_float(func,
+                       "min_freq",
+                       SOUND_EQUALIZER_DEFAULT_MIN_FREQ,
+                       0.0,
+                       SOUND_EQUALIZER_DEFAULT_MAX_FREQ, /*  Hard min and max */
+                       "Minimum Frequency",
+                       "Minimum Frequency",
+                       0.0,
+                       SOUND_EQUALIZER_DEFAULT_MAX_FREQ); /*  Soft min and max */
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_float(func,
+                       "max_freq",
+                       SOUND_EQUALIZER_DEFAULT_MAX_FREQ,
+                       0.0,
+                       SOUND_EQUALIZER_DEFAULT_MAX_FREQ, /*  Hard min and max */
+                       "Maximum Frequency",
+                       "Maximum Frequency",
+                       0.0,
+                       SOUND_EQUALIZER_DEFAULT_MAX_FREQ); /*  Soft min and max */
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  /* return type */
+  parm = RNA_def_pointer(func,
+                         "graphic_eqs",
+                         "EQCurveMappingData",
+                         "",
+                         "Newly created graphical Equalizer definition");
+  RNA_def_function_return(func, parm);
+
+  /* clear all modifiers */
+  func = RNA_def_function(srna, "clear_soundeqs", "rna_Sequence_SoundEqualizer_Curve_clear");
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT);
+  RNA_def_function_ui_description(func,
+                                  "Remove all graphical equalizers from the Equalizer modifier");
+
+  rna_def_graphical_sound_equalizer(brna);
+}
+
+static void rna_def_sound_modifiers(BlenderRNA *brna)
+{
+  rna_def_sound_equalizer_modifier(brna);
+}
+
 void RNA_def_sequencer(BlenderRNA *brna)
 {
   rna_def_color_balance(brna);
@@ -3776,6 +3921,7 @@ void RNA_def_sequencer(BlenderRNA *brna)
   rna_def_effect(brna);
   rna_def_effects(brna);
   rna_def_modifiers(brna);
+  rna_def_sound_modifiers(brna);
 }
 
 #endif

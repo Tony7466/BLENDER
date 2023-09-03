@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -57,6 +57,7 @@ typedef enum eReportType {
   RPT_ERROR_INVALID_CONTEXT = (1 << 7),
   RPT_ERROR_OUT_OF_MEMORY = (1 << 8),
 } eReportType;
+ENUM_OPERATORS(eReportType, RPT_ERROR_OUT_OF_MEMORY)
 
 #define RPT_DEBUG_ALL (RPT_DEBUG)
 #define RPT_INFO_ALL (RPT_INFO)
@@ -178,8 +179,12 @@ typedef struct wmWindowManager {
   /** Active dragged items. */
   ListBase drags;
 
-  /** Known key configurations. */
+  /**
+   * Known key configurations.
+   * This includes all the #wmKeyConfig members (`defaultconf`, `addonconf`, etc).
+   */
   ListBase keyconfigs;
+
   /** Default configuration. */
   struct wmKeyConfig *defaultconf;
   /** Addon configuration. */

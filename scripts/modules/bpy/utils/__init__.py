@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -285,6 +285,13 @@ def load_scripts(*, reload_scripts=False, refresh_scripts=False):
 
         del _global_loaded_modules[:]
 
+        # Update key-maps to account for operators no longer existing.
+        # Typically unloading operators would refresh the event system (such as disabling an add-on)
+        # however reloading scripts re-enable all add-ons immediately (which may inspect key-maps).
+        # For this reason it's important to update key-maps which will have been tagged to update.
+        # Without this, add-on register functions accessing key-map properties can crash, see: #111702.
+        _bpy.context.window_manager.keyconfigs.update()
+
     from bpy_restrict_state import RestrictBlend
 
     with RestrictBlend():
@@ -305,15 +312,15 @@ def load_scripts(*, reload_scripts=False, refresh_scripts=False):
         bl_app_template_utils.reset(reload_scripts=reload_scripts)
         del bl_app_template_utils
 
-    # deal with addons separately
-    _initialize = getattr(_addon_utils, "_initialize", None)
-    if _initialize is not None:
-        # first time, use fast-path
-        _initialize()
-        del _addon_utils._initialize
+    # Deal with add-ons separately.
+    _initialize_once = getattr(_addon_utils, "_initialize_once", None)
+    if _initialize_once is not None:
+        # First time, use fast-path.
+        _initialize_once()
+        del _addon_utils._initialize_once
     else:
         _addon_utils.reset_all(reload_scripts=reload_scripts)
-    del _initialize
+    del _initialize_once
 
     if reload_scripts:
         _bpy.context.window_manager.tag_script_reload()

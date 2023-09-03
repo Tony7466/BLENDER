@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'5aff5bc0e72b')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'5ba692898e63')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-07-17 12:39:59\n"
+"POT-Creation-Date: 2023-08-28 16:05:16\n"
 "PO-Revision-Date: 2021-12-25 23:57-0800\n"
 "Last-Translator: Adriel Tristanputra <ultimexport@gmail.com>\n"
 "Language-Team: Indonesian <>\n"
@@ -907,6 +907,14 @@ msgstr "Tags"
 
 msgid "Custom tags (name tokens) for the asset, used for filtering and general asset management"
 msgstr "Tag kustom (token nama) untuk aset, digunakan untuk pemfilteran dan manajemen aset umum"
+
+
+msgid "ID Name"
+msgstr "Nama ID"
+
+
+msgid "Space Type"
+msgstr "Tipe Spasi"
 
 
 msgid "Asset Tag"
@@ -3349,6 +3357,10 @@ msgid "Show Lasso"
 msgstr "Tampilkan Lasso"
 
 
+msgid "Active Layer"
+msgstr "Layer Aktif"
+
+
 msgid "Default Eraser"
 msgstr "Penghapus Default"
 
@@ -3439,10 +3451,6 @@ msgstr "Tipe Mode"
 
 msgid "Byte Color Attribute Value"
 msgstr "Nilai Atribut Warna Byte"
-
-
-msgid "Active Layer"
-msgstr "Layer Aktif"
 
 
 msgid "Object Path"
@@ -4123,10 +4131,6 @@ msgstr "Memasukkan Ruang Warna"
 
 msgid "Color space in the image file, to convert to and from when saving and loading the image"
 msgstr "Ruang warna dalam dokumen gambar, untuk mengubahnya ke dan dari saat menyimpan atau memuat gambar"
-
-
-msgid "Raw"
-msgstr "Raw"
 
 
 msgid "Do not perform any color transform on load, treat colors as in scene linear space already"
@@ -8661,10 +8665,6 @@ msgid "Tool Header"
 msgstr "Header Alat"
 
 
-msgid "Space Type"
-msgstr "Tipe Spasi"
-
-
 msgid "Has Reports"
 msgstr "Punya Laporan"
 
@@ -9302,10 +9302,6 @@ msgid "Clip Start"
 msgstr "Klip Mulai"
 
 
-msgid "Cycles camera settings"
-msgstr "Kamera"
-
-
 msgid "Depth Of Field"
 msgstr "Kedalaman Lapangan"
 
@@ -9316,6 +9312,22 @@ msgstr "Unit mengedit lensa untuk antarmuka pengguna"
 
 msgid "Millimeters"
 msgstr "Milimeter"
+
+
+msgid "Panorama Type"
+msgstr "Induk"
+
+
+msgid "Distortion to use for the calculation"
+msgstr "Distorsi yang digunakan untuk kalkulasi"
+
+
+msgid "Mirror Ball"
+msgstr "Warna"
+
+
+msgid "Ideal for fulldomes, ignore the sensor dimensions"
+msgstr "Saluran"
 
 
 msgid "Vertical"
@@ -9863,10 +9875,6 @@ msgid "Index of the active output"
 msgstr "Indeks keluaran aktif"
 
 
-msgid "ID Name"
-msgstr "Nama ID"
-
-
 msgid "Inputs"
 msgstr "Masukan"
 
@@ -9901,6 +9909,14 @@ msgstr "Partikel"
 
 msgid "Quality when rendering"
 msgstr "Partikel"
+
+
+msgid "Edit"
+msgstr "Edit"
+
+
+msgid "Tool"
+msgstr "Alat"
 
 
 msgid "Active Material"
@@ -11648,10 +11664,6 @@ msgstr "Menu Konteks Saluran NLA"
 
 msgid "NLA Context Menu"
 msgstr "Menu Konteks NLA"
-
-
-msgid "Edit"
-msgstr "Edit"
 
 
 msgid "Converter"
@@ -14306,10 +14318,6 @@ msgid "Projection"
 msgstr "Objek"
 
 
-msgid "Mirror Ball"
-msgstr "Warna"
-
-
 msgid "Gradient Texture"
 msgstr "Tekstur"
 
@@ -14613,11 +14621,6 @@ msgstr "Saluran"
 
 
 msgctxt "Operator"
-msgid "Rename Channels"
-msgstr "Saluran"
-
-
-msgctxt "Operator"
 msgid "Toggle Channel Setting"
 msgstr "Partikel"
 
@@ -14853,10 +14856,6 @@ msgstr "Ganti ukuran kuas oleh skalar"
 
 msgid "Scalar"
 msgstr "Skalar"
-
-
-msgid "Tool"
-msgstr "Alat"
 
 
 msgid "Translation"
@@ -16103,10 +16102,6 @@ msgid "Decal Offset"
 msgstr "Decal Offset"
 
 
-msgid "Clamp Size"
-msgstr "Ukurang"
-
-
 msgctxt "Operator"
 msgid "Copy Reports to Clipboard"
 msgstr "Hapus"
@@ -16676,10 +16671,6 @@ msgstr "Orientasi Transformasi"
 msgctxt "Operator"
 msgid "Delete Strips"
 msgstr "Hapus Titik"
-
-
-msgid "Duplicate selected strips and move them"
-msgstr "Tekstur"
 
 
 msgid "Duplicate Strips"
@@ -18375,6 +18366,10 @@ msgid "Deinterlace Movies"
 msgstr "Modus Sunting"
 
 
+msgid "Duplicate selected strips and move them"
+msgstr "Tekstur"
+
+
 msgid "Replace the current selection"
 msgstr "Data Objek"
 
@@ -19896,6 +19891,10 @@ msgid "Sampling Presets"
 msgstr "Contoh Tersedia"
 
 
+msgid "Film"
+msgstr "Film"
+
+
 msgid "Custom Shape"
 msgstr "Bentuk Kustom"
 
@@ -19942,10 +19941,6 @@ msgstr "Selesaikan"
 
 msgid "Tracking Presets"
 msgstr "Kamera"
-
-
-msgid "Film"
-msgstr "Film"
 
 
 msgid "Pixel Filter"
@@ -20231,6 +20226,10 @@ msgid "Analyze"
 msgstr "Analisis"
 
 
+msgid "Wire Color"
+msgstr "Warna Kabel"
+
+
 msgctxt "Operator"
 msgid "Push"
 msgstr "Dorong"
@@ -20380,18 +20379,6 @@ msgstr "Metode untuk membuat render teks antarmuka pengguna lancip"
 
 msgid "Temperature"
 msgstr "Temperatur"
-
-
-msgid "Panorama Type"
-msgstr "Induk"
-
-
-msgid "Distortion to use for the calculation"
-msgstr "Distorsi yang digunakan untuk kalkulasi"
-
-
-msgid "Ideal for fulldomes, ignore the sensor dimensions"
-msgstr "Saluran"
 
 
 msgid "AO Bounces"
@@ -20908,10 +20895,6 @@ msgid "Location of the text"
 msgstr "Lokasi teks"
 
 
-msgid "Edge angle"
-msgstr "Ujung sudut"
-
-
 msgid "Blur Width"
 msgstr "Lebar Blur"
 
@@ -21374,10 +21357,6 @@ msgstr "Dalam Jarak"
 
 msgid "Node Selected"
 msgstr "Modus Sunting"
-
-
-msgid "Wire Color"
-msgstr "Warna Kabel"
 
 
 msgid "Wire Select"
@@ -24124,6 +24103,10 @@ msgid "%14s"
 msgstr "%14s"
 
 
+msgid "Raw"
+msgstr "Raw"
+
+
 msgid "Storage"
 msgstr "Gudang"
 
@@ -25447,10 +25430,6 @@ msgstr "Penyunting Teks"
 
 
 msgid "Cannot add loops in edit mode"
-msgstr "Penyunting Teks"
-
-
-msgid "Cannot add polygons in edit mode"
 msgstr "Penyunting Teks"
 
 

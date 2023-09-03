@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -43,7 +43,7 @@ def reduce_newlines(text):
 
 
 def reduce_spaces(text):
-    """Reduces multiple whitespaces to a single space.
+    """Reduces multiple white-spaces to a single space.
 
     :arg text: text with multiple spaces
     :type text: str
@@ -100,7 +100,7 @@ def get_argspec(func, *, strip_self=True, doc=None, source=None):
         func_name = func.__name__
     except AttributeError:
         return ''
-    # from docstring
+    # From doc-string.
     if doc is None:
         doc = get_doc(func)
     match = re.search(DEF_DOC % func_name, doc, RE_FLAG)
@@ -158,7 +158,7 @@ def complete(line, cursor, namespace):
         func_word = match.group(2)
         try:
             func = eval(func_word, namespace)
-        except Exception:
+        except BaseException:
             func = None
 
         if func:

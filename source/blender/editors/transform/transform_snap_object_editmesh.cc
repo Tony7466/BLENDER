@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,8 +6,8 @@
  * \ingroup edtransform
  */
 
-#include "BLI_math.h"
 #include "BLI_math_matrix.hh"
+#include "BLI_math_vector.h"
 
 #include "BKE_bvhutils.h"
 #include "BKE_editmesh.h"
@@ -17,8 +17,8 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "ED_transform_snap_object_context.h"
-#include "ED_view3d.h"
+#include "ED_transform_snap_object_context.hh"
+#include "ED_view3d.hh"
 
 #include "transform_snap_object.hh"
 
@@ -466,7 +466,7 @@ eSnapMode snap_polygon_editmesh(SnapObjectContext *sctx,
                                 const ID * /*id*/,
                                 const float4x4 &obmat,
                                 eSnapMode snap_to_flag,
-                                int polygon)
+                                int face)
 {
   eSnapMode elem = SCE_SNAP_TO_NONE;
 
@@ -479,7 +479,7 @@ eSnapMode snap_polygon_editmesh(SnapObjectContext *sctx,
   nearest.dist_sq = sctx->ret.dist_px_sq;
 
   BM_mesh_elem_table_ensure(em->bm, BM_FACE);
-  BMFace *f = BM_face_at_index(em->bm, polygon);
+  BMFace *f = BM_face_at_index(em->bm, face);
   BMLoop *l_iter, *l_first;
   l_iter = l_first = BM_FACE_FIRST_LOOP(f);
   if (snap_to_flag & SCE_SNAP_TO_EDGE) {
@@ -559,7 +559,10 @@ static eSnapMode snapEditMesh(SnapCache_EditMesh *em_cache,
         auto test_looseverts_fn = [](BMElem *elem, void *user_data) {
           SnapObjectContext *sctx_ = static_cast<SnapObjectContext *>(user_data);
           BMVert *v = reinterpret_cast<BMVert *>(elem);
-          if (v->e) {
+          if (v->e && (!sctx_->callbacks.edit_mesh.test_edge_fn ||
+                       sctx_->callbacks.edit_mesh.test_edge_fn(
+                           v->e, sctx_->callbacks.edit_mesh.user_data)))
+          {
             return false;
           }
           return sctx_->callbacks.edit_mesh.test_vert_fn(v, sctx_->callbacks.edit_mesh.user_data);

@@ -74,10 +74,12 @@ static void library_foreach_path(ID *id, BPathForeachPathData *bpath_data)
   }
 }
 
-static void library_blend_read_data(struct BlendDataReader * /*reader*/, ID *id)
+static void library_blend_read_data(BlendDataReader * /*reader*/, ID *id)
 {
   Library *lib = (Library *)id;
   lib->runtime.name_map = nullptr;
+  /* This is runtime data. */
+  lib->parent = nullptr;
 }
 
 IDTypeInfo IDType_ID_LI = {
@@ -102,8 +104,7 @@ IDTypeInfo IDType_ID_LI = {
 
     /*blend_write*/ nullptr,
     /*blend_read_data*/ library_blend_read_data,
-    /*blend_read_lib*/ nullptr,
-    /*blend_read_expand*/ nullptr,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 

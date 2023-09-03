@@ -9,11 +9,11 @@
  * allocate and free of all library data
  */
 
-#include <ctype.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cctype>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "CLG_log.h"
 
@@ -50,7 +50,7 @@
 #include "BKE_idtype.h"
 #include "BKE_key.h"
 #include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
+#include "BKE_lib_override.hh"
 #include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
@@ -62,9 +62,9 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "atomic_ops.h"
 
@@ -100,8 +100,7 @@ IDTypeInfo IDType_ID_LINK_PLACEHOLDER = {
 
     /*blend_write*/ nullptr,
     /*blend_read_data*/ nullptr,
-    /*blend_read_lib*/ nullptr,
-    /*blend_read_expand*/ nullptr,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -589,8 +588,7 @@ static int id_copy_libmanagement_cb(LibraryIDLinkCallbackData *cb_data)
   ID **id_pointer = cb_data->id_pointer;
   ID *id = *id_pointer;
   const int cb_flag = cb_data->cb_flag;
-  struct IDCopyLibManagementData *data = static_cast<IDCopyLibManagementData *>(
-      cb_data->user_data);
+  IDCopyLibManagementData *data = static_cast<IDCopyLibManagementData *>(cb_data->user_data);
 
   /* Remap self-references to new copied ID. */
   if (id == data->id_src) {
@@ -794,14 +792,14 @@ static void id_swap(Main *bmain,
                     ID *id_b,
                     const bool do_full_id,
                     const bool do_self_remap,
-                    struct IDRemapper *input_remapper_id_a,
-                    struct IDRemapper *input_remapper_id_b,
+                    IDRemapper *input_remapper_id_a,
+                    IDRemapper *input_remapper_id_b,
                     const int self_remap_flags)
 {
   BLI_assert(GS(id_a->name) == GS(id_b->name));
 
-  struct IDRemapper *remapper_id_a = input_remapper_id_a;
-  struct IDRemapper *remapper_id_b = input_remapper_id_b;
+  IDRemapper *remapper_id_a = input_remapper_id_a;
+  IDRemapper *remapper_id_b = input_remapper_id_b;
   if (do_self_remap) {
     if (remapper_id_a == nullptr) {
       remapper_id_a = BKE_id_remapper_create();
@@ -887,8 +885,8 @@ static void id_swap(Main *bmain,
 static void id_embedded_swap(ID **embedded_id_a,
                              ID **embedded_id_b,
                              const bool do_full_id,
-                             struct IDRemapper *remapper_id_a,
-                             struct IDRemapper *remapper_id_b)
+                             IDRemapper *remapper_id_a,
+                             IDRemapper *remapper_id_b)
 {
   if (embedded_id_a != nullptr && *embedded_id_a != nullptr) {
     BLI_assert(embedded_id_b != nullptr);
@@ -2226,6 +2224,8 @@ void BKE_id_blend_write(BlendWriter *writer, ID *id)
   if (id->properties && !ELEM(GS(id->name), ID_WM)) {
     IDP_BlendWrite(writer, id->properties);
   }
+
+  BKE_animdata_blend_write(writer, id);
 
   if (id->override_library) {
     BLO_write_struct(writer, IDOverrideLibrary, id->override_library);

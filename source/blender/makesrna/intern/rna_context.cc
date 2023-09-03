@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,7 +6,7 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "DNA_ID.h"
 #include "DNA_userdef_types.h"
@@ -14,9 +14,9 @@
 #include "BKE_context.h"
 #include "BLI_utildefines.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h" /* own include */
 
@@ -276,6 +276,11 @@ void RNA_def_context(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_struct_type(prop, "Space");
   RNA_def_property_pointer_funcs(prop, "rna_Context_space_data_get", nullptr, nullptr, nullptr);
+  RNA_def_property_ui_text(prop,
+                           "",
+                           "The current space, may be None in background-mode, "
+                           "when the cursor is outside the window or "
+                           "when using menu-search");
 
   prop = RNA_def_property(srna, "region", PROP_POINTER, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);

@@ -6,9 +6,9 @@
  * \ingroup edtransform
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
 #include "BKE_context.h"
@@ -16,9 +16,9 @@
 
 #include "DNA_gpencil_legacy_types.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "BLT_translation.h"
 
@@ -32,7 +32,7 @@
 /** \name Transform (GPencil Strokes Opacity)
  * \{ */
 
-static void applyGPOpacity(TransInfo *t, const int[2] /*mval*/)
+static void applyGPOpacity(TransInfo *t)
 {
   float ratio;
   int i;
@@ -82,7 +82,7 @@ static void applyGPOpacity(TransInfo *t, const int[2] /*mval*/)
   }
 
   if (recalc) {
-    recalcData(t);
+    recalc_data(t);
   }
 
   ED_area_status_text(t->area, str);

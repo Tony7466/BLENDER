@@ -8,14 +8,15 @@
  * Deform coordinates by a lattice object (used by modifier).
  */
 
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_simd.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
@@ -31,7 +32,7 @@
 #include "BKE_editmesh.h"
 #include "BKE_key.h"
 #include "BKE_lattice.h"
-#include "BKE_mesh.h"
+#include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 
@@ -364,7 +365,7 @@ static void lattice_deform_coords_impl(const Object *ob_lattice,
       }
       else if (me_target) {
         dvert = static_cast<const MDeformVert *>(
-            CustomData_get_layer(&me_target->vdata, CD_MDEFORMVERT));
+            CustomData_get_layer(&me_target->vert_data, CD_MDEFORMVERT));
       }
       else if (ob_target->type == OB_LATTICE) {
         dvert = ((Lattice *)ob_target->data)->dvert;

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008-2018 Blender Foundation
+/* SPDX-FileCopyrightText: 2008-2018 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,14 +6,15 @@
  * \ingroup edgpencil
  */
 
-#include <math.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_math_matrix.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -37,23 +38,23 @@
 #include "DNA_scene_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
-#include "ED_clip.h"
-#include "ED_gpencil_legacy.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_clip.hh"
+#include "ED_gpencil_legacy.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_state.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "DEG_depsgraph.h"
 
@@ -263,8 +264,8 @@ static void annotation_get_3d_reference(tGPsdata *p, float vec[3])
 /* check if the current mouse position is suitable for adding a new point */
 static bool annotation_stroke_filtermval(tGPsdata *p, const float mval[2], const float pmval[2])
 {
-  int dx = (int)fabsf(mval[0] - pmval[0]);
-  int dy = (int)fabsf(mval[1] - pmval[1]);
+  int dx = int(fabsf(mval[0] - pmval[0]));
+  int dy = int(fabsf(mval[1] - pmval[1]));
 
   /* if buffer is empty, just let this go through (i.e. so that dots will work) */
   if (p->gpd->runtime.sbuffer_used == 0) {
@@ -366,8 +367,8 @@ static void annotation_stroke_convertcoords(tGPsdata *p,
   /* 2d - relative to screen (viewport area) */
   else {
     if (p->subrect == nullptr) { /* normal 3D view */
-      out[0] = (float)(mval[0]) / (float)(p->region->winx) * 100;
-      out[1] = (float)(mval[1]) / (float)(p->region->winy) * 100;
+      out[0] = float(mval[0]) / float(p->region->winx) * 100;
+      out[1] = float(mval[1]) / float(p->region->winy) * 100;
     }
     else { /* camera view, use subrect */
       out[0] = ((mval[0] - p->subrect->xmin) / BLI_rctf_size_x(p->subrect)) * 100;
@@ -535,7 +536,7 @@ static short annotation_stroke_addpoint(tGPsdata *p,
       /* Pressure values are unreliable, so ignore for now, see #44932. */
       pt->pressure = 1.0f;
       pt->strength = 1.0f;
-      pt->time = (float)(curtime - p->inittime);
+      pt->time = float(curtime - p->inittime);
 
       /* increment buffer size */
       gpd->runtime.sbuffer_used++;
@@ -551,7 +552,7 @@ static short annotation_stroke_addpoint(tGPsdata *p,
       /* Pressure values are unreliable, so ignore for now, see #44932. */
       pt->pressure = 1.0f;
       pt->strength = 1.0f;
-      pt->time = (float)(curtime - p->inittime);
+      pt->time = float(curtime - p->inittime);
 
       /* now the buffer has 2 points (and shouldn't be allowed to get any larger) */
       gpd->runtime.sbuffer_used = 2;
@@ -605,7 +606,7 @@ static short annotation_stroke_addpoint(tGPsdata *p,
     pt->strength = 1.0f;
 
     /* point time */
-    pt->time = (float)(curtime - p->inittime);
+    pt->time = float(curtime - p->inittime);
 
     /* increment counters */
     gpd->runtime.sbuffer_used++;
@@ -630,7 +631,7 @@ static short annotation_stroke_addpoint(tGPsdata *p,
     /* Pressure values are unreliable, so ignore for now, see #44932. */
     pt->pressure = 1.0f;
     pt->strength = 1.0f;
-    pt->time = (float)(curtime - p->inittime);
+    pt->time = float(curtime - p->inittime);
 
     /* if there's stroke for this poly line session add (or replace last) point
      * to stroke. This allows to draw lines more interactively (see new segment
@@ -1099,7 +1100,7 @@ static bool annotation_stroke_eraser_is_occluded(tGPsdata *p,
 
     float p_depth;
     if (ED_view3d_depth_read_cached(p->depths, mval_i, 0, &p_depth)) {
-      ED_view3d_depth_unproject_v3(p->region, mval_i, (double)p_depth, mval_3d);
+      ED_view3d_depth_unproject_v3(p->region, mval_i, double(p_depth), mval_3d);
 
       const float depth_mval = ED_view3d_calc_depth_for_comparison(rv3d, mval_3d);
       const float depth_pt = ED_view3d_calc_depth_for_comparison(rv3d, &pt->x);
@@ -1278,7 +1279,7 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
   /* make sure the active view (at the starting time) is a 3d-view */
   if (curarea == nullptr) {
     p->status = GP_STATUS_ERROR;
-    return 0;
+    return false;
   }
 
   /* pass on current scene and window */
@@ -1306,7 +1307,7 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
 
       if (region->regiondata == nullptr) {
         p->status = GP_STATUS_ERROR;
-        return 0;
+        return false;
       }
       break;
     }
@@ -1332,7 +1333,7 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
       /* check that gpencil data is allowed to be drawn */
       if (!((sseq->mainb == SEQ_DRAW_IMG_IMBUF) && (region->regiontype == RGN_TYPE_PREVIEW))) {
         p->status = GP_STATUS_ERROR;
-        return 0;
+        return false;
       }
       break;
     }
@@ -1393,7 +1394,7 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
     /* unsupported views */
     default: {
       p->status = GP_STATUS_ERROR;
-      return 0;
+      return false;
     }
   }
 
@@ -1401,7 +1402,7 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
   gpd_ptr = ED_annotation_data_get_pointers(C, &p->ownerPtr);
   if ((gpd_ptr == nullptr) || !ED_gpencil_data_owner_is_annotation(&p->ownerPtr)) {
     p->status = GP_STATUS_ERROR;
-    return 0;
+    return false;
   }
 
   /* if no existing GPencil block exists, add one */
@@ -1424,7 +1425,7 @@ static bool annotation_session_initdata(bContext *C, tGPsdata *p)
   /* clear out buffer (stored in gp-data), in case something contaminated it */
   annotation_session_validatebuffer(p);
 
-  return 1;
+  return true;
 }
 
 /* Enable the annotations in the current space. */
@@ -2093,8 +2094,8 @@ static void annotation_draw_apply_event(
     p->mval[1] -= y;
   }
   else {
-    p->mval[0] = (float)event->mval[0] - x;
-    p->mval[1] = (float)event->mval[1] - y;
+    p->mval[0] = float(event->mval[0]) - x;
+    p->mval[1] = float(event->mval[1]) - y;
   }
 
   /* Key to toggle stabilization. */
@@ -2115,8 +2116,8 @@ static void annotation_draw_apply_event(
   /* verify key status for straight lines */
   else if (event->modifier & (KM_CTRL | KM_ALT)) {
     if (p->straight[0] == 0) {
-      int dx = abs((int)(p->mval[0] - p->mvalo[0]));
-      int dy = abs((int)(p->mval[1] - p->mvalo[1]));
+      int dx = abs(int(p->mval[0] - p->mvalo[0]));
+      int dy = abs(int(p->mval[1] - p->mvalo[1]));
       if ((dx > 0) || (dy > 0)) {
         /* check mouse direction to replace the other coordinate with previous values */
         if (dx >= dy) {
@@ -2245,10 +2246,10 @@ static int annotation_draw_exec(bContext *C, wmOperator *op)
 
     /* get relevant data for this point from stroke */
     RNA_float_get_array(&itemptr, "mouse", mousef);
-    p->mval[0] = (int)mousef[0];
-    p->mval[1] = (int)mousef[1];
+    p->mval[0] = int(mousef[0]);
+    p->mval[1] = int(mousef[1]);
     p->pressure = RNA_float_get(&itemptr, "pressure");
-    p->curtime = (double)RNA_float_get(&itemptr, "time") + p->inittime;
+    p->curtime = double(RNA_float_get(&itemptr, "time")) + p->inittime;
 
     if (RNA_boolean_get(&itemptr, "is_start")) {
       /* if first-run flag isn't set already (i.e. not true first stroke),
@@ -2432,8 +2433,8 @@ static void annotation_add_missing_events(bContext *C,
   float factor = 10.0f;
 
   copy_v2_v2(a, p->mvalo);
-  b[0] = (float)event->mval[0] + 1.0f;
-  b[1] = (float)event->mval[1] + 1.0f;
+  b[0] = float(event->mval[0]) + 1.0f;
+  b[1] = float(event->mval[1]) + 1.0f;
 
   /* get distance in pixels */
   float dist = len_v2v2(a, b);
@@ -2446,7 +2447,7 @@ static void annotation_add_missing_events(bContext *C,
     annotation_draw_apply_event(op, event, depsgraph, pt[0], pt[1]);
   }
   else if (dist >= factor) {
-    int slices = 2 + (int)((dist - 1.0) / factor);
+    int slices = 2 + int((dist - 1.0) / factor);
     float n = 1.0f / slices;
     for (int i = 1; i < slices; i++) {
       interp_v2_v2v2(pt, a, b, n * i);
@@ -2469,9 +2470,9 @@ static int annotation_draw_modal(bContext *C, wmOperator *op, const wmEvent *eve
  * Problem is that the stroke is converted to 3D only after it is finished.
  * This approach should work better in tools that immediately apply in 3D space. */
 #if 0
-if (event->type == NDOF_MOTION) {
-return OPERATOR_PASS_THROUGH;
-}
+  if (event->type == NDOF_MOTION) {
+    return OPERATOR_PASS_THROUGH;
+  }
 #endif
 
   if (p->status == GP_STATUS_IDLING) {
@@ -2538,14 +2539,13 @@ return OPERATOR_PASS_THROUGH;
     estate = OPERATOR_FINISHED;
   }
 
-  /* toggle painting mode upon mouse-button movement
-   *  - LEFTMOUSE  = standard drawing (all) / straight line drawing (all) / polyline (toolbox
-   * only)
-   *  - RIGHTMOUSE = polyline (hotkey) / eraser (all)
-   *    (Disabling RIGHTMOUSE case here results in bugs like #32647)
-   * also making sure we have a valid event value, to not exit too early
-   */
-  if (ELEM(event->type, LEFTMOUSE, RIGHTMOUSE) && ELEM(event->val, KM_PRESS, KM_RELEASE)) {
+  /* Toggle painting mode upon mouse-button movement
+   * - #RIGHTMOUSE: eraser (all).
+   *   (Disabling #RIGHTMOUSE case here results in bugs like #32647)
+   * - Others (typically LMB): standard drawing (all) / straight line drawing (all).
+   * Also making sure we have a valid event value, to not exit too early. */
+
+  if (ISMOUSE_BUTTON(event->type) && ELEM(event->val, KM_PRESS, KM_RELEASE)) {
     /* if painting, end stroke */
     if (p->status == GP_STATUS_PAINTING) {
       int sketch = 0;
@@ -2634,7 +2634,7 @@ return OPERATOR_PASS_THROUGH;
           /* turn on eraser */
           p->paintmode = GP_PAINTMODE_ERASER;
         }
-        else if (event->type == LEFTMOUSE) {
+        else { /* Any mouse button besides right. */
           /* restore drawmode to default */
           p->paintmode = eGPencil_PaintModes(RNA_enum_get(op->ptr, "mode"));
         }

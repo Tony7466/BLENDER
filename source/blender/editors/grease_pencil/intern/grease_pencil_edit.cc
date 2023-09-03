@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,24 +6,27 @@
  * \ingroup edgreasepencil
  */
 
+#include "BLI_array_utils.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_index_range.hh"
+#include "BLI_math_geom.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
+#include "BLI_stack.hh"
 
 #include "BKE_context.h"
 #include "BKE_grease_pencil.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "DEG_depsgraph.h"
 
 #include "ED_curves.hh"
-#include "ED_grease_pencil.h"
-#include "ED_screen.h"
+#include "ED_grease_pencil.hh"
+#include "ED_screen.hh"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 namespace blender::ed::greasepencil {
 
@@ -91,7 +94,7 @@ static void keymap_grease_pencil_painting(wmKeyConfig *keyconf)
 }
 
 /* -------------------------------------------------------------------- */
-/** \name Smooth Stroke Operator.
+/** \name Smooth Stroke Operator
  * \{ */
 
 template<typename T>
@@ -103,26 +106,27 @@ static void gaussian_blur_1D(const Span<T> src,
                              const bool is_cyclic,
                              MutableSpan<T> dst)
 {
-  /* 1D Gaussian-like smoothing function.
+  /**
+   * 1D Gaussian-like smoothing function.
    *
-   * Note : This is the algorithm used by BKE_gpencil_stroke_smooth_point (legacy),
-   *        but generalized and written in C++.
+   * NOTE: This is the algorithm used by #BKE_gpencil_stroke_smooth_point (legacy),
+   *       but generalized and written in C++.
    *
    * This function uses a binomial kernel, which is the discrete version of gaussian blur.
    * The weight for a value at the relative index is:
-   * w = nCr(n, j + n/2) / 2^n = (n/1 * (n-1)/2 * ... * (n-j-n/2)/(j+n/2)) / 2^n
+   * `w = nCr(n, j + n/2) / 2^n = (n/1 * (n-1)/2 * ... * (n-j-n/2)/(j+n/2)) / 2^n`.
    * All weights together sum up to 1.
    * This is equivalent to doing multiple iterations of averaging neighbors,
-   * where n = iterations * 2 and -n/2 <= j <= n/2
+   * where: `n = iterations * 2 and -n/2 <= j <= n/2`.
    *
-   * Now the problem is that nCr(n, j + n/2) is very hard to compute for n > 500, since even
-   * double precision isn't sufficient. A very good robust approximation for n > 20 is
-   * nCr(n, j + n/2) / 2^n = sqrt(2/(pi*n)) * exp(-2*j*j/n)
+   * Now the problem is that `nCr(n, j + n/2)` is very hard to compute for `n > 500`, since even
+   * double precision isn't sufficient. A very good robust approximation for `n > 20` is:
+   * `nCr(n, j + n/2) / 2^n = sqrt(2/(pi*n)) * exp(-2*j*j/n)`.
    *
    * `keep_shape` is a new option to stop the points from severely deforming.
    * It uses different partially negative weights.
-   * w = 2 * (nCr(n, j + n/2) / 2^n) - (nCr(3*n, j + n) / 2^(3*n))
-   *   ~ 2 * sqrt(2/(pi*n)) * exp(-2*j*j/n) - sqrt(2/(pi*3*n)) * exp(-2*j*j/(3*n))
+   * `w = 2 * (nCr(n, j + n/2) / 2^n) - (nCr(3*n, j + n) / 2^(3*n))`
+   * `  ~ 2 * sqrt(2/(pi*n)) * exp(-2*j*j/n) - sqrt(2/(pi*3*n)) * exp(-2*j*j/(3*n))`
    * All weights still sum up to 1.
    * Note that these weights only work because the averaging is done in relative coordinates.
    */
@@ -148,7 +152,7 @@ static void gaussian_blur_1D(const Span<T> src,
   const int64_t last_pt = total_points - 1;
 
   auto is_end_and_fixed = [smooth_ends, is_cyclic, last_pt](int index) {
-    return !smooth_ends && !is_cyclic && ((index == 0) || (index == last_pt));
+    return !smooth_ends && !is_cyclic && ELEM(index, 0, last_pt);
   };
 
   /* Initialize at zero. */
@@ -243,21 +247,16 @@ void gaussian_blur_1D(const GSpan src,
   });
 }
 
-static void smooth_curve_attribute(bke::CurvesGeometry &curves,
-                                   bke::GSpanAttributeWriter &attribute,
-                                   const OffsetIndices<int> points_by_curve,
-                                   const VArray<bool> selection,
-                                   const VArray<bool> cyclic,
+static void smooth_curve_attribute(const OffsetIndices<int> points_by_curve,
+                                   const VArray<bool> &selection,
+                                   const VArray<bool> &cyclic,
                                    const int64_t iterations,
                                    const float influence,
                                    const bool smooth_ends,
-                                   const bool keep_shape)
+                                   const bool keep_shape,
+                                   GMutableSpan data)
 {
-  GMutableSpan data = attribute.span;
-  if (data.is_empty()) {
-    return;
-  }
-  threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
+  threading::parallel_for(points_by_curve.index_range(), 512, [&](const IndexRange range) {
     Vector<std::byte> orig_data;
     for (const int curve_i : range) {
       const IndexRange points = points_by_curve[curve_i];
@@ -270,17 +269,16 @@ static void smooth_curve_attribute(bke::CurvesGeometry &curves,
       Vector<IndexRange> selection_ranges = selection_mask.to_ranges();
       for (const IndexRange range : selection_ranges) {
         GMutableSpan dst_data = data.slice(range);
+
         orig_data.resize(dst_data.size_in_bytes());
         dst_data.type().copy_assign_n(dst_data.data(), orig_data.data(), range.size());
+        const GSpan src_data(dst_data.type(), orig_data.data(), range.size());
 
-        GSpan src_data(dst_data.type(), orig_data.data(), range.size());
         gaussian_blur_1D(
             src_data, iterations, influence, smooth_ends, keep_shape, cyclic[curve_i], dst_data);
       }
     }
   });
-
-  attribute.finish();
 }
 
 static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
@@ -319,41 +317,38 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
 
         if (smooth_position) {
           bke::GSpanAttributeWriter positions = attributes.lookup_for_write_span("position");
-          smooth_curve_attribute(curves,
-                                 positions,
-                                 points_by_curve,
+          smooth_curve_attribute(points_by_curve,
                                  selection,
                                  cyclic,
                                  iterations,
                                  influence,
                                  smooth_ends,
-                                 keep_shape);
+                                 keep_shape,
+                                 positions.span);
           positions.finish();
         }
         if (smooth_opacity && drawing.opacities().is_span()) {
-          bke::GSpanAttributeWriter opcities = attributes.lookup_for_write_span("opacity");
-          smooth_curve_attribute(curves,
-                                 opcities,
-                                 points_by_curve,
+          bke::GSpanAttributeWriter opacities = attributes.lookup_for_write_span("opacity");
+          smooth_curve_attribute(points_by_curve,
                                  selection,
                                  cyclic,
                                  iterations,
                                  influence,
                                  smooth_ends,
-                                 false);
-          opcities.finish();
+                                 false,
+                                 opacities.span);
+          opacities.finish();
         }
         if (smooth_radius && drawing.radii().is_span()) {
           bke::GSpanAttributeWriter radii = attributes.lookup_for_write_span("radius");
-          smooth_curve_attribute(curves,
-                                 radii,
-                                 points_by_curve,
+          smooth_curve_attribute(points_by_curve,
                                  selection,
                                  cyclic,
                                  iterations,
                                  influence,
                                  smooth_ends,
-                                 false);
+                                 false,
+                                 radii.span);
           radii.finish();
         }
       });
@@ -391,12 +386,340 @@ static void GREASE_PENCIL_OT_stroke_smooth(wmOperatorType *ot)
   RNA_def_boolean(ot->srna, "smooth_opacity", false, "Opacity", "");
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Simplify Stroke Operator
+ * \{ */
+
+/**
+ * An implementation of the Ramer-Douglas-Peucker algorithm.
+ *
+ * \param range: The range to simplify.
+ * \param epsilon: The threshold distance from the coord between two points for when a point
+ * in-between needs to be kept.
+ * \param dist_function: A function that computes the distance to a point at an index in the range.
+ * The IndexRange is a subrange of \a range and the index is an index relative to the subrange.
+ * \param points_to_delete: Writes true to the indecies for which the points should be removed.
+ * \returns the total number of points to remove.
+ */
+int64_t ramer_douglas_peucker_simplify(const IndexRange range,
+                                       const float epsilon,
+                                       const FunctionRef<float(IndexRange, int64_t)> dist_function,
+                                       MutableSpan<bool> points_to_delete)
+{
+  /* Mark all points to not be removed. */
+  points_to_delete.slice(range).fill(false);
+  int64_t total_points_to_remove = 0;
+
+  Stack<IndexRange> stack;
+  stack.push(range);
+  while (!stack.is_empty()) {
+    const IndexRange sub_range = stack.pop();
+
+    /* Compute the maximum distance and the corresponding distance. */
+    float max_dist = -1.0f;
+    int max_index = -1;
+    for (const int64_t sub_index : sub_range.index_range().drop_front(1).drop_back(1)) {
+      const float dist = dist_function(sub_range, sub_index);
+      if (dist > max_dist) {
+        max_dist = dist;
+        max_index = sub_index;
+      }
+    }
+
+    if (max_dist > epsilon) {
+      /* Found point outside the epsilon-sized strip. Repeat the search on the left & right side.
+       */
+      stack.push(sub_range.slice(IndexRange(max_index + 1)));
+      stack.push(sub_range.slice(IndexRange(max_index, sub_range.size() - max_index)));
+    }
+    else {
+      /* Points in `sub_range` are inside the epsilon-sized strip. Mark them to be deleted. */
+      const IndexRange inside_range = sub_range.drop_front(1).drop_back(1);
+      total_points_to_remove += inside_range.size();
+      points_to_delete.slice(inside_range).fill(true);
+    }
+  }
+  return total_points_to_remove;
+}
+
+static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
+{
+  using namespace blender;
+  const Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+
+  const float epsilon = RNA_float_get(op->ptr, "factor");
+
+  bool changed = false;
+  grease_pencil.foreach_editable_drawing(
+      scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
+        bke::CurvesGeometry &curves = drawing.strokes_for_write();
+        if (curves.points_num() == 0) {
+          return;
+        }
+
+        if (!ed::curves::has_anything_selected(curves)) {
+          return;
+        }
+
+        const Span<float3> positions = curves.positions();
+
+        /* Distance function for `ramer_douglas_peucker_simplify`. */
+        auto dist_func = [&](IndexRange range, int64_t index_in_range) {
+          const Span<float3> position_slice = positions.slice(range);
+          const float dist_position = dist_to_line_v3(
+              position_slice[index_in_range], position_slice.first(), position_slice.last());
+          return dist_position;
+        };
+
+        const VArray<bool> cyclic = curves.cyclic();
+        const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+        const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
+            ".selection", ATTR_DOMAIN_POINT, true);
+
+        Array<bool> points_to_delete(curves.points_num());
+        selection.materialize(points_to_delete);
+
+        std::atomic<int64_t> total_points_to_delete = 0;
+        threading::parallel_for(curves.curves_range(), 128, [&](const IndexRange range) {
+          for (const int curve_i : range) {
+            const IndexRange points = points_by_curve[curve_i];
+            const Span<bool> curve_selection = points_to_delete.as_span().slice(points);
+            if (!curve_selection.contains(true)) {
+              continue;
+            }
+
+            const bool is_last_segment_selected = (curve_selection.first() &&
+                                                   curve_selection.last());
+
+            const Vector<IndexRange> selection_ranges = array_utils::find_all_ranges(
+                curve_selection, true);
+            threading::parallel_for(
+                selection_ranges.index_range(), 1024, [&](const IndexRange range_of_ranges) {
+                  for (const IndexRange range : selection_ranges.as_span().slice(range_of_ranges))
+                  {
+                    total_points_to_delete += ramer_douglas_peucker_simplify(
+                        range.shift(points.start()),
+                        epsilon,
+                        dist_func,
+                        points_to_delete.as_mutable_span());
+                  }
+                });
+
+            /* For cyclic curves, simplify the last segment. */
+            if (cyclic[curve_i] && curves.points_num() > 2 && is_last_segment_selected) {
+              const float dist = dist_to_line_v3(
+                  positions[points.last()], positions[points.last(1)], positions[points.first()]);
+              if (dist <= epsilon) {
+                points_to_delete[points.last()] = true;
+                total_points_to_delete++;
+              }
+            }
+          }
+        });
+
+        if (total_points_to_delete > 0) {
+          IndexMaskMemory memory;
+          curves.remove_points(IndexMask::from_bools(points_to_delete, memory));
+          drawing.tag_topology_changed();
+          changed = true;
+        }
+      });
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_stroke_simplify(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  /* Identifiers. */
+  ot->name = "Simplify Stroke";
+  ot->idname = "GREASE_PENCIL_OT_stroke_simplify";
+  ot->description = "Simplify selected strokes";
+
+  /* Callbacks. */
+  ot->exec = grease_pencil_stroke_simplify_exec;
+  ot->poll = editable_grease_pencil_point_selection_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* Simplify parameters. */
+  prop = RNA_def_float(ot->srna, "factor", 0.001f, 0.0f, 100.0f, "Factor", "", 0.0f, 100.0f);
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Dissolve Points Operator
+ * \{ */
+
+enum class DissolveMode : int8_t {
+  /* Dissolve all selected points. */
+  POINTS,
+  /* Dissolve between selected points. */
+  BETWEEN,
+  /* Dissolve unselected points. */
+  UNSELECT,
+};
+
+static const EnumPropertyItem prop_dissolve_types[] = {
+    {int(DissolveMode::POINTS), "POINTS", 0, "Dissolve", "Dissolve selected points"},
+    {int(DissolveMode::BETWEEN),
+     "BETWEEN",
+     0,
+     "Dissolve Between",
+     "Dissolve points between selected points"},
+    {int(DissolveMode::UNSELECT),
+     "UNSELECT",
+     0,
+     "Dissolve Unselect",
+     "Dissolve all unselected points"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+static Array<bool> get_points_to_dissolve(bke::CurvesGeometry &curves, const DissolveMode mode)
+{
+  const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
+      ".selection", ATTR_DOMAIN_POINT, true);
+
+  Array<bool> points_to_dissolve(curves.points_num());
+  selection.materialize(points_to_dissolve);
+
+  if (mode == DissolveMode::POINTS) {
+    return points_to_dissolve;
+  }
+
+  /* Both `between` and `unselect` have the unselected point being the ones dissolved so we need to
+   * invert. */
+  BLI_assert(ELEM(mode, DissolveMode::BETWEEN, DissolveMode::UNSELECT));
+
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  /* Because we are going to invert, these become the points to keep. */
+  MutableSpan<bool> points_to_keep = points_to_dissolve.as_mutable_span();
+
+  threading::parallel_for(curves.curves_range(), 128, [&](const IndexRange range) {
+    for (const int64_t curve_i : range) {
+      const IndexRange points = points_by_curve[curve_i];
+      const Span<bool> curve_selection = points_to_dissolve.as_span().slice(points);
+      /* The unselected curves should not be dissolved. */
+      if (!curve_selection.contains(true)) {
+        points_to_keep.slice(points).fill(true);
+        continue;
+      }
+
+      /* `between` is just `unselect` but with the first and last segments not getting
+       * dissolved. */
+      if (mode != DissolveMode::BETWEEN) {
+        continue;
+      }
+
+      const Vector<IndexRange> deselection_ranges = array_utils::find_all_ranges(curve_selection,
+                                                                                 false);
+
+      if (deselection_ranges.size() != 0) {
+        const IndexRange first_range = deselection_ranges.first().shift(points.first());
+        const IndexRange last_range = deselection_ranges.last().shift(points.first());
+
+        /* Ranges should only be fill if the first/last point matches the start/end point
+         * of the segment. */
+        if (first_range.first() == points.first()) {
+          points_to_keep.slice(first_range).fill(true);
+        }
+        if (last_range.last() == points.last()) {
+          points_to_keep.slice(last_range).fill(true);
+        }
+      }
+    }
+  });
+
+  array_utils::invert_booleans(points_to_dissolve);
+
+  return points_to_dissolve;
+}
+
+static int grease_pencil_dissolve_exec(bContext *C, wmOperator *op)
+{
+  using namespace blender;
+  const Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+
+  const DissolveMode mode = DissolveMode(RNA_enum_get(op->ptr, "type"));
+
+  bool changed = false;
+  grease_pencil.foreach_editable_drawing(
+      scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
+        bke::CurvesGeometry &curves = drawing.strokes_for_write();
+        if (curves.points_num() == 0) {
+          return;
+        }
+
+        if (!ed::curves::has_anything_selected(curves)) {
+          return;
+        }
+
+        const Array<bool> points_to_dissolve = get_points_to_dissolve(curves, mode);
+
+        if (points_to_dissolve.as_span().contains(true)) {
+          IndexMaskMemory memory;
+          curves.remove_points(IndexMask::from_bools(points_to_dissolve, memory));
+          drawing.tag_topology_changed();
+          changed = true;
+        }
+      });
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_dissolve(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  /* Identifiers. */
+  ot->name = "Dissolve";
+  ot->idname = "GREASE_PENCIL_OT_dissolve";
+  ot->description = "Delete selected points without splitting strokes";
+
+  /* Callbacks. */
+  ot->invoke = WM_menu_invoke;
+  ot->exec = grease_pencil_dissolve_exec;
+  ot->poll = editable_grease_pencil_point_selection_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* Simplify parameters. */
+  ot->prop = prop = RNA_def_enum(ot->srna,
+                                 "type",
+                                 prop_dissolve_types,
+                                 0,
+                                 "Type",
+                                 "Method used for dissolving stroke points");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+}
+
+/** \} */
+
 }  // namespace blender::ed::greasepencil
 
-void ED_operatortypes_grease_pencil_edit(void)
+void ED_operatortypes_grease_pencil_edit()
 {
   using namespace blender::ed::greasepencil;
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_smooth);
+  WM_operatortype_append(GREASE_PENCIL_OT_stroke_simplify);
+  WM_operatortype_append(GREASE_PENCIL_OT_dissolve);
 }
 
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf)

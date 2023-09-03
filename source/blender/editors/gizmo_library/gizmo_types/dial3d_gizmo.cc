@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,7 +19,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 
 #include "BKE_context.h"
 
@@ -29,22 +30,22 @@
 #include "GPU_select.h"
 #include "GPU_state.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_gizmo_library.h"
-#include "ED_screen.h"
-#include "ED_transform.h"
-#include "ED_view3d.h"
+#include "ED_gizmo_library.hh"
+#include "ED_screen.hh"
+#include "ED_transform.hh"
+#include "ED_view3d.hh"
 
 /* own includes */
 #include "../gizmo_geometry.h"
 #include "../gizmo_library_intern.h"
 
-/* To use custom dials exported to geom_dial_gizmo.c */
+// /** To use custom dials exported to `geom_dial_gizmo.cc`. */
 // #define USE_GIZMO_CUSTOM_DIAL
 
 struct DialInteraction {
@@ -90,7 +91,7 @@ static void dial_3d_draw_util(const float matrix_final[4][4],
                               const float line_width,
                               const float color[4],
                               const bool select,
-                              struct Dial3dParams *params);
+                              Dial3dParams *params);
 
 static void dial_geom_draw(const float color[4],
                            const float line_width,
@@ -166,9 +167,9 @@ static void dial_geom_draw(const float color[4],
       imm_draw_circle_partial_wire_3d(
           pos, 0.0f, 0.0f, 0.0f, 1.0f, DIAL_RESOLUTION, -arc_partial_deg / 2, arc_partial_deg);
 #  if 0
-if (arc_inner_factor != 0.0f) {
-BLI_assert(0);
-}
+      if (arc_inner_factor != 0.0f) {
+        BLI_assert(0);
+      }
 #  endif
     }
   }
@@ -257,8 +258,8 @@ static void dial_ghostarc_draw(const float angle_ofs,
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
   /* Avoid artifacts by drawing the main arc over the span of one rotation only. */
-  const float pi2 = (float)(M_PI * 2.0);
-  int rotation_count = (int)floorf(fabsf(angle_delta) / pi2);
+  const float pi2 = float(M_PI * 2.0);
+  int rotation_count = int(floorf(fabsf(angle_delta) / pi2));
   angle_delta = fmod(angle_delta, pi2);
 
   /* Calculate the remaining angle that can be filled with the background color. */
@@ -358,7 +359,7 @@ static void dial_ghostarc_get_angles(const wmGizmo *gz,
   /* Change of sign, we passed the 180 degree threshold. This means we need to add a turn
    * to distinguish between transition from 0 to -1 and -PI to +PI, use comparison with PI/2.
    * Logic taken from #BLI_dial_angle */
-  if ((delta * inter->prev.angle < 0.0f) && (fabsf(inter->prev.angle) > (float)M_PI_2)) {
+  if ((delta * inter->prev.angle < 0.0f) && (fabsf(inter->prev.angle) > float(M_PI_2))) {
     if (inter->prev.angle < 0.0f) {
       inter->rotations--;
     }
@@ -369,9 +370,9 @@ static void dial_ghostarc_get_angles(const wmGizmo *gz,
   inter->prev.angle = delta;
 
   const bool wrap_angle = RNA_boolean_get(gz->ptr, "wrap_angle");
-  const double delta_final = (double)delta + ((2 * M_PI) * (double)inter->rotations);
+  const double delta_final = double(delta) + ((2 * M_PI) * double(inter->rotations));
   *r_start = start;
-  *r_delta = (float)(wrap_angle ? fmod(delta_final, 2 * M_PI) : delta_final);
+  *r_delta = float(wrap_angle ? fmod(delta_final, 2 * M_PI) : delta_final);
 }
 
 static void dial_ghostarc_draw_with_helplines(const float angle_ofs,
@@ -508,7 +509,7 @@ static int gizmo_dial_modal(bContext *C,
 
   if (tweak_flag & WM_GIZMO_TWEAK_SNAP) {
     angle_increment = RNA_float_get(gz->ptr, "incremental_angle");
-    angle_delta = (float)roundf((double)angle_delta / angle_increment) * angle_increment;
+    angle_delta = float(roundf(double(angle_delta) / angle_increment)) * angle_increment;
   }
   if (tweak_flag & WM_GIZMO_TWEAK_PRECISE) {
     angle_increment *= 0.2f;
@@ -613,7 +614,7 @@ static void dial_3d_draw_util(const float matrix_final[4][4],
                               const float line_width,
                               const float color[4],
                               const bool select,
-                              struct Dial3dParams *params)
+                              Dial3dParams *params)
 {
   GPU_matrix_push();
   GPU_matrix_mul(matrix_final);
@@ -714,7 +715,7 @@ static void GIZMO_GT_dial_3d(wmGizmoType *gzt)
   WM_gizmotype_target_property_def(gzt, "offset", PROP_FLOAT, 1);
 }
 
-void ED_gizmotypes_dial_3d(void)
+void ED_gizmotypes_dial_3d()
 {
   WM_gizmotype_append(GIZMO_GT_dial_3d);
 }

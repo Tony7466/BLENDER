@@ -6,16 +6,18 @@
  * \ingroup edcurve
  */
 
-#include <errno.h>
+#include <cerrno>
+#include <cstdlib>
+#include <cstring>
+#include <cwchar>
 #include <fcntl.h>
-#include <stdlib.h>
-#include <string.h>
-#include <wchar.h>
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string_cursor_utf8.h"
 #include "BLI_utildefines.h"
 
@@ -41,19 +43,19 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_curve.h"
-#include "ED_object.h"
-#include "ED_outliner.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_curve.hh"
+#include "ED_object.hh"
+#include "ED_outliner.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "curve_intern.h"
 
@@ -733,7 +735,6 @@ void ED_text_to_object(bContext *C, const Text *text, const bool split_lines)
 {
   Main *bmain = CTX_data_main(C);
   RegionView3D *rv3d = CTX_wm_region_view3d(C);
-  const TextLine *line;
   float offset[3];
   int linenum = 0;
 
@@ -742,7 +743,7 @@ void ED_text_to_object(bContext *C, const Text *text, const bool split_lines)
   }
 
   if (split_lines) {
-    for (line = static_cast<const TextLine *>(text->lines.first); line; line = line->next) {
+    LISTBASE_FOREACH (const TextLine *, line, &text->lines) {
       /* skip lines with no text, but still make space for them */
       if (line->line[0] == '\0') {
         linenum++;
@@ -843,7 +844,7 @@ void FONT_OT_style_set(wmOperatorType *ot)
   /* properties */
   RNA_def_enum(
       ot->srna, "style", style_items, CU_CHINFO_BOLD, "Style", "Style to set selection to");
-  RNA_def_boolean(ot->srna, "clear", 0, "Clear", "Clear style rather than setting it");
+  RNA_def_boolean(ot->srna, "clear", false, "Clear", "Clear style rather than setting it");
 }
 
 /** \} */
@@ -1126,7 +1127,7 @@ void FONT_OT_text_paste(wmOperatorType *ot)
   PropertyRNA *prop;
   prop = RNA_def_boolean(ot->srna,
                          "selection",
-                         0,
+                         false,
                          "Selection",
                          "Paste text selected elsewhere rather than copied (X11/Wayland only)");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
@@ -1805,7 +1806,7 @@ void FONT_OT_text_insert(wmOperatorType *ot)
   RNA_def_boolean(
       ot->srna,
       "accent",
-      0,
+      false,
       "Accent Mode",
       "Next typed character will strike through previous, for special character input");
 }
@@ -1823,7 +1824,7 @@ static int font_cursor_text_index_from_event(bContext *C, Object *obedit, const 
   plane_from_point_normal_v3(plane, obedit->object_to_world[3], obedit->object_to_world[2]);
 
   /* Convert Mouse location in region to 3D location in world space. */
-  float mal_fl[2] = {(float)event->mval[0], (float)event->mval[1]};
+  float mal_fl[2] = {float(event->mval[0]), float(event->mval[1])};
   float mouse_loc[3];
   ED_view3d_win_to_3d_on_plane(CTX_wm_region(C), plane, mal_fl, true, mouse_loc);
 
@@ -2386,7 +2387,7 @@ bool ED_curve_editfont_select_pick(
     bContext *C,
     const int mval[2],
     /* NOTE: `params->deselect_all` is ignored as only one text-box is active at once. */
-    const struct SelectPick_Params *params)
+    const SelectPick_Params *params)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *obedit = CTX_data_edit_object(C);

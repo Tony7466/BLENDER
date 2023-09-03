@@ -6,13 +6,15 @@
  * \ingroup edtransform
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "MEM_guardedalloc.h"
 
 #include "DNA_gpencil_legacy_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_task.h"
 
@@ -21,12 +23,12 @@
 #include "BKE_report.h"
 #include "BKE_unit.h"
 
-#include "ED_node.h"
-#include "ED_screen.h"
+#include "ED_node.hh"
+#include "ED_screen.hh"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #include "BLT_translation.h"
 
@@ -297,7 +299,7 @@ static void headerTranslation(TransInfo *t, const float vec[3], char str[UI_MAX_
   else {
     if (t->spacetype == SPACE_NODE) {
       SpaceNode *snode = (SpaceNode *)t->area->spacedata.first;
-      if ((snode->flag & SNODE_SKIP_INSOFFSET) == 0) {
+      if (U.uiflag & USER_NODE_AUTO_OFFSET) {
         const char *str_dir = (snode->insert_ofs_dir == SNODE_INSERTOFS_DIR_RIGHT) ?
                                   TIP_("right") :
                                   TIP_("left");
@@ -314,8 +316,11 @@ static void headerTranslation(TransInfo *t, const float vec[3], char str[UI_MAX_
       char str_attach_km[64];
       WM_modalkeymap_items_to_string(
           t->keymap, TFM_MODAL_NODE_ATTACH_OFF, true, str_attach_km, sizeof(str_attach_km));
-      ofs += BLI_snprintf_rlen(
-          str + ofs, UI_MAX_DRAW_STR - ofs, TIP_(", %s: Toggle auto-attach"), str_attach_km);
+      ofs += BLI_snprintf_rlen(str + ofs,
+                               UI_MAX_DRAW_STR - ofs,
+                               TIP_(", %s: Toggle auto-attach (%s)"),
+                               str_attach_km,
+                               WM_bool_as_string((t->modifiers & MOD_NODE_ATTACH) != 0));
     }
     else {
       if (t->flag & T_2D_EDIT) {
@@ -573,7 +578,7 @@ static bool clip_uv_transform_translation(TransInfo *t, float vec[2])
   return result;
 }
 
-static void applyTranslation(TransInfo *t, const int[2] /*mval*/)
+static void applyTranslation(TransInfo *t)
 {
   char str[UI_MAX_DRAW_STR];
   float global_dir[3] = {0.0f};
@@ -640,10 +645,7 @@ static void applyTranslation(TransInfo *t, const int[2] /*mval*/)
   if (t->flag & T_CLIP_UV && clip_uv_transform_translation(t, global_dir)) {
     applyTranslationValue(t, global_dir);
 
-    /* In proportional edit it can happen that */
-    /* vertices in the radius of the brush end */
-    /* outside the clipping area               */
-    /* XXX HACK - dg */
+    /* Not ideal, see #clipUVData code-comment. */
     if (t->flag & T_PROP_EDIT) {
       clipUVData(t);
     }
@@ -653,7 +655,7 @@ static void applyTranslation(TransInfo *t, const int[2] /*mval*/)
   mul_v3_m3v3(t->values_final, t->spacemtx_inv, global_dir);
   headerTranslation(t, (t->con.mode & CON_APPLY) ? t->values_final : global_dir, str);
 
-  recalcData(t);
+  recalc_data(t);
   ED_area_status_text(t->area, str);
 }
 

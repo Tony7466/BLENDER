@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,7 +16,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_color.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector_types.hh"
 
 #include "BKE_context.h"
@@ -29,20 +30,20 @@
 #include "GPU_select.h"
 #include "GPU_state.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_gizmo_library.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_gizmo_library.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
+#include "UI_resources.hh"
 
 /* own includes */
 #include "../gizmo_geometry.h"
@@ -76,7 +77,7 @@ static void button2d_geom_draw_backdrop(const wmGizmo *gz,
   GPU_viewport_size_get_f(viewport);
 
   const float max_pixel_error = 0.25f;
-  int nsegments = (int)ceilf(M_PI / acosf(1.0f - max_pixel_error / screen_scale));
+  int nsegments = int(ceilf(M_PI / acosf(1.0f - max_pixel_error / screen_scale)));
   nsegments = max_ff(nsegments, 8);
   nsegments = min_ff(nsegments, 1000);
 
@@ -298,7 +299,7 @@ static int gizmo_button2d_test_select(bContext *C, wmGizmo *gz, const int mval[2
 {
   float point_local[2];
 
-  if (0) {
+  if (false) {
     /* correct, but unnecessarily slow. */
     if (gizmo_window_project_2d(
             C, gz, blender::float2{blender::int2(mval)}, 2, true, point_local) == false)
@@ -431,7 +432,7 @@ static void GIZMO_GT_button_2d(wmGizmoType *gzt)
                 1.0f);
 }
 
-void ED_gizmotypes_button_2d(void)
+void ED_gizmotypes_button_2d()
 {
   WM_gizmotype_append(GIZMO_GT_button_2d);
 }

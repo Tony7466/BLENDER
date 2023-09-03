@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -6,6 +6,7 @@ set(INC
   .
   algorithms
   cached_resources
+  ../../blenkernel
   ../../blentranslation
   ../../draw
   ../../gpu
@@ -104,7 +105,7 @@ set(LIB
   bf_imbuf
   bf_render
   PRIVATE bf::blenlib
-  PRIVATE bf::blenkernel
+  bf_blenkernel
 )
 
 set(GLSL_SRC
@@ -142,6 +143,8 @@ set(GLSL_SRC
   shaders/compositor_keying_extract_chroma.glsl
   shaders/compositor_keying_replace_chroma.glsl
   shaders/compositor_keying_tweak_matte.glsl
+  shaders/compositor_kuwahara_anisotropic.glsl
+  shaders/compositor_kuwahara_anisotropic_compute_structure_tensor.glsl
   shaders/compositor_kuwahara_classic.glsl
   shaders/compositor_map_uv.glsl
   shaders/compositor_morphological_distance.glsl
@@ -210,7 +213,7 @@ set(GLSL_SRC
 
 set(GLSL_C)
 foreach(GLSL_FILE ${GLSL_SRC})
-  data_to_c_simple(${GLSL_FILE} GLSL_C)
+  data_to_c_simple(${GLSL_FILE} GLSL_C STRIP_LEADING_C_COMMENTS)
 endforeach()
 
 blender_add_lib(bf_compositor_shaders "${GLSL_C}" "" "" "")
@@ -316,4 +319,3 @@ if(WITH_OPENCOLORIO)
 endif()
 
 blender_add_lib(bf_realtime_compositor "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
-

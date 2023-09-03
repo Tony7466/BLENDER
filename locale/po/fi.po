@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'5aff5bc0e72b')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'5ba692898e63')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-07-17 12:39:59\n"
+"POT-Creation-Date: 2023-08-28 16:05:16\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -2114,6 +2114,10 @@ msgid "Show Lasso"
 msgstr "Näytä lasso"
 
 
+msgid "Active Layer"
+msgstr "Aktiivinen taso"
+
+
 msgid "Default Eraser"
 msgstr "Oletuspyyhekumi"
 
@@ -2184,10 +2188,6 @@ msgstr "Välimuistitasot"
 
 msgid "Collection of cache layers"
 msgstr "Kokoelma välimuistitasoista"
-
-
-msgid "Active Layer"
-msgstr "Aktiivinen taso"
 
 
 msgid "Active layer of the CacheFile"
@@ -2445,20 +2445,8 @@ msgid "Is Data"
 msgstr "On data"
 
 
-msgid "Linear ACES"
-msgstr "Linear ACES"
-
-
 msgid "Non-Color"
 msgstr "Väritön"
-
-
-msgid "Raw"
-msgstr "Raaka"
-
-
-msgid "XYZ"
-msgstr "XYZ"
 
 
 msgid "Color Space"
@@ -4717,6 +4705,14 @@ msgid "Normals"
 msgstr "Normaalit"
 
 
+msgid "Sculpt"
+msgstr "Veistä"
+
+
+msgid "Mesh"
+msgstr "Muoto"
+
+
 msgid "Mirror Object"
 msgstr "Peilaa objekti"
 
@@ -4785,10 +4781,6 @@ msgstr "Kirjoita"
 
 msgid "Instances"
 msgstr "Instanssit"
-
-
-msgid "Mesh"
-msgstr "Muoto"
 
 
 msgid "Node"
@@ -4890,10 +4882,6 @@ msgstr "Valoluotain"
 
 msgid "Random Mask"
 msgstr "Satunnainen maski"
-
-
-msgid "Sculpt"
-msgstr "Veistä"
 
 
 msgid "UV Mapping"
@@ -5799,15 +5787,6 @@ msgstr "Vain luvun A:n desimaaliosa"
 
 
 msgctxt "NodeTree"
-msgid "Modulo"
-msgstr "Jakojäännös"
-
-
-msgid "Modulo using fmod(A,B)"
-msgstr "A:n ja B:n jakojäännös"
-
-
-msgctxt "NodeTree"
 msgid "Wrap"
 msgstr "Kiedo"
 
@@ -6358,6 +6337,10 @@ msgid "Join Strings"
 msgstr "Yhdistä merkkijonot"
 
 
+msgid "Selection"
+msgstr "Valinta"
+
+
 msgid "Pack UV Islands"
 msgstr "Pakkaa UV-saaret"
 
@@ -6607,6 +6590,11 @@ msgid "Wave Type"
 msgstr "Aaltotyyppi"
 
 
+msgctxt "NodeTree"
+msgid "Modulo"
+msgstr "Jakojäännös"
+
+
 msgid "Vector Rotate"
 msgstr "Vektorin kirto"
 
@@ -6707,10 +6695,6 @@ msgid "Only Channel"
 msgstr "Vain kanava"
 
 
-msgid "Selection"
-msgstr "Valinta"
-
-
 msgid "Output A"
 msgstr "A-tuloste"
 
@@ -6797,46 +6781,6 @@ msgstr "Objektiasetukset"
 
 msgid "Animation settings"
 msgstr "Animaatioasetukset"
-
-
-msgid "Material Groups"
-msgstr "Materiaaliryhmät"
-
-
-msgid "OBJ Groups"
-msgstr "OBJ-ryhmät"
-
-
-msgid "Export Blender objects as OBJ groups"
-msgstr "Vie Blender-objektit OBJ-ryhminä"
-
-
-msgid "Keep Vertex Order"
-msgstr "Pidä kärkien järjestys"
-
-
-msgid "OBJ Objects"
-msgstr "OBJ-objektit"
-
-
-msgid "Export Blender objects as OBJ objects"
-msgstr "Vie Blender-objektit OBJ-objekteina"
-
-
-msgid "Include Edges"
-msgstr "Sisällytä reunat"
-
-
-msgid "Write Materials"
-msgstr "Kirjoita materiaalit"
-
-
-msgid "Apply modifiers"
-msgstr "Kytke muuntimet"
-
-
-msgid "Write Normals"
-msgstr "Kirjoita normaalit"
 
 
 msgctxt "Operator"
@@ -7495,6 +7439,10 @@ msgid "Canvas"
 msgstr "Kangas"
 
 
+msgid "XYZ"
+msgstr "XYZ"
+
+
 msgid "Pixel Size"
 msgstr "Pikselin koko"
 
@@ -7627,6 +7575,10 @@ msgstr "Näkymä"
 
 msgid "AOV"
 msgstr "AOV"
+
+
+msgid "Theme"
+msgstr "Teema"
 
 
 msgid "Active AOV"
@@ -7900,10 +7852,6 @@ msgstr "Kameraa ei löydetty"
 
 msgid "Shortcuts"
 msgstr "Pikanäppäimet"
-
-
-msgid "Theme"
-msgstr "Teema"
 
 
 msgid "Spacebar"
@@ -8356,6 +8304,10 @@ msgstr "Verkkomanuaali"
 
 msgid "Empties"
 msgstr "Tyhjät"
+
+
+msgid "Raw"
+msgstr "Raaka"
 
 
 msgctxt "Operator"
@@ -9361,6 +9313,10 @@ msgid "Grouping"
 msgstr "Ryhmittäminen"
 
 
+msgid "Material Groups"
+msgstr "Materiaaliryhmät"
+
+
 msgid "Data Types"
 msgstr "Tietotyypit"
 
@@ -9448,10 +9404,6 @@ msgstr "Reunoja ei voida lisätä muokkaustilassa"
 
 msgid "Cannot add loops in edit mode"
 msgstr "Silmukoita ei voida lisätä muokkaustilassa"
-
-
-msgid "Cannot add polygons in edit mode"
-msgstr "Monikulmioita ei voida lisätä muokkaustilassa"
 
 
 msgid "Cannot remove vertices in edit mode"
@@ -11578,46 +11530,6 @@ msgstr "16:9"
 
 msgid "4:3 in 16:9"
 msgstr "4:3 in 16:9"
-
-
-msgid "apple"
-msgstr "omena"
-
-
-msgid "chicken"
-msgstr "kana"
-
-
-msgid "cream"
-msgstr "kerma"
-
-
-msgid "ketchup"
-msgstr "ketsuppi"
-
-
-msgid "marble"
-msgstr "marmori"
-
-
-msgid "potato"
-msgstr "peruna"
-
-
-msgid "skim milk"
-msgstr "rasvaton maito"
-
-
-msgid "skin1"
-msgstr "iho1"
-
-
-msgid "skin2"
-msgstr "iho2"
-
-
-msgid "whole milk"
-msgstr "täysmaito"
 
 
 msgid "Blurry Footage"

@@ -16,7 +16,10 @@
 #include "BLI_array_utils.h"
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "BLT_translation.h"
 
@@ -38,17 +41,17 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_curve.h"
-#include "ED_object.h"
-#include "ED_outliner.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
-#include "ED_transform.h"
-#include "ED_transform_snap_object_context.h"
-#include "ED_view3d.h"
+#include "ED_curve.hh"
+#include "ED_object.hh"
+#include "ED_outliner.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
+#include "ED_transform.hh"
+#include "ED_transform_snap_object_context.hh"
+#include "ED_view3d.hh"
 
 #include "curve_intern.h"
 
@@ -56,12 +59,12 @@ extern "C" {
 #include "curve_fit_nd.h"
 }
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 void selectend_nurb(Object *obedit, enum eEndPoint_Types selfirst, bool doswap, bool selstatus);
 static void adduplicateflagNurb(
@@ -596,7 +599,7 @@ static void calc_keyHandles(ListBase *nurb, float *key)
           key_to_bezt(prevfp, prevp, &prev);
         }
 
-        BKE_nurb_handle_calc(&cur, prevp ? &prev : nullptr, nextp ? &next : nullptr, 0, 0);
+        BKE_nurb_handle_calc(&cur, prevp ? &prev : nullptr, nextp ? &next : nullptr, false, 0);
         bezt_to_key(&cur, fp);
 
         prevp = bezt;
@@ -658,7 +661,7 @@ static void calc_shapeKeys(Object *obedit, ListBase *newnurbs)
       LISTBASE_FOREACH (Nurb *, nu, &editnurb->nurbs) {
 
         if (nu->bezt) {
-          /* Three vects to store handles and one for tilt. */
+          /* Three vectors to store handles and one for tilt. */
           totvec += nu->pntsu * 4;
         }
         else {
@@ -1378,7 +1381,7 @@ static int separate_exec(bContext *C, wmOperator *op)
     /* 2. Duplicate the object and data. */
 
     /* Take into account user preferences for duplicating actions. */
-    const eDupli_ID_Flags dupflag = eDupli_ID_Flags((U.dupflag & USER_DUP_ACT));
+    const eDupli_ID_Flags dupflag = eDupli_ID_Flags(U.dupflag & USER_DUP_ACT);
 
     newbase = ED_object_add_duplicate(bmain, scene, view_layer, oldbase, dupflag);
     DEG_relations_tag_update(bmain);
@@ -1564,11 +1567,11 @@ static bool isNurbselU(Nurb *nu, int *v, int flag)
     }
     else if (sel >= 1) {
       *v = 0;
-      return 0;
+      return false;
     }
   }
 
-  return 1;
+  return true;
 }
 
 /* return true if V direction is selected and number of selected rows u */
@@ -1592,11 +1595,11 @@ static bool isNurbselV(Nurb *nu, int *u, int flag)
     }
     else if (sel >= 1) {
       *u = 0;
-      return 0;
+      return false;
     }
   }
 
-  return 1;
+  return true;
 }
 
 static void rotateflagNurb(ListBase *editnurb,
@@ -2998,9 +3001,9 @@ static void curve_smooth_value(ListBase *editnurb, const int bezt_offsetof, cons
             }
 
             /* Now Blend between the points */
-            range = (float)(end_sel - start_sel) + 2.0f;
+            range = float(end_sel - start_sel) + 2.0f;
             for (bezt = &nu->bezt[start_sel], a = start_sel; a <= end_sel; a++, bezt++) {
-              fac = (float)(1 + a - start_sel) / range;
+              fac = float(1 + a - start_sel) / range;
               BEZT_VALUE(bezt) = start_rad * (1.0f - fac) + end_rad * fac;
             }
           }
@@ -3079,9 +3082,9 @@ static void curve_smooth_value(ListBase *editnurb, const int bezt_offsetof, cons
             }
 
             /* Now Blend between the points */
-            range = (float)(end_sel - start_sel) + 2.0f;
+            range = float(end_sel - start_sel) + 2.0f;
             for (bp = &nu->bp[start_sel], a = start_sel; a <= end_sel; a++, bp++) {
-              fac = (float)(1 + a - start_sel) / range;
+              fac = float(1 + a - start_sel) / range;
               BP_VALUE(bp) = start_rad * (1.0f - fac) + end_rad * fac;
             }
           }
@@ -3324,7 +3327,8 @@ void CURVE_OT_hide(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* props */
-  RNA_def_boolean(ot->srna, "unselected", 0, "Unselected", "Hide unselected rather than selected");
+  RNA_def_boolean(
+      ot->srna, "unselected", false, "Unselected", "Hide unselected rather than selected");
 }
 
 /** \} */
@@ -3526,13 +3530,11 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
     else if (nu->pntsv == 1) {
       BPoint *nextbp;
 
-      /*
-       * All flat lines (ie. co-planar), except flat Nurbs. Flat NURB curves
+      /* NOTE(@nzc): All flat lines (ie. co-planar), except flat Nurbs. Flat NURB curves
        * are handled together with the regular NURB plane division, as it
-       * should be. I split it off just now, let's see if it is
-       * stable... nzc 30-5-'00
-       */
-      /* count */
+       * should be. I split it off just now, let's see if it is stable. */
+
+      /* Count. */
       a = nu->pntsu;
       bp = nu->bp;
       while (a--) {
@@ -3569,7 +3571,7 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
           if ((bp->f1 & SELECT) && (nextbp->f1 & SELECT)) {
             // printf("*** subdivideNurb: insert 'linear' point\n");
             for (int i = 0; i < number_cuts; i++) {
-              factor = (float)(i + 1) / (number_cuts + 1);
+              factor = float(i + 1) / (number_cuts + 1);
 
               memcpy(bpn, nextbp, sizeof(BPoint));
               interp_v4_v4v4(bpn->vec, bp->vec, nextbp->vec, factor);
@@ -3592,7 +3594,7 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
     else if (nu->type == CU_NURBS) {
       /* This is a very strange test ... */
       /**
-       * Subdivide NURB surfaces - nzc 30-5-'00 -
+       * NOTE(@nzc): Subdivide NURB surfaces
        *
        * Subdivision of a NURB curve can be effected by adding a
        * control point (insertion of a knot), or by raising the
@@ -3671,7 +3673,7 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
             if (b < nu->pntsu - 1) {
               prevbp = bp - 1;
               for (int i = 0; i < number_cuts; i++) {
-                factor = (float)(i + 1) / (number_cuts + 1);
+                factor = float(i + 1) / (number_cuts + 1);
                 *bpn = *bp;
                 interp_v4_v4v4(bpn->vec, prevbp->vec, bp->vec, factor);
                 bpn++;
@@ -3689,7 +3691,7 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
           for (b = 0; b < (number_cuts + 1) * nu->pntsu - number_cuts; b++) {
             BPoint *tmp = bpn;
             for (int i = 0; i < number_cuts; i++) {
-              factor = (float)(i + 1) / (number_cuts + 1);
+              factor = float(i + 1) / (number_cuts + 1);
               *tmp = *bp;
               interp_v4_v4v4(tmp->vec, prevbp->vec, bp->vec, factor);
               tmp += countu;
@@ -3731,7 +3733,7 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
             }
             if ((a < nu->pntsv - 1) && vsel[a] == nu->pntsu && vsel[a + 1] == nu->pntsu) {
               for (int i = 0; i < number_cuts; i++) {
-                factor = (float)(i + 1) / (number_cuts + 1);
+                factor = float(i + 1) / (number_cuts + 1);
                 prevbp = bp - nu->pntsu;
                 for (b = 0; b < nu->pntsu; b++) {
                   /*
@@ -3787,7 +3789,7 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
                    * some symmetry here...
                    */
                   for (int i = 0; i < number_cuts; i++) {
-                    factor = (float)(i + 1) / (number_cuts + 1);
+                    factor = float(i + 1) / (number_cuts + 1);
                     prevbp = bp - 1;
                     *bpn = *prevbp;
                     interp_v4_v4v4(bpn->vec, prevbp->vec, bp->vec, factor);
@@ -3955,7 +3957,7 @@ void CURVE_OT_spline_type_set(wmOperatorType *ot)
   ot->prop = RNA_def_enum(ot->srna, "type", type_items, CU_POLY, "Type", "Spline type");
   RNA_def_boolean(ot->srna,
                   "use_handles",
-                  0,
+                  false,
                   "Handles",
                   "Use handles when converting bezier curves into polygons");
 }
@@ -4171,7 +4173,7 @@ static bool is_u_selected(Nurb *nu, int u)
 }
 
 struct NurbSort {
-  struct NurbSort *next, *prev;
+  NurbSort *next, *prev;
   Nurb *nu;
   float vec[3];
 };
@@ -4197,7 +4199,7 @@ static void make_selection_list_nurb(View3D *v3d, ListBase *editnurb, ListBase *
         add_v3_v3(nus->vec, bp->vec);
         bp++;
       }
-      mul_v3_fl(nus->vec, 1.0f / (float)nu->pntsu);
+      mul_v3_fl(nus->vec, 1.0f / float(nu->pntsu));
     }
   }
 
@@ -4554,7 +4556,7 @@ static int make_segment_exec(bContext *C, wmOperator *op)
     }
 
     /* find both nurbs and points, nu1 will be put behind nu2 */
-    for (nu = static_cast<Nurb *>(nubase->first); nu; nu = nu->next) {
+    LISTBASE_FOREACH (Nurb *, nu, nubase) {
       if (nu->pntsu == 1) {
         nu->flagu &= ~CU_NURB_CYCLIC;
       }
@@ -4785,7 +4787,7 @@ bool ED_curve_editnurb_select_pick(bContext *C,
                                    const int mval[2],
                                    const int dist_px,
                                    const bool vert_without_handles,
-                                   const struct SelectPick_Params *params)
+                                   const SelectPick_Params *params)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   ViewContext vc;
@@ -4803,7 +4805,7 @@ bool ED_curve_editnurb_select_pick(bContext *C,
   const bool use_handle_select = vert_without_handles &&
                                  (vc.v3d->overlay.handle_display != CURVE_HANDLE_NONE);
 
-  bool found = ED_curve_pick_vert_ex(&vc, 1, dist_px, &nu, &bezt, &bp, &hand, &basact);
+  bool found = ED_curve_pick_vert_ex(&vc, true, dist_px, &nu, &bezt, &bp, &hand, &basact);
 
   if (params->sel_op == SEL_OP_SET) {
     if ((found && params->select_passthrough) &&
@@ -5033,8 +5035,8 @@ bool ed_editnurb_spin(
   mul_m3_m3m3(scalemat1, imat, tmat);
 
   unit_m3(scalemat2);
-  scalemat2[0][0] /= (float)M_SQRT2;
-  scalemat2[1][1] /= (float)M_SQRT2;
+  scalemat2[0][0] /= float(M_SQRT2);
+  scalemat2[1][1] /= float(M_SQRT2);
 
   mul_m3_m3m3(tmat, persmat, bmat);
   mul_m3_m3m3(cmat, scalemat2, tmat);
@@ -5477,7 +5479,7 @@ int ed_editcurve_addvert(Curve *cu, EditNurb *editnurb, View3D *v3d, const float
     float ofs[3];
     int i;
 
-    mul_v3_fl(center, 1.0f / (float)verts_len);
+    mul_v3_fl(center, 1.0f / float(verts_len));
     sub_v3_v3v3(ofs, location_init, center);
 
     if (CU_IS_2D(cu)) {
@@ -5794,7 +5796,7 @@ void CURVE_OT_extrude(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* to give to transform */
-  RNA_def_enum(ot->srna, "mode", rna_enum_transform_mode_types, TFM_TRANSLATION, "Mode", "");
+  RNA_def_enum(ot->srna, "mode", rna_enum_transform_mode_type_items, TFM_TRANSLATION, "Mode", "");
 }
 
 /** \} */

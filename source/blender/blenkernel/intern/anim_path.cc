@@ -8,12 +8,13 @@
 
 #include "MEM_guardedalloc.h"
 
-#include <float.h>
+#include <cfloat>
 
 #include "DNA_curve_types.h"
 #include "DNA_key_types.h"
 #include "DNA_object_types.h"
 
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 
 #include "BKE_anim_path.h"

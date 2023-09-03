@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,19 +6,18 @@
  * \ingroup edgpencil
  */
 
-#include <float.h>
-#include <math.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cfloat>
+#include <cmath>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_sys_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BLF_api.h"
@@ -36,19 +35,19 @@
 #include "BKE_global.h"
 #include "BKE_gpencil_legacy.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_view3d.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_view3d.hh"
 
-#include "UI_interface_icons.h"
-#include "UI_resources.h"
+#include "UI_interface_icons.hh"
+#include "UI_resources.hh"
 
 /* ************************************************** */
 /* GREASE PENCIL DRAWING */
@@ -148,7 +147,7 @@ static void annotation_draw_stroke_buffer(bGPdata *gps,
 
   if (totpoints == 1) {
     /* if drawing a single point, draw it larger */
-    GPU_point_size((float)(thickness + 2) * points->pressure);
+    GPU_point_size(float(thickness + 2) * points->pressure);
     immBindBuiltinProgram(GPU_SHADER_3D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_AA);
     immUniformColor3fvAlpha(ink, ink[3]);
     immBegin(GPU_PRIM_POINTS, 1);
@@ -241,15 +240,15 @@ static void annotation_calc_2d_stroke_fxy(
     r_co[1] = pt[1];
   }
   else if (sflag & GP_STROKE_2DIMAGE) {
-    const float x = (float)((pt[0] * winx) + offsx);
-    const float y = (float)((pt[1] * winy) + offsy);
+    const float x = float((pt[0] * winx) + offsx);
+    const float y = float((pt[1] * winy) + offsy);
 
     r_co[0] = x;
     r_co[1] = y;
   }
   else {
-    const float x = (float)(pt[0] / 100 * winx) + offsx;
-    const float y = (float)(pt[1] / 100 * winy) + offsy;
+    const float x = float(pt[0] / 100 * winx) + offsx;
+    const float y = float(pt[1] / 100 * winy) + offsy;
 
     r_co[0] = x;
     r_co[1] = y;
@@ -293,7 +292,7 @@ static void annotation_draw_stroke_point(const bGPDspoint *points,
   immUniformColor3fvAlpha(ink, ink[3]);
 
   /* set point thickness (since there's only one of these) */
-  immUniform1f("size", (float)(thickness + 2) * pt->pressure);
+  immUniform1f("size", float(thickness + 2) * pt->pressure);
 
   immBegin(GPU_PRIM_POINTS, 1);
   immVertex3fv(pos, fpt);
@@ -340,7 +339,7 @@ static void annotation_draw_stroke_3d(
      * (since line-width cannot change in middle of GL_LINE_STRIP)
      * NOTE: we want more visible levels of pressures when thickness is bigger.
      */
-    if (fabsf(pt->pressure - curpressure) > 0.2f / (float)thickness) {
+    if (fabsf(pt->pressure - curpressure) > 0.2f / float(thickness)) {
       /* if the pressure changes before get at least 2 vertices,
        * need to repeat last point to avoid assert in immEnd() */
       if (draw_points < 2) {
@@ -402,7 +401,7 @@ static void annotation_draw_stroke_2d(const bGPDspoint *points,
   if (totpoints == 0) {
     return;
   }
-  float thickness = (float)thickness_s;
+  float thickness = float(thickness_s);
 
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
@@ -414,7 +413,7 @@ static void annotation_draw_stroke_2d(const bGPDspoint *points,
   float oldpressure = points[0].pressure;
   if (totpoints == 1) {
     /* if drawing a single point, draw it larger */
-    GPU_point_size((float)(thickness + 2) * points->pressure);
+    GPU_point_size(float(thickness + 2) * points->pressure);
     immBindBuiltinProgram(GPU_SHADER_3D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_AA);
     immUniformColor3fvAlpha(ink, ink[3]);
     immBegin(GPU_PRIM_POINTS, 1);
@@ -605,7 +604,7 @@ static void annotation_draw_onionskins(
       /* check if frame is drawable */
       if ((gpf->framenum - gf->framenum) <= gpl->gstep) {
         /* Alpha decreases with distance from current-frame index. */
-        fac = 1.0f - ((float)(gpf->framenum - gf->framenum) / (float)(gpl->gstep + 1));
+        fac = 1.0f - (float(gpf->framenum - gf->framenum) / float(gpl->gstep + 1));
         color[3] = alpha * fac * 0.66f;
         annotation_draw_strokes(gf, offsx, offsy, winx, winy, dflag, gpl->thickness, color);
       }
@@ -637,7 +636,7 @@ static void annotation_draw_onionskins(
       /* check if frame is drawable */
       if ((gf->framenum - gpf->framenum) <= gpl->gstep_next) {
         /* Alpha decreases with distance from current-frame index. */
-        fac = 1.0f - ((float)(gf->framenum - gpf->framenum) / (float)(gpl->gstep_next + 1));
+        fac = 1.0f - (float(gf->framenum - gpf->framenum) / float(gpl->gstep_next + 1));
         color[3] = alpha * fac * 0.66f;
         annotation_draw_strokes(gf, offsx, offsy, winx, winy, dflag, gpl->thickness, color);
       }
@@ -705,12 +704,11 @@ static void annotation_draw_data_layers(
      */
     if (ED_gpencil_session_active() && (gpl->flag & GP_LAYER_ACTIVE) &&
         (gpf->flag & GP_FRAME_PAINT)) {
-      /* Buffer stroke needs to be drawn with a different linestyle
+      /* Buffer stroke needs to be drawn with a different line-style
        * to help differentiate them from normal strokes.
        *
-       * It should also be noted that sbuffer contains temporary point types
-       * i.e. tGPspoints NOT bGPDspoints
-       */
+       * It should also be noted that #bGPdata_Runtime::sbuffer contains temporary point types
+       * i.e. #tGPspoints NOT #bGPDspoints. */
       annotation_draw_stroke_buffer(gpd, lthick, dflag, ink);
     }
   }
@@ -891,7 +889,7 @@ void ED_annotation_draw_view2d(const bContext *C, bool onlyv2d)
 }
 
 void ED_annotation_draw_view3d(
-    Scene *scene, struct Depsgraph *depsgraph, View3D *v3d, ARegion *region, bool only3d)
+    Scene *scene, Depsgraph *depsgraph, View3D *v3d, ARegion *region, bool only3d)
 {
   int dflag = 0;
   RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
