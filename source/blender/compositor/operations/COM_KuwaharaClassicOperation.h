@@ -30,7 +30,7 @@ class KuwaharaClassicOperation : public MultiThreadedOperation {
   int get_kernel_size();
   void set_use_sat(bool use_sat);
   bool get_use_sat();
-  
+
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,
                                     Span<MemoryBuffer *> inputs) override;

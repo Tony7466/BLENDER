@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,8 +8,7 @@
 
 namespace blender::compositor::tests {
 
-// todo: remove
-void print_area(MemoryBuffer *input, const rcti &area, std::string description = "")
+static void print_area(MemoryBuffer *input, const rcti &area, std::string description = "")
 {
   std::cout << description << ":" << std::endl;
   for (BuffersIterator<float> it = input->iterate_with({}, area); !it.is_end(); ++it) {
@@ -27,7 +26,8 @@ TEST(SummedTableArea, FullFrame_5x2)
   SummedAreaTableOperation sat;
 
   sat.set_execution_model(eExecutionModel::FullFrame);
-  // sat.set_mode(SummedAreaTableOperation::eMode::Identity);
+  sat.set_mode(SummedAreaTableOperation::eMode::Identity);
+
   const rcti area{0, 5, 0, 2};
   MemoryBuffer output(DataType::Color, area);
 
@@ -38,11 +38,10 @@ TEST(SummedTableArea, FullFrame_5x2)
 
   print_area(&input, area, "input");
 
-  /* Doesn't work because of a dependency of Operations on nodetree. */
-  //  sat.render(&output, Span<rcti>{area}, inputs);
-  sat.update_memory_buffer(&output, area, inputs);
+  /* sat.render() doesn't work because of a dependency of Operations on nodetree,
+   * so call sat.update_memory_buffer() directly instead. */
 
-  print_area(&output, area, "output");
+  sat.update_memory_buffer(&output, area, inputs);
 
   /* First row. */
   EXPECT_FLOAT_EQ(output.get_elem(0, 0)[0], 1);
@@ -75,8 +74,6 @@ TEST(SummedTableArea, FullFrame_3x2_squared)
 
   print_area(&input, area, "input");
 
-  /* Doesn't work because of a dependency of Operations on nodetree. */
-  //  sat.render(&output, Span<rcti>{area}, inputs);
   sat.update_memory_buffer(&output, area, inputs);
 
   print_area(&output, area, "output");
@@ -158,14 +155,8 @@ class SummedTableAreaSumTest : public ::testing::Test {
     input.fill(area_, val);
     Span<MemoryBuffer *> inputs{&input};
 
-    /* Doesn't work because of a dependency of Operations on nodetree. */
-    //  sat.render(&output, Span<rcti>{area}, inputs);
     operation_->update_memory_buffer(sat_.get(), area_, inputs);
-
-    //    print_area(sat_.get(), area_);
   }
-
-  // void TearDown() override {}
 
   std::shared_ptr<SummedAreaTableOperation> operation_;
   std::shared_ptr<MemoryBuffer> sat_;
@@ -190,28 +181,29 @@ TEST_F(SummedTableAreaSumTest, RightEdge)
 {
   rcti area{.xmin = area_.xmax - 2, .xmax = area_.xmax, .ymin = 0, .ymax = 2};
   float4 sum = summed_area_table_sum(sat_.get(), area);
-  ASSERT_EQ(sum[0], 9);
+  ASSERT_EQ(sum[0], 6);
 }
 
 TEST_F(SummedTableAreaSumTest, LowerRightCorner)
 {
-  rcti area{.xmin = area_.xmax, .xmax = area_.xmax, .ymin = 0, .ymax = 0};
+  rcti area{
+      .xmin = area_.xmax - 1, .xmax = area_.xmax, .ymin = area_.ymax - 1, .ymax = area_.ymax};
   float4 sum = summed_area_table_sum(sat_.get(), area);
   ASSERT_EQ(sum[0], 1);
 }
 
 TEST_F(SummedTableAreaSumTest, TopLine)
 {
-  rcti area{.xmin = 0, .xmax = 2, .ymin = 0, .ymax = 0};
+  rcti area{.xmin = 0, .xmax = 1, .ymin = 0, .ymax = 0};
   float4 sum = summed_area_table_sum(sat_.get(), area);
-  ASSERT_EQ(sum[0], 4);
+  ASSERT_EQ(sum[0], 2);
 }
 
-TEST_F(SummedTableAreaSumTest, RightLine)
+TEST_F(SummedTableAreaSumTest, ButtomLine)
 {
-  rcti area{.xmin = 0, .xmax = 0, .ymin = 0, .ymax = 3};
+  rcti area{.xmin = 0, .xmax = 4, .ymin = 3, .ymax = 3};
   float4 sum = summed_area_table_sum(sat_.get(), area);
-  ASSERT_EQ(sum[0], 3);
+  ASSERT_EQ(sum[0], 5);
 }
 
 }  // namespace blender::compositor::tests

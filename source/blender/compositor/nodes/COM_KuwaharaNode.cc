@@ -30,7 +30,7 @@ void KuwaharaNode::convert_to_operations(NodeConverter &converter,
       converter.add_operation(kuwahara_classic);
       converter.map_input_socket(get_input_socket(0), kuwahara_classic->get_input_socket(0));
 
-      if(data->fast) {
+      if (data->fast) {
         SummedAreaTableOperation *sat = new SummedAreaTableOperation();
         sat->set_mode(SummedAreaTableOperation::eMode::Identity);
         converter.add_operation(sat);
@@ -41,7 +41,8 @@ void KuwaharaNode::convert_to_operations(NodeConverter &converter,
         sat_squared->set_mode(SummedAreaTableOperation::eMode::Squared);
         converter.add_operation(sat_squared);
         converter.map_input_socket(get_input_socket(0), sat_squared->get_input_socket(0));
-        converter.add_link(sat_squared->get_output_socket(0), kuwahara_classic->get_input_socket(2));
+        converter.add_link(sat_squared->get_output_socket(0),
+                           kuwahara_classic->get_input_socket(2));
 
         // todo: remove
         // debug

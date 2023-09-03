@@ -46,13 +46,15 @@ void KuwaharaClassicOperation::execute_pixel_sampled(float output[4],
   float3 mean_of_squared_color[] = {float3(0.0f), float3(0.0f), float3(0.0f), float3(0.0f)};
   int quadrant_pixel_count[] = {0, 0, 0, 0};
 
-  if(use_sat_) {
+  if (use_sat_) {
     for (int q = 0; q < 4; q++) {
       /* A fancy expression to compute the sign of the quadrant q. */
       int2 sign = int2((q % 2) * 2 - 1, ((q / 2) * 2 - 1));
 
-      int2 lower_bound = int2(x, y) - int2(sign.x > 0 ? 0 : kernel_size_, sign.y > 0 ? 0 : kernel_size_);
-      int2 upper_bound = int2(x, y) + int2(sign.x < 0 ? 0 : kernel_size_, sign.y < 0 ? 0 : kernel_size_);
+      int2 lower_bound = int2(x, y) -
+                         int2(sign.x > 0 ? 0 : kernel_size_, sign.y > 0 ? 0 : kernel_size_);
+      int2 upper_bound = int2(x, y) +
+                         int2(sign.x < 0 ? 0 : kernel_size_, sign.y < 0 ? 0 : kernel_size_);
 
       /* Limit the quadrants to the image bounds. */
       int2 image_bound = int2(this->get_width(), this->get_height()) - int2(1);
@@ -68,10 +70,11 @@ void KuwaharaClassicOperation::execute_pixel_sampled(float output[4],
       kernel_area.ymax = corrected_upper_bound[1];
 
       mean_of_color[q] = summed_area_table_sum_tiled(sat_reader_, kernel_area).xyz();
-      mean_of_squared_color[q] = summed_area_table_sum_tiled(sat_squared_reader_, kernel_area).xyz();
+      mean_of_squared_color[q] =
+          summed_area_table_sum_tiled(sat_squared_reader_, kernel_area).xyz();
     }
-
-  } else {
+  }
+  else {
 
     /* Split surroundings of pixel into 4 overlapping regions. */
     for (int dy = -kernel_size_; dy <= kernel_size_; dy++) {
@@ -181,13 +184,15 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
     float3 mean_of_squared_color[4] = {float3(0.0f), float3(0.0f), float3(0.0f), float3(0.0f)};
     int quadrant_pixel_count[4] = {0, 0, 0, 0};
 
-    if(use_sat_) {
+    if (use_sat_) {
       for (int q = 0; q < 4; q++) {
         /* A fancy expression to compute the sign of the quadrant q. */
         int2 sign = int2((q % 2) * 2 - 1, ((q / 2) * 2 - 1));
 
-        int2 lower_bound = int2(x, y) - int2(sign.x > 0 ? 0 : kernel_size_, sign.y > 0 ? 0 : kernel_size_);
-        int2 upper_bound = int2(x, y) + int2(sign.x < 0 ? 0 : kernel_size_, sign.y < 0 ? 0 : kernel_size_);
+        int2 lower_bound = int2(x, y) -
+                           int2(sign.x > 0 ? 0 : kernel_size_, sign.y > 0 ? 0 : kernel_size_);
+        int2 upper_bound = int2(x, y) +
+                           int2(sign.x < 0 ? 0 : kernel_size_, sign.y < 0 ? 0 : kernel_size_);
 
         /* Limit the quadrants to the image bounds. */
         int2 image_bound = int2(width, height) - int2(1);
@@ -205,8 +210,8 @@ void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output
         mean_of_color[q] = summed_area_table_sum(sat, kernel_area).xyz();
         mean_of_squared_color[q] = summed_area_table_sum(sat_squared, kernel_area).xyz();
       }
-
-    } else {
+    }
+    else {
       /* Split surroundings of pixel into 4 overlapping regions. */
       for (int dy = -kernel_size_; dy <= kernel_size_; dy++) {
         for (int dx = -kernel_size_; dx <= kernel_size_; dx++) {

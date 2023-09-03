@@ -1,11 +1,10 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Foundation
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
 #include "COM_SingleThreadedOperation.h"
-
 
 namespace blender::compositor {
 
@@ -18,11 +17,7 @@ class SummedAreaTableOperation : public SingleThreadedOperation {
  public:
   SummedAreaTableOperation();
 
-  enum eMode
-  {
-    Identity = 1,
-    Squared
-  };
+  enum eMode { Identity = 1, Squared };
 
   void set_mode(const eMode mode);
   eMode get_mode();
@@ -41,20 +36,17 @@ class SummedAreaTableOperation : public SingleThreadedOperation {
                                             ReadBufferOperation *read_operation,
                                             rcti *output) override;
 
-  void get_area_of_interest(int input_idx,
-                            const rcti &output_area,
-                            rcti &r_input_area) override;
+  void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
 
   MemoryBuffer *create_memory_buffer(rcti *rect) override;
 
   void update_memory_buffer(MemoryBuffer *output,
-                            const rcti & area,
+                            const rcti &area,
                             Span<MemoryBuffer *> inputs) override;
 
-private:
+ private:
   SocketReader *image_reader_;
-  eMode  mode_;
-  
+  eMode mode_;
 };
 
 float4 summed_area_table_sum(MemoryBuffer *buffer, const rcti &area);
