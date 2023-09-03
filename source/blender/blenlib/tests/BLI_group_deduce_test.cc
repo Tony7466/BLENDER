@@ -12,6 +12,18 @@
 
 namespace blender::grouped_indices::tests {
 
+TEST(grouped_indices, EmptyTest)
+{
+  const Span<int> group_indices({});
+  const Span<int> groupped_indices({});
+  const Span<int> groupped_offset({});
+
+  Array<int> offset;
+  Array<int> indices;
+  from_indices(group_indices, offset, indices, false);
+  from_indices(group_indices, offset, indices, true);
+}
+
 TEST(grouped_indices, SimpleTest)
 {
   const Span<int> group_indices({5, 5, 5, 3, 3, 3, 4, 4, 4, 2, 2, 2, 1, 1, 1, 0, 0, 0});
@@ -28,7 +40,7 @@ TEST(grouped_indices, SimpleTest)
       EXPECT_EQ(offset[i], groupped_offset[i]) << test_name;
     }
 
-    EXPECT_TRUE(indices.as_span() == groupped_indices);
+    EXPECT_TRUE(indices.as_span() == groupped_indices) << test_name;
     for (const int i : indices.index_range()) {
       EXPECT_EQ(indices[i], groupped_indices[i]) << test_name;
     }

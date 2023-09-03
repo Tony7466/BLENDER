@@ -309,16 +309,37 @@ static Array<int> create_reverse_offsets(const Span<int> indices, const int item
   return offsets;
 }
 
-static GroupedSpan<int> gather_groups(const Span<int> group_indices,
-                                      const int groups_num,
-                                      Array<int> &r_offsets,
-                                      Array<int> &r_indices)
+static void sort_small_groups(const OffsetIndices<int> groups,
+                              const int grain_size,
+                              MutableSpan<int> indices)
 {
-  r_offsets.reinitialize(groups_num + 1);
-  r_offsets.as_mutable_span().fill(0);
-  r_indices.reinitialize(group_indices.size());
-  const bool fragmented = grouped_indices::is_fragmented(group_indices, groups_num);
-  return grouped_indices::from_indices(group_indices, r_offsets, r_indices, fragmented, true);
+  threading::parallel_for(groups.index_range(), grain_size, [&](const IndexRange range) {
+    for (const int64_t index : range) {
+      MutableSpan<int> group = indices.slice(groups[index]);
+      std::sort(group.begin(), group.end());
+    }
+  });
+}
+
+static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
+                                            const OffsetIndices<int> offsets)
+{
+  if (group_indices.is_empty()) {
+    return {};
+  }
+  BLI_assert(*std::max_element(group_indices.begin(), group_indices.end()) < offsets.size());
+  BLI_assert(*std::min_element(group_indices.begin(), group_indices.end()) >= 0);
+  Array<int> counts(offsets.size(), -1);
+  Array<int> results(group_indices.size());
+  threading::parallel_for(group_indices.index_range(), 1024, [&](const IndexRange range) {
+    for (const int64_t i : range) {
+      const int group_index = group_indices[i];
+      const int index_in_group = atomic_add_and_fetch_int32(&counts[group_index], 1);
+      results[offsets[group_index][index_in_group]] = int(i);
+    }
+  });
+  sort_small_groups(offsets, 1024, results);
+  return results;
 }
 
 Array<int> build_loop_to_face_map(const OffsetIndices<int> faces)
@@ -383,7 +404,11 @@ GroupedSpan<int> build_vert_to_loop_map(const Span<int> corner_verts,
                                         Array<int> &r_offsets,
                                         Array<int> &r_indices)
 {
-  return gather_groups(corner_verts, verts_num, r_offsets, r_indices);
+  r_offsets.reinitialize(verts_num + 1);
+  r_offsets.as_mutable_span().fill(0);
+  r_indices.reinitialize(corner_verts.size());
+  const bool fragmented = grouped_indices::is_fragmented(corner_verts, verts_num);
+  return grouped_indices::from_indices(corner_verts, r_offsets, r_indices, fragmented, true);
 }
 
 GroupedSpan<int> build_edge_to_loop_map(const Span<int> corner_edges,
@@ -391,7 +416,11 @@ GroupedSpan<int> build_edge_to_loop_map(const Span<int> corner_edges,
                                         Array<int> &r_offsets,
                                         Array<int> &r_indices)
 {
-  return gather_groups(corner_edges, edges_num, r_offsets, r_indices);
+  r_offsets.reinitialize(edges_num + 1);
+  r_offsets.as_mutable_span().fill(0);
+  r_indices.reinitialize(corner_edges.size());
+  const bool fragmented = grouped_indices::is_fragmented(corner_edges, edges_num);
+  return grouped_indices::from_indices(corner_edges, r_offsets, r_indices, fragmented, true);
 }
 
 GroupedSpan<int> build_edge_to_face_map(const OffsetIndices<int> faces,

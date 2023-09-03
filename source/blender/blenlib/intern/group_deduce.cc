@@ -145,7 +145,9 @@ GroupedSpan<int> from_indices(const Span<int> group_indices,
                               const bool fragmented,
                               const bool stable)
 {
-  BLI_assert(!group_indices.is_empty());
+  if (group_indices.is_empty()) {
+    return {OffsetIndices<int>(r_counts_to_offset), r_indices};
+  }
   BLI_assert(group_indices.size() == r_indices.size());
   BLI_assert(std::all_of(
       r_counts_to_offset.begin(), r_counts_to_offset.end(), [](int value) { return value == 0; }));
