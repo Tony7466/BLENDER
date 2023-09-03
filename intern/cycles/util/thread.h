@@ -13,9 +13,9 @@
 
 #ifdef _WIN32
 #  include "util/windows.h"
-#else
-#  include <pthread.h>
 #endif
+
+#include <pthread.h>
 
 /* NOTE: Use tbb/spin_mutex.h instead of util_tbb.h because some of the TBB
  * functionality requires RTTI, which is disabled for OSL kernel. */
@@ -31,7 +31,7 @@ typedef std::condition_variable thread_condition_variable;
 
 /**
  * Own thread implementation similar to std::thread, so we can set a
- * custom stack size on macOS.
+ * custom stack size.
  */
 class thread {
  public:
@@ -43,11 +43,7 @@ class thread {
 
  protected:
   function<void()> run_cb_;
-#ifdef __APPLE__
   pthread_t pthread_id;
-#else
-  std::thread std_thread;
-#endif
   bool joined_;
 };
 
