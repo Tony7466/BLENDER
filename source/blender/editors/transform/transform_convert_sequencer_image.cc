@@ -128,7 +128,7 @@ static void createTransSeqImageData(bContext * /*C*/, TransInfo *t)
   ListBase *channels = SEQ_channels_displayed_get(ed);
   blender::Vector strips = SEQ_query_rendered_strips(
       t->scene, channels, seqbase, t->scene->r.cfra, 0);
-  SEQ_filter_selected_strips(strips);
+  strips.remove_if([&](auto seq) { return (seq->flag & SELECT) == 0; });
 
   const int count = strips.size();
   if (count == 0) {

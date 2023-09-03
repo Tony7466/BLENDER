@@ -52,7 +52,7 @@ static void seq_sequence_lookup_append_effect(const Sequence *input,
     return;
   }
 
-  blender::Vector<Sequence *> *effects = lookup->effects_by_seq->lookup(input);
+  blender::Vector<Sequence *> *effects = lookup->effects_by_seq->lookup_default(input, nullptr);
 
   if (effects == nullptr) {
     effects = new blender::Vector<Sequence *>;
@@ -180,7 +180,7 @@ blender::Vector<Sequence *> *seq_sequence_lookup_effects_by_seq(const Scene *sce
   BLI_mutex_lock(&lookup_lock);
   seq_sequence_lookup_update_if_needed(scene, &scene->ed->runtime.sequence_lookup);
   SequenceLookup *lookup = scene->ed->runtime.sequence_lookup;
-  blender::Vector<Sequence *> *effects = lookup->effects_by_seq->lookup(key);
+  blender::Vector<Sequence *> *effects = lookup->effects_by_seq->lookup_default(key, nullptr);
   BLI_mutex_unlock(&lookup_lock);
   return effects;
 }

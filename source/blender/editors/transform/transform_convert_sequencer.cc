@@ -400,8 +400,8 @@ static void query_time_dependent_strips_strips(TransInfo *t,
    * its position will change. */
 
   blender::Vector<Sequence *> strips_no_handles = query_selected_strips_no_handles(seqbase);
-  /* Selection is needed as reference for related strips. */
-  blender::Vector<Sequence *> dependent = strips_no_handles;
+  SEQ_collection_merge(time_dependent_strips, strips_no_handles);
+
   SEQ_collection_expand(t->scene, seqbase, &strips_no_handles, SEQ_query_strip_effect_chain);
   bool strip_added = true;
 
@@ -409,17 +409,17 @@ static void query_time_dependent_strips_strips(TransInfo *t,
     strip_added = false;
 
     for (auto seq : strips_no_handles) {
-      if (dependent.contains(seq)) {
+      if (time_dependent_strips->contains(seq)) {
         continue; /* Strip is already in collection, skip it. */
       }
 
       /* If both seq1 and seq2 exist, both must be selected. */
-      if (seq->seq1 && dependent.contains(seq->seq1)) {
-        if (seq->seq2 && !dependent.contains(seq->seq2)) {
+      if (seq->seq1 && time_dependent_strips->contains(seq->seq1)) {
+        if (seq->seq2 && !time_dependent_strips->contains(seq->seq2)) {
           continue;
         }
         strip_added = true;
-        dependent.append(seq);
+        time_dependent_strips->append(seq);
       }
     }
   }
@@ -441,12 +441,13 @@ static void query_time_dependent_strips_strips(TransInfo *t,
     Sequence *input_right = effect_base_input_get(t->scene, seq, SEQ_INPUT_RIGHT);
 
     if ((input_left->flag & SEQ_RIGHTSEL) != 0 && (input_right->flag & SEQ_LEFTSEL) != 0) {
-      dependent.append(seq);
+      time_dependent_strips->append(seq);
     }
   }
 
   /* Remove all non-effects. */
-  dependent.remove_if([&](auto seq) { SEQ_transform_sequence_can_be_translated(seq); });
+  time_dependent_strips->remove_if(
+      [&](auto seq) { return SEQ_transform_sequence_can_be_translated(seq); });
 }
 
 static void createTransSeqData(bContext * /*C*/, TransInfo *t)
@@ -517,6 +518,7 @@ static void createTransSeqData(bContext * /*C*/, TransInfo *t)
     }
   }
 
+  ts->time_dependent_strips = new blender::Vector<Sequence *>;
   query_time_dependent_strips_strips(t, ts->time_dependent_strips);
 }
 
