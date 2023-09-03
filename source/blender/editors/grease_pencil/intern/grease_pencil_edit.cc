@@ -712,6 +712,229 @@ static void GREASE_PENCIL_OT_dissolve(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Cyclical Set Operator
+ * \{ */
+
+enum class CyclicalMode : int8_t {
+  /* Sets all strokes to cycle. */
+  CLOSE,
+  /* Sets all strokes to not cycle. */
+  OPEN,
+  /* Switchs the cyclic state of the strokes. */
+  TOGGLE,
+};
+
+static const EnumPropertyItem prop_cyclical_types[] = {
+    {int(CyclicalMode::CLOSE), "CLOSE", 0, "Close All", ""},
+    {int(CyclicalMode::OPEN), "OPEN", 0, "Open All", ""},
+    {int(CyclicalMode::TOGGLE), "TOGGLE", 0, "Toggle", ""},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+static bke::CurvesGeometry close_curves_with_geometry(const bke::CurvesGeometry &curves,
+                                                      const IndexMask &curves_to_close)
+{
+  const bke::AnonymousAttributePropagationInfo &propagation_info = {};
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+
+  /* Start by adding the original points. */
+  Array<int> curve_point_counts(curves.curves_num(), 0);
+  threading::parallel_for(curves.curves_range(), 128, [&](const IndexRange range) {
+    for (const int curve_i : range) {
+      const IndexRange points = points_by_curve[curve_i];
+      curve_point_counts[curve_i] = points.size();
+    }
+  });
+
+  int total_points = curves.points_num();
+  const Span<float3> positions = curves.positions();
+
+  curves.ensure_evaluated_lengths();
+
+  /* Add the extra points to close the curves. */
+  curves_to_close.foreach_index([&](const int64_t curve_i) {
+    const IndexRange points = points_by_curve[curve_i];
+
+    const float curve_length = curves.evaluated_length_total_for_curve(curve_i, false);
+    const float end_distance = len_v3v3(positions[points.first()], positions[points.last()]);
+
+    const int num_points_to_add = points.size() * end_distance / curve_length;
+
+    curve_point_counts[curve_i] += num_points_to_add;
+    total_points += num_points_to_add;
+  });
+
+  /* Create the array containing the original points IDs.
+   * Note: Not all entries will be set, so initialze with zeros. */
+  Array<int> dst_to_src_point(total_points, 0);
+  int cur_dst_point = 0;
+  threading::parallel_for(curves.curves_range(), 128, [&](const IndexRange range) {
+    for (const int curve_i : range) {
+      const IndexRange points = points_by_curve[curve_i];
+      for (const int point : points) {
+        dst_to_src_point[cur_dst_point++] = point;
+      }
+      cur_dst_point += curve_point_counts[curve_i] - points.size();
+    }
+  });
+
+  bke::CurvesGeometry dst_curves(total_points, curves.curves_num());
+
+  threading::parallel_invoke(
+      dst_curves.curves_num() > 1024,
+      [&]() {
+        MutableSpan<int> new_curve_offsets = dst_curves.offsets_for_write();
+        array_utils::copy(curve_point_counts.as_span(), new_curve_offsets.drop_back(1));
+        offset_indices::accumulate_counts_to_offsets(new_curve_offsets);
+      },
+      [&]() {
+        copy_attributes(curves.attributes(),
+                        ATTR_DOMAIN_CURVE,
+                        propagation_info,
+                        {},
+                        dst_curves.attributes_for_write());
+        /* Note: all of the extra points will have a ID of zero. */
+        gather_attributes(curves.attributes(),
+                          ATTR_DOMAIN_POINT,
+                          propagation_info,
+                          {},
+                          dst_to_src_point.as_span(),
+                          dst_curves.attributes_for_write());
+      });
+
+  const OffsetIndices<int> new_points_by_curve = dst_curves.points_by_curve();
+  bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
+  const bke::AttributeAccessor src_attributes = curves.attributes();
+
+  /* Interpolating the attributes between the end points. */
+  for (bke::AttributeTransferData &attribute : bke::retrieve_attributes_for_transfer(
+           src_attributes, dst_attributes, ATTR_DOMAIN_MASK_POINT, {}))
+  {
+    curves_to_close.foreach_index([&](const int64_t curve_i) {
+      const IndexRange points = points_by_curve[curve_i];
+      const IndexRange dst_points = new_points_by_curve[curve_i];
+      const int num_points_added = curve_point_counts[curve_i] - points.size();
+
+      bke::attribute_math::convert_to_static_type(attribute.dst.span.type(), [&](auto dummy) {
+        using T = decltype(dummy);
+        const auto src_attr = attribute.src.typed<T>();
+        auto dst_attr = attribute.dst.span.typed<T>();
+
+        for (const int i : IndexRange(num_points_added)) {
+          const float factor = float(i + 1) / (num_points_added + 1);
+          dst_attr[dst_points[points.size() + i]] = bke::attribute_math::mix2(
+              factor, src_attr[points.last()], src_attr[points.first()]);
+        }
+      });
+    });
+
+    attribute.dst.finish();
+  }
+
+  dst_curves.runtime->type_counts = curves.runtime->type_counts;
+
+  return dst_curves;
+}
+
+static int grease_pencil_cyclical_set_exec(bContext *C, wmOperator *op)
+{
+  using namespace blender;
+  const Scene *scene = CTX_data_scene(C);
+  Object *object = CTX_data_active_object(C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
+
+  const CyclicalMode mode = CyclicalMode(RNA_enum_get(op->ptr, "type"));
+  const bool geometry = RNA_boolean_get(op->ptr, "geometry");
+
+  bool changed = false;
+  grease_pencil.foreach_editable_drawing(
+      scene->r.cfra, [&](int /*drawing_index*/, bke::greasepencil::Drawing &drawing) {
+        bke::CurvesGeometry &curves = drawing.strokes_for_write();
+        if (curves.points_num() == 0) {
+          return;
+        }
+
+        if (!ed::curves::has_anything_selected(curves)) {
+          return;
+        }
+
+        MutableSpan<bool> cyclic = curves.cyclic_for_write();
+        const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+        const VArray<bool> selection = *curves.attributes().lookup_or_default<bool>(
+            ".selection", ATTR_DOMAIN_POINT, true);
+
+        threading::parallel_for(curves.curves_range(), 256, [&](const IndexRange range) {
+          for (const int curve_i : range) {
+            if (!ed::curves::has_anything_selected(selection, points_by_curve[curve_i])) {
+              continue;
+            }
+
+            if (mode == CyclicalMode::CLOSE) {
+              cyclic[curve_i] = true;
+            }
+            else if (mode == CyclicalMode::OPEN) {
+              cyclic[curve_i] = false;
+            }
+            else if (mode == CyclicalMode::TOGGLE) {
+              cyclic[curve_i] ^= true;
+            }
+          }
+        });
+
+        if (geometry) {
+          IndexMaskMemory memory;
+          const IndexMask curves_to_close = IndexMask::from_predicate(
+              curves.curves_range(), GrainSize(512), memory, [&](const int64_t curve_i) {
+                const bool selected = ed::curves::has_anything_selected(selection,
+                                                                        points_by_curve[curve_i]);
+                return cyclic[curve_i] && selected;
+              });
+
+          if (!curves_to_close.is_empty()) {
+            curves = close_curves_with_geometry(curves, curves_to_close);
+            drawing.tag_topology_changed();
+            changed = true;
+          }
+        }
+
+        changed = true;
+      });
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_cyclical_set(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  /* Identifiers. */
+  ot->name = "Set Cyclical State";
+  ot->idname = "GREASE_PENCIL_OT_cyclical_set";
+  ot->description = "Close or open the selected stroke adding a segment from last to first point";
+
+  /* Callbacks. */
+  ot->invoke = WM_menu_invoke;
+  ot->exec = grease_pencil_cyclical_set_exec;
+  ot->poll = editable_grease_pencil_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* Simplify parameters. */
+  ot->prop = RNA_def_enum(
+      ot->srna, "type", prop_cyclical_types, int(CyclicalMode::TOGGLE), "Type", "");
+  prop = RNA_def_boolean(
+      ot->srna, "geometry", false, "Create Geometry", "Create new geometry for closing stroke");
+  RNA_def_property_flag(prop, PROP_SKIP_SAVE);
+}
+
+/** \} */
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_edit()
@@ -720,6 +943,7 @@ void ED_operatortypes_grease_pencil_edit()
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_smooth);
   WM_operatortype_append(GREASE_PENCIL_OT_stroke_simplify);
   WM_operatortype_append(GREASE_PENCIL_OT_dissolve);
+  WM_operatortype_append(GREASE_PENCIL_OT_cyclical_set);
 }
 
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf)

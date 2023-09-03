@@ -4569,6 +4569,9 @@ def km_grease_pencil_edit(params):
         # Dissolve
         ("grease_pencil.dissolve", {"type": 'X', "value": 'PRESS', "ctrl": True}, None),
         ("grease_pencil.dissolve", {"type": 'DEL', "value": 'PRESS', "ctrl": True}, None),
+        # Cyclical set
+        ("grease_pencil.cyclical_set", {"type": 'F', "value": 'PRESS'}, {"properties": [("type", "CLOSE"), ("geometry", True)]}),
+        ("grease_pencil.cyclical_set", {"type": 'C', "value": 'PRESS', "alt": True}, {"properties": [("type", "TOGGLE")]}),
     ])
 
     return keymap
