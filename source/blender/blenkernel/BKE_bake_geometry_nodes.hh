@@ -34,8 +34,8 @@ class BakeNodeStorage {
   Vector<BakeNodeStateAtFrame> states;
   std::unique_ptr<BakeNodeState> current_bake_state;
 
-  std::unique_ptr<BDataSharing> bdata_sharing;
-  std::optional<std::string> bdata_dir;
+  std::unique_ptr<BlobSharing> blob_sharing;
+  std::optional<std::string> blobs_dir;
 };
 
 class GeometryNodesModifierBakes {

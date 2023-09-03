@@ -7,7 +7,6 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "BKE_bake_geometry_nodes_serialize.hh"
 #include "BKE_bake_items_socket.hh"
 #include "BKE_context.h"
 #include "BKE_main.h"
@@ -549,8 +548,8 @@ class LazyFunctionForBakeNode : public LazyFunction {
             new_bake_state->meta_path.emplace(meta_file.path);
             bake_storage.states.append({meta_file.frame, std::move(new_bake_state)});
           }
-          bake_storage.bdata_dir = bake_path.bdata_dir;
-          bake_storage.bdata_sharing = std::make_unique<bke::BDataSharing>();
+          bake_storage.blobs_dir = bake_path.blobs_dir;
+          bake_storage.blob_sharing = std::make_unique<bke::BlobSharing>();
         }
       }
       if (!bake_storage.states.is_empty()) {
@@ -576,8 +575,8 @@ class LazyFunctionForBakeNode : public LazyFunction {
         if (state_to_read_from->item_by_identifier.is_empty() &&
             state_to_read_from->meta_path.has_value()) {
           bke::bake::deserialize_bake_node_state_from_disk(*state_to_read_from->meta_path,
-                                                           *bake_storage.bdata_dir,
-                                                           *bake_storage.bdata_sharing,
+                                                           *bake_storage.blobs_dir,
+                                                           *bake_storage.blob_sharing,
                                                            *state_to_read_from);
         }
       }

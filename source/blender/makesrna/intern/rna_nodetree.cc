@@ -3225,7 +3225,7 @@ static const EnumPropertyItem *rna_NodeGeometryBakeItem_socket_type_itemf(bConte
                                                                           bool *r_free)
 {
   *r_free = true;
-  return itemf_function_check(node_socket_data_type_items,
+  return itemf_function_check(rna_enum_node_socket_data_type_items,
                               rna_NodeGeometryBakeItem_socket_type_supported);
 }
 
@@ -9307,7 +9307,7 @@ static void rna_def_bake_item(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeGeometryBakeItem_update");
 
   prop = RNA_def_property(srna, "socket_type", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_items(prop, node_socket_data_type_items);
+  RNA_def_property_enum_items(prop, rna_enum_node_socket_data_type_items);
   RNA_def_property_enum_funcs(
       prop, nullptr, nullptr, "rna_NodeGeometryBakeItem_socket_type_itemf");
   RNA_def_property_ui_text(prop, "Socket Type", "");
@@ -9344,7 +9344,7 @@ static void rna_def_geo_bake_items(BlenderRNA *brna)
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
   parm = RNA_def_enum(func,
                       "socket_type",
-                      node_socket_data_type_items,
+                      rna_enum_node_socket_data_type_items,
                       SOCK_GEOMETRY,
                       "Socket Type",
                       "Socket type of the item");

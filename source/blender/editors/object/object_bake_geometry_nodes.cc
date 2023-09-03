@@ -16,7 +16,6 @@
 #include "MOD_nodes.hh"
 
 #include "BKE_bake_geometry_nodes.hh"
-#include "BKE_bake_geometry_nodes_serialize.hh"
 #include "BKE_bake_items_serialize.hh"
 #include "BKE_context.h"
 #include "BKE_main.h"
@@ -138,14 +137,14 @@ static int geometry_node_bake_exec(bContext *C, wmOperator *op)
     STRNCPY(absolute_bake_dir, bake->directory);
     BLI_path_abs(absolute_bake_dir, base_path);
 
-    bke::BDataSharing bdata_sharing;
+    bke::BlobSharing blob_sharing;
     const bke::bake::BakePath bake_path = bke::bake::BakePath::from_single_root(absolute_bake_dir);
 
     for (const bke::BakeNodeStateAtFrame &state_at_frame : bake_storage.states) {
       const SubFrame frame = state_at_frame.frame;
 
       bke::bake::serialize_bake_node_state_to_disk(
-          frame, *state_at_frame.state, bake_path, bdata_sharing);
+          frame, *state_at_frame.state, bake_path, blob_sharing);
     }
   }
 
