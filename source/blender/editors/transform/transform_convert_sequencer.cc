@@ -69,7 +69,7 @@ struct TransSeq {
   View2DEdgePanData edge_pan;
 
   /* Strips that aren't selected, but their position entirely depends on transformed strips. */
-  blender::Vector<Sequence *> time_dependent_strips;
+  blender::Vector<Sequence *> *time_dependent_strips;
 };
 
 /* -------------------------------------------------------------------- */
@@ -340,7 +340,7 @@ static void freeSeqData(TransInfo *t, TransDataContainer *tc, TransCustomData *c
                                  SEQ_MARKER_TRANS) != 0;
   if (seq_transform_check_overlap(&transformed_strips)) {
     SEQ_transform_handle_overlap(
-        scene, seqbasep, &transformed_strips, &ts->time_dependent_strips, use_sync_markers);
+        scene, seqbasep, &transformed_strips, ts->time_dependent_strips, use_sync_markers);
   }
 
   DEG_id_tag_update(&t->scene->id, ID_RECALC_SEQUENCER_STRIPS);
@@ -390,7 +390,8 @@ static Sequence *effect_base_input_get(const Scene *scene, Sequence *effect, Seq
  * Strips that aren't selected, but their position entirely depends on transformed strips.
  * This collection is used to offset animation.
  */
-static blender::Vector<Sequence *> query_time_dependent_strips_strips(TransInfo *t)
+static void query_time_dependent_strips_strips(TransInfo *t,
+                                               blender::Vector<Sequence *> *time_dependent_strips)
 {
   ListBase *seqbase = seqbase_active_get(t);
 
@@ -446,8 +447,6 @@ static blender::Vector<Sequence *> query_time_dependent_strips_strips(TransInfo 
 
   /* Remove all non-effects. */
   dependent.remove_if([&](auto seq) { SEQ_transform_sequence_can_be_translated(seq); });
-
-  return dependent;
 }
 
 static void createTransSeqData(bContext * /*C*/, TransInfo *t)
@@ -518,7 +517,7 @@ static void createTransSeqData(bContext * /*C*/, TransInfo *t)
     }
   }
 
-  ts->time_dependent_strips = query_time_dependent_strips_strips(t);
+  query_time_dependent_strips_strips(t, ts->time_dependent_strips);
 }
 
 /** \} */
@@ -624,7 +623,7 @@ static void flushTransSeq(TransInfo *t)
   TransSeq *ts = (TransSeq *)TRANS_DATA_CONTAINER_FIRST_SINGLE(t)->custom.type.data;
 
   /* Update animation for effects. */
-  for (auto seq : ts->time_dependent_strips) {
+  for (auto seq : *ts->time_dependent_strips) {
     SEQ_offset_animdata(t->scene, seq, max_offset);
   }
 
