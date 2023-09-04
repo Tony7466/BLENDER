@@ -1340,7 +1340,7 @@ typedef enum eID_Index {
                     "Invalid ID type: Expected `ID id` member"); \
       static_assert( \
           offsetof(ID_Type, id) == 0, \
-          "`Invalid ID type: `ID id` member must be at the very beginning of the struct"); \
+          "Invalid ID type: `ID id` member must be at the very beginning of the struct"); \
     } \
     (void)0
 
