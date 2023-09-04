@@ -93,12 +93,12 @@ class AbstractNodeGroupInterfaceTest(unittest.TestCase):
     def compare_group_socket_to_spec(self, item, node, spec: SocketSpec, test_links=True):
         group = item.id_data
 
-        # Examine the interface item
+        # Examine the interface item.
         self.assertEqual(item.name, spec.name)
         self.assertEqual(item.bl_socket_idname, spec.idname)
         self.assertEqual(item.identifier, spec.identifier)
 
-        # Types that have subtypes
+        # Types that have subtypes.
         if spec.type in {'VALUE', 'INT', 'VECTOR'}:
             self.assertEqual(item.subtype, spec.subtype)
 
@@ -129,7 +129,7 @@ class AbstractNodeGroupInterfaceTest(unittest.TestCase):
             # Add socket type testing above if this happens.
             self.fail("Socket type not supported by test")
 
-        # Examine the node socket
+        # Examine the node socket.
         if 'INPUT' in item.in_out:
             socket = next(s for s in node.inputs if s.identifier == spec.identifier)
             self.assertIsNotNone(socket, f"Could not find socket for group input identifier {spec.identifier}")
