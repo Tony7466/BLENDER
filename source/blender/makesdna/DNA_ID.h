@@ -1342,37 +1342,44 @@ template<typename ID_Type> static constexpr inline void _id_type_static_assert()
                 "Invalid ID type: `ID id` member must be at the very beginning of the struct");
 }
 
+/** Cast from `ID *` to `ID_Type *` */
 template<typename ID_Type> static constexpr inline ID_Type *id_cast(ID *from)
 {
   _id_type_static_assert<ID_Type>();
   return reinterpret_cast<ID_Type *>(from);
 }
+/** Cast from `const ID *` to `const ID_Type *` */
 template<typename ID_Type> static constexpr inline const ID_Type *id_cast(const ID *from)
 {
   _id_type_static_assert<ID_Type>();
   return reinterpret_cast<const ID_Type *>(from);
 }
+/** Cast from `ID &` to `ID_Type &` */
 template<typename ID_Type> static constexpr inline ID_Type &id_cast(ID &from)
 {
   _id_type_static_assert<ID_Type>();
   return reinterpret_cast<ID_Type &>(from);
 }
+/** Cast from `const ID &` to `const ID_Type &` */
 template<typename ID_Type> static constexpr inline const ID_Type &id_cast(const ID &from)
 {
   _id_type_static_assert<ID_Type>();
   return reinterpret_cast<const ID_Type &>(from);
 }
 
+/** Cast from `ID_Type *` to `ID *`. */
 template<typename ID_Type> static constexpr inline ID *id_cast(ID_Type *typed_id)
 {
   _id_type_static_assert<ID_Type>();
   return reinterpret_cast<ID *>(typed_id);
 }
+/** Cast from `const ID_Type *` to `const ID *`. */
 template<typename ID_Type> static constexpr inline const ID *id_cast(const ID_Type *typed_id)
 {
   _id_type_static_assert<ID_Type>();
   return reinterpret_cast<const ID *>(typed_id);
 }
+/** Cast from `const ID_Type &` to `const ID &`. */
 template<typename ID_Type> static constexpr inline const ID &id_cast(const ID_Type &typed_id)
 {
   _id_type_static_assert<ID_Type>();
