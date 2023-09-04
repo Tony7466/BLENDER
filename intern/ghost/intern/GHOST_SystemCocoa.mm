@@ -2027,6 +2027,9 @@ GHOST_TSuccess GHOST_SystemCocoa::hasClipboardImage() const
     }
 }
 
+
+//TODO figure out if this should be here or in WindowCocoa
+
 uint *GHOST_SystemCocoa::getClipboardImage(int *r_width, int *r_height) const
 {
       printf("trying to get clipboard image\n");

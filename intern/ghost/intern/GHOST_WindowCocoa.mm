@@ -627,6 +627,7 @@ GHOST_TSuccess GHOST_WindowCocoa::setClientHeight(uint32_t height)
     }
   }
 
+//TODO figure out if this should be here or in SystemCocoa
 
 //returns the image data from the clipboard if available
   uint *GHOST_WindowCocoa::getClipboardImage(int *r_width, int *r_height) const {
