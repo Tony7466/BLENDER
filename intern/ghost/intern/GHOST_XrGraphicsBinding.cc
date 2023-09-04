@@ -153,7 +153,7 @@ class GHOST_XrGraphicsBindingOpenGL : public GHOST_IXrGraphicsBinding {
 #  if defined(WITH_GHOST_X11)
         /* #GHOST_SystemX11. */
         oxr_binding.egl.type = XR_TYPE_GRAPHICS_BINDING_EGL_MNDX;
-        oxr_binding.egl.getProcAddress = eglGetProcAddress;
+        oxr_binding.egl.getProcAddress = static_cast<PFNEGLGETPROCADDRESSPROC>(eglGetProcAddress);
         oxr_binding.egl.display = ctx_egl.getDisplay();
         oxr_binding.egl.config = ctx_egl.getConfig();
         oxr_binding.egl.context = ctx_egl.getContext();
