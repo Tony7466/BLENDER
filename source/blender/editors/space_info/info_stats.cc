@@ -418,7 +418,15 @@ static void stats_update(Depsgraph *depsgraph,
   }
   else if (ob && (ob->mode & OB_MODE_SCULPT)) {
     /* Sculpt Mode. */
+    FOREACH_OBJECT_BEGIN (scene, view_layer, ob_iter) {
+      if (ob_iter->base_flag & BASE_ENABLED_AND_VISIBLE_IN_DEFAULT_VIEWPORT) {
+        stats->totobj++;
+      }
+    }
+    FOREACH_OBJECT_END;
+
     stats_object_sculpt(ob, stats);
+    stats->totobjsel++;
   }
   else {
     /* Objects. */
