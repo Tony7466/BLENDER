@@ -1160,7 +1160,7 @@ static void rna_def_attribute(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "is_required", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_funcs(prop, "rna_Attribute_is_required_get", nullptr);
-  RNA_def_property_ui_text(prop, "Is Required", "The attribute cannot be removed");
+  RNA_def_property_ui_text(prop, "Is Required", "Whether the attribute can be removed or renamed");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
 
   /* types */
