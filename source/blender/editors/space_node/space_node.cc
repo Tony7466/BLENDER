@@ -6,7 +6,10 @@
  * \ingroup spnode
  */
 
+
 #include "AS_asset_representation.hh"
+
+#include "BLI_string.h"
 
 #include "DNA_ID.h"
 #include "DNA_gpencil_legacy_types.h"
