@@ -158,7 +158,6 @@ struct GeoNodesModifierData {
   const Set<ComputeContextHash> *socket_log_contexts = nullptr;
 
   Map<std::pair<ComputeContextHash, int32_t>, int32_t> nested_node_id_by_compute_context;
-  bke::GeometryNodesModifierBakes *bakes = nullptr;
 };
 
 struct GeoNodesOperatorData {

@@ -688,16 +688,16 @@ static void find_side_effect_nodes(
     const ModifierEvalContext &ctx,
     MultiValueMap<ComputeContextHash, const lf::FunctionNode *> &r_side_effect_nodes)
 {
-  if (nmd.runtime->bakes) {
-    std::lock_guard lock{nmd.runtime->bakes->mutex};
-    for (const auto item : nmd.runtime->bakes->storage_by_id.items()) {
-      if (item.value->current_bake_state) {
-        const bNestedNodeRef *node_ref = nmd.node_group->find_nested_node_ref(item.key);
-        BLI_assert(node_ref != nullptr);
-        find_side_effect_nodes_for_nested_node_ref(*node_ref, nmd, r_side_effect_nodes);
-      }
-    }
-  }
+  // if (nmd.runtime->bakes) {
+  //   std::lock_guard lock{nmd.runtime->bakes->mutex};
+  //   for (const auto item : nmd.runtime->bakes->storage_by_id.items()) {
+  //     if (item.value->current_bake_state) {
+  //       const bNestedNodeRef *node_ref = nmd.node_group->find_nested_node_ref(item.key);
+  //       BLI_assert(node_ref != nullptr);
+  //       find_side_effect_nodes_for_nested_node_ref(*node_ref, nmd, r_side_effect_nodes);
+  //     }
+  //   }
+  // }
 
   Main *bmain = DEG_get_bmain(ctx.depsgraph);
   wmWindowManager *wm = (wmWindowManager *)bmain->wm.first;
@@ -1239,7 +1239,6 @@ static void modifyGeometry(ModifierData *md,
       modifier_eval_data.nested_node_id_by_compute_context.add(
           {compute_context_builder.hash(), leaf_node_id}, node_ref.id);
     }
-    modifier_eval_data.bakes = nmd->runtime->bakes.get();
   }
 
   bke::ModifierComputeContext modifier_compute_context{nullptr, nmd->modifier.name};
@@ -1784,113 +1783,6 @@ static void internal_dependencies_panel_draw(const bContext * /*C*/, Panel *pane
   }
 }
 
-static void bake_panel_draw(const bContext *C, Panel *panel)
-{
-  uiLayout *layout = panel->layout;
-
-  PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
-  NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
-
-  PointerRNA bakes_ptr;
-  RNA_pointer_create(ptr->owner_id, &RNA_NodesModifierBakes, nmd, &bakes_ptr);
-
-  uiTemplateList(layout,
-                 C,
-                 "DATA_UL_nodes_modifier_bake",
-                 "",
-                 ptr,
-                 "bakes",
-                 &bakes_ptr,
-                 "active_index",
-                 nullptr,
-                 3,
-                 5,
-                 UILST_LAYOUT_DEFAULT,
-                 0,
-                 UI_TEMPLATE_LIST_FLAG_NONE);
-
-  if (nmd->active_bake < 0 || nmd->active_bake >= nmd->bakes_num) {
-    return;
-  }
-
-  uiLayoutSetPropSep(layout, true);
-  uiLayoutSetPropDecorate(layout, false);
-
-  NodesModifierBake &bake = nmd->bakes[nmd->active_bake];
-  PointerRNA bake_ptr;
-  RNA_pointer_create(ptr->owner_id, &RNA_NodesModifierBake, &bake, &bake_ptr);
-
-  uiItemR(layout, &bake_ptr, "directory", UI_ITEM_NONE, "Directory", ICON_NONE);
-
-  {
-    uiLayout *row = uiLayoutRow(layout, true);
-    {
-      PointerRNA op_ptr;
-      uiItemFullO(row,
-                  "OBJECT_OT_geometry_node_bake",
-                  "Bake",
-                  ICON_NONE,
-                  nullptr,
-                  WM_OP_INVOKE_DEFAULT,
-                  UI_ITEM_NONE,
-                  &op_ptr);
-      WM_operator_properties_id_lookup_set_from_id(&op_ptr, ptr->owner_id);
-      RNA_string_set(&op_ptr, "modifier", nmd->modifier.name);
-      RNA_int_set(&op_ptr, "bake_id", bake.id);
-    }
-    {
-      PointerRNA op_ptr;
-      uiItemFullO(row,
-                  "OBJECT_OT_geometry_node_bake_delete",
-                  "",
-                  ICON_TRASH,
-                  nullptr,
-                  WM_OP_INVOKE_DEFAULT,
-                  UI_ITEM_NONE,
-                  &op_ptr);
-      WM_operator_properties_id_lookup_set_from_id(&op_ptr, ptr->owner_id);
-      RNA_string_set(&op_ptr, "modifier", nmd->modifier.name);
-      RNA_int_set(&op_ptr, "bake_id", bake.id);
-    }
-  }
-}
-
-static bool bake_id_is_baked(const NodesModifierData &nmd, const int32_t bake_id)
-{
-  if (!nmd.runtime->bakes) {
-    return false;
-  }
-  const bke::BakeNodeStorage *bake_storage = nmd.runtime->bakes->get_storage(bake_id);
-  if (bake_storage == nullptr) {
-    return false;
-  }
-  return !bake_storage->states.is_empty();
-}
-
-static void bake_list_item_draw(uiList * /*ui_list*/,
-                                const bContext * /*C*/,
-                                uiLayout *layout,
-                                PointerRNA *dataptr,
-                                PointerRNA *itemptr,
-                                int /*icon*/,
-                                PointerRNA * /*active_dataptr*/,
-                                const char * /*active_propname*/,
-                                int /*index*/,
-                                int /*flt_flag*/)
-{
-  NodesModifierData &nmd = *static_cast<NodesModifierData *>(dataptr->data);
-  NodesModifierBake &bake = *static_cast<NodesModifierBake *>(itemptr->data);
-  const bNode *node = nmd.node_group->find_nested_node(bake.id);
-
-  if (node) {
-    const bool is_baked = bake_id_is_baked(nmd, bake.id);
-    uiItemL(layout, node->label_or_name().c_str(), is_baked ? ICON_LOCKED : ICON_UNLOCKED);
-  }
-  else {
-    uiItemL(layout, N_("Not found"), ICON_ERROR);
-  }
-}
-
 static void panel_register(ARegionType *region_type)
 {
   using namespace blender;
@@ -1907,13 +1799,6 @@ static void panel_register(ARegionType *region_type)
                              nullptr,
                              internal_dependencies_panel_draw,
                              panel_type);
-  modifier_subpanel_register(
-      region_type, "bake", N_("Bake"), nullptr, bake_panel_draw, panel_type);
-
-  uiListType *bake_list = MEM_cnew<uiListType>(__func__);
-  STRNCPY(bake_list->idname, "DATA_UL_nodes_modifier_bake");
-  bake_list->draw_item = bake_list_item_draw;
-  WM_uilisttype_add(bake_list);
 }
 
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
