@@ -64,31 +64,31 @@ VectorSet<Sequence *> SEQ_query_by_reference(Sequence *reference_strip,
 }
 
 // This should be renamed if it is still needed.
-void SEQ_collection_merge(VectorSet<Sequence *> *strips_dst, VectorSet<Sequence *> strips_src)
+void SEQ_iterator_set_merge(VectorSet<Sequence *> *strips_dst, VectorSet<Sequence *> strips_src)
 {
   for (auto strip : strips_src) {
     strips_dst->add(strip);
   }
 }
 
-void SEQ_collection_expand(const Scene *scene,
-                           ListBase *seqbase,
-                           VectorSet<Sequence *> *strips,
-                           void seq_query_func(const Scene *scene,
-                                               Sequence *seq_reference,
-                                               ListBase *seqbase,
-                                               VectorSet<Sequence *> *strips))
+void SEQ_iterator_set_expand(const Scene *scene,
+                             ListBase *seqbase,
+                             VectorSet<Sequence *> *strips,
+                             void seq_query_func(const Scene *scene,
+                                                 Sequence *seq_reference,
+                                                 ListBase *seqbase,
+                                                 VectorSet<Sequence *> *strips))
 {
-  /* Collect expanded results for each sequence in provided SeqIteratorCollection. */
+  /* Collect expanded results for each sequence in provided VectorSet. */
   VectorSet<Sequence *> query_matches;
 
   for (auto strip : *strips) {
-    SEQ_collection_merge(&query_matches,
-                         SEQ_query_by_reference(strip, scene, seqbase, seq_query_func));
+    SEQ_iterator_set_merge(&query_matches,
+                           SEQ_query_by_reference(strip, scene, seqbase, seq_query_func));
   }
 
-  /* Merge all expanded results in provided SeqIteratorCollection. */
-  SEQ_collection_merge(strips, query_matches);
+  /* Merge all expanded results in provided VectorSet. */
+  SEQ_iterator_set_merge(strips, query_matches);
 }
 
 static void query_all_strips_recursive(ListBase *seqbase, VectorSet<Sequence *> *strips)
@@ -189,10 +189,10 @@ static bool must_render_strip(VectorSet<Sequence *> *strips, Sequence *strip)
   return true;
 }
 
-/* Remove strips we don't want to render from collection. */
+/* Remove strips we don't want to render from VectorSet. */
 static void collection_filter_rendered_strips(VectorSet<Sequence *> *strips, ListBase *channels)
 {
-  /* Remove sound strips and muted strips from collection, because these are not rendered.
+  /* Remove sound strips and muted strips from VectorSet, because these are not rendered.
    * Function #must_render_strip() don't have to check for these strips anymore. */
   strips->remove_if([&](auto strip) {
     return strip->type == SEQ_TYPE_SOUND_RAM || SEQ_render_is_muted(channels, strip);
