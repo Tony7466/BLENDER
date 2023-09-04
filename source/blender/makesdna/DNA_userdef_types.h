@@ -12,10 +12,6 @@
 #include "DNA_texture_types.h" /* ColorBand */
 #include "DNA_userdef_enums.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * Scaling factor for all UI elements, based on the "Resolution Scale" user preference and the
  * DPI/OS Scale of each monitor. This is a read-only, run-time value calculated by
@@ -161,7 +157,6 @@ typedef struct ThemeUI {
   uiWidgetColors wcol_num, wcol_numslider, wcol_tab;
   uiWidgetColors wcol_menu, wcol_pulldown, wcol_menu_back, wcol_menu_item, wcol_tooltip;
   uiWidgetColors wcol_box, wcol_scroll, wcol_progress, wcol_list_item, wcol_pie_menu;
-  uiWidgetColors wcol_view_item;
 
   uiWidgetStateColors wcol_state;
 
@@ -1499,7 +1494,3 @@ enum {
   ULANGUAGE_AUTO = 0,
   ULANGUAGE_ENGLISH = 1,
 };
-
-#ifdef __cplusplus
-}
-#endif
