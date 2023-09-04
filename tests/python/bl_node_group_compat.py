@@ -89,7 +89,8 @@ class AbstractNodeGroupInterfaceTest(unittest.TestCase):
         else:
             self.assertAlmostEqual(value, expected)
 
-    def compare_spec(self, item, node, spec: SocketSpec, test_links=True):
+    # Test properties of a node group item and associated node socket with spec data.
+    def compare_group_socket_to_spec(self, item, node, spec: SocketSpec, test_links=True):
         group = item.id_data
 
         # Examine the interface item
@@ -193,13 +194,13 @@ class NodeGroupVersioning36Test(AbstractNodeGroupInterfaceTest):
         self.assertEqual(node.node_tree, group, "Node group must use compositor node tree")
 
         # autopep8: off
-        self.compare_spec( group.interface.ui_items[0], node, SocketSpec( "Output Float", "Output_9", "VALUE", hide_value=True, default_value=3.0, min_value=1.0, max_value=1.0))
-        self.compare_spec( group.interface.ui_items[1], node, SocketSpec( "Output Vector", "Output_10", "VECTOR", subtype="EULER", default_value=( 10, 20, 30), min_value=-10.0, max_value=10.0))
-        self.compare_spec( group.interface.ui_items[2], node, SocketSpec("Output Color", "Output_11", "RGBA", default_value=(0, 1, 1, 1)))
+        self.compare_group_socket_to_spec( group.interface.ui_items[0], node, SocketSpec( "Output Float", "Output_9", "VALUE", hide_value=True, default_value=3.0, min_value=1.0, max_value=1.0))
+        self.compare_group_socket_to_spec( group.interface.ui_items[1], node, SocketSpec( "Output Vector", "Output_10", "VECTOR", subtype="EULER", default_value=( 10, 20, 30), min_value=-10.0, max_value=10.0))
+        self.compare_group_socket_to_spec( group.interface.ui_items[2], node, SocketSpec("Output Color", "Output_11", "RGBA", default_value=(0, 1, 1, 1)))
 
-        self.compare_spec( group.interface.ui_items[3], node, SocketSpec( "Input Float", "Input_6", "VALUE", subtype="ANGLE", default_value=-20.0, min_value=5.0, max_value=6.0))
-        self.compare_spec( group.interface.ui_items[4], node, SocketSpec( "Input Vector", "Input_7", "VECTOR", hide_value=True, default_value=( 2, 4, 6), min_value=-4.0, max_value=100.0))
-        self.compare_spec( group.interface.ui_items[5], node, SocketSpec("Input Color", "Input_8", "RGBA", default_value=(0.5, 0.4, 0.3, 0.2))) 
+        self.compare_group_socket_to_spec( group.interface.ui_items[3], node, SocketSpec( "Input Float", "Input_6", "VALUE", subtype="ANGLE", default_value=-20.0, min_value=5.0, max_value=6.0))
+        self.compare_group_socket_to_spec( group.interface.ui_items[4], node, SocketSpec( "Input Vector", "Input_7", "VECTOR", hide_value=True, default_value=( 2, 4, 6), min_value=-4.0, max_value=100.0))
+        self.compare_group_socket_to_spec( group.interface.ui_items[5], node, SocketSpec("Input Color", "Input_8", "RGBA", default_value=(0.5, 0.4, 0.3, 0.2))) 
         # autopep8: on
 
     def test_load_shader_nodes(self):
@@ -212,15 +213,15 @@ class NodeGroupVersioning36Test(AbstractNodeGroupInterfaceTest):
         self.assertEqual(node.node_tree, group, "Node group must use shader node tree")
 
         # autopep8: off
-        self.compare_spec(group.interface.ui_items[0], node, SocketSpec("Output Float", "Output_30", "VALUE", hide_value=True, default_value=3.0, min_value=1.0, max_value=1.0))
-        self.compare_spec(group.interface.ui_items[1], node, SocketSpec("Output Vector", "Output_31", "VECTOR", subtype="EULER", default_value=( 10, 20, 30), min_value=-10.0, max_value=10.0))
-        self.compare_spec(group.interface.ui_items[2], node, SocketSpec("Output Color", "Output_32", "RGBA", default_value=(0, 1, 1, 1)))
-        self.compare_spec(group.interface.ui_items[3], node, SocketSpec("Output Shader", "Output_33", "SHADER"))
+        self.compare_group_socket_to_spec(group.interface.ui_items[0], node, SocketSpec("Output Float", "Output_30", "VALUE", hide_value=True, default_value=3.0, min_value=1.0, max_value=1.0))
+        self.compare_group_socket_to_spec(group.interface.ui_items[1], node, SocketSpec("Output Vector", "Output_31", "VECTOR", subtype="EULER", default_value=( 10, 20, 30), min_value=-10.0, max_value=10.0))
+        self.compare_group_socket_to_spec(group.interface.ui_items[2], node, SocketSpec("Output Color", "Output_32", "RGBA", default_value=(0, 1, 1, 1)))
+        self.compare_group_socket_to_spec(group.interface.ui_items[3], node, SocketSpec("Output Shader", "Output_33", "SHADER"))
 
-        self.compare_spec(group.interface.ui_items[4], node, SocketSpec("Input Float", "Input_26", "VALUE", subtype="ANGLE", default_value=-20.0, min_value=5.0, max_value=6.0))
-        self.compare_spec(group.interface.ui_items[5], node, SocketSpec("Input Vector", "Input_27", "VECTOR", hide_value=True, default_value=( 2, 4, 6), min_value=-4.0, max_value=100.0))
-        self.compare_spec(group.interface.ui_items[6], node, SocketSpec("Input Color", "Input_28", "RGBA", default_value=(0.5, 0.4, 0.3, 0.2)))
-        self.compare_spec(group.interface.ui_items[7], node, SocketSpec("Input Shader", "Input_29", "SHADER")) 
+        self.compare_group_socket_to_spec(group.interface.ui_items[4], node, SocketSpec("Input Float", "Input_26", "VALUE", subtype="ANGLE", default_value=-20.0, min_value=5.0, max_value=6.0))
+        self.compare_group_socket_to_spec(group.interface.ui_items[5], node, SocketSpec("Input Vector", "Input_27", "VECTOR", hide_value=True, default_value=( 2, 4, 6), min_value=-4.0, max_value=100.0))
+        self.compare_group_socket_to_spec(group.interface.ui_items[6], node, SocketSpec("Input Color", "Input_28", "RGBA", default_value=(0.5, 0.4, 0.3, 0.2)))
+        self.compare_group_socket_to_spec(group.interface.ui_items[7], node, SocketSpec("Input Shader", "Input_29", "SHADER")) 
         # autopep8: on
 
     def test_load_geometry_nodes(self):
@@ -233,31 +234,31 @@ class NodeGroupVersioning36Test(AbstractNodeGroupInterfaceTest):
         self.assertEqual(node.node_tree, group, "Node group must use geometry node tree")
 
         # autopep8: off
-        self.compare_spec(group.interface.ui_items[0], node, SocketSpec("Output Float", "Output_7", "VALUE", hide_value=True, default_value=3.0, min_value=1.0, max_value=1.0))
-        self.compare_spec(group.interface.ui_items[1], node, SocketSpec("Output Vector", "Output_8", "VECTOR", subtype="EULER", default_value=( 10, 20, 30), min_value=-10.0, max_value=10.0))
-        self.compare_spec(group.interface.ui_items[2], node, SocketSpec("Output Color", "Output_9", "RGBA", default_value=(0, 1, 1, 1)))
-        self.compare_spec(group.interface.ui_items[3], node, SocketSpec("Output String", "Output_19", "STRING", default_value=""))
-        self.compare_spec(group.interface.ui_items[4], node, SocketSpec("Output Bool", "Output_20", "BOOLEAN", default_value=False))
-        self.compare_spec(group.interface.ui_items[5], node, SocketSpec("Output Material", "Output_21", "MATERIAL", default_value=bpy.data.materials['TestMaterial']))
-        self.compare_spec(group.interface.ui_items[6], node, SocketSpec("Output Int", "Output_22", "INT", default_value=0, min_value=-2147483648, max_value=2147483647))
-        self.compare_spec(group.interface.ui_items[7], node, SocketSpec("Output Geometry", "Output_23", "GEOMETRY"))
-        self.compare_spec(group.interface.ui_items[8], node, SocketSpec("Output Collection", "Output_24", "COLLECTION", default_value=bpy.data.collections['TestCollection']))
-        self.compare_spec(group.interface.ui_items[9], node, SocketSpec("Output Texture", "Output_25", "TEXTURE", default_value=bpy.data.textures['TestTexture']))
-        self.compare_spec(group.interface.ui_items[10], node, SocketSpec("Output Object", "Output_26", "OBJECT", default_value=bpy.data.objects['TestObject']))
-        self.compare_spec(group.interface.ui_items[11], node, SocketSpec("Output Image", "Output_27", "IMAGE", default_value=bpy.data.images['TestImage'])) 
+        self.compare_group_socket_to_spec(group.interface.ui_items[0], node, SocketSpec("Output Float", "Output_7", "VALUE", hide_value=True, default_value=3.0, min_value=1.0, max_value=1.0))
+        self.compare_group_socket_to_spec(group.interface.ui_items[1], node, SocketSpec("Output Vector", "Output_8", "VECTOR", subtype="EULER", default_value=( 10, 20, 30), min_value=-10.0, max_value=10.0))
+        self.compare_group_socket_to_spec(group.interface.ui_items[2], node, SocketSpec("Output Color", "Output_9", "RGBA", default_value=(0, 1, 1, 1)))
+        self.compare_group_socket_to_spec(group.interface.ui_items[3], node, SocketSpec("Output String", "Output_19", "STRING", default_value=""))
+        self.compare_group_socket_to_spec(group.interface.ui_items[4], node, SocketSpec("Output Bool", "Output_20", "BOOLEAN", default_value=False))
+        self.compare_group_socket_to_spec(group.interface.ui_items[5], node, SocketSpec("Output Material", "Output_21", "MATERIAL", default_value=bpy.data.materials['TestMaterial']))
+        self.compare_group_socket_to_spec(group.interface.ui_items[6], node, SocketSpec("Output Int", "Output_22", "INT", default_value=0, min_value=-2147483648, max_value=2147483647))
+        self.compare_group_socket_to_spec(group.interface.ui_items[7], node, SocketSpec("Output Geometry", "Output_23", "GEOMETRY"))
+        self.compare_group_socket_to_spec(group.interface.ui_items[8], node, SocketSpec("Output Collection", "Output_24", "COLLECTION", default_value=bpy.data.collections['TestCollection']))
+        self.compare_group_socket_to_spec(group.interface.ui_items[9], node, SocketSpec("Output Texture", "Output_25", "TEXTURE", default_value=bpy.data.textures['TestTexture']))
+        self.compare_group_socket_to_spec(group.interface.ui_items[10], node, SocketSpec("Output Object", "Output_26", "OBJECT", default_value=bpy.data.objects['TestObject']))
+        self.compare_group_socket_to_spec(group.interface.ui_items[11], node, SocketSpec("Output Image", "Output_27", "IMAGE", default_value=bpy.data.images['TestImage'])) 
 
-        self.compare_spec(group.interface.ui_items[12], node, SocketSpec("Input Float", "Input_4", "VALUE", subtype="ANGLE", default_value=-20.0, min_value=5.0, max_value=6.0))
-        self.compare_spec(group.interface.ui_items[13], node, SocketSpec("Input Vector", "Input_5", "VECTOR", hide_value=True, default_value=( 2, 4, 6), min_value=-4.0, max_value=100.0))
-        self.compare_spec(group.interface.ui_items[14], node, SocketSpec("Input Color", "Input_6", "RGBA", default_value=(0.5, 0.4, 0.3, 0.2)))
-        self.compare_spec(group.interface.ui_items[15], node, SocketSpec("Input String", "Input_10", "STRING", default_value="hello world!"))
-        self.compare_spec(group.interface.ui_items[16], node, SocketSpec("Input Bool", "Input_11", "BOOLEAN", default_value=True, hide_in_modifier=True))
-        self.compare_spec(group.interface.ui_items[17], node, SocketSpec("Input Material", "Input_12", "MATERIAL", default_value=bpy.data.materials['TestMaterial']))
-        self.compare_spec(group.interface.ui_items[18], node, SocketSpec("Input Int", "Input_13", "INT", default_value=500, min_value=200, max_value=1000))
-        self.compare_spec(group.interface.ui_items[19], node, SocketSpec("Input Geometry", "Input_14", "GEOMETRY"))
-        self.compare_spec(group.interface.ui_items[20], node, SocketSpec("Input Collection", "Input_15", "COLLECTION", default_value=bpy.data.collections['TestCollection']))
-        self.compare_spec(group.interface.ui_items[21], node, SocketSpec("Input Texture", "Input_16", "TEXTURE", default_value=bpy.data.textures['TestTexture']))
-        self.compare_spec(group.interface.ui_items[22], node, SocketSpec("Input Object", "Input_17", "OBJECT", default_value=bpy.data.objects['TestObject']))
-        self.compare_spec(group.interface.ui_items[23], node, SocketSpec("Input Image", "Input_18", "IMAGE", default_value=bpy.data.images['TestImage'])) 
+        self.compare_group_socket_to_spec(group.interface.ui_items[12], node, SocketSpec("Input Float", "Input_4", "VALUE", subtype="ANGLE", default_value=-20.0, min_value=5.0, max_value=6.0))
+        self.compare_group_socket_to_spec(group.interface.ui_items[13], node, SocketSpec("Input Vector", "Input_5", "VECTOR", hide_value=True, default_value=( 2, 4, 6), min_value=-4.0, max_value=100.0))
+        self.compare_group_socket_to_spec(group.interface.ui_items[14], node, SocketSpec("Input Color", "Input_6", "RGBA", default_value=(0.5, 0.4, 0.3, 0.2)))
+        self.compare_group_socket_to_spec(group.interface.ui_items[15], node, SocketSpec("Input String", "Input_10", "STRING", default_value="hello world!"))
+        self.compare_group_socket_to_spec(group.interface.ui_items[16], node, SocketSpec("Input Bool", "Input_11", "BOOLEAN", default_value=True, hide_in_modifier=True))
+        self.compare_group_socket_to_spec(group.interface.ui_items[17], node, SocketSpec("Input Material", "Input_12", "MATERIAL", default_value=bpy.data.materials['TestMaterial']))
+        self.compare_group_socket_to_spec(group.interface.ui_items[18], node, SocketSpec("Input Int", "Input_13", "INT", default_value=500, min_value=200, max_value=1000))
+        self.compare_group_socket_to_spec(group.interface.ui_items[19], node, SocketSpec("Input Geometry", "Input_14", "GEOMETRY"))
+        self.compare_group_socket_to_spec(group.interface.ui_items[20], node, SocketSpec("Input Collection", "Input_15", "COLLECTION", default_value=bpy.data.collections['TestCollection']))
+        self.compare_group_socket_to_spec(group.interface.ui_items[21], node, SocketSpec("Input Texture", "Input_16", "TEXTURE", default_value=bpy.data.textures['TestTexture']))
+        self.compare_group_socket_to_spec(group.interface.ui_items[22], node, SocketSpec("Input Object", "Input_17", "OBJECT", default_value=bpy.data.objects['TestObject']))
+        self.compare_group_socket_to_spec(group.interface.ui_items[23], node, SocketSpec("Input Image", "Input_18", "IMAGE", default_value=bpy.data.images['TestImage'])) 
         # autopep8: on
 
 
@@ -276,14 +277,14 @@ class NodeGroupVersioning25Test(AbstractNodeGroupInterfaceTest):
         self.assertEqual(node.node_tree, group, "Node group must use compositor node tree")
 
         # autopep8: off
-        self.compare_spec(group.interface.ui_items[0], node, SocketSpec("Image", "Image", "RGBA", default_value=(0, 0, 0, 1)), test_links=False)
-        self.compare_spec(group.interface.ui_items[1], node, SocketSpec("Alpha", "Alpha", "VALUE", default_value=1.0, min_value=0.0, max_value=0.0), test_links=False)
-        self.compare_spec(group.interface.ui_items[2], node, SocketSpec("Alpha", "Alpha.001", "VALUE", default_value=0.0, min_value=0.0, max_value=0.0), test_links=False)
-        self.compare_spec(group.interface.ui_items[3], node, SocketSpec("Alpha", "Alpha.002", "VALUE", default_value=0.0, min_value=0.0, max_value=0.0), test_links=False)
+        self.compare_group_socket_to_spec(group.interface.ui_items[0], node, SocketSpec("Image", "Image", "RGBA", default_value=(0, 0, 0, 1)), test_links=False)
+        self.compare_group_socket_to_spec(group.interface.ui_items[1], node, SocketSpec("Alpha", "Alpha", "VALUE", default_value=1.0, min_value=0.0, max_value=0.0), test_links=False)
+        self.compare_group_socket_to_spec(group.interface.ui_items[2], node, SocketSpec("Alpha", "Alpha.001", "VALUE", default_value=0.0, min_value=0.0, max_value=0.0), test_links=False)
+        self.compare_group_socket_to_spec(group.interface.ui_items[3], node, SocketSpec("Alpha", "Alpha.002", "VALUE", default_value=0.0, min_value=0.0, max_value=0.0), test_links=False)
 
-        self.compare_spec(group.interface.ui_items[4], node, SocketSpec("Fac", "Fac", "VALUE", default_value=0.5, min_value=0.0, max_value=0.0), test_links=False)
-        self.compare_spec(group.interface.ui_items[5], node, SocketSpec("ID value", "ID value", "VALUE", default_value=0.8, min_value=0.0, max_value=0.0), test_links=False)
-        self.compare_spec(group.interface.ui_items[6], node, SocketSpec("ID value", "ID value.001", "VALUE", default_value=0.8, min_value=0.0, max_value=0.0), test_links=False)
+        self.compare_group_socket_to_spec(group.interface.ui_items[4], node, SocketSpec("Fac", "Fac", "VALUE", default_value=0.5, min_value=0.0, max_value=0.0), test_links=False)
+        self.compare_group_socket_to_spec(group.interface.ui_items[5], node, SocketSpec("ID value", "ID value", "VALUE", default_value=0.8, min_value=0.0, max_value=0.0), test_links=False)
+        self.compare_group_socket_to_spec(group.interface.ui_items[6], node, SocketSpec("ID value", "ID value.001", "VALUE", default_value=0.8, min_value=0.0, max_value=0.0), test_links=False)
         # autopep8: on
 
     def test_load_shader_nodes(self):
@@ -296,19 +297,19 @@ class NodeGroupVersioning25Test(AbstractNodeGroupInterfaceTest):
         self.assertEqual(node.node_tree, group, "Node group must use shader node tree")
 
         # autopep8: off
-        self.compare_spec(group.interface.ui_items[0], node, SocketSpec("Color", "Color", "RGBA", default_value=(0, 0, 0, 1)), test_links=False)
-        self.compare_spec(group.interface.ui_items[1], node, SocketSpec("Color", "Color.001", "RGBA", default_value=(0, 0, 0, 1)), test_links=False)
-        self.compare_spec(group.interface.ui_items[2], node, SocketSpec("Vector", "Vector", "VECTOR", default_value=(0, 0, 0), min_value=0.0, max_value=0.0), test_links=False)
-        self.compare_spec(group.interface.ui_items[3], node, SocketSpec("Value", "Value", "VALUE", default_value=0.0, min_value=0.0, max_value=0.0), test_links=False)
+        self.compare_group_socket_to_spec(group.interface.ui_items[0], node, SocketSpec("Color", "Color", "RGBA", default_value=(0, 0, 0, 1)), test_links=False)
+        self.compare_group_socket_to_spec(group.interface.ui_items[1], node, SocketSpec("Color", "Color.001", "RGBA", default_value=(0, 0, 0, 1)), test_links=False)
+        self.compare_group_socket_to_spec(group.interface.ui_items[2], node, SocketSpec("Vector", "Vector", "VECTOR", default_value=(0, 0, 0), min_value=0.0, max_value=0.0), test_links=False)
+        self.compare_group_socket_to_spec(group.interface.ui_items[3], node, SocketSpec("Value", "Value", "VALUE", default_value=0.0, min_value=0.0, max_value=0.0), test_links=False)
 
-        self.compare_spec(group.interface.ui_items[4], node, SocketSpec("Fac", "Fac", "VALUE", default_value=0.5, min_value=0.0, max_value=0.0), test_links=False)
-        self.compare_spec(group.interface.ui_items[5], node, SocketSpec("Color1", "Color1", "RGBA", default_value=(0.5, 0.5, 0.5, 1)), test_links=False)
-        self.compare_spec(group.interface.ui_items[6], node, SocketSpec("Color2", "Color2", "RGBA", default_value=(0.5, 0.5, 0.5, 1)), test_links=False)
-        self.compare_spec(group.interface.ui_items[7], node, SocketSpec("Fac", "Fac.001", "VALUE", default_value=0.5, min_value=0.0, max_value=0.0), test_links=False)
-        self.compare_spec(group.interface.ui_items[8], node, SocketSpec("Color1", "Color1.001", "RGBA", default_value=(0.5, 0.5, 0.5, 1)), test_links=False)
-        self.compare_spec(group.interface.ui_items[9], node, SocketSpec("Color2", "Color2.001", "RGBA", default_value=(0.5, 0.5, 0.5, 1)), test_links=False)
-        self.compare_spec(group.interface.ui_items[10], node, SocketSpec("Vector", "Vector", "VECTOR", default_value=(0.5, 0.5, 0.5), min_value=0.0, max_value=0.0), test_links=False)
-        self.compare_spec(group.interface.ui_items[11], node, SocketSpec("Vector", "Vector.001", "VECTOR", default_value=(0.5, 0.5, 0.5), min_value=0.0, max_value=0.0), test_links=False)
+        self.compare_group_socket_to_spec(group.interface.ui_items[4], node, SocketSpec("Fac", "Fac", "VALUE", default_value=0.5, min_value=0.0, max_value=0.0), test_links=False)
+        self.compare_group_socket_to_spec(group.interface.ui_items[5], node, SocketSpec("Color1", "Color1", "RGBA", default_value=(0.5, 0.5, 0.5, 1)), test_links=False)
+        self.compare_group_socket_to_spec(group.interface.ui_items[6], node, SocketSpec("Color2", "Color2", "RGBA", default_value=(0.5, 0.5, 0.5, 1)), test_links=False)
+        self.compare_group_socket_to_spec(group.interface.ui_items[7], node, SocketSpec("Fac", "Fac.001", "VALUE", default_value=0.5, min_value=0.0, max_value=0.0), test_links=False)
+        self.compare_group_socket_to_spec(group.interface.ui_items[8], node, SocketSpec("Color1", "Color1.001", "RGBA", default_value=(0.5, 0.5, 0.5, 1)), test_links=False)
+        self.compare_group_socket_to_spec(group.interface.ui_items[9], node, SocketSpec("Color2", "Color2.001", "RGBA", default_value=(0.5, 0.5, 0.5, 1)), test_links=False)
+        self.compare_group_socket_to_spec(group.interface.ui_items[10], node, SocketSpec("Vector", "Vector", "VECTOR", default_value=(0.5, 0.5, 0.5), min_value=0.0, max_value=0.0), test_links=False)
+        self.compare_group_socket_to_spec(group.interface.ui_items[11], node, SocketSpec("Vector", "Vector.001", "VECTOR", default_value=(0.5, 0.5, 0.5), min_value=0.0, max_value=0.0), test_links=False)
         # autopep8: on
 
 
