@@ -12,56 +12,59 @@ namespace blender::nodes::materialx {
 NodeParser::NodeParser(MaterialX::GraphElement *graph,
                        const Depsgraph *depsgraph,
                        const Material *material,
-                       const bNode *node)
-    : graph(graph), depsgraph(depsgraph), material(material), node(node)
+                       const bNode *node,
+                       const bNodeSocket *socket_out)
+    : graph_(graph), depsgraph_(depsgraph), material_(material), node_(node), socket_out_(socket_out)
 {
 }
 
-NodeItem NodeParser::create_node(const std::string &mx_category,
-                                 const std::string &mx_type,
-                                 bool noname)
+std::string NodeParser::node_name(const bNode *node, const bNodeSocket *socket_out)
+{
+  return MaterialX::createValidName(node->output_sockets().size() <= 1 ?
+                                        std::string(node->name) :
+                                        std::string(node->name) + "_" + socket_out->name);
+}
+
+NodeItem NodeParser::create_node(const std::string &mx_category, const std::string &mx_type)
 {
   NodeItem res = empty();
-  res.node = graph->addNode(mx_category,
-                            noname ? MaterialX::EMPTY_STRING :
-                                     MaterialX::createValidName(node->name),
-                            mx_type);
+  res.node = graph_->addNode(mx_category, MaterialX::EMPTY_STRING, mx_type);
   return res;
 }
 
 NodeItem NodeParser::get_input_default(const std::string &name)
 {
-  return get_input_default(node->input_by_identifier(name));
+  return get_input_default(node_->input_by_identifier(name));
 }
 
 NodeItem NodeParser::get_input_default(int index)
 {
-  return get_input_default(node->input_socket(index));
+  return get_input_default(node_->input_socket(index));
 }
 
 NodeItem NodeParser::get_input_link(const std::string &name)
 {
-  return get_input_link(node->input_by_identifier(name));
+  return get_input_link(node_->input_by_identifier(name));
 }
 
 NodeItem NodeParser::get_input_link(int index)
 {
-  return get_input_link(node->input_socket(index));
+  return get_input_link(node_->input_socket(index));
 }
 
 NodeItem NodeParser::get_input_value(const std::string &name)
 {
-  return get_input_value(node->input_by_identifier(name));
+  return get_input_value(node_->input_by_identifier(name));
 }
 
 NodeItem NodeParser::get_input_value(int index)
 {
-  return get_input_value(node->input_socket(index));
+  return get_input_value(node_->input_socket(index));
 }
 
 NodeItem NodeParser::empty() const
 {
-  return NodeItem(graph);
+  return NodeItem(graph_);
 }
 
 NodeItem NodeParser::get_input_default(const bNodeSocket &socket)
@@ -98,50 +101,46 @@ NodeItem NodeParser::get_input_link(const bNodeSocket &socket)
     return res;
   }
 
-  const bNode *in_node = link->fromnode;
+  const bNode *from_node = link->fromnode;
 
   /* Passing NODE_REROUTE nodes */
-  while (in_node->type == NODE_REROUTE) {
-    link = in_node->input_socket(0).link;
+  while (from_node->type == NODE_REROUTE) {
+    link = from_node->input_socket(0).link;
     if (!(link && link->is_used())) {
       return res;
     }
-    in_node = link->fromnode;
+    from_node = link->fromnode;
   }
 
-  /* Getting required NodeParser object */
-  std::unique_ptr<NodeParser> parser;
-  switch (in_node->typeinfo->type) {
-    case SH_NODE_BSDF_PRINCIPLED:
-      parser = std::make_unique<BSDFPrincipledNodeParser>(graph, depsgraph, material, in_node);
-      break;
-    case SH_NODE_INVERT:
-      parser = std::make_unique<InvertNodeParser>(graph, depsgraph, material, in_node);
-      break;
-    case SH_NODE_MATH:
-      parser = std::make_unique<MathNodeParser>(graph, depsgraph, material, in_node);
-      break;
-    case SH_NODE_MIX_RGB_LEGACY:
-      parser = std::make_unique<MixRGBNodeParser>(graph, depsgraph, material, in_node);
-      break;
-    case SH_NODE_TEX_IMAGE:
-      parser = std::make_unique<TexImageNodeParser>(graph, depsgraph, material, in_node);
-      break;
-    case SH_NODE_TEX_ENVIRONMENT:
-      parser = std::make_unique<TexEnvironmentNodeParser>(graph, depsgraph, material, in_node);
-      break;
-    case SH_NODE_TEX_NOISE:
-      parser = std::make_unique<TexNoiseNodeParser>(graph, depsgraph, material, in_node);
-      break;
-    case SH_NODE_TEX_CHECKER:
-      parser = std::make_unique<TexCheckerNodeParser>(graph, depsgraph, material, in_node);
-      break;
+  /* Checking if node was already computed */
+  res.node = graph_->getNode(node_name(from_node, link->fromsock));
+  if (res.node) {
+    return res; 
+  }
+
+  /* Computing from_node with required NodeParser object */
+#define CASE_NODE_TYPE(type, T) \
+  case type: \
+    res = T(graph_, depsgraph_, material_, from_node, link->fromsock).compute_full(); \
+    break;
+
+  switch (from_node->typeinfo->type) {
+    CASE_NODE_TYPE(SH_NODE_BSDF_PRINCIPLED, BSDFPrincipledNodeParser)
+    CASE_NODE_TYPE(SH_NODE_INVERT, InvertNodeParser)
+    CASE_NODE_TYPE(SH_NODE_MATH, MathNodeParser)
+    CASE_NODE_TYPE(SH_NODE_MIX_RGB_LEGACY, MixRGBNodeParser)
+    CASE_NODE_TYPE(SH_NODE_TEX_CHECKER, TexCheckerNodeParser)
+    CASE_NODE_TYPE(SH_NODE_TEX_ENVIRONMENT, TexEnvironmentNodeParser)
+    CASE_NODE_TYPE(SH_NODE_TEX_IMAGE, TexImageNodeParser)
+    CASE_NODE_TYPE(SH_NODE_TEX_NOISE, TexNoiseNodeParser)
+
     default:
-      CLOG_WARN(LOG_MATERIALX_SHADER, "Unsupported node: %s (%d)", in_node->name, in_node->type);
-      return res;
+      CLOG_WARN(LOG_MATERIALX_SHADER,
+                "Unsupported node: %s [%d]",
+                from_node->name,
+                from_node->typeinfo->type);
   }
 
-  res = parser->compute();
   return res;
 }
 
@@ -150,6 +149,16 @@ NodeItem NodeParser::get_input_value(const bNodeSocket &socket)
   NodeItem res = get_input_link(socket);
   if (!res) {
     res = get_input_default(socket);
+  }
+  return res;
+}
+
+NodeItem NodeParser::compute_full()
+{
+  CLOG_INFO(LOG_MATERIALX_SHADER, 1, "%s [%d]", node_->name, node_->typeinfo->type);
+  NodeItem res = compute();
+  if (res.node) {
+    res.node->setName(node_name(node_, socket_out_));
   }
   return res;
 }

@@ -16,15 +16,10 @@ NodeItem TexCheckerNodeParser::compute()
     float v = scale.value->asA<float>();
     scale = value(MaterialX::Vector2(v, v));
   }
-  /* Modifier to follow Cycles result */
-  scale = scale * value(4.0f);
 
   NodeItem texcoord = create_node("texcoord", "vector2");
   NodeItem place2d = create_node("place2d", "vector2");
   place2d.set_input("texcoord", texcoord * scale);
-
-  /* TODO: fix offset:
-   * place2d.set_input("offset", offset); */
 
   NodeItem separate = create_node("separate2", "multioutput");
   separate.set_input("in", place2d);
@@ -42,9 +37,9 @@ NodeItem TexCheckerNodeParser::compute()
   NodeItem ifequal =
       (modulo_x.floor() + modulo_y.floor()).if_else("==", value(1.0f), value(0.0f), value(1.0f));
 
-  NodeItem res = create_node("mix", "color3", false);
-  res.set_input("fg", color1.to_color3());
-  res.set_input("bg", color2.to_color3());
+  NodeItem res = create_node("mix", "color3");
+  res.set_input("bg", color1.to_color3());
+  res.set_input("fg", color2.to_color3());
   res.set_input("mix", ifequal);
   return res;
 }

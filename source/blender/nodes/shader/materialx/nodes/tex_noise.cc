@@ -18,7 +18,7 @@ NodeItem TexNoiseNodeParser::compute()
 
   NodeItem texcoord = create_node("position", "vector3");
 
-  NodeItem res = create_node("fractal3d", "color3", false);
+  NodeItem res = create_node("fractal3d", "color3");
   res.set_input("position", texcoord * scale);
   res.set_input("octaves", detail);
   res.set_input("lacunarity", lacunarity);

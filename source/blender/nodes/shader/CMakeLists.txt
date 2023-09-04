@@ -162,6 +162,7 @@ if(WITH_MATERIALX)
     materialx/material.h
     materialx/nodes/node_item.h
     materialx/nodes/node_parser.h
+    materialx/nodes/output_material.h
   )
   list(APPEND LIB
     MaterialXCore

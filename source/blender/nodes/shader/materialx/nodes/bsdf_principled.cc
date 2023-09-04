@@ -68,7 +68,7 @@ NodeItem BSDFPrincipledNodeParser::compute()
   NodeItem tangent = get_input_link("Tangent");
 
   /* Creating standard_surface */
-  NodeItem res = create_node("standard_surface", "surfaceshader", false);
+  NodeItem res = create_node("standard_surface", "surfaceshader");
   res.set_input("base", 1.0, "float");
   res.set_input("base_color", base_color.to_color3());
   res.set_input("diffuse_roughness", roughness);
@@ -90,7 +90,9 @@ NodeItem BSDFPrincipledNodeParser::compute()
     res.set_input("specular_IOR", ior);
     if (anisotropic) {
       res.set_input("specular_anisotropy", anisotropic);
-      res.set_input("specular_rotation", anisotropic_rotation);
+      if (anisotropic_rotation) {
+        res.set_input("specular_rotation", anisotropic_rotation);
+      }
     }
   }
 

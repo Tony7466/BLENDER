@@ -10,7 +10,7 @@ namespace blender::nodes::materialx {
 NodeItem MathNodeParser::compute()
 {
   /* TODO: finish some math operations */
-  auto op = node->custom1;
+  auto op = node_->custom1;
   NodeItem res = empty();
 
   /* Single operand operations */
@@ -158,7 +158,7 @@ NodeItem MathNodeParser::compute()
     }
   }
 
-  bool clamp_output = node->custom2 != 0;
+  bool clamp_output = node_->custom2 != 0;
   if (clamp_output && res) {
     res = res.clamp();
   }

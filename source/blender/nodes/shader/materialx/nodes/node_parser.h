@@ -13,25 +13,25 @@
 namespace blender::nodes::materialx {
 
 class NodeParser {
- public:
-  MaterialX::GraphElement *graph;
-  const Depsgraph *depsgraph;
-  const Material *material;
-  const bNode *node;
+ protected:
+  MaterialX::GraphElement *graph_;
+  const Depsgraph *depsgraph_;
+  const Material *material_;
+  const bNode *node_;
+  const bNodeSocket *socket_out_;
 
  public:
   NodeParser(MaterialX::GraphElement *graph,
              const Depsgraph *depsgraph,
              const Material *material,
-             const bNode *node);
+             const bNode *node,
+             const bNodeSocket *socket_out);
   virtual ~NodeParser() = default;
-
   virtual NodeItem compute() = 0;
 
  protected:
-  NodeItem create_node(const std::string &mx_category,
-                       const std::string &mx_type,
-                       bool noname = true);
+  static std::string node_name(const bNode *node, const bNodeSocket *socket_out);
+  NodeItem create_node(const std::string &mx_category, const std::string &mx_type);
   NodeItem get_input_default(const std::string &name);
   NodeItem get_input_default(int index);
   NodeItem get_input_link(const std::string &name);
@@ -45,6 +45,7 @@ class NodeParser {
   NodeItem get_input_default(const bNodeSocket &socket);
   NodeItem get_input_link(const bNodeSocket &socket);
   NodeItem get_input_value(const bNodeSocket &socket);
+  NodeItem compute_full();
 };
 
 template<class T> NodeItem NodeParser::value(const T &data) const
@@ -63,7 +64,6 @@ DECLARE_PARSER(BSDFPrincipledNodeParser)
 DECLARE_PARSER(InvertNodeParser)
 DECLARE_PARSER(MathNodeParser)
 DECLARE_PARSER(MixRGBNodeParser)
-DECLARE_PARSER(OutputMaterialNodeParser)
 DECLARE_PARSER(TexCheckerNodeParser)
 DECLARE_PARSER(TexEnvironmentNodeParser)
 DECLARE_PARSER(TexImageNodeParser)

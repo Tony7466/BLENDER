@@ -12,10 +12,10 @@ namespace blender::nodes::materialx {
 
 NodeItem TexImageNodeParser::compute()
 {
-  Image *image = (Image *)node->id;
-  NodeTexImage *tex = static_cast<NodeTexImage *>(node->storage);
-  Scene *scene = DEG_get_input_scene(depsgraph);
-  Main *bmain = DEG_get_bmain(depsgraph);
+  Image *image = (Image *)node_->id;
+  NodeTexImage *tex = static_cast<NodeTexImage *>(node_->storage);
+  Scene *scene = DEG_get_input_scene(depsgraph_);
+  Main *bmain = DEG_get_bmain(depsgraph_);
   std::string image_path;
   /* TODO: What if Blender built without Hydra? Also io::hydra::cache_or_get_image_file contains
    * pretty general code, so could be moved from bf_usd project. */
@@ -24,7 +24,7 @@ NodeItem TexImageNodeParser::compute()
 #endif
 
   NodeItem texcoord = create_node("texcoord", "vector2");
-  NodeItem res = create_node("image", "color3", false);
+  NodeItem res = create_node("image", "color3");
   res.set_input("file", image_path, "filename");
   res.set_input("texcoord", texcoord);
   return res;
