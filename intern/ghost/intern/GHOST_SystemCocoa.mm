@@ -916,13 +916,14 @@ GHOST_TSuccess GHOST_SystemCocoa::getButtons(GHOST_Buttons &buttons) const
 
 GHOST_TCapabilityFlag GHOST_SystemCocoa::getCapabilities() const
 {
-  return GHOST_TCapabilityFlag(
-      GHOST_CAPABILITY_FLAG_ALL &
-      ~(
-          /* Cocoa has no support for a primary selection clipboard. */
-          GHOST_kCapabilityPrimaryClipboard |
-          /* Cocoa has no support for sampling colors from the desktop. */
-          GHOST_kCapabilityDesktopSample ));
+
+    return GHOST_TCapabilityFlag(GHOST_CAPABILITY_FLAG_ALL &
+                               ~(
+                                   /* OSX has no support for a primary selection clipboard. */
+                                   GHOST_kCapabilityPrimaryClipboard |
+                                   /* OSX has no support for a color sampling from the desktop. */
+                                   GHOST_kCapabilityDesktopSample ));
+
 }
 
 #pragma mark Event handlers
@@ -1977,7 +1978,7 @@ char *GHOST_SystemCocoa::getClipboard(bool /*selection*/) const
 
     if (textPasted == nil) {
       return nullptr;
-    }
+    } 
 
     pastedTextSize = [textPasted lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
 
@@ -2012,6 +2013,69 @@ void GHOST_SystemCocoa::putClipboard(const char *buffer, bool selection) const
     NSString *textToCopy = [NSString stringWithCString:buffer encoding:NSUTF8StringEncoding];
     [pasteBoard setString:textToCopy forType:NSPasteboardTypeString];
   }
+}
+
+GHOST_TSuccess GHOST_SystemCocoa::hasClipboardImage() const
+{
+    NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
+    if ([[pasteboard types] containsObject:NSPasteboardTypeTIFF] || [[pasteboard types] containsObject:NSPasteboardTypePNG])  {
+      printf("Has clipboard image\n");
+      return GHOST_kSuccess;
+    } else {
+      printf("Has NO clipboard image\n");
+      return GHOST_kFailure;
+    }
+}
+
+uint *GHOST_SystemCocoa::getClipboardImage(int *r_width, int *r_height) const
+{
+      printf("trying to get clipboard image\n");
+
+// Get the general pasteboard
+NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
+
+// Check if pasteboard contains an image
+
+if ([[pasteboard types] containsObject:NSPasteboardTypeTIFF] || [[pasteboard types] containsObject:NSPasteboardTypePNG]) 
+ {
+    // Get the image
+    NSImage* image = [[NSImage alloc] initWithPasteboard:pasteboard];
+    
+    // Get image size
+    NSSize size = [image size];
+    *r_width = size.width;
+    *r_height = size.height;
+
+    // Create bitmap context
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+    CGContextRef context = CGBitmapContextCreate(NULL, *r_width, *r_height, 8, *r_width * 4, colorSpace, kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
+
+    // Draw image to context
+    [image drawInRect:CGRectMake(0, 0, *r_width, *r_height) fromRect:NSZeroRect operation:NSCompositingOperationCopy fraction:1.0];
+
+    // Get pixel data
+    uint* pixels = (uint*)CGBitmapContextGetData(context);
+
+    // Clean up
+    CGContextRelease(context);
+    CGColorSpaceRelease(colorSpace);
+    [image release];
+    return pixels; 
+  } else { 
+      return nil;
+      }
+}
+
+GHOST_TSuccess GHOST_SystemCocoa::putClipboardImage(uint *rgba, int width, int height) const
+{
+
+    GHOST_WindowCocoa *window = (GHOST_WindowCocoa *)m_windowManager->getActiveWindow();
+  if (!window) {
+        return window->putClipboardImage(rgba, width, height);
+  } else {
+    return GHOST_kFailure;
+  }
+
 }
 
 GHOST_TSuccess GHOST_SystemCocoa::showMessageBox(const char *title,

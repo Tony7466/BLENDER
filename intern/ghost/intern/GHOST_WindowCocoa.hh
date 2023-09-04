@@ -198,7 +198,7 @@ class GHOST_WindowCocoa : public GHOST_Window {
   /**
    * Returns GHOST_kSuccess if the clipboard contains an image.
    */
-  GHOST_TSuccess GHOST_hasClipboardImage(void);
+  GHOST_TSuccess hasClipboardImage(void) const;
 
   /**
    * Get image data from the Clipboard
@@ -206,7 +206,7 @@ class GHOST_WindowCocoa : public GHOST_Window {
    * \param r_height: the returned image height in pixels.
    * \return pointer uint array in RGBA byte order. Caller must free.
    */
-  uint *GHOST_getClipboardImage(int *r_width, int *r_height);
+  uint *getClipboardImage(int *r_width, int *r_height) const;
 
   /**
    * Put image data to the Clipboard
@@ -214,7 +214,7 @@ class GHOST_WindowCocoa : public GHOST_Window {
    * \param width: the image width in pixels.
    * \param height: the image height in pixels.
    */
-  GHOST_TSuccess GHOST_putClipboardImage(uint *rgba, int width, int height);
+  GHOST_TSuccess putClipboardImage(uint *rgba, int width, int height) const;
 
   GHOST_TabletData &GetCocoaTabletData()
   {

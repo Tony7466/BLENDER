@@ -618,7 +618,7 @@ GHOST_TSuccess GHOST_WindowCocoa::setClientHeight(uint32_t height)
 }
 
 //returns success if we have an image in the clipboard
-  GHOST_TSuccess GHOST_hasClipboardImage(void) {
+  GHOST_TSuccess GHOST_WindowCocoa::hasClipboardImage(void) const {
    NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
     if ([[pasteboard types] containsObject:NSPasteboardTypeTIFF] || [[pasteboard types] containsObject:NSPasteboardTypePNG])  {
       return GHOST_kSuccess;
@@ -629,7 +629,7 @@ GHOST_TSuccess GHOST_WindowCocoa::setClientHeight(uint32_t height)
 
 
 //returns the image data from the clipboard if available
-  uint *GHOST_getClipboardImage(int *r_width, int *r_height) {
+  uint *GHOST_WindowCocoa::getClipboardImage(int *r_width, int *r_height) const {
 
 // Get the general pasteboard
 NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
@@ -668,7 +668,7 @@ if ([[pasteboard types] containsObject:NSPasteboardTypeTIFF] || [[pasteboard typ
 
 
   //takes an image and puts it in the system clipboard
-  GHOST_TSuccess GHOST_putClipboardImage(uint *rgba, int width, int height) {
+  GHOST_TSuccess GHOST_WindowCocoa::putClipboardImage(uint *rgba, int width, int height) const {
     CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
     CGContextRef context = CGBitmapContextCreate(rgba, width, height, 8, width * 4, colorSpace, 
                                                 kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);

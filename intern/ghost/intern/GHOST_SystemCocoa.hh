@@ -13,7 +13,7 @@
 #  error Apple OSX only!
 #endif  // __APPLE__
 
-//#define __CARBONSOUND__
+// #define __CARBONSOUND__
 
 #include "GHOST_System.hh"
 
@@ -211,6 +211,27 @@ class GHOST_SystemCocoa : public GHOST_System {
   void putClipboard(const char *buffer, bool selection) const;
 
   /**
+   * Returns GHOST_kSuccess if the clipboard contains an image.
+   */
+  GHOST_TSuccess hasClipboardImage(void) const;
+
+  /**
+   * Get image data from the Clipboard
+   * \param r_width: the returned image width in pixels.
+   * \param r_height: the returned image height in pixels.
+   * \return pointer uint array in RGBA byte order. Caller must free.
+   */
+  uint *getClipboardImage(int *r_width, int *r_height) const;
+
+  /**
+   * Put image data to the Clipboard
+   * \param rgba: uint array in RGBA byte order.
+   * \param width: the image width in pixels.
+   * \param height: the image height in pixels.
+   */
+  GHOST_TSuccess putClipboardImage(uint *rgba, int width, int height) const;
+
+  /**
    * Handles a window event. Called by GHOST_WindowCocoa window delegate
    * \param eventType: The type of window event.
    * \param window: The window on which the event occurred.
@@ -255,15 +276,15 @@ class GHOST_SystemCocoa : public GHOST_System {
 
   /**
    * Handles a mouse event.
-   * \param eventPtr: An #NSEvent pointer (cast to `void *` to enable compilation in standard C++).
-   * \return Indication whether the event was handled.
+   * \param eventPtr: An #NSEvent pointer (cast to `void *` to enable compilation in standard
+   * C++). \return Indication whether the event was handled.
    */
   GHOST_TSuccess handleMouseEvent(void *eventPtr);
 
   /**
    * Handles a key event.
-   * \param eventPtr: An #NSEvent pointer (cast to `void *` to enable compilation in standard C++).
-   * \return Indication whether the event was handled.
+   * \param eventPtr: An #NSEvent pointer (cast to `void *` to enable compilation in standard
+   * C++). \return Indication whether the event was handled.
    */
   GHOST_TSuccess handleKeyEvent(void *eventPtr);
 
