@@ -64,7 +64,6 @@ class SocketSpec():
 
     @property
     def idname(self):
-        global type_info
         return type_info[(self.type, self.subtype)]
 
 
