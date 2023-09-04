@@ -885,9 +885,12 @@ class VIEW3D_HT_header(Header):
                 )
 
         elif object_mode == 'SCULPT':
+            canvas_source = tool_settings.paint_mode.canvas_source
+            icon = 'GROUP_VCOL' if canvas_source == 'COLOR_ATTRIBUTE' else canvas_source
+
             row = layout.row()
-            row.ui_units_x = 6
-            row.popover(panel="VIEW3D_PT_slots_paint_canvas", icon="GROUP_VCOL")
+            row.ui_units_x = 7
+            row.popover(panel="VIEW3D_PT_slots_paint_canvas", icon=icon)
 
             layout.popover(
                 panel="VIEW3D_PT_sculpt_automasking",
@@ -906,7 +909,7 @@ class VIEW3D_HT_header(Header):
             row.popover(panel="VIEW3D_PT_slots_vertex_groups", icon="GROUP_VERTEX")
 
         elif object_mode == 'TEXTURE_PAINT':
-            tool_mode = context.tool_settings.image_paint.mode
+            tool_mode = tool_settings.image_paint.mode
             icon = 'MATERIAL' if tool_mode == 'MATERIAL' else 'IMAGE_DATA'
 
             row = layout.row()
