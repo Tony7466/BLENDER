@@ -235,9 +235,11 @@ class NODE_MT_add(bpy.types.Menu):
         if snode.tree_type == 'GeometryNodeTree':
             layout.menu_contents("NODE_MT_geometry_node_add_all")
         elif snode.tree_type == 'CompositorNodeTree':
-            layout.menu_contents("NODE_MT_compositing_node_add_all")
+            layout.menu_contents("NODE_MT_compositor_node_add_all")
+        elif snode.tree_type == 'ShaderNodeTree':
+            layout.menu_contents("NODE_MT_shader_node_add_all")
         elif nodeitems_utils.has_node_categories(context):
-            # actual node submenus are defined by draw functions from node categories
+            # Actual node sub-menus are defined by draw functions from node categories.
             nodeitems_utils.draw_node_categories_menu(self, context)
 
 

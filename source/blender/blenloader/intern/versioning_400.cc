@@ -30,6 +30,7 @@
 #include "BLI_map.hh"
 #include "BLI_math_vector.h"
 #include "BLI_set.hh"
+#include "BLI_string.h"
 #include "BLI_string_ref.hh"
 
 #include "BKE_armature.h"
@@ -119,12 +120,7 @@ static void version_bonelayers_to_bonecollections(Main *bmain)
   char bcoll_name[MAX_NAME];
   char custom_prop_name[MAX_NAME];
 
-  LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-    if (ob->type != OB_ARMATURE || !ob->pose) {
-      continue;
-    }
-
-    bArmature *arm = reinterpret_cast<bArmature *>(ob->data);
+  LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
     IDProperty *arm_idprops = IDP_GetProperties(&arm->id, false);
 
     BLI_assert_msg(arm->edbo == nullptr, "did not expect an Armature to be saved in edit mode");
@@ -605,15 +601,17 @@ static bNodeTreeInterfaceItem *legacy_socket_move_to_interface(bNodeSocket &lega
                      legacy_socket.flag & SOCK_HIDE_IN_MODIFIER,
                      NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER);
   new_socket.attribute_domain = legacy_socket.attribute_domain;
-  new_socket.default_attribute_name = BLI_strdup_null(legacy_socket.default_attribute_name);
-  new_socket.socket_data = legacy_socket.default_value;
-  new_socket.properties = legacy_socket.prop;
 
-  /* Clear moved pointers in legacy data. */
+  /* The following data are stolen from the old data, the ownership of their memory is directly
+   * transferred to the new data. */
+  new_socket.default_attribute_name = legacy_socket.default_attribute_name;
+  legacy_socket.default_attribute_name = nullptr;
+  new_socket.socket_data = legacy_socket.default_value;
   legacy_socket.default_value = nullptr;
+  new_socket.properties = legacy_socket.prop;
   legacy_socket.prop = nullptr;
 
-  /* Unused data */
+  /* Unused data. */
   MEM_delete(legacy_socket.runtime);
   legacy_socket.runtime = nullptr;
 
@@ -990,8 +988,24 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       /* Clear legacy sockets after conversion.
        * Internal data pointers have been moved or freed already. */
-      BLI_freelistN(&ntree->inputs_legacy);
-      BLI_freelistN(&ntree->outputs_legacy);
+      LISTBASE_FOREACH_MUTABLE (bNodeSocket *, legacy_socket, &ntree->inputs_legacy) {
+        MEM_delete(legacy_socket->runtime);
+        MEM_freeN(legacy_socket);
+      }
+      LISTBASE_FOREACH_MUTABLE (bNodeSocket *, legacy_socket, &ntree->outputs_legacy) {
+        MEM_delete(legacy_socket->runtime);
+        MEM_freeN(legacy_socket);
+      }
+      BLI_listbase_clear(&ntree->inputs_legacy);
+      BLI_listbase_clear(&ntree->outputs_legacy);
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 22)) {
+    /* Initialize root panel flags in files created before these flags were added. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      ntree->tree_interface.root_panel.flag |= NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS;
     }
     FOREACH_NODETREE_END;
   }
