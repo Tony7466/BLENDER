@@ -10,7 +10,6 @@
 
 #include "BLI_listbase.h"
 #include "BLI_string.h"
-#include "BLI_string_search.hh"
 
 #include "DNA_space_types.h"
 
