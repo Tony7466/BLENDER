@@ -59,6 +59,7 @@ class SocketSpec():
     default_value: object = None
     min_value: object = None
     max_value: object = None
+    links: int = 1
 
     @property
     def idname(self):
@@ -131,6 +132,8 @@ class AbstractNodeGroupInterfaceTest(unittest.TestCase):
         self.assertEqual(socket.type, spec.type)
         self.assertEqual(socket.identifier, spec.identifier)
         self.assertEqual(socket.hide_value, spec.hide_value)
+        # There should be exactly one link connecting to the socket
+        self.assertEqual(len(socket.links), spec.links, f"Socket should have exactly {spec.links} connections")
 
 
 class NodeGroupVersioningTest(AbstractNodeGroupInterfaceTest):
@@ -143,7 +146,7 @@ class NodeGroupVersioningTest(AbstractNodeGroupInterfaceTest):
         tree = bpy.data.scenes['Scene'].node_tree
         group = bpy.data.node_groups.get('NodeGroup')
         self.assertIsNotNone(group, "Compositor node group not found")
-        node = tree.nodes[0]
+        node = tree.nodes['Group']
         self.assertEqual(node.node_tree, group, "Node group must use compositor node tree")
 
         self.compare_spec(
@@ -178,7 +181,7 @@ class NodeGroupVersioningTest(AbstractNodeGroupInterfaceTest):
         tree = bpy.data.materials['Material'].node_tree
         group = bpy.data.node_groups.get('NodeGroup.003')
         self.assertIsNotNone(group, "Shader node group not found")
-        node = tree.nodes[0]
+        node = tree.nodes['Group']
         self.assertEqual(node.node_tree, group, "Node group must use shader node tree")
 
         self.compare_spec(
@@ -221,7 +224,7 @@ class NodeGroupVersioningTest(AbstractNodeGroupInterfaceTest):
         tree = bpy.data.node_groups['Geometry Nodes']
         group = bpy.data.node_groups.get('NodeGroup.002')
         self.assertIsNotNone(group, "Geometry node group not found")
-        node = tree.nodes[0]
+        node = tree.nodes['Group']
         self.assertEqual(node.node_tree, group, "Node group must use geometry node tree")
 
         self.compare_spec(
