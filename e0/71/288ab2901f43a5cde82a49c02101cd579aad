@@ -5,3 +5,4 @@ Referenced by commit 1bcd812a75d50ede6256ad72b385a6b3b6322daf, Fix (unreported) 
 Referenced by issue #111817, "Move to Nodes" operator broken after node group interface refactor
 Referenced by issue #111763, Crash when save file after appending (Interpolate Hair Curves) from Asset Browser
 Referenced by issue #111890, Blender 4 Alpha Won't Open
+Referenced by issue #111905, Error deleting an object with shape keys
