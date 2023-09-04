@@ -14,6 +14,9 @@ GPU_SHADER_CREATE_INFO(eevee_shared)
     .typedef_source("eevee_defines.hh")
     .typedef_source("eevee_shader_shared.hh");
 
+GPU_SHADER_CREATE_INFO(eevee_global_data)
+    .uniform_buf(GLOBAL_BUF_SLOT, "GlobalUBOData", "global_buf");
+
 GPU_SHADER_CREATE_INFO(eevee_sampling_data)
     .define("EEVEE_SAMPLING_DATA")
     .additional_info("eevee_shared")
@@ -23,7 +26,13 @@ GPU_SHADER_CREATE_INFO(eevee_utility_texture)
     .define("EEVEE_UTILITY_TX")
     .sampler(RBUFS_UTILITY_TEX_SLOT, ImageType::FLOAT_2D_ARRAY, "utility_tx");
 
-GPU_SHADER_CREATE_INFO(eevee_camera).uniform_buf(CAMERA_BUF_SLOT, "CameraData", "camera_buf");
+GPU_SHADER_CREATE_INFO(eevee_camera)
+    .additional_info("eevee_global_data")
+    .define("camera_buf", "global_buf.camera");
+
+GPU_SHADER_CREATE_INFO(eevee_render_buffers_data)
+    .additional_info("eevee_global_data")
+    .define("rp_buf", "global_buf.render_buffers");
 
 /** \} */
 
@@ -110,7 +119,7 @@ GPU_SHADER_CREATE_INFO(eevee_render_pass_out)
     .define("MAT_RENDER_PASS_SUPPORT")
     .image_array_out(RBUFS_COLOR_SLOT, Qualifier::WRITE, GPU_RGBA16F, "rp_color_img")
     .image_array_out(RBUFS_VALUE_SLOT, Qualifier::WRITE, GPU_R16F, "rp_value_img")
-    .uniform_buf(RBUFS_BUF_SLOT, "RenderBuffersInfoData", "rp_buf");
+    .additional_info("eevee_render_buffers_data");
 
 GPU_SHADER_CREATE_INFO(eevee_cryptomatte_out)
     .storage_buf(CRYPTOMATTE_BUF_SLOT, Qualifier::READ, "vec2", "cryptomatte_object_buf[]")
@@ -224,8 +233,8 @@ GPU_SHADER_CREATE_INFO(eevee_volume_material_common)
     .compute_source("eevee_volume_material_comp.glsl")
     .local_group_size(VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE, VOLUME_GROUP_SIZE)
     .define("VOLUMETRICS")
-    .uniform_buf(VOLUMES_INFO_BUF_SLOT, "VolumesInfoData", "volumes_info_buf")
-    .additional_info("draw_modelmat_new_common",
+    .additional_info("eevee_volumes_data",
+                     "draw_modelmat_new_common",
                      "draw_resource_id_uniform",
                      "draw_view",
                      "eevee_shared",

@@ -10,8 +10,9 @@ GPU_SHADER_CREATE_INFO(eevee_ambient_occlusion_data)
                      "eevee_shared",
                      "eevee_hiz_data",
                      "eevee_sampling_data",
-                     "eevee_utility_texture")
-    .uniform_buf(AO_BUF_SLOT, "AOData", "ao_buf");
+                     "eevee_utility_texture",
+                     "eevee_global_data")
+    .define("ao_buf", "global_buf.ao");
 
 GPU_SHADER_CREATE_INFO(eevee_ambient_occlusion_pass)
     .additional_info("eevee_ambient_occlusion_data")

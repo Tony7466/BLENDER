@@ -51,6 +51,8 @@ class Instance {
   friend VelocityModule;
   friend MotionBlurModule;
 
+  GlobalDataBuf global_data_;
+
  public:
   ShaderModule &shaders;
   SyncModule sync;
@@ -115,29 +117,29 @@ class Instance {
       : shaders(*ShaderModule::module_get()),
         sync(*this),
         materials(*this),
-        subsurface(*this),
+        subsurface(*this, global_data_.subsurface),
         pipelines(*this),
         shadows(*this),
         lights(*this),
-        ambient_occlusion(*this),
-        raytracing(*this),
+        ambient_occlusion(*this, global_data_.ao),
+        raytracing(*this, global_data_.raytrace),
         reflection_probes(*this),
         velocity(*this),
-        motion_blur(*this),
-        depth_of_field(*this),
+        motion_blur(*this, global_data_.motion_blur),
+        depth_of_field(*this, global_data_.dof),
         cryptomatte(*this),
-        hiz_buffer(*this),
+        hiz_buffer(*this, global_data_.hiz),
         sampling(*this),
-        camera(*this),
-        film(*this),
-        render_buffers(*this),
+        camera(*this, global_data_.camera),
+        film(*this, global_data_.film),
+        render_buffers(*this, global_data_.render_buffers),
         main_view(*this),
         capture_view(*this),
         world(*this),
         lookdev(*this),
         light_probes(*this),
         irradiance_cache(*this),
-        volume(*this){};
+        volume(*this, global_data_.volumes){};
   ~Instance(){};
 
   /* Render & Viewport. */
@@ -214,6 +216,16 @@ class Instance {
                       ((v3d->shading.flag & V3D_SHADING_SCENE_WORLD) == 0)) ||
                      ((v3d->shading.type == OB_RENDER) &&
                       ((v3d->shading.flag & V3D_SHADING_SCENE_WORLD_RENDER) == 0)));
+  }
+
+  void push_global_data()
+  {
+    global_data_.push_update();
+  }
+
+  template<typename T> void bind_global_resources(draw::detail::PassBase<T> *pass)
+  {
+    pass->bind_ubo(GLOBAL_BUF_SLOT, &global_data_);
   }
 
  private:

@@ -7,7 +7,8 @@
 
 GPU_SHADER_CREATE_INFO(eevee_hiz_data)
     .sampler(HIZ_TEX_SLOT, ImageType::FLOAT_2D, "hiz_tx")
-    .uniform_buf(HIZ_BUF_SLOT, "HiZData", "hiz_buf");
+    .additional_info("eevee_global_data")
+    .define("hiz_buf", "global_buf.hiz");
 
 GPU_SHADER_CREATE_INFO(eevee_hiz_update)
     .do_static_compilation(true)
