@@ -111,9 +111,7 @@ void BKE_previewimg_free(PreviewImage **prv)
       PreviewImageDeferred &this_deferred = PreviewImageDeferred::from_base(**prv);
       std::destroy_at(&this_deferred.filepath);
     }
-    else {
-      MEM_delete(*prv);
-    }
+    MEM_delete(*prv);
     *prv = nullptr;
   }
 }
@@ -139,7 +137,7 @@ void BKE_previewimg_freefunc(void *link)
   if (!prv) {
     return;
   }
-  BKE_previewimg_freefunc(&prv);
+  BKE_previewimg_free(&prv);
 }
 
 /** Handy override for the deferred type (derives from #PreviewImage). */
