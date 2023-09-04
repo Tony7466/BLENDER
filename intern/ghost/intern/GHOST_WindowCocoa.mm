@@ -176,6 +176,7 @@
   NSPasteboard *draggingPBoard = [sender draggingPasteboard];
 
   if ([[draggingPBoard types] containsObject:NSPasteboardTypeTIFF])
+
     m_draggedObjectType = GHOST_kDragnDropTypeBitmap;
   else if ([[draggingPBoard types] containsObject:NSFilenamesPboardType])
     m_draggedObjectType = GHOST_kDragnDropTypeFilenames;
@@ -618,14 +619,12 @@ GHOST_TSuccess GHOST_WindowCocoa::setClientHeight(uint32_t height)
 
 //returns success if we have an image in the clipboard
   GHOST_TSuccess GHOST_hasClipboardImage(void) {
-
-    return GHOST_kSuccess;
-    // NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
-    // if ([[pasteboard types] containsObject:NSTIFFPboardType])  {
-    //   return GHOST_kSuccess;
-    // } else {
-    //   return GHOST_kFailure;
-    // }
+   NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
+    if ([[pasteboard types] containsObject:NSPasteboardTypeTIFF] || [[pasteboard types] containsObject:NSPasteboardTypePNG])  {
+      return GHOST_kSuccess;
+    } else {
+      return GHOST_kFailure;
+    }
   }
 
 
@@ -636,63 +635,62 @@ GHOST_TSuccess GHOST_WindowCocoa::setClientHeight(uint32_t height)
 NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
 
 // Check if pasteboard contains an image
-if ([[pasteboard types] containsObject:NSTIFFPboardType]) {
 
-  // Get the image
-  NSImage* image = [[NSImage alloc] initWithPasteboard:pasteboard];
-  
-  // Get image size
-  NSSize size = [image size];
-  *r_width = size.width;
-  *r_height = size.height;
+if ([[pasteboard types] containsObject:NSPasteboardTypeTIFF] || [[pasteboard types] containsObject:NSPasteboardTypePNG]) 
+ {
+    // Get the image
+    NSImage* image = [[NSImage alloc] initWithPasteboard:pasteboard];
+    
+    // Get image size
+    NSSize size = [image size];
+    *r_width = size.width;
+    *r_height = size.height;
 
-  // Create bitmap context
-  CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-  CGContextRef context = CGBitmapContextCreate(NULL, *r_width, *r_height, 8, *r_width * 4, colorSpace, kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
+    // Create bitmap context
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+    CGContextRef context = CGBitmapContextCreate(NULL, *r_width, *r_height, 8, *r_width * 4, colorSpace, kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
 
-  // Draw image to context
-  [image drawInRect:CGRectMake(0, 0, *r_width, *r_height) fromRect:NSZeroRect operation:NSCompositingOperationCopy fraction:1.0];
+    // Draw image to context
+    [image drawInRect:CGRectMake(0, 0, *r_width, *r_height) fromRect:NSZeroRect operation:NSCompositingOperationCopy fraction:1.0];
 
-  // Get pixel data
-  uint* pixels = (uint*)CGBitmapContextGetData(context);
+    // Get pixel data
+    uint* pixels = (uint*)CGBitmapContextGetData(context);
 
-  // Clean up
-  CGContextRelease(context);
-  CGColorSpaceRelease(colorSpace);
-  [image release];
+    // Clean up
+    CGContextRelease(context);
+    CGColorSpaceRelease(colorSpace);
+    [image release];
     return pixels; 
-    } else { 
+  } else { 
       return nil;
       }
   }
 
 
-//takes an image and puts it in the system clipboard
+  //takes an image and puts it in the system clipboard
   GHOST_TSuccess GHOST_putClipboardImage(uint *rgba, int width, int height) {
     CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-  CGContextRef context = CGBitmapContextCreate(rgba, width, height, 8, width * 4, colorSpace, 
-                                              kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
-  CGImageRef image = CGBitmapContextCreateImage(context);
-  CGContextRelease(context);
-  CGColorSpaceRelease(colorSpace);
+    CGContextRef context = CGBitmapContextCreate(rgba, width, height, 8, width * 4, colorSpace, 
+                                                kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
+    CGImageRef image = CGBitmapContextCreateImage(context);
+    CGContextRelease(context);
+    CGColorSpaceRelease(colorSpace);
 
-  NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
-  [pasteboard clearContents];
-  NSImage *nsImage = [[NSImage alloc] initWithCGImage:image size:NSZeroSize];
-  NSArray *copiedObjects = [NSArray arrayWithObject:nsImage];
-  BOOL copied = [pasteboard writeObjects:copiedObjects];
+    NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
+    [pasteboard clearContents];
+    NSImage *nsImage = [[NSImage alloc] initWithCGImage:image size:NSZeroSize];
+    NSArray *copiedObjects = [NSArray arrayWithObject:nsImage];
+    BOOL copied = [pasteboard writeObjects:copiedObjects];
+    [nsImage release];
+    CGImageRelease(image);
 
-  [nsImage release];
-  CGImageRelease(image);
-
-if (copied) {
-        return GHOST_kSuccess;
- } else {
-  return GHOST_kFailure;
- }
+    if (copied) {
+      return GHOST_kSuccess;
+    } else {
+      return GHOST_kFailure;
+    }
 
   }
-
 
 
 GHOST_TSuccess GHOST_WindowCocoa::setClientSize(uint32_t width, uint32_t height)
