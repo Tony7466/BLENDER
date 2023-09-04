@@ -86,7 +86,10 @@ void main()
 
   if (true) {
     /* Reflection. */
-    vec4 out_reflect = vec4(gbuffer_normal_pack(g_reflection_data.N),
+    /* Make sure reflection normals are always valid as they are used as "geometric" normals for
+     * the lighting pass. */
+    vec3 reflection_N = (g_reflection_data.weight == 0.0) ? out_normal : g_reflection_data.N;
+    vec4 out_reflect = vec4(gbuffer_normal_pack(reflection_N),
                             g_reflection_data.roughness,
                             g_reflection_data.roughness);
     imageStore(out_gbuff_closure_img, ivec3(out_texel, 0), out_reflect);
