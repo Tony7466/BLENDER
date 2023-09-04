@@ -493,7 +493,7 @@ static std::optional<ObjectAndModifier> get_modifier_for_node_editor(const Space
   if (GS(snode.id->name) != ID_OB) {
     return std::nullopt;
   }
-  const Object *object = reinterpret_cast<Object *>(snode.id);
+  const Object *object = id_cast<Object>(snode.id);
   const NodesModifierData *used_modifier = nullptr;
   if (snode.flag & SNODE_PIN) {
     LISTBASE_FOREACH (const ModifierData *, md, &object->modifiers) {

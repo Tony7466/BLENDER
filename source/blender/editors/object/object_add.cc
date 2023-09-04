@@ -4052,7 +4052,7 @@ static int object_add_named_exec(bContext *C, wmOperator *op)
 
   /* Find object, create fake base. */
 
-  Object *ob = reinterpret_cast<Object *>(
+  Object *ob = id_cast<Object>(
       WM_operator_properties_id_lookup_from_name_or_session_uuid(bmain, op->ptr, ID_OB));
 
   if (ob == nullptr) {
@@ -4166,7 +4166,7 @@ static int object_transform_to_mouse_exec(bContext *C, wmOperator *op)
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
 
-  Object *ob = reinterpret_cast<Object *>(
+  Object *ob = id_cast<Object>(
       WM_operator_properties_id_lookup_from_name_or_session_uuid(bmain, op->ptr, ID_OB));
 
   if (!ob) {

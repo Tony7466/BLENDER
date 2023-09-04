@@ -791,7 +791,7 @@ void BKE_pose_copy_data_ex(bPose **dst,
 
   LISTBASE_FOREACH (bPoseChannel *, pchan, &outPose->chanbase) {
     if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
-      id_us_plus((ID *)pchan->custom);
+      id_us_plus(id_cast(pchan->custom));
     }
 
     if ((flag & LIB_ID_CREATE_NO_MAIN) == 0) {
@@ -1485,10 +1485,10 @@ eAction_TransformFlags BKE_action_get_item_transform_flags(bAction *act,
 
   /* build PointerRNA from provided data to obtain the paths to use */
   if (pchan) {
-    RNA_pointer_create((ID *)ob, &RNA_PoseBone, pchan, &ptr);
+    RNA_pointer_create(id_cast(ob), &RNA_PoseBone, pchan, &ptr);
   }
   else if (ob) {
-    RNA_id_pointer_create((ID *)ob, &ptr);
+    RNA_id_pointer_create(id_cast(ob), &ptr);
   }
   else {
     return eAction_TransformFlags(0);

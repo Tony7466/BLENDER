@@ -204,7 +204,7 @@ bool is_metaball_object_operation(const OperationNode *operation_node)
   if (GS(id_node->id_cow->name) != ID_OB) {
     return false;
   }
-  const Object *object = reinterpret_cast<const Object *>(id_node->id_cow);
+  const Object *object = id_cast<Object>(id_node->id_cow);
   return object->type == OB_MBALL;
 }
 

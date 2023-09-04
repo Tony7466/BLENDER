@@ -396,7 +396,7 @@ static void library_foreach_particlesystemsObjectLooper(ParticleSystem * /*psys*
 
 static void object_foreach_id(ID *id, LibraryForeachIDData *data)
 {
-  Object *object = reinterpret_cast<Object *>(id);
+  Object *object = id_cast<Object>(id);
   const int flag = BKE_lib_query_foreachid_process_flags_get(data);
 
   /* object data special case */
@@ -535,7 +535,7 @@ static void object_foreach_path_pointcache(ListBase *ptcache_list,
 
 static void object_foreach_path(ID *id, BPathForeachPathData *bpath_data)
 {
-  Object *ob = reinterpret_cast<Object *>(id);
+  Object *ob = id_cast<Object>(id);
 
   LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
     /* TODO: Move that to #ModifierTypeInfo. */
@@ -886,7 +886,7 @@ static void object_blend_read_data(BlendDataReader *reader, ID *id)
 
 static void object_blend_read_after_liblink(BlendLibReader *reader, ID *id)
 {
-  Object *ob = reinterpret_cast<Object *>(id);
+  Object *ob = id_cast<Object>(id);
 
   Main *bmain = BLO_read_lib_get_main(reader);
   BlendFileReadReport *reports = BLO_read_lib_reports(reader);

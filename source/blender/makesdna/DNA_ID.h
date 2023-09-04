@@ -9,6 +9,12 @@
 
 #pragma once
 
+#ifdef __cplusplus
+#  include <type_traits>
+#endif
+
+#include "BLI_utildefines.h"
+
 #include "DNA_ID_enums.h"
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
@@ -1322,4 +1328,57 @@ typedef enum eID_Index {
 
 #ifdef __cplusplus
 }
+#endif
+
+#ifdef __cplusplus
+
+#  define _ID_TYPE_STATIC_ASSERT(ID_Type) \
+    { \
+      static_assert(!std::is_same_v<ID_Type, ID>, \
+                    "Expected a specific ID type here, not the `ID` base type"); \
+      static_assert(std::is_same_v<decltype(ID_Type::id), ID>, \
+                    "Invalid ID type: Expected `ID id` member"); \
+      static_assert( \
+          offsetof(ID_Type, id) == 0, \
+          "`Invalid ID type: `ID id` member must be at the very beginning of the struct"); \
+    } \
+    (void)0
+
+template<typename ID_Type> static ID_Type *id_cast(ID *from)
+{
+  _ID_TYPE_STATIC_ASSERT(ID_Type);
+  return reinterpret_cast<ID_Type *>(from);
+}
+template<typename ID_Type> static const ID_Type *id_cast(const ID *from)
+{
+  _ID_TYPE_STATIC_ASSERT(ID_Type);
+  return reinterpret_cast<const ID_Type *>(from);
+}
+template<typename ID_Type> static ID_Type &id_cast(ID &from)
+{
+  _ID_TYPE_STATIC_ASSERT(ID_Type);
+  return reinterpret_cast<ID_Type &>(from);
+}
+template<typename ID_Type> static const ID_Type &id_cast(const ID &from)
+{
+  _ID_TYPE_STATIC_ASSERT(ID_Type);
+  return reinterpret_cast<const ID_Type &>(from);
+}
+
+template<typename ID_Type> static ID *id_cast(ID_Type *typed_id)
+{
+  _ID_TYPE_STATIC_ASSERT(ID_Type);
+  return reinterpret_cast<ID *>(typed_id);
+}
+template<typename ID_Type> static const ID *id_cast(const ID_Type *typed_id)
+{
+  _ID_TYPE_STATIC_ASSERT(ID_Type);
+  return reinterpret_cast<const ID *>(typed_id);
+}
+template<typename ID_Type> static const ID &id_cast(const ID_Type &typed_id)
+{
+  _ID_TYPE_STATIC_ASSERT(ID_Type);
+  return reinterpret_cast<const ID &>(typed_id);
+}
+
 #endif
