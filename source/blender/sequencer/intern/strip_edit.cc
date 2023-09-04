@@ -246,7 +246,7 @@ bool SEQ_edit_move_strip_to_meta(Scene *scene,
 
   blender::VectorSet<Sequence *> strips;
   strips.add(src_seq);
-  SEQ_collection_expand(scene, seqbase, &strips, SEQ_query_strip_effect_chain);
+  SEQ_iterator_set_expand(scene, seqbase, &strips, SEQ_query_strip_effect_chain);
 
   for (auto seq : strips) {
     /* Move to meta. */
@@ -426,7 +426,7 @@ Sequence *SEQ_edit_strip_split(Main *bmain,
   /* Whole strip chain must be duplicated in order to preserve relationships. */
   blender::VectorSet<Sequence *> strips;
   strips.add(seq);
-  SEQ_collection_expand(scene, seqbase, &strips, SEQ_query_strip_effect_chain);
+  SEQ_iterator_set_expand(scene, seqbase, &strips, SEQ_query_strip_effect_chain);
 
   if (!seq_edit_split_operation_permitted_check(scene, &strips, timeline_frame, r_error)) {
     return nullptr;

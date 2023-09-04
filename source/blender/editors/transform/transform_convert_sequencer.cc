@@ -321,7 +321,7 @@ static void freeSeqData(TransInfo *t, TransDataContainer *tc, TransCustomData *c
   }
 
   blender::VectorSet<Sequence *> transformed_strips = seq_transform_collection_from_transdata(tc);
-  SEQ_collection_expand(
+  SEQ_iterator_set_expand(
       t->scene, seqbase_active_get(t), &transformed_strips, SEQ_query_strip_effect_chain);
 
   for (auto seq : transformed_strips) {
@@ -401,9 +401,9 @@ static void query_time_dependent_strips_strips(
    * its position will change. */
 
   blender::VectorSet<Sequence *> strips_no_handles = query_selected_strips_no_handles(seqbase);
-  SEQ_collection_merge(time_dependent_strips, strips_no_handles);
+  SEQ_iterator_set_merge(time_dependent_strips, strips_no_handles);
 
-  SEQ_collection_expand(t->scene, seqbase, &strips_no_handles, SEQ_query_strip_effect_chain);
+  SEQ_iterator_set_expand(t->scene, seqbase, &strips_no_handles, SEQ_query_strip_effect_chain);
   bool strip_added = true;
 
   while (strip_added) {
@@ -430,7 +430,7 @@ static void query_time_dependent_strips_strips(
    * With single input effect, it is less likely desirable to move animation. */
 
   blender::VectorSet<Sequence *> selected_strips = SEQ_query_selected_strips(seqbase);
-  SEQ_collection_expand(t->scene, seqbase, &selected_strips, SEQ_query_strip_effect_chain);
+  SEQ_iterator_set_expand(t->scene, seqbase, &selected_strips, SEQ_query_strip_effect_chain);
   for (auto seq : selected_strips) {
     /* Check only 2 input effects. */
     if (seq->seq1 == nullptr || seq->seq2 == nullptr) {
@@ -633,7 +633,7 @@ static void flushTransSeq(TransInfo *t)
   /* need to do the overlap check in a new loop otherwise adjacent strips
    * will not be updated and we'll get false positives */
   blender::VectorSet<Sequence *> transformed_strips = seq_transform_collection_from_transdata(tc);
-  SEQ_collection_expand(
+  SEQ_iterator_set_expand(
       t->scene, seqbase_active_get(t), &transformed_strips, SEQ_query_strip_effect_chain);
 
   for (auto seq : transformed_strips) {

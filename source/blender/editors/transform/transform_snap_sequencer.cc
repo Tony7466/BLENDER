@@ -125,7 +125,7 @@ static blender::VectorSet<Sequence *> query_snap_targets(
   /* Effects will always change position with strip to which they are connected and they don't have
    * to be selected. Remove such strips from `snap_targets` collection. */
   blender::VectorSet effects_of_snap_sources = *snap_sources;
-  SEQ_collection_expand(scene, seqbase, &effects_of_snap_sources, query_strip_effects_fn);
+  SEQ_iterator_set_expand(scene, seqbase, &effects_of_snap_sources, query_strip_effects_fn);
   effects_of_snap_sources.remove_if(
       [&](auto seq) { return SEQ_effect_get_num_inputs(seq->type) == 0; });
 

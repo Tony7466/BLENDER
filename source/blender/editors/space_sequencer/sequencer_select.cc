@@ -77,7 +77,8 @@ blender::VectorSet<Sequence *> selected_strips_from_context(bContext *C)
   const bool is_preview = sequencer_view_has_preview_poll(C);
 
   if (is_preview) {
-    blender::VectorSet strips = SEQ_query_rendered_strips(scene, channels, seqbase, scene->r.cfra, 0);
+    blender::VectorSet strips = SEQ_query_rendered_strips(
+        scene, channels, seqbase, scene->r.cfra, 0);
     strips.remove_if([&](auto seq) { return (seq->flag & SELECT) == 0; });
     return strips;
   }
@@ -2014,8 +2015,8 @@ static bool select_grouped_effect_link(const Scene *scene,
   const int selected_strip_count = strips.size();
   /* XXX: this uses scene as arg, so it does not work with iterator :( I had thought about this,
    * but expand function is just so useful... I can just add scene and inject it I guess. */
-  SEQ_collection_expand(scene, seqbase, &strips, query_lower_channel_strips);
-  SEQ_collection_expand(scene, seqbase, &strips, SEQ_query_strip_effect_chain);
+  SEQ_iterator_set_expand(scene, seqbase, &strips, query_lower_channel_strips);
+  SEQ_iterator_set_expand(scene, seqbase, &strips, SEQ_query_strip_effect_chain);
 
   /* Check if other strips will be affected. */
   const bool changed = strips.size() > selected_strip_count;

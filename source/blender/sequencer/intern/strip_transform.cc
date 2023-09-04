@@ -469,7 +469,7 @@ static void seq_transform_handle_overwrite_trim(Scene *scene,
 
   /* Expand collection by adding all target's children, effects and their children. */
   if ((target->type & SEQ_TYPE_EFFECT) != 0) {
-    SEQ_collection_expand(scene, seqbasep, &targets, SEQ_query_strip_effect_chain);
+    SEQ_iterator_set_expand(scene, seqbasep, &targets, SEQ_query_strip_effect_chain);
   }
 
   /* Trim all non effects, that have influence on effect length which is overlapping. */

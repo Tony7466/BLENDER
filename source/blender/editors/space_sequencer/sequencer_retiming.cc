@@ -62,7 +62,7 @@ static void retiming_handle_overlap(Scene *scene, Sequence *seq)
   blender::VectorSet<Sequence *> strips;
   strips.add(seq);
   blender::VectorSet<Sequence *> dependant;
-  SEQ_collection_expand(scene, seqbase, &strips, SEQ_query_strip_effect_chain);
+  SEQ_iterator_set_expand(scene, seqbase, &strips, SEQ_query_strip_effect_chain);
   dependant.remove(0);
   SEQ_transform_handle_overlap(scene, seqbase, &strips, &dependant, true);
 }
