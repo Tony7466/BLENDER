@@ -113,7 +113,8 @@ pxr::VtTokenArray get_blend_shapes_attr_value(const pxr::UsdPrim &mesh_prim);
  * typically expect these animations to be combined in a single animation on the skeleton.  This
  * function creates an animation prim as a child of the skeleton and merges the blend shape time
  * samples from multiple meshes in a single attribute on the animation.  Merging the weight samples
- * requires handling blend shape name collisions by generating unique names for the combined result.
+ * requires handling blend shape name collisions by generating unique names for the combined
+ * result.
  *
  * \param stage: The stage
  * \param skel_path: Path to the skeleton

@@ -13,6 +13,8 @@
 
 #include <iostream>
 
+/* Utility: return the common Xform ancestor of the given prims. Is no such ancestor can
+ * be found, return an in valid Xform. */
 static pxr::UsdGeomXform get_xform_ancestor(const pxr::UsdPrim &prim1, const pxr::UsdPrim &prim2)
 {
   if (!prim1 || !prim2) {
@@ -50,6 +52,7 @@ void create_skel_roots(pxr::UsdStageRefPtr stage, const USDExportParams &params)
     return;
   }
 
+  /* Whether we converted any prims to UsdSkel. */
   bool converted_to_usdskel = false;
 
   pxr::UsdPrimRange it = stage->Traverse();
@@ -73,6 +76,9 @@ void create_skel_roots(pxr::UsdStageRefPtr stage, const USDExportParams &params)
       continue;
     }
 
+    /* If we got here, then this prim has the skel binding API. */
+
+    /* Get this prim's bound skeleton. */
     pxr::UsdSkelSkeleton skel;
     if (!skel_bind_api.GetSkeleton(&skel)) {
       continue;
@@ -86,6 +92,7 @@ void create_skel_roots(pxr::UsdStageRefPtr stage, const USDExportParams &params)
       continue;
     }
 
+    /* Try to find a commmon ancestor of the skinned prim and its bound skeleton. */
     pxr::UsdSkelRoot prim_skel_root = pxr::UsdSkelRoot::Find(prim);
     pxr::UsdSkelRoot skel_skel_root = pxr::UsdSkelRoot::Find(skel.GetPrim());
 
@@ -94,7 +101,7 @@ void create_skel_roots(pxr::UsdStageRefPtr stage, const USDExportParams &params)
     }
 
     if (pxr::UsdGeomXform xf = get_xform_ancestor(prim, skel.GetPrim())) {
-      /* Enable skeletal processing by setting the type to UsdSkelRoot. */
+      /* We found a common Xform ancestor, so we set its type to UsdSkelRoot. */
       WM_reportf(RPT_INFO,
                  "%s: Converting Xform prim %s to a SkelRoot\n",
                  __func__,
@@ -117,6 +124,8 @@ void create_skel_roots(pxr::UsdStageRefPtr stage, const USDExportParams &params)
     return;
   }
 
+  /* Check for nested SkelRoots, i.e., SkelRoots beneath other SkelRoots, which we want to avoid.
+   */
   it = stage->Traverse();
   for (pxr::UsdPrim prim : it) {
     if (prim.IsA<pxr::UsdSkelRoot>()) {
