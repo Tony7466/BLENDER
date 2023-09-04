@@ -85,9 +85,7 @@ PreviewImage *BKE_previewimg_id_ensure(ID *id);
 void BKE_previewimg_ensure(PreviewImage *prv, int size);
 
 const char *BKE_previewimg_deferred_filepath_get(const PreviewImage *prv);
-#ifdef __cplusplus
 std::optional<int> BKE_previewimg_deferred_thumb_source_get(const PreviewImage *prv);
-#endif
 
 /**
  * Create an #ImBuf holding a copy of the preview image buffer in \a prv.
