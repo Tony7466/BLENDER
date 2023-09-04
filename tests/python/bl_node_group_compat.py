@@ -175,11 +175,11 @@ class AbstractNodeGroupInterfaceTest(unittest.TestCase):
                              f"Socket should have exactly {spec.internal_links} internal connections")
 
 
-class NodeGroupVersioningTest(AbstractNodeGroupInterfaceTest):
+class NodeGroupVersioning36Test(AbstractNodeGroupInterfaceTest):
     def open_file(self):
         bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "nodegroup36.blend"))
 
-    def test_load_compositor_nodes_36(self):
+    def test_load_compositor_nodes(self):
         self.open_file()
 
         tree = bpy.data.scenes['Scene'].node_tree
@@ -248,7 +248,7 @@ class NodeGroupVersioningTest(AbstractNodeGroupInterfaceTest):
             node,
             SocketSpec("Input Color", "Input_8", "RGBA", default_value=(0.5, 0.4, 0.3, 0.2)))
 
-    def test_load_shader_nodes_36(self):
+    def test_load_shader_nodes(self):
         self.open_file()
 
         tree = bpy.data.materials['Material'].node_tree
@@ -325,7 +325,7 @@ class NodeGroupVersioningTest(AbstractNodeGroupInterfaceTest):
             node,
             SocketSpec("Input Shader", "Input_29", "SHADER"))
 
-    def test_load_geometry_nodes_36(self):
+    def test_load_geometry_nodes(self):
         self.open_file()
 
         tree = bpy.data.node_groups['Geometry Nodes']
@@ -474,6 +474,102 @@ class NodeGroupVersioningTest(AbstractNodeGroupInterfaceTest):
             node,
             SocketSpec("Input Image", "Input_18", "IMAGE", default_value=bpy.data.images['TestImage']))
 
+
+class NodeGroupVersioning25Test(AbstractNodeGroupInterfaceTest):
+    def open_file(self):
+        bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "nodegroup25.blend"))
+
+    def test_load_compositor_nodes_36(self):
+        self.open_file()
+
+        tree = bpy.data.scenes['Scene'].node_tree
+        group = bpy.data.node_groups.get('NodeGroup')
+        self.assertIsNotNone(group, "Compositor node group not found")
+        node = tree.nodes['Group']
+        self.assertEqual(node.node_tree, group, "Node group must use compositor node tree")
+
+        self.compare_spec(
+            group.interface.ui_items[0],
+            node,
+            SocketSpec(
+                "Output Float",
+                "Output_9",
+                "VALUE",
+                hide_value=True,
+                default_value=3.0,
+                min_value=1.0,
+                max_value=1.0))
+        self.compare_spec(
+            group.interface.ui_items[1],
+            node,
+            SocketSpec(
+                "Output Vector",
+                "Output_10",
+                "VECTOR",
+                subtype="EULER",
+                default_value=(
+                    10,
+                    20,
+                    30),
+                min_value=-10.0,
+                max_value=10.0))
+        self.compare_spec(
+            group.interface.ui_items[2],
+            node,
+            SocketSpec("Output Color", "Output_11", "RGBA", default_value=(0, 1, 1, 1)))
+
+        self.compare_spec(
+            group.interface.ui_items[3],
+            node,
+            SocketSpec(
+                "Input Float",
+                "Input_6",
+                "VALUE",
+                subtype="ANGLE",
+                default_value=-20.0,
+                min_value=5.0,
+                max_value=6.0))
+        self.compare_spec(
+            group.interface.ui_items[4],
+            node,
+            SocketSpec(
+                "Input Vector",
+                "Input_7",
+                "VECTOR",
+                hide_value=True,
+                default_value=(
+                    2,
+                    4,
+                    6),
+                min_value=-4.0,
+                max_value=100.0))
+        self.compare_spec(
+            group.interface.ui_items[5],
+            node,
+            SocketSpec("Input Color", "Input_8", "RGBA", default_value=(0.5, 0.4, 0.3, 0.2)))
+
+    def test_load_shader_nodes_36(self):
+        self.open_file()
+
+        tree = bpy.data.materials['Material'].node_tree
+        group = bpy.data.node_groups.get('NodeGroup.003')
+        self.assertIsNotNone(group, "Shader node group not found")
+        node = tree.nodes['Group']
+        self.assertEqual(node.node_tree, group, "Node group must use shader node tree")
+
+        # TODO
+
+    def test_load_geometry_nodes_36(self):
+        self.open_file()
+
+        tree = bpy.data.node_groups['Geometry Nodes']
+        group = bpy.data.node_groups.get('NodeGroup.002')
+        self.assertIsNotNone(group, "Geometry node group not found")
+        node = tree.nodes['Group']
+        self.assertEqual(node.node_tree, group, "Node group must use geometry node tree")
+
+        # TODO
+        
 
 def main():
     global args
