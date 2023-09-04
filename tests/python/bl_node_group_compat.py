@@ -182,6 +182,7 @@ class AbstractNodeGroupInterfaceTest(unittest.TestCase):
 class NodeGroupVersioning36Test(AbstractNodeGroupInterfaceTest):
     def open_file(self):
         bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "nodegroup36.blend"))
+        self.assertEqual(bpy.data.version, (3, 6, 11))
 
     def test_load_compositor_nodes(self):
         self.open_file()
@@ -264,6 +265,7 @@ class NodeGroupVersioning36Test(AbstractNodeGroupInterfaceTest):
 class NodeGroupVersioning25Test(AbstractNodeGroupInterfaceTest):
     def open_file(self):
         bpy.ops.wm.open_mainfile(filepath=str(self.testdir / "nodegroup25.blend"))
+        self.assertEqual(bpy.data.version, (2, 55, 0))
 
     def test_load_compositor_nodes(self):
         self.open_file()
