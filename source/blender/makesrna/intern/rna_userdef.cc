@@ -5145,7 +5145,7 @@ static void rna_def_userdef_view(BlenderRNA *brna)
       prop, "rna_lang_enum_properties_get_no_international", nullptr, nullptr);
 #  endif
   RNA_def_property_ui_text(prop, "Language", "Language used for translation");
-  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_EDITOR_PREFERENCES);
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_WINDOWMANAGER);
   RNA_def_property_update(prop, NC_WINDOW, "rna_userdef_language_update");
 
   prop = RNA_def_property(srna, "use_translate_tooltips", PROP_BOOLEAN, PROP_NONE);
