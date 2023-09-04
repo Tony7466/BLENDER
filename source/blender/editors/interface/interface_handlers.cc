@@ -9108,6 +9108,12 @@ void ui_but_activate_event(bContext *C, ARegion *region, uiBut *but)
 
 void ui_but_activate_over(bContext *C, ARegion *region, uiBut *but)
 {
+  /* If the active button has UI_SELECT_DRAW then also add that to the newly-activated button. */
+  uiBut *active = ui_region_find_active_but(CTX_wm_region(C));
+  if (active && active->flag & UI_SELECT_DRAW) {
+    but->flag |= UI_BUT_ACTIVE_DEFAULT;
+  }
+
   button_activate_init(C, region, but, BUTTON_ACTIVATE_OVER);
 }
 
