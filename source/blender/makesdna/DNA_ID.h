@@ -1344,38 +1344,38 @@ typedef enum eID_Index {
     } \
     (void)0
 
-template<typename ID_Type> static ID_Type *id_cast(ID *from)
+template<typename ID_Type> static constexpr inline ID_Type *id_cast(ID *from)
 {
   _ID_TYPE_STATIC_ASSERT(ID_Type);
   return reinterpret_cast<ID_Type *>(from);
 }
-template<typename ID_Type> static const ID_Type *id_cast(const ID *from)
+template<typename ID_Type> static constexpr inline const ID_Type *id_cast(const ID *from)
 {
   _ID_TYPE_STATIC_ASSERT(ID_Type);
   return reinterpret_cast<const ID_Type *>(from);
 }
-template<typename ID_Type> static ID_Type &id_cast(ID &from)
+template<typename ID_Type> static constexpr inline ID_Type &id_cast(ID &from)
 {
   _ID_TYPE_STATIC_ASSERT(ID_Type);
   return reinterpret_cast<ID_Type &>(from);
 }
-template<typename ID_Type> static const ID_Type &id_cast(const ID &from)
+template<typename ID_Type> static constexpr inline const ID_Type &id_cast(const ID &from)
 {
   _ID_TYPE_STATIC_ASSERT(ID_Type);
   return reinterpret_cast<const ID_Type &>(from);
 }
 
-template<typename ID_Type> static ID *id_cast(ID_Type *typed_id)
+template<typename ID_Type> static constexpr inline ID *id_cast(ID_Type *typed_id)
 {
   _ID_TYPE_STATIC_ASSERT(ID_Type);
   return reinterpret_cast<ID *>(typed_id);
 }
-template<typename ID_Type> static const ID *id_cast(const ID_Type *typed_id)
+template<typename ID_Type> static constexpr inline const ID *id_cast(const ID_Type *typed_id)
 {
   _ID_TYPE_STATIC_ASSERT(ID_Type);
   return reinterpret_cast<const ID *>(typed_id);
 }
-template<typename ID_Type> static const ID &id_cast(const ID_Type &typed_id)
+template<typename ID_Type> static constexpr inline const ID &id_cast(const ID_Type &typed_id)
 {
   _ID_TYPE_STATIC_ASSERT(ID_Type);
   return reinterpret_cast<const ID &>(typed_id);
