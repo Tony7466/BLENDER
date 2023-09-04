@@ -1379,6 +1379,12 @@ template<typename ID_Type> static constexpr inline const ID *id_cast(const ID_Ty
   _id_type_static_assert<ID_Type>();
   return reinterpret_cast<const ID *>(typed_id);
 }
+/** Cast from `ID_Type &` to `ID &`. */
+template<typename ID_Type> static constexpr inline ID &id_cast(ID_Type &typed_id)
+{
+  _id_type_static_assert<ID_Type>();
+  return reinterpret_cast<ID &>(typed_id);
+}
 /** Cast from `const ID_Type &` to `const ID &`. */
 template<typename ID_Type> static constexpr inline const ID &id_cast(const ID_Type &typed_id)
 {
