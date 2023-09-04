@@ -949,22 +949,22 @@ static int sequencer_add_movie_strip_exec(bContext *C, wmOperator *op)
     ED_sequencer_deselect_all(scene);
   }
 
-  blender::VectorSet<Sequence *> *movie_strips;
+  blender::VectorSet<Sequence *> movie_strips;
   const int tot_files = RNA_property_collection_length(op->ptr,
                                                        RNA_struct_find_property(op->ptr, "files"));
   if (tot_files > 1) {
-    sequencer_add_movie_multiple_strips(C, op, &load_data, movie_strips);
+    sequencer_add_movie_multiple_strips(C, op, &load_data, &movie_strips);
   }
   else {
-    sequencer_add_movie_single_strip(C, op, &load_data, movie_strips);
+    sequencer_add_movie_single_strip(C, op, &load_data, &movie_strips);
   }
 
-  if (movie_strips->size() == 0) {
+  if (movie_strips.size() == 0) {
     sequencer_add_cancel(C, op);
     return OPERATOR_CANCELLED;
   }
 
-  seq_build_proxy(C, movie_strips);
+  seq_build_proxy(C, &movie_strips);
   DEG_relations_tag_update(bmain);
   DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);
