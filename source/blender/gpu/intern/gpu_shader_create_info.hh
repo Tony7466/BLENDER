@@ -460,10 +460,8 @@ struct ShaderCreateInfo {
     Type type;
     DualBlend blend;
     StringRefNull name;
-#ifdef WITH_METAL_BACKEND
-    /* Metal only. */
+    /* Note: Currently only supported by Metal. */
     int raster_order_group;
-#endif
 
     bool operator==(const FragOut &b) const
     {
@@ -471,18 +469,14 @@ struct ShaderCreateInfo {
       TEST_EQUAL(*this, b, type);
       TEST_EQUAL(*this, b, blend);
       TEST_EQUAL(*this, b, name);
-#ifdef WITH_METAL_BACKEND
       TEST_EQUAL(*this, b, raster_order_group);
-#endif
       return true;
     }
   };
   Vector<FragOut> fragment_outputs_;
 
-#ifdef WITH_METAL_BACKEND
   using FragTileIn = FragOut;
   Vector<FragTileIn> fragment_tile_inputs_;
-#endif
 
   struct Sampler {
     ImageType type;
@@ -673,26 +667,13 @@ struct ShaderCreateInfo {
   Self &fragment_out(int slot,
                      Type type,
                      StringRefNull name,
-                     DualBlend blend = DualBlend::NONE
-#ifdef WITH_METAL_BACKEND
-                     ,
-                     int raster_order_group = -1
-#endif
-  )
+                     DualBlend blend = DualBlend::NONE,
+                     int raster_order_group = -1)
   {
-    fragment_outputs_.append({slot,
-                              type,
-                              blend,
-                              name
-#ifdef WITH_METAL_BACKEND
-                              ,
-                              raster_order_group
-#endif
-    });
+    fragment_outputs_.append({slot, type, blend, name, raster_order_group});
     return *(Self *)this;
   }
 
-#ifdef WITH_METAL_BACKEND
   /* Fragment tile inputs. */
   Self &fragment_tile_in(int slot,
                          Type type,
@@ -703,7 +684,6 @@ struct ShaderCreateInfo {
     fragment_tile_inputs_.append({slot, type, blend, name, raster_order_group});
     return *(Self *)this;
   }
-#endif
 
   /** \} */
 
@@ -979,9 +959,7 @@ struct ShaderCreateInfo {
     TEST_VECTOR_EQUAL(*this, b, geometry_out_interfaces_);
     TEST_VECTOR_EQUAL(*this, b, push_constants_);
     TEST_VECTOR_EQUAL(*this, b, typedef_sources_);
-#ifdef WITH_METAL_BACKEND
     TEST_VECTOR_EQUAL(*this, b, fragment_tile_inputs_);
-#endif
     TEST_EQUAL(*this, b, vertex_source_);
     TEST_EQUAL(*this, b, geometry_source_);
     TEST_EQUAL(*this, b, fragment_source_);

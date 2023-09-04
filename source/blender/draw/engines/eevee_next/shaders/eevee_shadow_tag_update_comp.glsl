@@ -35,7 +35,7 @@ void main()
   }
 
   uint resource_id = resource_ids_buf[gl_GlobalInvocationID.x];
-  /* TODO(Metal): Determine correct resource ID unpacking to avoid OOB read. */
+  /* Mask negative scale bit. */
   resource_id = (resource_id & 0x7FFFFFFFu);
 
   IsectBox box = isect_data_setup(bounds_buf[resource_id].bounding_corners[0].xyz,

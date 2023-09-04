@@ -39,7 +39,11 @@ using namespace blender::gpu;
 
 /* Fire off a single dispatch per encoder. Can make debugging view clearer for texture resources
  * associated with each dispatch. */
-#define MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER 1 && !NDEBUG
+#ifdef DEBUG
+#  define MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER 1
+#else
+#  define MTL_DEBUG_SINGLE_DISPATCH_PER_ENCODER 0
+#endif
 
 /* Debug option to bind null buffer for missing UBOs.
  * Enabled by default. TODO: Ensure all required UBO bindings are present. */
@@ -2563,7 +2567,8 @@ id<MTLComputePipelineState> MTLContextComputeUtils::get_buffer_clear_pso()
     if (error) {
       /* Only exit out if genuine error and not warning. */
       if ([[error localizedDescription] rangeOfString:@"Compilation succeeded"].location ==
-          NSNotFound) {
+          NSNotFound)
+      {
         NSLog(@"Compile Error - Metal Shader Library error %@ ", error);
         BLI_assert(false);
         return nil;

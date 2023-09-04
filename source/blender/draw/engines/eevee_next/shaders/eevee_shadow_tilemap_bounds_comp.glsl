@@ -25,7 +25,7 @@ void main()
   /* Keep uniform control flow. Do not return. */
   index = min(index, uint(resource_len) - 1);
   uint resource_id = casters_id_buf[index];
-  /* TODO(Metal): Determine correct resource ID unpacking to avoid OOB read. */
+  /* Mask negative scale bit. */
   resource_id = (resource_id & 0x7FFFFFFFu);
 
   ObjectBounds bounds = bounds_buf[resource_id];

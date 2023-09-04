@@ -21,7 +21,7 @@
 
 #include "gpu_py_shader.h" /* own include */
 
-//#define USE_PYGPU_SHADER_INFO_IMAGE_METHOD
+// #define USE_PYGPU_SHADER_INFO_IMAGE_METHOD
 
 using blender::gpu::shader::DualBlend;
 using blender::gpu::shader::Frequency;
@@ -703,7 +703,8 @@ static PyObject *pygpu_shader_info_sampler(BPyGPUShaderCreateInfo *self, PyObjec
   const char *name;
 
   if (!PyArg_ParseTuple(
-          args, "iO&s:sampler", &slot, PyC_ParseStringEnum, &pygpu_samplertype, &name)) {
+          args, "iO&s:sampler", &slot, PyC_ParseStringEnum, &pygpu_samplertype, &name))
+  {
     return nullptr;
   }
 
@@ -726,18 +727,20 @@ static int constant_type_size(Type type)
     case Type::UINT:
     case Type::UCHAR4:
     case Type::CHAR4:
-    case blender::gpu::shader::Type::VEC3_101010I2:
-    case blender::gpu::shader::Type::USHORT2:
-    case blender::gpu::shader::Type::SHORT2:
+    case Type::VEC3_101010I2:
+    case Type::USHORT2:
+    case Type::SHORT2:
       return 4;
+      break;
+    case Type::USHORT3:
+    case Type::SHORT3:
+      return 6;
       break;
     case Type::VEC2:
     case Type::UVEC2:
     case Type::IVEC2:
-    case blender::gpu::shader::Type::USHORT3:
-    case blender::gpu::shader::Type::SHORT3:
-    case blender::gpu::shader::Type::USHORT4:
-    case blender::gpu::shader::Type::SHORT4:
+    case Type::USHORT4:
+    case Type::SHORT4:
       return 8;
       break;
     case Type::VEC3:
@@ -755,18 +758,18 @@ static int constant_type_size(Type type)
     case Type::MAT4:
       return 64;
       break;
-    case blender::gpu::shader::Type::UCHAR:
-    case blender::gpu::shader::Type::CHAR:
+    case Type::UCHAR:
+    case Type::CHAR:
       return 1;
       break;
-    case blender::gpu::shader::Type::UCHAR2:
-    case blender::gpu::shader::Type::CHAR2:
-    case blender::gpu::shader::Type::USHORT:
-    case blender::gpu::shader::Type::SHORT:
+    case Type::UCHAR2:
+    case Type::CHAR2:
+    case Type::USHORT:
+    case Type::SHORT:
       return 2;
       break;
-    case blender::gpu::shader::Type::UCHAR3:
-    case blender::gpu::shader::Type::CHAR3:
+    case Type::UCHAR3:
+    case Type::CHAR3:
       return 3;
       break;
   }

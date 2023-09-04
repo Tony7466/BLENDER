@@ -6,6 +6,8 @@
  * \ingroup gpu
  */
 
+#include "BLI_string.h"
+
 #include "BKE_global.h"
 
 #include "mtl_context.hh"
@@ -1669,7 +1671,7 @@ MTLRenderPassDescriptor *MTLFrameBuffer::bake_render_pass_descriptor(bool load_c
           load_action = GPU_LOADACTION_LOAD;
         }
 
-        /* Safety check to ensure correct actions for memoryless attachments. */
+        /* Ensure memoryless attachment cannot load or store results. */
         eGPUStoreOp store_action = mtl_color_attachments_[attachment_ind].store_action;
         if (texture_is_memoryless && load_action == GPU_LOADACTION_LOAD) {
           load_action = GPU_LOADACTION_DONT_CARE;
@@ -1729,7 +1731,7 @@ MTLRenderPassDescriptor *MTLFrameBuffer::bake_render_pass_descriptor(bool load_c
         load_action = GPU_LOADACTION_LOAD;
       }
 
-      /* Safety check to ensure correct actions for memoryless attachments. */
+      /* Ensure memoryless attachment cannot load or store results. */
       eGPUStoreOp store_action = mtl_depth_attachment_.store_action;
       if (texture_is_memoryless && load_action == GPU_LOADACTION_LOAD) {
         load_action = GPU_LOADACTION_DONT_CARE;
@@ -1777,7 +1779,7 @@ MTLRenderPassDescriptor *MTLFrameBuffer::bake_render_pass_descriptor(bool load_c
         load_action = GPU_LOADACTION_LOAD;
       }
 
-      /* Safety check to ensure correct actions for memoryless attachments. */
+      /* Ensure memoryless attachment cannot load or store results. */
       eGPUStoreOp store_action = mtl_stencil_attachment_.store_action;
       if (texture_is_memoryless && load_action == GPU_LOADACTION_LOAD) {
         load_action = GPU_LOADACTION_DONT_CARE;

@@ -140,9 +140,13 @@ typedef struct GPULoadStore {
 } GPULoadStore;
 
 /* Empty bind point. */
+#define NULL_ATTACHMENT_COLOR \
+  { \
+    0.0, 0.0, 0.0, 0.0 \
+  }
 #define NULL_LOAD_STORE \
   { \
-    GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_DONT_CARE \
+    GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_DONT_CARE, NULL_ATTACHMENT_COLOR \
   }
 
 /**
