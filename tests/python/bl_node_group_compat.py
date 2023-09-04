@@ -139,7 +139,7 @@ class AbstractNodeGroupInterfaceTest(unittest.TestCase):
             self.assertEqual(socket.hide_value, spec.hide_value)
             if test_links:
                 self.assertEqual(len(socket.links), spec.external_links,
-                                f"Socket should have exactly {spec.external_links} external connections")
+                                 f"Socket should have exactly {spec.external_links} external connections")
 
             input_node = next(n for n in group.nodes if n.bl_idname == 'NodeGroupInput')
             self.assertIsNotNone(input_node, "Could not find an input node in the group")
@@ -152,7 +152,7 @@ class AbstractNodeGroupInterfaceTest(unittest.TestCase):
             self.assertEqual(socket.hide_value, spec.hide_value)
             if test_links:
                 self.assertEqual(len(socket.links), spec.internal_links,
-                                f"Socket should have exactly {spec.internal_links} internal connections")
+                                 f"Socket should have exactly {spec.internal_links} internal connections")
 
         if 'OUTPUT' in item.in_out:
             socket = next(s for s in node.outputs if s.identifier == spec.identifier)
@@ -163,7 +163,7 @@ class AbstractNodeGroupInterfaceTest(unittest.TestCase):
             self.assertEqual(socket.hide_value, spec.hide_value)
             if test_links:
                 self.assertEqual(len(socket.links), spec.external_links,
-                                f"Socket should have exactly {spec.external_links} external connections")
+                                 f"Socket should have exactly {spec.external_links} external connections")
 
             output_node = next(n for n in group.nodes if n.bl_idname == 'NodeGroupOutput')
             self.assertIsNotNone(output_node, "Could not find an output node in the group")
@@ -176,7 +176,7 @@ class AbstractNodeGroupInterfaceTest(unittest.TestCase):
             self.assertEqual(socket.hide_value, spec.hide_value)
             if test_links:
                 self.assertEqual(len(socket.links), spec.internal_links,
-                                f"Socket should have exactly {spec.internal_links} internal connections")
+                                 f"Socket should have exactly {spec.internal_links} internal connections")
 
 
 class NodeGroupVersioning36Test(AbstractNodeGroupInterfaceTest):
