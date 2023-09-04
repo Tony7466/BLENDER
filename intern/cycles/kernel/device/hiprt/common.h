@@ -477,9 +477,9 @@ ccl_device_inline bool shadow_intersection_filter(const hiprtRay &ray,
 }
 
 ccl_device_inline bool shadow_intersection_filter_curves(const hiprtRay &ray,
-                                                  const void *data,
-                                                  void *user_data,
-                                                  const hiprtHit &hit)
+                                                         const void *data,
+                                                         void *user_data,
+                                                         const hiprtHit &hit)
 
 {
   ShadowPayload *payload = (ShadowPayload *)user_data;
@@ -510,9 +510,9 @@ ccl_device_inline bool shadow_intersection_filter_curves(const hiprtRay &ray,
   float v = hit.uv.y;
 
   if (u == 0.0f || u == 1.0f) {
-        // continue traversal
-        return true;
-      }
+    // continue traversal
+    return true;
+  }
 
   int type = payload->prim_type;
 
