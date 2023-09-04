@@ -885,19 +885,9 @@ class VIEW3D_HT_header(Header):
                 )
 
         elif object_mode == 'SCULPT':
-            # If the active tool supports it, show the canvas selector popover.
-            from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
-            tool = ToolSelectPanelHelper.tool_active_from_context(context)
-            color_tools = {'builtin_brush.Paint', 'builtin_brush.Smear', 'builtin.color_filter'}
-
             row = layout.row()
             row.ui_units_x = 6
-            row.active = tool and tool.idname in color_tools
-
-            if context.preferences.experimental.use_sculpt_texture_paint:
-                row.popover(panel="VIEW3D_PT_slots_paint_canvas", icon="GROUP_VCOL")
-            else:
-                row.popover(panel="VIEW3D_PT_color_attributes_slots", icon="GROUP_VCOL")
+            row.popover(panel="VIEW3D_PT_slots_paint_canvas", icon="GROUP_VCOL")
 
             layout.popover(
                 panel="VIEW3D_PT_sculpt_automasking",
