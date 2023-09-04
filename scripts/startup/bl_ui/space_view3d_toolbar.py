@@ -592,6 +592,9 @@ class VIEW3D_PT_slots_paint_canvas(SelectPaintSlotHelper, View3DPanel, Panel):
 
     @classmethod
     def poll(cls, context):
+        if not context.preferences.experimental.use_sculpt_texture_paint:
+            return False
+
         from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
         tool = ToolSelectPanelHelper.tool_active_from_context(context)
         if tool is None:
@@ -617,7 +620,7 @@ class VIEW3D_PT_slots_paint_canvas(SelectPaintSlotHelper, View3DPanel, Panel):
                 label = mat.texture_paint_slots[mat.paint_active_slot].name
         elif paint.canvas_source == 'COLOR_ATTRIBUTE':
             label = (me.color_attributes.active_color.name if me.color_attributes.active_color
-                     else iface_("Color Attributes"))
+                     else iface_("Color Attribute"))
         elif paint.canvas_image:
             label = paint.canvas_image.name
 

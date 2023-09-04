@@ -885,12 +885,24 @@ class VIEW3D_HT_header(Header):
                 )
 
         elif object_mode == 'SCULPT':
-            canvas_source = tool_settings.paint_mode.canvas_source
-            icon = 'GROUP_VCOL' if canvas_source == 'COLOR_ATTRIBUTE' else canvas_source
+            # If the active tool supports it, show the canvas selector popover.
+            from bl_ui.space_toolsystem_common import ToolSelectPanelHelper
+            tool = ToolSelectPanelHelper.tool_active_from_context(context)
+            is_paint_tool = tool and tool.use_paint_canvas
+
+            shading = VIEW3D_PT_shading.get_shading(context)
+            color_type = shading.color_type
 
             row = layout.row()
-            row.ui_units_x = 7
-            row.popover(panel="VIEW3D_PT_slots_paint_canvas", icon=icon)
+            row.ui_units_x = 6
+            row.active = is_paint_tool and color_type == 'VERTEX'
+
+            if context.preferences.experimental.use_sculpt_texture_paint:
+                canvas_source = tool_settings.paint_mode.canvas_source
+                icon = 'GROUP_VCOL' if canvas_source == 'COLOR_ATTRIBUTE' else canvas_source
+                row.popover(panel="VIEW3D_PT_slots_paint_canvas", icon=icon)
+            else:
+                row.popover(panel="VIEW3D_PT_slots_color_attributes", icon="GROUP_VCOL")
 
             layout.popover(
                 panel="VIEW3D_PT_sculpt_automasking",
