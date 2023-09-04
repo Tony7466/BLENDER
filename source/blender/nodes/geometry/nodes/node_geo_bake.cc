@@ -7,6 +7,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "BKE_bake_geometry_nodes_modifier.hh"
 #include "BKE_bake_items_socket.hh"
 #include "BKE_context.h"
 #include "BKE_main.h"
@@ -17,6 +18,7 @@
 
 #include "BLI_binary_search.hh"
 #include "BLI_path_util.h"
+#include "BLI_string.h"
 #include "BLI_string_utils.h"
 
 #include "DNA_modifier_types.h"
@@ -28,6 +30,7 @@
 
 #include "NOD_socket.hh"
 
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "DEG_depsgraph_query.h"
@@ -103,11 +106,19 @@ static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
   const NodeGeometryBake &storage = node_storage(node);
   for (const int i : IndexRange(storage.items_num)) {
     const NodeGeometryBakeItem &item = storage.items[i];
-    r_declaration.inputs.append(socket_declaration_for_bake_item(item, SOCK_IN));
-    r_declaration.outputs.append(socket_declaration_for_bake_item(item, SOCK_OUT, i));
+    SocketDeclarationPtr input_decl = socket_declaration_for_bake_item(item, SOCK_IN);
+    SocketDeclarationPtr output_decl = socket_declaration_for_bake_item(item, SOCK_OUT, i);
+    r_declaration.inputs.append(input_decl.get());
+    r_declaration.items.append(std::move(input_decl));
+    r_declaration.outputs.append(output_decl.get());
+    r_declaration.items.append(std::move(output_decl));
   }
-  r_declaration.inputs.append(decl::create_extend_declaration(SOCK_IN));
-  r_declaration.outputs.append(decl::create_extend_declaration(SOCK_OUT));
+  SocketDeclarationPtr input_extend_decl = decl::create_extend_declaration(SOCK_IN);
+  SocketDeclarationPtr output_extend_decl = decl::create_extend_declaration(SOCK_OUT);
+  r_declaration.inputs.append(input_extend_decl.get());
+  r_declaration.items.append(std::move(input_extend_decl));
+  r_declaration.outputs.append(output_extend_decl.get());
+  r_declaration.items.append(std::move(output_extend_decl));
 
   aal::RelationsInNode &relations =
       NodeDeclarationBuilder(r_declaration).get_anonymous_attribute_relations();
@@ -196,15 +207,6 @@ static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
   return false;
 }
 
-static const bke::BakeNodeStorage *get_bake_storage(const NodesModifierData &nmd,
-                                                    const int32_t bake_id)
-{
-  if (!nmd.runtime->bakes) {
-    return nullptr;
-  }
-  return nmd.runtime->bakes->get_storage(bake_id);
-}
-
 static NodesModifierBake *get_bake(NodesModifierData &nmd, const int32_t bake_id)
 {
   for (NodesModifierBake &bake : MutableSpan(nmd.bakes, nmd.bakes_num)) {
@@ -218,16 +220,12 @@ static NodesModifierBake *get_bake(NodesModifierData &nmd, const int32_t bake_id
 static void draw_bake_ui(uiLayout *layout,
                          Object &object,
                          NodesModifierData &nmd,
-                         NodesModifierBake &bake,
-                         const bke::BakeNodeStorage *bake_storage)
+                         NodesModifierBake &bake)
 {
-  const bool is_baked = bake_storage ? !bake_storage->states.is_empty() : false;
-
   PointerRNA bake_ptr;
   RNA_pointer_create(&object.id, &RNA_NodesModifierBake, &bake, &bake_ptr);
 
   uiLayout *settings_col = uiLayoutColumn(layout, false);
-  uiLayoutSetActive(settings_col, !is_baked);
   {
     uiLayout *row = uiLayoutRow(settings_col, false);
     uiItemR(row, &bake_ptr, "bake_type", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
@@ -269,24 +267,6 @@ static void draw_bake_ui(uiLayout *layout,
     RNA_string_set(&op_ptr, "modifier", nmd.modifier.name);
     RNA_int_set(&op_ptr, "bake_id", bake.id);
   }
-
-  if (is_baked) {
-    const SubFrame bake_start = bake_storage->states.first().frame;
-    const SubFrame bake_end = bake_storage->states.last().frame;
-
-    if (bake_start == bake_end) {
-      uiItemL(layout, "Baked still", ICON_LOCKED);
-    }
-    else {
-      char message[1024];
-      BLI_snprintf(
-          message, sizeof(message), N_("Baked %d - %d"), bake_start.frame(), bake_end.frame());
-      uiItemL(layout, message, ICON_LOCKED);
-    }
-  }
-  else {
-    uiItemL(layout, "Not baked", ICON_UNLOCKED);
-  }
 }
 
 static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
@@ -316,13 +296,12 @@ static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
   if (!nested_node_id.has_value()) {
     return;
   }
-  const bke::BakeNodeStorage *bake_storage = get_bake_storage(nmd, *nested_node_id);
   NodesModifierBake *bake = get_bake(nmd, *nested_node_id);
   if (bake == nullptr) {
     return;
   }
 
-  draw_bake_ui(layout, *object, nmd, *bake, bake_storage);
+  draw_bake_ui(layout, *object, nmd, *bake);
 }
 
 static void bake_items_list_draw_item(uiList * /*ui_list*/,
@@ -419,7 +398,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
 
 class LazyFunctionForBakeNode : public LazyFunction {
   const bNode &node_;
-  bke::BakeSocketConfig bake_socket_config_;
+  bke::bake::BakeSocketConfig bake_socket_config_;
 
  public:
   LazyFunctionForBakeNode(const bNode &node, GeometryNodesLazyFunctionGraphInfo &own_lf_graph_info)
@@ -460,184 +439,7 @@ class LazyFunctionForBakeNode : public LazyFunction {
 
   void execute_impl(lf::Params &params, const lf::Context &context) const final
   {
-    const GeoNodesLFUserData &user_data = *static_cast<const GeoNodesLFUserData *>(
-        context.user_data);
-    if (user_data.modifier_data->bakes == nullptr) {
-      this->pass_through(params);
-      return;
-    }
-
-    const NodeGeometryBake &storage = node_storage(node_);
-
-    const Depsgraph *depsgraph = user_data.modifier_data->depsgraph;
-    const Scene *scene = DEG_get_input_scene(depsgraph);
-    const SubFrame frame = BKE_scene_ctime_get(scene);
-
-    const int32_t nested_node_id =
-        user_data.modifier_data->nested_node_id_by_compute_context.lookup_default(
-            {user_data.compute_context->hash(), node_.identifier}, -1);
-    if (nested_node_id == -1) {
-      this->pass_through(params);
-      return;
-    }
-
-    const NodesModifierBake *bake = get_bake(
-        const_cast<NodesModifierData &>(*user_data.modifier_data->nmd), nested_node_id);
-    if (bake == nullptr) {
-      this->pass_through(params);
-      return;
-    }
-
-    bke::BakeNodeStorage &bake_storage = user_data.modifier_data->bakes->get_storage_for_write(
-        nested_node_id);
-
-    bke::BakeNodeState *state_to_read_from = nullptr;
-
-    if (bake_storage.current_bake_state) {
-      bool has_missing_inputs = false;
-      Array<void *> input_values(storage.items_num);
-      for (const int i : IndexRange(storage.items_num)) {
-        void *data = params.try_get_input_data_ptr_or_request(i);
-        if (data == nullptr) {
-          has_missing_inputs = true;
-        }
-        input_values[i] = data;
-      }
-      if (has_missing_inputs) {
-        /* Wait until all inputs are available. */
-        return;
-      }
-
-      GeometrySet *geometry = params.try_get_input_data_ptr_or_request<GeometrySet>(0);
-      if (geometry == nullptr) {
-        /* Wait until value is available. */
-        return;
-      }
-
-      Array<std::unique_ptr<bke::BakeItem>> bake_items = bke::move_socket_values_to_bake_items(
-          input_values, bake_socket_config_);
-      for (const int i : IndexRange(storage.items_num)) {
-        const NodeGeometryBakeItem &item = storage.items[i];
-        std::unique_ptr<bke::BakeItem> &bake_item = bake_items[i];
-        if (bake_item) {
-          bake_storage.current_bake_state->item_by_identifier.add_new(item.identifier,
-                                                                      std::move(bake_item));
-        }
-      }
-
-      state_to_read_from = bake_storage.current_bake_state.get();
-    }
-    else {
-      {
-        /* TODO: Make locking more sound. */
-        std::lock_guard lock{bake_storage.mutex};
-        if (bake_storage.states.is_empty() && !StringRef(bake->directory).is_empty()) {
-          Main *bmain = DEG_get_bmain(user_data.modifier_data->depsgraph);
-          char absolute_bake_dir[FILE_MAX];
-          const char *base_path = ID_BLEND_PATH(bmain, &user_data.modifier_data->self_object->id);
-          STRNCPY(absolute_bake_dir, bake->directory);
-          BLI_path_abs(absolute_bake_dir, base_path);
-          const bke::bake::BakePath bake_path = bke::bake::BakePath::from_single_root(
-              absolute_bake_dir);
-          const Vector<bke::bake::MetaFile> meta_files = bke::bake::find_sorted_meta_files(
-              bake_path.meta_dir);
-
-          Vector<bke::BakeNodeStateAtFrame> new_states;
-          for (const bke::bake::MetaFile &meta_file : meta_files) {
-            auto new_bake_state = std::make_unique<bke::BakeNodeState>();
-            new_bake_state->meta_path.emplace(meta_file.path);
-            bake_storage.states.append({meta_file.frame, std::move(new_bake_state)});
-          }
-          bake_storage.blobs_dir = bake_path.blobs_dir;
-          bake_storage.blob_sharing = std::make_unique<bke::BlobSharing>();
-        }
-      }
-      if (!bake_storage.states.is_empty()) {
-        int state_index = binary_search::find_predicate_begin(
-            bake_storage.states, [&](const bke::BakeNodeStateAtFrame &state_at_frame) {
-              return state_at_frame.frame > frame;
-            });
-        /* Use the first state at the same or previous frame. When the current frame is before any
-         * baked frame, use the first baked frame.*/
-        if (state_index > 0) {
-          state_index--;
-        }
-        state_to_read_from = bake_storage.states[state_index].state.get();
-      }
-    }
-
-    if (state_to_read_from == nullptr) {
-      this->pass_through(params);
-    }
-    else {
-      {
-        std::lock_guard lock{state_to_read_from->mutex};
-        if (state_to_read_from->item_by_identifier.is_empty() &&
-            state_to_read_from->meta_path.has_value()) {
-          bke::bake::deserialize_bake_node_state_from_disk(*state_to_read_from->meta_path,
-                                                           *bake_storage.blobs_dir,
-                                                           *bake_storage.blob_sharing,
-                                                           *state_to_read_from);
-        }
-      }
-
-      Vector<void *> output_values(storage.items_num);
-      Vector<const bke::BakeItem *> bake_items(storage.items_num);
-      for (const int i : IndexRange(storage.items_num)) {
-        const NodeGeometryBakeItem &item = storage.items[i];
-        output_values[i] = params.get_output_data_ptr(i);
-        const std::unique_ptr<bke::BakeItem> *bake_item =
-            state_to_read_from->item_by_identifier.lookup_ptr(item.identifier);
-        bake_items[i] = bake_item ? bake_item->get() : nullptr;
-      }
-
-      bke::copy_bake_items_to_socket_values(
-          bake_items,
-          bake_socket_config_,
-          [&](const int item_i,
-              const CPPType &cpp_type) -> std::shared_ptr<AnonymousAttributeFieldInput> {
-            const NodeGeometryBakeItem &item = storage.items[item_i];
-            AnonymousAttributeIDPtr attribute_id = MEM_new<NodeAnonymousAttributeID>(
-                __func__,
-                *user_data.modifier_data->self_object,
-                *user_data.compute_context,
-                node_,
-                std::to_string(item.identifier),
-                item.name);
-            return std::make_shared<AnonymousAttributeFieldInput>(
-                attribute_id, cpp_type, node_.label_or_name());
-          },
-          output_values);
-
-      for (const int i : IndexRange(storage.items_num)) {
-        params.output_set(i);
-      }
-    }
-  }
-
-  void pass_through(lf::Params &params) const
-  {
-    const NodeGeometryBake &storage = node_storage(node_);
-
-    for (const int i : IndexRange(storage.items_num)) {
-      if (params.output_was_set(i)) {
-        /* Don't pass through the same socket more than once. */
-        continue;
-      }
-      if (params.get_output_usage(i) != lf::ValueUsage::Used) {
-        /* Don't compute inputs that might not be used. */
-        continue;
-      }
-      void *input_value = params.try_get_input_data_ptr_or_request(i);
-      if (input_value == nullptr) {
-        /* Wait until the input becomes available. */
-        continue;
-      }
-      void *output_value = params.get_output_data_ptr(i);
-      const CPPType &type = *inputs_[i].type;
-      type.move_construct(input_value, output_value);
-      params.output_set(i);
-    }
+    params.set_default_remaining_outputs();
   }
 };
 
@@ -658,31 +460,9 @@ class LazyFunctionForBakeNodeInputUsage : public LazyFunction {
     params.set_output(0, inputs_required);
   }
 
-  bool bake_inputs_required(const lf::Context &context) const
+  bool bake_inputs_required(const lf::Context & /*context*/) const
   {
-    const GeoNodesLFUserData &user_data = *static_cast<const GeoNodesLFUserData *>(
-        context.user_data);
-    if (user_data.modifier_data->bakes == nullptr) {
-      return true;
-    }
-    const int32_t nested_node_id =
-        user_data.modifier_data->nested_node_id_by_compute_context.lookup_default(
-            {user_data.compute_context->hash(), node_.identifier}, -1);
-    if (nested_node_id == -1) {
-      return true;
-    }
-    const bke::BakeNodeStorage *storage = user_data.modifier_data->bakes->get_storage(
-        nested_node_id);
-    if (storage == nullptr) {
-      return true;
-    }
-    if (storage->states.is_empty()) {
-      return true;
-    }
-    if (storage->current_bake_state) {
-      return true;
-    }
-    return false;
+    return true;
   }
 };
 
