@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <BLI_vector.hh>
+#include <BLI_vector_set.hh>
 
 /** \file
  * \ingroup sequencer
@@ -46,7 +46,7 @@ struct Sequence *seq_sequence_lookup_meta_by_seq(const struct Scene *scene,
  *
  * \return collection of effect strips
  */
-blender::Vector<Sequence *> *seq_sequence_lookup_effects_by_seq(const struct Scene *scene,
+blender::VectorSet<Sequence *> *seq_sequence_lookup_effects_by_seq(const struct Scene *scene,
                                                                 const struct Sequence *key);
 #ifdef __cplusplus
 }

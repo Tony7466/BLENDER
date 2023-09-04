@@ -107,7 +107,7 @@ static int seq_frame_apply_snap(bContext *C, Scene *scene, const int timeline_fr
 {
 
   ListBase *seqbase = SEQ_active_seqbase_get(SEQ_editing_get(scene));
-  blender::Vector strips = SEQ_query_all_strips(seqbase);
+  blender::VectorSet strips = SEQ_query_all_strips(seqbase);
 
   int best_frame = 0;
   int best_distance = MAXFRAME;

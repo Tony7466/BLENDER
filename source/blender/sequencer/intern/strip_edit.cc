@@ -244,8 +244,8 @@ bool SEQ_edit_move_strip_to_meta(Scene *scene,
     return false;
   }
 
-  blender::Vector<Sequence *> strips;
-  strips.append(src_seq);
+  blender::VectorSet<Sequence *> strips;
+  strips.add(src_seq);
   SEQ_collection_expand(scene, seqbase, &strips, SEQ_query_strip_effect_chain);
 
   for (auto seq : strips) {
@@ -380,7 +380,7 @@ static bool seq_edit_split_effect_inputs_intersect(const Scene *scene,
 }
 
 static bool seq_edit_split_operation_permitted_check(const Scene *scene,
-                                                     blender::Vector<Sequence *> *strips,
+                                                     blender::VectorSet<Sequence *> *strips,
                                                      const int timeline_frame,
                                                      const char **r_error)
 {
@@ -424,8 +424,8 @@ Sequence *SEQ_edit_strip_split(Main *bmain,
   }
 
   /* Whole strip chain must be duplicated in order to preserve relationships. */
-  blender::Vector<Sequence *> strips;
-  strips.append(seq);
+  blender::VectorSet<Sequence *> strips;
+  strips.add(seq);
   SEQ_collection_expand(scene, seqbase, &strips, SEQ_query_strip_effect_chain);
 
   if (!seq_edit_split_operation_permitted_check(scene, &strips, timeline_frame, r_error)) {

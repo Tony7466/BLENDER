@@ -272,7 +272,7 @@ void SEQUENCER_OT_view_zoom_ratio(wmOperatorType *ot)
  * \{ */
 
 static void seq_view_collection_rect_preview(Scene *scene,
-                                             blender::Vector<Sequence *> *strips,
+                                             blender::VectorSet<Sequence *> *strips,
                                              rctf *rect)
 {
   float min[2], max[2];
@@ -295,7 +295,7 @@ static void seq_view_collection_rect_preview(Scene *scene,
 }
 
 static void seq_view_collection_rect_timeline(Scene *scene,
-                                              blender::Vector<Sequence *> *strips,
+                                              blender::VectorSet<Sequence *> *strips,
                                               rctf *rect)
 {
   int xmin = MAXFRAME * 2;
@@ -341,7 +341,7 @@ static int sequencer_view_selected_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   ARegion *region = CTX_wm_region(C);
-  blender::Vector strips = selected_strips_from_context(C);
+  blender::VectorSet strips = selected_strips_from_context(C);
   View2D *v2d = UI_view2d_fromcontext(C);
   rctf cur_new = v2d->cur;
 

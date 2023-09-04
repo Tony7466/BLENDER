@@ -279,7 +279,7 @@ int seq_get_shown_sequences(const Scene *scene,
                             const int chanshown,
                             Sequence **r_seq_arr)
 {
-  blender::Vector strips = SEQ_query_rendered_strips(
+  blender::VectorSet strips = SEQ_query_rendered_strips(
       scene, channels, seqbase, timeline_frame, chanshown);
   const int strip_count = strips.size();
 

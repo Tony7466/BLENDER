@@ -69,7 +69,7 @@ struct TransSeq {
   View2DEdgePanData edge_pan;
 
   /* Strips that aren't selected, but their position entirely depends on transformed strips. */
-  blender::Vector<Sequence *> *time_dependent_strips;
+  blender::VectorSet<Sequence *> *time_dependent_strips;
 };
 
 /* -------------------------------------------------------------------- */
@@ -271,7 +271,7 @@ static void free_transform_custom_data(TransCustomData *custom_data)
 }
 
 /* Canceled, need to update the strips display. */
-static void seq_transform_cancel(TransInfo *t, blender::Vector<Sequence *> *transformed_strips)
+static void seq_transform_cancel(TransInfo *t, blender::VectorSet<Sequence *> *transformed_strips)
 {
   ListBase *seqbase = SEQ_active_seqbase_get(SEQ_editing_get(t->scene));
 
@@ -290,7 +290,7 @@ static ListBase *seqbase_active_get(const TransInfo *t)
   return SEQ_active_seqbase_get(ed);
 }
 
-static bool seq_transform_check_overlap(blender::Vector<Sequence *> *transformed_strips)
+static bool seq_transform_check_overlap(blender::VectorSet<Sequence *> *transformed_strips)
 {
   for (auto seq : *transformed_strips) {
     if (seq->flag & SEQ_OVERLAP) {
@@ -300,13 +300,14 @@ static bool seq_transform_check_overlap(blender::Vector<Sequence *> *transformed
   return false;
 }
 
-static blender::Vector<Sequence *> seq_transform_collection_from_transdata(TransDataContainer *tc)
+static blender::VectorSet<Sequence *> seq_transform_collection_from_transdata(
+    TransDataContainer *tc)
 {
-  blender::Vector<Sequence *> strips;
+  blender::VectorSet<Sequence *> strips;
   TransData *td = tc->data;
   for (int a = 0; a < tc->data_len; a++, td++) {
     Sequence *seq = ((TransDataSeq *)td->extra)->seq;
-    strips.append(seq);
+    strips.add(seq);
   }
   return strips;
 }
@@ -319,7 +320,7 @@ static void freeSeqData(TransInfo *t, TransDataContainer *tc, TransCustomData *c
     return;
   }
 
-  blender::Vector<Sequence *> transformed_strips = seq_transform_collection_from_transdata(tc);
+  blender::VectorSet<Sequence *> transformed_strips = seq_transform_collection_from_transdata(tc);
   SEQ_collection_expand(
       t->scene, seqbase_active_get(t), &transformed_strips, SEQ_query_strip_effect_chain);
 
@@ -347,12 +348,12 @@ static void freeSeqData(TransInfo *t, TransDataContainer *tc, TransCustomData *c
   free_transform_custom_data(custom_data);
 }
 
-static blender::Vector<Sequence *> query_selected_strips_no_handles(ListBase *seqbase)
+static blender::VectorSet<Sequence *> query_selected_strips_no_handles(ListBase *seqbase)
 {
-  blender::Vector<Sequence *> strips;
+  blender::VectorSet<Sequence *> strips;
   LISTBASE_FOREACH (Sequence *, seq, seqbase) {
     if ((seq->flag & SELECT) != 0 && ((seq->flag & (SEQ_LEFTSEL | SEQ_RIGHTSEL)) == 0)) {
-      strips.append(seq);
+      strips.add(seq);
     }
   }
   return strips;
@@ -390,8 +391,8 @@ static Sequence *effect_base_input_get(const Scene *scene, Sequence *effect, Seq
  * Strips that aren't selected, but their position entirely depends on transformed strips.
  * This collection is used to offset animation.
  */
-static void query_time_dependent_strips_strips(TransInfo *t,
-                                               blender::Vector<Sequence *> *time_dependent_strips)
+static void query_time_dependent_strips_strips(
+    TransInfo *t, blender::VectorSet<Sequence *> *time_dependent_strips)
 {
   ListBase *seqbase = seqbase_active_get(t);
 
@@ -399,7 +400,7 @@ static void query_time_dependent_strips_strips(TransInfo *t,
    * If all inputs of any effect even indirectly(through another effect) points to selected strip,
    * its position will change. */
 
-  blender::Vector<Sequence *> strips_no_handles = query_selected_strips_no_handles(seqbase);
+  blender::VectorSet<Sequence *> strips_no_handles = query_selected_strips_no_handles(seqbase);
   SEQ_collection_merge(time_dependent_strips, strips_no_handles);
 
   SEQ_collection_expand(t->scene, seqbase, &strips_no_handles, SEQ_query_strip_effect_chain);
@@ -419,7 +420,7 @@ static void query_time_dependent_strips_strips(TransInfo *t,
           continue;
         }
         strip_added = true;
-        time_dependent_strips->append(seq);
+        time_dependent_strips->add(seq);
       }
     }
   }
@@ -428,7 +429,7 @@ static void query_time_dependent_strips_strips(TransInfo *t,
    * If any 2-input effect changes position because handles were moved, animation should be offset.
    * With single input effect, it is less likely desirable to move animation. */
 
-  blender::Vector<Sequence *> selected_strips = SEQ_query_selected_strips(seqbase);
+  blender::VectorSet<Sequence *> selected_strips = SEQ_query_selected_strips(seqbase);
   SEQ_collection_expand(t->scene, seqbase, &selected_strips, SEQ_query_strip_effect_chain);
   for (auto seq : selected_strips) {
     /* Check only 2 input effects. */
@@ -441,7 +442,7 @@ static void query_time_dependent_strips_strips(TransInfo *t,
     Sequence *input_right = effect_base_input_get(t->scene, seq, SEQ_INPUT_RIGHT);
 
     if ((input_left->flag & SEQ_RIGHTSEL) != 0 && (input_right->flag & SEQ_LEFTSEL) != 0) {
-      time_dependent_strips->append(seq);
+      time_dependent_strips->add(seq);
     }
   }
 
@@ -518,7 +519,7 @@ static void createTransSeqData(bContext * /*C*/, TransInfo *t)
     }
   }
 
-  ts->time_dependent_strips = new blender::Vector<Sequence *>;
+  ts->time_dependent_strips = new blender::VectorSet<Sequence *>;
   query_time_dependent_strips_strips(t, ts->time_dependent_strips);
 }
 
@@ -631,7 +632,7 @@ static void flushTransSeq(TransInfo *t)
 
   /* need to do the overlap check in a new loop otherwise adjacent strips
    * will not be updated and we'll get false positives */
-  blender::Vector<Sequence *> transformed_strips = seq_transform_collection_from_transdata(tc);
+  blender::VectorSet<Sequence *> transformed_strips = seq_transform_collection_from_transdata(tc);
   SEQ_collection_expand(
       t->scene, seqbase_active_get(t), &transformed_strips, SEQ_query_strip_effect_chain);
 

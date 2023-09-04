@@ -9,7 +9,7 @@
  */
 
 #include "BLI_ghash.h"
-#include "BLI_vector.hh"
+#include "BLI_vector_set.hh"
 
 struct GSet;
 struct GSetIterator;
@@ -37,8 +37,8 @@ void SEQ_for_each_callback(struct ListBase *seqbase, SeqForEachFunc callback, vo
  * \param collection_dst: destination collection
  * \param collection_src: source collection
  */
-void SEQ_collection_merge(blender::Vector<Sequence *> *strips_dst,
-                          blender::Vector<Sequence *> strips_src);
+void SEQ_collection_merge(blender::VectorSet<Sequence *> *strips_dst,
+                          blender::VectorSet<Sequence *> strips_src);
 /**
  * Expand collection by running SEQ_query() for each strip, which will be used as reference.
  * Results of these queries will be merged into provided collection.
@@ -49,11 +49,11 @@ void SEQ_collection_merge(blender::Vector<Sequence *> *strips_dst,
  */
 void SEQ_collection_expand(const struct Scene *scene,
                            struct ListBase *seqbase,
-                           blender::Vector<Sequence *> *strips,
+                           blender::VectorSet<Sequence *> *strips,
                            void seq_query_func(const struct Scene *scene,
                                                struct Sequence *seq_reference,
                                                struct ListBase *seqbase,
-                                               blender::Vector<Sequence *> *strips));
+                                               blender::VectorSet<Sequence *> *strips));
 /**
  * Query strips from seqbase. seq_reference is used by query function as filter condition.
  *
@@ -62,42 +62,42 @@ void SEQ_collection_expand(const struct Scene *scene,
  * \param seq_query_func: query function callback
  * \return strip collection
  */
-blender::Vector<Sequence *> SEQ_query_by_reference(
+blender::VectorSet<Sequence *> SEQ_query_by_reference(
     struct Sequence *seq_reference,
     const struct Scene *scene,
     struct ListBase *seqbase,
     void seq_query_func(const struct Scene *scene,
                         struct Sequence *seq_reference,
                         struct ListBase *seqbase,
-                        blender::Vector<Sequence *> *strips));
+                        blender::VectorSet<Sequence *> *strips));
 /**
  * Query all selected strips in seqbase.
  *
  * \param seqbase: ListBase in which strips are queried
  * \return strip collection
  */
-blender::Vector<Sequence *> SEQ_query_selected_strips(struct ListBase *seqbase);
+blender::VectorSet<Sequence *> SEQ_query_selected_strips(struct ListBase *seqbase);
 /**
  * Query all unselected strips in seqbase.
  *
  * \param seqbase: ListBase in which strips are queried
  * \return strip collection
  */
-blender::Vector<Sequence *> SEQ_query_unselected_strips(ListBase *seqbase);
+blender::VectorSet<Sequence *> SEQ_query_unselected_strips(ListBase *seqbase);
 /**
  * Query all strips in seqbase. This does not include strips nested in meta strips.
  *
  * \param seqbase: ListBase in which strips are queried
  * \return strip collection
  */
-blender::Vector<Sequence *> SEQ_query_all_strips(ListBase *seqbase);
+blender::VectorSet<Sequence *> SEQ_query_all_strips(ListBase *seqbase);
 /**
  * Query all strips in seqbase and nested meta strips.
  *
  * \param seqbase: ListBase in which strips are queried
  * \return strip collection
  */
-blender::Vector<Sequence *> SEQ_query_all_strips_recursive(ListBase *seqbase);
+blender::VectorSet<Sequence *> SEQ_query_all_strips_recursive(ListBase *seqbase);
 
 /**
  * Query all effect strips that are directly or indirectly connected to seq_reference.
@@ -111,7 +111,7 @@ blender::Vector<Sequence *> SEQ_query_all_strips_recursive(ListBase *seqbase);
 void SEQ_query_strip_effect_chain(const struct Scene *scene,
                                   struct Sequence *seq_reference,
                                   struct ListBase *seqbase,
-                                  blender::Vector<Sequence *> *strips);
+                                  blender::VectorSet<Sequence *> *strips);
 
 /**
  * Query strips that are rendered at \a timeline_frame when \a displayed channel is viewed
@@ -121,9 +121,9 @@ void SEQ_query_strip_effect_chain(const struct Scene *scene,
  * \param displayed_channel: viewed channel. when set to 0, no channel filter is applied
  * \return strip collection
  */
-blender::Vector<Sequence *> SEQ_query_rendered_strips(const struct Scene *scene,
+blender::VectorSet<Sequence *> SEQ_query_rendered_strips(const struct Scene *scene,
                                                       ListBase *channels,
                                                       ListBase *seqbase,
                                                       int timeline_frame,
                                                       int displayed_channel);
-void SEQ_filter_selected_strips(blender::Vector<Sequence *> strips);
+void SEQ_filter_selected_strips(blender::VectorSet<Sequence *> strips);

@@ -18,7 +18,7 @@
 #include "DNA_sequence_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_vector.hh"
+#include "BLI_vector_set.hh"
 
 #include "BLT_translation.h"
 
@@ -387,7 +387,7 @@ ListBase *SEQ_get_seqbase_by_seq(const Scene *scene, Sequence *seq)
 
 Sequence *SEQ_get_meta_by_seqbase(ListBase *seqbase_main, ListBase *meta_seqbase)
 {
-  blender::Vector strips = SEQ_query_all_strips_recursive(seqbase_main);
+  blender::VectorSet strips = SEQ_query_all_strips_recursive(seqbase_main);
 
   for (auto seq : strips) {
     if (seq->type == SEQ_TYPE_META && &seq->seqbase == meta_seqbase) {

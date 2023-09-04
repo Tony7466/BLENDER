@@ -235,7 +235,7 @@ void seq_time_effect_range_set(const Scene *scene, Sequence *seq)
   seq->len = seq->enddisp - seq->startdisp;
 }
 
-void seq_time_update_effects_strip_range(const Scene *scene, blender::Vector<Sequence *> *effects)
+void seq_time_update_effects_strip_range(const Scene *scene, blender::VectorSet<Sequence *> *effects)
 {
   if (effects == nullptr) {
     return;
@@ -397,7 +397,7 @@ void SEQ_timeline_boundbox(const Scene *scene, const ListBase *seqbase, rctf *re
 }
 
 static bool strip_exists_at_frame(const Scene *scene,
-                                  blender::Vector<Sequence *> *strips,
+                                  blender::VectorSet<Sequence *> *strips,
                                   const int timeline_frame)
 {
   for (auto seq : *strips) {
@@ -421,7 +421,7 @@ void seq_time_gap_info_get(const Scene *scene,
   int timeline_frame = initial_frame;
   r_gap_info->gap_exists = false;
 
-  blender::Vector strips = SEQ_query_all_strips(seqbase);
+  blender::VectorSet strips = SEQ_query_all_strips(seqbase);
 
   if (!strip_exists_at_frame(scene, &strips, initial_frame)) {
     /* Search backward for gap_start_frame. */

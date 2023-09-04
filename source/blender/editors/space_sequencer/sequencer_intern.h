@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "BLI_vector.hh"
+#include "BLI_vector_set.hh"
 #include "DNA_sequence_types.h"
 #include "RNA_access.hh"
 
@@ -155,7 +155,7 @@ bool sequencer_view_strips_poll(struct bContext *C);
  * \param C: context
  * \return collection of strips (`Sequence`)
  */
-blender::Vector<Sequence *> all_strips_from_context(struct bContext *C);
+blender::VectorSet<Sequence *> all_strips_from_context(struct bContext *C);
 
 /**
  * Returns collection with selected strips presented to user. If operation is done in preview,
@@ -165,7 +165,7 @@ blender::Vector<Sequence *> all_strips_from_context(struct bContext *C);
  * \param C: context
  * \return collection of strips (`Sequence`)
  */
-blender::Vector<Sequence *> selected_strips_from_context(struct bContext *C);
+blender::VectorSet<Sequence *> selected_strips_from_context(struct bContext *C);
 
 /* Externs. */
 extern EnumPropertyItem sequencer_prop_effect_types[];

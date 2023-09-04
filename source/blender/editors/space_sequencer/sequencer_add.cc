@@ -353,8 +353,8 @@ static void seq_load_apply_generic_options(bContext *C, wmOperator *op, Sequence
 
   if (RNA_boolean_get(op->ptr, "overlap_shuffle_override")) {
     /* Use set overlap_mode to fix overlaps. */
-    blender::Vector<Sequence *> strip_col;
-    strip_col.append(seq);
+    blender::VectorSet<Sequence *> strip_col;
+    strip_col.add(seq);
 
     ScrArea *area = CTX_wm_area(C);
     const bool use_sync_markers = (((SpaceSeq *)area->spacedata.first)->flag & SEQ_MARKER_TRANS) !=
@@ -369,7 +369,7 @@ static void seq_load_apply_generic_options(bContext *C, wmOperator *op, Sequence
 
 /* In this alternative version we only check for overlap, but do not do anything about them. */
 static bool seq_load_apply_generic_options_only_test_overlap(
-    bContext *C, wmOperator *op, Sequence *seq, blender::Vector<Sequence *> *strip_col)
+    bContext *C, wmOperator *op, Sequence *seq, blender::VectorSet<Sequence *> *strip_col)
 {
   Scene *scene = CTX_data_scene(C);
   Editing *ed = SEQ_editing_get(scene);
@@ -383,7 +383,7 @@ static bool seq_load_apply_generic_options_only_test_overlap(
     SEQ_select_active_set(scene, seq);
   }
 
-  strip_col->append(seq);
+  strip_col->add(seq);
 
   return SEQ_transform_test_overlap(scene, ed->seqbasep, seq);
 }
@@ -777,7 +777,7 @@ static IMB_Proxy_Size seq_get_proxy_size_flags(bContext *C)
   return proxy_sizes;
 }
 
-static void seq_build_proxy(bContext *C, blender::Vector<Sequence *> *movie_strips)
+static void seq_build_proxy(bContext *C, blender::VectorSet<Sequence *> *movie_strips)
 {
   if (U.sequencer_proxy_setup != USER_SEQ_PROXY_SETUP_AUTOMATIC) {
     return;
@@ -818,7 +818,7 @@ static void sequencer_add_movie_clamp_sound_strip_length(Scene *scene,
 static void sequencer_add_movie_multiple_strips(bContext *C,
                                                 wmOperator *op,
                                                 SeqLoadData *load_data,
-                                                blender::Vector<Sequence *> *r_movie_strips)
+                                                blender::VectorSet<Sequence *> *r_movie_strips)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
@@ -826,7 +826,7 @@ static void sequencer_add_movie_multiple_strips(bContext *C,
   bool overlap_shuffle_override = RNA_boolean_get(op->ptr, "overlap") == false &&
                                   RNA_boolean_get(op->ptr, "overlap_shuffle_override");
   bool has_seq_overlap = false;
-  blender::Vector<Sequence *> strip_col;
+  blender::VectorSet<Sequence *> strip_col;
 
   RNA_BEGIN (op->ptr, itemptr, "files") {
     char dir_only[FILE_MAX];
@@ -867,7 +867,7 @@ static void sequencer_add_movie_multiple_strips(bContext *C,
         seq_load_apply_generic_options(C, op, seq_sound);
         seq_load_apply_generic_options(C, op, seq_movie);
       }
-      r_movie_strips->append(seq_movie);
+      r_movie_strips->add(seq_movie);
     }
   }
   RNA_END;
@@ -885,7 +885,7 @@ static void sequencer_add_movie_multiple_strips(bContext *C,
 static bool sequencer_add_movie_single_strip(bContext *C,
                                              wmOperator *op,
                                              SeqLoadData *load_data,
-                                             blender::Vector<Sequence *> *r_movie_strips)
+                                             blender::VectorSet<Sequence *> *r_movie_strips)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
@@ -913,7 +913,7 @@ static bool sequencer_add_movie_single_strip(bContext *C,
   bool overlap_shuffle_override = RNA_boolean_get(op->ptr, "overlap") == false &&
                                   RNA_boolean_get(op->ptr, "overlap_shuffle_override");
   if (overlap_shuffle_override) {
-    blender::Vector<Sequence *> strip_col;
+    blender::VectorSet<Sequence *> strip_col;
     bool has_seq_overlap = false;
 
     has_seq_overlap |= seq_load_apply_generic_options_only_test_overlap(
@@ -932,7 +932,7 @@ static bool sequencer_add_movie_single_strip(bContext *C,
     seq_load_apply_generic_options(C, op, seq_sound);
     seq_load_apply_generic_options(C, op, seq_movie);
   }
-  r_movie_strips->append(seq_movie);
+  r_movie_strips->add(seq_movie);
 
   return true;
 }
@@ -949,7 +949,7 @@ static int sequencer_add_movie_strip_exec(bContext *C, wmOperator *op)
     ED_sequencer_deselect_all(scene);
   }
 
-  blender::Vector<Sequence *> *movie_strips;
+  blender::VectorSet<Sequence *> *movie_strips;
   const int tot_files = RNA_property_collection_length(op->ptr,
                                                        RNA_struct_find_property(op->ptr, "files"));
   if (tot_files > 1) {

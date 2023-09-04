@@ -331,7 +331,7 @@ static void rna_SequenceEditor_retiming_handles_begin(CollectionPropertyIterator
 static Sequence *strip_by_handle_find(Scene *scene, SeqRetimingHandle *handle)
 {
   Editing *ed = SEQ_editing_get(scene);
-  blender::Vector strips = SEQ_query_all_strips_recursive(&ed->seqbase);
+  blender::VectorSet strips = SEQ_query_all_strips_recursive(&ed->seqbase);
 
   for (auto seq : strips) {
     const int retiming_handle_count = SEQ_retiming_handles_count(seq);
@@ -1511,7 +1511,7 @@ static void rna_Sequence_separate(ID *id, Sequence *seqm, Main *bmain)
 /* Find channel owner. If nullptr, owner is `Editing`, otherwise it's `Sequence`. */
 static Sequence *rna_SeqTimelineChannel_owner_get(Editing *ed, SeqTimelineChannel *channel)
 {
-  blender::Vector strips = SEQ_query_all_strips_recursive(&ed->seqbase);
+  blender::VectorSet strips = SEQ_query_all_strips_recursive(&ed->seqbase);
 
   Sequence *channel_owner = nullptr;
   for (auto seq : strips) {

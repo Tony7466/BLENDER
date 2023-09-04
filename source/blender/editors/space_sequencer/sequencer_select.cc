@@ -52,7 +52,7 @@
 /** \name Selection Utilities
  * \{ */
 
-blender::Vector<Sequence *> all_strips_from_context(bContext *C)
+blender::VectorSet<Sequence *> all_strips_from_context(bContext *C)
 {
   Scene *scene = CTX_data_scene(C);
   Editing *ed = SEQ_editing_get(scene);
@@ -67,7 +67,7 @@ blender::Vector<Sequence *> all_strips_from_context(bContext *C)
   return SEQ_query_all_strips(seqbase);
 }
 
-blender::Vector<Sequence *> selected_strips_from_context(bContext *C)
+blender::VectorSet<Sequence *> selected_strips_from_context(bContext *C)
 {
   Scene *scene = CTX_data_scene(C);
   Editing *ed = SEQ_editing_get(scene);
@@ -77,7 +77,7 @@ blender::Vector<Sequence *> selected_strips_from_context(bContext *C)
   const bool is_preview = sequencer_view_has_preview_poll(C);
 
   if (is_preview) {
-    blender::Vector strips = SEQ_query_rendered_strips(scene, channels, seqbase, scene->r.cfra, 0);
+    blender::VectorSet strips = SEQ_query_rendered_strips(scene, channels, seqbase, scene->r.cfra, 0);
     strips.remove_if([&](auto seq) { return (seq->flag & SELECT) == 0; });
     return strips;
   }
@@ -445,7 +445,7 @@ static int sequencer_de_select_all_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  blender::Vector strips = all_strips_from_context(C);
+  blender::VectorSet strips = all_strips_from_context(C);
 
   if (action == SEL_TOGGLE) {
     action = SEL_SELECT;
@@ -514,7 +514,7 @@ static int sequencer_select_inverse_exec(bContext *C, wmOperator * /*op*/)
     return OPERATOR_CANCELLED;
   }
 
-  blender::Vector strips = all_strips_from_context(C);
+  blender::VectorSet strips = all_strips_from_context(C);
 
   for (auto seq : strips) {
     if (seq->flag & SELECT) {
@@ -749,7 +749,7 @@ static Sequence *seq_select_seq_from_preview(
       UI_view2d_scale_get_y(v2d),
   };
 
-  blender::Vector strips = SEQ_query_rendered_strips(
+  blender::VectorSet strips = SEQ_query_rendered_strips(
       scene, channels, seqbase, scene->r.cfra, sseq->chanshown);
 
   SeqSelect_Link *slink_active = nullptr;
@@ -1596,7 +1596,7 @@ static void seq_box_select_seq_from_preview(const bContext *C, rctf *rect, const
   ListBase *channels = SEQ_channels_displayed_get(ed);
   SpaceSeq *sseq = CTX_wm_space_seq(C);
 
-  blender::Vector strips = SEQ_query_rendered_strips(
+  blender::VectorSet strips = SEQ_query_rendered_strips(
       scene, channels, seqbase, scene->r.cfra, sseq->chanshown);
   for (auto seq : strips) {
     if (!seq_box_select_rect_image_isect(scene, seq, rect)) {
@@ -1813,7 +1813,7 @@ static const EnumPropertyItem sequencer_prop_select_grouped_types[] = {
 
 #define SEQ_CHANNEL_CHECK(_seq, _chan) ELEM((_chan), 0, (_seq)->machine)
 
-static bool select_grouped_type(blender::Vector<Sequence *> strips,
+static bool select_grouped_type(blender::VectorSet<Sequence *> strips,
                                 ListBase * /*seqbase*/,
                                 Sequence *actseq,
                                 const int channel)
@@ -1830,7 +1830,7 @@ static bool select_grouped_type(blender::Vector<Sequence *> strips,
   return changed;
 }
 
-static bool select_grouped_type_basic(blender::Vector<Sequence *> strips,
+static bool select_grouped_type_basic(blender::VectorSet<Sequence *> strips,
                                       ListBase * /*seqbase*/,
                                       Sequence *actseq,
                                       const int channel)
@@ -1848,7 +1848,7 @@ static bool select_grouped_type_basic(blender::Vector<Sequence *> strips,
   return changed;
 }
 
-static bool select_grouped_type_effect(blender::Vector<Sequence *> strips,
+static bool select_grouped_type_effect(blender::VectorSet<Sequence *> strips,
                                        ListBase * /*seqbase*/,
                                        Sequence *actseq,
                                        const int channel)
@@ -1867,7 +1867,7 @@ static bool select_grouped_type_effect(blender::Vector<Sequence *> strips,
   return changed;
 }
 
-static bool select_grouped_data(blender::Vector<Sequence *> strips,
+static bool select_grouped_data(blender::VectorSet<Sequence *> strips,
                                 ListBase * /*seqbase*/,
                                 Sequence *actseq,
                                 const int channel)
@@ -1921,7 +1921,7 @@ static bool select_grouped_data(blender::Vector<Sequence *> strips,
   return changed;
 }
 
-static bool select_grouped_effect(blender::Vector<Sequence *> strips,
+static bool select_grouped_effect(blender::VectorSet<Sequence *> strips,
                                   ListBase * /*seqbase*/,
                                   Sequence *actseq,
                                   const int channel)
@@ -1960,7 +1960,7 @@ static bool select_grouped_effect(blender::Vector<Sequence *> strips,
 }
 
 static bool select_grouped_time_overlap(const Scene *scene,
-                                        blender::Vector<Sequence *> strips,
+                                        blender::VectorSet<Sequence *> strips,
                                         ListBase * /*seqbase*/,
                                         Sequence *actseq)
 {
@@ -1984,7 +1984,7 @@ static bool select_grouped_time_overlap(const Scene *scene,
 static void query_lower_channel_strips(const Scene *scene,
                                        Sequence *seq_reference,
                                        ListBase *seqbase,
-                                       blender::Vector<Sequence *> *strips)
+                                       blender::VectorSet<Sequence *> *strips)
 {
   LISTBASE_FOREACH (Sequence *, seq_test, seqbase) {
     if (seq_test->machine > seq_reference->machine) {
@@ -1997,14 +1997,14 @@ static void query_lower_channel_strips(const Scene *scene,
     {
       continue; /* Not intersecting in time. */
     }
-    strips->append(seq_test);
+    strips->add(seq_test);
   }
 }
 
 /* Select all strips within time range and with lower channel of initial selection. Then select
  * effect chains of these strips. */
 static bool select_grouped_effect_link(const Scene *scene,
-                                       blender::Vector<Sequence *> strips,
+                                       blender::VectorSet<Sequence *> strips,
                                        ListBase *seqbase,
                                        Sequence * /*actseq*/,
                                        const int /*channel*/)
@@ -2043,7 +2043,7 @@ static int sequencer_select_grouped_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  blender::Vector strips = all_strips_from_context(C);
+  blender::VectorSet strips = all_strips_from_context(C);
 
   if (actseq == nullptr || (is_preview && !strips.contains(actseq))) {
     BKE_report(op->reports, RPT_ERROR, "No active sequence!");

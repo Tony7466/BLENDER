@@ -2278,7 +2278,7 @@ void sequencer_draw_preview(const bContext *C,
   if (!draw_backdrop && scene->ed != nullptr) {
     Editing *ed = SEQ_editing_get(scene);
     ListBase *channels = SEQ_channels_displayed_get(ed);
-    blender::Vector strips = SEQ_query_rendered_strips(
+    blender::VectorSet strips = SEQ_query_rendered_strips(
         scene, channels, ed->seqbasep, timeline_frame, 0);
     Sequence *active_seq = SEQ_select_active_get(scene);
     for (auto seq : strips) {
