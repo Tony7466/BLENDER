@@ -406,7 +406,7 @@ float shadow_linear_occluder_distance(LightData light,
                                         ((near * far) / (occluder * (near - far) + far));
   float receiver_z = (is_directional) ? -lP.z : max(abs(lP.x), max(abs(lP.y), abs(lP.z)));
 
-  return occluder_z - receiver_z;
+  return receiver_z - occluder_z;
 }
 
 struct ShadowEvalResult {
