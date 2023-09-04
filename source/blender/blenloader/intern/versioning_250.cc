@@ -1871,7 +1871,6 @@ void blo_do_versions_250(FileData *fd, Library * /*lib*/, Main *bmain)
              */
             bNodeLink *link = static_cast<bNodeLink *>(MEM_callocN(sizeof(bNodeLink), "link"));
             BLI_addtail(&ntree->links, link);
-            nodeUniqueID(ntree, node);
             link->fromnode = nullptr;
             link->fromsock = gsock;
             link->tonode = node;
@@ -1896,7 +1895,6 @@ void blo_do_versions_250(FileData *fd, Library * /*lib*/, Main *bmain)
              */
             bNodeLink *link = static_cast<bNodeLink *>(MEM_callocN(sizeof(bNodeLink), "link"));
             BLI_addtail(&ntree->links, link);
-            nodeUniqueID(ntree, node);
             link->fromnode = node;
             link->fromsock = sock;
             link->tonode = nullptr;
