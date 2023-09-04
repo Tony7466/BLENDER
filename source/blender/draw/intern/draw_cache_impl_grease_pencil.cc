@@ -347,12 +347,15 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
     selection_float.materialize(selection_slice);
     drawing_start_offset += curves.points_num();
 
+    curves.ensure_evaluated_lengths();
+
     auto populate_point = [&](IndexRange verts_range,
                               int curve_i,
                               int8_t start_cap,
                               int8_t end_cap,
                               int point_i,
                               int idx,
+                              float length,
                               GreasePencilStrokeVert &s_vert,
                               GreasePencilColorVert &c_vert) {
       copy_v3_v3(s_vert.pos, positions[point_i]);
@@ -365,8 +368,7 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
 
       s_vert.packed_asp_hard_rot = pack_rotation_aspect_hardness(
           rotations[point_i], stroke_point_aspect_ratios[curve_i], stroke_hardnesses[curve_i]);
-      /* TODO: Populate stroke UVs. */
-      s_vert.u_stroke = 0;
+      s_vert.u_stroke = length;
       /* TODO: Populate fill UVs. */
       s_vert.uv_fill[0] = s_vert.uv_fill[1] = 0;
 
@@ -390,6 +392,8 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
         MutableSpan<GreasePencilStrokeVert> verts_slice = verts.slice(verts_range);
         MutableSpan<GreasePencilColorVert> cols_slice = cols.slice(verts_range);
 
+        const Span<float> lengths = curves.evaluated_lengths_for_curve(curve_i, is_cyclic);
+
         /* First vertex is not drawn. */
         verts_slice.first().mat = -1;
 
@@ -407,24 +411,28 @@ static void grease_pencil_geom_batch_ensure(GreasePencil &grease_pencil, int cfr
         /* Write all the point attributes to the vertex buffers. Create a quad for each point. */
         for (const int i : IndexRange(points.size())) {
           const int idx = i + 1;
+          const float length = lengths[i - 1];
           populate_point(verts_range,
                          curve_i,
                          start_caps[curve_i],
                          end_caps[curve_i],
                          points[i],
                          idx,
+                         length,
                          verts_slice[idx],
                          cols_slice[idx]);
         }
 
         if (is_cyclic) {
           const int idx = points.size() + 1;
+          const float length = lengths[points.size() - 1];
           populate_point(verts_range,
                          curve_i,
                          start_caps[curve_i],
                          end_caps[curve_i],
                          points[0],
                          idx,
+                         length,
                          verts_slice[idx],
                          cols_slice[idx]);
         }
