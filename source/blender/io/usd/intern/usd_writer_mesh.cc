@@ -2,13 +2,21 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "usd_writer_mesh.h"
+
+#include "usd_armature_utils.h"
+#include "usd_blend_shape_utils.h"
 #include "usd_hierarchy_iterator.h"
+#include "usd_skel_convert.h"
+#include "usd_writer_armature.h"
 
 #include <pxr/usd/usdGeom/bboxCache.h>
 #include <pxr/usd/usdGeom/mesh.h>
 #include <pxr/usd/usdGeom/primvarsAPI.h>
 #include <pxr/usd/usdShade/material.h>
 #include <pxr/usd/usdShade/materialBindingAPI.h>
+#include <pxr/usd/usdSkel/animation.h>
+#include <pxr/usd/usdSkel/bindingAPI.h>
+#include <pxr/usd/usdSkel/blendShape.h>
 
 #include "BLI_assert.h"
 #include "BLI_math_color.hh"
@@ -16,17 +24,23 @@
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
 
+#include "BKE_armature.h"
 #include "BKE_attribute.h"
 #include "BKE_customdata.h"
+#include "BKE_deform.h"
+#include "BKE_key.h"
 #include "BKE_lib_id.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
 
 #include "DEG_depsgraph.h"
 
+#include "DNA_armature_types.h"
+#include "DNA_key_types.h"
 #include "DNA_layer_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
@@ -37,6 +51,10 @@
 #include "WM_api.hh"
 
 #include <iostream>
+
+namespace usdtokens {
+static const pxr::TfToken Anim("Anim", pxr::TfToken::Immortal);
+}  // namespace usdtokens
 
 namespace blender::io::usd {
 
@@ -100,6 +118,10 @@ void USDGenericMeshWriter::write_custom_data(const Mesh *mesh, pxr::UsdGeomMesh 
             meta_data.domain == ATTR_DOMAIN_EDGE ||
             ELEM(attribute_id.name(), "position", "material_index"))
         {
+          return true;
+        }
+
+        if (BKE_id_defgroup_name_find(&mesh->id, attribute_id.name().data(), nullptr, nullptr)) {
           return true;
         }
 
@@ -728,9 +750,221 @@ void USDGenericMeshWriter::write_surface_velocity(const Mesh *mesh, pxr::UsdGeom
 
 USDMeshWriter::USDMeshWriter(const USDExporterContext &ctx) : USDGenericMeshWriter(ctx) {}
 
-Mesh *USDMeshWriter::get_export_mesh(Object *object_eval, bool & /*r_needsfree*/)
+bool USDMeshWriter::exporting_skinned_mesh(const Object *obj) const
 {
-  return BKE_object_get_evaluated_mesh(object_eval);
+  return usd_export_context_.export_params.export_armatures && has_armature_modifier(obj);
+}
+
+bool USDMeshWriter::exporting_blend_shapes(const Object *obj) const
+{
+  return obj && usd_export_context_.export_params.export_shapekeys && is_mesh_with_shape_keys(obj);
+}
+
+void USDMeshWriter::init_skinned_mesh(const HierarchyContext &context)
+{
+  pxr::UsdStageRefPtr stage = usd_export_context_.stage;
+
+  pxr::UsdPrim mesh_prim = stage->GetPrimAtPath(usd_export_context_.usd_path);
+
+  if (!mesh_prim.IsValid()) {
+    WM_reportf(RPT_WARNING,
+               "%s: couldn't get valid mesh prim for mesh %s\n",
+               __func__,
+               usd_export_context_.usd_path.GetAsString().c_str());
+    return;
+  }
+
+  pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(mesh_prim);
+
+  if (!skel_api) {
+    WM_reportf(RPT_WARNING,
+               "%s: couldn't apply UsdSkelBindingAPI to mesh prim %s\n",
+               __func__,
+               usd_export_context_.usd_path.GetAsString().c_str());
+    return;
+  }
+
+  const Object *arm_obj = get_armature_modifier_obj(context.object);
+
+  if (!arm_obj) {
+    WM_reportf(RPT_WARNING,
+               "%s: couldn't get armature modifier object for skinned mesh %s\n",
+               __func__,
+               usd_export_context_.usd_path.GetAsString().c_str());
+    return;
+  }
+
+  std::vector<std::string> bone_names;
+  get_armature_bone_names(arm_obj, bone_names);
+
+  if (bone_names.empty()) {
+    WM_reportf(RPT_WARNING,
+               "%s: no armature bones for skinned mesh %s\n",
+               __func__,
+               usd_export_context_.usd_path.GetAsString().c_str());
+    return;
+  }
+
+  bool needsfree = false;
+  Mesh *mesh = get_export_mesh(context.object, needsfree);
+
+  if (mesh == nullptr) {
+    return;
+  }
+
+  try {
+    export_deform_verts(mesh, skel_api, bone_names);
+
+    if (needsfree) {
+      free_export_mesh(mesh);
+    }
+  }
+  catch (...) {
+    if (needsfree) {
+      free_export_mesh(mesh);
+    }
+    throw;
+  }
+}
+
+void USDMeshWriter::init_blend_shapes(const HierarchyContext &context)
+{
+  pxr::UsdStageRefPtr stage = usd_export_context_.stage;
+
+  pxr::UsdPrim mesh_prim = stage->GetPrimAtPath(usd_export_context_.usd_path);
+
+  if (!mesh_prim.IsValid()) {
+    WM_reportf(RPT_WARNING,
+               "%s: couldn't get valid mesh prim for mesh %s\n",
+               __func__,
+               mesh_prim.GetPath().GetAsString().c_str());
+    return;
+  }
+
+  create_blend_shapes(this->usd_export_context_.stage, context.object, mesh_prim);
+
+  if (!has_animated_mesh_shape_key(context.object)) {
+    return;
+  }
+
+  /* Create the skeleton animation. */
+  pxr::SdfPath anim_path = mesh_prim.GetPath().AppendChild(usdtokens::Anim);
+  const pxr::UsdSkelAnimation anim = pxr::UsdSkelAnimation::Define(stage, anim_path);
+
+  pxr::VtTokenArray blend_shape_names = get_blend_shapes_attr_value(mesh_prim);
+
+  if (!blend_shape_names.empty()) {
+    if (pxr::UsdAttribute blend_shapes_attr = anim.CreateBlendShapesAttr()) {
+      blend_shapes_attr.Set(blend_shape_names);
+    }
+  }
+}
+
+void USDMeshWriter::do_write(HierarchyContext &context)
+{
+  const bool write_skinned_mesh = exporting_skinned_mesh(context.object);
+  const bool write_blend_shapes = exporting_blend_shapes(context.object);
+
+  if (frame_has_been_written_ && (write_skinned_mesh || write_blend_shapes)) {
+    /* When writing skinned meshes or blend shapes, we only write the rest mesh once.
+     * However, we might update blend shape weights. */
+    if (write_blend_shapes) {
+      add_shape_key_weights_sample(context.object);
+    }
+    return;
+  }
+
+  USDGenericMeshWriter::do_write(context);
+
+  if (write_skinned_mesh) {
+    init_skinned_mesh(context);
+  }
+
+  if (write_blend_shapes) {
+    init_blend_shapes(context);
+    add_shape_key_weights_sample(context.object);
+  }
+}
+
+Mesh *USDMeshWriter::get_export_mesh(Object *object_eval, bool &r_needsfree)
+{
+  if (!exporting_blend_shapes(object_eval)) {
+    return BKE_object_get_evaluated_mesh(object_eval);
+  }
+
+  /* If we're exporting blend shapes, we export the unmodified mesh with
+   * the verts in the basis key positions. */
+  Mesh *mesh = BKE_object_get_pre_modified_mesh(object_eval);
+
+  if (!mesh || !mesh->key || !mesh->key->block.first) {
+    return nullptr;
+  }
+
+  KeyBlock *basis = reinterpret_cast<KeyBlock *>(mesh->key->block.first);
+
+  if (mesh->totvert != basis->totelem) {
+    WM_reportf(RPT_WARNING,
+               "%s: vertex and shape key element count mismatch for mesh %s\n",
+               __func__,
+               object_eval->id.name + 2);
+    return nullptr;
+  }
+
+  /* Make a copy of the mesh so we can update the verts to the basis shape. */
+  Mesh *temp_mesh = reinterpret_cast<Mesh *>(
+      BKE_id_copy_ex(nullptr, &mesh->id, nullptr, LIB_ID_COPY_LOCALIZE));
+
+  /* Update the verts. */
+  BKE_keyblock_convert_to_mesh(
+      basis,
+      reinterpret_cast<float(*)[3]>(temp_mesh->vert_positions_for_write().data()),
+      temp_mesh->totvert);
+
+  r_needsfree = true;
+
+  return temp_mesh;
+}
+
+void USDMeshWriter::add_shape_key_weights_sample(const Object *obj)
+{
+  if (!obj) {
+    return;
+  }
+
+  const Key *key = get_mesh_shape_key(obj);
+  if (!key) {
+    return;
+  }
+
+  pxr::UsdStageRefPtr stage = usd_export_context_.stage;
+
+  pxr::UsdPrim mesh_prim = stage->GetPrimAtPath(usd_export_context_.usd_path);
+
+  if (!mesh_prim.IsValid()) {
+    WM_reportf(RPT_WARNING,
+               "%s: couldn't get valid mesh prim for mesh %s\n",
+               __func__,
+               usd_export_context_.usd_path.GetAsString().c_str());
+    return;
+  }
+
+  pxr::VtFloatArray weights = get_blendshape_weights(key);
+  pxr::UsdTimeCode timecode = get_export_time_code();
+
+  /* Save the weights samples to a temporary privar which will be copied to
+   * a skeleton animation later. */
+  pxr::UsdAttribute temp_weights_attr = pxr::UsdGeomPrimvarsAPI(mesh_prim).CreatePrimvar(
+      TempBlendShapeWeightsPrimvarName, pxr::SdfValueTypeNames->FloatArray);
+
+  if (!temp_weights_attr) {
+    WM_reportf(RPT_WARNING,
+               "%s: couldn't create primvar %s on prim %s\n",
+               __func__,
+               mesh_prim.GetPath().GetAsString().c_str());
+    return;
+  }
+
+  temp_weights_attr.Set(weights, timecode);
 }
 
 }  // namespace blender::io::usd

@@ -11,6 +11,8 @@
 
 #include <pxr/usd/usdGeom/mesh.h>
 
+struct Key;
+
 namespace blender::io::usd {
 
 struct USDMeshData;
@@ -64,7 +66,24 @@ class USDMeshWriter : public USDGenericMeshWriter {
   USDMeshWriter(const USDExporterContext &ctx);
 
  protected:
+  virtual void do_write(HierarchyContext &context) override;
+
   virtual Mesh *get_export_mesh(Object *object_eval, bool &r_needsfree) override;
+
+  /**
+   * Return true if the object is to be written as a USD skinned mesh.
+   */
+  bool exporting_skinned_mesh(const Object *obj) const;
+
+  /**
+   * Return true if the object is to be written with USD blend shapes.
+   */
+  bool exporting_blend_shapes(const Object *obj) const;
+
+  void init_skinned_mesh(const HierarchyContext &context);
+  void init_blend_shapes(const HierarchyContext &context);
+
+  void add_shape_key_weights_sample(const Object *obj);
 };
 
 }  // namespace blender::io::usd

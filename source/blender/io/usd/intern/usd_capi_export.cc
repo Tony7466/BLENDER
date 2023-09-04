@@ -6,6 +6,7 @@
 #include "usd.hh"
 #include "usd_hierarchy_iterator.h"
 #include "usd_hook.h"
+#include "usd_modifier_disabler.h"
 
 #include <pxr/base/plug/registry.h>
 #include <pxr/pxr.h>
@@ -269,6 +270,10 @@ static pxr::UsdStageRefPtr export_to_stage(const USDExportParams &params,
 
   iter.release_writers();
 
+  if (params.export_shapekeys || params.export_armatures) {
+    iter.process_usd_skel();
+  }
+
   /* Set the default prim if it doesn't exist */
   if (!usd_stage->GetDefaultPrim()) {
     /* Use TraverseAll since it's guaranteed to be depth first and will get the first top level
@@ -321,6 +326,8 @@ static void export_startjob(void *customdata,
   else {
     DEG_graph_build_for_all_objects(data->depsgraph);
   }
+  ModifierDisabler mod_disabler(data->depsgraph, data->params);
+  mod_disabler.disable_modifiers();
   BKE_scene_graph_update_tagged(data->depsgraph, data->bmain);
 
   *progress = 0.0f;
