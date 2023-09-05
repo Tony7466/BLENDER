@@ -482,15 +482,22 @@ static void node_update_basis_from_declaration(
 
   BLI_assert(is_node_panels_supported(node));
   BLI_assert(node.runtime->panels.size() == node.num_panel_states);
-
   const nodes::NodeDeclaration &decl = *node.declaration();
-  const bool has_buttons = node_update_basis_buttons(C, ntree, node, block, locy);
+  /* Checked at various places to avoid adding duplicate spacers without anything in between. */
+  bool need_spacer = true;
+
+  /* Space at the top. */
+  if (need_spacer) {
+    locy -= NODE_DYS / 2;
+    need_spacer = false;
+  }
+
+  need_spacer = node_update_basis_buttons(C, ntree, node, block, locy);
 
   bNodeSocket *current_input = static_cast<bNodeSocket *>(node.inputs.first);
   bNodeSocket *current_output = static_cast<bNodeSocket *>(node.outputs.first);
   bNodePanelState *current_panel_state = node.panel_states_array;
   bke::bNodePanelRuntime *current_panel_runtime = node.runtime->panels.begin();
-  bool has_sockets = false;
 
   /* The panel stack keeps track of the hierarchy of panels. When a panel declaration is found a
    * new #PanelUpdate is added to the stack. Items in the declaration are added to the top panel of
@@ -515,11 +522,6 @@ static void node_update_basis_from_declaration(
       is_parent_collapsed = parent_update->is_collapsed;
     }
 
-    /* Space after header and between items. */
-    if (!is_parent_collapsed) {
-      locy -= NODE_SOCKDY;
-    }
-
     if (nodes::PanelDeclaration *panel_decl = dynamic_cast<nodes::PanelDeclaration *>(
             item_decl.get())) {
       BLI_assert(node.panel_states().contains_ptr(current_panel_state));
@@ -527,6 +529,7 @@ static void node_update_basis_from_declaration(
 
       if (!is_parent_collapsed) {
         locy -= NODE_DY;
+        need_spacer = true;
       }
 
       SET_FLAG_FROM_TEST(
@@ -549,12 +552,17 @@ static void node_update_basis_from_declaration(
           /* Must match the declaration. */
           BLI_assert(current_input != nullptr);
 
+          /* Space after header and between items. */
+          if (!is_parent_collapsed && current_input->is_visible()) {
+            locy -= NODE_SOCKDY;
+          }
+
           SET_FLAG_FROM_TEST(current_input->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
           if (is_parent_collapsed) {
             current_input->runtime->location = float2(locx, round(locy + NODE_DYS));
           }
           else {
-            has_sockets |= node_update_basis_socket(
+            need_spacer |= node_update_basis_socket(
                 C, ntree, node, *current_input, block, locx, locy);
           }
           current_input = current_input->next;
@@ -563,13 +571,18 @@ static void node_update_basis_from_declaration(
           /* Must match the declaration. */
           BLI_assert(current_output != nullptr);
 
+          /* Space after header and between items. */
+          if (!is_parent_collapsed && current_output->is_visible()) {
+            locy -= NODE_SOCKDY;
+          }
+
           SET_FLAG_FROM_TEST(current_output->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
           if (is_parent_collapsed) {
             current_output->runtime->location = float2(round(locx + NODE_WIDTH(node)),
                                                        round(locy + NODE_DYS));
           }
           else {
-            has_sockets |= node_update_basis_socket(
+            need_spacer |= node_update_basis_socket(
                 C, ntree, node, *current_output, block, locx, locy);
           }
           current_output = current_output->next;
@@ -593,9 +606,9 @@ static void node_update_basis_from_declaration(
   /* Enough items should have been added to close all panels. */
   BLI_assert(panel_updates.is_empty());
 
-  /* Little bit of space in end. */
-  if (has_sockets || !has_buttons) {
+  if (need_spacer) {
     locy -= NODE_DYS / 2;
+    need_spacer = false;
   }
 }
 
