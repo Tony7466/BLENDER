@@ -822,6 +822,8 @@ static void flushTransIntFrameActionData(TransInfo *t)
 
 static void invert_snap(eSnapMode &snap_mode)
 {
+  /* Make snapping work like before 4.0 where pressing CTRL will switch between snapping to seconds
+   * and frames. */
   if (snap_mode & SCE_SNAP_TO_FRAME) {
     snap_mode &= ~SCE_SNAP_TO_FRAME;
     snap_mode |= SCE_SNAP_TO_SECOND;
