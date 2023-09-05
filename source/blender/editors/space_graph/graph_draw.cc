@@ -1022,13 +1022,13 @@ static blender::float2 calculate_pixels_per_unit(View2D *v2d)
   return pixels_per_unit;
 }
 
-static float calculate_pixel_distance(rctf &bounds, blender::float2 pixels_per_unit)
+static float calculate_pixel_distance(const rctf &bounds, const blender::float2 pixels_per_unit)
 {
   return BLI_rctf_size_x(&bounds) * pixels_per_unit[0] +
          BLI_rctf_size_y(&bounds) * pixels_per_unit[1];
 }
 
-static void expand_key_bounds(BezTriple *left_key, BezTriple *right_key, rctf &bounds)
+static void expand_key_bounds(const BezTriple *left_key, const BezTriple *right_key, rctf &bounds)
 {
   bounds.xmax = right_key->vec[1][0];
   if (left_key->ipo == BEZT_IPO_BEZ) {
