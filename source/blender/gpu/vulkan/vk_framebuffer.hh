@@ -53,9 +53,7 @@ class VKFrameBuffer : public FrameBuffer {
                         eGPUDataFormat data_format,
                         const void *clear_value) override;
 
-  void attachment_set_loadstore_op(GPUAttachmentType type,
-                                   eGPULoadOp load_action,
-                                   eGPUStoreOp store_action) override;
+  void attachment_set_loadstore_op(GPUAttachmentType type, GPULoadStore /*ls*/) override;
 
   void read(eGPUFrameBufferBits planes,
             eGPUDataFormat format,
@@ -98,12 +96,12 @@ class VKFrameBuffer : public FrameBuffer {
                                       int color_attachment,
                                       VkImageLayout requested_layout);
   /**
-   * Ensure that the size of the framebuffer matches the first attachment resolution.
+   * Ensure that the size of the frame-buffer matches the first attachment resolution.
    *
    * Frame buffers attachments are updated when actually used as the image layout has to be
-   * correct. After binding framebuffers the layout of images can still be modified.
+   * correct. After binding frame-buffers the layout of images can still be modified.
    *
-   * But for correct behavior of blit/clear operation the size of the framebuffer should be
+   * But for correct behavior of blit/clear operation the size of the frame-buffer should be
    * set, when activating the frame buffer.
    */
   void update_size();

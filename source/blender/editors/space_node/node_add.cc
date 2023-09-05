@@ -324,6 +324,7 @@ static int node_add_group_exec(bContext *C, wmOperator *op)
 
   nodeSetActive(ntree, group_node);
   ED_node_tree_propagate_change(C, bmain, nullptr);
+  WM_event_add_notifier(C, NC_NODE | NA_ADDED, nullptr);
   DEG_relations_tag_update(bmain);
   return OPERATOR_FINISHED;
 }
@@ -425,6 +426,7 @@ static bool add_node_group_asset(const bContext &C,
 
   nodeSetActive(&edit_tree, group_node);
   ED_node_tree_propagate_change(&C, &bmain, nullptr);
+  WM_event_add_notifier(&C, NC_NODE | NA_ADDED, nullptr);
   DEG_relations_tag_update(&bmain);
 
   return true;
@@ -918,6 +920,8 @@ void NODE_OT_add_material(wmOperatorType *ot)
 
   WM_operator_properties_id_lookup(ot, true);
 }
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name New Node Tree Operator
