@@ -142,7 +142,7 @@ static int pyrna_WindowManager_clipboard_set(PyObject * /*self*/, PyObject *valu
 
 PyDoc_STRVAR(
     pyrna_draw_cursor_add_doc,
-    ".. method:: draw_cursor_add(callback, args, space_type, region_type)\n"
+    ".. classmethod:: draw_cursor_add(callback, args, space_type, region_type)\n"
     "\n"
     "   Add a new draw cursor handler to this space type.\n"
     "   It will be called every time the cursor for the specified region in the space "
@@ -166,7 +166,7 @@ PyDoc_STRVAR(
     "   :rtype: object\n");
 
 PyDoc_STRVAR(pyrna_draw_cursor_remove_doc,
-             ".. method:: draw_cursor_remove(handler)\n"
+             ".. classmethod:: draw_cursor_remove(handler)\n"
              "\n"
              "   Remove a draw cursor handler that was added previously.\n"
              "\n"
