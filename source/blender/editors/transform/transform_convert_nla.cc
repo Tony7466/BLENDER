@@ -539,7 +539,7 @@ static void createTransNlaData(bContext *C, TransInfo *t)
         if (strip->type == NLASTRIP_TYPE_TRANSITION) {
           continue;
         }
-        if (!(strip->flag & NLASTRIP_FLAG_SELECT)) {
+        if (strip->flag & NLASTRIP_FLAG_SELECT == 0) {
           continue;
         }
 
@@ -654,7 +654,7 @@ static void snap_transform_data(TransInfo *t, TransDataContainer *tc)
   if (t->state == TRANS_CANCEL) {
     return;
   }
-  if (!(t->tsnap.flag & SCE_SNAP)) {
+  if (t->tsnap.flag & SCE_SNAP == 0) {
     return;
   }
 
