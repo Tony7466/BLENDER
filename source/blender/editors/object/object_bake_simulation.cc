@@ -370,11 +370,14 @@ static void bake_simulation_job_startjob(void *customdata,
     for (ModifierBakeData &modifier_bake_data : object_bake_data.modifiers) {
       NodesModifierData &nmd = *modifier_bake_data.nmd;
       for (ZoneBakeData &zone_bake_data : modifier_bake_data.zones) {
-        if (std::unique_ptr<bake::NodeCache> &node_cache = nmd.runtime->cache->cache_by_id.lookup(
-                zone_bake_data.zone_id))
+        if (std::unique_ptr<bake::NodeCache> *node_cache_ptr =
+                nmd.runtime->cache->cache_by_id.lookup_ptr(zone_bake_data.zone_id))
         {
-          /* Tag the caches as being baked so that they are not changed anymore. */
-          node_cache->cache_status = bake::CacheStatus::Baked;
+          bake::NodeCache &node_cache = **node_cache_ptr;
+          if (!node_cache.frame_caches.is_empty()) {
+            /* Tag the caches as being baked so that they are not changed anymore. */
+            node_cache.cache_status = bake::CacheStatus::Baked;
+          }
         }
       }
     }

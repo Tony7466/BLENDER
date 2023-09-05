@@ -8,6 +8,7 @@
 #include "BLI_task.hh"
 
 #include "BKE_attribute_math.hh"
+#include "BKE_bake_geometry_nodes_modifier.hh"
 #include "BKE_bake_items_socket.hh"
 #include "BKE_compute_contexts.hh"
 #include "BKE_context.h"
@@ -39,6 +40,8 @@
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
+
+#include "MOD_nodes.hh"
 
 #include "node_geometry_util.hh"
 
@@ -816,7 +819,7 @@ static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const b
   dst_node->storage = dst_storage;
 }
 
-static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
+static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
 {
   const bNode *node = static_cast<bNode *>(ptr->data);
   SpaceNode *snode = CTX_wm_space_node(C);
@@ -858,9 +861,32 @@ static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
   PointerRNA bake_rna;
   RNA_pointer_create(&object->id, &RNA_NodesModifierBake, (void *)bake, &bake_rna);
 
-  uiItemR(layout, &bake_rna, "directory", UI_ITEM_NONE, "Path", ICON_NONE);
+  bool is_baked = false;
+  if (nmd.runtime->cache) {
+    const bke::bake::ModifierCache &cache = *nmd.runtime->cache;
+    std::lock_guard lock{cache.mutex};
+    if (const std::unique_ptr<bke::bake::NodeCache> *node_cache_ptr = cache.cache_by_id.lookup_ptr(
+            *bake_id))
+    {
+      const bke::bake::NodeCache &node_cache = **node_cache_ptr;
+      if (node_cache.cache_status == bke::bake::CacheStatus::Baked &&
+          !node_cache.frame_caches.is_empty())
+      {
+        is_baked = true;
+        const int first_frame = node_cache.frame_caches.first()->frame.frame();
+        const int last_frame = node_cache.frame_caches.last()->frame.frame();
+        char baked_label[1024];
+        SNPRINTF(baked_label, "Baked %d - %d", first_frame, last_frame);
+        uiItemL(layout, baked_label, ICON_NONE);
+      }
+    }
+  }
+
+  uiLayout *col = uiLayoutColumn(layout, true);
+  uiLayoutSetActive(col, !is_baked);
+  uiItemR(col, &bake_rna, "directory", UI_ITEM_NONE, "Path", ICON_NONE);
   if (StringRef(bake->directory).is_empty()) {
-    uiItemL(layout, "Uses modifier bake path", ICON_INFO);
+    uiItemL(col, "Uses modifier bake path", ICON_INFO);
   }
 }
 
@@ -910,7 +936,7 @@ static void node_register()
   ntype.gather_add_node_search_ops = search_node_add_ops;
   ntype.gather_link_search_ops = nullptr;
   ntype.insert_link = node_insert_link;
-  ntype.draw_buttons_ex = node_layout;
+  ntype.draw_buttons_ex = node_layout_ex;
   node_type_storage(&ntype, "NodeGeometrySimulationOutput", node_free_storage, node_copy_storage);
   nodeRegisterType(&ntype);
 }
