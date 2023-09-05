@@ -120,12 +120,7 @@ static void version_bonelayers_to_bonecollections(Main *bmain)
   char bcoll_name[MAX_NAME];
   char custom_prop_name[MAX_NAME];
 
-  LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-    if (ob->type != OB_ARMATURE || !ob->pose) {
-      continue;
-    }
-
-    bArmature *arm = reinterpret_cast<bArmature *>(ob->data);
+  LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
     IDProperty *arm_idprops = IDP_GetProperties(&arm->id, false);
 
     BLI_assert_msg(arm->edbo == nullptr, "did not expect an Armature to be saved in edit mode");
@@ -974,6 +969,11 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         scene->eevee.gi_irradiance_pool_size = 16;
       }
     }
+    
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      scene->toolsettings->snap_flag_anim |= SCE_SNAP;
+      scene->toolsettings->snap_anim_mode |= SCE_SNAP_TO_FRAME;
+    }
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 20)) {
@@ -1003,6 +1003,14 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       }
       BLI_listbase_clear(&ntree->inputs_legacy);
       BLI_listbase_clear(&ntree->outputs_legacy);
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 22)) {
+    /* Initialize root panel flags in files created before these flags were added. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      ntree->tree_interface.root_panel.flag |= NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS;
     }
     FOREACH_NODETREE_END;
   }

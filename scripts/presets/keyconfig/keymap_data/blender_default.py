@@ -267,7 +267,7 @@ def any_except(*args):
 
 
 # ------------------------------------------------------------------------------
-# Keymap Item Wrappers
+# Key-map Item Wrappers
 
 def op_menu(menu, kmi_args):
     return ("wm.call_menu", kmi_args, {"properties": [("name", menu)]})
@@ -850,7 +850,7 @@ def km_screen(params):
         ])
 
     if params.apple:
-        # Apple undo and user prefs
+        # Apple undo and user-preferences.
         items.extend([
             ("screen.userpref_show", {"type": 'COMMA', "value": 'PRESS', "oskey": True}, None),
         ])
@@ -918,7 +918,7 @@ def km_view2d(_params):
     )
 
     items.extend([
-        # Scrollbars
+        # Scroll-bars.
         ("view2d.scroller_activate", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
         ("view2d.scroller_activate", {"type": 'MIDDLEMOUSE', "value": 'PRESS'}, None),
         # Pan/scroll
@@ -960,7 +960,7 @@ def km_view2d_buttons_list(_params):
     )
 
     items.extend([
-        # Scrollbars
+        # Scroll-bars.
         ("view2d.scroller_activate", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
         ("view2d.scroller_activate", {"type": 'MIDDLEMOUSE', "value": 'PRESS'}, None),
         # Pan scroll
@@ -4041,7 +4041,7 @@ def km_grease_pencil_stroke_sculpt_mode(params):
         ("gpencil.active_frames_delete_all", {"type": 'DEL', "value": 'PRESS', "shift": True}, None),
         # Context menu
         *_template_items_context_panel("VIEW3D_PT_gpencil_sculpt_context_menu", params.context_menu_event),
-        # Automasking Pie menu
+        # Auto-masking Pie menu.
         op_menu_pie("VIEW3D_MT_sculpt_gpencil_automasking_pie", {
                     "type": 'A', "shift": True, "alt": True, "value": 'PRESS'}),
     ])
@@ -5717,7 +5717,7 @@ def km_edit_armature(params):
     return keymap
 
 
-# Metaball edit mode.
+# Meta-ball edit mode.
 def km_edit_metaball(params):
     items = []
     keymap = (
@@ -6743,7 +6743,7 @@ def km_generic_gizmo_tweak_modal_map(_params):
 
 
 # ------------------------------------------------------------------------------
-# Popup Keymaps
+# Popup Key-maps
 
 def km_popup_toolbar(_params):
     return (
@@ -8472,7 +8472,7 @@ def generate_keymaps(params=None):
         km_generic_gizmo_select(params),
         km_generic_gizmo_tweak_modal_map(params),
 
-        # Pop-Up Keymaps.
+        # Pop-Up Key-maps.
         km_popup_toolbar(params),
 
         # Tool System.
