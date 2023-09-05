@@ -8,19 +8,6 @@
 
 namespace blender::compositor::tests {
 
-static void print_area(MemoryBuffer *input, const rcti &area, std::string description = "")
-{
-  std::cout << description << ":" << std::endl;
-  for (BuffersIterator<float> it = input->iterate_with({}, area); !it.is_end(); ++it) {
-    std::setprecision(2);
-    std::cout << it.out[0] << "\t";
-    if (it.x == area.xmax - 1) {
-      std::cout << std::endl;
-    }
-  }
-  std::cout << std::endl;
-}
-
 TEST(SummedTableArea, FullFrame_5x2)
 {
   SummedAreaTableOperation sat;
@@ -32,16 +19,14 @@ TEST(SummedTableArea, FullFrame_5x2)
   MemoryBuffer output(DataType::Color, area);
 
   const float val[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-  MemoryBuffer input(DataType::Color, area);
-  input.fill(area, val);
-  Span<MemoryBuffer *> inputs{&input};
 
-  print_area(&input, area, "input");
+  std::shared_ptr<MemoryBuffer> input = std::make_shared<MemoryBuffer>(DataType::Color, area);
+  input->fill(area, val);
 
   /* sat.render() doesn't work because of a dependency of Operations on nodetree,
    * so call sat.update_memory_buffer() directly instead. */
 
-  sat.update_memory_buffer(&output, area, inputs);
+  sat.update_memory_buffer(&output, area, Span<MemoryBuffer *>{input.get()});
 
   /* First row. */
   EXPECT_FLOAT_EQ(output.get_elem(0, 0)[0], 1);
@@ -68,15 +53,11 @@ TEST(SummedTableArea, FullFrame_3x2_squared)
   MemoryBuffer output(DataType::Color, area);
 
   const float val[4] = {2.0f, 2.0f, 1.5f, 0.1f};
-  MemoryBuffer input(DataType::Color, area);
-  input.fill(area, val);
-  Span<MemoryBuffer *> inputs{&input};
+  std::shared_ptr<MemoryBuffer> input = std::make_shared<MemoryBuffer>(DataType::Color, area);
+  input->fill(area, val);
+  Span<MemoryBuffer *> inputs{input.get()};
 
-  print_area(&input, area, "input");
-
-  sat.update_memory_buffer(&output, area, inputs);
-
-  print_area(&output, area, "output");
+  sat.update_memory_buffer(&output, area, Span<MemoryBuffer *>{input.get()});
 
   /* First row. */
   EXPECT_FLOAT_EQ(output.get_elem(0, 0)[0], 4);
@@ -87,51 +68,6 @@ TEST(SummedTableArea, FullFrame_3x2_squared)
   EXPECT_FLOAT_EQ(output.get_elem(0, 1)[3], 0.02);
   EXPECT_FLOAT_EQ(output.get_elem(1, 1)[0], 16);
   EXPECT_FLOAT_EQ(output.get_elem(2, 1)[1], 24);
-}
-
-/* Can't test tiled operation in an isolated way. */
-TEST(DISABLED_SummedTableArea, Fullfram_vs_tiled)
-{
-  SummedAreaTableOperation sat_tiled, sat_fullframe;
-
-  sat_tiled.set_execution_model(eExecutionModel::Tiled);
-  sat_fullframe.set_execution_model(eExecutionModel::FullFrame);
-  rcti area{0, 2, 0, 3};
-
-  MemoryBuffer input(DataType::Color, area);
-  auto output_fullframe = std::make_shared<MemoryBuffer>(DataType::Color, area);
-  auto output_tiled = std::make_shared<MemoryBuffer>(DataType::Color, area);
-
-  /* Fill input with random numbers. */
-  for (BuffersIterator<float> it = input.iterate_with({}, area); !it.is_end(); ++it) {
-    it.out[0] = (float)rand();
-    it.out[1] = (float)rand();
-    it.out[2] = (float)rand();
-    it.out[3] = (float)rand();
-  }
-
-  Span<MemoryBuffer *> inputs{&input};
-
-  print_area(&input, area, "input");
-
-  output_tiled.reset(sat_tiled.create_memory_buffer(&area));
-  sat_fullframe.update_memory_buffer(output_fullframe.get(), area, inputs);
-
-  print_area(output_tiled.get(), area, "output_tiled");
-  print_area(output_fullframe.get(), area, "output_fullframe");
-
-  /* Expect full-frame and tiled implementation to give same results. */
-  bool loop_run = false;
-  for (BuffersIterator<float> it = output_tiled->iterate_with({}, area); !it.is_end(); ++it) {
-    loop_run = true;
-    float color_tiled[4], color_fullframe[4];
-
-    output_tiled->read_elem(it.x, it.y, color_tiled);
-    output_fullframe->read_elem(it.x, it.y, color_fullframe);
-
-    EXPECT_V4_NEAR(color_tiled, color_fullframe, FLT_EPSILON);
-  }
-  ASSERT_TRUE(loop_run);
 }
 
 class SummedTableAreaSumTest : public ::testing::Test {
@@ -151,11 +87,10 @@ class SummedTableAreaSumTest : public ::testing::Test {
     sat_ = std::make_shared<MemoryBuffer>(DataType::Color, area_);
 
     const float val[4] = {1.0f, 2.0f, 1.5f, 0.1f};
-    MemoryBuffer input(DataType::Color, area_);
-    input.fill(area_, val);
-    Span<MemoryBuffer *> inputs{&input};
+    std::shared_ptr<MemoryBuffer> input = std::make_shared<MemoryBuffer>(DataType::Color, area_);
+    input->fill(area_, val);
 
-    operation_->update_memory_buffer(sat_.get(), area_, inputs);
+    operation_->update_memory_buffer(sat_.get(), area_, Span<MemoryBuffer *>{input.get()});
   }
 
   std::shared_ptr<SummedAreaTableOperation> operation_;

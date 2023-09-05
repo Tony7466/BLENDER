@@ -67,9 +67,6 @@ void SummedAreaTableOperation::update_memory_buffer(MemoryBuffer *output,
     float4 color, upper, left, upper_left;
     image->read_elem(x, y, &color.x);
 
-    float tmp[4];
-    image->read_elem(x, y, tmp);
-
     output->read_elem_checked(x, y - 1, &upper.x);
     output->read_elem_checked(x - 1, y, &left.x);
     output->read_elem_checked(x - 1, y - 1, &upper_left.x);
