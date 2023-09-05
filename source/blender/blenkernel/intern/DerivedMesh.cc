@@ -466,7 +466,7 @@ static void mesh_calc_modifier_final_normals(const bool sculpt_dyntopo, Mesh *me
   }
   else {
     if (sculpt_dyntopo == false) {
-      /* Eager normal calculation can potentially be faster than deferring the to drawing code. */
+      /* Eager normal calculation can potentially be faster than deferring to drawing code. */
       if (domain == ATTR_DOMAIN_FACE) {
         mesh_final->face_normals();
       }
