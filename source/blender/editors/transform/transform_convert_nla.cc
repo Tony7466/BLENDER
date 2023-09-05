@@ -663,18 +663,20 @@ static void snap_transform_data(TransInfo *t, TransDataContainer *tc)
     invert_snap(snap_mode);
   }
 
-  /* Snap with the center of the strip because snapping should preserve the length. */
-  /* float center = 0;
+  float min_offset = FLT_MAX;
   for (int i = 0; i < tc->data_len; i++) {
-    center += *tc->data[i].loc;
+    TransData td = tc->data[i];
+    transform_snap_anim_flush_data(t, &td, snap_mode, td.loc);
+    const float offset = *td.loc - td.iloc[0];
+    if (fabs(offset) < fabs(min_offset)) {
+      min_offset = offset;
+    }
   }
-  center /= tc->data_len;
-  float snapped_center;
-  transform_snap_anim_flush_data(t, tc->data, snap_mode, &snapped_center);
-  const float offset = snapped_center - center;
+
   for (int i = 0; i < tc->data_len; i++) {
-    *tc->data[i].loc += offset;
-  } */
+    TransData td = tc->data[i];
+    *td.loc = td.iloc[0] + min_offset;
+  }
 }
 
 static void recalcData_nla(TransInfo *t)
