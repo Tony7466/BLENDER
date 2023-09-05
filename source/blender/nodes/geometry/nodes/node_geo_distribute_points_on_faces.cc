@@ -336,7 +336,7 @@ static void compute_normal_outputs(const Mesh &mesh,
                                    const Span<int> looptri_indices,
                                    MutableSpan<float3> r_normals)
 {
-  switch (mesh.normal_domain_all_info()) {
+  switch (mesh.normals_domain()) {
     case ATTR_DOMAIN_POINT: {
       const Span<int> corner_verts = mesh.corner_verts();
       const Span<MLoopTri> looptris = mesh.looptris();

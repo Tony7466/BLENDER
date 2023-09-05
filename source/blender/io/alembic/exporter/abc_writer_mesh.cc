@@ -525,7 +525,7 @@ static void get_loop_normals(const Mesh *mesh, std::vector<Imath::V3f> &normals)
 {
   normals.clear();
 
-  switch (mesh->normal_domain_all_info()) {
+  switch (mesh->normals_domain()) {
     case ATTR_DOMAIN_POINT: {
       /* If all faces are smooth shaded, and there are no custom normals, we don't need to
        * export normals at all. This is also done by other software, see #71246. */

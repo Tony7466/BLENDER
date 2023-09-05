@@ -661,7 +661,7 @@ void USDGenericMeshWriter::write_normals(const Mesh *mesh, pxr::UsdGeomMesh usd_
 
   MutableSpan dst_normals(reinterpret_cast<float3 *>(loop_normals.data()), loop_normals.size());
 
-  switch (mesh->normal_domain_all_info()) {
+  switch (mesh->normals_domain()) {
     case ATTR_DOMAIN_POINT: {
       array_utils::gather(mesh->vert_normals(), mesh->corner_verts(), dst_normals);
       break;

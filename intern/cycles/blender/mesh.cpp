@@ -1045,8 +1045,8 @@ static void create_mesh(Scene *scene,
   const int polys_num = b_mesh.polygons.length();
   int numfaces = (!subdivision) ? b_mesh.loop_triangles.length() : b_mesh.polygons.length();
   const int numcorners = b_mesh.loops.length();
-  bool use_loop_normals = b_mesh.normal_domain_all_info() ==
-                              BL::Mesh::normal_domain_all_info_CORNER &&
+  bool use_loop_normals = b_mesh.normals_domain() ==
+                              BL::Mesh::normals_domain_CORNER &&
                           (mesh->get_subdivision_type() != Mesh::SUBDIVISION_CATMULL_CLARK);
 
   /* If no faces, create empty mesh. */

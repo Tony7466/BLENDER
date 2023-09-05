@@ -299,7 +299,7 @@ static void normals_calc_faces_and_verts(const Span<float3> positions,
 /** \name Mesh Normal Calculation
  * \{ */
 
-int Mesh::normal_domain_all_info() const
+int Mesh::normals_domain() const
 {
   using namespace blender;
   using namespace blender::bke;
@@ -390,7 +390,7 @@ blender::Span<blender::float3> Mesh::corner_normals() const
   this->runtime->corner_normals_cache.ensure([&](Vector<float3> &r_data) {
     const OffsetIndices faces = this->faces();
     r_data.reinitialize(faces.total_size());
-    switch (this->normal_domain_all_info()) {
+    switch (this->normals_domain()) {
       case ATTR_DOMAIN_POINT: {
         array_utils::gather(this->vert_normals(), this->corner_verts(), r_data.as_mutable_span());
         break;

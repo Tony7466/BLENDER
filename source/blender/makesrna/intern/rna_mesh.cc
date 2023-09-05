@@ -1611,9 +1611,9 @@ int rna_Mesh_loops_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
   return true;
 }
 
-static int rna_Mesh_normal_domain_all_info_get(PointerRNA *ptr)
+static int rna_Mesh_normals_domain_get(PointerRNA *ptr)
 {
-  return rna_mesh(ptr)->normal_domain_all_info();
+  return rna_mesh(ptr)->normals_domain();
 }
 
 static void rna_Mesh_vertex_normals_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
@@ -2996,14 +2996,14 @@ static void rna_def_mesh(BlenderRNA *brna)
 
   rna_def_normal_layer_value(brna);
 
-  prop = RNA_def_property(srna, "normal_domain_all_info", PROP_ENUM, PROP_NONE);
+  prop = RNA_def_property(srna, "normals_domain", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_attribute_domain_only_mesh_no_edge_items);
   RNA_def_property_ui_text(
       prop,
       "Normal Domain All Info",
       "The attribute domain that gives enough information to represent the mesh's normals");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
-  RNA_def_property_enum_funcs(prop, "rna_Mesh_normal_domain_all_info_get", NULL, NULL);
+  RNA_def_property_enum_funcs(prop, "rna_Mesh_normals_domain_get", NULL, NULL);
 
   prop = RNA_def_property(srna, "vertex_normals", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "MeshNormalValue");

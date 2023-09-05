@@ -142,7 +142,7 @@ bool BKE_shrinkwrap_init_tree(
 
   if (force_normals || BKE_shrinkwrap_needs_normals(shrinkType, shrinkMode)) {
     data->face_normals = reinterpret_cast<const float(*)[3]>(mesh->face_normals().data());
-    if (mesh->normal_domain_all_info() == ATTR_DOMAIN_CORNER) {
+    if (mesh->normals_domain() == ATTR_DOMAIN_CORNER) {
       data->clnors = reinterpret_cast<const float(*)[3]>(mesh->corner_normals().data());
     }
   }

@@ -626,7 +626,7 @@ void GeometryExporter::create_normals(std::vector<Normal> &normals,
       "sharp_face", ATTR_DOMAIN_FACE, false);
 
   blender::Span<blender::float3> corner_normals;
-  if (me->normal_domain_all_info() == ATTR_DOMAIN_CORNER) {
+  if (me->normals_domain() == ATTR_DOMAIN_CORNER) {
     corner_normals = me->corner_normals();
   }
 

@@ -449,7 +449,7 @@ static void add_orco_mesh(
 
 static void mesh_calc_modifier_final_normals(const bool sculpt_dyntopo, Mesh *mesh_final)
 {
-  const eAttrDomain domain = eAttrDomain(mesh_final->normal_domain_all_info());
+  const eAttrDomain domain = eAttrDomain(mesh_final->normals_domain());
 
   /* Needed as `final_datamask` is not preserved outside modifier stack evaluation. */
   SubsurfRuntimeData *subsurf_runtime_data = mesh_final->runtime->subsurf_runtime_data;

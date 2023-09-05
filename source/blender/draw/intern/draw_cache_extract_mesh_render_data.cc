@@ -402,7 +402,7 @@ class VArrayImpl_For_SharpEdge : public VArrayImpl<bool> {
 
 /**
  * Returns whether loop normals are required because of mixed sharp and smooth flags.
- * Similar to #Mesh::normal_domain_all_info().
+ * Similar to #Mesh::normals_domain().
  */
 static bool bm_loop_normals_required(BMesh *bm)
 {
@@ -447,7 +447,7 @@ void mesh_render_data_update_normals(MeshRenderData &mr, const eMRDataType data_
       mr.face_normals = mr.me->face_normals();
     }
     if (((data_flag & MR_DATA_LOOP_NOR) &&
-         ELEM(mr.me->normal_domain_all_info(), ATTR_DOMAIN_CORNER, ATTR_DOMAIN_FACE)) ||
+         ELEM(mr.me->normals_domain(), ATTR_DOMAIN_CORNER, ATTR_DOMAIN_FACE)) ||
         (data_flag & MR_DATA_TAN_LOOP_NOR))
     {
       mr.loop_normals = mr.me->corner_normals();

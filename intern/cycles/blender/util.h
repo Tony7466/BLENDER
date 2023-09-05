@@ -93,7 +93,7 @@ static inline BL::Mesh object_to_mesh(BL::BlendData & /*data*/,
        * Also in edit mode do we need to make a copy, to ensure data layers like
        * UV are not empty. */
       if (mesh.is_editmode() ||
-          (mesh.normal_domain_all_info() == BL::Mesh::normal_domain_all_info_CORNER &&
+          (mesh.normals_domain() == BL::Mesh::normals_domain_CORNER &&
            subdivision_type == Mesh::SUBDIVISION_NONE))
       {
         BL::Depsgraph depsgraph(PointerRNA_NULL);
@@ -119,7 +119,7 @@ static inline BL::Mesh object_to_mesh(BL::BlendData & /*data*/,
 #endif
 
   if ((bool)mesh && subdivision_type == Mesh::SUBDIVISION_NONE) {
-    if (mesh.normal_domain_all_info() == BL::Mesh::normal_domain_all_info_CORNER) {
+    if (mesh.normals_domain() == BL::Mesh::normals_domain_CORNER) {
       mesh.split_faces();
     }
 

@@ -232,7 +232,7 @@ void MeshData::write_submeshes(const Mesh *mesh)
   const Span<MLoopTri> looptris = mesh->looptris();
 
   Span<float3> corner_normals;
-  if (mesh->normal_domain_all_info() == ATTR_DOMAIN_CORNER) {
+  if (mesh->normals_domain() == ATTR_DOMAIN_CORNER) {
     corner_normals = mesh->corner_normals();
   }
 

@@ -87,7 +87,7 @@ static ModifierData *modifier_get_last_enabled_for_mode(const Scene *scene,
 bool BKE_subsurf_modifier_use_custom_loop_normals(const SubsurfModifierData *smd, const Mesh *mesh)
 {
   return smd->flags & eSubsurfModifierFlag_UseCustomNormals &&
-         mesh->normal_domain_all_info() == ATTR_DOMAIN_CORNER;
+         mesh->normals_domain() == ATTR_DOMAIN_CORNER;
 }
 
 static bool is_subdivision_evaluation_possible_on_gpu()
