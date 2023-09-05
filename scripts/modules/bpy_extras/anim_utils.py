@@ -312,11 +312,6 @@ def bake_action_iter(
             paths_bbprops = [(base_fcurve_path + bbprop) for bbprop in BBONE_PROPS]
 
             keyframes = KeyframesCo()
-            keyframes.add_paths(path_location, 3)
-            keyframes.add_paths(path_quaternion, 4)
-            keyframes.add_paths(path_axis_angle, 4)
-            keyframes.add_paths(path_euler, 3)
-            keyframes.add_paths(path_scale, 3)
 
             if do_location:
                 keyframes.add_paths(path_location, 3)
