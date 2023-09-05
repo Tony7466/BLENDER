@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,6 +20,8 @@
  * #lazy_function::Graph is build that can be used when evaluating the graph (e.g. for logging).
  */
 
+#include <variant>
+
 #include "FN_lazy_function_graph.hh"
 #include "FN_lazy_function_graph_executor.hh"
 
@@ -28,15 +30,103 @@
 
 #include "BLI_compute_context.hh"
 
-#include "BKE_simulation_state.hh"
+#include "BKE_bake_items.hh"
+#include "BKE_node_tree_zones.hh"
 
 struct Object;
 struct Depsgraph;
+struct Scene;
 
 namespace blender::nodes {
 
 using lf::LazyFunction;
 using mf::MultiFunction;
+
+/** The structs in here describe the different possible behaviors of a simulation input node. */
+namespace sim_input {
+
+/**
+ * The data is just passed through the node. Data that is incompatible with simulations (like
+ * anonymous attributes), is removed though.
+ */
+struct PassThrough {
+};
+
+/**
+ * The input is not evaluated, instead the values provided here are output by the node.
+ */
+struct OutputCopy {
+  float delta_time;
+  bke::bake::BakeStateRef state;
+};
+
+/**
+ * Same as above, but the values can be output by move, instead of copy. This can reduce the amount
+ * of unnecessary copies, when the old simulation state is not needed anymore.
+ */
+struct OutputMove {
+  float delta_time;
+  bke::bake::BakeState state;
+};
+
+using Behavior = std::variant<PassThrough, OutputCopy, OutputMove>;
+
+}  // namespace sim_input
+
+/** The structs in here describe the different possible behaviors of a simulation output node. */
+namespace sim_output {
+
+/**
+ * The data is just passed through the node. Data that is incompatible with simulations (like
+ * anonymous attributes), is removed though.
+ */
+struct PassThrough {
+};
+
+/**
+ * Same as above, but also calls the given function with the data that is passed through the node.
+ * This allows the caller of geometry nodes (e.g. the modifier), to cache the new simulation state.
+ */
+struct StoreAndPassThrough {
+  std::function<void(bke::bake::BakeState state)> store_fn;
+};
+
+/**
+ * The inputs are not evaluated, instead the given cached items are output directly.
+ */
+struct ReadSingle {
+  bke::bake::BakeStateRef state;
+};
+
+/**
+ * The inputs are not evaluated, instead of a mix of the two given states is output.
+ */
+struct ReadInterpolated {
+  /** Factor between 0 and 1 that determines the influence of the two simulation states. */
+  float mix_factor;
+  bke::bake::BakeStateRef prev_state;
+  bke::bake::BakeStateRef next_state;
+};
+
+using Behavior = std::variant<PassThrough, StoreAndPassThrough, ReadSingle, ReadInterpolated>;
+
+}  // namespace sim_output
+
+/** Controls the behavior of one simulation zone. */
+struct SimulationZoneBehavior {
+  sim_input::Behavior input;
+  sim_output::Behavior output;
+};
+
+class GeoNodesSimulationParams {
+ public:
+  /**
+   * Get the expected behavior for the simulation zone with the given id (see #bNestedNodeRef).
+   * It's possible that this method called multiple times for the same id. In this case, the same
+   * pointer should be returned in each call.
+   */
+  virtual SimulationZoneBehavior *get(const int zone_id) const = 0;
+};
 
 /**
  * Data that is passed into geometry nodes evaluation from the modifier.
@@ -49,14 +139,7 @@ struct GeoNodesModifierData {
   /** Optional logger. */
   geo_eval_log::GeoModifierLog *eval_log = nullptr;
 
-  /** Read-only simulation states around the current frame. */
-  const bke::sim::ModifierSimulationState *current_simulation_state = nullptr;
-  const bke::sim::ModifierSimulationState *prev_simulation_state = nullptr;
-  const bke::sim::ModifierSimulationState *next_simulation_state = nullptr;
-  float simulation_state_mix_factor = 0.0f;
-  /** Used when the evaluation should create a new simulation state. */
-  bke::sim::ModifierSimulationState *current_simulation_state_for_write = nullptr;
-  float simulation_time_delta = 0.0f;
+  GeoNodesSimulationParams *simulation_params = nullptr;
 
   /**
    * Some nodes should be executed even when their output is not used (e.g. active viewer nodes and
@@ -73,6 +156,14 @@ struct GeoNodesModifierData {
   const Set<ComputeContextHash> *socket_log_contexts = nullptr;
 };
 
+struct GeoNodesOperatorData {
+  /** The object currently effected by the operator. */
+  const Object *self_object = nullptr;
+  /** Current evaluated depsgraph. */
+  Depsgraph *depsgraph = nullptr;
+  Scene *scene = nullptr;
+};
+
 /**
  * Custom user data that is passed to every geometry nodes related lazy-function evaluation.
  */
@@ -82,6 +173,10 @@ struct GeoNodesLFUserData : public lf::UserData {
    */
   GeoNodesModifierData *modifier_data = nullptr;
   /**
+   * Data from execution as operator in 3D viewport.
+   */
+  GeoNodesOperatorData *operator_data = nullptr;
+  /**
    * Current compute context. This is different depending in the (nested) node group that is being
    * evaluated.
    */
@@ -90,6 +185,10 @@ struct GeoNodesLFUserData : public lf::UserData {
    * Log socket values in the current compute context. Child contexts might use logging again.
    */
   bool log_socket_values = true;
+  /**
+   * Top-level node tree of the current evaluation.
+   */
+  const bNodeTree *root_ntree = nullptr;
 
   destruct_ptr<lf::LocalUserData> get_local(LinearAllocator<> &allocator) override;
 };
@@ -175,7 +274,7 @@ struct GeometryNodeLazyFunctionGraphMapping {
    */
   Map<const bNode *, const lf::FunctionNode *> group_node_map;
   Map<const bNode *, const lf::FunctionNode *> viewer_node_map;
-  Map<const bNode *, const lf::FunctionNode *> sim_output_node_map;
+  Map<const bke::bNodeTreeZone *, const lf::FunctionNode *> zone_node_map;
 
   /* Indexed by #bNodeSocket::index_in_all_outputs. */
   Array<int> lf_input_index_for_output_bsocket_usage;
@@ -190,29 +289,9 @@ struct GeometryNodeLazyFunctionGraphMapping {
  */
 struct GeometryNodesLazyFunctionGraphInfo {
   /**
-   * Allocator used for many things contained in this struct.
+   * Contains resources that need to be freed when the graph is not needed anymore.
    */
-  LinearAllocator<> allocator;
-  /**
-   * Many nodes are implemented as multi-functions. So this contains a mapping from nodes to their
-   * corresponding multi-functions.
-   */
-  std::unique_ptr<NodeMultiFunctions> node_multi_functions;
-  /**
-   * Many lazy-functions are build for the lazy-function graph. Since the graph does not own them,
-   * we have to keep track of them separately.
-   */
-  Vector<std::unique_ptr<LazyFunction>> functions;
-  /**
-   * Debug info that has to be destructed when the graph is not used anymore.
-   */
-  Vector<std::unique_ptr<lf::DummyDebugInfo>> dummy_debug_infos_;
-  /**
-   * Many sockets have default values. Since those are not owned by the lazy-function graph, we
-   * have to keep track of them separately. This only owns the values, the memory is owned by the
-   * allocator above.
-   */
-  Vector<GMutablePointer> values_to_destruct;
+  ResourceScope scope;
   /**
    * The actual lazy-function graph.
    */
@@ -226,9 +305,6 @@ struct GeometryNodesLazyFunctionGraphInfo {
    * This can be used as a simple heuristic for the complexity of the node group.
    */
   int num_inline_nodes_approximate = 0;
-
-  GeometryNodesLazyFunctionGraphInfo();
-  ~GeometryNodesLazyFunctionGraphInfo();
 };
 
 /**
@@ -263,8 +339,14 @@ std::unique_ptr<LazyFunction> get_simulation_input_lazy_function(
     GeometryNodesLazyFunctionGraphInfo &own_lf_graph_info);
 std::unique_ptr<LazyFunction> get_switch_node_lazy_function(const bNode &node);
 
-bke::sim::SimulationZoneID get_simulation_zone_id(const ComputeContext &context,
-                                                  const int output_node_id);
+struct FoundNestedNodeID {
+  int id;
+  bool is_in_simulation = false;
+  bool is_in_loop = false;
+};
+
+std::optional<FoundNestedNodeID> find_nested_node_id(const GeoNodesLFUserData &user_data,
+                                                     const int node_id);
 
 /**
  * An anonymous attribute created by a node.

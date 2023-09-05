@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,8 +9,13 @@
 #include "DNA_node_types.h"
 #include "DNA_space_types.h"
 
+#include "BLI_math_vector.h"
+#include "BLI_string.h"
+
 #include "BKE_context.h"
 #include "BKE_node_runtime.hh"
+
+#include "IMB_colormanagement.h"
 
 #include "node_shader_util.hh"
 
@@ -204,9 +209,12 @@ static void gpu_stack_from_data_list(GPUNodeStack *gs, ListBase *sockets, bNodeS
 
 static void data_from_gpu_stack_list(ListBase *sockets, bNodeStack **ns, GPUNodeStack *gs)
 {
-  int i;
-  LISTBASE_FOREACH_INDEX (bNodeSocket *, socket, sockets, i) {
-    node_data_from_gpu_stack(ns[i], &gs[i]);
+  int i = 0;
+  LISTBASE_FOREACH (bNodeSocket *, socket, sockets) {
+    if (ELEM(socket->type, SOCK_FLOAT, SOCK_INT, SOCK_VECTOR, SOCK_RGBA, SOCK_SHADER)) {
+      node_data_from_gpu_stack(ns[i], &gs[i]);
+      i++;
+    }
   }
 }
 

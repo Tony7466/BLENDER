@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "BLI_utildefines.h"
+
 #include "DNA_defs.h"
 #include "DNA_listBase.h"
 #include "DNA_session_uuid_types.h"
@@ -16,13 +18,12 @@
 namespace blender::bke::sim {
 struct ModifierSimulationCachePtr;
 }
-using ModifierSimulationCachePtrHandle = blender::bke::sim::ModifierSimulationCachePtr;
+namespace blender {
+struct NodesModifierRuntime;
+}
+using NodesModifierRuntimeHandle = blender::NodesModifierRuntime;
 #else
-typedef struct ModifierSimulationCachePtrHandle ModifierSimulationCachePtrHandle;
-#endif
-
-#ifdef __cplusplus
-extern "C" {
+typedef struct NodesModifierRuntimeHandle NodesModifierRuntimeHandle;
 #endif
 
 /* WARNING ALERT! TYPEDEF VALUES ARE WRITTEN IN FILES! SO DO NOT CHANGE!
@@ -111,6 +112,7 @@ typedef enum ModifierMode {
   eModifierMode_ApplyOnSpline = (1 << 6),
   eModifierMode_DisableTemporary = (1u << 31),
 } ModifierMode;
+ENUM_OPERATORS(ModifierMode, eModifierMode_DisableTemporary);
 
 typedef struct ModifierData {
   struct ModifierData *next, *prev;
@@ -2122,10 +2124,10 @@ typedef struct DataTransferModifierData {
 
   struct Object *ob_source;
 
-  /** See DT_TYPE_ enum in ED_object.h. */
+  /** See DT_TYPE_ enum in ED_object.hh. */
   int data_types;
 
-  /* See MREMAP_MODE_ enum in BKE_mesh_mapping.h */
+  /* See MREMAP_MODE_ enum in BKE_mesh_mapping.hh */
   int vmap_mode;
   int emap_mode;
   int lmap_mode;
@@ -2137,9 +2139,9 @@ typedef struct DataTransferModifierData {
 
   char _pad1[4];
 
-  /** DT_MULTILAYER_INDEX_MAX; See DT_FROMLAYERS_ enum in ED_object.h. */
+  /** DT_MULTILAYER_INDEX_MAX; See DT_FROMLAYERS_ enum in ED_object.hh. */
   int layers_select_src[5];
-  /** DT_MULTILAYER_INDEX_MAX; See DT_TOLAYERS_ enum in ED_object.h. */
+  /** DT_MULTILAYER_INDEX_MAX; See DT_TOLAYERS_ enum in ED_object.hh. */
   int layers_select_dst[5];
 
   /** See CDT_MIX_ enum in BKE_customdata.h. */
@@ -2232,6 +2234,9 @@ enum {
    * the mesh topology changes, but this heuristic sometimes fails. In these cases, users can
    * disable interpolation with this flag. */
   MOD_MESHSEQ_INTERPOLATE_VERTICES = (1 << 4),
+
+  /* Read animated custom attributes from point cache files. */
+  MOD_MESHSEQ_READ_ATTRIBUTES = (1 << 5),
 };
 
 typedef struct SDefBind {
@@ -2331,20 +2336,7 @@ typedef struct NodesModifierData {
    * Directory where baked simulation states are stored. This may be relative to the .blend file.
    */
   char *simulation_bake_directory;
-  void *_pad;
-
-  /**
-   * Contains logged information from the last evaluation.
-   * This can be used to help the user to debug a node tree.
-   */
-  void *runtime_eval_log;
-
-  /**
-   * Simulation cache that is shared between original and evaluated modifiers. This allows the
-   * original modifier to be removed, without also removing the simulation state which may still be
-   * used by the evaluated modifier.
-   */
-  ModifierSimulationCachePtrHandle *simulation_cache;
+  NodesModifierRuntimeHandle *runtime;
 } NodesModifierData;
 
 typedef struct MeshToVolumeModifierData {
@@ -2426,7 +2418,3 @@ typedef enum VolumeToMeshResolutionMode {
 typedef enum VolumeToMeshFlag {
   VOLUME_TO_MESH_USE_SMOOTH_SHADE = 1 << 0,
 } VolumeToMeshFlag;
-
-#ifdef __cplusplus
-}
-#endif

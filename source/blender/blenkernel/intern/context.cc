@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -42,7 +42,7 @@
 
 #include "RE_engine.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "CLG_log.h"
@@ -68,7 +68,7 @@ struct bContext {
     ARegion *region;
     ARegion *menu;
     wmGizmoGroup *gizmo_group;
-    bContextStore *store;
+    const bContextStore *store;
 
     /* Operator poll. */
     /**
@@ -101,7 +101,7 @@ struct bContext {
 
 /* context */
 
-bContext *CTX_create(void)
+bContext *CTX_create()
 {
   bContext *C = MEM_cnew<bContext>(__func__);
 
@@ -128,60 +128,51 @@ void CTX_free(bContext *C)
 
 /* store */
 
-bContextStore *CTX_store_add(ListBase *contexts,
+bContextStore *CTX_store_add(blender::Vector<std::unique_ptr<bContextStore>> &contexts,
                              const blender::StringRefNull name,
                              const PointerRNA *ptr)
 {
   /* ensure we have a context to put the entry in, if it was already used
    * we have to copy the context to ensure */
-  bContextStore *ctx = static_cast<bContextStore *>(contexts->last);
-
-  if (!ctx || ctx->used) {
-    if (ctx) {
-      ctx = MEM_new<bContextStore>(__func__, *ctx);
-    }
-    else {
-      ctx = MEM_new<bContextStore>(__func__);
-    }
-
-    BLI_addtail(contexts, ctx);
+  if (contexts.is_empty()) {
+    contexts.append(std::make_unique<bContextStore>());
+  }
+  else if (contexts.last()->used) {
+    auto new_ctx = std::make_unique<bContextStore>(bContextStore{contexts.last()->entries, false});
+    contexts.append(std::move(new_ctx));
   }
 
+  bContextStore *ctx = contexts.last().get();
   ctx->entries.append(bContextStoreEntry{name, *ptr});
-
   return ctx;
 }
 
-bContextStore *CTX_store_add_all(ListBase *contexts, bContextStore *context)
+bContextStore *CTX_store_add_all(blender::Vector<std::unique_ptr<bContextStore>> &contexts,
+                                 const bContextStore *context)
 {
-  /* ensure we have a context to put the entries in, if it was already used
+  /* ensure we have a context to put the entry in, if it was already used
    * we have to copy the context to ensure */
-  bContextStore *ctx = static_cast<bContextStore *>(contexts->last);
-
-  if (!ctx || ctx->used) {
-    if (ctx) {
-      ctx = MEM_new<bContextStore>(__func__, *ctx);
-    }
-    else {
-      ctx = MEM_new<bContextStore>(__func__);
-    }
-
-    BLI_addtail(contexts, ctx);
+  if (contexts.is_empty()) {
+    contexts.append(std::make_unique<bContextStore>());
+  }
+  else if (contexts.last()->used) {
+    auto new_ctx = std::make_unique<bContextStore>(bContextStore{contexts.last()->entries, false});
+    contexts.append(std::move(new_ctx));
   }
 
+  bContextStore *ctx = contexts.last().get();
   for (const bContextStoreEntry &src_entry : context->entries) {
     ctx->entries.append(src_entry);
   }
-
   return ctx;
 }
 
-bContextStore *CTX_store_get(bContext *C)
+const bContextStore *CTX_store_get(const bContext *C)
 {
   return C->wm.store;
 }
 
-void CTX_store_set(bContext *C, bContextStore *store)
+void CTX_store_set(bContext *C, const bContextStore *store)
 {
   C->wm.store = store;
 }
@@ -198,16 +189,6 @@ const PointerRNA *CTX_store_ptr_lookup(const bContextStore *store,
     }
   }
   return nullptr;
-}
-
-bContextStore *CTX_store_copy(const bContextStore *store)
-{
-  return MEM_new<bContextStore>(__func__, *store);
-}
-
-void CTX_store_free(bContextStore *store)
-{
-  MEM_delete(store);
 }
 
 /* is python initialized? */
@@ -498,6 +479,16 @@ ListBase CTX_data_collection_get(const bContext *C, const char *member)
 
   ListBase list = {nullptr, nullptr};
   return list;
+}
+
+void CTX_data_collection_remap_property(ListBase /*CollectionPointerLink*/ collection_pointers,
+                                        const char *propname)
+{
+  LISTBASE_FOREACH (CollectionPointerLink *, link, &collection_pointers) {
+    PointerRNA original_ptr = link->ptr;
+    PointerRNA remapped_ptr = RNA_pointer_get(&original_ptr, propname);
+    link->ptr = remapped_ptr;
+  }
 }
 
 int /*eContextResult*/ CTX_data_get(const bContext *C,
@@ -1187,7 +1178,9 @@ enum eContextObjectMode CTX_data_mode_enum_ex(const Object *obedit,
       case OB_CURVES:
         return CTX_MODE_EDIT_CURVES;
       case OB_GREASE_PENCIL:
-        return CTX_MODE_EDIT_GPENCIL;
+        return CTX_MODE_EDIT_GREASE_PENCIL;
+      case OB_POINTCLOUD:
+        return CTX_MODE_EDIT_POINT_CLOUD;
     }
   }
   else {
@@ -1211,23 +1204,26 @@ enum eContextObjectMode CTX_data_mode_enum_ex(const Object *obedit,
       if (object_mode & OB_MODE_PARTICLE_EDIT) {
         return CTX_MODE_PARTICLE;
       }
-      if (object_mode & OB_MODE_PAINT_GPENCIL) {
-        return CTX_MODE_PAINT_GPENCIL;
+      if (object_mode & OB_MODE_PAINT_GPENCIL_LEGACY) {
+        return CTX_MODE_PAINT_GPENCIL_LEGACY;
       }
-      if (object_mode & OB_MODE_EDIT_GPENCIL) {
-        return CTX_MODE_EDIT_GPENCIL;
+      if (object_mode & OB_MODE_EDIT_GPENCIL_LEGACY) {
+        return CTX_MODE_EDIT_GPENCIL_LEGACY;
       }
-      if (object_mode & OB_MODE_SCULPT_GPENCIL) {
-        return CTX_MODE_SCULPT_GPENCIL;
+      if (object_mode & OB_MODE_SCULPT_GPENCIL_LEGACY) {
+        return CTX_MODE_SCULPT_GPENCIL_LEGACY;
       }
-      if (object_mode & OB_MODE_WEIGHT_GPENCIL) {
-        return CTX_MODE_WEIGHT_GPENCIL;
+      if (object_mode & OB_MODE_WEIGHT_GPENCIL_LEGACY) {
+        return CTX_MODE_WEIGHT_GPENCIL_LEGACY;
       }
-      if (object_mode & OB_MODE_VERTEX_GPENCIL) {
-        return CTX_MODE_VERTEX_GPENCIL;
+      if (object_mode & OB_MODE_VERTEX_GPENCIL_LEGACY) {
+        return CTX_MODE_VERTEX_GPENCIL_LEGACY;
       }
       if (object_mode & OB_MODE_SCULPT_CURVES) {
         return CTX_MODE_SCULPT_CURVES;
+      }
+      if (object_mode & OB_MODE_PAINT_GREASE_PENCIL) {
+        return CTX_MODE_PAINT_GREASE_PENCIL;
       }
     }
   }
@@ -1256,6 +1252,8 @@ static const char *data_mode_strings[] = {
     "mball_edit",
     "lattice_edit",
     "curves_edit",
+    "grease_pencil_edit",
+    "point_cloud_edit",
     "posemode",
     "sculpt_mode",
     "weightpaint",
@@ -1269,6 +1267,7 @@ static const char *data_mode_strings[] = {
     "greasepencil_weight",
     "greasepencil_vertex",
     "curves_sculpt",
+    "grease_pencil_paint",
     nullptr,
 };
 BLI_STATIC_ASSERT(ARRAY_SIZE(data_mode_strings) == CTX_MODE_NUM + 1,
@@ -1500,7 +1499,7 @@ AssetHandle CTX_wm_asset_handle(const bContext *C, bool *r_is_valid)
 
   /* If the asset handle was not found in context directly, try if there's an active file with
    * asset data there instead. Not nice to have this here, would be better to have this in
-   * `ED_asset.h`, but we can't include that in BKE. Even better would be not needing this at all
+   * `ED_asset.hh`, but we can't include that in BKE. Even better would be not needing this at all
    * and being able to have editors return this in the usual `context` callback. But that would
    * require returning a non-owning pointer, which we don't have in the Asset Browser (yet). */
   FileDirEntry *file =
@@ -1514,9 +1513,10 @@ AssetHandle CTX_wm_asset_handle(const bContext *C, bool *r_is_valid)
   return AssetHandle{nullptr};
 }
 
-AssetRepresentation *CTX_wm_asset(const bContext *C)
+blender::asset_system::AssetRepresentation *CTX_wm_asset(const bContext *C)
 {
-  return static_cast<AssetRepresentation *>(ctx_data_pointer_get(C, "asset"));
+  return static_cast<blender::asset_system::AssetRepresentation *>(
+      ctx_data_pointer_get(C, "asset"));
 }
 
 Depsgraph *CTX_data_depsgraph_pointer(const bContext *C)

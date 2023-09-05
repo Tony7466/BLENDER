@@ -623,6 +623,8 @@ ccl_device_forceinline Spectrum mnee_eval_bsdf_contribution(ccl_private ShaderCl
     G = bsdf_G<MicrofacetType::GGX>(alpha2, cosNI, cosNO);
   }
 
+  Spectrum F = microfacet_fresnel(bsdf, wi, Ht, true);
+
   /*
    * bsdf_do = (1 - F) * D_do * G * |h.wi| / (n.wi * n.wo)
    *  pdf_dh = D_dh * cosThetaM
@@ -631,7 +633,7 @@ ccl_device_forceinline Spectrum mnee_eval_bsdf_contribution(ccl_private ShaderCl
    * contribution = bsdf_do * |do/dh| * |n.wo / n.h| / pdf_dh
    *              = (1 - F) * G * |h.wi / (n.wi * n.h^2)|
    */
-  return bsdf->weight * G * fabsf(cosHI / (cosNI * sqr(cosThetaM)));
+  return bsdf->weight * F * G * fabsf(cosHI / (cosNI * sqr(cosThetaM)));
 }
 
 /* Compute transfer matrix determinant |T1| = |dx1/dxn| (and |dh/dx| in the process) */
@@ -775,7 +777,9 @@ ccl_device_forceinline bool mnee_path_contribution(KernelGlobals kg,
   surface_shader_bsdf_eval(kg, state, sd, wo, throughput, ls->shader);
 
   /* Update light sample with new position / direction and keep pdf in vertex area measure. */
-  light_sample_update(kg, ls, vertices[vertex_count - 1].p);
+  const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
+  light_sample_update(
+      kg, ls, vertices[vertex_count - 1].p, vertices[vertex_count - 1].n, path_flag);
 
   /* Save state path bounce info in case a light path node is used in the refractive interface or
    * light shader graph. */

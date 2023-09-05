@@ -1,8 +1,9 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from bpy.types import Menu, Panel, UIList, WindowManager
+from bpy.app.translations import contexts as i18n_contexts
 from bl_ui.properties_grease_pencil_common import (
     GreasePencilSculptAdvancedPanel,
     GreasePencilDisplayPanel,
@@ -737,12 +738,12 @@ class VIEW3D_PT_tools_brush_stroke_smooth_stroke(Panel, View3DPaintPanel, Smooth
 
 
 class VIEW3D_PT_tools_weight_gradient(Panel, View3DPaintPanel):
-    # dont give context on purpose to not show this in the generic header toolsettings
+    # Don't give context on purpose to not show this in the generic header tool-settings
     # this is added only in the gradient tool's ToolDef
-    # bl_context = ".weightpaint" # dot on purpose (access from topbar)
+    # `bl_context = ".weightpaint"` # dot on purpose (access from top-bar)
     bl_label = "Falloff"
     bl_options = {'DEFAULT_CLOSED'}
-    # also dont draw as an extra panel in the sidebar (already included in the Brush settings)
+    # Also don't draw as an extra panel in the sidebar (already included in the Brush settings).
     bl_space_type = 'TOPBAR'
     bl_region_type = 'HEADER'
 
@@ -898,8 +899,6 @@ class VIEW3D_PT_sculpt_dyntopo(Panel, View3DPaintPanel):
 
         if sculpt.detail_type_method in {'CONSTANT', 'MANUAL'}:
             col.operator("sculpt.detail_flood_fill")
-
-        col.prop(sculpt, "use_smooth_shading")
 
 
 class VIEW3D_PT_sculpt_voxel_remesh(Panel, View3DPaintPanel):
@@ -1456,7 +1455,7 @@ class GreasePencilPaintPanel:
             if context.gpencil_data is None:
                 return False
 
-            # Hide for tools not using bruhses
+            # Hide for tools not using brushes.
             if tool_use_brush(context) is False:
                 return False
 
@@ -1582,7 +1581,8 @@ class VIEW3D_PT_tools_grease_pencil_brush_advanced(View3DPanel, Panel):
 
             elif brush.gpencil_tool == 'FILL':
                 row = col.row(align=True)
-                row.prop(gp_settings, "fill_draw_mode", text="Boundary")
+                row.prop(gp_settings, "fill_draw_mode", text="Boundary",
+                         text_ctxt=i18n_contexts.id_gpencil)
                 row.prop(
                     gp_settings,
                     "show_fill_boundary",
