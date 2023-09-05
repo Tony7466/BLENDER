@@ -13,6 +13,8 @@
 #include "BKE_context.h"
 #include "BKE_curves.hh"
 #include "BKE_instances.hh"
+#include "BKE_modifier.h"
+#include "BKE_object.h"
 #include "BKE_scene.h"
 
 #include "DEG_depsgraph_query.h"
@@ -27,11 +29,16 @@
 
 #include "DNA_curves_types.h"
 #include "DNA_mesh_types.h"
+#include "DNA_modifier_types.h"
 #include "DNA_pointcloud_types.h"
+#include "DNA_space_types.h"
 
 #include "NOD_add_node_search.hh"
 
 #include "ED_node.hh"
+
+#include "RNA_access.hh"
+#include "RNA_prototypes.h"
 
 #include "node_geometry_util.hh"
 
@@ -816,12 +823,45 @@ static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
   if (snode == nullptr) {
     return;
   }
+  if (snode->id == nullptr) {
+    return;
+  }
+  if (GS(snode->id->name) != ID_OB) {
+    return;
+  }
+  Object *object = reinterpret_cast<Object *>(snode->id);
+  /* TODO: Better handle pinned node tree. */
+  ModifierData *md = BKE_object_active_modifier(object);
+  if (md == nullptr || md->type != eModifierType_Nodes) {
+    return;
+  }
+  NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
+  if (nmd.node_group != snode->nodetree) {
+    return;
+  }
   const std::optional<int32_t> bake_id = ed::space_node::find_nested_node_id_in_root(*snode,
                                                                                      *node);
   if (!bake_id.has_value()) {
     return;
   }
-  uiItemL(layout, std::to_string(*bake_id).c_str(), ICON_NONE);
+  const NodesModifierBake *bake = nullptr;
+  for (const NodesModifierBake &iter_bake : Span{nmd.bakes, nmd.bakes_num}) {
+    if (iter_bake.id == *bake_id) {
+      bake = &iter_bake;
+      break;
+    }
+  }
+  if (bake == nullptr) {
+    return;
+  }
+
+  PointerRNA bake_rna;
+  RNA_pointer_create(&object->id, &RNA_NodesModifierBake, (void *)bake, &bake_rna);
+
+  uiItemR(layout, &bake_rna, "directory", UI_ITEM_NONE, "Path", ICON_NONE);
+  if (StringRef(bake->directory).is_empty()) {
+    uiItemL(layout, "Uses modifier bake path", ICON_INFO);
+  }
 }
 
 static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
