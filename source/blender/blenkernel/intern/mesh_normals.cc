@@ -849,12 +849,16 @@ static void mesh_edges_sharp_tag(const OffsetIndices<int> faces,
   }
 }
 
-static void build_edge_to_loop_map(const OffsetIndices<int> faces,
-                                   const Span<int> corner_verts,
-                                   const Span<int> corner_edges,
-                                   const Span<bool> sharp_faces,
-                                   const Span<bool> sharp_edges,
-                                   MutableSpan<int2> edge_to_loops)
+/**
+ * Builds a simplified map from edges to face corners, marking special values when
+ * it encounters sharp edges or borders between faces with flipped winding orders.
+ */
+static void build_edge_to_loop_map_with_flip_and_sharp(const OffsetIndices<int> faces,
+                                                       const Span<int> corner_verts,
+                                                       const Span<int> corner_edges,
+                                                       const Span<bool> sharp_faces,
+                                                       const Span<bool> sharp_edges,
+                                                       MutableSpan<int2> edge_to_loops)
 {
   auto face_is_smooth = [&](const int face_i) {
     return sharp_faces.is_empty() || !sharp_faces[face_i];
@@ -1370,12 +1374,13 @@ void normals_calc_loop(const Span<float3> vert_positions,
   array_utils::gather(vert_normals, corner_verts, r_loop_normals, 1024);
 
   /* This first loop check which edges are actually smooth, and compute edge vectors. */
-  build_edge_to_loop_map(faces,
-                         corner_verts,
-                         corner_edges,
-                         Span<bool>(sharp_faces, sharp_faces ? faces.size() : 0),
-                         Span<bool>(sharp_edges, sharp_edges ? edges.size() : 0),
-                         edge_to_loops);
+  build_edge_to_loop_map_with_flip_and_sharp(
+      faces,
+      corner_verts,
+      corner_edges,
+      Span<bool>(sharp_faces, sharp_faces ? faces.size() : 0),
+      Span<bool>(sharp_edges, sharp_edges ? edges.size() : 0),
+      edge_to_loops);
 
   Vector<int> single_corners;
   Vector<int> fan_corners;
