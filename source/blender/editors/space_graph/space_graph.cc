@@ -47,7 +47,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "graph_intern.h" /* own include */
 
@@ -61,8 +61,6 @@ static SpaceLink *graph_create(const ScrArea * /*area*/, const Scene *scene)
   /* Graph Editor - general stuff */
   sipo = static_cast<SpaceGraph *>(MEM_callocN(sizeof(SpaceGraph), "init graphedit"));
   sipo->spacetype = SPACE_GRAPH;
-
-  sipo->autosnap = SACTSNAP_FRAME;
 
   /* allocate DopeSheet data for Graph Editor */
   sipo->ads = static_cast<bDopeSheet *>(MEM_callocN(sizeof(bDopeSheet), "GraphEdit DopeSheet"));

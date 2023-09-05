@@ -39,7 +39,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "outliner_intern.hh"
 #include "tree/tree_display.hh"
@@ -514,8 +514,8 @@ static void outliner_space_blend_read_data(BlendDataReader *reader, SpaceLink *s
 }
 
 static void outliner_space_blend_read_after_liblink(BlendLibReader * /*reader*/,
-                                          ID * /*parent_id*/,
-                                          SpaceLink *sl)
+                                                    ID * /*parent_id*/,
+                                                    SpaceLink *sl)
 {
   SpaceOutliner *space_outliner = reinterpret_cast<SpaceOutliner *>(sl);
 
