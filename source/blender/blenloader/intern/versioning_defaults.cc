@@ -571,7 +571,7 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
 
   LISTBASE_FOREACH (Mesh *, mesh, &bmain->meshes) {
     /* Match default for new meshes. */
-    mesh->smoothresh = DEG2RADF(30);
+    mesh->smoothresh_legacy = DEG2RADF(30);
     /* Match voxel remesher options for all existing meshes in templates. */
     mesh->flag |= ME_REMESH_REPROJECT_VOLUME | ME_REMESH_REPROJECT_PAINT_MASK |
                   ME_REMESH_REPROJECT_SCULPT_FACE_SETS | ME_REMESH_REPROJECT_VERTEX_COLORS;

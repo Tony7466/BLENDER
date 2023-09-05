@@ -149,7 +149,7 @@ typedef struct Mesh {
   /** Mostly more flags used when editing or displaying the mesh. */
   uint16_t flag;
 
-  float smoothresh DNA_DEPRECATED;
+  float smoothresh_legacy DNA_DEPRECATED;
 
   /** Per-mesh settings for voxel remesh. */
   float remesh_voxel_size;
@@ -438,7 +438,7 @@ enum {
   ME_FLAG_DEPRECATED_2 = 1 << 2, /* deprecated */
   ME_FLAG_UNUSED_3 = 1 << 3,     /* cleared */
   ME_FLAG_UNUSED_4 = 1 << 4,     /* cleared */
-  ME_AUTOSMOOTH = 1 << 5,        /* deprecated */
+  ME_AUTOSMOOTH_LEGACY = 1 << 5,        /* deprecated */
   ME_FLAG_UNUSED_6 = 1 << 6,     /* cleared */
   ME_FLAG_UNUSED_7 = 1 << 7,     /* cleared */
   ME_REMESH_REPROJECT_VERTEX_COLORS = 1 << 8,
