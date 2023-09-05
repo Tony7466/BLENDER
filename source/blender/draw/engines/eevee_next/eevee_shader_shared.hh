@@ -89,6 +89,7 @@ enum eDebugMode : uint32_t {
 enum PrecomputeType : uint32_t {
   LUT_GGX_BRDF_SPLIT_SUM = 0u,
   LUT_GGX_BTDF_SPLIT_SUM = 1u,
+  LUT_BURLEY_SSS_PROFILE = 2u,
 };
 
 /** \} */
@@ -1204,6 +1205,37 @@ struct SubsurfaceData {
   int _pad1;
 };
 BLI_STATIC_ASSERT_ALIGN(SubsurfaceData, 16)
+
+static inline float3 burley_setup(float3 radius, float3 albedo)
+{
+  /* TODO(fclem): Avoid constant duplication. */
+  const float m_1_pi = 0.318309886183790671538;
+
+  float3 A = albedo;
+  /* Diffuse surface transmission, equation (6). */
+  float3 s = 1.9 - A + 3.5 * ((A - 0.8) * (A - 0.8));
+  /* Mean free path length adapted to fit ancient Cubic and Gaussian models. */
+  float3 l = 0.25 * m_1_pi * radius;
+
+  return l / s;
+}
+
+static inline float3 burley_eval(float3 d, float r)
+{
+  /* Slide 33. */
+  float3 exp_r_3_d;
+  /* TODO(fclem): Vectorize. */
+  exp_r_3_d.x = expf(-r / (3.0 * d.x));
+  exp_r_3_d.y = expf(-r / (3.0 * d.y));
+  exp_r_3_d.z = expf(-r / (3.0 * d.z));
+  float3 exp_r_d = exp_r_3_d * exp_r_3_d * exp_r_3_d;
+  /* NOTE:
+   * - Surface albedo is applied at the end.
+   * - This is normalized diffuse model, so the equation is multiplied
+   *   by 2*pi, which also matches `cdf()`.
+   */
+  return (exp_r_d + exp_r_3_d) / (4.0 * d);
+}
 
 /** \} */
 

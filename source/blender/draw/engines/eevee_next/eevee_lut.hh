@@ -24,5 +24,7 @@ extern const float bsdf_split_sum_ggx[64][64][2];
 extern const float btdf_split_sum_ggx[16][64][64][2];
 /* 4 different blue noise, one per channel. */
 extern const float blue_noise[64][64][4];
+/* Precomputed translucency profile of a slab of material with varying thickness. */
+extern const float burley_sss_profile[64][1];
 
 }  // namespace blender::eevee::lut

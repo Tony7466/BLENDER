@@ -65,7 +65,6 @@ struct SubsurfaceModule {
   void precompute_samples_location();
 
   /** Christensen-Burley implementation. */
-  static float burley_setup(float radius, float albedo);
   static float burley_sample(float d, float x_rand);
   static float burley_eval(float d, float r);
   static float burley_pdf(float d, float r);

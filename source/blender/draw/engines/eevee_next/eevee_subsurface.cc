@@ -64,7 +64,7 @@ void SubsurfaceModule::render(View &view, Framebuffer &fb, Texture &diffuse_ligh
 void SubsurfaceModule::precompute_samples_location()
 {
   /* Precompute sample position with white albedo. */
-  float d = burley_setup(1.0f, 1.0f);
+  float d = burley_setup(float3(1.0f), float3(1.0f)).x;
 
   float rand_u = inst_.sampling.rng_get(SAMPLING_SSS_U);
   float rand_v = inst_.sampling.rng_get(SAMPLING_SSS_V);
@@ -74,7 +74,7 @@ void SubsurfaceModule::precompute_samples_location()
     float theta = golden_angle * i + M_PI * 2.0f * rand_u;
     /* Scale using rand_v in order to keep first sample always at center. */
     float x = (1.0f + (rand_v / data_.sample_len)) * (i / float(data_.sample_len));
-    float r = burley_sample(d, x);
+    float r = SubsurfaceModule::burley_sample(d, x);
     data_.samples[i].x = cosf(theta) * r;
     data_.samples[i].y = sinf(theta) * r;
     data_.samples[i].z = 1.0f / burley_pdf(d, r);
@@ -91,7 +91,7 @@ const Vector<float> &SubsurfaceModule::transmittance_profile()
 
   /* Precompute sample position with white albedo. */
   float radius = 1.0f;
-  float d = burley_setup(radius, 1.0f);
+  float d = burley_setup(float3(radius), float3(1.0f)).x;
 
   /* For each distance d we compute the radiance incoming from an hypothetical parallel plane. */
   for (auto i : IndexRange(SSS_TRANSMIT_LUT_SIZE)) {
@@ -110,7 +110,7 @@ const Vector<float> &SubsurfaceModule::transmittance_profile()
       float r_prev = (r_fp * (j + 0.0f)) / SSS_TRANSMIT_LUT_STEP_RES;
       float r_next = (r_fp * (j + 1.0f)) / SSS_TRANSMIT_LUT_STEP_RES;
       r = hypotf(r, distance);
-      float R = burley_eval(d, r);
+      float R = SubsurfaceModule::burley_eval(d, r);
       /* Since the profile and configuration are radially symmetrical we
        * can just evaluate it once and weight it accordingly */
       float disk_area = square_f(r_next) - square_f(r_prev);
@@ -149,17 +149,6 @@ const Vector<float> &SubsurfaceModule::transmittance_profile()
  * by Per Christensen
  * https://graphics.pixar.com/library/ApproxBSSRDF/approxbssrdfslides.pdf
  * \{ */
-
-float SubsurfaceModule::burley_setup(float radius, float albedo)
-{
-  float A = albedo;
-  /* Diffuse surface transmission, equation (6). */
-  float s = 1.9f - A + 3.5f * square_f(A - 0.8f);
-  /* Mean free path length adapted to fit ancient Cubic and Gaussian models. */
-  float l = 0.25 * M_1_PI * radius;
-
-  return l / s;
-}
 
 float SubsurfaceModule::burley_sample(float d, float x_rand)
 {

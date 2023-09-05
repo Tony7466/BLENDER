@@ -115,6 +115,43 @@ vec4 ggx_btdf_split_sum(vec3 lut_coord)
   return vec4(transmittance, reflectance, 0.0, 0.0);
 }
 
+/* Generate SSS translucency profile.
+ * We precompute the exit radiance for a slab of homogenous material backface-lit by a directional
+ * light. We only integrate for a single color primary since the profile will be applied to each
+ * primary independantly.
+ * For each distance `d` we compute the radiance incoming from an hypothetical parallel plane. */
+vec4 burley_sss_profile(vec3 lut_coord)
+{
+  /* Precompute sample position with white albedo. */
+  vec3 albedo = vec3(1.0);
+  vec3 radii = vec3(1.0, 0.2, 0.1);
+  vec3 d = burley_setup(radii, albedo);
+  /* Distance from the lit surface plane.
+   * Compute to a larger maximum distance to have a smoother falloff for all channels. */
+  float depth = SSS_TRANSMIT_LUT_RADIUS * lut_coord.x;
+  /* Integrate transmission. */
+  vec3 profile = vec3(0.0);
+  vec3 weight = vec3(0.0);
+  const uint sample_count = 512 * 512;
+  for (uint i = 0u; i < sample_count; i++) {
+    vec2 rand = hammersley_2d(i, sample_count);
+    vec3 dir = sample_hemisphere(rand);
+    float pdf = 1.0 / M_2PI;
+    /* Compute distance to the "shading" point through the medium. */
+    float r = length((dir / max(1e-8, dir.z)) * depth);
+    vec3 weight = burley_eval(d, r) / pdf;
+
+    vec3 sample_radiance = vec3(1.0);
+    profile += sample_radiance * weight;
+    weight += weight;
+  }
+  profile /= weight;
+  /* Mask off the end progressively to 0. */
+  profile *= saturate(1.0 - pow5f(lut_coord.x));
+
+  return vec4(profile, 0.0);
+}
+
 void main()
 {
   /* Make sure coordinates are covering the whole [0..1] range at texel center. */
@@ -127,6 +164,9 @@ void main()
       break;
     case LUT_GGX_BTDF_SPLIT_SUM:
       result = ggx_btdf_split_sum(lut_normalized_coordinate);
+      break;
+    case LUT_BURLEY_SSS_PROFILE:
+      result = burley_sss_profile(lut_normalized_coordinate);
       break;
   }
   imageStore(table_img, ivec3(gl_GlobalInvocationID), result);
