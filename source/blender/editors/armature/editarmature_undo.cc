@@ -17,10 +17,13 @@
 
 #include "BLI_array_utils.h"
 #include "BLI_listbase.h"
+#include "BLI_map.hh"
 
 #include "BKE_armature.h"
 #include "BKE_context.h"
+#include "BKE_idprop.h"
 #include "BKE_layer.h"
+#include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
 #include "BKE_undo_system.h"
@@ -32,11 +35,77 @@
 #include "ED_undo.hh"
 #include "ED_util.hh"
 
+#include "ANIM_bone_collections.h"
+
 #include "WM_api.hh"
 #include "WM_types.hh"
 
 /** We only need this locally. */
 static CLG_LogRef LOG = {"ed.undo.armature"};
+
+/* Utility functions. */
+
+/**
+ * Performs a semi-shallow free of the ebone list base.
+ *
+ * This includes ID properties, but not Bone Collection membership.
+ */
+static void armature_ebone_listbase_free(ListBase *ebones, const bool do_id_user)
+{
+  EditBone *ebone, *ebone_next;
+
+  for (ebone = static_cast<EditBone *>(ebones->first); ebone; ebone = ebone_next) {
+    ebone_next = ebone->next;
+
+    if (ebone->prop) {
+      IDP_FreeProperty_ex(ebone->prop, do_id_user);
+    }
+
+    MEM_freeN(ebone);
+  }
+
+  BLI_listbase_clear(ebones);
+}
+
+/**
+ * Performs a semi-shallow copy of the ebone list base.
+ *
+ * This includes ID properties, but not Bone Collection membership.
+ */
+static void armature_ebone_listbase_copy(ListBase *ebones_dst,
+                                         ListBase *ebones_src,
+                                         const bool do_id_user)
+{
+  BLI_assert(BLI_listbase_is_empty(ebones_dst));
+
+  LISTBASE_FOREACH (EditBone *, ebone_src, ebones_src) {
+    EditBone *ebone_dst = static_cast<EditBone *>(MEM_dupallocN(ebone_src));
+    if (ebone_dst->prop) {
+      ebone_dst->prop = IDP_CopyProperty_ex(ebone_dst->prop,
+                                            do_id_user ? 0 : LIB_ID_CREATE_NO_USER_REFCOUNT);
+    }
+    ebone_src->temp.ebone = ebone_dst;
+    BLI_addtail(ebones_dst, ebone_dst);
+  }
+
+  /* set pointers */
+  LISTBASE_FOREACH (EditBone *, ebone_dst, ebones_dst) {
+    if (ebone_dst->parent) {
+      ebone_dst->parent = ebone_dst->parent->temp.ebone;
+    }
+    if (ebone_dst->bbone_next) {
+      ebone_dst->bbone_next = ebone_dst->bbone_next->temp.ebone;
+    }
+    if (ebone_dst->bbone_prev) {
+      ebone_dst->bbone_prev = ebone_dst->bbone_prev->temp.ebone;
+    }
+
+    /* Duplicate bone collection references list base.  Each list item
+     * will still point to the same bone collection, but the list items
+     * themselves are duplicated. */
+    BLI_duplicatelist(&ebone_dst->bone_collections, &ebone_dst->bone_collections);
+  }
+}
 
 /* -------------------------------------------------------------------- */
 /** \name Undo Conversion
@@ -44,19 +113,47 @@ static CLG_LogRef LOG = {"ed.undo.armature"};
 
 struct UndoArmature {
   EditBone *act_edbone;
-  ListBase lb;
+  BoneCollection *active_collection;
+  ListBase ebones;
+  ListBase bone_collections;
   size_t undo_size;
 };
 
 static void undoarm_to_editarm(UndoArmature *uarm, bArmature *arm)
 {
-  EditBone *ebone;
+  /* Clear bone collections on the armature. */
+  LISTBASE_FOREACH_MUTABLE (BoneCollection *, arm_bcoll, &arm->collections) {
+    ANIM_armature_bonecoll_remove(arm, arm_bcoll);
+  }
 
-  ED_armature_ebone_listbase_free(arm->edbo, true);
-  ED_armature_ebone_listbase_copy(arm->edbo, &uarm->lb, true);
+  /* Undo armature bcoll -> edit armature new bcoll. */
+  blender::Map<BoneCollection *, BoneCollection *> bcoll_map;
+
+  /* Copy bone collections. */
+  LISTBASE_FOREACH (BoneCollection *, uarm_bcoll, &uarm->bone_collections) {
+    BoneCollection *arm_bcoll = static_cast<BoneCollection *>(MEM_dupallocN(uarm_bcoll));
+
+    /* This is rebuilt from the edit bones, so we don't need to copy it. */
+    BLI_listbase_clear(&arm_bcoll->bones);
+
+    arm_bcoll->prop = nullptr;
+    if (uarm_bcoll->prop) {
+      arm_bcoll->prop = IDP_CopyProperty_ex(uarm_bcoll->prop, 0);
+    }
+    BLI_addtail(&arm->collections, arm_bcoll);
+    bcoll_map.add(uarm_bcoll, arm_bcoll);
+  }
+
+  /* Active bone collection. */
+  arm->active_collection = bcoll_map.lookup_default(uarm->active_collection, nullptr);
+
+  /* Copy edit bones. */
+  armature_ebone_listbase_free(arm->edbo, true);
+  armature_ebone_listbase_copy(arm->edbo, &uarm->ebones, true);
 
   /* active bone */
   if (uarm->act_edbone) {
+    EditBone *ebone;
     ebone = uarm->act_edbone;
     arm->act_edbone = ebone->temp.ebone;
   }
@@ -65,6 +162,13 @@ static void undoarm_to_editarm(UndoArmature *uarm, bArmature *arm)
   }
 
   ED_armature_ebone_listbase_temp_clear(arm->edbo);
+
+  /* Remap bone collections. */
+  LISTBASE_FOREACH (EditBone *, ebone, arm->edbo) {
+    LISTBASE_FOREACH (BoneCollectionReference *, bcoll_ref, &ebone->bone_collections) {
+      bcoll_ref->bcoll = bcoll_map.lookup(bcoll_ref->bcoll);
+    }
+  }
 }
 
 static void *undoarm_from_editarm(UndoArmature *uarm, bArmature *arm)
@@ -74,17 +178,45 @@ static void *undoarm_from_editarm(UndoArmature *uarm, bArmature *arm)
   /* TODO: include size of ID-properties. */
   uarm->undo_size = 0;
 
-  ED_armature_ebone_listbase_copy(&uarm->lb, arm->edbo, false);
+  /* Edit armature bcoll -> undo armature bcoll. */
+  blender::Map<BoneCollection *, BoneCollection *> bcoll_map;
 
-  /* active bone */
+  /* Copy bone collections. */
+  LISTBASE_FOREACH (BoneCollection *, arm_bcoll, &arm->collections) {
+    BoneCollection *uarm_bcoll = static_cast<BoneCollection *>(MEM_dupallocN(arm_bcoll));
+
+    /* This is rebuilt from the edit bones, so we don't need to copy it. */
+    BLI_listbase_clear(&uarm_bcoll->bones);
+
+    uarm_bcoll->prop = nullptr;
+    if (arm_bcoll->prop) {
+      uarm_bcoll->prop = IDP_CopyProperty_ex(arm_bcoll->prop, LIB_ID_CREATE_NO_USER_REFCOUNT);
+    }
+    BLI_addtail(&uarm->bone_collections, uarm_bcoll);
+    bcoll_map.add(arm_bcoll, uarm_bcoll);
+  }
+
+  /* Active bone collection. */
+  uarm->active_collection = bcoll_map.lookup_default(arm->active_collection, nullptr);
+
+  /* Copy edit bones. */
+  armature_ebone_listbase_copy(&uarm->ebones, arm->edbo, false);
+
+  /* Active bone. */
   if (arm->act_edbone) {
     EditBone *ebone = arm->act_edbone;
     uarm->act_edbone = ebone->temp.ebone;
   }
 
-  ED_armature_ebone_listbase_temp_clear(&uarm->lb);
+  ED_armature_ebone_listbase_temp_clear(&uarm->ebones);
 
-  LISTBASE_FOREACH (EditBone *, ebone, &uarm->lb) {
+  LISTBASE_FOREACH (EditBone *, ebone, &uarm->ebones) {
+    /* Remap bone collections. */
+    LISTBASE_FOREACH (BoneCollectionReference *, bcoll_ref, &ebone->bone_collections) {
+      bcoll_ref->bcoll = bcoll_map.lookup(bcoll_ref->bcoll);
+    }
+
+    /* Edit bone contribution to undo size. */
     uarm->undo_size += sizeof(EditBone);
   }
 
@@ -93,7 +225,7 @@ static void *undoarm_from_editarm(UndoArmature *uarm, bArmature *arm)
 
 static void undoarm_free_data(UndoArmature *uarm)
 {
-  ED_armature_ebone_listbase_free(&uarm->lb, false);
+  armature_ebone_listbase_free(&uarm->ebones, false);
 }
 
 static Object *editarm_object_from_context(bContext *C)

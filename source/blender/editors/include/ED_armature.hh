@@ -244,12 +244,6 @@ void ED_armature_to_edit(bArmature *arm);
 void ED_armature_edit_free(bArmature *arm);
 void ED_armature_ebone_listbase_temp_clear(ListBase *lb);
 
-/**
- * Free list of bones and their properties.
- */
-void ED_armature_ebone_listbase_free(ListBase *lb, bool do_id_user);
-void ED_armature_ebone_listbase_copy(ListBase *lb_dst, ListBase *lb_src, bool do_id_user);
-
 int ED_armature_ebone_selectflag_get(const EditBone *ebone);
 void ED_armature_ebone_selectflag_set(EditBone *ebone, int flag);
 void ED_armature_ebone_select_set(EditBone *ebone, bool select);

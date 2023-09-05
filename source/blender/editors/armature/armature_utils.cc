@@ -825,63 +825,6 @@ void ED_armature_to_edit(bArmature *arm)
 /** \name Used by Undo for Armature EditMode
  * \{ */
 
-void ED_armature_ebone_listbase_free(ListBase *lb, const bool do_id_user)
-{
-  EditBone *ebone, *ebone_next;
-
-  for (ebone = static_cast<EditBone *>(lb->first); ebone; ebone = ebone_next) {
-    ebone_next = ebone->next;
-
-    if (ebone->prop) {
-      IDP_FreeProperty_ex(ebone->prop, do_id_user);
-    }
-
-    MEM_freeN(ebone);
-  }
-
-  BLI_listbase_clear(lb);
-}
-
-void ED_armature_ebone_listbase_copy(ListBase *lb_dst, ListBase *lb_src, const bool do_id_user)
-{
-  BLI_assert(BLI_listbase_is_empty(lb_dst));
-
-  LISTBASE_FOREACH (EditBone *, ebone_src, lb_src) {
-    EditBone *ebone_dst = static_cast<EditBone *>(MEM_dupallocN(ebone_src));
-    if (ebone_dst->prop) {
-      ebone_dst->prop = IDP_CopyProperty_ex(ebone_dst->prop,
-                                            do_id_user ? 0 : LIB_ID_CREATE_NO_USER_REFCOUNT);
-    }
-    ebone_src->temp.ebone = ebone_dst;
-    BLI_addtail(lb_dst, ebone_dst);
-  }
-
-  /* set pointers */
-  LISTBASE_FOREACH (EditBone *, ebone_dst, lb_dst) {
-    if (ebone_dst->parent) {
-      ebone_dst->parent = ebone_dst->parent->temp.ebone;
-    }
-    if (ebone_dst->bbone_next) {
-      ebone_dst->bbone_next = ebone_dst->bbone_next->temp.ebone;
-    }
-    if (ebone_dst->bbone_prev) {
-      ebone_dst->bbone_prev = ebone_dst->bbone_prev->temp.ebone;
-    }
-
-    /* TODO: WORKAROUND: this is a temporary hack to avoid segfaults when
-     * undoing, because bone collections are not handled properly by the
-     * armature undo code yet.  This just discards all collection membership
-     * data to avoid dangling references.  This MUST be addressed properly
-     * before release.
-     * See: https://projects.blender.org/blender/blender/pulls/109976#issuecomment-1008429
-     */
-    BoneCollectionReference *bcoll_ref = (BoneCollectionReference *)(&ebone_dst->bone_collections);
-    bcoll_ref->next = nullptr;
-    bcoll_ref->prev = nullptr;
-    bcoll_ref->bcoll = nullptr;
-  }
-}
-
 void ED_armature_ebone_listbase_temp_clear(ListBase *lb)
 {
   /* be sure they don't hang ever */
