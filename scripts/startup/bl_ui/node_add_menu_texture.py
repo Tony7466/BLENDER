@@ -18,8 +18,6 @@ class NODE_MT_category_texture_input(Menu):
         node_add_menu.add_node_type(layout, "TextureNodeImage")
         node_add_menu.add_node_type(layout, "TextureNodeTexture")
 
-        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
-
 
 class NODE_MT_category_texture_output(Menu):
     bl_idname = "NODE_MT_category_texture_output"
@@ -29,8 +27,6 @@ class NODE_MT_category_texture_output(Menu):
         layout = self.layout
         node_add_menu.add_node_type(layout, "TextureNodeOutput")
         node_add_menu.add_node_type(layout, "TextureNodeViewer")
-
-        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
 class NODE_MT_category_texture_color(Menu):
@@ -47,8 +43,6 @@ class NODE_MT_category_texture_color(Menu):
         node_add_menu.add_node_type(layout, "TextureNodeCombineColor")
         node_add_menu.add_node_type(layout, "TextureNodeSeparateColor")
 
-        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
-
 
 class NODE_MT_category_texture_converter(Menu):
     bl_idname = "NODE_MT_category_texture_converter"
@@ -62,8 +56,6 @@ class NODE_MT_category_texture_converter(Menu):
         node_add_menu.add_node_type(layout, "TextureNodeRGBToBW")
         node_add_menu.add_node_type(layout, "TextureNodeValToNor")
 
-        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
-
 
 class NODE_MT_category_texture_distort(Menu):
     bl_idname = "NODE_MT_category_texture_distort"
@@ -76,8 +68,6 @@ class NODE_MT_category_texture_distort(Menu):
         node_add_menu.add_node_type(layout, "TextureNodeScale")
         node_add_menu.add_node_type(layout, "TextureNodeTranslate")
 
-        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
-
 
 class NODE_MT_category_texture_pattern(Menu):
     bl_idname = "NODE_MT_category_texture_pattern"
@@ -87,8 +77,6 @@ class NODE_MT_category_texture_pattern(Menu):
         layout = self.layout
         node_add_menu.add_node_type(layout, "TextureNodeBricks")
         node_add_menu.add_node_type(layout, "TextureNodeChecker")
-
-        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
 class NODE_MT_category_texture_texture(Menu):
@@ -108,8 +96,6 @@ class NODE_MT_category_texture_texture(Menu):
         node_add_menu.add_node_type(layout, "TextureNodeTexVoronoi")
         node_add_menu.add_node_type(layout, "TextureNodeTexWood")
 
-        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
-
 
 class NODE_MT_category_texture_group(Menu):
     bl_idname = "NODE_MT_category_texture_group"
@@ -118,7 +104,6 @@ class NODE_MT_category_texture_group(Menu):
     def draw(self, context):
         layout = self.layout
         node_add_menu.draw_node_group_add_menu(context, layout)
-        node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 
 class NODE_MT_texture_node_add_all(Menu):
@@ -138,8 +123,6 @@ class NODE_MT_texture_node_add_all(Menu):
         layout.separator()
         layout.menu("NODE_MT_category_texture_group")
         layout.menu("NODE_MT_category_layout")
-
-        node_add_menu.draw_root_assets(layout)
 
 
 classes = (
