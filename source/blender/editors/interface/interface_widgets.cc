@@ -2739,7 +2739,7 @@ static void widget_state_menu_item(uiWidgetType *wt,
   }
   else if (state->but_flag & (UI_BUT_ACTIVE_DEFAULT | UI_SELECT_DRAW))
   {
-    /* Currently-selected list item. */
+    /* Currently-selected item. */
     copy_v4_v4_uchar(wt->wcol.inner, wt->wcol.inner_sel);
     copy_v4_v4_uchar(wt->wcol.text, wt->wcol.text_sel);
   }
