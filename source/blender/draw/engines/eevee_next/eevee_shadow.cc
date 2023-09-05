@@ -928,7 +928,10 @@ void ShadowModule::end_sync()
         sub.bind_ssbo("bounds_buf", &manager.bounds_buf.current());
         sub.push_constant("resource_len", int(curr_casters_.size()));
         inst_.lights.bind_resources(&sub);
-        sub.dispatch(int3(divide_ceil_u(curr_casters_.size(), SHADOW_BOUNDS_GROUP_SIZE), 1, 1));
+        sub.dispatch(int3(
+            divide_ceil_u(std::max(curr_casters_.size(), int64_t(1)), SHADOW_BOUNDS_GROUP_SIZE),
+            1,
+            1));
         sub.barrier(GPU_BARRIER_SHADER_STORAGE);
       }
       {
