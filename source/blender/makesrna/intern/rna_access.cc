@@ -184,11 +184,13 @@ static void rna_pointer_inherit_id(StructRNA *type, PointerRNA *parent, PointerR
   }
 }
 
-void RNA_blender_rna_pointer_create(PointerRNA *r_ptr)
+PointerRNA RNA_blender_rna_pointer_create()
 {
-  r_ptr->owner_id = nullptr;
-  r_ptr->type = &RNA_BlenderRNA;
-  r_ptr->data = &BLENDER_RNA;
+  PointerRNA ptr;
+  ptr.owner_id = nullptr;
+  ptr.type = &RNA_BlenderRNA;
+  ptr.data = &BLENDER_RNA;
+  return ptr;
 }
 
 PointerRNA rna_pointer_inherit_refine(PointerRNA *ptr, StructRNA *type, void *data)

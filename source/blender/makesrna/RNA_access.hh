@@ -51,7 +51,7 @@ bool RNA_path_resolved_create(PointerRNA *ptr,
                               int prop_index,
                               PathResolvedRNA *r_anim_rna);
 
-void RNA_blender_rna_pointer_create(PointerRNA *r_ptr);
+PointerRNA RNA_blender_rna_pointer_create();
 void RNA_pointer_recast(PointerRNA *ptr, PointerRNA *r_ptr);
 
 extern const PointerRNA PointerRNA_NULL;

@@ -7721,10 +7721,9 @@ void BPY_update_rna_module()
  * without having the data-types in Blender. */
 PyObject *BPY_rna_doc()
 {
-  PointerRNA ptr;
 
   /* For now, return the base RNA type rather than a real module. */
-  RNA_blender_rna_pointer_create(&ptr);
+  PointerRNA ptr = RNA_blender_rna_pointer_create();
 
   return pyrna_struct_CreatePyObject(&ptr);
 }
@@ -7835,7 +7834,7 @@ PyObject *BPY_rna_types()
   BPy_TypesModule_State *state = static_cast<BPy_TypesModule_State *>(
       PyModule_GetState(submodule));
 
-  RNA_blender_rna_pointer_create(&state->ptr);
+  state->ptr = RNA_blender_rna_pointer_create();
   state->prop = RNA_struct_find_property(&state->ptr, "structs");
 
   /* Internal base types we have no other accessors for. */
@@ -8815,13 +8814,12 @@ void pyrna_alloc_types()
 #ifdef DEBUG
   PyGILState_STATE gilstate;
 
-  PointerRNA ptr;
   PropertyRNA *prop;
 
   gilstate = PyGILState_Ensure();
 
   /* Avoid doing this lookup for every getattr. */
-  RNA_blender_rna_pointer_create(&ptr);
+  PointerRNA ptr = RNA_blender_rna_pointer_create();
   prop = RNA_struct_find_property(&ptr, "structs");
 
   RNA_PROP_BEGIN (&ptr, itemptr, prop) {
@@ -8844,11 +8842,10 @@ void pyrna_alloc_types()
 
 void pyrna_free_types()
 {
-  PointerRNA ptr;
   PropertyRNA *prop;
 
   /* Avoid doing this lookup for every getattr. */
-  RNA_blender_rna_pointer_create(&ptr);
+  PointerRNA ptr = RNA_blender_rna_pointer_create();
   prop = RNA_struct_find_property(&ptr, "structs");
 
   RNA_PROP_BEGIN (&ptr, itemptr, prop) {
@@ -9143,11 +9140,10 @@ static PyObject *pyrna_unregister_class(PyObject * /*self*/, PyObject *py_class)
   if (G.debug & G_DEBUG_PYTHON) {
     /* Remove all properties using this class. */
     StructRNA *srna_iter;
-    PointerRNA ptr_rna;
     PropertyRNA *prop_rna;
     const char *prop_identifier = nullptr;
 
-    RNA_blender_rna_pointer_create(&ptr_rna);
+    PointerRNA ptr_rna = RNA_blender_rna_pointer_create();
     prop_rna = RNA_struct_find_property(&ptr_rna, "structs");
 
     /* Loop over all structs. */
