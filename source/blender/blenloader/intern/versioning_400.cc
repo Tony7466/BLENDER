@@ -994,14 +994,20 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       LISTBASE_FOREACH_MUTABLE (bNodeSocket *, legacy_socket, &ntree->inputs_legacy) {
         MEM_SAFE_FREE(legacy_socket->default_attribute_name);
         MEM_SAFE_FREE(legacy_socket->default_value);
-        MEM_SAFE_FREE(legacy_socket->prop);
+        if (legacy_socket->prop) {
+          IDP_FreeProperty(legacy_socket->prop);
+          MEM_SAFE_FREE(legacy_socket->prop);
+        }
         MEM_delete(legacy_socket->runtime);
         MEM_freeN(legacy_socket);
       }
       LISTBASE_FOREACH_MUTABLE (bNodeSocket *, legacy_socket, &ntree->outputs_legacy) {
         MEM_SAFE_FREE(legacy_socket->default_attribute_name);
         MEM_SAFE_FREE(legacy_socket->default_value);
-        MEM_SAFE_FREE(legacy_socket->prop);
+        if (legacy_socket->prop) {
+          IDP_FreeProperty(legacy_socket->prop);
+          MEM_SAFE_FREE(legacy_socket->prop);
+        }
         MEM_delete(legacy_socket->runtime);
         MEM_freeN(legacy_socket);
       }
