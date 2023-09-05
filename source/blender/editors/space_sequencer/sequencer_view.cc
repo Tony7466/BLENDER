@@ -358,6 +358,8 @@ static int sequencer_view_selected_exec(bContext *C, wmOperator *op)
     seq_view_collection_rect_timeline(scene, strips, &cur_new);
   }
 
+  SEQ_collection_free(strips);
+
   const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
   UI_view2d_smooth_view(C, region, &cur_new, smooth_viewtx);
 
