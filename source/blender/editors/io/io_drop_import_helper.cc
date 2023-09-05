@@ -80,11 +80,11 @@ static int wm_drop_import_helper_exec(bContext *C, wmOperator *op)
   char extension[MAX_NAME];
   RNA_string_get(op->ptr, "extension", extension);
   blender::Vector<wmOperatorType *> operators = poll_operators_for_extension(C, extension);
-  
+
   if (operators.size() == 0) {
     return OPERATOR_CANCELLED;
   }
-  
+
   wmOperatorType *ot = operators[0];
 
   PointerRNA op_props = copy_file_properties_to_operator_type_pointer(op, ot);
@@ -190,7 +190,7 @@ static char *tooltip(bContext *C, wmDrag *drag, const int /*xy*/[2], wmDropBox *
     return nullptr;
   }
   if (operators.size() == 1) {
-    return BLI_strdup(operators[0]->name);
+    return BLI_strdup(operators[0]->name ? operators[0]->name : operators[0]->idname);
   }
 
   return BLI_strdup("Multiple operators can handle this file(s), drop to pick which to use");
