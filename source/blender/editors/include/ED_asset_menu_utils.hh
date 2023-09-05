@@ -5,14 +5,7 @@
 /** \file
  * \ingroup edasset
  *
- * UI/Editor level API for catalog operations, creating richer functionality than the asset system
- * catalog API provides (which this uses internally).
- *
- * Functions can be expected to not perform any change when #ED_asset_catalogs_read_only() returns
- * true. Generally UI code should disable such functionality in this case, so these functions are
- * not called at all.
- *
- * Note that `ED_asset_catalog.h` is part of this API.
+ * Code for dealing with dynamic asset menus and passing assets to operators with RNA properties.
  */
 
 #pragma once
