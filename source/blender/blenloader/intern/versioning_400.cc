@@ -996,7 +996,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         MEM_SAFE_FREE(legacy_socket->default_value);
         if (legacy_socket->prop) {
           IDP_FreeProperty(legacy_socket->prop);
-          MEM_SAFE_FREE(legacy_socket->prop);
         }
         MEM_delete(legacy_socket->runtime);
         MEM_freeN(legacy_socket);
@@ -1006,7 +1005,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         MEM_SAFE_FREE(legacy_socket->default_value);
         if (legacy_socket->prop) {
           IDP_FreeProperty(legacy_socket->prop);
-          MEM_SAFE_FREE(legacy_socket->prop);
         }
         MEM_delete(legacy_socket->runtime);
         MEM_freeN(legacy_socket);
