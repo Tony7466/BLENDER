@@ -100,43 +100,58 @@ class SummedTableAreaSumTest : public ::testing::Test {
 
 TEST_F(SummedTableAreaSumTest, FullyInside)
 {
-  rcti area{.xmin = 1, .xmax = 3, .ymin = 1, .ymax = 3};
+  rcti area;
+  area.xmin = 1; area.xmax = 3;
+  area.ymin = 1; area.ymax = 3;
   float4 sum = summed_area_table_sum(sat_.get(), area);
   ASSERT_EQ(sum[0], 9);
 }
 
 TEST_F(SummedTableAreaSumTest, LeftEdge)
 {
-  rcti area{.xmin = 0, .xmax = 2, .ymin = 0, .ymax = 2};
+  rcti area;
+  area.xmin = 0; area.xmax = 2;
+  area.ymin = 0; area.ymax = 2;
   float4 sum = summed_area_table_sum(sat_.get(), area);
   ASSERT_EQ(sum[0], 9);
 }
 
 TEST_F(SummedTableAreaSumTest, RightEdge)
 {
-  rcti area{.xmin = area_.xmax - 2, .xmax = area_.xmax, .ymin = 0, .ymax = 2};
+  rcti area;
+  area.xmin = area_.xmax - 2;
+  area.xmax = area_.xmax;
+  area.ymin = 0;
+  area.ymax = 2;
   float4 sum = summed_area_table_sum(sat_.get(), area);
   ASSERT_EQ(sum[0], 6);
 }
 
 TEST_F(SummedTableAreaSumTest, LowerRightCorner)
 {
-  rcti area{
-      .xmin = area_.xmax - 1, .xmax = area_.xmax, .ymin = area_.ymax - 1, .ymax = area_.ymax};
+  rcti area;
+  area.xmin = area_.xmax - 1;
+  area.xmax = area_.xmax;
+  area.ymin = area_.ymax - 1;
+  area.ymax = area_.ymax;
   float4 sum = summed_area_table_sum(sat_.get(), area);
   ASSERT_EQ(sum[0], 1);
 }
 
 TEST_F(SummedTableAreaSumTest, TopLine)
 {
-  rcti area{.xmin = 0, .xmax = 1, .ymin = 0, .ymax = 0};
+  rcti area;
+  area.xmin = 0; area.xmax = 1;
+  area.ymin = 0; area.ymax = 0;
   float4 sum = summed_area_table_sum(sat_.get(), area);
   ASSERT_EQ(sum[0], 2);
 }
 
 TEST_F(SummedTableAreaSumTest, ButtomLine)
 {
-  rcti area{.xmin = 0, .xmax = 4, .ymin = 3, .ymax = 3};
+  rcti area;
+  area.xmin = 0; area.xmax = 4;
+  area.ymin = 3; area.ymax = 3;
   float4 sum = summed_area_table_sum(sat_.get(), area);
   ASSERT_EQ(sum[0], 5);
 }
