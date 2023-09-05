@@ -348,6 +348,8 @@ enum {
   BLF_BAD_FONT = 1 << 16,
   /** This font is managed by the FreeType cache subsystem. */
   BLF_CACHED = 1 << 17,
+  /** For legacy DejaVu. No hinting and half-pixel too tight. */
+  BLF_LEGACY_SPACING = 1 << 18,
 };
 
 #define BLF_DRAW_STR_DUMMY_MAX 1024

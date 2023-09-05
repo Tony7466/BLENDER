@@ -168,6 +168,11 @@ void blf_glyph_cache_clear(struct FontBLF *font);
  */
 struct GlyphBLF *blf_glyph_ensure(struct FontBLF *font, struct GlyphCacheBLF *gc, uint charcode);
 
+struct GlyphBLF *blf_glyph_ensure_subpixel(struct FontBLF *font,
+                                           struct GlyphCacheBLF *gc,
+                                           struct GlyphBLF *g,
+                                           int32_t pen_x);
+
 void blf_glyph_free(struct GlyphBLF *g);
 void blf_glyph_draw(
     struct FontBLF *font, struct GlyphCacheBLF *gc, struct GlyphBLF *g, int x, int y);

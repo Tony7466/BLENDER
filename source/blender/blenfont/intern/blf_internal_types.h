@@ -91,12 +91,6 @@ BLI_INLINE ft_pix ft_pix_from_float(float v)
   return lroundf(v * 64.0f);
 }
 
-BLI_INLINE ft_pix ft_pix_round_advance(ft_pix v, ft_pix step)
-{
-  /** See #USE_LEGACY_SPACING, rounding logic could change here. */
-  return FT_PIX_DEFAULT_ROUNDING(v) + FT_PIX_DEFAULT_ROUNDING(step);
-}
-
 #undef FT_PIX_ROUND
 #undef FT_PIX_CEIL
 #undef FT_PIX_DEFAULT_ROUNDING
@@ -104,9 +98,6 @@ BLI_INLINE ft_pix ft_pix_round_advance(ft_pix v, ft_pix step)
 /** \} */
 
 #define BLF_BATCH_DRAW_LEN_MAX 2048 /* in glyph */
-
-/** Number of characters in #GlyphCacheBLF.glyph_ascii_table. */
-#define GLYPH_ASCII_TABLE_SIZE 128
 
 /** Number of characters in #KerningCacheBLF.table. */
 #define KERNING_CACHE_TABLE_SIZE 128
@@ -161,9 +152,6 @@ typedef struct GlyphCacheBLF {
   /** The glyphs. */
   ListBase bucket[257];
 
-  /** Fast ascii lookup */
-  struct GlyphBLF *glyph_ascii_table[GLYPH_ASCII_TABLE_SIZE];
-
   /** Texture array, to draw the glyphs. */
   GPUTexture *texture;
   char *bitmap_result;
@@ -190,6 +178,7 @@ typedef struct GlyphBLF {
   ft_pix box_ymax;
 
   ft_pix advance_x;
+  uint8_t subpixel;
 
   /** The difference in bearings when hinting is active, zero otherwise. */
   ft_pix lsb_delta;
