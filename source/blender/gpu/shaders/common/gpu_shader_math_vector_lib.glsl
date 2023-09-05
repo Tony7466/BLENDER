@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
 
@@ -170,7 +173,7 @@ int dominant_axis(vec3 a);
 vec3 orthogonal(vec3 v);
 /**
  * Calculates a perpendicular vector to \a v.
- * \note Returned vector is always rotated 90° counter clock wise.
+ * \note Returned vector is always rotated 90 degrees counter clock wise.
  */
 vec2 orthogonal(vec2 v);
 

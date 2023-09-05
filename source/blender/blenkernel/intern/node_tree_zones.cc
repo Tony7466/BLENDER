@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -33,7 +33,10 @@ static Vector<std::unique_ptr<bNodeTreeZone>> find_zone_nodes(
     Map<const bNode *, bNodeTreeZone *> &r_zone_by_inout_node)
 {
   Vector<std::unique_ptr<bNodeTreeZone>> zones;
-  for (const bNode *node : tree.nodes_by_type("GeometryNodeSimulationOutput")) {
+  Vector<const bNode *> zone_output_nodes;
+  zone_output_nodes.extend(tree.nodes_by_type("GeometryNodeSimulationOutput"));
+  zone_output_nodes.extend(tree.nodes_by_type("GeometryNodeRepeatOutput"));
+  for (const bNode *node : zone_output_nodes) {
     auto zone = std::make_unique<bNodeTreeZone>();
     zone->owner = &owner;
     zone->index = zones.size();
@@ -50,19 +53,38 @@ static Vector<std::unique_ptr<bNodeTreeZone>> find_zone_nodes(
       }
     }
   }
+  for (const bNode *node : tree.nodes_by_type("GeometryNodeRepeatInput")) {
+    const auto &storage = *static_cast<NodeGeometryRepeatInput *>(node->storage);
+    if (const bNode *repeat_output_node = tree.node_by_id(storage.output_node_id)) {
+      if (bNodeTreeZone *zone = r_zone_by_inout_node.lookup_default(repeat_output_node, nullptr)) {
+        zone->input_node = node;
+        r_zone_by_inout_node.add(node, zone);
+      }
+    }
+  }
   return zones;
 }
 
 struct ZoneRelation {
   bNodeTreeZone *parent;
   bNodeTreeZone *child;
+
+  uint64_t hash() const
+  {
+    return get_default_hash_2(this->parent, this->child);
+  }
+
+  friend bool operator==(const ZoneRelation &a, const ZoneRelation &b)
+  {
+    return a.parent == b.parent && a.child == b.child;
+  }
 };
 
-static Vector<ZoneRelation> get_direct_zone_relations(
+static std::optional<Vector<ZoneRelation>> get_direct_zone_relations(
     const Span<std::unique_ptr<bNodeTreeZone>> all_zones,
     const BitGroupVector<> &depend_on_input_flag_array)
 {
-  Vector<ZoneRelation> zone_relations;
+  VectorSet<ZoneRelation> all_zone_relations;
 
   /* Gather all relations, even the transitive once. */
   for (const std::unique_ptr<bNodeTreeZone> &zone : all_zones) {
@@ -74,35 +96,42 @@ static Vector<ZoneRelation> get_direct_zone_relations(
       const BoundedBitSpan depend_on_input_flags = depend_on_input_flag_array[node->index()];
       bits::foreach_1_index(depend_on_input_flags, [&](const int parent_zone_i) {
         if (parent_zone_i != zone_i) {
-          zone_relations.append({all_zones[parent_zone_i].get(), zone.get()});
+          all_zone_relations.add_new({all_zones[parent_zone_i].get(), zone.get()});
         }
       });
     }
   }
 
+  for (const ZoneRelation &relation : all_zone_relations) {
+    const ZoneRelation reverse_relation{relation.child, relation.parent};
+    if (all_zone_relations.contains(reverse_relation)) {
+      /* There is a cyclic zone dependency. */
+      return std::nullopt;
+    }
+  }
+
   /* Remove transitive relations. This is a brute force algorithm currently. */
   Vector<int> transitive_relations;
-  for (const int a : zone_relations.index_range()) {
-    const ZoneRelation &relation_a = zone_relations[a];
-    for (const int b : zone_relations.index_range()) {
+  for (const int a : all_zone_relations.index_range()) {
+    const ZoneRelation &relation_a = all_zone_relations[a];
+    for (const int b : all_zone_relations.index_range()) {
       if (a == b) {
         continue;
       }
-      const ZoneRelation &relation_b = zone_relations[b];
-      for (const int c : zone_relations.index_range()) {
-        if (a == c || b == c) {
-          continue;
-        }
-        const ZoneRelation &relation_c = zone_relations[c];
-        if (relation_a.child == relation_b.parent && relation_a.parent == relation_c.parent &&
-            relation_b.child == relation_c.child)
-        {
-          transitive_relations.append_non_duplicates(c);
-        }
+      const ZoneRelation &relation_b = all_zone_relations[b];
+      if (relation_a.child != relation_b.parent) {
+        continue;
+      }
+      const ZoneRelation transitive_relation{relation_a.parent, relation_b.child};
+      const int transitive_relation_i = all_zone_relations.index_of_try(transitive_relation);
+      if (transitive_relation_i != -1) {
+        transitive_relations.append_non_duplicates(transitive_relation_i);
       }
     }
   }
   std::sort(transitive_relations.begin(), transitive_relations.end(), std::greater<>());
+
+  Vector<ZoneRelation> zone_relations = all_zone_relations.as_span();
   for (const int i : transitive_relations) {
     zone_relations.remove_and_reorder(i);
   }
@@ -189,6 +218,7 @@ static void update_zone_border_links(const bNodeTree &tree, bNodeTreeZones &tree
 
 static std::unique_ptr<bNodeTreeZones> discover_tree_zones(const bNodeTree &tree)
 {
+  tree.ensure_topology_cache();
   if (tree.has_available_link_cycle()) {
     return {};
   }
@@ -227,13 +257,13 @@ static std::unique_ptr<bNodeTreeZones> discover_tree_zones(const bNodeTree &tree
         depend_on_output_flags |= depend_on_output_flag_array[from_node_i];
       }
     }
-    if (node->type == GEO_NODE_SIMULATION_INPUT) {
+    if (ELEM(node->type, GEO_NODE_SIMULATION_INPUT, GEO_NODE_REPEAT_INPUT)) {
       if (const bNodeTreeZone *zone = zone_by_inout_node.lookup_default(node, nullptr)) {
         /* Now entering a zone, so set the corresponding bit. */
         depend_on_input_flags[zone->index].set();
       }
     }
-    else if (node->type == GEO_NODE_SIMULATION_OUTPUT) {
+    else if (ELEM(node->type, GEO_NODE_SIMULATION_OUTPUT, GEO_NODE_REPEAT_OUTPUT)) {
       if (const bNodeTreeZone *zone = zone_by_inout_node.lookup_default(node, nullptr)) {
         /* The output is implicitly linked to the input, so also propagate the bits from there. */
         if (const bNode *zone_input_node = zone->input_node) {
@@ -253,11 +283,15 @@ static std::unique_ptr<bNodeTreeZones> discover_tree_zones(const bNodeTree &tree
     }
   }
 
-  const Vector<ZoneRelation> zone_relations = get_direct_zone_relations(
+  const std::optional<Vector<ZoneRelation>> zone_relations = get_direct_zone_relations(
       tree_zones->zones, depend_on_input_flag_array);
+  if (!zone_relations) {
+    /* Found cyclic relations. */
+    return {};
+  }
 
   /* Set parent and child pointers in zones. */
-  for (const ZoneRelation &relation : zone_relations) {
+  for (const ZoneRelation &relation : *zone_relations) {
     relation.parent->child_zones.append(relation.child);
     BLI_assert(relation.child->parent_zone == nullptr);
     relation.child->parent_zone = relation.parent;
@@ -322,6 +356,7 @@ static std::unique_ptr<bNodeTreeZones> discover_tree_zones(const bNodeTree &tree
 
 const bNodeTreeZones *get_tree_zones(const bNodeTree &tree)
 {
+  tree.ensure_topology_cache();
   tree.runtime->tree_zones_cache_mutex.ensure(
       [&]() { tree.runtime->tree_zones = discover_tree_zones(tree); });
   return tree.runtime->tree_zones.get();

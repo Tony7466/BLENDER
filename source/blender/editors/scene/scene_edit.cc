@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,8 +6,8 @@
  * \ingroup edscene
  */
 
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include "BLI_compiler_attrs.h"
 #include "BLI_listbase.h"
@@ -29,21 +29,21 @@
 
 #include "BLT_translation.h"
 
-#include "ED_object.h"
-#include "ED_render.h"
-#include "ED_scene.h"
-#include "ED_screen.h"
-#include "ED_util.h"
+#include "ED_object.hh"
+#include "ED_render.hh"
+#include "ED_scene.hh"
+#include "ED_screen.hh"
+#include "ED_util.hh"
 
 #include "SEQ_relations.h"
 #include "SEQ_select.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Scene Utilities
@@ -213,7 +213,7 @@ bool ED_scene_view_layer_delete(Main *bmain, Scene *scene, ViewLayer *layer, Rep
     return false;
   }
 
-  /* We need to unset nodetrees before removing the layer, otherwise its index will be -1. */
+  /* We need to unset node-trees before removing the layer, otherwise its index will be -1. */
   view_layer_remove_unset_nodetrees(bmain, scene, layer);
 
   BLI_remlink(&scene->view_layers, layer);

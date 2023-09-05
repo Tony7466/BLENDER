@@ -1,12 +1,16 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_CompositorOperation.h"
 
+#include "BLI_string.h"
+
 #include "BKE_global.h"
 #include "BKE_image.h"
 #include "BKE_scene.h"
+
+#include "IMB_imbuf.h"
 
 #include "RE_pipeline.h"
 
@@ -59,8 +63,9 @@ void CompositorOperation::deinit_execution()
 
     if (rr) {
       RenderView *rv = RE_RenderViewGetByName(rr, view_name_);
+      ImBuf *ibuf = RE_RenderViewEnsureImBuf(rr, rv);
 
-      RE_RenderBuffer_assign_data(&rv->combined_buffer, output_buffer_);
+      IMB_assign_float_buffer(ibuf, output_buffer_, IB_TAKE_OWNERSHIP);
 
       rr->have_combined = true;
     }
@@ -171,6 +176,11 @@ void CompositorOperation::execute_region(rcti *rect, uint /*tile_number*/)
     offset += add;
     offset4 += add * COM_DATA_TYPE_COLOR_CHANNELS;
   }
+}
+
+void CompositorOperation::set_scene_name(const char *scene_name)
+{
+  BLI_strncpy(scene_name_, scene_name, sizeof(scene_name_));
 }
 
 void CompositorOperation::update_memory_buffer_partial(MemoryBuffer * /*output*/,

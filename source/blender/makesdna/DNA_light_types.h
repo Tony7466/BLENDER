@@ -11,10 +11,6 @@
 #include "DNA_ID.h"
 #include "DNA_defs.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #ifndef MAX_MTEX
 #  define MAX_MTEX 18
 #endif
@@ -89,6 +85,8 @@ typedef struct Light {
 
   /* Deprecated. */
   struct Ipo *ipo DNA_DEPRECATED; /* Old animation system. */
+  float energy_deprecated DNA_DEPRECATED;
+  float _pad2;
 } Light;
 
 /* **************** LIGHT ********************* */
@@ -160,7 +158,3 @@ enum {
   LA_AREA_DISK = 4,
   LA_AREA_ELLIPSE = 5,
 };
-
-#ifdef __cplusplus
-}
-#endif

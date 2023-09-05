@@ -42,6 +42,11 @@ char *BLI_strdup(const char *str)
   return BLI_strdupn(str, strlen(str));
 }
 
+char *BLI_strdup_null(const char *str)
+{
+  return (str != NULL) ? BLI_strdupn(str, strlen(str)) : NULL;
+}
+
 char *BLI_strdupcat(const char *__restrict str1, const char *__restrict str2)
 {
   /* include the NULL terminator of str2 only */
@@ -121,6 +126,8 @@ size_t BLI_strncpy_rlen(char *__restrict dst, const char *__restrict src, const 
   dst[srclen] = '\0';
   return srclen;
 }
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name String Append

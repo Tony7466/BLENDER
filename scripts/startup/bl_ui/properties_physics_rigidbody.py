@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2013-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2013-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -328,7 +328,7 @@ class PHYSICS_PT_rigid_body_dynamics_deactivation(PHYSICS_PT_rigidbody_panel, Pa
         col = flow.column()
         col.prop(rbo, "deactivate_linear_velocity", text="Velocity Linear")
         col.prop(rbo, "deactivate_angular_velocity", text="Angular")
-        # TODO: other params such as time?
+        # TODO: other parameters such as time?
 
 
 classes = (

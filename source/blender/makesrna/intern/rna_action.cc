@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,7 +6,7 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "DNA_action_types.h"
 #include "DNA_anim_types.h"
@@ -20,13 +20,13 @@
 
 #include "BKE_action.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 #ifdef RNA_RUNTIME
 
@@ -36,9 +36,9 @@
 
 #  include "DEG_depsgraph.h"
 
-#  include "ED_keyframing.h"
+#  include "ED_keyframing.hh"
 
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
 static void rna_ActionGroup_channels_next(CollectionPropertyIterator *iter)
 {
@@ -242,7 +242,7 @@ static void rna_Action_active_pose_marker_index_range(
 
 static void rna_Action_frame_range_get(PointerRNA *ptr, float *r_values)
 {
-  BKE_action_get_frame_range((bAction *)ptr->owner_id, &r_values[0], &r_values[1]);
+  BKE_action_frame_range_get((bAction *)ptr->owner_id, &r_values[0], &r_values[1]);
 }
 
 static void rna_Action_frame_range_set(PointerRNA *ptr, const float *values)
@@ -258,7 +258,7 @@ static void rna_Action_frame_range_set(PointerRNA *ptr, const float *values)
 static void rna_Action_curve_frame_range_get(PointerRNA *ptr, float *values)
 { /* don't include modifiers because they too easily can have very large
    * ranges: MINAFRAMEF to MAXFRAMEF. */
-  calc_action_range((bAction *)ptr->owner_id, values, values + 1, false);
+  BKE_action_frame_range_calc((bAction *)ptr->owner_id, false, values, values + 1);
 }
 
 static void rna_Action_use_frame_range_set(PointerRNA *ptr, bool value)
@@ -268,7 +268,7 @@ static void rna_Action_use_frame_range_set(PointerRNA *ptr, bool value)
   if (value) {
     /* If the frame range is blank, initialize it by scanning F-Curves. */
     if ((data->frame_start == data->frame_end) && (data->frame_start == 0)) {
-      calc_action_range(data, &data->frame_start, &data->frame_end, false);
+      BKE_action_frame_range_calc(data, false, &data->frame_start, &data->frame_end);
     }
 
     data->flag |= ACT_FRAME_RANGE;

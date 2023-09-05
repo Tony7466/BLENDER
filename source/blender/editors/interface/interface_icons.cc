@@ -36,32 +36,33 @@
 #include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "BKE_appdir.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_icons.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
+#include "BKE_preview_image.hh"
 #include "BKE_studiolight.h"
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 #include "IMB_thumbs.h"
 
-#include "BIF_glutil.h"
+#include "BIF_glutil.hh"
 
 #include "ED_datafiles.h"
-#include "ED_keyframes_draw.h"
-#include "ED_keyframes_keylist.h"
-#include "ED_render.h"
+#include "ED_keyframes_draw.hh"
+#include "ED_keyframes_keylist.hh"
+#include "ED_render.hh"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "interface_intern.hh"
 
@@ -161,7 +162,7 @@ static const IconType icontypes[] = {
 #  define DEF_ICON_VECTOR(name) {ICON_TYPE_VECTOR, 0},
 #  define DEF_ICON_COLOR(name) {ICON_TYPE_COLOR_TEXTURE, 0},
 #  define DEF_ICON_BLANK(name) {ICON_TYPE_BLANK, 0},
-#  include "UI_icons.h"
+#  include "UI_icons.hh"
 };
 
 /* **************************************************** */
@@ -1150,6 +1151,7 @@ void UI_icons_free()
   free_iconfile_list(&iconfilelist);
 #endif
   BKE_icons_free();
+  BKE_preview_images_free();
 }
 
 void UI_icons_free_drawinfo(void *drawinfo)
@@ -1528,7 +1530,7 @@ static void icon_draw_rect(float x,
                            float /*aspect*/,
                            int rw,
                            int rh,
-                           uint8_t *rect,
+                           const uint8_t *rect,
                            float alpha,
                            const float desaturate)
 {
@@ -1882,7 +1884,7 @@ static void icon_draw_size(float x,
   UI_widgetbase_draw_cache_flush();
 
   if (di->type == ICON_TYPE_IMBUF) {
-    ImBuf *ibuf = static_cast<ImBuf *>(icon->obj);
+    const ImBuf *ibuf = static_cast<const ImBuf *>(icon->obj);
 
     GPU_blend(GPU_BLEND_ALPHA_PREMULT);
     icon_draw_rect(
@@ -2018,7 +2020,7 @@ static void icon_draw_size(float x,
                      aspect,
                      pi->w[size],
                      pi->h[size],
-                     reinterpret_cast<uint8_t *>(pi->rect[size]),
+                     reinterpret_cast<const uint8_t *>(pi->rect[size]),
                      alpha,
                      desaturate);
       GPU_blend(GPU_BLEND_ALPHA);
@@ -2457,9 +2459,6 @@ int UI_icon_from_idcode(const int idcode)
       return ICON_WORLD_DATA;
     case ID_WS:
       return ICON_WORKSPACE;
-    case ID_SIM:
-      /* TODO: Use correct icon. */
-      return ICON_PHYSICS;
     case ID_GP:
       return ICON_OUTLINER_DATA_GREASEPENCIL;
 

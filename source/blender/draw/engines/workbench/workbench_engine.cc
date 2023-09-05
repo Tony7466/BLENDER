@@ -1,19 +1,20 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_editmesh.h"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_particle.h"
 #include "BKE_pbvh_api.hh"
 #include "BKE_report.h"
 #include "DEG_depsgraph_query.h"
 #include "DNA_fluid_types.h"
-#include "ED_paint.h"
-#include "ED_view3d.h"
+#include "ED_paint.hh"
+#include "ED_view3d.hh"
 #include "GPU_capabilities.h"
+#include "IMB_imbuf_types.h"
 
 #include "draw_common.hh"
 #include "draw_sculpt.hh"
@@ -426,7 +427,10 @@ class Instance {
     });
   }
 
-  void draw(Manager &manager, GPUTexture *depth_tx, GPUTexture *color_tx)
+  void draw(Manager &manager,
+            GPUTexture *depth_tx,
+            GPUTexture *depth_in_front_tx,
+            GPUTexture *color_tx)
   {
     view.sync(DRW_view_default_get());
 
@@ -434,7 +438,8 @@ class Instance {
 
     if (scene_state.render_finished) {
       /* Just copy back the already rendered result */
-      anti_aliasing_ps.draw(manager, view, resources, resolution, depth_tx, color_tx);
+      anti_aliasing_ps.draw(
+          manager, view, resources, resolution, depth_tx, depth_in_front_tx, color_tx);
       return;
     }
 
@@ -454,18 +459,13 @@ class Instance {
     fb.bind();
     GPU_framebuffer_clear_depth_stencil(fb, 1.0f, 0x00);
 
-    if (!transparent_ps.accumulation_in_front_ps_.is_empty()) {
+    bool needs_depth_in_front = !transparent_ps.accumulation_in_front_ps_.is_empty() ||
+                                scene_state.sample == 0;
+    if (needs_depth_in_front) {
       resources.depth_in_front_tx.acquire(resolution,
                                           GPU_DEPTH24_STENCIL8,
                                           GPU_TEXTURE_USAGE_SHADER_READ |
                                               GPU_TEXTURE_USAGE_ATTACHMENT);
-      if (opaque_ps.gbuffer_in_front_ps_.is_empty()) {
-        /* Clear only if it wont be overwritten by `opaque_ps`. */
-        Framebuffer fb = Framebuffer("Workbench.Clear");
-        fb.ensure(GPU_ATTACHMENT_TEXTURE(resources.depth_in_front_tx));
-        fb.bind();
-        GPU_framebuffer_clear_depth_stencil(fb, 1.0f, 0x00);
-      }
     }
 
     opaque_ps.draw(
@@ -476,19 +476,42 @@ class Instance {
     volume_ps.draw(manager, view, resources);
     outline_ps.draw(manager, resources);
     dof_ps.draw(manager, view, resources, resolution);
-    anti_aliasing_ps.draw(manager, view, resources, resolution, depth_tx, color_tx);
+    anti_aliasing_ps.draw(
+        manager, view, resources, resolution, depth_tx, depth_in_front_tx, color_tx);
 
     resources.color_tx.release();
     resources.object_id_tx.release();
     resources.depth_in_front_tx.release();
   }
 
-  void draw_viewport(Manager &manager, GPUTexture *depth_tx, GPUTexture *color_tx)
+  void draw_viewport(Manager &manager,
+                     GPUTexture *depth_tx,
+                     GPUTexture *depth_in_front_tx,
+                     GPUTexture *color_tx)
   {
-    this->draw(manager, depth_tx, color_tx);
+    this->draw(manager, depth_tx, depth_in_front_tx, color_tx);
 
     if (scene_state.sample + 1 < scene_state.samples_len) {
       DRW_viewport_request_redraw();
+    }
+  }
+
+  void draw_viewport_image_render(Manager &manager,
+                                  GPUTexture *depth_tx,
+                                  GPUTexture *depth_in_front_tx,
+                                  GPUTexture *color_tx)
+  {
+    BLI_assert(scene_state.sample == 0);
+    for (auto i : IndexRange(scene_state.samples_len)) {
+      if (i != 0) {
+        scene_state.sample = i;
+        /* Re-sync anything dependent on scene_state.sample. */
+        resources.init(scene_state);
+        dof_ps.init(scene_state);
+        anti_aliasing_ps.init(scene_state);
+        anti_aliasing_ps.sync(resources, scene_state.resolution);
+      }
+      this->draw(manager, depth_tx, depth_in_front_tx, color_tx);
     }
   }
 };
@@ -567,7 +590,13 @@ static void workbench_draw_scene(void *vedata)
   }
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
   draw::Manager *manager = DRW_manager_get();
-  ved->instance->draw_viewport(*manager, dtxl->depth, dtxl->color);
+  if (DRW_state_is_viewport_image_render()) {
+    ved->instance->draw_viewport_image_render(
+        *manager, dtxl->depth, dtxl->depth_in_front, dtxl->color);
+  }
+  else {
+    ved->instance->draw_viewport(*manager, dtxl->depth, dtxl->depth_in_front, dtxl->color);
+  }
 }
 
 static void workbench_instance_free(void *instance)
@@ -656,7 +685,7 @@ static void write_render_color_output(RenderLayer *layer,
                                4,
                                0,
                                GPU_DATA_FLOAT,
-                               rp->buffer.data);
+                               rp->ibuf->float_buffer.data);
   }
 }
 
@@ -675,13 +704,13 @@ static void write_render_z_output(RenderLayer *layer,
                                BLI_rcti_size_x(rect),
                                BLI_rcti_size_y(rect),
                                GPU_DATA_FLOAT,
-                               rp->buffer.data);
+                               rp->ibuf->float_buffer.data);
 
     int pix_num = BLI_rcti_size_x(rect) * BLI_rcti_size_y(rect);
 
     /* Convert GPU depth [0..1] to view Z [near..far] */
     if (DRW_view_is_persp_get(nullptr)) {
-      for (float &z : MutableSpan(rp->buffer.data, pix_num)) {
+      for (float &z : MutableSpan(rp->ibuf->float_buffer.data, pix_num)) {
         if (z == 1.0f) {
           z = 1e10f; /* Background */
         }
@@ -697,7 +726,7 @@ static void write_render_z_output(RenderLayer *layer,
       float far = DRW_view_far_distance_get(nullptr);
       float range = fabsf(far - near);
 
-      for (float &z : MutableSpan(rp->buffer.data, pix_num)) {
+      for (float &z : MutableSpan(rp->ibuf->float_buffer.data, pix_num)) {
         if (z == 1.0f) {
           z = 1e10f; /* Background */
         }
@@ -804,40 +833,45 @@ extern "C" {
 static const DrawEngineDataSize workbench_data_size = DRW_VIEWPORT_DATA_SIZE(WORKBENCH_Data);
 
 DrawEngineType draw_engine_workbench_next = {
-    nullptr,
-    nullptr,
-    N_("Workbench"),
-    &workbench_data_size,
-    &workbench_engine_init,
-    nullptr,
-    &workbench_instance_free,
-    &workbench_cache_init,
-    &workbench_cache_populate,
-    &workbench_cache_finish,
-    &workbench_draw_scene,
-    &workbench_view_update,
-    &workbench_id_update,
-    &workbench_render_to_image,
-    nullptr,
+    /*next*/ nullptr,
+    /*prev*/ nullptr,
+    /*idname*/ N_("Workbench"),
+    /*vedata_size*/ &workbench_data_size,
+    /*engine_init*/ &workbench_engine_init,
+    /*engine_free*/ nullptr,
+    /*instance_free*/ &workbench_instance_free,
+    /*cache_init*/ &workbench_cache_init,
+    /*cache_populate*/ &workbench_cache_populate,
+    /*cache_finish*/ &workbench_cache_finish,
+    /*draw_scene*/ &workbench_draw_scene,
+    /*view_update*/ &workbench_view_update,
+    /*id_update*/ &workbench_id_update,
+    /*render_to_image*/ &workbench_render_to_image,
+    /*store_metadata*/ nullptr,
 };
 
 RenderEngineType DRW_engine_viewport_workbench_next_type = {
-    nullptr,
-    nullptr,
-    "BLENDER_WORKBENCH_NEXT",
-    N_("Workbench Next"),
-    RE_INTERNAL | RE_USE_STEREO_VIEWPORT | RE_USE_GPU_CONTEXT,
-    nullptr,
-    &DRW_render_to_image,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
-    &workbench_render_update_passes,
-    &draw_engine_workbench_next,
-    {nullptr, nullptr, nullptr},
+    /*next*/ nullptr,
+    /*prev*/ nullptr,
+    /*idname*/ "BLENDER_WORKBENCH_NEXT",
+    /*name*/ N_("Workbench"),
+    /*flag*/ RE_INTERNAL | RE_USE_STEREO_VIEWPORT | RE_USE_GPU_CONTEXT,
+    /*update*/ nullptr,
+    /*render*/ &DRW_render_to_image,
+    /*render_frame_finish*/ nullptr,
+    /*draw*/ nullptr,
+    /*bake*/ nullptr,
+    /*view_update*/ nullptr,
+    /*view_draw*/ nullptr,
+    /*update_script_node*/ nullptr,
+    /*update_render_passes*/ &workbench_render_update_passes,
+    /*draw_engine*/ &draw_engine_workbench_next,
+    /*rna_ext*/
+    {
+        /*data*/ nullptr,
+        /*srna*/ nullptr,
+        /*call*/ nullptr,
+    },
 };
 }
 

@@ -21,10 +21,6 @@
 #include "DNA_session_uuid_types.h" /* for #SessionUUID */
 #include "DNA_vec_types.h"          /* for #rctf */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct Ipo;
 struct MovieClip;
 struct Scene;
@@ -527,6 +523,21 @@ enum {
 
 /** \} */
 
+/** \name Sound Modifiers
+ * \{ */
+
+typedef struct EQCurveMappingData {
+  struct EQCurveMappingData *next, *prev;
+  struct CurveMapping curve_mapping;
+} EQCurveMappingData;
+
+typedef struct SoundEqualizerModifierData {
+  SequenceModifierData modifier;
+  /* EQCurveMappingData */
+  ListBase graphics;
+} SoundEqualizerModifierData;
+/** \} */
+
 /* -------------------------------------------------------------------- */
 /** \name Scopes
  * \{ */
@@ -679,13 +690,13 @@ enum {
  *
  * \warning #SEQ_TYPE_EFFECT BIT is used to determine if this is an effect strip!
  */
-enum {
+typedef enum SequenceType {
   SEQ_TYPE_IMAGE = 0,
   SEQ_TYPE_META = 1,
   SEQ_TYPE_SCENE = 2,
   SEQ_TYPE_MOVIE = 3,
   SEQ_TYPE_SOUND_RAM = 4,
-  SEQ_TYPE_SOUND_HD = 5,
+  SEQ_TYPE_SOUND_HD = 5, /* DEPRECATED */
   SEQ_TYPE_MOVIECLIP = 6,
   SEQ_TYPE_MASK = 7,
 
@@ -731,7 +742,7 @@ enum {
   SEQ_TYPE_EXCLUSION = 60,
 
   SEQ_TYPE_MAX = 60,
-};
+} SequenceType;
 
 enum {
   SEQ_MOVIECLIP_RENDER_UNDISTORTED = 1 << 0,
@@ -760,6 +771,7 @@ enum {
   seqModifierType_Mask = 5,
   seqModifierType_WhiteBalance = 6,
   seqModifierType_Tonemap = 7,
+  seqModifierType_SoundEqualizer = 8,
   /* Keep last. */
   NUM_SEQUENCE_MODIFIER_TYPES,
 };
@@ -845,7 +857,3 @@ typedef enum eSeqChannelFlag {
 } eSeqChannelFlag;
 
 /** \} */
-
-#ifdef __cplusplus
-}
-#endif

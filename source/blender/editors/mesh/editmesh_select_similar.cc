@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004 Blender Foundation
+/* SPDX-FileCopyrightText: 2004 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,9 @@
 #include "BLI_bitmap.h"
 #include "BLI_kdtree.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
 #include "BLT_translation.h"
 
@@ -26,15 +28,15 @@
 #include "DNA_material_types.h"
 #include "DNA_meshdata_types.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "ED_mesh.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
+#include "ED_mesh.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
 
 #include "mesh_intern.h" /* own include */
 
@@ -150,7 +152,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
 
   const int type = RNA_enum_get(op->ptr, "type");
   const float thresh = RNA_float_get(op->ptr, "threshold");
-  const float thresh_radians = thresh * (float)M_PI;
+  const float thresh_radians = thresh * float(M_PI);
   const int compare = RNA_enum_get(op->ptr, "compare");
 
   int tot_faces_selected_all = 0;
@@ -766,7 +768,15 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
       case SIMEDGE_CREASE: {
         has_custom_data_layer = CustomData_has_layer_named(
             &bm->edata, CD_PROP_FLOAT, "crease_edge");
-        ATTR_FALLTHROUGH;
+        if (!has_custom_data_layer) {
+          /* Proceed only if we have to select all the edges that have custom data value of 0.0f.
+           * In this case we will just select all the edges.
+           * Otherwise continue the for loop. */
+          if (!ED_select_similar_compare_float_tree(tree_1d, 0.0f, thresh, eSimilarCmp(compare))) {
+            continue;
+          }
+        }
+        break;
       }
       case SIMEDGE_BEVEL: {
         has_custom_data_layer = CustomData_has_layer_named(
@@ -779,6 +789,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
             continue;
           }
         }
+        break;
       }
     }
 

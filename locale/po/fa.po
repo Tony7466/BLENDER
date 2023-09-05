@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'44ee5b38ac1b')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'526f935981fd')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-07-04 16:07:54\n"
+"POT-Creation-Date: 2023-09-04 15:42:41\n"
 "PO-Revision-Date: 2012-10-31 17:00-0800\n"
 "Last-Translator: Amin Babaeipanah <translate@leomoon.com>\n"
 "Language-Team: LeoMoon Studios <blender@leomoon.com>\n"
@@ -360,6 +360,10 @@ msgid "Area width"
 msgstr "ﻪﻘﻄﻨﻣ ﯼﺎﻨﻬﭘ"
 
 
+msgid "Show Names"
+msgstr "ﺎﻫ‌ﻡﺎﻧ ﺶﯾﺎﻤﻧ"
+
+
 msgid "Vector"
 msgstr "ﺭﺍﺩﺮﺑ"
 
@@ -564,16 +568,16 @@ msgid "Children"
 msgstr "ﻥﺍﺪﻧﺯﺮﻓ"
 
 
-msgid "Layers"
-msgstr "ﺎﻫ‌ﻪﯾﻻ﻿"
-
-
 msgid "Parent"
 msgstr "ﻊﺒﻨﻣ"
 
 
 msgid "Deform"
 msgstr "ﻩﺪﻨﻫ ﺮﯿﯿﻐﺗ"
+
+
+msgid "Visible"
+msgstr "ﯽﺋﺮﻣ"
 
 
 msgid "Remove"
@@ -592,16 +596,8 @@ msgid "Material"
 msgstr "ﻩﺩﺎﻣ"
 
 
-msgid "Flat"
-msgstr "ﺖﺨﺗ"
-
-
 msgid "Direction"
 msgstr "ﺎﺘﺳﺍﺭ"
-
-
-msgid "Visible"
-msgstr "ﯽﺋﺮﻣ"
 
 
 msgid "Marker"
@@ -614,10 +610,6 @@ msgstr "ﺩﺍﺯﺁ ﯽﺷﺎﻘﻧ"
 
 msgid "Blur"
 msgstr "ﯽﮔﺮﯿﺗ"
-
-
-msgid "Smooth"
-msgstr "ﻑﺎﺻ"
 
 
 msgid "Hue"
@@ -1576,6 +1568,10 @@ msgid "Lattice"
 msgstr "ﻪﮑﺒﺷ"
 
 
+msgid "Smooth"
+msgstr "ﻑﺎﺻ"
+
+
 msgid "Matrix"
 msgstr "ﺲﯾﺮﺗﺎﻣ"
 
@@ -1704,6 +1700,10 @@ msgid "Max"
 msgstr "ﻪﻨﯿﺸﯿﺑ"
 
 
+msgid "Layers"
+msgstr "ﺎﻫ‌ﻪﯾﻻ﻿"
+
+
 msgid "U"
 msgstr "U"
 
@@ -1724,12 +1724,28 @@ msgid "Cube"
 msgstr "ﺐﻌﮑﻣ"
 
 
+msgid "Interface"
+msgstr "ﻂﺳﺍﻭ"
+
+
 msgid "Nodes"
 msgstr "ﺎﻫ ﻩﺮﮔ"
 
 
 msgid "OpenCL"
 msgstr "OpenCL"
+
+
+msgid "Edit"
+msgstr "ﺶﯾﺍﺮﯾﻭ"
+
+
+msgid "Sculpt"
+msgstr "ﻥﺩﺮﮐ ﯼﺭﺎﺠﺣ"
+
+
+msgid "Mesh"
+msgstr "ﺶﻣ"
 
 
 msgid "Active Material"
@@ -1988,8 +2004,12 @@ msgid "Key"
 msgstr "ﺪﯿﻠﮐ"
 
 
-msgid "Edit"
-msgstr "ﺶﯾﺍﺮﯾﻭ"
+msgid "Text"
+msgstr "ﻦﺘﻣ"
+
+
+msgid "Math"
+msgstr "ﯽﺿﺎﯾﺭ"
 
 
 msgid "Distort"
@@ -2000,16 +2020,8 @@ msgid "Layout"
 msgstr "ﺡﺮﻃ"
 
 
-msgid "Text"
-msgstr "ﻦﺘﻣ"
-
-
-msgid "Math"
-msgstr "ﯽﺿﺎﯾﺭ"
-
-
-msgid "Mesh"
-msgstr "ﺶﻣ"
+msgid "Tracking"
+msgstr "ﯽﺑﺎﯾﺩﺭ"
 
 
 msgid "Apply"
@@ -2054,10 +2066,6 @@ msgstr "ﻞﯾﺪﺒﺗ"
 
 msgid "Relations"
 msgstr "ﻂﺑﺍﻭﺭ"
-
-
-msgid "Sculpt"
-msgstr "ﻥﺩﺮﮐ ﯼﺭﺎﺠﺣ"
 
 
 msgid "Distortion"
@@ -2244,10 +2252,6 @@ msgid "Space Sigma"
 msgstr "ﺎﻤﮕﯿﺳ ﯼﺎﻀﻓ"
 
 
-msgid "Filter Type"
-msgstr "ﺮﺘﻠﯿﻓ ﻉﻮﻧ"
-
-
 msgid "Single"
 msgstr "ﯽﮑﺗ"
 
@@ -2278,6 +2282,10 @@ msgstr "ﺮﭘ"
 
 msgid "Double Edge Mask"
 msgstr "ﻪﺒﻟ ﻭﺩ ﮏﺳﺎﻣ"
+
+
+msgid "Filter Type"
+msgstr "ﺮﺘﻠﯿﻓ ﻉﻮﻧ"
 
 
 msgid "Flip X"
@@ -2472,6 +2480,10 @@ msgid "Linked"
 msgstr "ﻂﺒﺗﺮﻣ"
 
 
+msgid "Both"
+msgstr "ﻭﺩ ﺮﻫ"
+
+
 msgid "Object Constraints"
 msgstr "ءﺎﯿﺷﺍ ﯼﺎﻫ‌ﺖﯾﺩﻭﺪﺤﻣ"
 
@@ -2515,11 +2527,6 @@ msgstr "ﻝﺎﻌﻓ"
 msgctxt "Operator"
 msgid "Move Channels"
 msgstr "ﺎﻫ‌ﻝﺎﻧﺎﮐ ﻝﺎﻘﺘﻧﺍ"
-
-
-msgctxt "Operator"
-msgid "Rename Channels"
-msgstr "ﺎﻫ‌ﻝﺎﻧﺎﮐ ﻡﺎﻧ ﺮﯿﯿﻐﺗ"
 
 
 msgctxt "Operator"
@@ -2795,10 +2802,6 @@ msgid "Mouse location"
 msgstr "ﺱﻭﺎﻣ ﻥﺎﮑﻣ"
 
 
-msgid "Both"
-msgstr "ﻭﺩ ﺮﻫ"
-
-
 msgid "Join"
 msgstr "ﻦﺘﺳﻮﯿﭘ"
 
@@ -3024,10 +3027,6 @@ msgid "Repeat last action"
 msgstr "ﺖﯿﻟﺎﻌﻓ ﻦﯾﺮﺧﺁ ﺭﺍﺮﮑﺗ"
 
 
-msgid "Interface"
-msgstr "ﻂﺳﺍﻭ"
-
-
 msgid "Themes"
 msgstr "ﺎﻫ ﻢﺗ"
 
@@ -3191,6 +3190,10 @@ msgstr "ﺖﯿﻌﺿﻭ"
 msgctxt "Operator"
 msgid "Operator Cheat Sheet"
 msgstr "ﺮﺑﺭﺎﮐ ﺐﻠﻘﺗ ﻪﮔﺮﺑ"
+
+
+msgid "Speaker"
+msgstr "ﻮﮔﺪﻨﻠﺑ"
 
 
 msgid "Property Name"
@@ -3481,10 +3484,6 @@ msgid "Translation Unit"
 msgstr "ﯽﯾﺎﺠﺑﺎﺟ ﺪﺣﺍﻭ"
 
 
-msgid "Edge angle"
-msgstr "ﻪﺒﻟ ﻪﯾﻭﺍﺯ"
-
-
 msgid "Meta Sequence"
 msgstr "ﺎﺘﻣ ﺲﻧﺎﮑﺳ"
 
@@ -3529,10 +3528,6 @@ msgid "Show Green Channel"
 msgstr "ﺰﺒﺳ ﻝﺎﻧﺎﮐ ﺶﯾﺎﻤﻧ"
 
 
-msgid "Show Names"
-msgstr "ﺎﻫ‌ﻡﺎﻧ ﺶﯾﺎﻤﻧ"
-
-
 msgid "Show Red Channel"
 msgstr "ﺰﻣﺮﻗ ﻝﺎﻧﺎﮐ ﺶﯾﺎﻤﻧ"
 
@@ -3545,12 +3540,12 @@ msgid "Show 3D Marker Names"
 msgstr "3D ﺮﮕﻧﺎﺸﻧ ﻡﺎﻧ ﺶﯾﺎﻤﻧ"
 
 
-msgid "Speaker"
-msgstr "ﻮﮔﺪﻨﻠﺑ"
-
-
 msgid "3D"
 msgstr "3D"
+
+
+msgid "Flat"
+msgstr "ﺖﺨﺗ"
 
 
 msgid "X Mapping"
@@ -3667,10 +3662,6 @@ msgstr "ﯽﻄﺧ ﺖﻓﺮﺸﯿﭘ ﺯﺍ ﻩﺩﺎﻔﺘﺳﺍ"
 
 msgid "Search"
 msgstr "ﻮﺠﺘﺴﺟ"
-
-
-msgid "Tracking"
-msgstr "ﯽﺑﺎﯾﺩﺭ"
 
 
 msgid "3D View"
