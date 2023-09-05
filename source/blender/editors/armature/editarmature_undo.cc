@@ -74,7 +74,12 @@ static void armature_collection_listbase_free(ListBase *bcolls, const bool do_id
 }
 
 /**
- * Duplicates the ebone list base.
+ * Duplicates a list of EditBones.
+ *
+ * Note: the BoneCollections that the EditBones point to are *not*
+ * duplicated.  If you want to do a deep copy of all data that the
+ * EditBones point to, the BoneCollections need be handled separately
+ * and then remapped.
  */
 static void armature_ebone_listbase_copy(ListBase *edit_bones_dst,
                                          ListBase *edit_bones_src,
@@ -92,7 +97,7 @@ static void armature_ebone_listbase_copy(ListBase *edit_bones_dst,
     BLI_addtail(edit_bones_dst, ebone_dst);
   }
 
-  /* set pointers */
+  /* Set pointers. */
   LISTBASE_FOREACH (EditBone *, ebone_dst, edit_bones_dst) {
     if (ebone_dst->parent) {
       ebone_dst->parent = ebone_dst->parent->temp.ebone;
@@ -112,11 +117,16 @@ static void armature_ebone_listbase_copy(ListBase *edit_bones_dst,
 }
 
 /**
- * Copies a listbase of BoneCollections, including copying ID
- * properties, but not bone membership.
+ * Duplicates a list of BoneCollections.
  *
- * Additionally builds `r_bcoll_map`, which is a map from the
- * src collections to the dst collections.
+ * This is intended to be used with edit-mode Armatures, and as such
+ * discards bone membership data in the copy.  The assumption is that
+ * the membership information will be rebuilt from the edit bones when
+ * leaving edit mode.
+ *
+ * This also builds `r_bcoll_map`, which is a map from the src collections
+ * to the copied dst collections.  This can be used to remap edit bone
+ * membership.
  *
  * Note: `r_bcoll_map` should already be initialized, but empty.
  */
@@ -127,6 +137,7 @@ static void armature_collection_listbase_copy(
     const bool do_id_user)
 {
   BLI_assert(BLI_listbase_is_empty(bone_colls_dst));
+  BLI_assert(r_bcoll_map);
 
   /* Copy bone collections. */
   LISTBASE_FOREACH (BoneCollection *, bcoll_src, bone_colls_src) {
@@ -144,6 +155,13 @@ static void armature_collection_listbase_copy(
   }
 }
 
+/**
+ * Remaps editbone collection membership.
+ *
+ * This is intended to be used in combination with armature_ebone_listbase_copy()
+ * and armature_collection_listbase_copy() to make a full duplicate of both edit
+ * bones and collections together.
+ */
 static void remap_ebone_bone_collection_references(
     ListBase *edit_bones, blender::Map<BoneCollection *, BoneCollection *> *bcoll_map)
 {
@@ -172,7 +190,7 @@ static void undoarm_to_editarm(UndoArmature *uarm, bArmature *arm)
   armature_ebone_listbase_free(arm->edbo, true);
   armature_ebone_listbase_copy(arm->edbo, &uarm->ebones, true);
 
-  /* active bone */
+  /* Active bone. */
   if (uarm->act_edbone) {
     EditBone *ebone;
     ebone = uarm->act_edbone;
@@ -189,23 +207,17 @@ static void undoarm_to_editarm(UndoArmature *uarm, bArmature *arm)
       blender::Map<BoneCollection *, BoneCollection *>();
   armature_collection_listbase_free(&arm->collections, true);
   armature_collection_listbase_copy(&arm->collections, &uarm->bone_collections, &bcoll_map, true);
-
-  /* Active bone collection. */
   arm->active_collection = bcoll_map.lookup_default(uarm->active_collection, nullptr);
 
-  /* Remap bone collections. */
+  /* Point the new edit bones at the new collections. */
   remap_ebone_bone_collection_references(arm->edbo, &bcoll_map);
 
-  /* Refresh runtime data. */
   ANIM_armature_runtime_refresh(arm);
 }
 
 static void *undoarm_from_editarm(UndoArmature *uarm, bArmature *arm)
 {
   BLI_assert(BLI_array_is_zeroed(uarm, 1));
-
-  /* TODO: include size of ID-properties. */
-  uarm->undo_size = 0;
 
   /* Copy edit bones. */
   armature_ebone_listbase_copy(&uarm->ebones, arm->edbo, false);
@@ -218,21 +230,24 @@ static void *undoarm_from_editarm(UndoArmature *uarm, bArmature *arm)
 
   ED_armature_ebone_listbase_temp_clear(&uarm->ebones);
 
-  LISTBASE_FOREACH (EditBone *, ebone, &uarm->ebones) {
-    /* Edit bone contribution to undo size. */
-    uarm->undo_size += sizeof(EditBone);
-  }
-
   /* Copy bone collections. */
   blender::Map<BoneCollection *, BoneCollection *> bcoll_map =
       blender::Map<BoneCollection *, BoneCollection *>();
   armature_collection_listbase_copy(&uarm->bone_collections, &arm->collections, &bcoll_map, false);
-
-  /* Active bone collection. */
   uarm->active_collection = bcoll_map.lookup_default(arm->active_collection, nullptr);
 
-  /* Remap bone collections. */
+  /* Point the new edit bones at the new collections. */
   remap_ebone_bone_collection_references(&uarm->ebones, &bcoll_map);
+
+  /* Undo size.
+   * TODO: include size of ID-properties. */
+  uarm->undo_size = 0;
+  LISTBASE_FOREACH (EditBone *, ebone, &uarm->ebones) {
+    uarm->undo_size += sizeof(EditBone);
+    uarm->undo_size += sizeof(BoneCollectionReference) *
+                       BLI_listbase_count(&ebone->bone_collections);
+  }
+  uarm->undo_size += sizeof(BoneCollection) * BLI_listbase_count(&uarm->bone_collections);
 
   return uarm;
 }
