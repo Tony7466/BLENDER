@@ -154,7 +154,7 @@ class VIEW3D_PT_tools_object_options_dragdrop(View3DPanel, Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        col = layout.column(align=True)
+        col = layout.column(align=False)
         col.prop(tool_settings, "plane_depth", text="Depth")
         col.prop(tool_settings, "plane_orientation")
         col.prop(tool_settings, "snap_elements_tool")
