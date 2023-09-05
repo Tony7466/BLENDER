@@ -12,73 +12,6 @@ namespace blender::nodes::materialx {
 
 NodeItem::NodeItem(MaterialX::GraphElement *graph) : graph_(graph) {}
 
-NodeItem NodeItem::empty() const
-{
-  return NodeItem(graph_);
-}
-
-void NodeItem::set_input(const std::string &name,
-                         const NodeItem &item,
-                         const std::string &output_name)
-{
-  if (item.value) {
-    set_input(name, item.value);
-  }
-  else if (item.node) {
-    set_input(name, item.node, output_name);
-  }
-  else {
-    CLOG_WARN(LOG_MATERIALX_SHADER, "Empty item to input: %s", name.c_str());
-  }
-}
-
-void NodeItem::set_input(const std::string &name, const MaterialX::ValuePtr value)
-{
-  std::string mx_type = value->getTypeString();
-  if (mx_type == "float") {
-    set_input(name, value->asA<float>(), mx_type);
-  }
-  else if (mx_type == "integer") {
-    set_input(name, value->asA<int>(), mx_type);
-  }
-  else if (mx_type == "vector2") {
-    set_input(name, value->asA<MaterialX::Vector2>(), mx_type);
-  }
-  else if (mx_type == "vector3") {
-    set_input(name, value->asA<MaterialX::Vector3>(), mx_type);
-  }
-  else if (mx_type == "vector4") {
-    set_input(name, value->asA<MaterialX::Vector4>(), mx_type);
-  }
-  else if (mx_type == "color3") {
-    set_input(name, value->asA<MaterialX::Color3>(), mx_type);
-  }
-  else if (mx_type == "color4") {
-    set_input(name, value->asA<MaterialX::Color4>(), mx_type);
-  }
-  else if (mx_type == "string") {
-    set_input(name, value->asA<std::string>(), mx_type);
-  }
-  else {
-    BLI_assert_unreachable();
-  }
-}
-
-void NodeItem::set_input(const std::string &name,
-                         const MaterialX::NodePtr node,
-                         const std::string &output_name)
-{
-  this->node->setConnectedNode(name, node);
-  if (output_name != "") {
-    this->node->setConnectedOutput("in1", node->getOutput(output_name));
-  }
-}
-
-void NodeItem::add_output(const std::string &name, const std::string &mx_type)
-{
-  node->addOutput(name, mx_type);
-}
-
 NodeItem::operator bool() const
 {
   return value || node;
@@ -135,32 +68,13 @@ bool NodeItem::operator==(const NodeItem &other) const
     return false;
   }
 
-  std::string mx_type;
-  auto val1 = value;
-  auto val2 = other.value;
-  if (!adjust_types(val1, val2, mx_type)) {
+  NodeItem item1 = *this;
+  NodeItem item2 = other;
+  Type to_type = adjust_types(item1, item2);
+  if (to_type == Type::Empty) {
     return false;
   }
-  if (mx_type == "float") {
-    return val1->asA<float>() == val2->asA<float>();
-  }
-  if (mx_type == "color3") {
-    return val1->asA<MaterialX::Color3>() == val2->asA<MaterialX::Color3>();
-  }
-  if (mx_type == "color4") {
-    return val1->asA<MaterialX::Color4>() == val2->asA<MaterialX::Color4>();
-  }
-  if (mx_type == "vector2") {
-    return val1->asA<MaterialX::Vector2>() == val2->asA<MaterialX::Vector2>();
-  }
-  if (mx_type == "vector3") {
-    return val1->asA<MaterialX::Vector3>() == val2->asA<MaterialX::Vector3>();
-  }
-  if (mx_type == "vector4") {
-    return val1->asA<MaterialX::Vector4>() == val2->asA<MaterialX::Vector4>();
-  }
-
-  return false;
+  return item1.value->getValueString() == item2.value->getValueString();
 }
 
 bool NodeItem::operator!=(const NodeItem &other) const
@@ -197,96 +111,44 @@ NodeItem NodeItem::dotproduct(const NodeItem &other) const
 {
   NodeItem d = arithmetic(other, "dotproduct", [](float a, float b) { return a * b; });
   if (d.value) {
-    std::string mx_type = d.type();
+    Type mx_type = d.type();
     float f = 0.0f;
-    if (mx_type == "float") {
-      f = value->asA<float>();
-    }
-    else if (mx_type == "color3") {
-      auto v = value->asA<MaterialX::Color3>();
-      f = v[0] + v[1] + v[2];
-    }
-    else if (mx_type == "color4") {
-      auto v = value->asA<MaterialX::Color4>();
-      f = v[0] + v[1] + v[2] + v[3];
-    }
-    else if (mx_type == "vector2") {
-      auto v = value->asA<MaterialX::Vector2>();
-      f = v[0] + v[1];
-    }
-    else if (mx_type == "vector3") {
-      auto v = value->asA<MaterialX::Vector3>();
-      f = v[0] + v[1] + v[2];
-    }
-    else if (mx_type == "vector4") {
-      auto v = value->asA<MaterialX::Vector4>();
-      f = v[0] + v[1] + v[2] + v[3];
-    }
-    else {
-      BLI_assert_unreachable();
+    switch (mx_type) {
+      case Type::Float: {
+        f = value->asA<float>();
+        break;
+      }
+      case Type::Vector2: {
+        auto v = value->asA<MaterialX::Vector2>();
+        f = v[0] + v[1];
+        break;
+      }
+      case Type::Vector3: {
+        auto v = value->asA<MaterialX::Vector3>();
+        f = v[0] + v[1] + v[2];
+        break;
+      }
+      case Type::Vector4: {
+        auto v = value->asA<MaterialX::Vector4>();
+        f = v[0] + v[1] + v[2] + v[3];
+        break;
+      }
+      case Type::Color3: {
+        auto v = value->asA<MaterialX::Color3>();
+        f = v[0] + v[1] + v[2];
+        break;
+      }
+      case Type::Color4: {
+        auto v = value->asA<MaterialX::Color4>();
+        f = v[0] + v[1] + v[2] + v[3];
+        break;
+      }
+      default:
+        BLI_assert_unreachable();
     }
     d.value = MaterialX::Value::createValue(f);
   }
   return d;
-}
-
-NodeItem NodeItem::if_else(const std::string &condition,
-                           const NodeItem &other,
-                           const NodeItem &if_val,
-                           const NodeItem &else_val) const
-{
-  if (condition == "<") {
-    return other.if_else(">", *this, else_val, if_val);
-  }
-  if (condition == "<=") {
-    return other.if_else(">=", *this, else_val, if_val);
-  }
-  if (condition == "!=") {
-    return if_else("==", other, else_val, if_val);
-  }
-
-  NodeItem res = empty();
-  if (type() != "float" || other.type() != "float") {
-    return res;
-  }
-
-  auto val1 = if_val;
-  auto val2 = else_val;
-  std::string mx_type;
-  if (!adjust_types(val1, val2, mx_type)) {
-    return res;
-  }
-
-  std::function<bool(float, float)> func = nullptr;
-  std::string mx_category;
-  if (condition == ">") {
-    mx_category = "ifgreater";
-    func = [](float a, float b) { return a > b; };
-  }
-  else if (condition == ">=") {
-    mx_category = "ifgreatereq";
-    func = [](float a, float b) { return a >= b; };
-  }
-  else if (condition == "==") {
-    mx_category = "ifequal";
-    func = [](float a, float b) { return a == b; };
-  }
-  else {
-    BLI_assert_unreachable();
-  }
-
-  if (value && other.value) {
-    res = func(value->asA<float>(), other.value->asA<float>()) ? val1 : val2;
-  }
-  else {
-    res.node = graph_->addNode(mx_category, MaterialX::EMPTY_STRING, mx_type);
-    res.set_input("value1", *this);
-    res.set_input("value2", other);
-    res.set_input("in1", val1);
-    res.set_input("in2", val2);
-  }
-
-  return res;
 }
 
 NodeItem NodeItem::blend(const NodeItem &a, const NodeItem &b) const
@@ -374,247 +236,528 @@ NodeItem NodeItem::exp() const
   return arithmetic("exp", [](float a) { return std::expf(a); });
 }
 
-NodeItem NodeItem::to_color3() const
+NodeItem NodeItem::convert(Type to_type) const
 {
-  std::string mx_type = type();
+  Type from_type = type();
+  if (from_type == to_type) {
+    return *this;
+  }
+  if (!is_arithmetic(from_type) || !is_arithmetic(to_type)) {
+    return empty();
+  }
+
+  if (to_type == Type::Float) {
+    /* TODO: Convert to float, <extract> should be used */
+  }
+
+  /* Converting types which requires > 1 iteration */
+  switch (from_type) {
+    case Type::Vector2:
+      switch (to_type) {
+        case Type::Vector4:
+          return convert(Type::Vector3).convert(Type::Vector4);
+        case Type::Color3:
+          return convert(Type::Vector3).convert(Type::Color3);
+        case Type::Color4:
+          return convert(Type::Vector3).convert(Type::Color3).convert(Type::Color4);
+        default:
+          break;
+      }
+      break;
+    case Type::Vector3:
+      switch (to_type) {
+        case Type::Color4:
+          return convert(Type::Color3).convert(Type::Color4);
+        default:
+          break;
+      }
+      break;
+    case Type::Vector4:
+      switch (to_type) {
+        case Type::Vector2:
+          return convert(Type::Vector3).convert(Type::Vector2);
+        case Type::Color3:
+          return convert(Type::Vector3).convert(Type::Color3);
+        default:
+          break;
+      }
+      break;
+    case Type::Color3:
+      switch (to_type) {
+        case Type::Vector2:
+          return convert(Type::Vector3).convert(Type::Vector2);
+        case Type::Vector4:
+          return convert(Type::Vector3).convert(Type::Vector4);
+        default:
+          break;
+      }
+      break;
+    case Type::Color4:
+      switch (to_type) {
+        case Type::Vector2:
+          return convert(Type::Vector4).convert(Type::Vector3).convert(Type::Vector2);
+        case Type::Vector3:
+          return convert(Type::Vector4).convert(Type::Vector3);
+        default:
+          break;
+      }
+      break;
+    default:
+      break;
+  }
+
+  /* Converting 1 iteration types */
   NodeItem res = empty();
   if (value) {
-    MaterialX::Color3 c;
-    if (mx_type == "float") {
-      float v = value->asA<float>();
-      c = {v, v, v};
+    switch (from_type) {
+      case Type::Float: {
+        float v = value->asA<float>();
+        switch (to_type) {
+          case Type::Vector2:
+            res.value = MaterialX::Value::createValue<MaterialX::Vector2>({v, v});
+            break;
+          case Type::Vector3:
+            res.value = MaterialX::Value::createValue<MaterialX::Vector3>({v, v, v});
+            break;
+          case Type::Vector4:
+            res.value = MaterialX::Value::createValue<MaterialX::Vector4>({v, v, v, 1.0f});
+            break;
+          case Type::Color3:
+            res.value = MaterialX::Value::createValue<MaterialX::Color3>({v, v, v});
+            break;
+          case Type::Color4:
+            res.value = MaterialX::Value::createValue<MaterialX::Color4>({v, v, v, 1.0f});
+            break;
+          default:
+            BLI_assert_unreachable();
+        }
+        break;
+      }
+      case Type::Vector2: {
+        auto v = value->asA<MaterialX::Vector2>();
+        switch (to_type) {
+          case Type::Vector3:
+            res.value = MaterialX::Value::createValue<MaterialX::Vector3>({v[0], v[1], 0.0f});
+            break;
+          default:
+            BLI_assert_unreachable();
+        }
+        break;
+      }
+      case Type::Vector3: {
+        auto v = value->asA<MaterialX::Vector3>();
+        switch (to_type) {
+          case Type::Vector2:
+            res.value = MaterialX::Value::createValue<MaterialX::Vector2>({v[0], v[1]});
+            break;
+          case Type::Vector4:
+            res.value = MaterialX::Value::createValue<MaterialX::Vector4>(
+                {v[0], v[1], v[2], 0.0f});
+            break;
+          case Type::Color3:
+            res.value = MaterialX::Value::createValue<MaterialX::Color3>({v[0], v[1], v[2]});
+            break;
+          default:
+            BLI_assert_unreachable();
+        }
+        break;
+      }
+      case Type::Vector4: {
+        auto v = value->asA<MaterialX::Vector4>();
+        switch (to_type) {
+          case Type::Vector3:
+            res.value = MaterialX::Value::createValue<MaterialX::Vector3>({v[0], v[1], v[2]});
+            break;
+          case Type::Color4:
+            res.value = MaterialX::Value::createValue<MaterialX::Color4>({v[0], v[1], v[2], v[3]});
+            break;
+          default:
+            BLI_assert_unreachable();
+        }
+        break;
+      }
+      case Type::Color3: {
+        auto v = value->asA<MaterialX::Color3>();
+        switch (to_type) {
+          case Type::Vector3:
+            res.value = MaterialX::Value::createValue<MaterialX::Vector3>({v[0], v[1], v[2]});
+            break;
+          case Type::Color4:
+            res.value = MaterialX::Value::createValue<MaterialX::Color4>({v[0], v[1], v[2], 1.0f});
+            break;
+          default:
+            BLI_assert_unreachable();
+        }
+        break;
+      }
+      case Type::Color4: {
+        auto v = value->asA<MaterialX::Color4>();
+        switch (to_type) {
+          case Type::Vector4:
+            res.value = MaterialX::Value::createValue<MaterialX::Vector4>(
+                {v[0], v[1], v[2], v[3]});
+            break;
+          case Type::Color3:
+            res.value = MaterialX::Value::createValue<MaterialX::Color3>({v[0], v[1], v[2]});
+            break;
+          default:
+            BLI_assert_unreachable();
+        }
+        break;
+      }
+      default:
+        BLI_assert_unreachable();
     }
-    else if (mx_type == "color3") {
-      auto v = value->asA<MaterialX::Color3>();
-      c = {v[0], v[1], v[2]};
-    }
-    else if (mx_type == "color4") {
-      auto v = value->asA<MaterialX::Color4>();
-      c = {v[0], v[1], v[2]};
-    }
-    else if (mx_type == "vector3") {
-      auto v = value->asA<MaterialX::Vector3>();
-      c = {v[0], v[1], v[2]};
-    }
-    else if (mx_type == "vector4") {
-      auto v = value->asA<MaterialX::Vector4>();
-      c = {v[0], v[1], v[2]};
-    }
-    else {
-      return res;
-    }
-    res.value = MaterialX::Value::createValue<MaterialX::Color3>(c);
   }
-  else if (node) {
-    if (mx_type != "color3") {
-      return res;
-    }
-    res.node = node;
+  else {
+    res.node = graph_->addNode("convert", MaterialX::EMPTY_STRING, type(to_type));
+    res.set_input("in", *this);
   }
   return res;
 }
 
-bool NodeItem::is_numeric() const
+NodeItem NodeItem::if_else(CompareOp op,
+                           const NodeItem &other,
+                           const NodeItem &if_val,
+                           const NodeItem &else_val) const
 {
-  std::string t = type();
-  return ELEM(t, "float", "color3", "color4", "vector2", "vector3", "vector4");
-}
-
-std::string NodeItem::type() const
-{
-  return value ? value->getTypeString() : node->getType();
-}
-
-NodeItem NodeItem::arithmetic(const std::string &mx_category,
-                              std::function<float(float)> func) const
-{
-  if (!is_numeric()) {
-    return empty();
+  switch (op) {
+    case CompareOp::Less:
+      return other.if_else(CompareOp::Greater, *this, else_val, if_val);
+    case CompareOp::LessEq:
+      return other.if_else(CompareOp::GreaterEq, *this, else_val, if_val);
+    case CompareOp::NotEq:
+      return if_else(CompareOp::Eq, other, else_val, if_val);
+    default:
+      break;
   }
 
-  std::string t = value ? value->getTypeString() : node->getType();
-  NodeItem res(graph_);
-  if (value) {
-    if (t == "float") {
-      float v = value->asA<float>();
-      res.value = MaterialX::Value::createValue<float>(func(v));
-    }
-    else if (t == "color3") {
-      auto v = value->asA<MaterialX::Color3>();
-      res.value = MaterialX::Value::createValue<MaterialX::Color3>(
-          {func(v[0]), func(v[1]), func(v[2])});
-    }
-    else if (t == "color4") {
-      auto v = value->asA<MaterialX::Color4>();
-      res.value = MaterialX::Value::createValue<MaterialX::Color4>(
-          {func(v[0]), func(v[1]), func(v[2]), func(v[3])});
-    }
-    else if (t == "vector2") {
-      auto v = value->asA<MaterialX::Vector2>();
-      res.value = MaterialX::Value::createValue<MaterialX::Vector2>({func(v[0]), func(v[1])});
-    }
-    else if (t == "vector3") {
-      auto v = value->asA<MaterialX::Vector3>();
-      res.value = MaterialX::Value::createValue<MaterialX::Vector3>(
-          {func(v[0]), func(v[1]), func(v[2])});
-    }
-    else if (t == "vector4") {
-      auto v = value->asA<MaterialX::Vector4>();
-      res.value = MaterialX::Value::createValue<MaterialX::Vector4>(
-          {func(v[0]), func(v[1]), func(v[2]), func(v[3])});
-    }
-    else {
+  NodeItem res = empty();
+  if (type() != Type::Float || other.type() != Type::Float) {
+    return res;
+  }
+
+  auto item1 = if_val;
+  auto item2 = else_val;
+  Type to_type = adjust_types(item1, item2);
+  if (to_type == Type::Empty) {
+    return res;
+  }
+
+  std::function<bool(float, float)> func = nullptr;
+  std::string mx_category;
+  switch (op) {
+    case CompareOp::Greater:
+      mx_category = "ifgreater";
+      func = [](float a, float b) { return a > b; };
+      break;
+    case CompareOp::GreaterEq:
+      mx_category = "ifgreatereq";
+      func = [](float a, float b) { return a >= b; };
+      break;
+    case CompareOp::Eq:
+      mx_category = "ifequal";
+      func = [](float a, float b) { return a == b; };
+      break;
+    default:
       BLI_assert_unreachable();
+  }
+
+  if (value && other.value) {
+    res = func(value->asA<float>(), other.value->asA<float>()) ? item1 : item2;
+  }
+  else {
+    res.node = graph_->addNode(mx_category, MaterialX::EMPTY_STRING, type(to_type));
+    res.set_input("value1", *this);
+    res.set_input("value2", other);
+    res.set_input("in1", item1);
+    res.set_input("in2", item2);
+  }
+
+  return res;
+}
+
+NodeItem NodeItem::empty() const
+{
+  return NodeItem(graph_);
+}
+
+NodeItem::Type NodeItem::type() const
+{
+  if (value) {
+    return type(value->getTypeString());
+  }
+  if (node) {
+    return type(node->getType());
+  }
+  return Type::Empty;
+}
+
+void NodeItem::set_input(const std::string &name,
+                         const NodeItem &item,
+                         const std::string &output_name)
+{
+  if (item.value) {
+    Type item_type = item.type();
+    std::string mx_type = type(item_type);
+    switch (item_type) {
+      case Type::String:
+        set_input(name, item.value->asA<std::string>(), mx_type);
+        break;
+      case Type::Integer:
+        set_input(name, item.value->asA<int>(), mx_type);
+        break;
+      case Type::Float:
+        set_input(name, item.value->asA<float>(), mx_type);
+        break;
+      case Type::Vector2:
+        set_input(name, item.value->asA<MaterialX::Vector2>(), mx_type);
+        break;
+      case Type::Vector3:
+        set_input(name, item.value->asA<MaterialX::Vector3>(), mx_type);
+        break;
+      case Type::Vector4:
+        set_input(name, item.value->asA<MaterialX::Vector4>(), mx_type);
+        break;
+      case Type::Color3:
+        set_input(name, item.value->asA<MaterialX::Color3>(), mx_type);
+        break;
+      case Type::Color4:
+        set_input(name, item.value->asA<MaterialX::Color4>(), mx_type);
+        break;
+      default:
+        BLI_assert_unreachable();
+    }
+  }
+  else if (item.node) {
+    node->setConnectedNode(name, item.node);
+    if (output_name != "") {
+      node->setConnectedOutput(name, item.node->getOutput(output_name));
     }
   }
   else {
-    res.node = graph_->addNode(mx_category, MaterialX::EMPTY_STRING, t);
+    CLOG_WARN(LOG_MATERIALX_SHADER, "Empty item to input: %s", name.c_str());
+  }
+}
+
+void NodeItem::set_input(const std::string &name,
+                         const NodeItem &item,
+                         Type in_type,
+                         const std::string &output_name)
+{
+  set_input(name, item.convert(in_type), output_name);
+}
+
+void NodeItem::add_output(const std::string &name, Type out_type)
+{
+  node->addOutput(name, type(out_type));
+}
+
+NodeItem::Type NodeItem::type(const std::string &type_str)
+{
+  if (type_str == "string") {
+    return Type::String;
+  }
+  if (type_str == "integer") {
+    return Type::Integer;
+  }
+  if (type_str == "float") {
+    return Type::Float;
+  }
+  if (type_str == "vector2") {
+    return Type::Vector2;
+  }
+  if (type_str == "vector3") {
+    return Type::Vector3;
+  }
+  if (type_str == "vector4") {
+    return Type::Vector4;
+  }
+  if (type_str == "color3") {
+    return Type::Color3;
+  }
+  if (type_str == "color4") {
+    return Type::Color4;
+  }
+  return Type::Other;
+}
+
+std::string NodeItem::type(Type type)
+{
+  switch (type) {
+    case Type::String:
+      return "string";
+    case Type::Integer:
+      return "integer";
+    case Type::Float:
+      return "float";
+    case Type::Vector2:
+      return "vector2";
+    case Type::Vector3:
+      return "vector3";
+    case Type::Vector4:
+      return "vector4";
+    case Type::Color3:
+      return "color3";
+    case Type::Color4:
+      return "color4";
+    default:
+      break;
+  }
+  return "";
+}
+
+bool NodeItem::is_arithmetic(Type type)
+{
+  return type >= Type::Float;
+}
+
+NodeItem::Type NodeItem::adjust_types(NodeItem &item1, NodeItem &item2)
+{
+  Type t1 = item1.type();
+  Type t2 = item2.type();
+  if (t1 == t2) {
+    return t1;
+  }
+  if (!is_arithmetic(t1) || !is_arithmetic(t2)) {
+    return Type::Empty;
+  }
+  if (t1 < t2) {
+    item1 = item1.convert(t2);
+    return t2;
+  }
+  else {
+    item2 = item2.convert(t1);
+    return t1;
+  }
+}
+
+bool NodeItem::is_arithmetic() const
+{
+  return is_arithmetic(type());
+}
+
+NodeItem NodeItem::arithmetic(const std::string &category, std::function<float(float)> func) const
+{
+  NodeItem res = empty();
+  Type type = this->type();
+  if (!is_arithmetic(type)) {
+    return res;
+  }
+
+  if (value) {
+    switch (type) {
+      case Type::Float: {
+        float v = value->asA<float>();
+        res.value = MaterialX::Value::createValue<float>(func(v));
+        break;
+      }
+      case Type::Color3: {
+        auto v = value->asA<MaterialX::Color3>();
+        res.value = MaterialX::Value::createValue<MaterialX::Color3>(
+            {func(v[0]), func(v[1]), func(v[2])});
+        break;
+      }
+      case Type::Color4: {
+        auto v = value->asA<MaterialX::Color4>();
+        res.value = MaterialX::Value::createValue<MaterialX::Color4>(
+            {func(v[0]), func(v[1]), func(v[2]), func(v[3])});
+        break;
+      }
+      case Type::Vector2: {
+        auto v = value->asA<MaterialX::Vector2>();
+        res.value = MaterialX::Value::createValue<MaterialX::Vector2>({func(v[0]), func(v[1])});
+      }
+      case Type::Vector3: {
+        auto v = value->asA<MaterialX::Vector3>();
+        res.value = MaterialX::Value::createValue<MaterialX::Vector3>(
+            {func(v[0]), func(v[1]), func(v[2])});
+        break;
+      }
+      case Type::Vector4: {
+        auto v = value->asA<MaterialX::Vector4>();
+        res.value = MaterialX::Value::createValue<MaterialX::Vector4>(
+            {func(v[0]), func(v[1]), func(v[2]), func(v[3])});
+        break;
+      }
+      default:
+        BLI_assert_unreachable();
+    }
+  }
+  else {
+    /* TODO: Some of math functions (sin, cos, ...) doesn't work with Color types,
+     * we have to convert to Vector */
+    res.node = graph_->addNode(category, MaterialX::EMPTY_STRING, this->type(type));
     res.set_input("in", *this);
   }
   return res;
 }
 
 NodeItem NodeItem::arithmetic(const NodeItem &other,
-                              const std::string &mx_category,
+                              const std::string &category,
                               std::function<float(float, float)> func) const
 {
   NodeItem res = empty();
-  if (!is_numeric() || !other.is_numeric()) {
+  NodeItem item1 = *this;
+  NodeItem item2 = other;
+  Type to_type = adjust_types(item1, item2);
+  if (to_type == Type::Empty) {
     return res;
   }
 
-  std::string mx_type;
   if (value && other.value) {
-    auto val1 = value;
-    auto val2 = other.value;
-    if (!adjust_types(val1, val2, mx_type)) {
-      return res;
-    }
-
-    if (mx_type == "float") {
-      float v1 = val1->asA<float>();
-      float v2 = val2->asA<float>();
-      res.value = MaterialX::Value::createValue<float>(func(v1, v2));
-    }
-    else if (mx_type == "color3") {
-      auto v1 = val1->asA<MaterialX::Color3>();
-      auto v2 = val2->asA<MaterialX::Color3>();
-      res.value = MaterialX::Value::createValue<MaterialX::Color3>(
-          {func(v1[0], v2[0]), func(v1[1], v2[1]), func(v1[2], v2[2])});
-    }
-    else if (mx_type == "color4") {
-      auto v1 = val1->asA<MaterialX::Color4>();
-      auto v2 = val2->asA<MaterialX::Color4>();
-      res.value = MaterialX::Value::createValue<MaterialX::Color4>(
-          {func(v1[0], v2[0]), func(v1[1], v2[1]), func(v1[2], v2[2]), func(v1[3], v2[3])});
-    }
-    else if (mx_type == "vector2") {
-      auto v1 = val1->asA<MaterialX::Vector2>();
-      auto v2 = val2->asA<MaterialX::Vector2>();
-      res.value = MaterialX::Value::createValue<MaterialX::Vector2>(
-          {func(v1[0], v2[0]), func(v1[1], v2[1])});
-    }
-    else if (mx_type == "vector3") {
-      auto v1 = val1->asA<MaterialX::Vector3>();
-      auto v2 = val2->asA<MaterialX::Vector3>();
-      res.value = MaterialX::Value::createValue<MaterialX::Vector3>(
-          {func(v1[0], v2[0]), func(v1[1], v2[1]), func(v1[2], v2[2])});
-    }
-    else if (mx_type == "vector4") {
-      auto v1 = val1->asA<MaterialX::Vector4>();
-      auto v2 = val2->asA<MaterialX::Vector4>();
-      res.value = MaterialX::Value::createValue<MaterialX::Vector4>(
-          {func(v1[0], v2[0]), func(v1[1], v2[1]), func(v1[2], v2[2]), func(v1[3], v2[3])});
-    }
-    else {
-      BLI_assert_unreachable();
+    switch (to_type) {
+      case Type::Float: {
+        float v1 = item1.value->asA<float>();
+        float v2 = item2.value->asA<float>();
+        res.value = MaterialX::Value::createValue<float>(func(v1, v2));
+        break;
+      }
+      case Type::Color3: {
+        auto v1 = item1.value->asA<MaterialX::Color3>();
+        auto v2 = item2.value->asA<MaterialX::Color3>();
+        res.value = MaterialX::Value::createValue<MaterialX::Color3>(
+            {func(v1[0], v2[0]), func(v1[1], v2[1]), func(v1[2], v2[2])});
+        break;
+      }
+      case Type::Color4: {
+        auto v1 = item1.value->asA<MaterialX::Color4>();
+        auto v2 = item2.value->asA<MaterialX::Color4>();
+        res.value = MaterialX::Value::createValue<MaterialX::Color4>(
+            {func(v1[0], v2[0]), func(v1[1], v2[1]), func(v1[2], v2[2]), func(v1[3], v2[3])});
+        break;
+      }
+      case Type::Vector2: {
+        auto v1 = item1.value->asA<MaterialX::Vector2>();
+        auto v2 = item2.value->asA<MaterialX::Vector2>();
+        res.value = MaterialX::Value::createValue<MaterialX::Vector2>(
+            {func(v1[0], v2[0]), func(v1[1], v2[1])});
+        break;
+      }
+      case Type::Vector3: {
+        auto v1 = item1.value->asA<MaterialX::Vector3>();
+        auto v2 = item2.value->asA<MaterialX::Vector3>();
+        res.value = MaterialX::Value::createValue<MaterialX::Vector3>(
+            {func(v1[0], v2[0]), func(v1[1], v2[1]), func(v1[2], v2[2])});
+        break;
+      }
+      case Type::Vector4: {
+        auto v1 = item1.value->asA<MaterialX::Vector4>();
+        auto v2 = item2.value->asA<MaterialX::Vector4>();
+        res.value = MaterialX::Value::createValue<MaterialX::Vector4>(
+            {func(v1[0], v2[0]), func(v1[1], v2[1]), func(v1[2], v2[2]), func(v1[3], v2[3])});
+        break;
+      }
+      default:
+        BLI_assert_unreachable();
     }
   }
   else {
-    auto val1 = *this;
-    auto val2 = other;
-    if (!adjust_types(val1, val2, mx_type)) {
-      return res;
-    }
-
-    res.node = graph_->addNode(mx_category, MaterialX::EMPTY_STRING, mx_type);
-    res.set_input("in1", val1);
-    res.set_input("in2", val2);
+    res.node = graph_->addNode(category, MaterialX::EMPTY_STRING, type(to_type));
+    res.set_input("in1", item1);
+    res.set_input("in2", item2);
   }
   return res;
-}
-
-MaterialX::ValuePtr NodeItem::float_to_type(float v, std::string mx_type)
-{
-  if (mx_type == "float") {
-    return MaterialX::Value::createValue<float>(v);
-  }
-  if (mx_type == "color3") {
-    return MaterialX::Value::createValue<MaterialX::Color3>({v, v, v});
-  }
-  if (mx_type == "color4") {
-    return MaterialX::Value::createValue<MaterialX::Color4>({v, v, v, 1.0f});
-  }
-  if (mx_type == "vector2") {
-    return MaterialX::Value::createValue<MaterialX::Vector2>({v, v});
-  }
-  if (mx_type == "vector3") {
-    return MaterialX::Value::createValue<MaterialX::Vector3>({v, v, v});
-  }
-  if (mx_type == "vector4") {
-    return MaterialX::Value::createValue<MaterialX::Vector4>({v, v, v, 1.0f});
-  }
-
-  BLI_assert_unreachable();
-  return nullptr;
-}
-
-bool NodeItem::adjust_types(MaterialX::ValuePtr &val1,
-                            MaterialX::ValuePtr &val2,
-                            std::string &mx_type)
-{
-  std::string t1 = val1->getTypeString();
-  std::string t2 = val2->getTypeString();
-  if (t1 != t2) {
-    if (t1 == "float") {
-      val1 = float_to_type(val1->asA<float>(), t2);
-      mx_type = t2;
-    }
-    else if (t2 == "float") {
-      val2 = float_to_type(val2->asA<float>(), t1);
-      mx_type = t1;
-    }
-    else {
-      return false;
-    }
-  }
-  else {
-    mx_type = t1;
-  }
-  return true;
-}
-
-bool NodeItem::adjust_types(NodeItem &val1, NodeItem &val2, std::string &mx_type)
-{
-  std::string t1 = val1.type();
-  std::string t2 = val2.type();
-  if (t1 != t2) {
-    if (val1.value && t1 == "float") {
-      val1.value = float_to_type(val1.value->asA<float>(), t2);
-      mx_type = t2;
-    }
-    else if (val2.value && t2 == "float") {
-      val2.value = float_to_type(val2.value->asA<float>(), t1);
-      mx_type = t1;
-    }
-    else {
-      return false;
-    }
-  }
-  else {
-    mx_type = t1;
-  }
-  return true;
 }
 
 }  // namespace blender::nodes::materialx

@@ -14,7 +14,11 @@ NodeParser::NodeParser(MaterialX::GraphElement *graph,
                        const Material *material,
                        const bNode *node,
                        const bNodeSocket *socket_out)
-    : graph_(graph), depsgraph_(depsgraph), material_(material), node_(node), socket_out_(socket_out)
+    : graph_(graph),
+      depsgraph_(depsgraph),
+      material_(material),
+      node_(node),
+      socket_out_(socket_out)
 {
 }
 
@@ -74,17 +78,20 @@ NodeItem NodeParser::get_input_default(const bNodeSocket &socket)
     case SOCK_FLOAT: {
       float v = socket.default_value_typed<bNodeSocketValueFloat>()->value;
       res.value = MaterialX::Value::createValue<float>(v);
-    } break;
+      break;
+    }
     case SOCK_VECTOR: {
       const float *v = socket.default_value_typed<bNodeSocketValueVector>()->value;
       res.value = MaterialX::Value::createValue<MaterialX::Vector3>(
           MaterialX::Vector3(v[0], v[1], v[2]));
-    } break;
+      break;
+    }
     case SOCK_RGBA: {
       const float *v = socket.default_value_typed<bNodeSocketValueRGBA>()->value;
       res.value = MaterialX::Value::createValue<MaterialX::Color4>(
           MaterialX::Color4(v[0], v[1], v[2], v[3]));
-    } break;
+      break;
+    }
     default: {
       CLOG_WARN(LOG_MATERIALX_SHADER, "Unsupported socket type: %d", socket.type);
     }
@@ -115,7 +122,7 @@ NodeItem NodeParser::get_input_link(const bNodeSocket &socket)
   /* Checking if node was already computed */
   res.node = graph_->getNode(node_name(from_node, link->fromsock));
   if (res.node) {
-    return res; 
+    return res;
   }
 
   /* Computing from_node with required NodeParser object */

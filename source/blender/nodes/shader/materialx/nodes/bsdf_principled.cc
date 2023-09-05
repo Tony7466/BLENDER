@@ -15,12 +15,8 @@ NodeItem BSDFPrincipledNodeParser::compute()
   NodeItem base_color = get_input_value("Base Color");
 
   NodeItem subsurface = get_input_value("Subsurface");
-  NodeItem subsurface_radius = empty();
-  NodeItem subsurface_color = empty();
-  if (subsurface != zero) {
-    subsurface_radius = get_input_value("Subsurface Radius");
-    subsurface_color = get_input_value("Subsurface Color");
-  }
+  NodeItem subsurface_radius = get_input_value("Subsurface Radius");
+  NodeItem subsurface_color = get_input_value("Subsurface Color");
 
   NodeItem metallic = get_input_value("Metallic");
   NodeItem specular = get_input_value("Specular");
@@ -70,7 +66,7 @@ NodeItem BSDFPrincipledNodeParser::compute()
   /* Creating standard_surface */
   NodeItem res = create_node("standard_surface", "surfaceshader");
   res.set_input("base", 1.0, "float");
-  res.set_input("base_color", base_color.to_color3());
+  res.set_input("base_color", base_color, NodeItem::Type::Color3);
   res.set_input("diffuse_roughness", roughness);
   if (normal) {
     res.set_input("normal", normal);
@@ -85,7 +81,7 @@ NodeItem BSDFPrincipledNodeParser::compute()
 
   if (specular != zero) {
     res.set_input("specular", specular);
-    res.set_input("specular_color", base_color.to_color3());
+    res.set_input("specular_color", base_color, NodeItem::Type::Color3);
     res.set_input("specular_roughness", roughness);
     res.set_input("specular_IOR", ior);
     if (anisotropic) {
@@ -98,28 +94,26 @@ NodeItem BSDFPrincipledNodeParser::compute()
 
   if (transmission != zero) {
     res.set_input("transmission", transmission);
-    res.set_input("transmission_color", base_color.to_color3());
+    res.set_input("transmission_color", base_color, NodeItem::Type::Color3);
     res.set_input("transmission_extra_roughness", transmission_roughness);
   }
 
-  if (subsurface != zero) {
-    res.set_input("subsurface", subsurface);
-    res.set_input("subsurface_color", subsurface_color);
-    res.set_input("subsurface_radius", subsurface_radius);
-    if (anisotropic) {
-      res.set_input("subsurface_anisotropy", anisotropic);
-    }
+  res.set_input("subsurface", subsurface);
+  res.set_input("subsurface_color", subsurface_color);
+  res.set_input("subsurface_radius", subsurface_radius);
+  if (anisotropic) {
+    res.set_input("subsurface_anisotropy", anisotropic);
   }
 
   if (sheen != zero) {
     res.set_input("sheen", sheen);
-    res.set_input("sheen_color", base_color.to_color3());
+    res.set_input("sheen_color", base_color, NodeItem::Type::Color3);
     res.set_input("sheen_roughness", roughness);
   }
 
   if (clearcoat != zero) {
     res.set_input("coat", clearcoat);
-    res.set_input("coat_color", base_color.to_color3());
+    res.set_input("coat_color", base_color, NodeItem::Type::Color3);
     res.set_input("coat_roughness", clearcoat_roughness);
     res.set_input("coat_IOR", ior);
     if (anisotropic) {
@@ -131,7 +125,7 @@ NodeItem BSDFPrincipledNodeParser::compute()
 
   if (emission != zero) {
     res.set_input("emission", emission_strength);
-    res.set_input("emission_color", emission);
+    res.set_input("emission_color", emission, NodeItem::Type::Color3);
   }
 
   return res;

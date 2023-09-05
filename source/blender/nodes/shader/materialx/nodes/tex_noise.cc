@@ -12,14 +12,15 @@ NodeItem TexNoiseNodeParser::compute()
   NodeItem detail = get_input_value("Detail");
   NodeItem lacunarity = get_input_value("Lacunarity");
 
-  if (detail.value && detail.type() == "float") {
+  if (detail.value && detail.type() == NodeItem::Type::Float) {
     detail = value(int(detail.value->asA<float>()));
   }
 
-  NodeItem texcoord = create_node("position", "vector3");
+  NodeItem position = create_node("position", "vector3");
+  position = position * scale;
 
   NodeItem res = create_node("fractal3d", "color3");
-  res.set_input("position", texcoord * scale);
+  res.set_input("position", position, NodeItem::Type::Vector3);
   res.set_input("octaves", detail);
   res.set_input("lacunarity", lacunarity);
   return res;

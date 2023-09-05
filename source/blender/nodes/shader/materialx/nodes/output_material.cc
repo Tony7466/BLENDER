@@ -37,7 +37,8 @@ NodeItem OutputMaterialNodeParser::compute(const std::string &socket_name)
 NodeItem OutputMaterialNodeParser::compute_default()
 {
   NodeItem surface = create_node("standard_surface", "surfaceshader");
-  surface.set_input("base_color", value(MaterialX::Color3(material_->r, material_->g, material_->b)));
+  surface.set_input("base_color",
+                    value(MaterialX::Color3(material_->r, material_->g, material_->b)));
   surface.set_input("diffuse_roughness", value(material_->roughness));
   if (material_->metallic > 0.0f) {
     surface.set_input("metalness", value(material_->metallic));

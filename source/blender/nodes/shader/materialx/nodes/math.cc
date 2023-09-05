@@ -2,8 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "node_parser.h"
 #include "../material.h"
+#include "node_parser.h"
 
 namespace blender::nodes::materialx {
 
@@ -109,10 +109,10 @@ NodeItem MathNodeParser::compute()
           res = x.max(y);
           break;
         case NODE_MATH_LESS_THAN:
-          res = x.if_else("<", y, value(1.0f), value(0.0f));
+          res = x.if_else(NodeItem::CompareOp::Less, y, value(1.0f), value(0.0f));
           break;
         case NODE_MATH_GREATER_THAN:
-          res = x.if_else(">", y, value(1.0f), value(0.0f));
+          res = x.if_else(NodeItem::CompareOp::Greater, y, value(1.0f), value(0.0f));
           break;
         case NODE_MATH_MODULO:
           res = x % y;
@@ -138,7 +138,7 @@ NodeItem MathNodeParser::compute()
               CLOG_WARN(LOG_MATERIALX_SHADER, "Unimplemented math operation %d", op);
               break;
             case NODE_MATH_COMPARE:
-              res = z.if_else("<", (x - y).abs(), value(1.0f), value(0.0f));
+              res = z.if_else(NodeItem::CompareOp::Less, (x - y).abs(), value(1.0f), value(0.0f));
               break;
             case NODE_MATH_MULTIPLY_ADD:
               res = x * y + z;
