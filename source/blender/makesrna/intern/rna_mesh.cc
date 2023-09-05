@@ -2213,11 +2213,10 @@ static void rna_def_mloop(BlenderRNA *brna)
   RNA_def_property_array(prop, 3);
   RNA_def_property_range(prop, -1.0f, 1.0f);
   RNA_def_property_float_funcs(prop, "rna_MeshLoop_normal_get", nullptr, nullptr);
-  RNA_def_property_ui_text(
-      prop,
-      "Normal",
-      "Local space unit length split normal vector of this vertex for this face "
-      "(must be computed beforehand using calc_normals_split or calc_tangents)");
+  RNA_def_property_ui_text(prop,
+                           "Normal",
+                           "The normal direction of the face corner, taking into account sharp "
+                           "faces, sharp edges, and custom normal data");
 
   prop = RNA_def_property(srna, "tangent", PROP_FLOAT, PROP_DIRECTION);
   RNA_def_property_array(prop, 3);
