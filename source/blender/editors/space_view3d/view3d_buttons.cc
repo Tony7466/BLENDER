@@ -1291,8 +1291,7 @@ static void v3d_object_dimension_buts(bContext *C, uiLayout *layout, View3D *v3d
     BKE_object_dimensions_set_ex(
         ob, tfp->ob_dims, axis_mask, tfp->ob_scale_orig, tfp->ob_obmat_orig);
 
-    PointerRNA obptr;
-    RNA_id_pointer_create(&ob->id, &obptr);
+    PointerRNA obptr = RNA_id_pointer_create(&ob->id);
     PropertyRNA *prop = RNA_struct_find_property(&obptr, "scale");
     RNA_property_update(C, &obptr, prop);
   }
@@ -1807,9 +1806,7 @@ static void view3d_panel_transform(const bContext *C, Panel *panel)
     v3d_posearmature_buts(col, ob);
   }
   else {
-    PointerRNA obptr;
-
-    RNA_id_pointer_create(&ob->id, &obptr);
+    PointerRNA obptr = RNA_id_pointer_create(&ob->id);
     v3d_transform_butsR(col, &obptr);
 
     /* Dimensions and editmode are mostly the same check. */

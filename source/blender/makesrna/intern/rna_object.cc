@@ -2275,10 +2275,8 @@ static char *rna_ObjectLightLinking_path(const PointerRNA * /*ptr*/)
 static PointerRNA rna_LightLinking_receiver_collection_get(PointerRNA *ptr)
 {
   Object *object = reinterpret_cast<Object *>(ptr->owner_id);
-  PointerRNA collection_ptr;
-  RNA_id_pointer_create(
-      reinterpret_cast<ID *>(BKE_light_linking_collection_get(object, LIGHT_LINKING_RECEIVER)),
-      &collection_ptr);
+  PointerRNA collection_ptr = RNA_id_pointer_create(
+      reinterpret_cast<ID *>(BKE_light_linking_collection_get(object, LIGHT_LINKING_RECEIVER)));
   return collection_ptr;
 }
 
@@ -2295,10 +2293,8 @@ static void rna_LightLinking_receiver_collection_set(PointerRNA *ptr,
 static PointerRNA rna_LightLinking_blocker_collection_get(PointerRNA *ptr)
 {
   Object *object = reinterpret_cast<Object *>(ptr->owner_id);
-  PointerRNA collection_ptr;
-  RNA_id_pointer_create(
-      reinterpret_cast<ID *>(BKE_light_linking_collection_get(object, LIGHT_LINKING_BLOCKER)),
-      &collection_ptr);
+  PointerRNA collection_ptr = RNA_id_pointer_create(
+      reinterpret_cast<ID *>(BKE_light_linking_collection_get(object, LIGHT_LINKING_BLOCKER)));
   return collection_ptr;
 }
 

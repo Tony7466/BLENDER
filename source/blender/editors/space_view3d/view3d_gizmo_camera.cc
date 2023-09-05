@@ -276,8 +276,7 @@ static void WIDGETGROUP_camera_message_subscribe(const bContext *C,
         &rna_Camera_lens,
     };
 
-    PointerRNA idptr;
-    RNA_id_pointer_create(&ca->id, &idptr);
+    PointerRNA idptr = RNA_id_pointer_create(&ca->id);
 
     for (int i = 0; i < ARRAY_SIZE(props); i++) {
       WM_msg_subscribe_rna(mbus, &idptr, props[i], &msg_sub_value_gz_tag_refresh, __func__);

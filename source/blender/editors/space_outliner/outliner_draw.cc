@@ -284,7 +284,7 @@ static void outliner_object_set_flag_recursive_fn(bContext *C,
   {
     if (BKE_object_is_child_recursive(ob_parent, ob_iter)) {
       if (ob) {
-        RNA_id_pointer_create(&ob_iter->id, &ptr);
+        ptr = RNA_id_pointer_create(&ob_iter->id);
         DEG_id_tag_update(&ob_iter->id, ID_RECALC_COPY_ON_WRITE);
       }
       else {
@@ -338,7 +338,7 @@ static void outliner_layer_or_collection_pointer_create(Scene *scene,
                                                         PointerRNA *ptr)
 {
   if (collection) {
-    RNA_id_pointer_create(&collection->id, ptr);
+    *ptr = RNA_id_pointer_create(&collection->id);
   }
   else {
     RNA_pointer_create(&scene->id, &RNA_LayerCollection, layer_collection, ptr);
@@ -350,7 +350,7 @@ static void outliner_base_or_object_pointer_create(
     Scene *scene, ViewLayer *view_layer, Collection *collection, Object *ob, PointerRNA *ptr)
 {
   if (collection) {
-    RNA_id_pointer_create(&ob->id, ptr);
+    *ptr = RNA_id_pointer_create(&ob->id);
   }
   else {
     BKE_view_layer_synced_ensure(scene, view_layer);
@@ -570,7 +570,7 @@ void outliner_collection_isolate_flag(Scene *scene,
       if (parent->collection->flag & COLLECTION_IS_MASTER) {
         break;
       }
-      RNA_id_pointer_create(&parent->collection->id, &ptr);
+      ptr = RNA_id_pointer_create(&parent->collection->id);
       RNA_property_boolean_set(&ptr, layer_or_collection_prop, !is_hide);
       child = parent->collection;
     }
@@ -1036,7 +1036,7 @@ static bool outliner_restrict_properties_collection_set(Scene *scene,
   }
 
   /* Create the PointerRNA. */
-  RNA_id_pointer_create(&collection->id, collection_ptr);
+  *collection_ptr = RNA_id_pointer_create(&collection->id);
   if (layer_collection != nullptr) {
     RNA_pointer_create(&scene->id, &RNA_LayerCollection, layer_collection, layer_collection_ptr);
   }
@@ -1170,9 +1170,8 @@ static void outliner_draw_restrictbuts(uiBlock *block,
         /* Don't show restrict columns for children that are not directly inside the collection. */
       }
       else if ((tselem->type == TSE_SOME_ID) && (te->idcode == ID_OB)) {
-        PointerRNA ptr;
         Object *ob = (Object *)tselem->id;
-        RNA_id_pointer_create(&ob->id, &ptr);
+        PointerRNA ptr = RNA_id_pointer_create(&ob->id);
 
         if (space_outliner->show_restrict_flags & SO_RESTRICT_HIDE) {
           BKE_view_layer_synced_ensure(scene, view_layer);
@@ -2014,8 +2013,7 @@ static void outliner_draw_overrides_restrictbuts(Main *bmain,
                                UI_UNIT_X,
                                UI_UNIT_Y,
                                "");
-    PointerRNA idptr;
-    RNA_id_pointer_create(&id, &idptr);
+    PointerRNA idptr = RNA_id_pointer_create(&id);
     UI_but_context_ptr_set(block, but, "id", &idptr);
     UI_but_func_identity_compare_set(but, outliner_but_identity_cmp_context_id_fn);
     UI_but_flag_enable(but, UI_BUT_DRAG_LOCK);

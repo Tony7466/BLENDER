@@ -104,7 +104,7 @@ static bool driver_get_target_context_property(const DriverTargetContext *driver
 {
   switch (dtar->context_property) {
     case DTAR_CONTEXT_PROPERTY_ACTIVE_SCENE:
-      RNA_id_pointer_create(&driver_target_context->scene->id, r_property_ptr);
+      *r_property_ptr = RNA_id_pointer_create(&driver_target_context->scene->id);
       return true;
 
     case DTAR_CONTEXT_PROPERTY_ACTIVE_VIEW_LAYER: {
@@ -142,7 +142,7 @@ bool driver_get_target_property(const DriverTargetContext *driver_target_context
     return false;
   }
 
-  RNA_id_pointer_create(dtar->id, r_prop);
+  *r_prop = RNA_id_pointer_create(dtar->id);
 
   return true;
 }

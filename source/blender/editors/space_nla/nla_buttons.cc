@@ -293,9 +293,7 @@ static void nla_panel_animdata(const bContext *C, Panel *panel)
    */
   if (adt_ptr.owner_id) {
     ID *id = adt_ptr.owner_id;
-    PointerRNA id_ptr;
-
-    RNA_id_pointer_create(id, &id_ptr);
+    PointerRNA id_ptr = RNA_id_pointer_create(id);
 
     /* ID-block name > AnimData */
     row = uiLayoutRow(layout, true);

@@ -886,9 +886,8 @@ static PointerRNA rna_Window_view_layer_get(PointerRNA *ptr)
   wmWindow *win = static_cast<wmWindow *>(ptr->data);
   Scene *scene = WM_window_get_active_scene(win);
   ViewLayer *view_layer = WM_window_get_active_view_layer(win);
-  PointerRNA scene_ptr;
 
-  RNA_id_pointer_create(&scene->id, &scene_ptr);
+  PointerRNA scene_ptr = RNA_id_pointer_create(&scene->id);
   return rna_pointer_inherit_refine(&scene_ptr, &RNA_ViewLayer, view_layer);
 }
 

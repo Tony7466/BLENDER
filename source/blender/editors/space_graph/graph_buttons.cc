@@ -119,12 +119,10 @@ static void graph_panel_cursor_header(const bContext *C, Panel *panel)
 {
   bScreen *screen = CTX_wm_screen(C);
   SpaceGraph *sipo = CTX_wm_space_graph(C);
-  Scene *scene = CTX_data_scene(C);
-  PointerRNA spaceptr, sceneptr;
+  PointerRNA spaceptr;
   uiLayout *col;
 
   /* get RNA pointers for use when creating the UI elements */
-  RNA_id_pointer_create(&scene->id, &sceneptr);
   RNA_pointer_create(&screen->id, &RNA_SpaceGraphEditor, sipo, &spaceptr);
 
   /* 2D-Cursor */
@@ -137,12 +135,12 @@ static void graph_panel_cursor(const bContext *C, Panel *panel)
   bScreen *screen = CTX_wm_screen(C);
   SpaceGraph *sipo = CTX_wm_space_graph(C);
   Scene *scene = CTX_data_scene(C);
-  PointerRNA spaceptr, sceneptr;
+  PointerRNA spaceptr;
   uiLayout *layout = panel->layout;
   uiLayout *col, *sub;
 
   /* get RNA pointers for use when creating the UI elements */
-  RNA_id_pointer_create(&scene->id, &sceneptr);
+  PointerRNA sceneptr = RNA_id_pointer_create(&scene->id);
   RNA_pointer_create(&screen->id, &RNA_SpaceGraphEditor, sipo, &spaceptr);
 
   uiLayoutSetPropSep(layout, true);
@@ -369,7 +367,7 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
 
   /* only show this info if there are keyframes to edit */
   if (get_active_fcurve_keyframe_edit(fcu, &bezt, &prevbezt)) {
-    PointerRNA bezt_ptr, id_ptr, fcu_prop_ptr;
+    PointerRNA bezt_ptr, fcu_prop_ptr;
     PropertyRNA *fcu_prop = nullptr;
     uiBut *but;
     int unit = B_UNIT_NONE;
@@ -378,7 +376,7 @@ static void graph_panel_key_properties(const bContext *C, Panel *panel)
     RNA_pointer_create(ale->fcurve_owner_id, &RNA_Keyframe, bezt, &bezt_ptr);
 
     /* get property that F-Curve affects, for some unit-conversion magic */
-    RNA_id_pointer_create(ale->id, &id_ptr);
+    PointerRNA id_ptr = RNA_id_pointer_create(ale->id);
     if (RNA_path_resolve_property(&id_ptr, fcu->rna_path, &fcu_prop_ptr, &fcu_prop)) {
       /* determine the unit for this property */
       unit = RNA_SUBTYPE_UNIT(RNA_property_subtype(fcu_prop));
@@ -762,10 +760,8 @@ static void graph_panel_driverVar__singleProp(uiLayout *layout, ID *id, DriverVa
 
   /* Target Property */
   if (dtar->id) {
-    PointerRNA root_ptr;
-
     /* get pointer for resolving the property selected */
-    RNA_id_pointer_create(dtar->id, &root_ptr);
+    PointerRNA root_ptr = RNA_id_pointer_create(dtar->id);
 
     /* rna path */
     col = uiLayoutColumn(layout, true);

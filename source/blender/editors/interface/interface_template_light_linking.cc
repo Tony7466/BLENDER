@@ -178,11 +178,8 @@ class CollectionViewItem : public BasicTreeViewItem {
 
   void build_remove_button(uiLayout &row)
   {
-    PointerRNA id_ptr;
-    RNA_id_pointer_create(id_, &id_ptr);
-
-    PointerRNA collection_ptr;
-    RNA_id_pointer_create(&collection_.id, &collection_ptr);
+    PointerRNA id_ptr = RNA_id_pointer_create(id_);
+    PointerRNA collection_ptr = RNA_id_pointer_create(&collection_.id);
 
     uiLayoutSetContextPointer(&row, "id", &id_ptr);
     uiLayoutSetContextPointer(&row, "collection", &collection_ptr);

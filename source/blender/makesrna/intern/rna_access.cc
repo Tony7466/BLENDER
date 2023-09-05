@@ -115,7 +115,7 @@ PointerRNA RNA_main_pointer_create(Main *main)
   return ptr;
 }
 
-void RNA_id_pointer_create(ID *id, PointerRNA *r_ptr)
+PointerRNA RNA_id_pointer_create(ID *id)
 {
   StructRNA *type, *idtype = nullptr;
 
@@ -134,9 +134,11 @@ void RNA_id_pointer_create(ID *id, PointerRNA *r_ptr)
     }
   }
 
-  r_ptr->owner_id = id;
-  r_ptr->type = idtype;
-  r_ptr->data = id;
+  PointerRNA ptr;
+  ptr.owner_id = id;
+  ptr.type = idtype;
+  ptr.data = id;
+  return ptr;
 }
 
 void RNA_pointer_create(ID *id, StructRNA *type, void *data, PointerRNA *r_ptr)
@@ -215,7 +217,7 @@ void RNA_pointer_recast(PointerRNA *ptr, PointerRNA *r_ptr)
 #if 0 /* works but this case if covered by more general code below. */
   if (RNA_struct_is_ID(ptr->type)) {
     /* simple case */
-    RNA_id_pointer_create(ptr->owner_id, r_ptr);
+    *r_ptr = RNA_id_pointer_create(ptr->owner_id);
   }
   else
 #endif
@@ -2080,11 +2082,10 @@ bool RNA_property_path_from_ID_check(PointerRNA *ptr, PropertyRNA *prop)
   bool ret = false;
 
   if (path) {
-    PointerRNA id_ptr;
     PointerRNA r_ptr;
     PropertyRNA *r_prop;
 
-    RNA_id_pointer_create(ptr->owner_id, &id_ptr);
+    PointerRNA id_ptr = RNA_id_pointer_create(ptr->owner_id);
     if (RNA_path_resolve(&id_ptr, path, &r_ptr, &r_prop) == true) {
       ret = (prop == r_prop);
     }

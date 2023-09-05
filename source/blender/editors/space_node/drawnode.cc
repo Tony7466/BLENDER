@@ -1457,9 +1457,8 @@ static void std_node_socket_interface_draw(ID *id,
                                            bContext * /*C*/,
                                            uiLayout *layout)
 {
-  PointerRNA ptr, tree_ptr;
+  PointerRNA ptr;
   RNA_pointer_create(id, &RNA_NodeTreeInterfaceSocket, interface_socket, &ptr);
-  RNA_id_pointer_create(id, &tree_ptr);
 
   const bNodeSocketType *typeinfo = interface_socket->socket_typeinfo();
   BLI_assert(typeinfo != nullptr);

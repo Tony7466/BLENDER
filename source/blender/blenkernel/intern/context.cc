@@ -627,7 +627,7 @@ bool CTX_data_dir(const char *member)
 
 void CTX_data_id_pointer_set(bContextDataResult *result, ID *id)
 {
-  RNA_id_pointer_create(id, &result->ptr);
+  result->ptr = RNA_id_pointer_create(id);
 }
 
 void CTX_data_pointer_set(bContextDataResult *result, ID *id, StructRNA *type, void *data)
@@ -643,7 +643,7 @@ void CTX_data_pointer_set_ptr(bContextDataResult *result, const PointerRNA *ptr)
 void CTX_data_id_list_add(bContextDataResult *result, ID *id)
 {
   CollectionPointerLink *link = MEM_cnew<CollectionPointerLink>(__func__);
-  RNA_id_pointer_create(id, &link->ptr);
+  link->ptr = RNA_id_pointer_create(id);
 
   BLI_addtail(&result->list, link);
 }

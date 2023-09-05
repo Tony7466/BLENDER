@@ -1373,8 +1373,7 @@ static int image_open_exec(bContext *C, wmOperator *op)
      * pointer use also increases user, so this compensates it */
     id_us_min(&ima->id);
 
-    PointerRNA imaptr;
-    RNA_id_pointer_create(&ima->id, &imaptr);
+    PointerRNA imaptr = RNA_id_pointer_create(&ima->id);
     RNA_property_pointer_set(&iod->pprop.ptr, iod->pprop.prop, imaptr, nullptr);
     RNA_property_update(C, &iod->pprop.ptr, iod->pprop.prop);
   }
@@ -1594,9 +1593,8 @@ static int image_file_browse_exec(bContext *C, wmOperator *op)
     BKE_image_ensure_tile_token(filepath, sizeof(filepath));
   }
 
-  PointerRNA imaptr;
   PropertyRNA *imaprop;
-  RNA_id_pointer_create(&ima->id, &imaptr);
+  PointerRNA imaptr = RNA_id_pointer_create(&ima->id);
   imaprop = RNA_struct_find_property(&imaptr, "filepath");
 
   RNA_property_string_set(&imaptr, imaprop, filepath);
@@ -2601,8 +2599,7 @@ static int image_new_exec(bContext *C, wmOperator *op)
      * pointer use also increases user, so this compensates it */
     id_us_min(&ima->id);
 
-    PointerRNA imaptr;
-    RNA_id_pointer_create(&ima->id, &imaptr);
+    PointerRNA imaptr = RNA_id_pointer_create(&ima->id);
     RNA_property_pointer_set(&data->pprop.ptr, data->pprop.prop, imaptr, nullptr);
     RNA_property_update(C, &data->pprop.ptr, data->pprop.prop);
   }

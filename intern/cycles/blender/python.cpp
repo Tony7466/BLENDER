@@ -312,8 +312,7 @@ static PyObject *bake_func(PyObject * /*self*/, PyObject *args)
   RNA_pointer_create(NULL, &RNA_Depsgraph, PyLong_AsVoidPtr(pydepsgraph), &depsgraphptr);
   BL::Depsgraph b_depsgraph(depsgraphptr);
 
-  PointerRNA objectptr;
-  RNA_id_pointer_create((ID *)PyLong_AsVoidPtr(pyobject), &objectptr);
+  PointerRNA objectptr = RNA_id_pointer_create((ID *)PyLong_AsVoidPtr(pyobject));
   BL::Object b_object(objectptr);
 
   python_thread_state_save(&session->python_thread_state);
@@ -749,8 +748,7 @@ static PyObject *denoise_func(PyObject * /*self*/, PyObject *args, PyObject *key
       NULL, &RNA_Preferences, (void *)PyLong_AsVoidPtr(pypreferences), &preferencesptr);
   BL::Preferences b_preferences(preferencesptr);
 
-  PointerRNA sceneptr;
-  RNA_id_pointer_create((ID *)PyLong_AsVoidPtr(pyscene), &sceneptr);
+  PointerRNA sceneptr = RNA_id_pointer_create((ID *)PyLong_AsVoidPtr(pyscene));
   BL::Scene b_scene(sceneptr);
 
   DeviceInfo device = blender_device_info(b_preferences, b_scene, true, true);
@@ -848,8 +846,7 @@ static PyObject *debug_flags_update_func(PyObject * /*self*/, PyObject *args)
     return NULL;
   }
 
-  PointerRNA sceneptr;
-  RNA_id_pointer_create((ID *)PyLong_AsVoidPtr(pyscene), &sceneptr);
+  PointerRNA sceneptr = RNA_id_pointer_create((ID *)PyLong_AsVoidPtr(pyscene));
   BL::Scene b_scene(sceneptr);
 
   debug_flags_sync_from_scene(b_scene);

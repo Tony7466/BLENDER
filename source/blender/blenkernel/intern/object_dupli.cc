@@ -1935,8 +1935,7 @@ static bool find_rna_property_rgba(PointerRNA *id_ptr, const char *name, float r
 
 static bool find_rna_property_rgba(ID *id, const char *name, float r_data[4])
 {
-  PointerRNA ptr;
-  RNA_id_pointer_create(id, &ptr);
+  PointerRNA ptr = RNA_id_pointer_create(id);
   return find_rna_property_rgba(&ptr, name, r_data);
 }
 

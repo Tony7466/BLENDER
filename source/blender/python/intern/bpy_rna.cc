@@ -4428,8 +4428,7 @@ static PyObject *pyrna_struct_getattro(BPy_StructRNA *self, PyObject *pyname)
           case CTX_DATA_TYPE_PROPERTY: {
             if (newprop != nullptr) {
               /* Create pointer to parent ID, and path from ID to property. */
-              PointerRNA idptr;
-              RNA_id_pointer_create(newptr.owner_id, &idptr);
+              PointerRNA idptr = RNA_id_pointer_create(newptr.owner_id);
               char *path_str = RNA_path_from_ID_to_property(&newptr, newprop);
 
               ret = PyTuple_New(3);
@@ -4896,8 +4895,7 @@ static PyObject *pyrna_struct_get_id_data(BPy_DummyPointerRNA *self, void * /*cl
 {
   /* Used for struct and pointer since both have a ptr. */
   if (self->ptr.owner_id) {
-    PointerRNA id_ptr;
-    RNA_id_pointer_create((ID *)self->ptr.owner_id, &id_ptr);
+    PointerRNA id_ptr = RNA_id_pointer_create((ID *)self->ptr.owner_id);
     return pyrna_struct_CreatePyObject(&id_ptr);
   }
 
@@ -6200,7 +6198,7 @@ static PyObject *pyrna_param_to_py(PointerRNA *ptr, PropertyRNA *prop, void *dat
         }
         else {
           if (RNA_struct_is_ID(ptype)) {
-            RNA_id_pointer_create(static_cast<ID *>(*(void **)data), &newptr);
+            newptr = RNA_id_pointer_create(static_cast<ID *>(*(void **)data));
           }
           else {
             /* NOTE: this is taken from the function's ID pointer
@@ -7596,8 +7594,7 @@ PyObject *pyrna_prop_CreatePyObject(PointerRNA *ptr, PropertyRNA *prop)
 PyObject *pyrna_id_CreatePyObject(ID *id)
 {
   if (id) {
-    PointerRNA ptr;
-    RNA_id_pointer_create(id, &ptr);
+    PointerRNA ptr = RNA_id_pointer_create(id);
     return pyrna_struct_CreatePyObject(&ptr);
   }
 

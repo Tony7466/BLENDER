@@ -1488,7 +1488,7 @@ eAction_TransformFlags BKE_action_get_item_transform_flags(bAction *act,
     RNA_pointer_create((ID *)ob, &RNA_PoseBone, pchan, &ptr);
   }
   else if (ob) {
-    RNA_id_pointer_create((ID *)ob, &ptr);
+    ptr = RNA_id_pointer_create((ID *)ob);
   }
   else {
     return eAction_TransformFlags(0);
@@ -1755,10 +1755,9 @@ void what_does_obaction(Object *ob,
    * (though a bit more dangerous). */
   if (agrp) {
     /* specifically evaluate this group only */
-    PointerRNA id_ptr;
 
     /* get RNA-pointer for the workob's ID */
-    RNA_id_pointer_create(&workob->id, &id_ptr);
+    PointerRNA id_ptr = RNA_id_pointer_create(&workob->id);
 
     /* execute action for this group only */
     animsys_evaluate_action_group(&id_ptr, act, agrp, anim_eval_context);

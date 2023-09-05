@@ -375,7 +375,7 @@ static bool acf_generic_idblock_name_prop(bAnimListElem *ale,
                                           PointerRNA *r_ptr,
                                           PropertyRNA **r_prop)
 {
-  RNA_id_pointer_create(static_cast<ID *>(ale->data), r_ptr);
+  *r_ptr = RNA_id_pointer_create(static_cast<ID *>(ale->data));
   *r_prop = RNA_struct_name_property(r_ptr->type);
 
   return (*r_prop != nullptr);
@@ -387,7 +387,7 @@ static bool acf_generic_idfill_name_prop(bAnimListElem *ale,
                                          PropertyRNA **r_prop)
 {
   /* actual ID we're representing is stored in ale->data not ale->id, as id gives the owner */
-  RNA_id_pointer_create(static_cast<ID *>(ale->data), r_ptr);
+  *r_ptr = RNA_id_pointer_create(static_cast<ID *>(ale->data));
   *r_prop = RNA_struct_name_property(r_ptr->type);
 
   return (*r_prop != nullptr);
@@ -706,7 +706,7 @@ static void acf_object_name(bAnimListElem *ale, char *name)
 /* name property for object */
 static bool acf_object_name_prop(bAnimListElem *ale, PointerRNA *r_ptr, PropertyRNA **r_prop)
 {
-  RNA_id_pointer_create(ale->id, r_ptr);
+  *r_ptr = RNA_id_pointer_create(ale->id);
   *r_prop = RNA_struct_name_property(r_ptr->type);
 
   return (*r_prop != nullptr);
@@ -4976,14 +4976,14 @@ static void achannel_setting_slider_cb(bContext *C, void *id_poin, void *fcu_poi
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   ToolSettings *ts = scene->toolsettings;
   ListBase nla_cache = {nullptr, nullptr};
-  PointerRNA id_ptr, ptr;
+  PointerRNA ptr;
   PropertyRNA *prop;
   eInsertKeyFlags flag = INSERTKEY_NOFLAGS;
   bool done = false;
   float cfra;
 
   /* Get RNA pointer */
-  RNA_id_pointer_create(id, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create(id);
 
   /* Get NLA context for value remapping */
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
@@ -5039,13 +5039,13 @@ static void achannel_setting_slider_shapekey_cb(bContext *C, void *key_poin, voi
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   ToolSettings *ts = scene->toolsettings;
   ListBase nla_cache = {nullptr, nullptr};
-  PointerRNA id_ptr, ptr;
+  PointerRNA ptr;
   PropertyRNA *prop;
   eInsertKeyFlags flag = INSERTKEY_NOFLAGS;
   bool done = false;
 
   /* Get RNA pointer */
-  RNA_id_pointer_create((ID *)key, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create((ID *)key);
 
   /* Get NLA context for value remapping */
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
@@ -5405,9 +5405,9 @@ static void draw_grease_pencil_layer_widgets(bAnimListElem *ale,
   offset += SLIDER_WIDTH;
 
   /* Create the RNA pointers. */
-  PointerRNA ptr, id_ptr;
+  PointerRNA ptr;
   RNA_pointer_create(ale->id, &RNA_GreasePencilLayer, ale->data, &ptr);
-  RNA_id_pointer_create(ale->id, &id_ptr);
+  PointerRNA id_ptr = RNA_id_pointer_create(ale->id);
 
   /* Layer onion skinning switch. */
   offset -= ICON_WIDTH;
@@ -5734,7 +5734,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
         }
       }
       else if (ale->id) { /* Slider using RNA Access --------------- */
-        PointerRNA id_ptr, ptr;
+        PointerRNA ptr;
         PropertyRNA *prop;
         char *rna_path = nullptr;
         int array_index = 0;
@@ -5766,7 +5766,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
 
             /* Create the RNA pointers. */
             RNA_pointer_create(ale->id, &RNA_GPencilLayer, ale->data, &ptr);
-            RNA_id_pointer_create(ale->id, &id_ptr);
+            PointerRNA id_ptr = RNA_id_pointer_create(ale->id);
             int icon;
 
             /* Layer onion skinning switch. */
@@ -5843,7 +5843,7 @@ void ANIM_channel_draw_widgets(const bContext *C,
         /* Only if RNA-Path found. */
         if (rna_path) {
           /* get RNA pointer, and resolve the path */
-          RNA_id_pointer_create(ale->id, &id_ptr);
+          PointerRNA id_ptr = RNA_id_pointer_create(ale->id);
 
           /* try to resolve the path */
           if (RNA_path_resolve_property(&id_ptr, rna_path, &ptr, &prop)) {

@@ -700,7 +700,6 @@ static int pose_armature_layers_showall_exec(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
   bArmature *arm = armature_layers_get_data(&ob);
-  PointerRNA ptr;
   int maxLayers = RNA_boolean_get(op->ptr, "all") ? 32 : 16;
   /* hardcoded for now - we can only have 32 armature layers, so this should be fine... */
   bool layers[32] = {false};
@@ -714,7 +713,7 @@ static int pose_armature_layers_showall_exec(bContext *C, wmOperator *op)
    * although it would be faster to just set directly using bitflags, we still
    * need to setup a RNA pointer so that we get the "update" callbacks for free...
    */
-  RNA_id_pointer_create(&arm->id, &ptr);
+  PointerRNA ptr = RNA_id_pointer_create(&arm->id);
 
   for (int i = 0; i < maxLayers; i++) {
     layers[i] = true;
@@ -756,7 +755,6 @@ static int armature_layers_invoke(bContext *C, wmOperator *op, const wmEvent *ev
 {
   Object *ob = CTX_data_active_object(C);
   bArmature *arm = armature_layers_get_data(&ob);
-  PointerRNA ptr;
   /* hardcoded for now - we can only have 32 armature layers, so this should be fine... */
   bool layers[32];
 
@@ -767,7 +765,7 @@ static int armature_layers_invoke(bContext *C, wmOperator *op, const wmEvent *ev
 
   /* Get RNA pointer to armature data to use that to retrieve the layers as ints
    * to init the operator. */
-  RNA_id_pointer_create((ID *)arm, &ptr);
+  PointerRNA ptr = RNA_id_pointer_create((ID *)arm);
   RNA_boolean_get_array(&ptr, "layers", layers);
   RNA_boolean_set_array(op->ptr, "layers", layers);
 
@@ -780,7 +778,6 @@ static int armature_layers_exec(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
   bArmature *arm = armature_layers_get_data(&ob);
-  PointerRNA ptr;
   /* hardcoded for now - we can only have 32 armature layers, so this should be fine... */
   bool layers[32];
 
@@ -792,7 +789,7 @@ static int armature_layers_exec(bContext *C, wmOperator *op)
   RNA_boolean_get_array(op->ptr, "layers", layers);
 
   /* get pointer for armature, and write data there... */
-  RNA_id_pointer_create((ID *)arm, &ptr);
+  PointerRNA ptr = RNA_id_pointer_create((ID *)arm);
   RNA_boolean_set_array(&ptr, "layers", layers);
 
   /* NOTE: notifier might evolve. */

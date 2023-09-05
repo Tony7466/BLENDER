@@ -279,7 +279,7 @@ static char *rna_ColorRampElement_path(const PointerRNA *ptr)
       default: /* everything else should have a "color_ramp" property */
       {
         /* create pointer to the ID block, and try to resolve "color_ramp" pointer */
-        RNA_id_pointer_create(id, &ramp_ptr);
+        ramp_ptr = RNA_id_pointer_create(id);
         if (RNA_path_resolve(&ramp_ptr, "color_ramp", &ramp_ptr, &prop)) {
           COLRAMP_GETPATH;
         }

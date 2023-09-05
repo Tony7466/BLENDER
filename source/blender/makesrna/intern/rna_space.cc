@@ -2791,8 +2791,7 @@ static PointerRNA rna_FileBrowser_FileSelectEntry_asset_data_get(PointerRNA *ptr
    * the metadata RNA pointer if the metadata is stored locally and can thus be edited or not. */
 
   if (entry->asset->is_local_id()) {
-    PointerRNA id_ptr;
-    RNA_id_pointer_create(entry->id, &id_ptr);
+    PointerRNA id_ptr = RNA_id_pointer_create(entry->id);
     return rna_pointer_inherit_refine(&id_ptr, &RNA_AssetMetaData, asset_data);
   }
 

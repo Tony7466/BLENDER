@@ -949,7 +949,7 @@ void ANIM_relative_keyingset_add_source(ListBase *dsources, ID *id, StructRNA *s
     RNA_pointer_create(id, srna, data, &ds->ptr);
   }
   else {
-    RNA_id_pointer_create(id, &ds->ptr);
+    ds->ptr = RNA_id_pointer_create(id);
   }
 }
 
@@ -1117,10 +1117,10 @@ int ANIM_apply_keyingset(
 
     /* get length of array if whole array option is enabled */
     if (ksp->flag & KSP_FLAG_WHOLE_ARRAY) {
-      PointerRNA id_ptr, ptr;
+      PointerRNA ptr;
       PropertyRNA *prop;
 
-      RNA_id_pointer_create(ksp->id, &id_ptr);
+      PointerRNA id_ptr = RNA_id_pointer_create(ksp->id);
       if (RNA_path_resolve_property(&id_ptr, ksp->rna_path, &ptr, &prop)) {
         arraylen = RNA_property_array_length(&ptr, prop);
         /* start from start of array, instead of the previously specified index - #48020 */

@@ -129,7 +129,7 @@ static bool buttons_context_path_world(ButsContextPath *path)
     World *world = scene->world;
 
     if (world) {
-      RNA_id_pointer_create(&scene->world->id, &path->ptr[path->len]);
+      path->ptr[path->len] = RNA_id_pointer_create(&scene->world->id);
       path->len++;
       return true;
     }
@@ -166,7 +166,7 @@ static bool buttons_context_path_collection(const bContext *C,
     }
 
     if (c) {
-      RNA_id_pointer_create(&c->id, &path->ptr[path->len]);
+      path->ptr[path->len] = RNA_id_pointer_create(&c->id);
       path->len++;
       return true;
     }
@@ -189,7 +189,7 @@ static bool buttons_context_path_linestyle(ButsContextPath *path, wmWindow *wind
     ViewLayer *view_layer = static_cast<ViewLayer *>(path->ptr[path->len - 1].data);
     FreestyleLineStyle *linestyle = BKE_linestyle_active_from_view_layer(view_layer);
     if (linestyle) {
-      RNA_id_pointer_create(&linestyle->id, &path->ptr[path->len]);
+      path->ptr[path->len] = RNA_id_pointer_create(&linestyle->id);
       path->len++;
       return true;
     }
@@ -215,7 +215,7 @@ static bool buttons_context_path_object(ButsContextPath *path)
   Object *ob = BKE_view_layer_active_object_get(view_layer);
 
   if (ob) {
-    RNA_id_pointer_create(&ob->id, &path->ptr[path->len]);
+    path->ptr[path->len] = RNA_id_pointer_create(&ob->id);
     path->len++;
 
     return true;
@@ -281,7 +281,7 @@ static bool buttons_context_path_data(ButsContextPath *path, int type)
     Object *ob = static_cast<Object *>(path->ptr[path->len - 1].data);
 
     if (ob && ELEM(type, -1, ob->type)) {
-      RNA_id_pointer_create(static_cast<ID *>(ob->data), &path->ptr[path->len]);
+      path->ptr[path->len] = RNA_id_pointer_create(static_cast<ID *>(ob->data));
       path->len++;
 
       return true;
@@ -350,7 +350,7 @@ static bool buttons_context_path_material(ButsContextPath *path)
     if (ob && OB_TYPE_SUPPORT_MATERIAL(ob->type)) {
       Material *ma = BKE_object_material_get(ob, ob->actcol);
       if (ma != nullptr) {
-        RNA_id_pointer_create(&ma->id, &path->ptr[path->len]);
+        path->ptr[path->len] = RNA_id_pointer_create(&ma->id);
         path->len++;
       }
       return true;
@@ -466,7 +466,7 @@ static bool buttons_context_path_brush(const bContext *C, ButsContextPath *path)
     }
 
     if (br) {
-      RNA_id_pointer_create((ID *)br, &path->ptr[path->len]);
+      path->ptr[path->len] = RNA_id_pointer_create((ID *)br);
       path->len++;
 
       return true;
@@ -514,7 +514,7 @@ static bool buttons_context_path_texture(const bContext *C,
   }
 
   if (ct->texture) {
-    RNA_id_pointer_create(&ct->texture->id, &path->ptr[path->len]);
+    path->ptr[path->len] = RNA_id_pointer_create(&ct->texture->id);
     path->len++;
   }
 
@@ -561,12 +561,12 @@ static bool buttons_context_path(
   if (sbuts->pinid) {
     ID *id = sbuts->pinid;
 
-    RNA_id_pointer_create(id, &path->ptr[0]);
+    path->ptr[0] = RNA_id_pointer_create(id);
     path->len++;
   }
   /* No pinned root, use scene as initial root. */
   else if (mainb != BCONTEXT_TOOL) {
-    RNA_id_pointer_create(&scene->id, &path->ptr[0]);
+    path->ptr[0] = RNA_id_pointer_create(&scene->id);
     path->len++;
 
     if (!ELEM(mainb,

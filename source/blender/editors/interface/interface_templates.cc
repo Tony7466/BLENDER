@@ -348,9 +348,7 @@ static void template_ID_set_property_exec_fn(bContext *C, void *arg_template, vo
 
   /* ID */
   if (item) {
-    PointerRNA idptr;
-
-    RNA_id_pointer_create(static_cast<ID *>(item), &idptr);
+    PointerRNA idptr = RNA_id_pointer_create(static_cast<ID *>(item));
     RNA_property_pointer_set(&template_ui->ptr, template_ui->prop, idptr, nullptr);
     RNA_property_update(C, &template_ui->ptr, template_ui->prop);
   }
@@ -367,8 +365,7 @@ static bool id_search_allows_id(TemplateID *template_ui, const int flag, ID *id,
 
   /* Use filter. */
   if (RNA_property_type(template_ui->prop) == PROP_POINTER) {
-    PointerRNA ptr;
-    RNA_id_pointer_create(id, &ptr);
+    PointerRNA ptr = RNA_id_pointer_create(id);
     if (RNA_property_pointer_poll(&template_ui->ptr, template_ui->prop, &ptr) == 0) {
       return false;
     }
@@ -931,7 +928,7 @@ static void template_id_liboverride_hierarchy_make(bContext *C,
      * Otherwise, owner ID will also have been overridden, and remapped already to use it's
      * override of the data too. */
     if (!ID_IS_LINKED(owner_id)) {
-      RNA_id_pointer_create(id_override, idptr);
+      *idptr = RNA_id_pointer_create(id_override);
     }
   }
   else {
