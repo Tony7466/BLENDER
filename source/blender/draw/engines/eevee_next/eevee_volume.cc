@@ -307,6 +307,10 @@ void VolumeModule::draw_prepass(View &view)
 
 void VolumeModule::draw_compute(View &view)
 {
+  if (!enabled_) {
+    return;
+  }
+
   inst_.manager->submit(scatter_ps_, view);
   inst_.manager->submit(integration_ps_, view);
 }
