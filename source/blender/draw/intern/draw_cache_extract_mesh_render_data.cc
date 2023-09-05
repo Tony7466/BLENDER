@@ -16,6 +16,7 @@
 #include "BLI_index_mask.hh"
 #include "BLI_math_matrix.h"
 #include "BLI_task.hh"
+#include "BLI_virtual_array.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_editmesh.h"
@@ -336,69 +337,15 @@ void mesh_render_data_update_looptris(MeshRenderData &mr,
   }
 }
 
-namespace blender {
+static bool bm_edge_is_sharp(const BMEdge *const &edge)
+{
+  return BM_elem_flag_test(edge, BM_ELEM_SMOOTH);
+}
 
-class VArrayImpl_For_SharpFace : public VArrayImpl<bool> {
-  const BMFace *const *faces_;
-
- public:
-  VArrayImpl_For_SharpFace(const Span<const BMFace *> faces)
-      : VArrayImpl<bool>(faces.size()), faces_(faces.data())
-  {
-  }
-  bool get(const int64_t index) const final
-  {
-    return !BM_elem_flag_test(faces_[index], BM_ELEM_SMOOTH);
-  }
-  void materialize(const IndexMask &mask, bool *dst) const override
-  {
-    mask.foreach_index([&](const int64_t i) { dst[i] = this->get(i); });
-  }
-  void materialize_to_uninitialized(const IndexMask &mask, bool *dst) const override
-  {
-    materialize(mask, dst);
-  }
-  void materialize_compressed(const IndexMask &mask, bool *dst) const override
-  {
-    mask.foreach_index([&](const int64_t i, const int64_t pos) { dst[pos] = this->get(i); });
-  }
-  void materialize_compressed_to_uninitialized(const IndexMask &mask, bool *dst) const override
-  {
-    materialize_compressed(mask, dst);
-  }
-};
-
-class VArrayImpl_For_SharpEdge : public VArrayImpl<bool> {
-  const BMEdge *const *edges_;
-
- public:
-  VArrayImpl_For_SharpEdge(const Span<const BMEdge *> edges)
-      : VArrayImpl<bool>(edges.size()), edges_(edges.data())
-  {
-  }
-  bool get(const int64_t index) const final
-  {
-    return !BM_elem_flag_test(edges_[index], BM_ELEM_SMOOTH);
-  }
-  void materialize(const IndexMask &mask, bool *dst) const override
-  {
-    mask.foreach_index([&](const int64_t i) { dst[i] = this->get(i); });
-  }
-  void materialize_to_uninitialized(const IndexMask &mask, bool *dst) const override
-  {
-    materialize(mask, dst);
-  }
-  void materialize_compressed(const IndexMask &mask, bool *dst) const override
-  {
-    mask.foreach_index([&](const int64_t i, const int64_t pos) { dst[pos] = this->get(i); });
-  }
-  void materialize_compressed_to_uninitialized(const IndexMask &mask, bool *dst) const override
-  {
-    materialize_compressed(mask, dst);
-  }
-};
-
-}  // namespace blender
+static bool bm_face_is_sharp(const BMFace *const &face)
+{
+  return BM_elem_flag_test(face, BM_ELEM_SMOOTH);
+}
 
 /**
  * Returns whether loop normals are required because of mixed sharp and smooth flags.
@@ -417,15 +364,17 @@ static bool bm_loop_normals_required(BMesh *bm)
   }
 
   BM_mesh_elem_table_ensure(bm, BM_FACE);
-  const VArrayImpl_For_SharpFace sharp_faces({bm->ftable, bm->totface});
-  const array_utils::BooleanMix face_mix = array_utils::booleans_mix_calc(VArray(&sharp_faces));
+  const VArray<bool> sharp_faces = VArray<bool>::ForDerivedSpan<const BMFace *, bm_face_is_sharp>(
+      Span(bm->ftable, bm->totface));
+  const array_utils::BooleanMix face_mix = array_utils::booleans_mix_calc(sharp_faces);
   if (face_mix == array_utils::BooleanMix::AllTrue) {
     return false;
   }
 
   BM_mesh_elem_table_ensure(bm, BM_EDGE);
-  const VArrayImpl_For_SharpEdge sharp_edges({bm->etable, bm->totedge});
-  const array_utils::BooleanMix edge_mix = array_utils::booleans_mix_calc(VArray(&sharp_edges));
+  const VArray<bool> sharp_edges = VArray<bool>::ForDerivedSpan<const BMEdge *, bm_edge_is_sharp>(
+      Span(bm->etable, bm->totedge));
+  const array_utils::BooleanMix edge_mix = array_utils::booleans_mix_calc(sharp_edges);
   if (edge_mix == array_utils::BooleanMix::AllTrue) {
     return false;
   }
