@@ -120,12 +120,7 @@ static void version_bonelayers_to_bonecollections(Main *bmain)
   char bcoll_name[MAX_NAME];
   char custom_prop_name[MAX_NAME];
 
-  LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
-    if (ob->type != OB_ARMATURE || !ob->pose) {
-      continue;
-    }
-
-    bArmature *arm = reinterpret_cast<bArmature *>(ob->data);
+  LISTBASE_FOREACH (bArmature *, arm, &bmain->armatures) {
     IDProperty *arm_idprops = IDP_GetProperties(&arm->id, false);
 
     BLI_assert_msg(arm->edbo == nullptr, "did not expect an Armature to be saved in edit mode");
@@ -191,6 +186,21 @@ static void version_bonegroups_to_bonecollections(Main *bmain)
     /* Convert the bone groups on a bone-by-bone basis. */
     bArmature *arm = reinterpret_cast<bArmature *>(ob->data);
     bPose *pose = ob->pose;
+
+    blender::Map<const bActionGroup *, BoneCollection *> collections_by_group;
+    /* Convert all bone groups, regardless of whether they contain any bones. */
+    LISTBASE_FOREACH (bActionGroup *, bgrp, &pose->agroups) {
+      BoneCollection *bcoll = ANIM_armature_bonecoll_new(arm, bgrp->name);
+      collections_by_group.add_new(bgrp, bcoll);
+
+      /* Before now, bone visibility was determined by armature layers, and bone
+       * groups did not have any impact on this. To retain the behavior, that
+       * hiding all layers a bone is on hides the bone, the
+       * bone-group-collections should be created hidden. */
+      ANIM_bonecoll_hide(bcoll);
+    }
+
+    /* Assign the bones to their bone group based collection. */
     LISTBASE_FOREACH (bPoseChannel *, pchan, &pose->chanbase) {
       /* Find the bone group of this pose channel. */
       const bActionGroup *bgrp = (const bActionGroup *)BLI_findlink(&pose->agroups,
@@ -199,15 +209,8 @@ static void version_bonegroups_to_bonecollections(Main *bmain)
         continue;
       }
 
-      /* Get or create the bone collection. */
-      BoneCollection *bcoll = ANIM_armature_bonecoll_get_by_name(arm, bgrp->name);
-      if (!bcoll) {
-        bcoll = ANIM_armature_bonecoll_new(arm, bgrp->name);
-
-        ANIM_bonecoll_hide(bcoll);
-      }
-
       /* Assign the bone. */
+      BoneCollection *bcoll = collections_by_group.lookup(bgrp);
       ANIM_armature_bonecoll_assign(bcoll, pchan->bone);
     }
 
@@ -974,6 +977,11 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         scene->eevee.gi_irradiance_pool_size = 16;
       }
     }
+
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      scene->toolsettings->snap_flag_anim |= SCE_SNAP;
+      scene->toolsettings->snap_anim_mode |= SCE_SNAP_TO_FRAME;
+    }
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 20)) {
@@ -1003,6 +1011,14 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       }
       BLI_listbase_clear(&ntree->inputs_legacy);
       BLI_listbase_clear(&ntree->outputs_legacy);
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 22)) {
+    /* Initialize root panel flags in files created before these flags were added. */
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      ntree->tree_interface.root_panel.flag |= NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS;
     }
     FOREACH_NODETREE_END;
   }
