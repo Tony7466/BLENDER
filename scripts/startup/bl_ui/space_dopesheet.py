@@ -39,7 +39,7 @@ def dopesheet_filter(layout, context):
         row.prop(dopesheet, "show_only_errors", text="")
 
 #######################################
-# Dopesheet Filtering Popovers
+# Dope-sheet Filtering Popovers
 
 # Generic Layout - Used as base for filtering popovers used in all animation editors
 # Used for DopeSheet, NLA, and Graph Editors
@@ -49,7 +49,7 @@ class DopesheetFilterPopoverBase:
     bl_region_type = 'HEADER'
     bl_label = "Filters"
 
-    # Generic = Affects all datatypes
+    # Generic = Affects all data-types.
     # XXX: Perhaps we want these to stay in the header instead, for easy/fast access
     @classmethod
     def draw_generic_filters(cls, context, layout):
@@ -62,7 +62,7 @@ class DopesheetFilterPopoverBase:
 
         if is_nla:
             col.prop(dopesheet, "show_missing_nla", icon='NONE')
-        else:  # graph and dopesheet editors - F-Curves and drivers only
+        else:  # Graph and dope-sheet editors - F-Curves and drivers only.
             col.prop(dopesheet, "show_only_errors", icon='NONE')
 
     # Name/Membership Filters
@@ -160,7 +160,7 @@ class DopesheetFilterPopoverBase:
         col.prop(dopesheet, "use_datablock_sort", icon='NONE')
 
 
-# Popover for Dopesheet Editor(s) - Dopesheet, Action, Shapekey, GPencil, Mask, etc.
+# Popover for Dope-sheet Editor(s) - Dope-sheet, Action, Shape-key, GPencil, Mask, etc.
 class DOPESHEET_PT_filters(DopesheetFilterPopoverBase, Panel):
     bl_space_type = 'DOPESHEET_EDITOR'
     bl_region_type = 'HEADER'
@@ -740,6 +740,8 @@ class DOPESHEET_MT_channel_context_menu(Menu):
 
         # This menu is used from the graph editor too.
         is_graph_editor = context.area.type == 'GRAPH_EDITOR'
+
+        layout.operator_context = 'INVOKE_REGION_CHANNELS'
 
         layout.separator()
         layout.operator("anim.channels_view_selected")

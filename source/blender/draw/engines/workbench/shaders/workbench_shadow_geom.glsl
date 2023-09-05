@@ -1,3 +1,7 @@
+/* SPDX-FileCopyrightText: 2018-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
 #ifdef GPU_ARB_gpu_shader5
 #  define USE_INVOC_EXT
 #endif
@@ -9,7 +13,7 @@
 
 void extrude_edge(bool invert)
 {
-  /* Reverse order if backfacing the light. */
+  /* Reverse order if back-facing the light. */
   ivec2 idx = (invert) ? ivec2(1, 2) : ivec2(2, 1);
   gl_Position = vData[idx.x].frontPosition;
   EmitVertex();

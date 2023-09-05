@@ -2894,6 +2894,7 @@ void SEQUENCER_OT_change_effect_type(wmOperatorType *ot)
                           SEQ_TYPE_CROSS,
                           "Type",
                           "Sequencer effect type");
+  RNA_def_property_translation_context(ot->prop, BLT_I18NCONTEXT_ID_SEQUENCE);
 }
 
 /** \} */
@@ -3122,7 +3123,7 @@ void SEQUENCER_OT_change_scene(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* Properties. */
-  prop = RNA_def_enum(ot->srna, "scene", DummyRNA_NULL_items, 0, "Scene", "");
+  prop = RNA_def_enum(ot->srna, "scene", rna_enum_dummy_NULL_items, 0, "Scene", "");
   RNA_def_enum_funcs(prop, RNA_scene_without_active_itemf);
   RNA_def_property_flag(prop, PROP_ENUM_NO_TRANSLATE);
   ot->prop = prop;

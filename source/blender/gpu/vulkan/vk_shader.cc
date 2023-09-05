@@ -334,7 +334,7 @@ static void print_resource(std::ostream &os,
                            const VKDescriptorSet::Location location,
                            const ShaderCreateInfo::Resource &res)
 {
-  os << "layout(binding = " << static_cast<uint32_t>(location);
+  os << "layout(binding = " << uint32_t(location);
   if (res.bind_type == ShaderCreateInfo::Resource::BindType::IMAGE) {
     os << ", " << to_string(res.image.format);
   }
@@ -573,7 +573,10 @@ void VKShader::build_shader_module(Span<uint32_t> spirv_module, VkShaderModule *
   const VKDevice &device = VKBackend::get().device_get();
   VkResult result = vkCreateShaderModule(
       device.device_get(), &create_info, vk_allocation_callbacks, r_shader_module);
-  if (result != VK_SUCCESS) {
+  if (result == VK_SUCCESS) {
+    debug::object_label(*r_shader_module, name);
+  }
+  else {
     compilation_failed_ = true;
     *r_shader_module = VK_NULL_HANDLE;
   }

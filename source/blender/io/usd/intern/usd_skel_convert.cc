@@ -34,6 +34,7 @@
 #include "BKE_object_deform.h"
 
 #include "BLI_math_vector.h"
+#include "BLI_string.h"
 
 #include "ED_armature.hh"
 #include "ED_keyframing.hh"
@@ -941,7 +942,7 @@ void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim
   const pxr::TfToken interp = joint_weights_primvar.GetInterpolation();
 
   /* Sanity check: we expect only vertex or constant interpolation. */
-  if (interp != pxr::UsdGeomTokens->vertex && interp != pxr::UsdGeomTokens->constant) {
+  if (!ELEM(interp, pxr::UsdGeomTokens->vertex, pxr::UsdGeomTokens->constant)) {
     WM_reportf(RPT_WARNING,
                "%s: Unexpected joint weights interpolation type %s for prim %s",
                __func__,
@@ -986,7 +987,7 @@ void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim
     return;
   }
 
-  if (BKE_object_defgroup_data_create(static_cast<ID *>(mesh_obj->data)) == NULL) {
+  if (BKE_object_defgroup_data_create(static_cast<ID *>(mesh_obj->data)) == nullptr) {
     WM_reportf(RPT_WARNING,
                "%s: Error creating deform group data for mesh %s",
                __func__,

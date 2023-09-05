@@ -25,10 +25,6 @@
 #include "DNA_view2d_types.h"
 #include "DNA_viewer_path_types.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct BLI_mempool;
 struct FileLayout;
 struct FileList;
@@ -1651,8 +1647,7 @@ typedef enum eSpaceNode_Flag {
   SNODE_FLAG_UNUSED_10 = (1 << 10), /* cleared */
   SNODE_FLAG_UNUSED_11 = (1 << 11), /* cleared */
   SNODE_PIN = (1 << 12),
-  /** automatically offset following nodes in a chain on insertion */
-  SNODE_SKIP_INSOFFSET = (1 << 13),
+  SNODE_FLAG_UNUSED_12 = (1 << 13),
 } eSpaceNode_Flag;
 
 /** #SpaceNode.texfrom */
@@ -2121,7 +2116,3 @@ typedef enum eSpace_Type {
 #define IMG_SIZE_FALLBACK 256
 
 /** \} */
-
-#ifdef __cplusplus
-}
-#endif

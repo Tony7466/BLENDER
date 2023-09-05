@@ -13,15 +13,12 @@
 #pragma once
 
 #include "DNA_ID.h"
+#include "DNA_armature_types.h"
 #include "DNA_listBase.h"
 #include "DNA_session_uuid_types.h"
 #include "DNA_userdef_types.h" /* ThemeWireColor */
 #include "DNA_vec_types.h"
 #include "DNA_view2d_types.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 struct Collection;
 struct GHash;
@@ -351,6 +348,8 @@ typedef struct bPoseChannel {
 
   /** Points to an original pose channel. */
   struct bPoseChannel *orig_pchan;
+
+  BoneColor color; /* MUST be named the same as in Bone and EditBone structs. */
 
   /** Runtime data (keep last). */
   struct bPoseChannel_Runtime runtime;
@@ -975,7 +974,3 @@ typedef struct bActionChannel {
   /** Temporary setting - may be used to indicate group that channel belongs to during syncing. */
   int temp;
 } bActionChannel;
-
-#ifdef __cplusplus
-}
-#endif
