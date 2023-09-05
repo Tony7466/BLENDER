@@ -470,7 +470,7 @@ static void mesh_calc_modifier_final_normals(const bool sculpt_dyntopo, Mesh *me
       if (domain == ATTR_DOMAIN_FACE) {
         mesh_final->face_normals();
       }
-      else if (domain == ATTR_DOMAIN_FACE) {
+      else if (domain == ATTR_DOMAIN_POINT) {
         mesh_final->vert_normals();
       }
     }
