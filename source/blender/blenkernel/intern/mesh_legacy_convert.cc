@@ -2108,18 +2108,24 @@ static bNodeTree *add_auto_smooth_node_tree(Main &bmain)
   shade_smooth->locy = 40.0f;
 
   bNode *store_node = nodeAddNode(nullptr, node_tree, "GeometryNodeStoreNamedAttribute");
-  store_node->locx = 40.0f;
-  store_node->locy = 40.0f;
-  static_cast<NodeGeometryStoreNamedAttribute *>(store_node->storage)->data_type = CD_PROP_BOOL;
-  static_cast<NodeGeometryStoreNamedAttribute *>(store_node->storage)->domain = ATTR_DOMAIN_EDGE;
-  bNodeSocket *name = nodeFindSocket(store_node, SOCK_IN, DATA_("Name"));
-  STRNCPY(name->default_value_typed<bNodeSocketValueString>()->value, "sharp_edge");
+  {
+    store_node->locx = 40.0f;
+    store_node->locy = 40.0f;
+    auto *storage = static_cast<NodeGeometryStoreNamedAttribute *>(store_node->storage);
+    storage->data_type = CD_PROP_BOOL;
+    storage->domain = ATTR_DOMAIN_EDGE;
+    bNodeSocket *name = nodeFindSocket(store_node, SOCK_IN, DATA_("Name"));
+    STRNCPY(name->default_value_typed<bNodeSocketValueString>()->value, "sharp_edge");
+  }
 
   bNode *greater_node = nodeAddNode(nullptr, node_tree, "FunctionNodeCompare");
-  greater_node->locx = -160.0f;
-  greater_node->locy = -100.0f;
-  static_cast<NodeFunctionCompare *>(greater_node->storage)->operation = NODE_COMPARE_GREATER_THAN;
-  static_cast<NodeFunctionCompare *>(greater_node->storage)->data_type = SOCK_FLOAT;
+  {
+    greater_node->locx = -160.0f;
+    greater_node->locy = -100.0f;
+    auto *storage = static_cast<NodeFunctionCompare *>(store_node->storage);
+    storage->operation = NODE_COMPARE_GREATER_THAN;
+    storage->data_type = SOCK_FLOAT;
+  }
 
   bNode *edge_angle_node = nodeAddNode(nullptr, node_tree, "GeometryNodeInputMeshEdgeAngle");
   edge_angle_node->locx = -380.0f;
