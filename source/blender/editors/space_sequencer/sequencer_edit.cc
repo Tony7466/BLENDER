@@ -2894,6 +2894,7 @@ void SEQUENCER_OT_change_effect_type(wmOperatorType *ot)
                           SEQ_TYPE_CROSS,
                           "Type",
                           "Sequencer effect type");
+  RNA_def_property_translation_context(ot->prop, BLT_I18NCONTEXT_ID_SEQUENCE);
 }
 
 /** \} */
@@ -2968,7 +2969,7 @@ static int sequencer_change_path_exec(bContext *C, wmOperator *op)
      * Important not to set seq->len = len; allow the function to handle it. */
     SEQ_add_reload_new_file(bmain, scene, seq, true);
   }
-  else if (ELEM(seq->type, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD)) {
+  else if (seq->type == SEQ_TYPE_SOUND_RAM) {
     bSound *sound = seq->sound;
     if (sound == nullptr) {
       return OPERATOR_CANCELLED;
@@ -3122,7 +3123,7 @@ void SEQUENCER_OT_change_scene(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* Properties. */
-  prop = RNA_def_enum(ot->srna, "scene", DummyRNA_NULL_items, 0, "Scene", "");
+  prop = RNA_def_enum(ot->srna, "scene", rna_enum_dummy_NULL_items, 0, "Scene", "");
   RNA_def_enum_funcs(prop, RNA_scene_without_active_itemf);
   RNA_def_property_flag(prop, PROP_ENUM_NO_TRANSLATE);
   ot->prop = prop;

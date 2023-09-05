@@ -57,7 +57,7 @@
 #include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "nla_private.h"
 
@@ -317,24 +317,6 @@ void BKE_keyingsets_blend_read_data(BlendDataReader *reader, ListBase *list)
     LISTBASE_FOREACH (KS_Path *, ksp, &ks->paths) {
       /* rna path */
       BLO_read_data_address(reader, &ksp->rna_path);
-    }
-  }
-}
-
-void BKE_keyingsets_blend_read_lib(BlendLibReader *reader, ID *id, ListBase *list)
-{
-  LISTBASE_FOREACH (KeyingSet *, ks, list) {
-    LISTBASE_FOREACH (KS_Path *, ksp, &ks->paths) {
-      BLO_read_id_address(reader, id, &ksp->id);
-    }
-  }
-}
-
-void BKE_keyingsets_blend_read_expand(BlendExpander *expander, ListBase *list)
-{
-  LISTBASE_FOREACH (KeyingSet *, ks, list) {
-    LISTBASE_FOREACH (KS_Path *, ksp, &ks->paths) {
-      BLO_expand(expander, ksp->id);
     }
   }
 }
@@ -1683,12 +1665,13 @@ static bool nla_combine_get_inverted_lower_value(const int mix_mode,
          * up interpolation for the animator, requiring further cleanup on their part.
          */
         if (IS_EQF(blended_value, 0.0f)) {
-          /* For blending, nla_combine_value(), when strip_value==0:
-           *
-           *        blended_value = lower_value * powf(strip_value / base_value, infl);
-           *        blended_value = lower_value * powf(0, infl);
-           *        blended_value = lower_value * 0;
-           *        blended_value = 0;
+          /* For blending, nla_combine_value(), when `strip_value == 0`:
+           * \code{.cc}
+           * blended_value = lower_value * powf(strip_value / base_value, infl);
+           * blended_value = lower_value * powf(0, infl);
+           * blended_value = lower_value * 0;
+           * blended_value = 0;
+           * \endcode
            *
            * Effectively, blended_value will equal 0 no matter what lower_value is. Put another
            * way, when (blended_value==0 and strip_value==0), then lower_value can be any value and

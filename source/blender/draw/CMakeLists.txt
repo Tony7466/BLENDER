@@ -119,7 +119,6 @@ set(SRC
   engines/eevee/eevee_lightprobes.cc
   engines/eevee/eevee_lights.cc
   engines/eevee/eevee_lookdev.cc
-  engines/eevee/eevee_lut.cc
   engines/eevee/eevee_lut_gen.cc
   engines/eevee/eevee_materials.cc
   engines/eevee/eevee_mist.cc
@@ -150,6 +149,8 @@ set(SRC
   engines/eevee_next/eevee_lightcache.cc
   engines/eevee_next/eevee_lightprobe.cc
   engines/eevee_next/eevee_lookdev.cc
+  engines/eevee_next/eevee_lut.cc
+  engines/eevee_next/eevee_precompute.cc
   engines/eevee_next/eevee_material.cc
   engines/eevee_next/eevee_motion_blur.cc
   engines/eevee_next/eevee_pipeline.cc
@@ -281,7 +282,6 @@ set(SRC
   engines/compositor/compositor_engine.h
   engines/eevee/eevee_engine.h
   engines/eevee/eevee_lightcache.h
-  engines/eevee/eevee_lut.h
   engines/eevee/eevee_private.h
   engines/eevee/engine_eevee_shared_defines.h
   engines/eevee_next/eevee_ambient_occlusion.hh
@@ -298,9 +298,12 @@ set(SRC
   engines/eevee_next/eevee_lightcache.hh
   engines/eevee_next/eevee_lightprobe.hh
   engines/eevee_next/eevee_lookdev.hh
+  engines/eevee_next/eevee_lut.hh
+  engines/eevee_next/eevee_precompute.hh
   engines/eevee_next/eevee_material.hh
   engines/eevee_next/eevee_motion_blur.hh
   engines/eevee_next/eevee_pipeline.hh
+  engines/eevee_next/eevee_raytrace.hh
   engines/eevee_next/eevee_reflection_probes.hh
   engines/eevee_next/eevee_renderbuffers.hh
   engines/eevee_next/eevee_sampling.hh
@@ -524,6 +527,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_lightprobe_irradiance_load_comp.glsl
   engines/eevee_next/shaders/eevee_lightprobe_lib.glsl
   engines/eevee_next/shaders/eevee_ltc_lib.glsl
+  engines/eevee_next/shaders/eevee_lut_comp.glsl
   engines/eevee_next/shaders/eevee_motion_blur_dilate_comp.glsl
   engines/eevee_next/shaders/eevee_motion_blur_flatten_comp.glsl
   engines/eevee_next/shaders/eevee_motion_blur_gather_comp.glsl
@@ -602,6 +606,7 @@ set(GLSL_SRC
   engines/workbench/shaders/workbench_effect_smaa_frag.glsl
   engines/workbench/shaders/workbench_effect_smaa_vert.glsl
   engines/workbench/shaders/workbench_effect_taa_frag.glsl
+  engines/workbench/shaders/workbench_extract_stencil.glsl
   engines/workbench/shaders/workbench_image_lib.glsl
   engines/workbench/shaders/workbench_matcap_lib.glsl
   engines/workbench/shaders/workbench_material_lib.glsl
@@ -636,6 +641,7 @@ set(GLSL_SRC
   intern/shaders/common_fullscreen_vert.glsl
   intern/shaders/common_fxaa_lib.glsl
   intern/shaders/common_gpencil_lib.glsl
+  intern/shaders/common_grease_pencil_lib.glsl
   intern/shaders/common_hair_lib.glsl
   intern/shaders/common_hair_refine_comp.glsl
   intern/shaders/common_hair_refine_vert.glsl
@@ -833,7 +839,7 @@ set(GLSL_SRC
 set(GLSL_C)
 
 foreach(GLSL_FILE ${GLSL_SRC})
-  data_to_c_simple(${GLSL_FILE} GLSL_C)
+  data_to_c_simple(${GLSL_FILE} GLSL_C STRIP_LEADING_C_COMMENTS)
 endforeach()
 
 blender_add_lib(bf_draw_shaders "${GLSL_C}" "" "" "")
