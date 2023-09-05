@@ -512,6 +512,7 @@ static void node_update_basis_from_declaration(
     bke::bNodePanelRuntime *runtime;
   };
 
+  bool is_first = true;
   Stack<PanelUpdate> panel_updates;
   for (const nodes::ItemDeclarationPtr &item_decl : decl.items) {
     bool is_parent_collapsed = false;
@@ -529,6 +530,7 @@ static void node_update_basis_from_declaration(
 
       if (!is_parent_collapsed) {
         locy -= NODE_DY;
+        is_first = false;
         need_spacer = true;
       }
 
@@ -552,18 +554,19 @@ static void node_update_basis_from_declaration(
           /* Must match the declaration. */
           BLI_assert(current_input != nullptr);
 
-          /* Space after header and between items. */
-          if (!is_parent_collapsed && current_input->is_visible()) {
-            locy -= NODE_SOCKDY;
-          }
-
           SET_FLAG_FROM_TEST(current_input->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
           if (is_parent_collapsed) {
             current_input->runtime->location = float2(locx, round(locy + NODE_DYS));
           }
           else {
-            need_spacer |= node_update_basis_socket(
-                C, ntree, node, *current_input, block, locx, locy);
+            /* Space between items. */
+            if (!is_first && current_input->is_visible()) {
+              locy -= NODE_SOCKDY;
+            }
+            if (node_update_basis_socket(C, ntree, node, *current_input, block, locx, locy)) {
+              is_first = false;
+              need_spacer = true;
+            }
           }
           current_input = current_input->next;
           break;
@@ -571,19 +574,20 @@ static void node_update_basis_from_declaration(
           /* Must match the declaration. */
           BLI_assert(current_output != nullptr);
 
-          /* Space after header and between items. */
-          if (!is_parent_collapsed && current_output->is_visible()) {
-            locy -= NODE_SOCKDY;
-          }
-
           SET_FLAG_FROM_TEST(current_output->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
           if (is_parent_collapsed) {
             current_output->runtime->location = float2(round(locx + NODE_WIDTH(node)),
                                                        round(locy + NODE_DYS));
           }
           else {
-            need_spacer |= node_update_basis_socket(
-                C, ntree, node, *current_output, block, locx, locy);
+            /* Space between items. */
+            if (!is_first && current_output->is_visible()) {
+              locy -= NODE_SOCKDY;
+            }
+            if (node_update_basis_socket(C, ntree, node, *current_output, block, locx, locy)) {
+              is_first = false;
+              need_spacer = true;
+            }
           }
           current_output = current_output->next;
           break;
