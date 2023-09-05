@@ -656,9 +656,18 @@ static void recalcData_nla(TransInfo *t)
       if (t->modifiers & MOD_SNAP_INVERT) {
         invert_snap(snap_mode);
       }
-      TransData *td = tc->data;
-      for (int i = 0; i < tc->data_len; i++, td++) {
-        transform_snap_anim_flush_data(t, td, snap_mode, td->loc);
+
+      /* Snap with the center of the strip because snapping should preserve the length. */
+      float center = 0;
+      for (int i = 0; i < tc->data_len; i++) {
+        center += *tc->data[i].loc;
+      }
+      center /= tc->data_len;
+      float snapped_center;
+      transform_snap_anim_flush_data(t, tc->data, snap_mode, &snapped_center);
+      const float offset = snapped_center - center;
+      for (int i = 0; i < tc->data_len; i++) {
+        *tc->data[i].loc += offset;
       }
     }
   }
