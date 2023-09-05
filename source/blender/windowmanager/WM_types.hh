@@ -893,7 +893,7 @@ struct wmTimer {
   wmWindow *win;
 
   /** Set by timer user. */
-  double timestep;
+  double time_step;
   /** Set by timer user, goes to event system. */
   int event_type;
   /** Various flags controlling timer options, see below. */
@@ -902,16 +902,16 @@ struct wmTimer {
   void *customdata;
 
   /** Total running time in seconds. */
-  double duration;
+  double time_duration;
   /** Time since previous step in seconds. */
-  double delta;
+  double time_delta;
 
   /** Internal, last time timer was activated. */
-  double ltime;
+  double time_last;
   /** Internal, next time we want to activate the timer. */
-  double ntime;
+  double time_next;
   /** Internal, when the timer started. */
-  double stime;
+  double time_start;
   /** Internal, put timers to sleep when needed. */
   bool sleep;
 };
@@ -1111,10 +1111,6 @@ struct wmDragAsset {
 struct wmDragAssetCatalog {
   bUUID drag_catalog_id;
 };
-
-typedef struct wmDragNodeTreeInterface {
-  struct bNodeTreeInterfaceItem *item;
-} wmDragNodeTreeInterface;
 
 /**
  * For some specific cases we support dragging multiple assets (#WM_DRAG_ASSET_LIST). There is no
