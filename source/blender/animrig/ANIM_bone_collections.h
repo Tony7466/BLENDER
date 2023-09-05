@@ -209,8 +209,6 @@ void ANIM_armature_bonecoll_listbase_free(ListBase *bcolls, const bool do_id_use
  * This also builds `r_bcoll_map`, which is a map from the src collections
  * to the copied dst collections.  This can be used to remap edit bone
  * membership.
- *
- * Note: `r_bcoll_map` should already be initialized, but empty.
  */
 void ANIM_armature_bonecoll_listbase_copy(
     ListBase *bone_colls_dst,

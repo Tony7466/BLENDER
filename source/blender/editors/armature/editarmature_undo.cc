@@ -92,8 +92,7 @@ static void undoarm_to_editarm(UndoArmature *uarm, bArmature *arm)
   ED_armature_ebone_listbase_temp_clear(arm->edbo);
 
   /* Copy bone collections. */
-  blender::Map<BoneCollection *, BoneCollection *> bcoll_map =
-      blender::Map<BoneCollection *, BoneCollection *>();
+  blender::Map<BoneCollection *, BoneCollection *> bcoll_map;
   ANIM_armature_bonecoll_listbase_free(&arm->collections, true);
   ANIM_armature_bonecoll_listbase_copy(
       &arm->collections, &uarm->bone_collections, &bcoll_map, true);
@@ -121,8 +120,7 @@ static void *undoarm_from_editarm(UndoArmature *uarm, bArmature *arm)
   ED_armature_ebone_listbase_temp_clear(&uarm->ebones);
 
   /* Copy bone collections. */
-  blender::Map<BoneCollection *, BoneCollection *> bcoll_map =
-      blender::Map<BoneCollection *, BoneCollection *>();
+  blender::Map<BoneCollection *, BoneCollection *> bcoll_map;
   ANIM_armature_bonecoll_listbase_copy(
       &uarm->bone_collections, &arm->collections, &bcoll_map, false);
   uarm->active_collection = bcoll_map.lookup_default(arm->active_collection, nullptr);

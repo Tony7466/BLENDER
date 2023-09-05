@@ -466,7 +466,7 @@ void ANIM_armature_bonecoll_listbase_copy(
   BLI_assert(BLI_listbase_is_empty(bone_colls_dst));
   BLI_assert(r_bcoll_map);
 
-  /* Copy bone collections. */
+  *r_bcoll_map = blender::Map<BoneCollection *, BoneCollection *>();
   LISTBASE_FOREACH (BoneCollection *, bcoll_src, bone_colls_src) {
     BoneCollection *bcoll_dst = static_cast<BoneCollection *>(MEM_dupallocN(bcoll_src));
 
