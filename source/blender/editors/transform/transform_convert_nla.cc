@@ -663,19 +663,25 @@ static void snap_transform_data(TransInfo *t, TransDataContainer *tc)
     invert_snap(snap_mode);
   }
 
-  float min_offset = FLT_MAX;
+  float offset = 0;
+  float closest_snap_offset = FLT_MAX;
   for (int i = 0; i < tc->data_len; i++) {
     TransData td = tc->data[i];
-    transform_snap_anim_flush_data(t, &td, snap_mode, td.loc);
-    const float offset = *td.loc - td.iloc[0];
-    if (fabs(offset) < fabs(min_offset)) {
-      min_offset = offset;
+    float snap_value;
+    transform_snap_anim_flush_data(t, &td, snap_mode, &snap_value);
+
+    /* In order to move the strip in a block and not each end individually, find the minimal snap
+     * offset and shift the whole strip by that amount. */
+    const float snap_offset = *td.loc - snap_value;
+    if (fabs(snap_offset) < fabs(closest_snap_offset)) {
+      offset = snap_value - td.iloc[0];
+      closest_snap_offset = snap_offset;
     }
   }
 
   for (int i = 0; i < tc->data_len; i++) {
     TransData td = tc->data[i];
-    *td.loc = td.iloc[0] + min_offset;
+    *td.loc = td.iloc[0] + offset;
   }
 }
 
