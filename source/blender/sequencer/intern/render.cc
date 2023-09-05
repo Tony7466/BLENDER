@@ -693,7 +693,8 @@ static ImBuf *seq_render_preprocess_ibuf(const SeqRenderData *context,
                                          const bool is_proxy_image)
 {
   if (context->is_proxy_render == false &&
-      (ibuf->x != context->rectx || ibuf->y != context->recty)) {
+      (ibuf->x != context->rectx || ibuf->y != context->recty))
+  {
     use_preprocess = true;
   }
 
@@ -1865,6 +1866,8 @@ static ImBuf *seq_render_strip_stack_apply_effect(
       out = sh.execute(context, seq, timeline_frame, fac, ibuf1, ibuf2, nullptr);
     }
   }
+
+  IMB_metadata_copy(out, ibuf2);
 
   return out;
 }
