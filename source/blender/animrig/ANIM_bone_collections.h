@@ -197,7 +197,7 @@ void ANIM_armature_bonecoll_show_from_pchan(struct bArmature *armature,
 /* -------------------------------------------------------------------- */
 /* Only used by edit-mode Armature undo: */
 
-void ANIM_armature_bonecoll_listbase_free(ListBase *bcolls, const bool do_id_user);
+void ANIM_bonecoll_listbase_free(ListBase *bcolls, const bool do_id_user);
 /**
  * Duplicates a list of BoneCollections.
  *
@@ -210,7 +210,7 @@ void ANIM_armature_bonecoll_listbase_free(ListBase *bcolls, const bool do_id_use
  * to the copied dst collections.  This can be used to remap edit bone
  * membership.
  */
-void ANIM_armature_bonecoll_listbase_copy(
+void ANIM_bonecoll_listbase_copy(
     ListBase *bone_colls_dst,
     ListBase *bone_colls_src,
     blender::Map<BoneCollection *, BoneCollection *> *r_bcoll_map,

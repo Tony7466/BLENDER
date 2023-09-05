@@ -48,7 +48,7 @@ static CLG_LogRef LOG = {"ed.undo.armature"};
  * Remaps editbone collection membership.
  *
  * This is intended to be used in combination with ED_armature_ebone_listbase_copy()
- * and ANIM_armature_bonecoll_listbase_copy() to make a full duplicate of both edit
+ * and ANIM_bonecoll_listbase_copy() to make a full duplicate of both edit
  * bones and collections together.
  */
 static void remap_ebone_bone_collection_references(
@@ -93,8 +93,8 @@ static void undoarm_to_editarm(UndoArmature *uarm, bArmature *arm)
 
   /* Copy bone collections. */
   blender::Map<BoneCollection *, BoneCollection *> bcoll_map;
-  ANIM_armature_bonecoll_listbase_free(&arm->collections, true);
-  ANIM_armature_bonecoll_listbase_copy(
+  ANIM_bonecoll_listbase_free(&arm->collections, true);
+  ANIM_bonecoll_listbase_copy(
       &arm->collections, &uarm->bone_collections, &bcoll_map, true);
   arm->active_collection = bcoll_map.lookup_default(uarm->active_collection, nullptr);
 
@@ -121,7 +121,7 @@ static void *undoarm_from_editarm(UndoArmature *uarm, bArmature *arm)
 
   /* Copy bone collections. */
   blender::Map<BoneCollection *, BoneCollection *> bcoll_map;
-  ANIM_armature_bonecoll_listbase_copy(
+  ANIM_bonecoll_listbase_copy(
       &uarm->bone_collections, &arm->collections, &bcoll_map, false);
   uarm->active_collection = bcoll_map.lookup_default(arm->active_collection, nullptr);
 
@@ -144,7 +144,7 @@ static void *undoarm_from_editarm(UndoArmature *uarm, bArmature *arm)
 static void undoarm_free_data(UndoArmature *uarm)
 {
   ED_armature_ebone_listbase_free(&uarm->ebones, false);
-  ANIM_armature_bonecoll_listbase_free(&uarm->bone_collections, false);
+  ANIM_bonecoll_listbase_free(&uarm->bone_collections, false);
 }
 
 static Object *editarm_object_from_context(bContext *C)

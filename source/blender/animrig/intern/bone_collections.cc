@@ -443,7 +443,7 @@ void ANIM_armature_bonecoll_show_from_pchan(bArmature *armature, const bPoseChan
 /* ********************************************** */
 /* Utility functions for Armature edit-mode undo. */
 
-void ANIM_armature_bonecoll_listbase_free(ListBase *bcolls, const bool do_id_user)
+void ANIM_bonecoll_listbase_free(ListBase *bcolls, const bool do_id_user)
 {
   LISTBASE_FOREACH_MUTABLE (BoneCollection *, bcoll, bcolls) {
     /* ID properties. */
@@ -457,7 +457,7 @@ void ANIM_armature_bonecoll_listbase_free(ListBase *bcolls, const bool do_id_use
   BLI_freelistN(bcolls);
 }
 
-void ANIM_armature_bonecoll_listbase_copy(
+void ANIM_bonecoll_listbase_copy(
     ListBase *bone_colls_dst,
     ListBase *bone_colls_src,
     blender::Map<BoneCollection *, BoneCollection *> *r_bcoll_map,
