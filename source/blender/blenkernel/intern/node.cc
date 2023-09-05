@@ -57,7 +57,6 @@
 #include "BKE_context.h"
 #include "BKE_cryptomatte.h"
 #include "BKE_global.h"
-#include "BKE_icons.h"
 #include "BKE_idprop.h"
 #include "BKE_idprop.hh"
 #include "BKE_idtype.h"
@@ -71,6 +70,7 @@
 #include "BKE_node_tree_interface.hh"
 #include "BKE_node_tree_update.h"
 #include "BKE_node_tree_zones.hh"
+#include "BKE_preview_image.hh"
 #include "BKE_type_conversions.hh"
 
 #include "RNA_access.hh"
@@ -1358,14 +1358,16 @@ void ntreeSetTypes(const bContext *C, bNodeTree *ntree)
   blender::bke::ntree_set_typeinfo(ntree, ntreeTypeFind(ntree->idname));
 
   for (bNode *node : ntree->all_nodes()) {
-    blender::bke::node_set_typeinfo(C, ntree, node, nodeTypeFind(node->idname));
-
+    /* Set socket typeinfo first because node initialization may rely on socket typeinfo for
+     * generating declarations. */
     LISTBASE_FOREACH (bNodeSocket *, sock, &node->inputs) {
       blender::bke::node_socket_set_typeinfo(ntree, sock, nodeSocketTypeFind(sock->idname));
     }
     LISTBASE_FOREACH (bNodeSocket *, sock, &node->outputs) {
       blender::bke::node_socket_set_typeinfo(ntree, sock, nodeSocketTypeFind(sock->idname));
     }
+
+    blender::bke::node_set_typeinfo(C, ntree, node, nodeTypeFind(node->idname));
   }
 }
 
