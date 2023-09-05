@@ -488,7 +488,7 @@ static void createTransNlaData(bContext *C, TransInfo *t)
       if (strip->type == NLASTRIP_TYPE_TRANSITION) {
         continue;
       }
-      if (!(strip->flag & NLASTRIP_FLAG_SELECT)) {
+      if (strip->flag & NLASTRIP_FLAG_SELECT == 0) {
         continue;
       }
       if (FrameOnMouseSide(t->frame_side, strip->start, float(scene->r.cfra))) {
