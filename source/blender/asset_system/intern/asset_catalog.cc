@@ -575,6 +575,7 @@ std::unique_ptr<AssetCatalogTree> AssetCatalogService::read_into_tree()
 
   /* Go through the catalogs, insert each path component into the tree where needed. */
   for (auto &catalog : catalog_collection_->catalogs_.values()) {
+    std::cout << catalog->path << '\n';
     tree->insert_item(*catalog);
   }
 
@@ -583,6 +584,7 @@ std::unique_ptr<AssetCatalogTree> AssetCatalogService::read_into_tree()
 
 void AssetCatalogService::rebuild_tree()
 {
+  std::cout << __func__ << '\n';
   create_missing_catalogs();
   this->catalog_tree_ = read_into_tree();
 }

@@ -486,9 +486,9 @@ static GeometryNodeAssetTraitFlag asset_flag_for_context(const eContextObjectMod
   }
 }
 
-static asset::AssetItemTree *get_static_item_tree(const bContext &C)
+static asset::AssetItemTree *get_static_item_tree(const eContextObjectMode mode)
 {
-  switch (eContextObjectMode(CTX_data_mode_enum(&C))) {
+  switch (mode) {
     case CTX_MODE_EDIT_MESH: {
       static asset::AssetItemTree tree;
       return &tree;
@@ -514,8 +514,14 @@ static asset::AssetItemTree *get_static_item_tree(const bContext &C)
   }
 }
 
+static asset::AssetItemTree *get_static_item_tree(const bContext &C)
+{
+  return get_static_item_tree(eContextObjectMode(CTX_data_mode_enum(&C)));
+}
+
 static asset::AssetItemTree build_catalog_tree(const bContext &C)
 {
+  std::cout << __func__ << '\n';
   const eContextObjectMode ctx_mode = eContextObjectMode(CTX_data_mode_enum(&C));
   AssetFilterSettings type_filter{};
   type_filter.id_types = FILTER_ID_NT;
@@ -586,7 +592,7 @@ static Set<std::string> get_builtin_menus(const ObjectType object_type, const eO
   return menus;
 }
 
-static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)
+static void catalog_assets_draw(const bContext *C, Menu *menu)
 {
   bScreen &screen = *CTX_wm_screen(C);
   asset::AssetItemTree *tree = get_static_item_tree(*C);
@@ -631,6 +637,7 @@ static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)
   }
 
   catalog_item->foreach_child([&](asset_system::AssetCatalogTreeItem &item) {
+    std::cout << "  " << item.get_name() << '\n';
     asset::draw_menu_for_catalog(
         screen, *all_library, item, "GEO_MT_node_operator_catalog_assets", *layout);
   });
@@ -641,10 +648,19 @@ MenuType node_group_operator_assets_menu()
   MenuType type{};
   STRNCPY(type.idname, "GEO_MT_node_operator_catalog_assets");
   type.poll = asset_menu_poll;
-  type.draw = node_add_catalog_assets_draw;
+  type.draw = catalog_assets_draw;
   type.listener = asset::asset_reading_region_listen_fn;
   type.context_dependent = true;
   return type;
+}
+
+void clear_operator_asset_trees()
+{
+  SCOPED_TIMER(__func__);
+  for (const int mode : IndexRange(CTX_MODE_NUM)) {
+    if (asset::AssetItemTree *tree = get_static_item_tree(eContextObjectMode(mode)))
+      *tree = {};
+  }
 }
 
 void ui_template_node_operator_asset_menu_items(uiLayout &layout,
@@ -686,7 +702,9 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, bContext &C)
   if (!tree) {
     return;
   }
-  *tree = build_catalog_tree(C);
+  if (tree->assets_per_path.size() == 0) {
+    *tree = build_catalog_tree(C);
+  }
   if (tree->catalogs.is_empty()) {
     return;
   }
@@ -702,6 +720,7 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, bContext &C)
 
   tree->catalogs.foreach_root_item([&](asset_system::AssetCatalogTreeItem &item) {
     if (!builtin_menus.contains(item.get_name())) {
+      std::cout << "  root menu: " << item.get_name() << '\n';
       asset::draw_menu_for_catalog(
           screen, *all_library, item, "GEO_MT_node_operator_catalog_assets", layout);
     }

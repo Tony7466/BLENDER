@@ -6,6 +6,8 @@
  * \ingroup edasset
  */
 
+#include <iostream>
+
 #include "AS_asset_representation.hh"
 
 #include "BKE_asset.h"
@@ -115,6 +117,8 @@ AssetItemTree build_filtered_all_catalog_tree(
     return {};
   }
 
+  std::cout << "  ASSETS\n";
+
   ED_assetlist_iterate(library_ref, [&](asset_system::AssetRepresentation &asset) {
     if (!ED_asset_filter_matches_asset(&filter_settings, asset)) {
       return true;
@@ -133,9 +137,16 @@ AssetItemTree build_filtered_all_catalog_tree(
     if (catalog == nullptr) {
       return true;
     }
+    std::cout << "    " << asset.get_name() << ": " << catalog->path << '\n';
     assets_per_path.add(catalog->path, &asset);
     return true;
   });
+
+  std::cout << "  PATHS\n";
+
+  for (auto item : assets_per_path.items()) {
+    std::cout << "    " << item.key.str() << ": " << item.value.size() << '\n';
+  }
 
   asset_system::AssetCatalogTree catalogs_with_node_assets;
   asset_system::AssetCatalogTree &catalog_tree = *library->catalog_service->get_catalog_tree();
