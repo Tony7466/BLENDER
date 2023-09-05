@@ -30,6 +30,7 @@
 
 #include "BLT_translation.h"
 
+#include "BKE_blender_version.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
 #include "BKE_icons.h"
@@ -481,20 +482,38 @@ void wm_window_title(wmWindowManager *wm, wmWindow *win)
      * because #WM_window_open always sets window title. */
   }
   else if (win->ghostwin) {
-    /* this is set to 1 if you don't have startup.blend open */
-    const char *blendfile_path = BKE_main_blendfile_path_from_global();
-    if (blendfile_path[0] != '\0') {
-      char str[sizeof(Main::filepath) + 24];
-      SNPRINTF(str,
-               "Blender%s [%s%s]",
-               wm->file_saved ? "" : "*",
-               blendfile_path,
-               G_MAIN->recovered ? " (Recovered)" : "");
-      GHOST_SetTitle(static_cast<GHOST_WindowHandle>(win->ghostwin), str);
+    char str[sizeof(Main::filepath) + 24];
+    const char *filename = (BKE_main_blendfile_path_from_global()[0]) ?
+                         BKE_main_blendfile_path_from_global() :
+                         IFACE_("(Unsaved)");
+
+    const char *version_cycle = "";
+    if (STREQ(STRINGIFY(BLENDER_VERSION_CYCLE), "alpha")) {
+      version_cycle = " Alpha";
     }
-    else {
-      GHOST_SetTitle(static_cast<GHOST_WindowHandle>(win->ghostwin), "Blender");
+    else if (STREQ(STRINGIFY(BLENDER_VERSION_CYCLE), "beta")) {
+      version_cycle = " Beta";
     }
+    else if (STREQ(STRINGIFY(BLENDER_VERSION_CYCLE), "rc")) {
+      version_cycle = " Release Candidate";
+    }
+    else if (STREQ(STRINGIFY(BLENDER_VERSION_CYCLE), "release")) {
+      version_cycle = "";
+    }
+
+    const char *patch = BLENDER_VERSION_PATCH != 0 ? "." STRINGIFY(BLENDER_VERSION_CYCLE) : "";
+
+    BLI_snprintf(str,
+                 sizeof(str),
+                 "Blender %d.%d%s%s %s%s%s",
+                 BLENDER_VERSION / 100,
+                 BLENDER_VERSION % 100,
+                 patch,
+                 version_cycle,
+                 wm->file_saved ? "" : "*",
+                 filename,
+                 G_MAIN->recovered ? " (Recovered)" : "");
+    GHOST_SetTitle(static_cast<GHOST_WindowHandle>(win->ghostwin), str);
 
     /* Informs GHOST of unsaved changes, to set window modified visual indicator (macOS)
      * and to give hint of unsaved changes for a user warning mechanism in case of OS application
