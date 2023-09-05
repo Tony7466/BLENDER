@@ -1485,13 +1485,12 @@ static void rna_Object_material_slots_next(CollectionPropertyIterator *iter)
 
 static PointerRNA rna_Object_material_slots_get(CollectionPropertyIterator *iter)
 {
-  PointerRNA ptr;
   ID *id = static_cast<ID *>(iter->internal.count.ptr);
-  RNA_pointer_create(id,
-                     &RNA_MaterialSlot,
-                     /* Add offset, so that `ptr->data` is not null and unique across IDs. */
-                     (void *)(iter->internal.count.item + uintptr_t(id)),
-                     &ptr);
+  PointerRNA ptr = RNA_pointer_create(
+      id,
+      &RNA_MaterialSlot,
+      /* Add offset, so that `ptr->data` is not null and unique across IDs. */
+      (void *)(iter->internal.count.item + uintptr_t(id)));
   return ptr;
 }
 
@@ -1551,14 +1550,13 @@ static PointerRNA rna_Object_active_shape_key_get(PointerRNA *ptr)
   Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
   Key *key = BKE_key_from_object(ob);
   KeyBlock *kb;
-  PointerRNA keyptr;
 
   if (key == nullptr) {
     return PointerRNA_NULL;
   }
 
   kb = static_cast<KeyBlock *>(BLI_findlink(&key->block, ob->shapenr - 1));
-  RNA_pointer_create(reinterpret_cast<ID *>(key), &RNA_ShapeKey, kb, &keyptr);
+  PointerRNA keyptr = RNA_pointer_create(reinterpret_cast<ID *>(key), &RNA_ShapeKey, kb);
   return keyptr;
 }
 

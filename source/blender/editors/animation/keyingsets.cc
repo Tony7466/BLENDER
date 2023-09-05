@@ -946,7 +946,7 @@ void ANIM_relative_keyingset_add_source(ListBase *dsources, ID *id, StructRNA *s
 
   /* depending on what data we have, create using ID or full pointer call */
   if (srna && data) {
-    RNA_pointer_create(id, srna, data, &ds->ptr);
+    ds->ptr = RNA_pointer_create(id, srna, data);
   }
   else {
     ds->ptr = RNA_id_pointer_create(id);

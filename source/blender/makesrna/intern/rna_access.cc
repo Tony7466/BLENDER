@@ -141,7 +141,7 @@ PointerRNA RNA_id_pointer_create(ID *id)
   return ptr;
 }
 
-void RNA_pointer_create(ID *id, StructRNA *type, void *data, PointerRNA *r_ptr)
+PointerRNA RNA_pointer_create(ID *id, StructRNA *type, void *data)
 {
 #if 0 /* UNUSED */
   StructRNA *idtype = nullptr;
@@ -153,20 +153,23 @@ void RNA_pointer_create(ID *id, StructRNA *type, void *data, PointerRNA *r_ptr)
   }
 #endif
 
-  r_ptr->owner_id = id;
-  r_ptr->type = type;
-  r_ptr->data = data;
+  PointerRNA ptr;
+  ptr.owner_id = id;
+  ptr.type = type;
+  ptr.data = data;
 
   if (data) {
-    while (r_ptr->type && r_ptr->type->refine) {
-      StructRNA *rtype = r_ptr->type->refine(r_ptr);
+    while (ptr.type && ptr.type->refine) {
+      StructRNA *rtype = ptr.type->refine(&ptr);
 
-      if (rtype == r_ptr->type) {
+      if (rtype == ptr.type) {
         break;
       }
-      r_ptr->type = rtype;
+      ptr.type = rtype;
     }
   }
+
+  return ptr;
 }
 
 bool RNA_pointer_is_null(const PointerRNA *ptr)
@@ -801,10 +804,9 @@ bool RNA_struct_contains_property(PointerRNA *ptr, PropertyRNA *prop_test)
 
 uint RNA_struct_count_properties(StructRNA *srna)
 {
-  PointerRNA struct_ptr;
   uint counter = 0;
 
-  RNA_pointer_create(nullptr, srna, nullptr, &struct_ptr);
+  PointerRNA struct_ptr = RNA_pointer_create(nullptr, srna, nullptr);
 
   RNA_STRUCT_BEGIN (&struct_ptr, prop) {
     counter++;
@@ -852,11 +854,10 @@ FunctionRNA *RNA_struct_find_function(StructRNA *srna, const char *identifier)
 
   /* functional but slow */
 #else
-  PointerRNA tptr;
   PropertyRNA *iterprop;
   FunctionRNA *func;
 
-  RNA_pointer_create(nullptr, &RNA_Struct, srna, &tptr);
+  PointerRNA tptr = RNA_pointer_create(nullptr, &RNA_Struct, srna);
   iterprop = RNA_struct_find_property(&tptr, "functions");
 
   func = nullptr;
@@ -4549,7 +4550,6 @@ static int rna_raw_access(ReportList *reports,
                           int set)
 {
   StructRNA *ptype;
-  PointerRNA itemptr_base;
   PropertyRNA *itemprop, *iprop;
   PropertyType itemtype = PropertyType(0);
   RawArray in;
@@ -4564,7 +4564,7 @@ static int rna_raw_access(ReportList *reports,
   ptype = RNA_property_pointer_type(ptr, prop);
 
   /* try to get item property pointer */
-  RNA_pointer_create(nullptr, ptype, nullptr, &itemptr_base);
+  PointerRNA itemptr_base = RNA_pointer_create(nullptr, ptype, nullptr);
   itemprop = RNA_struct_find_property(&itemptr_base, propname);
 
   if (itemprop) {
@@ -5665,10 +5665,9 @@ char *RNA_function_as_string_keywords(bContext *C,
                                       const bool all_args,
                                       const int max_prop_length)
 {
-  PointerRNA funcptr;
   PropertyRNA *iterprop;
 
-  RNA_pointer_create(nullptr, &RNA_Function, func, &funcptr);
+  PointerRNA funcptr = RNA_pointer_create(nullptr, &RNA_Function, func);
 
   iterprop = RNA_struct_find_property(&funcptr, "parameters");
 
@@ -6578,7 +6577,7 @@ static int rna_function_parameter_parse(PointerRNA *ptr,
 
       LISTBASE_FOREACH (Link *, link, lb) {
         clink = MEM_cnew<CollectionPointerLink>(__func__);
-        RNA_pointer_create(nullptr, srna, link, &clink->ptr);
+        clink->ptr = RNA_pointer_create(nullptr, srna, link);
         BLI_addtail(clb, clink);
       }
 
@@ -6606,7 +6605,6 @@ int RNA_function_call_direct_va(bContext *C,
                                 const char *format,
                                 va_list args)
 {
-  PointerRNA funcptr;
   ParameterList parms;
   ParameterIterator iter;
   PropertyRNA *pret, *parm;
@@ -6616,7 +6614,7 @@ int RNA_function_call_direct_va(bContext *C,
   char ftype;
   void **retdata = nullptr;
 
-  RNA_pointer_create(nullptr, &RNA_Function, func, &funcptr);
+  PointerRNA funcptr = RNA_pointer_create(nullptr, &RNA_Function, func);
 
   tid = RNA_struct_identifier(ptr->type);
   fid = RNA_function_identifier(func);

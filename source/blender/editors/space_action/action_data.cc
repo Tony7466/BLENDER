@@ -140,11 +140,10 @@ static void actedit_change_action(bContext *C, bAction *act)
   bScreen *screen = CTX_wm_screen(C);
   SpaceAction *saction = (SpaceAction *)CTX_wm_space_data(C);
 
-  PointerRNA ptr;
   PropertyRNA *prop;
 
   /* create RNA pointers and get the property */
-  RNA_pointer_create(&screen->id, &RNA_SpaceDopeSheetEditor, saction, &ptr);
+  PointerRNA ptr = RNA_pointer_create(&screen->id, &RNA_SpaceDopeSheetEditor, saction);
   prop = RNA_struct_find_property(&ptr, "action");
 
   /* NOTE: act may be nullptr here, so better to just use a cast here */
@@ -641,11 +640,10 @@ void ED_animedit_unlink_action(
     }
     else {
       /* clear AnimData -> action */
-      PointerRNA ptr;
       PropertyRNA *prop;
 
       /* create AnimData RNA pointers */
-      RNA_pointer_create(id, &RNA_AnimData, adt, &ptr);
+      PointerRNA ptr = RNA_pointer_create(id, &RNA_AnimData, adt);
       prop = RNA_struct_find_property(&ptr, "action");
 
       /* clear... */

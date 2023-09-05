@@ -225,9 +225,8 @@ static int pose_calculate_paths_invoke(bContext *C, wmOperator *op, const wmEven
   /* set default settings from existing/stored settings */
   {
     bAnimVizSettings *avs = &ob->pose->avs;
-    PointerRNA avs_ptr;
 
-    RNA_pointer_create(nullptr, &RNA_AnimVizMotionPaths, avs, &avs_ptr);
+    PointerRNA avs_ptr = RNA_pointer_create(nullptr, &RNA_AnimVizMotionPaths, avs);
     RNA_enum_set(op->ptr, "display_type", RNA_enum_get(&avs_ptr, "type"));
     RNA_enum_set(op->ptr, "range", RNA_enum_get(&avs_ptr, "range"));
     RNA_enum_set(op->ptr, "bake_location", RNA_enum_get(&avs_ptr, "bake_location"));
@@ -254,13 +253,12 @@ static int pose_calculate_paths_exec(bContext *C, wmOperator *op)
   /* grab baking settings from operator settings */
   {
     bAnimVizSettings *avs = &ob->pose->avs;
-    PointerRNA avs_ptr;
 
     avs->path_type = RNA_enum_get(op->ptr, "display_type");
     avs->path_range = RNA_enum_get(op->ptr, "range");
     animviz_motionpath_compute_range(ob, scene);
 
-    RNA_pointer_create(nullptr, &RNA_AnimVizMotionPaths, avs, &avs_ptr);
+    PointerRNA avs_ptr = RNA_pointer_create(nullptr, &RNA_AnimVizMotionPaths, avs);
     RNA_enum_set(&avs_ptr, "bake_location", RNA_enum_get(op->ptr, "bake_location"));
   }
 
@@ -848,7 +846,6 @@ static int pose_bone_layers_invoke(bContext *C, wmOperator *op, const wmEvent *e
 /* Set the visible layers for the active armature (edit and pose modes) */
 static int pose_bone_layers_exec(bContext *C, wmOperator *op)
 {
-  PointerRNA ptr;
   /* hardcoded for now - we can only have 32 armature layers, so this should be fine... */
   bool layers[32];
 
@@ -875,7 +872,7 @@ static int pose_bone_layers_exec(bContext *C, wmOperator *op)
   /* set layers of pchans based on the values set in the operator props */
   CTX_DATA_BEGIN_WITH_ID (C, bPoseChannel *, pchan, selected_pose_bones, Object *, ob) {
     /* get pointer for pchan, and write flags this way */
-    RNA_pointer_create((ID *)ob->data, &RNA_Bone, pchan->bone, &ptr);
+    PointerRNA ptr = RNA_pointer_create((ID *)ob->data, &RNA_Bone, pchan->bone);
     RNA_boolean_set_array(&ptr, "layers", layers);
 
     if (prev_ob != ob) {

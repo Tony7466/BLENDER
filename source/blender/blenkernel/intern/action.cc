@@ -1485,7 +1485,7 @@ eAction_TransformFlags BKE_action_get_item_transform_flags(bAction *act,
 
   /* build PointerRNA from provided data to obtain the paths to use */
   if (pchan) {
-    RNA_pointer_create((ID *)ob, &RNA_PoseBone, pchan, &ptr);
+    ptr = RNA_pointer_create((ID *)ob, &RNA_PoseBone, pchan);
   }
   else if (ob) {
     ptr = RNA_id_pointer_create((ID *)ob);

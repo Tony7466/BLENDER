@@ -43,7 +43,7 @@ extern BlenderRNA BLENDER_RNA;
 
 PointerRNA RNA_main_pointer_create(struct Main *main);
 PointerRNA RNA_id_pointer_create(struct ID *id);
-void RNA_pointer_create(struct ID *id, StructRNA *type, void *data, PointerRNA *r_ptr);
+PointerRNA RNA_pointer_create(struct ID *id, StructRNA *type, void *data);
 bool RNA_pointer_is_null(const PointerRNA *ptr);
 
 bool RNA_path_resolved_create(PointerRNA *ptr,

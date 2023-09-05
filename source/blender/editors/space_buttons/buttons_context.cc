@@ -105,7 +105,7 @@ static bool buttons_context_path_view_layer(ButsContextPath *path, wmWindow *win
     ViewLayer *view_layer = (win->scene == scene) ? WM_window_get_active_view_layer(win) :
                                                     BKE_view_layer_default_view(scene);
 
-    RNA_pointer_create(&scene->id, &RNA_ViewLayer, view_layer, &path->ptr[path->len]);
+    path->ptr[path->len] = RNA_pointer_create(&scene->id, &RNA_ViewLayer, view_layer);
     path->len++;
     return true;
   }
@@ -311,7 +311,7 @@ static bool buttons_context_path_modifier(ButsContextPath *path)
     {
       ModifierData *md = BKE_object_active_modifier(ob);
       if (md != nullptr) {
-        RNA_pointer_create(&ob->id, &RNA_Modifier, md, &path->ptr[path->len]);
+        path->ptr[path->len] = RNA_pointer_create(&ob->id, &RNA_Modifier, md);
         path->len++;
       }
 
@@ -370,14 +370,14 @@ static bool buttons_context_path_bone(ButsContextPath *path)
     if (arm->edbo) {
       if (arm->act_edbone) {
         EditBone *edbo = arm->act_edbone;
-        RNA_pointer_create(&arm->id, &RNA_EditBone, edbo, &path->ptr[path->len]);
+        path->ptr[path->len] = RNA_pointer_create(&arm->id, &RNA_EditBone, edbo);
         path->len++;
         return true;
       }
     }
     else {
       if (arm->act_bone) {
-        RNA_pointer_create(&arm->id, &RNA_Bone, arm->act_bone, &path->ptr[path->len]);
+        path->ptr[path->len] = RNA_pointer_create(&arm->id, &RNA_Bone, arm->act_bone);
         path->len++;
         return true;
       }
@@ -410,7 +410,7 @@ static bool buttons_context_path_pose_bone(ButsContextPath *path)
     if (arm->act_bone) {
       bPoseChannel *pchan = BKE_pose_channel_find_name(ob->pose, arm->act_bone->name);
       if (pchan) {
-        RNA_pointer_create(&ob->id, &RNA_PoseBone, pchan, &path->ptr[path->len]);
+        path->ptr[path->len] = RNA_pointer_create(&ob->id, &RNA_PoseBone, pchan);
         path->len++;
         return true;
       }
@@ -436,7 +436,7 @@ static bool buttons_context_path_particle(ButsContextPath *path)
     if (ob && ob->type == OB_MESH) {
       ParticleSystem *psys = psys_get_current(ob);
 
-      RNA_pointer_create(&ob->id, &RNA_ParticleSystem, psys, &path->ptr[path->len]);
+      path->ptr[path->len] = RNA_pointer_create(&ob->id, &RNA_ParticleSystem, psys);
       path->len++;
       return true;
     }
@@ -576,7 +576,7 @@ static bool buttons_context_path(
               BCONTEXT_VIEW_LAYER,
               BCONTEXT_WORLD))
     {
-      RNA_pointer_create(nullptr, &RNA_ViewLayer, view_layer, &path->ptr[path->len]);
+      path->ptr[path->len] = RNA_pointer_create(nullptr, &RNA_ViewLayer, view_layer);
       path->len++;
     }
   }

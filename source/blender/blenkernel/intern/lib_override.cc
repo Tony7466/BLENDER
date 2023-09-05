@@ -4440,14 +4440,12 @@ static bool lib_override_library_id_reset_do(Main *bmain,
     bool do_op_delete = true;
     const bool is_collection = op->rna_prop_type == PROP_COLLECTION;
     if (is_collection || op->rna_prop_type == PROP_POINTER) {
-      PointerRNA ptr_root, ptr_root_lib, ptr, ptr_lib;
+      PointerRNA ptr, ptr_lib;
       PropertyRNA *prop, *prop_lib;
 
-      RNA_pointer_create(id_root, &RNA_ID, id_root, &ptr_root);
-      RNA_pointer_create(id_root->override_library->reference,
-                         &RNA_ID,
-                         id_root->override_library->reference,
-                         &ptr_root_lib);
+      PointerRNA ptr_root = RNA_pointer_create(id_root, &RNA_ID, id_root);
+      PointerRNA ptr_root_lib = RNA_pointer_create(
+          id_root->override_library->reference, &RNA_ID, id_root->override_library->reference);
 
       bool prop_exists = RNA_path_resolve_property(&ptr_root, op->rna_path, &ptr, &prop);
       if (prop_exists) {
