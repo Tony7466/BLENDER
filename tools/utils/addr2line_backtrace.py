@@ -27,7 +27,9 @@ import time
 
 from typing import (
     Any,
+    List,
     Optional,
+    Sequence,
     Tuple,
 )
 
@@ -60,12 +62,12 @@ def find_gitroot(filepath_reference: str) -> Optional[str]:
     return None
 
 
-def addr2line_fn(arg_pair: Tuple[Tuple[str, str, bool], str]) -> Tuple[str, str]:
-    shared_args, addr = arg_pair
+def addr2line_fn(arg_pair: Tuple[Tuple[str, str, bool], Sequence[str]]) -> Sequence[Tuple[str, str]]:
+    shared_args, addr_list = arg_pair
     (exe, base_path, time_command) = shared_args
     cmd = (
         "addr2line",
-        addr,
+        *addr_list,
         "--functions",
         "--demangle",
         "--exe=" + exe,
@@ -74,19 +76,28 @@ def addr2line_fn(arg_pair: Tuple[Tuple[str, str, bool], str]) -> Tuple[str, str]
         time_beg = time.time()
 
     output = subprocess.check_output(cmd).rstrip().decode("utf-8", errors="surrogateescape")
-    # Swap (function, line), to (line, function).
-    line_list = []
-    for line in output.split("\n"):
-        if line.startswith(base_path):
-            line = "." + os.sep + line[len(base_path):]
-        line_list.append(line)
-    output = ": ".join(reversed(line_list))
+    output_lines = output.split("\n")
 
-    if time_command:
-        time_end = time.time()
-        output = "{:s} ({:.2f})".format(output, time_end - time_beg)
+    result: List[Tuple[str, str]] = []
 
-    return addr, output
+    while output_lines:
+        # Swap (function, line), to (line, function).
+        output_lines_for_addr = output_lines[:2]
+        assert len(output_lines_for_addr) == 2
+        del output_lines[:2]
+        line_list = []
+        for line in output_lines_for_addr:
+            if line.startswith(base_path):
+                line = "." + os.sep + line[len(base_path):]
+            line_list.append(line)
+        output = ": ".join(reversed(line_list))
+
+        if time_command:
+            time_end = time.time()
+            output = "{:s} ({:.2f})".format(output, time_end - time_beg)
+        result.append((addr_list[len(result)], output))
+
+    return result
 
 
 def argparse_create() -> argparse.ArgumentParser:
@@ -127,10 +138,10 @@ def argparse_create() -> argparse.ArgumentParser:
         "--jobs",
         dest="jobs",
         type=int,
-        default=0,
+        default=4,
         help=(
             "The number of processes to use. "
-            "Defaults to zero which detects the available cores, 1 is single threaded (useful for debugging)."
+            "Defaults to 4 to prevent using too much memory, 1 is single threaded (useful for debugging)."
         ),
         required=False,
     )
@@ -156,15 +167,24 @@ def addr2line_for_filedata(
         addr_set.add(addr)
 
     shared_args = exe, base_path, time_command
-    addr2line_args = [(shared_args, addr) for addr in addr_set]
+    if jobs >= len(addr_set):
+        addr2line_args = [(shared_args, [addr]) for addr in addr_set]
+    else:
+        addr2line_args = [(shared_args, []) for _ in range(jobs)]
+        # Avoid using consecutive addresses in chunks since slower lookups are likely to be groups.
+        for i, addr in enumerate(addr_set):
+            addr2line_args[i % jobs][1].append(addr)
 
     addr_map = {}
+    addr_done = 0
     addr_len = len(addr_set)
 
     with multiprocessing.Pool(jobs) as pool:
-        for i, (addr, result) in enumerate(pool.imap_unordered(addr2line_fn, addr2line_args), 1):
-            progress_output(i, addr_len, "{:d} of {:d}".format(i, addr_len))
-            addr_map[addr] = result
+        for i, result_list in enumerate(pool.imap_unordered(addr2line_fn, addr2line_args), 1):
+            for (addr, result) in result_list:
+                progress_output(addr_done, addr_len, "{:d} of {:d}".format(addr_done, addr_len))
+                addr_map[addr] = result
+            addr_done += len(result_list)
 
     if IS_ATTY:
         print()
