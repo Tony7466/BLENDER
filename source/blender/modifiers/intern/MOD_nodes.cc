@@ -456,7 +456,6 @@ static void update_bakes_from_node_group(NodesModifierData &nmd)
 
   nmd.bakes = new_bake_data;
   nmd.bakes_num = new_bake_ids.size();
-  std::cout << nmd.bakes_num << "\n";
 }
 
 }  // namespace blender
