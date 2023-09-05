@@ -969,7 +969,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         scene->eevee.gi_irradiance_pool_size = 16;
       }
     }
-    
+
     LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
       scene->toolsettings->snap_flag_anim |= SCE_SNAP;
       scene->toolsettings->snap_anim_mode |= SCE_SNAP_TO_FRAME;
@@ -1011,6 +1011,29 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     /* Initialize root panel flags in files created before these flags were added. */
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       ntree->tree_interface.root_panel.flag |= NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS;
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 23)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      blender::Map<const bNodeSocket *, int> total_inputs;
+      LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
+        const bNodeSocket &socket = *link->tosock;
+        if (!socket.is_multi_input()) {
+          continue;
+        }
+        total_inputs.add_or_modify(
+            &socket, [](int *value) { *value = 0; }, [](int *value) { (*value)++; });
+      }
+      LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
+        const bNodeSocket &socket = *link->tosock;
+        if (!socket.is_multi_input()) {
+          continue;
+        }
+        const int last_input_index = total_inputs.lookup(&socket);
+        link->multi_input_socket_index = last_input_index - link->multi_input_socket_index;
+      }
     }
     FOREACH_NODETREE_END;
   }
