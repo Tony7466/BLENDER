@@ -10,6 +10,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_bake_items_socket.hh"
 #include "BKE_compute_contexts.hh"
+#include "BKE_context.h"
 #include "BKE_curves.hh"
 #include "BKE_instances.hh"
 #include "BKE_scene.h"
@@ -29,6 +30,8 @@
 #include "DNA_pointcloud_types.h"
 
 #include "NOD_add_node_search.hh"
+
+#include "ED_node.hh"
 
 #include "node_geometry_util.hh"
 
@@ -806,6 +809,21 @@ static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const b
   dst_node->storage = dst_storage;
 }
 
+static void node_layout(uiLayout *layout, bContext *C, PointerRNA *ptr)
+{
+  const bNode *node = static_cast<bNode *>(ptr->data);
+  SpaceNode *snode = CTX_wm_space_node(C);
+  if (snode == nullptr) {
+    return;
+  }
+  const std::optional<int32_t> bake_id = ed::space_node::find_nested_node_id_in_root(*snode,
+                                                                                     *node);
+  if (!bake_id.has_value()) {
+    return;
+  }
+  uiItemL(layout, std::to_string(*bake_id).c_str(), ICON_NONE);
+}
+
 static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)
 {
   NodeGeometrySimulationOutput &storage = node_storage(*node);
@@ -852,6 +870,7 @@ static void node_register()
   ntype.gather_add_node_search_ops = search_node_add_ops;
   ntype.gather_link_search_ops = nullptr;
   ntype.insert_link = node_insert_link;
+  ntype.draw_buttons_ex = node_layout;
   node_type_storage(&ntype, "NodeGeometrySimulationOutput", node_free_storage, node_copy_storage);
   nodeRegisterType(&ntype);
 }
