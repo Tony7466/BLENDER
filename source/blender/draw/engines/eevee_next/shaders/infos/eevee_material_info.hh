@@ -201,14 +201,12 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
     .additional_info("eevee_camera", "eevee_utility_texture", "eevee_sampling_data");
 
 GPU_SHADER_CREATE_INFO(eevee_surf_shadow_atomic_update_common)
-
     .additional_info("eevee_surf_shadow")
     .define("SHADOW_UPDATE_ATOMIC_RASTER")
     .storage_buf(SHADOW_RENDER_MAP_BUF_SLOT,
                  Qualifier::READ,
                  "uint",
                  "render_map_buf[SHADOW_RENDER_MAP_SIZE]")
-
     .storage_buf(SHADOW_PAGE_INFO_SLOT, Qualifier::READ, "ShadowPagesInfoData", "pages_infos_buf");
 
 GPU_SHADER_CREATE_INFO(eevee_surf_shadow_atomic_update_u32)
@@ -357,7 +355,7 @@ GPU_SHADER_CREATE_INFO(eevee_material_stub)
     EEVEE_MAT_GEOM_VARIATIONS(name##_forward, "eevee_surf_forward", __VA_ARGS__) \
     EEVEE_MAT_GEOM_VARIATIONS(name##_capture, "eevee_surf_capture", __VA_ARGS__) \
     EEVEE_MAT_GEOM_VARIATIONS( \
-        name##_shadow_atomic, "eevee_surf_shadow_atomic_update", __VA_ARGS__) \
+        name##_shadow_atomic, "eevee_surf_shadow_atomic_update_f32", __VA_ARGS__) \
     EEVEE_MAT_GEOM_VARIATIONS(name##_shadow_tbdr, "eevee_surf_shadow_tbdr_rog_update", __VA_ARGS__)
 
 EEVEE_MAT_PIPE_VARIATIONS(eevee_surface, "eevee_material_stub")

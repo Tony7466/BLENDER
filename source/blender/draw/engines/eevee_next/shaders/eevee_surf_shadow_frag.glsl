@@ -37,6 +37,8 @@ void main()
   }
 #endif
 
+  float f_depth = gl_FragCoord.z + fwidth(gl_FragCoord.z);
+
 #ifdef SHADOW_UPDATE_ATOMIC_RASTER
   ivec2 texel_co = ivec2(gl_FragCoord.xy);
 
@@ -56,13 +58,12 @@ void main()
   ivec3 out_texel = ivec3((page.xy << page_shift) | texel_page, page.z);
 
 #  ifdef SHADOW_ATLAS_U32
-  uint u_depth = floatBitsToUint(gl_FragCoord.z + fwidth(gl_FragCoord.z));
+  uint u_depth = floatBitsToUint(f_depth);
   /* Quantization bias. Equivalent to `nextafter()` in C without all the safety. */
   u_depth += 2;
   imageAtomicMin(shadow_atlas_img, out_texel, uvec4(u_depth));
 #  endif
 #  ifdef SHADOW_ATLAS_F32
-  float f_depth = gl_FragCoord.z + fwidth(gl_FragCoord.z);
   imageAtomicMin(shadow_atlas_img, out_texel, vec4(f_depth));
 #  endif
 #endif
@@ -70,6 +71,6 @@ void main()
 #ifdef SHADOW_UPDATE_TBDR_ROG
   /* Store output depth in tile memory using F32 attachment. NOTE: As depth testing is enabled,
    * only the closest fragment will store the result. */
-  out_depth = gl_FragCoord.z + fwidth(gl_FragCoord.z);
+  out_depth = f_depth;
 #endif
 }

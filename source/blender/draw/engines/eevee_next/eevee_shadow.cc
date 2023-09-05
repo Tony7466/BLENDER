@@ -650,7 +650,7 @@ void ShadowModule::init()
     ShadowModule::shadow_technique = eShadowUpdateTechnique::SHADOW_UPDATE_ATOMIC_RASTER;
   }
 
-#if SHADOW_USE_FLOAT_ATLAS == 1
+#ifdef SHADOW_USE_FLOAT_ATLAS
   ShadowModule::atlas_type = GPU_R32F;
   BLI_assert_msg(is_metal_backend,
                  "Floating point shadow atlas is currently only supported by the Metal backend.");

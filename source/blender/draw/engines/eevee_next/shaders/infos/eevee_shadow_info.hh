@@ -281,7 +281,7 @@ GPU_SHADER_CREATE_INFO(eevee_shadow_page_store_metal_tbdr_f32)
  * \{ */
 
 GPU_SHADER_CREATE_INFO(eevee_shadow_data)
-#if SHADOW_USE_FLOAT_ATLAS == 1
+#ifdef SHADOW_USE_FLOAT_ATLAS
     .sampler(SHADOW_ATLAS_TEX_SLOT, ImageType::FLOAT_2D_ARRAY, "shadow_atlas_tx")
 #else
     .sampler(SHADOW_ATLAS_TEX_SLOT, ImageType::UINT_2D_ARRAY, "shadow_atlas_tx")
