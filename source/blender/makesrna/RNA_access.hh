@@ -41,7 +41,7 @@ extern BlenderRNA BLENDER_RNA;
  * There is also a way to get a pointer with the information about all structs.
  */
 
-void RNA_main_pointer_create(struct Main *main, PointerRNA *r_ptr);
+PointerRNA RNA_main_pointer_create(struct Main *main);
 void RNA_id_pointer_create(struct ID *id, PointerRNA *r_ptr);
 void RNA_pointer_create(struct ID *id, StructRNA *type, void *data, PointerRNA *r_ptr);
 bool RNA_pointer_is_null(const PointerRNA *ptr);

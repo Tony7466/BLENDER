@@ -2742,7 +2742,7 @@ static void search_id_collection(StructRNA *ptype, PointerRNA *r_ptr, PropertyRN
 {
   /* look for collection property in Main */
   /* NOTE: using global Main is OK-ish here, UI shall not access other Mains anyway. */
-  RNA_main_pointer_create(G_MAIN, r_ptr);
+  *r_ptr = RNA_main_pointer_create(G_MAIN);
 
   *r_prop = nullptr;
 

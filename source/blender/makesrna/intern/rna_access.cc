@@ -106,11 +106,13 @@ void RNA_exit()
 
 /* Pointer */
 
-void RNA_main_pointer_create(Main *main, PointerRNA *r_ptr)
+PointerRNA RNA_main_pointer_create(Main *main)
 {
-  r_ptr->owner_id = nullptr;
-  r_ptr->type = &RNA_BlendData;
-  r_ptr->data = main;
+  PointerRNA ptr;
+  ptr.owner_id = nullptr;
+  ptr.type = &RNA_BlendData;
+  ptr.data = main;
+  return ptr;
 }
 
 void RNA_id_pointer_create(ID *id, PointerRNA *r_ptr)

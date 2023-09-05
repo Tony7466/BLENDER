@@ -181,8 +181,7 @@ static PyObject *create_func(PyObject * /*self*/, PyObject *args)
       NULL, &RNA_Preferences, (void *)PyLong_AsVoidPtr(pypreferences), &preferencesptr);
   BL::Preferences preferences(preferencesptr);
 
-  PointerRNA dataptr;
-  RNA_main_pointer_create((Main *)PyLong_AsVoidPtr(pydata), &dataptr);
+  PointerRNA dataptr = RNA_main_pointer_create((Main *)PyLong_AsVoidPtr(pydata));
   BL::BlendData data(dataptr);
 
   PointerRNA regionptr;
@@ -355,8 +354,7 @@ static PyObject *reset_func(PyObject * /*self*/, PyObject *args)
 
   BlenderSession *session = (BlenderSession *)PyLong_AsVoidPtr(pysession);
 
-  PointerRNA dataptr;
-  RNA_main_pointer_create((Main *)PyLong_AsVoidPtr(pydata), &dataptr);
+  PointerRNA dataptr = RNA_main_pointer_create((Main *)PyLong_AsVoidPtr(pydata));
   BL::BlendData b_data(dataptr);
 
   PointerRNA depsgraphptr;
@@ -439,8 +437,7 @@ static PyObject *osl_update_node_func(PyObject * /*self*/, PyObject *args)
     return NULL;
 
   /* RNA */
-  PointerRNA dataptr;
-  RNA_main_pointer_create((Main *)PyLong_AsVoidPtr(pydata), &dataptr);
+  PointerRNA dataptr = RNA_main_pointer_create((Main *)PyLong_AsVoidPtr(pydata));
   BL::BlendData b_data(dataptr);
 
   PointerRNA nodeptr;

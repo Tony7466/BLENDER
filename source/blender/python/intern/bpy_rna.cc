@@ -7699,10 +7699,9 @@ static PointerRNA *rna_module_ptr = nullptr;
 PyObject *BPY_rna_module()
 {
   BPy_StructRNA *pyrna;
-  PointerRNA ptr;
 
   /* For now, return the base RNA type rather than a real module. */
-  RNA_main_pointer_create(G_MAIN, &ptr);
+  PointerRNA ptr = RNA_main_pointer_create(G_MAIN);
   pyrna = (BPy_StructRNA *)pyrna_struct_CreatePyObject(&ptr);
 
   rna_module_ptr = &pyrna->ptr;
@@ -7713,7 +7712,7 @@ void BPY_update_rna_module()
 {
   if (rna_module_ptr) {
 #if 0
-    RNA_main_pointer_create(G_MAIN, rna_module_ptr);
+    *rna_module_ptr = RNA_main_pointer_create(G_MAIN);
 #else
     rna_module_ptr->data = G_MAIN; /* Just set data is enough. */
 #endif
