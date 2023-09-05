@@ -4005,11 +4005,10 @@ PyDoc_STRVAR(pyrna_struct_type_recast_doc,
              "   :rtype: subclass of :class:`bpy.types.bpy_struct`\n");
 static PyObject *pyrna_struct_type_recast(BPy_StructRNA *self)
 {
-  PointerRNA r_ptr;
 
   PYRNA_STRUCT_CHECK_OBJ(self);
 
-  RNA_pointer_recast(&self->ptr, &r_ptr);
+  PointerRNA r_ptr = RNA_pointer_recast(&self->ptr);
   return pyrna_struct_CreatePyObject(&r_ptr);
 }
 

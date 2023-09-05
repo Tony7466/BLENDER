@@ -214,7 +214,7 @@ PointerRNA rna_pointer_inherit_refine(PointerRNA *ptr, StructRNA *type, void *da
   return PointerRNA_NULL;
 }
 
-void RNA_pointer_recast(PointerRNA *ptr, PointerRNA *r_ptr)
+PointerRNA RNA_pointer_recast(PointerRNA *ptr)
 {
 #if 0 /* works but this case if covered by more general code below. */
   if (RNA_struct_is_ID(ptr->type)) {
@@ -224,16 +224,18 @@ void RNA_pointer_recast(PointerRNA *ptr, PointerRNA *r_ptr)
   else
 #endif
   {
+    PointerRNA r_ptr;
     StructRNA *base;
     PointerRNA t_ptr;
-    *r_ptr = *ptr; /* initialize as the same in case can't recast */
+    r_ptr = *ptr; /* initialize as the same in case can't recast */
 
     for (base = ptr->type->base; base; base = base->base) {
       t_ptr = rna_pointer_inherit_refine(ptr, base, ptr->data);
       if (t_ptr.type && t_ptr.type != ptr->type) {
-        *r_ptr = t_ptr;
+        r_ptr = t_ptr;
       }
     }
+    return r_ptr;
   }
 }
 
