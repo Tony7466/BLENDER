@@ -7,6 +7,7 @@
  */
 
 #include "BLI_linklist.h"
+#include "BLI_map.hh"
 #include "BLI_math_color.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
@@ -21,6 +22,7 @@
 
 #include "BKE_animsys.h"
 #include "BKE_idprop.h"
+#include "BKE_lib_id.h"
 
 #include "ANIM_armature_iter.hh"
 #include "ANIM_bone_collections.h"
@@ -436,4 +438,46 @@ void ANIM_armature_bonecoll_show_from_ebone(bArmature *armature, const EditBone 
 void ANIM_armature_bonecoll_show_from_pchan(bArmature *armature, const bPoseChannel *pchan)
 {
   ANIM_armature_bonecoll_show_from_bone(armature, pchan->bone);
+}
+
+/* ********************************************** */
+/* Utility functions for Armature edit-mode undo. */
+
+void ANIM_armature_bonecoll_listbase_free(ListBase *bcolls, const bool do_id_user)
+{
+  LISTBASE_FOREACH_MUTABLE (BoneCollection *, bcoll, bcolls) {
+    /* ID properties. */
+    if (bcoll->prop) {
+      IDP_FreeProperty_ex(bcoll->prop, do_id_user);
+    }
+
+    /* Bone references. */
+    BLI_freelistN(&bcoll->bones);
+  }
+  BLI_freelistN(bcolls);
+}
+
+void ANIM_armature_bonecoll_listbase_copy(
+    ListBase *bone_colls_dst,
+    ListBase *bone_colls_src,
+    blender::Map<BoneCollection *, BoneCollection *> *r_bcoll_map,
+    const bool do_id_user)
+{
+  BLI_assert(BLI_listbase_is_empty(bone_colls_dst));
+  BLI_assert(r_bcoll_map);
+
+  /* Copy bone collections. */
+  LISTBASE_FOREACH (BoneCollection *, bcoll_src, bone_colls_src) {
+    BoneCollection *bcoll_dst = static_cast<BoneCollection *>(MEM_dupallocN(bcoll_src));
+
+    /* This is rebuilt from the edit bones, so we don't need to copy it. */
+    BLI_listbase_clear(&bcoll_dst->bones);
+
+    if (bcoll_src->prop) {
+      bcoll_dst->prop = IDP_CopyProperty_ex(bcoll_src->prop,
+                                            do_id_user ? 0 : LIB_ID_CREATE_NO_USER_REFCOUNT);
+    }
+    BLI_addtail(bone_colls_dst, bcoll_dst);
+    r_bcoll_map->add(bcoll_src, bcoll_dst);
+  }
 }

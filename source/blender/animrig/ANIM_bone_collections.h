@@ -12,6 +12,7 @@
 
 #include <stdbool.h>
 
+#include "BLI_map.hh"
 #include "BLI_math_bits.h"
 
 #include "BKE_armature.h"
@@ -192,6 +193,31 @@ void ANIM_armature_bonecoll_show_from_ebone(struct bArmature *armature,
                                             const struct EditBone *ebone);
 void ANIM_armature_bonecoll_show_from_pchan(struct bArmature *armature,
                                             const struct bPoseChannel *pchan);
+
+/* -------------------------------------------------------------------- */
+/* Only used by edit-mode Armature undo: */
+
+void ANIM_armature_bonecoll_listbase_free(ListBase *bcolls, const bool do_id_user);
+/**
+ * Duplicates a list of BoneCollections.
+ *
+ * This is intended to be used with edit-mode Armatures, and as such
+ * discards bone membership data in the copy.  The assumption is that
+ * the membership information will be rebuilt from the edit bones when
+ * leaving edit mode.
+ *
+ * This also builds `r_bcoll_map`, which is a map from the src collections
+ * to the copied dst collections.  This can be used to remap edit bone
+ * membership.
+ *
+ * Note: `r_bcoll_map` should already be initialized, but empty.
+ */
+void ANIM_armature_bonecoll_listbase_copy(
+    ListBase *bone_colls_dst,
+    ListBase *bone_colls_src,
+    blender::Map<BoneCollection *, BoneCollection *> *r_bcoll_map,
+    const bool do_id_user);
+
 #ifdef __cplusplus
 }
 #endif

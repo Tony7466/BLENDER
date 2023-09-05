@@ -825,6 +825,51 @@ void ED_armature_to_edit(bArmature *arm)
 /** \name Used by Undo for Armature EditMode
  * \{ */
 
+void ED_armature_ebone_listbase_free(ListBase *lb, const bool do_id_user)
+{
+  LISTBASE_FOREACH_MUTABLE (EditBone *, ebone, lb) {
+    /* ID properties. */
+    if (ebone->prop) {
+      IDP_FreeProperty_ex(ebone->prop, do_id_user);
+    }
+
+    /* Bone collection references. */
+    BLI_freelistN(&ebone->bone_collections);
+  }
+  BLI_freelistN(lb);
+}
+
+void ED_armature_ebone_listbase_copy(ListBase *lb_dst, ListBase *lb_src, const bool do_id_user)
+{
+  BLI_assert(BLI_listbase_is_empty(lb_dst));
+
+  LISTBASE_FOREACH (EditBone *, ebone_src, lb_src) {
+    EditBone *ebone_dst = static_cast<EditBone *>(MEM_dupallocN(ebone_src));
+    if (ebone_dst->prop) {
+      ebone_dst->prop = IDP_CopyProperty_ex(ebone_dst->prop,
+                                            do_id_user ? 0 : LIB_ID_CREATE_NO_USER_REFCOUNT);
+    }
+    ebone_src->temp.ebone = ebone_dst;
+    BLI_addtail(lb_dst, ebone_dst);
+  }
+
+  /* set pointers */
+  LISTBASE_FOREACH (EditBone *, ebone_dst, lb_dst) {
+    if (ebone_dst->parent) {
+      ebone_dst->parent = ebone_dst->parent->temp.ebone;
+    }
+    if (ebone_dst->bbone_next) {
+      ebone_dst->bbone_next = ebone_dst->bbone_next->temp.ebone;
+    }
+    if (ebone_dst->bbone_prev) {
+      ebone_dst->bbone_prev = ebone_dst->bbone_prev->temp.ebone;
+    }
+
+    /* Duplicate bone collection references list. */
+    BLI_duplicatelist(&ebone_dst->bone_collections, &ebone_dst->bone_collections);
+  }
+}
+
 void ED_armature_ebone_listbase_temp_clear(ListBase *lb)
 {
   /* be sure they don't hang ever */
