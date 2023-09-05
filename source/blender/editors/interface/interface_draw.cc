@@ -1014,7 +1014,7 @@ void ui_draw_but_VECTORSCOPE(ARegion * /*region*/,
 
 static void ui_draw_colorband_handle_tri(uint pos, float x1, float y1, float halfwidth)
 {
-  /* Halfwidth equals height for 45 degree slope. */
+  /* Halfwidth equals height for better AA with 45 degree slope. */
   immBegin(GPU_PRIM_TRIS, 3);
   immVertex2f(pos, x1 + halfwidth, y1);
   immVertex2f(pos, x1, y1 + halfwidth);
@@ -1042,8 +1042,8 @@ static void ui_draw_colorband_handle(uint shdr_pos,
   const float sizey = BLI_rcti_size_y(rect);
   float colf[3] = {UNPACK3(rgb)};
 
-  const float half_width = sizey / 3.0f;
-  const float height = half_width * 1.6f;
+  const float half_width = sizey / 3.5f;
+  const float height = half_width * 1.4f;
 
   float y1 = rect->ymin;
   const float y2 = rect->ymax;
