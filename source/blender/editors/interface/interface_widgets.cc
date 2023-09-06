@@ -1269,8 +1269,8 @@ static void widgetbase_draw_ex(uiWidgetBase *wtb,
     outline_col[2] = wcol->outline[2];
     outline_col[3] = wcol->outline[3];
 
-    /* emboss bottom shadow */
-    if (wtb->draw_emboss) {
+    /* Emboss shadow if enabled, and inner and outline colors are not fully transparent. */
+    if ((wtb->draw_emboss) && (wcol->inner[3] != 0.0f || wcol->outline[3] != 0.0f)) {
       UI_GetThemeColor4ubv(TH_WIDGET_EMBOSS, emboss_col);
     }
   }
@@ -2737,8 +2737,7 @@ static void widget_state_menu_item(uiWidgetType *wt,
     /* Regular disabled. */
     color_blend_v3_v3(wt->wcol.text, wt->wcol.inner, 0.5f);
   }
-  else if (state->but_flag & (UI_BUT_ACTIVE_DEFAULT | UI_SELECT_DRAW))
-  {
+  else if (state->but_flag & (UI_BUT_ACTIVE_DEFAULT | UI_SELECT_DRAW)) {
     /* Currently-selected item. */
     copy_v4_v4_uchar(wt->wcol.inner, wt->wcol.inner_sel);
     copy_v4_v4_uchar(wt->wcol.text, wt->wcol.text_sel);
@@ -4975,12 +4974,14 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
         ui_draw_but_HSVCIRCLE(but, &tui->wcol_regular, rect);
         break;
 
-      case UI_BTYPE_COLORBAND:
-        /* do not draw right to edge of rect */
-        rect->xmin += (0.25f * UI_UNIT_X);
-        rect->xmax -= (0.3f * UI_UNIT_X);
+      case UI_BTYPE_COLORBAND: {
+        /* Horizontal padding to make room for handles at edges. */
+        const int padding = BLI_rcti_size_y(rect) / 6;
+        rect->xmin += padding;
+        rect->xmax -= padding;
         ui_draw_but_COLORBAND(but, &tui->wcol_regular, rect);
         break;
+      }
 
       case UI_BTYPE_UNITVEC:
         wt = widget_type(UI_WTYPE_UNITVEC);
