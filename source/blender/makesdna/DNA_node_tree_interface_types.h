@@ -163,7 +163,7 @@ typedef struct bNodeTreeInterfacePanel {
    * Create a copy of items in the span and add them to the interface.
    * \note This does not generate new identifiers for items, use only for identical copies.
    */
-  void copy_from(blender::Span<const bNodeTreeInterfaceItem *> items_src, int flag);
+  //void copy_from(blender::Span<const bNodeTreeInterfaceItem *> items_src, int flag);
   /** Remove all items from the panel. */
   void clear(bool do_id_user);
 

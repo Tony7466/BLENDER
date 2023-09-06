@@ -371,7 +371,30 @@ namespace item_types {
 
 static void item_copy(bNodeTreeInterfaceItem &dst,
                       const bNodeTreeInterfaceItem &src,
-                      const int flag)
+                      int flag,
+                      int &next_uid);
+
+/* Copy the source items and give each a new unique identifier. */
+static void panel_init(bNodeTreeInterfacePanel &panel,
+                       const Span<const bNodeTreeInterfaceItem *> items_src,
+                       const int flag,
+                       int &next_uid)
+{
+  panel.items_num = items_src.size();
+  panel.items_array = MEM_cnew_array<bNodeTreeInterfaceItem *>(panel.items_num, __func__);
+
+  /* Copy buffers. */
+  for (const int i : items_src.index_range()) {
+    const bNodeTreeInterfaceItem *item_src = items_src[i];
+    panel.items_array[i] = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(item_src));
+    item_types::item_copy(*panel.items_array[i], *item_src, flag, next_uid);
+  }
+}
+
+static void item_copy(bNodeTreeInterfaceItem &dst,
+                      const bNodeTreeInterfaceItem &src,
+                      const int flag,
+                      int &next_uid)
 {
   switch (dst.item_type) {
     case NODE_INTERFACE_SOCKET: {
@@ -402,10 +425,14 @@ static void item_copy(bNodeTreeInterfaceItem &dst,
 
       dst_panel.name = BLI_strdup(src_panel.name);
       dst_panel.description = BLI_strdup_null(src_panel.description);
-      dst_panel.copy_from(src_panel.items(), flag);
+      socket.identifier = BLI_sprintfN("Socket_%d", uid);
+
+      panel_init(dst_panel, src_panel.items(), flag, next_uid);
       break;
     }
   }
+
+    item_types::item_set_unique_identifier(next_uid++, *citem);
 }
 
 static void item_set_unique_identifier(const int uid, bNodeTreeInterfaceItem &item)
@@ -999,19 +1026,19 @@ static bNodeTreeInterfacePanel *make_panel(const int uid,
   return new_panel;
 }
 
-void bNodeTreeInterfacePanel::copy_from(
-    const blender::Span<const bNodeTreeInterfaceItem *> items_src, int flag)
-{
-  items_num = items_src.size();
-  items_array = MEM_cnew_array<bNodeTreeInterfaceItem *>(items_num, __func__);
-
-  /* Copy buffers. */
-  for (const int i : items_src.index_range()) {
-    const bNodeTreeInterfaceItem *item_src = items_src[i];
-    items_array[i] = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(item_src));
-    item_types::item_copy(*items_array[i], *item_src, flag);
-  }
-}
+//void bNodeTreeInterfacePanel::copy_from(
+//    const blender::Span<const bNodeTreeInterfaceItem *> items_src, int flag)
+//{
+//  items_num = items_src.size();
+//  items_array = MEM_cnew_array<bNodeTreeInterfaceItem *>(items_num, __func__);
+//
+//  /* Copy buffers. */
+//  for (const int i : items_src.index_range()) {
+//    const bNodeTreeInterfaceItem *item_src = items_src[i];
+//    items_array[i] = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(item_src));
+//    item_types::item_copy(*items_array[i], *item_src, flag);
+//  }
+//}
 
 void bNodeTreeInterface::init_data()
 {
@@ -1021,7 +1048,7 @@ void bNodeTreeInterface::init_data()
 
 void bNodeTreeInterface::copy_data(const bNodeTreeInterface &src, int flag)
 {
-  this->root_panel.copy_from(src.root_panel.items(), flag);
+  item_types::panel_init(this->root_panel, src.root_panel.items(), flag, this->next_uid);
   this->active_index = src.active_index;
 }
 
@@ -1188,8 +1215,7 @@ bNodeTreeInterfaceItem *bNodeTreeInterface::add_item_copy(const bNodeTreeInterfa
   }
 
   bNodeTreeInterfaceItem *citem = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(&item));
-  item_types::item_copy(*citem, item, 0);
-  item_types::item_set_unique_identifier(next_uid++, *citem);
+  item_types::item_copy(*citem, item, 0, next_uid);
   parent->add_item(*citem);
 
   return citem;
@@ -1213,8 +1239,7 @@ bNodeTreeInterfaceItem *bNodeTreeInterface::insert_item_copy(const bNodeTreeInte
   }
 
   bNodeTreeInterfaceItem *citem = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(&item));
-  item_types::item_copy(*citem, item, 0);
-  item_types::item_set_unique_identifier(next_uid++, *citem);
+  item_types::item_copy(*citem, item, 0, next_uid);
   parent->insert_item(*citem, position);
 
   return citem;
