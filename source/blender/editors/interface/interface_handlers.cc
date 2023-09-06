@@ -6511,7 +6511,8 @@ static bool ui_numedit_but_HSVCUBE(uiBut *but,
                                    int mx,
                                    int my,
                                    const enum eSnapType snap,
-                                   const bool shift)
+                                   const bool shift,
+                                   const bool use_continuous_grab)
 {
   const uiButHSVCube *hsv_but = (uiButHSVCube *)but;
   ColorPicker *cpicker = static_cast<ColorPicker *>(but->custom_data);
@@ -6521,7 +6522,20 @@ static bool ui_numedit_but_HSVCUBE(uiBut *but,
   float mx_fl, my_fl;
   const bool changed = true;
 
-  ui_mouse_scale_warp(data, mx, my, &mx_fl, &my_fl, shift);
+  if (use_continuous_grab) {
+    rcti rect;
+    BLI_rcti_rctf_copy(&rect, &but->rect);
+
+    ui_hsvcube_pos_from_vals(hsv_but, &rect, hsv, &mx_fl, &my_fl);
+
+    const float fac = ui_mouse_scale_warp_factor(shift);
+    mx_fl = (mx - float(data->draglastx)) * fac + mx_fl;
+    my_fl = (my - float(data->draglasty)) * fac + my_fl;
+  }
+  else {
+    mx_fl = mx;
+    my_fl = my;
+  }
 
 #ifdef USE_CONT_MOUSE_CORRECT
   if (ui_but_is_cursor_warp(but)) {
@@ -6537,27 +6551,6 @@ static bool ui_numedit_but_HSVCUBE(uiBut *but,
 
   ui_rgb_to_color_picker_HSVCUBE_compat_v(hsv_but, rgb, hsv);
 
-  /* only apply the delta motion, not absolute */
-  if (shift) {
-    rcti rect_i;
-    float xpos, ypos, hsvo[3];
-
-    BLI_rcti_rctf_copy(&rect_i, &but->rect);
-
-    /* calculate original hsv again */
-    copy_v3_v3(rgb, data->origvec);
-    ui_scene_linear_to_perceptual_space(but, rgb);
-
-    copy_v3_v3(hsvo, hsv);
-
-    ui_rgb_to_color_picker_HSVCUBE_compat_v(hsv_but, rgb, hsvo);
-
-    /* and original position */
-    ui_hsvcube_pos_from_vals(hsv_but, &rect_i, hsvo, &xpos, &ypos);
-
-    mx_fl = xpos - (data->dragstartx - mx_fl);
-    my_fl = ypos - (data->dragstarty - my_fl);
-  }
 
   /* relative position within box */
   x = (float(mx_fl) - but->rect.xmin) / BLI_rctf_size_x(&but->rect);
@@ -6713,7 +6706,10 @@ static int ui_do_but_HSVCUBE(
       button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
 
       /* also do drag the first time */
-      if (ui_numedit_but_HSVCUBE(but, data, mx, my, snap, event->modifier & KM_SHIFT)) {
+      const bool shift = event->modifier & KM_SHIFT;
+      /* On KM_PRESS the mouse is within the cube, use `use_continuous_grab` to pick colot at mouse
+       * position. */
+      if (ui_numedit_but_HSVCUBE(but, data, mx, my, snap, shift, false)) {
         ui_numedit_apply(C, block, but, data);
       }
 
@@ -6775,8 +6771,10 @@ static int ui_do_but_HSVCUBE(
     else if ((event->type == MOUSEMOVE) || ui_event_is_snap(event)) {
       if (mx != data->draglastx || my != data->draglasty || event->type != MOUSEMOVE) {
         const enum eSnapType snap = ui_event_to_snap(event);
-
-        if (ui_numedit_but_HSVCUBE(but, data, mx, my, snap, event->modifier & KM_SHIFT)) {
+        const bool shift = event->modifier & KM_SHIFT;
+        const bool use_continuous_grab = ui_but_is_cursor_warp(but) &&
+                                         event->tablet.active == EVT_TABLET_NONE;
+        if (ui_numedit_but_HSVCUBE(but, data, mx, my, snap, shift, use_continuous_grab)) {
           ui_numedit_apply(C, block, but, data);
         }
       }
