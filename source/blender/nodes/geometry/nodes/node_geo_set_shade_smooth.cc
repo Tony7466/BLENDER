@@ -9,6 +9,8 @@
 
 #include "NOD_rna_define.hh"
 
+#include "RNA_enum_types.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_set_shade_smooth_cc {
@@ -17,29 +19,13 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Geometry").supported_type(GeometryComponent::Type::Mesh);
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
-  b.add_input<decl::Bool>("Smooth Edge").field_on_all().default_value(true);
-  b.add_input<decl::Bool>("Smooth Face").field_on_all().default_value(true);
+  b.add_input<decl::Bool>("Shade Smooth").field_on_all().default_value(true);
   b.add_output<decl::Geometry>("Geometry").propagate_all();
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "mode", UI_ITEM_NONE, "", ICON_NONE);
-}
-
-enum class SmoothMode {
-  Face = 0,
-  Edge = 1,
-  Both = 2,
-};
-
-static void node_update(bNodeTree *ntree, bNode *node)
-{
-  const SmoothMode mode = SmoothMode(node->custom1);
-  bNodeSocket *edge = static_cast<bNodeSocket *>(node->inputs.first)->next->next;
-  bNodeSocket *face = edge->next;
-  bke::nodeSetSocketAvailability(ntree, edge, ELEM(mode, SmoothMode::Both, SmoothMode::Edge));
-  bke::nodeSetSocketAvailability(ntree, face, ELEM(mode, SmoothMode::Both, SmoothMode::Face));
+  uiItemR(layout, ptr, "domain", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
 }
 
 /**
@@ -96,31 +82,17 @@ static void set_sharp(Mesh &mesh,
 static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
+  const eAttrDomain domain = eAttrDomain(params.node().custom1);
   Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
-  const SmoothMode mode = SmoothMode(params.node().custom1);
-  Field<bool> smooth_edge = ELEM(mode, SmoothMode::Both, SmoothMode::Edge) ?
-                                params.extract_input<Field<bool>>("Smooth Edge") :
-                                fn::make_constant_field<bool>(false);
-  Field<bool> smooth_face = ELEM(mode, SmoothMode::Both, SmoothMode::Face) ?
-                                params.extract_input<Field<bool>>("Smooth Face") :
-                                fn::make_constant_field<bool>(false);
+  Field<bool> smooth_field = params.extract_input<Field<bool>>("Shade Smooth");
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     if (Mesh *mesh = geometry_set.get_mesh_for_write()) {
-      if (ELEM(mode, SmoothMode::Both, SmoothMode::Edge)) {
-        set_sharp(*mesh,
-                  ATTR_DOMAIN_EDGE,
-                  "sharp_edge",
-                  selection_field,
-                  fn::invert_boolean_field(smooth_edge));
-      }
-      if (ELEM(mode, SmoothMode::Both, SmoothMode::Face)) {
-        set_sharp(*mesh,
-                  ATTR_DOMAIN_FACE,
-                  "sharp_face",
-                  selection_field,
-                  fn::invert_boolean_field(smooth_face));
-      }
+      set_sharp(*mesh,
+                domain,
+                domain == ATTR_DOMAIN_FACE ? "sharp_face" : "sharp_edge",
+                selection_field,
+                fn::invert_boolean_field(smooth_field));
     }
   });
   params.set_output("Geometry", std::move(geometry_set));
@@ -128,14 +100,12 @@ static void node_geo_exec(GeoNodeExecParams params)
 
 static void node_rna(StructRNA *srna)
 {
-  static const EnumPropertyItem mode_items[] = {
-      {int(SmoothMode::Both), "BOTH", 0, "Both", ""},
-      {int(SmoothMode::Edge), "EDGE", 0, "Edge", ""},
-      {int(SmoothMode::Face), "FACE", 0, "Face", "Face"},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
-  RNA_def_node_enum(srna, "mode", "Mode", "", mode_items, NOD_inline_enum_accessors(custom1));
+  RNA_def_node_enum(srna,
+                    "domain",
+                    "Domain",
+                    "",
+                    rna_enum_attribute_domain_edge_face_items,
+                    NOD_inline_enum_accessors(custom1));
 }
 
 static void node_register()
@@ -145,7 +115,6 @@ static void node_register()
   geo_node_type_base(&ntype, GEO_NODE_SET_SHADE_SMOOTH, "Set Shade Smooth", NODE_CLASS_GEOMETRY);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
-  ntype.updatefunc = node_update;
   ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
 
