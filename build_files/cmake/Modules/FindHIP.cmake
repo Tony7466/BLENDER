@@ -12,13 +12,11 @@ if(DEFINED HIP_ROOT_DIR AND HIP_ROOT_DIR)
   # Pass.
 elseif(DEFINED ENV{HIP_ROOT_DIR})
   set(HIP_ROOT_DIR $ENV{HIP_ROOT_DIR})
+elseif(DEFINED ENV{HIP_PATH})
+  # Built-in environment variable from SDK.
+  set(HIP_ROOT_DIR $ENV{HIP_PATH})
 else()
   set(HIP_ROOT_DIR "")
-endif()
-
-# Else use the built in HIP_PATH environment variable from the SDK
-if(NOT HIP_ROOT_DIR AND NOT $ENV{HIP_PATH} STREQUAL "")
-  set(HIP_ROOT_DIR $ENV{HIP_PATH})
 endif()
 
 set(_hip_SEARCH_DIRS
