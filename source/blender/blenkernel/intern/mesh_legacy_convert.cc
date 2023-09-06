@@ -2117,9 +2117,11 @@ static bNodeTree *add_auto_smooth_node_tree(Main &bmain)
     }
   }
   bNode *shade_smooth_edge = nodeAddNode(nullptr, group, "GeometryNodeSetShadeSmooth");
+  shade_smooth_edge->custom1 = ATTR_DOMAIN_EDGE;
   shade_smooth_edge->locx = 120.0f;
   shade_smooth_edge->locy = -100.0f;
   bNode *shade_smooth_face = nodeAddNode(nullptr, group, "GeometryNodeSetShadeSmooth");
+  shade_smooth_face->custom1 = ATTR_DOMAIN_FACE;
   shade_smooth_face->locx = 300.0f;
   shade_smooth_face->locy = -100.0f;
   bNode *edge_angle = nodeAddNode(nullptr, group, "GeometryNodeInputMeshEdgeAngle");
