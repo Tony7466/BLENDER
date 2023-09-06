@@ -67,7 +67,6 @@
 #include "BKE_fcurve.h"
 #include "BKE_freestyle.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_icons.h"
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
 #include "BKE_image.h"
@@ -84,6 +83,7 @@
 #include "BKE_object.h"
 #include "BKE_paint.hh"
 #include "BKE_pointcache.h"
+#include "BKE_preview_image.hh"
 #include "BKE_rigidbody.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
@@ -105,7 +105,7 @@
 #include "SEQ_iterator.h"
 #include "SEQ_sequencer.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "engines/eevee/eevee_lightcache.h"
 
@@ -158,7 +158,7 @@ static void scene_init_data(ID *id)
   STRNCPY(scene->r.bake.filepath, U.renderdir);
 
   mblur_shutter_curve = &scene->r.mblur_shutter_curve;
-  BKE_curvemapping_set_defaults(mblur_shutter_curve, 1, 0.0f, 0.0f, 1.0f, 1.0f);
+  BKE_curvemapping_set_defaults(mblur_shutter_curve, 1, 0.0f, 0.0f, 1.0f, 1.0f, HD_AUTO);
   BKE_curvemapping_init(mblur_shutter_curve);
   BKE_curvemap_reset(mblur_shutter_curve->cm,
                      &mblur_shutter_curve->clipr,
@@ -2844,8 +2844,7 @@ enum eCyclesFeatureSet {
 bool BKE_scene_uses_cycles_experimental_features(Scene *scene)
 {
   BLI_assert(BKE_scene_uses_cycles(scene));
-  PointerRNA scene_ptr;
-  RNA_id_pointer_create(&scene->id, &scene_ptr);
+  PointerRNA scene_ptr = RNA_id_pointer_create(&scene->id);
   PointerRNA cycles_ptr = RNA_pointer_get(&scene_ptr, "cycles");
 
   if (RNA_pointer_is_null(&cycles_ptr)) {

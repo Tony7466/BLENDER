@@ -10,11 +10,13 @@
  */
 
 #include "BLI_filereader.h"
+#include "BLI_listbase.h"
 
 struct GHash;
+struct Main;
 struct Scene;
 
-typedef struct {
+struct MemFileChunk {
   void *next, *prev;
   const char *buf;
   /** Size in bytes. */
@@ -28,14 +30,14 @@ typedef struct {
   /** Session UUID of the ID being currently written (MAIN_ID_SESSION_UUID_UNSET when not writing
    * ID-related data). Used to find matching chunks in previous memundo step. */
   uint id_session_uuid;
-} MemFileChunk;
+};
 
-typedef struct MemFile {
+struct MemFile {
   ListBase chunks;
   size_t size;
-} MemFile;
+};
 
-typedef struct MemFileWriteData {
+struct MemFileWriteData {
   MemFile *written_memfile;
   MemFile *reference_memfile;
 
@@ -43,14 +45,14 @@ typedef struct MemFileWriteData {
   MemFileChunk *reference_current_chunk;
 
   /** Maps an ID session uuid to its first reference MemFileChunk, if existing. */
-  struct GHash *id_session_uuid_mapping;
-} MemFileWriteData;
+  GHash *id_session_uuid_mapping;
+};
 
-typedef struct MemFileUndoData {
+struct MemFileUndoData {
   char filepath[1024]; /* FILE_MAX */
   MemFile memfile;
   size_t undo_size;
-} MemFileUndoData;
+};
 
 /* FileReader-compatible wrapper for reading MemFiles */
 typedef struct {
@@ -61,10 +63,6 @@ typedef struct {
 
   bool memchunk_identical;
 } UndoReader;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* Actually only used `writefile.cc`. */
 
@@ -85,7 +83,7 @@ void BLO_memfile_chunk_add(MemFileWriteData *mem_data, const char *buf, size_t s
 extern void BLO_memfile_free(MemFile *memfile);
 /**
  * Result is that 'first' is being freed.
- * to keep list of memfiles consistent, 'first' is always first in list.
+ * To keep the #MemFile linked list of consistent, `first` is always first in list.
  */
 extern void BLO_memfile_merge(MemFile *first, MemFile *second);
 /**
@@ -95,18 +93,12 @@ extern void BLO_memfile_clear_future(MemFile *memfile);
 
 /* Utilities. */
 
-extern struct Main *BLO_memfile_main_get(struct MemFile *memfile,
-                                         struct Main *bmain,
-                                         struct Scene **r_scene);
+extern Main *BLO_memfile_main_get(MemFile *memfile, Main *bmain, Scene **r_scene);
 /**
  * Saves .blend using undo buffer.
  *
  * \return success.
  */
-extern bool BLO_memfile_write_file(struct MemFile *memfile, const char *filepath);
+extern bool BLO_memfile_write_file(MemFile *memfile, const char *filepath);
 
 FileReader *BLO_memfile_new_filereader(MemFile *memfile, int undo_direction);
-
-#ifdef __cplusplus
-}
-#endif
