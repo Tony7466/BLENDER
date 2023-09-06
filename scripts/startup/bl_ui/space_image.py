@@ -216,6 +216,12 @@ class IMAGE_MT_image(Menu):
             layout.operator("image.clipboard_paste", text="Paste")
             layout.separator()
 
+        if sys.platform == "darwin":
+            layout.operator("image.clipboard_copy", text="Copy")
+            layout.operator("image.clipboard_paste", text="Paste")
+            layout.separator()
+
+
         if ima:
             layout.operator("image.save", text="Save", icon='FILE_TICK')
             layout.operator("image.save_as", text="Save As...")
