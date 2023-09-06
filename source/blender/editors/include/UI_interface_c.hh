@@ -255,7 +255,7 @@ enum {
    * box as soon as a popup opens. Usually, the text in the search box is selected by default.
    * However, sometimes this behavior is not desired, so it can be disabled with this flag.
    */
-  UI_BUT2_ACTIVATE_ON_INIT_SKIP_SELECT = 1 << 0,
+  UI_BUT2_ACTIVATE_ON_INIT_NO_SELECT = 1 << 0,
 };
 
 /** #uiBut.dragflag */

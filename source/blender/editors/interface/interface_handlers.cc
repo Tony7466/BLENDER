@@ -3480,7 +3480,7 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
   /* set cursor pos to the end of the text */
   but->editstr = data->str;
   but->pos = len;
-  if (bool(but->flag2 & UI_BUT2_ACTIVATE_ON_INIT_SKIP_SELECT)) {
+  if (bool(but->flag2 & UI_BUT2_ACTIVATE_ON_INIT_NO_SELECT)) {
     but->selsta = len;
   }
   else {
