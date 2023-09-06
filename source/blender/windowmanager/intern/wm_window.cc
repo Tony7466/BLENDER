@@ -505,14 +505,14 @@ void wm_window_title(wmWindowManager *wm, wmWindow *win)
 
     BLI_snprintf(str,
                  sizeof(str),
-                 "Blender %d.%d%s%s %s%s%s",
+                 "%s%s%s - Blender %d.%d%s%s",
+                 wm->file_saved ? "" : "*",
+                 filename,
+                 G_MAIN->recovered ? " (Recovered)" : "",
                  BLENDER_VERSION / 100,
                  BLENDER_VERSION % 100,
                  patch,
-                 version_cycle,
-                 wm->file_saved ? "" : "*",
-                 filename,
-                 G_MAIN->recovered ? " (Recovered)" : "");
+                 version_cycle);
     GHOST_SetTitle(static_cast<GHOST_WindowHandle>(win->ghostwin), str);
 
     /* Informs GHOST of unsaved changes, to set window modified visual indicator (macOS)
