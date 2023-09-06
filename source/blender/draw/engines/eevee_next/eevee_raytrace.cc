@@ -48,7 +48,6 @@ void RayTraceModule::sync()
     pass.bind_image("tile_mask_img", &tile_mask_tx_);
     pass.bind_ssbo("ray_dispatch_buf", &ray_dispatch_buf_);
     pass.bind_ssbo("denoise_dispatch_buf", &denoise_dispatch_buf_);
-    inst_.bind_global_resources(&pass);
     pass.dispatch(&tile_classify_dispatch_size_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS | GPU_BARRIER_SHADER_STORAGE);
   }
@@ -61,7 +60,6 @@ void RayTraceModule::sync()
     pass.bind_ssbo("denoise_dispatch_buf", &denoise_dispatch_buf_);
     pass.bind_ssbo("ray_tiles_buf", &ray_tiles_buf_);
     pass.bind_ssbo("denoise_tiles_buf", &denoise_tiles_buf_);
-    inst_.bind_global_resources(&pass);
     pass.dispatch(&tile_compact_dispatch_size_);
     pass.barrier(GPU_BARRIER_SHADER_STORAGE);
   }
@@ -91,7 +89,6 @@ void RayTraceModule::sync()
     pass.bind_image("ray_data_img", &ray_data_tx_);
     pass.bind_image("ray_time_img", &ray_time_tx_);
     pass.bind_image("ray_radiance_img", &ray_radiance_tx_);
-    inst_.bind_global_resources(&pass);
     inst_.hiz_buffer.bind_resources(&pass);
     inst_.sampling.bind_resources(&pass);
     inst_.reflection_probes.bind_resources(&pass);
@@ -115,7 +112,6 @@ void RayTraceModule::sync()
     pass.bind_image("out_variance_img", &hit_variance_tx_);
     pass.bind_image("out_hit_depth_img", &hit_depth_tx_);
     pass.bind_image("tile_mask_img", &tile_mask_tx_);
-    inst_.bind_global_resources(&pass);
     inst_.sampling.bind_resources(&pass);
     inst_.hiz_buffer.bind_resources(&pass);
     pass.dispatch(denoise_dispatch_buf_);
@@ -125,7 +121,6 @@ void RayTraceModule::sync()
     PassSimple &pass = denoise_temporal_ps_;
     pass.init();
     pass.shader_set(inst_.shaders.static_shader_get(RAY_DENOISE_TEMPORAL));
-    inst_.bind_global_resources(&pass);
     pass.bind_texture("radiance_history_tx", &radiance_history_tx_);
     pass.bind_texture("variance_history_tx", &variance_history_tx_);
     pass.bind_texture("tilemask_history_tx", &tilemask_history_tx_);
@@ -151,7 +146,6 @@ void RayTraceModule::sync()
     pass.bind_image("in_variance_img", &denoise_variance_tx_);
     pass.bind_image("tile_mask_img", &tile_mask_tx_);
     pass.bind_ssbo("tiles_coord_buf", &denoise_tiles_buf_);
-    inst_.bind_global_resources(&pass);
     inst_.sampling.bind_resources(&pass);
     inst_.hiz_buffer.bind_resources(&pass);
     pass.dispatch(denoise_dispatch_buf_);
