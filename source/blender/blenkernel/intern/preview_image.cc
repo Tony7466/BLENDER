@@ -156,7 +156,7 @@ void BKE_previewimg_clear_single(PreviewImage *prv, enum eIconSizes size)
   }
   prv->h[size] = prv->w[size] = 0;
   prv->flag[size] |= PRV_CHANGED;
-  prv->flag[size] &= ~PRV_USER_EDITED;
+  prv->flag[size] &= ~(PRV_USER_EDITED | PRV_DEFERRED_NOT_FOUND);
   prv->changed_timestamp[size] = 0;
 }
 
@@ -396,6 +396,12 @@ void BKE_previewimg_ensure(PreviewImage *prv, const int size)
 
   ImBuf *thumb = IMB_thumb_manage(prv_deferred.filepath.c_str(), THB_LARGE, prv_deferred.source);
   if (!thumb) {
+    if (do_icon) {
+      prv->flag[ICON_SIZE_ICON] |= PRV_DEFERRED_NOT_FOUND;
+    }
+    if (do_preview) {
+      prv->flag[ICON_SIZE_PREVIEW] |= PRV_DEFERRED_NOT_FOUND;
+    }
     return;
   }
 
