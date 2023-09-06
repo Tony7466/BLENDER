@@ -162,7 +162,7 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_data_writer(const Hierarch
   }
 
   if (data_writer && (params_.export_armatures || params_.export_shapekeys)) {
-    add_usd_skel_export_mapping(context);
+    add_usd_skel_export_mapping(context->object, data_writer->usd_path());
   }
 
   return data_writer;
@@ -182,21 +182,18 @@ AbstractHierarchyWriter *USDHierarchyIterator::create_particle_writer(
   return nullptr;
 }
 
-void USDHierarchyIterator::add_usd_skel_export_mapping(const HierarchyContext *context)
+void USDHierarchyIterator::add_usd_skel_export_mapping(const Object *obj, const pxr::SdfPath &path)
 {
-  Object *obj = context->object;
-  const std::string &path = context->export_path;
-
   if (params_.export_shapekeys && is_mesh_with_shape_keys(obj)) {
-    this->shape_key_mesh_export_map_.insert(std::make_pair(obj, path));
+    shape_key_mesh_export_map_.insert(std::make_pair(obj, path));
   }
 
   if (params_.export_armatures && obj->type == OB_ARMATURE) {
-    this->armature_export_map_.insert(std::make_pair(obj, path));
+    armature_export_map_.insert(std::make_pair(obj, path));
   }
 
   if (params_.export_armatures && obj->type == OB_MESH && has_armature_modifier(obj)) {
-    this->skinned_mesh_export_map_.insert(std::make_pair(obj, path));
+    skinned_mesh_export_map_.insert(std::make_pair(obj, path));
   }
 }
 

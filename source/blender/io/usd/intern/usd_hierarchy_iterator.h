@@ -61,7 +61,7 @@ class USDHierarchyIterator : public AbstractHierarchyIterator {
  private:
   USDExporterContext create_usd_export_context(const HierarchyContext *context);
 
-  void add_usd_skel_export_mapping(const HierarchyContext *context);
+  void add_usd_skel_export_mapping(const Object *obj, const pxr::SdfPath &usd_path);
 };
 
 }  // namespace blender::io::usd

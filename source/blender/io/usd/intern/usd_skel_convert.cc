@@ -1144,14 +1144,15 @@ void skinned_mesh_export_chaser(pxr::UsdStageRefPtr stage,
   /* Finish creating skinned mesh bindings. */
   for (const auto &kv : skinned_mesh_export_map) {
     const Object *mesh_obj = kv.first;
-    const std::string &mesh_path = kv.second;
+    const pxr::SdfPath &mesh_path = kv.second;
 
     /* Get the mesh prim from the stage. */
-    pxr::UsdPrim mesh_prim = stage->GetPrimAtPath(pxr::SdfPath(mesh_path));
+    pxr::UsdPrim mesh_prim = stage->GetPrimAtPath(mesh_path);
     if (!mesh_prim) {
       WM_reportf(RPT_WARNING,
-                 "%s: No export mapt entry for mesh object %s",
+                 "%s: Invalid export map prim path %s for mesh object %s",
                  __func__,
+                 mesh_path.GetAsString().c_str(),
                  mesh_obj->id.name + 2);
       continue;
     }
@@ -1201,14 +1202,15 @@ void shape_key_export_chaser(pxr::UsdStageRefPtr stage,
   /* Finish creating blend shape bindings. */
   for (const auto &kv : shape_key_mesh_export_map) {
     const Object *mesh_obj = kv.first;
-    const std::string &mesh_path = kv.second;
+    const pxr::SdfPath &mesh_path = kv.second;
 
     /* Get the mesh prim from the stage. */
-    pxr::UsdPrim mesh_prim = stage->GetPrimAtPath(pxr::SdfPath(mesh_path));
+    pxr::UsdPrim mesh_prim = stage->GetPrimAtPath(mesh_path);
     if (!mesh_prim) {
       WM_reportf(RPT_WARNING,
-                 "%s: No export mapt entry for mesh object %s",
+                 "%s: Invalid export map prim path %s for mesh object %s",
                  __func__,
+                 mesh_path.GetAsString().c_str(),
                  mesh_obj->id.name + 2);
       continue;
     }

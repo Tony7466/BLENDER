@@ -93,7 +93,7 @@ const Object *get_armature_modifier_obj(const Object *obj);
 /**
  * Map an object to its USD prim export path.
  */
-using ObjExportMap = std::map<const Object *, std::string>;
+using ObjExportMap = std::map<const Object *, pxr::SdfPath>;
 
 /**
  * This function is called after the USD writers are invoked, to
