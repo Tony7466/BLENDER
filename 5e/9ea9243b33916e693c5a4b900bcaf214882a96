@@ -2,3 +2,4 @@ Referenced by pull request #110432, Cleanup: Rename mesh custom data fields
 Referenced by commit 95edff7495b06f580721e40c5f0d48ae88e8f395, Cleanup: Rename mesh custom data fields
 Referenced by commit 9cad2e877131320b77f071968bc1c72215cf9c9b, Fix #110682: Loading old files crashes from missing DNA rename
 Referenced by issue #111898, Regression: Custom normals data transfer modifier does not work
+Referenced by pull request #112037, Fix #111898: Custom normals data transfer modifier does not work
