@@ -858,8 +858,7 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
     return;
   }
 
-  PointerRNA bake_rna;
-  RNA_pointer_create(&object->id, &RNA_NodesModifierBake, (void *)bake, &bake_rna);
+  PointerRNA bake_rna = RNA_pointer_create(&object->id, &RNA_NodesModifierBake, (void *)bake);
 
   bool is_baked = false;
   if (nmd.runtime->cache) {
