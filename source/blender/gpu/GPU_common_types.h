@@ -18,6 +18,13 @@ typedef enum eGPULoadOp {
   GPU_LOADACTION_DONT_CARE
 } eGPULoadOp;
 
+typedef enum GPUAttachmentLayout {
+  GPU_LAYOUT_GENERAL = 0,
+  /* TODO(fclem): Populate this struct. */
+  /* Attachment is used as subpass input. */
+  GPU_LAYOUT_INPUT,
+} GPUAttachmentLayout;
+
 typedef enum eGPUStoreOp { GPU_STOREACTION_STORE = 0, GPU_STOREACTION_DONT_CARE } eGPUStoreOp;
 
 typedef enum eGPUFrontFace {

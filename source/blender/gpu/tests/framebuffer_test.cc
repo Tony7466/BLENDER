@@ -376,7 +376,8 @@ static void test_framebuffer_subpass_input()
   GPU_batch_set_shader(batch, shader_write);
   GPU_batch_draw(batch);
 
-  /* TODO(fclem): Vulkan might want to introduce an explicit sync event here. */
+  /* Metal Raster Order Group does not need that. */
+  GPU_framebuffer_subpass_transition(framebuffer, {GPU_LAYOUT_GENERAL, GPU_LAYOUT_INPUT});
 
   GPU_batch_set_shader(batch, shader_read);
   GPU_batch_draw(batch);

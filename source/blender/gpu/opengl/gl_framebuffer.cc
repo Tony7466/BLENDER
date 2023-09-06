@@ -226,6 +226,26 @@ void GLFrameBuffer::update_attachments()
   }
 }
 
+void GLFrameBuffer::subpass_transition(const GPUAttachmentLayout *attachment_layouts,
+                                       uint attachment_len)
+{
+  /* TODO(fclem): attachment_len is equal to number of attachments. */
+
+  /* TODO(fclem): Only do this if needed. */
+  GPU_memory_barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+  /* TODO(fclem): Barrier if attachment was written and will be read. */
+
+  /* TODO depth. */
+  int type = GPU_FB_COLOR_ATTACHMENT0;
+  for (int i = 1; i < attachment_len && type < GPU_FB_MAX_ATTACHMENT; i++, type++) {
+    if (this->attachments_[type].tex != nullptr) {
+      if (attachment_layouts[i] == GPU_LAYOUT_INPUT) {
+        GPU_texture_image_bind(this->attachments_[type].tex, i - 1);
+      }
+    }
+  }
+}
+
 void GLFrameBuffer::apply_state()
 {
   if (dirty_state_ == false) {

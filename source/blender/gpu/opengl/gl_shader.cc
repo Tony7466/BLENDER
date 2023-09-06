@@ -110,9 +110,251 @@ static const char *to_string(const Type &type)
       return "ivec4";
     case Type::BOOL:
       return "bool";
-    default:
-      return "unknown";
+    /* Alias special types. */
+    case Type::UCHAR:
+    case Type::USHORT:
+      return "uint";
+    case Type::UCHAR2:
+    case Type::USHORT2:
+      return "uvec2";
+    case Type::UCHAR3:
+    case Type::USHORT3:
+      return "uvec3";
+    case Type::UCHAR4:
+    case Type::USHORT4:
+      return "uvec4";
+    case Type::CHAR:
+    case Type::SHORT:
+      return "int";
+    case Type::CHAR2:
+    case Type::SHORT2:
+      return "ivec2";
+    case Type::CHAR3:
+    case Type::SHORT3:
+      return "ivec3";
+    case Type::CHAR4:
+    case Type::SHORT4:
+      return "ivec4";
+    case Type::VEC3_101010I2:
+      return "vec3";
   }
+  BLI_assert_unreachable();
+  return "unknown";
+}
+
+static const int to_component_count(const Type &type)
+{
+  switch (type) {
+    case Type::FLOAT:
+    case Type::UINT:
+    case Type::INT:
+    case Type::BOOL:
+      return 1;
+    case Type::VEC2:
+    case Type::UVEC2:
+    case Type::IVEC2:
+      return 2;
+    case Type::VEC3:
+    case Type::UVEC3:
+    case Type::IVEC3:
+      return 3;
+    case Type::VEC4:
+    case Type::UVEC4:
+    case Type::IVEC4:
+      return 4;
+    case Type::MAT3:
+      return 9;
+    case Type::MAT4:
+      return 16;
+    /* Alias special types. */
+    case Type::UCHAR:
+    case Type::USHORT:
+      return 1;
+    case Type::UCHAR2:
+    case Type::USHORT2:
+      return 2;
+    case Type::UCHAR3:
+    case Type::USHORT3:
+      return 3;
+    case Type::UCHAR4:
+    case Type::USHORT4:
+      return 4;
+    case Type::CHAR:
+    case Type::SHORT:
+      return 1;
+    case Type::CHAR2:
+    case Type::SHORT2:
+      return 2;
+    case Type::CHAR3:
+    case Type::SHORT3:
+      return 3;
+    case Type::CHAR4:
+    case Type::SHORT4:
+      return 4;
+    case Type::VEC3_101010I2:
+      return 3;
+  }
+  BLI_assert_unreachable();
+  return -1;
+}
+
+static const eGPUTextureFormat to_texture_format_type(const Type &type)
+{
+  switch (type) {
+    case Type::FLOAT:
+      return GPU_R32F;
+    case Type::VEC2:
+      return GPU_RG32F;
+    case Type::VEC4:
+      return GPU_RGBA32F;
+    case Type::UINT:
+      return GPU_R32UI;
+    case Type::UVEC2:
+      return GPU_RG32UI;
+    case Type::UVEC4:
+      return GPU_RGBA32UI;
+    case Type::INT:
+      return GPU_R32I;
+    case Type::IVEC2:
+      return GPU_RG32I;
+    case Type::IVEC4:
+      return GPU_RGBA32I;
+
+    /* Alias special types. */
+    case Type::UCHAR:
+    case Type::UCHAR2:
+    case Type::UCHAR3:
+    case Type::UCHAR4:
+    case Type::USHORT:
+    case Type::USHORT2:
+    case Type::USHORT3:
+    case Type::USHORT4:
+    case Type::CHAR:
+    case Type::CHAR2:
+    case Type::CHAR3:
+    case Type::CHAR4:
+    case Type::SHORT:
+    case Type::SHORT2:
+    case Type::SHORT3:
+    case Type::SHORT4:
+    case Type::VEC3_101010I2:
+      /* TODO(fclem): This could add support for lower bit depth formats. */
+      break;
+
+    /* Unsupported. */
+    case Type::IVEC3:
+    case Type::BOOL:
+    case Type::UVEC3:
+    case Type::VEC3:
+    case Type::MAT3:
+    case Type::MAT4:
+      break;
+  }
+  BLI_assert_unreachable();
+  return GPU_R32F;
+}
+
+static const Type to_component_type(const Type &type)
+{
+  switch (type) {
+    case Type::FLOAT:
+    case Type::VEC2:
+    case Type::VEC3:
+    case Type::VEC4:
+    case Type::MAT3:
+    case Type::MAT4:
+      return Type::FLOAT;
+    case Type::UINT:
+    case Type::UVEC2:
+    case Type::UVEC3:
+    case Type::UVEC4:
+      return Type::UINT;
+    case Type::INT:
+    case Type::IVEC2:
+    case Type::IVEC3:
+    case Type::IVEC4:
+    case Type::BOOL:
+      return Type::INT;
+    /* Alias special types. */
+    case Type::UCHAR:
+    case Type::UCHAR2:
+    case Type::UCHAR3:
+    case Type::UCHAR4:
+    case Type::USHORT:
+    case Type::USHORT2:
+    case Type::USHORT3:
+    case Type::USHORT4:
+      return Type::UINT;
+    case Type::CHAR:
+    case Type::CHAR2:
+    case Type::CHAR3:
+    case Type::CHAR4:
+    case Type::SHORT:
+    case Type::SHORT2:
+    case Type::SHORT3:
+    case Type::SHORT4:
+      return Type::INT;
+    case Type::VEC3_101010I2:
+      return Type::FLOAT;
+  }
+  BLI_assert_unreachable();
+  return Type::FLOAT;
+}
+
+static const Type vector_of_type(const Type &type, int comp_len)
+{
+  switch (type) {
+    case Type::FLOAT:
+      switch (comp_len) {
+        case 1:
+          return Type::FLOAT;
+        case 2:
+          return Type::VEC2;
+        case 3:
+          return Type::VEC3;
+        case 4:
+          return Type::VEC4;
+        case 9:
+          return Type::MAT3;
+        case 16:
+          return Type::MAT4;
+        default:
+          break;
+      }
+      break;
+    case Type::UINT:
+      switch (comp_len) {
+        case 1:
+          return Type::UINT;
+        case 2:
+          return Type::UVEC2;
+        case 3:
+          return Type::UVEC3;
+        case 4:
+          return Type::UVEC4;
+        default:
+          break;
+      }
+      break;
+    case Type::INT:
+      switch (comp_len) {
+        case 1:
+          return Type::INT;
+        case 2:
+          return Type::IVEC2;
+        case 3:
+          return Type::IVEC3;
+        case 4:
+          return Type::IVEC4;
+        default:
+          break;
+      }
+      break;
+    default:
+      break;
+  }
+  BLI_assert_unreachable();
+  return Type::FLOAT;
 }
 
 static const char *to_string(const eGPUTextureFormat &type)
@@ -581,7 +823,7 @@ std::string GLShader::vertex_interface_declare(const ShaderCreateInfo &info) con
 std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) const
 {
   std::stringstream ss;
-  std::string pre_main;
+  std::string pre_main, post_main;
 
   ss << "\n/* Interfaces. */\n";
   const Vector<StageInterfaceInfo *> &in_interfaces = info.geometry_source_.is_empty() ?
@@ -639,14 +881,106 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
     ss << "layout(" << to_string(info.depth_write_) << ") out float gl_FragDepth;\n";
   }
   ss << "\n/* Subpass Inputs. */\n";
+  /* Used to detect which attachments needs imageStore emulation. One bit per attachment. */
+  uint32_t fetched_attachment_bits = 0u;
   for (const ShaderCreateInfo::SubpassIn &input : info.subpass_inputs_) {
-    /* TODO(fclem): Add GL_EXT_shader_framebuffer_fetch support and fallback using imageLoad.
-     * For now avoid compilation failure. */
-    ss << "const " << to_string(input.type) << " " << input.name << " = " << to_string(input.type)
-       << "(0);\n";
+    if (false) {
+      /* TODO(fclem): Add GL_EXT_shader_framebuffer_fetch support. */
+    }
+    else {
+      fetched_attachment_bits |= 1u << input.index;
+
+      char swizzle[] = "xyzw";
+      swizzle[to_component_count(input.type)] = '\0';
+
+      /* IMPORTANT: We assume that the frame-buffer will be layered or not based on the layer
+       * built-in flag. */
+      bool is_layered_fb = bool(info.builtins_ & BuiltinBits::LAYER);
+
+      std::string texel_co = (is_layered_fb) ? "ivec3(gl_FragCoord.xy, gpu_Layer)" :
+                                               "ivec2(gl_FragCoord.xy)";
+
+      std::string image_name = "gpu_subpass_img_";
+      image_name += std::to_string(input.index);
+
+      /* Declare global for input. */
+      ss << to_string(input.type) << " " << input.name << ";\n";
+
+      /* Start with invalid value to detect failure cases. */
+      ImageType image_type = ImageType::FLOAT_BUFFER;
+      switch (to_component_type(input.type)) {
+        case Type::FLOAT:
+          image_type = is_layered_fb ? ImageType::FLOAT_2D_ARRAY : ImageType::FLOAT_2D;
+          break;
+        case Type::INT:
+          image_type = is_layered_fb ? ImageType::INT_2D_ARRAY : ImageType::INT_2D;
+          break;
+        case Type::UINT:
+          image_type = is_layered_fb ? ImageType::UINT_2D_ARRAY : ImageType::UINT_2D;
+          break;
+        default:
+          break;
+      }
+      /* Declare image. */
+      using Resource = ShaderCreateInfo::Resource;
+      /* NOTE(fclem): Using the attachment index as resource index might be problematic as it might
+       * collide with other resources. */
+      Resource res(Resource::BindType::IMAGE, input.index);
+      res.image.format = to_texture_format_type(input.type);
+      /* TODO(fclem): Could be made READ only if we know we don't write to it. */
+      res.image.qualifiers = Qualifier::READ_WRITE;
+      res.image.type = image_type;
+      res.image.name = image_name;
+      print_resource(ss, res, false);
+
+      std::stringstream ss_pre;
+      /* Populate the global before main using imageLoad. */
+      ss_pre << "  " << input.name << " = imageLoad(" << image_name << ", " << texel_co << ")."
+             << swizzle << ";\n";
+
+      pre_main += ss_pre.str();
+    }
   }
   ss << "\n/* Outputs. */\n";
   for (const ShaderCreateInfo::FragOut &output : info.fragment_outputs_) {
+    if ((fetched_attachment_bits & (1u << output.index)) != 0) {
+      /* When emulating framebuffer fetch support, the storing is done using imageStore.*/
+      /* Declare global for output. */
+      ss << to_string(output.type) << " " << output.name << ";\n";
+
+      char swizzle[] = "xyzw";
+      swizzle[to_component_count(output.type)] = '\0';
+
+      /* IMPORTANT: We assume that the frame-buffer will be layered or not based on the layer
+       * built-in flag. */
+      bool is_layered_fb = bool(info.builtins_ & BuiltinBits::LAYER);
+
+      std::string texel_co = (is_layered_fb) ? "ivec3(gl_FragCoord.xy, gpu_Layer)" :
+                                               "ivec2(gl_FragCoord.xy)";
+
+      /* IMPORTANT: We assume that the frame-buffer will be layered or not based on the layer
+       * built-in flag. */
+      if (bool(info.builtins_ & BuiltinBits::LAYER)) {
+        texel_co = "ivec3(gl_FragCoord.xy, gpu_Layer)";
+      }
+
+      std::string image_name = "gpu_subpass_img_";
+      image_name += std::to_string(output.index);
+
+      shader::Type tmp_var_type = vector_of_type(to_component_type(output.type), 4);
+      std::string tmp_var = "tmp_subpass_output_";
+      tmp_var += std::to_string(output.index);
+
+      std::stringstream ss_post;
+      /* Cast to `(u|i)vec4`. */
+      ss_post << "  " << to_string(tmp_var_type) << "  " << tmp_var << ";\n";
+      ss_post << "  " << tmp_var << "." << swizzle << " = " << output.name << ";\n";
+      /* Store the global after main using imageStore. */
+      ss_post << "  imageStore(" << image_name << ", " << texel_co << ", " << tmp_var << ");\n";
+
+      post_main += ss_post.str();
+      continue;
+    }
     ss << "layout(location = " << output.index;
     switch (output.blend) {
       case DualBlend::SRC_0:
@@ -663,10 +997,10 @@ std::string GLShader::fragment_interface_declare(const ShaderCreateInfo &info) c
   }
   ss << "\n";
 
-  if (pre_main.empty() == false) {
-    std::string post_main;
+  if (!pre_main.empty() || !post_main.empty()) {
     ss << main_function_wrapper(pre_main, post_main);
   }
+  std::cout << ss.str() << std::endl;
   return ss.str();
 }
 

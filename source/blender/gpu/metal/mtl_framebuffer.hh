@@ -153,6 +153,9 @@ class MTLFrameBuffer : public FrameBuffer {
                int dst_offset_x,
                int dst_offset_y) override;
 
+  void subpass_transition(const GPUAttachmentLayout *attachment_layouts,
+                          uint attachment_len) override{};
+
   void apply_state();
 
   /* State. */

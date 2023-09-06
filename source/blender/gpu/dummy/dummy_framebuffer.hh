@@ -35,6 +35,9 @@ class DummyFrameBuffer : public FrameBuffer {
 
   void attachment_set_loadstore_op(GPUAttachmentType /*type*/, GPULoadStore /*ls*/) override {}
 
+  void subpass_transition(const GPUAttachmentLayout * /*attachment_layouts*/,
+                          uint /*attachment_len*/) override{};
+
   void read(eGPUFrameBufferBits /*planes*/,
             eGPUDataFormat /*format*/,
             const int /*area*/[4],
