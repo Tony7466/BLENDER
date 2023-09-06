@@ -1036,7 +1036,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
       if (ntree->type == NTREE_GEOMETRY) {
         LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
-          if (STREQ(node->idname, "GeometryNodeSetShadeSmooth")) {
+          if (node->type == GEO_NODE_SET_SHADE_SMOOTH) {
             node->custom1 = ATTR_DOMAIN_FACE;
           }
         }
