@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -53,6 +54,8 @@
 #include "draw_state.h"
 
 #include "intern/gpu_codegen.h"
+
+#include <sstream>
 
 namespace blender::draw {
 using namespace blender::draw;
@@ -117,8 +120,8 @@ class PassBase {
   friend Manager;
   friend DrawCommandBuf;
 
-  /** Will use texture own sampler state. */
-  static constexpr eGPUSamplerState sampler_auto = GPU_SAMPLER_MAX;
+  /** Will use texture own internal sampler state. */
+  static constexpr GPUSamplerState sampler_auto = GPUSamplerState::internal_sampler();
 
  protected:
   /** Highest level of the command stream. Split command stream in different command types. */
@@ -287,12 +290,12 @@ class PassBase {
   void bind_image(const char *name, GPUTexture **image);
   void bind_image(int slot, GPUTexture *image);
   void bind_image(int slot, GPUTexture **image);
-  void bind_texture(const char *name, GPUTexture *texture, eGPUSamplerState state = sampler_auto);
-  void bind_texture(const char *name, GPUTexture **texture, eGPUSamplerState state = sampler_auto);
+  void bind_texture(const char *name, GPUTexture *texture, GPUSamplerState state = sampler_auto);
+  void bind_texture(const char *name, GPUTexture **texture, GPUSamplerState state = sampler_auto);
   void bind_texture(const char *name, GPUVertBuf *buffer);
   void bind_texture(const char *name, GPUVertBuf **buffer);
-  void bind_texture(int slot, GPUTexture *texture, eGPUSamplerState state = sampler_auto);
-  void bind_texture(int slot, GPUTexture **texture, eGPUSamplerState state = sampler_auto);
+  void bind_texture(int slot, GPUTexture *texture, GPUSamplerState state = sampler_auto);
+  void bind_texture(int slot, GPUTexture **texture, GPUSamplerState state = sampler_auto);
   void bind_texture(int slot, GPUVertBuf *buffer);
   void bind_texture(int slot, GPUVertBuf **buffer);
   void bind_ssbo(const char *name, GPUStorageBuf *buffer);
@@ -836,16 +839,16 @@ template<class T> inline void PassBase<T>::material_set(Manager &manager, GPUMat
       if (tex->tiled_mapping_name[0]) {
         GPUTexture *tiles = BKE_image_get_gpu_tiles(tex->ima, iuser, nullptr);
         manager.acquire_texture(tiles);
-        bind_texture(tex->sampler_name, tiles, (eGPUSamplerState)tex->sampler_state);
+        bind_texture(tex->sampler_name, tiles, tex->sampler_state);
 
         GPUTexture *tile_map = BKE_image_get_gpu_tilemap(tex->ima, iuser, nullptr);
         manager.acquire_texture(tile_map);
-        bind_texture(tex->tiled_mapping_name, tile_map, (eGPUSamplerState)tex->sampler_state);
+        bind_texture(tex->tiled_mapping_name, tile_map, tex->sampler_state);
       }
       else {
         GPUTexture *texture = BKE_image_get_gpu_texture(tex->ima, iuser, nullptr);
         manager.acquire_texture(texture);
-        bind_texture(tex->sampler_name, texture, (eGPUSamplerState)tex->sampler_state);
+        bind_texture(tex->sampler_name, texture, tex->sampler_state);
       }
     }
     else if (tex->colorband) {
@@ -856,7 +859,7 @@ template<class T> inline void PassBase<T>::material_set(Manager &manager, GPUMat
 
   GPUUniformBuf *ubo = GPU_material_uniform_buffer_get(material);
   if (ubo != nullptr) {
-    bind_ubo(GPU_UBO_BLOCK_NAME, ubo);
+    bind_ubo(GPU_NODE_TREE_UBO_SLOT, ubo);
   }
 }
 
@@ -912,9 +915,7 @@ template<class T> inline void PassBase<T>::bind_ubo(const char *name, GPUUniform
 }
 
 template<class T>
-inline void PassBase<T>::bind_texture(const char *name,
-                                      GPUTexture *texture,
-                                      eGPUSamplerState state)
+inline void PassBase<T>::bind_texture(const char *name, GPUTexture *texture, GPUSamplerState state)
 {
   this->bind_texture(GPU_shader_get_sampler_binding(shader_, name), texture, state);
 }
@@ -981,7 +982,7 @@ template<class T> inline void PassBase<T>::bind_ubo(int slot, GPUUniformBuf *buf
 }
 
 template<class T>
-inline void PassBase<T>::bind_texture(int slot, GPUTexture *texture, eGPUSamplerState state)
+inline void PassBase<T>::bind_texture(int slot, GPUTexture *texture, GPUSamplerState state)
 {
   create_command(Type::ResourceBind).resource_bind = {slot, texture, state};
 }
@@ -1014,7 +1015,7 @@ template<class T> inline void PassBase<T>::bind_ubo(const char *name, GPUUniform
 template<class T>
 inline void PassBase<T>::bind_texture(const char *name,
                                       GPUTexture **texture,
-                                      eGPUSamplerState state)
+                                      GPUSamplerState state)
 {
   this->bind_texture(GPU_shader_get_sampler_binding(shader_, name), texture, state);
 }
@@ -1036,7 +1037,7 @@ template<class T> inline void PassBase<T>::bind_ubo(int slot, GPUUniformBuf **bu
 }
 
 template<class T>
-inline void PassBase<T>::bind_texture(int slot, GPUTexture **texture, eGPUSamplerState state)
+inline void PassBase<T>::bind_texture(int slot, GPUTexture **texture, GPUSamplerState state)
 {
   create_command(Type::ResourceBind).resource_bind = {slot, texture, state};
 }

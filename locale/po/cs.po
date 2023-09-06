@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.5.0 Beta (b'4096bcfb25f6')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'526f935981fd')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-03-13 11:29:34\n"
+"POT-Creation-Date: 2023-09-04 15:42:41\n"
 "PO-Revision-Date: \n"
 "Last-Translator: Martin Tabačan <tabycz@gmail.com>\n"
 "Language-Team: Taby <tabycz@gmail.com>\n"
@@ -986,6 +986,26 @@ msgid "Tags"
 msgstr "Tagy"
 
 
+msgid "ID Name"
+msgstr "Zobrazit tvar"
+
+
+msgid "Options"
+msgstr "Nastavení"
+
+
+msgid "Space Type"
+msgstr "Stejné typy"
+
+
+msgid "Display Filter"
+msgstr "Filtr Zobrazení"
+
+
+msgid "Show Names"
+msgstr "Zobrazit tvar"
+
+
 msgid "Geometry attribute"
 msgstr "Atribut Geometrie"
 
@@ -1044,6 +1064,10 @@ msgstr "True or false"
 
 msgid "2D Vector"
 msgstr "2D Vektor"
+
+
+msgid "Quaternion"
+msgstr "Původni rotace"
 
 
 msgid "Domain"
@@ -2218,14 +2242,6 @@ msgid "Specifies how the bone inherits scaling from the parent bone"
 msgstr "Určuje, jak kost dědí změnu měřítka z nadřazené kosti"
 
 
-msgid "Layers"
-msgstr "Vrstvy"
-
-
-msgid "Layers bone exists in"
-msgstr "Vazby objektu"
-
-
 msgid "Length"
 msgstr "Délka"
 
@@ -2296,6 +2312,18 @@ msgstr "Distance deformace kosti"
 
 msgid "Relative Parenting"
 msgstr "Relativní cesta"
+
+
+msgid "Visible"
+msgstr "Viditelný"
+
+
+msgid "Active Collection"
+msgstr "Aktivní kolekce"
+
+
+msgid "Custom"
+msgstr "Vlastní"
 
 
 msgid "Bone Group"
@@ -2462,14 +2490,6 @@ msgid "Vertex Color"
 msgstr "Vertex barva"
 
 
-msgid "Round"
-msgstr "Zaoblené"
-
-
-msgid "Flat"
-msgstr "Ploché"
-
-
 msgid "Curve Jitter"
 msgstr "Chvění křivky"
 
@@ -2568,10 +2588,6 @@ msgstr "Přesnost"
 
 msgid "Layer Mode"
 msgstr "Režim vrstvy"
-
-
-msgid "Visible"
-msgstr "Viditelný"
 
 
 msgid "Visible layers"
@@ -2682,38 +2698,6 @@ msgid "Eraser Stroke"
 msgstr "Tah gumy"
 
 
-msgid "Smooth"
-msgstr "Hladké"
-
-
-msgid "Thickness"
-msgstr "Tloušťka"
-
-
-msgid "Randomize"
-msgstr "Náhodně"
-
-
-msgid "Grab"
-msgstr "Přesun"
-
-
-msgid "Push"
-msgstr "Tlačit"
-
-
-msgid "Twist"
-msgstr "Kroutit"
-
-
-msgid "Pinch"
-msgstr "Sevření"
-
-
-msgid "Clone"
-msgstr "Klonovat"
-
-
 msgid "Draw"
 msgstr "Kreslit"
 
@@ -2744,6 +2728,10 @@ msgstr "Generovat mezilehlé body pro velmi rychlé pohyby myši. Chcete-li zak�
 
 msgid "Material used for strokes drawn using this brush"
 msgstr "Materiál použitý pro tahy nakreslené tímto štětcem"
+
+
+msgid "Thickness"
+msgstr "Tloušťka"
 
 
 msgid "Jitter factor for new strokes"
@@ -2806,6 +2794,10 @@ msgid "Factor of Simplify using adaptive algorithm"
 msgstr "Faktor zjednodušení pomocí adaptivního algoritmu"
 
 
+msgid "Active Layer"
+msgstr "Aktivní vrstva"
+
+
 msgid "Default Eraser"
 msgstr "Výchozí guma"
 
@@ -2850,20 +2842,12 @@ msgid "Use tablet pressure for color strength"
 msgstr "Použít tlak tabletu pro sílu bravy"
 
 
-msgid "Active Layer"
-msgstr "Aktivní vrstva"
-
-
 msgid "Object Path"
 msgstr "Cesta k objektu"
 
 
 msgid "Path of an object inside of an Alembic archive"
 msgstr "Cesta objektu uvnitř alembického archivu"
-
-
-msgid "Path"
-msgstr "Cesta"
 
 
 msgid "Object path"
@@ -3436,6 +3420,14 @@ msgstr "Neplatný vstup"
 
 msgid "Collection Children"
 msgstr "Kolekce podřazených"
+
+
+msgid "Include"
+msgstr "Zahrnout"
+
+
+msgid "Exclude"
+msgstr "Vyloučit"
 
 
 msgid "Collision Settings"
@@ -5095,10 +5087,6 @@ msgid "From Minimum Z"
 msgstr "Minimální X limitace"
 
 
-msgid "Quaternion"
-msgstr "Původni rotace"
-
-
 msgid "Map From"
 msgstr "První frame"
 
@@ -5113,10 +5101,6 @@ msgstr "Umístění"
 
 msgid "Map To"
 msgstr "Stejné typy"
-
-
-msgid "The transformation type to affect of the constrained object"
-msgstr "Přidat objekt(y) do aktivní vrstvy"
 
 
 msgid "To Maximum X"
@@ -5673,11 +5657,6 @@ msgstr "Scéna"
 
 
 msgctxt "ID"
-msgid "Simulation"
-msgstr "Simulace"
-
-
-msgctxt "ID"
 msgid "Sound"
 msgstr "Zvuk"
 
@@ -5895,26 +5874,6 @@ msgstr "Vyčistit změnu měřítka"
 
 msgid "Factor"
 msgstr "Faktor"
-
-
-msgid "Wave Type"
-msgstr "Stejné typy"
-
-
-msgid "Depth Change"
-msgstr "Změna hloubky"
-
-
-msgid "Obstacle"
-msgstr "Objekt"
-
-
-msgid "Force"
-msgstr "Síla"
-
-
-msgid "Reflect Only"
-msgstr "Pouze vybrané"
 
 
 msgid "Canvas Settings"
@@ -6181,6 +6140,10 @@ msgid "Active Surface"
 msgstr "Aktivní povrch"
 
 
+msgid "Curve Mapping"
+msgstr "Kresba na texturu"
+
+
 msgid "Edit Bone"
 msgstr "Upravit kost"
 
@@ -6231,6 +6194,10 @@ msgstr "Přesun"
 
 msgid "Drag effector weight"
 msgstr "Vlastnosti zaoblení"
+
+
+msgid "Force"
+msgstr "Síla"
 
 
 msgid "Global gravity weight"
@@ -6401,11 +6368,7 @@ msgid "FFmpeg audio codec to use"
 msgstr "Zvukový kodek FFmpeg k použití"
 
 
-msgid "Samplerate"
-msgstr "Vzorky"
-
-
-msgid "Audio samplerate(samples/s)"
+msgid "Sample Rate"
 msgstr "Vzorky"
 
 
@@ -6783,10 +6746,6 @@ msgid "Frame"
 msgstr "Snímek"
 
 
-msgid "Face Maps"
-msgstr "Mapy Obličeje"
-
-
 msgid "Field Settings"
 msgstr "Nastavení renderování"
 
@@ -6801,10 +6760,6 @@ msgstr "Maximální vzdálenost"
 
 msgid "Falloff Power"
 msgstr "Síla poklesu"
-
-
-msgid "Fall-Off"
-msgstr "Pokles"
 
 
 msgid "Cone"
@@ -6849,22 +6804,6 @@ msgstr "Frekvence"
 
 msgid "Adjust the offset to the beginning/end"
 msgstr "Vyhlazuje hrany textury"
-
-
-msgid "Braid"
-msgstr "Mřížka"
-
-
-msgid "Curl"
-msgstr "Křivka"
-
-
-msgid "Radial"
-msgstr "Radiální"
-
-
-msgid "Wave"
-msgstr "Vlnění"
 
 
 msgid "Harmonic Damping"
@@ -6933,6 +6872,10 @@ msgstr "Velikost prostor textury"
 
 msgid "Texture Mode"
 msgstr "Textury"
+
+
+msgid "Curl"
+msgstr "Křivka"
 
 
 msgid "Gradient"
@@ -7019,10 +6962,6 @@ msgid "Particles Settings"
 msgstr "Nastavení Částic"
 
 
-msgid "Simulations"
-msgstr "Simulace"
-
-
 msgid "Node Trees"
 msgstr "Větvení Uzlů"
 
@@ -7085,10 +7024,6 @@ msgstr "Zobrazit objekty a kolekce"
 
 msgid "Show scenes"
 msgstr "Ukázat scény"
-
-
-msgid "Show materials, nodetrees, textures and Freestyle's linestyles"
-msgstr "Zobrazit materiály, větvení uzlů, textury a Freestyle čáry"
 
 
 msgid "Directory"
@@ -7453,6 +7388,10 @@ msgstr "Překážková vzdálenost"
 
 msgid "Fluid"
 msgstr "Tekutina"
+
+
+msgid "Obstacle"
+msgstr "Objekt"
 
 
 msgid "Outflow"
@@ -7879,16 +7818,16 @@ msgid "Layer"
 msgstr "Vrstva"
 
 
-msgid "Custom"
-msgstr "Vlastní"
-
-
 msgid "Spacing"
 msgstr "Mezery"
 
 
 msgid "Circular"
 msgstr "Kruh"
+
+
+msgid "Radial"
+msgstr "Radiální"
 
 
 msgid "Grid"
@@ -7915,16 +7854,8 @@ msgid "2D Image"
 msgstr "Přidat obrázek"
 
 
-msgid "End Cap"
-msgstr "Poslední frame"
-
-
 msgid "Stroke Points"
 msgstr "Zobrazit/skrýt kontrolní body"
-
-
-msgid "Start Cap"
-msgstr "Počátek"
 
 
 msgid "Triangles"
@@ -7965,10 +7896,6 @@ msgid "GizmoGroup"
 msgstr "GizmoSkupina"
 
 
-msgid "Options"
-msgstr "Nastavení"
-
-
 msgid "Region Type"
 msgstr "Typ oblasti"
 
@@ -7985,6 +7912,10 @@ msgid "Temporary"
 msgstr "Dočasné"
 
 
+msgid "Sidebar"
+msgstr "Postranní panel"
+
+
 msgid "Tools"
 msgstr "Nástroje"
 
@@ -7995,10 +7926,6 @@ msgstr "Vlastnosti"
 
 msgid "Footer"
 msgstr "Zápatí"
-
-
-msgid "Space Type"
-msgstr "Stejné typy"
 
 
 msgid "Modifier name"
@@ -8055,6 +7982,10 @@ msgstr "Mříž"
 
 msgid "Project the shape onto another object"
 msgstr "Projektovat tvar na další objekt"
+
+
+msgid "Smooth"
+msgstr "Hladké"
 
 
 msgid "Hue/Saturation"
@@ -8511,18 +8442,6 @@ msgid "True when used in editmode"
 msgstr "Pravdivý pokud je použit v režimu úprav"
 
 
-msgid "Visible Layers"
-msgstr "Viditelné vrstvy"
-
-
-msgid "Armature layer visibility"
-msgstr "Přepíná viditelnost vrstev"
-
-
-msgid "Layer Proxy Protection"
-msgstr "Vytvořit proxy objekt"
-
-
 msgid "Pose Position"
 msgstr "Poloha"
 
@@ -8591,24 +8510,8 @@ msgid "Gaussian"
 msgstr "Gaussova"
 
 
-msgid "Deformation"
-msgstr "Deformace"
-
-
 msgid "Deformation type that is used in the brush"
 msgstr "Typ deformace, který je použitý u štětce"
-
-
-msgid "Bend"
-msgstr "Ohýbat"
-
-
-msgid "Expand"
-msgstr "Rozšířit"
-
-
-msgid "Inflate"
-msgstr "Nafouknout"
 
 
 msgid "Brush Radius"
@@ -8637,6 +8540,26 @@ msgstr "Odsazení klonování"
 
 msgid "Soft Body Plasticity"
 msgstr "Soft Body Plasticita"
+
+
+msgid "Deformation"
+msgstr "Deformace"
+
+
+msgid "Push"
+msgstr "Tlačit"
+
+
+msgid "Inflate"
+msgstr "Nafouknout"
+
+
+msgid "Grab"
+msgstr "Přesun"
+
+
+msgid "Expand"
+msgstr "Rozšířit"
 
 
 msgid "Part of the mesh that is going to be simulated when the stroke is active"
@@ -8731,18 +8654,6 @@ msgid "File path to brush icon"
 msgstr "Typ filtru"
 
 
-msgid "Image Paint Tool"
-msgstr "Nástroj malování obrazu"
-
-
-msgid "Soften"
-msgstr "Zjemnit"
-
-
-msgid "Mask"
-msgstr "Maska"
-
-
 msgid "Jitter the position of the brush while painting"
 msgstr "Počáteční pozice pro osu Y"
 
@@ -8753,10 +8664,6 @@ msgstr "Jednotka chvění"
 
 msgid "Brush"
 msgstr "Štětec"
-
-
-msgid "Mask Tool"
-msgstr "Nástroje"
 
 
 msgid "Normal Weight"
@@ -8827,72 +8734,12 @@ msgid "Z Plane"
 msgstr "Z Rovina"
 
 
-msgid "Sculpt Tool"
-msgstr "Nástroj sochařství"
-
-
-msgid "Draw Sharp"
-msgstr "Kreslení ostré"
-
-
-msgid "Clay"
-msgstr "Clay"
-
-
-msgid "Clay Strips"
-msgstr "Hliněné proužky"
-
-
-msgid "Clay Thumb"
-msgstr "Hliněný palec"
-
-
-msgid "Blob"
-msgstr "Blob"
-
-
-msgid "Flatten"
-msgstr "Zarovnat"
-
-
-msgid "Scrape"
-msgstr "Změnit velikost"
-
-
-msgid "Elastic Deform"
-msgstr "Elastická deformace"
-
-
-msgid "Thumb"
-msgstr "Thumb"
-
-
-msgid "Pose"
-msgstr "Póza"
-
-
-msgid "Nudge"
-msgstr "Posunout"
-
-
-msgid "Rotate"
-msgstr "Otočit"
-
-
-msgid "Slide Relax"
-msgstr "Uvolnit posunutím"
-
-
-msgid "Boundary"
-msgstr "Hranice"
-
-
-msgid "Cloth"
-msgstr "Tkanina"
-
-
 msgid "Radius of the brush in pixels"
 msgstr "Poloměr štětce v pixelech"
+
+
+msgid "Pinch"
+msgstr "Sevření"
 
 
 msgid "Smooth Stroke Factor"
@@ -9051,10 +8898,6 @@ msgid "Use this brush in weight paint mode"
 msgstr "Nastavit váhu vertexů"
 
 
-msgid "Enable Plane Trim"
-msgstr "Přejmenovat značku"
-
-
 msgid "Jitter Pressure"
 msgstr "Tlak chvění"
 
@@ -9097,6 +8940,10 @@ msgstr "Obnovit Síť"
 
 msgid "Smooth Stroke"
 msgstr "Hladký Tah"
+
+
+msgid "Sculpt Tool"
+msgstr "Nástroj sochařství"
 
 
 msgid "Grab UVs"
@@ -9191,20 +9038,24 @@ msgid "Camera near clipping distance"
 msgstr "Ořezová vzdálenost pro 3D pohled v popředí"
 
 
-msgid "Cycles Camera Settings"
-msgstr "Nastavení kamery Cycles"
-
-
-msgid "Cycles camera settings"
-msgstr "Nastavení kamery Cycles"
-
-
 msgid "Apparent size of the Camera object in the 3D View"
 msgstr "Zdánlivá velikost Objektu Kamery ve 3D Pohledu"
 
 
 msgid "Depth Of Field"
 msgstr "Hloubka Ostrosti"
+
+
+msgid "Field of view for the fisheye lens"
+msgstr "Zobrazí mód ze seznamu souborů"
+
+
+msgid "Fisheye Lens"
+msgstr "Objektiv fisheye"
+
+
+msgid "Lens focal length (mm)"
+msgstr "Původní velikost"
 
 
 msgid "Focal Length"
@@ -9225,6 +9076,26 @@ msgstr "Milimetry"
 
 msgid "Orthographic Scale"
 msgstr "Rovnoběžné promítání"
+
+
+msgid "Panorama Type"
+msgstr "Rodič"
+
+
+msgid "Distortion to use for the calculation"
+msgstr "Počáteční snímek animace"
+
+
+msgid "Equirectangular"
+msgstr "Trojúhleníky"
+
+
+msgid "Mirror Ball"
+msgstr "Zrcadlit"
+
+
+msgid "Ideal for fulldomes, ignore the sensor dimensions"
+msgstr "Vybrat cestu"
 
 
 msgid "Passepartout Alpha"
@@ -9451,20 +9322,12 @@ msgid "How to use this collection in line art"
 msgstr "Jak použít tuto kolekci v kresbě tužkou"
 
 
-msgid "Include"
-msgstr "Zahrnout"
-
-
 msgid "Occlusion Only"
 msgstr "Pouze Okluze"
 
 
 msgid "Only use the collection to produce occlusion"
 msgstr "Použít pouze tuto kolekci k generování okluze"
-
-
-msgid "Exclude"
-msgstr "Vyloučit"
 
 
 msgid "Don't use this collection in line art"
@@ -9481,6 +9344,10 @@ msgstr "Bez Průsečíku"
 
 msgid "Bevel Depth"
 msgstr "Autovyhlazení"
+
+
+msgid "Round"
+msgstr "Zaoblené"
 
 
 msgid "Profile"
@@ -9591,6 +9458,10 @@ msgid "Map Taper"
 msgstr "Stejné typy"
 
 
+msgid "Path"
+msgstr "Cesta"
+
+
 msgid "Follow"
 msgstr "Následovat Cestu"
 
@@ -9665,6 +9536,10 @@ msgstr "Tučné & kurzíva"
 
 msgid "Font Italic"
 msgstr "Kurzíva"
+
+
+msgid "Text Selected"
+msgstr "Vybraný Text"
 
 
 msgid "X Offset"
@@ -9813,6 +9688,10 @@ msgstr "Použít textury"
 
 msgid "Annotation"
 msgstr "Poznámky"
+
+
+msgid "Layers"
+msgstr "Vrstvy"
 
 
 msgid "Filter by Type"
@@ -10269,56 +10148,12 @@ msgid "Area Light"
 msgstr "Plošné Světlo"
 
 
-msgid "Constant Coefficient"
-msgstr "Konstantní Koeficient"
-
-
 msgid "Contact Shadow Distance"
 msgstr "Vzdálenost Stykového Stínu"
 
 
-msgid "Falloff Type"
-msgstr "Typ poklesu"
-
-
-msgid "Inverse Linear"
-msgstr "Prohodit"
-
-
-msgid "Inverse Square"
-msgstr "Opustit Editační mód"
-
-
-msgid "Lin/Quad Weighted"
-msgstr "Lineární"
-
-
-msgid "Linear Attenuation"
-msgstr "Rotace"
-
-
-msgid "Linear distance attenuation"
-msgstr "Opustit Editační mód"
-
-
-msgid "Quadratic Attenuation"
-msgstr "Rotace"
-
-
 msgid "Shadow Buffer Bias"
 msgstr "Vložit barvu z bufferu"
-
-
-msgid "Samples"
-msgstr "Vzorky"
-
-
-msgid "Number of shadow buffer samples"
-msgstr "Číslo, určující počet 'Spin' kroků"
-
-
-msgid "Shadow Buffer Size"
-msgstr "Velikost stínu"
 
 
 msgid "Shadow Color"
@@ -10377,6 +10212,10 @@ msgid "Sun Light"
 msgstr "Slunečné světlo"
 
 
+msgid "Smoother irradiance interpolation but introduce light bleeding"
+msgstr "Hladší interpolace ozáření, ale zavede lehké krvácení"
+
+
 msgid "Resolution X"
 msgstr "Rozlišení X"
 
@@ -10421,22 +10260,6 @@ msgid "Blend Mode for Transparent Faces"
 msgstr "Mixovací mód pro průhledné plošky"
 
 
-msgid "Opaque"
-msgstr "Otevřít"
-
-
-msgid "Alpha Clip"
-msgstr "Alfa Clip"
-
-
-msgid "Alpha Hashed"
-msgstr "Alfa Hashed"
-
-
-msgid "Alpha Blend"
-msgstr "Alfa Prolnutí"
-
-
 msgid "Cycles Material Settings"
 msgstr "Vlastnosti zaoblení"
 
@@ -10473,12 +10296,12 @@ msgid "Cube"
 msgstr "Krychle"
 
 
-msgid "Hair"
-msgstr "Vlasy"
-
-
 msgid "Hair strands"
 msgstr "Zrušit vazby"
+
+
+msgid "Cloth"
+msgstr "Tkanina"
 
 
 msgid "Refraction Depth"
@@ -10491,6 +10314,18 @@ msgstr "Roughness materiálu"
 
 msgid "Shadow Mode"
 msgstr "Režim Stínů"
+
+
+msgid "Opaque"
+msgstr "Otevřít"
+
+
+msgid "Alpha Clip"
+msgstr "Alfa Clip"
+
+
+msgid "Alpha Hashed"
+msgstr "Alfa Hashed"
 
 
 msgid "Specular color of the material"
@@ -10527,18 +10362,6 @@ msgstr "Velikost štětce"
 
 msgid "Has Custom Normals"
 msgstr "Má Vlastní Normály"
-
-
-msgid "Float Property Layers"
-msgstr "Vrstvy float vlastností"
-
-
-msgid "Int Property Layers"
-msgstr "Int Vrstvy vlastností Int"
-
-
-msgid "String Property Layers"
-msgstr "Vlastnosti stripu"
 
 
 msgid "Polygons"
@@ -10665,10 +10488,6 @@ msgid "Render Size"
 msgstr "Nastavit okraje renderování"
 
 
-msgid "Wire Size"
-msgstr "Velikost fontu:   8"
-
-
 msgid "Update"
 msgstr "Aktualizace"
 
@@ -10705,10 +10524,6 @@ msgid "Proxy Custom Directory"
 msgstr "Adresář zvuků"
 
 
-msgid "ID Name"
-msgstr "Zobrazit tvar"
-
-
 msgid "Label"
 msgstr "Úroveň"
 
@@ -10717,8 +10532,8 @@ msgid "Grease Pencil Data"
 msgstr "Kresba skicovací tužkou"
 
 
-msgid "Inputs"
-msgstr "Vstup"
+msgid "Interface"
+msgstr "Rozhraní"
 
 
 msgid "Links"
@@ -10727,10 +10542,6 @@ msgstr "Odkazy"
 
 msgid "Nodes"
 msgstr "Uzel"
-
-
-msgid "Outputs"
-msgstr "Výstupy"
 
 
 msgid "Shader"
@@ -10758,26 +10569,6 @@ msgstr "Kompoziční Větvení Uzlů"
 
 
 msgid "Chunksize"
-msgstr "Skrýt skryté soubory"
-
-
-msgid "Chunksize of 32x32"
-msgstr "Skrýt skryté soubory"
-
-
-msgid "Chunksize of 64x64"
-msgstr "Skrýt skryté soubory"
-
-
-msgid "Chunksize of 128x128"
-msgstr "Skrýt skryté soubory"
-
-
-msgid "Chunksize of 256x256"
-msgstr "Skrýt skryté soubory"
-
-
-msgid "Chunksize of 512x512"
 msgstr "Skrýt skryté soubory"
 
 
@@ -10839,6 +10630,26 @@ msgstr "Dva průchody"
 
 msgid "Geometry Node Tree"
 msgstr "Větvení Geometrických Uzlů"
+
+
+msgid "Edit"
+msgstr "Upravit"
+
+
+msgid "Sculpt"
+msgstr "Tesat"
+
+
+msgid "Tool"
+msgstr "Nástroje"
+
+
+msgid "Mesh"
+msgstr "Síť"
+
+
+msgid "Point Cloud"
+msgstr "Bodový Mrak"
 
 
 msgid "Shader Node Tree"
@@ -10993,10 +10804,6 @@ msgid "Origin offset distance"
 msgstr "Vzdálenost odsazení počátku"
 
 
-msgid "Both"
-msgstr "Oba"
-
-
 msgid "Settings for using the object as a field in physics simulation"
 msgstr "První frame animace"
 
@@ -11115,6 +10922,10 @@ msgstr "Pridat objekt do nové skupiny"
 
 msgid "Parent Vertices"
 msgstr "Odstranit vertexy"
+
+
+msgid "Pose"
+msgstr "Póza"
 
 
 msgid "Current pose for armatures"
@@ -11276,10 +11087,6 @@ msgid "Global Z"
 msgstr "Globální Z"
 
 
-msgid "Effect Children"
-msgstr "Potomek"
-
-
 msgid "Apply effectors to children"
 msgstr "Omezit osvětlení na lampy v této skupině"
 
@@ -11296,10 +11103,6 @@ msgid "Length of child paths"
 msgstr "Označit vrstvu"
 
 
-msgid "Children Per Parent"
-msgstr "Počet podřazených objektů na jeden nadřazený"
-
-
 msgid "Parting Factor"
 msgstr "Činitel"
 
@@ -11310,6 +11113,10 @@ msgstr "Maximalní X limitace"
 
 msgid "Parting Minimum"
 msgstr "Minimální X limitace"
+
+
+msgid "Children Per Parent"
+msgstr "Počet podřazených objektů na jeden nadřazený"
 
 
 msgid "Child Radius"
@@ -11704,6 +11511,14 @@ msgid "Number of trail particles"
 msgstr "Vzbrat vše podle typu"
 
 
+msgid "Twist"
+msgstr "Kroutit"
+
+
+msgid "Hair"
+msgstr "Vlasy"
+
+
 msgid "Absolute Path Time"
 msgstr "Absolutní bod pro pivot"
 
@@ -11812,12 +11627,12 @@ msgid "Relative amount of virtual parents"
 msgstr "Normální rodičovská vazba"
 
 
-msgid "Point Cloud"
-msgstr "Bodový Mrak"
-
-
 msgid "Active Movie Clip"
 msgstr "Akce"
+
+
+msgid "Mirror Object"
+msgstr "Zrcadlit objekt"
 
 
 msgid "No distance attenuation"
@@ -12132,10 +11947,6 @@ msgstr "Nelze uložit soubor"
 
 msgid "Memory"
 msgstr "Paměť"
-
-
-msgid "Modified"
-msgstr "Modifikátory"
 
 
 msgid "Lines of text"
@@ -12846,10 +12657,6 @@ msgid "Insert After"
 msgstr "Vložit po"
 
 
-msgid "Insert a new item into collection after the one referenced in subitem_reference_name or _index"
-msgstr "Vložte novou položku do kolekce za tu, na kterou odkazuje subitem_reference_name nebo _index"
-
-
 msgid "IK Solver"
 msgstr "Řešitel IK"
 
@@ -13032,10 +12839,6 @@ msgstr "Cinema"
 
 msgid "When rendering animations, save JPG preview images in same directory"
 msgstr "Při renderování animace ukládat náhledy obrázků JPG ve stejném adresáři"
-
-
-msgid "Z Buffer"
-msgstr "Z-Buffer"
 
 
 msgid "Image Preview"
@@ -13556,10 +13359,6 @@ msgstr "Media Play/Pause"
 msgctxt "UI_Events_KeyMaps"
 msgid "Media Stop"
 msgstr "Media Stop"
-
-
-msgid "Stop"
-msgstr "Stop"
 
 
 msgctxt "UI_Events_KeyMaps"
@@ -14333,10 +14132,6 @@ msgid "Mask spline"
 msgstr "Vrstvy masky"
 
 
-msgid "Feather Offset"
-msgstr "Zrušit odchylku"
-
-
 msgid "Calculate even feather offset"
 msgstr "Výpočet trasy"
 
@@ -14385,6 +14180,10 @@ msgid "Weight of feather point"
 msgstr "Váha této vazby"
 
 
+msgid "Active Point"
+msgstr "Aktivní bod"
+
+
 msgid "Alignment"
 msgstr "Zarovnaný"
 
@@ -14399,6 +14198,10 @@ msgstr "Gradient"
 
 msgid "Mix Factor"
 msgstr "Činitel"
+
+
+msgid "Mask"
+msgstr "Maska"
 
 
 msgid "Material slot in an object"
@@ -14458,10 +14261,6 @@ msgid "Add Attribute"
 msgstr "Přidat Atribut"
 
 
-msgid "Bone Group Specials"
-msgstr "Skupina vertexů"
-
-
 msgid "Channel"
 msgstr "Kanál"
 
@@ -14511,8 +14310,16 @@ msgid "Vertex Group Specials"
 msgstr "Skupina vertexů"
 
 
-msgid "Edit"
-msgstr "Upravit"
+msgid "Text"
+msgstr "Text"
+
+
+msgid "Utilities"
+msgstr "Nástroje"
+
+
+msgid "Math"
+msgstr "Matematika"
 
 
 msgid "Converter"
@@ -14527,20 +14334,12 @@ msgid "Layout"
 msgstr "Rozložení"
 
 
-msgid "Matte"
-msgstr "Slepecké Znaky"
+msgid "Keying"
+msgstr "Klíčovací sestava"
 
 
-msgid "Text"
-msgstr "Text"
-
-
-msgid "Utilities"
-msgstr "Nástroje"
-
-
-msgid "Math"
-msgstr "Matematika"
+msgid "Tracking"
+msgstr "Sledování"
 
 
 msgid "Attribute"
@@ -14549,10 +14348,6 @@ msgstr "Atribut"
 
 msgid "Instances"
 msgstr "Instance"
-
-
-msgid "Mesh"
-msgstr "Síť"
 
 
 msgid "Node"
@@ -14586,6 +14381,10 @@ msgstr "Navigace"
 
 msgid "Strip"
 msgstr "Proužek"
+
+
+msgid "Inputs"
+msgstr "Vstup"
 
 
 msgid "Movie Strip"
@@ -14724,10 +14523,6 @@ msgid "Proportional Editing Falloff"
 msgstr "Způsob útlumu"
 
 
-msgid "Sculpt"
-msgstr "Tesat"
-
-
 msgid "Clone Layer"
 msgstr "Vyberte renderovanou vrstvu"
 
@@ -14758,14 +14553,6 @@ msgstr "Rychlé Nastavení"
 
 msgid "Mesh Edge"
 msgstr "Klouzat s hranou"
-
-
-msgid "Bevel Weight"
-msgstr "Vlastnosti zaoblení"
-
-
-msgid "Weight used by the Bevel modifier"
-msgstr "Zobrazí ostré hrany používané 'EdgeSplit' modifikátorem"
 
 
 msgid "Loose"
@@ -14828,10 +14615,6 @@ msgid "Polygon Center"
 msgstr "Střed Polygonu"
 
 
-msgid "Center of this polygon"
-msgstr "Střed tohoto polygonu"
-
-
 msgid "Loop Start"
 msgstr "Rozříznout"
 
@@ -14854,6 +14637,10 @@ msgstr "Přidat barvu"
 
 msgid "Name of skin layer"
 msgstr "Nelze uložit soubor"
+
+
+msgid "Samples"
+msgstr "Vzorky"
 
 
 msgid "Intersect"
@@ -14910,10 +14697,6 @@ msgstr "Velikost X"
 
 msgid "Size Z"
 msgstr "Velikost (Z)"
-
-
-msgid "Metaball types"
-msgstr "Metaball"
 
 
 msgid "Ball"
@@ -15080,6 +14863,10 @@ msgid "Warp"
 msgstr "Warp"
 
 
+msgid "Wave"
+msgstr "Vlnění"
+
+
 msgid "Dynamic Paint"
 msgstr "Dynamický"
 
@@ -15124,6 +14911,10 @@ msgid "Number of duplicates to make"
 msgstr "Počet duplikátů k vytvoření"
 
 
+msgid "End Cap"
+msgstr "Poslední frame"
+
+
 msgid "Fit Type"
 msgstr "Fit Type"
 
@@ -15150,6 +14941,10 @@ msgstr "Objekt"
 
 msgid "Relative Offset Displacement"
 msgstr "Přidat rodiče"
+
+
+msgid "Start Cap"
+msgstr "Počátek"
 
 
 msgid "Add a constant offset"
@@ -15264,6 +15059,10 @@ msgid "Seed for random if used"
 msgstr "Nelze uložit soubor"
 
 
+msgid "Randomize"
+msgstr "Náhodně"
+
+
 msgid "Reversed"
 msgstr "Invertovat"
 
@@ -15300,10 +15099,6 @@ msgid "Lambda Factor"
 msgstr "Činitel"
 
 
-msgid "Smooth factor effect"
-msgstr "Hladký útlum"
-
-
 msgid "Original Coords"
 msgstr "Původní Souřadnice"
 
@@ -15318,6 +15113,10 @@ msgstr "Orientace manipulátorů (Klávesová zkratka: Alt Space)"
 
 msgid "Deform Axis"
 msgstr "Aplikovat deformaci"
+
+
+msgid "Bevel Weight"
+msgstr "Vlastnosti zaoblení"
 
 
 msgid "Freestyle"
@@ -15450,10 +15249,6 @@ msgstr "Dynamický modifikátor barvy"
 
 msgid "Dynamic Paint modifier"
 msgstr "Dynamický modifikátor barvy"
-
-
-msgid "Canvas"
-msgstr "Plátno"
 
 
 msgid "EdgeSplit Modifier"
@@ -15610,10 +15405,6 @@ msgstr "Spustit renderovani"
 
 msgid "Mirroring modifier"
 msgstr "Vrátit editaci"
-
-
-msgid "Mirror Object"
-msgstr "Zrcadlit objekt"
 
 
 msgid "Object to use as mirror"
@@ -16001,8 +15792,18 @@ msgid "SimpleDeform Modifier"
 msgstr "Vzorky"
 
 
+msgctxt "Operator"
+msgid "Twist"
+msgstr "Zakroutit"
+
+
 msgid "Rotate around the Z axis of the modifier space"
 msgstr "Nelze kopírovat modifikátory do objektu jiného typu"
+
+
+msgctxt "Operator"
+msgid "Bend"
+msgstr "Ohyb"
 
 
 msgid "Stretch the object along the Z axis of the modifier space"
@@ -16505,6 +16306,10 @@ msgstr "Vybrat následující klíč"
 
 msgid "Face Area"
 msgstr "Velikost plošek"
+
+
+msgid "Boundary"
+msgstr "Hranice"
 
 
 msgid "Offset Relative"
@@ -17063,6 +16868,10 @@ msgid "Height of the node"
 msgstr "Šířka a výška nového obrázku"
 
 
+msgid "Outputs"
+msgstr "Výstupy"
+
+
 msgid "Show Options"
 msgstr "Možnosti deformace"
 
@@ -17081,10 +16890,6 @@ msgstr "Orientace manipulátorů (Klávesová zkratka: Alt Space)"
 
 msgid "Width of the node"
 msgstr "Nastaví umístění 3D kurzoru"
-
-
-msgid "Width Hidden"
-msgstr "Limity"
 
 
 msgid "Custom Group"
@@ -17125,22 +16930,6 @@ msgstr "Relativní cesta"
 
 msgid "Relative Size Y"
 msgstr "Relativní cesta"
-
-
-msgid "Filter Type"
-msgstr "Typ filtru"
-
-
-msgid "Tent"
-msgstr "Text"
-
-
-msgid "Fast Gaussian"
-msgstr "Navigace letem"
-
-
-msgid "Mitch"
-msgstr "Seškrcení"
 
 
 msgid "Variable Size"
@@ -17209,10 +16998,6 @@ msgstr "Počáteční pozice pro osu Y"
 
 msgid "Y position of the middle of the box"
 msgstr "Počáteční pozice pro osu Y"
-
-
-msgid "Bright/Contrast"
-msgstr "Odstranit pruh"
 
 
 msgid "Channel Key"
@@ -17619,6 +17404,14 @@ msgid "Ellipse Mask"
 msgstr "Maximalní X limitace"
 
 
+msgid "Filter Type"
+msgstr "Typ filtru"
+
+
+msgid "Soften"
+msgstr "Zjemnit"
+
+
 msgid "Laplace"
 msgstr "Nahradit"
 
@@ -17683,10 +17476,6 @@ msgid "Hue Correct"
 msgstr "Odznačit spojené"
 
 
-msgid "Hue Saturation Value"
-msgstr "Sytost"
-
-
 msgid "ID Mask"
 msgstr "Plošky"
 
@@ -17701,10 +17490,6 @@ msgstr "VBar malování"
 
 msgid "Distance to inpaint (number of iterations)"
 msgstr "Číslo ve stupních určující počet otočení"
-
-
-msgid "Keying"
-msgstr "Klíčovací sestava"
 
 
 msgid "Post Blur"
@@ -17745,6 +17530,10 @@ msgstr "Klíčovací sestava"
 
 msgid "Tracking Object"
 msgstr "Přidat objekt"
+
+
+msgid "Eccentricity"
+msgstr "Výstřednost"
 
 
 msgid "Lens Distortion"
@@ -17887,6 +17676,10 @@ msgid "Render Layers"
 msgstr "Vyberte renderovanou vrstvu"
 
 
+msgid "Rotate"
+msgstr "Otočit"
+
+
 msgid "Method to use to filter rotation"
 msgstr "Metoda, která se má použít k filtrování rotace"
 
@@ -17993,10 +17786,6 @@ msgstr "Osa X"
 
 msgid "Y Axis"
 msgstr "Osa Y"
-
-
-msgid "ColorRamp"
-msgstr "Barevná rampa"
 
 
 msgid "Vector Blur"
@@ -18183,6 +17972,10 @@ msgid "Z Up"
 msgstr "Posun nahoru"
 
 
+msgid "Selection"
+msgstr "Výběr"
+
+
 msgid "Angle Based"
 msgstr "Přivlastnění"
 
@@ -18256,12 +18049,8 @@ msgid "Blackbody"
 msgstr "Černé tělo"
 
 
-msgid "Bright Contrast"
-msgstr "Jasný kontrast"
-
-
-msgid "Anisotropic BSDF"
-msgstr "Anizotropní BSDF"
+msgid "Glossy BSDF"
+msgstr "Lesklost BSDF"
 
 
 msgid "Beckmann"
@@ -18278,10 +18067,6 @@ msgstr "Diffuse BSDF"
 
 msgid "Glass BSDF"
 msgstr "Sklo BSDF"
-
-
-msgid "Glossy BSDF"
-msgstr "Lesklost BSDF"
 
 
 msgid "Hair BSDF"
@@ -18540,14 +18325,6 @@ msgid "Projection of the input image"
 msgstr "Nastaví umístění 3D kurzoru"
 
 
-msgid "Equirectangular"
-msgstr "Trojúhleníky"
-
-
-msgid "Mirror Ball"
-msgstr "Zrcadlit"
-
-
 msgid "Gradient Texture"
 msgstr "Textura přechodu"
 
@@ -18748,6 +18525,10 @@ msgid "Wave Texture"
 msgstr "Vlnová textura"
 
 
+msgid "Wave Type"
+msgstr "Stejné typy"
+
+
 msgid "Use standard wave texture in bands"
 msgstr "Zobrazit materiál daného objektu"
 
@@ -18756,28 +18537,8 @@ msgid "Use wave texture in rings"
 msgstr "Zobrazit materiál daného objektu"
 
 
-msgid "Multiply Add"
-msgstr "Násobit Vše"
-
-
-msgid "Reflect"
-msgstr "Zrcadlit"
-
-
 msgid "Normalize A"
 msgstr "Normalizovat A"
-
-
-msgid "Fraction"
-msgstr "Zlomek"
-
-
-msgid "Modulo"
-msgstr "Modulo"
-
-
-msgid "Wrap"
-msgstr "Zbalit"
 
 
 msgid "Vector Rotate"
@@ -18818,10 +18579,6 @@ msgstr "Informace o Objemu"
 
 msgid "Volume Scatter"
 msgstr "Rozptyl Objemu"
-
-
-msgid "Pixel Size"
-msgstr "Velikost Pixelu"
 
 
 msgid "Use screen pixel size instead of world units"
@@ -18936,6 +18693,14 @@ msgid "Geometry socket of a node"
 msgstr "Soket geometrického uzlu"
 
 
+msgid "Both"
+msgstr "Oba"
+
+
+msgid "Socket Type"
+msgstr "Stejné typy"
+
+
 msgid "Collection of Nodes"
 msgstr "Kolekce Uzlů"
 
@@ -19005,10 +18770,6 @@ msgstr "Myš Y"
 msgctxt "Operator"
 msgid "Copy Keyframes"
 msgstr "Zobrazit klíče"
-
-
-msgid "Copy selected keyframes to the copy/paste buffer"
-msgstr "Konvertuje označené trojúhlníky na čtyřúhelníky"
 
 
 msgctxt "Operator"
@@ -19421,6 +19182,10 @@ msgid "Interactively change the current frame number"
 msgstr "Interaktivně stahuje vertexy k sobě v dané oblasti"
 
 
+msgid "Include Handles"
+msgstr "Auto Úchop"
+
+
 msgctxt "Operator"
 msgid "Remove Empty Animation Data"
 msgstr "Odstranit Prázdná Data Animací"
@@ -19491,11 +19256,6 @@ msgstr "Dolů"
 
 msgid "To Bottom"
 msgstr "Dole"
-
-
-msgctxt "Operator"
-msgid "Rename Channels"
-msgstr "Odstranit uzly"
 
 
 msgid "Rename animation channel under mouse"
@@ -19670,10 +19430,6 @@ msgstr "Změnit scénu..."
 
 msgid "Filter folders"
 msgstr "Filtry"
-
-
-msgid "Filter python"
-msgstr "Typ filtru"
 
 
 msgid "Filter text"
@@ -19913,6 +19669,11 @@ msgstr "Zviditelnit všechny vrstvy kostry"
 
 
 msgctxt "Operator"
+msgid "Move to Collection"
+msgstr "Přemístit do Kolekce"
+
+
+msgctxt "Operator"
 msgid "Clear Parent"
 msgstr "Vyčistit rodičovskou vazbu"
 
@@ -20098,10 +19859,6 @@ msgid "Filter movie files"
 msgstr "Filtr video souborů"
 
 
-msgid "Filter python files"
-msgstr "Filtr python souborů"
-
-
 msgid "Filter sound files"
 msgstr "Filtr zvukových souborů"
 
@@ -20251,10 +20008,6 @@ msgstr "Prohlížet štětce"
 
 msgid "Scalar"
 msgstr "Změna velikosti"
-
-
-msgid "Tool"
-msgstr "Nástroje"
 
 
 msgid "Translation"
@@ -20415,10 +20168,6 @@ msgstr "Cíl vazby"
 msgctxt "Operator"
 msgid "Copy Tracks"
 msgstr "Sledování postaru"
-
-
-msgid "Copy selected tracks to clipboard"
-msgstr "Odstranit označené značky"
 
 
 msgctxt "Operator"
@@ -21136,10 +20885,6 @@ msgid "Set the current language for this console"
 msgstr "Nastavit současný jazyk pro tuto konzoli"
 
 
-msgid "Language"
-msgstr "Jazyk"
-
-
 msgctxt "Operator"
 msgid "Move Cursor"
 msgstr "Na kurzoru"
@@ -21380,6 +21125,10 @@ msgstr "Původni velikost"
 
 msgid "Skin Resize"
 msgstr "Skrýt skryté soubory"
+
+
+msgid "Bend"
+msgstr "Ohýbat"
 
 
 msgid "Shrink/Fatten"
@@ -21879,8 +21628,16 @@ msgstr "Původni rotace"
 
 
 msgctxt "Operator"
-msgid "Export PLY"
+msgid "Export STL"
 msgstr "Exportovat"
+
+
+msgid "Ascii"
+msgstr "Ascii"
+
+
+msgid "Save the file in ASCII file format"
+msgstr "Uložit současný soubor na vybrané umístění"
 
 
 msgid "X Forward"
@@ -21927,43 +21684,6 @@ msgid "-Z Up"
 msgstr "-Z nahoru"
 
 
-msgid "ASCII"
-msgstr "ASCII"
-
-
-msgid "Export the active vertex color layer"
-msgstr "Načíst uložené Render Hladiny"
-
-
-msgid "Apply Modifiers"
-msgstr "Aplikovat modifikátor"
-
-
-msgid "Apply Modifiers to the exported mesh"
-msgstr "Vazby objektu"
-
-
-msgid "Selection Only"
-msgstr "Pouze vybrané"
-
-
-msgid "Export selected objects only"
-msgstr "Ostranit označené Objekt(y) Globálně"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "Exportovat"
-
-
-msgid "Ascii"
-msgstr "Ascii"
-
-
-msgid "Save the file in ASCII file format"
-msgstr "Uložit současný soubor na vybrané umístění"
-
-
 msgid "Batch Mode"
 msgstr "Pózy kostí"
 
@@ -21972,8 +21692,20 @@ msgid "All data in one file"
 msgstr "Všechna data v jednom souboru"
 
 
+msgid "Apply Modifiers"
+msgstr "Aplikovat modifikátor"
+
+
 msgid "Apply the modifiers before saving"
 msgstr "Před kreslením aplikovat normály vertexů"
+
+
+msgid "Selection Only"
+msgstr "Pouze vybrané"
+
+
+msgid "Export selected objects only"
+msgstr "Ostranit označené Objekt(y) Globálně"
 
 
 msgctxt "Operator"
@@ -22051,10 +21783,6 @@ msgstr "Zobrazit jméno"
 
 msgid "-X Axis"
 msgstr "-Osa X"
-
-
-msgid "Active Collection"
-msgstr "Aktivní kolekce"
 
 
 msgid "Only Deform Bones"
@@ -22151,59 +21879,6 @@ msgstr "Zapamatovat si Nastavení Exportu"
 
 
 msgctxt "Operator"
-msgid "Export OBJ"
-msgstr "Exportovat"
-
-
-msgid "Save a Wavefront OBJ File"
-msgstr "Uložit soubor OBJ Wavefront"
-
-
-msgid "Material Groups"
-msgstr "Materiál"
-
-
-msgid "Export Blender objects as OBJ groups"
-msgstr "Exportovat objekty Blenderu jako skupiny OBJ"
-
-
-msgid "Keep Vertex Order"
-msgstr "Nová vertexová barva"
-
-
-msgid "Include Edges"
-msgstr "Auto Úchop"
-
-
-msgid "Write Materials"
-msgstr "Aktivovat materiálové uzly"
-
-
-msgid "Write out the MTL file"
-msgstr "Nelze uložit soubor"
-
-
-msgid "Write Nurbs"
-msgstr "Obnovit Křivku"
-
-
-msgid "Smooth Groups"
-msgstr "Přidat do skupiny"
-
-
-msgid "Include UVs"
-msgstr "Auto Úchop"
-
-
-msgid "Write out the active UV coordinates"
-msgstr "Smazat koordináty nálepky textury"
-
-
-msgid "Polygroups"
-msgstr "Polyskupiny"
-
-
-msgctxt "Operator"
 msgid "Export X3D"
 msgstr "Exportovat X3D"
 
@@ -22292,6 +21967,14 @@ msgid "Execute selected file"
 msgstr "Odstranit označené značky"
 
 
+msgid "Show"
+msgstr "Zobrazit"
+
+
+msgid "Play"
+msgstr "Přehrát"
+
+
 msgid "Increment"
 msgstr "Přírůstek"
 
@@ -22330,11 +22013,6 @@ msgstr "Další Složka"
 
 msgid "Move to next folder"
 msgstr "Přejít na další složku"
-
-
-msgctxt "Operator"
-msgid "Parent File"
-msgstr "Nadřazená Složka"
 
 
 msgid "Move to parent directory"
@@ -22537,10 +22215,6 @@ msgid "Change Spacing"
 msgstr "Změna rozestupu"
 
 
-msgid "Selection"
-msgstr "Výběr"
-
-
 msgid "Next or Selection"
 msgstr "Vybrat cestu"
 
@@ -22590,6 +22264,10 @@ msgstr "Skrýt skryté soubory"
 
 msgid "Select all text"
 msgstr "Vybrat další"
+
+
+msgid "Select word under cursor"
+msgstr "Vytvořit nový soubor"
 
 
 msgctxt "Operator"
@@ -23154,6 +22832,15 @@ msgstr "Vybrané vertexy náleží do aktuální skupiny vertexů"
 
 
 msgctxt "Operator"
+msgid "Weight Paint Sample Weight"
+msgstr "Váha vertexů"
+
+
+msgid "Use the mouse to sample a weight in the 3D view"
+msgstr "Zobrazit obrázek na pozadí pohledu do 3D"
+
+
+msgctxt "Operator"
 msgid "Bake Curve"
 msgstr "Bake Křivku"
 
@@ -23187,6 +22874,10 @@ msgstr "Decimovat Klíčové Snímky"
 msgctxt "Operator"
 msgid "Delete Invalid Drivers"
 msgstr "Smazat Neplatné Ovladače"
+
+
+msgid "Flatten"
+msgstr "Zarovnat"
 
 
 msgctxt "Operator"
@@ -23224,6 +22915,14 @@ msgid "Place the cursor on the midpoint of selected keyframes"
 msgstr "Nastaví současný snímek na průměrný snímek vybraných klíčových snímků"
 
 
+msgid "Filter Width"
+msgstr "Filtr skriptů"
+
+
+msgid "Sigma"
+msgstr "Sada barev"
+
+
 msgctxt "Operator"
 msgid "Clear Ghost Curves"
 msgstr "Zrušit vazbu"
@@ -23239,6 +22938,19 @@ msgid "Hide Curves"
 msgstr "Skrýt Křivky"
 
 
+msgctxt "Operator"
+msgid "Jump to Keyframe"
+msgstr "Skočit na Klíčový snímek"
+
+
+msgid "Jump to previous/next keyframe"
+msgstr "Předchozí klíč"
+
+
+msgid "Next Keyframe"
+msgstr "Další klíč"
+
+
 msgid "Flip values of selected keyframes using the cursor value (Y/Horizontal component) as the mirror line"
 msgstr "Převede označené hrany na plošky a označí nové vertexy"
 
@@ -23250,10 +22962,6 @@ msgstr "Převede označené hrany na plošky a označí nové vertexy"
 msgctxt "Operator"
 msgid "Reveal Curves"
 msgstr "Odhalit Křivky"
-
-
-msgid "Include Handles"
-msgstr "Auto Úchop"
 
 
 msgctxt "Operator"
@@ -23289,6 +22997,15 @@ msgstr "Un-Bake Křivku"
 
 msgid "Un-Bake selected F-Points to F-Curves"
 msgstr "Un-Bake označené F-Body do F-Křivek"
+
+
+msgid "Stroke Mode"
+msgstr "Režim tahu"
+
+
+msgctxt "Operator"
+msgid "Select Mode"
+msgstr "Seskupený objekt"
 
 
 msgctxt "Operator"
@@ -23559,19 +23276,6 @@ msgstr "Shader záření"
 
 
 msgctxt "Operator"
-msgid "Import PLY"
-msgstr "Importovat"
-
-
-msgid "Load a PLY geometry file"
-msgstr "Skrýt skryté soubory"
-
-
-msgid "File path used for importing the PLY file"
-msgstr "Typ filtru"
-
-
-msgctxt "Operator"
 msgid "Import STL"
 msgstr "Importovat"
 
@@ -23612,31 +23316,6 @@ msgstr "Data Dělení"
 msgctxt "Operator"
 msgid "Import glTF 2.0"
 msgstr "Importovat glTF 2.0"
-
-
-msgctxt "Operator"
-msgid "Import OBJ"
-msgstr "Importovat"
-
-
-msgid "Load a Wavefront OBJ File"
-msgstr "Skrýt skryté soubory"
-
-
-msgid "Clamp Size"
-msgstr "Vyčistit změnu měřítka"
-
-
-msgid "Poly Groups"
-msgstr "Žádné skupiny"
-
-
-msgid "Import OBJ groups as vertex groups"
-msgstr "Odstranit ze skupiny vertexů"
-
-
-msgid "Import OBJ Groups into Blender Objects"
-msgstr "Importuje OBJ skupiny do objektů Blenderu"
 
 
 msgctxt "Operator"
@@ -23759,11 +23438,6 @@ msgstr "Duplikovat značku"
 
 msgid "Duplicate selected time marker(s)"
 msgstr "Odstranit označené Objekt(y)"
-
-
-msgctxt "Operator"
-msgid "Make Links to Scene"
-msgstr "Vytvořit propojení ke scéně"
 
 
 msgid "Copy selected markers to another scene"
@@ -23901,17 +23575,9 @@ msgid "Clear Restrict View"
 msgstr "Obnovit pohled"
 
 
-msgid "Reveal the layer by setting the hide flag"
-msgstr "Ukáže objekt dle nastavení skrývající vazby"
-
-
 msgctxt "Operator"
 msgid "Set Restrict View"
 msgstr "Obnovit pohled"
-
-
-msgid "Hide the layer by setting the hide flag"
-msgstr "Skryje objekt dle nastavení skrývající vazby"
 
 
 msgctxt "Operator"
@@ -25109,10 +24775,6 @@ msgid "Select Faces by Sides"
 msgstr "Vyberte typ textury"
 
 
-msgid "Select vertices or faces by the number of polygon sides"
-msgstr "Odznačit vertexy patřící do aktuální skupiny vertexů"
-
-
 msgid "Equal To"
 msgstr "Rovná se"
 
@@ -25145,11 +24807,6 @@ msgstr "Odstranit aktuální skript link"
 
 msgid "Extend the existing selection"
 msgstr "Přidá existující výběr"
-
-
-msgctxt "Operator"
-msgid "Select Mode"
-msgstr "Seskupený objekt"
 
 
 msgid "Change selection mode"
@@ -25559,10 +25216,6 @@ msgid "Duplicate Linked"
 msgstr "Zdvojit připojené"
 
 
-msgid "Duplicate selected strips and move them"
-msgstr "Zdvojí vybrané objekty"
-
-
 msgid "Duplicate Strips"
 msgstr "Duplikovat značku"
 
@@ -25776,10 +25429,6 @@ msgstr "Obrázek na pozadí"
 
 msgid "Zoom in/out the background image"
 msgstr "Seznam obrázků na pozadí"
-
-
-msgid "Copies selected nodes to the clipboard"
-msgstr "Odstranit označené značky"
 
 
 msgctxt "Operator"
@@ -26110,10 +25759,6 @@ msgid "Move and Attach"
 msgstr "Přemístit a Připojit"
 
 
-msgid "Socket Type"
-msgstr "Stejné typy"
-
-
 msgid "Resize view so you can see all nodes"
 msgstr "Změnit velikost zobrazení, abyste viděli všechny uzly"
 
@@ -26345,21 +25990,6 @@ msgstr "Obnovit"
 
 
 msgctxt "Operator"
-msgid "Add Face Map"
-msgstr "Přidat Mapu Ploch"
-
-
-msgctxt "Operator"
-msgid "Assign Face Map"
-msgstr "Přiřadit Mapu Ploch"
-
-
-msgctxt "Operator"
-msgid "Move Face Map"
-msgstr "Přemístit Mapu Ploch"
-
-
-msgctxt "Operator"
 msgid "Toggle Force Field"
 msgstr "Přepíná silové pole"
 
@@ -26371,11 +26001,6 @@ msgstr "Přepíní objekty silového pole"
 msgctxt "Operator"
 msgid "Copy Geometry Node Group"
 msgstr "Kopírovat Skupinu s Geometrickými Uzly"
-
-
-msgctxt "Operator"
-msgid "Add Grease Pencil"
-msgstr "Přidat Skicovací Tužku"
 
 
 msgid "Monkey"
@@ -26438,6 +26063,11 @@ msgstr "Přesunout modifikátor"
 
 msgid "Move modifier up in the stack"
 msgstr "Přesunout modifikátor výše v zásobníku modifikátorů"
+
+
+msgctxt "Operator"
+msgid "Add Grease Pencil"
+msgstr "Přidat Skicovací Tužku"
 
 
 msgctxt "Operator"
@@ -26557,6 +26187,20 @@ msgstr "Přidat Osvětlení"
 msgctxt "Operator"
 msgid "Add Light Probe"
 msgstr "Přidat Světelnou Sondu"
+
+
+msgctxt "Operator"
+msgid "Bake Light Cache"
+msgstr "Bake Mezipaměť Osvětlení"
+
+
+msgid "Selected Only"
+msgstr "Pouze Vybrané"
+
+
+msgctxt "Operator"
+msgid "Delete Light Cache"
+msgstr "Odstranit Světlo v Mezipaměti"
 
 
 msgctxt "Operator"
@@ -26713,11 +26357,6 @@ msgstr "Odstranit Modifikátor"
 
 msgid "Remove a modifier from the active object"
 msgstr "Odstranit modifikátor z aktivního objektu"
-
-
-msgctxt "Operator"
-msgid "Move to Collection"
-msgstr "Přemístit do Kolekce"
 
 
 msgctxt "Operator"
@@ -27130,10 +26769,6 @@ msgid "Do a case sensitive compare"
 msgstr "Bude rozlišovat velká a malá písmena"
 
 
-msgid "Set select on random visible objects"
-msgstr "Nastaví výběr na náhodné viditelné objekty"
-
-
 msgctxt "Operator"
 msgid "Select Same Collection"
 msgstr "Vybrat Stejnou Kolekci"
@@ -27354,11 +26989,6 @@ msgid "Keep Single"
 msgstr "Uchovat originál"
 
 
-msgctxt "Operator"
-msgid "Copy Vertex Group"
-msgstr "Skupina vertexů"
-
-
 msgid "Make a copy of the active vertex group"
 msgstr "Odstranit skupinu vertexů"
 
@@ -27366,19 +26996,6 @@ msgstr "Odstranit skupinu vertexů"
 msgctxt "Operator"
 msgid "Copy Vertex Group to Selected"
 msgstr "Není vybrána žádní skupina vertexů"
-
-
-msgctxt "Operator"
-msgid "Fix Vertex Group Deform"
-msgstr "Skupiny vertexů"
-
-
-msgid "Change Sensitivity"
-msgstr "Citlivost"
-
-
-msgid "The distance to move to"
-msgstr "Opustit Editační mód"
 
 
 msgid "Invert active vertex group's weights"
@@ -27909,6 +27526,18 @@ msgid "Create Missing"
 msgstr "Vytvořit chybějící"
 
 
+msgid "Comb"
+msgstr "Hřeben"
+
+
+msgid "Puff"
+msgstr "Nafouknout"
+
+
+msgid "Clone"
+msgstr "Klonovat"
+
+
 msgid "Hide selected faces"
 msgstr "Skrýt Vybrané Plochy"
 
@@ -27937,10 +27566,6 @@ msgstr "Skrýt/zobrazit některé vrcholy"
 
 msgid "Hide vertices"
 msgstr "Skrýt vrcholy"
-
-
-msgid "Show"
-msgstr "Zobrazit"
 
 
 msgid "Show vertices"
@@ -27991,10 +27616,6 @@ msgstr "Malovat Obrázek"
 
 msgid "Paint a stroke into the image"
 msgstr "Malování tahu do obrázku"
-
-
-msgid "Stroke Mode"
-msgstr "Režim tahu"
 
 
 msgid "Add mask within the box as you move the brush"
@@ -28134,15 +27755,6 @@ msgstr "Kreslit v aktuální vrstvě skupině vertexů"
 msgctxt "Operator"
 msgid "Weight Paint Mode"
 msgstr "Váha vertexů"
-
-
-msgctxt "Operator"
-msgid "Weight Paint Sample Weight"
-msgstr "Váha vertexů"
-
-
-msgid "Use the mouse to sample a weight in the 3D view"
-msgstr "Zobrazit obrázek na pozadí pohledu do 3D"
 
 
 msgctxt "Operator"
@@ -28434,10 +28046,6 @@ msgid "Apply the current pose as the new rest pose"
 msgstr "Kopírovat aktuální pózu do bufferu"
 
 
-msgid "Selected Only"
-msgstr "Pouze Vybrané"
-
-
 msgid "All Properties"
 msgstr "Všechny Vlastnosti"
 
@@ -28452,10 +28060,6 @@ msgstr "Pouze rotace"
 
 msgid "Custom properties"
 msgstr "Uživatelské vlastnosti"
-
-
-msgid "Next Keyframe"
-msgstr "Další klíč"
 
 
 msgid "Frame number of keyframe immediately after the current frame"
@@ -28488,10 +28092,6 @@ msgid "Clear Pose Constraints"
 msgstr "Zrušit vazbu"
 
 
-msgid "Clear all the constraints for the selected bones"
-msgstr "Vyčistit všechny vazby pro vybrané kosti"
-
-
 msgctxt "Operator"
 msgid "Copy Constraints to Selected Bones"
 msgstr "Kopírovat vazby pro vybrané"
@@ -28504,10 +28104,6 @@ msgstr "Zkopíruje vazby pro ostatní vybrané kosti"
 msgctxt "Operator"
 msgid "Copy Pose"
 msgstr "Kopírovat pózu"
-
-
-msgid "Copies the current pose of the selected bones to copy/paste buffer"
-msgstr "Kopírovat aktuální pózu do bufferu"
 
 
 msgctxt "Operator"
@@ -29148,18 +28744,8 @@ msgid "Add Line Thickness Modifier"
 msgstr "Přidat Modifikátor Tloušťka Čáry"
 
 
-msgctxt "Operator"
-msgid "Bake Light Cache"
-msgstr "Bake Mezipaměť Osvětlení"
-
-
 msgid "Bake the active view layer lighting"
 msgstr "Bake aktivní zobrazovací vrstvu osvětlení"
-
-
-msgctxt "Operator"
-msgid "Delete Light Cache"
-msgstr "Odstranit Světlo v Mezipaměti"
 
 
 msgctxt "Operator"
@@ -29353,15 +28939,6 @@ msgstr "Zobrazit Informační Protokol"
 
 
 msgctxt "Operator"
-msgid "Jump to Keyframe"
-msgstr "Skočit na Klíčový snímek"
-
-
-msgid "Jump to previous/next keyframe"
-msgstr "Předchozí klíč"
-
-
-msgctxt "Operator"
 msgid "Jump to Marker"
 msgstr "Skočit na Značku"
 
@@ -29448,10 +29025,6 @@ msgstr "Uložit snímek obrazovky"
 
 msgid "Edit user preferences and system settings"
 msgstr "Upravit uživatelské předvolby a systémové nastavení"
-
-
-msgid "Interface"
-msgstr "Rozhraní"
 
 
 msgid "Themes"
@@ -29572,6 +29145,10 @@ msgid "Expand"
 msgstr "Rozšířit"
 
 
+msgid "Falloff Type"
+msgstr "Typ poklesu"
+
+
 msgctxt "Operator"
 msgid "Face Sets Visibility"
 msgstr "Viditelnost Sady Ploch"
@@ -29675,45 +29252,90 @@ msgid "The effect inputs to swap"
 msgstr "Jméno skriptu"
 
 
-msgid "A -> B"
-msgstr "A -> B"
-
-
-msgid "B -> C"
-msgstr "B -> C"
-
-
-msgid "A -> C"
-msgstr "A -> C"
-
-
 msgctxt "Operator"
 msgid "Change Effect Type"
 msgstr "Změnit Typ Efektu"
+
+
+msgctxt "Sequence"
+msgid "Type"
+msgstr "Typ"
+
+
+msgctxt "Sequence"
+msgid "Add"
+msgstr "Přidat"
 
 
 msgid "Add effect strip type"
 msgstr "Efekt"
 
 
+msgctxt "Sequence"
+msgid "Subtract"
+msgstr "Odečíst"
+
+
+msgctxt "Sequence"
+msgid "Alpha Over"
+msgstr "Alfa Nad"
+
+
+msgctxt "Sequence"
+msgid "Alpha Under"
+msgstr "Alfa Pod"
+
+
+msgctxt "Sequence"
+msgid "Multiply"
+msgstr "Násobyt"
+
+
 msgid "Multiply effect strip type"
 msgstr "Odstranit označené značky"
+
+
+msgctxt "Sequence"
+msgid "Wipe"
+msgstr "Otřít"
+
+
+msgctxt "Sequence"
+msgid "Transform"
+msgstr "Transformovat"
 
 
 msgid "Transform effect strip type"
 msgstr "Odstranit označené"
 
 
+msgctxt "Sequence"
+msgid "Color"
+msgstr "Barva"
+
+
 msgid "Color effect strip type"
 msgstr "Přidat vazbu aktivní kosti"
 
 
-msgid "Multicam Selector"
-msgstr "Vybrat řádek"
+msgctxt "Sequence"
+msgid "Speed"
+msgstr "Rychlost"
 
 
-msgid "Adjustment Layer"
-msgstr "Aktivní vrstva"
+msgctxt "Sequence"
+msgid "Gaussian Blur"
+msgstr "Gaussovské Rozostření"
+
+
+msgctxt "Sequence"
+msgid "Text"
+msgstr "Text"
+
+
+msgctxt "Sequence"
+msgid "Color Mix"
+msgstr "Mix Barev"
 
 
 msgctxt "Operator"
@@ -29735,17 +29357,12 @@ msgid "Deinterlace all selected movie sources"
 msgstr "Odstranit označené Objekt(y)"
 
 
-msgctxt "Operator"
-msgid "Erase Strips"
-msgstr "NLA Proužky"
-
-
-msgid "Erase selected strips from the sequencer"
-msgstr "Přidat vazbu aktivní kosti"
-
-
 msgid "Duplicate the selected strips"
 msgstr "Odstranit označené značky"
+
+
+msgid "Duplicate selected strips and move them"
+msgstr "Zdvojí vybrané objekty"
 
 
 msgctxt "Operator"
@@ -30536,14 +30153,6 @@ msgid "Select text by line"
 msgstr "Vyberte typ textury"
 
 
-msgid "Select word under cursor"
-msgstr "Vytvořit nový soubor"
-
-
-msgid "Set cursor selection"
-msgstr "Kurzor -> výběr"
-
-
 msgctxt "Operator"
 msgid "Find"
 msgstr "Nalézt"
@@ -30577,11 +30186,6 @@ msgstr "Vazba os"
 
 msgid "Transformation orientation"
 msgstr "Orientace transformací"
-
-
-msgctxt "Operator"
-msgid "Bend"
-msgstr "Ohyb"
 
 
 msgid "Center Override"
@@ -30647,10 +30251,6 @@ msgstr "Opravit UV"
 
 msgid "Correct UV coordinates when transforming"
 msgstr "Použít souřadnice označených vertexů i pro souřadnice uv mapování"
-
-
-msgid "Snap to increments of grid"
-msgstr "Přichytává k mřížce"
 
 
 msgid "Snap to vertices"
@@ -30733,10 +30333,6 @@ msgstr "Vybrat orientaci transformací"
 msgctxt "Operator"
 msgid "Shear"
 msgstr "Zkosit"
-
-
-msgid "Shear selected items along the horizontal screen axis"
-msgstr "Zkosí vybrané předměty podél vodorovné osy obrazovky"
 
 
 msgctxt "Operator"
@@ -31076,6 +30672,10 @@ msgid "Export the UV layout to a bitmap image"
 msgstr "Vybrat"
 
 
+msgid "Modified"
+msgstr "Modifikátory"
+
+
 msgid "Fill Opacity"
 msgstr "Neprůsvitnost výplně"
 
@@ -31108,10 +30708,6 @@ msgstr "Skrýt označené plošky"
 msgctxt "Operator"
 msgid "Lightmap Pack"
 msgstr "Přidat primitivum"
-
-
-msgid "New Image"
-msgstr "Nový obrázek"
 
 
 msgid "Pack Quality"
@@ -31150,6 +30746,10 @@ msgstr "Minimalizovat roztažení"
 msgctxt "Operator"
 msgid "Pack Islands"
 msgstr "Přibalit obrázek"
+
+
+msgid "Fraction"
+msgstr "Zlomek"
 
 
 msgctxt "Operator"
@@ -31490,10 +31090,6 @@ msgid "Copy Objects"
 msgstr "Kopírovat Objekty"
 
 
-msgid "Selected objects are copied to the clipboard"
-msgstr "Vybrané objekty jsou zkopírovány"
-
-
 msgctxt "Operator"
 msgid "Set 3D Cursor"
 msgstr "Nastavit 3D kurzor"
@@ -31533,22 +31129,6 @@ msgstr "Navigace letem"
 
 msgid "Interactively fly around the scene"
 msgstr "Insteraktivní přelet nad scénou"
-
-
-msgid "Plane Axis"
-msgstr "Osa Plochy"
-
-
-msgid "Auto Axis"
-msgstr "Automatická Osa"
-
-
-msgid "Snap to"
-msgstr "Přichytit k"
-
-
-msgid "Snap to all geometry"
-msgstr "Přichytit ke každé geometrii"
 
 
 msgctxt "Operator"
@@ -31599,10 +31179,6 @@ msgstr "Nastaví aktivní objekt jako aktivní kameru pro tento pohled nebo scé
 msgctxt "Operator"
 msgid "Paste Objects"
 msgstr "Vložit Objekty"
-
-
-msgid "Objects from the clipboard are pasted"
-msgstr "Zkopírované objekty jsou vloženy"
 
 
 msgctxt "Operator"
@@ -31998,10 +31574,6 @@ msgid "Apply Global Orientation"
 msgstr "Použít Globální Orientaci"
 
 
-msgid "Apply modifiers to exported mesh (non destructive))"
-msgstr "Použít modifikátory na exportovanou síť (nedestruktivní)"
-
-
 msgid "Key Type"
 msgstr "Typ Klíče"
 
@@ -32073,6 +31645,10 @@ msgstr "Auto Připojení"
 
 msgid "Import Units"
 msgstr "Importovat Jednotky"
+
+
+msgid "Wrap"
+msgstr "Zbalit"
 
 
 msgid "Header Text"
@@ -32156,10 +31732,6 @@ msgid "Run once and exit"
 msgstr "Spustit jednou a ukončit"
 
 
-msgid "Play"
-msgstr "Přehrát"
-
-
 msgid "Random Order"
 msgstr "Náhodné Pořadí"
 
@@ -32227,6 +31799,10 @@ msgid "Object Properties"
 msgstr "Vlastnosti objektu"
 
 
+msgid "Import OBJ groups as vertex groups"
+msgstr "Odstranit ze skupiny vertexů"
+
+
 msgctxt "Operator"
 msgid "Open"
 msgstr "Otevřít"
@@ -32264,6 +31840,16 @@ msgstr "Přidat, nebo odstranit přednastavení operátoru"
 
 msgid "Open a path in a file browser"
 msgstr "Skrýt skryté soubory"
+
+
+msgctxt "Operator"
+msgid "Export PLY"
+msgstr "Exportovat"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "Importovat"
 
 
 msgid "Save Backups"
@@ -32306,6 +31892,10 @@ msgstr "Kontex"
 msgctxt "Operator"
 msgid "Edit Property"
 msgstr "Upravit Vlastnost"
+
+
+msgid "Speaker"
+msgstr "Reproduktor"
 
 
 msgid "Property Name"
@@ -32359,10 +31949,6 @@ msgstr "Načíst Tovární Předvolby"
 msgctxt "Operator"
 msgid "Reload Start-Up File"
 msgstr "Znovu načíst Spouštěcí Soubor"
-
-
-msgid "Open the default file (doesn't save the current file)"
-msgstr "Otevře výchozí soubor (neuloží současný soubor)"
 
 
 msgctxt "Operator"
@@ -32771,6 +32357,10 @@ msgid "Properties of image and texture painting mode"
 msgstr "Textový editor"
 
 
+msgid "Canvas"
+msgstr "Plátno"
+
+
 msgid "Invert the stencil layer"
 msgstr "Pouze render aktivní vrstvy"
 
@@ -32875,6 +32465,14 @@ msgid "Restrict"
 msgstr "Omezit"
 
 
+msgid "Refraction"
+msgstr "Lom"
+
+
+msgid "Denoising"
+msgstr "Odstranění šumu"
+
+
 msgid "Integrator Presets"
 msgstr "Generátory"
 
@@ -32883,8 +32481,12 @@ msgid "Sampling Presets"
 msgstr "Přednastavení vzorkování"
 
 
-msgid "View Object Types"
-msgstr "Zobrazit Typy Objektů"
+msgid "Film"
+msgstr "Film"
+
+
+msgid "Passes"
+msgstr "Průchody"
 
 
 msgid "Asset Metadata"
@@ -32913,10 +32515,6 @@ msgstr "Přednastavení kamery"
 
 msgid "2D Cursor"
 msgstr "2D Kursor"
-
-
-msgid "Active Point"
-msgstr "Aktivní bod"
 
 
 msgid "Predefined tracking camera intrinsics"
@@ -32980,10 +32578,6 @@ msgid "Tracking Settings Extras"
 msgstr "Doplňky nastavení sledování"
 
 
-msgid "Lens"
-msgstr "Čočka"
-
-
 msgid "Tracking Settings Extra"
 msgstr "Doplňky nastavení sledování"
 
@@ -33016,10 +32610,6 @@ msgid "Ray Visibility"
 msgstr "Viditelnost Ray paprsku"
 
 
-msgid "Film"
-msgstr "Film"
-
-
 msgid "Pixel Filter"
 msgstr "Filter Pixelů"
 
@@ -33042,10 +32632,6 @@ msgstr "Maximální Počet Odrazů"
 
 msgid "Shutter Curve"
 msgstr "Křivka Závěrky"
-
-
-msgid "Passes"
-msgstr "Průchody"
 
 
 msgid "Performance"
@@ -33295,10 +32881,6 @@ msgid "Mask"
 msgstr "Maska"
 
 
-msgid "Brush Tip"
-msgstr "Špička štětce"
-
-
 msgid "Tiling"
 msgstr "Dlaždicování"
 
@@ -33509,10 +33091,6 @@ msgstr "Kódování"
 
 msgid "Audio"
 msgstr "Audio"
-
-
-msgid "FFMPEG Presets"
-msgstr "Přednastavení FFMPEG"
 
 
 msgid "Views"
@@ -33860,9 +33438,25 @@ msgid "Comb"
 msgstr "Hřeben"
 
 
+msgid "Comb hairs"
+msgstr "Učesat vlasy"
+
+
+msgid "Smooth hairs"
+msgstr "Vyhladit"
+
+
+msgid "Add hairs"
+msgstr "Přidat vlasy"
+
+
 msgctxt "Operator"
 msgid "Length"
 msgstr "Délka"
+
+
+msgid "Make hairs longer or shorter"
+msgstr "Zdelšit nebo zkrátit vlasy"
 
 
 msgctxt "Operator"
@@ -33870,9 +33464,21 @@ msgid "Puff"
 msgstr "Nafouknout"
 
 
+msgid "Make hairs stand up"
+msgstr "Postaví vlasy"
+
+
+msgid "Cut hairs"
+msgstr "Ostříhat vlasy"
+
+
 msgctxt "Operator"
 msgid "Weight"
 msgstr "Hmotnost"
+
+
+msgid "Weight hair particles"
+msgstr "Vzbrat vše podle typu"
 
 
 msgctxt "Operator"
@@ -34048,11 +33654,6 @@ msgstr "Tloušťka"
 msgctxt "Operator"
 msgid "Strength"
 msgstr "Síla"
-
-
-msgctxt "Operator"
-msgid "Twist"
-msgstr "Zakroutit"
 
 
 msgctxt "Operator"
@@ -34238,42 +33839,6 @@ msgstr "Zobrazit částice"
 
 msgid "Display actual particles"
 msgstr "Zobrazit skutečné částice"
-
-
-msgid "Comb"
-msgstr "Hřeben"
-
-
-msgid "Comb hairs"
-msgstr "Učesat vlasy"
-
-
-msgid "Smooth hairs"
-msgstr "Vyhladit"
-
-
-msgid "Add hairs"
-msgstr "Přidat vlasy"
-
-
-msgid "Make hairs longer or shorter"
-msgstr "Zdelšit nebo zkrátit vlasy"
-
-
-msgid "Puff"
-msgstr "Nafouknout"
-
-
-msgid "Make hairs stand up"
-msgstr "Postaví vlasy"
-
-
-msgid "Cut hairs"
-msgstr "Ostříhat vlasy"
-
-
-msgid "Weight hair particles"
-msgstr "Vzbrat vše podle typu"
 
 
 msgid "Auto Velocity"
@@ -34796,10 +34361,6 @@ msgid "Disallow movement around the Z axis"
 msgstr "Limituje rotaci po Z ose"
 
 
-msgid "4x4 matrix, before constraints"
-msgstr "Zrušit vazbu"
-
-
 msgid "Parent of this pose bone"
 msgstr "Krok Snímku"
 
@@ -34886,6 +34447,10 @@ msgstr "Vyrovná úhly označených plošek"
 
 msgid "Material Link To"
 msgstr "Materiál"
+
+
+msgid "Auto-offset"
+msgstr "Automatické odsazení"
 
 
 msgid "Align Object To"
@@ -35384,6 +34949,10 @@ msgid "Header Position"
 msgstr "Pozice záhlaví"
 
 
+msgid "Language"
+msgstr "Jazyk"
+
+
 msgid "Language used for translation"
 msgstr "Jazyk použitý pro překlad"
 
@@ -35406,10 +34975,6 @@ msgstr "Velikost štětce"
 
 msgid "Mini Axes Size"
 msgstr "Osa Zrcadlení"
-
-
-msgid "Simple Axis"
-msgstr "Jednoduchá Osa"
 
 
 msgid "Interactive Navigation"
@@ -35620,6 +35185,14 @@ msgid "Weight Color Range"
 msgstr "Použít světlo pro plošky"
 
 
+msgid "Base"
+msgstr "Zákaldna"
+
+
+msgid "Temperature"
+msgstr "Teplota"
+
+
 msgid "ID Property Group"
 msgstr "Žádné skupiny"
 
@@ -35630,30 +35203,6 @@ msgstr "Transformační vlastnosti"
 
 msgid "Find"
 msgstr "Hledat"
-
-
-msgid "Field of view for the fisheye lens"
-msgstr "Zobrazí mód ze seznamu souborů"
-
-
-msgid "Fisheye Lens"
-msgstr "Objektiv fisheye"
-
-
-msgid "Lens focal length (mm)"
-msgstr "Původní velikost"
-
-
-msgid "Panorama Type"
-msgstr "Rodič"
-
-
-msgid "Distortion to use for the calculation"
-msgstr "Počáteční snímek animace"
-
-
-msgid "Ideal for fulldomes, ignore the sensor dimensions"
-msgstr "Vybrat cestu"
 
 
 msgid "Rounded Ribbons"
@@ -35770,10 +35319,6 @@ msgstr "Průhledné Skla"
 
 msgid "Transparent Roughness Threshold"
 msgstr "Práh Hrubosti Průhlednosti"
-
-
-msgid "Filter Width"
-msgstr "Filtr skriptů"
 
 
 msgid "Pixel filter width"
@@ -36308,8 +35853,12 @@ msgid "Vertical aspect ratio - for anamorphic or non-square pixel output"
 msgstr "Svislý poměr stran - pro anamorfní a nečtvercové pixelové výstupy"
 
 
-msgid "Resolution %"
-msgstr "Rozlišení %"
+msgid "Pixel Size"
+msgstr "Velikost Pixelu"
+
+
+msgid "Resolution Scale"
+msgstr "Měřítko rozlišení"
 
 
 msgid "Percentage scale for render resolution"
@@ -36672,10 +36221,6 @@ msgid "Linear Damping"
 msgstr "Lineární"
 
 
-msgid "Base"
-msgstr "Zákaldna"
-
-
 msgid "Base mesh"
 msgstr "Základní síť"
 
@@ -36812,10 +36357,6 @@ msgid "Size of every cubemaps"
 msgstr "Velikost všech cubemap"
 
 
-msgid "Number of time the light is reinjected inside light grids, 0 disable indirect diffuse light"
-msgstr "Počet opětovného vstříknutého světla do světelných mřížek, 0 vypne nepřímé difuzní světlo"
-
-
 msgid "Filter Quality"
 msgstr "Kvalita filtru"
 
@@ -36830,10 +36371,6 @@ msgstr "Velikost sfér vzorku ozáření pro ladění zachyceného světla"
 
 msgid "Irradiance Smoothing"
 msgstr "Vyhlazení ozáření"
-
-
-msgid "Smoother irradiance interpolation but introduce light bleeding"
-msgstr "Hladší interpolace ozáření, ale zavede lehké krvácení"
 
 
 msgid "Size of the shadow map applied to each irradiance sample"
@@ -37073,11 +36610,6 @@ msgstr "Mód Úchopu"
 
 
 msgctxt "Sequence"
-msgid "Type"
-msgstr "Typ"
-
-
-msgctxt "Sequence"
 msgid "Image"
 msgstr "Obrázek"
 
@@ -37105,66 +36637,6 @@ msgstr "Maska"
 msgctxt "Sequence"
 msgid "Sound"
 msgstr "Zvuk"
-
-
-msgctxt "Sequence"
-msgid "Add"
-msgstr "Přidat"
-
-
-msgctxt "Sequence"
-msgid "Subtract"
-msgstr "Odečíst"
-
-
-msgctxt "Sequence"
-msgid "Alpha Over"
-msgstr "Alfa Nad"
-
-
-msgctxt "Sequence"
-msgid "Alpha Under"
-msgstr "Alfa Pod"
-
-
-msgctxt "Sequence"
-msgid "Multiply"
-msgstr "Násobyt"
-
-
-msgctxt "Sequence"
-msgid "Wipe"
-msgstr "Otřít"
-
-
-msgctxt "Sequence"
-msgid "Transform"
-msgstr "Transformovat"
-
-
-msgctxt "Sequence"
-msgid "Color"
-msgstr "Barva"
-
-
-msgctxt "Sequence"
-msgid "Speed"
-msgstr "Rychlost"
-
-
-msgctxt "Sequence"
-msgid "Gaussian Blur"
-msgstr "Gaussovské Rozostření"
-
-
-msgctxt "Sequence"
-msgid "Text"
-msgstr "Text"
-
-
-msgctxt "Sequence"
-msgid "Color Mix"
-msgstr "Mix Barev"
 
 
 msgid "Use Default Fade"
@@ -37363,16 +36835,8 @@ msgid "Sequence strip creating a wipe transition"
 msgstr "Přidat vazbu aktivní kosti"
 
 
-msgid "Edge angle"
-msgstr "Zobrazit nastaveni hran"
-
-
 msgid "Blur Width"
 msgstr "Filtr skriptů"
-
-
-msgid "Wipe direction"
-msgstr "Překlopit směr"
 
 
 msgid "Mask Sequence"
@@ -37435,16 +36899,8 @@ msgid "Scene Sequence"
 msgstr "Sekvence "
 
 
-msgid "Sequence strip to used the rendered image of a scene"
-msgstr "Přidat vazbu aktivní kosti"
-
-
 msgid "Scene that this sequence uses"
 msgstr "Přidat vazbu aktivní kosti"
-
-
-msgid "Override the scenes active camera"
-msgstr "Pohled aktivní kamery"
 
 
 msgid "Sound Sequence"
@@ -37573,10 +37029,6 @@ msgstr "První frame animace"
 
 msgid "RGB curves modifier for sequence strip"
 msgstr "První frame animace"
-
-
-msgid "Curve Mapping"
-msgstr "Kresba na texturu"
 
 
 msgid "Hue correction modifier for sequence strip"
@@ -37977,10 +37429,6 @@ msgid "Show Marker Search"
 msgstr "Vybrat klíče"
 
 
-msgid "Show Names"
-msgstr "Zobrazit tvar"
-
-
 msgid "Show track names and status"
 msgstr "Ukáže čísla snímků na cestě pohybu"
 
@@ -37999,10 +37447,6 @@ msgstr "Upravit poslední operaci"
 
 msgid "Toolbar"
 msgstr "Panelu nástrojů"
-
-
-msgid "Sidebar"
-msgstr "Postranní panel"
 
 
 msgid "Show Seconds"
@@ -38062,10 +37506,6 @@ msgstr "Přidat action strip"
 
 msgid "Space Console"
 msgstr "Zobrazit kontrolery"
-
-
-msgid "Interactive python console"
-msgstr "Interaktivně stahuje vertexy k sobě v dané oblasti"
 
 
 msgid "Font size to use for displaying the text"
@@ -38230,10 +37670,6 @@ msgstr "Mód Úchopu"
 
 msgid "Show handles of Bezier control points"
 msgstr "Vyrovná úhly označených plošek"
-
-
-msgid "Only Selected Curve Keyframes"
-msgstr "Zobrazit a vybrat klíče"
 
 
 msgid "Only Selected Keyframes Handles"
@@ -38420,10 +37856,6 @@ msgid "Auto Render"
 msgstr "Automatické vykreslování"
 
 
-msgid "Auto-offset"
-msgstr "Automatické odsazení"
-
-
 msgid "Space Outliner"
 msgstr "Zobrazit Outliner"
 
@@ -38443,10 +37875,6 @@ msgstr "Otevřít Blender soubor"
 msgctxt "ID"
 msgid "Filter by Type"
 msgstr "Filtrovat podle Typu"
-
-
-msgid "Display Filter"
-msgstr "Filtr Zobrazení"
 
 
 msgid "Show Object Children"
@@ -38713,10 +38141,6 @@ msgid "Live Edit"
 msgstr "NLA editor"
 
 
-msgid "Run python while editing"
-msgstr "Typ filtru"
-
-
 msgid "3D View Space"
 msgstr "3D okno"
 
@@ -38731,6 +38155,10 @@ msgstr "Ořezová vzdálenost pro 3D pohled v popředí"
 
 msgid "Visibility Icon"
 msgstr "Ikona Viditelnosti"
+
+
+msgid "Lens"
+msgstr "Čočka"
 
 
 msgid "Lock to Bone"
@@ -38773,10 +38201,6 @@ msgid "Show reconstructed camera path"
 msgstr "Jemnost dělení"
 
 
-msgid "Speaker"
-msgstr "Reproduktor"
-
-
 msgid "Show Reconstruction"
 msgstr "Jemnost dělení"
 
@@ -38811,6 +38235,10 @@ msgstr "3D pohled:"
 
 msgid "Use Local Camera"
 msgstr "Použít Místní Kameru"
+
+
+msgid "Flat"
+msgstr "Ploché"
 
 
 msgid "Space UV Editor"
@@ -39905,10 +39333,6 @@ msgid "Shade Top"
 msgstr "Stínovat Hořejšek"
 
 
-msgid "Text Selected"
-msgstr "Vybraný Text"
-
-
 msgid "Animated"
 msgstr "Animovaný"
 
@@ -39969,6 +39393,14 @@ msgid "Mesh Selection Mode"
 msgstr "Seskupený objekt"
 
 
+msgid "Plane Axis"
+msgstr "Osa Plochy"
+
+
+msgid "Auto Axis"
+msgstr "Automatická Osa"
+
+
 msgid "UV Local View"
 msgstr "Lokální pohled"
 
@@ -39979,6 +39411,14 @@ msgstr "Prvek pro přichytávání"
 
 msgid "Type of element to snap to"
 msgstr "Typ prvku pro přichytávání"
+
+
+msgid "Snap to"
+msgstr "Přichytit k"
+
+
+msgid "Snap to all geometry"
+msgstr "Přichytit ke každé geometrii"
 
 
 msgid "Snap Node Element"
@@ -40007,6 +39447,10 @@ msgstr "Přichytit k cíli"
 
 msgid "Snap UV Element"
 msgstr "Prvek pro přichytávání"
+
+
+msgid "Snap to increments of grid"
+msgstr "Přichytává k mřížce"
 
 
 msgid "Unified Paint Settings"
@@ -40421,6 +39865,10 @@ msgid "Method to display/shade objects in the 3D View"
 msgstr "Metoda zobrazení/stínování objektů ve 3D zobrazení"
 
 
+msgid "Theme"
+msgstr "Motiv"
+
+
 msgid "View layer"
 msgstr "Zobrazit vrstvu"
 
@@ -40447,10 +39895,6 @@ msgstr "Zobrazit výšku"
 
 msgid "Walk Speed"
 msgstr "Rychlost chůze"
-
-
-msgid "Use Ambient Occlusion"
-msgstr "Použít Okolní Okluzi"
 
 
 msgid "World Mist"
@@ -40483,306 +39927,6 @@ msgstr "Velikost štětce"
 
 msgid "Use Mist"
 msgstr "Limity"
-
-
-msgctxt "Operator"
-msgid "Action:"
-msgstr "Akce:"
-
-
-msgctxt "Operator"
-msgid "Anim:"
-msgstr "Anim:"
-
-
-msgctxt "Operator"
-msgid "Armature:"
-msgstr "Kostra:"
-
-
-msgctxt "Operator"
-msgid "Blender_id:"
-msgstr "Blender_id:"
-
-
-msgctxt "Operator"
-msgid "Boid:"
-msgstr "Hejno:"
-
-
-msgctxt "Operator"
-msgid "Brush:"
-msgstr "Štětec:"
-
-
-msgctxt "Operator"
-msgid "Buttons:"
-msgstr "Tlačítka:"
-
-
-msgctxt "Operator"
-msgid "Cachefile:"
-msgstr "Soubor mezipaměti:"
-
-
-msgctxt "Operator"
-msgid "Camera:"
-msgstr "Kamera:"
-
-
-msgctxt "Operator"
-msgid "Clip:"
-msgstr "Klip:"
-
-
-msgctxt "Operator"
-msgid "Cloth:"
-msgstr "Tkanina:"
-
-
-msgctxt "Operator"
-msgid "Collection:"
-msgstr "Kolekce:"
-
-
-msgctxt "Operator"
-msgid "Console:"
-msgstr "Konzola:"
-
-
-msgctxt "Operator"
-msgid "Constraint:"
-msgstr "Vazba:"
-
-
-msgctxt "Operator"
-msgid "Curve:"
-msgstr "Křivka:"
-
-
-msgctxt "Operator"
-msgid "Ed:"
-msgstr "Ed:"
-
-
-msgctxt "Operator"
-msgid "File:"
-msgstr "Soubor:"
-
-
-msgctxt "Operator"
-msgid "Fluid:"
-msgstr "Tekutina:"
-
-
-msgctxt "Operator"
-msgid "Font:"
-msgstr "Font:"
-
-
-msgctxt "Operator"
-msgid "Geometry:"
-msgstr "Geometrie:"
-
-
-msgctxt "Operator"
-msgid "Gpencil:"
-msgstr "Skicovací tužka:"
-
-
-msgctxt "Operator"
-msgid "Graph:"
-msgstr "Graf:"
-
-
-msgctxt "Operator"
-msgid "Image:"
-msgstr "Obrázek:"
-
-
-msgctxt "Operator"
-msgid "Import_image:"
-msgstr "Importovat_obrázek:"
-
-
-msgctxt "Operator"
-msgid "Info:"
-msgstr "Info:"
-
-
-msgctxt "Operator"
-msgid "Lattice:"
-msgstr "Mříže:"
-
-
-msgctxt "Operator"
-msgid "Marker:"
-msgstr "Značka:"
-
-
-msgctxt "Operator"
-msgid "Mask:"
-msgstr "Maska:"
-
-
-msgctxt "Operator"
-msgid "Material:"
-msgstr "Materiál:"
-
-
-msgctxt "Operator"
-msgid "Mball:"
-msgstr "Meta objekt:"
-
-
-msgctxt "Operator"
-msgid "Mesh:"
-msgstr "Síť:"
-
-
-msgctxt "Operator"
-msgid "Nla:"
-msgstr "Nla:"
-
-
-msgctxt "Operator"
-msgid "Node:"
-msgstr "Uzel:"
-
-
-msgctxt "Operator"
-msgid "Object:"
-msgstr "Objekt:"
-
-
-msgctxt "Operator"
-msgid "Outliner:"
-msgstr "Outliner:"
-
-
-msgctxt "Operator"
-msgid "Paintcurve:"
-msgstr "Malovat Křivku:"
-
-
-msgctxt "Operator"
-msgid "Paint:"
-msgstr "Malovat:"
-
-
-msgctxt "Operator"
-msgid "Palette:"
-msgstr "Paleta:"
-
-
-msgctxt "Operator"
-msgid "Particle:"
-msgstr "Částice:"
-
-
-msgctxt "Operator"
-msgid "Poselib:"
-msgstr "Poselib:"
-
-
-msgctxt "Operator"
-msgid "Pose:"
-msgstr "Póza:"
-
-
-msgctxt "Operator"
-msgid "Preferences:"
-msgstr "Předvolby:"
-
-
-msgctxt "Operator"
-msgid "Render:"
-msgstr "Render:"
-
-
-msgctxt "Operator"
-msgid "Scene:"
-msgstr "Scéna:"
-
-
-msgctxt "Operator"
-msgid "Screen:"
-msgstr "Obrazovka:"
-
-
-msgctxt "Operator"
-msgid "Script:"
-msgstr "Skript:"
-
-
-msgctxt "Operator"
-msgid "Sculpt:"
-msgstr "Vyřezávat:"
-
-
-msgctxt "Operator"
-msgid "Sequencer:"
-msgstr "Sekvencer:"
-
-
-msgctxt "Operator"
-msgid "Sound:"
-msgstr "Zvuk:"
-
-
-msgctxt "Operator"
-msgid "Spreadsheet:"
-msgstr "Tabulka:"
-
-
-msgctxt "Operator"
-msgid "Surface:"
-msgstr "Povrch:"
-
-
-msgctxt "Operator"
-msgid "Texture:"
-msgstr "Textura:"
-
-
-msgctxt "Operator"
-msgid "Text:"
-msgstr "Text:"
-
-
-msgctxt "Operator"
-msgid "Transform:"
-msgstr "Transformace:"
-
-
-msgctxt "Operator"
-msgid "Ui:"
-msgstr "Ui:"
-
-
-msgctxt "Operator"
-msgid "Uv:"
-msgstr "Uv:"
-
-
-msgctxt "Operator"
-msgid "View2d:"
-msgstr "View2d:"
-
-
-msgctxt "Operator"
-msgid "Wm:"
-msgstr "Wm:"
-
-
-msgctxt "Operator"
-msgid "Workspace:"
-msgstr "Pracovní prostor:"
-
-
-msgctxt "Operator"
-msgid "World:"
-msgstr "Svět:"
 
 
 msgid "Search"
@@ -41068,10 +40212,6 @@ msgid "Surfaces"
 msgstr "Povrchy"
 
 
-msgid "Denoising"
-msgstr "Odstranění šumu"
-
-
 msgid "Pipeline"
 msgstr "Pipeline"
 
@@ -41249,10 +40389,6 @@ msgid "Invert Selection"
 msgstr "Vybrat cestu"
 
 
-msgid "Tracking"
-msgstr "Sledování"
-
-
 msgid "Extensions"
 msgstr "Rozšíření"
 
@@ -41276,10 +40412,6 @@ msgstr "Nastavit aktivní objekt jako kameru"
 
 msgid "Shortcuts"
 msgstr "Zkratky"
-
-
-msgid "Theme"
-msgstr "Motiv"
 
 
 msgctxt "Operator"
@@ -41434,10 +40566,6 @@ msgid "Pivot Offset"
 msgstr "Odsazení Pivotu"
 
 
-msgid "Layers:"
-msgstr "Vrstvy:"
-
-
 msgid "Axes"
 msgstr "Osy"
 
@@ -41449,10 +40577,6 @@ msgstr "Odstranit"
 
 msgid "Display Size X"
 msgstr "Velikost Zobrazení X"
-
-
-msgid "Out"
-msgstr "Ven"
 
 
 msgid "Stiffness X"
@@ -41798,10 +40922,6 @@ msgid "All Edges"
 msgstr "Všechny Hrany"
 
 
-msgid "Old"
-msgstr "Starý"
-
-
 msgid "Date"
 msgstr "Datum"
 
@@ -41820,10 +40940,6 @@ msgstr "Ukládání"
 
 msgid "Buffer"
 msgstr "Z-Buffer"
-
-
-msgid "Sample Rate"
-msgstr "Vzorky"
 
 
 msgid "Custom (%.4g fps)"
@@ -42226,10 +41342,6 @@ msgid "Light Clamping"
 msgstr "Svorka Světla"
 
 
-msgid "Refraction"
-msgstr "Lom"
-
-
 msgid "Cascade Size"
 msgstr "Velikost kaskády"
 
@@ -42263,10 +41375,6 @@ msgstr "Render Engine"
 msgctxt "Operator"
 msgid "Bake Cubemap Only"
 msgstr "Bake Pouze Cubemapu"
-
-
-msgid "Temperature"
-msgstr "Teplota"
 
 
 msgid "General Override"
@@ -42328,10 +41436,6 @@ msgstr "Čtvrté"
 
 msgid "Multiply R"
 msgstr "Násobit R"
-
-
-msgid "Eccentricity"
-msgstr "Výstřednost"
 
 
 msgid "Odd"
@@ -42934,6 +42038,11 @@ msgid "Make and Replace Links"
 msgstr "Vytvořit a přemístit spojení"
 
 
+msgctxt "Operator"
+msgid "Online Manual"
+msgstr "Online Návod"
+
+
 msgid "Inputs:"
 msgstr "Vstupy:"
 
@@ -43141,31 +42250,6 @@ msgstr "Scéna..."
 
 
 msgctxt "Operator"
-msgid "Subtract"
-msgstr "Odečíst"
-
-
-msgctxt "Operator"
-msgid "Multiply"
-msgstr "Násobit"
-
-
-msgctxt "Operator"
-msgid "Alpha Over"
-msgstr "Alfa Nad"
-
-
-msgctxt "Operator"
-msgid "Alpha Under"
-msgstr "Alfa pod"
-
-
-msgctxt "Operator"
-msgid "Color Mix"
-msgstr "Mix Barev"
-
-
-msgctxt "Operator"
 msgid "Multicam Selector"
 msgstr "Volič více kamer"
 
@@ -43302,14 +42386,6 @@ msgid "One Object"
 msgstr "Jeden objekt"
 
 
-msgid "File: *%s (unsaved)"
-msgstr "Soubor: *%s (neuložený)"
-
-
-msgid "File: %s"
-msgstr "Soubor: %s"
-
-
 msgid "Text: External"
 msgstr "Text: Externí"
 
@@ -43318,9 +42394,12 @@ msgid "Text: Internal"
 msgstr "Text: Interní"
 
 
-msgctxt "Operator"
-msgid "Duplicate Marker"
-msgstr "Zdvojit značku"
+msgid "File: *%s (unsaved)"
+msgstr "Soubor: *%s (neuložený)"
+
+
+msgid "File: %s"
+msgstr "Soubor: %s"
 
 
 msgctxt "Operator"
@@ -43329,13 +42408,18 @@ msgstr "Posunout značku"
 
 
 msgctxt "Operator"
-msgid "Jump to Next Marker"
-msgstr "Skončit na Další Značku"
+msgid "Duplicate Marker"
+msgstr "Zdvojit značku"
 
 
 msgctxt "Operator"
 msgid "Jump to Previous Marker"
 msgstr "Skočit na Předchozí Značku"
+
+
+msgctxt "Operator"
+msgid "Jump to Next Marker"
+msgstr "Skončit na Další Značku"
 
 
 msgid "Active Editor"
@@ -43445,13 +42529,13 @@ msgstr "Zobrazit animaci"
 
 
 msgctxt "Operator"
-msgid "Repeat History..."
-msgstr "Opakovat historii..."
+msgid "Adjust Last Operation..."
+msgstr "Upravit poslední operaci..."
 
 
 msgctxt "Operator"
-msgid "Adjust Last Operation..."
-msgstr "Upravit poslední operaci..."
+msgid "Repeat History..."
+msgstr "Opakovat historii..."
 
 
 msgctxt "Operator"
@@ -43530,16 +42614,6 @@ msgstr "Uživatelská komunita"
 
 
 msgctxt "Operator"
-msgid "Developer Community"
-msgstr "Vývojářská komunita"
-
-
-msgctxt "Operator"
-msgid "Python API Reference"
-msgstr "Reference API pythonu"
-
-
-msgctxt "Operator"
 msgid "Report a Bug"
 msgstr "Nahlásit chybu"
 
@@ -43553,12 +42627,18 @@ msgid "Developer Documentation"
 msgstr "Vývojářská Dokumentace"
 
 
+msgctxt "Operator"
+msgid "Developer Community"
+msgstr "Vývojářská komunita"
+
+
+msgctxt "Operator"
+msgid "Python API Reference"
+msgstr "Reference API pythonu"
+
+
 msgid "Auto-Save Preferences"
 msgstr "Auto-Ukládat Předvolby"
-
-
-msgid "Resolution Scale"
-msgstr "Měřítko rozlišení"
 
 
 msgid "Splash Screen"
@@ -43645,10 +42725,6 @@ msgid "View Name"
 msgstr "Zobrazit Název"
 
 
-msgid "3D Viewport Axis"
-msgstr "Osy 3D Pohledu"
-
-
 msgid "Smooth Wires"
 msgstr "Hladké Dráty"
 
@@ -43672,10 +42748,6 @@ msgstr "Odsazení Stínu X"
 
 msgid "Panel Title"
 msgstr "Název Panelu"
-
-
-msgid "Scripts"
-msgstr "Skripty"
 
 
 msgid "Timer (Minutes)"
@@ -43881,11 +42953,6 @@ msgstr "Úrovně"
 
 
 msgctxt "Operator"
-msgid "Bright/Contrast"
-msgstr "Jas/Kontrast"
-
-
-msgctxt "Operator"
 msgid "Plane"
 msgstr "Plocha"
 
@@ -43963,11 +43030,6 @@ msgstr "Kamera"
 msgctxt "Operator"
 msgid "Import OpenVDB..."
 msgstr "Importovat OpenVDB..."
-
-
-msgctxt "Operator"
-msgid "Grease Pencil"
-msgstr "Skicovací tužka"
 
 
 msgctxt "Operator"
@@ -44135,11 +43197,6 @@ msgid "Limit Total"
 msgstr "Limity"
 
 
-msgctxt "Operator"
-msgid "Fix Deforms"
-msgstr "Deformace"
-
-
 msgid "Locks"
 msgstr "Zámky"
 
@@ -44304,16 +43361,6 @@ msgstr "Vymazat Ostré z Vrcholů"
 
 
 msgctxt "Operator"
-msgid "Extrude Faces"
-msgstr "Vysunout plochy"
-
-
-msgctxt "Operator"
-msgid "Extrude Faces Along Normals"
-msgstr "Vytáhnout Plochy Podél Normál"
-
-
-msgctxt "Operator"
 msgid "Solidify Faces"
 msgstr "Ztloustnou Plochy"
 
@@ -44427,10 +43474,6 @@ msgid "Local Camera"
 msgstr "Místní Kamera"
 
 
-msgid "Object Types Visibility"
-msgstr "Viditelnost Typů Objektů"
-
-
 msgid "Look At"
 msgstr "Dívat se na"
 
@@ -44517,6 +43560,11 @@ msgstr "Bodový Mrak"
 
 
 msgctxt "Operator"
+msgid "Grease Pencil"
+msgstr "Skicovací tužka"
+
+
+msgctxt "Operator"
 msgid "Armature"
 msgstr "Kostra"
 
@@ -44600,6 +43648,16 @@ msgstr "Vymazat ostré"
 
 
 msgctxt "Operator"
+msgid "Extrude Faces"
+msgstr "Vysunout plochy"
+
+
+msgctxt "Operator"
+msgid "Extrude Faces Along Normals"
+msgstr "Vytáhnout Plochy Podél Normál"
+
+
+msgctxt "Operator"
 msgid "Custom Normal"
 msgstr "Vlastní Normála"
 
@@ -44617,16 +43675,6 @@ msgstr "Přepočítat vnější"
 msgctxt "Operator"
 msgid "Recalculate Inside"
 msgstr "Přepočítat vnitřní"
-
-
-msgctxt "Operator"
-msgid "Copy Vectors"
-msgstr "Kopírovat vektory"
-
-
-msgctxt "Operator"
-msgid "Paste Vectors"
-msgstr "Vložit vektory"
 
 
 msgctxt "Operator"
@@ -44723,11 +43771,6 @@ msgstr "Vývojář"
 
 msgid "Reference Point"
 msgstr "Referenční Bod"
-
-
-msgctxt "Operator"
-msgid "Assign to Group"
-msgstr "Přidat do nové skupiny"
 
 
 msgctxt "Operator"
@@ -44885,10 +43928,6 @@ msgstr "Dokumenty"
 
 msgid "Loading failed: "
 msgstr "Načítaní se pokazilo: "
-
-
-msgid "Loading '%s' failed: "
-msgstr "Načtení '%s' se nezdařilo: "
 
 
 msgid "Path '%s' not found"
@@ -45073,6 +44112,10 @@ msgid "Cannot re-link markers into the same scene"
 msgstr "Upravit všechny značky stejné skupiny jako jednu"
 
 
+msgid "Out"
+msgstr "Ven"
+
+
 msgid "Add Control Point"
 msgstr "Přidat Kontrolní bod"
 
@@ -45155,10 +44198,6 @@ msgstr "Klíčové snímky"
 
 msgid "No pose to copy"
 msgstr "Vlastnosti pro zkopírování"
-
-
-msgid "Copy buffer is empty"
-msgstr "Odstranit vybrané vertexy z aktuální skupiny vertexů"
 
 
 msgid "No point was selected"
@@ -45478,11 +44517,6 @@ msgstr "Obrázek na pozadí"
 
 
 msgctxt "Operator"
-msgid "Online Manual"
-msgstr "Online Návod"
-
-
-msgctxt "Operator"
 msgid "Online Python Reference"
 msgstr "Reference pythonu pro API"
 
@@ -45493,10 +44527,6 @@ msgstr "Animovat vlastnost"
 
 msgid "Active button not found"
 msgstr "Aktivní tlačítko nebylo nalezeno"
-
-
-msgid "File '%s' cannot be opened"
-msgstr "Soubor '%s' nelze otevřít"
 
 
 msgid "(Gamma Corrected)"
@@ -45769,10 +44799,6 @@ msgid "Browse Particle Settings to be linked"
 msgstr "Procházet Nastavení Částic k připojení"
 
 
-msgid "Browse Grease Pencil Data to be linked"
-msgstr "Procházet Data Skicovací Tužky k připojení"
-
-
 msgid "Browse Movie Clip to be linked"
 msgstr "Procházet Filmový Klip k připojení"
 
@@ -45809,8 +44835,8 @@ msgid "Browse Volume Data to be linked"
 msgstr "Procházet Data Objemu k připojení"
 
 
-msgid "Browse Simulation to be linked"
-msgstr "Procházet Simulacik připojení"
+msgid "Browse Grease Pencil Data to be linked"
+msgstr "Procházet Data Skicovací Tužky k připojení"
 
 
 msgid "Browse ID data to be linked"
@@ -45937,11 +44963,6 @@ msgid "New"
 msgstr "Nový"
 
 
-msgctxt "Simulation"
-msgid "New"
-msgstr "Nový"
-
-
 msgid "%d items"
 msgstr "%d předměty"
 
@@ -45968,10 +44989,6 @@ msgstr "Použít schéma"
 
 msgid "Method Quads"
 msgstr "Metoda Čtyřhrany"
-
-
-msgid "No filename given"
-msgstr "Nebyl uveden žádný název souboru"
 
 
 msgid "Global Orientation"
@@ -46004,6 +45021,18 @@ msgstr "Nelze vytvořit exportní soubor"
 
 msgid "Can't overwrite export file"
 msgstr "Nelze přepsat exportní soubor"
+
+
+msgid "Material Groups"
+msgstr "Materiál"
+
+
+msgid "Smooth Groups"
+msgstr "Přidat do skupiny"
+
+
+msgid "ASCII"
+msgstr "ASCII"
 
 
 msgctxt "Mesh"
@@ -46149,10 +45178,6 @@ msgstr "Nelze přidat hrany v režimu úprav"
 
 msgid "Cannot add loops in edit mode"
 msgstr "Nelze přidat smyčky v režimu úprav"
-
-
-msgid "Cannot add polygons in edit mode"
-msgstr "Nelze přidat mnohoúhelníky v režimu úprav"
 
 
 msgid "Cannot remove vertices in edit mode"
@@ -46694,12 +45719,12 @@ msgid "Maximize Area"
 msgstr "Velikost plošek"
 
 
-msgid "Flip to Bottom"
-msgstr "Zespodu"
-
-
 msgid "Flip to Top"
 msgstr "Nastavení Ořezu"
+
+
+msgid "Flip to Bottom"
+msgstr "Zespodu"
 
 
 msgid "Blender Preferences"
@@ -46748,10 +45773,6 @@ msgstr "Aktivní snímek"
 
 msgid "Active Keyframe"
 msgstr "Aktivní snímek"
-
-
-msgid "No keyframes copied to keyframes copy/paste buffer"
-msgstr "Konvertuje označené trojúhlníky na čtyřúhelníky"
 
 
 msgid "No selected F-Curves to paste into"
@@ -47077,6 +46098,10 @@ msgstr "Znovu vytvořit soubor"
 
 msgid "unknown error writing file"
 msgstr "neznámá chyba při psaní souboru"
+
+
+msgid "File '%s' cannot be opened"
+msgstr "Soubor '%s' nelze otevřít"
 
 
 msgid "No Recent Files"
@@ -47621,6 +46646,10 @@ msgid "Replace Original"
 msgstr "Nahradit Původní"
 
 
+msgid "Matte"
+msgstr "Slepecké Znaky"
+
+
 msgid "Fac"
 msgstr "Fac"
 
@@ -47631,6 +46660,10 @@ msgstr "Kvadratické"
 
 msgid "Val"
 msgstr "Hodnota"
+
+
+msgid "Old"
+msgstr "Starý"
 
 
 msgid "Edge Crease"
@@ -47655,10 +46688,6 @@ msgstr "Subsurface Radius"
 
 msgid "Emission Strength"
 msgstr "Síla záření"
-
-
-msgid "Sigma"
-msgstr "Sada barev"
 
 
 msgid "View Vector"
@@ -47829,22 +46858,6 @@ msgid "Context window not set"
 msgstr "Pohled & Ovládání"
 
 
-msgid "Cannot read file '%s': %s"
-msgstr "Nelze přečíst soubor \"%s\": %s"
-
-
-msgid "File format is not supported in file '%s'"
-msgstr "Formát souboru není podporován v souboru: \"%s\"."
-
-
-msgid "File path '%s' invalid"
-msgstr "Cesta souboru '%s' je neplatná"
-
-
-msgid "Unknown error loading '%s'"
-msgstr "Neznámá chyba při načítání: \"%s\"."
-
-
 msgid "Saved \"%s\""
 msgstr "Uloženo \"%s\""
 
@@ -47902,10 +46915,6 @@ msgstr "Angličtina (English)"
 
 msgid "Japanese (日本語)"
 msgstr "Japonština (日本語)"
-
-
-msgid "Dutch (Nederlandse taal)"
-msgstr "Holandština (Nederlandse taal)"
 
 
 msgid "Italian (Italiano)"
@@ -48004,10 +47013,6 @@ msgid "Hebrew (תירִבְעִ)"
 msgstr "Hebrejština (תירִבְעִ)"
 
 
-msgid "Estonian (Eestlane)"
-msgstr "Estonština (Eestlane)"
-
-
 msgid "Spanish from Spain (Español de España)"
 msgstr "Španělština (Español)"
 
@@ -48022,18 +47027,6 @@ msgstr "Uzbekština (Oʻzbek)"
 
 msgid "Uzbek Cyrillic (Ўзбек)"
 msgstr "Uzbecká cyrilice (Ўзбек)"
-
-
-msgid "Hindi (मानक हिन्दी)"
-msgstr "Hindština (मानक हिन्दी)"
-
-
-msgid "Vietnamese (tiếng Việt)"
-msgstr "Vietnamština (tiếng Việt)"
-
-
-msgid "Kazakh (қазақша)"
-msgstr "Kazašština (қазақша)"
 
 
 msgid "Thai (ภาษาไทย)"

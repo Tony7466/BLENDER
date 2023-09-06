@@ -305,7 +305,7 @@
           <ThemeWidgetColors
             outline="#e6e6e6"
             inner="#1a1a1a00"
-            inner_sel="#c0c0c0ff"
+            inner_sel="#668cccff"
             item="#1a1a1aff"
             text="#1a1a1a"
             text_sel="#000000"
@@ -316,21 +316,6 @@
             >
           </ThemeWidgetColors>
         </wcol_list_item>
-        <wcol_view_item>
-          <ThemeWidgetColors
-            outline="#e6e6e6"
-            inner="#c0c0c044"
-            inner_sel="#c0c0c0ff"
-            item="#1a1a1aff"
-            text="#1a1a1a"
-            text_sel="#000000"
-            show_shaded="FALSE"
-            shadetop="0"
-            shadedown="0"
-            roundness="0.4"
-            >
-          </ThemeWidgetColors>
-        </wcol_view_item>
         <wcol_state>
           <ThemeWidgetStateColors
             inner_anim="#73be4c"
@@ -819,6 +804,7 @@
         scene_strip="#828f50"
         audio_strip="#4c8f8f"
         effect_strip="#4c456c"
+        transition_strip="#50458F"
         color_strip="#8f8f8f"
         meta_strip="#5b4d91"
         mask_strip="#8f5656"
@@ -869,10 +855,10 @@
         </space>
         <space_list>
           <ThemeSpaceListGeneric
-            list="#181818"
-            list_title="#ffffff"
-            list_text="#ffffff"
-            list_text_hi="#ffffff"
+            list="#b3b3b3"
+            list_title="#747474"
+            list_text="#333333"
+            list_text_hi="#747474"
             >
           </ThemeSpaceListGeneric>
         </space_list>
@@ -1240,7 +1226,7 @@
             title="#000000"
             text="#000000"
             text_hi="#ffffff"
-            header="#727272ff"
+            header="#b3b3b3ff"
             header_text="#000000"
             header_text_hi="#ffffff"
             button="#7272727f"
@@ -1317,7 +1303,7 @@
             title="#ffffff"
             text="#ffffff"
             text_hi="#ffffff"
-            header="#999999ff"
+            header="#b3b3b3ff"
             header_text="#1a1a1a"
             header_text_hi="#ffffff"
             button="#2f303500"

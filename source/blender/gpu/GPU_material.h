@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -14,7 +15,7 @@
 #include "BLI_sys_types.h" /* for bool */
 
 #include "GPU_shader.h"  /* for GPUShaderCreateInfo */
-#include "GPU_texture.h" /* for eGPUSamplerState */
+#include "GPU_texture.h" /* for GPUSamplerState */
 
 #ifdef __cplusplus
 extern "C" {
@@ -154,6 +155,10 @@ GPUNodeLink *GPU_attribute(GPUMaterial *mat, eCustomDataType type, const char *n
  * The name, type, and domain are unknown and do not depend on the material.
  */
 GPUNodeLink *GPU_attribute_default_color(GPUMaterial *mat);
+/**
+ * Add a GPU attribute that refers to the approximate length of curves/hairs.
+ */
+GPUNodeLink *GPU_attribute_hair_length(GPUMaterial *mat);
 GPUNodeLink *GPU_attribute_with_default(GPUMaterial *mat,
                                         eCustomDataType type,
                                         const char *name,
@@ -166,11 +171,11 @@ GPUNodeLink *GPU_layer_attribute(GPUMaterial *mat, const char *name);
 GPUNodeLink *GPU_image(GPUMaterial *mat,
                        struct Image *ima,
                        struct ImageUser *iuser,
-                       eGPUSamplerState sampler_state);
+                       GPUSamplerState sampler_state);
 void GPU_image_tiled(GPUMaterial *mat,
                      struct Image *ima,
                      struct ImageUser *iuser,
-                     eGPUSamplerState sampler_state,
+                     GPUSamplerState sampler_state,
                      GPUNodeLink **r_image_tiled_link,
                      GPUNodeLink **r_image_tiled_mapping_link);
 GPUNodeLink *GPU_image_sky(GPUMaterial *mat,
@@ -178,7 +183,7 @@ GPUNodeLink *GPU_image_sky(GPUMaterial *mat,
                            int height,
                            const float *pixels,
                            float *layer,
-                           eGPUSamplerState sampler_state);
+                           GPUSamplerState sampler_state);
 GPUNodeLink *GPU_color_band(GPUMaterial *mat, int size, float *pixels, float *row);
 
 /**
@@ -280,18 +285,18 @@ eGPUMaterialStatus GPU_material_status(GPUMaterial *mat);
 void GPU_material_status_set(GPUMaterial *mat, eGPUMaterialStatus status);
 
 /**
- * Return status for async optimization jobs.
+ * Return status for asynchronous optimization jobs.
  */
 eGPUMaterialOptimizationStatus GPU_material_optimization_status(GPUMaterial *mat);
 void GPU_material_optimization_status_set(GPUMaterial *mat, eGPUMaterialOptimizationStatus status);
 bool GPU_material_optimization_ready(GPUMaterial *mat);
 
 /**
- * Store reference to a similar default material for async PSO cache warming.
+ * Store reference to a similar default material for asynchronous PSO cache warming.
  *
  * This function expects `material` to have not yet been compiled and for `default_material` to be
- * ready. When compiling `material` as part of an async shader compilation job, use existing PSO
- * descriptors from `default_material`'s shader to also compile PSOs for this new material
+ * ready. When compiling `material` as part of an asynchronous shader compilation job, use existing
+ * PSO descriptors from `default_material`'s shader to also compile PSOs for this new material
  * asynchronously, rather than at runtime.
  *
  * The default_material `options` should match this new materials options in order
@@ -343,6 +348,10 @@ typedef struct GPUMaterialAttribute {
    * valid here.
    */
   bool is_default_color;
+  /**
+   * If true, the attribute is the length of hair particles and curves.
+   */
+  bool is_hair_length;
 } GPUMaterialAttribute;
 
 typedef struct GPUMaterialTexture {
@@ -355,7 +364,7 @@ typedef struct GPUMaterialTexture {
   char sampler_name[32];       /* Name of sampler in GLSL. */
   char tiled_mapping_name[32]; /* Name of tile mapping sampler in GLSL. */
   int users;
-  int sampler_state; /* eGPUSamplerState */
+  GPUSamplerState sampler_state;
 } GPUMaterialTexture;
 
 ListBase GPU_material_attributes(GPUMaterial *material);

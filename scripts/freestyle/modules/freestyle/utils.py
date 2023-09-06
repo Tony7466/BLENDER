@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """
@@ -111,7 +113,7 @@ def get_object_name(stroke):
 
 
 def material_from_fedge(fe):
-    "get the diffuse rgba color from an FEdge"
+    "get the diffuse RGBA color from an FEdge"
     if fe is None:
         return None
     if fe.is_smooth:

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -80,8 +81,9 @@ class FrameBuffer {
   /** Debug name. */
   char name_[DEBUG_NAME_LEN];
   /** Frame-buffer state. */
-  int viewport_[4] = {0};
+  int viewport_[GPU_MAX_VIEWPORTS][4] = {{0}};
   int scissor_[4] = {0};
+  bool multi_viewport_ = false;
   bool scissor_test_ = false;
   bool dirty_state_ = true;
 
@@ -109,9 +111,7 @@ class FrameBuffer {
                                 eGPUDataFormat data_format,
                                 const void *clear_value) = 0;
 
-  virtual void attachment_set_loadstore_op(GPUAttachmentType type,
-                                           eGPULoadOp load_action,
-                                           eGPUStoreOp store_action) = 0;
+  virtual void attachment_set_loadstore_op(GPUAttachmentType type, GPULoadStore ls) = 0;
 
   virtual void read(eGPUFrameBufferBits planes,
                     eGPUDataFormat format,
@@ -133,10 +133,11 @@ class FrameBuffer {
   void attachment_remove(GPUAttachmentType type);
 
   void recursive_downsample(int max_lvl,
-                            void (*callback)(void *userData, int level),
-                            void *userData);
+                            void (*callback)(void *user_data, int level),
+                            void *user_data);
   uint get_bits_per_pixel();
 
+  /* Sets the size after creation. */
   inline void size_set(int width, int height)
   {
     width_ = width;
@@ -144,12 +145,33 @@ class FrameBuffer {
     dirty_state_ = true;
   }
 
+  /* Sets the size for frame-buffer with no attachments. */
+  inline void default_size_set(int width, int height)
+  {
+    width_ = width;
+    height_ = height;
+    dirty_attachments_ = true;
+    dirty_state_ = true;
+  }
+
   inline void viewport_set(const int viewport[4])
   {
-    if (!equals_v4v4_int(viewport_, viewport)) {
-      copy_v4_v4_int(viewport_, viewport);
+    if (!equals_v4v4_int(viewport_[0], viewport)) {
+      copy_v4_v4_int(viewport_[0], viewport);
       dirty_state_ = true;
     }
+    multi_viewport_ = false;
+  }
+
+  inline void viewport_multi_set(const int viewports[GPU_MAX_VIEWPORTS][4])
+  {
+    for (size_t i = 0; i < GPU_MAX_VIEWPORTS; i++) {
+      if (!equals_v4v4_int(viewport_[i], viewports[i])) {
+        copy_v4_v4_int(viewport_[i], viewports[i]);
+        dirty_state_ = true;
+      }
+    }
+    multi_viewport_ = true;
   }
 
   inline void scissor_set(const int scissor[4])
@@ -167,7 +189,7 @@ class FrameBuffer {
 
   inline void viewport_get(int r_viewport[4]) const
   {
-    copy_v4_v4_int(r_viewport, viewport_);
+    copy_v4_v4_int(r_viewport, viewport_[0]);
   }
 
   inline void scissor_get(int r_scissor[4]) const

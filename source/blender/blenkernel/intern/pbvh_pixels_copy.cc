@@ -1,9 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array.hh"
 #include "BLI_bit_vector.hh"
-#include "BLI_math.h"
+#include "BLI_listbase.h"
+#include "BLI_math_geom.h"
 #include "BLI_math_vector.hh"
 #include "BLI_task.hh"
 #include "BLI_vector.hh"
@@ -12,7 +14,7 @@
 #include "IMB_imbuf_types.h"
 
 #include "BKE_image_wrappers.hh"
-#include "BKE_pbvh.h"
+#include "BKE_pbvh_api.hh"
 #include "BKE_pbvh_pixels.hh"
 
 #include "pbvh_intern.hh"
@@ -157,9 +159,9 @@ class NonManifoldUVEdges : public Vector<Edge<CoordSpace::UV>> {
                         int vertex_i)
   {
     for (int i = 0; i < 3; i++) {
-      int loop_i = loop_tri.tri[i];
-      const MLoop &loop = mesh_data.loops[loop_i];
-      if (loop.v == vertex_i) {
+      const int loop_i = loop_tri.tri[i];
+      const int vert = mesh_data.corner_verts[loop_i];
+      if (vert == vertex_i) {
         return mesh_data.uv_map[loop_i];
       }
     }
@@ -174,7 +176,7 @@ class PixelNodesTileData : public Vector<std::reference_wrapper<UDIMTilePixels>>
   {
     reserve(count_nodes(pbvh, image_tile));
 
-    for (PBVHNode &node : MutableSpan(pbvh.nodes, pbvh.totnode)) {
+    for (PBVHNode &node : pbvh.nodes) {
       if (should_add_node(node, image_tile)) {
         NodeData &node_data = *static_cast<NodeData *>(node.pixels.node_data);
         UDIMTilePixels &tile_pixels = *node_data.find_tile_data(image_tile);
@@ -202,7 +204,7 @@ class PixelNodesTileData : public Vector<std::reference_wrapper<UDIMTilePixels>>
   static int64_t count_nodes(PBVH &pbvh, const image::ImageTileWrapper &image_tile)
   {
     int64_t result = 0;
-    for (PBVHNode &node : MutableSpan(pbvh.nodes, pbvh.totnode)) {
+    for (PBVHNode &node : pbvh.nodes) {
       if (should_add_node(node, image_tile)) {
         result++;
       }
@@ -258,7 +260,7 @@ struct Rows {
 
   struct RowView {
     int row_number = 0;
-    /** Not owning pointer into Row.pixels starts at the start of the row.*/
+    /** Not owning pointer into Row.pixels starts at the start of the row. */
     MutableSpan<Pixel> pixels;
     RowView() = delete;
     RowView(Rows &rows, int64_t row_number)
@@ -296,7 +298,8 @@ struct Rows {
           tile_pixels.pixel_rows, [&](const PackedPixelRow &encoded_pixels) {
             for (int x = encoded_pixels.start_image_coordinate.x;
                  x < encoded_pixels.start_image_coordinate.x + encoded_pixels.num_pixels;
-                 x++) {
+                 x++)
+            {
               int64_t index = encoded_pixels.start_image_coordinate.y * resolution.x + x;
               pixels[index].type = PixelType::Brush;
               pixels[index].distance = 0.0f;

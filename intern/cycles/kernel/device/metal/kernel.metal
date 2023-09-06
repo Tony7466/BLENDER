@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 /* Metal kernel entry points. */
 
@@ -289,9 +290,8 @@ bool metalrt_shadow_all_hit(constant KernelParamsMetal &launch_params_metal,
     }
 
     if (ray_tmax >= max_recorded_t) {
-      /* Accept hit, so that we don't consider any more hits beyond the distance of the
-       * current hit anymore. */
-      payload.result = true;
+      /* Ray hits are not guaranteed to be ordered by distance so don't exit early here.
+       * Continue search. */
       return true;
     }
 

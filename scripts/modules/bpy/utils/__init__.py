@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """
@@ -30,7 +32,6 @@ __all__ = (
     "previews",
     "resource_path",
     "script_path_user",
-    "script_path_pref",
     "script_paths",
     "smpte_from_frame",
     "smpte_from_seconds",
@@ -70,7 +71,7 @@ _script_module_dirs = "startup", "modules"
 # Base scripts, this points to the directory containing: "modules" & "startup" (see `_script_module_dirs`).
 # In Blender's code-base this is `./scripts`.
 #
-# NOTE: in virtually all cases this should match `BLENDER_SYSTEM_SCRIPTS` as this script is it's self a system script,
+# NOTE: in virtually all cases this should match `BLENDER_SYSTEM_SCRIPTS` as this script is itself a system script,
 # it must be in the `BLENDER_SYSTEM_SCRIPTS` by definition and there is no need for a look-up from `_bpy_script_paths`.
 _script_base_dir = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.dirname(__file__))))
 
@@ -284,6 +285,13 @@ def load_scripts(*, reload_scripts=False, refresh_scripts=False):
 
         del _global_loaded_modules[:]
 
+        # Update key-maps to account for operators no longer existing.
+        # Typically unloading operators would refresh the event system (such as disabling an add-on)
+        # however reloading scripts re-enable all add-ons immediately (which may inspect key-maps).
+        # For this reason it's important to update key-maps which will have been tagged to update.
+        # Without this, add-on register functions accessing key-map properties can crash, see: #111702.
+        _bpy.context.window_manager.keyconfigs.update()
+
     from bpy_restrict_state import RestrictBlend
 
     with RestrictBlend():
@@ -293,7 +301,7 @@ def load_scripts(*, reload_scripts=False, refresh_scripts=False):
                 if _os.path.isdir(path):
                     _sys_path_ensure_prepend(path)
 
-                    # Only add to 'sys.modules' unless this is 'startup'.
+                    # Only add to `sys.modules` unless this is 'startup'.
                     if path_subdir == "startup":
                         for mod in modules_from_path(path, loaded_modules):
                             test_register(mod)
@@ -304,15 +312,15 @@ def load_scripts(*, reload_scripts=False, refresh_scripts=False):
         bl_app_template_utils.reset(reload_scripts=reload_scripts)
         del bl_app_template_utils
 
-    # deal with addons separately
-    _initialize = getattr(_addon_utils, "_initialize", None)
-    if _initialize is not None:
-        # first time, use fast-path
-        _initialize()
-        del _addon_utils._initialize
+    # Deal with add-ons separately.
+    _initialize_once = getattr(_addon_utils, "_initialize_once", None)
+    if _initialize_once is not None:
+        # First time, use fast-path.
+        _initialize_once()
+        del _addon_utils._initialize_once
     else:
         _addon_utils.reset_all(reload_scripts=reload_scripts)
-    del _initialize
+    del _initialize_once
 
     if reload_scripts:
         _bpy.context.window_manager.tag_script_reload()
@@ -340,10 +348,14 @@ def script_path_user():
     return _os.path.normpath(path) if path else None
 
 
-def script_path_pref():
-    """returns the user preference or None"""
-    path = _preferences.filepaths.script_directory
-    return _os.path.normpath(path) if path else None
+def script_paths_pref():
+    """Returns a list of user preference script directories."""
+    paths = []
+    for script_directory in _preferences.filepaths.script_directories:
+        directory = script_directory.directory
+        if directory:
+            paths.append(_os.path.normpath(directory))
+    return paths
 
 
 def script_paths(*, subdir=None, user_pref=True, check_all=False, use_user=True):
@@ -352,7 +364,7 @@ def script_paths(*, subdir=None, user_pref=True, check_all=False, use_user=True)
 
     :arg subdir: Optional subdir.
     :type subdir: string
-    :arg user_pref: Include the user preference script path.
+    :arg user_pref: Include the user preference script paths.
     :type user_pref: bool
     :arg check_all: Include local, user and system paths rather just the paths Blender uses.
     :type check_all: bool
@@ -385,7 +397,7 @@ def script_paths(*, subdir=None, user_pref=True, check_all=False, use_user=True)
             base_paths.append(path_user)
 
     if user_pref:
-        base_paths.append(script_path_pref())
+        base_paths.extend(script_paths_pref())
 
     scripts = []
     for path in base_paths:

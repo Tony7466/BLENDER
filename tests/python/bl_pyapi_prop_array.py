@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2020-2023 Blender Authors
+#
 # SPDX-License-Identifier: Apache-2.0
 
 # ./blender.bin --background -noaudio --python tests/python/bl_pyapi_prop_array.py -- --verbose
@@ -234,7 +236,7 @@ class TestPropArrayDynamicAssign(unittest.TestCase):
 
 class TestPropArrayDynamicArg(unittest.TestCase):
     """
-    Index array, a dynamic array argument which defines it's own length.
+    Index array, a dynamic array argument which defines its own length.
     """
 
     dims = 8

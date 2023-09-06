@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -21,8 +22,8 @@
 
 namespace blender::gpu::shader {
 
-#ifndef GPU_SHADER_CREATE_INFO
 /* Helps intellisense / auto-completion. */
+#ifndef GPU_SHADER_CREATE_INFO
 #  define GPU_SHADER_INTERFACE_INFO(_interface, _inst_name) \
     StageInterfaceInfo _interface(#_interface, _inst_name); \
     _interface
@@ -62,7 +63,15 @@ enum class Type {
   CHAR,
   CHAR2,
   CHAR3,
-  CHAR4
+  CHAR4,
+  USHORT,
+  USHORT2,
+  USHORT3,
+  USHORT4,
+  SHORT,
+  SHORT2,
+  SHORT3,
+  SHORT4
 };
 
 /* All of these functions is a bit out of place */
@@ -136,6 +145,22 @@ static inline std::ostream &operator<<(std::ostream &stream, const Type type)
       return stream << "uvec3";
     case Type::UVEC4:
       return stream << "uvec4";
+    case Type::USHORT:
+      return stream << "ushort";
+    case Type::USHORT2:
+      return stream << "ushort2";
+    case Type::USHORT3:
+      return stream << "ushort3";
+    case Type::USHORT4:
+      return stream << "ushort4";
+    case Type::SHORT:
+      return stream << "short";
+    case Type::SHORT2:
+      return stream << "short2";
+    case Type::SHORT3:
+      return stream << "short3";
+    case Type::SHORT4:
+      return stream << "short4";
     default:
       BLI_assert(0);
       return stream;
@@ -177,6 +202,11 @@ enum class BuiltinBits {
   VERTEX_ID = (1 << 14),
   WORK_GROUP_ID = (1 << 15),
   WORK_GROUP_SIZE = (1 << 16),
+  /**
+   * Allow setting the target viewport when using multi viewport feature.
+   * \note Emulated through geometry shader on older hardware.
+   */
+  VIEWPORT_INDEX = (1 << 17),
 
   /* Not a builtin but a flag we use to tag shaders that use the debug features. */
   USE_DEBUG_DRAW = (1 << 29),
@@ -430,6 +460,8 @@ struct ShaderCreateInfo {
     Type type;
     DualBlend blend;
     StringRefNull name;
+    /* Note: Currently only supported by Metal. */
+    int raster_order_group;
 
     bool operator==(const FragOut &b) const
     {
@@ -437,14 +469,18 @@ struct ShaderCreateInfo {
       TEST_EQUAL(*this, b, type);
       TEST_EQUAL(*this, b, blend);
       TEST_EQUAL(*this, b, name);
+      TEST_EQUAL(*this, b, raster_order_group);
       return true;
     }
   };
   Vector<FragOut> fragment_outputs_;
 
+  using FragTileIn = FragOut;
+  Vector<FragTileIn> fragment_tile_inputs_;
+
   struct Sampler {
     ImageType type;
-    eGPUSamplerState sampler;
+    GPUSamplerState sampler;
     StringRefNull name;
   };
 
@@ -628,9 +664,24 @@ struct ShaderCreateInfo {
     return *(Self *)this;
   }
 
-  Self &fragment_out(int slot, Type type, StringRefNull name, DualBlend blend = DualBlend::NONE)
+  Self &fragment_out(int slot,
+                     Type type,
+                     StringRefNull name,
+                     DualBlend blend = DualBlend::NONE,
+                     int raster_order_group = -1)
   {
-    fragment_outputs_.append({slot, type, blend, name});
+    fragment_outputs_.append({slot, type, blend, name, raster_order_group});
+    return *(Self *)this;
+  }
+
+  /* Fragment tile inputs. */
+  Self &fragment_tile_in(int slot,
+                         Type type,
+                         StringRefNull name,
+                         DualBlend blend = DualBlend::NONE,
+                         int raster_order_group = -1)
+  {
+    fragment_tile_inputs_.append({slot, type, blend, name, raster_order_group});
     return *(Self *)this;
   }
 
@@ -689,7 +740,7 @@ struct ShaderCreateInfo {
                 ImageType type,
                 StringRefNull name,
                 Frequency freq = Frequency::PASS,
-                eGPUSamplerState sampler = (eGPUSamplerState)-1)
+                GPUSamplerState sampler = GPUSamplerState::internal_sampler())
   {
     Resource res(Resource::BindType::SAMPLER, slot);
     res.sampler.type = type;
@@ -876,6 +927,7 @@ struct ShaderCreateInfo {
   void finalize();
 
   std::string check_error() const;
+  bool is_vulkan_compatible() const;
 
   /** Error detection that some backend compilers do not complain about. */
   void validate_merge(const ShaderCreateInfo &other_info);
@@ -888,8 +940,8 @@ struct ShaderCreateInfo {
    *
    * \{ */
 
-  /* Comparison operator for GPUPass cache. We only compare if it will create the same shader code.
-   * So we do not compare name and some other internal stuff. */
+  /* Comparison operator for GPUPass cache. We only compare if it will create the same shader
+   * code. So we do not compare name and some other internal stuff. */
   bool operator==(const ShaderCreateInfo &b)
   {
     TEST_EQUAL(*this, b, builtins_);
@@ -907,6 +959,7 @@ struct ShaderCreateInfo {
     TEST_VECTOR_EQUAL(*this, b, geometry_out_interfaces_);
     TEST_VECTOR_EQUAL(*this, b, push_constants_);
     TEST_VECTOR_EQUAL(*this, b, typedef_sources_);
+    TEST_VECTOR_EQUAL(*this, b, fragment_tile_inputs_);
     TEST_EQUAL(*this, b, vertex_source_);
     TEST_EQUAL(*this, b, geometry_source_);
     TEST_EQUAL(*this, b, fragment_source_);

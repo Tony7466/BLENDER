@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "bvh/bvh.h"
 
@@ -313,9 +314,7 @@ Hair::Hair() : Geometry(get_node_type(), Geometry::HAIR)
   curve_shape = CURVE_RIBBON;
 }
 
-Hair::~Hair()
-{
-}
+Hair::~Hair() {}
 
 void Hair::resize_curves(int numcurves, int numkeys)
 {
@@ -533,7 +532,7 @@ PrimitiveType Hair::primitive_type() const
 
 /* Fill in coordinates for curve transparency shader evaluation on device. */
 static int fill_shader_input(const Hair *hair,
-                             const int object_index,
+                             const size_t object_index,
                              device_vector<KernelShaderEvalInput> &d_input)
 {
   int d_input_size = 0;

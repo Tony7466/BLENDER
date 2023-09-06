@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2015-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """
@@ -21,10 +23,7 @@ __all__ = (
     "ImagePreviewCollection",
 )
 
-import _bpy
-_utils_previews = _bpy._utils_previews
-del _bpy
-
+from _bpy import _utils_previews
 
 _uuid_open = set()
 

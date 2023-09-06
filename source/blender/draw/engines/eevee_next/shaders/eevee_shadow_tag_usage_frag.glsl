@@ -1,6 +1,9 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
- * Virtual shadowmapping: Usage tagging
+ * Virtual shadow-mapping: Usage tagging
  *
  * Shadow pages are only allocated if they are visible.
  * This ray-marches the current fragment along the bounds depth and tags all the intersected shadow
@@ -9,8 +12,6 @@
 
 #pragma BLENDER_REQUIRE(eevee_shadow_tag_usage_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
-
-#pragma BLENDER_REQUIRE(common_debug_shape_lib.glsl)
 
 float ray_aabb(vec3 ray_origin, vec3 ray_direction, vec3 aabb_min, vec3 aabb_max)
 {
@@ -45,7 +46,7 @@ float pixel_size_at(float linear_depth)
   if (is_persp) {
     pixel_size *= max(0.01, linear_depth);
   }
-  return pixel_size * exp2(fb_lod);
+  return pixel_size * exp2(float(fb_lod));
 }
 
 void step_bounding_sphere(vec3 vs_near_plane,
@@ -82,7 +83,7 @@ void main()
 {
   vec2 screen_uv = gl_FragCoord.xy / vec2(fb_resolution);
 
-  float opaque_depth = texelFetch(hiz_tx, int2(gl_FragCoord.xy), fb_lod).r;
+  float opaque_depth = texelFetch(hiz_tx, ivec2(gl_FragCoord.xy), fb_lod).r;
   vec3 ws_opaque = get_world_space_from_depth(screen_uv, opaque_depth);
 
   vec3 ws_near_plane = get_world_space_from_depth(screen_uv, 0);
@@ -93,10 +94,10 @@ void main()
   vec3 ls_view_direction = normalize(point_world_to_object(interp.P) - ls_near_plane);
 
   /* TODO (Miguel Pozo): We could try to ray-cast against the non-inflated bounds first,
-   * and fallback to the inflated ones if theres no hit.
-   * The inflated bounds can cause unnecesary extra steps. */
+   * and fallback to the inflated ones if there is no hit.
+   * The inflated bounds can cause unnecessary extra steps. */
   float ls_near_box_t = ray_aabb(
-      ls_near_plane, ls_view_direction, interp.ls_aabb_min, interp.ls_aabb_max);
+      ls_near_plane, ls_view_direction, interp_flat.ls_aabb_min, interp_flat.ls_aabb_max);
   vec3 ls_near_box = ls_near_plane + ls_view_direction * ls_near_box_t;
   vec3 ws_near_box = point_object_to_world(ls_near_box);
 
@@ -117,6 +118,7 @@ void main()
     step_bounding_sphere(vs_near_plane, vs_view_direction, t, t + step_size, P, step_radius);
     vec3 vP = point_world_to_view(P);
 
-    shadow_tag_usage(vP, P, ws_view_direction, step_radius, t, gl_FragCoord.xy * exp2(fb_lod));
+    shadow_tag_usage(
+        vP, P, ws_view_direction, step_radius, t, gl_FragCoord.xy * exp2(float(fb_lod)));
   }
 }

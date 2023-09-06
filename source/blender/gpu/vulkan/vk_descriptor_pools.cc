@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -9,9 +10,7 @@
 #include "vk_memory.hh"
 
 namespace blender::gpu {
-VKDescriptorPools::VKDescriptorPools()
-{
-}
+VKDescriptorPools::VKDescriptorPools() {}
 
 VKDescriptorPools::~VKDescriptorPools()
 {
@@ -80,8 +79,10 @@ bool VKDescriptorPools::is_last_pool_active()
   return active_pool_index_ == pools_.size() - 1;
 }
 
-VKDescriptorSet VKDescriptorPools::allocate(const VkDescriptorSetLayout &descriptor_set_layout)
+std::unique_ptr<VKDescriptorSet> VKDescriptorPools::allocate(
+    const VkDescriptorSetLayout &descriptor_set_layout)
 {
+  BLI_assert(descriptor_set_layout != VK_NULL_HANDLE);
   VkDescriptorSetAllocateInfo allocate_info = {};
   VkDescriptorPool pool = active_pool_get();
   allocate_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -91,7 +92,7 @@ VKDescriptorSet VKDescriptorPools::allocate(const VkDescriptorSetLayout &descrip
   VkDescriptorSet vk_descriptor_set = VK_NULL_HANDLE;
   VkResult result = vkAllocateDescriptorSets(vk_device_, &allocate_info, &vk_descriptor_set);
 
-  if (result == VK_ERROR_OUT_OF_POOL_MEMORY) {
+  if (ELEM(result, VK_ERROR_OUT_OF_POOL_MEMORY, VK_ERROR_FRAGMENTED_POOL)) {
     if (is_last_pool_active()) {
       add_new_pool();
       activate_last_pool();
@@ -102,7 +103,7 @@ VKDescriptorSet VKDescriptorPools::allocate(const VkDescriptorSetLayout &descrip
     return allocate(descriptor_set_layout);
   }
 
-  return VKDescriptorSet(pool, vk_descriptor_set);
+  return std::make_unique<VKDescriptorSet>(pool, vk_descriptor_set);
 }
 
 void VKDescriptorPools::free(VKDescriptorSet &descriptor_set)

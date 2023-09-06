@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2018 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2018 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -21,6 +22,7 @@
 #include "draw_shader_shared.h"
 
 #include <iomanip>
+#include <sstream>
 
 #if defined(DEBUG) || defined(WITH_DRAW_DEBUG)
 #  define DRAW_DEBUG
@@ -133,13 +135,13 @@ void DebugDraw::draw_line(float3 v1, float3 v2, float4 color)
   draw_line(v1, v2, color_pack(color));
 }
 
-void DebugDraw::draw_polygon(Span<float3> poly_verts, float4 color)
+void DebugDraw::draw_polygon(Span<float3> face_verts, float4 color)
 {
-  BLI_assert(!poly_verts.is_empty());
+  BLI_assert(!face_verts.is_empty());
 
   uint col = color_pack(color);
-  float3 v0 = math::transform_point(model_mat_, poly_verts.last());
-  for (auto vert : poly_verts) {
+  float3 v0 = math::transform_point(model_mat_, face_verts.last());
+  for (auto vert : face_verts) {
     float3 v1 = math::transform_point(model_mat_, vert);
     draw_line(v0, v1, col);
     v0 = v1;
@@ -589,7 +591,13 @@ void DebugDraw::display_to_view()
   GPU_debug_group_end();
 }
 
+/** \} */
+
 }  // namespace blender::draw
+
+/* -------------------------------------------------------------------- */
+/** \name DebugDraw Access
+ * \{ */
 
 blender::draw::DebugDraw *DRW_debug_get()
 {

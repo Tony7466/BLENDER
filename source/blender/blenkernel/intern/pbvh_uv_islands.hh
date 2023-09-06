@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -23,9 +25,7 @@
 #include <optional>
 
 #include "BLI_array.hh"
-#include "BLI_edgehash.h"
 #include "BLI_map.hh"
-#include "BLI_math.h"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_rect.h"
@@ -119,7 +119,7 @@ class TriangleToEdgeMap {
 struct MeshData {
  public:
   const Span<MLoopTri> looptris;
-  const Span<MLoop> loops;
+  const Span<int> corner_verts;
   const Span<float2> uv_map;
   const Span<float3> vert_positions;
 
@@ -140,7 +140,7 @@ struct MeshData {
 
  public:
   explicit MeshData(Span<MLoopTri> looptris,
-                    Span<MLoop> loops,
+                    Span<int> corner_verts,
                     const Span<float2> uv_map,
                     const Span<float3> vert_positions);
 };

@@ -1,14 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup shdnodes
  */
 
 #include "node_shader_util.hh"
+#include "node_util.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 static void node_combsep_color_init(bNodeTree * /*tree*/, bNode *node)
 {
@@ -25,10 +27,10 @@ NODE_STORAGE_FUNCS(NodeCombSepColor)
 
 static void sh_node_sepcolor_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>(N_("Color")).default_value({0.8f, 0.8f, 0.8f, 1.0f});
-  b.add_output<decl::Float>(N_("Red"));
-  b.add_output<decl::Float>(N_("Green"));
-  b.add_output<decl::Float>(N_("Blue"));
+  b.add_input<decl::Color>("Color").default_value({0.8f, 0.8f, 0.8f, 1.0f});
+  b.add_output<decl::Float>("Red");
+  b.add_output<decl::Float>("Green");
+  b.add_output<decl::Float>("Blue");
 }
 
 static void node_sepcolor_update(bNodeTree * /*ntree*/, bNode *node)
@@ -93,18 +95,10 @@ NODE_STORAGE_FUNCS(NodeCombSepColor)
 
 static void sh_node_combcolor_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Float>(N_("Red")).default_value(0.0f).min(0.0f).max(1.0f).subtype(PROP_FACTOR);
-  b.add_input<decl::Float>(N_("Green"))
-      .default_value(0.0f)
-      .min(0.0f)
-      .max(1.0f)
-      .subtype(PROP_FACTOR);
-  b.add_input<decl::Float>(N_("Blue"))
-      .default_value(0.0f)
-      .min(0.0f)
-      .max(1.0f)
-      .subtype(PROP_FACTOR);
-  b.add_output<decl::Color>(N_("Color"));
+  b.add_input<decl::Float>("Red").default_value(0.0f).min(0.0f).max(1.0f).subtype(PROP_FACTOR);
+  b.add_input<decl::Float>("Green").default_value(0.0f).min(0.0f).max(1.0f).subtype(PROP_FACTOR);
+  b.add_input<decl::Float>("Blue").default_value(0.0f).min(0.0f).max(1.0f).subtype(PROP_FACTOR);
+  b.add_output<decl::Color>("Color");
 }
 
 static void node_combcolor_update(bNodeTree * /*ntree*/, bNode *node)

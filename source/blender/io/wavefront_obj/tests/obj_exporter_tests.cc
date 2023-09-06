@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include <gtest/gtest.h>
 #include <ios>
@@ -15,6 +17,7 @@
 
 #include "BLI_fileops.h"
 #include "BLI_index_range.hh"
+#include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_vector.hh"
 
@@ -99,7 +102,7 @@ TEST(obj_exporter_utils, append_negative_frame_to_filename)
   char path_with_frame[FILE_MAX] = {0};
   const bool ok = append_frame_to_filename(path_original, frame, path_with_frame);
   EXPECT_TRUE(ok);
-  EXPECT_EQ_ARRAY(path_with_frame, path_truth, BLI_strlen_utf8(path_truth));
+  EXPECT_STREQ(path_with_frame, path_truth);
 }
 
 TEST(obj_exporter_utils, append_positive_frame_to_filename)
@@ -110,27 +113,8 @@ TEST(obj_exporter_utils, append_positive_frame_to_filename)
   char path_with_frame[FILE_MAX] = {0};
   const bool ok = append_frame_to_filename(path_original, frame, path_with_frame);
   EXPECT_TRUE(ok);
-  EXPECT_EQ_ARRAY(path_with_frame, path_truth, BLI_strlen_utf8(path_truth));
+  EXPECT_STREQ(path_with_frame, path_truth);
 }
-
-static std::unique_ptr<OBJWriter> init_writer(const OBJExportParams &params,
-                                              const std::string out_filepath)
-{
-  try {
-    auto writer = std::make_unique<OBJWriter>(out_filepath.c_str(), params);
-    return writer;
-  }
-  catch (const std::system_error &ex) {
-    std::cerr << ex.code().category().name() << ": " << ex.what() << ": " << ex.code().message()
-              << std::endl;
-    return nullptr;
-  }
-}
-
-/* The following is relative to BKE_tempdir_base.
- * Use Latin Capital Letter A with Ogonek, Cyrillic Capital Letter Zhe
- * at the end, to test I/O on non-English file names. */
-const char *const temp_file_path = "output\xc4\x84\xd0\x96.OBJ";
 
 static std::string read_temp_file_in_string(const std::string &file_path)
 {
@@ -144,11 +128,47 @@ static std::string read_temp_file_in_string(const std::string &file_path)
   return res;
 }
 
-TEST(obj_exporter_writer, header)
+class ObjExporterWriterTest : public testing::Test {
+ protected:
+  void SetUp() override
+  {
+    BKE_tempdir_init("");
+  }
+
+  void TearDown() override
+  {
+    BKE_tempdir_session_purge();
+  }
+
+  std::string get_temp_obj_filename()
+  {
+    /* Use Latin Capital Letter A with Ogonek, Cyrillic Capital Letter Zhe
+     * at the end, to test I/O on non-English file names. */
+    const char *const temp_file_path = "output\xc4\x84\xd0\x96.OBJ";
+
+    return std::string(BKE_tempdir_session()) + SEP_STR + std::string(temp_file_path);
+  }
+
+  std::unique_ptr<OBJWriter> init_writer(const OBJExportParams &params,
+                                         const std::string out_filepath)
+  {
+    try {
+      auto writer = std::make_unique<OBJWriter>(out_filepath.c_str(), params);
+      return writer;
+    }
+    catch (const std::system_error &ex) {
+      std::cerr << ex.code().category().name() << ": " << ex.what() << ": " << ex.code().message()
+                << std::endl;
+      return nullptr;
+    }
+  }
+};
+
+TEST_F(ObjExporterWriterTest, header)
 {
   /* Because testing doesn't fully initialize Blender, we need the following. */
   BKE_tempdir_init(nullptr);
-  std::string out_file_path = blender::tests::flags_test_release_dir() + SEP_STR + temp_file_path;
+  std::string out_file_path = get_temp_obj_filename();
   {
     OBJExportParamsDefault _export;
     std::unique_ptr<OBJWriter> writer = init_writer(_export.params, out_file_path);
@@ -161,12 +181,11 @@ TEST(obj_exporter_writer, header)
   const std::string result = read_temp_file_in_string(out_file_path);
   using namespace std::string_literals;
   ASSERT_EQ(result, "# Blender "s + BKE_blender_version_string() + "\n" + "# www.blender.org\n");
-  BLI_delete(out_file_path.c_str(), false, false);
 }
 
-TEST(obj_exporter_writer, mtllib)
+TEST_F(ObjExporterWriterTest, mtllib)
 {
-  std::string out_file_path = blender::tests::flags_test_release_dir() + SEP_STR + temp_file_path;
+  std::string out_file_path = get_temp_obj_filename();
   {
     OBJExportParamsDefault _export;
     std::unique_ptr<OBJWriter> writer = init_writer(_export.params, out_file_path);
@@ -179,7 +198,6 @@ TEST(obj_exporter_writer, mtllib)
   }
   const std::string result = read_temp_file_in_string(out_file_path);
   ASSERT_EQ(result, "mtllib blah.mtl\nmtllib blah.mtl\n");
-  BLI_delete(out_file_path.c_str(), false, false);
 }
 
 TEST(obj_exporter_writer, format_handler_buffer_chunking)
@@ -261,10 +279,11 @@ class obj_exporter_regression_test : public obj_exporter_test {
     BKE_tempdir_init(nullptr);
     std::string tempdir = std::string(BKE_tempdir_base());
     std::string out_file_path = tempdir + BLI_path_basename(golden_obj.c_str());
-    strncpy(params.filepath, out_file_path.c_str(), FILE_MAX - 1);
+    STRNCPY(params.filepath, out_file_path.c_str());
     params.blen_filepath = bfile->main->filepath;
     std::string golden_file_path = blender::tests::flags_test_asset_dir() + SEP_STR + golden_obj;
-    BLI_split_dir_part(golden_file_path.c_str(), params.file_base_for_tests, PATH_MAX);
+    BLI_path_split_dir_part(
+        golden_file_path.c_str(), params.file_base_for_tests, sizeof(params.file_base_for_tests));
     export_frame(depsgraph, params, out_file_path.c_str());
     std::string output_str = read_temp_file_in_string(out_file_path);
 
@@ -340,6 +359,19 @@ TEST_F(obj_exporter_regression_test, edges)
 }
 
 TEST_F(obj_exporter_regression_test, vertices)
+{
+  OBJExportParamsDefault _export;
+  _export.params.forward_axis = IO_AXIS_Y;
+  _export.params.up_axis = IO_AXIS_Z;
+  _export.params.export_materials = false;
+  compare_obj_export_to_golden("io_tests" SEP_STR "blend_geometry" SEP_STR
+                               "cube_loose_edges_verts.blend",
+                               "io_tests" SEP_STR "obj" SEP_STR "cube_loose_edges_verts.obj",
+                               "",
+                               _export.params);
+}
+
+TEST_F(obj_exporter_regression_test, cube_loose_edges)
 {
   OBJExportParamsDefault _export;
   _export.params.forward_axis = IO_AXIS_Y;

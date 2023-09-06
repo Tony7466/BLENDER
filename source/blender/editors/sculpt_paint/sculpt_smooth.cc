@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edsculpt
@@ -7,15 +8,15 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_task.h"
 
 #include "DNA_brush_types.h"
 #include "DNA_meshdata_types.h"
 
 #include "BKE_context.h"
-#include "BKE_paint.h"
-#include "BKE_pbvh.h"
+#include "BKE_paint.hh"
+#include "BKE_pbvh_api.hh"
 
 #include "sculpt_intern.hh"
 
@@ -176,14 +177,12 @@ void SCULPT_neighbor_color_average(SculptSession *ss, float result[4], PBVHVertR
   }
 }
 
-static void do_enhance_details_brush_task_cb_ex(void *__restrict userdata,
-                                                const int n,
-                                                const TaskParallelTLS *__restrict tls)
+static void do_enhance_details_brush_task(Object *ob,
+                                          Sculpt *sd,
+                                          const Brush *brush,
+                                          PBVHNode *node)
 {
-  SculptThreadedTaskData *data = static_cast<SculptThreadedTaskData *>(userdata);
-  SculptSession *ss = data->ob->sculpt;
-  Sculpt *sd = data->sd;
-  const Brush *brush = data->brush;
+  SculptSession *ss = ob->sculpt;
 
   PBVHVertexIter vd;
 
@@ -192,14 +191,13 @@ static void do_enhance_details_brush_task_cb_ex(void *__restrict userdata,
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, data->brush->falloff_shape);
+      ss, &test, brush->falloff_shape);
 
-  const int thread_id = BLI_task_parallel_thread_id(tls);
+  const int thread_id = BLI_task_parallel_thread_id(nullptr);
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(
-      data->ob, ss, ss->cache->automasking, &automask_data, data->nodes[n]);
+  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
 
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
@@ -228,11 +226,9 @@ static void do_enhance_details_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-static void SCULPT_enhance_details_brush(Sculpt *sd,
-                                         Object *ob,
-                                         PBVHNode **nodes,
-                                         const int totnode)
+static void SCULPT_enhance_details_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
+  using namespace blender;
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
@@ -253,27 +249,21 @@ static void SCULPT_enhance_details_brush(Sculpt *sd,
     }
   }
 
-  SculptThreadedTaskData data{};
-  data.sd = sd;
-  data.ob = ob;
-  data.brush = brush;
-  data.nodes = nodes;
-
-  TaskParallelSettings settings;
-  BKE_pbvh_parallel_range_settings(&settings, true, totnode);
-  BLI_task_parallel_range(0, totnode, &data, do_enhance_details_brush_task_cb_ex, &settings);
+  threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+    for (const int i : range) {
+      do_enhance_details_brush_task(ob, sd, brush, nodes[i]);
+    }
+  });
 }
 
-static void do_smooth_brush_task_cb_ex(void *__restrict userdata,
-                                       const int n,
-                                       const TaskParallelTLS *__restrict tls)
+static void do_smooth_brush_task(Object *ob,
+                                 Sculpt *sd,
+                                 const Brush *brush,
+                                 const bool smooth_mask,
+                                 float bstrength,
+                                 PBVHNode *node)
 {
-  SculptThreadedTaskData *data = static_cast<SculptThreadedTaskData *>(userdata);
-  SculptSession *ss = data->ob->sculpt;
-  Sculpt *sd = data->sd;
-  const Brush *brush = data->brush;
-  const bool smooth_mask = data->smooth_mask;
-  float bstrength = data->strength;
+  SculptSession *ss = ob->sculpt;
 
   PBVHVertexIter vd;
 
@@ -281,14 +271,13 @@ static void do_smooth_brush_task_cb_ex(void *__restrict userdata,
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, data->brush->falloff_shape);
+      ss, &test, brush->falloff_shape);
 
-  const int thread_id = BLI_task_parallel_thread_id(tls);
+  const int thread_id = BLI_task_parallel_thread_id(nullptr);
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(
-      data->ob, ss, ss->cache->automasking, &automask_data, data->nodes[n]);
+  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
 
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
@@ -326,19 +315,15 @@ static void do_smooth_brush_task_cb_ex(void *__restrict userdata,
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_smooth(Sculpt *sd,
-                   Object *ob,
-                   PBVHNode **nodes,
-                   const int totnode,
-                   float bstrength,
-                   const bool smooth_mask)
+void SCULPT_smooth(
+    Sculpt *sd, Object *ob, Span<PBVHNode *> nodes, float bstrength, const bool smooth_mask)
 {
+  using namespace blender;
   SculptSession *ss = ob->sculpt;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
   const int max_iterations = 4;
   const float fract = 1.0f / max_iterations;
-  PBVHType type = BKE_pbvh_type(ss->pbvh);
   int iteration, count;
   float last;
 
@@ -347,32 +332,20 @@ void SCULPT_smooth(Sculpt *sd,
   count = int(bstrength * max_iterations);
   last = max_iterations * (bstrength - count * fract);
 
-  if (type == PBVH_FACES && !ss->pmap) {
-    BLI_assert_msg(0, "sculpt smooth: pmap missing");
-    return;
-  }
-
   SCULPT_vertex_random_access_ensure(ss);
   SCULPT_boundary_info_ensure(ob);
 
   for (iteration = 0; iteration <= count; iteration++) {
     const float strength = (iteration != count) ? 1.0f : last;
-
-    SculptThreadedTaskData data{};
-    data.sd = sd;
-    data.ob = ob;
-    data.brush = brush;
-    data.nodes = nodes;
-    data.smooth_mask = smooth_mask;
-    data.strength = strength;
-
-    TaskParallelSettings settings;
-    BKE_pbvh_parallel_range_settings(&settings, true, totnode);
-    BLI_task_parallel_range(0, totnode, &data, do_smooth_brush_task_cb_ex, &settings);
+    threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+      for (const int i : range) {
+        do_smooth_brush_task(ob, sd, brush, smooth_mask, strength, nodes[i]);
+      }
+    });
   }
 }
 
-void SCULPT_do_smooth_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
+void SCULPT_do_smooth_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
   SculptSession *ss = ob->sculpt;
 
@@ -382,11 +355,11 @@ void SCULPT_do_smooth_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnod
    * middle of the stroke. */
   if (ss->cache->bstrength < 0.0f) {
     /* Invert mode, intensify details. */
-    SCULPT_enhance_details_brush(sd, ob, nodes, totnode);
+    SCULPT_enhance_details_brush(sd, ob, nodes);
   }
   else {
     /* Regular mode, smooth. */
-    SCULPT_smooth(sd, ob, nodes, totnode, ss->cache->bstrength, false);
+    SCULPT_smooth(sd, ob, nodes, ss->cache->bstrength, false);
   }
 }
 
@@ -442,12 +415,9 @@ void SCULPT_surface_smooth_displace_step(SculptSession *ss,
   }
 }
 
-static void SCULPT_do_surface_smooth_brush_laplacian_task_cb_ex(
-    void *__restrict userdata, const int n, const TaskParallelTLS *__restrict tls)
+static void do_surface_smooth_brush_laplacian_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
-  SculptThreadedTaskData *data = static_cast<SculptThreadedTaskData *>(userdata);
-  SculptSession *ss = data->ob->sculpt;
-  const Brush *brush = data->brush;
+  SculptSession *ss = ob->sculpt;
   const float bstrength = ss->cache->bstrength;
   float alpha = brush->surface_smooth_shape_preservation;
 
@@ -456,15 +426,14 @@ static void SCULPT_do_surface_smooth_brush_laplacian_task_cb_ex(
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, data->brush->falloff_shape);
-  const int thread_id = BLI_task_parallel_thread_id(tls);
+      ss, &test, brush->falloff_shape);
+  const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
-  SCULPT_orig_vert_data_init(&orig_data, data->ob, data->nodes[n], SCULPT_UNDO_COORDS);
+  SCULPT_orig_vert_data_init(&orig_data, ob, node, SCULPT_UNDO_COORDS);
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(
-      data->ob, ss, ss->cache->automasking, &automask_data, data->nodes[n]);
+  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
 
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(&orig_data, &vd);
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
@@ -494,12 +463,9 @@ static void SCULPT_do_surface_smooth_brush_laplacian_task_cb_ex(
   BKE_pbvh_vertex_iter_end;
 }
 
-static void SCULPT_do_surface_smooth_brush_displace_task_cb_ex(
-    void *__restrict userdata, const int n, const TaskParallelTLS *__restrict tls)
+static void do_surface_smooth_brush_displace_task(Object *ob, const Brush *brush, PBVHNode *node)
 {
-  SculptThreadedTaskData *data = static_cast<SculptThreadedTaskData *>(userdata);
-  SculptSession *ss = data->ob->sculpt;
-  const Brush *brush = data->brush;
+  SculptSession *ss = ob->sculpt;
   const float bstrength = ss->cache->bstrength;
   const float beta = brush->surface_smooth_current_vertex;
 
@@ -507,13 +473,12 @@ static void SCULPT_do_surface_smooth_brush_displace_task_cb_ex(
 
   SculptBrushTest test;
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
-      ss, &test, data->brush->falloff_shape);
-  const int thread_id = BLI_task_parallel_thread_id(tls);
+      ss, &test, brush->falloff_shape);
+  const int thread_id = BLI_task_parallel_thread_id(nullptr);
   AutomaskingNodeData automask_data;
-  SCULPT_automasking_node_begin(
-      data->ob, ss, ss->cache->automasking, &automask_data, data->nodes[n]);
+  SCULPT_automasking_node_begin(ob, ss, ss->cache->automasking, &automask_data, node);
 
-  BKE_pbvh_vertex_iter_begin (ss->pbvh, data->nodes[n], vd, PBVH_ITER_UNIQUE) {
+  BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
       continue;
     }
@@ -536,23 +501,23 @@ static void SCULPT_do_surface_smooth_brush_displace_task_cb_ex(
   BKE_pbvh_vertex_iter_end;
 }
 
-void SCULPT_do_surface_smooth_brush(Sculpt *sd, Object *ob, PBVHNode **nodes, int totnode)
+void SCULPT_do_surface_smooth_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
 {
+  using namespace blender;
   Brush *brush = BKE_paint_brush(&sd->paint);
 
-  /* Threaded loop over nodes. */
-  SculptThreadedTaskData data{};
-  data.sd = sd;
-  data.ob = ob;
-  data.brush = brush;
-  data.nodes = nodes;
-
   TaskParallelSettings settings;
-  BKE_pbvh_parallel_range_settings(&settings, true, totnode);
+  BKE_pbvh_parallel_range_settings(&settings, true, nodes.size());
   for (int i = 0; i < brush->surface_smooth_iterations; i++) {
-    BLI_task_parallel_range(
-        0, totnode, &data, SCULPT_do_surface_smooth_brush_laplacian_task_cb_ex, &settings);
-    BLI_task_parallel_range(
-        0, totnode, &data, SCULPT_do_surface_smooth_brush_displace_task_cb_ex, &settings);
+    threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+      for (const int i : range) {
+        do_surface_smooth_brush_laplacian_task(ob, brush, nodes[i]);
+      }
+    });
+    threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
+      for (const int i : range) {
+        do_surface_smooth_brush_displace_task(ob, brush, nodes[i]);
+      }
+    });
   }
 }

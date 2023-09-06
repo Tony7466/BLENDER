@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2011-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 from __future__ import annotations
 
 if "bpy" in locals():
@@ -20,7 +23,7 @@ from bpy.app.translations import pgettext_tip as tip_
 
 
 class ANIM_OT_keying_set_export(Operator):
-    """Export Keying Set to a python script"""
+    """Export Keying Set to a Python script"""
     bl_idname = "anim.keying_set_export"
     bl_label = "Export Keying Set..."
 
@@ -38,7 +41,7 @@ class ANIM_OT_keying_set_export(Operator):
         options={'HIDDEN'},
     )
     filter_python: BoolProperty(
-        name="Filter python",
+        name="Filter Python",
         default=True,
         options={'HIDDEN'},
     )
@@ -385,7 +388,7 @@ class UpdateAnimatedTransformConstraint(Operator):
             data = ...
             try:
                 data = eval("base." + old_path)
-            except:
+            except BaseException:
                 pass
             ret = (data, old_path)
             if isinstance(base, bpy.types.TransformConstraint) and data is not ...:
@@ -402,7 +405,7 @@ class UpdateAnimatedTransformConstraint(Operator):
                     data = ...
                     try:
                         data = eval("base." + new_path)
-                    except:
+                    except BaseException:
                         pass
                     ret = (data, new_path)
                     # print(ret)

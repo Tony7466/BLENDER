@@ -1,11 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
 #include <functional>
 
-#include "BLI_math.h"
 #include "BLI_math_vector.hh"
 #include "BLI_rect.h"
 #include "BLI_vector.hh"
@@ -169,9 +169,7 @@ struct UDIMTileUndo {
   short tile_number;
   rcti region;
 
-  UDIMTileUndo(short tile_number, rcti &region) : tile_number(tile_number), region(region)
-  {
-  }
+  UDIMTileUndo(short tile_number, rcti &region) : tile_number(tile_number), region(region) {}
 };
 
 struct NodeData {
@@ -330,7 +328,7 @@ struct CopyPixelCommand {
       return false;
     }
 
-    /* Can only extend when the delta between with the previous source fits in a single byte.*/
+    /* Can only extend when the delta between with the previous source fits in a single byte. */
     int2 delta_source_1 = source_1 - command.source_1;
     if (max_ii(UNPACK2(blender::math::abs(delta_source_1))) > 127) {
       return false;
@@ -344,13 +342,11 @@ struct CopyPixelTile {
   Vector<CopyPixelGroup> groups;
   Vector<DeltaCopyPixelCommand> command_deltas;
 
-  CopyPixelTile(image::TileNumber tile_number) : tile_number(tile_number)
-  {
-  }
+  CopyPixelTile(image::TileNumber tile_number) : tile_number(tile_number) {}
 
   void copy_pixels(ImBuf &tile_buffer, IndexRange group_range) const
   {
-    if (tile_buffer.rect_float) {
+    if (tile_buffer.float_buffer.data) {
       image::ImageBufferAccessor<float4> accessor(tile_buffer);
       copy_pixels<float4>(accessor, group_range);
     }
@@ -380,7 +376,8 @@ struct CopyPixelTile {
       const CopyPixelGroup &group = groups[group_index];
       CopyPixelCommand copy_command(group);
       for (const DeltaCopyPixelCommand &item : Span<const DeltaCopyPixelCommand>(
-               &command_deltas[group.start_delta_index], group.num_deltas)) {
+               &command_deltas[group.start_delta_index], group.num_deltas))
+      {
         copy_command.apply(item);
         copy_command.mix_source_and_write_destination<T>(image_buffer);
       }

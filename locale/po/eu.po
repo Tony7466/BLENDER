@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.5.0 Beta (b'4096bcfb25f6')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'526f935981fd')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-03-13 11:29:34\n"
+"POT-Creation-Date: 2023-09-04 15:42:41\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Ainhize & Miriam <agoenaga006@ikasle.ehu.eus>\n"
 "Language-Team: Euskara <agoenaga006@ikasle.ehu.eus>\n"
@@ -451,10 +451,6 @@ msgid "Groups"
 msgstr "Taldeak"
 
 
-msgid "Visible Layers"
-msgstr "Ikusgai Dauden Geruzak"
-
-
 msgid "Local"
 msgstr "Lokala"
 
@@ -477,6 +473,10 @@ msgstr "Hautatutako"
 
 msgid "Cube"
 msgstr "Kuboa"
+
+
+msgid "Edit"
+msgstr "Editatu"
 
 
 msgid "Cylinder"
@@ -572,10 +572,6 @@ msgid "Show/Hide Faces"
 msgstr "Aurpegiak erakutsi/ezkutatu"
 
 
-msgid "Edit"
-msgstr "Editatu"
-
-
 msgid "Text"
 msgstr "Testua"
 
@@ -639,6 +635,10 @@ msgstr "Y Ardatza"
 
 msgid "Original"
 msgstr "Jatorrizkoa"
+
+
+msgid "Selection"
+msgstr "Hautaketa"
 
 
 msgid "Reflection"
@@ -785,10 +785,6 @@ msgstr "Txertatu"
 msgctxt "Operator"
 msgid "Console Language"
 msgstr "Kontsolaren Hizkuntza"
-
-
-msgid "Language"
-msgstr "Hizkuntza"
 
 
 msgctxt "Operator"
@@ -943,15 +939,6 @@ msgid "Use Metadata"
 msgstr "Metadata erabili"
 
 
-msgctxt "Operator"
-msgid "Export OBJ"
-msgstr "Esportatu OBJ"
-
-
-msgid "Include UVs"
-msgstr "Gehitu UVs"
-
-
 msgid "Hierarchy"
 msgstr "Hierarkia"
 
@@ -1004,6 +991,10 @@ msgid "Execute selected file"
 msgstr "Hautatutako fitxategia exekutatu"
 
 
+msgid "Play"
+msgstr "Erreproduzitu"
+
+
 msgctxt "Operator"
 msgid "Increment Number in Filename"
 msgstr "Fitxategi-izenean Zenbakia Inkrementatu"
@@ -1042,11 +1033,6 @@ msgstr "Hurrengo karpeta"
 
 msgid "Move to next folder"
 msgstr "Hurrengo karpetara mugitu"
-
-
-msgctxt "Operator"
-msgid "Parent File"
-msgstr "Erro Fitxategia"
 
 
 msgid "Move to parent directory"
@@ -1162,10 +1148,6 @@ msgstr "Tartea aldatu"
 
 msgid "Change font spacing"
 msgstr "Letra-tipo tartea aldatu"
-
-
-msgid "Selection"
-msgstr "Hautaketa"
 
 
 msgctxt "Operator"
@@ -1614,6 +1596,36 @@ msgid "Save Screenshot"
 msgstr "Pantaila-irudia Gorde"
 
 
+msgctxt "Sequence"
+msgid "Type"
+msgstr "Mota"
+
+
+msgctxt "Sequence"
+msgid "Add"
+msgstr "Gehitu"
+
+
+msgctxt "Sequence"
+msgid "Subtract"
+msgstr "Kendu"
+
+
+msgctxt "Sequence"
+msgid "Color"
+msgstr "Kolorea"
+
+
+msgctxt "Sequence"
+msgid "Speed"
+msgstr "Abiadura"
+
+
+msgctxt "Sequence"
+msgid "Text"
+msgstr "Testua"
+
+
 msgid "Property"
 msgstr "Ezaugarria"
 
@@ -1671,8 +1683,8 @@ msgid "Prev"
 msgstr "Aurrekoa"
 
 
-msgid "Play"
-msgstr "Erreproduzitu"
+msgid "Speaker"
+msgstr "Bozgorailua"
 
 
 msgctxt "Operator"
@@ -1688,6 +1700,10 @@ msgstr "Azken Saioa Berreskuratu"
 msgctxt "Operator"
 msgid "Save System Info"
 msgstr "Sistemaren Informazioa Gorde"
+
+
+msgid "Refraction"
+msgstr "Errefrakzioa"
 
 
 msgctxt "Operator"
@@ -1724,9 +1740,12 @@ msgid "Continue"
 msgstr "Jarraitu"
 
 
-msgctxt "Sequence"
-msgid "Type"
-msgstr "Mota"
+msgid "Language"
+msgstr "Hizkuntza"
+
+
+msgid "Temperature"
+msgstr "Tenperatura"
 
 
 msgctxt "Sequence"
@@ -1759,31 +1778,6 @@ msgid "Cross"
 msgstr "Gurutzatu"
 
 
-msgctxt "Sequence"
-msgid "Add"
-msgstr "Gehitu"
-
-
-msgctxt "Sequence"
-msgid "Subtract"
-msgstr "Kendu"
-
-
-msgctxt "Sequence"
-msgid "Color"
-msgstr "Kolorea"
-
-
-msgctxt "Sequence"
-msgid "Speed"
-msgstr "Abiadura"
-
-
-msgctxt "Sequence"
-msgid "Text"
-msgstr "Testua"
-
-
 msgid "Gray Scale"
 msgstr "Gris-eskala"
 
@@ -1798,10 +1792,6 @@ msgstr "Blender Fitxategia"
 
 msgid "Sort Alphabetically"
 msgstr "Alfabetikoki Ordenatu"
-
-
-msgid "Speaker"
-msgstr "Bozgorailua"
 
 
 msgid "3D"
@@ -1918,14 +1908,6 @@ msgid "Upper"
 msgstr "Altua"
 
 
-msgid "Refraction"
-msgstr "Errefrakzioa"
-
-
-msgid "Temperature"
-msgstr "Tenperatura"
-
-
 msgctxt "Image"
 msgid "New"
 msgstr "Berria"
@@ -1995,13 +1977,13 @@ msgstr "Irudia Renderizatu"
 
 
 msgctxt "Operator"
-msgid "Developer Community"
-msgstr "Garatzaileen Komunitatea"
+msgid "Report a Bug"
+msgstr "Akats baten berri eman"
 
 
 msgctxt "Operator"
-msgid "Report a Bug"
-msgstr "Akats baten berri eman"
+msgid "Developer Community"
+msgstr "Garatzaileen Komunitatea"
 
 
 msgctxt "Operator"
@@ -2221,12 +2203,12 @@ msgid "AO"
 msgstr "Inguruneko Oklusioa"
 
 
-msgid "Anisotropy"
-msgstr "Anisotropia"
-
-
 msgid "BSDF"
 msgstr "BSDF"
+
+
+msgid "Anisotropy"
+msgstr "Anisotropia"
 
 
 msgid "View Vector"
@@ -2361,22 +2343,6 @@ msgid "unable to open the file"
 msgstr "Ezin izan da fitxategia ireki"
 
 
-msgid "File format is not supported in file '%s'"
-msgstr "Fitxategi formatuak ez dauka euskarririk '%s' fitxategian"
-
-
-msgid "File path '%s' invalid"
-msgstr "'%s' fitxategi-helbidea baliogabea"
-
-
-msgid "Unknown error loading '%s'"
-msgstr "Errore ezezaguna '%s' kargatzean"
-
-
-msgid "Could not read '%s'"
-msgstr "Ezin izan da '%s' irakurri"
-
-
 msgid "'%s': nothing indicated"
 msgstr "'%s': ez da ezer adierazi"
 
@@ -2419,10 +2385,6 @@ msgstr "Ingelesa (English)"
 
 msgid "Japanese (日本語)"
 msgstr "Japoniera (日本語)"
-
-
-msgid "Dutch (Nederlandse taal)"
-msgstr "Nederlandera (Nederlandse taal)"
 
 
 msgid "Italian (Italiano)"
@@ -2533,10 +2495,6 @@ msgid "Hebrew (תירִבְעִ)"
 msgstr "Hebreera (תירִבְעִ)"
 
 
-msgid "Estonian (Eestlane)"
-msgstr "Estoniera (Eestlane)"
-
-
 msgid "Esperanto (Esperanto)"
 msgstr "Esperantoa (Esperanto)"
 
@@ -2555,14 +2513,6 @@ msgstr "Uzbekera (Oʻzbek)"
 
 msgid "Uzbek Cyrillic (Ўзбек)"
 msgstr "Uzbekera Zirilikoa (Ўзбек)"
-
-
-msgid "Hindi (मानक हिन्दी)"
-msgstr "Hindi (मानक हिन्दी)"
-
-
-msgid "Vietnamese (tiếng Việt)"
-msgstr "Vietnamera (tiếng Việt)"
 
 
 msgid "Complete"

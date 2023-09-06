@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
  * Adapted from the Blender Alembic importer implementation. Copyright 2016 Kévin Dietrich.
  * Modifications Copyright 2021 Tangent Animation. All rights reserved. */
 
@@ -161,7 +163,7 @@ void USDCurvesReader::read_curve_sample(Curve *cu, const double motionSampleTime
   }
 }
 
-Mesh *USDCurvesReader::read_mesh(struct Mesh *existing_mesh,
+Mesh *USDCurvesReader::read_mesh(Mesh *existing_mesh,
                                  const USDMeshReadParams params,
                                  const char ** /* err_str */)
 {

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup obj
@@ -6,11 +8,12 @@
 
 #include "BKE_image.h"
 #include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 #include "BLI_map.hh"
 #include "BLI_math_vector.h"
 #include "BLI_path_util.h"
+#include "BLI_string.h"
 
 #include "DNA_material_types.h"
 #include "DNA_node_types.h"
@@ -20,6 +23,8 @@
 #include "obj_export_mtl.hh"
 #include "obj_import_mtl.hh"
 #include "obj_import_string_utils.hh"
+
+#include <iostream>
 
 namespace blender::io::obj {
 
@@ -410,7 +415,7 @@ bNodeTree *create_mtl_node_tree(Main *bmain,
                                 Material *mat,
                                 bool relative_paths)
 {
-  bNodeTree *ntree = ntreeAddTreeEmbedded(
+  bNodeTree *ntree = blender::bke::ntreeAddTreeEmbedded(
       nullptr, &mat->id, "Shader Nodetree", ntreeType_Shader->idname);
 
   bNode *bsdf = add_node(ntree, SH_NODE_BSDF_PRINCIPLED, node_locx_bsdf, node_locy_top);

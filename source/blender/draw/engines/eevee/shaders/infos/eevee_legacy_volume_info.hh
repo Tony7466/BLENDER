@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "gpu_shader_create_info.hh"
 
@@ -16,6 +18,7 @@ GPU_SHADER_CREATE_INFO(eevee_legacy_volumes_clear)
     .define("STANDALONE")
     .define("VOLUMETRICS")
     .define("CLEAR")
+    .builtins(BuiltinBits::LAYER)
     .additional_info("eevee_legacy_common_lib")
     .additional_info("draw_view")
     .additional_info("draw_resource_id_varying")
@@ -42,6 +45,7 @@ GPU_SHADER_CREATE_INFO(eevee_legacy_volumes_clear_no_geom)
     .define("STANDALONE")
     .define("VOLUMETRICS")
     .define("CLEAR")
+    .builtins(BuiltinBits::LAYER)
     .additional_info("eevee_legacy_common_lib")
     .additional_info("draw_view")
     .additional_info("draw_resource_id_varying")
@@ -64,6 +68,7 @@ GPU_SHADER_CREATE_INFO(eevee_legacy_volumes_scatter_common)
     .define("STANDALONE")
     .define("VOLUMETRICS")
     .define("VOLUME_SHADOW")
+    .builtins(BuiltinBits::LAYER)
     .additional_info("eevee_legacy_common_lib")
     .additional_info("draw_view")
     .additional_info("draw_resource_id_varying")
@@ -102,7 +107,9 @@ GPU_SHADER_CREATE_INFO(eevee_legacy_volumes_scatter_no_geom)
 #endif
 
 /* EEVEE_shaders_volumes_scatter_with_lights_sh_get */
-GPU_SHADER_CREATE_INFO(eevee_legacy_volumes_scatter_with_lights_common).define("VOLUME_LIGHTING");
+GPU_SHADER_CREATE_INFO(eevee_legacy_volumes_scatter_with_lights_common)
+    .define("VOLUME_LIGHTING")
+    .define("IRRADIANCE_HL2");
 
 GPU_SHADER_CREATE_INFO(eevee_legacy_volumes_scatter_with_lights)
     .additional_info("eevee_legacy_volumes_scatter_with_lights_common")
@@ -126,6 +133,7 @@ GPU_SHADER_CREATE_INFO(eevee_legacy_volumes_integration_common)
     .additional_info("draw_view")
     .additional_info("eevee_legacy_volumetric_lib")
     .additional_info("draw_resource_id_varying")
+    .builtins(BuiltinBits::LAYER)
     /* NOTE: Unique sampler IDs assigned for consistency between library includes,
      * and to avoid unique assignment collision validation error.
      * However, resources will be auto assigned locations within shader usage. */

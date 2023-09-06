@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2008 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup spoutliner
@@ -18,26 +19,27 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
+#include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_outliner_treehash.hh"
 #include "BKE_screen.h"
 
-#include "ED_screen.h"
-#include "ED_space_api.h"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
 
-#include "WM_api.h"
-#include "WM_message.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "outliner_intern.hh"
 #include "tree/tree_display.hh"
@@ -92,9 +94,7 @@ static void outliner_main_region_draw(const bContext *C, ARegion *region)
   UI_view2d_scrollers_draw(v2d, nullptr);
 }
 
-static void outliner_main_region_free(ARegion * /*region*/)
-{
-}
+static void outliner_main_region_free(ARegion * /*region*/) {}
 
 static void outliner_main_region_listener(const wmRegionListenerParams *params)
 {
@@ -237,7 +237,7 @@ static void outliner_main_region_listener(const wmRegionListenerParams *params)
       }
       break;
     case NC_GPENCIL:
-      if (ELEM(wmn->action, NA_EDITED, NA_SELECTED)) {
+      if (ELEM(wmn->action, NA_EDITED, NA_SELECTED, NA_RENAME)) {
         ED_region_tag_redraw(region);
       }
       break;
@@ -263,7 +263,8 @@ static void outliner_main_region_listener(const wmRegionListenerParams *params)
       break;
     case NC_NODE:
       if (ELEM(wmn->action, NA_ADDED, NA_REMOVED) &&
-          ELEM(space_outliner->outlinevis, SO_LIBRARIES, SO_DATA_API)) {
+          ELEM(space_outliner->outlinevis, SO_LIBRARIES, SO_DATA_API))
+      {
         ED_region_tag_redraw(region);
       }
       break;
@@ -272,7 +273,7 @@ static void outliner_main_region_listener(const wmRegionListenerParams *params)
 
 static void outliner_main_region_message_subscribe(const wmRegionMessageSubscribeParams *params)
 {
-  struct wmMsgBus *mbus = params->message_bus;
+  wmMsgBus *mbus = params->message_bus;
   ScrArea *area = params->area;
   ARegion *region = params->region;
   SpaceOutliner *space_outliner = static_cast<SpaceOutliner *>(area->spacedata.first);
@@ -300,9 +301,7 @@ static void outliner_header_region_draw(const bContext *C, ARegion *region)
   ED_region_header(C, region);
 }
 
-static void outliner_header_region_free(ARegion * /*region*/)
-{
-}
+static void outliner_header_region_free(ARegion * /*region*/) {}
 
 static void outliner_header_region_listener(const wmRegionListenerParams *params)
 {
@@ -356,7 +355,7 @@ static SpaceLink *outliner_create(const ScrArea * /*area*/, const Scene * /*scen
   return (SpaceLink *)space_outliner;
 }
 
-/* not spacelink itself */
+/* Doesn't free the space-link itself. */
 static void outliner_free(SpaceLink *sl)
 {
   SpaceOutliner *space_outliner = (SpaceOutliner *)sl;
@@ -398,7 +397,7 @@ static SpaceLink *outliner_duplicate(SpaceLink *sl)
   return (SpaceLink *)space_outliner_new;
 }
 
-static void outliner_id_remap(ScrArea *area, SpaceLink *slink, const struct IDRemapper *mappings)
+static void outliner_id_remap(ScrArea *area, SpaceLink *slink, const IDRemapper *mappings)
 {
   SpaceOutliner *space_outliner = (SpaceOutliner *)slink;
 
@@ -443,7 +442,39 @@ static void outliner_id_remap(ScrArea *area, SpaceLink *slink, const struct IDRe
   }
 }
 
-static void outliner_deactivate(struct ScrArea *area)
+static void outliner_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
+{
+  SpaceOutliner *space_outliner = reinterpret_cast<SpaceOutliner *>(space_link);
+  const int data_flags = BKE_lib_query_foreachid_process_flags_get(data);
+  const bool is_readonly = (data_flags & IDWALK_READONLY) != 0;
+  const bool allow_pointer_access = (data_flags & IDWALK_NO_ORIG_POINTERS_ACCESS) == 0;
+
+  if (space_outliner->treestore != nullptr) {
+    TreeStoreElem *tselem;
+    BLI_mempool_iter iter;
+
+    BLI_mempool_iternew(space_outliner->treestore, &iter);
+    while ((tselem = static_cast<TreeStoreElem *>(BLI_mempool_iterstep(&iter)))) {
+      /* Do not try to restore non-ID pointers (drivers/sequence/etc.). */
+      if (TSE_IS_REAL_ID(tselem)) {
+        const int cb_flag = (tselem->id != nullptr && allow_pointer_access &&
+                             (tselem->id->flag & LIB_EMBEDDED_DATA) != 0) ?
+                                IDWALK_CB_EMBEDDED_NOT_OWNING :
+                                IDWALK_CB_NOP;
+        BKE_LIB_FOREACHID_PROCESS_ID(data, tselem->id, cb_flag);
+      }
+      else if (!is_readonly) {
+        tselem->id = nullptr;
+      }
+    }
+    if (!is_readonly) {
+      /* rebuild hash table, because it depends on ids too */
+      space_outliner->storeflag |= SO_TREESTORE_REBUILD;
+    }
+  }
+}
+
+static void outliner_deactivate(ScrArea *area)
 {
   /* Remove hover highlights */
   SpaceOutliner *space_outliner = static_cast<SpaceOutliner *>(area->spacedata.first);
@@ -451,7 +482,7 @@ static void outliner_deactivate(struct ScrArea *area)
   ED_region_tag_redraw_no_rebuild(BKE_area_find_region_type(area, RGN_TYPE_WINDOW));
 }
 
-static void outliner_blend_read_data(BlendDataReader *reader, SpaceLink *sl)
+static void outliner_space_blend_read_data(BlendDataReader *reader, SpaceLink *sl)
 {
   SpaceOutliner *space_outliner = (SpaceOutliner *)sl;
 
@@ -482,9 +513,11 @@ static void outliner_blend_read_data(BlendDataReader *reader, SpaceLink *sl)
   space_outliner->runtime = nullptr;
 }
 
-static void outliner_blend_read_lib(BlendLibReader *reader, ID * /*parent_id*/, SpaceLink *sl)
+static void outliner_space_blend_read_after_liblink(BlendLibReader * /*reader*/,
+                                                    ID * /*parent_id*/,
+                                                    SpaceLink *sl)
 {
-  SpaceOutliner *space_outliner = (SpaceOutliner *)sl;
+  SpaceOutliner *space_outliner = reinterpret_cast<SpaceOutliner *>(sl);
 
   if (space_outliner->treestore) {
     TreeStoreElem *tselem;
@@ -492,7 +525,9 @@ static void outliner_blend_read_lib(BlendLibReader *reader, ID * /*parent_id*/, 
 
     BLI_mempool_iternew(space_outliner->treestore, &iter);
     while ((tselem = static_cast<TreeStoreElem *>(BLI_mempool_iterstep(&iter)))) {
-      BLO_read_id_address(reader, nullptr, &tselem->id);
+      if (!TSE_IS_REAL_ID(tselem)) {
+        tselem->id = nullptr;
+      }
     }
     /* rebuild hash table, because it depends on ids too */
     space_outliner->storeflag |= SO_TREESTORE_REBUILD;
@@ -554,7 +589,7 @@ static void write_space_outliner(BlendWriter *writer, const SpaceOutliner *space
   }
 }
 
-static void outliner_blend_write(BlendWriter *writer, SpaceLink *sl)
+static void outliner_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 {
   SpaceOutliner *space_outliner = (SpaceOutliner *)sl;
   write_space_outliner(writer, space_outliner);
@@ -562,7 +597,7 @@ static void outliner_blend_write(BlendWriter *writer, SpaceLink *sl)
 
 }  // namespace blender::ed::outliner
 
-void ED_spacetype_outliner(void)
+void ED_spacetype_outliner()
 {
   using namespace blender::ed::outliner;
 
@@ -580,11 +615,12 @@ void ED_spacetype_outliner(void)
   st->keymap = outliner_keymap;
   st->dropboxes = outliner_dropboxes;
   st->id_remap = outliner_id_remap;
+  st->foreach_id = outliner_foreach_id;
   st->deactivate = outliner_deactivate;
   st->context = outliner_context;
-  st->blend_read_data = outliner_blend_read_data;
-  st->blend_read_lib = outliner_blend_read_lib;
-  st->blend_write = outliner_blend_write;
+  st->blend_read_data = outliner_space_blend_read_data;
+  st->blend_read_after_liblink = outliner_space_blend_read_after_liblink;
+  st->blend_write = outliner_space_blend_write;
 
   /* regions: main window */
   art = MEM_cnew<ARegionType>("spacetype outliner region");

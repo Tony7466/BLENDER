@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
@@ -47,7 +49,7 @@ class DopesheetFilterPopoverBase:
     bl_region_type = 'HEADER'
     bl_label = "Filters"
 
-    # Generic = Affects all datatypes
+    # Generic = Affects all data-types.
     # XXX: Perhaps we want these to stay in the header instead, for easy/fast access
     @classmethod
     def draw_generic_filters(cls, context, layout):
@@ -158,7 +160,7 @@ class DopesheetFilterPopoverBase:
         col.prop(dopesheet, "use_datablock_sort", icon='NONE')
 
 
-# Popover for Dopesheet Editor(s) - Dopesheet, Action, Shapekey, GPencil, Mask, etc.
+# Popover for Dope-sheet Editor(s) - Dope-sheet, Action, Shape-key, GPencil, Mask, etc.
 class DOPESHEET_PT_filters(DopesheetFilterPopoverBase, Panel):
     bl_space_type = 'DOPESHEET_EDITOR'
     bl_region_type = 'HEADER'
@@ -281,7 +283,29 @@ class DOPESHEET_HT_editor_buttons:
         row.prop(tool_settings, "use_proportional_action", text="", icon_only=True)
         sub = row.row(align=True)
         sub.active = tool_settings.use_proportional_action
-        sub.prop(tool_settings, "proportional_edit_falloff", text="", icon_only=True)
+        sub.prop_with_popover(
+            tool_settings,
+            "proportional_edit_falloff",
+            text="",
+            icon_only=True,
+            panel="DOPESHEET_PT_proportional_edit",
+        )
+
+
+class DOPESHEET_PT_proportional_edit(Panel):
+    bl_space_type = 'DOPESHEET_EDITOR'
+    bl_region_type = 'HEADER'
+    bl_label = "Proportional Editing"
+    bl_ui_units_x = 8
+
+    def draw(self, context):
+        layout = self.layout
+        tool_settings = context.tool_settings
+        col = layout.column()
+        col.active = tool_settings.use_proportional_action
+
+        col.prop(tool_settings, "proportional_edit_falloff", expand=True)
+        col.prop(tool_settings, "proportional_size")
 
 
 class DOPESHEET_MT_editor_menus(Menu):
@@ -695,6 +719,8 @@ class DOPESHEET_MT_channel_context_menu(Menu):
         # This menu is used from the graph editor too.
         is_graph_editor = context.area.type == 'GRAPH_EDITOR'
 
+        layout.operator_context = 'INVOKE_REGION_CHANNELS'
+
         layout.separator()
         layout.operator("anim.channels_view_selected")
 
@@ -822,6 +848,7 @@ class DOPESHEET_PT_gpencil_layer_display(LayersDopeSheetPanel, GreasePencilLayer
 
 classes = (
     DOPESHEET_HT_header,
+    DOPESHEET_PT_proportional_edit,
     DOPESHEET_MT_editor_menus,
     DOPESHEET_MT_view,
     DOPESHEET_MT_select,

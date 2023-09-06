@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "scene/attribute.h"
 #include "scene/hair.h"
@@ -278,9 +279,11 @@ bool Attribute::same_storage(TypeDesc a, TypeDesc b)
     return true;
 
   if (a == TypeDesc::TypeColor || a == TypeDesc::TypePoint || a == TypeDesc::TypeVector ||
-      a == TypeDesc::TypeNormal) {
+      a == TypeDesc::TypeNormal)
+  {
     if (b == TypeDesc::TypeColor || b == TypeDesc::TypePoint || b == TypeDesc::TypeVector ||
-        b == TypeDesc::TypeNormal) {
+        b == TypeDesc::TypeNormal)
+    {
       return true;
     }
   }
@@ -460,9 +463,7 @@ AttributeSet::AttributeSet(Geometry *geometry, AttributePrimitive prim)
 {
 }
 
-AttributeSet::~AttributeSet()
-{
-}
+AttributeSet::~AttributeSet() {}
 
 Attribute *AttributeSet::add(ustring name, TypeDesc type, AttributeElement element)
 {
@@ -618,6 +619,9 @@ Attribute *AttributeSet::add(AttributeStandard std, ustring name)
   }
   else if (geometry->geometry_type == Geometry::HAIR) {
     switch (std) {
+      case ATTR_STD_VERTEX_NORMAL:
+        attr = add(name, TypeDesc::TypeNormal, ATTR_ELEMENT_CURVE_KEY);
+        break;
       case ATTR_STD_UV:
         attr = add(name, TypeFloat2, ATTR_ELEMENT_CURVE);
         break;
@@ -842,13 +846,9 @@ AttributeRequest::AttributeRequest(AttributeStandard std_)
 
 /* AttributeRequestSet */
 
-AttributeRequestSet::AttributeRequestSet()
-{
-}
+AttributeRequestSet::AttributeRequestSet() {}
 
-AttributeRequestSet::~AttributeRequestSet()
-{
-}
+AttributeRequestSet::~AttributeRequestSet() {}
 
 bool AttributeRequestSet::modified(const AttributeRequestSet &other)
 {

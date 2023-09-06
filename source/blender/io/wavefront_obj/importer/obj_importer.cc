@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup obj
@@ -10,6 +12,7 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_set.hh"
 #include "BLI_sort.hh"
+#include "BLI_string.h"
 #include "BLI_string_ref.hh"
 
 #include "BKE_layer.h"

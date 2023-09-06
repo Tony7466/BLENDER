@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2007 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2007 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup imbuf
@@ -30,6 +31,7 @@ typedef enum ThumbSource {
   THB_SOURCE_MOVIE,
   THB_SOURCE_BLEND,
   THB_SOURCE_FONT,
+  THB_SOURCE_OBJECT_IO,
 } ThumbSource;
 
 /**

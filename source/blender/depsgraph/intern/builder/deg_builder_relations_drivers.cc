@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2013 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2013 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup depsgraph
@@ -10,6 +11,8 @@
 #include "intern/builder/deg_builder_relations_drivers.h"
 
 #include <cstring>
+
+#include "BLI_listbase.h"
 
 #include "DNA_anim_types.h"
 

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgeometry
@@ -18,24 +19,24 @@
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
 #include "BKE_object_deform.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_report.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "DEG_depsgraph.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "ED_geometry.h"
-#include "ED_mesh.h"
-#include "ED_object.h"
+#include "ED_geometry.hh"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
 
 #include "geometry_intern.hh"
 
@@ -73,12 +74,12 @@ static const EnumPropertyItem *geometry_attribute_domain_itemf(bContext *C,
                                                                bool *r_free)
 {
   if (C == nullptr) {
-    return DummyRNA_NULL_items;
+    return rna_enum_dummy_NULL_items;
   }
 
   Object *ob = ED_object_context(C);
   if (ob == nullptr) {
-    return DummyRNA_NULL_items;
+    return rna_enum_dummy_NULL_items;
   }
 
   return rna_enum_attribute_domain_itemf(static_cast<ID *>(ob->data), false, r_free);
@@ -105,36 +106,6 @@ static int geometry_attribute_add_exec(bContext *C, wmOperator *op)
   WM_main_add_notifier(NC_GEOM | ND_DATA, id);
 
   return OPERATOR_FINISHED;
-}
-
-static void next_color_attribute(ID *id, const StringRefNull name, bool is_render)
-{
-  const CustomDataLayer *layer = BKE_id_attributes_color_find(id, name.c_str());
-  int index = BKE_id_attribute_to_index(id, layer, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
-
-  index++;
-
-  layer = BKE_id_attribute_from_index(id, index, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
-
-  if (!layer) {
-    index = 0;
-    layer = BKE_id_attribute_from_index(id, index, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
-  }
-
-  if (layer) {
-    if (is_render) {
-      BKE_id_attributes_active_color_set(id, layer->name);
-    }
-    else {
-      BKE_id_attributes_default_color_set(id, layer->name);
-    }
-  }
-}
-
-static void next_color_attributes(ID *id, const StringRefNull name)
-{
-  next_color_attribute(id, name, false); /* active */
-  next_color_attribute(id, name, true);  /* render */
 }
 
 void GEOMETRY_OT_attribute_add(wmOperatorType *ot)
@@ -181,8 +152,6 @@ static int geometry_attribute_remove_exec(bContext *C, wmOperator *op)
   Object *ob = ED_object_context(C);
   ID *id = static_cast<ID *>(ob->data);
   CustomDataLayer *layer = BKE_id_attributes_active_get(id);
-
-  next_color_attributes(id, layer->name);
 
   if (!BKE_id_attribute_remove(id, layer->name, op->reports)) {
     return OPERATOR_CANCELLED;
@@ -295,14 +264,15 @@ static int geometry_attribute_convert_exec(bContext *C, wmOperator *op)
                                          name.c_str(),
                                          eCustomDataType(RNA_enum_get(op->ptr, "data_type")),
                                          eAttrDomain(RNA_enum_get(op->ptr, "domain")),
-                                         op->reports)) {
+                                         op->reports))
+      {
         return OPERATOR_CANCELLED;
       }
       break;
     }
     case ConvertAttributeMode::VertexGroup: {
       Array<float> src_weights(mesh->totvert);
-      VArray<float> src_varray = attributes.lookup_or_default<float>(
+      VArray<float> src_varray = *attributes.lookup_or_default<float>(
           name, ATTR_DOMAIN_POINT, 0.0f);
       src_varray.materialize(src_weights);
       attributes.remove(name);
@@ -335,10 +305,10 @@ static void geometry_color_attribute_add_ui(bContext * /*C*/, wmOperator *op)
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
 
-  uiItemR(layout, op->ptr, "name", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "name", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(layout, op->ptr, "domain", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
   uiItemR(layout, op->ptr, "data_type", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
-  uiItemR(layout, op->ptr, "color", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "color", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 void GEOMETRY_OT_color_attribute_add(wmOperatorType *ot)
@@ -435,8 +405,6 @@ static int geometry_color_attribute_remove_exec(bContext *C, wmOperator *op)
   if (active_name.empty()) {
     return OPERATOR_CANCELLED;
   }
-
-  next_color_attributes(id, active_name);
 
   if (!BKE_id_attribute_remove(id, active_name.c_str(), op->reports)) {
     return OPERATOR_CANCELLED;
@@ -564,14 +532,14 @@ static void geometry_attribute_convert_ui(bContext * /*C*/, wmOperator *op)
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
 
-  uiItemR(layout, op->ptr, "mode", 0, nullptr, ICON_NONE);
+  uiItemR(layout, op->ptr, "mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   const ConvertAttributeMode mode = static_cast<ConvertAttributeMode>(
       RNA_enum_get(op->ptr, "mode"));
 
   if (mode == ConvertAttributeMode::Generic) {
-    uiItemR(layout, op->ptr, "domain", 0, nullptr, ICON_NONE);
-    uiItemR(layout, op->ptr, "data_type", 0, nullptr, ICON_NONE);
+    uiItemR(layout, op->ptr, "domain", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(layout, op->ptr, "data_type", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 }
 
@@ -599,7 +567,8 @@ static bool geometry_color_attribute_convert_poll(bContext *C)
     return false;
   }
   if (!(ATTR_DOMAIN_AS_MASK(meta_data->domain) & ATTR_DOMAIN_MASK_COLOR) ||
-      !(CD_TYPE_AS_MASK(meta_data->data_type) & CD_MASK_COLOR_ALL)) {
+      !(CD_TYPE_AS_MASK(meta_data->data_type) & CD_MASK_COLOR_ALL))
+  {
     return false;
   }
 
@@ -737,13 +706,15 @@ bool ED_geometry_attribute_convert(Mesh *mesh,
   }
 
   const std::string name_copy = name;
-  const GVArray varray = attributes.lookup_or_default(name_copy, dst_domain, dst_type);
+  const GVArray varray = *attributes.lookup_or_default(name_copy, dst_domain, dst_type);
 
   const CPPType &cpp_type = varray.type();
   void *new_data = MEM_malloc_arrayN(varray.size(), cpp_type.size(), __func__);
   varray.materialize_to_uninitialized(new_data);
   attributes.remove(name_copy);
-  attributes.add(name_copy, dst_domain, dst_type, bke::AttributeInitMoveArray(new_data));
+  if (!attributes.add(name_copy, dst_domain, dst_type, bke::AttributeInitMoveArray(new_data))) {
+    MEM_freeN(new_data);
+  }
 
   return true;
 }

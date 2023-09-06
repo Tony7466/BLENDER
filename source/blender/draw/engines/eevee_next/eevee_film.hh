@@ -1,6 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation.
- */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
@@ -14,6 +14,16 @@
  * - For dynamic scene (if an update is detected), we use a more temporally stable accumulation
  *   following the Temporal Anti-Aliasing method (a.k.a. Temporal Super-Sampling). This does
  *   history reprojection and rectification to avoid most of the flickering.
+ *
+ * The Film module uses the following terms to refer to different spaces/extents:
+ *
+ * - Display: The full output extent (matches the full viewport or the final image resolution).
+ *
+ * - Film: The same extent as display, or a subset of it when a Render Region is used.
+ *
+ * - Render: The extent used internally by the engine for rendering the main views.
+ *   Equals to the full display extent + overscan (even when a Render Region is used)
+ *   and its resolution can be scaled.
  */
 
 #pragma once
@@ -21,6 +31,8 @@
 #include "DRW_render.h"
 
 #include "eevee_shader_shared.hh"
+
+#include <sstream>
 
 namespace blender::eevee {
 
@@ -64,6 +76,7 @@ class Film {
   PassSimple cryptomatte_post_ps_ = {"Film.Cryptomatte.Post"};
 
   FilmDataBuf data_;
+  int2 display_extent;
 
   eViewLayerEEVEEPassType enabled_passes_ = eViewLayerEEVEEPassType(0);
 
@@ -94,6 +107,12 @@ class Film {
     return data_.render_extent;
   }
 
+  /** Returns final output resolution. */
+  int2 display_extent_get() const
+  {
+    return display_extent;
+  }
+
   float2 pixel_jitter_get() const;
 
   float background_opacity_get() const
@@ -105,13 +124,12 @@ class Film {
   int cryptomatte_layer_max_get() const;
   int cryptomatte_layer_len_get() const;
 
+  /** WARNING: Film and RenderBuffers use different storage types for AO and Shadow. */
   static ePassStorageType pass_storage_type(eViewLayerEEVEEPassType pass_type)
   {
     switch (pass_type) {
       case EEVEE_RENDER_PASS_Z:
       case EEVEE_RENDER_PASS_MIST:
-      case EEVEE_RENDER_PASS_SHADOW:
-      case EEVEE_RENDER_PASS_AO:
         return PASS_STORAGE_VALUE;
       case EEVEE_RENDER_PASS_CRYPTOMATTE_OBJECT:
       case EEVEE_RENDER_PASS_CRYPTOMATTE_ASSET:
@@ -124,19 +142,8 @@ class Film {
 
   static bool pass_is_float3(eViewLayerEEVEEPassType pass_type)
   {
-    switch (pass_type) {
-      case EEVEE_RENDER_PASS_NORMAL:
-      case EEVEE_RENDER_PASS_DIFFUSE_LIGHT:
-      case EEVEE_RENDER_PASS_DIFFUSE_COLOR:
-      case EEVEE_RENDER_PASS_SPECULAR_LIGHT:
-      case EEVEE_RENDER_PASS_SPECULAR_COLOR:
-      case EEVEE_RENDER_PASS_VOLUME_LIGHT:
-      case EEVEE_RENDER_PASS_EMIT:
-      case EEVEE_RENDER_PASS_ENVIRONMENT:
-        return true;
-      default:
-        return false;
-    }
+    return pass_storage_type(pass_type) == PASS_STORAGE_COLOR &&
+           pass_type != EEVEE_RENDER_PASS_COMBINED;
   }
 
   /* Returns layer offset in the accumulation texture. -1 if the pass is not enabled. */

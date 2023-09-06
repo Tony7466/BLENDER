@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edmesh
@@ -16,7 +18,9 @@
 #include "DNA_scene_types.h"
 
 #include "BLI_array_utils.h"
+#include "BLI_implicit_sharing.hh"
 #include "BLI_listbase.h"
+#include "BLI_string.h"
 #include "BLI_task.hh"
 
 #include "BKE_context.h"
@@ -32,13 +36,13 @@
 
 #include "DEG_depsgraph.h"
 
-#include "ED_mesh.h"
-#include "ED_object.h"
-#include "ED_undo.h"
-#include "ED_util.h"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
+#include "ED_undo.hh"
+#include "ED_util.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #define USE_ARRAY_STORE
 
@@ -51,8 +55,15 @@
 
 #  include "BLI_array_store.h"
 #  include "BLI_array_store_utils.h"
-/* check on best size later... */
-#  define ARRAY_CHUNK_SIZE 256
+/**
+ * This used to be much smaller (256), but this caused too much overhead
+ * when selection moved to boolean arrays. Especially with high-poly meshes
+ * where managing a large number of small chunks could be slow, blocking user interactivity.
+ * Use a larger value (in bytes) which calculates the chunk size using #array_chunk_size_calc.
+ * See: #105046 & #105205.
+ */
+#  define ARRAY_CHUNK_SIZE_IN_BYTES 65536
+#  define ARRAY_CHUNK_NUM_MIN 256
 
 #  define USE_ARRAY_STORE_THREAD
 #endif
@@ -69,6 +80,14 @@ static CLG_LogRef LOG = {"ed.undo.mesh"};
  * \{ */
 
 #ifdef USE_ARRAY_STORE
+
+static size_t array_chunk_size_calc(const size_t stride)
+{
+  /* Return a chunk size that targets a size in bytes,
+   * this is done so boolean arrays don't add so much overhead and
+   * larger arrays aren't so big as to waste memory, see: #105205. */
+  return std::max(ARRAY_CHUNK_NUM_MIN, ARRAY_CHUNK_SIZE_IN_BYTES / power_of_2_max_i(stride));
+}
 
 /* Single linked list of layers stored per type */
 struct BArrayCustomData {
@@ -105,6 +124,7 @@ struct UndoMesh {
   /* Null arrays are considered empty. */
   struct { /* most data is stored as 'custom' data */
     BArrayCustomData *vdata, *edata, *ldata, *pdata;
+    BArrayState *face_offset_indices;
     BArrayState **keyblocks;
     BArrayState *mselect;
   } store;
@@ -128,6 +148,7 @@ enum {
   ARRAY_STORE_INDEX_EDGE,
   ARRAY_STORE_INDEX_LOOP,
   ARRAY_STORE_INDEX_POLY,
+  ARRAY_STORE_INDEX_POLY_OFFSETS,
   ARRAY_STORE_INDEX_SHAPE,
   ARRAY_STORE_INDEX_MSEL,
 };
@@ -190,8 +211,9 @@ static void um_arraystore_cd_compact(CustomData *cdata,
     }
 
     const int stride = CustomData_sizeof(type);
-    BArrayStore *bs = create ? BLI_array_store_at_size_ensure(
-                                   &um_arraystore.bs_stride[bs_index], stride, ARRAY_CHUNK_SIZE) :
+    BArrayStore *bs = create ? BLI_array_store_at_size_ensure(&um_arraystore.bs_stride[bs_index],
+                                                              stride,
+                                                              array_chunk_size_calc(stride)) :
                                nullptr;
     const int layer_len = layer_end - layer_start;
 
@@ -255,8 +277,21 @@ static void um_arraystore_cd_compact(CustomData *cdata,
       }
 
       if (layer->data) {
+        if (layer->sharing_info) {
+          /* This assumes that the layer is not shared, which it is not here because it has just
+           * been created in #BM_mesh_bm_to_me. The situation is a bit tricky here, because the
+           * layer data may be freed partially below for e.g. vertex groups. A potentially better
+           * solution might be to not pass "dynamic" layers (see `layer_type_is_dynamic`) to the
+           * array store at all. */
+          BLI_assert(layer->sharing_info->is_mutable());
+          /* Intentionally don't call #MEM_delete, because we want to free the sharing info without
+           * the data here. In general this would not be allowed because one can't be sure how to
+           * free the data without the sharing info. */
+          MEM_freeN(const_cast<blender::ImplicitSharingInfo *>(layer->sharing_info));
+        }
         MEM_freeN(layer->data);
         layer->data = nullptr;
+        layer->sharing_info = nullptr;
       }
     }
 
@@ -328,14 +363,14 @@ static void um_arraystore_compact_ex(UndoMesh *um, const UndoMesh *um_ref, bool 
   /* Compacting can be time consuming, run in parallel.
    *
    * NOTE(@ideasman42): this could be further parallelized with every custom-data layer
-   * running in it's own thread. If this is a bottleneck it's worth considering.
-   * At the moment it seems fast enough to split by element type.
-   * Since this is it's self a background thread, using too many threads here could
+   * running in its own thread. If this is a bottleneck it's worth considering.
+   * At the moment it seems fast enough to split by domain.
+   * Since this is itself a background thread, using too many threads here could
    * interfere with foreground tasks. */
   blender::threading::parallel_invoke(
-      4096 < (me->totvert + me->totedge + me->totloop + me->totpoly),
+      4096 < (me->totvert + me->totedge + me->totloop + me->faces_num),
       [&]() {
-        um_arraystore_cd_compact(&me->vdata,
+        um_arraystore_cd_compact(&me->vert_data,
                                  me->totvert,
                                  create,
                                  ARRAY_STORE_INDEX_VERT,
@@ -343,7 +378,7 @@ static void um_arraystore_compact_ex(UndoMesh *um, const UndoMesh *um_ref, bool 
                                  &um->store.vdata);
       },
       [&]() {
-        um_arraystore_cd_compact(&me->edata,
+        um_arraystore_cd_compact(&me->edge_data,
                                  me->totedge,
                                  create,
                                  ARRAY_STORE_INDEX_EDGE,
@@ -351,7 +386,7 @@ static void um_arraystore_compact_ex(UndoMesh *um, const UndoMesh *um_ref, bool 
                                  &um->store.edata);
       },
       [&]() {
-        um_arraystore_cd_compact(&me->ldata,
+        um_arraystore_cd_compact(&me->loop_data,
                                  me->totloop,
                                  create,
                                  ARRAY_STORE_INDEX_LOOP,
@@ -359,12 +394,29 @@ static void um_arraystore_compact_ex(UndoMesh *um, const UndoMesh *um_ref, bool 
                                  &um->store.ldata);
       },
       [&]() {
-        um_arraystore_cd_compact(&me->pdata,
-                                 me->totpoly,
+        um_arraystore_cd_compact(&me->face_data,
+                                 me->faces_num,
                                  create,
                                  ARRAY_STORE_INDEX_POLY,
                                  um_ref ? um_ref->store.pdata : nullptr,
                                  &um->store.pdata);
+      },
+      [&]() {
+        if (me->face_offset_indices) {
+          BLI_assert(create == (um->store.face_offset_indices == nullptr));
+          if (create) {
+            BArrayState *state_reference = um_ref ? um_ref->store.face_offset_indices : nullptr;
+            const size_t stride = sizeof(*me->face_offset_indices);
+            BArrayStore *bs = BLI_array_store_at_size_ensure(
+                &um_arraystore.bs_stride[ARRAY_STORE_INDEX_POLY_OFFSETS],
+                stride,
+                array_chunk_size_calc(stride));
+            um->store.face_offset_indices = BLI_array_store_state_add(
+                bs, me->face_offset_indices, size_t(me->faces_num + 1) * stride, state_reference);
+          }
+          blender::implicit_sharing::free_shared_data(&me->face_offset_indices,
+                                                      &me->runtime->face_offsets_sharing_info);
+        }
       },
       [&]() {
         if (me->key && me->key->totkey) {
@@ -372,7 +424,7 @@ static void um_arraystore_compact_ex(UndoMesh *um, const UndoMesh *um_ref, bool 
           BArrayStore *bs = create ? BLI_array_store_at_size_ensure(
                                          &um_arraystore.bs_stride[ARRAY_STORE_INDEX_SHAPE],
                                          stride,
-                                         ARRAY_CHUNK_SIZE) :
+                                         array_chunk_size_calc(stride)) :
                                      nullptr;
           if (create) {
             um->store.keyblocks = static_cast<BArrayState **>(
@@ -403,7 +455,9 @@ static void um_arraystore_compact_ex(UndoMesh *um, const UndoMesh *um_ref, bool 
             BArrayState *state_reference = um_ref ? um_ref->store.mselect : nullptr;
             const size_t stride = sizeof(*me->mselect);
             BArrayStore *bs = BLI_array_store_at_size_ensure(
-                &um_arraystore.bs_stride[ARRAY_STORE_INDEX_MSEL], stride, ARRAY_CHUNK_SIZE);
+                &um_arraystore.bs_stride[ARRAY_STORE_INDEX_MSEL],
+                stride,
+                array_chunk_size_calc(stride));
             um->store.mselect = BLI_array_store_state_add(
                 bs, me->mselect, size_t(me->totselect) * stride, state_reference);
           }
@@ -506,10 +560,10 @@ static void um_arraystore_expand(UndoMesh *um)
 {
   Mesh *me = &um->me;
 
-  um_arraystore_cd_expand(um->store.vdata, &me->vdata, me->totvert);
-  um_arraystore_cd_expand(um->store.edata, &me->edata, me->totedge);
-  um_arraystore_cd_expand(um->store.ldata, &me->ldata, me->totloop);
-  um_arraystore_cd_expand(um->store.pdata, &me->pdata, me->totpoly);
+  um_arraystore_cd_expand(um->store.vdata, &me->vert_data, me->totvert);
+  um_arraystore_cd_expand(um->store.edata, &me->edge_data, me->totedge);
+  um_arraystore_cd_expand(um->store.ldata, &me->loop_data, me->totloop);
+  um_arraystore_cd_expand(um->store.pdata, &me->face_data, me->faces_num);
 
   if (um->store.keyblocks) {
     const size_t stride = me->key->elemsize;
@@ -523,6 +577,17 @@ static void um_arraystore_expand(UndoMesh *um)
     }
   }
 
+  if (um->store.face_offset_indices) {
+    const size_t stride = sizeof(*me->face_offset_indices);
+    BArrayState *state = um->store.face_offset_indices;
+    size_t state_len;
+    me->face_offset_indices = static_cast<int *>(
+        BLI_array_store_state_data_get_alloc(state, &state_len));
+    me->runtime->face_offsets_sharing_info = blender::implicit_sharing::info_for_mem_free(
+        me->face_offset_indices);
+    BLI_assert((me->faces_num + 1) == (state_len / stride));
+    UNUSED_VARS_NDEBUG(stride);
+  }
   if (um->store.mselect) {
     const size_t stride = sizeof(*me->mselect);
     BArrayState *state = um->store.mselect;
@@ -554,6 +619,14 @@ static void um_arraystore_free(UndoMesh *um)
     um->store.keyblocks = nullptr;
   }
 
+  if (um->store.face_offset_indices) {
+    const size_t stride = sizeof(*me->face_offset_indices);
+    BArrayStore *bs = BLI_array_store_at_size_get(
+        &um_arraystore.bs_stride[ARRAY_STORE_INDEX_POLY_OFFSETS], stride);
+    BArrayState *state = um->store.face_offset_indices;
+    BLI_array_store_state_remove(bs, state);
+    um->store.face_offset_indices = nullptr;
+  }
   if (um->store.mselect) {
     const size_t stride = sizeof(*me->mselect);
     BArrayStore *bs = BLI_array_store_at_size_get(&um_arraystore.bs_stride[ARRAY_STORE_INDEX_MSEL],
@@ -616,8 +689,9 @@ static UndoMesh **mesh_undostep_reference_elems_from_objects(Object **object, in
   UndoMesh *um_iter = static_cast<UndoMesh *>(um_arraystore.local_links.last);
   while (um_iter && (uuid_map_len != 0)) {
     UndoMesh **um_p;
-    if ((um_p = static_cast<UndoMesh **>(BLI_ghash_popkey(
-             uuid_map, POINTER_FROM_INT(um_iter->me.id.session_uuid), nullptr)))) {
+    if ((um_p = static_cast<UndoMesh **>(
+             BLI_ghash_popkey(uuid_map, POINTER_FROM_INT(um_iter->me.id.session_uuid), nullptr))))
+    {
       *um_p = um_iter;
       uuid_map_len--;
     }
@@ -664,7 +738,7 @@ static void *undomesh_from_editmesh(UndoMesh *um, BMEditMesh *em, Key *key, Undo
 
   /* Copy the ID name characters to the mesh so code that depends on accessing the ID type can work
    * on it. Necessary to use the attribute API. */
-  strcpy(um->me.id.name, "MEundomesh_from_editmesh");
+  STRNCPY(um->me.id.name, "MEundomesh_from_editmesh");
 
   /* Runtime data is necessary for some asserts in other code, and the overhead of creating it for
    * undo meshes should be low. */
@@ -751,10 +825,6 @@ static void undomesh_to_editmesh(UndoMesh *um, Object *ob, BMEditMesh *em)
 
   em_tmp = BKE_editmesh_create(bm);
   *em = *em_tmp;
-
-  /* Normals should not be stored in the undo mesh, so recalculate them. The edit
-   * mesh is expected to have valid normals and there is no tracked dirty state. */
-  BLI_assert(BKE_mesh_vert_normals_are_dirty(&um->me));
 
   /* Calculate face normals and tessellation at once since it's multi-threaded. */
   BKE_editmesh_looptri_and_normals_calc(em);

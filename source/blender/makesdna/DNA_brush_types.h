@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -12,10 +13,6 @@
 #include "DNA_curve_types.h"
 #include "DNA_defs.h"
 #include "DNA_texture_types.h" /* for MTex */
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 struct CurveMapping;
 struct Image;
@@ -440,7 +437,3 @@ typedef struct PaintCurve {
   /** Index where next point will be added. */
   int add_index;
 } PaintCurve;
-
-#ifdef __cplusplus
-}
-#endif

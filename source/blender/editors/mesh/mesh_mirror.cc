@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edmesh
@@ -8,8 +10,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
-
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
@@ -18,7 +18,7 @@
 #include "BKE_mesh.hh"
 #include "BLI_kdtree.h"
 
-#include "ED_mesh.h"
+#include "ED_mesh.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Mesh Spatial Mirror API
@@ -55,7 +55,8 @@ void ED_mesh_mirror_spatial_table_begin(Object *ob, BMEditMesh *em, Mesh *me_eva
     }
   }
   else {
-    const float(*positions)[3] = BKE_mesh_vert_positions(me_eval ? me_eval : me);
+    const blender::Span<blender::float3> positions = me_eval ? me_eval->vert_positions() :
+                                                               me->vert_positions();
     for (int i = 0; i < totvert; i++) {
       BLI_kdtree_3d_insert(MirrKdStore.tree, i, positions[i]);
     }
@@ -147,7 +148,8 @@ bool ED_mesh_mirrtopo_recalc_check(BMEditMesh *em, Mesh *me, MirrTopoStore_t *me
 
   if ((mesh_topo_store->index_lookup == nullptr) ||
       (mesh_topo_store->prev_is_editmode != is_editmode) ||
-      (totvert != mesh_topo_store->prev_vert_tot) || (totedge != mesh_topo_store->prev_edge_tot)) {
+      (totvert != mesh_topo_store->prev_vert_tot) || (totedge != mesh_topo_store->prev_edge_tot))
+  {
     return true;
   }
   return false;
@@ -203,9 +205,9 @@ void ED_mesh_mirrtopo_init(BMEditMesh *em,
   }
   else {
     totedge = me->totedge;
-    for (const MEdge &edge : me->edges()) {
-      topo_hash[edge.v1]++;
-      topo_hash[edge.v2]++;
+    for (const blender::int2 &edge : me->edges()) {
+      topo_hash[edge[0]]++;
+      topo_hash[edge[1]]++;
     }
   }
 
@@ -213,7 +215,7 @@ void ED_mesh_mirrtopo_init(BMEditMesh *em,
 
   tot_unique_prev = -1;
   tot_unique_edges_prev = -1;
-  while (1) {
+  while (true) {
     /* use the number of edges per vert to give verts unique topology IDs */
 
     tot_unique_edges = 0;
@@ -228,8 +230,8 @@ void ED_mesh_mirrtopo_init(BMEditMesh *em,
       }
     }
     else {
-      for (const MEdge &edge : me->edges()) {
-        const uint i1 = edge.v1, i2 = edge.v2;
+      for (const blender::int2 &edge : me->edges()) {
+        const int i1 = edge[0], i2 = edge[1];
         topo_hash[i1] += topo_hash_prev[i2] * topo_pass;
         topo_hash[i2] += topo_hash_prev[i1] * topo_pass;
         tot_unique_edges += (topo_hash[i1] != topo_hash[i2]);

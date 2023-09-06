@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2005 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup modifiers
@@ -7,9 +8,9 @@
  * Method of smoothing deformation, also known as 'delta-mush'.
  */
 
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
-
-#include "BLI_math.h"
 
 #include "BLT_translation.h"
 
@@ -27,20 +28,20 @@
 #include "BKE_editmesh.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_wrapper.h"
+#include "BKE_mesh_wrapper.hh"
 #include "BKE_screen.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "MOD_modifiertypes.h"
-#include "MOD_ui_common.h"
-#include "MOD_util.h"
+#include "MOD_modifiertypes.hh"
+#include "MOD_ui_common.hh"
+#include "MOD_util.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "DEG_depsgraph_query.h"
 
@@ -54,7 +55,7 @@
 
 #include "BLI_strict_flags.h"
 
-static void initData(ModifierData *md)
+static void init_data(ModifierData *md)
 {
   CorrectiveSmoothModifierData *csmd = (CorrectiveSmoothModifierData *)md;
 
@@ -65,7 +66,7 @@ static void initData(ModifierData *md)
   csmd->delta_cache.deltas = nullptr;
 }
 
-static void copyData(const ModifierData *md, ModifierData *target, const int flag)
+static void copy_data(const ModifierData *md, ModifierData *target, const int flag)
 {
   const CorrectiveSmoothModifierData *csmd = (const CorrectiveSmoothModifierData *)md;
   CorrectiveSmoothModifierData *tcsmd = (CorrectiveSmoothModifierData *)target;
@@ -88,13 +89,13 @@ static void freeBind(CorrectiveSmoothModifierData *csmd)
   csmd->bind_coords_num = 0;
 }
 
-static void freeData(ModifierData *md)
+static void free_data(ModifierData *md)
 {
   CorrectiveSmoothModifierData *csmd = (CorrectiveSmoothModifierData *)md;
   freeBind(csmd);
 }
 
-static void requiredDataMask(ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
+static void required_data_mask(ModifierData *md, CustomData_MeshMasks *r_cddata_masks)
 {
   CorrectiveSmoothModifierData *csmd = (CorrectiveSmoothModifierData *)md;
 
@@ -127,27 +128,25 @@ static void mesh_get_weights(const MDeformVert *dvert,
 
 static void mesh_get_boundaries(Mesh *mesh, float *smooth_weights)
 {
-  const blender::Span<MEdge> edges = mesh->edges();
-  const blender::Span<MPoly> polys = mesh->polys();
-  const blender::Span<MLoop> loops = mesh->loops();
+  const blender::Span<blender::int2> edges = mesh->edges();
+  const blender::OffsetIndices faces = mesh->faces();
+  const blender::Span<int> corner_edges = mesh->corner_edges();
 
   /* Flag boundary edges so only boundaries are set to 1. */
   uint8_t *boundaries = static_cast<uint8_t *>(
       MEM_calloc_arrayN(size_t(edges.size()), sizeof(*boundaries), __func__));
 
-  for (const int64_t i : polys.index_range()) {
-    const int totloop = polys[i].totloop;
-    int j;
-    for (j = 0; j < totloop; j++) {
-      uint8_t *e_value = &boundaries[loops[polys[i].loopstart + j].e];
+  for (const int64_t i : faces.index_range()) {
+    for (const int edge : corner_edges.slice(faces[i])) {
+      uint8_t *e_value = &boundaries[edge];
       *e_value |= uint8_t((*e_value) + 1);
     }
   }
 
   for (const int64_t i : edges.index_range()) {
     if (boundaries[i] == 1) {
-      smooth_weights[edges[i].v1] = 0.0f;
-      smooth_weights[edges[i].v2] = 0.0f;
+      smooth_weights[edges[i][0]] = 0.0f;
+      smooth_weights[edges[i][1]] = 0.0f;
     }
   }
 
@@ -170,7 +169,7 @@ static void smooth_iter__simple(CorrectiveSmoothModifierData *csmd,
   uint i;
 
   const uint edges_num = uint(mesh->totedge);
-  const blender::Span<MEdge> edges = mesh->edges();
+  const blender::Span<blender::int2> edges = mesh->edges();
 
   struct SmoothingData_Simple {
     float delta[3];
@@ -182,8 +181,8 @@ static void smooth_iter__simple(CorrectiveSmoothModifierData *csmd,
 
   /* calculate as floats to avoid int->float conversion in #smooth_iter */
   for (i = 0; i < edges_num; i++) {
-    vertex_edge_count_div[edges[i].v1] += 1.0f;
-    vertex_edge_count_div[edges[i].v2] += 1.0f;
+    vertex_edge_count_div[edges[i][0]] += 1.0f;
+    vertex_edge_count_div[edges[i][1]] += 1.0f;
   }
 
   /* a little confusing, but we can include 'lambda' and smoothing weight
@@ -212,10 +211,10 @@ static void smooth_iter__simple(CorrectiveSmoothModifierData *csmd,
       SmoothingData_Simple *sd_v2;
       float edge_dir[3];
 
-      sub_v3_v3v3(edge_dir, vertexCos[edges[i].v2], vertexCos[edges[i].v1]);
+      sub_v3_v3v3(edge_dir, vertexCos[edges[i][1]], vertexCos[edges[i][0]]);
 
-      sd_v1 = &smooth_data[edges[i].v1];
-      sd_v2 = &smooth_data[edges[i].v2];
+      sd_v1 = &smooth_data[edges[i][0]];
+      sd_v2 = &smooth_data[edges[i][1]];
 
       add_v3_v3(sd_v1->delta, edge_dir);
       sub_v3_v3(sd_v2->delta, edge_dir);
@@ -248,7 +247,7 @@ static void smooth_iter__length_weight(CorrectiveSmoothModifierData *csmd,
   /* NOTE: the way this smoothing method works, its approx half as strong as the simple-smooth,
    * and 2.0 rarely spikes, double the value for consistent behavior. */
   const float lambda = csmd->lambda * 2.0f;
-  const blender::Span<MEdge> edges = mesh->edges();
+  const blender::Span<blender::int2> edges = mesh->edges();
   uint i;
 
   struct SmoothingData_Weighted {
@@ -262,8 +261,8 @@ static void smooth_iter__length_weight(CorrectiveSmoothModifierData *csmd,
   float *vertex_edge_count = static_cast<float *>(
       MEM_calloc_arrayN(verts_num, sizeof(float), __func__));
   for (i = 0; i < edges_num; i++) {
-    vertex_edge_count[edges[i].v1] += 1.0f;
-    vertex_edge_count[edges[i].v2] += 1.0f;
+    vertex_edge_count[edges[i][0]] += 1.0f;
+    vertex_edge_count[edges[i][1]] += 1.0f;
   }
 
   /* -------------------------------------------------------------------- */
@@ -276,14 +275,14 @@ static void smooth_iter__length_weight(CorrectiveSmoothModifierData *csmd,
       float edge_dir[3];
       float edge_dist;
 
-      sub_v3_v3v3(edge_dir, vertexCos[edges[i].v2], vertexCos[edges[i].v1]);
+      sub_v3_v3v3(edge_dir, vertexCos[edges[i][1]], vertexCos[edges[i][0]]);
       edge_dist = len_v3(edge_dir);
 
       /* weight by distance */
       mul_v3_fl(edge_dir, edge_dist);
 
-      sd_v1 = &smooth_data[edges[i].v1];
-      sd_v2 = &smooth_data[edges[i].v2];
+      sd_v1 = &smooth_data[edges[i][0]];
+      sd_v2 = &smooth_data[edges[i][1]];
 
       add_v3_v3(sd_v1->delta, edge_dir);
       sub_v3_v3(sd_v2->delta, edge_dir);
@@ -434,49 +433,53 @@ static void calc_tangent_spaces(const Mesh *mesh,
                                 float *r_tangent_weights_per_vertex)
 {
   const uint mvert_num = uint(mesh->totvert);
-  const blender::Span<MPoly> polys = mesh->polys();
-  const blender::Span<MLoop> loops = mesh->loops();
+  const blender::OffsetIndices faces = mesh->faces();
+  blender::Span<int> corner_verts = mesh->corner_verts();
 
   if (r_tangent_weights_per_vertex != nullptr) {
     copy_vn_fl(r_tangent_weights_per_vertex, int(mvert_num), 0.0f);
   }
 
-  for (const int64_t i : polys.index_range()) {
-    const MPoly &poly = polys[i];
-    const MLoop *l_next = &loops[poly.loopstart];
-    const MLoop *l_term = l_next + poly.totloop;
-    const MLoop *l_prev = l_term - 2;
-    const MLoop *l_curr = l_term - 1;
+  for (const int64_t i : faces.index_range()) {
+    const blender::IndexRange face = faces[i];
+    int next_corner = int(face.start());
+    int term_corner = next_corner + int(face.size());
+    int prev_corner = term_corner - 2;
+    int curr_corner = term_corner - 1;
 
     /* loop directions */
     float v_dir_prev[3], v_dir_next[3];
 
     /* needed entering the loop */
-    sub_v3_v3v3(v_dir_prev, vertexCos[l_prev->v], vertexCos[l_curr->v]);
+    sub_v3_v3v3(
+        v_dir_prev, vertexCos[corner_verts[prev_corner]], vertexCos[corner_verts[curr_corner]]);
     normalize_v3(v_dir_prev);
 
-    for (; l_next != l_term; l_prev = l_curr, l_curr = l_next, l_next++) {
-      uint l_index = uint(l_curr - loops.data());
-      float(*ts)[3] = r_tangent_spaces[l_index];
+    for (; next_corner != term_corner;
+         prev_corner = curr_corner, curr_corner = next_corner, next_corner++)
+    {
+      float(*ts)[3] = r_tangent_spaces[curr_corner];
 
       /* re-use the previous value */
 #if 0
-      sub_v3_v3v3(v_dir_prev, vertexCos[l_prev->v], vertexCos[l_curr->v]);
+      sub_v3_v3v3(
+          v_dir_prev, vertexCos[corner_verts[prev_corner]], vertexCos[corner_verts[curr_corner]]);
       normalize_v3(v_dir_prev);
 #endif
-      sub_v3_v3v3(v_dir_next, vertexCos[l_curr->v], vertexCos[l_next->v]);
+      sub_v3_v3v3(
+          v_dir_next, vertexCos[corner_verts[curr_corner]], vertexCos[corner_verts[next_corner]]);
       normalize_v3(v_dir_next);
 
       if (calc_tangent_loop(v_dir_prev, v_dir_next, ts)) {
         if (r_tangent_weights != nullptr) {
           const float weight = fabsf(acosf(dot_v3v3(v_dir_next, v_dir_prev)));
-          r_tangent_weights[l_index] = weight;
-          r_tangent_weights_per_vertex[l_curr->v] += weight;
+          r_tangent_weights[curr_corner] = weight;
+          r_tangent_weights_per_vertex[corner_verts[curr_corner]] += weight;
         }
       }
       else {
         if (r_tangent_weights != nullptr) {
-          r_tangent_weights[l_index] = 0;
+          r_tangent_weights[curr_corner] = 0;
         }
       }
 
@@ -513,34 +516,34 @@ static void calc_deltas(CorrectiveSmoothModifierData *csmd,
                         const float (*rest_coords)[3],
                         uint verts_num)
 {
-  const blender::Span<MLoop> loops = mesh->loops();
+  const blender::Span<int> corner_verts = mesh->corner_verts();
 
   float(*smooth_vertex_coords)[3] = static_cast<float(*)[3]>(MEM_dupallocN(rest_coords));
 
   uint l_index;
 
   float(*tangent_spaces)[3][3] = static_cast<float(*)[3][3]>(
-      MEM_malloc_arrayN(size_t(loops.size()), sizeof(float[3][3]), __func__));
+      MEM_malloc_arrayN(size_t(corner_verts.size()), sizeof(float[3][3]), __func__));
 
-  if (csmd->delta_cache.deltas_num != uint(loops.size())) {
+  if (csmd->delta_cache.deltas_num != uint(corner_verts.size())) {
     MEM_SAFE_FREE(csmd->delta_cache.deltas);
   }
 
   /* allocate deltas if they have not yet been allocated, otherwise we will just write over them */
   if (!csmd->delta_cache.deltas) {
-    csmd->delta_cache.deltas_num = uint(loops.size());
+    csmd->delta_cache.deltas_num = uint(corner_verts.size());
     csmd->delta_cache.deltas = static_cast<float(*)[3]>(
-        MEM_malloc_arrayN(size_t(loops.size()), sizeof(float[3]), __func__));
+        MEM_malloc_arrayN(size_t(corner_verts.size()), sizeof(float[3]), __func__));
   }
 
   smooth_verts(csmd, mesh, dvert, defgrp_index, smooth_vertex_coords, verts_num);
 
   calc_tangent_spaces(mesh, smooth_vertex_coords, tangent_spaces, nullptr, nullptr);
 
-  copy_vn_fl(&csmd->delta_cache.deltas[0][0], int(loops.size()) * 3, 0.0f);
+  copy_vn_fl(&csmd->delta_cache.deltas[0][0], int(corner_verts.size()) * 3, 0.0f);
 
-  for (l_index = 0; l_index < loops.size(); l_index++) {
-    const int v_index = int(loops[l_index].v);
+  for (l_index = 0; l_index < corner_verts.size(); l_index++) {
+    const int v_index = corner_verts[l_index];
     float delta[3];
     sub_v3_v3v3(delta, rest_coords[v_index], smooth_vertex_coords[v_index]);
 
@@ -571,7 +574,7 @@ static void correctivesmooth_modifier_do(ModifierData *md,
       ((csmd->rest_source == MOD_CORRECTIVESMOOTH_RESTSOURCE_ORCO) &&
        (((ID *)ob->data)->recalc & ID_RECALC_ALL));
 
-  const blender::Span<MLoop> loops = mesh->loops();
+  blender::Span<int> corner_verts = mesh->corner_verts();
 
   bool use_only_smooth = (csmd->flag & MOD_CORRECTIVESMOOTH_ONLY_SMOOTH) != 0;
   const MDeformVert *dvert = nullptr;
@@ -582,7 +585,8 @@ static void correctivesmooth_modifier_do(ModifierData *md,
   /* if rest bind_coords not are defined, set them (only run during bind) */
   if ((csmd->rest_source == MOD_CORRECTIVESMOOTH_RESTSOURCE_BIND) &&
       /* signal to recalculate, whoever sets MUST also free bind coords */
-      (csmd->bind_coords_num == uint(-1))) {
+      (csmd->bind_coords_num == uint(-1)))
+  {
     if (DEG_is_active(depsgraph)) {
       BLI_assert(csmd->bind_coords == nullptr);
       csmd->bind_coords = static_cast<float(*)[3]>(MEM_dupallocN(vertexCos));
@@ -636,8 +640,9 @@ static void correctivesmooth_modifier_do(ModifierData *md,
   }
 
   /* check to see if our deltas are still valid */
-  if (!csmd->delta_cache.deltas || (csmd->delta_cache.deltas_num != loops.size()) ||
-      force_delta_cache_update) {
+  if (!csmd->delta_cache.deltas || (csmd->delta_cache.deltas_num != corner_verts.size()) ||
+      force_delta_cache_update)
+  {
     const float(*rest_coords)[3];
     bool is_rest_coords_alloc = false;
 
@@ -650,12 +655,17 @@ static void correctivesmooth_modifier_do(ModifierData *md,
     }
     else {
       int me_numVerts;
-      rest_coords = em ? BKE_editmesh_vert_coords_alloc_orco(em, &me_numVerts) :
-                         BKE_mesh_vert_coords_alloc(static_cast<const Mesh *>(ob->data),
-                                                    &me_numVerts);
+      if (em) {
+        rest_coords = BKE_editmesh_vert_coords_alloc_orco(em, &me_numVerts);
+        is_rest_coords_alloc = true;
+      }
+      else {
+        const Mesh *me = static_cast<const Mesh *>(ob->data);
+        rest_coords = reinterpret_cast<const float(*)[3]>(me->vert_positions().data());
+        me_numVerts = me->totvert;
+      }
 
-      BLI_assert((uint)me_numVerts == verts_num);
-      is_rest_coords_alloc = true;
+      BLI_assert(uint(me_numVerts) == verts_num);
     }
 
 #ifdef DEBUG_TIME
@@ -689,17 +699,17 @@ static void correctivesmooth_modifier_do(ModifierData *md,
     const float scale = csmd->scale;
 
     float(*tangent_spaces)[3][3] = static_cast<float(*)[3][3]>(
-        MEM_malloc_arrayN(size_t(loops.size()), sizeof(float[3][3]), __func__));
+        MEM_malloc_arrayN(size_t(corner_verts.size()), sizeof(float[3][3]), __func__));
     float *tangent_weights = static_cast<float *>(
-        MEM_malloc_arrayN(size_t(loops.size()), sizeof(float), __func__));
+        MEM_malloc_arrayN(size_t(corner_verts.size()), sizeof(float), __func__));
     float *tangent_weights_per_vertex = static_cast<float *>(
         MEM_malloc_arrayN(verts_num, sizeof(float), __func__));
 
     calc_tangent_spaces(
         mesh, vertexCos, tangent_spaces, tangent_weights, tangent_weights_per_vertex);
 
-    for (const int64_t l_index : loops.index_range()) {
-      const uint v_index = loops[l_index].v;
+    for (const int64_t l_index : corner_verts.index_range()) {
+      const int v_index = corner_verts[l_index];
       const float weight = tangent_weights[l_index] / tangent_weights_per_vertex[v_index];
       if (UNLIKELY(!(weight > 0.0f))) {
         /* Catches zero & divide by zero. */
@@ -729,43 +739,14 @@ error:
   csmd->delta_cache.deltas_num = 0;
 }
 
-static void deformVerts(ModifierData *md,
-                        const ModifierEvalContext *ctx,
-                        Mesh *mesh,
-                        float (*vertexCos)[3],
-                        int verts_num)
+static void deform_verts(ModifierData *md,
+                         const ModifierEvalContext *ctx,
+                         Mesh *mesh,
+                         float (*vertexCos)[3],
+                         int verts_num)
 {
-  Mesh *mesh_src = MOD_deform_mesh_eval_get(ctx->object, nullptr, mesh, nullptr, verts_num, false);
-
   correctivesmooth_modifier_do(
-      md, ctx->depsgraph, ctx->object, mesh_src, vertexCos, uint(verts_num), nullptr);
-
-  if (!ELEM(mesh_src, nullptr, mesh)) {
-    BKE_id_free(nullptr, mesh_src);
-  }
-}
-
-static void deformVertsEM(ModifierData *md,
-                          const ModifierEvalContext *ctx,
-                          BMEditMesh *editData,
-                          Mesh *mesh,
-                          float (*vertexCos)[3],
-                          int verts_num)
-{
-  Mesh *mesh_src = MOD_deform_mesh_eval_get(
-      ctx->object, editData, mesh, nullptr, verts_num, false);
-
-  /* TODO(@ideasman42): use edit-mode data only (remove this line). */
-  if (mesh_src != nullptr) {
-    BKE_mesh_wrapper_ensure_mdata(mesh_src);
-  }
-
-  correctivesmooth_modifier_do(
-      md, ctx->depsgraph, ctx->object, mesh_src, vertexCos, uint(verts_num), editData);
-
-  if (!ELEM(mesh_src, nullptr, mesh)) {
-    BKE_id_free(nullptr, mesh_src);
-  }
+      md, ctx->depsgraph, ctx->object, mesh, vertexCos, uint(verts_num), nullptr);
 }
 
 static void panel_draw(const bContext * /*C*/, Panel *panel)
@@ -777,17 +758,17 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "factor", 0, IFACE_("Factor"), ICON_NONE);
-  uiItemR(layout, ptr, "iterations", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "scale", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "smooth_type", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "factor", UI_ITEM_NONE, IFACE_("Factor"), ICON_NONE);
+  uiItemR(layout, ptr, "iterations", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "scale", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "smooth_type", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   modifier_vgroup_ui(layout, ptr, &ob_ptr, "vertex_group", "invert_vertex_group", nullptr);
 
-  uiItemR(layout, ptr, "use_only_smooth", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "use_pin_boundary", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_only_smooth", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_pin_boundary", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  uiItemR(layout, ptr, "rest_source", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "rest_source", UI_ITEM_NONE, nullptr, ICON_NONE);
   if (RNA_enum_get(ptr, "rest_source") == MOD_CORRECTIVESMOOTH_RESTSOURCE_BIND) {
     uiItemO(layout,
             (RNA_boolean_get(ptr, "is_bind") ? IFACE_("Unbind") : IFACE_("Bind")),
@@ -798,12 +779,12 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   modifier_panel_end(layout, ptr);
 }
 
-static void panelRegister(ARegionType *region_type)
+static void panel_register(ARegionType *region_type)
 {
   modifier_panel_register(region_type, eModifierType_CorrectiveSmooth, panel_draw);
 }
 
-static void blendWrite(BlendWriter *writer, const ID *id_owner, const ModifierData *md)
+static void blend_write(BlendWriter *writer, const ID *id_owner, const ModifierData *md)
 {
   CorrectiveSmoothModifierData csmd = *(const CorrectiveSmoothModifierData *)md;
   const bool is_undo = BLO_write_is_undo(writer);
@@ -826,7 +807,7 @@ static void blendWrite(BlendWriter *writer, const ID *id_owner, const ModifierDa
   }
 }
 
-static void blendRead(BlendDataReader *reader, ModifierData *md)
+static void blend_read(BlendDataReader *reader, ModifierData *md)
 {
   CorrectiveSmoothModifierData *csmd = (CorrectiveSmoothModifierData *)md;
 
@@ -840,34 +821,35 @@ static void blendRead(BlendDataReader *reader, ModifierData *md)
 }
 
 ModifierTypeInfo modifierType_CorrectiveSmooth = {
+    /*idname*/ "CorrectiveSmooth",
     /*name*/ N_("CorrectiveSmooth"),
-    /*structName*/ "CorrectiveSmoothModifierData",
-    /*structSize*/ sizeof(CorrectiveSmoothModifierData),
+    /*struct_name*/ "CorrectiveSmoothModifierData",
+    /*struct_size*/ sizeof(CorrectiveSmoothModifierData),
     /*srna*/ &RNA_CorrectiveSmoothModifier,
     /*type*/ eModifierTypeType_OnlyDeform,
     /*flags*/ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsEditmode,
     /*icon*/ ICON_MOD_SMOOTH,
 
-    /*copyData*/ copyData,
+    /*copy_data*/ copy_data,
 
-    /*deformVerts*/ deformVerts,
-    /*deformMatrices*/ nullptr,
-    /*deformVertsEM*/ deformVertsEM,
-    /*deformMatricesEM*/ nullptr,
-    /*modifyMesh*/ nullptr,
-    /*modifyGeometrySet*/ nullptr,
+    /*deform_verts*/ deform_verts,
+    /*deform_matrices*/ nullptr,
+    /*deform_verts_EM*/ nullptr,
+    /*deform_matrices_EM*/ nullptr,
+    /*modify_mesh*/ nullptr,
+    /*modify_geometry_set*/ nullptr,
 
-    /*initData*/ initData,
-    /*requiredDataMask*/ requiredDataMask,
-    /*freeData*/ freeData,
-    /*isDisabled*/ nullptr,
-    /*updateDepsgraph*/ nullptr,
-    /*dependsOnTime*/ nullptr,
-    /*dependsOnNormals*/ nullptr,
-    /*foreachIDLink*/ nullptr,
-    /*foreachTexLink*/ nullptr,
-    /*freeRuntimeData*/ nullptr,
-    /*panelRegister*/ panelRegister,
-    /*blendWrite*/ blendWrite,
-    /*blendRead*/ blendRead,
+    /*init_data*/ init_data,
+    /*required_data_mask*/ required_data_mask,
+    /*free_data*/ free_data,
+    /*is_disabled*/ nullptr,
+    /*update_depsgraph*/ nullptr,
+    /*depends_on_time*/ nullptr,
+    /*depends_on_normals*/ nullptr,
+    /*foreach_ID_link*/ nullptr,
+    /*foreach_tex_link*/ nullptr,
+    /*free_runtime_data*/ nullptr,
+    /*panel_register*/ panel_register,
+    /*blend_write*/ blend_write,
+    /*blend_read*/ blend_read,
 };

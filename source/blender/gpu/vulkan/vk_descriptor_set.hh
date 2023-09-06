@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -12,7 +13,10 @@
 
 #include "gpu_shader_private.hh"
 
+#include "vk_buffer.hh"
 #include "vk_common.hh"
+#include "vk_resource_tracker.hh"
+#include "vk_uniform_buffer.hh"
 
 namespace blender::gpu {
 class VKIndexBuffer;
@@ -21,6 +25,8 @@ class VKStorageBuffer;
 class VKTexture;
 class VKUniformBuffer;
 class VKVertexBuffer;
+class VKDescriptorSetTracker;
+class VKSampler;
 
 /**
  * In vulkan shader resources (images and buffers) are grouped in descriptor sets.
@@ -31,7 +37,6 @@ class VKVertexBuffer;
  * to use 2 descriptor sets per shader. One for each #blender::gpu::shader::Frequency.
  */
 class VKDescriptorSet : NonCopyable {
-  struct Binding;
 
  public:
   /**
@@ -52,9 +57,7 @@ class VKDescriptorSet : NonCopyable {
      */
     uint32_t binding;
 
-    Location(uint32_t binding) : binding(binding)
-    {
-    }
+    Location(uint32_t binding) : binding(binding) {}
 
    public:
     Location() = default;
@@ -69,53 +72,26 @@ class VKDescriptorSet : NonCopyable {
       return binding;
     }
 
-    friend struct Binding;
+    friend class VKDescriptorSetTracker;
     friend class VKShaderInterface;
-  };
-
- private:
-  struct Binding {
-    Location location;
-    VkDescriptorType type;
-
-    VkBuffer vk_buffer = VK_NULL_HANDLE;
-    VkDeviceSize buffer_size = 0;
-
-    VkImageView vk_image_view = VK_NULL_HANDLE;
-
-    Binding()
-    {
-      location.binding = 0;
-    }
-
-    bool is_buffer() const
-    {
-      return ELEM(type, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    }
-
-    bool is_image() const
-    {
-      return ELEM(type, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-    }
   };
 
   VkDescriptorPool vk_descriptor_pool_ = VK_NULL_HANDLE;
   VkDescriptorSet vk_descriptor_set_ = VK_NULL_HANDLE;
-
-  /** A list of bindings that needs to be updated. */
-  Vector<Binding> bindings_;
 
  public:
   VKDescriptorSet() = default;
   VKDescriptorSet(VkDescriptorPool vk_descriptor_pool, VkDescriptorSet vk_descriptor_set)
       : vk_descriptor_pool_(vk_descriptor_pool), vk_descriptor_set_(vk_descriptor_set)
   {
+    BLI_assert(vk_descriptor_set_ != VK_NULL_HANDLE);
   }
   VKDescriptorSet(VKDescriptorSet &&other);
   virtual ~VKDescriptorSet();
 
   VKDescriptorSet &operator=(VKDescriptorSet &&other)
   {
+    BLI_assert(other.vk_descriptor_set_ != VK_NULL_HANDLE);
     vk_descriptor_set_ = other.vk_descriptor_set_;
     vk_descriptor_pool_ = other.vk_descriptor_pool_;
     other.mark_freed();
@@ -131,22 +107,95 @@ class VKDescriptorSet : NonCopyable {
   {
     return vk_descriptor_pool_;
   }
+  void mark_freed();
+};
 
-  void bind_as_ssbo(VKVertexBuffer &buffer, Location location);
-  void bind_as_ssbo(VKIndexBuffer &buffer, Location location);
-  void bind(VKStorageBuffer &buffer, Location location);
-  void bind(VKUniformBuffer &buffer, Location location);
-  void image_bind(VKTexture &texture, Location location);
+class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
+  friend class VKDescriptorSet;
+
+ public:
+  struct Binding {
+    VKDescriptorSet::Location location;
+    VkDescriptorType type;
+
+    VkBuffer vk_buffer = VK_NULL_HANDLE;
+    VkDeviceSize buffer_size = 0;
+
+    VkBufferView vk_buffer_view = VK_NULL_HANDLE;
+
+    VKTexture *texture = nullptr;
+    VkSampler vk_sampler = VK_NULL_HANDLE;
+
+    Binding()
+    {
+      location.binding = 0;
+    }
+
+    bool is_buffer() const
+    {
+      return ELEM(type, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+    }
+
+    bool is_texel_buffer() const
+    {
+      return ELEM(type, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
+    }
+
+    bool is_image() const
+    {
+      return ELEM(type,
+                  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) &&
+             texture != nullptr;
+    }
+  };
+
+ private:
+  /** A list of bindings that needs to be updated. */
+  Vector<Binding> bindings_;
+  VkDescriptorSetLayout layout_ = VK_NULL_HANDLE;
+
+ public:
+  VKDescriptorSetTracker() {}
+
+  VKDescriptorSetTracker(VkDescriptorSetLayout layout) : layout_(layout) {}
+
+  void bind_as_ssbo(VKVertexBuffer &buffer, VKDescriptorSet::Location location);
+  void bind_as_ssbo(VKIndexBuffer &buffer, VKDescriptorSet::Location location);
+  void bind_as_ssbo(VKUniformBuffer &buffer, VKDescriptorSet::Location location);
+  void bind(VKStorageBuffer &buffer, VKDescriptorSet::Location location);
+  void bind(VKUniformBuffer &buffer, VKDescriptorSet::Location location);
+  /* TODO: bind as image */
+  void image_bind(VKTexture &texture, VKDescriptorSet::Location location);
+  void bind(VKTexture &texture, VKDescriptorSet::Location location, const VKSampler &sampler);
+  /* Bind as uniform texel buffer. */
+  void bind(VKVertexBuffer &vertex_buffer, VKDescriptorSet::Location location);
+  /**
+   * Some shaders don't need any descriptor sets so we don't need to bind them.
+   *
+   * The result of this function determines if the descriptor set has any layout assigned.
+   * TODO: we might want to make descriptor sets optional for pipelines.
+   */
+  bool has_layout() const
+  {
+    return layout_ != VK_NULL_HANDLE;
+  }
 
   /**
    * Update the descriptor set on the device.
    */
-  void update(VkDevice vk_device);
+  void update(VKContext &context);
 
-  void mark_freed();
+  std::unique_ptr<VKDescriptorSet> &active_descriptor_set()
+  {
+    return active_resource();
+  }
+
+ protected:
+  std::unique_ptr<VKDescriptorSet> create_resource(VKContext &context) override;
 
  private:
-  Binding &ensure_location(Location location);
+  Binding &ensure_location(VKDescriptorSet::Location location);
 };
 
 }  // namespace blender::gpu

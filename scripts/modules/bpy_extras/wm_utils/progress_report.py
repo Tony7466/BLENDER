@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2015-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import time
@@ -26,10 +28,10 @@ class ProgressReport:
                 progress.leave_substeps()  # No need to step here, this implicitly does it.
             progress.leave_substeps("Finished!")  # You may pass some message too.
     """
-    __slots__ = ('wm', 'running', 'steps', 'curr_step', 'start_time')
+    __slots__ = ("wm", "running", "steps", "curr_step", "start_time")
 
     def __init__(self, wm=None):
-        self_wm = getattr(self, 'wm', None)
+        self_wm = getattr(self, "wm", None)
         if self_wm:
             self.finalize()
         self.running = False
@@ -117,11 +119,11 @@ class ProgressReportSubstep:
                         for j in range(100):
                             subprogress2.step()
     """
-    __slots__ = ('progress', 'nbr', 'msg', 'final_msg', 'level')
+    __slots__ = ("progress", "nbr", "msg", "final_msg", "level")
 
     def __init__(self, progress, nbr, msg="", final_msg=""):
         # Allows to generate a subprogress context handler from another one.
-        progress = getattr(progress, 'progress', progress)
+        progress = getattr(progress, "progress", progress)
 
         self.progress = progress
         self.nbr = nbr

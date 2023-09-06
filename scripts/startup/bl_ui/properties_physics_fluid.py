@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
@@ -82,8 +84,7 @@ class PhysicButtonsPanel:
 
         md = context.fluid
         flow = md.flow_settings
-        if (flow.flow_behavior == 'OUTFLOW'):
-            return True
+        return (flow.flow_behavior == 'OUTFLOW')
 
     @staticmethod
     def poll_fluid_flow_liquid(context):
@@ -92,8 +93,7 @@ class PhysicButtonsPanel:
 
         md = context.fluid
         flow = md.flow_settings
-        if (flow.flow_type == 'LIQUID'):
-            return True
+        return (flow.flow_type == 'LIQUID')
 
 
 class PHYSICS_PT_fluid(PhysicButtonsPanel, Panel):

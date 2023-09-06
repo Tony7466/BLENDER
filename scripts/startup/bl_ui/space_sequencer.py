@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.types import (
     Header,
@@ -135,8 +138,6 @@ class SEQUENCER_HT_tool_header(Header):
         # TODO: options popover.
 
     def draw_tool_settings(self, context):
-        pass
-
         layout = self.layout
 
         # Active Tool
@@ -436,6 +437,7 @@ class SEQUENCER_MT_view(Menu):
         if is_sequencer_view:
             layout.operator_context = 'INVOKE_REGION_WIN'
             layout.operator("sequencer.view_all")
+            layout.operator("sequencer.view_frame")
             layout.operator("view2d.zoom_border", text="Zoom")
             layout.prop(st, "use_clamp_view")
 
@@ -621,17 +623,17 @@ class SEQUENCER_MT_change(Menu):
         layout.operator_context = 'INVOKE_DEFAULT'
         layout.operator_menu_enum("sequencer.change_effect_input", "swap")
         layout.operator_menu_enum("sequencer.change_effect_type", "type")
-        prop = layout.operator("sequencer.change_path", text="Path/Files")
+        props = layout.operator("sequencer.change_path", text="Path/Files")
 
         if strip:
             strip_type = strip.type
 
             if strip_type == 'IMAGE':
-                prop.filter_image = True
+                props.filter_image = True
             elif strip_type == 'MOVIE':
-                prop.filter_movie = True
+                props.filter_movie = True
             elif strip_type == 'SOUND':
-                prop.filter_sound = True
+                props.filter_sound = True
 
 
 class SEQUENCER_MT_navigation(Menu):
@@ -792,13 +794,20 @@ class SEQUENCER_MT_add_effect(Menu):
         layout.operator_context = 'INVOKE_REGION_WIN'
 
         col = layout.column()
-        col.operator("sequencer.effect_strip_add", text="Add").type = 'ADD'
-        col.operator("sequencer.effect_strip_add", text="Subtract").type = 'SUBTRACT'
-        col.operator("sequencer.effect_strip_add", text="Multiply").type = 'MULTIPLY'
-        col.operator("sequencer.effect_strip_add", text="Over Drop").type = 'OVER_DROP'
-        col.operator("sequencer.effect_strip_add", text="Alpha Over").type = 'ALPHA_OVER'
-        col.operator("sequencer.effect_strip_add", text="Alpha Under").type = 'ALPHA_UNDER'
-        col.operator("sequencer.effect_strip_add", text="Color Mix").type = 'COLORMIX'
+        col.operator("sequencer.effect_strip_add", text="Add",
+                     text_ctxt=i18n_contexts.id_sequence).type = 'ADD'
+        col.operator("sequencer.effect_strip_add", text="Subtract",
+                     text_ctxt=i18n_contexts.id_sequence).type = 'SUBTRACT'
+        col.operator("sequencer.effect_strip_add", text="Multiply",
+                     text_ctxt=i18n_contexts.id_sequence).type = 'MULTIPLY'
+        col.operator("sequencer.effect_strip_add", text="Over Drop",
+                     text_ctxt=i18n_contexts.id_sequence).type = 'OVER_DROP'
+        col.operator("sequencer.effect_strip_add", text="Alpha Over",
+                     text_ctxt=i18n_contexts.id_sequence).type = 'ALPHA_OVER'
+        col.operator("sequencer.effect_strip_add", text="Alpha Under",
+                     text_ctxt=i18n_contexts.id_sequence).type = 'ALPHA_UNDER'
+        col.operator("sequencer.effect_strip_add", text="Color Mix",
+                     text_ctxt=i18n_contexts.id_sequence).type = 'COLORMIX'
         col.enabled = selected_sequences_len(context) >= 2
 
         layout.separator()
@@ -865,18 +874,18 @@ class SEQUENCER_MT_strip_input(Menu):
 
         layout.operator("sequencer.reload", text="Reload Strips")
         layout.operator("sequencer.reload", text="Reload Strips and Adjust Length").adjust_length = True
-        prop = layout.operator("sequencer.change_path", text="Change Path/Files")
+        props = layout.operator("sequencer.change_path", text="Change Path/Files")
         layout.operator("sequencer.swap_data", text="Swap Data")
 
         if strip:
             strip_type = strip.type
 
             if strip_type == 'IMAGE':
-                prop.filter_image = True
+                props.filter_image = True
             elif strip_type == 'MOVIE':
-                prop.filter_movie = True
+                props.filter_movie = True
             elif strip_type == 'SOUND':
-                prop.filter_sound = True
+                props.filter_sound = True
 
 
 class SEQUENCER_MT_strip_lock_mute(Menu):
@@ -960,7 +969,11 @@ class SEQUENCER_MT_strip(Menu):
 
                 if strip_type != 'SOUND':
                     layout.separator()
-                    layout.operator_menu_enum("sequencer.strip_modifier_add", "type", text="Add Modifier")
+                    layout.operator_menu_enum("sequencer.strip_video_modifier_add", "type", text="Add Modifier")
+                    layout.operator("sequencer.strip_modifier_copy", text="Copy Modifiers to Selection")
+                else:
+                    layout.separator()
+                    layout.operator_menu_enum("sequencer.strip_sound_modifier_add", "type", text="Add Modifier")
                     layout.operator("sequencer.strip_modifier_copy", text="Copy Modifiers to Selection")
 
                 if strip_type in {
@@ -1101,17 +1114,19 @@ class SEQUENCER_MT_context_menu(Menu):
 
             if strip_type != 'SOUND':
                 layout.separator()
-                layout.operator_menu_enum("sequencer.strip_modifier_add", "type", text="Add Modifier")
+                layout.operator_menu_enum("sequencer.strip_video_modifier_add", "type", text="Add Modifier")
                 layout.operator("sequencer.strip_modifier_copy", text="Copy Modifiers to Selection")
-
                 if selected_sequences_count >= 2:
                     layout.separator()
                     col = layout.column()
                     col.menu("SEQUENCER_MT_add_transitions", text="Add Transition")
-
-            elif selected_sequences_count >= 2:
+            else:
                 layout.separator()
-                layout.operator("sequencer.crossfade_sounds", text="Crossfade Sounds")
+                layout.operator_menu_enum("sequencer.strip_sound_modifier_add", "type", text="Add Modifier")
+                layout.operator("sequencer.strip_modifier_copy", text="Copy Modifiers to Selection")
+                if selected_sequences_count >= 2:
+                    layout.separator()
+                    layout.operator("sequencer.crossfade_sounds", text="Crossfade Sounds")
 
             if selected_sequences_count >= 1:
                 col = layout.column()
@@ -1653,7 +1668,7 @@ class SEQUENCER_PT_source(SequencerButtonsPanel, Panel):
                 col = col.column(align=True)
                 split = col.split(factor=0.5, align=False)
                 split.alignment = 'RIGHT'
-                split.label(text="Samplerate")
+                split.label(text="Sample Rate")
                 split.alignment = 'LEFT'
                 if sound.samplerate <= 0:
                     split.label(text="Unknown")
@@ -1762,7 +1777,7 @@ class SEQUENCER_PT_scene(SequencerButtonsPanel, Panel):
             sub.use_property_decorate = True
             split = sub.split(factor=0.4, align=True)
             split.alignment = 'RIGHT'
-            split.label(text="Volume")
+            split.label(text="Volume", text_ctxt=i18n_contexts.id_sound)
             split.prop(scene, "audio_volume", text="")
             sub.use_property_decorate = False
 
@@ -1771,7 +1786,7 @@ class SEQUENCER_PT_scene(SequencerButtonsPanel, Panel):
             layout.prop(strip, "use_annotations", text="Annotations")
             if scene:
                 # Warning, this is not a good convention to follow.
-                # Expose here because setting the alpha from the 'Render' menu is very inconvenient.
+                # Expose here because setting the alpha from the "Render" menu is very inconvenient.
                 layout.prop(scene.render, "film_transparent")
 
 
@@ -1877,12 +1892,6 @@ class SEQUENCER_PT_time(SequencerButtonsPanel, Panel):
         split.alignment = 'RIGHT'
         split.label(text="Channel")
         split.prop(strip, "channel", text="")
-
-        if strip.type == 'SOUND':
-            split = layout.split(factor=0.5 + max_factor)
-            split.alignment = 'RIGHT'
-            split.label(text="Speed Factor")
-            split.prop(strip, "speed_factor", text="")
 
         sub = layout.column(align=True)
         split = sub.split(factor=0.5 + max_factor, align=True)
@@ -1993,7 +2002,7 @@ class SEQUENCER_PT_adjust_sound(SequencerButtonsPanel, Panel):
 
             split = col.split(factor=0.4)
             split.alignment = 'RIGHT'
-            split.label(text="Volume")
+            split.label(text="Volume", text_ctxt=i18n_contexts.id_sound)
             split.prop(strip, "volume", text="")
 
             audio_channels = context.scene.render.ffmpeg.audio_channels
@@ -2006,7 +2015,7 @@ class SEQUENCER_PT_adjust_sound(SequencerButtonsPanel, Panel):
             split.prop(strip, "pan", text="")
             split.enabled = pan_enabled
 
-            if audio_channels != 'MONO' and audio_channels != 'STEREO':
+            if audio_channels not in {'MONO', 'STEREO'}:
                 split = col.split(factor=0.4)
                 split.alignment = 'RIGHT'
                 split.label(text="Pan Angle")
@@ -2488,6 +2497,7 @@ class SEQUENCER_PT_view_safe_areas_center_cut(SequencerButtonsPanel_Output, Pane
 
         col = layout.column()
         col.prop(safe_data, "title_center", slider=True)
+        col.prop(safe_data, "action_center", slider=True)
 
 
 class SEQUENCER_PT_modifiers(SequencerButtonsPanel, Panel):
@@ -2500,8 +2510,13 @@ class SEQUENCER_PT_modifiers(SequencerButtonsPanel, Panel):
 
         strip = context.active_sequence_strip
         ed = context.scene.sequence_editor
+        if strip.type == 'SOUND':
+            sound = strip.sound
+        else:
+            sound = None
 
-        layout.prop(strip, "use_linear_modifiers")
+        if sound is None:
+            layout.prop(strip, "use_linear_modifiers")
 
         layout.operator_menu_enum("sequencer.strip_modifier_add", "type")
         layout.operator("sequencer.strip_modifier_copy")
@@ -2528,45 +2543,78 @@ class SEQUENCER_PT_modifiers(SequencerButtonsPanel, Panel):
             row.operator("sequencer.strip_modifier_remove", text="", icon='X', emboss=False).name = mod.name
 
             if mod.show_expanded:
-                row = box.row()
-                row.prop(mod, "input_mask_type", expand=True)
-
-                if mod.input_mask_type == 'STRIP':
-                    sequences_object = ed
-                    if ed.meta_stack:
-                        sequences_object = ed.meta_stack[-1]
-                    box.prop_search(mod, "input_mask_strip", sequences_object, "sequences", text="Mask")
-                else:
-                    box.prop(mod, "input_mask_id")
+                if sound is None:
                     row = box.row()
-                    row.prop(mod, "mask_time", expand=True)
+                    row.prop(mod, "input_mask_type", expand=True)
 
-                if mod.type == 'COLOR_BALANCE':
-                    box.prop(mod, "color_multiply")
-                    draw_color_balance(box, mod.color_balance)
-                elif mod.type == 'CURVES':
-                    box.template_curve_mapping(mod, "curve_mapping", type='COLOR', show_tone=True)
-                elif mod.type == 'HUE_CORRECT':
-                    box.template_curve_mapping(mod, "curve_mapping", type='HUE')
-                elif mod.type == 'BRIGHT_CONTRAST':
-                    col = box.column()
-                    col.prop(mod, "bright")
-                    col.prop(mod, "contrast")
-                elif mod.type == 'WHITE_BALANCE':
-                    col = box.column()
-                    col.prop(mod, "white_value")
-                elif mod.type == 'TONEMAP':
-                    col = box.column()
-                    col.prop(mod, "tonemap_type")
-                    if mod.tonemap_type == 'RD_PHOTORECEPTOR':
-                        col.prop(mod, "intensity")
+                    if mod.input_mask_type == 'STRIP':
+                        sequences_object = ed
+                        if ed.meta_stack:
+                            sequences_object = ed.meta_stack[-1]
+                        box.prop_search(mod, "input_mask_strip", sequences_object, "sequences", text="Mask")
+                    else:
+                        box.prop(mod, "input_mask_id")
+                        row = box.row()
+                        row.prop(mod, "mask_time", expand=True)
+
+                    if mod.type == 'COLOR_BALANCE':
+                        box.prop(mod, "color_multiply")
+                        draw_color_balance(box, mod.color_balance)
+                    elif mod.type == 'CURVES':
+                        box.template_curve_mapping(mod, "curve_mapping", type='COLOR', show_tone=True)
+                    elif mod.type == 'HUE_CORRECT':
+                        box.template_curve_mapping(mod, "curve_mapping", type='HUE')
+                    elif mod.type == 'BRIGHT_CONTRAST':
+                        col = box.column()
+                        col.prop(mod, "bright")
                         col.prop(mod, "contrast")
-                        col.prop(mod, "adaptation")
-                        col.prop(mod, "correction")
-                    elif mod.tonemap_type == 'RH_SIMPLE':
-                        col.prop(mod, "key")
-                        col.prop(mod, "offset")
-                        col.prop(mod, "gamma")
+                    elif mod.type == 'WHITE_BALANCE':
+                        col = box.column()
+                        col.prop(mod, "white_value")
+                    elif mod.type == 'TONEMAP':
+                        col = box.column()
+                        col.prop(mod, "tonemap_type")
+                        if mod.tonemap_type == 'RD_PHOTORECEPTOR':
+                            col.prop(mod, "intensity")
+                            col.prop(mod, "contrast")
+                            col.prop(mod, "adaptation")
+                            col.prop(mod, "correction")
+                        elif mod.tonemap_type == 'RH_SIMPLE':
+                            col.prop(mod, "key")
+                            col.prop(mod, "offset")
+                            col.prop(mod, "gamma")
+                else:
+                    if mod.type == 'SOUND_EQUALIZER':
+                        eq_row = box.row()
+                        # eq_graphs = eq_row.operator_menu_enum("sequencer.strip_modifier_equalizer_redefine", "graphs")
+                        # eq_graphs.name = mod.name
+                        flow = box.grid_flow(
+                            row_major=True,
+                            columns=0,
+                            even_columns=True,
+                            even_rows=False,
+                            align=False,
+                        )
+                        for sound_eq in mod.graphics:
+                            col = flow.column()
+                            box = col.box()
+                            split = box.split(factor=0.4)
+                            split.label(text="%.2f" % sound_eq.curve_mapping.clip_min_x)
+                            split.label(text="Hz")
+                            split.alignment = "RIGHT"
+                            split.label(text="%.2f" % sound_eq.curve_mapping.clip_max_x)
+                            box.template_curve_mapping(
+                                sound_eq,
+                                "curve_mapping",
+                                type='NONE',
+                                levels=False,
+                                brush=True,
+                                use_negative_slope=True,
+                                show_tone=False,
+                            )
+                            second_row = col.row()
+                            second_row.label(text="dB")
+                            second_row.alignment = 'CENTER'
 
 
 class SEQUENCER_PT_annotation(AnnotationDataPanel, SequencerButtonsPanel_Output, Panel):

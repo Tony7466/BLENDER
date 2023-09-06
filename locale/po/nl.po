@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.5.0 Beta (b'4096bcfb25f6')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'526f935981fd')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-03-13 11:29:34\n"
+"POT-Creation-Date: 2023-09-04 15:42:41\n"
 "PO-Revision-Date: 2021-12-05 20:05+0100\n"
 "Language: nl\n"
 "MIME-Version: 1.0\n"
@@ -276,6 +276,10 @@ msgstr "Auteur"
 
 msgid "Description"
 msgstr "Beschrijving"
+
+
+msgid "Options"
+msgstr "Opties"
 
 
 msgid "Data Type"
@@ -602,16 +606,20 @@ msgid "Selectable"
 msgstr "Selecteerbaar"
 
 
-msgid "Layers"
-msgstr "Lagen"
-
-
 msgid "Length"
 msgstr "Lengte"
 
 
 msgid "Parent"
 msgstr "Ouder"
+
+
+msgid "Visible"
+msgstr "Zichtbaar"
+
+
+msgid "Custom"
+msgstr "Aangepast"
 
 
 msgid "Bone Group"
@@ -646,14 +654,6 @@ msgid "Vertex Color"
 msgstr "Kleur van Punt"
 
 
-msgid "Round"
-msgstr "Rond"
-
-
-msgid "Flat"
-msgstr "Vlak"
-
-
 msgid "Dissolve"
 msgstr "Oplossen"
 
@@ -670,24 +670,12 @@ msgid "Layer Mode"
 msgstr "Laagmodus"
 
 
-msgid "Visible"
-msgstr "Zichtbaar"
-
-
 msgid "Simplify"
 msgstr "Versimpel"
 
 
 msgid "Fill"
 msgstr "Vul"
-
-
-msgid "Smooth"
-msgstr "Glad"
-
-
-msgid "Twist"
-msgstr "Draai"
 
 
 msgid "Draw"
@@ -698,6 +686,10 @@ msgid "Show Lines"
 msgstr "Toon Lijnen"
 
 
+msgid "Active Layer"
+msgstr "Actieve Laag"
+
+
 msgid "Random Settings"
 msgstr "Willekeurige Instellingen"
 
@@ -706,16 +698,8 @@ msgid "Mode Type"
 msgstr "Type Modus"
 
 
-msgid "Active Layer"
-msgstr "Actieve Laag"
-
-
 msgid "Object Path"
 msgstr "Object Pad"
-
-
-msgid "Path"
-msgstr "Pad"
 
 
 msgid "Opacity"
@@ -800,6 +784,10 @@ msgstr "Succes"
 
 msgid "Invalid Input"
 msgstr "Ongeldige Invoer"
+
+
+msgid "Include"
+msgstr "Includeer"
 
 
 msgid "Collection Objects"
@@ -1069,11 +1057,6 @@ msgstr "Scene"
 
 
 msgctxt "ID"
-msgid "Simulation"
-msgstr "Simulatie"
-
-
-msgctxt "ID"
 msgid "Sound"
 msgstr "Geluid"
 
@@ -1133,14 +1116,6 @@ msgstr "Vervang Kleur"
 
 msgid "Factor"
 msgstr "Factor"
-
-
-msgid "Obstacle"
-msgstr "Obstakel"
-
-
-msgid "Force"
-msgstr "Kracht"
 
 
 msgid "Canvas Settings"
@@ -1213,6 +1188,10 @@ msgstr "Gebruik Uitvoer"
 
 msgid "Smoothness"
 msgstr "Gladheid"
+
+
+msgid "Force"
+msgstr "Kracht"
 
 
 msgid "Group"
@@ -1339,18 +1318,6 @@ msgid "Frequency"
 msgstr "Frequentie"
 
 
-msgid "Kink"
-msgstr "Knik"
-
-
-msgid "Curl"
-msgstr "Krul"
-
-
-msgid "Wave"
-msgstr "Golf"
-
-
 msgid "Seed"
 msgstr "Zaad"
 
@@ -1373,6 +1340,10 @@ msgstr "Domein Object"
 
 msgid "Strength of force field"
 msgstr "Kracht van het krachtveld"
+
+
+msgid "Curl"
+msgstr "Krul"
 
 
 msgid "Gradient"
@@ -1485,6 +1456,10 @@ msgstr "Kracht Collectie"
 
 msgid "Fluid"
 msgstr "Vloeistof"
+
+
+msgid "Obstacle"
+msgstr "Obstakel"
 
 
 msgid "Nearest"
@@ -1639,10 +1614,6 @@ msgid "Layer"
 msgstr "Laag"
 
 
-msgid "Custom"
-msgstr "Aangepast"
-
-
 msgid "Grid"
 msgstr "Rooster"
 
@@ -1687,10 +1658,6 @@ msgid "Select Background"
 msgstr "Selecteer Achtergrond"
 
 
-msgid "Options"
-msgstr "Opties"
-
-
 msgid "Window"
 msgstr "Scherm"
 
@@ -1717,6 +1684,10 @@ msgstr "Bouw"
 
 msgid "Mirror"
 msgstr "Spiegel"
+
+
+msgid "Smooth"
+msgstr "Glad"
 
 
 msgid "Inverse Materials"
@@ -1917,10 +1888,6 @@ msgid "Box"
 msgstr "Doos"
 
 
-msgid "Bend"
-msgstr "Buig"
-
-
 msgid "Force Falloff"
 msgstr "Kracht Afvlakking"
 
@@ -1965,32 +1932,12 @@ msgid "Projected"
 msgstr "Geprojecteerd"
 
 
-msgid "Erase"
-msgstr "Gummen"
-
-
 msgid "Repeat"
 msgstr "Herhaal"
 
 
-msgid "Mask"
-msgstr "Mask"
-
-
 msgid "Brush"
 msgstr "Kwast"
-
-
-msgid "Clay"
-msgstr "Klei"
-
-
-msgid "Rotate"
-msgstr "Roteren"
-
-
-msgid "Cloth"
-msgstr "Kleding"
 
 
 msgid "Elastic"
@@ -2105,8 +2052,8 @@ msgid "Disable Selection"
 msgstr "Selectie Uitschakelen"
 
 
-msgid "Include"
-msgstr "Includeer"
+msgid "Round"
+msgstr "Rond"
 
 
 msgid "Profile"
@@ -2127,6 +2074,10 @@ msgstr "Half"
 
 msgid "Fill Caps"
 msgstr "Vul Kap"
+
+
+msgid "Path"
+msgstr "Pad"
 
 
 msgid "Follow"
@@ -2201,6 +2152,10 @@ msgid "Annotation"
 msgstr "Annotatie"
 
 
+msgid "Layers"
+msgstr "Lagen"
+
+
 msgid "Only selected keyframes"
 msgstr "Alleen geselecteerde sleutelframes"
 
@@ -2232,14 +2187,6 @@ msgid "Area"
 msgstr "Gebied"
 
 
-msgid "Falloff Type"
-msgstr "Type Afvlakking"
-
-
-msgid "Inverse Square"
-msgstr "Inverse Wortel"
-
-
 msgid "Shadow Color"
 msgstr "Schaduwkleur"
 
@@ -2260,8 +2207,8 @@ msgid "Cube"
 msgstr "Kubus"
 
 
-msgid "Hair"
-msgstr "Haar"
+msgid "Cloth"
+msgstr "Kleding"
 
 
 msgid "Roughness"
@@ -2276,12 +2223,28 @@ msgid "Shadow Mode"
 msgstr "Schaduwmodus"
 
 
+msgid "Interface"
+msgstr "Interface"
+
+
 msgid "Links"
 msgstr "Koppeling"
 
 
 msgid "Undefined"
 msgstr "Niet Gedefinieerd"
+
+
+msgid "Edit"
+msgstr "Bewerken"
+
+
+msgid "Sculpt"
+msgstr "Beeldhouwen"
+
+
+msgid "Tool"
+msgstr "Gereedschap"
 
 
 msgid "Active Material"
@@ -2360,10 +2323,6 @@ msgid "Hair Length"
 msgstr "Haarlengte"
 
 
-msgid "Spiral"
-msgstr "Spiraal"
-
-
 msgid "Mass"
 msgstr "Massa"
 
@@ -2404,8 +2363,16 @@ msgid "Random Size"
 msgstr "Willekeurige Grootte"
 
 
+msgid "Twist"
+msgstr "Draai"
+
+
 msgid "Particle type"
 msgstr "Deeltjestype"
+
+
+msgid "Hair"
+msgstr "Haar"
 
 
 msgid "Advanced"
@@ -2414,6 +2381,10 @@ msgstr "Geavanceerd"
 
 msgid "Rotations"
 msgstr "Rotaties"
+
+
+msgid "Mirror Object"
+msgstr "Spiegel Object"
 
 
 msgid "Speed of Sound"
@@ -2699,6 +2670,14 @@ msgid "Calculate Holes"
 msgstr "Bereken Gaten"
 
 
+msgid "Active Point"
+msgstr "Actieve Punt"
+
+
+msgid "Mask"
+msgstr "Mask"
+
+
 msgctxt "MovieClip"
 msgid "Clip"
 msgstr "Clip"
@@ -2733,8 +2712,8 @@ msgid "Add"
 msgstr "Toevoegen"
 
 
-msgid "Edit"
-msgstr "Bewerken"
+msgid "Text"
+msgstr "Tekst"
 
 
 msgid "Converter"
@@ -2743,10 +2722,6 @@ msgstr "Converteerder"
 
 msgid "Layout"
 msgstr "Indeling"
-
-
-msgid "Text"
-msgstr "Tekst"
 
 
 msgctxt "Operator"
@@ -2842,10 +2817,6 @@ msgid "Clear Transform"
 msgstr "Maak Transformatie Leeg"
 
 
-msgid "Sculpt"
-msgstr "Beeldhouwen"
-
-
 msgid "Local View"
 msgstr "Lokale Scherm"
 
@@ -2880,6 +2851,10 @@ msgstr "Bal"
 
 msgid "Data Transfer"
 msgstr "Gegevens Overdracht"
+
+
+msgid "Wave"
+msgstr "Golf"
 
 
 msgid "Soft Body"
@@ -2922,10 +2897,6 @@ msgid "Time Mode"
 msgstr "Tijdsmodus"
 
 
-msgid "Mirror Object"
-msgstr "Spiegel Object"
-
-
 msgid "Mirror Axis"
 msgstr "Spiegel As"
 
@@ -2940,6 +2911,11 @@ msgstr "Genereer"
 
 msgid "World"
 msgstr "Wereld"
+
+
+msgctxt "Operator"
+msgid "Bend"
+msgstr "Buig"
 
 
 msgid "Origin"
@@ -3072,6 +3048,10 @@ msgstr "Bewegingsonscherpte"
 
 msgid "Render Layers"
 msgstr "Render Lagen"
+
+
+msgid "Rotate"
+msgstr "Roteren"
 
 
 msgid "Translate"
@@ -3338,11 +3318,6 @@ msgstr "Verplaats Kanalen"
 
 
 msgctxt "Operator"
-msgid "Rename Channels"
-msgstr "Hernoem Kanalen"
-
-
-msgctxt "Operator"
 msgid "Disable Channel Setting"
 msgstr "Zet Kanaal Instellingen Uit"
 
@@ -3538,10 +3513,6 @@ msgid "Reset Brush"
 msgstr "Reset Kwast"
 
 
-msgid "Tool"
-msgstr "Gereedschap"
-
-
 msgctxt "Operator"
 msgid "Accept"
 msgstr "Accepteer"
@@ -3714,10 +3685,6 @@ msgid "Insert"
 msgstr "Invoegen"
 
 
-msgid "Language"
-msgstr "Taal"
-
-
 msgctxt "Operator"
 msgid "Move Cursor"
 msgstr "Verplaats Cursor"
@@ -3762,6 +3729,10 @@ msgstr "Wijzig formaat"
 
 msgid "To Sphere"
 msgstr "Naar Bal"
+
+
+msgid "Bend"
+msgstr "Buig"
 
 
 msgid "Edge Slide"
@@ -3838,17 +3809,12 @@ msgstr "Exporteer BVH"
 
 
 msgctxt "Operator"
-msgid "Export PLY"
-msgstr "Exporteer PLY"
+msgid "Export STL"
+msgstr "Exporteer STL"
 
 
 msgid "Apply Modifiers"
 msgstr "Pas Aanpassers Toe"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "Exporteer STL"
 
 
 msgctxt "Operator"
@@ -3882,15 +3848,6 @@ msgstr "Algemeen"
 
 msgid "Animation settings"
 msgstr "Animatie-instellingen"
-
-
-msgctxt "Operator"
-msgid "Export OBJ"
-msgstr "Exporteer OBJ"
-
-
-msgid "Apply modifiers"
-msgstr "Pas aanpassers toe"
 
 
 msgctxt "Operator"
@@ -3950,6 +3907,10 @@ msgid "Execute File Window"
 msgstr "Voer Bestand Scherm Uit"
 
 
+msgid "Play"
+msgstr "Afspelen"
+
+
 msgctxt "Operator"
 msgid "Increment Number in Filename"
 msgstr "Verhoog Nummer in Bestandsnaam"
@@ -3972,11 +3933,6 @@ msgstr "Markeer Bestand"
 msgctxt "Operator"
 msgid "Next Folder"
 msgstr "Volgende Map"
-
-
-msgctxt "Operator"
-msgid "Parent File"
-msgstr "Ouder Bestand"
 
 
 msgctxt "Operator"
@@ -4309,6 +4265,10 @@ msgid "Hide Curves"
 msgstr "Verberg Krommes"
 
 
+msgid "Next Keyframe"
+msgstr "Volgende Sleutelframe"
+
+
 msgctxt "Operator"
 msgid "Reveal Curves"
 msgstr "Toon Krommes"
@@ -4388,11 +4348,6 @@ msgstr "Importeer Afbeeldingen als Vlakken"
 
 
 msgctxt "Operator"
-msgid "Import PLY"
-msgstr "Importeer PLY"
-
-
-msgctxt "Operator"
 msgid "Import STL"
 msgstr "Importeer STL"
 
@@ -4408,11 +4363,6 @@ msgstr "Importeer Animatie"
 
 msgid "Import FBX animation"
 msgstr "Importeer FBX Animatie"
-
-
-msgctxt "Operator"
-msgid "Import OBJ"
-msgstr "Importeer OBJ"
 
 
 msgctxt "Operator"
@@ -4865,15 +4815,6 @@ msgid "Toggle Force Field"
 msgstr "Krachtveld Aan/Uit"
 
 
-msgctxt "Operator"
-msgid "Add Grease Pencil"
-msgstr "Voeg Vetkrijt Toe"
-
-
-msgid "Add a Grease Pencil object to the scene"
-msgstr "Voeg een vetkrijt object toe in de scene"
-
-
 msgid "Monkey"
 msgstr "Aap"
 
@@ -4895,6 +4836,15 @@ msgstr "Object Gegevens"
 msgctxt "Operator"
 msgid "Copy Modifier"
 msgstr "Kopieer Aanpasser"
+
+
+msgctxt "Operator"
+msgid "Add Grease Pencil"
+msgstr "Voeg Vetkrijt Toe"
+
+
+msgid "Add a Grease Pencil object to the scene"
+msgstr "Voeg een vetkrijt object toe in de scene"
 
 
 msgctxt "Operator"
@@ -5156,11 +5106,6 @@ msgid "Assign to New Group"
 msgstr "Koppel aan Nieuwe Groep"
 
 
-msgctxt "Operator"
-msgid "Copy Vertex Group"
-msgstr "Kopieer Groep van Punten"
-
-
 msgid "Add Weights"
 msgstr "Voeg Gewichten Toe"
 
@@ -5363,10 +5308,6 @@ msgstr "Pas Pose als Rust Pose Toe"
 
 msgid "Rotation only"
 msgstr "Alleen Rotatie"
-
-
-msgid "Next Keyframe"
-msgstr "Volgende Sleutelframe"
 
 
 msgid "Previous Keyframe"
@@ -5723,10 +5664,6 @@ msgid "Open Preferences..."
 msgstr "Open Instellingen..."
 
 
-msgid "Interface"
-msgstr "Interface"
-
-
 msgid "File Paths"
 msgstr "Bestandspaden"
 
@@ -5757,6 +5694,10 @@ msgid "Change value"
 msgstr "Wijzig waarde"
 
 
+msgid "Falloff Type"
+msgstr "Type Afvlakking"
+
+
 msgid "Modify Active"
 msgstr "Wijzig Actieve"
 
@@ -5765,12 +5706,59 @@ msgid "Modify Hidden"
 msgstr "Wijzig Verborgen"
 
 
+msgctxt "Sequence"
+msgid "Type"
+msgstr "Type"
+
+
+msgctxt "Sequence"
+msgid "Add"
+msgstr "Toevoegen"
+
+
+msgctxt "Sequence"
+msgid "Subtract"
+msgstr "Aftrekken"
+
+
+msgctxt "Sequence"
+msgid "Alpha Over"
+msgstr "Alpha Over"
+
+
+msgctxt "Sequence"
 msgid "Alpha Under"
 msgstr "Alpha Onder"
 
 
+msgctxt "Sequence"
+msgid "Multiply"
+msgstr "Vermenigvuldigen"
+
+
+msgctxt "Sequence"
 msgid "Wipe"
 msgstr "Veeg"
+
+
+msgctxt "Sequence"
+msgid "Transform"
+msgstr "Transformatie"
+
+
+msgctxt "Sequence"
+msgid "Color"
+msgstr "Kleur"
+
+
+msgctxt "Sequence"
+msgid "Speed"
+msgstr "Snelheid"
+
+
+msgctxt "Sequence"
+msgid "Text"
+msgstr "Tekst"
 
 
 msgctxt "Operator"
@@ -5951,11 +5939,6 @@ msgstr "Split Lijnen"
 
 
 msgctxt "Operator"
-msgid "Bend"
-msgstr "Buig"
-
-
-msgctxt "Operator"
 msgid "Create Orientation"
 msgstr "Maak Oriëntatie"
 
@@ -6044,10 +6027,6 @@ msgstr "Cylinder Projectie"
 msgctxt "Operator"
 msgid "Export UV Layout"
 msgstr "Exporteer UV Indeling"
-
-
-msgid "New Image"
-msgstr "Nieuwe Afbeelding"
 
 
 msgid "Selected Faces"
@@ -6204,10 +6183,6 @@ msgid "Search Path"
 msgstr "Zoek Pad"
 
 
-msgid "Play"
-msgstr "Afspelen"
-
-
 msgid "Export grease pencil to PDF"
 msgstr "Exporteer vetkrijt naar PDF"
 
@@ -6228,6 +6203,16 @@ msgstr "Objecteigenschappen"
 
 msgid "Open a Blender file"
 msgstr "Open een Blender Bestand"
+
+
+msgctxt "Operator"
+msgid "Export PLY"
+msgstr "Exporteer PLY"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "Importeer PLY"
 
 
 msgid "All Types"
@@ -6276,10 +6261,6 @@ msgstr "Herlaad Geschiedenis Bestand"
 msgctxt "Operator"
 msgid "Reload Start-Up File"
 msgstr "Herlaad Opstart Bestand"
-
-
-msgid "Open the default file (doesn't save the current file)"
-msgstr "Open Opstart Bestand (huidige bestand wordt niet opgelsagen)"
 
 
 msgctxt "Operator"
@@ -6443,10 +6424,6 @@ msgid "Custom Shape"
 msgstr "Aangepaste Vorm"
 
 
-msgid "Active Point"
-msgstr "Actieve Punt"
-
-
 msgctxt "MovieClip"
 msgid "Scene Setup"
 msgstr "Scene Opstelling"
@@ -6478,6 +6455,10 @@ msgstr "Schalen"
 msgctxt "Operator"
 msgid "Draw"
 msgstr "Tekenen"
+
+
+msgid "Kink"
+msgstr "Knik"
 
 
 msgid "Force Field Settings"
@@ -6721,6 +6702,10 @@ msgid "Interface Font"
 msgstr "Interface Lettertype"
 
 
+msgid "Language"
+msgstr "Taal"
+
+
 msgid "Language used for translation"
 msgstr "Taal gebruikt voor vertaling"
 
@@ -6743,6 +6728,10 @@ msgstr "Vertaal de Interface"
 
 msgid "Seconds"
 msgstr "Seconden"
+
+
+msgid "Temperature"
+msgstr "Temperatuur"
 
 
 msgid "Find/Replace"
@@ -6781,8 +6770,8 @@ msgid "Old mapping value in frames"
 msgstr "Oude mapping waarde in frames"
 
 
-msgid "Resolution %"
-msgstr "Resolutie %"
+msgid "Resolution Scale"
+msgstr "Resolutie Schaal"
 
 
 msgid "Percentage scale for render resolution"
@@ -6817,9 +6806,8 @@ msgid "Max Roughness"
 msgstr "Maximale Ruwheid"
 
 
-msgctxt "Sequence"
-msgid "Type"
-msgstr "Type"
+msgid "Alpha Under"
+msgstr "Alpha Onder"
 
 
 msgctxt "Sequence"
@@ -6860,56 +6848,6 @@ msgstr "Geluid"
 msgctxt "Sequence"
 msgid "Cross"
 msgstr "Kruisovergang"
-
-
-msgctxt "Sequence"
-msgid "Add"
-msgstr "Toevoegen"
-
-
-msgctxt "Sequence"
-msgid "Subtract"
-msgstr "Aftrekken"
-
-
-msgctxt "Sequence"
-msgid "Alpha Over"
-msgstr "Alpha Over"
-
-
-msgctxt "Sequence"
-msgid "Alpha Under"
-msgstr "Alpha Onder"
-
-
-msgctxt "Sequence"
-msgid "Multiply"
-msgstr "Vermenigvuldigen"
-
-
-msgctxt "Sequence"
-msgid "Wipe"
-msgstr "Veeg"
-
-
-msgctxt "Sequence"
-msgid "Transform"
-msgstr "Transformatie"
-
-
-msgctxt "Sequence"
-msgid "Color"
-msgstr "Kleur"
-
-
-msgctxt "Sequence"
-msgid "Speed"
-msgstr "Snelheid"
-
-
-msgctxt "Sequence"
-msgid "Text"
-msgstr "Tekst"
 
 
 msgid "Add Sequence"
@@ -7085,6 +7023,10 @@ msgid "3D"
 msgstr "3D"
 
 
+msgid "Flat"
+msgstr "Vlak"
+
+
 msgid "Force Field"
 msgstr "Krachtveld"
 
@@ -7205,101 +7147,6 @@ msgid "Show Weights"
 msgstr "Toon Gewichten"
 
 
-msgctxt "Operator"
-msgid "Camera:"
-msgstr "Camera:"
-
-
-msgctxt "Operator"
-msgid "Collection:"
-msgstr "Collectie:"
-
-
-msgctxt "Operator"
-msgid "Curve:"
-msgstr "Kromme:"
-
-
-msgctxt "Operator"
-msgid "File:"
-msgstr "Bestand:"
-
-
-msgctxt "Operator"
-msgid "Font:"
-msgstr "Lettertype:"
-
-
-msgctxt "Operator"
-msgid "Image:"
-msgstr "Afbeelding:"
-
-
-msgctxt "Operator"
-msgid "Material:"
-msgstr "Materiaal:"
-
-
-msgctxt "Operator"
-msgid "Object:"
-msgstr "Object:"
-
-
-msgctxt "Operator"
-msgid "Preferences:"
-msgstr "Instellingen:"
-
-
-msgctxt "Operator"
-msgid "Render:"
-msgstr "Render:"
-
-
-msgctxt "Operator"
-msgid "Rigidbody:"
-msgstr "Star Lichaam:"
-
-
-msgctxt "Operator"
-msgid "Scene:"
-msgstr "Scene:"
-
-
-msgctxt "Operator"
-msgid "Sculpt:"
-msgstr "Beeldhouwen:"
-
-
-msgctxt "Operator"
-msgid "Sound:"
-msgstr "Geluid:"
-
-
-msgctxt "Operator"
-msgid "Surface:"
-msgstr "Oppervlak:"
-
-
-msgctxt "Operator"
-msgid "Text:"
-msgstr "Tekst:"
-
-
-msgctxt "Operator"
-msgid "Transform:"
-msgstr "Transformeer:"
-
-
-msgctxt "Operator"
-msgid "Workspace:"
-msgstr "Werkomgeving:"
-
-
-msgctxt "Operator"
-msgid "World:"
-msgstr "Wereld:"
-
-
 msgid "Search"
 msgstr "Zoeken"
 
@@ -7322,6 +7169,11 @@ msgstr "Skellet"
 msgctxt "WindowManager"
 msgid "Font"
 msgstr "Lettertype"
+
+
+msgctxt "WindowManager"
+msgid "Grease Pencil"
+msgstr "Vetkrijt"
 
 
 msgctxt "WindowManager"
@@ -7372,11 +7224,6 @@ msgstr "Console"
 msgctxt "WindowManager"
 msgid "Clip"
 msgstr "Clip"
-
-
-msgctxt "WindowManager"
-msgid "Grease Pencil"
-msgstr "Vetkrijt"
 
 
 msgctxt "WindowManager"
@@ -7711,10 +7558,6 @@ msgid "Copy All Materials to Selected"
 msgstr "Kopieer Alle Materialen naar Geselecteerde"
 
 
-msgid "Old"
-msgstr "Oud"
-
-
 msgid "Date"
 msgstr "Datum"
 
@@ -7802,10 +7645,6 @@ msgstr "Seconde"
 
 msgid "Auto-Step"
 msgstr "Auto-Stap"
-
-
-msgid "Temperature"
-msgstr "Temperatuur"
 
 
 msgid "Paths:"
@@ -8149,31 +7988,6 @@ msgstr "Veeg"
 
 
 msgctxt "Operator"
-msgid "Subtract"
-msgstr "Aftrekken"
-
-
-msgctxt "Operator"
-msgid "Multiply"
-msgstr "Vermenigvuldigen"
-
-
-msgctxt "Operator"
-msgid "Alpha Over"
-msgstr "Alpha Over"
-
-
-msgctxt "Operator"
-msgid "Alpha Under"
-msgstr "Alpha Onder"
-
-
-msgctxt "Operator"
-msgid "Color Mix"
-msgstr "Kleur Mix"
-
-
-msgctxt "Operator"
 msgid "Glow"
 msgstr "Gloed"
 
@@ -8333,10 +8147,6 @@ msgid "Revert to Saved Preferences"
 msgstr "Ga terug naar Opgeslagen Instellingen"
 
 
-msgid "Resolution Scale"
-msgstr "Resolutie Schaal"
-
-
 msgid "New Data"
 msgstr "Nieuwe Data"
 
@@ -8355,11 +8165,6 @@ msgstr "Gebruik Aangepaste Kleur"
 
 msgid "Show Warning"
 msgstr "Toon Waarschuwing"
-
-
-msgctxt "Operator"
-msgid "Make Default"
-msgstr "Maak Standaard"
 
 
 msgctxt "Operator"
@@ -8915,10 +8720,6 @@ msgid "var"
 msgstr "var"
 
 
-msgid " from "
-msgstr " van "
-
-
 msgid "%i frames found!"
 msgstr "%i frames gevonden!"
 
@@ -9210,11 +9011,6 @@ msgid "New"
 msgstr "Nieuw"
 
 
-msgctxt "Simulation"
-msgid "New"
-msgstr "Nieuw"
-
-
 msgid "Close"
 msgstr "Sluit"
 
@@ -9225,10 +9021,6 @@ msgstr "Alleen"
 
 msgid "Object Options"
 msgstr "Objectopties"
-
-
-msgid "No filename given"
-msgstr "Geen bestandsnaam gegeven"
 
 
 msgid "Armature Options"
@@ -9395,10 +9187,6 @@ msgid "Active Keyframe"
 msgstr "Actieve Sleutelframe"
 
 
-msgid "into"
-msgstr "in"
-
-
 msgid "Today"
 msgstr "Vandaag"
 
@@ -9507,10 +9295,6 @@ msgid "Now"
 msgstr "Nu"
 
 
-msgid " (Vector)"
-msgstr " (Punt)"
-
-
 msgctxt "Action"
 msgid "Group"
 msgstr "Groep"
@@ -9601,6 +9385,10 @@ msgstr "Pad:"
 
 msgid "Speed:"
 msgstr "Snelheid:"
+
+
+msgid "Old"
+msgstr "Oud"
 
 
 msgid "Random Roughness"

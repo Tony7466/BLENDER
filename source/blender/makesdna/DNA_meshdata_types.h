@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -7,91 +8,7 @@
 
 #pragma once
 
-#include "DNA_customdata_types.h"
-#include "DNA_listBase.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/* -------------------------------------------------------------------- */
-/** \name Geometry Elements
- * \{ */
-
-/**
- * Mesh Edges.
- *
- * Typically accessed with #Mesh.edges()
- */
-typedef struct MEdge {
-  /** Un-ordered vertex indices (cannot match). */
-  unsigned int v1, v2;
-  /** Deprecated edge crease, now located in #CD_CREASE, except for file read and write. */
-  char crease_legacy;
-  /**
-   * Deprecated bevel weight storage, now located in #CD_BWEIGHT, except for file read and write.
-   */
-  char bweight_legacy;
-  short flag_legacy;
-} MEdge;
-
-#ifdef DNA_DEPRECATED_ALLOW
-/** #MEdge.flag */
-enum {
-  /** Deprecated selection status. Now stored in ".select_edge" attribute. */
-  /*  SELECT = (1 << 0), */
-  ME_SEAM = (1 << 2),
-  /** Deprecated hide status. Now stored in ".hide_edge" attribute. */
-  /*  ME_HIDE = (1 << 4), */
-  /** Deprecated loose edge status. Now stored in #Mesh::loose_edges() runtime cache. */
-  ME_LOOSEEDGE = (1 << 7),
-  /** Deprecated sharp edge status. Now stored in "sharp_edge" attribute. */
-  ME_SHARP = (1 << 9),
-};
-#endif
-
-/**
- * Mesh Faces.
- * This only stores the polygon size & flags, the vertex & edge indices are stored in the #MLoop.
- *
- * Typically accessed with #Mesh.polys().
- */
-typedef struct MPoly {
-  /** Offset into loop array and number of loops in the face. */
-  int loopstart;
-  /** Keep signed since we need to subtract when getting the previous loop. */
-  int totloop;
-  /** Deprecated material index. Now stored in the "material_index" attribute, but kept for IO. */
-  short mat_nr_legacy;
-  char flag_legacy, _pad;
-} MPoly;
-
-/** #MPoly.flag */
-#ifdef DNA_DEPRECATED_ALLOW
-enum {
-  /** Deprecated smooth shading status. Now stored reversed in "sharp_face" attribute. */
-  ME_SMOOTH = (1 << 0),
-  /** Deprecated selection status. Now stored in ".select_poly" attribute. */
-  ME_FACE_SEL = (1 << 1),
-  /** Deprecated hide status. Now stored in ".hide_poly" attribute. */
-  /* ME_HIDE = (1 << 4), */
-};
-#endif
-
-/**
- * Mesh Face Corners.
- * "Loop" is an internal name for the corner of a polygon (#MPoly).
- *
- * Typically accessed with #Mesh.loops().
- */
-typedef struct MLoop {
-  /** Vertex index. */
-  unsigned int v;
-  /** Edge index into an #MEdge array. */
-  unsigned int e;
-} MLoop;
-
-/** \} */
+#include "BLI_sys_types.h"
 
 /* -------------------------------------------------------------------- */
 /** \name Ordered Selection Storage
@@ -125,17 +42,17 @@ enum {
 
 /**
  * #MLoopTri's are lightweight triangulation data,
- * for functionality that doesn't support ngons (#MPoly).
- * This is cache data created from (#MPoly, #MLoop & position arrays).
+ * for functionality that doesn't support ngons.
+ * This is cache data created from (polygons, corner vert, and position arrays).
  * There is no attempt to maintain this data's validity over time,
  * any changes to the underlying mesh invalidate the #MLoopTri array,
  * which will need to be re-calculated.
  *
- * Users normally access this via #BKE_mesh_runtime_looptri_ensure.
- * In rare cases its calculated directly, with #BKE_mesh_recalc_looptri.
+ * Users normally access this via #Mesh::looptris().
+ * In rare cases its calculated directly, with #bke::mesh::looptris_calc.
  *
  * Typical usage includes:
- * - OpenGL drawing.
+ * - Viewport drawing.
  * - #BVHTree creation.
  * - Physics/collision detection.
  *
@@ -148,14 +65,11 @@ enum {
  *
  * Usage examples:
  * \code{.c}
- * // access polygon attribute value.
- * T value = polygon_attribute[lt->poly];
- *
  * // access vertex locations.
  * float *vtri_co[3] = {
- *     positions[mloop[lt->tri[0]].v],
- *     positions[mloop[lt->tri[1]].v],
- *     positions[mloop[lt->tri[2]].v],
+ *     positions[corner_verts[lt->tri[0]]],
+ *     positions[corner_verts[lt->tri[1]]],
+ *     positions[corner_verts[lt->tri[2]]],
  * };
  *
  * // access UV coordinates (works for all loop data, vertex colors... etc).
@@ -167,22 +81,22 @@ enum {
  * \endcode
  *
  * #MLoopTri's are allocated in an array, where each polygon's #MLoopTri's are stored contiguously,
- * the number of triangles for each polygon is guaranteed to be (#MPoly.totloop - 2),
- * even for degenerate geometry. See #ME_POLY_TRI_TOT macro.
+ * the number of triangles for each polygon is guaranteed to be the corner count - 2,
+ * even for degenerate geometry. See #ME_FACE_TRI_TOT macro.
  *
- * It's also possible to perform a reverse lookup (find all #MLoopTri's for any given #MPoly).
+ * It's also possible to perform a reverse lookup (find all #MLoopTri's for any given face).
  *
  * \code{.c}
  * // loop over all looptri's for a given polygon: i
- * MPoly *poly = &polys[i];
- * MLoopTri *lt = &looptri[poly_to_tri_count(i, poly->loopstart)];
- * int j, lt_tot = ME_POLY_TRI_TOT(poly);
+ * const IndexRange face = faces[i];
+ * MLoopTri *lt = &looptri[poly_to_tri_count(i, face.start())];
+ * int j, lt_tot = ME_FACE_TRI_TOT(face.size());
  *
  * for (j = 0; j < lt_tot; j++, lt++) {
- *     unsigned int vtri[3] = {
- *         mloop[lt->tri[0]].v,
- *         mloop[lt->tri[1]].v,
- *         mloop[lt->tri[2]].v,
+ *     int vtri[3] = {
+ *         corner_verts[lt->tri[0]],
+ *         corner_verts[lt->tri[1]],
+ *         corner_verts[lt->tri[2]],
  *     };
  *     printf("tri %u %u %u\n", vtri[0], vtri[1], vtri[2]);
  * };
@@ -191,19 +105,19 @@ enum {
  * It may also be useful to check whether or not two vertices of a triangle
  * form an edge in the underlying mesh.
  *
- * This can be done by checking the edge of the referenced loop (#MLoop.e),
- * the winding of the #MLoopTri and the #MLoop's will always match,
+ * This can be done by checking the edge of the referenced corner,
+ * the winding of the #MLoopTri and the corners's will always match,
  * however the order of vertices in the edge is undefined.
  *
  * \code{.c}
  * // print real edges from an MLoopTri: lt
  * int j, j_next;
  * for (j = 2, j_next = 0; j_next < 3; j = j_next++) {
- *     MEdge *ed = &medge[mloop[lt->tri[j]].e];
- *     unsigned int tri_edge[2]  = {mloop[lt->tri[j]].v, mloop[lt->tri[j_next]].v};
+ *     const int2 &edge = &medge[corner_edges[lt->tri[j]]];
+ *     unsigned int tri_edge[2]  = {corner_verts[lt->tri[j]], corner_verts[lt->tri[j_next]]};
  *
- *     if (((ed->v1 == tri_edge[0]) && (ed->v2 == tri_edge[1])) ||
- *         ((ed->v1 == tri_edge[1]) && (ed->v2 == tri_edge[0])))
+ *     if (((edge[0] == tri_edge[0]) && (edge[1] == tri_edge[1])) ||
+ *         ((edge[0] == tri_edge[1]) && (edge[1] == tri_edge[0])))
  *     {
  *         printf("real edge found %u %u\n", tri_edge[0], tri_edge[1]);
  *     }
@@ -216,7 +130,6 @@ enum {
  */
 typedef struct MLoopTri {
   unsigned int tri[3];
-  unsigned int poly;
 } MLoopTri;
 #
 #
@@ -296,12 +209,14 @@ typedef struct MVertSkin {
 } MVertSkin;
 
 typedef enum eMVertSkinFlag {
-  /** Marks a vertex as the edge-graph root, used for calculating rotations for all connected
+  /**
+   * Marks a vertex as the edge-graph root, used for calculating rotations for all connected
    * edges (recursively). Also used to choose a root when generating an armature.
    */
   MVERT_SKIN_ROOT = 1,
 
-  /** Marks a branch vertex (vertex with more than two connected edges), so that its neighbors
+  /**
+   * Marks a branch vertex (vertex with more than two connected edges), so that its neighbors
    * are directly hulled together, rather than the default of generating intermediate frames.
    */
   MVERT_SKIN_LOOSE = 2,
@@ -410,23 +325,8 @@ enum {
 /** \name Utility Macros
  * \{ */
 
-#define ME_POLY_LOOP_PREV(mloop, poly, i) \
-  (&(mloop)[(poly)->loopstart + (((i) + (poly)->totloop - 1) % (poly)->totloop)])
-#define ME_POLY_LOOP_NEXT(mloop, poly, i) \
-  (&(mloop)[(poly)->loopstart + (((i) + 1) % (poly)->totloop)])
-
-/** Number of tri's that make up this polygon once tessellated. */
-#define ME_POLY_TRI_TOT(poly) ((poly)->totloop - 2)
-
-/**
- * Check out-of-bounds material, note that this is nearly always prevented,
- * yet its still possible in rare cases.
- * So usage such as array lookup needs to check.
- */
-#define ME_MAT_NR_TEST(mat_nr, totmat) \
-  (CHECK_TYPE_ANY(mat_nr, short, const short), \
-   CHECK_TYPE_ANY(totmat, short, const short), \
-   (LIKELY(mat_nr < totmat) ? mat_nr : 0))
+/** Number of triangles that make up this face once tessellated. */
+#define ME_FACE_TRI_TOT(face_loop_num) ((face_loop_num)-2)
 
 /** \} */
 
@@ -435,6 +335,63 @@ enum {
  * \{ */
 
 #ifdef DNA_DEPRECATED_ALLOW
+
+/**
+ * Mesh Edges.
+ *
+ * Typically accessed with #Mesh.edges()
+ */
+typedef struct MEdge {
+  /** Un-ordered vertex indices (cannot match). */
+  unsigned int v1, v2;
+  /** Deprecated edge crease, now located in `edge_crease`, except for file read and write. */
+  char crease_legacy;
+  /**
+   * Deprecated bevel weight storage, now located in #CD_BWEIGHT, except for file read and write.
+   */
+  char bweight_legacy;
+  short flag_legacy;
+} MEdge;
+
+/** #MEdge.flag */
+enum {
+  /** Deprecated selection status. Now stored in ".select_edge" attribute. */
+  /*  SELECT = (1 << 0), */
+  ME_SEAM = (1 << 2),
+  /** Deprecated hide status. Now stored in ".hide_edge" attribute. */
+  /*  ME_HIDE = (1 << 4), */
+  /** Deprecated loose edge status. Now stored in #Mesh::loose_edges() runtime cache. */
+  ME_LOOSEEDGE = (1 << 7),
+  /** Deprecated sharp edge status. Now stored in "sharp_edge" attribute. */
+  ME_SHARP = (1 << 9),
+};
+
+/**
+ * Mesh Faces.
+ * This only stores the polygon size & flags, the vertex & edge indices are stored in the "corner
+ * edges" array.
+ *
+ * Typically accessed with #Mesh.faces().
+ */
+typedef struct MPoly {
+  /** Offset into loop array and number of loops in the face. */
+  int loopstart;
+  /** Keep signed since we need to subtract when getting the previous loop. */
+  int totloop;
+  /** Deprecated material index. Now stored in the "material_index" attribute, but kept for IO. */
+  short mat_nr_legacy;
+  char flag_legacy, _pad;
+} MPoly;
+
+/** #MPoly.flag */
+enum {
+  /** Deprecated smooth shading status. Now stored reversed in "sharp_face" attribute. */
+  ME_SMOOTH = (1 << 0),
+  /** Deprecated selection status. Now stored in ".select_poly" attribute. */
+  ME_FACE_SEL = (1 << 1),
+  /** Deprecated hide status. Now stored in ".hide_poly" attribute. */
+  /* ME_HIDE = (1 << 4), */
+};
 
 /**
  * UV coordinate for a polygon face & flag for selection & other options.
@@ -452,12 +409,9 @@ enum {
   MLOOPUV_PINNED = (1 << 2),
 };
 
-#endif
-
 /**
  * Deprecated mesh vertex data structure. Now stored with generic attributes.
  */
-#ifdef DNA_DEPRECATED_ALLOW
 typedef struct MVert {
   float co_legacy[3];
   /**
@@ -479,11 +433,25 @@ enum {
   /** Deprecated hide status. Now stored in ".hide_vert" attribute. */
   ME_HIDE = (1 << 4),
 };
+
+/**
+ * Mesh Face Corners.
+ * Deprecated storage for the vertex of a face corner and the following edge.
+ * Replaced by the "corner_verts" and "corner_edges" arrays.
+ */
+typedef struct MLoop {
+  /** Vertex index. */
+  unsigned int v;
+  /** Edge index into an #MEdge array. */
+  unsigned int e;
+} MLoop;
+
 #endif
 
 /**
- * Used in Blender pre 2.63, See #MLoop, #MPoly for face data stored in the blend file.
- * Use for reading old files and in a handful of cases which should be removed eventually.
+ * Used in Blender pre 2.63, See #Mesh::corner_verts(), #Mesh::faces() for face data stored in the
+ * blend file. Use for reading old files and in a handful of cases which should be removed
+ * eventually.
  */
 typedef struct MFace {
   unsigned int v1, v2, v3, v4;
@@ -515,35 +483,13 @@ typedef struct MCol {
   unsigned char a, r, g, b;
 } MCol;
 
-#define MESH_MLOOPCOL_FROM_MCOL(_mloopcol, _mcol) \
-  { \
-    MLoopCol *mloopcol__tmp = _mloopcol; \
-    const MCol *mcol__tmp = _mcol; \
-    mloopcol__tmp->r = mcol__tmp->b; \
-    mloopcol__tmp->g = mcol__tmp->g; \
-    mloopcol__tmp->b = mcol__tmp->r; \
-    mloopcol__tmp->a = mcol__tmp->a; \
-  } \
-  (void)0
-
-#define MESH_MLOOPCOL_TO_MCOL(_mloopcol, _mcol) \
-  { \
-    const MLoopCol *mloopcol__tmp = _mloopcol; \
-    MCol *mcol__tmp = _mcol; \
-    mcol__tmp->b = mloopcol__tmp->r; \
-    mcol__tmp->g = mloopcol__tmp->g; \
-    mcol__tmp->r = mloopcol__tmp->b; \
-    mcol__tmp->a = mloopcol__tmp->a; \
-  } \
-  (void)0
+#ifdef DNA_DEPRECATED_ALLOW
 
 /** Old game engine recast navigation data, while unused 2.7x files may contain this. */
 typedef struct MRecast {
   int i;
 } MRecast;
 
-/** \} */
-
-#ifdef __cplusplus
-}
 #endif
+
+/** \} */

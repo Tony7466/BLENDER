@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -23,6 +25,8 @@
  * assignment.
  * eg: `Euler3 my_euler(EulerOrder::XYZ); my_euler = my_quaternion:`
  */
+
+#include <ostream>
 
 #include "BLI_math_angle_types.hh"
 #include "BLI_math_base.hh"
@@ -437,5 +441,3 @@ using EulerXYZ = EulerXYZBase<float>;
 using Euler3 = Euler3Base<float>;
 
 }  // namespace blender::math
-
-/** \} */

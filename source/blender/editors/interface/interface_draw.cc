@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -14,7 +15,7 @@
 #include "DNA_movieclip_types.h"
 #include "DNA_screen_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_polyfill_2d.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
@@ -25,14 +26,14 @@
 #include "BKE_colorband.h"
 #include "BKE_colortools.h"
 #include "BKE_curveprofile.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_tracking.h"
 
 #include "IMB_colormanagement.h"
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
-#include "BIF_glutil.h"
+#include "BIF_glutil.hh"
 
 #include "BLF_api.h"
 
@@ -45,7 +46,7 @@
 #include "GPU_shader_shared.h"
 #include "GPU_state.h"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 /* own include */
 #include "interface_intern.hh"
@@ -60,7 +61,7 @@ void UI_draw_roundbox_corner_set(int type)
 }
 
 #if 0 /* unused */
-int UI_draw_roundbox_corner_get(void)
+int UI_draw_roundbox_corner_get()
 {
   return roundboxtype;
 }
@@ -301,7 +302,7 @@ void ui_draw_but_IMAGE(ARegion * /*region*/,
                         ibuf->y,
                         GPU_RGBA8,
                         false,
-                        ibuf->rect,
+                        ibuf->byte_buffer.data,
                         1.0f,
                         1.0f,
                         col);
@@ -610,7 +611,7 @@ void ui_draw_but_WAVEFORM(ARegion * /*region*/,
   /* draw scale numbers first before binding any shader */
   for (int i = 0; i < 6; i++) {
     char str[4];
-    BLI_snprintf(str, sizeof(str), "%-3d", i * 20);
+    SNPRINTF(str, "%-3d", i * 20);
     str[3] = '\0';
     BLF_color4f(BLF_default(), 1.0f, 1.0f, 1.0f, 0.08f);
     BLF_draw_default(rect.xmin + 1, yofs - 5 + (i * 0.2f) * h, 0, str, sizeof(str) - 1);
@@ -728,7 +729,8 @@ void ui_draw_but_WAVEFORM(ARegion * /*region*/,
                   SCOPES_WAVEFRM_RGB_PARADE,
                   SCOPES_WAVEFRM_YCC_601,
                   SCOPES_WAVEFRM_YCC_709,
-                  SCOPES_WAVEFRM_YCC_JPEG)) {
+                  SCOPES_WAVEFRM_YCC_JPEG))
+    {
       const int rgb = (scopes->wavefrm_mode == SCOPES_WAVEFRM_RGB_PARADE);
 
       GPU_matrix_push();
@@ -2035,7 +2037,8 @@ void ui_draw_but_TRACKPREVIEW(ARegion * /*region*/,
   }
   else if ((scopes->track_search) &&
            ((!scopes->track_preview) ||
-            (scopes->track_preview->x != width || scopes->track_preview->y != height))) {
+            (scopes->track_preview->x != width || scopes->track_preview->y != height)))
+  {
     if (scopes->track_preview) {
       IMB_freeImBuf(scopes->track_preview);
     }
@@ -2051,11 +2054,11 @@ void ui_draw_but_TRACKPREVIEW(ARegion * /*region*/,
                                                  height,
                                                  scopes->track_pos);
     if (tmpibuf) {
-      if (tmpibuf->rect_float) {
+      if (tmpibuf->float_buffer.data) {
         IMB_rect_from_float(tmpibuf);
       }
 
-      if (tmpibuf->rect) {
+      if (tmpibuf->byte_buffer.data) {
         scopes->track_preview = tmpibuf;
       }
       else {
@@ -2071,7 +2074,7 @@ void ui_draw_but_TRACKPREVIEW(ARegion * /*region*/,
     GPU_scissor(rect.xmin, rect.ymin, scissor[2], scissor[3]);
 
     if (width > 0 && height > 0) {
-      ImBuf *drawibuf = scopes->track_preview;
+      const ImBuf *drawibuf = scopes->track_preview;
       float col_sel[4], col_outline[4];
 
       if (scopes->use_track_mask) {
@@ -2093,7 +2096,7 @@ void ui_draw_but_TRACKPREVIEW(ARegion * /*region*/,
                             drawibuf->y,
                             GPU_RGBA8,
                             true,
-                            drawibuf->rect,
+                            drawibuf->byte_buffer.data,
                             1.0f,
                             1.0f,
                             nullptr);
