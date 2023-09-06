@@ -339,12 +339,12 @@ void mesh_render_data_update_looptris(MeshRenderData &mr,
 
 static bool bm_edge_is_sharp(const BMEdge *const &edge)
 {
-  return BM_elem_flag_test(edge, BM_ELEM_SMOOTH);
+  return !BM_elem_flag_test(edge, BM_ELEM_SMOOTH);
 }
 
 static bool bm_face_is_sharp(const BMFace *const &face)
 {
-  return BM_elem_flag_test(face, BM_ELEM_SMOOTH);
+  return !BM_elem_flag_test(face, BM_ELEM_SMOOTH);
 }
 
 /**
