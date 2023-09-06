@@ -28,6 +28,11 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   uiItemR(layout, ptr, "domain", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
 }
 
+static void node_init(bNodeTree * /*tree*/, bNode *node)
+{
+  node->custom1 = ATTR_DOMAIN_FACE;
+}
+
 /**
  * When the `sharp_face` attribute doesn't exist, all faces are considered smooth. If all faces
  * are selected and the sharp value is a constant false value, we can remove the attribute instead
@@ -115,6 +120,7 @@ static void node_register()
   geo_node_type_base(&ntype, GEO_NODE_SET_SHADE_SMOOTH, "Set Shade Smooth", NODE_CLASS_GEOMETRY);
   ntype.geometry_node_execute = node_geo_exec;
   ntype.declare = node_declare;
+  ntype.initfunc = node_init;
   ntype.draw_buttons = node_layout;
   nodeRegisterType(&ntype);
 
