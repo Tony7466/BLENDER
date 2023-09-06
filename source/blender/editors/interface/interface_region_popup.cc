@@ -575,6 +575,11 @@ uiBlock *ui_popup_block_refresh(bContext *C,
     block = handle_create_func(C, handle, arg);
   }
 
+  /* Don't create accelorator keys if the parent menu does not have them. */
+  if (but && but->block->flag & UI_BLOCK_NO_ACCELERATOR_KEYS) {
+    block->flag |= UI_BLOCK_NO_ACCELERATOR_KEYS;
+  }
+
   /* callbacks _must_ leave this for us, otherwise we can't call UI_block_update_from_old */
   BLI_assert(!block->endblock);
 
