@@ -43,6 +43,8 @@ void BackgroundPipeline::sync(GPUMaterial *gpumat, const float background_opacit
   /* Required by validation layers. */
   inst_.cryptomatte.bind_resources(&world_ps_);
 
+  inst_.bind_global_resources(&world_ps_);
+
   world_ps_.draw(DRW_cache_fullscreen_quad_get(), handle);
   /* To allow opaque pass rendering over it. */
   world_ps_.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
@@ -79,6 +81,7 @@ void WorldPipeline::sync(GPUMaterial *gpumat)
   pass.push_constant("world_opacity_fade", 1.0f);
 
   pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+  inst_.bind_global_resources(&pass);
   pass.bind_image("rp_normal_img", dummy_renderpass_tx_);
   pass.bind_image("rp_light_img", dummy_renderpass_tx_);
   pass.bind_image("rp_diffuse_color_img", dummy_renderpass_tx_);
@@ -113,6 +116,7 @@ void WorldVolumePipeline::sync(GPUMaterial *gpumat)
 {
   world_ps_.init();
   world_ps_.state_set(DRW_STATE_WRITE_COLOR);
+  inst_.bind_global_resources(&world_ps_);
   inst_.volume.bind_properties_buffers(world_ps_);
   inst_.sampling.bind_resources(&world_ps_);
 
@@ -150,6 +154,7 @@ void ShadowPipeline::sync()
   surface_ps_.bind_ssbo(SHADOW_RENDER_MAP_BUF_SLOT, &inst_.shadows.render_map_buf_);
   surface_ps_.bind_ssbo(SHADOW_VIEWPORT_INDEX_BUF_SLOT, &inst_.shadows.viewport_index_buf_);
   surface_ps_.bind_ssbo(SHADOW_PAGE_INFO_SLOT, &inst_.shadows.pages_infos_data_);
+  inst_.bind_global_resources(&surface_ps_);
   inst_.sampling.bind_resources(&surface_ps_);
 }
 
@@ -187,6 +192,7 @@ void ForwardPipeline::sync()
       /* Textures. */
       prepass_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
 
+      inst_.bind_global_resources(&prepass_ps_);
       inst_.velocity.bind_resources(&prepass_ps_);
       inst_.sampling.bind_resources(&prepass_ps_);
     }
@@ -216,6 +222,7 @@ void ForwardPipeline::sync()
       /* Textures. */
       opaque_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
 
+      inst_.bind_global_resources(&opaque_ps_);
       inst_.lights.bind_resources(&opaque_ps_);
       inst_.shadows.bind_resources(&opaque_ps_);
       inst_.sampling.bind_resources(&opaque_ps_);
@@ -240,6 +247,7 @@ void ForwardPipeline::sync()
     /* Textures. */
     sub.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
 
+    inst_.bind_global_resources(&sub);
     inst_.lights.bind_resources(&sub);
     inst_.shadows.bind_resources(&sub);
     inst_.volume.bind_resources(sub);
@@ -352,6 +360,7 @@ void DeferredLayer::begin_sync()
       /* Textures. */
       prepass_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
 
+      inst_.bind_global_resources(&prepass_ps_);
       inst_.velocity.bind_resources(&prepass_ps_);
       inst_.sampling.bind_resources(&prepass_ps_);
     }
@@ -392,6 +401,7 @@ void DeferredLayer::begin_sync()
       /* Textures. */
       gbuffer_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
 
+      inst_.bind_global_resources(&gbuffer_ps_);
       inst_.sampling.bind_resources(&gbuffer_ps_);
       inst_.hiz_buffer.bind_resources(&gbuffer_ps_);
       inst_.cryptomatte.bind_resources(&gbuffer_ps_);
@@ -433,6 +443,7 @@ void DeferredLayer::end_sync()
     eval_light_ps_.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
     eval_light_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
 
+    inst_.bind_global_resources(&eval_light_ps_);
     inst_.lights.bind_resources(&eval_light_ps_);
     inst_.shadows.bind_resources(&eval_light_ps_);
     inst_.sampling.bind_resources(&eval_light_ps_);
@@ -592,6 +603,7 @@ void VolumePipeline::sync()
 {
   volume_ps_.init();
   volume_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+  inst_.bind_global_resources(&volume_ps_);
   inst_.volume.bind_properties_buffers(volume_ps_);
   inst_.sampling.bind_resources(&volume_ps_);
 }
@@ -622,6 +634,7 @@ void DeferredProbeLayer::begin_sync()
       /* Textures. */
       prepass_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
 
+      inst_.bind_global_resources(&prepass_ps_);
       inst_.velocity.bind_resources(&prepass_ps_);
       inst_.sampling.bind_resources(&prepass_ps_);
     }
@@ -654,6 +667,7 @@ void DeferredProbeLayer::begin_sync()
       /* Textures. */
       gbuffer_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
 
+      inst_.bind_global_resources(&gbuffer_ps_);
       inst_.sampling.bind_resources(&gbuffer_ps_);
       inst_.hiz_buffer.bind_resources(&gbuffer_ps_);
       inst_.cryptomatte.bind_resources(&gbuffer_ps_);
@@ -698,6 +712,7 @@ void DeferredProbeLayer::end_sync()
     eval_light_ps_.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
     eval_light_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
 
+    inst_.bind_global_resources(&eval_light_ps_);
     inst_.lights.bind_resources(&eval_light_ps_);
     inst_.shadows.bind_resources(&eval_light_ps_);
     inst_.sampling.bind_resources(&eval_light_ps_);
@@ -812,7 +827,9 @@ void CapturePipeline::sync()
   surface_ps_.bind_ssbo(CAPTURE_BUF_SLOT, &inst_.irradiance_cache.bake.capture_info_buf_);
 
   surface_ps_.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
-  /* TODO(fclem): There should be no view dependent behavior during capture. */
+  /* TODO(fclem): Remove. Binded to get the camera data,
+   * but there should be no view dependent behavior during capture. */
+  inst_.bind_global_resources(&surface_ps_);
 }
 
 PassMain::Sub *CapturePipeline::surface_material_add(GPUMaterial *gpumat)

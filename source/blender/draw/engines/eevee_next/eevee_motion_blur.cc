@@ -146,6 +146,7 @@ void MotionBlurModule::sync()
     eShaderType shader = vector_tx_format == GPU_RG16F ? MOTION_BLUR_TILE_FLATTEN_RG :
                                                          MOTION_BLUR_TILE_FLATTEN_RGBA;
     sub.shader_set(inst_.shaders.static_shader_get(shader));
+    inst_.bind_global_resources(&sub);
     sub.bind_texture("depth_tx", &render_buffers.depth_tx);
     sub.bind_image("velocity_img", &render_buffers.vector_tx);
     sub.bind_image("out_tiles_img", &tiles_tx_);
@@ -165,6 +166,7 @@ void MotionBlurModule::sync()
     /* Do the motion blur gather algorithm. */
     PassSimple::Sub &sub = motion_blur_ps_.sub("ConvolveGather");
     sub.shader_set(inst_.shaders.static_shader_get(MOTION_BLUR_GATHER));
+    inst_.bind_global_resources(&sub);
     sub.bind_ssbo("tile_indirection_buf", tile_indirection_buf_);
     sub.bind_texture("depth_tx", &render_buffers.depth_tx, no_filter);
     sub.bind_texture("velocity_tx", &render_buffers.vector_tx, no_filter);

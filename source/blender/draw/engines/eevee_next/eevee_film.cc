@@ -434,6 +434,7 @@ void Film::sync()
   accumulate_ps_.init();
   accumulate_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
   accumulate_ps_.shader_set(inst_.shaders.static_shader_get(shader));
+  inst_.bind_global_resources(&accumulate_ps_);
   accumulate_ps_.bind_ubo("camera_prev", &(*velocity.camera_steps[STEP_PREVIOUS]));
   accumulate_ps_.bind_ubo("camera_curr", &(*velocity.camera_steps[STEP_CURRENT]));
   accumulate_ps_.bind_ubo("camera_next", &(*velocity.camera_steps[step_next]));

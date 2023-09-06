@@ -327,8 +327,6 @@ bool Instance::do_probe_sync() const
  **/
 void Instance::render_sample()
 {
-  GPU_uniformbuf_bind(global_data_, GLOBAL_BUF_SLOT);
-
   if (sampling.finished_viewport()) {
     film.display();
     return;

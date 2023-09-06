@@ -223,6 +223,11 @@ class Instance {
     global_data_.push_update();
   }
 
+  template<typename T> void bind_global_resources(draw::detail::PassBase<T> *pass)
+  {
+    pass->bind_ubo(GLOBAL_BUF_SLOT, &global_data_);
+  }
+
  private:
   static void object_sync_render(void *instance_,
                                  Object *ob,

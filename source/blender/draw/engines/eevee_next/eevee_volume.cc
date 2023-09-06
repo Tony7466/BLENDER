@@ -271,6 +271,7 @@ void VolumeModule::end_sync()
 
   integration_ps_.init();
   integration_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_INTEGRATION));
+  inst_.bind_global_resources(&integration_ps_);
   integration_ps_.bind_texture("in_scattering_tx", &scatter_tx_);
   integration_ps_.bind_texture("in_extinction_tx", &extinction_tx_);
   integration_ps_.bind_image("out_scattering_img", &integrated_scatter_tx_);
@@ -283,6 +284,7 @@ void VolumeModule::end_sync()
   resolve_ps_.init();
   resolve_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
   resolve_ps_.shader_set(inst_.shaders.static_shader_get(VOLUME_RESOLVE));
+  inst_.bind_global_resources(&resolve_ps_);
   bind_resources(resolve_ps_);
   resolve_ps_.bind_texture("depth_tx", &inst_.render_buffers.depth_tx);
   resolve_ps_.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
