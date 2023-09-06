@@ -838,27 +838,23 @@ static void wm_file_read_post(bContext *C,
 /** \name File Loading Dialog
  * \{ */
 
-
 /**
  * Window callback to draw a darkened area behind the loading dialog.
  */
 static void loading_dialog_background_cb(const wmWindow *win, void *)
 {
-  if (win)
-  {
-    GPU_blend(GPU_BLEND_ALPHA);
-    GPUVertFormat *format = immVertexFormat();
-    int pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-    immUniformColor4f(0.0f, 0.0f, 0.0f, 0.5f);
-    immBegin(GPU_PRIM_TRI_STRIP, 4);
-    immVertex2f(pos, WM_window_pixels_x(win), 0.0f);
-    immVertex2f(pos, 0.0f, 0.0f);
-    immVertex2f(pos, WM_window_pixels_x(win), WM_window_pixels_y(win));
-    immVertex2f(pos, 0.0f, WM_window_pixels_y(win));
-    immEnd();
-    immUnbindProgram();
-  }
+  GPU_blend(GPU_BLEND_ALPHA);
+  GPUVertFormat *format = immVertexFormat();
+  int pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+  immUniformColor4f(0.0f, 0.0f, 0.0f, 0.5f);
+  immBegin(GPU_PRIM_TRI_STRIP, 4);
+  immVertex2f(pos, WM_window_pixels_x(win), 0.0f);
+  immVertex2f(pos, 0.0f, 0.0f);
+  immVertex2f(pos, WM_window_pixels_x(win), WM_window_pixels_y(win));
+  immVertex2f(pos, 0.0f, WM_window_pixels_y(win));
+  immEnd();
+  immUnbindProgram();
 }
 
 /**
@@ -867,8 +863,34 @@ static void loading_dialog_background_cb(const wmWindow *win, void *)
 static uiBlock *wm_block_create_loading(bContext *C, ARegion *region, void *arg)
 {
   const char *filepath = static_cast<const char *>(arg);
+  short preview_width = int((114.0f * UI_SCALE_FAC));
 
-  const short preview_width = int((114.0f * UI_SCALE_FAC));
+  /* First look for preview in the local thumbnail cache folder. */
+  ImBuf *ibuf = IMB_thumb_read(filepath, THB_LARGE);
+
+  if (!ibuf) {
+    /* Not in cache, so extract from the blend file itself. */
+    BlendThumbnail *data = BLO_thumbnail_from_file(filepath);
+    ibuf = data ? BKE_main_thumbnail_to_imbuf(nullptr, data) : nullptr;
+    if (data) {
+      MEM_freeN(data);
+    }
+  }
+
+  const uchar *color = nullptr;
+
+  if (!ibuf) {
+    /* No thumbnails found, so just use Blender logo. */
+    ibuf = UI_icon_alert_imbuf_get(ALERT_ICON_BLENDER);
+    color = UI_GetTheme()->tui.wcol_menu_back.text_sel;
+    IMB_premultiply_alpha(ibuf);
+  }
+
+  /* Size to fit within preview_width x preview_width. */
+  float scale = float(preview_width) / float(MAX2(ibuf->x, ibuf->y));
+  IMB_scaleImBuf(ibuf, scale * ibuf->x, scale * ibuf->y);
+  preview_width = ibuf->x;
+
   const uiStyle *style = UI_style_get_dpi();
   const int text_points_max = MAX2(style->widget.points, style->widgetlabel.points);
   const int dialog_width = preview_width + (text_points_max * 23 * UI_SCALE_FAC);
@@ -890,32 +912,12 @@ static uiBlock *wm_block_create_loading(bContext *C, ARegion *region, void *arg)
   /* Using 'align_left' with 'row' avoids stretching the icon along the width of column. */
   uiLayoutSetAlignment(layout, UI_LAYOUT_ALIGN_LEFT);
 
-  /* First look in local thumbnail cache folder. */
-  ImBuf *ibuf = IMB_thumb_read(filepath, THB_LARGE);
-
-  if (!ibuf) {
-    /* Not in cache, so extract from the blend file itself. */
-    BlendThumbnail *data = BLO_thumbnail_from_file(filepath);
-    ibuf = data ? BKE_main_thumbnail_to_imbuf(nullptr, data) : nullptr;
-    if (data) {
-      MEM_freeN(data);
-    }
-  }
-
-  const uchar *color = nullptr;
-
-  if (!ibuf) {
-    /* No thumbnails found, so just use Blender logo. */
-    ibuf = UI_icon_alert_imbuf_get(ALERT_ICON_BLENDER);
-    color = UI_GetTheme()->tui.wcol_menu_back.text_sel;
-    IMB_premultiply_alpha(ibuf);
-  }
-
-  IMB_scaleImBuf(ibuf, preview_width, (preview_width * ibuf->y) / ibuf->x);
   uiDefButImage(block, ibuf, 0, U.widget_unit, ibuf->x, ibuf->y, color);
 
   /* The rest of the content on the right. */
   layout = uiLayoutColumn(split_block, false);
+
+  uiItemS(layout);
 
   uiItemL_ex(layout, N_("Opening file..."), ICON_NONE, false, false);
 
@@ -924,9 +926,13 @@ static uiBlock *wm_block_create_loading(bContext *C, ARegion *region, void *arg)
   uiItemL_ex(layout, filename, ICON_NONE, true, false);
 
   size_t filesize = BLI_file_size(filepath);
-  char element_count[BLI_STR_FORMAT_INT32_DECIMAL_UNIT_SIZE];
-  BLI_str_format_decimal_unit(element_count, filesize);
-  uiItemL_ex(layout, element_count, ICON_NONE, false, false);
+  if (filesize > 0) {
+    char size_dec[BLI_STR_FORMAT_INT32_DECIMAL_UNIT_SIZE];
+    BLI_str_format_decimal_unit(size_dec, filesize);
+    uiItemL_ex(layout, size_dec, ICON_NONE, false, false);
+  }
+
+  uiItemS(layout);
 
   UI_block_bounds_set_centered(block, 5 * UI_SCALE_FAC);
 
