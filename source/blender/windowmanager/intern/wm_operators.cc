@@ -682,7 +682,7 @@ char *WM_prop_pystring_assign(bContext *C, PointerRNA *ptr, PropertyRNA *prop, i
 void WM_operator_properties_create_ptr(PointerRNA *ptr, wmOperatorType *ot)
 {
   /* Set the ID so the context can be accessed: see #STRUCT_NO_CONTEXT_WITHOUT_OWNER_ID. */
-  RNA_pointer_create(static_cast<ID *>(G_MAIN->wm.first), ot->srna, nullptr, ptr);
+  *ptr = RNA_pointer_create(static_cast<ID *>(G_MAIN->wm.first), ot->srna, nullptr);
 }
 
 void WM_operator_properties_create(PointerRNA *ptr, const char *opstring)
@@ -694,7 +694,8 @@ void WM_operator_properties_create(PointerRNA *ptr, const char *opstring)
   }
   else {
     /* Set the ID so the context can be accessed: see #STRUCT_NO_CONTEXT_WITHOUT_OWNER_ID. */
-    RNA_pointer_create(static_cast<ID *>(G_MAIN->wm.first), &RNA_OperatorProperties, nullptr, ptr);
+    *ptr = RNA_pointer_create(
+        static_cast<ID *>(G_MAIN->wm.first), &RNA_OperatorProperties, nullptr);
   }
 }
 
@@ -1287,7 +1288,7 @@ IDProperty *WM_operator_last_properties_ensure_idprops(wmOperatorType *ot)
 void WM_operator_last_properties_ensure(wmOperatorType *ot, PointerRNA *ptr)
 {
   IDProperty *props = WM_operator_last_properties_ensure_idprops(ot);
-  RNA_pointer_create(static_cast<ID *>(G_MAIN->wm.first), ot->srna, props, ptr);
+  *ptr = RNA_pointer_create(static_cast<ID *>(G_MAIN->wm.first), ot->srna, props);
 }
 
 ID *WM_operator_drop_load_path(bContext *C, wmOperator *op, const short idcode)
@@ -2023,6 +2024,24 @@ static bool wm_operator_winactive_normal(bContext *C)
   return true;
 }
 
+static bool wm_operator_winactive_not_full(bContext *C)
+{
+  wmWindow *win = CTX_wm_window(C);
+  bScreen *screen;
+
+  if (win == nullptr) {
+    return false;
+  }
+  if (!((screen = WM_window_get_active_screen(win)) && (screen->state != SCREENFULL))) {
+    return false;
+  }
+  if (G.background) {
+    return false;
+  }
+
+  return true;
+}
+
 /* included for script-access */
 static void WM_OT_window_close(wmOperatorType *ot)
 {
@@ -2041,7 +2060,7 @@ static void WM_OT_window_new(wmOperatorType *ot)
   ot->description = "Create a new window";
 
   ot->exec = wm_window_new_exec;
-  ot->poll = wm_operator_winactive_normal;
+  ot->poll = wm_operator_winactive_not_full;
 }
 
 static void WM_OT_window_new_main(wmOperatorType *ot)
@@ -2671,8 +2690,7 @@ static int radial_control_get_properties(bContext *C, wmOperator *op)
 {
   RadialControl *rc = static_cast<RadialControl *>(op->customdata);
 
-  PointerRNA ctx_ptr;
-  RNA_pointer_create(nullptr, &RNA_Context, C, &ctx_ptr);
+  PointerRNA ctx_ptr = RNA_pointer_create(nullptr, &RNA_Context, C);
 
   /* check if we use primary or secondary path */
   PointerRNA use_secondary_ptr;
