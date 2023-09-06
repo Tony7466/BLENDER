@@ -90,6 +90,8 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
+#include "GPU_immediate.h"
+
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 #include "IMB_thumbs.h"
@@ -836,6 +838,29 @@ static void wm_file_read_post(bContext *C,
 /** \name File Loading Dialog
  * \{ */
 
+
+/**
+ * Window callback to draw a darkened area behind the loading dialog.
+ */
+static void loading_dialog_background_cb(const wmWindow *win, void *)
+{
+  if (win)
+  {
+    GPU_blend(GPU_BLEND_ALPHA);
+    GPUVertFormat *format = immVertexFormat();
+    int pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+    immUniformColor4f(0.0f, 0.0f, 0.0f, 0.5f);
+    immBegin(GPU_PRIM_TRI_STRIP, 4);
+    immVertex2f(pos, WM_window_pixels_x(win), 0.0f);
+    immVertex2f(pos, 0.0f, 0.0f);
+    immVertex2f(pos, WM_window_pixels_x(win), WM_window_pixels_y(win));
+    immVertex2f(pos, 0.0f, WM_window_pixels_y(win));
+    immEnd();
+    immUnbindProgram();
+  }
+}
+
 /**
  * Dialog displayed during blend file loading, showing thumbnail and file name.
  */
@@ -892,15 +917,16 @@ static uiBlock *wm_block_create_loading(bContext *C, ARegion *region, void *arg)
   /* The rest of the content on the right. */
   layout = uiLayoutColumn(split_block, false);
 
-  //uiItemS_ex(layout, 1.0f);
-
   uiItemL_ex(layout, N_("Opening file..."), ICON_NONE, false, false);
 
   char filename[FILE_MAX];
   BLI_path_split_file_part(filepath, filename, sizeof(filename));
   uiItemL_ex(layout, filename, ICON_NONE, true, false);
 
-  uiItemL_ex(layout, N_("789 MB"), ICON_NONE, false, false);
+  size_t filesize = BLI_file_size(filepath);
+  char element_count[BLI_STR_FORMAT_INT32_DECIMAL_UNIT_SIZE];
+  BLI_str_format_decimal_unit(element_count, filesize);
+  uiItemL_ex(layout, element_count, ICON_NONE, false, false);
 
   UI_block_bounds_set_centered(block, 5 * UI_SCALE_FAC);
 
@@ -1099,10 +1125,17 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
       CTX_wm_window_set(C, win);
     }
     if (win != nullptr) {
+      /* Draw a darkened background across the window. */
+      void *cb = WM_draw_cb_activate(win, loading_dialog_background_cb, nullptr);
+
+      /* Set up the dialog. */
       UI_popup_block_invoke(C, wm_block_create_loading, (void *)filepath, nullptr);
 
       /* Redraw to remove any open menus and show loading block. */
       WM_redraw_windows(C);
+
+      /* No more need for the window-darkening callback. */
+      WM_draw_cb_exit(win, cb);
 
       if (win_was_null) {
         CTX_wm_window_set(C, nullptr);
