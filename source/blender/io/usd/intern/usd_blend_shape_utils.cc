@@ -83,7 +83,7 @@ std::string add_unique_name(std::set<std::string> &names, const std::string &nam
   std::string unique_name = name;
   int suffix = 2;
   while (names.find(unique_name) != names.end()) {
-    unique_name = name + std::to_string(suffix);
+    unique_name = name + std::to_string(suffix++);
   }
   names.insert(unique_name);
   return unique_name;
