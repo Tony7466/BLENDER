@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,6 @@
 #include "DNA_view3d_types.h"
 
 #include "BLI_array.hh"
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_attribute.h"
@@ -24,26 +23,26 @@
 #include "BKE_customdata.h"
 #include "BKE_editmesh.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_report.h"
 
 #include "DEG_depsgraph.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "BLT_translation.h"
 
-#include "ED_mesh.h"
-#include "ED_object.h"
-#include "ED_paint.h"
-#include "ED_screen.h"
-#include "ED_uvedit.h"
-#include "ED_view3d.h"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
+#include "ED_paint.hh"
+#include "ED_screen.hh"
+#include "ED_uvedit.hh"
+#include "ED_view3d.hh"
 
 #include "GEO_mesh_split_edges.hh"
 
@@ -745,6 +744,7 @@ static int mesh_customdata_custom_splitnormals_add_exec(bContext *C, wmOperator 
                                             me->corner_verts(),
                                             me->corner_edges(),
                                             me->face_normals(),
+                                            me->corner_to_face_map(),
                                             sharp_faces,
                                             me->smoothresh,
                                             sharp_edges.span);
@@ -1166,6 +1166,7 @@ void ED_mesh_split_faces(Mesh *mesh)
                                         corner_verts,
                                         corner_edges,
                                         mesh->face_normals(),
+                                        mesh->corner_to_face_map(),
                                         sharp_faces,
                                         split_angle,
                                         sharp_edges);

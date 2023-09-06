@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'4f56261f768e')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'526f935981fd')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-07-24 15:42:18\n"
+"POT-Creation-Date: 2023-09-04 15:42:41\n"
 "PO-Revision-Date: \n"
 "Last-Translator: Arvid Rudling <arvid.r@gmail.com>\n"
 "Language-Team: \n"
@@ -115,6 +115,10 @@ msgstr "Egenskaper"
 
 msgid "Width"
 msgstr "Bredd"
+
+
+msgid "Options"
+msgstr "Alternativ"
 
 
 msgid "Quaternion"
@@ -229,10 +233,6 @@ msgid "Inherit Scale"
 msgstr "Ärva skalning"
 
 
-msgid "Layers"
-msgstr "Lager"
-
-
 msgid "Length"
 msgstr "Längd"
 
@@ -259,6 +259,10 @@ msgstr "Ärv rotation"
 
 msgid "Local Location"
 msgstr "Lokalposition"
+
+
+msgid "Custom"
+msgstr "Anpassad"
 
 
 msgid "Bone Groups"
@@ -307,10 +311,6 @@ msgstr "Hårdhet"
 
 msgid "Thickness"
 msgstr "Tjocklek"
-
-
-msgid "Smooth"
-msgstr "Jämn"
 
 
 msgid "Saturation"
@@ -793,16 +793,8 @@ msgid "Layer"
 msgstr "Lager"
 
 
-msgid "Custom"
-msgstr "Anpassad"
-
-
 msgid "Grid"
 msgstr "Rutnät"
-
-
-msgid "Options"
-msgstr "Alternativ"
 
 
 msgid "Window"
@@ -823,6 +815,10 @@ msgstr "Dela upp"
 
 msgid "Lattice"
 msgstr "Lattice"
+
+
+msgid "Smooth"
+msgstr "Jämn"
 
 
 msgid "Falloff Curve"
@@ -871,10 +867,6 @@ msgstr "Grupper"
 
 msgid "Wire"
 msgstr "Trådmodell"
-
-
-msgid "Visible Layers"
-msgstr "Synliga lager"
 
 
 msgid "Box"
@@ -939,6 +931,10 @@ msgstr "Min"
 
 msgid "Max"
 msgstr "Max"
+
+
+msgid "Layers"
+msgstr "Lager"
 
 
 msgid "Alpha Mode"
@@ -1043,6 +1039,18 @@ msgstr "Vertexfärger"
 
 msgid "Nodes"
 msgstr "Noder"
+
+
+msgid "Sculpt"
+msgstr "Skulptera"
+
+
+msgid "Tool"
+msgstr "Verktyg"
+
+
+msgid "Mesh"
+msgstr "Mesh"
 
 
 msgid "Cylinder"
@@ -1213,10 +1221,6 @@ msgid "Rotation Angle"
 msgstr "Rotationsvinkel"
 
 
-msgid "Even"
-msgstr "Jämn"
-
-
 msgid "Pivot Point"
 msgstr "Fast punkt"
 
@@ -1239,10 +1243,6 @@ msgstr "Text"
 
 msgid "Instances"
 msgstr "Instanser"
-
-
-msgid "Mesh"
-msgstr "Mesh"
 
 
 msgid "Node"
@@ -1299,10 +1299,6 @@ msgstr "Ljus"
 
 msgid "Rigid Body"
 msgstr "Rigid kropp"
-
-
-msgid "Sculpt"
-msgstr "Skulptera"
 
 
 msgid "Root"
@@ -1369,6 +1365,10 @@ msgid "Limits"
 msgstr "Gränser"
 
 
+msgid "Even"
+msgstr "Jämn"
+
+
 msgid "Aspect X"
 msgstr "Aspekt X"
 
@@ -1411,6 +1411,10 @@ msgstr "Zooma"
 
 msgid "Shadow"
 msgstr "Skugga"
+
+
+msgid "Eccentricity"
+msgstr "Eccentricitet"
 
 
 msgid "Anisotropic"
@@ -1520,10 +1524,6 @@ msgstr "Dela upp"
 msgctxt "Operator"
 msgid "Preset"
 msgstr "Förinställning"
-
-
-msgid "Tool"
-msgstr "Verktyg"
 
 
 msgid "Name of the preset, used to make the path name"
@@ -1926,26 +1926,6 @@ msgid "Operator"
 msgstr "Operator"
 
 
-msgid "Alpha Under"
-msgstr "Alfa under"
-
-
-msgid "Gamma Cross"
-msgstr "Gamma-övertona"
-
-
-msgid "Wipe"
-msgstr "Torka"
-
-
-msgid "Glow"
-msgstr "Glöd"
-
-
-msgid "Adjustment Layer"
-msgstr "Justeringslager"
-
-
 msgctxt "Operator"
 msgid "Deinterlace Movies"
 msgstr "Avläta filmer"
@@ -2292,10 +2272,6 @@ msgid "When true the format is a movie"
 msgstr "Om 'sant' så är formatet en film"
 
 
-msgid "Resolution %"
-msgstr "Upplösning %"
-
-
 msgid "Percentage scale for render resolution"
 msgstr "Percentuell skala för renderingsupplösning"
 
@@ -2346,6 +2322,14 @@ msgstr "Instrument för statistisk analys av bilder"
 
 msgid "Vectorscope Opacity"
 msgstr "Genomskinlighet för vektroskop"
+
+
+msgid "Alpha Under"
+msgstr "Alfa under"
+
+
+msgid "Gamma Cross"
+msgstr "Gamma-övertona"
 
 
 msgid "Camera Override"
@@ -2532,14 +2516,6 @@ msgid "Pivot Offset"
 msgstr "Rotationspunktförskjutning"
 
 
-msgid "Layers:"
-msgstr "Lager:"
-
-
-msgid "Protected Layers:"
-msgstr "Skyddade lager:"
-
-
 msgid "Axes"
 msgstr "Axlar"
 
@@ -2591,10 +2567,6 @@ msgstr "Exponent"
 
 msgid "Auto-Step"
 msgstr "Automatiska steg"
-
-
-msgid "Eccentricity"
-msgstr "Eccentricitet"
 
 
 msgid "Options:"
@@ -2723,6 +2695,10 @@ msgstr "Brytningsindex"
 
 msgid "Transparency"
 msgstr "Genomskinlighet"
+
+
+msgid "Glow"
+msgstr "Glöd"
 
 
 msgid "English (English)"

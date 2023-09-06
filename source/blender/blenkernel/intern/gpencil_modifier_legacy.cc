@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,6 +12,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
@@ -48,7 +49,7 @@
 #include "MOD_gpencil_legacy_lineart.h"
 #include "MOD_gpencil_legacy_modifiertypes.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "CLG_log.h"
 
@@ -337,7 +338,7 @@ void BKE_gpencil_frame_active_set(Depsgraph *depsgraph, bGPdata *gpd)
 void BKE_gpencil_modifier_init()
 {
   /* Initialize modifier types */
-  gpencil_modifier_type_init(modifier_gpencil_types); /* MOD_gpencil_legacy_util.c */
+  gpencil_modifier_type_init(modifier_gpencil_types); /* `MOD_gpencil_legacy_util.cc`. */
 
 #if 0
   /* Note that GPencil actually does not support these at the moment,
@@ -481,7 +482,7 @@ void BKE_gpencil_modifier_copydata_generic(const GpencilModifierData *md_src,
   const size_t data_size = sizeof(GpencilModifierData);
   const char *md_src_data = ((const char *)md_src) + data_size;
   char *md_dst_data = ((char *)md_dst) + data_size;
-  BLI_assert(data_size <= (size_t)mti->struct_size);
+  BLI_assert(data_size <= size_t(mti->struct_size));
   memcpy(md_dst_data, md_src_data, size_t(mti->struct_size) - data_size);
 }
 
@@ -932,7 +933,7 @@ void BKE_gpencil_modifier_blend_write(BlendWriter *writer, ListBase *modbase)
   }
 }
 
-void BKE_gpencil_modifier_blend_read_data(BlendDataReader *reader, ListBase *lb)
+void BKE_gpencil_modifier_blend_read_data(BlendDataReader *reader, ListBase *lb, Object *ob)
 {
   BLO_read_list(reader, lb);
 
@@ -942,6 +943,11 @@ void BKE_gpencil_modifier_blend_read_data(BlendDataReader *reader, ListBase *lb)
     /* if modifiers disappear, or for upward compatibility */
     if (nullptr == BKE_gpencil_modifier_get_info(GpencilModifierType(md->type))) {
       md->type = eModifierType_None;
+    }
+
+    /* If linking from a library, clear 'local' library override flag. */
+    if (ID_IS_LINKED(ob)) {
+      md->flag &= ~eGpencilModifierFlag_OverrideLibrary_Local;
     }
 
     if (md->type == eGpencilModifierType_Lattice) {
@@ -1025,18 +1031,6 @@ void BKE_gpencil_modifier_blend_read_data(BlendDataReader *reader, ListBase *lb)
     if (md->type == eGpencilModifierType_Shrinkwrap) {
       ShrinkwrapGpencilModifierData *gpmd = (ShrinkwrapGpencilModifierData *)md;
       gpmd->cache_data = nullptr;
-    }
-  }
-}
-
-void BKE_gpencil_modifier_blend_read_lib(BlendLibReader *reader, Object *ob)
-{
-  BKE_gpencil_modifiers_foreach_ID_link(ob, BKE_object_modifiers_lib_link_common, reader);
-
-  /* If linking from a library, clear 'local' library override flag. */
-  if (ID_IS_LINKED(ob)) {
-    LISTBASE_FOREACH (GpencilModifierData *, mod, &ob->greasepencil_modifiers) {
-      mod->flag &= ~eGpencilModifierFlag_OverrideLibrary_Local;
     }
   }
 }

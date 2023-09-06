@@ -1,6 +1,8 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
+
+#include "BLI_string.h"
 
 #include "DNA_space_types.h"
 #include "DNA_windowmanager_types.h"
@@ -8,14 +10,13 @@
 #include "BKE_context.h"
 #include "BKE_volume.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "UI_interface.h"
 #include "UI_interface.hh"
 #include "UI_tree_view.hh"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 #include "BLT_translation.h"
 
@@ -135,8 +136,7 @@ void GeometryDataSetTreeViewItem::on_activate(bContext &C)
   if (domain_) {
     tree_view.sspreadsheet_.attribute_domain = *domain_;
   }
-  PointerRNA ptr;
-  RNA_pointer_create(&tree_view.screen_.id, &RNA_SpaceSpreadsheet, &sspreadsheet, &ptr);
+  PointerRNA ptr = RNA_pointer_create(&tree_view.screen_.id, &RNA_SpaceSpreadsheet, &sspreadsheet);
   RNA_property_update(&C, &ptr, RNA_struct_find_property(&ptr, "attribute_domain"));
   RNA_property_update(&C, &ptr, RNA_struct_find_property(&ptr, "geometry_component_type"));
 }
@@ -188,7 +188,7 @@ std::optional<int> GeometryDataSetTreeViewItem::count() const
 
   /* Special case for volumes since there is no grid domain. */
   if (component_type_ == bke::GeometryComponent::Type::Volume) {
-    if (const Volume *volume = geometry.get_volume_for_read()) {
+    if (const Volume *volume = geometry.get_volume()) {
       return BKE_volume_num_grids(volume);
     }
     return 0;
@@ -198,7 +198,7 @@ std::optional<int> GeometryDataSetTreeViewItem::count() const
     return std::nullopt;
   }
 
-  if (const bke::GeometryComponent *component = geometry.get_component_for_read(component_type_)) {
+  if (const bke::GeometryComponent *component = geometry.get_component(component_type_)) {
     return component->attribute_domain_size(*domain_);
   }
 

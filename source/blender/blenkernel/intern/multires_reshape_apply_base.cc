@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,15 +16,16 @@
 #include "DNA_object_types.h"
 
 #include "BLI_listbase.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 
 #include "BKE_customdata.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
-#include "BKE_mesh_runtime.h"
-#include "BKE_multires.h"
-#include "BKE_subdiv_eval.h"
+#include "BKE_mesh_mapping.hh"
+#include "BKE_mesh_runtime.hh"
+#include "BKE_multires.hh"
+#include "BKE_subdiv_eval.hh"
 
 #include "DEG_depsgraph_query.h"
 
@@ -71,14 +72,7 @@ void multires_reshape_apply_base_refit_base_mesh(MultiresReshapeContext *reshape
   blender::MutableSpan<blender::float3> base_positions = base_mesh->vert_positions_for_write();
   /* Update the context in case the vertices were duplicated. */
   reshape_context->base_positions = base_positions;
-  blender::Array<int> vert_to_face_offsets;
-  blender::Array<int> vert_to_face_indices;
-  const blender::GroupedSpan<int> pmap = blender::bke::mesh::build_vert_to_face_map(
-      reshape_context->base_faces,
-      reshape_context->base_corner_verts,
-      base_mesh->totvert,
-      vert_to_face_offsets,
-      vert_to_face_indices);
+  const blender::GroupedSpan<int> pmap = base_mesh->vert_to_face_map();
 
   float(*origco)[3] = static_cast<float(*)[3]>(
       MEM_calloc_arrayN(base_mesh->totvert, sizeof(float[3]), __func__));

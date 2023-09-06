@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,7 +12,7 @@
 #include "DNA_node_types.h"
 #include "DNA_scene_types.h"
 #include "RE_bake.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "BLI_threads.h"
 
@@ -286,7 +286,7 @@ bool RE_engine_supports_alembic_procedural(const RenderEngineType *render_type, 
 
 RenderEngineType *RE_engines_find(const char *idname);
 
-rcti *RE_engine_get_current_tiles(struct Render *re, int *r_total_tiles, bool *r_needs_free);
+const rcti *RE_engine_get_current_tiles(struct Render *re, int *r_total_tiles);
 struct RenderData *RE_engine_get_render_data(struct Render *re);
 void RE_bake_engine_set_engine_parameters(struct Render *re,
                                           struct Main *bmain,

@@ -20,7 +20,9 @@
 #include "BLI_blenlib.h"
 #include "BLI_kdopbvh.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 #include "BLT_translation.h"
@@ -57,8 +59,9 @@
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_lib_id.h"
+#include "BKE_lib_query.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_movieclip.h"
 #include "BKE_object.h"
 #include "BKE_scene.h"
@@ -70,7 +73,7 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "CLG_log.h"
 
@@ -729,7 +732,7 @@ static void constraint_target_to_mat4(Object *ob,
         int index;
 
         /* figure out which segment(s) the headtail value falls in */
-        BKE_pchan_bbone_deform_segment_index(pchan, headtail, &index, &fac);
+        BKE_pchan_bbone_deform_clamp_segment_index(pchan, headtail, &index, &fac);
 
         /* apply full transformation of the segment if requested */
         if (full_bbone) {
@@ -1110,7 +1113,8 @@ static void childof_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *tar
   }
 }
 
-/* XXX NOTE: con->flag should be CONSTRAINT_SPACEONCE for bone-childof, patched in `readfile.c`. */
+/* XXX NOTE: con->flag should be CONSTRAINT_SPACEONCE for bone-childof, patched in `readfile.cc`.
+ */
 static bConstraintTypeInfo CTI_CHILDOF = {
     /*type*/ CONSTRAINT_TYPE_CHILDOF,
     /*size*/ sizeof(bChildOfConstraint),
@@ -2574,7 +2578,8 @@ static void armdef_accumulate_matrix(const float obmat[4][4],
                                      const float iobmat[4][4],
                                      const float basemat[4][4],
                                      const float bonemat[4][4],
-                                     float weight,
+                                     const float pivot[3],
+                                     const float weight,
                                      float r_sum_mat[4][4],
                                      DualQuat *r_sum_dq)
 {
@@ -2596,7 +2601,7 @@ static void armdef_accumulate_matrix(const float obmat[4][4],
     orthogonalize_m4_stable(basemat_world, 1, true);
 
     mat4_to_dquat(&tmpdq, basemat_world, mat);
-    add_weighted_dq_dq(r_sum_dq, &tmpdq, weight);
+    add_weighted_dq_dq_pivot(r_sum_dq, &tmpdq, pivot, weight, true);
   }
   else {
     madd_m4_m4m4fl(r_sum_mat, r_sum_mat, mat, weight);
@@ -2604,16 +2609,16 @@ static void armdef_accumulate_matrix(const float obmat[4][4],
 }
 
 /* Compute and accumulate transformation for a single target bone. */
-static void armdef_accumulate_bone(bConstraintTarget *ct,
-                                   bPoseChannel *pchan,
+static void armdef_accumulate_bone(const bConstraintTarget *ct,
+                                   const bPoseChannel *pchan,
                                    const float wco[3],
-                                   bool force_envelope,
+                                   const bool force_envelope,
                                    float *r_totweight,
                                    float r_sum_mat[4][4],
                                    DualQuat *r_sum_dq)
 {
   float iobmat[4][4], co[3];
-  Bone *bone = pchan->bone;
+  const Bone *bone = pchan->bone;
   float weight = ct->weight;
 
   /* Our object's location in target pose space. */
@@ -2628,20 +2633,14 @@ static void armdef_accumulate_bone(bConstraintTarget *ct,
 
   /* Find the correct bone transform matrix in world space. */
   if (bone->segments > 1 && bone->segments == pchan->runtime.bbone_segments) {
-    Mat4 *b_bone_mats = pchan->runtime.bbone_deform_mats;
-    Mat4 *b_bone_rest_mats = pchan->runtime.bbone_rest_mats;
-    float(*iamat)[4] = b_bone_mats[0].mat;
+    const Mat4 *b_bone_mats = pchan->runtime.bbone_deform_mats;
+    const Mat4 *b_bone_rest_mats = pchan->runtime.bbone_rest_mats;
     float basemat[4][4];
-
-    /* The target is a B-Bone:
-     * FIRST: find the segment (see b_bone_deform in armature.c)
-     * Need to transform co back to bone-space, only need y. */
-    float y = iamat[0][1] * co[0] + iamat[1][1] * co[1] + iamat[2][1] * co[2] + iamat[3][1];
 
     /* Blend the matrix. */
     int index;
     float blend;
-    BKE_pchan_bbone_deform_segment_index(pchan, y / bone->length, &index, &blend);
+    BKE_pchan_bbone_deform_segment_index(pchan, co, &index, &blend);
 
     if (r_sum_dq != nullptr) {
       /* Compute the object space rest matrix of the segment. */
@@ -2652,6 +2651,7 @@ static void armdef_accumulate_bone(bConstraintTarget *ct,
                              iobmat,
                              basemat,
                              b_bone_mats[index + 1].mat,
+                             wco,
                              weight * (1.0f - blend),
                              r_sum_mat,
                              r_sum_dq);
@@ -2665,6 +2665,7 @@ static void armdef_accumulate_bone(bConstraintTarget *ct,
                              iobmat,
                              basemat,
                              b_bone_mats[index + 2].mat,
+                             wco,
                              weight * blend,
                              r_sum_mat,
                              r_sum_dq);
@@ -2675,6 +2676,7 @@ static void armdef_accumulate_bone(bConstraintTarget *ct,
                              iobmat,
                              bone->arm_mat,
                              pchan->chan_mat,
+                             wco,
                              weight,
                              r_sum_mat,
                              r_sum_dq);
@@ -2893,7 +2895,7 @@ static void actcon_get_tarmat(Depsgraph *depsgraph,
     }
     else if (cob->type == CONSTRAINT_OBTYPE_BONE) {
       Object workob;
-      bPose pose = {{0}};
+      bPose pose = {{nullptr}};
       bPoseChannel *pchan, *tchan;
 
       /* make a copy of the bone of interest in the temp pose before evaluating action,
@@ -5543,6 +5545,7 @@ static void con_unlink_refs_cb(bConstraint * /*con*/,
 static void con_invoke_id_looper(const bConstraintTypeInfo *cti,
                                  bConstraint *con,
                                  ConstraintIDFunc func,
+                                 const int flag,
                                  void *userdata)
 {
   if (cti->id_looper) {
@@ -5550,6 +5553,10 @@ static void con_invoke_id_looper(const bConstraintTypeInfo *cti,
   }
 
   func(con, (ID **)&con->space_object, false, userdata);
+
+  if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
+    func(con, reinterpret_cast<ID **>(&con->ipo), false, userdata);
+  }
 }
 
 void BKE_constraint_free_data_ex(bConstraint *con, bool do_id_user)
@@ -5565,7 +5572,7 @@ void BKE_constraint_free_data_ex(bConstraint *con, bool do_id_user)
 
       /* unlink the referenced resources it uses */
       if (do_id_user) {
-        con_invoke_id_looper(cti, con, con_unlink_refs_cb, nullptr);
+        con_invoke_id_looper(cti, con, con_unlink_refs_cb, IDWALK_NOP, nullptr);
       }
     }
 
@@ -5880,13 +5887,16 @@ bConstraint *BKE_constraint_add_for_object(Object *ob, const char *name, short t
 
 /* ......... */
 
-void BKE_constraints_id_loop(ListBase *conlist, ConstraintIDFunc func, void *userdata)
+void BKE_constraints_id_loop(ListBase *conlist,
+                             ConstraintIDFunc func,
+                             const int flag,
+                             void *userdata)
 {
   LISTBASE_FOREACH (bConstraint *, con, conlist) {
     const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(con);
 
     if (cti) {
-      con_invoke_id_looper(cti, con, func, userdata);
+      con_invoke_id_looper(cti, con, func, flag, userdata);
     }
   }
 }
@@ -5939,13 +5949,13 @@ static void constraint_copy_data_ex(bConstraint *dst,
 
     /* Fix user-counts for all referenced data that need it. */
     if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
-      con_invoke_id_looper(cti, dst, con_fix_copied_refs_cb, nullptr);
+      con_invoke_id_looper(cti, dst, con_fix_copied_refs_cb, IDWALK_NOP, nullptr);
     }
 
     /* For proxies we don't want to make external. */
     if (do_extern) {
       /* go over used ID-links for this constraint to ensure that they are valid for proxies */
-      con_invoke_id_looper(cti, dst, con_extern_cb, nullptr);
+      con_invoke_id_looper(cti, dst, con_extern_cb, IDWALK_NOP, nullptr);
     }
   }
 }
@@ -6305,8 +6315,6 @@ void BKE_constraint_targets_for_solving_get(
   const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(con);
 
   if (cti && cti->get_constraint_targets) {
-    bConstraintTarget *ct;
-
     /* get targets
      * - constraints should use ct->matrix, not directly accessing values
      * - ct->matrix members have not yet been calculated here!
@@ -6322,12 +6330,12 @@ void BKE_constraint_targets_for_solving_get(
      * - calculate if possible, otherwise just initialize as identity matrix
      */
     if (cti->get_target_matrix) {
-      for (ct = static_cast<bConstraintTarget *>(targets->first); ct; ct = ct->next) {
+      LISTBASE_FOREACH (bConstraintTarget *, ct, targets) {
         cti->get_target_matrix(depsgraph, con, cob, ct, ctime);
       }
     }
     else {
-      for (ct = static_cast<bConstraintTarget *>(targets->first); ct; ct = ct->next) {
+      LISTBASE_FOREACH (bConstraintTarget *, ct, targets) {
         unit_m4(ct->matrix);
       }
     }
@@ -6360,7 +6368,6 @@ void BKE_constraints_solve(Depsgraph *depsgraph,
                            bConstraintOb *cob,
                            float ctime)
 {
-  bConstraint *con;
   float oldmat[4][4];
   float enf;
 
@@ -6370,7 +6377,7 @@ void BKE_constraints_solve(Depsgraph *depsgraph,
   }
 
   /* loop over available constraints, solving and blending them */
-  for (con = static_cast<bConstraint *>(conlist->first); con; con = con->next) {
+  LISTBASE_FOREACH (bConstraint *, con, conlist) {
     const bConstraintTypeInfo *cti = BKE_constraint_typeinfo_get(con);
     ListBase targets = {nullptr, nullptr};
 
@@ -6492,11 +6499,24 @@ void BKE_constraint_blend_write(BlendWriter *writer, ListBase *conlist)
   }
 }
 
-void BKE_constraint_blend_read_data(BlendDataReader *reader, ListBase *lb)
+void BKE_constraint_blend_read_data(BlendDataReader *reader, ID *id_owner, ListBase *lb)
 {
   BLO_read_list(reader, lb);
   LISTBASE_FOREACH (bConstraint *, con, lb) {
     BLO_read_data_address(reader, &con->data);
+    /* Patch for error introduced by changing constraints (don't know how). */
+    /* NOTE(@ton): If `con->data` type changes, DNA cannot resolve the pointer!. */
+    /* FIXME This is likely dead code actually, since it used to be in
+     * constraint 'read_lib', so it would have crashed on null pointer access in any of
+     * the code below? But does not hurt to keep it around as a safety measure. */
+    if (con->data == nullptr) {
+      con->type = CONSTRAINT_TYPE_NULL;
+    }
+
+    /* If linking from a library, clear 'local' library override flag. */
+    if (ID_IS_LINKED(id_owner)) {
+      con->flag &= ~CONSTRAINT_OVERRIDE_LIBRARY_LOCAL;
+    }
 
     switch (con->type) {
       case CONSTRAINT_TYPE_PYTHON: {
@@ -6543,70 +6563,6 @@ void BKE_constraint_blend_read_data(BlendDataReader *reader, ListBase *lb)
         data->reader = nullptr;
         data->reader_object_path[0] = '\0';
       }
-    }
-  }
-}
-
-/* temp struct used to transport needed info to lib_link_constraint_cb() */
-struct tConstraintLinkData {
-  BlendLibReader *reader;
-  ID *id;
-};
-/* callback function used to relink constraint ID-links */
-static void lib_link_constraint_cb(bConstraint * /*con*/,
-                                   ID **idpoin,
-                                   bool /*is_reference*/,
-                                   void *userdata)
-{
-  tConstraintLinkData *cld = (tConstraintLinkData *)userdata;
-  BLO_read_id_address(cld->reader, cld->id, idpoin);
-}
-
-void BKE_constraint_blend_read_lib(BlendLibReader *reader, ID *id, ListBase *conlist)
-{
-  tConstraintLinkData cld;
-
-  /* legacy fixes */
-  LISTBASE_FOREACH (bConstraint *, con, conlist) {
-    /* Patch for error introduced by changing constraints (don't know how). */
-    /* NOTE(@ton): If `con->data` type changes, DNA cannot resolve the pointer!. */
-    if (con->data == nullptr) {
-      con->type = CONSTRAINT_TYPE_NULL;
-    }
-    /* own ipo, all constraints have it */
-    BLO_read_id_address(reader, id, &con->ipo); /* XXX deprecated - old animation system */
-
-    /* If linking from a library, clear 'local' library override flag. */
-    if (ID_IS_LINKED(id)) {
-      con->flag &= ~CONSTRAINT_OVERRIDE_LIBRARY_LOCAL;
-    }
-  }
-
-  /* relink all ID-blocks used by the constraints */
-  cld.reader = reader;
-  cld.id = id;
-
-  BKE_constraints_id_loop(conlist, lib_link_constraint_cb, &cld);
-}
-
-/* callback function used to expand constraint ID-links */
-static void expand_constraint_cb(bConstraint * /*con*/,
-                                 ID **idpoin,
-                                 bool /*is_reference*/,
-                                 void *userdata)
-{
-  BlendExpander *expander = static_cast<BlendExpander *>(userdata);
-  BLO_expand(expander, *idpoin);
-}
-
-void BKE_constraint_blend_read_expand(BlendExpander *expander, ListBase *lb)
-{
-  BKE_constraints_id_loop(lb, expand_constraint_cb, expander);
-
-  /* deprecated manual expansion stuff */
-  LISTBASE_FOREACH (bConstraint *, curcon, lb) {
-    if (curcon->ipo) {
-      BLO_expand(expander, curcon->ipo); /* XXX deprecated - old animation system */
     }
   }
 }

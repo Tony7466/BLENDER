@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,7 +22,6 @@
 
 #include "BKE_anim_data.h"
 #include "BKE_collection.h"
-#include "BKE_icons.h"
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
 #include "BKE_layer.h"
@@ -31,6 +30,7 @@
 #include "BKE_lib_remap.h"
 #include "BKE_main.h"
 #include "BKE_object.h"
+#include "BKE_preview_image.hh"
 #include "BKE_rigidbody.h"
 #include "BKE_scene.h"
 
@@ -48,7 +48,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static CLG_LogRef LOG = {"bke.collection"};
 
@@ -173,7 +173,9 @@ static void collection_foreach_id(ID *id, LibraryForeachIDData *data)
   const int data_flags = BKE_lib_query_foreachid_process_flags_get(data);
 
   BKE_LIB_FOREACHID_PROCESS_ID(
-      data, collection->runtime.owner_id, IDWALK_CB_LOOPBACK | IDWALK_CB_NEVER_SELF);
+      data,
+      collection->runtime.owner_id,
+      (IDWALK_CB_LOOPBACK | IDWALK_CB_NEVER_SELF | IDWALK_CB_READFILE_IGNORE));
 
   LISTBASE_FOREACH (CollectionObject *, cob, &collection->gobject) {
     Object *cob_ob_old = cob->ob;
@@ -256,18 +258,6 @@ static void collection_blend_write(BlendWriter *writer, ID *id, const void *id_a
   BKE_collection_blend_write_nolib(writer, collection);
 }
 
-#ifdef USE_COLLECTION_COMPAT_28
-void BKE_collection_compat_blend_read_data(BlendDataReader *reader, SceneCollection *sc)
-{
-  BLO_read_list(reader, &sc->objects);
-  BLO_read_list(reader, &sc->scene_collections);
-
-  LISTBASE_FOREACH (SceneCollection *, nsc, &sc->scene_collections) {
-    BKE_collection_compat_blend_read_data(reader, nsc);
-  }
-}
-#endif
-
 void BKE_collection_blend_read_data(BlendDataReader *reader, Collection *collection, ID *owner_id)
 {
   /* Special case for this pointer, do not rely on regular `lib_link` process here. Avoids needs
@@ -306,19 +296,6 @@ void BKE_collection_blend_read_data(BlendDataReader *reader, Collection *collect
 
   BLO_read_data_address(reader, &collection->preview);
   BKE_previewimg_blend_read(reader, collection->preview);
-
-#ifdef USE_COLLECTION_COMPAT_28
-  /* This runs before the very first doversion. */
-  BLO_read_data_address(reader, &collection->collection);
-  if (collection->collection != nullptr) {
-    BKE_collection_compat_blend_read_data(reader, collection->collection);
-  }
-
-  BLO_read_data_address(reader, &collection->view_layer);
-  if (collection->view_layer != nullptr) {
-    BKE_view_layer_blend_read_data(reader, collection->view_layer);
-  }
-#endif
 }
 
 static void collection_blend_read_data(BlendDataReader *reader, ID *id)
@@ -327,92 +304,23 @@ static void collection_blend_read_data(BlendDataReader *reader, ID *id)
   BKE_collection_blend_read_data(reader, collection, nullptr);
 }
 
-static void lib_link_collection_data(BlendLibReader *reader, ID *self_id, Collection *collection)
+static void collection_blend_read_after_liblink(BlendLibReader * /*reader*/, ID *id)
 {
+  Collection *collection = reinterpret_cast<Collection *>(id);
+
+  /* Sanity check over Collection/Object data. */
   BLI_assert(collection->runtime.gobject_hash == nullptr);
   LISTBASE_FOREACH_MUTABLE (CollectionObject *, cob, &collection->gobject) {
-    BLO_read_id_address(reader, self_id, &cob->ob);
-
     if (cob->ob == nullptr) {
       BLI_freelinkN(&collection->gobject, cob);
     }
   }
 
-  LISTBASE_FOREACH (CollectionChild *, child, &collection->children) {
-    BLO_read_id_address(reader, self_id, &child->collection);
-  }
-}
-
-#ifdef USE_COLLECTION_COMPAT_28
-void BKE_collection_compat_blend_read_lib(BlendLibReader *reader, ID *self_id, SceneCollection *sc)
-{
-  LISTBASE_FOREACH (LinkData *, link, &sc->objects) {
-    BLO_read_id_address(reader, self_id, &link->data);
-    BLI_assert(link->data);
-  }
-
-  LISTBASE_FOREACH (SceneCollection *, nsc, &sc->scene_collections) {
-    BKE_collection_compat_blend_read_lib(reader, self_id, nsc);
-  }
-}
-#endif
-
-void BKE_collection_blend_read_lib(BlendLibReader *reader, Collection *collection)
-{
-#ifdef USE_COLLECTION_COMPAT_28
-  if (collection->collection) {
-    BKE_collection_compat_blend_read_lib(reader, &collection->id, collection->collection);
-  }
-
-  if (collection->view_layer) {
-    BKE_view_layer_blend_read_lib(reader, &collection->id, collection->view_layer);
-  }
-#endif
-
-  lib_link_collection_data(reader, &collection->id, collection);
-}
-
-static void collection_blend_read_lib(BlendLibReader *reader, ID *id)
-{
-  Collection *collection = (Collection *)id;
-  BKE_collection_blend_read_lib(reader, collection);
-}
-
-#ifdef USE_COLLECTION_COMPAT_28
-void BKE_collection_compat_blend_read_expand(BlendExpander *expander, SceneCollection *sc)
-{
-  LISTBASE_FOREACH (LinkData *, link, &sc->objects) {
-    BLO_expand(expander, link->data);
-  }
-
-  LISTBASE_FOREACH (SceneCollection *, nsc, &sc->scene_collections) {
-    BKE_collection_compat_blend_read_expand(expander, nsc);
-  }
-}
-#endif
-
-void BKE_collection_blend_read_expand(BlendExpander *expander, Collection *collection)
-{
+  /* foreach_id code called by generic lib_link process has most likely set this flag, however it
+   * is not needed during readfile process since the runtime data is affects are not yet built, so
+   * just clear it here. */
   BLI_assert(collection->runtime.gobject_hash == nullptr);
-  LISTBASE_FOREACH (CollectionObject *, cob, &collection->gobject) {
-    BLO_expand(expander, cob->ob);
-  }
-
-  LISTBASE_FOREACH (CollectionChild *, child, &collection->children) {
-    BLO_expand(expander, child->collection);
-  }
-
-#ifdef USE_COLLECTION_COMPAT_28
-  if (collection->collection != nullptr) {
-    BKE_collection_compat_blend_read_expand(expander, collection->collection);
-  }
-#endif
-}
-
-static void collection_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  Collection *collection = (Collection *)id;
-  BKE_collection_blend_read_expand(expander, collection);
+  collection->runtime.tag &= ~COLLECTION_TAG_COLLECTION_OBJECT_DIRTY;
 }
 
 IDTypeInfo IDType_ID_GR = {
@@ -437,8 +345,7 @@ IDTypeInfo IDType_ID_GR = {
 
     /*blend_write*/ collection_blend_write,
     /*blend_read_data*/ collection_blend_read_data,
-    /*blend_read_lib*/ collection_blend_read_lib,
-    /*blend_read_expand*/ collection_blend_read_expand,
+    /*blend_read_after_liblink*/ collection_blend_read_after_liblink,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -1938,7 +1845,7 @@ void BKE_main_collections_parent_relations_rebuild(Main *bmain)
   /* Scene's master collections will be 'root' parent of most of our collections, so start with
    * them. */
   LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-    /* This function can be called from readfile.c, when this pointer is not guaranteed to be
+    /* This function can be called from `readfile.cc`, when this pointer is not guaranteed to be
      * nullptr.
      */
     if (scene->master_collection != nullptr) {
@@ -1949,7 +1856,7 @@ void BKE_main_collections_parent_relations_rebuild(Main *bmain)
   }
 
   /* We may have parent chains outside of scene's master_collection context? At least, readfile's
-   * lib_link_collection_data() seems to assume that, so do the same here. */
+   * #collection_blend_read_after_liblink() seems to assume that, so do the same here. */
   LISTBASE_FOREACH (Collection *, collection, &bmain->collections) {
     if (collection->runtime.tag & COLLECTION_TAG_RELATION_REBUILD) {
       /* NOTE: we do not have easy access to 'which collections is root' info in that case, which
@@ -1976,9 +1883,7 @@ bool BKE_collection_validate(Collection *collection)
 
   /* Check that children have each collection used/referenced only once. */
   GSet *processed_collections = BLI_gset_ptr_new(__func__);
-  for (CollectionChild *child = static_cast<CollectionChild *>(collection->children.first); child;
-       child = child->next)
-  {
+  LISTBASE_FOREACH (CollectionChild *, child, &collection->children) {
     void **r_key;
     if (BLI_gset_ensure_p_ex(processed_collections, child->collection, &r_key)) {
       is_ok = false;
@@ -1990,11 +1895,7 @@ bool BKE_collection_validate(Collection *collection)
 
   /* Check that parents have each collection used/referenced only once. */
   BLI_gset_clear(processed_collections, nullptr);
-  for (CollectionParent *parent =
-           static_cast<CollectionParent *>(collection->runtime.parents.first);
-       parent;
-       parent = parent->next)
-  {
+  LISTBASE_FOREACH (CollectionParent *, parent, &collection->runtime.parents) {
     void **r_key;
     if (BLI_gset_ensure_p_ex(processed_collections, parent->collection, &r_key)) {
       is_ok = false;
@@ -2275,7 +2176,7 @@ static void scene_objects_iterator_begin(BLI_Iterator *iter, Scene *scene, GSet 
     data->visited = BLI_gset_ptr_new(__func__);
   }
 
-  /* We wrap the scenecollection iterator here to go over the scene collections. */
+  /* We wrap the scene-collection iterator here to go over the scene collections. */
   BKE_scene_collections_iterator_begin(&data->scene_collection_iter, scene);
 
   Collection *collection = static_cast<Collection *>(data->scene_collection_iter.current);

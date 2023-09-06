@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved. 2007 Blender Foundation.
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved. 2007 Blender Authors.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,10 +8,12 @@
  * Window management, wrap GHOST.
  */
 
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <thread>
 
 #include "DNA_listBase.h"
 #include "DNA_screen_types.h"
@@ -23,7 +25,6 @@
 #include "GHOST_C-api.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_system.h"
 #include "BLI_utildefines.h"
 
@@ -38,34 +39,34 @@
 #include "BKE_screen.h"
 #include "BKE_workspace.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
-#include "wm.h"
-#include "wm_draw.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
+#include "wm.hh"
+#include "wm_draw.hh"
 #include "wm_event_system.h"
-#include "wm_files.h"
+#include "wm_files.hh"
 #include "wm_platform_support.h"
-#include "wm_window.h"
+#include "wm_window.hh"
 #include "wm_window_private.h"
 #ifdef WITH_XR_OPENXR
 #  include "wm_xr.h"
 #endif
 
-#include "ED_anim_api.h"
-#include "ED_fileselect.h"
-#include "ED_render.h"
-#include "ED_scene.h"
-#include "ED_screen.h"
+#include "ED_anim_api.hh"
+#include "ED_fileselect.hh"
+#include "ED_render.hh"
+#include "ED_scene.hh"
+#include "ED_screen.hh"
 
 #include "IMB_imbuf.h"
 #include "IMB_imbuf_types.h"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
 
 #include "PIL_time.h"
 
@@ -80,7 +81,7 @@
 #include "GPU_state.h"
 #include "GPU_texture.h"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 /* for assert */
 #ifndef NDEBUG
@@ -161,7 +162,7 @@ enum ModSide {
  * \{ */
 
 static void wm_window_set_drawable(wmWindowManager *wm, wmWindow *win, bool activate);
-static bool wm_window_timers_process(const bContext *C);
+static bool wm_window_timers_process(const bContext *C, int *sleep_us);
 static uint8_t wm_ghost_modifier_query(const enum ModSide side);
 
 void wm_get_screensize(int *r_width, int *r_height)
@@ -483,7 +484,7 @@ void wm_window_title(wmWindowManager *wm, wmWindow *win)
     /* this is set to 1 if you don't have startup.blend open */
     const char *blendfile_path = BKE_main_blendfile_path_from_global();
     if (blendfile_path[0] != '\0') {
-      char str[sizeof(((Main *)nullptr)->filepath) + 24];
+      char str[sizeof(Main::filepath) + 24];
       SNPRINTF(str,
                "Blender%s [%s%s]",
                wm->file_saved ? "" : "*",
@@ -1355,9 +1356,9 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
 
         wm_window_make_drawable(wm, win);
 #if 0
-/* NOTE(@ideasman42): Ideally we could swap-buffers to avoid a full redraw.
-* however this causes window flickering on resize with LIBDECOR under WAYLAND. */
-wm_window_swap_buffers(win);
+        /* NOTE(@ideasman42): Ideally we could swap-buffers to avoid a full redraw.
+         * however this causes window flickering on resize with LIBDECOR under WAYLAND. */
+        wm_window_swap_buffers(win);
 #else
         WM_event_add_notifier(C, NC_WINDOW, nullptr);
 #endif
@@ -1423,7 +1424,8 @@ wm_window_swap_buffers(win);
 
 #if defined(__APPLE__) || defined(WIN32)
             /* MACOS and WIN32 don't return to the main-loop while resize. */
-            wm_window_timers_process(C);
+            int dummy_sleep_ms = 0;
+            wm_window_timers_process(C, &dummy_sleep_ms);
             wm_event_do_handlers(C);
             wm_event_do_notifiers(C);
             wm_draw_update(C);
@@ -1518,7 +1520,7 @@ wm_window_swap_buffers(win);
             int icon = ED_file_extension_icon((char *)stra->strings[a]);
             wmDragPath *path_data = WM_drag_create_path_data((char *)stra->strings[a]);
             WM_event_start_drag(C, icon, WM_DRAG_PATH, path_data, 0.0, WM_DRAG_NOP);
-            /* void poin should point to string, it makes a copy */
+            /* Void pointer should point to string, it makes a copy. */
             break; /* only one drop element supported now */
           }
         }
@@ -1585,60 +1587,88 @@ wm_window_swap_buffers(win);
 /**
  * This timer system only gives maximum 1 timer event per redraw cycle,
  * to prevent queues to get overloaded.
- * Timer handlers should check for delta to decide if they just update, or follow real time.
- * Timer handlers can also set duration to match frames passed
+ * - Timer handlers should check for delta to decide if they just update, or follow real time.
+ * - Timer handlers can also set duration to match frames passed.
+ *
+ * \param sleep_us_p: The number of microseconds to sleep which may be reduced by this function
+ * to account for timers that would run during the anticipated sleep period.
  */
-static bool wm_window_timers_process(const bContext *C)
+static bool wm_window_timers_process(const bContext *C, int *sleep_us_p)
 {
   Main *bmain = CTX_data_main(C);
   wmWindowManager *wm = CTX_wm_manager(C);
-  double time = PIL_check_seconds_timer();
+  const double time = PIL_check_seconds_timer();
   bool has_event = false;
+
+  const int sleep_us = *sleep_us_p;
+  /* The nearest time an active timer is scheduled to run.  */
+  double ntime_min = DBL_MAX;
 
   /* Mutable in case the timer gets removed. */
   LISTBASE_FOREACH_MUTABLE (wmTimer *, wt, &wm->timers) {
     if (wt->flags & WM_TIMER_TAGGED_FOR_REMOVAL) {
       continue;
     }
-    wmWindow *win = wt->win;
-
-    if (wt->sleep != 0) {
+    if (wt->sleep == true) {
       continue;
     }
 
-    if (time > wt->ntime) {
-      wt->delta = time - wt->ltime;
-      wt->duration += wt->delta;
-      wt->ltime = time;
+    /* Future timer, update nearest time & skip. */
+    if (wt->time_next >= time) {
+      if ((has_event == false) && (sleep_us != 0)) {
+        /* The timer is not ready to run but may run shortly. */
+        if (wt->time_next < ntime_min) {
+          ntime_min = wt->time_next;
+        }
+      }
+      continue;
+    }
 
-      wt->ntime = wt->stime;
-      if (wt->timestep != 0.0f) {
-        wt->ntime += wt->timestep * ceil(wt->duration / wt->timestep);
-      }
+    wt->time_delta = time - wt->time_last;
+    wt->time_duration += wt->time_delta;
+    wt->time_last = time;
 
-      if (wt->event_type == TIMERJOBS) {
-        wm_jobs_timer(wm, wt);
-      }
-      else if (wt->event_type == TIMERAUTOSAVE) {
-        wm_autosave_timer(bmain, wm, wt);
-      }
-      else if (wt->event_type == TIMERNOTIFIER) {
-        WM_main_add_notifier(POINTER_AS_UINT(wt->customdata), nullptr);
-      }
-      else if (win) {
-        wmEvent event;
-        wm_event_init_from_window(win, &event);
+    wt->time_next = wt->time_start;
+    if (wt->time_step != 0.0f) {
+      wt->time_next += wt->time_step * ceil(wt->time_duration / wt->time_step);
+    }
 
-        event.type = wt->event_type;
-        event.val = KM_NOTHING;
-        event.keymodifier = 0;
-        event.flag = eWM_EventFlag(0);
-        event.custom = EVT_DATA_TIMER;
-        event.customdata = wt;
-        wm_event_add(win, &event);
+    if (wt->event_type == TIMERJOBS) {
+      wm_jobs_timer(wm, wt);
+    }
+    else if (wt->event_type == TIMERAUTOSAVE) {
+      wm_autosave_timer(bmain, wm, wt);
+    }
+    else if (wt->event_type == TIMERNOTIFIER) {
+      WM_main_add_notifier(POINTER_AS_UINT(wt->customdata), nullptr);
+    }
+    else if (wmWindow *win = wt->win) {
+      wmEvent event;
+      wm_event_init_from_window(win, &event);
 
-        has_event = true;
-      }
+      event.type = wt->event_type;
+      event.val = KM_NOTHING;
+      event.keymodifier = 0;
+      event.flag = eWM_EventFlag(0);
+      event.custom = EVT_DATA_TIMER;
+      event.customdata = wt;
+      wm_event_add(win, &event);
+
+      has_event = true;
+    }
+  }
+
+  if ((has_event == false) && (sleep_us != 0) && (ntime_min != DBL_MAX)) {
+    /* Clamp the sleep time so next execution runs earlier (if necessary).
+     * Use `ceil` so the timer is guarantee to be ready to run (not always the case with rounding).
+     * Even though using `floor` or `round` is more responsive,
+     * it causes CPU intensive loops that may run until the timer is reached, see: #111579. */
+    const double microseconds = 1000000.0;
+    const double sleep_sec = (double(sleep_us) / microseconds);
+    const double sleep_sec_next = ntime_min - time;
+
+    if (sleep_sec_next < sleep_sec) {
+      *sleep_us_p = int(std::ceil(sleep_sec_next * microseconds));
     }
   }
 
@@ -1658,7 +1688,11 @@ void wm_window_events_process(const bContext *C)
   if (has_event) {
     GHOST_DispatchEvents(g_system);
   }
-  has_event |= wm_window_timers_process(C);
+
+  /* When there is no event, sleep 5 milliseconds not to use too much CPU when idle. */
+  const int sleep_us_default = 5000;
+  int sleep_us = has_event ? 0 : sleep_us_default;
+  has_event |= wm_window_timers_process(C, &sleep_us);
 #ifdef WITH_XR_OPENXR
   /* XR events don't use the regular window queues. So here we don't only trigger
    * processing/dispatching but also handling. */
@@ -1666,12 +1700,24 @@ void wm_window_events_process(const bContext *C)
 #endif
   GPU_render_end();
 
-  /* When there is no event, sleep 5 milliseconds not to use too much CPU when idle.
-   *
-   * Skip sleeping when simulating events so tests don't idle unnecessarily as simulated
+  /* Skip sleeping when simulating events so tests don't idle unnecessarily as simulated
    * events are typically generated from a timer that runs in the main loop. */
-  if ((has_event == false) && !(G.f & G_FLAG_EVENT_SIMULATE)) {
-    PIL_sleep_ms(5);
+  if ((has_event == false) && (sleep_us != 0) && !(G.f & G_FLAG_EVENT_SIMULATE)) {
+    if (sleep_us == sleep_us_default) {
+      /* NOTE(@ideasman42): prefer #PIL_sleep_ms over `sleep_for(..)` in the common case
+       * because this function uses lower resolution (millisecond) resolution sleep timers
+       * which are tried & true for the idle loop. We could move to C++ `sleep_for(..)`
+       * if this works well on all platforms but this needs further testing. */
+      PIL_sleep_ms(sleep_us_default / 1000);
+    }
+    else {
+      /* The time was shortened to resume for the upcoming timer, use a high resolution sleep.
+       * Mainly happens during animation playback but could happen immediately before any timer.
+       *
+       * NOTE(@ideasman42): At time of writing Windows-10-22H2 doesn't give higher precision sleep.
+       * Keep the functionality as it doesn't have noticeable down sides either. */
+      std::this_thread::sleep_for(std::chrono::microseconds(sleep_us));
+    }
   }
 }
 
@@ -1888,6 +1934,9 @@ eWM_CapabilitiesFlag WM_capabilities_flag()
   if (ghost_flag & GHOST_kCapabilityClipboardImages) {
     flag |= WM_CAPABILITY_CLIPBOARD_IMAGES;
   }
+  if (ghost_flag & GHOST_kCapabilityDesktopSample) {
+    flag |= WM_CAPABILITY_DESKTOP_SAMPLE;
+  }
 
   return flag;
 }
@@ -1900,27 +1949,28 @@ eWM_CapabilitiesFlag WM_capabilities_flag()
 
 void WM_event_timer_sleep(wmWindowManager *wm, wmWindow * /*win*/, wmTimer *timer, bool do_sleep)
 {
-  LISTBASE_FOREACH (wmTimer *, wt, &wm->timers) {
-    if (wt->flags & WM_TIMER_TAGGED_FOR_REMOVAL) {
-      continue;
-    }
-    if (wt == timer) {
-      wt->sleep = do_sleep;
-      break;
-    }
+  /* Extra security check. */
+  if (BLI_findindex(&wm->timers, timer) == -1) {
+    return;
   }
+  /* It's disputable if this is needed, when tagged for removal,
+   * the sleep value won't be used anyway. */
+  if (timer->flags & WM_TIMER_TAGGED_FOR_REMOVAL) {
+    return;
+  }
+  timer->sleep = do_sleep;
 }
 
-wmTimer *WM_event_timer_add(wmWindowManager *wm, wmWindow *win, int event_type, double timestep)
+wmTimer *WM_event_timer_add(wmWindowManager *wm, wmWindow *win, int event_type, double time_step)
 {
   wmTimer *wt = static_cast<wmTimer *>(MEM_callocN(sizeof(wmTimer), "window timer"));
-  BLI_assert(timestep >= 0.0f);
+  BLI_assert(time_step >= 0.0f);
 
   wt->event_type = event_type;
-  wt->ltime = PIL_check_seconds_timer();
-  wt->ntime = wt->ltime + timestep;
-  wt->stime = wt->ltime;
-  wt->timestep = timestep;
+  wt->time_last = PIL_check_seconds_timer();
+  wt->time_next = wt->time_last + time_step;
+  wt->time_start = wt->time_last;
+  wt->time_step = time_step;
   wt->win = win;
 
   BLI_addtail(&wm->timers, wt);
@@ -1931,16 +1981,16 @@ wmTimer *WM_event_timer_add(wmWindowManager *wm, wmWindow *win, int event_type, 
 wmTimer *WM_event_timer_add_notifier(wmWindowManager *wm,
                                      wmWindow *win,
                                      uint type,
-                                     double timestep)
+                                     double time_step)
 {
   wmTimer *wt = static_cast<wmTimer *>(MEM_callocN(sizeof(wmTimer), "window timer"));
-  BLI_assert(timestep >= 0.0f);
+  BLI_assert(time_step >= 0.0f);
 
   wt->event_type = TIMERNOTIFIER;
-  wt->ltime = PIL_check_seconds_timer();
-  wt->ntime = wt->ltime + timestep;
-  wt->stime = wt->ltime;
-  wt->timestep = timestep;
+  wt->time_last = PIL_check_seconds_timer();
+  wt->time_next = wt->time_last + time_step;
+  wt->time_start = wt->time_last;
+  wt->time_step = time_step;
   wt->win = win;
   wt->customdata = POINTER_FROM_UINT(type);
   wt->flags |= WM_TIMER_NO_FREE_CUSTOM_DATA;
@@ -1975,8 +2025,7 @@ void WM_event_timers_free_all(wmWindowManager *wm)
 {
   BLI_assert_msg(BLI_listbase_is_empty(&wm->windows),
                  "This should only be called when freeing the window-manager");
-  wmTimer *timer;
-  while ((timer = static_cast<wmTimer *>(BLI_pophead(&wm->timers)))) {
+  while (wmTimer *timer = static_cast<wmTimer *>(BLI_pophead(&wm->timers))) {
     WM_event_timer_free_data(timer);
     MEM_freeN(timer);
   }
@@ -2266,21 +2315,23 @@ bool wm_window_get_swap_interval(wmWindow *win, int *intervalOut)
 /** \name Find Window Utility
  * \{ */
 
-wmWindow *WM_window_find_under_cursor(wmWindow *win, const int mval[2], int r_mval[2])
+wmWindow *WM_window_find_under_cursor(wmWindow *win,
+                                      const int event_xy[2],
+                                      int r_event_xy_other[2])
 {
-  int tmp[2];
-  copy_v2_v2_int(tmp, mval);
-  wm_cursor_position_to_ghost_screen_coords(win, &tmp[0], &tmp[1]);
+  int temp_xy[2];
+  copy_v2_v2_int(temp_xy, event_xy);
+  wm_cursor_position_to_ghost_screen_coords(win, &temp_xy[0], &temp_xy[1]);
 
-  GHOST_WindowHandle ghostwin = GHOST_GetWindowUnderCursor(g_system, tmp[0], tmp[1]);
+  GHOST_WindowHandle ghostwin = GHOST_GetWindowUnderCursor(g_system, temp_xy[0], temp_xy[1]);
 
   if (!ghostwin) {
     return nullptr;
   }
 
   wmWindow *win_other = static_cast<wmWindow *>(GHOST_GetWindowUserData(ghostwin));
-  wm_cursor_position_from_ghost_screen_coords(win_other, &tmp[0], &tmp[1]);
-  copy_v2_v2_int(r_mval, tmp);
+  wm_cursor_position_from_ghost_screen_coords(win_other, &temp_xy[0], &temp_xy[1]);
+  copy_v2_v2_int(r_event_xy_other, temp_xy);
   return win_other;
 }
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -1643,7 +1643,7 @@ void gpu::MTLTexture::read_internal(int mip,
 
           for (int array_slice = base_slice; array_slice < final_slice; array_slice++) {
             [enc copyFromTexture:read_texture
-                             sourceSlice:0
+                             sourceSlice:array_slice
                              sourceLevel:mip
                             sourceOrigin:MTLOriginMake(x_off, y_off, 0)
                               sourceSize:MTLSizeMake(width, height, 1)
@@ -2136,10 +2136,27 @@ void gpu::MTLTexture::ensure_baked()
     /* Determine Resource Mode. */
     resource_mode_ = MTL_TEXTURE_MODE_DEFAULT;
 
+    /* Override storage mode if memoryless attachments are being used. */
+    if (gpu_image_usage_flags_ & GPU_TEXTURE_USAGE_MEMORYLESS) {
+      if (@available(macOS 11.00, *)) {
+        texture_descriptor_.storageMode = MTLStorageModeMemoryless;
+      }
+      else {
+        BLI_assert_msg(0, "GPU_TEXTURE_USAGE_MEMORYLESS is not available on older MacOS versions");
+      }
+    }
+
     /* Standard texture allocation. */
     texture_ = [ctx->device newTextureWithDescriptor:texture_descriptor_];
+#ifndef NDEBUG
+    if (gpu_image_usage_flags_ & GPU_TEXTURE_USAGE_MEMORYLESS) {
+      texture_.label = [NSString stringWithFormat:@"MemorylessTexture_%s", this->get_name()];
+    }
+    else {
+      texture_.label = [NSString stringWithFormat:@"Texture_%s", this->get_name()];
+    }
+#endif
 
-    texture_.label = [NSString stringWithUTF8String:this->get_name()];
     BLI_assert(texture_);
     is_baked_ = true;
     is_dirty_ = false;
@@ -2223,18 +2240,11 @@ id<MTLTexture> MTLTexture::get_non_srgb_handle()
 
 MTLPixelBuffer::MTLPixelBuffer(uint size) : PixelBuffer(size)
 {
-  MTLContext *ctx = MTLContext::get();
-  BLI_assert(ctx);
   /* Ensure buffer satisfies the alignment of 256 bytes for copying
    * data between buffers and textures. As specified in:
    * https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf */
   BLI_assert(size >= 256);
-
-  MTLResourceOptions resource_options = ([ctx->device hasUnifiedMemory]) ?
-                                            MTLResourceStorageModeShared :
-                                            MTLResourceStorageModeManaged;
-  buffer_ = [ctx->device newBufferWithLength:size options:resource_options];
-  BLI_assert(buffer_ != nil);
+  buffer_ = nil;
 }
 
 MTLPixelBuffer::~MTLPixelBuffer()
@@ -2247,8 +2257,23 @@ MTLPixelBuffer::~MTLPixelBuffer()
 
 void *MTLPixelBuffer::map()
 {
-  if (buffer_ == nil) {
-    return nullptr;
+  /* Duplicate the existing buffer and release original to ensure we do not directly modify data
+   * in-flight on the GPU. */
+  MTLContext *ctx = MTLContext::get();
+  BLI_assert(ctx);
+  MTLResourceOptions resource_options = ([ctx->device hasUnifiedMemory]) ?
+                                            MTLResourceStorageModeShared :
+                                            MTLResourceStorageModeManaged;
+
+  if (buffer_ != nil) {
+    id<MTLBuffer> new_buffer = [ctx->device newBufferWithBytes:[buffer_ contents]
+                                                        length:size_
+                                                       options:resource_options];
+    [buffer_ release];
+    buffer_ = new_buffer;
+  }
+  else {
+    buffer_ = [ctx->device newBufferWithLength:size_ options:resource_options];
   }
 
   return [buffer_ contents];

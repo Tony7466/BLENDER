@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,7 +13,8 @@
 #include "BLI_utildefines.h"
 
 #include "BLI_bitmap.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
 #include "BLT_translation.h"
 
@@ -31,10 +32,10 @@
 #include "BKE_mesh.hh"
 #include "BKE_screen.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "DEG_depsgraph_query.h"
@@ -182,43 +183,34 @@ static void mix_normals(const float mix_factor,
 
 /* Check face normals and new loop normals are compatible, otherwise flip faces
  * (and invert matching face normals). */
-static bool faces_check_flip(blender::MutableSpan<int> corner_verts,
-                             blender::MutableSpan<int> corner_edges,
-                             blender::float3 *nos,
-                             CustomData *ldata,
-                             const blender::OffsetIndices<int> faces,
+static void faces_check_flip(Mesh &mesh,
+                             blender::MutableSpan<blender::float3> nos,
                              const blender::Span<blender::float3> face_normals)
 {
-  MDisps *mdisp = static_cast<MDisps *>(
-      CustomData_get_layer_for_write(ldata, CD_MDISPS, corner_verts.size()));
-  bool flipped = false;
+  using namespace blender;
+  const OffsetIndices faces = mesh.faces();
+  IndexMaskMemory memory;
+  const IndexMask faces_to_flip = IndexMask::from_predicate(
+      faces.index_range(), GrainSize(1024), memory, [&](const int i) {
+        const blender::IndexRange face = faces[i];
+        float norsum[3] = {0.0f};
 
-  for (const int i : faces.index_range()) {
-    const blender::IndexRange face = faces[i];
-    float norsum[3] = {0.0f};
+        for (const int64_t j : face) {
+          add_v3_v3(norsum, nos[j]);
+        }
+        if (!normalize_v3(norsum)) {
+          return false;
+        }
 
-    for (const int64_t j : face) {
-      add_v3_v3(norsum, nos[j]);
-    }
-    if (!normalize_v3(norsum)) {
-      continue;
-    }
+        /* If average of new loop normals is opposed to face normal, flip face. */
+        if (dot_v3v3(face_normals[i], norsum) < 0.0f) {
+          nos.slice(faces[i].drop_front(1)).reverse();
+          return true;
+        }
+        return false;
+      });
 
-    /* If average of new loop normals is opposed to face normal, flip face. */
-    if (dot_v3v3(face_normals[i], norsum) < 0.0f) {
-      BKE_mesh_face_flip_ex(face.start(),
-                            face.size(),
-                            corner_verts.data(),
-                            corner_edges.data(),
-                            ldata,
-                            reinterpret_cast<float(*)[3]>(nos),
-                            mdisp,
-                            true);
-      flipped = true;
-    }
-  }
-
-  return flipped;
+  bke::mesh_flip_faces(mesh, faces_to_flip);
 }
 
 static void normalEditModifier_do_radial(NormalEditModifierData *enmd,
@@ -326,11 +318,8 @@ static void normalEditModifier_do_radial(NormalEditModifierData *enmd,
                 nos.data());
   }
 
-  if (do_facenors_fix &&
-      faces_check_flip(
-          corner_verts, corner_edges, nos.data(), &mesh->loop_data, faces, mesh->face_normals()))
-  {
-    BKE_mesh_tag_face_winding_changed(mesh);
+  if (do_facenors_fix) {
+    faces_check_flip(*mesh, nos, mesh->face_normals());
   }
   const bool *sharp_faces = static_cast<const bool *>(
       CustomData_get_layer_named(&mesh->face_data, CD_PROP_BOOL, "sharp_face"));
@@ -434,11 +423,8 @@ static void normalEditModifier_do_directional(NormalEditModifierData *enmd,
                 nos.data());
   }
 
-  if (do_facenors_fix &&
-      faces_check_flip(
-          corner_verts, corner_edges, nos.data(), &mesh->loop_data, faces, mesh->face_normals()))
-  {
-    BKE_mesh_tag_face_winding_changed(mesh);
+  if (do_facenors_fix) {
+    faces_check_flip(*mesh, nos, mesh->face_normals());
   }
   const bool *sharp_faces = static_cast<const bool *>(
       CustomData_get_layer_named(&mesh->face_data, CD_PROP_BOOL, "sharp_face"));
@@ -548,7 +534,7 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd,
                                           faces,
                                           corner_verts,
                                           corner_edges,
-                                          {},
+                                          result->corner_to_face_map(),
                                           result->vert_normals(),
                                           result->face_normals(),
                                           sharp_edges.span.data(),
@@ -683,11 +669,11 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "target", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "target", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   col = uiLayoutColumn(layout, false);
   uiLayoutSetActive(col, mode == MOD_NORMALEDIT_MODE_DIRECTIONAL);
-  uiItemR(col, ptr, "use_direction_parallel", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "use_direction_parallel", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   modifier_panel_end(layout, ptr);
 }
@@ -703,17 +689,17 @@ static void mix_mode_panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "mix_mode", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "mix_factor", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "mix_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "mix_factor", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   modifier_vgroup_ui(layout, ptr, &ob_ptr, "vertex_group", "invert_vertex_group", nullptr);
 
   row = uiLayoutRow(layout, true);
-  uiItemR(row, ptr, "mix_limit", 0, nullptr, ICON_NONE);
+  uiItemR(row, ptr, "mix_limit", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(row,
           ptr,
           "no_polynors_fix",
-          0,
+          UI_ITEM_NONE,
           "",
           (RNA_boolean_get(ptr, "no_polynors_fix") ? ICON_LOCKED : ICON_UNLOCKED));
 }
@@ -734,7 +720,7 @@ static void offset_panel_draw(const bContext * /*C*/, Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   uiLayoutSetActive(layout, needs_object_offset);
-  uiItemR(layout, ptr, "offset", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "offset", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void panel_register(ARegionType *region_type)

@@ -1,8 +1,9 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
+  ../asset
   ../include
   ../../asset_system
   ../../blenfont
@@ -59,9 +60,9 @@ set(SRC
   view3d_navigate_view_move.cc
   view3d_navigate_view_ndof.cc
   view3d_navigate_view_orbit.cc
+  view3d_navigate_view_pan.cc
   view3d_navigate_view_roll.cc
   view3d_navigate_view_rotate.cc
-  view3d_navigate_view_pan.cc
   view3d_navigate_view_zoom.cc
   view3d_navigate_walk.cc
   view3d_navigate_zoom_border.cc
@@ -78,6 +79,7 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::animrig
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   bf_editor_curves

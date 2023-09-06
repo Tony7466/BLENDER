@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,6 +14,7 @@
 
 #include "BLI_listbase.h"
 #include "BLI_math_base.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 #include "BLI_sort.h"
 #include "BLI_utildefines.h"
@@ -37,10 +38,10 @@
 #include "BKE_modifier.h"
 #include "BKE_screen.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
@@ -281,7 +282,7 @@ static void build_sequential(Object *ob,
   size_t i;
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   /* Frame-rate of scene. */
-  const float fps = ((float(scene->r.frs_sec)) / scene->r.frs_sec_base);
+  const float fps = (float(scene->r.frs_sec) / scene->r.frs_sec_base);
 
   /* 1) Determine which strokes to start with (& adapt total number of strokes to build). */
   if (mmd->mode == GP_BUILD_MODE_ADDITIVE) {
@@ -601,7 +602,7 @@ static void build_concurrent(BuildGpencilModifierData *mmd,
 
   /* 1) Determine the longest stroke, to figure out when short strokes should start */
   /* Todo: A *really* long stroke here could dwarf everything else, causing bad timings */
-  for (gps = static_cast<bGPDstroke *>(gpf->strokes.first); gps; gps = gps->next) {
+  LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
     if (gps->totpoints > max_points) {
       max_points = gps->totpoints;
     }
@@ -896,9 +897,9 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   /* First: Build mode and build settings. */
-  uiItemR(layout, ptr, "mode", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "mode", UI_ITEM_NONE, nullptr, ICON_NONE);
   if (mode == GP_BUILD_MODE_SEQUENTIAL) {
-    uiItemR(layout, ptr, "transition", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "transition", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   if (mode == GP_BUILD_MODE_CONCURRENT) {
     /* Concurrent mode doesn't support GP_BUILD_TIMEMODE_DRAWSPEED, so unset it. */
@@ -906,35 +907,35 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
       RNA_enum_set(ptr, "time_mode", GP_BUILD_TIMEMODE_FRAMES);
       time_mode = GP_BUILD_TIMEMODE_FRAMES;
     }
-    uiItemR(layout, ptr, "transition", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "transition", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   uiItemS(layout);
 
   /* Second: Time mode and time settings. */
 
-  uiItemR(layout, ptr, "time_mode", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "time_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
   if (mode == GP_BUILD_MODE_CONCURRENT) {
-    uiItemR(layout, ptr, "concurrent_time_alignment", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "concurrent_time_alignment", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   switch (time_mode) {
     case GP_BUILD_TIMEMODE_DRAWSPEED:
-      uiItemR(layout, ptr, "speed_factor", 0, nullptr, ICON_NONE);
-      uiItemR(layout, ptr, "speed_maxgap", 0, nullptr, ICON_NONE);
+      uiItemR(layout, ptr, "speed_factor", UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiItemR(layout, ptr, "speed_maxgap", UI_ITEM_NONE, nullptr, ICON_NONE);
       break;
     case GP_BUILD_TIMEMODE_FRAMES:
-      uiItemR(layout, ptr, "length", 0, IFACE_("Frames"), ICON_NONE);
+      uiItemR(layout, ptr, "length", UI_ITEM_NONE, IFACE_("Frames"), ICON_NONE);
       if (mode != GP_BUILD_MODE_ADDITIVE) {
-        uiItemR(layout, ptr, "start_delay", 0, nullptr, ICON_NONE);
+        uiItemR(layout, ptr, "start_delay", UI_ITEM_NONE, nullptr, ICON_NONE);
       }
       break;
     case GP_BUILD_TIMEMODE_PERCENTAGE:
-      uiItemR(layout, ptr, "percentage_factor", 0, nullptr, ICON_NONE);
+      uiItemR(layout, ptr, "percentage_factor", UI_ITEM_NONE, nullptr, ICON_NONE);
       break;
     default:
       break;
   }
   uiItemS(layout);
-  uiItemR(layout, ptr, "object", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "object", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   /* Some housekeeping to prevent clashes between incompatible
    * options */
@@ -955,7 +956,8 @@ static void frame_range_header_draw(const bContext * /*C*/, Panel *panel)
 
   PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
-  uiItemR(layout, ptr, "use_restrict_frame_range", 0, IFACE_("Custom Range"), ICON_NONE);
+  uiItemR(
+      layout, ptr, "use_restrict_frame_range", UI_ITEM_NONE, IFACE_("Custom Range"), ICON_NONE);
 }
 
 static void frame_range_panel_draw(const bContext * /*C*/, Panel *panel)
@@ -968,8 +970,8 @@ static void frame_range_panel_draw(const bContext * /*C*/, Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   col = uiLayoutColumn(layout, false);
-  uiItemR(col, ptr, "frame_start", 0, IFACE_("Start"), ICON_NONE);
-  uiItemR(col, ptr, "frame_end", 0, IFACE_("End"), ICON_NONE);
+  uiItemR(col, ptr, "frame_start", UI_ITEM_NONE, IFACE_("Start"), ICON_NONE);
+  uiItemR(col, ptr, "frame_end", UI_ITEM_NONE, IFACE_("End"), ICON_NONE);
 }
 
 static void fading_header_draw(const bContext * /*C*/, Panel *panel)
@@ -978,7 +980,7 @@ static void fading_header_draw(const bContext * /*C*/, Panel *panel)
 
   PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
-  uiItemR(layout, ptr, "use_fading", 0, IFACE_("Fade"), ICON_NONE);
+  uiItemR(layout, ptr, "use_fading", UI_ITEM_NONE, IFACE_("Fade"), ICON_NONE);
 }
 
 static void fading_panel_draw(const bContext * /*C*/, Panel *panel)
@@ -991,11 +993,11 @@ static void fading_panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "fade_factor", 0, IFACE_("Factor"), ICON_NONE);
+  uiItemR(layout, ptr, "fade_factor", UI_ITEM_NONE, IFACE_("Factor"), ICON_NONE);
 
   col = uiLayoutColumn(layout, true);
-  uiItemR(col, ptr, "fade_thickness_strength", 0, IFACE_("Thickness"), ICON_NONE);
-  uiItemR(col, ptr, "fade_opacity_strength", 0, IFACE_("Opacity"), ICON_NONE);
+  uiItemR(col, ptr, "fade_thickness_strength", UI_ITEM_NONE, IFACE_("Thickness"), ICON_NONE);
+  uiItemR(col, ptr, "fade_opacity_strength", UI_ITEM_NONE, IFACE_("Opacity"), ICON_NONE);
 
   uiItemPointerR(layout,
                  ptr,

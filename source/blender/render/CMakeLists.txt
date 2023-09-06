@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -36,11 +36,12 @@ set(SRC
   intern/pipeline.cc
   intern/render_result.cc
   intern/render_types.cc
-  intern/texture_image.c
+  intern/texture_image.cc
   intern/texture_margin.cc
-  intern/texture_pointdensity.c
-  intern/texture_procedural.c
-  intern/zbuf.c
+  intern/texture_pointdensity.cc
+  intern/texture_procedural.cc
+  intern/tile_highlight.cc
+  intern/zbuf.cc
 
   RE_bake.h
   RE_compositor.hh
@@ -54,6 +55,7 @@ set(SRC
   intern/render_result.h
   intern/render_types.h
   intern/texture_common.h
+  intern/tile_highlight.h
   intern/zbuf.h
 )
 
@@ -91,3 +93,7 @@ endif()
 
 
 blender_add_lib_nolist(bf_render "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+if(WITH_HYDRA)
+  add_subdirectory(hydra)
+endif()

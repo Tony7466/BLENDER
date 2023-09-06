@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -28,19 +28,19 @@
 #include "BKE_mesh.hh"
 #include "BKE_scene.h"
 #include "BKE_screen.h"
-#include "BKE_subdiv.h"
-#include "BKE_subdiv_ccg.h"
-#include "BKE_subdiv_deform.h"
+#include "BKE_subdiv.hh"
+#include "BKE_subdiv_ccg.hh"
+#include "BKE_subdiv_deform.hh"
 #include "BKE_subdiv_mesh.hh"
-#include "BKE_subdiv_modifier.h"
-#include "BKE_subsurf.h"
+#include "BKE_subdiv_modifier.hh"
+#include "BKE_subsurf.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "RE_engine.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "DEG_depsgraph.h"
@@ -49,7 +49,7 @@
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "intern/CCGSubSurf.h"
 
@@ -364,9 +364,8 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA cycles_ptr = {nullptr};
   PointerRNA ob_cycles_ptr = {nullptr};
 #ifdef WITH_CYCLES
-  PointerRNA scene_ptr;
   Scene *scene = CTX_data_scene(C);
-  RNA_id_pointer_create(&scene->id, &scene_ptr);
+  PointerRNA scene_ptr = RNA_id_pointer_create(&scene->id);
   if (BKE_scene_uses_cycles(scene)) {
     cycles_ptr = RNA_pointer_get(&scene_ptr, "cycles");
     ob_cycles_ptr = RNA_pointer_get(&ob_ptr, "cycles");
@@ -387,12 +386,12 @@ static void panel_draw(const bContext *C, Panel *panel)
     uiItemR(layout,
             &ob_cycles_ptr,
             "use_adaptive_subdivision",
-            0,
+            UI_ITEM_NONE,
             IFACE_("Adaptive Subdivision"),
             ICON_NONE);
   }
   if (ob_use_adaptive_subdivision && show_adaptive_options) {
-    uiItemR(layout, &ob_cycles_ptr, "dicing_rate", 0, nullptr, ICON_NONE);
+    uiItemR(layout, &ob_cycles_ptr, "dicing_rate", UI_ITEM_NONE, nullptr, ICON_NONE);
     float render = MAX2(RNA_float_get(&cycles_ptr, "dicing_rate") *
                             RNA_float_get(&ob_cycles_ptr, "dicing_rate"),
                         0.1f);
@@ -405,15 +404,15 @@ static void panel_draw(const bContext *C, Panel *panel)
 
     uiItemS(layout);
 
-    uiItemR(layout, ptr, "levels", 0, IFACE_("Levels Viewport"), ICON_NONE);
+    uiItemR(layout, ptr, "levels", UI_ITEM_NONE, IFACE_("Levels Viewport"), ICON_NONE);
   }
   else {
     uiLayout *col = uiLayoutColumn(layout, true);
-    uiItemR(col, ptr, "levels", 0, IFACE_("Levels Viewport"), ICON_NONE);
-    uiItemR(col, ptr, "render_levels", 0, IFACE_("Render"), ICON_NONE);
+    uiItemR(col, ptr, "levels", UI_ITEM_NONE, IFACE_("Levels Viewport"), ICON_NONE);
+    uiItemR(col, ptr, "render_levels", UI_ITEM_NONE, IFACE_("Render"), ICON_NONE);
   }
 
-  uiItemR(layout, ptr, "show_only_control_edges", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "show_only_control_edges", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   SubsurfModifierData *smd = static_cast<SubsurfModifierData *>(ptr->data);
@@ -464,16 +463,16 @@ static void advanced_panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropSep(layout, true);
 
   uiLayoutSetActive(layout, !(show_adaptive_options && ob_use_adaptive_subdivision));
-  uiItemR(layout, ptr, "use_limit_surface", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_limit_surface", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   uiLayout *col = uiLayoutColumn(layout, true);
   uiLayoutSetActive(col, RNA_boolean_get(ptr, "use_limit_surface"));
-  uiItemR(col, ptr, "quality", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "quality", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  uiItemR(layout, ptr, "uv_smooth", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "boundary_smooth", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "use_creases", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "use_custom_normals", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "uv_smooth", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "boundary_smooth", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_creases", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_custom_normals", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void panel_register(ARegionType *region_type)

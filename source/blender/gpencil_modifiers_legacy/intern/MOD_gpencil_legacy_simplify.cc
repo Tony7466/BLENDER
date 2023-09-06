@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -29,10 +29,10 @@
 
 #include "DEG_depsgraph.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "MOD_gpencil_legacy_modifiertypes.h"
 #include "MOD_gpencil_legacy_ui_common.h"
@@ -128,20 +128,20 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "mode", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   if (mode == GP_SIMPLIFY_FIXED) {
-    uiItemR(layout, ptr, "step", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "step", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   else if (mode == GP_SIMPLIFY_ADAPTIVE) {
-    uiItemR(layout, ptr, "factor", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "factor", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   else if (mode == GP_SIMPLIFY_SAMPLE) {
-    uiItemR(layout, ptr, "length", 0, nullptr, ICON_NONE);
-    uiItemR(layout, ptr, "sharp_threshold", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "length", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "sharp_threshold", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
   else if (mode == GP_SIMPLIFY_MERGE) {
-    uiItemR(layout, ptr, "distance", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "distance", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
   gpencil_modifier_panel_end(layout, ptr);

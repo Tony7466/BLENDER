@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -36,10 +36,10 @@
 #include "DEG_depsgraph_build.h"
 #include "DEG_depsgraph_query.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "MOD_gpencil_legacy_modifiertypes.h"
 #include "MOD_gpencil_legacy_ui_common.h"
@@ -473,7 +473,7 @@ static void add_stroke_simple(Object *ob,
 static void generate_geometry(GpencilModifierData *md, Object *ob, bGPDlayer *gpl, bGPDframe *gpf)
 {
   EnvelopeGpencilModifierData *mmd = (EnvelopeGpencilModifierData *)md;
-  ListBase duplicates = {0};
+  ListBase duplicates = {nullptr};
   LISTBASE_FOREACH_MUTABLE (bGPDstroke *, gps, &gpf->strokes) {
     if (!is_stroke_affected_by_modifier(ob,
                                         mmd->layername,
@@ -622,16 +622,16 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "mode", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  uiItemR(layout, ptr, "spread", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "thickness", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "spread", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "thickness", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   const int mode = RNA_enum_get(ptr, "mode");
   if (mode != GP_ENVELOPE_DEFORM) {
-    uiItemR(layout, ptr, "strength", 0, nullptr, ICON_NONE);
-    uiItemR(layout, ptr, "mat_nr", 0, nullptr, ICON_NONE);
-    uiItemR(layout, ptr, "skip", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "strength", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "mat_nr", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "skip", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
   gpencil_modifier_panel_end(layout, ptr);

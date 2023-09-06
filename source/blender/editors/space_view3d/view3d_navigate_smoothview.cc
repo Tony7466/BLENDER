@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,15 +11,16 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_context.h"
 
 #include "DEG_depsgraph_query.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "view3d_intern.h"
 #include "view3d_navigate.hh" /* own include */
@@ -479,7 +480,7 @@ static void view3d_smoothview_apply_from_timer(bContext *C, View3D *v3d, ARegion
   float factor;
 
   if (sms->time_allowed != 0.0) {
-    factor = float(rv3d->smooth_timer->duration / sms->time_allowed);
+    factor = float(rv3d->smooth_timer->time_duration / sms->time_allowed);
   }
   else {
     factor = 1.0f;

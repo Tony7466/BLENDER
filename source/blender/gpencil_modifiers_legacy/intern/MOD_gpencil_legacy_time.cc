@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation
+/* SPDX-FileCopyrightText: 2018 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,7 +13,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
@@ -37,17 +36,17 @@
 #include "BKE_modifier.h"
 #include "BKE_screen.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "MOD_gpencil_legacy_modifiertypes.h"
 #include "MOD_gpencil_legacy_ui_common.h"
 #include "MOD_gpencil_legacy_util.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "DEG_depsgraph.h"
 
@@ -299,20 +298,20 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "mode", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   col = uiLayoutColumn(layout, false);
 
   const char *text = (mode == GP_TIME_MODE_FIX) ? IFACE_("Frame") : IFACE_("Frame Offset");
-  uiItemR(col, ptr, "offset", 0, text, ICON_NONE);
+  uiItemR(col, ptr, "offset", UI_ITEM_NONE, text, ICON_NONE);
 
   row = uiLayoutRow(col, false);
   uiLayoutSetActive(row, mode != GP_TIME_MODE_FIX);
-  uiItemR(row, ptr, "frame_scale", 0, IFACE_("Scale"), ICON_NONE);
+  uiItemR(row, ptr, "frame_scale", UI_ITEM_NONE, IFACE_("Scale"), ICON_NONE);
 
   row = uiLayoutRow(layout, false);
   uiLayoutSetActive(row, mode != GP_TIME_MODE_FIX);
-  uiItemR(row, ptr, "use_keep_loop", 0, nullptr, ICON_NONE);
+  uiItemR(row, ptr, "use_keep_loop", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   if (mode == GP_TIME_MODE_CHAIN) {
 
@@ -347,18 +346,16 @@ static void panel_draw(const bContext *C, Panel *panel)
 
     TimeGpencilModifierData *gpmd = static_cast<TimeGpencilModifierData *>(ptr->data);
     if (gpmd->segment_active_index >= 0 && gpmd->segment_active_index < gpmd->segments_len) {
-      PointerRNA ds_ptr;
-      RNA_pointer_create(ptr->owner_id,
-                         &RNA_TimeGpencilModifierSegment,
-                         &gpmd->segments[gpmd->segment_active_index],
-                         &ds_ptr);
+      PointerRNA ds_ptr = RNA_pointer_create(ptr->owner_id,
+                                             &RNA_TimeGpencilModifierSegment,
+                                             &gpmd->segments[gpmd->segment_active_index]);
 
       sub = uiLayoutColumn(layout, true);
-      uiItemR(sub, &ds_ptr, "seg_mode", 0, nullptr, ICON_NONE);
+      uiItemR(sub, &ds_ptr, "seg_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
       sub = uiLayoutColumn(layout, true);
-      uiItemR(sub, &ds_ptr, "seg_start", 0, nullptr, ICON_NONE);
-      uiItemR(sub, &ds_ptr, "seg_end", 0, nullptr, ICON_NONE);
-      uiItemR(sub, &ds_ptr, "seg_repeat", 0, nullptr, ICON_NONE);
+      uiItemR(sub, &ds_ptr, "seg_start", UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiItemR(sub, &ds_ptr, "seg_end", UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiItemR(sub, &ds_ptr, "seg_repeat", UI_ITEM_NONE, nullptr, ICON_NONE);
     }
 
     gpencil_modifier_panel_end(layout, ptr);
@@ -377,7 +374,7 @@ static void custom_range_header_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetActive(layout, !ELEM(mode, GP_TIME_MODE_FIX, GP_TIME_MODE_CHAIN));
 
-  uiItemR(layout, ptr, "use_custom_frame_range", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_custom_frame_range", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 static void custom_range_panel_draw(const bContext * /*C*/, Panel *panel)
@@ -395,8 +392,8 @@ static void custom_range_panel_draw(const bContext * /*C*/, Panel *panel)
                         RNA_boolean_get(ptr, "use_custom_frame_range"));
 
   col = uiLayoutColumn(layout, true);
-  uiItemR(col, ptr, "frame_start", 0, IFACE_("Frame Start"), ICON_NONE);
-  uiItemR(col, ptr, "frame_end", 0, IFACE_("End"), ICON_NONE);
+  uiItemR(col, ptr, "frame_start", UI_ITEM_NONE, IFACE_("Frame Start"), ICON_NONE);
+  uiItemR(col, ptr, "frame_end", UI_ITEM_NONE, IFACE_("End"), ICON_NONE);
 }
 
 static void mask_panel_draw(const bContext * /*C*/, Panel *panel)

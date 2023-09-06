@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -21,29 +21,30 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
+#include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_nla.h"
 #include "BKE_screen.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "WM_api.h"
-#include "WM_message.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
-#include "ED_anim_api.h"
-#include "ED_markers.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_time_scrub_ui.h"
+#include "ED_anim_api.hh"
+#include "ED_markers.hh"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_time_scrub_ui.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "GPU_matrix.h"
 
@@ -61,7 +62,6 @@ static SpaceLink *action_create(const ScrArea *area, const Scene *scene)
   saction = MEM_cnew<SpaceAction>("initaction");
   saction->spacetype = SPACE_ACTION;
 
-  saction->autosnap = SACTSNAP_FRAME;
   saction->mode = SACTCONT_DOPESHEET;
   saction->mode_prev = SACTCONT_DOPESHEET;
   saction->flag = SACTION_SHOW_INTERPOLATION | SACTION_SHOW_MARKERS;
@@ -365,12 +365,7 @@ static void action_channel_region_listener(const wmRegionListenerParams *params)
 static void saction_channel_region_message_subscribe(const wmRegionMessageSubscribeParams *params)
 {
   wmMsgBus *mbus = params->message_bus;
-  bScreen *screen = params->screen;
-  ScrArea *area = params->area;
   ARegion *region = params->region;
-
-  PointerRNA ptr;
-  RNA_pointer_create(&screen->id, &RNA_SpaceDopeSheetEditor, area->spacedata.first, &ptr);
 
   wmMsgSubscribeValue msg_sub_value_region_tag_redraw{};
   msg_sub_value_region_tag_redraw.owner = region;
@@ -382,7 +377,7 @@ static void saction_channel_region_message_subscribe(const wmRegionMessageSubscr
    * so just whitelist the entire structs for updates
    */
   {
-    wmMsgParams_RNA msg_key_params = {{0}};
+    wmMsgParams_RNA msg_key_params = {{nullptr}};
     StructRNA *type_array[] = {
         &RNA_DopeSheet, /* dopesheet filters */
 
@@ -467,12 +462,7 @@ static void saction_main_region_message_subscribe(const wmRegionMessageSubscribe
 {
   wmMsgBus *mbus = params->message_bus;
   Scene *scene = params->scene;
-  bScreen *screen = params->screen;
-  ScrArea *area = params->area;
   ARegion *region = params->region;
-
-  PointerRNA ptr;
-  RNA_pointer_create(&screen->id, &RNA_SpaceDopeSheetEditor, area->spacedata.first, &ptr);
 
   wmMsgSubscribeValue msg_sub_value_region_tag_redraw{};
   msg_sub_value_region_tag_redraw.owner = region;
@@ -489,8 +479,7 @@ static void saction_main_region_message_subscribe(const wmRegionMessageSubscribe
         &rna_Scene_frame_current,
     };
 
-    PointerRNA idptr;
-    RNA_id_pointer_create(&scene->id, &idptr);
+    PointerRNA idptr = RNA_id_pointer_create(&scene->id);
 
     for (int i = 0; i < ARRAY_SIZE(props); i++) {
       WM_msg_subscribe_rna(mbus, &idptr, props[i], &msg_sub_value_region_tag_redraw, __func__);
@@ -776,11 +765,9 @@ static void action_refresh(const bContext *C, ScrArea *area)
    * NOTE: the temp flag is used to indicate when this needs to be done,
    * and will be cleared once handled. */
   if (saction->runtime.flag & SACTION_RUNTIME_FLAG_NEED_CHAN_SYNC) {
-    ARegion *region;
-
     /* Perform syncing of channel state incl. selection
      * Active action setting also occurs here
-     * (as part of anim channel filtering in anim_filter.c). */
+     * (as part of anim channel filtering in `anim_filter.cc`). */
     ANIM_sync_animchannels_to_data(C);
     saction->runtime.flag &= ~SACTION_RUNTIME_FLAG_NEED_CHAN_SYNC;
 
@@ -789,7 +776,7 @@ static void action_refresh(const bContext *C, ScrArea *area)
      *   or else they don't update #28962.
      */
     ED_area_tag_redraw(area);
-    for (region = static_cast<ARegion *>(area->regionbase.first); region; region = region->next) {
+    LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
       ED_region_tag_redraw(region);
     }
   }
@@ -805,6 +792,25 @@ static void action_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapp
   BKE_id_remapper_apply(mappings, (ID **)&sact->action, ID_REMAP_APPLY_DEFAULT);
   BKE_id_remapper_apply(mappings, (ID **)&sact->ads.filter_grp, ID_REMAP_APPLY_DEFAULT);
   BKE_id_remapper_apply(mappings, &sact->ads.source, ID_REMAP_APPLY_DEFAULT);
+}
+
+static void action_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
+{
+  SpaceAction *sact = reinterpret_cast<SpaceAction *>(space_link);
+  const int data_flags = BKE_lib_query_foreachid_process_flags_get(data);
+  const bool is_readonly = (data_flags & IDWALK_READONLY) != 0;
+
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, sact->action, IDWALK_CB_NOP);
+
+  /* NOTE: Could be deduplicated with the #bDopeSheet handling of #SpaceNla and #SpaceGraph. */
+  BKE_LIB_FOREACHID_PROCESS_ID(data, sact->ads.source, IDWALK_CB_NOP);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, sact->ads.filter_grp, IDWALK_CB_NOP);
+
+  if (!is_readonly) {
+    /* Force recalc of list of channels, potentially updating the active action while we're
+     * at it (as it can only be updated that way) #28962. */
+    sact->runtime.flag |= SACTION_RUNTIME_FLAG_NEED_CHAN_SYNC;
+  }
 }
 
 /**
@@ -845,19 +851,6 @@ static void action_space_blend_read_data(BlendDataReader * /*reader*/, SpaceLink
   memset(&saction->runtime, 0x0, sizeof(saction->runtime));
 }
 
-static void action_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, SpaceLink *sl)
-{
-  SpaceAction *saction = (SpaceAction *)sl;
-  bDopeSheet *ads = &saction->ads;
-
-  if (ads) {
-    BLO_read_id_address(reader, parent_id, &ads->source);
-    BLO_read_id_address(reader, parent_id, &ads->filter_grp);
-  }
-
-  BLO_read_id_address(reader, parent_id, &saction->action);
-}
-
 static void action_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 {
   BLO_write_struct(writer, SpaceAction, sl);
@@ -886,11 +879,12 @@ void ED_spacetype_action()
   st->listener = action_listener;
   st->refresh = action_refresh;
   st->id_remap = action_id_remap;
+  st->foreach_id = action_foreach_id;
   st->space_subtype_item_extend = action_space_subtype_item_extend;
   st->space_subtype_get = action_space_subtype_get;
   st->space_subtype_set = action_space_subtype_set;
   st->blend_read_data = action_space_blend_read_data;
-  st->blend_read_lib = action_space_blend_read_lib;
+  st->blend_read_after_liblink = nullptr;
   st->blend_write = action_space_blend_write;
 
   /* regions: main window */

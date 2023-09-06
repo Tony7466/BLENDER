@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2004-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -180,7 +180,7 @@ static PyObject *CurvePoint_fedge_get(BPy_CurvePoint *self, void * /*closure*/)
 {
   SVertex *A = self->cp->A();
   Interface0D *B = (Interface0D *)self->cp->B();
-  // B can be NULL under certain circumstances
+  // B can be nullptr under certain circumstances
   if (B) {
     return Any_BPy_Interface1D_from_Interface1D(*(A->getFEdge(*B)));
   }

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation
+/* SPDX-FileCopyrightText: 2012 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,7 +6,9 @@
  * \ingroup pybmesh
  */
 
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_sort.h"
 #include "BLI_string.h"
 #include "BLI_string_utils.h"
@@ -18,8 +20,8 @@
 #include "BKE_customdata.h"
 #include "BKE_global.h"
 #include "BKE_lib_id.h"
-#include "BKE_mesh.h"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh.hh"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_object.h"
 
 #include "DEG_depsgraph.h"
@@ -3783,7 +3785,7 @@ PyObject *BPyInit_bmesh_types()
 
   submodule = PyModule_Create(&BPy_BM_types_module_def);
 
-  /* bmesh_py_types.c */
+  /* `bmesh_py_types.cc` */
   PyModule_AddType(submodule, &BPy_BMesh_Type);
   PyModule_AddType(submodule, &BPy_BMVert_Type);
   PyModule_AddType(submodule, &BPy_BMEdge_Type);
@@ -3795,17 +3797,17 @@ PyObject *BPyInit_bmesh_types()
   PyModule_AddType(submodule, &BPy_BMFaceSeq_Type);
   PyModule_AddType(submodule, &BPy_BMLoopSeq_Type);
   PyModule_AddType(submodule, &BPy_BMIter_Type);
-  /* bmesh_py_types_select.c */
+  /* `bmesh_py_types_select.cc` */
   PyModule_AddType(submodule, &BPy_BMEditSelSeq_Type);
   PyModule_AddType(submodule, &BPy_BMEditSelIter_Type);
-  /* bmesh_py_types_customdata.c */
+  /* `bmesh_py_types_customdata.cc` */
   PyModule_AddType(submodule, &BPy_BMLayerAccessVert_Type);
   PyModule_AddType(submodule, &BPy_BMLayerAccessEdge_Type);
   PyModule_AddType(submodule, &BPy_BMLayerAccessFace_Type);
   PyModule_AddType(submodule, &BPy_BMLayerAccessLoop_Type);
   PyModule_AddType(submodule, &BPy_BMLayerCollection_Type);
   PyModule_AddType(submodule, &BPy_BMLayerItem_Type);
-  /* bmesh_py_types_meshdata.c */
+  /* `bmesh_py_types_meshdata.cc` */
   PyModule_AddType(submodule, &BPy_BMLoopUV_Type);
   PyModule_AddType(submodule, &BPy_BMDeformVert_Type);
 

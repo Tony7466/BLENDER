@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,7 +8,7 @@
 
 #include <cstdio>
 
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -18,10 +18,10 @@
 
 #include "DNA_screen_types.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "FX_shader_types.h"
 #include "FX_ui_common.h"
@@ -48,13 +48,13 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "samples", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "samples", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  uiItemR(layout, ptr, "use_dof_mode", 0, IFACE_("Use Depth of Field"), ICON_NONE);
+  uiItemR(layout, ptr, "use_dof_mode", UI_ITEM_NONE, IFACE_("Use Depth of Field"), ICON_NONE);
   col = uiLayoutColumn(layout, false);
   uiLayoutSetActive(col, !RNA_boolean_get(ptr, "use_dof_mode"));
-  uiItemR(col, ptr, "size", 0, nullptr, ICON_NONE);
-  uiItemR(col, ptr, "rotation", 0, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "size", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "rotation", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   shaderfx_panel_end(layout, ptr);
 }

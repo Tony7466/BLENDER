@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -40,17 +40,16 @@
 #include "BLI_blenlib.h"
 #include "BLI_dial_2d.h"
 #include "BLI_dynstr.h" /* For #WM_operator_pystring. */
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_string_utils.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_anim_data.h"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
 #include "BKE_global.h"
-#include "BKE_icons.h"
 #include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
@@ -58,6 +57,7 @@
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
 #include "BKE_material.h"
+#include "BKE_preview_image.hh"
 #include "BKE_report.h"
 #include "BKE_scene.h"
 #include "BKE_screen.h" /* BKE_ST_MAXNAME */
@@ -74,32 +74,32 @@
 
 #include "IMB_imbuf_types.h"
 
-#include "ED_fileselect.h"
-#include "ED_gpencil_legacy.h"
-#include "ED_numinput.h"
-#include "ED_screen.h"
-#include "ED_undo.h"
-#include "ED_view3d.h"
+#include "ED_fileselect.hh"
+#include "ED_gpencil_legacy.hh"
+#include "ED_numinput.hh"
+#include "ED_screen.hh"
+#include "ED_undo.hh"
+#include "ED_view3d.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
+#include "UI_resources.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "wm.h"
-#include "wm_draw.h"
+#include "wm.hh"
+#include "wm_draw.hh"
 #include "wm_event_system.h"
-#include "wm_event_types.h"
-#include "wm_files.h"
-#include "wm_window.h"
+#include "wm_event_types.hh"
+#include "wm_files.hh"
+#include "wm_window.hh"
 #ifdef WITH_XR_OPENXR
 #  include "wm_xr.h"
 #endif
@@ -348,7 +348,7 @@ static const char *wm_context_member_from_ptr(bContext *C, const PointerRNA *ptr
   for (link = lb.first; link; link = link->next) {
     const char *identifier = link->data;
     PointerRNA ctx_item_ptr = {{0}};
-        /* CTX_data_pointer_get(C, identifier); */ /* XXX, this isn't working. */
+    // CTX_data_pointer_get(C, identifier);  /* XXX, this isn't working. */
 
     if (ctx_item_ptr.type == nullptr) {
       continue;
@@ -682,7 +682,7 @@ char *WM_prop_pystring_assign(bContext *C, PointerRNA *ptr, PropertyRNA *prop, i
 void WM_operator_properties_create_ptr(PointerRNA *ptr, wmOperatorType *ot)
 {
   /* Set the ID so the context can be accessed: see #STRUCT_NO_CONTEXT_WITHOUT_OWNER_ID. */
-  RNA_pointer_create(static_cast<ID *>(G_MAIN->wm.first), ot->srna, nullptr, ptr);
+  *ptr = RNA_pointer_create(static_cast<ID *>(G_MAIN->wm.first), ot->srna, nullptr);
 }
 
 void WM_operator_properties_create(PointerRNA *ptr, const char *opstring)
@@ -694,7 +694,8 @@ void WM_operator_properties_create(PointerRNA *ptr, const char *opstring)
   }
   else {
     /* Set the ID so the context can be accessed: see #STRUCT_NO_CONTEXT_WITHOUT_OWNER_ID. */
-    RNA_pointer_create(static_cast<ID *>(G_MAIN->wm.first), &RNA_OperatorProperties, nullptr, ptr);
+    *ptr = RNA_pointer_create(
+        static_cast<ID *>(G_MAIN->wm.first), &RNA_OperatorProperties, nullptr);
   }
 }
 
@@ -1048,7 +1049,8 @@ int WM_menu_invoke_ex(bContext *C, wmOperator *op, wmOperatorCallContext opconte
     return retval;
   }
   else {
-    uiPopupMenu *pup = UI_popup_menu_begin(C, WM_operatortype_name(op->type, op->ptr), ICON_NONE);
+    uiPopupMenu *pup = UI_popup_menu_begin(
+        C, WM_operatortype_name(op->type, op->ptr).c_str(), ICON_NONE);
     uiLayout *layout = UI_popup_menu_layout(pup);
     /* set this so the default execution context is the same as submenus */
     uiLayoutSetOperatorContext(layout, opcontext);
@@ -1057,7 +1059,7 @@ int WM_menu_invoke_ex(bContext *C, wmOperator *op, wmOperatorCallContext opconte
                      RNA_property_identifier(prop),
                      static_cast<IDProperty *>(op->ptr->data),
                      opcontext,
-                     0);
+                     UI_ITEM_NONE);
     UI_popup_menu_end(C, pup);
     return OPERATOR_INTERFACE;
   }
@@ -1193,7 +1195,8 @@ int WM_operator_confirm_message_ex(bContext *C,
 
   uiPopupMenu *pup = UI_popup_menu_begin(C, title, icon);
   uiLayout *layout = UI_popup_menu_layout(pup);
-  uiItemFullO_ptr(layout, op->type, message, ICON_NONE, properties, opcontext, 0, nullptr);
+  uiItemFullO_ptr(
+      layout, op->type, message, ICON_NONE, properties, opcontext, UI_ITEM_NONE, nullptr);
   UI_popup_menu_end(C, pup);
 
   return OPERATOR_INTERFACE;
@@ -1285,7 +1288,7 @@ IDProperty *WM_operator_last_properties_ensure_idprops(wmOperatorType *ot)
 void WM_operator_last_properties_ensure(wmOperatorType *ot, PointerRNA *ptr)
 {
   IDProperty *props = WM_operator_last_properties_ensure_idprops(ot);
-  RNA_pointer_create(static_cast<ID *>(G_MAIN->wm.first), ot->srna, props, ptr);
+  *ptr = RNA_pointer_create(static_cast<ID *>(G_MAIN->wm.first), ot->srna, props);
 }
 
 ID *WM_operator_drop_load_path(bContext *C, wmOperator *op, const short idcode)
@@ -1882,7 +1885,7 @@ static int wm_call_menu_exec(bContext *C, wmOperator *op)
   return UI_popup_menu_invoke(C, idname, op->reports);
 }
 
-static const char *wm_call_menu_get_name(wmOperatorType *ot, PointerRNA *ptr)
+static std::string wm_call_menu_get_name(wmOperatorType *ot, PointerRNA *ptr)
 {
   char idname[BKE_ST_MAXNAME];
   RNA_string_get(ptr, "name", idname);
@@ -1961,7 +1964,7 @@ static int wm_call_panel_exec(bContext *C, wmOperator *op)
   return UI_popover_panel_invoke(C, idname, keep_open, op->reports);
 }
 
-static const char *wm_call_panel_get_name(wmOperatorType *ot, PointerRNA *ptr)
+static std::string wm_call_panel_get_name(wmOperatorType *ot, PointerRNA *ptr)
 {
   char idname[BKE_ST_MAXNAME];
   RNA_string_get(ptr, "name", idname);
@@ -2669,8 +2672,7 @@ static int radial_control_get_properties(bContext *C, wmOperator *op)
 {
   RadialControl *rc = static_cast<RadialControl *>(op->customdata);
 
-  PointerRNA ctx_ptr;
-  RNA_pointer_create(nullptr, &RNA_Context, C, &ctx_ptr);
+  PointerRNA ctx_ptr = RNA_pointer_create(nullptr, &RNA_Context, C);
 
   /* check if we use primary or secondary path */
   PointerRNA use_secondary_ptr;
@@ -2681,7 +2683,7 @@ static int radial_control_get_properties(bContext *C, wmOperator *op)
                                &use_secondary_ptr,
                                &use_secondary_prop,
                                0,
-                               RCPropFlags((RC_PROP_ALLOW_MISSING | RC_PROP_REQUIRE_BOOL))))
+                               RCPropFlags(RC_PROP_ALLOW_MISSING | RC_PROP_REQUIRE_BOOL)))
   {
     return 0;
   }

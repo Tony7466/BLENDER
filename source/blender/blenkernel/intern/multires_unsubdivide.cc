@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,12 +22,12 @@
 #include "BKE_customdata.h"
 #include "BKE_lib_id.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_mapping.hh"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.h"
-#include "BKE_multires.h"
-#include "BKE_subdiv.h"
-#include "BKE_subsurf.h"
+#include "BKE_multires.hh"
+#include "BKE_subdiv.hh"
+#include "BKE_subsurf.hh"
 
 #include "bmesh.h"
 
@@ -925,7 +925,6 @@ static void multires_unsubdivide_prepare_original_bmesh_for_extract(
     MultiresUnsubdivideContext *context)
 {
   Mesh *original_mesh = context->original_mesh;
-  const blender::OffsetIndices original_faces = original_mesh->faces();
 
   Mesh *base_mesh = context->base_mesh;
 
@@ -953,7 +952,7 @@ static void multires_unsubdivide_prepare_original_bmesh_for_extract(
     BM_elem_flag_set(v, BM_ELEM_TAG, true);
   }
 
-  context->loop_to_face_map = blender::bke::mesh::build_loop_to_face_map(original_faces);
+  context->loop_to_face_map = original_mesh->corner_to_face_map();
 }
 
 /**

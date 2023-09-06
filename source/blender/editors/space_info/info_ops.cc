@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -30,14 +30,14 @@
 #include "BKE_report.h"
 #include "BKE_screen.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "info_intern.hh"
 
@@ -360,7 +360,7 @@ static int unpack_item_invoke(bContext *C, wmOperator *op, const wmEvent * /*eve
                    "method",
                    static_cast<IDProperty *>(op->ptr->data),
                    WM_OP_EXEC_REGION_WIN,
-                   0);
+                   UI_ITEM_NONE);
 
   UI_popup_menu_end(C, pup);
 
@@ -566,7 +566,7 @@ void FILE_OT_find_missing_files(wmOperatorType *ot)
 
 /* NOTE(@broken): Hard to decide whether to keep this as an operator,
  * or turn it into a hard_coded UI control feature,
- * handling TIMER events for all regions in `interface_handlers.c`.
+ * handling TIMER events for all regions in `interface_handlers.cc`.
  * Not sure how good that is to be accessing UI data from
  * inactive regions, so use this for now. */
 
@@ -599,7 +599,7 @@ static int update_reports_display_invoke(bContext *C, wmOperator * /*op*/, const
   timeout = (report->type & RPT_ERROR_ALL) ? ERROR_TIMEOUT : INFO_TIMEOUT;
 
   /* clear the report display after timeout */
-  if (float(reports->reporttimer->duration) > timeout) {
+  if (float(reports->reporttimer->time_duration) > timeout) {
     WM_event_timer_remove(wm, nullptr, reports->reporttimer);
     reports->reporttimer = nullptr;
 
@@ -624,8 +624,8 @@ static int update_reports_display_invoke(bContext *C, wmOperator * /*op*/, const
     rti->widthfac = 1.0f;
   }
 
-  progress = powf(float(reports->reporttimer->duration) / timeout, 2.0f);
-  flash_progress = powf(float(reports->reporttimer->duration) / flash_timeout, 2.0);
+  progress = powf(float(reports->reporttimer->time_duration) / timeout, 2.0f);
+  flash_progress = powf(float(reports->reporttimer->time_duration) / flash_timeout, 2.0);
 
   /* save us from too many draws */
   if (flash_progress <= 1.0f) {

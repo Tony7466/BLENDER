@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'4f56261f768e')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'526f935981fd')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-07-24 15:42:18\n"
+"POT-Creation-Date: 2023-09-04 15:42:41\n"
 "PO-Revision-Date: 2022-01-21 16:08+0100\n"
 "Last-Translator: MT\n"
 "Language-Team: blend-it <https://developer.blender.org/T42765>\n"
@@ -848,6 +848,26 @@ msgstr "Autore"
 
 msgid "Description"
 msgstr "Descrizione"
+
+
+msgid "ID Name"
+msgstr "Nome ID"
+
+
+msgid "Options"
+msgstr "Opzioni"
+
+
+msgid "Space Type"
+msgstr "Tipo Spazio"
+
+
+msgid "Display Filter"
+msgstr "Mostra Filtro"
+
+
+msgid "Show Names"
+msgstr "Mostra Nomi"
 
 
 msgid "Data Type"
@@ -2402,14 +2422,6 @@ msgid "Inherit Scale"
 msgstr "Eredita Scala"
 
 
-msgid "Layers"
-msgstr "Livelli"
-
-
-msgid "Layers bone exists in"
-msgstr "Livelli in cui esiste l'osso"
-
-
 msgid "Length"
 msgstr "Lunghezza"
 
@@ -2516,6 +2528,14 @@ msgstr "La posizione dell'osso è impostata nello spazio locale"
 
 msgid "Relative Parenting"
 msgstr "Parentela Relativa"
+
+
+msgid "Visible"
+msgstr "Visibile"
+
+
+msgid "Custom"
+msgstr "Personalizzato"
 
 
 msgid "Bone Group"
@@ -2662,14 +2682,6 @@ msgid "Vertex Color"
 msgstr "Colore Vertice"
 
 
-msgid "Round"
-msgstr "Arrotonda"
-
-
-msgid "Flat"
-msgstr "Piano"
-
-
 msgid "Curve Jitter"
 msgstr "Curva Tremolio"
 
@@ -2738,10 +2750,6 @@ msgid "Precision"
 msgstr "Precisione"
 
 
-msgid "Visible"
-msgstr "Visibile"
-
-
 msgid "Simplify"
 msgstr "Semplifica"
 
@@ -2784,10 +2792,6 @@ msgstr "Spessore"
 
 msgid "Jitter factor for new strokes"
 msgstr "Fattore di tremolio per i nuovi tratti"
-
-
-msgid "Smooth"
-msgstr "Levigato"
 
 
 msgid "Iterations"
@@ -3612,10 +3616,6 @@ msgstr "Impostazioni spazio colore input"
 
 msgid "Input Color Space"
 msgstr "Spazio Colore Input"
-
-
-msgid "XYZ"
-msgstr "XYZ"
 
 
 msgid "Color Space"
@@ -7049,6 +7049,10 @@ msgid "Active Surface"
 msgstr "Superficie Attiva"
 
 
+msgid "Curve Mapping"
+msgstr "Mappatura Curva"
+
+
 msgid "Edit Bone"
 msgstr "Osso-Strutturale"
 
@@ -9477,10 +9481,6 @@ msgid "Layer"
 msgstr "Livello"
 
 
-msgid "Custom"
-msgstr "Personalizzato"
-
-
 msgid "Spacing"
 msgstr "Spaziatura"
 
@@ -9541,10 +9541,6 @@ msgid "Stroke is in 2D-space (but with special 'image' scaling)"
 msgstr "Il tratto è nello spazio 2D (ma con una speciale scalatura 'immagine')"
 
 
-msgid "End Cap"
-msgstr "Elemento di Fine"
-
-
 msgid "Thickness of stroke (in pixels)"
 msgstr "Spessore del tratto (in pixels)"
 
@@ -9555,10 +9551,6 @@ msgstr "Punti Pennellata"
 
 msgid "Stroke data points"
 msgstr "Dati punti pennellata"
-
-
-msgid "Start Cap"
-msgstr "Elemento d'Inizio"
 
 
 msgid "Triangles"
@@ -9625,10 +9617,6 @@ msgid "Grab Cursor"
 msgstr "Muovi Cursore"
 
 
-msgid "Options"
-msgstr "Opzioni"
-
-
 msgid "Use in 3D viewport"
 msgstr "Usa nella vista 3D"
 
@@ -9653,16 +9641,16 @@ msgid "Temporary"
 msgstr "Temporaneo"
 
 
+msgid "Sidebar"
+msgstr "Barra Laterale"
+
+
 msgid "Tools"
 msgstr "Strumenti"
 
 
 msgid "Tool Properties"
 msgstr "Proprietà Strumento"
-
-
-msgid "Space Type"
-msgstr "Tipo Spazio"
 
 
 msgid "Modifier name"
@@ -9723,6 +9711,10 @@ msgstr "Gancio"
 
 msgid "Lattice"
 msgstr "Lattice"
+
+
+msgid "Smooth"
+msgstr "Levigato"
 
 
 msgid "Hue/Saturation"
@@ -10344,14 +10336,6 @@ msgid "Is Editmode"
 msgstr "È Modalità Modifica"
 
 
-msgid "Visible Layers"
-msgstr "Livelli Visibili"
-
-
-msgid "Armature layer visibility"
-msgstr "Visibilità livello armatura"
-
-
 msgid "Pose Position"
 msgstr "Posizione di Posa"
 
@@ -10536,18 +10520,6 @@ msgid "Color of cursor when subtracting"
 msgstr "Colore del cursore quando sottrae"
 
 
-msgid "Comb"
-msgstr "Pettina"
-
-
-msgid "Pinch"
-msgstr "Pizzica"
-
-
-msgid "Puff"
-msgstr "Gonfia"
-
-
 msgid "Falloff Angle"
 msgstr "Angolo Decadimento"
 
@@ -10616,10 +10588,6 @@ msgid "Mask Texture Slot"
 msgstr "Slot Maschera Texture"
 
 
-msgid "Mask Tool"
-msgstr "Strumenti Maschera"
-
-
 msgid "Normal Weight"
 msgstr "Peso Normale"
 
@@ -10682,6 +10650,10 @@ msgstr "Colore Secondario"
 
 msgid "Radius of the brush in pixels"
 msgstr "Raggio del Pennello in pixels"
+
+
+msgid "Pinch"
+msgstr "Pizzica"
 
 
 msgid "Laplacian"
@@ -10988,20 +10960,28 @@ msgid "Camera near clipping distance"
 msgstr "Distanza di taglio iniziale della camera (non mostra ciò che è più vicino)"
 
 
-msgid "Cycles Camera Settings"
-msgstr "Impostazioni Camera Cycles"
-
-
-msgid "Cycles camera settings"
-msgstr "Impostazioni camera Cycles"
-
-
 msgid "Apparent size of the Camera object in the 3D View"
 msgstr "Dimensione apparente dell'oggetto Camera nella vista 3D"
 
 
 msgid "Depth Of Field"
 msgstr "Profondità di Campo"
+
+
+msgid "Fisheye Lens"
+msgstr "Fisheye"
+
+
+msgid "Lens focal length (mm)"
+msgstr "Lunghezza focale lenti (mm)"
+
+
+msgid "Max Latitude"
+msgstr "Max Latitudine"
+
+
+msgid "Min Latitude"
+msgstr "Min Latitudine"
 
 
 msgid "Focal Length"
@@ -11020,12 +11000,40 @@ msgid "Millimeters"
 msgstr "Millimetri"
 
 
+msgid "Max Longitude"
+msgstr "Max Longitudine"
+
+
+msgid "Min Longitude"
+msgstr "Min Longitudine"
+
+
 msgid "Orthographic Scale"
 msgstr "Scala Ortografica"
 
 
 msgid "Orthographic Camera scale (similar to zoom)"
 msgstr "Scala della Camera Ortografica (simile allo Zoom)"
+
+
+msgid "Panorama Type"
+msgstr "Tipo Panorama"
+
+
+msgid "Equirectangular"
+msgstr "Equirettangolare"
+
+
+msgid "Mirror Ball"
+msgstr "Sfera a Specchio"
+
+
+msgid "Fisheye Equidistant"
+msgstr "Fisheye Equidistante"
+
+
+msgid "Fisheye Equisolid"
+msgstr "Fisheye Equisolido"
 
 
 msgid "Passepartout Alpha"
@@ -11234,6 +11242,10 @@ msgstr "Disabilita selezione nella vista"
 
 msgid "Bevel Depth"
 msgstr "Profondità Smusso"
+
+
+msgid "Round"
+msgstr "Arrotonda"
 
 
 msgid "Profile"
@@ -11862,6 +11874,10 @@ msgstr "Impostazioni Griglia"
 
 msgid "Settings for grid and canvas in the 3D viewport"
 msgstr "Impostazioni per la griglia e la tela nella vista 3D"
+
+
+msgid "Layers"
+msgstr "Livelli"
 
 
 msgid "Filter by Type"
@@ -12602,10 +12618,6 @@ msgid "Cube"
 msgstr "Cubo"
 
 
-msgid "Hair"
-msgstr "Capelli"
-
-
 msgid "Hair strands"
 msgstr "Filamenti Capelli"
 
@@ -12704,10 +12716,6 @@ msgstr "Vero se ci sono dati di divisione normali personalizzati in questa mesh"
 
 msgid "Loops"
 msgstr "Cicli"
-
-
-msgid "Loops of the mesh (polygon corners)"
-msgstr "Anelli della mesh"
 
 
 msgid "Polygons"
@@ -12886,22 +12894,6 @@ msgid "Create proxy images in a custom directory (default is movie location)"
 msgstr "Crea immagini proxy in una directory personalizzata (la definita è la posizione del filmato)"
 
 
-msgid "Active Input"
-msgstr "Ingresso Attivo"
-
-
-msgid "Active Output"
-msgstr "Uscita Attiva"
-
-
-msgid "Index of the active output"
-msgstr "Indice dell'output attivo"
-
-
-msgid "ID Name"
-msgstr "Nome ID"
-
-
 msgid "Label"
 msgstr "Etichetta"
 
@@ -12910,12 +12902,8 @@ msgid "Grease Pencil Data"
 msgstr "Dati Matita"
 
 
-msgid "Inputs"
-msgstr "Ingressi"
-
-
-msgid "Node tree inputs"
-msgstr "Ingressi alberi nodi"
+msgid "Interface"
+msgstr "Interfaccia"
 
 
 msgid "Links"
@@ -12924,14 +12912,6 @@ msgstr "Collegamenti"
 
 msgid "Nodes"
 msgstr "Nodi"
-
-
-msgid "Outputs"
-msgstr "Uscite"
-
-
-msgid "Node tree outputs"
-msgstr "Uscite albero nodi"
 
 
 msgid "Shader"
@@ -13028,6 +13008,22 @@ msgstr "Usa l'esecuzione di due passaggi durante la modifica: il primo passaggio
 
 msgid "Use boundaries for viewer nodes and composite backdrop"
 msgstr "Usa i bordi per i nodi di visualizzazione e la composizione sullo sfondo"
+
+
+msgid "Edit"
+msgstr "Modifica"
+
+
+msgid "Sculpt"
+msgstr "Scultura"
+
+
+msgid "Tool"
+msgstr "Strumento"
+
+
+msgid "Mesh"
+msgstr "Mesh"
 
 
 msgid "Shader Node Tree"
@@ -14185,6 +14181,10 @@ msgid "Twist"
 msgstr "Torci"
 
 
+msgid "Hair"
+msgstr "Capelli"
+
+
 msgid "Absolute Path Time"
 msgstr "Tempo Assoluto Percorso"
 
@@ -14511,10 +14511,6 @@ msgstr "Editor Sequenza"
 
 msgid "Sequencer Color Space Settings"
 msgstr "Impostazioni Spazio Colore Sequencer"
-
-
-msgid "Only Keyframes from Selected Channels"
-msgstr "Solo Fotogrammi Chiave dai Canali Selezionati"
 
 
 msgid "Show Subframe"
@@ -17988,16 +17984,8 @@ msgid "Mask spline"
 msgstr "Maschera spline"
 
 
-msgid "Feather Offset"
-msgstr "Scostamento Sfumatura"
-
-
 msgid "The method used for calculating the feather offset"
 msgstr "Il metrodo usato per calcolare lo scostamento della sfumatura"
-
-
-msgid "Even"
-msgstr "Pari"
 
 
 msgid "Make this spline a closed loop"
@@ -18153,10 +18141,6 @@ msgid "Languages..."
 msgstr "Linguaggi..."
 
 
-msgid "Bone Group Specials"
-msgstr "Gruppo Ossa Speciali"
-
-
 msgid "Channel"
 msgstr "Canale"
 
@@ -18206,8 +18190,16 @@ msgid "Vertex Group Specials"
 msgstr "Gruppo Vertici Speciali"
 
 
-msgid "Edit"
-msgstr "Modifica"
+msgid "Text"
+msgstr "Testo"
+
+
+msgid "Math"
+msgstr "Matematica"
+
+
+msgid "Primitives"
+msgstr "Primitive"
 
 
 msgid "Converter"
@@ -18222,28 +18214,12 @@ msgid "Layout"
 msgstr "Livello"
 
 
-msgid "Matte"
-msgstr "Mascherino"
-
-
-msgid "Text"
-msgstr "Testo"
-
-
-msgid "Math"
-msgstr "Matematica"
-
-
-msgid "Primitives"
-msgstr "Primitive"
+msgid "Tracking"
+msgstr "Tracciamento"
 
 
 msgid "Attribute"
 msgstr "Attributo"
-
-
-msgid "Mesh"
-msgstr "Mesh"
 
 
 msgid "Node"
@@ -18285,6 +18261,10 @@ msgstr "Navigazione"
 
 msgid "Strip"
 msgstr "Spezzone"
+
+
+msgid "Inputs"
+msgstr "Ingressi"
 
 
 msgid "Lock/Mute"
@@ -18495,10 +18475,6 @@ msgid "Proportional Editing Falloff"
 msgstr "Decadimento Modifica Proporzionale"
 
 
-msgid "Sculpt"
-msgstr "Scultura"
-
-
 msgid "Clone Layer"
 msgstr "Livello Clone"
 
@@ -18663,20 +18639,8 @@ msgid "Polygon Area"
 msgstr "Area Poligono"
 
 
-msgid "Read only area of this polygon"
-msgstr "Area del poligono in sola lettura"
-
-
 msgid "Polygon Center"
 msgstr "Centro Poligono"
-
-
-msgid "Center of this polygon"
-msgstr "Centro di questo poligono"
-
-
-msgid "Index of this polygon"
-msgstr "Indice di questo poligono"
 
 
 msgid "Loop Start"
@@ -18701,10 +18665,6 @@ msgstr "Poligoni Mesh"
 
 msgid "Active Polygon"
 msgstr "Poligono Attivo"
-
-
-msgid "The active polygon for this mesh"
-msgstr "Il poligono attivo di questa mesh"
 
 
 msgid "Skin Vertex"
@@ -19047,6 +19007,10 @@ msgid "Curve object to fit array length to"
 msgstr "Oggetto curva a cui adattare la lunghezza della sequenza"
 
 
+msgid "End Cap"
+msgstr "Elemento di Fine"
+
+
 msgid "Mesh object to use as an end cap"
 msgstr "Oggetto mesh da usare come elemento finale"
 
@@ -19105,6 +19069,10 @@ msgstr "Scostamento V"
 
 msgid "Relative Offset Displacement"
 msgstr "Dislocazione a Scostamento Relativo"
+
+
+msgid "Start Cap"
+msgstr "Elemento d'Inizio"
 
 
 msgid "Mesh object to use as a start cap"
@@ -19503,10 +19471,6 @@ msgid "Poly Data Types"
 msgstr "Tipi Dati Poly"
 
 
-msgid "Which poly data layers to transfer"
-msgstr "Quali livelli di dati poly trasferire"
-
-
 msgid "Transfer flat/smooth mark"
 msgstr "Trasferisce la marcatura piatta/levigata"
 
@@ -19651,24 +19615,12 @@ msgid "Copy from nearest corner which has the face with the best matching normal
 msgstr "Copia dall'angolo più vicino che ha la normale della faccia più corrispondente a quella degli angoli della faccia di destinazione"
 
 
-msgid "Copy from nearest corner of nearest polygon"
-msgstr "Copia dall'angolo più vicino del poligono più vicino"
-
-
 msgid "Nearest Face Interpolated"
 msgstr "Faccia Più Vicina Interpolata"
 
 
-msgid "Copy from interpolated corners of the nearest source polygon"
-msgstr "Usa il punto più vicino della faccia più vicina della sorgente, interpolando i dati da tutti quegli angoli delle facce della sorgente"
-
-
 msgid "Projected Face Interpolated"
 msgstr "Faccia Proiettata Interpolata"
-
-
-msgid "Copy from interpolated corners of the source polygon hit by corner normal projection"
-msgstr "Usa il punto della faccia sulla sorgente colpito dalla proiezione dell'angolo di destinazione lungo la propria normale, interpolando i dati da tutti quegli angoli delle facce della sorgente"
 
 
 msgid "Max Distance"
@@ -19735,16 +19687,8 @@ msgid "Nearest Face"
 msgstr "Faccia Più Vicina"
 
 
-msgid "Copy from nearest polygon (using center points)"
-msgstr "Copia dal poligono più vicino (usando punti centrali)"
-
-
 msgid "Best Normal-Matching"
 msgstr "Miglior Corrispondenza Normali"
-
-
-msgid "Copy from source polygon which normal is the closest to destination one"
-msgstr "Copia dal poligono della sorgente la cui normale è la più vicina a quella di destinazione"
 
 
 msgid "Interpolate all source polygons intersected by the projection of destination one along its own normal"
@@ -20928,6 +20872,10 @@ msgid "Merge Threshold"
 msgstr "Soglia Unione"
 
 
+msgid "Even"
+msgstr "Pari"
+
+
 msgid "Offset the thickness from the center"
 msgstr "Scostamento dello spessore dal centro"
 
@@ -21803,10 +21751,6 @@ msgid "Display Hidden"
 msgstr "Mostra Nascosti"
 
 
-msgid "Include channels from objects/bone that aren't visible"
-msgstr "Include i canali da oggetti/ossa che non sono visibili"
-
-
 msgid "Dopesheet Sort Field"
 msgstr "Campo Ordinamento Dopesheet"
 
@@ -22415,6 +22359,10 @@ msgid "Unique node identifier"
 msgstr "Identificatore unico del nodo"
 
 
+msgid "Outputs"
+msgstr "Uscite"
+
+
 msgid "Parent this node is attached to"
 msgstr "Genitore al quale è attaccato questo nodo"
 
@@ -22481,26 +22429,6 @@ msgstr "Dimensione X Relativa"
 
 msgid "Relative Size Y"
 msgstr "Dimensione Y Relativa"
-
-
-msgid "Filter Type"
-msgstr "Tipo Filtro"
-
-
-msgid "Tent"
-msgstr "Tenda"
-
-
-msgid "Fast Gaussian"
-msgstr "Gaussiana Veloce"
-
-
-msgid "Catrom"
-msgstr "Catrom"
-
-
-msgid "Mitch"
-msgstr "Mitch"
 
 
 msgid "Bokeh"
@@ -23135,6 +23063,10 @@ msgid "Y position of the middle of the ellipse"
 msgstr "Posizione Y della metà dell'ellisse"
 
 
+msgid "Filter Type"
+msgstr "Tipo Filtro"
+
+
 msgid "Soften"
 msgstr "Ammorbidisci"
 
@@ -23260,8 +23192,8 @@ msgid "Tracking Object"
 msgstr "Oggetto Tracciamento"
 
 
-msgid "Smoothing"
-msgstr "Levigatura"
+msgid "Eccentricity"
+msgstr "Eccentricità"
 
 
 msgid "Anisotropic"
@@ -23660,6 +23592,10 @@ msgid "Z Up"
 msgstr "Z In Alto"
 
 
+msgid "Selection"
+msgstr "Selezione"
+
+
 msgid "Pack UV Islands"
 msgstr "Compatta Isole UV"
 
@@ -23691,6 +23627,10 @@ msgstr "Ingresso Gruppo"
 
 msgid "Group Output"
 msgstr "Uscita Gruppo"
+
+
+msgid "Active Output"
+msgstr "Uscita Attiva"
 
 
 msgid "Reroute"
@@ -24009,16 +23949,8 @@ msgid "Projection of the input image"
 msgstr "Proiezione dell'immagine in entrata"
 
 
-msgid "Equirectangular"
-msgstr "Equirettangolare"
-
-
 msgid "Equirectangular or latitude-longitude projection"
 msgstr "Equirettangolare o proiezione latitudine-longitudine"
-
-
-msgid "Mirror Ball"
-msgstr "Sfera a Specchio"
 
 
 msgid "Projection from an orthographic photo of a mirror ball"
@@ -24445,8 +24377,12 @@ msgid "Virtual Node Socket"
 msgstr "Connettore Nodo Virtuale"
 
 
-msgid "Node Socket Template"
-msgstr "Connettore Nodo Modello"
+msgid "Both"
+msgstr "Entrambi"
+
+
+msgid "Socket Type"
+msgstr "Tipo di Connettore"
 
 
 msgid "Maximum value"
@@ -24455,14 +24391,6 @@ msgstr "Valore massimo"
 
 msgid "Minimum value"
 msgstr "Valore minimo"
-
-
-msgid "Node Tree Inputs"
-msgstr "Ingressi Alberi Nodi"
-
-
-msgid "Node Tree Outputs"
-msgstr "Uscite Albero Nodi"
 
 
 msgid "Node Tree Path"
@@ -25197,11 +25125,6 @@ msgid "To Bottom"
 msgstr "Al Fondo"
 
 
-msgctxt "Operator"
-msgid "Rename Channels"
-msgstr "Rinomina Canali"
-
-
 msgid "Rename animation channel under mouse"
 msgstr "Rinomina il canale di animazione sotto il mouse"
 
@@ -25493,10 +25416,6 @@ msgid "Automatically renames the selected bones according to which side of the t
 msgstr "Rinomina automaticamente le ossa selezionate in accordo a quale lato dell'asse bersaglio cadono"
 
 
-msgid "Axis tag names with"
-msgstr "Contrassegna nomi degli assi con"
-
-
 msgid "X-Axis"
 msgstr "Asse X"
 
@@ -25716,6 +25635,11 @@ msgstr "Rendi visibili tutti i layers dell'armatura visibile"
 
 msgid "Enable all layers or just the first 16 (top row)"
 msgstr "Abilita tutti i livelli o solo i primi 16 (riga in alto)"
+
+
+msgctxt "Operator"
+msgid "Move to Collection"
+msgstr "Sposta alla Raccolta"
 
 
 msgctxt "Operator"
@@ -26151,10 +26075,6 @@ msgstr "Fattore di scala di grandezza del pennello"
 msgctxt "Operator"
 msgid "Stencil Brush Control"
 msgstr "Controllo Stencil Pennello"
-
-
-msgid "Tool"
-msgstr "Strumento"
 
 
 msgid "Translation"
@@ -27154,10 +27074,6 @@ msgid "Set the current language for this console"
 msgstr "Imposta il linguaggio corrente per questa console"
 
 
-msgid "Language"
-msgstr "Lingua"
-
-
 msgctxt "Operator"
 msgid "Move Cursor"
 msgstr "Muovi Cursore"
@@ -27186,10 +27102,6 @@ msgstr "Incolla dagli Appunti"
 
 msgid "Paste text from clipboard"
 msgstr "Incolla il testo dagli appunti"
-
-
-msgid "Selection"
-msgstr "Selezione"
 
 
 msgctxt "Operator"
@@ -28013,8 +27925,16 @@ msgstr "Converte le rotazioni nell'euleriana ZYX"
 
 
 msgctxt "Operator"
-msgid "Export PLY"
-msgstr "Esporta PLY"
+msgid "Export STL"
+msgstr "Esporta STL"
+
+
+msgid "Ascii"
+msgstr "Ascii"
+
+
+msgid "Save the file in ASCII file format"
+msgstr "Salva il file nel formato di file ASCII"
 
 
 msgid "X Forward"
@@ -28061,39 +27981,6 @@ msgid "-Z Up"
 msgstr "-Z In Alto"
 
 
-msgid "Export the active vertex color layer"
-msgstr "Esporta il livello colori vertice attivo"
-
-
-msgid "Apply Modifiers"
-msgstr "Applica Modificatori"
-
-
-msgid "Apply Modifiers to the exported mesh"
-msgstr "Applica i modificatori alle mesh esportate"
-
-
-msgid "Selection Only"
-msgstr "Solo Selezione"
-
-
-msgid "Export selected objects only"
-msgstr "Esporta solo gli oggetti selezionati"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "Esporta STL"
-
-
-msgid "Ascii"
-msgstr "Ascii"
-
-
-msgid "Save the file in ASCII file format"
-msgstr "Salva il file nel formato di file ASCII"
-
-
 msgid "Batch Mode"
 msgstr "Modo Batch"
 
@@ -28106,12 +27993,24 @@ msgid "Each object as a file"
 msgstr "Ogni oggetto come un file"
 
 
+msgid "Apply Modifiers"
+msgstr "Applica Modificatori"
+
+
 msgid "Apply the modifiers before saving"
 msgstr "Applica i modificatori prima di salvare"
 
 
 msgid "Scene Unit"
 msgstr "Unità Scena"
+
+
+msgid "Selection Only"
+msgstr "Solo Selezione"
+
+
+msgid "Export selected objects only"
+msgstr "Esporta solo gli oggetti selezionati"
 
 
 msgctxt "Operator"
@@ -28177,6 +28076,10 @@ msgstr "Incorpora Texture"
 
 msgid "Scale all data (Some importers do not support scaled armatures!)"
 msgstr "Scala tutti i dati (Alcuni importatori non supportano le armature scalate!)"
+
+
+msgid "Smoothing"
+msgstr "Levigatura"
 
 
 msgid "Normals Only"
@@ -28293,67 +28196,6 @@ msgstr "Converte tutte le facce in triangoli"
 
 msgid "General"
 msgstr "Generale"
-
-
-msgctxt "Operator"
-msgid "Export OBJ"
-msgstr "Esporta OBJ"
-
-
-msgid "Save a Wavefront OBJ File"
-msgstr "Salva in un file Wavefront OBJ"
-
-
-msgid "Material Groups"
-msgstr "Gruppi Materiale"
-
-
-msgid "Keep Vertex Order"
-msgstr "Mantieni Ordine Vertici"
-
-
-msgid "Write out an OBJ for each frame"
-msgstr "Scrive un OBJ per ogni fotogramma"
-
-
-msgid "Include Edges"
-msgstr "Includi Spigoli"
-
-
-msgid "Write Materials"
-msgstr "Scrivi Materiali"
-
-
-msgid "Write out the MTL file"
-msgstr "Scrive il file MTL"
-
-
-msgid "Apply modifiers"
-msgstr "Applica modificatori"
-
-
-msgid "Write Normals"
-msgstr "Scrivi Normali"
-
-
-msgid "Write Nurbs"
-msgstr "Scrivi Nurbs"
-
-
-msgid "Write nurbs curves as OBJ nurbs rather than converting to geometry"
-msgstr "Scrivi curve nurbs come OBJ nurbs anziché convertire la geometria"
-
-
-msgid "Include UVs"
-msgstr "Includi UV"
-
-
-msgid "Write out the active UV coordinates"
-msgstr "Esporta le coordinate UV attive"
-
-
-msgid "Polygroups"
-msgstr "Gruppi Multipli"
 
 
 msgid "Compress"
@@ -29414,10 +29256,6 @@ msgid "Send to Back"
 msgstr "Porta in Fondo"
 
 
-msgid "Both"
-msgstr "Entrambi"
-
-
 msgctxt "Operator"
 msgid "Change Stroke Color"
 msgstr "Cambia Colore Tratto"
@@ -29426,10 +29264,6 @@ msgstr "Cambia Colore Tratto"
 msgctxt "Operator"
 msgid "Set Cyclical State"
 msgstr "Imposta Stato Ciclico"
-
-
-msgid "Close or open the selected stroke adding an edge from last to first point"
-msgstr "Chiude o apre il tratto selezionato aggiungendo uno spigolo fra l'ultimo ed il primo punto"
 
 
 msgctxt "Operator"
@@ -30232,19 +30066,6 @@ msgstr "Senza ombre"
 
 
 msgctxt "Operator"
-msgid "Import PLY"
-msgstr "Importa PLY"
-
-
-msgid "Load a PLY geometry file"
-msgstr "Carica un file geometria PLY"
-
-
-msgid "File path used for importing the PLY file"
-msgstr "Percorso usato per importare il file PLY"
-
-
-msgctxt "Operator"
 msgid "Import STL"
 msgstr "Importa STL"
 
@@ -30320,55 +30141,6 @@ msgstr "Specifica orientamento e scala, anzichè usare quelli inclusi nel file F
 
 msgid "Use Pre/Post Rotation"
 msgstr "Usa Pre/Post Rotazione"
-
-
-msgctxt "Operator"
-msgid "Import OBJ"
-msgstr "Importa OBJ"
-
-
-msgid "Load a Wavefront OBJ File"
-msgstr "Carica un file Wavefront OBJ"
-
-
-msgid "Clamp Size"
-msgstr "Blocca Dimensione"
-
-
-msgid "Clamp bounds under this value (zero to disable)"
-msgstr "Blocca i confini al di sotto di questo valore (zero per disabilitare)"
-
-
-msgid "Keep Vert Order"
-msgstr "Mantieni Ordine Vertici"
-
-
-msgid "Keep vertex order from file"
-msgstr "Mantiene l'ordine dei vertici del file"
-
-
-msgid "Import lines and faces with 2 verts as edge"
-msgstr "Importa linee e facce con 2 vertici come spigoli"
-
-
-msgid "Poly Groups"
-msgstr "Gruppi Poly"
-
-
-msgid "Import OBJ groups as vertex groups"
-msgstr "Importa gruppi OBJ come gruppo di vertici"
-
-
-msgid "Search subdirs for any associated images (Warning, may be slow)"
-msgstr "Ricerca nelle sottodrectory per qualsiasi immagine associata (Attenzione, può essere lento)"
-
-
-msgid "Import OBJ Groups into Blender Objects"
-msgstr "Importa Gruppi OBJ in Oggetti Blender"
-
-
-msgid "Import OBJ Objects into Blender Objects"
-msgstr "Importa Oggetti OBJ in Oggetti Blender"
 
 
 msgctxt "Operator"
@@ -30505,11 +30277,6 @@ msgstr "Duplica Marcatore Tempo"
 
 msgid "Duplicate selected time marker(s)"
 msgstr "Duplica il marcatore(i) del tempo selezionato"
-
-
-msgctxt "Operator"
-msgid "Make Links to Scene"
-msgstr "Crea Collegamento alla Scena"
 
 
 msgid "Copy selected markers to another scene"
@@ -32151,10 +31918,6 @@ msgid "Select Faces by Sides"
 msgstr "Seleziona Facce per N° di Lati"
 
 
-msgid "Select vertices or faces by the number of polygon sides"
-msgstr "Seleziona vertici o facce con lo stesso numero di lati poligonali"
-
-
 msgid "Number of Vertices"
 msgstr "Numero di Vertici"
 
@@ -32753,17 +32516,9 @@ msgid "Duplicate Strips"
 msgstr "Duplica Spezzoni"
 
 
-msgid "Duplicate selected NLA-Strips, adding the new strips in new tracks above the originals"
-msgstr "Duplica le NLA-Strips selezionate, aggiungendo le strips duplicate in nuove tracce sopra le originali"
-
-
 msgctxt "Operator"
 msgid "Duplicate Linked"
 msgstr "Duplica e Collega"
-
-
-msgid "Duplicate selected strips and move them"
-msgstr "Duplica gli spezzoni selezionati e muovili"
 
 
 msgid "Duplicate Strips"
@@ -33432,15 +33187,6 @@ msgstr "Albero Nodi Genitore"
 
 msgid "Go to parent node tree"
 msgstr "Torna all'albero nodi genitore"
-
-
-msgid "Socket Type"
-msgstr "Tipo di Connettore"
-
-
-msgctxt "Operator"
-msgid "Move Node Tree Socket"
-msgstr "Muovi Connettore Albero Nodi"
 
 
 msgid "Resize view so you can see all nodes"
@@ -34126,11 +33872,6 @@ msgstr "Rimuovi Modificatore"
 
 msgid "Remove a modifier from the active object"
 msgstr "Rimuove un modificatore dall'oggetto attivo"
-
-
-msgctxt "Operator"
-msgid "Move to Collection"
-msgstr "Sposta alla Raccolta"
 
 
 msgid "Move objects to a collection"
@@ -35629,6 +35370,14 @@ msgstr "Crea Mancante"
 
 msgid "If the requested brush type does not exist, create a new brush"
 msgstr "Se il tipo di pennello richiesto non esiste, ne crea uno nuovo"
+
+
+msgid "Comb"
+msgstr "Pettina"
+
+
+msgid "Puff"
+msgstr "Gonfia"
 
 
 msgid "Clone"
@@ -37641,10 +37390,6 @@ msgid "Remove unused settings for invisible editors"
 msgstr "Rimuove le impostazioni inutilizzate per gli editor invisibili"
 
 
-msgid "Interface"
-msgstr "Interfaccia"
-
-
 msgid "Themes"
 msgstr "Temi"
 
@@ -37794,30 +37539,47 @@ msgid "Change Effect Type"
 msgstr "Cambia Tipo di Effetto"
 
 
+msgctxt "Sequence"
+msgid "Type"
+msgstr "Tipo"
+
+
 msgid "Sequencer effect type"
 msgstr "Tipo di effetto del sequenziatore"
-
-
-msgid "Crossfade"
-msgstr "Dissolvenza Incrociata"
 
 
 msgid "Crossfade effect strip type"
 msgstr "Tipo strip effetto dissolvenza incrociata"
 
 
+msgctxt "Sequence"
+msgid "Add"
+msgstr "Aggiungi"
+
+
 msgid "Add effect strip type"
 msgstr "Agg. tipo effetto strip"
+
+
+msgctxt "Sequence"
+msgid "Subtract"
+msgstr "Sottrai"
 
 
 msgid "Subtract effect strip type"
 msgstr "Sottrae tipo di effetto strip"
 
 
+msgctxt "Sequence"
+msgid "Alpha Over"
+msgstr "Sovra Trasparenza"
+
+
 msgid "Alpha Over effect strip type"
 msgstr "Alpha sopra il tipo di effetto strip"
 
 
+msgctxt "Sequence"
 msgid "Alpha Under"
 msgstr "Sotto Trasparenza"
 
@@ -37826,12 +37588,18 @@ msgid "Alpha Under effect strip type"
 msgstr "Spezzone d'effetto tipo Alfa Sotto"
 
 
+msgctxt "Sequence"
 msgid "Gamma Cross"
 msgstr "Incrocio Gamma"
 
 
 msgid "Gamma Cross effect strip type"
 msgstr "Tipo strip effetto Incrocio Gamma"
+
+
+msgctxt "Sequence"
+msgid "Multiply"
+msgstr "Moltiplica"
 
 
 msgid "Multiply effect strip type"
@@ -37842,6 +37610,7 @@ msgid "Alpha Over Drop effect strip type"
 msgstr "Tipo di effetto strip Alpha Over Drop"
 
 
+msgctxt "Sequence"
 msgid "Wipe"
 msgstr "Tendina"
 
@@ -37850,34 +37619,59 @@ msgid "Wipe effect strip type"
 msgstr "Tipo strip effetto tendina"
 
 
+msgctxt "Sequence"
 msgid "Glow"
-msgstr "Bagliore"
+msgstr "Incandescenza"
 
 
 msgid "Glow effect strip type"
 msgstr "Tipo strip effetto bagliore"
 
 
+msgctxt "Sequence"
+msgid "Transform"
+msgstr "Trasforma"
+
+
 msgid "Transform effect strip type"
 msgstr "Tipo strip effetto trasformazione"
+
+
+msgctxt "Sequence"
+msgid "Color"
+msgstr "Colore"
 
 
 msgid "Color effect strip type"
 msgstr "Tipo strip effetto colore"
 
 
+msgctxt "Sequence"
+msgid "Speed"
+msgstr "Velocità"
+
+
+msgctxt "Sequence"
 msgid "Multicam Selector"
 msgstr "Selettore Multicamera"
 
 
+msgctxt "Sequence"
 msgid "Adjustment Layer"
 msgstr "Livello Aggiustamento"
 
 
+msgctxt "Sequence"
 msgid "Gaussian Blur"
 msgstr "Sfocatura Gaussiana"
 
 
+msgctxt "Sequence"
+msgid "Text"
+msgstr "Testo"
+
+
+msgctxt "Sequence"
 msgid "Color Mix"
 msgstr "Mix Colore"
 
@@ -37915,6 +37709,10 @@ msgstr "Deinterlaccia tutte le sorgenti di filmato selezionate"
 
 msgid "Duplicate the selected strips"
 msgstr "Duplica gli spezzoni selezionati"
+
+
+msgid "Duplicate selected strips and move them"
+msgstr "Duplica gli spezzoni selezionati e muovili"
 
 
 msgid "Slide a sequence strip in time"
@@ -38290,14 +38088,6 @@ msgstr "Aggiungi Modificatore Spezzone"
 
 msgid "Add a modifier to the strip"
 msgstr "Aggiunge un modificatore allo spezzone"
-
-
-msgid "Tone Map"
-msgstr "Mappa Toni"
-
-
-msgid "White Balance"
-msgstr "Bilanciamento del Bianco"
 
 
 msgctxt "Operator"
@@ -39109,10 +38899,6 @@ msgstr "Scorri Sequenza"
 msgctxt "Operator"
 msgid "Shear"
 msgstr "Inclina"
-
-
-msgid "Shear selected items along the horizontal screen axis"
-msgstr "Inclina gli elementi selezionati lungo l'asse orizzontale dello schermo"
 
 
 msgctxt "Operator"
@@ -41066,6 +40852,10 @@ msgid "Print memory statistics to the console"
 msgstr "Stampa la statistica della memoria nella console"
 
 
+msgid "Import OBJ groups as vertex groups"
+msgstr "Importa gruppi OBJ come gruppo di vertici"
+
+
 msgid "Open a Blender file"
 msgstr "Apre un file Blender"
 
@@ -41110,6 +40900,16 @@ msgstr "Aggiunge o rimuove una Preimpostazione Operatore"
 
 msgid "Open a path in a file browser"
 msgstr "Apre un percorso nel file browser"
+
+
+msgctxt "Operator"
+msgid "Export PLY"
+msgstr "Esporta PLY"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "Importa PLY"
 
 
 msgctxt "Operator"
@@ -41172,6 +40972,10 @@ msgstr "Contesto"
 msgctxt "Operator"
 msgid "Edit Property"
 msgstr "Modifica Proprietà"
+
+
+msgid "Speaker"
+msgstr "Altoparlante"
 
 
 msgid "Property Name"
@@ -41873,12 +41677,28 @@ msgid "Active Palette Color"
 msgstr "Colore Tavolozza Attivo"
 
 
+msgid "Refraction"
+msgstr "Rifrazione"
+
+
+msgid "Denoising"
+msgstr "Riduzione Rumore"
+
+
 msgid "Integrator Presets"
 msgstr "Preimpostazioni Integratore"
 
 
 msgid "Sampling Presets"
 msgstr "Preimpostazioni Campionatura"
+
+
+msgid "Film"
+msgstr "Film"
+
+
+msgid "Passes"
+msgstr "Passaggi"
 
 
 msgid "Bone Constraints"
@@ -41970,10 +41790,6 @@ msgid "Post Processing"
 msgstr "Post Elaborazione"
 
 
-msgid "Film"
-msgstr "Film"
-
-
 msgid "Pixel Filter"
 msgstr "Filtro Pixel"
 
@@ -41992,10 +41808,6 @@ msgstr "Rimbalzi Massimi"
 
 msgid "Shutter Curve"
 msgstr "Curva Otturatore"
-
-
-msgid "Passes"
-msgstr "Passaggi"
 
 
 msgid "Performance"
@@ -42328,16 +42140,16 @@ msgid "Shadows"
 msgstr "Ombre"
 
 
-msgid "Screen Space Reflections"
-msgstr "Riflessioni Spazio Schermo"
-
-
 msgid "Volumetrics"
 msgstr "Volumetrie"
 
 
 msgid "Volumetric Lighting"
 msgstr "Illuminazione Volumetrica"
+
+
+msgid "Screen Space Reflections"
+msgstr "Riflessioni Spazio Schermo"
 
 
 msgid "Volumetric Shadows"
@@ -42571,6 +42383,10 @@ msgstr "Libreria Pose"
 
 msgid "3D-Print"
 msgstr "Stampa 3D"
+
+
+msgid "Wire Color"
+msgstr "Colore Reticolo"
 
 
 msgid "Compositor"
@@ -43743,6 +43559,14 @@ msgid "Minimum distance between nodes for Auto-offsetting nodes"
 msgstr "Distanza minima fra i nodi per l'Auto-Spaziatura dei nodi"
 
 
+msgid "Auto-offset"
+msgstr "Auto-Spaziatura"
+
+
+msgid "Automatically offset the following or previous nodes in a chain when inserting a new node"
+msgstr "Spazia automaticamente i nodi seguenti o precedenti in una catena quando si inserisce un nuovo nodo"
+
+
 msgid "Align Object To"
 msgstr "Allinea Oggetto A"
 
@@ -44547,6 +44371,10 @@ msgid "Diameter of the gizmo"
 msgstr "Diametro del manipolatore"
 
 
+msgid "Language"
+msgstr "Lingua"
+
+
 msgid "Language used for translation"
 msgstr "Lingua usata per la traduzione"
 
@@ -44715,14 +44543,6 @@ msgid "Thicker lines than the default"
 msgstr "Linee più spesse del predefinito"
 
 
-msgid "Contents Follow Opening Direction"
-msgstr "Contenuto Ordinato per Direzione Apertura"
-
-
-msgid "Otherwise menus, etc will always be top to bottom, left to right, no matter opening direction"
-msgstr "Altrimenti menu ecc. sono sempre dall'alto in basso, da sinistra a destra, indipendentemente dalla direzione di apertura"
-
-
 msgid "Open menu buttons and pulldowns automatically when the mouse is hovering"
 msgstr "Apre i menu a discesa automaticamente al passaggio del mouse sopra gli stessi"
 
@@ -44783,48 +44603,16 @@ msgid "Temperature"
 msgstr "Temperatura"
 
 
+msgid "XYZ"
+msgstr "XYZ"
+
+
 msgid "Group of ID properties"
 msgstr "Gruppo di proprietà ID"
 
 
 msgid "Case"
 msgstr "Maiuscolo/Minuscolo"
-
-
-msgid "Fisheye Lens"
-msgstr "Fisheye"
-
-
-msgid "Lens focal length (mm)"
-msgstr "Lunghezza focale lenti (mm)"
-
-
-msgid "Max Latitude"
-msgstr "Max Latitudine"
-
-
-msgid "Min Latitude"
-msgstr "Min Latitudine"
-
-
-msgid "Max Longitude"
-msgstr "Max Longitudine"
-
-
-msgid "Min Longitude"
-msgstr "Min Longitudine"
-
-
-msgid "Panorama Type"
-msgstr "Tipo Panorama"
-
-
-msgid "Fisheye Equidistant"
-msgstr "Fisheye Equidistante"
-
-
-msgid "Fisheye Equisolid"
-msgstr "Fisheye Equisolido"
 
 
 msgid "CPU"
@@ -45915,8 +45703,8 @@ msgid "Render at 12.5% resolution"
 msgstr "Renderizza al 12.5% della risoluzione"
 
 
-msgid "Resolution %"
-msgstr "Risoluzione %"
+msgid "Resolution Scale"
+msgstr "Risoluzione Scala"
 
 
 msgid "Percentage scale for render resolution"
@@ -46747,6 +46535,14 @@ msgid "YCbCr (ITU 709)"
 msgstr "YCbCr (ITU 709)"
 
 
+msgid "Alpha Under"
+msgstr "Sotto Trasparenza"
+
+
+msgid "Gamma Cross"
+msgstr "Incrocio Gamma"
+
+
 msgid "Y position of the sequence strip"
 msgstr "Posizione Y dello spezzone sequenza"
 
@@ -46769,11 +46565,6 @@ msgstr "Maniglia Sinistra Selezionata"
 
 msgid "Right Handle Selected"
 msgstr "Maniglia Destra Selezionata"
-
-
-msgctxt "Sequence"
-msgid "Type"
-msgstr "Tipo"
 
 
 msgctxt "Sequence"
@@ -46814,86 +46605,6 @@ msgstr "Suono"
 msgctxt "Sequence"
 msgid "Cross"
 msgstr "Incrocio"
-
-
-msgctxt "Sequence"
-msgid "Add"
-msgstr "Aggiungi"
-
-
-msgctxt "Sequence"
-msgid "Subtract"
-msgstr "Sottrai"
-
-
-msgctxt "Sequence"
-msgid "Alpha Over"
-msgstr "Sovra Trasparenza"
-
-
-msgctxt "Sequence"
-msgid "Alpha Under"
-msgstr "Sotto Trasparenza"
-
-
-msgctxt "Sequence"
-msgid "Gamma Cross"
-msgstr "Incrocio Gamma"
-
-
-msgctxt "Sequence"
-msgid "Multiply"
-msgstr "Moltiplica"
-
-
-msgctxt "Sequence"
-msgid "Wipe"
-msgstr "Tendina"
-
-
-msgctxt "Sequence"
-msgid "Glow"
-msgstr "Incandescenza"
-
-
-msgctxt "Sequence"
-msgid "Transform"
-msgstr "Trasforma"
-
-
-msgctxt "Sequence"
-msgid "Color"
-msgstr "Colore"
-
-
-msgctxt "Sequence"
-msgid "Speed"
-msgstr "Velocità"
-
-
-msgctxt "Sequence"
-msgid "Multicam Selector"
-msgstr "Selettore Multicamera"
-
-
-msgctxt "Sequence"
-msgid "Adjustment Layer"
-msgstr "Livello Aggiustamento"
-
-
-msgctxt "Sequence"
-msgid "Gaussian Blur"
-msgstr "Sfocatura Gaussiana"
-
-
-msgctxt "Sequence"
-msgid "Text"
-msgstr "Testo"
-
-
-msgctxt "Sequence"
-msgid "Color Mix"
-msgstr "Mix Colore"
 
 
 msgid "Use Linear Modifiers"
@@ -47100,16 +46811,8 @@ msgid "Sequence strip creating a wipe transition"
 msgstr "Spezzone di sequenza che crea un effetto tendina"
 
 
-msgid "Edge angle"
-msgstr "Angolo spigolo"
-
-
 msgid "Blur Width"
 msgstr "Larghezza Sfocatura"
-
-
-msgid "Wipe direction"
-msgstr "Direzione tendina"
 
 
 msgid "Mask Sequence"
@@ -47276,6 +46979,14 @@ msgid "Mute this modifier"
 msgstr "Disabilita questo modificatore"
 
 
+msgid "Tone Map"
+msgstr "Mappa Toni"
+
+
+msgid "White Balance"
+msgstr "Bilanciamento del Bianco"
+
+
 msgid "Bright/contrast modifier data for sequence strip"
 msgstr "Dati modifica luminosità/contrasto di uno spezzone sequenza"
 
@@ -47294,10 +47005,6 @@ msgstr "Modificatore bilanciamento colore di uno spezzone sequenza"
 
 msgid "RGB curves modifier for sequence strip"
 msgstr "Modificatore curve RGB di uno spzzone sequenza"
-
-
-msgid "Curve Mapping"
-msgstr "Mappatura Curva"
 
 
 msgid "Hue correction modifier for sequence strip"
@@ -47817,10 +47524,6 @@ msgid "Show search boundbox for markers"
 msgstr "Mostra l'area di ricerca per i marcatori"
 
 
-msgid "Show Names"
-msgstr "Mostra Nomi"
-
-
 msgid "Show track names and status"
 msgstr "Mostra il nome del tracciatore e lo stato"
 
@@ -47835,10 +47538,6 @@ msgstr "Mostra canale rosso nel fotogramma"
 
 msgid "Toolbar"
 msgstr "Barra Strumenti"
-
-
-msgid "Sidebar"
-msgstr "Barra Laterale"
 
 
 msgid "Show Seconds"
@@ -48432,14 +48131,6 @@ msgid "Re-render and composite changed layers on 3D edits"
 msgstr "Ri-renderizza e composita i livelli alterati con modifiche 3D"
 
 
-msgid "Auto-offset"
-msgstr "Auto-Spaziatura"
-
-
-msgid "Automatically offset the following or previous nodes in a chain when inserting a new node"
-msgstr "Spazia automaticamente i nodi seguenti o precedenti in una catena quando si inserisce un nuovo nodo"
-
-
 msgid "Space Outliner"
 msgstr "Spazio Struttura (Outliner)"
 
@@ -48466,10 +48157,6 @@ msgstr "Dati Orfani"
 
 msgid "Display data-blocks which are unused and/or will be lost when the file is reloaded"
 msgstr "Mostra i blocchi -dati inutilizzati e/o che verranno persi quando il file sarà ricaricato"
-
-
-msgid "Display Filter"
-msgstr "Mostra Filtro"
 
 
 msgid "Live search filtering string"
@@ -48804,10 +48491,6 @@ msgid "Show Camera Focus Distance"
 msgstr "Mostra Distanza Focale Camera"
 
 
-msgid "Speaker"
-msgstr "Altoparlante"
-
-
 msgid "Show Reconstruction"
 msgstr "Mostra Ricostruzione"
 
@@ -48862,6 +48545,10 @@ msgstr "Mostra la dimensione delle tracce per i dati ricostruiti"
 
 msgid "Use Local Camera"
 msgstr "Usa Camera Locale"
+
+
+msgid "Flat"
+msgstr "Piano"
 
 
 msgid "Space UV Editor"
@@ -49830,10 +49517,6 @@ msgstr "Nodo Vettore"
 
 msgid "Wires"
 msgstr "Reticoli (fil di ferro)"
-
-
-msgid "Wire Color"
-msgstr "Colore Reticolo"
 
 
 msgid "Wire Select"
@@ -51356,10 +51039,6 @@ msgid "Surfaces"
 msgstr "Superfici"
 
 
-msgid "Denoising"
-msgstr "Riduzione Rumore"
-
-
 msgid "No output node"
 msgstr "Nessun Nodo Uscita"
 
@@ -51642,10 +51321,6 @@ msgid "Invert Selection"
 msgstr "Inverti Selezione"
 
 
-msgid "Tracking"
-msgstr "Tracciamento"
-
-
 msgctxt "Operator"
 msgid "New"
 msgstr "Nuovo"
@@ -51741,14 +51416,6 @@ msgstr "Estrapola"
 
 msgid "Pivot Offset"
 msgstr "Scostamento Perno"
-
-
-msgid "Layers:"
-msgstr "Livelli:"
-
-
-msgid "Protected Layers:"
-msgstr "Livelli Protetti:"
 
 
 msgid "Axes"
@@ -52302,10 +51969,6 @@ msgid "Auto-Step"
 msgstr "Passo Automatico"
 
 
-msgid "Refraction"
-msgstr "Rifrazione"
-
-
 msgid "Render Engine"
 msgstr "Motore di Rendering"
 
@@ -52333,10 +51996,6 @@ msgstr "Calcola"
 
 msgid "Dimension"
 msgstr "Dimensione"
-
-
-msgid "Eccentricity"
-msgstr "Eccentricità"
 
 
 msgid "Odd"
@@ -52906,11 +52565,6 @@ msgstr "Rinomina..."
 
 
 msgctxt "Operator"
-msgid "Linked Duplicate"
-msgstr "Duplicato Collegato"
-
-
-msgctxt "Operator"
 msgid "Stop Tweaking Strip Actions"
 msgstr "Termina la Modifica della Striscia Azioni"
 
@@ -53163,31 +52817,6 @@ msgstr "Tendina"
 
 
 msgctxt "Operator"
-msgid "Subtract"
-msgstr "Sottrai"
-
-
-msgctxt "Operator"
-msgid "Multiply"
-msgstr "Moltiplica"
-
-
-msgctxt "Operator"
-msgid "Alpha Over"
-msgstr "Sovra Trasparenza"
-
-
-msgctxt "Operator"
-msgid "Alpha Under"
-msgstr "Sotto Trasparenza"
-
-
-msgctxt "Operator"
-msgid "Color Mix"
-msgstr "Mix Colore"
-
-
-msgctxt "Operator"
 msgid "Multicam Selector"
 msgstr "Selettore Multicam"
 
@@ -53343,13 +52972,23 @@ msgstr "File: %s"
 
 
 msgctxt "Operator"
+msgid "Move Marker"
+msgstr "Muovi Marcatore"
+
+
+msgctxt "Operator"
 msgid "Duplicate Marker"
 msgstr "Duplica Marcatore"
 
 
 msgctxt "Operator"
-msgid "Move Marker"
-msgstr "Muovi Marcatore"
+msgid "Jump to Previous Marker"
+msgstr "Salta al Marcatore Precedente"
+
+
+msgctxt "Operator"
+msgid "Jump to Next Marker"
+msgstr "Salta al Marcatore Successivo"
 
 
 msgctxt "Operator"
@@ -53360,16 +52999,6 @@ msgstr "Duplica Marcatore alla Scena..."
 msgctxt "Operator"
 msgid "Duplicate Marker to Scene"
 msgstr "Duplica Marcatore alla Scena"
-
-
-msgctxt "Operator"
-msgid "Jump to Next Marker"
-msgstr "Salta al Marcatore Successivo"
-
-
-msgctxt "Operator"
-msgid "Jump to Previous Marker"
-msgstr "Salta al Marcatore Precedente"
 
 
 msgid "Drag:"
@@ -53500,16 +53129,6 @@ msgstr "Comunità Utenti"
 
 
 msgctxt "Operator"
-msgid "Developer Community"
-msgstr "Comunità Sviluppatori"
-
-
-msgctxt "Operator"
-msgid "Python API Reference"
-msgstr "Riferimenti API Python"
-
-
-msgctxt "Operator"
 msgid "Report a Bug"
 msgstr "Segnala un Baco"
 
@@ -53523,12 +53142,18 @@ msgid "Developer Documentation"
 msgstr "Documentazione per Sviluppatori"
 
 
+msgctxt "Operator"
+msgid "Developer Community"
+msgstr "Comunità Sviluppatori"
+
+
+msgctxt "Operator"
+msgid "Python API Reference"
+msgstr "Riferimenti API Python"
+
+
 msgid "Auto-Save Preferences"
 msgstr "Auto Salva Preferenze"
-
-
-msgid "Resolution Scale"
-msgstr "Risoluzione Scala"
 
 
 msgid "Splash Screen"
@@ -54731,11 +54356,6 @@ msgstr "Imposta Camera Attiva"
 
 
 msgctxt "Operator"
-msgid "Assign to Group"
-msgstr "Assegna a Gruppo"
-
-
-msgctxt "Operator"
 msgid "Randomize Vertices"
 msgstr "Casualizza Vertici"
 
@@ -54976,40 +54596,16 @@ msgid "ShapeKey"
 msgstr "ChiaveForma"
 
 
-msgid "Source and destination meshes do not have the same amount of vertices, 'Topology' mapping cannot be used in this case"
-msgstr "Le mesh sorgente e di destinazione non hanno lo stesso numero di vertici, in questo caso la mappatura \"Topologia\" non può essere usata"
-
-
-msgid "Source mesh doesn't have any edges, None of the 'Edge' mappings can be used in this case"
-msgstr "La mesh sorgente non ha spigoli, impossibile usare una qualunque mappatura 'Spigoli'"
-
-
-msgid "Source mesh doesn't have any faces, None of the 'Face' mappings can be used in this case"
-msgstr "La mesh sorgente non ha facce, impossibile usare una qualunque mappatura 'Facce'"
-
-
 msgid "Source or destination meshes do not have any vertices, cannot transfer vertex data"
 msgstr "La mesh sorgente o quella di destinazione non ha vertici, impossibile trasferire dati vertice"
-
-
-msgid "Source and destination meshes do not have the same amount of edges, 'Topology' mapping cannot be used in this case"
-msgstr "Le mesh sorgente e di destinazione non hanno lo stesso numero di spigoli, in questo caso la mappatura \"Topologia\" non può essere usata"
 
 
 msgid "Source or destination meshes do not have any edges, cannot transfer edge data"
 msgstr "La mesh sorgente o quella di destinazione non ha spigoli, impossibile trasferire dati spigolo"
 
 
-msgid "Source and destination meshes do not have the same amount of face corners, 'Topology' mapping cannot be used in this case"
-msgstr "Le mesh sorgente e di destinazione non hanno lo stesso numero di angoli della faccia, in questo caso la mappatura \"Topologia\" non può essere usata"
-
-
 msgid "Source or destination meshes do not have any faces, cannot transfer corner data"
 msgstr "La mesh sorgente o quella di destinazione non ha facce, impossibile trasferire dati angolo"
-
-
-msgid "Source and destination meshes do not have the same amount of faces, 'Topology' mapping cannot be used in this case"
-msgstr "Le mesh sorgente e di destinazione non hanno lo stesso numero di facce, in questo caso la mappatura \"Topologia\" non può essere usata"
 
 
 msgid "Source or destination meshes do not have any faces, cannot transfer face data"
@@ -55969,10 +55565,6 @@ msgid "Stop animation playback"
 msgstr "Ferma la riproduzione dell'animazione"
 
 
-msgid "Click to see the remaining reports in text block: 'Recent Reports'"
-msgstr "Clicca per vedere il resto dei rapporti nel textblock: 'Recent Reports'"
-
-
 msgid "Browse Scene to be linked"
 msgstr "Naviga Scena da collegare"
 
@@ -56223,6 +55815,10 @@ msgid "Object Groups"
 msgstr "Gruppi Oggetto"
 
 
+msgid "Material Groups"
+msgstr "Gruppi Materiale"
+
+
 msgid "Mesh Data"
 msgstr "Dati Mesh"
 
@@ -56418,10 +56014,6 @@ msgstr "Impossibile aggiungere spigoli in Modalità Modifica"
 
 msgid "Cannot add loops in edit mode"
 msgstr "Impossibile aggiungere anelli (loops) in edit mode"
-
-
-msgid "Cannot add polygons in edit mode"
-msgstr "Impossibile aggiungere poligoni in Modalità Modifica"
 
 
 msgid "Cannot remove vertices in edit mode"
@@ -58701,6 +58293,10 @@ msgid "Crease Edges"
 msgstr "Spigoli Piega"
 
 
+msgid "Matte"
+msgstr "Mascherino"
+
+
 msgid "Fac"
 msgstr "Fatt"
 
@@ -59324,6 +58920,10 @@ msgstr "Gli spezzoni non sono compatibili"
 
 msgid "Strips must have the same number of inputs"
 msgstr "Gli spezzoni devono avere lo stesso numero di ingressi"
+
+
+msgid "Glow"
+msgstr "Bagliore"
 
 
 msgid "Blur X"

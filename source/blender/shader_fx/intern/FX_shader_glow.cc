@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation
+/* SPDX-FileCopyrightText: 2018 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,7 +13,7 @@
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -23,10 +23,10 @@
 #include "BKE_screen.h"
 #include "BKE_shader_fx.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "FX_shader_types.h"
 #include "FX_ui_common.h"
@@ -56,23 +56,23 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "mode", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  uiItemR(layout, ptr, "threshold", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "threshold", UI_ITEM_NONE, nullptr, ICON_NONE);
   if (mode == eShaderFxGlowMode_Color) {
-    uiItemR(layout, ptr, "select_color", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "select_color", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
-  uiItemR(layout, ptr, "glow_color", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "glow_color", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   uiItemS(layout);
 
-  uiItemR(layout, ptr, "blend_mode", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "opacity", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "size", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "rotation", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "samples", 0, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "use_glow_under", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "blend_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "opacity", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "size", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "rotation", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "samples", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "use_glow_under", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   shaderfx_panel_end(layout, ptr);
 }

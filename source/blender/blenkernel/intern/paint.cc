@@ -26,6 +26,8 @@
 #include "BLI_bitmap.h"
 #include "BLI_hash.h"
 #include "BLI_listbase.h"
+#include "BLI_math_color.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 #include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
@@ -35,7 +37,7 @@
 
 #include "BKE_attribute.h"
 #include "BKE_attribute.hh"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_ccg.h"
 #include "BKE_colortools.h"
 #include "BKE_context.h"
@@ -50,23 +52,23 @@
 #include "BKE_main.h"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_mapping.hh"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.h"
-#include "BKE_multires.h"
+#include "BKE_multires.hh"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_scene.h"
-#include "BKE_subdiv_ccg.h"
-#include "BKE_subsurf.h"
+#include "BKE_subdiv_ccg.hh"
+#include "BKE_subsurf.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "RNA_enum_types.h"
+#include "RNA_enum_types.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "bmesh.h"
 
@@ -158,8 +160,7 @@ IDTypeInfo IDType_ID_PAL = {
 
     /*blend_write*/ palette_blend_write,
     /*blend_read_data*/ palette_blend_read_data,
-    /*blend_read_lib*/ nullptr,
-    /*blend_read_expand*/ nullptr,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ palette_undo_preserve,
 
@@ -226,8 +227,7 @@ IDTypeInfo IDType_ID_PC = {
 
     /*blend_write*/ paint_curve_blend_write,
     /*blend_read_data*/ paint_curve_blend_read_data,
-    /*blend_read_lib*/ nullptr,
-    /*blend_read_expand*/ nullptr,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -594,6 +594,8 @@ ePaintMode BKE_paintmode_get_active_from_context(const bContext *C)
           return PAINT_MODE_SCULPT_UV;
         case OB_MODE_SCULPT_CURVES:
           return PAINT_MODE_SCULPT_CURVES;
+        case OB_MODE_PAINT_GREASE_PENCIL:
+          return PAINT_MODE_GPENCIL;
         default:
           return PAINT_MODE_TEXTURE_2D;
       }
@@ -1271,31 +1273,8 @@ void BKE_paint_blend_read_data(BlendDataReader *reader, const Scene *scene, Pain
     p->tool_slots = static_cast<PaintToolSlot *>(MEM_callocN(expected_size, "PaintToolSlot"));
   }
 
+  p->paint_cursor = nullptr;
   BKE_paint_runtime_init(scene->toolsettings, p);
-}
-
-void BKE_paint_blend_read_lib(BlendLibReader *reader, Scene *sce, Paint *p)
-{
-  if (p) {
-    BLO_read_id_address(reader, &sce->id, &p->brush);
-    for (int i = 0; i < p->tool_slots_len; i++) {
-      if (p->tool_slots[i].brush != nullptr) {
-        BLO_read_id_address(reader, &sce->id, &p->tool_slots[i].brush);
-      }
-    }
-    BLO_read_id_address(reader, &sce->id, &p->palette);
-    p->paint_cursor = nullptr;
-
-    BKE_paint_runtime_init(sce->toolsettings, p);
-  }
-}
-
-bool paint_is_face_hidden(const int *looptri_faces, const bool *hide_poly, const int tri_index)
-{
-  if (!hide_poly) {
-    return false;
-  }
-  return hide_poly[looptri_faces[tri_index]];
 }
 
 bool paint_is_grid_face_hidden(const uint *grid_hidden, int gridsize, int x, int y)
@@ -1412,13 +1391,7 @@ void BKE_sculptsession_free_deformMats(SculptSession *ss)
 
 void BKE_sculptsession_free_vwpaint_data(SculptSession *ss)
 {
-  SculptVertexPaintGeomMap *gmap = nullptr;
-  if (ss->mode_type == OB_MODE_VERTEX_PAINT) {
-    gmap = &ss->mode.vpaint.gmap;
-  }
-  else if (ss->mode_type == OB_MODE_WEIGHT_PAINT) {
-    gmap = &ss->mode.wpaint.gmap;
-
+  if (ss->mode_type == OB_MODE_WEIGHT_PAINT) {
     MEM_SAFE_FREE(ss->mode.wpaint.alpha_weight);
     if (ss->mode.wpaint.dvert_prev) {
       BKE_defvert_array_free_elems(ss->mode.wpaint.dvert_prev, ss->totvert);
@@ -1426,15 +1399,6 @@ void BKE_sculptsession_free_vwpaint_data(SculptSession *ss)
       ss->mode.wpaint.dvert_prev = nullptr;
     }
   }
-  else {
-    return;
-  }
-  gmap->vert_to_loop_offsets = {};
-  gmap->vert_to_loop_indices = {};
-  gmap->vert_to_loop = {};
-  gmap->vert_to_face_offsets = {};
-  gmap->vert_to_face_indices = {};
-  gmap->vert_to_face = {};
 }
 
 /**
@@ -1446,11 +1410,6 @@ static void sculptsession_bm_to_me_update_data_only(Object *ob, bool reorder)
 
   if (ss->bm) {
     if (ob->data) {
-      BMIter iter;
-      BMFace *efa;
-      BM_ITER_MESH (efa, &iter, ss->bm, BM_FACES_OF_MESH) {
-        BM_elem_flag_set(efa, BM_ELEM_SMOOTH, ss->bm_smooth_shading);
-      }
       if (reorder) {
         BM_log_mesh_elems_reorder(ss->bm, ss->bm_log);
       }
@@ -1485,8 +1444,6 @@ static void sculptsession_free_pbvh(Object *object)
     ss->pbvh = nullptr;
   }
 
-  ss->vert_to_face_offsets = {};
-  ss->vert_to_face_indices = {};
   ss->pmap = {};
   ss->edge_to_face_offsets = {};
   ss->edge_to_face_indices = {};
@@ -1802,12 +1759,8 @@ static void sculpt_update_object(
   sculpt_attribute_update_refs(ob);
   sculpt_update_persistent_base(ob);
 
-  if (ob->type == OB_MESH && ss->pmap.is_empty()) {
-    ss->pmap = blender::bke::mesh::build_vert_to_face_map(me->faces(),
-                                                          me->corner_verts(),
-                                                          me->totvert,
-                                                          ss->vert_to_face_offsets,
-                                                          ss->vert_to_face_indices);
+  if (ob->type == OB_MESH) {
+    ss->pmap = me->vert_to_face_map();
   }
 
   if (ss->pbvh) {
@@ -1938,7 +1891,7 @@ void BKE_sculpt_update_object_before_eval(Object *ob_eval)
       BKE_sculptsession_free_vwpaint_data(ob_eval->sculpt);
     }
     else if (ss->pbvh) {
-      Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
+      Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
 
       for (PBVHNode *node : nodes) {
         BKE_pbvh_node_mark_update(node);
@@ -2225,7 +2178,6 @@ static PBVH *build_pbvh_for_dynamic_topology(Object *ob)
 
   BKE_pbvh_build_bmesh(pbvh,
                        ob->sculpt->bm,
-                       ob->sculpt->bm_smooth_shading,
                        ob->sculpt->bm_log,
                        ob->sculpt->attrs.dyntopo_node_id_vertex->bmesh_cd_offset,
                        ob->sculpt->attrs.dyntopo_node_id_face->bmesh_cd_offset);
@@ -2263,7 +2215,7 @@ static PBVH *build_pbvh_from_ccg(Object *ob, SubdivCCG *subdiv_ccg)
                        subdiv_ccg->grids,
                        subdiv_ccg->num_grids,
                        &key,
-                       (void **)subdiv_ccg->grid_faces,
+                       subdiv_ccg->grid_to_face_map,
                        subdiv_ccg->grid_flag_mats,
                        subdiv_ccg->grid_hidden,
                        base_mesh,
@@ -2273,7 +2225,7 @@ static PBVH *build_pbvh_from_ccg(Object *ob, SubdivCCG *subdiv_ccg)
 
 PBVH *BKE_sculpt_object_pbvh_ensure(Depsgraph *depsgraph, Object *ob)
 {
-  if (ob == nullptr || ob->sculpt == nullptr) {
+  if (ob->sculpt == nullptr) {
     return nullptr;
   }
 
@@ -2345,11 +2297,6 @@ bool BKE_object_sculpt_use_dyntopo(const Object *object)
   return object->sculpt && object->sculpt->bm;
 }
 
-void BKE_object_sculpt_dyntopo_smooth_shading_set(Object *object, const bool value)
-{
-  object->sculpt->bm_smooth_shading = value;
-}
-
 void BKE_sculpt_bvh_update_from_ccg(PBVH *pbvh, SubdivCCG *subdiv_ccg)
 {
   CCGKey key;
@@ -2357,7 +2304,7 @@ void BKE_sculpt_bvh_update_from_ccg(PBVH *pbvh, SubdivCCG *subdiv_ccg)
 
   BKE_pbvh_grids_update(pbvh,
                         subdiv_ccg->grids,
-                        (void **)subdiv_ccg->grid_faces,
+                        subdiv_ccg->grid_to_face_map,
                         subdiv_ccg->grid_flag_mats,
                         subdiv_ccg->grid_hidden,
                         &key);

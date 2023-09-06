@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2020-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2020-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -14,8 +14,8 @@ from bpy.props import (
 
 def build_default_empty_geometry_node_group(name):
     group = bpy.data.node_groups.new(name, 'GeometryNodeTree')
-    group.inputs.new('NodeSocketGeometry', data_("Geometry"))
-    group.outputs.new('NodeSocketGeometry', data_("Geometry"))
+    group.interface.new_socket(data_("Geometry"), in_out={'OUTPUT'}, socket_type='NodeSocketGeometry')
+    group.interface.new_socket(data_("Geometry"), in_out={'INPUT'}, socket_type='NodeSocketGeometry')
     input_node = group.nodes.new('NodeGroupInput')
     output_node = group.nodes.new('NodeGroupOutput')
     output_node.is_active_output = True
@@ -136,7 +136,9 @@ class MoveModifierToNodes(Operator):
         # Copy default values for inputs and create named attribute input nodes.
         input_nodes = []
         first_geometry_input = None
-        for input_socket in old_group.inputs:
+        for input_socket in old_group.interface.ui_items:
+            if input_socket.item_type != 'SOCKET' or (input_socket.in_out not in {'INPUT', 'BOTH'}):
+                continue
             identifier = input_socket.identifier
             group_node_input = get_socket_with_identifier(group_node.inputs, identifier)
             if modifier_input_use_attribute(modifier, identifier):
@@ -153,6 +155,9 @@ class MoveModifierToNodes(Operator):
                 if not first_geometry_input:
                     first_geometry_input = group_node_input
 
+        if not first_geometry_input:
+            self.report({"WARNING"}, "Node group must have a geometry input")
+            return {'CANCELLED'}
         group.links.new(group_input_node.outputs[0], first_geometry_input)
 
         # Adjust locations of named attribute input nodes and group input node to make some space.
@@ -165,7 +170,9 @@ class MoveModifierToNodes(Operator):
         # Connect outputs to store named attribute nodes to replace modifier attribute outputs.
         store_nodes = []
         first_geometry_output = None
-        for output_socket in old_group.outputs:
+        for output_socket in old_group.interface.ui_items:
+            if output_socket.item_type != 'SOCKET' or (output_socket.in_out not in {'OUTPUT', 'BOTH'}):
+                continue
             identifier = output_socket.identifier
             group_node_output = get_socket_with_identifier(group_node.outputs, identifier)
             attribute_name = modifier_attribute_name_get(modifier, identifier)
@@ -195,6 +202,9 @@ class MoveModifierToNodes(Operator):
 
             group.links.new(store_nodes[-1].outputs["Geometry"], group_output_node.inputs[data_("Geometry")])
         else:
+            if not first_geometry_output:
+                self.report({"WARNING"}, "Node group must have a geometry output")
+                return {"CANCELLED"}
             group.links.new(first_geometry_output, group_output_node.inputs[data_("Geometry")])
 
         modifier.node_group = group
@@ -220,6 +230,7 @@ class NewGeometryNodesModifier(Operator):
             return {'CANCELLED'}
 
         group = geometry_node_group_empty_new()
+        group.is_modifier = True
         modifier.node_group = group
 
         return {'FINISHED'}
@@ -238,7 +249,7 @@ class NewGeometryNodeTreeAssign(Operator):
 
     def execute(self, context):
         space = context.space_data
-        if space and space.type == 'NODE_EDITOR' and space.geometry_nodes_type == 'OPERATOR':
+        if space and space.type == 'NODE_EDITOR' and space.geometry_nodes_type == 'TOOL':
             group = geometry_node_group_empty_new()
             space.node_tree = group
             return {'FINISHED'}
@@ -247,8 +258,28 @@ class NewGeometryNodeTreeAssign(Operator):
             if not modifier:
                 return {'CANCELLED'}
             group = geometry_node_group_empty_new()
+            group.is_modifier = True
             modifier.node_group = group
 
+        return {'FINISHED'}
+
+
+class NewGeometryNodeGroupTool(Operator):
+    """Create a new geometry node group for an tool"""
+    bl_idname = "node.new_geometry_node_group_tool"
+    bl_label = "New Geometry Node Tool Group"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        space = context.space_data
+        return space and space.type == 'NODE_EDITOR' and space.geometry_nodes_type == 'TOOL'
+
+    def execute(self, context):
+        group = geometry_node_group_empty_new()
+        group.asset_mark()
+        group.is_tool = True
+        context.space_data.node_tree = group
         return {'FINISHED'}
 
 
@@ -452,6 +483,7 @@ class RepeatZoneItemMoveOperator(RepeatZoneOperator, Operator):
 classes = (
     NewGeometryNodesModifier,
     NewGeometryNodeTreeAssign,
+    NewGeometryNodeGroupTool,
     MoveModifierToNodes,
     SimulationZoneItemAddOperator,
     SimulationZoneItemRemoveOperator,

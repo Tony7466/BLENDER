@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,6 +8,7 @@
 #include "AS_asset_representation.hh"
 
 #include "BLI_multi_value_map.hh"
+#include "BLI_string.h"
 
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
@@ -18,10 +19,11 @@
 
 #include "BLT_translation.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "ED_asset.h"
-#include "ED_screen.h"
+#include "ED_asset.hh"
+#include "ED_asset_menu_utils.hh"
+#include "ED_screen.hh"
 
 #include "node_intern.hh"
 
@@ -98,17 +100,9 @@ static void node_add_catalog_assets_draw(const bContext *C, Menu *menu)
     return;
   }
 
-  catalog_item->foreach_child([&](asset_system::AssetCatalogTreeItem &child_item) {
-    PointerRNA path_ptr = asset::persistent_catalog_path_rna_pointer(
-        screen, *all_library, child_item);
-    if (path_ptr.data == nullptr) {
-      return;
-    }
-
-    uiLayout *col = uiLayoutColumn(layout, false);
-    uiLayoutSetContextPointer(col, "asset_catalog_path", &path_ptr);
-    uiItemM(
-        col, "NODE_MT_node_add_catalog_assets", IFACE_(child_item.get_name().c_str()), ICON_NONE);
+  catalog_item->foreach_child([&](asset_system::AssetCatalogTreeItem &item) {
+    asset::draw_menu_for_catalog(
+        screen, *all_library, item, "NODE_MT_node_add_catalog_assets", *layout);
   });
 }
 
@@ -163,6 +157,7 @@ static void add_root_catalogs_draw(const bContext *C, Menu *menu)
     menus.add_new("Point");
     menus.add_new("Text");
     menus.add_new("Texture");
+    menus.add_new("Tool");
     menus.add_new("Utilities");
     menus.add_new("UV");
     menus.add_new("Vector");
@@ -179,16 +174,10 @@ static void add_root_catalogs_draw(const bContext *C, Menu *menu)
   }
 
   tree.catalogs.foreach_root_item([&](asset_system::AssetCatalogTreeItem &item) {
-    if (all_builtin_menus.contains(item.get_name())) {
-      return;
+    if (!all_builtin_menus.contains(item.get_name())) {
+      asset::draw_menu_for_catalog(
+          screen, *all_library, item, "NODE_MT_node_add_catalog_assets", *layout);
     }
-    PointerRNA path_ptr = asset::persistent_catalog_path_rna_pointer(screen, *all_library, item);
-    if (path_ptr.data == nullptr) {
-      return;
-    }
-    uiLayout *col = uiLayoutColumn(layout, false);
-    uiLayoutSetContextPointer(col, "asset_catalog_path", &path_ptr);
-    uiItemM(col, "NODE_MT_node_add_catalog_assets", IFACE_(item.get_name().c_str()), ICON_NONE);
   });
 }
 
@@ -199,6 +188,7 @@ MenuType add_catalog_assets_menu_type()
   type.poll = node_add_menu_poll;
   type.draw = node_add_catalog_assets_draw;
   type.listener = asset::asset_reading_region_listen_fn;
+  type.flag = MenuTypeFlag::ContextDependent;
   return type;
 }
 

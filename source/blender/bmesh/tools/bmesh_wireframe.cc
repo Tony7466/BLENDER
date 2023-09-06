@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,9 +12,10 @@
 
 #include "DNA_meshdata_types.h"
 
-#include "BLI_math.h"
-
 #include "bmesh.h"
+
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_customdata.h"
 #include "BKE_deform.h"
@@ -191,7 +192,7 @@ void BM_mesh_wireframe(BMesh *bm,
           MEM_mallocN(sizeof(float) * totvert_orig, __func__) :
           nullptr);
 
-  /* may over-alloc if not all faces have wire */
+  /* May over-allocate if not all faces have wire. */
   BMVert **verts_loop;
   int verts_loop_tot = 0;
 

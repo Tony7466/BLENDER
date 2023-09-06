@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -878,7 +878,7 @@ class PHYSICS_PT_mesh(PhysicButtonsPanel, Panel):
             col.prop(domain, "mesh_concave_upper", text="Concavity Upper")
             col.prop(domain, "mesh_concave_lower", text="Lower")
 
-        # TODO (sebbas): for now just interpolate any upres grids, ie not sampling highres grids
+        # TODO(@sebbas): for now just interpolate any up-resolution grids, ie not sampling high-resolution grids
         # col.prop(domain, "highres_sampling", text="Flow Sampling:")
 
         if domain.cache_type == 'MODULAR':

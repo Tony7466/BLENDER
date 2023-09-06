@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,7 +18,7 @@ namespace Freestyle {
 
 class WSFillGrid {
  public:
-  inline WSFillGrid(Grid *grid = NULL, WingedEdge *winged_edge = NULL)
+  inline WSFillGrid(Grid *grid = nullptr, WingedEdge *winged_edge = nullptr)
   {
     _winged_edge = winged_edge;
     _grid = grid;

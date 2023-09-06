@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,7 +18,9 @@
 #include "BLI_blenlib.h"
 #include "BLI_easing.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -38,18 +40,18 @@
 #include "BKE_gpencil_legacy.h"
 #include "BKE_report.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_screen.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_screen.hh"
 
 #include "DEG_depsgraph.h"
 
@@ -1446,51 +1448,50 @@ static void gpencil_interpolate_seq_ui(bContext *C, wmOperator *op)
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
   row = uiLayoutRow(layout, true);
-  uiItemR(row, op->ptr, "step", 0, nullptr, ICON_NONE);
+  uiItemR(row, op->ptr, "step", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   row = uiLayoutRow(layout, true);
-  uiItemR(row, op->ptr, "layers", 0, nullptr, ICON_NONE);
+  uiItemR(row, op->ptr, "layers", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   if (CTX_data_mode_enum(C) == CTX_MODE_EDIT_GPENCIL_LEGACY) {
     row = uiLayoutRow(layout, true);
-    uiItemR(row, op->ptr, "interpolate_selected_only", 0, nullptr, ICON_NONE);
+    uiItemR(row, op->ptr, "interpolate_selected_only", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
   row = uiLayoutRow(layout, true);
-  uiItemR(row, op->ptr, "exclude_breakdowns", 0, nullptr, ICON_NONE);
+  uiItemR(row, op->ptr, "exclude_breakdowns", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   row = uiLayoutRow(layout, true);
-  uiItemR(row, op->ptr, "flip", 0, nullptr, ICON_NONE);
+  uiItemR(row, op->ptr, "flip", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   col = uiLayoutColumn(layout, true);
-  uiItemR(col, op->ptr, "smooth_factor", 0, nullptr, ICON_NONE);
-  uiItemR(col, op->ptr, "smooth_steps", 0, nullptr, ICON_NONE);
+  uiItemR(col, op->ptr, "smooth_factor", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, op->ptr, "smooth_steps", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   row = uiLayoutRow(layout, true);
-  uiItemR(row, op->ptr, "type", 0, nullptr, ICON_NONE);
+  uiItemR(row, op->ptr, "type", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   if (type == GP_IPO_CURVEMAP) {
     /* Get an RNA pointer to ToolSettings to give to the custom curve. */
     Scene *scene = CTX_data_scene(C);
     ToolSettings *ts = scene->toolsettings;
-    PointerRNA gpsettings_ptr;
-    RNA_pointer_create(
-        &scene->id, &RNA_GPencilInterpolateSettings, &ts->gp_interpolate, &gpsettings_ptr);
+    PointerRNA gpsettings_ptr = RNA_pointer_create(
+        &scene->id, &RNA_GPencilInterpolateSettings, &ts->gp_interpolate);
     uiTemplateCurveMapping(
         layout, &gpsettings_ptr, "interpolation_curve", 0, false, true, true, false);
   }
   else if (type != GP_IPO_LINEAR) {
     row = uiLayoutRow(layout, false);
-    uiItemR(row, op->ptr, "easing", 0, nullptr, ICON_NONE);
+    uiItemR(row, op->ptr, "easing", UI_ITEM_NONE, nullptr, ICON_NONE);
     if (type == GP_IPO_BACK) {
       row = uiLayoutRow(layout, false);
-      uiItemR(row, op->ptr, "back", 0, nullptr, ICON_NONE);
+      uiItemR(row, op->ptr, "back", UI_ITEM_NONE, nullptr, ICON_NONE);
     }
     else if (type == GP_IPO_ELASTIC) {
       row = uiLayoutRow(layout, false);
-      uiItemR(row, op->ptr, "amplitude", 0, nullptr, ICON_NONE);
+      uiItemR(row, op->ptr, "amplitude", UI_ITEM_NONE, nullptr, ICON_NONE);
       row = uiLayoutRow(layout, false);
-      uiItemR(row, op->ptr, "period", 0, nullptr, ICON_NONE);
+      uiItemR(row, op->ptr, "period", UI_ITEM_NONE, nullptr, ICON_NONE);
     }
   }
 }

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,35 +9,35 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 
 #include "BKE_context.h"
 
 #include "GPU_batch.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "BKE_global.h"
 #include "BKE_idprop.h"
 #include "BKE_main.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 #include "WM_toolsystem.h"
-#include "WM_types.h"
+#include "WM_types.hh"
 
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
 #endif
 
 /* only for own init/exit calls (wm_gizmotype_init/wm_gizmotype_free) */
-#include "wm.h"
+#include "wm.hh"
 
 /* own includes */
 #include "wm_gizmo_intern.h"
@@ -66,7 +66,7 @@ static wmGizmo *wm_gizmo_create(const wmGizmoType *gzt, PointerRNA *properties)
     IDPropertyTemplate val = {0};
     gz->properties = IDP_New(IDP_GROUP, &val, "wmGizmoProperties");
   }
-  RNA_pointer_create(static_cast<ID *>(G_MAIN->wm.first), gzt->srna, gz->properties, gz->ptr);
+  *gz->ptr = RNA_pointer_create(static_cast<ID *>(G_MAIN->wm.first), gzt->srna, gz->properties);
 
   WM_gizmo_properties_sanitize(gz->ptr, false);
 
@@ -590,7 +590,7 @@ void WM_gizmo_calc_matrix_final(const wmGizmo *gz, float r_mat[4][4])
 
 void WM_gizmo_properties_create_ptr(PointerRNA *ptr, wmGizmoType *gzt)
 {
-  RNA_pointer_create(nullptr, gzt->srna, nullptr, ptr);
+  *ptr = RNA_pointer_create(nullptr, gzt->srna, nullptr);
 }
 
 void WM_gizmo_properties_create(PointerRNA *ptr, const char *gtstring)
@@ -601,7 +601,7 @@ void WM_gizmo_properties_create(PointerRNA *ptr, const char *gtstring)
     WM_gizmo_properties_create_ptr(ptr, (wmGizmoType *)gzt);
   }
   else {
-    RNA_pointer_create(nullptr, &RNA_GizmoProperties, nullptr, ptr);
+    *ptr = RNA_pointer_create(nullptr, &RNA_GizmoProperties, nullptr);
   }
 }
 

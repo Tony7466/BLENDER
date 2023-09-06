@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_linklist.h"
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
@@ -23,8 +22,8 @@
 
 #include "DEG_depsgraph_query.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_gpencil_modifier_types.h"
@@ -46,7 +45,7 @@ static bool lineart_mod_is_disabled(GpencilModifierData *md)
    * it. We can assume that the guard function has already toggled this on for all modifiers that
    * are sent here. */
   lmd->flags &= (~LRT_GPENCIL_IS_BAKED);
-  bool disabled = info->is_disabled(md, 0);
+  bool disabled = info->is_disabled(md, false);
   lmd->flags |= LRT_GPENCIL_IS_BAKED;
 
   return disabled;
