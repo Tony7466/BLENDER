@@ -359,7 +359,7 @@ static void seq_load_apply_generic_options(bContext *C, wmOperator *op, Sequence
     ScrArea *area = CTX_wm_area(C);
     const bool use_sync_markers = (((SpaceSeq *)area->spacedata.first)->flag & SEQ_MARKER_TRANS) !=
                                   0;
-    SEQ_transform_handle_overlap(scene, ed->seqbasep, &strip_col, nullptr, use_sync_markers);
+    SEQ_transform_handle_overlap(scene, ed->seqbasep, strip_col, use_sync_markers);
   }
   else {
     /* Shuffle strip channel to fix overlaps. */
@@ -369,7 +369,7 @@ static void seq_load_apply_generic_options(bContext *C, wmOperator *op, Sequence
 
 /* In this alternative version we only check for overlap, but do not do anything about them. */
 static bool seq_load_apply_generic_options_only_test_overlap(
-    bContext *C, wmOperator *op, Sequence *seq, blender::VectorSet<Sequence *> *strip_col)
+    bContext *C, wmOperator *op, Sequence *seq, blender::VectorSet<Sequence *> &strip_col)
 {
   Scene *scene = CTX_data_scene(C);
   Editing *ed = SEQ_editing_get(scene);
@@ -383,7 +383,7 @@ static bool seq_load_apply_generic_options_only_test_overlap(
     SEQ_select_active_set(scene, seq);
   }
 
-  strip_col->add(seq);
+  strip_col.add(seq);
 
   return SEQ_transform_test_overlap(scene, ed->seqbasep, seq);
 }
@@ -777,7 +777,7 @@ static IMB_Proxy_Size seq_get_proxy_size_flags(bContext *C)
   return proxy_sizes;
 }
 
-static void seq_build_proxy(bContext *C, blender::VectorSet<Sequence *> *movie_strips)
+static void seq_build_proxy(bContext *C, blender::VectorSet<Sequence *> &movie_strips)
 {
   if (U.sequencer_proxy_setup != USER_SEQ_PROXY_SETUP_AUTOMATIC) {
     return;
@@ -786,7 +786,7 @@ static void seq_build_proxy(bContext *C, blender::VectorSet<Sequence *> *movie_s
   wmJob *wm_job = ED_seq_proxy_wm_job_get(C);
   ProxyJob *pj = ED_seq_proxy_job_get(C, wm_job);
 
-  for (auto seq : *movie_strips) {
+  for (auto seq : movie_strips) {
     /* Enable and set proxy size. */
     SEQ_proxy_set(seq, true);
     seq->strip->proxy->build_size_flags = seq_get_proxy_size_flags(C);
@@ -818,7 +818,7 @@ static void sequencer_add_movie_clamp_sound_strip_length(Scene *scene,
 static void sequencer_add_movie_multiple_strips(bContext *C,
                                                 wmOperator *op,
                                                 SeqLoadData *load_data,
-                                                blender::VectorSet<Sequence *> *r_movie_strips)
+                                                blender::VectorSet<Sequence *> &r_movie_strips)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
@@ -859,15 +859,15 @@ static void sequencer_add_movie_multiple_strips(bContext *C,
                                 SEQ_time_left_handle_frame_get(scene, seq_movie);
       if (overlap_shuffle_override) {
         has_seq_overlap |= seq_load_apply_generic_options_only_test_overlap(
-            C, op, seq_sound, &strip_col);
+            C, op, seq_sound, strip_col);
         has_seq_overlap |= seq_load_apply_generic_options_only_test_overlap(
-            C, op, seq_movie, &strip_col);
+            C, op, seq_movie, strip_col);
       }
       else {
         seq_load_apply_generic_options(C, op, seq_sound);
         seq_load_apply_generic_options(C, op, seq_movie);
       }
-      r_movie_strips->add(seq_movie);
+      r_movie_strips.add(seq_movie);
     }
   }
   RNA_END;
@@ -877,7 +877,9 @@ static void sequencer_add_movie_multiple_strips(bContext *C,
       ScrArea *area = CTX_wm_area(C);
       const bool use_sync_markers = (((SpaceSeq *)area->spacedata.first)->flag &
                                      SEQ_MARKER_TRANS) != 0;
-      SEQ_transform_handle_overlap(scene, ed->seqbasep, &strip_col, nullptr, use_sync_markers);
+      {
+        SEQ_transform_handle_overlap(scene, ed->seqbasep, strip_col, use_sync_markers);
+      }
     }
   }
 }
@@ -885,7 +887,7 @@ static void sequencer_add_movie_multiple_strips(bContext *C,
 static bool sequencer_add_movie_single_strip(bContext *C,
                                              wmOperator *op,
                                              SeqLoadData *load_data,
-                                             blender::VectorSet<Sequence *> *r_movie_strips)
+                                             blender::VectorSet<Sequence *> &r_movie_strips)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
@@ -917,22 +919,22 @@ static bool sequencer_add_movie_single_strip(bContext *C,
     bool has_seq_overlap = false;
 
     has_seq_overlap |= seq_load_apply_generic_options_only_test_overlap(
-        C, op, seq_sound, &strip_col);
+        C, op, seq_sound, strip_col);
     has_seq_overlap |= seq_load_apply_generic_options_only_test_overlap(
-        C, op, seq_movie, &strip_col);
+        C, op, seq_movie, strip_col);
 
     if (has_seq_overlap) {
       ScrArea *area = CTX_wm_area(C);
       const bool use_sync_markers = (((SpaceSeq *)area->spacedata.first)->flag &
                                      SEQ_MARKER_TRANS) != 0;
-      SEQ_transform_handle_overlap(scene, ed->seqbasep, &strip_col, nullptr, use_sync_markers);
+      SEQ_transform_handle_overlap(scene, ed->seqbasep, strip_col, use_sync_markers);
     }
   }
   else {
     seq_load_apply_generic_options(C, op, seq_sound);
     seq_load_apply_generic_options(C, op, seq_movie);
   }
-  r_movie_strips->add(seq_movie);
+  r_movie_strips.add(seq_movie);
 
   return true;
 }
@@ -953,10 +955,10 @@ static int sequencer_add_movie_strip_exec(bContext *C, wmOperator *op)
   const int tot_files = RNA_property_collection_length(op->ptr,
                                                        RNA_struct_find_property(op->ptr, "files"));
   if (tot_files > 1) {
-    sequencer_add_movie_multiple_strips(C, op, &load_data, &movie_strips);
+    sequencer_add_movie_multiple_strips(C, op, &load_data, movie_strips);
   }
   else {
-    sequencer_add_movie_single_strip(C, op, &load_data, &movie_strips);
+    sequencer_add_movie_single_strip(C, op, &load_data, movie_strips);
   }
 
   if (movie_strips.size() == 0) {
@@ -964,7 +966,7 @@ static int sequencer_add_movie_strip_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  seq_build_proxy(C, &movie_strips);
+  seq_build_proxy(C, movie_strips);
   DEG_relations_tag_update(bmain);
   DEG_id_tag_update(&scene->id, ID_RECALC_SEQUENCER_STRIPS);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);

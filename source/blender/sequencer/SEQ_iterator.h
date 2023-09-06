@@ -37,7 +37,7 @@ void SEQ_for_each_callback(struct ListBase *seqbase, SeqForEachFunc callback, vo
  * \param collection_dst: destination collection
  * \param collection_src: source collection
  */
-void SEQ_iterator_set_merge(blender::VectorSet<Sequence *> *strips_dst,
+void SEQ_iterator_set_merge(blender::VectorSet<Sequence *> &strips_dst,
                             blender::VectorSet<Sequence *> strips_src);
 /**
  * Expand collection by running SEQ_query() for each strip, which will be used as reference.
@@ -49,11 +49,11 @@ void SEQ_iterator_set_merge(blender::VectorSet<Sequence *> *strips_dst,
  */
 void SEQ_iterator_set_expand(const struct Scene *scene,
                              struct ListBase *seqbase,
-                             blender::VectorSet<Sequence *> *strips,
+                             blender::VectorSet<Sequence *> &strips,
                              void seq_query_func(const struct Scene *scene,
                                                  struct Sequence *seq_reference,
                                                  struct ListBase *seqbase,
-                                                 blender::VectorSet<Sequence *> *strips));
+                                                 blender::VectorSet<Sequence *> &strips));
 /**
  * Query strips from seqbase. seq_reference is used by query function as filter condition.
  *
@@ -69,7 +69,7 @@ blender::VectorSet<Sequence *> SEQ_query_by_reference(
     void seq_query_func(const struct Scene *scene,
                         struct Sequence *seq_reference,
                         struct ListBase *seqbase,
-                        blender::VectorSet<Sequence *> *strips));
+                        blender::VectorSet<Sequence *> &strips));
 /**
  * Query all selected strips in seqbase.
  *
@@ -111,7 +111,7 @@ blender::VectorSet<Sequence *> SEQ_query_all_strips_recursive(ListBase *seqbase)
 void SEQ_query_strip_effect_chain(const struct Scene *scene,
                                   struct Sequence *seq_reference,
                                   struct ListBase *seqbase,
-                                  blender::VectorSet<Sequence *> *strips);
+                                  blender::VectorSet<Sequence *> &strips);
 
 /**
  * Query strips that are rendered at \a timeline_frame when \a displayed channel is viewed

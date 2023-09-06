@@ -272,7 +272,7 @@ void SEQUENCER_OT_view_zoom_ratio(wmOperatorType *ot)
  * \{ */
 
 static void seq_view_collection_rect_preview(Scene *scene,
-                                             blender::VectorSet<Sequence *> *strips,
+                                             blender::VectorSet<Sequence *> &strips,
                                              rctf *rect)
 {
   float min[2], max[2];
@@ -295,7 +295,7 @@ static void seq_view_collection_rect_preview(Scene *scene,
 }
 
 static void seq_view_collection_rect_timeline(Scene *scene,
-                                              blender::VectorSet<Sequence *> *strips,
+                                              blender::VectorSet<Sequence *> &strips,
                                               rctf *rect)
 {
   int xmin = MAXFRAME * 2;
@@ -307,7 +307,7 @@ static void seq_view_collection_rect_timeline(Scene *scene,
   int ymargin = 1;
   int xmargin = FPS;
 
-  for (auto seq : *strips) {
+  for (auto seq : strips) {
     xmin = min_ii(xmin, SEQ_time_left_handle_frame_get(scene, seq));
     xmax = max_ii(xmax, SEQ_time_right_handle_frame_get(scene, seq));
 
@@ -354,10 +354,10 @@ static int sequencer_view_selected_exec(bContext *C, wmOperator *op)
   }
 
   if (region && region->regiontype == RGN_TYPE_PREVIEW) {
-    seq_view_collection_rect_preview(scene, &strips, &cur_new);
+    seq_view_collection_rect_preview(scene, strips, &cur_new);
   }
   else {
-    seq_view_collection_rect_timeline(scene, &strips, &cur_new);
+    seq_view_collection_rect_timeline(scene, strips, &cur_new);
   }
 
   const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);

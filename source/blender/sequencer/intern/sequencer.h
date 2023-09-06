@@ -10,10 +10,6 @@
  * \ingroup sequencer
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct Scene;
 struct Sequence;
 struct StripProxy;
@@ -46,8 +42,5 @@ struct Sequence *seq_sequence_lookup_meta_by_seq(const struct Scene *scene,
  *
  * \return collection of effect strips
  */
-blender::VectorSet<Sequence *> *seq_sequence_lookup_effects_by_seq(const struct Scene *scene,
-                                                                const struct Sequence *key);
-#ifdef __cplusplus
-}
-#endif
+blender::VectorSet<Sequence *> seq_sequence_lookup_effects_by_seq(const struct Scene *scene,
+                                                                  const struct Sequence *key);

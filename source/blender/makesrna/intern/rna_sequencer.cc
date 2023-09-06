@@ -213,10 +213,10 @@ static void rna_Sequence_use_sequence(Main *bmain, Scene *scene, PointerRNA *ptr
   DEG_relations_tag_update(bmain);
 }
 
-static void add_strips_from_seqbase(const ListBase *seqbase, blender::Vector<Sequence *> *strips)
+static void add_strips_from_seqbase(const ListBase *seqbase, blender::Vector<Sequence *> &strips)
 {
   LISTBASE_FOREACH (Sequence *, seq, seqbase) {
-    strips->append(seq);
+    strips.append(seq);
 
     if (seq->type == SEQ_TYPE_META) {
       add_strips_from_seqbase(&seq->seqbase, strips);
@@ -225,7 +225,7 @@ static void add_strips_from_seqbase(const ListBase *seqbase, blender::Vector<Seq
 }
 
 typedef struct SequencesAllIterator {
-  blender::Vector<Sequence *> *strips;
+  blender::Vector<Sequence *> strips;
   int index;
 } SequencesAllIterator;
 
@@ -235,8 +235,7 @@ static void rna_SequenceEditor_sequences_all_begin(CollectionPropertyIterator *i
   Scene *scene = (Scene *)ptr->owner_id;
   Editing *ed = SEQ_editing_get(scene);
 
-  SequencesAllIterator *seq_iter = MEM_cnew<SequencesAllIterator>(__func__);
-  seq_iter->strips = new blender::Vector<Sequence *>;
+  SequencesAllIterator *seq_iter = MEM_new<SequencesAllIterator>(__func__);
   seq_iter->index = 0;
   add_strips_from_seqbase(&ed->seqbase, seq_iter->strips);
 
@@ -245,7 +244,7 @@ static void rna_SequenceEditor_sequences_all_begin(CollectionPropertyIterator *i
   iter->internal.custom = bli_iter;
   bli_iter->data = seq_iter;
 
-  Sequence **seq_arr = seq_iter->strips->begin();
+  Sequence **seq_arr = seq_iter->strips.begin();
   bli_iter->current = *seq_arr;
   iter->valid = bli_iter->current != nullptr;
 }
@@ -256,10 +255,10 @@ static void rna_SequenceEditor_sequences_all_next(CollectionPropertyIterator *it
   SequencesAllIterator *seq_iter = static_cast<SequencesAllIterator *>(bli_iter->data);
 
   seq_iter->index++;
-  Sequence **seq_arr = seq_iter->strips->begin();
+  Sequence **seq_arr = seq_iter->strips.begin();
   bli_iter->current = *(seq_arr + seq_iter->index);
 
-  iter->valid = bli_iter->current != nullptr && seq_iter->index < seq_iter->strips->size();
+  iter->valid = bli_iter->current != nullptr && seq_iter->index < seq_iter->strips.size();
 }
 
 static PointerRNA rna_SequenceEditor_sequences_all_get(CollectionPropertyIterator *iter)
@@ -273,9 +272,7 @@ static void rna_SequenceEditor_sequences_all_end(CollectionPropertyIterator *ite
   BLI_Iterator *bli_iter = static_cast<BLI_Iterator *>(iter->internal.custom);
   SequencesAllIterator *seq_iter = static_cast<SequencesAllIterator *>(bli_iter->data);
 
-  delete seq_iter->strips;
-  MEM_freeN(seq_iter);
-
+  MEM_delete(seq_iter);
   MEM_freeN(bli_iter);
 }
 

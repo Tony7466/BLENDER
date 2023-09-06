@@ -1985,7 +1985,7 @@ static bool select_grouped_time_overlap(const Scene *scene,
 static void query_lower_channel_strips(const Scene *scene,
                                        Sequence *seq_reference,
                                        ListBase *seqbase,
-                                       blender::VectorSet<Sequence *> *strips)
+                                       blender::VectorSet<Sequence *> &strips)
 {
   LISTBASE_FOREACH (Sequence *, seq_test, seqbase) {
     if (seq_test->machine > seq_reference->machine) {
@@ -1998,7 +1998,7 @@ static void query_lower_channel_strips(const Scene *scene,
     {
       continue; /* Not intersecting in time. */
     }
-    strips->add(seq_test);
+    strips.add(seq_test);
   }
 }
 
@@ -2015,8 +2015,8 @@ static bool select_grouped_effect_link(const Scene *scene,
   const int selected_strip_count = strips.size();
   /* XXX: this uses scene as arg, so it does not work with iterator :( I had thought about this,
    * but expand function is just so useful... I can just add scene and inject it I guess. */
-  SEQ_iterator_set_expand(scene, seqbase, &strips, query_lower_channel_strips);
-  SEQ_iterator_set_expand(scene, seqbase, &strips, SEQ_query_strip_effect_chain);
+  SEQ_iterator_set_expand(scene, seqbase, strips, query_lower_channel_strips);
+  SEQ_iterator_set_expand(scene, seqbase, strips, SEQ_query_strip_effect_chain);
 
   /* Check if other strips will be affected. */
   const bool changed = strips.size() > selected_strip_count;

@@ -45,7 +45,7 @@ void seq_time_effect_range_set(const struct Scene *scene, Sequence *seq);
  * Update strip `startdisp` and `enddisp` (n-input effects have no length to calculate these).
  */
 void seq_time_update_effects_strip_range(const struct Scene *scene,
-                                         blender::VectorSet<Sequence *> *effects);
+                                         blender::VectorSet<Sequence *> &effects);
 void seq_time_translate_handles(const struct Scene *scene, struct Sequence *seq, const int offset);
 float seq_time_media_playback_rate_factor_get(const struct Scene *scene,
                                               const struct Sequence *seq);

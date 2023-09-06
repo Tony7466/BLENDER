@@ -397,7 +397,7 @@ static bool seq_prefetch_seq_has_disk_cache(PrefetchJob *pfjob,
 static bool seq_prefetch_scene_strip_is_rendered(PrefetchJob *pfjob,
                                                  ListBase *channels,
                                                  ListBase *seqbase,
-                                                 blender::VectorSet<Sequence *> *scene_strips,
+                                                 blender::VectorSet<Sequence *> &scene_strips,
                                                  bool is_recursive_check)
 {
   float cfra = seq_prefetch_cfra(pfjob);
@@ -421,7 +421,7 @@ static bool seq_prefetch_scene_strip_is_rendered(PrefetchJob *pfjob,
     }
 
     /* Check if strip is effect of scene strip or uses it as modifier. This is recursive check. */
-    for (auto seq_scene : *scene_strips) {
+    for (auto seq_scene : scene_strips) {
       if (SEQ_relations_render_loop_check(seq, seq_scene)) {
         return true;
       }
@@ -446,7 +446,7 @@ static blender::VectorSet<Sequence *> query_scene_strips(ListBase *seqbase)
 static bool seq_prefetch_must_skip_frame(PrefetchJob *pfjob, ListBase *channels, ListBase *seqbase)
 {
   blender::VectorSet<Sequence *> scene_strips = query_scene_strips(seqbase);
-  if (seq_prefetch_scene_strip_is_rendered(pfjob, channels, seqbase, &scene_strips, false)) {
+  if (seq_prefetch_scene_strip_is_rendered(pfjob, channels, seqbase, scene_strips, false)) {
     return true;
   }
   return false;

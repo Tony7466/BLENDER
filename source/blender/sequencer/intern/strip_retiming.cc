@@ -326,7 +326,8 @@ static void seq_retiming_offset_linear_handle(const Scene *scene,
   }
 
   SEQ_time_update_meta_strip_range(scene, seq_sequence_lookup_meta_by_seq(scene, seq));
-  seq_time_update_effects_strip_range(scene, seq_sequence_lookup_effects_by_seq(scene, seq));
+  blender::VectorSet effects = seq_sequence_lookup_effects_by_seq(scene, seq);
+  seq_time_update_effects_strip_range(scene, effects);
 }
 
 static void seq_retiming_offset_transition_handle(const Scene *scene,
@@ -503,7 +504,8 @@ SeqRetimingHandle *SEQ_retiming_add_transition(const Scene *scene,
   }
 
   if (SEQ_retiming_handle_is_freeze_frame(handle) ||
-      SEQ_retiming_handle_is_freeze_frame(handle - 1)) {
+      SEQ_retiming_handle_is_freeze_frame(handle - 1))
+  {
     return nullptr;
   }
 

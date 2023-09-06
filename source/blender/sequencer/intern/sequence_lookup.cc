@@ -173,16 +173,22 @@ Sequence *seq_sequence_lookup_meta_by_seq(const Scene *scene, const Sequence *ke
   return seq;
 }
 
-blender::VectorSet<Sequence *> *seq_sequence_lookup_effects_by_seq(const Scene *scene,
-                                                                const Sequence *key)
+blender::VectorSet<Sequence *> seq_sequence_lookup_effects_by_seq(const Scene *scene,
+                                                                  const Sequence *key)
 {
   BLI_assert(scene->ed);
   BLI_mutex_lock(&lookup_lock);
   seq_sequence_lookup_update_if_needed(scene, &scene->ed->runtime.sequence_lookup);
   SequenceLookup *lookup = scene->ed->runtime.sequence_lookup;
   blender::VectorSet<Sequence *> *effects = lookup->effects_by_seq->lookup_default(key, nullptr);
+
+  if (effects == nullptr) {
+    BLI_mutex_unlock(&lookup_lock);
+    return {};
+  }
+
   BLI_mutex_unlock(&lookup_lock);
-  return effects;
+  return *effects;
 }
 
 void SEQ_sequence_lookup_tag(const Scene *scene, eSequenceLookupTag tag)

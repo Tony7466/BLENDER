@@ -250,13 +250,14 @@ static bool gizmo2d_calc_bounds(const bContext *C, float *r_center, float *r_min
     Editing *ed = SEQ_editing_get(scene);
     ListBase *seqbase = SEQ_active_seqbase_get(ed);
     ListBase *channels = SEQ_channels_displayed_get(ed);
-    blender::VectorSet strips = SEQ_query_rendered_strips(scene, channels, seqbase, scene->r.cfra, 0);
+    blender::VectorSet strips = SEQ_query_rendered_strips(
+        scene, channels, seqbase, scene->r.cfra, 0);
     strips.remove_if([&](auto seq) { return (seq->flag & SELECT) == 0; });
     int selected_strips = strips.size();
     if (selected_strips > 0) {
       has_select = true;
       SEQ_image_transform_bounding_box_from_collection(
-          scene, &strips, selected_strips != 1, r_min, r_max);
+          scene, strips, selected_strips != 1, r_min, r_max);
     }
     if (selected_strips > 1) {
       /* Don't draw the cage as transforming multiple strips isn't currently very useful as it
@@ -301,7 +302,8 @@ static int gizmo2d_calc_transform_orientation(const bContext *C)
   Editing *ed = SEQ_editing_get(scene);
   ListBase *seqbase = SEQ_active_seqbase_get(ed);
   ListBase *channels = SEQ_channels_displayed_get(ed);
-  blender::VectorSet strips = SEQ_query_rendered_strips(scene, channels, seqbase, scene->r.cfra, 0);
+  blender::VectorSet strips = SEQ_query_rendered_strips(
+      scene, channels, seqbase, scene->r.cfra, 0);
   strips.remove_if([&](auto seq) { return (seq->flag & SELECT) == 0; });
 
   bool use_local_orient = strips.size() == 1;
@@ -323,7 +325,8 @@ static float gizmo2d_calc_rotation(const bContext *C)
   Editing *ed = SEQ_editing_get(scene);
   ListBase *seqbase = SEQ_active_seqbase_get(ed);
   ListBase *channels = SEQ_channels_displayed_get(ed);
-  blender::VectorSet strips = SEQ_query_rendered_strips(scene, channels, seqbase, scene->r.cfra, 0);
+  blender::VectorSet strips = SEQ_query_rendered_strips(
+      scene, channels, seqbase, scene->r.cfra, 0);
   strips.remove_if([&](auto seq) { return (seq->flag & SELECT) == 0; });
 
   if (strips.size() == 1) {
@@ -346,7 +349,8 @@ static bool seq_get_strip_pivot_median(const Scene *scene, float r_pivot[2])
   Editing *ed = SEQ_editing_get(scene);
   ListBase *seqbase = SEQ_active_seqbase_get(ed);
   ListBase *channels = SEQ_channels_displayed_get(ed);
-  blender::VectorSet strips = SEQ_query_rendered_strips(scene, channels, seqbase, scene->r.cfra, 0);
+  blender::VectorSet strips = SEQ_query_rendered_strips(
+      scene, channels, seqbase, scene->r.cfra, 0);
   strips.remove_if([&](auto seq) { return (seq->flag & SELECT) == 0; });
   bool has_select = strips.size() != 0;
 
