@@ -32,19 +32,16 @@ typedef bool (*SeqForEachFunc)(struct Sequence *seq, void *user_data);
 void SEQ_for_each_callback(struct ListBase *seqbase, SeqForEachFunc callback, void *user_data);
 
 /**
- * Move strips from collection_src to collection_dst. Source collection will be freed.
- *
- * \param collection_dst: destination collection
- * \param collection_src: source collection
+ * Move strips from strips_src to strips_dst.
  */
 void SEQ_iterator_set_merge(blender::VectorSet<Sequence *> &strips_dst,
                             blender::VectorSet<Sequence *> strips_src);
 /**
- * Expand collection by running SEQ_query() for each strip, which will be used as reference.
+ * Expand set by running `seq_query_func()` for each strip, which will be used as reference.
  * Results of these queries will be merged into provided collection.
  *
  * \param seqbase: ListBase in which strips are queried
- * \param collection: SeqCollection to be expanded
+ * \param strips: set of strips to be expanded
  * \param seq_query_func: query function callback
  */
 void SEQ_iterator_set_expand(const struct Scene *scene,
@@ -60,7 +57,7 @@ void SEQ_iterator_set_expand(const struct Scene *scene,
  * \param seq_reference: reference strip for query function
  * \param seqbase: ListBase in which strips are queried
  * \param seq_query_func: query function callback
- * \return strip collection
+ * \return set of strips
  */
 blender::VectorSet<Sequence *> SEQ_query_by_reference(
     struct Sequence *seq_reference,
@@ -74,28 +71,28 @@ blender::VectorSet<Sequence *> SEQ_query_by_reference(
  * Query all selected strips in seqbase.
  *
  * \param seqbase: ListBase in which strips are queried
- * \return strip collection
+ * \return set of strips
  */
 blender::VectorSet<Sequence *> SEQ_query_selected_strips(struct ListBase *seqbase);
 /**
  * Query all unselected strips in seqbase.
  *
  * \param seqbase: ListBase in which strips are queried
- * \return strip collection
+ * \return set of strips
  */
 blender::VectorSet<Sequence *> SEQ_query_unselected_strips(ListBase *seqbase);
 /**
  * Query all strips in seqbase. This does not include strips nested in meta strips.
  *
  * \param seqbase: ListBase in which strips are queried
- * \return strip collection
+ * \return set of strips
  */
 blender::VectorSet<Sequence *> SEQ_query_all_strips(ListBase *seqbase);
 /**
  * Query all strips in seqbase and nested meta strips.
  *
  * \param seqbase: ListBase in which strips are queried
- * \return strip collection
+ * \return set of strips
  */
 blender::VectorSet<Sequence *> SEQ_query_all_strips_recursive(ListBase *seqbase);
 
@@ -106,7 +103,7 @@ blender::VectorSet<Sequence *> SEQ_query_all_strips_recursive(ListBase *seqbase)
  *
  * \param seq_reference: reference strip
  * \param seqbase: ListBase in which strips are queried
- * \param collection: collection to be filled
+ * \param strips: set of strips to be filled
  */
 void SEQ_query_strip_effect_chain(const struct Scene *scene,
                                   struct Sequence *seq_reference,
@@ -119,11 +116,10 @@ void SEQ_query_strip_effect_chain(const struct Scene *scene,
  * \param seqbase: ListBase in which strips are queried
  * \param timeline_frame: viewed frame
  * \param displayed_channel: viewed channel. when set to 0, no channel filter is applied
- * \return strip collection
+ * \return set of strips
  */
 blender::VectorSet<Sequence *> SEQ_query_rendered_strips(const struct Scene *scene,
                                                          ListBase *channels,
                                                          ListBase *seqbase,
                                                          int timeline_frame,
                                                          int displayed_channel);
-void SEQ_filter_selected_strips(blender::VectorSet<Sequence *> strips);
