@@ -37,15 +37,17 @@ class NodeParser {
   NodeItem get_input_default(int index);
   NodeItem get_input_link(const std::string &name);
   NodeItem get_input_link(int index);
-  NodeItem get_input_value(const std::string &name);
-  NodeItem get_input_value(int index);
+  NodeItem get_input_value(const std::string &name,
+                           const NodeItem::Type type);
+  NodeItem get_input_value(int index, const NodeItem::Type type);
   NodeItem empty() const;
   template<class T> NodeItem value(const T &data) const;
 
  private:
   NodeItem get_input_default(const bNodeSocket &socket);
   NodeItem get_input_link(const bNodeSocket &socket);
-  NodeItem get_input_value(const bNodeSocket &socket);
+  NodeItem get_input_value(const bNodeSocket &socket,
+                           const NodeItem::Type type);
   NodeItem compute_full();
 };
 

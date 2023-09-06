@@ -8,9 +8,9 @@ namespace blender::nodes::materialx {
 
 NodeItem TexNoiseNodeParser::compute()
 {
-  NodeItem scale = get_input_value("Scale");
-  NodeItem detail = get_input_value("Detail");
-  NodeItem lacunarity = get_input_value("Lacunarity");
+  NodeItem scale = get_input_value("Scale", NodeItem::Type::Float);
+  NodeItem detail = get_input_value("Detail", NodeItem::Type::Float);
+  NodeItem lacunarity = get_input_value("Lacunarity", NodeItem::Type::Float);
 
   if (detail.value && detail.type() == NodeItem::Type::Float) {
     detail = value(int(detail.value->asA<float>()));
@@ -20,7 +20,7 @@ NodeItem TexNoiseNodeParser::compute()
   position = position * scale;
 
   NodeItem res = create_node("fractal3d", "color3");
-  res.set_input("position", position, NodeItem::Type::Vector3);
+  res.set_input("position", position);
   res.set_input("octaves", detail);
   res.set_input("lacunarity", lacunarity);
   return res;

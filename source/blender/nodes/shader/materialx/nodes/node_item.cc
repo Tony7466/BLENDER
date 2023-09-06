@@ -549,14 +549,6 @@ void NodeItem::set_input(const std::string &name,
   }
 }
 
-void NodeItem::set_input(const std::string &name,
-                         const NodeItem &item,
-                         Type in_type,
-                         const std::string &output_name)
-{
-  set_input(name, item.convert(in_type), output_name);
-}
-
 void NodeItem::add_output(const std::string &name, Type out_type)
 {
   node->addOutput(name, type(out_type));

@@ -89,10 +89,6 @@ class NodeItem {
   void set_input(const std::string &in_name,
                  const NodeItem &item,
                  const std::string &out_name = "");
-  void set_input(const std::string &in_name,
-                 const NodeItem &item,
-                 Type in_type,
-                 const std::string &out_name = "");
   void add_output(const std::string &in_name, Type out_type);
 
  private:

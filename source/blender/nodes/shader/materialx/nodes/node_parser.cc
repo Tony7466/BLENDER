@@ -56,14 +56,14 @@ NodeItem NodeParser::get_input_link(int index)
   return get_input_link(node_->input_socket(index));
 }
 
-NodeItem NodeParser::get_input_value(const std::string &name)
+NodeItem NodeParser::get_input_value(const std::string &name, const NodeItem::Type type)
 {
-  return get_input_value(node_->input_by_identifier(name));
+  return get_input_value(node_->input_by_identifier(name), type);
 }
 
-NodeItem NodeParser::get_input_value(int index)
+NodeItem NodeParser::get_input_value(int index, const NodeItem::Type type)
 {
-  return get_input_value(node_->input_socket(index));
+  return get_input_value(node_->input_socket(index), type);
 }
 
 NodeItem NodeParser::empty() const
@@ -159,13 +159,13 @@ NodeItem NodeParser::get_input_link(const bNodeSocket &socket)
   return res;
 }
 
-NodeItem NodeParser::get_input_value(const bNodeSocket &socket)
+NodeItem NodeParser::get_input_value(const bNodeSocket &socket, const NodeItem::Type type)
 {
   NodeItem res = get_input_link(socket);
   if (!res) {
     res = get_input_default(socket);
   }
-  return res;
+  return type == NodeItem::Type::Empty ? res : res.convert(type);
 }
 
 NodeItem NodeParser::compute_full()

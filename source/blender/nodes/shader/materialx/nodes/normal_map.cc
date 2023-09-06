@@ -11,11 +11,11 @@ NodeItem NormalMapNodeParser::compute()
 {
   std::string default_space = "object";
   NodeShaderNormalMap *normal_map_node = static_cast<NodeShaderNormalMap *>(node_->storage);
-  NodeItem color = get_input_value("Color");
-  NodeItem strength = get_input_value("Strength");
+  NodeItem color = get_input_value("Color", NodeItem::Type::Color3);
+  NodeItem strength = get_input_value("Strength", NodeItem::Type::Float);
 
   NodeItem res = create_node("normalmap", "vector3");
-  res.set_input("in", color, NodeItem::Type::Color3);
+  res.set_input("in", color);
   res.set_input("scale", strength);
 
   switch (normal_map_node->space) {

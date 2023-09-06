@@ -8,16 +8,16 @@ namespace blender::nodes::materialx {
 
 NodeItem SeparateXYZNodeParser::compute()
 {
-  NodeItem vector = get_input_value("Vector");
+  NodeItem vector = get_input_value("Vector", NodeItem::Type::Vector3);
   int index = STREQ(socket_out_->name, "X") ? 0 : STREQ(socket_out_->name, "Y") ? 1 : 2;
   return vector.extract(index);
 }
 
 NodeItem CombineXYZNodeParser::compute()
 {
-  NodeItem x = get_input_value("X");
-  NodeItem y = get_input_value("Y");
-  NodeItem z = get_input_value("Z");
+  NodeItem x = get_input_value("X", NodeItem::Type::Float);
+  NodeItem y = get_input_value("Y", NodeItem::Type::Float);
+  NodeItem z = get_input_value("Z", NodeItem::Type::Float);
   NodeItem res = create_node("combine3", "vector3");
   res.set_input("in1", x);
   res.set_input("in2", y);

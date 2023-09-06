@@ -10,7 +10,7 @@ namespace blender::nodes::materialx {
 NodeItem SeparateColorNodeParser::compute()
 {
   int mode = static_cast<NodeCombSepColor *>(node_->storage)->mode;
-  NodeItem color = get_input_value("Color");
+  NodeItem color = get_input_value("Color", NodeItem::Type::Color3);
 
   NodeItem convert = empty();
 
@@ -39,9 +39,9 @@ NodeItem SeparateColorNodeParser::compute()
 NodeItem CombineColorNodeParser::compute()
 {
   int mode = static_cast<NodeCombSepColor *>(node_->storage)->mode;
-  NodeItem red = get_input_value("Red");
-  NodeItem green = get_input_value("Green");
-  NodeItem blue = get_input_value("Blue");
+  NodeItem red = get_input_value("Red", NodeItem::Type::Float);
+  NodeItem green = get_input_value("Green", NodeItem::Type::Float);
+  NodeItem blue = get_input_value("Blue", NodeItem::Type::Float);
 
   NodeItem convert = empty();
   NodeItem combine = create_node("combine3", "color3");

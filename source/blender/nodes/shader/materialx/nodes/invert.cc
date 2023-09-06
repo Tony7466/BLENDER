@@ -8,8 +8,8 @@ namespace blender::nodes::materialx {
 
 NodeItem InvertNodeParser::compute()
 {
-  NodeItem fac = get_input_value("Fac");
-  NodeItem color = get_input_value("Color");
+  NodeItem fac = get_input_value("Fac", NodeItem::Type::Float);
+  NodeItem color = get_input_value("Color", NodeItem::Type::Color3);
   return fac.blend(color, fac.val(1.0f) - color);
 }
 

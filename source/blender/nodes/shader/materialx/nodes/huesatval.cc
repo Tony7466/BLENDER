@@ -10,11 +10,11 @@ NodeItem HueSatValNodeParser::compute()
 {
   /* TODO: implement fac, see do_hue_sat_fac in
    * source\blender\nodes\texture\nodes\node_texture_hueSatVal.cc */
-  NodeItem hue = get_input_value("Hue");
-  NodeItem saturation = get_input_value("Saturation");
-  NodeItem val = get_input_value("Value");
-  NodeItem fac = get_input_value("Fac");
-  NodeItem color = get_input_value("Color");
+  NodeItem hue = get_input_value("Hue", NodeItem::Type::Float);
+  NodeItem saturation = get_input_value("Saturation", NodeItem::Type::Float);
+  NodeItem val = get_input_value("Value", NodeItem::Type::Float);
+  NodeItem fac = get_input_value("Fac", NodeItem::Type::Float);
+  NodeItem color = get_input_value("Color", NodeItem::Type::Color3);
 
   /* Modifier to follow Cycles result */
   hue = hue - value(0.5f);
@@ -25,7 +25,7 @@ NodeItem HueSatValNodeParser::compute()
   combine.set_input("in3", val);
 
   NodeItem res = create_node("hsvadjust", "color3");
-  res.set_input("in", color, NodeItem::Type::Color3);
+  res.set_input("in", color);
   res.set_input("amount", combine);
   return res;
 }
