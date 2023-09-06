@@ -482,15 +482,12 @@ static void node_update_basis_from_declaration(
   BLI_assert(node.runtime->panels.size() == node.num_panel_states);
   const nodes::NodeDeclaration &decl = *node.declaration();
   /* Checked at various places to avoid adding duplicate spacers without anything in between. */
-  bool need_spacer = true;
+  bool need_spacer_after_item = false;
 
   /* Space at the top. */
-  if (need_spacer) {
-    locy -= NODE_DYS / 2;
-    need_spacer = false;
-  }
+  locy -= NODE_DYS / 2;
 
-  need_spacer = node_update_basis_buttons(C, ntree, node, block, locy);
+  need_spacer_after_item = node_update_basis_buttons(C, ntree, node, block, locy);
 
   bNodeSocket *current_input = static_cast<bNodeSocket *>(node.inputs.first);
   bNodeSocket *current_output = static_cast<bNodeSocket *>(node.outputs.first);
@@ -529,7 +526,7 @@ static void node_update_basis_from_declaration(
       if (!is_parent_collapsed) {
         locy -= NODE_DY;
         is_first = false;
-        need_spacer = true;
+        need_spacer_after_item = true;
       }
 
       SET_FLAG_FROM_TEST(
@@ -563,7 +560,7 @@ static void node_update_basis_from_declaration(
             }
             if (node_update_basis_socket(C, ntree, node, *current_input, block, locx, locy)) {
               is_first = false;
-              need_spacer = true;
+              need_spacer_after_item = true;
             }
           }
           current_input = current_input->next;
@@ -584,7 +581,7 @@ static void node_update_basis_from_declaration(
             }
             if (node_update_basis_socket(C, ntree, node, *current_output, block, locx, locy)) {
               is_first = false;
-              need_spacer = true;
+              need_spacer_after_item = true;
             }
           }
           current_output = current_output->next;
@@ -608,9 +605,9 @@ static void node_update_basis_from_declaration(
   /* Enough items should have been added to close all panels. */
   BLI_assert(panel_updates.is_empty());
 
-  if (need_spacer) {
+  if (need_spacer_after_item) {
     locy -= NODE_DYS / 2;
-    need_spacer = false;
+    need_spacer_after_item = false;
   }
 }
 
