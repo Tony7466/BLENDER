@@ -6519,10 +6519,12 @@ static bool ui_numedit_but_HSVCUBE(uiBut *but,
   float *hsv = cpicker->hsv_perceptual;
   float rgb[3];
   float x, y;
-  float mx_fl, my_fl;
   const bool changed = true;
 
-  /* Workaround for snapping: stores the relative mouse position within the color inputbox.*/
+  /* If `use_continuous_grab = false` stores the absolute mouse position of the mouse.
+   * If `use_continuous_grab = true` stores relative mouse position within the `HSVCIRCLE`, this
+   * position will depend on mouse movement rather than the absolute mouse position.
+   */
   static float mval[2];
 
   if (use_continuous_grab) {
@@ -6530,25 +6532,19 @@ static bool ui_numedit_but_HSVCUBE(uiBut *but,
     BLI_rcti_rctf_copy(&rect, &but->rect);
 
     const float fac = ui_mouse_scale_warp_factor(shift);
-    mval[0] = (mx - float(data->draglastx)) * fac + mval[0];
-    mval[1] = (my - float(data->draglasty)) * fac + mval[1];
+    mval[0] = (float(mx) - float(data->draglastx)) * fac + mval[0];
+    mval[1] = (float(my) - float(data->draglasty)) * fac + mval[1];
     BLI_rctf_clamp_pt_v(&but->rect, mval);
-    mx_fl = mval[0];
-    my_fl = mval[1];
   }
   else {
-    mx_fl = mx;
-    my_fl = my;
-    mval[0] = mx_fl;
-    mval[1] = my_fl;
+    mval[0] = mx;
+    mval[1] = my;
   }
 
 #ifdef USE_CONT_MOUSE_CORRECT
-  if (ui_but_is_cursor_warp(but)) {
-    /* OK but can go outside bounds */
-    data->ungrab_mval[0] = mx_fl;
-    data->ungrab_mval[1] = my_fl;
-    BLI_rctf_clamp_pt_v(&but->rect, data->ungrab_mval);
+  if (use_continuous_grab) {
+    data->ungrab_mval[0] = mval[0];
+    data->ungrab_mval[1] = mval[1];
   }
 #endif
 
@@ -6558,8 +6554,8 @@ static bool ui_numedit_but_HSVCUBE(uiBut *but,
   ui_rgb_to_color_picker_HSVCUBE_compat_v(hsv_but, rgb, hsv);
 
   /* relative position within box */
-  x = (float(mx_fl) - but->rect.xmin) / BLI_rctf_size_x(&but->rect);
-  y = (float(my_fl) - but->rect.ymin) / BLI_rctf_size_y(&but->rect);
+  x = (float(mval[0]) - but->rect.xmin) / BLI_rctf_size_x(&but->rect);
+  y = (float(mval[1]) - but->rect.ymin) / BLI_rctf_size_y(&but->rect);
   CLAMP(x, 0.0f, 1.0f);
   CLAMP(y, 0.0f, 1.0f);
 
