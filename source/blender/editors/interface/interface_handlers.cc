@@ -6522,19 +6522,25 @@ static bool ui_numedit_but_HSVCUBE(uiBut *but,
   float mx_fl, my_fl;
   const bool changed = true;
 
+  /* Workaround for snapping: stores the relative mouse position within the color inputbox.*/
+  static float mval[2];
+
   if (use_continuous_grab) {
     rcti rect;
     BLI_rcti_rctf_copy(&rect, &but->rect);
 
-    ui_hsvcube_pos_from_vals(hsv_but, &rect, hsv, &mx_fl, &my_fl);
-
     const float fac = ui_mouse_scale_warp_factor(shift);
-    mx_fl = (mx - float(data->draglastx)) * fac + mx_fl;
-    my_fl = (my - float(data->draglasty)) * fac + my_fl;
+    mval[0] = (mx - float(data->draglastx)) * fac + mval[0];
+    mval[1] = (my - float(data->draglasty)) * fac + mval[1];
+    BLI_rctf_clamp_pt_v(&but->rect, mval);
+    mx_fl = mval[0];
+    my_fl = mval[1];
   }
   else {
     mx_fl = mx;
     my_fl = my;
+    mval[0] = mx_fl;
+    mval[1] = my_fl;
   }
 
 #ifdef USE_CONT_MOUSE_CORRECT
@@ -6550,7 +6556,6 @@ static bool ui_numedit_but_HSVCUBE(uiBut *but,
   ui_scene_linear_to_perceptual_space(but, rgb);
 
   ui_rgb_to_color_picker_HSVCUBE_compat_v(hsv_but, rgb, hsv);
-
 
   /* relative position within box */
   x = (float(mx_fl) - but->rect.xmin) / BLI_rctf_size_x(&but->rect);
