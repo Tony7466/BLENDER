@@ -1,2 +1,3 @@
 Referenced by issue #109399, Blender LTS: Maintenance Task 3.6
 Referenced by issue #112021, Node assets: Crash when dragging into an empty node editor
+Referenced by pull request #112023, Fix #112021: Crash dragging node groups into an empty node editor
