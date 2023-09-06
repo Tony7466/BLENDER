@@ -5568,7 +5568,8 @@ static bool ui_numedit_but_SLI(uiBut *but,
                                const bool is_horizontal,
                                const bool is_motion,
                                const bool snap,
-                               const bool shift)
+                               const bool shift,
+                               const bool use_continuous_grab)
 {
   float cursor_x_range, f, tempf, softmin, softmax, softrange;
   int temp, lvalue;
@@ -5591,7 +5592,12 @@ static bool ui_numedit_but_SLI(uiBut *but,
   softmax = but->softmax;
   softrange = softmax - softmin;
 
-  if (but->type == UI_BTYPE_NUM_SLIDER) {
+  if (but->type == UI_BTYPE_NUM_SLIDER && !use_continuous_grab) {
+    mx_fl = clamp_f(mx_fl, but->rect.xmin, but->rect.xmax);
+    cursor_x_range = BLI_rctf_size_x(&but->rect);
+    f = (mx_fl - but->rect.xmin) / cursor_x_range;
+  }
+  else if (but->type == UI_BTYPE_NUM_SLIDER) {
     const float fac = ui_mouse_scale_warp_factor(shift);
     cursor_x_range = BLI_rctf_size_x(&but->rect);
     f = ((mx_fl - data->draglastx) / cursor_x_range) * fac + data->dragf;
@@ -5809,14 +5815,11 @@ static int ui_do_but_SLI(
       data->multi_data.drag_dir[0] += abs(data->draglastx - mx);
       data->multi_data.drag_dir[1] += abs(data->draglasty - my);
 #endif
-      if (ui_numedit_but_SLI(but,
-                             data,
-                             mx,
-                             true,
-                             is_motion,
-                             event->modifier & KM_CTRL,
-                             event->modifier & KM_SHIFT))
-      {
+      const bool ctrl = event->modifier & KM_CTRL;
+      const bool shift = event->modifier & KM_SHIFT;
+      const bool use_continuous_grab = ui_but_is_cursor_warp(but) &&
+                                       event->tablet.active == EVT_TABLET_NONE;
+      if (ui_numedit_but_SLI(but, data, mx, true, is_motion, ctrl, shift, use_continuous_grab)) {
         ui_numedit_apply(C, block, but, data);
       }
 
@@ -5971,7 +5974,8 @@ static int ui_do_but_SCROLL(
     else if (event->type == MOUSEMOVE) {
       const bool is_motion = (event->type == MOUSEMOVE);
       if (ui_numedit_but_SLI(
-              but, data, (horizontal) ? mx : my, horizontal, is_motion, false, false)) {
+              but, data, (horizontal) ? mx : my, horizontal, is_motion, false, false, false))
+      {
         ui_numedit_apply(C, block, but, data);
       }
     }
