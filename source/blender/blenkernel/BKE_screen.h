@@ -412,6 +412,15 @@ ENUM_OPERATORS(MenuTypeFlag, MenuTypeFlag::SearchOnKeyPress)
 
 /* menu types */
 
+enum class MenuTypeFlag {
+  /**
+   * Whether the menu depends on data retrieved via #CTX_data_pointer_get. If it is context
+   * dependent, menu search has to scan it in different contexts.
+   */
+  ContextDependent = (1 << 0),
+};
+ENUM_OPERATORS(MenuTypeFlag, MenuTypeFlag::ContextDependent)
+
 typedef struct MenuType {
   struct MenuType *next, *prev;
 
