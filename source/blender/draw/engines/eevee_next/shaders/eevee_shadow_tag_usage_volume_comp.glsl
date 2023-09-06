@@ -21,7 +21,7 @@ void main()
   vec3 extinction = imageLoad(in_extinction_img, froxel).rgb;
   vec3 scattering = imageLoad(in_scattering_img, froxel).rgb;
 
-  if (extinction == vec3(0.0) || scattering == vec3(0.0)) {
+  if (is_zero(extinction) || is_zero(scattering)) {
     return;
   }
 
