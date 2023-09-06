@@ -397,6 +397,12 @@ static uiPopupBlockHandle *ui_popup_menu_create(
   if (but) {
     pup->slideout = ui_block_is_menu(but->block);
     pup->but = but;
+
+    if (MenuType *mt = UI_but_menutype_get(but)) {
+      if (bool(mt->flag & MenuTypeFlag::SearchOnKeyPress)) {
+        ED_workspace_status_text(C, TIP_("Type to search..."));
+      }
+    }
   }
 
   if (!but) {
@@ -610,6 +616,10 @@ static void ui_popup_menu_create_from_menutype(bContext *C,
 
   STRNCPY(handle->menu_idname, mt->idname);
   handle->can_refresh = true;
+
+  if (bool(mt->flag & MenuTypeFlag::SearchOnKeyPress)) {
+    ED_workspace_status_text(C, TIP_("Type to search..."));
+  }
 }
 
 int UI_popup_menu_invoke(bContext *C, const char *idname, ReportList *reports)
