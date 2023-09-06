@@ -182,6 +182,8 @@ void ensure_blend_shape_skeleton(pxr::UsdStageRefPtr stage, pxr::UsdPrim &mesh_p
                __func__,
                skel.GetPath().GetAsString().c_str());
   }
+
+  pxr::UsdGeomPrimvarsAPI(mesh_prim).RemovePrimvar(TempBlendShapeWeightsPrimvarName);
 }
 
 const Key *get_mesh_shape_key(const Object *obj)
