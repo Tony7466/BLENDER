@@ -128,7 +128,7 @@ class DepthOfField {
   int3 dispatch_resolve_size_ = int3(-1);
   PassSimple resolve_ps_ = {"Resolve"};
 
-  DepthOfFieldData &data_;
+  DepthOfFieldDataBuf data_;
 
   /** Scene settings that are immutable. */
   float user_overblur_;
@@ -148,7 +148,7 @@ class DepthOfField {
   int2 extent_;
 
  public:
-  DepthOfField(Instance &inst, DepthOfFieldData &data) : inst_(inst), data_(data){};
+  DepthOfField(Instance &inst) : inst_(inst){};
   ~DepthOfField(){};
 
   void init();

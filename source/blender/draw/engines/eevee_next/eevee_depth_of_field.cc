@@ -248,7 +248,7 @@ void DepthOfField::bokeh_lut_pass_sync()
   /* Precompute bokeh texture. */
   bokeh_lut_ps_.init();
   bokeh_lut_ps_.shader_set(inst_.shaders.static_shader_get(DOF_BOKEH_LUT));
-  inst_.bind_global_resources(&bokeh_lut_ps_);
+  bokeh_lut_ps_.bind_ubo("dof_buf", data_);
   bokeh_lut_ps_.bind_image("out_gather_lut_img", &bokeh_gather_lut_tx_);
   bokeh_lut_ps_.bind_image("out_scatter_lut_img", &bokeh_scatter_lut_tx_);
   bokeh_lut_ps_.bind_image("out_resolve_lut_img", &bokeh_resolve_lut_tx_);
@@ -263,7 +263,7 @@ void DepthOfField::setup_pass_sync()
   setup_ps_.shader_set(inst_.shaders.static_shader_get(DOF_SETUP));
   setup_ps_.bind_texture("color_tx", &input_color_tx_, no_filter);
   setup_ps_.bind_texture("depth_tx", &render_buffers.depth_tx, no_filter);
-  inst_.bind_global_resources(&setup_ps_);
+  setup_ps_.bind_ubo("dof_buf", data_);
   setup_ps_.bind_image("out_color_img", &setup_color_tx_);
   setup_ps_.bind_image("out_coc_img", &setup_coc_tx_);
   setup_ps_.dispatch(&dispatch_setup_size_);
@@ -286,7 +286,7 @@ void DepthOfField::stabilize_pass_sync()
   stabilize_ps_.bind_texture("velocity_tx", &render_buffers.vector_tx, no_filter);
   stabilize_ps_.bind_texture("in_history_tx", &stabilize_input_, with_filter);
   stabilize_ps_.bind_texture("depth_tx", &render_buffers.depth_tx, no_filter);
-  inst_.bind_global_resources(&stabilize_ps_);
+  stabilize_ps_.bind_ubo("dof_buf", data_);
   stabilize_ps_.push_constant("u_use_history", &stabilize_valid_history_, 1);
   stabilize_ps_.bind_image("out_coc_img", reduced_coc_tx_.mip_view(0));
   stabilize_ps_.bind_image("out_color_img", reduced_color_tx_.mip_view(0));
@@ -310,7 +310,7 @@ void DepthOfField::reduce_pass_sync()
 {
   reduce_ps_.init();
   reduce_ps_.shader_set(inst_.shaders.static_shader_get(DOF_REDUCE));
-  inst_.bind_global_resources(&reduce_ps_);
+  reduce_ps_.bind_ubo("dof_buf", data_);
   reduce_ps_.bind_texture("downsample_tx", &downsample_tx_, no_filter);
   reduce_ps_.bind_ssbo("scatter_fg_list_buf", scatter_fg_list_buf_);
   reduce_ps_.bind_ssbo("scatter_bg_list_buf", scatter_bg_list_buf_);
@@ -378,7 +378,7 @@ void DepthOfField::gather_pass_sync()
     drw_pass.init();
     inst_.sampling.bind_resources(&drw_pass);
     drw_pass.shader_set(inst_.shaders.static_shader_get(sh_type));
-    inst_.bind_global_resources(&drw_pass);
+    drw_pass.bind_ubo("dof_buf", data_);
     drw_pass.bind_texture("color_bilinear_tx", reduced_color_tx_, gather_bilinear);
     drw_pass.bind_texture("color_tx", reduced_color_tx_, gather_nearest);
     drw_pass.bind_texture("coc_tx", reduced_coc_tx_, gather_nearest);
@@ -442,7 +442,7 @@ void DepthOfField::hole_fill_pass_sync()
   hole_fill_ps_.init();
   inst_.sampling.bind_resources(&hole_fill_ps_);
   hole_fill_ps_.shader_set(inst_.shaders.static_shader_get(DOF_GATHER_HOLE_FILL));
-  inst_.bind_global_resources(&hole_fill_ps_);
+  hole_fill_ps_.bind_ubo("dof_buf", data_);
   hole_fill_ps_.bind_texture("color_bilinear_tx", reduced_color_tx_, gather_bilinear);
   hole_fill_ps_.bind_texture("color_tx", reduced_color_tx_, gather_nearest);
   hole_fill_ps_.bind_texture("coc_tx", reduced_coc_tx_, gather_nearest);
@@ -463,7 +463,7 @@ void DepthOfField::resolve_pass_sync()
   resolve_ps_.init();
   inst_.sampling.bind_resources(&resolve_ps_);
   resolve_ps_.shader_set(inst_.shaders.static_shader_get(sh_type));
-  inst_.bind_global_resources(&resolve_ps_);
+  resolve_ps_.bind_ubo("dof_buf", data_);
   resolve_ps_.bind_texture("depth_tx", &render_buffers.depth_tx, no_filter);
   resolve_ps_.bind_texture("color_tx", &input_color_tx_, no_filter);
   resolve_ps_.bind_texture("stable_color_tx", &resolve_stable_color_tx_, no_filter);
@@ -553,7 +553,7 @@ void DepthOfField::render(View &view,
 
     update_sample_table();
 
-    inst_.push_global_data();
+    data_.push_update();
   }
 
   int2 half_res = math::divide_ceil(extent_, int2(2));

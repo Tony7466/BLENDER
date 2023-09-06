@@ -98,14 +98,14 @@ class MotionBlurModule {
   PassSimple motion_blur_ps_ = {"MotionBlur"};
 
   MotionBlurTileIndirectionBuf tile_indirection_buf_;
-  MotionBlurData &data_;
+  MotionBlurDataBuf data_;
   /** Dispatch size for full-screen passes. */
   int3 dispatch_flatten_size_ = int3(0);
   int3 dispatch_dilate_size_ = int3(0);
   int3 dispatch_gather_size_ = int3(0);
 
  public:
-  MotionBlurModule(Instance &inst, MotionBlurData &data) : inst_(inst), data_(data){};
+  MotionBlurModule(Instance &inst) : inst_(inst){};
   ~MotionBlurModule(){};
 
   void init();
