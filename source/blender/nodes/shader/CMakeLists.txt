@@ -147,18 +147,24 @@ set(LIB
 if(WITH_MATERIALX)
   list(APPEND SRC
     materialx/material.cc
+    materialx/nodes/brightness.cc
     materialx/nodes/bsdf_principled.cc
+    materialx/nodes/huesatval.cc
     materialx/nodes/invert.cc
     materialx/nodes/math.cc
     materialx/nodes/mix_rgb.cc
     materialx/nodes/node_item.cc
     materialx/nodes/node_parser.cc
+    materialx/nodes/normal_map.cc
     materialx/nodes/output_material.cc
-    materialx/nodes/tex_image.cc
-    materialx/nodes/tex_environment.cc
-    materialx/nodes/tex_noise.cc
+    materialx/nodes/sepcomb_color.cc
+    materialx/nodes/sepcomb_xyz.cc
     materialx/nodes/tex_checker.cc
-
+    materialx/nodes/tex_environment.cc
+    materialx/nodes/tex_image.cc
+    materialx/nodes/tex_noise.cc    
+    materialx/nodes/vector_math.cc
+    
     materialx/material.h
     materialx/nodes/node_item.h
     materialx/nodes/node_parser.h

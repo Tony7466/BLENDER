@@ -27,6 +27,7 @@ class NodeParser {
              const bNode *node,
              const bNodeSocket *socket_out);
   virtual ~NodeParser() = default;
+
   virtual NodeItem compute() = 0;
 
  protected:
@@ -60,13 +61,21 @@ template<class T> NodeItem NodeParser::value(const T &data) const
     NodeItem compute() override; \
   };
 
+DECLARE_PARSER(BrightContrastNodeParser)
 DECLARE_PARSER(BSDFPrincipledNodeParser)
+DECLARE_PARSER(CombineColorNodeParser)
+DECLARE_PARSER(CombineXYZNodeParser)
+DECLARE_PARSER(HueSatValNodeParser)
 DECLARE_PARSER(InvertNodeParser)
 DECLARE_PARSER(MathNodeParser)
 DECLARE_PARSER(MixRGBNodeParser)
+DECLARE_PARSER(NormalMapNodeParser)
+DECLARE_PARSER(SeparateColorNodeParser)
+DECLARE_PARSER(SeparateXYZNodeParser)
 DECLARE_PARSER(TexCheckerNodeParser)
 DECLARE_PARSER(TexEnvironmentNodeParser)
 DECLARE_PARSER(TexImageNodeParser)
 DECLARE_PARSER(TexNoiseNodeParser)
+DECLARE_PARSER(VectorMathNodeParser)
 
 }  // namespace blender::nodes::materialx

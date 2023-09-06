@@ -76,6 +76,7 @@ class NodeItem {
                    const NodeItem &other,
                    const NodeItem &if_val,
                    const NodeItem &else_val) const;
+  NodeItem extract(const int index) const;
 
   /* Useful functions */
   NodeItem empty() const;

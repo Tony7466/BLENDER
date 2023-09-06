@@ -132,14 +132,22 @@ NodeItem NodeParser::get_input_link(const bNodeSocket &socket)
     break;
 
   switch (from_node->typeinfo->type) {
+    CASE_NODE_TYPE(SH_NODE_BRIGHTCONTRAST, BrightContrastNodeParser)
     CASE_NODE_TYPE(SH_NODE_BSDF_PRINCIPLED, BSDFPrincipledNodeParser)
+    CASE_NODE_TYPE(SH_NODE_COMBINE_COLOR, CombineColorNodeParser)
+    CASE_NODE_TYPE(SH_NODE_COMBXYZ, CombineXYZNodeParser)
+    CASE_NODE_TYPE(SH_NODE_HUE_SAT, HueSatValNodeParser)
     CASE_NODE_TYPE(SH_NODE_INVERT, InvertNodeParser)
     CASE_NODE_TYPE(SH_NODE_MATH, MathNodeParser)
     CASE_NODE_TYPE(SH_NODE_MIX_RGB_LEGACY, MixRGBNodeParser)
+    CASE_NODE_TYPE(SH_NODE_NORMAL_MAP, NormalMapNodeParser)
+    CASE_NODE_TYPE(SH_NODE_SEPARATE_COLOR, SeparateColorNodeParser)
+    CASE_NODE_TYPE(SH_NODE_SEPXYZ, SeparateXYZNodeParser)
     CASE_NODE_TYPE(SH_NODE_TEX_CHECKER, TexCheckerNodeParser)
     CASE_NODE_TYPE(SH_NODE_TEX_ENVIRONMENT, TexEnvironmentNodeParser)
     CASE_NODE_TYPE(SH_NODE_TEX_IMAGE, TexImageNodeParser)
     CASE_NODE_TYPE(SH_NODE_TEX_NOISE, TexNoiseNodeParser)
+    CASE_NODE_TYPE(SH_NODE_VECTOR_MATH, VectorMathNodeParser)
 
     default:
       CLOG_WARN(LOG_MATERIALX_SHADER,

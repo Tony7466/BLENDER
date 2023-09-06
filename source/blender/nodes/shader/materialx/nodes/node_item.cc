@@ -236,6 +236,15 @@ NodeItem NodeItem::exp() const
   return arithmetic("exp", [](float a) { return std::expf(a); });
 }
 
+NodeItem NodeItem::extract(const int index) const
+{
+  NodeItem res = empty();
+  res.node = graph_->addNode("extract", MaterialX::EMPTY_STRING, "float");
+  res.set_input("in", *this);
+  res.set_input("index", val(index));
+  return res;
+}
+
 NodeItem NodeItem::convert(Type to_type) const
 {
   Type from_type = type();
@@ -247,7 +256,7 @@ NodeItem NodeItem::convert(Type to_type) const
   }
 
   if (to_type == Type::Float) {
-    /* TODO: Convert to float, <extract> should be used */
+    return extract(0);
   }
 
   /* Converting types which requires > 1 iteration */
