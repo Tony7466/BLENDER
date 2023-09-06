@@ -2122,7 +2122,7 @@ static bNodeTree *add_auto_smooth_node_tree(Main &bmain)
   {
     greater_node->locx = -160.0f;
     greater_node->locy = -100.0f;
-    auto *storage = static_cast<NodeFunctionCompare *>(store_node->storage);
+    auto *storage = static_cast<NodeFunctionCompare *>(greater_node->storage);
     storage->operation = NODE_COMPARE_GREATER_THAN;
     storage->data_type = SOCK_FLOAT;
   }
