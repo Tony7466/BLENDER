@@ -6,7 +6,6 @@
  * \ingroup spnode
  */
 
-
 #include "AS_asset_representation.hh"
 
 #include "BLI_string.h"
@@ -682,6 +681,10 @@ static void node_main_region_draw(const bContext *C, ARegion *region)
 static bool node_group_drop_poll(bContext *C, wmDrag *drag, const wmEvent * /*event*/)
 {
   SpaceNode *snode = CTX_wm_space_node(C);
+
+  if (snode->edittree == nullptr) {
+    return false;
+  }
 
   if (!WM_drag_is_ID_type(drag, ID_NT)) {
     return false;
