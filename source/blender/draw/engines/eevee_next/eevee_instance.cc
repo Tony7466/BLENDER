@@ -281,7 +281,7 @@ void Instance::end_sync()
   reflection_probes.end_sync();
   volume.end_sync();
 
-  global_data_.push_update();
+  global_ubo_.push_update();
 }
 
 void Instance::render_sync()

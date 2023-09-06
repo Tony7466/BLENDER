@@ -5,12 +5,7 @@
 #include "eevee_defines.hh"
 #include "gpu_shader_create_info.hh"
 
-GPU_SHADER_CREATE_INFO(eevee_film_data)
-    .additional_info("eevee_global_data")
-    .define("film_buf", "global_buf.film");
-
 GPU_SHADER_CREATE_INFO(eevee_film)
-    .additional_info("eevee_film_data")
     .sampler(0, ImageType::DEPTH_2D, "depth_tx")
     .sampler(1, ImageType::FLOAT_2D, "combined_tx")
     .sampler(2, ImageType::FLOAT_2D, "vector_tx")
@@ -29,7 +24,7 @@ GPU_SHADER_CREATE_INFO(eevee_film)
     .image(6, GPU_R16F, Qualifier::READ_WRITE, ImageType::FLOAT_2D_ARRAY, "value_accum_img")
     .image(7, GPU_RGBA32F, Qualifier::READ_WRITE, ImageType::FLOAT_2D_ARRAY, "cryptomatte_img")
     .additional_info("eevee_shared")
-    .additional_info("eevee_render_buffers_data")
+    .additional_info("eevee_global_ubo")
     .additional_info("eevee_velocity_camera")
     .additional_info("draw_view");
 

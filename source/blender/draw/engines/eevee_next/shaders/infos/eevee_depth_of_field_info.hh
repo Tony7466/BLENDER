@@ -9,10 +9,6 @@
 /** \name Setup
  * \{ */
 
-GPU_SHADER_CREATE_INFO(eevee_depth_of_field_data)
-    .additional_info("eevee_global_data")
-    .define("dof_buf", "global_buf.dof");
-
 GPU_SHADER_CREATE_INFO(eevee_depth_of_field_bokeh_lut)
     .do_static_compilation(true)
     .local_group_size(DOF_BOKEH_LUT_SIZE, DOF_BOKEH_LUT_SIZE)

@@ -1256,7 +1256,7 @@ struct GlobalUBOData {
   FilmData film;
   HiZData hiz;
   RayTraceData raytrace;
-  RenderBuffersInfoData render_buffers;
+  RenderBuffersInfoData render_pass;
   SubsurfaceData subsurface;
   VolumesInfoData volumes;
 };

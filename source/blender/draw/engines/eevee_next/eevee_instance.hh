@@ -51,7 +51,7 @@ class Instance {
   friend VelocityModule;
   friend MotionBlurModule;
 
-  GlobalDataBuf global_data_;
+  GlobalDataBuf global_ubo_;
 
  public:
   ShaderModule &shaders;
@@ -117,29 +117,29 @@ class Instance {
       : shaders(*ShaderModule::module_get()),
         sync(*this),
         materials(*this),
-        subsurface(*this, global_data_.subsurface),
+        subsurface(*this, global_ubo_.subsurface),
         pipelines(*this),
         shadows(*this),
         lights(*this),
-        ambient_occlusion(*this, global_data_.ao),
-        raytracing(*this, global_data_.raytrace),
+        ambient_occlusion(*this, global_ubo_.ao),
+        raytracing(*this, global_ubo_.raytrace),
         reflection_probes(*this),
         velocity(*this),
         motion_blur(*this),
         depth_of_field(*this),
         cryptomatte(*this),
-        hiz_buffer(*this, global_data_.hiz),
+        hiz_buffer(*this, global_ubo_.hiz),
         sampling(*this),
-        camera(*this, global_data_.camera),
-        film(*this, global_data_.film),
-        render_buffers(*this, global_data_.render_buffers),
+        camera(*this, global_ubo_.camera),
+        film(*this, global_ubo_.film),
+        render_buffers(*this, global_ubo_.render_pass),
         main_view(*this),
         capture_view(*this),
         world(*this),
         lookdev(*this),
         light_probes(*this),
         irradiance_cache(*this),
-        volume(*this, global_data_.volumes){};
+        volume(*this, global_ubo_.volumes){};
   ~Instance(){};
 
   /* Render & Viewport. */
@@ -218,14 +218,14 @@ class Instance {
                       ((v3d->shading.flag & V3D_SHADING_SCENE_WORLD_RENDER) == 0)));
   }
 
-  void push_global_data()
+  void push_global_ubo()
   {
-    global_data_.push_update();
+    global_ubo_.push_update();
   }
 
-  template<typename T> void bind_global_resources(draw::detail::PassBase<T> *pass)
+  template<typename T> void bind_global_ubo(draw::detail::PassBase<T> *pass)
   {
-    pass->bind_ubo(GLOBAL_BUF_SLOT, &global_data_);
+    pass->bind_ubo(GLOBAL_BUF_SLOT, &global_ubo_);
   }
 
  private:

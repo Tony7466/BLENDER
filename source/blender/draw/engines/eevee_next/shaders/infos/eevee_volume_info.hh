@@ -6,18 +6,14 @@
 
 #pragma once
 
-GPU_SHADER_CREATE_INFO(eevee_volumes_data)
-    .additional_info("eevee_global_data")
-    .define("volumes_info_buf", "global_buf.volumes");
-
 /* Used for shaders that need the final accumulated volume transmittance and scattering. */
 GPU_SHADER_CREATE_INFO(eevee_volume_lib)
-    .additional_info("eevee_shared", "eevee_volumes_data", "draw_view")
+    .additional_info("eevee_shared", "eevee_global_ubo", "draw_view")
     .sampler(VOLUME_SCATTERING_TEX_SLOT, ImageType::FLOAT_3D, "volume_scattering_tx")
     .sampler(VOLUME_TRANSMITTANCE_TEX_SLOT, ImageType::FLOAT_3D, "volume_transmittance_tx");
 
 GPU_SHADER_CREATE_INFO(eevee_volume_properties_data)
-    .additional_info("eevee_volumes_data")
+    .additional_info("eevee_global_ubo")
     .image(VOLUME_PROP_SCATTERING_IMG_SLOT,
            GPU_R11F_G11F_B10F,
            Qualifier::READ,
@@ -41,7 +37,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_properties_data)
 
 GPU_SHADER_CREATE_INFO(eevee_volume_scatter)
     .additional_info("eevee_shared")
-    .additional_info("eevee_volumes_data")
+    .additional_info("eevee_global_ubo")
     .additional_info("draw_resource_id_varying")
     .additional_info("draw_view")
     .additional_info("eevee_light_data")
@@ -64,7 +60,7 @@ GPU_SHADER_CREATE_INFO(eevee_volume_scatter_with_lights)
     .do_static_compilation(true);
 
 GPU_SHADER_CREATE_INFO(eevee_volume_integration)
-    .additional_info("eevee_shared", "eevee_volumes_data", "draw_view")
+    .additional_info("eevee_shared", "eevee_global_ubo", "draw_view")
     .compute_source("eevee_volume_integration_comp.glsl")
     .local_group_size(VOLUME_INTEGRATION_GROUP_SIZE, VOLUME_INTEGRATION_GROUP_SIZE, 1)
     /* Inputs. */
