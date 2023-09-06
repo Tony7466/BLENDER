@@ -693,8 +693,7 @@ static ImBuf *seq_render_preprocess_ibuf(const SeqRenderData *context,
                                          const bool is_proxy_image)
 {
   if (context->is_proxy_render == false &&
-      (ibuf->x != context->rectx || ibuf->y != context->recty))
-  {
+      (ibuf->x != context->rectx || ibuf->y != context->recty)) {
     use_preprocess = true;
   }
 
@@ -1867,8 +1866,6 @@ static ImBuf *seq_render_strip_stack_apply_effect(
     }
   }
 
-  IMB_metadata_copy(out, ibuf2);
-
   return out;
 }
 
@@ -1937,6 +1934,7 @@ static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
           ImBuf *ibuf2 = seq_render_strip(context, state, seq, timeline_frame);
 
           out = seq_render_strip_stack_apply_effect(context, seq, timeline_frame, ibuf1, ibuf2);
+          IMB_metadata_copy(out, ibuf2);
 
           seq_cache_put(context, seq_arr[i], timeline_frame, SEQ_CACHE_STORE_COMPOSITE, out);
 
@@ -1960,6 +1958,7 @@ static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
       ImBuf *ibuf2 = seq_render_strip(context, state, seq, timeline_frame);
 
       out = seq_render_strip_stack_apply_effect(context, seq, timeline_frame, ibuf1, ibuf2);
+      IMB_metadata_copy(out, ibuf2);
 
       IMB_freeImBuf(ibuf1);
       IMB_freeImBuf(ibuf2);
