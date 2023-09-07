@@ -131,7 +131,12 @@ GHOST_TSuccess GHOST_Window::releaseNativeHandles()
 
 GHOST_TSuccess GHOST_Window::setCursorVisibility(bool visible)
 {
-  if (setWindowCursorVisibility(visible)) {
+
+  if (m_cursorGrab == GHOST_kGrabHide) {
+    /* Make sure the cursor is not visible. */
+    setWindowCursorVisibility(false);
+  }
+  else if (setWindowCursorVisibility(visible)) {
     m_cursorVisible = visible;
     return GHOST_kSuccess;
   }
