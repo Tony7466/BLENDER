@@ -758,7 +758,7 @@ struct LightData {
   float transmit_power;
 
   /** --- Shadow Data --- */
-  /** Directional : Near clip distance. Float stored as int for atomic operations. */
+  /** Near clip distances. Float stored as int for atomic operations. */
   int clip_near;
   int clip_far;
   /** Directional : Clip-map LOD range to avoid sampling outside of valid range. */
@@ -770,8 +770,12 @@ struct LightData {
   int2 clipmap_base_offset;
   /** Number of step for shadow map tracing. */
   int shadow_ray_step_count;
-
-  float _pad;
+  /** Punctual: Other parts of the perspective matrix. */
+  float clip_side;
+  float shadow_projection_shift;
+  float _pad0;
+  float _pad1;
+  float _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(LightData, 16)
 
@@ -835,7 +839,7 @@ struct ShadowTileMapData {
   /** Near and far clip distances for punctual. */
   float clip_near;
   float clip_far;
-  /** Half of the tilemap size in world units. Used to compute directional window matrix. */
+  /** Half of the tilemap size in world units. Used to compute window matrix. */
   float half_size;
   /** Offset in local space to the tilemap center in world units. Used for directional winmat. */
   float2 center_offset;

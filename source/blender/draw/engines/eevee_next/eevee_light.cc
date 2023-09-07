@@ -89,9 +89,9 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
     else {
       /* Reuse shape radius as near clip plane. */
       /* This assumes `shape_parameters_set` has already set `radius_squared`. */
-      float clip_near = math::sqrt(this->radius_squared);
+      float radius = math::sqrt(this->radius_squared);
       this->punctual->sync(
-          this->type, this->object_mat, la->spotsize, clip_near, this->influence_radius_max);
+          this->type, this->object_mat, la->spotsize, radius, this->influence_radius_max);
     }
   }
   else {

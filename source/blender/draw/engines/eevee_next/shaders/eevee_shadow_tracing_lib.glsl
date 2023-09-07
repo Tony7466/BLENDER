@@ -75,7 +75,6 @@ ShadowMapTracingState shadow_map_trace_init(int sample_count, float step_offset)
 struct ShadowTracingSample {
   float receiver_depth;
   float occluder_depth;
-  bool reset_interpolation;
   bool skip_sample;
 };
 
@@ -108,10 +107,6 @@ struct ShadowTracingSample {
  */
 void shadow_map_trace_hit_check(inout ShadowMapTracingState state, ShadowTracingSample samp)
 {
-  /* Reset history if we are crossing cube-face boundaries since the depth gradient changes. */
-  if (samp.reset_interpolation) {
-    state.occluder_depth_history = SHADOW_TRACING_INVALID_HISTORY;
-  }
   /* Skip empty tiles since they do not contain actual depth information.
    * Not doing so would change the z gradient history.  */
   if (samp.skip_sample) {
@@ -252,7 +247,6 @@ ShadowTracingSample shadow_map_trace_sample(ShadowMapTracingState state,
   tilemap_uv = saturate(tilemap_uv);
 
   ShadowTracingSample samp;
-  samp.reset_interpolation = false;
   samp.receiver_depth = ray_pos.w;
   samp.occluder_depth = shadow_read_depth_at_tilemap_uv(ray.light.tilemap_index + level_relative,
                                                         tilemap_uv);
@@ -268,16 +262,22 @@ SHADOW_MAP_TRACE_FN(ShadowRayDirectional)
 /** \name Punctual Shadow Map Tracing
  * \{ */
 
-struct ShadowRayPrototype {
-  /* Ray in local space coordinates. */
-  vec3 start;
-  vec3 end;
+struct ShadowRayPunctual {
+  /* Ray in tilemap normalized coordinates [0..1]. */
+  vec3 origin;
+  vec3 direction;
+  /* Tilemap to sample. */
+  int tilemap_index;
+  /* Debug. */
+  mat4 viewinv;
+  mat4 wininv;
 };
 
-/* Returns a ray in light local space. */
-ShadowRayPrototype shadow_ray_generate_punctual(
-    LightData light, vec2 random_2d, vec3 lP, vec3 lNg, out bool r_is_above_surface)
+/* Return ray in UV clip space [0..1]. */
+ShadowRayPunctual shadow_ray_generate_punctual(
+    LightData light, vec2 random_2d, float rand, vec3 lP, vec3 lNg, out bool r_is_above_surface)
 {
+
   if (light.type == LIGHT_RECT) {
     random_2d = random_2d * 2.0 - 1.0;
   }
@@ -299,49 +299,38 @@ ShadowRayPrototype shadow_ray_generate_punctual(
 
   r_is_above_surface = dot(direction, lNg) > 0.0;
 
-  /* Clip the ray to not cross the near plane. */
+  float clip_far = intBitsToFloat(light.clip_far);
   float clip_near = intBitsToFloat(light.clip_near);
-  /* Scale it so that it encompass the whole cube (with a safety margin). */
-  float clip_distance = clip_near * M_SQRT3 * 1.05 + 0.01;
+  float clip_side = light.clip_side;
+
+  /* Clip the ray to not cross the near plane.
+   * Scale it so that it encompass the whole cube (with a safety margin). */
+  /* TODO(fclem):  */
+  float clip_distance = clip_near + 0.001;
   float ray_length = length(direction);
   direction *= saturate((ray_length - clip_distance) / ray_length);
 
-  ShadowRayPrototype ray;
-  ray.start = lP;
-  ray.end = lP + direction;
-  return ray;
-}
+  /* Apply shadow origin shift. */
+  /* TODO(fclem): 3D shift for jittered soft shadows. */
+  vec3 local_ray_start = lP + vec3(0.0, 0.0, -light.shadow_projection_shift);
+  vec3 local_ray_end = local_ray_start + direction;
 
-struct ShadowRay {
-  /* Ray in tilemap normalized coordinates [0..1]. */
-  vec3 origin;
-  vec3 direction;
-  /* Tilemap to sample. */
-  int tilemap_index;
-  /* Debug. */
-  mat4 viewinv;
-  mat4 wininv;
-};
-
-/* Return ray in UV clip space [0..1]. */
-ShadowRay shadow_ray_project_punctual(LightData light, int face_id, ShadowRayPrototype local_ray)
-{
+  int face_id = shadow_punctual_face_index_get(local_ray_start);
   /* Local Light Space > Face Local (View) Space. */
-  vec3 view_ray_start = shadow_punctual_local_position_to_face_local(face_id, local_ray.start);
-  vec3 view_ray_end = shadow_punctual_local_position_to_face_local(face_id, local_ray.end);
+  vec3 view_ray_start = shadow_punctual_local_position_to_face_local(face_id, local_ray_start);
+  vec3 view_ray_end = shadow_punctual_local_position_to_face_local(face_id, local_ray_end);
+
   /* Face Local (View) Space > Clip Space. */
   /* TODO: Could be simplified since frustum is completely symetrical. */
-  float clip_far = intBitsToFloat(light.clip_far);
-  float clip_near = intBitsToFloat(light.clip_near);
   mat4 winmat = projection_perspective(
-      -clip_near, clip_near, -clip_near, clip_near, clip_near, clip_far);
+      -clip_side, clip_side, -clip_side, clip_side, clip_near, clip_far);
   vec3 clip_ray_start = project_point(winmat, view_ray_start);
   vec3 clip_ray_end = project_point(winmat, view_ray_end);
   /* Clip Space > UV Space. */
   vec3 uv_ray_start = clip_ray_start * 0.5 + 0.5;
   vec3 uv_ray_end = clip_ray_end * 0.5 + 0.5;
   /* Compute the ray again. */
-  ShadowRay ray;
+  ShadowRayPunctual ray;
   ray.origin = uv_ray_start;
   ray.direction = uv_ray_end - uv_ray_start;
   ray.tilemap_index = light.tilemap_index + face_id;
@@ -351,38 +340,20 @@ ShadowRay shadow_ray_project_punctual(LightData light, int face_id, ShadowRayPro
   return ray;
 }
 
-struct ShadowRayDualCubeFace {
-  ShadowRay rays[2];
-  int active_ray;
-};
-
 ShadowTracingSample shadow_map_trace_sample(ShadowMapTracingState state,
-                                            inout ShadowRayDualCubeFace ray_dual)
+                                            inout ShadowRayPunctual ray)
 {
-  ShadowRay ray = ray_dual.rays[ray_dual.active_ray];
   vec3 ray_pos = ray.origin + ray.direction * state.ray_time;
   vec2 tilemap_uv = saturate(ray_pos.xy);
 
-  bool switched_cubeface = (ray_dual.active_ray == 1) && any(equal(tilemap_uv, ray_pos.xy));
-  if (switched_cubeface) {
-    /* Out of shadow map. Switch to next cube-face's ray. */
-    ray_dual.active_ray = 0;
-    ray = ray_dual.rays[ray_dual.active_ray];
-    ray_pos = ray.origin + ray.direction * state.ray_time;
-    tilemap_uv = saturate(ray_pos.xy);
-    /* NOTE: Sample might still be on the 3rd cube face.
-     * In this case, just extend the depth from the newly active face. */
-  }
-
   ShadowTracingSample samp;
-  samp.reset_interpolation = switched_cubeface;
   samp.receiver_depth = ray_pos.z;
   samp.occluder_depth = shadow_read_depth_at_tilemap_uv(ray.tilemap_index, tilemap_uv);
   samp.skip_sample = (samp.occluder_depth == -1.0);
   return samp;
 }
 
-SHADOW_MAP_TRACE_FN(ShadowRayDualCubeFace)
+SHADOW_MAP_TRACE_FN(ShadowRayPunctual)
 
 /** \} */
 
@@ -466,20 +437,8 @@ ShadowEvalResult shadow_eval(
       trace = shadow_map_trace(clip_ray, ray_step_count, random_shadow_3d.z);
     }
     else {
-      ShadowRayPrototype ray_proto = shadow_ray_generate_punctual(
-          light, random_ray_2d, lP, lNg, is_above_surface);
-      int face_start = shadow_punctual_face_index_get(ray_proto.start);
-      int face_end = shadow_punctual_face_index_get(ray_proto.end);
-      /* TODO(fclem): Remove the need to trace multiple faces by capturing the light shape inside
-       * the frustum. */
-
-      /* While a ray can potentially cross 3 faces, this is rather rare and covers a very small
-       * part of the tracing with low amount of samples. */
-      ShadowRayDualCubeFace clip_ray;
-      /* Start from end. */
-      clip_ray.active_ray = (face_start != face_end) ? 1 : 0;
-      clip_ray.rays[0] = shadow_ray_project_punctual(light, face_start, ray_proto);
-      clip_ray.rays[1] = shadow_ray_project_punctual(light, face_end, ray_proto);
+      ShadowRayPunctual clip_ray = shadow_ray_generate_punctual(
+          light, random_ray_2d, random_shadow_3d.z, lP, lNg, is_above_surface);
       trace = shadow_map_trace(clip_ray, ray_step_count, random_shadow_3d.z);
     }
 

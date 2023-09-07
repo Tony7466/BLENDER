@@ -87,8 +87,13 @@ struct ShadowTileMap : public ShadowTileMapData {
                          float lod_bias_,
                          eShadowProjectionType projection_type_);
 
-  void sync_cubeface(
-      const float4x4 &object_mat, float near, float far, eCubeFace face, float lod_bias_);
+  void sync_cubeface(const float4x4 &object_mat,
+                     float near,
+                     float far,
+                     float side,
+                     float shift,
+                     eCubeFace face,
+                     float lod_bias_);
 
   void debug_draw() const;
 
@@ -339,8 +344,8 @@ class ShadowPunctual : public NonCopyable, NonMovable {
   eLightType light_type_;
   /** Light position. */
   float3 position_;
-  /** Near and far clip distances. */
-  float far_, near_;
+  /** Used to compute near and far clip distances. */
+  float max_distance_, light_radius_;
   /** Number of tile-maps needed to cover the light angular extents. */
   int tilemaps_needed_;
 
@@ -360,8 +365,8 @@ class ShadowPunctual : public NonCopyable, NonMovable {
   void sync(eLightType light_type,
             const float4x4 &object_mat,
             float cone_aperture,
-            float near_clip,
-            float far_clip);
+            float light_shape_radius,
+            float max_distance);
 
   /**
    * Release the tile-maps that will not be used in the current frame.
@@ -372,6 +377,15 @@ class ShadowPunctual : public NonCopyable, NonMovable {
    * Allocate shadow tile-maps and setup views for rendering.
    */
   void end_sync(Light &light, float lod_bias);
+
+ private:
+  /**
+   * Compute the projection matrix inputs.
+   * Make sure that the projection encompass all possible rays that can start in the projection
+   * quadrant.
+   */
+  void compute_projection_boundaries(
+      float radius, float max_lit_distance, float &near, float &far, float &side);
 };
 
 class ShadowDirectional : public NonCopyable, NonMovable {
