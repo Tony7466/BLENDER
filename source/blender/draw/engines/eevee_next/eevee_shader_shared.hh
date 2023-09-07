@@ -1247,10 +1247,11 @@ BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Global UBO
+/** \name Uniform Data
  * \{ */
 
-struct GlobalUBOData {
+/* Combines data from several modules to avoid wasting binding slots. */
+struct UniformData {
   AOData ao;
   CameraData camera;
   FilmData film;
@@ -1260,7 +1261,7 @@ struct GlobalUBOData {
   SubsurfaceData subsurface;
   VolumesInfoData volumes;
 };
-BLI_STATIC_ASSERT_ALIGN(GlobalUBOData, 16)
+BLI_STATIC_ASSERT_ALIGN(UniformData, 16)
 
 /** \} */
 
@@ -1328,7 +1329,7 @@ using DepthOfFieldDataBuf = draw::UniformBuffer<DepthOfFieldData>;
 using DepthOfFieldScatterListBuf = draw::StorageArrayBuffer<ScatterRect, 16, true>;
 using DrawIndirectBuf = draw::StorageBuffer<DrawCommand, true>;
 using DispatchIndirectBuf = draw::StorageBuffer<DispatchCommand>;
-using GlobalDataBuf = draw::UniformBuffer<GlobalUBOData>;
+using UniformDataBuf = draw::UniformBuffer<UniformData>;
 using IrradianceGridDataBuf = draw::UniformArrayBuffer<IrradianceGridData, IRRADIANCE_GRID_MAX>;
 using IrradianceBrickBuf = draw::StorageVectorBuffer<IrradianceBrickPacked, 16>;
 using LightCullingDataBuf = draw::StorageBuffer<LightCullingData>;

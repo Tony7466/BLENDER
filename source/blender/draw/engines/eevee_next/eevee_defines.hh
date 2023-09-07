@@ -154,7 +154,7 @@
 
 /* Uniform Buffers. */
 /* Slot 0 is GPU_NODE_TREE_UBO_SLOT. */
-#define GLOBAL_BUF_SLOT 1
+#define UNIFORM_BUF_SLOT 1
 /* Only during surface shading (forward and deferred eval). */
 #define IRRADIANCE_GRID_BUF_SLOT 2
 #define REFLECTION_PROBE_BUF_SLOT 3

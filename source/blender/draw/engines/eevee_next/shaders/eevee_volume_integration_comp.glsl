@@ -13,7 +13,7 @@
 void main()
 {
   ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
-  ivec3 tex_size = g_buf.volumes.tex_size;
+  ivec3 tex_size = uniform_buf.volumes.tex_size;
 
   if (any(greaterThanEqual(texel, tex_size.xy))) {
     return;

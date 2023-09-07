@@ -14,7 +14,8 @@ GPU_SHADER_CREATE_INFO(eevee_shared)
     .typedef_source("eevee_defines.hh")
     .typedef_source("eevee_shader_shared.hh");
 
-GPU_SHADER_CREATE_INFO(eevee_global_ubo).uniform_buf(GLOBAL_BUF_SLOT, "GlobalUBOData", "g_buf");
+GPU_SHADER_CREATE_INFO(eevee_global_ubo)
+    .uniform_buf(UNIFORM_BUF_SLOT, "UniformData", "uniform_buf");
 
 GPU_SHADER_CREATE_INFO(eevee_sampling_data)
     .define("EEVEE_SAMPLING_DATA")

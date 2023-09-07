@@ -51,7 +51,7 @@ class Instance {
   friend VelocityModule;
   friend MotionBlurModule;
 
-  GlobalDataBuf global_ubo_;
+  UniformDataBuf global_ubo_;
 
  public:
   ShaderModule &shaders;
@@ -218,14 +218,14 @@ class Instance {
                       ((v3d->shading.flag & V3D_SHADING_SCENE_WORLD_RENDER) == 0)));
   }
 
-  void push_global_ubo()
+  void push_uniform_data()
   {
     global_ubo_.push_update();
   }
 
-  template<typename T> void bind_global_ubo(draw::detail::PassBase<T> *pass)
+  template<typename T> void bind_uniform_data(draw::detail::PassBase<T> *pass)
   {
-    pass->bind_ubo(GLOBAL_BUF_SLOT, &global_ubo_);
+    pass->bind_ubo(UNIFORM_BUF_SLOT, &global_ubo_);
   }
 
  private:
