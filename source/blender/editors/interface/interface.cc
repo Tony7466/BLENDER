@@ -3475,6 +3475,10 @@ static void ui_but_free(const bContext *C, uiBut *but)
     MEM_freeN(but->hold_argN);
   }
 
+  if (but->placeholder) {
+    MEM_freeN(but->placeholder);
+  }
+
   ui_but_free_type_specific(but);
 
   if (but->active) {
@@ -5894,6 +5898,17 @@ void UI_but_disable(uiBut *but, const char *disabled_hint)
   }
 
   but->disabled_info = disabled_hint;
+}
+
+void UI_but_placeholder(uiBut *but, const char *placeholder_text)
+{
+  if (but->placeholder) {
+    MEM_SAFE_FREE(but->placeholder);
+    but->placeholder = nullptr;
+  }
+  if (placeholder_text && placeholder_text[0]) {
+    but->placeholder = BLI_strdup(placeholder_text);
+  }
 }
 
 void UI_but_type_set_menu_from_pulldown(uiBut *but)

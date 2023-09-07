@@ -162,6 +162,8 @@ struct uiBut {
   char strdata[UI_MAX_NAME_STR] = "";
   char drawstr[UI_MAX_DRAW_STR] = "";
 
+  char *placeholder = nullptr;
+
   rctf rect = {}; /* block relative coords */
 
   char *poin = nullptr;
