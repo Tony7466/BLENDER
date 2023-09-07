@@ -703,9 +703,9 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
               modifier_data.prev_simulation_state->get_zone_state(zone_id) :
               nullptr;
       if (prev_zone_state == nullptr) {
-        /* There is no previous simulation state and we also don't create a new one, so just
-         * output defaults. */
-        params.set_default_remaining_outputs();
+        /* There is no previous simulation state and we also don't create a new one, so just pass
+         * the data through. */
+        this->pass_through(params, modifier_data, user_data);
         return;
       }
       const bke::sim::SimulationZoneState *next_zone_state =
@@ -798,6 +798,22 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
     for (const int i : simulation_items_.index_range()) {
       params.output_set(i);
     }
+  }
+
+  void pass_through(lf::Params &params, GeoNodesModifierData &modifier_data, GeoNodesLFUserData &user_data) const
+  {
+    Array<void *> input_values(inputs_.size());
+    for (const int i : inputs_.index_range()) {
+      input_values[i] = params.try_get_input_data_ptr_or_request(i);
+    }
+    if (input_values.as_span().contains(nullptr)) {
+      /* Wait until all inputs are available. */
+      return;
+    }
+    bke::sim::SimulationZoneState state;
+    values_to_simulation_state(simulation_items_, input_values, state);
+    this->output_cached_state(
+        params, *modifier_data.self_object, *user_data.compute_context, state);
   }
 };
 

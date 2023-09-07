@@ -58,53 +58,64 @@ class LazyFunctionForSimulationInputNode final : public LazyFunction {
     const GeoNodesLFUserData &user_data = *static_cast<const GeoNodesLFUserData *>(
         context.user_data);
     const GeoNodesModifierData &modifier_data = *user_data.modifier_data;
-    if (modifier_data.current_simulation_state == nullptr) {
-      params.set_default_remaining_outputs();
-      return;
-    }
 
     if (!params.output_was_set(0)) {
       const float delta_time = modifier_data.simulation_time_delta;
       params.set_output(0, fn::ValueOrField<float>(delta_time));
     }
 
+    if (modifier_data.current_simulation_state == nullptr) {
+      this->pass_through(params, user_data);
+      return;
+    }
+
     const bke::sim::SimulationZoneID zone_id = get_simulation_zone_id(*user_data.compute_context,
                                                                       output_node_id_);
 
-    const bke::sim::SimulationZoneState *prev_zone_state =
-        modifier_data.prev_simulation_state == nullptr ?
-            nullptr :
-            modifier_data.prev_simulation_state->get_zone_state(zone_id);
-
-    std::optional<bke::sim::SimulationZoneState> initial_prev_zone_state;
-    if (prev_zone_state == nullptr) {
-      Array<void *> input_values(simulation_items_.size(), nullptr);
-      for (const int i : simulation_items_.index_range()) {
-        input_values[i] = params.try_get_input_data_ptr_or_request(i);
-      }
-      if (input_values.as_span().contains(nullptr)) {
-        /* Wait until all inputs are available. */
+    /* If there is state from the last frame, output that directly. */
+    if (const auto *state = modifier_data.prev_simulation_state) {
+      if (const bke::sim::SimulationZoneState *prev_zone_state = state->get_zone_state(zone_id)) {
+        this->output_simulation_state(params, user_data, *prev_zone_state);
         return;
       }
-
-      initial_prev_zone_state.emplace();
-      values_to_simulation_state(simulation_items_, input_values, *initial_prev_zone_state);
-      prev_zone_state = &*initial_prev_zone_state;
     }
 
+    this->pass_through(params, user_data);
+  }
+
+  void output_simulation_state(lf::Params &params,
+                               const GeoNodesLFUserData &user_data,
+                               const bke::sim::SimulationZoneState &state) const
+  {
     Array<void *> output_values(simulation_items_.size());
     for (const int i : simulation_items_.index_range()) {
       output_values[i] = params.get_output_data_ptr(i + 1);
     }
     simulation_state_to_values(simulation_items_,
-                               *prev_zone_state,
-                               *modifier_data.self_object,
+                               state,
+                               *user_data.modifier_data->self_object,
                                *user_data.compute_context,
                                node_,
                                output_values);
     for (const int i : simulation_items_.index_range()) {
       params.output_set(i + 1);
     }
+  }
+
+  void pass_through(lf::Params &params, const GeoNodesLFUserData &user_data) const
+  {
+    Array<void *> input_values(inputs_.size());
+    for (const int i : inputs_.index_range()) {
+      input_values[i] = params.try_get_input_data_ptr_or_request(i);
+    }
+    if (input_values.as_span().contains(nullptr)) {
+      /* Wait until all inputs are available. */
+      return;
+    }
+
+    bke::sim::SimulationZoneState state;
+    values_to_simulation_state(simulation_items_, input_values, state);
+    this->output_simulation_state(params, user_data, state);
   }
 };
 
