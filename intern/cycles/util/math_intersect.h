@@ -16,35 +16,42 @@ ccl_device bool ray_sphere_intersect(float3 ray_P,
                                      float3 sphere_P,
                                      float sphere_radius,
                                      ccl_private float3 *isect_P,
-                                     ccl_private float *isect_t)
+                                     ccl_private float *isect_t,
+                                     const bool cull_backface)
 {
-  const float3 d_vec = sphere_P - ray_P;
-  const float r_sq = sphere_radius * sphere_radius;
-  const float d_sq = dot(d_vec, d_vec);
-  const float d_cos_theta = dot(d_vec, ray_D);
+    const float inv_d_sq = 1.0f / dot(ray_D, ray_D);
 
-  if (d_sq > r_sq && d_cos_theta < 0.0f) {
-    /* Ray origin outside sphere and points away from sphere. */
+    const float3 c0 = sphere_P - ray_P;
+    const float projC0 = dot(c0, ray_D) * inv_d_sq;
+    const float3 perp = c0 - projC0 * ray_D;
+    const float l_sq = dot(perp, perp);
+    const float r_sq = sphere_radius * sphere_radius;
+    if (!(l_sq <= r_sq)) {
+      return false;
+    }
+
+    float t;
+    if (dot(c0, c0) < r_sq) {
+        /* Ray origin is inside the sphere */
+        if (cull_backface) {
+            return false;
+        }
+        const float td = sqrt((r_sq - l_sq) * inv_d_sq);
+        t = projC0 + td;
+    }
+    else {
+        /* Ray origin is outside the sphere */
+        const float td = sqrt((r_sq - l_sq) * inv_d_sq);
+        t = projC0 - td;
+    }
+    
+    if ((ray_tmin <= t) & (t <= ray_tmax)){
+        *isect_t = t;
+        *isect_P = ray_P + ray_D * t;
+        return true;
+    }
+    
     return false;
-  }
-
-  const float d_sin_theta_sq = len_squared(d_vec - d_cos_theta * ray_D);
-
-  if (d_sin_theta_sq > r_sq) {
-    /* Closest point on ray outside sphere. */
-    return false;
-  }
-
-  /* Law of cosines. */
-  const float t = d_cos_theta - copysignf(sqrtf(r_sq - d_sin_theta_sq), d_sq - r_sq);
-
-  if (t > ray_tmin && t < ray_tmax) {
-    *isect_t = t;
-    *isect_P = ray_P + ray_D * t;
-    return true;
-  }
-
-  return false;
 }
 
 ccl_device bool ray_aligned_disk_intersect(float3 ray_P,

@@ -68,7 +68,7 @@ ccl_device_inline bool spot_light_sample(const ccl_global KernelLight *klight,
       ls->D = sample_uniform_cone(
           -klight->spot.dir, one_minus_cos_half_spot_spread, rand, &cos_theta, &ls->pdf);
 
-      if (!ray_sphere_intersect(P, ls->D, 0.0f, FLT_MAX, center, radius, &ls->P, &ls->t)) {
+      if (!ray_sphere_intersect(P, ls->D, 0.0f, FLT_MAX, center, radius, &ls->P, &ls->t, false)) {
         /* Sampled direction does not intersect with the light. */
         return false;
       }
