@@ -6708,7 +6708,7 @@ static int ui_do_but_HSVCUBE(
 
       /* also do drag the first time */
       const bool shift = event->modifier & KM_SHIFT;
-      /* On KM_PRESS the mouse is within the cube, use `use_continuous_grab` to pick colot at mouse
+      /* On KM_PRESS the mouse is within the cube, use `use_continuous_grab` to pick color at mouse
        * position. */
       if (ui_numedit_but_HSVCUBE(but, data, mx, my, snap, shift, false)) {
         ui_numedit_apply(C, block, but, data);
