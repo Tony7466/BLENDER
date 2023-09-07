@@ -3583,7 +3583,7 @@ static int text_insert_invoke(bContext *C, wmOperator *op, const wmEvent *event)
           txt_move_to(st->text, BLI_findindex(&st->text->lines, curl), curc, false);
         }
         else if (curl == sell) {
-          int ch = curc > selc ? curc : selc;
+          const int ch = curc > selc ? curc : selc;
           txt_move_to(st->text, BLI_findindex(&st->text->lines, sell), ch + 1, false);
         }
         else {
