@@ -15,7 +15,7 @@ NodeItem EmissionNodeParser::compute()
   NodeItem color = get_input_value("Color", NodeItem::Type::Color3);
   NodeItem strength = get_input_value("Strength", NodeItem::Type::Float);
 
-  NodeItem res = create_node("uniform_edf", "EDF");
+  NodeItem res = create_node("uniform_edf", NodeItem::Type::EDF);
   res.set_input("color", color * strength);
   return res;
 }

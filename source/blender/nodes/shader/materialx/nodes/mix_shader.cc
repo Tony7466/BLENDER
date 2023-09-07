@@ -17,13 +17,13 @@ NodeItem MixShaderNodeParser::compute()
       NodeItem shader2 = get_input_shader(2, shader_type_);
 
       if (shader1 && !shader2) {
-        res = shader1 * (value(1.0f) - fac);
+        res = shader1 * (val(1.0f) - fac);
       }
       else if (!shader1 && shader2) {
         res = shader2 * fac;
       }
       else if (shader1 && shader2) {
-        res = create_node("mix", NodeItem::type(shader_type_));
+        res = create_node("mix", shader_type_);
         res.set_input("fg", shader1);
         res.set_input("bg", shader2);
         res.set_input("mix", fac);
@@ -31,9 +31,9 @@ NodeItem MixShaderNodeParser::compute()
       break;
     }
     case NodeItem::Type::SurfaceShader: {
-      res = get_input_shader(1, shader_type_);
+      res = get_input_shader(1, NodeItem::Type::SurfaceShader);
       if (!res) {
-        res = get_input_shader(2, shader_type_);
+        res = get_input_shader(2, NodeItem::Type::SurfaceShader);
       }
       break;
     }

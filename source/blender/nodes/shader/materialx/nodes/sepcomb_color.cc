@@ -18,12 +18,12 @@ NodeItem SeparateColorNodeParser::compute()
     case NODE_COMBSEP_COLOR_RGB:
       break;
     case NODE_COMBSEP_COLOR_HSV:
-      convert = create_node("rgbtohsv", "color3");
+      convert = create_node("rgbtohsv", NodeItem::Type::Color3);
       convert.set_input("in", color);
       break;
     case NODE_COMBSEP_COLOR_HSL:
       CLOG_WARN(LOG_MATERIALX_SHADER, "Unsupported color model, using HSV instead: %d", mode);
-      convert = create_node("rgbtohsv", "color3");
+      convert = create_node("rgbtohsv", NodeItem::Type::Color3);
       convert.set_input("in", color);
       break;
     default:
@@ -44,7 +44,7 @@ NodeItem CombineColorNodeParser::compute()
   NodeItem blue = get_input_value("Blue", NodeItem::Type::Float);
 
   NodeItem convert = empty();
-  NodeItem combine = create_node("combine3", "color3");
+  NodeItem combine = create_node("combine3", NodeItem::Type::Color3);
   combine.set_input("in1", red);
   combine.set_input("in2", green);
   combine.set_input("in3", blue);
@@ -53,12 +53,12 @@ NodeItem CombineColorNodeParser::compute()
     case NODE_COMBSEP_COLOR_RGB:
       break;
     case NODE_COMBSEP_COLOR_HSV:
-      convert = create_node("hsvtorgb", "color3");
+      convert = create_node("hsvtorgb", NodeItem::Type::Color3);
       convert.set_input("in", combine);
       break;
     case NODE_COMBSEP_COLOR_HSL:
       CLOG_WARN(LOG_MATERIALX_SHADER, "Unsupported color model, using HSV instead: %d", mode);
-      convert = create_node("hsvtorgb", "color3");
+      convert = create_node("hsvtorgb", NodeItem::Type::Color3);
       convert.set_input("in", combine);
       break;
     default:

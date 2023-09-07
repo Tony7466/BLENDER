@@ -35,7 +35,7 @@ NodeItem VectorMathNodeParser::compute()
       res = x.ceil();
       break;
     case NODE_VECTOR_MATH_FRACTION:
-      res = x % value(1.0f);
+      res = x % val(1.0f);
       break;
     case NODE_VECTOR_MATH_LENGTH:
       CLOG_WARN(LOG_MATERIALX_SHADER, "Unimplemented math operation %d", op);

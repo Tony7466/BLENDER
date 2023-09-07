@@ -97,13 +97,14 @@ class NodeItem {
   NodeItem empty() const;
   template<class T> NodeItem val(const T &data) const;
   Type type() const;
+  NodeItem create_node(const std::string &category, NodeItem::Type type) const;
 
   /* Functions to set input and output */
-  template<class T>
-  void set_input(const std::string &in_name, const T &value, const std::string &in_type);
-  void set_input(const std::string &in_name,
-                 const NodeItem &item,
-                 const std::string &out_name = "");
+  template<class T> void set_input(const std::string &in_name, const T &value, Type in_type);
+  void set_input(const std::string &in_name, const NodeItem &item);
+  void set_input_output(const std::string &in_name,
+                        const NodeItem &item,
+                        const std::string &out_name);
   void add_output(const std::string &in_name, Type out_type);
 
  private:
@@ -125,9 +126,9 @@ template<class T> NodeItem NodeItem::val(const T &data) const
 }
 
 template<class T>
-void NodeItem::set_input(const std::string &in_name, const T &value, const std::string &in_type)
+void NodeItem::set_input(const std::string &in_name, const T &value, Type in_type)
 {
-  node->setInputValue(in_name, value, in_type);
+  node->setInputValue(in_name, value, type(in_type));
 }
 
 }  // namespace blender::nodes::materialx

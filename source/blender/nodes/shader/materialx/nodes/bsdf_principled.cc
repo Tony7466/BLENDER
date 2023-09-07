@@ -50,8 +50,8 @@ NodeItem BSDFPrincipledNodeParser::compute()
   NodeItem tangent = get_input_link("Tangent", NodeItem::Type::Vector3);
 
   /* Creating standard_surface */
-  NodeItem res = create_node("standard_surface", "surfaceshader");
-  res.set_input("base", 1.0, "float");
+  NodeItem res = create_node("standard_surface", NodeItem::Type::SurfaceShader);
+  res.set_input("base", val(1.0f));
   res.set_input("base_color", base_color);
   res.set_input("diffuse_roughness", roughness);
   if (normal) {

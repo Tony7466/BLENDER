@@ -35,7 +35,7 @@ NodeItem MathNodeParser::compute()
       res = x.atan();
       break;
     case NODE_MATH_ROUND:
-      res = (x + value(0.5f)).floor();
+      res = (x + val(0.5f)).floor();
       break;
     case NODE_MATH_ABSOLUTE:
       res = x.abs();
@@ -47,13 +47,13 @@ NodeItem MathNodeParser::compute()
       res = x.ceil();
       break;
     case NODE_MATH_FRACTION:
-      res = x % value(1.0f);
+      res = x % val(1.0f);
       break;
     case NODE_MATH_SQRT:
       res = x.sqrt();
       break;
     case NODE_MATH_INV_SQRT:
-      res = value(1.0f) / x.sqrt();
+      res = val(1.0f) / x.sqrt();
       break;
     case NODE_MATH_SIGN:
       res = x.sign();
@@ -62,10 +62,10 @@ NodeItem MathNodeParser::compute()
       res = x.exp();
       break;
     case NODE_MATH_RADIANS:
-      res = x * value(float(M_PI) / 180.0f);
+      res = x * val(float(M_PI) / 180.0f);
       break;
     case NODE_MATH_DEGREES:
-      res = x * value(180.0f * float(M_1_PI));
+      res = x * val(180.0f * float(M_1_PI));
       break;
     case NODE_MATH_SINH:
       res = x.sinh();
@@ -109,10 +109,10 @@ NodeItem MathNodeParser::compute()
           res = x.max(y);
           break;
         case NODE_MATH_LESS_THAN:
-          res = x.if_else(NodeItem::CompareOp::Less, y, value(1.0f), value(0.0f));
+          res = x.if_else(NodeItem::CompareOp::Less, y, val(1.0f), val(0.0f));
           break;
         case NODE_MATH_GREATER_THAN:
-          res = x.if_else(NodeItem::CompareOp::Greater, y, value(1.0f), value(0.0f));
+          res = x.if_else(NodeItem::CompareOp::Greater, y, val(1.0f), val(0.0f));
           break;
         case NODE_MATH_MODULO:
           res = x % y;
@@ -138,7 +138,7 @@ NodeItem MathNodeParser::compute()
               CLOG_WARN(LOG_MATERIALX_SHADER, "Unimplemented math operation %d", op);
               break;
             case NODE_MATH_COMPARE:
-              res = z.if_else(NodeItem::CompareOp::Less, (x - y).abs(), value(1.0f), value(0.0f));
+              res = z.if_else(NodeItem::CompareOp::Less, (x - y).abs(), val(1.0f), val(0.0f));
               break;
             case NODE_MATH_MULTIPLY_ADD:
               res = x * y + z;

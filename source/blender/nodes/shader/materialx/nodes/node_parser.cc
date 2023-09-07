@@ -39,11 +39,9 @@ std::string NodeParser::node_name()
                                         std::string(node_->name) + "_" + socket_out_->name);
 }
 
-NodeItem NodeParser::create_node(const std::string &mx_category, const std::string &mx_type)
+NodeItem NodeParser::create_node(const std::string &category, NodeItem::Type type)
 {
-  NodeItem res = empty();
-  res.node = graph_->addNode(mx_category, MaterialX::EMPTY_STRING, mx_type);
-  return res;
+  return empty().create_node(category, type);
 }
 
 NodeItem NodeParser::get_input_default(const std::string &name, NodeItem::Type to_type)

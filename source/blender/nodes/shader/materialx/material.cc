@@ -32,7 +32,7 @@ MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph, Material *mater
   }
 
   CLOG_INFO(LOG_MATERIALX_SHADER,
-            2,
+            1,
             "Material: %s\n%s",
             material->id.name,
             MaterialX::writeToXmlString(doc).c_str());

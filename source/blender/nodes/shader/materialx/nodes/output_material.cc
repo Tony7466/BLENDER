@@ -20,7 +20,7 @@ NodeItem OutputMaterialNodeParser::compute()
     NodeItem bsdf = get_input_shader("Surface", NodeItem::Type::BSDF);
     NodeItem edf = get_input_shader("Surface", NodeItem::Type::EDF);
     if (bsdf || edf) {
-      surface = create_node("surface", "surfaceshader");
+      surface = create_node("surface", NodeItem::Type::SurfaceShader);
       if (bsdf) {
         surface.set_input("bsdf", bsdf);
       }
@@ -33,30 +33,30 @@ NodeItem OutputMaterialNodeParser::compute()
     }
   }
   else {
-    surface = create_node("standard_surface", "surfaceshader");
-    surface.set_input("base_color", value(MaterialX::Color3(1.0f, 0.0f, 1.0f)));
+    surface = create_node("standard_surface", NodeItem::Type::SurfaceShader);
+    surface.set_input("base_color", val(MaterialX::Color3(1.0f, 0.0f, 1.0f)));
   }
-  NodeItem res = create_node("surfacematerial", "material");
+  NodeItem res = create_node("surfacematerial", NodeItem::Type::Material);
   res.set_input("surfaceshader", surface);
   return res;
 }
 
 NodeItem OutputMaterialNodeParser::compute_default()
 {
-  NodeItem surface = create_node("standard_surface", "surfaceshader");
+  NodeItem surface = create_node("standard_surface", NodeItem::Type::SurfaceShader);
   surface.set_input("base_color",
-                    value(MaterialX::Color3(material_->r, material_->g, material_->b)));
-  surface.set_input("diffuse_roughness", value(material_->roughness));
+                    val(MaterialX::Color3(material_->r, material_->g, material_->b)));
+  surface.set_input("diffuse_roughness", val(material_->roughness));
   if (material_->metallic > 0.0f) {
-    surface.set_input("metalness", value(material_->metallic));
+    surface.set_input("metalness", val(material_->metallic));
   }
   if (material_->spec) {
-    surface.set_input("specular", value(material_->spec));
-    surface.set_input("specular_color", value(material_->spec));
-    surface.set_input("specular_roughness", value(material_->roughness));
+    surface.set_input("specular", val(material_->spec));
+    surface.set_input("specular_color", val(material_->spec));
+    surface.set_input("specular_roughness", val(material_->roughness));
   }
 
-  NodeItem res = create_node("surfacematerial", "material");
+  NodeItem res = create_node("surfacematerial", NodeItem::Type::Material);
   res.node->setName("Material_Default");
   res.set_input("surfaceshader", surface);
   return res;

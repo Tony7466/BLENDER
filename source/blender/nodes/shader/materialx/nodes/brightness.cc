@@ -13,7 +13,7 @@ NodeItem BrightContrastNodeParser::compute()
   NodeItem contrast = get_input_value("Contrast", NodeItem::Type::Float);
 
   /* This formula was given from OSL shader code in Cycles. */
-  return (bright + color * (contrast + value(1.0f)) - contrast * value(0.5f)).max(value(0.0f));
+  return (bright + color * (contrast + val(1.0f)) - contrast * val(0.5f)).max(val(0.0f));
 }
 
 }  // namespace blender::nodes::materialx

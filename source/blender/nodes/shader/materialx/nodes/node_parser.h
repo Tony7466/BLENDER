@@ -33,7 +33,7 @@ class NodeParser {
  protected:
   virtual NodeItem compute_full();
   virtual std::string node_name();
-  NodeItem create_node(const std::string &mx_category, const std::string &mx_type);
+  NodeItem create_node(const std::string &category, NodeItem::Type type);
   NodeItem get_input_default(const std::string &name, NodeItem::Type to_type);
   NodeItem get_input_default(int index, NodeItem::Type to_type);
   NodeItem get_input_link(const std::string &name, NodeItem::Type to_type);
@@ -41,7 +41,7 @@ class NodeParser {
   NodeItem get_input_value(const std::string &name, NodeItem::Type to_type);
   NodeItem get_input_value(int index, NodeItem::Type to_type);
   NodeItem empty() const;
-  template<class T> NodeItem value(const T &data) const;
+  template<class T> NodeItem val(const T &data) const;
 
  private:
   NodeItem get_input_default(const bNodeSocket &socket, NodeItem::Type to_type);
@@ -71,7 +71,7 @@ class ShaderNodeParser : public NodeParser {
   NodeItem get_input_shader(const bNodeSocket &socket, NodeItem::Type shader_type);
 };
 
-template<class T> NodeItem NodeParser::value(const T &data) const
+template<class T> NodeItem NodeParser::val(const T &data) const
 {
   return empty().val(data);
 }

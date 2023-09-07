@@ -23,9 +23,9 @@ NodeItem TexImageNodeParser::compute()
   image_path = io::hydra::cache_or_get_image_file(bmain, scene, image, &tex->iuser);
 #endif
 
-  NodeItem texcoord = create_node("texcoord", "vector2");
-  NodeItem res = create_node("image", "color3");
-  res.set_input("file", image_path, "filename");
+  NodeItem texcoord = create_node("texcoord", NodeItem::Type::Vector2);
+  NodeItem res = create_node("image", NodeItem::Type::Color3);
+  res.set_input("file", image_path, NodeItem::Type::Filename);
   res.set_input("texcoord", texcoord);
   return res;
 }

@@ -104,7 +104,7 @@ NodeItem NodeItem::operator+(const NodeItem &other) const
     /* Special case: add BSDF/EDF shaders */
     NodeItem res = empty();
     if (other.type() == type) {
-      res.node = graph_->addNode("add", MaterialX::EMPTY_STRING, this->type(type));
+      res = create_node("add", type);
       res.set_input("in1", *this);
       res.set_input("in2", other);
     }
@@ -135,7 +135,7 @@ NodeItem NodeItem::operator*(const NodeItem &other) const
     NodeItem res = empty();
     Type other_type = other.type();
     if (ELEM(other_type, Type::Float, Type::Color3)) {
-      res.node = graph_->addNode("multiply", MaterialX::EMPTY_STRING, this->type(type));
+      res = create_node("multiply", type);
       res.set_input("in1", *this);
       res.set_input("in2", other);
     }
@@ -222,9 +222,8 @@ NodeItem NodeItem::dotproduct(const NodeItem &other) const
 {
   NodeItem d = arithmetic(other, "dotproduct", [](float a, float b) { return a * b; });
   if (d.value) {
-    Type mx_type = d.type();
     float f = 0.0f;
-    switch (mx_type) {
+    switch (d.type()) {
       case Type::Float: {
         f = value->asA<float>();
         break;
@@ -350,7 +349,7 @@ NodeItem NodeItem::exp() const
 NodeItem NodeItem::extract(const int index) const
 {
   NodeItem res = empty();
-  res.node = graph_->addNode("extract", MaterialX::EMPTY_STRING, "float");
+  res = create_node("extract", Type::Float);
   res.set_input("in", *this);
   res.set_input("index", val(index));
   return res;
@@ -534,7 +533,7 @@ NodeItem NodeItem::convert(Type to_type) const
     }
   }
   else {
-    res.node = graph_->addNode("convert", MaterialX::EMPTY_STRING, type(to_type));
+    res = create_node("convert", to_type);
     res.set_input("in", *this);
   }
   return res;
@@ -569,18 +568,18 @@ NodeItem NodeItem::if_else(CompareOp op,
   }
 
   std::function<bool(float, float)> func = nullptr;
-  std::string mx_category;
+  std::string category;
   switch (op) {
     case CompareOp::Greater:
-      mx_category = "ifgreater";
+      category = "ifgreater";
       func = [](float a, float b) { return a > b; };
       break;
     case CompareOp::GreaterEq:
-      mx_category = "ifgreatereq";
+      category = "ifgreatereq";
       func = [](float a, float b) { return a >= b; };
       break;
     case CompareOp::Eq:
-      mx_category = "ifequal";
+      category = "ifequal";
       func = [](float a, float b) { return a == b; };
       break;
     default:
@@ -591,7 +590,7 @@ NodeItem NodeItem::if_else(CompareOp op,
     res = func(value->asA<float>(), other.value->asA<float>()) ? item1 : item2;
   }
   else {
-    res.node = graph_->addNode(mx_category, MaterialX::EMPTY_STRING, type(to_type));
+    res = create_node(category, to_type);
     res.set_input("value1", *this);
     res.set_input("value2", other);
     res.set_input("in1", item1);
@@ -617,51 +616,65 @@ NodeItem::Type NodeItem::type() const
   return Type::Empty;
 }
 
-void NodeItem::set_input(const std::string &name,
-                         const NodeItem &item,
-                         const std::string &output_name)
+NodeItem NodeItem::create_node(const std::string &category, NodeItem::Type type) const
+{
+  std::string type_str = this->type(type);
+  CLOG_INFO(LOG_MATERIALX_SHADER, 2, "<%s type=%s>", category.c_str(), type_str.c_str());
+  NodeItem res = empty();
+  res.node = graph_->addNode(category, MaterialX::EMPTY_STRING, type_str);
+  return res;
+}
+
+void NodeItem::set_input(const std::string &in_name, const NodeItem &item)
 {
   if (item.value) {
     Type item_type = item.type();
-    std::string mx_type = type(item_type);
     switch (item_type) {
       case Type::String:
-        set_input(name, item.value->asA<std::string>(), mx_type);
+        set_input(in_name, item.value->asA<std::string>(), item_type);
         break;
       case Type::Integer:
-        set_input(name, item.value->asA<int>(), mx_type);
+        set_input(in_name, item.value->asA<int>(), item_type);
         break;
       case Type::Float:
-        set_input(name, item.value->asA<float>(), mx_type);
+        set_input(in_name, item.value->asA<float>(), item_type);
         break;
       case Type::Vector2:
-        set_input(name, item.value->asA<MaterialX::Vector2>(), mx_type);
+        set_input(in_name, item.value->asA<MaterialX::Vector2>(), item_type);
         break;
       case Type::Vector3:
-        set_input(name, item.value->asA<MaterialX::Vector3>(), mx_type);
+        set_input(in_name, item.value->asA<MaterialX::Vector3>(), item_type);
         break;
       case Type::Vector4:
-        set_input(name, item.value->asA<MaterialX::Vector4>(), mx_type);
+        set_input(in_name, item.value->asA<MaterialX::Vector4>(), item_type);
         break;
       case Type::Color3:
-        set_input(name, item.value->asA<MaterialX::Color3>(), mx_type);
+        set_input(in_name, item.value->asA<MaterialX::Color3>(), item_type);
         break;
       case Type::Color4:
-        set_input(name, item.value->asA<MaterialX::Color4>(), mx_type);
+        set_input(in_name, item.value->asA<MaterialX::Color4>(), item_type);
         break;
       default:
         BLI_assert_unreachable();
     }
   }
   else if (item.node) {
-    node->setConnectedNode(name, item.node);
-    if (output_name != "") {
-      node->setConnectedOutput(name, item.node->getOutput(output_name));
-    }
+    node->setConnectedNode(in_name, item.node);
   }
   else {
-    CLOG_WARN(LOG_MATERIALX_SHADER, "Empty item to input: %s", name.c_str());
+    CLOG_WARN(LOG_MATERIALX_SHADER, "Empty item to input: %s", in_name.c_str());
   }
+}
+
+void NodeItem::set_input_output(const std::string &in_name,
+                                const NodeItem &item,
+                                const std::string &out_name)
+{
+  if (!item.node) {
+    BLI_assert_unreachable();
+  }
+  node->setConnectedNode(in_name, item.node);
+  node->setConnectedOutput(in_name, item.node->getOutput(out_name));
 }
 
 void NodeItem::add_output(const std::string &name, Type out_type)
@@ -751,7 +764,7 @@ NodeItem NodeItem::arithmetic(const std::string &category, std::function<float(f
   else {
     /* TODO: Some of math functions (sin, cos, ...) doesn't work with Color types,
      * we have to convert to Vector */
-    res.node = graph_->addNode(category, MaterialX::EMPTY_STRING, this->type(type));
+    res = create_node(category, type);
     res.set_input("in", *this);
   }
   return res;
@@ -817,7 +830,7 @@ NodeItem NodeItem::arithmetic(const NodeItem &other,
     }
   }
   else {
-    res.node = graph_->addNode(category, MaterialX::EMPTY_STRING, type(to_type));
+    res = create_node(category, to_type);
     res.set_input("in1", item1);
     res.set_input("in2", item2);
   }
