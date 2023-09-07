@@ -15,6 +15,7 @@
 #include "BKE_context.h"
 #include "BKE_movieclip.h"
 
+#include "ED_anim_api.hh"
 #include "ED_clip.hh"
 #include "ED_screen.hh"
 
@@ -98,7 +99,8 @@ void clip_draw_dopesheet_main(SpaceClip *sc, ARegion *region, Scene *scene)
   View2D *v2d = &region->v2d;
 
   /* frame range */
-  clip_draw_sfra_efra(v2d, scene);
+  UI_view2d_view_ortho(v2d);
+  ANIM_draw_framerange(scene, v2d);
 
   if (clip) {
     MovieTracking *tracking = &clip->tracking;

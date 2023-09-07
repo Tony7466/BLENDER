@@ -189,8 +189,6 @@ bool clip_view_calculate_view_selection(
  */
 bool clip_view_has_locked_selection(const struct bContext *C);
 
-void clip_draw_sfra_efra(struct View2D *v2d, struct Scene *scene);
-
 /* tracking_ops.cc */
 
 /* Find track which can be slid in a proximity of the given event.
