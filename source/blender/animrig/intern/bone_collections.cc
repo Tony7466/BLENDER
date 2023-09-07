@@ -457,11 +457,10 @@ void ANIM_bonecoll_listbase_free(ListBase *bcolls, const bool do_id_user)
   BLI_freelistN(bcolls);
 }
 
-void ANIM_bonecoll_listbase_copy(
-    ListBase *bone_colls_dst,
-    ListBase *bone_colls_src,
-    blender::Map<BoneCollection *, BoneCollection *> *r_bcoll_map,
-    const bool do_id_user)
+void ANIM_bonecoll_listbase_copy(ListBase *bone_colls_dst,
+                                 ListBase *bone_colls_src,
+                                 blender::Map<BoneCollection *, BoneCollection *> *r_bcoll_map,
+                                 const bool do_id_user)
 {
   BLI_assert(BLI_listbase_is_empty(bone_colls_dst));
   BLI_assert(r_bcoll_map);

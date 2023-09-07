@@ -210,11 +210,10 @@ void ANIM_bonecoll_listbase_free(ListBase *bcolls, const bool do_id_user);
  * to the copied dst collections.  This can be used to remap edit bone
  * membership.
  */
-void ANIM_bonecoll_listbase_copy(
-    ListBase *bone_colls_dst,
-    ListBase *bone_colls_src,
-    blender::Map<BoneCollection *, BoneCollection *> *r_bcoll_map,
-    const bool do_id_user);
+void ANIM_bonecoll_listbase_copy(ListBase *bone_colls_dst,
+                                 ListBase *bone_colls_src,
+                                 blender::Map<BoneCollection *, BoneCollection *> *r_bcoll_map,
+                                 const bool do_id_user);
 
 #ifdef __cplusplus
 }
