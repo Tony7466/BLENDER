@@ -6522,7 +6522,7 @@ static bool ui_numedit_but_HSVCUBE(uiBut *but,
   const bool changed = true;
 
   /* If `use_continuous_grab = false` stores the absolute mouse position of the mouse.
-   * If `use_continuous_grab = true` stores relative mouse position within the `HSVCIRCLE`, this
+   * If `use_continuous_grab = true` stores relative mouse position within the `HSVCUBE`, this
    * position will depend on mouse movement rather than the absolute mouse position.
    */
   static float mval[2];
