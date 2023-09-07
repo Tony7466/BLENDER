@@ -1090,30 +1090,6 @@ void gather_attributes(const AttributeAccessor src_attributes,
   }
 }
 
-template<typename T>
-static void gather_group_to_group(const OffsetIndices<int> src_offsets,
-                                  const OffsetIndices<int> dst_offsets,
-                                  const IndexMask &selection,
-                                  const Span<T> src,
-                                  MutableSpan<T> dst)
-{
-  selection.foreach_index(GrainSize(512), [&](const int64_t src_i, const int64_t dst_i) {
-    dst.slice(dst_offsets[dst_i]).copy_from(src.slice(src_offsets[src_i]));
-  });
-}
-
-static void gather_group_to_group(const OffsetIndices<int> src_offsets,
-                                  const OffsetIndices<int> dst_offsets,
-                                  const IndexMask &selection,
-                                  const GSpan src,
-                                  GMutableSpan dst)
-{
-  attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
-    using T = decltype(dummy);
-    gather_group_to_group(src_offsets, dst_offsets, selection, src.typed<T>(), dst.typed<T>());
-  });
-}
-
 void gather_attributes_group_to_group(const AttributeAccessor src_attributes,
                                       const eAttrDomain domain,
                                       const AnonymousAttributePropagationInfo &propagation_info,
@@ -1139,7 +1115,7 @@ void gather_attributes_group_to_group(const AttributeAccessor src_attributes,
     if (!dst) {
       return true;
     }
-    gather_group_to_group(src_offsets, dst_offsets, selection, src, dst.span);
+    attribute_math::gather_group_to_group(src_offsets, dst_offsets, selection, src, dst.span);
     dst.finish();
     return true;
   });

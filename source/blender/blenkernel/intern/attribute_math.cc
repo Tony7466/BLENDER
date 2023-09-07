@@ -176,4 +176,16 @@ void gather(const GVArray &src, const Span<int> map, GMutableSpan dst)
   });
 }
 
+void gather_group_to_group(const OffsetIndices<int> src_offsets,
+                           const OffsetIndices<int> dst_offsets,
+                           const IndexMask &selection,
+                           const GSpan src,
+                           GMutableSpan dst)
+{
+  attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
+    using T = decltype(dummy);
+    gather_group_to_group(src_offsets, dst_offsets, selection, src.typed<T>(), dst.typed<T>());
+  });
+}
+
 }  // namespace blender::bke::attribute_math
