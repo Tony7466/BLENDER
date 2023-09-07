@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,11 +6,11 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "rna_internal.h"
 
@@ -20,12 +20,14 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_pointcloud_types.h"
 
+#include "BLI_math_color.h"
+
 #include "BKE_attribute.h"
 #include "BKE_customdata.h"
 
 #include "BLT_translation.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 const EnumPropertyItem rna_enum_attribute_type_items[] = {
     {CD_PROP_FLOAT, "FLOAT", 0, "Float", "Floating-point value"},
@@ -97,6 +99,19 @@ const EnumPropertyItem rna_enum_attribute_domain_only_mesh_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+const EnumPropertyItem rna_enum_attribute_domain_point_face_curve_items[] = {
+    {ATTR_DOMAIN_POINT, "POINT", 0, "Point", "Attribute on point"},
+    {ATTR_DOMAIN_FACE, "FACE", 0, "Face", "Attribute on mesh faces"},
+    {ATTR_DOMAIN_CURVE, "CURVE", 0, "Spline", "Attribute on spline"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+const EnumPropertyItem rna_enum_attribute_domain_edge_face_items[] = {
+    {ATTR_DOMAIN_EDGE, "EDGE", 0, "Edge", "Attribute on mesh edge"},
+    {ATTR_DOMAIN_FACE, "FACE", 0, "Face", "Attribute on mesh faces"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 const EnumPropertyItem rna_enum_attribute_domain_without_corner_items[] = {
     {ATTR_DOMAIN_POINT, "POINT", 0, "Point", "Attribute on point"},
     {ATTR_DOMAIN_EDGE, "EDGE", 0, "Edge", "Attribute on mesh edge"},
@@ -129,13 +144,11 @@ const EnumPropertyItem rna_enum_attribute_curves_domain_items[] = {
 
 #ifdef RNA_RUNTIME
 
-#  include "BLI_math.h"
-
 #  include "DEG_depsgraph.h"
 
 #  include "BLT_translation.h"
 
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
 /* Attribute */
 
@@ -360,7 +373,7 @@ static void rna_ByteIntAttributeValue_set(PointerRNA *ptr, const int new_value)
     *value = INT8_MIN;
   }
   else {
-    *value = (int8_t)new_value;
+    *value = int8_t(new_value);
   }
 }
 
@@ -385,8 +398,7 @@ static PointerRNA rna_AttributeGroup_new(
   DEG_id_tag_update(id, ID_RECALC_GEOMETRY);
   WM_main_add_notifier(NC_GEOM | ND_DATA, id);
 
-  PointerRNA ptr;
-  RNA_pointer_create(id, &RNA_Attribute, layer, &ptr);
+  PointerRNA ptr = RNA_pointer_create(id, &RNA_Attribute, layer);
   return ptr;
 }
 
@@ -514,8 +526,7 @@ static PointerRNA rna_AttributeGroup_active_get(PointerRNA *ptr)
   ID *id = ptr->owner_id;
   CustomDataLayer *layer = BKE_id_attributes_active_get(id);
 
-  PointerRNA attribute_ptr;
-  RNA_pointer_create(id, &RNA_Attribute, layer, &attribute_ptr);
+  PointerRNA attribute_ptr = RNA_pointer_create(id, &RNA_Attribute, layer);
   return attribute_ptr;
 }
 
@@ -556,8 +567,7 @@ static PointerRNA rna_AttributeGroup_active_color_get(PointerRNA *ptr)
                                                    CD_MASK_COLOR_ALL,
                                                    ATTR_DOMAIN_MASK_COLOR);
 
-  PointerRNA attribute_ptr;
-  RNA_pointer_create(id, &RNA_Attribute, layer, &attribute_ptr);
+  PointerRNA attribute_ptr = RNA_pointer_create(id, &RNA_Attribute, layer);
   return attribute_ptr;
 }
 

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -7,6 +7,7 @@ set(INC
   exporter
   importer
   ../common
+  ../../blenkernel
   ../../bmesh
   ../../bmesh/intern
   ../../depsgraph
@@ -36,7 +37,7 @@ set(SRC
   importer/obj_import_string_utils.cc
   importer/obj_importer.cc
 
-  IO_wavefront_obj.h
+  IO_wavefront_obj.hh
   exporter/obj_export_file_writer.hh
   exporter/obj_export_io.hh
   exporter/obj_export_mesh.hh
@@ -54,7 +55,7 @@ set(SRC
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc

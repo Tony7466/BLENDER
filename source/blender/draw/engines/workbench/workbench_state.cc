@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,15 +6,16 @@
 
 #include "BKE_camera.h"
 #include "BKE_editmesh.h"
+#include "BKE_mesh_types.hh"
 #include "BKE_modifier.h"
 #include "BKE_object.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_particle.h"
 #include "BKE_pbvh_api.hh"
 #include "DEG_depsgraph_query.h"
 #include "DNA_fluid_types.h"
-#include "ED_paint.h"
-#include "ED_view3d.h"
+#include "ED_paint.hh"
+#include "ED_view3d.hh"
 #include "GPU_capabilities.h"
 
 namespace blender::workbench {
@@ -134,7 +135,7 @@ void SceneState::init(Object *camera_ob /*= nullptr*/)
   if (v3d && ELEM(v3d->shading.type, OB_RENDER, OB_MATERIAL)) {
     _samples_len = scene->display.viewport_aa;
   }
-  else if (DRW_state_is_image_render()) {
+  else if (DRW_state_is_scene_render()) {
     _samples_len = scene->display.render_aa;
   }
   if (is_navigating || is_playback) {
@@ -183,7 +184,7 @@ static const CustomData *get_loop_custom_data(const Mesh *mesh)
     BLI_assert(mesh->edit_mesh->bm != nullptr);
     return &mesh->edit_mesh->bm->ldata;
   }
-  return &mesh->ldata;
+  return &mesh->loop_data;
 }
 
 static const CustomData *get_vert_custom_data(const Mesh *mesh)
@@ -193,7 +194,7 @@ static const CustomData *get_vert_custom_data(const Mesh *mesh)
     BLI_assert(mesh->edit_mesh->bm != nullptr);
     return &mesh->edit_mesh->bm->vdata;
   }
-  return &mesh->vdata;
+  return &mesh->vert_data;
 }
 
 ObjectState::ObjectState(const SceneState &scene_state, Object *ob)

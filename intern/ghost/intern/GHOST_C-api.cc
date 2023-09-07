@@ -768,6 +768,12 @@ void GHOST_SetTabletAPI(GHOST_SystemHandle systemhandle, GHOST_TTabletAPI api)
   system->setTabletAPI(api);
 }
 
+GHOST_TSuccess GHOST_GetPixelAtCursor(float r_color[3])
+{
+  GHOST_ISystem *system = GHOST_ISystem::getSystem();
+  return system->getPixelAtCursor(r_color);
+}
+
 int32_t GHOST_GetWidthRectangle(GHOST_RectangleHandle rectanglehandle)
 {
   return ((GHOST_Rect *)rectanglehandle)->getWidth();
@@ -1148,7 +1154,7 @@ void *GHOST_XrGetActionSetCustomdata(GHOST_XrContextHandle xr_contexthandle,
   GHOST_IXrContext *xr_context = (GHOST_IXrContext *)xr_contexthandle;
   GHOST_XrSession *xr_session = xr_context->getSession();
   GHOST_XR_CAPI_CALL_RET(xr_session->getActionSetCustomdata(action_set_name), xr_context);
-  return 0;
+  return nullptr;
 }
 
 void *GHOST_XrGetActionCustomdata(GHOST_XrContextHandle xr_contexthandle,
@@ -1159,7 +1165,7 @@ void *GHOST_XrGetActionCustomdata(GHOST_XrContextHandle xr_contexthandle,
   GHOST_XrSession *xr_session = xr_context->getSession();
   GHOST_XR_CAPI_CALL_RET(xr_session->getActionCustomdata(action_set_name, action_name),
                          xr_context);
-  return 0;
+  return nullptr;
 }
 
 uint GHOST_XrGetActionCount(GHOST_XrContextHandle xr_contexthandle, const char *action_set_name)
@@ -1231,21 +1237,20 @@ void GHOST_GetVulkanHandles(GHOST_ContextHandle contexthandle,
       r_instance, r_physical_device, r_device, r_graphic_queue_family, r_queue);
 }
 
-void GHOST_GetVulkanCommandBuffer(GHOST_ContextHandle contexthandle, void *r_command_buffer)
+void GHOST_SetVulkanSwapBuffersCallbacks(
+    GHOST_ContextHandle contexthandle,
+    void (*swap_buffers_pre_callback)(const GHOST_VulkanSwapChainData *),
+    void (*swap_buffers_post_callback)(void))
 {
   GHOST_IContext *context = (GHOST_IContext *)contexthandle;
-  context->getVulkanCommandBuffer(r_command_buffer);
+  context->setVulkanSwapBuffersCallbacks(swap_buffers_pre_callback, swap_buffers_post_callback);
 }
 
-void GHOST_GetVulkanBackbuffer(GHOST_WindowHandle windowhandle,
-                               void *image,
-                               void *framebuffer,
-                               void *render_pass,
-                               void *extent,
-                               uint32_t *fb_id)
+void GHOST_GetVulkanSwapChainFormat(GHOST_WindowHandle windowhandle,
+                                    GHOST_VulkanSwapChainData *r_swap_chain_data)
 {
   GHOST_IWindow *window = (GHOST_IWindow *)windowhandle;
-  window->getVulkanBackbuffer(image, framebuffer, render_pass, extent, fb_id);
+  window->getVulkanSwapChainFormat(r_swap_chain_data);
 }
 
 #endif /* WITH_VULKAN_BACKEND */

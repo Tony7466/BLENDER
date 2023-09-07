@@ -25,7 +25,7 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
   float cos_theta;
   if (d_sq > r_sq) {
     const float one_minus_cos = sin_sqr_to_one_minus_cos(r_sq / d_sq);
-    sample_uniform_cone_concentric(-lightN, one_minus_cos, rand, &cos_theta, &ls->D, &ls->pdf);
+    ls->D = sample_uniform_cone(-lightN, one_minus_cos, rand, &cos_theta, &ls->pdf);
   }
   else {
     const bool has_transmission = (shader_flags & SD_BSDF_HAS_TRANSMISSION);
@@ -48,7 +48,7 @@ ccl_device_inline bool point_light_sample(const ccl_global KernelLight *klight,
   if (r_sq == 0) {
     /* Use intensity instead of radiance for point light. */
     ls->eval_fac /= sqr(ls->t);
-    /* `ls->Ng` is not well-defined for point light, so use the incoming direction instead.  */
+    /* `ls->Ng` is not well-defined for point light, so use the incoming direction instead. */
     ls->Ng = -ls->D;
   }
   else {

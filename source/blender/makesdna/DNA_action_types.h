@@ -13,15 +13,12 @@
 #pragma once
 
 #include "DNA_ID.h"
+#include "DNA_armature_types.h"
 #include "DNA_listBase.h"
 #include "DNA_session_uuid_types.h"
 #include "DNA_userdef_types.h" /* ThemeWireColor */
 #include "DNA_vec_types.h"
 #include "DNA_view2d_types.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 struct Collection;
 struct GHash;
@@ -213,6 +210,8 @@ typedef struct bPoseChannel_Runtime {
  * with respect to the rest-position of #bArmature bones.
  */
 typedef struct bPoseChannel {
+  DNA_DEFINE_CXX_METHODS(bPoseChannel)
+
   struct bPoseChannel *next, *prev;
 
   /** User-Defined Properties on this PoseChannel. */
@@ -350,6 +349,8 @@ typedef struct bPoseChannel {
   /** Points to an original pose channel. */
   struct bPoseChannel *orig_pchan;
 
+  BoneColor color; /* MUST be named the same as in Bone and EditBone structs. */
+
   /** Runtime data (keep last). */
   struct bPoseChannel_Runtime runtime;
 } bPoseChannel;
@@ -442,7 +443,7 @@ typedef enum ePchan_BBoneFlag {
 typedef enum eRotationModes {
   /* quaternion rotations (default, and for older Blender versions) */
   ROT_MODE_QUAT = 0,
-  /* euler rotations - keep in sync with enum in BLI_math.h */
+  /* euler rotations - keep in sync with enum in BLI_math_rotation.h */
   /** Blender 'default' (classic) - must be as 1 to sync with BLI_math_rotation.h defines */
   ROT_MODE_EUL = 1,
   ROT_MODE_XYZ = 1,
@@ -852,8 +853,8 @@ typedef struct SpaceAction {
   char mode;
   /* Storage for sub-space types. */
   char mode_prev;
-  /** Automatic keyframe snapping mode. */
-  char autosnap;
+  /* Snapping now lives on the Scene. */
+  char autosnap DNA_DEPRECATED;
   /** (eTimeline_Cache_Flag). */
   char cache_display;
   char _pad1[6];
@@ -916,10 +917,8 @@ typedef enum eAnimEdit_Context {
   SACTCONT_TIMELINE = 6,
 } eAnimEdit_Context;
 
-/* SpaceAction AutoSnap Settings (also used by other Animation Editors) */
+/* Old snapping enum that is only needed because of the versioning code. */
 typedef enum eAnimEdit_AutoSnap {
-  /* no auto-snap */
-  SACTSNAP_OFF = 0,
   /* snap to 1.0 frame/second intervals */
   SACTSNAP_STEP = 1,
   /* snap to actual frames/seconds (nla-action time) */
@@ -930,7 +929,7 @@ typedef enum eAnimEdit_AutoSnap {
   SACTSNAP_SECOND = 4,
   /* snap to 1.0 second increments */
   SACTSNAP_TSTEP = 5,
-} eAnimEdit_AutoSnap;
+} eAnimEdit_AutoSnap DNA_DEPRECATED;
 
 /* SAction->cache_display */
 typedef enum eTimeline_Cache_Flag {
@@ -975,7 +974,3 @@ typedef struct bActionChannel {
   /** Temporary setting - may be used to indicate group that channel belongs to during syncing. */
   int temp;
 } bActionChannel;
-
-#ifdef __cplusplus
-}
-#endif
