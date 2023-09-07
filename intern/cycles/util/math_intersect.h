@@ -19,6 +19,8 @@ ccl_device bool ray_sphere_intersect(float3 ray_P,
                                      ccl_private float *isect_t,
                                      const bool cull_backface)
 {
+  /* If the object has been scaled, ray_D will not be a normalized vector
+   * and inv_d_sq will not be equal to 1.0 */
   const float inv_d_sq = 1.0f / dot(ray_D, ray_D);
 
   const float3 c0 = sphere_P - ray_P;
@@ -27,23 +29,21 @@ ccl_device bool ray_sphere_intersect(float3 ray_P,
   const float l_sq = dot(perp, perp);
   const float r_sq = sphere_radius * sphere_radius;
   if (l_sq > r_sq) {
+    /* If the distance between the sphere center, and the point on the ray closest to the
+     * sphere center, is greater than the radius, then the ray does not intersect the sphere. */
     return false;
   }
 
-  float t;
-  if (len_squared(c0) < r_sq) {
-    /* Ray origin is inside the sphere */
-    if (cull_backface) {
-      return false;
-    }
-    const float td = sqrt((r_sq - l_sq) * inv_d_sq);
-    t = projC0 + td;
+  /* to_surface_sq is the squared distance from the ray origin to the surface of the sphere.
+   * Negative numbers denote the ray origin is inside the sphere.
+   * Positive numbers denote it's outside the sphere. */
+  const float to_surface_sq = len_squared(c0) - r_sq;
+  if (cull_backface && to_surface_sq < 0.0f) {
+    /* Ray origin is inside the sphere, and the ray can only intersect backfaces. */
+    return false;
   }
-  else {
-    /* Ray origin is outside the sphere */
-    const float td = sqrt((r_sq - l_sq) * inv_d_sq);
-    t = projC0 - td;
-  }
+
+  const float t = projC0 - copysignf(sqrt((r_sq - l_sq) * inv_d_sq), to_surface_sq);
 
   if ((ray_tmin <= t) & (t <= ray_tmax)) {
     *isect_t = t;
