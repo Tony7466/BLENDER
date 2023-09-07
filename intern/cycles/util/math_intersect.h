@@ -20,7 +20,7 @@ ccl_device bool ray_sphere_intersect(float3 ray_P,
                                      const bool cull_backface)
 {
   /* If the object has been scaled, ray_D will not be a normalized vector
-   * and inv_d_sq will not be equal to 1.0 */
+   * and inv_rd_sq will not be equal to 1.0 */
   const float inv_rd_sq = 1.0f / dot(ray_D, ray_D);
 
   const float3 c0 = sphere_P - ray_P;
