@@ -17,12 +17,14 @@
 #include "DNA_vec_types.h"
 
 #include "BLI_array.hh"
+#include "BLI_array_utils.hh"
 #include "BLI_bitmap.h"
 #include "BLI_buffer.h"
 #include "BLI_function_ref.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector.h"
 #include "BLI_task.hh"
+#include "BLI_timeit.hh"
 #include "BLI_utildefines.h"
 
 #include "BKE_customdata.h"
@@ -320,6 +322,32 @@ static void sort_small_groups(const OffsetIndices<int> groups,
   });
 }
 
+#if 1
+static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
+                                            const OffsetIndices<int> groups)
+{
+  if (group_indices.is_empty()) {
+    return {};
+  }
+  BLI_assert(*std::max_element(group_indices.begin(), group_indices.end()) < groups.size());
+  BLI_assert(*std::min_element(group_indices.begin(), group_indices.end()) >= 0);
+
+  /* Use the existing offsets to fill the groups in parallel, starting at the end of each group. */
+  Array<int> offsets(groups.size());
+  array_utils::copy(groups.data().drop_back(1), offsets.as_mutable_span());
+
+  Array<int> results(group_indices.size());
+  threading::parallel_for(group_indices.index_range(), 1024, [&](const IndexRange range) {
+    for (const int64_t i : range) {
+      const int group_index = group_indices[i];
+      const int result_index = atomic_fetch_and_add_int32(&offsets[group_index], 1);
+      results[result_index] = int(i);
+    }
+  });
+  sort_small_groups(groups, 1024, results);
+  return results;
+}
+#else
 static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
                                             const OffsetIndices<int> offsets)
 {
@@ -328,18 +356,22 @@ static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
   }
   BLI_assert(*std::max_element(group_indices.begin(), group_indices.end()) < offsets.size());
   BLI_assert(*std::min_element(group_indices.begin(), group_indices.end()) >= 0);
-  Array<int> counts(offsets.size(), -1);
+
+  /* `calloc` can be measurably faster than a parallel fill of zero. */
+  int *counts = MEM_cnew_array<int>(size_t(offsets.size()), __func__);
   Array<int> results(group_indices.size());
   threading::parallel_for(group_indices.index_range(), 1024, [&](const IndexRange range) {
     for (const int64_t i : range) {
       const int group_index = group_indices[i];
-      const int index_in_group = atomic_add_and_fetch_int32(&counts[group_index], 1);
+      const int index_in_group = atomic_fetch_and_add_int32(&counts[group_index], 1);
       results[offsets[group_index][index_in_group]] = int(i);
     }
   });
   sort_small_groups(offsets, 1024, results);
+  MEM_freeN(counts);
   return results;
 }
+#endif
 
 static GroupedSpan<int> gather_groups(const Span<int> group_indices,
                                       const int groups_num,
@@ -405,6 +437,7 @@ GroupedSpan<int> build_vert_to_face_map(const OffsetIndices<int> faces,
 Array<int> build_vert_to_corner_indices(const Span<int> corner_verts,
                                         const OffsetIndices<int> offsets)
 {
+  SCOPED_TIMER_AVERAGED(__func__);
   return reverse_indices_in_groups(corner_verts, offsets);
 }
 
