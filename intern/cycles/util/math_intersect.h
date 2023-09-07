@@ -31,7 +31,7 @@ ccl_device bool ray_sphere_intersect(float3 ray_P,
   }
 
   float t;
-  if (dot(c0, c0) < r_sq) {
+  if (len_squared(c0) < r_sq) {
     /* Ray origin is inside the sphere */
     if (cull_backface) {
       return false;
