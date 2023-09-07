@@ -994,6 +994,7 @@ const bTheme U_theme_default = {
     .path_keyframe_after = RGBA(0xc4c4ffff),
     .gp_vertex_size = 1,
     .metadatatext = RGBA(0xffffffff),
+    .anim_preview_range = RGBA(0xa14d0066),
   },
   .space_topbar = {
     .back = RGBA(0x18181800),

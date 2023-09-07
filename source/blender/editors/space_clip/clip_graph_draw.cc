@@ -278,4 +278,5 @@ void clip_draw_graph(SpaceClip *sc, ARegion *region, Scene *scene)
   /* frame range */
   UI_view2d_view_ortho(v2d);
   ANIM_draw_framerange(scene, v2d);
+  ANIM_draw_previewrange(scene, v2d, 0);
 }

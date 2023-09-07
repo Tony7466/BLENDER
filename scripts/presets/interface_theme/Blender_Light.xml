@@ -1238,6 +1238,7 @@
         handle_vertex="#000000"
         handle_vertex_select="#ffff00"
         handle_vertex_size="5"
+        preview_range="#a14d0066"
         >
         <space>
           <ThemeSpaceGeneric
