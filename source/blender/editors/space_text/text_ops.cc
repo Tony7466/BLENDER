@@ -96,6 +96,52 @@ static char text_closing_character_pair_get(const char character)
 }
 
 /**
+ * This function receives a range and returns true if there is at least one non whitespace character.
+ * \param line1: The first TextLine argument.
+ * \param line1_char: The character number of line1.
+ * \param line2: The second TextLine argument.
+ * \param line2_char: The character number of line2.
+ * \return True if there is at least one non whitespace character.
+ */
+static bool text_test_has_non_whitespace(TextLine *line1,
+                                         const int line1_char,
+                                         TextLine *line2,
+                                         const int line2_char)
+{
+  const TextLine *start_line;
+  const TextLine *end_line;
+  int start_char;
+  int end_char;
+
+  /* Get the start and end lines. */
+  if (txt_get_span(line1, line2) > 0 || (line1 == line2 && line1_char <= line2_char)) {
+    start_line = line1;
+    end_line = line2;
+    start_char = line1_char;
+    end_char = line2_char;
+  }
+  else {
+    start_line = line2;
+    end_line = line1;
+    start_char = line2_char;
+    end_char = line1_char;
+  }
+
+  for (const TextLine *line = start_line; line != end_line->next; line = line->next) {
+    const int start = (line == start_line) ? start_char : 0;
+    const int end = (line == end_line) ? end_char : line->len;
+
+    for (int i = start; i < end; i++) {
+      if (!ELEM(line->line[i], ' ', '\t', '\n')) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
  * This function converts the indentation tabs from a buffer to spaces.
  * \param in_buf: A pointer to a cstring.
  * \param tab_size: The size, in spaces, of the tab character.
@@ -3554,7 +3600,7 @@ static int text_insert_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     if (U.text_flag & USER_TEXT_EDIT_AUTO_CLOSE) {
       auto_close_char = BLI_str_utf8_as_unicode(str);
 
-      if (txt_has_sel(st->text)) {
+      if (txt_has_sel(st->text) && text_test_has_non_whitespace(st->text->sell, st->text->selc, st->text->curl, st->text->curc)) {
         sell = st->text->sell;
         curl = st->text->curl;
         selc = st->text->selc;
