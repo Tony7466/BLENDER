@@ -124,7 +124,8 @@ ccl_device_inline bool point_light_intersect(const ccl_global KernelLight *kligh
   }
 
   float3 P;
-  return ray_sphere_intersect(ray->P, ray->D, ray->tmin, ray->tmax, klight->co, radius, &P, t, false);
+  return ray_sphere_intersect(
+      ray->P, ray->D, ray->tmin, ray->tmax, klight->co, radius, &P, t, false);
 }
 
 ccl_device_inline bool point_light_sample_from_intersection(

@@ -24,9 +24,18 @@ ccl_device_forceinline bool point_intersect(KernelGlobals kg,
   const float4 point = (type & PRIMITIVE_MOTION) ? motion_point(kg, object, prim, time) :
                                                    kernel_data_fetch(points, prim);
 
-    float3 discard;
-  if (!ray_sphere_intersect(ray_P, ray_D, ray_tmin, ray_tmax, float4_to_float3(point), point.w, &discard, &isect->t, true)) {
-      return false;
+  float3 discard;
+  if (!ray_sphere_intersect(ray_P,
+                            ray_D,
+                            ray_tmin,
+                            ray_tmax,
+                            float4_to_float3(point),
+                            point.w,
+                            &discard,
+                            &isect->t,
+                            true))
+  {
+    return false;
   }
 
   isect->prim = prim;

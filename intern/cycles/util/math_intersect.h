@@ -19,39 +19,39 @@ ccl_device bool ray_sphere_intersect(float3 ray_P,
                                      ccl_private float *isect_t,
                                      const bool cull_backface)
 {
-    const float inv_d_sq = 1.0f / dot(ray_D, ray_D);
+  const float inv_d_sq = 1.0f / dot(ray_D, ray_D);
 
-    const float3 c0 = sphere_P - ray_P;
-    const float projC0 = dot(c0, ray_D) * inv_d_sq;
-    const float3 perp = c0 - projC0 * ray_D;
-    const float l_sq = dot(perp, perp);
-    const float r_sq = sphere_radius * sphere_radius;
-    if (!(l_sq <= r_sq)) {
+  const float3 c0 = sphere_P - ray_P;
+  const float projC0 = dot(c0, ray_D) * inv_d_sq;
+  const float3 perp = c0 - projC0 * ray_D;
+  const float l_sq = dot(perp, perp);
+  const float r_sq = sphere_radius * sphere_radius;
+  if (!(l_sq <= r_sq)) {
+    return false;
+  }
+
+  float t;
+  if (dot(c0, c0) < r_sq) {
+    /* Ray origin is inside the sphere */
+    if (cull_backface) {
       return false;
     }
+    const float td = sqrt((r_sq - l_sq) * inv_d_sq);
+    t = projC0 + td;
+  }
+  else {
+    /* Ray origin is outside the sphere */
+    const float td = sqrt((r_sq - l_sq) * inv_d_sq);
+    t = projC0 - td;
+  }
 
-    float t;
-    if (dot(c0, c0) < r_sq) {
-        /* Ray origin is inside the sphere */
-        if (cull_backface) {
-            return false;
-        }
-        const float td = sqrt((r_sq - l_sq) * inv_d_sq);
-        t = projC0 + td;
-    }
-    else {
-        /* Ray origin is outside the sphere */
-        const float td = sqrt((r_sq - l_sq) * inv_d_sq);
-        t = projC0 - td;
-    }
-    
-    if ((ray_tmin <= t) & (t <= ray_tmax)){
-        *isect_t = t;
-        *isect_P = ray_P + ray_D * t;
-        return true;
-    }
-    
-    return false;
+  if ((ray_tmin <= t) & (t <= ray_tmax)) {
+    *isect_t = t;
+    *isect_P = ray_P + ray_D * t;
+    return true;
+  }
+
+  return false;
 }
 
 ccl_device bool ray_aligned_disk_intersect(float3 ray_P,
