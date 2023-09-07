@@ -23,10 +23,10 @@ ccl_device bool ray_sphere_intersect(float3 ray_P,
 
   const float3 c0 = sphere_P - ray_P;
   const float projC0 = dot(c0, ray_D) * inv_d_sq;
-  const float3 perp = c0 - projC0 * ray_D;
+  const float3 perp = c0 - (projC0 * ray_D);
   const float l_sq = dot(perp, perp);
   const float r_sq = sphere_radius * sphere_radius;
-  if (!(l_sq <= r_sq)) {
+  if (l_sq > r_sq) {
     return false;
   }
 
