@@ -83,6 +83,17 @@ enum eDebugMode : uint32_t {
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Look-Up Table Generation
+ * \{ */
+
+enum PrecomputeType : uint32_t {
+  LUT_GGX_BRDF_SPLIT_SUM = 0u,
+  LUT_GGX_BTDF_SPLIT_SUM = 1u,
+};
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Sampling
  * \{ */
 
@@ -461,6 +472,8 @@ struct VolumesInfoData {
   packed_int3 tex_size;
   float light_clamp;
   packed_float3 inv_tex_size;
+  int tile_size;
+  int tile_size_lod;
   float shadow_steps;
   bool1 use_lights;
   bool1 use_soft_shadows;
@@ -468,8 +481,6 @@ struct VolumesInfoData {
   float depth_far;
   float depth_distribution;
   float _pad0;
-  float _pad1;
-  float _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(VolumesInfoData, 16)
 
@@ -1025,6 +1036,11 @@ struct CaptureInfoData {
   int scene_bound_x_max;
   int scene_bound_y_max;
   int scene_bound_z_max;
+  /* Max intensity a ray can have. */
+  float clamp_direct;
+  float clamp_indirect;
+  float _pad1;
+  float _pad2;
   /** Minimum distance between a grid sample and a surface. Used to compute virtual offset. */
   float min_distance_to_surface;
   /** Maximum world scale offset an irradiance grid sample can be baked with. */

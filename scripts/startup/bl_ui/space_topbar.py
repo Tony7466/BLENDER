@@ -503,10 +503,10 @@ class TOPBAR_MT_file_export(Menu):
                 "wm.usd_export", text="Universal Scene Description (.usd*)")
 
         if bpy.app.build_options.io_gpencil:
-            # Pugixml lib dependency
+            # PUGIXML library dependency.
             if bpy.app.build_options.pugixml:
                 self.layout.operator("wm.gpencil_export_svg", text="Grease Pencil as SVG")
-            # Haru lib dependency
+            # HARU library dependency.
             if bpy.app.build_options.haru:
                 self.layout.operator("wm.gpencil_export_pdf", text="Grease Pencil as PDF")
 
@@ -702,7 +702,11 @@ class TOPBAR_MT_help(Menu):
         layout.separator()
 
         if show_developer:
-            layout.operator("wm.url_open", text="Developer Documentation", icon='URL').url = "https://wiki.blender.org/wiki/Main_Page"
+            layout.operator(
+                "wm.url_open",
+                text="Developer Documentation",
+                icon='URL',
+            ).url = "https://wiki.blender.org/wiki/Main_Page"
             layout.operator("wm.url_open", text="Developer Community").url = "https://devtalk.blender.org"
             layout.operator("wm.url_open_preset", text="Python API Reference").type = 'API'
             layout.operator("wm.operator_cheat_sheet", icon='TEXT')
