@@ -17,9 +17,7 @@ namespace blender::nodes::materialx {
 
 CLG_LOGREF_DECLARE_GLOBAL(LOG_MATERIALX_SHADER, "materialx.shader");
 
-MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
-                                           Material *material,
-                                           const std::string &socket_name)
+MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph, Material *material)
 {
   CLOG_INFO(LOG_MATERIALX_SHADER, 0, "Material: %s", material->id.name);
 
@@ -27,7 +25,7 @@ MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
   if (material->use_nodes) {
     material->nodetree->ensure_topology_cache();
     bNode *output_node = ntreeShaderOutputNode(material->nodetree, SHD_OUTPUT_ALL);
-    OutputMaterialNodeParser(doc.get(), depsgraph, material, output_node).compute(socket_name);
+    OutputMaterialNodeParser(doc.get(), depsgraph, material, output_node).compute_full();
   }
   else {
     OutputMaterialNodeParser(doc.get(), depsgraph, material, nullptr).compute_default();

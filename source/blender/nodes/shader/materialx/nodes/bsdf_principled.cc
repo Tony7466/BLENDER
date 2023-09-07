@@ -8,6 +8,11 @@ namespace blender::nodes::materialx {
 
 NodeItem BSDFPrincipledNodeParser::compute()
 {
+  if (shader_type_ != NodeItem::Type::SurfaceShader) {
+    /* TODO: implement for BSDF and EDF */
+    return empty();
+  }
+
   NodeItem base_color = get_input_value("Base Color", NodeItem::Type::Color3);
 
   NodeItem subsurface = get_input_value("Subsurface", NodeItem::Type::Float);
@@ -40,9 +45,9 @@ NodeItem BSDFPrincipledNodeParser::compute()
   NodeItem alpha = get_input_value("Alpha", NodeItem::Type::Float);
   // transparency = 1.0 - alpha
 
-  NodeItem normal = get_input_link("Normal");
-  NodeItem clearcoat_normal = get_input_link("Clearcoat Normal");
-  NodeItem tangent = get_input_link("Tangent");
+  NodeItem normal = get_input_link("Normal", NodeItem::Type::Vector3);
+  NodeItem clearcoat_normal = get_input_link("Clearcoat Normal", NodeItem::Type::Vector3);
+  NodeItem tangent = get_input_link("Tangent", NodeItem::Type::Vector3);
 
   /* Creating standard_surface */
   NodeItem res = create_node("standard_surface", "surfaceshader");

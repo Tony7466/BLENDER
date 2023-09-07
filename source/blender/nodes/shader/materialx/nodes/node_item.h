@@ -11,16 +11,28 @@ namespace blender::nodes::materialx {
 class NodeItem {
  public:
   enum class Type {
-    Empty = 0,
-    Other, /* For MaterialX types like: surfaceshader, bsdf, edf, ...*/
+    Any = 0,
+    Empty,
+
+    /* Value types */
     String,
+    Filename,
     Integer,
+    /* Block of arithmetic types. Ordered by type cast */
     Float,
     Vector2,
     Vector3,
-    Vector4,
     Color3,
-    Color4
+    Vector4,
+    Color4,
+    /* End of arithmetic types */
+
+    /* Shader types
+     * NOTE: There are only supported types */
+    BSDF,
+    EDF,
+    SurfaceShader,
+    Material,
   };
   enum class CompareOp { Less = 0, LessEq, Eq, GreaterEq, Greater, NotEq };
 
@@ -34,6 +46,9 @@ class NodeItem {
  public:
   NodeItem(MaterialX::GraphElement *graph);
   ~NodeItem() = default;
+
+  static Type type(const std::string &type_str);
+  static std::string type(Type type);
 
   /* Operators */
   operator bool() const;
@@ -92,10 +107,8 @@ class NodeItem {
   void add_output(const std::string &in_name, Type out_type);
 
  private:
-  static Type type(const std::string &type_str);
-  static std::string type(Type type);
   static bool is_arithmetic(Type type);
-  static Type adjust_types(NodeItem &item1, NodeItem &item2);
+  static Type cast_types(NodeItem &item1, NodeItem &item2);
 
   bool is_arithmetic() const;
   NodeItem arithmetic(const std::string &category, std::function<float(float)> func) const;

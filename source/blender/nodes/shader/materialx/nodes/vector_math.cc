@@ -14,7 +14,7 @@ NodeItem VectorMathNodeParser::compute()
   NodeItem res = empty();
 
   /* Single operand operations */
-  NodeItem x = get_input_value(0, NodeItem::Type::Empty);
+  NodeItem x = get_input_value(0, NodeItem::Type::Any);
   switch (op) {
     case NODE_VECTOR_MATH_SINE:
       res = x.sin();
@@ -46,7 +46,7 @@ NodeItem VectorMathNodeParser::compute()
 
     default: {
       /* 2-operand operations */
-      NodeItem y = get_input_value(1, NodeItem::Type::Empty);
+      NodeItem y = get_input_value(1, NodeItem::Type::Any);
       switch (op) {
         case NODE_VECTOR_MATH_ADD:
           res = x + y;
@@ -93,7 +93,7 @@ NodeItem VectorMathNodeParser::compute()
 
         default: {
           /* 3-operand operations */
-          NodeItem z = get_input_value(2, NodeItem::Type::Empty);
+          NodeItem z = get_input_value(2, NodeItem::Type::Any);
           switch (op) {
             case NODE_VECTOR_MATH_MULTIPLY_ADD:
               res = x * y + z;

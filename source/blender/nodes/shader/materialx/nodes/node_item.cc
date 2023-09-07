@@ -12,6 +12,86 @@ namespace blender::nodes::materialx {
 
 NodeItem::NodeItem(MaterialX::GraphElement *graph) : graph_(graph) {}
 
+NodeItem::Type NodeItem::type(const std::string &type_str)
+{
+  if (type_str == "string") {
+    return Type::String;
+  }
+  if (type_str == "filename") {
+    return Type::Filename;
+  }
+  if (type_str == "integer") {
+    return Type::Integer;
+  }
+  if (type_str == "float") {
+    return Type::Float;
+  }
+  if (type_str == "vector2") {
+    return Type::Vector2;
+  }
+  if (type_str == "vector3") {
+    return Type::Vector3;
+  }
+  if (type_str == "vector4") {
+    return Type::Vector4;
+  }
+  if (type_str == "color3") {
+    return Type::Color3;
+  }
+  if (type_str == "color4") {
+    return Type::Color4;
+  }
+  if (type_str == "BSDF") {
+    return Type::BSDF;
+  }
+  if (type_str == "EDF") {
+    return Type::EDF;
+  }
+  if (type_str == "surfaceshader") {
+    return Type::SurfaceShader;
+  }
+  if (type_str == "material") {
+    return Type::Material;
+  }
+  BLI_assert_unreachable();
+  return Type::Empty;
+}
+
+std::string NodeItem::type(Type type)
+{
+  switch (type) {
+    case Type::String:
+      return "string";
+    case Type::Filename:
+      return "filename";
+    case Type::Integer:
+      return "integer";
+    case Type::Float:
+      return "float";
+    case Type::Vector2:
+      return "vector2";
+    case Type::Vector3:
+      return "vector3";
+    case Type::Vector4:
+      return "vector4";
+    case Type::Color3:
+      return "color3";
+    case Type::Color4:
+      return "color4";
+    case Type::BSDF:
+      return "BSDF";
+    case Type::EDF:
+      return "EDF";
+    case Type::SurfaceShader:
+      return "surfaceshader";
+    case Type::Material:
+      return "material";
+    default:
+      BLI_assert_unreachable();
+  }
+  return "";
+}
+
 NodeItem::operator bool() const
 {
   return value || node;
@@ -19,6 +99,21 @@ NodeItem::operator bool() const
 
 NodeItem NodeItem::operator+(const NodeItem &other) const
 {
+  Type type = this->type();
+  if (ELEM(type, Type::BSDF, Type::EDF)) {
+    /* Special case: add BSDF/EDF shaders */
+    NodeItem res = empty();
+    if (other.type() == type) {
+      res.node = graph_->addNode("add", MaterialX::EMPTY_STRING, this->type(type));
+      res.set_input("in1", *this);
+      res.set_input("in2", other);
+    }
+    else {
+      BLI_assert_unreachable();
+    }
+    return res;
+  }
+
   return arithmetic(other, "add", [](float a, float b) { return a + b; });
 }
 
@@ -34,6 +129,22 @@ NodeItem NodeItem::operator-() const
 
 NodeItem NodeItem::operator*(const NodeItem &other) const
 {
+  Type type = this->type();
+  if (ELEM(type, Type::BSDF, Type::EDF)) {
+    /* Special case: multiple BSDF/EDF shader by Float or Color3 */
+    NodeItem res = empty();
+    Type other_type = other.type();
+    if (ELEM(other_type, Type::Float, Type::Color3)) {
+      res.node = graph_->addNode("multiply", MaterialX::EMPTY_STRING, this->type(type));
+      res.set_input("in1", *this);
+      res.set_input("in2", other);
+    }
+    else {
+      BLI_assert_unreachable();
+    }
+    return res;
+  }
+
   return arithmetic(other, "multiply", [](float a, float b) { return a * b; });
 }
 
@@ -70,7 +181,7 @@ bool NodeItem::operator==(const NodeItem &other) const
 
   NodeItem item1 = *this;
   NodeItem item2 = other;
-  Type to_type = adjust_types(item1, item2);
+  Type to_type = cast_types(item1, item2);
   if (to_type == Type::Empty) {
     return false;
   }
@@ -248,10 +359,14 @@ NodeItem NodeItem::extract(const int index) const
 NodeItem NodeItem::convert(Type to_type) const
 {
   Type from_type = type();
-  if (from_type == to_type) {
+  if (from_type == Type::Empty || from_type == to_type || to_type == Type::Any) {
     return *this;
   }
   if (!is_arithmetic(from_type) || !is_arithmetic(to_type)) {
+    CLOG_WARN(LOG_MATERIALX_SHADER,
+              "Cannot convert: %s -> %s",
+              type(from_type).c_str(),
+              type(to_type).c_str());
     return empty();
   }
 
@@ -448,7 +563,7 @@ NodeItem NodeItem::if_else(CompareOp op,
 
   auto item1 = if_val;
   auto item2 = else_val;
-  Type to_type = adjust_types(item1, item2);
+  Type to_type = cast_types(item1, item2);
   if (to_type == Type::Empty) {
     return res;
   }
@@ -554,66 +669,12 @@ void NodeItem::add_output(const std::string &name, Type out_type)
   node->addOutput(name, type(out_type));
 }
 
-NodeItem::Type NodeItem::type(const std::string &type_str)
-{
-  if (type_str == "string") {
-    return Type::String;
-  }
-  if (type_str == "integer") {
-    return Type::Integer;
-  }
-  if (type_str == "float") {
-    return Type::Float;
-  }
-  if (type_str == "vector2") {
-    return Type::Vector2;
-  }
-  if (type_str == "vector3") {
-    return Type::Vector3;
-  }
-  if (type_str == "vector4") {
-    return Type::Vector4;
-  }
-  if (type_str == "color3") {
-    return Type::Color3;
-  }
-  if (type_str == "color4") {
-    return Type::Color4;
-  }
-  return Type::Other;
-}
-
-std::string NodeItem::type(Type type)
-{
-  switch (type) {
-    case Type::String:
-      return "string";
-    case Type::Integer:
-      return "integer";
-    case Type::Float:
-      return "float";
-    case Type::Vector2:
-      return "vector2";
-    case Type::Vector3:
-      return "vector3";
-    case Type::Vector4:
-      return "vector4";
-    case Type::Color3:
-      return "color3";
-    case Type::Color4:
-      return "color4";
-    default:
-      break;
-  }
-  return "";
-}
-
 bool NodeItem::is_arithmetic(Type type)
 {
-  return type >= Type::Float;
+  return type >= Type::Float && type <= Type::Color4;
 }
 
-NodeItem::Type NodeItem::adjust_types(NodeItem &item1, NodeItem &item2)
+NodeItem::Type NodeItem::cast_types(NodeItem &item1, NodeItem &item2)
 {
   Type t1 = item1.type();
   Type t2 = item2.type();
@@ -621,6 +682,8 @@ NodeItem::Type NodeItem::adjust_types(NodeItem &item1, NodeItem &item2)
     return t1;
   }
   if (!is_arithmetic(t1) || !is_arithmetic(t2)) {
+    CLOG_WARN(
+        LOG_MATERIALX_SHADER, "Can't adjust types: %s <-> %s", type(t1).c_str(), type(t2).c_str());
     return Type::Empty;
   }
   if (t1 < t2) {
@@ -701,7 +764,7 @@ NodeItem NodeItem::arithmetic(const NodeItem &other,
   NodeItem res = empty();
   NodeItem item1 = *this;
   NodeItem item2 = other;
-  Type to_type = adjust_types(item1, item2);
+  Type to_type = cast_types(item1, item2);
   if (to_type == Type::Empty) {
     return res;
   }

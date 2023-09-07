@@ -8,15 +8,19 @@
 
 namespace blender::nodes::materialx {
 
-class OutputMaterialNodeParser : public NodeParser {
+class OutputMaterialNodeParser : public ShaderNodeParser {
  public:
   OutputMaterialNodeParser(MaterialX::GraphElement *graph,
                            const Depsgraph *depsgraph,
                            const Material *material,
                            const bNode *node);
   NodeItem compute() override;
-  NodeItem compute(const std::string &socket_name);
+
+  using ShaderNodeParser::compute_full;
   NodeItem compute_default();
+
+ protected:
+  std::string node_name() override;
 };
 
 }  // namespace blender::nodes::materialx

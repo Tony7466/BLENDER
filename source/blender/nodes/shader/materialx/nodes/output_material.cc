@@ -9,27 +9,34 @@ OutputMaterialNodeParser::OutputMaterialNodeParser(MaterialX::GraphElement *grap
                                                    const Depsgraph *depsgraph,
                                                    const Material *material,
                                                    const bNode *node)
-    : NodeParser(graph, depsgraph, material, node, nullptr)
+    : ShaderNodeParser(graph, depsgraph, material, node, nullptr, NodeItem::Type::Material)
 {
 }
 
 NodeItem OutputMaterialNodeParser::compute()
 {
-  return empty();
-}
-
-NodeItem OutputMaterialNodeParser::compute(const std::string &socket_name)
-{
   NodeItem surface = empty();
   if (node_) {
-    surface = get_input_link(socket_name);
+    NodeItem bsdf = get_input_shader("Surface", NodeItem::Type::BSDF);
+    NodeItem edf = get_input_shader("Surface", NodeItem::Type::EDF);
+    if (bsdf || edf) {
+      surface = create_node("surface", "surfaceshader");
+      if (bsdf) {
+        surface.set_input("bsdf", bsdf);
+      }
+      if (edf) {
+        surface.set_input("edf", edf);
+      }
+    }
+    else {
+      surface = get_input_shader("Surface", NodeItem::Type::SurfaceShader);
+    }
   }
   else {
     surface = create_node("standard_surface", "surfaceshader");
     surface.set_input("base_color", value(MaterialX::Color3(1.0f, 0.0f, 1.0f)));
   }
   NodeItem res = create_node("surfacematerial", "material");
-  res.node->setName(node_name(node_, nullptr));
   res.set_input("surfaceshader", surface);
   return res;
 }
@@ -53,6 +60,11 @@ NodeItem OutputMaterialNodeParser::compute_default()
   res.node->setName("Material_Default");
   res.set_input("surfaceshader", surface);
   return res;
+}
+
+std::string OutputMaterialNodeParser::node_name()
+{
+  return NodeParser::node_name();
 }
 
 }  // namespace blender::nodes::materialx

@@ -15,8 +15,6 @@ namespace blender::nodes::materialx {
 
 extern struct CLG_LogRef *LOG_MATERIALX_SHADER;
 
-MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph,
-                                           Material *material,
-                                           const std::string &socket_name = "Surface");
+MaterialX::DocumentPtr export_to_materialx(Depsgraph *depsgraph, Material *material);
 
 }  // namespace blender::nodes::materialx
