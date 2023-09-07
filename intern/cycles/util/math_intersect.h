@@ -34,16 +34,16 @@ ccl_device bool ray_sphere_intersect(float3 ray_P,
     return false;
   }
 
-  /* to_surface_sq is the squared distance from the ray origin to the surface of the sphere.
-   * Negative numbers denote the ray origin is inside the sphere.
-   * Positive numbers denote it's outside the sphere. */
-  const float to_surface_sq = len_squared(c0) - r_sq;
-  if (cull_backface && to_surface_sq < 0.0f) {
+  /* to_surface_d denotes where the ray origin is located relative to the surface of the sphere.
+   * Negative values denote the ray origin is inside the sphere.
+   * Positive values denote the ray origin is outside the sphere. */
+  const float to_surface_d = len_squared(c0) - r_sq;
+  if (cull_backface && to_surface_d < 0.0f) {
     /* Ray origin is inside the sphere, and the ray can only intersect backfaces. */
     return false;
   }
 
-  const float t = projC0 - copysignf(sqrt((r_sq - l_sq) * inv_d_sq), to_surface_sq);
+  const float t = projC0 - copysignf(sqrt((r_sq - l_sq) * inv_d_sq), to_surface_d);
 
   if ((ray_tmin <= t) & (t <= ray_tmax)) {
     *isect_t = t;
