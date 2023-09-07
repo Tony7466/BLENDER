@@ -374,17 +374,17 @@ using UidGeneratorFn = blender::FunctionRef<int()>;
 static void item_copy(bNodeTreeInterfaceItem &dst,
                       const bNodeTreeInterfaceItem &src,
                       int flag,
-                      UidGeneratorFn uid_gen);
+                      UidGeneratorFn generate_uid);
 
 /**
  * Copy the source items and give each a new unique identifier.
- * \param uid_gen: Optional generator function for new item UIDs, copies existing identifiers if
- *                 null.
+ * \param generate_uid: Optional generator function for new item UIDs, copies existing identifiers
+ * if null.
  */
 static void panel_init(bNodeTreeInterfacePanel &panel,
                        const Span<const bNodeTreeInterfaceItem *> items_src,
                        const int flag,
-                       UidGeneratorFn uid_gen)
+                       UidGeneratorFn generate_uid)
 {
   panel.items_num = items_src.size();
   panel.items_array = MEM_cnew_array<bNodeTreeInterfaceItem *>(panel.items_num, __func__);
@@ -393,19 +393,19 @@ static void panel_init(bNodeTreeInterfacePanel &panel,
   for (const int i : items_src.index_range()) {
     const bNodeTreeInterfaceItem *item_src = items_src[i];
     panel.items_array[i] = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(item_src));
-    item_types::item_copy(*panel.items_array[i], *item_src, flag, uid_gen);
+    item_types::item_copy(*panel.items_array[i], *item_src, flag, generate_uid);
   }
 }
 
 /**
  * Copy data from a source item.
- * \param uid_gen: Optional generator function for new item UIDs, copies existing identifiers if
- *                 null.
+ * \param generate_uid: Optional generator function for new item UIDs, copies existing identifiers
+ * if null.
  */
 static void item_copy(bNodeTreeInterfaceItem &dst,
                       const bNodeTreeInterfaceItem &src,
                       const int flag,
-                      UidGeneratorFn uid_gen)
+                      UidGeneratorFn generate_uid)
 {
   switch (dst.item_type) {
     case NODE_INTERFACE_SOCKET: {
@@ -419,8 +419,8 @@ static void item_copy(bNodeTreeInterfaceItem &dst,
       dst_socket.description = BLI_strdup_null(src_socket.description);
       dst_socket.socket_type = BLI_strdup(src_socket.socket_type);
       dst_socket.default_attribute_name = BLI_strdup_null(src_socket.default_attribute_name);
-      dst_socket.identifier = uid_gen ? BLI_sprintfN("Socket_%d", uid_gen()) :
-                                        BLI_strdup(src_socket.identifier);
+      dst_socket.identifier = generate_uid ? BLI_sprintfN("Socket_%d", generate_uid()) :
+                                             BLI_strdup(src_socket.identifier);
       if (src_socket.properties) {
         dst_socket.properties = IDP_CopyProperty_ex(src_socket.properties, flag);
       }
@@ -437,9 +437,9 @@ static void item_copy(bNodeTreeInterfaceItem &dst,
 
       dst_panel.name = BLI_strdup(src_panel.name);
       dst_panel.description = BLI_strdup_null(src_panel.description);
-      dst_panel.identifier = uid_gen ? uid_gen() : src_panel.identifier;
+      dst_panel.identifier = generate_uid ? generate_uid() : src_panel.identifier;
 
-      panel_init(dst_panel, src_panel.items(), flag, uid_gen);
+      panel_init(dst_panel, src_panel.items(), flag, generate_uid);
       break;
     }
   }
