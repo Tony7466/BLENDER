@@ -423,6 +423,9 @@ string(APPEND PLATFORM_LINKFLAGS
   " -Wl,-unexported_symbols_list,'${PLATFORM_SYMBOLS_MAP}'"
 )
 
+# Use old, slower linker for now to avoid linker warnings.
+string(APPEND PLATFORM_LINKFLAGS " -Wl,-ld_classic")
+
 # Make stack size more similar to Embree, required for Embree.
 string(APPEND PLATFORM_LINKFLAGS_EXECUTABLE " -Wl,-stack_size,0x100000")
 
