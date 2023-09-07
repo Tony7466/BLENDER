@@ -313,6 +313,9 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
         case TH_TIME_SCRUB_BACKGROUND:
           cp = ts->time_scrub_background;
           break;
+        case TH_TIME_RANGE:
+          cp = ts->time_range;
+          break;
         case TH_TIME_MARKER_LINE:
           cp = ts->time_marker_line;
           break;

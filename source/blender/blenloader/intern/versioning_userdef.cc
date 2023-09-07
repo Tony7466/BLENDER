@@ -125,6 +125,11 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     /* Keep this block, even when empty. */
     FROM_DEFAULT_V4_UCHAR(space_sequencer.transition);
     FROM_DEFAULT_V4_UCHAR(tui.wcol_list_item.inner_sel);
+    FROM_DEFAULT_V4_UCHAR(space_action.time_range);
+    FROM_DEFAULT_V4_UCHAR(space_graph.time_range);
+    FROM_DEFAULT_V4_UCHAR(space_nla.time_range);
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.time_range);
+    FROM_DEFAULT_V4_UCHAR(space_clip.time_range);
   }
 
 #undef FROM_DEFAULT_V4_UCHAR

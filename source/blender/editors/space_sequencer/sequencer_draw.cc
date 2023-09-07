@@ -2432,7 +2432,7 @@ static void seq_draw_sfra_efra(const Scene *scene, View2D *v2d)
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
   /* Draw overlay outside of frame range. */
-  immUniformThemeColorShadeAlpha(TH_BACK, -10, -100);
+  immUniformThemeColor(TH_TIME_RANGE);
 
   if (frame_sta < frame_end) {
     immRectf(pos, v2d->cur.xmin, v2d->cur.ymin, float(frame_sta), v2d->cur.ymax);
@@ -2442,7 +2442,7 @@ static void seq_draw_sfra_efra(const Scene *scene, View2D *v2d)
     immRectf(pos, v2d->cur.xmin, v2d->cur.ymin, v2d->cur.xmax, v2d->cur.ymax);
   }
 
-  immUniformThemeColorShade(TH_BACK, -60);
+  immUniformThemeColor3(TH_TIME_RANGE);
 
   /* Draw frame range boundary. */
   immBegin(GPU_PRIM_LINES, 4);

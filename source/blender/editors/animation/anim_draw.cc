@@ -120,7 +120,7 @@ void ANIM_draw_framerange(Scene *scene, View2D *v2d)
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-  immUniformThemeColorShadeAlpha(TH_BACK, -25, -100);
+  immUniformThemeColor(TH_TIME_RANGE);
 
   if (scene->r.sfra < scene->r.efra) {
     immRectf(pos, v2d->cur.xmin, v2d->cur.ymin, float(scene->r.sfra), v2d->cur.ymax);
@@ -133,7 +133,7 @@ void ANIM_draw_framerange(Scene *scene, View2D *v2d)
   GPU_blend(GPU_BLEND_NONE);
 
   /* thin lines where the actual frames are */
-  immUniformThemeColorShade(TH_BACK, -60);
+  immUniformThemeColor3(TH_TIME_RANGE);
 
   immBegin(GPU_PRIM_LINES, 4);
 
@@ -174,7 +174,7 @@ void ANIM_draw_action_framerange(
   immBindBuiltinProgram(GPU_SHADER_2D_DIAG_STRIPES);
 
   float color[4];
-  UI_GetThemeColorShadeAlpha4fv(TH_BACK, -40, -50, color);
+  UI_GetThemeColor4fv(TH_TIME_RANGE, color);
 
   immUniform4f("color1", color[0], color[1], color[2], color[3]);
   immUniform4f("color2", 0.0f, 0.0f, 0.0f, 0.0f);
@@ -195,7 +195,7 @@ void ANIM_draw_action_framerange(
 
   /* Thin lines where the actual frames are. */
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-  immUniformThemeColorShade(TH_BACK, -60);
+  immUniformThemeColor3(TH_TIME_RANGE);
 
   GPU_line_width(1.0f);
 

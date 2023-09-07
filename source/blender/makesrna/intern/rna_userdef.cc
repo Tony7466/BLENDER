@@ -2609,6 +2609,17 @@ static void rna_def_userdef_theme_space_graph(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Current Frame", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
+  prop = RNA_def_property(srna, "time_range", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_ui_text(prop, "Frame Range", "Color outside of frame start/end range");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "preview_range", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, nullptr, "anim_preview_range");
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_ui_text(prop, "Preview Range", "Color of preview range overlay");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
   prop = RNA_def_property(srna, "time_scrub_background", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(prop, "Scrubbing/Markers Region", "");
@@ -2658,12 +2669,6 @@ static void rna_def_userdef_theme_space_graph(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, nullptr, "group_active");
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Active Channel Group", "");
-  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
-
-  prop = RNA_def_property(srna, "preview_range", PROP_FLOAT, PROP_COLOR_GAMMA);
-  RNA_def_property_float_sdna(prop, nullptr, "anim_preview_range");
-  RNA_def_property_array(prop, 4);
-  RNA_def_property_ui_text(prop, "Preview Range", "Color of preview range overlay");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
   rna_def_userdef_theme_spaces_vertex(srna);
@@ -3441,6 +3446,17 @@ static void rna_def_userdef_theme_space_seq(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Current Frame", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
+  prop = RNA_def_property(srna, "time_range", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_ui_text(prop, "Frame Range", "Color outside of frame start/end range");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "preview_range", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, nullptr, "anim_preview_range");
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_ui_text(prop, "Preview Range", "Color of preview range overlay");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
   prop = RNA_def_property(srna, "time_scrub_background", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(prop, "Scrubbing/Markers Region", "");
@@ -3486,12 +3502,6 @@ static void rna_def_userdef_theme_space_seq(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Metadata Text", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
-  prop = RNA_def_property(srna, "preview_range", PROP_FLOAT, PROP_COLOR_GAMMA);
-  RNA_def_property_float_sdna(prop, nullptr, "anim_preview_range");
-  RNA_def_property_array(prop, 4);
-  RNA_def_property_ui_text(prop, "Preview Range", "Color of preview range overlay");
-  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
-
   prop = RNA_def_property(srna, "row_alternate", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(prop, "Alternate Rows", "Overlay color on every other row");
@@ -3522,6 +3532,17 @@ static void rna_def_userdef_theme_space_action(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, nullptr, "cframe");
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Current Frame", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "time_range", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_ui_text(prop, "Frame Range", "Color outside of frame start/end range");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "preview_range", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, nullptr, "anim_preview_range");
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_ui_text(prop, "Preview Range", "Color of preview range overlay");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
   prop = RNA_def_property(srna, "time_scrub_background", PROP_FLOAT, PROP_COLOR_GAMMA);
@@ -3689,12 +3710,6 @@ static void rna_def_userdef_theme_space_action(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Summary", "Color of summary channel");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
-  prop = RNA_def_property(srna, "preview_range", PROP_FLOAT, PROP_COLOR_GAMMA);
-  RNA_def_property_float_sdna(prop, nullptr, "anim_preview_range");
-  RNA_def_property_array(prop, 4);
-  RNA_def_property_ui_text(prop, "Preview Range", "Color of preview range overlay");
-  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
-
   prop = RNA_def_property(srna, "interpolation_line", PROP_FLOAT, PROP_COLOR_GAMMA);
   RNA_def_property_float_sdna(prop, nullptr, "ds_ipoline");
   RNA_def_property_array(prop, 4);
@@ -3757,12 +3772,6 @@ static void rna_def_userdef_theme_space_nla(BlenderRNA *brna)
   RNA_def_property_array(prop, 4);
   RNA_def_property_ui_text(
       prop, "No Active Action", "Animation data-block doesn't have active action");
-  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
-
-  prop = RNA_def_property(srna, "preview_range", PROP_FLOAT, PROP_COLOR_GAMMA);
-  RNA_def_property_float_sdna(prop, nullptr, "anim_preview_range");
-  RNA_def_property_array(prop, 4);
-  RNA_def_property_ui_text(prop, "Preview Range", "Color of preview range overlay");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
   prop = RNA_def_property(srna, "strips", PROP_FLOAT, PROP_COLOR_GAMMA);
@@ -3848,6 +3857,17 @@ static void rna_def_userdef_theme_space_nla(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, nullptr, "cframe");
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Current Frame", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "time_range", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_ui_text(prop, "Frame Range", "Color outside of frame start/end range");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "preview_range", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, nullptr, "anim_preview_range");
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_ui_text(prop, "Preview Range", "Color of preview range overlay");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
   prop = RNA_def_property(srna, "time_scrub_background", PROP_FLOAT, PROP_COLOR_GAMMA);
@@ -4016,6 +4036,11 @@ static void rna_def_userdef_theme_space_clip(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, nullptr, "cframe");
   RNA_def_property_array(prop, 3);
   RNA_def_property_ui_text(prop, "Current Frame", "");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
+
+  prop = RNA_def_property(srna, "time_range", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_ui_text(prop, "Frame Range", "Color outside of frame start/end range");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
   prop = RNA_def_property(srna, "time_scrub_background", PROP_FLOAT, PROP_COLOR_GAMMA);

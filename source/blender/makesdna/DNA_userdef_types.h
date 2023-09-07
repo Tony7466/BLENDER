@@ -302,6 +302,7 @@ typedef struct ThemeSpace {
   unsigned char time_keyframe[4], time_gp_keyframe[4];
   unsigned char freestyle_edge_mark[4], freestyle_face_mark[4];
   unsigned char time_scrub_background[4];
+  unsigned char time_range[4];
   unsigned char time_marker_line[4], time_marker_line_selected[4];
 
   unsigned char nurb_uline[4], nurb_vline[4];
@@ -321,7 +322,6 @@ typedef struct ThemeSpace {
   unsigned char keytype_keyframe_select[4], keytype_extreme_select[4], keytype_breakdown_select[4],
       keytype_jitter_select[4], keytype_movehold_select[4];
   unsigned char keyborder[4], keyborder_select[4];
-  char _pad4[3];
 
   unsigned char console_output[4], console_input[4], console_info[4], console_error[4];
   unsigned char console_cursor[4], console_select[4];
@@ -329,7 +329,7 @@ typedef struct ThemeSpace {
   unsigned char vertex_size, edge_width, outline_width, obcenter_dia, facedot_size;
   unsigned char noodle_curving;
   unsigned char grid_levels;
-  char _pad5[2];
+  char _pad5[1];
   float dash_alpha;
 
   /* Syntax for text-window and nodes. */
