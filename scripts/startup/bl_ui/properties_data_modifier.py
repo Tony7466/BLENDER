@@ -29,6 +29,7 @@ class DATA_PT_modifiers(ModifierButtonsPanel, Panel):
 
 class OBJECT_MT_modifier_add(Menu):
     bl_label = "Add Modifier"
+    bl_options = {'SEARCH_ON_KEY_PRESS'}
 
     def draw(self, context):
         layout = self.layout
@@ -226,6 +227,7 @@ class AddModifierMenu(Operator):
 
     @classmethod
     def poll(cls, context):
+        # NOTE: This operator only exists to add a poll to the add modifier shortcut in the property editor.
         space = context.space_data
         return space and space.type == 'PROPERTIES' and space.context == "MODIFIER"
 
