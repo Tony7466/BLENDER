@@ -3112,7 +3112,7 @@ class VIEW3D_MT_object_asset(Menu):
     def draw(self, _context):
         layout = self.layout
 
-        layout.operator("asset.mark")
+        layout.operator("asset.mark", icon="ASSET_MANAGER")
         layout.operator("asset.clear", text="Clear Asset").set_fake_user = False
         layout.operator("asset.clear", text="Clear Asset (Set Fake User)").set_fake_user = True
 
