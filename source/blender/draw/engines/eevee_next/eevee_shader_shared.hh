@@ -1161,6 +1161,9 @@ struct RayTraceData {
   bool1 skip_denoise;
   /** Closure being ray-traced. */
   eClosureBits closure_active;
+  int _pad0;
+  int _pad1;
+  int _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(RayTraceData, 16)
 
