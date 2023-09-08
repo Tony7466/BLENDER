@@ -222,15 +222,15 @@ static bool bake_simulation_poll(bContext *C)
   return true;
 }
 
-struct ZoneBakeData {
-  int zone_id;
+struct NodeBakeData {
+  int id;
   bake::BakePath path;
   std::unique_ptr<bake::BlobSharing> blob_sharing;
 };
 
 struct ModifierBakeData {
   NodesModifierData *nmd;
-  Vector<ZoneBakeData> zones;
+  Vector<NodeBakeData> zones;
 };
 
 struct ObjectBakeData {
@@ -281,14 +281,14 @@ static void bake_simulation_job_startjob(void *customdata,
         }
 
         for (const bNestedNodeRef &nested_node_ref : nmd->node_group->nested_node_refs_span()) {
-          ZoneBakeData zone_bake_data;
-          zone_bake_data.zone_id = nested_node_ref.id;
-          zone_bake_data.blob_sharing = std::make_unique<bake::BlobSharing>();
+          NodeBakeData node_bake_data;
+          node_bake_data.id = nested_node_ref.id;
+          node_bake_data.blob_sharing = std::make_unique<bake::BlobSharing>();
           if (std::optional<bake::BakePath> path = bake::get_node_bake_path(
                   *job.bmain, *object, *nmd, nested_node_ref.id))
           {
-            zone_bake_data.path = std::move(*path);
-            modifier_bake_data.zones.append(std::move(zone_bake_data));
+            node_bake_data.path = std::move(*path);
+            modifier_bake_data.zones.append(std::move(node_bake_data));
           }
         }
 
@@ -325,12 +325,12 @@ static void bake_simulation_job_startjob(void *customdata,
       for (ModifierBakeData &modifier_bake_data : object_bake_data.modifiers) {
         NodesModifierData &nmd = *modifier_bake_data.nmd;
         const bake::ModifierCache &modifier_cache = *nmd.runtime->cache;
-        for (ZoneBakeData &zone_bake_data : modifier_bake_data.zones) {
-          if (!modifier_cache.cache_by_id.contains(zone_bake_data.zone_id)) {
+        for (NodeBakeData &node_bake_data : modifier_bake_data.zones) {
+          if (!modifier_cache.cache_by_id.contains(node_bake_data.id)) {
             continue;
           }
           const bake::NodeCache &node_cache = *modifier_cache.cache_by_id.lookup(
-              zone_bake_data.zone_id);
+              node_bake_data.id);
           if (node_cache.frame_caches.is_empty()) {
             continue;
           }
@@ -339,7 +339,7 @@ static void bake_simulation_job_startjob(void *customdata,
             continue;
           }
 
-          const bake::BakePath path = zone_bake_data.path;
+          const bake::BakePath path = node_bake_data.path;
 
           const std::string blob_file_name = frame_file_name + ".blob";
 
@@ -357,7 +357,7 @@ static void bake_simulation_job_startjob(void *customdata,
           bake::DiskBlobWriter blob_writer{blob_file_name, blob_file, 0};
           fstream meta_file{meta_path, std::ios::out};
           bake::serialize_bake(
-              frame_cache.state, blob_writer, *zone_bake_data.blob_sharing, meta_file);
+              frame_cache.state, blob_writer, *node_bake_data.blob_sharing, meta_file);
         }
       }
     }
@@ -369,9 +369,9 @@ static void bake_simulation_job_startjob(void *customdata,
   for (ObjectBakeData &object_bake_data : objects_to_bake) {
     for (ModifierBakeData &modifier_bake_data : object_bake_data.modifiers) {
       NodesModifierData &nmd = *modifier_bake_data.nmd;
-      for (ZoneBakeData &zone_bake_data : modifier_bake_data.zones) {
+      for (NodeBakeData &node_bake_data : modifier_bake_data.zones) {
         if (std::unique_ptr<bake::NodeCache> *node_cache_ptr =
-                nmd.runtime->cache->cache_by_id.lookup_ptr(zone_bake_data.zone_id))
+                nmd.runtime->cache->cache_by_id.lookup_ptr(node_bake_data.id))
         {
           bake::NodeCache &node_cache = **node_cache_ptr;
           if (!node_cache.frame_caches.is_empty()) {
