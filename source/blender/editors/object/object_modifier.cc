@@ -38,6 +38,7 @@
 #include "BKE_DerivedMesh.h"
 #include "BKE_animsys.h"
 #include "BKE_armature.h"
+#include "BKE_bake_geometry_nodes_modifier.hh"
 #include "BKE_context.h"
 #include "BKE_curve.h"
 #include "BKE_curves.h"
@@ -69,7 +70,6 @@
 #include "BKE_pointcloud.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
-#include "BKE_simulation_state.hh"
 #include "BKE_softbody.h"
 #include "BKE_volume.h"
 
@@ -3726,7 +3726,6 @@ static int geometry_nodes_id_mapping_update_exec(bContext *C, wmOperator *op)
 {
   using namespace blender;
   using namespace blender::bke;
-  using namespace blender::bke::sim;
 
   Main *bmain = CTX_data_main(C);
   Object *ob = ED_object_active_context(C);
@@ -3772,8 +3771,13 @@ static int geometry_nodes_id_mapping_update_exec(bContext *C, wmOperator *op)
 
   CLAMP(nmd.active_id_mapping, 0, std::max(nmd.id_mappings_num - 1, 0));
 
-  if (nmd.runtime->simulation_cache) {
-    nmd.runtime->simulation_cache->reset();
+  if (nmd.runtime->cache) {
+    std::lock_guard lock{nmd.runtime->cache->mutex};
+    for (std::unique_ptr<bake::NodeCache> &node_cache : nmd.runtime->cache->cache_by_id.values()) {
+      if (node_cache->cache_status != bake::CacheStatus::Baked) {
+        node_cache->reset();
+      }
+    }
   }
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);

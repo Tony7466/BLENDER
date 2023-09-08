@@ -212,6 +212,8 @@ void move_simulation_state_to_values(const Span<NodeSimulationItem> node_simulat
         return make_attribute_field(
             self_object, compute_context, node, node_simulation_items[i], type);
       },
+      id_mapping,
+      id_mapping_issues,
       r_output_values);
 }
 
@@ -239,6 +241,8 @@ void copy_simulation_state_to_values(const Span<NodeSimulationItem> node_simulat
         return make_attribute_field(
             self_object, compute_context, node, node_simulation_items[i], type);
       },
+      id_mapping,
+      id_mapping_issues,
       r_output_values);
 }
 
@@ -581,6 +585,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
     }
     else if (auto *info = std::get_if<sim_output::ReadInterpolated>(&output_behavior)) {
       this->output_mixed_cached_state(params,
+                                      user_data,
                                       *modifier_data.self_object,
                                       *user_data.compute_context,
                                       info->prev_state,
@@ -620,6 +625,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
   }
 
   void output_mixed_cached_state(lf::Params &params,
+                                 GeoNodesLFUserData &user_data,
                                  const Object &self_object,
                                  const ComputeContext &compute_context,
                                  const bke::bake::BakeStateRef &prev_state,
@@ -632,8 +638,8 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
     }
     copy_simulation_state_to_values(simulation_items_,
                                     prev_state,
-                                    *user_data.modifier_data->self_object,
-                                    *user_data.compute_context,
+                                    self_object,
+                                    compute_context,
                                     node_,
                                     user_data.modifier_data->id_mapping,
                                     user_data.modifier_data->id_mapping_issues,
@@ -647,8 +653,8 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
     }
     copy_simulation_state_to_values(simulation_items_,
                                     next_state,
-                                    *user_data.modifier_data->self_object,
-                                    *user_data.compute_context,
+                                    self_object,
+                                    compute_context,
                                     node_,
                                     user_data.modifier_data->id_mapping,
                                     user_data.modifier_data->id_mapping_issues,
@@ -688,6 +694,8 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
                                     *user_data.modifier_data->self_object,
                                     *user_data.compute_context,
                                     node_,
+                                    user_data.modifier_data->id_mapping,
+                                    user_data.modifier_data->id_mapping_issues,
                                     output_values);
     for (const int i : simulation_items_.index_range()) {
       params.output_set(i);

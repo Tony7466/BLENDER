@@ -5,8 +5,10 @@
 #include "BKE_bake_items.hh"
 #include "BKE_bake_items_serialize.hh"
 #include "BKE_curves.hh"
+#include "BKE_idprop.hh"
 #include "BKE_instances.hh"
 #include "BKE_lib_id.h"
+#include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_pointcloud.h"
 
@@ -33,21 +35,56 @@ static void remove_materials(Material ***materials, short *materials_num)
   *materials_num = 0;
 }
 
+static void store_materials_as_id_properties(ID &id)
+{
+  Material ***materials = BKE_id_material_array_p(&id);
+  short *materials_num = BKE_id_material_len_p(&id);
+  if (*materials_num == 0) {
+    return;
+  }
+
+  IDProperty *materials_prop = IDP_NewIDPArray(".materials");
+  for (const int i : IndexRange(*materials_num)) {
+    const Material *material = (*materials)[i];
+    IDProperty *material_prop = bke::idprop::create_group(std::to_string(i)).release();
+    if (material != nullptr) {
+      IDP_AddToGroup(material_prop, IDP_NewString(material->id.name + 2, "id_name"));
+      if (material->id.lib != nullptr) {
+        IDP_AddToGroup(material_prop, IDP_NewString(material->id.lib->id.name + 2, "lib_name"));
+      }
+    }
+    IDP_AppendArray(materials_prop, material_prop);
+    /* IDP_AppendArray does a shallow copy. */
+    MEM_freeN(material_prop);
+  }
+  IDProperty *id_properties = IDP_GetProperties(&id, true);
+  IDP_ReplaceInGroup(id_properties, materials_prop);
+
+  remove_materials(materials, materials_num);
+}
+
+/**
+ * Removes parts of the geometry that can't be stored in the simulation state:
+ * - Anonymous attributes can't be stored because it is not known which of them will or will not be
+ *   used in the future.
+ * - Materials can't be stored directly, because they are linked ID data blocks that can't be
+ *   restored from baked data currently.
+ */
 void GeometryBakeItem::cleanup_geometry(GeometrySet &main_geometry)
 {
   main_geometry.ensure_owns_all_data();
   main_geometry.modify_geometry_sets([&](GeometrySet &geometry) {
     if (Mesh *mesh = geometry.get_mesh_for_write()) {
       mesh->attributes_for_write().remove_anonymous();
-      remove_materials(&mesh->mat, &mesh->totcol);
+      store_materials_as_id_properties(mesh->id);
     }
     if (Curves *curves = geometry.get_curves_for_write()) {
       curves->geometry.wrap().attributes_for_write().remove_anonymous();
-      remove_materials(&curves->mat, &curves->totcol);
+      store_materials_as_id_properties(curves->id);
     }
     if (PointCloud *pointcloud = geometry.get_pointcloud_for_write()) {
       pointcloud->attributes_for_write().remove_anonymous();
-      remove_materials(&pointcloud->mat, &pointcloud->totcol);
+      store_materials_as_id_properties(pointcloud->id);
     }
     if (bke::Instances *instances = geometry.get_instances_for_write()) {
       instances->attributes_for_write().remove_anonymous();

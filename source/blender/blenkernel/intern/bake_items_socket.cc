@@ -3,10 +3,14 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_bake_items_socket.hh"
-
 #include "BKE_geometry_fields.hh"
-
+#include "BKE_idprop.hh"
+#include "BKE_material.h"
 #include "BKE_node.hh"
+
+#include "DNA_curves_types.h"
+#include "DNA_mesh_types.h"
+#include "DNA_pointcloud_types.h"
 
 #include "FN_field_cpp_type.hh"
 
@@ -180,6 +184,76 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
   return false;
 }
 
+static void restore_materials(ID &id,
+                              const bke::BakeIDMapping &id_mapping,
+                              bke::BakeIDMappingIssuesLog *id_mapping_issues)
+{
+  if (id.properties == nullptr) {
+    return;
+  }
+  Material ***materials = BKE_id_material_array_p(&id);
+  short *materials_num = BKE_id_material_len_p(&id);
+
+  IDProperty *materials_prop = IDP_GetPropertyFromGroup(id.properties, ".materials");
+  if (materials_prop == nullptr) {
+    return;
+  }
+  if (materials_prop->type != IDP_IDPARRAY) {
+    return;
+  }
+  if (materials_prop->len == 0) {
+    return;
+  }
+
+  *materials_num = materials_prop->len;
+  *materials = MEM_cnew_array<Material *>(*materials_num, __func__);
+  for (const int i : IndexRange(materials_prop->len)) {
+    IDProperty *material_prop = IDP_GetIndexArray(materials_prop, i);
+    bke::BakeIDMappingKey key;
+    if (IDProperty *id_name_prop = IDP_GetPropertyFromGroup(material_prop, "id_name")) {
+      if (id_name_prop->type == IDP_STRING) {
+        key.id_name = IDP_String(id_name_prop);
+      }
+    }
+    if (IDProperty *lib_name_prop = IDP_GetPropertyFromGroup(material_prop, "lib_name")) {
+      if (lib_name_prop->type == IDP_STRING) {
+        key.lib_name = IDP_String(lib_name_prop);
+      }
+    }
+    if (key.id_name.is_empty()) {
+      continue;
+    }
+    Material *material = reinterpret_cast<Material *>(id_mapping.get(key, ID_MA));
+    if (material) {
+      (*materials)[i] = material;
+    }
+    else if (id_mapping_issues) {
+      id_mapping_issues->add(key, ID_MA);
+    }
+  }
+  IDP_RemoveFromGroup(id.properties, materials_prop);
+  IDP_FreeProperty(materials_prop);
+}
+
+static void restore_geometry_set_materials(const Span<GeometrySet *> geometries,
+                                           const bke::BakeIDMapping &id_mapping,
+                                           bke::BakeIDMappingIssuesLog *id_mapping_issues)
+{
+  for (GeometrySet *geometry_set : geometries) {
+    geometry_set->modify_geometry_sets([&](GeometrySet &geometry) {
+      if (Mesh *mesh = geometry.get_mesh_for_write()) {
+        restore_materials(mesh->id, id_mapping, id_mapping_issues);
+      }
+      if (PointCloud *pointcloud = geometry.get_pointcloud_for_write()) {
+        restore_materials(pointcloud->id, id_mapping, id_mapping_issues);
+      }
+      if (Curves *curves = geometry.get_curves_for_write()) {
+        restore_materials(curves->id, id_mapping, id_mapping_issues);
+      }
+    });
+  }
+}
+
 static void rename_attributes(const Span<GeometrySet *> geometries,
                               const Map<std::string, AnonymousAttributeIDPtr> &attribute_map)
 {
@@ -216,6 +290,8 @@ void move_bake_items_to_socket_values(
     const BakeSocketConfig &config,
     FunctionRef<std::shared_ptr<AnonymousAttributeFieldInput>(int, const CPPType &)>
         make_attribute_field,
+    const BakeIDMapping &id_mapping,
+    bke::BakeIDMappingIssuesLog *id_mapping_issues,
     const Span<void *> r_socket_values)
 {
   Map<std::string, AnonymousAttributeIDPtr> attribute_map;
@@ -249,6 +325,7 @@ void move_bake_items_to_socket_values(
   }
 
   rename_attributes(geometries, attribute_map);
+  restore_geometry_set_materials(geometries, id_mapping, id_mapping_issues);
 }
 
 void copy_bake_items_to_socket_values(
@@ -256,6 +333,8 @@ void copy_bake_items_to_socket_values(
     const BakeSocketConfig &config,
     FunctionRef<std::shared_ptr<AnonymousAttributeFieldInput>(int, const CPPType &)>
         make_attribute_field,
+    const BakeIDMapping &id_mapping,
+    bke::BakeIDMappingIssuesLog *id_mapping_issues,
     const Span<void *> r_socket_values)
 {
   Map<std::string, AnonymousAttributeIDPtr> attribute_map;
@@ -286,6 +365,7 @@ void copy_bake_items_to_socket_values(
   }
 
   rename_attributes(geometries, attribute_map);
+  restore_geometry_set_materials(geometries, id_mapping, id_mapping_issues);
 }
 
 }  // namespace blender::bke::bake

@@ -357,7 +357,7 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
       &settings);
 
   for (NodesModifierIDMapping &mapping : MutableSpan(nmd->id_mappings, nmd->id_mappings_num)) {
-    walk(userData, ob, &mapping.id, IDWALK_CB_USER);
+    walk(user_data, ob, &mapping.id, IDWALK_CB_USER);
   }
 }
 
@@ -1674,8 +1674,7 @@ static void id_mappings_panel_draw(const bContext *C, Panel *panel)
   NodesModifierData *nmd = static_cast<NodesModifierData *>(ptr->data);
   const bool has_missing_mappings = !nmd->runtime->id_mapping_issues.missing_mappings.is_empty();
 
-  PointerRNA mappings_ptr;
-  RNA_pointer_create(ptr->owner_id, &RNA_NodesModifierIDMappings, nmd, &mappings_ptr);
+  PointerRNA mappings_ptr = RNA_pointer_create(ptr->owner_id, &RNA_NodesModifierIDMappings, nmd);
 
   uiLayout *col = uiLayoutColumn(layout, false);
   uiLayoutSetPropSep(col, true);
@@ -1711,13 +1710,12 @@ static void id_mappings_panel_draw(const bContext *C, Panel *panel)
   }
   NodesModifierIDMapping &active_mapping = nmd->id_mappings[nmd->active_id_mapping];
 
-  PointerRNA active_mapping_ptr;
-  RNA_pointer_create(
-      ptr->owner_id, &RNA_NodesModifierIDMapping, &active_mapping, &active_mapping_ptr);
+  PointerRNA active_mapping_ptr = RNA_pointer_create(
+      ptr->owner_id, &RNA_NodesModifierIDMapping, &active_mapping);
 
   uiTemplateAnyID(col, &active_mapping_ptr, "id", "id_type", "ID");
-  uiItemR(col, &active_mapping_ptr, "id_name", 0, "ID Name", ICON_NONE);
-  uiItemR(col, &active_mapping_ptr, "lib_name", 0, "Library Name", ICON_NONE);
+  uiItemR(col, &active_mapping_ptr, "id_name", UI_ITEM_NONE, "ID Name", ICON_NONE);
+  uiItemR(col, &active_mapping_ptr, "lib_name", UI_ITEM_NONE, "Library Name", ICON_NONE);
 }
 
 static void id_mapping_list_item_draw(uiList * /*ui_list*/,

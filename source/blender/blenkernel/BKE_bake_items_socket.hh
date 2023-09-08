@@ -8,6 +8,7 @@
 
 #include "DNA_node_types.h"
 
+#include "BKE_bake_id_mapping.hh"
 #include "BKE_bake_items.hh"
 #include "BKE_geometry_fields.hh"
 
@@ -54,6 +55,8 @@ void move_bake_items_to_socket_values(
     const BakeSocketConfig &config,
     FunctionRef<std::shared_ptr<AnonymousAttributeFieldInput>(int socket_index, const CPPType &)>
         make_attribute_field,
+    const BakeIDMapping &id_mapping,
+    bke::BakeIDMappingIssuesLog *id_mapping_issues,
     Span<void *> r_socket_values);
 
 /**
@@ -65,6 +68,8 @@ void copy_bake_items_to_socket_values(
     const BakeSocketConfig &config,
     FunctionRef<std::shared_ptr<AnonymousAttributeFieldInput>(int, const CPPType &)>
         make_attribute_field,
+    const BakeIDMapping &id_mapping,
+    bke::BakeIDMappingIssuesLog *id_mapping_issues,
     Span<void *> r_socket_values);
 
 }  // namespace blender::bke::bake
