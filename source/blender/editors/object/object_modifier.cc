@@ -30,7 +30,6 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
@@ -49,6 +48,7 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_global.h"
 #include "BKE_gpencil_modifier_legacy.h"
+#include "BKE_idprop.h"
 #include "BKE_key.h"
 #include "BKE_lattice.h"
 #include "BKE_layer.h"
@@ -57,14 +57,14 @@
 #include "BKE_material.h"
 #include "BKE_mball.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
-#include "BKE_mesh_runtime.h"
+#include "BKE_mesh_mapping.hh"
+#include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.h"
-#include "BKE_multires.h"
+#include "BKE_multires.hh"
 #include "BKE_object.h"
 #include "BKE_object_deform.h"
 #include "BKE_ocean.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcloud.h"
 #include "BKE_report.h"
@@ -78,23 +78,23 @@
 
 #include "BLT_translation.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
-#include "ED_armature.h"
-#include "ED_mesh.h"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_sculpt.h"
+#include "ED_armature.hh"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_sculpt.hh"
 
 #include "ANIM_bone_collections.h"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "object_intern.h"
 
@@ -780,8 +780,9 @@ static Mesh *create_applied_mesh_for_modifier(Depsgraph *depsgraph,
 
   Mesh *mesh_temp = reinterpret_cast<Mesh *>(
       BKE_id_copy_ex(nullptr, &me->id, nullptr, LIB_ID_COPY_LOCALIZE));
-  int numVerts = 0;
-  float(*deformedVerts)[3] = nullptr;
+  const int numVerts = mesh_temp->totvert;
+  float(*deformedVerts)[3] = reinterpret_cast<float(*)[3]>(
+      mesh_temp->vert_positions_for_write().data());
 
   if (use_virtual_modifiers) {
     VirtualModifierData virtual_modifier_data;
@@ -800,37 +801,27 @@ static Mesh *create_applied_mesh_for_modifier(Depsgraph *depsgraph,
         continue;
       }
 
-      if (deformedVerts == nullptr) {
-        deformedVerts = BKE_mesh_vert_coords_alloc(me, &numVerts);
-      }
       mti_virt->deform_verts(md_eval_virt, &mectx, mesh_temp, deformedVerts, numVerts);
     }
   }
 
   Mesh *result = nullptr;
   if (mti->type == eModifierTypeType_OnlyDeform) {
-    if (deformedVerts == nullptr) {
-      deformedVerts = BKE_mesh_vert_coords_alloc(me, &numVerts);
-    }
     result = mesh_temp;
     mti->deform_verts(md_eval, &mectx, result, deformedVerts, numVerts);
-    BKE_mesh_vert_coords_apply(result, deformedVerts);
+    BKE_mesh_tag_positions_changed(result);
 
     if (build_shapekey_layers) {
       add_shapekey_layers(*result, *me);
     }
   }
   else {
-    if (deformedVerts != nullptr) {
-      BKE_mesh_vert_coords_apply(mesh_temp, deformedVerts);
-    }
-
     if (build_shapekey_layers) {
       add_shapekey_layers(*mesh_temp, *me);
     }
 
     if (mti->modify_geometry_set) {
-      bke::GeometrySet geometry_set = bke::GeometrySet::create_with_mesh(
+      bke::GeometrySet geometry_set = bke::GeometrySet::from_mesh(
           mesh_temp, bke::GeometryOwnershipType::Owned);
       mti->modify_geometry_set(md_eval, &mectx, &geometry_set);
       if (!geometry_set.has_mesh()) {
@@ -845,10 +836,6 @@ static Mesh *create_applied_mesh_for_modifier(Depsgraph *depsgraph,
         BKE_id_free(nullptr, mesh_temp);
       }
     }
-  }
-
-  if (deformedVerts != nullptr) {
-    MEM_freeN(deformedVerts);
   }
 
   return result;
@@ -1068,7 +1055,7 @@ static bool modifier_apply_obdata(
       return false;
     }
 
-    bke::GeometrySet geometry_set = bke::GeometrySet::create_with_curves(
+    bke::GeometrySet geometry_set = bke::GeometrySet::from_curves(
         &curves, bke::GeometryOwnershipType::ReadOnly);
 
     ModifierEvalContext mectx = {depsgraph, ob, ModifierApplyFlag(0)};
@@ -1093,7 +1080,7 @@ static bool modifier_apply_obdata(
       return false;
     }
 
-    bke::GeometrySet geometry_set = bke::GeometrySet::create_with_pointcloud(
+    bke::GeometrySet geometry_set = bke::GeometrySet::from_pointcloud(
         &points, bke::GeometryOwnershipType::ReadOnly);
 
     ModifierEvalContext mectx = {depsgraph, ob, ModifierApplyFlag(0)};
@@ -1879,17 +1866,16 @@ static int modifier_apply_as_shapekey_invoke(bContext *C, wmOperator *op, const 
   return retval;
 }
 
-static char *modifier_apply_as_shapekey_get_description(bContext * /*C*/,
-                                                        wmOperatorType * /*op*/,
-                                                        PointerRNA *values)
+static std::string modifier_apply_as_shapekey_get_description(bContext * /*C*/,
+                                                              wmOperatorType * /*op*/,
+                                                              PointerRNA *values)
 {
   bool keep = RNA_boolean_get(values, "keep_modifier");
-
   if (keep) {
-    return BLI_strdup(TIP_("Apply modifier as a new shapekey and keep it in the stack"));
+    return TIP_("Apply modifier as a new shapekey and keep it in the stack");
   }
 
-  return nullptr;
+  return "";
 }
 
 void OBJECT_OT_modifier_apply_as_shapekey(wmOperatorType *ot)
@@ -2657,7 +2643,7 @@ static int multires_rebuild_subdiv_exec(bContext *C, wmOperator *op)
 
   int new_levels = multiresModifier_rebuild_subdiv(depsgraph, object, mmd, INT_MAX, false);
   if (new_levels == 0) {
-    BKE_report(op->reports, RPT_ERROR, "Not valid subdivisions found to rebuild lower levels");
+    BKE_report(op->reports, RPT_ERROR, "No valid subdivisions found to rebuild lower levels");
     return OPERATOR_CANCELLED;
   }
 
@@ -2959,7 +2945,7 @@ static Object *modifier_skin_armature_create(Depsgraph *depsgraph, Main *bmain, 
   Object *arm_ob = BKE_object_add(bmain, scene, view_layer, OB_ARMATURE, nullptr);
   BKE_object_transform_copy(arm_ob, skin_ob);
   bArmature *arm = static_cast<bArmature *>(arm_ob->data);
-  ANIM_armature_ensure_first_layer_enabled(arm);
+  ANIM_armature_bonecoll_show_all(arm);
   arm_ob->dtx |= OB_DRAW_IN_FRONT;
   arm->drawtype = ARM_LINE;
   arm->edbo = MEM_cnew<ListBase>("edbo armature");
@@ -3638,15 +3624,24 @@ static int geometry_nodes_input_attribute_toggle_exec(bContext *C, wmOperator *o
     return OPERATOR_CANCELLED;
   }
 
-  char prop_path[MAX_NAME];
-  RNA_string_get(op->ptr, "prop_path", prop_path);
+  char input_name[MAX_NAME];
+  RNA_string_get(op->ptr, "input_name", input_name);
 
-  PointerRNA mod_ptr;
-  RNA_pointer_create(&ob->id, &RNA_Modifier, nmd, &mod_ptr);
+  IDProperty *use_attribute = IDP_GetPropertyFromGroup(
+      nmd->settings.properties, std::string(input_name + std::string("_use_attribute")).c_str());
+  if (!use_attribute) {
+    return OPERATOR_CANCELLED;
+  }
 
-  const int old_value = RNA_int_get(&mod_ptr, prop_path);
-  const int new_value = !old_value;
-  RNA_int_set(&mod_ptr, prop_path, new_value);
+  if (use_attribute->type == IDP_INT) {
+    IDP_Int(use_attribute) = !IDP_Int(use_attribute);
+  }
+  else if (use_attribute->type == IDP_BOOLEAN) {
+    IDP_Bool(use_attribute) = !IDP_Bool(use_attribute);
+  }
+  else {
+    return OPERATOR_CANCELLED;
+  }
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
@@ -3665,7 +3660,7 @@ void OBJECT_OT_geometry_nodes_input_attribute_toggle(wmOperatorType *ot)
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
 
-  RNA_def_string(ot->srna, "prop_path", nullptr, 0, "Prop Path", "");
+  RNA_def_string(ot->srna, "input_name", nullptr, 0, "Input Name", "");
   RNA_def_string(ot->srna, "modifier_name", nullptr, MAX_NAME, "Modifier Name", "");
 }
 
@@ -3692,6 +3687,8 @@ static int geometry_node_tree_copy_assign_exec(bContext *C, wmOperator * /*op*/)
 
   bNodeTree *new_tree = (bNodeTree *)BKE_id_copy_ex(
       bmain, &tree->id, nullptr, LIB_ID_COPY_ACTIONS | LIB_ID_COPY_DEFAULT);
+
+  nmd->flag &= ~NODES_MODIFIER_HIDE_DATABLOCK_SELECTOR;
 
   if (new_tree == nullptr) {
     return OPERATOR_CANCELLED;

@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
+ * SPDX-FileCopyrightText: 2003-2009 Blender Authors
  * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -15,7 +15,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h" /* windows needs for M_PI */
+#include "BLI_math_rotation.h"
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
@@ -40,7 +40,7 @@
 
 #include "BLI_math_color_blend.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "RE_pipeline.h"
@@ -1980,6 +1980,12 @@ static void RVBlurBitmap2_float(float *map, int width, int height, float blur, i
     return;
   }
 
+  /* If result would be no blurring, early out. */
+  halfWidth = ((quality + 1) * blur);
+  if (halfWidth == 0) {
+    return;
+  }
+
   /* Allocate memory for the temp-map and the blur filter matrix. */
   temp = static_cast<float *>(MEM_mallocN(sizeof(float[4]) * width * height, "blurbitmaptemp"));
   if (!temp) {
@@ -1987,7 +1993,6 @@ static void RVBlurBitmap2_float(float *map, int width, int height, float blur, i
   }
 
   /* Allocate memory for the filter elements */
-  halfWidth = ((quality + 1) * blur);
   filter = (float *)MEM_mallocN(sizeof(float) * halfWidth * 2, "blurbitmapfilter");
   if (!filter) {
     MEM_freeN(temp);

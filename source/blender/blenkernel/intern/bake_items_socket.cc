@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,7 +10,7 @@
 
 #include "FN_field_cpp_type.hh"
 
-namespace blender::bke {
+namespace blender::bke::bake {
 
 static const CPPType &get_socket_cpp_type(const eNodeSocketDatatype socket_type)
 {
@@ -193,8 +193,7 @@ static void rename_attributes(const Span<GeometrySet *> geometries,
         continue;
       }
       /* Avoid write access on the geometry when unnecessary to avoid copying data-blocks. */
-      const AttributeAccessor attributes_read_only =
-          *geometry->get_component_for_read(type)->attributes();
+      const AttributeAccessor attributes_read_only = *geometry->get_component(type)->attributes();
       if (std::none_of(attribute_map.keys().begin(),
                        attribute_map.keys().end(),
                        [&](const StringRef name) { return attributes_read_only.contains(name); }))
@@ -289,4 +288,4 @@ void copy_bake_items_to_socket_values(
   rename_attributes(geometries, attribute_map);
 }
 
-}  // namespace blender::bke
+}  // namespace blender::bke::bake

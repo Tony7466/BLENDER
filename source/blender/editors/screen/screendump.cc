@@ -32,14 +32,14 @@
 
 #include "BLT_translation.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "screen_intern.h"
 
@@ -217,8 +217,7 @@ static void screenshot_draw(bContext * /*C*/, wmOperator *op)
   uiLayoutSetPropDecorate(layout, false);
 
   /* image template */
-  PointerRNA ptr;
-  RNA_pointer_create(nullptr, &RNA_ImageFormatSettings, &scd->im_format, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_ImageFormatSettings, &scd->im_format);
   uiTemplateImageSettings(layout, &ptr, false);
 
   /* main draw call */

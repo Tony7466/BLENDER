@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -32,10 +32,10 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "BLT_translation.h"
@@ -47,7 +47,7 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 static void init_data(GpencilModifierData *md)
 {
@@ -174,7 +174,7 @@ static bool stroke_dash(const bGPDstroke *gps,
       for (int di = 0; di < stroke->totpoints; di++) {
         MDeformVert *dv = &gps->dvert[new_stroke_offset + di];
         if (dv && dv->totweight && dv->dw) {
-          MDeformWeight *dw = (MDeformWeight *)MEM_callocN(sizeof(MDeformWeight) * dv->totweight,
+          MDeformWeight *dw = (MDeformWeight *)MEM_mallocN(sizeof(MDeformWeight) * dv->totweight,
                                                            __func__);
           memcpy(dw, dv->dw, sizeof(MDeformWeight) * dv->totweight);
           stroke->dvert[di].dw = dw;
@@ -221,8 +221,7 @@ static void apply_dash_for_frame(
       }
     }
   }
-  bGPDstroke *gps_dash;
-  while ((gps_dash = static_cast<bGPDstroke *>(BLI_pophead(&result)))) {
+  while (bGPDstroke *gps_dash = static_cast<bGPDstroke *>(BLI_pophead(&result))) {
     BLI_addtail(&gpf->strokes, gps_dash);
     BKE_gpencil_stroke_geometry_update(gpd, gps_dash);
   }
@@ -333,11 +332,8 @@ static void panel_draw(const bContext *C, Panel *panel)
   DashGpencilModifierData *dmd = static_cast<DashGpencilModifierData *>(ptr->data);
 
   if (dmd->segment_active_index >= 0 && dmd->segment_active_index < dmd->segments_len) {
-    PointerRNA ds_ptr;
-    RNA_pointer_create(ptr->owner_id,
-                       &RNA_DashGpencilModifierSegment,
-                       &dmd->segments[dmd->segment_active_index],
-                       &ds_ptr);
+    PointerRNA ds_ptr = RNA_pointer_create(
+        ptr->owner_id, &RNA_DashGpencilModifierSegment, &dmd->segments[dmd->segment_active_index]);
 
     sub = uiLayoutColumn(layout, true);
     uiItemR(sub, &ds_ptr, "dash", UI_ITEM_NONE, nullptr, ICON_NONE);

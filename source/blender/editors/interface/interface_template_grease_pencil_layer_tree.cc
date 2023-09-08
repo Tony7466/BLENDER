@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,14 +11,13 @@
 
 #include "BLT_translation.h"
 
-#include "UI_interface.h"
 #include "UI_interface.hh"
 #include "UI_tree_view.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "ED_undo.h"
+#include "ED_undo.hh"
 
 #include <fmt/format.h>
 
@@ -58,7 +57,7 @@ class LayerNodeDropTarget : public TreeViewItemDropTarget {
     Layer &drag_layer = drag_grease_pencil->layer->wrap();
 
     std::string_view drag_name = drag_layer.name();
-    std::string_view drop_name = drop_tree_node_.name;
+    std::string_view drop_name = drop_tree_node_.name();
 
     switch (drag_info.drop_location) {
       case DropLocation::Into:
@@ -100,7 +99,7 @@ class LayerNodeDropTarget : public TreeViewItemDropTarget {
                        "Inserting should not be possible for layers, only for groups, because "
                        "only groups use DropBehavior::Reorder_and_Insert");
 
-        LayerGroup &drop_group = drop_tree_node_.as_group_for_write();
+        LayerGroup &drop_group = drop_tree_node_.as_group();
         drag_parent.unlink_node(&drag_layer.as_node());
         drop_group.add_layer(&drag_layer);
         return true;
@@ -184,9 +183,9 @@ class LayerViewItem : public AbstractTreeViewItem {
 
   void on_activate(bContext &C) override
   {
-    PointerRNA grease_pencil_ptr, value_ptr;
-    RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilv3Layers, nullptr, &grease_pencil_ptr);
-    RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilLayer, &layer_, &value_ptr);
+    PointerRNA grease_pencil_ptr = RNA_pointer_create(
+        &grease_pencil_.id, &RNA_GreasePencilv3Layers, nullptr);
+    PointerRNA value_ptr = RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilLayer, &layer_);
 
     PropertyRNA *prop = RNA_struct_find_property(&grease_pencil_ptr, "active");
 
@@ -201,9 +200,9 @@ class LayerViewItem : public AbstractTreeViewItem {
     return true;
   }
 
-  bool rename(StringRefNull new_name) override
+  bool rename(const bContext & /*C*/, StringRefNull new_name) override
   {
-    grease_pencil_.rename_layer(layer_, new_name);
+    grease_pencil_.rename_node(layer_.as_node(), new_name);
     return true;
   }
 
@@ -239,11 +238,49 @@ class LayerViewItem : public AbstractTreeViewItem {
 
   void build_layer_buttons(uiLayout &row)
   {
-    PointerRNA layer_ptr;
-    RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilLayer, &layer_, &layer_ptr);
+    uiBut *but;
+    PointerRNA layer_ptr = RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilLayer, &layer_);
 
-    uiItemR(&row, &layer_ptr, "hide", UI_ITEM_R_ICON_ONLY, nullptr, 0);
-    uiItemR(&row, &layer_ptr, "lock", UI_ITEM_R_ICON_ONLY, nullptr, 0);
+    uiBlock *block = uiLayoutGetBlock(&row);
+    but = uiDefIconButR(block,
+                        UI_BTYPE_ICON_TOGGLE,
+                        0,
+                        ICON_NONE,
+                        0,
+                        0,
+                        UI_UNIT_X,
+                        UI_UNIT_Y,
+                        &layer_ptr,
+                        "hide",
+                        0,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        nullptr);
+    if (!layer_.parent_group().is_visible()) {
+      UI_but_flag_enable(but, UI_BUT_INACTIVE);
+    }
+
+    but = uiDefIconButR(block,
+                        UI_BTYPE_ICON_TOGGLE,
+                        0,
+                        ICON_NONE,
+                        0,
+                        0,
+                        UI_UNIT_X,
+                        UI_UNIT_Y,
+                        &layer_ptr,
+                        "lock",
+                        0,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        0.0f,
+                        nullptr);
+    if (layer_.parent_group().is_locked()) {
+      UI_but_flag_enable(but, UI_BUT_INACTIVE);
+    }
   }
 };
 
@@ -271,9 +308,9 @@ class LayerGroupViewItem : public AbstractTreeViewItem {
     return true;
   }
 
-  bool rename(StringRefNull new_name) override
+  bool rename(const bContext & /*C*/, StringRefNull new_name) override
   {
-    grease_pencil_.rename_group(group_, new_name);
+    grease_pencil_.rename_node(group_.as_node(), new_name);
     return true;
   }
 
@@ -303,11 +340,11 @@ class LayerGroupViewItem : public AbstractTreeViewItem {
 
   void build_layer_group_buttons(uiLayout &row)
   {
-    PointerRNA group_ptr;
-    RNA_pointer_create(&grease_pencil_.id, &RNA_GreasePencilLayerGroup, &group_, &group_ptr);
+    PointerRNA group_ptr = RNA_pointer_create(
+        &grease_pencil_.id, &RNA_GreasePencilLayerGroup, &group_);
 
-    uiItemR(&row, &group_ptr, "hide", UI_ITEM_R_ICON_ONLY, nullptr, 0);
-    uiItemR(&row, &group_ptr, "lock", UI_ITEM_R_ICON_ONLY, nullptr, 0);
+    uiItemR(&row, &group_ptr, "hide", UI_ITEM_R_ICON_ONLY, nullptr, ICON_NONE);
+    uiItemR(&row, &group_ptr, "lock", UI_ITEM_R_ICON_ONLY, nullptr, ICON_NONE);
   }
 };
 
@@ -316,12 +353,12 @@ void LayerTreeView::build_tree_node_recursive(TreeViewOrItem &parent, TreeNode &
   using namespace blender::bke::greasepencil;
   if (node.is_layer()) {
     LayerViewItem &item = parent.add_tree_item<LayerViewItem>(this->grease_pencil_,
-                                                              node.as_layer_for_write());
+                                                              node.as_layer());
     item.set_collapsed(false);
   }
   else if (node.is_group()) {
-    LayerGroupViewItem &group_item = parent.add_tree_item<LayerGroupViewItem>(
-        this->grease_pencil_, node.as_group_for_write());
+    LayerGroupViewItem &group_item = parent.add_tree_item<LayerGroupViewItem>(this->grease_pencil_,
+                                                                              node.as_group());
     group_item.set_collapsed(false);
     LISTBASE_FOREACH_BACKWARD (GreasePencilLayerTreeNode *, node_, &node.as_group().children) {
       build_tree_node_recursive(group_item, node_->wrap());

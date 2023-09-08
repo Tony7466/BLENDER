@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -30,17 +30,17 @@
 #include "BKE_fcurve.h"
 #include "BKE_screen.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "ED_anim_api.h"
-#include "ED_undo.h"
+#include "ED_anim_api.hh"
+#include "ED_undo.hh"
 
 #include "DEG_depsgraph.h"
 
@@ -705,8 +705,7 @@ static void envelope_panel_draw(const bContext *C, Panel *panel)
 
   FCM_EnvelopeData *fed = env->data;
   for (int i = 0; i < env->totvert; i++, fed++) {
-    PointerRNA ctrl_ptr;
-    RNA_pointer_create(owner_id, &RNA_FModifierEnvelopeControlPoint, fed, &ctrl_ptr);
+    PointerRNA ctrl_ptr = RNA_pointer_create(owner_id, &RNA_FModifierEnvelopeControlPoint, fed);
 
     /* get a new row to operate on */
     row = uiLayoutRow(col, true);
@@ -884,13 +883,13 @@ void ANIM_fmodifier_panels(const bContext *C,
 
   if (!panels_match) {
     UI_panels_free_instanced(C, region);
-    for (FModifier *fcm = static_cast<FModifier *>(fmodifiers->first); fcm; fcm = fcm->next) {
+    LISTBASE_FOREACH (FModifier *, fcm, fmodifiers) {
       char panel_idname[MAX_NAME];
       panel_id_fn(fcm, panel_idname);
 
       PointerRNA *fcm_ptr = static_cast<PointerRNA *>(
           MEM_mallocN(sizeof(PointerRNA), "panel customdata"));
-      RNA_pointer_create(owner_id, &RNA_FModifier, fcm, fcm_ptr);
+      *fcm_ptr = RNA_pointer_create(owner_id, &RNA_FModifier, fcm);
 
       UI_panel_add_instanced(C, region, &region->panels, panel_idname, fcm_ptr);
     }
@@ -909,7 +908,7 @@ void ANIM_fmodifier_panels(const bContext *C,
 
       PointerRNA *fcm_ptr = static_cast<PointerRNA *>(
           MEM_mallocN(sizeof(PointerRNA), "panel customdata"));
-      RNA_pointer_create(owner_id, &RNA_FModifier, fcm, fcm_ptr);
+      *fcm_ptr = RNA_pointer_create(owner_id, &RNA_FModifier, fcm);
       UI_panel_custom_data_set(panel, fcm_ptr);
 
       panel = panel->next;
@@ -987,7 +986,6 @@ bool ANIM_fmodifiers_copy_to_buf(ListBase *modifiers, bool active)
 
 bool ANIM_fmodifiers_paste_from_buf(ListBase *modifiers, bool replace, FCurve *curve)
 {
-  FModifier *fcm;
   bool ok = false;
 
   /* sanity checks */
@@ -1003,7 +1001,7 @@ bool ANIM_fmodifiers_paste_from_buf(ListBase *modifiers, bool replace, FCurve *c
   }
 
   /* now copy over all the modifiers in the buffer to the end of the list */
-  for (fcm = static_cast<FModifier *>(fmodifier_copypaste_buf.first); fcm; fcm = fcm->next) {
+  LISTBASE_FOREACH (FModifier *, fcm, &fmodifier_copypaste_buf) {
     /* make a copy of it */
     FModifier *fcmN = copy_fmodifier(fcm);
 

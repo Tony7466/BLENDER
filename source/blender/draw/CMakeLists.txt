@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2016 Blender Foundation
+# SPDX-FileCopyrightText: 2016 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -29,7 +29,9 @@ set(INC
 
   ../../../intern/clog
   ../../../intern/opensubdiv
+)
 
+set(INC_SYS
 )
 
 set(SRC
@@ -117,7 +119,6 @@ set(SRC
   engines/eevee/eevee_lightprobes.cc
   engines/eevee/eevee_lights.cc
   engines/eevee/eevee_lookdev.cc
-  engines/eevee/eevee_lut.cc
   engines/eevee/eevee_lut_gen.cc
   engines/eevee/eevee_materials.cc
   engines/eevee/eevee_mist.cc
@@ -148,9 +149,12 @@ set(SRC
   engines/eevee_next/eevee_lightcache.cc
   engines/eevee_next/eevee_lightprobe.cc
   engines/eevee_next/eevee_lookdev.cc
+  engines/eevee_next/eevee_lut.cc
+  engines/eevee_next/eevee_precompute.cc
   engines/eevee_next/eevee_material.cc
   engines/eevee_next/eevee_motion_blur.cc
   engines/eevee_next/eevee_pipeline.cc
+  engines/eevee_next/eevee_raytrace.cc
   engines/eevee_next/eevee_reflection_probes.cc
   engines/eevee_next/eevee_renderbuffers.cc
   engines/eevee_next/eevee_sampling.cc
@@ -160,32 +164,20 @@ set(SRC
   engines/eevee_next/eevee_sync.cc
   engines/eevee_next/eevee_velocity.cc
   engines/eevee_next/eevee_view.cc
+  engines/eevee_next/eevee_volume.cc
   engines/eevee_next/eevee_world.cc
-  engines/workbench/workbench_data.cc
   engines/workbench/workbench_effect_antialiasing.cc
-  engines/workbench/workbench_effect_antialiasing_c.cc
   engines/workbench/workbench_effect_cavity.cc
-  engines/workbench/workbench_effect_cavity_c.cc
   engines/workbench/workbench_effect_dof.cc
-  engines/workbench/workbench_effect_dof_c.cc
   engines/workbench/workbench_effect_outline.cc
-  engines/workbench/workbench_effect_outline_c.cc
   engines/workbench/workbench_engine.cc
-  engines/workbench/workbench_engine_c.cc
   engines/workbench/workbench_materials.cc
-  engines/workbench/workbench_materials_next.cc
   engines/workbench/workbench_mesh_passes.cc
-  engines/workbench/workbench_opaque.cc
-  engines/workbench/workbench_render.cc
   engines/workbench/workbench_resources.cc
-  engines/workbench/workbench_shader.cc
   engines/workbench/workbench_shader_cache.cc
   engines/workbench/workbench_shadow.cc
-  engines/workbench/workbench_shadow_c.cc
   engines/workbench/workbench_state.cc
-  engines/workbench/workbench_transparent.cc
   engines/workbench/workbench_volume.cc
-  engines/workbench/workbench_volume_next.cc
   engines/external/external_engine.cc
   engines/gpencil/gpencil_antialiasing.cc
   engines/gpencil/gpencil_cache_utils.cc
@@ -241,7 +233,7 @@ set(SRC
   intern/draw_attributes.hh
   intern/draw_cache.h
   intern/draw_cache_extract.hh
-  intern/draw_cache_impl.h
+  intern/draw_cache_impl.hh
   intern/draw_cache_inline.h
   intern/draw_color_management.h
   intern/draw_command.hh
@@ -277,7 +269,6 @@ set(SRC
   engines/compositor/compositor_engine.h
   engines/eevee/eevee_engine.h
   engines/eevee/eevee_lightcache.h
-  engines/eevee/eevee_lut.h
   engines/eevee/eevee_private.h
   engines/eevee/engine_eevee_shared_defines.h
   engines/eevee_next/eevee_ambient_occlusion.hh
@@ -294,9 +285,12 @@ set(SRC
   engines/eevee_next/eevee_lightcache.hh
   engines/eevee_next/eevee_lightprobe.hh
   engines/eevee_next/eevee_lookdev.hh
+  engines/eevee_next/eevee_lut.hh
+  engines/eevee_next/eevee_precompute.hh
   engines/eevee_next/eevee_material.hh
   engines/eevee_next/eevee_motion_blur.hh
   engines/eevee_next/eevee_pipeline.hh
+  engines/eevee_next/eevee_raytrace.hh
   engines/eevee_next/eevee_reflection_probes.hh
   engines/eevee_next/eevee_renderbuffers.hh
   engines/eevee_next/eevee_sampling.hh
@@ -306,6 +300,7 @@ set(SRC
   engines/eevee_next/eevee_sync.hh
   engines/eevee_next/eevee_velocity.hh
   engines/eevee_next/eevee_view.hh
+  engines/eevee_next/eevee_volume.hh
   engines/eevee_next/eevee_world.hh
   engines/external/external_engine.h
   engines/gpencil/gpencil_antialiasing.hh
@@ -346,7 +341,6 @@ set(SRC
   engines/workbench/workbench_defines.hh
   engines/workbench/workbench_engine.h
   engines/workbench/workbench_enums.hh
-  engines/workbench/workbench_private.h
   engines/workbench/workbench_private.hh
   engines/workbench/workbench_shader_shared.h
 )
@@ -464,12 +458,16 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_ambient_occlusion_lib.glsl
   engines/eevee_next/shaders/eevee_ambient_occlusion_pass_comp.glsl
   engines/eevee_next/shaders/eevee_attributes_lib.glsl
+  engines/eevee_next/shaders/eevee_bxdf_lib.glsl
+  engines/eevee_next/shaders/eevee_bxdf_sampling_lib.glsl
   engines/eevee_next/shaders/eevee_camera_lib.glsl
   engines/eevee_next/shaders/eevee_colorspace_lib.glsl
   engines/eevee_next/shaders/eevee_cryptomatte_lib.glsl
   engines/eevee_next/shaders/eevee_cubemap_lib.glsl
   engines/eevee_next/shaders/eevee_debug_surfels_vert.glsl
   engines/eevee_next/shaders/eevee_debug_surfels_frag.glsl
+  engines/eevee_next/shaders/eevee_debug_irradiance_grid_vert.glsl
+  engines/eevee_next/shaders/eevee_debug_irradiance_grid_frag.glsl
   engines/eevee_next/shaders/eevee_deferred_light_frag.glsl
   engines/eevee_next/shaders/eevee_depth_of_field_accumulator_lib.glsl
   engines/eevee_next/shaders/eevee_depth_of_field_bokeh_lut_comp.glsl
@@ -511,14 +509,25 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_lightprobe_eval_lib.glsl
   engines/eevee_next/shaders/eevee_lightprobe_irradiance_bounds_comp.glsl
   engines/eevee_next/shaders/eevee_lightprobe_irradiance_ray_comp.glsl
+  engines/eevee_next/shaders/eevee_lightprobe_irradiance_offset_comp.glsl
   engines/eevee_next/shaders/eevee_lightprobe_irradiance_load_comp.glsl
   engines/eevee_next/shaders/eevee_lightprobe_lib.glsl
   engines/eevee_next/shaders/eevee_ltc_lib.glsl
+  engines/eevee_next/shaders/eevee_lut_comp.glsl
   engines/eevee_next/shaders/eevee_motion_blur_dilate_comp.glsl
   engines/eevee_next/shaders/eevee_motion_blur_flatten_comp.glsl
   engines/eevee_next/shaders/eevee_motion_blur_gather_comp.glsl
   engines/eevee_next/shaders/eevee_motion_blur_lib.glsl
   engines/eevee_next/shaders/eevee_nodetree_lib.glsl
+  engines/eevee_next/shaders/eevee_ray_denoise_bilateral_comp.glsl
+  engines/eevee_next/shaders/eevee_ray_denoise_spatial_comp.glsl
+  engines/eevee_next/shaders/eevee_ray_denoise_temporal_comp.glsl
+  engines/eevee_next/shaders/eevee_ray_generate_comp.glsl
+  engines/eevee_next/shaders/eevee_ray_generate_lib.glsl
+  engines/eevee_next/shaders/eevee_ray_tile_classify_comp.glsl
+  engines/eevee_next/shaders/eevee_ray_tile_compact_comp.glsl
+  engines/eevee_next/shaders/eevee_ray_trace_screen_comp.glsl
+  engines/eevee_next/shaders/eevee_ray_trace_screen_lib.glsl
   engines/eevee_next/shaders/eevee_octahedron_lib.glsl
   engines/eevee_next/shaders/eevee_ray_types_lib.glsl
   engines/eevee_next/shaders/eevee_reflection_probe_eval_lib.glsl
@@ -541,6 +550,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_shadow_tag_usage_lib.glsl
   engines/eevee_next/shaders/eevee_shadow_tag_usage_surfels_comp.glsl
   engines/eevee_next/shaders/eevee_shadow_tag_usage_vert.glsl
+  engines/eevee_next/shaders/eevee_shadow_tag_usage_volume_comp.glsl
   engines/eevee_next/shaders/eevee_shadow_test.glsl
   engines/eevee_next/shaders/eevee_shadow_tilemap_bounds_comp.glsl
   engines/eevee_next/shaders/eevee_shadow_tilemap_finalize_comp.glsl
@@ -555,6 +565,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_surf_lib.glsl
   engines/eevee_next/shaders/eevee_surf_shadow_frag.glsl
   engines/eevee_next/shaders/eevee_surf_world_frag.glsl
+  engines/eevee_next/shaders/eevee_surfel_cluster_build_comp.glsl
   engines/eevee_next/shaders/eevee_surfel_light_comp.glsl
   engines/eevee_next/shaders/eevee_surfel_list_build_comp.glsl
   engines/eevee_next/shaders/eevee_surfel_list_lib.glsl
@@ -562,6 +573,11 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_surfel_ray_comp.glsl
   engines/eevee_next/shaders/eevee_transparency_lib.glsl
   engines/eevee_next/shaders/eevee_velocity_lib.glsl
+  engines/eevee_next/shaders/eevee_volume_integration_comp.glsl
+  engines/eevee_next/shaders/eevee_volume_lib.glsl
+  engines/eevee_next/shaders/eevee_volume_material_comp.glsl
+  engines/eevee_next/shaders/eevee_volume_resolve_frag.glsl
+  engines/eevee_next/shaders/eevee_volume_scatter_comp.glsl
 
   engines/eevee_next/eevee_defines.hh
   engines/eevee_next/eevee_shader_shared.hh
@@ -569,19 +585,17 @@ set(GLSL_SRC
   engines/workbench/shaders/workbench_cavity_lib.glsl
   engines/workbench/shaders/workbench_common_lib.glsl
   engines/workbench/shaders/workbench_composite_frag.glsl
-  engines/workbench/shaders/workbench_next_composite_frag.glsl
   engines/workbench/shaders/workbench_curvature_lib.glsl
-  engines/workbench/shaders/workbench_effect_cavity_frag.glsl
   engines/workbench/shaders/workbench_effect_dof_frag.glsl
   engines/workbench/shaders/workbench_effect_outline_frag.glsl
   engines/workbench/shaders/workbench_effect_smaa_frag.glsl
   engines/workbench/shaders/workbench_effect_smaa_vert.glsl
   engines/workbench/shaders/workbench_effect_taa_frag.glsl
+  engines/workbench/shaders/workbench_extract_stencil.glsl
   engines/workbench/shaders/workbench_image_lib.glsl
   engines/workbench/shaders/workbench_matcap_lib.glsl
   engines/workbench/shaders/workbench_material_lib.glsl
-  engines/workbench/shaders/workbench_merge_infront_frag.glsl
-  engines/workbench/shaders/workbench_next_merge_depth_frag.glsl
+  engines/workbench/shaders/workbench_merge_depth_frag.glsl
   engines/workbench/shaders/workbench_overlay_depth_frag.glsl
   engines/workbench/shaders/workbench_prepass_frag.glsl
   engines/workbench/shaders/workbench_prepass_hair_vert.glsl
@@ -611,6 +625,7 @@ set(GLSL_SRC
   intern/shaders/common_fullscreen_vert.glsl
   intern/shaders/common_fxaa_lib.glsl
   intern/shaders/common_gpencil_lib.glsl
+  intern/shaders/common_grease_pencil_lib.glsl
   intern/shaders/common_hair_lib.glsl
   intern/shaders/common_hair_refine_comp.glsl
   intern/shaders/common_hair_refine_vert.glsl
@@ -808,7 +823,7 @@ set(GLSL_SRC
 set(GLSL_C)
 
 foreach(GLSL_FILE ${GLSL_SRC})
-  data_to_c_simple(${GLSL_FILE} GLSL_C)
+  data_to_c_simple(${GLSL_FILE} GLSL_C STRIP_LEADING_C_COMMENTS)
 endforeach()
 
 blender_add_lib(bf_draw_shaders "${GLSL_C}" "" "" "")
@@ -872,6 +887,9 @@ if(WITH_GTESTS)
     endif()
     if(WITH_METAL_BACKEND)
       add_definitions(-DWITH_METAL_BACKEND)
+    endif()
+    if(WITH_VULKAN_BACKEND)
+      add_definitions(-DWITH_VULKAN_BACKEND)
     endif()
   endif()
 endif()

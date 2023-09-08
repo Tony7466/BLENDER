@@ -14,7 +14,7 @@
 #include <cstring>
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
 #include "BLI_utildefines.h"
 
 /* Types --------------------------------------------------------------- */
@@ -29,10 +29,10 @@
 #include "DNA_screen_types.h"
 
 #include "BKE_action.h"
+#include "BKE_bake_geometry_nodes_modifier.hh"
 #include "BKE_context.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_pointcache.h"
-#include "BKE_simulation_state.hh"
 
 /* Everything from source (BIF, BDR, BSE) ------------------------------ */
 
@@ -40,12 +40,12 @@
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
-#include "ED_anim_api.h"
-#include "ED_keyframes_draw.h"
+#include "ED_anim_api.hh"
+#include "ED_keyframes_draw.hh"
 
 #include "MOD_nodes.hh"
 
@@ -295,18 +295,37 @@ static void draw_backdrops(bAnimContext *ac, ListBase &anim_data, View2D *v2d, u
     else if (ac->datatype == ANIMCONT_GPENCIL) {
       uchar *color;
       uchar gpl_col[4];
-      if (ale->type == ANIMTYPE_SUMMARY) {
-        color = col_summary;
-      }
-      else if ((show_group_colors) && (ale->type == ANIMTYPE_GPLAYER)) {
-        bGPDlayer *gpl = (bGPDlayer *)ale->data;
-        rgb_float_to_uchar(gpl_col, gpl->color);
-        gpl_col[3] = col1[3];
+      switch (ale->type) {
+        case ANIMTYPE_SUMMARY:
+          color = col_summary;
+          break;
 
-        color = sel ? col1 : gpl_col;
-      }
-      else {
-        color = sel ? col1 : col2;
+        case ANIMTYPE_GPLAYER: {
+          if (show_group_colors) {
+            bGPDlayer *gpl = (bGPDlayer *)ale->data;
+            rgb_float_to_uchar(gpl_col, gpl->color);
+            gpl_col[3] = col1[3];
+
+            color = sel ? col1 : gpl_col;
+          }
+          else {
+            color = sel ? col1 : col2;
+          }
+          break;
+        }
+
+        case ANIMTYPE_GREASE_PENCIL_LAYER_GROUP:
+          color = sel ? col1a : col2a;
+          break;
+
+        case ANIMTYPE_GREASE_PENCIL_DATABLOCK:
+          color = col2b;
+          color[3] = sel ? col1[3] : col2b[3];
+          break;
+
+        default:
+          color = sel ? col1 : col2;
+          break;
       }
 
       /* Color overlay on frames between the start/end frames. */
@@ -431,13 +450,30 @@ static void draw_keyframes(bAnimContext *ac,
                             scale_factor,
                             action_flag);
         break;
-      case ALE_GREASE_PENCIL_CELS:
+      case ALE_GREASE_PENCIL_CEL:
         draw_grease_pencil_cels_channel(draw_list,
                                         ads,
-                                        static_cast<GreasePencilLayer *>(ale->data),
+                                        static_cast<const GreasePencilLayer *>(ale->data),
                                         ycenter,
                                         scale_factor,
                                         action_flag);
+        break;
+      case ALE_GREASE_PENCIL_GROUP:
+        draw_grease_pencil_layer_group_channel(
+            draw_list,
+            ads,
+            static_cast<const GreasePencilLayerTreeGroup *>(ale->data),
+            ycenter,
+            scale_factor,
+            action_flag);
+        break;
+      case ALE_GREASE_PENCIL_DATA:
+        draw_grease_pencil_datablock_channel(draw_list,
+                                             ads,
+                                             static_cast<const GreasePencil *>(ale->data),
+                                             ycenter,
+                                             scale_factor,
+                                             action_flag);
         break;
       case ALE_GPFRAME:
         draw_gpl_channel(draw_list,
@@ -711,29 +747,38 @@ static void timeline_cache_draw_single(PTCacheID *pid, float y_offset, float hei
   GPU_matrix_pop();
 }
 
-static void timeline_cache_draw_simulation_nodes(
-    const Scene &scene,
-    const blender::bke::sim::ModifierSimulationCache &cache,
-    const float y_offset,
-    const float height,
-    const uint pos_id)
+static void timeline_cache_draw_simulation_nodes(const blender::bke::bake::ModifierCache &cache,
+                                                 const float y_offset,
+                                                 const float height,
+                                                 const uint pos_id)
 {
+  std::lock_guard lock{cache.mutex};
+  if (cache.cache_by_id.is_empty()) {
+    return;
+  }
+  /* Draw the state if one of the simulation zones. This is fine for now, because there is no ui
+   * that allows caching zones independently. */
+  const blender::bke::bake::NodeCache &node_cache = **cache.cache_by_id.values().begin();
+  if (node_cache.frame_caches.is_empty()) {
+    return;
+  }
+
   GPU_matrix_push();
   GPU_matrix_translate_2f(0.0, float(V2D_SCROLL_HANDLE_HEIGHT) + y_offset);
   GPU_matrix_scale_2f(1.0, height);
 
   float color[4];
   UI_GetThemeColor4fv(TH_SIMULATED_FRAMES, color);
-  switch (cache.cache_state) {
-    case blender::bke::sim::CacheState::Invalid: {
+  switch (node_cache.cache_status) {
+    case blender::bke::bake::CacheStatus::Invalid: {
       color[3] = 0.4f;
       break;
     }
-    case blender::bke::sim::CacheState::Valid: {
+    case blender::bke::bake::CacheStatus::Valid: {
       color[3] = 0.7f;
       break;
     }
-    case blender::bke::sim::CacheState::Baked: {
+    case blender::bke::bake::CacheStatus::Baked: {
       color[3] = 1.0f;
       break;
     }
@@ -741,16 +786,13 @@ static void timeline_cache_draw_simulation_nodes(
 
   immUniformColor4fv(color);
 
-  const int start_frame = scene.r.sfra;
-  const int end_frame = scene.r.efra;
-  const int frames_num = end_frame - start_frame + 1;
-  const blender::IndexRange frames_range(start_frame, frames_num);
+  immBeginAtMost(GPU_PRIM_TRIS, node_cache.frame_caches.size() * 6);
 
-  immBeginAtMost(GPU_PRIM_TRIS, frames_num * 6);
-  for (const int frame : frames_range) {
-    if (cache.has_state_at_frame(frame)) {
-      immRectf_fast(pos_id, frame - 0.5f, 0, frame + 0.5f, 1.0f);
-    }
+  for (const std::unique_ptr<blender::bke::bake::FrameCache> &frame_cache :
+       node_cache.frame_caches.as_span())
+  {
+    const int frame = frame_cache->frame.frame();
+    immRectf_fast(pos_id, frame - 0.5f, 0, frame + 0.5f, 1.0f);
   }
   immEnd();
 
@@ -797,14 +839,14 @@ void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Sce
       if (nmd->node_group == nullptr) {
         continue;
       }
-      if (!nmd->runtime->simulation_cache) {
+      if (!nmd->runtime->cache) {
         continue;
       }
       if ((nmd->node_group->runtime->runtime_flag & NTREE_RUNTIME_FLAG_HAS_SIMULATION_ZONE) == 0) {
         continue;
       }
       timeline_cache_draw_simulation_nodes(
-          *scene, *nmd->runtime->simulation_cache, y_offset, cache_draw_height, pos_id);
+          *nmd->runtime->cache, y_offset, cache_draw_height, pos_id);
       y_offset += cache_draw_height;
     }
   }

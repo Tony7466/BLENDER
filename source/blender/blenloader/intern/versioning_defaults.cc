@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,7 +16,8 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_string.h"
 #include "BLI_system.h"
@@ -41,7 +42,7 @@
 
 #include "BKE_appdir.h"
 #include "BKE_attribute.hh"
-#include "BKE_brush.h"
+#include "BKE_brush.hh"
 #include "BKE_colortools.h"
 #include "BKE_curveprofile.h"
 #include "BKE_customdata.h"
@@ -56,7 +57,7 @@
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 #include "BKE_screen.h"
 #include "BKE_workspace.h"
 
@@ -64,9 +65,9 @@
 
 #include "BLT_translation.h"
 
-#include "versioning_common.h"
+#include "versioning_common.hh"
 
-/* Make preferences read-only, use versioning_userdef.c. */
+/* Make preferences read-only, use `versioning_userdef.cc`. */
 #define U (*((const UserDef *)&U))
 
 static bool blo_is_builtin_template(const char *app_template)
@@ -535,6 +536,9 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       STRNCPY(scene->view_settings.look, "None");
     }
     else {
+      /* Default to AgX view transform. */
+      STRNCPY(scene->view_settings.view_transform, "AgX");
+
       /* AV Sync break physics sim caching, disable until that is fixed. */
       scene->audio.flag &= ~AUDIO_SYNC;
       scene->flag &= ~SCE_FRAME_DROP;
@@ -607,6 +611,7 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
           bNodeSocketValueFloat *roughness_data = static_cast<bNodeSocketValueFloat *>(
               roughness_socket->default_value);
           roughness_data->value = 0.5f;
+          node->custom1 = SHD_GLOSSY_MULTI_GGX;
           node->custom2 = SHD_SUBSURFACE_RANDOM_WALK;
           BKE_ntree_update_tag_node_property(ma->nodetree, node);
         }

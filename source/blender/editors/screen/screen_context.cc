@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -36,21 +36,23 @@
 #include "BKE_object.h"
 #include "BKE_tracking.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "ED_anim_api.h"
-#include "ED_armature.h"
-#include "ED_clip.h"
-#include "ED_gpencil_legacy.h"
+#include "ED_anim_api.hh"
+#include "ED_armature.hh"
+#include "ED_clip.hh"
+#include "ED_gpencil_legacy.hh"
 
 #include "SEQ_channels.h"
 #include "SEQ_select.h"
 #include "SEQ_sequencer.h"
 #include "SEQ_transform.h"
 
-#include "UI_interface.h"
-#include "WM_api.h"
+#include "UI_interface.hh"
+#include "WM_api.hh"
+
+#include "ANIM_bone_collections.h"
 
 #include "screen_intern.h"
 
@@ -520,7 +522,7 @@ static eContextResult screen_ctx_active_pose_bone(const bContext *C, bContextDat
   Object *obact = BKE_view_layer_active_object_get(view_layer);
   Object *obpose = BKE_object_pose_armature_get(obact);
 
-  bPoseChannel *pchan = BKE_pose_channel_active_if_layer_visible(obpose);
+  bPoseChannel *pchan = BKE_pose_channel_active_if_bonecoll_visible(obpose);
   if (pchan) {
     CTX_data_pointer_set(result, &obpose->id, &RNA_PoseBone, pchan);
     return CTX_RESULT_OK;

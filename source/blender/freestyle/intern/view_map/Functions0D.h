@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -68,7 +68,7 @@ template<class T> class UnaryFunction0D {
   /** Default constructor. */
   UnaryFunction0D()
   {
-    py_uf0D = NULL;
+    py_uf0D = nullptr;
   }
 
   /** Destructor; */

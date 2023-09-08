@@ -10,7 +10,8 @@
 
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_rand.h"
 #include "BLI_task.h"
 
@@ -33,17 +34,17 @@
 #include "BKE_lib_id.h"
 #include "BKE_lib_query.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_wrapper.h"
+#include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.h"
 #include "BKE_screen.h"
 #include "BKE_texture.h" /* Texture masking. */
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "DEG_depsgraph_build.h"
@@ -144,7 +145,7 @@ static void vert2geom_task_cb_ex(void *__restrict userdata,
 }
 
 /**
- * Find nearest vertex and/or edge and/or face, for each vertex (adapted from shrinkwrap.c).
+ * Find nearest vertex and/or edge and/or face, for each vertex (adapted from `shrinkwrap.cc`).
  */
 static void get_vert2geom_distance(int verts_num,
                                    const blender::Span<blender::float3> positions,

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,7 @@
 #include "DNA_userdef_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_color.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
@@ -23,15 +23,15 @@
 
 #include "BKE_context.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "BLF_api.h"
 
 #include "ED_node.hh"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
+#include "UI_view2d.hh"
 
 #include "interface_intern.hh"
 
@@ -44,7 +44,7 @@
 #include "GPU_state.h"
 
 #ifdef WITH_INPUT_IME
-#  include "WM_types.h"
+#  include "WM_types.hh"
 #endif
 
 /* -------------------------------------------------------------------- */
@@ -154,13 +154,6 @@ static void color_blend_v4_v4v4(uchar r_col[4],
   r_col[3] = (faci * col1[3] + facm * col2[3]) / 256;
 }
 
-static void color_add_v3_i(uchar cp[3], int tint)
-{
-  cp[0] = clamp_i(cp[0] + tint, 0, 255);
-  cp[1] = clamp_i(cp[1] + tint, 0, 255);
-  cp[2] = clamp_i(cp[2] + tint, 0, 255);
-}
-
 static void color_ensure_contrast_v3(uchar cp[3], const uchar cp_other[3], int contrast)
 {
   BLI_assert(contrast > 0);
@@ -169,12 +162,12 @@ static void color_ensure_contrast_v3(uchar cp[3], const uchar cp_other[3], int c
   const int delta = item_value - inner_value;
   if (delta >= 0) {
     if (contrast > delta) {
-      color_add_v3_i(cp, contrast - delta);
+      add_v3_uchar_clamped(cp, contrast - delta);
     }
   }
   else {
     if (contrast > -delta) {
-      color_add_v3_i(cp, -contrast - delta);
+      add_v3_uchar_clamped(cp, -contrast - delta);
     }
   }
 }
@@ -1269,8 +1262,8 @@ static void widgetbase_draw_ex(uiWidgetBase *wtb,
     outline_col[2] = wcol->outline[2];
     outline_col[3] = wcol->outline[3];
 
-    /* emboss bottom shadow */
-    if (wtb->draw_emboss) {
+    /* Emboss shadow if enabled, and inner and outline colors are not fully transparent. */
+    if ((wtb->draw_emboss) && (wcol->inner[3] != 0.0f || wcol->outline[3] != 0.0f)) {
       UI_GetThemeColor4ubv(TH_WIDGET_EMBOSS, emboss_col);
     }
   }
@@ -1341,6 +1334,32 @@ static void widget_draw_preview(BIFIconID icon, float alpha, const rcti *rect)
     const int y = rect->ymin + h / 2 - size / 2;
 
     UI_icon_draw_preview(x, y, icon, 1.0f, alpha, size);
+  }
+}
+
+static void widget_draw_icon_centered(const BIFIconID icon,
+                                      const float aspect,
+                                      const float alpha,
+                                      const rcti *rect,
+                                      const uchar mono_color[4])
+{
+  if (icon == ICON_NONE) {
+    return;
+  }
+
+  const float size = ICON_DEFAULT_HEIGHT / (aspect * UI_INV_SCALE_FAC);
+
+  if (size > 0) {
+    const int x = BLI_rcti_cent_x(rect) - size / 2;
+    const int y = BLI_rcti_cent_y(rect) - size / 2;
+
+    const bTheme *btheme = UI_GetTheme();
+    const float desaturate = 1.0 - btheme->tui.icon_saturation;
+    uchar color[4] = {mono_color[0], mono_color[1], mono_color[2], mono_color[3]};
+    const bool has_theme = UI_icon_get_theme_color(int(icon), color);
+
+    UI_icon_draw_ex(
+        x, y, icon, aspect * UI_INV_SCALE_FAC, alpha, desaturate, color, has_theme, nullptr);
   }
 }
 
@@ -2287,7 +2306,7 @@ static void widget_draw_text_icon(const uiFontStyle *fstyle,
 
   /* Big previews with optional text label below */
   if (but->flag & UI_BUT_ICON_PREVIEW && ui_block_is_menu(but->block)) {
-    const BIFIconID icon = BIFIconID(ui_but_icon(but));
+    const BIFIconID icon = ui_but_icon(but);
     int icon_size = BLI_rcti_size_y(rect);
     int text_size = 0;
 
@@ -2324,7 +2343,7 @@ static void widget_draw_text_icon(const uiFontStyle *fstyle,
     }
 #endif
 
-    const BIFIconID icon = BIFIconID(ui_but_icon(but));
+    const BIFIconID icon = ui_but_icon(but);
     const int icon_size_init = is_tool ? ICON_DEFAULT_HEIGHT_TOOLBAR : ICON_DEFAULT_HEIGHT;
     const float icon_size = icon_size_init / (but->block->aspect * UI_INV_SCALE_FAC);
     const float icon_padding = 2 * UI_SCALE_FAC;
@@ -2701,27 +2720,42 @@ static void widget_state_menu_item(uiWidgetType *wt,
 {
   wt->wcol = *(wt->wcol_theme);
 
-  /* active and disabled (not so common) */
   if ((state->but_flag & UI_BUT_DISABLED) && (state->but_flag & UI_ACTIVE)) {
-    /* draw the backdrop at low alpha, helps navigating with keys
-     * when disabled items are active */
+    /* Hovering over disabled item. */
     wt->wcol.text[3] = 128;
     color_blend_v3_v3(wt->wcol.inner, wt->wcol.text, 0.5f);
     wt->wcol.inner[3] = 64;
   }
-  else {
-    /* regular active */
+  else if (state->but_flag & UI_BUT_DISABLED) {
+    /* Regular disabled. */
+    color_blend_v3_v3(wt->wcol.text, wt->wcol.inner, 0.5f);
+  }
+  else if (state->but_flag & UI_BUT_INACTIVE) {
+    /* Inactive. */
     if (state->but_flag & UI_ACTIVE) {
-      copy_v3_v3_uchar(wt->wcol.text, wt->wcol.text_sel);
+      color_blend_v3_v3(wt->wcol.inner, wt->wcol.text, 0.2f);
+      wt->wcol.inner[3] = 255;
     }
-    else if (state->but_flag & (UI_BUT_DISABLED | UI_BUT_INACTIVE)) {
-      /* regular disabled */
-      color_blend_v3_v3(wt->wcol.text, wt->wcol.inner, 0.5f);
-    }
-
-    if (state->but_flag & UI_ACTIVE) {
-      copy_v4_v4_uchar(wt->wcol.inner, wt->wcol.inner_sel);
-    }
+    color_blend_v3_v3(wt->wcol.text, wt->wcol.inner, 0.5f);
+  }
+  else if (state->but_flag & (UI_BUT_ACTIVE_DEFAULT | UI_SELECT_DRAW)) {
+    /* Currently-selected item. */
+    copy_v4_v4_uchar(wt->wcol.inner, wt->wcol.inner_sel);
+    copy_v4_v4_uchar(wt->wcol.text, wt->wcol.text_sel);
+  }
+  else if ((state->but_flag & (UI_SELECT | UI_BUT_ICON_PREVIEW)) ==
+           (UI_SELECT | UI_BUT_ICON_PREVIEW))
+  {
+    /* Currently-selected list or menu item that is large icon preview. */
+    copy_v4_v4_uchar(wt->wcol.inner, wt->wcol.inner_sel);
+    copy_v4_v4_uchar(wt->wcol.text, wt->wcol.text_sel);
+  }
+  else if (state->but_flag & UI_ACTIVE) {
+    /* Regular hover. */
+    color_blend_v3_v3(wt->wcol.inner, wt->wcol.text, 0.2f);
+    copy_v3_v3_uchar(wt->wcol.text, wt->wcol.text_sel);
+    wt->wcol.inner[3] = 255;
+    wt->wcol.text[3] = 255;
   }
 }
 
@@ -2799,11 +2833,9 @@ static void widget_menu_back(
   }
   else if (direction == UI_DIR_DOWN) {
     roundboxalign = (UI_CNR_BOTTOM_RIGHT | UI_CNR_BOTTOM_LEFT);
-    rect->ymin -= 0.1f * U.widget_unit;
   }
   else if (direction == UI_DIR_UP) {
     roundboxalign = UI_CNR_TOP_LEFT | UI_CNR_TOP_RIGHT;
-    rect->ymax += 0.1f * U.widget_unit;
   }
 
   GPU_blend(GPU_BLEND_ALPHA);
@@ -3290,7 +3322,7 @@ static void ui_draw_but_HSV_v(uiBut *but, const rcti *rect)
 /** Separator for menus. */
 static void ui_draw_separator(const rcti *rect, const uiWidgetColors *wcol)
 {
-  const int y = rect->ymin + BLI_rcti_size_y(rect) / 2 - 1;
+  const int y = rect->ymin + BLI_rcti_size_y(rect) / 2;
   const uchar col[4] = {
       wcol->text[0],
       wcol->text[1],
@@ -3716,25 +3748,6 @@ static void widget_progress_indicator(uiBut *but,
       widget_progress_type_ring(but_progress, wcol, rect);
       break;
     }
-  }
-}
-
-static void widget_view_item(uiWidgetColors *wcol,
-                             rcti *rect,
-                             const uiWidgetStateInfo *state,
-                             int /*roundboxalign*/,
-                             const float zoom)
-{
-  uiWidgetBase wtb;
-  widget_init(&wtb);
-
-  /* no outline */
-  wtb.draw_outline = false;
-  const float rad = widget_radius_from_zoom(zoom, wcol);
-  round_box_edges(&wtb, UI_CNR_ALL, rect, rad);
-
-  if ((state->but_flag & UI_ACTIVE) || (state->but_flag & UI_SELECT)) {
-    widgetbase_draw(&wtb, wcol);
   }
 }
 
@@ -4202,8 +4215,17 @@ static void widget_preview_tile(uiBut *but,
     widget_list_itembut(wcol, rect, state, roundboxalign, zoom);
   }
 
-  ui_draw_preview_item_stateless(
-      &UI_style_get()->widget, rect, but->drawstr, but->icon, wcol->text, UI_STYLE_TEXT_CENTER);
+  /* When the button is not tagged as having a preview icon, do regular icon drawing with the
+   * standard icon size. */
+  const bool draw_as_icon = !(but->flag & UI_BUT_ICON_PREVIEW);
+
+  ui_draw_preview_item_stateless(&UI_style_get()->widget,
+                                 rect,
+                                 but->drawstr,
+                                 but->icon,
+                                 wcol->text,
+                                 UI_STYLE_TEXT_CENTER,
+                                 draw_as_icon);
 }
 
 static void widget_optionbut(uiWidgetColors *wcol,
@@ -4617,6 +4639,8 @@ static uiWidgetType *widget_type(uiWidgetTypeEnum type)
       wt.draw = nullptr;
       /* Drawn via the `custom` callback. */
       wt.text = nullptr;
+      /* Drawing indicates state well enough. No need to change colors further. */
+      wt.state = widget_state_nothing;
       wt.custom = widget_preview_tile;
       wt.wcol_theme = &btheme->tui.wcol_list_item;
       break;
@@ -4644,6 +4668,7 @@ static uiWidgetType *widget_type(uiWidgetTypeEnum type)
       break;
 
     case UI_WTYPE_LISTITEM:
+    case UI_WTYPE_VIEW_ITEM:
       wt.wcol_theme = &btheme->tui.wcol_list_item;
       wt.draw = widget_list_itembut;
       break;
@@ -4651,11 +4676,6 @@ static uiWidgetType *widget_type(uiWidgetTypeEnum type)
     case UI_WTYPE_PROGRESS:
       wt.wcol_theme = &btheme->tui.wcol_progress;
       wt.custom = widget_progress_indicator;
-      break;
-
-    case UI_WTYPE_VIEW_ITEM:
-      wt.wcol_theme = &btheme->tui.wcol_view_item;
-      wt.draw = widget_view_item;
       break;
 
     case UI_WTYPE_NODESOCKET:
@@ -4953,12 +4973,14 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
         ui_draw_but_HSVCIRCLE(but, &tui->wcol_regular, rect);
         break;
 
-      case UI_BTYPE_COLORBAND:
-        /* do not draw right to edge of rect */
-        rect->xmin += (0.25f * UI_UNIT_X);
-        rect->xmax -= (0.3f * UI_UNIT_X);
+      case UI_BTYPE_COLORBAND: {
+        /* Horizontal padding to make room for handles at edges. */
+        const int padding = BLI_rcti_size_y(rect) / 6;
+        rect->xmin += padding;
+        rect->xmax -= padding;
         ui_draw_but_COLORBAND(but, &tui->wcol_regular, rect);
         break;
+      }
 
       case UI_BTYPE_UNITVEC:
         wt = widget_type(UI_WTYPE_UNITVEC);
@@ -5570,18 +5592,36 @@ void ui_draw_preview_item_stateless(const uiFontStyle *fstyle,
                                     const char *name,
                                     int iconid,
                                     const uchar text_col[4],
-                                    eFontStyle_Align text_align)
+                                    eFontStyle_Align text_align,
+                                    bool draw_as_icon)
 {
   rcti trect = *rect;
   const float text_size = UI_UNIT_Y;
   const bool has_text = name && name[0];
+
+  float alpha = 1.0f;
+
+  {
+    /* Special handling: Previews often want to show a loading icon while the preview is being
+     * loaded. Draw this with reduced opacity. */
+    const bool is_loading_icon = iconid == ICON_TEMP;
+    if (is_loading_icon) {
+      alpha *= 0.5f;
+      draw_as_icon = true;
+    }
+  }
 
   if (has_text) {
     /* draw icon in rect above the space reserved for the label */
     rect->ymin += text_size;
   }
   GPU_blend(GPU_BLEND_ALPHA);
-  widget_draw_preview(BIFIconID(iconid), 1.0f, rect);
+  if (draw_as_icon) {
+    widget_draw_icon_centered(iconid, 1.0f, alpha, rect, text_col);
+  }
+  else {
+    widget_draw_preview(iconid, alpha, rect);
+  }
   GPU_blend(GPU_BLEND_NONE);
 
   if (!has_text) {

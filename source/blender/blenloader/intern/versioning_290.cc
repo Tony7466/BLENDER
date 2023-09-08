@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,7 +9,8 @@
 #define DNA_DEPRECATED_ALLOW
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -51,14 +52,14 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_legacy_convert.h"
-#include "BKE_multires.h"
+#include "BKE_mesh_legacy_convert.hh"
+#include "BKE_multires.hh"
 #include "BKE_node.hh"
 
 #include "IMB_imbuf.h"
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "SEQ_proxy.h"
 #include "SEQ_render.h"
@@ -67,10 +68,10 @@
 #include "SEQ_transform.h"
 
 #include "BLO_readfile.h"
-#include "readfile.h"
-#include "versioning_common.h"
+#include "readfile.hh"
+#include "versioning_common.hh"
 
-/* Make preferences read-only, use versioning_userdef.c. */
+/* Make preferences read-only, use `versioning_userdef.cc`. */
 #define U (*((const UserDef *)&U))
 
 static eSpaceSeq_Proxy_RenderSize get_sequencer_render_size(Main *bmain)
@@ -254,7 +255,7 @@ static void seq_convert_transform_crop_lb(const Scene *scene,
 {
 
   LISTBASE_FOREACH (Sequence *, seq, lb) {
-    if (seq->type != SEQ_TYPE_SOUND_RAM) {
+    if (!ELEM(seq->type, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD)) {
       seq_convert_transform_crop(scene, seq, render_size);
     }
     if (seq->type == SEQ_TYPE_META) {
@@ -340,7 +341,7 @@ static void seq_convert_transform_crop_lb_2(const Scene *scene,
 {
 
   LISTBASE_FOREACH (Sequence *, seq, lb) {
-    if (seq->type != SEQ_TYPE_SOUND_RAM) {
+    if (!ELEM(seq->type, SEQ_TYPE_SOUND_RAM, SEQ_TYPE_SOUND_HD)) {
       seq_convert_transform_crop_2(scene, seq, render_size);
     }
     if (seq->type == SEQ_TYPE_META) {
@@ -625,7 +626,7 @@ void do_versions_after_linking_290(FileData * /*fd*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 292, 8)) {
-    /* Systematically rebuild posebones to ensure consistent ordering matching the one of bones in
+    /* Systematically rebuild pose-bones to ensure consistent ordering matching the one of bones in
      * Armature obdata. */
     LISTBASE_FOREACH (Object *, ob, &bmain->objects) {
       if (ob->type == OB_ARMATURE) {
@@ -676,8 +677,8 @@ void do_versions_after_linking_290(FileData * /*fd*/, Main *bmain)
    *
    * \note Be sure to check when bumping the version:
    * - #blo_do_versions_290 in this file.
-   * - "versioning_userdef.c", #blo_do_versions_userdef
-   * - "versioning_userdef.c", #do_versions_theme
+   * - `versioning_userdef.cc`, #blo_do_versions_userdef
+   * - `versioning_userdef.cc`, #do_versions_theme
    *
    * \note Keep this message at the bottom of the function.
    */
@@ -777,9 +778,9 @@ static void do_versions_291_fcurve_handles_limit(FCurve *fcu)
     }
 
     const float factor = time_delta / total_len;
-    /* Current keyframe's right handle: */
+    /* Current key-frame's right handle: */
     madd_v2_v2v2fl(bezt->vec[2], v1, delta1, -factor); /* vec[2] = v1 - factor * delta1 */
-    /* Next keyframe's left handle: */
+    /* Next key-frame's left handle: */
     madd_v2_v2v2fl(nextbezt->vec[0], v4, delta2, -factor); /* vec[0] = v4 - factor * delta2 */
   }
 }
@@ -1967,8 +1968,8 @@ void blo_do_versions_290(FileData *fd, Library * /*lib*/, Main *bmain)
    * Versioning code until next subversion bump goes here.
    *
    * \note Be sure to check when bumping the version:
-   * - "versioning_userdef.c", #blo_do_versions_userdef
-   * - "versioning_userdef.c", #do_versions_theme
+   * - `versioning_userdef.cc`, #blo_do_versions_userdef
+   * - `versioning_userdef.cc`, #do_versions_theme
    *
    * \note Keep this message at the bottom of the function.
    */

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2011-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2011-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -677,7 +677,7 @@ class CLIP_OT_setup_tracking_scene(Operator):
         self.createCollection(context, "foreground")
         self.createCollection(context, "background")
 
-        # rendersettings
+        # Render settings.
         setup_collection_recursively(
             vlayers["Foreground"].layer_collection.children,
             "background",

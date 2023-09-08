@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,7 +10,7 @@
 
 #include "BKE_attribute_math.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
+#include "BKE_mesh_mapping.hh"
 
 #include "node_geometry_util.hh"
 
@@ -630,15 +630,8 @@ static Mesh *calc_dual_mesh(const Mesh &src_mesh,
   /* Stores the indices of the faces connected to the vertex. Because the faces are looped
    * over in order of their indices, the face's indices will be sorted in ascending order.
    * (This can change once they are sorted using `sort_vertex_faces`). */
-  Array<int> vert_to_face_offset_data;
-  Array<int> vert_to_face_indices;
-  const GroupedSpan<int> vert_to_face_map = bke::mesh::build_vert_to_face_map(
-      src_faces,
-      src_corner_verts,
-      src_positions.size(),
-      vert_to_face_offset_data,
-      vert_to_face_indices);
-  const OffsetIndices<int> vert_to_face_offsets(vert_to_face_offset_data);
+  Array<int> vert_to_face_indices = src_mesh.vert_to_face_map().data;
+  const OffsetIndices<int> vert_to_face_offsets = src_mesh.vert_to_face_map().offsets;
 
   Array<Array<int>> vertex_shared_edges(src_mesh.totvert);
   Array<Array<int>> vertex_corners(src_mesh.totvert);
@@ -691,6 +684,8 @@ static Mesh *calc_dual_mesh(const Mesh &src_mesh,
       vertex_corners[i] = std::move(sorted_corners);
     }
   });
+
+  const GroupedSpan<int> vert_to_face_map(vert_to_face_offsets, vert_to_face_indices);
 
   Vector<float3> vert_positions(src_mesh.faces_num);
   for (const int i : src_faces.index_range()) {
@@ -923,7 +918,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Mesh");
   const bool keep_boundaries = params.extract_input<bool>("Keep Boundaries");
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
-    if (const Mesh *mesh = geometry_set.get_mesh_for_read()) {
+    if (const Mesh *mesh = geometry_set.get_mesh()) {
       Mesh *new_mesh = calc_dual_mesh(
           *mesh, keep_boundaries, params.get_output_propagation_info("Dual Mesh"));
       geometry_set.replace_mesh(new_mesh);
@@ -932,15 +927,14 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Dual Mesh", std::move(geometry_set));
 }
 
-}  // namespace blender::nodes::node_geo_dual_mesh_cc
-
-void register_node_type_geo_dual_mesh()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_dual_mesh_cc;
-
   static bNodeType ntype;
   geo_node_type_base(&ntype, GEO_NODE_DUAL_MESH, "Dual Mesh", NODE_CLASS_GEOMETRY);
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_dual_mesh_cc

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,8 @@
 #include <cstring>
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_string_utils.h"
@@ -41,10 +42,10 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "readfile.h" /* Own include. */
+#include "readfile.hh" /* Own include. */
 
-#include "WM_types.h"
-#include "wm_event_types.h"
+#include "WM_types.hh"
+#include "wm_event_types.hh"
 
 /* Don't use translation strings in versioning!
  * These depend on the preferences already being read.
@@ -93,10 +94,6 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(space_sequencer.list_text_hi);
   }
 
-  if (!USER_VERSION_ATLEAST(303, 6)) {
-    btheme->tui.wcol_view_item = U_theme_default.tui.wcol_view_item;
-  }
-
   if (!USER_VERSION_ATLEAST(306, 3)) {
     FROM_DEFAULT_V4_UCHAR(space_view3d.face_retopology);
   }
@@ -110,6 +107,11 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(space_node.node_zone_repeat);
   }
 
+  if (!USER_VERSION_ATLEAST(400, 14)) {
+    FROM_DEFAULT_V4_UCHAR(space_view3d.asset_shelf.back);
+    FROM_DEFAULT_V4_UCHAR(space_view3d.asset_shelf.header_back);
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -121,6 +123,8 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
    */
   {
     /* Keep this block, even when empty. */
+    FROM_DEFAULT_V4_UCHAR(space_sequencer.transition);
+    FROM_DEFAULT_V4_UCHAR(tui.wcol_list_item.inner_sel);
   }
 
 #undef FROM_DEFAULT_V4_UCHAR
@@ -314,9 +318,7 @@ void blo_do_versions_userdef(UserDef *userdef)
   }
 
   if (!USER_VERSION_ATLEAST(250, 8)) {
-    wmKeyMap *km;
-
-    for (km = static_cast<wmKeyMap *>(userdef->user_keymaps.first); km; km = km->next) {
+    LISTBASE_FOREACH (wmKeyMap *, km, &userdef->user_keymaps) {
       if (STREQ(km->idname, "Armature_Sketch")) {
         STRNCPY(km->idname, "Armature Sketch");
       }
@@ -549,7 +551,7 @@ void blo_do_versions_userdef(UserDef *userdef)
 
     userdef->flag &= ~(USER_FLAG_UNUSED_4);
 
-    userdef->uiflag &= ~(USER_HEADER_FROM_PREF | USER_UIFLAG_UNUSED_12 | USER_REGISTER_ALL_USERS);
+    userdef->uiflag &= ~(USER_HEADER_FROM_PREF | USER_REGISTER_ALL_USERS);
   }
 
   if (!USER_VERSION_ATLEAST(280, 41)) {
@@ -843,6 +845,18 @@ void blo_do_versions_userdef(UserDef *userdef)
 #endif
   }
 
+  if (!USER_VERSION_ATLEAST(400, 15)) {
+    userdef->node_preview_res = 120;
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 18)) {
+    userdef->playback_fps_samples = 8;
+  }
+
+  if (!USER_VERSION_ATLEAST(400, 19)) {
+    userdef->uiflag |= USER_NODE_AUTO_OFFSET;
+  }
+
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -854,6 +868,9 @@ void blo_do_versions_userdef(UserDef *userdef)
    */
   {
     /* Keep this block, even when empty. */
+
+    /* Clear deprecated USER_MENUFIXEDORDER user flag for reuse. */
+    userdef->uiflag &= ~USER_UIFLAG_UNUSED_4;
   }
 
   LISTBASE_FOREACH (bTheme *, btheme, &userdef->themes) {

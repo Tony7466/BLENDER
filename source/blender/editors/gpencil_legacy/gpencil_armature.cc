@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation
+/* SPDX-FileCopyrightText: 2018 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,7 +16,9 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_armature_types.h"
@@ -35,16 +37,16 @@
 #include "BKE_object_deform.h"
 #include "BKE_report.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_mesh.h"
-#include "ED_object.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
 
 #include "ANIM_bone_collections.h"
 
@@ -589,13 +591,13 @@ static int gpencil_generate_weights_exec(bContext *C, wmOperator *op)
     GpencilModifierData *md = BKE_gpencil_modifiers_findby_type(ob_eval,
                                                                 eGpencilModifierType_Armature);
     if (md == nullptr) {
-      BKE_report(op->reports, RPT_ERROR, "The grease pencil object need an Armature modifier");
+      BKE_report(op->reports, RPT_ERROR, "The grease pencil object needs an Armature modifier");
       return OPERATOR_CANCELLED;
     }
 
     ArmatureGpencilModifierData *mmd = (ArmatureGpencilModifierData *)md;
     if (mmd->object == nullptr) {
-      BKE_report(op->reports, RPT_ERROR, "Armature modifier is not valid or wrong defined");
+      BKE_report(op->reports, RPT_ERROR, "The Armature modifier is invalid");
       return OPERATOR_CANCELLED;
     }
 
@@ -629,7 +631,7 @@ static const EnumPropertyItem *gpencil_armatures_enum_itemf(bContext *C,
   int i = 0;
 
   if (C == nullptr) {
-    return DummyRNA_DEFAULT_items;
+    return rna_enum_dummy_DEFAULT_items;
   }
 
   /* add default */
@@ -680,7 +682,7 @@ void GPENCIL_OT_generate_weights(wmOperatorType *ot)
   ot->prop = RNA_def_enum(ot->srna, "mode", mode_type, 0, "Mode", "");
 
   prop = RNA_def_enum(
-      ot->srna, "armature", DummyRNA_DEFAULT_items, 0, "Armature", "Armature to use");
+      ot->srna, "armature", rna_enum_dummy_DEFAULT_items, 0, "Armature", "Armature to use");
   RNA_def_enum_funcs(prop, gpencil_armatures_enum_itemf);
 
   RNA_def_float(ot->srna,

@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
+ * SPDX-FileCopyrightText: 2003-2009 Blender Authors
  * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -55,8 +55,7 @@ struct SeqUniqueInfo {
 
 static void seqbase_unique_name(ListBase *seqbasep, SeqUniqueInfo *sui)
 {
-  Sequence *seq;
-  for (seq = static_cast<Sequence *>(seqbasep->first); seq; seq = seq->next) {
+  LISTBASE_FOREACH (Sequence *, seq, seqbasep) {
     if ((sui->seq != seq) && STREQ(sui->name_dest, seq->name + 2)) {
       /* SEQ_NAME_MAXSTR -4 for the number, -1 for \0, - 2 for r_prefix */
       SNPRINTF(
@@ -108,55 +107,55 @@ static const char *give_seqname_by_type(int type)
 {
   switch (type) {
     case SEQ_TYPE_META:
-      return DATA_("Meta");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Meta");
     case SEQ_TYPE_IMAGE:
-      return DATA_("Image");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Image");
     case SEQ_TYPE_SCENE:
-      return DATA_("Scene");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Scene");
     case SEQ_TYPE_MOVIE:
-      return DATA_("Movie");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Movie");
     case SEQ_TYPE_MOVIECLIP:
-      return DATA_("Clip");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Clip");
     case SEQ_TYPE_MASK:
-      return DATA_("Mask");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Mask");
     case SEQ_TYPE_SOUND_RAM:
-      return DATA_("Audio");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Audio");
     case SEQ_TYPE_CROSS:
-      return DATA_("Cross");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Cross");
     case SEQ_TYPE_GAMCROSS:
-      return DATA_("Gamma Cross");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Gamma Cross");
     case SEQ_TYPE_ADD:
-      return DATA_("Add");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Add");
     case SEQ_TYPE_SUB:
-      return DATA_("Sub");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Sub");
     case SEQ_TYPE_MUL:
-      return DATA_("Mul");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Mul");
     case SEQ_TYPE_ALPHAOVER:
-      return DATA_("Alpha Over");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Alpha Over");
     case SEQ_TYPE_ALPHAUNDER:
-      return DATA_("Alpha Under");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Alpha Under");
     case SEQ_TYPE_OVERDROP:
-      return DATA_("Over Drop");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Over Drop");
     case SEQ_TYPE_COLORMIX:
-      return DATA_("Color Mix");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Color Mix");
     case SEQ_TYPE_WIPE:
-      return DATA_("Wipe");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Wipe");
     case SEQ_TYPE_GLOW:
-      return DATA_("Glow");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Glow");
     case SEQ_TYPE_TRANSFORM:
-      return DATA_("Transform");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Transform");
     case SEQ_TYPE_COLOR:
-      return DATA_("Color");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Color");
     case SEQ_TYPE_MULTICAM:
-      return DATA_("Multicam");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Multicam");
     case SEQ_TYPE_ADJUSTMENT:
-      return DATA_("Adjustment");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Adjustment");
     case SEQ_TYPE_SPEED:
-      return DATA_("Speed");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Speed");
     case SEQ_TYPE_GAUSSIAN_BLUR:
-      return DATA_("Gaussian Blur");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Gaussian Blur");
     case SEQ_TYPE_TEXT:
-      return DATA_("Text");
+      return CTX_DATA_(BLT_I18NCONTEXT_ID_SEQUENCE, "Text");
     default:
       return nullptr;
   }
@@ -343,10 +342,10 @@ const Sequence *SEQ_get_topmost_sequence(const Scene *scene, int frame)
   }
 
   ListBase *channels = SEQ_channels_displayed_get(ed);
-  const Sequence *seq, *best_seq = nullptr;
+  const Sequence *best_seq = nullptr;
   int best_machine = -1;
 
-  for (seq = static_cast<const Sequence *>(ed->seqbasep->first); seq; seq = seq->next) {
+  LISTBASE_FOREACH (const Sequence *, seq, ed->seqbasep) {
     if (SEQ_render_is_muted(channels, seq) || !SEQ_time_strip_intersects_frame(scene, seq, frame))
     {
       continue;
@@ -422,17 +421,15 @@ Sequence *SEQ_sequence_from_strip_elem(ListBase *seqbase, StripElem *se)
 
 Sequence *SEQ_get_sequence_by_name(ListBase *seqbase, const char *name, bool recursive)
 {
-  Sequence *iseq = nullptr;
-  Sequence *rseq = nullptr;
-
-  for (iseq = static_cast<Sequence *>(seqbase->first); iseq; iseq = iseq->next) {
+  LISTBASE_FOREACH (Sequence *, iseq, seqbase) {
     if (STREQ(name, iseq->name + 2)) {
       return iseq;
     }
-    if (recursive && (iseq->seqbase.first) &&
-        (rseq = SEQ_get_sequence_by_name(&iseq->seqbase, name, true)))
-    {
-      return rseq;
+    if (recursive && !BLI_listbase_is_empty(&iseq->seqbase)) {
+      Sequence *rseq = SEQ_get_sequence_by_name(&iseq->seqbase, name, true);
+      if (rseq != nullptr) {
+        return rseq;
+      }
     }
   }
 

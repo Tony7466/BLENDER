@@ -17,14 +17,14 @@
 #include "BKE_global.h"
 #include "BKE_sound.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "sequencer_intern.h"
+#include "sequencer_intern.hh"
 
 struct PreviewJob {
   ListBase previews;

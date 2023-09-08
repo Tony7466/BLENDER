@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,7 +13,8 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_dlrbTree.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -47,35 +48,36 @@
 #include "BKE_sound.h"
 #include "BKE_workspace.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "ED_anim_api.h"
-#include "ED_armature.h"
-#include "ED_clip.h"
-#include "ED_fileselect.h"
-#include "ED_image.h"
-#include "ED_keyframes_keylist.h"
-#include "ED_mesh.h"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_screen_types.h"
-#include "ED_sequencer.h"
-#include "ED_undo.h"
-#include "ED_util.h"
-#include "ED_view3d.h"
+#include "ED_anim_api.hh"
+#include "ED_armature.hh"
+#include "ED_clip.hh"
+#include "ED_fileselect.hh"
+#include "ED_image.hh"
+#include "ED_keyframes_keylist.hh"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
+#include "ED_scene.hh"
+#include "ED_screen.hh"
+#include "ED_screen_types.hh"
+#include "ED_sequencer.hh"
+#include "ED_undo.hh"
+#include "ED_util.hh"
+#include "ED_view3d.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
 #include "GPU_capabilities.h"
 
@@ -822,18 +824,19 @@ static bool azone_clipped_rect_calc(const AZone *az, rcti *r_rect_clip)
 static void area_actionzone_get_rect(AZone *az, rcti *rect)
 {
   if (az->type == AZONE_REGION_SCROLL) {
+    const bool is_horizontal = az->direction == AZ_SCROLL_HOR;
+    const bool is_vertical = az->direction == AZ_SCROLL_VERT;
+    const bool is_right = is_vertical && bool(az->region->v2d.scroll & V2D_SCROLL_RIGHT);
+    const bool is_left = is_vertical && bool(az->region->v2d.scroll & V2D_SCROLL_LEFT);
+    const bool is_top = is_horizontal && bool(az->region->v2d.scroll & V2D_SCROLL_TOP);
+    const bool is_botton = is_horizontal && bool(az->region->v2d.scroll & V2D_SCROLL_BOTTOM);
     /* For scroll azones use the area around the region's scroll-bar location. */
-    rcti scroller_vert = (az->direction == AZ_SCROLL_HOR) ? az->region->v2d.hor :
-                                                            az->region->v2d.vert;
+    rcti scroller_vert = is_horizontal ? az->region->v2d.hor : az->region->v2d.vert;
     BLI_rcti_translate(&scroller_vert, az->region->winrct.xmin, az->region->winrct.ymin);
-    rect->xmin = scroller_vert.xmin -
-                 ((az->direction == AZ_SCROLL_VERT) ? V2D_SCROLL_HIDE_HEIGHT : 0);
-    rect->ymin = scroller_vert.ymin -
-                 ((az->direction == AZ_SCROLL_HOR) ? V2D_SCROLL_HIDE_WIDTH : 0);
-    rect->xmax = scroller_vert.xmax +
-                 ((az->direction == AZ_SCROLL_VERT) ? V2D_SCROLL_HIDE_HEIGHT : 0);
-    rect->ymax = scroller_vert.ymax +
-                 ((az->direction == AZ_SCROLL_HOR) ? V2D_SCROLL_HIDE_WIDTH : 0);
+    rect->xmin = scroller_vert.xmin - (is_right ? V2D_SCROLL_HIDE_HEIGHT : 0);
+    rect->ymin = scroller_vert.ymin - (is_top ? V2D_SCROLL_HIDE_WIDTH : 0);
+    rect->xmax = scroller_vert.xmax + (is_left ? V2D_SCROLL_HIDE_HEIGHT : 0);
+    rect->ymax = scroller_vert.ymax + (is_botton ? V2D_SCROLL_HIDE_WIDTH : 0);
   }
   else {
     azone_clipped_rect_calc(az, rect);
@@ -897,7 +900,8 @@ static AZone *area_actionzone_refresh_xy(ScrArea *area, const int xy[2], const b
           break;
         }
       }
-      else if (az->type == AZONE_REGION_SCROLL) {
+      else if (az->type == AZONE_REGION_SCROLL && az->region->visible) {
+        /* If the region is not visible we can ignore this scroll-bar zone. */
         ARegion *region = az->region;
         View2D *v2d = &region->v2d;
         int scroll_flag = 0;
@@ -966,7 +970,8 @@ static AZone *area_actionzone_refresh_xy(ScrArea *area, const int xy[2], const b
         area->flag &= ~AREA_FLAG_ACTIONZONES_UPDATE;
         ED_area_tag_redraw_no_rebuild(area);
       }
-      else if (az->type == AZONE_REGION_SCROLL) {
+      else if (az->type == AZONE_REGION_SCROLL && az->region->visible) {
+        /* If the region is not visible we can ignore this scroll-bar zone. */
         if (az->direction == AZ_SCROLL_VERT) {
           az->alpha = az->region->v2d.alpha_vert = 0;
           area->flag &= ~AREA_FLAG_ACTIONZONES_UPDATE;
@@ -2684,14 +2689,20 @@ static int area_max_regionsize(ScrArea *area, ARegion *scale_region, AZEdge edge
         dist -= region->winx;
       }
       else if (scale_region->alignment == RGN_ALIGN_TOP &&
-               (region->alignment == RGN_ALIGN_BOTTOM ||
-                ELEM(region->regiontype, RGN_TYPE_HEADER, RGN_TYPE_TOOL_HEADER, RGN_TYPE_FOOTER)))
+               (region->alignment == RGN_ALIGN_BOTTOM || ELEM(region->regiontype,
+                                                              RGN_TYPE_HEADER,
+                                                              RGN_TYPE_TOOL_HEADER,
+                                                              RGN_TYPE_FOOTER,
+                                                              RGN_TYPE_ASSET_SHELF_HEADER)))
       {
         dist -= region->winy;
       }
       else if (scale_region->alignment == RGN_ALIGN_BOTTOM &&
-               (region->alignment == RGN_ALIGN_TOP ||
-                ELEM(region->regiontype, RGN_TYPE_HEADER, RGN_TYPE_TOOL_HEADER, RGN_TYPE_FOOTER)))
+               (region->alignment == RGN_ALIGN_TOP || ELEM(region->regiontype,
+                                                           RGN_TYPE_HEADER,
+                                                           RGN_TYPE_TOOL_HEADER,
+                                                           RGN_TYPE_FOOTER,
+                                                           RGN_TYPE_ASSET_SHELF_HEADER)))
       {
         dist -= region->winy;
       }
@@ -2742,6 +2753,10 @@ static int region_scale_invoke(bContext *C, wmOperator *op, const wmEvent *event
     if ((az->region->alignment & RGN_SPLIT_PREV) && az->region->prev &&
         !is_split_edge(RGN_ALIGN_ENUM_FROM_MASK(az->region->alignment), az->edge))
     {
+      rmd->region = az->region->prev;
+    }
+    /* Flag to always forward scaling to the previous region. */
+    else if (az->region->prev && (az->region->alignment & RGN_SPLIT_SCALE_PREV)) {
       rmd->region = az->region->prev;
     }
     else {
@@ -3230,7 +3245,7 @@ static int keyframe_jump_exec(bContext *C, wmOperator *op)
 static bool keyframe_jump_poll(bContext *C)
 {
   /* There is a keyframe jump operator specifically for the Graph Editor. */
-  return ED_operator_screenactive_norender(C) && CTX_wm_area(C)->spacetype != SPACE_GRAPH;
+  return ED_operator_screenactive_norender(C) && !ED_operator_graphedit_active(C);
 }
 
 static void SCREEN_OT_keyframe_jump(wmOperatorType *ot)
@@ -3697,7 +3712,8 @@ static int screen_area_options_invoke(bContext *C, wmOperator *op, const wmEvent
     return OPERATOR_CANCELLED;
   }
 
-  uiPopupMenu *pup = UI_popup_menu_begin(C, WM_operatortype_name(op->type, op->ptr), ICON_NONE);
+  uiPopupMenu *pup = UI_popup_menu_begin(
+      C, WM_operatortype_name(op->type, op->ptr).c_str(), ICON_NONE);
   uiLayout *layout = UI_popup_menu_layout(pup);
 
   /* Vertical Split */
@@ -3882,7 +3898,8 @@ static int repeat_history_invoke(bContext *C, wmOperator *op, const wmEvent * /*
     return OPERATOR_CANCELLED;
   }
 
-  uiPopupMenu *pup = UI_popup_menu_begin(C, WM_operatortype_name(op->type, op->ptr), ICON_NONE);
+  uiPopupMenu *pup = UI_popup_menu_begin(
+      C, WM_operatortype_name(op->type, op->ptr).c_str(), ICON_NONE);
   uiLayout *layout = UI_popup_menu_layout(pup);
 
   wmOperator *lastop;
@@ -3892,7 +3909,7 @@ static int repeat_history_invoke(bContext *C, wmOperator *op, const wmEvent * /*
   {
     if ((lastop->type->flag & OPTYPE_REGISTER) && WM_operator_repeat_check(C, lastop)) {
       uiItemIntO(layout,
-                 WM_operatortype_name(lastop->type, lastop->ptr),
+                 WM_operatortype_name(lastop->type, lastop->ptr).c_str(),
                  ICON_NONE,
                  op->type->idname,
                  "index",
@@ -4357,8 +4374,7 @@ void ED_screens_header_tools_menu_create(bContext *C, uiLayout *layout, void * /
 {
   ScrArea *area = CTX_wm_area(C);
   {
-    PointerRNA ptr;
-    RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Space, area->spacedata.first, &ptr);
+    PointerRNA ptr = RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Space, area->spacedata.first);
     if (!ELEM(area->spacetype, SPACE_TOPBAR)) {
       uiItemR(layout, &ptr, "show_region_header", UI_ITEM_NONE, IFACE_("Show Header"), ICON_NONE);
     }
@@ -4395,8 +4411,7 @@ void ED_screens_footer_tools_menu_create(bContext *C, uiLayout *layout, void * /
   ScrArea *area = CTX_wm_area(C);
 
   {
-    PointerRNA ptr;
-    RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Space, area->spacedata.first, &ptr);
+    PointerRNA ptr = RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Space, area->spacedata.first);
     uiItemR(layout, &ptr, "show_region_footer", UI_ITEM_NONE, IFACE_("Show Footer"), ICON_NONE);
   }
 
@@ -4422,9 +4437,7 @@ void ED_screens_region_flip_menu_create(bContext *C, uiLayout *layout, void * /*
 
 static void ed_screens_statusbar_menu_create(uiLayout *layout, void * /*arg*/)
 {
-  PointerRNA ptr;
-
-  RNA_pointer_create(nullptr, &RNA_PreferencesView, &U, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_PreferencesView, &U);
   uiItemR(
       layout, &ptr, "show_statusbar_stats", UI_ITEM_NONE, IFACE_("Scene Statistics"), ICON_NONE);
   uiItemR(layout,
@@ -4738,7 +4751,7 @@ static int screen_animation_step_invoke(bContext *C, wmOperator * /*op*/, const 
       /* Try to keep the playback in realtime by dropping frames. */
 
       /* How much time (in frames) has passed since the last frame was drawn? */
-      double delta_frames = wt->delta * FPS;
+      double delta_frames = wt->time_delta * FPS;
 
       /* Add the remaining fraction from the last time step. */
       delta_frames += sad->lagging_frame_count;
@@ -4856,18 +4869,19 @@ static int screen_animation_step_invoke(bContext *C, wmOperator * /*op*/, const 
     }
   }
 
-  /* update frame rate info too
-   * NOTE: this may not be accurate enough, since we might need this after modifiers/etc.
-   * have been calculated instead of just before updates have been done?
-   */
-  ED_refresh_viewport_fps(C);
+  if (U.uiflag & USER_SHOW_FPS) {
+    /* Update frame rate info too.
+     * NOTE: this may not be accurate enough, since we might need this after modifiers/etc.
+     * have been calculated instead of just before updates have been done? */
+    ED_scene_fps_average_accumulate(scene, U.playback_fps_samples, wt->time_last);
+  }
 
   /* Recalculate the time-step for the timer now that we've finished calculating this,
    * since the frames-per-second value may have been changed.
    */
   /* TODO: this may make evaluation a bit slower if the value doesn't change...
    * any way to avoid this? */
-  wt->timestep = (1.0 / FPS);
+  wt->time_step = (1.0 / FPS);
 
   return OPERATOR_FINISHED;
 }
@@ -4930,6 +4944,7 @@ int ED_screen_animation_play(bContext *C, int sync, int mode)
   if (ED_screen_animation_playing(CTX_wm_manager(C))) {
     /* stop playback now */
     ED_screen_animation_timer(C, 0, 0, 0);
+    ED_scene_fps_average_clear(scene);
     BKE_sound_stop_scene(scene_eval);
 
     BKE_callback_exec_id_depsgraph(
@@ -4939,6 +4954,7 @@ int ED_screen_animation_play(bContext *C, int sync, int mode)
      * playback. */
     WM_event_add_notifier(C, NC_SPACE | ND_SPACE_SEQUENCER, scene);
     WM_event_add_notifier(C, NC_SPACE | ND_SPACE_SPREADSHEET, scene);
+    WM_event_add_notifier(C, NC_SCENE | ND_TRANSFORM, scene);
   }
   else {
     BKE_callback_exec_id_depsgraph(
@@ -4950,6 +4966,7 @@ int ED_screen_animation_play(bContext *C, int sync, int mode)
     }
 
     ED_screen_animation_timer(C, screen->redraws_flag, sync, mode);
+    ED_scene_fps_average_clear(scene);
 
     if (screen->animtimer) {
       wmTimer *wt = screen->animtimer;
@@ -5166,8 +5183,7 @@ static int userpref_show_exec(bContext *C, wmOperator *op)
   if (prop && RNA_property_is_set(op->ptr, prop)) {
     /* Set active section via RNA, so it can fail properly. */
 
-    PointerRNA pref_ptr;
-    RNA_pointer_create(nullptr, &RNA_Preferences, &U, &pref_ptr);
+    PointerRNA pref_ptr = RNA_pointer_create(nullptr, &RNA_Preferences, &U);
     PropertyRNA *active_section_prop = RNA_struct_find_property(&pref_ptr, "active_section");
 
     RNA_property_enum_set(&pref_ptr, active_section_prop, RNA_property_enum_get(op->ptr, prop));
@@ -5464,7 +5480,7 @@ float ED_region_blend_alpha(ARegion *region)
     RegionAlphaInfo *rgi = static_cast<RegionAlphaInfo *>(region->regiontimer->customdata);
     float alpha;
 
-    alpha = float(region->regiontimer->duration) / TIMEOUT;
+    alpha = float(region->regiontimer->time_duration) / TIMEOUT;
     /* makes sure the blend out works 100% - without area redraws */
     if (rgi->hidden) {
       alpha = 0.9f - TIMESTEP - alpha;
@@ -5560,7 +5576,7 @@ static int region_blend_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *
   }
 
   /* end timer? */
-  if (rgi->region->regiontimer->duration > double(TIMEOUT)) {
+  if (rgi->region->regiontimer->time_duration > double(TIMEOUT)) {
     region_blend_end(C, rgi->region, false);
     return (OPERATOR_FINISHED | OPERATOR_PASS_THROUGH);
   }
@@ -5600,9 +5616,8 @@ static int space_type_set_or_cycle_exec(bContext *C, wmOperator *op)
 {
   const int space_type = RNA_enum_get(op->ptr, "space_type");
 
-  PointerRNA ptr;
   ScrArea *area = CTX_wm_area(C);
-  RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Area, area, &ptr);
+  PointerRNA ptr = RNA_pointer_create((ID *)CTX_wm_screen(C), &RNA_Area, area);
   PropertyRNA *prop_type = RNA_struct_find_property(&ptr, "type");
   PropertyRNA *prop_ui_type = RNA_struct_find_property(&ptr, "ui_type");
 
@@ -5683,11 +5698,11 @@ static void context_cycle_prop_get(bScreen *screen,
 
   switch (area->spacetype) {
     case SPACE_PROPERTIES:
-      RNA_pointer_create(&screen->id, &RNA_SpaceProperties, area->spacedata.first, r_ptr);
+      *r_ptr = RNA_pointer_create(&screen->id, &RNA_SpaceProperties, area->spacedata.first);
       propname = "context";
       break;
     case SPACE_USERPREF:
-      RNA_pointer_create(nullptr, &RNA_Preferences, &U, r_ptr);
+      *r_ptr = RNA_pointer_create(nullptr, &RNA_Preferences, &U);
       propname = "active_section";
       break;
     default:

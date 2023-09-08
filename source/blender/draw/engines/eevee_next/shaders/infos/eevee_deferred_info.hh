@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -34,6 +34,17 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light_base)
     .fragment_source("eevee_deferred_light_frag.glsl")
     .sampler(0, ImageType::FLOAT_2D_ARRAY, "gbuffer_closure_tx")
     .sampler(1, ImageType::FLOAT_2D_ARRAY, "gbuffer_color_tx")
+    .image(4,
+           RAYTRACE_RADIANCE_FORMAT,
+           Qualifier::READ,
+           ImageType::FLOAT_2D,
+           "indirect_reflection_img")
+    .image(5,
+           RAYTRACE_RADIANCE_FORMAT,
+           Qualifier::READ,
+           ImageType::FLOAT_2D,
+           "indirect_refraction_img")
+    .define("SSS_TRANSMITTANCE")
     .additional_info("eevee_shared",
                      "eevee_utility_texture",
                      "eevee_sampling_data",
@@ -42,7 +53,6 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light_base)
                      "eevee_lightprobe_data",
                      "eevee_shadow_data",
                      "eevee_deferred_base",
-                     "eevee_transmittance_data",
                      "eevee_hiz_data",
                      "eevee_render_pass_out",
                      "draw_view",

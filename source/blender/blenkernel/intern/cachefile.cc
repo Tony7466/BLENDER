@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -37,7 +37,7 @@
 
 #include "RE_engine.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -104,10 +104,6 @@ static void cache_file_blend_write(BlendWriter *writer, ID *id, const void *id_a
   BLO_write_id_struct(writer, CacheFile, id_address, &cache_file->id);
   BKE_id_blend_write(writer, &cache_file->id);
 
-  if (cache_file->adt) {
-    BKE_animdata_blend_write(writer, cache_file->adt);
-  }
-
   /* write layers */
   LISTBASE_FOREACH (CacheFileLayer *, layer, &cache_file->layers) {
     BLO_write_struct(writer, CacheFileLayer, layer);
@@ -121,10 +117,6 @@ static void cache_file_blend_read_data(BlendDataReader *reader, ID *id)
   cache_file->handle = nullptr;
   cache_file->handle_filepath[0] = '\0';
   cache_file->handle_readers = nullptr;
-
-  /* relink animdata */
-  BLO_read_data_address(reader, &cache_file->adt);
-  BKE_animdata_blend_read_data(reader, cache_file->adt);
 
   /* relink layers */
   BLO_read_list(reader, &cache_file->layers);
@@ -152,8 +144,7 @@ IDTypeInfo IDType_ID_CF = {
 
     /*blend_write*/ cache_file_blend_write,
     /*blend_read_data*/ cache_file_blend_read_data,
-    /*blend_read_lib*/ nullptr,
-    /*blend_read_expand*/ nullptr,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -438,9 +429,7 @@ bool BKE_cache_file_uses_render_procedural(const CacheFile *cache_file, Scene *s
 
 CacheFileLayer *BKE_cachefile_add_layer(CacheFile *cache_file, const char filepath[1024])
 {
-  for (CacheFileLayer *layer = static_cast<CacheFileLayer *>(cache_file->layers.first); layer;
-       layer = layer->next)
-  {
+  LISTBASE_FOREACH (CacheFileLayer *, layer, &cache_file->layers) {
     if (STREQ(layer->filepath, filepath)) {
       return nullptr;
     }

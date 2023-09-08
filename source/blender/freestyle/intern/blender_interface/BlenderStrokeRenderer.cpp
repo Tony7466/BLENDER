@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2008-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,9 +13,9 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
-#include "RNA_types.h"
+#include "RNA_types.hh"
 
 #include "DNA_camera_types.h"
 #include "DNA_collection_types.h"
@@ -219,7 +219,7 @@ Material *BlenderStrokeRenderer::GetStrokeShader(Main *bmain,
     ntree = blender::bke::ntreeCopyTree_ex(iNodeTree, bmain, do_id_user);
 
     // find the active Output Line Style node
-    for (bNode *node = (bNode *)ntree->nodes.first; node; node = node->next) {
+    LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
       if (node->type == SH_NODE_OUTPUT_LINESTYLE && (node->flag & NODE_DO_OUTPUT)) {
         output_linestyle = node;
         break;
@@ -245,7 +245,7 @@ Material *BlenderStrokeRenderer::GetStrokeShader(Main *bmain,
   mix_rgb_color->locx = 200.0f;
   mix_rgb_color->locy = -200.0f;
   tosock = (bNodeSocket *)BLI_findlink(&mix_rgb_color->inputs, 0);  // Fac
-  RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, tosock, &toptr);
+  toptr = RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, tosock);
   RNA_float_set(&toptr, "default_value", 0.0f);
 
   bNode *input_attr_alpha = nodeAddStaticNode(nullptr, ntree, SH_NODE_ATTRIBUTE);
@@ -259,7 +259,7 @@ Material *BlenderStrokeRenderer::GetStrokeShader(Main *bmain,
   mix_rgb_alpha->locx = 600.0f;
   mix_rgb_alpha->locy = 300.0f;
   tosock = (bNodeSocket *)BLI_findlink(&mix_rgb_alpha->inputs, 0);  // Fac
-  RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, tosock, &toptr);
+  toptr = RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, tosock);
   RNA_float_set(&toptr, "default_value", 0.0f);
 
   bNode *shader_emission = nodeAddStaticNode(nullptr, ntree, SH_NODE_EMISSION);
@@ -337,8 +337,8 @@ Material *BlenderStrokeRenderer::GetStrokeShader(Main *bmain,
     }
     else {
       float color[4];
-      RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, outsock, &fromptr);
-      RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, tosock, &toptr);
+      fromptr = RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, outsock);
+      toptr = RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, tosock);
       RNA_float_get_array(&fromptr, "default_value", color);
       RNA_float_set_array(&toptr, "default_value", color);
     }
@@ -350,8 +350,8 @@ Material *BlenderStrokeRenderer::GetStrokeShader(Main *bmain,
       nodeAddLink(ntree, link->fromnode, link->fromsock, mix_rgb_color, tosock);
     }
     else {
-      RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, outsock, &fromptr);
-      RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, tosock, &toptr);
+      fromptr = RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, outsock);
+      toptr = RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, tosock);
       RNA_float_set(&toptr, "default_value", RNA_float_get(&fromptr, "default_value"));
     }
 
@@ -363,8 +363,8 @@ Material *BlenderStrokeRenderer::GetStrokeShader(Main *bmain,
     }
     else {
       float color[4];
-      RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, outsock, &fromptr);
-      RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, tosock, &toptr);
+      fromptr = RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, outsock);
+      toptr = RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, tosock);
       color[0] = color[1] = color[2] = RNA_float_get(&fromptr, "default_value");
       color[3] = 1.0f;
       RNA_float_set_array(&toptr, "default_value", color);
@@ -377,12 +377,12 @@ Material *BlenderStrokeRenderer::GetStrokeShader(Main *bmain,
       nodeAddLink(ntree, link->fromnode, link->fromsock, mix_rgb_alpha, tosock);
     }
     else {
-      RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, outsock, &fromptr);
-      RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, tosock, &toptr);
+      fromptr = RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, outsock);
+      toptr = RNA_pointer_create((ID *)ntree, &RNA_NodeSocket, tosock);
       RNA_float_set(&toptr, "default_value", RNA_float_get(&fromptr, "default_value"));
     }
 
-    for (bNode *node = (bNode *)ntree->nodes.first; node; node = node->next) {
+    LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
       if (node->type == SH_NODE_UVALONGSTROKE) {
         // UV output of the UV Along Stroke node
         bNodeSocket *sock = (bNodeSocket *)BLI_findlink(&node->outputs, 0);
@@ -401,7 +401,7 @@ Material *BlenderStrokeRenderer::GetStrokeShader(Main *bmain,
         fromsock = (bNodeSocket *)BLI_findlink(&input_uvmap->outputs, 0);  // UV
 
         // replace links from the UV Along Stroke node by links from the UV Map node
-        for (bNodeLink *link = (bNodeLink *)ntree->links.first; link; link = link->next) {
+        LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
           if (link->fromnode == node && link->fromsock == sock) {
             nodeAddLink(ntree, input_uvmap, fromsock, link->tonode, link->tosock);
           }

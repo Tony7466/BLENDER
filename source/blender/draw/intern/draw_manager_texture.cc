@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2016 Blender Foundation
+/* SPDX-FileCopyrightText: 2016 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,7 +10,7 @@
 #include "draw_texture_pool.h"
 
 #ifndef NDEBUG
-/* Maybe gpu_texture.c is a better place for this. */
+/* Maybe `gpu_texture.cc` is a better place for this. */
 static bool drw_texture_format_supports_framebuffer(eGPUTextureFormat format)
 {
   /* Some formats do not work with frame-buffers. */
