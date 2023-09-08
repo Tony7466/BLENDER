@@ -753,50 +753,48 @@ static void timeline_cache_draw_simulation_nodes(const blender::bke::bake::Modif
                                                  const uint pos_id)
 {
   std::lock_guard lock{cache.mutex};
-  if (cache.cache_by_id.is_empty()) {
-    return;
-  }
-  /* Draw the state if one of the simulation zones. This is fine for now, because there is no ui
-   * that allows caching zones independently. */
-  const blender::bke::bake::NodeCache &node_cache = **cache.cache_by_id.values().begin();
-  if (node_cache.frame_caches.is_empty()) {
-    return;
-  }
-
-  GPU_matrix_push();
-  GPU_matrix_translate_2f(0.0, float(V2D_SCROLL_HANDLE_HEIGHT) + y_offset);
-  GPU_matrix_scale_2f(1.0, height);
-
-  float color[4];
-  UI_GetThemeColor4fv(TH_SIMULATED_FRAMES, color);
-  switch (node_cache.cache_status) {
-    case blender::bke::bake::CacheStatus::Invalid: {
-      color[3] = 0.4f;
-      break;
-    }
-    case blender::bke::bake::CacheStatus::Valid: {
-      color[3] = 0.7f;
-      break;
-    }
-    case blender::bke::bake::CacheStatus::Baked: {
-      color[3] = 1.0f;
-      break;
-    }
-  }
-
-  immUniformColor4fv(color);
-
-  immBeginAtMost(GPU_PRIM_TRIS, node_cache.frame_caches.size() * 6);
-
-  for (const std::unique_ptr<blender::bke::bake::FrameCache> &frame_cache :
-       node_cache.frame_caches.as_span())
+  for (const std::unique_ptr<blender::bke::bake::NodeCache> &node_cache_ptr :
+       cache.cache_by_id.values())
   {
-    const int frame = frame_cache->frame.frame();
-    immRectf_fast(pos_id, frame - 0.5f, 0, frame + 0.5f, 1.0f);
-  }
-  immEnd();
+    const blender::bke::bake::NodeCache &node_cache = *node_cache_ptr;
+    if (node_cache.frame_caches.is_empty()) {
+      continue;
+    }
+    GPU_matrix_push();
+    GPU_matrix_translate_2f(0.0, float(V2D_SCROLL_HANDLE_HEIGHT) + y_offset);
+    GPU_matrix_scale_2f(1.0, height);
 
-  GPU_matrix_pop();
+    float color[4];
+    UI_GetThemeColor4fv(TH_SIMULATED_FRAMES, color);
+    switch (node_cache.cache_status) {
+      case blender::bke::bake::CacheStatus::Invalid: {
+        color[3] = 0.4f;
+        break;
+      }
+      case blender::bke::bake::CacheStatus::Valid: {
+        color[3] = 0.7f;
+        break;
+      }
+      case blender::bke::bake::CacheStatus::Baked: {
+        color[3] = 1.0f;
+        break;
+      }
+    }
+
+    immUniformColor4fv(color);
+
+    immBeginAtMost(GPU_PRIM_TRIS, node_cache.frame_caches.size() * 6);
+
+    for (const std::unique_ptr<blender::bke::bake::FrameCache> &frame_cache :
+         node_cache.frame_caches.as_span())
+    {
+      const int frame = frame_cache->frame.frame();
+      immRectf_fast(pos_id, frame - 0.5f, 0, frame + 0.5f, 1.0f);
+    }
+    immEnd();
+
+    GPU_matrix_pop();
+  }
 }
 
 void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Scene *scene)
