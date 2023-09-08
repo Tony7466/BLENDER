@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,7 +16,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_threads.h"
 
 #include "BKE_colortools.h"
@@ -24,35 +23,36 @@
 #include "BKE_image.h"
 #include "BKE_layer.h"
 #include "BKE_lib_id.h"
+#include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_screen.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "DEG_depsgraph.h"
 
 #include "IMB_imbuf_types.h"
 
-#include "ED_image.h"
-#include "ED_mask.h"
-#include "ED_node.h"
-#include "ED_render.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_transform.h"
-#include "ED_util.h"
-#include "ED_uvedit.h"
+#include "ED_image.hh"
+#include "ED_mask.hh"
+#include "ED_node.hh"
+#include "ED_render.hh"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_transform.hh"
+#include "ED_util.hh"
+#include "ED_uvedit.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "DRW_engine.h"
 
@@ -63,10 +63,9 @@
 static void image_scopes_tag_refresh(ScrArea *area)
 {
   SpaceImage *sima = (SpaceImage *)area->spacedata.first;
-  ARegion *region;
 
   /* only while histogram is visible */
-  for (region = static_cast<ARegion *>(area->regionbase.first); region; region = region->next) {
+  LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
     if (region->regiontype == RGN_TYPE_TOOL_PROPS && region->flag & RGN_FLAG_HIDDEN) {
       return;
     }
@@ -678,8 +677,8 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
       BLI_rctf_init(&frame, 0.0f, ibuf->x, 0.0f, ibuf->y);
       UI_view2d_view_to_region(&region->v2d, 0.0f, 0.0f, &x, &y);
       ED_region_image_metadata_draw(x, y, ibuf, &frame, zoomx, zoomy);
-      ED_space_image_release_buffer(sima, ibuf, lock);
     }
+    ED_space_image_release_buffer(sima, ibuf, lock);
   }
 
   /* sample line */
@@ -721,8 +720,9 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
                         nullptr,
                         C);
   }
-
-  WM_gizmomap_draw(region->gizmo_map, C, WM_GIZMOMAP_DRAWSTEP_2D);
+  if ((sima->gizmo_flag & SI_GIZMO_HIDE) == 0) {
+    WM_gizmomap_draw(region->gizmo_map, C, WM_GIZMOMAP_DRAWSTEP_2D);
+  }
   draw_image_cache(C, region);
 }
 
@@ -990,7 +990,7 @@ static void image_header_region_listener(const wmRegionListenerParams *params)
   }
 }
 
-static void image_id_remap(ScrArea * /*area*/, SpaceLink *slink, const struct IDRemapper *mappings)
+static void image_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper *mappings)
 {
   SpaceImage *simg = (SpaceImage *)slink;
 
@@ -1002,6 +1002,21 @@ static void image_id_remap(ScrArea * /*area*/, SpaceLink *slink, const struct ID
   BKE_id_remapper_apply(mappings, (ID **)&simg->image, ID_REMAP_APPLY_ENSURE_REAL);
   BKE_id_remapper_apply(mappings, (ID **)&simg->gpd, ID_REMAP_APPLY_UPDATE_REFCOUNT);
   BKE_id_remapper_apply(mappings, (ID **)&simg->mask_info.mask, ID_REMAP_APPLY_ENSURE_REAL);
+}
+
+static void image_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
+{
+  SpaceImage *simg = reinterpret_cast<SpaceImage *>(space_link);
+  const int data_flags = BKE_lib_query_foreachid_process_flags_get(data);
+  const bool is_readonly = (data_flags & IDWALK_READONLY) != 0;
+
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, simg->image, IDWALK_CB_USER_ONE);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, simg->iuser.scene, IDWALK_CB_NOP);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, simg->mask_info.mask, IDWALK_CB_USER_ONE);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, simg->gpd, IDWALK_CB_USER);
+  if (!is_readonly) {
+    simg->scopes.ok = 0;
+  }
 }
 
 /**
@@ -1058,19 +1073,6 @@ static void image_space_blend_read_data(BlendDataReader * /*reader*/, SpaceLink 
 #endif
 }
 
-static void image_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, SpaceLink *sl)
-{
-  SpaceImage *sima = (SpaceImage *)sl;
-
-  BLO_read_id_address(reader, parent_id, &sima->image);
-  BLO_read_id_address(reader, parent_id, &sima->mask_info.mask);
-
-  /* NOTE: pre-2.5, this was local data not lib data, but now we need this as lib data
-   * so fingers crossed this works fine!
-   */
-  BLO_read_id_address(reader, parent_id, &sima->gpd);
-}
-
 static void image_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 {
   BLO_write_struct(writer, SpaceImage, sl);
@@ -1098,11 +1100,12 @@ void ED_spacetype_image()
   st->context = image_context;
   st->gizmos = image_widgets;
   st->id_remap = image_id_remap;
+  st->foreach_id = image_foreach_id;
   st->space_subtype_item_extend = image_space_subtype_item_extend;
   st->space_subtype_get = image_space_subtype_get;
   st->space_subtype_set = image_space_subtype_set;
   st->blend_read_data = image_space_blend_read_data;
-  st->blend_read_lib = image_space_blend_read_lib;
+  st->blend_read_after_liblink = nullptr;
   st->blend_write = image_space_blend_write;
 
   /* regions: main window */
