@@ -225,6 +225,8 @@ static bool bake_simulation_poll(bContext *C)
 struct NodeBakeData {
   int id;
   bake::BakePath path;
+  int frame_start;
+  int frame_end;
   std::unique_ptr<bake::BlobSharing> blob_sharing;
 };
 
@@ -256,6 +258,9 @@ static void bake_simulation_job_startjob(void *customdata,
   G.is_break = false;
   WM_set_locked_interface(job.wm, true);
 
+  int global_bake_start_frame = INT32_MAX;
+  int global_bake_end_frame = INT32_MIN;
+
   Vector<ObjectBakeData> objects_to_bake;
   for (Object *object : job.objects) {
     if (!BKE_id_is_editable(job.bmain, &object->id)) {
@@ -284,12 +289,24 @@ static void bake_simulation_job_startjob(void *customdata,
           NodeBakeData node_bake_data;
           node_bake_data.id = nested_node_ref.id;
           node_bake_data.blob_sharing = std::make_unique<bake::BlobSharing>();
-          if (std::optional<bake::BakePath> path = bake::get_node_bake_path(
-                  *job.bmain, *object, *nmd, nested_node_ref.id))
-          {
-            node_bake_data.path = std::move(*path);
-            modifier_bake_data.nodes.append(std::move(node_bake_data));
+          std::optional<bake::BakePath> path = bake::get_node_bake_path(
+              *job.bmain, *object, *nmd, nested_node_ref.id);
+          if (!path) {
+            continue;
           }
+          std::optional<IndexRange> frame_range = bake::get_node_bake_frame_range(
+              *job.scene, *object, *nmd, nested_node_ref.id);
+          if (!frame_range) {
+            continue;
+          }
+          node_bake_data.path = std::move(*path);
+          node_bake_data.frame_start = frame_range->first();
+          node_bake_data.frame_end = frame_range->last();
+
+          global_bake_start_frame = std::min(global_bake_start_frame, node_bake_data.frame_start);
+          global_bake_end_frame = std::max(global_bake_end_frame, node_bake_data.frame_end);
+
+          modifier_bake_data.nodes.append(std::move(node_bake_data));
         }
 
         bake_data.modifiers.append(std::move(modifier_bake_data));
@@ -301,12 +318,14 @@ static void bake_simulation_job_startjob(void *customdata,
   *progress = 0.0f;
   *do_update = true;
 
+  const int frames_to_bake = global_bake_end_frame - global_bake_start_frame + 1;
+
   const float frame_step_size = 1.0f;
-  const float progress_per_frame = 1.0f / (float(job.scene->r.efra - job.scene->r.sfra + 1) /
-                                           frame_step_size);
+  const float progress_per_frame = frame_step_size / frames_to_bake;
   const int old_frame = job.scene->r.cfra;
 
-  for (float frame_f = job.scene->r.sfra; frame_f <= job.scene->r.efra; frame_f += frame_step_size)
+  for (float frame_f = global_bake_start_frame; frame_f <= global_bake_end_frame;
+       frame_f += frame_step_size)
   {
     const SubFrame frame{frame_f};
 
