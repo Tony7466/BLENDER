@@ -1882,6 +1882,8 @@ struct GeometryNodesLazyFunctionGraphBuilder {
     const int zone_i = zone.index;
     ZoneBuildInfo &zone_info = zone_build_infos_[zone_i];
     lf::Graph &lf_graph = scope_.construct<lf::Graph>();
+    const auto &sim_output_storage = *static_cast<const NodeGeometrySimulationOutput *>(
+        zone.output_node->storage);
 
     lf::Node *lf_zone_input_node = nullptr;
     lf::Node *lf_main_input_usage_node = nullptr;
@@ -1923,6 +1925,18 @@ struct GeometryNodesLazyFunctionGraphBuilder {
 
     for (const bNodeSocket *bsocket : zone.output_node->input_sockets().drop_back(1)) {
       graph_params.usage_by_bsocket.add(bsocket, &lf_simulation_usage_node.output(1));
+    }
+
+    /* Link simulation input node directly to simulation output node for pass-through behavior. */
+    for (const int i : IndexRange(sim_output_storage.items_num)) {
+      lf::InputSocket &lf_to = lf_simulation_output.input(i + 1);
+      if (lf_simulation_input) {
+        lf::OutputSocket &lf_from = lf_simulation_input->output(i + 1);
+        lf_graph.add_link(lf_from, lf_to);
+      }
+      else {
+        lf_to.set_default_value(lf_to.type().default_value());
+      }
     }
 
     this->insert_nodes_and_zones(zone.child_nodes, zone.child_zones, graph_params);
@@ -2012,7 +2026,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
                                                                                 lf_graph_fn);
     zone_info.lazy_function = &zone_function;
 
-    // std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
+    std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
   }
 
   /**

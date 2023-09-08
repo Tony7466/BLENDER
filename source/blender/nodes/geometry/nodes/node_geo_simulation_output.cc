@@ -516,6 +516,7 @@ static void mix_simulation_state(const NodeSimulationItem &item,
 class LazyFunctionForSimulationOutputNode final : public LazyFunction {
   const bNode &node_;
   Span<NodeSimulationItem> simulation_items_;
+  int socket_inputs_offset_;
 
  public:
   LazyFunctionForSimulationOutputNode(const bNode &node,
@@ -533,6 +534,14 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
         "Pass Through",
         *pass_through_bsocket.typeinfo->geometry_nodes_cpp_type,
         lf::ValueUsage::Maybe);
+
+    for (const int i : simulation_items_.index_range()) {
+      const NodeSimulationItem &item = simulation_items_[i];
+      const CPPType &type = get_simulation_item_cpp_type(item);
+      inputs_.append_as(item.name, type, lf::ValueUsage::Maybe);
+    }
+
+    socket_inputs_offset_ = inputs_.size();
 
     for (const int i : simulation_items_.index_range()) {
       const NodeSimulationItem &item = simulation_items_[i];
@@ -696,7 +705,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
   {
     Array<void *> input_values(simulation_items_.size());
     for (const int i : simulation_items_.index_range()) {
-      input_values[i] = params.try_get_input_data_ptr_or_request(i + 1);
+      input_values[i] = params.try_get_input_data_ptr_or_request(i + socket_inputs_offset_);
     }
     if (input_values.as_span().contains(nullptr)) {
       /* Wait for inputs to be computed. */
