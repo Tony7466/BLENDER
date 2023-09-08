@@ -7110,6 +7110,7 @@ static void rna_def_modifier_nodes_id_mapping(BlenderRNA *brna)
   prop = RNA_def_property(srna, "id_type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, rna_enum_id_type_items);
   RNA_def_property_enum_default(prop, ID_MA);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_enum_funcs(prop, nullptr, "rna_NodesModifier_id_mapping_id_type_set", nullptr);
   RNA_def_property_ui_text(prop, "Data-Block Type", "Type of data-block that is mapped");
   RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
