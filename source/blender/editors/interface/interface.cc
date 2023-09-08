@@ -2001,7 +2001,9 @@ void UI_block_end_ex(const bContext *C, uiBlock *block, const int xy[2], int r_x
     UI_block_layout_resolve(block, nullptr, nullptr);
   }
   ui_block_align_calc(block, CTX_wm_region(C));
-  if ((block->flag & UI_BLOCK_LOOP) && (block->flag & UI_BLOCK_NUMSELECT)) {
+  if ((block->flag & UI_BLOCK_LOOP) && (block->flag & UI_BLOCK_NUMSELECT) &&
+      (block->flag & UI_BLOCK_NO_ACCELERATOR_KEYS) == 0)
+  {
     ui_menu_block_set_keyaccels(block); /* could use a different flag to check */
   }
 
@@ -2846,11 +2848,10 @@ void ui_but_string_get_ex(uiBut *but,
     const char *buf = nullptr;
     if ((but->type == UI_BTYPE_TAB) && (but->custom_data)) {
       StructRNA *ptr_type = RNA_property_pointer_type(&but->rnapoin, but->rnaprop);
-      PointerRNA ptr;
 
       /* uiBut.custom_data points to data this tab represents (e.g. workspace).
        * uiBut.rnapoin/prop store an active value (e.g. active workspace). */
-      RNA_pointer_create(but->rnapoin.owner_id, ptr_type, but->custom_data, &ptr);
+      PointerRNA ptr = RNA_pointer_create(but->rnapoin.owner_id, ptr_type, but->custom_data);
       buf = RNA_struct_name_get_alloc(&ptr, str, str_maxncpy, &buf_len);
     }
     else if (type == PROP_STRING) {
@@ -3183,10 +3184,9 @@ bool ui_but_string_set(bContext *C, uiBut *but, const char *str)
           RNA_property_pointer_set(&but->rnapoin, but->rnaprop, rptr, nullptr);
         }
         else if (search_but->item_active != nullptr) {
-          RNA_pointer_create(nullptr,
-                             RNA_property_pointer_type(&but->rnapoin, but->rnaprop),
-                             search_but->item_active,
-                             &rptr);
+          rptr = RNA_pointer_create(nullptr,
+                                    RNA_property_pointer_type(&but->rnapoin, but->rnaprop),
+                                    search_but->item_active);
           RNA_property_pointer_set(&but->rnapoin, but->rnaprop, rptr, nullptr);
         }
 
@@ -3212,12 +3212,11 @@ bool ui_but_string_set(bContext *C, uiBut *but, const char *str)
   else if (but->type == UI_BTYPE_TAB) {
     if (but->rnaprop && but->custom_data) {
       StructRNA *ptr_type = RNA_property_pointer_type(&but->rnapoin, but->rnaprop);
-      PointerRNA ptr;
       PropertyRNA *prop;
 
       /* uiBut.custom_data points to data this tab represents (e.g. workspace).
        * uiBut.rnapoin/prop store an active value (e.g. active workspace). */
-      RNA_pointer_create(but->rnapoin.owner_id, ptr_type, but->custom_data, &ptr);
+      PointerRNA ptr = RNA_pointer_create(but->rnapoin.owner_id, ptr_type, but->custom_data);
       prop = RNA_struct_name_property(ptr_type);
       if (RNA_property_editable(&ptr, prop)) {
         RNA_property_string_set(&ptr, prop, str);
@@ -4286,6 +4285,7 @@ static void ui_def_but_rna__menu(bContext *C, uiLayout *layout, void *but_p)
   uiBlock *block = uiLayoutGetBlock(layout);
   uiPopupBlockHandle *handle = block->handle;
   uiBut *but = (uiBut *)but_p;
+  const int current_value = RNA_property_enum_get(&but->rnapoin, but->rnaprop);
 
   /* see comment in ui_item_enum_expand, re: `uiname`. */
   const EnumPropertyItem *item_array;
@@ -4347,8 +4347,12 @@ static void ui_def_but_rna__menu(bContext *C, uiLayout *layout, void *but_p)
 
   const char *title = RNA_property_ui_name(but->rnaprop);
 
-  if (title[0] && !but->str[0] && (categories == 0)) {
-    /* Show title when no categories and calling button has no text. */
+  /* Is there a non-blank label before this button on the same row? */
+  const bool prior_label = but->prev && but->prev->type == UI_BTYPE_LABEL && but->prev->str[0] &&
+                           but->prev->alignnr == but->alignnr;
+
+  if (title[0] && (categories == 0) && (!but->str[0] || !prior_label)) {
+    /* Show title when no categories and calling button has no text or prior label. */
     uiDefBut(block,
              UI_BTYPE_LABEL,
              0,
@@ -4436,38 +4440,42 @@ static void ui_def_but_rna__menu(bContext *C, uiLayout *layout, void *but_p)
         icon = ICON_BLANK1;
       }
 
+      uiBut *item_but;
       if (icon) {
-        uiDefIconTextButI(block,
-                          UI_BTYPE_BUT_MENU,
-                          B_NOP,
-                          icon,
-                          item->name,
-                          0,
-                          0,
-                          UI_UNIT_X * 5,
-                          UI_UNIT_Y,
-                          &handle->retvalue,
-                          item->value,
-                          0.0,
-                          0,
-                          -1,
-                          item->description);
+        item_but = uiDefIconTextButI(block,
+                                     UI_BTYPE_BUT_MENU,
+                                     B_NOP,
+                                     icon,
+                                     item->name,
+                                     0,
+                                     0,
+                                     UI_UNIT_X * 5,
+                                     UI_UNIT_Y,
+                                     &handle->retvalue,
+                                     item->value,
+                                     0.0,
+                                     0,
+                                     -1,
+                                     item->description);
       }
       else {
-        uiDefButI(block,
-                  UI_BTYPE_BUT_MENU,
-                  B_NOP,
-                  item->name,
-                  0,
-                  0,
-                  UI_UNIT_X * 5,
-                  UI_UNIT_X,
-                  &handle->retvalue,
-                  item->value,
-                  0.0,
-                  0,
-                  -1,
-                  item->description);
+        item_but = uiDefButI(block,
+                             UI_BTYPE_BUT_MENU,
+                             B_NOP,
+                             item->name,
+                             0,
+                             0,
+                             UI_UNIT_X * 5,
+                             UI_UNIT_X,
+                             &handle->retvalue,
+                             item->value,
+                             0.0,
+                             0,
+                             -1,
+                             item->description);
+      }
+      if (item->value == current_value) {
+        item_but->flag |= UI_SELECT_DRAW;
       }
     }
   }
@@ -5844,6 +5852,11 @@ void UI_block_flag_disable(uiBlock *block, int flag)
 void UI_but_flag_enable(uiBut *but, int flag)
 {
   but->flag |= flag;
+}
+
+void UI_but_flag2_enable(uiBut *but, int flag)
+{
+  but->flag2 |= flag;
 }
 
 void UI_but_flag_disable(uiBut *but, int flag)

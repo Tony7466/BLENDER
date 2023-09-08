@@ -94,10 +94,6 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
     FROM_DEFAULT_V4_UCHAR(space_sequencer.list_text_hi);
   }
 
-  if (!USER_VERSION_ATLEAST(303, 6)) {
-    btheme->tui.wcol_view_item = U_theme_default.tui.wcol_view_item;
-  }
-
   if (!USER_VERSION_ATLEAST(306, 3)) {
     FROM_DEFAULT_V4_UCHAR(space_view3d.face_retopology);
   }
@@ -128,6 +124,7 @@ static void do_versions_theme(const UserDef *userdef, bTheme *btheme)
   {
     /* Keep this block, even when empty. */
     FROM_DEFAULT_V4_UCHAR(space_sequencer.transition);
+    FROM_DEFAULT_V4_UCHAR(tui.wcol_list_item.inner_sel);
   }
 
 #undef FROM_DEFAULT_V4_UCHAR
