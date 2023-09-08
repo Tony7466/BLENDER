@@ -410,6 +410,33 @@ static void update_id_properties_from_node_group(NodesModifierData *nmd)
   }
 }
 
+static void update_existing_bake_caches(NodesModifierData &nmd)
+{
+  if (!nmd.runtime->cache) {
+    if (nmd.bakes_num == 0) {
+      return;
+    }
+    nmd.runtime->cache = std::make_shared<bake::ModifierCache>();
+  }
+  bake::ModifierCache &modifier_cache = *nmd.runtime->cache;
+  std::lock_guard lock{modifier_cache.mutex};
+
+  Map<int, std::unique_ptr<bake::NodeCache>> &old_cache_by_id = modifier_cache.cache_by_id;
+  Map<int, std::unique_ptr<bake::NodeCache>> new_cache_by_id;
+  for (const NodesModifierBake &bake : Span{nmd.bakes, nmd.bakes_num}) {
+    std::unique_ptr<bake::NodeCache> node_cache;
+    std::unique_ptr<bake::NodeCache> *old_node_cache_ptr = old_cache_by_id.lookup_ptr(bake.id);
+    if (old_node_cache_ptr == nullptr) {
+      node_cache = std::make_unique<bake::NodeCache>();
+    }
+    else {
+      node_cache = std::move(*old_node_cache_ptr);
+    }
+    new_cache_by_id.add(bake.id, std::move(node_cache));
+  }
+  modifier_cache.cache_by_id = std::move(new_cache_by_id);
+}
+
 static void update_bakes_from_node_group(NodesModifierData &nmd)
 {
   Map<int, const NodesModifierBake *> old_bake_by_id;
@@ -458,6 +485,8 @@ static void update_bakes_from_node_group(NodesModifierData &nmd)
 
   nmd.bakes = new_bake_data;
   nmd.bakes_num = new_bake_ids.size();
+
+  update_existing_bake_caches(nmd);
 }
 
 }  // namespace blender
@@ -815,8 +844,11 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
 
   void init_simulation_info(const int zone_id, nodes::SimulationZoneBehavior &zone_behavior) const
   {
-    bake::NodeCache &node_cache = *modifier_cache_->cache_by_id.lookup_or_add_cb(
-        zone_id, []() { return std::make_unique<bake::NodeCache>(); });
+    if (!modifier_cache_->cache_by_id.contains(zone_id)) {
+      /* Should have been created in #update_existing_bake_caches. */
+      return;
+    }
+    bake::NodeCache &node_cache = *modifier_cache_->cache_by_id.lookup(zone_id);
 
     /* Try load baked data. */
     if (!node_cache.failed_finding_bake) {
