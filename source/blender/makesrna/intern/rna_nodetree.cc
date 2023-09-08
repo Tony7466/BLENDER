@@ -10099,6 +10099,12 @@ static void rna_def_nodetree(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Grease Pencil Data", "Grease Pencil data-block");
   RNA_def_property_update(prop, NC_NODE, nullptr);
 
+  prop = RNA_def_property(srna, "is_viewer", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NTREE_IS_VIEWER);
+  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_ui_text(prop, "Is Viewer Group", "Node Group can be used as Viewer node");
+  RNA_def_property_update(prop, NC_NODE | ND_DISPLAY, nullptr);
+
   prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_enum_items(prop, static_type_items);

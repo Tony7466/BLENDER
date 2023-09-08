@@ -795,8 +795,12 @@ static int node_get_colorid(TreeDrawContext &tree_draw_ctx, const bNode &node)
       return TH_NODE_VECTOR;
     case NODE_CLASS_OP_FILTER:
       return TH_NODE_FILTER;
-    case NODE_CLASS_GROUP:
+    case NODE_CLASS_GROUP: {
+      if (bke::node_is_viewer_group(node)) {
+        return &node == tree_draw_ctx.active_geometry_nodes_viewer ? TH_NODE_OUTPUT : TH_NODE;
+      }
       return TH_NODE_GROUP;
+    }
     case NODE_CLASS_INTERFACE:
       return TH_NODE_INTERFACE;
     case NODE_CLASS_MATTE:
@@ -2650,7 +2654,7 @@ static void node_draw_basis(const bContext &C,
                  "");
     UI_block_emboss_set(&block, UI_EMBOSS);
   }
-  if (node.type == GEO_NODE_VIEWER) {
+  if (node.type == GEO_NODE_VIEWER || bke::node_is_viewer_group(node)) {
     const bool is_active = &node == tree_draw_ctx.active_geometry_nodes_viewer;
     iconofs -= iconbutw;
     UI_block_emboss_set(&block, UI_EMBOSS_NONE);

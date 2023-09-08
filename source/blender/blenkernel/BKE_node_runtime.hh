@@ -564,6 +564,11 @@ inline blender::Span<bNodeTreeInterfaceItem *> bNodeTree::interface_items() cons
   return this->runtime->interface_cache.items;
 }
 
+inline bool bNodeTree::is_viewer() const
+{
+  return this->flag & NTREE_IS_VIEWER;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

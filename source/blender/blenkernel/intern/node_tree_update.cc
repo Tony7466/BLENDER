@@ -480,6 +480,8 @@ class NodeTreeMainUpdater {
     this->remove_unused_previews_when_necessary(ntree);
     this->make_node_previews_dirty(ntree);
 
+    this->propagate_viewers(ntree);
+
     this->propagate_runtime_flags(ntree);
     if (ntree.type == NTREE_GEOMETRY) {
       if (node_field_inferencing::update_field_inferencing(ntree)) {
@@ -734,6 +736,36 @@ class NodeTreeMainUpdater {
       if (bNodeTree *nested_tree = reinterpret_cast<bNodeTree *>(node->id)) {
         this->make_node_previews_dirty(*nested_tree);
       }
+    }
+  }
+
+  void propagate_viewers(bNodeTree &ntree)
+  {
+    ntree.ensure_topology_cache();
+    ntree.flag &= ~NTREE_IS_VIEWER;
+    if (!ntree.interface_outputs().is_empty()) {
+      return;
+    }
+
+    const Span<bNode *> viewers = ntree.nodes_by_type("GeometryNodeViewer");
+    const Span<bNode *> groups = ntree.group_nodes();
+
+    const bNode *viewer_node = viewers.size() != 1 ? nullptr : viewers.first();
+    const bNode *viewer_group = [&]() -> bNode * {
+      bNode *viewer_group = nullptr;
+      for (bNode *group_node : groups) {
+        if (bke::node_is_viewer_group(*group_node)) {
+          if (viewer_group != nullptr) {
+            return nullptr;
+          }
+          viewer_group = group_node;
+        }
+      }
+      return viewer_group;
+    }();
+
+    if ((viewer_node == nullptr) != (viewer_group == nullptr)) {
+      ntree.flag |= NTREE_IS_VIEWER;
     }
   }
 

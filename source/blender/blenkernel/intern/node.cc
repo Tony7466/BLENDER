@@ -3665,6 +3665,12 @@ void nodeSetActive(bNodeTree *ntree, bNode *node)
 
 namespace blender::bke {
 
+bool node_is_viewer_group(const bNode &node)
+{
+  const bNodeTree *tree = reinterpret_cast<bNodeTree *>(node.id);
+  return node.is_group() && (tree != nullptr) && tree->is_viewer();
+}
+
 void nodeSetSocketAvailability(bNodeTree *ntree, bNodeSocket *sock, const bool is_available)
 {
   if (is_available == sock->is_available()) {

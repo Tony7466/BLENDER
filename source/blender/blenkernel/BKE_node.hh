@@ -122,6 +122,8 @@ bool nodeLinkIsSelected(const bNodeLink *link);
 
 void nodeInternalRelink(bNodeTree *ntree, bNode *node);
 
+bool node_is_viewer_group(const bNode &node);
+
 float2 nodeToView(const bNode *node, float2 loc);
 
 float2 nodeFromView(const bNode *node, float2 view_loc);

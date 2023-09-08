@@ -712,6 +712,8 @@ typedef struct bNodeTree {
   [[nodiscard]] bool node_id_path_from_nested_node_ref(const int32_t nested_node_id,
                                                        blender::Vector<int32_t> &r_node_ids) const;
 
+  bool is_viewer() const;
+
   /**
    * Update a run-time cache for the node tree based on it's current state. This makes many methods
    * available which allow efficient lookup for topology information (like neighboring sockets).
@@ -804,6 +806,9 @@ enum {
    * NOTE: DEPRECATED, use (id->tag & LIB_TAG_LOCALIZED) instead.
    */
   // NTREE_IS_LOCALIZED = 1 << 5,
+
+  /** Viuwer subtype of node tree. */
+  NTREE_IS_VIEWER,
 };
 
 /* tree->execution_mode */
