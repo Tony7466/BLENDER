@@ -1201,7 +1201,7 @@ void GRAPH_OT_sound_to_samples(wmOperatorType *ot)
   /* Identifiers */
   ot->name = "Sound to Samples";
   ot->idname = "GRAPH_OT_sound_to_samples";
-  ot->description = "Bakes a sound wave to selected F-Curves";
+  ot->description = "Bakes a sound wave to samples on selected channels";
 
   /* API callbacks */
   ot->invoke = graphkeys_sound_to_samples_invoke;
