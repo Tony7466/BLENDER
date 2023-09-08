@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,6 +9,7 @@
 #include <string>
 
 #include "BLI_assert.h"
+#include "BLI_string.h"
 
 #include "DNA_userdef_types.h"
 

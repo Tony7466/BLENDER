@@ -114,7 +114,7 @@ GHOST_SystemX11::GHOST_SystemX11()
   m_display = XOpenDisplay(nullptr);
 
   if (!m_display) {
-    throw std::runtime_error("X11: Unable to open a display");
+    throw std::runtime_error("unable to open a display!");
   }
 
 #ifdef USE_X11_ERROR_HANDLERS
@@ -482,7 +482,7 @@ static void SleepTillEvent(Display *display, int64_t maxSleep)
   }
 }
 
-/* This function borrowed from Qt's X11 support qclipboard_x11.cpp */
+/* This function borrowed from QT's X11 support `qclipboard_x11.cpp`. */
 struct init_timestamp_data {
   Time timestamp;
 };
@@ -1526,6 +1526,45 @@ void GHOST_SystemX11::processEvent(XEvent *xe)
   }
 }
 
+GHOST_TSuccess GHOST_SystemX11::getPixelAtCursor(float r_color[3]) const
+{
+  /* NOTE: There are known issues/limitations at the moment:
+   *
+   * - Blender has no control of the cursor outside of its window, so it is
+   *   not going to be the eyedropper icon.
+   * - GHOST does not report click events from outside of the window, so the
+   *   user needs to press Enter instead.
+   *
+   * Ref #111303. */
+
+  XColor c;
+  int32_t x, y;
+
+  if (getCursorPosition(x, y) == GHOST_kFailure) {
+    return GHOST_kFailure;
+  }
+  XImage *image = XGetImage(m_display,
+                            XRootWindow(m_display, XDefaultScreen(m_display)),
+                            x,
+                            y,
+                            1,
+                            1,
+                            AllPlanes,
+                            XYPixmap);
+  if (image == nullptr) {
+    return GHOST_kFailure;
+  }
+  c.pixel = XGetPixel(image, 0, 0);
+  XFree(image);
+  XQueryColor(m_display, XDefaultColormap(m_display, XDefaultScreen(m_display)), &c);
+
+  /* X11 returns colors in the [0, 65535] range, so we need to scale back to [0, 1]. */
+  r_color[0] = c.red / 65535.0f;
+  r_color[1] = c.green / 65535.0f;
+  r_color[2] = c.blue / 65535.0f;
+  return GHOST_kSuccess;
+}
+
 GHOST_TSuccess GHOST_SystemX11::getModifierKeys(GHOST_ModifierKeys &keys) const
 {
 
@@ -1693,6 +1732,8 @@ GHOST_TCapabilityFlag GHOST_SystemX11::getCapabilities() const
 {
   return GHOST_TCapabilityFlag(GHOST_CAPABILITY_FLAG_ALL &
                                ~(
+                                   /* No support yet for desktop sampling. */
+                                   GHOST_kCapabilityDesktopSample |
                                    /* No support yet for image copy/paste. */
                                    GHOST_kCapabilityClipboardImages));
 }
@@ -1841,7 +1882,7 @@ static GHOST_TKey ghost_key_from_keysym(const KeySym key)
       GXMAP(type, XK_KP_Multiply, GHOST_kKeyNumpadAsterisk);
       GXMAP(type, XK_KP_Divide, GHOST_kKeyNumpadSlash);
 
-      /* Media keys in some keyboards and laptops with XFree86/Xorg */
+      /* Media keys in some keyboards and laptops with XFree86/XORG. */
 #ifdef WITH_XF86KEYSYM
       GXMAP(type, XF86XK_AudioPlay, GHOST_kKeyMediaPlay);
       GXMAP(type, XF86XK_AudioStop, GHOST_kKeyMediaStop);
@@ -2429,6 +2470,8 @@ GHOST_TSuccess GHOST_SystemX11::showMessageBox(const char *title,
   XSelectInput(m_display, window, ExposureMask | ButtonPressMask | ButtonReleaseMask);
   XMapWindow(m_display, window);
 
+  const bool has_link = link && strlen(link);
+
   while (true) {
     XNextEvent(m_display, &e);
     if (e.type == Expose) {
@@ -2442,7 +2485,7 @@ GHOST_TSuccess GHOST_SystemX11::showMessageBox(const char *title,
                     int(strlen(text_splitted[i])));
       }
       dialog_data.drawButton(m_display, window, buttonBorderGC, buttonGC, 1, continue_label);
-      if (strlen(link)) {
+      if (has_link) {
         dialog_data.drawButton(m_display, window, buttonBorderGC, buttonGC, 2, help_label);
       }
     }
@@ -2451,7 +2494,7 @@ GHOST_TSuccess GHOST_SystemX11::showMessageBox(const char *title,
         break;
       }
       if (dialog_data.isInsideButton(e, 2)) {
-        if (strlen(link)) {
+        if (has_link) {
           string cmd = "xdg-open \"" + string(link) + "\"";
           if (system(cmd.c_str()) != 0) {
             GHOST_PRINTF("GHOST_SystemX11::showMessageBox: Unable to run system command [%s]",

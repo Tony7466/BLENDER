@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -334,8 +334,6 @@ static Mesh *create_uv_sphere_mesh(const float radius,
   mesh->tag_loose_verts_none();
   mesh->tag_loose_edges_none();
   mesh->bounds_set_eager(calculate_bounds_uv_sphere(radius, segments, rings));
-
-  BLI_assert(BKE_mesh_is_valid(mesh));
 
   return mesh;
 }

@@ -286,7 +286,7 @@ static int text_new_exec(bContext *C, wmOperator * /*op*/)
   SpaceText *st = CTX_wm_space_text(C);
   Main *bmain = CTX_data_main(C);
   Text *text;
-  PointerRNA ptr, idptr;
+  PointerRNA ptr;
   PropertyRNA *prop;
 
   text = BKE_text_add(bmain, DATA_("Text"));
@@ -295,7 +295,7 @@ static int text_new_exec(bContext *C, wmOperator * /*op*/)
   UI_context_active_but_prop_get_templateID(C, &ptr, &prop);
 
   if (prop) {
-    RNA_id_pointer_create(&text->id, &idptr);
+    PointerRNA idptr = RNA_id_pointer_create(&text->id);
     RNA_property_pointer_set(&ptr, prop, idptr, nullptr);
     RNA_property_update(C, &ptr, prop);
   }
@@ -354,7 +354,6 @@ static int text_open_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   Text *text;
   PropertyPointerRNA *pprop;
-  PointerRNA idptr;
   char filepath[FILE_MAX];
   const bool internal = RNA_boolean_get(op->ptr, "internal");
 
@@ -377,7 +376,7 @@ static int text_open_exec(bContext *C, wmOperator *op)
   pprop = static_cast<PropertyPointerRNA *>(op->customdata);
 
   if (pprop->prop) {
-    RNA_id_pointer_create(&text->id, &idptr);
+    PointerRNA idptr = RNA_id_pointer_create(&text->id);
     RNA_property_pointer_set(&pprop->ptr, pprop->prop, idptr, nullptr);
     RNA_property_update(C, &pprop->ptr, pprop->prop);
   }
@@ -606,6 +605,11 @@ static void txt_write_file(Main *bmain, Text *text, ReportList *reports)
   FILE *fp;
   BLI_stat_t st;
   char filepath[FILE_MAX];
+
+  if (text->filepath == nullptr) {
+    BKE_reportf(reports, RPT_ERROR, "No file path for \"%s\"", text->id.name + 2);
+    return;
+  }
 
   STRNCPY(filepath, text->filepath);
   BLI_path_abs(filepath, BKE_main_blendfile_path(bmain));
@@ -3968,19 +3972,19 @@ static int text_resolve_conflict_invoke(bContext *C, wmOperator *op, const wmEve
         uiItemEnumO_ptr(layout,
                         op->type,
                         IFACE_("Reload from disk (ignore local changes)"),
-                        0,
+                        ICON_NONE,
                         "resolution",
                         RESOLVE_RELOAD);
         uiItemEnumO_ptr(layout,
                         op->type,
                         IFACE_("Save to disk (ignore outside changes)"),
-                        0,
+                        ICON_NONE,
                         "resolution",
                         RESOLVE_SAVE);
         uiItemEnumO_ptr(layout,
                         op->type,
                         IFACE_("Make text internal (separate copy)"),
-                        0,
+                        ICON_NONE,
                         "resolution",
                         RESOLVE_MAKE_INTERNAL);
         UI_popup_menu_end(C, pup);
@@ -3989,23 +3993,29 @@ static int text_resolve_conflict_invoke(bContext *C, wmOperator *op, const wmEve
         pup = UI_popup_menu_begin(C, IFACE_("File Modified Outside Blender"), ICON_NONE);
         layout = UI_popup_menu_layout(pup);
         uiItemEnumO_ptr(
-            layout, op->type, IFACE_("Reload from disk"), 0, "resolution", RESOLVE_RELOAD);
+            layout, op->type, IFACE_("Reload from disk"), ICON_NONE, "resolution", RESOLVE_RELOAD);
         uiItemEnumO_ptr(layout,
                         op->type,
                         IFACE_("Make text internal (separate copy)"),
-                        0,
+                        ICON_NONE,
                         "resolution",
                         RESOLVE_MAKE_INTERNAL);
-        uiItemEnumO_ptr(layout, op->type, IFACE_("Ignore"), 0, "resolution", RESOLVE_IGNORE);
+        uiItemEnumO_ptr(
+            layout, op->type, IFACE_("Ignore"), ICON_NONE, "resolution", RESOLVE_IGNORE);
         UI_popup_menu_end(C, pup);
       }
       break;
     case 2:
       pup = UI_popup_menu_begin(C, IFACE_("File Deleted Outside Blender"), ICON_NONE);
       layout = UI_popup_menu_layout(pup);
+      uiItemEnumO_ptr(layout,
+                      op->type,
+                      IFACE_("Make text internal"),
+                      ICON_NONE,
+                      "resolution",
+                      RESOLVE_MAKE_INTERNAL);
       uiItemEnumO_ptr(
-          layout, op->type, IFACE_("Make text internal"), 0, "resolution", RESOLVE_MAKE_INTERNAL);
-      uiItemEnumO_ptr(layout, op->type, IFACE_("Recreate file"), 0, "resolution", RESOLVE_SAVE);
+          layout, op->type, IFACE_("Recreate file"), ICON_NONE, "resolution", RESOLVE_SAVE);
       UI_popup_menu_end(C, pup);
       break;
   }

@@ -28,6 +28,8 @@
 #  include <shlobj.h>
 #endif
 
+#include <fmt/format.h>
+
 #include "MEM_CacheLimiterC-Api.h"
 #include "MEM_guardedalloc.h"
 
@@ -82,8 +84,8 @@
 #include "BKE_undo_system.h"
 #include "BKE_workspace.h"
 
-#include "BLO_undofile.h" /* to save from an undo memfile */
-#include "BLO_writefile.h"
+#include "BLO_undofile.hh" /* to save from an undo memfile */
+#include "BLO_writefile.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -2393,9 +2395,8 @@ static void wm_userpref_update_when_changed(bContext *C,
                                             UserDef *userdef_prev,
                                             UserDef *userdef_curr)
 {
-  PointerRNA ptr_a, ptr_b;
-  RNA_pointer_create(nullptr, &RNA_Preferences, userdef_prev, &ptr_a);
-  RNA_pointer_create(nullptr, &RNA_Preferences, userdef_curr, &ptr_b);
+  PointerRNA ptr_a = RNA_pointer_create(nullptr, &RNA_Preferences, userdef_prev);
+  PointerRNA ptr_b = RNA_pointer_create(nullptr, &RNA_Preferences, userdef_curr);
   const bool is_dirty = userdef_curr->runtime.is_dirty;
 
   rna_struct_update_when_changed(C, bmain, &ptr_a, &ptr_b);
@@ -2873,12 +2874,12 @@ static int wm_open_mainfile_exec(bContext *C, wmOperator *op)
   return wm_open_mainfile__open(C, op);
 }
 
-static char *wm_open_mainfile_description(bContext * /*C*/,
-                                          wmOperatorType * /*op*/,
-                                          PointerRNA *params)
+static std::string wm_open_mainfile_description(bContext * /*C*/,
+                                                wmOperatorType * /*op*/,
+                                                PointerRNA *params)
 {
   if (!RNA_struct_property_is_set(params, "filepath")) {
-    return nullptr;
+    return "";
   }
 
   char filepath[FILE_MAX];
@@ -2886,7 +2887,7 @@ static char *wm_open_mainfile_description(bContext * /*C*/,
 
   BLI_stat_t stats;
   if (BLI_stat(filepath, &stats) == -1) {
-    return BLI_sprintfN("%s\n\n%s", filepath, TIP_("File Not Found"));
+    return fmt::format("{}\n\n{}", filepath, TIP_("File Not Found"));
   }
 
   /* Date. */
@@ -2903,13 +2904,13 @@ static char *wm_open_mainfile_description(bContext * /*C*/,
   char size_str[FILELIST_DIRENTRY_SIZE_LEN];
   BLI_filelist_entry_size_to_string(nullptr, uint64_t(stats.st_size), false, size_str);
 
-  return BLI_sprintfN("%s\n\n%s: %s %s\n%s: %s",
-                      filepath,
-                      TIP_("Modified"),
-                      date_st,
-                      time_st,
-                      TIP_("Size"),
-                      size_str);
+  return fmt::format("{}\n\n{}: {} {}\n{}: {}",
+                     filepath,
+                     TIP_("Modified"),
+                     date_st,
+                     time_st,
+                     TIP_("Size"),
+                     size_str);
 }
 
 /* currently fits in a pointer */
@@ -3362,23 +3363,23 @@ static bool wm_save_mainfile_check(bContext * /*C*/, wmOperator *op)
   return false;
 }
 
-static const char *wm_save_as_mainfile_get_name(wmOperatorType *ot, PointerRNA *ptr)
+static std::string wm_save_as_mainfile_get_name(wmOperatorType *ot, PointerRNA *ptr)
 {
   if (RNA_boolean_get(ptr, "copy")) {
     return CTX_IFACE_(ot->translation_context, "Save Copy");
   }
-  return nullptr;
+  return "";
 }
 
-static char *wm_save_as_mainfile_get_description(bContext * /*C*/,
-                                                 wmOperatorType * /*ot*/,
-                                                 PointerRNA *ptr)
+static std::string wm_save_as_mainfile_get_description(bContext * /*C*/,
+                                                       wmOperatorType * /*ot*/,
+                                                       PointerRNA *ptr)
 {
   if (RNA_boolean_get(ptr, "copy")) {
     return BLI_strdup(TIP_(
         "Save the current file in the desired location but do not make the saved file active"));
   }
-  return nullptr;
+  return "";
 }
 
 void WM_OT_save_as_mainfile(wmOperatorType *ot)
@@ -3458,16 +3459,16 @@ static int wm_save_mainfile_invoke(bContext *C, wmOperator *op, const wmEvent * 
   return ret;
 }
 
-static char *wm_save_mainfile_get_description(bContext * /*C*/,
-                                              wmOperatorType * /*ot*/,
-                                              PointerRNA *ptr)
+static std::string wm_save_mainfile_get_description(bContext * /*C*/,
+                                                    wmOperatorType * /*ot*/,
+                                                    PointerRNA *ptr)
 {
   if (RNA_boolean_get(ptr, "incremental")) {
-    return BLI_strdup(
-        TIP_("Save the current Blender file with a numerically incremented name that does not "
-             "overwrite any existing files"));
+    return TIP_(
+        "Save the current Blender file with a numerically incremented name that does not "
+        "overwrite any existing files");
   }
-  return nullptr;
+  return "";
 }
 
 void WM_OT_save_mainfile(wmOperatorType *ot)
@@ -3585,8 +3586,7 @@ static uiBlock *block_create_autorun_warning(bContext *C, ARegion *region, void 
 
   uiItemS(layout);
 
-  PointerRNA pref_ptr;
-  RNA_pointer_create(nullptr, &RNA_PreferencesFilePaths, &U, &pref_ptr);
+  PointerRNA pref_ptr = RNA_pointer_create(nullptr, &RNA_PreferencesFilePaths, &U);
   uiItemR(layout,
           &pref_ptr,
           "use_scripts_auto_execute",
@@ -3806,8 +3806,21 @@ static void save_file_forwardcompat_cancel(bContext *C, void *arg_block, void * 
 
 static void save_file_forwardcompat_cancel_button(uiBlock *block, wmGenericCallback *post_action)
 {
-  uiBut *but = uiDefIconTextBut(
-      block, UI_BTYPE_BUT, 0, 0, IFACE_("Cancel"), 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, 0, 0, "");
+  uiBut *but = uiDefIconTextBut(block,
+                                UI_BTYPE_BUT,
+                                0,
+                                ICON_NONE,
+                                IFACE_("Cancel"),
+                                0,
+                                0,
+                                0,
+                                UI_UNIT_Y,
+                                nullptr,
+                                0,
+                                0,
+                                0,
+                                0,
+                                "");
   UI_but_func_set(but, save_file_forwardcompat_cancel, block, post_action);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
 }
@@ -3815,12 +3828,16 @@ static void save_file_forwardcompat_cancel_button(uiBlock *block, wmGenericCallb
 static void save_file_forwardcompat_overwrite(bContext *C, void *arg_block, void *arg_data)
 {
   wmWindow *win = CTX_wm_window(C);
-  UI_popup_block_close(C, win, static_cast<uiBlock *>(arg_block));
 
   /* Re-use operator properties as defined for the initial 'save' operator, which triggered this
    * 'forward compat' popup. */
   wmGenericCallback *callback = WM_generic_callback_steal(
       static_cast<wmGenericCallback *>(arg_data));
+
+  /* Needs to be done after stealing the callback data above, otherwise it would cause a
+   * use-after-free. */
+  UI_popup_block_close(C, win, static_cast<uiBlock *>(arg_block));
+
   PointerRNA operator_propptr = {};
   PointerRNA *operator_propptr_p = &operator_propptr;
   IDProperty *operator_idproperties = static_cast<IDProperty *>(callback->user_data);
@@ -3834,8 +3851,21 @@ static void save_file_forwardcompat_overwrite(bContext *C, void *arg_block, void
 static void save_file_forwardcompat_overwrite_button(uiBlock *block,
                                                      wmGenericCallback *post_action)
 {
-  uiBut *but = uiDefIconTextBut(
-      block, UI_BTYPE_BUT, 0, 0, IFACE_("Overwrite"), 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, 0, 0, "");
+  uiBut *but = uiDefIconTextBut(block,
+                                UI_BTYPE_BUT,
+                                0,
+                                ICON_NONE,
+                                IFACE_("Overwrite"),
+                                0,
+                                0,
+                                0,
+                                UI_UNIT_Y,
+                                nullptr,
+                                0,
+                                0,
+                                0,
+                                0,
+                                "");
   UI_but_func_set(but, save_file_forwardcompat_overwrite, block, post_action);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
   UI_but_flag_enable(but, UI_BUT_REDALERT);
@@ -3854,7 +3884,7 @@ static void save_file_forwardcompat_saveas_button(uiBlock *block, wmGenericCallb
   uiBut *but = uiDefIconTextBut(block,
                                 UI_BTYPE_BUT,
                                 0,
-                                0,
+                                ICON_NONE,
                                 IFACE_("Save As..."),
                                 0,
                                 0,
@@ -4028,8 +4058,21 @@ static void wm_block_file_close_save(bContext *C, void *arg_block, void *arg_dat
 
 static void wm_block_file_close_cancel_button(uiBlock *block, wmGenericCallback *post_action)
 {
-  uiBut *but = uiDefIconTextBut(
-      block, UI_BTYPE_BUT, 0, 0, IFACE_("Cancel"), 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, 0, 0, "");
+  uiBut *but = uiDefIconTextBut(block,
+                                UI_BTYPE_BUT,
+                                0,
+                                ICON_NONE,
+                                IFACE_("Cancel"),
+                                0,
+                                0,
+                                0,
+                                UI_UNIT_Y,
+                                nullptr,
+                                0,
+                                0,
+                                0,
+                                0,
+                                "");
   UI_but_func_set(but, wm_block_file_close_cancel, block, post_action);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
 }
@@ -4039,7 +4082,7 @@ static void wm_block_file_close_discard_button(uiBlock *block, wmGenericCallback
   uiBut *but = uiDefIconTextBut(block,
                                 UI_BTYPE_BUT,
                                 0,
-                                0,
+                                ICON_NONE,
                                 IFACE_("Don't Save"),
                                 0,
                                 0,
@@ -4063,7 +4106,7 @@ static void wm_block_file_close_save_button(uiBlock *block,
       block,
       UI_BTYPE_BUT,
       0,
-      0,
+      ICON_NONE,
       /* Forward compatibility issues force using 'save as' operator instead of 'save' one. */
       has_forwardcompat_issues ? IFACE_("Save As...") : IFACE_("Save"),
       0,

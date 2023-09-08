@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -935,6 +935,7 @@ static void screen_opengl_render_end(bContext *C, OGLRender *oglrender)
   CTX_wm_region_set(C, oglrender->prevar);
 
   MEM_delete(oglrender);
+  G.is_rendering = false;
 }
 
 static void screen_opengl_render_cancel(bContext *C, wmOperator *op)
@@ -992,6 +993,7 @@ static bool screen_opengl_render_anim_init(bContext *C, wmOperator *op)
     }
   }
 
+  G.is_rendering = true;
   oglrender->cfrao = scene->r.cfra;
   oglrender->nfra = PSFRA;
   scene->r.cfra = PSFRA;
@@ -1302,21 +1304,21 @@ static int screen_opengl_render_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static char *screen_opengl_render_description(bContext * /*C*/,
-                                              wmOperatorType * /*ot*/,
-                                              PointerRNA *ptr)
+static std::string screen_opengl_render_description(bContext * /*C*/,
+                                                    wmOperatorType * /*ot*/,
+                                                    PointerRNA *ptr)
 {
   if (!RNA_boolean_get(ptr, "animation")) {
-    return nullptr;
+    return "";
   }
 
   if (RNA_boolean_get(ptr, "render_keyed_only")) {
-    return BLI_strdup(TIP_(
+    return TIP_(
         "Render the viewport for the animation range of this scene, but only render keyframes of "
-        "selected objects"));
+        "selected objects");
   }
 
-  return BLI_strdup(TIP_("Render the viewport for the animation range of this scene"));
+  return TIP_("Render the viewport for the animation range of this scene");
 }
 
 void RENDER_OT_opengl(wmOperatorType *ot)

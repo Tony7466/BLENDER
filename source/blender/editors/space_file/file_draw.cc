@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -65,13 +65,12 @@ void ED_file_path_button(bScreen *screen,
                          FileSelectParams *params,
                          uiBlock *block)
 {
-  PointerRNA params_rna_ptr;
   uiBut *but;
 
   BLI_assert_msg(params != nullptr,
                  "File select parameters not set. The caller is expected to check this.");
 
-  RNA_pointer_create(&screen->id, &RNA_FileSelectParams, params, &params_rna_ptr);
+  PointerRNA params_rna_ptr = RNA_pointer_create(&screen->id, &RNA_FileSelectParams, params);
 
   /* callbacks for operator check functions */
   UI_block_func_set(block, file_draw_check_cb, nullptr, nullptr);
@@ -186,7 +185,7 @@ static uiBut *file_add_icon_but(const SpaceFile *sfile,
   const int x = tile_draw_rect->xmin;
   const int y = tile_draw_rect->ymax - sfile->layout->tile_border_y - height;
 
-  /* For uiDefIconBut(), if a1==1.0 then a2 is alpha 0.0 - 1.0 */
+  /* For #uiDefIconBut(): if `a1==1.0` then a2 is alpha `0.0 - 1.0`. */
   const float a1 = dimmed ? 1.0f : 0.0f;
   const float a2 = dimmed ? 0.3f : 0.0f;
   but = uiDefIconBut(

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,6 +13,7 @@
 #include "DNA_texture_types.h"
 
 #include "BLI_listbase.h"
+#include "BLI_string.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
@@ -20,7 +21,9 @@
 #include "BKE_layer.h"
 #include "BKE_linestyle.h"
 #include "BKE_node.hh"
+#include "BKE_node_runtime.hh"
 #include "BKE_paint.hh"
+#include "BKE_texture.h"
 
 #include "NOD_texture.h"
 #include "node_common.h"

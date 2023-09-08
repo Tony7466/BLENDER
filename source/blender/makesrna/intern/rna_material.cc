@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -95,7 +95,6 @@ static void rna_Material_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA 
 static void rna_Material_update_previews(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
   Material *ma = (Material *)ptr->owner_id;
-  BKE_material_make_node_previews_dirty(ma);
 
   WM_main_add_notifier(NC_MATERIAL | ND_SHADING_PREVIEW, ma);
 }
@@ -885,6 +884,7 @@ void RNA_def_material(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, nullptr, "pr_type");
   RNA_def_property_enum_items(prop, preview_type_items);
   RNA_def_property_ui_text(prop, "Preview Render Type", "Type of preview render");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_MATERIAL);
   RNA_def_property_update(prop, 0, "rna_Material_update_previews");
 
   prop = RNA_def_property(srna, "use_preview_world", PROP_BOOLEAN, PROP_NONE);

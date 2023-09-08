@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,6 +9,7 @@
 #include "AS_asset_representation.hh"
 
 #include "BLI_listbase.h"
+#include "BLI_string.h"
 #include "BLI_string_search.hh"
 
 #include "DNA_space_types.h"

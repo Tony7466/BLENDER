@@ -789,7 +789,7 @@ static void vgroup_operator_subset_select_props(wmOperatorType *ot, bool use_act
 
   prop = RNA_def_enum(ot->srna,
                       "group_select_mode",
-                      DummyRNA_NULL_items,
+                      rna_enum_dummy_NULL_items,
                       use_active ? WT_VGROUP_ACTIVE : WT_VGROUP_ALL,
                       "Subset",
                       "Define which subset of groups shall be used");
@@ -1006,8 +1006,8 @@ float ED_vgroup_vert_weight(Object *ob, bDeformGroup *dg, int vertnum)
 
 void ED_vgroup_select_by_name(Object *ob, const char *name)
 {
-  /* NOTE: actdef==0 signals on painting to create a new one,
-   * if a bone in posemode is selected */
+  /* NOTE: `actdef == 0` signals on painting to create a new one,
+   * if a bone in pose-mode is selected. */
   BKE_object_defgroup_active_index_set(ob, BKE_object_defgroup_name_index(ob, name) + 1);
 }
 
@@ -2965,9 +2965,9 @@ static int vertex_group_lock_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static char *vertex_group_lock_description(bContext * /*C*/,
-                                           wmOperatorType * /*op*/,
-                                           PointerRNA *params)
+static std::string vertex_group_lock_description(bContext * /*C*/,
+                                                 wmOperatorType * /*op*/,
+                                                 PointerRNA *params)
 {
   int action = RNA_enum_get(params, "action");
   int mask = RNA_enum_get(params, "mask");
@@ -2978,51 +2978,49 @@ static char *vertex_group_lock_description(bContext * /*C*/,
     case VGROUP_LOCK:
       switch (mask) {
         case VGROUP_MASK_ALL:
-          return BLI_strdup(TIP_("Lock all vertex groups of the active object"));
+          return TIP_("Lock all vertex groups of the active object");
         case VGROUP_MASK_SELECTED:
-          return BLI_strdup(TIP_("Lock selected vertex groups of the active object"));
+          return TIP_("Lock selected vertex groups of the active object");
         case VGROUP_MASK_UNSELECTED:
-          return BLI_strdup(TIP_("Lock unselected vertex groups of the active object"));
+          return TIP_("Lock unselected vertex groups of the active object");
         case VGROUP_MASK_INVERT_UNSELECTED:
-          return BLI_strdup(
-              TIP_("Lock selected and unlock unselected vertex groups of the active object"));
+          return TIP_("Lock selected and unlock unselected vertex groups of the active object");
       }
       break;
     case VGROUP_UNLOCK:
       switch (mask) {
         case VGROUP_MASK_ALL:
-          return BLI_strdup(TIP_("Unlock all vertex groups of the active object"));
+          return TIP_("Unlock all vertex groups of the active object");
         case VGROUP_MASK_SELECTED:
-          return BLI_strdup(TIP_("Unlock selected vertex groups of the active object"));
+          return TIP_("Unlock selected vertex groups of the active object");
         case VGROUP_MASK_UNSELECTED:
-          return BLI_strdup(TIP_("Unlock unselected vertex groups of the active object"));
+          return TIP_("Unlock unselected vertex groups of the active object");
         case VGROUP_MASK_INVERT_UNSELECTED:
-          return BLI_strdup(
-              TIP_("Unlock selected and lock unselected vertex groups of the active object"));
+          return TIP_("Unlock selected and lock unselected vertex groups of the active object");
       }
       break;
     case VGROUP_TOGGLE:
       switch (mask) {
         case VGROUP_MASK_ALL:
-          return BLI_strdup(TIP_("Toggle locks of all vertex groups of the active object"));
+          return TIP_("Toggle locks of all vertex groups of the active object");
         case VGROUP_MASK_SELECTED:
-          return BLI_strdup(TIP_("Toggle locks of selected vertex groups of the active object"));
+          return TIP_("Toggle locks of selected vertex groups of the active object");
         case VGROUP_MASK_UNSELECTED:
-          return BLI_strdup(TIP_("Toggle locks of unselected vertex groups of the active object"));
+          return TIP_("Toggle locks of unselected vertex groups of the active object");
         case VGROUP_MASK_INVERT_UNSELECTED:
-          return BLI_strdup(TIP_(
-              "Toggle locks of all and invert unselected vertex groups of the active object"));
+          return TIP_(
+              "Toggle locks of all and invert unselected vertex groups of the active object");
       }
       break;
     case VGROUP_INVERT:
       switch (mask) {
         case VGROUP_MASK_ALL:
-          return BLI_strdup(TIP_("Invert locks of all vertex groups of the active object"));
+          return TIP_("Invert locks of all vertex groups of the active object");
         case VGROUP_MASK_SELECTED:
         case VGROUP_MASK_INVERT_UNSELECTED:
-          return BLI_strdup(TIP_("Invert locks of selected vertex groups of the active object"));
+          return TIP_("Invert locks of selected vertex groups of the active object");
         case VGROUP_MASK_UNSELECTED:
-          return BLI_strdup(TIP_("Invert locks of unselected vertex groups of the active object"));
+          return TIP_("Invert locks of unselected vertex groups of the active object");
       }
       break;
     default:
@@ -3502,7 +3500,7 @@ static const EnumPropertyItem *vgroup_itemf(bContext *C,
                                             bool *r_free)
 {
   if (C == nullptr) {
-    return DummyRNA_NULL_items;
+    return rna_enum_dummy_NULL_items;
   }
 
   Object *ob = ED_object_context(C);
@@ -3512,7 +3510,7 @@ static const EnumPropertyItem *vgroup_itemf(bContext *C,
   int a, totitem = 0;
 
   if (!ob) {
-    return DummyRNA_NULL_items;
+    return rna_enum_dummy_NULL_items;
   }
 
   const ListBase *defbase = BKE_object_defgroup_list(ob);
@@ -3549,7 +3547,7 @@ void OBJECT_OT_vertex_group_set_active(wmOperatorType *ot)
 
   /* properties */
   prop = RNA_def_enum(
-      ot->srna, "group", DummyRNA_NULL_items, 0, "Group", "Vertex group to set as active");
+      ot->srna, "group", rna_enum_dummy_NULL_items, 0, "Group", "Vertex group to set as active");
   RNA_def_enum_funcs(prop, vgroup_itemf);
   RNA_def_property_flag(prop, PROP_ENUM_NO_TRANSLATE);
   ot->prop = prop;

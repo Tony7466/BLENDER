@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'd4d0daa934cd')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'526f935981fd')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-08-07 09:03:59\n"
+"POT-Creation-Date: 2023-09-04 15:42:41\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -1838,14 +1838,6 @@ msgid "Selectable"
 msgstr "Valittavissa oleva"
 
 
-msgid "Layers"
-msgstr "Tasot"
-
-
-msgid "Layers bone exists in"
-msgstr "Tasot, joissa luut esiintyvät"
-
-
 msgid "Length"
 msgstr "Pituus"
 
@@ -1876,6 +1868,10 @@ msgstr "Yhdistetyt"
 
 msgid "Local Location"
 msgstr "Lokaali sijainti"
+
+
+msgid "Visible"
+msgstr "Näkyvä"
 
 
 msgid "Bone Group"
@@ -1946,14 +1942,6 @@ msgid "Material"
 msgstr "Materiaali"
 
 
-msgid "Round"
-msgstr "Pyöreä"
-
-
-msgid "Flat"
-msgstr "Tasainen"
-
-
 msgid "Random Curve"
 msgstr "Satunnainen käyrä"
 
@@ -2004,10 +1992,6 @@ msgstr "Tasotila"
 
 msgid "Layers used as boundaries"
 msgstr "Rajoina käytetyt tasot"
-
-
-msgid "Visible"
-msgstr "Näkyvä"
 
 
 msgid "Visible layers"
@@ -2445,16 +2429,8 @@ msgid "Is Data"
 msgstr "On data"
 
 
-msgid "Linear ACES"
-msgstr "Linear ACES"
-
-
 msgid "Non-Color"
 msgstr "Väritön"
-
-
-msgid "XYZ"
-msgstr "XYZ"
 
 
 msgid "Color Space"
@@ -4705,12 +4681,20 @@ msgid "Push"
 msgstr "Työnnä"
 
 
+msgid "Round"
+msgstr "Pyöreä"
+
+
 msgid "Path"
 msgstr "Polku"
 
 
 msgid "Normals"
 msgstr "Normaalit"
+
+
+msgid "Layers"
+msgstr "Tasot"
 
 
 msgid "Sculpt"
@@ -5179,10 +5163,6 @@ msgstr "Luo iho"
 
 msgid "Material Offset"
 msgstr "Materiaalisiirros"
-
-
-msgid "Boundary Shape"
-msgstr "Rajamuoto"
 
 
 msgid "Surface Modifier"
@@ -5792,15 +5772,6 @@ msgstr "Jätä luvun desimaaliosa"
 
 msgid "The fraction part of A"
 msgstr "Vain luvun A:n desimaaliosa"
-
-
-msgctxt "NodeTree"
-msgid "Modulo"
-msgstr "Jakojäännös"
-
-
-msgid "Modulo using fmod(A,B)"
-msgstr "A:n ja B:n jakojäännös"
 
 
 msgctxt "NodeTree"
@@ -6607,6 +6578,11 @@ msgid "Wave Type"
 msgstr "Aaltotyyppi"
 
 
+msgctxt "NodeTree"
+msgid "Modulo"
+msgstr "Jakojäännös"
+
+
 msgid "Vector Rotate"
 msgstr "Vektorin kirto"
 
@@ -6793,46 +6769,6 @@ msgstr "Objektiasetukset"
 
 msgid "Animation settings"
 msgstr "Animaatioasetukset"
-
-
-msgid "Material Groups"
-msgstr "Materiaaliryhmät"
-
-
-msgid "OBJ Groups"
-msgstr "OBJ-ryhmät"
-
-
-msgid "Export Blender objects as OBJ groups"
-msgstr "Vie Blender-objektit OBJ-ryhminä"
-
-
-msgid "Keep Vertex Order"
-msgstr "Pidä kärkien järjestys"
-
-
-msgid "OBJ Objects"
-msgstr "OBJ-objektit"
-
-
-msgid "Export Blender objects as OBJ objects"
-msgstr "Vie Blender-objektit OBJ-objekteina"
-
-
-msgid "Include Edges"
-msgstr "Sisällytä reunat"
-
-
-msgid "Write Materials"
-msgstr "Kirjoita materiaalit"
-
-
-msgid "Apply modifiers"
-msgstr "Kytke muuntimet"
-
-
-msgid "Write Normals"
-msgstr "Kirjoita normaalit"
 
 
 msgctxt "Operator"
@@ -7491,12 +7427,20 @@ msgid "Canvas"
 msgstr "Kangas"
 
 
+msgid "XYZ"
+msgstr "XYZ"
+
+
 msgid "Pixel Size"
 msgstr "Pikselin koko"
 
 
 msgid "3D"
 msgstr "3D"
+
+
+msgid "Flat"
+msgstr "Tasainen"
 
 
 msgid "Corner"
@@ -7623,6 +7567,10 @@ msgstr "Näkymä"
 
 msgid "AOV"
 msgstr "AOV"
+
+
+msgid "Theme"
+msgstr "Teema"
 
 
 msgid "Active AOV"
@@ -7898,10 +7846,6 @@ msgid "Shortcuts"
 msgstr "Pikanäppäimet"
 
 
-msgid "Theme"
-msgstr "Teema"
-
-
 msgid "Spacebar"
 msgstr "Välilyönti"
 
@@ -7924,10 +7868,6 @@ msgstr "Minimi/Maksimi"
 
 msgid "Z Min"
 msgstr "Z-minimi"
-
-
-msgid "Layers:"
-msgstr "Tasot:"
 
 
 msgid "Triangle A"
@@ -8371,16 +8311,6 @@ msgstr "Väri"
 msgctxt "Operator"
 msgid "Text"
 msgstr "Teksti"
-
-
-msgctxt "Operator"
-msgid "Subtract"
-msgstr "Vähennä"
-
-
-msgctxt "Operator"
-msgid "Multiply"
-msgstr "Kerro"
 
 
 msgid "Add Transition"
@@ -9359,6 +9289,10 @@ msgstr "Vienti asetukset"
 
 msgid "Grouping"
 msgstr "Ryhmittäminen"
+
+
+msgid "Material Groups"
+msgstr "Materiaaliryhmät"
 
 
 msgid "Data Types"

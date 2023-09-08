@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -514,7 +514,7 @@ class edit_generators:
         Replace:
           float abc[3] = {0, 1, 2};
         With:
-          const float abc[3] = {0, 1, 2};
+          `const float abc[3] = {0, 1, 2};`
 
         Replace:
           float abc[3]
@@ -1932,7 +1932,7 @@ def run_edits_on_directory(
             # print(c)
             if index != -1:
                 # Remove first part of the path, we don't want to match
-                # against paths in Blender's repo.
+                # against paths in Blender's repository.
                 # print(source_path)
                 c_strip = c[index:]
                 for regex in regex_list:

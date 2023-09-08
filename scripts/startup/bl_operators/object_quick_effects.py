@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2011-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2011-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -493,7 +493,7 @@ class QuickSmoke(ObjectModeOperator, Operator):
 
         # Setup material
 
-        # Cycles and Eevee
+        # Cycles and EEVEE.
         bpy.ops.object.material_slot_add()
 
         mat = bpy.data.materials.new("Smoke Domain Material")

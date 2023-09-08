@@ -313,7 +313,7 @@ bool ED_object_jump_to_bone(bContext *C,
       if (reveal_hidden) {
         /* Unhide the bone. */
         ebone->flag &= ~BONE_HIDDEN_A;
-        ANIM_armature_ensure_layer_enabled_from_ebone(arm, ebone);
+        ANIM_armature_bonecoll_show_from_ebone(arm, ebone);
       }
 
       /* Select it. */
@@ -337,7 +337,7 @@ bool ED_object_jump_to_bone(bContext *C,
       if (reveal_hidden) {
         /* Unhide the bone. */
         pchan->bone->flag &= ~BONE_HIDDEN_P;
-        ANIM_armature_ensure_layer_enabled_from_pchan(arm, pchan);
+        ANIM_armature_bonecoll_show_from_pchan(arm, pchan);
       }
 
       /* Select it. */
@@ -850,7 +850,7 @@ static bool select_grouped_collection(bContext *C, Object *ob)
     collection = ob_collections[i];
     uiItemStringO(layout,
                   collection->id.name + 2,
-                  0,
+                  ICON_NONE,
                   "OBJECT_OT_select_same_collection",
                   "collection",
                   collection->id.name + 2);

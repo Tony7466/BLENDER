@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -21,15 +21,20 @@ struct ARegion;
 struct Bone;
 struct Collection;
 struct EditBone;
+struct GpencilModifierData;
 struct ID;
 struct LayerCollection;
 struct ListBase;
 struct Main;
+struct ModifierData;
+struct ModifierDataStoreElem;
 struct Object;
 struct Scene;
 struct ShaderFxData;
 struct TreeStoreElem;
 struct ViewLayer;
+struct bActionGroup;
+struct bConstraint;
 struct bContext;
 struct bContextDataResult;
 struct bDeformGroup;
@@ -288,36 +293,6 @@ bool outliner_requires_rebuild_on_select_or_active_change(const SpaceOutliner *s
 
 struct IDsSelectedData {
   ListBase selected_array;
-};
-
-struct BoneElementCreateData {
-  ID *armature_id;
-  Bone *bone;
-};
-
-struct EditBoneElementCreateData {
-  ID *armature_id;
-  EditBone *ebone;
-};
-
-struct DeformGroupElementCreateData {
-  Object *object;
-  bDeformGroup *defgroup;
-};
-
-struct GPencilEffectElementCreateData {
-  Object *object;
-  ShaderFxData *fx;
-};
-
-struct ParticleSystemElementCreateData {
-  Object *object;
-  ParticleSystem *psys;
-};
-
-struct ViewLayerElementCreateData {
-  Scene *scene;
-  ViewLayer *view_layer;
 };
 
 TreeTraversalAction outliner_collect_selected_collections(TreeElement *te, void *customdata);

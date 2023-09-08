@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -1052,20 +1052,16 @@ static uiTooltipData *ui_tooltip_data_from_gizmo(bContext *C, wmGizmo *gz)
                                 nullptr;
       if (gzop != nullptr) {
         /* Description */
-        char *info = WM_operatortype_description_or_name(C, gzop->type, &gzop->ptr);
+        std::string info = WM_operatortype_description_or_name(C, gzop->type, &gzop->ptr);
 
-        if (info != nullptr) {
-          char *text = info;
-
+        if (!info.empty()) {
+          uiTooltipField *field = text_field_add(
+              data, uiTooltipFormat::Style::Header, uiTooltipFormat::ColorID::Value, true);
           if (gzop_actions[i].prefix != nullptr) {
-            text = BLI_sprintfN("%s: %s", gzop_actions[i].prefix, info);
-            MEM_freeN(info);
+            field->text = BLI_sprintfN("%s: %s", gzop_actions[i].prefix, info.c_str());
           }
-
-          if (text != nullptr) {
-            uiTooltipField *field = text_field_add(
-                data, uiTooltipFormat::Style::Header, uiTooltipFormat::ColorID::Value, true);
-            field->text = text;
+          else {
+            field->text = BLI_strdup(info.c_str());
           }
         }
 

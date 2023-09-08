@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -58,6 +58,7 @@
 #include "BKE_main.h"
 #include "BKE_main_idmap.h"
 #include "BKE_preferences.h"
+#include "BKE_preview_image.hh"
 
 #include "DNA_asset_types.h"
 #include "DNA_space_types.h"

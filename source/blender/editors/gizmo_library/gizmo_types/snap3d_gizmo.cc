@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -304,19 +304,6 @@ static void GIZMO_GT_snap_3d(wmGizmoType *gzt)
   gzt->free = snap_gizmo_free;
 
   gzt->struct_size = sizeof(SnapGizmo3D);
-
-  const EnumPropertyItem *rna_enum_snap_element_items;
-  {
-    /* Get Snap Element Items enum. */
-    bool free;
-    PointerRNA toolsettings_ptr;
-    RNA_pointer_create(nullptr, &RNA_ToolSettings, nullptr, &toolsettings_ptr);
-    PropertyRNA *prop = RNA_struct_find_property(&toolsettings_ptr, "snap_elements");
-    RNA_property_enum_items(
-        nullptr, &toolsettings_ptr, prop, &rna_enum_snap_element_items, nullptr, &free);
-
-    BLI_assert(free == false);
-  }
 
   /* Setup. */
   PropertyRNA *prop;
