@@ -6,7 +6,6 @@
 #include "usd.hh"
 #include "usd_hierarchy_iterator.h"
 #include "usd_hook.h"
-#include "usd_modifier_disabler.h"
 
 #include <pxr/base/plug/registry.h>
 #include <pxr/pxr.h>
