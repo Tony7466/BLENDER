@@ -334,6 +334,7 @@ static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
    * of zero. Alternatively the offsets could be copied and incremented directly, but the cost of
    * the copy is slightly higher than the cost of `calloc`. */
   int *counts = MEM_cnew_array<int>(size_t(offsets.size()), __func__);
+  BLI_SCOPED_DEFER([&]() { MEM_freeN(counts); })
   Array<int> results(group_indices.size());
   threading::parallel_for(group_indices.index_range(), 1024, [&](const IndexRange range) {
     for (const int64_t i : range) {
@@ -343,7 +344,6 @@ static Array<int> reverse_indices_in_groups(const Span<int> group_indices,
     }
   });
   sort_small_groups(offsets, 1024, results);
-  MEM_freeN(counts);
   return results;
 }
 
