@@ -1167,6 +1167,9 @@ struct RayTraceData {
   bool1 skip_denoise;
   /** Closure being ray-traced. */
   eClosureBits closure_active;
+  int _pad0;
+  int _pad1;
+  int _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(RayTraceData, 16)
 
@@ -1253,6 +1256,25 @@ BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Uniform Data
+ * \{ */
+
+/* Combines data from several modules to avoid wasting binding slots. */
+struct UniformData {
+  AOData ao;
+  CameraData camera;
+  FilmData film;
+  HiZData hiz;
+  RayTraceData raytrace;
+  RenderBuffersInfoData render_pass;
+  SubsurfaceData subsurface;
+  VolumesInfoData volumes;
+};
+BLI_STATIC_ASSERT_ALIGN(UniformData, 16)
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Utility Texture
  * \{ */
 
@@ -1316,8 +1338,7 @@ using DepthOfFieldDataBuf = draw::UniformBuffer<DepthOfFieldData>;
 using DepthOfFieldScatterListBuf = draw::StorageArrayBuffer<ScatterRect, 16, true>;
 using DrawIndirectBuf = draw::StorageBuffer<DrawCommand, true>;
 using DispatchIndirectBuf = draw::StorageBuffer<DispatchCommand>;
-using FilmDataBuf = draw::UniformBuffer<FilmData>;
-using HiZDataBuf = draw::UniformBuffer<HiZData>;
+using UniformDataBuf = draw::UniformBuffer<UniformData>;
 using IrradianceGridDataBuf = draw::UniformArrayBuffer<IrradianceGridData, IRRADIANCE_GRID_MAX>;
 using IrradianceBrickBuf = draw::StorageVectorBuffer<IrradianceBrickPacked, 16>;
 using LightCullingDataBuf = draw::StorageBuffer<LightCullingData>;
@@ -1329,7 +1350,6 @@ using LightDataBuf = draw::StorageArrayBuffer<LightData, LIGHT_CHUNK>;
 using MotionBlurDataBuf = draw::UniformBuffer<MotionBlurData>;
 using MotionBlurTileIndirectionBuf = draw::StorageBuffer<MotionBlurTileIndirection, true>;
 using RayTraceTileBuf = draw::StorageArrayBuffer<uint, 1024, true>;
-using RayTraceDataBuf = draw::UniformBuffer<RayTraceData>;
 using ReflectionProbeDataBuf =
     draw::UniformArrayBuffer<ReflectionProbeData, REFLECTION_PROBES_MAX>;
 using SamplingDataBuf = draw::StorageBuffer<SamplingData>;
@@ -1340,7 +1360,6 @@ using ShadowPageCacheBuf = draw::StorageArrayBuffer<uint2, SHADOW_MAX_PAGE, true
 using ShadowTileMapDataBuf = draw::StorageVectorBuffer<ShadowTileMapData, SHADOW_MAX_TILEMAP>;
 using ShadowTileMapClipBuf = draw::StorageArrayBuffer<ShadowTileMapClip, SHADOW_MAX_TILEMAP, true>;
 using ShadowTileDataBuf = draw::StorageArrayBuffer<ShadowTileDataPacked, SHADOW_MAX_TILE, true>;
-using SubsurfaceDataBuf = draw::UniformBuffer<SubsurfaceData>;
 using SurfelBuf = draw::StorageArrayBuffer<Surfel, 64>;
 using SurfelRadianceBuf = draw::StorageArrayBuffer<SurfelRadiance, 64>;
 using CaptureInfoBuf = draw::StorageBuffer<CaptureInfoData>;
@@ -1348,9 +1367,7 @@ using SurfelListInfoBuf = draw::StorageBuffer<SurfelListInfoData>;
 using VelocityGeometryBuf = draw::StorageArrayBuffer<float4, 16, true>;
 using VelocityIndexBuf = draw::StorageArrayBuffer<VelocityIndex, 16>;
 using VelocityObjectBuf = draw::StorageArrayBuffer<float4x4, 16>;
-using VolumesInfoDataBuf = draw::UniformBuffer<VolumesInfoData>;
 using CryptomatteObjectBuf = draw::StorageArrayBuffer<float2, 16>;
-using AODataBuf = draw::UniformBuffer<AOData>;
 
 }  // namespace blender::eevee
 #endif
