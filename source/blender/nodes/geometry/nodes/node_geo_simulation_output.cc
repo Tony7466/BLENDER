@@ -529,7 +529,16 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
   const bNode &node_;
   Span<NodeSimulationItem> simulation_items_;
   int skip_input_index_;
+  /**
+   * Start index of the simulation state inputs that are used when the simulation is skipped. Those
+   * inputs are linked directly to the simulation input node. Those inputs only exist internally,
+   * but not in the UI.
+   */
   int skip_inputs_offset_;
+  /**
+   * Start index of the simulation state inputs that are used when the simulation is actually
+   * computed. Those correspond to the sockets that are visible in the UI.
+   */
   int solve_inputs_offset_;
 
  public:
@@ -550,6 +559,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
 
     skip_inputs_offset_ = inputs_.size();
 
+    /* Add the skip inputs that are linked to the simulation input node. */
     for (const int i : simulation_items_.index_range()) {
       const NodeSimulationItem &item = simulation_items_[i];
       const CPPType &type = get_simulation_item_cpp_type(item);
@@ -558,6 +568,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
 
     solve_inputs_offset_ = inputs_.size();
 
+    /* Add the solve inputs that correspond to the simulation state inputs in the UI. */
     for (const int i : simulation_items_.index_range()) {
       const NodeSimulationItem &item = simulation_items_[i];
       const bNodeSocket &input_bsocket = node.input_socket(i + 1);
@@ -727,6 +738,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
   std::optional<bke::bake::BakeState> get_bake_state_from_inputs(lf::Params &params,
                                                                  const bool skip) const
   {
+    /* Choose which set of input parameters to use. The others are ignored. */
     const int params_offset = skip ? skip_inputs_offset_ : solve_inputs_offset_;
     Array<void *> input_values(simulation_items_.size());
     for (const int i : simulation_items_.index_range()) {
