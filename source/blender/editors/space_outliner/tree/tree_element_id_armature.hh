@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -25,8 +25,8 @@ class TreeElementIDArmature final : public TreeElementID {
   void expand(SpaceOutliner &) const override;
 
  private:
-  void expandEditBones(SpaceOutliner &) const;
-  void expandBones(SpaceOutliner &) const;
+  void expand_edit_bones() const;
+  void expand_bones(SpaceOutliner &) const;
 };
 
 }  // namespace blender::ed::outliner

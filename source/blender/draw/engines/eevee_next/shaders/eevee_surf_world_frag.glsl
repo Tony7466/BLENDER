@@ -1,9 +1,12 @@
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Background used to shade the world.
  *
  * Outputs shading parameter per pixel using a set of randomized BSDFs.
- **/
+ */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
@@ -49,6 +52,6 @@ void main()
   output_renderpass_color(rp_buf.specular_color_id, clear_color);
   output_renderpass_color(rp_buf.emission_id, clear_color);
   output_renderpass_value(rp_buf.shadow_id, 1.0);
-  output_renderpass_value(rp_buf.ambient_occlusion_id, 0.0);
+  /** NOTE: AO is done on its own pass. */
   imageStore(rp_cryptomatte_img, texel, vec4(0.0));
 }

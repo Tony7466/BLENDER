@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,10 +13,6 @@
 #include "DNA_xr_types.h"     /* for #XrSessionSettings */
 
 #include "DNA_ID.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /* Defined here: */
 
@@ -57,6 +53,7 @@ typedef enum eReportType {
   RPT_ERROR_INVALID_CONTEXT = (1 << 7),
   RPT_ERROR_OUT_OF_MEMORY = (1 << 8),
 } eReportType;
+ENUM_OPERATORS(eReportType, RPT_ERROR_OUT_OF_MEMORY)
 
 #define RPT_DEBUG_ALL (RPT_DEBUG)
 #define RPT_INFO_ALL (RPT_INFO)
@@ -108,8 +105,8 @@ typedef struct ReportList {
 #
 #
 typedef struct ReportTimerInfo {
-  float col[4];
   float widthfac;
+  float flash_progress;
 } ReportTimerInfo;
 
 //#ifdef WITH_XR_OPENXR
@@ -178,8 +175,12 @@ typedef struct wmWindowManager {
   /** Active dragged items. */
   ListBase drags;
 
-  /** Known key configurations. */
+  /**
+   * Known key configurations.
+   * This includes all the #wmKeyConfig members (`defaultconf`, `addonconf`, etc).
+   */
   ListBase keyconfigs;
+
   /** Default configuration. */
   struct wmKeyConfig *defaultconf;
   /** Addon configuration. */
@@ -205,6 +206,8 @@ typedef struct wmWindowManager {
   wmXrData xr;
   //#endif
 } wmWindowManager;
+
+#define WM_KEYCONFIG_ARRAY_P(wm) &(wm)->defaultconf, &(wm)->addonconf, &(wm)->userconf
 
 /** #wmWindowManager.init_flag */
 enum {
@@ -660,7 +663,3 @@ enum {
    */
   OP_IS_MODAL_CURSOR_REGION = (1 << 3),
 };
-
-#ifdef __cplusplus
-}
-#endif

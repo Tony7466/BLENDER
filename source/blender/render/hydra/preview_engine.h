@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -11,22 +12,8 @@ class PreviewEngine : public FinalEngine {
  public:
   using FinalEngine::FinalEngine;
 
-  static PreviewEngine *get_instance(RenderEngine *bl_engine,
-                                     const std::string &render_delegate_name);
-  static void schedule_free();
-
-  void sync(Depsgraph *depsgraph,
-            bContext *context,
-            pxr::HdRenderSettingsMap &render_settings) override;
-  void render(Depsgraph *depsgraph) override;
-
- private:
-  /* Singleton class instance */
-  static double free_instance(uintptr_t uuid, void *user_data);
-  static std::unique_ptr<PreviewEngine> instance_;
-
-  void update(RenderEngine *bl_engine, const std::string &render_delegate_name);
-  void update_render_result(std::vector<float> &pixels);
+ protected:
+  void notify_status(float progress, const std::string &title, const std::string &info) override;
 };
 
 }  // namespace blender::render::hydra

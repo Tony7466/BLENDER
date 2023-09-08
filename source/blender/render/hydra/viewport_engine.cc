@@ -1,27 +1,34 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+#include "viewport_engine.h"
 
 #include <pxr/base/gf/camera.h>
 #include <pxr/imaging/glf/drawTarget.h>
 #include <pxr/usd/usdGeom/camera.h>
 
 #include "DNA_camera_types.h"
+#include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
-#include "DNA_vec_types.h" /* this include must be before BKE_camera.h due to "rctf" type */
-
-#include "BKE_camera.h"
+#include "DNA_vec_types.h" /* This include must be before `BKE_camera.h` due to `rctf` type. */
+#include "DNA_view3d_types.h"
 
 #include "BLI_math_matrix.h"
 #include "BLI_timecode.h"
+#include "PIL_time.h"
+
+#include "BKE_camera.h"
+#include "BKE_context.h"
 
 #include "DEG_depsgraph_query.h"
 
+#include "GPU_context.h"
 #include "GPU_matrix.h"
 
-#include "PIL_time.h"
+#include "RE_engine.h"
 
-#include "camera.h"
-#include "viewport_engine.h"
+#include "hydra/camera.h"
 
 namespace blender::render::hydra {
 
@@ -33,17 +40,18 @@ struct ViewSettings {
 
   pxr::GfCamera gf_camera();
 
-  CameraData camera_data;
+  io::hydra::CameraData camera_data;
 
   int screen_width;
   int screen_height;
   pxr::GfVec4i border;
 };
 
-ViewSettings::ViewSettings(bContext *context) : camera_data(context)
+ViewSettings::ViewSettings(bContext *context)
+    : camera_data(CTX_wm_view3d(context), CTX_wm_region(context))
 {
   View3D *view3d = CTX_wm_view3d(context);
-  RegionView3D *region_data = (RegionView3D *)CTX_wm_region_data(context);
+  RegionView3D *region_data = static_cast<RegionView3D *>(CTX_wm_region_data(context));
   ARegion *region = CTX_wm_region(context);
 
   screen_width = region->winx;
@@ -60,7 +68,7 @@ ViewSettings::ViewSettings(bContext *context) : camera_data(context)
       Object *camera_obj = scene->camera;
 
       float camera_points[4][3];
-      BKE_camera_view_frame(scene, (Camera *)camera_obj->data, camera_points);
+      BKE_camera_view_frame(scene, static_cast<Camera *>(camera_obj->data), camera_points);
 
       float screen_points[4][2];
       for (int i = 0; i < 4; i++) {
@@ -130,13 +138,13 @@ int ViewSettings::height()
 
 pxr::GfCamera ViewSettings::gf_camera()
 {
-  return camera_data.gf_camera(pxr::GfVec4f((float)border[0] / screen_width,
-                                            (float)border[1] / screen_height,
-                                            (float)border[2] / screen_width,
-                                            (float)border[3] / screen_height));
+  return camera_data.gf_camera(pxr::GfVec4f(float(border[0]) / screen_width,
+                                            float(border[1]) / screen_height,
+                                            float(border[2]) / screen_width,
+                                            float(border[3]) / screen_height));
 }
 
-DrawTexture::DrawTexture() : texture_(nullptr), width_(0), height_(0), channels_(4)
+DrawTexture::DrawTexture()
 {
   float coords[8] = {0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0};
 
@@ -154,132 +162,98 @@ DrawTexture::DrawTexture() : texture_(nullptr), width_(0), height_(0), channels_
 DrawTexture::~DrawTexture()
 {
   if (texture_) {
-    free();
+    GPU_texture_free(texture_);
   }
   GPU_batch_discard(batch_);
 }
 
-void DrawTexture::set_buffer(pxr::HdRenderBuffer *buffer)
+void DrawTexture::write_data(int width, int height, const void *data)
 {
-  if (!texture_) {
-    create(buffer);
+  if (texture_ && width == GPU_texture_width(texture_) && height == GPU_texture_height(texture_)) {
+    if (data) {
+      GPU_texture_update(texture_, GPU_DATA_FLOAT, data);
+    }
     return;
   }
 
-  if (width_ != buffer->GetWidth() || height_ != buffer->GetHeight()) {
-    free();
-    create(buffer);
-    return;
+  if (texture_) {
+    GPU_texture_free(texture_);
   }
 
-  void *data = buffer->Map();
-  GPU_texture_update(texture_, GPU_DATA_FLOAT, data);
-  buffer->Unmap();
+  texture_ = GPU_texture_create_2d("tex_hydra_render_viewport",
+                                   width,
+                                   height,
+                                   1,
+                                   GPU_RGBA32F,
+                                   GPU_TEXTURE_USAGE_GENERAL,
+                                   (float *)data);
 }
 
-void DrawTexture::draw(GPUShader *shader, float x, float y)
+void DrawTexture::draw(GPUShader *shader, const pxr::GfVec4d &viewport, GPUTexture *tex)
 {
+  if (!tex) {
+    tex = texture_;
+  }
   int slot = GPU_shader_get_sampler_binding(shader, "image");
-  GPU_texture_bind(texture_, slot);
+  GPU_texture_bind(tex, slot);
   GPU_shader_uniform_1i(shader, "image", slot);
 
   GPU_matrix_push();
-  GPU_matrix_translate_2f(x, y);
-  GPU_matrix_scale_2f(width_, height_);
+  GPU_matrix_translate_2f(viewport[0], viewport[1]);
+  GPU_matrix_scale_2f(viewport[2] - viewport[0], viewport[3] - viewport[1]);
   GPU_batch_set_shader(batch_, shader);
   GPU_batch_draw(batch_);
   GPU_matrix_pop();
 }
 
-void DrawTexture::create(pxr::HdRenderBuffer *buffer)
+GPUTexture *DrawTexture::texture() const
 {
-  width_ = buffer->GetWidth();
-  height_ = buffer->GetHeight();
-  channels_ = pxr::HdGetComponentCount(buffer->GetFormat());
-
-  void *data = buffer->Map();
-  texture_ = GPU_texture_create_2d("tex_hydra_render_viewport",
-                                   width_,
-                                   height_,
-                                   1,
-                                   GPU_RGBA16F,
-                                   GPU_TEXTURE_USAGE_GENERAL,
-                                   (float *)data);
-  buffer->Unmap();
-
-  GPU_texture_filter_mode(texture_, true);
-  GPU_texture_mipmap_mode(texture_, true, true);
+  return texture_;
 }
 
-void DrawTexture::free()
+void ViewportEngine::render()
 {
-  GPU_texture_free(texture_);
-  texture_ = nullptr;
-}
-
-void ViewportEngine::sync(Depsgraph *depsgraph,
-                          bContext *context,
-                          pxr::HdRenderSettingsMap &render_settings)
-{
-  if (!scene_delegate_) {
-    scene_delegate_ = std::make_unique<BlenderSceneDelegate>(
-        render_index_.get(),
-        pxr::SdfPath::AbsoluteRootPath().AppendElementString("scene"),
-        BlenderSceneDelegate::EngineType::VIEWPORT,
-        render_delegate_name_);
-  }
-  scene_delegate_->populate(depsgraph, context);
-
-  for (auto const &setting : render_settings) {
-    render_delegate_->SetRenderSetting(setting.first, setting.second);
-  }
-}
-
-void ViewportEngine::render(Depsgraph *depsgraph)
-{
-  /* Empty function */
-}
-
-void ViewportEngine::render(Depsgraph *depsgraph, bContext *context)
-{
-  ViewSettings view_settings(context);
+  ViewSettings view_settings(context_);
   if (view_settings.width() * view_settings.height() == 0) {
     return;
   };
 
   pxr::GfCamera gf_camera = view_settings.gf_camera();
   free_camera_delegate_->SetCamera(gf_camera);
-  render_task_delegate_->set_camera_and_viewport(free_camera_delegate_->GetCameraId(),
-                                                 pxr::GfVec4d(view_settings.border[0],
-                                                              view_settings.border[1],
-                                                              view_settings.border[2],
-                                                              view_settings.border[3]));
-  if (simple_light_task_delegate_) {
-    simple_light_task_delegate_->set_camera_path(free_camera_delegate_->GetCameraId());
+
+  pxr::GfVec4d viewport(view_settings.border[0],
+                        view_settings.border[1],
+                        view_settings.border[2],
+                        view_settings.border[3]);
+  render_task_delegate_->set_viewport(viewport);
+  if (light_tasks_delegate_) {
+    light_tasks_delegate_->set_viewport(viewport);
   }
 
-  if ((bl_engine_->type->flag & RE_USE_GPU_CONTEXT) == 0) {
-    render_task_delegate_->set_renderer_aov(pxr::HdAovTokens->color);
-  }
+  render_task_delegate_->add_aov(pxr::HdAovTokens->color);
+  render_task_delegate_->add_aov(pxr::HdAovTokens->depth);
 
+  GPUFrameBuffer *view_framebuffer = GPU_framebuffer_active_get();
+  render_task_delegate_->bind();
+
+  auto t = tasks();
+  engine_->Execute(render_index_.get(), &t);
+
+  render_task_delegate_->unbind();
+
+  GPU_framebuffer_bind(view_framebuffer);
   GPUShader *shader = GPU_shader_get_builtin_shader(GPU_SHADER_3D_IMAGE);
   GPU_shader_bind(shader);
 
-  pxr::HdTaskSharedPtrVector tasks;
-  if (simple_light_task_delegate_) {
-    tasks.push_back(simple_light_task_delegate_->get_task());
+  GPURenderTaskDelegate *gpu_task = dynamic_cast<GPURenderTaskDelegate *>(
+      render_task_delegate_.get());
+  if (gpu_task) {
+    draw_texture_.draw(shader, viewport, gpu_task->aov_texture(pxr::HdAovTokens->color));
   }
-  tasks.push_back(render_task_delegate_->get_task());
-
-  {
-    /* Release the GIL before calling into hydra, in case any hydra plugins call into python. */
-    pxr::TF_PY_ALLOW_THREADS_IN_SCOPE();
-    engine_->Execute(render_index_.get(), &tasks);
-
-    if ((bl_engine_->type->flag & RE_USE_GPU_CONTEXT) == 0) {
-      draw_texture_.set_buffer(render_task_delegate_->get_renderer_aov(pxr::HdAovTokens->color));
-      draw_texture_.draw(shader, view_settings.border[0], view_settings.border[1]);
-    }
+  else {
+    draw_texture_.write_data(view_settings.width(), view_settings.height(), nullptr);
+    render_task_delegate_->read_aov(pxr::HdAovTokens->color, draw_texture_.texture());
+    draw_texture_.draw(shader, viewport);
   }
 
   GPU_shader_unbind();
@@ -293,18 +267,28 @@ void ViewportEngine::render(Depsgraph *depsgraph, bContext *context)
   BLI_timecode_string_from_time_simple(
       elapsed_time, sizeof(elapsed_time), PIL_check_seconds_timer() - time_begin_);
 
+  float percent_done = renderer_percent_done();
   if (!render_task_delegate_->is_converged()) {
-    notify_status(std::string("Time: ") + elapsed_time +
-                      " | Done: " + std::to_string(int(renderer_percent_done())) + "%",
+    notify_status(percent_done / 100.0,
+                  std ::string("Time: ") + elapsed_time +
+                      " | Done: " + std::to_string(int(percent_done)) + "%",
                   "Render");
     bl_engine_->flag |= RE_ENGINE_DO_DRAW;
   }
   else {
-    notify_status((std::string("Time: ") + elapsed_time).c_str(), "Rendering Done");
+    notify_status(percent_done / 100.0, std::string("Time: ") + elapsed_time, "Rendering Done");
   }
 }
 
-void ViewportEngine::notify_status(const std::string &info, const std::string &status)
+void ViewportEngine::render(bContext *context)
+{
+  context_ = context;
+  render();
+}
+
+void ViewportEngine::notify_status(float /*progress*/,
+                                   const std::string &info,
+                                   const std::string &status)
 {
   RE_engine_update_stats(bl_engine_, status.c_str(), info.c_str());
 }

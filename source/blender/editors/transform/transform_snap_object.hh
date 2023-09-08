@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,18 +8,21 @@
 
 #pragma once
 
-#define MAX_CLIPPLANE_LEN 3
+#include "BLI_math_geom.h"
+
+#define MAX_CLIPPLANE_LEN 6
 
 #define SNAP_TO_EDGE_ELEMENTS \
   (SCE_SNAP_TO_EDGE | SCE_SNAP_TO_EDGE_ENDPOINT | SCE_SNAP_TO_EDGE_MIDPOINT | \
    SCE_SNAP_TO_EDGE_PERPENDICULAR)
 
-struct SnapCache_EditMesh;
-
 struct SnapObjectContext {
-  struct Scene *scene;
+  Scene *scene;
 
-  blender::Map<const BMEditMesh *, std::unique_ptr<SnapCache_EditMesh>> editmesh_caches;
+  struct SnapCache {
+    virtual ~SnapCache(){};
+  };
+  blender::Map<const BMEditMesh *, std::unique_ptr<SnapCache>> editmesh_caches;
 
   /* Filter data, returns true to check this value */
   struct {
@@ -39,34 +42,37 @@ struct SnapObjectContext {
     eSnapMode snap_to_flag;
     SnapObjectParams params;
 
-    float ray_start[3];
-    float ray_dir[3];
-    float mval[2];
+    blender::float3 ray_start;
+    blender::float3 ray_dir;
 
-    float init_co[3];
-    float curr_co[3];
+    blender::float3 init_co;
+    blender::float3 curr_co;
 
-    float win_size[2]; /* win x and y */
-    float clip_plane[MAX_CLIPPLANE_LEN][4];
-    int clip_plane_len;
+    blender::float2 win_size; /* win x and y */
+    blender::float2 mval;
+
+    blender::Vector<blender::float4, MAX_CLIPPLANE_LEN> clip_planes;
+    blender::float4 occlusion_plane;
+    blender::float4 occlusion_plane_in_front;
 
     /* read/write */
     uint object_index;
 
-    bool has_occlusion_plane; /* Ignore plane of occlusion in curves. */
+    bool has_occlusion_plane;
+    bool has_occlusion_plane_in_front;
     bool use_occlusion_test_edit;
   } runtime;
 
   /* Output. */
   struct {
     /* Location of snapped point on target surface. */
-    float loc[3];
+    blender::float3 loc;
     /* Normal of snapped point on target surface. */
-    float no[3];
+    blender::float3 no;
     /* Index of snapped element on target object (-1 when no valid index is found). */
     int index;
     /* Matrix of target object (may not be #Object.object_to_world with dupli-instances). */
-    float obmat[4][4];
+    blender::float4x4 obmat;
     /* List of #SnapObjectHitDepth (caller must free). */
     ListBase *hit_list;
     /* Snapped object. */
@@ -75,6 +81,7 @@ struct SnapObjectContext {
     const ID *data;
 
     float ray_depth_max;
+    float ray_depth_max_in_front;
     float dist_px_sq;
   } ret;
 };
@@ -85,7 +92,7 @@ struct RayCastAll_Data {
   /* internal vars for adding depths */
   BVHTree_RayCastCallback raycast_callback;
 
-  const float (*obmat)[4];
+  const blender::float4x4 *obmat;
 
   float len_diff;
   float local_scale;
@@ -100,7 +107,7 @@ class SnapData {
  public:
   /* Read-only. */
   DistProjectedAABBPrecalc nearest_precalc;
-  blender::Vector<blender::float4, MAX_CLIPPLANE_LEN> clip_planes;
+  blender::Vector<blender::float4, MAX_CLIPPLANE_LEN + 1> clip_planes;
   blender::float4x4 pmat_local;
   blender::float4x4 obmat_;
   const bool is_persp;
@@ -114,7 +121,9 @@ class SnapData {
   SnapData(SnapObjectContext *sctx,
            const blender::float4x4 &obmat = blender::float4x4::identity());
 
-  void clip_planes_enable(SnapObjectContext *sctx, bool skip_occlusion_plane = false);
+  void clip_planes_enable(SnapObjectContext *sctx,
+                          const Object *ob_eval,
+                          bool skip_occlusion_plane = false);
   bool snap_boundbox(const blender::float3 &min, const blender::float3 &max);
   bool snap_point(const blender::float3 &co, int index = -1);
   bool snap_edge(const blender::float3 &va, const blender::float3 &vb, int edge_index = -1);
@@ -125,11 +134,15 @@ class SnapData {
                               const blender::float4x4 &obmat,
                               BVHTreeNearest *r_nearest);
   void register_result(SnapObjectContext *sctx, Object *ob_eval, const ID *id_eval);
+  static void register_result_raycast(SnapObjectContext *sctx,
+                                      Object *ob_eval,
+                                      const ID *id_eval,
+                                      const blender::float4x4 &obmat,
+                                      const BVHTreeRayHit *hit,
+                                      const bool is_in_front);
 
   virtual void get_vert_co(const int /*index*/, const float ** /*r_co*/){};
   virtual void get_edge_verts_index(const int /*index*/, int /*r_v_index*/[2]){};
-  virtual void get_tri_verts_index(const int /*index*/, int /*r_v_index*/[3]){};
-  virtual void get_tri_edges_index(const int /*index*/, int /*r_e_index*/[3]){};
   virtual void copy_vert_no(const int /*index*/, float /*r_no*/[3]){};
 };
 
@@ -164,70 +177,47 @@ bool nearest_world_tree(SnapObjectContext *sctx,
 
 eSnapMode snap_object_center(SnapObjectContext *sctx,
                              Object *ob_eval,
-                             const float obmat[4][4],
+                             const blender::float4x4 &obmat,
                              eSnapMode snap_to_flag);
 
 /* transform_snap_object_armature.cc */
 
 eSnapMode snapArmature(SnapObjectContext *sctx,
                        Object *ob_eval,
-                       const float obmat[4][4],
+                       const blender::float4x4 &obmat,
                        bool is_object_active);
 
 /* transform_snap_object_camera.cc */
 
 eSnapMode snapCamera(SnapObjectContext *sctx,
                      Object *object,
-                     const float obmat[4][4],
+                     const blender::float4x4 &obmat,
                      eSnapMode snap_to_flag);
 
 /* transform_snap_object_curve.cc */
 
-eSnapMode snapCurve(SnapObjectContext *sctx, Object *ob_eval, const float obmat[4][4]);
+eSnapMode snapCurve(SnapObjectContext *sctx, Object *ob_eval, const blender::float4x4 &obmat);
 
 /* transform_snap_object_editmesh.cc */
-
-struct SnapCache_EditMesh {
-  /* Loose Verts, Edges. */
-  BVHTree *bvhtree[2];
-  bool cached[2];
-
-  /* BVH tree from #BMEditMesh.looptris. */
-  BVHTreeFromEditMesh treedata_editmesh;
-
-  blender::bke::MeshRuntime *mesh_runtime;
-  float min[3], max[3];
-
-  void clear();
-
-  ~SnapCache_EditMesh()
-  {
-    this->clear();
-  }
-
-#ifdef WITH_CXX_GUARDEDALLOC
-  MEM_CXX_CLASS_ALLOC_FUNCS("SnapData_EditMesh")
-#endif
-};
 
 eSnapMode snap_object_editmesh(SnapObjectContext *sctx,
                                Object *ob_eval,
                                const ID *id,
-                               const float obmat[4][4],
+                               const blender::float4x4 &obmat,
                                eSnapMode snap_to_flag,
                                bool use_hide);
 
 eSnapMode snap_polygon_editmesh(SnapObjectContext *sctx,
                                 Object *ob_eval,
                                 const ID *id,
-                                const float obmat[4][4],
+                                const blender::float4x4 &obmat,
                                 eSnapMode snap_to_flag,
                                 int polygon);
 
 eSnapMode snap_edge_points_editmesh(SnapObjectContext *sctx,
                                     Object *ob_eval,
                                     const ID *id,
-                                    const float obmat[4][4],
+                                    const blender::float4x4 &obmat,
                                     float dist_px_sq_orig,
                                     int edge);
 
@@ -236,20 +226,20 @@ eSnapMode snap_edge_points_editmesh(SnapObjectContext *sctx,
 eSnapMode snap_object_mesh(SnapObjectContext *sctx,
                            Object *ob_eval,
                            const ID *id,
-                           const float obmat[4][4],
+                           const blender::float4x4 &obmat,
                            eSnapMode snap_to_flag,
                            bool use_hide);
 
 eSnapMode snap_polygon_mesh(SnapObjectContext *sctx,
                             Object *ob_eval,
                             const ID *id,
-                            const float obmat[4][4],
+                            const blender::float4x4 &obmat,
                             eSnapMode snap_to_flag,
                             int polygon);
 
 eSnapMode snap_edge_points_mesh(SnapObjectContext *sctx,
                                 Object *ob_eval,
                                 const ID *id,
-                                const float obmat[4][4],
+                                const blender::float4x4 &obmat,
                                 float dist_px_sq_orig,
                                 int edge);

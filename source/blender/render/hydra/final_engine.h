@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -8,32 +9,20 @@
 namespace blender::render::hydra {
 
 class FinalEngine : public Engine {
+ private:
+  Map<std::string, pxr::TfToken> aov_tokens_;
+
  public:
   using Engine::Engine;
 
-  virtual void sync(Depsgraph *depsgraph,
-                    bContext *context,
-                    pxr::HdRenderSettingsMap &render_settings) override;
-  virtual void render(Depsgraph *b_depsgraph) override;
+  void render() override;
+  void set_render_setting(const std::string &key, const pxr::VtValue &val) override;
 
  protected:
-  void update_render_result();
-  void notify_status(float progress, const std::string &title, const std::string &info);
-  void prepare_for_render(Depsgraph *depsgraph);
+  void notify_status(float progress, const std::string &title, const std::string &info) override;
 
-  pxr::HdRenderSettingsMap render_settings_;
-  pxr::HdTaskSharedPtrVector tasks_;
-  std::string scene_name_;
-  std::string layer_name_;
-  std::map<std::string, std::vector<float>> render_images_;
-  pxr::GfVec2i resolution_;
-};
-
-class FinalEngineGL : public FinalEngine {
- public:
-  using FinalEngine::FinalEngine;
-
-  void render(Depsgraph *depsgraph) override;
+ private:
+  void update_render_result(int width, int height, const char *layer_name);
 };
 
 }  // namespace blender::render::hydra

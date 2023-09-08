@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,16 +11,30 @@
 
 #include "DEG_depsgraph.h"
 
-#include "ED_grease_pencil.h"
+#include "ED_grease_pencil.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "DNA_scene_types.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 namespace blender::ed::greasepencil {
+
+void select_layer_channel(GreasePencil &grease_pencil, bke::greasepencil::Layer *layer)
+{
+  using namespace blender::bke::greasepencil;
+
+  if (layer != nullptr) {
+    layer->set_selected(true);
+  }
+
+  if (grease_pencil.active_layer != layer) {
+    grease_pencil.set_active_layer(layer);
+    WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, &grease_pencil);
+  }
+}
 
 static int grease_pencil_layer_add_exec(bContext *C, wmOperator *op)
 {
@@ -33,26 +47,23 @@ static int grease_pencil_layer_add_exec(bContext *C, wmOperator *op)
   char *new_layer_name = RNA_string_get_alloc(
       op->ptr, "new_layer_name", nullptr, 0, &new_layer_name_length);
 
-  grease_pencil.add_empty_drawings(1);
-  GreasePencilFrame frame{int(grease_pencil.drawings().size() - 1), 0, BEZT_KEYTYPE_KEYFRAME};
-
   if (grease_pencil.has_active_layer()) {
     LayerGroup &active_group = grease_pencil.get_active_layer()->parent_group();
     Layer &new_layer = grease_pencil.add_layer_after(
-        active_group, grease_pencil.get_active_layer_for_write(), new_layer_name);
+        active_group, &grease_pencil.get_active_layer_for_write()->as_node(), new_layer_name);
     grease_pencil.set_active_layer(&new_layer);
-    new_layer.insert_frame(scene->r.cfra, frame);
+    grease_pencil.insert_blank_frame(new_layer, scene->r.cfra, 0, BEZT_KEYTYPE_KEYFRAME);
   }
   else {
     Layer &new_layer = grease_pencil.add_layer(new_layer_name);
     grease_pencil.set_active_layer(&new_layer);
-    new_layer.insert_frame(scene->r.cfra, frame);
+    grease_pencil.insert_blank_frame(new_layer, scene->r.cfra, 0, BEZT_KEYTYPE_KEYFRAME);
   }
 
   MEM_SAFE_FREE(new_layer_name);
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
-  WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, &grease_pencil);
 
   return OPERATOR_FINISHED;
 }
@@ -89,7 +100,7 @@ static int grease_pencil_layer_remove_exec(bContext *C, wmOperator * /*op*/)
   grease_pencil.remove_layer(*grease_pencil.get_active_layer_for_write());
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
-  WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_SELECTED, &grease_pencil);
 
   return OPERATOR_FINISHED;
 }
@@ -111,7 +122,7 @@ static void GREASE_PENCIL_OT_layer_remove(wmOperatorType *ot)
 static const EnumPropertyItem prop_layer_reorder_location[] = {
     {LAYER_REORDER_ABOVE, "ABOVE", 0, "Above", ""},
     {LAYER_REORDER_BELOW, "BELOW", 0, "Below", ""},
-    {0, NULL, 0, NULL, NULL},
+    {0, nullptr, 0, nullptr, nullptr},
 };
 
 static int grease_pencil_layer_reorder_exec(bContext *C, wmOperator *op)
@@ -136,19 +147,19 @@ static int grease_pencil_layer_reorder_exec(bContext *C, wmOperator *op)
   }
 
   Layer *active_layer = grease_pencil.get_active_layer_for_write();
-  active_layer->parent_group().unlink_layer(active_layer);
+  active_layer->parent_group().unlink_node(&active_layer->as_node());
 
   switch (reorder_location) {
     case LAYER_REORDER_ABOVE: {
-      /* Note: The layers are stored from bottom to top, so inserting above (visually), means
+      /* NOTE: The layers are stored from bottom to top, so inserting above (visually), means
        * inserting the link after the target. */
-      target_layer->parent_group().add_layer_after(active_layer, target_layer);
+      target_layer->parent_group().add_layer_after(active_layer, &target_layer->as_node());
       break;
     }
     case LAYER_REORDER_BELOW: {
-      /* Note: The layers are stored from bottom to top, so inserting below (visually), means
+      /* NOTE: The layers are stored from bottom to top, so inserting below (visually), means
        * inserting the link before the target. */
-      target_layer->parent_group().add_layer_before(active_layer, target_layer);
+      target_layer->parent_group().add_layer_before(active_layer, &target_layer->as_node());
       break;
     }
     default:
@@ -241,7 +252,7 @@ static void GREASE_PENCIL_OT_layer_group_add(wmOperatorType *ot)
 
 }  // namespace blender::ed::greasepencil
 
-void ED_operatortypes_grease_pencil_layers(void)
+void ED_operatortypes_grease_pencil_layers()
 {
   using namespace blender::ed::greasepencil;
   WM_operatortype_append(GREASE_PENCIL_OT_layer_add);
