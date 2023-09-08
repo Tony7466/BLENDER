@@ -528,9 +528,15 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
 
     MutableSpan<int> lf_index_by_bsocket = own_lf_graph_info.mapping.lf_index_by_bsocket;
 
+    const bNodeSocket &pass_through_bsocket = node.input_socket(0);
+    lf_index_by_bsocket[pass_through_bsocket.index_in_tree()] = inputs_.append_and_get_index_as(
+        "Pass Through",
+        *pass_through_bsocket.typeinfo->geometry_nodes_cpp_type,
+        lf::ValueUsage::Maybe);
+
     for (const int i : simulation_items_.index_range()) {
       const NodeSimulationItem &item = simulation_items_[i];
-      const bNodeSocket &input_bsocket = node.input_socket(i);
+      const bNodeSocket &input_bsocket = node.input_socket(i + 1);
       const bNodeSocket &output_bsocket = node.output_socket(i);
 
       const CPPType &type = get_simulation_item_cpp_type(item);
@@ -688,9 +694,9 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
 
   std::optional<bke::bake::BakeState> get_bake_state_from_inputs(lf::Params &params) const
   {
-    Array<void *> input_values(inputs_.size());
-    for (const int i : inputs_.index_range()) {
-      input_values[i] = params.try_get_input_data_ptr_or_request(i);
+    Array<void *> input_values(simulation_items_.size());
+    for (const int i : simulation_items_.index_range()) {
+      input_values[i] = params.try_get_input_data_ptr_or_request(i + 1);
     }
     if (input_values.as_span().contains(nullptr)) {
       /* Wait for inputs to be computed. */
@@ -722,6 +728,14 @@ static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
                                  NodeDeclaration &r_declaration)
 {
   const NodeGeometrySimulationOutput &storage = node_storage(node);
+  {
+    SocketDeclarationPtr pass_through_decl = std::make_unique<decl::Bool>();
+    pass_through_decl->name = "Pass Through";
+    pass_through_decl->identifier = pass_through_decl->name;
+    pass_through_decl->in_out = SOCK_IN;
+    r_declaration.inputs.append(pass_through_decl.get());
+    r_declaration.items.append(std::move(pass_through_decl));
+  }
   socket_declarations_for_simulation_items({storage.items, storage.items_num}, r_declaration);
 }
 
