@@ -51,7 +51,7 @@
 #include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static void shapekey_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int /*flag*/)
 {
@@ -184,6 +184,7 @@ static void shapekey_blend_read_after_liblink(BlendLibReader * /*reader*/, ID *i
   /* ShapeKeys should always only be linked indirectly through their user ID (mesh, Curve etc.), or
    * be fully local data. */
   BLI_assert((id->tag & LIB_TAG_EXTERN) == 0);
+  UNUSED_VARS_NDEBUG(id);
 }
 
 IDTypeInfo IDType_ID_KE = {
@@ -1953,7 +1954,6 @@ void BKE_keyblock_copy_settings(KeyBlock *kb_dst, const KeyBlock *kb_src)
 
 char *BKE_keyblock_curval_rnapath_get(const Key *key, const KeyBlock *kb)
 {
-  PointerRNA ptr;
   PropertyRNA *prop;
 
   /* sanity checks */
@@ -1962,7 +1962,7 @@ char *BKE_keyblock_curval_rnapath_get(const Key *key, const KeyBlock *kb)
   }
 
   /* create the RNA pointer */
-  RNA_pointer_create((ID *)&key->id, &RNA_ShapeKey, (KeyBlock *)kb, &ptr);
+  PointerRNA ptr = RNA_pointer_create((ID *)&key->id, &RNA_ShapeKey, (KeyBlock *)kb);
   /* get pointer to the property too */
   prop = RNA_struct_find_property(&ptr, "value");
 
@@ -2257,11 +2257,11 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         {reinterpret_cast<blender::float3 *>(face_normals), faces.size()});
   }
   if (vert_normals_needed) {
-    blender::bke::mesh::normals_calc_face_vert(
+    blender::bke::mesh::normals_calc_verts(
         positions,
         faces,
         corner_verts,
-        {reinterpret_cast<blender::float3 *>(face_normals), faces.size()},
+        {reinterpret_cast<const blender::float3 *>(face_normals), faces.size()},
         {reinterpret_cast<blender::float3 *>(vert_normals), mesh->totvert});
   }
   if (loop_normals_needed) {
@@ -2277,7 +2277,7 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
         faces,
         corner_verts,
         corner_edges,
-        {},
+        mesh->corner_to_face_map(),
         {reinterpret_cast<blender::float3 *>(vert_normals), mesh->totvert},
         {reinterpret_cast<blender::float3 *>(face_normals), faces.size()},
         sharp_edges,

@@ -26,7 +26,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #ifdef WITH_PYTHON
 #endif
@@ -155,8 +155,8 @@ static void script_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
 }
 
 static void script_space_blend_read_after_liblink(BlendLibReader * /*reader*/,
-                                        ID * /*parent_id*/,
-                                        SpaceLink *sl)
+                                                  ID * /*parent_id*/,
+                                                  SpaceLink *sl)
 {
   SpaceScript *scpt = reinterpret_cast<SpaceScript *>(sl);
 
