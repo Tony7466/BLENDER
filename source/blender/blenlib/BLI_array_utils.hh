@@ -7,6 +7,7 @@
 #include "BLI_generic_span.hh"
 #include "BLI_generic_virtual_array.hh"
 #include "BLI_index_mask.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_task.hh"
 #include "BLI_virtual_array.hh"
 

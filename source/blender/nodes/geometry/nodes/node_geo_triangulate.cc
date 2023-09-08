@@ -2,15 +2,11 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_customdata.h"
 #include "BKE_mesh.hh"
 
-#include "bmesh.h"
-#include "bmesh_tools.h"
-
-#include "DNA_mesh_types.h"
-
 #include "NOD_rna_define.hh"
+
+#include "GEO_mesh_triangulate.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -23,7 +19,6 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Mesh").supported_type(GeometryComponent::Type::Mesh);
   b.add_input<decl::Bool>("Selection").default_value(true).field_on_all().hide_value();
-  b.add_input<decl::Int>("Minimum Vertices").default_value(4).min(4).max(10000);
   b.add_output<decl::Geometry>("Mesh").propagate_all();
 }
 
@@ -39,42 +34,12 @@ static void geo_triangulate_init(bNodeTree * /*tree*/, bNode *node)
   node->custom2 = GEO_NODE_TRIANGULATE_NGON_BEAUTY;
 }
 
-static Mesh *triangulate_mesh_selection(const Mesh &mesh,
-                                        const int quad_method,
-                                        const int ngon_method,
-                                        const IndexMask &selection,
-                                        const int min_vertices)
-{
-  CustomData_MeshMasks cd_mask_extra = {
-      CD_MASK_ORIGINDEX, CD_MASK_ORIGINDEX, 0, CD_MASK_ORIGINDEX};
-  BMeshCreateParams create_params{false};
-  BMeshFromMeshParams from_mesh_params{};
-  from_mesh_params.calc_face_normal = true;
-  from_mesh_params.calc_vert_normal = true;
-  from_mesh_params.cd_mask_extra = cd_mask_extra;
-  BMesh *bm = BKE_mesh_to_bmesh_ex(&mesh, &create_params, &from_mesh_params);
-
-  /* Tag faces to be triangulated from the selection mask. */
-  BM_mesh_elem_table_ensure(bm, BM_FACE);
-  selection.foreach_index([&](const int i_face) {
-    BM_elem_flag_set(BM_face_at_index(bm, i_face), BM_ELEM_TAG, true);
-  });
-
-  BM_mesh_triangulate(bm, quad_method, ngon_method, min_vertices, true, nullptr, nullptr, nullptr);
-  Mesh *result = BKE_mesh_from_bmesh_for_eval_nomain(bm, &cd_mask_extra, &mesh);
-  BM_mesh_free(bm);
-
-  /* Positions are not changed by the triangulation operation, so the bounds are the same. */
-  result->runtime->bounds_cache = mesh.runtime->bounds_cache;
-
-  return result;
-}
-
 static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Mesh");
   Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
-  const int min_vertices = std::max(params.extract_input<int>("Minimum Vertices"), 4);
+  const AnonymousAttributePropagationInfo &propagation_info = params.get_output_propagation_info(
+      "Mesh");
 
   GeometryNodeTriangulateQuads quad_method = GeometryNodeTriangulateQuads(params.node().custom1);
   GeometryNodeTriangulateNGons ngon_method = GeometryNodeTriangulateNGons(params.node().custom2);
@@ -90,10 +55,16 @@ static void node_geo_exec(GeoNodeExecParams params)
     evaluator.add(selection_field);
     evaluator.evaluate();
     const IndexMask selection = evaluator.get_evaluated_as_mask(0);
+    if (selection.is_empty()) {
+      return;
+    }
 
-    Mesh *mesh_out = triangulate_mesh_selection(
-        mesh_in, quad_method, ngon_method, selection, min_vertices);
-    geometry_set.replace_mesh(mesh_out);
+    Mesh *mesh = geometry_set.get_mesh_for_write();
+    geometry::triangulate(*mesh,
+                          selection,
+                          geometry::TriangulateNGonMode(ngon_method),
+                          geometry::TriangulateQuadMode(quad_method),
+                          propagation_info);
   });
 
   params.set_output("Mesh", std::move(geometry_set));

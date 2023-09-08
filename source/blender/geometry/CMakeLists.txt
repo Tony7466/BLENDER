@@ -24,6 +24,7 @@ set(SRC
   intern/mesh_split_edges.cc
   intern/mesh_to_curve_convert.cc
   intern/mesh_to_volume.cc
+  intern/mesh_triangulate.cc
   intern/point_merge_by_distance.cc
   intern/points_to_volume.cc
   intern/realize_instances.cc
@@ -44,6 +45,7 @@ set(SRC
   GEO_mesh_split_edges.hh
   GEO_mesh_to_curve.hh
   GEO_mesh_to_volume.hh
+  GEO_mesh_triangulate.hh
   GEO_point_merge_by_distance.hh
   GEO_points_to_volume.hh
   GEO_realize_instances.hh
