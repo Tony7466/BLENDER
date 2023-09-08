@@ -696,7 +696,7 @@ void ED_node_set_active(
   }
 
   nodeSetActive(ntree, node);
-  if (node->type == NODE_GROUP) {
+  if (node->is_group() && !blender::bke::node_is_viewer_group(*node)) {
     return;
   }
 
@@ -818,10 +818,10 @@ void ED_node_set_active(
     }
   }
   else if (ntree->type == NTREE_GEOMETRY) {
-    if (node->type == GEO_NODE_VIEWER) {
+    if (node->type == GEO_NODE_VIEWER || blender::bke::node_is_viewer_group(*node)) {
       if ((node->flag & NODE_DO_OUTPUT) == 0) {
         for (bNode *node_iter : ntree->all_nodes()) {
-          if (node_iter->type == GEO_NODE_VIEWER) {
+          if (node_iter->type == GEO_NODE_VIEWER || blender::bke::node_is_viewer_group(*node)) {
             node_iter->flag &= ~NODE_DO_OUTPUT;
           }
         }
@@ -1701,19 +1701,11 @@ static int node_deactivate_viewer_exec(bContext *C, wmOperator * /*op*/)
 
   bNode *active_viewer = viewer_path::find_geometry_nodes_viewer(workspace.viewer_path, snode);
 
-  for (bNode *node : snode.edittree->all_nodes()) {
-    if (node->type != GEO_NODE_VIEWER) {
-      continue;
-    }
-    if (!(node->flag & SELECT)) {
-      continue;
-    }
-    if (node == active_viewer) {
-      node->flag &= ~NODE_DO_OUTPUT;
-      BKE_ntree_update_tag_node_property(snode.edittree, node);
-    }
+  if (active_viewer == nullptr) {
+    return OPERATOR_FINISHED;
   }
-
+  active_viewer->flag &= ~NODE_DO_OUTPUT;
+  BKE_ntree_update_tag_node_property(snode.edittree, active_viewer);
   ED_node_tree_propagate_change(C, CTX_data_main(C), snode.edittree);
 
   return OPERATOR_FINISHED;

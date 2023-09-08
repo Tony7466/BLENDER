@@ -2,8 +2,10 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "ED_viewer_path.hh"
+#include <iostream>
+
 #include "ED_screen.hh"
+#include "ED_viewer_path.hh"
 
 #include "BKE_context.h"
 #include "BKE_main.h"
@@ -137,6 +139,7 @@ static void viewer_path_for_geometry_node(const SpaceNode &snode,
 
 void activate_geometry_node(Main &bmain, SpaceNode &snode, bNode &node)
 {
+  std::cout << __func__ << ": " << node.name << std::endl;
   wmWindowManager *wm = (wmWindowManager *)bmain.wm.first;
   if (wm == nullptr) {
     return;

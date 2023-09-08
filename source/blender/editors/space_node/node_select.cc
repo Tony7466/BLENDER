@@ -6,6 +6,8 @@
  * \ingroup spnode
  */
 
+#include <iostream>
+
 #include <array>
 #include <cstdlib>
 
@@ -687,14 +689,18 @@ static bool node_mouse_select(bContext *C,
     return false;
   }
 
+  std::cout << __func__ << std::endl;
+
   bool active_texture_changed = false;
   bool viewer_node_changed = false;
   if ((node != nullptr) && (node_was_selected == false || params->select_passthrough == false)) {
     viewer_node_changed = (node->flag & NODE_DO_OUTPUT) == 0 && node->type == GEO_NODE_VIEWER;
     ED_node_set_active(&bmain, &snode, snode.edittree, node, &active_texture_changed);
+    std::cout << __LINE__ << std::endl;
   }
   else if (node != nullptr && node->type == GEO_NODE_VIEWER) {
     viewer_path::activate_geometry_node(bmain, snode, *node);
+    std::cout << __LINE__ << std::endl;
   }
   ED_node_set_active_viewer_key(&snode);
   node_sort(node_tree);
@@ -702,6 +708,7 @@ static bool node_mouse_select(bContext *C,
       viewer_node_changed)
   {
     DEG_id_tag_update(&snode.edittree->id, ID_RECALC_COPY_ON_WRITE);
+    std::cout << __LINE__ << std::endl;
   }
 
   WM_event_add_notifier(C, NC_NODE | NA_SELECTED, nullptr);

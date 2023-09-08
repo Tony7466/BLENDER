@@ -807,7 +807,7 @@ enum {
    */
   // NTREE_IS_LOCALIZED = 1 << 5,
 
-  /** Viuwer subtype of node tree. */
+  /** Viewer subtype of node tree. */
   NTREE_IS_VIEWER,
 };
 

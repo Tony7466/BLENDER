@@ -78,6 +78,11 @@ void BKE_viewer_path_blend_write(BlendWriter *writer, const ViewerPath *viewer_p
         BLO_write_struct(writer, GroupNodeViewerPathElem, typed_elem);
         break;
       }
+      case VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP: {
+        const auto *typed_elem = reinterpret_cast<ViewerNodeGroupViewerPathElem *>(elem);
+        BLO_write_struct(writer, ViewerNodeGroupViewerPathElem, typed_elem);
+        break;
+      }
       case VIEWER_PATH_ELEM_TYPE_SIMULATION_ZONE: {
         const auto *typed_elem = reinterpret_cast<SimulationZoneViewerPathElem *>(elem);
         BLO_write_struct(writer, SimulationZoneViewerPathElem, typed_elem);
@@ -107,6 +112,7 @@ void BKE_viewer_path_blend_read_data(BlendDataReader *reader, ViewerPath *viewer
       case VIEWER_PATH_ELEM_TYPE_GROUP_NODE:
       case VIEWER_PATH_ELEM_TYPE_SIMULATION_ZONE:
       case VIEWER_PATH_ELEM_TYPE_VIEWER_NODE:
+      case VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP:
       case VIEWER_PATH_ELEM_TYPE_REPEAT_ZONE:
       case VIEWER_PATH_ELEM_TYPE_ID: {
         break;
@@ -131,6 +137,7 @@ void BKE_viewer_path_foreach_id(LibraryForeachIDData *data, ViewerPath *viewer_p
       }
       case VIEWER_PATH_ELEM_TYPE_MODIFIER:
       case VIEWER_PATH_ELEM_TYPE_GROUP_NODE:
+      case VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP:
       case VIEWER_PATH_ELEM_TYPE_SIMULATION_ZONE:
       case VIEWER_PATH_ELEM_TYPE_VIEWER_NODE:
       case VIEWER_PATH_ELEM_TYPE_REPEAT_ZONE: {
@@ -151,6 +158,7 @@ void BKE_viewer_path_id_remap(ViewerPath *viewer_path, const IDRemapper *mapping
       }
       case VIEWER_PATH_ELEM_TYPE_MODIFIER:
       case VIEWER_PATH_ELEM_TYPE_GROUP_NODE:
+      case VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP:
       case VIEWER_PATH_ELEM_TYPE_SIMULATION_ZONE:
       case VIEWER_PATH_ELEM_TYPE_VIEWER_NODE:
       case VIEWER_PATH_ELEM_TYPE_REPEAT_ZONE: {
@@ -178,6 +186,9 @@ ViewerPathElem *BKE_viewer_path_elem_new(const ViewerPathElemType type)
     }
     case VIEWER_PATH_ELEM_TYPE_GROUP_NODE: {
       return &make_elem<GroupNodeViewerPathElem>(type)->base;
+    }
+    case VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP: {
+      return &make_elem<ViewerNodeGroupViewerPathElem>(type)->base;
     }
     case VIEWER_PATH_ELEM_TYPE_SIMULATION_ZONE: {
       return &make_elem<SimulationZoneViewerPathElem>(type)->base;
@@ -222,6 +233,12 @@ ViewerNodeViewerPathElem *BKE_viewer_path_elem_new_viewer_node()
       BKE_viewer_path_elem_new(VIEWER_PATH_ELEM_TYPE_VIEWER_NODE));
 }
 
+ViewerNodeGroupViewerPathElem *BKE_viewer_path_elem_new_viewer_node_group()
+{
+  return reinterpret_cast<ViewerNodeGroupViewerPathElem *>(
+      BKE_viewer_path_elem_new(VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP));
+}
+
 RepeatZoneViewerPathElem *BKE_viewer_path_elem_new_repeat_zone()
 {
   return reinterpret_cast<RepeatZoneViewerPathElem *>(
@@ -252,6 +269,12 @@ ViewerPathElem *BKE_viewer_path_elem_copy(const ViewerPathElem *src)
     case VIEWER_PATH_ELEM_TYPE_GROUP_NODE: {
       const auto *old_elem = reinterpret_cast<const GroupNodeViewerPathElem *>(src);
       auto *new_elem = reinterpret_cast<GroupNodeViewerPathElem *>(dst);
+      new_elem->node_id = old_elem->node_id;
+      break;
+    }
+    case VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP: {
+      const auto *old_elem = reinterpret_cast<const ViewerNodeGroupViewerPathElem *>(src);
+      auto *new_elem = reinterpret_cast<ViewerNodeGroupViewerPathElem *>(dst);
       new_elem->node_id = old_elem->node_id;
       break;
     }
@@ -299,6 +322,11 @@ bool BKE_viewer_path_elem_equal(const ViewerPathElem *a, const ViewerPathElem *b
       const auto *b_elem = reinterpret_cast<const GroupNodeViewerPathElem *>(b);
       return a_elem->node_id == b_elem->node_id;
     }
+    case VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP: {
+      const auto *a_elem = reinterpret_cast<const ViewerNodeGroupViewerPathElem *>(a);
+      const auto *b_elem = reinterpret_cast<const ViewerNodeGroupViewerPathElem *>(b);
+      return a_elem->node_id == b_elem->node_id;
+    }
     case VIEWER_PATH_ELEM_TYPE_SIMULATION_ZONE: {
       const auto *a_elem = reinterpret_cast<const SimulationZoneViewerPathElem *>(a);
       const auto *b_elem = reinterpret_cast<const SimulationZoneViewerPathElem *>(b);
@@ -324,6 +352,7 @@ void BKE_viewer_path_elem_free(ViewerPathElem *elem)
   switch (ViewerPathElemType(elem->type)) {
     case VIEWER_PATH_ELEM_TYPE_ID:
     case VIEWER_PATH_ELEM_TYPE_GROUP_NODE:
+    case VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP:
     case VIEWER_PATH_ELEM_TYPE_SIMULATION_ZONE:
     case VIEWER_PATH_ELEM_TYPE_VIEWER_NODE:
     case VIEWER_PATH_ELEM_TYPE_REPEAT_ZONE: {
