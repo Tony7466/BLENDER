@@ -1,6 +1,8 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
+
+#include "BLI_string.h"
 
 #include "NOD_socket_declarations.hh"
 #include "NOD_socket_declarations_geometry.hh"
@@ -347,12 +349,7 @@ bNodeSocket &Color::build(bNodeTree &ntree, bNode &node) const
 bool Color::matches(const bNodeSocket &socket) const
 {
   if (!this->matches_common_data(socket)) {
-    if (socket.name != this->name) {
-      return false;
-    }
-    if (socket.identifier != this->identifier) {
-      return false;
-    }
+    return false;
   }
   if (socket.type != SOCK_RGBA) {
     return false;
@@ -401,12 +398,7 @@ bNodeSocket &Rotation::build(bNodeTree &ntree, bNode &node) const
 bool Rotation::matches(const bNodeSocket &socket) const
 {
   if (!this->matches_common_data(socket)) {
-    if (socket.name != this->name) {
-      return false;
-    }
-    if (socket.identifier != this->identifier) {
-      return false;
-    }
+    return false;
   }
   if (socket.type != SOCK_ROTATION) {
     return false;
@@ -690,6 +682,9 @@ bNodeSocket &Custom::build(bNodeTree &ntree, bNode &node) const
 {
   bNodeSocket &socket = *nodeAddSocket(
       &ntree, &node, this->in_out, idname_, this->identifier.c_str(), this->name.c_str());
+  if (this->init_socket_fn) {
+    this->init_socket_fn(node, socket, "interface");
+  }
   return socket;
 }
 

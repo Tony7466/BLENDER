@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,19 +19,18 @@
 
 #include "BLO_readfile.h"
 
-#include "ED_asset.h"
-#include "ED_screen.h"
+#include "ED_asset.hh"
+#include "ED_screen.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "UI_interface.h"
 #include "UI_interface.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "interface_intern.hh"
 
@@ -79,11 +78,9 @@ static void asset_view_draw_item(uiList *ui_list,
   AssetHandle asset_handle = ED_assetlist_asset_handle_get_by_index(&list_data->asset_library_ref,
                                                                     index);
 
-  PointerRNA file_ptr;
-  RNA_pointer_create(&list_data->screen->id,
-                     &RNA_FileSelectEntry,
-                     const_cast<FileDirEntry *>(asset_handle.file_data),
-                     &file_ptr);
+  PointerRNA file_ptr = RNA_pointer_create(&list_data->screen->id,
+                                           &RNA_FileSelectEntry,
+                                           const_cast<FileDirEntry *>(asset_handle.file_data));
   uiLayoutSetContextPointer(layout, "active_file", &file_ptr);
 
   uiBlock *block = uiLayoutGetBlock(layout);
@@ -205,10 +202,9 @@ static void populate_asset_collection(const AssetLibraryReference &asset_library
      * because the #FileDirEntry may be freed while iterating, there's a cache for them with a
      * maximum size. Further code will query as needed it using the collection index. */
 
-    PointerRNA itemptr, fileptr;
+    PointerRNA itemptr;
     RNA_property_collection_add(&assets_dataptr, assets_prop, &itemptr);
-
-    RNA_pointer_create(nullptr, &RNA_FileSelectEntry, nullptr, &fileptr);
+    PointerRNA fileptr = RNA_pointer_create(nullptr, &RNA_FileSelectEntry, nullptr);
     RNA_pointer_set(&itemptr, "file_data", fileptr);
 
     return true;
@@ -245,7 +241,14 @@ void uiTemplateAssetView(uiLayout *layout,
 
   uiLayout *row = uiLayoutRow(col, true);
   if ((display_flags & UI_TEMPLATE_ASSET_DRAW_NO_LIBRARY) == 0) {
-    uiItemFullR(row, asset_library_dataptr, asset_library_prop, RNA_NO_INDEX, 0, 0, "", 0);
+    uiItemFullR(row,
+                asset_library_dataptr,
+                asset_library_prop,
+                RNA_NO_INDEX,
+                0,
+                UI_ITEM_NONE,
+                "",
+                ICON_NONE);
     if (asset_library_ref.type != ASSET_LIBRARY_LOCAL) {
       uiItemO(row, "", ICON_FILE_REFRESH, "ASSET_OT_library_refresh");
     }

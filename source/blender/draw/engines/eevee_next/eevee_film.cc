@@ -1,11 +1,11 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
  *
- * A film is a full-screen buffer (usually at output extent)
+ * A film is a buffer (usually at display extent)
  * that will be able to accumulate sample in any distorted camera_type
  * using a pixel filter.
  *
@@ -25,8 +25,6 @@
 #include "eevee_instance.hh"
 
 namespace blender::eevee {
-
-ENUM_OPERATORS(eViewLayerEEVEEPassType, 1 << EEVEE_RENDER_PASS_MAX_BIT)
 
 /* -------------------------------------------------------------------- */
 /** \name Arbitrary Output Variables
@@ -149,6 +147,7 @@ void Film::sync_mist()
 inline bool operator==(const FilmData &a, const FilmData &b)
 {
   return (a.extent == b.extent) && (a.offset == b.offset) &&
+         (a.render_extent == b.render_extent) && (a.render_offset == b.render_offset) &&
          (a.filter_radius == b.filter_radius) && (a.scaling_factor == b.scaling_factor) &&
          (a.background_opacity == b.background_opacity);
 }
@@ -250,16 +249,27 @@ void Film::init(const int2 &extent, const rcti *output_rect)
       output_rect = &fallback_rect;
     }
 
+    display_extent = extent;
+
     FilmData data = data_;
     data.extent = int2(BLI_rcti_size_x(output_rect), BLI_rcti_size_y(output_rect));
     data.offset = int2(output_rect->xmin, output_rect->ymin);
     data.extent_inv = 1.0f / float2(data.extent);
-    /* Disable filtering if sample count is 1. */
-    data.filter_radius = (sampling.sample_count() == 1) ? 0.0f :
-                                                          clamp_f(scene.r.gauss, 0.0f, 100.0f);
     /* TODO(fclem): parameter hidden in experimental.
      * We need to figure out LOD bias first in order to preserve texture crispiness. */
     data.scaling_factor = 1;
+    data.render_extent = math::divide_ceil(extent, int2(data.scaling_factor));
+    data.render_offset = data.offset;
+
+    if (inst_.camera.overscan() != 0.0f) {
+      int2 overscan = int2(inst_.camera.overscan() * math::max(UNPACK2(data.render_extent)));
+      data.render_extent += overscan * 2;
+      data.render_offset += overscan;
+    }
+
+    /* Disable filtering if sample count is 1. */
+    data.filter_radius = (sampling.sample_count() == 1) ? 0.0f :
+                                                          clamp_f(scene.r.gauss, 0.0f, 100.0f);
     data.cryptomatte_samples_len = inst_.view_layer->cryptomatte_levels;
 
     data.background_opacity = (scene.r.alphamode == R_ALPHAPREMUL) ? 0.0f : 1.0f;
@@ -357,9 +367,6 @@ void Film::init(const int2 &extent, const rcti *output_rect)
     data_.cryptomatte_material_id = cryptomatte_index_get(EEVEE_RENDER_PASS_CRYPTOMATTE_MATERIAL);
   }
   {
-    /* TODO(@fclem): Over-scans. */
-
-    data_.render_extent = math::divide_ceil(extent, int2(data_.scaling_factor));
     int2 weight_extent = inst_.camera.is_panoramic() ? data_.extent : int2(data_.scaling_factor);
 
     eGPUTextureFormat color_format = GPU_RGBA16F;
@@ -480,7 +487,7 @@ void Film::end_sync()
   data_.use_reprojection = inst_.sampling.interactive_mode();
 
   /* Just bypass the reprojection and reset the accumulation. */
-  if (force_disable_reprojection_ && inst_.sampling.is_reset()) {
+  if (inst_.is_viewport() && force_disable_reprojection_ && inst_.sampling.is_reset()) {
     data_.use_reprojection = false;
     data_.use_history = false;
   }

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -26,17 +26,16 @@
 #include "BKE_idprop.h"
 #include "BKE_screen.h"
 
-#include "ED_asset.h"
-#include "ED_keyframing.h"
-#include "ED_screen.h"
+#include "ED_asset.hh"
+#include "ED_keyframing.hh"
+#include "ED_screen.hh"
 
-#include "UI_interface.h"
 #include "UI_interface.hh"
 
 #include "interface_intern.hh"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 #include "RNA_prototypes.h"
 
 #ifdef WITH_PYTHON
@@ -44,8 +43,8 @@
 #  include "BPY_extern_run.h"
 #endif
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 /* This hack is needed because we don't have a good way to
  * re-reference keymap items once added: #42944 */
@@ -148,7 +147,6 @@ static uiBlock *menu_change_shortcut(bContext *C, ARegion *region, void *arg)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   uiBut *but = (uiBut *)arg;
-  PointerRNA ptr;
   const uiStyle *style = UI_style_get_dpi();
   IDProperty *prop;
   const char *idname = shortcut_get_operator_property(C, but, &prop);
@@ -165,7 +163,7 @@ static uiBlock *menu_change_shortcut(bContext *C, ARegion *region, void *arg)
 
   BLI_assert(kmi != nullptr);
 
-  RNA_pointer_create(&wm->id, &RNA_KeyMapItem, kmi, &ptr);
+  PointerRNA ptr = RNA_pointer_create(&wm->id, &RNA_KeyMapItem, kmi);
 
   uiBlock *block = UI_block_begin(C, region, "_popup", UI_EMBOSS);
   UI_block_func_handle_set(block, but_shortcut_name_func, but);
@@ -201,7 +199,6 @@ static uiBlock *menu_add_shortcut(bContext *C, ARegion *region, void *arg)
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   uiBut *but = (uiBut *)arg;
-  PointerRNA ptr;
   const uiStyle *style = UI_style_get_dpi();
   IDProperty *prop;
   const char *idname = shortcut_get_operator_property(C, but, &prop);
@@ -227,7 +224,7 @@ static uiBlock *menu_add_shortcut(bContext *C, ARegion *region, void *arg)
   km = WM_keymap_guess_opname(C, idname);
   kmi = WM_keymap_item_find_id(km, kmi_id);
 
-  RNA_pointer_create(&wm->id, &RNA_KeyMapItem, kmi, &ptr);
+  PointerRNA ptr = RNA_pointer_create(&wm->id, &RNA_KeyMapItem, kmi);
 
   uiBlock *block = UI_block_begin(C, region, "_popup", UI_EMBOSS);
   UI_block_func_handle_set(block, but_shortcut_name_func, but);
@@ -424,7 +421,7 @@ static void ui_but_user_menu_add(bContext *C, uiBut *but, bUserMenu *um)
   }
   else if ((ot = UI_but_operatortype_get_from_enum_menu(but, &prop))) {
     ED_screen_user_menu_item_add_operator(&um->items,
-                                          WM_operatortype_name(ot, nullptr),
+                                          WM_operatortype_name(ot, nullptr).c_str(),
                                           ot,
                                           nullptr,
                                           RNA_property_identifier(prop),
@@ -455,7 +452,7 @@ static void ui_but_menu_add_path_operators(uiLayout *layout, PointerRNA *ptr, Pr
                     ICON_NONE,
                     nullptr,
                     WM_OP_INVOKE_DEFAULT,
-                    0,
+                    UI_ITEM_NONE,
                     &props_ptr);
     RNA_string_set(&props_ptr, "filepath", filepath);
   }
@@ -466,7 +463,7 @@ static void ui_but_menu_add_path_operators(uiLayout *layout, PointerRNA *ptr, Pr
                   ICON_NONE,
                   nullptr,
                   WM_OP_INVOKE_DEFAULT,
-                  0,
+                  UI_ITEM_NONE,
                   &props_ptr);
   RNA_string_set(&props_ptr, "filepath", dir);
 }
@@ -490,7 +487,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
 
   uiPopupMenu *pup;
   uiLayout *layout;
-  bContextStore *previous_ctx = CTX_store_get(C);
+  const bContextStore *previous_ctx = CTX_store_get(C);
   {
     uiStringInfo label = {BUT_GET_LABEL, nullptr};
 
@@ -824,7 +821,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
                           ICON_NONE,
                           nullptr,
                           WM_OP_INVOKE_DEFAULT,
-                          0,
+                          UI_ITEM_NONE,
                           &op_ptr);
           RNA_boolean_set(&op_ptr, "all", true);
           uiItemFullO_ptr(layout,
@@ -833,7 +830,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
                           ICON_NONE,
                           nullptr,
                           WM_OP_INVOKE_DEFAULT,
-                          0,
+                          UI_ITEM_NONE,
                           &op_ptr);
           RNA_boolean_set(&op_ptr, "all", false);
         }
@@ -844,7 +841,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
                       ICON_NONE,
                       nullptr,
                       WM_OP_INVOKE_DEFAULT,
-                      0,
+                      UI_ITEM_NONE,
                       &op_ptr);
           RNA_boolean_set(&op_ptr, "all", false);
         }
@@ -947,7 +944,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
     if (view_item_but) {
       BLI_assert(view_item_but->type == UI_BTYPE_VIEW_ITEM);
 
-      bContextStore *prev_ctx = CTX_store_get(C);
+      const bContextStore *prev_ctx = CTX_store_get(C);
       /* Sub-layout for context override. */
       uiLayout *sub = uiLayoutColumn(layout, false);
       set_layout_context_from_button(C, sub, view_item_but);
@@ -1030,6 +1027,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
             0,
             0,
             "");
+        item_found = true;
         UI_but_func_set(but2, [um, umi](bContext &) {
           U.runtime.is_dirty = true;
           ED_screen_user_menu_item_remove(&um->items, umi);
@@ -1200,7 +1198,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
                     ICON_NONE,
                     nullptr,
                     WM_OP_EXEC_DEFAULT,
-                    0,
+                    UI_ITEM_NONE,
                     &ptr_props);
         RNA_string_set(&ptr_props, "doc_id", buf);
       }
@@ -1220,7 +1218,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
                   ICON_NONE,
                   nullptr,
                   WM_OP_INVOKE_DEFAULT,
-                  0,
+                  UI_ITEM_NONE,
                   nullptr);
     }
   }
@@ -1232,7 +1230,7 @@ bool ui_popup_context_menu_for_button(bContext *C, uiBut *but, const wmEvent *ev
                 ICON_NONE,
                 nullptr,
                 WM_OP_INVOKE_DEFAULT,
-                0,
+                UI_ITEM_NONE,
                 nullptr);
   }
 
@@ -1307,8 +1305,7 @@ void ui_popup_context_menu_for_panel(bContext *C, ARegion *region, Panel *panel)
     return;
   }
 
-  PointerRNA ptr;
-  RNA_pointer_create(&screen->id, &RNA_Panel, panel, &ptr);
+  PointerRNA ptr = RNA_pointer_create(&screen->id, &RNA_Panel, panel);
 
   uiPopupMenu *pup = UI_popup_menu_begin(C, IFACE_("Panel"), ICON_NONE);
   uiLayout *layout = UI_popup_menu_layout(pup);
@@ -1316,7 +1313,7 @@ void ui_popup_context_menu_for_panel(bContext *C, ARegion *region, Panel *panel)
   if (has_panel_category) {
     char tmpstr[80];
     SNPRINTF(tmpstr, "%s" UI_SEP_CHAR_S "%s", IFACE_("Pin"), IFACE_("Shift Left Mouse"));
-    uiItemR(layout, &ptr, "use_pin", 0, tmpstr, ICON_NONE);
+    uiItemR(layout, &ptr, "use_pin", UI_ITEM_NONE, tmpstr, ICON_NONE);
 
     /* evil, force shortcut flag */
     {

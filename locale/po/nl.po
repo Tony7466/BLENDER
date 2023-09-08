@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'2f5245b4340a')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'526f935981fd')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-07-10 12:34:48\n"
+"POT-Creation-Date: 2023-09-04 15:42:41\n"
 "PO-Revision-Date: 2021-12-05 20:05+0100\n"
 "Language: nl\n"
 "MIME-Version: 1.0\n"
@@ -276,6 +276,10 @@ msgstr "Auteur"
 
 msgid "Description"
 msgstr "Beschrijving"
+
+
+msgid "Options"
+msgstr "Opties"
 
 
 msgid "Data Type"
@@ -602,16 +606,20 @@ msgid "Selectable"
 msgstr "Selecteerbaar"
 
 
-msgid "Layers"
-msgstr "Lagen"
-
-
 msgid "Length"
 msgstr "Lengte"
 
 
 msgid "Parent"
 msgstr "Ouder"
+
+
+msgid "Visible"
+msgstr "Zichtbaar"
+
+
+msgid "Custom"
+msgstr "Aangepast"
 
 
 msgid "Bone Group"
@@ -646,14 +654,6 @@ msgid "Vertex Color"
 msgstr "Kleur van Punt"
 
 
-msgid "Round"
-msgstr "Rond"
-
-
-msgid "Flat"
-msgstr "Vlak"
-
-
 msgid "Dissolve"
 msgstr "Oplossen"
 
@@ -670,10 +670,6 @@ msgid "Layer Mode"
 msgstr "Laagmodus"
 
 
-msgid "Visible"
-msgstr "Zichtbaar"
-
-
 msgid "Simplify"
 msgstr "Versimpel"
 
@@ -686,12 +682,12 @@ msgid "Draw"
 msgstr "Potlood"
 
 
-msgid "Smooth"
-msgstr "Glad"
-
-
 msgid "Show Lines"
 msgstr "Toon Lijnen"
+
+
+msgid "Active Layer"
+msgstr "Actieve Laag"
 
 
 msgid "Random Settings"
@@ -700,10 +696,6 @@ msgstr "Willekeurige Instellingen"
 
 msgid "Mode Type"
 msgstr "Type Modus"
-
-
-msgid "Active Layer"
-msgstr "Actieve Laag"
 
 
 msgid "Object Path"
@@ -1062,11 +1054,6 @@ msgstr "Deeltje"
 msgctxt "ID"
 msgid "Scene"
 msgstr "Scene"
-
-
-msgctxt "ID"
-msgid "Simulation"
-msgstr "Simulatie"
 
 
 msgctxt "ID"
@@ -1627,10 +1614,6 @@ msgid "Layer"
 msgstr "Laag"
 
 
-msgid "Custom"
-msgstr "Aangepast"
-
-
 msgid "Grid"
 msgstr "Rooster"
 
@@ -1675,10 +1658,6 @@ msgid "Select Background"
 msgstr "Selecteer Achtergrond"
 
 
-msgid "Options"
-msgstr "Opties"
-
-
 msgid "Window"
 msgstr "Scherm"
 
@@ -1705,6 +1684,10 @@ msgstr "Bouw"
 
 msgid "Mirror"
 msgstr "Spiegel"
+
+
+msgid "Smooth"
+msgstr "Glad"
 
 
 msgid "Inverse Materials"
@@ -2069,6 +2052,10 @@ msgid "Disable Selection"
 msgstr "Selectie Uitschakelen"
 
 
+msgid "Round"
+msgstr "Rond"
+
+
 msgid "Profile"
 msgstr "Profiel"
 
@@ -2165,6 +2152,10 @@ msgid "Annotation"
 msgstr "Annotatie"
 
 
+msgid "Layers"
+msgstr "Lagen"
+
+
 msgid "Only selected keyframes"
 msgstr "Alleen geselecteerde sleutelframes"
 
@@ -2216,10 +2207,6 @@ msgid "Cube"
 msgstr "Kubus"
 
 
-msgid "Hair"
-msgstr "Haar"
-
-
 msgid "Cloth"
 msgstr "Kleding"
 
@@ -2236,12 +2223,28 @@ msgid "Shadow Mode"
 msgstr "Schaduwmodus"
 
 
+msgid "Interface"
+msgstr "Interface"
+
+
 msgid "Links"
 msgstr "Koppeling"
 
 
 msgid "Undefined"
 msgstr "Niet Gedefinieerd"
+
+
+msgid "Edit"
+msgstr "Bewerken"
+
+
+msgid "Sculpt"
+msgstr "Beeldhouwen"
+
+
+msgid "Tool"
+msgstr "Gereedschap"
 
 
 msgid "Active Material"
@@ -2366,6 +2369,10 @@ msgstr "Draai"
 
 msgid "Particle type"
 msgstr "Deeltjestype"
+
+
+msgid "Hair"
+msgstr "Haar"
 
 
 msgid "Advanced"
@@ -2705,8 +2712,8 @@ msgid "Add"
 msgstr "Toevoegen"
 
 
-msgid "Edit"
-msgstr "Bewerken"
+msgid "Text"
+msgstr "Tekst"
 
 
 msgid "Converter"
@@ -2715,10 +2722,6 @@ msgstr "Converteerder"
 
 msgid "Layout"
 msgstr "Indeling"
-
-
-msgid "Text"
-msgstr "Tekst"
 
 
 msgctxt "Operator"
@@ -2812,10 +2815,6 @@ msgstr "Star Lichaam"
 
 msgid "Clear Transform"
 msgstr "Maak Transformatie Leeg"
-
-
-msgid "Sculpt"
-msgstr "Beeldhouwen"
 
 
 msgid "Local View"
@@ -3319,11 +3318,6 @@ msgstr "Verplaats Kanalen"
 
 
 msgctxt "Operator"
-msgid "Rename Channels"
-msgstr "Hernoem Kanalen"
-
-
-msgctxt "Operator"
 msgid "Disable Channel Setting"
 msgstr "Zet Kanaal Instellingen Uit"
 
@@ -3519,10 +3513,6 @@ msgid "Reset Brush"
 msgstr "Reset Kwast"
 
 
-msgid "Tool"
-msgstr "Gereedschap"
-
-
 msgctxt "Operator"
 msgid "Accept"
 msgstr "Accepteer"
@@ -3695,10 +3685,6 @@ msgid "Insert"
 msgstr "Invoegen"
 
 
-msgid "Language"
-msgstr "Taal"
-
-
 msgctxt "Operator"
 msgid "Move Cursor"
 msgstr "Verplaats Cursor"
@@ -3823,17 +3809,12 @@ msgstr "Exporteer BVH"
 
 
 msgctxt "Operator"
-msgid "Export PLY"
-msgstr "Exporteer PLY"
+msgid "Export STL"
+msgstr "Exporteer STL"
 
 
 msgid "Apply Modifiers"
 msgstr "Pas Aanpassers Toe"
-
-
-msgctxt "Operator"
-msgid "Export STL"
-msgstr "Exporteer STL"
 
 
 msgctxt "Operator"
@@ -3867,15 +3848,6 @@ msgstr "Algemeen"
 
 msgid "Animation settings"
 msgstr "Animatie-instellingen"
-
-
-msgctxt "Operator"
-msgid "Export OBJ"
-msgstr "Exporteer OBJ"
-
-
-msgid "Apply modifiers"
-msgstr "Pas aanpassers toe"
 
 
 msgctxt "Operator"
@@ -4376,11 +4348,6 @@ msgstr "Importeer Afbeeldingen als Vlakken"
 
 
 msgctxt "Operator"
-msgid "Import PLY"
-msgstr "Importeer PLY"
-
-
-msgctxt "Operator"
 msgid "Import STL"
 msgstr "Importeer STL"
 
@@ -4396,11 +4363,6 @@ msgstr "Importeer Animatie"
 
 msgid "Import FBX animation"
 msgstr "Importeer FBX Animatie"
-
-
-msgctxt "Operator"
-msgid "Import OBJ"
-msgstr "Importeer OBJ"
 
 
 msgctxt "Operator"
@@ -5702,10 +5664,6 @@ msgid "Open Preferences..."
 msgstr "Open Instellingen..."
 
 
-msgid "Interface"
-msgstr "Interface"
-
-
 msgid "File Paths"
 msgstr "Bestandspaden"
 
@@ -5748,12 +5706,59 @@ msgid "Modify Hidden"
 msgstr "Wijzig Verborgen"
 
 
+msgctxt "Sequence"
+msgid "Type"
+msgstr "Type"
+
+
+msgctxt "Sequence"
+msgid "Add"
+msgstr "Toevoegen"
+
+
+msgctxt "Sequence"
+msgid "Subtract"
+msgstr "Aftrekken"
+
+
+msgctxt "Sequence"
+msgid "Alpha Over"
+msgstr "Alpha Over"
+
+
+msgctxt "Sequence"
 msgid "Alpha Under"
 msgstr "Alpha Onder"
 
 
+msgctxt "Sequence"
+msgid "Multiply"
+msgstr "Vermenigvuldigen"
+
+
+msgctxt "Sequence"
 msgid "Wipe"
 msgstr "Veeg"
+
+
+msgctxt "Sequence"
+msgid "Transform"
+msgstr "Transformatie"
+
+
+msgctxt "Sequence"
+msgid "Color"
+msgstr "Kleur"
+
+
+msgctxt "Sequence"
+msgid "Speed"
+msgstr "Snelheid"
+
+
+msgctxt "Sequence"
+msgid "Text"
+msgstr "Tekst"
 
 
 msgctxt "Operator"
@@ -6200,6 +6205,16 @@ msgid "Open a Blender file"
 msgstr "Open een Blender Bestand"
 
 
+msgctxt "Operator"
+msgid "Export PLY"
+msgstr "Exporteer PLY"
+
+
+msgctxt "Operator"
+msgid "Import PLY"
+msgstr "Importeer PLY"
+
+
 msgid "All Types"
 msgstr "Alle Types"
 
@@ -6246,10 +6261,6 @@ msgstr "Herlaad Geschiedenis Bestand"
 msgctxt "Operator"
 msgid "Reload Start-Up File"
 msgstr "Herlaad Opstart Bestand"
-
-
-msgid "Open the default file (doesn't save the current file)"
-msgstr "Open Opstart Bestand (huidige bestand wordt niet opgelsagen)"
 
 
 msgctxt "Operator"
@@ -6691,6 +6702,10 @@ msgid "Interface Font"
 msgstr "Interface Lettertype"
 
 
+msgid "Language"
+msgstr "Taal"
+
+
 msgid "Language used for translation"
 msgstr "Taal gebruikt voor vertaling"
 
@@ -6755,8 +6770,8 @@ msgid "Old mapping value in frames"
 msgstr "Oude mapping waarde in frames"
 
 
-msgid "Resolution %"
-msgstr "Resolutie %"
+msgid "Resolution Scale"
+msgstr "Resolutie Schaal"
 
 
 msgid "Percentage scale for render resolution"
@@ -6791,9 +6806,8 @@ msgid "Max Roughness"
 msgstr "Maximale Ruwheid"
 
 
-msgctxt "Sequence"
-msgid "Type"
-msgstr "Type"
+msgid "Alpha Under"
+msgstr "Alpha Onder"
 
 
 msgctxt "Sequence"
@@ -6834,56 +6848,6 @@ msgstr "Geluid"
 msgctxt "Sequence"
 msgid "Cross"
 msgstr "Kruisovergang"
-
-
-msgctxt "Sequence"
-msgid "Add"
-msgstr "Toevoegen"
-
-
-msgctxt "Sequence"
-msgid "Subtract"
-msgstr "Aftrekken"
-
-
-msgctxt "Sequence"
-msgid "Alpha Over"
-msgstr "Alpha Over"
-
-
-msgctxt "Sequence"
-msgid "Alpha Under"
-msgstr "Alpha Onder"
-
-
-msgctxt "Sequence"
-msgid "Multiply"
-msgstr "Vermenigvuldigen"
-
-
-msgctxt "Sequence"
-msgid "Wipe"
-msgstr "Veeg"
-
-
-msgctxt "Sequence"
-msgid "Transform"
-msgstr "Transformatie"
-
-
-msgctxt "Sequence"
-msgid "Color"
-msgstr "Kleur"
-
-
-msgctxt "Sequence"
-msgid "Speed"
-msgstr "Snelheid"
-
-
-msgctxt "Sequence"
-msgid "Text"
-msgstr "Tekst"
 
 
 msgid "Add Sequence"
@@ -7057,6 +7021,10 @@ msgstr "Laat leeg krachtveld zien"
 
 msgid "3D"
 msgstr "3D"
+
+
+msgid "Flat"
+msgstr "Vlak"
 
 
 msgid "Force Field"
@@ -8020,31 +7988,6 @@ msgstr "Veeg"
 
 
 msgctxt "Operator"
-msgid "Subtract"
-msgstr "Aftrekken"
-
-
-msgctxt "Operator"
-msgid "Multiply"
-msgstr "Vermenigvuldigen"
-
-
-msgctxt "Operator"
-msgid "Alpha Over"
-msgstr "Alpha Over"
-
-
-msgctxt "Operator"
-msgid "Alpha Under"
-msgstr "Alpha Onder"
-
-
-msgctxt "Operator"
-msgid "Color Mix"
-msgstr "Kleur Mix"
-
-
-msgctxt "Operator"
 msgid "Glow"
 msgstr "Gloed"
 
@@ -8202,10 +8145,6 @@ msgstr "Geen actief item"
 msgctxt "Operator"
 msgid "Revert to Saved Preferences"
 msgstr "Ga terug naar Opgeslagen Instellingen"
-
-
-msgid "Resolution Scale"
-msgstr "Resolutie Schaal"
 
 
 msgid "New Data"
@@ -9068,11 +9007,6 @@ msgstr "Nieuw"
 
 
 msgctxt "Volume"
-msgid "New"
-msgstr "Nieuw"
-
-
-msgctxt "Simulation"
 msgid "New"
 msgstr "Nieuw"
 

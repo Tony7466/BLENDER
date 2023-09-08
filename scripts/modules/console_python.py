@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -298,7 +298,7 @@ def copy_as_script(context):
         text = line.body
         type = line.type
 
-        if type == 'INFO':  # ignore autocomp.
+        if type == 'INFO':  # Ignore auto-completion.
             continue
         if type == 'INPUT':
             if text.startswith(PROMPT):
