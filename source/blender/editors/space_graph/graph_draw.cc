@@ -266,7 +266,13 @@ static void draw_fcurve_keyframe_vertices(FCurve *fcu, View2D *v2d, const uint p
 {
   immBindBuiltinProgram(GPU_SHADER_2D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_AA);
 
-  immUniform1f("size", UI_GetThemeValuef(TH_VERTEX_SIZE) * UI_SCALE_FAC);
+  if ((fcu->flag & FCURVE_PROTECTED) == 0) {
+    immUniform1f("size", UI_GetThemeValuef(TH_VERTEX_SIZE) * UI_SCALE_FAC);
+  }
+  else {
+    /* Draw keyframes on locked curves slightly smaller to give them less visual weight. */
+    immUniform1f("size", (UI_GetThemeValuef(TH_VERTEX_SIZE) * UI_SCALE_FAC) * 0.8f);
+  }
 
   draw_fcurve_selected_keyframe_vertices(fcu, v2d, false, pos);
   draw_fcurve_selected_keyframe_vertices(fcu, v2d, true, pos);
