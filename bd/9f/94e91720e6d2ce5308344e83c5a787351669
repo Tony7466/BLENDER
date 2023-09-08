@@ -1,2 +1,3 @@
 Referenced by issue #94692, Thumbnails are not shown for offline files in OneDrive
 Referenced by pull request #112101, Thumbnails: Always use cached thumbnails for offline files
+Referenced by commit 3589533908c3cf24ed0f742957cc92c0d6a23c9d, Thumbnails: Always use cached thumbnails for offline files
