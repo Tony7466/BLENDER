@@ -424,7 +424,7 @@ string(APPEND PLATFORM_LINKFLAGS
 )
 
 # Use old, slower linker for now to avoid many linker warnings.
-if(XCODE AND ${XCODE_VERSION} VERSION_GREATER_EQUAL 15.0)
+if(${XCODE_VERSION} VERSION_GREATER_EQUAL 15.0)
   string(APPEND PLATFORM_LINKFLAGS " -Wl,-ld_classic")
 endif()
 
