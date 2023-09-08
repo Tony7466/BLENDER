@@ -1713,9 +1713,9 @@ static void id_mappings_panel_draw(const bContext *C, Panel *panel)
   PointerRNA active_mapping_ptr = RNA_pointer_create(
       ptr->owner_id, &RNA_NodesModifierIDMapping, &active_mapping);
 
-  uiTemplateAnyID(col, &active_mapping_ptr, "id", "id_type", "ID");
-  uiItemR(col, &active_mapping_ptr, "id_name", UI_ITEM_NONE, "ID Name", ICON_NONE);
-  uiItemR(col, &active_mapping_ptr, "lib_name", UI_ITEM_NONE, "Library Name", ICON_NONE);
+  uiTemplateAnyID(col, &active_mapping_ptr, "id", "id_type", IFACE_("ID"));
+  uiItemR(col, &active_mapping_ptr, "id_name", UI_ITEM_NONE, IFACE_("Data Block Name"), ICON_NONE);
+  uiItemR(col, &active_mapping_ptr, "lib_name", UI_ITEM_NONE, IFACE_("Library Name"), ICON_NONE);
 }
 
 static void id_mapping_list_item_draw(uiList * /*ui_list*/,
