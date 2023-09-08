@@ -623,8 +623,9 @@ class NodeDeclarationBuilder {
                                          StringRef identifier,
                                          eNodeSocketInOut in_out);
 
-  /* Mark the most recent builder as 'complete' so no more items can be added. */
-  void mark_most_recent_panel_complete();
+  /* Mark the most recent builder as 'complete' when changing builders
+   * so no more items can be added. */
+  void set_active_panel_builder(const PanelDeclarationBuilder *panel_builder);
 };
 
 namespace implicit_field_inputs {
@@ -834,7 +835,7 @@ template<typename DeclType>
 inline typename DeclType::Builder &NodeDeclarationBuilder::add_input(StringRef name,
                                                                      StringRef identifier)
 {
-  mark_most_recent_panel_complete();
+  set_active_panel_builder(nullptr);
   return this->add_socket<DeclType>(name, identifier, SOCK_IN);
 }
 
@@ -842,7 +843,7 @@ template<typename DeclType>
 inline typename DeclType::Builder &NodeDeclarationBuilder::add_output(StringRef name,
                                                                       StringRef identifier)
 {
-  mark_most_recent_panel_complete();
+  set_active_panel_builder(nullptr);
   return this->add_socket<DeclType>(name, identifier, SOCK_OUT);
 }
 
@@ -877,9 +878,6 @@ inline typename DeclType::Builder &NodeDeclarationBuilder::add_socket(StringRef 
 
 inline PanelDeclarationBuilder &NodeDeclarationBuilder::add_panel(StringRef name, int identifier)
 {
-
-  mark_most_recent_panel_complete();
-
   std::unique_ptr<PanelDeclaration> panel_decl = std::make_unique<PanelDeclaration>();
   std::unique_ptr<PanelDeclarationBuilder> panel_decl_builder =
       std::make_unique<PanelDeclarationBuilder>();
@@ -898,6 +896,7 @@ inline PanelDeclarationBuilder &NodeDeclarationBuilder::add_panel(StringRef name
 
   PanelDeclarationBuilder &builder_ref = *panel_decl_builder;
   panel_builders_.append(std::move(panel_decl_builder));
+  set_active_panel_builder(&builder_ref);
 
   return builder_ref;
 }

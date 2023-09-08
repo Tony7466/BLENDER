@@ -97,16 +97,17 @@ void NodeDeclarationBuilder::finalize()
   }
 }
 
-void NodeDeclarationBuilder::mark_most_recent_panel_complete()
+void NodeDeclarationBuilder::set_active_panel_builder(const PanelDeclarationBuilder *panel_builder)
 {
   if (panel_builders_.is_empty()) {
+    BLI_assert(panel_builder == nullptr);
     return;
   }
 
-  if (PanelDeclarationBuilder *panel_builder = dynamic_cast<PanelDeclarationBuilder *>(
-          panel_builders_.last().get()))
-  {
-    panel_builder->is_complete_ = true;
+  BLI_assert(!panel_builder || !panel_builder->is_complete_);
+  PanelDeclarationBuilder *last_panel_builder = panel_builders_.last().get();
+  if (last_panel_builder != panel_builder) {
+    last_panel_builder->is_complete_ = true;
   }
 }
 
