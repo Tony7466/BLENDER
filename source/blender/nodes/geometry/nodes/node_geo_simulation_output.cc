@@ -30,6 +30,8 @@
 
 #include "NOD_add_node_search.hh"
 
+#include "BLT_translation.h"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes {
