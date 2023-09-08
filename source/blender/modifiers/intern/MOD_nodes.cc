@@ -446,6 +446,8 @@ static void update_bakes_from_node_group(NodesModifierData &nmd)
     }
     else {
       new_bake.id = id;
+      new_bake.frame_start = 1;
+      new_bake.frame_end = 100;
     }
   }
 
@@ -467,6 +469,21 @@ void MOD_nodes_update_interface(Object *object, NodesModifierData *nmd)
   update_bakes_from_node_group(*nmd);
 
   DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
+}
+
+NodesModifierBake *NodesModifierData::find_bake(const int id)
+{
+  return const_cast<NodesModifierBake *>(std::as_const(*this).find_bake(id));
+}
+
+const NodesModifierBake *NodesModifierData::find_bake(const int id) const
+{
+  for (const NodesModifierBake &bake : blender::Span{this->bakes, this->bakes_num}) {
+    if (bake.id == id) {
+      return &bake;
+    }
+  }
+  return nullptr;
 }
 
 namespace blender {
@@ -726,8 +743,8 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
   const ModifierEvalContext &ctx_;
   const Main *bmain_;
   SubFrame current_frame_;
-  SubFrame start_frame_;
-  bool is_start_frame_;
+  SubFrame scene_start_frame_;
+  bool is_scene_start_frame_;
   bool use_frame_cache_;
   bool depsgraph_is_active_;
   bake::ModifierCache *modifier_cache_;
@@ -741,8 +758,8 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     bmain_ = DEG_get_bmain(depsgraph);
     current_frame_ = DEG_get_ctime(depsgraph);
     const Scene *scene = DEG_get_input_scene(depsgraph);
-    start_frame_ = scene->r.sfra;
-    is_start_frame_ = current_frame_ == start_frame_;
+    scene_start_frame_ = scene->r.sfra;
+    is_scene_start_frame_ = current_frame_ == scene_start_frame_;
     use_frame_cache_ = ctx_.object->flag & OB_FLAG_USE_SIMULATION_CACHE;
     depsgraph_is_active_ = DEG_is_active(depsgraph);
     modifier_cache_ = nmd.runtime->cache.get();
@@ -763,7 +780,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
         }
       }
       /* Reset cached data if necessary. */
-      if (is_start_frame_) {
+      if (is_scene_start_frame_) {
         for (std::unique_ptr<bake::NodeCache> &node_cache : modifier_cache_->cache_by_id.values())
         {
           if (node_cache->cache_status == bake::CacheStatus::Invalid) {
@@ -843,7 +860,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
           /* Initialize the simulation. */
           this->input_pass_through(zone_behavior);
           this->output_store_frame_cache(node_cache, zone_behavior);
-          if (!is_start_frame_) {
+          if (!is_scene_start_frame_) {
             /* If we initialize at a frame that is not the start frame, the simulation is not
              * valid. */
             node_cache.cache_status = bake::CacheStatus::Invalid;

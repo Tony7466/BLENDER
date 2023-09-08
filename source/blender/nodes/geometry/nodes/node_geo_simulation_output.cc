@@ -882,11 +882,19 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
     }
   }
 
-  uiLayout *col = uiLayoutColumn(layout, true);
-  uiLayoutSetActive(col, !is_baked);
-  uiItemR(col, &bake_rna, "directory", UI_ITEM_NONE, "Path", ICON_NONE);
-  if (StringRef(bake->directory).is_empty()) {
-    uiItemL(col, "Uses modifier bake path", ICON_INFO);
+  {
+    uiLayout *col = uiLayoutColumn(layout, true);
+    uiLayoutSetActive(col, !is_baked);
+    uiItemR(col, &bake_rna, "directory", UI_ITEM_NONE, "Path", ICON_NONE);
+    if (StringRef(bake->directory).is_empty()) {
+      uiItemL(col, "Uses modifier bake path", ICON_INFO);
+    }
+  }
+  {
+    uiLayout *col = uiLayoutColumn(layout, true);
+    uiLayoutSetActive(col, !is_baked);
+    uiItemR(col, &bake_rna, "frame_start", UI_ITEM_NONE, "Start", ICON_NONE);
+    uiItemR(col, &bake_rna, "frame_end", UI_ITEM_NONE, "End", ICON_NONE);
   }
 }
 

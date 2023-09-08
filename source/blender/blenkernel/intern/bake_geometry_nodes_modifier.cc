@@ -84,6 +84,20 @@ std::optional<bake::BakePath> get_node_bake_path(const Main &bmain,
   return bake::BakePath::from_single_root(zone_bake_dir);
 }
 
+std::optional<IndexRange> get_node_bake_frame_range(const Scene & /*scene*/,
+                                                    const Object & /*object*/,
+                                                    const NodesModifierData &nmd,
+                                                    int node_id)
+{
+  const NodesModifierBake *bake = nmd.find_bake(node_id);
+  if (bake == nullptr) {
+    return std::nullopt;
+  }
+  const int start = bake->frame_start;
+  const int end = std::max(start, bake->frame_end);
+  return IndexRange(start, end - start + 1);
+}
+
 /**
  * Turn the name into something that can be used as file name. It does not necessarily have to be
  * human readable, but it can help if it is at least partially readable.

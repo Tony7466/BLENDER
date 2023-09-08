@@ -2329,6 +2329,8 @@ typedef struct NodesModifierBake {
   int id;
   char _pad[4];
   char *directory;
+  int frame_start;
+  int frame_end;
 } NodesModifierBake;
 
 typedef struct NodesModifierData {
@@ -2348,6 +2350,11 @@ typedef struct NodesModifierData {
   void *_pad2;
 
   NodesModifierRuntimeHandle *runtime;
+
+#ifdef __cplusplus
+  NodesModifierBake *find_bake(int id);
+  const NodesModifierBake *find_bake(int id) const;
+#endif
 } NodesModifierData;
 
 typedef enum NodesModifierFlag {
