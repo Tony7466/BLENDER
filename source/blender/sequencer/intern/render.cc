@@ -1958,7 +1958,6 @@ static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
       ImBuf *ibuf2 = seq_render_strip(context, state, seq, timeline_frame);
 
       out = seq_render_strip_stack_apply_effect(context, seq, timeline_frame, ibuf1, ibuf2);
-      IMB_metadata_copy(out, ibuf2);
 
       IMB_freeImBuf(ibuf1);
       IMB_freeImBuf(ibuf2);
