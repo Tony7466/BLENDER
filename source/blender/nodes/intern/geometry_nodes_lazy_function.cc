@@ -1926,7 +1926,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
       graph_params.usage_by_bsocket.add(bsocket, &lf_simulation_usage_node.output(1));
     }
 
-    /* Link simulation input node directly to simulation output node for pass-through behavior. */
+    /* Link simulation input node directly to simulation output node for skip behavior. */
     for (const int i : IndexRange(sim_output_storage.items_num)) {
       lf::InputSocket &lf_to = lf_simulation_output.input(i + 1);
       if (lf_simulation_input) {

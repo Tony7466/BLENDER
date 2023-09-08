@@ -528,9 +528,9 @@ static void mix_simulation_state(const NodeSimulationItem &item,
 class LazyFunctionForSimulationOutputNode final : public LazyFunction {
   const bNode &node_;
   Span<NodeSimulationItem> simulation_items_;
-  int pass_through_input_index_;
-  int pass_through_inputs_offset_;
-  int socket_inputs_offset_;
+  int skip_input_index_;
+  int skip_inputs_offset_;
+  int solve_inputs_offset_;
 
  public:
   LazyFunctionForSimulationOutputNode(const bNode &node,
@@ -543,14 +543,12 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
 
     MutableSpan<int> lf_index_by_bsocket = own_lf_graph_info.mapping.lf_index_by_bsocket;
 
-    const bNodeSocket &pass_through_bsocket = node.input_socket(0);
-    pass_through_input_index_ = inputs_.append_and_get_index_as(
-        "Pass Through",
-        *pass_through_bsocket.typeinfo->geometry_nodes_cpp_type,
-        lf::ValueUsage::Maybe);
-    lf_index_by_bsocket[pass_through_bsocket.index_in_tree()] = pass_through_input_index_;
+    const bNodeSocket &skip_bsocket = node.input_socket(0);
+    skip_input_index_ = inputs_.append_and_get_index_as(
+        "Skip", *skip_bsocket.typeinfo->geometry_nodes_cpp_type, lf::ValueUsage::Maybe);
+    lf_index_by_bsocket[skip_bsocket.index_in_tree()] = skip_input_index_;
 
-    pass_through_inputs_offset_ = inputs_.size();
+    skip_inputs_offset_ = inputs_.size();
 
     for (const int i : simulation_items_.index_range()) {
       const NodeSimulationItem &item = simulation_items_[i];
@@ -558,7 +556,7 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
       inputs_.append_as(item.name, type, lf::ValueUsage::Maybe);
     }
 
-    socket_inputs_offset_ = inputs_.size();
+    solve_inputs_offset_ = inputs_.size();
 
     for (const int i : simulation_items_.index_range()) {
       const NodeSimulationItem &item = simulation_items_[i];
@@ -707,18 +705,17 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
                        GeoNodesLFUserData &user_data,
                        const sim_output::StoreNewState &info) const
   {
-    const bool *use_pass_through = params.try_get_input_data_ptr_or_request<bool>(
-        pass_through_input_index_);
-    if (use_pass_through == nullptr) {
-      /* Wait for pass through input to be computed. */
+    const bool *skip = params.try_get_input_data_ptr_or_request<bool>(skip_input_index_);
+    if (skip == nullptr) {
+      /* Wait for skip input to be computed. */
       return;
     }
 
     /* Instead of outputting the values directly, convert them to a bake state and then back. This
      * ensures that some geometry processing happens on the data consistently (e.g. removing
      * anonymous attributes). */
-    std::optional<bke::bake::BakeState> bake_state = this->get_bake_state_from_inputs(
-        params, *use_pass_through);
+    std::optional<bke::bake::BakeState> bake_state = this->get_bake_state_from_inputs(params,
+                                                                                      *skip);
     if (!bake_state) {
       /* Wait for inputs to be computed. */
       return;
@@ -728,10 +725,9 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
   }
 
   std::optional<bke::bake::BakeState> get_bake_state_from_inputs(lf::Params &params,
-                                                                 const bool use_pass_through) const
+                                                                 const bool skip) const
   {
-    const int params_offset = use_pass_through ? pass_through_inputs_offset_ :
-                                                 socket_inputs_offset_;
+    const int params_offset = skip ? skip_inputs_offset_ : solve_inputs_offset_;
     Array<void *> input_values(simulation_items_.size());
     for (const int i : simulation_items_.index_range()) {
       input_values[i] = params.try_get_input_data_ptr_or_request(i + params_offset);
@@ -767,15 +763,15 @@ static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
 {
   const NodeGeometrySimulationOutput &storage = node_storage(node);
   {
-    SocketDeclarationPtr pass_through_decl = std::make_unique<decl::Bool>();
-    pass_through_decl->name = "Pass Through";
-    pass_through_decl->identifier = pass_through_decl->name;
-    pass_through_decl->description = N_(
-        "Forward the simulation state from the simulation input node directly and ignore the "
-        "nodes in the simulation zone");
-    pass_through_decl->in_out = SOCK_IN;
-    r_declaration.inputs.append(pass_through_decl.get());
-    r_declaration.items.append(std::move(pass_through_decl));
+    SocketDeclarationPtr skip_decl = std::make_unique<decl::Bool>();
+    skip_decl->name = "Skip";
+    skip_decl->identifier = skip_decl->name;
+    skip_decl->description = N_(
+        "Forward the output of the simulation input node directly to the output node and ignore "
+        "the nodes in the simulation zone");
+    skip_decl->in_out = SOCK_IN;
+    r_declaration.inputs.append(skip_decl.get());
+    r_declaration.items.append(std::move(skip_decl));
   }
   socket_declarations_for_simulation_items({storage.items, storage.items_num}, r_declaration);
 }

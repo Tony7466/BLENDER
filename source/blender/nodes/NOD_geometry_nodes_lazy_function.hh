@@ -84,7 +84,7 @@ struct PassThrough {
 };
 
 /**
- * Computes the simulatiton step and calls the given function to cache the new simulation state.
+ * Computes the simulation step and calls the given function to cache the new simulation state.
  * The new simulation state is the output of the node.
  */
 struct StoreNewState {
