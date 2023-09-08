@@ -1,1 +1,2 @@
 Referenced by commit ba880db09a431d6e9fc7565bd243cb088fada555, Fix #108175: Missing subversion bump for recent geometry nodes change
+Referenced by issue #112009, Regression: Mesh boolean node with difference not working like it did in Blender 3.5
