@@ -135,8 +135,10 @@ GHOST_TSuccess GHOST_Window::setCursorVisibility(bool visible)
   if (m_cursorGrab == GHOST_kGrabHide) {
     /* If the grab cursor is tagged as `GHOST_kGrabHide`, the mouse should not be visible by any
      * means. */
-    setWindowCursorVisibility(false);
-    return GHOST_kFailure;
+    if (setWindowCursorVisibility(false)) {
+      m_cursorVisible = false;
+      return GHOST_kSuccess;
+    }
   }
   else if (setWindowCursorVisibility(visible)) {
     m_cursorVisible = visible;

@@ -1332,7 +1332,8 @@ static bool ghost_event_proc(GHOST_EventHandle evt, GHOST_TUserDataPtr C_void_pt
         event.flag = eWM_EventFlag(0);
 
         wm_event_add(win, &event);
-
+        /* Restore cursor visibility on window reactivation. */
+        GHOST_SetCursorVisibility(static_cast<GHOST_WindowHandle>(win->ghostwin), true);
         break;
       }
       case GHOST_kEventWindowClose: {

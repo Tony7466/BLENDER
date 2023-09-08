@@ -820,11 +820,7 @@ HCURSOR GHOST_WindowWin32::getStandardCursor(GHOST_TStandardCursor shape) const
 
 void GHOST_WindowWin32::loadCursor(bool visible, GHOST_TStandardCursor shape) const
 {
-  /* Blender can loose focus while having `m_cursorGrab = GHOST_kGrabHide`, when blender gets focus
-   * again the grab action can continue event if the mouse is released when blender was not
-   * active. In this case hide the mouse again. Ideally it would be better to cancel the drag
-   * action when Blender loses focus. */
-  if ((::GetForegroundWindow() == m_hWnd && m_cursorGrab == GHOST_kGrabHide) || !visible) {
+  if (!visible) {
     while (::ShowCursor(FALSE) >= 0)
       ;
   }
