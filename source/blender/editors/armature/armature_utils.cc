@@ -827,16 +827,23 @@ void ED_armature_to_edit(bArmature *arm)
 
 void ED_armature_ebone_listbase_free(ListBase *lb, const bool do_id_user)
 {
-  LISTBASE_FOREACH_MUTABLE (EditBone *, ebone, lb) {
-    /* ID properties. */
+
+  EditBone *ebone, *ebone_next;
+
+  for (ebone = static_cast<EditBone *>(lb->first); ebone; ebone = ebone_next) {
+    ebone_next = ebone->next;
+
     if (ebone->prop) {
       IDP_FreeProperty_ex(ebone->prop, do_id_user);
     }
 
     /* Bone collection references. */
     BLI_freelistN(&ebone->bone_collections);
+
+    MEM_freeN(ebone);
   }
-  BLI_freelistN(lb);
+
+  BLI_listbase_clear(lb);
 }
 
 void ED_armature_ebone_listbase_copy(ListBase *lb_dst, ListBase *lb_src, const bool do_id_user)
