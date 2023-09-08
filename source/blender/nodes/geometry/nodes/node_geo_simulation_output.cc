@@ -516,6 +516,8 @@ static void mix_simulation_state(const NodeSimulationItem &item,
 class LazyFunctionForSimulationOutputNode final : public LazyFunction {
   const bNode &node_;
   Span<NodeSimulationItem> simulation_items_;
+  int pass_through_input_index_;
+  int pass_through_inputs_offset_;
   int socket_inputs_offset_;
 
  public:
@@ -530,10 +532,13 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
     MutableSpan<int> lf_index_by_bsocket = own_lf_graph_info.mapping.lf_index_by_bsocket;
 
     const bNodeSocket &pass_through_bsocket = node.input_socket(0);
-    lf_index_by_bsocket[pass_through_bsocket.index_in_tree()] = inputs_.append_and_get_index_as(
+    pass_through_input_index_ = inputs_.append_and_get_index_as(
         "Pass Through",
         *pass_through_bsocket.typeinfo->geometry_nodes_cpp_type,
         lf::ValueUsage::Maybe);
+    lf_index_by_bsocket[pass_through_bsocket.index_in_tree()] = pass_through_input_index_;
+
+    pass_through_inputs_offset_ = inputs_.size();
 
     for (const int i : simulation_items_.index_range()) {
       const NodeSimulationItem &item = simulation_items_[i];
@@ -667,7 +672,8 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
     /* Instead of outputting the initial values directly, convert them to a simulation state and
      * then back. This ensures that some geometry processing happens on the data consistently (e.g.
      * removing anonymous attributes). */
-    std::optional<bke::bake::BakeState> bake_state = this->get_bake_state_from_inputs(params);
+    std::optional<bke::bake::BakeState> bake_state = this->get_bake_state_from_inputs(params,
+                                                                                      true);
     if (!bake_state) {
       /* Wait for inputs to be computed. */
       return;
@@ -692,7 +698,8 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
                               GeoNodesLFUserData &user_data,
                               const sim_output::StoreAndPassThrough &info) const
   {
-    std::optional<bke::bake::BakeState> bake_state = this->get_bake_state_from_inputs(params);
+    std::optional<bke::bake::BakeState> bake_state = this->get_bake_state_from_inputs(params,
+                                                                                      false);
     if (!bake_state) {
       /* Wait for inputs to be computed. */
       return;
@@ -701,11 +708,29 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
     info.store_fn(std::move(*bake_state));
   }
 
-  std::optional<bke::bake::BakeState> get_bake_state_from_inputs(lf::Params &params) const
+  std::optional<bke::bake::BakeState> get_bake_state_from_inputs(
+      lf::Params &params, const bool force_pass_through) const
   {
+    bool use_pass_through;
+    if (force_pass_through) {
+      use_pass_through = true;
+    }
+    else if (const bool *pass_through_input = params.try_get_input_data_ptr_or_request<bool>(
+                 pass_through_input_index_))
+    {
+      use_pass_through = *pass_through_input;
+    }
+    else {
+      /* Wait for pass through input to be computed. */
+      return std::nullopt;
+    }
+
+    const int param_offset = use_pass_through ? pass_through_inputs_offset_ :
+                                                socket_inputs_offset_;
+
     Array<void *> input_values(simulation_items_.size());
     for (const int i : simulation_items_.index_range()) {
-      input_values[i] = params.try_get_input_data_ptr_or_request(i + socket_inputs_offset_);
+      input_values[i] = params.try_get_input_data_ptr_or_request(i + param_offset);
     }
     if (input_values.as_span().contains(nullptr)) {
       /* Wait for inputs to be computed. */
