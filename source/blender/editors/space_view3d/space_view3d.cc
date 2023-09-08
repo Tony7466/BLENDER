@@ -1621,6 +1621,11 @@ static void view3d_header_region_listener(const wmRegionListenerParams *params)
           blender::ed::geometry::clear_operator_asset_trees();
           ED_region_tag_redraw(region);
           break;
+      }
+      break;
+    case NC_NODE:
+      switch (wmn->data) {
+        case ND_NODE_ASSET_DATA:
           blender::ed::geometry::clear_operator_asset_trees();
           ED_region_tag_redraw(region);
           break;

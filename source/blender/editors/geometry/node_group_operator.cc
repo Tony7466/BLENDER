@@ -520,7 +520,6 @@ static asset::AssetItemTree *get_static_item_tree(const bContext &C)
 
 static asset::AssetItemTree build_catalog_tree(const bContext &C)
 {
-  std::cout << __func__ << '\n';
   const eContextObjectMode ctx_mode = eContextObjectMode(CTX_data_mode_enum(&C));
   AssetFilterSettings type_filter{};
   type_filter.id_types = FILTER_ID_NT;
@@ -538,6 +537,7 @@ static asset::AssetItemTree build_catalog_tree(const bContext &C)
     return true;
   };
   const AssetLibraryReference library = asset_system::all_library_reference();
+  AS_asset_library_load(CTX_data_main(&C), library);
   return asset::build_filtered_all_catalog_tree(library, C, type_filter, meta_data_filter);
 }
 
@@ -636,7 +636,6 @@ static void catalog_assets_draw(const bContext *C, Menu *menu)
   }
 
   catalog_item->foreach_child([&](asset_system::AssetCatalogTreeItem &item) {
-    std::cout << "  " << item.get_name() << '\n';
     asset::draw_menu_for_catalog(
         screen, *all_library, item, "GEO_MT_node_operator_catalog_assets", *layout);
   });
@@ -719,7 +718,6 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, bContext &C)
 
   tree->catalogs.foreach_root_item([&](asset_system::AssetCatalogTreeItem &item) {
     if (!builtin_menus.contains(item.get_name())) {
-      std::cout << "  root menu: " << item.get_name() << '\n';
       asset::draw_menu_for_catalog(
           screen, *all_library, item, "GEO_MT_node_operator_catalog_assets", layout);
     }

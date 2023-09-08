@@ -47,6 +47,12 @@ asset_system::AssetLibrary *AS_asset_library_load(const Main *bmain,
   return service->get_asset_library(bmain, library_reference);
 }
 
+void AS_asset_library_rebuild_all()
+{
+  AssetLibraryService *service = AssetLibraryService::get();
+  service->rebuild_all_library();
+}
+
 ::AssetLibrary *AS_asset_library_load(const char *name, const char *library_dirpath)
 {
   /* NOTE: Loading an asset library at this point only means loading the catalogs.
