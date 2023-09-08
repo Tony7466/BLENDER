@@ -628,10 +628,12 @@ static bool set_active_volume_grid(bke::GeometrySet &geometry,
   }
   Volume *volume = geometry.get_volume_for_write();
 
+  tree.ensure_topology_cache();
+
   const bNode &output_node = *tree.group_output_node();
   MultiValueMap<eAttrDomain, OutputAttributeInfo> outputs_by_domain;
   for (const bNodeSocket *socket : output_node.input_sockets().drop_front(1).drop_back(1)) {
-    if (!socket_type_has_attribute_toggle(*socket)) {
+    if (!socket_type_has_attribute_toggle(eNodeSocketDatatype(socket->type))) {
       continue;
     }
 
@@ -649,8 +651,9 @@ static bool set_active_volume_grid(bke::GeometrySet &geometry,
     }
 
     const int index = socket->index();
-    const bNodeSocket *interface_socket = (const bNodeSocket *)BLI_findlink(&tree.outputs, index);
-    const eAttrDomain domain = (eAttrDomain)interface_socket->attribute_domain;
+    const bNodeTreeInterfaceSocket *interface_socket = tree.interface_outputs().get(index,
+                                                                                    nullptr);
+    const eAttrDomain domain = eAttrDomain(interface_socket->attribute_domain);
     switch (domain) {
       case ATTR_DOMAIN_VOXEL: {
         const VolumeGrid *grid = BKE_volume_grid_find_for_read(volume, attribute_name.c_str());
