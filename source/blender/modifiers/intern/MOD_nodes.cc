@@ -771,8 +771,8 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
   const NodesModifierData &nmd_;
   const ModifierEvalContext &ctx_;
   const Main *bmain_;
+  const Scene *scene_;
   SubFrame current_frame_;
-  SubFrame scene_start_frame_;
   bool use_frame_cache_;
   bool depsgraph_is_active_;
   bake::ModifierCache *modifier_cache_;
@@ -786,7 +786,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     bmain_ = DEG_get_bmain(depsgraph);
     current_frame_ = DEG_get_ctime(depsgraph);
     const Scene *scene = DEG_get_input_scene(depsgraph);
-    scene_start_frame_ = scene->r.sfra;
+    scene_ = scene;
     use_frame_cache_ = ctx_.object->flag & OB_FLAG_USE_SIMULATION_CACHE;
     depsgraph_is_active_ = DEG_is_active(depsgraph);
     modifier_cache_ = nmd.runtime->cache.get();
@@ -838,6 +838,10 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
       return;
     }
     bake::NodeCache &node_cache = *modifier_cache_->cache_by_id.lookup(zone_id);
+    const IndexRange sim_frame_range = *bake::get_node_bake_frame_range(
+        *scene_, *ctx_.object, nmd_, zone_id);
+    const SubFrame sim_start_frame{int(sim_frame_range.first())};
+    const SubFrame sim_end_frame{int(sim_frame_range.last())};
 
     /* Try load baked data. */
     if (!node_cache.failed_finding_bake) {
@@ -881,12 +885,20 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
           node_cache.reset();
         }
         if (node_cache.frame_caches.is_empty()) {
+          if (current_frame_ < sim_start_frame || current_frame_ > sim_end_frame) {
+            /* Outside of simulation frame range, so ignore the simulation. */
+            this->input_pass_through(zone_behavior);
+            this->output_pass_through(zone_behavior);
+            return;
+          }
           /* Initialize the simulation. */
           this->input_pass_through(zone_behavior);
           this->output_store_frame_cache(node_cache, zone_behavior);
           return;
         }
-        if (frame_indices.prev && !frame_indices.current && !frame_indices.next) {
+        if (frame_indices.prev && !frame_indices.current && !frame_indices.next &&
+            current_frame_ <= sim_end_frame)
+        {
           /* Read the previous frame's data and store the newly computed simulation state. */
           auto &output_copy_info = zone_behavior.input.emplace<sim_input::OutputCopy>();
           const bake::FrameCache &prev_frame_cache = *node_cache.frame_caches[*frame_indices.prev];
@@ -977,6 +989,11 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
   void input_pass_through(nodes::SimulationZoneBehavior &zone_behavior) const
   {
     zone_behavior.input.emplace<sim_input::PassThrough>();
+  }
+
+  void output_pass_through(nodes::SimulationZoneBehavior &zone_behavior) const
+  {
+    zone_behavior.output.emplace<sim_output::PassThrough>();
   }
 
   void output_store_frame_cache(bake::NodeCache &node_cache,
