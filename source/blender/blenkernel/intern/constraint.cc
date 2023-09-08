@@ -73,7 +73,7 @@
 #include "DEG_depsgraph.h"
 #include "DEG_depsgraph_query.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "CLG_log.h"
 
@@ -2578,7 +2578,8 @@ static void armdef_accumulate_matrix(const float obmat[4][4],
                                      const float iobmat[4][4],
                                      const float basemat[4][4],
                                      const float bonemat[4][4],
-                                     float weight,
+                                     const float pivot[3],
+                                     const float weight,
                                      float r_sum_mat[4][4],
                                      DualQuat *r_sum_dq)
 {
@@ -2600,7 +2601,7 @@ static void armdef_accumulate_matrix(const float obmat[4][4],
     orthogonalize_m4_stable(basemat_world, 1, true);
 
     mat4_to_dquat(&tmpdq, basemat_world, mat);
-    add_weighted_dq_dq(r_sum_dq, &tmpdq, weight);
+    add_weighted_dq_dq_pivot(r_sum_dq, &tmpdq, pivot, weight, true);
   }
   else {
     madd_m4_m4m4fl(r_sum_mat, r_sum_mat, mat, weight);
@@ -2608,16 +2609,16 @@ static void armdef_accumulate_matrix(const float obmat[4][4],
 }
 
 /* Compute and accumulate transformation for a single target bone. */
-static void armdef_accumulate_bone(bConstraintTarget *ct,
-                                   bPoseChannel *pchan,
+static void armdef_accumulate_bone(const bConstraintTarget *ct,
+                                   const bPoseChannel *pchan,
                                    const float wco[3],
-                                   bool force_envelope,
+                                   const bool force_envelope,
                                    float *r_totweight,
                                    float r_sum_mat[4][4],
                                    DualQuat *r_sum_dq)
 {
   float iobmat[4][4], co[3];
-  Bone *bone = pchan->bone;
+  const Bone *bone = pchan->bone;
   float weight = ct->weight;
 
   /* Our object's location in target pose space. */
@@ -2632,8 +2633,8 @@ static void armdef_accumulate_bone(bConstraintTarget *ct,
 
   /* Find the correct bone transform matrix in world space. */
   if (bone->segments > 1 && bone->segments == pchan->runtime.bbone_segments) {
-    Mat4 *b_bone_mats = pchan->runtime.bbone_deform_mats;
-    Mat4 *b_bone_rest_mats = pchan->runtime.bbone_rest_mats;
+    const Mat4 *b_bone_mats = pchan->runtime.bbone_deform_mats;
+    const Mat4 *b_bone_rest_mats = pchan->runtime.bbone_rest_mats;
     float basemat[4][4];
 
     /* Blend the matrix. */
@@ -2650,6 +2651,7 @@ static void armdef_accumulate_bone(bConstraintTarget *ct,
                              iobmat,
                              basemat,
                              b_bone_mats[index + 1].mat,
+                             wco,
                              weight * (1.0f - blend),
                              r_sum_mat,
                              r_sum_dq);
@@ -2663,6 +2665,7 @@ static void armdef_accumulate_bone(bConstraintTarget *ct,
                              iobmat,
                              basemat,
                              b_bone_mats[index + 2].mat,
+                             wco,
                              weight * blend,
                              r_sum_mat,
                              r_sum_dq);
@@ -2673,6 +2676,7 @@ static void armdef_accumulate_bone(bConstraintTarget *ct,
                              iobmat,
                              bone->arm_mat,
                              pchan->chan_mat,
+                             wco,
                              weight,
                              r_sum_mat,
                              r_sum_dq);
@@ -6562,36 +6566,3 @@ void BKE_constraint_blend_read_data(BlendDataReader *reader, ID *id_owner, ListB
     }
   }
 }
-
-/* temp struct used to transport needed info to lib_link_constraint_cb() */
-struct tConstraintLinkData {
-  BlendLibReader *reader;
-  ID *id;
-};
-/* callback function used to relink constraint ID-links */
-static void lib_link_constraint_cb(bConstraint * /*con*/,
-                                   ID **idpoin,
-                                   bool /*is_reference*/,
-                                   void *userdata)
-{
-  tConstraintLinkData *cld = (tConstraintLinkData *)userdata;
-  BLO_read_id_address(cld->reader, cld->id, idpoin);
-}
-
-void BKE_constraint_blend_read_lib(BlendLibReader *reader, ID *id, ListBase *conlist)
-{
-  tConstraintLinkData cld;
-
-  /* legacy fixes */
-  LISTBASE_FOREACH (bConstraint *, con, conlist) {
-    /* own ipo, all constraints have it */
-    BLO_read_id_address(reader, id, &con->ipo); /* XXX deprecated - old animation system */
-  }
-
-  /* relink all ID-blocks used by the constraints */
-  cld.reader = reader;
-  cld.id = id;
-
-  BKE_constraints_id_loop(conlist, lib_link_constraint_cb, IDWALK_NOP, &cld);
-}
-

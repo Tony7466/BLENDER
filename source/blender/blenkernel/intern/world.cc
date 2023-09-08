@@ -30,6 +30,7 @@
 #include "BKE_lib_query.h"
 #include "BKE_main.h"
 #include "BKE_node.h"
+#include "BKE_preview_image.hh"
 #include "BKE_world.h"
 
 #include "BLT_translation.h"
@@ -40,7 +41,7 @@
 
 #include "GPU_material.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 /** Free (or release) any data used by this world (does not free the world itself). */
 static void world_free_data(ID *id)
@@ -175,12 +176,6 @@ static void world_blend_read_data(BlendDataReader *reader, ID *id)
   BLO_read_data_address(reader, &wrld->lightgroup);
 }
 
-static void world_blend_read_lib(BlendLibReader *reader, ID *id)
-{
-  World *wrld = (World *)id;
-  BLO_read_id_address(reader, id, &wrld->ipo); /* XXX deprecated, old animation system */
-}
-
 IDTypeInfo IDType_ID_WO = {
     /*id_code*/ ID_WO,
     /*id_filter*/ FILTER_ID_WO,
@@ -203,7 +198,7 @@ IDTypeInfo IDType_ID_WO = {
 
     /*blend_write*/ world_blend_write,
     /*blend_read_data*/ world_blend_read_data,
-    /*blend_read_lib*/ world_blend_read_lib,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 
