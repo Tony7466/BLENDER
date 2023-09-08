@@ -34,29 +34,6 @@ struct TriangleIntersectionResult {
 
 enum { METALRT_HIT_TRIANGLE, METALRT_HIT_BOUNDING_BOX };
 
-/* Utilities. */
-
-ccl_device_inline bool intersection_skip_self(ray_data const RaySelfPrimitives &self,
-                                              const int object,
-                                              const int prim)
-{
-  return (self.prim == prim) && (self.object == object);
-}
-
-ccl_device_inline bool intersection_skip_self_shadow(ray_data const RaySelfPrimitives &self,
-                                                     const int object,
-                                                     const int prim)
-{
-  return ((self.prim == prim) && (self.object == object)) ||
-         ((self.light_prim == prim) && (self.light_object == object));
-}
-
-ccl_device_inline bool intersection_skip_self_local(ray_data const RaySelfPrimitives &self,
-                                                    const int prim)
-{
-  return (self.prim == prim);
-}
-
 /* Hit functions. */
 
 template<typename TReturn, uint intersection_type>
@@ -72,8 +49,11 @@ TReturn metalrt_local_hit(constant KernelParamsMetal &launch_params_metal,
 #  ifdef __BVH_LOCAL__
   uint prim = primitive_id + kernel_data_fetch(object_prim_offset, object);
 
-  if ((object != payload.local_object) || intersection_skip_self_local(payload.self, prim)) {
-    /* Only intersect with matching object and skip self-intersecton. */
+  MetalKernelContext context(launch_params_metal);
+
+  if ((object != payload.local_object) || context.intersection_skip_self_local(payload.self, prim))
+  {
+    /* Only intersect with matching object and skip self-intersection. */
     result.accept = false;
     result.continue_search = true;
     return result;
@@ -152,10 +132,10 @@ __anyhit__cycles_metalrt_local_hit_tri_prim(
     float2 barycentrics [[barycentric_coord]],
     float ray_tmax [[distance]])
 {
-  // instance_id, aka the user_id has been removed. If we take this function we optimized the
-  // SSS for starting traversal from a primitive acceleration structure instead of the root of the
-  // global AS. this means we will always be intersecting the correct object no need for the userid
-  // to check
+  /* instance_id, aka the user_id has been removed. If we take this function we optimized the
+   * SSS for starting traversal from a primitive acceleration structure instead of the root of the
+   * global AS. this means we will always be intersecting the correct object no need for the
+   * user-id to check */
   return metalrt_local_hit<TriangleIntersectionResult, METALRT_HIT_TRIANGLE>(
       launch_params_metal, payload, payload.local_object, primitive_id, barycentrics, ray_tmax);
 }
@@ -222,7 +202,7 @@ bool metalrt_shadow_all_hit(constant KernelParamsMetal &launch_params_metal,
       type = segment.type;
       prim = segment.prim;
 
-      /* Filter out curve endcaps */
+      /* Filter out curve end-caps. */
       if (u == 0.0f || u == 1.0f) {
         /* continue search */
         return true;
@@ -231,10 +211,19 @@ bool metalrt_shadow_all_hit(constant KernelParamsMetal &launch_params_metal,
   }
 #    endif
 
-  if (intersection_skip_self_shadow(payload.self, object, prim)) {
+  MetalKernelContext context(launch_params_metal);
+
+  if (context.intersection_skip_self_shadow(payload.self, object, prim)) {
     /* continue search */
     return true;
   }
+
+#    ifdef __SHADOW_LINKING__
+  if (context.intersection_skip_shadow_link(nullptr, payload.self, object)) {
+    /* continue search */
+    return true;
+  }
+#    endif
 
 #    ifndef __TRANSPARENT_SHADOWS__
   /* No transparent shadows support compiled in, make opaque. */
@@ -245,8 +234,6 @@ bool metalrt_shadow_all_hit(constant KernelParamsMetal &launch_params_metal,
   short max_hits = payload.max_hits;
   short num_hits = payload.num_hits;
   short num_recorded_hits = payload.num_recorded_hits;
-
-  MetalKernelContext context(launch_params_metal);
 
   /* If no transparent shadows, all light is blocked and we can stop immediately. */
   if (num_hits >= max_hits ||
@@ -362,7 +349,7 @@ inline TReturnType metalrt_visibility_test(
   if (intersection_type == METALRT_HIT_BOUNDING_BOX &&
       (type == PRIMITIVE_CURVE_THICK || type == PRIMITIVE_CURVE_RIBBON))
   {
-    /* Filter out curve endcaps. */
+    /* Filter out curve end-caps. */
     if (u == 0.0f || u == 1.0f) {
       result.accept = false;
       result.continue_search = true;
@@ -388,9 +375,19 @@ inline TReturnType metalrt_visibility_test(
   }
 #  endif
 
+  MetalKernelContext context(launch_params_metal);
+
   /* Shadow ray early termination. */
   if (visibility & PATH_RAY_SHADOW_OPAQUE) {
-    if (intersection_skip_self_shadow(payload.self, object, prim)) {
+#  ifdef __SHADOW_LINKING__
+    if (context.intersection_skip_shadow_link(nullptr, payload.self, object)) {
+      result.accept = false;
+      result.continue_search = true;
+      return result;
+    }
+#  endif
+
+    if (context.intersection_skip_self_shadow(payload.self, object, prim)) {
       result.accept = false;
       result.continue_search = true;
       return result;
@@ -402,7 +399,7 @@ inline TReturnType metalrt_visibility_test(
     }
   }
   else {
-    if (intersection_skip_self(payload.self, object, prim)) {
+    if (context.intersection_skip_self(payload.self, object, prim)) {
       result.accept = false;
       result.continue_search = true;
       return result;
