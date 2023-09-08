@@ -776,6 +776,9 @@ static void node_declare_dynamic(const bNodeTree & /*node_tree*/,
     SocketDeclarationPtr pass_through_decl = std::make_unique<decl::Bool>();
     pass_through_decl->name = "Pass Through";
     pass_through_decl->identifier = pass_through_decl->name;
+    pass_through_decl->description = N_(
+        "Forward the simulation state from the simulation input node directly and ignore the "
+        "nodes in the simulation zone");
     pass_through_decl->in_out = SOCK_IN;
     r_declaration.inputs.append(pass_through_decl.get());
     r_declaration.items.append(std::move(pass_through_decl));
