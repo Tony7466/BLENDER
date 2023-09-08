@@ -1295,29 +1295,55 @@ static uiBlock *wm_block_confirm_create(bContext *C, ARegion *region, void *arg_
   const bool windows_layout = false;
 #endif
 
-  uiBut *confirm = NULL;
-  uiBut *cancel = NULL;
+  uiBut *confirm = nullptr;
+  uiBut *cancel = nullptr;
   int height = UI_UNIT_Y;
   uiLayout *split = uiLayoutSplit(small ? block_layout : layout, 0.0f, true);
   uiLayoutSetScaleY(split, small ? 1.1f : 1.2f);
   uiLayoutColumn(split, false);
 
   if (windows_layout) {
-    confirm = uiDefIconTextBut(
-        block, UI_BTYPE_BUT, 0, 0, warning.confirm_button, 0, 0, 0, height, 0, 0, 0, 0, 0, NULL);
+    confirm = uiDefIconTextBut(block,
+                               UI_BTYPE_BUT,
+                               0,
+                               0,
+                               warning.confirm_button,
+                               0,
+                               0,
+                               0,
+                               height,
+                               0,
+                               0,
+                               0,
+                               0,
+                               0,
+                               nullptr);
     uiLayoutColumn(split, false);
   }
 
   cancel = uiDefIconTextBut(
-      block, UI_BTYPE_BUT, 0, 0, warning.cancel_button, 0, 0, 0, height, 0, 0, 0, 0, 0, NULL);
+      block, UI_BTYPE_BUT, 0, 0, warning.cancel_button, 0, 0, 0, height, 0, 0, 0, 0, 0, nullptr);
 
   if (!windows_layout) {
     uiLayoutColumn(split, false);
-    confirm = uiDefIconTextBut(
-        block, UI_BTYPE_BUT, 0, 0, warning.confirm_button, 0, 0, 0, height, 0, 0, 0, 0, 0, NULL);
+    confirm = uiDefIconTextBut(block,
+                               UI_BTYPE_BUT,
+                               0,
+                               0,
+                               warning.confirm_button,
+                               0,
+                               0,
+                               0,
+                               height,
+                               0,
+                               0,
+                               0,
+                               0,
+                               0,
+                               nullptr);
   }
 
-  UI_block_func_set(block, NULL, NULL, NULL);
+  UI_block_func_set(block, nullptr, nullptr, nullptr);
   UI_but_func_set(confirm, wm_operator_block_confirm, op, block);
   UI_but_func_set(cancel, wm_operator_block_cancel, op, block);
   UI_but_drawflag_disable(confirm, UI_BUT_TEXT_LEFT);
@@ -1376,7 +1402,7 @@ int WM_operator_confirm_message_ex(bContext *C,
 int WM_operator_confirm_message(bContext *C, wmOperator *op, const char *message)
 {
   if (op->type->warning) {
-    UI_popup_block_invoke(C, wm_block_confirm_create, op, NULL);
+    UI_popup_block_invoke(C, wm_block_confirm_create, op, nullptr);
     return OPERATOR_RUNNING_MODAL;
   }
 
