@@ -10,10 +10,6 @@
 
 #include "DNA_ID.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct PackedFile;
 struct VolumeGridVector;
 struct VolumeGrid;
@@ -171,7 +167,3 @@ typedef enum SliceAxis {
 
 /* Only one material supported currently. */
 #define VOLUME_MATERIAL_NR 1
-
-#ifdef __cplusplus
-}
-#endif

@@ -252,6 +252,7 @@ set(INC
   ../../sequencer
   ../../simulation
   ../../windowmanager
+  ../../editors/asset
   ../../editors/include
   ../../render
   ../../../../intern/clog
@@ -483,6 +484,7 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::animrig
   PRIVATE bf::dna
   bf_editor_space_api
 
