@@ -9,6 +9,8 @@
 
 namespace blender::nodes::materialx {
 
+static const std::string TEXCOORD_NODE_NAME = "node_texcoord";
+
 NodeParser::NodeParser(MaterialX::GraphElement *graph,
                        const Depsgraph *depsgraph,
                        const Material *material,
@@ -77,6 +79,17 @@ NodeItem NodeParser::get_input_value(int index, NodeItem::Type to_type)
 NodeItem NodeParser::empty() const
 {
   return NodeItem(graph_);
+}
+
+NodeItem NodeParser::texcoord_node()
+{
+  NodeItem res = empty();
+  res.node = graph_->getNode(TEXCOORD_NODE_NAME);
+  if (!res.node) {
+    res = create_node("texcoord", NodeItem::Type::Vector2);
+    res.node->setName(TEXCOORD_NODE_NAME);
+  }
+  return res;
 }
 
 NodeItem NodeParser::get_input_default(const bNodeSocket &socket, NodeItem::Type to_type)

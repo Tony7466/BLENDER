@@ -351,15 +351,6 @@ NodeItem NodeItem::exp() const
   return arithmetic("exp", [](float a) { return std::expf(a); });
 }
 
-NodeItem NodeItem::extract(const int index) const
-{
-  NodeItem res = empty();
-  res = create_node("extract", Type::Float);
-  res.set_input("in", *this);
-  res.set_input("index", val(index));
-  return res;
-}
-
 NodeItem NodeItem::convert(Type to_type) const
 {
   Type from_type = type();
@@ -602,6 +593,15 @@ NodeItem NodeItem::if_else(CompareOp op,
     res.set_input("in2", item2);
   }
 
+  return res;
+}
+
+NodeItem NodeItem::extract(const int index) const
+{
+  NodeItem res = empty();
+  res = create_node("extract", Type::Float);
+  res.set_input("in", *this);
+  res.set_input("index", val(index));
   return res;
 }
 

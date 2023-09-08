@@ -10,11 +10,13 @@ namespace blender::nodes::materialx {
 NodeItem MathNodeParser::compute()
 {
   /* TODO: finish some math operations */
-  auto op = node_->custom1;
+  NodeMathOperation op = NodeMathOperation(node_->custom1);
   NodeItem res = empty();
 
   /* Single operand operations */
-  NodeItem x = get_input_value(0, NodeItem::Type::Any);
+  NodeItem x = get_input_value(0, NodeItem::Type::Float);
+  /* TODO: Seems we have to use average if Vector or Color are added */
+
   switch (op) {
     case NODE_MATH_SINE:
       res = x.sin();
@@ -82,7 +84,7 @@ NodeItem MathNodeParser::compute()
 
     default: {
       /* 2-operand operations */
-      NodeItem y = get_input_value(1, NodeItem::Type::Any);
+      NodeItem y = get_input_value(1, NodeItem::Type::Float);
       switch (op) {
         case NODE_MATH_ADD:
           res = x + y;
@@ -132,7 +134,7 @@ NodeItem MathNodeParser::compute()
 
         default: {
           /* 3-operand operations */
-          NodeItem z = get_input_value(2, NodeItem::Type::Any);
+          NodeItem z = get_input_value(2, NodeItem::Type::Float);
           switch (op) {
             case NODE_MATH_WRAP:
               CLOG_WARN(LOG_MATERIALX_SHADER, "Unimplemented math operation %d", op);
