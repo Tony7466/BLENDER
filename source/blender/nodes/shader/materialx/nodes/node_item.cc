@@ -20,6 +20,9 @@ NodeItem::Type NodeItem::type(const std::string &type_str)
   if (type_str == "filename") {
     return Type::Filename;
   }
+  if (type_str == "boolean") {
+    return Type::Boolean;
+  }
   if (type_str == "integer") {
     return Type::Integer;
   }
@@ -64,6 +67,8 @@ std::string NodeItem::type(Type type)
       return "string";
     case Type::Filename:
       return "filename";
+    case Type::Boolean:
+      return "boolean";
     case Type::Integer:
       return "integer";
     case Type::Float:
@@ -632,6 +637,9 @@ void NodeItem::set_input(const std::string &in_name, const NodeItem &item)
     switch (item_type) {
       case Type::String:
         set_input(in_name, item.value->asA<std::string>(), item_type);
+        break;
+      case Type::Boolean:
+        set_input(in_name, item.value->asA<bool>(), item_type);
         break;
       case Type::Integer:
         set_input(in_name, item.value->asA<int>(), item_type);

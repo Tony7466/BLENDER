@@ -17,6 +17,7 @@ class NodeItem {
     /* Value types */
     String,
     Filename,
+    Boolean,
     Integer,
     /* Block of arithmetic types. Ordered by type cast */
     Float,

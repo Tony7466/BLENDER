@@ -90,14 +90,18 @@ template<class T> NodeItem NodeParser::val(const T &data) const
     NodeItem compute() override; \
   };
 
+DECLARE_NODE_PARSER(BlackbodyNodeParser)
 DECLARE_NODE_PARSER(BrightContrastNodeParser)
+DECLARE_NODE_PARSER(ClampNodeParser)
 DECLARE_NODE_PARSER(CombineColorNodeParser)
 DECLARE_NODE_PARSER(CombineXYZNodeParser)
 DECLARE_NODE_PARSER(HueSatValNodeParser)
 DECLARE_NODE_PARSER(InvertNodeParser)
+DECLARE_NODE_PARSER(MapRangeNodeParser)
 DECLARE_NODE_PARSER(MathNodeParser)
 DECLARE_NODE_PARSER(MixRGBNodeParser)
 DECLARE_NODE_PARSER(NormalMapNodeParser)
+DECLARE_NODE_PARSER(RGBToBWNodeParser)
 DECLARE_NODE_PARSER(SeparateColorNodeParser)
 DECLARE_NODE_PARSER(SeparateXYZNodeParser)
 DECLARE_NODE_PARSER(TexCheckerNodeParser)

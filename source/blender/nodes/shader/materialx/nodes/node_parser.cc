@@ -136,14 +136,18 @@ NodeItem NodeParser::get_input_link(const bNodeSocket &socket, NodeItem::Type to
     break;
 
   switch (from_node->typeinfo->type) {
+    CASE_NODE_TYPE(SH_NODE_BLACKBODY, BlackbodyNodeParser)
     CASE_NODE_TYPE(SH_NODE_BRIGHTCONTRAST, BrightContrastNodeParser)
+    CASE_NODE_TYPE(SH_NODE_CLAMP, ClampNodeParser)
     CASE_NODE_TYPE(SH_NODE_COMBINE_COLOR, CombineColorNodeParser)
     CASE_NODE_TYPE(SH_NODE_COMBXYZ, CombineXYZNodeParser)
     CASE_NODE_TYPE(SH_NODE_HUE_SAT, HueSatValNodeParser)
     CASE_NODE_TYPE(SH_NODE_INVERT, InvertNodeParser)
+    CASE_NODE_TYPE(SH_NODE_MAP_RANGE, MapRangeNodeParser)
     CASE_NODE_TYPE(SH_NODE_MATH, MathNodeParser)
     CASE_NODE_TYPE(SH_NODE_MIX_RGB_LEGACY, MixRGBNodeParser)
     CASE_NODE_TYPE(SH_NODE_NORMAL_MAP, NormalMapNodeParser)
+    CASE_NODE_TYPE(SH_NODE_RGBTOBW, RGBToBWNodeParser)
     CASE_NODE_TYPE(SH_NODE_SEPARATE_COLOR, SeparateColorNodeParser)
     CASE_NODE_TYPE(SH_NODE_SEPXYZ, SeparateXYZNodeParser)
     CASE_NODE_TYPE(SH_NODE_TEX_CHECKER, TexCheckerNodeParser)
