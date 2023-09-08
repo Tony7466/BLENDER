@@ -916,7 +916,6 @@ class LazyFunctionForSimulationInputsUsage : public LazyFunction {
     params.set_output(
         1,
         solve_contains_side_effect ||
-            std::holds_alternative<sim_output::PassThrough>(zone_behavior->output) ||
             std::holds_alternative<sim_output::StoreNewState>(zone_behavior->output));
   }
 };
