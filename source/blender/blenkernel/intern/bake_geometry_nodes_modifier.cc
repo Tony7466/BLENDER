@@ -71,11 +71,21 @@ std::optional<bake::BakePath> get_node_bake_path(const Main &bmain,
                                                  const NodesModifierData &nmd,
                                                  int node_id)
 {
+  const NodesModifierBake *bake = nmd.find_bake(node_id);
+  if (bake == nullptr) {
+    return std::nullopt;
+  }
+  if (!StringRef(bake->directory).is_empty()) {
+    const char *base_path = ID_BLEND_PATH(&bmain, &object.id);
+    char absolute_bake_dir[FILE_MAX];
+    STRNCPY(absolute_bake_dir, bake->directory);
+    BLI_path_abs(absolute_bake_dir, base_path);
+    return bake::BakePath::from_single_root(absolute_bake_dir);
+  }
   const std::optional<std::string> modifier_bake_path = get_modifier_bake_path(bmain, object, nmd);
   if (!modifier_bake_path) {
     return std::nullopt;
   }
-
   char zone_bake_dir[FILE_MAX];
   BLI_path_join(zone_bake_dir,
                 sizeof(zone_bake_dir),
