@@ -196,7 +196,7 @@ static void rna_BoneCollections_active_index_set(PointerRNA *ptr, const int bone
   bArmature *arm = (bArmature *)ptr->data;
   ANIM_armature_bonecoll_active_index_set(arm, bone_collection_index);
 
-  // TODO: send notifiers?
+  WM_main_add_notifier(NC_OBJECT | ND_BONE_COLLECTION, ptr->data);
 }
 
 static void rna_BoneCollections_active_index_range(
@@ -219,7 +219,7 @@ static void rna_BoneCollections_move(bArmature *arm, ReportList *reports, int fr
     BKE_reportf(reports, RPT_ERROR, "Cannot move collection from index '%d' to '%d'", from, to);
   }
 
-  // TODO: notifiers.
+  WM_main_add_notifier(NC_OBJECT | ND_BONE_COLLECTION, &arm->id);
 }
 
 static void rna_BoneCollection_name_set(PointerRNA *ptr, const char *name)
@@ -228,7 +228,7 @@ static void rna_BoneCollection_name_set(PointerRNA *ptr, const char *name)
   BoneCollection *bcoll = (BoneCollection *)ptr->data;
 
   ANIM_armature_bonecoll_name_set(arm, bcoll, name);
-  // TODO: notifiers.
+  WM_main_add_notifier(NC_OBJECT | ND_BONE_COLLECTION, &arm->id);
 }
 
 static char *rna_BoneCollection_path(const PointerRNA *ptr)
@@ -244,6 +244,12 @@ static IDProperty **rna_BoneCollection_idprops(PointerRNA *ptr)
 {
   BoneCollection *bcoll = static_cast<BoneCollection *>(ptr->data);
   return &bcoll->prop;
+}
+
+static void rna_BoneCollectionMemberships_clear(Bone *bone)
+{
+  ANIM_armature_bonecoll_unassign_all(bone);
+  WM_main_add_notifier(NC_OBJECT | ND_BONE_COLLECTION, nullptr);
 }
 
 /* BoneCollection.bones iterator functions. */
@@ -1396,6 +1402,23 @@ static void rna_def_bone_common(StructRNA *srna, int editbone)
   RNA_define_lib_overridable(false);
 }
 
+/** Bone.collections collection-of-bone-collections interface. */
+static void rna_def_bone_collection_memberships(BlenderRNA *brna, PropertyRNA *cprop)
+{
+  StructRNA *srna;
+  FunctionRNA *func;
+
+  RNA_def_property_srna(cprop, "BoneCollectionMemberships");
+  srna = RNA_def_struct(brna, "BoneCollectionMemberships", nullptr);
+  RNA_def_struct_sdna(srna, "Bone");
+  RNA_def_struct_ui_text(
+      srna, "Bone Collection Memberships", "The Bone Collections that contain this Bone");
+
+  /* Bone.collections.clear(...) */
+  func = RNA_def_function(srna, "clear", "rna_BoneCollectionMemberships_clear");
+  RNA_def_function_ui_description(func, "Remove this bone from all bone collections");
+}
+
 /* Err... bones should not be directly edited (only edit-bones should be...). */
 static void rna_def_bone(BlenderRNA *brna)
 {
@@ -1436,8 +1459,8 @@ static void rna_def_bone(BlenderRNA *brna)
                                     nullptr,
                                     nullptr);
   RNA_def_property_flag(prop, PROP_PTR_NO_OWNERSHIP);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_ui_text(prop, "Collections", "Bone Collections that contain this bone");
+  rna_def_bone_collection_memberships(brna, prop);
 
   rna_def_bone_common(srna, 0);
   rna_def_bone_curved_common(srna, false, false);
