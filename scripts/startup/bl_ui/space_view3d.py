@@ -2745,18 +2745,13 @@ class VIEW3D_MT_object_context_menu(Menu):
         selected_objects_len = len(context.selected_objects)
 
         # If nothing is selected
-        # (disabled for now until it can be made more useful).
-        '''
         if selected_objects_len == 0:
-
-            layout.menu("VIEW3D_MT_add", text="Add", text_ctxt=i18n_contexts.operator_default)
+            layout.menu("VIEW3D_MT_add", text="Add", text_ctxt=i18n_contexts.operator_default, icon="ADD")
             layout.operator("view3d.pastebuffer", text="Paste Objects", icon='PASTEDOWN')
 
             return
-        '''
 
         # If something is selected
-
         # Individual object types.
         if obj is None:
             pass
@@ -4257,18 +4252,13 @@ class VIEW3D_MT_edit_mesh_context_menu(Menu):
 
         layout.operator_context = 'INVOKE_REGION_WIN'
 
-        # If nothing is selected
-        # (disabled for now until it can be made more useful).
-        '''
-        # If nothing is selected
+        # If nothing is selected.
         if not (selected_verts_len or selected_edges_len or selected_faces_len):
-            layout.menu("VIEW3D_MT_mesh_add", text="Add", text_ctxt=i18n_contexts.operator_default)
+            layout.menu("VIEW3D_MT_mesh_add", text="Add", text_ctxt=i18n_contexts.operator_default, icon="ADD")
 
             return
-        '''
 
-        # Else something is selected
-
+        # If something is selected.
         row = layout.row()
 
         if is_vert_mode:
