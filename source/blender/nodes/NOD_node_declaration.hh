@@ -182,6 +182,7 @@ class SocketDeclaration : public ItemDeclaration {
   bool is_unavailable = false;
   bool is_attribute_name = false;
   bool is_default_link_socket = false;
+  bool inline_with_next = false;
 
   InputSocketFieldType input_field_type = InputSocketFieldType::None;
   OutputFieldDependency output_field_dependency;
@@ -331,6 +332,12 @@ class SocketDeclarationBuilder : public BaseSocketDeclarationBuilder {
   Self &is_default_link_socket(bool value = true)
   {
     decl_->is_default_link_socket = value;
+    return *(Self *)this;
+  }
+
+  Self &inline_with_next(bool value = true)
+  {
+    decl_->inline_with_next = value;
     return *(Self *)this;
   }
 
