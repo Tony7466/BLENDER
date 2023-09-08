@@ -516,6 +516,10 @@ class PanelDeclarationBuilder {
   using Self = PanelDeclarationBuilder;
   NodeDeclarationBuilder *node_decl_builder_ = nullptr;
   PanelDeclaration *decl_;
+  /* Panel is complete once items are added after it.
+   * Completed panels are locked and no more items can be added.
+   */
+  bool is_complete_ = false;
 
   friend class NodeDeclarationBuilder;
 
@@ -526,17 +530,16 @@ class PanelDeclarationBuilder {
     return *this;
   }
 
-  Self &items(int count)
-  {
-    decl_->num_items = count;
-    return *this;
-  }
-
   Self &default_closed(bool closed)
   {
     decl_->default_collapsed = closed;
     return *this;
   }
+
+  template<typename DeclType>
+  typename DeclType::Builder &add_input(StringRef name, StringRef identifier = "");
+  template<typename DeclType>
+  typename DeclType::Builder &add_output(StringRef name, StringRef identifier = "");
 };
 
 using PanelDeclarationPtr = std::unique_ptr<PanelDeclaration>;
@@ -581,6 +584,9 @@ class NodeDeclarationBuilder {
   Vector<std::unique_ptr<PanelDeclarationBuilder>> panel_builders_;
   bool is_function_node_ = false;
 
+ private:
+  friend PanelDeclarationBuilder;
+
  public:
   NodeDeclarationBuilder(NodeDeclaration &declaration);
 
@@ -616,6 +622,9 @@ class NodeDeclarationBuilder {
   typename DeclType::Builder &add_socket(StringRef name,
                                          StringRef identifier,
                                          eNodeSocketInOut in_out);
+
+  /* Mark the most recent builder as 'complete' so no more items can be added. */
+  void mark_most_recent_panel_complete();
 };
 
 namespace implicit_field_inputs {
@@ -776,6 +785,38 @@ inline void SocketDeclaration::make_available(bNode &node) const
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name #PanelDeclarationBuilder Inline Methods
+ * \{ */
+
+template<typename DeclType>
+typename DeclType::Builder &PanelDeclarationBuilder::add_input(StringRef name,
+                                                               StringRef identifier)
+{
+  if (is_complete_) {
+    static typename DeclType::Builder dummy_builder = {};
+    BLI_assert_unreachable();
+    return dummy_builder;
+  }
+  ++this->decl_->num_child_decls;
+  return node_decl_builder_->add_socket<DeclType>(name, identifier, SOCK_IN);
+}
+
+template<typename DeclType>
+typename DeclType::Builder &PanelDeclarationBuilder::add_output(StringRef name,
+                                                                StringRef identifier)
+{
+  if (is_complete_) {
+    static typename DeclType::Builder dummy_builder = {};
+    BLI_assert_unreachable();
+    return dummy_builder;
+  }
+  ++this->decl_->num_child_decls;
+  return node_decl_builder_->add_socket<DeclType>(name, identifier, SOCK_OUT);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name #NodeDeclarationBuilder Inline Methods
  * \{ */
 
@@ -793,6 +834,7 @@ template<typename DeclType>
 inline typename DeclType::Builder &NodeDeclarationBuilder::add_input(StringRef name,
                                                                      StringRef identifier)
 {
+  mark_most_recent_panel_complete();
   return this->add_socket<DeclType>(name, identifier, SOCK_IN);
 }
 
@@ -800,6 +842,7 @@ template<typename DeclType>
 inline typename DeclType::Builder &NodeDeclarationBuilder::add_output(StringRef name,
                                                                       StringRef identifier)
 {
+  mark_most_recent_panel_complete();
   return this->add_socket<DeclType>(name, identifier, SOCK_OUT);
 }
 
@@ -824,19 +867,25 @@ inline typename DeclType::Builder &NodeDeclarationBuilder::add_socket(StringRef 
   socket_decl->in_out = in_out;
   socket_decl_builder->index_ = declarations.append_and_get_index(socket_decl.get());
   declaration_.items.append(std::move(socket_decl));
+
   Builder &socket_decl_builder_ref = *socket_decl_builder;
   ((in_out == SOCK_IN) ? input_builders_ : output_builders_)
       .append(std::move(socket_decl_builder));
+
   return socket_decl_builder_ref;
 }
 
 inline PanelDeclarationBuilder &NodeDeclarationBuilder::add_panel(StringRef name, int identifier)
 {
+
+  mark_most_recent_panel_complete();
+
   std::unique_ptr<PanelDeclaration> panel_decl = std::make_unique<PanelDeclaration>();
   std::unique_ptr<PanelDeclarationBuilder> panel_decl_builder =
       std::make_unique<PanelDeclarationBuilder>();
   panel_decl_builder->decl_ = &*panel_decl;
 
+  panel_decl_builder->node_decl_builder_ = this;
   if (identifier >= 0) {
     panel_decl->identifier = identifier;
   }
@@ -849,6 +898,7 @@ inline PanelDeclarationBuilder &NodeDeclarationBuilder::add_panel(StringRef name
 
   PanelDeclarationBuilder &builder_ref = *panel_decl_builder;
   panel_builders_.append(std::move(panel_decl_builder));
+
   return builder_ref;
 }
 

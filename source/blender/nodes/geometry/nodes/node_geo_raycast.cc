@@ -38,8 +38,9 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Rotation>("Attribute", "Attribute_005").hide_value().field_on_all();
 
   b.add_input<decl::Vector>("Source Position").implicit_field(implicit_field_inputs::position);
-  b.add_input<decl::Vector>("Ray Direction").default_value({0.0f, 0.0f, -1.0f}).supports_field();
-  b.add_input<decl::Float>("Ray Length")
+  PanelDeclarationBuilder &pb = b.add_panel("TEST");
+  pb.add_input<decl::Vector>("Ray Direction").default_value({0.0f, 0.0f, -1.0f}).supports_field();
+  pb.add_input<decl::Float>("Ray Length")
       .default_value(100.0f)
       .min(0.0f)
       .subtype(PROP_DISTANCE)

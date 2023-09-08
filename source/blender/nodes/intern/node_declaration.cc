@@ -97,6 +97,19 @@ void NodeDeclarationBuilder::finalize()
   }
 }
 
+void NodeDeclarationBuilder::mark_most_recent_panel_complete()
+{
+  if (panel_builders_.is_empty()) {
+    return;
+  }
+
+  if (PanelDeclarationBuilder *panel_builder = dynamic_cast<PanelDeclarationBuilder *>(
+          panel_builders_.last().get()))
+  {
+    panel_builder->is_complete_ = true;
+  }
+}
+
 namespace anonymous_attribute_lifetime {
 
 bool operator==(const RelationsInNode &a, const RelationsInNode &b)
