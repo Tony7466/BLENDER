@@ -326,8 +326,7 @@ static void export_startjob(void *customdata,
   else {
     DEG_graph_build_for_all_objects(data->depsgraph);
   }
-  ModifierDisabler mod_disabler(data->depsgraph, data->params);
-  mod_disabler.disable_modifiers();
+
   BKE_scene_graph_update_tagged(data->depsgraph, data->bmain);
 
   *progress = 0.0f;

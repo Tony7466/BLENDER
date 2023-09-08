@@ -124,4 +124,14 @@ void remap_blend_shape_anim(pxr::UsdStageRefPtr stage,
                             const pxr::SdfPath &skel_path,
                             const pxr::SdfPathSet &mesh_paths);
 
+/**
+ * If the given object is a mesh with shape keys, return a copy of the object's pre-modified mesh
+ * with its verts in the shape key basis positions. The returned mesh must be freed by the caller.
+ *
+ * \param obj: The mesh object with shape keys
+ * \return: A new mesh corresponding to the shape key basis shape, or null if the object
+ *          isn't a mesh or has no shape keys
+ */
+Mesh *get_shape_key_basis_mesh(Object *obj);
+
 }  // namespace blender::io::usd

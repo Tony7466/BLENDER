@@ -888,41 +888,23 @@ void USDMeshWriter::do_write(HierarchyContext &context)
 
 Mesh *USDMeshWriter::get_export_mesh(Object *object_eval, bool &r_needsfree)
 {
-  if (!exporting_blend_shapes(object_eval)) {
-    return BKE_object_get_evaluated_mesh(object_eval);
+  if (exporting_blend_shapes(object_eval)) {
+    r_needsfree = true;
+    /* We return the pre-modified mesh with the verts in the shape key
+     * basis positions. */
+    return get_shape_key_basis_mesh(object_eval);
   }
 
-  /* If we're exporting blend shapes, we export the unmodified mesh with
-   * the verts in the basis key positions. */
-  Mesh *mesh = BKE_object_get_pre_modified_mesh(object_eval);
-
-  if (!mesh || !mesh->key || !mesh->key->block.first) {
-    return nullptr;
+  if (exporting_skinned_mesh(object_eval)) {
+    r_needsfree = false;
+    /* We must export the skinned mesh in its rest pose.  We therefore
+     * return the pre-modified mesh, so that the armature modifier isn't
+     * applied. */
+    return BKE_object_get_pre_modified_mesh(object_eval);
   }
 
-  KeyBlock *basis = reinterpret_cast<KeyBlock *>(mesh->key->block.first);
-
-  if (mesh->totvert != basis->totelem) {
-    WM_reportf(RPT_WARNING,
-               "%s: vertex and shape key element count mismatch for mesh %s\n",
-               __func__,
-               object_eval->id.name + 2);
-    return nullptr;
-  }
-
-  /* Make a copy of the mesh so we can update the verts to the basis shape. */
-  Mesh *temp_mesh = reinterpret_cast<Mesh *>(
-      BKE_id_copy_ex(nullptr, &mesh->id, nullptr, LIB_ID_COPY_LOCALIZE));
-
-  /* Update the verts. */
-  BKE_keyblock_convert_to_mesh(
-      basis,
-      reinterpret_cast<float(*)[3]>(temp_mesh->vert_positions_for_write().data()),
-      temp_mesh->totvert);
-
-  r_needsfree = true;
-
-  return temp_mesh;
+  r_needsfree = false;
+  return BKE_object_get_evaluated_mesh(object_eval);
 }
 
 void USDMeshWriter::add_shape_key_weights_sample(const Object *obj)

@@ -509,4 +509,41 @@ void remap_blend_shape_anim(pxr::UsdStageRefPtr stage,
   }
 }
 
+Mesh *get_shape_key_basis_mesh(Object *obj)
+{
+  if (!obj || !obj->data || obj->type != OB_MESH) {
+    return nullptr;
+  }
+
+  /* If we're exporting blend shapes, we export the unmodified mesh with
+   * the verts in the basis key positions. */
+  Mesh *mesh = BKE_object_get_pre_modified_mesh(obj);
+
+  if (!mesh || !mesh->key || !mesh->key->block.first) {
+    return nullptr;
+  }
+
+  KeyBlock *basis = reinterpret_cast<KeyBlock *>(mesh->key->block.first);
+
+  if (mesh->totvert != basis->totelem) {
+    WM_reportf(RPT_WARNING,
+               "%s: vertex and shape key element count mismatch for mesh %s\n",
+               __func__,
+               obj->id.name + 2);
+    return nullptr;
+  }
+
+  /* Make a copy of the mesh so we can update the verts to the basis shape. */
+  Mesh *temp_mesh = reinterpret_cast<Mesh *>(
+      BKE_id_copy_ex(nullptr, &mesh->id, nullptr, LIB_ID_COPY_LOCALIZE));
+
+  /* Update the verts. */
+  BKE_keyblock_convert_to_mesh(
+      basis,
+      reinterpret_cast<float(*)[3]>(temp_mesh->vert_positions_for_write().data()),
+      temp_mesh->totvert);
+
+  return temp_mesh;
+}
+
 }  // namespace blender::io::usd
