@@ -121,6 +121,7 @@ void main()
     imageStore(rp_cryptomatte_img, out_texel, cryptomatte_output);
   }
   output_renderpass_color(rp_buf.normal_id, vec4(out_normal, 1.0));
+  output_renderpass_color(rp_buf.position_id, vec4(g_data.P, 1.0));
   output_renderpass_color(rp_buf.diffuse_color_id, vec4(g_diffuse_data.color, 1.0));
   output_renderpass_color(rp_buf.diffuse_light_id, vec4(diffuse_light, 1.0));
   output_renderpass_color(rp_buf.specular_color_id, vec4(specular_color, 1.0));

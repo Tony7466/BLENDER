@@ -46,6 +46,7 @@ void main()
 
   vec4 clear_color = vec4(0.0, 0.0, 0.0, 1.0);
   output_renderpass_color(rp_buf.normal_id, clear_color);
+  output_renderpass_color(rp_buf.position_id, clear_color);
   output_renderpass_color(rp_buf.diffuse_light_id, clear_color);
   output_renderpass_color(rp_buf.specular_light_id, clear_color);
   output_renderpass_color(rp_buf.diffuse_color_id, clear_color);

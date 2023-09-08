@@ -645,14 +645,20 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     FilmSample film_sample = film_sample_get(0, texel_film);
 
     if (film_buf.use_reprojection || film_sample.weight < film_distance) {
-      vec4 normal = texelFetch(rp_color_tx, ivec3(film_sample.texel, rp_buf.normal_id), 0);
       float depth = texelFetch(depth_tx, film_sample.texel, 0).x;
       vec4 vector = velocity_resolve(vector_tx, film_sample.texel, depth);
       /* Transform to pixel space. */
       vector *= vec4(vec2(film_buf.render_extent), -vec2(film_buf.render_extent));
 
       film_store_depth(texel_film, depth, out_depth);
-      film_store_data(texel_film, film_buf.normal_id, normal, out_color);
+      if (film_buf.normal_id != -1) {
+        vec4 normal = texelFetch(rp_color_tx, ivec3(film_sample.texel, rp_buf.normal_id), 0);
+        film_store_data(texel_film, film_buf.normal_id, normal, out_color);
+      }
+      if (film_buf.position_id != -1) {
+        vec4 position = texelFetch(rp_color_tx, ivec3(film_sample.texel, rp_buf.position_id), 0);
+        film_store_data(texel_film, film_buf.position_id, position, out_color);
+      }
       film_store_data(texel_film, film_buf.vector_id, vector, out_color);
       film_store_distance(texel_film, film_sample.weight);
     }

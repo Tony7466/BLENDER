@@ -158,6 +158,8 @@ class Film {
         return data_.mist_id;
       case EEVEE_RENDER_PASS_NORMAL:
         return data_.normal_id;
+      case EEVEE_RENDER_PASS_POSITION:
+        return data_.position_id;
       case EEVEE_RENDER_PASS_VECTOR:
         return data_.vector_id;
       case EEVEE_RENDER_PASS_DIFFUSE_LIGHT:
@@ -218,6 +220,9 @@ class Film {
         break;
       case EEVEE_RENDER_PASS_NORMAL:
         result.append(RE_PASSNAME_NORMAL);
+        break;
+      case EEVEE_RENDER_PASS_POSITION:
+        result.append(RE_PASSNAME_POSITION);
         break;
       case EEVEE_RENDER_PASS_VECTOR:
         result.append(RE_PASSNAME_VECTOR);
