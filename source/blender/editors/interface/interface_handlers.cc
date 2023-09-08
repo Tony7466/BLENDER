@@ -6791,44 +6791,65 @@ static int ui_do_but_HSVCUBE(
   return WM_UI_HANDLER_CONTINUE;
 }
 
+void UI_draw_unsnaped_hsv_cursor(const uiBut *but)
+{
+  uiHandleButtonData *data = but->active;
+
+  const bool use_continuous_grab = ui_but_is_cursor_warp(but);
+
+  if (!data || !use_continuous_grab) {
+    return;
+  }
+  const float zoom = 1.0f / but->block->aspect;
+  UI_draw_hsv_cursor(data->ungrab_mval[0], data->ungrab_mval[1], zoom * 0.65f, 0.5f);
+}
+
 static bool ui_numedit_but_HSVCIRCLE(uiBut *but,
                                      uiHandleButtonData *data,
                                      float mx,
                                      float my,
                                      const enum eSnapType snap,
-                                     const bool shift)
+                                     const bool shift,
+                                     const bool use_continuous_grab)
 {
   const bool changed = true;
   ColorPicker *cpicker = static_cast<ColorPicker *>(but->custom_data);
   float *hsv = cpicker->hsv_perceptual;
 
-  float mx_fl, my_fl;
-  ui_mouse_scale_warp(data, mx, my, &mx_fl, &my_fl, shift);
-
-#ifdef USE_CONT_MOUSE_CORRECT
-  if (ui_but_is_cursor_warp(but)) {
-    /* OK but can go outside bounds */
-    data->ungrab_mval[0] = mx_fl;
-    data->ungrab_mval[1] = my_fl;
-    { /* clamp */
-      const float radius = min_ff(BLI_rctf_size_x(&but->rect), BLI_rctf_size_y(&but->rect)) / 2.0f;
-      const float cent[2] = {BLI_rctf_cent_x(&but->rect), BLI_rctf_cent_y(&but->rect)};
-      const float len = len_v2v2(cent, data->ungrab_mval);
-      if (len > radius) {
-        dist_ensure_v2_v2fl(data->ungrab_mval, cent, radius);
-      }
-    }
-  }
-#endif
+  /* If `use_continuous_grab = false` stores the absolute mouse position.
+   * If `use_continuous_grab = true` stores relative mouse position within the `HSVCIRCLE`, this
+   * position will depend on mouse movement rather than the absolute mouse position.
+   */
+  static float mval[2];
 
   rcti rect;
   BLI_rcti_rctf_copy(&rect, &but->rect);
 
-  float rgb[3];
-  ui_but_v3_get(but, rgb);
-  ui_scene_linear_to_perceptual_space(but, rgb);
-  ui_color_picker_rgb_to_hsv_compat(rgb, hsv);
+  if (use_continuous_grab) {
+    const float fac = ui_mouse_scale_warp_factor(shift);
+    mval[0] = (mx - float(data->draglastx)) * fac + mval[0];
+    mval[1] = (my - float(data->draglasty)) * fac + mval[1];
 
+    const float radius = min_ff(BLI_rctf_size_x(&but->rect), BLI_rctf_size_y(&but->rect)) / 2.0f;
+    const float cent[2] = {BLI_rctf_cent_x(&but->rect), BLI_rctf_cent_y(&but->rect)};
+    const float len = len_v2v2(cent, mval);
+
+    if (len > radius) {
+      dist_ensure_v2_v2fl(mval, cent, radius);
+    }
+  }
+  else {
+    mval[0] = mx;
+    mval[1] = my;
+  }
+
+#ifdef USE_CONT_MOUSE_CORRECT
+  if (use_continuous_grab) {
+    /* OK but can go outside bounds */
+    data->ungrab_mval[0] = mval[0];
+    data->ungrab_mval[1] = mval[1];
+  }
+#endif
   /* exception, when using color wheel in 'locked' value state:
    * allow choosing a hue for black values, by giving a tiny increment */
   if (cpicker->use_color_lock) {
@@ -6847,24 +6868,7 @@ static bool ui_numedit_but_HSVCIRCLE(uiBut *but,
     }
   }
 
-  /* only apply the delta motion, not absolute */
-  if (shift) {
-    float xpos, ypos, hsvo[3], rgbo[3];
-
-    /* calculate original hsv again */
-    copy_v3_v3(hsvo, hsv);
-    copy_v3_v3(rgbo, data->origvec);
-    ui_scene_linear_to_perceptual_space(but, rgbo);
-    ui_color_picker_rgb_to_hsv_compat(rgbo, hsvo);
-
-    /* and original position */
-    ui_hsvcircle_pos_from_vals(cpicker, &rect, hsvo, &xpos, &ypos);
-
-    mx_fl = xpos - (data->dragstartx - mx_fl);
-    my_fl = ypos - (data->dragstarty - my_fl);
-  }
-
-  ui_hsvcircle_vals_from_pos(&rect, mx_fl, my_fl, hsv, hsv + 1);
+  ui_hsvcircle_vals_from_pos(&rect, mval[0], mval[1], hsv, hsv + 1);
 
   if ((cpicker->use_color_cubic) && (U.color_picker_type == USER_CP_CIRCLE_HSV)) {
     hsv[1] = 1.0f - sqrt3f(1.0f - hsv[1]);
@@ -6874,6 +6878,7 @@ static bool ui_numedit_but_HSVCIRCLE(uiBut *but,
     ui_color_snap_hue(snap, &hsv[0]);
   }
 
+  float rgb[3];
   ui_color_picker_hsv_to_rgb(hsv, rgb);
 
   if (cpicker->use_luminosity_lock) {
@@ -6976,6 +6981,8 @@ static int ui_do_but_HSVCIRCLE(
   float *hsv = cpicker->hsv_perceptual;
   int mx = event->xy[0];
   int my = event->xy[1];
+
+  const bool shift = event->modifier & KM_SHIFT;
   ui_window_to_block(data->region, block, &mx, &my);
 
   if (data->state == BUTTON_STATE_HIGHLIGHT) {
@@ -6987,8 +6994,10 @@ static int ui_do_but_HSVCIRCLE(
       data->draglasty = my;
       button_activate_state(C, but, BUTTON_STATE_NUM_EDITING);
 
+      /* On KM_PRESS the mouse is within the circle, use `use_continuous_grab = false` to pick
+       * color at mouse position. */
       /* also do drag the first time */
-      if (ui_numedit_but_HSVCIRCLE(but, data, mx, my, snap, event->modifier & KM_SHIFT)) {
+      if (ui_numedit_but_HSVCIRCLE(but, data, mx, my, snap, shift, false)) {
         ui_numedit_apply(C, block, but, data);
       }
 
@@ -7059,8 +7068,9 @@ static int ui_do_but_HSVCIRCLE(
     else if ((event->type == MOUSEMOVE) || ui_event_is_snap(event)) {
       if (mx != data->draglastx || my != data->draglasty || event->type != MOUSEMOVE) {
         const enum eSnapType snap = ui_event_to_snap(event);
-
-        if (ui_numedit_but_HSVCIRCLE(but, data, mx, my, snap, event->modifier & KM_SHIFT)) {
+        const bool use_continuous_grab = ui_but_is_cursor_warp(but) &&
+                                         event->tablet.active == EVT_TABLET_NONE;
+        if (ui_numedit_but_HSVCIRCLE(but, data, mx, my, snap, shift, use_continuous_grab)) {
           ui_numedit_apply(C, block, but, data);
         }
       }
@@ -9115,6 +9125,11 @@ void ui_but_activate_event(bContext *C, ARegion *region, uiBut *but)
 
 void ui_but_activate_over(bContext *C, ARegion *region, uiBut *but)
 {
+  /* If there is an active button then add UI_SELECT_DRAW to the to-be-activated one. */
+  if (ui_region_find_active_but(CTX_wm_region(C))) {
+    but->flag |= UI_SELECT_DRAW;
+  }
+
   button_activate_init(C, region, but, BUTTON_ACTIVATE_OVER);
 }
 

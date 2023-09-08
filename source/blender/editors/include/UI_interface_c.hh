@@ -1858,6 +1858,8 @@ void UI_panels_end(const bContext *C, ARegion *region, int *r_x, int *r_y);
  * Draw panels, selected (panels currently being dragged) on top.
  */
 void UI_panels_draw(const bContext *C, ARegion *region);
+void UI_draw_unsnaped_hsv_cursor(const uiBut *but);
+void UI_draw_hsv_cursor(const float x, const float y, const float zoom, const float alpha = 1);
 
 Panel *UI_panel_find_by_type(ListBase *lb, const PanelType *pt);
 /**

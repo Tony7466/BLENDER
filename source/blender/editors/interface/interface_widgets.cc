@@ -33,6 +33,8 @@
 #include "UI_interface_icons.hh"
 #include "UI_view2d.hh"
 
+#include "DNA_windowmanager_types.h"
+
 #include "interface_intern.hh"
 
 #include "GPU_batch.h"
@@ -2843,7 +2845,7 @@ static void widget_menu_back(
   GPU_blend(GPU_BLEND_NONE);
 }
 
-static void ui_hsv_cursor(const float x, const float y, const float zoom)
+void UI_draw_hsv_cursor(const float x, const float y, const float zoom, const float alpha)
 {
   const float radius = zoom * 3.0f * U.pixelsize;
   const uint pos = GPU_vertformat_attr_add(
@@ -2851,12 +2853,12 @@ static void ui_hsv_cursor(const float x, const float y, const float zoom)
 
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-  immUniformColor3f(1.0f, 1.0f, 1.0f);
+  GPU_blend(GPU_BLEND_ALPHA);
+  immUniformColor4f(1.0f, 1.0f, 1.0f, alpha);
   imm_draw_circle_fill_2d(pos, x, y, radius, 8);
 
-  GPU_blend(GPU_BLEND_ALPHA);
   GPU_line_smooth(true);
-  immUniformColor3f(0.0f, 0.0f, 0.0f);
+  immUniformColor4f(0.0f, 0.0f, 0.0f, alpha);
   imm_draw_circle_wire_2d(pos, x, y, radius, 12);
   GPU_blend(GPU_BLEND_NONE);
   GPU_line_smooth(false);
@@ -2901,7 +2903,10 @@ void ui_hsvcircle_pos_from_vals(
   *r_ypos = centy + sinf(-ang) * rad;
 }
 
-static void ui_draw_but_HSVCIRCLE(uiBut *but, const uiWidgetColors *wcol, const rcti *rect)
+static void ui_draw_but_HSVCIRCLE(uiBut *but,
+                                  const uiWidgetColors *wcol,
+                                  const rcti *rect,
+                                  const bool tablet)
 {
   /* TODO(merwin): reimplement as shader for pixel-perfect colors */
 
@@ -3005,7 +3010,10 @@ static void ui_draw_but_HSVCIRCLE(uiBut *but, const uiWidgetColors *wcol, const 
   float xpos, ypos;
   ui_hsvcircle_pos_from_vals(cpicker, rect, hsv, &xpos, &ypos);
   const float zoom = 1.0f / but->block->aspect;
-  ui_hsv_cursor(xpos, ypos, zoom);
+  if (!tablet) {
+    UI_draw_unsnaped_hsv_cursor(but);
+  }
+  UI_draw_hsv_cursor(xpos, ypos, zoom);
 }
 
 /** \} */
@@ -3239,8 +3247,7 @@ static void ui_draw_but_HSVCUBE(uiBut *but, const rcti *rect)
   CLAMP(y, rect->ymin + 3.0f, rect->ymax - 3.0f);
 
   const float zoom = 1.0f / but->block->aspect;
-
-  ui_hsv_cursor(x, y, zoom);
+  UI_draw_hsv_cursor(x, y, zoom);
 
   /* outline */
   const uint pos = GPU_vertformat_attr_add(
@@ -3309,8 +3316,7 @@ static void ui_draw_but_HSV_v(uiBut *but, const rcti *rect)
   y = rect->ymin + v * BLI_rcti_size_y(rect);
   CLAMP(y, rect->ymin + 3.0f, rect->ymax - 3.0f);
   const float zoom = 1.0f / but->block->aspect;
-
-  ui_hsv_cursor(x, y, zoom);
+  UI_draw_hsv_cursor(x, y, zoom);
 }
 
 /** Separator for menus. */
@@ -4963,9 +4969,12 @@ void ui_draw_but(const bContext *C, ARegion *region, uiStyle *style, uiBut *but,
         break;
       }
 
-      case UI_BTYPE_HSVCIRCLE:
-        ui_draw_but_HSVCIRCLE(but, &tui->wcol_regular, rect);
+      case UI_BTYPE_HSVCIRCLE: {
+        const wmWindow *win = CTX_wm_window(C);
+        const bool tablet = win->eventstate->tablet.active != EVT_TABLET_NONE;
+        ui_draw_but_HSVCIRCLE(but, &tui->wcol_regular, rect, tablet);
         break;
+      }
 
       case UI_BTYPE_COLORBAND: {
         /* Horizontal padding to make room for handles at edges. */
