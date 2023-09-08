@@ -2339,14 +2339,20 @@ typedef struct NodesModifierData {
    * Directory where baked simulation states are stored. This may be relative to the .blend file.
    */
   char *simulation_bake_directory;
+  /** NodesModifierFlag. */
+  int8_t flag;
 
-  char _pad[4];
+  char _pad[3];
   int bakes_num;
   NodesModifierBake *bakes;
   void *_pad2;
 
   NodesModifierRuntimeHandle *runtime;
 } NodesModifierData;
+
+typedef enum NodesModifierFlag {
+  NODES_MODIFIER_HIDE_DATABLOCK_SELECTOR = (1 << 0),
+} NodesModifierFlag;
 
 typedef struct MeshToVolumeModifierData {
   ModifierData modifier;

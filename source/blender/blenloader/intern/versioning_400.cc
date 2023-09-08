@@ -34,6 +34,7 @@
 #include "BLI_string_ref.hh"
 
 #include "BKE_armature.h"
+#include "BKE_attribute.h"
 #include "BKE_effect.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idprop.hh"
@@ -72,7 +73,7 @@ static void version_composite_nodetree_null_id(bNodeTree *ntree, Scene *scene)
   }
 }
 
-/* Move bonegroup color to the individual bones. */
+/* Move bone-group color to the individual bones. */
 static void version_bonegroup_migrate_color(Main *bmain)
 {
   using PoseSet = blender::Set<bPose *>;
@@ -87,11 +88,17 @@ static void version_bonegroup_migrate_color(Main *bmain)
     bArmature *arm = reinterpret_cast<bArmature *>(ob->data);
     BLI_assert_msg(GS(arm->id.name) == ID_AR,
                    "Expected ARMATURE object to have an Armature as data");
+
+    /* There is no guarantee that the current state of poses is in sync with the Armature data.
+     *
+     * NOTE: No need to handle user reference-counting in readfile code. */
+    BKE_pose_ensure(bmain, ob, arm, false);
+
     PoseSet &pose_set = armature_poses.lookup_or_add_default(arm);
     pose_set.add(ob->pose);
   }
 
-  /* Move colors from the pose's bonegroup to either the armature bones or the
+  /* Move colors from the pose's bone-group to either the armature bones or the
    * pose bones, depending on how many poses use the Armature. */
   for (const PoseSet &pose_set : armature_poses.values()) {
     /* If the Armature is shared, the bone group colors might be different, and thus they have to
@@ -1029,6 +1036,18 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       ntree->tree_interface.root_panel.flag |= NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS;
     }
     FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 23)) {
+    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      if (ntree->type == NTREE_GEOMETRY) {
+        LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
+          if (node->type == GEO_NODE_SET_SHADE_SMOOTH) {
+            node->custom1 = ATTR_DOMAIN_FACE;
+          }
+        }
+      }
+    }
   }
 
   /**
