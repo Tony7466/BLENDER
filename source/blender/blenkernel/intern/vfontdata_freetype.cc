@@ -17,14 +17,14 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLF_api.h"
+
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
-
-#include "BLF_api.h"
 
 #include "BKE_curve.h"
 #include "BKE_vfont.h"

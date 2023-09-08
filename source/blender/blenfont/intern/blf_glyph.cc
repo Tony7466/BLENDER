@@ -1117,7 +1117,7 @@ void *blf_glyphslot_ensure_outline(FontBLF *font, const uint charcode)
   FT_UInt glyph_index = blf_glyph_index_from_charcode(&font_with_glyph, charcode);
 
   if (!blf_ensure_face(font_with_glyph)) {
-    return NULL;
+    return nullptr;
   }
 
   FT_GlyphSlot glyph = blf_glyph_render(font, font_with_glyph, glyph_index, charcode, 0, true);
@@ -1125,7 +1125,7 @@ void *blf_glyphslot_ensure_outline(FontBLF *font, const uint charcode)
   if (font != font_with_glyph)
   {
     if (!blf_ensure_face(font)) {
-      return NULL;
+      return nullptr;
     }
     double ratio = float(font->face->units_per_EM) / float(font_with_glyph->face->units_per_EM);
     FT_Matrix transform = {to_16dot16(ratio), 0, 0, to_16dot16(ratio)};

@@ -149,7 +149,7 @@ void *BLF_get_glyphslot(int fontid, unsigned int unicode)
   if (font) {
     return blf_glyphslot_ensure_outline(font, unicode);
   }
-  return NULL;
+  return nullptr;
 }
 
 void *BLF_get_face(int fontid)
@@ -159,7 +159,7 @@ void *BLF_get_face(int fontid)
     blf_ensure_face(font);
     return font->face;
   }
-  return NULL;
+  return nullptr;
 }
 
 bool BLF_is_loaded(const char *filepath)
