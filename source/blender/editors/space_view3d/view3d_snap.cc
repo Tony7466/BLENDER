@@ -885,7 +885,12 @@ static int snap_curs_to_sel_exec(bContext *C, wmOperator * /*op*/)
 {
   Scene *scene = CTX_data_scene(C);
   const int pivot_point = scene->toolsettings->transform_pivot_point;
-  if (snap_curs_to_sel_ex(C, pivot_point, scene->cursor.location)) {
+  bool is_align_rot_on = RNA_boolean_get(op->ptr, "is_align_rot_on");
+  bool is_align_loc_on = RNA_boolean_get(op->ptr, "is_align_loc_on");
+  if (!is_align_loc_on && !is_align_rot_on) {
+    is_align_loc_on = true;
+  }
+  if (is_align_loc_on && snap_curs_to_sel_ex(C, pivot_point, scene->cursor.location)) {
     WM_event_add_notifier(C, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
     DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
 
@@ -930,11 +935,27 @@ static bool snap_calc_active_center(bContext *C, const bool select_only, float r
   return ED_object_calc_active_center(ob, select_only, r_center);
 }
 
+static bool snap_cursor_to_active_rot(bContext *C, const bool select_only, View3DCursor *cursor)
+{
+  Object *ob = CTX_data_active_object(C);
+  if (ob == nullptr) {
+    return false;
+  }
+  float r_rot[3][3];
+  if (ED_object_calc_active_rot(ob, select_only, r_rot)) {
+    BKE_scene_cursor_mat3_to_rot(cursor, r_rot, false);
+    return true;
+  }
+  return false;
+}
+
 static int snap_curs_to_active_exec(bContext *C, wmOperator * /*op*/)
 {
   Scene *scene = CTX_data_scene(C);
 
-  if (snap_calc_active_center(C, false, scene->cursor.location)) {
+  if (snap_calc_active_center(C, false, scene->cursor.location) &&
+      snap_cursor_to_active_rot(C, false, &scene->cursor))
+  {
     WM_event_add_notifier(C, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
     DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
 

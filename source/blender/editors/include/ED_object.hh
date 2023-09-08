@@ -71,6 +71,10 @@ bool ED_object_calc_active_center_for_editmode(Object *obedit,
 bool ED_object_calc_active_center_for_posemode(Object *ob, bool select_only, float r_center[3]);
 bool ED_object_calc_active_center(Object *ob, bool select_only, float r_center[3]);
 
+bool ED_object_calc_active_rot_for_editmode(Object *obedit, bool select_only, float r_rot[3][3]);
+bool ED_object_calc_active_rot_for_posemode(Object *ob, bool select_only, float r_rot[3][3]);
+bool ED_object_calc_active_rot(Object *ob, const bool select_only, float r_rot[3][3]);
+
 /* Object Data Container helper API. */
 struct XFormObjectData_Container;
 XFormObjectData_Container *ED_object_data_xform_container_create();

@@ -136,6 +136,100 @@ bool ED_object_calc_active_center(Object *ob, const bool select_only, float r_ce
   return false;
 }
 
+// Functions for getting the rotation of active element
+bool ED_object_calc_active_rot_for_editmode(Object *obedit, bool select_only, float r_rot[3][3])
+{
+  switch (obedit->type) {
+    case OB_MESH: {
+      BMEditMesh *em = BKE_editmesh_from_object(obedit);
+      BMEditSelection ese;
+
+      if (BM_select_history_active_get(em->bm, &ese)) {
+        // BM_editselection_center(&ese, r_center);
+        return true;
+      }
+      break;
+    }
+    case OB_ARMATURE: {
+      bArmature *arm = static_cast<bArmature *>(obedit->data);
+      EditBone *ebo = arm->act_edbone;
+
+      if (ebo && (!select_only || (ebo->flag & (BONE_SELECTED | BONE_ROOTSEL)))) {
+        // copy_v3_v3(r_center, ebo->head);
+        return true;
+      }
+
+      break;
+    }
+    case OB_CURVES_LEGACY:
+    case OB_SURF: {
+      Curve *cu = static_cast<Curve *>(obedit->data);
+
+      return true;
+      // if (ED_curve_active_center(cu, r_center)) {
+      //   return true;
+      // }
+      break;
+    }
+    case OB_MBALL: {
+      MetaBall *mb = static_cast<MetaBall *>(obedit->data);
+      MetaElem *ml_act = mb->lastelem;
+
+      if (ml_act && (!select_only || (ml_act->flag & SELECT))) {
+        // copy_v3_v3(r_center, &ml_act->x);
+        return true;
+      }
+      break;
+    }
+    case OB_LATTICE: {
+      BPoint *actbp = BKE_lattice_active_point_get(static_cast<Lattice *>(obedit->data));
+
+      if (actbp) {
+        // copy_v3_v3(r_center, actbp->vec);
+        return true;
+      }
+      break;
+    }
+  }
+
+  return false;
+}
+
+bool ED_object_calc_active_rot_for_posemode(Object *ob, bool select_only, float r_rot[3][3])
+{
+  bPoseChannel *pchan = BKE_pose_channel_active_if_layer_visible(ob);
+  if (pchan && (!select_only || (pchan->bone->flag & BONE_SELECTED))) {
+    // keeping y axis untouched
+    mat4_to_rot_skew_check(r_rot, pchan->pose_mat, 1);
+    return true;
+  }
+  return false;
+}
+
+bool ED_object_calc_active_rot(Object *ob, const bool select_only, float r_rot[3][3])
+{
+  if (ob->mode & OB_MODE_EDIT) {
+    if (ED_object_calc_active_rot_for_editmode(ob, select_only, r_rot)) {
+      rotate_m3_m4(r_rot, ob->object_to_world);
+      return true;
+    }
+    return false;
+  }
+  if (ob->mode & OB_MODE_POSE) {
+    if (ED_object_calc_active_rot_for_posemode(ob, select_only, r_rot)) {
+      rotate_m3_m4(r_rot, ob->object_to_world);
+      return true;
+    }
+    return false;
+  }
+  if (!select_only || (ob->base_flag & BASE_SELECTED)) {
+    unit_m3(r_rot);
+    rotate_m3_m4(r_rot, ob->object_to_world);
+    return true;
+  }
+  return false;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
