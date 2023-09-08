@@ -230,7 +230,7 @@ struct NodeBakeData {
 
 struct ModifierBakeData {
   NodesModifierData *nmd;
-  Vector<NodeBakeData> zones;
+  Vector<NodeBakeData> nodes;
 };
 
 struct ObjectBakeData {
@@ -288,7 +288,7 @@ static void bake_simulation_job_startjob(void *customdata,
                   *job.bmain, *object, *nmd, nested_node_ref.id))
           {
             node_bake_data.path = std::move(*path);
-            modifier_bake_data.zones.append(std::move(node_bake_data));
+            modifier_bake_data.nodes.append(std::move(node_bake_data));
           }
         }
 
@@ -325,7 +325,7 @@ static void bake_simulation_job_startjob(void *customdata,
       for (ModifierBakeData &modifier_bake_data : object_bake_data.modifiers) {
         NodesModifierData &nmd = *modifier_bake_data.nmd;
         const bake::ModifierCache &modifier_cache = *nmd.runtime->cache;
-        for (NodeBakeData &node_bake_data : modifier_bake_data.zones) {
+        for (NodeBakeData &node_bake_data : modifier_bake_data.nodes) {
           if (!modifier_cache.cache_by_id.contains(node_bake_data.id)) {
             continue;
           }
@@ -369,7 +369,7 @@ static void bake_simulation_job_startjob(void *customdata,
   for (ObjectBakeData &object_bake_data : objects_to_bake) {
     for (ModifierBakeData &modifier_bake_data : object_bake_data.modifiers) {
       NodesModifierData &nmd = *modifier_bake_data.nmd;
-      for (NodeBakeData &node_bake_data : modifier_bake_data.zones) {
+      for (NodeBakeData &node_bake_data : modifier_bake_data.nodes) {
         if (std::unique_ptr<bake::NodeCache> *node_cache_ptr =
                 nmd.runtime->cache->cache_by_id.lookup_ptr(node_bake_data.id))
         {
