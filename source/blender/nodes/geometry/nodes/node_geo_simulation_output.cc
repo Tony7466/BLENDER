@@ -707,11 +707,18 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
                        GeoNodesLFUserData &user_data,
                        const sim_output::StoreNewState &info) const
   {
+    const bool *use_pass_through = params.try_get_input_data_ptr_or_request<bool>(
+        pass_through_input_index_);
+    if (use_pass_through == nullptr) {
+      /* Wait for pass through input to be computed. */
+      return;
+    }
+
     /* Instead of outputting the values directly, convert them to a bake state and then back. This
      * ensures that some geometry processing happens on the data consistently (e.g. removing
      * anonymous attributes). */
-    std::optional<bke::bake::BakeState> bake_state = this->get_bake_state_from_inputs(params,
-                                                                                      false);
+    std::optional<bke::bake::BakeState> bake_state = this->get_bake_state_from_inputs(
+        params, *use_pass_through);
     if (!bake_state) {
       /* Wait for inputs to be computed. */
       return;
@@ -720,29 +727,14 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
     info.store_fn(std::move(*bake_state));
   }
 
-  std::optional<bke::bake::BakeState> get_bake_state_from_inputs(
-      lf::Params &params, const bool force_pass_through) const
+  std::optional<bke::bake::BakeState> get_bake_state_from_inputs(lf::Params &params,
+                                                                 const bool use_pass_through) const
   {
-    bool use_pass_through;
-    if (force_pass_through) {
-      use_pass_through = true;
-    }
-    else if (const bool *pass_through_input = params.try_get_input_data_ptr_or_request<bool>(
-                 pass_through_input_index_))
-    {
-      use_pass_through = *pass_through_input;
-    }
-    else {
-      /* Wait for pass through input to be computed. */
-      return std::nullopt;
-    }
-
-    const int param_offset = use_pass_through ? pass_through_inputs_offset_ :
-                                                socket_inputs_offset_;
-
+    const int params_offset = use_pass_through ? pass_through_inputs_offset_ :
+                                                 socket_inputs_offset_;
     Array<void *> input_values(simulation_items_.size());
     for (const int i : simulation_items_.index_range()) {
-      input_values[i] = params.try_get_input_data_ptr_or_request(i + param_offset);
+      input_values[i] = params.try_get_input_data_ptr_or_request(i + params_offset);
     }
     if (input_values.as_span().contains(nullptr)) {
       /* Wait for inputs to be computed. */
