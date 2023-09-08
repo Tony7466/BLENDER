@@ -2981,11 +2981,10 @@ static int sequencer_change_path_exec(bContext *C, wmOperator *op)
   }
   else {
     /* Lame, set rna filepath. */
-    PointerRNA seq_ptr;
     PropertyRNA *prop;
     char filepath[FILE_MAX];
 
-    RNA_pointer_create(&scene->id, &RNA_Sequence, seq, &seq_ptr);
+    PointerRNA seq_ptr = RNA_pointer_create(&scene->id, &RNA_Sequence, seq);
 
     RNA_string_get(op->ptr, "filepath", filepath);
     prop = RNA_struct_find_property(&seq_ptr, "filepath");
@@ -3314,9 +3313,9 @@ static int sequencer_set_range_to_strips_exec(bContext *C, wmOperator *op)
     if (seq->flag & SELECT) {
       selected = true;
       sfra = min_ii(sfra, SEQ_time_left_handle_frame_get(scene, seq));
-      /* Offset of -1 is needed because in VSE every frame has width. Range from 1 to 1 is drawn
-       * as range 1 to 2, because 1 frame long strip starts at frame 1 and ends at frame 2.
-       * See #106480. */
+      /* Offset of -1 is needed because in the sequencer every frame has width.
+       * Range from 1 to 1 is drawn as range 1 to 2, because 1 frame long strip starts at frame 1
+       * and ends at frame 2. See #106480. */
       efra = max_ii(efra, SEQ_time_right_handle_frame_get(scene, seq) - 1);
     }
   }

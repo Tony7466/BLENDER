@@ -405,11 +405,14 @@ struct VelocityObjectIndex {
 BLI_STATIC_ASSERT_ALIGN(VelocityObjectIndex, 16)
 
 struct VelocityGeometryIndex {
-  /** Offset inside #VelocityGeometryBuf for each timestep. Indexed using eVelocityStep. */
+  /** Offset inside #VelocityGeometryBuf for each time-step. Indexed using eVelocityStep. */
   packed_int3 ofs;
   /** If true, compute deformation motion blur. */
   bool1 do_deform;
-  /** Length of data inside #VelocityGeometryBuf for each timestep. Indexed using eVelocityStep. */
+  /**
+   * Length of data inside #VelocityGeometryBuf for each time-step.
+   * Indexed using eVelocityStep.
+   */
   packed_int3 len;
 
   int _pad0;
@@ -472,6 +475,8 @@ struct VolumesInfoData {
   packed_int3 tex_size;
   float light_clamp;
   packed_float3 inv_tex_size;
+  int tile_size;
+  int tile_size_lod;
   float shadow_steps;
   bool1 use_lights;
   bool1 use_soft_shadows;
@@ -479,8 +484,6 @@ struct VolumesInfoData {
   float depth_far;
   float depth_distribution;
   float _pad0;
-  float _pad1;
-  float _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(VolumesInfoData, 16)
 
@@ -861,9 +864,9 @@ struct ShadowPagesInfoData {
   int page_alloc_count;
   /** Index of the next cache page in the cached page buffer. */
   uint page_cached_next;
-  /** Index of the first page in the buffer since the last defrag. */
+  /** Index of the first page in the buffer since the last defragment. */
   uint page_cached_start;
-  /** Index of the last page in the buffer since the last defrag. */
+  /** Index of the last page in the buffer since the last defragment. */
   uint page_cached_end;
 
   int _pad0;
