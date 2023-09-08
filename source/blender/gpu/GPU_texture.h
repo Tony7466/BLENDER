@@ -174,7 +174,6 @@ typedef enum GPUSamplerStateType {
  * GPU_texture_compare_mode(texture, true);
  * // Use the texture ...
  * GPU_texture_compare_mode(texture, false);
- *
  */
 typedef struct GPUSamplerState {
   /** Specifies the enabled filtering options for the sampler. */
@@ -547,7 +546,7 @@ typedef enum eGPUTextureUsage {
   /* Whether the texture needs to be read from by the CPU. */
   GPU_TEXTURE_USAGE_HOST_READ = (1 << 4),
   /* When used, the texture will not have any backing storage and can solely exist as a virtual
-   * framebuffer attachment. */
+   * frame-buffer attachment. */
   GPU_TEXTURE_USAGE_MEMORYLESS = (1 << 5),
   /* Create a texture whose usage cannot be defined prematurely.
    * This is unoptimized and should not be used. */
