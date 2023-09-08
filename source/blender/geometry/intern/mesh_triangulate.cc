@@ -24,9 +24,9 @@
 
 namespace blender::geometry {
 
-static OffsetIndices<int> create_face_offsets(const OffsetIndices<int> orig_faces,
-                                              const IndexMask &selection,
-                                              MutableSpan<int> face_offset_data)
+static OffsetIndices<int> calc_new_face_groups(const OffsetIndices<int> orig_faces,
+                                               const IndexMask &selection,
+                                               MutableSpan<int> face_offset_data)
 {
   selection.foreach_index(GrainSize(2048), [&](const int face, const int mask) {
     /* Reuse the original face for the first triangle. */
@@ -46,11 +46,11 @@ static OffsetIndices<int> create_new_edge_offsets(const OffsetIndices<int> orig_
   return offset_indices::accumulate_counts_to_offsets(edge_offset_data);
 }
 
-static OffsetIndices<int> create_new_corner_offsets(const OffsetIndices<int> orig_faces,
-                                                    const IndexMask &selection,
-                                                    const IndexMask &selection_inverse,
-                                                    const int new_faces_num,
-                                                    MutableSpan<int> corner_offset_data)
+static OffsetIndices<int> create_new_faces(const OffsetIndices<int> orig_faces,
+                                           const IndexMask &selection,
+                                           const IndexMask &selection_inverse,
+                                           const int new_faces_num,
+                                           MutableSpan<int> corner_offset_data)
 {
   if (selection.size() == orig_faces.size()) {
     offset_indices::fill_constant_group_size(3, 0, corner_offset_data);
@@ -353,7 +353,7 @@ void triangulate(Mesh &mesh,
   const Span<int> orig_corner_edges = mesh.corner_edges();
 
   Array<int> face_offsets(selection.size() + 1);
-  const OffsetIndices new_face_groups = create_face_offsets(orig_faces, selection, face_offsets);
+  const OffsetIndices new_face_groups = calc_new_face_groups(orig_faces, selection, face_offsets);
   const int new_faces_num = new_face_groups.total_size();
   if (new_faces_num == 0) {
     /* All selected faces are already triangles. */
@@ -368,7 +368,7 @@ void triangulate(Mesh &mesh,
   const IndexMask selection_inverse = selection.complement(orig_faces.index_range(), memory);
 
   Array<int> corner_offset_data(orig_faces.size() + new_faces_num + 1);
-  const OffsetIndices new_faces = create_new_corner_offsets(
+  const OffsetIndices new_faces = create_new_faces(
       orig_faces, selection, selection_inverse, new_faces_num, corner_offset_data);
 
   Array<int2> edges(new_edge_groups.total_size());
