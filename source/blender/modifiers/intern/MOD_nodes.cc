@@ -773,7 +773,6 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
   const Main *bmain_;
   SubFrame current_frame_;
   SubFrame scene_start_frame_;
-  bool is_scene_start_frame_;
   bool use_frame_cache_;
   bool depsgraph_is_active_;
   bake::ModifierCache *modifier_cache_;
@@ -788,7 +787,6 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
     current_frame_ = DEG_get_ctime(depsgraph);
     const Scene *scene = DEG_get_input_scene(depsgraph);
     scene_start_frame_ = scene->r.sfra;
-    is_scene_start_frame_ = current_frame_ == scene_start_frame_;
     use_frame_cache_ = ctx_.object->flag & OB_FLAG_USE_SIMULATION_CACHE;
     depsgraph_is_active_ = DEG_is_active(depsgraph);
     modifier_cache_ = nmd.runtime->cache.get();
@@ -804,15 +802,6 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
         for (std::unique_ptr<bake::NodeCache> &node_cache : modifier_cache_->cache_by_id.values())
         {
           if (node_cache->cache_status != bake::CacheStatus::Baked) {
-            node_cache->cache_status = bake::CacheStatus::Invalid;
-          }
-        }
-      }
-      /* Reset cached data if necessary. */
-      if (is_scene_start_frame_) {
-        for (std::unique_ptr<bake::NodeCache> &node_cache : modifier_cache_->cache_by_id.values())
-        {
-          if (node_cache->cache_status == bake::CacheStatus::Invalid) {
             node_cache->reset();
           }
         }
@@ -888,15 +877,13 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
       /* If the depsgraph is active, we allow creating new simulation states. Otherwise, the access
        * is read-only. */
       if (depsgraph_is_active_) {
+        if (!frame_indices.prev && !frame_indices.current && frame_indices.next) {
+          node_cache.reset();
+        }
         if (node_cache.frame_caches.is_empty()) {
           /* Initialize the simulation. */
           this->input_pass_through(zone_behavior);
           this->output_store_frame_cache(node_cache, zone_behavior);
-          if (!is_scene_start_frame_) {
-            /* If we initialize at a frame that is not the start frame, the simulation is not
-             * valid. */
-            node_cache.cache_status = bake::CacheStatus::Invalid;
-          }
           return;
         }
         if (frame_indices.prev && !frame_indices.current && !frame_indices.next) {
