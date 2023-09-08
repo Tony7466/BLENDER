@@ -603,8 +603,8 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
     else if (std::get_if<sim_output::PassThrough>(&output_behavior)) {
       this->pass_through(params, user_data);
     }
-    else if (auto *info = std::get_if<sim_output::StoreAndPassThrough>(&output_behavior)) {
-      this->store_and_pass_through(params, user_data, *info);
+    else if (auto *info = std::get_if<sim_output::StoreNewState>(&output_behavior)) {
+      this->store_new_state(params, user_data, *info);
     }
     else {
       BLI_assert_unreachable();
@@ -669,9 +669,6 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
 
   void pass_through(lf::Params &params, GeoNodesLFUserData &user_data) const
   {
-    /* Instead of outputting the initial values directly, convert them to a simulation state and
-     * then back. This ensures that some geometry processing happens on the data consistently (e.g.
-     * removing anonymous attributes). */
     std::optional<bke::bake::BakeState> bake_state = this->get_bake_state_from_inputs(params,
                                                                                       true);
     if (!bake_state) {
@@ -694,10 +691,13 @@ class LazyFunctionForSimulationOutputNode final : public LazyFunction {
     }
   }
 
-  void store_and_pass_through(lf::Params &params,
-                              GeoNodesLFUserData &user_data,
-                              const sim_output::StoreAndPassThrough &info) const
+  void store_new_state(lf::Params &params,
+                       GeoNodesLFUserData &user_data,
+                       const sim_output::StoreNewState &info) const
   {
+    /* Instead of outputting the values directly, convert them to a bake state and then back. This
+     * ensures that some geometry processing happens on the data consistently (e.g. removing
+     * anonymous attributes). */
     std::optional<bke::bake::BakeState> bake_state = this->get_bake_state_from_inputs(params,
                                                                                       false);
     if (!bake_state) {
