@@ -2025,7 +2025,7 @@ struct GeometryNodesLazyFunctionGraphBuilder {
                                                                                 lf_graph_fn);
     zone_info.lazy_function = &zone_function;
 
-    std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
+    // std::cout << "\n\n" << lf_graph.to_dot() << "\n\n";
   }
 
   /**
