@@ -50,6 +50,7 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_global.h"
 #include "BKE_gpencil_modifier_legacy.h"
+#include "BKE_idprop.h"
 #include "BKE_key.h"
 #include "BKE_lattice.h"
 #include "BKE_layer.h"
@@ -2652,7 +2653,7 @@ static int multires_rebuild_subdiv_exec(bContext *C, wmOperator *op)
 
   int new_levels = multiresModifier_rebuild_subdiv(depsgraph, object, mmd, INT_MAX, false);
   if (new_levels == 0) {
-    BKE_report(op->reports, RPT_ERROR, "Not valid subdivisions found to rebuild lower levels");
+    BKE_report(op->reports, RPT_ERROR, "No valid subdivisions found to rebuild lower levels");
     return OPERATOR_CANCELLED;
   }
 
@@ -2954,7 +2955,7 @@ static Object *modifier_skin_armature_create(Depsgraph *depsgraph, Main *bmain, 
   Object *arm_ob = BKE_object_add(bmain, scene, view_layer, OB_ARMATURE, nullptr);
   BKE_object_transform_copy(arm_ob, skin_ob);
   bArmature *arm = static_cast<bArmature *>(arm_ob->data);
-  ANIM_armature_ensure_first_layer_enabled(arm);
+  ANIM_armature_bonecoll_show_all(arm);
   arm_ob->dtx |= OB_DRAW_IN_FRONT;
   arm->drawtype = ARM_LINE;
   arm->edbo = MEM_cnew<ListBase>("edbo armature");
@@ -3633,15 +3634,24 @@ static int geometry_nodes_input_attribute_toggle_exec(bContext *C, wmOperator *o
     return OPERATOR_CANCELLED;
   }
 
-  char prop_path[MAX_NAME];
-  RNA_string_get(op->ptr, "prop_path", prop_path);
+  char input_name[MAX_NAME];
+  RNA_string_get(op->ptr, "input_name", input_name);
 
-  PointerRNA mod_ptr;
-  RNA_pointer_create(&ob->id, &RNA_Modifier, nmd, &mod_ptr);
+  IDProperty *use_attribute = IDP_GetPropertyFromGroup(
+      nmd->settings.properties, std::string(input_name + std::string("_use_attribute")).c_str());
+  if (!use_attribute) {
+    return OPERATOR_CANCELLED;
+  }
 
-  const int old_value = RNA_int_get(&mod_ptr, prop_path);
-  const int new_value = !old_value;
-  RNA_int_set(&mod_ptr, prop_path, new_value);
+  if (use_attribute->type == IDP_INT) {
+    IDP_Int(use_attribute) = !IDP_Int(use_attribute);
+  }
+  else if (use_attribute->type == IDP_BOOLEAN) {
+    IDP_Bool(use_attribute) = !IDP_Bool(use_attribute);
+  }
+  else {
+    return OPERATOR_CANCELLED;
+  }
 
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, ob);
@@ -3660,7 +3670,7 @@ void OBJECT_OT_geometry_nodes_input_attribute_toggle(wmOperatorType *ot)
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
 
-  RNA_def_string(ot->srna, "prop_path", nullptr, 0, "Prop Path", "");
+  RNA_def_string(ot->srna, "input_name", nullptr, 0, "Input Name", "");
   RNA_def_string(ot->srna, "modifier_name", nullptr, MAX_NAME, "Modifier Name", "");
 }
 
@@ -3687,6 +3697,8 @@ static int geometry_node_tree_copy_assign_exec(bContext *C, wmOperator * /*op*/)
 
   bNodeTree *new_tree = (bNodeTree *)BKE_id_copy_ex(
       bmain, &tree->id, nullptr, LIB_ID_COPY_ACTIONS | LIB_ID_COPY_DEFAULT);
+
+  nmd->flag &= ~NODES_MODIFIER_HIDE_DATABLOCK_SELECTOR;
 
   if (new_tree == nullptr) {
     return OPERATOR_CANCELLED;

@@ -444,7 +444,7 @@ static void add_orco_mesh(
   if (!layer_orco.is_empty()) {
     if (layer == CD_ORCO) {
       BKE_mesh_orco_verts_transform(
-          (Mesh *)ob->data, reinterpret_cast<float(*)[3]>(layer_orco.data()), totvert, 0);
+          (Mesh *)ob->data, reinterpret_cast<float(*)[3]>(layer_orco.data()), totvert, false);
     }
   }
 }
@@ -1527,7 +1527,7 @@ static void object_get_datamask(const Depsgraph *depsgraph,
       r_mask->fmask |= CD_MASK_MTFACE;
     }
 
-    /* check if we need mcols due to vertex paint or weightpaint */
+    /* Check if we need mcols due to vertex paint or weight-paint. */
     if (ob->mode & OB_MODE_VERTEX_PAINT) {
       r_mask->lmask |= CD_MASK_PROP_BYTE_COLOR;
     }

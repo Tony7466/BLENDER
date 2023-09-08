@@ -74,7 +74,7 @@ typedef void (*ConstraintIDFunc)(struct bConstraint *con,
  * structs.
  */
 typedef struct bConstraintTypeInfo {
-  /* admin/ident */
+  /* Admin/identity. */
   /** CONSTRAINT_TYPE_### */
   short type;
   /** size in bytes of the struct */
@@ -179,7 +179,7 @@ void BKE_constraints_copy_ex(struct ListBase *dst,
 /**
  * Run the given callback on all ID-blocks in list of constraints.
  *
- * \param flag the `IDWALK_` flags controlling the behavior of the foreach_id code, see
+ * \param flag: the `IDWALK_` flags controlling the behavior of the foreach_id code, see
  * `BKE_lib_query.h`
  */
 void BKE_constraints_id_loop(struct ListBase *list,
@@ -371,9 +371,6 @@ void BKE_constraint_blend_write(struct BlendWriter *writer, struct ListBase *con
 void BKE_constraint_blend_read_data(struct BlendDataReader *reader,
                                     struct ID *id_owner,
                                     struct ListBase *lb);
-void BKE_constraint_blend_read_lib(struct BlendLibReader *reader,
-                                   struct ID *id,
-                                   struct ListBase *conlist);
 
 #ifdef __cplusplus
 }

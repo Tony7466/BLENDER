@@ -81,7 +81,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
@@ -202,13 +202,13 @@ void ED_view3d_init_mats_rv3d_gl(const Object *ob, RegionView3D *rv3d)
 }
 
 #ifdef DEBUG
-void ED_view3d_clear_mats_rv3d(struct RegionView3D *rv3d)
+void ED_view3d_clear_mats_rv3d(RegionView3D *rv3d)
 {
   zero_m4(rv3d->viewmatob);
   zero_m4(rv3d->persmatob);
 }
 
-void ED_view3d_check_mats_rv3d(struct RegionView3D *rv3d)
+void ED_view3d_check_mats_rv3d(RegionView3D *rv3d)
 {
   BLI_ASSERT_ZERO_M4(rv3d->viewmatob);
   BLI_ASSERT_ZERO_M4(rv3d->persmatob);
@@ -336,8 +336,9 @@ static void view3d_free(SpaceLink *sl)
 
   MEM_SAFE_FREE(vd->runtime.local_stats);
 
-  if (vd->runtime.properties_storage) {
-    MEM_freeN(vd->runtime.properties_storage);
+  if (vd->runtime.properties_storage_free) {
+    vd->runtime.properties_storage_free(vd->runtime.properties_storage);
+    vd->runtime.properties_storage_free = nullptr;
   }
 
   if (vd->shading.prop) {
@@ -910,6 +911,13 @@ static void view3d_id_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
   ID *id = WM_drag_get_local_ID_or_import_from_asset(C, drag, 0);
 
   WM_operator_properties_id_lookup_set_from_id(drop->ptr, id);
+  RNA_boolean_set(drop->ptr, "show_datablock_in_modifier", (drag->type != WM_DRAG_ASSET));
+}
+
+static void view3d_geometry_nodes_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
+{
+  view3d_id_drop_copy(C, drag, drop);
+  RNA_boolean_set(drop->ptr, "show_datablock_in_modifier", (drag->type != WM_DRAG_ASSET));
 }
 
 static void view3d_id_drop_copy_with_type(bContext *C, wmDrag *drag, wmDropBox *drop)
@@ -1007,7 +1015,7 @@ static void view3d_dropboxes()
   WM_dropbox_add(lb,
                  "OBJECT_OT_drop_geometry_nodes",
                  view3d_geometry_nodes_drop_poll,
-                 view3d_id_drop_copy,
+                 view3d_geometry_nodes_drop_copy,
                  WM_drag_free_imported_drag_ID,
                  view3d_geometry_nodes_drop_tooltip);
   WM_dropbox_add(lb,
@@ -1219,6 +1227,7 @@ static void view3d_main_region_listener(const wmRegionListenerParams *params)
       switch (wmn->data) {
         case ND_BONE_ACTIVE:
         case ND_BONE_SELECT:
+        case ND_BONE_COLLECTION:
         case ND_TRANSFORM:
         case ND_POSE:
         case ND_DRAW:
@@ -1839,6 +1848,7 @@ static void view3d_buttons_region_listener(const wmRegionListenerParams *params)
       switch (wmn->data) {
         case ND_BONE_ACTIVE:
         case ND_BONE_SELECT:
+        case ND_BONE_COLLECTION:
         case ND_TRANSFORM:
         case ND_POSE:
         case ND_DRAW:
@@ -2130,20 +2140,6 @@ static void view3d_space_blend_read_data(BlendDataReader *reader, SpaceLink *sl)
   BKE_viewer_path_blend_read_data(reader, &v3d->viewer_path);
 }
 
-static void view3d_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, SpaceLink *sl)
-{
-  View3D *v3d = (View3D *)sl;
-
-  BLO_read_id_address(reader, parent_id, &v3d->camera);
-  BLO_read_id_address(reader, parent_id, &v3d->ob_center);
-
-  if (v3d->localvd) {
-    BLO_read_id_address(reader, parent_id, &v3d->localvd->camera);
-  }
-
-  BKE_viewer_path_blend_read_lib(reader, parent_id, &v3d->viewer_path);
-}
-
 static void view3d_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 {
   View3D *v3d = (View3D *)sl;
@@ -2181,7 +2177,7 @@ void ED_spacetype_view3d()
   st->id_remap = view3d_id_remap;
   st->foreach_id = view3d_foreach_id;
   st->blend_read_data = view3d_space_blend_read_data;
-  st->blend_read_lib = view3d_space_blend_read_lib;
+  st->blend_read_after_liblink = nullptr;
   st->blend_write = view3d_space_blend_write;
 
   /* regions: main window */

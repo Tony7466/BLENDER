@@ -314,6 +314,22 @@ add_blender_test(
 )
 
 # ------------------------------------------------------------------------------
+# NODE GROUP TESTS
+add_blender_test(
+  bl_node_group_compat
+  --python ${CMAKE_CURRENT_LIST_DIR}/bl_node_group_compat.py
+  --
+  --testdir "${TEST_SRC_DIR}/node_group"
+)
+
+add_blender_test(
+  bl_node_group_interface
+  --python ${CMAKE_CURRENT_LIST_DIR}/bl_node_group_interface.py
+  --
+  --testdir "${TEST_SRC_DIR}/node_group"
+)
+
+# ------------------------------------------------------------------------------
 # IO TESTS
 
 # STL Import tests
@@ -729,7 +745,7 @@ if(WITH_COMPOSITOR_CPU)
   endif()
 endif()
 
-# NOTE: WITH_COMPOSITOR_CPU is needed for rendering. 
+# NOTE: WITH_COMPOSITOR_CPU is needed for rendering.
 if(WITH_COMPOSITOR_REALTIME_TESTS AND WITH_COMPOSITOR_CPU)
   if(NOT OPENIMAGEIO_IDIFF)
       message(WARNING "Disabling realtime compositor tests because OIIO idiff does not exist")
@@ -744,7 +760,7 @@ if(WITH_COMPOSITOR_REALTIME_TESTS AND WITH_COMPOSITOR_CPU)
 
           multiple_node_setups
         )
-      
+
       if(WITH_LIBMV)
         list(APPEND compositor_tests distort matte)
       endif()
