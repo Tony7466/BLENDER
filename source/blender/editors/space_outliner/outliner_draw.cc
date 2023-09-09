@@ -3992,7 +3992,8 @@ void draw_outliner(const bContext *C)
             SO_LIBRARIES,
             SO_OVERRIDES_LIBRARY,
             SO_DATA_API,
-            SO_ID_ORPHANS) &&
+            SO_ID_ORPHANS,
+            SO_BAKES) &&
       space_outliner->flag & SO_SYNC_SELECT)
   {
     outliner_sync_selection(C, space_outliner);

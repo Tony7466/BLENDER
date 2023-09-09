@@ -3736,6 +3736,7 @@ static void rna_def_space_outliner(BlenderRNA *brna)
        ICON_ORPHAN_DATA,
        "Orphan Data",
        "Display data-blocks which are unused and/or will be lost when the file is reloaded"},
+      {SO_BAKES, "BAKES", ICON_PHYSICS, "Bakes", "Display bake-able nodes"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 

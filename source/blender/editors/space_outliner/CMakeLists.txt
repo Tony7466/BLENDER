@@ -38,6 +38,7 @@ set(SRC
   space_outliner.cc
   tree/common.cc
   tree/tree_display.cc
+  tree/tree_display_bakes.cc
   tree/tree_display_data.cc
   tree/tree_display_libraries.cc
   tree/tree_display_orphaned.cc

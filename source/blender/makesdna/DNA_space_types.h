@@ -410,6 +410,7 @@ typedef enum eSpaceOutliner_Mode {
   SO_ID_ORPHANS = 14,
   SO_VIEW_LAYER = 15,
   SO_OVERRIDES_LIBRARY = 16,
+  SO_BAKES = 17,
 } eSpaceOutliner_Mode;
 
 /** #SpaceOutliner.outlinevis */
