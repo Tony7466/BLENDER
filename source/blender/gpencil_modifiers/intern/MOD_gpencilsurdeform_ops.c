@@ -2162,8 +2162,15 @@ static int bake_frames(bContext *C, wmOperator *op)
     BKE_scene_graph_update_for_newframe(depsgraph);
     /*Iterate all the layers*/
     LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
+      /*What if the user decides to bake a bound/existing frame? It must be skipped.*/
+      gpf = BKE_gpencil_layer_frame_get(gpl, frame, GP_GETFRAME_USE_PREV);
+      if (gpf->framenum == frame)
+        continue;
       /* get the current state in current frame */
-      gpf = BKE_gpencil_layer_frame_get(gpl, frame, GP_GETFRAME_ADD_NEW);
+      gpf = BKE_gpencil_layer_frame_get(gpl, frame, GP_GETFRAME_ADD_COPY);
+      /*All the properties of the second frame were copied; including the changed color!
+      Let's set it back to normal, cuz the baked frame must not be or appear bound.*/
+      gpf->key_type = BEZT_KEYTYPE_KEYFRAME;
       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes)
       {
         mti->deformStroke(md, depsgraph, ob, gpl, gpf, gps);
