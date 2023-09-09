@@ -189,17 +189,6 @@ void gather_group_to_group(const OffsetIndices<int> src_offsets,
   });
 }
 
-template<typename T>
-static void gather_to_groups(const Span<T> src,
-                             const IndexMask &src_selection,
-                             const OffsetIndices<int> dst_groups,
-                             MutableSpan<T> dst)
-{
-  src_selection.foreach_index(GrainSize(1024), [&](const int src_i, const int dst_i) {
-    dst.slice(dst_groups[dst_i]).fill(src[src_i]);
-  });
-}
-
 void gather_to_groups(const GSpan src,
                       const IndexMask &src_selection,
                       const OffsetIndices<int> dst_groups,
@@ -207,7 +196,7 @@ void gather_to_groups(const GSpan src,
 {
   bke::attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
     using T = decltype(dummy);
-    gather_to_groups(src.typed<T>(), src_selection, dst_groups, dst.typed<T>());
+    array_utils::gather_to_groups(src.typed<T>(), src_selection, dst_groups, dst.typed<T>());
   });
 }
 

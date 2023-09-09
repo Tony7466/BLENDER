@@ -424,10 +424,24 @@ std::optional<Mesh *> mesh_triangulate(
     return true;
   });
 
-  if (int *orig_indices = static_cast<int *>(
-          CustomData_get_layer_for_write(&mesh->edge_data, CD_ORIGINDEX, mesh->totedge)))
+  if (const int *src = static_cast<const int *>(
+          CustomData_get_layer(&src_mesh.edge_data, CD_ORIGINDEX)))
   {
-    MutableSpan(orig_indices, mesh->totedge).drop_front(src_edges.size()).fill(ORIGINDEX_NONE);
+    int *dst = static_cast<int *>(
+        CustomData_add_layer(&mesh->edge_data, CD_ORIGINDEX, CD_CONSTRUCT, mesh->totedge));
+    std::copy(src, src + src_mesh.totedge, dst);
+    MutableSpan(dst, mesh->totedge).drop_front(src_mesh.totedge).fill(ORIGINDEX_NONE);
+  }
+
+  if (const int *src = static_cast<const int *>(
+          CustomData_get_layer(&src_mesh.face_data, CD_ORIGINDEX)))
+  {
+    int *dst = static_cast<int *>(
+        CustomData_add_layer(&mesh->face_data, CD_ORIGINDEX, CD_CONSTRUCT, mesh->faces_num));
+    array_utils::gather(src, selection_inverse, dst.span.take_front(selection_inverse.size()));
+    bke::attribute_math::gather_to_groups(
+        src, selection, tri_groups, dst.span.take_back(tri_groups.total_size()));
+    array_utils::gather_to_groups(Span(orig_indices, src_faces.size()), )
   }
 
   mesh->runtime->bounds_cache = src_mesh.runtime->bounds_cache;
