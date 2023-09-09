@@ -26,21 +26,25 @@
 #include "DNA_mask_types.h"
 #include "DNA_mesh_types.h"
 #include "DNA_meta_types.h"
+#include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_userdef_types.h"
 #include "DNA_workspace_types.h"
 
+#include "BKE_bake_geometry_nodes_modifier.hh"
 #include "BKE_callbacks.h"
 #include "BKE_context.h"
 #include "BKE_editmesh.h"
 #include "BKE_fcurve.h"
 #include "BKE_global.h"
 #include "BKE_icons.h"
+#include "BKE_layer.h"
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_mask.h"
+#include "BKE_modifier.h"
 #include "BKE_object.h"
 #include "BKE_report.h"
 #include "BKE_scene.h"
@@ -80,6 +84,8 @@
 #include "UI_view2d.hh"
 
 #include "GPU_capabilities.h"
+
+#include "MOD_nodes.hh"
 
 #include "screen_intern.h" /* own module include */
 
@@ -5020,11 +5026,58 @@ static void SCREEN_OT_animation_play(wmOperatorType *ot)
 
 static int screen_animation_play_with_preroll_exec(bContext *C, wmOperator * /*op*/)
 {
+  namespace bake = blender::bke::bake;
   if (!ED_screen_animation_playing(CTX_wm_manager(C))) {
     Scene *scene = CTX_data_scene(C);
-    scene->r.cfra = -100;
-    DEG_id_tag_update(&scene->id, ID_RECALC_FRAME_CHANGE);
-    WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
+    ViewLayer *view_layer = CTX_data_view_layer(C);
+
+    std::optional<int> playback_start_frame;
+
+    FOREACH_OBJECT_BEGIN (scene, view_layer, ob) {
+      LISTBASE_FOREACH (const ModifierData *, md, &ob->modifiers) {
+        if (md->type != eModifierType_Nodes) {
+          continue;
+        }
+        const NodesModifierData &nmd = *reinterpret_cast<const NodesModifierData *>(md);
+        if (!nmd.runtime->cache) {
+          continue;
+        }
+        const bake::ModifierCache &modifier_cache = *nmd.runtime->cache;
+        std::lock_guard lock{modifier_cache.mutex};
+        for (const NodesModifierBake &bake : blender::Span(nmd.bakes, nmd.bakes_num)) {
+          const std::unique_ptr<bake::NodeCache> *node_cache_ptr =
+              modifier_cache.cache_by_id.lookup_ptr(bake.id);
+          const bool cache_is_invalid = (node_cache_ptr == nullptr) ||
+                                        (*node_cache_ptr)->cache_status ==
+                                            bake::CacheStatus::Invalid ||
+                                        (*node_cache_ptr)->frame_caches.is_empty();
+          if (!cache_is_invalid) {
+            continue;
+          }
+          const std::optional<blender::IndexRange> frame_range = bake::get_node_bake_frame_range(
+              *scene, *ob, nmd, bake.id);
+          if (!frame_range.has_value()) {
+            continue;
+          }
+          const int sim_start_frame = frame_range->start();
+          if (playback_start_frame) {
+            if (sim_start_frame < *playback_start_frame) {
+              playback_start_frame = sim_start_frame;
+            }
+          }
+          else {
+            playback_start_frame = sim_start_frame;
+          }
+        }
+      }
+    }
+    FOREACH_OBJECT_END;
+
+    if (playback_start_frame.has_value()) {
+      scene->r.cfra = *playback_start_frame;
+      DEG_id_tag_update(&scene->id, ID_RECALC_FRAME_CHANGE);
+      WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
+    }
   }
   return ED_screen_animation_play(C, ANIMPLAY_FLAG_NO_SYNC, 1, false);
 }

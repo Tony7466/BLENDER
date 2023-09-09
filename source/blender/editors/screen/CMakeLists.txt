@@ -15,6 +15,7 @@ set(INC
   ../../gpu
   ../../imbuf
   ../../makesrna
+  ../../modifiers
   ../../sequencer
   ../../windowmanager
   # RNA_prototypes.h
