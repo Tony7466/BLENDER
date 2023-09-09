@@ -928,6 +928,9 @@ class NodeTreeMainUpdater {
     if (node.typeinfo->nclass == NODE_CLASS_OUTPUT) {
       return true;
     }
+    if (bke::node_is_viewer_group(node)) {
+      return true;
+    }
     if (node.type == NODE_GROUP_OUTPUT) {
       return true;
     }
