@@ -777,6 +777,7 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
   bool depsgraph_is_active_;
   bake::ModifierCache *modifier_cache_;
   float fps_;
+  bool has_invalid_simulation_ = false;
 
  public:
   NodesModifierSimulationParams(NodesModifierData &nmd, const ModifierEvalContext &ctx)
@@ -802,9 +803,38 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
         for (std::unique_ptr<bake::NodeCache> &node_cache : modifier_cache_->cache_by_id.values())
         {
           if (node_cache->cache_status != bake::CacheStatus::Baked) {
-            node_cache->reset();
+            node_cache->cache_status = bake::CacheStatus::Invalid;
           }
         }
+      }
+      for (auto item : modifier_cache_->cache_by_id.items()) {
+        const int id = item.key;
+        bake::NodeCache &node_cache = *item.value;
+        if (node_cache.cache_status != bake::CacheStatus::Invalid) {
+          continue;
+        }
+        const std::optional<IndexRange> sim_frame_range = bake::get_node_bake_frame_range(
+            *scene_, *ctx_.object, nmd_, id);
+        if (!sim_frame_range.has_value()) {
+          continue;
+        }
+        const SubFrame start_frame{int(sim_frame_range->start())};
+        if (current_frame_ <= start_frame) {
+          node_cache.reset();
+        }
+        if (!node_cache.frame_caches.is_empty() &&
+            current_frame_ < node_cache.frame_caches.first()->frame) {
+          node_cache.reset();
+        }
+      }
+    }
+    for (const std::unique_ptr<bake::NodeCache> &node_cache_ptr :
+         modifier_cache_->cache_by_id.values())
+    {
+      const bake::NodeCache &node_cache = *node_cache_ptr;
+      if (node_cache.cache_status == bake::CacheStatus::Invalid) {
+        has_invalid_simulation_ = true;
+        break;
       }
     }
   }
@@ -881,17 +911,17 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
       /* If the depsgraph is active, we allow creating new simulation states. Otherwise, the access
        * is read-only. */
       if (depsgraph_is_active_) {
-        if (!frame_indices.prev && !frame_indices.current && frame_indices.next) {
-          node_cache.reset();
-        }
         if (node_cache.frame_caches.is_empty()) {
           if (current_frame_ < sim_start_frame || current_frame_ > sim_end_frame) {
-            /* Outside of simulation frame range, so ignore the simulation. */
+            /* Outside of simulation frame range, so ignore the simulation if there is no cache. */
             this->input_pass_through(zone_behavior);
             this->output_pass_through(zone_behavior);
             return;
           }
           /* Initialize the simulation. */
+          if (current_frame_ > sim_start_frame || has_invalid_simulation_) {
+            node_cache.cache_status = bake::CacheStatus::Invalid;
+          }
           this->input_pass_through(zone_behavior);
           this->output_store_frame_cache(node_cache, zone_behavior);
           return;
@@ -902,11 +932,11 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
           /* Read the previous frame's data and store the newly computed simulation state. */
           auto &output_copy_info = zone_behavior.input.emplace<sim_input::OutputCopy>();
           const bake::FrameCache &prev_frame_cache = *node_cache.frame_caches[*frame_indices.prev];
-          const float delta_frames = std::min(
-              max_delta_frames, float(current_frame_) - float(prev_frame_cache.frame));
-          if (delta_frames != 1) {
+          const float real_delta_frames = float(current_frame_) - float(prev_frame_cache.frame);
+          if (real_delta_frames != 1) {
             node_cache.cache_status = bake::CacheStatus::Invalid;
           }
+          const float delta_frames = std::min(max_delta_frames, real_delta_frames);
           output_copy_info.delta_time = delta_frames / fps_;
           output_copy_info.state = prev_frame_cache.state;
           this->output_store_frame_cache(node_cache, zone_behavior);
@@ -1051,20 +1081,15 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
             *frame_indices.prev, *frame_indices.next, node_cache, zone_behavior);
       }
       else {
-        this->read_empty(zone_behavior);
+        this->output_pass_through(zone_behavior);
       }
     }
     else if (frame_indices.prev) {
       this->read_single(*frame_indices.prev, node_cache, zone_behavior);
     }
     else {
-      this->read_empty(zone_behavior);
+      this->output_pass_through(zone_behavior);
     }
-  }
-
-  void read_empty(nodes::SimulationZoneBehavior &zone_behavior) const
-  {
-    zone_behavior.output.emplace<sim_output::ReadSingle>();
   }
 
   void read_single(const int frame_index,
