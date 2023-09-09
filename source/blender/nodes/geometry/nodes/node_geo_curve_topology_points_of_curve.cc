@@ -2,11 +2,9 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_attribute.hh"
 #include "BKE_curves.hh"
 
 #include "BLI_task.hh"
-#include "BLI_virtual_array.hh"
 
 #include "node_geometry_util.hh"
 
@@ -200,8 +198,7 @@ class CurveStartPointInput final : public bke::CurvesFieldInput {
                                  const eAttrDomain domain,
                                  const IndexMask & /*mask*/) const final
   {
-    return curves.attributes().adapt_domain(
-        VArray<int>::ForSpan(curves.offsets()), ATTR_DOMAIN_CURVE, domain);
+    return curves.adapt_domain(VArray<int>::ForSpan(curves.offsets()), ATTR_DOMAIN_CURVE, domain);
   }
 
   uint64_t hash() const final
