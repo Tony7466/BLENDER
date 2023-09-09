@@ -91,7 +91,7 @@ shader node_principled_bsdf(string distribution = "multi_ggx",
     f0 *= specTint;
 
     TransmissionBSDF = generalized_schlick_bsdf(
-        Normal, vector(0.0), color(1.0), BaseColor, r2, r2, f0, f90, -eta, distribution),
+        Normal, vector(0.0), color(1.0), sqrt(BaseColor), r2, r2, f0, f90, -eta, distribution),
     BSDF = mix(BSDF, TransmissionBSDF, clamp(Transmission, 0.0, 1.0));
   }
 
