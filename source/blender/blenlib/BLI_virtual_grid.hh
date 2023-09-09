@@ -208,7 +208,7 @@ template<typename T> class VGridImpl_For_Single final : public VGridImpl<T> {
   T value_;
 
  public:
-  VGridImpl_For_Single(T value) : VGridImpl<T>(), value_(std::move(value)) {}
+  VGridImpl_For_Single(T value) : value_(std::move(value)) {}
 
  protected:
   CommonVGridInfo common_info() const override
@@ -226,10 +226,7 @@ template<typename T, typename GetFunc> class VGridImpl_For_Func final : public V
   GetFunc get_func_;
 
  public:
-  VGridImpl_For_Func(const int64_t size, GetFunc get_func)
-      : VGridImpl<T>(size), get_func_(std::move(get_func))
-  {
-  }
+  VGridImpl_For_Func(GetFunc get_func) : get_func_(std::move(get_func)) {}
 };
 
 namespace detail {
@@ -491,9 +488,12 @@ template<typename T> class VMutableGrid;
  * construct the virtual grid first and then move it into the vector.
  */
 namespace vgrid_tag {
-struct grid {};
-struct single_ref {};
-struct single {};
+struct grid {
+};
+struct single_ref {
+};
+struct single {
+};
 }  // namespace vgrid_tag
 
 /**

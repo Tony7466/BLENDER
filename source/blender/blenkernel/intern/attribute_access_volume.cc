@@ -6,6 +6,7 @@
  * \ingroup bke
  */
 
+#include "BLI_virtual_grid.hh"
 #include "BLI_volume_openvdb.hh"
 
 #include "BKE_attribute.hh"
@@ -21,6 +22,37 @@
 #endif
 
 namespace blender::bke {
+
+GAttributeGridReader VolumeCellCenterAttributeGridProvider::try_get_grid_for_read(
+    const void * /*owner*/) const
+{
+  auto cell_center_fn = [](const blender::int3 &coord) { return float3(0, 1, 2); };
+
+  using ImplType = VGridImpl_For_Func<float3, decltype(cell_center_fn)>;
+  return {VGrid<float3>::For<ImplType>(std::move(cell_center_fn)), this->domain(), nullptr};
+}
+
+GAttributeGridWriter VolumeCellCenterAttributeGridProvider::try_get_grid_for_write(
+    void * /*owner*/) const
+{
+  return {};
+}
+
+bool VolumeCellCenterAttributeGridProvider::try_delete(void * /*owner*/) const
+{
+  return false;
+}
+
+bool VolumeCellCenterAttributeGridProvider::try_create(void * /*owner*/,
+                                                       const AttributeInit & /*initializer*/) const
+{
+  return false;
+}
+
+bool VolumeCellCenterAttributeGridProvider::exists(const void * /*owner*/) const
+{
+  return true;
+}
 
 GAttributeGridReader VolumeCustomAttributeGridProvider::try_get_grid_for_read(
     const void *owner, const AttributeIDRef &attribute_id) const

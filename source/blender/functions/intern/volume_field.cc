@@ -176,6 +176,10 @@ template<typename GridType>
 void merge_input_field_topology(GridType &buffer, Span<GVGrid> field_context_inputs)
 {
   for (const GVGrid &input_grid : field_context_inputs) {
+    if (!input_grid.is_grid()) {
+      /* Non-grids have undefined topology, nothing to merge. */
+      continue;
+    }
     volume::grid_to_static_type(*input_grid.get_internal_grid(), [&](auto &typed_input_grid) {
       buffer.topologyUnion(typed_input_grid);
     });
@@ -197,6 +201,24 @@ struct VGridReader_For_Accessor : public VGridReader<GridType> {
   {
     using VArrayImplType = VArrayImpl_For_GridLeaf<AccessorType, LeafNodeType, Converter>;
     return VArray<AttributeValueType>::template For<VArrayImplType>(accessor_, leaf);
+  }
+};
+
+template<typename GridType, typename Converter>
+struct VGridReader_For_Single : public VGridReader<GridType> {
+  using TreeType = typename GridType::TreeType;
+  using LeafNodeType = typename TreeType::LeafNodeType;
+  using AttributeValueType = typename Converter::AttributeValueType;
+  const int32_t leaf_size = LeafNodeType::size();
+
+  AttributeValueType value_;
+
+  VGridReader_For_Single(const AttributeValueType &value) : value_(value) {}
+  virtual ~VGridReader_For_Single() {}
+
+  GVArray make_varray_for_leaf(const LeafNodeType & /*leaf*/) const override
+  {
+    return VArray<AttributeValueType>::ForSingle(value_, leaf_size);
   }
 };
 
@@ -232,17 +254,33 @@ template<typename GridType, typename MaskGridType = openvdb::MaskGrid> struct Ev
     input_readers_.reinitialize(field_context_inputs.size());
 
     for (const int i : field_context_inputs.index_range()) {
-      volume::grid_to_static_type(
-          *field_context_inputs[i].get_internal_grid(), [&](auto &input_grid) {
-            using InputGridType = typename std::decay<decltype(input_grid)>::type;
-            using AccessorType = typename InputGridType::ConstAccessor;
-            using Converter = volume::grid_types::Converter<InputGridType>;
+      if (field_context_inputs[i].is_grid()) {
+        volume::grid_to_static_type(
+            *field_context_inputs[i].get_internal_grid(), [&](auto &input_grid) {
+              using InputGridType = typename std::decay<decltype(input_grid)>::type;
+              using AccessorType = typename InputGridType::ConstAccessor;
+              using Converter = volume::grid_types::Converter<InputGridType>;
 
-            GridReaderPtr reader_ptr =
-                std::make_shared<VGridReader_For_Accessor<GridType, AccessorType, Converter>>(
-                    input_grid.getConstAccessor());
-            input_readers_[i] = std::move(reader_ptr);
-          });
+              GridReaderPtr reader_ptr =
+                  std::make_shared<VGridReader_For_Accessor<GridType, AccessorType, Converter>>(
+                      input_grid.getConstAccessor());
+              input_readers_[i] = std::move(reader_ptr);
+            });
+      }
+      else if (field_context_inputs[i].is_single()) {
+        volume::field_to_static_type(field_context_inputs[i].type(), [&](auto tag) {
+          using ValueType = typename decltype(tag)::type;
+          using InputGridType = volume::grid_types::AttributeGrid<ValueType>;
+          using InputConverter = volume::grid_types::Converter<InputGridType>;
+          using AttributeValueType = typename InputConverter::AttributeValueType;
+
+          AttributeValueType value;
+          field_context_inputs[i].get_internal_single(&value);
+          GridReaderPtr reader_ptr =
+              std::make_shared<VGridReader_For_Single<GridType, InputConverter>>(value);
+          input_readers_[i] = std::move(reader_ptr);
+        });
+      }
     }
   }
 

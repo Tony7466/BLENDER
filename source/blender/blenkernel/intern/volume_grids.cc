@@ -357,10 +357,12 @@ static ComponentAttributeProviders create_attribute_providers_for_volume()
 
   static auto update_on_change = [](void * /*owner*/) {};
 
-  static VolumeCustomAttributeGridProvider grid_custom_data(
+  static VolumeCellCenterAttributeGridProvider cell_center_provider(grid_access, update_on_change);
+
+  static VolumeCustomAttributeGridProvider grid_custom_provider(
       ATTR_DOMAIN_VOXEL, grid_access, update_on_change);
 
-  return ComponentAttributeProviders({}, {&grid_custom_data});
+  return ComponentAttributeProviders({&cell_center_provider}, {&grid_custom_provider});
 }
 
 static AttributeAccessorFunctions get_volume_accessor_functions()
@@ -434,7 +436,8 @@ int VolumeGridVector::domain_size(const eAttrDomain domain) const
   }
 }
 
-blender::float4x4 VolumeGridVector::domain_transform(const eAttrDomain domain) const {
+blender::float4x4 VolumeGridVector::domain_transform(const eAttrDomain domain) const
+{
   switch (domain) {
     case ATTR_DOMAIN_VOXEL:
       if (empty()) {

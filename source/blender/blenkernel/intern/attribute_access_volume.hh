@@ -24,6 +24,50 @@ struct VolumeGridAccessInfo {
 };
 
 /**
+ * Cell center position attribute provider.
+ */
+class VolumeCellCenterAttributeGridProvider final : public BuiltinAttributeProvider {
+ private:
+  using UpdateOnChange = void (*)(void *owner);
+
+  const VolumeGridAccessInfo grid_access_;
+  const UpdateOnChange update_on_change_;
+
+ public:
+  VolumeCellCenterAttributeGridProvider(const VolumeGridAccessInfo grid_access,
+                                        UpdateOnChange update_on_change)
+      : BuiltinAttributeProvider("cell_center",
+                                 ATTR_DOMAIN_VOXEL,
+                                 CD_PROP_FLOAT3,
+                                 BuiltinAttributeProvider::NonCreatable,
+                                 BuiltinAttributeProvider::NonDeletable),
+        grid_access_(grid_access),
+        update_on_change_(update_on_change)
+  {
+  }
+
+  GAttributeReader try_get_for_read(const void * /*owner*/) const final
+  {
+    return {};
+  }
+
+  GAttributeWriter try_get_for_write(void * /*owner*/) const final
+  {
+    return {};
+  }
+
+  GAttributeGridReader try_get_grid_for_read(const void *owner) const final;
+
+  GAttributeGridWriter try_get_grid_for_write(void *owner) const final;
+
+  bool try_delete(void *owner) const final;
+
+  bool try_create(void *owner, const AttributeInit &initializer) const final;
+
+  bool exists(const void *owner) const final;
+};
+
+/**
  * An attribute provider for custom volume grids.
  */
 class VolumeCustomAttributeGridProvider final : public DynamicAttributesProvider {
