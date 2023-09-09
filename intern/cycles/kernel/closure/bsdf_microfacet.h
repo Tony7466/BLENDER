@@ -758,11 +758,11 @@ ccl_device void bsdf_microfacet_setup_fresnel_dielectric_tint(
 {
   bsdf->fresnel_type = MicrofacetFresnel::DIELECTRIC_TINT;
   bsdf->fresnel = fresnel;
-  bsdf->sample_weight *= average(bsdf_microfacet_estimate_albedo(kg, sd, bsdf, true, true));
+  Spectrum albedo = bsdf_microfacet_estimate_albedo(kg, sd, bsdf, true, true);
+  bsdf->sample_weight *= average(albedo);
 
   if (preserve_energy) {
-    /* Assume that the transmissive tint makes up most of the overall color. */
-    microfacet_ggx_preserve_energy(kg, bsdf, sd, fresnel->transmission_tint);
+    microfacet_ggx_preserve_energy(kg, bsdf, sd, albedo);
   }
 }
 
@@ -775,7 +775,8 @@ ccl_device void bsdf_microfacet_setup_fresnel_generalized_schlick(
 {
   bsdf->fresnel_type = MicrofacetFresnel::GENERALIZED_SCHLICK;
   bsdf->fresnel = fresnel;
-  bsdf->sample_weight *= average(bsdf_microfacet_estimate_albedo(kg, sd, bsdf, true, true));
+  Spectrum albedo = bsdf_microfacet_estimate_albedo(kg, sd, bsdf, true, true);
+  bsdf->sample_weight *= average(albedo);
 
   if (preserve_energy) {
     Spectrum Fss = one_spectrum();
@@ -806,9 +807,7 @@ ccl_device void bsdf_microfacet_setup_fresnel_generalized_schlick(
       Fss = fresnel->reflection_tint * mix(fresnel->f0, fresnel->f90, s);
     }
     else {
-      /* For transmissive BSDFs, assume that the transmissive tint makes up most of the overall
-       * color. */
-      Fss = fresnel->transmission_tint;
+      Fss = albedo;
     }
 
     microfacet_ggx_preserve_energy(kg, bsdf, sd, Fss);
