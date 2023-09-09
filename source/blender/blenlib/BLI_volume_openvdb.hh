@@ -28,6 +28,45 @@ namespace blender::volume {
 
 #ifdef WITH_OPENVDB
 
+inline openvdb::math::Mat4f from_m4(const float4x4 &mat)
+{
+  /* Blender column-major and OpenVDB right-multiplication conventions match. */
+  openvdb::math::Mat4f vdb_mat;
+  for (int col = 0; col < 4; col++) {
+    for (int row = 0; row < 4; row++) {
+      vdb_mat(col, row) = mat[col][row];
+    }
+  }
+  return vdb_mat;
+}
+
+inline float4x4 to_m4(const openvdb::math::Mat4f &vdb_mat)
+{
+  /* Blender column-major and OpenVDB right-multiplication conventions match. */
+  float4x4 mat;
+  for (int col = 0; col < 4; col++) {
+    for (int row = 0; row < 4; row++) {
+      mat[col][row] = vdb_mat(col, row);
+    }
+  }
+  return mat;
+}
+
+inline openvdb::math::Transform::Ptr transform_from_m4(const float4x4 &mat)
+{
+  openvdb::math::Mat4f vdb_mat = from_m4(mat);
+  return std::make_shared<openvdb::math::Transform>(
+      std::make_shared<openvdb::math::AffineMap>(vdb_mat));
+}
+
+inline float4x4 transform_to_m4(const openvdb::math::Transform &transform)
+{
+  /* Perspective not supported for now, getAffineMap() will leave out the
+   * perspective part of the transform. */
+  openvdb::math::Mat4f vdb_mat = transform.baseMap()->getAffineMap()->getMat4();
+  return to_m4(vdb_mat);
+}
+
 namespace detail {
 
 template<typename Func> struct FilterVoidOp {

@@ -83,6 +83,8 @@ static openvdb::GridBase *make_grid_for_attribute_type(ResourceScope *scope,
     else {
       result = new GridType(Converter::single_value_to_grid(background_value));
     }
+
+    result->setTransform(transform_from_m4(transform));
   });
   BLI_assert(result != nullptr);
   return result;
