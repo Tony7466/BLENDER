@@ -86,7 +86,7 @@ static ImBuf *getImageBuffer(NSImage *droppedImg) {
     ibuf = IMB_allocImBuf(imgSize.width, imgSize.height, 32, IB_rect);
     if (!ibuf) {
       [droppedImg release];
-      return nil;
+      return nullptr;
     }
 
     /* Get the bitmap of the image. */
@@ -97,8 +97,10 @@ static ImBuf *getImageBuffer(NSImage *droppedImg) {
         break;
       }
     }
-    if (bitmapImage == nil)
-      return nil;
+    if (bitmapImage == nullptr) {
+        [droppedImg release];
+        return nullptr;
+    }
 
     if (([bitmapImage bitsPerPixel] == 32) && (([bitmapImage bitmapFormat] & 0x5) == 0) &&
         ![bitmapImage isPlanar])
@@ -111,8 +113,8 @@ static ImBuf *getImageBuffer(NSImage *droppedImg) {
         from_i = y * imgSize.width;
         memcpy(toIBuf + 4 * to_i, rasterRGB + 4 * from_i, 4 * imgSize.width);
       }
-    }
-    else {
+      [bitmapImage release];
+    } else {
       /* Tell cocoa image resolution is same as current system one */
       [bitmapImage setSize:imgSize];
 
@@ -147,7 +149,7 @@ static ImBuf *getImageBuffer(NSImage *droppedImg) {
         [bitmapImage release];
         [blBitmapFormatImageRGB release];
         [droppedImg release];
-        return nil;
+        return nullptr;
       }
 
       /* Then get Alpha values by getting the RGBA image (that is pre-multiplied BTW) */
@@ -177,7 +179,7 @@ static ImBuf *getImageBuffer(NSImage *droppedImg) {
         [blBitmapFormatImageRGB release];
         [blBitmapFormatImageRGBA release];
         [droppedImg release];
-        return nil;
+        return nullptr;
       }
 
       /* Copy the image to ibuf, flipping it vertically. */
@@ -2059,20 +2061,17 @@ if ([[pasteboard types] containsObject:NSPasteboardTypeTIFF] || [[pasteboard typ
     *r_width = size.width;
     *r_height = size.height;
 
-     printf("width is %d, height is %d",*r_width, *r_height );
-        
     ImBuf *imageBuffer=  getImageBuffer(image);
      
-     uint8_t *pixels = imageBuffer->byte_buffer.data;
-     uint *ppixels = (uint*) pixels;
-     
-     if (ppixels == nullptr) {
-         printf("ppixels is NULL!!!!");
-     }
-     
+     int msize =(*r_width) * (*r_height) * 4 ;
+     uint *ppixels = (uint *)malloc(msize);
+     memcpy(ppixels, imageBuffer->byte_buffer.data, msize);
+     free(imageBuffer);
+
+    
      return ppixels;
   } else {
-      return nil;
+      return nullptr;
       }
 }
 
