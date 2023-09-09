@@ -483,17 +483,16 @@ void wm_window_title(wmWindowManager *wm, wmWindow *win)
   }
   else if (win->ghostwin) {
     char str[sizeof(Main::filepath) + 24];
-    const char *filename = (BKE_main_blendfile_path_from_global()[0]) ?
+    const char *filepath = (BKE_main_blendfile_path_from_global()[0]) ?
                          BKE_main_blendfile_path_from_global() :
                          IFACE_("(Unsaved)");
 
-    BLI_snprintf(str,
-                 sizeof(str),
-                 "%s%s%s - Blender %s",
-                 wm->file_saved ? "" : "*",
-                 filename,
-                 G_MAIN->recovered ? " (Recovered)" : "",
-                 BKE_blender_version_string());
+    SNPRINTF(str,
+             "%s%s%s - Blender %s",
+             wm->file_saved ? "" : "*",
+             filepath,
+             G_MAIN->recovered ? " (Recovered)" : "",
+             BKE_blender_version_string());
     GHOST_SetTitle(static_cast<GHOST_WindowHandle>(win->ghostwin), str);
 
     /* Informs GHOST of unsaved changes, to set window modified visual indicator (macOS)
