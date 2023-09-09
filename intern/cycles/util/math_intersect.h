@@ -19,32 +19,39 @@ ccl_device bool ray_sphere_intersect(float3 ray_P,
                                      ccl_private float *isect_t,
                                      const bool cull_backface)
 {
-  /* If the object has been scaled, ray_D will not be a normalized vector
-   * and inv_rd_sq will not be equal to 1.0 */
-  const float inv_rd_sq = 1.0f / dot(ray_D, ray_D);
 
   const float3 c0 = sphere_P - ray_P;
-  const float projC0 = dot(c0, ray_D) * inv_rd_sq;
   const float r_sq = sphere_radius * sphere_radius;
-  const float d_sq = len_squared(c0 - (projC0 * ray_D));
-  if (d_sq > r_sq) {
-    /* If the distance between the sphere center and the point on the ray closest to the sphere
-     * center is greater than the radius, then the ray does not intersect the sphere. */
-    return false;
-  }
 
   /* to_surface_d denotes where the ray origin is located relative to the surface of the sphere.
    * Negative values denote the ray origin is inside the sphere.
    * Positive values denote the ray origin is outside the sphere. */
   const float to_surface_d = len_squared(c0) - r_sq;
   if (cull_backface && to_surface_d < 0.0f) {
-    /* Ray origin is inside the sphere and the ray can only intersect backfaces. */
+    /* Ray origin is inside the sphere meaning it can only intersect backfaces. */
+    return false;
+  }
+
+  /* If the object has been scaled, ray_D will not be a normalized vector
+   * and inv_rd_sq will not be equal to 1.0 */
+  const float inv_rd_sq = 1.0f / dot(ray_D, ray_D);
+  const float projC0 = dot(c0, ray_D) * inv_rd_sq;
+
+  if (projC0 < 0.0f && to_surface_d >= 0.0f) {
+    /* Ray origin is outside the sphere and points away from the sphere. */
+    return false;
+  }
+
+  const float d_sq = len_squared(c0 - (projC0 * ray_D));
+
+  if (d_sq > r_sq) {
+    /* Closest point on ray is outside the sphere. */
     return false;
   }
 
   const float t = projC0 - copysignf(sqrt((r_sq - d_sq) * inv_rd_sq), to_surface_d);
 
-  if ((ray_tmin <= t) & (t <= ray_tmax)) {
+  if (t > ray_tmin && t < ray_tmax) {
     *isect_t = t;
     *isect_P = ray_P + ray_D * t;
     return true;
