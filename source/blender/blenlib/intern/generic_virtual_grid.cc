@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_generic_virtual_array.hh"
 #include "BLI_generic_virtual_grid.hh"
 #include "BLI_volume_openvdb.hh"
 
@@ -114,6 +115,20 @@ GVGridImpl_For_Grid::GVGridImpl_For_Grid(const GridType &grid)
 
 /* Generic virtual array where each element has the same value. The value is not owned. */
 
+GVArray GVGridImpl_For_SingleValueRef::get_varray_for_leaf(uint32_t log2dim,
+                                                           const int3 & /*origin*/) const
+{
+  const uint32_t num_voxels = 1 << 3 * log2dim;
+
+  volume::field_to_static_type(this->type(), [&](auto tag) {
+    using AttributeValueType = typename decltype(tag)::type;
+
+    return VArray<AttributeValueType>::ForSingle(*static_cast<const AttributeValueType *>(value_),
+                                                 num_voxels);
+  });
+  return {};
+}
+
 CommonVGridInfo GVGridImpl_For_SingleValueRef::common_info() const
 {
   return CommonVGridInfo{CommonVGridInfo::Type::Single, true, value_};
@@ -165,6 +180,19 @@ template<int BufferSize> class GVGridImpl_For_SmallTrivialSingleValue : public G
     type.copy_construct(value, &buffer_);
   }
 
+  GVArray get_varray_for_leaf(uint32_t log2dim, const int3 & /*origin*/) const
+  {
+    const uint32_t num_voxels = 1 << 3 * log2dim;
+
+    volume::field_to_static_type(this->type(), [&](auto tag) {
+      using AttributeValueType = typename decltype(tag)::type;
+
+      return VArray<AttributeValueType>::ForSingle(
+          *static_cast<const AttributeValueType *>(buffer_.ptr()), num_voxels);
+    });
+    return {};
+  }
+
  private:
   CommonVGridInfo common_info() const override
   {
@@ -203,6 +231,11 @@ GVGridCommon::GVGridCommon(std::shared_ptr<const GVGridImpl> impl) : impl_(impl.
 }
 
 GVGridCommon::~GVGridCommon() = default;
+
+GVArray GVGridCommon::get_varray_for_leaf(uint32_t log2dim, const int3 &origin) const
+{
+  return impl_->get_varray_for_leaf(log2dim, origin);
+}
 
 // void GVGridCommon::materialize(void *dst) const
 //{

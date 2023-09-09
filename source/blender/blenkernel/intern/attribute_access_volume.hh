@@ -36,7 +36,7 @@ class VolumeCellCenterAttributeGridProvider final : public BuiltinAttributeProvi
  public:
   VolumeCellCenterAttributeGridProvider(const VolumeGridAccessInfo grid_access,
                                         UpdateOnChange update_on_change)
-      : BuiltinAttributeProvider("cell_center",
+      : BuiltinAttributeProvider("position",
                                  ATTR_DOMAIN_VOXEL,
                                  CD_PROP_FLOAT3,
                                  BuiltinAttributeProvider::NonCreatable,

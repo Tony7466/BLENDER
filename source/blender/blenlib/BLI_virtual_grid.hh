@@ -114,6 +114,8 @@ template<typename T> class VGridImpl {
   {
     return false;
   }
+
+  virtual VArray<T> get_varray_for_leaf(uint32_t log2dim, const int3 &origin) const = 0;
 };
 
 /** Similar to #VGridImpl, but adds methods that allow modifying the referenced elements. */
@@ -162,11 +164,29 @@ template<typename T> class VMutableGridImpl : public VGridImpl<T> {
 template<typename T> class VGridImpl_For_Grid : public VMutableGridImpl<T> {
  protected:
   using GridType = volume::grid_types::AttributeGrid<T>;
+  using TreeType = typename GridType::TreeType;
 
   GridType *grid_ = nullptr;
 
  public:
   VGridImpl_For_Grid(GridType &grid) : grid_(&grid) {}
+
+  VArray<T> get_varray_for_leaf(uint32_t log2dim, const int3 &origin) const override
+  {
+#  ifdef WITH_OPENVDB
+    using Accessor = typename GridType::ConstAccessor;
+    using Converter = volume::grid_types::Converter<GridType>;
+    const uint32_t num_voxels = 1 << 3 * log2dim;
+
+    Accessor accessor = grid_->getConstAccessor();
+    return VArray<T>::ForFunc(num_voxels, [log2dim, origin, &accessor](const int64_t index) {
+      const openvdb::Coord xyz = volume::offset_to_global_coord(log2dim, origin, int32_t(index));
+      return Converter::single_value_to_attribute(accessor.getValue(xyz));
+    });
+#  else
+    return {};
+#  endif
+  }
 
  protected:
   CommonVGridInfo common_info() const override
@@ -176,8 +196,8 @@ template<typename T> class VGridImpl_For_Grid : public VMutableGridImpl<T> {
 };
 
 /**
- * A version of #VArrayImpl_For_Grid that can not be subclassed. This allows safely overwriting the
- * #may_have_ownership method.
+ * A version of #VArrayImpl_For_Grid that can not be subclassed. This allows safely overwriting
+ * the #may_have_ownership method.
  */
 template<typename T> class VGridImpl_For_Grid_final final : public VGridImpl_For_Grid<T> {
  public:
@@ -210,6 +230,12 @@ template<typename T> class VGridImpl_For_Single final : public VGridImpl<T> {
  public:
   VGridImpl_For_Single(T value) : value_(std::move(value)) {}
 
+  VArray<T> get_varray_for_leaf(uint32_t log2dim, const int3 & /*origin*/) const override
+  {
+    const uint32_t num_voxels = 1 << 3 * log2dim;
+    return VArray<T>::ForSingle(value_, num_voxels);
+  }
+
  protected:
   CommonVGridInfo common_info() const override
   {
@@ -227,6 +253,19 @@ template<typename T, typename GetFunc> class VGridImpl_For_Func final : public V
 
  public:
   VGridImpl_For_Func(GetFunc get_func) : get_func_(std::move(get_func)) {}
+
+  VArray<T> get_varray_for_leaf(uint32_t log2dim, const int3 &origin) const override
+  {
+#if WITH_OPENVDB
+    const uint32_t num_voxels = 1 << 3 * log2dim;
+    return VArray<T>::ForFunc(num_voxels, [](const int64_t index) -> T {
+      const openvdb::Coord coord = volume::offset_to_global_coord(log2dim, origin, index);
+      return get_func_(coord);
+    });
+#else
+    return {};
+#endif
+  }
 };
 
 namespace detail {
@@ -472,6 +511,13 @@ template<typename T> class VGridCommon {
     return impl_->try_assign_GVGrid(vgrid);
   }
 
+  /* Leaf size 2^(log2dim * 3) and origin define the transform to local coordinates and index
+   * space. */
+  VArray<T> get_varray_for_leaf(uint32_t log2dim, const int3 &origin) const
+  {
+    return impl_->get_varray_for_leaf(log2dim, origin);
+  }
+
   const VGridImpl<T> *get_implementation() const
   {
     return impl_;
@@ -625,7 +671,8 @@ template<typename T> class VMutableGrid : public VGridCommon<T> {
 
 #ifdef WITH_OPENVDB
   /**
-   * Construct a new virtual array for an existing span. This does not take ownership of the span.
+   * Construct a new virtual array for an existing span. This does not take ownership of the
+   * span.
    */
   static VMutableGrid ForGrid(GridType &grid)
   {

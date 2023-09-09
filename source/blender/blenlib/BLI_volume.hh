@@ -9,6 +9,7 @@
  */
 
 #include "BLI_cpp_type.hh"
+#include "BLI_generic_virtual_array.hh"
 #include "BLI_math_base.hh"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
@@ -105,6 +106,33 @@ class ResourceScope;
 namespace blender::volume {
 
 #ifdef WITH_OPENVDB
+inline int32_t coord_to_offset(uint32_t log2dim, const openvdb::Coord &xyz)
+{
+  /* Dimension along one coordinate direction. */
+  const uint32_t DIM = 1 << log2dim;
+
+  BLI_assert((xyz[0] & (DIM - 1u)) < DIM && (xyz[1] & (DIM - 1u)) < DIM &&
+             (xyz[2] & (DIM - 1u)) < DIM);
+  return ((xyz[0] & (DIM - 1u)) << 2 * log2dim) + ((xyz[1] & (DIM - 1u)) << log2dim) +
+         (xyz[2] & (DIM - 1u));
+}
+
+inline openvdb::Coord offset_to_local_coord(uint32_t log2dim, int n)
+{
+  BLI_assert(n < (1 << 3 * log2dim));
+  openvdb::Coord xyz;
+  xyz.setX(n >> 2 * log2dim);
+  n &= ((1 << 2 * log2dim) - 1);
+  xyz.setY(n >> log2dim);
+  xyz.setZ(n & ((1 << log2dim) - 1));
+  return xyz;
+}
+
+inline openvdb::Coord offset_to_global_coord(uint32_t log2dim, const int3 &origin, int n)
+{
+  return offset_to_local_coord(log2dim, n) + openvdb::Coord(origin);
+}
+
 namespace grid_types {
 
 /* XXX Generic template for attribute grids, this can cause excessive code generation,
@@ -298,6 +326,10 @@ openvdb::GridBase *make_grid_for_attribute_type(ResourceScope &scope,
 openvdb::GridBase *make_grid_for_attribute_type(const CPPType &type,
                                                 const float4x4 &transform,
                                                 const void *value = nullptr);
+
+inline GVArray get_varray_for_leaf(uint32_t log2dim,
+                                   const int3 &origin,
+                                   const openvdb::GridBase &grid);
 
 #endif
 

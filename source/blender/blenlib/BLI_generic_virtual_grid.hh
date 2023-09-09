@@ -11,6 +11,7 @@
  * is only known at runtime.
  */
 
+#include "BLI_generic_array.hh"
 #include "BLI_timeit.hh"
 #include "BLI_virtual_grid.hh"
 
@@ -20,6 +21,8 @@ namespace blender {
 /** \name #GVGridImpl and #GVMutableGridImpl.
  * \{ */
 
+class GVArray;
+class GVMutableArray;
 class GVGrid;
 class GVGridImpl;
 class GVMutableGrid;
@@ -43,6 +46,8 @@ class GVGridImpl {
   {
     return {};
   }
+
+  virtual GVArray get_varray_for_leaf(uint32_t log2dim, const int3 &origin) const = 0;
 
   // virtual void materialize(const IndexMask &mask, void *dst) const;
   // virtual void materialize_to_uninitialized(const IndexMask &mask, void *dst) const;
@@ -134,6 +139,10 @@ class GVGridCommon {
   {
     return impl_->common_info().may_have_ownership;
   }
+
+  /* Leaf size 2^(log2dim * 3) and origin define the transform to local coordinates and index
+   * space. */
+  GVArray get_varray_for_leaf(uint32_t log2dim, const int3 &origin) const;
 
   // void materialize(void *dst) const;
   // void materialize(const IndexMask &mask, void *dst) const;
@@ -304,6 +313,11 @@ template<typename T> class GVGridImpl_For_VGrid : public GVGridImpl {
     *(VGrid<T> *)vgrid = vgrid_;
     return true;
   }
+
+  GVArray get_varray_for_leaf(uint32_t log2dim, const int3 &origin) const override
+  {
+    return vgrid_.get_varray_for_leaf(log2dim, origin);
+  }
 };
 
 /* Used to convert any generic virtual grid into a typed one. */
@@ -316,6 +330,11 @@ template<typename T> class VGridImpl_For_GVGrid : public VGridImpl<T> {
   {
     BLI_assert(vgrid_);
     BLI_assert(vgrid_.type().template is<T>());
+  }
+
+  VArray<T> get_varray_for_leaf(uint32_t log2dim, const int3 &origin) const override
+  {
+    return vgrid_.get_varray_for_leaf(log2dim, origin).typed<T>();
   }
 
  protected:
@@ -340,6 +359,11 @@ template<typename T> class GVMutableGridImpl_For_VMutableGrid : public GVMutable
   GVMutableGridImpl_For_VMutableGrid(VMutableGrid<T> vgrid)
       : GVMutableGridImpl(CPPType::get<T>()), vgrid_(std::move(vgrid))
   {
+  }
+
+  GVArray get_varray_for_leaf(uint32_t log2dim, const int3 &origin) const override
+  {
+    return vgrid_.get_varray_for_leaf(log2dim, origin);
   }
 
  protected:
@@ -371,6 +395,11 @@ template<typename T> class VMutableGridImpl_For_GVMutableGrid : public VMutableG
   {
     BLI_assert(vgrid_);
     BLI_assert(vgrid_.type().template is<T>());
+  }
+
+  VArray<T> get_varray_for_leaf(uint32_t log2dim, const int3 &origin) const override
+  {
+    return vgrid_.get_varray_for_leaf(log2dim, origin).typed<T>();
   }
 
  private:
@@ -408,6 +437,11 @@ class GVGridImpl_For_Grid : public GVMutableGridImpl {
 
  public:
   GVGridImpl_For_Grid(const GridType &grid);
+
+  GVArray get_varray_for_leaf(uint32_t log2dim, const int3 &origin) const override
+  {
+    return volume::get_varray_for_leaf(log2dim, origin, *grid_);
+  }
 
  protected:
   GVGridImpl_For_Grid(const CPPType &type) : GVMutableGridImpl(type) {}
@@ -448,6 +482,8 @@ class GVGridImpl_For_SingleValueRef : public GVGridImpl {
       : GVGridImpl(type), value_(value)
   {
   }
+
+  GVArray get_varray_for_leaf(uint32_t log2dim, const int3 &origin) const override;
 
  protected:
   GVGridImpl_For_SingleValueRef(const CPPType &type) : GVGridImpl(type) {}

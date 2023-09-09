@@ -24,62 +24,64 @@ namespace blender::fn {
 
 namespace mf = multi_function;
 
-/* A VArray implementation using OpenVDB grid accessors.
- * The index is converted to global voxel coordinate
- * by interpreting it as a leaf buffer index. */
-template<typename AccessorType, typename LeafNodeType, typename Converter>
-class VArrayImpl_For_GridLeaf final : public VArrayImpl<typename Converter::AttributeValueType> {
- public:
-  using Coord = openvdb::Coord;
-  using AttributeValueType = typename Converter::AttributeValueType;
-
- protected:
-  const AccessorType &accessor_;
-  const Coord leaf_origin_;
-
- public:
-  VArrayImpl_For_GridLeaf(const AccessorType &accessor, const Coord &leaf_origin)
-      : VArrayImpl<AttributeValueType>(LeafNodeType::size()),
-        accessor_(accessor),
-        leaf_origin_(leaf_origin)
-  {
-  }
-  VArrayImpl_For_GridLeaf(const AccessorType &accessor, const LeafNodeType &leaf)
-      : VArrayImpl<AttributeValueType>(LeafNodeType::size()),
-        accessor_(accessor),
-        leaf_origin_(leaf.origin())
-  {
-  }
-
-  Coord index_to_global_coord(const int64_t index) const
-  {
-    return LeafNodeType::offsetToLocalCoord(index) + leaf_origin_;
-  }
-
-  int64_t global_coord_to_index(const Coord &coord) const
-  {
-    return LeafNodeType::coordToOffset(coord - leaf_origin_);
-  }
-
-  AttributeValueType get(const int64_t index) const override
-  {
-    const Coord coord = index_to_global_coord(index);
-    return Converter::single_value_to_attribute(accessor_.getValue(coord));
-  }
-
-  void materialize(const IndexMask &mask, AttributeValueType *dst) const override
-  {
-    mask.foreach_index([this, dst](const int64_t i) {
-      const Coord coord = index_to_global_coord(i);
-      dst[i] = Converter::single_value_to_attribute(accessor_.getValue(coord));
-    });
-  }
-
-  void materialize_to_uninitialized(const IndexMask &mask, AttributeValueType *dst) const override
-  {
-    this->materialize(mask, dst);
-  }
-};
+///* A VArray implementation using OpenVDB grid accessors.
+// * The index is converted to global voxel coordinate
+// * by interpreting it as a leaf buffer index. */
+// template<typename AccessorType, typename LeafNodeType, typename Converter>
+// class VArrayImpl_For_GridLeaf final : public VArrayImpl<typename Converter::AttributeValueType>
+// {
+// public:
+//  using Coord = openvdb::Coord;
+//  using AttributeValueType = typename Converter::AttributeValueType;
+//
+// protected:
+//  const AccessorType &accessor_;
+//  const Coord leaf_origin_;
+//
+// public:
+//  VArrayImpl_For_GridLeaf(const AccessorType &accessor, const Coord &leaf_origin)
+//      : VArrayImpl<AttributeValueType>(LeafNodeType::size()),
+//        accessor_(accessor),
+//        leaf_origin_(leaf_origin)
+//  {
+//  }
+//  VArrayImpl_For_GridLeaf(const AccessorType &accessor, const LeafNodeType &leaf)
+//      : VArrayImpl<AttributeValueType>(LeafNodeType::size()),
+//        accessor_(accessor),
+//        leaf_origin_(leaf.origin())
+//  {
+//  }
+//
+//  Coord index_to_global_coord(const int64_t index) const
+//  {
+//    return LeafNodeType::offsetToLocalCoord(index) + leaf_origin_;
+//  }
+//
+//  int64_t global_coord_to_index(const Coord &coord) const
+//  {
+//    return LeafNodeType::coordToOffset(coord - leaf_origin_);
+//  }
+//
+//  AttributeValueType get(const int64_t index) const override
+//  {
+//    const Coord coord = index_to_global_coord(index);
+//    return Converter::single_value_to_attribute(accessor_.getValue(coord));
+//  }
+//
+//  void materialize(const IndexMask &mask, AttributeValueType *dst) const override
+//  {
+//    mask.foreach_index([this, dst](const int64_t i) {
+//      const Coord coord = index_to_global_coord(i);
+//      dst[i] = Converter::single_value_to_attribute(accessor_.getValue(coord));
+//    });
+//  }
+//
+//  void materialize_to_uninitialized(const IndexMask &mask, AttributeValueType *dst) const
+//  override
+//  {
+//    this->materialize(mask, dst);
+//  }
+//};
 
 /* A VArray implementation using OpenVDB grid accessors.
  * The index is converted to global voxel coordinate
@@ -150,28 +152,6 @@ class VMutableArrayImpl_For_GridLeaf final
   }
 };
 
-/* Wrapper holding an accessor for an input field. */
-template<typename GridType> struct VGridReader {
-  using TreeType = typename GridType::TreeType;
-  using LeafNodeType = typename TreeType::LeafNodeType;
-
-  virtual ~VGridReader() {}
-
-  /* VArray for a specific leaf node using the accessor. */
-  virtual GVArray make_varray_for_leaf(const LeafNodeType &leaf) const = 0;
-};
-
-/* Wrapper holding an accessor for an input field. */
-template<typename GridType> struct VGridWriter {
-  using TreeType = typename GridType::TreeType;
-  using LeafNodeType = typename TreeType::LeafNodeType;
-
-  virtual ~VGridWriter() {}
-
-  /* VMutableArray for a specific leaf node using the accessor. */
-  virtual GVMutableArray make_varray_for_leaf(const LeafNodeType &leaf) const = 0;
-};
-
 template<typename GridType>
 void merge_input_field_topology(GridType &buffer, Span<GVGrid> field_context_inputs)
 {
@@ -186,54 +166,94 @@ void merge_input_field_topology(GridType &buffer, Span<GVGrid> field_context_inp
   }
 }
 
-template<typename GridType, typename AccessorType, typename Converter>
-struct VGridReader_For_Accessor : public VGridReader<GridType> {
-  using TreeType = typename GridType::TreeType;
-  using LeafNodeType = typename TreeType::LeafNodeType;
-  using AttributeValueType = typename Converter::AttributeValueType;
-
-  AccessorType accessor_;
-
-  VGridReader_For_Accessor(const AccessorType &accessor) : accessor_(accessor) {}
-  virtual ~VGridReader_For_Accessor() {}
-
-  GVArray make_varray_for_leaf(const LeafNodeType &leaf) const override
-  {
-    using VArrayImplType = VArrayImpl_For_GridLeaf<AccessorType, LeafNodeType, Converter>;
-    return VArray<AttributeValueType>::template For<VArrayImplType>(accessor_, leaf);
-  }
-};
-
-template<typename GridType, typename Converter>
-struct VGridReader_For_Single : public VGridReader<GridType> {
-  using TreeType = typename GridType::TreeType;
-  using LeafNodeType = typename TreeType::LeafNodeType;
-  using AttributeValueType = typename Converter::AttributeValueType;
-  const int32_t leaf_size = LeafNodeType::size();
-
-  AttributeValueType value_;
-
-  VGridReader_For_Single(const AttributeValueType &value) : value_(value) {}
-  virtual ~VGridReader_For_Single() {}
-
-  GVArray make_varray_for_leaf(const LeafNodeType & /*leaf*/) const override
-  {
-    return VArray<AttributeValueType>::ForSingle(value_, leaf_size);
-  }
-};
+///* Wrapper holding an accessor for an input field. */
+// template<typename GridType> struct VGridReader {
+//  using TreeType = typename GridType::TreeType;
+//  using LeafNodeType = typename TreeType::LeafNodeType;
+//
+//  virtual ~VGridReader() {}
+//
+//  /* VArray for a specific leaf node using the accessor. */
+//  virtual GVArray make_varray_for_leaf(const LeafNodeType &leaf) const = 0;
+//};
+//
+///* Wrapper holding an accessor for an input field. */
+// template<typename GridType> struct VGridWriter {
+//  using TreeType = typename GridType::TreeType;
+//  using LeafNodeType = typename TreeType::LeafNodeType;
+//
+//  virtual ~VGridWriter() {}
+//
+//  /* VMutableArray for a specific leaf node using the accessor. */
+//  virtual GVMutableArray make_varray_for_leaf(const LeafNodeType &leaf) const = 0;
+//};
+//
+// template<typename GridType, typename AccessorType, typename Converter>
+// struct VGridReader_For_Accessor : public VGridReader<GridType> {
+//  using TreeType = typename GridType::TreeType;
+//  using LeafNodeType = typename TreeType::LeafNodeType;
+//  using AttributeValueType = typename Converter::AttributeValueType;
+//
+//  AccessorType accessor_;
+//
+//  VGridReader_For_Accessor(const AccessorType &accessor) : accessor_(accessor) {}
+//  virtual ~VGridReader_For_Accessor() {}
+//
+//  GVArray make_varray_for_leaf(const LeafNodeType &leaf) const override
+//  {
+//    using VArrayImplType = VArrayImpl_For_GridLeaf<AccessorType, LeafNodeType, Converter>;
+//    return VArray<AttributeValueType>::template For<VArrayImplType>(accessor_, leaf);
+//  }
+//};
+//
+// template<typename GridType, typename AttributeValueType>
+// struct VGridReader_For_Single : public VGridReader<GridType> {
+//  using TreeType = typename GridType::TreeType;
+//  using LeafNodeType = typename TreeType::LeafNodeType;
+//  const int32_t leaf_size = LeafNodeType::size();
+//
+//  AttributeValueType value_;
+//
+//  VGridReader_For_Single(const AttributeValueType &value) : value_(value) {}
+//  virtual ~VGridReader_For_Single() {}
+//
+//  GVArray make_varray_for_leaf(const LeafNodeType & /*leaf*/) const override
+//  {
+//    return VArray<AttributeValueType>::ForSingle(value_, leaf_size);
+//  }
+//};
+//
+// template<typename GridType, typename AttributeValueType, typename GetFunc>
+// struct VGridReader_For_Func : public VGridReader<GridType> {
+//  using TreeType = typename GridType::TreeType;
+//  using LeafNodeType = typename TreeType::LeafNodeType;
+//  const int32_t leaf_size = LeafNodeType::size();
+//
+//  VGridReader_For_Func() {}
+//  virtual ~VGridReader_For_Func() {}
+//
+//  GVArray make_varray_for_leaf(const LeafNodeType &leaf) const override
+//  {
+//    return
+//    // auto eval_fn = [leaf](const int64_t index) -> AttributeValueType {
+//    //  openvdb::Coord coord = leaf.offsetToGlobalCoord(index);
+//    //  return get_func(std::move(coord));
+//    //};
+//    // return VArray<AttributeValueType>::ForFunc(leaf_size, std::move(eval_fn));
+//  }
+//};
 
 template<typename GridType, typename MaskGridType = openvdb::MaskGrid> struct EvalPerLeafOp {
-  using GGrid = GVGrid;
-  using GMutableGrid = GVMutableGrid;
   using TreeType = typename GridType::TreeType;
   using ValueType = typename GridType::ValueType;
 
   using LeafNode = typename TreeType::LeafNodeType;
-  using GridReaderType = VGridReader<GridType>;
-  using GridReaderPtr = std::shared_ptr<GridReaderType>;
+  // using GridReaderType = VGridReader<GridType>;
+  // using GridReaderPtr = std::shared_ptr<GridReaderType>;
 
   using Coord = openvdb::Coord;
   const int32_t leaf_size = LeafNode::size();
+  static const int32_t LOG2DIM = static_cast<int32_t>(LeafNode::LOG2DIM);
 
   const mf::ProcedureExecutor &procedure_executor_;
 
@@ -243,65 +263,73 @@ template<typename GridType, typename MaskGridType = openvdb::MaskGrid> struct Ev
   mutable IndexMaskMemory index_mask_memory_;
   mutable mf::ContextBuilder mf_context_;
 
+  Span<GVGrid> field_context_inputs_;
   /* Accessors for input fields. */
-  /* XXX have to use shared_ptr instead of unique_ptr because some parts
-   * of BLI_memory_utils try to copy the values and that's forbidden for unique_ptr.
-   */
-  Array<GridReaderPtr> input_readers_;
+  ///* XXX have to use shared_ptr instead of unique_ptr because some parts
+  // * of BLI_memory_utils try to copy the values and that's forbidden for unique_ptr.
+  // */
+  // Array<GridReaderPtr> input_readers_;
 
-  void make_input_accessors(Span<GGrid> field_context_inputs)
-  {
-    input_readers_.reinitialize(field_context_inputs.size());
+  // void make_input_accessors(Span<GVGrid> field_context_inputs)
+  //{
+  //  input_readers_.reinitialize(field_context_inputs.size());
 
-    for (const int i : field_context_inputs.index_range()) {
-      if (field_context_inputs[i].is_grid()) {
-        volume::grid_to_static_type(
-            *field_context_inputs[i].get_internal_grid(), [&](auto &input_grid) {
-              using InputGridType = typename std::decay<decltype(input_grid)>::type;
-              using AccessorType = typename InputGridType::ConstAccessor;
-              using Converter = volume::grid_types::Converter<InputGridType>;
+  //  for (const int i : field_context_inputs.index_range()) {
+  //      field_context_inputs[i].get_varray_for_leaf(LOG2DIM, leaf.
+  //    volume::field_to_static_type(field_context_inputs[i].type(), [&](auto tag) {
+  //      using AttributeValueType = typename decltype(tag)::type;
+  //      using InputGridType = volume::grid_types::AttributeGrid<ValueType>;
+  //      using InputConverter = volume::grid_types::Converter<InputGridType>;
 
-              GridReaderPtr reader_ptr =
-                  std::make_shared<VGridReader_For_Accessor<GridType, AccessorType, Converter>>(
-                      input_grid.getConstAccessor());
-              input_readers_[i] = std::move(reader_ptr);
-            });
-      }
-      else if (field_context_inputs[i].is_single()) {
-        volume::field_to_static_type(field_context_inputs[i].type(), [&](auto tag) {
-          using ValueType = typename decltype(tag)::type;
-          using InputGridType = volume::grid_types::AttributeGrid<ValueType>;
-          using InputConverter = volume::grid_types::Converter<InputGridType>;
-          using AttributeValueType = typename InputConverter::AttributeValueType;
+  //      if (field_context_inputs[i].is_grid()) {
+  //        using InputAccessor = typename InputGridType::ConstAccessor;
 
-          AttributeValueType value;
-          field_context_inputs[i].get_internal_single(&value);
-          GridReaderPtr reader_ptr =
-              std::make_shared<VGridReader_For_Single<GridType, InputConverter>>(value);
-          input_readers_[i] = std::move(reader_ptr);
-        });
-      }
-    }
-  }
+  //        const InputGridType &input_grid = static_cast<const InputGridType &>(
+  //            *field_context_inputs[i].get_internal_grid());
+  //        GridReaderPtr reader_ptr =
+  //            std::make_shared<VGridReader_For_Accessor<GridType, InputAccessor,
+  //            InputConverter>>(
+  //                input_grid.getConstAccessor());
+  //        input_readers_[i] = std::move(reader_ptr);
+  //      }
+  //      else if (field_context_inputs[i].is_single()) {
+  //        AttributeValueType value;
+  //        field_context_inputs[i].get_internal_single(&value);
+  //        GridReaderPtr reader_ptr =
+  //            std::make_shared<VGridReader_For_Single<GridType, InputConverter>>(value);
+  //        input_readers_[i] = std::move(reader_ptr);
+  //      }
+  //      else {
+  //        // auto eval_fn = [](const openvdb::Coord &coord) -> AttributeValueType {
+  //        //  return
+  //        //};
+  //        GridReaderPtr reader_ptr =
+  //            std::make_shared<VGridReader_For_Func<GridType,
+  //            InputConverter>>(std::move(eval_fn));
+  //        input_readers_[i] = std::move(reader_ptr);
+  //      }
+  //    });
+  //  }
+  //}
 
-  EvalPerLeafOp(Span<GGrid> field_context_inputs,
+  EvalPerLeafOp(Span<GVGrid> field_context_inputs,
                 const mf::ProcedureExecutor &procedure_executor,
                 const MaskGridType &mask)
-      : procedure_executor_(procedure_executor), mask_accessor_(mask.getAccessor())
+      : procedure_executor_(procedure_executor),
+        mask_accessor_(mask.getAccessor()),
+        field_context_inputs_(field_context_inputs)
   {
-    make_input_accessors(field_context_inputs);
   }
 
-  EvalPerLeafOp(Span<GGrid> field_context_inputs, const mf::ProcedureExecutor &procedure_executor)
-      : procedure_executor_(procedure_executor)
+  EvalPerLeafOp(Span<GVGrid> field_context_inputs, const mf::ProcedureExecutor &procedure_executor)
+      : procedure_executor_(procedure_executor), field_context_inputs_(field_context_inputs)
   {
-    make_input_accessors(field_context_inputs);
   }
 
   EvalPerLeafOp(const EvalPerLeafOp &other)
       : procedure_executor_(other.procedure_executor_),
         mask_accessor_(other.mask_accessor_),
-        input_readers_(other.input_readers_)
+        field_context_inputs_(other.field_context_inputs_)
   {
   }
 
@@ -325,8 +353,9 @@ template<typename GridType, typename MaskGridType = openvdb::MaskGrid> struct Ev
     mf::ParamsBuilder mf_params{procedure_executor_, &index_mask};
 
     /* Provide inputs to the procedure executor. */
-    for (const GridReaderPtr &input_reader : input_readers_) {
-      mf_params.add_readonly_single_input(input_reader->make_varray_for_leaf(leaf));
+    for (const GVGrid &input : field_context_inputs_) {
+      const int3 origin = int3(leaf.origin().data());
+      mf_params.add_readonly_single_input(input.get_varray_for_leaf(LOG2DIM, origin));
     }
 
     /* Pass output buffer to the procedure executor. */

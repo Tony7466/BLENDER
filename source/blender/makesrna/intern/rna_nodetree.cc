@@ -11,9 +11,11 @@
 #include <cstring>
 
 #include "BLI_function_ref.hh"
+#include "BLI_generic_array.hh"
 #include "BLI_math_rotation.h"
 #include "BLI_string_utf8_symbols.h"
 #include "BLI_utildefines.h"
+#include "BLI_volume_openvdb.hh"
 
 #include "BLF_api.h"
 
