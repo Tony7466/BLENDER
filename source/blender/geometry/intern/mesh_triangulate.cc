@@ -31,9 +31,9 @@ namespace blender::geometry {
 // const IndexMask ngons = IndexMask::from_predicate(
 //     selection, GrainSize(4096), memory, [&](const int face) { return faces[face].size() > 4; });
 
-static OffsetIndices<int> calc_new_face_groups(const OffsetIndices<int> orig_faces,
-                                               const IndexMask &selection,
-                                               MutableSpan<int> face_offset_data)
+static OffsetIndices<int> calc_new_tri_groups(const OffsetIndices<int> orig_faces,
+                                              const IndexMask &selection,
+                                              MutableSpan<int> face_offset_data)
 {
   selection.foreach_index(GrainSize(2048), [&](const int face, const int mask) {
     /* Reuse the original face for the first triangle. */
@@ -42,37 +42,38 @@ static OffsetIndices<int> calc_new_face_groups(const OffsetIndices<int> orig_fac
   return offset_indices::accumulate_counts_to_offsets(face_offset_data);
 }
 
-static OffsetIndices<int> create_new_edge_offsets(const OffsetIndices<int> orig_faces,
-                                                  const IndexMask &selection,
-                                                  MutableSpan<int> edge_offset_data)
+static OffsetIndices<int> calc_new_edge_groups(const OffsetIndices<int> orig_faces,
+                                               const IndexMask &selection,
+                                               MutableSpan<int> edge_offset_data)
 {
   selection.foreach_index(GrainSize(2048), [&](const int face, const int mask) {
-    /* The number of new edges for each face is the number of corners - 3. */
+    /* The number of new inner edges for each face is the number of corners - 3. */
     edge_offset_data[mask] = orig_faces[face].size() - 3;
   });
   return offset_indices::accumulate_counts_to_offsets(edge_offset_data);
 }
 
-static OffsetIndices<int> create_new_faces(const OffsetIndices<int> orig_faces,
-                                           const IndexMask &selection,
-                                           const IndexMask &selection_inverse,
-                                           const int new_faces_num,
-                                           MutableSpan<int> new_faces_data)
+static OffsetIndices<int> calc_new_face_offsets(const OffsetIndices<int> orig_faces,
+                                                const IndexMask &selection,
+                                                const IndexMask &selection_inverse,
+                                                const int new_tris_num,
+                                                MutableSpan<int> face_offsets)
 {
   if (selection.size() == orig_faces.size()) {
-    offset_indices::fill_constant_group_size(3, 0, new_faces_data);
-    return OffsetIndices<int>(new_faces_data);
+    /* When all faces are selected, we can skip accumulating the mix of old and new sizes. */
+    offset_indices::fill_constant_group_size(3, 0, face_offsets);
+    return OffsetIndices<int>(face_offsets);
   }
 
-  /* The reused faces are triangles. */
-  index_mask::masked_fill(new_faces_data, 3, selection);
-  offset_indices::copy_group_sizes(orig_faces, selection_inverse, new_faces_data);
-  offset_indices::accumulate_counts_to_offsets(new_faces_data.take_front(orig_faces.size()));
+  /* Unselected faces are moved to the start of the mesh. */
+  index_mask::masked_fill(face_offsets, 3, selection);
+  offset_indices::copy_group_sizes(orig_faces, selection_inverse, face_offsets);
+  offset_indices::accumulate_counts_to_offsets(face_offsets.take_front(orig_faces.size()));
 
-  /* All new faces are triangles.*/
-  MutableSpan<int> new_faces = new_faces_data.take_back(new_faces_num);
-  offset_indices::fill_constant_group_size(3, new_faces.first(), new_faces);
-  return OffsetIndices<int>(new_faces_data);
+  /* All new faces are triangles, and are added to the end of the mesh. */
+  MutableSpan<int> new_tri_offsets = face_offsets.take_back(new_tris_num);
+  offset_indices::fill_constant_group_size(3, new_tri_offsets.first(), new_tri_offsets);
+  return OffsetIndices<int>(face_offsets);
 }
 
 /**
@@ -188,11 +189,11 @@ static void triangulate_faces(const Span<float3> positions,
                               const Span<int> orig_corner_verts,
                               const Span<int> orig_corner_edges,
                               const IndexMask &selection,
-                              const OffsetIndices<int> new_face_groups,
+                              const OffsetIndices<int> new_tri_groups,
                               const OffsetIndices<int> new_edge_groups,
                               const TriangulateNGonMode ngon_mode,
                               const TriangulateQuadMode quad_mode,
-                              const OffsetIndices<int> faces,
+                              const OffsetIndices<int> all_faces,
                               MutableSpan<int> corner_orig_indices,
                               MutableSpan<int2> edges,
                               MutableSpan<int> corner_verts,
@@ -208,10 +209,10 @@ static void triangulate_faces(const Span<float3> positions,
     const Span<int> face_verts = orig_corner_verts.slice(orig_corners);
     const Span<int> face_edges = orig_corner_edges.slice(orig_corners);
 
-    const IndexRange new_face_group = new_face_groups[mask];
-    const IndexRange reused_face = faces[face];
-    const OffsetIndices new_faces = faces.slice(new_face_group.shift(orig_faces.size()));
-    const IndexRange new_corners(new_faces.data().first(), new_faces.size() * 3);
+    const IndexRange new_tri_group = new_tri_groups[mask];
+    const IndexRange reused_face = all_faces[face];
+    const OffsetIndices faces = all_faces.slice(new_tri_group.shift(orig_faces.size()));
+    const IndexRange new_corners(faces.data().first(), faces.size() * 3);
 
     MutableSpan<int> reused_corner_verts = corner_verts.slice(reused_face);
     MutableSpan<int> new_corner_verts = corner_verts.slice(new_corners);
@@ -279,7 +280,7 @@ static void triangulate_faces(const Span<float3> positions,
 
       for (const int i : triangulation.index_range().drop_front(1)) {
         const uint3 tri = triangulation[i];
-        const IndexRange new_face = new_faces[i];
+        const IndexRange new_face = faces[i];
         corner_verts[new_face[0]] = face_verts[tri[0]];
         corner_verts[new_face[1]] = face_verts[tri[1]];
         corner_verts[new_face[2]] = face_verts[tri[2]];
@@ -360,24 +361,24 @@ void triangulate(Mesh &mesh,
   const Span<int> orig_corner_verts = mesh.corner_verts();
   const Span<int> orig_corner_edges = mesh.corner_edges();
 
-  Array<int> face_offsets(selection.size() + 1);
-  const OffsetIndices new_face_groups = calc_new_face_groups(orig_faces, selection, face_offsets);
-  const int new_faces_num = new_face_groups.total_size();
-  if (new_faces_num == 0) {
+  Array<int> tri_offsets(selection.size() + 1);
+  const OffsetIndices new_tri_groups = calc_new_tri_groups(orig_faces, selection, tri_offsets);
+  const int new_tris_num = new_tri_groups.total_size();
+  if (new_tris_num == 0) {
     /* All selected faces are already triangles. */
     return;
   }
 
   Array<int> edge_offset_data(selection.size() + 1);
-  const OffsetIndices new_edge_groups = create_new_edge_offsets(
+  const OffsetIndices new_edge_groups = calc_new_edge_groups(
       orig_faces, selection, edge_offset_data);
 
   IndexMaskMemory memory;
   const IndexMask selection_inverse = selection.complement(orig_faces.index_range(), memory);
 
-  Array<int> new_faces_data(orig_faces.size() + new_faces_num + 1);
-  const OffsetIndices new_faces = create_new_faces(
-      orig_faces, selection, selection_inverse, new_faces_num, new_faces_data);
+  Array<int> face_offsets(orig_faces.size() + new_tris_num + 1);
+  const OffsetIndices new_faces = calc_new_face_offsets(
+      orig_faces, selection, selection_inverse, new_tris_num, face_offsets);
 
   Array<int2> edges(new_edge_groups.total_size());
   Array<int> corner_verts(new_faces.total_size());
@@ -394,7 +395,7 @@ void triangulate(Mesh &mesh,
                     orig_corner_verts,
                     orig_corner_edges,
                     selection,
-                    new_face_groups,
+                    new_tri_groups,
                     new_edge_groups,
                     ngon_mode,
                     quad_mode,
