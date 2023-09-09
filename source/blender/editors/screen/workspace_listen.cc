@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <iostream>
+
 #include "BKE_context.h"
 
 #include "ED_screen.hh"
@@ -24,6 +26,7 @@ static void validate_viewer_paths(bContext &C, WorkSpace &workspace)
     /* The current viewer path is still valid and active. */
     return;
   }
+  std::cout << __func__ << std::endl;
   /* Reset inactive viewer path. */
   BKE_viewer_path_clear(&workspace.viewer_path);
   WM_event_add_notifier(&C, NC_VIEWER_PATH, nullptr);

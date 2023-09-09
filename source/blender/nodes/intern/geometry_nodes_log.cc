@@ -629,6 +629,24 @@ Map<const bNodeTreeZone *, GeoTreeLog *> GeoModifierLog::get_tree_log_by_zone_fo
   return log_by_zone;
 }
 
+static const bNodeTree *top_tree_from_viewer_path(const Span<const ViewerPathElem *> node_path,
+                                                  const bNodeTree &root_node_tree)
+{
+  const bNodeTree *iter_node_tree = &root_node_tree;
+  for (const ViewerPathElem *elem : node_path) {
+    if (elem->type == VIEWER_PATH_ELEM_TYPE_GROUP_NODE) {
+      const auto &typed_elem = *reinterpret_cast<const GroupNodeViewerPathElem *>(elem);
+      const bNode *node_group = iter_node_tree->node_by_id(typed_elem.node_id);
+      if (node_group != nullptr && node_group->id != nullptr) {
+        iter_node_tree = reinterpret_cast<const bNodeTree *>(node_group->id);
+        continue;
+      }
+      return nullptr;
+    }
+  }
+  return iter_node_tree;
+}
+
 const ViewerNodeLog *GeoModifierLog::find_viewer_node_log_for_path(const ViewerPath &viewer_path)
 {
   const std::optional<ed::viewer_path::ViewerPathForGeometryNodesViewer> parsed_path =
@@ -680,6 +698,78 @@ const ViewerNodeLog *GeoModifierLog::find_viewer_node_log_for_path(const ViewerP
       }
     }
   }
+
+  {
+    const bNodeTree *iter_node_tree = top_tree_from_viewer_path(parsed_path->node_path,
+                                                                *nmd->node_group);
+    std::cout << "Name: " << nmd->node_group->id.name << std::endl;
+    const bNode *viewer_node = iter_node_tree->node_by_id(parsed_path->viewer_node_id);
+    if (bke::node_is_viewer_group(*viewer_node)) {
+      compute_context_builder.push<bke::NodeGroupComputeContext>(parsed_path->viewer_node_id);
+
+      const auto lookup_viewer = [&](const bNodeTree &tree) -> const bNode * {
+        BLI_assert(tree.is_viewer());
+        tree.ensure_topology_cache();
+        const Span<const bNode *> viewers = tree.nodes_by_type("GeometryNodeViewer");
+        const Span<const bNode *> groups = tree.group_nodes();
+        if (viewers.size() == 1) {
+          return viewers.first();
+        }
+        for (const bNode *group_node : groups) {
+          if (bke::node_is_viewer_group(*group_node)) {
+            return group_node;
+          }
+        }
+        return nullptr;
+      };
+
+      iter_node_tree = iter_node_tree = reinterpret_cast<const bNodeTree *>(viewer_node->id);
+      while (const bNode *viewer = lookup_viewer(*iter_node_tree)) {
+        std::cout << "Step\n";
+        const bke::bNodeTreeZones *tree_zones = iter_node_tree->zones();
+        if (tree_zones == nullptr) {
+          return nullptr;
+        }
+        for (const bke::bNodeTreeZone *zone :
+             tree_zones->get_zone_stack_for_node(viewer->identifier)) {
+          if (zone->output_node == nullptr) {
+            return nullptr;
+          }
+          const bNode &zone_output = *zone->output_node;
+          switch (zone_output.type) {
+            case GEO_NODE_SIMULATION_OUTPUT: {
+              compute_context_builder.push<bke::SimulationZoneComputeContext>(
+                  zone_output.identifier);
+              break;
+            }
+            case GEO_NODE_REPEAT_OUTPUT: {
+              compute_context_builder.push<bke::RepeatZoneComputeContext>(zone_output.identifier,
+                                                                          0);
+              break;
+            }
+            default: {
+              BLI_assert_unreachable();
+            }
+          }
+        }
+        if (viewer->type == GEO_NODE_VIEWER) {
+          const ComputeContextHash context_hash = compute_context_builder.hash();
+          nodes::geo_eval_log::GeoTreeLog &tree_log = modifier_log->get_tree_log(context_hash);
+          tree_log.ensure_viewer_node_logs();
+
+          const ViewerNodeLog *viewer_log = tree_log.viewer_node_logs.lookup_default(
+              viewer->identifier, nullptr);
+          return viewer_log;
+        }
+        compute_context_builder.push<bke::NodeGroupComputeContext>(viewer->identifier);
+        iter_node_tree = reinterpret_cast<const bNodeTree *>(viewer->id);
+        if (iter_node_tree == nullptr) {
+          return nullptr;
+        }
+      }
+    }
+  }
+
   const ComputeContextHash context_hash = compute_context_builder.hash();
   nodes::geo_eval_log::GeoTreeLog &tree_log = modifier_log->get_tree_log(context_hash);
   tree_log.ensure_viewer_node_logs();

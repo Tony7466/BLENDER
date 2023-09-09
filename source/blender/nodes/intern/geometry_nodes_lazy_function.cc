@@ -778,6 +778,7 @@ class LazyFunctionForViewerNode : public LazyFunction {
 
   void execute_impl(lf::Params &params, const lf::Context &context) const override
   {
+    std::cout << __func__ << std::endl;
     const auto &local_user_data = *static_cast<GeoNodesLFLocalUserData *>(context.local_user_data);
     if (local_user_data.tree_logger == nullptr) {
       return;

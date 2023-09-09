@@ -131,10 +131,20 @@ static void viewer_path_for_geometry_node(const SpaceNode &snode,
     BLI_addtail(&r_dst.path, zone_elem);
   }
 
-  ViewerNodeViewerPathElem *viewer_node_elem = BKE_viewer_path_elem_new_viewer_node();
-  viewer_node_elem->node_id = node.identifier;
-  viewer_node_elem->base.ui_name = BLI_strdup(node.name);
-  BLI_addtail(&r_dst.path, viewer_node_elem);
+  if (node.type == GEO_NODE_VIEWER) {
+    ViewerNodeViewerPathElem *viewer_node_elem = BKE_viewer_path_elem_new_viewer_node();
+    viewer_node_elem->node_id = node.identifier;
+    viewer_node_elem->base.ui_name = BLI_strdup(node.name);
+    BLI_addtail(&r_dst.path, viewer_node_elem);
+  }
+
+  if (bke::node_is_viewer_group(node)) {
+    ViewerNodeGroupViewerPathElem *viewer_node_group_elem =
+        BKE_viewer_path_elem_new_viewer_node_group();
+    viewer_node_group_elem->node_id = node.identifier;
+    viewer_node_group_elem->base.ui_name = BLI_strdup(node.name);
+    BLI_addtail(&r_dst.path, viewer_node_group_elem);
+  }
 }
 
 void activate_geometry_node(Main &bmain, SpaceNode &snode, bNode &node)
@@ -260,16 +270,23 @@ std::optional<ViewerPathForGeometryNodesViewer> parse_geometry_nodes_viewer(
     node_path.append(elem);
   }
   const ViewerPathElem *last_elem = remaining_elems.last();
-  if (last_elem->type != VIEWER_PATH_ELEM_TYPE_VIEWER_NODE) {
-    return std::nullopt;
+  if (last_elem->type == VIEWER_PATH_ELEM_TYPE_VIEWER_NODE) {
+    const int32_t viewer_node_id =
+        reinterpret_cast<const ViewerNodeViewerPathElem *>(last_elem)->node_id;
+    return ViewerPathForGeometryNodesViewer{root_ob, modifier_name, node_path, viewer_node_id};
   }
-  const int32_t viewer_node_id =
-      reinterpret_cast<const ViewerNodeViewerPathElem *>(last_elem)->node_id;
-  return ViewerPathForGeometryNodesViewer{root_ob, modifier_name, node_path, viewer_node_id};
+  if (last_elem->type == VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP) {
+    const int32_t viewer_node_group_id =
+        reinterpret_cast<const ViewerNodeGroupViewerPathElem *>(last_elem)->node_id;
+    return ViewerPathForGeometryNodesViewer{
+        root_ob, modifier_name, node_path, viewer_node_group_id};
+  }
+  return std::nullopt;
 }
 
 bool exists_geometry_nodes_viewer(const ViewerPathForGeometryNodesViewer &parsed_viewer_path)
 {
+  // TODO
   const NodesModifierData *modifier = nullptr;
   LISTBASE_FOREACH (const ModifierData *, md, &parsed_viewer_path.object->modifiers) {
     if (md->type != eModifierType_Nodes) {
@@ -363,7 +380,10 @@ bool is_active_geometry_nodes_viewer(const bContext &C, const ViewerPath &viewer
     return false;
   }
   const ViewerPathElem *last_elem = static_cast<ViewerPathElem *>(viewer_path.path.last);
-  if (last_elem->type != VIEWER_PATH_ELEM_TYPE_VIEWER_NODE) {
+  if (!ELEM(last_elem->type,
+            VIEWER_PATH_ELEM_TYPE_VIEWER_NODE,
+            VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP))
+  {
     return false;
   }
   const int32_t viewer_node_id =
