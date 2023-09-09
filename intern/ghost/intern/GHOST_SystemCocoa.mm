@@ -72,6 +72,10 @@ static GHOST_TButton convertButton(int button)
   }
 }
 
+/**
+ * Given an NSImage, returns an ImBuf in RGBA order.
+ * Caller must free
+ */
 static ImBuf *getImageBuffer(NSImage *droppedImg) {
     NSSize imgSize = [droppedImg size];
     ImBuf *ibuf = nullptr;
@@ -200,9 +204,7 @@ static ImBuf *getImageBuffer(NSImage *droppedImg) {
       [blBitmapFormatImageRGBA release];
       [droppedImg release];
     }
-
     return ibuf;
-    
 }
 
 /**
