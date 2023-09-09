@@ -487,32 +487,13 @@ void wm_window_title(wmWindowManager *wm, wmWindow *win)
                          BKE_main_blendfile_path_from_global() :
                          IFACE_("(Unsaved)");
 
-    const char *version_cycle = "";
-    if (STREQ(STRINGIFY(BLENDER_VERSION_CYCLE), "alpha")) {
-      version_cycle = " Alpha";
-    }
-    else if (STREQ(STRINGIFY(BLENDER_VERSION_CYCLE), "beta")) {
-      version_cycle = " Beta";
-    }
-    else if (STREQ(STRINGIFY(BLENDER_VERSION_CYCLE), "rc")) {
-      version_cycle = " Release Candidate";
-    }
-    else if (STREQ(STRINGIFY(BLENDER_VERSION_CYCLE), "release")) {
-      version_cycle = "";
-    }
-
-    const char *patch = BLENDER_VERSION_PATCH != 0 ? "." STRINGIFY(BLENDER_VERSION_CYCLE) : "";
-
     BLI_snprintf(str,
                  sizeof(str),
-                 "%s%s%s - Blender %d.%d%s%s",
+                 "%s%s%s - Blender %s",
                  wm->file_saved ? "" : "*",
                  filename,
                  G_MAIN->recovered ? " (Recovered)" : "",
-                 BLENDER_VERSION / 100,
-                 BLENDER_VERSION % 100,
-                 patch,
-                 version_cycle);
+                 BKE_blender_version_string());
     GHOST_SetTitle(static_cast<GHOST_WindowHandle>(win->ghostwin), str);
 
     /* Informs GHOST of unsaved changes, to set window modified visual indicator (macOS)
