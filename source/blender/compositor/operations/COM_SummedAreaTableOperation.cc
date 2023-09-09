@@ -19,6 +19,7 @@ SummedAreaTableOperation::SummedAreaTableOperation()
 
   this->flags_.is_fullframe_operation = true;
 }
+
 void SummedAreaTableOperation::init_execution()
 {
   SingleThreadedOperation::init_execution();
@@ -110,13 +111,8 @@ MemoryBuffer *SummedAreaTableOperation::create_memory_buffer(rcti *rect)
     const int x = it.x;
     const int y = it.y;
 
-    float tmp[4];
-    offset_reader_->read_sampled(tmp, x, y, sampler);
-    const float offset = tmp[0];
-
     float4 color, upper, left, upper_left;
     image_reader_->read_sampled(color, x, y, sampler);
-    color -= offset;
 
     result->read_elem_checked(x, y - 1, &upper.x);
     result->read_elem_checked(x - 1, y, &left.x);
