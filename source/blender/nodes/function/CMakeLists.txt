@@ -43,6 +43,7 @@ set(SRC
   nodes/node_fn_separate_color.cc
   nodes/node_fn_slice_string.cc
   nodes/node_fn_string_length.cc
+  nodes/node_fn_string_to_value.cc
   nodes/node_fn_value_to_string.cc
 
   node_function_util.cc

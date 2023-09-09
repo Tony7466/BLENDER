@@ -502,6 +502,7 @@ class NODE_MT_category_GEO_TEXT(Menu):
         layout.separator()
         node_add_menu.add_node_type(layout, "FunctionNodeStringLength")
         node_add_menu.add_node_type(layout, "GeometryNodeStringToCurves")
+        node_add_menu.add_node_type(layout, "FunctionNodeStringToValue")
         node_add_menu.add_node_type(layout, "FunctionNodeValueToString")
         layout.separator()
         node_add_menu.add_node_type(layout, "FunctionNodeInputSpecialCharacters")

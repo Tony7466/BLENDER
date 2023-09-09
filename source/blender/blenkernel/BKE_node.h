@@ -1348,6 +1348,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define FN_NODE_ROTATE_VECTOR 1229
 #define FN_NODE_ROTATE_ROTATION 1230
 #define FN_NODE_INVERT_ROTATION 1231
+#define FN_NODE_STRING_TO_VALUE 1232
 
 /** \} */
 
