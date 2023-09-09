@@ -24,54 +24,37 @@
 
 namespace blender::geometry {
 
-//   IndexMaskMemory memory;
-// const IndexMask quads = IndexMask::from_predicate(
-//     selection, GrainSize(4096), memory, [&](const int face) { return faces[face].size() == 3;
-//     });
-// const IndexMask ngons = IndexMask::from_predicate(
-//     selection, GrainSize(4096), memory, [&](const int face) { return faces[face].size() > 4; });
-
-static OffsetIndices<int> calc_new_tri_groups(const OffsetIndices<int> orig_faces,
-                                              const IndexMask &selection,
-                                              MutableSpan<int> face_offset_data)
+static OffsetIndices<int> calc_tri_groups(const OffsetIndices<int> src_faces,
+                                          const IndexMask &selection,
+                                          MutableSpan<int> face_offset_data)
 {
   selection.foreach_index(GrainSize(2048), [&](const int face, const int mask) {
-    /* Reuse the original face for the first triangle. */
-    face_offset_data[mask] = bke::mesh::face_triangles_num(orig_faces[face].size()) - 1;
+    face_offset_data[mask] = bke::mesh::face_triangles_num(src_faces[face].size());
   });
   return offset_indices::accumulate_counts_to_offsets(face_offset_data);
 }
 
-static OffsetIndices<int> calc_new_edge_groups(const OffsetIndices<int> orig_faces,
-                                               const IndexMask &selection,
-                                               MutableSpan<int> edge_offset_data)
+static OffsetIndices<int> calc_edge_groups(const OffsetIndices<int> src_faces,
+                                           const IndexMask &selection,
+                                           const int src_edges_num,
+                                           MutableSpan<int> edge_offset_data)
 {
   selection.foreach_index(GrainSize(2048), [&](const int face, const int mask) {
     /* The number of new inner edges for each face is the number of corners - 3. */
-    edge_offset_data[mask] = orig_faces[face].size() - 3;
+    edge_offset_data[mask] = src_faces[face].size() - 3;
   });
-  return offset_indices::accumulate_counts_to_offsets(edge_offset_data);
+  return offset_indices::accumulate_counts_to_offsets(edge_offset_data, src_edges_num);
 }
 
-static OffsetIndices<int> calc_new_face_offsets(const OffsetIndices<int> orig_faces,
-                                                const IndexMask &selection,
+static OffsetIndices<int> calc_new_face_offsets(const OffsetIndices<int> src_faces,
                                                 const IndexMask &selection_inverse,
-                                                const int new_tris_num,
                                                 MutableSpan<int> face_offsets)
 {
-  if (selection.size() == orig_faces.size()) {
-    /* When all faces are selected, we can skip accumulating the mix of old and new sizes. */
-    offset_indices::fill_constant_group_size(3, 0, face_offsets);
-    return OffsetIndices<int>(face_offsets);
-  }
-
   /* Unselected faces are moved to the start of the mesh. */
-  index_mask::masked_fill(face_offsets, 3, selection);
-  offset_indices::copy_group_sizes(orig_faces, selection_inverse, face_offsets);
-  offset_indices::accumulate_counts_to_offsets(face_offsets.take_front(orig_faces.size()));
+  offset_indices::gather_selected_offsets(src_faces, selection_inverse, face_offsets);
 
   /* All new faces are triangles, and are added to the end of the mesh. */
-  MutableSpan<int> new_tri_offsets = face_offsets.take_back(new_tris_num);
+  MutableSpan<int> new_tri_offsets = face_offsets.drop_front(selection_inverse.size());
   offset_indices::fill_constant_group_size(3, new_tri_offsets.first(), new_tri_offsets);
   return OffsetIndices<int>(face_offsets);
 }
@@ -120,35 +103,49 @@ static QuadDirection calc_quad_direction(const Span<float3> positions,
   return QuadDirection::Edge_0_2;
 }
 
-static void triangulate_quad(const Span<float3> positions,
-                             const Span<int> face_verts,
-                             const Span<int> face_edges,
-                             const TriangulateQuadMode quad_mode,
-                             const int new_edge_index,
-                             MutableSpan<int2> new_edges,
-                             int3 &r_tri_verts_a,
-                             int3 &r_tri_verts_b,
-                             int3 &r_tri_edges_a,
-                             int3 &r_tri_edges_b)
+static void triangulate_quad_edges(const Span<int> face_verts,
+                                   const Span<int> face_edges,
+                                   const QuadDirection direction,
+                                   const int new_edge_index,
+                                   MutableSpan<int2> edges,
+                                   MutableSpan<int> corner_edges)
 {
-  const QuadDirection direction = calc_quad_direction(positions, face_verts, quad_mode);
   switch (direction) {
     case QuadDirection::Edge_0_2:
-      r_tri_verts_a = int3(face_verts[0], face_verts[1], face_verts[2]);
-      r_tri_verts_b = int3(face_verts[2], face_verts[3], face_verts[0]);
-
-      new_edges[new_edge_index] = int2(face_verts[0], face_verts[2]);
-      r_tri_edges_a = int3(face_edges[0], face_edges[1], new_edge_index);
-      r_tri_edges_b = int3(face_edges[2], face_edges[3], new_edge_index);
+      edges[new_edge_index] = int2(face_verts[0], face_verts[2]);
+      corner_edges.copy_from({face_edges[0],
+                              face_edges[1],
+                              new_edge_index,
+                              face_edges[2],
+                              face_edges[3],
+                              new_edge_index});
       break;
     case QuadDirection::Edge_1_3:
-      r_tri_verts_a = int3(face_verts[0], face_verts[1], face_verts[3]);
-      r_tri_verts_b = int3(face_verts[1], face_verts[2], face_verts[3]);
-
-      new_edges[new_edge_index] = int2(face_verts[1], face_verts[3]);
-      r_tri_edges_a = int3(face_edges[0], new_edge_index, face_edges[3]);
-      r_tri_edges_b = int3(face_edges[1], face_edges[2], new_edge_index);
+      edges[new_edge_index] = int2(face_verts[1], face_verts[3]);
+      corner_edges.copy_from({face_edges[0],
+                              new_edge_index,
+                              face_edges[3],
+                              face_edges[1],
+                              face_edges[2],
+                              new_edge_index});
       break;
+  }
+}
+
+static void calc_quad_corner_map(const QuadDirection direction,
+                                 const int start,
+                                 MutableSpan<int> new_to_old_corner_map)
+{
+  switch (direction) {
+    case QuadDirection::Edge_0_2:
+      new_to_old_corner_map.copy_from({0, 1, 2, 2, 3, 0});
+      break;
+    case QuadDirection::Edge_1_3:
+      new_to_old_corner_map.copy_from({0, 1, 3, 1, 2, 3});
+      break;
+  }
+  for (int &i : new_to_old_corner_map) {
+    i += start;
   }
 }
 
@@ -156,95 +153,82 @@ static VectorSet<OrderedEdge> calc_inner_triangles(const Span<int> face_verts,
                                                    const Span<int> face_edges,
                                                    const int edge_offset,
                                                    const Span<uint3> tris,
-                                                   MutableSpan<int> corner_edges_first,
                                                    MutableSpan<int> corner_edges)
 {
   VectorSet<OrderedEdge> inner_edges;
-  auto add_edge = [&](const int corner_1, const int corner_2) -> int {
-    if (math::distance(corner_1, corner_2) == 1) {
-      return face_edges[math::min(corner_1, corner_2)];
+  auto add_edge = [&](const OrderedEdge corner_edge) -> int {
+    if (corner_edge == OrderedEdge(0, face_verts.size() - 1)) {
+      return face_edges.last();
     }
-    const OrderedEdge edge(face_verts[corner_1], face_verts[corner_2]);
+    if (corner_edge.v_high == corner_edge.v_low + 1) {
+      return face_edges[corner_edge.v_low];
+    }
+    const OrderedEdge edge(face_verts[corner_edge.v_low], face_verts[corner_edge.v_high]);
     return edge_offset + inner_edges.index_of_or_add(edge);
   };
 
-  const uint3 tri_first = tris.first();
-  corner_edges_first[0] = add_edge(tri_first[0], tri_first[1]);
-  corner_edges_first[1] = add_edge(tri_first[1], tri_first[2]);
-  corner_edges_first[2] = add_edge(tri_first[2], tri_first[0]);
-
-  for (const int i : tris.index_range().drop_front(1)) {
+  for (const int i : tris.index_range()) {
     const uint3 tri = tris[i];
-    corner_edges[3 * i + 0] = add_edge(tri[0], tri[1]);
-    corner_edges[3 * i + 1] = add_edge(tri[1], tri[2]);
-    corner_edges[3 * i + 2] = add_edge(tri[2], tri[0]);
+    corner_edges[3 * i + 0] = add_edge({tri[0], tri[1]});
+    corner_edges[3 * i + 1] = add_edge({tri[1], tri[2]});
+    corner_edges[3 * i + 2] = add_edge({tri[2], tri[0]});
   }
 
   return inner_edges;
 }
 
 static void triangulate_faces(const Span<float3> positions,
-                              const Span<int2> orig_edges,
-                              const OffsetIndices<int> orig_faces,
-                              const Span<int> orig_corner_verts,
-                              const Span<int> orig_corner_edges,
+                              const OffsetIndices<int> src_faces,
+                              const Span<int> src_corner_verts,
+                              const Span<int> src_corner_edges,
                               const IndexMask &selection,
-                              const OffsetIndices<int> new_tri_groups,
-                              const OffsetIndices<int> new_edge_groups,
+                              const OffsetIndices<int> tri_groups,
+                              const OffsetIndices<int> edge_groups,
                               const TriangulateNGonMode ngon_mode,
                               const TriangulateQuadMode quad_mode,
                               const OffsetIndices<int> all_faces,
-                              MutableSpan<int> corner_orig_indices,
+                              MutableSpan<int> new_to_old_corner_map,
+                              MutableSpan<int4> new_edge_neighbors,
                               MutableSpan<int2> edges,
-                              MutableSpan<int> corner_verts,
                               MutableSpan<int> corner_edges)
 {
+  const int new_tri_start = src_faces.size() - selection.size();
+  new_edge_neighbors.fill(int4(0));
   selection.foreach_index(GrainSize(512), [&](const int face, const int mask) {
-    const IndexRange orig_corners = orig_faces[face];
-    const int triangles_num = bke::mesh::face_triangles_num(orig_corners.size());
-    if (triangles_num == 1) {
+    const IndexRange src_corners = src_faces[face];
+    if (src_corners.size() == 3) {
       return;
     }
 
-    const Span<int> face_verts = orig_corner_verts.slice(orig_corners);
-    const Span<int> face_edges = orig_corner_edges.slice(orig_corners);
+    const Span<int> src_face_verts = src_corner_verts.slice(src_corners);
+    const Span<int> src_face_edges = src_corner_edges.slice(src_corners);
 
-    const IndexRange new_tri_group = new_tri_groups[mask];
-    const IndexRange reused_face = all_faces[face];
-    const OffsetIndices faces = all_faces.slice(new_tri_group.shift(orig_faces.size()));
+    const IndexRange new_tri_group = tri_groups[mask];
+    const OffsetIndices faces = all_faces.slice(new_tri_group.shift(new_tri_start));
     const IndexRange new_corners(faces.data().first(), faces.size() * 3);
 
-    MutableSpan<int> reused_corner_verts = corner_verts.slice(reused_face);
-    MutableSpan<int> new_corner_verts = corner_verts.slice(new_corners);
+    MutableSpan<int> face_edges = corner_edges.slice(new_corners);
 
-    MutableSpan<int> reused_corner_edges = corner_edges.slice(reused_face);
-    MutableSpan<int> new_corner_edges = corner_edges.slice(new_corners);
+    const IndexRange new_edge_range = edge_groups[mask];
 
-    const IndexRange new_edge_range = new_edge_groups[mask];
-
-    if (orig_corners.size() == 4) {
-      triangulate_quad(positions,
-                       face_verts,
-                       face_edges,
-                       quad_mode,
-                       new_edge_range.first(),
-                       edges,
-                       reused_corner_verts.cast<int3>().first(),
-                       new_corner_verts.cast<int3>().first(),
-                       reused_corner_edges.cast<int3>().first(),
-                       new_corner_edges.cast<int3>().first());
+    if (src_corners.size() == 4) {
+      const QuadDirection direction = calc_quad_direction(positions, src_face_verts, quad_mode);
+      calc_quad_corner_map(
+          direction, src_corners.start(), new_to_old_corner_map.slice(new_corners));
+      triangulate_quad_edges(
+          src_face_verts, src_face_edges, direction, new_edge_range.start(), edges, face_edges);
     }
     else {
-      const float3 normal = bke::mesh::face_normal_calc(positions, face_verts);
+      const float3 normal = bke::mesh::face_normal_calc(positions, src_face_verts);
       float3x3 projection;
       axis_dominant_v3_to_m3_negate(projection.ptr(), normal);
 
-      Array<float2, 64> positions_2d(face_verts.size());
-      for (const int i : face_verts.index_range()) {
-        mul_v2_m3v3(positions_2d[i], projection.ptr(), positions[face_verts[i]]);
+      Array<float2, 64> positions_2d(src_face_verts.size());
+      for (const int i : src_face_verts.index_range()) {
+        mul_v2_m3v3(positions_2d[i], projection.ptr(), positions[src_face_verts[i]]);
       }
 
-      MutableSpan<uint3> triangulation = corner_orig_indices.slice(new_corners).cast<uint3>();
+      MutableSpan<uint3> triangulation = new_to_old_corner_map.slice(new_corners).cast<uint3>();
       BLI_polyfill_calc(reinterpret_cast<const float(*)[2]>(positions_2d.data()),
                         positions_2d.size(),
                         1,
@@ -262,160 +246,194 @@ static void triangulate_faces(const Span<float3> positions,
         BLI_heap_free(heap, nullptr);
       }
 
-      const VectorSet<OrderedEdge> inner_edges = calc_inner_triangles(face_verts,
-                                                                      face_edges,
-                                                                      new_edge_range.start() +
-                                                                          orig_edges.size(),
-                                                                      triangulation,
-                                                                      reused_corner_edges,
-                                                                      new_corner_edges);
+      const VectorSet<OrderedEdge> inner_edges = calc_inner_triangles(
+          src_face_verts, src_face_edges, new_edge_range.start(), triangulation, face_edges);
 
       BLI_assert(inner_edges.size() == new_edge_range.size());
-      edges.slice(new_edge_groups[mask]).copy_from(inner_edges.as_span().cast<int2>());
-
-      const uint3 first_tri = triangulation.first();
-      corner_verts[reused_face[0]] = face_verts[first_tri[0]];
-      corner_verts[reused_face[1]] = face_verts[first_tri[1]];
-      corner_verts[reused_face[2]] = face_verts[first_tri[2]];
-
-      for (const int i : triangulation.index_range().drop_front(1)) {
-        const uint3 tri = triangulation[i];
-        const IndexRange new_face = faces[i];
-        corner_verts[new_face[0]] = face_verts[tri[0]];
-        corner_verts[new_face[1]] = face_verts[tri[1]];
-        corner_verts[new_face[2]] = face_verts[tri[2]];
-      }
+      edges.slice(edge_groups[mask]).copy_from(inner_edges.as_span().cast<int2>());
     }
   });
 }
 
-static void remove_non_propagated_attributes(
-    bke::MutableAttributeAccessor attributes,
+static Mesh *create_mesh_no_attributes(const Mesh &params_mesh,
+                                       const int verts_num,
+                                       const int edges_num,
+                                       const int faces_num,
+                                       const int corners_num)
+{
+  Mesh *mesh = BKE_mesh_new_nomain(0, 0, faces_num, 0);
+  mesh->totvert = verts_num;
+  mesh->totedge = edges_num;
+  mesh->totloop = corners_num;
+  CustomData_free_layer_named(&mesh->vert_data, "position", 0);
+  CustomData_free_layer_named(&mesh->edge_data, ".edge_verts", 0);
+  CustomData_free_layer_named(&mesh->loop_data, ".corner_vert", 0);
+  CustomData_free_layer_named(&mesh->loop_data, ".corner_edge", 0);
+  BKE_mesh_copy_parameters_for_eval(mesh, &params_mesh);
+  return mesh;
+}
+
+static void copy_loose_vert_hint(const Mesh &src, Mesh &dst)
+{
+  const auto &src_cache = src.runtime->loose_verts_cache;
+  if (src_cache.is_cached() && src_cache.data().count == 0) {
+    dst.tag_loose_verts_none();
+  }
+}
+
+static void copy_loose_edge_hint(const Mesh &src, Mesh &dst)
+{
+  const auto &src_cache = src.runtime->loose_edges_cache;
+  if (src_cache.is_cached() && src_cache.data().count == 0) {
+    dst.tag_loose_edges_none();
+  }
+}
+
+template<typename T>
+static void mix_edge_data_from_neighbors(const Span<T> src,
+                                         const Span<int4> indices,
+                                         MutableSpan<T> dst)
+{
+  threading::parallel_for(dst.index_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      dst[i] = bke::attribute_math::mix4(float4(1.0f),
+                                         src[indices[i][0]],
+                                         src[indices[i][1]],
+                                         src[indices[i][2]],
+                                         src[indices[i][3]]);
+    }
+  });
+}
+
+std::optional<Mesh *> mesh_triangulate(
+    const Mesh &src_mesh,
+    const IndexMask &selection,
+    const TriangulateNGonMode ngon_mode,
+    const TriangulateQuadMode quad_mode,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
-  if (propagation_info.propagate_all) {
-    return;
-  }
-  Set<bke::AttributeIDRef> ids_to_remove = attributes.all_ids();
-  ids_to_remove.remove_if([&](const bke::AttributeIDRef &id) {
-    if (!id.is_anonymous()) {
-      return true;
-    }
-    if (propagation_info.propagate(id.anonymous_id())) {
-      return true;
-    }
-    return false;
-  });
-  for (const bke::AttributeIDRef &id : ids_to_remove) {
-    attributes.remove(id);
-  }
-}
-
-static void resize_mesh(Mesh &mesh,
-                        const int edges_num,
-                        const int faces_num,
-                        const int corners_num)
-{
-  /* Remove types that aren't supported for interpolation in this node. */
-  if (mesh.totedge != edges_num) {
-    CustomData_free_layers(&mesh.edge_data, CD_FREESTYLE_EDGE, mesh.totedge);
-    const int old_edges_num = mesh.totedge;
-    mesh.totedge = edges_num;
-    CustomData_realloc(&mesh.edge_data, old_edges_num, mesh.totedge);
-  }
-  if (mesh.faces_num != faces_num) {
-    CustomData_free_layers(&mesh.face_data, CD_FREESTYLE_FACE, mesh.faces_num);
-    const int old_faces_num = mesh.faces_num;
-    mesh.faces_num = faces_num;
-    CustomData_realloc(&mesh.face_data, old_faces_num, mesh.faces_num);
-    implicit_sharing::resize_trivial_array(&mesh.face_offset_indices,
-                                           &mesh.runtime->face_offsets_sharing_info,
-                                           old_faces_num == 0 ? 0 : (old_faces_num + 1),
-                                           mesh.faces_num + 1);
-    /* Set common values for convenience. */
-    mesh.face_offset_indices[0] = 0;
-    mesh.face_offset_indices[mesh.faces_num] = corners_num;
-  }
-  if (mesh.totloop != corners_num) {
-    CustomData_free_layers(&mesh.loop_data, CD_NORMAL, mesh.totloop);
-    CustomData_free_layers(&mesh.loop_data, CD_MDISPS, mesh.totloop);
-    CustomData_free_layers(&mesh.loop_data, CD_TANGENT, mesh.totloop);
-    CustomData_free_layers(&mesh.loop_data, CD_PAINT_MASK, mesh.totloop);
-    CustomData_free_layers(&mesh.loop_data, CD_MLOOPTANGENT, mesh.totloop);
-    CustomData_free_layers(&mesh.loop_data, CD_GRID_PAINT_MASK, mesh.totloop);
-    CustomData_free_layers(&mesh.loop_data, CD_CUSTOMLOOPNORMAL, mesh.totloop);
-    const int old_loops_num = mesh.totloop;
-    mesh.totloop = corners_num;
-    CustomData_realloc(&mesh.loop_data, old_loops_num, mesh.totloop);
-  }
-}
-
-void triangulate(Mesh &mesh,
-                 const IndexMask &selection,
-                 const TriangulateNGonMode ngon_mode,
-                 const TriangulateQuadMode quad_mode,
-                 const bke::AnonymousAttributePropagationInfo &propagation_info)
-{
-  const Span<int2> orig_edges = mesh.edges();
-  const OffsetIndices orig_faces = mesh.faces();
-  const Span<int> orig_corner_verts = mesh.corner_verts();
-  const Span<int> orig_corner_edges = mesh.corner_edges();
+  const Span<int2> src_edges = src_mesh.edges();
+  const OffsetIndices src_faces = src_mesh.faces();
+  const Span<int> src_corner_verts = src_mesh.corner_verts();
+  const Span<int> src_corner_edges = src_mesh.corner_edges();
+  const bke::AttributeAccessor src_attributes = src_mesh.attributes();
 
   Array<int> tri_offsets(selection.size() + 1);
-  const OffsetIndices new_tri_groups = calc_new_tri_groups(orig_faces, selection, tri_offsets);
-  const int new_tris_num = new_tri_groups.total_size();
+  const OffsetIndices tri_groups = calc_tri_groups(src_faces, selection, tri_offsets);
+  const int new_tris_num = tri_groups.total_size();
   if (new_tris_num == 0) {
     /* All selected faces are already triangles. */
-    return;
+    return std::nullopt;
   }
 
   Array<int> edge_offset_data(selection.size() + 1);
-  const OffsetIndices new_edge_groups = calc_new_edge_groups(
-      orig_faces, selection, edge_offset_data);
+  const OffsetIndices edge_groups = calc_edge_groups(
+      src_faces, selection, src_mesh.totedge, edge_offset_data);
 
   IndexMaskMemory memory;
-  const IndexMask selection_inverse = selection.complement(orig_faces.index_range(), memory);
+  const IndexMask selection_inverse = selection.complement(src_faces.index_range(), memory);
 
-  Array<int> face_offsets(orig_faces.size() + new_tris_num + 1);
+  Mesh *mesh = create_mesh_no_attributes(src_mesh,
+                                         src_mesh.totvert,
+                                         edge_groups.total_size(),
+                                         src_faces.size() + new_tris_num - selection.size(),
+                                         0);
+  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+
   const OffsetIndices faces = calc_new_face_offsets(
-      orig_faces, selection, selection_inverse, new_tris_num, face_offsets);
+      src_faces, selection_inverse, mesh->face_offsets_for_write());
 
-  Array<int2> edges(new_edge_groups.total_size());
-  Array<int> corner_verts(faces.total_size());
-  Array<int> corner_edges(faces.total_size());
+  mesh->totloop = faces.total_size();
+  attributes.add<int>(".corner_vert", ATTR_DOMAIN_CORNER, bke::AttributeInitConstruct());
+  attributes.add<int>(".corner_edge", ATTR_DOMAIN_CORNER, bke::AttributeInitConstruct());
+  attributes.add<int2>(".edge_verts", ATTR_DOMAIN_EDGE, bke::AttributeInitConstruct());
 
-  array_utils::gather_group_to_group(
-      orig_faces, faces, selection_inverse, orig_corner_verts, corner_verts.as_mutable_span());
-  array_utils::gather_group_to_group(
-      orig_faces, faces, selection_inverse, orig_corner_edges, corner_edges.as_mutable_span());
+  Array<int> new_to_old_corner_map(new_tris_num * 3);
 
-  Array<int> new_to_old_corner_map(faces.total_size());
+  MutableSpan<int2> edges = mesh->edges_for_write();
+  edges.take_front(src_edges.size()).copy_from(src_edges);
 
-  triangulate_faces(mesh.vert_positions(),
-                    orig_edges,
-                    orig_faces,
-                    orig_corner_verts,
-                    orig_corner_edges,
+  MutableSpan<int> corner_edges = mesh->corner_edges_for_write();
+
+  // TODO: Only calculate edge neighbors if there are edge attributes to interpolate.
+  Array<int4> new_edge_old_neighbors(edge_groups.total_size());
+
+  triangulate_faces(src_mesh.vert_positions(),
+                    src_faces,
+                    src_corner_verts,
+                    src_corner_edges,
                     selection,
-                    new_tri_groups,
-                    new_edge_groups,
+                    tri_groups,
+                    edge_groups,
                     ngon_mode,
                     quad_mode,
                     faces,
+                    new_to_old_corner_map,
+                    new_edge_old_neighbors,
                     edges,
-                    corner_verts,
                     corner_edges);
 
-  remove_non_propagated_attributes(mesh.attributes_for_write(), propagation_info);
-  resize_mesh(mesh, orig_edges.size() + edges.size(), faces.size(), faces.total_size());
+  bke::copy_attributes(src_attributes, ATTR_DOMAIN_POINT, propagation_info, {}, attributes);
 
-  mesh.edges_for_write().take_back(edges.size()).copy_from(edges);
-  mesh.face_offsets_for_write().copy_from(faces.data());
-  mesh.corner_verts_for_write().copy_from(corner_verts);
-  mesh.corner_edges_for_write().copy_from(corner_edges);
+  src_attributes.for_all([&](const bke::AttributeIDRef &id,
+                             const bke::AttributeMetaData meta_data) {
+    if (meta_data.data_type == CD_PROP_STRING) {
+      return true;
+    }
+    if (ELEM(id.name(), ".corner_edge", ".edge_verts")) {
+      return true;
+    }
+    if (meta_data.domain == ATTR_DOMAIN_POINT) {
+      return true;
+    }
 
-  // TODO: Keep bounds the same
-  BKE_mesh_tag_topology_changed(&mesh);
+    const GVArraySpan src = *src_attributes.lookup(id, meta_data.domain);
+    bke::GSpanAttributeWriter dst = attributes.lookup_or_add_for_write_only_span(
+        id, meta_data.domain, meta_data.data_type);
+
+    switch (meta_data.domain) {
+      case ATTR_DOMAIN_EDGE: {
+        dst.span.take_front(src.size()).copy_from(src);
+        bke::attribute_math::convert_to_static_type(meta_data.data_type, [&](auto dummy) {
+          using T = decltype(dummy);
+          mix_edge_data_from_neighbors(
+              src.typed<T>(),
+              new_edge_old_neighbors,
+              dst.span.typed<T>().take_back(new_edge_old_neighbors.size()));
+        });
+        break;
+      }
+      case ATTR_DOMAIN_FACE: {
+        array_utils::gather(src, selection_inverse, dst.span.take_front(selection_inverse.size()));
+        bke::attribute_math::gather_to_groups(
+            src, selection, tri_groups, dst.span.take_back(tri_groups.total_size()));
+        break;
+      }
+      case ATTR_DOMAIN_CORNER: {
+        bke::attribute_math::gather_group_to_group(
+            src_faces, faces, selection_inverse, src, dst.span);
+        bke::attribute_math::gather(
+            src, new_to_old_corner_map.as_span(), dst.span.take_back(new_tris_num * 3));
+        break;
+      }
+      default:
+        break;
+    }
+
+    dst.finish();
+    return true;
+  });
+
+  if (int *orig_indices = static_cast<int *>(
+          CustomData_get_layer_for_write(&mesh->edge_data, CD_ORIGINDEX, mesh->totedge)))
+  {
+    MutableSpan(orig_indices, mesh->totedge).drop_front(src_edges.size()).fill(ORIGINDEX_NONE);
+  }
+
+  mesh->runtime->bounds_cache = src_mesh.runtime->bounds_cache;
+  copy_loose_vert_hint(src_mesh, *mesh);
+  copy_loose_edge_hint(src_mesh, *mesh);
+  return mesh;
 }
 
 }  // namespace blender::geometry

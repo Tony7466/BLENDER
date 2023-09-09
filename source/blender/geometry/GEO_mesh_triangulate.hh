@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <optional>
+
 #include "BLI_index_mask.hh"
 
 #include "BKE_attribute.hh"
@@ -25,10 +27,11 @@ enum class TriangulateQuadMode {
   LongEdge = 4,
 };
 
-void triangulate(Mesh &mesh,
-                 const IndexMask &mask,
-                 TriangulateNGonMode ngon_mode,
-                 TriangulateQuadMode quad_mode,
-                 const bke::AnonymousAttributePropagationInfo &propagation_info);
+std::optional<Mesh *> mesh_triangulate(
+    const Mesh &src_mesh,
+    const IndexMask &selection,
+    const TriangulateNGonMode ngon_mode,
+    const TriangulateQuadMode quad_mode,
+    const bke::AnonymousAttributePropagationInfo &propagation_info);
 
 }  // namespace blender::geometry

@@ -1283,16 +1283,8 @@ static void extrude_individual_mesh_faces(
       }
       case ATTR_DOMAIN_FACE: {
         /* Each side face gets the values from the corresponding new face. */
-        bke::attribute_math::convert_to_static_type(meta_data.data_type, [&](auto dummy) {
-          using T = decltype(dummy);
-          MutableSpan<T> data = attribute.span.typed<T>();
-          MutableSpan<T> new_data = data.slice(side_face_range);
-          face_selection.foreach_index(
-              GrainSize(1024), [&](const int64_t face_index, const int64_t i_selection) {
-                const IndexRange extrude_range = group_per_face[i_selection];
-                new_data.slice(extrude_range).fill(data[face_index]);
-              });
-        });
+        bke::attribute_math::gather_to_groups(
+            attribute.span, face_selection, group_per_face, attribute.span.slice(side_face_range));
         break;
       }
       case ATTR_DOMAIN_CORNER: {

@@ -45,13 +45,13 @@ static void node_geo_exec(GeoNodeExecParams params)
   GeometryNodeTriangulateNGons ngon_method = GeometryNodeTriangulateNGons(params.node().custom2);
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
-    if (!geometry_set.has_mesh()) {
+    const Mesh *src_mesh = geometry_set.get_mesh();
+    if (!src_mesh) {
       return;
     }
-    const Mesh &mesh_in = *geometry_set.get_mesh();
 
-    const bke::MeshFieldContext context{mesh_in, ATTR_DOMAIN_FACE};
-    FieldEvaluator evaluator{context, mesh_in.faces_num};
+    const bke::MeshFieldContext context{*src_mesh, ATTR_DOMAIN_FACE};
+    FieldEvaluator evaluator{context, src_mesh->faces_num};
     evaluator.add(selection_field);
     evaluator.evaluate();
     const IndexMask selection = evaluator.get_evaluated_as_mask(0);
@@ -59,12 +59,15 @@ static void node_geo_exec(GeoNodeExecParams params)
       return;
     }
 
-    Mesh *mesh = geometry_set.get_mesh_for_write();
-    geometry::triangulate(*mesh,
-                          selection,
-                          geometry::TriangulateNGonMode(ngon_method),
-                          geometry::TriangulateQuadMode(quad_method),
-                          propagation_info);
+    std::optional<Mesh *> mesh = geometry::mesh_triangulate(
+        *src_mesh,
+        selection,
+        geometry::TriangulateNGonMode(ngon_method),
+        geometry::TriangulateQuadMode(quad_method),
+        propagation_info);
+    if (mesh) {
+      geometry_set.replace_mesh(*mesh);
+    }
   });
 
   params.set_output("Mesh", std::move(geometry_set));
