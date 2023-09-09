@@ -4933,7 +4933,7 @@ bScreen *ED_screen_animation_no_scrub(const wmWindowManager *wm)
   return nullptr;
 }
 
-int ED_screen_animation_play(bContext *C, int sync, int mode)
+int ED_screen_animation_play(bContext *C, int sync, int mode, const bool fix_start_frame)
 {
   bScreen *screen = CTX_wm_screen(C);
   Scene *scene = CTX_data_scene(C);
@@ -4943,7 +4943,7 @@ int ED_screen_animation_play(bContext *C, int sync, int mode)
 
   if (ED_screen_animation_playing(CTX_wm_manager(C))) {
     /* stop playback now */
-    ED_screen_animation_timer(C, 0, 0, 0);
+    ED_screen_animation_timer(C, 0, 0, 0, false);
     ED_scene_fps_average_clear(scene);
     BKE_sound_stop_scene(scene_eval);
 
@@ -4965,7 +4965,7 @@ int ED_screen_animation_play(bContext *C, int sync, int mode)
       BKE_sound_play_scene(scene_eval);
     }
 
-    ED_screen_animation_timer(C, screen->redraws_flag, sync, mode);
+    ED_screen_animation_timer(C, screen->redraws_flag, sync, mode, fix_start_frame);
     ED_scene_fps_average_clear(scene);
 
     if (screen->animtimer) {
@@ -4988,7 +4988,7 @@ static int screen_animation_play_exec(bContext *C, wmOperator *op)
     sync = RNA_boolean_get(op->ptr, "sync");
   }
 
-  return ED_screen_animation_play(C, sync, mode);
+  return ED_screen_animation_play(C, sync, mode, true);
 }
 
 static void SCREEN_OT_animation_play(wmOperatorType *ot)
@@ -5015,6 +5015,36 @@ static void SCREEN_OT_animation_play(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Animation Playback with Preroll Operator
+ * \{ */
+
+static int screen_animation_play_with_preroll_exec(bContext *C, wmOperator * /*op*/)
+{
+  if (!ED_screen_animation_playing(CTX_wm_manager(C))) {
+    Scene *scene = CTX_data_scene(C);
+    scene->r.cfra = -100;
+    DEG_id_tag_update(&scene->id, ID_RECALC_FRAME_CHANGE);
+    WM_event_add_notifier(C, NC_SCENE | ND_FRAME, scene);
+  }
+  return ED_screen_animation_play(C, ANIMPLAY_FLAG_NO_SYNC, 1, false);
+}
+
+static void SCREEN_OT_animation_play_with_preroll(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Play Animation with Preroll";
+  ot->description = "Play animation starting at the earliest invalidated simulation";
+  ot->idname = "SCREEN_OT_animation_play_with_preroll";
+
+  /* api callbacks */
+  ot->exec = screen_animation_play_with_preroll_exec;
+
+  ot->poll = ED_operator_screenactive_norender;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Animation Cancel Operator
  * \{ */
 
@@ -5036,7 +5066,7 @@ static int screen_animation_cancel_exec(bContext *C, wmOperator *op)
     }
 
     /* call the other "toggling" operator to clean up now */
-    ED_screen_animation_play(C, 0, 0);
+    ED_screen_animation_play(C, 0, 0, false);
   }
 
   return OPERATOR_PASS_THROUGH;
@@ -5872,6 +5902,7 @@ void ED_operatortypes_screen()
 
   WM_operatortype_append(SCREEN_OT_animation_step);
   WM_operatortype_append(SCREEN_OT_animation_play);
+  WM_operatortype_append(SCREEN_OT_animation_play_with_preroll);
   WM_operatortype_append(SCREEN_OT_animation_cancel);
 
   /* New/delete. */

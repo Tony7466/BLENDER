@@ -3941,7 +3941,7 @@ void wm_event_do_handlers(bContext *C)
             CTX_wm_screen_set(C, screen);
             CTX_data_scene_set(C, scene);
 
-            ED_screen_animation_play(C, -1, 1);
+            ED_screen_animation_play(C, -1, 1, true);
 
             CTX_data_scene_set(C, scene_ctx);
             CTX_wm_screen_set(C, screen_stx);

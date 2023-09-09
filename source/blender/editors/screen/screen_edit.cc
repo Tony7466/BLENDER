@@ -1679,7 +1679,8 @@ ScrArea *ED_screen_temp_space_open(bContext *C,
   return area;
 }
 
-void ED_screen_animation_timer(bContext *C, int redraws, int sync, int enable)
+void ED_screen_animation_timer(
+    bContext *C, int redraws, int sync, int enable, const bool fix_start_frame)
 {
   bScreen *screen = CTX_wm_screen(C);
   wmWindowManager *wm = CTX_wm_manager(C);
@@ -1699,24 +1700,26 @@ void ED_screen_animation_timer(bContext *C, int redraws, int sync, int enable)
     screen->animtimer = WM_event_timer_add(wm, win, TIMER0, (1.0 / FPS));
 
     sad->region = CTX_wm_region(C);
-    /* If start-frame is larger than current frame, we put current-frame on start-frame.
-     * NOTE(ton): first frame then is not drawn! */
-    if (PRVRANGEON) {
-      if (scene->r.psfra > scene->r.cfra) {
-        sad->sfra = scene->r.cfra;
-        scene->r.cfra = scene->r.psfra;
+    if (fix_start_frame) {
+      /* If start-frame is larger than current frame, we put current-frame on start-frame.
+       * NOTE(ton): first frame then is not drawn! */
+      if (PRVRANGEON) {
+        if (scene->r.psfra > scene->r.cfra) {
+          sad->sfra = scene->r.cfra;
+          scene->r.cfra = scene->r.psfra;
+        }
+        else {
+          sad->sfra = scene->r.cfra;
+        }
       }
       else {
-        sad->sfra = scene->r.cfra;
-      }
-    }
-    else {
-      if (scene->r.sfra > scene->r.cfra) {
-        sad->sfra = scene->r.cfra;
-        scene->r.cfra = scene->r.sfra;
-      }
-      else {
-        sad->sfra = scene->r.cfra;
+        if (scene->r.sfra > scene->r.cfra) {
+          sad->sfra = scene->r.cfra;
+          scene->r.cfra = scene->r.sfra;
+        }
+        else {
+          sad->sfra = scene->r.cfra;
+        }
       }
     }
     sad->redraws = redraws;

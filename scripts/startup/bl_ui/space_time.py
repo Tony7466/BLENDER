@@ -48,6 +48,9 @@ class TIME_HT_editor_buttons:
         row.operator("screen.keyframe_jump", text="", icon='NEXT_KEYFRAME').next = True
         row.operator("screen.frame_jump", text="", icon='FF').end = True
 
+        row = layout.row(align=True)
+        row.operator("screen.animation_play_with_preroll", text="Play with Preroll")
+
         layout.separator_spacer()
 
         row = layout.row()
