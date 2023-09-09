@@ -8,67 +8,99 @@
 
 namespace blender::compositor::tests {
 
-TEST(SummedTableArea, FullFrame_5x2)
+struct SatParams {
+  /* Input parameters. */
+  SummedAreaTableOperation::eMode mode;
+  eExecutionModel execution_model;
+  float offset;
+  rcti area;
+  float4 fill_value;
+
+  /* Expected output values. */
+  std::vector<std::vector<float>> values;
+};
+
+class SummedAreaTableTestP : public testing::TestWithParam<SatParams> {
+};
+
+TEST_P(SummedAreaTableTestP, Values)
 {
-  SummedAreaTableOperation sat;
+  SatParams params = GetParam();
 
-  sat.set_execution_model(eExecutionModel::FullFrame);
-  sat.set_mode(SummedAreaTableOperation::eMode::Identity);
+  SummedAreaTableOperation sat = SummedAreaTableOperation();
 
-  const rcti area{0, 5, 0, 2};
+  sat.set_execution_model(params.execution_model);
+  sat.set_mode(params.mode);
+  const rcti area = params.area;
   MemoryBuffer output(DataType::Color, area);
 
-  const float val[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-
   std::shared_ptr<MemoryBuffer> input = std::make_shared<MemoryBuffer>(DataType::Color, area);
-  input->fill(area, val);
+  input->fill(area, &params.fill_value.x);
+  std::shared_ptr<MemoryBuffer> offset = std::make_shared<MemoryBuffer>(
+      DataType::Value, area, true);
+  offset->fill(area, &params.offset);
 
-  /* sat.render() doesn't work because of a dependency of Operations on nodetree,
-   * so call sat.update_memory_buffer() directly instead. */
-
-  sat.update_memory_buffer(&output, area, Span<MemoryBuffer *>{input.get()});
+  sat.update_memory_buffer(&output, area, Span<MemoryBuffer *>{input.get(), offset.get()});
 
   /* First row. */
-  EXPECT_FLOAT_EQ(output.get_elem(0, 0)[0], 1);
-  EXPECT_FLOAT_EQ(output.get_elem(1, 0)[1], 2);
-  EXPECT_FLOAT_EQ(output.get_elem(2, 0)[2], 3);
-  EXPECT_FLOAT_EQ(output.get_elem(3, 0)[3], 4);
-  EXPECT_FLOAT_EQ(output.get_elem(4, 0)[0], 5);
+  EXPECT_FLOAT_EQ(output.get_elem(0, 0)[0], params.values[0][0]);
+  EXPECT_FLOAT_EQ(output.get_elem(1, 0)[1], params.values[0][1]);
+  EXPECT_FLOAT_EQ(output.get_elem(2, 0)[2], params.values[0][2]);
 
   /* Second row. */
-  EXPECT_FLOAT_EQ(output.get_elem(0, 1)[3], 2);
-  EXPECT_FLOAT_EQ(output.get_elem(1, 1)[0], 4);
-  EXPECT_FLOAT_EQ(output.get_elem(2, 1)[1], 6);
-  EXPECT_FLOAT_EQ(output.get_elem(3, 1)[2], 8);
-  EXPECT_FLOAT_EQ(output.get_elem(4, 1)[0], 10);
+  EXPECT_FLOAT_EQ(output.get_elem(0, 1)[3], params.values[1][0]);
+  EXPECT_FLOAT_EQ(output.get_elem(1, 1)[0], params.values[1][1]);
+  EXPECT_FLOAT_EQ(output.get_elem(2, 1)[1], params.values[1][2]);
 }
 
-TEST(SummedTableArea, FullFrame_3x2_squared)
-{
-  SummedAreaTableOperation sat;
+INSTANTIATE_TEST_SUITE_P(FullFrame5x2_IdentityOnes,
+                         SummedAreaTableTestP,
+                         testing::Values(SatParams{SummedAreaTableOperation::eMode::Identity,
+                                                   eExecutionModel::FullFrame,
+                                                   0.0f,                     /* Offset. */
+                                                   rcti{0, 5, 0, 2},         /* Area. */
+                                                   {1.0f, 1.0f, 1.0f, 1.0f}, /* Fill value. */
 
-  sat.set_execution_model(eExecutionModel::FullFrame);
-  sat.set_mode(SummedAreaTableOperation::eMode::Squared);
-  const rcti area{0, 3, 0, 2};
-  MemoryBuffer output(DataType::Color, area);
+                                                   /* Expected output. */
+                                                   {{1, 2, 3, 4, 5}, {2, 4, 6, 8, 10}}}));
 
-  const float val[4] = {2.0f, 2.0f, 1.5f, 0.1f};
-  std::shared_ptr<MemoryBuffer> input = std::make_shared<MemoryBuffer>(DataType::Color, area);
-  input->fill(area, val);
-  Span<MemoryBuffer *> inputs{input.get()};
+INSTANTIATE_TEST_SUITE_P(FullFrame3x2_Squared,
+                         SummedAreaTableTestP,
+                         testing::Values(SatParams{SummedAreaTableOperation::eMode::Identity,
+                                                   eExecutionModel::FullFrame,
+                                                   0.0f,                    /* Offset. */
+                                                   rcti{0, 3, 0, 2},        /* Area. */
+                                                   {2.0f, 2.0f, 1.5f, .1f}, /* Fill value. */
 
-  sat.update_memory_buffer(&output, area, Span<MemoryBuffer *>{input.get()});
+                                                   /* Expected output. */
+                                                   {
+                                                       {2, 4, 4.5},
+                                                       {0.2, 8, 12},
+                                                   }}));
 
-  /* First row. */
-  EXPECT_FLOAT_EQ(output.get_elem(0, 0)[0], 4);
-  EXPECT_FLOAT_EQ(output.get_elem(1, 0)[1], 8);
-  EXPECT_FLOAT_EQ(output.get_elem(2, 0)[2], 6.75);
+INSTANTIATE_TEST_SUITE_P(FullFrame3x2_IdentityPositiveOffset,
+                         SummedAreaTableTestP,
+                         testing::Values(SatParams{
+                             SummedAreaTableOperation::eMode::Identity,
+                             eExecutionModel::FullFrame,
+                             42.0f,                     /* Offset. */
+                             rcti{0, 3, 0, 2},          /* Area. */
+                             {2.0f, 1.24f, 5.0f, 1.0f}, /* Fill value. */
 
-  /* Second row. */
-  EXPECT_FLOAT_EQ(output.get_elem(0, 1)[3], 0.02);
-  EXPECT_FLOAT_EQ(output.get_elem(1, 1)[0], 16);
-  EXPECT_FLOAT_EQ(output.get_elem(2, 1)[1], 24);
-}
+                             /* Expected output. */
+                             {{-40.0f, -81.519997f, -111.0f}, {-82.0f, -160.0f, -244.56001f}}}));
+
+INSTANTIATE_TEST_SUITE_P(FullFrame3x2_SquaredNegativeOffset,
+                         SummedAreaTableTestP,
+                         testing::Values(SatParams{
+                             SummedAreaTableOperation::eMode::Identity,
+                             eExecutionModel::FullFrame,
+                             -0.5f,                     /* Offset. */
+                             rcti{0, 3, 0, 2},          /* Area. */
+                             {2.0f, 1.24f, 5.0f, 1.0f}, /* Fill value. */
+
+                             /* Expected output. */
+                             {{2.5f, 3.48f, 16.5f}, {3.0f, 10.0f, 10.440001f}}}));
 
 class SummedTableAreaSumTest : public ::testing::Test {
  public:
@@ -89,20 +121,27 @@ class SummedTableAreaSumTest : public ::testing::Test {
     const float val[4] = {1.0f, 2.0f, 1.5f, 0.1f};
     std::shared_ptr<MemoryBuffer> input = std::make_shared<MemoryBuffer>(DataType::Color, area_);
     input->fill(area_, val);
+    std::shared_ptr<MemoryBuffer> offset = std::make_shared<MemoryBuffer>(
+        DataType::Value, area_, true);
+    offset->fill(area_, &offset_);
 
-    operation_->update_memory_buffer(sat_.get(), area_, Span<MemoryBuffer *>{input.get()});
+    operation_->update_memory_buffer(
+        sat_.get(), area_, Span<MemoryBuffer *>{input.get(), offset.get()});
   }
 
   std::shared_ptr<SummedAreaTableOperation> operation_;
   std::shared_ptr<MemoryBuffer> sat_;
   rcti area_;
+  float offset_ = 0.0f;
 };
 
 TEST_F(SummedTableAreaSumTest, FullyInside)
 {
   rcti area;
-  area.xmin = 1; area.xmax = 3;
-  area.ymin = 1; area.ymax = 3;
+  area.xmin = 1;
+  area.xmax = 3;
+  area.ymin = 1;
+  area.ymax = 3;
   float4 sum = summed_area_table_sum(sat_.get(), area);
   ASSERT_EQ(sum[0], 9);
 }
@@ -110,8 +149,10 @@ TEST_F(SummedTableAreaSumTest, FullyInside)
 TEST_F(SummedTableAreaSumTest, LeftEdge)
 {
   rcti area;
-  area.xmin = 0; area.xmax = 2;
-  area.ymin = 0; area.ymax = 2;
+  area.xmin = 0;
+  area.xmax = 2;
+  area.ymin = 0;
+  area.ymax = 2;
   float4 sum = summed_area_table_sum(sat_.get(), area);
   ASSERT_EQ(sum[0], 9);
 }
@@ -141,8 +182,10 @@ TEST_F(SummedTableAreaSumTest, LowerRightCorner)
 TEST_F(SummedTableAreaSumTest, TopLine)
 {
   rcti area;
-  area.xmin = 0; area.xmax = 1;
-  area.ymin = 0; area.ymax = 0;
+  area.xmin = 0;
+  area.xmax = 1;
+  area.ymin = 0;
+  area.ymax = 0;
   float4 sum = summed_area_table_sum(sat_.get(), area);
   ASSERT_EQ(sum[0], 2);
 }
@@ -150,8 +193,10 @@ TEST_F(SummedTableAreaSumTest, TopLine)
 TEST_F(SummedTableAreaSumTest, ButtomLine)
 {
   rcti area;
-  area.xmin = 0; area.xmax = 4;
-  area.ymin = 3; area.ymax = 3;
+  area.xmin = 0;
+  area.xmax = 4;
+  area.ymin = 3;
+  area.ymax = 3;
   float4 sum = summed_area_table_sum(sat_.get(), area);
   ASSERT_EQ(sum[0], 5);
 }

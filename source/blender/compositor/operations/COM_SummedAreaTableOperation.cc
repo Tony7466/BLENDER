@@ -12,6 +12,7 @@ namespace blender::compositor {
 SummedAreaTableOperation::SummedAreaTableOperation()
 {
   this->add_input_socket(DataType::Color);
+  this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Color);
 
   mode_ = eMode::Identity;
@@ -22,11 +23,13 @@ void SummedAreaTableOperation::init_execution()
 {
   SingleThreadedOperation::init_execution();
   image_reader_ = this->get_input_socket_reader(0);
+  offset_reader_ = this->get_input_socket_reader(1);
 }
 
 void SummedAreaTableOperation::deinit_execution()
 {
   image_reader_ = nullptr;
+  offset_reader_ = nullptr;
   SingleThreadedOperation::deinit_execution();
 }
 
@@ -50,7 +53,6 @@ void SummedAreaTableOperation::get_area_of_interest(int input_idx,
                                                     const rcti & /*output_area*/,
                                                     rcti &r_input_area)
 {
-  BLI_assert(input_idx == 0);
   r_input_area = get_input_operation(input_idx)->get_canvas();
 }
 
@@ -60,12 +62,16 @@ void SummedAreaTableOperation::update_memory_buffer(MemoryBuffer *output,
 {
   MemoryBuffer *image = inputs[0];
 
-  for (BuffersIterator<float> it = output->iterate_with({}, area); !it.is_end(); ++it) {
+  for (BuffersIterator<float> it = output->iterate_with({inputs}, area); !it.is_end(); ++it) {
     const int x = it.x;
     const int y = it.y;
 
+    BLI_assert(it.get_num_inputs() == 2);
+    const float offset = *it.in(1);
+
     float4 color, upper, left, upper_left;
     image->read_elem(x, y, &color.x);
+    color -= offset;
 
     output->read_elem_checked(x, y - 1, &upper.x);
     output->read_elem_checked(x - 1, y, &left.x);
@@ -104,8 +110,13 @@ MemoryBuffer *SummedAreaTableOperation::create_memory_buffer(rcti *rect)
     const int x = it.x;
     const int y = it.y;
 
+    float tmp[4];
+    offset_reader_->read_sampled(tmp, x, y, sampler);
+    const float offset = tmp[0];
+
     float4 color, upper, left, upper_left;
     image_reader_->read_sampled(color, x, y, sampler);
+    color -= offset;
 
     result->read_elem_checked(x, y - 1, &upper.x);
     result->read_elem_checked(x - 1, y, &left.x);

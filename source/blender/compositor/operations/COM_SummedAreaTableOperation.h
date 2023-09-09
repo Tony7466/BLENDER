@@ -46,6 +46,7 @@ class SummedAreaTableOperation : public SingleThreadedOperation {
 
  private:
   SocketReader *image_reader_;
+  SocketReader *offset_reader_;
   eMode mode_;
 };
 

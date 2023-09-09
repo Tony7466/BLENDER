@@ -7,6 +7,7 @@
 
 #include "COM_KuwaharaNode.h"
 
+#include "COM_CalculateMeanOperation.h"
 #include "COM_GaussianXBlurOperation.h"
 #include "COM_GaussianYBlurOperation.h"
 #include "COM_KuwaharaAnisotropicOperation.h"
@@ -43,8 +44,28 @@ void KuwaharaNode::convert_to_operations(NodeConverter &converter,
         converter.map_input_socket(get_input_socket(0), sat_squared->get_input_socket(0));
         converter.add_link(sat_squared->get_output_socket(0),
                            kuwahara_classic->get_input_socket(2));
-      }
 
+        /* Using offset to improve precision.
+         *
+         * Summed area table can produce very large numbers, e.g. for 4k images with channel
+         * values between 0 and 1, sum values can reach 10^7, but sum values are still around 10
+         * This causes precision issues for single precision floating point values.
+         * In order to improve precision, we subtract the mean value from the image as suggested in
+         * the paper
+         *
+         *    G. Facciolo et al. "Integral Images for Block Matching" 2014.
+         *
+         * Though this does solve the problem entirely, it improves results significantly.
+         */
+        CalculateMeanOperation *mean = new CalculateMeanOperation();
+        /* Compute the meam from the green channel. */
+        mean->set_setting(3);
+        converter.add_operation(mean);
+        converter.map_input_socket(get_input_socket(0), mean->get_input_socket(0));
+        converter.add_link(mean->get_output_socket(0), kuwahara_classic->get_input_socket(3));
+        converter.add_link(mean->get_output_socket(0), sat->get_input_socket(1));
+        converter.add_link(mean->get_output_socket(0), sat_squared->get_input_socket(1));
+      }
       converter.map_output_socket(get_output_socket(0), kuwahara_classic->get_output_socket(0));
       break;
     }

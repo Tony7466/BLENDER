@@ -12,6 +12,7 @@ class KuwaharaClassicOperation : public MultiThreadedOperation {
   SocketReader *image_reader_;
   SocketReader *sat_reader_;
   SocketReader *sat_squared_reader_;
+  SocketReader *offset_reader_;
 
   int kernel_size_;
 
