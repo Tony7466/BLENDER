@@ -221,7 +221,7 @@ class GHOST_SystemCocoa : public GHOST_System {
    * \param r_height: the returned image height in pixels.
    * \return pointer uint array in RGBA byte order. Caller must free.
    */
-  uint *getClipboardImage(int *r_width, int *r_height) const;
+     uint *getClipboardImage(int *r_width, int *r_height) const;
 
   /**
    * Put image data to the Clipboard

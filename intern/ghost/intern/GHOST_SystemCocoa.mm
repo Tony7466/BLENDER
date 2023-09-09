@@ -2052,28 +2052,26 @@ if ([[pasteboard types] containsObject:NSPasteboardTypeTIFF] || [[pasteboard typ
  {
     // Get the image
     NSImage* image = [[NSImage alloc] initWithPasteboard:pasteboard];
+     
     
     // Get image size
     NSSize size = [image size];
     *r_width = size.width;
     *r_height = size.height;
 
-    // Create bitmap context
-    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
-    CGContextRef context = CGBitmapContextCreate(NULL, *r_width, *r_height, 8, *r_width * 4, colorSpace, kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
-
-    // Draw image to context
-    [image drawInRect:CGRectMake(0, 0, *r_width, *r_height) fromRect:NSZeroRect operation:NSCompositingOperationCopy fraction:1.0];
-
-    // Get pixel data
-    uint* pixels = (uint*)CGBitmapContextGetData(context);
-
-    // Clean up
-    CGContextRelease(context);
-    CGColorSpaceRelease(colorSpace);
-    [image release];
-    return pixels; 
-  } else { 
+     printf("width is %d, height is %d",*r_width, *r_height );
+        
+    ImBuf *imageBuffer=  getImageBuffer(image);
+     
+     uint8_t *pixels = imageBuffer->byte_buffer.data;
+     uint *ppixels = (uint*) pixels;
+     
+     if (ppixels == nullptr) {
+         printf("ppixels is NULL!!!!");
+     }
+     
+     return ppixels;
+  } else {
       return nil;
       }
 }
