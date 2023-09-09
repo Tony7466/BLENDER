@@ -2060,12 +2060,26 @@ uint *GHOST_SystemCocoa::getClipboardImage(int *r_width, int *r_height) const
 GHOST_TSuccess GHOST_SystemCocoa::putClipboardImage(uint *rgba, int width, int height) const
 {
 
-  GHOST_WindowCocoa *window = (GHOST_WindowCocoa *)m_windowManager->getActiveWindow();
-  if (!window) {
-      return window->putClipboardImage(rgba, width, height); //TODO move code here
-  } else {
-    return GHOST_kFailure;
-  }
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+    CGContextRef context = CGBitmapContextCreate(rgba, width, height, 8, width * 4, colorSpace,
+                                                kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
+    CGImageRef image = CGBitmapContextCreateImage(context);
+    CGContextRelease(context);
+    CGColorSpaceRelease(colorSpace);
+
+    NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
+    [pasteboard clearContents];
+    NSImage *nsImage = [[NSImage alloc] initWithCGImage:image size:NSZeroSize];
+    NSArray *copiedObjects = [NSArray arrayWithObject:nsImage];
+    BOOL copied = [pasteboard writeObjects:copiedObjects];
+    [nsImage release];
+    CGImageRelease(image);
+
+    if (copied) {
+      return GHOST_kSuccess;
+    } else {
+      return GHOST_kFailure;
+    }
 
 }
 
