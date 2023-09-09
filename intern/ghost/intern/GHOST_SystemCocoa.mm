@@ -2050,6 +2050,7 @@ uint *GHOST_SystemCocoa::getClipboardImage(int *r_width, int *r_height) const
         int msize =(*r_width) * (*r_height) * 4 ;
         uint *ppixels = (uint *)malloc(msize);
         memcpy(ppixels, imageBuffer->byte_buffer.data, msize);
+        IMB_freeImBuf(imageBuffer);
         return ppixels;
       } else {
           return nullptr;
