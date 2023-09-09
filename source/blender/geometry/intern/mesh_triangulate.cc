@@ -377,17 +377,19 @@ void triangulate(Mesh &mesh,
   const IndexMask selection_inverse = selection.complement(orig_faces.index_range(), memory);
 
   Array<int> face_offsets(orig_faces.size() + new_tris_num + 1);
-  const OffsetIndices new_faces = calc_new_face_offsets(
+  const OffsetIndices faces = calc_new_face_offsets(
       orig_faces, selection, selection_inverse, new_tris_num, face_offsets);
 
   Array<int2> edges(new_edge_groups.total_size());
-  Array<int> corner_verts(new_faces.total_size());
-  Array<int> corner_edges(new_faces.total_size());
+  Array<int> corner_verts(faces.total_size());
+  Array<int> corner_edges(faces.total_size());
 
   array_utils::gather_group_to_group(
-      orig_faces, new_faces, selection_inverse, orig_corner_verts, corner_verts.as_mutable_span());
+      orig_faces, faces, selection_inverse, orig_corner_verts, corner_verts.as_mutable_span());
   array_utils::gather_group_to_group(
-      orig_faces, new_faces, selection_inverse, orig_corner_edges, corner_edges.as_mutable_span());
+      orig_faces, faces, selection_inverse, orig_corner_edges, corner_edges.as_mutable_span());
+
+  Array<int> new_to_old_corner_map(faces.total_size());
 
   triangulate_faces(mesh.vert_positions(),
                     orig_edges,
@@ -399,16 +401,17 @@ void triangulate(Mesh &mesh,
                     new_edge_groups,
                     ngon_mode,
                     quad_mode,
-                    new_faces,
+                    faces,
+
                     edges,
                     corner_verts,
                     corner_edges);
 
   remove_non_propagated_attributes(mesh.attributes_for_write(), propagation_info);
-  resize_mesh(mesh, orig_edges.size() + edges.size(), new_faces.size(), new_faces.total_size());
+  resize_mesh(mesh, orig_edges.size() + edges.size(), faces.size(), faces.total_size());
 
   mesh.edges_for_write().take_back(edges.size()).copy_from(edges);
-  mesh.face_offsets_for_write().copy_from(new_faces.data());
+  mesh.face_offsets_for_write().copy_from(faces.data());
   mesh.corner_verts_for_write().copy_from(corner_verts);
   mesh.corner_edges_for_write().copy_from(corner_edges);
 
