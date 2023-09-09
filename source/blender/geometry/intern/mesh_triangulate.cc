@@ -24,6 +24,13 @@
 
 namespace blender::geometry {
 
+//   IndexMaskMemory memory;
+// const IndexMask quads = IndexMask::from_predicate(
+//     selection, GrainSize(4096), memory, [&](const int face) { return faces[face].size() == 3;
+//     });
+// const IndexMask ngons = IndexMask::from_predicate(
+//     selection, GrainSize(4096), memory, [&](const int face) { return faces[face].size() > 4; });
+
 static OffsetIndices<int> calc_new_face_groups(const OffsetIndices<int> orig_faces,
                                                const IndexMask &selection,
                                                MutableSpan<int> face_offset_data)
@@ -50,22 +57,22 @@ static OffsetIndices<int> create_new_faces(const OffsetIndices<int> orig_faces,
                                            const IndexMask &selection,
                                            const IndexMask &selection_inverse,
                                            const int new_faces_num,
-                                           MutableSpan<int> corner_offset_data)
+                                           MutableSpan<int> new_faces_data)
 {
   if (selection.size() == orig_faces.size()) {
-    offset_indices::fill_constant_group_size(3, 0, corner_offset_data);
-    return OffsetIndices<int>(corner_offset_data);
+    offset_indices::fill_constant_group_size(3, 0, new_faces_data);
+    return OffsetIndices<int>(new_faces_data);
   }
 
   /* The reused faces are triangles. */
-  index_mask::masked_fill(corner_offset_data, 3, selection);
-  offset_indices::copy_group_sizes(orig_faces, selection_inverse, corner_offset_data);
-  offset_indices::accumulate_counts_to_offsets(corner_offset_data.take_front(orig_faces.size()));
+  index_mask::masked_fill(new_faces_data, 3, selection);
+  offset_indices::copy_group_sizes(orig_faces, selection_inverse, new_faces_data);
+  offset_indices::accumulate_counts_to_offsets(new_faces_data.take_front(orig_faces.size()));
 
   /* All new faces are triangles.*/
-  MutableSpan<int> new_faces = corner_offset_data.take_back(new_faces_num);
+  MutableSpan<int> new_faces = new_faces_data.take_back(new_faces_num);
   offset_indices::fill_constant_group_size(3, new_faces.first(), new_faces);
-  return OffsetIndices<int>(corner_offset_data);
+  return OffsetIndices<int>(new_faces_data);
 }
 
 /**
@@ -105,7 +112,7 @@ static QuadDirection calc_quad_direction(const Span<float3> positions,
                                                         positions[face_verts[2]]);
       const float distance_1_3 = math::distance_squared(positions[face_verts[1]],
                                                         positions[face_verts[3]]);
-      return distance_0_2 < distance_1_3 ? QuadDirection::Edge_0_2 : QuadDirection::Edge_1_3;
+      return distance_0_2 < distance_1_3 ? QuadDirection::Edge_1_3 : QuadDirection::Edge_0_2;
     }
   }
   BLI_assert_unreachable();
@@ -186,6 +193,7 @@ static void triangulate_faces(const Span<float3> positions,
                               const TriangulateNGonMode ngon_mode,
                               const TriangulateQuadMode quad_mode,
                               const OffsetIndices<int> faces,
+                              MutableSpan<int> corner_orig_indices,
                               MutableSpan<int2> edges,
                               MutableSpan<int> corner_verts,
                               MutableSpan<int> corner_edges)
@@ -200,9 +208,9 @@ static void triangulate_faces(const Span<float3> positions,
     const Span<int> face_verts = orig_corner_verts.slice(orig_corners);
     const Span<int> face_edges = orig_corner_edges.slice(orig_corners);
 
-    const IndexRange new_face_group = new_face_groups[mask].shift(orig_faces.size());
+    const IndexRange new_face_group = new_face_groups[mask];
     const IndexRange reused_face = faces[face];
-    const OffsetIndices new_faces = faces.slice(new_face_group);
+    const OffsetIndices new_faces = faces.slice(new_face_group.shift(orig_faces.size()));
     const IndexRange new_corners(new_faces.data().first(), new_faces.size() * 3);
 
     MutableSpan<int> reused_corner_verts = corner_verts.slice(reused_face);
@@ -235,7 +243,7 @@ static void triangulate_faces(const Span<float3> positions,
         mul_v2_m3v3(positions_2d[i], projection.ptr(), positions[face_verts[i]]);
       }
 
-      Array<uint3, 64> triangulation(triangles_num);
+      MutableSpan<uint3> triangulation = corner_orig_indices.slice(new_corners).cast<uint3>();
       BLI_polyfill_calc(reinterpret_cast<const float(*)[2]>(positions_2d.data()),
                         positions_2d.size(),
                         1,
@@ -367,9 +375,9 @@ void triangulate(Mesh &mesh,
   IndexMaskMemory memory;
   const IndexMask selection_inverse = selection.complement(orig_faces.index_range(), memory);
 
-  Array<int> corner_offset_data(orig_faces.size() + new_faces_num + 1);
+  Array<int> new_faces_data(orig_faces.size() + new_faces_num + 1);
   const OffsetIndices new_faces = create_new_faces(
-      orig_faces, selection, selection_inverse, new_faces_num, corner_offset_data);
+      orig_faces, selection, selection_inverse, new_faces_num, new_faces_data);
 
   Array<int2> edges(new_edge_groups.total_size());
   Array<int> corner_verts(new_faces.total_size());
@@ -399,6 +407,7 @@ void triangulate(Mesh &mesh,
   resize_mesh(mesh, orig_edges.size() + edges.size(), new_faces.size(), new_faces.total_size());
 
   mesh.edges_for_write().take_back(edges.size()).copy_from(edges);
+  mesh.face_offsets_for_write().copy_from(new_faces.data());
   mesh.corner_verts_for_write().copy_from(corner_verts);
   mesh.corner_edges_for_write().copy_from(corner_edges);
 
