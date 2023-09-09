@@ -172,6 +172,16 @@ template<typename GridType> struct VGridWriter {
   virtual GVMutableArray make_varray_for_leaf(const LeafNodeType &leaf) const = 0;
 };
 
+template<typename GridType>
+void merge_input_field_topology(GridType &buffer, Span<GVGrid> field_context_inputs)
+{
+  for (const GVGrid &input_grid : field_context_inputs) {
+    volume::grid_to_static_type(*input_grid.get_internal_grid(), [&](auto &typed_input_grid) {
+      buffer.topologyUnion(typed_input_grid);
+    });
+  }
+}
+
 template<typename GridType, typename AccessorType, typename Converter>
 struct VGridReader_For_Accessor : public VGridReader<GridType> {
   using TreeType = typename GridType::TreeType;
@@ -352,6 +362,8 @@ void evaluate_procedure_on_varying_volume_fields(ResourceScope &scope,
 
     volume::grid_to_static_type(*buffer, [&](auto &dst_grid) {
       using GridType = typename std::decay<decltype(dst_grid)>::type;
+
+      merge_input_field_topology(dst_grid, field_context_inputs);
 
       /* Make sure every active tile has leaf node buffers to write into.
        * A tree can have active (non-leaf) tiles with only the background value.
