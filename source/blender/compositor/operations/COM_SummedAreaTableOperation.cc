@@ -24,13 +24,11 @@ void SummedAreaTableOperation::init_execution()
 {
   SingleThreadedOperation::init_execution();
   image_reader_ = this->get_input_socket_reader(0);
-  offset_reader_ = this->get_input_socket_reader(1);
 }
 
 void SummedAreaTableOperation::deinit_execution()
 {
   image_reader_ = nullptr;
-  offset_reader_ = nullptr;
   SingleThreadedOperation::deinit_execution();
 }
 
@@ -63,6 +61,9 @@ void SummedAreaTableOperation::update_memory_buffer(MemoryBuffer *output,
 {
   MemoryBuffer *image = inputs[0];
 
+  /* Track floating point error. See below. */
+  float4 running_compensation = {0.0f, 0.0f, 0.0f, 0.0f};
+
   for (BuffersIterator<float> it = output->iterate_with({inputs}, area); !it.is_end(); ++it) {
     const int x = it.x;
     const int y = it.y;
@@ -80,13 +81,14 @@ void SummedAreaTableOperation::update_memory_buffer(MemoryBuffer *output,
 
     float4 sum = upper + left - upper_left;
 
+    float4 v;
     switch (mode_) {
       case eMode::Squared: {
-        sum += color * color;
+        v = color * color;
         break;
       }
       case eMode::Identity: {
-        sum += color;
+        v = color;
         break;
       }
       default: {
@@ -94,6 +96,17 @@ void SummedAreaTableOperation::update_memory_buffer(MemoryBuffer *output,
         break;
       }
     }
+
+    /* Using Kahan Summation algorithm to compensate for floating point inaccuracies caused by
+     * summing up large number of values.
+     * The idea is to introduce a variable to keep track of the error (here called `running_error`)
+     * and then correct the error in the next iteration. */
+    float4 difference = v - running_compensation;
+    float4 temp = sum + difference;
+    /* `(temp - sum)` cancels the high-order part of `difference`. Subtracting `difference` again
+     * recovers `difference` for the next iteration. */
+    running_compensation = (temp - sum) - difference;
+    sum = temp;
 
     it.out[0] = sum.x;
     it.out[1] = sum.y;
@@ -106,6 +119,9 @@ MemoryBuffer *SummedAreaTableOperation::create_memory_buffer(rcti *rect)
 {
   MemoryBuffer *result = new MemoryBuffer(DataType::Color, *rect);
   PixelSampler sampler = PixelSampler::Nearest;
+
+  /* Track floating point error. See below. */
+  float4 running_compensation = {0.0f, 0.0f, 0.0f, 0.0f};
 
   for (BuffersIterator<float> it = result->iterate_with({}, *rect); !it.is_end(); ++it) {
     const int x = it.x;
@@ -120,13 +136,14 @@ MemoryBuffer *SummedAreaTableOperation::create_memory_buffer(rcti *rect)
 
     float4 sum = upper + left - upper_left;
 
+    float4 v;
     switch (mode_) {
       case eMode::Squared: {
-        sum += color * color;
+        v = color * color;
         break;
       }
       case eMode::Identity: {
-        sum += color;
+        v = color;
         break;
       }
       default: {
@@ -134,6 +151,17 @@ MemoryBuffer *SummedAreaTableOperation::create_memory_buffer(rcti *rect)
         break;
       }
     }
+
+    /* Using Kahan Summation algorithm to compensate for floating point inaccuracies caused by
+     * summing up large number of values.
+     * The idea is to introduce a variable to keep track of the error (here called `running_error`)
+     * and then correct the error in the next iteration. */
+    float4 difference = v - running_compensation;
+    float4 temp = sum + difference;
+    /* `(temp - sum)` cancels the high-order part of `difference`. Subtracting `difference` again
+     * recovers `difference` for the next iteration. */
+    running_compensation = (temp - sum) - difference;
+    sum = temp;
 
     it.out[0] = sum.x;
     it.out[1] = sum.y;

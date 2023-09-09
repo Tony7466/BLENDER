@@ -55,7 +55,8 @@ void KuwaharaNode::convert_to_operations(NodeConverter &converter,
          *
          *    G. Facciolo et al. "Integral Images for Block Matching" 2014.
          *
-         * Though this does solve the problem entirely, it improves results significantly.
+         * Note: best results are achieved using this optimization as well as the running error
+         * compensation in SummedAreaTableOperation.
          */
         CalculateMeanOperation *mean = new CalculateMeanOperation();
         /* Compute the meam from the green channel. */
