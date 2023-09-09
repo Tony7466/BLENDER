@@ -59,11 +59,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .max(1.0f)
       .subtype(PROP_FACTOR);
 #define SOCK_SPECULAR_ID 7
-  b.add_input<decl::Float>("Specular Tint")
-      .default_value(0.0f)
-      .min(0.0f)
-      .max(1.0f)
-      .subtype(PROP_FACTOR);
+  b.add_input<decl::Color>("Specular Tint").default_value({1.0f, 1.0f, 1.0f, 1.0f});
 #define SOCK_SPECULAR_TINT_ID 8
   b.add_input<decl::Float>("Roughness")
       .default_value(0.5f)

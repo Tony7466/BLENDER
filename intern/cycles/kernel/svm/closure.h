@@ -92,7 +92,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
       float subsurface = param2;
       float specular = stack_load_float(stack, specular_offset);
       float roughness = stack_load_float(stack, roughness_offset);
-      float specular_tint = stack_load_float(stack, specular_tint_offset);
+      Spectrum specular_tint = rgb_to_spectrum(stack_load_float3(stack, specular_tint_offset));
       float anisotropic = stack_load_float(stack, anisotropic_offset);
       float sheen = stack_load_float(stack, sheen_offset);
       float3 sheen_tint = stack_load_float3(stack, sheen_tint_offset);
@@ -248,14 +248,9 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           bsdf->alpha_x = bsdf->alpha_y = sqr(roughness);
           bsdf->ior = (sd->flag & SD_BACKFACING) ? 1.0f / eta : eta;
 
-          float m_cdlum = linear_rgb_to_gray(kg, base_color);
-          float3 m_ctint = m_cdlum > 0.0f ? base_color / m_cdlum : one_float3();
-          float3 specTint = mix(one_spectrum(), rgb_to_spectrum(m_ctint), specular_tint);
-
-          fresnel->f0 = F0_from_ior(eta) * specTint;
+          fresnel->f0 = F0_from_ior(eta) * specular_tint;
           fresnel->f90 = one_spectrum();
           fresnel->exponent = -eta;
-
           fresnel->reflection_tint = one_spectrum();
           fresnel->transmission_tint = rgb_to_spectrum(sqrt(base_color));
 
@@ -285,11 +280,7 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
           bsdf->alpha_x = alpha_x;
           bsdf->alpha_y = alpha_y;
 
-          float m_cdlum = linear_rgb_to_gray(kg, base_color);
-          float3 m_ctint = m_cdlum > 0.0f ? base_color / m_cdlum : one_float3();
-          float3 specTint = mix(one_spectrum(), rgb_to_spectrum(m_ctint), specular_tint);
-
-          fresnel->f0 = F0_from_ior(eta) * 2.0f * specular * specTint;
+          fresnel->f0 = F0_from_ior(eta) * 2.0f * specular * specular_tint;
           fresnel->f90 = one_spectrum();
           fresnel->exponent = -eta;
           fresnel->reflection_tint = one_spectrum();
