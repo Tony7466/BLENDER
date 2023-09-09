@@ -2030,57 +2030,38 @@ GHOST_TSuccess GHOST_SystemCocoa::hasClipboardImage() const
 {
     NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
     if ([[pasteboard types] containsObject:NSPasteboardTypeTIFF] || [[pasteboard types] containsObject:NSPasteboardTypePNG])  {
-      printf("Has clipboard image\n");
       return GHOST_kSuccess;
     } else {
-      printf("Has NO clipboard image\n");
       return GHOST_kFailure;
     }
 }
 
 
-//TODO figure out if this should be here or in WindowCocoa
-
 uint *GHOST_SystemCocoa::getClipboardImage(int *r_width, int *r_height) const
 {
-      printf("trying to get clipboard image\n");
-
-// Get the general pasteboard
-NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
-
-// Check if pasteboard contains an image
-
-if ([[pasteboard types] containsObject:NSPasteboardTypeTIFF] || [[pasteboard types] containsObject:NSPasteboardTypePNG]) 
- {
-    // Get the image
-    NSImage* image = [[NSImage alloc] initWithPasteboard:pasteboard];
-     
-    
-    // Get image size
-    NSSize size = [image size];
-    *r_width = size.width;
-    *r_height = size.height;
-
-    ImBuf *imageBuffer=  getImageBuffer(image);
-     
-     int msize =(*r_width) * (*r_height) * 4 ;
-     uint *ppixels = (uint *)malloc(msize);
-     memcpy(ppixels, imageBuffer->byte_buffer.data, msize);
-     free(imageBuffer);
-
-    
-     return ppixels;
-  } else {
-      return nullptr;
-      }
+    NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
+    if ([[pasteboard types] containsObject:NSPasteboardTypeTIFF] || [[pasteboard types] containsObject:NSPasteboardTypePNG])  {
+        // Get the image
+        NSImage* image = [[NSImage alloc] initWithPasteboard:pasteboard];
+        NSSize size = [image size];
+        *r_width = size.width;
+        *r_height = size.height;
+        ImBuf *imageBuffer=  getImageBuffer(image);
+        int msize =(*r_width) * (*r_height) * 4 ;
+        uint *ppixels = (uint *)malloc(msize);
+        memcpy(ppixels, imageBuffer->byte_buffer.data, msize);
+        return ppixels;
+      } else {
+          return nullptr;
+    }
 }
 
 GHOST_TSuccess GHOST_SystemCocoa::putClipboardImage(uint *rgba, int width, int height) const
 {
 
-    GHOST_WindowCocoa *window = (GHOST_WindowCocoa *)m_windowManager->getActiveWindow();
+  GHOST_WindowCocoa *window = (GHOST_WindowCocoa *)m_windowManager->getActiveWindow();
   if (!window) {
-        return window->putClipboardImage(rgba, width, height);
+      return window->putClipboardImage(rgba, width, height); //TODO move code here
   } else {
     return GHOST_kFailure;
   }

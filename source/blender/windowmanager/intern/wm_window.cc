@@ -2198,11 +2198,13 @@ ImBuf *WM_clipboard_image_get()
   if (!rgba) {
     return nullptr;
   }
-
+      
   ImBuf *ibuf = IMB_allocFromBuffer(rgba, nullptr, width, height, 4);
-//  free(rgba); //WHY IS THIS GETTING FREED TWICE!!!??
-
+  free(rgba);
   return ibuf;
+
+  
+    
 }
 
 bool WM_clipboard_image_set(ImBuf *ibuf)
