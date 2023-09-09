@@ -2269,17 +2269,20 @@ void UI_draw_box_shadow(const rctf *rect, uchar alpha)
   GPU_blend(GPU_BLEND_NONE);
 }
 
-void ui_draw_dropshadow(const rctf *rct, float radius, float aspect, float alpha, int /*select*/)
+void ui_draw_dropshadow(
+    const rctf *rct, const float radius, const float width, const float aspect, const float alpha)
 {
+  if (width == 0.0f) {
+    return;
+  }
+
   /* This undoes the scale of the view for higher zoom factors to clamp the shadow size. */
   const float clamped_aspect = smoothminf(aspect, 1.0f, 0.5f);
+  const float shadow_width = width * clamped_aspect;
+  const float shadow_offset = min_ff(shadow_width, BLI_rctf_size_y(rct) - 2.0f * radius);
 
-  const float shadow_softness = 0.6f * U.widget_unit * clamped_aspect;
-  const float shadow_offset = 0.5f * U.widget_unit * clamped_aspect;
-  const float shadow_alpha = 0.5f * alpha;
-
-  const float max_radius = (BLI_rctf_size_y(rct) - shadow_offset) * 0.5f;
-  const float rad = min_ff(radius, max_radius);
+  const float inner_radius = max_ff(radius - U.pixelsize, 0.0);
+  const float shadow_radius = radius + shadow_width - U.pixelsize;
 
   GPU_blend(GPU_BLEND_ALPHA);
 
@@ -2287,13 +2290,13 @@ void ui_draw_dropshadow(const rctf *rct, float radius, float aspect, float alpha
   widget_params.recti.xmin = rct->xmin;
   widget_params.recti.ymin = rct->ymin;
   widget_params.recti.xmax = rct->xmax;
-  widget_params.recti.ymax = rct->ymax - shadow_offset;
-  widget_params.rect.xmin = rct->xmin - shadow_softness;
-  widget_params.rect.ymin = rct->ymin - shadow_softness;
-  widget_params.rect.xmax = rct->xmax + shadow_softness;
-  widget_params.rect.ymax = rct->ymax - shadow_offset + shadow_softness;
-  widget_params.radi = rad;
-  widget_params.rad = rad + shadow_softness;
+  widget_params.recti.ymax = rct->ymax;
+  widget_params.rect.xmin = rct->xmin - shadow_width;
+  widget_params.rect.ymin = rct->ymin - shadow_width;
+  widget_params.rect.xmax = rct->xmax + shadow_width;
+  widget_params.rect.ymax = rct->ymax + shadow_width - shadow_offset;
+  widget_params.radi = inner_radius;
+  widget_params.rad = shadow_radius;
   widget_params.round_corners[0] = (roundboxtype & UI_CNR_BOTTOM_LEFT) ? 1.0f : 0.0f;
   widget_params.round_corners[1] = (roundboxtype & UI_CNR_BOTTOM_RIGHT) ? 1.0f : 0.0f;
   widget_params.round_corners[2] = (roundboxtype & UI_CNR_TOP_RIGHT) ? 1.0f : 0.0f;
@@ -2303,17 +2306,8 @@ void ui_draw_dropshadow(const rctf *rct, float radius, float aspect, float alpha
   GPUBatch *batch = ui_batch_roundbox_shadow_get();
   GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_WIDGET_SHADOW);
   GPU_batch_uniform_4fv_array(batch, "parameters", 4, (const float(*)[4]) & widget_params);
-  GPU_batch_uniform_1f(batch, "alpha", shadow_alpha);
+  GPU_batch_uniform_1f(batch, "alpha", alpha);
   GPU_batch_draw(batch);
-
-  /* outline emphasis */
-  const float color[4] = {0.0f, 0.0f, 0.0f, 0.4f};
-  rctf rect{};
-  rect.xmin = rct->xmin - 0.5f;
-  rect.xmax = rct->xmax + 0.5f;
-  rect.ymin = rct->ymin - 0.5f;
-  rect.ymax = rct->ymax + 0.5f;
-  UI_draw_roundbox_4fv(&rect, false, radius + 0.5f, color);
 
   GPU_blend(GPU_BLEND_NONE);
 }

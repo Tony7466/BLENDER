@@ -599,77 +599,6 @@ static void widget_init(uiWidgetBase *wtb)
 /** \name Draw Round Box
  * \{ */
 
-/* helper call, makes shadow rect, with 'sun' above menu, so only shadow to left/right/bottom */
-/* return tot */
-static int round_box_shadow_edges(float (*vert)[2],
-                                  const rcti *rect,
-                                  const float round_box_radius,
-                                  const int roundboxalign,
-                                  const float shadow_width,
-                                  const float step)
-{
-  int tot = 0;
-
-  const float minx = rect->xmin - step;
-  const float miny = rect->ymin - step;
-  const float maxx = rect->xmax + step;
-
-  auto get_maxy = [=, ymax = rect->ymax](const int corner) {
-    const bool corner_is_rounded = (roundboxalign & corner);
-    /* Small corner radii compared to the shadow width can create a sharp shadow edge at the top.
-     * So handle this specifically for sharp corners.
-     */
-    const bool use_offset = corner_is_rounded && (round_box_radius > 0.0f);
-    return ymax - (use_offset ? 0.0f : (shadow_width - step));
-  };
-
-  auto get_shadow_radius = [=](const int corner) {
-    const bool corner_is_rounded = (roundboxalign & corner);
-    const float inner_radius = corner_is_rounded ? round_box_radius : 0.0f;
-    return inner_radius + step;
-  };
-
-  /* Start with top-left corner. Anti clockwise. */
-  {
-    const float shadow_radius = get_shadow_radius(UI_CNR_TOP_LEFT);
-    const float maxy = get_maxy(UI_CNR_TOP_LEFT);
-    for (int a = 0; a < WIDGET_CURVE_RESOLU; a++, tot++) {
-      vert[tot][0] = minx - (shadow_radius * cornervec[a][0]) + shadow_radius;
-      vert[tot][1] = maxy - (shadow_radius * cornervec[a][1]);
-    }
-  }
-
-  /* bottom-left */
-  {
-    const float shadow_radius = get_shadow_radius(UI_CNR_BOTTOM_LEFT);
-    for (int a = 0; a < WIDGET_CURVE_RESOLU; a++, tot++) {
-      vert[tot][0] = minx + (shadow_radius * cornervec[a][1]);
-      vert[tot][1] = miny - (shadow_radius * cornervec[a][0]) + shadow_radius;
-    }
-  }
-
-  /* bottom-right */
-  {
-    const float shadow_radius = get_shadow_radius(UI_CNR_BOTTOM_RIGHT);
-    for (int a = 0; a < WIDGET_CURVE_RESOLU; a++, tot++) {
-      vert[tot][0] = maxx + (shadow_radius * cornervec[a][0]) - shadow_radius;
-      vert[tot][1] = miny + (shadow_radius * cornervec[a][1]);
-    }
-  }
-
-  /* top-right */
-  {
-    const float shadow_radius = get_shadow_radius(UI_CNR_TOP_RIGHT);
-    const float maxy = get_maxy(UI_CNR_TOP_RIGHT);
-    for (int a = 0; a < WIDGET_CURVE_RESOLU; a++, tot++) {
-      vert[tot][0] = maxx - (shadow_radius * cornervec[a][1]);
-      vert[tot][1] = maxy + (shadow_radius * cornervec[a][0]) - shadow_radius;
-    }
-  }
-
-  return tot;
-}
-
 /* this call has 1 extra arg to allow mask outline */
 static void round_box__edges(
     uiWidgetBase *wt, int roundboxalign, const rcti *rect, float rad, float radi)
@@ -2819,49 +2748,18 @@ static void widget_state_menu_item(uiWidgetType *wt,
 /* outside of rect, rad to left/bottom/right */
 static void widget_softshadow(const rcti *rect, int roundboxalign, const float radin)
 {
-  bTheme *btheme = UI_GetTheme();
-  uiWidgetBase wtb;
-  float triangle_strip[WIDGET_SIZE_MAX * 2 + 2][2];
-  const float max_shadow_width = BLI_rcti_size_y(rect) - 2.0f * radin;
-  const float shadow_width = min_ff(UI_ThemeMenuShadowWidth(), max_shadow_width);
+  const float outline = U.pixelsize;
 
-  /* disabled shadow */
-  if (shadow_width == 0.0f) {
-    return;
-  }
+  rctf shadow_rect;
+  BLI_rctf_rcti_copy(&shadow_rect, rect);
+  BLI_rctf_pad(&shadow_rect, -outline, -outline);
 
-  /* The way rounded corners at the top are handled, they can look bad when small corner radii are
-   * paired with large shadows. So for those we draw the shadow as if the top corners were sharp.
-   */
-  if ((radin < 15.0f) && (radin < 0.75f * shadow_width)) {
-    roundboxalign &= ~(UI_CNR_TOP_LEFT | UI_CNR_TOP_RIGHT);
-  }
+  UI_draw_roundbox_corner_set(roundboxalign);
 
-  /* inner part */
-  const int totvert = round_box_shadow_edges(
-      wtb.inner_v, rect, radin, roundboxalign, shadow_width, 0.0f);
+  const float shadow_alpha = UI_GetTheme()->tui.menu_shadow_fac;
+  const float shadow_width = UI_ThemeMenuShadowWidth();
 
-  /* we draw a number of increasing size alpha quad strips */
-  const float alphastep = 3.0f * btheme->tui.menu_shadow_fac / shadow_width;
-
-  const uint pos = GPU_vertformat_attr_add(
-      immVertexFormat(), "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-
-  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-
-  for (int step = 1; step <= int(shadow_width); step++) {
-    const float expfac = sqrtf(step / shadow_width);
-
-    round_box_shadow_edges(wtb.outer_v, rect, radin, roundboxalign, shadow_width, float(step));
-
-    immUniformColor4f(0.0f, 0.0f, 0.0f, alphastep * (1.0f - expfac));
-
-    widget_verts_to_triangle_strip(&wtb, totvert, triangle_strip);
-
-    widget_draw_vertex_buffer(pos, 0, GPU_PRIM_TRI_STRIP, triangle_strip, nullptr, totvert * 2);
-  }
-
-  immUnbindProgram();
+  ui_draw_dropshadow(&shadow_rect, radin, shadow_width, 1.0f, shadow_alpha);
 }
 
 static void widget_menu_back(
@@ -5479,9 +5377,7 @@ static void ui_draw_widget_back_color(uiWidgetTypeEnum type,
   uiWidgetType *wt = widget_type(type);
 
   if (use_shadow) {
-    GPU_blend(GPU_BLEND_ALPHA);
     widget_softshadow(rect, UI_CNR_ALL, 0.25f * U.widget_unit);
-    GPU_blend(GPU_BLEND_NONE);
   }
 
   rcti rect_copy = *rect;

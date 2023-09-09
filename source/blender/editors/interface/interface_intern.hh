@@ -1030,7 +1030,7 @@ void ui_panel_tag_search_filter_match(Panel *panel);
 
 /* interface_draw.cc */
 
-void ui_draw_dropshadow(const rctf *rct, float radius, float aspect, float alpha, int select);
+void ui_draw_dropshadow(const rctf *rct, float radius, float width, float aspect, float alpha);
 
 /**
  * Draws in resolution of 48x4 colors.
