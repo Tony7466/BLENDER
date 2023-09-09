@@ -627,10 +627,8 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
               return;
             }
           }
-
-          return;
         }
-        
+        return;
       }
       else {
         smd->layers->frames++;
@@ -659,13 +657,13 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
   
 
   /*Exit evaluation if we are on a frame that is not bound.
-  (? USELESS OR DANGEROUS)*/
+  (? USELESS OR DANGEROUS)
   
   if (smd->layers->frames->frame_number != gpf->framenum) 
   {
     end_stroke_evaluation(smd, gpf);
     return;
-  }
+  }*/
 
   
 
@@ -816,7 +814,7 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
     /* END MOD_surfacedeform.c FUNCTIONS */
 
 /* uses evaluated modifer */
-static void deformStroke(GpencilModifierData *md, // every time deform stroke is ran, increases stroke, frame, layer. in a similar way
+static void deformStroke(GpencilModifierData *md, 
                          Depsgraph *depsgraph,
                          Object *ob,
                          bGPDlayer *gpl,
