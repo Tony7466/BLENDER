@@ -402,7 +402,6 @@ void triangulate(Mesh &mesh,
                     ngon_mode,
                     quad_mode,
                     faces,
-
                     edges,
                     corner_verts,
                     corner_edges);
