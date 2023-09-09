@@ -2,3 +2,4 @@ Referenced by issue #111831, UI: Search items are only partially highlighted
 Referenced by issue #111943, Pressing F2 to rename bone collection
 Referenced by issue #111942, Renaming bone collections highlight color
 Referenced by issue #112081, RMB context menu item displays active when it shouldn't
+Referenced by issue #112183, Regression: Selecting a policy element does not take into account the prefix
