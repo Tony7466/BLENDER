@@ -725,7 +725,6 @@ const ViewerNodeLog *GeoModifierLog::find_viewer_node_log_for_path(const ViewerP
 
       iter_node_tree = iter_node_tree = reinterpret_cast<const bNodeTree *>(viewer_node->id);
       while (const bNode *viewer = lookup_viewer(*iter_node_tree)) {
-        std::cout << "Step\n";
         const bke::bNodeTreeZones *tree_zones = iter_node_tree->zones();
         if (tree_zones == nullptr) {
           return nullptr;

@@ -453,10 +453,13 @@ class NODE_MT_category_GEO_OUTPUT(Menu):
     bl_idname = "NODE_MT_category_GEO_OUTPUT"
     bl_label = "Output"
 
-    def draw(self, _context):
+    def draw(self, context):
         layout = self.layout
         node_add_menu.add_node_type(layout, "NodeGroupOutput")
         node_add_menu.add_node_type(layout, "GeometryNodeViewer")
+        groups = node_add_menu.node_groups(context)
+        groups = [group for group in groups if group.is_viewer]
+        node_add_menu.draw_node_group_add_menu(context, layout, groups)
         node_add_menu.draw_assets_for_catalog(layout, self.bl_label)
 
 

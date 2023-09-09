@@ -25,33 +25,48 @@ def add_node_type(layout, node_type, *, label=None, poll=None):
         return props
 
 
-def draw_node_group_add_menu(context, layout):
-    """Add items to the layout used for interacting with node groups."""
+def node_groups(context):
+    """All node groups allowed in current context."""
     space_node = context.space_data
     node_tree = space_node.edit_tree
     all_node_groups = context.blend_data.node_groups
+    if node_tree is None:
+        return None
 
+    def group_allowed_in_context(group):
+        if group.bl_idname is node_tree.bl_idname:
+            return False
+        if group.name.startswith('.'):
+            return False
+        if group.contains_tree(node_tree):
+            return False
+        return True
+
+    return [group for group in all_node_groups if group_allowed_in_context(group)]
+
+
+def draw_node_group_add_menu(context, layout, groups = None):
+    """Add items to the layout used for interacting with node groups."""
+    space_node = context.space_data
+    node_tree = space_node.edit_tree
+    if groups is None:
+        groups = node_groups(context)
+
+    all_node_groups = context.blend_data.node_groups
     if node_tree in all_node_groups.values():
         layout.separator()
         add_node_type(layout, "NodeGroupInput")
         add_node_type(layout, "NodeGroupOutput")
 
-    if node_tree:
+    if node_tree and groups:
         from nodeitems_builtins import node_tree_group_type
 
-        groups = [
-            group for group in context.blend_data.node_groups
-            if (group.bl_idname == node_tree.bl_idname and
-                not group.contains_tree(node_tree) and
-                not group.name.startswith('.'))
-        ]
-        if groups:
-            layout.separator()
-            for group in groups:
-                props = add_node_type(layout, node_tree_group_type[group.bl_idname], label=group.name)
-                ops = props.settings.add()
-                ops.name = "node_tree"
-                ops.value = "bpy.data.node_groups[%r]" % group.name
+        layout.separator()
+        for group in groups:
+            props = add_node_type(layout, node_tree_group_type[group.bl_idname], label=group.name)
+            ops = props.settings.add()
+            ops.name = "node_tree"
+            ops.value = "bpy.data.node_groups[%r]" % group.name
 
 
 def draw_assets_for_catalog(layout, catalog_path):

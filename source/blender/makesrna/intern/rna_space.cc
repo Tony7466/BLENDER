@@ -3323,6 +3323,8 @@ static StructRNA *rna_viewer_path_elem_refine(PointerRNA *ptr)
       return &RNA_ModifierViewerPathElem;
     case VIEWER_PATH_ELEM_TYPE_GROUP_NODE:
       return &RNA_GroupNodeViewerPathElem;
+    case VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP:
+      return &RNA_ViewerNodeGroupViewerPathElem;
     case VIEWER_PATH_ELEM_TYPE_SIMULATION_ZONE:
       return &RNA_SimulationZoneViewerPathElem;
     case VIEWER_PATH_ELEM_TYPE_VIEWER_NODE:
@@ -8073,6 +8075,11 @@ static const EnumPropertyItem viewer_path_elem_type_items[] = {
     {VIEWER_PATH_ELEM_TYPE_SIMULATION_ZONE, "SIMULATION_ZONE", ICON_NONE, "Simulation Zone", ""},
     {VIEWER_PATH_ELEM_TYPE_VIEWER_NODE, "VIEWER_NODE", ICON_NONE, "Viewer Node", ""},
     {VIEWER_PATH_ELEM_TYPE_REPEAT_ZONE, "REPEAT_ZONE", ICON_NONE, "Repeat", ""},
+    {VIEWER_PATH_ELEM_TYPE_VIEWER_NODE_GROUP,
+     "VIEWER_NODE_GROUP",
+     ICON_NONE,
+     "Viewer Node Group",
+     ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -8162,6 +8169,17 @@ static void rna_def_viewer_node_viewer_path_elem(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Node ID", "");
 }
 
+static void rna_def_viewer_node_group_viewer_path_elem(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "ViewerNodeGroupViewerPathElem", "ViewerPathElem");
+
+  prop = RNA_def_property(srna, "node_id", PROP_INT, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Node ID", "");
+}
+
 static void rna_def_viewer_path(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -8174,6 +8192,7 @@ static void rna_def_viewer_path(BlenderRNA *brna)
   rna_def_simulation_zone_viewer_path_elem(brna);
   rna_def_repeat_zone_viewer_path_elem(brna);
   rna_def_viewer_node_viewer_path_elem(brna);
+  rna_def_viewer_node_group_viewer_path_elem(brna);
 
   srna = RNA_def_struct(brna, "ViewerPath", nullptr);
   RNA_def_struct_ui_text(srna, "Viewer Path", "Path to data that is viewed");
