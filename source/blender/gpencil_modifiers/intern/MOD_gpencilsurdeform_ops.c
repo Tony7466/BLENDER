@@ -2147,6 +2147,9 @@ static int bake_frames(bContext *C, wmOperator *op)
   PointerRNA ob_ptr;
   bGPDframe *gpf;
 
+  smd_orig->bake_range_start = RNA_int_get( op->ptr, "frame_start");
+  smd_orig->bake_range_end = RNA_int_get(op->ptr, "frame_end");
+
   int frame_start = smd_orig->bake_range_start;
   int frame_end = smd_orig->bake_range_end;
 
@@ -2154,7 +2157,7 @@ static int bake_frames(bContext *C, wmOperator *op)
 
   smd_orig->flags |= GP_MOD_SDEF_WITHHOLD_EVALUATION;
 
-  for (int frame = frame_start; frame < frame_end; frame++) {
+  for (int frame = frame_start; frame <= frame_end; frame++) {
     BKE_scene_frame_set(scene, frame);
     BKE_scene_graph_update_for_newframe(depsgraph);
     /*Iterate all the layers*/
@@ -2171,14 +2174,27 @@ static int bake_frames(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static int gpsurdef_fill_range(bContext *C, wmOperator *op)
+{
+  Scene *scene = CTX_data_scene(C);
+  Object *ob = ED_object_active_context(C);
+  SurDeformGpencilModifierData *smd_orig = (SurDeformGpencilModifierData *)
+      gpencil_edit_modifier_property_get(op, ob, eGpencilModifierType_SurDeform);
+ 
+  smd_orig->bake_range_start = scene->r.sfra;
+  smd_orig->bake_range_end = scene->r.efra;
+
+  return OPERATOR_FINISHED;
+}
+
 
 /* OPERATORS */
 
 static int gpencil_surfacedeform_bake_exec(bContext *C, wmOperator *op)
 {
-  Object *ob = ED_object_active_context(C);
-  SurDeformGpencilModifierData *smd_orig = (SurDeformGpencilModifierData *)
-      gpencil_edit_modifier_property_get(op, ob, eGpencilModifierType_SurDeform);
+ /* set notifier that keyframe properties have changed */
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME_PROP, NULL);
+
   return bake_frames(C, op);
 }
 
@@ -2208,6 +2224,11 @@ static int gpencil_surfacedeform_unbind_exec(bContext *C, wmOperator *op)
   return gpencil_surfacedeform_bind_or_unbind(C,  op);
 }
 
+static int gpencil_surfacedeform_fillrange_exec(bContext *C, wmOperator *op)
+{
+  return gpsurdef_fill_range(C, op);
+}
+
 
 static int gpencil_surfacedeform_bind_invoke(bContext *C,
                                              wmOperator *op,
@@ -2235,6 +2256,16 @@ static int gpencil_surfacedeform_bake_invoke(bContext *C,
 {
   if (gpencil_edit_modifier_invoke_properties(C, op, NULL, NULL)) {
     return gpencil_surfacedeform_bake_exec(C, op);
+  }
+  return OPERATOR_CANCELLED;
+}
+
+static int gpencil_surfacedeform_fillrange_invoke(bContext *C,
+                                             wmOperator *op,
+                                             const wmEvent *UNUSED(event))
+{
+  if (gpencil_edit_modifier_invoke_properties(C, op, NULL, NULL)) {
+    return gpencil_surfacedeform_fillrange_exec(C, op);
   }
   return OPERATOR_CANCELLED;
 }
@@ -2297,7 +2328,6 @@ void GPENCIL_OT_gpencilsurdeform_unbind(wmOperatorType *ot)
   gpencil_edit_modifier_properties(ot);
 }
 
-
 void GPENCIL_OT_gpencilsurdeform_bake(wmOperatorType *ot)
 {
   /* identifiers */
@@ -2311,7 +2341,26 @@ void GPENCIL_OT_gpencilsurdeform_bake(wmOperatorType *ot)
   ot->exec = gpencil_surfacedeform_bake_exec;
 
   /* parameters */
-  // RNA_def_boolean(ot->srna, "current_frame_only", true, "Only current frame", "");
+  RNA_def_int(ot->srna, "frame_start", 0, INT_MIN, INT_MAX, "Frame Start", "", INT_MIN, INT_MAX);
+  RNA_def_int(ot->srna, "frame_end", 0, INT_MIN, INT_MAX, "Frame End", "", INT_MIN, INT_MAX);
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
+  gpencil_edit_modifier_properties(ot);
+}
+
+void GPENCIL_OT_gpencilsurdeform_fillrange(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Fill with Current Timeline Range";
+  ot->description =
+      "Fill the start frame and end frame of the bake range of frames with the current Scene's timeline start and end frames";
+  ot->idname = "GPENCIL_OT_gpencilsurdeform_fillrange";
+
+  /* api callbacks */
+  // ot->poll = gpencil_surfacedeform_bind_poll;
+  ot->invoke = gpencil_surfacedeform_fillrange_invoke;
+  ot->exec = gpencil_surfacedeform_fillrange_exec;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_INTERNAL;
@@ -2323,6 +2372,7 @@ void WM_operatortypes_gpencilsurdeform(void)
   WM_operatortype_append(GPENCIL_OT_gpencilsurdeform_bind);
   WM_operatortype_append(GPENCIL_OT_gpencilsurdeform_unbind);
   WM_operatortype_append(GPENCIL_OT_gpencilsurdeform_bake);
+  WM_operatortype_append(GPENCIL_OT_gpencilsurdeform_fillrange);
 }
 
 

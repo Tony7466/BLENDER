@@ -1006,20 +1006,33 @@ static void panel_draw(const bContext *C, Panel *panel)
 }
 
 
-static void bake_panel_draw(const bContext *UNUSED(C), Panel *panel)
+static void bake_panel_draw(const bContext *(C), Panel *panel)
 {
   uiLayout *row, *col, *sub;
   uiLayout *layout = panel->layout;
 
-  PointerRNA op_ptr;
+  PointerRNA bake_op;
 
   int toggles_flag = UI_ITEM_R_TOGGLE | UI_ITEM_R_FORCE_BLANK_DECORATE;
-
   PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, NULL);
+  Scene *scene = CTX_data_scene(C);
 
   col = uiLayoutColumn(layout, false);
 
   uiLayoutSetPropSep(layout, true);
+
+  row = uiLayoutRow(col, true);
+  uiItemFullO(row,
+              "GPENCIL_OT_gpencilsurdeform_bake",
+              IFACE_("Bake Current Frame"),
+              ICON_NONE,
+              NULL,
+              WM_OP_INVOKE_DEFAULT,
+              0,
+              &bake_op);
+  int current_frame_num = (int)BKE_scene_frame_get(scene);
+  RNA_int_set(&bake_op, "frame_start", current_frame_num);
+  RNA_int_set(&bake_op, "frame_end", current_frame_num);
 
   row = uiLayoutRow(col, true);
   uiItemFullO(row,
@@ -1029,7 +1042,9 @@ static void bake_panel_draw(const bContext *UNUSED(C), Panel *panel)
               NULL,
               WM_OP_INVOKE_DEFAULT,
               0,
-              &op_ptr);
+              &bake_op);
+  RNA_int_set(&bake_op, "frame_start", RNA_int_get(ptr, "bake_range_start"));
+  RNA_int_set(&bake_op, "frame_end", RNA_int_get(ptr, "bake_range_end"));
 
   row = uiLayoutRow(col, true);
   uiItemL(row, "Range:", ICON_NONE);
@@ -1037,6 +1052,15 @@ static void bake_panel_draw(const bContext *UNUSED(C), Panel *panel)
   uiItemR(row, ptr, "bake_range_start", 0, "Start", ICON_NONE);
   sub = uiLayoutRow(row, true);
   uiItemR(sub, ptr, "bake_range_end", 0, "End", ICON_NONE);
+  sub = uiLayoutRow(row, true);
+  uiItemFullO(sub,
+              "GPENCIL_OT_gpencilsurdeform_fillrange",
+              IFACE_(""),
+              ICON_PREVIEW_RANGE,
+              NULL,
+              WM_OP_INVOKE_DEFAULT,
+              0,
+              NULL);
 
   gpencil_modifier_panel_end(layout, ptr);
 
@@ -1069,7 +1093,7 @@ GpencilModifierTypeInfo modifierType_Gpencil_SurDeform = {
     /* structName */ "SurDeformGpencilModifierData",
     /* structSize */ sizeof(SurDeformGpencilModifierData),
     /* type */ eGpencilModifierTypeType_Gpencil,
-    /* flags */  eGpencilModifierTypeFlag_EnableInEditmode,
+    /* flags */ 0,
 
     /* copyData */ copyData,
 
