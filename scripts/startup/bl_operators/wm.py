@@ -3446,6 +3446,10 @@ class WM_MT_region_toggle_pie(Menu):
         # Use to access the labels.
         enum_items = bpy.types.Region.bl_rna.properties["type"].enum_items_static_ui
 
+        # Remove empty items.
+        items[:] = [item for item in items if item != []]
+        items_overflow[:] = [item for item in items_overflow if item != []]
+
         for region_type_list in (items + items_overflow):
             if not region_type_list:
                 pie.separator()
