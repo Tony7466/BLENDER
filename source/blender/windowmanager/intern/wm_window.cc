@@ -2201,6 +2201,7 @@ ImBuf *WM_clipboard_image_get()
 
   ImBuf *ibuf = IMB_allocFromBuffer(rgba, nullptr, width, height, 4);
   free(rgba);
+
   return ibuf;
 }
 
