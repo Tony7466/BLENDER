@@ -2215,10 +2215,10 @@ static void widget_draw_text(const uiFontStyle *fstyle,
     uiFontStyleDraw_Params params{};
     params.align = align;
     uiFontStyle style = *fstyle;
-    style.italic = true;
+    style.shadow = 0;
     uchar col[4];
     copy_v4_v4_uchar(col, wcol->text);
-    col[3] *= 0.4f;
+    col[3] *= 0.33f;
     int font_xofs, font_yofs;
     UI_fontstyle_draw_ex(&style,
                          rect,
