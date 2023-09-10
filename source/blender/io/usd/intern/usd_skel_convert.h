@@ -13,9 +13,6 @@ struct Key;
 struct Main;
 struct Mesh;
 struct Object;
-struct Scene;
-struct USDExportParams;
-struct USDImportParams;
 
 namespace blender::io::usd {
 
@@ -72,23 +69,6 @@ void import_skeleton(Main *bmain,
  * \param prim: The USD primitive from which skinning data will be imported
  */
 void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim &prim);
-
-/**
- * Check if the given object has an armature modifier.
- *
- * \param obj: Object to check for the modifier
- * \return: True if the object has an armature modifier, false otherwise
- */
-bool has_armature_modifier(const Object *obj);
-
-/**
- * If the given object has an armature modifier, return the
- * armature object bound to the modifier.
- *
- * \param: Object to check for the modifier
- * \return: The armature object
- */
-const Object *get_armature_modifier_obj(const Object *obj);
 
 /**
  * Map an object to its USD prim export path.

@@ -5,8 +5,10 @@
 #include "usd_armature_utils.h"
 
 #include "BKE_armature.h"
+#include "BKE_modifier.h"
+#include "DEG_depsgraph.h"
+#include "DEG_depsgraph_query.h"
 #include "DNA_armature_types.h"
-
 #include "ED_armature.hh"
 
 #include "WM_api.hh"
@@ -23,6 +25,38 @@ static void visit_bones(const Bone *bone, std::function<void(const Bone *)> visi
   for (Bone *child = (Bone *)bone->childbase.first; child; child = child->next) {
     visit_bones(child, visitor);
   }
+}
+
+/* Return the armature modifier on the given object.  Return null if no
+ * armature modifier can be found. */
+static ArmatureModifierData *get_armature_modifier(const Object *obj)
+{
+  BLI_assert(obj);
+  ArmatureModifierData *mod = reinterpret_cast<ArmatureModifierData *>(
+      BKE_modifiers_findby_type(obj, eModifierType_Armature));
+  return mod;
+}
+
+/* Return the enabled modifier of the given type on the given
+ * object.  Return null if the modifier isn't found on the object
+ * or if the modifier isn't enabled. */
+static ModifierData *get_enabled_modifier(const Object *obj,
+                                          const Depsgraph *depsgraph,
+                                          const ModifierType type)
+{
+  if (!obj || !depsgraph) {
+    return nullptr;
+  }
+
+  ModifierData *mod = BKE_modifiers_findby_type(obj, type);
+  if (!mod) {
+    return nullptr;
+  }
+
+  Scene *scene = DEG_get_input_scene(depsgraph);
+  eEvaluationMode mode = DEG_get_mode(depsgraph);
+
+  return BKE_modifier_is_enabled(scene, mod, mode) ? mod : nullptr;
 }
 
 namespace blender::io::usd {
@@ -81,6 +115,41 @@ void create_pose_joints(pxr::UsdSkelAnimation &skel_anim, const Object *obj)
   }
 
   skel_anim.GetJointsAttr().Set(joints);
+}
+
+bool has_armature_modifier(const Object *obj, const Depsgraph *depsgraph)
+{
+  ModifierData *mod = get_enabled_modifier(obj, depsgraph, eModifierType_Armature);
+
+  if (!mod) {
+    return false;
+  }
+
+  Scene *scene = DEG_get_input_scene(depsgraph);
+  eEvaluationMode mode = DEG_get_mode(depsgraph);
+  return BKE_modifier_is_enabled(scene, mod, mode);
+}
+
+const Object *get_armature_modifier_obj(const Object *obj)
+{
+  const ArmatureModifierData *mod = get_armature_modifier(obj);
+  return mod ? mod->object : nullptr;
+}
+
+bool is_armature_modifier_bone_name(const Object *obj, const char *name)
+{
+  if (!obj || !name) {
+    return false;
+  }
+  const ArmatureModifierData *arm_mod = get_armature_modifier(obj);
+
+  if (!arm_mod || !arm_mod->object || !arm_mod->object->data) {
+    return false;
+  }
+
+  bArmature *arm = (bArmature *)arm_mod->object->data;
+
+  return BKE_armature_find_bone_name(arm, name);
 }
 
 }  // namespace blender::io::usd

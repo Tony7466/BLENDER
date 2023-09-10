@@ -8,7 +8,10 @@
 #include <functional>
 
 struct Bone;
+struct Depsgraph;
 struct Object;
+struct Scene;
+struct USDExportParams;
 
 namespace blender::io::usd {
 
@@ -47,5 +50,35 @@ pxr::TfToken build_usd_joint_path(const Bone *bone);
  * \param ob_arm: The armature object
  */
 void create_pose_joints(pxr::UsdSkelAnimation &skel_anim, const Object *obj);
+
+/**
+ * Check if the given object has an armature modifier enabled for the
+ * given dependency graph's evaluation mode (viewport or render).
+ *
+ * \param obj: Object to query for the modifier
+ * \param depsgraph: The dependency graph in which the object was evaluated
+ * \return: True if the object has an enabled armature modifier, false otherwise
+ */
+bool has_armature_modifier(const Object *obj, const Depsgraph *depsgraph);
+
+/**
+ * If the given object has an armature modifier, return the
+ * armature object bound to the modifier.
+ *
+ * \param params: Current export parameters
+ * \param: Object to check for the modifier
+ * \return: The armature object
+ */
+const Object *get_armature_modifier_obj(const Object *obj);
+
+/**
+ * If the given object has an armature modifier, query whether the given
+ * name matches the name of a bone on the armature referenced by the modifier.
+ *
+ * \param obj: Object to query for the modifier
+ * \return: True if the name matches a bone name.  Return false if no matching
+ *          bone name is found or if the object does not have an armature modifier
+ */
+bool is_armature_modifier_bone_name(const Object *obj, const char *name);
 
 }  // namespace blender::io::usd

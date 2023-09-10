@@ -41,7 +41,7 @@ class USDGenericMeshWriter : public USDAbstractWriter {
   void write_normals(const Mesh *mesh, pxr::UsdGeomMesh usd_mesh);
   void write_surface_velocity(const Mesh *mesh, pxr::UsdGeomMesh usd_mesh);
 
-  void write_custom_data(const Mesh *mesh, pxr::UsdGeomMesh usd_mesh);
+  void write_custom_data(const Object *obj, const Mesh *mesh, pxr::UsdGeomMesh usd_mesh);
   void write_generic_data(const Mesh *mesh,
                           pxr::UsdGeomMesh usd_mesh,
                           const bke::AttributeIDRef &attribute_id,

@@ -97,7 +97,9 @@ void USDGenericMeshWriter::do_write(HierarchyContext &context)
   }
 }
 
-void USDGenericMeshWriter::write_custom_data(const Mesh *mesh, pxr::UsdGeomMesh usd_mesh)
+void USDGenericMeshWriter::write_custom_data(const Object *obj,
+                                             const Mesh *mesh,
+                                             pxr::UsdGeomMesh usd_mesh)
 {
   const bke::AttributeAccessor attributes = mesh->attributes();
 
@@ -121,7 +123,13 @@ void USDGenericMeshWriter::write_custom_data(const Mesh *mesh, pxr::UsdGeomMesh 
           return true;
         }
 
-        if (BKE_id_defgroup_name_find(&mesh->id, attribute_id.name().data(), nullptr, nullptr)) {
+        if (usd_export_context_.export_params.export_armatures &&
+            is_armature_modifier_bone_name(obj, attribute_id.name().data()))
+        {
+          /* This attribute is likely a vertex group for the armature modifier,
+           * and it may conflict with skinning data that will be written to
+           * the USD mesh, so we skip it.  Such vertex groups will instead be
+           * handled in #export_deform_verts(). */
           return true;
         }
 
@@ -491,7 +499,7 @@ void USDGenericMeshWriter::write_mesh(HierarchyContext &context, Mesh *mesh)
         attr_corner_sharpnesses, pxr::VtValue(usd_mesh_data.crease_sharpnesses), timecode);
   }
 
-  write_custom_data(mesh, usd_mesh);
+  write_custom_data(context.object, mesh, usd_mesh);
 
   if (usd_export_context_.export_params.export_normals) {
     write_normals(mesh, usd_mesh);
@@ -752,7 +760,8 @@ USDMeshWriter::USDMeshWriter(const USDExporterContext &ctx) : USDGenericMeshWrit
 
 bool USDMeshWriter::exporting_skinned_mesh(const Object *obj) const
 {
-  return usd_export_context_.export_params.export_armatures && has_armature_modifier(obj);
+  return usd_export_context_.export_params.export_armatures &&
+         has_armature_modifier(obj, usd_export_context_.depsgraph);
 }
 
 bool USDMeshWriter::exporting_blend_shapes(const Object *obj) const

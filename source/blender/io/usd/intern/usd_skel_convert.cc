@@ -5,6 +5,7 @@
 #include "usd_skel_convert.h"
 
 #include "usd.h"
+#include "usd_armature_utils.h"
 #include "usd_blend_shape_utils.h"
 
 #include <pxr/usd/sdf/namespaceEdit.h>
@@ -1098,29 +1099,6 @@ void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim
       }
     }
   }
-}
-
-bool has_armature_modifier(const Object *obj)
-{
-  BLI_assert(obj);
-  return BKE_modifiers_findby_type(obj, eModifierType_Armature) != nullptr;
-}
-
-ArmatureModifierData *get_armature_modifier(const Object *obj)
-{
-  BLI_assert(obj);
-  ArmatureModifierData *mod = reinterpret_cast<ArmatureModifierData *>(
-      BKE_modifiers_findby_type(obj, eModifierType_Armature));
-  return mod;
-}
-
-const Object *get_armature_modifier_obj(const Object *obj)
-{
-  BLI_assert(obj);
-  const ArmatureModifierData *mod = reinterpret_cast<const ArmatureModifierData *>(
-      BKE_modifiers_findby_type(obj, eModifierType_Armature));
-
-  return mod ? mod->object : nullptr;
 }
 
 void skel_export_chaser(pxr::UsdStageRefPtr stage,
