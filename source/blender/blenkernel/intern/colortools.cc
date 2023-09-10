@@ -6,6 +6,7 @@
  * \ingroup bke
  */
 
+#include <algorithm>
 #include <cfloat>
 #include <cmath>
 #include <cstdlib>
@@ -873,26 +874,6 @@ void BKE_curvemapping_premultiply(CurveMapping *cumap, bool restore)
   }
 }
 
-static int sort_curvepoints(const void *a1, const void *a2)
-{
-  const CurveMapPoint *x1 = static_cast<const CurveMapPoint *>(a1),
-                      *x2 = static_cast<const CurveMapPoint *>(a2);
-
-  if (x1->x > x2->x) {
-    return 1;
-  }
-  if (x1->x < x2->x) {
-    return -1;
-  }
-  if (x1->y > x2->y) {
-    return 1;
-  }
-  if (x1->y < x2->y) {
-    return -1;
-  }
-  return 0;
-}
-
 /* ************************ more CurveMapping calls *************** */
 
 void BKE_curvemapping_changed(CurveMapping *cumap, const bool rem_doubles)
@@ -941,8 +922,11 @@ void BKE_curvemapping_changed(CurveMapping *cumap, const bool rem_doubles)
       cumap->curr.ymax = cumap->clipr.ymax;
     }
   }
-
-  qsort(cmp, cuma->totpoint, sizeof(CurveMapPoint), sort_curvepoints);
+  
+  auto sort_fn = [] std::stable_sort(
+      cuma->curve,
+      cuma->curve + cuma->totpoint,
+      [](const CurveMapPoint &a, const CurveMapPoint &b) { return a.x < b.x; });
 
   /* remove doubles, threshold set on 1% of default range */
   if (rem_doubles && cuma->totpoint > 2) {
