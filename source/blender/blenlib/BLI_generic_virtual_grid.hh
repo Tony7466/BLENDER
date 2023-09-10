@@ -14,6 +14,7 @@
 #include "BLI_generic_array.hh"
 #include "BLI_timeit.hh"
 #include "BLI_virtual_grid.hh"
+#include "BLI_volume.hh"
 
 namespace blender {
 
@@ -48,6 +49,15 @@ class GVGridImpl {
   }
 
   virtual GVArray get_varray_for_leaf(uint32_t log2dim, const int3 &origin) const = 0;
+
+  virtual void materialize(GVMutableGrid &dst) const
+  {
+#ifdef WITH_OPENVDB
+    volume::materialize_to_grid(dst, *this);
+#else
+    UNUSED_VARS(dst);
+#endif
+  }
 
   // virtual void materialize(const IndexMask &mask, void *dst) const;
   // virtual void materialize_to_uninitialized(const IndexMask &mask, void *dst) const;
@@ -143,6 +153,8 @@ class GVGridCommon {
   /* Leaf size 2^(log2dim * 3) and origin define the transform to local coordinates and index
    * space. */
   GVArray get_varray_for_leaf(uint32_t log2dim, const int3 &origin) const;
+
+  void materialize(GVMutableGrid &dst) const;
 
   // void materialize(void *dst) const;
   // void materialize(const IndexMask &mask, void *dst) const;

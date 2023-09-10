@@ -3954,7 +3954,9 @@ static const EnumPropertyItem *rna_GeometryNodeGridValue_data_type_itemf(bContex
 
 /* XXX This is a hack to fix a mysterious undefined reference from bf_rna to this volume function.
  * Couldn't find a better way to fix this - Lukas */
-namespace blender::volume {
+namespace blender {
+
+namespace volume {
 
 GVArray get_varray_for_leaf(uint32_t /*log2dim*/,
                             const int3 & /*origin*/,
@@ -3963,7 +3965,11 @@ GVArray get_varray_for_leaf(uint32_t /*log2dim*/,
   return {};
 }
 
-}  // namespace blender::volume
+void materialize_to_grid(GVMutableGrid & /*dst*/, const GVGridImpl & /*src*/) {}
+
+}  // namespace volume
+
+}  // namespace blender
 
 static const EnumPropertyItem prop_image_layer_items[] = {
     {0, "PLACEHOLDER", 0, "Placeholder", ""},

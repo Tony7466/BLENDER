@@ -239,6 +239,11 @@ GVArray GVGridCommon::get_varray_for_leaf(uint32_t log2dim, const int3 &origin) 
   return impl_->get_varray_for_leaf(log2dim, origin);
 }
 
+void GVGridCommon::materialize(GVMutableGrid &dst) const
+{
+  return impl_->materialize(dst);
+}
+
 // void GVGridCommon::materialize(void *dst) const
 //{
 //   this->materialize(IndexMask(impl_->size()), dst);
