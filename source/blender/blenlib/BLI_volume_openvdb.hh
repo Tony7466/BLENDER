@@ -116,37 +116,17 @@ template<typename GridType> const CPPType &grid_attribute_type(const GridType & 
 
 const CPPType &grid_base_attribute_type(const openvdb::GridBase &grid);
 
-GVArray get_varray_for_leaf(uint32_t log2dim, const int3 &origin, const openvdb::GridBase &grid)
-{
-  const uint32_t num_voxels = 1 << 3 * log2dim;
-
-  GVArray result = {};
-  grid_to_static_type(grid, [&](auto &typed_grid) {
-    using GridType = typename std::decay<decltype(typed_grid)>::type;
-    using TreeType = typename GridType::TreeType;
-    using Accessor = typename GridType::ConstAccessor;
-    using Converter = volume::grid_types::Converter<GridType>;
-    using AttributeValueType = typename Converter::AttributeValueType;
-
-    Accessor accessor = typed_grid.getAccessor();
-    result = VArray<AttributeValueType>::ForFunc(
-        num_voxels, [log2dim, origin, &accessor](const int64_t index) {
-          const openvdb::Coord xyz = volume::offset_to_global_coord(
-              log2dim, origin, int32_t(index));
-          return Converter::single_value_to_attribute(accessor.getValue(xyz));
-        });
-  });
-  return result;
-}
+// GVArray get_varray_for_leaf(uint32_t log2dim, const int3 &origin, const openvdb::GridBase
+// &grid);
 
 #else
 
-GVArray get_varray_for_leaf(uint32_t /*log2dim*/,
-                            const int3 & /*origin*/,
-                            const openvdb::GridBase & /*grid*/)
-{
-  return {};
-}
+// GVArray get_varray_for_leaf(uint32_t /*log2dim*/,
+//                            const int3 & /*origin*/,
+//                            const openvdb::GridBase & /*grid*/)
+//{
+//  return {};
+//}
 
 #endif
 

@@ -214,6 +214,13 @@ set(SRC_RNA_INC
   ../RNA_types.hh
 )
 
+# XXX Extra sources to fix undefined symbols - can this be avoided? - Lukas
+set(SRC_BLENLIB
+#   ../../blenlib/intern/generic_virtual_array.cc
+#   ../../blenlib/intern/volume.cc
+#   ../../blenkernel/intern/cpp_types.cc
+)
+
 set(SRC
   makesrna.cc
   rna_define.cc
@@ -399,6 +406,7 @@ if(WITH_OPENSUBDIV)
   )
   add_definitions(-DWITH_OPENSUBDIV)
 endif()
+
 if(WITH_OPENVDB)
   list(APPEND INC
     ../../../../intern/openvdb
@@ -439,7 +447,7 @@ endif()
 # Build makesrna executable
 add_cc_flags_custom_test(makesrna)
 
-add_executable(makesrna ${SRC} ${SRC_RNA_INC} ${SRC_DNA_INC})
+add_executable(makesrna ${SRC} ${SRC_RNA_INC} ${SRC_DNA_INC} ${SRC_BLENLIB})
 setup_platform_linker_flags(makesrna)
 setup_platform_linker_libs(makesrna)
 blender_target_include_dirs(makesrna ${INC})
@@ -449,7 +457,6 @@ target_link_libraries(makesrna PRIVATE bf_dna)
 target_link_libraries(makesrna PRIVATE bf::intern::atomic)
 target_link_libraries(makesrna PRIVATE bf::intern::guardedalloc)
 target_link_libraries(makesrna PRIVATE bf_dna_blenlib)
-target_link_libraries(makesrna PRIVATE ${OPENVDB_LIBRARIES})
 
 if(WIN32 AND NOT UNIX)
   if(DEFINED PTHREADS_LIBRARIES)

@@ -11,11 +11,10 @@
 #include <cstring>
 
 #include "BLI_function_ref.hh"
-#include "BLI_generic_array.hh"
 #include "BLI_math_rotation.h"
 #include "BLI_string_utf8_symbols.h"
 #include "BLI_utildefines.h"
-#include "BLI_volume_openvdb.hh"
+#include "BLI_volume.hh"
 
 #include "BLF_api.h"
 
@@ -3952,6 +3951,19 @@ static const EnumPropertyItem *rna_GeometryNodeGridValue_data_type_itemf(bContex
 }
 
 #else
+
+/* XXX This is a hack to fix a mysterious undefined reference from bf_rna to this volume function.
+ * Couldn't find a better way to fix this - Lukas */
+namespace blender::volume {
+
+GVArray get_varray_for_leaf(uint32_t /*log2dim*/,
+                            const int3 & /*origin*/,
+                            const openvdb::GridBase & /*grid*/)
+{
+  return {};
+}
+
+}  // namespace blender::volume
 
 static const EnumPropertyItem prop_image_layer_items[] = {
     {0, "PLACEHOLDER", 0, "Placeholder", ""},

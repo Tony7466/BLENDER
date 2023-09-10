@@ -438,7 +438,7 @@ class GVGridImpl_For_Grid : public GVMutableGridImpl {
  public:
   GVGridImpl_For_Grid(const GridType &grid);
 
-  GVArray get_varray_for_leaf(uint32_t log2dim, const int3 &origin) const override
+  inline GVArray get_varray_for_leaf(uint32_t log2dim, const int3 &origin) const override
   {
     return volume::get_varray_for_leaf(log2dim, origin, *grid_);
   }

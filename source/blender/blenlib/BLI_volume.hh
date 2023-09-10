@@ -327,9 +327,16 @@ openvdb::GridBase *make_grid_for_attribute_type(const CPPType &type,
                                                 const float4x4 &transform,
                                                 const void *value = nullptr);
 
-inline GVArray get_varray_for_leaf(uint32_t log2dim,
-                                   const int3 &origin,
-                                   const openvdb::GridBase &grid);
+GVArray get_varray_for_leaf(uint32_t log2dim, const int3 &origin, const openvdb::GridBase &grid);
+
+#else
+//
+// inline GVArray get_varray_for_leaf(uint32_t log2dim,
+//                                   const int3 &origin,
+//                                   const openvdb::GridBase &grid)
+//{
+//  return {};
+//}
 
 #endif
 

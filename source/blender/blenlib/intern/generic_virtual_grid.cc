@@ -107,6 +107,11 @@ GVGridImpl_For_Grid::GVGridImpl_For_Grid(const GridType &grid)
 {
 }
 
+// GVArray GVGridImpl_For_Grid::get_varray_for_leaf(uint32_t log2dim, const int3 &origin) const
+//{
+//  return volume::get_varray_for_leaf(log2dim, origin, *grid_);
+//}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

@@ -258,8 +258,8 @@ template<typename T, typename GetFunc> class VGridImpl_For_Func final : public V
   {
 #if WITH_OPENVDB
     const uint32_t num_voxels = 1 << 3 * log2dim;
-    return VArray<T>::ForFunc(num_voxels, [](const int64_t index) -> T {
-      const openvdb::Coord coord = volume::offset_to_global_coord(log2dim, origin, index);
+    return VArray<T>::ForFunc(num_voxels, [this, log2dim, origin](const int64_t index) -> T {
+      const int3 coord = int3(volume::offset_to_global_coord(log2dim, origin, index).data());
       return get_func_(coord);
     });
 #else
