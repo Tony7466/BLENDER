@@ -2048,12 +2048,12 @@ uint *GHOST_SystemCocoa::getClipboardImage(int *r_width, int *r_height) const
         NSSize size = [image size];
         *r_width = size.width;
         *r_height = size.height;
-        ImBuf *imageBuffer=  getImageBuffer(image);
-        int msize =(*r_width) * (*r_height) * 4 ;
-        uint *ppixels = (uint *)malloc(msize);
-        memcpy(ppixels, imageBuffer->byte_buffer.data, msize);
+        ImBuf *imageBuffer = getImageBuffer(image);
+        int msize = size.width * size.height * 4 ;
+        uint *pixels = (uint *)malloc(msize);
+        memcpy(pixels, imageBuffer->byte_buffer.data, msize);
         IMB_freeImBuf(imageBuffer);
-        return ppixels;
+        return pixels;
       } else {
           return nullptr;
     }
