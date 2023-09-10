@@ -3448,7 +3448,6 @@ class WM_MT_region_toggle_pie(Menu):
 
         # Remove empty items.
         items[:] = [item for item in items if item != []]
-        items_overflow[:] = [item for item in items_overflow if item != []]
 
         for region_type_list in (items + items_overflow):
             if not region_type_list:
