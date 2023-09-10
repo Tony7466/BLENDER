@@ -164,11 +164,9 @@ static void triangulate_quads(const Span<float3> positions,
                               const TriangulateQuadMode quad_mode,
                               const IndexRange edge_range,
                               MutableSpan<int> corner_map,
-                              MutableSpan<int4> new_edge_neighbors,
                               MutableSpan<int2> edges,
                               MutableSpan<int> corner_edges)
 {
-  new_edge_neighbors.fill(int4(0));
   quads.foreach_segment(GrainSize(1024), [&](const IndexMaskSegment quads, const int64_t pos) {
     // TODO: TLS
     Array<QuadDirection, 1024> directions(quads.size());
@@ -180,9 +178,6 @@ static void triangulate_quads(const Span<float3> positions,
         src_faces, src_corner_verts, quads, directions, edges.slice(pos, quads.size()));
     calc_quad_corner_edges(
         src_faces, src_corner_edges, quads, directions, edge_range, corner_edges.slice(corners));
-    if (!new_edge_neighbors.is_empty()) {
-      // TODO
-    }
   });
 }
 
@@ -249,7 +244,7 @@ static void triangulate_ngons(const Span<float3> positions,
                               const OffsetIndices<int> src_faces,
                               const Span<int> src_corner_verts,
                               const Span<int> src_corner_edges,
-                              const std::optional<Span<float3>> face_normals,
+                              const Span<float3> face_normals,
                               const IndexMask &ngons,
                               const OffsetIndices<int> tris_by_ngon,
                               const OffsetIndices<int> edges_by_ngon,
@@ -257,23 +252,23 @@ static void triangulate_ngons(const Span<float3> positions,
                               const OffsetIndices<int> ngon_tris,
                               const IndexRange edge_range,
                               MutableSpan<int> corner_map,
-                              MutableSpan<int4> new_edge_neighbors,
                               MutableSpan<int2> edges,
                               MutableSpan<int> corner_edges)
 {
+  // TODO: TLS
+  // TODO: Test loop fusion.
   ngons.foreach_segment(GrainSize(128), [&](const IndexMaskSegment ngons, const int pos) {
-    // TODO: Test combining with projection loop below.
     Array<float3x3> projections(ngons.size());
-    if (face_normals) {
+    if (face_normals.is_empty()) {
       for (const int i : ngons.index_range()) {
-        axis_dominant_v3_to_m3_negate(projections[i].ptr(), (*face_normals)[ngons[i]]);
+        const Span<int> face_verts = src_corner_verts.slice(src_faces[ngons[i]]);
+        const float3 normal = bke::mesh::face_normal_calc(positions, face_verts);
+        axis_dominant_v3_to_m3_negate(projections[i].ptr(), normal);
       }
     }
     else {
       for (const int i : ngons.index_range()) {
-        const float3 normal = bke::mesh::face_normal_calc(
-            positions, src_corner_verts.slice(src_faces[ngons[i]]));
-        axis_dominant_v3_to_m3_negate(projections[i].ptr(), normal);
+        axis_dominant_v3_to_m3_negate(projections[i].ptr(), face_normals[ngons[i]]);
       }
     }
 
@@ -314,8 +309,8 @@ static void triangulate_ngons(const Span<float3> positions,
     for (const int i : ngons.index_range()) {
       const Span<int> src_face_verts = src_corner_verts.slice(src_faces[ngons[i]]);
       const Span<int> src_face_edges = src_corner_edges.slice(src_faces[ngons[i]]);
+      const Span<int> corner_map = corner_map.slice(ngon_tris[pos + i]);
       MutableSpan<int> face_edges = corner_edges.slice(ngon_tris[pos + i]);
-      MutableSpan<int> corner_map = corner_map.slice(ngon_tris[pos + i]);
 
       const VectorSet<OrderedEdge> inner_edges = calc_inner_triangles(
           src_face_verts, src_face_edges, edge_range.start(), corner_map.cast<int3>(), face_edges);
@@ -325,7 +320,7 @@ static void triangulate_ngons(const Span<float3> positions,
 
     for (const int i : ngons.index_range()) {
       const int face_start = src_faces[ngons[i]].start();
-      MutableSpan<int> corner_map = {};  // TODO
+      MutableSpan<int> corner_map = corner_map.slice(ngon_tris[pos + i]);
       for (int &i : corner_map) {
         i += face_start;
       }
@@ -365,22 +360,6 @@ static void copy_loose_edge_hint(const Mesh &src, Mesh &dst)
   if (src_cache.is_cached() && src_cache.data().count == 0) {
     dst.tag_loose_edges_none();
   }
-}
-
-template<typename T>
-static void mix_edge_data_from_neighbors(const Span<T> src,
-                                         const Span<int4> indices,
-                                         MutableSpan<T> dst)
-{
-  threading::parallel_for(dst.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : range) {
-      dst[i] = bke::attribute_math::mix4(float4(1.0f),
-                                         src[indices[i][0]],
-                                         src[indices[i][1]],
-                                         src[indices[i][2]],
-                                         src[indices[i][3]]);
-    }
-  });
 }
 
 template<typename T>
@@ -463,9 +442,6 @@ std::optional<Mesh *> mesh_triangulate(
 
   Array<int> corner_map(tri_corners.size());
 
-  // TODO: Only calculate edge neighbors if there are edge attributes to interpolate.
-  Array<int4> new_edge_old_neighbors(inner_edges.size());
-
   MutableSpan<int2> edges = mesh->edges_for_write();
   MutableSpan<int> corner_edges = mesh->corner_edges_for_write();
 
@@ -477,22 +453,23 @@ std::optional<Mesh *> mesh_triangulate(
                     quad_mode,
                     quad_edges,
                     corner_map.as_mutable_span().take_front(quad_tri_corners.size()),
-                    new_edge_old_neighbors.as_mutable_span().take_front(quad_edges.size()),
                     edges.slice(quad_edges),
                     corner_edges.slice(quad_tri_corners));
+
   triangulate_ngons(positions,
                     src_faces,
                     src_corner_verts,
                     src_corner_edges,
+                    (ngons.size() > src_faces.size() / 4) ? mesh->face_normals() : Span<float3>(),
                     ngons,
                     tris_by_ngon,
                     edges_by_ngon,
                     ngon_mode,
-                    faces,
-                    corner_map,
-                    new_edge_old_neighbors.as_mutable_span().take_back(ngon_edges.size()),
-                    edges,
-                    corner_edges);
+                    faces.slice(ngon_tris),
+                    ngon_edges,
+                    corner_map.as_mutable_span().take_back(ngon_tri_corners.size()),
+                    edges.slice(ngon_edges),
+                    corner_edges.slice(ngon_tri_corners));
 
   edges.take_front(src_edges.size()).copy_from(src_edges);
 
