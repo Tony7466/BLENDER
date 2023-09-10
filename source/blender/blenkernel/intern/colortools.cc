@@ -922,11 +922,10 @@ void BKE_curvemapping_changed(CurveMapping *cumap, const bool rem_doubles)
       cumap->curr.ymax = cumap->clipr.ymax;
     }
   }
-  
-  auto sort_fn = [] std::stable_sort(
-      cuma->curve,
-      cuma->curve + cuma->totpoint,
-      [](const CurveMapPoint &a, const CurveMapPoint &b) { return a.x < b.x; });
+
+  std::stable_sort(cuma->curve,
+                   cuma->curve + cuma->totpoint,
+                   [](const CurveMapPoint &a, const CurveMapPoint &b) { return a.x < b.x; });
 
   /* remove doubles, threshold set on 1% of default range */
   if (rem_doubles && cuma->totpoint > 2) {
