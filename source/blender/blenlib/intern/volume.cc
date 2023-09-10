@@ -127,7 +127,7 @@ GVArray get_varray_for_leaf(uint32_t log2dim, const int3 &origin, const openvdb:
 
     Accessor accessor = typed_grid.getAccessor();
     result = VArray<AttributeValueType>::ForFunc(
-        num_voxels, [log2dim, origin, &accessor](const int64_t index) {
+        num_voxels, [log2dim, origin, accessor](const int64_t index) {
           const openvdb::Coord xyz = volume::offset_to_global_coord(
               log2dim, origin, int32_t(index));
           return Converter::single_value_to_attribute(accessor.getValue(xyz));
