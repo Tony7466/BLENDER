@@ -176,7 +176,6 @@
   NSPasteboard *draggingPBoard = [sender draggingPasteboard];
 
   if ([[draggingPBoard types] containsObject:NSPasteboardTypeTIFF])
-
     m_draggedObjectType = GHOST_kDragnDropTypeBitmap;
   else if ([[draggingPBoard types] containsObject:NSFilenamesPboardType])
     m_draggedObjectType = GHOST_kDragnDropTypeFilenames;
@@ -616,9 +615,6 @@ GHOST_TSuccess GHOST_WindowCocoa::setClientHeight(uint32_t height)
   [pool drain];
   return GHOST_kSuccess;
 }
-
-
-
 
 GHOST_TSuccess GHOST_WindowCocoa::setClientSize(uint32_t width, uint32_t height)
 {
