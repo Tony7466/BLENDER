@@ -884,6 +884,12 @@ static int sort_curvepoints(const void *a1, const void *a2)
   if (x1->x < x2->x) {
     return -1;
   }
+  if (x1->y > x2->y) {
+    return 1;
+  }
+  if (x1->y < x2->y) {
+    return -1;
+  }
   return 0;
 }
 
