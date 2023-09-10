@@ -244,15 +244,15 @@ template<typename T> class VGridImpl_For_Single final : public VGridImpl<T> {
 };
 
 /**
- * This class makes it easy to create a virtual array for an existing function or lambda. The
- * `GetFunc` should take a single position argument and return the value at that index.
+ * Evalute a function at the voxel location.
+ * The `GetFunc` should take a single coordinate argument and return the value at that location.
  */
-template<typename T, typename GetFunc> class VGridImpl_For_Func final : public VGridImpl<T> {
+template<typename T, typename GetFunc> class VGridImpl_For_CoordFunc final : public VGridImpl<T> {
  private:
   GetFunc get_func_;
 
  public:
-  VGridImpl_For_Func(GetFunc get_func) : get_func_(std::move(get_func)) {}
+  VGridImpl_For_CoordFunc(GetFunc get_func) : get_func_(std::move(get_func)) {}
 
   VArray<T> get_varray_for_leaf(uint32_t log2dim, const int3 &origin) const override
   {
@@ -617,7 +617,7 @@ template<typename T> class VGrid : public VGridCommon<T> {
    */
   template<typename GetFunc> static VGrid ForFunc(GetFunc get_func)
   {
-    return VGrid::For<VGridImpl_For_Func<T, decltype(get_func)>>(std::move(get_func));
+    return VGrid::For<VGridImpl_For_CoordFunc<T, decltype(get_func)>>(std::move(get_func));
   }
 
   VGrid &operator=(const VGrid &other)

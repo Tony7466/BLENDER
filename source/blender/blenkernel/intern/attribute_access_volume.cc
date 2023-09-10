@@ -7,6 +7,7 @@
  */
 
 #include "BLI_virtual_grid.hh"
+#include "BLI_math_matrix.hh"
 #include "BLI_volume_openvdb.hh"
 
 #include "BKE_attribute.hh"
@@ -24,11 +25,15 @@
 namespace blender::bke {
 
 GAttributeGridReader VolumeCellCenterAttributeGridProvider::try_get_grid_for_read(
-    const void * /*owner*/) const
+    const void * owner) const
 {
-  auto cell_center_fn = [](const blender::int3 &coord) { return float3(0, 1, 2); };
+  const VolumeGridVector &grids = grid_access_.get_const_grids(owner);
+  const float4x4 transform = grids.domain_transform(ATTR_DOMAIN_VOXEL);
+  auto cell_center_fn = [transform](const blender::int3 &coord) {
+    return math::transform_point(transform, float3(coord.x, coord.y, coord.z));
+  };
 
-  using ImplType = VGridImpl_For_Func<float3, decltype(cell_center_fn)>;
+  using ImplType = VGridImpl_For_CoordFunc<float3, decltype(cell_center_fn)>;
   return {VGrid<float3>::For<ImplType>(std::move(cell_center_fn)), this->domain(), nullptr};
 }
 
