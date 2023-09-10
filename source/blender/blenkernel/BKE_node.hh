@@ -124,6 +124,8 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node);
 
 bool node_is_viewer_group(const bNode &node);
 
+int get_internal_link_type_priority(const bNodeSocketType &from, const bNodeSocketType &to);
+
 float2 nodeToView(const bNode *node, float2 loc);
 
 float2 nodeFromView(const bNode *node, float2 view_loc);

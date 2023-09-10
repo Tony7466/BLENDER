@@ -83,11 +83,11 @@ namespace blender::bke {
  * `<  0`: never connect these types.
  * `>= 0`: priority of connection (higher values chosen first).
  */
-static int get_internal_link_type_priority(const bNodeSocketType *from, const bNodeSocketType *to)
+int get_internal_link_type_priority(const bNodeSocketType &from, const bNodeSocketType &to)
 {
-  switch (to->type) {
+  switch (to.type) {
     case SOCK_RGBA:
-      switch (from->type) {
+      switch (from.type) {
         case SOCK_RGBA:
           return 4;
         case SOCK_FLOAT:
@@ -99,7 +99,7 @@ static int get_internal_link_type_priority(const bNodeSocketType *from, const bN
       }
       return -1;
     case SOCK_VECTOR:
-      switch (from->type) {
+      switch (from.type) {
         case SOCK_VECTOR:
           return 4;
         case SOCK_FLOAT:
@@ -111,7 +111,7 @@ static int get_internal_link_type_priority(const bNodeSocketType *from, const bN
       }
       return -1;
     case SOCK_FLOAT:
-      switch (from->type) {
+      switch (from.type) {
         case SOCK_FLOAT:
           return 5;
         case SOCK_INT:
@@ -125,7 +125,7 @@ static int get_internal_link_type_priority(const bNodeSocketType *from, const bN
       }
       return -1;
     case SOCK_INT:
-      switch (from->type) {
+      switch (from.type) {
         case SOCK_INT:
           return 5;
         case SOCK_FLOAT:
@@ -139,7 +139,7 @@ static int get_internal_link_type_priority(const bNodeSocketType *from, const bN
       }
       return -1;
     case SOCK_BOOLEAN:
-      switch (from->type) {
+      switch (from.type) {
         case SOCK_BOOLEAN:
           return 5;
         case SOCK_INT:
@@ -156,7 +156,7 @@ static int get_internal_link_type_priority(const bNodeSocketType *from, const bN
 
   /* The rest of the socket types only allow an internal link if both the input and output socket
    * have the same type. If the sockets are custom, we check the idname instead. */
-  if (to->type == from->type && (to->type != SOCK_CUSTOM || STREQ(to->idname, from->idname))) {
+  if (to.type == from.type && (to.type != SOCK_CUSTOM || STREQ(to.idname, from.idname))) {
     return 1;
   }
 
@@ -669,8 +669,8 @@ class NodeTreeMainUpdater {
       if (input_socket->flag & SOCK_NO_INTERNAL_LINK) {
         continue;
       }
-      const int priority = get_internal_link_type_priority(input_socket->typeinfo,
-                                                           output_socket->typeinfo);
+      const int priority = get_internal_link_type_priority(*input_socket->typeinfo,
+                                                           *output_socket->typeinfo);
       if (priority < 0) {
         continue;
       }
