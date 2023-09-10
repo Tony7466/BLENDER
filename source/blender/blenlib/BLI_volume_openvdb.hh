@@ -116,18 +116,6 @@ template<typename GridType> const CPPType &grid_attribute_type(const GridType & 
 
 const CPPType &grid_base_attribute_type(const openvdb::GridBase &grid);
 
-// GVArray get_varray_for_leaf(uint32_t log2dim, const int3 &origin, const openvdb::GridBase
-// &grid);
-
-#else
-
-// GVArray get_varray_for_leaf(uint32_t /*log2dim*/,
-//                            const int3 & /*origin*/,
-//                            const openvdb::GridBase & /*grid*/)
-//{
-//  return {};
-//}
-
 #endif
 
 }  // namespace blender::volume

@@ -166,90 +166,11 @@ void merge_input_field_topology(GridType &buffer, Span<GVGrid> field_context_inp
   }
 }
 
-///* Wrapper holding an accessor for an input field. */
-// template<typename GridType> struct VGridReader {
-//  using TreeType = typename GridType::TreeType;
-//  using LeafNodeType = typename TreeType::LeafNodeType;
-//
-//  virtual ~VGridReader() {}
-//
-//  /* VArray for a specific leaf node using the accessor. */
-//  virtual GVArray make_varray_for_leaf(const LeafNodeType &leaf) const = 0;
-//};
-//
-///* Wrapper holding an accessor for an input field. */
-// template<typename GridType> struct VGridWriter {
-//  using TreeType = typename GridType::TreeType;
-//  using LeafNodeType = typename TreeType::LeafNodeType;
-//
-//  virtual ~VGridWriter() {}
-//
-//  /* VMutableArray for a specific leaf node using the accessor. */
-//  virtual GVMutableArray make_varray_for_leaf(const LeafNodeType &leaf) const = 0;
-//};
-//
-// template<typename GridType, typename AccessorType, typename Converter>
-// struct VGridReader_For_Accessor : public VGridReader<GridType> {
-//  using TreeType = typename GridType::TreeType;
-//  using LeafNodeType = typename TreeType::LeafNodeType;
-//  using AttributeValueType = typename Converter::AttributeValueType;
-//
-//  AccessorType accessor_;
-//
-//  VGridReader_For_Accessor(const AccessorType &accessor) : accessor_(accessor) {}
-//  virtual ~VGridReader_For_Accessor() {}
-//
-//  GVArray make_varray_for_leaf(const LeafNodeType &leaf) const override
-//  {
-//    using VArrayImplType = VArrayImpl_For_GridLeaf<AccessorType, LeafNodeType, Converter>;
-//    return VArray<AttributeValueType>::template For<VArrayImplType>(accessor_, leaf);
-//  }
-//};
-//
-// template<typename GridType, typename AttributeValueType>
-// struct VGridReader_For_Single : public VGridReader<GridType> {
-//  using TreeType = typename GridType::TreeType;
-//  using LeafNodeType = typename TreeType::LeafNodeType;
-//  const int32_t leaf_size = LeafNodeType::size();
-//
-//  AttributeValueType value_;
-//
-//  VGridReader_For_Single(const AttributeValueType &value) : value_(value) {}
-//  virtual ~VGridReader_For_Single() {}
-//
-//  GVArray make_varray_for_leaf(const LeafNodeType & /*leaf*/) const override
-//  {
-//    return VArray<AttributeValueType>::ForSingle(value_, leaf_size);
-//  }
-//};
-//
-// template<typename GridType, typename AttributeValueType, typename GetFunc>
-// struct VGridReader_For_Func : public VGridReader<GridType> {
-//  using TreeType = typename GridType::TreeType;
-//  using LeafNodeType = typename TreeType::LeafNodeType;
-//  const int32_t leaf_size = LeafNodeType::size();
-//
-//  VGridReader_For_Func() {}
-//  virtual ~VGridReader_For_Func() {}
-//
-//  GVArray make_varray_for_leaf(const LeafNodeType &leaf) const override
-//  {
-//    return
-//    // auto eval_fn = [leaf](const int64_t index) -> AttributeValueType {
-//    //  openvdb::Coord coord = leaf.offsetToGlobalCoord(index);
-//    //  return get_func(std::move(coord));
-//    //};
-//    // return VArray<AttributeValueType>::ForFunc(leaf_size, std::move(eval_fn));
-//  }
-//};
-
 template<typename GridType, typename MaskGridType = openvdb::MaskGrid> struct EvalPerLeafOp {
   using TreeType = typename GridType::TreeType;
   using ValueType = typename GridType::ValueType;
 
   using LeafNode = typename TreeType::LeafNodeType;
-  // using GridReaderType = VGridReader<GridType>;
-  // using GridReaderPtr = std::shared_ptr<GridReaderType>;
 
   using Coord = openvdb::Coord;
   const int32_t leaf_size = LeafNode::size();
@@ -264,53 +185,6 @@ template<typename GridType, typename MaskGridType = openvdb::MaskGrid> struct Ev
   mutable mf::ContextBuilder mf_context_;
 
   Span<GVGrid> field_context_inputs_;
-  /* Accessors for input fields. */
-  ///* XXX have to use shared_ptr instead of unique_ptr because some parts
-  // * of BLI_memory_utils try to copy the values and that's forbidden for unique_ptr.
-  // */
-  // Array<GridReaderPtr> input_readers_;
-
-  // void make_input_accessors(Span<GVGrid> field_context_inputs)
-  //{
-  //  input_readers_.reinitialize(field_context_inputs.size());
-
-  //  for (const int i : field_context_inputs.index_range()) {
-  //      field_context_inputs[i].get_varray_for_leaf(LOG2DIM, leaf.
-  //    volume::field_to_static_type(field_context_inputs[i].type(), [&](auto tag) {
-  //      using AttributeValueType = typename decltype(tag)::type;
-  //      using InputGridType = volume::grid_types::AttributeGrid<ValueType>;
-  //      using InputConverter = volume::grid_types::Converter<InputGridType>;
-
-  //      if (field_context_inputs[i].is_grid()) {
-  //        using InputAccessor = typename InputGridType::ConstAccessor;
-
-  //        const InputGridType &input_grid = static_cast<const InputGridType &>(
-  //            *field_context_inputs[i].get_internal_grid());
-  //        GridReaderPtr reader_ptr =
-  //            std::make_shared<VGridReader_For_Accessor<GridType, InputAccessor,
-  //            InputConverter>>(
-  //                input_grid.getConstAccessor());
-  //        input_readers_[i] = std::move(reader_ptr);
-  //      }
-  //      else if (field_context_inputs[i].is_single()) {
-  //        AttributeValueType value;
-  //        field_context_inputs[i].get_internal_single(&value);
-  //        GridReaderPtr reader_ptr =
-  //            std::make_shared<VGridReader_For_Single<GridType, InputConverter>>(value);
-  //        input_readers_[i] = std::move(reader_ptr);
-  //      }
-  //      else {
-  //        // auto eval_fn = [](const openvdb::Coord &coord) -> AttributeValueType {
-  //        //  return
-  //        //};
-  //        GridReaderPtr reader_ptr =
-  //            std::make_shared<VGridReader_For_Func<GridType,
-  //            InputConverter>>(std::move(eval_fn));
-  //        input_readers_[i] = std::move(reader_ptr);
-  //      }
-  //    });
-  //  }
-  //}
 
   EvalPerLeafOp(Span<GVGrid> field_context_inputs,
                 const mf::ProcedureExecutor &procedure_executor,

@@ -266,17 +266,6 @@ GVArray get_varray_for_leaf(uint32_t log2dim, const int3 &origin, const openvdb:
 
 #else
 
-// namespace openvdb {
-// class GridBase;
-//}
-//
-// GVArray get_varray_for_leaf(uint32_t /*log2dim*/,
-//                            const int3 & /*origin*/,
-//                            const openvdb::GridBase & /*grid*/)
-//{
-//  return {};
-//}
-
 // GGrid::operator bool() const
 //{
 //   return false;

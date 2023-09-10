@@ -107,11 +107,6 @@ GVGridImpl_For_Grid::GVGridImpl_For_Grid(const GridType &grid)
 {
 }
 
-// GVArray GVGridImpl_For_Grid::get_varray_for_leaf(uint32_t log2dim, const int3 &origin) const
-//{
-//  return volume::get_varray_for_leaf(log2dim, origin, *grid_);
-//}
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -125,13 +120,14 @@ GVArray GVGridImpl_For_SingleValueRef::get_varray_for_leaf(uint32_t log2dim,
 {
   const uint32_t num_voxels = 1 << 3 * log2dim;
 
+  GVArray result = {};
   volume::field_to_static_type(this->type(), [&](auto tag) {
     using AttributeValueType = typename decltype(tag)::type;
 
-    return VArray<AttributeValueType>::ForSingle(*static_cast<const AttributeValueType *>(value_),
-                                                 num_voxels);
+    result = VArray<AttributeValueType>::ForSingle(
+        *static_cast<const AttributeValueType *>(value_), num_voxels);
   });
-  return {};
+  return result;
 }
 
 CommonVGridInfo GVGridImpl_For_SingleValueRef::common_info() const
@@ -189,13 +185,14 @@ template<int BufferSize> class GVGridImpl_For_SmallTrivialSingleValue : public G
   {
     const uint32_t num_voxels = 1 << 3 * log2dim;
 
+    GVArray result = {};
     volume::field_to_static_type(this->type(), [&](auto tag) {
       using AttributeValueType = typename decltype(tag)::type;
 
-      return VArray<AttributeValueType>::ForSingle(
+      result = VArray<AttributeValueType>::ForSingle(
           *static_cast<const AttributeValueType *>(buffer_.ptr()), num_voxels);
     });
-    return {};
+    return result;
   }
 
  private:
