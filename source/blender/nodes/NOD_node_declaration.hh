@@ -516,7 +516,8 @@ class PanelDeclarationBuilder {
   using Self = PanelDeclarationBuilder;
   NodeDeclarationBuilder *node_decl_builder_ = nullptr;
   PanelDeclaration *decl_;
-  /* Panel is complete once items are added after it.
+  /**
+   * Panel is complete once items are added after it.
    * Completed panels are locked and no more items can be added.
    */
   bool is_complete_ = false;
