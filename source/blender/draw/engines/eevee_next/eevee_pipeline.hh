@@ -373,15 +373,16 @@ class UtilityTexture : public Texture {
     }
     {
       Layer &layer = data[UTIL_SSS_TRANSMITTANCE_PROFILE_LAYER];
-      const Vector<float> &transmittance_profile = SubsurfaceModule::transmittance_profile();
-      BLI_assert(transmittance_profile.size() == lut_size);
-      /* Repeatedly stored on every row for correct interpolation. */
       for (auto y : IndexRange(lut_size)) {
         for (auto x : IndexRange(lut_size)) {
-          /* Only the first channel is used. */
-          layer.data[y][x] = float4(transmittance_profile[x]);
+          /* Repeatedly stored on every row for correct interpolation. */
+          layer.data[y][x][0] = lut::burley_sss_profile[x][0];
+          layer.data[y][x][1] = lut::random_walk_sss_profile[x][0];
+          layer.data[y][x][2] = 0.0f;
+          layer.data[y][x][UTIL_DISK_INTEGRAL_COMP] = lut::ltc_disk_integral[y][x][0];
         }
       }
+      BLI_assert(UTIL_SSS_TRANSMITTANCE_PROFILE_LAYER == UTIL_DISK_INTEGRAL_LAYER);
     }
     {
       Layer &layer = data[UTIL_LTC_MAT_LAYER];
@@ -400,20 +401,14 @@ class UtilityTexture : public Texture {
       BLI_assert(UTIL_LTC_MAG_LAYER == UTIL_BSDF_LAYER);
     }
     {
-      Layer &layer = data[UTIL_DISK_INTEGRAL_LAYER];
-      for (auto x : IndexRange(lut_size)) {
-        for (auto y : IndexRange(lut_size)) {
-          layer.data[y][x][UTIL_DISK_INTEGRAL_COMP] = lut::ltc_disk_integral[y][x][0];
-        }
-      }
-    }
-    {
       for (auto layer_id : IndexRange(16)) {
         Layer &layer = data[UTIL_BTDF_LAYER + layer_id];
         for (auto x : IndexRange(lut_size)) {
           for (auto y : IndexRange(lut_size)) {
             layer.data[y][x][0] = lut::btdf_split_sum_ggx[layer_id][y][x][0];
             layer.data[y][x][1] = lut::btdf_split_sum_ggx[layer_id][y][x][1];
+            layer.data[y][x][2] = 0.0f;
+            layer.data[y][x][3] = 0.0f;
           }
         }
       }

@@ -81,65 +81,6 @@ void SubsurfaceModule::precompute_samples_location()
   }
 }
 
-const Vector<float> &SubsurfaceModule::transmittance_profile()
-{
-  static Vector<float> profile;
-  if (!profile.is_empty()) {
-    return profile;
-  }
-  profile.resize(SSS_TRANSMIT_LUT_SIZE);
-
-  /* Precompute sample position with white albedo. */
-  float radius = 1.0f;
-  float d = burley_setup(float3(radius), float3(1.0f)).x;
-
-  /* For each distance d we compute the radiance incoming from an hypothetical parallel plane. */
-  for (auto i : IndexRange(SSS_TRANSMIT_LUT_SIZE)) {
-    /* Distance from the lit surface plane.
-     * Compute to a larger maximum distance to have a smoother falloff for all channels. */
-    float lut_radius = SSS_TRANSMIT_LUT_RADIUS * radius;
-    float distance = lut_radius * (i + 1e-5f) / profile.size();
-    /* Compute radius of the footprint on the hypothetical plane. */
-    float r_fp = sqrtf(square_f(lut_radius) - square_f(distance));
-
-    profile[i] = 0.0f;
-    float area_accum = 0.0f;
-    for (auto j : IndexRange(SSS_TRANSMIT_LUT_STEP_RES)) {
-      /* Compute distance to the "shading" point through the medium. */
-      float r = (r_fp * (j + 0.5f)) / SSS_TRANSMIT_LUT_STEP_RES;
-      float r_prev = (r_fp * (j + 0.0f)) / SSS_TRANSMIT_LUT_STEP_RES;
-      float r_next = (r_fp * (j + 1.0f)) / SSS_TRANSMIT_LUT_STEP_RES;
-      r = hypotf(r, distance);
-      float R = SubsurfaceModule::burley_eval(d, r);
-      /* Since the profile and configuration are radially symmetrical we
-       * can just evaluate it once and weight it accordingly */
-      float disk_area = square_f(r_next) - square_f(r_prev);
-
-      profile[i] += R * disk_area;
-      area_accum += disk_area;
-    }
-    /* Normalize over the disk. */
-    profile[i] /= area_accum;
-  }
-
-  /** NOTE: There's something very wrong here.
-   * This should be a small remap,
-   * but current profile range goes from 0.0399098 to 0.0026898. */
-
-  /* Make a smooth gradient from 1 to 0. */
-  float range = profile.first() - profile.last();
-  float offset = profile.last();
-  for (float &value : profile) {
-    value = (value - offset) / range;
-    /** HACK: Remap the curve to better fit Cycles values. */
-    value = std::pow(value, 1.6f);
-  }
-  profile.first() = 1;
-  profile.last() = 0;
-
-  return profile;
-}
-
 /** \} */
 
 /* -------------------------------------------------------------------- */

@@ -49,9 +49,6 @@ struct SubsurfaceModule {
 
   ~SubsurfaceModule(){};
 
-  /** Contains translucence profile for a single color channel. */
-  static const Vector<float> &transmittance_profile();
-
   void end_sync();
 
   void render(View &view, Framebuffer &fb, Texture &diffuse_light_tx);

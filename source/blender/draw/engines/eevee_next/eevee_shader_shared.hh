@@ -1296,7 +1296,7 @@ BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
 #define UTIL_LTC_MAG_LAYER 3
 #define UTIL_BSDF_LAYER 3
 #define UTIL_BTDF_LAYER 4
-#define UTIL_DISK_INTEGRAL_LAYER 4
+#define UTIL_DISK_INTEGRAL_LAYER UTIL_SSS_TRANSMITTANCE_PROFILE_LAYER
 #define UTIL_DISK_INTEGRAL_COMP 3
 
 /* __cplusplus is true when compiling with MSL, so include if inside a shader. */
