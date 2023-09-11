@@ -640,10 +640,52 @@ static int bake_simulation_modal(bContext *C, wmOperator * /*op*/, const wmEvent
   return OPERATOR_PASS_THROUGH;
 }
 
-static int delete_baked_simulation_exec(bContext *C, wmOperator *op)
+static void try_delete_bake(
+    bContext *C, Object &object, NodesModifierData &nmd, const int bake_id, ReportList *reports)
 {
   Main *bmain = CTX_data_main(C);
+  if (!nmd.runtime->cache) {
+    return;
+  }
+  bake::ModifierCache &modifier_cache = *nmd.runtime->cache;
+  std::lock_guard lock{modifier_cache.mutex};
+  if (!modifier_cache.cache_by_id.contains(bake_id)) {
+    return;
+  }
+  bake::NodeCache &node_cache = *modifier_cache.cache_by_id.lookup(bake_id);
+  node_cache.reset();
+  const std::optional<bake::BakePath> bake_path = bake::get_node_bake_path(
+      *bmain, object, nmd, bake_id);
+  if (!bake_path) {
+    return;
+  }
+  const char *meta_dir = bake_path->meta_dir.c_str();
+  if (BLI_exists(meta_dir)) {
+    if (BLI_delete(meta_dir, true, true)) {
+      BKE_reportf(reports, RPT_ERROR, "Failed to remove meta directory %s", meta_dir);
+    }
+  }
+  const char *blobs_dir = bake_path->blobs_dir.c_str();
+  if (BLI_exists(blobs_dir)) {
+    if (BLI_delete(blobs_dir, true, true)) {
+      BKE_reportf(reports, RPT_ERROR, "Failed to remove blobs directory %s", blobs_dir);
+    }
+  }
+  if (bake_path->bake_dir.has_value()) {
+    const char *zone_bake_dir = bake_path->bake_dir->c_str();
+    /* Try to delete zone bake directory if it is empty. */
+    BLI_delete(zone_bake_dir, true, false);
+  }
+  if (const std::optional<std::string> modifier_bake_dir = bake::get_modifier_bake_path(
+          *bmain, object, nmd))
+  {
+    /* Try to delete modifier bake directory if it is empty. */
+    BLI_delete(modifier_bake_dir->c_str(), true, false);
+  }
+}
 
+static int delete_baked_simulation_exec(bContext *C, wmOperator *op)
+{
   Vector<Object *> objects;
   if (RNA_boolean_get(op->ptr, "selected")) {
     CTX_DATA_BEGIN (C, Object *, object, selected_objects) {
@@ -665,42 +707,8 @@ static int delete_baked_simulation_exec(bContext *C, wmOperator *op)
     LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
       if (md->type == eModifierType_Nodes) {
         NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-        if (!nmd->runtime->cache) {
-          continue;
-        }
-        for (auto item : nmd->runtime->cache->cache_by_id.items()) {
-          item.value->reset();
-
-          const std::optional<bake::BakePath> bake_path = bake::get_node_bake_path(
-              *bmain, *object, *nmd, item.key);
-          if (!bake_path) {
-            continue;
-          }
-
-          const char *meta_dir = bake_path->meta_dir.c_str();
-          if (BLI_exists(meta_dir)) {
-            if (BLI_delete(meta_dir, true, true)) {
-              BKE_reportf(op->reports, RPT_ERROR, "Failed to remove meta directory %s", meta_dir);
-            }
-          }
-          const char *blobs_dir = bake_path->blobs_dir.c_str();
-          if (BLI_exists(blobs_dir)) {
-            if (BLI_delete(blobs_dir, true, true)) {
-              BKE_reportf(
-                  op->reports, RPT_ERROR, "Failed to remove blobs directory %s", blobs_dir);
-            }
-          }
-          if (bake_path->bake_dir.has_value()) {
-            const char *zone_bake_dir = bake_path->bake_dir->c_str();
-            /* Try to delete zone bake directory if it is empty. */
-            BLI_delete(zone_bake_dir, true, false);
-          }
-        }
-        if (const std::optional<std::string> modifier_bake_dir = bake::get_modifier_bake_path(
-                *bmain, *object, *nmd))
-        {
-          /* Try to delete modifier bake directory if it is empty. */
-          BLI_delete(modifier_bake_dir->c_str(), true, false);
+        for (const NodesModifierBake &bake : Span(nmd->bakes, nmd->bakes_num)) {
+          try_delete_bake(C, *object, *nmd, bake.id, op->reports);
         }
       }
     }
