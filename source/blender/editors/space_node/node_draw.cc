@@ -487,7 +487,8 @@ static void node_update_basis_from_declaration(
   /* Space at the top. */
   locy -= NODE_DYS / 2;
 
-  need_spacer_after_item = node_update_basis_buttons(C, ntree, node, block, locy);
+  /* Makes sure buttons are only drawn once. */
+  bool buttons_drawn = false;
 
   bNodeSocket *current_input = static_cast<bNodeSocket *>(node.inputs.first);
   bNodeSocket *current_output = static_cast<bNodeSocket *>(node.outputs.first);
@@ -548,6 +549,12 @@ static void node_update_basis_from_declaration(
           /* Must match the declaration. */
           BLI_assert(current_input != nullptr);
 
+          /* Draw buttons before the first input. */
+          if (!buttons_drawn) {
+            buttons_drawn = true;
+            need_spacer_after_item = node_update_basis_buttons(C, ntree, node, block, locy);
+          }
+
           SET_FLAG_FROM_TEST(current_input->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
           if (is_parent_collapsed) {
             current_input->runtime->location = float2(locx, round(locy + NODE_DYS));
@@ -603,6 +610,11 @@ static void node_update_basis_from_declaration(
   }
   /* Enough items should have been added to close all panels. */
   BLI_assert(panel_updates.is_empty());
+
+  /* Draw buttons at the bottom if no inputs exist. */
+  if (!buttons_drawn) {
+    need_spacer_after_item = node_update_basis_buttons(C, ntree, node, block, locy);
+  }
 
   if (need_spacer_after_item) {
     locy -= NODE_DYS / 2;
