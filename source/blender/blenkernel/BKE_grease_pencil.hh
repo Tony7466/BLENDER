@@ -225,6 +225,11 @@ class TreeNode : public ::GreasePencilLayerTreeNode {
    */
   LayerGroup *parent_group() const;
   TreeNode *parent_node() const;
+
+  /**
+   * \returns the number of non-null parents of the node.
+   */
+  int64_t depth() const;
 };
 
 /**
@@ -300,7 +305,7 @@ class LayerRuntime {
    */
   Vector<LayerMask> masks_;
 
-  /* Runtime data used for frame transformations.*/
+  /* Runtime data used for frame transformations. */
   LayerTransformData trans_data_;
 };
 
@@ -480,6 +485,17 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
    */
   Layer &add_layer_after(Layer *layer, TreeNode *link);
   Layer &add_layer_after(StringRefNull name, TreeNode *link);
+
+  /**
+   * Move child \a node up/down by \a step.
+   */
+  void move_node_up(TreeNode *node, int step = 1);
+  void move_node_down(TreeNode *node, int step = 1);
+  /**
+   * Move child \a node to the top/bottom.
+   */
+  void move_node_top(TreeNode *node);
+  void move_node_bottom(TreeNode *node);
 
   /**
    * Returns the number of direct nodes in this group.

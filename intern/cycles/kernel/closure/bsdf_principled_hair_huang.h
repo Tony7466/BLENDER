@@ -152,7 +152,7 @@ ccl_device_inline float3 sphg_dir(float theta, float gamma, float b)
   fast_sincosf(theta, &sin_theta, &cos_theta);
   fast_sincosf(gamma, &sin_gamma, &cos_gamma);
 
-  if (b == 1.0f) {
+  if (b == 1.0f || fabsf(cos_gamma) < 1e-6f) {
     sin_phi = sin_gamma;
     cos_phi = cos_gamma;
   }
@@ -211,11 +211,18 @@ ccl_device int bsdf_hair_huang_setup(ccl_private ShaderData *sd,
     /* Align local frame with the ray direction so that `phi_i == 0`. */
     bsdf->N = X;
   }
-  kernel_assert(!is_zero(bsdf->N) && isfinite_safe(bsdf->N));
 
   /* Fill extra closure. */
-  bsdf->extra->Z = safe_normalize(cross(bsdf->N, sd->dPdu));
-  bsdf->extra->Y = safe_normalize(cross(bsdf->extra->Z, bsdf->N));
+  if (is_zero(bsdf->N) || !isfinite_safe(bsdf->N)) {
+    bsdf->extra->Y = Y;
+    /* Construct arbitrary local coordinate system. The implementation should ensure smooth
+     * transition along the hair shaft. */
+    make_orthonormals(Y, &bsdf->extra->Z, &bsdf->N);
+  }
+  else {
+    bsdf->extra->Z = safe_normalize(cross(bsdf->N, sd->dPdu));
+    bsdf->extra->Y = safe_normalize(cross(bsdf->extra->Z, bsdf->N));
+  }
 
   const float3 I = make_float3(
       dot(sd->wi, bsdf->N), dot(sd->wi, bsdf->extra->Y), dot(sd->wi, bsdf->extra->Z));
@@ -268,13 +275,13 @@ ccl_device_inline float3 sample_wh(
   return wh;
 }
 
-/* Check micronormal/mesonormal direct visiblity from direction `v`. */
+/* Check micronormal/mesonormal direct visibility from direction `v`. */
 ccl_device_inline bool microfacet_visible(const float3 v, const float3 m, const float3 h)
 {
   return (dot(v, h) > 0.0f && dot(v, m) > 0.0f);
 }
 
-/* Check micronormal/mesonormal direct visiblity from directions `wi` and `wo`. */
+/* Check micronormal/mesonormal direct visibility from directions `wi` and `wo`. */
 ccl_device_inline bool microfacet_visible(const float3 wi,
                                           const float3 wo,
                                           const float3 m,
@@ -502,7 +509,7 @@ ccl_device Spectrum bsdf_hair_huang_eval_residual(KernelGlobals kg,
         const float rcp_norm_wh2 = 1.0f / len(wh2);
         wh2 *= rcp_norm_wh2;
         const float cos_mh2 = dot(wmt, wh2);
-        if (cos_mh2 >= 0.0f) { /* Microfacet visiblity from macronormal. */
+        if (cos_mh2 >= 0.0f) { /* Microfacet visibility from macronormal. */
           const float cos_hi2 = dot(-wt, wh2);
           const float cos_ho2 = dot(-wo, wh2);
           const float cos_mo2 = dot(-wo, wmt);

@@ -35,7 +35,7 @@
 #include "BLI_vector_set.hh"
 #include "BLI_virtual_array.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "BLT_translation.h"
 
@@ -192,38 +192,6 @@ static void grease_pencil_blend_read_data(BlendDataReader *reader, ID *id)
   grease_pencil->runtime = MEM_new<blender::bke::GreasePencilRuntime>(__func__);
 }
 
-static void grease_pencil_blend_read_lib(BlendLibReader *reader, ID *id)
-{
-  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(id);
-  for (int i = 0; i < grease_pencil->material_array_num; i++) {
-    BLO_read_id_address(reader, id, &grease_pencil->material_array[i]);
-  }
-  for (int i = 0; i < grease_pencil->drawing_array_num; i++) {
-    GreasePencilDrawingBase *drawing_base = grease_pencil->drawing_array[i];
-    if (drawing_base->type == GP_DRAWING_REFERENCE) {
-      GreasePencilDrawingReference *drawing_reference =
-          reinterpret_cast<GreasePencilDrawingReference *>(drawing_base);
-      BLO_read_id_address(reader, id, &drawing_reference->id_reference);
-    }
-  }
-}
-
-static void grease_pencil_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(id);
-  for (int i = 0; i < grease_pencil->material_array_num; i++) {
-    BLO_expand(expander, grease_pencil->material_array[i]);
-  }
-  for (int i = 0; i < grease_pencil->drawing_array_num; i++) {
-    GreasePencilDrawingBase *drawing_base = grease_pencil->drawing_array[i];
-    if (drawing_base->type == GP_DRAWING_REFERENCE) {
-      GreasePencilDrawingReference *drawing_reference =
-          reinterpret_cast<GreasePencilDrawingReference *>(drawing_base);
-      BLO_expand(expander, drawing_reference->id_reference);
-    }
-  }
-}
-
 IDTypeInfo IDType_ID_GP = {
     /*id_code*/ ID_GP,
     /*id_filter*/ FILTER_ID_GP,
@@ -246,8 +214,7 @@ IDTypeInfo IDType_ID_GP = {
 
     /*blend_write*/ grease_pencil_blend_write,
     /*blend_read_data*/ grease_pencil_blend_read_data,
-    /*blend_read_lib*/ grease_pencil_blend_read_lib,
-    /*blend_read_expand*/ grease_pencil_blend_read_expand,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -487,6 +454,16 @@ TreeNode *TreeNode::parent_node() const
   return this->parent_group() ? &this->parent->wrap().as_node() : nullptr;
 }
 
+int64_t TreeNode::depth() const
+{
+  const LayerGroup *parent = this->parent_group();
+  if (parent == nullptr) {
+    /* The root group has a depth of 0. */
+    return 0;
+  }
+  return 1 + parent->as_node().depth();
+}
+
 LayerMask::LayerMask()
 {
   this->layer_name = nullptr;
@@ -627,7 +604,7 @@ GreasePencilFrame *Layer::add_frame(const FramesMapKey key,
     return frame;
   }
   next_key_it = this->remove_leading_null_frames_in_range(next_key_it, sorted_keys.end());
-  /* If the duration is set to 0, the frame is marked as an implicit hold.*/
+  /* If the duration is set to 0, the frame is marked as an implicit hold. */
   if (duration == 0) {
     frame->flag |= GP_FRAME_IMPLICIT_HOLD;
     return frame;
@@ -897,6 +874,29 @@ Layer &LayerGroup::add_layer_after(StringRefNull name, TreeNode *link)
 {
   Layer *new_layer = MEM_new<Layer>(__func__, name);
   return this->add_layer_after(new_layer, link);
+}
+
+void LayerGroup::move_node_up(TreeNode *node, const int step)
+{
+  BLI_listbase_link_move(&this->children, node, step);
+  this->tag_nodes_cache_dirty();
+}
+void LayerGroup::move_node_down(TreeNode *node, const int step)
+{
+  BLI_listbase_link_move(&this->children, node, -step);
+  this->tag_nodes_cache_dirty();
+}
+void LayerGroup::move_node_top(TreeNode *node)
+{
+  BLI_remlink(&this->children, node);
+  BLI_insertlinkafter(&this->children, this->children.last, node);
+  this->tag_nodes_cache_dirty();
+}
+void LayerGroup::move_node_bottom(TreeNode *node)
+{
+  BLI_remlink(&this->children, node);
+  BLI_insertlinkbefore(&this->children, this->children.first, node);
+  this->tag_nodes_cache_dirty();
 }
 
 int64_t LayerGroup::num_direct_nodes() const
@@ -1868,6 +1868,24 @@ blender::bke::greasepencil::Layer &GreasePencil::add_layer_after(
   using namespace blender;
   std::string unique_name = unique_layer_name(*this, name);
   return group.add_layer_after(unique_name, link);
+}
+
+void GreasePencil::move_layer_up(blender::bke::greasepencil::Layer *layer,
+                                 blender::bke::greasepencil::Layer *move_along_layer)
+{
+  layer->parent_group().unlink_node(&layer->as_node());
+  move_along_layer->parent_group().add_layer_after(layer, &move_along_layer->as_node());
+}
+
+void GreasePencil::move_layer_down(blender::Span<blender::bke::greasepencil::Layer *> layers,
+                                   blender::bke::greasepencil::Layer *move_along_layer)
+{
+  for (int i = layers.size() - 1; i >= 0; i--) {
+    using namespace blender::bke::greasepencil;
+    Layer *layer = layers[i];
+    layer->parent_group().unlink_node(&layer->as_node());
+    move_along_layer->parent_group().add_layer_before(layer, &move_along_layer->as_node());
+  }
 }
 
 blender::bke::greasepencil::Layer &GreasePencil::add_layer(const blender::StringRefNull name)

@@ -47,6 +47,14 @@ eAttrDomain ED_grease_pencil_selection_domain_get(bContext *C);
 
 namespace blender::ed::greasepencil {
 
+void set_selected_frames_type(bke::greasepencil::Layer &layer,
+                              const eBezTriple_KeyframeType key_type);
+
+bool mirror_selected_frames(GreasePencil &grease_pencil,
+                            bke::greasepencil::Layer &layer,
+                            Scene &scene,
+                            const eEditKeyframes_Mirror mode);
+
 bool remove_all_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::Layer &layer);
 
 void select_layer_channel(GreasePencil &grease_pencil, bke::greasepencil::Layer *layer);
@@ -59,14 +67,18 @@ bool select_frame_at(bke::greasepencil::Layer &layer,
                      const int frame_number,
                      const short select_mode);
 
+void select_frames_at(bke::greasepencil::LayerGroup &layer_group,
+                      const int frame_number,
+                      const short select_mode);
+
 void select_all_frames(bke::greasepencil::Layer &layer, const short select_mode);
 
 void select_frames_region(KeyframeEditData *ked,
-                          bke::greasepencil::Layer &layer,
+                          bke::greasepencil::TreeNode &node,
                           const short tool,
                           const short select_mode);
 
-void select_frames_range(bke::greasepencil::Layer &layer,
+void select_frames_range(bke::greasepencil::TreeNode &node,
                          const float min,
                          const float max,
                          const short select_mode);

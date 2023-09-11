@@ -44,10 +44,6 @@ typedef struct GreasePencilLayerRuntimeHandle GreasePencilLayerRuntimeHandle;
 typedef struct GreasePencilLayerGroupRuntimeHandle GreasePencilLayerGroupRuntimeHandle;
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct GreasePencil;
 struct BlendDataReader;
 struct BlendWriter;
@@ -235,6 +231,7 @@ typedef enum GreasePencilLayerTreeNodeFlag {
   GP_LAYER_TREE_NODE_MUTE = (1 << 3),
   GP_LAYER_TREE_NODE_USE_LIGHTS = (1 << 4),
   GP_LAYER_TREE_NODE_USE_ONION_SKINNING = (1 << 5),
+  GP_LAYER_TREE_NODE_EXPANDED = (1 << 6),
 } GreasePencilLayerTreeNodeFlag;
 
 struct GreasePencilLayerTreeGroup;
@@ -460,6 +457,12 @@ typedef struct GreasePencil {
                                                      blender::bke::greasepencil::TreeNode *link,
                                                      blender::StringRefNull name);
 
+  void move_layer_up(blender::bke::greasepencil::Layer *layer,
+                     blender::bke::greasepencil::Layer *move_along_layer);
+
+  void move_layer_down(blender::Span<blender::bke::greasepencil::Layer *> layers,
+                       blender::bke::greasepencil::Layer *move_along_layer);
+
   blender::bke::greasepencil::LayerGroup &add_layer_group(
       blender::bke::greasepencil::LayerGroup &group, blender::StringRefNull name);
   blender::bke::greasepencil::LayerGroup &add_layer_group(blender::StringRefNull name);
@@ -505,12 +508,11 @@ typedef struct GreasePencil {
   /**
    * Move a set of frames in a \a layer.
    *
-   * \param frame_number_destinations describes all transformations that should be applied on the
+   * \param frame_number_destinations: describes all transformations that should be applied on the
    * frame keys.
    *
    * If a transformation overlaps another frames, the frame will be overwritten, and the
    * corresponding drawing may be removed, if it no longer has users.
-   *
    */
   void move_frames(blender::bke::greasepencil::Layer &layer,
                    const blender::Map<int, int> &frame_number_destinations);
@@ -538,7 +540,3 @@ typedef struct GreasePencil {
   void print_layer_tree();
 #endif
 } GreasePencil;
-
-#ifdef __cplusplus
-}
-#endif
