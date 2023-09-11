@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,6 +20,15 @@ class TreeElementPoseBase final : public AbstractTreeElement {
  public:
   TreeElementPoseBase(TreeElement &legacy_te, Object &object);
   void expand(SpaceOutliner &) const override;
+};
+
+class TreeElementPoseChannel final : public AbstractTreeElement {
+  /* Not needed right now, avoid unused member variable warning. */
+  // Object &object_;
+  bPoseChannel &pchan_;
+
+ public:
+  TreeElementPoseChannel(TreeElement &legacy_te, Object &object, bPoseChannel &pchan);
 };
 
 }  // namespace blender::ed::outliner

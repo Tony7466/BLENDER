@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -763,7 +763,7 @@ static void OVERLAY_engine_free()
 
 static void OVERLAY_instance_free(void *instance_)
 {
-  auto *instance = (Instance *)instance_;
+  Instance *instance = (Instance *)instance_;
   if (instance != nullptr) {
     delete instance;
   }

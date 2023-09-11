@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,10 +12,6 @@
 #include "DNA_customdata_types.h"
 
 #include "BLI_utildefines.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #ifdef __cplusplus
 namespace blender::bke {
@@ -215,7 +211,3 @@ ENUM_OPERATORS(eCurvesSymmetryType, CURVES_SYMMETRY_Z)
 
 /* Only one material supported currently. */
 #define CURVES_MATERIAL_NR 1
-
-#ifdef __cplusplus
-}
-#endif

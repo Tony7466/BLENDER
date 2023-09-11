@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -165,9 +165,8 @@ static bool autokeyframe_sequencer_image(bContext *C,
                                          StripTransform *transform,
                                          const int tmode)
 {
-  PointerRNA ptr;
   PropertyRNA *prop;
-  RNA_pointer_create(&scene->id, &RNA_SequenceTransform, transform, &ptr);
+  PointerRNA ptr = RNA_pointer_create(&scene->id, &RNA_SequenceTransform, transform);
 
   const bool around_cursor = scene->toolsettings->sequencer_tool_settings->pivot_point ==
                              V3D_AROUND_CURSOR;

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -106,6 +106,7 @@ enum eShaderType {
   SHADOW_TILEMAP_TAG_USAGE_OPAQUE,
   SHADOW_TILEMAP_TAG_USAGE_SURFELS,
   SHADOW_TILEMAP_TAG_USAGE_TRANSPARENT,
+  SHADOW_TILEMAP_TAG_USAGE_VOLUME,
 
   SUBSURFACE_EVAL,
 

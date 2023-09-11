@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -935,6 +935,7 @@ static void screen_opengl_render_end(bContext *C, OGLRender *oglrender)
   CTX_wm_region_set(C, oglrender->prevar);
 
   MEM_delete(oglrender);
+  G.is_rendering = false;
 }
 
 static void screen_opengl_render_cancel(bContext *C, wmOperator *op)
@@ -992,6 +993,7 @@ static bool screen_opengl_render_anim_init(bContext *C, wmOperator *op)
     }
   }
 
+  G.is_rendering = true;
   oglrender->cfrao = scene->r.cfra;
   oglrender->nfra = PSFRA;
   scene->r.cfra = PSFRA;

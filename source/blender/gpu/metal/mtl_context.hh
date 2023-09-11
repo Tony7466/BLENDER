@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -53,9 +53,6 @@ class MTLStorageBuf;
 /* Structs containing information on current binding state for textures and samplers. */
 struct MTLTextureBinding {
   bool used;
-
-  /* Same value as index in bindings array. */
-  uint slot_index;
   gpu::MTLTexture *texture_resource;
 };
 

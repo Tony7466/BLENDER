@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,7 +23,7 @@ class TreeElementIDGreasePencil final : public TreeElementID {
   void expand(SpaceOutliner &) const override;
 
  private:
-  void expand_layer_tree(SpaceOutliner &) const;
+  void expand_layer_tree() const;
 };
 
 }  // namespace blender::ed::outliner

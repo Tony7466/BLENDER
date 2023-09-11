@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
 #pragma BLENDER_REQUIRE(common_math_lib.glsl)
@@ -78,7 +81,8 @@ void main()
   vec3 Ng = transform_direction(ViewMatrixInverse, vNg);
   vec3 N = imageLoad(in_normal_img, ivec3(texel, in_normal_img_layer_index)).xyz;
 
-  OcclusionData data = ambient_occlusion_search(vP, hiz_tx, texel, ao_buf.distance, 0.0, 8.0);
+  OcclusionData data = ambient_occlusion_search(
+      vP, hiz_tx, texel, uniform_buf.ao.distance, 0.0, 8.0);
 
   float visibility;
   float visibility_error_out;

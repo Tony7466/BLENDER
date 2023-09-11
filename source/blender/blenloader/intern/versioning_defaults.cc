@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -65,7 +65,7 @@
 
 #include "BLT_translation.h"
 
-#include "versioning_common.h"
+#include "versioning_common.hh"
 
 /* Make preferences read-only, use `versioning_userdef.cc`. */
 #define U (*((const UserDef *)&U))
@@ -536,6 +536,9 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
       STRNCPY(scene->view_settings.look, "None");
     }
     else {
+      /* Default to AgX view transform. */
+      STRNCPY(scene->view_settings.view_transform, "AgX");
+
       /* AV Sync break physics sim caching, disable until that is fixed. */
       scene->audio.flag &= ~AUDIO_SYNC;
       scene->flag &= ~SCE_FRAME_DROP;
@@ -611,6 +614,7 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
           bNodeSocket *emission_strength = nodeFindSocket(node, SOCK_IN, "Emission Strength");
           *version_cycles_node_socket_float_value(emission_strength) = 0.0f;
 
+          node->custom1 = SHD_GLOSSY_MULTI_GGX;
           node->custom2 = SHD_SUBSURFACE_RANDOM_WALK;
           BKE_ntree_update_tag_node_property(ma->nodetree, node);
         }
