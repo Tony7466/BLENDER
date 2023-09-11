@@ -288,9 +288,7 @@ class bNodeRuntime : NonCopyable, NonMovable {
   /** Update flags. */
   int update = 0;
 
-  /** Initial locx for insert offset animation. */
-  float anim_init_locx;
-  /** Offset that will be added to locx for insert offset animation. */
+  /** Offset that will be added to #bNote::locx for insert offset animation. */
   float anim_ofsx;
 
   /** List of cached internal links (input to output), for muted nodes and operators. */
@@ -794,7 +792,7 @@ inline bool bNodeSocket::is_panel_collapsed() const
 
 inline bool bNodeSocket::is_visible() const
 {
-  return !this->is_hidden() && this->is_available();
+  return !this->is_hidden() && this->is_available() && !this->is_panel_collapsed();
 }
 
 inline bNode &bNodeSocket::owner_node()

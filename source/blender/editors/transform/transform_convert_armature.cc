@@ -821,7 +821,8 @@ static void createTransPose(bContext * /*C*/, TransInfo *t)
     const bool mirror = ((pose->flag & POSE_MIRROR_EDIT) != 0);
     const bool is_mirror_relative = ((pose->flag & POSE_MIRROR_RELATIVE) != 0);
 
-    tc->poseobj = ob; /* we also allow non-active objects to be transformed, in weightpaint */
+    /* We also allow non-active objects to be transformed, in weight-paint. */
+    tc->poseobj = ob;
 
     /* init trans data */
     td = tc->data = static_cast<TransData *>(
@@ -1301,7 +1302,7 @@ static void recalcData_edit_armature(TransInfo *t)
 
 /**
  * if pose bone (partial) selected, copy data.
- * context; posemode armature, with mirror editing enabled.
+ * context; pose-mode armature, with mirror editing enabled.
  */
 static void pose_transform_mirror_update(TransInfo *t, TransDataContainer *tc, Object *ob)
 {
@@ -1439,7 +1440,7 @@ static void recalcData_pose(TransInfo *t)
         }
       }
       else if (ob->mode == OB_MODE_POSE) {
-        /* actually support TFM_BONESIZE in posemode as well */
+        /* Actually support #TFM_BONESIZE in pose-mode as well. */
         DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
         bPose *pose = ob->pose;
         if (arm->flag & ARM_MIRROR_EDIT || pose->flag & POSE_MIRROR_EDIT) {
