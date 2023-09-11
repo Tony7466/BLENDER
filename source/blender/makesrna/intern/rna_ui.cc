@@ -1271,12 +1271,13 @@ static void rna_Menu_bl_description_set(PointerRNA *ptr, const char *value)
 
 /* File Drop */
 
-static bool file_drop_poll_extension(const bContext *C, FileDropType *file_drop_type, const char *extension)
+static bool file_drop_poll_extension(const bContext *C,
+                                     FileDropType *file_drop_type,
+                                     const char *extension)
 {
   extern FunctionRNA rna_FileDrop_poll_extension_func;
 
-  PointerRNA ptr;
-  RNA_pointer_create(nullptr, file_drop_type->rna_ext.srna, nullptr, &ptr); /* dummy */
+  PointerRNA ptr = RNA_pointer_create(nullptr, file_drop_type->rna_ext.srna, nullptr); /* dummy */
   /* RNA_struct_find_function(&ptr, "poll"); */
   FunctionRNA *func = &rna_FileDrop_poll_extension_func;
 
@@ -1330,10 +1331,9 @@ static StructRNA *rna_FileDrop_register(Main *bmain,
 {
   FileDropType dummy_file_drop_type = {};
   FileDrop dummy_file_drop = {};
-  PointerRNA dummy_file_drop_ptr;
   dummy_file_drop.type = &dummy_file_drop_type;
   /* setup dummy file drop type to store static properties in */
-  RNA_pointer_create(nullptr, &RNA_FileDrop, &dummy_file_drop, &dummy_file_drop_ptr);
+  PointerRNA dummy_file_drop_ptr = RNA_pointer_create(nullptr, &RNA_FileDrop, &dummy_file_drop);
 
   bool have_function[1];
 
