@@ -139,12 +139,12 @@ static void calc_quad_corner_edges(const OffsetIndices<int> src_faces,
                                    const Span<int> src_corner_edges,
                                    const IndexMaskSegment quads,
                                    const Span<QuadDirection> directions,
-                                   const IndexRange quad_edges,
+                                   const int edges_start,
                                    MutableSpan<int> corner_edges)
 {
   for (const int i : quads.index_range()) {
     const Span<int> src = src_corner_edges.slice(src_faces[quads[i]]);
-    const int new_edge = quad_edges[i];
+    const int new_edge = edges_start + i;
     MutableSpan<int> dst = corner_edges.slice(6 * i, 6);
     switch (directions[i]) {
       case QuadDirection::Edge_0_2:
@@ -163,7 +163,7 @@ static void triangulate_quads(const Span<float3> positions,
                               const Span<int> src_corner_edges,
                               const IndexMask &quads,
                               const TriangulateQuadMode quad_mode,
-                              const IndexRange edge_range,
+                              const int edges_start,
                               MutableSpan<int> corner_map,
                               MutableSpan<int2> edges,
                               MutableSpan<int> quad_corner_edges)
@@ -181,7 +181,7 @@ static void triangulate_quads(const Span<float3> positions,
                            src_corner_edges,
                            quads,
                            directions,
-                           edge_range,
+                           edges_start + pos,
                            quad_corner_edges.slice(corners));
   });
 }
@@ -267,12 +267,18 @@ static void triangulate_ngons(const Span<float3> positions,
     Vector<float2> projected_positions;
     VectorSet<OrderedEdge> inner_edges;
 
+    /* Only used for the "Beauty" method. */
     MemArena *arena = nullptr;
     Heap *heap = nullptr;
+
     ~TLS()
     {
-      BLI_memarena_free(arena);
-      BLI_heap_free(heap, nullptr);
+      if (arena) {
+        BLI_memarena_free(arena);
+      }
+      if (heap) {
+        BLI_heap_free(heap, nullptr);
+      }
     }
   };
   threading::EnumerableThreadSpecific<TLS> tls;
@@ -544,7 +550,7 @@ std::optional<Mesh *> mesh_triangulate(
                       src_corner_edges,
                       quads,
                       quad_mode,
-                      quad_edges,
+                      quad_edges.start(),
                       corner_map.as_mutable_span().take_back(quad_tri_corners.size()),
                       edges.slice(quad_edges),
                       corner_edges.slice(quad_tri_corners));
