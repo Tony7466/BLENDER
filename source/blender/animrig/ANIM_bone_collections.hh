@@ -59,4 +59,4 @@ blender::Map<BoneCollection *, BoneCollection *> ANIM_bonecoll_listbase_copy_no_
  */
 void ANIM_bonecoll_listbase_free(ListBase *bcolls, bool do_id_user);
 
-};  // namespace blender::animrig
+}  // namespace blender::animrig

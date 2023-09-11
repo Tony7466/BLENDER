@@ -486,4 +486,4 @@ void ANIM_bonecoll_listbase_free(ListBase *bcolls, const bool do_id_user)
   BLI_freelistN(bcolls);
 }
 
-} /* namespace blender::animrig */
+}  // namespace blender::animrig
