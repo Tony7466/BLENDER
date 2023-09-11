@@ -41,6 +41,55 @@
 
 #include "nla_intern.hh" /* own include */
 
+
+static const EnumPropertyItem *collection_object_active_itemf(bContext *C,
+                                                              PointerRNA *UNUSED(ptr),
+                                                              PropertyRNA *UNUSED(prop),
+                                                              bool *r_free)
+{
+  Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
+  Object *ob;
+  EnumPropertyItem *item = NULL, item_tmp = {0};
+  int totitem = 0;
+
+  if (C == NULL) {
+    return DummyRNA_NULL_items;
+  }
+
+  ob = ED_object_context(C);
+
+  /* check that the object exists */
+  if (ob) {
+    Collection *collection;
+    int i = 0, count = 0;
+
+    /* if 2 or more collections, add option to add to all collections */
+    collection = NULL;
+    while ((collection = BKE_collection_object_find(bmain, scene, collection, ob))) {
+      count++;
+    }
+
+    if (count >= 2) {
+      item_tmp.identifier = item_tmp.name = "All Collections";
+      item_tmp.value = INT_MAX; /* this will give NULL on lookup */
+      RNA_enum_item_add(&item, &totitem, &item_tmp);
+      RNA_enum_item_add_separator(&item, &totitem);
+    }
+  }
+
+  RNA_enum_item_end(&item, &totitem);
+  *r_free = true;
+
+  return item;
+}
+
+
+LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      scene->toolsettings->snap_flag_anim |= SCE_SNAP;
+      scene->toolsettings->snap_anim_mode |= SCE_SNAP_TO_FRAME;
+}
+
 /* ******************** default callbacks for nla space ***************** */
 
 static SpaceLink *nla_create(const ScrArea *area, const Scene *scene)
@@ -56,7 +105,6 @@ static SpaceLink *nla_create(const ScrArea *area, const Scene *scene)
   snla->ads->source = (ID *)(scene);
 
   /* set auto-snapping settings */
-  snla->autosnap = SACTSNAP_FRAME;
   snla->flag = SNLA_SHOW_MARKERS;
 
   /* header */
