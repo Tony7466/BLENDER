@@ -3544,8 +3544,14 @@ void ED_region_header_draw(const bContext *C, ARegion *region)
 
 void ED_region_header_draw_with_background_sections(const bContext *C, ARegion *region)
 {
-  /* clear */
-  region_clear_draw_sections_background(C, region, region_background_color_id(C, region));
+  const ThemeColorID bgcolorid = region_background_color_id(C, region);
+  if (region->overlap) {
+    /* clear */
+    region_clear_draw_sections_background(C, region, bgcolorid);
+  }
+  else {
+    ED_region_clear(C, region, bgcolorid);
+  }
 
   UI_view2d_view_ortho(&region->v2d);
 
