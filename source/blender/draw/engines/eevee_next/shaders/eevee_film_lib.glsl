@@ -649,8 +649,8 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     if (uniform_buf.film.use_reprojection || film_sample.weight < film_distance) {
       float depth = texelFetch(depth_tx, film_sample.texel, 0).x;
       vec4 vector = velocity_resolve(vector_tx, film_sample.texel, depth);
-      /* Transform to pixel space. */
-      vector *= vec4(vec2(uniform_buf.film.render_extent), -vec2(uniform_buf.film.render_extent));
+      /* Transform to pixel space, matching Cycles format. */
+      vector *= vec4(vec2(uniform_buf.film.render_extent), vec2(uniform_buf.film.render_extent));
 
       film_store_depth(texel_film, depth, out_depth);
       if (uniform_buf.film.normal_id != -1) {
