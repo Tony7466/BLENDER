@@ -494,7 +494,7 @@ std::optional<Mesh *> mesh_triangulate(
 
   /* Find the face corner ranges using the offsets array from the new mesh. That gives us the final
    * number of face corners. */
-  const OffsetIndices faces = calc_faces(src_faces, copy_tris, mesh->face_offsets_for_write());
+  const OffsetIndices faces = calc_faces(src_faces, unselected, mesh->face_offsets_for_write());
   mesh->totloop = faces.total_size();
   attributes.add<int>(".corner_vert", ATTR_DOMAIN_CORNER, bke::AttributeInitConstruct());
   attributes.add<int>(".corner_edge", ATTR_DOMAIN_CORNER, bke::AttributeInitConstruct());
@@ -563,10 +563,16 @@ std::optional<Mesh *> mesh_triangulate(
   /* Edges and corner edges from unselected faces and already-trianguated faces are
    * unaffected and are copied to the result mesh like other generic attributes. */
   edges.take_front(src_edges.size()).copy_from(src_edges);
-  array_utils::gather_group_to_group(
-      src_faces, faces.slice(unselected_range), unselected, src_corner_edges, corner_edges);
-  array_utils::gather_group_to_group(
-      src_faces, faces.slice(copy_tris_range), copy_tris, src_corner_edges, corner_edges);
+  array_utils::gather_group_to_group(src_faces,
+                                     faces.slice(unselected_range),
+                                     unselected,
+                                     src_corner_edges,
+                                     corner_edges.slice(unselected_corners));
+  array_utils::gather_group_to_group(src_faces,
+                                     faces.slice(copy_tris_range),
+                                     copy_tris,
+                                     src_corner_edges,
+                                     corner_edges.slice(copy_tri_corners));
 
   src_attributes.for_all([&](const bke::AttributeIDRef &id,
                              const bke::AttributeMetaData meta_data) {
