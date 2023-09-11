@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,6 +18,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.h"
+#include "BKE_lib_query.h"
 #include "BKE_lib_remap.h"
 #include "BKE_screen.h"
 
@@ -37,7 +38,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "nla_intern.hh" /* own include */
 
@@ -56,7 +57,6 @@ static SpaceLink *nla_create(const ScrArea *area, const Scene *scene)
   snla->ads->source = (ID *)(scene);
 
   /* set auto-snapping settings */
-  snla->autosnap = SACTSNAP_FRAME;
   snla->flag = SNLA_SHOW_MARKERS;
 
   /* header */
@@ -405,12 +405,7 @@ static void nla_main_region_message_subscribe(const wmRegionMessageSubscribePara
 {
   wmMsgBus *mbus = params->message_bus;
   Scene *scene = params->scene;
-  bScreen *screen = params->screen;
-  ScrArea *area = params->area;
   ARegion *region = params->region;
-
-  PointerRNA ptr;
-  RNA_pointer_create(&screen->id, &RNA_SpaceNLA, area->spacedata.first, &ptr);
 
   wmMsgSubscribeValue msg_sub_value_region_tag_redraw = {};
   msg_sub_value_region_tag_redraw.owner = region;
@@ -427,8 +422,7 @@ static void nla_main_region_message_subscribe(const wmRegionMessageSubscribePara
         &rna_Scene_frame_current,
     };
 
-    PointerRNA idptr;
-    RNA_id_pointer_create(&scene->id, &idptr);
+    PointerRNA idptr = RNA_id_pointer_create(&scene->id);
 
     for (int i = 0; i < ARRAY_SIZE(props); i++) {
       WM_msg_subscribe_rna(mbus, &idptr, props[i], &msg_sub_value_region_tag_redraw, __func__);
@@ -487,12 +481,7 @@ static void nla_channel_region_listener(const wmRegionListenerParams *params)
 static void nla_channel_region_message_subscribe(const wmRegionMessageSubscribeParams *params)
 {
   wmMsgBus *mbus = params->message_bus;
-  bScreen *screen = params->screen;
-  ScrArea *area = params->area;
   ARegion *region = params->region;
-
-  PointerRNA ptr;
-  RNA_pointer_create(&screen->id, &RNA_SpaceNLA, area->spacedata.first, &ptr);
 
   wmMsgSubscribeValue msg_sub_value_region_tag_redraw = {};
   msg_sub_value_region_tag_redraw.owner = region;
@@ -570,21 +559,23 @@ static void nla_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper 
       mappings, reinterpret_cast<ID **>(&snla->ads->source), ID_REMAP_APPLY_DEFAULT);
 }
 
+static void nla_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
+{
+  SpaceNla *snla = reinterpret_cast<SpaceNla *>(space_link);
+
+  /* NOTE: Could be deduplicated with the #bDopeSheet handling of #SpaceAction and #SpaceGraph. */
+  if (snla->ads == nullptr) {
+    return;
+  }
+
+  BKE_LIB_FOREACHID_PROCESS_ID(data, snla->ads->source, IDWALK_CB_NOP);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, snla->ads->filter_grp, IDWALK_CB_NOP);
+}
+
 static void nla_space_blend_read_data(BlendDataReader *reader, SpaceLink *sl)
 {
   SpaceNla *snla = reinterpret_cast<SpaceNla *>(sl);
   BLO_read_data_address(reader, &snla->ads);
-}
-
-static void nla_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, SpaceLink *sl)
-{
-  SpaceNla *snla = reinterpret_cast<SpaceNla *>(sl);
-  bDopeSheet *ads = snla->ads;
-
-  if (ads) {
-    BLO_read_id_address(reader, parent_id, &ads->source);
-    BLO_read_id_address(reader, parent_id, &ads->filter_grp);
-  }
 }
 
 static void nla_space_blend_write(BlendWriter *writer, SpaceLink *sl)
@@ -613,8 +604,9 @@ void ED_spacetype_nla()
   st->listener = nla_listener;
   st->keymap = nla_keymap;
   st->id_remap = nla_id_remap;
+  st->foreach_id = nla_foreach_id;
   st->blend_read_data = nla_space_blend_read_data;
-  st->blend_read_lib = nla_space_blend_read_lib;
+  st->blend_read_after_liblink = nullptr;
   st->blend_write = nla_space_blend_write;
 
   /* regions: main window */

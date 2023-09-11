@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Compute light objects lighting contribution using Gbuffer data.
@@ -88,26 +91,22 @@ void main()
   diffuse_data.color = is_refraction ? vec3(0.0) : gbuffer_color_unpack(color_1_packed);
 
   /* Light passes. */
-  if (rp_buf.diffuse_light_id >= 0) {
-    imageStore(rp_color_img, ivec3(texel, rp_buf.diffuse_light_id), vec4(diffuse_light, 1.0));
+  if (uniform_buf.render_pass.diffuse_light_id >= 0) {
+    imageStore(rp_color_img,
+               ivec3(texel, uniform_buf.render_pass.diffuse_light_id),
+               vec4(diffuse_light, 1.0));
   }
-  if (rp_buf.specular_light_id >= 0) {
+  if (uniform_buf.render_pass.specular_light_id >= 0) {
     vec3 specular_light = reflection_light + refraction_light;
-    imageStore(rp_color_img, ivec3(texel, rp_buf.specular_light_id), vec4(specular_light, 1.0));
+    imageStore(rp_color_img,
+               ivec3(texel, uniform_buf.render_pass.specular_light_id),
+               vec4(specular_light, 1.0));
   }
-  if (rp_buf.shadow_id >= 0) {
-    imageStore(rp_value_img, ivec3(texel, rp_buf.shadow_id), vec4(shadow));
+  if (uniform_buf.render_pass.shadow_id >= 0) {
+    imageStore(rp_value_img, ivec3(texel, uniform_buf.render_pass.shadow_id), vec4(shadow));
   }
 
-  if (is_last_eval_pass) {
-    diffuse_light *= diffuse_data.color;
-    reflection_light *= reflection_data.color;
-    refraction_light *= refraction_data.color;
-    /* Add radiance to combined pass. */
-    out_radiance = vec4(diffuse_light + reflection_light + refraction_light, 0.0);
-    out_transmittance = vec4(1.0);
-  }
-  else {
+  if (!is_last_eval_pass) {
     /* Store lighting for next deferred pass. */
     vec4 diffuse_radiance;
     diffuse_radiance.xyz = diffuse_light;
@@ -116,4 +115,11 @@ void main()
     imageStore(out_diffuse_light_img, texel, diffuse_radiance);
     imageStore(out_specular_light_img, texel, vec4(reflection_light + reflection_light, 0.0));
   }
+
+  diffuse_light *= diffuse_data.color;
+  reflection_light *= reflection_data.color;
+  refraction_light *= refraction_data.color;
+  /* Add radiance to combined pass. */
+  out_radiance = vec4(diffuse_light + reflection_light + refraction_light, 0.0);
+  out_transmittance = vec4(1.0);
 }

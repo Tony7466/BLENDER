@@ -1,10 +1,9 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eevee
- *
  */
 
 #include "BLI_vector.hh"
@@ -18,7 +17,6 @@ namespace blender::eevee {
 
 /* -------------------------------------------------------------------- */
 /** \name Subsurface
- *
  * \{ */
 
 void SubsurfaceModule::end_sync()
@@ -31,25 +29,18 @@ void SubsurfaceModule::end_sync()
     data_.sample_len = 55;
   }
 
-  if (!transmittance_tx_.is_valid()) {
-    precompute_transmittance_profile();
-  }
-
   precompute_samples_location();
-
-  data_.push_update();
 
   subsurface_ps_.init();
   subsurface_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_STENCIL_EQUAL |
                            DRW_STATE_BLEND_ADD_FULL);
   subsurface_ps_.state_stencil(0x00u, 0xFFu, CLOSURE_SSS);
   subsurface_ps_.shader_set(inst_.shaders.static_shader_get(SUBSURFACE_EVAL));
-  inst_.subsurface.bind_resources(&subsurface_ps_);
+  inst_.bind_uniform_data(&subsurface_ps_);
   inst_.hiz_buffer.bind_resources(&subsurface_ps_);
   subsurface_ps_.bind_texture("radiance_tx", &diffuse_light_tx_);
   subsurface_ps_.bind_texture("gbuffer_closure_tx", &inst_.gbuffer.closure_tx);
   subsurface_ps_.bind_texture("gbuffer_color_tx", &inst_.gbuffer.color_tx);
-  subsurface_ps_.bind_ubo(RBUFS_BUF_SLOT, &inst_.render_buffers.data);
   subsurface_ps_.bind_image(RBUFS_COLOR_SLOT, &inst_.render_buffers.rp_color_tx);
   /** NOTE: Not used in the shader, but we bind it to avoid debug warnings. */
   subsurface_ps_.bind_image(RBUFS_VALUE_SLOT, &inst_.render_buffers.rp_value_tx);
@@ -85,9 +76,13 @@ void SubsurfaceModule::precompute_samples_location()
   }
 }
 
-void SubsurfaceModule::precompute_transmittance_profile()
+const Vector<float> &SubsurfaceModule::transmittance_profile()
 {
-  Vector<float> profile(SSS_TRANSMIT_LUT_SIZE);
+  static Vector<float> profile;
+  if (!profile.is_empty()) {
+    return profile;
+  }
+  profile.resize(SSS_TRANSMIT_LUT_SIZE);
 
   /* Precompute sample position with white albedo. */
   float radius = 1.0f;
@@ -137,8 +132,7 @@ void SubsurfaceModule::precompute_transmittance_profile()
   profile.first() = 1;
   profile.last() = 0;
 
-  transmittance_tx_.ensure_1d(
-      GPU_R16F, profile.size(), GPU_TEXTURE_USAGE_SHADER_READ, profile.data());
+  return profile;
 }
 
 /** \} */

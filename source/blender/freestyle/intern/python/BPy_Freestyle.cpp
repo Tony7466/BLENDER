@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2008-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -65,8 +65,7 @@ static PyObject *Freestyle_getCurrentScene(PyObject * /*self*/)
     PyErr_SetString(PyExc_TypeError, "current scene not available");
     return nullptr;
   }
-  PointerRNA ptr_scene;
-  RNA_pointer_create(&scene->id, &RNA_Scene, scene, &ptr_scene);
+  PointerRNA ptr_scene = RNA_pointer_create(&scene->id, &RNA_Scene, scene);
   return pyrna_struct_CreatePyObject(&ptr_scene);
 }
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation
+/* SPDX-FileCopyrightText: 2018 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -36,7 +36,7 @@
 
 #include "FX_shader_types.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static ShaderFxTypeInfo *shader_fx_types[NUM_SHADER_FX_TYPES] = {nullptr};
 
@@ -299,9 +299,4 @@ void BKE_shaderfx_blend_read_data(BlendDataReader *reader, ListBase *lb, Object 
       fx->type = eShaderFxType_None;
     }
   }
-}
-
-void BKE_shaderfx_blend_read_lib(BlendLibReader *reader, Object *ob)
-{
-  BKE_shaderfx_foreach_ID_link(ob, BKE_object_modifiers_lib_link_common, reader);
 }

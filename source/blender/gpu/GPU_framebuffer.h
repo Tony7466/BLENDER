@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -136,12 +136,17 @@ void GPU_framebuffer_restore(void);
 typedef struct GPULoadStore {
   eGPULoadOp load_action;
   eGPUStoreOp store_action;
+  float clear_value[4];
 } GPULoadStore;
 
 /* Empty bind point. */
+#define NULL_ATTACHMENT_COLOR \
+  { \
+    0.0, 0.0, 0.0, 0.0 \
+  }
 #define NULL_LOAD_STORE \
   { \
-    GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_DONT_CARE \
+    GPU_LOADACTION_DONT_CARE, GPU_STOREACTION_DONT_CARE, NULL_ATTACHMENT_COLOR \
   }
 
 /**

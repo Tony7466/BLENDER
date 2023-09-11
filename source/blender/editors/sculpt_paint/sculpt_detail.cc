@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -85,7 +85,7 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
   float size;
   float bb_min[3], bb_max[3], center[3], dim[3];
 
-  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, nullptr, nullptr);
+  Vector<PBVHNode *> nodes = blender::bke::pbvh::search_gather(ss->pbvh, {});
 
   if (nodes.is_empty()) {
     return OPERATOR_CANCELLED;

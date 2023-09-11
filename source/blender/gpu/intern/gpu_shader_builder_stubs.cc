@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -35,8 +35,9 @@
 
 extern "C" {
 Global G;
-UserDef U;
 }
+
+UserDef U;
 
 /* -------------------------------------------------------------------- */
 /** \name Stubs of BLI_imbuf_types.h

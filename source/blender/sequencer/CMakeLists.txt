@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2011 Blender Foundation
+# SPDX-FileCopyrightText: 2011 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -101,6 +101,10 @@ if(WITH_AUDASPACE)
     )
   endif()
   add_definitions(-DWITH_AUDASPACE)
+
+  if(WITH_FFTW3)
+    add_definitions(-DWITH_CONVOLUTION)
+  endif()
 endif()
 
 blender_add_lib(bf_sequencer "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")

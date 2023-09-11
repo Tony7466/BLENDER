@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -159,10 +159,10 @@ class RayTraceModule {
   RaytraceEEVEE reflection_options_;
   RaytraceEEVEE refraction_options_;
 
-  RayTraceDataBuf data_;
+  RayTraceData &data_;
 
  public:
-  RayTraceModule(Instance &inst) : inst_(inst){};
+  RayTraceModule(Instance &inst, RayTraceData &data) : inst_(inst), data_(data){};
 
   void init();
 

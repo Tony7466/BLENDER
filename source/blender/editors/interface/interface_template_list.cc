@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -121,8 +121,7 @@ static void uilist_draw_item_default(uiList *ui_list,
 
 static void uilist_draw_filter_default(uiList *ui_list, const bContext * /*C*/, uiLayout *layout)
 {
-  PointerRNA listptr;
-  RNA_pointer_create(nullptr, &RNA_UIList, ui_list, &listptr);
+  PointerRNA listptr = RNA_pointer_create(nullptr, &RNA_UIList, ui_list);
 
   uiLayout *row = uiLayoutRow(layout, false);
 

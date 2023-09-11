@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -206,7 +206,7 @@ TriMeshTopology::TriMeshTopology(const IMesh &tm)
       std::cout << "tris for edge " << item.key << ": " << *item.value << "\n";
       constexpr bool print_stats = false;
       if (print_stats) {
-        edge_tri_.print_stats();
+        edge_tri_.print_stats("");
       }
     }
     for (auto item : vert_edges_.items()) {

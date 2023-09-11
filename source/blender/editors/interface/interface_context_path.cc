@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -33,8 +33,7 @@ void context_path_add_generic(Vector<ContextPathItem> &path,
     return;
   }
 
-  PointerRNA rna_ptr;
-  RNA_pointer_create(nullptr, &rna_type, ptr, &rna_ptr);
+  PointerRNA rna_ptr = RNA_pointer_create(nullptr, &rna_type, ptr);
   char name[128];
   RNA_struct_name_get_alloc(&rna_ptr, name, sizeof(name), nullptr);
 
