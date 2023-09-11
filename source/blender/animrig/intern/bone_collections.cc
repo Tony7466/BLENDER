@@ -440,7 +440,10 @@ void ANIM_armature_bonecoll_show_from_pchan(bArmature *armature, const bPoseChan
   ANIM_armature_bonecoll_show_from_bone(armature, pchan->bone);
 }
 
-/* ********************************************** */
+/* ********* */
+/* C++ only. */
+namespace blender::animrig {
+
 /* Utility functions for Armature edit-mode undo. */
 
 blender::Map<BoneCollection *, BoneCollection *> ANIM_bonecoll_listbase_copy_no_membership(
@@ -482,3 +485,5 @@ void ANIM_bonecoll_listbase_free(ListBase *bcolls, const bool do_id_user)
   }
   BLI_freelistN(bcolls);
 }
+
+} /* namespace blender::animrig */

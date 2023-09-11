@@ -34,10 +34,12 @@
 #include "ED_undo.hh"
 #include "ED_util.hh"
 
-#include "ANIM_bone_collections.h"
+#include "ANIM_bone_collections.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
+
+using namespace blender::animrig;
 
 /** We only need this locally. */
 static CLG_LogRef LOG = {"ed.undo.armature"};
