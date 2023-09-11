@@ -228,6 +228,7 @@ class GHOST_DeviceVK {
     device_features.imageCubeArray = VK_TRUE;
     device_features.multiViewport = VK_TRUE;
 #endif
+    device_features.drawIndirectFirstInstance = VK_TRUE;
 
     VkPhysicalDeviceMaintenance4FeaturesKHR maintenance_4 = {};
     maintenance_4.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES_KHR;
@@ -928,6 +929,8 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
   if (m_debug) {
     enableLayer(layers_available, layers_enabled, VkLayer::KHRONOS_validation, m_debug);
     requireExtension(extensions_available, extensions_enabled, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    requireExtension(
+        extensions_available, extensions_enabled, VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
   }
 
   if (use_window_surface) {
@@ -958,6 +961,16 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
     app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     app_info.apiVersion = VK_MAKE_VERSION(m_context_major_version, m_context_minor_version, 0);
 
+    // Populate the VkValidationFeaturesEXT
+    VkValidationFeaturesEXT validationFeatures = {};
+    validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+    validationFeatures.enabledValidationFeatureCount = 1;
+
+    VkValidationFeatureEnableEXT enabledValidationFeatures[1] = {
+        VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT};
+    validationFeatures.pEnabledValidationFeatures = enabledValidationFeatures;
+
+    // Then add the VkValidationFeaturesEXT to the VkInstanceCreateInfo
     VkInstanceCreateInfo create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     create_info.pApplicationInfo = &app_info;
@@ -965,6 +978,10 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
     create_info.ppEnabledLayerNames = layers_enabled.data();
     create_info.enabledExtensionCount = uint32_t(extensions_enabled.size());
     create_info.ppEnabledExtensionNames = extensions_enabled.data();
+
+    if (m_debug) {
+      create_info.pNext = &validationFeatures;
+    }
     VK_CHECK(vkCreateInstance(&create_info, nullptr, &instance));
   }
   else {

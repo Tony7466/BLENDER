@@ -507,8 +507,8 @@ static char *glsl_patch_get()
   STR_CONCAT(patch, slen, "#define gl_VertexID gl_VertexIndex\n");
   STR_CONCAT(patch, slen, "#define gpu_InstanceIndex (gl_InstanceIndex)\n");
   STR_CONCAT(patch, slen, "#define GPU_ARB_texture_cube_map_array\n");
-
-  STR_CONCAT(patch, slen, "#define gl_InstanceID gpu_InstanceIndex\n");
+  /* `gl_InstanceID` should always start at 0. */
+  STR_CONCAT(patch, slen, "#define gl_InstanceID (gpu_InstanceIndex - gpu_BaseInstance)\n");
 
   /* TODO(fclem): This creates a validation error and should be already part of Vulkan 1.2. */
   STR_CONCAT(patch, slen, "#extension GL_ARB_shader_viewport_layer_array: enable\n");
