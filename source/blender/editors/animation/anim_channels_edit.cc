@@ -2931,7 +2931,7 @@ static void box_select_anim_channels(bAnimContext *ac, rcti *rect, short selectm
   /* filter data */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE | ANIMFILTER_LIST_CHANNELS);
 
-  if (ac->datatype == ANIMCONT_FCURVES) {
+  if (!ANIM_animdata_can_have_greasepencil(eAnimCont_Types(ac->datatype))) {
     filter |= ANIMFILTER_FCURVESONLY;
   }
 
