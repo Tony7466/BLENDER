@@ -705,10 +705,9 @@ Vector<GVGrid> evaluate_volume_fields(ResourceScope &scope,
         }
         else {
           /* TODO materialize into the grid? What's the topology? */
-          // computed_grid.materialize(
+          computed_grid.materialize(dst_grid);
           std::cout << "Destination grid: " << std::endl;
           dst_grid.get_internal_grid()->print(std::cout, 3);
-          BLI_assert_unreachable();
         }
       }
       r_grids[out_index] = dst_grid;

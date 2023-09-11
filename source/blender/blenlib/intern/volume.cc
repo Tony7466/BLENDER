@@ -6,6 +6,7 @@
  * \ingroup bli
  */
 
+#include "BLI_array_utils.hh"
 #include "BLI_cpp_type.hh"
 #include "BLI_generic_virtual_grid.hh"
 #include "BLI_math_base.hh"
@@ -142,8 +143,8 @@ void materialize_to_grid(GVMutableGrid &dst, const GVGridImpl &src)
   BLI_assert(dst.is_grid());
   volume::grid_to_static_type(*dst.get_internal_grid(), [&](auto &typed_dst) {
     using GridType = typename std::decay<decltype(typed_dst)>::type;
+    using GridValueType = typename GridType::ValueType;
     using TreeType = typename GridType::TreeType;
-    using Accessor = typename GridType::ConstAccessor;
     using Converter = volume::grid_types::Converter<GridType>;
     using AttributeValueType = typename Converter::AttributeValueType;
     using LeafNode = typename TreeType::LeafNodeType;
@@ -155,8 +156,9 @@ void materialize_to_grid(GVMutableGrid &dst, const GVGridImpl &src)
         [&src](const typename TreeType::LeafIter &leaf_iter) {
           LeafNode &leaf = *leaf_iter;
 
-          GVArray leaf_varray = src.get_varray_for_leaf(leaf.LOG2DIM, int3(leaf.origin().data()));
-          auto *leaf_values = leaf.buffer().data();
+          GVArray src_varray = src.get_varray_for_leaf(leaf.LOG2DIM, int3(leaf.origin().data()));
+          MutableSpan<GridValueType> leaf_span = {leaf.buffer().data(), LeafNode::NUM_VOXELS};
+          array_utils::copy(src_varray, leaf_span);
         },
         /*threaded=*/true,
         /*shareOp=*/false);
