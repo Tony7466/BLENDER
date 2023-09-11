@@ -618,7 +618,6 @@ static void node_update_basis_from_declaration(
 
   if (need_spacer_after_item) {
     locy -= NODE_DYS / 2;
-    need_spacer_after_item = false;
   }
 }
 
