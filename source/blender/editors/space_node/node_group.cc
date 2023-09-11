@@ -1022,6 +1022,7 @@ static void node_group_make_insert_selected(const bContext &C,
   Map<int32_t, int32_t> node_identifier_map;
 
   ntree.ensure_topology_cache();
+  /* Add all outputs first. */
   for (bNode *node : nodes_to_move) {
     for (bNodeSocket *output_socket : node->output_sockets()) {
       for (bNodeLink *link : output_socket->directly_linked_links()) {
@@ -1047,6 +1048,9 @@ static void node_group_make_insert_selected(const bContext &C,
         }
       }
     }
+  }
+  /* Now add all inputs. */
+  for (bNode *node : nodes_to_move) {
     for (bNodeSocket *input_socket : node->input_sockets()) {
       for (bNodeLink *link : input_socket->directly_linked_links()) {
         if (nodeLinkIsHidden(link)) {
@@ -1096,8 +1100,8 @@ static void node_group_make_insert_selected(const bContext &C,
           }
         }
       };
-      expose_sockets(node->input_sockets());
       expose_sockets(node->output_sockets());
+      expose_sockets(node->input_sockets());
     }
   }
 
