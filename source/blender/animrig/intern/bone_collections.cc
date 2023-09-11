@@ -20,6 +20,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BKE_animsys.h"
+#include "BKE_idprop.h"
 
 #include "ANIM_armature_iter.hh"
 #include "ANIM_bone_collections.h"
@@ -63,6 +64,9 @@ void ANIM_bonecoll_free(BoneCollection *bcoll)
   BLI_assert_msg(BLI_listbase_is_empty(&bcoll->bones),
                  "bone collection still has bones assigned to it, will cause dangling pointers in "
                  "bone runtime data");
+  if (bcoll->prop) {
+    IDP_FreeProperty(bcoll->prop);
+  }
   MEM_delete(bcoll);
 }
 
@@ -261,11 +265,7 @@ bool ANIM_armature_bonecoll_assign_editbone(BoneCollection *bcoll, EditBone *ebo
 
 bool ANIM_armature_bonecoll_assign_and_move(BoneCollection *bcoll, Bone *bone)
 {
-  /* Remove the bone from all its current collections. */
-  LISTBASE_FOREACH_MUTABLE (BoneCollectionReference *, ref, &bone->runtime.collections) {
-    ANIM_armature_bonecoll_unassign(ref->bcoll, bone);
-  }
-  /* Assign the new collection. */
+  ANIM_armature_bonecoll_unassign_all(bone);
   return ANIM_armature_bonecoll_assign(bcoll, bone);
 }
 
@@ -293,6 +293,13 @@ bool ANIM_armature_bonecoll_unassign(BoneCollection *bcoll, Bone *bone)
   }
 
   return was_found;
+}
+
+void ANIM_armature_bonecoll_unassign_all(Bone *bone)
+{
+  LISTBASE_FOREACH_MUTABLE (BoneCollectionReference *, ref, &bone->runtime.collections) {
+    ANIM_armature_bonecoll_unassign(ref->bcoll, bone);
+  }
 }
 
 bool ANIM_armature_bonecoll_unassign_editbone(BoneCollection *bcoll, EditBone *ebone)

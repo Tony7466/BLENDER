@@ -194,8 +194,7 @@ static void ui_obj_export_settings(uiLayout *layout, PointerRNA *imfptr)
 
 static void wm_obj_export_draw(bContext * /*C*/, wmOperator *op)
 {
-  PointerRNA ptr;
-  RNA_pointer_create(nullptr, op->type->srna, op->properties, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, op->type->srna, op->properties);
   ui_obj_export_settings(op->layout, &ptr);
 }
 
@@ -465,10 +464,8 @@ static void ui_obj_import_settings(uiLayout *layout, PointerRNA *imfptr)
 
 static void wm_obj_import_draw(bContext *C, wmOperator *op)
 {
-  PointerRNA ptr;
   wmWindowManager *wm = CTX_wm_manager(C);
-  RNA_pointer_create(&wm->id, op->type->srna, op->properties, &ptr);
-  files_drop_label_draw(C, op, ICON_FILE_3D, ".obj");
+  PointerRNA ptr = RNA_pointer_create(&wm->id, op->type->srna, op->properties);
   ui_obj_import_settings(op->layout, &ptr);
 }
 
