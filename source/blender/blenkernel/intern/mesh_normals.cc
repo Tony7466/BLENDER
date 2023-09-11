@@ -193,33 +193,11 @@ void normals_calc_verts(const Span<float3> vert_positions,
       float3 vert_normal(0);
       for (const int face : vert_faces) {
         const int2 adjacent_verts = face_find_adjecent_verts(faces[face], corner_verts, vert);
-
         const float3 dir_prev = math::normalize(positions[adjacent_verts[0]] - positions[vert]);
         const float3 dir_next = math::normalize(positions[adjacent_verts[1]] - positions[vert]);
         const float factor = math::safe_acos(math::dot(dir_prev, dir_next));
 
         vert_normal += face_normals[face] * factor;
-      }
-      vert_normals[vert] = vert_normal / vert_faces.size();
-    }
-  });
-}
-
-static void normals_calc_verts_fast(const Span<float3> positions,
-                                    const GroupedSpan<int> vert_to_face_map,
-                                    const Span<float3> face_normals,
-                                    MutableSpan<float3> vert_normals)
-{
-  threading::parallel_for(positions.index_range(), 1024, [&](const IndexRange range) {
-    for (const int vert : range) {
-      const Span<int> vert_faces = vert_to_face_map[vert];
-      if (vert_faces.is_empty()) {
-        vert_normals[vert] = math::normalize(positions[vert]);
-        continue;
-      }
-      float3 vert_normal(0);
-      for (const int face : vert_faces) {
-        vert_normal += face_normals[face];
       }
       vert_normals[vert] = vert_normal / vert_faces.size();
     }
@@ -245,15 +223,10 @@ blender::Span<blender::float3> Mesh::vert_normals() const
   const GroupedSpan<int> vert_to_face_map = this->vert_to_face_map();
   this->runtime->vert_normals_cache.ensure([&](Vector<float3> &r_data) {
     r_data.reinitialize(positions.size());
-    if (false) {
-      bke::mesh::normals_calc_verts_fast(positions, vert_to_face_map, face_normals, r_data);
-    }
-    else {
-      const OffsetIndices faces = this->faces();
-      const Span<int> corner_verts = this->corner_verts();
-      bke::mesh::normals_calc_verts(
-          positions, faces, corner_verts, vert_to_face_map, face_normals, r_data);
-    }
+    const OffsetIndices faces = this->faces();
+    const Span<int> corner_verts = this->corner_verts();
+    bke::mesh::normals_calc_verts(
+        positions, faces, corner_verts, vert_to_face_map, face_normals, r_data);
   });
   return this->runtime->vert_normals_cache.data();
 }
