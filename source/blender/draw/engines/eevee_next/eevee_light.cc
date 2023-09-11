@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -417,6 +417,7 @@ void LightModule::debug_pass_sync()
     debug_draw_ps_.init();
     debug_draw_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
     debug_draw_ps_.shader_set(inst_.shaders.static_shader_get(LIGHT_CULLING_DEBUG));
+    inst_.bind_uniform_data(&debug_draw_ps_);
     inst_.hiz_buffer.bind_resources(&debug_draw_ps_);
     debug_draw_ps_.bind_ssbo("light_buf", &culling_light_buf_);
     debug_draw_ps_.bind_ssbo("light_cull_buf", &culling_data_buf_);

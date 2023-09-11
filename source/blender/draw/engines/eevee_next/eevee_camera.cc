@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -180,7 +180,6 @@ void Camera::sync()
   }
 
   data_.initialized = true;
-  data_.push_update();
 
   update_bounds();
 }

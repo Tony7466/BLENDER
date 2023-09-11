@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -534,7 +534,7 @@ static Mesh *normalEditModifier_do(NormalEditModifierData *enmd,
                                           faces,
                                           corner_verts,
                                           corner_edges,
-                                          {},
+                                          result->corner_to_face_map(),
                                           result->vert_normals(),
                                           result->face_normals(),
                                           sharp_edges.span.data(),

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,7 +16,7 @@
 
 #include "ED_sequencer.hh"
 
-#include "sequencer_intern.h"
+#include "sequencer_intern.hh"
 
 /* ************************** registration **********************************/
 
@@ -104,6 +104,7 @@ void sequencer_operatortypes()
   WM_operatortype_append(SEQUENCER_OT_strip_modifier_remove);
   WM_operatortype_append(SEQUENCER_OT_strip_modifier_move);
   WM_operatortype_append(SEQUENCER_OT_strip_modifier_copy);
+  WM_operatortype_append(SEQUENCER_OT_strip_modifier_equalizer_redefine);
 
   /* sequencer_view.h */
   WM_operatortype_append(SEQUENCER_OT_sample);

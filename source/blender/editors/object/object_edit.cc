@@ -2044,7 +2044,37 @@ void move_to_collection_menu_new_item(uiLayout *layout,
 
   RNA_boolean_set(&ptr, "is_new", true);
 
+<<<<<<< HEAD
   RNA_enum_set(&ptr, scene_collection ? "scene" : "collection", enum_index);
+=======
+static void move_to_collection_menus_free_recursive(MoveToCollectionData *menu)
+{
+  LISTBASE_FOREACH (MoveToCollectionData *, submenu, &menu->submenus) {
+    move_to_collection_menus_free_recursive(submenu);
+  }
+  BLI_freelistN(&menu->submenus);
+}
+
+static void move_to_collection_menus_free(MoveToCollectionData **menu)
+{
+  if (*menu == nullptr) {
+    return;
+  }
+
+  move_to_collection_menus_free_recursive(*menu);
+  MEM_freeN(*menu);
+  *menu = nullptr;
+}
+
+static void move_to_collection_menu_create(bContext *C, uiLayout *layout, void *menu_v)
+{
+  MoveToCollectionData *menu = static_cast<MoveToCollectionData *>(menu_v);
+  const char *name = BKE_collection_ui_name_get(menu->collection);
+
+  WM_operator_properties_create_ptr(&menu->ptr, menu->ot);
+  RNA_int_set(&menu->ptr, "collection_index", menu->index);
+  RNA_boolean_set(&menu->ptr, "is_new", true);
+>>>>>>> origin/main
 
   uiItemFullO_ptr(layout,
                   ot,

@@ -37,17 +37,20 @@
 
 #include "transform_convert.hh"
 
-/* helper struct for gp-frame transforms */
+/** Helper struct for GP-frame transforms. */
 struct tGPFtransdata {
   union {
-    float val;    /* where transdata writes transform */
-    float loc[3]; /* #td->val and #td->loc share the same pointer. */
+    /** Where `transdata` writes transform. */
+    float val;
+    /** #td->val and #td->loc share the same pointer. */
+    float loc[3];
   };
-  int *sdata; /* pointer to gpf->framenum */
+  /** Pointer to `gpf->framenum` */
+  int *sdata;
 };
 
 /* -------------------------------------------------------------------- */
-/** \name Grease Pencil Transfrom helpers
+/** \name Grease Pencil Transform helpers
  * \{ */
 
 static bool grease_pencil_layer_initialize_trans_data(blender::bke::greasepencil::Layer &layer)
@@ -60,7 +63,7 @@ static bool grease_pencil_layer_initialize_trans_data(blender::bke::greasepencil
   }
 
   /* Make a copy of the current frames in the layer. This map will be changed during the
-   * transformation, and we need to be able to reset it if the operation is cancelled. */
+   * transformation, and we need to be able to reset it if the operation is canceled. */
   trans_data.frames_copy = layer.frames();
   trans_data.frames_duration.clear();
   trans_data.frames_destination.clear();
@@ -817,6 +820,20 @@ static void flushTransIntFrameActionData(TransInfo *t)
   }
 }
 
+static void invert_snap(eSnapMode &snap_mode)
+{
+  /* Make snapping work like before 4.0 where pressing CTRL will switch between snapping to seconds
+   * and frames. */
+  if (snap_mode & SCE_SNAP_TO_FRAME) {
+    snap_mode &= ~SCE_SNAP_TO_FRAME;
+    snap_mode |= SCE_SNAP_TO_SECOND;
+  }
+  else if (snap_mode & SCE_SNAP_TO_SECOND) {
+    snap_mode &= ~SCE_SNAP_TO_SECOND;
+    snap_mode |= SCE_SNAP_TO_FRAME;
+  }
+}
+
 static void recalcData_actedit(TransInfo *t)
 {
   ViewLayer *view_layer = t->view_layer;
@@ -850,13 +867,17 @@ static void recalcData_actedit(TransInfo *t)
 
   /* Flush 2d vector. */
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
-  const short autosnap = getAnimEdit_SnapMode(t);
+  eSnapMode snap_mode = t->tsnap.mode;
+  if (t->modifiers & MOD_SNAP_INVERT) {
+    invert_snap(snap_mode);
+  }
+
   TransData *td;
   TransData2D *td2d;
   int i = 0;
   for (td = tc->data, td2d = tc->data_2d; i < tc->data_len; i++, td++, td2d++) {
-    if ((autosnap != SACTSNAP_OFF) && (t->state != TRANS_CANCEL) && !(td->flag & TD_NOTIMESNAP)) {
-      transform_snap_anim_flush_data(t, td, eAnimEdit_AutoSnap(autosnap), td->loc);
+    if ((t->tsnap.flag & SCE_SNAP) && (t->state != TRANS_CANCEL) && !(td->flag & TD_NOTIMESNAP)) {
+      transform_snap_anim_flush_data(t, td, snap_mode, td->loc);
     }
 
     /* Constrain Y. */
@@ -1044,7 +1065,7 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
   bAnimContext ac;
 
   const bool canceled = (t->state == TRANS_CANCEL);
-  const bool duplicate = (t->flag & T_AUTOMERGE) != 0;
+  const bool duplicate = (t->flag & T_DUPLICATED_KEYFRAMES) != 0;
 
   /* initialize relevant anim-context 'context' data */
   if (ANIM_animdata_get_context(C, &ac) == 0) {

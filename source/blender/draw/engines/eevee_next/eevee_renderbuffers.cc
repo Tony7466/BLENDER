@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -51,7 +51,6 @@ void RenderBuffers::sync()
   data.ambient_occlusion_id = pass_index_get(EEVEE_RENDER_PASS_AO);
 
   data.aovs = inst_.film.aovs_info;
-  data.push_update();
 }
 
 void RenderBuffers::acquire(int2 extent)
