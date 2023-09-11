@@ -2249,3 +2249,45 @@ void ui_draw_dropshadow(const rctf *rct, float radius, float aspect, float alpha
 
   GPU_blend(GPU_BLEND_NONE);
 }
+
+void ui_draw_button_sections_background(const ARegion *region,
+                                        const blender::Vector<rcti> &section_bounds,
+                                        int /*ThemeColorID*/ colorid,
+                                        const float merge_distance_x)
+{
+  const uiStyle *style = UI_style_get_dpi();
+  const float aspect = BLI_rctf_size_x(&region->v2d.cur) /
+                       (BLI_rcti_size_x(&region->v2d.mask) + 1);
+
+  float bg_color[4];
+  UI_GetThemeColor4fv(colorid, bg_color);
+
+  GPU_blend(GPU_BLEND_ALPHA);
+  for (const rcti &bounds : section_bounds) {
+    int roundbox_corners = UI_CNR_TOP_LEFT | UI_CNR_TOP_RIGHT;
+    rctf bounds_float;
+    BLI_rctf_rcti_copy(&bounds_float, &bounds);
+
+    /* Merge with region edge if close enough. */
+    if (bounds_float.xmin <= merge_distance_x) {
+      bounds_float.xmin = 0;
+      roundbox_corners &= ~(UI_CNR_TOP_LEFT | UI_CNR_BOTTOM_LEFT);
+    }
+    if (bounds_float.xmax >= (region->winx - merge_distance_x)) {
+      bounds_float.xmax = region->winx;
+      roundbox_corners &= ~(UI_CNR_TOP_RIGHT | UI_CNR_BOTTOM_RIGHT);
+    }
+
+    UI_draw_roundbox_corner_set(roundbox_corners);
+
+    BLI_rctf_pad(&bounds_float, style->buttonspacex, style->buttonspacey);
+    /* Clamp, important for the rounded-corners to be correct. */
+    CLAMP_MIN(bounds_float.xmin, 0);
+    CLAMP_MAX(bounds_float.xmax, region->winx);
+    CLAMP_MIN(bounds_float.ymin, 0);
+    CLAMP_MAX(bounds_float.ymax, region->winy);
+
+    UI_draw_roundbox_4fv(&bounds_float, true, 4.0f * UI_SCALE_FAC / aspect, bg_color);
+  }
+  GPU_blend(GPU_BLEND_NONE);
+}

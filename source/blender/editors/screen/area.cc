@@ -2778,6 +2778,22 @@ void ED_region_clear(const bContext *C, const ARegion *region, const int /*Theme
   }
 }
 
+/* TODO should there be separate theme colors for the clear color and the button background color?
+ */
+static void region_clear_draw_sections_background(const bContext *C,
+                                                  const ARegion *region,
+                                                  const int /*ThemeColorID*/ colorid)
+{
+  /* view should be in pixelspace */
+  UI_view2d_view_restore(C);
+
+  float back[4];
+  UI_GetThemeColor4fv(colorid, back);
+  GPU_clear_color(0, 0, 0, 0);
+
+  UI_region_button_sections_draw(region, colorid);
+}
+
 BLI_INLINE bool streq_array_any(const char *s, const char *arr[])
 {
   for (uint i = 0; arr[i]; i++) {
@@ -3513,6 +3529,23 @@ void ED_region_header_draw(const bContext *C, ARegion *region)
 {
   /* clear */
   ED_region_clear(C, region, region_background_color_id(C, region));
+
+  UI_view2d_view_ortho(&region->v2d);
+
+  /* View2D matrix might have changed due to dynamic sized regions. */
+  UI_blocklist_update_window_matrix(C, &region->uiblocks);
+
+  /* draw blocks */
+  UI_blocklist_draw(C, &region->uiblocks);
+
+  /* restore view matrix */
+  UI_view2d_view_restore(C);
+}
+
+void ED_region_header_draw_with_background_sections(const bContext *C, ARegion *region)
+{
+  /* clear */
+  region_clear_draw_sections_background(C, region, region_background_color_id(C, region));
 
   UI_view2d_view_ortho(&region->v2d);
 

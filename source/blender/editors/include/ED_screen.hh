@@ -118,6 +118,7 @@ void ED_region_header_init(ARegion *region);
 void ED_region_header(const bContext *C, ARegion *region);
 void ED_region_header_layout(const bContext *C, ARegion *region);
 void ED_region_header_draw(const bContext *C, ARegion *region);
+void ED_region_header_draw_with_background_sections(const bContext *C, ARegion *region);
 
 void ED_region_cursor_set(wmWindow *win, ScrArea *area, ARegion *region);
 /**

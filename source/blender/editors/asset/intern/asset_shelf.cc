@@ -468,7 +468,8 @@ void ED_asset_shelf_header_region(const bContext *C, ARegion *region)
       *main_shelf_region);
   update_active_shelf(*C, *space_type, *shelf_regiondata);
 
-  ED_region_header(C, region);
+  ED_region_header_layout(C, region);
+  ED_region_header_draw_with_background_sections(C, region);
 }
 
 int ED_asset_shelf_header_region_size()
