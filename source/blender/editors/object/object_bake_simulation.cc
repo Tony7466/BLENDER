@@ -38,6 +38,7 @@
 #include "BKE_lib_id.h"
 #include "BKE_main.h"
 #include "BKE_mesh.hh"
+#include "BKE_modifier.h"
 #include "BKE_node_runtime.hh"
 #include "BKE_object.h"
 #include "BKE_pointcloud.h"
@@ -373,8 +374,15 @@ static void bake_simulation_job_endjob(void *customdata)
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, nullptr);
 }
 
-static int start_bake_job(bContext *C, BakeSimulationJob *job, wmOperator *op)
+static int start_bake_job(bContext *C, Vector<ObjectBakeData> objects_to_bake, wmOperator *op)
 {
+  BakeSimulationJob *job = MEM_new<BakeSimulationJob>(__func__);
+  job->wm = CTX_wm_manager(C);
+  job->bmain = CTX_data_main(C);
+  job->depsgraph = CTX_data_depsgraph_pointer(C);
+  job->scene = CTX_data_scene(C);
+  job->objects = std::move(objects_to_bake);
+
   wmJob *wm_job = WM_jobs_get(job->wm,
                               CTX_wm_window(C),
                               job->scene,
@@ -395,16 +403,8 @@ static int start_bake_job(bContext *C, BakeSimulationJob *job, wmOperator *op)
 
 static int bake_simulation_exec(bContext *C, wmOperator *op)
 {
-  wmWindowManager *wm = CTX_wm_manager(C);
   Scene *scene = CTX_data_scene(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Main *bmain = CTX_data_main(C);
-
-  BakeSimulationJob *job = MEM_new<BakeSimulationJob>(__func__);
-  job->wm = wm;
-  job->bmain = bmain;
-  job->depsgraph = depsgraph;
-  job->scene = scene;
 
   Vector<Object *> objects;
   if (RNA_boolean_get(op->ptr, "selected")) {
@@ -419,6 +419,7 @@ static int bake_simulation_exec(bContext *C, wmOperator *op)
     }
   }
 
+  Vector<ObjectBakeData> objects_to_bake;
   for (Object *object : objects) {
     if (!BKE_id_is_editable(bmain, &object->id)) {
       continue;
@@ -471,10 +472,10 @@ static int bake_simulation_exec(bContext *C, wmOperator *op)
     if (bake_data.modifiers.is_empty()) {
       continue;
     }
-    job->objects.append(std::move(bake_data));
+    objects_to_bake.append(std::move(bake_data));
   }
 
-  return start_bake_job(C, job, op);
+  return start_bake_job(C, std::move(objects_to_bake), op);
 }
 
 struct PathStringHash {
@@ -712,6 +713,71 @@ static int delete_baked_simulation_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static int geometry_nodes_bake_node_exec(bContext *C, wmOperator *op)
+{
+  Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
+  Object *object = reinterpret_cast<Object *>(
+      WM_operator_properties_id_lookup_from_name_or_session_uuid(bmain, op->ptr, ID_OB));
+  if (object == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+  char *modifier_name = RNA_string_get_alloc(op->ptr, "modifier_name", nullptr, 0, nullptr);
+  if (modifier_name == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+  BLI_SCOPED_DEFER([&]() { MEM_SAFE_FREE(modifier_name); });
+
+  ModifierData *md = BKE_modifiers_findby_name(object, modifier_name);
+  if (md == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+  NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
+  const int bake_id = RNA_int_get(op->ptr, "bake_id");
+  const std::optional<bake::BakePath> bake_path = bake::get_node_bake_path(
+      *bmain, *object, nmd, bake_id);
+  if (!bake_path.has_value()) {
+    return OPERATOR_CANCELLED;
+  }
+  const std::optional<IndexRange> frame_range = bake::get_node_bake_frame_range(
+      *scene, *object, nmd, bake_id);
+  if (!frame_range.has_value()) {
+    return OPERATOR_CANCELLED;
+  }
+  if (frame_range->is_empty()) {
+    return OPERATOR_CANCELLED;
+  }
+
+  NodeBakeData node_bake_data;
+  node_bake_data.id = bake_id;
+  node_bake_data.path = std::move(*bake_path);
+  node_bake_data.frame_start = frame_range->first();
+  node_bake_data.frame_end = frame_range->last();
+  node_bake_data.blob_sharing = std::make_unique<bake::BlobSharing>();
+
+  ModifierBakeData modifier_bake_data;
+  modifier_bake_data.nmd = &nmd;
+  modifier_bake_data.nodes.append(std::move(node_bake_data));
+
+  ObjectBakeData object_bake_data;
+  object_bake_data.object = object;
+  object_bake_data.modifiers.append(std::move(modifier_bake_data));
+
+  Vector<ObjectBakeData> objects_to_bake;
+  objects_to_bake.append(std::move(object_bake_data));
+  return start_bake_job(C, std::move(objects_to_bake), op);
+}
+
+static int geometry_nodes_bake_node_modal(bContext *C,
+                                          wmOperator * /*op*/,
+                                          const wmEvent * /*event*/)
+{
+  if (!WM_jobs_test(CTX_wm_manager(C), CTX_data_scene(C), WM_JOB_TYPE_BAKE_SIMULATION_NODES)) {
+    return OPERATOR_FINISHED | OPERATOR_PASS_THROUGH;
+  }
+  return OPERATOR_PASS_THROUGH;
+}
+
 }  // namespace blender::ed::object::bake_simulation
 
 void OBJECT_OT_simulation_nodes_cache_calculate_to_frame(wmOperatorType *ot)
@@ -762,4 +828,27 @@ void OBJECT_OT_simulation_nodes_cache_delete(wmOperatorType *ot)
   ot->poll = ED_operator_object_active;
 
   RNA_def_boolean(ot->srna, "selected", false, "Selected", "Delete cache on all selected objects");
+}
+
+void OBJECT_OT_geometry_nodes_bake_node(wmOperatorType *ot)
+{
+  using namespace blender::ed::object::bake_simulation;
+
+  ot->name = "Bake Single Geometry Node";
+  ot->description = "Bake a single geometry node";
+  ot->idname = "OBJECT_OT_geometry_nodes_bake_node";
+
+  ot->exec = geometry_nodes_bake_node_exec;
+  ot->modal = geometry_nodes_bake_node_modal;
+
+  WM_operator_properties_id_lookup(ot, false);
+
+  RNA_def_string(ot->srna,
+                 "modifier_name",
+                 nullptr,
+                 0,
+                 "Modifier Name",
+                 "Name of the modifier that contains the node to bake");
+  RNA_def_int(
+      ot->srna, "bake_id", 0, 0, INT32_MAX, "Bake ID", "ID of the node to bake", 0, INT32_MAX);
 }

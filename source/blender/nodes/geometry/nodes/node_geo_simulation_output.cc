@@ -45,6 +45,8 @@
 
 #include "BLT_translation.h"
 
+#include "WM_api.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes {
@@ -958,6 +960,20 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
     uiLayoutSetActive(col, !is_baked);
     uiItemR(col, &bake_rna, "frame_start", UI_ITEM_NONE, "Start", ICON_NONE);
     uiItemR(col, &bake_rna, "frame_end", UI_ITEM_NONE, "End", ICON_NONE);
+  }
+  {
+    PointerRNA ptr;
+    uiItemFullO(layout,
+                "OBJECT_OT_geometry_nodes_bake_node",
+                "Bake",
+                ICON_NONE,
+                nullptr,
+                WM_OP_INVOKE_DEFAULT,
+                UI_ITEM_NONE,
+                &ptr);
+    WM_operator_properties_id_lookup_set_from_id(&ptr, &object->id);
+    RNA_string_set(&ptr, "modifier_name", nmd.modifier.name);
+    RNA_int_set(&ptr, "bake_id", bake->id);
   }
 }
 
