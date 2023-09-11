@@ -33,12 +33,13 @@
 #include "BKE_light.h"
 #include "BKE_main.h"
 #include "BKE_node.h"
+#include "BKE_preview_image.hh"
 
 #include "BLT_translation.h"
 
 #include "DEG_depsgraph.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static void light_init_data(ID *id)
 {
@@ -154,12 +155,6 @@ static void light_blend_read_data(BlendDataReader *reader, ID *id)
   BKE_previewimg_blend_read(reader, la->preview);
 }
 
-static void light_blend_read_lib(BlendLibReader *reader, ID *id)
-{
-  Light *la = (Light *)id;
-  BLO_read_id_address(reader, id, &la->ipo);  // XXX deprecated - old animation system
-}
-
 IDTypeInfo IDType_ID_LA = {
     /*id_code*/ ID_LA,
     /*id_filter*/ FILTER_ID_LA,
@@ -182,7 +177,7 @@ IDTypeInfo IDType_ID_LA = {
 
     /*blend_write*/ light_blend_write,
     /*blend_read_data*/ light_blend_read_data,
-    /*blend_read_lib*/ light_blend_read_lib,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 

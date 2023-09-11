@@ -36,7 +36,7 @@
 #include "BKE_lib_query.h"
 #include "BKE_nla.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
@@ -220,7 +220,6 @@ FCurve *id_data_find_fcurve(
   AnimData *adt = BKE_animdata_from_id(id);
 
   /* Rna vars */
-  PointerRNA ptr;
   PropertyRNA *prop;
 
   if (r_driven) {
@@ -232,7 +231,7 @@ FCurve *id_data_find_fcurve(
     return nullptr;
   }
 
-  RNA_pointer_create(id, type, data, &ptr);
+  PointerRNA ptr = RNA_pointer_create(id, type, data);
   prop = RNA_struct_find_property(&ptr, prop_name);
   if (prop == nullptr) {
     return nullptr;
@@ -1315,7 +1314,8 @@ void testhandles_fcurve(FCurve *fcu, eBezTriple_Flag sel_flag, const bool use_ha
   BezTriple *bezt;
   uint a;
   for (a = 0, bezt = fcu->bezt; a < fcu->totvert; a++, bezt++) {
-    BKE_nurb_bezt_handle_test(bezt, sel_flag, use_handle, false);
+    BKE_nurb_bezt_handle_test(
+        bezt, sel_flag, use_handle ? NURB_HANDLE_TEST_EACH : NURB_HANDLE_TEST_KNOT_ONLY, false);
   }
 
   /* Recalculate handles. */
@@ -2507,20 +2507,6 @@ void BKE_fmodifiers_blend_read_data(BlendDataReader *reader, ListBase *fmodifier
   }
 }
 
-void BKE_fmodifiers_blend_read_lib(BlendLibReader *reader, ID *id, ListBase *fmodifiers)
-{
-  LISTBASE_FOREACH (FModifier *, fcm, fmodifiers) {
-    /* data for specific modifiers */
-    switch (fcm->type) {
-      case FMODIFIER_TYPE_PYTHON: {
-        FMod_Python *data = (FMod_Python *)fcm->data;
-        BLO_read_id_address(reader, id, &data->script);
-        break;
-      }
-    }
-  }
-}
-
 void BKE_fcurve_blend_write(BlendWriter *writer, ListBase *fcurves)
 {
   BLO_write_struct_list(writer, FCurve, fcurves);
@@ -2613,30 +2599,6 @@ void BKE_fcurve_blend_read_data(BlendDataReader *reader, ListBase *fcurves)
     /* modifiers */
     BLO_read_list(reader, &fcu->modifiers);
     BKE_fmodifiers_blend_read_data(reader, &fcu->modifiers, fcu);
-  }
-}
-
-void BKE_fcurve_blend_read_lib(BlendLibReader *reader, ID *id, ListBase *fcurves)
-{
-  if (fcurves == nullptr) {
-    return;
-  }
-
-  /* relink ID-block references... */
-  LISTBASE_FOREACH (FCurve *, fcu, fcurves) {
-    /* driver data */
-    if (fcu->driver) {
-      ChannelDriver *driver = fcu->driver;
-      LISTBASE_FOREACH (DriverVar *, dvar, &driver->variables) {
-        DRIVER_TARGETS_LOOPER_BEGIN (dvar) {
-          BLO_read_id_address(reader, id, &dtar->id);
-        }
-        DRIVER_TARGETS_LOOPER_END;
-      }
-    }
-
-    /* modifiers */
-    BKE_fmodifiers_blend_read_lib(reader, id, &fcu->modifiers);
   }
 }
 

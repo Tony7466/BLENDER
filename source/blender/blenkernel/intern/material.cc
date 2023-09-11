@@ -41,6 +41,7 @@
 #include "BLI_listbase.h"
 #include "BLI_math_color.h"
 #include "BLI_math_vector.h"
+#include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "BLT_translation.h"
@@ -63,6 +64,7 @@
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_object.h"
+#include "BKE_preview_image.hh"
 #include "BKE_scene.h"
 #include "BKE_vfont.h"
 
@@ -74,7 +76,7 @@
 
 #include "NOD_shader.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static CLG_LogRef LOG = {"bke.material"};
 
@@ -226,23 +228,6 @@ static void material_blend_read_data(BlendDataReader *reader, ID *id)
   BLO_read_data_address(reader, &ma->gp_style);
 }
 
-static void material_blend_read_lib(BlendLibReader *reader, ID *id)
-{
-  Material *ma = (Material *)id;
-  BLO_read_id_address(reader, id, &ma->ipo); /* XXX deprecated - old animation system */
-
-  /* relink grease pencil settings */
-  if (ma->gp_style != nullptr) {
-    MaterialGPencilStyle *gp_style = ma->gp_style;
-    if (gp_style->sima != nullptr) {
-      BLO_read_id_address(reader, id, &gp_style->sima);
-    }
-    if (gp_style->ima != nullptr) {
-      BLO_read_id_address(reader, id, &gp_style->ima);
-    }
-  }
-}
-
 IDTypeInfo IDType_ID_MA = {
     /*id_code*/ ID_MA,
     /*id_filter*/ FILTER_ID_MA,
@@ -265,7 +250,7 @@ IDTypeInfo IDType_ID_MA = {
 
     /*blend_write*/ material_blend_write,
     /*blend_read_data*/ material_blend_read_data,
-    /*blend_read_lib*/ material_blend_read_lib,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 

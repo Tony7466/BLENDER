@@ -114,7 +114,7 @@ struct EraseOperationExecutor {
   }
 
   struct SegmentCircleIntersection {
-    /* Position of the intersection in the segment.*/
+    /* Position of the intersection in the segment. */
     float factor = -1.0f;
 
     /* True if the intersection corresponds to an inside/outside transition with respect to the
@@ -376,7 +376,6 @@ struct EraseOperationExecutor {
    * source geometry, with the given \a factor.
    * A point in the destination is a \a cut if it splits the source curves geometry, meaning it is
    * the first point of a new curve in the destination.
-   *
    */
   struct PointTransferData {
     int src_point;
