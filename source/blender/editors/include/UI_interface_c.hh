@@ -908,6 +908,8 @@ void UI_but_dragflag_disable(uiBut *but, int flag);
 
 void UI_but_disable(uiBut *but, const char *disabled_hint);
 
+void UI_but_placeholder(uiBut *but, const char *placeholder_text);
+
 void UI_but_type_set_menu_from_pulldown(uiBut *but);
 
 /**
@@ -2699,7 +2701,8 @@ void uiItemFullR(uiLayout *layout,
                  int value,
                  eUI_Item_Flag flag,
                  const char *name,
-                 int icon);
+                 int icon,
+                 const char *placeholder = nullptr);
 /**
  * Use a wrapper function since re-implementing all the logic in this function would be messy.
  */

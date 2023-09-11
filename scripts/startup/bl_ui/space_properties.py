@@ -27,7 +27,7 @@ class PROPERTIES_HT_header(Header):
             row.scale_x = layout_scale
             row.label(icon='BLANK1')
 
-        layout.prop(view, "search_filter", icon='VIEWZOOM', text="")
+        layout.prop(view, "search_filter", icon='VIEWZOOM', text="", placeholder="Search")
 
         layout.separator_spacer()
 

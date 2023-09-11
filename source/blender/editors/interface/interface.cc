@@ -5902,11 +5902,11 @@ void UI_but_disable(uiBut *but, const char *disabled_hint)
 
 void UI_but_placeholder(uiBut *but, const char *placeholder_text)
 {
-  if (but->placeholder) {
+  if (but && but->placeholder) {
     MEM_SAFE_FREE(but->placeholder);
     but->placeholder = nullptr;
   }
-  if (placeholder_text && placeholder_text[0]) {
+  if (but && placeholder_text && placeholder_text[0]) {
     but->placeholder = BLI_strdup(placeholder_text);
   }
 }

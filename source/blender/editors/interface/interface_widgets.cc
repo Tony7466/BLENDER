@@ -2191,27 +2191,9 @@ static void widget_draw_text(const uiFontStyle *fstyle,
     }
   }
 
-  if (strlen(drawstr) == 0 && !but->editstr &&
+  if (but->placeholder && strlen(drawstr) == 0 && !but->editstr &&
       ELEM(but->type, UI_BTYPE_TEXT, UI_BTYPE_SEARCH_MENU))
   {
-
-    /* Custom placeholder text here just while testing. */
-    const char *placeholder = (but->placeholder) ? but->placeholder : "Placeholder";
-    switch (but->icon) {
-      case ICON_VIEWZOOM:
-        placeholder = "Search";
-        break;
-      case ICON_SCENE_DATA:
-        placeholder = "Scene";
-        break;
-      case ICON_OBJECT_DATA:
-        placeholder = "Object";
-        break;
-      case ICON_SEQUENCE:
-        placeholder = "Movie Clip";
-        break;
-    }
-    
     uiFontStyleDraw_Params params{};
     params.align = align;
     uiFontStyle style = *fstyle;
@@ -2222,8 +2204,8 @@ static void widget_draw_text(const uiFontStyle *fstyle,
     int font_xofs, font_yofs;
     UI_fontstyle_draw_ex(&style,
                          rect,
-                         placeholder,
-                         strlen(placeholder),
+                         but->placeholder,
+                         strlen(but->placeholder),
                          col,
                          &params,
                          &font_xofs,

@@ -6001,7 +6001,7 @@ class VIEW3D_PT_view3d_properties(Panel):
         sub.prop(view, "use_local_camera", text="")
         sub = sub.row(align=True)
         sub.enabled = view.use_local_camera
-        sub.prop(view, "camera", text="")
+        sub.prop(view, "camera", text="", placeholder="Object")
 
         layout.separator()
 
@@ -6029,7 +6029,7 @@ class VIEW3D_PT_view3d_lock(Panel):
         sub = col.column()
         sub.active = bool(view.region_3d.view_perspective != 'CAMERA' or view.region_quadviews)
 
-        sub.prop(view, "lock_object")
+        sub.prop(view, "lock_object", placeholder="Object")
         lock_object = view.lock_object
         if lock_object:
             if lock_object.type == 'ARMATURE':
