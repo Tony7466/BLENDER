@@ -6,18 +6,22 @@
  * \ingroup bli
  */
 
+#include <iostream>
+
+#include "BLI_any.hh"
 #include "BLI_map.hh"
 #include "BLI_string_ref.hh"
-#include "BLI_linear_allocator.hh"
-#include "BLI_singleton_flags.hh"
 
-namespace blender {
+namespace blender::singleton::detail {
 
-FlagInfo singleton_prt(const StringRef name)
+Any<> &singleton_ptr_for_write(const StringRef name)
 {
-  static Map<StringRef, void *> flags;
-  static LinearAllocator<> allocator;
-  return FlagInfo{&flags.lookup_or_add(name, nullptr), allocator};
+  static Map<StringRef, Any<>> runtime_values;
+  return runtime_values.lookup_or_add(name, {});
 }
 
+void panic_non_debug(const StringRef name)
+{
+  std::cout << __func__ << ": Used non initialized singleton value for key: " << name << std::endl;
 }
+}  // namespace blender::singleton::detail

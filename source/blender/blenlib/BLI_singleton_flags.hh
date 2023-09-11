@@ -8,28 +8,33 @@
  * \ingroup bli
  */
 
+#include "BLI_any.hh"
+#include "BLI_assert.h"
 #include "BLI_string_ref.hh"
-#include "BLI_linear_allocator.hh"
 
-namespace blender {
+namespace blender::singleton {
 
-struct FlagInfo {
-  void **flag;
-  LinearAllocator<GuardedAllocator> &allocator;
-};
+namespace detail {
 
-FlagInfo singleton_prt(const StringRef name);
+Any<> &singleton_ptr_for_write(const StringRef name);
 
-template<typename Flag, typename... Args>
-inline Flag &singleton(const StringRef name, Args &&...args)
+void panic_non_debug(const StringRef name);
+}  // namespace detail
+
+template<typename T, typename... Args>
+inline T &init_or_change(const StringRef name, Args &&...args)
 {
-  FlagInfo flag_info = singleton_prt(name);
-  if (*flag_info.flag == nullptr) {
-    *flag_info.flag = flag_info.allocator.allocate(sizeof(Flag), alignof(Flag));
-    new (*flag_info.flag) Flag(std::forward<Args>(args)...);
+  Any<> &value = detail::singleton_ptr_for_write(name);
+  return value.emplace<T>(std::forward<Args>(args)...);
+}
+
+template<typename T> inline const T &find(const StringRef name)
+{
+  const Any<> &value = detail::singleton_ptr_for_write(name);
+  if (!value.has_value()) {
+    BLI_assert_unreachable();
+    detail::panic_non_debug(name);
   }
-  return *static_cast<Flag *>(*flag_info.flag);
+  return value.get<T>();
 }
-
-
-}
+}  // namespace blender::singleton
