@@ -245,7 +245,7 @@ struct BakeSimulationJob {
   Main *bmain;
   Depsgraph *depsgraph;
   Scene *scene;
-  Vector<Object *> objects;
+  Vector<ObjectBakeData> objects;
 };
 
 static void bake_simulation_job_startjob(void *customdata,
@@ -261,58 +261,13 @@ static void bake_simulation_job_startjob(void *customdata,
   int global_bake_start_frame = INT32_MAX;
   int global_bake_end_frame = INT32_MIN;
 
-  Vector<ObjectBakeData> objects_to_bake;
-  for (Object *object : job.objects) {
-    if (!BKE_id_is_editable(job.bmain, &object->id)) {
-      continue;
-    }
-
-    ObjectBakeData bake_data;
-    bake_data.object = object;
-    LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
-      if (md->type == eModifierType_Nodes) {
-        NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
-        if (!nmd->node_group) {
-          continue;
-        }
-        if (!nmd->runtime->cache) {
-          continue;
-        }
-        ModifierBakeData modifier_bake_data;
-        modifier_bake_data.nmd = nmd;
-
-        for (auto item : nmd->runtime->cache->cache_by_id.items()) {
-          item.value->reset();
-        }
-
-        for (const bNestedNodeRef &nested_node_ref : nmd->node_group->nested_node_refs_span()) {
-          NodeBakeData node_bake_data;
-          node_bake_data.id = nested_node_ref.id;
-          node_bake_data.blob_sharing = std::make_unique<bake::BlobSharing>();
-          std::optional<bake::BakePath> path = bake::get_node_bake_path(
-              *job.bmain, *object, *nmd, nested_node_ref.id);
-          if (!path) {
-            continue;
-          }
-          std::optional<IndexRange> frame_range = bake::get_node_bake_frame_range(
-              *job.scene, *object, *nmd, nested_node_ref.id);
-          if (!frame_range) {
-            continue;
-          }
-          node_bake_data.path = std::move(*path);
-          node_bake_data.frame_start = frame_range->first();
-          node_bake_data.frame_end = frame_range->last();
-
-          global_bake_start_frame = std::min(global_bake_start_frame, node_bake_data.frame_start);
-          global_bake_end_frame = std::max(global_bake_end_frame, node_bake_data.frame_end);
-
-          modifier_bake_data.nodes.append(std::move(node_bake_data));
-        }
-
-        bake_data.modifiers.append(std::move(modifier_bake_data));
+  for (ObjectBakeData &object_bake : job.objects) {
+    for (ModifierBakeData &modifier_bake : object_bake.modifiers) {
+      for (NodeBakeData &node_bake : modifier_bake.nodes) {
+        global_bake_start_frame = std::min(global_bake_start_frame, node_bake.frame_start);
+        global_bake_end_frame = std::max(global_bake_end_frame, node_bake.frame_end);
       }
     }
-    objects_to_bake.append(std::move(bake_data));
   }
 
   *progress = 0.0f;
@@ -340,7 +295,7 @@ static void bake_simulation_job_startjob(void *customdata,
 
     const std::string frame_file_name = bake::frame_to_file_name(frame);
 
-    for (ObjectBakeData &object_bake_data : objects_to_bake) {
+    for (ObjectBakeData &object_bake_data : job.objects) {
       for (ModifierBakeData &modifier_bake_data : object_bake_data.modifiers) {
         NodesModifierData &nmd = *modifier_bake_data.nmd;
         const bake::ModifierCache &modifier_cache = *nmd.runtime->cache;
@@ -385,7 +340,7 @@ static void bake_simulation_job_startjob(void *customdata,
     *do_update = true;
   }
 
-  for (ObjectBakeData &object_bake_data : objects_to_bake) {
+  for (ObjectBakeData &object_bake_data : job.objects) {
     for (ModifierBakeData &modifier_bake_data : object_bake_data.modifiers) {
       NodesModifierData &nmd = *modifier_bake_data.nmd;
       for (NodeBakeData &node_bake_data : modifier_bake_data.nodes) {
@@ -431,16 +386,72 @@ static int bake_simulation_exec(bContext *C, wmOperator *op)
   job->depsgraph = depsgraph;
   job->scene = scene;
 
+  Vector<Object *> objects;
   if (RNA_boolean_get(op->ptr, "selected")) {
     CTX_DATA_BEGIN (C, Object *, object, selected_objects) {
-      job->objects.append(object);
+      objects.append(object);
     }
     CTX_DATA_END;
   }
   else {
     if (Object *object = CTX_data_active_object(C)) {
-      job->objects.append(object);
+      objects.append(object);
     }
+  }
+
+  for (Object *object : objects) {
+    if (!BKE_id_is_editable(bmain, &object->id)) {
+      continue;
+    }
+
+    ObjectBakeData bake_data;
+    bake_data.object = object;
+    LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
+      if (md->type == eModifierType_Nodes) {
+        NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
+        if (!nmd->node_group) {
+          continue;
+        }
+        if (!nmd->runtime->cache) {
+          continue;
+        }
+        ModifierBakeData modifier_bake_data;
+        modifier_bake_data.nmd = nmd;
+
+        for (auto item : nmd->runtime->cache->cache_by_id.items()) {
+          item.value->reset();
+        }
+
+        for (const bNestedNodeRef &nested_node_ref : nmd->node_group->nested_node_refs_span()) {
+          NodeBakeData node_bake_data;
+          node_bake_data.id = nested_node_ref.id;
+          node_bake_data.blob_sharing = std::make_unique<bake::BlobSharing>();
+          std::optional<bake::BakePath> path = bake::get_node_bake_path(
+              *bmain, *object, *nmd, nested_node_ref.id);
+          if (!path) {
+            continue;
+          }
+          std::optional<IndexRange> frame_range = bake::get_node_bake_frame_range(
+              *scene, *object, *nmd, nested_node_ref.id);
+          if (!frame_range) {
+            continue;
+          }
+          node_bake_data.path = std::move(*path);
+          node_bake_data.frame_start = frame_range->first();
+          node_bake_data.frame_end = frame_range->last();
+
+          modifier_bake_data.nodes.append(std::move(node_bake_data));
+        }
+        if (modifier_bake_data.nodes.is_empty()) {
+          continue;
+        }
+        bake_data.modifiers.append(std::move(modifier_bake_data));
+      }
+    }
+    if (bake_data.modifiers.is_empty()) {
+      continue;
+    }
+    job->objects.append(std::move(bake_data));
   }
 
   wmJob *wm_job = WM_jobs_get(wm,
