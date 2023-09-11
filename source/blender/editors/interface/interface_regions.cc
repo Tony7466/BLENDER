@@ -126,13 +126,16 @@ static blender::Vector<rcti> calc_button_section_bounds(const ARegion *region,
   return section_bounds;
 }
 
-void UI_region_button_sections_draw(const ARegion *region, int /*THemeColorID*/ colorid)
+void UI_region_button_sections_draw(const ARegion *region,
+                                    int /*THemeColorID*/ colorid,
+                                    const uiButtonSectionsAlign align)
 {
   const float merge_distance_x = UI_BUTTON_SECTION_MERGE_DISTANCE;
 
   const blender::Vector<rcti> section_bounds = calc_button_section_bounds(region,
                                                                           merge_distance_x);
-  ui_draw_button_sections_background(region, section_bounds, colorid, merge_distance_x);
+  ui_draw_button_sections_background_and_separator(
+      region, section_bounds, colorid, merge_distance_x, align);
 }
 
 /** \} */

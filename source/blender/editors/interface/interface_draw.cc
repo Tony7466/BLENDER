@@ -149,6 +149,79 @@ void UI_draw_roundbox_4fv(const rctf *rect, bool filled, float rad, const float 
   UI_draw_roundbox_4fv_ex(rect, (filled) ? col : nullptr, nullptr, 1.0f, col, U.pixelsize, rad);
 }
 
+/**
+ * Draws rounded corners but inverted. Imagine this like a right triangle with its
+ *
+ * That is, it draws a vertex in the corner defined by \a rect,
+ * and then draws a rounded corner
+ * Note that this only draws the corners themselves
+ * For example a lower left corner:
+ */
+static void ui_draw_rounded_corners_inverted(const rcti &rect, const float rad, const float4 color)
+{
+  GPUVertFormat *format = immVertexFormat();
+  const uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+
+  float vec[4][2] = {
+      {0.195, 0.02},
+      {0.55, 0.169},
+      {0.831, 0.45},
+      {0.98, 0.805},
+  };
+  for (int a = 0; a < 4; a++) {
+    mul_v2_fl(vec[a], rad);
+  }
+
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+  immUniformColor4fv(color);
+
+  if (roundboxtype & UI_CNR_TOP_LEFT) {
+    immBegin(GPU_PRIM_TRI_FAN, 7);
+    immVertex2f(pos, rect.xmin, rect.ymax);
+    immVertex2f(pos, rect.xmin, rect.ymax - rad);
+    for (int a = 0; a < 4; a++) {
+      immVertex2f(pos, rect.xmin + vec[a][1], rect.ymax - rad + vec[a][0]);
+    }
+    immVertex2f(pos, rect.xmin + rad, rect.ymax);
+    immEnd();
+  }
+
+  if (roundboxtype & UI_CNR_TOP_RIGHT) {
+    immBegin(GPU_PRIM_TRI_FAN, 7);
+    immVertex2f(pos, rect.xmax, rect.ymax);
+    immVertex2f(pos, rect.xmax - rad, rect.ymax);
+    for (int a = 0; a < 4; a++) {
+      immVertex2f(pos, rect.xmax - rad + vec[a][0], rect.ymax - vec[a][1]);
+    }
+    immVertex2f(pos, rect.xmax, rect.ymax - rad);
+    immEnd();
+  }
+
+  if (roundboxtype & UI_CNR_BOTTOM_RIGHT) {
+    immBegin(GPU_PRIM_TRI_FAN, 7);
+    immVertex2f(pos, rect.xmax, rect.ymin);
+    immVertex2f(pos, rect.xmax, rect.ymin + rad);
+    for (int a = 0; a < 4; a++) {
+      immVertex2f(pos, rect.xmax - vec[a][1], rect.ymin + rad - vec[a][0]);
+    }
+    immVertex2f(pos, rect.xmax - rad, rect.ymin);
+    immEnd();
+  }
+
+  if (roundboxtype & UI_CNR_BOTTOM_LEFT) {
+    immBegin(GPU_PRIM_TRI_FAN, 7);
+    immVertex2f(pos, rect.xmin, rect.ymin);
+    immVertex2f(pos, rect.xmin + rad, rect.ymin);
+    for (int a = 0; a < 4; a++) {
+      immVertex2f(pos, rect.xmin + rad - vec[a][0], rect.ymin + vec[a][1]);
+    }
+    immVertex2f(pos, rect.xmin, rect.ymin + rad);
+    immEnd();
+  }
+
+  immUnbindProgram();
+}
+
 void UI_draw_text_underline(int pos_x, int pos_y, int len, int height, const float color[4])
 {
   const int ofs_y = 4 * U.pixelsize;
@@ -2250,21 +2323,36 @@ void ui_draw_dropshadow(const rctf *rct, float radius, float aspect, float alpha
   GPU_blend(GPU_BLEND_NONE);
 }
 
-void ui_draw_button_sections_background(const ARegion *region,
-                                        const blender::Vector<rcti> &section_bounds,
-                                        int /*ThemeColorID*/ colorid,
-                                        const float merge_distance_x)
+void ui_draw_button_sections_background_and_separator(const ARegion *region,
+                                                      const blender::Vector<rcti> &section_bounds,
+                                                      int /*ThemeColorID*/ colorid,
+                                                      const float merge_distance_x,
+                                                      uiButtonSectionsAlign align)
 {
   const uiStyle *style = UI_style_get_dpi();
+  const int pad_x = style->buttonspacex;
+  const int pad_y = style->buttonspacey;
   const float aspect = BLI_rctf_size_x(&region->v2d.cur) /
                        (BLI_rcti_size_x(&region->v2d.mask) + 1);
+  const float corner_radius = 4.0f * UI_SCALE_FAC / aspect;
 
   float bg_color[4];
   UI_GetThemeColor4fv(colorid, bg_color);
 
   GPU_blend(GPU_BLEND_ALPHA);
   for (const rcti &bounds : section_bounds) {
-    int roundbox_corners = UI_CNR_TOP_LEFT | UI_CNR_TOP_RIGHT;
+    int roundbox_corners = [align]() -> int {
+      switch (align) {
+        case uiButtonSectionsAlign::Top:
+          return UI_CNR_BOTTOM_LEFT | UI_CNR_BOTTOM_RIGHT;
+        case uiButtonSectionsAlign::Bottom:
+          return UI_CNR_TOP_LEFT | UI_CNR_TOP_RIGHT;
+        case uiButtonSectionsAlign::None:
+          return UI_CNR_ALL;
+      }
+      return UI_CNR_ALL;
+    }();
+
     rctf bounds_float;
     BLI_rctf_rcti_copy(&bounds_float, &bounds);
 
@@ -2280,14 +2368,54 @@ void ui_draw_button_sections_background(const ARegion *region,
 
     UI_draw_roundbox_corner_set(roundbox_corners);
 
-    BLI_rctf_pad(&bounds_float, style->buttonspacex, style->buttonspacey);
+    BLI_rctf_pad(&bounds_float, pad_x, pad_y);
     /* Clamp, important for the rounded-corners to be correct. */
     CLAMP_MIN(bounds_float.xmin, 0);
     CLAMP_MAX(bounds_float.xmax, region->winx);
     CLAMP_MIN(bounds_float.ymin, 0);
     CLAMP_MAX(bounds_float.ymax, region->winy);
 
-    UI_draw_roundbox_4fv(&bounds_float, true, 4.0f * UI_SCALE_FAC / aspect, bg_color);
+    UI_draw_roundbox_4fv(&bounds_float, true, corner_radius, bg_color);
   }
+
+  const int separator_line_width = 2 * U.pixelsize;
+
+  if (align == uiButtonSectionsAlign::None) {
+    return;
+  }
+
+  /* Separator line. */
+  {
+    GPUVertFormat *format = immVertexFormat();
+    const uint pos = GPU_vertformat_attr_add(
+        format, "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
+    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+    immUniformColor4fv(bg_color);
+
+    if (align == uiButtonSectionsAlign::Top) {
+      immRecti(pos, 0, region->winy - separator_line_width, region->winx, region->winy);
+    }
+    else if (align == uiButtonSectionsAlign::Bottom) {
+      immRecti(pos, 0, 0, region->winx, separator_line_width);
+    }
+    immUnbindProgram();
+  }
+
+  int prev_xmax = 0;
+  for (const rcti &bounds : section_bounds) {
+    if (prev_xmax != 0) {
+      const rcti rounded_corner_rect = {prev_xmax + pad_x,
+                                        bounds.xmin - pad_x,
+                                        separator_line_width,
+                                        region->winy - separator_line_width};
+
+      UI_draw_roundbox_corner_set(align == uiButtonSectionsAlign::Top ?
+                                      (UI_CNR_TOP_LEFT | UI_CNR_TOP_RIGHT) :
+                                      (UI_CNR_BOTTOM_LEFT | UI_CNR_BOTTOM_RIGHT));
+      ui_draw_rounded_corners_inverted(rounded_corner_rect, corner_radius + 1, bg_color);
+    }
+    prev_xmax = bounds.xmax;
+  }
+
   GPU_blend(GPU_BLEND_NONE);
 }

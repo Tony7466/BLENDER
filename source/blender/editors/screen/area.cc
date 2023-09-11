@@ -2778,11 +2778,12 @@ void ED_region_clear(const bContext *C, const ARegion *region, const int /*Theme
   }
 }
 
-/* TODO should there be separate theme colors for the clear color and the button background color?
+/* TODO should there separate theme colors for the clear color and the button background color?
  */
-static void region_clear_draw_sections_background(const bContext *C,
-                                                  const ARegion *region,
-                                                  const int /*ThemeColorID*/ colorid)
+static void region_clear_draw_button_sections_back(const bContext *C,
+                                                   const ARegion *region,
+                                                   const int /*ThemeColorID*/ colorid,
+                                                   const uiButtonSectionsAlign align)
 {
   /* view should be in pixelspace */
   UI_view2d_view_restore(C);
@@ -2791,7 +2792,7 @@ static void region_clear_draw_sections_background(const bContext *C,
   UI_GetThemeColor4fv(colorid, back);
   GPU_clear_color(0, 0, 0, 0);
 
-  UI_region_button_sections_draw(region, colorid);
+  UI_region_button_sections_draw(region, colorid, align);
 }
 
 BLI_INLINE bool streq_array_any(const char *s, const char *arr[])
@@ -3542,12 +3543,14 @@ void ED_region_header_draw(const bContext *C, ARegion *region)
   UI_view2d_view_restore(C);
 }
 
-void ED_region_header_draw_with_background_sections(const bContext *C, ARegion *region)
+void ED_region_header_draw_with_button_sections(const bContext *C,
+                                                const ARegion *region,
+                                                const uiButtonSectionsAlign align)
 {
   const ThemeColorID bgcolorid = region_background_color_id(C, region);
+  /* clear */
   if (region->overlap) {
-    /* clear */
-    region_clear_draw_sections_background(C, region, bgcolorid);
+    region_clear_draw_button_sections_back(C, region, bgcolorid, align);
   }
   else {
     ED_region_clear(C, region, bgcolorid);

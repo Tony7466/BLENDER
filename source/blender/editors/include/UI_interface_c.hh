@@ -513,8 +513,6 @@ enum {
  */
 void UI_draw_widget_scroll(uiWidgetColors *wcol, const rcti *rect, const rcti *slider, int state);
 
-void UI_draw_button_sections_background(const ARegion *region, int /*ThemeColorID*/ colorid);
-
 /**
  * Shortening string helper.
  *
@@ -840,6 +838,7 @@ void UI_block_lock_clear(uiBlock *block);
 
 #define UI_BUTTON_SECTION_MERGE_DISTANCE (UI_UNIT_X * 3)
 
+enum class uiButtonSectionsAlign : int16_t { None, Top, Bottom };
 /**
  * Draw a background with rounded corners behind each visual group of buttons. The visual groups
  * are separated by spacer buttons (#uiItemSpacer()). Button groups that are closer than
@@ -849,7 +848,9 @@ void UI_block_lock_clear(uiBlock *block);
  *
  * \note This currently only works well for horizontal, header like regions.
  */
-void UI_region_button_sections_draw(const ARegion *region, int /*THemeColorID*/ colorid);
+void UI_region_button_sections_draw(const ARegion *region,
+                                    int /*THemeColorID*/ colorid,
+                                    uiButtonSectionsAlign align);
 
 /**
  * Automatic aligning, horizontal or vertical.
