@@ -52,12 +52,31 @@ enum class QuadDirection : int8_t {
   Edge_1_3 = 1,
 };
 
-static void calc_quad_directions(const Span<float3> positions,
-                                 const OffsetIndices<int> faces,
-                                 const Span<int> corner_verts,
-                                 const TriangulateQuadMode quad_mode,
-                                 const IndexMaskSegment quads,
-                                 MutableSpan<QuadDirection> directions)
+/** See #BM_verts_calc_rotate_beauty. */
+static QuadDirection calc_quad_direction_beauty(const float3 &v0,
+                                                const float3 &v1,
+                                                const float3 &v2,
+                                                const float3 &v3)
+{
+  const int flip_flag = is_quad_flip_v3(v0, v1, v2, v3);
+  if (UNLIKELY(flip_flag & (1 << 0))) {
+    return QuadDirection::Edge_1_3;
+  }
+  else if (UNLIKELY(flip_flag & (1 << 1))) {
+    return QuadDirection::Edge_0_2;
+  }
+  return BLI_polyfill_edge_calc_rotate_beauty__area(v0, v1, v2, v3, false) > 0.0f ?
+             QuadDirection::Edge_1_3 :
+             QuadDirection::Edge_0_2;
+}
+
+BLI_NOINLINE static void calc_quad_directions(const Span<float3> positions,
+                                              const OffsetIndices<int> faces,
+                                              const Span<int> corner_verts,
+                                              const TriangulateQuadMode quad_mode,
+                                              const IndexMaskSegment quads,
+                                              Vector<float2> &distances,
+                                              MutableSpan<QuadDirection> directions)
 {
   if (quad_mode == TriangulateQuadMode::Fixed) {
     directions.fill(QuadDirection::Edge_0_2);
@@ -66,38 +85,40 @@ static void calc_quad_directions(const Span<float3> positions,
     directions.fill(QuadDirection::Edge_1_3);
   }
   else {
-    // TODO: Test simplifying this thing ;)
-    Array<float, 128> distances_0_2(quads.size());
-    Array<float, 128> distances_1_3(quads.size());
+    distances.reinitialize(quads.size());
     for (const int i : quads.index_range()) {
       const Span<int> face_verts = corner_verts.slice(faces[quads[i]]);
-      distances_0_2[i] = math::distance_squared(positions[face_verts[0]],
-                                                positions[face_verts[2]]);
-      distances_1_3[i] = math::distance_squared(positions[face_verts[1]],
-                                                positions[face_verts[3]]);
+      distances[i][0] = math::distance_squared(positions[face_verts[0]], positions[face_verts[2]]);
+      distances[i][1] = math::distance_squared(positions[face_verts[1]], positions[face_verts[3]]);
     }
     if (quad_mode == TriangulateQuadMode::ShortEdge) {
       for (const int i : quads.index_range()) {
-        directions[i] = distances_0_2[i] < distances_1_3[i] ? QuadDirection::Edge_0_2 :
-                                                              QuadDirection::Edge_1_3;
+        directions[i] = distances[i][0] < distances[i][1] ? QuadDirection::Edge_0_2 :
+                                                            QuadDirection::Edge_1_3;
       }
     }
     else if (quad_mode == TriangulateQuadMode::LongEdge) {
       for (const int i : quads.index_range()) {
-        directions[i] = distances_0_2[i] < distances_1_3[i] ? QuadDirection::Edge_1_3 :
-                                                              QuadDirection::Edge_0_2;
+        directions[i] = distances[i][0] < distances[i][1] ? QuadDirection::Edge_1_3 :
+                                                            QuadDirection::Edge_0_2;
       }
     }
   }
   if (quad_mode == TriangulateQuadMode::Beauty) {
-    // TODO
+    for (const int i : quads.index_range()) {
+      const Span<int> face_verts = corner_verts.slice(faces[quads[i]]);
+      directions[i] = calc_quad_direction_beauty(positions[face_verts[0]],
+                                                 positions[face_verts[1]],
+                                                 positions[face_verts[2]],
+                                                 positions[face_verts[3]]);
+    }
   }
 }
 
-static void calc_quad_corner_maps(const OffsetIndices<int> faces,
-                                  const IndexMaskSegment quads,
-                                  const Span<QuadDirection> directions,
-                                  MutableSpan<int> corner_map)
+BLI_NOINLINE static void calc_quad_corner_maps(const OffsetIndices<int> faces,
+                                               const IndexMaskSegment quads,
+                                               const Span<QuadDirection> directions,
+                                               MutableSpan<int> corner_map)
 {
   for (const int i : quads.index_range()) {
     MutableSpan<int> quad_map = corner_map.slice(6 * i, 6);
@@ -116,11 +137,11 @@ static void calc_quad_corner_maps(const OffsetIndices<int> faces,
   }
 }
 
-static void calc_quad_edges(const OffsetIndices<int> src_faces,
-                            const Span<int> src_corner_verts,
-                            const IndexMaskSegment quads,
-                            const Span<QuadDirection> directions,
-                            MutableSpan<int2> edges)
+BLI_NOINLINE static void calc_quad_edges(const OffsetIndices<int> src_faces,
+                                         const Span<int> src_corner_verts,
+                                         const IndexMaskSegment quads,
+                                         const Span<QuadDirection> directions,
+                                         MutableSpan<int2> edges)
 {
   for (const int i : quads.index_range()) {
     const Span<int> face_verts = src_corner_verts.slice(src_faces[quads[i]]);
@@ -135,12 +156,12 @@ static void calc_quad_edges(const OffsetIndices<int> src_faces,
   }
 }
 
-static void calc_quad_corner_edges(const OffsetIndices<int> src_faces,
-                                   const Span<int> src_corner_edges,
-                                   const IndexMaskSegment quads,
-                                   const Span<QuadDirection> directions,
-                                   const int edges_start,
-                                   MutableSpan<int> corner_edges)
+BLI_NOINLINE static void calc_quad_corner_edges(const OffsetIndices<int> src_faces,
+                                                const Span<int> src_corner_edges,
+                                                const IndexMaskSegment quads,
+                                                const Span<QuadDirection> directions,
+                                                const int edges_start,
+                                                MutableSpan<int> corner_edges)
 {
   for (const int i : quads.index_range()) {
     const Span<int> src = src_corner_edges.slice(src_faces[quads[i]]);
@@ -157,30 +178,38 @@ static void calc_quad_corner_edges(const OffsetIndices<int> src_faces,
   }
 }
 
-static void triangulate_quads(const Span<float3> positions,
-                              const OffsetIndices<int> src_faces,
-                              const Span<int> src_corner_verts,
-                              const Span<int> src_corner_edges,
-                              const IndexMask &quads,
-                              const TriangulateQuadMode quad_mode,
-                              const int edges_start,
-                              MutableSpan<int> corner_map,
-                              MutableSpan<int2> edges,
-                              MutableSpan<int> quad_corner_edges)
+BLI_NOINLINE static void triangulate_quads(const Span<float3> positions,
+                                           const OffsetIndices<int> src_faces,
+                                           const Span<int> src_corner_verts,
+                                           const Span<int> src_corner_edges,
+                                           const IndexMask &quads,
+                                           const TriangulateQuadMode quad_mode,
+                                           const int edges_start,
+                                           MutableSpan<int> corner_map,
+                                           MutableSpan<int2> edges,
+                                           MutableSpan<int> quad_corner_edges)
 {
+  struct TLS {
+    Vector<int> offsets;
+    Vector<float2> distances;
+    Vector<QuadDirection> directions;
+  };
+  threading::EnumerableThreadSpecific<TLS> tls;
+
   quads.foreach_segment(GrainSize(1024), [&](const IndexMaskSegment quads, const int64_t pos) {
-    // TODO: TLS
-    Array<QuadDirection, 1024> directions(quads.size());
-    calc_quad_directions(positions, src_faces, src_corner_verts, quad_mode, quads, directions);
+    TLS &data = tls.local();
+    data.directions.reinitialize(quads.size());
+    calc_quad_directions(
+        positions, src_faces, src_corner_verts, quad_mode, quads, data.distances, data.directions);
 
     const IndexRange corners(pos * 6, quads.size() * 6);
-    calc_quad_corner_maps(src_faces, quads, directions, corner_map.slice(corners));
+    calc_quad_corner_maps(src_faces, quads, data.directions, corner_map.slice(corners));
     calc_quad_edges(
-        src_faces, src_corner_verts, quads, directions, edges.slice(pos, quads.size()));
+        src_faces, src_corner_verts, quads, data.directions, edges.slice(pos, quads.size()));
     calc_quad_corner_edges(src_faces,
                            src_corner_edges,
                            quads,
-                           directions,
+                           data.directions,
                            edges_start + pos,
                            quad_corner_edges.slice(corners));
   });
