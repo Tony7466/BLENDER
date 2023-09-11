@@ -120,32 +120,42 @@ vec4 ggx_btdf_split_sum(vec3 lut_coord)
  * light. We only integrate for a single color primary since the profile will be applied to each
  * primary independantly.
  * For each distance `d` we compute the radiance incoming from an hypothetical parallel plane. */
-vec4 burley_sss_profile(vec3 lut_coord)
+vec4 burley_sss_translucency(vec3 lut_coord)
 {
-  /* Precompute sample position with white albedo. */
-  vec3 albedo = vec3(1.0);
+  /* Note that we only store the 1st (radius == 1) component.
+   * The others are here for debugging overall appearance. */
   vec3 radii = vec3(1.0, 0.2, 0.1);
-  vec3 d = burley_setup(radii, albedo);
-  /* Distance from the lit surface plane.
-   * Compute to a larger maximum distance to have a smoother falloff for all channels. */
-  float depth = SSS_TRANSMIT_LUT_RADIUS * lut_coord.x;
-  /* Integrate transmission. */
-  vec3 profile = vec3(0.0);
-  vec3 weight = vec3(0.0);
-  const uint sample_count = 512 * 512;
-  for (uint i = 0u; i < sample_count; i++) {
-    vec2 rand = hammersley_2d(i, sample_count);
-    vec3 dir = sample_hemisphere(rand);
-    float pdf = 1.0 / M_2PI;
-    /* Compute distance to the "shading" point through the medium. */
-    float r = length((dir / max(1e-8, dir.z)) * depth);
-    vec3 weight = burley_eval(d, r) / pdf;
+  float thickness = lut_coord.x * 2.0;
+  vec3 r = thickness / radii;
+  /* Manual fit based on cycles render of a backlit slab of varying thickness.
+   * Mean Error: 0.003
+   * Max Error: 0.015 */
+  vec3 exponential = exp(-3.6 * pow(r, 1.11));
+  vec3 gaussian = exp(-pow(3.4 * r, 1.6));
+  vec3 fac = square(saturate(0.5 + r / 0.6));
+  vec3 profile = saturate(mix(gaussian, exponential, fac));
+  /* Mask off the end progressively to 0. */
+  profile *= saturate(1.0 - pow5f(lut_coord.x));
 
-    vec3 sample_radiance = vec3(1.0);
-    profile += sample_radiance * weight;
-    weight += weight;
-  }
-  profile /= weight;
+  return vec4(profile, 0.0);
+}
+
+vec4 random_walk_sss_translucency(vec3 lut_coord)
+{
+  /* Note that we only store the 1st (radius == 1) component.
+   * The others are here for debugging overall appearance. */
+  vec3 radii = vec3(1.0, 0.2, 0.1);
+  float thickness = lut_coord.x * 2.0;
+  vec3 r = thickness / radii;
+  /* Manual fit based on cycles render of a backlit slab of varying thickness.
+   * Mean Error: 0.003
+   * Max Error: 0.016 */
+  vec3 scale = vec3(0.31, 0.47, 0.32);
+  vec3 exponent = vec3(-22.0, -5.8, -0.5);
+  vec3 profile = vec3(dot(scale, exp(exponent * r.r)),
+                      dot(scale, exp(exponent * r.g)),
+                      dot(scale, exp(exponent * r.b)));
+  profile = saturate(profile - 0.1);
   /* Mask off the end progressively to 0. */
   profile *= saturate(1.0 - pow5f(lut_coord.x));
 
@@ -166,7 +176,10 @@ void main()
       result = ggx_btdf_split_sum(lut_normalized_coordinate);
       break;
     case LUT_BURLEY_SSS_PROFILE:
-      result = burley_sss_profile(lut_normalized_coordinate);
+      result = burley_sss_translucency(lut_normalized_coordinate);
+      break;
+    case LUT_RANDOM_WALK_SSS_PROFILE:
+      result = random_walk_sss_translucency(lut_normalized_coordinate);
       break;
   }
   imageStore(table_img, ivec3(gl_GlobalInvocationID), result);

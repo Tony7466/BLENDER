@@ -26,5 +26,14 @@ extern const float btdf_split_sum_ggx[16][64][64][2];
 extern const float blue_noise[64][64][4];
 /* Precomputed translucency profile of a slab of material with varying thickness. */
 extern const float burley_sss_profile[64][1];
+/* Precomputed translucency profile of a slab of material with varying thickness. */
+extern const float random_walk_sss_profile[64][1];
+
+#ifdef CYCLES_REFERENCE_LUT
+/* Precomputed translucency profile of a slab of material with varying thickness. */
+extern const float cycles_burley_reference_sss_profile[256][3];
+/* Precomputed translucency profile of a slab of material with varying thickness. */
+extern const float cycles_random_walk_reference_sss_profile[256][3];
+#endif
 
 }  // namespace blender::eevee::lut

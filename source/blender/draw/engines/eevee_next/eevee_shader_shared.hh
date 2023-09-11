@@ -90,6 +90,7 @@ enum PrecomputeType : uint32_t {
   LUT_GGX_BRDF_SPLIT_SUM = 0u,
   LUT_GGX_BTDF_SPLIT_SUM = 1u,
   LUT_BURLEY_SSS_PROFILE = 2u,
+  LUT_RANDOM_WALK_SSS_PROFILE = 3u,
 };
 
 /** \} */

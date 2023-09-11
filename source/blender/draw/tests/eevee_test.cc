@@ -1450,16 +1450,18 @@ static void test_eevee_lut_gen()
   /* Check if LUT generation matches the header version. */
   auto bsdf_ggx_gen = Precompute(manager, LUT_GGX_BRDF_SPLIT_SUM, {64, 64, 1}).data<float2>();
   auto btdf_ggx_gen = Precompute(manager, LUT_GGX_BTDF_SPLIT_SUM, {64, 64, 16}).data<float2>();
-  auto burley_sss_gen = Precompute(manager, LUT_BURLEY_SSS_PROFILE, {64, 1, 1}).data<float3>();
+  auto burley_gen = Precompute(manager, LUT_BURLEY_SSS_PROFILE, {64, 1, 1}).data<float1>();
+  auto rand_walk_gen = Precompute(manager, LUT_RANDOM_WALK_SSS_PROFILE, {64, 1, 1}).data<float1>();
 
   Span<float2> bsdf_ggx_lut((const float2 *)&eevee::lut::bsdf_split_sum_ggx, 64 * 64);
   Span<float2> btdf_ggx_lut((const float2 *)&eevee::lut::btdf_split_sum_ggx, 64 * 64 * 16);
   Span<float1> burley_sss_lut((const float1 *)&eevee::lut::burley_sss_profile, 64);
+  Span<float1> rand_walk_lut((const float1 *)&eevee::lut::random_walk_sss_profile, 64);
 
-  Precompute::write_to_pfm("burley_sss_gen", burley_sss_gen.as_span(), 64);
-
-  // EXPECT_NEAR_ARRAY_ND(bsdf_ggx_lut.data(), bsdf_ggx_gen.data(), bsdf_ggx_gen.size(), 2, 1e-4f);
-  // EXPECT_NEAR_ARRAY_ND(btdf_ggx_lut.data(), btdf_ggx_gen.data(), btdf_ggx_gen.size(), 2, 1e-4f);
+  EXPECT_NEAR_ARRAY_ND(bsdf_ggx_lut.data(), bsdf_ggx_gen.data(), bsdf_ggx_gen.size(), 2, 1e-4f);
+  EXPECT_NEAR_ARRAY_ND(btdf_ggx_lut.data(), btdf_ggx_gen.data(), btdf_ggx_gen.size(), 2, 1e-4f);
+  EXPECT_NEAR_ARRAY_ND(burley_gen.data(), burley_sss_lut.data(), burley_sss_lut.size(), 1, 1e-4f);
+  EXPECT_NEAR_ARRAY_ND(rand_walk_gen.data(), rand_walk_lut.data(), rand_walk_lut.size(), 1, 1e-4f);
 
   GPU_render_end();
 }
