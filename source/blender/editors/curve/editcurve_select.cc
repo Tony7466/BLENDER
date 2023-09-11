@@ -1846,7 +1846,7 @@ void CURVE_OT_select_similar(wmOperatorType *ot)
   ot->prop = RNA_def_enum(
       ot->srna, "type", curve_prop_similar_types, SIMCURHAND_WEIGHT, "Type", "");
   RNA_def_enum(ot->srna, "compare", curve_prop_similar_compare_types, SIM_CMP_EQ, "Compare", "");
-  RNA_def_float(ot->srna, "threshold", 0.1, 0.0, FLT_MAX, "Threshold", "", 0.0, 100.0);
+  RNA_def_float(ot->srna, "threshold", 0.1, "Threshold", "", {{0.0, FLT_MAX}, {0.0, 100.0}});
 }
 
 /** \} */

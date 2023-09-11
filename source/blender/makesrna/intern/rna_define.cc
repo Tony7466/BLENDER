@@ -3617,6 +3617,86 @@ PropertyRNA *RNA_def_boolean_vector(StructOrFunctionRNA *cont_,
 
   return prop;
 }
+PropertyRNA *RNA_def_int(StructOrFunctionRNA *cont_,
+                         const char *identifier,
+                         int default_value,
+                         const char *ui_name,
+                         const char *ui_description,
+                         const IntRanges &ranges)
+{
+  ContainerRNA *cont = static_cast<ContainerRNA *>(cont_);
+  PropertyRNA *prop;
+
+  ASSERT_SOFT_HARD_LIMITS;
+
+  prop = RNA_def_property(cont, identifier, PROP_INT, PROP_NONE);
+  RNA_def_property_int_default(prop, default_value);
+  if (ranges.hard.min != ranges.hard.max) {
+    RNA_def_property_range(prop, ranges.hard.min, ranges.hard.max);
+  }
+  RNA_def_property_ui_text(prop, ui_name, ui_description);
+  RNA_def_property_ui_range(prop, ranges.soft.min, ranges.soft.max, 1, 3);
+
+  return prop;
+}
+
+PropertyRNA *RNA_def_int_vector(StructOrFunctionRNA *cont_,
+                                const char *identifier,
+                                int len,
+                                const int *default_value,
+                                const char *ui_name,
+                                const char *ui_description,
+                                const IntRanges &ranges)
+{
+  ContainerRNA *cont = static_cast<ContainerRNA *>(cont_);
+  PropertyRNA *prop;
+
+  ASSERT_SOFT_HARD_LIMITS;
+
+  prop = RNA_def_property(cont, identifier, PROP_INT, PROP_XYZ); /* XXX */
+  if (len != 0) {
+    RNA_def_property_array(prop, len);
+  }
+  if (default_value) {
+    RNA_def_property_int_array_default(prop, default_value);
+  }
+  if (ranges.hard.min != ranges.hard.max) {
+    RNA_def_property_range(prop, ranges.hard.min, ranges.hard.max);
+  }
+  RNA_def_property_ui_text(prop, ui_name, ui_description);
+  RNA_def_property_ui_range(prop, ranges.soft.min, ranges.soft.max, 1, 3);
+
+  return prop;
+}
+
+PropertyRNA *RNA_def_int_array(StructOrFunctionRNA *cont_,
+                               const char *identifier,
+                               int len,
+                               const int *default_value,
+                               const char *ui_name,
+                               const char *ui_description,
+                               const IntRanges &ranges)
+{
+  ContainerRNA *cont = static_cast<ContainerRNA *>(cont_);
+  PropertyRNA *prop;
+
+  ASSERT_SOFT_HARD_LIMITS;
+
+  prop = RNA_def_property(cont, identifier, PROP_INT, PROP_NONE);
+  if (len != 0) {
+    RNA_def_property_array(prop, len);
+  }
+  if (default_value) {
+    RNA_def_property_int_array_default(prop, default_value);
+  }
+  if (ranges.hard.min != ranges.hard.max) {
+    RNA_def_property_range(prop, ranges.hard.min, ranges.hard.max);
+  }
+  RNA_def_property_ui_text(prop, ui_name, ui_description);
+  RNA_def_property_ui_range(prop, ranges.soft.min, ranges.soft.max, 1, 3);
+
+  return prop;
+}
 
 PropertyRNA *RNA_def_int(StructOrFunctionRNA *cont_,
                          const char *identifier,
@@ -3855,6 +3935,285 @@ void RNA_def_enum_funcs(PropertyRNA *prop, EnumPropertyItemFunc itemfunc)
 {
   EnumPropertyRNA *eprop = (EnumPropertyRNA *)prop;
   eprop->item_fn = itemfunc;
+}
+
+PropertyRNA *RNA_def_float(StructOrFunctionRNA *cont_,
+                           const char *identifier,
+                           float default_value,
+                           const char *ui_name,
+                           const char *ui_description,
+                           const FloatRanges &ranges)
+{
+  ContainerRNA *cont = static_cast<ContainerRNA *>(cont_);
+  PropertyRNA *prop;
+
+  ASSERT_SOFT_HARD_LIMITS;
+
+  prop = RNA_def_property(cont, identifier, PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_default(prop, default_value);
+  if (ranges.hard.min != ranges.hard.min) {
+    RNA_def_property_range(prop, ranges.hard.min, ranges.hard.max);
+  }
+  RNA_def_property_ui_text(prop, ui_name, ui_description);
+  RNA_def_property_ui_range(prop, ranges.soft.min, ranges.soft.min, 1, 3);
+
+  return prop;
+}
+
+PropertyRNA *RNA_def_float_vector(StructOrFunctionRNA *cont_,
+                                  const char *identifier,
+                                  int len,
+                                  const float *default_value,
+                                  const char *ui_name,
+                                  const char *ui_description,
+                                  const FloatRanges &ranges)
+{
+  ContainerRNA *cont = static_cast<ContainerRNA *>(cont_);
+  PropertyRNA *prop;
+
+  ASSERT_SOFT_HARD_LIMITS;
+
+  prop = RNA_def_property(cont, identifier, PROP_FLOAT, PROP_XYZ);
+  if (len != 0) {
+    RNA_def_property_array(prop, len);
+  }
+  if (default_value) {
+    RNA_def_property_float_array_default(prop, default_value);
+  }
+  if (ranges.hard.min != ranges.hard.min) {
+    RNA_def_property_range(prop, ranges.hard.min, ranges.hard.max);
+  }
+  RNA_def_property_ui_text(prop, ui_name, ui_description);
+  RNA_def_property_ui_range(prop, ranges.soft.min, ranges.soft.min, 1, 3);
+
+  return prop;
+}
+
+PropertyRNA *RNA_def_float_vector_xyz(StructOrFunctionRNA *cont_,
+                                      const char *identifier,
+                                      int len,
+                                      const float *default_value,
+                                      const char *ui_name,
+                                      const char *ui_description,
+                                      const FloatRanges &ranges)
+{
+  PropertyRNA *prop;
+
+  prop = RNA_def_float_vector(
+      cont_, identifier, len, default_value, ui_name, ui_description, ranges);
+  prop->subtype = PROP_XYZ_LENGTH;
+
+  return prop;
+}
+
+PropertyRNA *RNA_def_float_color(StructOrFunctionRNA *cont_,
+                                 const char *identifier,
+                                 int len,
+                                 const float *default_value,
+                                 const char *ui_name,
+                                 const char *ui_description,
+                                 const FloatRanges &ranges)
+{
+  ContainerRNA *cont = static_cast<ContainerRNA *>(cont_);
+  PropertyRNA *prop;
+
+  ASSERT_SOFT_HARD_LIMITS;
+
+  prop = RNA_def_property(cont, identifier, PROP_FLOAT, PROP_COLOR);
+  if (len != 0) {
+    RNA_def_property_array(prop, len);
+  }
+  if (default_value) {
+    RNA_def_property_float_array_default(prop, default_value);
+  }
+  if (ranges.hard.min != ranges.hard.min) {
+    RNA_def_property_range(prop, ranges.hard.min, ranges.hard.max);
+  }
+  RNA_def_property_ui_text(prop, ui_name, ui_description);
+  RNA_def_property_ui_range(prop, ranges.soft.min, ranges.soft.min, 1, 3);
+
+  return prop;
+}
+
+PropertyRNA *RNA_def_float_matrix(StructOrFunctionRNA *cont_,
+                                  const char *identifier,
+                                  int rows,
+                                  int columns,
+                                  const float *default_value,
+                                  const char *ui_name,
+                                  const char *ui_description,
+                                  const FloatRanges &ranges)
+{
+  ContainerRNA *cont = static_cast<ContainerRNA *>(cont_);
+  PropertyRNA *prop;
+  const int length[2] = {rows, columns};
+
+  ASSERT_SOFT_HARD_LIMITS;
+
+  prop = RNA_def_property(cont, identifier, PROP_FLOAT, PROP_MATRIX);
+  RNA_def_property_multi_array(prop, 2, length);
+  if (default_value) {
+    RNA_def_property_float_array_default(prop, default_value);
+  }
+  if (ranges.hard.min != ranges.hard.min) {
+    RNA_def_property_range(prop, ranges.hard.min, ranges.hard.max);
+  }
+  RNA_def_property_ui_text(prop, ui_name, ui_description);
+  RNA_def_property_ui_range(prop, ranges.soft.min, ranges.soft.min, 1, 3);
+
+  return prop;
+}
+
+PropertyRNA *RNA_def_float_translation(StructOrFunctionRNA *cont_,
+                                       const char *identifier,
+                                       int len,
+                                       const float *default_value,
+                                       const char *ui_name,
+                                       const char *ui_description,
+                                       const FloatRanges &ranges)
+{
+  PropertyRNA *prop;
+
+  prop = RNA_def_float_vector(
+      cont_, identifier, len, default_value, ui_name, ui_description, ranges);
+  prop->subtype = PROP_TRANSLATION;
+
+  RNA_def_property_ui_range(
+      prop, ranges.soft.min, ranges.soft.min, 1, RNA_TRANSLATION_PREC_DEFAULT);
+
+  return prop;
+}
+
+PropertyRNA *RNA_def_float_rotation(StructOrFunctionRNA *cont_,
+                                    const char *identifier,
+                                    int len,
+                                    const float *default_value,
+                                    const char *ui_name,
+                                    const char *ui_description,
+                                    const FloatRanges &ranges)
+{
+  ContainerRNA *cont = static_cast<ContainerRNA *>(cont_);
+  PropertyRNA *prop;
+
+  ASSERT_SOFT_HARD_LIMITS;
+
+  prop = RNA_def_property(cont, identifier, PROP_FLOAT, (len >= 3) ? PROP_EULER : PROP_ANGLE);
+  if (len != 0) {
+    RNA_def_property_array(prop, len);
+    if (default_value) {
+      RNA_def_property_float_array_default(prop, default_value);
+    }
+  }
+  else {
+    /* RNA_def_property_float_default must be called outside */
+    BLI_assert(default_value == nullptr);
+  }
+  if (ranges.hard.min != ranges.hard.min) {
+    RNA_def_property_range(prop, ranges.hard.min, ranges.hard.max);
+  }
+  RNA_def_property_ui_text(prop, ui_name, ui_description);
+  RNA_def_property_ui_range(prop, ranges.soft.min, ranges.soft.min, 10, 3);
+
+  return prop;
+}
+
+PropertyRNA *RNA_def_float_distance(StructOrFunctionRNA *cont_,
+                                    const char *identifier,
+                                    float default_value,
+                                    const char *ui_name,
+                                    const char *ui_description,
+                                    const FloatRanges &ranges)
+{
+  PropertyRNA *prop = RNA_def_float(
+      cont_, identifier, default_value, ui_name, ui_description, ranges);
+  RNA_def_property_subtype(prop, PROP_DISTANCE);
+
+  return prop;
+}
+
+PropertyRNA *RNA_def_float_array(StructOrFunctionRNA *cont_,
+                                 const char *identifier,
+                                 int len,
+                                 const float *default_value,
+                                 const char *ui_name,
+                                 const char *ui_description,
+                                 const FloatRanges &ranges)
+{
+  ContainerRNA *cont = static_cast<ContainerRNA *>(cont_);
+  PropertyRNA *prop;
+
+  ASSERT_SOFT_HARD_LIMITS;
+
+  prop = RNA_def_property(cont, identifier, PROP_FLOAT, PROP_NONE);
+  if (len != 0) {
+    RNA_def_property_array(prop, len);
+  }
+  if (default_value) {
+    RNA_def_property_float_array_default(prop, default_value);
+  }
+  if (ranges.hard.min != ranges.hard.min) {
+    RNA_def_property_range(prop, ranges.hard.min, ranges.hard.max);
+  }
+  RNA_def_property_ui_text(prop, ui_name, ui_description);
+  RNA_def_property_ui_range(prop, ranges.soft.min, ranges.soft.min, 1, 3);
+
+  return prop;
+}
+
+PropertyRNA *RNA_def_float_percentage(StructOrFunctionRNA *cont_,
+                                      const char *identifier,
+                                      float default_value,
+                                      const char *ui_name,
+                                      const char *ui_description,
+                                      const FloatRanges &ranges)
+{
+  ContainerRNA *cont = static_cast<ContainerRNA *>(cont_);
+  PropertyRNA *prop;
+
+  ASSERT_SOFT_HARD_LIMITS;
+
+#ifdef DEBUG
+  /* Properties with PROP_PERCENTAGE should use a range like 0 to 100, unlike PROP_FACTOR. */
+  if (hardmax < 2.0f) {
+    CLOG_WARN(&LOG,
+              "Percentage property with incorrect range: %s.%s",
+              CONTAINER_RNA_ID(cont),
+              identifier);
+  }
+#endif
+
+  prop = RNA_def_property(cont, identifier, PROP_FLOAT, PROP_PERCENTAGE);
+  RNA_def_property_float_default(prop, default_value);
+  if (ranges.hard.min != ranges.hard.min) {
+    RNA_def_property_range(prop, ranges.hard.min, ranges.hard.max);
+  }
+  RNA_def_property_ui_text(prop, ui_name, ui_description);
+  RNA_def_property_ui_range(prop, ranges.soft.min, ranges.soft.min, 1, 3);
+
+  return prop;
+}
+
+PropertyRNA *RNA_def_float_factor(StructOrFunctionRNA *cont_,
+                                  const char *identifier,
+                                  float default_value,
+                                  const char *ui_name,
+                                  const char *ui_description,
+                                  const FloatRanges &ranges)
+{
+  ContainerRNA *cont = static_cast<ContainerRNA *>(cont_);
+  PropertyRNA *prop;
+
+  ASSERT_SOFT_HARD_LIMITS;
+
+  prop = RNA_def_property(cont, identifier, PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_default(prop, default_value);
+  if (ranges.hard.min != ranges.hard.min) {
+    RNA_def_property_range(prop, ranges.hard.min, ranges.hard.max);
+  }
+  RNA_def_property_ui_text(prop, ui_name, ui_description);
+  RNA_def_property_ui_range(prop, ranges.soft.min, ranges.soft.min, 1, 3);
+
+  return prop;
 }
 
 PropertyRNA *RNA_def_float(StructOrFunctionRNA *cont_,

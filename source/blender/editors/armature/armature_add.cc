@@ -1777,7 +1777,7 @@ void ARMATURE_OT_subdivide(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* Properties */
-  prop = RNA_def_int(ot->srna, "number_cuts", 1, 1, 1000, "Number of Cuts", "", 1, 10);
+  prop = RNA_def_int(ot->srna, "number_cuts", 1, "Number of Cuts", "", {{1, 1000}, {1, 10}});
   /* Avoid re-using last var because it can cause
    * _very_ high poly meshes and annoy users (or worse crash) */
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);

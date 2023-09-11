@@ -131,6 +131,45 @@ PropertyRNA *RNA_def_boolean_vector(StructOrFunctionRNA *cont,
                                     const char *ui_name,
                                     const char *ui_description);
 
+template<class T> struct PropertyRange {
+  PropertyRange(const T min, const T max) : min(min), max(max){};
+  const T min;
+  const T max;
+};
+
+template<class T> struct PropertyRanges {
+  PropertyRanges(const PropertyRange<T> hard, const PropertyRange<T> soft)
+      : hard(std::move(hard)), soft(std::move(soft)){};
+  const PropertyRange<T> hard;
+  const PropertyRange<T> soft;
+};
+
+using IntRanges = PropertyRanges<int>;
+using FloatRanges = PropertyRanges<float>;
+
+PropertyRNA *RNA_def_int(StructOrFunctionRNA *cont,
+                         const char *identifier,
+                         int default_value,
+                         const char *ui_name,
+                         const char *ui_description,
+                         const IntRanges &ranges);
+
+PropertyRNA *RNA_def_int_vector(StructOrFunctionRNA *cont,
+                                const char *identifier,
+                                int len,
+                                const int *default_value,
+                                const char *ui_name,
+                                const char *ui_description,
+                                const IntRanges &ranges);
+
+PropertyRNA *RNA_def_int_array(StructOrFunctionRNA *cont,
+                               const char *identifier,
+                               int len,
+                               const int *default_value,
+                               const char *ui_name,
+                               const char *ui_description,
+                               const IntRanges &ranges);
+
 PropertyRNA *RNA_def_int(StructOrFunctionRNA *cont,
                          const char *identifier,
                          int default_value,
@@ -202,6 +241,91 @@ PropertyRNA *RNA_def_enum_flag(StructOrFunctionRNA *cont,
                                const char *ui_name,
                                const char *ui_description);
 void RNA_def_enum_funcs(PropertyRNA *prop, EnumPropertyItemFunc itemfunc);
+
+PropertyRNA *RNA_def_float(StructOrFunctionRNA *cont,
+                           const char *identifier,
+                           float default_value,
+                           const char *ui_name,
+                           const char *ui_description,
+                           const FloatRanges &ranges);
+
+PropertyRNA *RNA_def_float_vector(StructOrFunctionRNA *cont,
+                                  const char *identifier,
+                                  int len,
+                                  const float *default_value,
+                                  const char *ui_name,
+                                  const char *ui_description,
+                                  const FloatRanges &ranges);
+
+PropertyRNA *RNA_def_float_vector_xyz(StructOrFunctionRNA *cont,
+                                      const char *identifier,
+                                      int len,
+                                      const float *default_value,
+                                      const char *ui_name,
+                                      const char *ui_description,
+                                      const FloatRanges &ranges);
+
+PropertyRNA *RNA_def_float_color(StructOrFunctionRNA *cont,
+                                 const char *identifier,
+                                 int len,
+                                 const float *default_value,
+                                 const char *ui_name,
+                                 const char *ui_description,
+                                 const FloatRanges &ranges);
+
+PropertyRNA *RNA_def_float_matrix(StructOrFunctionRNA *cont,
+                                  const char *identifier,
+                                  int rows,
+                                  int columns,
+                                  const float *default_value,
+                                  const char *ui_name,
+                                  const char *ui_description,
+                                  const FloatRanges &ranges);
+
+PropertyRNA *RNA_def_float_translation(StructOrFunctionRNA *cont,
+                                       const char *identifier,
+                                       int len,
+                                       const float *default_value,
+                                       const char *ui_name,
+                                       const char *ui_description,
+                                       const FloatRanges &ranges);
+
+PropertyRNA *RNA_def_float_rotation(StructOrFunctionRNA *cont,
+                                    const char *identifier,
+                                    int len,
+                                    const float *default_value,
+                                    const char *ui_name,
+                                    const char *ui_description,
+                                    const FloatRanges &ranges);
+
+PropertyRNA *RNA_def_float_distance(StructOrFunctionRNA *cont,
+                                    const char *identifier,
+                                    float default_value,
+                                    const char *ui_name,
+                                    const char *ui_description,
+                                    const FloatRanges &ranges);
+
+PropertyRNA *RNA_def_float_array(StructOrFunctionRNA *cont,
+                                 const char *identifier,
+                                 int len,
+                                 const float *default_value,
+                                 const char *ui_name,
+                                 const char *ui_description,
+                                 const FloatRanges &ranges);
+
+PropertyRNA *RNA_def_float_percentage(StructOrFunctionRNA *cont,
+                                      const char *identifier,
+                                      float default_value,
+                                      const char *ui_name,
+                                      const char *ui_description,
+                                      const FloatRanges &ranges);
+
+PropertyRNA *RNA_def_float_factor(StructOrFunctionRNA *cont,
+                                  const char *identifier,
+                                  float default_value,
+                                  const char *ui_name,
+                                  const char *ui_description,
+                                  const FloatRanges &ranges);
 
 PropertyRNA *RNA_def_float(StructOrFunctionRNA *cont,
                            const char *identifier,

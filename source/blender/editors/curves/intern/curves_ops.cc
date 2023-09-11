@@ -940,21 +940,15 @@ static void CURVES_OT_select_random(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "seed",
               0,
-              INT32_MIN,
-              INT32_MAX,
               "Seed",
               "Source of randomness",
-              INT32_MIN,
-              INT32_MAX);
+              {{INT32_MIN, INT32_MAX}, {INT32_MIN, INT32_MAX}});
   RNA_def_float(ot->srna,
                 "probability",
                 0.5f,
-                0.0f,
-                1.0f,
                 "Probability",
                 "Chance of every point or curve being included in the selection",
-                0.0f,
-                1.0f);
+                {{0.0f, 1.0f}, {0.0f, 1.0f}});
 }
 
 static int select_ends_exec(bContext *C, wmOperator *op)
@@ -1021,21 +1015,15 @@ static void CURVES_OT_select_ends(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "amount_start",
               0,
-              0,
-              INT32_MAX,
               "Amount Front",
               "Number of points to select from the front",
-              0,
-              INT32_MAX);
+              {{0, INT32_MAX}, {0, INT32_MAX}});
   RNA_def_int(ot->srna,
               "amount_end",
               1,
-              0,
-              INT32_MAX,
               "Amount Back",
               "Number of points to select from the back",
-              0,
-              INT32_MAX);
+              {{0, INT32_MAX}, {0, INT32_MAX}});
 }
 
 static int select_linked_exec(bContext *C, wmOperator * /*op*/)

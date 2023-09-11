@@ -527,16 +527,14 @@ void ARMATURE_OT_roll_clear(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_float_rotation(ot->srna,
-                         "roll",
-                         0,
-                         nullptr,
-                         DEG2RADF(-360.0f),
-                         DEG2RADF(360.0f),
-                         "Roll",
-                         "",
-                         DEG2RADF(-360.0f),
-                         DEG2RADF(360.0f));
+  RNA_def_float_rotation(
+      ot->srna,
+      "roll",
+      0,
+      nullptr,
+      "Roll",
+      "",
+      {{DEG2RADF(-360.0f), DEG2RADF(360.0f)}, {DEG2RADF(-360.0f), DEG2RADF(360.0f)}});
 }
 
 /** \} */

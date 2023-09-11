@@ -1220,12 +1220,9 @@ void CURVE_OT_draw(wmOperatorType *ot)
   prop = RNA_def_float_distance(ot->srna,
                                 "error_threshold",
                                 0.0f,
-                                0.0f,
-                                10.0f,
                                 "Error",
                                 "Error distance threshold (in object units)",
-                                0.0001f,
-                                10.0f);
+                                {{0.0f, 10.0f}, {0.0001f, 10.0f}});
   RNA_def_property_ui_range(prop, 0.0, 10, 1, 4);
 
   RNA_def_enum(ot->srna,
@@ -1236,7 +1233,7 @@ void CURVE_OT_draw(wmOperatorType *ot)
                "");
 
   prop = RNA_def_float_distance(
-      ot->srna, "corner_angle", DEG2RADF(70.0f), 0.0f, M_PI, "Corner Angle", "", 0.0f, M_PI);
+      ot->srna, "corner_angle", DEG2RADF(70.0f), "Corner Angle", "", {{0.0f, M_PI}, {0.0f, M_PI}});
   RNA_def_property_subtype(prop, PROP_ANGLE);
 
   prop = RNA_def_boolean(ot->srna, "use_cyclic", true, "Cyclic", "");

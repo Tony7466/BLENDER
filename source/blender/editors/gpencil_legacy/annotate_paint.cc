@@ -2833,12 +2833,9 @@ void GPENCIL_OT_annotate(wmOperatorType *ot)
   prop = RNA_def_int(ot->srna,
                      "stabilizer_radius",
                      35,
-                     0,
-                     200,
                      "Stabilizer Stroke Radius",
                      "Minimum distance from last point before stroke continues",
-                     1,
-                     100);
+                     {{0, 200}, {1, 100}});
   RNA_def_property_subtype(prop, PROP_PIXEL);
 
   prop = RNA_def_collection_runtime(ot->srna, "stroke", &RNA_OperatorStrokeElement, "Stroke", "");

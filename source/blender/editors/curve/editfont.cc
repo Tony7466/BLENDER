@@ -1410,12 +1410,9 @@ void FONT_OT_change_spacing(wmOperatorType *ot)
   RNA_def_float(ot->srna,
                 "delta",
                 1.0,
-                0.0,
-                0.0,
                 "Delta",
                 "Amount to decrease or increase character spacing with",
-                0.0,
-                0.0);
+                {{0.0, 0.0}, {0.0, 0.0}});
 }
 
 /** \} */
@@ -1468,12 +1465,9 @@ void FONT_OT_change_character(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "delta",
               1,
-              -255,
-              255,
               "Delta",
               "Number to increase or decrease character code with",
-              -255,
-              255);
+              {{-255, 255}, {-255, 255}});
 }
 
 /** \} */
@@ -2039,7 +2033,7 @@ void FONT_OT_textbox_remove(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "The current text box", 0, INT_MAX);
+  RNA_def_int(ot->srna, "index", 0, "Index", "The current text box", {{0, INT_MAX}, {0, INT_MAX}});
 }
 
 /** \} */

@@ -2005,7 +2005,7 @@ void ARMATURE_OT_select_similar(wmOperatorType *ot)
 
   /* properties */
   ot->prop = RNA_def_enum(ot->srna, "type", prop_similar_types, SIMEDBONE_LENGTH, "Type", "");
-  RNA_def_float(ot->srna, "threshold", 0.1f, 0.0f, 1.0f, "Threshold", "", 0.0f, 1.0f);
+  RNA_def_float(ot->srna, "threshold", 0.1f, "Threshold", "", {{0.0f, 1.0f}, {0.0f, 1.0f}});
 }
 
 /** \} */

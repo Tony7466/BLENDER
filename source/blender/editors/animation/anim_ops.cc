@@ -393,7 +393,7 @@ static void ANIM_OT_change_frame(wmOperatorType *ot)
 
   /* rna */
   ot->prop = RNA_def_float(
-      ot->srna, "frame", 0, MINAFRAME, MAXFRAME, "Frame", "", MINAFRAME, MAXFRAME);
+      ot->srna, "frame", 0, "Frame", "", {{MINAFRAME, MAXFRAME}, {MINAFRAME, MAXFRAME}});
   prop = RNA_def_boolean(ot->srna, "snap", false, "Snap", "");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }

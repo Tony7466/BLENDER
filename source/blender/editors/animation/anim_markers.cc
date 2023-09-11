@@ -1123,7 +1123,7 @@ static void MARKER_OT_move(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_X;
 
   /* rna storage */
-  RNA_def_int(ot->srna, "frames", 0, INT_MIN, INT_MAX, "Frames", "", INT_MIN, INT_MAX);
+  RNA_def_int(ot->srna, "frames", 0, "Frames", "", {{INT_MIN, INT_MAX}, {INT_MIN, INT_MAX}});
   PropertyRNA *prop = RNA_def_boolean(
       ot->srna, "tweak", false, "Tweak", "Operator has been activated using a click-drag event");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE | PROP_HIDDEN);
@@ -1221,7 +1221,7 @@ static void MARKER_OT_duplicate(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* rna storage */
-  RNA_def_int(ot->srna, "frames", 0, INT_MIN, INT_MAX, "Frames", "", INT_MIN, INT_MAX);
+  RNA_def_int(ot->srna, "frames", 0, "Frames", "", {{INT_MIN, INT_MAX}, {INT_MIN, INT_MAX}});
 }
 
 /** \} */

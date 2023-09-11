@@ -2683,7 +2683,7 @@ void CURVE_OT_spline_weight_set(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  RNA_def_float_factor(ot->srna, "weight", 1.0f, 0.0f, 1.0f, "Weight", "", 0.0f, 1.0f);
+  RNA_def_float_factor(ot->srna, "weight", 1.0f, "Weight", "", {{0.0f, 1.0f}, {0.0f, 1.0f}});
 }
 
 /** \} */
@@ -2751,7 +2751,7 @@ void CURVE_OT_radius_set(wmOperatorType *ot)
 
   /* properties */
   RNA_def_float(
-      ot->srna, "radius", 1.0f, 0.0f, OBJECT_ADD_SIZE_MAXF, "Radius", "", 0.0001f, 10.0f);
+      ot->srna, "radius", 1.0f, "Radius", "", {{0.0f, OBJECT_ADD_SIZE_MAXF}, {0.0001f, 10.0f}});
 }
 
 /** \} */
@@ -3862,7 +3862,7 @@ void CURVE_OT_subdivide(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  prop = RNA_def_int(ot->srna, "number_cuts", 1, 1, 1000, "Number of Cuts", "", 1, 10);
+  prop = RNA_def_int(ot->srna, "number_cuts", 1, "Number of Cuts", "", {{1, 1000}, {1, 10}});
   /* Avoid re-using last var because it can cause _very_ high poly meshes
    * and annoy users (or worse crash). */
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
@@ -5177,14 +5177,16 @@ void CURVE_OT_spin(wmOperatorType *ot)
                            "center",
                            3,
                            nullptr,
-                           -OBJECT_ADD_SIZE_MAXF,
-                           OBJECT_ADD_SIZE_MAXF,
                            "Center",
                            "Center in global view space",
-                           -1000.0f,
-                           1000.0f);
-  RNA_def_float_vector(
-      ot->srna, "axis", 3, nullptr, -1.0f, 1.0f, "Axis", "Axis in global view space", -1.0f, 1.0f);
+                           {{-OBJECT_ADD_SIZE_MAXF, OBJECT_ADD_SIZE_MAXF}, {-1000.0f, 1000.0f}});
+  RNA_def_float_vector(ot->srna,
+                       "axis",
+                       3,
+                       nullptr,
+                       "Axis",
+                       "Axis in global view space",
+                       {{-1.0f, 1.0f}, {-1.0f, 1.0f}});
 }
 
 /** \} */
@@ -5728,12 +5730,9 @@ void CURVE_OT_vertex_add(wmOperatorType *ot)
                            "location",
                            3,
                            nullptr,
-                           -OBJECT_ADD_SIZE_MAXF,
-                           OBJECT_ADD_SIZE_MAXF,
                            "Location",
                            "Location to add new vertex at",
-                           -1.0e4f,
-                           1.0e4f);
+                           {{-OBJECT_ADD_SIZE_MAXF, OBJECT_ADD_SIZE_MAXF}, {-1.0e4f, 1.0e4f}});
 }
 
 /** \} */
@@ -6831,7 +6830,7 @@ void CURVE_OT_decimate(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  RNA_def_float_factor(ot->srna, "ratio", 1.0f, 0.0f, 1.0f, "Ratio", "", 0.0f, 1.0f);
+  RNA_def_float_factor(ot->srna, "ratio", 1.0f, "Ratio", "", {{0.0f, 1.0f}, {0.0f, 1.0f}});
 }
 
 /** \} */

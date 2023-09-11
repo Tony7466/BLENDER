@@ -1377,34 +1377,25 @@ static void pose_slide_opdef_properties(wmOperatorType *ot)
   prop = RNA_def_float_factor(ot->srna,
                               "factor",
                               0.5f,
-                              0.0f,
-                              1.0f,
                               "Factor",
                               "Weighting factor for which keyframe is favored more",
-                              0.0,
-                              1.0);
+                              {{0.0f, 1.0f}, {0.0, 1.0}});
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-
+  const IntRanges frame_ranges({MINAFRAME, MAXFRAME}, {0, 50});
   prop = RNA_def_int(ot->srna,
                      "prev_frame",
                      0,
-                     MINAFRAME,
-                     MAXFRAME,
                      "Previous Keyframe",
                      "Frame number of keyframe immediately before the current frame",
-                     0,
-                     50);
+                     frame_ranges);
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   prop = RNA_def_int(ot->srna,
                      "next_frame",
                      0,
-                     MINAFRAME,
-                     MAXFRAME,
                      "Next Keyframe",
                      "Frame number of keyframe immediately after the current frame",
-                     0,
-                     50);
+                     frame_ranges);
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   prop = RNA_def_enum(ot->srna,
@@ -1987,12 +1978,9 @@ void POSE_OT_propagate(wmOperatorType *ot)
   RNA_def_float(ot->srna,
                 "end_frame",
                 250.0,
-                FLT_MIN,
-                FLT_MAX,
                 "End Frame",
                 "Frame to stop propagating frames to (for 'Before Frame' mode)",
-                1.0,
-                250.0);
+                {{FLT_MIN, FLT_MAX}, {1.0, 250.0}});
 }
 
 /* **************************************************** */

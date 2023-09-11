@@ -412,22 +412,22 @@ void GPENCIL_OT_bake_grease_pencil_animation(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  prop = RNA_def_int(
-      ot->srna, "frame_start", 1, 1, 100000, "Start Frame", "The start frame", 1, 100000);
+  const IntRanges frame_ranges{{1, 100000}, {1, 100000}};
+  prop = RNA_def_int(ot->srna, "frame_start", 1, "Start Frame", "The start frame", frame_ranges);
 
   prop = RNA_def_int(
-      ot->srna, "frame_end", 250, 1, 100000, "End Frame", "The end frame of animation", 1, 100000);
+      ot->srna, "frame_end", 250, "End Frame", "The end frame of animation", frame_ranges);
   RNA_def_property_update_runtime(prop, gpencil_bake_set_frame_end);
 
-  prop = RNA_def_int(ot->srna, "step", 1, 1, 100, "Step", "Step between generated frames", 1, 100);
+  prop = RNA_def_int(
+      ot->srna, "step", 1, "Step", "Step between generated frames", {{1, 100}, {1, 100}});
 
   RNA_def_boolean(ot->srna,
                   "only_selected",
                   false,
                   "Only Selected Keyframes",
                   "Convert only selected keyframes");
-  RNA_def_int(
-      ot->srna, "frame_target", 1, 1, 100000, "Target Frame", "Destination frame", 1, 100000);
+  RNA_def_int(ot->srna, "frame_target", 1, "Target Frame", "Destination frame", frame_ranges);
 
   RNA_def_enum(ot->srna,
                "project_type",
