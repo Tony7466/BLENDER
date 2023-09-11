@@ -524,6 +524,12 @@ static void node_update_basis_from_declaration(
       BLI_assert(node.panel_states().contains_ptr(current_panel_state));
       BLI_assert(node.runtime->panels.as_span().contains_ptr(current_panel_runtime));
 
+      /* Draw buttons before the first panel. */
+      if (!buttons_drawn) {
+        buttons_drawn = true;
+        need_spacer_after_item = node_update_basis_buttons(C, ntree, node, block, locy);
+      }
+
       if (!is_parent_collapsed) {
         locy -= NODE_DY;
         is_first = false;
