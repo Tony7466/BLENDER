@@ -590,8 +590,7 @@ class NodeDeclaration {
 class NodeDeclarationBuilder {
  private:
   NodeDeclaration &declaration_;
-  Vector<std::unique_ptr<BaseSocketDeclarationBuilder>> input_builders_;
-  Vector<std::unique_ptr<BaseSocketDeclarationBuilder>> output_builders_;
+  Vector<std::unique_ptr<BaseSocketDeclarationBuilder>> socket_builders_;
   Vector<std::unique_ptr<PanelDeclarationBuilder>> panel_builders_;
   bool is_function_node_ = false;
 
@@ -881,8 +880,7 @@ inline typename DeclType::Builder &NodeDeclarationBuilder::add_socket(StringRef 
   declaration_.items.append(std::move(socket_decl));
 
   Builder &socket_decl_builder_ref = *socket_decl_builder;
-  ((in_out == SOCK_IN) ? input_builders_ : output_builders_)
-      .append(std::move(socket_decl_builder));
+  socket_builders_.append(std::move(socket_decl_builder));
 
   return socket_decl_builder_ref;
 }
