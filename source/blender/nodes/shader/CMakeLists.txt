@@ -160,9 +160,14 @@ if(WITH_MATERIALX)
     materialx/nodes/bsdf_translucent.cc
     materialx/nodes/bsdf_transparent.cc
     materialx/nodes/clamp.cc
+    materialx/nodes/color_ramp.cc
+    materialx/nodes/curves.cc
+    materialx/nodes/gamma.cc
     materialx/nodes/emission.cc
     materialx/nodes/huesatval.cc
     materialx/nodes/invert.cc
+    materialx/nodes/light_falloff.cc
+    materialx/nodes/light_path.cc
     materialx/nodes/map_range.cc
     materialx/nodes/math.cc
     materialx/nodes/mix_rgb.cc
@@ -180,6 +185,7 @@ if(WITH_MATERIALX)
     materialx/nodes/tex_image.cc
     materialx/nodes/tex_noise.cc
     materialx/nodes/vector_math.cc
+    materialx/nodes/wavelength.cc
 
     materialx/material.h
     materialx/nodes/node_item.h

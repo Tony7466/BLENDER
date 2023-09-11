@@ -152,10 +152,16 @@ NodeItem NodeParser::get_input_link(const bNodeSocket &socket, NodeItem::Type to
     CASE_NODE_TYPE(SH_NODE_BLACKBODY, BlackbodyNodeParser)
     CASE_NODE_TYPE(SH_NODE_BRIGHTCONTRAST, BrightContrastNodeParser)
     CASE_NODE_TYPE(SH_NODE_CLAMP, ClampNodeParser)
+    CASE_NODE_TYPE(SH_NODE_VALTORGB, ColorRampNodeParser)
+    CASE_NODE_TYPE(SH_NODE_CURVE_FLOAT, CurvesFloatNodeParser)
+    CASE_NODE_TYPE(SH_NODE_CURVE_RGB, CurvesRGBNodeParser)
+    CASE_NODE_TYPE(SH_NODE_GAMMA, GammaNodeParser)
     CASE_NODE_TYPE(SH_NODE_COMBINE_COLOR, CombineColorNodeParser)
     CASE_NODE_TYPE(SH_NODE_COMBXYZ, CombineXYZNodeParser)
     CASE_NODE_TYPE(SH_NODE_HUE_SAT, HueSatValNodeParser)
     CASE_NODE_TYPE(SH_NODE_INVERT, InvertNodeParser)
+    CASE_NODE_TYPE(SH_NODE_LIGHT_FALLOFF, LightFalloffNodeParser)
+    CASE_NODE_TYPE(SH_NODE_LIGHT_PATH, LightPathNodeParser)
     CASE_NODE_TYPE(SH_NODE_MAP_RANGE, MapRangeNodeParser)
     CASE_NODE_TYPE(SH_NODE_MATH, MathNodeParser)
     CASE_NODE_TYPE(SH_NODE_MIX_RGB_LEGACY, MixRGBNodeParser)
@@ -168,6 +174,7 @@ NodeItem NodeParser::get_input_link(const bNodeSocket &socket, NodeItem::Type to
     CASE_NODE_TYPE(SH_NODE_TEX_IMAGE, TexImageNodeParser)
     CASE_NODE_TYPE(SH_NODE_TEX_NOISE, TexNoiseNodeParser)
     CASE_NODE_TYPE(SH_NODE_VECTOR_MATH, VectorMathNodeParser)
+    CASE_NODE_TYPE(SH_NODE_WAVELENGTH, WavelengthNodeParser)
 
     default:
       CLOG_WARN(LOG_MATERIALX_SHADER,
