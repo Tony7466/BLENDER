@@ -76,6 +76,9 @@ void BKE_mesh_tag_topology_changed(struct Mesh *mesh);
  */
 void BKE_mesh_tag_edges_split(struct Mesh *mesh);
 
+/** Call when changing "sharp_face" or "sharp_edge" data. */
+void BKE_mesh_tag_sharpness_changed(struct Mesh *mesh);
+
 /**
  * Call when face vertex order has changed but positions and faces haven't changed
  */

@@ -858,10 +858,10 @@ static void tag_component_positions_changed(void *owner)
   }
 }
 
-static void tag_component_corner_normals_dirty(void *owner)
+static void tag_component_sharpness_changed(void *owner)
 {
   if (Mesh *mesh = static_cast<Mesh *>(owner)) {
-    mesh->runtime->corner_normals_cache.tag_dirty();
+    BKE_mesh_tag_sharpness_changed(mesh);
   }
 }
 
@@ -1187,7 +1187,7 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                                    BuiltinAttributeProvider::Creatable,
                                                    BuiltinAttributeProvider::Deletable,
                                                    face_access,
-                                                   tag_component_corner_normals_dirty);
+                                                   tag_component_sharpness_changed);
 
   static BuiltinCustomDataLayerProvider sharp_edge("sharp_edge",
                                                    ATTR_DOMAIN_EDGE,
@@ -1196,7 +1196,7 @@ static ComponentAttributeProviders create_attribute_providers_for_mesh()
                                                    BuiltinAttributeProvider::Creatable,
                                                    BuiltinAttributeProvider::Deletable,
                                                    edge_access,
-                                                   tag_component_corner_normals_dirty);
+                                                   tag_component_sharpness_changed);
 
   static VertexGroupsAttributeProvider vertex_groups;
   static CustomDataAttributeProvider corner_custom_data(ATTR_DOMAIN_CORNER, corner_access);

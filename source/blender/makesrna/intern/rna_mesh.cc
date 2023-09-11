@@ -582,7 +582,10 @@ static void rna_MeshPolygon_use_smooth_set(PointerRNA *ptr, bool value)
         &mesh->face_data, CD_PROP_BOOL, CD_SET_DEFAULT, mesh->faces_num, "sharp_face"));
   }
   const int index = rna_MeshPolygon_index_get(ptr);
-  sharp_faces[index] = !value;
+  if (value != sharp_faces[index]) {
+    sharp_faces[index] = value;
+    BKE_mesh_tag_sharpness_changed(mesh);
+  }
 }
 
 static bool rna_MeshPolygon_select_get(PointerRNA *ptr)
@@ -1368,7 +1371,10 @@ static void rna_MeshEdge_use_edge_sharp_set(PointerRNA *ptr, bool value)
         &mesh->edge_data, CD_PROP_BOOL, CD_SET_DEFAULT, mesh->totedge, "sharp_edge"));
   }
   const int index = rna_MeshEdge_index_get(ptr);
-  sharp_edge[index] = value;
+  if (value != sharp_edge[index]) {
+    sharp_edge[index] = value;
+    BKE_mesh_tag_sharpness_changed(mesh);
+  }
 }
 
 static bool rna_MeshEdge_use_seam_get(PointerRNA *ptr)
