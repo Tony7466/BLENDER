@@ -429,6 +429,7 @@ struct wmNotifier {
 #define ND_SHADERFX (32 << 16)
 /* For updating motion paths in 3dview. */
 #define ND_DRAW_ANIMVIZ (33 << 16)
+#define ND_BONE_COLLECTION (34 << 16)
 
 /* NC_MATERIAL Material */
 #define ND_SHADING (30 << 16)
@@ -1110,10 +1111,6 @@ struct wmDragAsset {
 struct wmDragAssetCatalog {
   bUUID drag_catalog_id;
 };
-
-typedef struct wmDragNodeTreeInterface {
-  struct bNodeTreeInterfaceItem *item;
-} wmDragNodeTreeInterface;
 
 /**
  * For some specific cases we support dragging multiple assets (#WM_DRAG_ASSET_LIST). There is no
