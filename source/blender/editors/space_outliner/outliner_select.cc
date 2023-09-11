@@ -1610,7 +1610,7 @@ static bool do_outliner_range_select_recursive(ListBase *lb,
                                                TreeElement *active,
                                                TreeElement *cursor,
                                                bool selecting,
-                                               bool recurse,
+                                               const bool recurse,
                                                Collection *in_collection)
 {
   LISTBASE_FOREACH (TreeElement *, te, lb) {
@@ -1661,7 +1661,8 @@ static void do_outliner_range_select(bContext *C,
                                      SpaceOutliner *space_outliner,
                                      TreeElement *cursor,
                                      const bool extend,
-                                     const bool recurse)
+                                     const bool recurse,
+                                     Collection *in_collection)
 {
   TreeElement *active = outliner_find_element_with_flag(&space_outliner->tree, TSE_ACTIVE);
 
@@ -1688,17 +1689,6 @@ static void do_outliner_range_select(bContext *C,
   if (!active_selected || !outliner_is_element_visible(active)) {
     outliner_item_select(C, space_outliner, cursor, OL_ITEM_SELECT | OL_ITEM_ACTIVATE);
     return;
-  }
-
-  Collection *in_collection = nullptr;
-  if (recurse) {
-    if (tselem->type == TSE_LAYER_COLLECTION) {
-      in_collection = static_cast<LayerCollection *>(active->directdata)->collection;
-    }
-    else if (tselem->type == TSE_SOME_ID && active->idcode == ID_OB) {
-      in_collection = BKE_collection_object_find(
-          CTX_data_main(C), CTX_data_scene(C), nullptr, reinterpret_cast<Object *>(tselem->id));
-    }
   }
 
   do_outliner_range_select_recursive(
@@ -1773,8 +1763,7 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
     return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
   else {
-    /* The row may also contain children, if one is hovered we want this instead of current te.
-     */
+    /* The row may also contain children, if one is hovered we want this instead of current te. */
     bool merged_elements = false;
     bool is_over_icon = false;
     TreeElement *activate_te = outliner_find_item_at_x_in_row(
@@ -1812,12 +1801,15 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
        select recursively. */
     if (!recurse && (extend || use_range) &&
         outliner_item_is_co_over_icon(activate_te, view_mval[0]))
+    {
       return OPERATOR_CANCELLED;
+    }
 
     if (use_range) {
-      do_outliner_range_select(C, space_outliner, activate_te, extend, recurse);
-      if (recurse)
+      do_outliner_range_select(C, space_outliner, activate_te, extend, recurse, in_collection);
+      if (recurse) {
         do_outliner_select_recursive(&activate_te->subtree, /*selecting=*/true, in_collection);
+      }
     }
     else {
       const bool is_over_name_icons = outliner_item_is_co_over_name_icons(activate_te,
@@ -1829,8 +1821,9 @@ static int outliner_item_do_activate_from_cursor(bContext *C,
 
       /* If we're CTRL+double-clicking and the element is aleady selected, skip the activation
          straight to deselection */
-      if (extend && recurse && activate_tselem->flag & TSE_SELECTED)
+      if (extend && recurse && activate_tselem->flag & TSE_SELECTED) {
         select = false;
+      }
 
       const short select_flag = OL_ITEM_ACTIVATE | (select ? OL_ITEM_SELECT : OL_ITEM_DESELECT) |
                                 (is_over_name_icons ? OL_ITEM_SELECT_DATA : 0) |
