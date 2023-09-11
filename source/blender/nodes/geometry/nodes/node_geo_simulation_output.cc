@@ -975,6 +975,20 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
     RNA_string_set(&ptr, "modifier_name", nmd.modifier.name);
     RNA_int_set(&ptr, "bake_id", bake->id);
   }
+  {
+    PointerRNA ptr;
+    uiItemFullO(layout,
+                "OBJECT_OT_geometry_nodes_delete_bake",
+                "Delete Bake",
+                ICON_NONE,
+                nullptr,
+                WM_OP_INVOKE_DEFAULT,
+                UI_ITEM_NONE,
+                &ptr);
+    WM_operator_properties_id_lookup_set_from_id(&ptr, &object->id);
+    RNA_string_set(&ptr, "modifier_name", nmd.modifier.name);
+    RNA_int_set(&ptr, "bake_id", bake->id);
+  }
 }
 
 static bool node_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *link)

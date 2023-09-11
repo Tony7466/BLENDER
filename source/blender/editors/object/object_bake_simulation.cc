@@ -786,6 +786,32 @@ static int geometry_nodes_bake_node_modal(bContext *C,
   return OPERATOR_PASS_THROUGH;
 }
 
+static int geometry_nodes_delete_bake_exec(bContext *C, wmOperator *op)
+{
+  Main *bmain = CTX_data_main(C);
+  Scene *scene = CTX_data_scene(C);
+  Object *object = reinterpret_cast<Object *>(
+      WM_operator_properties_id_lookup_from_name_or_session_uuid(bmain, op->ptr, ID_OB));
+  if (object == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+  char *modifier_name = RNA_string_get_alloc(op->ptr, "modifier_name", nullptr, 0, nullptr);
+  if (modifier_name == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+  BLI_SCOPED_DEFER([&]() { MEM_SAFE_FREE(modifier_name); });
+
+  ModifierData *md = BKE_modifiers_findby_name(object, modifier_name);
+  if (md == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+  NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
+  const int bake_id = RNA_int_get(op->ptr, "bake_id");
+
+  try_delete_bake(C, *object, nmd, bake_id, op->reports);
+  return OPERATOR_FINISHED;
+}
+
 }  // namespace blender::ed::object::bake_simulation
 
 void OBJECT_OT_simulation_nodes_cache_calculate_to_frame(wmOperatorType *ot)
@@ -859,4 +885,33 @@ void OBJECT_OT_geometry_nodes_bake_node(wmOperatorType *ot)
                  "Name of the modifier that contains the node to bake");
   RNA_def_int(
       ot->srna, "bake_id", 0, 0, INT32_MAX, "Bake ID", "ID of the node to bake", 0, INT32_MAX);
+}
+
+void OBJECT_OT_geometry_nodes_delete_bake(wmOperatorType *ot)
+{
+  using namespace blender::ed::object::bake_simulation;
+
+  ot->name = "Delete Baked Data";
+  ot->description = "Delete baked data of a single geometry node";
+  ot->idname = "OBJECT_OT_geometry_nodes_delete_bake";
+
+  ot->exec = geometry_nodes_delete_bake_exec;
+
+  WM_operator_properties_id_lookup(ot, false);
+
+  RNA_def_string(ot->srna,
+                 "modifier_name",
+                 nullptr,
+                 0,
+                 "Modifier Name",
+                 "Name of the modifier that contains the node");
+  RNA_def_int(ot->srna,
+              "bake_id",
+              0,
+              0,
+              INT32_MAX,
+              "Bake ID",
+              "Nested node id of the bake to delete",
+              0,
+              INT32_MAX);
 }
