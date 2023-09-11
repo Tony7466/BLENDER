@@ -149,9 +149,9 @@ enum eTFlag {
   T_DRAW_SNAP_SOURCE = 1 << 25,
 
   /** Special flag for when the transform code is called after keys have been duplicated. */
-  T_DUPLICATED_KEYS = 1 << 26,
+  T_DUPLICATED_KEYFRAMES = 1 << 26,
 };
-ENUM_OPERATORS(eTFlag, T_NO_GIZMO);
+ENUM_OPERATORS(eTFlag, T_DUPLICATED_KEYFRAMES);
 
 #define T_ALL_RESTRICTIONS (T_NO_CONSTRAINT | T_NULL_ONE)
 #define T_PROP_EDIT_ALL (T_PROP_EDIT | T_PROP_CONNECTED | T_PROP_PROJECTED)
