@@ -756,7 +756,6 @@ ccl_device_noinline int svm_node_closure_bsdf(KernelGlobals kg,
         bssrdf->albedo = closure_weight;
         bssrdf->N = N;
         bssrdf->ior = param2;
-        /* TODO */
         bssrdf->alpha = 1.0f;
         bssrdf->anisotropy = stack_load_float(stack, data_node.w);
 

@@ -52,7 +52,6 @@ ccl_device_inline bool subsurface_entry_bounce(KernelGlobals kg,
   make_orthonormals(Z, &X, &Y);
 
   const float alpha = bssrdf->alpha;
-  const float alpha2 = sqr(alpha);
   const float neta = 1.0f / bssrdf->ior;
 
   /* Sample microfacet normal by transforming to/from local coordinates. */
