@@ -1029,11 +1029,16 @@ void ui_draw_but_TRACKPREVIEW(ARegion *region,
                               const uiWidgetColors *wcol,
                               const rcti *rect);
 
-void ui_draw_button_sections_background_and_separator(const ARegion *region,
-                                                      const blender::Vector<rcti> &section_bounds,
-                                                      int /*ThemeColorID*/ colorid,
-                                                      const float merge_distance_x,
-                                                      uiButtonSectionsAlign align);
+void ui_draw_button_sections_background(const ARegion *region,
+                                        const blender::Vector<rcti> &section_bounds,
+                                        ThemeColorID colorid,
+                                        uiButtonSectionsAlign align,
+                                        const float corner_radius);
+void ui_draw_button_sections_alignment_separator(const ARegion *region,
+                                                 const blender::Vector<rcti> &section_bounds,
+                                                 ThemeColorID colorid,
+                                                 uiButtonSectionsAlign align,
+                                                 const float corner_radius);
 
 /* `interface_undo.cc` */
 

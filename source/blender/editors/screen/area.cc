@@ -2778,21 +2778,12 @@ void ED_region_clear(const bContext *C, const ARegion *region, const int /*Theme
   }
 }
 
-/* TODO should there separate theme colors for the clear color and the button background color?
- */
-static void region_clear_draw_button_sections_back(const bContext *C,
-                                                   const ARegion *region,
-                                                   const int /*ThemeColorID*/ colorid,
-                                                   const uiButtonSectionsAlign align)
+static void region_clear_fully_transparent(const bContext *C)
 {
   /* view should be in pixelspace */
   UI_view2d_view_restore(C);
 
-  float back[4];
-  UI_GetThemeColor4fv(colorid, back);
   GPU_clear_color(0, 0, 0, 0);
-
-  UI_region_button_sections_draw(region, colorid, align);
 }
 
 BLI_INLINE bool streq_array_any(const char *s, const char *arr[])
@@ -3548,9 +3539,12 @@ void ED_region_header_draw_with_button_sections(const bContext *C,
                                                 const uiButtonSectionsAlign align)
 {
   const ThemeColorID bgcolorid = region_background_color_id(C, region);
-  /* clear */
+
+  /* Clear and draw button sections background when using region overlap. Otherwise clear using the
+   * background color like normally. */
   if (region->overlap) {
-    region_clear_draw_button_sections_back(C, region, bgcolorid, align);
+    region_clear_fully_transparent(C);
+    UI_region_button_sections_draw(region, bgcolorid, align);
   }
   else {
     ED_region_clear(C, region, bgcolorid);

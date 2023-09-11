@@ -66,28 +66,36 @@ void ui_region_temp_remove(bContext *C, bScreen *screen, ARegion *region)
 
 /**
  * Calculate a bounding box for each "section", that is, each group of buttons separated by a
- * separator spacer button. Sections will be merged if they are closer than \a merge_distance_x.
+ * separator spacer button. Sections will be merged if they are closer than
+ * #UI_BUTTON_SECTION_MERGE_DISTANCE.
  *
- * \param merge_distance_x: Bounds that are closer horizontally than this will be merged. Optional,
- *                          set to 0 to enable. Must be >= 0.
+ * If a section is closer than #UI_BUTTON_SECTION_MERGE_DISTANCE to a region edge, it will be
+ * extended to the edge.
+ *
  * \return the bounding boxes in region space.
  */
-static blender::Vector<rcti> calc_button_section_bounds(const ARegion *region,
-                                                        const int merge_distance_x)
+static blender::Vector<rcti> button_section_bounds_calc(const ARegion *region)
 {
   blender::Vector<rcti> section_bounds;
 
-  BLI_assert(merge_distance_x >= 0);
-
-  const std::function finish_section_fn = [&section_bounds,
-                                           merge_distance_x](const rcti cur_section_bounds) {
-    if (merge_distance_x && !section_bounds.is_empty() &&
-        std::abs(section_bounds.last().xmax - cur_section_bounds.xmin) < merge_distance_x)
+  const std::function finish_section_fn = [&section_bounds, region](rcti cur_section_bounds) {
+    if (!section_bounds.is_empty() &&
+        std::abs(section_bounds.last().xmax - cur_section_bounds.xmin) <
+            UI_BUTTON_SECTION_MERGE_DISTANCE)
     {
       section_bounds.last().xmax = cur_section_bounds.xmax;
     }
     else {
       section_bounds.append(cur_section_bounds);
+    }
+
+    rcti &last_bounds = section_bounds.last();
+    /* Extend to region edge if close enough. */
+    if (last_bounds.xmin <= UI_BUTTON_SECTION_MERGE_DISTANCE) {
+      last_bounds.xmin = 0;
+    }
+    if (last_bounds.xmax >= (region->winx - UI_BUTTON_SECTION_MERGE_DISTANCE)) {
+      last_bounds.xmax = region->winx;
     }
   };
 
@@ -127,15 +135,37 @@ static blender::Vector<rcti> calc_button_section_bounds(const ARegion *region,
 }
 
 void UI_region_button_sections_draw(const ARegion *region,
-                                    int /*THemeColorID*/ colorid,
+                                    const int /*ThemeColorID*/ colorid,
                                     const uiButtonSectionsAlign align)
 {
-  const float merge_distance_x = UI_BUTTON_SECTION_MERGE_DISTANCE;
+  const uiStyle *style = UI_style_get_dpi();
+  const float aspect = BLI_rctf_size_x(&region->v2d.cur) /
+                       (BLI_rcti_size_x(&region->v2d.mask) + 1);
+  const float corner_radius = 4.0f * UI_SCALE_FAC / aspect;
 
-  const blender::Vector<rcti> section_bounds = calc_button_section_bounds(region,
-                                                                          merge_distance_x);
-  ui_draw_button_sections_background_and_separator(
-      region, section_bounds, colorid, merge_distance_x, align);
+  const blender::Vector<rcti> section_bounds = button_section_bounds_calc(region);
+
+  blender::Vector<rcti> padded_bounds;
+  for (rcti bounds_copy : section_bounds) {
+    BLI_rcti_pad(&bounds_copy, style->buttonspacex, style->buttonspacey);
+    /* Clamp, important for the rounded-corners to draw correct. */
+    CLAMP_MIN(bounds_copy.xmin, 0);
+    CLAMP_MAX(bounds_copy.xmax, region->winx);
+    CLAMP_MIN(bounds_copy.ymin, 0);
+    CLAMP_MAX(bounds_copy.ymax, region->winy);
+    padded_bounds.append(bounds_copy);
+  }
+
+  ui_draw_button_sections_background(
+      region, padded_bounds, ThemeColorID(colorid), align, corner_radius);
+  if (align != uiButtonSectionsAlign::None) {
+    ui_draw_button_sections_alignment_separator(region,
+                                                padded_bounds,
+                                                ThemeColorID(colorid),
+                                                align,
+                                                /* Slightly bigger corner radius, looks better. */
+                                                corner_radius + 1);
+  }
 }
 
 /** \} */
