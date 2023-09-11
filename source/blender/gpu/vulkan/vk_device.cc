@@ -56,6 +56,7 @@ void VKDevice::init(void *ghost_context)
                          &vk_queue_);
 
   init_physical_device_properties();
+  init_physical_device_features();
   VKBackend::platform_init(*this);
   VKBackend::capabilities_init(*this);
   init_debug_callbacks();
