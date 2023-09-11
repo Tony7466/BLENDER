@@ -2,9 +2,14 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_index_range.hh"
+#include "BLI_math_vector.h"
 #include "BLI_math_vector.hh"
 
-#include "BKE_attribute.hh"
+#include "DNA_mesh_types.h"
+#include "DNA_meshdata_types.h"
+
+#include "BKE_geometry_set.hh"
 #include "BKE_mesh.hh"
 
 #include "GEO_mesh_primitive_cuboid.hh"

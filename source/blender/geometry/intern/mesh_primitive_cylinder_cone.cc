@@ -2,10 +2,11 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_material.h"
 #include "BKE_mesh.hh"
 
 #include "GEO_mesh_primitive_cylinder_cone.hh"
+#include "GEO_mesh_primitive_line.hh"
+#include "GEO_mesh_primitive_uv_sphere.hh"
 
 namespace blender::geometry {
 
@@ -646,28 +647,9 @@ static Mesh *create_vertex_mesh()
   return mesh;
 }
 
-Bounds<float3> calculate_bounds_radial_primitive(const float radius_top,
-                                                 const float radius_bottom,
-                                                 const int segments,
-                                                 const float height)
-{
-  const float radius = std::max(radius_top, radius_bottom);
-  const float delta_phi = (2.0f * M_PI) / float(segments);
-
-  const float x_max = radius;
-  const float x_min = std::cos(std::round(0.5f * segments) * delta_phi) * radius;
-  const float y_max = std::sin(std::round(0.25f * segments) * delta_phi) * radius;
-  const float y_min = -y_max;
-
-  const float3 bounds_min(x_min, y_min, -height);
-  const float3 bounds_max(x_max, y_max, height);
-
-  return {bounds_min, bounds_max};
-}
-
 static Bounds<float3> calculate_bounds_cylinder(const ConeConfig &config)
 {
-  return calculate_bounds_radial_primitive(
+  return geometry::calculate_bounds_radial_primitive(
       config.radius_top, config.radius_bottom, config.circle_segments, config.height);
 }
 
@@ -697,7 +679,6 @@ Mesh *create_cylinder_or_cone_mesh(const float radius_top,
 
   Mesh *mesh = BKE_mesh_new_nomain(
       config.tot_verts, config.tot_edges, config.tot_faces, config.tot_corners);
-  BKE_id_material_eval_ensure_default_slot(&mesh->id);
 
   MutableSpan<float3> positions = mesh->vert_positions_for_write();
   MutableSpan<int2> edges = mesh->edges_for_write();

@@ -7,8 +7,6 @@
 #include "BKE_attribute.hh"
 
 struct Mesh;
-namespace blender {
-}  // namespace blender
 
 namespace blender::geometry {
 

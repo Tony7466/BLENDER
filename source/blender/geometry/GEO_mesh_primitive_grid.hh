@@ -5,11 +5,9 @@
 #pragma once
 
 struct Mesh;
-namespace blender {
-namespace bke {
+namespace blender::bke {
 class AttributeIDRef;
-}
-}  // namespace blender
+}  // namespace blender::bke
 
 namespace blender::geometry {
 

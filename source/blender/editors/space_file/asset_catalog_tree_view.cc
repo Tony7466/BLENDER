@@ -247,7 +247,7 @@ void AssetCatalogTreeView::activate_catalog_by_id(CatalogID catalog_id)
 {
   params_->asset_catalog_visibility = FILE_SHOW_ASSETS_FROM_CATALOG;
   params_->catalog_id = catalog_id;
-  // WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, nullptr);
+  WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, nullptr);
 }
 
 bool AssetCatalogTreeView::is_active_catalog(CatalogID catalog_id) const

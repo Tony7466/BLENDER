@@ -46,17 +46,6 @@ void transform_geometry_set(GeoNodeExecParams &params,
                             const float4x4 &transform,
                             const Depsgraph &depsgraph);
 
-Mesh *create_line_mesh(const float3 start, const float3 delta, int count);
-
-/**
- * Calculates the bounds of a radial primitive.
- * The algorithm assumes X-axis symmetry of primitives.
- */
-Bounds<float3> calculate_bounds_radial_primitive(float radius_top,
-                                                 float radius_bottom,
-                                                 int segments,
-                                                 float height);
-
 /**
  * Returns the parts of the geometry that are on the selection for the given domain. If the domain
  * is not applicable for the component, e.g. face domain for point cloud, nothing happens to that
