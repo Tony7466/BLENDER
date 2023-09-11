@@ -844,10 +844,10 @@ bool ED_object_editmode_enter_ex(Main *bmain, Scene *scene, Object *ob, int flag
 
     /* WORKAROUND / FIXME: this is a temporary workaround to ensure that
      * full bone collection data gets restored when exiting edit mode
-     * via an undo step.  The correct fix is to have a full edit-mode
+     * via an undo step. The correct fix is to have a full edit-mode
      * copy of bone collections so that edit-mode changes don't modify
-     * object-mode armature data until exiting edit mode.  But that
-     * change is a bit of a project, and will be done later.  This line
+     * object-mode armature data until exiting edit mode. But that
+     * change is a bit of a project, and will be done later. This line
      * should be removed when that is done. */
     bmain->is_memfile_undo_written = false;
 

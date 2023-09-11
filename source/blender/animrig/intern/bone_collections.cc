@@ -448,12 +448,11 @@ blender::Map<BoneCollection *, BoneCollection *> ANIM_bonecoll_listbase_copy_no_
 {
   BLI_assert(BLI_listbase_is_empty(bone_colls_dst));
 
-  blender::Map<BoneCollection *, BoneCollection *> bcoll_map =
-      blender::Map<BoneCollection *, BoneCollection *>();
+  blender::Map<BoneCollection *, BoneCollection *> bcoll_map{};
   LISTBASE_FOREACH (BoneCollection *, bcoll_src, bone_colls_src) {
     BoneCollection *bcoll_dst = static_cast<BoneCollection *>(MEM_dupallocN(bcoll_src));
 
-    /* This is rebuilt from the edit bones, so we don't need to copy it. */
+    /* This will be rebuilt from the edit bones, so we don't need to copy it. */
     BLI_listbase_clear(&bcoll_dst->bones);
 
     if (bcoll_src->prop) {
@@ -470,12 +469,15 @@ blender::Map<BoneCollection *, BoneCollection *> ANIM_bonecoll_listbase_copy_no_
 void ANIM_bonecoll_listbase_free(ListBase *bcolls, const bool do_id_user)
 {
   LISTBASE_FOREACH_MUTABLE (BoneCollection *, bcoll, bcolls) {
-    /* ID properties. */
     if (bcoll->prop) {
       IDP_FreeProperty_ex(bcoll->prop, do_id_user);
     }
 
-    /* Bone references. */
+    /* This will usually already be empty, because the passed BoneCollection
+     * list is usually from ANIM_bonecoll_listbase_copy_no_membership().
+     * However, during undo this is also used to free the BoneCollection
+     * list on the Armature itself before copying over the undo BoneCollection
+     * list, in which case this of Bone pointers may not be empty. */
     BLI_freelistN(&bcoll->bones);
   }
   BLI_freelistN(bcolls);

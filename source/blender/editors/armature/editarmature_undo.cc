@@ -52,11 +52,12 @@ static CLG_LogRef LOG = {"ed.undo.armature"};
  * bones and collections together.
  */
 static void remap_ebone_bone_collection_references(
-    ListBase *edit_bones, blender::Map<BoneCollection *, BoneCollection *> *bcoll_map)
+    ListBase /* EditBone */ *edit_bones,
+    const blender::Map<BoneCollection *, BoneCollection *> &bcoll_map)
 {
   LISTBASE_FOREACH (EditBone *, ebone, edit_bones) {
     LISTBASE_FOREACH (BoneCollectionReference *, bcoll_ref, &ebone->bone_collections) {
-      bcoll_ref->bcoll = bcoll_map->lookup(bcoll_ref->bcoll);
+      bcoll_ref->bcoll = bcoll_map.lookup(bcoll_ref->bcoll);
     }
   }
 }
@@ -97,7 +98,7 @@ static void undoarm_to_editarm(UndoArmature *uarm, bArmature *arm)
       &arm->collections, &uarm->bone_collections, true);
   arm->active_collection = bcoll_map.lookup_default(uarm->active_collection, nullptr);
 
-  remap_ebone_bone_collection_references(arm->edbo, &bcoll_map);
+  remap_ebone_bone_collection_references(arm->edbo, bcoll_map);
 
   ANIM_armature_runtime_refresh(arm);
 }
@@ -123,7 +124,7 @@ static void *undoarm_from_editarm(UndoArmature *uarm, bArmature *arm)
   uarm->active_collection = bcoll_map.lookup_default(arm->active_collection, nullptr);
 
   /* Point the new edit bones at the new collections. */
-  remap_ebone_bone_collection_references(&uarm->ebones, &bcoll_map);
+  remap_ebone_bone_collection_references(&uarm->ebones, bcoll_map);
 
   /* Undo size.
    * TODO: include size of ID-properties. */
