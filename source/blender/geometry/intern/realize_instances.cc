@@ -97,7 +97,7 @@ struct MeshElementStartIndices {
   int vertex = 0;
   int edge = 0;
   int face = 0;
-  int loop = 0;
+  int corner = 0;
 };
 
 struct MeshRealizeInfo {
@@ -564,7 +564,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
                                                  base_instance_context.id});
           gather_info.r_offsets.mesh_offsets.vertex += mesh->totvert;
           gather_info.r_offsets.mesh_offsets.edge += mesh->totedge;
-          gather_info.r_offsets.mesh_offsets.loop += mesh->totloop;
+          gather_info.r_offsets.mesh_offsets.corner += mesh->totloop;
           gather_info.r_offsets.mesh_offsets.face += mesh->faces_num;
         }
         break;
@@ -991,7 +991,7 @@ static void execute_realize_mesh_task(const RealizeInstancesOptions &options,
   const IndexRange dst_vert_range(task.start_indices.vertex, src_positions.size());
   const IndexRange dst_edge_range(task.start_indices.edge, src_edges.size());
   const IndexRange dst_face_range(task.start_indices.face, src_faces.size());
-  const IndexRange dst_loop_range(task.start_indices.loop, src_corner_verts.size());
+  const IndexRange dst_loop_range(task.start_indices.corner, src_corner_verts.size());
 
   MutableSpan<float3> dst_positions = all_dst_positions.slice(dst_vert_range);
   MutableSpan<int2> dst_edges = all_dst_edges.slice(dst_edge_range);
@@ -1021,7 +1021,7 @@ static void execute_realize_mesh_task(const RealizeInstancesOptions &options,
   });
   threading::parallel_for(src_faces.index_range(), 1024, [&](const IndexRange face_range) {
     for (const int i : face_range) {
-      dst_face_offsets[i] = src_faces[i].start() + task.start_indices.loop;
+      dst_face_offsets[i] = src_faces[i].start() + task.start_indices.corner;
     }
   });
   if (!all_dst_material_indices.is_empty()) {
@@ -1094,7 +1094,7 @@ static void execute_realize_mesh_tasks(const RealizeInstancesOptions &options,
   const Mesh &last_mesh = *last_task.mesh_info->mesh;
   const int tot_vertices = last_task.start_indices.vertex + last_mesh.totvert;
   const int tot_edges = last_task.start_indices.edge + last_mesh.totedge;
-  const int tot_loops = last_task.start_indices.loop + last_mesh.totloop;
+  const int tot_loops = last_task.start_indices.corner + last_mesh.totloop;
   const int tot_faces = last_task.start_indices.face + last_mesh.faces_num;
 
   Mesh *dst_mesh = BKE_mesh_new_nomain(tot_vertices, tot_edges, tot_faces, tot_loops);
