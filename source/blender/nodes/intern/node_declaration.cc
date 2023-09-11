@@ -336,6 +336,31 @@ bool SocketDeclaration::matches_common_data(const bNodeSocket &socket) const
   return true;
 }
 
+PanelDeclarationBuilder &NodeDeclarationBuilder::add_panel(StringRef name, int identifier)
+{
+  std::unique_ptr<PanelDeclaration> panel_decl = std::make_unique<PanelDeclaration>();
+  std::unique_ptr<PanelDeclarationBuilder> panel_decl_builder =
+      std::make_unique<PanelDeclarationBuilder>();
+  panel_decl_builder->decl_ = &*panel_decl;
+
+  panel_decl_builder->node_decl_builder_ = this;
+  if (identifier >= 0) {
+    panel_decl->identifier = identifier;
+  }
+  else {
+    /* Use index as identifier. */
+    panel_decl->identifier = declaration_.items.size();
+  }
+  panel_decl->name = name;
+  declaration_.items.append(std::move(panel_decl));
+
+  PanelDeclarationBuilder &builder_ref = *panel_decl_builder;
+  panel_builders_.append(std::move(panel_decl_builder));
+  set_active_panel_builder(&builder_ref);
+
+  return builder_ref;
+}
+
 void PanelDeclaration::build(bNodePanelState &panel) const
 {
   panel = {0};
