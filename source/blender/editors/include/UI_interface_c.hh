@@ -908,9 +908,10 @@ void UI_but_dragflag_disable(uiBut *but, int flag);
 
 void UI_but_disable(uiBut *but, const char *disabled_hint);
 
-void UI_but_placeholder(uiBut *but, const char *placeholder_text);
-
 void UI_but_type_set_menu_from_pulldown(uiBut *but);
+
+/* Add hint text that describes the expected value when empty */
+void UI_but_placeholder(uiBut *but, const char *placeholder_text);
 
 /**
  * Special button case, only draw it when used actively, for outliner etc.

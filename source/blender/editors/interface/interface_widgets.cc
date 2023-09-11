@@ -2191,7 +2191,8 @@ static void widget_draw_text(const uiFontStyle *fstyle,
     }
   }
 
-  if (but->placeholder && strlen(drawstr) == 0 && !but->editstr &&
+  /* Show placeholder text if the input is empty and not being edited. */
+  if (but->placeholder && !drawstr[0] && !but->editstr &&
       ELEM(but->type, UI_BTYPE_TEXT, UI_BTYPE_SEARCH_MENU))
   {
     uiFontStyleDraw_Params params{};
@@ -2201,15 +2202,14 @@ static void widget_draw_text(const uiFontStyle *fstyle,
     uchar col[4];
     copy_v4_v4_uchar(col, wcol->text);
     col[3] *= 0.33f;
-    int font_xofs, font_yofs;
     UI_fontstyle_draw_ex(&style,
                          rect,
                          but->placeholder,
                          strlen(but->placeholder),
                          col,
                          &params,
-                         &font_xofs,
-                         &font_yofs,
+                         nullptr,
+                         nullptr,
                          nullptr);
   }
 
