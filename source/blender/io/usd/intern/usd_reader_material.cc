@@ -35,8 +35,8 @@ namespace usdtokens {
 /* Parameter names. */
 static const pxr::TfToken a("a", pxr::TfToken::Immortal);
 static const pxr::TfToken b("b", pxr::TfToken::Immortal);
-static const pxr::TfToken coat("coat", pxr::TfToken::Immortal);
-static const pxr::TfToken coatRoughness("coatRoughness", pxr::TfToken::Immortal);
+static const pxr::TfToken clearcoat("clearcoat", pxr::TfToken::Immortal);
+static const pxr::TfToken clearcoatRoughness("clearcoatRoughness", pxr::TfToken::Immortal);
 static const pxr::TfToken diffuseColor("diffuseColor", pxr::TfToken::Immortal);
 static const pxr::TfToken emissiveColor("emissiveColor", pxr::TfToken::Immortal);
 static const pxr::TfToken file("file", pxr::TfToken::Immortal);

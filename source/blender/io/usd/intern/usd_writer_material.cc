@@ -39,8 +39,8 @@
 /* `TfToken` objects are not cheap to construct, so we do it once. */
 namespace usdtokens {
 /* Materials. */
-static const pxr::TfToken coat("coat", pxr::TfToken::Immortal);
-static const pxr::TfToken coatRoughness("coatRoughness", pxr::TfToken::Immortal);
+static const pxr::TfToken clearcoat("clearcoat", pxr::TfToken::Immortal);
+static const pxr::TfToken clearcoatRoughness("clearcoatRoughness", pxr::TfToken::Immortal);
 static const pxr::TfToken diffuse_color("diffuseColor", pxr::TfToken::Immortal);
 static const pxr::TfToken emissive_color("emissiveColor", pxr::TfToken::Immortal);
 static const pxr::TfToken metallic("metallic", pxr::TfToken::Immortal);
@@ -298,8 +298,8 @@ static InputSpecMap &preview_surface_input_map()
       {"IOR", {usdtokens::ior, pxr::SdfValueTypeNames->Float, true}},
       /* Note that for the Normal input set_default_value is false. */
       {"Normal", {usdtokens::normal, pxr::SdfValueTypeNames->Float3, false}},
-      {"Coat", {usdtokens::coat, pxr::SdfValueTypeNames->Float, true}},
-      {"Coat Roughness", {usdtokens::coatRoughness, pxr::SdfValueTypeNames->Float, true}},
+      {"Coat", {usdtokens::clearcoat, pxr::SdfValueTypeNames->Float, true}},
+      {"Coat Roughness", {usdtokens::clearcoatRoughness, pxr::SdfValueTypeNames->Float, true}},
   };
 
   return input_map;

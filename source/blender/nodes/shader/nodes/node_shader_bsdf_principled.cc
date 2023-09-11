@@ -111,7 +111,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 #define SOCK_COAT_ROUGHNESS_ID 16
   b.add_input<decl::Float>("Coat IOR")
       .default_value(1.5f)
-      .min(0.0f)
+      .min(1.0f)
       .max(4.0f)
       .description(
           "The index of refraction of the coat layer (affects its reflectivity as well "
