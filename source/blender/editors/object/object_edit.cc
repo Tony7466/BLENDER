@@ -2044,37 +2044,7 @@ void move_to_collection_menu_new_item(uiLayout *layout,
 
   RNA_boolean_set(&ptr, "is_new", true);
 
-<<<<<<< HEAD
   RNA_enum_set(&ptr, scene_collection ? "scene" : "collection", enum_index);
-=======
-static void move_to_collection_menus_free_recursive(MoveToCollectionData *menu)
-{
-  LISTBASE_FOREACH (MoveToCollectionData *, submenu, &menu->submenus) {
-    move_to_collection_menus_free_recursive(submenu);
-  }
-  BLI_freelistN(&menu->submenus);
-}
-
-static void move_to_collection_menus_free(MoveToCollectionData **menu)
-{
-  if (*menu == nullptr) {
-    return;
-  }
-
-  move_to_collection_menus_free_recursive(*menu);
-  MEM_freeN(*menu);
-  *menu = nullptr;
-}
-
-static void move_to_collection_menu_create(bContext *C, uiLayout *layout, void *menu_v)
-{
-  MoveToCollectionData *menu = static_cast<MoveToCollectionData *>(menu_v);
-  const char *name = BKE_collection_ui_name_get(menu->collection);
-
-  WM_operator_properties_create_ptr(&menu->ptr, menu->ot);
-  RNA_int_set(&menu->ptr, "collection_index", menu->index);
-  RNA_boolean_set(&menu->ptr, "is_new", true);
->>>>>>> origin/main
 
   uiItemFullO_ptr(layout,
                   ot,
@@ -2196,14 +2166,14 @@ void OBJECT_OT_move_to_collection(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  prop = RNA_def_enum(ot->srna, "collection", DummyRNA_NULL_items, 0, "Collection", "");
+  prop = RNA_def_enum(ot->srna, "collection", rna_enum_dummy_NULL_items, 0, "Collection", "");
   RNA_def_enum_funcs(prop, RNA_collection_itemf);
   RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE | PROP_HIDDEN));
   RNA_def_property_flag(prop, PROP_ENUM_NO_TRANSLATE);
 
   prop = RNA_def_enum(ot->srna,
                       "scene",
-                      DummyRNA_NULL_items,
+                      rna_enum_dummy_NULL_items,
                       0,
                       "Scene",
                       "Uses scenes master collection as target collection");
