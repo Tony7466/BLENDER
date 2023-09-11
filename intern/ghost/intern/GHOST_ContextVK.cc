@@ -148,7 +148,9 @@ class GHOST_DeviceVK {
   uint32_t generic_queue_family = 0;
 
   VkPhysicalDeviceProperties properties = {};
-  VkPhysicalDeviceFeatures features = {};
+  VkPhysicalDeviceFeatures2 features = {};
+  VkPhysicalDeviceVulkan11Features features_11 = {};
+
   int users = 0;
 
  public:
@@ -156,7 +158,12 @@ class GHOST_DeviceVK {
       : instance(vk_instance), physical_device(vk_physical_device)
   {
     vkGetPhysicalDeviceProperties(physical_device, &properties);
-    vkGetPhysicalDeviceFeatures(physical_device, &features);
+
+    features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    features_11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+    features.pNext = &features_11;
+
+    vkGetPhysicalDeviceFeatures2(physical_device, &features);
   }
   ~GHOST_DeviceVK()
   {
@@ -226,8 +233,15 @@ class GHOST_DeviceVK {
     maintenance_4.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES_KHR;
     maintenance_4.maintenance4 = VK_TRUE;
 
+    /* Enable shader draw parameters on logical device when supported on physical device. */
+    VkPhysicalDeviceShaderDrawParametersFeatures shader_draw_parameters = {};
+    shader_draw_parameters.sType =
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
+    shader_draw_parameters.shaderDrawParameters = features_11.shaderDrawParameters;
+    shader_draw_parameters.pNext = &maintenance_4;
+
     VkDeviceCreateInfo device_create_info = {};
-    device_create_info.pNext = &maintenance_4;
+    device_create_info.pNext = &shader_draw_parameters;
     device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
     device_create_info.queueCreateInfoCount = uint32_t(queue_create_infos.size());
     device_create_info.pQueueCreateInfos = queue_create_infos.data();
@@ -318,8 +332,8 @@ static GHOST_TSuccess ensure_vulkan_device(VkInstance vk_instance,
     }
 
 #if STRICT_REQUIREMENTS
-    if (!device_vk.features.geometryShader || !device_vk.features.dualSrcBlend ||
-        !device_vk.features.logicOp || !device_vk.features.imageCubeArray)
+    if (!device_vk.features.features.geometryShader || !device_vk.features.features.dualSrcBlend ||
+        !device_vk.features.features.logicOp || !device_vk.features.features.imageCubeArray)
     {
       continue;
     }
