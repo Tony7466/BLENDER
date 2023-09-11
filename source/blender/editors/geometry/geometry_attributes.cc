@@ -349,9 +349,9 @@ void GEOMETRY_OT_color_attribute_add(wmOperatorType *ot)
                       "Type of data stored in attribute");
 
   static float default_color[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-
+  const FloatRanges color_ranges({0.0f, FLT_MAX}, {0.0f, 1.0f});
   prop = RNA_def_float_color(
-      ot->srna, "color", 4, nullptr, 0.0f, FLT_MAX, "Color", "Default fill color", 0.0f, 1.0f);
+      ot->srna, "color", 4, nullptr, "Color", "Default fill color", color_ranges);
   RNA_def_property_subtype(prop, PROP_COLOR);
   RNA_def_property_float_array_default(prop, default_color);
 }

@@ -424,12 +424,9 @@ static void GIZMO_GT_button_2d(wmGizmoType *gzt)
   RNA_def_float(gzt->srna,
                 "backdrop_fill_alpha",
                 1.0f,
-                0.0f,
-                1.0,
                 "When below 1.0, draw the interior with a reduced alpha compared to the outline",
                 "",
-                0.0f,
-                1.0f);
+                {{0.0f, 1.0}, {0.0f, 1.0f}});
 }
 
 void ED_gizmotypes_button_2d()

@@ -1658,16 +1658,13 @@ void GPENCIL_OT_convert(wmOperatorType *ot)
       ot->srna, "type", prop_gpencil_convertmodes, 0, "Type", "Which type of curve to convert to");
 
   RNA_def_float_distance(
-      ot->srna, "bevel_depth", 0.0f, 0.0f, 1000.0f, "Bevel Depth", "", 0.0f, 10.0f);
+      ot->srna, "bevel_depth", 0.0f, "Bevel Depth", "", {{0.0f, 1000.0f}, {0.0f, 10.0f}});
   RNA_def_int(ot->srna,
               "bevel_resolution",
               0,
-              0,
-              32,
               "Bevel Resolution",
               "Bevel resolution when depth is non-zero",
-              0,
-              32);
+              {{0, 32}, {0, 32}});
 
   RNA_def_boolean(ot->srna,
                   "use_normalize_weights",
@@ -1677,12 +1674,9 @@ void GPENCIL_OT_convert(wmOperatorType *ot)
   RNA_def_float(ot->srna,
                 "radius_multiplier",
                 1.0f,
-                0.0f,
-                1000.0f,
                 "Radius Factor",
                 "Multiplier for the points' radii (set from stroke width)",
-                0.0f,
-                10.0f);
+                {{0.0f, 1000.0f}, {0.0f, 10.0f}});
   RNA_def_boolean(ot->srna,
                   "use_link_strokes",
                   false,
@@ -1700,21 +1694,16 @@ void GPENCIL_OT_convert(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "frame_range",
               100,
-              1,
-              10000,
               "Frame Range",
               "The duration of evaluation of the path control curve",
-              1,
-              1000);
+              {{1, 10000}, {1, 1000}});
   RNA_def_int(ot->srna,
               "start_frame",
               1,
-              1,
-              100000,
+
               "Start Frame",
               "The start frame of the path control curve",
-              1,
-              100000);
+              {{1, 100000}, {1, 100000}});
   RNA_def_boolean(ot->srna,
                   "use_realtime",
                   false,
@@ -1724,42 +1713,30 @@ void GPENCIL_OT_convert(wmOperatorType *ot)
   prop = RNA_def_int(ot->srna,
                      "end_frame",
                      250,
-                     1,
-                     100000,
                      "End Frame",
                      "The end frame of the path control curve (if Realtime is not set)",
-                     1,
-                     100000);
+                     {{1, 100000}, {1, 100000}});
   RNA_def_property_update_runtime(prop, gpencil_convert_set_end_frame);
 
   RNA_def_float(ot->srna,
                 "gap_duration",
                 0.0f,
-                0.0f,
-                10000.0f,
                 "Gap Duration",
                 "Custom Gap mode: (Average) length of gaps, in frames "
                 "(Note: Realtime value, will be scaled if Realtime is not set)",
-                0.0f,
-                1000.0f);
+                {{0.0f, 10000.0f}, {0.0f, 1000.0f}});
   RNA_def_float(ot->srna,
                 "gap_randomness",
                 0.0f,
-                0.0f,
-                10000.0f,
                 "Gap Randomness",
                 "Custom Gap mode: Number of frames that gap lengths can vary",
-                0.0f,
-                1000.0f);
+                {{0.0f, 10000.0f}, {0.0f, 1000.0f}});
   RNA_def_int(ot->srna,
               "seed",
               0,
-              0,
-              1000,
               "Random Seed",
               "Custom Gap mode: Random generator seed",
-              0,
-              100);
+              {{0, 1000}, {0, 100}});
 
   /* NOTE: Internal use, this one will always be hidden by UI code... */
   prop = RNA_def_boolean(
@@ -1849,12 +1826,9 @@ void GPENCIL_OT_image_to_grease_pencil(wmOperatorType *ot)
   ot->prop = RNA_def_float(ot->srna,
                            "size",
                            0.005f,
-                           0.0001f,
-                           10.0f,
                            "Point Size",
                            "Size used for grease pencil points",
-                           0.001f,
-                           1.0f);
+                           {{0.0001f, 10.0f}, {0.001f, 1.0f}});
   RNA_def_property_flag(ot->prop, PROP_SKIP_SAVE);
 
   prop = RNA_def_boolean(ot->srna,

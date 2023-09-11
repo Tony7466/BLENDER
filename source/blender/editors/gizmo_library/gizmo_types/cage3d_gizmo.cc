@@ -661,7 +661,7 @@ static void GIZMO_GT_cage_3d(wmGizmoType *gzt)
   };
   static float unit_v3[3] = {1.0f, 1.0f, 1.0f};
   RNA_def_float_vector(
-      gzt->srna, "dimensions", 3, unit_v3, 0, FLT_MAX, "Dimensions", "", 0.0f, FLT_MAX);
+      gzt->srna, "dimensions", 3, unit_v3, "Dimensions", "", {{0.0f, FLT_MAX}, {0.0f, FLT_MAX}});
   RNA_def_enum_flag(gzt->srna, "transform", rna_enum_transform, 0, "Transform Options", "");
   RNA_def_enum(gzt->srna,
                "draw_style",

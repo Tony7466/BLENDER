@@ -2709,12 +2709,9 @@ void GPENCIL_OT_select(wmOperatorType *ot)
                             "location",
                             2,
                             nullptr,
-                            INT_MIN,
-                            INT_MAX,
                             "Location",
                             "Mouse location",
-                            INT_MIN,
-                            INT_MAX);
+                            {{INT_MIN, INT_MAX}, {INT_MIN, INT_MAX}});
   RNA_def_property_flag(prop, PROP_HIDDEN);
 
   prop = RNA_def_boolean(ot->srna, "use_shift_extend", false, "Extend", "");
@@ -2890,12 +2887,9 @@ void GPENCIL_OT_select_vertex_color(wmOperatorType *ot)
       ot->srna,
       "threshold",
       0,
-      0,
-      5,
       "Threshold",
       "Tolerance of the selection. Higher values select a wider range of similar colors",
-      0,
-      5);
+      {{0, 5}, {0, 5}});
   /* avoid re-using last var */
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }

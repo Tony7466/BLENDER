@@ -331,7 +331,7 @@ void GPENCIL_OT_selectmode_toggle(wmOperatorType *ot)
   ot->flag = OPTYPE_UNDO | OPTYPE_REGISTER;
 
   /* properties */
-  prop = RNA_def_int(ot->srna, "mode", 0, 0, 2, "Select Mode", "Select mode", 0, 2);
+  prop = RNA_def_int(ot->srna, "mode", 0, "Select Mode", "Select mode", {{0, 2}, {0, 2}});
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 
@@ -1976,7 +1976,8 @@ void GPENCIL_OT_move_to_layer(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* GPencil layer to use. */
-  prop = RNA_def_int(ot->srna, "layer", 0, -1, INT_MAX, "Grease Pencil Layer", "", -1, INT_MAX);
+  prop = RNA_def_int(
+      ot->srna, "layer", 0, "Grease Pencil Layer", "", {{-1, INT_MAX}, {-1, INT_MAX}});
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   prop = RNA_def_string(
@@ -4095,7 +4096,7 @@ void GPENCIL_OT_reproject(wmOperatorType *ot)
                          "Keep original strokes and create a copy before reprojecting");
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_MOVIECLIP);
 
-  RNA_def_float(ot->srna, "offset", 0.0f, 0.0f, 10.0f, "Surface Offset", "", 0.0f, 10.0f);
+  RNA_def_float(ot->srna, "offset", 0.0f, "Surface Offset", "", {{0.0f, 10.0f}, {0.0f, 10.0f}});
 }
 
 static int gpencil_recalc_geometry_exec(bContext *C, wmOperator * /*op*/)
@@ -4382,21 +4383,18 @@ void GPENCIL_OT_stroke_outline(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "thickness",
               1,
-              1,
-              1000,
               "Thickness",
               "Thickness of the stroke perimeter",
-              1,
-              1000);
+              {{1, 1000}, {1, 1000}});
   RNA_def_boolean(ot->srna,
                   "keep",
                   true,
                   "Keep Shape",
                   "Try to keep global shape when the stroke thickness change");
 
-  RNA_def_int(ot->srna, "subdivisions", 3, 0, 10, "Subdivisions", "", 0, 10);
+  RNA_def_int(ot->srna, "subdivisions", 3, "Subdivisions", "", {{0, 10}, {0, 10}});
 
-  RNA_def_float(ot->srna, "length", 0.0f, 0.0f, 100.0f, "Sample Length", "", 0.0f, 100.0f);
+  RNA_def_float(ot->srna, "length", 0.0f, "Sample Length", "", {{0.0f, 100.0f}, {0.0f, 100.0f}});
 }
 
 /** \} */
@@ -4741,13 +4739,13 @@ void GPENCIL_OT_stroke_subdivide(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  prop = RNA_def_int(ot->srna, "number_cuts", 1, 1, 10, "Number of Cuts", "", 1, 5);
+  prop = RNA_def_int(ot->srna, "number_cuts", 1, "Number of Cuts", "", {{1, 10}, {1, 5}});
   /* avoid re-using last var because it can cause _very_ high value and annoy users */
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   /* Smooth parameters */
-  RNA_def_float(ot->srna, "factor", 0.0f, 0.0f, 2.0f, "Smooth", "", 0.0f, 2.0f);
-  prop = RNA_def_int(ot->srna, "repeat", 1, 1, 10, "Repeat", "", 1, 5);
+  RNA_def_float(ot->srna, "factor", 0.0f, "Smooth", "", {{0.0f, 2.0f}, {0.0f, 2.0f}});
+  prop = RNA_def_int(ot->srna, "repeat", 1, "Repeat", "", {{1, 10}, {1, 5}});
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   RNA_def_boolean(ot->srna,
                   "only_selected",
@@ -4815,7 +4813,7 @@ void GPENCIL_OT_stroke_simplify(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  prop = RNA_def_float(ot->srna, "factor", 0.0f, 0.0f, 100.0f, "Factor", "", 0.0f, 100.0f);
+  prop = RNA_def_float(ot->srna, "factor", 0.0f, "Factor", "", {{0.0f, 100.0f}, {0.0f, 100.0f}});
   /* avoid re-using last var */
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
@@ -4876,7 +4874,8 @@ void GPENCIL_OT_stroke_simplify_fixed(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  prop = RNA_def_int(ot->srna, "step", 1, 1, 100, "Steps", "Number of simplify steps", 1, 10);
+  prop = RNA_def_int(
+      ot->srna, "step", 1, "Steps", "Number of simplify steps", {{1, 100}, {1, 10}});
 
   /* avoid re-using last var */
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
@@ -4926,9 +4925,9 @@ void GPENCIL_OT_stroke_sample(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  prop = RNA_def_float(ot->srna, "length", 0.1f, 0.0f, 100.0f, "Length", "", 0.0f, 100.0f);
+  prop = RNA_def_float(ot->srna, "length", 0.1f, "Length", "", {{0.0f, 100.0f}, {0.0f, 100.0f}});
   prop = RNA_def_float(
-      ot->srna, "sharp_threshold", 0.1f, 0.0f, M_PI, "Sharp Threshold", "", 0.0f, M_PI);
+      ot->srna, "sharp_threshold", 0.1f, "Sharp Threshold", "", {{0.0f, M_PI}, {0.0f, M_PI}});
   /* avoid re-using last var */
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
@@ -5464,10 +5463,10 @@ void GPENCIL_OT_stroke_smooth(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  prop = RNA_def_int(ot->srna, "repeat", 2, 1, 1000, "Repeat", "", 1, 1000);
+  prop = RNA_def_int(ot->srna, "repeat", 2, "Repeat", "", {{1, 1000}, {1, 1000}});
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
-  RNA_def_float(ot->srna, "factor", 1.0f, 0.0f, 2.0f, "Factor", "", 0.0f, 1.0f);
+  RNA_def_float(ot->srna, "factor", 1.0f, "Factor", "", {{0.0f, 2.0f}, {0.0f, 1.0f}});
   RNA_def_boolean(ot->srna,
                   "only_selected",
                   true,
@@ -5881,7 +5880,8 @@ void GPENCIL_OT_stroke_merge_by_distance(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  prop = RNA_def_float(ot->srna, "threshold", 0.001f, 0.0f, 100.0f, "Threshold", "", 0.0f, 100.0f);
+  prop = RNA_def_float(
+      ot->srna, "threshold", 0.001f, "Threshold", "", {{0.0f, 100.0f}, {0.0f, 100.0f}});
   /* avoid re-using last var */
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
@@ -6069,8 +6069,8 @@ void GPENCIL_OT_stroke_normalize(wmOperatorType *ot)
   /* props */
   ot->prop = RNA_def_enum(
       ot->srna, "mode", prop_gpencil_normalize_modes, 0, "Mode", "Attribute to be normalized");
-  RNA_def_float(ot->srna, "factor", 1.0f, 0.0f, 1.0f, "Factor", "", 0.0f, 1.0f);
-  RNA_def_int(ot->srna, "value", 10, 0, 1000, "Value", "Value", 0, 1000);
+  RNA_def_float(ot->srna, "factor", 1.0f, "Factor", "", {{0.0f, 1.0f}, {0.0f, 1.0f}});
+  RNA_def_int(ot->srna, "value", 10, "Value", "Value", {{0, 1000}, {0, 1000}});
 }
 
 /** \} */

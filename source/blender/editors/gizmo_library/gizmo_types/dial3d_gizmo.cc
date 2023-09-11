@@ -683,34 +683,26 @@ static void GIZMO_GT_dial_3d(wmGizmoType *gzt)
   RNA_def_enum_flag(gzt->srna, "draw_options", rna_enum_draw_options, 0, "Draw Options", "");
   RNA_def_boolean(gzt->srna, "wrap_angle", true, "Wrap Angle", "");
   RNA_def_float_factor(
-      gzt->srna, "arc_inner_factor", 0.0f, 0.0f, 1.0f, "Arc Inner Factor", "", 0.0f, 1.0f);
+      gzt->srna, "arc_inner_factor", 0.0f, "Arc Inner Factor", "", {{0.0f, 1.0f}, {0.0f, 1.0f}});
   RNA_def_float_factor(gzt->srna,
                        "arc_partial_angle",
                        0.0f,
-                       0.0f,
-                       M_PI * 2,
                        "Show Partial Dial",
                        "",
-                       0.0f,
-                       M_PI * 2);
+                       {{0.0f, M_PI * 2.0f}, {0.0f, M_PI * 2.0f}});
   RNA_def_float_factor(gzt->srna,
                        "incremental_angle",
                        SNAP_INCREMENTAL_ANGLE,
-                       0.0f,
-                       M_PI * 2,
+
                        "Incremental Angle",
                        "Angle to snap in steps",
-                       0.0f,
-                       M_PI * 2);
+                       {{0.0f, M_PI * 2.0f}, {0.0f, M_PI * 2.0f}});
   RNA_def_float(gzt->srna,
                 "click_value",
                 0.0f,
-                -FLT_MAX,
-                FLT_MAX,
                 "Click Value",
                 "Value to use for a single click action",
-                -FLT_MAX,
-                FLT_MAX);
+                {{-FLT_MAX, FLT_MAX}, {-FLT_MAX, FLT_MAX}});
 
   WM_gizmotype_target_property_def(gzt, "offset", PROP_FLOAT, 1);
 }

@@ -573,10 +573,19 @@ static void GIZMO_GT_arrow_3d(wmGizmoType *gzt)
                     "");
   RNA_def_enum_flag(gzt->srna, "transform", rna_enum_transform_items, 0, "Transform", "");
 
-  RNA_def_float(
-      gzt->srna, "length", 1.0f, -FLT_MAX, FLT_MAX, "Arrow Line Length", "", -FLT_MAX, FLT_MAX);
-  RNA_def_float_vector(
-      gzt->srna, "aspect", 2, nullptr, 0, FLT_MAX, "Aspect", "Cone/box style only", 0.0f, FLT_MAX);
+  RNA_def_float(gzt->srna,
+                "length",
+                1.0f,
+                "Arrow Line Length",
+                "",
+                {{-FLT_MAX, FLT_MAX}, {-FLT_MAX, FLT_MAX}});
+  RNA_def_float_vector(gzt->srna,
+                       "aspect",
+                       2,
+                       nullptr,
+                       "Aspect",
+                       "Cone/box style only",
+                       {{0.0f, FLT_MAX}, {0.0f, FLT_MAX}});
 
   WM_gizmotype_target_property_def(gzt, "offset", PROP_FLOAT, 1);
 }

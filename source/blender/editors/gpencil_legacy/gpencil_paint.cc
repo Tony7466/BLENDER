@@ -4038,12 +4038,9 @@ void GPENCIL_OT_draw(wmOperatorType *ot)
   prop = RNA_def_float(ot->srna,
                        "guide_last_angle",
                        0.0f,
-                       -10000.0f,
-                       10000.0f,
                        "Angle",
                        "Speed guide angle",
-                       -10000.0f,
-                       10000.0f);
+                       {{-10000.0f, 10000.0f}, {-10000.0f, 10000.0f}});
 }
 
 /* additional OPs */
@@ -4083,7 +4080,11 @@ void GPENCIL_OT_guide_rotate(wmOperatorType *ot)
 
   prop = RNA_def_boolean(ot->srna, "increment", true, "Increment", "Increment angle");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
-  prop = RNA_def_float(
-      ot->srna, "angle", 0.0f, -10000.0f, 10000.0f, "Angle", "Guide angle", -10000.0f, 10000.0f);
+  prop = RNA_def_float(ot->srna,
+                       "angle",
+                       0.0f,
+                       "Angle",
+                       "Guide angle",
+                       {{-10000.0f, 10000.0f}, {-10000.0f, 10000.0f}});
   RNA_def_property_flag(prop, PROP_HIDDEN);
 }

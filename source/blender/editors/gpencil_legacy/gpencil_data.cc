@@ -276,7 +276,8 @@ void GPENCIL_OT_layer_add(wmOperatorType *ot)
   ot->poll = gpencil_add_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-  prop = RNA_def_int(ot->srna, "layer", 0, -1, INT_MAX, "Grease Pencil Layer", "", -1, INT_MAX);
+  prop = RNA_def_int(
+      ot->srna, "layer", 0, "Grease Pencil Layer", "", {{-1, INT_MAX}, {-1, INT_MAX}});
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   prop = RNA_def_string(
@@ -878,12 +879,9 @@ void GPENCIL_OT_frame_clean_loose(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "limit",
               1,
-              1,
-              INT_MAX,
               "Limit",
               "Number of points to consider stroke as loose",
-              1,
-              INT_MAX);
+              {{1, INT_MAX}, {1, INT_MAX}});
 }
 
 /* ********************* Clean Duplicate Frames ************************** */
@@ -1578,7 +1576,8 @@ void GPENCIL_OT_layer_active(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* GPencil layer to use. */
-  ot->prop = RNA_def_int(ot->srna, "layer", 0, 0, INT_MAX, "Grease Pencil Layer", "", 0, INT_MAX);
+  ot->prop = RNA_def_int(
+      ot->srna, "layer", 0, "Grease Pencil Layer", "", {{0, INT_MAX}, {0, INT_MAX}});
   RNA_def_property_flag(ot->prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 /* ************************************************ */
@@ -2571,8 +2570,8 @@ void GPENCIL_OT_vertex_group_smooth(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_float(ot->srna, "factor", 0.5f, 0.0f, 1.0, "Factor", "", 0.0f, 1.0f);
-  RNA_def_int(ot->srna, "repeat", 1, 1, 10000, "Iterations", "", 1, 200);
+  RNA_def_float(ot->srna, "factor", 0.5f, "Factor", "", {{0.0f, 1.0}, {0.0f, 1.0f}});
+  RNA_def_int(ot->srna, "repeat", 1, "Iterations", "", {{1, 10000}, {1, 200}});
 }
 
 /* normalize */

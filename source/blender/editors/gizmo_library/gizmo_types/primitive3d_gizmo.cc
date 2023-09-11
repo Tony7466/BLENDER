@@ -278,8 +278,12 @@ static void GIZMO_GT_primitive_3d(wmGizmoType *gzt)
                                       gizmo_primitive_rna__draw_style_set_fn,
                                       nullptr);
 
-  prop = RNA_def_float_factor(
-      gzt->srna, "arc_inner_factor", 0.0f, 0.0f, FLT_MAX, "Arc Inner Factor", "", 0.0f, 1.0f);
+  prop = RNA_def_float_factor(gzt->srna,
+                              "arc_inner_factor",
+                              0.0f,
+                              "Arc Inner Factor",
+                              "",
+                              {{0.0f, FLT_MAX}, {0.0f, 1.0f}});
   RNA_def_property_float_funcs_runtime(prop,
                                        gizmo_primitive_rna__arc_inner_factor_get_fn,
                                        gizmo_primitive_rna__arc_inner_factor_set_fn,

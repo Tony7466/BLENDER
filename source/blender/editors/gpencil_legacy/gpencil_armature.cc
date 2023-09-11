@@ -688,20 +688,14 @@ void GPENCIL_OT_generate_weights(wmOperatorType *ot)
   RNA_def_float(ot->srna,
                 "ratio",
                 DEFAULT_RATIO,
-                0.0f,
-                2.0f,
                 "Ratio",
                 "Ratio between bone length and influence radius",
-                0.001f,
-                1.0f);
+                {{0.0f, 2.0f}, {0.001f, 1.0f}});
 
   RNA_def_float(ot->srna,
                 "decay",
                 DEFAULT_DECAY,
-                0.0f,
-                1.0f,
                 "Decay",
                 "Factor to reduce influence depending of distance to bone axis",
-                0.0f,
-                1.0f);
+                {{0.0f, 1.0f}, {0.0f, 1.0f}});
 }

@@ -417,39 +417,34 @@ void GPENCIL_OT_bake_mesh_animation(wmOperatorType *ot)
                           "Target Object",
                           "Target grease pencil");
   RNA_def_property_flag(ot->prop, PROP_SKIP_SAVE);
+  const IntRanges frame_ranges({1, 100000}, {1, 100000});
+  prop = RNA_def_int(ot->srna, "frame_start", 1, "Start Frame", "The start frame", frame_ranges);
 
   prop = RNA_def_int(
-      ot->srna, "frame_start", 1, 1, 100000, "Start Frame", "The start frame", 1, 100000);
-
-  prop = RNA_def_int(
-      ot->srna, "frame_end", 250, 1, 100000, "End Frame", "The end frame of animation", 1, 100000);
+      ot->srna, "frame_end", 250, "End Frame", "The end frame of animation", frame_ranges);
   RNA_def_property_update_runtime(prop, gpencil_bake_set_frame_end);
 
-  prop = RNA_def_int(ot->srna, "step", 1, 1, 100, "Step", "Step between generated frames", 1, 100);
+  prop = RNA_def_int(
+      ot->srna, "step", 1, "Step", "Step between generated frames", {{1, 100}, {1, 100}});
 
-  RNA_def_int(ot->srna, "thickness", 1, 1, 100, "Thickness", "", 1, 100);
+  RNA_def_int(ot->srna, "thickness", 1, "Thickness", "", {{1, 100}, {1, 100}});
 
-  prop = RNA_def_float_rotation(ot->srna,
-                                "angle",
-                                0,
-                                nullptr,
-                                DEG2RADF(0.0f),
-                                DEG2RADF(180.0f),
-                                "Threshold Angle",
-                                "Threshold to determine ends of the strokes",
-                                DEG2RADF(0.0f),
-                                DEG2RADF(180.0f));
+  prop = RNA_def_float_rotation(
+      ot->srna,
+      "angle",
+      0,
+      nullptr,
+      "Threshold Angle",
+      "Threshold to determine ends of the strokes",
+      {{DEG2RADF(0.0f), DEG2RADF(180.0f)}, {DEG2RADF(0.0f), DEG2RADF(180.0f)}});
   RNA_def_property_float_default(prop, DEG2RADF(70.0f));
 
   RNA_def_float_distance(ot->srna,
                          "offset",
                          0.001f,
-                         0.0,
-                         100.0,
                          "Stroke Offset",
                          "Offset strokes from fill",
-                         0.0,
-                         100.00);
+                         {{0.0f, 100.0f}, {0.0f, 100.00f}});
 
   RNA_def_boolean(ot->srna, "seams", false, "Only Seam Edges", "Convert only seam edges");
   RNA_def_boolean(ot->srna, "faces", true, "Export Faces", "Export faces as filled strokes");
@@ -458,8 +453,7 @@ void GPENCIL_OT_bake_mesh_animation(wmOperatorType *ot)
                   false,
                   "Only Selected Keyframes",
                   "Convert only selected keyframes");
-  RNA_def_int(
-      ot->srna, "frame_target", 1, 1, 100000, "Target Frame", "Destination frame", 1, 100000);
+  RNA_def_int(ot->srna, "frame_target", 1, "Target Frame", "Destination frame", frame_ranges);
 
   RNA_def_enum(ot->srna,
                "project_type",

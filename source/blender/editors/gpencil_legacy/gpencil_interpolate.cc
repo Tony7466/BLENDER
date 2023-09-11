@@ -970,12 +970,9 @@ void GPENCIL_OT_interpolate(wmOperatorType *ot)
       ot->srna,
       "shift",
       0.0f,
-      -1.0f,
-      1.0f,
       "Shift",
       "Bias factor for which frame has more influence on the interpolated strokes",
-      -0.9f,
-      0.9f);
+      {{-1.0f, 1.0f}, {-0.9f, 0.9f}});
 
   RNA_def_enum(ot->srna,
                "layers",
@@ -1006,22 +1003,16 @@ void GPENCIL_OT_interpolate(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "smooth_steps",
               1,
-              1,
-              3,
               "Iterations",
               "Number of times to smooth newly created strokes",
-              1,
-              3);
+              {{1, 3}, {1, 3}});
 
   RNA_def_float(ot->srna,
                 "smooth_factor",
                 0.0f,
-                0.0f,
-                2.0f,
                 "Smooth",
                 "Amount of smoothing to apply to interpolated strokes, to reduce jitter/noise",
-                0.0f,
-                2.0f);
+                {{0.0f, 2.0f}, {0.0f, 2.0f}});
 
   prop = RNA_def_boolean(ot->srna, "release_confirm", false, "Confirm on Release", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
@@ -1609,12 +1600,9 @@ void GPENCIL_OT_interpolate_sequence(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "step",
               1,
-              1,
-              MAXFRAME,
               "Step",
               "Number of frames between generated interpolated frames",
-              1,
-              MAXFRAME);
+              {{1, MAXFRAME}, {1, MAXFRAME}});
 
   RNA_def_enum(ot->srna,
                "layers",
@@ -1645,22 +1633,16 @@ void GPENCIL_OT_interpolate_sequence(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "smooth_steps",
               1,
-              1,
-              3,
               "Iterations",
               "Number of times to smooth newly created strokes",
-              1,
-              3);
+              {{1, 3}, {1, 3}});
 
   RNA_def_float(ot->srna,
                 "smooth_factor",
                 0.0f,
-                0.0f,
-                2.0f,
                 "Smooth",
                 "Amount of smoothing to apply to interpolated strokes, to reduce jitter/noise",
-                0.0f,
-                2.0f);
+                {{0.0f, 2.0f}, {0.0f, 2.0f}});
 
   prop = RNA_def_enum(ot->srna,
                       "type",
@@ -1683,32 +1665,23 @@ void GPENCIL_OT_interpolate_sequence(wmOperatorType *ot)
   RNA_def_float(ot->srna,
                 "back",
                 1.702f,
-                0.0f,
-                FLT_MAX,
                 "Back",
                 "Amount of overshoot for 'back' easing",
-                0.0f,
-                FLT_MAX);
+                {{0.0f, FLT_MAX}, {0.0f, FLT_MAX}});
 
   RNA_def_float(ot->srna,
                 "amplitude",
                 0.15f,
-                0.0f,
-                FLT_MAX,
                 "Amplitude",
                 "Amount to boost elastic bounces for 'elastic' easing",
-                0.0f,
-                FLT_MAX);
+                {{0.0f, FLT_MAX}, {0.0f, FLT_MAX}});
 
   RNA_def_float(ot->srna,
                 "period",
                 0.15f,
-                -FLT_MAX,
-                FLT_MAX,
                 "Period",
                 "Time between bounces for elastic easing",
-                -FLT_MAX,
-                FLT_MAX);
+                {{-FLT_MAX, FLT_MAX}, {-FLT_MAX, FLT_MAX}});
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;

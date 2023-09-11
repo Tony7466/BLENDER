@@ -311,12 +311,9 @@ static void GIZMO_GT_snap_3d(wmGizmoType *gzt)
                              "prev_point",
                              3,
                              nullptr,
-                             FLT_MIN,
-                             FLT_MAX,
                              "Previous Point",
                              "Point that defines the location of the perpendicular snap",
-                             FLT_MIN,
-                             FLT_MAX);
+                             {{FLT_MIN, FLT_MAX}, {FLT_MIN, FLT_MAX}});
   RNA_def_property_float_array_funcs_runtime(
       prop, gizmo_snap_rna_prevpoint_get_fn, gizmo_snap_rna_prevpoint_set_fn, nullptr);
 
@@ -325,12 +322,9 @@ static void GIZMO_GT_snap_3d(wmGizmoType *gzt)
                                    "location",
                                    3,
                                    nullptr,
-                                   FLT_MIN,
-                                   FLT_MAX,
                                    "Location",
                                    "Snap Point Location",
-                                   FLT_MIN,
-                                   FLT_MAX);
+                                   {{FLT_MIN, FLT_MAX}, {FLT_MIN, FLT_MAX}});
   RNA_def_property_float_array_funcs_runtime(
       prop, gizmo_snap_rna_location_get_fn, gizmo_snap_rna_location_set_fn, nullptr);
 
@@ -338,24 +332,18 @@ static void GIZMO_GT_snap_3d(wmGizmoType *gzt)
                                   "normal",
                                   3,
                                   nullptr,
-                                  FLT_MIN,
-                                  FLT_MAX,
                                   "Normal",
                                   "Snap Point Normal",
-                                  FLT_MIN,
-                                  FLT_MAX);
+                                  {{FLT_MIN, FLT_MAX}, {FLT_MIN, FLT_MAX}});
   RNA_def_property_float_array_funcs_runtime(prop, gizmo_snap_rna_normal_get_fn, nullptr, nullptr);
 
   prop = RNA_def_int_vector(gzt->srna,
                             "snap_elem_index",
                             3,
                             nullptr,
-                            INT_MIN,
-                            INT_MAX,
                             "Snap Element",
                             "Array index of face, edge and vert snapped",
-                            INT_MIN,
-                            INT_MAX);
+                            {{INT_MIN, INT_MAX}, {INT_MIN, INT_MAX}});
   RNA_def_property_int_array_funcs_runtime(
       prop, gizmo_snap_rna_snap_elem_index_get_fn, nullptr, nullptr);
 }

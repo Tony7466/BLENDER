@@ -439,37 +439,32 @@ void GPENCIL_OT_trace_image(wmOperatorType *ot)
                           "Target grease pencil");
   RNA_def_property_flag(ot->prop, PROP_SKIP_SAVE);
 
-  RNA_def_int(ot->srna, "thickness", 10, 1, 1000, "Thickness", "", 1, 1000);
-  RNA_def_int(
-      ot->srna, "resolution", 5, 1, 20, "Resolution", "Resolution of the generated curves", 1, 20);
+  RNA_def_int(ot->srna, "thickness", 10, "Thickness", "", {{1, 1000}, {1, 1000}});
+  RNA_def_int(ot->srna,
+              "resolution",
+              5,
+              "Resolution",
+              "Resolution of the generated curves",
+              {{1, 20}, {1, 20}});
 
   RNA_def_float(ot->srna,
                 "scale",
                 1.0f,
-                0.001f,
-                100.0f,
                 "Scale",
                 "Scale of the final stroke",
-                0.001f,
-                100.0f);
+                {{0.001f, 100.0f}, {0.001f, 100.0f}});
   RNA_def_float(ot->srna,
                 "sample",
                 0.0f,
-                0.0f,
-                100.0f,
                 "Sample",
                 "Distance to sample points, zero to disable",
-                0.0f,
-                100.0f);
+                {{0.0f, 100.0f}, {0.0f, 100.0f}});
   RNA_def_float_factor(ot->srna,
                        "threshold",
                        0.5f,
-                       0.0f,
-                       1.0f,
                        "Color Threshold",
                        "Determine the lightness threshold above which strokes are generated",
-                       0.0f,
-                       1.0f);
+                       {{0.0f, 1.0f}, {0.0f, 1.0f}});
   RNA_def_enum(ot->srna,
                "turnpolicy",
                turnpolicy_type,
@@ -491,11 +486,8 @@ void GPENCIL_OT_trace_image(wmOperatorType *ot)
       ot->srna,
       "frame_number",
       0,
-      0,
-      9999,
       "Trace Frame",
       "Used to trace only one frame of the image sequence, set to zero to trace all",
-      0,
-      9999);
+      {{0, 9999}, {0, 9999}});
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
