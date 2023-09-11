@@ -537,7 +537,7 @@ std::optional<Mesh *> mesh_triangulate(
                       ngon_mode,
                       faces.slice(ngon_tris),
                       ngon_edges.start(),
-                      unselected_range.size() + copy_tri_corners.size(),
+                      unselected_corners.size() + copy_tri_corners.size(),
                       corner_map.as_mutable_span().take_front(ngon_tri_corners.size()),
                       edges.slice(ngon_edges),
                       corner_edges);
