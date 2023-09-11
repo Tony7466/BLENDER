@@ -149,13 +149,9 @@ void UI_draw_roundbox_4fv(const rctf *rect, bool filled, float rad, const float 
   UI_draw_roundbox_4fv_ex(rect, (filled) ? col : nullptr, nullptr, 1.0f, col, U.pixelsize, rad);
 }
 
-/**
- * Draws rounded corner segments but inverted. Imagine each corner like a filled right triangle,
- * just that the hypotenuse is nicely curved inwards (towards the right angle of the triangle).
- *
- * Useful for connecting orthogonal shapes with a rounded corner, which can look quite nice.
- */
-static void ui_draw_rounded_corners_inverted(const rcti &rect, const float rad, const float4 color)
+void ui_draw_rounded_corners_inverted(const rcti &rect,
+                                      const float rad,
+                                      const blender::float4 color)
 {
   GPUVertFormat *format = immVertexFormat();
   const uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
@@ -2317,94 +2313,6 @@ void ui_draw_dropshadow(const rctf *rct, float radius, float aspect, float alpha
   rect.ymin = rct->ymin - 0.5f;
   rect.ymax = rct->ymax + 0.5f;
   UI_draw_roundbox_4fv(&rect, false, radius + 0.5f, color);
-
-  GPU_blend(GPU_BLEND_NONE);
-}
-
-void ui_draw_button_sections_background(const ARegion *region,
-                                        const blender::Vector<rcti> &section_bounds,
-                                        const ThemeColorID colorid,
-                                        const uiButtonSectionsAlign align,
-                                        const float corner_radius)
-{
-  float bg_color[4];
-  UI_GetThemeColor4fv(colorid, bg_color);
-
-  for (const rcti &bounds : section_bounds) {
-    int roundbox_corners = [align]() -> int {
-      switch (align) {
-        case uiButtonSectionsAlign::Top:
-          return UI_CNR_BOTTOM_LEFT | UI_CNR_BOTTOM_RIGHT;
-        case uiButtonSectionsAlign::Bottom:
-          return UI_CNR_TOP_LEFT | UI_CNR_TOP_RIGHT;
-        case uiButtonSectionsAlign::None:
-          return UI_CNR_ALL;
-      }
-      return UI_CNR_ALL;
-    }();
-
-    /* No rounded corners at the region edge. */
-    if (bounds.xmin == 0) {
-      roundbox_corners &= ~(UI_CNR_TOP_LEFT | UI_CNR_BOTTOM_LEFT);
-    }
-    if (bounds.xmax >= region->winx) {
-      roundbox_corners &= ~(UI_CNR_TOP_RIGHT | UI_CNR_BOTTOM_RIGHT);
-    }
-
-    rctf bounds_float;
-    BLI_rctf_rcti_copy(&bounds_float, &bounds);
-    UI_draw_roundbox_corner_set(roundbox_corners);
-    UI_draw_roundbox_4fv(&bounds_float, true, corner_radius, bg_color);
-  }
-}
-
-void ui_draw_button_sections_alignment_separator(const ARegion *region,
-                                                 const blender::Vector<rcti> &section_bounds,
-                                                 const ThemeColorID colorid,
-                                                 const uiButtonSectionsAlign align,
-                                                 const float corner_radius)
-{
-  const int separator_line_width = 2 * U.pixelsize;
-
-  float bg_color[4];
-  UI_GetThemeColor4fv(colorid, bg_color);
-
-  GPU_blend(GPU_BLEND_ALPHA);
-
-  /* Separator line. */
-  {
-    GPUVertFormat *format = immVertexFormat();
-    const uint pos = GPU_vertformat_attr_add(
-        format, "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
-    immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-    immUniformColor4fv(bg_color);
-
-    if (align == uiButtonSectionsAlign::Top) {
-      immRecti(pos, 0, region->winy - separator_line_width, region->winx, region->winy);
-    }
-    else if (align == uiButtonSectionsAlign::Bottom) {
-      immRecti(pos, 0, 0, region->winx, separator_line_width);
-    }
-    else {
-      BLI_assert_unreachable();
-    }
-    immUnbindProgram();
-  }
-
-  int prev_xmax = 0;
-  for (const rcti &bounds : section_bounds) {
-    if (prev_xmax != 0) {
-      const rcti rounded_corner_rect = {
-          prev_xmax, bounds.xmin, separator_line_width, region->winy - separator_line_width};
-
-      UI_draw_roundbox_corner_set(align == uiButtonSectionsAlign::Top ?
-                                      (UI_CNR_TOP_LEFT | UI_CNR_TOP_RIGHT) :
-                                      (UI_CNR_BOTTOM_LEFT | UI_CNR_BOTTOM_RIGHT));
-      ui_draw_rounded_corners_inverted(rounded_corner_rect, corner_radius, bg_color);
-    }
-
-    prev_xmax = bounds.xmax;
-  }
 
   GPU_blend(GPU_BLEND_NONE);
 }
