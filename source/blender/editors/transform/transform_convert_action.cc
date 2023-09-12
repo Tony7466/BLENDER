@@ -101,7 +101,7 @@ static bool grease_pencil_layer_reset_trans_data(blender::bke::greasepencil::Lay
 static bool grease_pencil_layer_update_trans_data(blender::bke::greasepencil::Layer &layer,
                                                   const int src_frame_number,
                                                   const int dst_frame_number,
-                                                  const bool duplicate)
+                                                  const bool duplicated)
 {
   using namespace blender::bke::greasepencil;
   LayerTransformData &trans_data = layer.runtime->trans_data_;
@@ -119,7 +119,7 @@ static bool grease_pencil_layer_update_trans_data(blender::bke::greasepencil::La
     trans_data.status = LayerTransformData::TRANS_RUNNING;
   }
 
-  const bool use_duplicated = duplicate &&
+  const bool use_duplicated = duplicated &&
                               trans_data.temp_frames_buffer.contains(src_frame_number);
   const blender::Map<int, GreasePencilFrame> &frame_map = use_duplicated ?
                                                               (trans_data.temp_frames_buffer) :
@@ -268,20 +268,22 @@ static int count_grease_pencil_frames(const blender::bke::greasepencil::Layer *l
   int count_selected = 0;
   int count_all = 0;
 
-  /* Only include points that occur on the right side of cfra. */
-  for (const auto &[frame_number, frame] : layer->frames().items()) {
-    if (!FrameOnMouseSide(side, float(frame_number), cfra)) {
-      continue;
-    }
-    if (frame.is_selected()) {
-      count_selected++;
-    }
-    count_all++;
-  }
-
   if (use_duplicated) {
-    /* Also count frames that were duplicated. */
+    /* Only count the frames that were duplicated. */
     count_selected += layer->runtime->trans_data_.temp_frames_buffer.size();
+    count_all += count_selected;
+  }
+  else {
+    /* Only include points that occur on the right side of cfra. */
+    for (const auto &[frame_number, frame] : layer->frames().items()) {
+      if (!FrameOnMouseSide(side, float(frame_number), cfra)) {
+        continue;
+      }
+      if (frame.is_selected()) {
+        count_selected++;
+      }
+      count_all++;
+    }
   }
 
   if (is_prop_edit && count_selected > 0) {
@@ -496,16 +498,11 @@ static int GreasePencilLayerToTransData(TransData *td,
     any_frame_affected = true;
   };
 
-  for (const auto [frame_number, frame] : layer->frames().items()) {
-    grease_pencil_frame_to_trans_data(frame_number, frame.is_selected());
-  }
+  const blender::Map<int, GreasePencilFrame> &frame_map =
+      duplicate ? (layer->runtime->trans_data_.temp_frames_buffer) : (layer->frames());
 
-  if (duplicate) {
-    /* Also insert frames that were duplicated. */
-    for (const auto [frame_number, frame] : layer->runtime->trans_data_.temp_frames_buffer.items())
-    {
-      grease_pencil_frame_to_trans_data(frame_number, frame.is_selected());
-    }
+  for (const auto [frame_number, frame] : frame_map.items()) {
+    grease_pencil_frame_to_trans_data(frame_number, frame.is_selected());
   }
 
   if (total_trans_frames == 0) {
@@ -957,7 +954,7 @@ static void recalcData_actedit(TransInfo *t)
     transform_convert_flush_handle2D(td, td2d, 0.0f);
 
     if ((t->state == TRANS_RUNNING) && ((td->flag & TD_GREASE_PENCIL_FRAME) != 0)) {
-      const bool use_duplicated = (t->flag & T_AUTOMERGE) != 0;
+      const bool use_duplicated = (t->flag & T_DUPLICATED_KEYFRAMES) != 0;
       grease_pencil_layer_update_trans_data(
           *static_cast<blender::bke::greasepencil::Layer *>(td->extra),
           round_fl_to_int(td->ival),
