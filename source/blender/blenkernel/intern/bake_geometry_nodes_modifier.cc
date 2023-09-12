@@ -97,7 +97,7 @@ std::optional<bake::BakePath> get_node_bake_path(const Main &bmain,
 
 static IndexRange fix_frame_range(const int start, const int end)
 {
-  const int num_frames = std::max(1, end - start);
+  const int num_frames = std::max(1, end - start + 1);
   return IndexRange(start, num_frames);
 }
 
