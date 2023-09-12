@@ -216,9 +216,33 @@ class KeyframeInsertTest(AbstractAnimationTest, unittest.TestCase):
                 bpy.ops.anim.keyframe_insert_by_name(type="Location")
 
         key_object = bpy.context.active_object
-        for key_index in range(key_count):
-            key = key_object.animation_data.action.fcurves[0].keyframe_points[key_index]
-            self.assertAlmostEqual(key.co.x, key_index/key_count + frame_offset)
+        # These are the possible floating point steps from "1.000.000" up to "1.000.001".
+        floating_point_steps = [
+            1000000.0,
+            1000000.0625,
+            1000000.125,
+            1000000.1875,
+            1000000.25,
+            1000000.3125,
+            1000000.375,
+            1000000.4375,
+            1000000.5,
+            1000000.5625,
+            1000000.625,
+            1000000.6875,
+            1000000.75,
+            1000000.8125,
+            1000000.875,
+            1000000.9375,
+            1000001.0 # Even though range() is exclusive, the floating point limitations mean keys end up on that position.
+        ]
+        keyframe_points = key_object.animation_data.action.fcurves[0].keyframe_points
+        for i, value in enumerate(floating_point_steps):
+            key = keyframe_points[i]
+            self.assertAlmostEqual(key.co.x, value)
+
+        # This checks that there is a key on every possible floating point value.
+        self.assertEqual(len(floating_point_steps), len(keyframe_points))
         
         bpy.ops.object.delete(use_global=False)
 
