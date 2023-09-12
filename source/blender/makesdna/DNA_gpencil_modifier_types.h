@@ -1329,7 +1329,7 @@ typedef struct SDefGPBind {
   float influence;
 } SDefGPBind;
 
-typedef struct SDefGPVert {/* 83771 - For each vertex there ca be more than one bind.*/
+typedef struct SDefGPVert {
   SDefGPBind *binds;
   unsigned int binds_num;
   unsigned int vertex_idx;
@@ -1457,8 +1457,7 @@ enum {
   GP_MOD_SDEF_INVERT_VGROUP = (1 << 1),
   /* Only store bind data for nonzero vgroup weights at the time of bind. */
   GP_MOD_SDEF_SPARSE_BIND = (1 << 2),
-  GP_MOD_SDEF_WITHHOLD_EVALUATION = (1 << 3),
-  GP_MOD_SDEF_CHECKED = (1 << 4),
+  GP_MOD_SDEF_WITHHOLD_EVALUATION = (1 << 3)
   
 
 };
