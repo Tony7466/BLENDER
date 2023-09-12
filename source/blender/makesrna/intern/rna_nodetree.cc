@@ -1050,8 +1050,7 @@ static void rna_NodeTree_update_asset(Main *bmain, Scene *scene, PointerRNA *ptr
 {
   rna_NodeTree_update(bmain, scene, ptr);
   WM_main_add_notifier(NC_NODE | ND_NODE_ASSET_DATA, nullptr);
-  ID *id = ptr->owner_id;
-  id->asset_data->local_type_info->pre_save_fn(id, id->asset_data);
+  blender::bke::node_update_asset_metadata(*reinterpret_cast<bNodeTree *>(ptr->owner_id));
 }
 
 static bNode *rna_NodeTree_node_new(bNodeTree *ntree,
