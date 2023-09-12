@@ -42,8 +42,8 @@ enum class TriangulateQuadMode {
 std::optional<Mesh *> mesh_triangulate(
     const Mesh &src_mesh,
     const IndexMask &selection,
-    const TriangulateNGonMode ngon_mode,
-    const TriangulateQuadMode quad_mode,
+    TriangulateNGonMode ngon_mode,
+    TriangulateQuadMode quad_mode,
     const bke::AnonymousAttributePropagationInfo &propagation_info);
 
 }  // namespace blender::geometry
