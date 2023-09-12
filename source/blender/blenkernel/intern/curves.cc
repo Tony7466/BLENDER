@@ -105,17 +105,15 @@ static void curves_blend_write(BlendWriter *writer, ID *id, const void *id_addre
 {
   Curves *curves = (Curves *)id;
 
-  Vector<CustomDataLayer, 16> point_layers;
-  Vector<CustomDataLayer, 16> curve_layers;
-  CustomData_blend_write_prepare(curves->geometry.point_data, point_layers);
-  CustomData_blend_write_prepare(curves->geometry.curve_data, curve_layers);
+  blender::bke::CurvesGeometryBlendWriteData write_data;
+  curves->geometry.wrap().blend_write_prepare(write_data);
 
   /* Write LibData */
   BLO_write_id_struct(writer, Curves, id_address, &curves->id);
   BKE_id_blend_write(writer, &curves->id);
 
   /* Direct data */
-  curves->geometry.wrap().blend_write(*writer, point_layers, curve_layers, curves->id);
+  curves->geometry.wrap().blend_write(*writer, write_data, curves->id);
 
   BLO_write_string(writer, curves->surface_uv_map);
 

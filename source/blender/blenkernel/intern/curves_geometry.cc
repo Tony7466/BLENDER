@@ -1477,15 +1477,20 @@ void CurvesGeometry::blend_read(BlendDataReader &reader)
   this->update_curve_types();
 }
 
+void CurvesGeometry::blend_write_prepare(CurvesGeometryBlendWriteData &write_data)
+{
+  CustomData_blend_write_prepare(this->point_data, write_data.point_layers);
+  CustomData_blend_write_prepare(this->curve_data, write_data.curve_layers);
+}
+
 void CurvesGeometry::blend_write(BlendWriter &writer,
-                                 const Span<CustomDataLayer> point_layers,
-                                 const Span<CustomDataLayer> curve_layers,
+                                 const CurvesGeometryBlendWriteData &write_data,
                                  ID &id)
 {
   CustomData_blend_write(
-      &writer, &this->point_data, point_layers, this->point_num, CD_MASK_ALL, &id);
+      &writer, &this->point_data, write_data.point_layers, this->point_num, CD_MASK_ALL, &id);
   CustomData_blend_write(
-      &writer, &this->curve_data, curve_layers, this->curve_num, CD_MASK_ALL, &id);
+      &writer, &this->curve_data, write_data.curve_layers, this->curve_num, CD_MASK_ALL, &id);
 
   BLO_write_int32_array(&writer, this->curve_num + 1, this->curve_offsets);
 }

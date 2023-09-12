@@ -52,6 +52,16 @@ struct BasisCache {
 }  // namespace curves::nurbs
 
 /**
+ * Helper struct for `CurvesGeometry::blend_write_*` functions.
+ */
+struct CurvesGeometryBlendWriteData {
+  /* The point custom data layers to be written. */
+  Vector<CustomDataLayer, 16> point_layers;
+  /* The curve custom data layers to be written. */
+  Vector<CustomDataLayer, 16> curve_layers;
+};
+
+/**
  * Contains derived data, caches, and other information not saved in files.
  */
 class CurvesGeometryRuntime {
@@ -395,10 +405,12 @@ class CurvesGeometry : public ::CurvesGeometry {
    */
 
   void blend_read(BlendDataReader &reader);
-  void blend_write(BlendWriter &writer,
-                   Span<CustomDataLayer> point_layers,
-                   Span<CustomDataLayer> curve_layers,
-                   ID &id);
+  /**
+   * This function needs to be called before `blend_write` and before the `CurvesGeometry` struct
+   * is written because it can mutate the `CustomData` struct.
+   */
+  void blend_write_prepare(CurvesGeometryBlendWriteData &write_data);
+  void blend_write(BlendWriter &writer, const CurvesGeometryBlendWriteData &write_data ID &id);
 };
 
 static_assert(sizeof(blender::bke::CurvesGeometry) == sizeof(::CurvesGeometry));

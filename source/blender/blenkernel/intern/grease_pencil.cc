@@ -2055,13 +2055,10 @@ static void write_drawing_array(GreasePencil &grease_pencil, BlendWriter *writer
     switch (drawing_base->type) {
       case GP_DRAWING: {
         GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
-        Vector<CustomDataLayer, 16> point_layers;
-        Vector<CustomDataLayer, 16> curve_layers;
-        CustomData_blend_write_prepare(drawing->geometry.point_data, point_layers);
-        CustomData_blend_write_prepare(drawing->geometry.curve_data, curve_layers);
+        blender::bke::CurvesGeometryBlendWriteData write_data;
+        drawing->wrap().strokes_for_write().blend_write_prepare(write_data);
         BLO_write_struct(writer, GreasePencilDrawing, drawing);
-        drawing->wrap().strokes_for_write().blend_write(
-            *writer, point_layers, curve_layers, grease_pencil.id);
+        drawing->wrap().strokes_for_write().blend_write(*writer, write_data, grease_pencil.id);
         break;
       }
       case GP_DRAWING_REFERENCE: {
