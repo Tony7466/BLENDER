@@ -105,7 +105,6 @@ static void curves_blend_write(BlendWriter *writer, ID *id, const void *id_addre
 {
   Curves *curves = (Curves *)id;
 
-  /* Make sure to call `CurvesGeometry::blend_write_prepare()` before writing the struct. */
   blender::bke::CurvesGeometry::BlendWriteData write_data =
       curves->geometry.wrap().blend_write_prepare();
 
