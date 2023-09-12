@@ -21,7 +21,7 @@ extern const float ltc_disk_integral[64][64][1];
 /* Precomputed integrated split fresnel term of the GGX BRDF. */
 extern const float bsdf_split_sum_ggx[64][64][2];
 /* Precomputed reflectance and transmission of glass material. */
-extern const float btdf_split_sum_ggx[16][64][64][2];
+extern const float btdf_split_sum_ggx[16][64][64][3];
 /* 4 different blue noise, one per channel. */
 extern const float blue_noise[64][64][4];
 

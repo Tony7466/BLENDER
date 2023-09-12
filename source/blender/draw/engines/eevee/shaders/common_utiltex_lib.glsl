@@ -69,20 +69,70 @@ vec3 lut_coords_btdf(float cos_theta, float roughness, float ior)
 
   /* scale and bias coordinates, for correct filtered lookup */
   coords.xy = coords.xy * (LUT_SIZE - 1.0) / LUT_SIZE + 0.5 / LUT_SIZE;
+  coords.z = coords.z * lut_btdf_layer_count + lut_btdf_layer_first;
 
   return coords;
+}
+
+vec4 sample_3D_texture(sampler2DArray tex, vec3 coords)
+{
+  float layer_floored;
+  float f = modf(coords.z, layer_floored);
+
+  coords.z = layer_floored;
+  vec4 tex_low = textureLod(tex, coords, 0.0);
+
+  coords.z += 1.0;
+  vec4 tex_high = textureLod(tex, coords, 0.0);
+
+  /* Manual trilinear interpolation. */
+  return mix(tex_low, tex_high, f);
+}
+
+/* Returns GGX BTDF in first component and fresnel in second. */
+void btdf_lut(vec3 f0,
+              vec3 f90,
+              vec3 transmission_tint,
+              float cos_theta,
+              float roughness,
+              float ior,
+              float do_multiscatter,
+              out vec3 reflectance,
+              out vec3 transmittance)
+{
+  if (ior >= 1.0) {
+    vec2 split_sum = brdf_lut(cos_theta, roughness);
+    /* TODO: Gradually increase `f90` from 0 to 1 when IOR is in the range of [1.0, 1.33], to avoid
+     * harsh transition at `IOR == 1`. */
+
+    reflectance = F_brdf_multi_scatter(f0, f90, split_sum);
+    /* Energy conservation. */
+    transmittance = (vec3(1.0) - reflectance) * transmission_tint;
+    return;
+  }
+
+  vec3 coords = lut_coords_btdf(cos_theta, roughness, ior);
+  vec3 scale_bias_transmittance = sample_3D_texture(utilTex, coords).rgb;
+
+  reflectance = f0 * scale_bias_transmittance.x + f90 * scale_bias_transmittance.y;
+  transmittance = scale_bias_transmittance.z * (f90 - f0) * transmission_tint;
+
+  /* TODO: add multiscatter compensation. */
+
+  return;
 }
 
 /* Returns GGX BTDF in first component and fresnel in second. */
 vec2 btdf_lut(float cos_theta, float roughness, float ior, float do_multiscatter)
 {
   if (ior <= 1e-5) {
-    return vec2(0.0);
+    return vec2(0.0, 1.0);
   }
+
+  float f0 = F0_from_ior(ior);
 
   if (ior >= 1.0) {
     vec2 split_sum = brdf_lut(cos_theta, roughness);
-    float f0 = F0_from_ior(ior);
     /* Gradually increase `f90` from 0 to 1 when IOR is in the range of [1.0, 1.33], to avoid harsh
      * transition at `IOR == 1`. */
     float f90 = fast_sqrt(saturate(f0 / 0.02));
@@ -96,18 +146,12 @@ vec2 btdf_lut(float cos_theta, float roughness, float ior, float do_multiscatter
   }
 
   vec3 coords = lut_coords_btdf(cos_theta, roughness, ior);
+  vec3 scale_bias_transmittance = sample_3D_texture(utilTex, coords).rgb;
 
-  float layer = coords.z * lut_btdf_layer_count;
-  float layer_floored = floor(layer);
-
-  coords.z = lut_btdf_layer_first + layer_floored;
-  vec2 btdf_brdf_low = textureLod(utilTex, coords, 0.0).rg;
-
-  coords.z += 1.0;
-  vec2 btdf_brdf_high = textureLod(utilTex, coords, 0.0).rg;
-
-  /* Manual trilinear interpolation. */
-  vec2 btdf_brdf = mix(btdf_brdf_low, btdf_brdf_high, layer - layer_floored);
+  float f90 = 1.0;
+  float brdf = f0 * scale_bias_transmittance.x + f90 * scale_bias_transmittance.y;
+  float btdf = scale_bias_transmittance.z * (f90 - f0);
+  vec2 btdf_brdf = vec2(btdf, brdf);
 
   if (do_multiscatter != 0.0) {
     /* For energy-conserving BSDF the reflection and refraction lobes should sum to one. Assuming

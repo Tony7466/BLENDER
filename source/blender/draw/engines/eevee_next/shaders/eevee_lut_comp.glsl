@@ -78,8 +78,9 @@ vec4 ggx_btdf_split_sum(vec3 lut_coord)
   vec3 V = vec3(sqrt(1.0 - square(NV)), 0.0, NV);
 
   /* Integrating BSDF */
+  float scale = 0.0;
+  float bias = 0.0;
   float transmittance = 0.0;
-  float reflectance = 0.0;
 
   const uint sample_count = 512u * 512u;
   for (uint i = 0u; i < sample_count; i++) {
@@ -88,14 +89,17 @@ vec4 ggx_btdf_split_sum(vec3 lut_coord)
 
     /* Microfacet normal. */
     vec3 H = sample_ggx(Xi, roughness, V);
-    float fresnel = F_eta(ior, dot(V, H));
+    float HL = 1.0 - (1.0 - square(dot(V, H))) / square(ior);
+    float s = saturate(pow5f(1.0 - saturate(HL)));
 
     /* Reflection. */
     vec3 R = -reflect(V, H);
     float NR = R.z;
     if (NR > 0.0) {
       /* Assuming sample visible normals, accumulating `brdf * NV / pdf.` */
-      reflectance += fresnel * bxdf_ggx_smith_G1(NR, roughness_sq);
+      float weight = bxdf_ggx_smith_G1(NR, roughness_sq);
+      scale += (1.0 - s) * weight;
+      bias += s * weight;
     }
 
     /* Refraction. */
@@ -104,15 +108,17 @@ vec4 ggx_btdf_split_sum(vec3 lut_coord)
     /* In the case of TIR, `T == vec3(0)`. */
     if (NT < 0.0) {
       /* Assuming sample visible normals, accumulating `btdf * NV / pdf.` */
-      transmittance += (1.0 - fresnel) * bxdf_ggx_smith_G1(NT, roughness_sq);
+      // transmittance += (1.0 - F0) * (1.0 - s) * bxdf_ggx_smith_G1(NT, roughness_sq);
+      transmittance += (1.0 - s) * bxdf_ggx_smith_G1(NT, roughness_sq);
     }
   }
   transmittance /= float(sample_count);
-  reflectance /= float(sample_count);
+  scale /= float(sample_count);
+  bias /= float(sample_count);
 
   /* There is place to put multi-scatter result (which is a little bit different still)
    * and / or lobe fitting for better sampling of. */
-  return vec4(transmittance, reflectance, 0.0, 0.0);
+  return vec4(scale, bias, transmittance, 0.0);
 }
 
 void main()

@@ -26,7 +26,7 @@ void node_bsdf_principled(vec4 base_color,
                           float subsurface_anisotropy,
                           float metallic,
                           float specular,
-                          float specular_tint,
+                          vec4 specular_tint,
                           float roughness,
                           float anisotropic,
                           float anisotropic_rotation,
@@ -110,15 +110,18 @@ void node_bsdf_principled(vec4 base_color,
 
   /* Transmission component */
   ClosureRefraction refraction_data;
-  /* TODO: change `specular_tint` to rgb. */
-  vec3 reflection_tint = mix(vec3(1.0), base_color.rgb, specular_tint);
+  vec3 reflection_tint = specular_tint.rgb;
   if (true) {
-    vec2 bsdf = btdf_lut(NV, roughness, ior, do_multiscatter);
+    vec3 f0 = vec3(F0_from_ior(ior)) * reflection_tint;
+    vec3 f90 = vec3(1.0);
+    vec3 reflectance, transmittance;
+    btdf_lut(
+        f0, f90, base_color.rgb, NV, roughness, ior, do_multiscatter, reflectance, transmittance);
 
-    reflection_data.color += weight * transmission * bsdf.y * reflection_tint;
+    reflection_data.color += weight * transmission * reflectance;
 
-    refraction_data.weight = weight * transmission * bsdf.x;
-    refraction_data.color = base_color.rgb;
+    refraction_data.weight = weight * transmission;
+    refraction_data.color = transmittance;
     refraction_data.N = N;
     refraction_data.roughness = roughness;
     refraction_data.ior = ior;
