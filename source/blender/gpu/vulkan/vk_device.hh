@@ -73,6 +73,9 @@ class VKDevice : public NonCopyable {
   /** Buffer to bind to unbound resource locations. */
   VKBuffer dummy_buffer_;
 
+  Vector<std::pair<VkImage, VmaAllocation>> discarded_images_;
+  Vector<std::pair<VkBuffer, VmaAllocation>> discarded_buffers_;
+
  public:
   VkPhysicalDevice physical_device_get() const
   {
@@ -176,6 +179,10 @@ class VKDevice : public NonCopyable {
   {
     return dummy_buffer_;
   }
+
+  void discard_image(VkImage vk_image, VmaAllocation vma_allocation);
+  void discard_buffer(VkBuffer vk_buffer, VmaAllocation vma_allocation);
+  void destroy_discarded_resources();
 
   /** \} */
 

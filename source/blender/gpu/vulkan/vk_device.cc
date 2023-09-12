@@ -25,9 +25,9 @@ void VKDevice::deinit()
 {
   VK_ALLOCATION_CALLBACKS;
   vkDestroyCommandPool(vk_device_, vk_command_pool_, vk_allocation_callbacks);
-
   dummy_buffer_.free();
   sampler_.free();
+  destroy_discarded_resources();
   vmaDestroyAllocator(mem_allocator_);
   mem_allocator_ = VK_NULL_HANDLE;
   debugging_tools_.deinit(vk_instance_);
@@ -247,6 +247,29 @@ const Vector<std::reference_wrapper<VKContext>> &VKDevice::contexts_get() const
 {
   return contexts_;
 };
+
+void VKDevice::discard_image(VkImage vk_image, VmaAllocation vma_allocation)
+{
+  discarded_images_.append(std::pair(vk_image, vma_allocation));
+}
+
+void VKDevice::discard_buffer(VkBuffer vk_buffer, VmaAllocation vma_allocation)
+{
+  discarded_buffers_.append(std::pair(vk_buffer, vma_allocation));
+}
+
+void VKDevice::destroy_discarded_resources()
+{
+  while (!discarded_images_.is_empty()) {
+    std::pair<VkImage, VmaAllocation> image_allocation = discarded_images_.pop_last();
+    vmaDestroyImage(mem_allocator_get(), image_allocation.first, image_allocation.second);
+  }
+
+  while (!discarded_buffers_.is_empty()) {
+    std::pair<VkBuffer, VmaAllocation> buffer_allocation = discarded_buffers_.pop_last();
+    vmaDestroyBuffer(mem_allocator_get(), buffer_allocation.first, buffer_allocation.second);
+  }
+}
 
 /** \} */
 

@@ -229,6 +229,7 @@ class GHOST_DeviceVK {
     device_features.multiViewport = VK_TRUE;
 #endif
     device_features.drawIndirectFirstInstance = VK_TRUE;
+    device_features.fragmentStoresAndAtomics = VK_TRUE;
 
     VkPhysicalDeviceMaintenance4FeaturesKHR maintenance_4 = {};
     maintenance_4.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_4_FEATURES_KHR;
