@@ -34,8 +34,6 @@ void build_node_declaration_dynamic(const bNodeTree &node_tree,
 
 void NodeDeclarationBuilder::finalize()
 {
-  BLI_assert(declaration_.is_valid());
-
   /* Declarations generating both input and output should align these sockets. */
   for (std::unique_ptr<BaseSocketDeclarationBuilder> &socket_builder : socket_builders_) {
     if (socket_builder->input_declaration() && socket_builder->output_declaration()) {
@@ -115,6 +113,8 @@ void NodeDeclarationBuilder::finalize()
       }
     }
   }
+
+  BLI_assert(declaration_.is_valid());
 }
 
 void NodeDeclarationBuilder::set_active_panel_builder(const PanelDeclarationBuilder *panel_builder)
@@ -207,13 +207,17 @@ bool NodeDeclaration::is_valid() const
         return false;
       }
 
-      if (state.socket_in_out == SOCK_OUT && socket_decl->in_out == SOCK_IN) {
-        /* Start of input sockets. */
-        state.socket_in_out = SOCK_IN;
-      }
-      if (socket_decl->in_out != state.socket_in_out) {
-        std::cout << "Output socket added after input socket" << std::endl;
-        return false;
+      /* Check for consistent outputs.., inputs.. blocks.
+       * Ignored for sockets that are inline pairs. */
+      if (!socket_decl->inline_with_next) {
+        if (state.socket_in_out == SOCK_OUT && socket_decl->in_out == SOCK_IN) {
+          /* Start of input sockets. */
+          state.socket_in_out = SOCK_IN;
+        }
+        if (socket_decl->in_out != state.socket_in_out) {
+          std::cout << "Output socket added after input socket" << std::endl;
+          return false;
+        }
       }
 
       /* Item counting for the panels, but ignore for root items. */
