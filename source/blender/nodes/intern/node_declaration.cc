@@ -36,6 +36,13 @@ void NodeDeclarationBuilder::finalize()
 {
   BLI_assert(declaration_.is_valid());
 
+  /* Declarations generating both input and output should align these sockets. */
+  for (std::unique_ptr<BaseSocketDeclarationBuilder> &socket_builder : socket_builders_) {
+    if (socket_builder->input_declaration() && socket_builder->output_declaration()) {
+      socket_builder->input_declaration()->inline_with_next = true;
+    }
+  }
+
   if (is_function_node_) {
     for (std::unique_ptr<BaseSocketDeclarationBuilder> &socket_builder : socket_builders_) {
       if (SocketDeclaration *socket_decl = socket_builder->input_declaration()) {
