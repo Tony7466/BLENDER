@@ -247,6 +247,8 @@ class NodeDeclarationBuilder;
 
 class BaseSocketDeclarationBuilder {
  protected:
+  /* Socket builder can hold both an input and an output declaration.
+   * Each socket declaration has its own index for dependencies. */
   int index_in_ = -1;
   int index_out_ = -1;
   bool reference_pass_all_ = false;
