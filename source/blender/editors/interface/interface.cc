@@ -61,6 +61,7 @@
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
+#include "RNA_enum_types.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern_run.h"
@@ -5900,7 +5901,7 @@ void UI_but_disable(uiBut *but, const char *disabled_hint)
   but->disabled_info = disabled_hint;
 }
 
-void UI_but_placeholder(uiBut *but, const char *placeholder_text)
+void UI_but_placeholder_set(uiBut *but, const char *placeholder_text)
 {
   /* Remove any existing placeholder. */
   if (but && but->placeholder) {
@@ -5912,6 +5913,29 @@ void UI_but_placeholder(uiBut *but, const char *placeholder_text)
   if (but && placeholder_text && placeholder_text[0]) {
     but->placeholder = BLI_strdup(placeholder_text);
   }
+}
+
+const char *UI_but_placeholder_get(uiBut *but)
+{
+  const char *placeholder = (but->placeholder) ? but->placeholder : nullptr;
+
+  if (!placeholder && but->rnaprop) {
+    if (but->type == UI_BTYPE_SEARCH_MENU) {
+      StructRNA *type = RNA_property_pointer_type(&but->rnapoin, but->rnaprop);
+      const short idcode = RNA_type_to_ID_code(type);
+      if (idcode != 0) {
+        RNA_enum_name(rna_enum_id_type_items, idcode, &placeholder);
+      }
+    }
+    else if (but->type == UI_BTYPE_TEXT) {
+      const char *identifier = RNA_property_identifier(but->rnaprop);
+      if (STR_ELEM(identifier, "search_filter", "filter_text", "filter_search")) {
+        placeholder = "Search";
+      }
+    }
+  }
+
+  return IFACE_(placeholder);
 }
 
 void UI_but_type_set_menu_from_pulldown(uiBut *but)

@@ -911,8 +911,9 @@ void UI_but_disable(uiBut *but, const char *disabled_hint);
 
 void UI_but_type_set_menu_from_pulldown(uiBut *but);
 
-/* Add hint text that describes the expected value when empty */
-void UI_but_placeholder(uiBut *but, const char *placeholder_text);
+/* Hint that describes the expected value when empty */
+void UI_but_placeholder_set(uiBut *but, const char *placeholder_text);
+const char *UI_but_placeholder_get(uiBut *but);
 
 /**
  * Special button case, only draw it when used actively, for outliner etc.

@@ -40,7 +40,7 @@ class OUTLINER_HT_header(Header):
 
         if filter_text_supported:
             row = layout.row(align=True)
-            row.prop(space, "filter_text", icon='VIEWZOOM', text="", placeholder="Search")
+            row.prop(space, "filter_text", icon='VIEWZOOM', text="")
 
         layout.separator_spacer()
 
