@@ -511,6 +511,7 @@ struct NodeInterfacePanelData {
 
   operator bool() const
   {
+    /* Panel can only be drawn when state data is available. */
     return this->state != nullptr && this->runtime != nullptr;
   }
 };
@@ -522,7 +523,7 @@ struct NodeInterfaceSocketData {
 
   operator bool() const
   {
-    /* One socket side is enough to be valid. */
+    /* Socket can be drawn if there is an input, or an output, or both. */
     return this->input != nullptr || this->output != nullptr;
   }
 };
