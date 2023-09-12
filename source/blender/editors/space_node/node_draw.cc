@@ -499,9 +499,14 @@ static bool node_update_basis_socket(const bContext &C,
   return true;
 }
 
+/* Temporary stack data to keep track of the panel hierarchy while drawing. */
 struct NodeInterfacePanelData {
+  /* Declaration of a panel that items are added into. */
   const nodes::PanelDeclaration *decl_;
+  /* State of the panel instance on the node.
+   * Mutable so that panel visibility can be updated. */
   bNodePanelState *state_;
+  /* Runtime panel state for draw locations. */
   bke::bNodePanelRuntime *runtime_;
 
   operator bool() const
@@ -691,11 +696,11 @@ static void node_update_basis_from_declaration(
     else if (const NodeInterfaceSocketData data = interface_iter.try_next_socket()) {
       if (data.input_) {
         SET_FLAG_FROM_TEST(data.input_->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
-          /* Draw buttons before the first input. */
-          if (!buttons_drawn) {
-            buttons_drawn = true;
-            need_spacer_after_item = node_update_basis_buttons(C, ntree, node, block, locy);
-          }
+        /* Draw buttons before the first input. */
+        if (!buttons_drawn) {
+          buttons_drawn = true;
+          need_spacer_after_item = node_update_basis_buttons(C, ntree, node, block, locy);
+        }
 
         if (is_parent_collapsed) {
           data.input_->runtime->location = float2(locx, round(locy + NODE_DYS));
