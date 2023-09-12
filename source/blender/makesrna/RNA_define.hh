@@ -132,17 +132,17 @@ PropertyRNA *RNA_def_boolean_vector(StructOrFunctionRNA *cont,
                                     const char *ui_description);
 
 template<class T> struct PropertyRange {
-  const T min;
-  const T max;
+  T min;
+  T max;
 };
 
 template<class T> struct PropertyRanges {
-  const PropertyRange<T> hard;
-  const PropertyRange<T> soft;
+  PropertyRange<T> hard;
+  PropertyRange<T> soft;
 };
 
-using IntRanges = PropertyRanges<int>;
-using FloatRanges = PropertyRanges<float>;
+using IntRanges = PropertyRanges<const int>;
+using FloatRanges = PropertyRanges<const float>;
 
 PropertyRNA *RNA_def_int(StructOrFunctionRNA *cont,
                          const char *identifier,
