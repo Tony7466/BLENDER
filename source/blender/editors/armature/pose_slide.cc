@@ -1381,7 +1381,7 @@ static void pose_slide_opdef_properties(wmOperatorType *ot)
                               "Weighting factor for which keyframe is favored more",
                               {{0.0f, 1.0f}, {0.0, 1.0}});
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-  const IntRanges frame_ranges({MINAFRAME, MAXFRAME}, {0, 50});
+  constexpr IntRanges frame_ranges{{MINAFRAME, MAXFRAME}, {0, 50}};
   prop = RNA_def_int(ot->srna,
                      "prev_frame",
                      0,

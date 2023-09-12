@@ -132,14 +132,11 @@ PropertyRNA *RNA_def_boolean_vector(StructOrFunctionRNA *cont,
                                     const char *ui_description);
 
 template<class T> struct PropertyRange {
-  PropertyRange(const T min, const T max) : min(min), max(max){};
   const T min;
   const T max;
 };
 
 template<class T> struct PropertyRanges {
-  PropertyRanges(const PropertyRange<T> hard, const PropertyRange<T> soft)
-      : hard(std::move(hard)), soft(std::move(soft)){};
   const PropertyRange<T> hard;
   const PropertyRange<T> soft;
 };

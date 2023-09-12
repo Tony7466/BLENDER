@@ -417,7 +417,7 @@ void GPENCIL_OT_bake_mesh_animation(wmOperatorType *ot)
                           "Target Object",
                           "Target grease pencil");
   RNA_def_property_flag(ot->prop, PROP_SKIP_SAVE);
-  const IntRanges frame_ranges({1, 100000}, {1, 100000});
+  constexpr IntRanges frame_ranges{{1, 100000}, {1, 100000}};
   prop = RNA_def_int(ot->srna, "frame_start", 1, "Start Frame", "The start frame", frame_ranges);
 
   prop = RNA_def_int(

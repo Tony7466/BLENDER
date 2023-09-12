@@ -619,7 +619,7 @@ void GPENCIL_OT_stroke_merge_material(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  const FloatRanges threshold_ranges({0.0f, 1.0f}, {0.0f, 1.0f});
+  constexpr FloatRanges threshold_ranges{{0.0f, 1.0f}, {0.0f, 1.0f}};
   prop = RNA_def_float(ot->srna, "hue_threshold", 0.001f, "Hue Threshold", "", threshold_ranges);
   prop = RNA_def_float(
       ot->srna, "sat_threshold", 0.001f, "Saturation Threshold", "", threshold_ranges);
