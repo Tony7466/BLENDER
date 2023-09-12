@@ -263,7 +263,7 @@ static OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src,
 static VectorSet<OrderedEdge> calc_inner_triangles(const Span<int> face_verts,
                                                    const Span<int> face_edges,
                                                    const int edge_offset,
-                                                   const Span<int3> tris,
+                                                   const Span<int3> tris_range,
                                                    MutableSpan<int> corner_edges,
                                                    VectorSet<OrderedEdge> &inner_edges)
 {
@@ -278,8 +278,8 @@ static VectorSet<OrderedEdge> calc_inner_triangles(const Span<int> face_verts,
     return edge_offset + inner_edges.index_of_or_add(edge);
   };
 
-  for (const int i : tris.index_range()) {
-    const int3 tri = tris[i];
+  for (const int i : tris_range.index_range()) {
+    const int3 tri = tris_range[i];
     corner_edges[3 * i + 0] = add_edge({tri[0], tri[1]});
     corner_edges[3 * i + 1] = add_edge({tri[1], tri[2]});
     corner_edges[3 * i + 2] = add_edge({tri[2], tri[0]});
@@ -369,8 +369,8 @@ static void triangulate_ngons(const Span<float3> positions,
     /* Calculate the triangulation of corners indices local to each face. */
     for (const int i : ngons.index_range()) {
       const Span<float2> positions_2d = projected_positions.slice(local_corner_offsets[i]);
-      const IndexRange tris = tris_by_ngon[pos + i];
-      const IndexRange corners = faces[tris];
+      const IndexRange tris_range = tris_by_ngon[pos + i];
+      const IndexRange corners = faces[tris_range];
       MutableSpan<int> map = corner_map.slice(corners.shift(-corner_map_offset));
       BLI_polyfill_calc(reinterpret_cast<const float(*)[2]>(positions_2d.data()),
                         positions_2d.size(),
@@ -394,9 +394,9 @@ static void triangulate_ngons(const Span<float3> positions,
     /* Calculate the edges for each face, and the corner edge indices referring to them. */
     for (const int i : ngons.index_range()) {
       const IndexRange src_face = src_faces[ngons[i]];
-      const IndexRange tris = tris_by_ngon[pos + i];
+      const IndexRange tris_range = tris_by_ngon[pos + i];
       const IndexRange edges = edges_by_ngon[pos + i];
-      const IndexRange corners = faces[tris];
+      const IndexRange corners = faces[tris_range];
       MutableSpan<int> map = corner_map.slice(corners.shift(-corner_map_offset));
 
       data.inner_edges.clear();
@@ -413,8 +413,8 @@ static void triangulate_ngons(const Span<float3> positions,
      * source vertices, not just within the source face. */
     for (const int i : ngons.index_range()) {
       const IndexRange src_face = src_faces[ngons[i]];
-      const IndexRange tris = tris_by_ngon[pos + i];
-      const IndexRange corners = faces[tris];
+      const IndexRange tris_range = tris_by_ngon[pos + i];
+      const IndexRange corners = faces[tris_range];
       MutableSpan<int> map = corner_map.slice(corners.shift(-corner_map_offset));
       for (int &vert : map) {
         vert += src_face.start();
@@ -522,25 +522,27 @@ std::optional<Mesh *> mesh_triangulate(
   /* Selected faces that are already triangles are copied explicitly after the unselected faces. */
   const IndexRange copy_tris_range(unselected_range.one_after_last(), copy_tris.size());
   /* Triangles created from Ngons. */
-  const IndexRange ngon_tris(copy_tris_range.one_after_last(), tris_by_ngon.total_size());
+  const IndexRange ngon_tris_range(copy_tris_range.one_after_last(), tris_by_ngon.total_size());
   /* Triangles generated from quads. */
-  const IndexRange quad_tris(ngon_tris.one_after_last(), quads.size() * 2);
+  const IndexRange quad_tris_range(ngon_tris_range.one_after_last(), quads.size() * 2);
   /* All newly created triangles (from Ngons and quads). */
-  const IndexRange tris(ngon_tris.start(), ngon_tris.size() + quad_tris.size());
+  const IndexRange tris_range(ngon_tris_range.start(),
+                              ngon_tris_range.size() + quad_tris_range.size());
 
   /* New edges from the inner part of Ngons. */
-  const IndexRange ngon_edges(src_edges.size(), edges_by_ngon.total_size());
+  const IndexRange ngon_edges_range(src_edges.size(), edges_by_ngon.total_size());
   /* A single edge connecting the opposite corners of each quad. */
-  const IndexRange quad_edges(ngon_edges.one_after_last(), quads.size());
+  const IndexRange quad_edges_range(ngon_edges_range.one_after_last(), quads.size());
   /* All newly created edges (from Ngons and quads). */
-  const IndexRange inner_edges(ngon_edges.start(), ngon_edges.size() + quad_edges.size());
+  const IndexRange new_edges_range(ngon_edges_range.start(),
+                                   ngon_edges_range.size() + quad_edges_range.size());
 
   /* Create a mesh with no face corners, since we don't know how many there will be yet. */
   Mesh *mesh = create_mesh_no_attributes(src_mesh,
                                          src_mesh.totvert,
-                                         src_edges.size() + inner_edges.size(),
+                                         src_edges.size() + new_edges_range.size(),
                                          unselected_range.size() + copy_tris_range.size() +
-                                             tris.size(),
+                                             tris_range.size(),
                                          0);
   bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
   attributes.add<int2>(".edge_verts", ATTR_DOMAIN_EDGE, bke::AttributeInitConstruct());
@@ -557,11 +559,11 @@ std::optional<Mesh *> mesh_triangulate(
   /* Corners from selected faces that are already triangulated. */
   const IndexRange copy_tri_corners = faces[copy_tris_range];
   /* Corners from triangulated Ngons. */
-  const IndexRange ngon_tri_corners = faces[ngon_tris];
+  const IndexRange ngon_tri_corners = faces[ngon_tris_range];
   /* Corners from triangulated quads. */
-  const IndexRange quad_tri_corners = faces[quad_tris];
+  const IndexRange quad_tri_corners = faces[quad_tris_range];
   /* All newly created corners (from Ngons and quads). */
-  const IndexRange tri_corners = faces[tris];
+  const IndexRange tri_corners = faces[tris_range];
 
   /* An index map that maps from newly created corners in `tri_corners` to original corner indices.
    * This is used to interpolate `corner_vert` indices and face corner attributes. If there are no
@@ -588,11 +590,11 @@ std::optional<Mesh *> mesh_triangulate(
                       tris_by_ngon,
                       edges_by_ngon,
                       ngon_mode,
-                      faces.slice(ngon_tris),
-                      ngon_edges.start(),
+                      faces.slice(ngon_tris_range),
+                      ngon_edges_range.start(),
                       unselected_corners.size() + copy_tri_corners.size(),
                       corner_map.as_mutable_span().take_front(ngon_tri_corners.size()),
-                      edges.slice(ngon_edges),
+                      edges.slice(ngon_edges_range),
                       corner_edges);
   }
 
@@ -603,9 +605,9 @@ std::optional<Mesh *> mesh_triangulate(
                       src_corner_edges,
                       quads,
                       quad_mode,
-                      quad_edges.start(),
+                      quad_edges_range.start(),
                       corner_map.as_mutable_span().take_back(quad_tri_corners.size()),
-                      edges.slice(quad_edges),
+                      edges.slice(quad_edges_range),
                       corner_edges.slice(quad_tri_corners));
   }
 
@@ -627,59 +629,60 @@ std::optional<Mesh *> mesh_triangulate(
                                      src_corner_edges,
                                      corner_edges.slice(copy_tri_corners));
 
-  src_attributes.for_all([&](const bke::AttributeIDRef &id,
-                             const bke::AttributeMetaData meta_data) {
-    if (meta_data.data_type == CD_PROP_STRING) {
-      return true;
-    }
-    if (meta_data.domain == ATTR_DOMAIN_POINT) {
-      return true;
-    }
-    if (ELEM(id.name(), ".corner_edge", ".edge_verts")) {
-      return true;
-    }
+  src_attributes.for_all(
+      [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
+        if (meta_data.data_type == CD_PROP_STRING) {
+          return true;
+        }
+        if (meta_data.domain == ATTR_DOMAIN_POINT) {
+          return true;
+        }
+        if (ELEM(id.name(), ".corner_edge", ".edge_verts")) {
+          return true;
+        }
 
-    const GVArraySpan src = *src_attributes.lookup(id, meta_data.domain);
-    bke::GSpanAttributeWriter dst = attributes.lookup_or_add_for_write_only_span(
-        id, meta_data.domain, meta_data.data_type);
+        const GVArraySpan src = *src_attributes.lookup(id, meta_data.domain);
+        bke::GSpanAttributeWriter dst = attributes.lookup_or_add_for_write_only_span(
+            id, meta_data.domain, meta_data.data_type);
 
-    switch (meta_data.domain) {
-      case ATTR_DOMAIN_EDGE: {
-        dst.span.take_front(src.size()).copy_from(src);
-        GMutableSpan new_data = dst.span.take_back(inner_edges.size());
-        /* Though it would be reasonable interpolate data from connected edges within each face,
-         * currently the data from new edges is just set to the type's default value. */
-        dst.span.type().default_construct_n(new_data.data(), new_data.size());
-        break;
-      }
-      case ATTR_DOMAIN_FACE: {
-        array_utils::gather(src, unselected, dst.span.slice(unselected_range));
-        array_utils::gather(src, copy_tris, dst.span.slice(copy_tris_range));
-        copy_quad_face_data_to_tris(src, quads, dst.span.slice(quad_tris));
-        bke::attribute_math::gather_to_groups(src, ngons, tris_by_ngon, dst.span.slice(ngon_tris));
-        break;
-      }
-      case ATTR_DOMAIN_CORNER: {
-        bke::attribute_math::gather_group_to_group(src_faces,
-                                                   faces.slice(unselected_range),
-                                                   unselected,
-                                                   src,
-                                                   dst.span.slice(unselected_corners));
-        bke::attribute_math::gather_group_to_group(src_faces,
-                                                   faces.slice(copy_tris_range),
-                                                   copy_tris,
-                                                   src,
-                                                   dst.span.slice(copy_tri_corners));
-        bke::attribute_math::gather(src, corner_map.as_span(), dst.span.slice(tri_corners));
-        break;
-      }
-      default:
-        break;
-    }
+        switch (meta_data.domain) {
+          case ATTR_DOMAIN_EDGE: {
+            dst.span.take_front(src.size()).copy_from(src);
+            GMutableSpan new_data = dst.span.take_back(new_edges_range.size());
+            /* Though it would be reasonable interpolate data from connected edges within each
+             * face, currently the data from new edges is just set to the type's default value. */
+            dst.span.type().default_construct_n(new_data.data(), new_data.size());
+            break;
+          }
+          case ATTR_DOMAIN_FACE: {
+            array_utils::gather(src, unselected, dst.span.slice(unselected_range));
+            array_utils::gather(src, copy_tris, dst.span.slice(copy_tris_range));
+            copy_quad_face_data_to_tris(src, quads, dst.span.slice(quad_tris_range));
+            bke::attribute_math::gather_to_groups(
+                src, ngons, tris_by_ngon, dst.span.slice(ngon_tris_range));
+            break;
+          }
+          case ATTR_DOMAIN_CORNER: {
+            bke::attribute_math::gather_group_to_group(src_faces,
+                                                       faces.slice(unselected_range),
+                                                       unselected,
+                                                       src,
+                                                       dst.span.slice(unselected_corners));
+            bke::attribute_math::gather_group_to_group(src_faces,
+                                                       faces.slice(copy_tris_range),
+                                                       copy_tris,
+                                                       src,
+                                                       dst.span.slice(copy_tri_corners));
+            bke::attribute_math::gather(src, corner_map.as_span(), dst.span.slice(tri_corners));
+            break;
+          }
+          default:
+            break;
+        }
 
-    dst.finish();
-    return true;
-  });
+        dst.finish();
+        return true;
+      });
 
   if (const int *src = static_cast<const int *>(
           CustomData_get_layer(&src_mesh.edge_data, CD_ORIGINDEX)))
@@ -699,8 +702,8 @@ std::optional<Mesh *> mesh_triangulate(
     MutableSpan dst(dst_data, mesh->faces_num);
     array_utils::gather(src, unselected, dst.slice(unselected_range));
     array_utils::gather(src, copy_tris_range, dst.slice(copy_tris_range));
-    copy_quad_face_data_to_tris(src, quads, dst.slice(quad_tris));
-    bke::attribute_math::gather_to_groups(src, ngons, tris_by_ngon, dst.slice(ngon_tris));
+    copy_quad_face_data_to_tris(src, quads, dst.slice(quad_tris_range));
+    bke::attribute_math::gather_to_groups(src, ngons, tris_by_ngon, dst.slice(ngon_tris_range));
   }
 
   mesh->runtime->bounds_cache = src_mesh.runtime->bounds_cache;
