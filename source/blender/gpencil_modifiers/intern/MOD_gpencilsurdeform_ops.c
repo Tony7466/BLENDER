@@ -31,6 +31,8 @@
 
 #include "DEG_depsgraph_query.h"
 #include "ED_object.h"
+#include "ED_anim_api.h"
+#include "ED_keyframes_edit.h"
 #include "WM_api.h"
 #include "UI_interface.h"
 
@@ -2143,9 +2145,12 @@ static int bake_frames(bContext *C, wmOperator *op)
   const GpencilModifierTypeInfo *mti = BKE_gpencil_modifier_get_info(md->type);
   Scene *scene = DEG_get_evaluated_scene(depsgraph);
   Object *object_eval = DEG_get_evaluated_object(depsgraph, ob);
-
+  bGPdata *gpd_eval = object_eval->data;
+  bGPDlayer *gpl_eval;
   PointerRNA ob_ptr;
   bGPDframe *gpf;
+  bGPDframe *gpf_eval;
+  bGPDstroke *gps_new;
 
   smd_orig->bake_range_start = RNA_int_get( op->ptr, "frame_start");
   smd_orig->bake_range_end = RNA_int_get(op->ptr, "frame_end");
@@ -2155,29 +2160,40 @@ static int bake_frames(bContext *C, wmOperator *op)
 
   /*Iterate the frames in the range*/
 
-  smd_orig->flags |= GP_MOD_SDEF_WITHHOLD_EVALUATION;
 
   for (int frame = frame_start; frame <= frame_end; frame++) {
+    smd_orig->flags |= GP_MOD_SDEF_WITHHOLD_EVALUATION;
     BKE_scene_frame_set(scene, frame);
     BKE_scene_graph_update_for_newframe(depsgraph);
+    smd_orig->flags &= ~GP_MOD_SDEF_WITHHOLD_EVALUATION;
     /*Iterate all the layers*/
+    int l = 0;
     LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
       /*What if the user decides to bake a bound/existing frame? It must be skipped.*/
       gpf = BKE_gpencil_layer_frame_get(gpl, frame, GP_GETFRAME_USE_PREV);
       if (gpf->framenum == frame)
         continue;
-      /* get the current state in current frame */
-      gpf = BKE_gpencil_layer_frame_get(gpl, frame, GP_GETFRAME_ADD_COPY);
+      /* get the current state in current frame (orig)*/
+      gpf = BKE_gpencil_layer_frame_get(gpl, frame, GP_GETFRAME_ADD_NEW);
+      /*eval*/
+      gpl_eval = BLI_rfindlink(&gpd_eval->layers, l);
+      gpf_eval = BKE_gpencil_layer_frame_get(gpl_eval, frame, GP_GETFRAME_USE_PREV);
       /*All the properties of the second frame were copied; including the changed color!
-      Let's set it back to normal, cuz the baked frame must not be or appear bound.*/
-      gpf->key_type = BEZT_KEYTYPE_KEYFRAME;
-      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes)
+      Let's set it back to normal, cuz the baked frame must not be or appear bound.
+      gpf->key_type = BEZT_KEYTYPE_KEYFRAME;*/
+      LISTBASE_FOREACH (bGPDstroke *, gps, &gpf_eval->strokes)
       {
-        mti->deformStroke(md, depsgraph, ob, gpl, gpf, gps);
+        gps_new = BKE_gpencil_stroke_duplicate(gps, true, true);
+        BLI_addtail(&gpf->strokes, gps_new);
+        //mti->deformStroke(md, depsgraph, ob, gpl, gpf, gps);
       }
+      l++;
+      rollback_lframes_a(smd_orig, smd_orig->layers);
     }
+    rollback_layers_a(smd_orig);
   }
-  smd_orig->flags &= ~GP_MOD_SDEF_WITHHOLD_EVALUATION;
+
+  DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION | ID_RECALC_COPY_ON_WRITE);
   return OPERATOR_FINISHED;
 }
 
@@ -2199,9 +2215,11 @@ static int gpsurdef_fill_range(bContext *C, wmOperator *op)
 
 static int gpencil_surfacedeform_bake_exec(bContext *C, wmOperator *op)
 {
- /* set notifier that keyframe properties have changed */
-  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME_PROP, NULL);
-
+  Object *ob = ED_object_active_context(C);
+  /* set notifiers */
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, ob);
+  WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+  
   return bake_frames(C, op);
 }
 

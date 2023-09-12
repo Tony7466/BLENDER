@@ -553,20 +553,6 @@ static void surfacedeformModifier_do(GpencilModifierData *md,
     return;
   }
 
-  
-  
-  
-  /*Check only one time. Once the evaluation is over, the flag data will be copied again from 
-  the original modifier, so the flag will hopefully became 0 again on its own.
-  smd->bound_flags = smd_orig->bound_flags;
-  if (!(smd->flags & GP_MOD_SDEF_CHECKED))
-  {
-    check_bind_situation(smd, depsgraph, DEG_get_evaluated_scene(depsgraph), ob);
-    smd->flags |= GP_MOD_SDEF_CHECKED;
-  }*/
- 
-
-
   Object *ob_target = DEG_get_evaluated_object(depsgraph, smd->target);
   target = BKE_modifier_get_evaluated_mesh_from_evaluated_object(ob_target);
 
@@ -1059,6 +1045,9 @@ static void bake_panel_draw(const bContext *(C), Panel *panel)
               WM_OP_INVOKE_DEFAULT,
               0,
               NULL);
+
+  row = uiLayoutRow(col, true);
+  uiItemL(row, "Note that baked frames are unbound. Please bind the freshly baked frame if desired", ICON_INFO);
 
   gpencil_modifier_panel_end(layout, ptr);
 
