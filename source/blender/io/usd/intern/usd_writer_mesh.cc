@@ -123,6 +123,17 @@ void USDGenericMeshWriter::write_custom_data(const Object *obj,
           return true;
         }
 
+        if ((usd_export_context_.export_params.export_armatures ||
+             usd_export_context_.export_params.export_shapekeys) &&
+            attribute_id.name().rfind("skel:") == 0)
+        {
+          /* If we're exporting armatures ot shape keys to UsdSkel, we skip any
+           * attributes that have names with the "skel:" namespace, to avoid possible
+           * conflicts. Such attribute might have been previously imported into Blender
+           * from USD, but can no longer be considered valid. */
+          return true;
+        }
+
         if (usd_export_context_.export_params.export_armatures &&
             is_armature_modifier_bone_name(obj, attribute_id.name().data()))
         {
