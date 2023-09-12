@@ -53,7 +53,7 @@ class DenoiserGPU : public Denoiser {
    * If the GPU denoiser descriptor did re-allocate here it is left unconfigured. */
   virtual bool denoise_create_if_needed(DenoiseContext &context) = 0;
 
-  /* Configure existing OptiX denoiser descriptor for the use for the given task. */
+  /* Configure existing GPU denoiser descriptor for the use for the given task. */
   virtual bool denoise_configure_if_needed(DenoiseContext &context) = 0;
 
   /* Read input color pass from the render buffer into the memory which corresponds to the noisy
@@ -68,7 +68,7 @@ class DenoiserGPU : public Denoiser {
   bool denoise_filter_guiding_set_fake_albedo(const DenoiseContext &context);
 
   /* Read guiding passes from the render buffers, preprocess them in a way which is expected by
-   * OptiX and store in the guiding passes memory within the given context.
+   * the GPU denoiser and store in the guiding passes memory within the given context.
    *
    * Pre-processing of the guiding passes is to only happen once per context lifetime. DO not
    * preprocess them for every pass which is being denoised. */
