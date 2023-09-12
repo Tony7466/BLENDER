@@ -583,10 +583,10 @@ GeometryBuilder &GeometryBuilder::supported_type(
     blender::Vector<bke::GeometryComponent::Type> supported_types)
 {
   if (decl_in_) {
-    decl_in_->supported_types_ = std::move(supported_types);
+    decl_in_->supported_types_ = supported_types;
   }
   if (decl_out_) {
-    decl_out_->supported_types_ = std::move(supported_types);
+    decl_out_->supported_types_ = supported_types;
   }
   return *this;
 }
