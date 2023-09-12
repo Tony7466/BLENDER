@@ -2055,7 +2055,7 @@ static void write_drawing_array(GreasePencil &grease_pencil, BlendWriter *writer
     switch (drawing_base->type) {
       case GP_DRAWING: {
         GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base);
-        blender::bke::CurvesGeometry::BlendWriteData write_data =
+        bke::CurvesGeometry::BlendWriteData write_data =
             drawing->wrap().strokes_for_write().blend_write_prepare();
         BLO_write_struct(writer, GreasePencilDrawing, drawing);
         drawing->wrap().strokes_for_write().blend_write(*writer, grease_pencil.id, write_data);
