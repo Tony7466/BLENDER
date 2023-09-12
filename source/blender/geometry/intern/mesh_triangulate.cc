@@ -623,16 +623,10 @@ std::optional<Mesh *> mesh_triangulate(
   /* Edges and corner edges from unselected faces and already-trianguated faces are
    * unaffected and are copied to the result mesh like other generic attributes. */
   edges.take_front(src_edges.size()).copy_from(src_edges);
-  array_utils::gather_group_to_group(src_faces,
-                                     faces.slice(unselected_range),
-                                     unselected,
-                                     src_corner_edges,
-                                     corner_edges.slice(unselected_corners));
-  array_utils::gather_group_to_group(src_faces,
-                                     faces.slice(copy_tris_range),
-                                     copy_tris,
-                                     src_corner_edges,
-                                     corner_edges.slice(copy_tri_corners));
+  array_utils::gather_group_to_group(
+      src_faces, faces.slice(unselected_range), unselected, src_corner_edges, corner_edges);
+  array_utils::gather_group_to_group(
+      src_faces, faces.slice(copy_tris_range), copy_tris, src_corner_edges, corner_edges);
 
   src_attributes.for_all(
       [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
@@ -668,16 +662,10 @@ std::optional<Mesh *> mesh_triangulate(
             break;
           }
           case ATTR_DOMAIN_CORNER: {
-            bke::attribute_math::gather_group_to_group(src_faces,
-                                                       faces.slice(unselected_range),
-                                                       unselected,
-                                                       src,
-                                                       dst.span.slice(unselected_corners));
-            bke::attribute_math::gather_group_to_group(src_faces,
-                                                       faces.slice(copy_tris_range),
-                                                       copy_tris,
-                                                       src,
-                                                       dst.span.slice(copy_tri_corners));
+            bke::attribute_math::gather_group_to_group(
+                src_faces, faces.slice(unselected_range), unselected, src, dst.span);
+            bke::attribute_math::gather_group_to_group(
+                src_faces, faces.slice(copy_tris_range), copy_tris, src, dst.span);
             bke::attribute_math::gather(src, corner_map.as_span(), dst.span.slice(tri_corners));
             break;
           }
