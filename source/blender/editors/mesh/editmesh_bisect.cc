@@ -425,23 +425,17 @@ void MESH_OT_bisect(wmOperatorType *ot)
                                   "plane_co",
                                   3,
                                   nullptr,
-                                  -1e12f,
-                                  1e12f,
                                   "Plane Point",
                                   "A point on the plane",
-                                  -1e4f,
-                                  1e4f);
+                                  {{-1e12f, 1e12f}, {-1e4f, 1e4f}});
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   prop = RNA_def_float_vector(ot->srna,
                               "plane_no",
                               3,
                               nullptr,
-                              -1.0f,
-                              1.0f,
                               "Plane Normal",
                               "The direction the plane points",
-                              -1.0f,
-                              1.0f);
+                              {{-1.0f, 1.0f}, {-1.0f, 1.0f}});
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   prop = RNA_def_boolean(ot->srna, "use_fill", false, "Fill", "Fill in the cut");
@@ -455,12 +449,9 @@ void MESH_OT_bisect(wmOperatorType *ot)
   prop = RNA_def_float(ot->srna,
                        "threshold",
                        0.0001,
-                       0.0,
-                       10.0,
                        "Axis Threshold",
                        "Preserves the existing geometry along the cut plane",
-                       0.00001,
-                       0.1);
+                       {{0.0, 10.0}, {0.00001, 0.1}});
   /* Without higher precision, the default value displays as zero. */
   RNA_def_property_ui_range(prop, 0.0, 10.0, 0.01, 5);
 

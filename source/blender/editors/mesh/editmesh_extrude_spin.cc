@@ -188,7 +188,7 @@ void MESH_OT_spin(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* props */
-  RNA_def_int(ot->srna, "steps", 12, 0, 1000000, "Steps", "Steps", 0, 1000);
+  RNA_def_int(ot->srna, "steps", 12, "Steps", "Steps", {{0, 1000000}, {0, 1000}});
 
   prop = RNA_def_boolean(ot->srna, "dupli", false, "Use Duplicates", "");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
@@ -196,12 +196,9 @@ void MESH_OT_spin(wmOperatorType *ot)
   prop = RNA_def_float(ot->srna,
                        "angle",
                        DEG2RADF(90.0f),
-                       -1e12f,
-                       1e12f,
                        "Angle",
                        "Rotation for each step",
-                       DEG2RADF(-360.0f),
-                       DEG2RADF(360.0f));
+                       {{-1e12f, 1e12f}, {DEG2RADF(-360.0f), DEG2RADF(360.0f)}});
   RNA_def_property_subtype(prop, PROP_ANGLE);
   RNA_def_boolean(ot->srna,
                   "use_auto_merge",
@@ -214,14 +211,16 @@ void MESH_OT_spin(wmOperatorType *ot)
                            "center",
                            3,
                            nullptr,
-                           -1e12f,
-                           1e12f,
                            "Center",
                            "Center in global view space",
-                           -1e4f,
-                           1e4f);
-  RNA_def_float_vector(
-      ot->srna, "axis", 3, nullptr, -1.0f, 1.0f, "Axis", "Axis in global view space", -1.0f, 1.0f);
+                           {{-1e12f, 1e12f}, {-1e4f, 1e4f}});
+  RNA_def_float_vector(ot->srna,
+                       "axis",
+                       3,
+                       nullptr,
+                       "Axis",
+                       "Axis in global view space",
+                       {{-1.0f, 1.0f}, {-1.0f, 1.0f}});
 
   WM_gizmogrouptype_append(MESH_GGT_spin);
 #ifdef USE_GIZMO

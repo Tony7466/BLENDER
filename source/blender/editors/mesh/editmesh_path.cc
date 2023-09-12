@@ -840,7 +840,7 @@ void MESH_OT_shortest_path_pick(wmOperatorType *ot)
   path_select_properties(ot);
 
   /* use for redo */
-  prop = RNA_def_int(ot->srna, "index", -1, -1, INT_MAX, "", "", 0, INT_MAX);
+  prop = RNA_def_int(ot->srna, "index", -1, "", "", {{-1, INT_MAX}, {0, INT_MAX}});
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }
 

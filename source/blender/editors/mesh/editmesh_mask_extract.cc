@@ -315,12 +315,9 @@ static void geometry_extract_props(StructRNA *srna)
   RNA_def_int(srna,
               "smooth_iterations",
               4,
-              0,
-              INT_MAX,
               "Smooth Iterations",
               "Smooth iterations applied to the extracted mesh",
-              0,
-              20);
+              {{0, INT_MAX}, {0, 20}});
   RNA_def_boolean(srna,
                   "apply_shrinkwrap",
                   true,
@@ -351,12 +348,9 @@ void MESH_OT_paint_mask_extract(wmOperatorType *ot)
       ot->srna,
       "mask_threshold",
       0.5f,
-      0.0f,
-      1.0f,
       "Threshold",
       "Minimum mask value to consider the vertex valid to extract a face from the original mesh",
-      0.0f,
-      1.0f);
+      {{0.0f, 1.0f}, {0.0f, 1.0f}});
 
   geometry_extract_props(ot->srna);
 }
@@ -558,12 +552,9 @@ void MESH_OT_paint_mask_slice(wmOperatorType *ot)
       ot->srna,
       "mask_threshold",
       0.5f,
-      0.0f,
-      1.0f,
       "Threshold",
       "Minimum mask value to consider the vertex valid to extract a face from the original mesh",
-      0.0f,
-      1.0f);
+      {{0.0f, 1.0f}, {0.0f, 1.0f}});
   prop = RNA_def_boolean(
       ot->srna, "fill_holes", true, "Fill Holes", "Fill holes after slicing the mask");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);

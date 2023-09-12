@@ -1093,22 +1093,16 @@ void MESH_OT_bevel(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "segments",
               1,
-              1,
-              SEGMENTS_HARD_MAX,
               "Segments",
               "Segments for curved edge",
-              1,
-              100);
+              {{1, SEGMENTS_HARD_MAX}, {1, 100}});
 
   RNA_def_float(ot->srna,
                 "profile",
                 0.5f,
-                PROFILE_HARD_MIN,
-                1.0f,
                 "Profile",
                 "Controls profile shape (0.5 = round)",
-                PROFILE_HARD_MIN,
-                1.0f);
+                {{PROFILE_HARD_MIN, 1.0f}, {PROFILE_HARD_MIN, 1.0f}});
 
   RNA_def_enum(ot->srna,
                "affect",
@@ -1133,12 +1127,9 @@ void MESH_OT_bevel(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "material",
               -1,
-              -1,
-              INT_MAX,
               "Material Index",
               "Material for bevel faces (-1 means use adjacent faces)",
-              -1,
-              100);
+              {{-1, INT_MAX}, {-1, 100}});
 
   RNA_def_boolean(ot->srna,
                   "harden_normals",
@@ -1170,12 +1161,9 @@ void MESH_OT_bevel(wmOperatorType *ot)
   RNA_def_float(ot->srna,
                 "spread",
                 0.1f,
-                0.0f,
-                1e6f,
                 "Spread",
                 "Amount to spread arcs for arc inner miters",
-                0.0f,
-                100.0f);
+                {{0.0f, 1e6f}, {0.0f, 100.0f}});
 
   RNA_def_enum(ot->srna,
                "vmesh_method",

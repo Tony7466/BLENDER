@@ -3763,9 +3763,9 @@ void MESH_OT_select_linked_pick(wmOperatorType *ot)
 #endif
 
   /* use for redo */
-  prop = RNA_def_int(ot->srna, "object_index", -1, -1, INT_MAX, "", "", 0, INT_MAX);
+  prop = RNA_def_int(ot->srna, "object_index", -1, "", "", {{-1, INT_MAX}, {0, INT_MAX}});
   RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN | PROP_SKIP_SAVE));
-  prop = RNA_def_int(ot->srna, "index", -1, -1, INT_MAX, "", "", 0, INT_MAX);
+  prop = RNA_def_int(ot->srna, "index", -1, "", "", {{-1, INT_MAX}, {0, INT_MAX}});
   RNA_def_property_flag(prop, PropertyFlag(PROP_HIDDEN | PROP_SKIP_SAVE));
 }
 
@@ -3856,7 +3856,7 @@ void MESH_OT_select_face_by_sides(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  RNA_def_int(ot->srna, "number", 4, 3, INT_MAX, "Number of Vertices", "", 3, INT_MAX);
+  RNA_def_int(ot->srna, "number", 4, "Number of Vertices", "", {{3, INT_MAX}, {3, INT_MAX}});
   RNA_def_enum(ot->srna, "type", type_items, 1, "Type", "Type of comparison to make");
   RNA_def_boolean(ot->srna, "extend", true, "Extend", "Extend the selection");
 }
@@ -4466,16 +4466,14 @@ void MESH_OT_edges_select_sharp(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* props */
-  prop = RNA_def_float_rotation(ot->srna,
-                                "sharpness",
-                                0,
-                                nullptr,
-                                DEG2RADF(0.01f),
-                                DEG2RADF(180.0f),
-                                "Sharpness",
-                                "",
-                                DEG2RADF(1.0f),
-                                DEG2RADF(180.0f));
+  prop = RNA_def_float_rotation(
+      ot->srna,
+      "sharpness",
+      0,
+      nullptr,
+      "Sharpness",
+      "",
+      {{DEG2RADF(0.01f), DEG2RADF(180.0f)}, {DEG2RADF(1.0f), DEG2RADF(180.0f)}});
   RNA_def_property_float_default(prop, DEG2RADF(30.0f));
 }
 
@@ -4569,16 +4567,14 @@ void MESH_OT_faces_select_linked_flat(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* props */
-  prop = RNA_def_float_rotation(ot->srna,
-                                "sharpness",
-                                0,
-                                nullptr,
-                                DEG2RADF(0.01f),
-                                DEG2RADF(180.0f),
-                                "Sharpness",
-                                "",
-                                DEG2RADF(1.0f),
-                                DEG2RADF(180.0f));
+  prop = RNA_def_float_rotation(
+      ot->srna,
+      "sharpness",
+      0,
+      nullptr,
+      "Sharpness",
+      "",
+      {{DEG2RADF(0.01f), DEG2RADF(180.0f)}, {DEG2RADF(1.0f), DEG2RADF(180.0f)}});
   RNA_def_property_float_default(prop, DEG2RADF(1.0f));
 }
 
@@ -5053,7 +5049,7 @@ void MESH_OT_select_axis(wmOperatorType *ot)
                "Axis",
                "Select the axis to compare each vertex on");
   RNA_def_float(
-      ot->srna, "threshold", 0.0001f, 0.000001f, 50.0f, "Threshold", "", 0.00001f, 10.0f);
+      ot->srna, "threshold", 0.0001f, "Threshold", "", {{0.000001f, 50.0f}, {0.00001f, 10.0f}});
 }
 
 /** \} */

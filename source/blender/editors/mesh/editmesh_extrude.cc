@@ -339,14 +339,12 @@ void MESH_OT_extrude_repeat(wmOperatorType *ot)
                                                "offset",
                                                3,
                                                nullptr,
-                                               -100000,
-                                               100000,
                                                "Offset",
                                                "Offset vector",
-                                               -1000.0f,
-                                               1000.0f);
+                                               {{-100000, 100000}, {-1000.0f, 1000.0f}});
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-  RNA_def_float(ot->srna, "scale_offset", 1.0f, 0.0f, 1e12f, "Scale Offset", "", 0.0f, 100.0f);
+  RNA_def_float(
+      ot->srna, "scale_offset", 1.0f, "Scale Offset", "", {{0.0f, 1e12f}, {0.0f, 100.0f}});
 }
 
 /** \} */

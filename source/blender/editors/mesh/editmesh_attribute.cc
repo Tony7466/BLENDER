@@ -387,51 +387,40 @@ void MESH_OT_attribute_set(wmOperatorType *ot)
 
   static blender::float4 color_default(1);
 
-  RNA_def_float(ot->srna, "value_float", 0.0f, -FLT_MAX, FLT_MAX, "Value", "", -FLT_MAX, FLT_MAX);
+  RNA_def_float(
+      ot->srna, "value_float", 0.0f, "Value", "", {{-FLT_MAX, FLT_MAX}, {-FLT_MAX, FLT_MAX}});
   RNA_def_float_array(ot->srna,
                       "value_float_vector_2d",
                       2,
                       nullptr,
-                      -FLT_MAX,
-                      FLT_MAX,
                       "Value",
                       "",
-                      -FLT_MAX,
-                      FLT_MAX);
+                      {{-FLT_MAX, FLT_MAX}, {-FLT_MAX, FLT_MAX}});
   RNA_def_float_array(ot->srna,
                       "value_float_vector_3d",
                       3,
                       nullptr,
-                      -FLT_MAX,
-                      FLT_MAX,
                       "Value",
                       "",
-                      -FLT_MAX,
-                      FLT_MAX);
-  RNA_def_int(ot->srna, "value_int", 0, INT_MIN, INT_MAX, "Value", "", INT_MIN, INT_MAX);
+                      {{-FLT_MAX, FLT_MAX}, {-FLT_MAX, FLT_MAX}});
+  RNA_def_int(ot->srna, "value_int", 0, "Value", "", {{INT_MIN, INT_MAX}, {INT_MIN, INT_MAX}});
   RNA_def_int_array(ot->srna,
                     "value_int_vector_2d",
                     2,
                     nullptr,
-                    INT_MIN,
-                    INT_MAX,
                     "Value",
                     "",
-                    INT_MIN,
-                    INT_MAX);
+                    {{INT_MIN, INT_MAX}, {INT_MIN, INT_MAX}});
   RNA_def_float_color(
-      ot->srna, "value_color", 4, color_default, -FLT_MAX, FLT_MAX, "Value", "", 0.0f, 1.0f);
+      ot->srna, "value_color", 4, color_default, "Value", "", {{-FLT_MAX, FLT_MAX}, {0.0f, 1.0f}});
   RNA_def_boolean(ot->srna, "value_bool", false, "Value", "");
   RNA_def_float_array(ot->srna,
                       "value_quat",
                       4,
                       rna_default_quaternion,
-                      -FLT_MAX,
-                      FLT_MAX,
                       "Value",
                       "",
-                      FLT_MAX,
-                      FLT_MAX);
+                      {{-FLT_MAX, FLT_MAX}, {FLT_MAX, FLT_MAX}});
 }
 
 /** \} */

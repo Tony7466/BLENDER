@@ -314,7 +314,7 @@ void MESH_OT_intersect(wmOperatorType *ot)
   RNA_def_enum(
       ot->srna, "separate_mode", isect_separate_items, ISECT_SEPARATE_CUT, "Separate Mode", "");
   RNA_def_float_distance(
-      ot->srna, "threshold", 0.000001f, 0.0, 0.01, "Merge Threshold", "", 0.0, 0.001);
+      ot->srna, "threshold", 0.000001f, "Merge Threshold", "", {{0.0, 0.01}, {0.0, 0.001}});
   RNA_def_enum(ot->srna,
                "solver",
                isect_intersect_solver_items,
@@ -474,7 +474,7 @@ void MESH_OT_intersect_boolean(wmOperatorType *ot)
   RNA_def_boolean(
       ot->srna, "use_self", false, "Self Intersection", "Do self-union or self-intersection");
   RNA_def_float_distance(
-      ot->srna, "threshold", 0.000001f, 0.0, 0.01, "Merge Threshold", "", 0.0, 0.001);
+      ot->srna, "threshold", 0.000001f, "Merge Threshold", "", {{0.0, 0.01}, {0.0, 0.001}});
   RNA_def_enum(ot->srna,
                "solver",
                isect_boolean_solver_items,

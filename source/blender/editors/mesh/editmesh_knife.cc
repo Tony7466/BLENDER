@@ -4938,12 +4938,18 @@ void MESH_OT_knife_tool(wmOperatorType *ot)
   prop = RNA_def_float(ot->srna,
                        "angle_snapping_increment",
                        DEG2RADF(KNIFE_DEFAULT_ANGLE_SNAPPING_INCREMENT),
-                       DEG2RADF(KNIFE_MIN_ANGLE_SNAPPING_INCREMENT),
-                       DEG2RADF(KNIFE_MAX_ANGLE_SNAPPING_INCREMENT),
                        "Angle Snap Increment",
                        "The angle snap increment used when in constrained angle mode",
-                       DEG2RADF(KNIFE_MIN_ANGLE_SNAPPING_INCREMENT),
-                       DEG2RADF(KNIFE_MAX_ANGLE_SNAPPING_INCREMENT));
+                       {
+                           {
+                               DEG2RADF(KNIFE_MIN_ANGLE_SNAPPING_INCREMENT),
+                               DEG2RADF(KNIFE_MAX_ANGLE_SNAPPING_INCREMENT),
+                           },
+                           {
+                               DEG2RADF(KNIFE_MIN_ANGLE_SNAPPING_INCREMENT),
+                               DEG2RADF(KNIFE_MAX_ANGLE_SNAPPING_INCREMENT),
+                           },
+                       });
   RNA_def_property_subtype(prop, PROP_ANGLE);
 
   prop = RNA_def_boolean(ot->srna, "wait_for_input", true, "Wait for Input", "");

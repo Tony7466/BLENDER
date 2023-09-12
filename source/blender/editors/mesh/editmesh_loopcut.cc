@@ -743,7 +743,7 @@ void MESH_OT_loopcut(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;
 
   /* properties */
-  prop = RNA_def_int(ot->srna, "number_cuts", 1, 1, 1000000, "Number of Cuts", "", 1, 100);
+  prop = RNA_def_int(ot->srna, "number_cuts", 1, "Number of Cuts", "", {{1, 1000000}, {1, 100}});
   /* avoid re-using last var because it can cause
    * _very_ high poly meshes and annoy users (or worse crash) */
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
@@ -751,12 +751,9 @@ void MESH_OT_loopcut(wmOperatorType *ot)
   prop = RNA_def_float(ot->srna,
                        "smoothness",
                        0.0f,
-                       -1e3f,
-                       1e3f,
                        "Smoothness",
                        "Smoothness factor",
-                       -SUBD_SMOOTH_MAX,
-                       SUBD_SMOOTH_MAX);
+                       {{-1e3f, 1e3f}, {-SUBD_SMOOTH_MAX, SUBD_SMOOTH_MAX}});
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   WM_operatortype_props_advanced_begin(ot);
@@ -769,10 +766,11 @@ void MESH_OT_loopcut(wmOperatorType *ot)
                                        BLT_I18NCONTEXT_ID_CURVE_LEGACY); /* Abusing id_curve :/ */
 
   /* For redo only. */
-  prop = RNA_def_int(ot->srna, "object_index", -1, -1, INT_MAX, "Object Index", "", 0, INT_MAX);
+  prop = RNA_def_int(
+      ot->srna, "object_index", -1, "Object Index", "", {{-1, INT_MAX}, {0, INT_MAX}});
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_MESH);
   RNA_def_property_flag(prop, PROP_HIDDEN);
-  prop = RNA_def_int(ot->srna, "edge_index", -1, -1, INT_MAX, "Edge Index", "", 0, INT_MAX);
+  prop = RNA_def_int(ot->srna, "edge_index", -1, "Edge Index", "", {{-1, INT_MAX}, {0, INT_MAX}});
   RNA_def_property_flag(prop, PROP_HIDDEN);
 
 #ifdef USE_LOOPSLIDE_HACK

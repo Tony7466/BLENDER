@@ -603,12 +603,12 @@ void MESH_OT_inset(wmOperatorType *ot)
       ot->srna, "use_edge_rail", false, "Edge Rail", "Inset the region along existing edges");
 
   prop = RNA_def_float_distance(
-      ot->srna, "thickness", 0.0f, 0.0f, 1e12f, "Thickness", "", 0.0f, 10.0f);
+      ot->srna, "thickness", 0.0f, "Thickness", "", {{0.0f, 1e12f}, {0.0f, 10.0f}});
   /* use 1 rather than 10 for max else dragging the button moves too far */
   RNA_def_property_ui_range(prop, 0.0, 1.0, 0.01, 4);
 
   prop = RNA_def_float_distance(
-      ot->srna, "depth", 0.0f, -1e12f, 1e12f, "Depth", "", -10.0f, 10.0f);
+      ot->srna, "depth", 0.0f, "Depth", "", {{-1e12f, 1e12f}, {-10.0f, 10.0f}});
   RNA_def_property_ui_range(prop, -10.0f, 10.0f, 0.01, 4);
 
   RNA_def_boolean(ot->srna, "use_outset", false, "Outset", "Outset rather than inset");
