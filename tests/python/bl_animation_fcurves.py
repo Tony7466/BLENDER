@@ -152,6 +152,89 @@ class EulerFilterTest(AbstractAnimationTest, unittest.TestCase):
         ob = bpy.context.view_layer.objects.active
         action = ob.animation_data.action
         return [action.fcurves.find('rotation_euler', index=idx) for idx in range(3)]
+    
+
+class KeyframeInsertTest(AbstractAnimationTest, unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        bpy.ops.wm.read_homefile()
+
+
+    def test_keyframe_insertion_basic(self):
+        bpy.ops.mesh.primitive_monkey_add()
+        key_count = 100
+        with bpy.context.temp_override(**self.get_context()):
+            for frame in range(key_count):
+                bpy.context.scene.frame_set(frame)
+                bpy.ops.anim.keyframe_insert_by_name(type="Location")
+
+        key_object = bpy.context.active_object
+        for key_index in range(key_count):
+            key = key_object.animation_data.action.fcurves[0].keyframe_points[key_index]
+            self.assertEqual(key.co.x, key_index)
+        
+        bpy.ops.object.delete(use_global=False)
+
+    def test_keyframe_insertion_high_frame_number(self):
+        bpy.ops.mesh.primitive_monkey_add()
+        key_count = 100
+        frame_offset = 1000000
+        with bpy.context.temp_override(**self.get_context()):
+            for frame in range(key_count):
+                bpy.context.scene.frame_set(frame + frame_offset)
+                bpy.ops.anim.keyframe_insert_by_name(type="Location")
+
+        key_object = bpy.context.active_object
+        for key_index in range(key_count):
+            key = key_object.animation_data.action.fcurves[0].keyframe_points[key_index]
+            self.assertEqual(key.co.x, key_index+frame_offset)
+        
+        bpy.ops.object.delete(use_global=False)
+
+    def test_keyframe_insertion_subframes_basic(self):
+        bpy.ops.mesh.primitive_monkey_add()
+        key_count = 50
+        with bpy.context.temp_override(**self.get_context()):
+            for i in range(key_count):
+                bpy.context.scene.frame_set(0, subframe=i/key_count)
+                bpy.ops.anim.keyframe_insert_by_name(type="Location")
+
+        key_object = bpy.context.active_object
+        for key_index in range(key_count):
+            key = key_object.animation_data.action.fcurves[0].keyframe_points[key_index]
+            self.assertAlmostEqual(key.co.x, key_index/key_count)
+        
+        bpy.ops.object.delete(use_global=False)
+
+    def test_keyframe_insertion_subframes_high_frame_number(self):
+        bpy.ops.mesh.primitive_monkey_add()
+        key_count = 50
+        frame_offset = 1000000
+        with bpy.context.temp_override(**self.get_context()):
+            for i in range(key_count):
+                bpy.context.scene.frame_set(frame_offset, subframe=i/key_count)
+                bpy.ops.anim.keyframe_insert_by_name(type="Location")
+
+        key_object = bpy.context.active_object
+        for key_index in range(key_count):
+            key = key_object.animation_data.action.fcurves[0].keyframe_points[key_index]
+            self.assertAlmostEqual(key.co.x, key_index/key_count + frame_offset)
+        
+        bpy.ops.object.delete(use_global=False)
+
+    @staticmethod
+    def get_context():
+        ctx = bpy.context.copy()
+
+        for area in bpy.context.window.screen.areas:
+            if area.type != 'VIEW_3D':
+                continue
+
+            ctx['area'] = area
+            ctx['space'] = area.spaces.active
+            break
+
+        return ctx
 
 
 def main():
