@@ -21,7 +21,8 @@ namespace blender::nodes::node_composite_map_range_cc {
 
 static void cmp_node_map_range_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Float>("Value")
+  b.use_custom_socket_order();
+  b.add_input_output<decl::Float>("Value")
       .default_value(1.0f)
       .min(0.0f)
       .max(1.0f)
@@ -46,7 +47,6 @@ static void cmp_node_map_range_declare(NodeDeclarationBuilder &b)
       .min(-10000.0f)
       .max(10000.0f)
       .compositor_domain_priority(4);
-  b.add_output<decl::Float>("Value");
 }
 
 static void node_composit_buts_map_range(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)

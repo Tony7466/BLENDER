@@ -209,18 +209,18 @@ namespace blender::nodes::node_composite_rgb_curves_cc {
 
 static void cmp_node_rgbcurves_declare(NodeDeclarationBuilder &b)
 {
+  b.use_custom_socket_order();
+  b.add_input_output<decl::Color>("Image")
+      .default_value({1.0f, 1.0f, 1.0f, 1.0f})
+      .compositor_domain_priority(0);
   b.add_input<decl::Float>("Fac")
       .default_value(1.0f)
       .min(-1.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR)
       .compositor_domain_priority(1);
-  b.add_input<decl::Color>("Image")
-      .default_value({1.0f, 1.0f, 1.0f, 1.0f})
-      .compositor_domain_priority(0);
   b.add_input<decl::Color>("Black Level").default_value({0.0f, 0.0f, 0.0f, 1.0f});
   b.add_input<decl::Color>("White Level").default_value({1.0f, 1.0f, 1.0f, 1.0f});
-  b.add_output<decl::Color>("Image");
 }
 
 static void node_composit_init_curve_rgb(bNodeTree * /*ntree*/, bNode *node)

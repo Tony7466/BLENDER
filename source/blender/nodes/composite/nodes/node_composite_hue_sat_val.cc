@@ -18,7 +18,8 @@ namespace blender::nodes::node_composite_hue_sat_val_cc {
 
 static void cmp_node_huesatval_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>("Image")
+  b.use_custom_socket_order();
+  b.add_input_output<decl::Color>("Image")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0);
   b.add_input<decl::Float>("Hue")
@@ -46,7 +47,6 @@ static void cmp_node_huesatval_declare(NodeDeclarationBuilder &b)
       .max(1.0f)
       .subtype(PROP_FACTOR)
       .compositor_domain_priority(4);
-  b.add_output<decl::Color>("Image");
 }
 
 using namespace blender::realtime_compositor;

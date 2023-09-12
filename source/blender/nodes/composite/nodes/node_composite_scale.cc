@@ -27,7 +27,8 @@ namespace blender::nodes::node_composite_scale_cc {
 
 static void cmp_node_scale_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Color>("Image")
+  b.use_custom_socket_order();
+  b.add_input_output<decl::Color>("Image")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0);
   b.add_input<decl::Float>("X")
@@ -40,7 +41,6 @@ static void cmp_node_scale_declare(NodeDeclarationBuilder &b)
       .min(0.0001f)
       .max(CMP_SCALE_MAX)
       .compositor_expects_single_value();
-  b.add_output<decl::Color>("Image");
 }
 
 static void node_composite_update_scale(bNodeTree *ntree, bNode *node)
