@@ -5607,15 +5607,16 @@ static bool ui_numedit_but_SLI(uiBut *but,
   softmax = but->softmax;
   softrange = softmax - softmin;
 
-  if (but->type == UI_BTYPE_NUM_SLIDER && !use_continuous_grab) {
-    mx_fl = clamp_f(mx_fl, but->rect.xmin, but->rect.xmax);
+  if (but->type == UI_BTYPE_NUM_SLIDER) {
     cursor_x_range = BLI_rctf_size_x(&but->rect);
-    f = (mx_fl - but->rect.xmin) / cursor_x_range;
-  }
-  else if (but->type == UI_BTYPE_NUM_SLIDER) {
-    const float fac = ui_mouse_scale_warp_factor(shift);
-    cursor_x_range = BLI_rctf_size_x(&but->rect);
-    f = ((mx_fl - data->draglastx) / cursor_x_range) * fac + data->dragf;
+    if (use_continuous_grab) {
+      const float fac = ui_mouse_scale_warp_factor(shift);
+      f = ((mx_fl - data->draglastx) / cursor_x_range) * fac + data->dragf;
+    }
+    else {
+      mx_fl = clamp_f(mx_fl, but->rect.xmin, but->rect.xmax);
+      f = (mx_fl - but->rect.xmin) / cursor_x_range;
+    }
   }
   else if (but->type == UI_BTYPE_SCROLL) {
     const float size = (is_horizontal) ? BLI_rctf_size_x(&but->rect) :
