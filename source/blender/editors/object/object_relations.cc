@@ -70,6 +70,8 @@
 #include "BKE_mesh.hh"
 #include "BKE_modifier.h"
 #include "BKE_node.h"
+#include "BKE_node_runtime.hh"
+#include "BKE_node_tree_interface.hh"
 #include "BKE_object.h"
 #include "BKE_pointcloud.h"
 #include "BKE_report.h"
@@ -175,11 +177,11 @@ static int vertex_parent_set_exec(bContext *C, wmOperator *op)
   }
   else if (ELEM(obedit->type, OB_SURF, OB_CURVES_LEGACY)) {
     ListBase *editnurb = object_editcurve_get(obedit);
-
+    int curr_index = 0;
     for (Nurb *nu = static_cast<Nurb *>(editnurb->first); nu != nullptr; nu = nu->next) {
       if (nu->type == CU_BEZIER) {
         BezTriple *bezt = nu->bezt;
-        for (int curr_index = 0; curr_index < nu->pntsu; curr_index++, bezt++) {
+        for (int nurb_index = 0; nurb_index < nu->pntsu; nurb_index++, bezt++, curr_index++) {
           if (BEZT_ISSEL_ANY_HIDDENHANDLES(v3d, bezt)) {
             if (par1 == INDEX_UNSET) {
               par1 = curr_index;
@@ -202,7 +204,7 @@ static int vertex_parent_set_exec(bContext *C, wmOperator *op)
       else {
         BPoint *bp = nu->bp;
         const int num_points = nu->pntsu * nu->pntsv;
-        for (int curr_index = 0; curr_index < num_points; curr_index++, bp++) {
+        for (int nurb_index = 0; nurb_index < num_points; nurb_index++, bp++, curr_index++) {
           if (bp->f1 & SELECT) {
             if (par1 == INDEX_UNSET) {
               par1 = curr_index;
@@ -571,8 +573,8 @@ bool ED_object_parent_set(ReportList *reports,
     }
     case PAR_BONE:
     case PAR_BONE_RELATIVE:
-      pchan = BKE_pose_channel_active_if_layer_visible(par);
-      pchan_eval = BKE_pose_channel_active_if_layer_visible(parent_eval);
+      pchan = BKE_pose_channel_active_if_bonecoll_visible(par);
+      pchan_eval = BKE_pose_channel_active_if_bonecoll_visible(parent_eval);
 
       if (pchan == nullptr || pchan_eval == nullptr) {
         /* If pchan_eval is nullptr, pchan should also be nullptr. */
@@ -1655,7 +1657,7 @@ void OBJECT_OT_make_links_scene(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* properties */
-  prop = RNA_def_enum(ot->srna, "scene", DummyRNA_NULL_items, 0, "Scene", "");
+  prop = RNA_def_enum(ot->srna, "scene", rna_enum_dummy_NULL_items, 0, "Scene", "");
   RNA_def_enum_funcs(prop, RNA_scene_local_itemf);
   RNA_def_property_flag(prop, PROP_ENUM_NO_TRANSLATE);
   ot->prop = prop;
@@ -2964,23 +2966,32 @@ char *ED_object_ot_drop_geometry_nodes_tooltip(bContext *C,
 
 static bool check_geometry_node_group_sockets(wmOperator *op, const bNodeTree *tree)
 {
-  const bNodeSocket *first_input = (const bNodeSocket *)tree->inputs.first;
-  if (!first_input) {
-    BKE_report(op->reports, RPT_ERROR, "The node group must have a geometry input socket");
-    return false;
+  tree->ensure_topology_cache();
+  if (!tree->interface_inputs().is_empty()) {
+    const bNodeTreeInterfaceSocket *first_input = tree->interface_inputs()[0];
+    if (!first_input) {
+      BKE_report(op->reports, RPT_ERROR, "The node group must have a geometry input socket");
+      return false;
+    }
+    const bNodeSocketType *typeinfo = first_input->socket_typeinfo();
+    const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
+    if (type != SOCK_GEOMETRY) {
+      BKE_report(op->reports, RPT_ERROR, "The first input must be a geometry socket");
+      return false;
+    }
   }
-  if (first_input->type != SOCK_GEOMETRY) {
-    BKE_report(op->reports, RPT_ERROR, "The first input must be a geometry socket");
-    return false;
-  }
-  const bNodeSocket *first_output = (const bNodeSocket *)tree->outputs.first;
-  if (!first_output) {
-    BKE_report(op->reports, RPT_ERROR, "The node group must have a geometry output socket");
-    return false;
-  }
-  if (first_output->type != SOCK_GEOMETRY) {
-    BKE_report(op->reports, RPT_ERROR, "The first output must be a geometry socket");
-    return false;
+  if (!tree->interface_outputs().is_empty()) {
+    const bNodeTreeInterfaceSocket *first_output = tree->interface_outputs()[0];
+    if (!first_output) {
+      BKE_report(op->reports, RPT_ERROR, "The node group must have a geometry output socket");
+      return false;
+    }
+    const bNodeSocketType *typeinfo = first_output->socket_typeinfo();
+    const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
+    if (type != SOCK_GEOMETRY) {
+      BKE_report(op->reports, RPT_ERROR, "The first output must be a geometry socket");
+      return false;
+    }
   }
   return true;
 }
@@ -3016,6 +3027,10 @@ static int drop_geometry_nodes_invoke(bContext *C, wmOperator *op, const wmEvent
     return OPERATOR_CANCELLED;
   }
 
+  if (!RNA_boolean_get(op->ptr, "show_datablock_in_modifier")) {
+    nmd->flag |= NODES_MODIFIER_HIDE_DATABLOCK_SELECTOR;
+  }
+
   nmd->node_group = node_tree;
   id_us_plus(&node_tree->id);
   MOD_nodes_update_interface(ob, nmd);
@@ -3046,6 +3061,11 @@ void OBJECT_OT_drop_geometry_nodes(wmOperatorType *ot)
                                   INT32_MIN,
                                   INT32_MAX);
   RNA_def_property_flag(prop, (PropertyFlag)(PROP_HIDDEN | PROP_SKIP_SAVE));
+  RNA_def_boolean(ot->srna,
+                  "show_datablock_in_modifier",
+                  true,
+                  "Show the datablock selector in the modifier",
+                  "");
 }
 
 /** \} */

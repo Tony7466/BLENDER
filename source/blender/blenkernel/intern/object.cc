@@ -94,7 +94,6 @@
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_grease_pencil.hh"
-#include "BKE_icons.h"
 #include "BKE_idprop.h"
 #include "BKE_idtype.h"
 #include "BKE_image.h"
@@ -121,6 +120,7 @@
 #include "BKE_pointcache.h"
 #include "BKE_pointcloud.h"
 #include "BKE_pose_backup.h"
+#include "BKE_preview_image.hh"
 #include "BKE_rigidbody.h"
 #include "BKE_scene.h"
 #include "BKE_shader_fx.h"
@@ -136,7 +136,7 @@
 
 #include "DRW_engine.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 #include "BLO_readfile.h"
 
 #include "SEQ_sequencer.h"
@@ -892,23 +892,18 @@ static void object_blend_read_after_liblink(BlendLibReader *reader, ID *id)
   BlendFileReadReport *reports = BLO_read_lib_reports(reader);
 
   if (ob->data == nullptr && ob->type != OB_EMPTY) {
+    /* NOTE: This case is not expected to happen anymore, since in when a linked ID disappears, an
+     * empty placeholder is created for it by readfile code. Only some serious corruption of data
+     * should be able to trigger this code nowadays. */
+
     ob->type = OB_EMPTY;
 
     if (ob->pose) {
-      /* we can't call #BKE_pose_free() here because of library linking
-       * freeing will recurse down into every pose constraints ID pointers
-       * which are not always valid, so for now free directly and suffer
-       * some leaked memory rather than crashing immediately
-       * while bad this _is_ an exceptional case - campbell */
-      /* FIXME Since this code is now executed after _all_ ID pointers have been lib-linked, it
-       * should be safe to do it properly now. Further more, since user count of IDs is not done in
-       * readcode anymore, `BKE_pose_free_ex(ob->pose, false)` could be called instead, avoiding
-       * any access to other IDs altogether - Bastien. */
-#if 0
-      BKE_pose_free(ob->pose);
-#else
-      MEM_freeN(ob->pose);
-#endif
+      /* This code is now executed after _all_ ID pointers have been lib-linked,so it's safe to do
+       * a proper cleanup. Further more, since user count of IDs is not done in read-code anymore,
+       * `BKE_pose_free_ex(ob->pose, false)` can be called (instead of
+       * `BKE_pose_free_ex(ob->pose)`), avoiding any access to other IDs altogether. */
+      BKE_pose_free_ex(ob->pose, false);
       ob->pose = nullptr;
       ob->mode &= ~OB_MODE_POSE;
     }

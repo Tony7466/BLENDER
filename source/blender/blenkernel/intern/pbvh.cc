@@ -814,17 +814,11 @@ void BKE_pbvh_update_mesh_pointers(PBVH *pbvh, Mesh *mesh)
     pbvh->vert_positions = mesh->vert_positions_for_write();
   }
 
-  pbvh->hide_poly = static_cast<bool *>(CustomData_get_layer_named_for_write(
-      &mesh->face_data, CD_PROP_BOOL, ".hide_poly", mesh->faces_num));
-  pbvh->hide_vert = static_cast<bool *>(CustomData_get_layer_named_for_write(
-      &mesh->vert_data, CD_PROP_BOOL, ".hide_vert", mesh->totvert));
+  BKE_pbvh_update_hide_attributes_from_mesh(pbvh);
 
   /* Make sure cached normals start out calculated. */
-  mesh->vert_normals();
-  mesh->face_normals();
-
-  pbvh->vert_normals = mesh->runtime->vert_normals;
-  pbvh->face_normals = mesh->runtime->face_normals;
+  pbvh->vert_normals = mesh->vert_normals();
+  pbvh->face_normals = mesh->face_normals();
 
   pbvh->vert_data = &mesh->vert_data;
   pbvh->loop_data = &mesh->loop_data;
@@ -920,7 +914,7 @@ void BKE_pbvh_build_grids(PBVH *pbvh,
                           CCGElem **grids,
                           int totgrid,
                           CCGKey *key,
-                          void **gridfaces,
+                          blender::Span<int> grid_to_face_map,
                           DMFlagMat *flagmats,
                           BLI_bitmap **grid_hidden,
                           Mesh *me,
@@ -930,7 +924,7 @@ void BKE_pbvh_build_grids(PBVH *pbvh,
 
   pbvh->header.type = PBVH_GRIDS;
   pbvh->grids = grids;
-  pbvh->gridfaces = gridfaces;
+  pbvh->grid_to_face_map = grid_to_face_map;
   pbvh->grid_flag_mats = flagmats;
   pbvh->totgrid = totgrid;
   pbvh->gridkey = *key;
@@ -1322,13 +1316,13 @@ static void pbvh_faces_update_normals(PBVH *pbvh, Span<PBVHNode *> nodes, Mesh &
   VectorSet<int> verts_to_update;
   threading::parallel_invoke(
       [&]() {
-        MutableSpan<float3> face_normals = mesh.runtime->face_normals;
-        threading::parallel_for(faces_to_update.index_range(), 512, [&](const IndexRange range) {
-          for (const int i : faces_to_update.as_span().slice(range)) {
-            face_normals[i] = mesh::face_normal_calc(positions, corner_verts.slice(faces[i]));
-          }
+        mesh.runtime->face_normals_cache.update([&](Vector<float3> &r_data) {
+          threading::parallel_for(faces_to_update.index_range(), 512, [&](const IndexRange range) {
+            for (const int i : faces_to_update.as_span().slice(range)) {
+              r_data[i] = mesh::face_normal_calc(positions, corner_verts.slice(faces[i]));
+            }
+          });
         });
-        mesh.runtime->face_normals_dirty = false;
       },
       [&]() {
         /* Update all normals connected to affected faces, even if not explicitly tagged. */
@@ -1345,18 +1339,22 @@ static void pbvh_faces_update_normals(PBVH *pbvh, Span<PBVHNode *> nodes, Mesh &
         }
       });
 
-  const Span<float3> face_normals = mesh.runtime->face_normals;
-  MutableSpan<float3> vert_normals = mesh.runtime->vert_normals;
-  threading::parallel_for(verts_to_update.index_range(), 1024, [&](const IndexRange range) {
-    for (const int vert : verts_to_update.as_span().slice(range)) {
-      float3 normal(0.0f);
-      for (const int face : pbvh->pmap[vert]) {
-        normal += face_normals[face];
+  const Span<float3> face_normals = mesh.face_normals();
+  mesh.runtime->vert_normals_cache.update([&](Vector<float3> &r_data) {
+    threading::parallel_for(verts_to_update.index_range(), 1024, [&](const IndexRange range) {
+      for (const int vert : verts_to_update.as_span().slice(range)) {
+        float3 normal(0.0f);
+        for (const int face : pbvh->pmap[vert]) {
+          normal += face_normals[face];
+        }
+        r_data[vert] = math::normalize(normal);
       }
-      vert_normals[vert] = math::normalize(normal);
-    }
+    });
   });
-  mesh.runtime->vert_normals_dirty = false;
+
+  /* #SharedCache::update() reallocates the cached vectors if they were shared initially. */
+  pbvh->face_normals = mesh.runtime->face_normals_cache.data();
+  pbvh->vert_normals = mesh.runtime->vert_normals_cache.data();
 }
 
 static void node_update_mask_redraw(PBVH &pbvh, PBVHNode &node)
@@ -1387,26 +1385,6 @@ static void node_update_mask_redraw(PBVH &pbvh, PBVHNode &node)
   }
   BKE_pbvh_node_fully_masked_set(&node, !has_unmasked);
   BKE_pbvh_node_fully_unmasked_set(&node, has_masked);
-}
-
-static void node_update_visibility_redraw(PBVH &pbvh, PBVHNode &node)
-{
-  if (!(node.flag & PBVH_UpdateVisibility)) {
-    return;
-  }
-  node.flag &= ~PBVH_UpdateVisibility;
-
-  BKE_pbvh_node_fully_hidden_set(&node, true);
-  if (node.flag & PBVH_Leaf) {
-    PBVHVertexIter vd;
-    BKE_pbvh_vertex_iter_begin (&pbvh, &node, vd, PBVH_ITER_ALL) {
-      if (vd.visible) {
-        BKE_pbvh_node_fully_hidden_set(&node, false);
-        return;
-      }
-    }
-    BKE_pbvh_vertex_iter_end;
-  }
 }
 
 static void node_update_bounds(PBVH &pbvh, PBVHNode &node, const PBVHNodeFlags flag)
@@ -1591,14 +1569,6 @@ void BKE_pbvh_update_vertex_data(PBVH *pbvh, int flag)
       node->flag |= PBVH_UpdateRedraw | PBVH_UpdateDrawBuffers | PBVH_UpdateColor;
     }
   }
-
-  if (flag & (PBVH_UpdateVisibility)) {
-    threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
-      for (PBVHNode *node : nodes.as_span().slice(range)) {
-        node_update_visibility_redraw(*pbvh, *node);
-      }
-    });
-  }
 }
 
 static void pbvh_faces_node_visibility_update(PBVH *pbvh, PBVHNode *node)
@@ -1749,10 +1719,11 @@ void BKE_pbvh_get_grid_updates(PBVH *pbvh, bool clear, void ***r_gridfaces, int 
 
   pbvh_iter_begin(&iter, pbvh, {});
 
+  SubdivCCGFace *all_faces = pbvh->subdiv_ccg->faces;
   while ((node = pbvh_iter_next(&iter, PBVH_Leaf))) {
     if (node->flag & PBVH_UpdateNormals) {
       for (const int grid : node->prim_indices) {
-        void *face = pbvh->gridfaces[grid];
+        void *face = &all_faces[pbvh->grid_to_face_map[grid]];
         BLI_gset_add(face_set, face);
       }
 
@@ -2978,14 +2949,14 @@ void BKE_pbvh_draw_debug_cb(PBVH *pbvh,
 
 void BKE_pbvh_grids_update(PBVH *pbvh,
                            CCGElem **grids,
-                           void **gridfaces,
+                           blender::Span<int> grid_to_face_map,
                            DMFlagMat *flagmats,
                            BLI_bitmap **grid_hidden,
                            CCGKey *key)
 {
   pbvh->gridkey = *key;
   pbvh->grids = grids;
-  pbvh->gridfaces = gridfaces;
+  pbvh->grid_to_face_map = grid_to_face_map;
 
   if (flagmats != pbvh->grid_flag_mats || pbvh->grid_hidden != grid_hidden) {
     pbvh->grid_flag_mats = flagmats;
@@ -2995,19 +2966,6 @@ void BKE_pbvh_grids_update(PBVH *pbvh,
       BKE_pbvh_node_mark_rebuild_draw(&node);
     }
   }
-}
-
-float (*BKE_pbvh_vert_coords_alloc(PBVH *pbvh))[3]
-{
-  float(*vertCos)[3] = nullptr;
-
-  if (!pbvh->vert_positions.is_empty()) {
-    vertCos = static_cast<float(*)[3]>(
-        MEM_malloc_arrayN(pbvh->totvert, sizeof(float[3]), __func__));
-    memcpy(vertCos, pbvh->vert_positions.data(), sizeof(float[3]) * pbvh->totvert);
-  }
-
-  return vertCos;
 }
 
 void BKE_pbvh_vert_coords_apply(PBVH *pbvh, const float (*vertCos)[3], const int totvert)

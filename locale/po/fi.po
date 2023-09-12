@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.0.0 Alpha (b'3dc93d6e3806')\n"
+"Project-Id-Version: Blender 4.0.0 Alpha (b'6221ff436fc2')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-08-21 09:30:35\n"
+"POT-Creation-Date: 2023-09-11 10:35:14\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -1838,14 +1838,6 @@ msgid "Selectable"
 msgstr "Valittavissa oleva"
 
 
-msgid "Layers"
-msgstr "Tasot"
-
-
-msgid "Layers bone exists in"
-msgstr "Tasot, joissa luut esiintyvät"
-
-
 msgid "Length"
 msgstr "Pituus"
 
@@ -1878,12 +1870,8 @@ msgid "Local Location"
 msgstr "Lokaali sijainti"
 
 
-msgid "Bone Group"
-msgstr "Luuryhmä"
-
-
-msgid "Bone Groups"
-msgstr "Luuryhmät"
+msgid "Visible"
+msgstr "Näkyvä"
 
 
 msgid "Has Color"
@@ -1946,14 +1934,6 @@ msgid "Material"
 msgstr "Materiaali"
 
 
-msgid "Round"
-msgstr "Pyöreä"
-
-
-msgid "Flat"
-msgstr "Tasainen"
-
-
 msgid "Random Curve"
 msgstr "Satunnainen käyrä"
 
@@ -2004,10 +1984,6 @@ msgstr "Tasotila"
 
 msgid "Layers used as boundaries"
 msgstr "Rajoina käytetyt tasot"
-
-
-msgid "Visible"
-msgstr "Näkyvä"
 
 
 msgid "Visible layers"
@@ -4697,6 +4673,10 @@ msgid "Push"
 msgstr "Työnnä"
 
 
+msgid "Round"
+msgstr "Pyöreä"
+
+
 msgid "Path"
 msgstr "Polku"
 
@@ -4705,8 +4685,16 @@ msgid "Normals"
 msgstr "Normaalit"
 
 
+msgid "Layers"
+msgstr "Tasot"
+
+
 msgid "Sculpt"
 msgstr "Veistä"
+
+
+msgid "Modifier"
+msgstr "Muunnin"
 
 
 msgid "Mesh"
@@ -4785,6 +4773,14 @@ msgstr "Instanssit"
 
 msgid "Node"
 msgstr "Noodi"
+
+
+msgid "Add Modifier"
+msgstr "Lisää muunnin"
+
+
+msgid "Generate"
+msgstr "Luo"
 
 
 msgctxt "Operator"
@@ -5104,10 +5100,6 @@ msgid "Ocean Modifier"
 msgstr "Valtamerimuunnin"
 
 
-msgid "Generate"
-msgstr "Luo"
-
-
 msgid "Ocean is Cached"
 msgstr "Valtameri on viety välimuistiin"
 
@@ -5171,10 +5163,6 @@ msgstr "Luo iho"
 
 msgid "Material Offset"
 msgstr "Materiaalisiirros"
-
-
-msgid "Boundary Shape"
-msgstr "Rajamuoto"
 
 
 msgid "Surface Modifier"
@@ -7191,10 +7179,6 @@ msgid "Add Segment"
 msgstr "Lisää segmentti"
 
 
-msgid "Modifier"
-msgstr "Muunnin"
-
-
 msgid "Mouse location"
 msgstr "Hiiren sijainti"
 
@@ -7451,6 +7435,10 @@ msgid "3D"
 msgstr "3D"
 
 
+msgid "Flat"
+msgstr "Tasainen"
+
+
 msgid "Corner"
 msgstr "Kulma"
 
@@ -7575,6 +7563,10 @@ msgstr "Näkymä"
 
 msgid "AOV"
 msgstr "AOV"
+
+
+msgid "Theme"
+msgstr "Teema"
 
 
 msgid "Active AOV"
@@ -7850,10 +7842,6 @@ msgid "Shortcuts"
 msgstr "Pikanäppäimet"
 
 
-msgid "Theme"
-msgstr "Teema"
-
-
 msgid "Spacebar"
 msgstr "Välilyönti"
 
@@ -7878,10 +7866,6 @@ msgid "Z Min"
 msgstr "Z-minimi"
 
 
-msgid "Layers:"
-msgstr "Tasot:"
-
-
 msgid "Triangle A"
 msgstr "A-kolmio"
 
@@ -7904,6 +7888,11 @@ msgstr "X-siirros"
 
 msgid "Before"
 msgstr "Ennen"
+
+
+msgctxt "Operator"
+msgid "Lattice"
+msgstr "Säleikkö"
 
 
 msgid "Combination"
@@ -8084,6 +8073,10 @@ msgstr "Aseta X-akselit"
 msgctxt "Operator"
 msgid "Set Y Axis"
 msgstr "Aseta Y-akselit"
+
+
+msgid "Snap To"
+msgstr "Napsauta"
 
 
 msgctxt "Operator"
@@ -8323,16 +8316,6 @@ msgstr "Väri"
 msgctxt "Operator"
 msgid "Text"
 msgstr "Teksti"
-
-
-msgctxt "Operator"
-msgid "Subtract"
-msgstr "Vähennä"
-
-
-msgctxt "Operator"
-msgid "Multiply"
-msgstr "Kerro"
 
 
 msgid "Add Transition"
@@ -8632,15 +8615,6 @@ msgstr "Lokaalikamera"
 
 msgid "Seams"
 msgstr "Saumat"
-
-
-msgid "Snap To"
-msgstr "Napsauta"
-
-
-msgctxt "Operator"
-msgid "Lattice"
-msgstr "Säleikkö"
 
 
 msgctxt "Operator"
@@ -9861,10 +9835,6 @@ msgid "Driver:"
 msgstr "Ajuri:"
 
 
-msgid "Add Modifier"
-msgstr "Lisää muunnin"
-
-
 msgid "Driven Property"
 msgstr "Ajettu ominaisuus"
 
@@ -10008,6 +9978,10 @@ msgstr "Nykyinen tiedosto"
 
 msgid "Missing library"
 msgstr "Kirjasto puuttuu"
+
+
+msgid "Bone Groups"
+msgstr "Luuryhmät"
 
 
 msgid "(empty)"
@@ -10286,11 +10260,6 @@ msgstr "Muotoavainta ei kyetty poistamaan"
 
 msgid "Mesh has no UV data"
 msgstr "Muodolla ei ole UV-dataa"
-
-
-msgctxt "Armature"
-msgid "Group"
-msgstr "Ryhmä"
 
 
 msgid "Scripting"
@@ -11752,10 +11721,6 @@ msgstr "Espanja (Español)"
 
 msgid "Catalan (Català)"
 msgstr "Katalaani (Català)"
-
-
-msgid "Czech (Český)"
-msgstr "Tsekki (Český)"
 
 
 msgid "Portuguese (Português)"
