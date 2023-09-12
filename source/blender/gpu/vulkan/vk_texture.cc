@@ -527,11 +527,15 @@ void VKTexture::bind(int binding, shader::ShaderCreateInfo::Resource::BindType b
 
 VkImageLayout VKTexture::current_layout_get() const
 {
+  if (is_texture_view()) {
+    return source_texture_->current_layout_get();
+  }
   return current_layout_;
 }
 
 void VKTexture::current_layout_set(const VkImageLayout new_layout)
 {
+  BLI_assert(!is_texture_view());
   current_layout_ = new_layout;
 }
 
