@@ -61,13 +61,10 @@ static void gpencil_export_common_props_definition(wmOperatorType *ot)
   RNA_def_float(ot->srna,
                 "stroke_sample",
                 0.0f,
-                0.0f,
-                100.0f,
                 "Sampling",
                 "Precision of stroke sampling. Low values mean a more precise result, and zero "
                 "disables sampling",
-                0.0f,
-                100.0f);
+                {{0.0f, 100.0f}, {0.0f, 100.0f}});
   RNA_def_boolean(ot->srna,
                   "use_normalized_thickness",
                   false,

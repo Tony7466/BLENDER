@@ -297,7 +297,7 @@ static void GREASE_PENCIL_OT_insert_blank_frame(wmOperatorType *ot)
   prop = RNA_def_boolean(
       ot->srna, "all_layers", false, "All Layers", "Insert a blank frame in all editable layers");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-  RNA_def_int(ot->srna, "duration", 1, 1, MAXFRAME, "Duration", "", 1, 100);
+  RNA_def_int(ot->srna, "duration", 1, "Duration", "", {{1, MAXFRAME}, {1, 100}});
 }
 
 }  // namespace blender::ed::greasepencil

@@ -230,8 +230,8 @@ void GPENCIL_OT_vertex_color_brightness_contrast(wmOperatorType *ot)
   ot->prop = RNA_def_enum(
       ot->srna, "mode", gpencil_modesEnumPropertyItem_mode, GPPAINT_MODE_BOTH, "Mode", "");
   const float min = -100, max = +100;
-  prop = RNA_def_float(ot->srna, "brightness", 0.0f, min, max, "Brightness", "", min, max);
-  prop = RNA_def_float(ot->srna, "contrast", 0.0f, min, max, "Contrast", "", min, max);
+  prop = RNA_def_float(ot->srna, "brightness", 0.0f, "Brightness", "", {{min, max}, {min, max}});
+  prop = RNA_def_float(ot->srna, "contrast", 0.0f, "Contrast", "", {{min, max}, {min, max}});
   RNA_def_property_ui_range(prop, min, max, 1, 1);
 }
 
@@ -350,9 +350,9 @@ void GPENCIL_OT_vertex_color_hsv(wmOperatorType *ot)
   /* params */
   ot->prop = RNA_def_enum(
       ot->srna, "mode", gpencil_modesEnumPropertyItem_mode, GPPAINT_MODE_BOTH, "Mode", "");
-  RNA_def_float(ot->srna, "h", 0.5f, 0.0f, 1.0f, "Hue", "", 0.0f, 1.0f);
-  RNA_def_float(ot->srna, "s", 1.0f, 0.0f, 2.0f, "Saturation", "", 0.0f, 2.0f);
-  RNA_def_float(ot->srna, "v", 1.0f, 0.0f, 2.0f, "Value", "", 0.0f, 2.0f);
+  RNA_def_float(ot->srna, "h", 0.5f, "Hue", "", {{0.0f, 1.0f}, {0.0f, 1.0f}});
+  RNA_def_float(ot->srna, "s", 1.0f, "Saturation", "", {{0.0f, 2.0f}, {0.0f, 2.0f}});
+  RNA_def_float(ot->srna, "v", 1.0f, "Value", "", {{0.0f, 2.0f}, {0.0f, 2.0f}});
 }
 
 static int gpencil_vertexpaint_invert_exec(bContext *C, wmOperator *op)
@@ -537,11 +537,10 @@ void GPENCIL_OT_vertex_color_levels(wmOperatorType *ot)
   /* params */
   ot->prop = RNA_def_enum(
       ot->srna, "mode", gpencil_modesEnumPropertyItem_mode, GPPAINT_MODE_BOTH, "Mode", "");
-
-  RNA_def_float(
-      ot->srna, "offset", 0.0f, -1.0f, 1.0f, "Offset", "Value to add to colors", -1.0f, 1.0f);
-  RNA_def_float(
-      ot->srna, "gain", 1.0f, 0.0f, FLT_MAX, "Gain", "Value to multiply colors by", 0.0f, 10.0f);
+  constexpr FloatRanges offset_ranges{{-1.0f, 1.0f}, {-1.0f, 1.0f}};
+  RNA_def_float(ot->srna, "offset", 0.0f, "Offset", "Value to add to colors", offset_ranges);
+  constexpr FloatRanges gain_ranges{{0.0f, FLT_MAX}, {0.0f, 10.0f}};
+  RNA_def_float(ot->srna, "gain", 1.0f, "Gain", "Value to multiply colors by", gain_ranges);
 }
 
 static int gpencil_vertexpaint_set_exec(bContext *C, wmOperator *op)
@@ -637,7 +636,8 @@ void GPENCIL_OT_vertex_color_set(wmOperatorType *ot)
   /* params */
   ot->prop = RNA_def_enum(
       ot->srna, "mode", gpencil_modesEnumPropertyItem_mode, GPPAINT_MODE_BOTH, "Mode", "");
-  RNA_def_float(ot->srna, "factor", 1.0f, 0.001f, 1.0f, "Factor", "Mix Factor", 0.001f, 1.0f);
+  RNA_def_float(
+      ot->srna, "factor", 1.0f, "Factor", "Mix Factor", {{0.001f, 1.0f}, {0.001f, 1.0f}});
 }
 
 /* Helper to extract color from vertex color to create a palette. */
@@ -999,7 +999,7 @@ void GPENCIL_OT_material_to_vertex_color(wmOperatorType *ot)
                              "Remove any unused material after the conversion");
   RNA_def_boolean(ot->srna, "palette", true, "Create Palette", "Create a new palette with colors");
   RNA_def_boolean(ot->srna, "selected", false, "Only Selected", "Convert only selected strokes");
-  RNA_def_int(ot->srna, "threshold", 3, 1, 4, "Threshold", "", 1, 4);
+  RNA_def_int(ot->srna, "threshold", 3, "Threshold", "", {{1, 4}, {1, 4}});
 }
 
 /* Extract Palette from Vertex Color. */
@@ -1046,7 +1046,7 @@ void GPENCIL_OT_extract_palette_vertex(wmOperatorType *ot)
   /* properties */
   ot->prop = RNA_def_boolean(
       ot->srna, "selected", false, "Only Selected", "Convert only selected strokes");
-  RNA_def_int(ot->srna, "threshold", 1, 1, 4, "Threshold", "", 1, 4);
+  RNA_def_int(ot->srna, "threshold", 1, "Threshold", "", {{1, 4}, {1, 4}});
 }
 
 /* -------------------------------------------------------------------- */

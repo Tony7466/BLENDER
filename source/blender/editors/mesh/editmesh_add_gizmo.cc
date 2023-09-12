@@ -394,7 +394,7 @@ void MESH_OT_primitive_cube_add_gizmo(wmOperatorType *ot)
 
   /* hidden props */
   PropertyRNA *prop = RNA_def_float_matrix(
-      ot->srna, "matrix", 4, 4, nullptr, 0.0f, 0.0f, "Matrix", "", 0.0f, 0.0f);
+      ot->srna, "matrix", 4, 4, nullptr, "Matrix", "", {{0.0f, 0.0f}, {0.0f, 0.0f}});
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   WM_gizmogrouptype_append(MESH_GGT_add_bounds);

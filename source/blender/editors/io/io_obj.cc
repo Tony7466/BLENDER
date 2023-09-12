@@ -269,21 +269,15 @@ void WM_OT_obj_export(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "start_frame",
               INT_MIN, /* wm_obj_export_check uses this to set scene->r.sfra. */
-              INT_MIN,
-              INT_MAX,
               "Start Frame",
               "The first frame to be exported",
-              INT_MIN,
-              INT_MAX);
+              {{INT_MIN, INT_MAX}, {INT_MIN, INT_MAX}});
   RNA_def_int(ot->srna,
               "end_frame",
               INT_MAX, /* wm_obj_export_check uses this to set scene->r.efra. */
-              INT_MIN,
-              INT_MAX,
               "End Frame",
               "The last frame to be exported",
-              INT_MIN,
-              INT_MAX);
+              {{INT_MIN, INT_MAX}, {INT_MIN, INT_MAX}});
   /* Object transform options. */
   prop = RNA_def_enum(
       ot->srna, "forward_axis", io_transform_axis, IO_AXIS_NEGATIVE_Z, "Forward Axis", "");
@@ -294,12 +288,9 @@ void WM_OT_obj_export(wmOperatorType *ot)
       ot->srna,
       "global_scale",
       1.0f,
-      0.0001f,
-      10000.0f,
       "Scale",
       "Value by which to enlarge or shrink the objects with respect to the world's origin",
-      0.0001f,
-      10000.0f);
+      {{0.0001f, 10000.0f}, {0.0001f, 10000.0f}});
   /* File Writer options. */
   RNA_def_boolean(
       ot->srna, "apply_modifiers", true, "Apply Modifiers", "Apply modifiers to exported meshes");
@@ -501,22 +492,16 @@ void WM_OT_obj_import(wmOperatorType *ot)
       ot->srna,
       "global_scale",
       1.0f,
-      0.0001f,
-      10000.0f,
       "Scale",
       "Value by which to enlarge or shrink the objects with respect to the world's origin",
-      0.0001f,
-      10000.0f);
+      {{0.0001f, 10000.0f}, {0.0001f, 10000.0f}});
   RNA_def_float(
       ot->srna,
       "clamp_size",
       0.0f,
-      0.0f,
-      1000.0f,
       "Clamp Bounding Box",
       "Resize the objects to keep bounding box under this value. Value 0 disables clamping",
-      0.0f,
-      1000.0f);
+      {{0.0f, 1000.0f}, {0.0f, 1000.0f}});
   prop = RNA_def_enum(
       ot->srna, "forward_axis", io_transform_axis, IO_AXIS_NEGATIVE_Z, "Forward Axis", "");
   RNA_def_property_update_runtime(prop, io_ui_forward_axis_update);

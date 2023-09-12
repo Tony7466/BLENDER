@@ -327,58 +327,40 @@ void UI_view2d_edge_pan_operator_properties_ex(wmOperatorType *ot,
       ot->srna,
       "inside_padding",
       inside_pad,
-      0.0f,
-      100.0f,
       "Inside Padding",
       "Inside distance in UI units from the edge of the region within which to start panning",
-      0.0f,
-      100.0f);
+      {{0.0f, 100.0f}, {0.0f, 100.0f}});
   RNA_def_float(
       ot->srna,
       "outside_padding",
       outside_pad,
-      0.0f,
-      100.0f,
       "Outside Padding",
       "Outside distance in UI units from the edge of the region at which to stop panning",
-      0.0f,
-      100.0f);
+      {{0.0f, 100.0f}, {0.0f, 100.0f}});
   RNA_def_float(ot->srna,
                 "speed_ramp",
                 speed_ramp,
-                0.0f,
-                100.0f,
                 "Speed Ramp",
                 "Width of the zone in UI units where speed increases with distance from the edge",
-                0.0f,
-                100.0f);
+                {{0.0f, 100.0f}, {0.0f, 100.0f}});
   RNA_def_float(ot->srna,
                 "max_speed",
                 max_speed,
-                0.0f,
-                10000.0f,
                 "Max Speed",
                 "Maximum speed in UI units per second",
-                0.0f,
-                10000.0f);
+                {{0.0f, 10000.0f}, {0.0f, 10000.0f}});
   RNA_def_float(ot->srna,
                 "delay",
                 delay,
-                0.0f,
-                10.0f,
                 "Delay",
                 "Delay in seconds before maximum speed is reached",
-                0.0f,
-                10.0f);
+                {{0.0f, 10.0f}, {0.0f, 10.0f}});
   RNA_def_float(ot->srna,
                 "zoom_influence",
                 zoom_influence,
-                0.0f,
-                1.0f,
                 "Zoom Influence",
                 "Influence of the zoom factor on scroll speed",
-                0.0f,
-                1.0f);
+                {{0.0f, 1.0f}, {0.0f, 1.0f}});
 }
 
 void UI_view2d_edge_pan_operator_init(bContext *C, View2DEdgePanData *vpd, wmOperator *op)

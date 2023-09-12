@@ -289,64 +289,46 @@ void WM_OT_alembic_export(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "start",
               INT_MIN,
-              INT_MIN,
-              INT_MAX,
               "Start Frame",
               "Start frame of the export, use the default value to "
               "take the start frame of the current scene",
-              INT_MIN,
-              INT_MAX);
+              {{INT_MIN, INT_MAX}, {INT_MIN, INT_MAX}});
 
   RNA_def_int(ot->srna,
               "end",
               INT_MIN,
-              INT_MIN,
-              INT_MAX,
               "End Frame",
               "End frame of the export, use the default value to "
               "take the end frame of the current scene",
-              INT_MIN,
-              INT_MAX);
+              {{INT_MIN, INT_MAX}, {INT_MIN, INT_MAX}});
 
   RNA_def_int(ot->srna,
               "xsamples",
               1,
-              1,
-              128,
               "Transform Samples",
               "Number of times per frame transformations are sampled",
-              1,
-              128);
+              {{1, 128}, {1, 128}});
 
   RNA_def_int(ot->srna,
               "gsamples",
               1,
-              1,
-              128,
               "Geometry Samples",
               "Number of times per frame object data are sampled",
-              1,
-              128);
+              {{1, 128}, {1, 128}});
 
   RNA_def_float(ot->srna,
                 "sh_open",
                 0.0f,
-                -1.0f,
-                1.0f,
                 "Shutter Open",
                 "Time at which the shutter is open",
-                -1.0f,
-                1.0f);
+                {{-1.0f, 1.0f}, {-1.0f, 1.0f}});
 
   RNA_def_float(ot->srna,
                 "sh_close",
                 1.0f,
-                -1.0f,
-                1.0f,
                 "Shutter Close",
                 "Time at which the shutter is closed",
-                -1.0f,
-                1.0f);
+                {{-1.0f, 1.0f}, {-1.0f, 1.0f}});
 
   RNA_def_boolean(
       ot->srna, "selected", 0, "Selected Objects Only", "Export only selected objects");
@@ -409,12 +391,9 @@ void WM_OT_alembic_export(wmOperatorType *ot)
       ot->srna,
       "global_scale",
       1.0f,
-      0.0001f,
-      1000.0f,
       "Scale",
       "Value by which to enlarge or shrink the objects with respect to the world's origin",
-      0.0001f,
-      1000.0f);
+      {{0.0001f, 1000.0f}, {0.0001f, 1000.0f}});
 
   RNA_def_boolean(ot->srna,
                   "triangulate",
@@ -673,12 +652,9 @@ void WM_OT_alembic_import(wmOperatorType *ot)
       ot->srna,
       "scale",
       1.0f,
-      0.0001f,
-      1000.0f,
       "Scale",
       "Value by which to enlarge or shrink the objects with respect to the world's origin",
-      0.0001f,
-      1000.0f);
+      {{0.0001f, 1000.0f}, {0.0001f, 1000.0f}});
 
   RNA_def_boolean(
       ot->srna,

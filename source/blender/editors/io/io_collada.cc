@@ -501,12 +501,9 @@ void WM_OT_collada_export(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "export_mesh_type",
               0,
-              INT_MIN,
-              INT_MAX,
               "Resolution",
               "Modifier resolution for export",
-              INT_MIN,
-              INT_MAX);
+              {{INT_MIN, INT_MAX}, {INT_MIN, INT_MAX}});
 
   RNA_def_enum(ot->srna,
                "export_mesh_type_selection",
@@ -587,12 +584,9 @@ void WM_OT_collada_export(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "sampling_rate",
               1,
-              1,
-              INT_MAX,
               "Sampling Rate",
               "The distance between 2 keyframes (1 to key every frame)",
-              1,
-              INT_MAX);
+              {{1, INT_MAX}, {1, INT_MAX}});
 
   RNA_def_boolean(ot->srna,
                   "keep_smooth_curves",
@@ -649,12 +643,9 @@ void WM_OT_collada_export(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "export_object_transformation_type",
               0,
-              INT_MIN,
-              INT_MAX,
               "Transform",
               "Object Transformation type for translation, scale and rotation",
-              INT_MIN,
-              INT_MAX);
+              {{INT_MIN, INT_MAX}, {INT_MIN, INT_MAX}});
 
   RNA_def_enum(ot->srna,
                "export_object_transformation_type_selection",
@@ -666,14 +657,11 @@ void WM_OT_collada_export(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "export_animation_transformation_type",
               0,
-              INT_MIN,
-              INT_MAX,
               "Transform",
               "Transformation type for translation, scale and rotation. "
               "Note: The Animation transformation type in the Anim Tab "
               "is always equal to the Object transformation type in the Geom tab",
-              INT_MIN,
-              INT_MAX);
+              {{INT_MIN, INT_MAX}, {INT_MIN, INT_MAX}});
 
   RNA_def_enum(ot->srna,
                "export_animation_transformation_type_selection",
@@ -845,12 +833,9 @@ void WM_OT_collada_import(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "min_chain_length",
               0,
-              0,
-              INT_MAX,
               "Minimum Chain Length",
               "When searching Bone Chains disregard chains of length below this value",
-              0,
-              INT_MAX);
+              {{0, INT_MAX}, {0, INT_MAX}});
 
   RNA_def_boolean(
       ot->srna,

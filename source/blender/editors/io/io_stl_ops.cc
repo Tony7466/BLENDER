@@ -109,7 +109,7 @@ void WM_OT_stl_import(wmOperatorType *ot)
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
 
-  RNA_def_float(ot->srna, "global_scale", 1.0f, 1e-6f, 1e6f, "Scale", "", 0.001f, 1000.0f);
+  RNA_def_float(ot->srna, "global_scale", 1.0f, "Scale", "", {{1e-6f, 1e6f}, {0.001f, 1000.0f}});
   RNA_def_boolean(ot->srna,
                   "use_scene_unit",
                   false,

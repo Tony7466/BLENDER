@@ -618,12 +618,9 @@ void WM_OT_usd_import(wmOperatorType *ot)
       ot->srna,
       "scale",
       1.0f,
-      0.0001f,
-      1000.0f,
       "Scale",
       "Value by which to enlarge or shrink the objects with respect to the world's origin",
-      0.0001f,
-      1000.0f);
+      {{0.0001f, 1000.0f}, {0.0001f, 1000.0f}});
 
   RNA_def_boolean(ot->srna,
                   "set_frame_range",
@@ -718,12 +715,9 @@ void WM_OT_usd_import(wmOperatorType *ot)
   RNA_def_float(ot->srna,
                 "light_intensity_scale",
                 1.0f,
-                0.0001f,
-                10000.0f,
                 "Light Intensity Scale",
                 "Scale for the intensity of imported lights",
-                0.0001f,
-                1000.0f);
+                {{0.0001f, 10000.0f}, {0.0001f, 1000.0f}});
 
   RNA_def_enum(
       ot->srna,

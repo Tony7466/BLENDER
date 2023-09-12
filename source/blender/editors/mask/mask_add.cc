@@ -597,12 +597,9 @@ void MASK_OT_add_vertex(wmOperatorType *ot)
                        "location",
                        2,
                        nullptr,
-                       -FLT_MAX,
-                       FLT_MAX,
                        "Location",
                        "Location of vertex in normalized space",
-                       -1.0f,
-                       1.0f);
+                       {{-FLT_MAX, FLT_MAX}, {-1.0f, 1.0f}});
 }
 
 /** \} */
@@ -694,12 +691,9 @@ void MASK_OT_add_feather_vertex(wmOperatorType *ot)
                        "location",
                        2,
                        nullptr,
-                       -FLT_MAX,
-                       FLT_MAX,
                        "Location",
                        "Location of vertex in normalized space",
-                       -1.0f,
-                       1.0f);
+                       {{-FLT_MAX, FLT_MAX}, {-1.0f, 1.0f}});
 }
 
 /** \} */
@@ -828,18 +822,19 @@ static int primitive_add_invoke(bContext *C, wmOperator *op, const wmEvent * /*e
 
 static void define_primitive_add_properties(wmOperatorType *ot)
 {
-  RNA_def_float(
-      ot->srna, "size", 100, -FLT_MAX, FLT_MAX, "Size", "Size of new circle", -FLT_MAX, FLT_MAX);
+  RNA_def_float(ot->srna,
+                "size",
+                100,
+                "Size",
+                "Size of new circle",
+                {{-FLT_MAX, FLT_MAX}, {-FLT_MAX, FLT_MAX}});
   RNA_def_float_vector(ot->srna,
                        "location",
                        2,
                        nullptr,
-                       -FLT_MAX,
-                       FLT_MAX,
                        "Location",
                        "Location of new circle",
-                       -FLT_MAX,
-                       FLT_MAX);
+                       {{-FLT_MAX, FLT_MAX}, {-FLT_MAX, FLT_MAX}});
 }
 
 /** \} */

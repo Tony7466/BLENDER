@@ -179,22 +179,16 @@ void WM_OT_gpencil_import_svg(wmOperatorType *ot)
   RNA_def_int(ot->srna,
               "resolution",
               10,
-              1,
-              30,
               "Resolution",
               "Resolution of the generated strokes",
-              1,
-              20);
+              {{1, 30}, {1, 20}});
 
   RNA_def_float(ot->srna,
                 "scale",
                 10.0f,
-                0.001f,
-                100.0f,
                 "Scale",
                 "Scale of the final strokes",
-                0.001f,
-                100.0f);
+                {{0.001f, 100.0f}, {0.001f, 100.0f}});
 }
 
 #endif /* WITH_IO_GPENCIL */

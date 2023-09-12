@@ -294,7 +294,7 @@ void MESH_OT_primitive_circle_add(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* props */
-  RNA_def_int(ot->srna, "vertices", 32, 3, MESH_ADD_VERTS_MAXI, "Vertices", "", 3, 500);
+  RNA_def_int(ot->srna, "vertices", 32, "Vertices", "", {{3, MESH_ADD_VERTS_MAXI}, {3, 500}});
   ED_object_add_unit_props_radius(ot);
   RNA_def_enum(ot->srna, "fill_type", fill_type_items, 0, "Fill Type", "");
 
@@ -369,10 +369,10 @@ void MESH_OT_primitive_cylinder_add(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* props */
-  RNA_def_int(ot->srna, "vertices", 32, 3, MESH_ADD_VERTS_MAXI, "Vertices", "", 3, 500);
+  RNA_def_int(ot->srna, "vertices", 32, "Vertices", "", {{3, MESH_ADD_VERTS_MAXI}, {3, 500}});
   ED_object_add_unit_props_radius(ot);
   RNA_def_float_distance(
-      ot->srna, "depth", 2.0f, 0.0, OBJECT_ADD_SIZE_MAXF, "Depth", "", 0.001, 100.00);
+      ot->srna, "depth", 2.0f, "Depth", "", {{0.0, OBJECT_ADD_SIZE_MAXF}, {0.001, 100.00}});
   RNA_def_enum(ot->srna, "end_fill_type", fill_type_items, 1, "Cap Fill Type", "");
 
   ED_object_add_mesh_props(ot);
@@ -446,13 +446,13 @@ void MESH_OT_primitive_cone_add(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* props */
-  RNA_def_int(ot->srna, "vertices", 32, 3, MESH_ADD_VERTS_MAXI, "Vertices", "", 3, 500);
+  RNA_def_int(ot->srna, "vertices", 32, "Vertices", "", {{3, MESH_ADD_VERTS_MAXI}, {3, 500}});
   RNA_def_float_distance(
-      ot->srna, "radius1", 1.0f, 0.0, OBJECT_ADD_SIZE_MAXF, "Radius 1", "", 0.001, 100.00);
+      ot->srna, "radius1", 1.0f, "Radius 1", "", {{0.0, OBJECT_ADD_SIZE_MAXF}, {0.001, 100.00}});
   RNA_def_float_distance(
-      ot->srna, "radius2", 0.0f, 0.0, OBJECT_ADD_SIZE_MAXF, "Radius 2", "", 0.0, 100.00);
+      ot->srna, "radius2", 0.0f, "Radius 2", "", {{0.0, OBJECT_ADD_SIZE_MAXF}, {0.0, 100.00}});
   RNA_def_float_distance(
-      ot->srna, "depth", 2.0f, 0.0, OBJECT_ADD_SIZE_MAXF, "Depth", "", 0.001, 100.00);
+      ot->srna, "depth", 2.0f, "Depth", "", {{0.0, OBJECT_ADD_SIZE_MAXF}, {0.001, 100.00}});
   RNA_def_enum(ot->srna, "end_fill_type", fill_type_items, 1, "Base Fill Type", "");
 
   ED_object_add_mesh_props(ot);
@@ -523,9 +523,9 @@ void MESH_OT_primitive_grid_add(wmOperatorType *ot)
   /* Note that if you use MESH_ADD_VERTS_MAXI for both x and y at the same time
    * you will still reach impossible values (10^12 vertices or so...). */
   RNA_def_int(
-      ot->srna, "x_subdivisions", 10, 1, MESH_ADD_VERTS_MAXI, "X Subdivisions", "", 1, 1000);
+      ot->srna, "x_subdivisions", 10, "X Subdivisions", "", {{1, MESH_ADD_VERTS_MAXI}, {1, 1000}});
   RNA_def_int(
-      ot->srna, "y_subdivisions", 10, 1, MESH_ADD_VERTS_MAXI, "Y Subdivisions", "", 1, 1000);
+      ot->srna, "y_subdivisions", 10, "Y Subdivisions", "", {{1, MESH_ADD_VERTS_MAXI}, {1, 1000}});
 
   ED_object_add_unit_props_size(ot);
   ED_object_add_mesh_props(ot);
@@ -660,8 +660,9 @@ void MESH_OT_primitive_uv_sphere_add(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* props */
-  RNA_def_int(ot->srna, "segments", 32, 3, MESH_ADD_VERTS_MAXI / 100, "Segments", "", 3, 500);
-  RNA_def_int(ot->srna, "ring_count", 16, 3, MESH_ADD_VERTS_MAXI / 100, "Rings", "", 3, 500);
+  RNA_def_int(
+      ot->srna, "segments", 32, "Segments", "", {{3, MESH_ADD_VERTS_MAXI / 100}, {3, 500}});
+  RNA_def_int(ot->srna, "ring_count", 16, "Rings", "", {{3, MESH_ADD_VERTS_MAXI / 100}, {3, 500}});
 
   ED_object_add_unit_props_radius(ot);
   ED_object_add_mesh_props(ot);
@@ -728,7 +729,7 @@ void MESH_OT_primitive_ico_sphere_add(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* props */
-  RNA_def_int(ot->srna, "subdivisions", 2, 1, 10, "Subdivisions", "", 1, 8);
+  RNA_def_int(ot->srna, "subdivisions", 2, "Subdivisions", "", {{1, 10}, {1, 8}});
 
   ED_object_add_unit_props_radius(ot);
   ED_object_add_mesh_props(ot);

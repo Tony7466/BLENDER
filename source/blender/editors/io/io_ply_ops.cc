@@ -184,12 +184,9 @@ void WM_OT_ply_export(wmOperatorType *ot)
       ot->srna,
       "global_scale",
       1.0f,
-      0.0001f,
-      10000.0f,
       "Scale",
       "Value by which to enlarge or shrink the objects with respect to the world's origin",
-      0.0001f,
-      10000.0f);
+      {{0.0001f, 10000.0f}, {0.0001f, 10000.0f}});
   /* File Writer options. */
   RNA_def_boolean(
       ot->srna, "apply_modifiers", true, "Apply Modifiers", "Apply modifiers to exported meshes");
@@ -301,7 +298,7 @@ void WM_OT_ply_import(wmOperatorType *ot)
                                  FILE_DEFAULTDISPLAY,
                                  FILE_SORT_DEFAULT);
 
-  RNA_def_float(ot->srna, "global_scale", 1.0f, 1e-6f, 1e6f, "Scale", "", 0.001f, 1000.0f);
+  RNA_def_float(ot->srna, "global_scale", 1.0f, "Scale", "", {{1e-6f, 1e6f}, {0.001f, 1000.0f}});
   RNA_def_boolean(ot->srna,
                   "use_scene_unit",
                   false,

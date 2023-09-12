@@ -410,12 +410,9 @@ void MASK_OT_select(wmOperatorType *ot)
                        "location",
                        2,
                        nullptr,
-                       -FLT_MAX,
-                       FLT_MAX,
                        "Location",
                        "Location of vertex in normalized space",
-                       -1.0f,
-                       1.0f);
+                       {{-FLT_MAX, FLT_MAX}, {-1.0f, 1.0f}});
 }
 
 /** \} */
