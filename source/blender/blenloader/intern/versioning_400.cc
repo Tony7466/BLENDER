@@ -665,7 +665,7 @@ static void remove_triangulate_node_min_size_input(bNodeTree *tree)
     }
   }
 
-  Map<const bNodeSocket *, bNodeLink *> input_links;
+  Map<bNodeSocket *, bNodeLink *> input_links;
   LISTBASE_FOREACH (bNodeLink *, link, &tree->links) {
     if (triangulate_nodes.contains(link->tonode)) {
       input_links.add_new(link->tosock, link);
@@ -674,7 +674,11 @@ static void remove_triangulate_node_min_size_input(bNodeTree *tree)
 
   for (bNode *triangulate : triangulate_nodes) {
     bNodeSocket *selection = nodeFindSocket(triangulate, SOCK_IN, "Selection");
-    const bNodeSocket *min_verts = nodeFindSocket(triangulate, SOCK_IN, "Minimum Vertices");
+    bNodeSocket *min_verts = nodeFindSocket(triangulate, SOCK_IN, "Minimum Vertices");
+    if (!min_verts) {
+      /* Make versioning idempotent. */
+      continue;
+    }
     const int old_min_verts = static_cast<bNodeSocketValueInt *>(min_verts->default_value)->value;
     if (!input_links.contains(min_verts) && old_min_verts <= 4) {
       continue;
@@ -743,6 +747,9 @@ static void remove_triangulate_node_min_size_input(bNodeTree *tree)
                   triangulate,
                   selection);
     }
+
+    /* Make versioning idempotent. */
+    nodeRemoveSocket(tree, triangulate, min_verts);
   }
 }
 
@@ -1141,14 +1148,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 24)) {
-    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
-      if (ntree->type == NTREE_GEOMETRY) {
-        remove_triangulate_node_min_size_input(ntree);
-      }
-    }
-  }
-
   /**
    * Versioning code until next subversion bump goes here.
    *
@@ -1161,5 +1160,10 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
    */
   {
     /* Keep this block, even when empty. */
+    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      if (ntree->type == NTREE_GEOMETRY) {
+        remove_triangulate_node_min_size_input(ntree);
+      }
+    }
   }
 }
