@@ -502,28 +502,28 @@ static bool node_update_basis_socket(const bContext &C,
 /* Temporary stack data to keep track of the panel hierarchy while drawing. */
 struct NodeInterfacePanelData {
   /* Declaration of a panel that items are added into. */
-  const nodes::PanelDeclaration *decl_;
+  const nodes::PanelDeclaration *decl;
   /* State of the panel instance on the node.
    * Mutable so that panel visibility can be updated. */
-  bNodePanelState *state_;
+  bNodePanelState *state;
   /* Runtime panel state for draw locations. */
-  bke::bNodePanelRuntime *runtime_;
+  bke::bNodePanelRuntime *runtime;
 
   operator bool() const
   {
-    return state_ != nullptr && runtime_ != nullptr;
+    return this->state != nullptr && this->runtime != nullptr;
   }
 };
 
 struct NodeInterfaceSocketData {
-  const nodes::SocketDeclaration *decl_;
-  bNodeSocket *input_;
-  bNodeSocket *output_;
+  const nodes::SocketDeclaration *decl;
+  bNodeSocket *input;
+  bNodeSocket *output;
 
   operator bool() const
   {
     /* One socket side is enough to be valid. */
-    return input_ != nullptr || output_ != nullptr;
+    return this->input != nullptr || this->output != nullptr;
   }
 };
 
@@ -577,12 +577,12 @@ struct NodeInterfaceIterator {
     switch (socket_decl->in_out) {
       case SOCK_IN:
         BLI_assert(input_ != nullptr);
-        result.input_ = input_;
+        result.input = input_;
         input_ = input_->next;
         break;
       case SOCK_OUT:
         BLI_assert(output_ != nullptr);
-        result.output_ = output_;
+        result.output = output_;
         output_ = output_->next;
         break;
     }
@@ -592,13 +592,13 @@ struct NodeInterfaceIterator {
       switch (next_socket_decl->in_out) {
         case SOCK_IN:
           if (input_) {
-            result.input_ = input_;
+            result.input = input_;
             input_ = input_->next;
           }
           break;
         case SOCK_OUT:
           if (output_) {
-            result.output_ = output_;
+            result.output = output_;
             output_ = output_->next;
           }
           break;
@@ -684,18 +684,18 @@ static void node_update_basis_from_declaration(
         is_first = false;
       }
 
-      SET_FLAG_FROM_TEST(data.state_->flag, is_parent_collapsed, NODE_PANEL_PARENT_COLLAPSED);
+      SET_FLAG_FROM_TEST(data.state->flag, is_parent_collapsed, NODE_PANEL_PARENT_COLLAPSED);
       /* New top panel is collapsed if self or parent is collapsed. */
-      const bool is_collapsed = is_parent_collapsed || data.state_->is_collapsed();
-      panel_updates.push({data.decl_->num_child_decls, is_collapsed, data.runtime_});
+      const bool is_collapsed = is_parent_collapsed || data.state->is_collapsed();
+      panel_updates.push({data.decl->num_child_decls, is_collapsed, data.runtime});
 
       /* Round the socket location to stop it from jiggling. */
-      data.runtime_->location_y = round(locy + NODE_DYS);
-      data.runtime_->max_content_y = data.runtime_->min_content_y = round(locy);
+      data.runtime->location_y = round(locy + NODE_DYS);
+      data.runtime->max_content_y = data.runtime->min_content_y = round(locy);
     }
     else if (const NodeInterfaceSocketData data = interface_iter.try_next_socket()) {
-      if (data.input_) {
-        SET_FLAG_FROM_TEST(data.input_->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
+      if (data.input) {
+        SET_FLAG_FROM_TEST(data.input->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
         /* Draw buttons before the first input. */
         if (!buttons_drawn) {
           buttons_drawn = true;
@@ -703,31 +703,31 @@ static void node_update_basis_from_declaration(
         }
 
         if (is_parent_collapsed) {
-          data.input_->runtime->location = float2(locx, round(locy + NODE_DYS));
+          data.input->runtime->location = float2(locx, round(locy + NODE_DYS));
         }
         else {
           /* Space between items. */
-          if (!is_first && data.input_->is_visible()) {
+          if (!is_first && data.input->is_visible()) {
             locy -= NODE_SOCKDY;
           }
         }
       }
-      if (data.output_) {
-        SET_FLAG_FROM_TEST(data.output_->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
+      if (data.output) {
+        SET_FLAG_FROM_TEST(data.output->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
         if (is_parent_collapsed) {
-          data.output_->runtime->location = float2(round(locx + NODE_WIDTH(node)),
-                                                   round(locy + NODE_DYS));
+          data.output->runtime->location = float2(round(locx + NODE_WIDTH(node)),
+                                                  round(locy + NODE_DYS));
         }
         else {
           /* Space between items. */
-          if (!is_first && data.output_->is_visible()) {
+          if (!is_first && data.output->is_visible()) {
             locy -= NODE_SOCKDY;
           }
         }
       }
 
       if (!is_parent_collapsed &&
-          node_update_basis_socket(C, ntree, node, data.input_, data.output_, block, locx, locy))
+          node_update_basis_socket(C, ntree, node, data.input, data.output, block, locx, locy))
       {
         is_first = false;
         need_spacer_after_item = true;
