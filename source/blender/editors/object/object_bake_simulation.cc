@@ -789,7 +789,6 @@ static int geometry_nodes_bake_node_modal(bContext *C,
 static int geometry_nodes_delete_bake_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
-  Scene *scene = CTX_data_scene(C);
   Object *object = reinterpret_cast<Object *>(
       WM_operator_properties_id_lookup_from_name_or_session_uuid(bmain, op->ptr, ID_OB));
   if (object == nullptr) {
