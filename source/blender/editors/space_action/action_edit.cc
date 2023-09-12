@@ -1249,7 +1249,7 @@ void ACTION_OT_clean(wmOperatorType *ot)
  * \{ */
 
 /* Evaluates the curves between each selected keyframe on each frame, and keys the value. */
-static void sample_action_keys(bAnimContext *ac)
+static void bake_action_keys(bAnimContext *ac)
 {
   ListBase anim_data = {nullptr, nullptr};
   eAnimFilter_Flags filter;
@@ -1261,7 +1261,7 @@ static void sample_action_keys(bAnimContext *ac)
 
   /* Loop through filtered data and add keys between selected keyframes on every frame. */
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    sample_fcurve((FCurve *)ale->key_data);
+    bake_fcurve_segments((FCurve *)ale->key_data);
 
     ale->update |= ANIM_UPDATE_DEPS;
   }
@@ -1272,7 +1272,7 @@ static void sample_action_keys(bAnimContext *ac)
 
 /* ------------------- */
 
-static int actkeys_sample_exec(bContext *C, wmOperator *op)
+static int actkeys_bake_exec(bContext *C, wmOperator *op)
 {
   bAnimContext ac;
 
@@ -1287,7 +1287,7 @@ static int actkeys_sample_exec(bContext *C, wmOperator *op)
   }
 
   /* sample keyframes */
-  sample_action_keys(&ac);
+  bake_action_keys(&ac);
 
   /* set notifier that keyframes have changed */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, nullptr);
@@ -1295,15 +1295,15 @@ static int actkeys_sample_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-void ACTION_OT_sample(wmOperatorType *ot)
+void ACTION_OT_bake_keys(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Sample Keyframes";
-  ot->idname = "ACTION_OT_sample";
+  ot->name = "Bake Keyframes";
+  ot->idname = "ACTION_OT_bake_keys";
   ot->description = "Add keyframes on every frame between the selected keyframes";
 
   /* api callbacks */
-  ot->exec = actkeys_sample_exec;
+  ot->exec = actkeys_bake_exec;
   ot->poll = ED_operator_action_active;
 
   /* flags */
@@ -2063,7 +2063,15 @@ static void mirror_action_keys(bAnimContext *ac, short mode)
       ED_gpencil_layer_mirror_frames(static_cast<bGPDlayer *>(ale->data), ac->scene, mode);
     }
     else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
-      /* GPv3: To be implemented. */
+      GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
+      GreasePencilLayer *layer = static_cast<GreasePencilLayer *>(ale->data);
+
+      const bool changed = blender::ed::greasepencil::mirror_selected_frames(
+          *grease_pencil, layer->wrap(), *(ac->scene), static_cast<eEditKeyframes_Mirror>(mode));
+
+      if (changed) {
+        DEG_id_tag_update(&grease_pencil->id, ID_RECALC_GEOMETRY);
+      }
     }
     else if (ale->type == ANIMTYPE_MASKLAYER) {
       /* TODO */
