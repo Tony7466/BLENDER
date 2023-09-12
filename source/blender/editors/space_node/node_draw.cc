@@ -696,8 +696,8 @@ static void node_update_basis_from_declaration(
     else if (const NodeInterfaceSocketData data = interface_iter.try_next_socket()) {
       if (data.input) {
         SET_FLAG_FROM_TEST(data.input->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
-        /* Draw buttons before the first input. */
-        if (!buttons_drawn) {
+        /* Draw buttons before the first input, unless it's inline with an output. */
+        if (!data.decl->inline_with_next && !buttons_drawn) {
           buttons_drawn = true;
           need_spacer_after_item = node_update_basis_buttons(C, ntree, node, block, locy);
         }
