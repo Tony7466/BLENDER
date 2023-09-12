@@ -27,6 +27,10 @@ enum class TriangulateQuadMode {
   LongEdge = 4,
 };
 
+/**
+ * \return #std::nullopt if the mesh is not changed (when every selected face is already a
+ * triangle).
+ */
 std::optional<Mesh *> mesh_triangulate(
     const Mesh &src_mesh,
     const IndexMask &selection,
