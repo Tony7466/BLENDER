@@ -7076,6 +7076,12 @@ static void rna_def_modifier_nodes_bake(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Custom Simulation Frame Range", "Override the simulation frame range from the scene");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "use_custom_path", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", NODES_MODIFIER_BAKE_CUSTOM_PATH);
+  RNA_def_property_ui_text(
+      prop, "Auto Path", "Specify a path where the baked data should be stored manually");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 }
 
 static void rna_def_modifier_nodes_bakes(BlenderRNA *brna)

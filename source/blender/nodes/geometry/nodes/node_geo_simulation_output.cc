@@ -915,10 +915,10 @@ static void node_layout_ex(uiLayout *layout, bContext *C, PointerRNA *ptr)
   {
     uiLayout *col = uiLayoutColumn(layout, true);
     uiLayoutSetActive(col, !is_baked);
-    uiItemR(col, &bake_rna, "directory", UI_ITEM_NONE, "Path", ICON_NONE);
-    if (StringRef(bake->directory).is_empty()) {
-      uiItemL(col, "Uses modifier bake path", ICON_INFO);
-    }
+    uiItemR(col, &bake_rna, "use_custom_path", UI_ITEM_NONE, "Custom Path", ICON_NONE);
+    uiLayout *subcol = uiLayoutColumn(layout, true);
+    uiLayoutSetActive(subcol, bake->flag & NODES_MODIFIER_BAKE_CUSTOM_PATH);
+    uiItemR(subcol, &bake_rna, "directory", UI_ITEM_NONE, "Path", ICON_NONE);
   }
   {
     uiItemR(layout,

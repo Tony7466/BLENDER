@@ -75,7 +75,10 @@ std::optional<bake::BakePath> get_node_bake_path(const Main &bmain,
   if (bake == nullptr) {
     return std::nullopt;
   }
-  if (!StringRef(bake->directory).is_empty()) {
+  if (bake->flag & NODES_MODIFIER_BAKE_CUSTOM_PATH) {
+    if (StringRef(bake->directory).is_empty()) {
+      return std::nullopt;
+    }
     const char *base_path = ID_BLEND_PATH(&bmain, &object.id);
     char absolute_bake_dir[FILE_MAX];
     STRNCPY(absolute_bake_dir, bake->directory);
@@ -86,12 +89,10 @@ std::optional<bake::BakePath> get_node_bake_path(const Main &bmain,
   if (!modifier_bake_path) {
     return std::nullopt;
   }
-  char zone_bake_dir[FILE_MAX];
-  BLI_path_join(zone_bake_dir,
-                sizeof(zone_bake_dir),
-                modifier_bake_path->c_str(),
-                std::to_string(node_id).c_str());
-  return bake::BakePath::from_single_root(zone_bake_dir);
+  char bake_dir[FILE_MAX];
+  BLI_path_join(
+      bake_dir, sizeof(bake_dir), modifier_bake_path->c_str(), std::to_string(node_id).c_str());
+  return bake::BakePath::from_single_root(bake_dir);
 }
 
 static IndexRange fix_frame_range(const int start, const int end)
