@@ -395,7 +395,10 @@ class CurvesGeometry : public ::CurvesGeometry {
    */
 
   void blend_read(BlendDataReader &reader);
-  void blend_write(BlendWriter &writer, ID &id);
+  void blend_write(BlendWriter &writer,
+                   Span<CustomDataLayer> point_layers,
+                   Span<CustomDataLayer> curve_layers,
+                   ID &id);
 };
 
 static_assert(sizeof(blender::bke::CurvesGeometry) == sizeof(::CurvesGeometry));

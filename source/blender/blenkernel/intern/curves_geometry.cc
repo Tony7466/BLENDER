@@ -1477,13 +1477,11 @@ void CurvesGeometry::blend_read(BlendDataReader &reader)
   this->update_curve_types();
 }
 
-void CurvesGeometry::blend_write(BlendWriter &writer, ID &id)
+void CurvesGeometry::blend_write(BlendWriter &writer,
+                                 const Span<CustomDataLayer> point_layers,
+                                 const Span<CustomDataLayer> curve_layers,
+                                 ID &id)
 {
-  Vector<CustomDataLayer, 16> point_layers;
-  Vector<CustomDataLayer, 16> curve_layers;
-  CustomData_blend_write_prepare(this->point_data, point_layers);
-  CustomData_blend_write_prepare(this->curve_data, curve_layers);
-
   CustomData_blend_write(
       &writer, &this->point_data, point_layers, this->point_num, CD_MASK_ALL, &id);
   CustomData_blend_write(
