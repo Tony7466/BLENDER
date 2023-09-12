@@ -9,8 +9,11 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "DNA_scene_types.h"
+
 #include "COM_algorithm_jump_flooding.hh"
 #include "COM_node_operation.hh"
+#include "COM_symmetric_separable_blur_weights.hh"
 #include "COM_utilities.hh"
 
 #include "node_composite_util.hh"
@@ -52,7 +55,7 @@ class InpaintOperation : public NodeOperation {
      * composed of pixels that are not opaque. */
     Result inpainting_boundary = compute_inpainting_boundary();
 
-    /* Compute a jump flooding table that tells us the closest boundary pixel to each pixel. */
+    /* Compute a jump flooding table to get the closest boundary pixel to each pixel. */
     Result flooded_boundary = Result::Temporary(ResultType::Color, texture_pool());
     jump_flooding(context(), inpainting_boundary, flooded_boundary);
     inpainting_boundary.release();
@@ -96,6 +99,13 @@ class InpaintOperation : public NodeOperation {
 
     flooded_boundary.bind_as_texture(shader, "flooded_boundary_tx");
 
+    /* The lateral blur in the shader is proportional to the distance each pixel makes with the
+     * inpainting boundary. So the maximum possible blur radius is the user supplied distance. */
+    const float max_radius = float(get_distance());
+    const SymmetricSeparableBlurWeights &gaussian_weights =
+        context().cache_manager().symmetric_separable_blur_weights.get(R_FILTER_GAUSS, max_radius);
+    gaussian_weights.bind_as_texture(shader, "gaussian_weights_tx");
+
     const Domain domain = compute_domain();
     Result &output = get_result("Image");
     output.allocate_texture(domain);
@@ -104,6 +114,7 @@ class InpaintOperation : public NodeOperation {
     compute_dispatch_threads_at_least(shader, domain.size);
 
     input.unbind_as_texture();
+    gaussian_weights.unbind_as_texture();
     output.unbind_as_image();
     GPU_shader_unbind();
   }
