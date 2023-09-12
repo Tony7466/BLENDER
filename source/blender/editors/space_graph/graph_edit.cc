@@ -1350,7 +1350,7 @@ static int graphkeys_bake_exec(bContext *C, wmOperator * /*op*/)
 void GRAPH_OT_bake_keys(wmOperatorType *ot)
 {
   /* Identifiers */
-  ot->name = "Bake Keys";
+  ot->name = "Bake Keyframes";
   ot->idname = "GRAPH_OT_bake_keys";
   ot->description = "Add keyframes on every frame between the selected keyframes";
 
