@@ -11,6 +11,7 @@
 #include "BLI_generic_virtual_grid.hh"
 #include "BLI_math_base.hh"
 #include "BLI_resource_scope.hh"
+#include "BLI_span.hh"
 #include "BLI_volume_openvdb.hh"
 
 #ifdef WITH_OPENVDB
@@ -148,6 +149,8 @@ void materialize_to_grid(GVMutableGrid &dst, const GVGridImpl &src)
     using Converter = volume::grid_types::Converter<GridType>;
     using AttributeValueType = typename Converter::AttributeValueType;
     using LeafNode = typename TreeType::LeafNodeType;
+    using LeafBuffer = typename LeafNode::Buffer;
+    using StorageType = typename LeafBuffer::StorageType;
 
     //    EvalPerLeafOp<GridType, MaskGridType> func(
     // field_context_inputs, procedure_executor, mask_grid);
@@ -155,10 +158,30 @@ void materialize_to_grid(GVMutableGrid &dst, const GVGridImpl &src)
         typed_dst.tree().beginLeaf(),
         [&src](const typename TreeType::LeafIter &leaf_iter) {
           LeafNode &leaf = *leaf_iter;
+          if (leaf.isEmpty() || !leaf.isAllocated()) {
+            return;
+          }
 
           GVArray src_varray = src.get_varray_for_leaf(leaf.LOG2DIM, int3(leaf.origin().data()));
-          MutableSpan<GridValueType> leaf_span = {leaf.buffer().data(), LeafNode::NUM_VOXELS};
-          array_utils::copy(src_varray, leaf_span);
+          for (typename LeafNode::ValueOnIter iter = leaf.beginValueOn();
+               iter != leaf.endValueOn();
+               ++iter) {
+            StorageType value;
+            src_varray.get(iter.offset(), &value);
+            iter.setValue(std::move(value));
+          }
+
+          //MutableSpan<StorageType> leaf_span(leaf.buffer().data(), LeafNode::NUM_VOXELS);
+          //const IndexMask index_mask(LeafNode::NUM_VOXELS);
+          //if (!leaf.isDense()) {
+          //  /* TODO any way to make this more efficient and copy only active values?
+          //   * There does not seem to be direct access to the mask buffer,
+          //   * so index_mask would do a linear copy of the mask first, only to then
+          //   * evaluate this again to copy the actual buffer... */
+          //  // leaf.getValueMask()
+          //  // index_mask = IndexMask::from_...
+          //}
+          //array_utils::copy(src_varray, index_mask, leaf_span);
         },
         /*threaded=*/true,
         /*shareOp=*/false);
