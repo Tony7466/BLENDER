@@ -14,16 +14,24 @@ struct Mesh;
 
 namespace blender::geometry {
 
+/** \warning Values are saved in files. */
 enum class TriangulateNGonMode {
+  /** Add a "beauty" pass on top of the standard ear-clipping algorithm. */
   Beauty = 0,
   EarClip = 1,
 };
 
+/** \warning Values are saved in files. */
 enum class TriangulateQuadMode {
+  /** Complex method to determine the best looking edge. */
   Beauty = 0,
+  /** Create a new edge from the first corner to the last. */
   Fixed = 1,
+  /** Create a new edge from the second corner to the third. */
   Alternate = 2,
+  /** Create a new edge along the shortest diagonal. */
   ShortEdge = 3,
+  /** Create a new edge along the longest diagonal. */
   LongEdge = 4,
 };
 

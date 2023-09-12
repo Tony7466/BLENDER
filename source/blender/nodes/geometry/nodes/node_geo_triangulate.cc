@@ -30,8 +30,8 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
 static void geo_triangulate_init(bNodeTree * /*tree*/, bNode *node)
 {
-  node->custom1 = GEO_NODE_TRIANGULATE_QUAD_SHORTEDGE;
-  node->custom2 = GEO_NODE_TRIANGULATE_NGON_BEAUTY;
+  node->custom1 = int(geometry::TriangulateQuadMode::ShortEdge);
+  node->custom2 = int(geometry::TriangulateNGonMode::Beauty);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
@@ -41,8 +41,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   const AnonymousAttributePropagationInfo &propagation_info = params.get_output_propagation_info(
       "Mesh");
 
-  GeometryNodeTriangulateQuads quad_method = GeometryNodeTriangulateQuads(params.node().custom1);
-  GeometryNodeTriangulateNGons ngon_method = GeometryNodeTriangulateNGons(params.node().custom2);
+  geometry::TriangulateNGonMode ngon_method = geometry::TriangulateNGonMode(params.node().custom2);
+  geometry::TriangulateQuadMode quad_method = geometry::TriangulateQuadMode(params.node().custom1);
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     const Mesh *src_mesh = geometry_set.get_mesh();
@@ -76,27 +76,27 @@ static void node_geo_exec(GeoNodeExecParams params)
 static void node_rna(StructRNA *srna)
 {
   static const EnumPropertyItem rna_node_geometry_triangulate_quad_method_items[] = {
-      {GEO_NODE_TRIANGULATE_QUAD_BEAUTY,
+      {int(geometry::TriangulateQuadMode::Beauty),
        "BEAUTY",
        0,
        "Beauty",
        "Split the quads in nice triangles, slower method"},
-      {GEO_NODE_TRIANGULATE_QUAD_FIXED,
+      {int(geometry::TriangulateQuadMode::Fixed),
        "FIXED",
        0,
        "Fixed",
        "Split the quads on the first and third vertices"},
-      {GEO_NODE_TRIANGULATE_QUAD_ALTERNATE,
+      {int(geometry::TriangulateQuadMode::Alternate),
        "FIXED_ALTERNATE",
        0,
        "Fixed Alternate",
        "Split the quads on the 2nd and 4th vertices"},
-      {GEO_NODE_TRIANGULATE_QUAD_SHORTEDGE,
+      {int(geometry::TriangulateQuadMode::ShortEdge),
        "SHORTEST_DIAGONAL",
        0,
        "Shortest Diagonal",
        "Split the quads along their shortest diagonal"},
-      {GEO_NODE_TRIANGULATE_QUAD_LONGEDGE,
+      {int(geometry::TriangulateQuadMode::LongEdge),
        "LONGEST_DIAGONAL",
        0,
        "Longest Diagonal",
@@ -105,12 +105,12 @@ static void node_rna(StructRNA *srna)
   };
 
   static const EnumPropertyItem rna_node_geometry_triangulate_ngon_method_items[] = {
-      {GEO_NODE_TRIANGULATE_NGON_BEAUTY,
+      {int(geometry::TriangulateNGonMode::Beauty),
        "BEAUTY",
        0,
        "Beauty",
        "Arrange the new triangles evenly (slow)"},
-      {GEO_NODE_TRIANGULATE_NGON_EARCLIP,
+      {int(geometry::TriangulateNGonMode::EarClip),
        "CLIP",
        0,
        "Clip",
