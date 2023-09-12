@@ -655,6 +655,97 @@ static void versioning_convert_node_tree_socket_lists_to_interface(bNodeTree *nt
   }
 }
 
+static void remove_triangulate_node_min_size_input(bNodeTree *tree)
+{
+  using namespace blender;
+  Set<bNode *> triangulate_nodes;
+  for (bNode *node : tree->all_nodes()) {
+    if (node->type == GEO_NODE_TRIANGULATE) {
+      triangulate_nodes.add(node);
+    }
+  }
+
+  Map<const bNodeSocket *, bNodeLink *> input_links;
+  LISTBASE_FOREACH (bNodeLink *, link, &tree->links) {
+    if (triangulate_nodes.contains(link->tonode)) {
+      input_links.add_new(link->tosock, link);
+    }
+  }
+
+  for (bNode *triangulate : triangulate_nodes) {
+    bNodeSocket *selection = nodeFindSocket(triangulate, SOCK_IN, "Selection");
+    const bNodeSocket *min_verts = nodeFindSocket(triangulate, SOCK_IN, "Minimum Vertices");
+    const int old_min_verts = static_cast<bNodeSocketValueInt *>(min_verts->default_value)->value;
+    if (!input_links.contains(min_verts) && old_min_verts <= 4) {
+      continue;
+    }
+    bNode *corners_of_face = nodeAddNode(nullptr, tree, "GeometryNodeCornersOfFace");
+    corners_of_face->locx = triangulate->locx - 200;
+    corners_of_face->locy = triangulate->locy - 50;
+    corners_of_face->parent = triangulate->parent;
+    LISTBASE_FOREACH (bNodeSocket *, socket, &corners_of_face->inputs) {
+      socket->flag |= SOCK_HIDDEN;
+    }
+    LISTBASE_FOREACH (bNodeSocket *, socket, &corners_of_face->outputs) {
+      if (!STREQ(socket->identifier, "Total")) {
+        socket->flag |= SOCK_HIDDEN;
+      }
+    }
+
+    bNode *greater_or_equal = nodeAddNode(nullptr, tree, "FunctionNodeCompare");
+    greater_or_equal->locx = triangulate->locx - 100;
+    greater_or_equal->locy = triangulate->locy - 50;
+    greater_or_equal->parent = triangulate->parent;
+    greater_or_equal->flag &= ~NODE_OPTIONS;
+    NodeFunctionCompare *storage = static_cast<NodeFunctionCompare *>(greater_or_equal->storage);
+    storage->operation = NODE_COMPARE_GREATER_EQUAL;
+    storage->data_type = SOCK_INT;
+    nodeAddLink(tree,
+                corners_of_face,
+                nodeFindSocket(corners_of_face, SOCK_OUT, "Total"),
+                greater_or_equal,
+                nodeFindSocket(greater_or_equal, SOCK_IN, "A_INT"));
+    if (bNodeLink **min_verts_link = input_links.lookup_ptr(min_verts)) {
+      (*min_verts_link)->tonode = greater_or_equal;
+      (*min_verts_link)->tosock = nodeFindSocket(greater_or_equal, SOCK_IN, "B_INT");
+    }
+    else {
+      bNodeSocket *new_min_verts = nodeFindSocket(greater_or_equal, SOCK_IN, "B_INT");
+      static_cast<bNodeSocketValueInt *>(new_min_verts->default_value)->value = old_min_verts;
+    }
+
+    if (bNodeLink **selection_link = input_links.lookup_ptr(selection)) {
+      bNode *boolean_and = nodeAddNode(nullptr, tree, "FunctionNodeBooleanMath");
+      boolean_and->locx = triangulate->locx - 75;
+      boolean_and->locy = triangulate->locy - 50;
+      boolean_and->parent = triangulate->parent;
+      boolean_and->flag &= ~NODE_OPTIONS;
+      boolean_and->custom1 = NODE_BOOLEAN_MATH_AND;
+
+      (*selection_link)->tonode = boolean_and;
+      (*selection_link)->tosock = nodeFindSocket(boolean_and, SOCK_IN, "Boolean");
+      nodeAddLink(tree,
+                  greater_or_equal,
+                  nodeFindSocket(greater_or_equal, SOCK_OUT, "Result"),
+                  boolean_and,
+                  nodeFindSocket(boolean_and, SOCK_IN, "Boolean_001"));
+
+      nodeAddLink(tree,
+                  boolean_and,
+                  nodeFindSocket(boolean_and, SOCK_OUT, "Boolean"),
+                  triangulate,
+                  selection);
+    }
+    else {
+      nodeAddLink(tree,
+                  greater_or_equal,
+                  nodeFindSocket(greater_or_equal, SOCK_OUT, "Result"),
+                  triangulate,
+                  selection);
+    }
+  }
+}
+
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -1046,6 +1137,14 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
             node->custom1 = ATTR_DOMAIN_FACE;
           }
         }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 24)) {
+    LISTBASE_FOREACH (bNodeTree *, ntree, &bmain->nodetrees) {
+      if (ntree->type == NTREE_GEOMETRY) {
+        remove_triangulate_node_min_size_input(ntree);
       }
     }
   }
