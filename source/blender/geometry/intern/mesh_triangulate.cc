@@ -66,22 +66,25 @@ enum class QuadDirection : int8_t {
   Edge_1_3 = 1,
 };
 
-/** See #BM_verts_calc_rotate_beauty. */
+/**
+ * \note This behavior is meant to be the same as #BM_verts_calc_rotate_beauty.
+ * The order of vertices requires special attention.
+ */
 static QuadDirection calc_quad_direction_beauty(const float3 &v0,
                                                 const float3 &v1,
                                                 const float3 &v2,
                                                 const float3 &v3)
 {
-  const int flip_flag = is_quad_flip_v3(v0, v1, v2, v3);
+  const int flip_flag = is_quad_flip_v3(v1, v2, v3, v0);
   if (UNLIKELY(flip_flag & (1 << 0))) {
-    return QuadDirection::Edge_1_3;
-  }
-  else if (UNLIKELY(flip_flag & (1 << 1))) {
     return QuadDirection::Edge_0_2;
   }
-  return BLI_polyfill_edge_calc_rotate_beauty__area(v0, v1, v2, v3, false) > 0.0f ?
-             QuadDirection::Edge_1_3 :
-             QuadDirection::Edge_0_2;
+  else if (UNLIKELY(flip_flag & (1 << 1))) {
+    return QuadDirection::Edge_1_3;
+  }
+  return BLI_polyfill_edge_calc_rotate_beauty__area(v1, v2, v3, v0, false) > 0.0f ?
+             QuadDirection::Edge_0_2 :
+             QuadDirection::Edge_1_3;
 }
 
 static void calc_quad_directions(const Span<float3> positions,
