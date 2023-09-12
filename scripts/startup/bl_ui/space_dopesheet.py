@@ -78,7 +78,7 @@ class DopesheetFilterPopoverBase:
             row.prop(dopesheet, "filter_fcurve_name", text="")
         else:
             row = col.row(align=True)
-            row.prop(dopesheet, "filter_text", text="", placeholder="Search")
+            row.prop(dopesheet, "filter_text", text="")
 
         if (not generic_filters_only) and bpy.data.collections:
             col = layout.column(align=True)

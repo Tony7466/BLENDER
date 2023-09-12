@@ -47,9 +47,9 @@ class SCENE_PT_scene(SceneButtonsPanel, Panel):
 
         scene = context.scene
 
-        layout.prop(scene, "camera", placeholder="Object")
-        layout.prop(scene, "background_set", placeholder="Scene")
-        layout.prop(scene, "active_clip", text="Active Clip", placeholder="Movie Clip")
+        layout.prop(scene, "camera")
+        layout.prop(scene, "background_set")
+        layout.prop(scene, "active_clip", text="Active Clip")
 
 
 class SCENE_PT_unit(SceneButtonsPanel, Panel):

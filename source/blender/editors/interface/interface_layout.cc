@@ -2470,7 +2470,7 @@ void uiItemFullR(uiLayout *layout,
   }
 
   if (but && placeholder) {
-    UI_but_placeholder(but, placeholder);
+    UI_but_placeholder_set(but, placeholder);
   }
 
 #ifdef UI_PROP_DECORATE
