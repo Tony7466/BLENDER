@@ -522,7 +522,7 @@ static bool subdiv_mesh_topology_info(const SubdivForeachContext *foreach_contex
                                       const int * /*subdiv_face_offset*/)
 {
   /* Multi-resolution grid data will be applied or become invalid after subdivision,
-   * so don't try to preserve it and use memory. */
+   * so don't try to preserve it and use memory. Crease values should also not be interpolated. */
   CustomData_MeshMasks mask = CD_MASK_EVERYTHING;
   mask.lmask &= ~CD_MASK_MULTIRES_GRIDS;
 

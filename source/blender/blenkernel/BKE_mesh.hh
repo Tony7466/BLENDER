@@ -55,8 +55,6 @@ void face_angles_calc(Span<float3> vert_positions,
                       Span<int> face_verts,
                       MutableSpan<float> angles);
 
-void face_project_2d();
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
