@@ -13,6 +13,8 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "CLG_log.h"
+
 #include "BLI_array_utils.hh"
 #include "BLI_blenlib.h"
 #include "BLI_dial_2d.h"
@@ -23,7 +25,6 @@
 #include "BLI_set.hh"
 #include "BLI_task.h"
 #include "BLI_task.hh"
-#include "BLI_timeit.hh"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
@@ -85,6 +86,8 @@ using blender::Set;
 using blender::Span;
 using blender::Vector;
 
+static CLG_LogRef LOG = {"ed.sculpt_paint"};
+
 static float sculpt_calc_radius(ViewContext *vc,
                                 const Brush *brush,
                                 const Scene *scene,
@@ -116,7 +119,7 @@ void SCULPT_vertex_random_access_ensure(SculptSession *ss)
   }
 }
 
-int SCULPT_vertex_count_get(SculptSession *ss)
+int SCULPT_vertex_count_get(const SculptSession *ss)
 {
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES:
@@ -130,7 +133,7 @@ int SCULPT_vertex_count_get(SculptSession *ss)
   return 0;
 }
 
-const float *SCULPT_vertex_co_get(SculptSession *ss, PBVHVertRef vertex)
+const float *SCULPT_vertex_co_get(const SculptSession *ss, PBVHVertRef vertex)
 {
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES: {
@@ -186,7 +189,7 @@ void SCULPT_vertex_color_set(SculptSession *ss, PBVHVertRef vertex, const float 
   BKE_pbvh_vertex_color_set(ss->pbvh, vertex, color);
 }
 
-void SCULPT_vertex_normal_get(SculptSession *ss, PBVHVertRef vertex, float no[3])
+void SCULPT_vertex_normal_get(const SculptSession *ss, PBVHVertRef vertex, float no[3])
 {
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES: {
@@ -373,7 +376,7 @@ int SCULPT_active_face_set_get(SculptSession *ss)
   return SCULPT_FACE_SET_NONE;
 }
 
-bool SCULPT_vertex_visible_get(SculptSession *ss, PBVHVertRef vertex)
+bool SCULPT_vertex_visible_get(const SculptSession *ss, PBVHVertRef vertex)
 {
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES: {
@@ -1074,7 +1077,7 @@ PBVHVertRef SCULPT_nearest_vertex_get(
   return threading::parallel_reduce(
              nodes.index_range(),
              1,
-             NearestVertexData{PBVH_REF_NONE, FLT_MAX},
+             NearestVertexData{{PBVH_REF_NONE}, FLT_MAX},
              [&](const IndexRange range, NearestVertexData nearest) {
                for (const int i : range) {
                  nearest_vertex_get_node(ss->pbvh, co, max_distance_sq, nodes[i], &nearest);
@@ -3868,25 +3871,17 @@ void SCULPT_combine_transform_proxies(Sculpt *sd, Object *ob)
 static void sculpt_update_keyblock(Object *ob)
 {
   SculptSession *ss = ob->sculpt;
-  float(*vertCos)[3];
 
   /* Key-block update happens after handling deformation caused by modifiers,
    * so ss->orig_cos would be updated with new stroke. */
   if (ss->orig_cos) {
-    vertCos = ss->orig_cos;
+    SCULPT_vertcos_to_key(ob, ss->shapekey_active, ss->orig_cos);
   }
   else {
-    vertCos = BKE_pbvh_vert_coords_alloc(ss->pbvh);
-  }
-
-  if (!vertCos) {
-    return;
-  }
-
-  SCULPT_vertcos_to_key(ob, ss->shapekey_active, vertCos);
-
-  if (vertCos != ss->orig_cos) {
-    MEM_freeN(vertCos);
+    const float(*positions)[3] = BKE_pbvh_get_vert_positions(ss->pbvh);
+    if (positions != nullptr) {
+      SCULPT_vertcos_to_key(ob, ss->shapekey_active, positions);
+    }
   }
 }
 
@@ -4299,40 +4294,43 @@ static void sculpt_init_mirror_clipping(Object *ob, SculptSession *ss)
 static void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache *cache)
 {
   Scene *scene = CTX_data_scene(C);
-  Brush *brush = paint->brush;
+  Brush *cur_brush = paint->brush;
 
-  if (brush->sculpt_tool == SCULPT_TOOL_MASK) {
-    cache->saved_mask_brush_tool = brush->mask_tool;
-    brush->mask_tool = BRUSH_MASK_SMOOTH;
+  if (cur_brush->sculpt_tool == SCULPT_TOOL_MASK) {
+    cache->saved_mask_brush_tool = cur_brush->mask_tool;
+    cur_brush->mask_tool = BRUSH_MASK_SMOOTH;
   }
-  else if (ELEM(brush->sculpt_tool,
+  else if (ELEM(cur_brush->sculpt_tool,
                 SCULPT_TOOL_SLIDE_RELAX,
                 SCULPT_TOOL_DRAW_FACE_SETS,
                 SCULPT_TOOL_PAINT,
                 SCULPT_TOOL_SMEAR))
   {
     /* Do nothing, this tool has its own smooth mode. */
+    return;
   }
-  else {
-    int cur_brush_size = BKE_brush_size_get(scene, brush);
 
-    STRNCPY(cache->saved_active_brush_name, brush->id.name + 2);
-
-    /* Switch to the smooth brush. */
-    brush = BKE_paint_toolslots_brush_get(paint, SCULPT_TOOL_SMOOTH);
-    if (brush) {
-      BKE_paint_brush_set(paint, brush);
-      cache->saved_smooth_size = BKE_brush_size_get(scene, brush);
-      BKE_brush_size_set(scene, brush, cur_brush_size);
-      BKE_curvemapping_init(brush->curve);
-    }
+  /* Switch to the smooth brush if possible. */
+  Brush *smooth_brush = BKE_paint_toolslots_brush_get(paint, SCULPT_TOOL_SMOOTH);
+  if (!smooth_brush) {
+    CLOG_WARN(&LOG, "Switching to the smooth brush not possible, corresponding brush not");
+    cache->saved_active_brush_name[0] = '\0';
+    return;
   }
+
+  int cur_brush_size = BKE_brush_size_get(scene, cur_brush);
+
+  STRNCPY(cache->saved_active_brush_name, cur_brush->id.name + 2);
+
+  BKE_paint_brush_set(paint, smooth_brush);
+  cache->saved_smooth_size = BKE_brush_size_get(scene, smooth_brush);
+  BKE_brush_size_set(scene, smooth_brush, cur_brush_size);
+  BKE_curvemapping_init(smooth_brush->curve);
 }
 
 static void smooth_brush_toggle_off(const bContext *C, Paint *paint, StrokeCache *cache)
 {
   Main *bmain = CTX_data_main(C);
-  Scene *scene = CTX_data_scene(C);
   Brush *brush = BKE_paint_brush(paint);
 
   if (brush->sculpt_tool == SCULPT_TOOL_MASK) {
@@ -4346,13 +4344,15 @@ static void smooth_brush_toggle_off(const bContext *C, Paint *paint, StrokeCache
   {
     /* Do nothing. */
   }
-  else {
-    /* Try to switch back to the saved/previous brush. */
+
+  /* If saved_active_brush_name is not set, brush was not switched/affected in
+   * smooth_brush_toggle_on(). */
+  Brush *saved_active_brush = (Brush *)BKE_libblock_find_name(
+      bmain, ID_BR, cache->saved_active_brush_name);
+  if (saved_active_brush) {
+    Scene *scene = CTX_data_scene(C);
     BKE_brush_size_set(scene, brush, cache->saved_smooth_size);
-    brush = (Brush *)BKE_libblock_find_name(bmain, ID_BR, cache->saved_active_brush_name);
-    if (brush) {
-      BKE_paint_brush_set(paint, brush);
-    }
+    BKE_paint_brush_set(paint, saved_active_brush);
   }
 }
 
@@ -5421,9 +5421,14 @@ void SCULPT_flush_update_step(bContext *C, SculptUpdateType update_flags)
 
   if (update_flags & SCULPT_UPDATE_COORDS && !ss->shapekey_active) {
     if (BKE_pbvh_type(ss->pbvh) == PBVH_FACES) {
-      /* When sculpting and changing the positions of a mesh, tag them as changed and update. */
-      BKE_mesh_tag_positions_changed(mesh);
-      /* Update the mesh's bounds eagerly since the PBVH already has that information. */
+      /* Updating mesh positions without marking caches dirty is generally not good, but since
+       * sculpt mode has special requirements and is expected to have sole ownership of the mesh it
+       * modifies, it's generally okay.
+       *
+       * Vertex and face normals are updated later in #BKE_pbvh_update_normals. However, we update
+       * the mesh's bounds eagerly here since they are trivial to access from the PBVH. */
+      BKE_mesh_tag_positions_changed_no_normals(mesh);
+
       Bounds<float3> bounds;
       BKE_pbvh_bounding_box(ob->sculpt->pbvh, bounds.min, bounds.max);
       mesh->bounds_set_eager(bounds);
@@ -6251,7 +6256,7 @@ void SCULPT_face_set_set(SculptSession *ss, PBVHFaceRef face, int fset)
   }
 }
 
-int SCULPT_vertex_island_get(SculptSession *ss, PBVHVertRef vertex)
+int SCULPT_vertex_island_get(const SculptSession *ss, PBVHVertRef vertex)
 {
   if (ss->attrs.topology_island_key) {
     return *static_cast<uint8_t *>(SCULPT_vertex_attr_get(vertex, ss->attrs.topology_island_key));

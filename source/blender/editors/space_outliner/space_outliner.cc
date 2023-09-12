@@ -39,7 +39,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "outliner_intern.hh"
 #include "tree/tree_display.hh"
@@ -156,6 +156,7 @@ static void outliner_main_region_listener(const wmRegionListenerParams *params)
           break;
         case ND_BONE_ACTIVE:
         case ND_BONE_SELECT:
+        case ND_BONE_COLLECTION:
         case ND_DRAW:
         case ND_PARENT:
         case ND_OB_SHADING:
