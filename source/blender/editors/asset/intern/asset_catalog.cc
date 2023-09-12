@@ -84,7 +84,7 @@ asset_system::AssetCatalog *ED_asset_catalog_add(::AssetLibrary *library,
 
   WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, nullptr);
 
-  // AS_asset_library_rebuild_all();
+  AS_asset_library_rebuild_all();
 
   return new_catalog;
 }
@@ -105,7 +105,7 @@ void ED_asset_catalog_remove(::AssetLibrary *library, const CatalogID &catalog_i
   catalog_service->tag_has_unsaved_changes(nullptr);
   catalog_service->prune_catalogs_by_id(catalog_id);
 
-  // AS_asset_library_rebuild_all();
+  AS_asset_library_rebuild_all();
 
   WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, nullptr);
 }
@@ -138,7 +138,7 @@ void ED_asset_catalog_rename(::AssetLibrary *library,
   catalog_service->tag_has_unsaved_changes(catalog);
   catalog_service->update_catalog_path(catalog_id, clean_new_path);
 
-  // AS_asset_library_rebuild_all();
+  AS_asset_library_rebuild_all();
 
   WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, nullptr);
 }
@@ -187,7 +187,7 @@ void ED_asset_catalog_move(::AssetLibrary *library,
   catalog_service->tag_has_unsaved_changes(src_catalog);
   catalog_service->update_catalog_path(src_catalog_id, clean_new_path);
 
-  // AS_asset_library_rebuild_all();
+  AS_asset_library_rebuild_all();
 
   WM_main_add_notifier(NC_SPACE | ND_SPACE_ASSET_PARAMS, nullptr);
 }

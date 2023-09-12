@@ -561,7 +561,6 @@ static asset::AssetItemTree build_catalog_tree(const bContext &C)
     return true;
   };
   const AssetLibraryReference library = asset_system::all_library_reference();
-  AS_asset_library_load(CTX_data_main(&C), library);
   return asset::build_filtered_all_catalog_tree(library, C, type_filter, meta_data_filter);
 }
 
@@ -678,7 +677,6 @@ MenuType node_group_operator_assets_menu()
 
 void clear_operator_asset_trees()
 {
-  SCOPED_TIMER(__func__);
   for (const int mode : IndexRange(CTX_MODE_NUM)) {
     if (asset::AssetItemTree *tree = get_static_item_tree(eContextObjectMode(mode)))
       *tree = {};
