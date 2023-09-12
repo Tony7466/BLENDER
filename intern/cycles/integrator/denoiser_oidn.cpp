@@ -17,60 +17,15 @@
 #include "kernel/device/cpu/compat.h"
 #include "kernel/device/cpu/kernel.h"
 
-#if OIDN_VERSION_MAJOR < 2
-#  define oidnExecuteFilterAsync oidnExecuteFilter
-#  define oidnSetFilterInt oidnSetFilter1i
-#  define oidnSetFilterBool oidnSetFilter1b
-#endif
-
 CCL_NAMESPACE_BEGIN
 
 thread_mutex OIDNDenoiser::mutex_;
-bool OIDNDenoiser::is_device_supported(const DeviceInfo &device)
-{
-
-  switch (device.type) {
-    case DEVICE_CPU:
-      return openimagedenoise_supported();
-#if OIDN_VERSION_MAJOR >= 2
-#  ifdef OIDN_DEVICE_SYCL
-    case DEVICE_ONEAPI:
-      return true;
-#  endif
-#endif
-    default:
-      return false;
-  }
-}
 
 OIDNDenoiser::OIDNDenoiser(Device *path_trace_device, const DenoiseParams &params)
-    : DenoiserGPU(path_trace_device, params)
+    : Denoiser(path_trace_device, params)
 {
   DCHECK_EQ(params.type, DENOISER_OPENIMAGEDENOISE);
-}
-
-OIDNDenoiser::~OIDNDenoiser()
-{
-  if (albedo_memory_) {
-    delete albedo_memory_;
-  }
-  if (normal_memory_) {
-    delete normal_memory_;
-  }
-#ifdef WITH_OPENIMAGEDENOISE
-  if (albedo_filter_) {
-    oidnReleaseFilter(albedo_filter_);
-  }
-  if (normal_filter_) {
-    oidnReleaseFilter(normal_filter_);
-  }
-  if (oidn_filter_) {
-    oidnReleaseFilter(oidn_filter_);
-  }
-  if (oidn_device_) {
-    oidnReleaseDevice(oidn_device_);
-  }
-#endif
+  printf("oidn CPU\n");
 }
 
 #ifdef WITH_OPENIMAGEDENOISE
@@ -619,16 +574,12 @@ bool OIDNDenoiser::denoise_buffer(const BufferParams &buffer_params,
                                   const int num_samples,
                                   bool allow_inplace_modification)
 {
-  if (denoiser_device_->info.type != DEVICE_CPU && !cpu_fallback_) {
-    return DenoiserGPU::denoise_buffer(
-        buffer_params, render_buffers, num_samples, allow_inplace_modification);
-  }
-
   DCHECK(openimagedenoise_supported())
       << "OpenImageDenoiser is not supported on this platform or build.";
 
 #ifdef WITH_OPENIMAGEDENOISE
   thread_scoped_lock lock(mutex_);
+
   /* Make sure the host-side data is available for denoising. */
   unique_ptr<DeviceQueue> queue = create_device_queue(render_buffers);
   copy_render_buffers_from_device(queue, render_buffers);
@@ -673,20 +624,7 @@ bool OIDNDenoiser::denoise_buffer(const BufferParams &buffer_params,
 
 uint OIDNDenoiser::get_device_type_mask() const
 {
-  uint device_mask = 0;
-#ifdef WITH_OPENIMAGEDENOISE
-#  if OIDN_VERSION_MAJOR < 2
-  device_mask = DEVICE_MASK_CPU;
-#  else
-#    ifdef OIDN_DEVICE_CPU
-  device_mask |= DEVICE_MASK_CPU;
-#    endif
-#    ifdef OIDN_DEVICE_SYCL
-  device_mask |= DEVICE_MASK_ONEAPI;
-#    endif
-#  endif
-#endif
-  return device_mask;
+  return DEVICE_MASK_CPU;
 }
 
 Device *OIDNDenoiser::ensure_denoiser_device(Progress *progress)
@@ -696,295 +634,14 @@ Device *OIDNDenoiser::ensure_denoiser_device(Progress *progress)
   path_trace_device_->set_error("Build without OpenImageDenoiser");
   return nullptr;
 #else
-#  if OIDN_VERSION_MAJOR < 2
-  (void)progress;
   if (!openimagedenoise_supported()) {
     path_trace_device_->set_error(
         "OpenImageDenoiser is not supported on this CPU: missing SSE 4.1 support");
     return nullptr;
   }
+
   return Denoiser::ensure_denoiser_device(progress);
-#  else
-  Device *denoiser_device = Denoiser::ensure_denoiser_device(progress);
-  if (!denoiser_device) {
-    return nullptr;
-  }
-
-  if (denoiser_device->info.type != DEVICE_CPU) {
-    return DenoiserGPU::ensure_denoiser_device(progress);
-  }
-  return denoiser_device;
-#  endif
 #endif
-}
-
-bool OIDNDenoiser::denoise_create_if_needed(DenoiseContext &context)
-{
-#ifdef WITH_OPENIMAGEDENOISE
-  const bool recreate_denoiser = (oidn_device_ == nullptr) || (oidn_filter_ == nullptr) ||
-                                 (use_pass_albedo_ != context.use_pass_albedo) ||
-                                 (use_pass_normal_ != context.use_pass_normal) ||
-                                 (use_pass_motion_ != context.use_pass_motion);
-  if (!recreate_denoiser) {
-    return true;
-  }
-
-  /* Destroy existing handle before creating new one. */
-  if (oidn_filter_) {
-    oidnReleaseFilter(oidn_filter_);
-  }
-
-  if (oidn_device_) {
-    oidnReleaseDevice(oidn_device_);
-  }
-
-  cpu_fallback_ = false;
-
-#  if OIDN_VERSION_MAJOR < 2
-  oidn_device_ = oidnNewDevice(OIDN_DEVICE_TYPE_CPU);
-#  else
-  switch (denoiser_device_->info.type) {
-#    if defined(OIDN_DEVICE_SYCL)
-    case DEVICE_ONEAPI:
-      oidn_device_ = oidnNewDevice(OIDN_DEVICE_TYPE_SYCL);
-      denoiser_queue_->init_execution();
-      break;
-#    endif
-    /* Devices without explicit support fall through to CPU backend. */
-    default:
-      oidn_device_ = oidnNewDevice(OIDN_DEVICE_TYPE_CPU);
-      break;
-  }
-  if (!oidn_device_) {
-    denoiser_device_->set_error("Failed to create OIDN device");
-    return false;
-  }
-
-#  endif
-  oidnCommitDevice(oidn_device_);
-
-  oidn_filter_ = oidnNewFilter(oidn_device_, "RT");
-  if (oidn_filter_ == nullptr) {
-    denoiser_device_->set_error("Failed to create OIDN filter");
-    return false;
-  }
-
-  oidnSetFilterBool(oidn_filter_, "hdr", true);
-  oidnSetFilterBool(oidn_filter_, "srgb", false);
-  oidnSetFilterInt(oidn_filter_, "maxMemoryMB", 1024);
-  if (params_.prefilter == DENOISER_PREFILTER_NONE ||
-      params_.prefilter == DENOISER_PREFILTER_ACCURATE) {
-    oidnSetFilterInt(oidn_filter_, "cleanAux", true);
-  }
-
-  albedo_filter_ = oidnNewFilter(oidn_device_, "RT");
-  oidnSetFilterInt(albedo_filter_, "maxMemoryMB", 1024);
-  if (albedo_filter_ == nullptr) {
-    denoiser_device_->set_error("Failed to create OIDN filter");
-    return false;
-  }
-
-  normal_filter_ = oidnNewFilter(oidn_device_, "RT");
-  oidnSetFilterInt(normal_filter_, "maxMemoryMB", 1024);
-  if (normal_filter_ == nullptr) {
-    denoiser_device_->set_error("Failed to create OIDN filter");
-    return false;
-  }
-
-  /* OIDN denoiser handle was created with the requested number of input passes. */
-  use_pass_albedo_ = context.use_pass_albedo;
-  use_pass_normal_ = context.use_pass_normal;
-  use_pass_motion_ = context.use_pass_motion;
-
-  /* OIDN denoiser has been created, but it needs configuration. */
-  is_configured_ = false;
-#endif
-  return true;
-}
-
-bool OIDNDenoiser::denoise_configure_if_needed(DenoiseContext &context)
-{
-  /* Limit maximum tile size denoiser can be invoked with. */
-  const int2 size = make_int2(context.buffer_params.width, context.buffer_params.height);
-
-  if (is_configured_ && (configured_size_.x == size.x && configured_size_.y == size.y)) {
-    return true;
-  }
-
-  if (params_.prefilter != DENOISER_PREFILTER_NONE) {
-    if (albedo_memory_) {
-      delete albedo_memory_;
-    }
-    if (normal_memory_) {
-      delete normal_memory_;
-    }
-    size_t buffer_size = context.buffer_params.width * context.buffer_params.height *
-                         sizeof(float) * 3;
-
-    albedo_memory_ = new device_only_memory<char>(denoiser_device_, "__oidn_albedo");
-    albedo_memory_->alloc_to_device(buffer_size);
-    normal_memory_ = new device_only_memory<char>(denoiser_device_, "__oidn_normal");
-    normal_memory_->alloc_to_device(buffer_size);
-  }
-
-  is_configured_ = true;
-  configured_size_ = size;
-
-  return true;
-}
-
-bool OIDNDenoiser::denoise_run(const DenoiseContext &context, const DenoisePass &pass)
-{
-#ifdef WITH_OPENIMAGEDENOISE
-  /* Color pass. */
-  const int64_t pass_stride_in_bytes = context.buffer_params.pass_stride * sizeof(float);
-
-  oidnSetSharedFilterImage(oidn_filter_,
-                           "color",
-                           (void *)context.render_buffers->buffer.device_pointer,
-                           OIDN_FORMAT_FLOAT3,
-                           context.buffer_params.width,
-                           context.buffer_params.height,
-                           pass.denoised_offset * sizeof(float),
-                           pass_stride_in_bytes,
-                           pass_stride_in_bytes * context.buffer_params.stride);
-  oidnSetSharedFilterImage(oidn_filter_,
-                           "output",
-                           (void *)context.render_buffers->buffer.device_pointer,
-                           OIDN_FORMAT_FLOAT3,
-                           context.buffer_params.width,
-                           context.buffer_params.height,
-                           pass.denoised_offset * sizeof(float),
-                           pass_stride_in_bytes,
-                           pass_stride_in_bytes * context.buffer_params.stride);
-
-  /* Optional albedo and color passes. */
-  if (context.num_input_passes > 1) {
-    const device_ptr d_guiding_buffer = context.guiding_params.device_pointer;
-    const int64_t pixel_stride_in_bytes = context.guiding_params.pass_stride * sizeof(float);
-    const int64_t row_stride_in_bytes = context.guiding_params.stride * pixel_stride_in_bytes;
-
-    if (context.use_pass_albedo) {
-      if (params_.prefilter == DENOISER_PREFILTER_NONE) {
-        oidnSetSharedFilterImage(oidn_filter_,
-                                 "albedo",
-                                 (void *)d_guiding_buffer,
-                                 OIDN_FORMAT_FLOAT3,
-                                 context.buffer_params.width,
-                                 context.buffer_params.height,
-                                 context.guiding_params.pass_albedo * sizeof(float),
-                                 pixel_stride_in_bytes,
-                                 row_stride_in_bytes);
-      }
-      else {
-        oidnSetSharedFilterImage(albedo_filter_,
-                                 "color",
-                                 (void *)d_guiding_buffer,
-                                 OIDN_FORMAT_FLOAT3,
-                                 context.buffer_params.width,
-                                 context.buffer_params.height,
-                                 context.guiding_params.pass_albedo * sizeof(float),
-                                 pixel_stride_in_bytes,
-                                 row_stride_in_bytes);
-        oidnSetSharedFilterImage(albedo_filter_,
-                                 "output",
-                                 (void *)albedo_memory_->device_pointer,
-                                 OIDN_FORMAT_FLOAT3,
-                                 context.buffer_params.width,
-                                 context.buffer_params.height,
-                                 0,
-                                 3 * sizeof(float),
-                                 context.buffer_params.width * 3 * sizeof(float));
-        oidnCommitFilter(albedo_filter_);
-        oidnExecuteFilterAsync(albedo_filter_);
-
-        oidnSetSharedFilterImage(oidn_filter_,
-                                 "albedo",
-                                 (void *)albedo_memory_->device_pointer,
-                                 OIDN_FORMAT_FLOAT3,
-                                 context.buffer_params.width,
-                                 context.buffer_params.height,
-                                 0,
-                                 3 * sizeof(float),
-                                 context.buffer_params.width * 3 * sizeof(float));
-      }
-    }
-
-    if (context.use_pass_normal) {
-      if (params_.prefilter == DENOISER_PREFILTER_NONE) {
-        oidnSetSharedFilterImage(oidn_filter_,
-                                 "normal",
-                                 (void *)d_guiding_buffer,
-                                 OIDN_FORMAT_FLOAT3,
-                                 context.buffer_params.width,
-                                 context.buffer_params.height,
-                                 context.guiding_params.pass_normal * sizeof(float),
-                                 pixel_stride_in_bytes,
-                                 row_stride_in_bytes);
-      }
-      else {
-        oidnSetSharedFilterImage(normal_filter_,
-                                 "color",
-                                 (void *)d_guiding_buffer,
-                                 OIDN_FORMAT_FLOAT3,
-                                 context.buffer_params.width,
-                                 context.buffer_params.height,
-                                 context.guiding_params.pass_normal * sizeof(float),
-                                 pixel_stride_in_bytes,
-                                 row_stride_in_bytes);
-
-        oidnSetSharedFilterImage(normal_filter_,
-                                 "output",
-                                 (void *)normal_memory_->device_pointer,
-                                 OIDN_FORMAT_FLOAT3,
-                                 context.buffer_params.width,
-                                 context.buffer_params.height,
-                                 0,
-                                 3 * sizeof(float),
-                                 context.buffer_params.width * 3 * sizeof(float));
-
-        oidnCommitFilter(normal_filter_);
-        oidnExecuteFilterAsync(normal_filter_);
-
-        oidnSetSharedFilterImage(oidn_filter_,
-                                 "normal",
-                                 (void *)normal_memory_->device_pointer,
-                                 OIDN_FORMAT_FLOAT3,
-                                 context.buffer_params.width,
-                                 context.buffer_params.height,
-                                 0,
-                                 3 * sizeof(float),
-                                 context.buffer_params.width * 3 * sizeof(float));
-      }
-    }
-  }
-
-  oidnCommitFilter(oidn_filter_);
-  oidnExecuteFilter(oidn_filter_);
-
-  const char *out_message = nullptr;
-  OIDNError err = oidnGetDeviceError(oidn_device_, (const char **)&out_message);
-  if (OIDN_ERROR_NONE != err) {
-    /* If OIDN runs out of memory, reduce mem limit and retry */
-    while (err == OIDN_ERROR_OUT_OF_MEMORY && max_mem_ > 200) {
-      max_mem_ = max_mem_ / 2;
-      oidnSetFilterInt(oidn_filter_, "maxMemoryMB", max_mem_);
-      oidnCommitFilter(oidn_filter_);
-      oidnExecuteFilter(oidn_filter_);
-      err = oidnGetDeviceError(oidn_device_, &out_message);
-    }
-    if (out_message) {
-      LOG(ERROR) << "OIDN error: " << out_message;
-      denoiser_device_->set_error(out_message);
-    }
-    else {
-      LOG(ERROR) << "OIDN error: unspecified";
-      denoiser_device_->set_error("Unspecified OIDN error");
-    }
-    return false;
-  }
-#endif
-  return true;
 }
 
 CCL_NAMESPACE_END

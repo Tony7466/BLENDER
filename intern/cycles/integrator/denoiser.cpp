@@ -6,6 +6,9 @@
 
 #include "device/device.h"
 #include "integrator/denoiser_oidn.h"
+#ifdef WITH_OPENIMAGEDENOISE
+#  include "integrator/denoiser_oidn2.h"
+#endif
 #include "integrator/denoiser_optix.h"
 #include "session/buffers.h"
 #include "util/log.h"
@@ -20,6 +23,14 @@ unique_ptr<Denoiser> Denoiser::create(Device *path_trace_device, const DenoisePa
 #ifdef WITH_OPTIX
   if (params.type == DENOISER_OPTIX && Device::available_devices(DEVICE_MASK_OPTIX).size()) {
     return make_unique<OptiXDenoiser>(path_trace_device, params);
+  }
+#endif
+
+#ifdef WITH_OPENIMAGEDENOISE
+  if (params.type == DENOISER_OPENIMAGEDENOISE_GPU &&
+      Device::available_devices(DEVICE_MASK_ONEAPI).size())
+  {
+    return make_unique<OIDN2Denoiser>(path_trace_device, params);
   }
 #endif
 
