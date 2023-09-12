@@ -249,6 +249,9 @@ static void store_bsdf_properties(const bNode *bsdf_node,
     copy_property_from_node(SOCK_FLOAT, bsdf_node, "Anisotropic", {&aniso, 1});
     copy_property_from_node(SOCK_FLOAT, bsdf_node, "Anisotropic Rotation", {&aniso_rot, 1});
     copy_property_from_node(SOCK_FLOAT, bsdf_node, "Transmission", {&transmission, 1});
+
+    /* Clearcoat used to include an implicit 0.25 factor, so stay compatible to old versions. */
+    coat *= 4.0f;
   }
 
   /* See https://wikipedia.org/wiki/Wavefront_.obj_file for all possible values of `illum`. */

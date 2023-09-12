@@ -327,7 +327,8 @@ static void set_bsdf_socket_values(bNode *bsdf, Material *mat, const MTLMaterial
     set_property_of_socket(SOCK_FLOAT, "Sheen", {mtl_mat.sheen}, bsdf);
   }
   if (mtl_mat.cc_thickness >= 0) {
-    set_property_of_socket(SOCK_FLOAT, "Coat", {mtl_mat.cc_thickness}, bsdf);
+    /* Clearcoat used to include an implicit 0.25 factor, so stay compatible to old versions. */
+    set_property_of_socket(SOCK_FLOAT, "Coat", {0.25f * mtl_mat.cc_thickness}, bsdf);
   }
   if (mtl_mat.cc_roughness >= 0) {
     set_property_of_socket(SOCK_FLOAT, "Coat Roughness", {mtl_mat.cc_roughness}, bsdf);
