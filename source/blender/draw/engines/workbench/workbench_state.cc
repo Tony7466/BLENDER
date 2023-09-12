@@ -70,20 +70,18 @@ void SceneState::init(Object *camera_ob /*= nullptr*/)
     }
   }
 
-  if (!is_render_mode) {
-    if (shading.type < OB_SOLID) {
-      shading.light = V3D_LIGHTING_FLAT;
-      shading.color_type = V3D_SHADING_OBJECT_COLOR;
-      shading.xray_alpha = 0.0f;
-    }
-    else if (SHADING_XRAY_ENABLED(shading)) {
-      shading.xray_alpha = SHADING_XRAY_ALPHA(shading);
-    }
-    else {
-      shading.xray_alpha = 1.0f;
-    }
+  if (shading.type < OB_SOLID) {
+    shading.light = V3D_LIGHTING_FLAT;
+    shading.color_type = V3D_SHADING_OBJECT_COLOR;
+    shading.xray_alpha = 0.0f;
   }
-  xray_mode = !is_render_mode && shading.xray_alpha != 1.0f;
+  else if (SHADING_XRAY_ENABLED(shading)) {
+    shading.xray_alpha = SHADING_XRAY_ALPHA(shading);
+  }
+  else {
+    shading.xray_alpha = 1.0f;
+  }
+  xray_mode = shading.xray_alpha != 1.0f;
 
   if (SHADING_XRAY_FLAG_ENABLED(shading)) {
     /* Disable shading options that aren't supported in transparency mode. */
@@ -138,9 +136,8 @@ void SceneState::init(Object *camera_ob /*= nullptr*/)
   else if (DRW_state_is_scene_render()) {
     _samples_len = scene->display.render_aa;
   }
-  if (is_navigating || is_playback || DRW_state_is_viewport_image_render()) {
+  if (is_navigating || is_playback) {
     /* Only draw using SMAA or no AA when navigating. */
-    /* Same for viewport image render, since it's limited to a single sample. */
     _samples_len = min_ii(_samples_len, 1);
   }
   /* 0 samples means no AA */

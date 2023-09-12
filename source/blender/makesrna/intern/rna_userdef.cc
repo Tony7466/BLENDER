@@ -966,11 +966,10 @@ static StructRNA *rna_AddonPref_register(Main *bmain,
   const char *error_prefix = "Registering add-on preferences class:";
   bAddonPrefType *apt, dummy_apt = {{'\0'}};
   bAddon dummy_addon = {nullptr};
-  PointerRNA dummy_addon_ptr;
   // bool have_function[1];
 
   /* Setup dummy add-on preference and it's type to store static properties in. */
-  RNA_pointer_create(nullptr, &RNA_AddonPreferences, &dummy_addon, &dummy_addon_ptr);
+  PointerRNA dummy_addon_ptr = RNA_pointer_create(nullptr, &RNA_AddonPreferences, &dummy_addon);
 
   /* validate the python class */
   if (validate(&dummy_addon_ptr, data, nullptr /* have_function */) != 0) {
@@ -1655,11 +1654,6 @@ static void rna_def_userdef_theme_ui(BlenderRNA *brna)
   prop = RNA_def_property(srna, "wcol_list_item", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_NEVER_NULL);
   RNA_def_property_ui_text(prop, "List Item Colors", "");
-  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
-
-  prop = RNA_def_property(srna, "wcol_view_item", PROP_POINTER, PROP_NONE);
-  RNA_def_property_flag(prop, PROP_NEVER_NULL);
-  RNA_def_property_ui_text(prop, "Data-View Item Colors", "");
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 
   prop = RNA_def_property(srna, "wcol_state", PROP_POINTER, PROP_NONE);
