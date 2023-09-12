@@ -892,36 +892,32 @@ class NodesModifierSimulationParams : public nodes::GeoNodesSimulationParams {
   void output_store_frame_cache(bake::NodeCache &node_cache,
                                 nodes::SimulationZoneBehavior &zone_behavior) const
   {
-    auto &store_and_pass_through_info =
-        zone_behavior.output.emplace<sim_output::StoreAndPassThrough>();
-    store_and_pass_through_info.store_fn =
-        [simulation_cache = modifier_cache_,
-         node_cache = &node_cache,
-         current_frame = current_frame_](bke::bake::BakeState state) {
-          std::lock_guard lock{simulation_cache->mutex};
-          auto frame_cache = std::make_unique<bake::FrameCache>();
-          frame_cache->frame = current_frame;
-          frame_cache->state = std::move(state);
-          node_cache->frame_caches.append(std::move(frame_cache));
-        };
+    auto &store_new_state_info = zone_behavior.output.emplace<sim_output::StoreNewState>();
+    store_new_state_info.store_fn = [simulation_cache = modifier_cache_,
+                                     node_cache = &node_cache,
+                                     current_frame = current_frame_](bke::bake::BakeState state) {
+      std::lock_guard lock{simulation_cache->mutex};
+      auto frame_cache = std::make_unique<bake::FrameCache>();
+      frame_cache->frame = current_frame;
+      frame_cache->state = std::move(state);
+      node_cache->frame_caches.append(std::move(frame_cache));
+    };
   }
 
   void store_as_prev_items(bake::NodeCache &node_cache,
                            nodes::SimulationZoneBehavior &zone_behavior) const
   {
-    auto &store_and_pass_through_info =
-        zone_behavior.output.emplace<sim_output::StoreAndPassThrough>();
-    store_and_pass_through_info.store_fn =
-        [simulation_cache = modifier_cache_,
-         node_cache = &node_cache,
-         current_frame = current_frame_](bke::bake::BakeState state) {
-          std::lock_guard lock{simulation_cache->mutex};
-          if (!node_cache->prev_cache) {
-            node_cache->prev_cache.emplace();
-          }
-          node_cache->prev_cache->state = std::move(state);
-          node_cache->prev_cache->frame = current_frame;
-        };
+    auto &store_new_state_info = zone_behavior.output.emplace<sim_output::StoreNewState>();
+    store_new_state_info.store_fn = [simulation_cache = modifier_cache_,
+                                     node_cache = &node_cache,
+                                     current_frame = current_frame_](bke::bake::BakeState state) {
+      std::lock_guard lock{simulation_cache->mutex};
+      if (!node_cache->prev_cache) {
+        node_cache->prev_cache.emplace();
+      }
+      node_cache->prev_cache->state = std::move(state);
+      node_cache->prev_cache->frame = current_frame;
+    };
   }
 
   void read_from_cache(const FrameIndices &frame_indices,
@@ -1487,16 +1483,18 @@ static void panel_draw(const bContext *C, Panel *panel)
    * attribute/value toggle requires a manually built layout anyway. */
   uiLayoutSetPropDecorate(layout, false);
 
-  uiTemplateID(layout,
-               C,
-               ptr,
-               "node_group",
-               "node.new_geometry_node_group_assign",
-               nullptr,
-               nullptr,
-               0,
-               false,
-               nullptr);
+  if (!(nmd->flag & NODES_MODIFIER_HIDE_DATABLOCK_SELECTOR)) {
+    uiTemplateID(layout,
+                 C,
+                 ptr,
+                 "node_group",
+                 "node.new_geometry_node_group_assign",
+                 nullptr,
+                 nullptr,
+                 0,
+                 false,
+                 nullptr);
+  }
 
   if (nmd->node_group != nullptr && nmd->settings.properties != nullptr) {
     PointerRNA bmain_ptr = RNA_main_pointer_create(bmain);
