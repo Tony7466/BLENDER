@@ -2326,12 +2326,18 @@ typedef struct NodesModifierSettings {
 } NodesModifierSettings;
 
 typedef struct NodesModifierBake {
+  /** An id that references a nested node in the node tree. Also see #bNestedNodeRef. */
   int id;
-  char _pad[4];
+  /** #NodesModifierBakeFlag. */
+  uint32_t flag;
   char *directory;
   int frame_start;
   int frame_end;
 } NodesModifierBake;
+
+typedef enum NodesModifierBakeFlag {
+  NODES_MODIFIER_BAKE_CUSTOM_SIMULATION_FRAME_RANGE = 1 << 0,
+} NodesModifierBakeFlag;
 
 typedef struct NodesModifierData {
   ModifierData modifier;

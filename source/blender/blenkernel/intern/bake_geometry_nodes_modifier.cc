@@ -94,7 +94,13 @@ std::optional<bake::BakePath> get_node_bake_path(const Main &bmain,
   return bake::BakePath::from_single_root(zone_bake_dir);
 }
 
-std::optional<IndexRange> get_node_bake_frame_range(const Scene & /*scene*/,
+static IndexRange fix_frame_range(const int start, const int end)
+{
+  const int num_frames = std::max(1, end - start);
+  return IndexRange(start, num_frames);
+}
+
+std::optional<IndexRange> get_node_bake_frame_range(const Scene &scene,
                                                     const Object & /*object*/,
                                                     const NodesModifierData &nmd,
                                                     int node_id)
@@ -103,9 +109,13 @@ std::optional<IndexRange> get_node_bake_frame_range(const Scene & /*scene*/,
   if (bake == nullptr) {
     return std::nullopt;
   }
-  const int start = bake->frame_start;
-  const int end = std::max(start, bake->frame_end);
-  return IndexRange(start, end - start + 1);
+  if (bake->flag & NODES_MODIFIER_BAKE_CUSTOM_SIMULATION_FRAME_RANGE) {
+    return fix_frame_range(bake->frame_start, bake->frame_end);
+  }
+  if (scene.flag & SCE_CUSTOM_SIMULATION_RANGE) {
+    return fix_frame_range(scene.simulation_frame_start, scene.simulation_frame_end);
+  }
+  return fix_frame_range(scene.r.sfra, scene.r.efra);
 }
 
 /**
