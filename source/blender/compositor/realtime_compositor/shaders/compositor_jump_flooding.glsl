@@ -48,7 +48,7 @@ void main()
 
       if (squared_distance < minimum_squared_distance) {
         minimum_squared_distance = squared_distance;
-        closest_seed_position = position;
+        closest_seed_position = vec2(position);
       }
     }
   }
