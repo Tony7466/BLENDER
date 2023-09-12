@@ -111,7 +111,15 @@ static float get_aspect_scaled_extent(const rctf &extent, const UVPackIsland_Par
  */
 static bool is_larger(const rctf &a, const rctf &b, const UVPackIsland_Params &params)
 {
-  return get_aspect_scaled_extent(b, params) < get_aspect_scaled_extent(a, params);
+  const float extent_a = get_aspect_scaled_extent(a, params);
+  const float extent_b = get_aspect_scaled_extent(b, params);
+
+  /* Equal extent, use smaller area. */
+  if (compare_ff_relative(extent_a, extent_b, FLT_EPSILON, 64)) {
+    return BLI_rctf_size_x(&b) * BLI_rctf_size_y(&b) < BLI_rctf_size_x(&a) * BLI_rctf_size_y(&a);
+  }
+
+  return extent_b < extent_a;
 }
 
 PackIsland::PackIsland()
