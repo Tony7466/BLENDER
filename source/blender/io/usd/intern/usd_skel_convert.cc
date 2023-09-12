@@ -328,6 +328,29 @@ void import_skeleton_curves(Main *bmain,
   std::for_each(scale_curves.begin(), scale_curves.end(), recalc_handles);
 }
 
+/* If the given mesh has an attribute with the given name, rename the
+ * attribute to a unique name. */
+void check_attribute_name_collision(const std::string &name, Mesh *mesh)
+{
+  blender::bke::MutableAttributeAccessor attribs = mesh->attributes_for_write();
+
+  if (attribs.contains(name)) {
+    char uniquename[MAX_CUSTOMDATA_LAYER_NAME];
+    BKE_id_attribute_calc_unique_name(&mesh->id, name.c_str(), uniquename);
+
+    WM_reportf(
+        RPT_WARNING,
+        "Attribute '%s' from mesh '%s' renamed to '%s' because of name conflict with vertex group",
+        name.c_str(),
+        mesh->id.name + 2,
+        uniquename);
+
+    if (!attribs.rename(name, uniquename)) {
+      WM_reportf(RPT_WARNING, "Attribute rename to %s failed", uniquename);
+    }
+  }
+}
+
 }  // End anonymous namespace.
 
 namespace blender::io::usd {
@@ -1006,27 +1029,15 @@ void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim
   std::vector<bDeformGroup *> joint_def_grps(joints.size(), nullptr);
 
   /* We must be careful about name collisions with existing attributes when creating
-   * deform groups, because in the call to BKE_object_defgroup_add_name() below
+   * deform groups, because in the call to #BKE_object_defgroup_add_name() below
    * the deform group is given a unique name if there is already an attribute with
    * the same name. To ensure that deform groups preserve the required bone names, we
-   * will remove attributes with colliding names before adding the groups. */
-  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+   * will rename attributes with colliding names before adding the groups. */
 
   for (int idx : used_indices) {
     std::string joint_name = pxr::SdfPath(joints[idx]).GetName();
     if (!BKE_object_defgroup_find_name(mesh_obj, joint_name.c_str())) {
-      /* If there is an attribute with the same name, remove it. */
-      bke::AttributeIDRef attr_id(joint_name);
-      if (attributes.contains(attr_id)) {
-        WM_reportf(
-            RPT_WARNING,
-            "%s: Removing attribute '%s' from mesh '%s', as it conflicts with a deform group "
-            "for a bone with the same name",
-            __func__,
-            joint_name.c_str(),
-            mesh->id.name + 2);
-        attributes.remove(attr_id);
-      }
+      check_attribute_name_collision(joint_name, mesh);
       bDeformGroup *def_grp = BKE_object_defgroup_add_name(mesh_obj, joint_name.c_str());
       joint_def_grps[idx] = def_grp;
     }
