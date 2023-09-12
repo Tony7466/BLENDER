@@ -565,7 +565,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
 
   /* The automerge flag is only set if we made some duplicates of the selected frames, and there
    * are the ones that are being transformed. */
-  const bool use_duplicated = (t->flag & T_AUTOMERGE) != 0;
+  const bool use_duplicated = (t->flag & T_DUPLICATED_KEYFRAMES) != 0;
 
   rcti *mask = &t->region->v2d.mask;
   rctf *datamask = &t->region->v2d.cur;
