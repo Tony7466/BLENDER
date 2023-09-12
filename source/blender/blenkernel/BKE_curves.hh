@@ -430,6 +430,8 @@ class CurvesEditHints {
   bool is_valid() const;
 };
 
+void curves_normals_point_domain_calc(const CurvesGeometry &curves, MutableSpan<float3> normals);
+
 namespace curves {
 
 /* -------------------------------------------------------------------- */
