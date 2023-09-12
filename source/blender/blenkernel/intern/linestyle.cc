@@ -38,7 +38,7 @@
 #include "BKE_node_tree_update.h"
 #include "BKE_texture.h"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static void linestyle_init_data(ID *id)
 {
@@ -711,7 +711,7 @@ static LineStyleModifier *new_modifier(const char *name, int type, size_t size)
   }
   m = (LineStyleModifier *)MEM_callocN(size, "line style modifier");
   m->type = type;
-  STRNCPY(m->name, name);
+  STRNCPY(m->name, DATA_(name));
   m->influence = 1.0f;
   m->flags = LS_MODIFIER_ENABLED | LS_MODIFIER_EXPANDED;
 

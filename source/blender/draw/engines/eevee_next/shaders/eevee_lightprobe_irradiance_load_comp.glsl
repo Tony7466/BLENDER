@@ -113,6 +113,8 @@ void main()
   SphericalHarmonicL1 sh_distant = lightprobe_irradiance_sample(P);
   /* Mask distant lighting by local visibility. */
   sh_distant = spherical_harmonics_triple_product(sh_visibility, sh_distant);
+  /* Apply intensity scaling. */
+  sh_local = spherical_harmonics_mul(sh_local, grid_intensity_factor);
   /* Add local lighting to distant lighting. */
   sh_local = spherical_harmonics_add(sh_local, sh_distant);
 
@@ -124,7 +126,7 @@ void main()
   if (gl_LocalInvocationID.z % 4 == 0u) {
     /* Encode 4 cells into one volume sample. */
     ivec4 cell_validity_bits = ivec4(0);
-    /* Encode validty of each samples in the grid cell. */
+    /* Encode validity of each samples in the grid cell. */
     for (int cell = 0; cell < 4; cell++) {
       for (int i = 0; i < 8; i++) {
         ivec3 offset = lightprobe_irradiance_grid_cell_corner(i);
