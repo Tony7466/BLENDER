@@ -393,7 +393,6 @@ class CurvesGeometry : public ::CurvesGeometry {
   /* --------------------------------------------------------------------
    * File Read/Write.
    */
- public:
   void blend_read(BlendDataReader &reader);
   /**
    * Helper struct for `CurvesGeometry::blend_write_*` functions.
