@@ -455,7 +455,7 @@ static void build_channel_keylist(ChannelListElement *elem)
     }
     case eChannelType::GREASE_PENCIL_DATA: {
       grease_pencil_data_block_to_keylist(
-          elem->adt, elem->grease_pencil, elem->keylist, elem->saction_flag);
+          elem->adt, elem->grease_pencil, elem->keylist, elem->saction_flag, false);
       break;
     }
     case eChannelType::GREASE_PENCIL_LAYER: {

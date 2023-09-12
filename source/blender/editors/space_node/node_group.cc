@@ -314,8 +314,7 @@ static bool node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
      * if the old node-tree has animation data which potentially covers this node. */
     const char *old_animation_basepath = nullptr;
     if (wgroup->adt) {
-      PointerRNA ptr;
-      RNA_pointer_create(&wgroup->id, &RNA_Node, node, &ptr);
+      PointerRNA ptr = RNA_pointer_create(&wgroup->id, &RNA_Node, node);
       old_animation_basepath = RNA_path_from_ID_to_struct(&ptr);
     }
 
@@ -330,8 +329,7 @@ static bool node_group_ungroup(Main *bmain, bNodeTree *ntree, bNode *gnode)
     BKE_ntree_update_tag_node_new(ntree, node);
 
     if (wgroup->adt) {
-      PointerRNA ptr;
-      RNA_pointer_create(&ntree->id, &RNA_Node, node, &ptr);
+      PointerRNA ptr = RNA_pointer_create(&ntree->id, &RNA_Node, node);
       const char *new_animation_basepath = RNA_path_from_ID_to_struct(&ptr);
       BLI_addtail(&anim_basepaths,
                   animation_basepath_change_new(old_animation_basepath, new_animation_basepath));
@@ -554,10 +552,9 @@ static bool node_group_separate_selected(
     /* Keep track of this node's RNA "base" path (the part of the path identifying the node)
      * if the old node-tree has animation data which potentially covers this node. */
     if (ngroup.adt) {
-      PointerRNA ptr;
       char *path;
 
-      RNA_pointer_create(&ngroup.id, &RNA_Node, newnode, &ptr);
+      PointerRNA ptr = RNA_pointer_create(&ngroup.id, &RNA_Node, newnode);
       path = RNA_path_from_ID_to_struct(&ptr);
 
       if (path) {
@@ -988,6 +985,9 @@ static void node_group_make_insert_selected(const bContext &C,
   float2 real_min, real_max;
   get_min_max_of_nodes(nodes_to_move, true, real_min, real_max);
 
+  /* If only one node is selected expose all its sockets regardless of links. */
+  const bool expose_visible = nodes_to_move.size() == 1;
+
   /* Reuse an existing output node or create a new one. */
   group.ensure_topology_cache();
   bNode *output_node = [&]() {
@@ -1016,6 +1016,12 @@ static void node_group_make_insert_selected(const bContext &C,
     const bNodeTreeInterfaceSocket *interface_socket;
   };
 
+  struct NewInternalLinkInfo {
+    bNode *node;
+    bNodeSocket *socket;
+    const bNodeTreeInterfaceSocket *interface_socket;
+  };
+
   /* Map from single non-selected output sockets to potentially many selected input sockets. */
   Map<bNodeSocket *, InputSocketInfo> input_links;
   Vector<OutputLinkInfo> output_links;
@@ -1023,10 +1029,16 @@ static void node_group_make_insert_selected(const bContext &C,
   Set<bNodeLink *> links_to_remove;
   /* Map old to new node identifiers. */
   Map<int32_t, int32_t> node_identifier_map;
+  Vector<NewInternalLinkInfo> new_internal_links;
 
   ntree.ensure_topology_cache();
+  /* Add all outputs first. */
   for (bNode *node : nodes_to_move) {
     for (bNodeSocket *output_socket : node->output_sockets()) {
+      if (!output_socket->is_available() || output_socket->is_hidden()) {
+        continue;
+      }
+
       for (bNodeLink *link : output_socket->directly_linked_links()) {
         if (nodeLinkIsHidden(link)) {
           links_to_remove.add(link);
@@ -1049,8 +1061,22 @@ static void node_group_make_insert_selected(const bContext &C,
           links_to_remove.add(link);
         }
       }
+      if (expose_visible && !output_socket->is_directly_linked()) {
+        bNodeTreeInterfaceSocket *io_socket = bke::node_interface::add_interface_socket_from_node(
+            group, *node, *output_socket);
+        if (io_socket) {
+          new_internal_links.append({node, output_socket, io_socket});
+        }
+      }
     }
+  }
+  /* Now add all inputs. */
+  for (bNode *node : nodes_to_move) {
     for (bNodeSocket *input_socket : node->input_sockets()) {
+      if (!input_socket->is_available() || input_socket->is_hidden()) {
+        continue;
+      }
+
       for (bNodeLink *link : input_socket->directly_linked_links()) {
         if (nodeLinkIsHidden(link)) {
           links_to_remove.add(link);
@@ -1070,40 +1096,14 @@ static void node_group_make_insert_selected(const bContext &C,
         if (!info.interface_socket) {
           info.interface_socket = add_interface_from_socket(ntree, group, *link->tosock);
         }
-        else {
-          links_to_remove.add(link);
+      }
+      if (expose_visible && !input_socket->is_directly_linked()) {
+        bNodeTreeInterfaceSocket *io_socket = bke::node_interface::add_interface_socket_from_node(
+            group, *node, *input_socket);
+        if (io_socket) {
+          new_internal_links.append({node, input_socket, io_socket});
         }
       }
-    }
-  }
-
-  struct NewInternalLinkInfo {
-    bNode *node;
-    bNodeSocket *socket;
-    const bNodeTreeInterfaceSocket *interface_socket;
-  };
-
-  const bool expose_visible = nodes_to_move.size() == 1;
-  Vector<NewInternalLinkInfo> new_internal_links;
-  if (expose_visible) {
-    for (bNode *node : nodes_to_move) {
-      auto expose_sockets = [&](const Span<bNodeSocket *> sockets) {
-        for (bNodeSocket *socket : sockets) {
-          if (!socket->is_available() || socket->is_hidden()) {
-            continue;
-          }
-          if (socket->is_directly_linked()) {
-            continue;
-          }
-          const bNodeTreeInterfaceSocket *io_socket =
-              bke::node_interface::add_interface_socket_from_node(group, *node, *socket);
-          if (io_socket) {
-            new_internal_links.append({node, socket, io_socket});
-          }
-        }
-      };
-      expose_sockets(node->input_sockets());
-      expose_sockets(node->output_sockets());
     }
   }
 
@@ -1123,8 +1123,7 @@ static void node_group_make_insert_selected(const bContext &C,
   if (ntree.adt) {
     ListBase anim_basepaths = {nullptr, nullptr};
     for (bNode *node : nodes_to_move) {
-      PointerRNA ptr;
-      RNA_pointer_create(&ntree.id, &RNA_Node, node, &ptr);
+      PointerRNA ptr = RNA_pointer_create(&ntree.id, &RNA_Node, node);
       if (char *path = RNA_path_from_ID_to_struct(&ptr)) {
         BLI_addtail(&anim_basepaths, animation_basepath_change_new(path, path));
       }
