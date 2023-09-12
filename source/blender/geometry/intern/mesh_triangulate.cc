@@ -537,7 +537,9 @@ std::optional<Mesh *> mesh_triangulate(
   const IndexRange new_edges_range(ngon_edges_range.start(),
                                    ngon_edges_range.size() + quad_edges_range.size());
 
-  /* Create a mesh with no face corners, since we don't know how many there will be yet. */
+  /* Create a mesh with no face corners, since we don't know how many there will be yet
+   * because we didn't track the total number of replaced NGon corners earlier. We have to
+   * accumulate the face offsets anyway, this will give us the number of corners. */
   Mesh *mesh = create_mesh_no_attributes(src_mesh,
                                          src_mesh.totvert,
                                          src_edges.size() + new_edges_range.size(),
