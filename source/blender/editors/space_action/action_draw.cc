@@ -747,48 +747,81 @@ static void timeline_cache_draw_single(PTCacheID *pid, float y_offset, float hei
   GPU_matrix_pop();
 }
 
-static void timeline_cache_draw_simulation_nodes(const blender::bke::bake::NodeCache &node_cache,
-                                                 const float y_offset,
-                                                 const float height,
-                                                 const uint pos_id)
+struct SimulationRange {
+  blender::IndexRange frames;
+  blender::bke::bake::CacheStatus status;
+};
+
+static void timeline_cache_draw_simulation_nodes(
+    const blender::Span<SimulationRange> simulation_ranges,
+    const float y_offset,
+    const float height,
+    const uint pos_id)
 {
-  if (node_cache.frame_caches.is_empty()) {
+  if (simulation_ranges.is_empty()) {
     return;
   }
+
+  blender::Set<int> status_change_frames_set;
+  for (const SimulationRange &sim_range : simulation_ranges) {
+    status_change_frames_set.add(sim_range.frames.first());
+    status_change_frames_set.add(sim_range.frames.one_after_last());
+  }
+  blender::Vector<int> status_change_frames;
+  status_change_frames.extend(status_change_frames_set.begin(), status_change_frames_set.end());
+  std::sort(status_change_frames.begin(), status_change_frames.end());
+  const blender::OffsetIndices<int> frame_ranges = status_change_frames.as_span();
+
   GPU_matrix_push();
   GPU_matrix_translate_2f(0.0, float(V2D_SCROLL_HANDLE_HEIGHT) + y_offset);
   GPU_matrix_scale_2f(1.0, height);
 
-  float color[4];
-  UI_GetThemeColor4fv(TH_SIMULATED_FRAMES, color);
-  switch (node_cache.cache_status) {
-    case blender::bke::bake::CacheStatus::Invalid: {
-      color[3] = 0.4f;
-      break;
+  blender::float4 base_color;
+  UI_GetThemeColor4fv(TH_SIMULATED_FRAMES, base_color);
+  blender::float4 invalid_color = base_color;
+  invalid_color.w *= 0.4f;
+  blender::float4 valid_color = base_color;
+  valid_color.w *= 0.7f;
+  blender::float4 baked_color = base_color;
+
+  for (const int range_i : frame_ranges.index_range()) {
+    const blender::IndexRange frame_range = frame_ranges[range_i];
+    const int start_frame = frame_range.first();
+    const int end_frame = frame_range.last();
+
+    bool has_bake = false;
+    bool has_valid = false;
+    bool has_invalid = false;
+    for (const SimulationRange &sim_range : simulation_ranges) {
+      if (sim_range.frames.contains(start_frame)) {
+        switch (sim_range.status) {
+          case blender::bke::bake::CacheStatus::Invalid:
+            has_invalid = true;
+            break;
+          case blender::bke::bake::CacheStatus::Valid:
+            has_valid = true;
+            break;
+          case blender::bke::bake::CacheStatus::Baked:
+            has_bake = true;
+            break;
+        }
+      }
     }
-    case blender::bke::bake::CacheStatus::Valid: {
-      color[3] = 0.7f;
-      break;
+    if (!(has_bake || has_valid || has_invalid)) {
+      continue;
     }
-    case blender::bke::bake::CacheStatus::Baked: {
-      color[3] = 1.0f;
-      break;
-    }
+
+    const blender::float4 color = has_invalid ? invalid_color :
+                                                (has_valid ? valid_color : baked_color);
+    immUniformColor4fv(color);
+
+    immBeginAtMost(GPU_PRIM_TRIS, 6);
+    immRectf_fast(pos_id, start_frame, 0, end_frame + 1.0f, 1.0f);
+
+    immEnd();
+
+    GPU_matrix_pop();
   }
-
-  immUniformColor4fv(color);
-
-  immBeginAtMost(GPU_PRIM_TRIS, node_cache.frame_caches.size() * 6);
-
-  for (const std::unique_ptr<blender::bke::bake::FrameCache> &frame_cache :
-       node_cache.frame_caches.as_span())
-  {
-    const int frame = frame_cache->frame.frame();
-    immRectf_fast(pos_id, frame - 0.5f, 0, frame + 0.5f, 1.0f);
-  }
-  immEnd();
-
-  GPU_matrix_pop();
 }
 
 void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Scene *scene)
@@ -823,6 +856,7 @@ void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Sce
     y_offset += cache_draw_height;
   }
   if (saction->cache_display & TIME_CACHE_SIMULATION_NODES) {
+    blender::Vector<SimulationRange> simulation_ranges;
     LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
       if (md->type != eModifierType_Nodes) {
         continue;
@@ -844,11 +878,18 @@ void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Sce
              modifier_cache.cache_by_id.values())
         {
           const blender::bke::bake::NodeCache &node_cache = *node_cache_ptr;
-          timeline_cache_draw_simulation_nodes(node_cache, y_offset, cache_draw_height, pos_id);
-          y_offset += cache_draw_height;
+          if (node_cache.frame_caches.is_empty()) {
+            continue;
+          }
+          const int start_frame = node_cache.frame_caches.first()->frame.frame();
+          const int end_frame = node_cache.frame_caches.last()->frame.frame();
+          const blender::IndexRange frame_range{start_frame, end_frame - start_frame + 1};
+          simulation_ranges.append({frame_range, node_cache.cache_status});
         }
       }
     }
+    timeline_cache_draw_simulation_nodes(simulation_ranges, y_offset, cache_draw_height, pos_id);
+    y_offset += cache_draw_height;
   }
 
   GPU_blend(GPU_BLEND_NONE);
