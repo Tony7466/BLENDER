@@ -3572,10 +3572,13 @@ static int text_insert_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   SpaceText *st = CTX_wm_space_text(C);
   uint auto_close_char = 0;
   int ret;
-  TextLine *sell = nullptr;
-  TextLine *curl = nullptr;
-  int selc = 0;
-  int curc = 0;
+  /* Variables needed to restore the selection when auto-closing around an existing selection. */
+  struct {
+    TextLine *sell;
+    TextLine *curl;
+    int selc;
+    int curc;
+  } auto_close_select = {nullptr};
 
   /* NOTE: the "text" property is always set from key-map,
    * so we can't use #RNA_struct_property_is_set, check the length instead. */
@@ -3597,18 +3600,30 @@ static int text_insert_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     if (U.text_flag & USER_TEXT_EDIT_AUTO_CLOSE) {
       auto_close_char = BLI_str_utf8_as_unicode(str);
 
-      if (txt_has_sel(st->text) && text_test_has_non_whitespace(st->text->sell, st->text->selc, st->text->curl, st->text->curc)) {
-        sell = st->text->sell;
-        curl = st->text->curl;
-        selc = st->text->selc;
-        curc = st->text->curc;
+      if (txt_has_sel(st->text) &&
+          !text_span_is_blank(st->text->sell, st->text->selc, st->text->curl, st->text->curc) &&
+          text_closing_character_pair_get(auto_close_char) != 0)
+      {
+        auto_close_select.sell = st->text->sell;
+        auto_close_select.curl = st->text->curl;
+        auto_close_select.selc = st->text->selc;
+        auto_close_select.curc = st->text->curc;
 
         /* Move the cursor to the start of the selection. */
-        if (txt_get_span(curl, sell) > 0 || (curl == sell && selc > curc)) {
-          txt_move_to(st->text, BLI_findindex(&st->text->lines, curl), curc, false);
+        if (txt_get_span(auto_close_select.curl, auto_close_select.sell) > 0 ||
+            (auto_close_select.curl == auto_close_select.sell &&
+             auto_close_select.selc > auto_close_select.curc))
+        {
+          txt_move_to(st->text,
+                      BLI_findindex(&st->text->lines, auto_close_select.curl),
+                      auto_close_select.curc,
+                      false);
         }
         else {
-          txt_move_to(st->text, BLI_findindex(&st->text->lines, sell), selc, false);
+          txt_move_to(st->text,
+                      BLI_findindex(&st->text->lines, auto_close_select.sell),
+                      auto_close_select.selc,
+                      false);
         }
       }
     }
@@ -3620,17 +3635,25 @@ static int text_insert_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     const uint auto_close_match = text_closing_character_pair_get(auto_close_char);
     if (auto_close_match != 0) {
       /* If there was a selection, move cursor to the end of it. */
-      if (sell) {
+      if (auto_close_select.sell) {
         /* Move the cursor to the end of the selection. */
-        if (txt_get_span(curl, sell) < 0) {
-          txt_move_to(st->text, BLI_findindex(&st->text->lines, curl), curc, false);
+        if (txt_get_span(auto_close_select.curl, auto_close_select.sell) < 0) {
+          txt_move_to(st->text,
+                      BLI_findindex(&st->text->lines, auto_close_select.curl),
+                      auto_close_select.curc,
+                      false);
         }
-        else if (curl == sell) {
-          const int ch = curc > selc ? curc : selc;
-          txt_move_to(st->text, BLI_findindex(&st->text->lines, sell), ch + 1, false);
+        else if (auto_close_select.curl == auto_close_select.sell) {
+          const int ch = auto_close_select.curc > auto_close_select.selc ? auto_close_select.curc :
+                                                                           auto_close_select.selc;
+          txt_move_to(
+              st->text, BLI_findindex(&st->text->lines, auto_close_select.sell), ch + 1, false);
         }
         else {
-          txt_move_to(st->text, BLI_findindex(&st->text->lines, sell), selc, false);
+          txt_move_to(st->text,
+                      BLI_findindex(&st->text->lines, auto_close_select.sell),
+                      auto_close_select.selc,
+                      false);
         }
       }
       Text *text = CTX_data_edit_text(C);
@@ -3638,11 +3661,17 @@ static int text_insert_invoke(bContext *C, wmOperator *op, const wmEvent *event)
       txt_move_left(text, false);
 
       /* If there was a selection, bring it back. */
-      if (sell) {
-        st->text->sell = sell;
-        st->text->curl = curl;
-        st->text->selc = (sell == curl || txt_get_span(curl, sell) < 0) ? selc + 1 : selc;
-        st->text->curc = (sell == curl || txt_get_span(curl, sell) > 0) ? curc + 1 : curc;
+      if (auto_close_select.sell) {
+        st->text->sell = auto_close_select.sell;
+        st->text->curl = auto_close_select.curl;
+        st->text->selc = (auto_close_select.sell == auto_close_select.curl ||
+                          txt_get_span(auto_close_select.curl, auto_close_select.sell) < 0) ?
+                             auto_close_select.selc + 1 :
+                             auto_close_select.selc;
+        st->text->curc = (auto_close_select.sell == auto_close_select.curl ||
+                          txt_get_span(auto_close_select.curl, auto_close_select.sell) > 0) ?
+                             auto_close_select.curc + 1 :
+                             auto_close_select.curc;
       }
     }
   }
