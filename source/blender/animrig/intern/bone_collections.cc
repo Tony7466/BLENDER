@@ -7,6 +7,7 @@
  */
 
 #include "BLI_linklist.h"
+#include "BLI_map.hh"
 #include "BLI_math_color.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
@@ -20,9 +21,12 @@
 #include "MEM_guardedalloc.h"
 
 #include "BKE_animsys.h"
+#include "BKE_idprop.h"
+#include "BKE_lib_id.h"
 
 #include "ANIM_armature_iter.hh"
 #include "ANIM_bone_collections.h"
+#include "ANIM_bone_collections.hh"
 
 #include <cstring>
 #include <string>
@@ -36,13 +40,14 @@ namespace {
 /** Default flags for new bone collections. */
 constexpr eBoneCollection_Flag default_flags = BONE_COLLECTION_VISIBLE |
                                                BONE_COLLECTION_SELECTABLE;
+constexpr auto bonecoll_default_name = "Bones";
 }  // namespace
 
 BoneCollection *ANIM_bonecoll_new(const char *name)
 {
   if (name == nullptr || name[0] == '\0') {
     /* Use a default name if no name was given. */
-    name = "Bones";
+    name = bonecoll_default_name;
   }
 
   /* Note: the collection name may change after the collection is added to an
@@ -62,6 +67,9 @@ void ANIM_bonecoll_free(BoneCollection *bcoll)
   BLI_assert_msg(BLI_listbase_is_empty(&bcoll->bones),
                  "bone collection still has bones assigned to it, will cause dangling pointers in "
                  "bone runtime data");
+  if (bcoll->prop) {
+    IDP_FreeProperty(bcoll->prop);
+  }
   MEM_delete(bcoll);
 }
 
@@ -92,7 +100,7 @@ static void bonecoll_ensure_name_unique(bArmature *armature, BoneCollection *bco
 {
   BLI_uniquename(&armature->collections,
                  bcoll,
-                 "Bones",
+                 bonecoll_default_name,
                  '.',
                  offsetof(BoneCollection, name),
                  sizeof(bcoll->name));
@@ -260,11 +268,7 @@ bool ANIM_armature_bonecoll_assign_editbone(BoneCollection *bcoll, EditBone *ebo
 
 bool ANIM_armature_bonecoll_assign_and_move(BoneCollection *bcoll, Bone *bone)
 {
-  /* Remove the bone from all its current collections. */
-  LISTBASE_FOREACH_MUTABLE (BoneCollectionReference *, ref, &bone->runtime.collections) {
-    ANIM_armature_bonecoll_unassign(ref->bcoll, bone);
-  }
-  /* Assign the new collection. */
+  ANIM_armature_bonecoll_unassign_all(bone);
   return ANIM_armature_bonecoll_assign(bcoll, bone);
 }
 
@@ -292,6 +296,13 @@ bool ANIM_armature_bonecoll_unassign(BoneCollection *bcoll, Bone *bone)
   }
 
   return was_found;
+}
+
+void ANIM_armature_bonecoll_unassign_all(Bone *bone)
+{
+  LISTBASE_FOREACH_MUTABLE (BoneCollectionReference *, ref, &bone->runtime.collections) {
+    ANIM_armature_bonecoll_unassign(ref->bcoll, bone);
+  }
 }
 
 bool ANIM_armature_bonecoll_unassign_editbone(BoneCollection *bcoll, EditBone *ebone)
@@ -429,3 +440,51 @@ void ANIM_armature_bonecoll_show_from_pchan(bArmature *armature, const bPoseChan
 {
   ANIM_armature_bonecoll_show_from_bone(armature, pchan->bone);
 }
+
+/* ********* */
+/* C++ only. */
+namespace blender::animrig {
+
+/* Utility functions for Armature edit-mode undo. */
+
+blender::Map<BoneCollection *, BoneCollection *> ANIM_bonecoll_listbase_copy_no_membership(
+    ListBase *bone_colls_dst, ListBase *bone_colls_src, const bool do_id_user)
+{
+  BLI_assert(BLI_listbase_is_empty(bone_colls_dst));
+
+  blender::Map<BoneCollection *, BoneCollection *> bcoll_map{};
+  LISTBASE_FOREACH (BoneCollection *, bcoll_src, bone_colls_src) {
+    BoneCollection *bcoll_dst = static_cast<BoneCollection *>(MEM_dupallocN(bcoll_src));
+
+    /* This will be rebuilt from the edit bones, so we don't need to copy it. */
+    BLI_listbase_clear(&bcoll_dst->bones);
+
+    if (bcoll_src->prop) {
+      bcoll_dst->prop = IDP_CopyProperty_ex(bcoll_src->prop,
+                                            do_id_user ? 0 : LIB_ID_CREATE_NO_USER_REFCOUNT);
+    }
+    BLI_addtail(bone_colls_dst, bcoll_dst);
+    bcoll_map.add(bcoll_src, bcoll_dst);
+  }
+
+  return bcoll_map;
+}
+
+void ANIM_bonecoll_listbase_free(ListBase *bcolls, const bool do_id_user)
+{
+  LISTBASE_FOREACH_MUTABLE (BoneCollection *, bcoll, bcolls) {
+    if (bcoll->prop) {
+      IDP_FreeProperty_ex(bcoll->prop, do_id_user);
+    }
+
+    /* This will usually already be empty, because the passed BoneCollection
+     * list is usually from ANIM_bonecoll_listbase_copy_no_membership().
+     * However, during undo this is also used to free the BoneCollection
+     * list on the Armature itself before copying over the undo BoneCollection
+     * list, in which case this of Bone pointers may not be empty. */
+    BLI_freelistN(&bcoll->bones);
+  }
+  BLI_freelistN(bcolls);
+}
+
+}  // namespace blender::animrig

@@ -101,6 +101,7 @@ class GRAPH_PT_filters(DopesheetFilterPopoverBase, Panel):
         layout.separator()
         DopesheetFilterPopoverBase.draw_standard_filters(context, layout)
 
+
 class GRAPH_PT_snapping(Panel):
     bl_space_type = 'GRAPH_EDITOR'
     bl_region_type = 'HEADER'
@@ -282,8 +283,8 @@ class GRAPH_MT_channel(Menu):
         layout.operator("anim.channels_fcurves_enable")
 
         layout.separator()
-        layout.operator("graph.bake")
-        layout.operator("graph.unbake")
+        layout.operator("graph.keys_to_samples")
+        layout.operator("graph.samples_to_keys")
         layout.operator("graph.sound_bake")
 
         layout.separator()
@@ -324,6 +325,7 @@ class GRAPH_MT_key_blending(Menu):
         layout.operator("graph.blend_to_ease", text="Blend to Ease")
         layout.operator("graph.match_slope", text="Match Slope")
         layout.operator("graph.shear", text="Shear Keys")
+        layout.operator("graph.scale_average", text="Scale Average")
 
 
 class GRAPH_MT_key_smoothing(Menu):
