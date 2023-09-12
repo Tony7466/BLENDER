@@ -34,6 +34,7 @@ class VKTexture : public Texture, public VKBindableResource {
   VkImageLayout current_layout_ = VK_IMAGE_LAYOUT_UNDEFINED;
 
   int layer_offset_ = 0;
+  bool use_stencil_ = false;
 
   enum eDirtyFlags {
     IMAGE_VIEW_DIRTY = (1 << 0),
@@ -165,6 +166,7 @@ class VKTexture : public Texture, public VKBindableResource {
 
  private:
   IndexRange mip_map_range() const;
+  IndexRange layer_range() const;
   void image_view_ensure();
   void image_view_update();
 

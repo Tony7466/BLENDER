@@ -346,19 +346,16 @@ bool VKTexture::init_internal(GPUVertBuf *vbo)
   return true;
 }
 
-bool VKTexture::init_internal(GPUTexture *src,
-                              int mip_offset,
-                              int layer_offset,
-                              bool /*use_stencil*/)
+bool VKTexture::init_internal(GPUTexture *src, int mip_offset, int layer_offset, bool use_stencil)
 {
   BLI_assert(source_texture_ == nullptr);
   BLI_assert(src);
 
   VKTexture *texture = unwrap(unwrap(src));
   source_texture_ = texture;
-  NOT_YET_IMPLEMENTED;
   mip_min_ = mip_offset;
   layer_offset_ = layer_offset;
+  use_stencil_ = use_stencil;
   flags_ |= IMAGE_VIEW_DIRTY;
 
   return true;
@@ -587,16 +584,24 @@ void VKTexture::image_view_ensure()
 
 void VKTexture::image_view_update()
 {
-  IndexRange mip_range = mip_map_range();
-  IndexRange layer_range(
-      0, ELEM(type_, GPU_TEXTURE_CUBE, GPU_TEXTURE_CUBE_ARRAY) ? d_ : VK_REMAINING_ARRAY_LAYERS);
-  image_view_.emplace(
-      VKImageView(*this, eImageViewUsage::ShaderBinding, layer_range, mip_range, name_));
+  image_view_.emplace(VKImageView(
+      *this, eImageViewUsage::ShaderBinding, layer_range(), mip_map_range(), use_stencil_, name_));
 }
 
 IndexRange VKTexture::mip_map_range() const
 {
   return IndexRange(mip_min_, mip_max_ - mip_min_ + 1);
+}
+
+IndexRange VKTexture::layer_range() const
+{
+  if (is_texture_view()) {
+    return IndexRange(layer_offset_, 1);
+  }
+  else {
+    return IndexRange(
+        0, ELEM(type_, GPU_TEXTURE_CUBE, GPU_TEXTURE_CUBE_ARRAY) ? d_ : VK_REMAINING_ARRAY_LAYERS);
+  }
 }
 
 int VKTexture::vk_layer_count(int non_layered_value) const
