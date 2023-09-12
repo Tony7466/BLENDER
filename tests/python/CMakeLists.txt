@@ -790,6 +790,7 @@ set(geo_node_tests
   mesh
   mesh/extrude
   mesh/split_edges
+  mesh/triangulate
   points
   texture
   utilities
