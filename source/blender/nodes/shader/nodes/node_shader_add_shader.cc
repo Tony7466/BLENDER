@@ -22,6 +22,41 @@ static int node_shader_gpu_add_shader(GPUMaterial *mat,
   return GPU_stack_link(mat, node, "node_add_shader", in, out);
 }
 
+NODE_SHADER_MATERIALX_BEGIN
+{
+  NodeItem res = empty();
+  switch (to_type_) {
+    case NodeItem::Type::BSDF:
+    case NodeItem::Type::EDF: {
+      NodeItem shader1 = get_input_link(0, to_type_);
+      NodeItem shader2 = get_input_link(1, to_type_);
+
+      if (shader1 && !shader2) {
+        res = shader1;
+      }
+      else if (!shader1 && shader2) {
+        res = shader2;
+      }
+      else if (shader1 && shader2) {
+        res = shader1 + shader2;
+      }
+      break;
+    }
+    case NodeItem::Type::SurfaceShader: {
+      /* SurfaceShaders can't be added, returning the first one connected */
+      res = get_input_link(0, to_type_);
+      if (!res) {
+        res = get_input_link(1, to_type_);
+      }
+      break;
+    }
+    default:
+      BLI_assert_unreachable();
+  }
+  return res;
+}
+NODE_SHADER_MATERIALX_END
+
 }  // namespace blender::nodes::node_shader_add_shader_cc
 
 /* node type definition */

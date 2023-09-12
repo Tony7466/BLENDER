@@ -22,6 +22,13 @@ static int node_shader_gpu_gamma(GPUMaterial *mat,
 {
   return GPU_stack_link(mat, node, "node_gamma", in, out);
 }
+NODE_SHADER_MATERIALX_BEGIN
+{
+  NodeItem color = get_input_value("Color", NodeItem::Type::Color4);
+  NodeItem gamma = get_input_value("Gamma", NodeItem::Type::Float);
+  return color ^ gamma;
+}
+NODE_SHADER_MATERIALX_END
 
 }  // namespace blender::nodes::node_shader_gamma_cc
 
@@ -34,6 +41,7 @@ void register_node_type_sh_gamma()
   sh_node_type_base(&ntype, SH_NODE_GAMMA, "Gamma", NODE_CLASS_OP_COLOR);
   ntype.declare = file_ns::node_declare;
   ntype.gpu_fn = file_ns::node_shader_gpu_gamma;
+  ntype.materialx_fn = file_ns::node_shader_materialx;
 
   nodeRegisterType(&ntype);
 }

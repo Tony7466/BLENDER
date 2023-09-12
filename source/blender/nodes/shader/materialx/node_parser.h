@@ -1,0 +1,96 @@
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+#pragma once
+
+#include "node_item.h"
+
+#include "DEG_depsgraph.h"
+#include "DNA_material_types.h"
+#include "DNA_node_types.h"
+
+#include "CLG_log.h"
+
+namespace blender::nodes::materialx {
+
+extern struct CLG_LogRef *LOG_MATERIALX_SHADER;
+
+class NodeParser {
+ protected:
+  MaterialX::GraphElement *graph_;
+  const Depsgraph *depsgraph_;
+  const Material *material_;
+  const bNode *node_;
+  const bNodeSocket *socket_out_;
+  NodeItem::Type to_type_;
+
+ public:
+  NodeParser(MaterialX::GraphElement *graph,
+             const Depsgraph *depsgraph,
+             const Material *material,
+             const bNode *node,
+             const bNodeSocket *socket_out,
+             NodeItem::Type to_type);
+  virtual ~NodeParser() = default;
+
+  virtual NodeItem compute() = 0;
+  virtual NodeItem compute_full();
+
+ protected:
+  std::string node_name();
+  NodeItem create_node(const std::string &category, NodeItem::Type type);
+  NodeItem get_input_default(const std::string &name, NodeItem::Type to_type);
+  NodeItem get_input_default(int index, NodeItem::Type to_type);
+  NodeItem get_input_link(const std::string &name, NodeItem::Type to_type);
+  NodeItem get_input_link(int index, NodeItem::Type to_type);
+  NodeItem get_input_value(const std::string &name, NodeItem::Type to_type);
+  NodeItem get_input_value(int index, NodeItem::Type to_type);
+  NodeItem empty() const;
+  template<class T> NodeItem val(const T &data) const;
+  NodeItem texcoord_node();
+
+ private:
+  NodeItem get_input_default(const bNodeSocket &socket, NodeItem::Type to_type);
+  NodeItem get_input_link(const bNodeSocket &socket, NodeItem::Type to_type);
+  NodeItem get_input_value(const bNodeSocket &socket, NodeItem::Type to_type);
+};
+
+template<class T> NodeItem NodeParser::val(const T &data) const
+{
+  return empty().val(data);
+}
+
+/*
+ * Defines for including MaterialX node parsing code into node_shader_<name>.cc
+ */
+struct NodeParserData {
+  MaterialX::GraphElement *graph;
+  const Depsgraph *depsgraph;
+  const Material *material;
+  NodeItem::Type to_type;
+  NodeItem result;
+};
+
+#define NODE_SHADER_MATERIALX_BEGIN \
+  class MaterialXNodeParser : public materialx::NodeParser { \
+   public: \
+    using materialx::NodeParser::NodeParser; \
+    materialx::NodeItem compute() override; \
+  }; \
+\
+  materialx::NodeItem MaterialXNodeParser::compute() \
+  { \
+    using NodeItem = materialx::NodeItem;
+
+#define NODE_SHADER_MATERIALX_END \
+  } \
+\
+  void node_shader_materialx(void *data, struct bNode *node, struct bNodeSocket *out) \
+  { \
+    materialx::NodeParserData *d = reinterpret_cast<materialx::NodeParserData *>(data); \
+    d->result = MaterialXNodeParser(d->graph, d->depsgraph, d->material, node, out, d->to_type) \
+                    .compute_full(); \
+  }
+
+}  // namespace blender::nodes::materialx

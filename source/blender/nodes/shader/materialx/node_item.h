@@ -50,6 +50,7 @@ class NodeItem {
 
   static Type type(const std::string &type_str);
   static std::string type(Type type);
+  static bool is_arithmetic(Type type);
 
   /* Operators */
   operator bool() const;
@@ -109,7 +110,6 @@ class NodeItem {
   void add_output(const std::string &in_name, Type out_type);
 
  private:
-  static bool is_arithmetic(Type type);
   static Type cast_types(NodeItem &item1, NodeItem &item2);
 
   bool is_arithmetic() const;

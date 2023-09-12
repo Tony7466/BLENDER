@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_item.h"
-#include "../material.h"
 
 #include "BLI_assert.h"
 #include "BLI_utildefines.h"
@@ -63,6 +62,8 @@ NodeItem::Type NodeItem::type(const std::string &type_str)
 std::string NodeItem::type(Type type)
 {
   switch (type) {
+    case Type::Any:
+      return "";
     case Type::String:
       return "string";
     case Type::Filename:

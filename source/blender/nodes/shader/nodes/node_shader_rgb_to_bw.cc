@@ -27,6 +27,16 @@ static int gpu_shader_rgbtobw(GPUMaterial *mat,
   return GPU_stack_link(mat, node, "rgbtobw", in, out);
 }
 
+NODE_SHADER_MATERIALX_BEGIN
+{
+  NodeItem color = get_input_value("Color", NodeItem::Type::Color4);
+
+  NodeItem res = create_node("luminance", NodeItem::Type::Color4);
+  res.set_input("in", color);
+  return res;
+}
+NODE_SHADER_MATERIALX_END
+
 }  // namespace blender::nodes::node_shader_rgb_to_bw_cc
 
 void register_node_type_sh_rgbtobw()
@@ -38,6 +48,7 @@ void register_node_type_sh_rgbtobw()
   sh_node_type_base(&ntype, SH_NODE_RGBTOBW, "RGB to BW", NODE_CLASS_CONVERTER);
   ntype.declare = file_ns::sh_node_rgbtobw_declare;
   ntype.gpu_fn = file_ns::gpu_shader_rgbtobw;
+  ntype.materialx_fn = file_ns::node_shader_materialx;
 
   nodeRegisterType(&ntype);
 }

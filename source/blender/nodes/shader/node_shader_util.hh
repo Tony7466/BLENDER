@@ -22,6 +22,8 @@
 
 #include "node_shader_register.hh"
 
+#include "materialx/node_parser.h"
+
 struct bContext;
 typedef struct bContext bContext;
 struct bNodeExecContext;

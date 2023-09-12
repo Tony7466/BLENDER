@@ -147,50 +147,12 @@ set(LIB
 if(WITH_MATERIALX)
   list(APPEND SRC
     materialx/material.cc
-    materialx/nodes/add_shader.cc
-    materialx/nodes/blackbody.cc
-    materialx/nodes/brightness.cc
-    materialx/nodes/bsdf_diffuse.cc
-    materialx/nodes/bsdf_glass.cc
-    materialx/nodes/bsdf_glossy.cc
-    materialx/nodes/bsdf_principled.cc
-    materialx/nodes/bsdf_refraction.cc
-    materialx/nodes/bsdf_sheen.cc
-    materialx/nodes/bsdf_toon.cc
-    materialx/nodes/bsdf_translucent.cc
-    materialx/nodes/bsdf_transparent.cc
-    materialx/nodes/clamp.cc
-    materialx/nodes/color_ramp.cc
-    materialx/nodes/curves.cc
-    materialx/nodes/gamma.cc
-    materialx/nodes/emission.cc
-    materialx/nodes/huesatval.cc
-    materialx/nodes/invert.cc
-    materialx/nodes/light_falloff.cc
-    materialx/nodes/light_path.cc
-    materialx/nodes/map_range.cc
-    materialx/nodes/math.cc
-    materialx/nodes/mix_rgb.cc
-    materialx/nodes/mix_shader.cc
-    materialx/nodes/node_item.cc
-    materialx/nodes/node_parser.cc
-    materialx/nodes/normal_map.cc
-    materialx/nodes/output_material.cc
-    materialx/nodes/rgb_to_bw.cc
-    materialx/nodes/sepcomb_color.cc
-    materialx/nodes/sepcomb_xyz.cc
-    materialx/nodes/subsurface_scattering.cc
-    materialx/nodes/tex_checker.cc
-    materialx/nodes/tex_environment.cc
-    materialx/nodes/tex_image.cc
-    materialx/nodes/tex_noise.cc
-    materialx/nodes/vector_math.cc
-    materialx/nodes/wavelength.cc
+    materialx/node_item.cc
+    materialx/node_parser.cc
 
     materialx/material.h
-    materialx/nodes/node_item.h
-    materialx/nodes/node_parser.h
-    materialx/nodes/output_material.h
+    materialx/node_item.h
+    materialx/node_parser.h
   )
   list(APPEND LIB
     MaterialXCore

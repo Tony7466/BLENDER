@@ -127,6 +127,13 @@ static int node_shader_gpu_tex_environment(GPUMaterial *mat,
   return true;
 }
 
+NODE_SHADER_MATERIALX_BEGIN
+{
+  /* TODO: Implement */
+  return empty();
+}
+NODE_SHADER_MATERIALX_END
+
 }  // namespace blender::nodes::node_shader_tex_environment_cc
 
 /* node type definition */
@@ -144,6 +151,7 @@ void register_node_type_sh_tex_environment()
   ntype.gpu_fn = file_ns::node_shader_gpu_tex_environment;
   ntype.labelfunc = node_image_label;
   blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::LARGE);
+  ntype.materialx_fn = file_ns::node_shader_materialx;
 
   nodeRegisterType(&ntype);
 }
