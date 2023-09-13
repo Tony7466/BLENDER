@@ -58,6 +58,20 @@ GPU_SHADER_CREATE_INFO(eevee_ray_generate)
 
 EEVEE_RAYTRACE_CLOSURE_VARIATION(eevee_ray_generate)
 
+GPU_SHADER_CREATE_INFO(eevee_ray_trace_fallback)
+    .do_static_compilation(true)
+    .local_group_size(RAYTRACE_GROUP_SIZE, RAYTRACE_GROUP_SIZE)
+    .additional_info("eevee_shared",
+                     "eevee_global_ubo",
+                     "draw_view",
+                     "eevee_reflection_probe_data")
+    .image(0, GPU_RGBA16F, Qualifier::READ, ImageType::FLOAT_2D, "ray_data_img")
+    .image(1, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "ray_time_img")
+    .image(2, RAYTRACE_RADIANCE_FORMAT, Qualifier::WRITE, ImageType::FLOAT_2D, "ray_radiance_img")
+    .sampler(1, ImageType::DEPTH_2D, "depth_tx")
+    .storage_buf(4, Qualifier::READ, "uint", "tiles_coord_buf[]")
+    .compute_source("eevee_ray_trace_fallback_comp.glsl");
+
 GPU_SHADER_CREATE_INFO(eevee_ray_trace_screen)
     .local_group_size(RAYTRACE_GROUP_SIZE, RAYTRACE_GROUP_SIZE)
     .additional_info("eevee_shared",

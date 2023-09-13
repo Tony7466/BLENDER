@@ -217,7 +217,8 @@ class DeferredLayer {
               Framebuffer &prepass_fb,
               Framebuffer &combined_fb,
               int2 extent,
-              RayTraceBuffer &rt_buffer);
+              RayTraceBuffer &rt_buffer,
+              bool is_first_pass);
 };
 
 class DeferredPipeline {

@@ -30,6 +30,7 @@ void RayTraceModule::init()
 
   reflection_options_ = sce_eevee.reflection_options;
   refraction_options_ = sce_eevee.refraction_options;
+  tracing_method_ = RaytraceEEVEE_Method(sce_eevee.ray_tracing_method);
 
   if (sce_eevee.ray_split_settings == 0) {
     refraction_options_ = reflection_options_;
@@ -98,6 +99,19 @@ void RayTraceModule::sync()
     inst_.bind_uniform_data(&pass);
     inst_.hiz_buffer.bind_resources(&pass);
     inst_.sampling.bind_resources(&pass);
+    inst_.reflection_probes.bind_resources(&pass);
+    pass.dispatch(ray_dispatch_buf_);
+    pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+  }
+  {
+    PassSimple &pass = trace_fallback_ps_;
+    pass.init();
+    pass.shader_set(inst_.shaders.static_shader_get(RAY_TRACE_FALLBACK));
+    pass.bind_ssbo("tiles_coord_buf", &ray_tiles_buf_);
+    pass.bind_image("ray_data_img", &ray_data_tx_);
+    pass.bind_image("ray_time_img", &ray_time_tx_);
+    pass.bind_image("ray_radiance_img", &ray_radiance_tx_);
+    inst_.bind_uniform_data(&pass);
     inst_.reflection_probes.bind_resources(&pass);
     pass.dispatch(ray_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
@@ -173,13 +187,18 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
                                      eClosureBits raytrace_closure,
                                      /* TODO(fclem): Maybe wrap these two in some other class. */
                                      View &main_view,
-                                     View &render_view)
+                                     View &render_view,
+                                     bool force_no_tracing)
 {
   BLI_assert_msg(count_bits_i(raytrace_closure) == 1,
                  "Only one closure type can be raytraced at a time.");
   BLI_assert_msg(raytrace_closure ==
                      (raytrace_closure & (CLOSURE_REFLECTION | CLOSURE_REFRACTION)),
                  "Only reflection and refraction are implemented.");
+
+  if (tracing_method_ == RAYTRACE_EEVEE_METHOD_NONE) {
+    force_no_tracing = true;
+  }
 
   screen_radiance_tx_ = screen_radiance_tx;
 
@@ -193,7 +212,7 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
   if (raytrace_closure == CLOSURE_REFLECTION) {
     options = reflection_options_;
     generate_ray_ps = &generate_reflect_ps_;
-    trace_ray_ps = &trace_reflect_ps_;
+    trace_ray_ps = force_no_tracing ? &trace_fallback_ps_ : &trace_reflect_ps_;
     denoise_spatial_ps = &denoise_spatial_reflect_ps_;
     denoise_bilateral_ps = &denoise_bilateral_reflect_ps_;
     denoise_buf = &rt_buffer.reflection;
@@ -201,7 +220,7 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
   else if (raytrace_closure == CLOSURE_REFRACTION) {
     options = refraction_options_;
     generate_ray_ps = &generate_refract_ps_;
-    trace_ray_ps = &trace_refract_ps_;
+    trace_ray_ps = force_no_tracing ? &trace_fallback_ps_ : &trace_refract_ps_;
     denoise_spatial_ps = &denoise_spatial_refract_ps_;
     denoise_bilateral_ps = &denoise_bilateral_refract_ps_;
     denoise_buf = &rt_buffer.refraction;

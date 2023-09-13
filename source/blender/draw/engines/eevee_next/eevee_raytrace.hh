@@ -107,6 +107,7 @@ class RayTraceModule {
   draw::PassSimple generate_refract_ps_ = {"RayGenerate.Refraction"};
   draw::PassSimple trace_reflect_ps_ = {"Trace.Reflection"};
   draw::PassSimple trace_refract_ps_ = {"Trace.Refraction"};
+  draw::PassSimple trace_fallback_ps_ = {"Trace.Fallback"};
   draw::PassSimple denoise_spatial_reflect_ps_ = {"DenoiseSpatial.Reflection"};
   draw::PassSimple denoise_spatial_refract_ps_ = {"DenoiseSpatial.Refraction"};
   draw::PassSimple denoise_temporal_ps_ = {"DenoiseTemporal"};
@@ -160,6 +161,8 @@ class RayTraceModule {
   RaytraceEEVEE reflection_options_;
   RaytraceEEVEE refraction_options_;
 
+  RaytraceEEVEE_Method tracing_method_ = RAYTRACE_EEVEE_METHOD_NONE;
+
   RayTraceData &data_;
 
  public:
@@ -181,13 +184,15 @@ class RayTraceModule {
    * \arg raytrace_closure is type of closure the rays are to be casted for.
    * \arg main_view is the un-jittered view.
    * \arg render_view is the TAA jittered view.
+   * \arg force_no_tracing will run the pipeline without any tracing, relying only on local probes.
    */
   RayTraceResult trace(RayTraceBuffer &rt_buffer,
                        GPUTexture *screen_radiance_tx,
                        eClosureBits active_closures,
                        eClosureBits raytrace_closure,
                        View &main_view,
-                       View &render_view);
+                       View &render_view,
+                       bool force_no_tracing = false);
 
   void debug_pass_sync();
   void debug_draw(View &view, GPUFrameBuffer *view_fb);

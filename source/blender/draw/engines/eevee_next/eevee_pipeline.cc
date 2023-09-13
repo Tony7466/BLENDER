@@ -487,9 +487,14 @@ void DeferredLayer::render(View &main_view,
                            Framebuffer &prepass_fb,
                            Framebuffer &combined_fb,
                            int2 extent,
-                           RayTraceBuffer &rt_buffer)
+                           RayTraceBuffer &rt_buffer,
+                           bool is_first_pass)
 {
   RenderBuffers &rb = inst_.render_buffers;
+
+  /* The first pass will never have any surfaces behind it. Nothing is refracted except the
+   * environment. So in this case, disable tracing and fallback to probe. */
+  bool do_screen_space_refraction = !is_first_pass && (closure_bits_ & CLOSURE_REFRACTION);
 
   {
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ;
@@ -499,7 +504,7 @@ void DeferredLayer::render(View &main_view,
     radiance_behind_tx_.ensure_2d(rb.color_format, extent, usage);
   }
 
-  if (closure_bits_ & CLOSURE_REFRACTION) {
+  if (do_screen_space_refraction) {
     /* Update for refraction. */
     inst_.hiz_buffer.update();
     GPU_texture_copy(radiance_behind_tx_, rb.combined_tx);
@@ -512,11 +517,11 @@ void DeferredLayer::render(View &main_view,
 
   if (closure_bits_ & CLOSURE_AMBIENT_OCCLUSION) {
     /* If the shader needs Ambient Occlusion, we need to update the HiZ here. */
-    if (closure_bits_ & CLOSURE_REFRACTION) {
+    if (do_screen_space_refraction) {
       /* TODO(fclem): This update conflicts with the refraction screen tracing which need the depth
-       * behind the objects. In this case we do not update and only consider surfaces already in
-       * the Hi-Z buffer for the occlusion detection. This might be solved (if really problematic)
-       * by having another copy of the Hi-Z buffer. */
+       * behind the refractive surface. In this case, we do not update the Hi-Z and only consider
+       * surfaces already in the Hi-Z buffer for the ambient occlusion computation. This might be
+       * solved (if really problematic) by having another copy of the Hi-Z buffer. */
     }
     else {
       inst_.hiz_buffer.update();
@@ -530,8 +535,13 @@ void DeferredLayer::render(View &main_view,
 
   inst_.irradiance_cache.set_view(render_view);
 
-  RayTraceResult refract_result = inst_.raytracing.trace(
-      rt_buffer, radiance_behind_tx_, closure_bits_, CLOSURE_REFRACTION, main_view, render_view);
+  RayTraceResult refract_result = inst_.raytracing.trace(rt_buffer,
+                                                         radiance_behind_tx_,
+                                                         closure_bits_,
+                                                         CLOSURE_REFRACTION,
+                                                         main_view,
+                                                         render_view,
+                                                         !do_screen_space_refraction);
   indirect_refraction_tx_ = refract_result.get();
 
   /* Only update the HiZ after refraction tracing. */
@@ -621,12 +631,12 @@ void DeferredPipeline::render(View &main_view,
 {
   DRW_stats_group_start("Deferred.Opaque");
   opaque_layer_.render(
-      main_view, render_view, prepass_fb, combined_fb, extent, rt_buffer_opaque_layer);
+      main_view, render_view, prepass_fb, combined_fb, extent, rt_buffer_opaque_layer, true);
   DRW_stats_group_end();
 
   DRW_stats_group_start("Deferred.Refract");
   refraction_layer_.render(
-      main_view, render_view, prepass_fb, combined_fb, extent, rt_buffer_refract_layer);
+      main_view, render_view, prepass_fb, combined_fb, extent, rt_buffer_refract_layer, false);
   DRW_stats_group_end();
 }
 
