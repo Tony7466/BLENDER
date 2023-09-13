@@ -42,12 +42,14 @@ def setup():
     grid = None
     # Does not work in edit mode
     try:
+        #TODO: Skip cubemaps for now
         # Simple probe setup
-        bpy.ops.object.lightprobe_add(type='CUBEMAP', location=(0.5, 0, 1.5))
-        cubemap = bpy.context.selected_objects[0]
-        cubemap.scale = (2.5, 2.5, 1.0)
-        cubemap.data.falloff = 0
-        cubemap.data.clip_start = 2.4
+        if False:
+            bpy.ops.object.lightprobe_add(type='CUBEMAP', location=(0.5, 0, 1.5))
+            cubemap = bpy.context.selected_objects[0]
+            cubemap.scale = (2.5, 2.5, 1.0)
+            cubemap.data.falloff = 0
+            cubemap.data.clip_start = 2.4
 
         bpy.ops.object.lightprobe_add(type='GRID', location=(0, 0, 0.25))
         grid = bpy.context.selected_objects[0]
@@ -59,21 +61,23 @@ def setup():
         pass
 
     try:
+        #TODO: Skip cubemaps for now
         # Try to only include the plane in reflections
-        plane = bpy.data.objects['Plane']
+        if False:
+            plane = bpy.data.objects['Plane']
 
-        collection = bpy.data.collections.new("Reflection")
-        collection.objects.link(plane)
-        # Add all lights to light the plane
-        if not invert:
-            for light in bpy.data.objects:
-                if light.type == 'LIGHT':
-                    collection.objects.link(light)
+            collection = bpy.data.collections.new("Reflection")
+            collection.objects.link(plane)
+            # Add all lights to light the plane
+            if not invert:
+                for light in bpy.data.objects:
+                    if light.type == 'LIGHT':
+                        collection.objects.link(light)
 
-        # Add collection to the scene
-        scene.collection.children.link(collection)
+            # Add collection to the scene
+            scene.collection.children.link(collection)
 
-        cubemap.data.visibility_collection = collection
+            cubemap.data.visibility_collection = collection
     except:
         pass
 
