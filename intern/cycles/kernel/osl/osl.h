@@ -134,18 +134,22 @@ ccl_device void flatten_closure_tree(KernelGlobals kg,
         break;
     }
 
-    /* Pop the next closure from the stack (or return if we're done). */
+    /* Search for the next closure that we need to handle. Sometimes closures might be NULL
+     * or might be skipped due to zero weight, so loop until we find a valid one. */
     do {
+      /* If the stack is empty, we're done here. Exit the outer loop and the function. */
       if (stack_size == 0) {
         return;
       }
 
+      /* Pop the next closure from the stack. */
       weight = weight_stack[--stack_size];
       closure = closure_stack[stack_size];
+
+      /* Check for layering, needs special handling for weights. */
       if (stack_size == layer_stack_level) {
-        /* We just finished processing the top layers of a Layer closure, so adjust the weight to
-         * account for the layering. */
-        weight *= saturatef(1.0f - reduce_max(layer_albedo / weight));
+        /* We just finished the top layers of a Layer closure, so adjust the weight accordingly. */
+        weight *= saturatef(1.0f - reduce_max(safe_divide_color(layer_albedo, weight)));
         layer_stack_level = -1;
         /* If it's fully occluded, skip the base layer we just popped from the stack and grab
          * the next entry instead. */
