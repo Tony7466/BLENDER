@@ -29,7 +29,7 @@ namespace blender::meshintersect {
 
 template<typename T> struct InputStorage {
   Array<VecBase<T, 2>> vert;
-  Array<int2> edge;
+  Array<std::pair<int, int>> edge;
   Array<int> faces;
   Vector<int> face_vert_indices;
 };
@@ -173,8 +173,8 @@ int get_output_edge_index(const CDT_result<T> &out, int out_index_1, int out_ind
 {
   int ne = int(out.edge.size());
   for (int i = 0; i < ne; ++i) {
-    if ((out.edge[i][0] == out_index_1 && out.edge[i][1] == out_index_2) ||
-        (out.edge[i][0] == out_index_2 && out.edge[i][1] == out_index_1))
+    if ((out.edge[i].first == out_index_1 && out.edge[i].second == out_index_2) ||
+        (out.edge[i].first == out_index_2 && out.edge[i].second == out_index_1))
     {
       return i;
     }
@@ -360,18 +360,18 @@ void graph_draw(const std::string &label,
   }
 
   for (const std::pair<int, int> &e : edges) {
-    const VecBase<T, 2> &uco = verts[e[0]];
-    const VecBase<T, 2> &vco = verts[e[1]];
+    const VecBase<T, 2> &uco = verts[e.first];
+    const VecBase<T, 2> &vco = verts[e.second];
     int strokew = thin_line;
     f << R"(<line fill="none" stroke="black" stroke-width=")" << strokew << "\" x1=\""
       << SX(uco[0]) << "\" y1=\"" << SY(uco[1]) << "\" x2=\"" << SX(vco[0]) << "\" y2=\""
       << SY(vco[1]) << "\">\n";
-    f << "  <title>[" << e[0] << "][" << e[1] << "]</title>\n";
+    f << "  <title>[" << e.first << "][" << e.second << "]</title>\n";
     f << "</line>\n";
     if (draw_edge_labels) {
       f << "<text x=\"" << SX(0.5 * (uco[0] + vco[0])) << "\" y=\"" << SY(0.5 * (uco[1] + vco[1]))
         << R"(" font-size="small">)";
-      f << "[" << e[0] << "][" << e[1] << "]</text>\n";
+      f << "[" << e.first << "][" << e.second << "]</text>\n";
     }
   }
 
@@ -927,7 +927,7 @@ template<typename T> void twodiamondscross_test()
     EXPECT_EQ(v_out[7], v_out[11]);
     int e_out[9];
     for (int i = 0; i < 8; ++i) {
-      e_out[i] = get_output_edge_index(out, v_out[in.edge[i][0]], v_out[in.edge[i][1]]);
+      e_out[i] = get_output_edge_index(out, v_out[in.edge[i].first], v_out[in.edge[i].second]);
       EXPECT_NE(e_out[i], -1);
     }
     /* there won't be a single edge for the input cross edge, but rather 3 */
@@ -1860,14 +1860,14 @@ void rand_delaunay_test(int test_kind,
             verts[i][1] = T(BLI_rng_get_double(rng));
             if (test_kind != RANDOM_PTS) {
               if (i > 0) {
-                edges[i - 1][0] = i - 1;
-                edges[i - 1][1] = i;
+                edges[i - 1].first = i - 1;
+                edges[i - 1].second = i;
               }
             }
           }
           if (test_kind == RANDOM_POLY) {
-            edges[size - 1][0] = size - 1;
-            edges[size - 1][1] = 0;
+            edges[size - 1].first = size - 1;
+            edges[size - 1].second = 0;
           }
         } break;
 
@@ -1880,11 +1880,11 @@ void rand_delaunay_test(int test_kind,
           }
           for (int i = 0; i < size; ++i) {
             /* Horizontal edges: connect `p(i,0)` to `p(i,size-1)`. */
-            edges[i][0] = i * size;
-            edges[i][1] = i * size + size - 1;
+            edges[i].first = i * size;
+            edges[i].second = i * size + size - 1;
             /* Vertical edges: connect `p(0,i)` to `p(size-1,i)`. */
-            edges[size + i][0] = i;
-            edges[size + i][1] = (size - 1) * size + i;
+            edges[size + i].first = i;
+            edges[size + i].second = (size - 1) * size + i;
           }
         } break;
 

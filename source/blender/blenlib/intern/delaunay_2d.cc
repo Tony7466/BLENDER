@@ -2111,8 +2111,8 @@ template<typename T> void add_edge_constraints(CDT_state<T> *cdt_state, const CD
   int ne = input.edge.size();
   int nv = input.vert.size();
   for (int i = 0; i < ne; i++) {
-    int iv1 = input.edge[i][0];
-    int iv2 = input.edge[i][1];
+    int iv1 = input.edge[i].first;
+    int iv2 = input.edge[i].second;
     if (iv1 < 0 || iv1 >= nv || iv2 < 0 || iv2 >= nv) {
       /* Ignore invalid indices in edges. */
       continue;
@@ -2689,11 +2689,11 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
   }
   result.vert = Array<VecBase<T, 2>>(nv);
   if (cdt_state->need_ids) {
-    result.vert_orig_offsets.reinitialize(nv + 1);
+    result.vert_orig_offsets = Array<int>(nv + 1, 0);
     int i_out = 0;
     for (int i = 0; i < verts_size; ++i) {
       const CDTVert<T> *v = cdt->verts[i];
-      if (v->merge_to_index != -1) {
+      if (v->merge_to_index == -1) {
         result.vert_orig_offsets[i_out] = v->input_ids.size();
         if (i < cdt_state->input_vert_num) {
           result.vert_orig_offsets[i_out]++;
@@ -2730,7 +2730,7 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
   });
   result.edge = Array<std::pair<int, int>>(ne);
   if (cdt_state->need_ids) {
-    result.edge_orig_offsets.reinitialize(ne + 1);
+    result.edge_orig_offsets = Array<int>(ne + 1, 0);
     int e_out = 0;
     for (const int i : cdt->edges.index_range()) {
       if (!is_deleted_edge(cdt->edges[i])) {
@@ -2773,9 +2773,9 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
     }
   }
 
-  result.face_offsets.reinitialize(new_face_count + 1);
-  result.face_vert_indices.reinitialize(new_face_vert_count);
   if (cdt_state->need_ids) {
+    result.face_orig_offsets = Array<int>(new_face_count + 1, 0);
+    result.face_vert_indices.reinitialize(new_face_vert_count);
     result.face_orig_offsets.reinitialize(new_face_count + 1);
     int f_out = 0;
     for (const int i : cdt->faces.index_range()) {
@@ -2790,6 +2790,7 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
   }
   int face_vert_out = 0;
   int f_out = 0;
+  result.face_offsets.reinitialize(new_face_count + 1);
   for (const CDTFace<T> *f : cdt->faces) {
     if (!f->deleted && f != cdt->outer_face) {
       result.face_offsets[f_out] = face_vert_out;
