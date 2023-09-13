@@ -710,6 +710,8 @@ static void GREASE_PENCIL_OT_dissolve(wmOperatorType *ot)
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 }
 
+/** \} */
+
 /* -------------------------------------------------------------------- */
 /** \name Delete Frame Operator
  * \{ */
