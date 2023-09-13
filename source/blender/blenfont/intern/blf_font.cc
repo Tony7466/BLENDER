@@ -360,13 +360,6 @@ BLI_INLINE ft_pix blf_kerning(FontBLF *font, const GlyphBLF *g_prev, const Glyph
 {
   ft_pix adjustment = 0;
 
-  if (font->flags & BLF_LEGACY_SPACING) {
-    if (font->flags & BLF_HINTING_NONE || !g_prev || g_prev->c == ' ') {
-      return 0;
-    }
-    adjustment -= 32;
-  }
-
   /* Small adjust if there is hinting. */
   adjustment += g->lsb_delta - ((g_prev) ? g_prev->rsb_delta : 0);
 
@@ -420,10 +413,6 @@ BLI_INLINE GlyphBLF *blf_glyph_from_utf8_and_step(FontBLF *font,
 
 BLI_INLINE ft_pix blf_pen_advance(FontBLF *font, ft_pix v, ft_pix step)
 {
-  if (font->flags & BLF_LEGACY_SPACING && font->flags & BLF_HINTING_NONE) {
-    /* DejaVu with no hinting, so truncate pen position to match old spacing. */
-    return (v + step) & ~63;
-  }
   return v + step;
 }
 
@@ -1432,11 +1421,6 @@ bool blf_ensure_face(FontBLF *font)
   }
 
   font->face_flags = font->face->face_flags;
-
-  if (font->face && STREQ(font->face->family_name, "DejaVu Sans")) {
-    /* So our legacy font can keep its too-tight spacing. */
-    font->flags |= BLF_LEGACY_SPACING;
-  }
 
   if (FT_HAS_MULTIPLE_MASTERS(font)) {
     FT_Get_MM_Var(font->face, &(font->variations));
