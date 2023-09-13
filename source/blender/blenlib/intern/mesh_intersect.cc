@@ -2090,7 +2090,6 @@ static Array<Face *> polyfill_triangulate_poly(Face *f, IMeshArena *arena)
 static Array<Face *> exact_triangulate_poly(Face *f, IMeshArena *arena)
 {
   int flen = f->size();
-
   /* Project poly along dominant axis of normal to get 2d coords. */
   if (!f->plane_populated()) {
     f->populate_plane(false);
@@ -2671,7 +2670,6 @@ static void calc_cluster_tris(Array<IMesh> &tri_subdivided,
     const CDT_result<mpq_class> &cdt_out = cd.cdt_out;
     const GroupedSpan<int> orig_faces = cdt_out.orig_faces();
     BLI_assert(cd.input_face.size() == n_cluster_tris);
-
     Array<Vector<Face *>> face_vec(n_cluster_tris);
     for (int cdt_out_t : cdt_out.faces().index_range()) {
       for (int cdt_in_t : orig_faces[cdt_out_t]) {

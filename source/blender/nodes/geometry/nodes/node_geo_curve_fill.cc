@@ -75,15 +75,12 @@ static Mesh *cdt_to_mesh(const meshintersect::CDT_result<double> &result)
                                    result.face_vert_indices.size());
 
   MutableSpan<float3> positions = mesh->vert_positions_for_write();
-  threading::parallel_for(positions.index_range(), 2048, [&](const IndexRange range) {
-    for (const int i : range) {
-      positions[i] = float3(float(result.vert[i].x), float(result.vert[i].y), 0.0f);
-    }
-  });
-
   mesh->edges_for_write().copy_from(result.edge.as_span().cast<int2>());
   mesh->face_offsets_for_write().copy_from(result.face_offsets);
   mesh->corner_verts_for_write().copy_from(result.face_vert_indices);
+  for (const int i : IndexRange(result.vert.size())) {
+    positions[i] = float3(float(result.vert[i].x), float(result.vert[i].y), 0.0f);
+  }
 
   /* The delaunay triangulation doesn't seem to return all of the necessary edges, even in
    * triangulation mode. */
