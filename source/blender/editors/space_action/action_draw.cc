@@ -755,12 +755,31 @@ struct SimulationRange {
 
 static void timeline_cache_draw_simulation_nodes(
     const blender::Span<SimulationRange> simulation_ranges,
-    const float y_offset,
-    const float height,
+    const bool all_simulations_baked,
+    float *y_offset,
+    const float line_height,
     const uint pos_id)
 {
   if (simulation_ranges.is_empty()) {
     return;
+  }
+
+  bool has_bake = false;
+  bool has_valid = false;
+  bool has_invalid = false;
+
+  for (const SimulationRange &sim_range : simulation_ranges) {
+    switch (sim_range.status) {
+      case blender::bke::bake::CacheStatus::Invalid:
+        has_invalid = true;
+        break;
+      case blender::bke::bake::CacheStatus::Valid:
+        has_valid = true;
+        break;
+      case blender::bke::bake::CacheStatus::Baked:
+        has_bake = true;
+        break;
+    }
   }
 
   blender::Set<int> status_change_frames_set;
@@ -774,8 +793,8 @@ static void timeline_cache_draw_simulation_nodes(
   const blender::OffsetIndices<int> frame_ranges = status_change_frames.as_span();
 
   GPU_matrix_push();
-  GPU_matrix_translate_2f(0.0, float(V2D_SCROLL_HANDLE_HEIGHT) + y_offset);
-  GPU_matrix_scale_2f(1.0, height);
+  GPU_matrix_translate_2f(0.0, float(V2D_SCROLL_HANDLE_HEIGHT) + *y_offset);
+  GPU_matrix_scale_2f(1.0, line_height);
 
   blender::float4 base_color;
   UI_GetThemeColor4fv(TH_SIMULATED_FRAMES, base_color);
@@ -785,44 +804,61 @@ static void timeline_cache_draw_simulation_nodes(
   valid_color.w *= 0.7f;
   blender::float4 baked_color = base_color;
 
+  float max_used_height = 1.0f;
   for (const int range_i : frame_ranges.index_range()) {
     const blender::IndexRange frame_range = frame_ranges[range_i];
     const int start_frame = frame_range.first();
     const int end_frame = frame_range.last();
 
-    bool has_bake = false;
-    bool has_valid = false;
-    bool has_invalid = false;
+    bool has_bake_at_frame = false;
+    bool has_valid_at_frame = false;
+    bool has_invalid_at_frame = false;
     for (const SimulationRange &sim_range : simulation_ranges) {
       if (sim_range.frames.contains(start_frame)) {
         switch (sim_range.status) {
           case blender::bke::bake::CacheStatus::Invalid:
-            has_invalid = true;
+            has_invalid_at_frame = true;
             break;
           case blender::bke::bake::CacheStatus::Valid:
-            has_valid = true;
+            has_valid_at_frame = true;
             break;
           case blender::bke::bake::CacheStatus::Baked:
-            has_bake = true;
+            has_bake_at_frame = true;
             break;
         }
       }
     }
-    if (!(has_bake || has_valid || has_invalid)) {
+    if (!(has_bake_at_frame || has_valid_at_frame || has_invalid_at_frame)) {
       continue;
     }
 
-    const blender::float4 color = has_invalid ? invalid_color :
-                                                (has_valid ? valid_color : baked_color);
-    immUniformColor4fv(color);
-
-    immBeginAtMost(GPU_PRIM_TRIS, 6);
-    immRectf_fast(pos_id, start_frame, 0, end_frame + 1.0f, 1.0f);
-
-    immEnd();
-
-    GPU_matrix_pop();
+    if (all_simulations_baked) {
+      immUniformColor4fv(baked_color);
+      immBeginAtMost(GPU_PRIM_TRIS, 6);
+      immRectf_fast(pos_id, start_frame, 0, end_frame + 1.0f, 1.0f);
+      immEnd();
+    }
+    else {
+      if (has_valid_at_frame || has_invalid_at_frame) {
+        immUniformColor4fv(has_invalid_at_frame ? invalid_color : valid_color);
+        immBeginAtMost(GPU_PRIM_TRIS, 6);
+        const float top = has_bake ? 1.5f : 1.0f;
+        immRectf_fast(pos_id, start_frame, 0.0f, end_frame + 1.0f, top);
+        immEnd();
+        max_used_height = top;
+      }
+      if (has_bake_at_frame) {
+        immUniformColor4fv(baked_color);
+        immBeginAtMost(GPU_PRIM_TRIS, 6);
+        immRectf_fast(pos_id, start_frame, 0, end_frame + 1.0f, 0.5f);
+        immEnd();
+      }
+    }
   }
+
+  GPU_matrix_pop();
+
+  *y_offset += max_used_height * 2;
 }
 
 void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Scene *scene)
@@ -858,6 +894,7 @@ void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Sce
   }
   if (saction->cache_display & TIME_CACHE_SIMULATION_NODES) {
     blender::Vector<SimulationRange> simulation_ranges;
+    bool all_simulations_baked = true;
     LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
       if (md->type != eModifierType_Nodes) {
         continue;
@@ -880,7 +917,11 @@ void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Sce
         {
           const blender::bke::bake::NodeCache &node_cache = *node_cache_ptr;
           if (node_cache.frame_caches.is_empty()) {
+            all_simulations_baked = false;
             continue;
+          }
+          if (node_cache.cache_status != blender::bke::bake::CacheStatus::Baked) {
+            all_simulations_baked = false;
           }
           const int start_frame = node_cache.frame_caches.first()->frame.frame();
           const int end_frame = node_cache.frame_caches.last()->frame.frame();
@@ -889,8 +930,8 @@ void timeline_draw_cache(const SpaceAction *saction, const Object *ob, const Sce
         }
       }
     }
-    timeline_cache_draw_simulation_nodes(simulation_ranges, y_offset, cache_draw_height, pos_id);
-    y_offset += cache_draw_height;
+    timeline_cache_draw_simulation_nodes(
+        simulation_ranges, all_simulations_baked, &y_offset, cache_draw_height, pos_id);
   }
 
   GPU_blend(GPU_BLEND_NONE);
