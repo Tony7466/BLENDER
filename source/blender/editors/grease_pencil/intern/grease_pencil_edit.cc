@@ -796,6 +796,7 @@ static void GREASE_PENCIL_OT_delete_frame(wmOperatorType *ot)
 }
 
 /** \} */
+
 /* -------------------------------------------------------------------- */
 /** \name Cyclical Set Operator
  * \{ */
