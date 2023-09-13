@@ -378,9 +378,43 @@ static void socket_data_foreach_id(LibraryForeachIDData *data, bNodeTreeInterfac
 
 namespace item_types {
 
+using UidGeneratorFn = blender::FunctionRef<int()>;
+
 static void item_copy(bNodeTreeInterfaceItem &dst,
                       const bNodeTreeInterfaceItem &src,
-                      const int flag)
+                      int flag,
+                      UidGeneratorFn generate_uid);
+
+/**
+ * Copy the source items and give each a new unique identifier.
+ * \param generate_uid: Optional generator function for new item UIDs, copies existing identifiers
+ * if null.
+ */
+static void panel_init(bNodeTreeInterfacePanel &panel,
+                       const Span<const bNodeTreeInterfaceItem *> items_src,
+                       const int flag,
+                       UidGeneratorFn generate_uid)
+{
+  panel.items_num = items_src.size();
+  panel.items_array = MEM_cnew_array<bNodeTreeInterfaceItem *>(panel.items_num, __func__);
+
+  /* Copy buffers. */
+  for (const int i : items_src.index_range()) {
+    const bNodeTreeInterfaceItem *item_src = items_src[i];
+    panel.items_array[i] = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(item_src));
+    item_types::item_copy(*panel.items_array[i], *item_src, flag, generate_uid);
+  }
+}
+
+/**
+ * Copy data from a source item.
+ * \param generate_uid: Optional generator function for new item UIDs, copies existing identifiers
+ * if null.
+ */
+static void item_copy(bNodeTreeInterfaceItem &dst,
+                      const bNodeTreeInterfaceItem &src,
+                      const int flag,
+                      UidGeneratorFn generate_uid)
 {
   switch (dst.item_type) {
     case NODE_INTERFACE_SOCKET: {
@@ -394,7 +428,8 @@ static void item_copy(bNodeTreeInterfaceItem &dst,
       dst_socket.description = BLI_strdup_null(src_socket.description);
       dst_socket.socket_type = BLI_strdup(src_socket.socket_type);
       dst_socket.default_attribute_name = BLI_strdup_null(src_socket.default_attribute_name);
-      dst_socket.identifier = BLI_strdup(src_socket.identifier);
+      dst_socket.identifier = generate_uid ? BLI_sprintfN("Socket_%d", generate_uid()) :
+                                             BLI_strdup(src_socket.identifier);
       if (src_socket.properties) {
         dst_socket.properties = IDP_CopyProperty_ex(src_socket.properties, flag);
       }
@@ -411,7 +446,9 @@ static void item_copy(bNodeTreeInterfaceItem &dst,
 
       dst_panel.name = BLI_strdup(src_panel.name);
       dst_panel.description = BLI_strdup_null(src_panel.description);
-      dst_panel.copy_from(src_panel.items(), flag);
+      dst_panel.identifier = generate_uid ? generate_uid() : src_panel.identifier;
+
+      panel_init(dst_panel, src_panel.items(), flag, generate_uid);
       break;
     }
   }
@@ -991,22 +1028,6 @@ static bNodeTreeInterfacePanel *make_panel(const int uid,
   return new_panel;
 }
 
-void bNodeTreeInterfacePanel::copy_from(
-    const blender::Span<const bNodeTreeInterfaceItem *> items_src, int flag)
-{
-  items_num = items_src.size();
-  items_array = MEM_cnew_array<bNodeTreeInterfaceItem *>(items_num, __func__);
-
-  /* Copy buffers. */
-  for (const int i : items_src.index_range()) {
-    const bNodeTreeInterfaceItem *item_src = items_src[i];
-    BLI_assert(item_src->item_type != NODE_INTERFACE_PANEL ||
-               (flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS));
-    items_array[i] = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(item_src));
-    item_types::item_copy(*items_array[i], *item_src, flag);
-  }
-}
-
 void bNodeTreeInterface::init_data()
 {
   this->runtime = MEM_new<blender::bke::bNodeTreeInterfaceRuntime>(__func__);
@@ -1018,7 +1039,7 @@ void bNodeTreeInterface::init_data()
 
 void bNodeTreeInterface::copy_data(const bNodeTreeInterface &src, int flag)
 {
-  this->root_panel.copy_from(src.root_panel.items(), flag);
+  item_types::panel_init(this->root_panel, src.root_panel.items(), flag, nullptr);
   this->active_index = src.active_index;
 
   this->runtime = MEM_new<blender::bke::bNodeTreeInterfaceRuntime>(__func__);
@@ -1201,7 +1222,7 @@ bNodeTreeInterfaceItem *bNodeTreeInterface::add_item_copy(const bNodeTreeInterfa
   }
 
   bNodeTreeInterfaceItem *citem = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(&item));
-  item_types::item_copy(*citem, item, 0);
+  item_types::item_copy(*citem, item, 0, [&]() { return this->next_uid++; });
   parent->add_item(*citem);
 
   tag_items_changed();
@@ -1226,7 +1247,7 @@ bNodeTreeInterfaceItem *bNodeTreeInterface::insert_item_copy(const bNodeTreeInte
   }
 
   bNodeTreeInterfaceItem *citem = static_cast<bNodeTreeInterfaceItem *>(MEM_dupallocN(&item));
-  item_types::item_copy(*citem, item, 0);
+  item_types::item_copy(*citem, item, 0, [&]() { return this->next_uid++; });
   parent->insert_item(*citem, position);
 
   tag_items_changed();
@@ -1235,7 +1256,7 @@ bNodeTreeInterfaceItem *bNodeTreeInterface::insert_item_copy(const bNodeTreeInte
 
 bool bNodeTreeInterface::remove_item(bNodeTreeInterfaceItem &item, bool move_content_to_parent)
 {
-  bNodeTreeInterfacePanel *parent = this->find_item_parent(item);
+  bNodeTreeInterfacePanel *parent = this->find_item_parent(item, true);
   if (parent == nullptr) {
     return false;
   }
@@ -1263,7 +1284,7 @@ void bNodeTreeInterface::clear_items()
 
 bool bNodeTreeInterface::move_item(bNodeTreeInterfaceItem &item, const int new_position)
 {
-  bNodeTreeInterfacePanel *parent = this->find_item_parent(item);
+  bNodeTreeInterfacePanel *parent = this->find_item_parent(item, true);
   if (parent == nullptr) {
     return false;
   }
@@ -1279,11 +1300,11 @@ bool bNodeTreeInterface::move_item_to_parent(bNodeTreeInterfaceItem &item,
                                              bNodeTreeInterfacePanel *new_parent,
                                              int new_position)
 {
-  bNodeTreeInterfacePanel *parent = this->find_item_parent(item);
+  bNodeTreeInterfacePanel *parent = this->find_item_parent(item, true);
   if (parent == nullptr) {
     return false;
   }
-  if (item.item_type == NODE_INTERFACE_PANEL &&
+  if (item.item_type == NODE_INTERFACE_PANEL && new_parent &&
       !(new_parent->flag & NODE_INTERFACE_PANEL_ALLOW_CHILD_PANELS))
   {
     /* Parent does not allow adding child panels. */

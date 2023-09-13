@@ -652,7 +652,6 @@ static void ui_template_node_link_menu(bContext *C, uiLayout *layout, void *but_
   bNodeSocket *sock = arg->sock;
   bNodeTreeType *ntreetype = arg->ntree->typeinfo;
 
-  UI_block_flag_enable(block, UI_BLOCK_NO_FLIP | UI_BLOCK_IS_FLIP);
   UI_block_layout_set_current(block, layout);
   split = uiLayoutSplit(layout, 0.0f, false);
 
@@ -765,9 +764,7 @@ static void ui_node_draw_input(
 static void ui_node_draw_node(
     uiLayout &layout, bContext &C, bNodeTree &ntree, bNode &node, int depth)
 {
-  PointerRNA nodeptr;
-
-  RNA_pointer_create(&ntree.id, &RNA_Node, &node, &nodeptr);
+  PointerRNA nodeptr = RNA_pointer_create(&ntree.id, &RNA_Node, &node);
 
   if (node.typeinfo->draw_buttons) {
     if (node.type != NODE_GROUP) {
@@ -784,7 +781,6 @@ static void ui_node_draw_node(
 static void ui_node_draw_input(
     uiLayout &layout, bContext &C, bNodeTree &ntree, bNode &node, bNodeSocket &input, int depth)
 {
-  PointerRNA inputptr, nodeptr;
   uiBlock *block = uiLayoutGetBlock(&layout);
   uiLayout *row = nullptr;
   bool dependency_loop;
@@ -803,8 +799,8 @@ static void ui_node_draw_input(
   }
 
   /* socket RNA pointer */
-  RNA_pointer_create(&ntree.id, &RNA_NodeSocket, &input, &inputptr);
-  RNA_pointer_create(&ntree.id, &RNA_Node, &node, &nodeptr);
+  PointerRNA inputptr = RNA_pointer_create(&ntree.id, &RNA_NodeSocket, &input);
+  PointerRNA nodeptr = RNA_pointer_create(&ntree.id, &RNA_Node, &node);
 
   row = uiLayoutRow(&layout, true);
   /* Decorations are added manually here. */

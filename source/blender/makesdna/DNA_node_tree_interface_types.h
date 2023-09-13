@@ -28,10 +28,6 @@ using bNodeTreeInterfaceRuntimeHandle = blender::bke::bNodeTreeInterfaceRuntime;
 typedef struct bNodeTreeInterfaceRuntimeHandle bNodeTreeInterfaceRuntimeHandle;
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct bContext;
 struct bNodeSocket;
 struct bNodeSocketType;
@@ -66,6 +62,7 @@ typedef enum NodeTreeInterfaceSocketFlag {
   NODE_INTERFACE_SOCKET_OUTPUT = 1 << 1,
   NODE_INTERFACE_SOCKET_HIDE_VALUE = 1 << 2,
   NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER = 1 << 3,
+  NODE_INTERFACE_SOCKET_COMPACT = 1 << 4,
 } NodeTreeInterfaceSocketFlag;
 ENUM_OPERATORS(NodeTreeInterfaceSocketFlag, NODE_INTERFACE_SOCKET_HIDE_IN_MODIFIER);
 
@@ -171,8 +168,6 @@ typedef struct bNodeTreeInterfacePanel {
    */
   bNodeTreeInterfacePanel *find_parent_recursive(const bNodeTreeInterfaceItem &item);
 
-  /** Create a copy of items in the span and add them to the interface. */
-  void copy_from(blender::Span<const bNodeTreeInterfaceItem *> items_src, int flag);
   /** Remove all items from the panel. */
   void clear(bool do_id_user);
 
@@ -257,7 +252,10 @@ typedef struct bNodeTreeInterface {
     /* const_cast to avoid a const version of #find_parent_recursive. */
     const bNodeTreeInterfacePanel *parent =
         const_cast<bNodeTreeInterfacePanel &>(root_panel).find_parent_recursive(item);
-    BLI_assert(parent != nullptr);
+    if (parent == nullptr || parent == &root_panel) {
+      /* Panel is the root panel. */
+      return 0;
+    }
     return parent->item_position(item);
   }
   /**
@@ -285,11 +283,19 @@ typedef struct bNodeTreeInterface {
   }
   /**
    * Find the panel containing the item.
+   * \param include_root: Allow #root_panel as a return value,
+   *                      otherwise return nullptr for root items.
    * \return Parent panel containing the item.
    */
-  bNodeTreeInterfacePanel *find_item_parent(const bNodeTreeInterfaceItem &item)
+  bNodeTreeInterfacePanel *find_item_parent(const bNodeTreeInterfaceItem &item,
+                                            bool include_root = false)
   {
-    return root_panel.find_parent_recursive(item);
+    bNodeTreeInterfacePanel *parent = root_panel.find_parent_recursive(item);
+    /* Return nullptr instead the root panel. */
+    if (!include_root && parent == &root_panel) {
+      return nullptr;
+    }
+    return parent;
   }
 
   /**
@@ -419,7 +425,3 @@ typedef struct bNodeTreeInterface {
 
 #endif
 } bNodeTreeInterface;
-
-#ifdef __cplusplus
-}
-#endif
