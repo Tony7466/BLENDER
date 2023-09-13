@@ -852,6 +852,7 @@ enum class uiButtonSectionsAlign : int16_t { None, Top, Bottom };
 void UI_region_button_sections_draw(const ARegion *region,
                                     int /*THemeColorID*/ colorid,
                                     uiButtonSectionsAlign align);
+bool UI_region_button_sections_is_inside_x(const ARegion *region, const int mval_x);
 
 /**
  * Automatic aligning, horizontal or vertical.

@@ -18,6 +18,8 @@
 
 #include "interface_intern.hh"
 
+using namespace blender;
+
 /**
  * Calculate a bounding box for each section. Sections will be merged if they are closer than
  * #UI_BUTTON_SECTION_MERGE_DISTANCE.
@@ -27,9 +29,9 @@
  *
  * \return the bounding boxes in region space.
  */
-static blender::Vector<rcti> button_section_bounds_calc(const ARegion *region)
+static Vector<rcti> button_section_bounds_calc(const ARegion *region, const bool add_padding)
 {
-  blender::Vector<rcti> section_bounds;
+  Vector<rcti> section_bounds;
 
   const std::function finish_section_fn = [&section_bounds, region](rcti cur_section_bounds) {
     if (!section_bounds.is_empty() &&
@@ -84,11 +86,23 @@ static blender::Vector<rcti> button_section_bounds_calc(const ARegion *region)
     }
   }
 
+  if (add_padding) {
+    const uiStyle *style = UI_style_get_dpi();
+    for (rcti &bounds : section_bounds) {
+      BLI_rcti_pad(&bounds, style->buttonspacex, style->buttonspacey);
+      /* Clamp, important for the rounded-corners to draw correct. */
+      CLAMP_MIN(bounds.xmin, 0);
+      CLAMP_MAX(bounds.xmax, region->winx);
+      CLAMP_MIN(bounds.ymin, 0);
+      CLAMP_MAX(bounds.ymax, region->winy);
+    }
+  }
+
   return section_bounds;
 }
 
 static void ui_draw_button_sections_background(const ARegion *region,
-                                               const blender::Vector<rcti> &section_bounds,
+                                               const Vector<rcti> &section_bounds,
                                                const ThemeColorID colorid,
                                                const uiButtonSectionsAlign align,
                                                const float corner_radius)
@@ -124,12 +138,11 @@ static void ui_draw_button_sections_background(const ARegion *region,
   }
 }
 
-static void ui_draw_button_sections_alignment_separator(
-    const ARegion *region,
-    const blender::Vector<rcti> &section_bounds,
-    const ThemeColorID colorid,
-    const uiButtonSectionsAlign align,
-    const float corner_radius)
+static void ui_draw_button_sections_alignment_separator(const ARegion *region,
+                                                        const Vector<rcti> &section_bounds,
+                                                        const ThemeColorID colorid,
+                                                        const uiButtonSectionsAlign align,
+                                                        const float corner_radius)
 {
   const int separator_line_width = 2 * U.pixelsize;
 
@@ -180,32 +193,32 @@ void UI_region_button_sections_draw(const ARegion *region,
                                     const int /*ThemeColorID*/ colorid,
                                     const uiButtonSectionsAlign align)
 {
-  const uiStyle *style = UI_style_get_dpi();
   const float aspect = BLI_rctf_size_x(&region->v2d.cur) /
                        (BLI_rcti_size_x(&region->v2d.mask) + 1);
   const float corner_radius = 4.0f * UI_SCALE_FAC / aspect;
 
-  const blender::Vector<rcti> section_bounds = button_section_bounds_calc(region);
-
-  blender::Vector<rcti> padded_bounds;
-  for (rcti bounds_copy : section_bounds) {
-    BLI_rcti_pad(&bounds_copy, style->buttonspacex, style->buttonspacey);
-    /* Clamp, important for the rounded-corners to draw correct. */
-    CLAMP_MIN(bounds_copy.xmin, 0);
-    CLAMP_MAX(bounds_copy.xmax, region->winx);
-    CLAMP_MIN(bounds_copy.ymin, 0);
-    CLAMP_MAX(bounds_copy.ymax, region->winy);
-    padded_bounds.append(bounds_copy);
-  }
+  const Vector<rcti> section_bounds = button_section_bounds_calc(region, true);
 
   ui_draw_button_sections_background(
-      region, padded_bounds, ThemeColorID(colorid), align, corner_radius);
+      region, section_bounds, ThemeColorID(colorid), align, corner_radius);
   if (align != uiButtonSectionsAlign::None) {
     ui_draw_button_sections_alignment_separator(region,
-                                                padded_bounds,
+                                                section_bounds,
                                                 ThemeColorID(colorid),
                                                 align,
                                                 /* Slightly bigger corner radius, looks better. */
                                                 corner_radius + 1);
   }
+}
+
+bool UI_region_button_sections_is_inside_x(const ARegion *region, const int mval_x)
+{
+  const Vector<rcti> section_bounds = button_section_bounds_calc(region, true);
+
+  for (const rcti &bounds : section_bounds) {
+    if (BLI_rcti_isect_x(&bounds, mval_x)) {
+      return true;
+    }
+  }
+  return false;
 }
