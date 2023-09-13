@@ -426,6 +426,7 @@ ccl_device_inline bool subsurface_random_walk(KernelGlobals kg,
   if (hit) {
     kernel_assert(isfinite_safe(throughput));
 
+    /* TODO(lukas): Which PDF should we report here? Entry bounce? The random walk? Just 1.0? */
     guiding_record_bssrdf_bounce(
         kg,
         state,
