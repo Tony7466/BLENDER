@@ -207,9 +207,7 @@ void VKFrameBuffer::clear_attachment(GPUAttachmentType /*type*/,
 /** \name Load/Store operations
  * \{ */
 
-void VKFrameBuffer::attachment_set_loadstore_op(GPUAttachmentType /*type*/,
-                                                eGPULoadOp /*load_action*/,
-                                                eGPUStoreOp /*store_action*/)
+void VKFrameBuffer::attachment_set_loadstore_op(GPUAttachmentType /*type*/, GPULoadStore /*ls*/)
 {
   NOT_YET_IMPLEMENTED;
 }
@@ -382,6 +380,7 @@ void VKFrameBuffer::render_pass_create()
                                       eImageViewUsage::Attachment,
                                       IndexRange(max_ii(attachment.layer, 0), 1),
                                       IndexRange(attachment.mip, 1),
+                                      false,
                                       name_));
       image_views[attachment_location] = image_views_.last().vk_handle();
 

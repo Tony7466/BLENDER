@@ -114,7 +114,7 @@ GHOST_SystemX11::GHOST_SystemX11()
   m_display = XOpenDisplay(nullptr);
 
   if (!m_display) {
-    throw std::runtime_error("X11: Unable to open a display");
+    throw std::runtime_error("unable to open a display!");
   }
 
 #ifdef USE_X11_ERROR_HANDLERS
@@ -482,7 +482,7 @@ static void SleepTillEvent(Display *display, int64_t maxSleep)
   }
 }
 
-/* This function borrowed from Qt's X11 support qclipboard_x11.cpp */
+/* This function borrowed from QT's X11 support `qclipboard_x11.cpp`. */
 struct init_timestamp_data {
   Time timestamp;
 };
@@ -2734,8 +2734,9 @@ void GHOST_SystemX11::refreshXInputDevices()
 void GHOST_SystemX11::clearXInputDevices()
 {
   for (GHOST_TabletX11 &xtablet : m_xtablets) {
-    if (xtablet.Device)
+    if (xtablet.Device) {
       XCloseDevice(m_display, xtablet.Device);
+    }
   }
 
   m_xtablets.clear();
