@@ -96,8 +96,7 @@ static void seq_sequence_lookup_build(const Scene *scene, SequenceLookup *lookup
 
 static SequenceLookup *seq_sequence_lookup_new()
 {
-  SequenceLookup *lookup = static_cast<SequenceLookup *>(
-      MEM_callocN(sizeof(SequenceLookup), __func__));
+  SequenceLookup *lookup = MEM_new<SequenceLookup>(__func__);
   seq_sequence_lookup_init(lookup);
   return lookup;
 }
@@ -114,7 +113,7 @@ static void seq_sequence_lookup_free(SequenceLookup **lookup)
   (*lookup)->seq_by_name = nullptr;
   (*lookup)->meta_by_seq = nullptr;
   //(*lookup)->effects_by_seq = nullptr;
-  MEM_freeN(*lookup);
+  MEM_delete(*lookup);
   *lookup = nullptr;
 }
 
@@ -173,8 +172,8 @@ Sequence *seq_sequence_lookup_meta_by_seq(const Scene *scene, const Sequence *ke
   return seq;
 }
 
-blender::VectorSet<Sequence *> seq_sequence_lookup_effects_by_seq(const Scene *scene,
-                                                                  const Sequence *key)
+blender::Span<Sequence *> seq_sequence_lookup_effects_by_seq(const Scene *scene,
+                                                             const Sequence *key)
 {
   BLI_assert(scene->ed);
   BLI_mutex_lock(&lookup_lock);
@@ -188,7 +187,7 @@ blender::VectorSet<Sequence *> seq_sequence_lookup_effects_by_seq(const Scene *s
   }
 
   BLI_mutex_unlock(&lookup_lock);
-  return *effects;
+  return effects->as_span();
 }
 
 void SEQ_sequence_lookup_tag(const Scene *scene, eSequenceLookupTag tag)

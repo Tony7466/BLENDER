@@ -401,7 +401,7 @@ static void query_time_dependent_strips_strips(
    * its position will change. */
 
   blender::VectorSet<Sequence *> strips_no_handles = query_selected_strips_no_handles(seqbase);
-  SEQ_iterator_set_merge(time_dependent_strips, strips_no_handles);
+  time_dependent_strips.add_multiple(strips_no_handles);
 
   SEQ_iterator_set_expand(t->scene, seqbase, strips_no_handles, SEQ_query_strip_effect_chain);
   bool strip_added = true;

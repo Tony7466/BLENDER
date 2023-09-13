@@ -799,7 +799,7 @@ void sequencer_draw_preview(const bContext *C,
     blender::VectorSet strips = SEQ_query_rendered_strips(
         scene, channels, ed->seqbasep, timeline_frame, 0);
     Sequence *active_seq = SEQ_select_active_get(scene);
-    for (Sequence *seq: strips) {
+    for (Sequence *seq : strips) {
       seq_draw_image_origin_and_outline(C, seq, seq == active_seq);
     }
   }

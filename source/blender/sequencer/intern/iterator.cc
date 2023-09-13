@@ -63,14 +63,6 @@ VectorSet<Sequence *> SEQ_query_by_reference(Sequence *reference_strip,
   return strips;
 }
 
-// This should be renamed if it is still needed.
-void SEQ_iterator_set_merge(VectorSet<Sequence *> &strips_dst, VectorSet<Sequence *> strips_src)
-{
-  for (auto strip : strips_src) {
-    strips_dst.add(strip);
-  }
-}
-
 void SEQ_iterator_set_expand(const Scene *scene,
                              ListBase *seqbase,
                              VectorSet<Sequence *> &strips,
@@ -83,12 +75,11 @@ void SEQ_iterator_set_expand(const Scene *scene,
   VectorSet<Sequence *> query_matches;
 
   for (auto strip : strips) {
-    SEQ_iterator_set_merge(query_matches,
-                           SEQ_query_by_reference(strip, scene, seqbase, seq_query_func));
+    query_matches.add_multiple(SEQ_query_by_reference(strip, scene, seqbase, seq_query_func));
   }
 
   /* Merge all expanded results in provided VectorSet. */
-  SEQ_iterator_set_merge(strips, query_matches);
+  query_matches.add_multiple(query_matches);
 }
 
 static void query_all_strips_recursive(ListBase *seqbase, VectorSet<Sequence *> &strips)

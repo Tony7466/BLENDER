@@ -8,9 +8,9 @@
 
 #pragma once
 
+#include "BLI_vector_set.hh"
 #include "DNA_sequence_types.h"
 #include "RNA_access.hh"
-#include "BLI_vector_set.hh"
 
 /* Internal exports only. */
 
@@ -164,7 +164,6 @@ blender::VectorSet<Sequence *> all_strips_from_context(struct bContext *C);
  * \return collection of strips (`Sequence`)
  */
 blender::VectorSet<Sequence *> selected_strips_from_context(struct bContext *C);
-
 
 /* Externs. */
 extern EnumPropertyItem sequencer_prop_effect_types[];

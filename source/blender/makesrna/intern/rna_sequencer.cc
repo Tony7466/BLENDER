@@ -224,10 +224,10 @@ static void add_strips_from_seqbase(const ListBase *seqbase, blender::Vector<Seq
   }
 }
 
-typedef struct SequencesAllIterator {
+struct SequencesAllIterator {
   blender::Vector<Sequence *> strips;
   int index;
-} SequencesAllIterator;
+};
 
 static void rna_SequenceEditor_sequences_all_begin(CollectionPropertyIterator *iter,
                                                    PointerRNA *ptr)

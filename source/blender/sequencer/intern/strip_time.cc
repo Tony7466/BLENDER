@@ -201,7 +201,7 @@ void SEQ_time_update_meta_strip_range(const Scene *scene, Sequence *seq_meta)
 
   seq_update_sound_bounds_recursive(scene, seq_meta);
   SEQ_time_update_meta_strip_range(scene, seq_sequence_lookup_meta_by_seq(scene, seq_meta));
-  blender::VectorSet effects = seq_sequence_lookup_effects_by_seq(scene, seq_meta);
+  blender::Span effects = seq_sequence_lookup_effects_by_seq(scene, seq_meta);
   seq_time_update_effects_strip_range(scene, effects);
 }
 
@@ -236,8 +236,7 @@ void seq_time_effect_range_set(const Scene *scene, Sequence *seq)
   seq->len = seq->enddisp - seq->startdisp;
 }
 
-void seq_time_update_effects_strip_range(const Scene *scene,
-                                         blender::VectorSet<Sequence *> &effects)
+void seq_time_update_effects_strip_range(const Scene *scene, blender::Span<Sequence *> &effects)
 {
   /* First pass: Update length of immediate effects. */
   for (auto seq : effects) {
@@ -247,7 +246,7 @@ void seq_time_update_effects_strip_range(const Scene *scene,
   /* Second pass: Recursive call to update effects in chain and in order, so they inherit length
    * correctly. */
   for (auto seq : effects) {
-    blender::VectorSet effects = seq_sequence_lookup_effects_by_seq(scene, seq);
+    blender::Span effects = seq_sequence_lookup_effects_by_seq(scene, seq);
     seq_time_update_effects_strip_range(scene, effects);
   }
 }
@@ -478,7 +477,7 @@ void SEQ_time_speed_factor_set(const Scene *scene, Sequence *seq, const float sp
   }
 
   SEQ_time_update_meta_strip_range(scene, seq_sequence_lookup_meta_by_seq(scene, seq));
-  blender::VectorSet effects = seq_sequence_lookup_effects_by_seq(scene, seq);
+  blender::Span effects = seq_sequence_lookup_effects_by_seq(scene, seq);
   seq_time_update_effects_strip_range(scene, effects);
 }
 
@@ -518,7 +517,7 @@ void SEQ_time_start_frame_set(const Scene *scene, Sequence *seq, int timeline_fr
 {
   seq->start = timeline_frame;
   SEQ_time_update_meta_strip_range(scene, seq_sequence_lookup_meta_by_seq(scene, seq));
-  blender::VectorSet effects = seq_sequence_lookup_effects_by_seq(scene, seq);
+  blender::Span effects = seq_sequence_lookup_effects_by_seq(scene, seq);
   seq_time_update_effects_strip_range(scene, effects);
 }
 
@@ -568,7 +567,7 @@ void SEQ_time_left_handle_frame_set(const Scene *scene, Sequence *seq, int timel
   seq->startdisp = timeline_frame; /* Only to make files usable in older versions. */
 
   SEQ_time_update_meta_strip_range(scene, seq_sequence_lookup_meta_by_seq(scene, seq));
-  blender::VectorSet effects = seq_sequence_lookup_effects_by_seq(scene, seq);
+  blender::Span effects = seq_sequence_lookup_effects_by_seq(scene, seq);
   seq_time_update_effects_strip_range(scene, effects);
 }
 
@@ -584,7 +583,7 @@ void SEQ_time_right_handle_frame_set(const Scene *scene, Sequence *seq, int time
   seq->enddisp = timeline_frame; /* Only to make files usable in older versions. */
 
   SEQ_time_update_meta_strip_range(scene, seq_sequence_lookup_meta_by_seq(scene, seq));
-  blender::VectorSet effects = seq_sequence_lookup_effects_by_seq(scene, seq);
+  blender::Span effects = seq_sequence_lookup_effects_by_seq(scene, seq);
   seq_time_update_effects_strip_range(scene, effects);
 }
 
@@ -596,6 +595,6 @@ void seq_time_translate_handles(const Scene *scene, Sequence *seq, const int off
   seq->enddisp -= offset;   /* Only to make files usable in older versions. */
 
   SEQ_time_update_meta_strip_range(scene, seq_sequence_lookup_meta_by_seq(scene, seq));
-  blender::VectorSet effects = seq_sequence_lookup_effects_by_seq(scene, seq);
+  blender::Span effects = seq_sequence_lookup_effects_by_seq(scene, seq);
   seq_time_update_effects_strip_range(scene, effects);
 }

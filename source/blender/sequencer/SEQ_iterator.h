@@ -32,11 +32,6 @@ typedef bool (*SeqForEachFunc)(struct Sequence *seq, void *user_data);
 void SEQ_for_each_callback(struct ListBase *seqbase, SeqForEachFunc callback, void *user_data);
 
 /**
- * Move strips from strips_src to strips_dst.
- */
-void SEQ_iterator_set_merge(blender::VectorSet<Sequence *> &strips_dst,
-                            blender::VectorSet<Sequence *> strips_src);
-/**
  * Expand set by running `seq_query_func()` for each strip, which will be used as reference.
  * Results of these queries will be merged into provided collection.
  *
