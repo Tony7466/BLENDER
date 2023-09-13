@@ -209,7 +209,7 @@ void calculate_auto_handles(const bool cyclic,
 }
 
 template<typename T>
-void evaluate_segment(
+void evaluate_segment_ex(
     const T &point_0, const T &point_1, const T &point_2, const T &point_3, MutableSpan<T> result)
 {
   BLI_assert(result.size() > 0);
@@ -239,7 +239,7 @@ void evaluate_segment(const float3 &point_0,
                       const float3 &point_3,
                       MutableSpan<float3> result)
 {
-  evaluate_segment<float3>(point_0, point_1, point_2, point_3, result);
+  evaluate_segment_ex<float3>(point_0, point_1, point_2, point_3, result);
 }
 template<>
 void evaluate_segment(const float2 &point_0,
@@ -248,7 +248,7 @@ void evaluate_segment(const float2 &point_0,
                       const float2 &point_3,
                       MutableSpan<float2> result)
 {
-  evaluate_segment<float2>(point_0, point_1, point_2, point_3, result);
+  evaluate_segment_ex<float2>(point_0, point_1, point_2, point_3, result);
 }
 
 void calculate_evaluated_positions(const Span<float3> positions,
