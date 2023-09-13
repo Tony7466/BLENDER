@@ -495,18 +495,22 @@ void DeferredLayer::render(View &main_view,
   /* The first pass will never have any surfaces behind it. Nothing is refracted except the
    * environment. So in this case, disable tracing and fallback to probe. */
   bool do_screen_space_refraction = !is_first_pass && (closure_bits_ & CLOSURE_REFRACTION);
+  bool do_screen_space_reflection = (closure_bits_ & CLOSURE_REFLECTION);
 
-  {
+  if (do_screen_space_reflection) {
     eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ;
     if (radiance_feedback_tx_.ensure_2d(rb.color_format, extent, usage)) {
       radiance_feedback_tx_.clear(float4(0.0));
+      radiance_feedback_persmat_ = render_view.persmat();
     }
-    radiance_behind_tx_.ensure_2d(rb.color_format, extent, usage);
   }
 
   if (do_screen_space_refraction) {
     /* Update for refraction. */
     inst_.hiz_buffer.update();
+
+    eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ;
+    radiance_behind_tx_.ensure_2d(rb.color_format, extent, usage);
     GPU_texture_copy(radiance_behind_tx_, rb.combined_tx);
   }
 
@@ -537,6 +541,7 @@ void DeferredLayer::render(View &main_view,
 
   RayTraceResult refract_result = inst_.raytracing.trace(rt_buffer,
                                                          radiance_behind_tx_,
+                                                         render_view.persmat(),
                                                          closure_bits_,
                                                          CLOSURE_REFRACTION,
                                                          main_view,
@@ -547,8 +552,13 @@ void DeferredLayer::render(View &main_view,
   /* Only update the HiZ after refraction tracing. */
   inst_.hiz_buffer.update();
 
-  RayTraceResult reflect_result = inst_.raytracing.trace(
-      rt_buffer, radiance_feedback_tx_, closure_bits_, CLOSURE_REFLECTION, main_view, render_view);
+  RayTraceResult reflect_result = inst_.raytracing.trace(rt_buffer,
+                                                         radiance_feedback_tx_,
+                                                         radiance_feedback_persmat_,
+                                                         closure_bits_,
+                                                         CLOSURE_REFLECTION,
+                                                         main_view,
+                                                         render_view);
   indirect_reflection_tx_ = reflect_result.get();
 
   {
@@ -571,7 +581,10 @@ void DeferredLayer::render(View &main_view,
     inst_.subsurface.render(render_view, combined_fb, diffuse_light_tx_);
   }
 
-  GPU_texture_copy(radiance_feedback_tx_, rb.combined_tx);
+  if (do_screen_space_reflection) {
+    GPU_texture_copy(radiance_feedback_tx_, rb.combined_tx);
+    radiance_feedback_persmat_ = render_view.persmat();
+  }
 
   diffuse_light_tx_.release();
   specular_light_tx_.release();

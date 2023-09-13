@@ -179,7 +179,8 @@ class RayTraceModule {
    * IMPORTANT: Should not be conditionally executed as it manages the RayTraceResult.
    * IMPORTANT: The screen tracing will use the Hierarchical-Z Buffer in its current state.
    *
-   * \arg screen_radiance is the texture used for screen space rays.
+   * \arg screen_radiance_tx is the texture used for screen space rays.
+   * \arg screen_radiance_persmat is the view projection matrix used to render screen_radiance_tx.
    * \arg active_closures is a mask of all active closures in a deferred layer.
    * \arg raytrace_closure is type of closure the rays are to be casted for.
    * \arg main_view is the un-jittered view.
@@ -188,6 +189,7 @@ class RayTraceModule {
    */
   RayTraceResult trace(RayTraceBuffer &rt_buffer,
                        GPUTexture *screen_radiance_tx,
+                       const float4x4 &screen_radiance_persmat,
                        eClosureBits active_closures,
                        eClosureBits raytrace_closure,
                        View &main_view,

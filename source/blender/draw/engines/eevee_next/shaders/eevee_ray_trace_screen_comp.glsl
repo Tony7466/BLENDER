@@ -74,8 +74,12 @@ void main()
                                            ray_view);
 
   if (hit.valid) {
+    vec3 hit_P = transform_point(drw_view.viewinv, hit.v_hit_P);
+    /* TODO(fclem): Split matrix mult for precision. */
+    vec3 history_ndc_hit_P = project_point(uniform_buf.raytrace.radiance_persmat, hit_P);
+    vec3 history_ss_hit_P = history_ndc_hit_P * 0.5 + 0.5;
     /* Evaluate radiance at hit-point. */
-    radiance = textureLod(screen_radiance_tx, hit.ss_hit_P.xy, 0.0).rgb;
+    radiance = textureLod(screen_radiance_tx, history_ss_hit_P.xy, 0.0).rgb;
 
     /* Transmit twice if thickness is set and ray is longer than thickness. */
     // if (thickness > 0.0 && length(ray_data.xyz) > thickness) {

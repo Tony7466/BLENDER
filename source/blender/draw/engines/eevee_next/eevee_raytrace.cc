@@ -183,6 +183,7 @@ void RayTraceModule::debug_draw(View & /* view */, GPUFrameBuffer * /* view_fb *
 
 RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
                                      GPUTexture *screen_radiance_tx,
+                                     const float4x4 &screen_radiance_persmat,
                                      eClosureBits active_closures,
                                      eClosureBits raytrace_closure,
                                      /* TODO(fclem): Maybe wrap these two in some other class. */
@@ -271,6 +272,7 @@ RayTraceResult RayTraceModule::trace(RayTraceBuffer &rt_buffer,
   data_.closure_active = raytrace_closure;
   data_.resolution_bias = int2(inst_.sampling.rng_2d_get(SAMPLING_RAYTRACE_V) * resolution_scale);
   data_.history_persmat = denoise_buf->history_persmat;
+  data_.radiance_persmat = screen_radiance_persmat;
   data_.full_resolution = extent;
   data_.full_resolution_inv = 1.0f / float2(extent);
   data_.skip_denoise = !use_spatial_denoise;

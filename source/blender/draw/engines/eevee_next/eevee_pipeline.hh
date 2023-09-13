@@ -198,6 +198,7 @@ class DeferredLayer {
 
   Texture radiance_behind_tx_ = {"radiance_behind_tx"};
   Texture radiance_feedback_tx_ = {"radiance_feedback_tx"};
+  float4x4 radiance_feedback_persmat_;
 
   /* Reference to ray-tracing result. */
   GPUTexture *indirect_refraction_tx_ = nullptr;
