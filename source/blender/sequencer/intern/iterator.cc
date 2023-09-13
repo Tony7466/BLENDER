@@ -74,7 +74,7 @@ void SEQ_iterator_set_expand(const Scene *scene,
   /* Collect expanded results for each sequence in provided VectorSet. */
   VectorSet<Sequence *> query_matches;
 
-  for (auto strip : strips) {
+  for (Sequence *strip : strips) {
     query_matches.add_multiple(SEQ_query_by_reference(strip, scene, seqbase, seq_query_func));
   }
 
@@ -141,7 +141,7 @@ static VectorSet<Sequence *> query_strips_at_frame(const Scene *scene,
 
 static void collection_filter_channel_up_to_incl(VectorSet<Sequence *> &strips, const int channel)
 {
-  strips.remove_if([&](auto strip) { return strip->machine > channel; });
+  strips.remove_if([&](Sequence *strip) { return strip->machine > channel; });
 }
 
 /* Check if seq must be rendered. This depends on whole stack in some cases, not only seq itself.
@@ -149,7 +149,7 @@ static void collection_filter_channel_up_to_incl(VectorSet<Sequence *> &strips, 
 static bool must_render_strip(VectorSet<Sequence *> &strips, Sequence *strip)
 {
   bool seq_have_effect_in_stack = false;
-  for (auto strip_iter : strips) {
+  for (Sequence *strip_iter : strips) {
     /* Strips is below another strip with replace blending are not rendered. */
     if (strip_iter->blend_mode == SEQ_BLEND_REPLACE && strip->machine < strip_iter->machine) {
       return false;
@@ -185,11 +185,11 @@ static void collection_filter_rendered_strips(VectorSet<Sequence *> &strips, Lis
 {
   /* Remove sound strips and muted strips from VectorSet, because these are not rendered.
    * Function #must_render_strip() don't have to check for these strips anymore. */
-  strips.remove_if([&](auto strip) {
+  strips.remove_if([&](Sequence *strip) {
     return strip->type == SEQ_TYPE_SOUND_RAM || SEQ_render_is_muted(channels, strip);
   });
 
-  strips.remove_if([&](auto strip) { return !must_render_strip(strips, strip); });
+  strips.remove_if([&](Sequence *strip) { return !must_render_strip(strips, strip); });
 }
 
 VectorSet<Sequence *> SEQ_query_rendered_strips(const Scene *scene,
@@ -254,5 +254,5 @@ void SEQ_query_strip_effect_chain(const Scene *scene,
 
 void SEQ_filter_selected_strips(VectorSet<Sequence *> &strips)
 {
-  strips.remove_if([&](auto strip) { return (strip->flag & SELECT) == 0; });
+  strips.remove_if([&](Sequence *strip) { return (strip->flag & SELECT) == 0; });
 }

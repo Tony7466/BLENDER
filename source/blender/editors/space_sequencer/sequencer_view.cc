@@ -307,7 +307,7 @@ static void seq_view_collection_rect_timeline(Scene *scene,
   int ymargin = 1;
   int xmargin = FPS;
 
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     xmin = min_ii(xmin, SEQ_time_left_handle_frame_get(scene, seq));
     xmax = max_ii(xmax, SEQ_time_right_handle_frame_get(scene, seq));
 

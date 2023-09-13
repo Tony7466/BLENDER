@@ -345,7 +345,7 @@ static Sequence *strip_by_handle_find(Scene *scene, SeqRetimingHandle *handle)
   Editing *ed = SEQ_editing_get(scene);
   blender::VectorSet strips = SEQ_query_all_strips_recursive(&ed->seqbase);
 
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     const int retiming_handle_count = SEQ_retiming_handles_count(seq);
     SeqRetimingHandle *first = seq->retiming_handles;
     SeqRetimingHandle *last = seq->retiming_handles + retiming_handle_count - 1;
@@ -1525,7 +1525,7 @@ static Sequence *rna_SeqTimelineChannel_owner_get(Editing *ed, SeqTimelineChanne
   blender::VectorSet strips = SEQ_query_all_strips_recursive(&ed->seqbase);
 
   Sequence *channel_owner = nullptr;
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     if (seq->type != SEQ_TYPE_META) {
       continue;
     }

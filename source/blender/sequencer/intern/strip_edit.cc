@@ -248,7 +248,7 @@ bool SEQ_edit_move_strip_to_meta(Scene *scene,
   strips.add(src_seq);
   SEQ_iterator_set_expand(scene, seqbase, strips, SEQ_query_strip_effect_chain);
 
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     /* Move to meta. */
     SEQ_edit_move_strip_to_seqbase(scene, seqbase, seq, &dst_seqm->seqbase);
   }
@@ -384,7 +384,7 @@ static bool seq_edit_split_operation_permitted_check(const Scene *scene,
                                                      const int timeline_frame,
                                                      const char **r_error)
 {
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     ListBase *channels = SEQ_channels_displayed_get(SEQ_editing_get(scene));
     if (SEQ_transform_is_locked(channels, seq)) {
       *r_error = "Strip is locked.";
@@ -437,7 +437,7 @@ Sequence *SEQ_edit_strip_split(Main *bmain,
   SEQ_animation_backup_original(scene, &animation_backup);
 
   ListBase left_strips = {nullptr, nullptr};
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     /* Move strips in collection from seqbase to new ListBase. */
     BLI_remlink(seqbase, seq);
     BLI_addtail(&left_strips, seq);

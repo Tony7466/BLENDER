@@ -291,7 +291,7 @@ int seq_get_shown_sequences(const Scene *scene,
   /* Copy collection elements into array. */
   memset(r_seq_arr, 0, sizeof(Sequence *) * (MAXSEQ + 1));
   int index = 0;
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     r_seq_arr[index] = seq;
     index++;
   }

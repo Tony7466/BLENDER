@@ -784,7 +784,7 @@ static void seq_build_proxy(bContext *C, blender::VectorSet<Sequence *> &movie_s
   wmJob *wm_job = ED_seq_proxy_wm_job_get(C);
   ProxyJob *pj = ED_seq_proxy_job_get(C, wm_job);
 
-  for (auto seq : movie_strips) {
+  for (Sequence *seq : movie_strips) {
     /* Enable and set proxy size. */
     SEQ_proxy_set(seq, true);
     seq->strip->proxy->build_size_flags = seq_get_proxy_size_flags(C);

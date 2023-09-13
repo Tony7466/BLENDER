@@ -212,7 +212,7 @@ static int shuffle_seq_time_offset_get(const Scene *scene,
 
   while (!all_conflicts_resolved) {
     all_conflicts_resolved = true;
-    for (auto seq : strips_to_shuffle) {
+    for (Sequence *seq : strips_to_shuffle) {
       LISTBASE_FOREACH (Sequence *, seq_other, seqbasep) {
         if (!shuffle_seq_test_overlap(scene, seq, seq_other, offset)) {
           continue;
@@ -269,13 +269,13 @@ bool SEQ_transform_seqbase_shuffle_time(blender::VectorSet<Sequence *> &strips_t
   int offset = (-offset_l < offset_r) ? offset_l : offset_r;
 
   if (offset) {
-    for (auto seq : strips_to_shuffle) {
+    for (Sequence *seq : strips_to_shuffle) {
       SEQ_transform_translate_sequence(evil_scene, seq, offset);
       seq->flag &= ~SEQ_OVERLAP;
     }
 
     if (time_dependent_strips.size() != 0) {
-      for (auto seq : time_dependent_strips) {
+      for (Sequence *seq : time_dependent_strips) {
         SEQ_offset_animdata(evil_scene, seq, offset);
       }
     }
@@ -298,7 +298,7 @@ static blender::VectorSet<Sequence *> extract_standalone_strips(
 {
   blender::VectorSet<Sequence *> standalone_strips;
 
-  for (auto seq : transformed_strips) {
+  for (Sequence *seq : transformed_strips) {
     if ((seq->type & SEQ_TYPE_EFFECT) == 0 || seq->seq1 == nullptr) {
       standalone_strips.add(seq);
     }
@@ -315,7 +315,7 @@ static blender::VectorSet<Sequence *> query_right_side_strips(
 {
   int minframe = MAXFRAME;
   {
-    for (auto seq : transformed_strips) {
+    for (Sequence *seq : transformed_strips) {
       minframe = min_ii(minframe, SEQ_time_left_handle_frame_get(scene, seq));
     }
   }
@@ -351,7 +351,7 @@ static void seq_transform_handle_expand_to_fit(
       scene, seqbasep, transformed_strips, time_dependent_strips);
 
   /* Temporarily move right side strips beyond timeline boundary. */
-  for (auto seq : right_side_strips) {
+  for (Sequence *seq : right_side_strips) {
     seq->machine += MAXSEQ * 2;
   }
 
@@ -362,7 +362,7 @@ static void seq_transform_handle_expand_to_fit(
       standalone_strips, time_dependent_strips, seqbasep, scene, markers, use_sync_markers);
 
   /* Move temporarily moved strips back to their original place and tag for shuffling. */
-  for (auto seq : right_side_strips) {
+  for (Sequence *seq : right_side_strips) {
     seq->machine -= MAXSEQ * 2;
   }
   /* Shuffle again to displace strips on right side. Final effect shuffling is done in
@@ -377,10 +377,10 @@ static blender::VectorSet<Sequence *> query_overwrite_targets(
   blender::VectorSet<Sequence *> overwrite_targets = SEQ_query_unselected_strips(seqbasep);
 
   /* Effects of transformed strips can be unselected. These must not be included. */
-  overwrite_targets.remove_if([&](auto seq) { return transformed_strips.contains(seq); });
-  overwrite_targets.remove_if([&](auto seq) {
+  overwrite_targets.remove_if([&](Sequence *seq) { return transformed_strips.contains(seq); });
+  overwrite_targets.remove_if([&](Sequence *seq) {
     bool does_overlap = false;
-    for (auto seq_transformed : transformed_strips) {
+    for (Sequence *seq_transformed : transformed_strips) {
       if (SEQ_transform_test_overlap_seq_seq(scene, seq, seq_transformed)) {
         does_overlap = true;
       }
@@ -484,7 +484,7 @@ static void seq_transform_handle_overwrite_trim(Scene *scene,
   }
 
   /* Trim all non effects, that have influence on effect length which is overlapping. */
-  for (auto seq : targets) {
+  for (Sequence *seq : targets) {
     if ((seq->type & SEQ_TYPE_EFFECT) != 0 && SEQ_effect_get_num_inputs(seq->type) > 0) {
       continue;
     }
@@ -507,8 +507,8 @@ static void seq_transform_handle_overwrite(Scene *scene,
   blender::VectorSet targets = query_overwrite_targets(scene, seqbasep, transformed_strips);
   blender::VectorSet<Sequence *> strips_to_delete;
 
-  for (auto target : targets) {
-    for (auto transformed : transformed_strips) {
+  for (Sequence *target : targets) {
+    for (Sequence *transformed : transformed_strips) {
       if (transformed->machine != target->machine) {
         continue;
       }
@@ -530,7 +530,7 @@ static void seq_transform_handle_overwrite(Scene *scene,
   /* Remove covered strips. This must be done in separate loop, because
    * `SEQ_edit_strip_split()` also uses `SEQ_edit_remove_flagged_sequences()`. See #91096. */
   if (strips_to_delete.size() > 0) {
-    for (auto seq : strips_to_delete) {
+    for (Sequence *seq : strips_to_delete) {
       SEQ_edit_flag_for_removal(scene, seqbasep, seq);
     }
     SEQ_edit_remove_flagged_sequences(scene, seqbasep);
@@ -585,7 +585,7 @@ void SEQ_transform_handle_overlap(Scene *scene,
 
   /* If any effects still overlap, we need to move them up.
    * In some cases other strips can be overlapping still, see #90646. */
-  for (auto seq : transformed_strips) {
+  for (Sequence *seq : transformed_strips) {
     if (SEQ_transform_test_overlap(scene, seqbasep, seq)) {
       SEQ_transform_seqbase_shuffle(seqbasep, seq, scene);
     }
@@ -747,7 +747,7 @@ void SEQ_image_transform_bounding_box_from_collection(Scene *scene,
                                                       float r_max[2])
 {
   INIT_MINMAX2(r_min, r_max);
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     float quad[4][2];
     SEQ_image_transform_quad_get(scene, seq, apply_rotation, quad);
     for (int i = 0; i < 4; i++) {

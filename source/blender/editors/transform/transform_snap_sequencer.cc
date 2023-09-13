@@ -67,7 +67,7 @@ static void seq_snap_source_points_build(const Scene *scene,
                                          blender::VectorSet<Sequence *> &snap_sources)
 {
   int i = 0;
-  for (auto seq : snap_sources) {
+  for (Sequence *seq : snap_sources) {
     int left = 0, right = 0;
     if (seq->flag & SEQ_LEFTSEL) {
       left = right = SEQ_time_left_handle_frame_get(scene, seq);
@@ -127,7 +127,7 @@ static blender::VectorSet<Sequence *> query_snap_targets(
   blender::VectorSet effects_of_snap_sources = snap_sources;
   SEQ_iterator_set_expand(scene, seqbase, effects_of_snap_sources, query_strip_effects_fn);
   effects_of_snap_sources.remove_if(
-      [&](auto seq) { return SEQ_effect_get_num_inputs(seq->type) == 0; });
+      [&](Sequence *seq) { return SEQ_effect_get_num_inputs(seq->type) == 0; });
 
   blender::VectorSet<Sequence *> snap_targets;
   LISTBASE_FOREACH (Sequence *, seq, seqbase) {
@@ -191,7 +191,7 @@ static void seq_snap_target_points_build(Scene *scene,
     i++;
   }
 
-  for (auto seq : snap_targets) {
+  for (Sequence *seq : snap_targets) {
     snap_data->target_snap_points[i] = SEQ_time_left_handle_frame_get(scene, seq);
     snap_data->target_snap_points[i + 1] = SEQ_time_right_handle_frame_get(scene, seq);
     i += 2;

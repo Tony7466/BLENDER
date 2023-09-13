@@ -239,13 +239,13 @@ void seq_time_effect_range_set(const Scene *scene, Sequence *seq)
 void seq_time_update_effects_strip_range(const Scene *scene, blender::Span<Sequence *> &effects)
 {
   /* First pass: Update length of immediate effects. */
-  for (auto seq : effects) {
+  for (Sequence *seq : effects) {
     seq_time_effect_range_set(scene, seq);
   }
 
   /* Second pass: Recursive call to update effects in chain and in order, so they inherit length
    * correctly. */
-  for (auto seq : effects) {
+  for (Sequence *seq : effects) {
     blender::Span effects = seq_sequence_lookup_effects_by_seq(scene, seq);
     seq_time_update_effects_strip_range(scene, effects);
   }
@@ -398,7 +398,7 @@ static bool strip_exists_at_frame(const Scene *scene,
                                   blender::VectorSet<Sequence *> &strips,
                                   const int timeline_frame)
 {
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     if (SEQ_time_strip_intersects_frame(scene, seq, timeline_frame)) {
       return true;
     }

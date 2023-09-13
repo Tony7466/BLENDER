@@ -79,7 +79,7 @@ blender::VectorSet<Sequence *> selected_strips_from_context(bContext *C)
   if (is_preview) {
     blender::VectorSet strips = SEQ_query_rendered_strips(
         scene, channels, seqbase, scene->r.cfra, 0);
-    strips.remove_if([&](auto seq) { return (seq->flag & SELECT) == 0; });
+    strips.remove_if([&](Sequence *seq) { return (seq->flag & SELECT) == 0; });
     return strips;
   }
 
@@ -448,7 +448,7 @@ static int sequencer_de_select_all_exec(bContext *C, wmOperator *op)
 
   if (action == SEL_TOGGLE) {
     action = SEL_SELECT;
-    for (auto seq : strips) {
+    for (Sequence *seq : strips) {
       if (seq->flag & SEQ_ALLSEL) {
         action = SEL_DESELECT;
         break;
@@ -456,7 +456,7 @@ static int sequencer_de_select_all_exec(bContext *C, wmOperator *op)
     }
   }
 
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     switch (action) {
       case SEL_SELECT:
         seq->flag &= ~(SEQ_LEFTSEL + SEQ_RIGHTSEL);
@@ -515,7 +515,7 @@ static int sequencer_select_inverse_exec(bContext *C, wmOperator * /*op*/)
 
   blender::VectorSet strips = all_strips_from_context(C);
 
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     if (seq->flag & SELECT) {
       seq->flag &= ~SEQ_ALLSEL;
     }
@@ -754,7 +754,7 @@ static Sequence *seq_select_seq_from_preview(
   SeqSelect_Link *slink_active = nullptr;
   Sequence *seq_active = SEQ_select_active_get(scene);
   ListBase strips_ordered = {nullptr};
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     bool isect = false;
     float center_dist_sq_test = 0.0f;
     if (center) {
@@ -1597,7 +1597,7 @@ static void seq_box_select_seq_from_preview(const bContext *C, rctf *rect, const
 
   blender::VectorSet strips = SEQ_query_rendered_strips(
       scene, channels, seqbase, scene->r.cfra, sseq->chanshown);
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     if (!seq_box_select_rect_image_isect(scene, seq, rect)) {
       continue;
     }
@@ -1819,7 +1819,7 @@ static bool select_grouped_type(blender::VectorSet<Sequence *> strips,
 {
   bool changed = false;
 
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     if (SEQ_CHANNEL_CHECK(seq, channel) && seq->type == actseq->type) {
       seq->flag |= SELECT;
       changed = true;
@@ -1837,7 +1837,7 @@ static bool select_grouped_type_basic(blender::VectorSet<Sequence *> strips,
   bool changed = false;
   const bool is_sound = SEQ_IS_SOUND(actseq);
 
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     if (SEQ_CHANNEL_CHECK(seq, channel) && (is_sound ? SEQ_IS_SOUND(seq) : !SEQ_IS_SOUND(seq))) {
       seq->flag |= SELECT;
       changed = true;
@@ -1855,7 +1855,7 @@ static bool select_grouped_type_effect(blender::VectorSet<Sequence *> strips,
   bool changed = false;
   const bool is_effect = SEQ_IS_EFFECT(actseq);
 
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     if (SEQ_CHANNEL_CHECK(seq, channel) && (is_effect ? SEQ_IS_EFFECT(seq) : !SEQ_IS_EFFECT(seq)))
     {
       seq->flag |= SELECT;
@@ -1879,7 +1879,7 @@ static bool select_grouped_data(blender::VectorSet<Sequence *> strips,
   }
 
   if (SEQ_HAS_PATH(actseq) && dirpath) {
-    for (auto seq : strips) {
+    for (Sequence *seq : strips) {
       if (SEQ_CHANNEL_CHECK(seq, channel) && SEQ_HAS_PATH(seq) && seq->strip &&
           STREQ(seq->strip->dirpath, dirpath))
       {
@@ -1890,7 +1890,7 @@ static bool select_grouped_data(blender::VectorSet<Sequence *> strips,
   }
   else if (actseq->type == SEQ_TYPE_SCENE) {
     Scene *sce = actseq->scene;
-    for (auto seq : strips) {
+    for (Sequence *seq : strips) {
       if (SEQ_CHANNEL_CHECK(seq, channel) && seq->type == SEQ_TYPE_SCENE && seq->scene == sce) {
         seq->flag |= SELECT;
         changed = true;
@@ -1899,7 +1899,7 @@ static bool select_grouped_data(blender::VectorSet<Sequence *> strips,
   }
   else if (actseq->type == SEQ_TYPE_MOVIECLIP) {
     MovieClip *clip = actseq->clip;
-    for (auto seq : strips) {
+    for (Sequence *seq : strips) {
       if (SEQ_CHANNEL_CHECK(seq, channel) && seq->type == SEQ_TYPE_MOVIECLIP && seq->clip == clip)
       {
         seq->flag |= SELECT;
@@ -1909,7 +1909,7 @@ static bool select_grouped_data(blender::VectorSet<Sequence *> strips,
   }
   else if (actseq->type == SEQ_TYPE_MASK) {
     Mask *mask = actseq->mask;
-    for (auto seq : strips) {
+    for (Sequence *seq : strips) {
       if (SEQ_CHANNEL_CHECK(seq, channel) && seq->type == SEQ_TYPE_MASK && seq->mask == mask) {
         seq->flag |= SELECT;
         changed = true;
@@ -1932,7 +1932,7 @@ static bool select_grouped_effect(blender::VectorSet<Sequence *> strips,
     effects[i] = false;
   }
 
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     if (SEQ_CHANNEL_CHECK(seq, channel) && (seq->type & SEQ_TYPE_EFFECT) &&
         SEQ_relation_is_effect_of_strip(seq, actseq))
     {
@@ -1940,7 +1940,7 @@ static bool select_grouped_effect(blender::VectorSet<Sequence *> strips,
     }
   }
 
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     if (SEQ_CHANNEL_CHECK(seq, channel) && effects[seq->type]) {
       if (seq->seq1) {
         seq->seq1->flag |= SELECT;
@@ -1965,7 +1965,7 @@ static bool select_grouped_time_overlap(const Scene *scene,
 {
   bool changed = false;
 
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     if (SEQ_time_left_handle_frame_get(scene, seq) <
             SEQ_time_right_handle_frame_get(scene, actseq) &&
         SEQ_time_right_handle_frame_get(scene, seq) >
@@ -2009,7 +2009,7 @@ static bool select_grouped_effect_link(const Scene *scene,
                                        const int /*channel*/)
 {
   /* Get collection of strips. */
-  strips.remove_if([&](auto seq) { return (seq->flag & SELECT) == 0; });
+  strips.remove_if([&](Sequence *seq) { return (seq->flag & SELECT) == 0; });
   const int selected_strip_count = strips.size();
   /* XXX: this uses scene as arg, so it does not work with iterator :( I had thought about this,
    * but expand function is just so useful... I can just add scene and inject it I guess. */
@@ -2020,7 +2020,7 @@ static bool select_grouped_effect_link(const Scene *scene,
   const bool changed = strips.size() > selected_strip_count;
 
   /* Actual logic. */
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     seq->flag |= SELECT;
   }
 

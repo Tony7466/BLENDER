@@ -304,7 +304,7 @@ static void sequencer_drop_copy(bContext *C, wmDrag *drag, wmDropBox *drop)
 
     /* Get the top most strip channel that is in view. */
     int max_channel = -1;
-    for (auto seq : strips) {
+    for (Sequence *seq : strips) {
       max_channel = max_ii(seq->machine, max_channel);
     }
 

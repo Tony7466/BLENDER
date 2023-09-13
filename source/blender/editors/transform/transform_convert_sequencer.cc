@@ -275,7 +275,7 @@ static void seq_transform_cancel(TransInfo *t, blender::VectorSet<Sequence *> &t
 {
   ListBase *seqbase = SEQ_active_seqbase_get(SEQ_editing_get(t->scene));
 
-  for (auto seq : transformed_strips) {
+  for (Sequence *seq : transformed_strips) {
     /* Handle pre-existing overlapping strips even when operator is canceled.
      * This is necessary for SEQUENCER_OT_duplicate_move macro for example. */
     if (SEQ_transform_test_overlap(t->scene, seqbase, seq)) {
@@ -292,7 +292,7 @@ static ListBase *seqbase_active_get(const TransInfo *t)
 
 static bool seq_transform_check_overlap(blender::VectorSet<Sequence *> &transformed_strips)
 {
-  for (auto seq : transformed_strips) {
+  for (Sequence *seq : transformed_strips) {
     if (seq->flag & SEQ_OVERLAP) {
       return true;
     }
@@ -324,7 +324,7 @@ static void freeSeqData(TransInfo *t, TransDataContainer *tc, TransCustomData *c
   SEQ_iterator_set_expand(
       t->scene, seqbase_active_get(t), transformed_strips, SEQ_query_strip_effect_chain);
 
-  for (auto seq : transformed_strips) {
+  for (Sequence *seq : transformed_strips) {
     seq->flag &= ~SEQ_IGNORE_CHANNEL_LOCK;
   }
 
@@ -409,7 +409,7 @@ static void query_time_dependent_strips_strips(
   while (strip_added) {
     strip_added = false;
 
-    for (auto seq : strips_no_handles) {
+    for (Sequence *seq : strips_no_handles) {
       if (time_dependent_strips.contains(seq)) {
         continue; /* Strip is already in collection, skip it. */
       }
@@ -431,7 +431,7 @@ static void query_time_dependent_strips_strips(
 
   blender::VectorSet<Sequence *> selected_strips = SEQ_query_selected_strips(seqbase);
   SEQ_iterator_set_expand(t->scene, seqbase, selected_strips, SEQ_query_strip_effect_chain);
-  for (auto seq : selected_strips) {
+  for (Sequence *seq : selected_strips) {
     /* Check only 2 input effects. */
     if (seq->seq1 == nullptr || seq->seq2 == nullptr) {
       continue;
@@ -448,7 +448,7 @@ static void query_time_dependent_strips_strips(
 
   /* Remove all non-effects. */
   time_dependent_strips.remove_if(
-      [&](auto seq) { return SEQ_transform_sequence_can_be_translated(seq); });
+      [&](Sequence *seq) { return SEQ_transform_sequence_can_be_translated(seq); });
 }
 
 static void createTransSeqData(bContext * /*C*/, TransInfo *t)
@@ -625,7 +625,7 @@ static void flushTransSeq(TransInfo *t)
   TransSeq *ts = (TransSeq *)TRANS_DATA_CONTAINER_FIRST_SINGLE(t)->custom.type.data;
 
   /* Update animation for effects. */
-  for (auto seq : ts->time_dependent_strips) {
+  for (Sequence *seq : ts->time_dependent_strips) {
     SEQ_offset_animdata(t->scene, seq, max_offset);
   }
 
@@ -635,7 +635,7 @@ static void flushTransSeq(TransInfo *t)
   SEQ_iterator_set_expand(
       t->scene, seqbase_active_get(t), transformed_strips, SEQ_query_strip_effect_chain);
 
-  for (auto seq : transformed_strips) {
+  for (Sequence *seq : transformed_strips) {
     /* test overlap, displays red outline */
     seq->flag &= ~SEQ_OVERLAP;
     if (SEQ_transform_test_overlap(scene, seqbasep, seq)) {

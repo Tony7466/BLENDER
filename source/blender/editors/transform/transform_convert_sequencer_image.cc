@@ -128,7 +128,7 @@ static void createTransSeqImageData(bContext * /*C*/, TransInfo *t)
   ListBase *channels = SEQ_channels_displayed_get(ed);
   blender::VectorSet strips = SEQ_query_rendered_strips(
       t->scene, channels, seqbase, t->scene->r.cfra, 0);
-  strips.remove_if([&](auto seq) { return (seq->flag & SELECT) == 0; });
+  strips.remove_if([&](Sequence *seq) { return (seq->flag & SELECT) == 0; });
 
   const int count = strips.size();
   if (count == 0) {
@@ -146,7 +146,7 @@ static void createTransSeqImageData(bContext * /*C*/, TransInfo *t)
   TransDataSeq *tdseq = static_cast<TransDataSeq *>(
       MEM_callocN(tc->data_len * sizeof(TransDataSeq), "TransSeq TransDataSeq"));
 
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     /* One `Sequence` needs 3 `TransData` entries - center point placed in image origin, then 2
      * points offset by 1 in X and Y direction respectively, so rotation and scale can be
      * calculated from these points. */

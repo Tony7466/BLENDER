@@ -111,7 +111,7 @@ static int seq_frame_apply_snap(bContext *C, Scene *scene, const int timeline_fr
 
   int best_frame = 0;
   int best_distance = MAXFRAME;
-  for (auto seq : strips) {
+  for (Sequence *seq : strips) {
     seq_frame_snap_update_best(
         SEQ_time_left_handle_frame_get(scene, seq), timeline_frame, &best_frame, &best_distance);
     seq_frame_snap_update_best(

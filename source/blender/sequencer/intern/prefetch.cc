@@ -421,7 +421,7 @@ static bool seq_prefetch_scene_strip_is_rendered(PrefetchJob *pfjob,
     }
 
     /* Check if strip is effect of scene strip or uses it as modifier. This is recursive check. */
-    for (auto seq_scene : scene_strips) {
+    for (Sequence *seq_scene : scene_strips) {
       if (SEQ_relations_render_loop_check(seq, seq_scene)) {
         return true;
       }
