@@ -4338,11 +4338,12 @@ static void smooth_brush_toggle_off(const bContext *C, Paint *paint, StrokeCache
     brush->mask_tool = cache->saved_mask_brush_tool;
     return;
   }
-  else if (ELEM(brush->sculpt_tool,
-                SCULPT_TOOL_SLIDE_RELAX,
-                SCULPT_TOOL_DRAW_FACE_SETS,
-                SCULPT_TOOL_PAINT,
-                SCULPT_TOOL_SMEAR))
+
+  if (ELEM(brush->sculpt_tool,
+           SCULPT_TOOL_SLIDE_RELAX,
+           SCULPT_TOOL_DRAW_FACE_SETS,
+           SCULPT_TOOL_PAINT,
+           SCULPT_TOOL_SMEAR))
   {
     /* Do nothing. */
     return;
