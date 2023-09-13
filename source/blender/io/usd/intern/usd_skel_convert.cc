@@ -328,8 +328,10 @@ void import_skeleton_curves(Main *bmain,
   std::for_each(scale_curves.begin(), scale_curves.end(), recalc_handles);
 }
 
-/* If the given mesh has an attribute with the given name, rename the
- * attribute to a unique name. */
+/**
+ * If the given mesh has an attribute with the given name, rename the
+ * attribute to a unique name.
+ */
 void check_attribute_name_collision(const std::string &name, Mesh *mesh)
 {
   blender::bke::MutableAttributeAccessor attribs = mesh->attributes_for_write();
