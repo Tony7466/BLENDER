@@ -25,7 +25,6 @@ OIDNDenoiser::OIDNDenoiser(Device *path_trace_device, const DenoiseParams &param
     : Denoiser(path_trace_device, params)
 {
   DCHECK_EQ(params.type, DENOISER_OPENIMAGEDENOISE);
-  printf("oidn CPU\n");
 }
 
 #ifdef WITH_OPENIMAGEDENOISE

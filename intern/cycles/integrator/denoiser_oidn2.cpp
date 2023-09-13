@@ -39,8 +39,6 @@ OIDN2Denoiser::OIDN2Denoiser(Device *path_trace_device, const DenoiseParams &par
     : DenoiserGPU(path_trace_device, params)
 {
   DCHECK_EQ(params.type, DENOISER_OPENIMAGEDENOISE_GPU);
-
-  printf("oidn GPU\n");
 }
 
 OIDN2Denoiser::~OIDN2Denoiser()
