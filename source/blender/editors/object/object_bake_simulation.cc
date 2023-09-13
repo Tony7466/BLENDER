@@ -741,6 +741,12 @@ static int geometry_nodes_bake_node_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
   NodesModifierData &nmd = *reinterpret_cast<NodesModifierData *>(md);
+
+  if (StringRef(nmd.simulation_bake_directory).is_empty()) {
+    const std::string directory = bake::get_default_modifier_bake_directory(*bmain, *object, nmd);
+    nmd.simulation_bake_directory = BLI_strdup(directory.c_str());
+  }
+
   const int bake_id = RNA_int_get(op->ptr, "bake_id");
   const std::optional<bake::BakePath> bake_path = bake::get_node_bake_path(
       *bmain, *object, nmd, bake_id);
