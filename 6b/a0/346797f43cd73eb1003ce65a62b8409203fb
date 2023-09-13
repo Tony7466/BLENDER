@@ -1,1 +1,1 @@
-Referenced by issue #112299, `bpy.ops.object.data_transfer()` crashes when using `context.copy()` via addon
+Referenced by issue #112299, Operator (e.g `bpy.ops.object.data_transfer()`) crashes when using `context.copy()` via addon
