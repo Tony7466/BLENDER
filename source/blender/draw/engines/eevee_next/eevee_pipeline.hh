@@ -196,6 +196,9 @@ class DeferredLayer {
   TextureFromPool diffuse_light_tx_ = {"diffuse_light_accum_tx"};
   TextureFromPool specular_light_tx_ = {"specular_light_accum_tx"};
 
+  Texture radiance_behind_tx_ = {"radiance_behind_tx"};
+  Texture radiance_feedback_tx_ = {"radiance_feedback_tx"};
+
   /* Reference to ray-tracing result. */
   GPUTexture *indirect_refraction_tx_ = nullptr;
   GPUTexture *indirect_reflection_tx_ = nullptr;

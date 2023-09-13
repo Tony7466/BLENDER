@@ -489,32 +489,68 @@ void DeferredLayer::render(View &main_view,
                            int2 extent,
                            RayTraceBuffer &rt_buffer)
 {
+  RenderBuffers &rb = inst_.render_buffers;
+
+  {
+    eGPUTextureUsage usage = GPU_TEXTURE_USAGE_ATTACHMENT | GPU_TEXTURE_USAGE_SHADER_READ;
+    if (radiance_feedback_tx_.ensure_2d(rb.color_format, extent, usage)) {
+      radiance_feedback_tx_.clear(float4(0.0));
+    }
+    radiance_behind_tx_.ensure_2d(rb.color_format, extent, usage);
+  }
+
+  if (closure_bits_ & CLOSURE_REFRACTION) {
+    /* Update for refraction. */
+    inst_.hiz_buffer.update();
+    GPU_texture_copy(radiance_behind_tx_, rb.combined_tx);
+  }
+
   GPU_framebuffer_bind(prepass_fb);
   inst_.manager->submit(prepass_ps_, render_view);
 
-  inst_.hiz_buffer.set_dirty();
-  inst_.shadows.set_view(render_view);
-  inst_.irradiance_cache.set_view(render_view);
-
   inst_.gbuffer.acquire(extent, closure_bits_);
+
+  if (closure_bits_ & CLOSURE_AMBIENT_OCCLUSION) {
+    /* If the shader needs Ambient Occlusion, we need to update the HiZ here. */
+    if (closure_bits_ & CLOSURE_REFRACTION) {
+      /* TODO(fclem): This update conflicts with the refraction screen tracing which need the depth
+       * behind the objects. In this case we do not update and only consider surfaces already in
+       * the Hi-Z buffer for the occlusion detection. This might be solved (if really problematic)
+       * by having another copy of the Hi-Z buffer. */
+    }
+    else {
+      inst_.hiz_buffer.update();
+    }
+  }
 
   GPU_framebuffer_bind(combined_fb);
   inst_.manager->submit(gbuffer_ps_, render_view);
 
+  inst_.hiz_buffer.set_dirty();
+
+  inst_.irradiance_cache.set_view(render_view);
+
   RayTraceResult refract_result = inst_.raytracing.trace(
-      rt_buffer, closure_bits_, CLOSURE_REFRACTION, main_view, render_view);
+      rt_buffer, radiance_behind_tx_, closure_bits_, CLOSURE_REFRACTION, main_view, render_view);
   indirect_refraction_tx_ = refract_result.get();
 
+  /* Only update the HiZ after refraction tracing. */
+  inst_.hiz_buffer.update();
+
   RayTraceResult reflect_result = inst_.raytracing.trace(
-      rt_buffer, closure_bits_, CLOSURE_REFLECTION, main_view, render_view);
+      rt_buffer, radiance_feedback_tx_, closure_bits_, CLOSURE_REFLECTION, main_view, render_view);
   indirect_reflection_tx_ = reflect_result.get();
 
-  eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
-                           GPU_TEXTURE_USAGE_ATTACHMENT;
-  diffuse_light_tx_.acquire(extent, GPU_RGBA16F, usage);
-  diffuse_light_tx_.clear(float4(0.0f));
-  specular_light_tx_.acquire(extent, GPU_RGBA16F, usage);
-  specular_light_tx_.clear(float4(0.0f));
+  {
+    eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE |
+                             GPU_TEXTURE_USAGE_ATTACHMENT;
+    diffuse_light_tx_.acquire(extent, GPU_RGBA16F, usage);
+    diffuse_light_tx_.clear(float4(0.0f));
+    specular_light_tx_.acquire(extent, GPU_RGBA16F, usage);
+    specular_light_tx_.clear(float4(0.0f));
+  }
+
+  inst_.shadows.set_view(render_view);
 
   inst_.manager->submit(eval_light_ps_, render_view);
 
@@ -524,6 +560,8 @@ void DeferredLayer::render(View &main_view,
   if (closure_bits_ & CLOSURE_SSS) {
     inst_.subsurface.render(render_view, combined_fb, diffuse_light_tx_);
   }
+
+  GPU_texture_copy(radiance_feedback_tx_, rb.combined_tx);
 
   diffuse_light_tx_.release();
   specular_light_tx_.release();
