@@ -27,6 +27,22 @@ FCurveKey = Tuple[
     int,
 ]
 
+
+@dataclass
+class BakeOptions:
+    only_selected: bool
+    do_pose: bool
+    do_object: bool
+    do_visual_keying: bool
+    do_constraint_clear: bool
+    do_parents_clear: bool
+    do_clean: bool
+    do_location: bool
+    do_rotation: bool
+    do_scale: bool
+    do_bbone: bool
+
+
 # List of `[frame0, value0, frame1, value1, ...]` pairs.
 ListKeyframes = List[float]
 
@@ -35,7 +51,7 @@ def bake_action(
         obj,
         *,
         action, frames,
-        **kwargs
+        bake_options: BakeOptions
 ):
     """
     :arg obj: Object to bake.
@@ -55,7 +71,7 @@ def bake_action(
     action, = bake_action_objects(
         [(obj, action)],
         frames=frames,
-        **kwargs,
+        bake_options=bake_options,
     )
     return action
 
@@ -64,7 +80,7 @@ def bake_action_objects(
         object_action_pairs,
         *,
         frames,
-        **kwargs
+        bake_options: BakeOptions
 ):
     """
     A version of :func:`bake_action_objects_iter` that takes frames and returns the output.
@@ -75,7 +91,7 @@ def bake_action_objects(
     :return: A sequence of Action or None types (aligned with `object_action_pairs`)
     :rtype: sequence of :class:`bpy.types.Action`
     """
-    iter = bake_action_objects_iter(object_action_pairs, **kwargs)
+    iter = bake_action_objects_iter(object_action_pairs, bake_options=bake_options)
     iter.send(None)
     for frame in frames:
         iter.send(frame)
@@ -84,7 +100,7 @@ def bake_action_objects(
 
 def bake_action_objects_iter(
         object_action_pairs,
-        **kwargs
+        bake_options: BakeOptions
 ):
     """
     An coroutine that bakes actions for multiple objects.
@@ -96,7 +112,7 @@ def bake_action_objects_iter(
     scene = bpy.context.scene
     frame_back = scene.frame_current
     iter_all = tuple(
-        bake_action_iter(obj, action=action, **kwargs)
+        bake_action_iter(obj, action=action, bake_options=bake_options)
         for (obj, action) in object_action_pairs
     )
     for iter in iter_all:
@@ -118,17 +134,18 @@ def bake_action_iter(
         obj,
         *,
         action,
-        only_selected=False,
-        do_pose=True,
-        do_object=True,
-        do_visual_keying=True,
-        do_constraint_clear=False,
-        do_parents_clear=False,
-        do_clean=False,
-        do_location=True,
-        do_rotation=True,
-        do_scale=True,
-        do_bbone=True
+        bake_options: BakeOptions
+        # only_selected=False,
+        # do_pose=True,
+        # do_object=True,
+        # do_visual_keying=True,
+        # do_constraint_clear=False,
+        # do_parents_clear=False,
+        # do_clean=False,
+        # do_location=True,
+        # do_rotation=True,
+        # do_scale=True,
+        # do_bbone=True
 ):
     """
     An coroutine that bakes action for a single object.
