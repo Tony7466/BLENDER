@@ -96,10 +96,12 @@ static char text_closing_character_pair_get(const char character)
 }
 
 /**
- * This function receives a range and returns true if there is at least one non whitespace
- * character. \param line1: The first TextLine argument. \param line1_char: The character number of
- * line1. \param line2: The second TextLine argument. \param line2_char: The character number of
- * line2. \return True if the span is blank.
+ * This function receives a range and returns true if the range is blank.
+ * \param line1: The first TextLine argument.
+ * \param line1_char: The character number of line1.
+ * \param line2: The second TextLine argument.
+ * \param line2_char: The character number of line2.
+ * \return True if the span is blank.
  */
 static bool text_span_is_blank(TextLine *line1,
                                          const int line1_char,
