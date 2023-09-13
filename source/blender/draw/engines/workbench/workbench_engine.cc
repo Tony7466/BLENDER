@@ -324,11 +324,16 @@ class Instance {
 
   void sculpt_sync(ObjectRef &ob_ref, ResourceHandle handle, const ObjectState &object_state)
   {
+    SculptBatchFeature features = SCULPT_BATCH_DEFAULT;
+    if (object_state.color_type == V3D_SHADING_VERTEX_COLOR) {
+      features = SCULPT_BATCH_VERTEX_COLOR;
+    }
+    else if (object_state.color_type == V3D_SHADING_TEXTURE_COLOR) {
+      features = SCULPT_BATCH_UV;
+    }
+
     if (object_state.use_per_material_batches) {
-      const int material_count = DRW_cache_object_material_count_get(ob_ref.object);
-      for (SculptBatch &batch : sculpt_batches_per_material_get(
-               ob_ref.object, {get_dummy_gpu_materials(material_count), material_count}))
-      {
+      for (SculptBatch &batch : sculpt_batches_get(ob_ref.object, true, features)) {
         Material mat = get_material(ob_ref, object_state.color_type, batch.material_slot);
         if (SCULPT_DEBUG_DRAW) {
           mat.base_color = batch.debug_color();
@@ -346,15 +351,7 @@ class Instance {
     }
     else {
       Material mat = get_material(ob_ref, object_state.color_type);
-      SculptBatchFeature features = SCULPT_BATCH_DEFAULT;
-      if (object_state.color_type == V3D_SHADING_VERTEX_COLOR) {
-        features = SCULPT_BATCH_VERTEX_COLOR;
-      }
-      else if (object_state.color_type == V3D_SHADING_TEXTURE_COLOR) {
-        features = SCULPT_BATCH_UV;
-      }
-
-      for (SculptBatch &batch : sculpt_batches_get(ob_ref.object, features)) {
+      for (SculptBatch &batch : sculpt_batches_get(ob_ref.object, false, features)) {
         if (SCULPT_DEBUG_DRAW) {
           mat.base_color = batch.debug_color();
         }
