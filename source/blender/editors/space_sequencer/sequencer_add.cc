@@ -877,9 +877,7 @@ static void sequencer_add_movie_multiple_strips(bContext *C,
       ScrArea *area = CTX_wm_area(C);
       const bool use_sync_markers = (((SpaceSeq *)area->spacedata.first)->flag &
                                      SEQ_MARKER_TRANS) != 0;
-      {
-        SEQ_transform_handle_overlap(scene, ed->seqbasep, strip_col, use_sync_markers);
-      }
+      SEQ_transform_handle_overlap(scene, ed->seqbasep, strip_col, use_sync_markers);
     }
   }
 }
