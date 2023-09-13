@@ -121,20 +121,6 @@ static void node_declare(NodeDeclarationBuilder &b)
   spec.add_input<decl::Vector>("Tangent").hide_value();
 #define SOCK_TANGENT_ID 17
 
-  /* Panel for Sheen settings. */
-  PanelDeclarationBuilder &sheen = b.add_panel("Sheen").default_closed(true);
-  sheen.add_input<decl::Float>("Sheen").default_value(0.0f).min(0.0f).max(1.0f).subtype(
-      PROP_FACTOR);
-#define SOCK_SHEEN_ID 18
-  sheen.add_input<decl::Float>("Sheen Roughness")
-      .default_value(0.5f)
-      .min(0.0f)
-      .max(1.0f)
-      .subtype(PROP_FACTOR);
-#define SOCK_SHEEN_ROUGHNESS_ID 19
-  sheen.add_input<decl::Color>("Sheen Tint").default_value({1.0f, 1.0f, 1.0f, 1.0f});
-#define SOCK_SHEEN_TINT_ID 20
-
   /* Panel for Coat settings. */
   PanelDeclarationBuilder &coat = b.add_panel("Coat").default_closed(true);
   coat.add_input<decl::Float>("Coat")
@@ -145,14 +131,14 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description(
           "Controls the intensity of the coat layer, both the reflection and the tinting. "
           "Typically should be zero or one for physically-based materials");
-#define SOCK_COAT_ID 21
+#define SOCK_COAT_ID 18
   coat.add_input<decl::Float>("Coat Roughness")
       .default_value(0.03f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR)
       .description("The roughness of the coat layer");
-#define SOCK_COAT_ROUGHNESS_ID 22
+#define SOCK_COAT_ROUGHNESS_ID 19
   coat.add_input<decl::Float>("Coat IOR")
       .default_value(1.5f)
       .min(1.0f)
@@ -160,16 +146,30 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description(
           "The index of refraction of the coat layer "
           "(affects its reflectivity as well as the falloff of coat tinting)");
-#define SOCK_COAT_IOR_ID 23
+#define SOCK_COAT_IOR_ID 20
   coat.add_input<decl::Color>("Coat Tint")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .description(
           "Adds a colored tint to the coat layer by modeling absorption in the layer. "
           "Saturation increases at shallower angles, as the light travels farther "
           "through the medium (depending on the Coat IOR)");
-#define SOCK_COAT_TINT_ID 24
+#define SOCK_COAT_TINT_ID 21
   coat.add_input<decl::Vector>("Coat Normal").hide_value();
-#define SOCK_COAT_NORMAL_ID 25
+#define SOCK_COAT_NORMAL_ID 22
+
+  /* Panel for Sheen settings. */
+  PanelDeclarationBuilder &sheen = b.add_panel("Sheen").default_closed(true);
+  sheen.add_input<decl::Float>("Sheen").default_value(0.0f).min(0.0f).max(1.0f).subtype(
+      PROP_FACTOR);
+#define SOCK_SHEEN_ID 23
+  sheen.add_input<decl::Float>("Sheen Roughness")
+      .default_value(0.5f)
+      .min(0.0f)
+      .max(1.0f)
+      .subtype(PROP_FACTOR);
+#define SOCK_SHEEN_ROUGHNESS_ID 24
+  sheen.add_input<decl::Color>("Sheen Tint").default_value({1.0f, 1.0f, 1.0f, 1.0f});
+#define SOCK_SHEEN_TINT_ID 25
 
   /* Panel for Emission settings. */
   PanelDeclarationBuilder &emis = b.add_panel("Emission").default_closed(true);
