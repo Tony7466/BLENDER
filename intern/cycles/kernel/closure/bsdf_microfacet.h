@@ -205,15 +205,13 @@ ccl_device_forceinline float3 microfacet_ggx_sample_vndf(const float3 wi,
   return normalize(make_float3(alpha_x * H_.x, alpha_y * H_.y, max(0.0f, H_.z)));
 }
 
-/* Calculate the tinted reflectance and transmittance
- *
- * If generalized Schlick is used, the reflectance is an interpolation of the F0 color and the F90
- * color.
- * For dielectric and conductor, use Fresnel equations.
- * Otherwise returns white. */
+/* Computes the Fresnel reflectance and transmittance given the Microfacet BSDF and the cosine of
+ * the incoming angle `cos_theta_i`.
+ * Also returns the cosine of the angle between the normal and the refracted ray as `r_cos_theta_t`
+ * if provided. */
 ccl_device_forceinline void microfacet_fresnel(ccl_private const MicrofacetBsdf *bsdf,
                                                const float cos_theta_i,
-                                               ccl_private float *r_cos_theta_r,
+                                               ccl_private float *r_cos_theta_t,
                                                ccl_private Spectrum *r_reflectance,
                                                ccl_private Spectrum *r_transmittance)
 {
@@ -222,14 +220,14 @@ ccl_device_forceinline void microfacet_fresnel(ccl_private const MicrofacetBsdf 
   const bool has_transmission = CLOSURE_IS_GLASS(bsdf->type) || !has_reflection;
 
   if (bsdf->fresnel_type == MicrofacetFresnel::DIELECTRIC) {
-    const Spectrum F = make_spectrum(fresnel_dielectric(cos_theta_i, bsdf->ior, r_cos_theta_r));
+    const Spectrum F = make_spectrum(fresnel_dielectric(cos_theta_i, bsdf->ior, r_cos_theta_t));
     *r_reflectance = F;
     *r_transmittance = one_spectrum() - F;
   }
   else if (bsdf->fresnel_type == MicrofacetFresnel::DIELECTRIC_TINT) {
     ccl_private FresnelDielectricTint *fresnel = (ccl_private FresnelDielectricTint *)
                                                      bsdf->fresnel;
-    const float F = fresnel_dielectric(cos_theta_i, bsdf->ior, r_cos_theta_r);
+    const float F = fresnel_dielectric(cos_theta_i, bsdf->ior, r_cos_theta_t);
     *r_reflectance = F * fresnel->reflection_tint;
     *r_transmittance = (1.0f - F) * fresnel->transmission_tint;
   }
@@ -245,27 +243,27 @@ ccl_device_forceinline void microfacet_fresnel(ccl_private const MicrofacetBsdf 
     if (fresnel->exponent < 0.0f) {
       /* Special case: Use real Fresnel curve to determine the interpolation between F0 and F90.
        * Used by Principled v1. */
-      const float F_real = fresnel_dielectric(cos_theta_i, bsdf->ior, r_cos_theta_r);
+      const float F_real = fresnel_dielectric(cos_theta_i, bsdf->ior, r_cos_theta_t);
       const float F0_real = F0_from_ior(bsdf->ior);
       s = saturatef(inverse_lerp(F0_real, 1.0f, F_real));
     }
     else {
       /* Regular case: Generalized Schlick term. */
-      const float cosT_sq = 1.0f - (1.0f - sqr(cos_theta_i)) / sqr(bsdf->ior);
-      if (cosT_sq <= 0.0f) {
+      const float cos_theta_t_sq = 1.0f - (1.0f - sqr(cos_theta_i)) / sqr(bsdf->ior);
+      if (cos_theta_t_sq <= 0.0f) {
         /* Total internal reflection */
         *r_reflectance = fresnel->reflection_tint * (float)has_reflection;
         *r_transmittance = zero_spectrum();
         return;
       }
-      const float cosT = safe_sqrtf(cosT_sq);
-      if (r_cos_theta_r) {
-        *r_cos_theta_r = cosT;
+      const float cos_theta_t = sqrtf(cos_theta_t_sq);
+      if (r_cos_theta_t) {
+        *r_cos_theta_t = cos_theta_t;
       }
 
       /* TODO(lukas): Is a special case for exponent==5 worth it? */
       /* When going from a higher to a lower IOR, we must use the transmitted angle. */
-      s = powf(1.0f - ((bsdf->ior < 1.0f) ? *r_cos_theta_r : cos_theta_i), fresnel->exponent);
+      s = powf(1.0f - ((bsdf->ior < 1.0f) ? cos_theta_t : cos_theta_i), fresnel->exponent);
     }
     const Spectrum F = mix(fresnel->f0, fresnel->f90, s);
     *r_reflectance = F * fresnel->reflection_tint;
@@ -277,7 +275,7 @@ ccl_device_forceinline void microfacet_fresnel(ccl_private const MicrofacetBsdf 
     *r_reflectance = *r_transmittance = one_spectrum();
 
     /* Exclude total internal reflection. */
-    if (has_transmission && fresnel_dielectric(cos_theta_i, bsdf->ior, r_cos_theta_r) == 1.0f) {
+    if (has_transmission && fresnel_dielectric(cos_theta_i, bsdf->ior, r_cos_theta_t) == 1.0f) {
       *r_transmittance = zero_spectrum();
     }
   }
