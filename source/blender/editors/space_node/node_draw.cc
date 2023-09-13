@@ -497,141 +497,130 @@ static bool node_update_basis_socket(const bContext &C,
   return true;
 }
 
-/* Temporary stack data to keep track of the panel hierarchy while drawing. */
-struct NodeInterfacePanelData {
-  /* Declaration of a panel that items are added into. */
-  const nodes::PanelDeclaration *decl;
+struct NodeInterfaceItemData {
+  /* Declaration of a socket (only for socket items). */
+  const nodes::SocketDeclaration *socket_decl = nullptr;
+  bNodeSocket *input = nullptr;
+  bNodeSocket *output = nullptr;
+
+  /* Declaration of a panel (only for panel items). */
+  const nodes::PanelDeclaration *panel_decl = nullptr;
   /* State of the panel instance on the node.
    * Mutable so that panel visibility can be updated. */
-  bNodePanelState *state;
+  bNodePanelState *state = nullptr;
   /* Runtime panel state for draw locations. */
-  bke::bNodePanelRuntime *runtime;
+  bke::bNodePanelRuntime *runtime = nullptr;
 
-  operator bool() const
+  NodeInterfaceItemData(const nodes::SocketDeclaration *_socket_decl,
+                        bNodeSocket *_input,
+                        bNodeSocket *_output)
+      : socket_decl(_socket_decl), input(_input), output(_output)
+  {
+  }
+  NodeInterfaceItemData(const nodes::PanelDeclaration *_panel_decl,
+                        bNodePanelState *_state,
+                        bke::bNodePanelRuntime *_runtime)
+      : panel_decl(_panel_decl), state(_state), runtime(_runtime)
+  {
+  }
+
+  bool is_valid_socket() const
+  {
+    /* At least one socket pointer must be valid. */
+    return this->socket_decl && (input || output);
+  }
+
+  bool is_valid_panel() const
   {
     /* Panel can only be drawn when state data is available. */
-    return this->state != nullptr && this->runtime != nullptr;
+    return this->panel_decl && this->state && this->runtime;
   }
 };
 
-struct NodeInterfaceSocketData {
-  const nodes::SocketDeclaration *decl;
-  bNodeSocket *input;
-  bNodeSocket *output;
-
-  operator bool() const
-  {
-    /* Socket can be drawn if there is an input, or an output, or both. */
-    return this->input != nullptr || this->output != nullptr;
-  }
-};
-
-/* Utility to ensure valid state while iterating over interface items and sockets.
- * This iterates over all the item declarations in the same order as
- * #bNodeTreeInterface::foreach_item, but also manages pointers to input/output socket of the node
- * alongside declarations. Acquiring a socket or panel declaration makes sure the necessary
- * pointers are valid and advances to the next item.
+/* Compile relevant socket and panel pointer data into a vector.
+ * This helps ensure correct pointer access in complex situations like inlined sockets.
  */
-class NodeInterfaceIterator {
-  const bNode &node_;
+static Vector<NodeInterfaceItemData> node_build_item_data(bNode &node)
+{
+  namespace nodes = blender::nodes;
+  using ItemDeclIterator = blender::Span<nodes::ItemDeclarationPtr>::iterator;
+  using SocketIterator = blender::Span<bNodeSocket *>::iterator;
+  using PanelStateIterator = blender::MutableSpan<bNodePanelState>::iterator;
+  using PanelRuntimeIterator = blender::MutableSpan<bke::bNodePanelRuntime>::iterator;
 
-  int decl_index_;
-  blender::Span<bNodeSocket *>::iterator input_;
-  blender::Span<bNodeSocket *>::iterator output_;
-  bNodePanelState *panel_state_;
-  bke::bNodePanelRuntime *panel_runtime_;
+  BLI_assert(is_node_panels_supported(node));
+  BLI_assert(node.runtime->panels.size() == node.num_panel_states);
 
- public:
-  NodeInterfaceIterator(bNode &node)
-      : node_(node),
-        decl_index_(0),
-        input_(node.input_sockets().begin()),
-        output_(node.output_sockets().begin()),
-        panel_state_(node.panel_states_array),
-        panel_runtime_(node.runtime->panels.begin())
-  {
-  }
+  ItemDeclIterator item_decl = node.declaration()->items.begin();
+  SocketIterator input = node.input_sockets().begin();
+  SocketIterator output = node.output_sockets().begin();
+  PanelStateIterator panel_state = node.panel_states().begin();
+  PanelRuntimeIterator panel_runtime = node.runtime->panels.begin();
+  const ItemDeclIterator item_decl_end = node.declaration()->items.end();
+  const SocketIterator input_end = node.input_sockets().end();
+  const SocketIterator output_end = node.output_sockets().end();
+  const PanelStateIterator panel_state_end = node.panel_states().end();
+  const PanelRuntimeIterator panel_runtime_end = node.runtime->panels.end();
 
-  operator bool() const
-  {
-    return decl_index_ < node_.declaration()->items.size();
-  }
+  Vector<NodeInterfaceItemData> result;
+  result.reserve(node.declaration()->items.size());
 
-  /* Consume the next socket item(s) if possible. */
-  NodeInterfaceSocketData try_next_socket()
-  {
-    const nodes::SocketDeclaration *socket_decl = dynamic_cast<const nodes::SocketDeclaration *>(
-        node_.declaration()->items[decl_index_].get());
-    if (!socket_decl) {
-      return {nullptr, nullptr, nullptr};
-    }
-
-    /* Look-ahead to check if the next item should be inlined with this one. */
-    const nodes::ItemDeclaration *next_item_decl =
-        (decl_index_ + 1 < node_.declaration()->items.size() ?
-             node_.declaration()->items[decl_index_ + 1].get() :
-             nullptr);
-    const nodes::SocketDeclaration *next_socket_decl =
-        dynamic_cast<const nodes::SocketDeclaration *>(next_item_decl);
-    const bool inline_with_next = (socket_decl->inline_with_next && next_socket_decl &&
-                                   next_socket_decl->in_out != socket_decl->in_out);
-
-    NodeInterfaceSocketData result = {socket_decl, nullptr, nullptr};
-    switch (socket_decl->in_out) {
-      case SOCK_IN:
-        BLI_assert(input_ != node_.input_sockets().end());
-        result.input = *input_;
-        ++input_;
-        break;
-      case SOCK_OUT:
-        BLI_assert(output_ != node_.output_sockets().end());
-        result.output = *output_;
-        ++output_;
-        break;
-    }
-    ++decl_index_;
-
-    if (inline_with_next) {
-      switch (next_socket_decl->in_out) {
+  while (item_decl != item_decl_end) {
+    if (const nodes::SocketDeclaration *socket_decl =
+            dynamic_cast<const nodes::SocketDeclaration *>(item_decl->get()))
+    {
+      bNodeSocket *used_input = nullptr;
+      bNodeSocket *used_output = nullptr;
+      switch (socket_decl->in_out) {
         case SOCK_IN:
-          if (input_) {
-            BLI_assert(input_ != node_.input_sockets().end());
-            result.input = *input_;
-            ++input_;
-          }
+          BLI_assert(input != input_end);
+          used_input = *input;
+          ++input;
           break;
         case SOCK_OUT:
-          if (output_) {
-            BLI_assert(output_ != node_.output_sockets().end());
-            result.output = *output_;
-            ++output_;
-          }
+          BLI_assert(output != output_end);
+          used_output = *output;
+          ++output;
           break;
       }
-      ++decl_index_;
+      ++item_decl;
+
+      if (socket_decl->inline_with_next && item_decl != item_decl_end) {
+        /* Consume the next item as well when inlining sockets. */
+        const nodes::SocketDeclaration *next_socket_decl =
+            dynamic_cast<const nodes::SocketDeclaration *>(item_decl->get());
+        if (next_socket_decl && next_socket_decl->in_out != socket_decl->in_out) {
+          switch (next_socket_decl->in_out) {
+            case SOCK_IN:
+              BLI_assert(input != input_end);
+              used_input = *input;
+              ++input;
+              break;
+            case SOCK_OUT:
+              BLI_assert(output != output_end);
+              used_output = *output;
+              ++output;
+              break;
+          }
+          ++item_decl;
+        }
+      }
+
+      result.append({socket_decl, used_input, used_output});
     }
-    return result;
-  }
-
-  /* Consume the next panel item if possible. */
-  NodeInterfacePanelData try_next_panel()
-  {
-    const nodes::PanelDeclaration *panel_decl = dynamic_cast<const nodes::PanelDeclaration *>(
-        node_.declaration()->items[decl_index_].get());
-    if (!panel_decl) {
-      return {nullptr, nullptr, nullptr};
+    else if (const nodes::PanelDeclaration *panel_decl =
+                 dynamic_cast<const nodes::PanelDeclaration *>(item_decl->get()))
+    {
+      BLI_assert(panel_state != panel_state_end);
+      BLI_assert(panel_runtime != panel_runtime_end);
+      result.append({panel_decl, panel_state, panel_runtime});
+      ++item_decl;
+      ++panel_state;
+      ++panel_runtime;
     }
-
-    BLI_assert(node_.panel_states().contains_ptr(panel_state_));
-    BLI_assert(node_.runtime->panels.as_span().contains_ptr(panel_runtime_));
-
-    NodeInterfacePanelData result{panel_decl, panel_state_, panel_runtime_};
-    ++decl_index_;
-    ++panel_state_;
-    ++panel_runtime_;
-    return result;
   }
-};
+  return result;
+}
 
 /* Advanced drawing with panels and arbitrary input/output ordering. */
 static void node_update_basis_from_declaration(
@@ -650,8 +639,6 @@ static void node_update_basis_from_declaration(
   /* Makes sure buttons are only drawn once. */
   bool buttons_drawn = false;
 
-  NodeInterfaceIterator interface_iter(node);
-
   /* The panel stack keeps track of the hierarchy of panels. When a panel declaration is found a
    * new #PanelUpdate is added to the stack. Items in the declaration are added to the top panel
    * of the stack. Each panel expects a number of items to be added, after which the panel is
@@ -668,7 +655,8 @@ static void node_update_basis_from_declaration(
   /* Only true for the first item in the layout. */
   bool is_first = true;
 
-  while (interface_iter) {
+  const Vector<NodeInterfaceItemData> item_data = node_build_item_data(node);
+  for (const NodeInterfaceItemData &item : item_data) {
     bool is_parent_collapsed = false;
     if (PanelUpdate *parent_update = panel_updates.is_empty() ? nullptr : &panel_updates.peek()) {
       /* Adding an item to the parent panel, will be popped when reaching 0. */
@@ -677,7 +665,7 @@ static void node_update_basis_from_declaration(
       is_parent_collapsed = parent_update->is_collapsed;
     }
 
-    if (const NodeInterfacePanelData data = interface_iter.try_next_panel()) {
+    if (item.is_valid_panel()) {
       /* Draw buttons before the first panel. */
       if (!buttons_drawn) {
         buttons_drawn = true;
@@ -689,50 +677,50 @@ static void node_update_basis_from_declaration(
         is_first = false;
       }
 
-      SET_FLAG_FROM_TEST(data.state->flag, is_parent_collapsed, NODE_PANEL_PARENT_COLLAPSED);
+      SET_FLAG_FROM_TEST(item.state->flag, is_parent_collapsed, NODE_PANEL_PARENT_COLLAPSED);
       /* New top panel is collapsed if self or parent is collapsed. */
-      const bool is_collapsed = is_parent_collapsed || data.state->is_collapsed();
-      panel_updates.push({data.decl->num_child_decls, is_collapsed, data.runtime});
+      const bool is_collapsed = is_parent_collapsed || item.state->is_collapsed();
+      panel_updates.push({item.panel_decl->num_child_decls, is_collapsed, item.runtime});
 
       /* Round the socket location to stop it from jiggling. */
-      data.runtime->location_y = round(locy + NODE_DYS);
-      data.runtime->max_content_y = data.runtime->min_content_y = round(locy);
+      item.runtime->location_y = round(locy + NODE_DYS);
+      item.runtime->max_content_y = item.runtime->min_content_y = round(locy);
     }
-    else if (const NodeInterfaceSocketData data = interface_iter.try_next_socket()) {
-      if (data.input) {
-        SET_FLAG_FROM_TEST(data.input->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
+    else if (item.is_valid_socket()) {
+      if (item.input) {
+        SET_FLAG_FROM_TEST(item.input->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
         /* Draw buttons before the first input, unless it's inline with an output. */
-        if (!data.decl->inline_with_next && !buttons_drawn) {
+        if (!item.socket_decl->inline_with_next && !buttons_drawn) {
           buttons_drawn = true;
           need_spacer_after_item = node_update_basis_buttons(C, ntree, node, block, locy);
         }
 
         if (is_parent_collapsed) {
-          data.input->runtime->location = float2(locx, round(locy + NODE_DYS));
+          item.input->runtime->location = float2(locx, round(locy + NODE_DYS));
         }
         else {
           /* Space between items. */
-          if (!is_first && data.input->is_visible()) {
+          if (!is_first && item.input->is_visible()) {
             locy -= NODE_SOCKDY;
           }
         }
       }
-      if (data.output) {
-        SET_FLAG_FROM_TEST(data.output->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
+      if (item.output) {
+        SET_FLAG_FROM_TEST(item.output->flag, is_parent_collapsed, SOCK_PANEL_COLLAPSED);
         if (is_parent_collapsed) {
-          data.output->runtime->location = float2(round(locx + NODE_WIDTH(node)),
+          item.output->runtime->location = float2(round(locx + NODE_WIDTH(node)),
                                                   round(locy + NODE_DYS));
         }
         else {
           /* Space between items. */
-          if (!is_first && data.output->is_visible()) {
+          if (!is_first && item.output->is_visible()) {
             locy -= NODE_SOCKDY;
           }
         }
       }
 
       if (!is_parent_collapsed &&
-          node_update_basis_socket(C, ntree, node, data.input, data.output, block, locx, locy))
+          node_update_basis_socket(C, ntree, node, item.input, item.output, block, locx, locy))
       {
         is_first = false;
         need_spacer_after_item = true;
