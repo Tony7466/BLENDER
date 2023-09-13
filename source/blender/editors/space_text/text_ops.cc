@@ -104,9 +104,9 @@ static char text_closing_character_pair_get(const char character)
  * \return True if the span is blank.
  */
 static bool text_span_is_blank(TextLine *line1,
-                                         const int line1_char,
-                                         TextLine *line2,
-                                         const int line2_char)
+                               const int line1_char,
+                               TextLine *line2,
+                               const int line2_char)
 {
   const TextLine *start_line;
   const TextLine *end_line;
@@ -1470,7 +1470,8 @@ static int text_convert_whitespace_exec(bContext *C, wmOperator *op)
           /* a + 0 we already know to be ' ' char... */
           for (j = 1;
                (j < tab_len) && (a + j < text_check_line_len) && (text_check_line[a + j] == ' ');
-               j++) {
+               j++)
+          {
             /* pass */
           }
 
@@ -3580,6 +3581,7 @@ static int text_insert_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     TextLine *curl;
     int selc;
     int curc;
+    int curl_sell_span;
   } auto_close_select = {nullptr};
 
   /* NOTE: the "text" property is always set from key-map,
@@ -3609,9 +3611,11 @@ static int text_insert_invoke(bContext *C, wmOperator *op, const wmEvent *event)
         auto_close_select.curl = st->text->curl;
         auto_close_select.selc = st->text->selc;
         auto_close_select.curc = st->text->curc;
+        auto_close_select.curl_sell_span = txt_get_span(auto_close_select.curl,
+                                                        auto_close_select.sell);
 
         /* Move the cursor to the start of the selection. */
-        if (txt_get_span(auto_close_select.curl, auto_close_select.sell) > 0 ||
+        if (auto_close_select.curl_sell_span > 0 ||
             (auto_close_select.curl == auto_close_select.sell &&
              auto_close_select.selc > auto_close_select.curc))
         {
@@ -3638,7 +3642,7 @@ static int text_insert_invoke(bContext *C, wmOperator *op, const wmEvent *event)
       /* If there was a selection, move cursor to the end of it. */
       if (auto_close_select.sell) {
         /* Move the cursor to the end of the selection. */
-        if (txt_get_span(auto_close_select.curl, auto_close_select.sell) < 0) {
+        if (auto_close_select.curl_sell_span < 0) {
           txt_move_to(st->text,
                       BLI_findindex(&st->text->lines, auto_close_select.curl),
                       auto_close_select.curc,
@@ -3666,11 +3670,11 @@ static int text_insert_invoke(bContext *C, wmOperator *op, const wmEvent *event)
         st->text->sell = auto_close_select.sell;
         st->text->curl = auto_close_select.curl;
         st->text->selc = (auto_close_select.sell == auto_close_select.curl ||
-                          txt_get_span(auto_close_select.curl, auto_close_select.sell) < 0) ?
+                          auto_close_select.curl_sell_span < 0) ?
                              auto_close_select.selc + 1 :
                              auto_close_select.selc;
         st->text->curc = (auto_close_select.sell == auto_close_select.curl ||
-                          txt_get_span(auto_close_select.curl, auto_close_select.sell) > 0) ?
+                          auto_close_select.curl_sell_span > 0) ?
                              auto_close_select.curc + 1 :
                              auto_close_select.curc;
       }
