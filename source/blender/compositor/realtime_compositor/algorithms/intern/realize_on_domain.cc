@@ -1,0 +1,140 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+#include "BLI_math_angle_types.hh"
+#include "BLI_math_matrix.hh"
+#include "BLI_math_matrix_types.hh"
+#include "BLI_math_vector_types.hh"
+#include "BLI_utildefines.h"
+
+#include "GPU_capabilities.h"
+#include "GPU_shader.h"
+#include "GPU_texture.h"
+
+#include "COM_context.hh"
+#include "COM_domain.hh"
+#include "COM_result.hh"
+#include "COM_utilities.hh"
+
+#include "COM_algorithm_realize_on_domain.hh"
+
+namespace blender::realtime_compositor {
+
+Domain compute_realized_transformation_domain(const Domain &domain,
+                                              bool realize_rotation,
+                                              bool realize_scale)
+{
+  if (!realize_rotation && !realize_scale) {
+    return domain;
+  }
+
+  math::AngleRadian rotation;
+  float2 translation, scale;
+  float2 size = float2(domain.size);
+  math::to_loc_rot_scale(domain.transformation, translation, rotation, scale);
+
+  /* Set the rotation to zero and expand the domain size to fit the bounding box of the rotated
+   * result. */
+  if (realize_rotation) {
+    const float sine = math::abs(math::sin(rotation));
+    const float cosine = math::abs(math::cos(rotation));
+    size = float2(size.x * sine + size.y * cosine, size.x * cosine + size.y * sine);
+    rotation = 0.0f;
+  }
+
+  /* Set the scale to 1 and scale the domain size to adapt to the new domain. */
+  if (realize_scale) {
+    size *= scale;
+    scale = float2(1.0f);
+  }
+
+  const float3x3 transformation = math::from_loc_rot_scale<float3x3>(translation, rotation, scale);
+
+  return Domain(math::min(int2(math::ceil(size)), int2(GPU_max_texture_size())), transformation);
+}
+
+static const char *get_realization_shader(Result &input,
+                                          const RealizationOptions &realization_options)
+{
+  if (realization_options.interpolation == Interpolation::Bicubic) {
+    switch (input.type()) {
+      case ResultType::Color:
+        return "compositor_realize_on_domain_bicubic_color";
+      case ResultType::Vector:
+        return "compositor_realize_on_domain_bicubic_vector";
+      case ResultType::Float:
+        return "compositor_realize_on_domain_bicubic_float";
+    }
+  }
+  else {
+    switch (input.type()) {
+      case ResultType::Color:
+        return "compositor_realize_on_domain_color";
+      case ResultType::Vector:
+        return "compositor_realize_on_domain_vector";
+      case ResultType::Float:
+        return "compositor_realize_on_domain_float";
+    }
+  }
+
+  BLI_assert_unreachable();
+  return nullptr;
+}
+
+void realize_on_domain(Context &context,
+                       Result &input,
+                       Result &output,
+                       const Domain &domain,
+                       const float3x3 &input_transformation,
+                       const RealizationOptions &realization_options)
+{
+
+  GPUShader *shader = context.shader_manager().get(
+      get_realization_shader(input, realization_options));
+  GPU_shader_bind(shader);
+
+  /* Transform the input space into the domain space. */
+  const float3x3 local_transformation = math::invert(domain.transformation) * input_transformation;
+
+  /* Set the origin of the transformation to be the center of the domain. */
+  const float3x3 transformation = math::from_origin_transform<float3x3>(
+      local_transformation, float2(domain.size) / 2.0f);
+
+  /* Invert the transformation because the shader transforms the domain coordinates instead of the
+   * input image itself and thus expect the inverse. */
+  const float3x3 inverse_transformation = math::invert(transformation);
+
+  GPU_shader_uniform_mat3_as_mat4(shader, "inverse_transformation", inverse_transformation.ptr());
+
+  /* The texture sampler should use bilinear interpolation for both the bilinear and bicubic
+   * cases, as the logic used by the bicubic realization shader expects textures to use bilinear
+   * interpolation. */
+  const bool use_bilinear = ELEM(
+      realization_options.interpolation, Interpolation::Bilinear, Interpolation::Bicubic);
+  GPU_texture_filter_mode(input.texture(), use_bilinear);
+
+  /* If the input repeats, set a repeating wrap mode for out-of-bound texture access. Otherwise,
+   * make out-of-bound texture access return zero by setting a clamp to border extend mode. */
+  GPU_texture_extend_mode_x(input.texture(),
+                            realization_options.repeat_x ?
+                                GPU_SAMPLER_EXTEND_MODE_REPEAT :
+                                GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
+  GPU_texture_extend_mode_y(input.texture(),
+                            realization_options.repeat_y ?
+                                GPU_SAMPLER_EXTEND_MODE_REPEAT :
+                                GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
+
+  input.bind_as_texture(shader, "input_tx");
+
+  output.allocate_texture(domain);
+  output.bind_as_image(shader, "domain_img");
+
+  compute_dispatch_threads_at_least(shader, domain.size);
+
+  input.unbind_as_texture();
+  output.unbind_as_image();
+  GPU_shader_unbind();
+}
+
+}  // namespace blender::realtime_compositor

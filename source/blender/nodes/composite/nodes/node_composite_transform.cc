@@ -13,6 +13,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "COM_algorithm_realize_on_domain.hh"
 #include "COM_node_operation.hh"
 
 #include "node_composite_util.hh"
@@ -66,16 +67,35 @@ class TransformOperation : public NodeOperation {
   {
     Result &input = get_input("Image");
     Result &result = get_result("Image");
-    input.pass_through(result);
 
     const float2 translation = float2(get_input("X").get_float_value_default(0.0f),
                                       get_input("Y").get_float_value_default(0.0f));
     const AngleRadian rotation = AngleRadian(get_input("Angle").get_float_value_default(0.0f));
     const float2 scale = float2(get_input("Scale").get_float_value_default(1.0f));
 
-    const float3x3 transformation = from_loc_rot_scale<float3x3>(translation, rotation, scale);
+    if (rotation == 0.0f && scale == float2(1.0f)) {
+      input.pass_through(result);
+    }
+    else {
+      RealizationOptions realization_options = input.get_realization_options();
+      realization_options.interpolation = get_interpolation();
 
-    result.transform(transformation);
+      Domain input_domain = input.domain();
+      input_domain.transform(from_loc_rot_scale<float3x3>(translation, rotation, scale));
+
+      const Domain target_domain = compute_realized_transformation_domain(
+          input_domain, true, true);
+
+      realize_on_domain(context(),
+                        input,
+                        result,
+                        target_domain,
+                        input_domain.transformation,
+                        realization_options);
+    }
+
+    const float3x3 translation_matrix = from_location<float3x3>(translation);
+    result.transform(translation_matrix);
     result.get_realization_options().interpolation = get_interpolation();
   }
 

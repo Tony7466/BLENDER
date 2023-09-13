@@ -42,10 +42,6 @@ class RealizeOnDomainOperation : public SimpleOperation {
  protected:
   /* The operation domain is just the target domain. */
   Domain compute_domain() override;
-
- private:
-  /* Get the realization shader of the appropriate type. */
-  GPUShader *get_realization_shader();
 };
 
 /* ------------------------------------------------------------------------------------------------
@@ -69,13 +65,6 @@ class RealizeTransformationOperation {
   static SimpleOperation *construct_if_needed(Context &context,
                                               const Result &input_result,
                                               const InputDescriptor &input_descriptor);
-
- private:
-  /* Given the domain of an input and its realization options, compute a domain such that the
-   * appropriate transformations specified in the realization options become identity and the size
-   * of the domain is increased/reduced to adapt to the new domain. */
-  static Domain compute_target_domain(const Domain &input_domain,
-                                      const InputRealizationOptions &realization_options);
 };
 
 }  // namespace blender::realtime_compositor
