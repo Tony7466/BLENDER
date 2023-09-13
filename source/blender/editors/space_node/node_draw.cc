@@ -440,12 +440,12 @@ static bool node_update_basis_socket(const bContext &C,
   }
 
   uiLayout *row = uiLayoutRow(layout, true);
+  PointerRNA nodeptr = RNA_pointer_create(&ntree.id, &RNA_Node, &node);
+  uiLayoutSetContextPointer(row, "node", &nodeptr);
 
   if (input_socket) {
     /* Context pointers for current node and socket. */
-    PointerRNA nodeptr = RNA_pointer_create(&ntree.id, &RNA_Node, &node);
     PointerRNA sockptr = RNA_pointer_create(&ntree.id, &RNA_NodeSocket, input_socket);
-    uiLayoutSetContextPointer(row, "node", &nodeptr);
     uiLayoutSetContextPointer(row, "socket", &sockptr);
 
     uiLayoutSetAlignment(row, UI_LAYOUT_ALIGN_EXPAND);
@@ -460,9 +460,7 @@ static bool node_update_basis_socket(const bContext &C,
   }
   else {
     /* Context pointers for current node and socket. */
-    PointerRNA nodeptr = RNA_pointer_create(&ntree.id, &RNA_Node, &node);
     PointerRNA sockptr = RNA_pointer_create(&ntree.id, &RNA_NodeSocket, output_socket);
-    uiLayoutSetContextPointer(row, "node", &nodeptr);
     uiLayoutSetContextPointer(row, "socket", &sockptr);
 
     /* Align output buttons to the right. */
