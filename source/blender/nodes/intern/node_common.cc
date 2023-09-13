@@ -667,6 +667,8 @@ static bool group_input_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *li
   if (!io_socket) {
     return false;
   }
+  BKE_ntree_update_tag_interface(ntree);
+
   update_node_declaration_and_sockets(*ntree, *node);
   link->fromsock = node_group_input_find_socket(node, io_socket->identifier);
   return true;
@@ -688,6 +690,8 @@ static bool group_output_insert_link(bNodeTree *ntree, bNode *node, bNodeLink *l
   if (!io_socket) {
     return false;
   }
+  BKE_ntree_update_tag_interface(ntree);
+
   update_node_declaration_and_sockets(*ntree, *node);
   link->tosock = node_group_output_find_socket(node, io_socket->identifier);
   return true;
