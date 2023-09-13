@@ -4301,11 +4301,12 @@ static void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache 
     cur_brush->mask_tool = BRUSH_MASK_SMOOTH;
     return;
   }
-  else if (ELEM(cur_brush->sculpt_tool,
-                SCULPT_TOOL_SLIDE_RELAX,
-                SCULPT_TOOL_DRAW_FACE_SETS,
-                SCULPT_TOOL_PAINT,
-                SCULPT_TOOL_SMEAR))
+
+  if (ELEM(cur_brush->sculpt_tool,
+           SCULPT_TOOL_SLIDE_RELAX,
+           SCULPT_TOOL_DRAW_FACE_SETS,
+           SCULPT_TOOL_PAINT,
+           SCULPT_TOOL_SMEAR))
   {
     /* Do nothing, this tool has its own smooth mode. */
     return;
