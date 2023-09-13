@@ -532,8 +532,7 @@ struct NodeInterfaceSocketData {
  * alongside declarations. Acquiring a socket or panel declaration makes sure the necessary
  * pointers are valid and advances to the next item.
  */
-struct NodeInterfaceIterator {
- private:
+class NodeInterfaceIterator {
   const bNode &node_;
 
   int decl_index_;
