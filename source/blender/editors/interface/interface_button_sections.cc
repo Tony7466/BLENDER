@@ -103,7 +103,7 @@ static Vector<rcti> button_section_bounds_calc(const ARegion *region, const bool
 }
 
 static void ui_draw_button_sections_background(const ARegion *region,
-                                               const Span<rcti> &section_bounds,
+                                               const Span<rcti> section_bounds,
                                                const ThemeColorID colorid,
                                                const uiButtonSectionsAlign align,
                                                const float corner_radius)
@@ -140,7 +140,7 @@ static void ui_draw_button_sections_background(const ARegion *region,
 }
 
 static void ui_draw_button_sections_alignment_separator(const ARegion *region,
-                                                        const Span<rcti> &section_bounds,
+                                                        const Span<rcti> section_bounds,
                                                         const ThemeColorID colorid,
                                                         const uiButtonSectionsAlign align,
                                                         const float corner_radius)
