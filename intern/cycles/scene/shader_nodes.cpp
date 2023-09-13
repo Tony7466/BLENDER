@@ -2674,8 +2674,10 @@ NODE_DEFINE(PrincipledBsdfNode)
   SOCKET_IN_FLOAT(sheen, "Sheen", 0.0f);
   SOCKET_IN_FLOAT(sheen_roughness, "Sheen Roughness", 0.5f);
   SOCKET_IN_COLOR(sheen_tint, "Sheen Tint", one_float3());
-  SOCKET_IN_FLOAT(clearcoat, "Clearcoat", 0.0f);
-  SOCKET_IN_FLOAT(clearcoat_roughness, "Clearcoat Roughness", 0.03f);
+  SOCKET_IN_FLOAT(coat, "Coat", 0.0f);
+  SOCKET_IN_FLOAT(coat_roughness, "Coat Roughness", 0.03f);
+  SOCKET_IN_FLOAT(coat_ior, "Coat IOR", 1.5f);
+  SOCKET_IN_COLOR(coat_tint, "Coat Tint", one_float3());
   SOCKET_IN_FLOAT(ior, "IOR", 0.0f);
   SOCKET_IN_FLOAT(transmission, "Transmission", 0.0f);
   SOCKET_IN_FLOAT(anisotropic_rotation, "Anisotropic Rotation", 0.0f);
@@ -2683,7 +2685,7 @@ NODE_DEFINE(PrincipledBsdfNode)
   SOCKET_IN_FLOAT(emission_strength, "Emission Strength", 1.0f);
   SOCKET_IN_FLOAT(alpha, "Alpha", 1.0f);
   SOCKET_IN_NORMAL(normal, "Normal", zero_float3(), SocketType::LINK_NORMAL);
-  SOCKET_IN_NORMAL(clearcoat_normal, "Clearcoat Normal", zero_float3(), SocketType::LINK_NORMAL);
+  SOCKET_IN_NORMAL(coat_normal, "Coat Normal", zero_float3(), SocketType::LINK_NORMAL);
   SOCKET_IN_NORMAL(tangent, "Tangent", zero_float3(), SocketType::LINK_TANGENT);
   SOCKET_IN_FLOAT(surface_mix_weight, "SurfaceMixWeight", 0.0f, SocketType::SVM_INTERNAL);
 
@@ -2784,7 +2786,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler)
   compiler.add_node(NODE_CLOSURE_SET_WEIGHT, weight);
 
   int normal_offset = compiler.stack_assign_if_linked(input("Normal"));
-  int clearcoat_normal_offset = compiler.stack_assign_if_linked(input("Clearcoat Normal"));
+  int coat_normal_offset = compiler.stack_assign_if_linked(input("Coat Normal"));
   int tangent_offset = compiler.stack_assign_if_linked(input("Tangent"));
   int specular_offset = compiler.stack_assign(input("Specular"));
   int roughness_offset = compiler.stack_assign(input("Roughness"));
@@ -2793,8 +2795,10 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler)
   int sheen_offset = compiler.stack_assign(input("Sheen"));
   int sheen_roughness_offset = compiler.stack_assign(input("Sheen Roughness"));
   int sheen_tint_offset = compiler.stack_assign(input("Sheen Tint"));
-  int clearcoat_offset = compiler.stack_assign(input("Clearcoat"));
-  int clearcoat_roughness_offset = compiler.stack_assign(input("Clearcoat Roughness"));
+  int coat_offset = compiler.stack_assign(input("Coat"));
+  int coat_roughness_offset = compiler.stack_assign(input("Coat Roughness"));
+  int coat_ior_offset = compiler.stack_assign(input("Coat IOR"));
+  int coat_tint_offset = compiler.stack_assign(input("Coat Tint"));
   int ior_offset = compiler.stack_assign(input("IOR"));
   int transmission_offset = compiler.stack_assign(input("Transmission"));
   int anisotropic_rotation_offset = compiler.stack_assign(input("Anisotropic Rotation"));
@@ -2817,14 +2821,15 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler)
       compiler.encode_uchar4(
           specular_offset, roughness_offset, specular_tint_offset, anisotropic_offset),
       compiler.encode_uchar4(
-          sheen_offset, sheen_tint_offset, clearcoat_offset, clearcoat_roughness_offset));
+          sheen_offset, sheen_tint_offset, sheen_roughness_offset, SVM_STACK_INVALID));
 
   compiler.add_node(
       compiler.encode_uchar4(
-          ior_offset, transmission_offset, anisotropic_rotation_offset, subsurface_ior_offset),
+          ior_offset, transmission_offset, anisotropic_rotation_offset, coat_normal_offset),
       distribution,
       subsurface_method,
-      sheen_roughness_offset);
+      compiler.encode_uchar4(
+          coat_offset, coat_roughness_offset, coat_ior_offset, coat_tint_offset));
 
   float3 bc_default = get_float3(base_color_in->socket_type);
 
@@ -2834,7 +2839,7 @@ void PrincipledBsdfNode::compile(SVMCompiler &compiler)
       __float_as_int(bc_default.y),
       __float_as_int(bc_default.z));
 
-  compiler.add_node(clearcoat_normal_offset,
+  compiler.add_node(subsurface_ior_offset,
                     subsurface_radius_offset,
                     subsurface_scale_offset,
                     subsurface_anisotropy_offset);
