@@ -1,2 +1,3 @@
 Referenced by pull request #111928, Fix OPTIX_ROOT_DIR environment variable not working for setting up build
 Referenced by commit 526f935981fdf7a746cfaa58d2ac14e8a2269b2e, Fix broken OPTIX_ROOT_DIR environment variable for setting up build
+Referenced by issue #109399, Blender LTS: Maintenance Task 3.6
