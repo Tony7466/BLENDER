@@ -27,6 +27,8 @@ static inline bool openimagedenoise_supported()
 #endif
 }
 
+bool openimagedenoise_gpu_supported();
+
 CCL_NAMESPACE_END
 
 #endif /* __UTIL_OPENIMAGEDENOISE_H__ */

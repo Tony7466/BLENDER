@@ -34,6 +34,7 @@ class OIDN2Denoiser : public DenoiserGPU {
                               bool allow_inplace_modification) override;
 
   static bool is_device_supported(const DeviceInfo &device);
+  static bool is_device_type_supported(const DeviceType &type);
 
  protected:
   virtual uint get_device_type_mask() const override;
@@ -52,6 +53,8 @@ class OIDN2Denoiser : public DenoiserGPU {
 
   /* Run configured denoiser. */
   virtual bool denoise_run(const DenoiseContext &context, const DenoisePass &pass) override;
+
+  OIDNFilter create_filter();
 
   OIDNDevice oidn_device_ = nullptr;
   OIDNFilter oidn_filter_ = nullptr;

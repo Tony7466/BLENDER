@@ -17,6 +17,7 @@ set(SRC
   math_cdf.cpp
   md5.cpp
   murmurhash.cpp
+  openimagedenoise.cpp
   path.cpp
   profiling.cpp
   string.cpp

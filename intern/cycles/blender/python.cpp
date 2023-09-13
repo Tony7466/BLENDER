@@ -1035,7 +1035,7 @@ void *CCL_python_module_init()
 
   if (ccl::openimagedenoise_supported()) {
     PyModule_AddObject(mod, "with_openimagedenoise", Py_True);
-    if (ccl::Device::available_devices(ccl::DEVICE_MASK_ONEAPI).size() > 0) {
+    if (ccl::openimagedenoise_gpu_supported()) {
       PyModule_AddObject(mod, "with_openimagedenoise_gpu", Py_True);
     }
     else {
