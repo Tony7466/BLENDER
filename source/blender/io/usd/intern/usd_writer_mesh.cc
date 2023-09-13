@@ -758,17 +758,29 @@ void USDGenericMeshWriter::write_surface_velocity(const Mesh *mesh, pxr::UsdGeom
   usd_mesh.CreateVelocitiesAttr().Set(usd_velocities, timecode);
 }
 
-USDMeshWriter::USDMeshWriter(const USDExporterContext &ctx) : USDGenericMeshWriter(ctx) {}
-
-bool USDMeshWriter::exporting_skinned_mesh(const Object *obj) const
+USDMeshWriter::USDMeshWriter(const USDExporterContext &ctx)
+    : USDGenericMeshWriter(ctx), write_skinned_mesh_(false), write_blend_shapes_(false)
 {
-  return usd_export_context_.export_params.export_armatures &&
-         has_armature_modifier(obj, usd_export_context_.depsgraph);
 }
 
-bool USDMeshWriter::exporting_blend_shapes(const Object *obj) const
+void USDMeshWriter::set_skel_export_flags(const HierarchyContext &context)
 {
-  return obj && usd_export_context_.export_params.export_shapekeys && is_mesh_with_shape_keys(obj);
+  write_skinned_mesh_ = false;
+  write_blend_shapes_ = false;
+
+  ModifierQueryResult result = get_enabled_armature_modifier(context.object,
+                                                             usd_export_context_.depsgraph);
+
+  const USDExportParams &params = usd_export_context_.export_params;
+
+  /* We can write a skinned mesh if exporting armatures is enabled and the object has an enabled
+   * armature modifier and no other enabled modifiers of any type. */
+  write_skinned_mesh_ = params.export_armatures && result.first != nullptr && result.second == 1;
+
+  /* We can write blend shapes if exporting shape keys is enabled and the object has shape keys
+   * and we are either writing a skinned mesh or the object has no modifiers. */
+  write_blend_shapes_ = params.export_shapekeys && is_mesh_with_shape_keys(context.object) &&
+                        (write_skinned_mesh_ || result.second == 0);
 }
 
 void USDMeshWriter::init_skinned_mesh(const HierarchyContext &context)
@@ -873,13 +885,13 @@ void USDMeshWriter::init_blend_shapes(const HierarchyContext &context)
 
 void USDMeshWriter::do_write(HierarchyContext &context)
 {
-  const bool write_skinned_mesh = exporting_skinned_mesh(context.object);
-  const bool write_blend_shapes = exporting_blend_shapes(context.object);
+  set_skel_export_flags(context);
 
-  if (frame_has_been_written_ && (write_skinned_mesh || write_blend_shapes)) {
-    /* When writing skinned meshes or blend shapes, we only write the rest mesh once.
-     * However, we might update blend shape weights. */
-    if (write_blend_shapes) {
+  if (frame_has_been_written_ && (write_skinned_mesh_ || write_blend_shapes_)) {
+    /* When writing skinned meshes or blend shapes, we only write the rest mesh once,
+     * so we return early after the first frame has been written. However, we still
+     * update blend shape weights if needed. */
+    if (write_blend_shapes_) {
       add_shape_key_weights_sample(context.object);
     }
     return;
@@ -887,11 +899,11 @@ void USDMeshWriter::do_write(HierarchyContext &context)
 
   USDGenericMeshWriter::do_write(context);
 
-  if (write_skinned_mesh) {
+  if (write_skinned_mesh_) {
     init_skinned_mesh(context);
   }
 
-  if (write_blend_shapes) {
+  if (write_blend_shapes_) {
     init_blend_shapes(context);
     add_shape_key_weights_sample(context.object);
   }
@@ -899,14 +911,14 @@ void USDMeshWriter::do_write(HierarchyContext &context)
 
 Mesh *USDMeshWriter::get_export_mesh(Object *object_eval, bool &r_needsfree)
 {
-  if (exporting_blend_shapes(object_eval)) {
+  if (write_blend_shapes_) {
     r_needsfree = true;
     /* We return the pre-modified mesh with the verts in the shape key
      * basis positions. */
     return get_shape_key_basis_mesh(object_eval);
   }
 
-  if (exporting_skinned_mesh(object_eval)) {
+  if (write_skinned_mesh_) {
     r_needsfree = false;
     /* We must export the skinned mesh in its rest pose.  We therefore
      * return the pre-modified mesh, so that the armature modifier isn't
@@ -914,6 +926,7 @@ Mesh *USDMeshWriter::get_export_mesh(Object *object_eval, bool &r_needsfree)
     return BKE_object_get_pre_modified_mesh(object_eval);
   }
 
+  /* Return the fully evaluated mesh. */
   r_needsfree = false;
   return BKE_object_get_evaluated_mesh(object_eval);
 }

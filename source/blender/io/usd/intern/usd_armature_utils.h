@@ -9,6 +9,7 @@
 
 struct Bone;
 struct Depsgraph;
+struct ModifierData;
 struct Object;
 struct Scene;
 struct USDExportParams;
@@ -59,7 +60,19 @@ void create_pose_joints(pxr::UsdSkelAnimation &skel_anim, const Object *obj);
  * \param depsgraph: The dependency graph in which the object was evaluated
  * \return: True if the object has an enabled armature modifier, false otherwise
  */
-bool has_armature_modifier(const Object *obj, const Depsgraph *depsgraph);
+bool has_enabled_armature_modifier(const Object *obj, const Depsgraph *depsgraph);
+
+/* The result of querying an object for an enabled modifier of a given type.
+ *
+ * #ModifierQueryResult::first is the pointer to the modifier, or null if the modifier
+ * couldn't be found.
+ *
+ * #ModifierQueryResult::second is the total number of enabled modifiers of any type
+ * found on the object. */
+using ModifierQueryResult = std::pair<ModifierData *, int>;
+
+ModifierQueryResult get_enabled_armature_modifier(const Object *obj,
+                                                  const Depsgraph *depsgraph);
 
 /**
  * If the given object has an armature modifier, return the
@@ -80,5 +93,7 @@ const Object *get_armature_modifier_obj(const Object *obj);
  *          bone name is found or if the object does not have an armature modifier
  */
 bool is_armature_modifier_bone_name(const Object *obj, const char *name);
+
+bool can_export_skinned_mesh(const Object *obj, const Depsgraph *depsgraph);
 
 }  // namespace blender::io::usd

@@ -13,6 +13,8 @@
 
 #include "WM_api.hh"
 
+using namespace blender::io::usd;
+
 /* Recursively invoke the 'visitor' function on the given bone and its children. */
 static void visit_bones(const Bone *bone, std::function<void(const Bone *)> visitor)
 {
@@ -37,27 +39,40 @@ static ArmatureModifierData *get_armature_modifier(const Object *obj)
   return mod;
 }
 
-/* Return the enabled modifier of the given type on the given
- * object.  Return null if the modifier isn't found on the object
- * or if the modifier isn't enabled. */
-static ModifierData *get_enabled_modifier(const Object *obj,
-                                          const Depsgraph *depsgraph,
-                                          const ModifierType type)
+/**
+ * Return in #ModifierQueryResult the first enabled modifier of the given type
+ * on the given object (or null if the modifier isn't found) and the total number
+ * of enabled modifiers on the object.
+ */
+static ModifierQueryResult get_enabled_modifier(const Object *obj,
+                                                const Depsgraph *depsgraph,
+                                                const ModifierType type)
 {
-  if (!obj || !depsgraph) {
-    return nullptr;
-  }
+  BLI_assert(obj);
+  BLI_assert(depsgraph);
 
-  ModifierData *mod = BKE_modifiers_findby_type(obj, type);
-  if (!mod) {
-    return nullptr;
-  }
+  ModifierData *ret_md = nullptr;
 
   Scene *scene = DEG_get_input_scene(depsgraph);
   eEvaluationMode mode = DEG_get_mode(depsgraph);
 
-  return BKE_modifier_is_enabled(scene, mod, mode) ? mod : nullptr;
+  int num_enabled = 0;
+  LISTBASE_FOREACH (ModifierData *, md, &obj->modifiers) {
+
+    if (!BKE_modifier_is_enabled(scene, md, mode)) {
+      continue;
+    }
+
+    ++num_enabled;
+
+    if (!ret_md && md->type == type) {
+      ret_md = md;
+    }
+  }
+
+  return std::make_pair(ret_md, num_enabled);
 }
+
 
 namespace blender::io::usd {
 
@@ -117,17 +132,15 @@ void create_pose_joints(pxr::UsdSkelAnimation &skel_anim, const Object *obj)
   skel_anim.GetJointsAttr().Set(joints);
 }
 
-bool has_armature_modifier(const Object *obj, const Depsgraph *depsgraph)
+bool has_enabled_armature_modifier(const Object *obj, const Depsgraph *depsgraph)
 {
-  ModifierData *mod = get_enabled_modifier(obj, depsgraph, eModifierType_Armature);
+  return get_enabled_modifier(obj, depsgraph, eModifierType_Armature).first != nullptr;
+}
 
-  if (!mod) {
-    return false;
-  }
-
-  Scene *scene = DEG_get_input_scene(depsgraph);
-  eEvaluationMode mode = DEG_get_mode(depsgraph);
-  return BKE_modifier_is_enabled(scene, mod, mode);
+ModifierQueryResult get_enabled_armature_modifier(const Object *obj,
+                                                  const Depsgraph *depsgraph)
+{
+  return get_enabled_modifier(obj, depsgraph, eModifierType_Armature);
 }
 
 const Object *get_armature_modifier_obj(const Object *obj)
@@ -150,6 +163,15 @@ bool is_armature_modifier_bone_name(const Object *obj, const char *name)
   bArmature *arm = (bArmature *)arm_mod->object->data;
 
   return BKE_armature_find_bone_name(arm, name);
+}
+
+bool can_export_skinned_mesh(const Object *obj, const Depsgraph *depsgraph)
+{
+  ModifierQueryResult result = get_enabled_armature_modifier(obj, depsgraph);
+
+  /* We can export a skinned mesh if the object has an enabled
+   * armature modifier and no other enabled modifiers. */
+  return result.first != nullptr && result.second == 1;
 }
 
 }  // namespace blender::io::usd

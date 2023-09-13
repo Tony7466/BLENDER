@@ -62,6 +62,9 @@ class USDGenericMeshWriter : public USDAbstractWriter {
 };
 
 class USDMeshWriter : public USDGenericMeshWriter {
+  bool write_skinned_mesh_;
+  bool write_blend_shapes_;
+
  public:
   USDMeshWriter(const USDExporterContext &ctx);
 
@@ -71,14 +74,10 @@ class USDMeshWriter : public USDGenericMeshWriter {
   virtual Mesh *get_export_mesh(Object *object_eval, bool &r_needsfree) override;
 
   /**
-   * Return true if the object is to be written as a USD skinned mesh.
+   * Determine whether we should write skinned mesh or blend shape data
+   * based on the export parameters and the modifiers enabled on the object.
    */
-  bool exporting_skinned_mesh(const Object *obj) const;
-
-  /**
-   * Return true if the object is to be written with USD blend shapes.
-   */
-  bool exporting_blend_shapes(const Object *obj) const;
+  void set_skel_export_flags(const HierarchyContext &context);
 
   void init_skinned_mesh(const HierarchyContext &context);
   void init_blend_shapes(const HierarchyContext &context);
