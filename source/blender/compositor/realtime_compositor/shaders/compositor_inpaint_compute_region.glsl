@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /* Fill the inpainting region by sampling the color of the nearest boundary pixel if it is not
- * further than the user supplied distance. Additionally, apply a lateral blur in the direction
- * tangent to the inpainting boundary to smooth out the inpainted region. */
+ * further than the user supplied distance. Additionally, apply a lateral blur in the tangential
+ * path to the inpainting boundary to smooth out the inpainted region. */
 
 #pragma BLENDER_REQUIRE(gpu_shader_compositor_texture_utilities.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_compositor_jump_flooding_lib.glsl)
@@ -30,38 +30,41 @@ void main()
     return;
   }
 
-  /* Compute the normalized tangent to the nearest boundary point. */
-  ivec2 boundary_texel = extract_jump_flooding_closest_seed_texel(flooding_value);
-  vec2 tangent = normalize(vec2((texel - boundary_texel).yx * ivec2(-1, 1)));
-
-  float accumulated_weight = 0.0;
-  vec4 accumulated_color = vec4(0.0);
-
-  /* Accumulate the contribution of the boundary pixel as the center pixel. */
-  float weight = texture(gaussian_weights_tx, 0.0).x;
-  accumulated_color += texture_load(input_tx, boundary_texel) * weight;
-  accumulated_weight += weight;
-
   /* We set the blur radius to be proportional to the distance to the boundary. */
   int blur_radius = int(ceil(distance_to_boundary));
 
-  /* Accumulate the contributions of the boundary pixels nearest to the pixels to the left and
-   * right in the direction of the tangent, noting that the weights texture only stores the weights
-   * for the positive half, but since the Gaussian is symmetric, the same weight is used for the
-   * negative half and we add both of their contributions. */
-  for (int i = 1; i < blur_radius; i++) {
-    /* Notice that the weight is used fro both the left and right contributions, hence the multiply
-     * by two. */
-    weight = texture(gaussian_weights_tx, float(i / (blur_radius - 1))).x;
-    accumulated_weight += weight * 2.0;
+  /* Laterally blur by accumulate the boundary pixels nearest to the pixels along the tangential
+   * path in both directions starting from the current pixel, noting that the weights texture only
+   * stores the weights for the left half, but since the Gaussian is symmetric, the same weight is
+   * used for the right half and we add both of their contributions. */
+  vec2 left_texel = vec2(texel);
+  vec2 right_texel = vec2(texel);
+  float accumulated_weight = 0.0;
+  vec4 accumulated_color = vec4(0.0);
+  for (int i = 0; i < blur_radius; i++) {
+    float weight = texture(gaussian_weights_tx, float(i / (blur_radius - 1))).x;
 
-    flooding_value = texture_load(flooded_boundary_tx, ivec2(vec2(texel) + tangent * i));
-    boundary_texel = extract_jump_flooding_closest_seed_texel(flooding_value);
-    accumulated_color += texture_load(input_tx, boundary_texel) * weight;
+    {
+      vec4 flooding_value = texture_load(flooded_boundary_tx, ivec2(left_texel));
+      ivec2 boundary_texel = extract_jump_flooding_closest_seed_texel(flooding_value);
+      accumulated_color += texture_load(input_tx, boundary_texel) * weight;
+      accumulated_weight += weight;
 
-    flooding_value = texture_load(flooded_boundary_tx, ivec2(vec2(texel) - tangent * i));
-    boundary_texel = extract_jump_flooding_closest_seed_texel(flooding_value);
-    accumulated_color += texture_load(input_tx, boundary_texel) * weight;
+      /* Move the left texel one pixel in the clockwise tangent to the boundary. */
+      left_texel += normalize((left_texel - boundary_texel).yx * vec2(-1.0, 1.0));
+    }
+
+    /* When i is zero, we are accumulating the center pixel, which was already accumulated as the
+     * left texel above, so no need to accumulate it again. */
+    if (i != 0) {
+      vec4 flooding_value = texture_load(flooded_boundary_tx, ivec2(right_texel));
+      ivec2 boundary_texel = extract_jump_flooding_closest_seed_texel(flooding_value);
+      accumulated_color += texture_load(input_tx, boundary_texel) * weight;
+      accumulated_weight += weight;
+
+      /* Move the left texel one pixel in the anti-clockwise tangent to the boundary. */
+      right_texel += normalize((right_texel - boundary_texel).yx * vec2(1.0, -1.0));
+    }
   }
 
   imageStore(output_img, texel, accumulated_color / accumulated_weight);
