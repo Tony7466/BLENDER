@@ -536,8 +536,8 @@ class NodeInterfaceIterator {
   const bNode &node_;
 
   int decl_index_;
-  bNodeSocket *input_;
-  bNodeSocket *output_;
+  blender::Span<bNodeSocket *>::iterator input_;
+  blender::Span<bNodeSocket *>::iterator output_;
   bNodePanelState *panel_state_;
   bke::bNodePanelRuntime *panel_runtime_;
 
@@ -545,8 +545,8 @@ class NodeInterfaceIterator {
   NodeInterfaceIterator(bNode &node)
       : node_(node),
         decl_index_(0),
-        input_(static_cast<bNodeSocket *>(node.inputs.first)),
-        output_(static_cast<bNodeSocket *>(node.outputs.first)),
+        input_(node.input_sockets().begin()),
+        output_(node.output_sockets().begin()),
         panel_state_(node.panel_states_array),
         panel_runtime_(node.runtime->panels.begin())
   {
@@ -579,14 +579,14 @@ class NodeInterfaceIterator {
     NodeInterfaceSocketData result = {socket_decl, nullptr, nullptr};
     switch (socket_decl->in_out) {
       case SOCK_IN:
-        BLI_assert(input_ != nullptr);
-        result.input = input_;
-        input_ = input_->next;
+        BLI_assert(input_ != node_.input_sockets().end());
+        result.input = *input_;
+        ++input_;
         break;
       case SOCK_OUT:
-        BLI_assert(output_ != nullptr);
-        result.output = output_;
-        output_ = output_->next;
+        BLI_assert(output_ != node_.output_sockets().end());
+        result.output = *output_;
+        ++output_;
         break;
     }
     ++decl_index_;
@@ -595,14 +595,16 @@ class NodeInterfaceIterator {
       switch (next_socket_decl->in_out) {
         case SOCK_IN:
           if (input_) {
-            result.input = input_;
-            input_ = input_->next;
+            BLI_assert(input_ != node_.input_sockets().end());
+            result.input = *input_;
+            ++input_;
           }
           break;
         case SOCK_OUT:
           if (output_) {
-            result.output = output_;
-            output_ = output_->next;
+            BLI_assert(output_ != node_.output_sockets().end());
+            result.output = *output_;
+            ++output_;
           }
           break;
       }
