@@ -3602,9 +3602,8 @@ static int text_insert_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     if (U.text_flag & USER_TEXT_EDIT_AUTO_CLOSE) {
       auto_close_char = BLI_str_utf8_as_unicode(str);
 
-      if (txt_has_sel(st->text) &&
-          !text_span_is_blank(st->text->sell, st->text->selc, st->text->curl, st->text->curc) &&
-          text_closing_character_pair_get(auto_close_char) != 0)
+      if (txt_has_sel(st->text) && text_closing_character_pair_get(auto_close_char) != 0 &&
+          !text_span_is_blank(st->text->sell, st->text->selc, st->text->curl, st->text->curc))
       {
         auto_close_select.sell = st->text->sell;
         auto_close_select.curl = st->text->curl;
