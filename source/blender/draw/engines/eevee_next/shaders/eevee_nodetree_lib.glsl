@@ -166,11 +166,11 @@ Closure closure_eval(ClosureDiffuse diffuse, ClosureReflection reflection)
   return Closure(0);
 }
 
-/* ClearCoat BSDF. */
-Closure closure_eval(ClosureReflection reflection, ClosureReflection clearcoat)
+/* Coat BSDF. */
+Closure closure_eval(ClosureReflection reflection, ClosureReflection coat)
 {
   SELECT_CLOSURE(g_reflection_data, g_reflection_rand, reflection);
-  SELECT_CLOSURE(g_reflection_data, g_reflection_rand, clearcoat);
+  SELECT_CLOSURE(g_reflection_data, g_reflection_rand, coat);
   return Closure(0);
 }
 
@@ -186,30 +186,28 @@ Closure closure_eval(ClosureVolumeScatter volume_scatter,
 }
 
 /* Specular BSDF. */
-Closure closure_eval(ClosureDiffuse diffuse,
-                     ClosureReflection reflection,
-                     ClosureReflection clearcoat)
+Closure closure_eval(ClosureDiffuse diffuse, ClosureReflection reflection, ClosureReflection coat)
 {
   SELECT_CLOSURE(g_diffuse_data, g_diffuse_rand, diffuse);
   SELECT_CLOSURE(g_reflection_data, g_reflection_rand, reflection);
-  SELECT_CLOSURE(g_reflection_data, g_reflection_rand, clearcoat);
+  SELECT_CLOSURE(g_reflection_data, g_reflection_rand, coat);
   return Closure(0);
 }
 
 /* Principled BSDF. */
 Closure closure_eval(ClosureDiffuse diffuse,
                      ClosureReflection reflection,
-                     ClosureReflection clearcoat,
+                     ClosureReflection coat,
                      ClosureRefraction refraction)
 {
   SELECT_CLOSURE(g_diffuse_data, g_diffuse_rand, diffuse);
   SELECT_CLOSURE(g_reflection_data, g_reflection_rand, reflection);
-  SELECT_CLOSURE(g_reflection_data, g_reflection_rand, clearcoat);
+  SELECT_CLOSURE(g_reflection_data, g_reflection_rand, coat);
   SELECT_CLOSURE(g_refraction_data, g_refraction_rand, refraction);
   return Closure(0);
 }
 
-/* Noop since we are sampling closures. */
+/* NOP since we are sampling closures. */
 Closure closure_add(Closure cl1, Closure cl2)
 {
   return Closure(0);
@@ -256,23 +254,6 @@ float nodetree_thickness();
 vec4 closure_to_rgba(Closure cl);
 #endif
 
-/* Fresnel monochromatic, perfect mirror */
-float F_eta(float eta, float cos_theta)
-{
-  /* Compute fresnel reflectance without explicitly computing
-   * the refracted direction. */
-  float c = abs(cos_theta);
-  float g = eta * eta - 1.0 + c * c;
-  if (g > 0.0) {
-    g = sqrt(g);
-    float A = (g - c) / (g + c);
-    float B = (c * (g + c) - 1.0) / (c * (g - c) + 1.0);
-    return 0.5 * A * A * (1.0 + B * B);
-  }
-  /* Total internal reflections. */
-  return 1.0;
-}
-
 /* Simplified form of F_eta(eta, 1.0). */
 float F0_from_ior(float eta)
 {
@@ -299,7 +280,7 @@ vec3 F_brdf_multi_scatter(vec3 f0, vec3 f90, vec2 lut)
 
   /* The original paper uses `FssEss * radiance + Fms*Ems * irradiance`, but
    * "A Journey Through Implementing Multiscattering BRDFs and Area Lights" by Steve McAuley
-   * suggests to use `FssEss * radiance + Fms*Ems * radiance` which results in comparible quality.
+   * suggests to use `FssEss * radiance + Fms*Ems * radiance` which results in comparable quality.
    * We handle `radiance` outside of this function, so the result simplifies to:
    * `FssEss + Fms*Ems = FssEss * (1 + Ems*Favg / (1 - Ems*Favg)) = FssEss / (1 - Ems*Favg)`.
    * This is a simple albedo scaling very similar to the approach used by Cycles:
@@ -316,7 +297,7 @@ vec2 brdf_lut(float cos_theta, float roughness)
 #endif
 }
 
-vec2 btdf_lut(float cos_theta, float roughness, float ior)
+vec2 btdf_lut(float cos_theta, float roughness, float ior, float do_multiscatter)
 {
   if (ior <= 1e-5) {
     return vec2(0.0);
@@ -325,16 +306,16 @@ vec2 btdf_lut(float cos_theta, float roughness, float ior)
   if (ior >= 1.0) {
     vec2 split_sum = brdf_lut(cos_theta, roughness);
     float f0 = F0_from_ior(ior);
-    /* Baked IOR for GGX BRDF. */
-    const float specular = 1.0;
-    const float eta_brdf = (2.0 / (1.0 - sqrt(0.08 * specular))) - 1.0;
-    /* Avoid harsh transition coming from ior == 1. */
-    float f90 = fast_sqrt(saturate(f0 / (F0_from_ior(eta_brdf) * 0.25)));
-    float fresnel = F_brdf_single_scatter(vec3(f0), vec3(f90), split_sum).r;
-    /* Setting the BTDF to one is not really important since it is only used for multi-scatter
-     * and it's already quite close to ground truth. */
-    float btdf = 1.0;
-    return vec2(btdf, fresnel);
+    /* Gradually increase `f90` from 0 to 1 when IOR is in the range of [1.0, 1.33], to avoid harsh
+     * transition at `IOR == 1`. */
+    float f90 = fast_sqrt(saturate(f0 / 0.02));
+
+    float brdf = F_brdf_multi_scatter(vec3(f0), vec3(f90), split_sum).r;
+    /* Energy conservation. */
+    float btdf = 1.0 - brdf;
+    /* Assuming the energy loss caused by single-scattering is distributed proportionally in the
+     * reflection and refraction lobes. */
+    return vec2(btdf, brdf) * ((do_multiscatter == 0.0) ? sum(split_sum) : 1.0);
   }
 
   /* IOR is sin of critical angle. */
@@ -355,11 +336,18 @@ vec2 btdf_lut(float cos_theta, float roughness, float ior)
 
 #ifdef EEVEE_UTILITY_TX
   coords.z = UTIL_BTDF_LAYER + layer_floored;
-  vec2 btdf_low = utility_tx_sample_lut(utility_tx, coords.xy, coords.z).rg;
-  vec2 btdf_high = utility_tx_sample_lut(utility_tx, coords.xy, coords.z + 1.0).rg;
+  vec2 btdf_brdf_low = utility_tx_sample_lut(utility_tx, coords.xy, coords.z).rg;
+  vec2 btdf_brdf_high = utility_tx_sample_lut(utility_tx, coords.xy, coords.z + 1.0).rg;
   /* Manual trilinear interpolation. */
-  vec2 btdf = mix(btdf_low, btdf_high, layer - layer_floored);
-  return btdf;
+  vec2 btdf_brdf = mix(btdf_brdf_low, btdf_brdf_high, layer - layer_floored);
+
+  if (do_multiscatter != 0.0) {
+    /* For energy-conserving BSDF the reflection and refraction lobes should sum to one. Assuming
+     * the energy loss of single-scattering is distributed proportionally in the two lobes. */
+    btdf_brdf /= (btdf_brdf.x + btdf_brdf.y);
+  }
+
+  return btdf_brdf;
 #else
   return vec2(0.0);
 #endif
@@ -388,11 +376,11 @@ void output_renderpass_value(int id, float value)
 void clear_aovs()
 {
 #if defined(MAT_RENDER_PASS_SUPPORT) && defined(GPU_FRAGMENT_SHADER)
-  for (int i = 0; i < AOV_MAX && i < rp_buf.aovs.color_len; i++) {
-    output_renderpass_color(rp_buf.color_len + i, vec4(0));
+  for (int i = 0; i < AOV_MAX && i < uniform_buf.render_pass.aovs.color_len; i++) {
+    output_renderpass_color(uniform_buf.render_pass.color_len + i, vec4(0));
   }
-  for (int i = 0; i < AOV_MAX && i < rp_buf.aovs.value_len; i++) {
-    output_renderpass_value(rp_buf.value_len + i, 0.0);
+  for (int i = 0; i < AOV_MAX && i < uniform_buf.render_pass.aovs.value_len; i++) {
+    output_renderpass_value(uniform_buf.render_pass.value_len + i, 0.0);
   }
 #endif
 }
@@ -400,15 +388,19 @@ void clear_aovs()
 void output_aov(vec4 color, float value, uint hash)
 {
 #if defined(MAT_RENDER_PASS_SUPPORT) && defined(GPU_FRAGMENT_SHADER)
-  for (int i = 0; i < AOV_MAX && i < rp_buf.aovs.color_len; i++) {
-    if (rp_buf.aovs.hash_color[i].x == hash) {
-      imageStore(rp_color_img, ivec3(ivec2(gl_FragCoord.xy), rp_buf.color_len + i), color);
+  for (int i = 0; i < AOV_MAX && i < uniform_buf.render_pass.aovs.color_len; i++) {
+    if (uniform_buf.render_pass.aovs.hash_color[i].x == hash) {
+      imageStore(rp_color_img,
+                 ivec3(ivec2(gl_FragCoord.xy), uniform_buf.render_pass.color_len + i),
+                 color);
       return;
     }
   }
-  for (int i = 0; i < AOV_MAX && i < rp_buf.aovs.value_len; i++) {
-    if (rp_buf.aovs.hash_value[i].x == hash) {
-      imageStore(rp_value_img, ivec3(ivec2(gl_FragCoord.xy), rp_buf.value_len + i), vec4(value));
+  for (int i = 0; i < AOV_MAX && i < uniform_buf.render_pass.aovs.value_len; i++) {
+    if (uniform_buf.render_pass.aovs.hash_value[i].x == hash) {
+      imageStore(rp_value_img,
+                 ivec3(ivec2(gl_FragCoord.xy), uniform_buf.render_pass.value_len + i),
+                 vec4(value));
       return;
     }
   }
@@ -507,7 +499,7 @@ vec3 coordinate_screen(vec3 P)
   else {
     /* TODO(fclem): Actual camera transform. */
     window.xy = project_point(ProjectionMatrix, transform_point(ViewMatrix, P)).xy * 0.5 + 0.5;
-    window.xy = window.xy * camera_buf.uv_scale + camera_buf.uv_bias;
+    window.xy = window.xy * uniform_buf.camera.uv_scale + uniform_buf.camera.uv_bias;
   }
   return window;
 }
@@ -561,7 +553,7 @@ vec4 attr_load_color_post(vec4 attr)
   return attr;
 }
 
-#else /* Noop for any other surface. */
+#else /* NOP for any other surface. */
 
 float attr_load_temperature_post(float attr)
 {

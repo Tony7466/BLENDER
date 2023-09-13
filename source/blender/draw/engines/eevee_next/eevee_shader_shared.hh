@@ -83,6 +83,17 @@ enum eDebugMode : uint32_t {
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Look-Up Table Generation
+ * \{ */
+
+enum PrecomputeType : uint32_t {
+  LUT_GGX_BRDF_SPLIT_SUM = 0u,
+  LUT_GGX_BTDF_SPLIT_SUM = 1u,
+};
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Sampling
  * \{ */
 
@@ -229,10 +240,12 @@ BLI_STATIC_ASSERT_ALIGN(FilmSample, 16)
 struct FilmData {
   /** Size of the film in pixels. */
   int2 extent;
-  /** Offset of the film in the full-res frame, in pixels. */
+  /** Offset to convert from Display space to Film space, in pixels. */
   int2 offset;
-  /** Extent used by the render buffers when rendering the main views. */
+  /** Size of the render buffers when rendering the main views, in pixels. */
   int2 render_extent;
+  /** Offset to convert from Film space to Render space, in pixels. */
+  int2 render_offset;
   /**
    * Sub-pixel offset applied to the window matrix.
    * NOTE: In final film pixel unit.
@@ -254,12 +267,13 @@ struct FilmData {
   bool1 any_render_pass_2;
   /** Controlled by user in lookdev mode or by render settings. */
   float background_opacity;
-  float _pad0;
+  float _pad0, _pad1;
   /** Output counts per type. */
   int color_len, value_len;
   /** Index in color_accum_img or value_accum_img of each pass. -1 if pass is not enabled. */
   int mist_id;
   int normal_id;
+  int position_id;
   int vector_id;
   int diffuse_light_id;
   int diffuse_color_id;
@@ -351,6 +365,7 @@ struct RenderBuffersInfoData {
   /* Color. */
   int color_len;
   int normal_id;
+  int position_id;
   int diffuse_light_id;
   int diffuse_color_id;
   int specular_light_id;
@@ -362,6 +377,7 @@ struct RenderBuffersInfoData {
   int value_len;
   int shadow_id;
   int ambient_occlusion_id;
+  int _pad0, _pad1, _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(RenderBuffersInfoData, 16)
 
@@ -392,11 +408,14 @@ struct VelocityObjectIndex {
 BLI_STATIC_ASSERT_ALIGN(VelocityObjectIndex, 16)
 
 struct VelocityGeometryIndex {
-  /** Offset inside #VelocityGeometryBuf for each timestep. Indexed using eVelocityStep. */
+  /** Offset inside #VelocityGeometryBuf for each time-step. Indexed using eVelocityStep. */
   packed_int3 ofs;
   /** If true, compute deformation motion blur. */
   bool1 do_deform;
-  /** Length of data inside #VelocityGeometryBuf for each timestep. Indexed using eVelocityStep. */
+  /**
+   * Length of data inside #VelocityGeometryBuf for each time-step.
+   * Indexed using eVelocityStep.
+   */
   packed_int3 len;
 
   int _pad0;
@@ -459,6 +478,8 @@ struct VolumesInfoData {
   packed_int3 tex_size;
   float light_clamp;
   packed_float3 inv_tex_size;
+  int tile_size;
+  int tile_size_lod;
   float shadow_steps;
   bool1 use_lights;
   bool1 use_soft_shadows;
@@ -466,8 +487,6 @@ struct VolumesInfoData {
   float depth_far;
   float depth_distribution;
   float _pad0;
-  float _pad1;
-  float _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(VolumesInfoData, 16)
 
@@ -848,9 +867,9 @@ struct ShadowPagesInfoData {
   int page_alloc_count;
   /** Index of the next cache page in the cached page buffer. */
   uint page_cached_next;
-  /** Index of the first page in the buffer since the last defrag. */
+  /** Index of the first page in the buffer since the last defragment. */
   uint page_cached_start;
-  /** Index of the last page in the buffer since the last defrag. */
+  /** Index of the last page in the buffer since the last defragment. */
   uint page_cached_end;
 
   int _pad0;
@@ -1023,6 +1042,11 @@ struct CaptureInfoData {
   int scene_bound_x_max;
   int scene_bound_y_max;
   int scene_bound_z_max;
+  /* Max intensity a ray can have. */
+  float clamp_direct;
+  float clamp_indirect;
+  float _pad1;
+  float _pad2;
   /** Minimum distance between a grid sample and a surface. Used to compute virtual offset. */
   float min_distance_to_surface;
   /** Maximum world scale offset an irradiance grid sample can be baked with. */
@@ -1143,6 +1167,9 @@ struct RayTraceData {
   bool1 skip_denoise;
   /** Closure being ray-traced. */
   eClosureBits closure_active;
+  int _pad0;
+  int _pad1;
+  int _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(RayTraceData, 16)
 
@@ -1229,6 +1256,25 @@ BLI_STATIC_ASSERT_ALIGN(ReflectionProbeData, 16)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Uniform Data
+ * \{ */
+
+/* Combines data from several modules to avoid wasting binding slots. */
+struct UniformData {
+  AOData ao;
+  CameraData camera;
+  FilmData film;
+  HiZData hiz;
+  RayTraceData raytrace;
+  RenderBuffersInfoData render_pass;
+  SubsurfaceData subsurface;
+  VolumesInfoData volumes;
+};
+BLI_STATIC_ASSERT_ALIGN(UniformData, 16)
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Utility Texture
  * \{ */
 
@@ -1275,7 +1321,7 @@ float4 utility_tx_sample_lut(sampler2DArray util_tx, float cos_theta, float roug
 {
   /* LUTs are parameterized by `sqrt(1.0 - cos_theta)` for more precision near grazing incidence.
    */
-  vec2 coords = vec2(roughness, sqrt(saturate(1.0 - cos_theta)));
+  vec2 coords = vec2(roughness, sqrt(clamp(1.0 - cos_theta, 0.0, 1.0)));
   return utility_tx_sample_lut(util_tx, coords, layer);
 }
 
@@ -1292,8 +1338,7 @@ using DepthOfFieldDataBuf = draw::UniformBuffer<DepthOfFieldData>;
 using DepthOfFieldScatterListBuf = draw::StorageArrayBuffer<ScatterRect, 16, true>;
 using DrawIndirectBuf = draw::StorageBuffer<DrawCommand, true>;
 using DispatchIndirectBuf = draw::StorageBuffer<DispatchCommand>;
-using FilmDataBuf = draw::UniformBuffer<FilmData>;
-using HiZDataBuf = draw::UniformBuffer<HiZData>;
+using UniformDataBuf = draw::UniformBuffer<UniformData>;
 using IrradianceGridDataBuf = draw::UniformArrayBuffer<IrradianceGridData, IRRADIANCE_GRID_MAX>;
 using IrradianceBrickBuf = draw::StorageVectorBuffer<IrradianceBrickPacked, 16>;
 using LightCullingDataBuf = draw::StorageBuffer<LightCullingData>;
@@ -1305,7 +1350,6 @@ using LightDataBuf = draw::StorageArrayBuffer<LightData, LIGHT_CHUNK>;
 using MotionBlurDataBuf = draw::UniformBuffer<MotionBlurData>;
 using MotionBlurTileIndirectionBuf = draw::StorageBuffer<MotionBlurTileIndirection, true>;
 using RayTraceTileBuf = draw::StorageArrayBuffer<uint, 1024, true>;
-using RayTraceDataBuf = draw::UniformBuffer<RayTraceData>;
 using ReflectionProbeDataBuf =
     draw::UniformArrayBuffer<ReflectionProbeData, REFLECTION_PROBES_MAX>;
 using SamplingDataBuf = draw::StorageBuffer<SamplingData>;
@@ -1316,7 +1360,6 @@ using ShadowPageCacheBuf = draw::StorageArrayBuffer<uint2, SHADOW_MAX_PAGE, true
 using ShadowTileMapDataBuf = draw::StorageVectorBuffer<ShadowTileMapData, SHADOW_MAX_TILEMAP>;
 using ShadowTileMapClipBuf = draw::StorageArrayBuffer<ShadowTileMapClip, SHADOW_MAX_TILEMAP, true>;
 using ShadowTileDataBuf = draw::StorageArrayBuffer<ShadowTileDataPacked, SHADOW_MAX_TILE, true>;
-using SubsurfaceDataBuf = draw::UniformBuffer<SubsurfaceData>;
 using SurfelBuf = draw::StorageArrayBuffer<Surfel, 64>;
 using SurfelRadianceBuf = draw::StorageArrayBuffer<SurfelRadiance, 64>;
 using CaptureInfoBuf = draw::StorageBuffer<CaptureInfoData>;
@@ -1324,9 +1367,7 @@ using SurfelListInfoBuf = draw::StorageBuffer<SurfelListInfoData>;
 using VelocityGeometryBuf = draw::StorageArrayBuffer<float4, 16, true>;
 using VelocityIndexBuf = draw::StorageArrayBuffer<VelocityIndex, 16>;
 using VelocityObjectBuf = draw::StorageArrayBuffer<float4x4, 16>;
-using VolumesInfoDataBuf = draw::UniformBuffer<VolumesInfoData>;
 using CryptomatteObjectBuf = draw::StorageArrayBuffer<float2, 16>;
-using AODataBuf = draw::UniformBuffer<AOData>;
 
 }  // namespace blender::eevee
 #endif
