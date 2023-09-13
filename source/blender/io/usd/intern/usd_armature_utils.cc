@@ -29,50 +29,43 @@ static void visit_bones(const Bone *bone, std::function<void(const Bone *)> visi
   }
 }
 
-/* Return the armature modifier on the given object.  Return null if no
- * armature modifier can be found. */
-static ArmatureModifierData *get_armature_modifier(const Object *obj)
-{
-  BLI_assert(obj);
-  ArmatureModifierData *mod = reinterpret_cast<ArmatureModifierData *>(
-      BKE_modifiers_findby_type(obj, eModifierType_Armature));
-  return mod;
-}
-
 /**
- * Return in #ModifierQueryResult the first enabled modifier of the given type
- * on the given object (or null if the modifier isn't found) and the total number
- * of enabled modifiers on the object.
+ * Return the modifier of the given type enabled for the given dependency graph's
+ * evaluation mode (viewport or render).
  */
-static ModifierQueryResult get_enabled_modifier(const Object *obj,
-                                                const Depsgraph *depsgraph,
-                                                const ModifierType type)
+static ModifierData *get_enabled_modifier(const Object *obj,
+                                          ModifierType type,
+                                          const Depsgraph *depsgraph)
 {
   BLI_assert(obj);
   BLI_assert(depsgraph);
 
-  ModifierData *ret_md = nullptr;
-
   Scene *scene = DEG_get_input_scene(depsgraph);
   eEvaluationMode mode = DEG_get_mode(depsgraph);
 
-  int num_enabled = 0;
   LISTBASE_FOREACH (ModifierData *, md, &obj->modifiers) {
 
     if (!BKE_modifier_is_enabled(scene, md, mode)) {
       continue;
     }
 
-    ++num_enabled;
-
-    if (!ret_md && md->type == type) {
-      ret_md = md;
+    if (md->type == type) {
+      return md;
     }
   }
 
-  return std::make_pair(ret_md, num_enabled);
+  return nullptr;
 }
 
+/* Return the armature modifier on the given object.  Return null if no armature modifier
+ * can be found. */
+static ArmatureModifierData *get_armature_modifier(const Object *obj, const Depsgraph *depsgraph)
+{
+  BLI_assert(obj);
+  ArmatureModifierData *mod = reinterpret_cast<ArmatureModifierData *>(
+      get_enabled_modifier(obj, eModifierType_Armature, depsgraph));
+  return mod;
+}
 
 namespace blender::io::usd {
 
@@ -132,29 +125,20 @@ void create_pose_joints(pxr::UsdSkelAnimation &skel_anim, const Object *obj)
   skel_anim.GetJointsAttr().Set(joints);
 }
 
-bool has_enabled_armature_modifier(const Object *obj, const Depsgraph *depsgraph)
+const Object *get_armature_modifier_obj(const Object *obj, const Depsgraph *depsgraph)
 {
-  return get_enabled_modifier(obj, depsgraph, eModifierType_Armature).first != nullptr;
-}
-
-ModifierQueryResult get_enabled_armature_modifier(const Object *obj,
-                                                  const Depsgraph *depsgraph)
-{
-  return get_enabled_modifier(obj, depsgraph, eModifierType_Armature);
-}
-
-const Object *get_armature_modifier_obj(const Object *obj)
-{
-  const ArmatureModifierData *mod = get_armature_modifier(obj);
+  const ArmatureModifierData *mod = get_armature_modifier(obj, depsgraph);
   return mod ? mod->object : nullptr;
 }
 
-bool is_armature_modifier_bone_name(const Object *obj, const char *name)
+bool is_armature_modifier_bone_name(const Object *obj,
+                                    const char *name,
+                                    const Depsgraph *depsgraph)
 {
   if (!obj || !name) {
     return false;
   }
-  const ArmatureModifierData *arm_mod = get_armature_modifier(obj);
+  const ArmatureModifierData *arm_mod = get_armature_modifier(obj, depsgraph);
 
   if (!arm_mod || !arm_mod->object || !arm_mod->object->data) {
     return false;
@@ -167,11 +151,33 @@ bool is_armature_modifier_bone_name(const Object *obj, const char *name)
 
 bool can_export_skinned_mesh(const Object *obj, const Depsgraph *depsgraph)
 {
-  ModifierQueryResult result = get_enabled_armature_modifier(obj, depsgraph);
+  Vector<ModifierData *> mods = get_enabled_modifiers(obj, depsgraph);
 
   /* We can export a skinned mesh if the object has an enabled
    * armature modifier and no other enabled modifiers. */
-  return result.first != nullptr && result.second == 1;
+  return mods.size() == 1 && mods.first()->type == eModifierType_Armature;
+}
+
+Vector<ModifierData *> get_enabled_modifiers(const Object *obj, const Depsgraph *depsgraph)
+{
+  BLI_assert(obj);
+  BLI_assert(depsgraph);
+
+  blender::Vector<ModifierData *> result;
+
+  Scene *scene = DEG_get_input_scene(depsgraph);
+  eEvaluationMode mode = DEG_get_mode(depsgraph);
+
+  LISTBASE_FOREACH (ModifierData *, md, &obj->modifiers) {
+
+    if (!BKE_modifier_is_enabled(scene, md, mode)) {
+      continue;
+    }
+
+    result.append(md);
+  }
+
+  return result;
 }
 
 }  // namespace blender::io::usd

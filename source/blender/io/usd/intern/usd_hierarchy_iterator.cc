@@ -68,8 +68,11 @@ std::string USDHierarchyIterator::make_valid_name(const std::string &name) const
 
 void USDHierarchyIterator::process_usd_skel() const
 {
-  skel_export_chaser(
-      stage_, armature_export_map_, skinned_mesh_export_map_, shape_key_mesh_export_map_);
+  skel_export_chaser(stage_,
+                     armature_export_map_,
+                     skinned_mesh_export_map_,
+                     shape_key_mesh_export_map_,
+                     depsgraph_);
 
   create_skel_roots(stage_, params_);
 }
@@ -193,7 +196,8 @@ void USDHierarchyIterator::add_usd_skel_export_mapping(const Object *obj, const 
     armature_export_map_.insert(std::make_pair(obj, path));
   }
 
-  if (params_.export_armatures && obj->type == OB_MESH && can_export_skinned_mesh(obj, depsgraph_)) {
+  if (params_.export_armatures && obj->type == OB_MESH && can_export_skinned_mesh(obj, depsgraph_))
+  {
     skinned_mesh_export_map_.insert(std::make_pair(obj, path));
   }
 }

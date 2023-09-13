@@ -9,6 +9,7 @@
 #include <pxr/usd/usdSkel/bindingAPI.h>
 #include <pxr/usd/usdSkel/skeletonQuery.h>
 
+struct Depsgraph;
 struct Key;
 struct Main;
 struct Mesh;
@@ -85,11 +86,13 @@ using ObjExportMap = std::map<const Object *, pxr::SdfPath>;
  * \param skinned_mesh_export_map: Map mesh objects to USD skinned meshes
  * \param shape_key_export_map: Map mesh objects with shape keye to USD meshes
  *                              with blend shape targets
+ * \param depsgraph: The dependency graph in which objects were evaluated
  */
 void skel_export_chaser(pxr::UsdStageRefPtr stage,
                         const ObjExportMap &armature_export_map,
                         const ObjExportMap &skinned_mesh_export_map,
-                        const ObjExportMap &shape_key_mesh_export_map);
+                        const ObjExportMap &shape_key_mesh_export_map,
+                        const Depsgraph *depsgraph);
 
 /**
  * Complete the export process for skinned meshes.
@@ -98,11 +101,13 @@ void skel_export_chaser(pxr::UsdStageRefPtr stage,
  * \param armature_export_map: Map armature objects to USD skeleton paths
  * \param skinned_mesh_export_map: Map mesh objects to USD skinned meshes
  * \param xf_cache: Cache to speed up USD prim transform computations
+ * \param depsgraph: The dependency graph in which objects were evaluated
  */
 void skinned_mesh_export_chaser(pxr::UsdStageRefPtr stage,
                                 const ObjExportMap &armature_export_map,
                                 const ObjExportMap &skinned_mesh_export_map,
-                                pxr::UsdGeomXformCache &xf_cache);
+                                pxr::UsdGeomXformCache &xf_cache,
+                                const Depsgraph *depsgraph);
 
 /**
  * Complete the export process for shape keys.

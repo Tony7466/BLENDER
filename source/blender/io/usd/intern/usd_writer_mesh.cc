@@ -135,7 +135,8 @@ void USDGenericMeshWriter::write_custom_data(const Object *obj,
         }
 
         if (usd_export_context_.export_params.export_armatures &&
-            is_armature_modifier_bone_name(obj, attribute_id.name().data()))
+            is_armature_modifier_bone_name(
+                obj, attribute_id.name().data(), usd_export_context_.depsgraph))
         {
           /* This attribute is likely a vertex group for the armature modifier,
            * and it may conflict with skinning data that will be written to
@@ -768,19 +769,20 @@ void USDMeshWriter::set_skel_export_flags(const HierarchyContext &context)
   write_skinned_mesh_ = false;
   write_blend_shapes_ = false;
 
-  ModifierQueryResult result = get_enabled_armature_modifier(context.object,
-                                                             usd_export_context_.depsgraph);
+  Vector<ModifierData *> mods = get_enabled_modifiers(context.object,
+                                                      usd_export_context_.depsgraph);
 
   const USDExportParams &params = usd_export_context_.export_params;
 
-  /* We can write a skinned mesh if exporting armatures is enabled and the object has an enabled
-   * armature modifier and no other enabled modifiers of any type. */
-  write_skinned_mesh_ = params.export_armatures && result.first != nullptr && result.second == 1;
+  /* We can write a skinned mesh if exporting armatures is enabled and the object has an armature
+   * modifier and no other modifiers of any type. */
+  write_skinned_mesh_ = params.export_armatures && mods.size() == 1 &&
+                        mods.first()->type == eModifierType_Armature;
 
   /* We can write blend shapes if exporting shape keys is enabled and the object has shape keys
    * and we are either writing a skinned mesh or the object has no modifiers. */
   write_blend_shapes_ = params.export_shapekeys && is_mesh_with_shape_keys(context.object) &&
-                        (write_skinned_mesh_ || result.second == 0);
+                        (write_skinned_mesh_ || mods.is_empty());
 }
 
 void USDMeshWriter::init_skinned_mesh(const HierarchyContext &context)
@@ -807,7 +809,7 @@ void USDMeshWriter::init_skinned_mesh(const HierarchyContext &context)
     return;
   }
 
-  const Object *arm_obj = get_armature_modifier_obj(context.object);
+  const Object *arm_obj = get_armature_modifier_obj(context.object, usd_export_context_.depsgraph);
 
   if (!arm_obj) {
     WM_reportf(RPT_WARNING,

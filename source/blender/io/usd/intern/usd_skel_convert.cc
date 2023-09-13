@@ -1104,20 +1104,23 @@ void import_mesh_skel_bindings(Main *bmain, Object *mesh_obj, const pxr::UsdPrim
 void skel_export_chaser(pxr::UsdStageRefPtr stage,
                         const ObjExportMap &armature_export_map,
                         const ObjExportMap &skinned_mesh_export_map,
-                        const ObjExportMap &shape_key_mesh_export_map)
+                        const ObjExportMap &shape_key_mesh_export_map,
+                        const Depsgraph *depsgraph)
 {
   /* We may need to compute the world transforms of certain prims when
    * setting skinning data.  Using a shared transform cache can make computing
    * the transforms more efficient. */
   pxr::UsdGeomXformCache xf_cache(1.0);
-  skinned_mesh_export_chaser(stage, armature_export_map, skinned_mesh_export_map, xf_cache);
+  skinned_mesh_export_chaser(
+      stage, armature_export_map, skinned_mesh_export_map, xf_cache, depsgraph);
   shape_key_export_chaser(stage, shape_key_mesh_export_map);
 }
 
 void skinned_mesh_export_chaser(pxr::UsdStageRefPtr stage,
                                 const ObjExportMap &armature_export_map,
                                 const ObjExportMap &skinned_mesh_export_map,
-                                pxr::UsdGeomXformCache &xf_cache)
+                                pxr::UsdGeomXformCache &xf_cache,
+                                const Depsgraph *depsgraph)
 {
   /* Finish creating skinned mesh bindings. */
   for (const auto &kv : skinned_mesh_export_map) {
@@ -1136,7 +1139,7 @@ void skinned_mesh_export_chaser(pxr::UsdStageRefPtr stage,
     }
 
     /* Get the armature bound to the mesh's armature modifier. */
-    const Object *arm_obj = get_armature_modifier_obj(mesh_obj);
+    const Object *arm_obj = get_armature_modifier_obj(mesh_obj, depsgraph);
     if (!arm_obj) {
       WM_reportf(RPT_WARNING,
                  "%s: Invalid armature modifier for skinned mesh %s",
