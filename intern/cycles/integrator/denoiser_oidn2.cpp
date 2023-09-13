@@ -2,34 +2,37 @@
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
-#include "integrator/denoiser_oidn2.h"
+#if defined(WITH_OPENIMAGEDENOISE)
 
-#include <array>
+#  include "integrator/denoiser_oidn2.h"
 
-#include "device/device.h"
-#include "device/queue.h"
-#include "integrator/pass_accessor_cpu.h"
-#include "session/buffers.h"
-#include "util/array.h"
-#include "util/log.h"
-#include "util/openimagedenoise.h"
+#  include <array>
 
-#include "kernel/device/cpu/compat.h"
-#include "kernel/device/cpu/kernel.h"
+#  include "device/device.h"
+#  include "device/queue.h"
+#  include "integrator/pass_accessor_cpu.h"
+#  include "session/buffers.h"
+#  include "util/array.h"
+#  include "util/log.h"
+#  include "util/openimagedenoise.h"
+
+#  include "kernel/device/cpu/compat.h"
+#  include "kernel/device/cpu/kernel.h"
 
 CCL_NAMESPACE_BEGIN
+
+/* Ideally, this would be dynamic and adaptively change when the runtime runs out of memory.  */
+constexpr int prefilter_max_mem = 1024;
 
 thread_mutex OIDN2Denoiser::mutex_;
 bool OIDN2Denoiser::is_device_supported(const DeviceInfo &device)
 {
 
   switch (device.type) {
-    case DEVICE_CPU:
-      return openimagedenoise_supported();
-#ifdef OIDN_DEVICE_SYCL
+#  ifdef OIDN_DEVICE_SYCL
     case DEVICE_ONEAPI:
       return true;
-#endif
+#  endif
     default:
       return false;
   }
@@ -75,23 +78,17 @@ bool OIDN2Denoiser::denoise_buffer(const BufferParams &buffer_params,
 uint OIDN2Denoiser::get_device_type_mask() const
 {
   uint device_mask = 0;
-#ifdef OIDN_DEVICE_SYCL
+#  ifdef OIDN_DEVICE_SYCL
   device_mask |= DEVICE_MASK_ONEAPI;
-#endif
+#  endif
   return device_mask;
-}
-
-Device *OIDN2Denoiser::ensure_denoiser_device(Progress *progress)
-{
-  return DenoiserGPU::ensure_denoiser_device(progress);
 }
 
 bool OIDN2Denoiser::denoise_create_if_needed(DenoiseContext &context)
 {
   const bool recreate_denoiser = (oidn_device_ == nullptr) || (oidn_filter_ == nullptr) ||
                                  (use_pass_albedo_ != context.use_pass_albedo) ||
-                                 (use_pass_normal_ != context.use_pass_normal) ||
-                                 (use_pass_motion_ != context.use_pass_motion);
+                                 (use_pass_normal_ != context.use_pass_normal);
   if (!recreate_denoiser) {
     return true;
   }
@@ -106,16 +103,12 @@ bool OIDN2Denoiser::denoise_create_if_needed(DenoiseContext &context)
   }
 
   switch (denoiser_device_->info.type) {
-#if defined(OIDN_DEVICE_SYCL)
+#  if defined(OIDN_DEVICE_SYCL)
     case DEVICE_ONEAPI:
       oidn_device_ = oidnNewDevice(OIDN_DEVICE_TYPE_SYCL);
       denoiser_queue_->init_execution();
       break;
-#endif
-    /* Devices without explicit support fall through to CPU backend. */
-    default:
-      oidn_device_ = oidnNewDevice(OIDN_DEVICE_TYPE_CPU);
-      break;
+#  endif
   }
   if (!oidn_device_) {
     denoiser_device_->set_error("Failed to create OIDN device");
@@ -132,22 +125,25 @@ bool OIDN2Denoiser::denoise_create_if_needed(DenoiseContext &context)
 
   oidnSetFilterBool(oidn_filter_, "hdr", true);
   oidnSetFilterBool(oidn_filter_, "srgb", false);
-  oidnSetFilterInt(oidn_filter_, "maxMemoryMB", 1024);
+  oidnSetFilterInt(oidn_filter_, "maxMemoryMB", prefilter_max_mem);
   if (params_.prefilter == DENOISER_PREFILTER_NONE ||
       params_.prefilter == DENOISER_PREFILTER_ACCURATE)
   {
     oidnSetFilterInt(oidn_filter_, "cleanAux", true);
   }
 
-  albedo_filter_ = oidnNewFilter(oidn_device_, "RT");
-  oidnSetFilterInt(albedo_filter_, "maxMemoryMB", 1024);
-  if (albedo_filter_ == nullptr) {
-    denoiser_device_->set_error("Failed to create OIDN filter");
-    return false;
+  if (context.use_pass_albedo) {
+    albedo_filter_ = oidnNewFilter(oidn_device_, "RT");
+    oidnSetFilterInt(albedo_filter_, "maxMemoryMB", prefilter_max_mem);
+    if (albedo_filter_ == nullptr) {
+      denoiser_device_->set_error("Failed to create OIDN filter");
+      return false;
+    }
   }
 
-  normal_filter_ = oidnNewFilter(oidn_device_, "RT");
-  oidnSetFilterInt(normal_filter_, "maxMemoryMB", 1024);
+  if (context.use_pass_normal)
+    normal_filter_ = oidnNewFilter(oidn_device_, "RT");
+  oidnSetFilterInt(normal_filter_, "maxMemoryMB", prefilter_max_mem);
   if (normal_filter_ == nullptr) {
     denoiser_device_->set_error("Failed to create OIDN filter");
     return false;
@@ -156,7 +152,6 @@ bool OIDN2Denoiser::denoise_create_if_needed(DenoiseContext &context)
   /* OIDN denoiser handle was created with the requested number of input passes. */
   use_pass_albedo_ = context.use_pass_albedo;
   use_pass_normal_ = context.use_pass_normal;
-  use_pass_motion_ = context.use_pass_motion;
 
   /* OIDN denoiser has been created, but it needs configuration. */
   is_configured_ = false;
@@ -347,3 +342,5 @@ bool OIDN2Denoiser::denoise_run(const DenoiseContext &context, const DenoisePass
 }
 
 CCL_NAMESPACE_END
+
+#endif

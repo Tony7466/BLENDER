@@ -218,6 +218,7 @@ enum_guiding_directional_sampling_types = (
      2),
 )
 
+
 def enum_openimagedenoise_gpu_denoiser(self, context):
     import _cycles
     if _cycles.with_openimagedenoise_gpu:

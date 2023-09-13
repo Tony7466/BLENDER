@@ -4,9 +4,11 @@
 
 #pragma once
 
-#include "integrator/denoiser_gpu.h"
-#include "util/thread.h"
-#include "util/unique_ptr.h"
+#if defined(WITH_OPENIMAGEDENOISE)
+
+#  include "integrator/denoiser_gpu.h"
+#  include "util/thread.h"
+#  include "util/unique_ptr.h"
 
 typedef struct OIDNDeviceImpl *OIDNDevice;
 typedef struct OIDNFilterImpl *OIDNFilter;
@@ -35,9 +37,8 @@ class OIDN2Denoiser : public DenoiserGPU {
 
  protected:
   virtual uint get_device_type_mask() const override;
-  virtual Device *ensure_denoiser_device(Progress *progress) override;
 
- /* We only perform one denoising at a time, since OpenImageDenoise itself is multithreaded.
+  /* We only perform one denoising at a time, since OpenImageDenoise itself is multithreaded.
    * Use this mutex whenever images are passed to the OIDN and needs to be denoised. */
   static thread_mutex mutex_;
 
@@ -65,9 +66,10 @@ class OIDN2Denoiser : public DenoiserGPU {
 
   bool use_pass_albedo_ = false;
   bool use_pass_normal_ = false;
-  bool use_pass_motion_ = false;
 
   int max_mem_ = 3000;
 };
 
 CCL_NAMESPACE_END
+
+#endif
