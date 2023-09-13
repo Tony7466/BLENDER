@@ -385,17 +385,6 @@ ccl_device Spectrum bsdf_microfacet_estimate_albedo(KernelGlobals kg,
   return reflectance + transmittance;
 }
 
-/* Generalized Trowbridge-Reitz for clearcoat. */
-ccl_device_forceinline float bsdf_clearcoat_D(float alpha2, float cos_NH)
-{
-  if (alpha2 >= 1.0f) {
-    return M_1_PI_F;
-  }
-
-  const float t = 1.0f + (alpha2 - 1.0f) * cos_NH * cos_NH;
-  return (alpha2 - 1.0f) / (M_PI_F * logf(alpha2) * t);
-}
-
 /* Smith shadowing-masking term, here in the non-separable form.
  * For details, see:
  * Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs.
@@ -543,18 +532,7 @@ ccl_device Spectrum bsdf_microfacet_eval(ccl_private const ShaderClosure *sc,
    * harder to compute. */
   if (alpha_x == alpha_y || is_transmission) { /* Isotropic. */
     float alpha2 = alpha_x * alpha_y;
-
-    if (bsdf->type == CLOSURE_BSDF_MICROFACET_GGX_CLEARCOAT_ID) {
-      D = bsdf_clearcoat_D(alpha2, cos_NH);
-
-      /* The masking-shadowing term for clearcoat has a fixed alpha of 0.25
-       * => alpha2 = 0.25 * 0.25 */
-      alpha2 = 0.0625f;
-    }
-    else {
-      D = bsdf_D<m_type>(alpha2, cos_NH);
-    }
-
+    D = bsdf_D<m_type>(alpha2, cos_NH);
     lambdaI = bsdf_lambda<m_type>(alpha2, cos_NI);
     lambdaO = bsdf_lambda<m_type>(alpha2, cos_NO);
   }
@@ -585,7 +563,6 @@ ccl_device Spectrum bsdf_microfacet_eval(ccl_private const ShaderClosure *sc,
 
 template<MicrofacetType m_type>
 ccl_device int bsdf_microfacet_sample(ccl_private const ShaderClosure *sc,
-                                      const int path_flag,
                                       float3 Ng,
                                       float3 wi,
                                       const float3 rand,
@@ -686,17 +663,7 @@ ccl_device int bsdf_microfacet_sample(ccl_private const ShaderClosure *sc,
       const float cos_NH = dot(N, H);
       const float cos_NO = dot(N, *wo);
 
-      if (bsdf->type == CLOSURE_BSDF_MICROFACET_GGX_CLEARCOAT_ID) {
-        D = bsdf_clearcoat_D(alpha2, cos_NH);
-
-        /* The masking-shadowing term for clearcoat has a fixed alpha of 0.25
-         * => alpha2 = 0.25 * 0.25 */
-        alpha2 = 0.0625f;
-      }
-      else {
-        D = bsdf_D<m_type>(alpha2, cos_NH);
-      }
-
+      D = bsdf_D<m_type>(alpha2, cos_NH);
       lambdaO = bsdf_lambda<m_type>(alpha2, cos_NO);
       lambdaI = bsdf_lambda<m_type>(alpha2, cos_NI);
     }
@@ -828,6 +795,14 @@ ccl_device void bsdf_microfacet_setup_fresnel_constant(KernelGlobals kg,
   microfacet_ggx_preserve_energy(kg, bsdf, sd, color);
 }
 
+ccl_device void bsdf_microfacet_setup_fresnel_dielectric(KernelGlobals kg,
+                                                         ccl_private MicrofacetBsdf *bsdf,
+                                                         ccl_private const ShaderData *sd)
+{
+  bsdf->fresnel_type = MicrofacetFresnel::DIELECTRIC;
+  bsdf->sample_weight *= average(bsdf_microfacet_estimate_albedo(kg, sd, bsdf, true, true));
+}
+
 /* GGX microfacet with Smith shadow-masking from:
  *
  * Microfacet Models for Refraction through Rough Surfaces
@@ -849,21 +824,6 @@ ccl_device int bsdf_microfacet_ggx_setup(ccl_private MicrofacetBsdf *bsdf)
   bsdf->fresnel_type = MicrofacetFresnel::NONE;
   bsdf->energy_scale = 1.0f;
   bsdf->type = CLOSURE_BSDF_MICROFACET_GGX_ID;
-
-  return SD_BSDF | bsdf_microfacet_eval_flag(bsdf);
-}
-
-ccl_device int bsdf_microfacet_ggx_clearcoat_setup(KernelGlobals kg,
-                                                   ccl_private MicrofacetBsdf *bsdf,
-                                                   ccl_private const ShaderData *sd)
-{
-  bsdf->alpha_x = saturatef(bsdf->alpha_x);
-  bsdf->alpha_y = bsdf->alpha_x;
-
-  bsdf->fresnel_type = MicrofacetFresnel::DIELECTRIC;
-  bsdf->energy_scale = 1.0f;
-  bsdf->type = CLOSURE_BSDF_MICROFACET_GGX_CLEARCOAT_ID;
-  bsdf->sample_weight *= average(bsdf_microfacet_estimate_albedo(kg, sd, bsdf, true, true));
 
   return SD_BSDF | bsdf_microfacet_eval_flag(bsdf);
 }
@@ -911,7 +871,6 @@ ccl_device Spectrum bsdf_microfacet_ggx_eval(ccl_private const ShaderClosure *sc
 }
 
 ccl_device int bsdf_microfacet_ggx_sample(ccl_private const ShaderClosure *sc,
-                                          const int path_flag,
                                           float3 Ng,
                                           float3 wi,
                                           const float3 rand,
@@ -923,7 +882,7 @@ ccl_device int bsdf_microfacet_ggx_sample(ccl_private const ShaderClosure *sc,
 {
 
   int label = bsdf_microfacet_sample<MicrofacetType::GGX>(
-      sc, path_flag, Ng, wi, rand, eval, wo, pdf, sampled_roughness, eta);
+      sc, Ng, wi, rand, eval, wo, pdf, sampled_roughness, eta);
   *eval *= ((ccl_private const MicrofacetBsdf *)sc)->energy_scale;
   return label;
 }
@@ -976,7 +935,6 @@ ccl_device Spectrum bsdf_microfacet_beckmann_eval(ccl_private const ShaderClosur
 }
 
 ccl_device int bsdf_microfacet_beckmann_sample(ccl_private const ShaderClosure *sc,
-                                               const int path_flag,
                                                float3 Ng,
                                                float3 wi,
                                                const float3 rand,
@@ -987,7 +945,7 @@ ccl_device int bsdf_microfacet_beckmann_sample(ccl_private const ShaderClosure *
                                                ccl_private float *eta)
 {
   return bsdf_microfacet_sample<MicrofacetType::BECKMANN>(
-      sc, path_flag, Ng, wi, rand, eval, wo, pdf, sampled_roughness, eta);
+      sc, Ng, wi, rand, eval, wo, pdf, sampled_roughness, eta);
 }
 
 CCL_NAMESPACE_END
