@@ -331,7 +331,7 @@ static void attr_create_generic(Scene *scene,
               src[tri.tri[0]][0], src[tri.tri[0]][1], src[tri.tri[0]][2], src[tri.tri[0]][3]);
           data[i * 3 + 1] = make_uchar4(
               src[tri.tri[1]][0], src[tri.tri[1]][1], src[tri.tri[1]][2], src[tri.tri[1]][3]);
-          data[i * 3 + 1] = make_uchar4(
+          data[i * 3 + 2] = make_uchar4(
               src[tri.tri[2]][0], src[tri.tri[2]][1], src[tri.tri[2]][2], src[tri.tri[2]][3]);
         }
       }
