@@ -84,7 +84,6 @@ class LayerNodeDropTarget : public TreeViewItemDropTarget {
 
     LayerGroup &drag_parent = drag_layer.parent_group();
     LayerGroup *drop_parent_group = drop_tree_node_.parent_group();
-
     if (!drop_parent_group) {
       /* Root node is not added to the tree view, so there should never be a drop target for this.
        */
