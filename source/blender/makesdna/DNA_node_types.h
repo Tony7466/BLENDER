@@ -190,6 +190,7 @@ typedef struct bNodeSocket {
   bool is_available() const;
   bool is_panel_collapsed() const;
   bool is_visible() const;
+  bool is_icon_visible() const;
   bool is_multi_input() const;
   bool is_input() const;
   bool is_output() const;

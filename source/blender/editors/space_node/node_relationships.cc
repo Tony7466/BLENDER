@@ -416,7 +416,7 @@ namespace viewer_linking {
 /* Depending on the node tree type, different socket types are supported by viewer nodes. */
 static bool socket_can_be_viewed(const bNodeSocket &socket)
 {
-  if (!socket.is_visible()) {
+  if (!socket.is_icon_visible()) {
     return false;
   }
   if (STREQ(socket.idname, "NodeSocketVirtual")) {

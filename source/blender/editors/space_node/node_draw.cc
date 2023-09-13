@@ -1619,7 +1619,7 @@ static void node_draw_sockets(const View2D &v2d,
   /* Socket inputs. */
   int selected_input_len = 0;
   for (const bNodeSocket *sock : node.input_sockets()) {
-    if (!sock->is_visible() || sock->is_panel_collapsed()) {
+    if (!sock->is_icon_visible()) {
       continue;
     }
     if (select_all || (sock->flag & SELECT)) {
@@ -1642,7 +1642,7 @@ static void node_draw_sockets(const View2D &v2d,
   int selected_output_len = 0;
   if (draw_outputs) {
     for (const bNodeSocket *sock : node.output_sockets()) {
-      if (!sock->is_visible() || sock->is_panel_collapsed()) {
+      if (!sock->is_icon_visible()) {
         continue;
       }
       if (select_all || (sock->flag & SELECT)) {
@@ -1670,7 +1670,7 @@ static void node_draw_sockets(const View2D &v2d,
     if (selected_input_len) {
       /* Socket inputs. */
       for (const bNodeSocket *sock : node.input_sockets()) {
-        if (!sock->is_visible()) {
+        if (!sock->is_icon_visible()) {
           continue;
         }
         /* Don't draw multi-input sockets here since they are drawn in a different batch. */
@@ -1699,7 +1699,7 @@ static void node_draw_sockets(const View2D &v2d,
     if (selected_output_len) {
       /* Socket outputs. */
       for (const bNodeSocket *sock : node.output_sockets()) {
-        if (!sock->is_visible()) {
+        if (!sock->is_icon_visible()) {
           continue;
         }
         if (select_all || (sock->flag & SELECT)) {
@@ -1732,7 +1732,7 @@ static void node_draw_sockets(const View2D &v2d,
   /* Draw multi-input sockets after the others because they are drawn with `UI_draw_roundbox`
    * rather than with `GL_POINT`. */
   for (const bNodeSocket *socket : node.input_sockets()) {
-    if (!socket->is_visible()) {
+    if (!socket->is_icon_visible()) {
       continue;
     }
     if (!(socket->flag & SOCK_MULTI_INPUT)) {
