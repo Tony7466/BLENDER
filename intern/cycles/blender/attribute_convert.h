@@ -19,7 +19,6 @@ CCL_NAMESPACE_BEGIN
 
 template<typename BlenderT> struct AttributeConverter {
   using CyclesT = void;
-  // static constexpr auto type_desc = void;
 };
 
 template<> struct AttributeConverter<float> {
