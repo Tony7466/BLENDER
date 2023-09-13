@@ -36,7 +36,7 @@ class OBJECT_MT_modifier_add(Menu):
         ob_type = context.object.type
         geometry_nodes_supported = ob_type in {'MESH', 'CURVE', 'CURVES', 'FONT', 'SURFACE', 'VOLUME', 'POINTCLOUD'}
         if geometry_nodes_supported:
-            layout.operator("object.modifier_add", text="Empty Modifier").type = 'NODES'
+            layout.operator("object.modifier_add", icon='GEOMETRY_NODES', text="Geometry Nodes").type = 'NODES'
             layout.separator()
         if ob_type in {'MESH', 'CURVE', 'FONT', 'SURFACE', 'LATTICE'}:
             layout.menu("OBJECT_MT_modifier_add_edit")
@@ -229,7 +229,7 @@ class AddModifierMenu(Operator):
     def poll(cls, context):
         # NOTE: This operator only exists to add a poll to the add modifier shortcut in the property editor.
         space = context.space_data
-        return space and space.type == 'PROPERTIES' and space.context == "MODIFIER"
+        return space and space.type == 'PROPERTIES' and space.context == 'MODIFIER'
 
     def invoke(self, context, event):
         return bpy.ops.wm.call_menu(name="OBJECT_MT_modifier_add")
