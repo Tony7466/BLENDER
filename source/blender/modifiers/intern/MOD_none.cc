@@ -55,6 +55,4 @@ ModifierTypeInfo modifierType_None = {
     /*panel_register*/ nullptr,
     /*blend_write*/ nullptr,
     /*blend_read*/ nullptr,
-    /*addChildPanelInstances*/ nullptr,
-    /*childPanelInstancesMatchData*/ nullptr,
 };

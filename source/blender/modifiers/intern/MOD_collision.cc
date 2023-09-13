@@ -303,6 +303,4 @@ ModifierTypeInfo modifierType_Collision = {
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ blend_read,
-    /*addChildPanelInstances*/ nullptr,
-    /*childPanelInstancesMatchData*/ nullptr,
 };

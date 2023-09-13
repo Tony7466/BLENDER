@@ -144,6 +144,4 @@ ModifierTypeInfo modifierType_ShapeKey = {
     /*panel_register*/ nullptr,
     /*blend_write*/ nullptr,
     /*blend_read*/ nullptr,
-    /*addChildPanelInstances*/ nullptr,
-    /*childPanelInstancesMatchData*/ nullptr,
 };

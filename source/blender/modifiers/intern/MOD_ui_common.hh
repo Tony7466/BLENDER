@@ -20,7 +20,6 @@ struct PointerRNA;
 struct bContext;
 struct uiLayout;
 
-using PanelPollFn = bool (*)(const bContext *, PanelType *);
 using PanelDrawFn = void (*)(const bContext *, Panel *);
 
 /**
@@ -57,18 +56,3 @@ PanelType *modifier_subpanel_register(ARegionType *region_type,
                                       PanelDrawFn draw_header,
                                       PanelDrawFn draw,
                                       PanelType *parent);
-
-/**
- * Add a child panel to the parent.
- *
- * \note To create the panel type's #PanelType.idname,
- * it appends the \a name argument to the \a parent's `idname`.
- */
-PanelType *modifier_subpanel_register_ex(ARegionType *region_type,
-                                         const char *name,
-                                         const char *label,
-                                         PanelPollFn poll,
-                                         PanelDrawFn draw_header,
-                                         PanelDrawFn draw,
-                                         PanelType *parent,
-                                         int flag);

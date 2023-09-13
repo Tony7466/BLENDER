@@ -861,6 +861,4 @@ ModifierTypeInfo modifierType_LaplacianDeform = {
     /*panel_register*/ panel_register,
     /*blend_write*/ blend_write,
     /*blend_read*/ blend_read,
-    /*addChildPanelInstances*/ nullptr,
-    /*childPanelInstancesMatchData*/ nullptr,
 };

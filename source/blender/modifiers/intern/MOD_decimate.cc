@@ -301,6 +301,4 @@ ModifierTypeInfo modifierType_Decimate = {
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ nullptr,
-    /*addChildPanelInstances*/ nullptr,
-    /*childPanelInstancesMatchData*/ nullptr,
 };

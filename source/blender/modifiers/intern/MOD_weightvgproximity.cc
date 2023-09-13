@@ -57,7 +57,7 @@
 #include "MOD_util.hh"
 #include "MOD_weightvg_util.hh"
 
-// #define USE_TIMEIT
+//#define USE_TIMEIT
 
 #ifdef USE_TIMEIT
 #  include "PIL_time.h"
@@ -765,6 +765,4 @@ ModifierTypeInfo modifierType_WeightVGProximity = {
     /*panel_register*/ panel_register,
     /*blend_write*/ blend_write,
     /*blend_read*/ blend_read,
-    /*addChildPanelInstances*/ nullptr,
-    /*childPanelInstancesMatchData*/ nullptr,
 };
