@@ -154,12 +154,12 @@ static void eevee_init_util_texture()
   memcpy(texels_layer, blender::eevee::lut::ltc_mat_ggx, sizeof(float[4]) * 64 * 64);
   texels_layer += 64 * 64;
 
-  /* Copy bsdf_split_sum_ggx into 2nd layer red and green channels.
+  /* Copy brdf_ggx into 2nd layer red and green channels.
    * Copy ltc_mag_ggx into 2nd layer blue and alpha channel. */
   for (int x = 0; x < 64; x++) {
     for (int y = 0; y < 64; y++) {
-      texels_layer[y * 64 + x][0] = blender::eevee::lut::bsdf_split_sum_ggx[y][x][0];
-      texels_layer[y * 64 + x][1] = blender::eevee::lut::bsdf_split_sum_ggx[y][x][1];
+      texels_layer[y * 64 + x][0] = blender::eevee::lut::brdf_ggx[y][x][0];
+      texels_layer[y * 64 + x][1] = blender::eevee::lut::brdf_ggx[y][x][1];
       texels_layer[y * 64 + x][2] = blender::eevee::lut::ltc_mag_ggx[y][x][0];
       texels_layer[y * 64 + x][3] = blender::eevee::lut::ltc_mag_ggx[y][x][1];
     }
@@ -192,10 +192,10 @@ static void eevee_init_util_texture()
   for (int j = 0; j < 16; j++) {
     for (int x = 0; x < 64; x++) {
       for (int y = 0; y < 64; y++) {
-        texels_layer[y * 64 + x][0] = blender::eevee::lut::btdf_split_sum_ggx[j][y][x][0];
-        texels_layer[y * 64 + x][1] = blender::eevee::lut::btdf_split_sum_ggx[j][y][x][1];
-        texels_layer[y * 64 + x][2] = blender::eevee::lut::btdf_split_sum_ggx[j][y][x][2];
-        texels_layer[y * 64 + x][3] = 0.0; /* UNUSED */
+        texels_layer[y * 64 + x][0] = blender::eevee::lut::bsdf_ggx[j][y][x][0];
+        texels_layer[y * 64 + x][1] = blender::eevee::lut::bsdf_ggx[j][y][x][1];
+        texels_layer[y * 64 + x][2] = blender::eevee::lut::bsdf_ggx[j][y][x][2];
+        texels_layer[y * 64 + x][3] = blender::eevee::lut::btdf_ggx[j][y][x][0];
       }
     }
     texels_layer += 64 * 64;
@@ -874,7 +874,8 @@ void EEVEE_materials_cache_populate(EEVEE_Data *vedata,
             /* Do not render surface if we are rendering a volume object
              * and do not have a surface closure. */
             if (use_volume_material &&
-                (gpumat_array[i] && !GPU_material_has_surface_output(gpumat_array[i]))) {
+                (gpumat_array[i] && !GPU_material_has_surface_output(gpumat_array[i])))
+            {
               continue;
             }
 

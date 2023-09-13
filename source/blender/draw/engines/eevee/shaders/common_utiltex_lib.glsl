@@ -52,7 +52,7 @@ vec2 brdf_lut(float cos_theta, float roughness)
 }
 
 /* Return texture coordinates to sample Surface LUT. */
-vec3 lut_coords_btdf(float cos_theta, float roughness, float ior)
+vec3 lut_coords_bsdf(float cos_theta, float roughness, float ior)
 {
   /* ior is sin of critical angle. */
   float critical_cos = sqrt(1.0 - ior * ior);
@@ -66,6 +66,18 @@ vec3 lut_coords_btdf(float cos_theta, float roughness, float ior)
   coords.z = roughness;
 
   coords = saturate(coords);
+
+  /* scale and bias coordinates, for correct filtered lookup */
+  coords.xy = coords.xy * (LUT_SIZE - 1.0) / LUT_SIZE + 0.5 / LUT_SIZE;
+  coords.z = coords.z * lut_btdf_layer_count + lut_btdf_layer_first;
+
+  return coords;
+}
+
+/* Return texture coordinates to sample Surface LUT. */
+vec3 lut_coords_btdf(float cos_theta, float roughness, float ior)
+{
+  vec3 coords = vec3(sqrt((ior - 1.0) / (ior + 1.0)), sqrt(1.0 - cos_theta), roughness);
 
   /* scale and bias coordinates, for correct filtered lookup */
   coords.xy = coords.xy * (LUT_SIZE - 1.0) / LUT_SIZE + 0.5 / LUT_SIZE;
@@ -89,9 +101,10 @@ vec4 sample_3D_texture(sampler2DArray tex, vec3 coords)
   return mix(tex_low, tex_high, f);
 }
 
-/* Returns GGX BTDF in first component and fresnel in second. */
-void btdf_lut(vec3 f0,
-              vec3 f90,
+/* Computes the reflectance and transmittance based on the tint (`f0`, `f90`, `transmission_tint`)
+ * and the BSDF LUT. */
+void bsdf_lut(vec3 F0,
+              vec3 F90,
               vec3 transmission_tint,
               float cos_theta,
               float roughness,
@@ -100,29 +113,42 @@ void btdf_lut(vec3 f0,
               out vec3 reflectance,
               out vec3 transmittance)
 {
-  if (ior >= 1.0) {
-    vec2 split_sum = brdf_lut(cos_theta, roughness);
-    /* TODO: Gradually increase `f90` from 0 to 1 when IOR is in the range of [1.0, 1.33], to avoid
-     * harsh transition at `IOR == 1`. */
-
-    reflectance = F_brdf_multi_scatter(f0, f90, split_sum);
-    /* Energy conservation. */
-    transmittance = (vec3(1.0) - reflectance) * transmission_tint;
+  if (ior == 1.0) {
+    reflectance = vec3(0.0);
+    transmittance = transmission_tint;
     return;
   }
 
-  vec3 coords = lut_coords_btdf(cos_theta, roughness, ior);
-  vec3 scale_bias_transmittance = sample_3D_texture(utilTex, coords).rgb;
+  vec2 split_sum;
+  float transmission_factor;
 
-  reflectance = f0 * scale_bias_transmittance.x + f90 * scale_bias_transmittance.y;
-  transmittance = scale_bias_transmittance.z * (f90 - f0) * transmission_tint;
+  if (ior > 1.0) {
+    split_sum = brdf_lut(cos_theta, roughness);
+    transmission_factor = sample_3D_texture(utilTex, lut_coords_btdf(cos_theta, roughness, ior)).a;
+  }
+  else {
+    vec3 bsdf = sample_3D_texture(utilTex, lut_coords_bsdf(cos_theta, roughness, ior)).rgb;
+    split_sum = bsdf.rg;
+    transmission_factor = bsdf.b;
+  }
 
-  /* TODO: add multiscatter compensation. */
+  /* TODO: Gradually increase `f90` from 0 to 1 when IOR is in the range of [1.0, 1.33], to avoid
+   * harsh transition at `IOR == 1`. */
+  reflectance = F_brdf_single_scatter(F0, F90, split_sum);
+  transmittance = (vec3(1.0) - F0) * transmission_factor * transmission_tint;
+
+  if (do_multiscatter) {
+    float real_F0 = F0_from_ior(ior);
+    float Ess = real_F0 * split_sum.x + split_sum.y + (1.0 - real_F0) * transmission_factor;
+    reflectance /= Ess;
+    transmittance /= Ess;
+  }
 
   return;
 }
 
 /* Returns GGX BTDF in first component and fresnel in second. */
+/* TODO: delete this function. */
 vec2 btdf_lut(float cos_theta, float roughness, float ior, float do_multiscatter)
 {
   if (ior <= 1e-5) {
