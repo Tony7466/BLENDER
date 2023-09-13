@@ -650,7 +650,8 @@ std::optional<Mesh *> mesh_triangulate(
             GMutableSpan new_data = dst.span.take_back(new_edges_range.size());
             /* Though it would be reasonable interpolate data from connected edges within each
              * face, currently the data from new edges is just set to the type's default value. */
-            dst.span.type().default_construct_n(new_data.data(), new_data.size());
+            new_data.type().fill_assign_n(
+                new_data.type().default_value(), new_data.data(), new_data.size());
             break;
           }
           case ATTR_DOMAIN_FACE: {
