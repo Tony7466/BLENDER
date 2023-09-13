@@ -100,6 +100,8 @@ int ED_curve_updateAnimPaths(Main *bmain, Curve *cu);
 
 bool ED_curve_active_center(Curve *cu, float center[3]);
 
+bool ED_curve_active_rot(Curve *cu, float rot[3][3]);
+
 /**
  * Text box selection.
  *

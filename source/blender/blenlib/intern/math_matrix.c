@@ -69,6 +69,40 @@ void unit_m4_db(double m[4][4])
   m[3][0] = m[3][1] = m[3][2] = 0.0f;
 }
 
+void m3_from_single_axis(float mat3[3][3], const float axis[3], const int axis_index)
+{
+  float len, vec[3], world_ax[3];
+  int ax_i = mod_i(axis_index, 3);
+  zero_v3(world_ax);
+  world_ax[ax_i] = 1;
+  // 1st axis
+  normalize_v3_v3(mat3[ax_i], axis);
+  if (compare_v3v3(mat3[ax_i], world_ax, FLT_EPSILON)) {
+    unit_m3(mat3);
+    return;
+  }
+  // check not to generate zero axes
+  cross_v3_v3v3(vec, mat3[ax_i], world_ax);
+  len = len_v3(vec);
+  if (compare_ff(len, 0, 0.01f)) {
+    zero_v3(vec);
+    vec[mod_i((ax_i - 1), 3)] = 1;
+  }
+  else {
+    copy_v3_v3(vec, world_ax);
+  }
+  // remaining axes
+  for (int i = 0; i < 2; i++) {
+    ax_i = mod_i((ax_i - 1), 3);
+    cross_v3_v3v3(mat3[ax_i], vec, axis);
+    len = normalize_v3(mat3[ax_i]);
+    copy_v3_v3(vec, mat3[ax_i]);
+  }
+  if (UNLIKELY(is_negative_m3(mat3))) {
+    negate_m3(mat3);
+  }
+}
+
 void copy_m2_m2(float m1[2][2], const float m2[2][2])
 {
   memcpy(m1, m2, sizeof(float[2][2]));
@@ -2210,33 +2244,34 @@ void mat3_to_rot_size(float rot[3][3], float size[3], const float mat3[3][3])
   }
 }
 
+/* Makes a skewed rotation matrices, keeps an axis fixed,
+ * and orthogonalizes the other two with respect to fixed axis
+ */
+void remove_skew_m3_m3(float mat3[3][3], const float wmat[3][3], const int fixed_axis)
+{
+  int cur_axis, prev_axis, f_axis = mod_i(fixed_axis, 3);
+  float proj[3];
+  normalize_v3_v3(mat3[f_axis], wmat[f_axis]);  // Keep fixed axis as is
+  for (int i = 1; i <= 2; i++) {                // For the two remaining axes do orthogonalization
+    cur_axis = mod_i((f_axis + i), 3);
+    copy_v3_v3(mat3[cur_axis], wmat[cur_axis]);
+    for (int j = f_axis; j < f_axis + i; j++) {  // Make it perpendicular to previous axes
+      prev_axis = mod_i(j, 3);
+      project_v3_v3v3(proj, mat3[cur_axis], mat3[prev_axis]);
+      sub_v3_v3(mat3[cur_axis], proj);
+    }
+    normalize_v3(mat3[cur_axis]);
+  }
+  if (UNLIKELY(is_negative_m3(mat3))) {
+    negate_m3(mat3);
+  }
+}
+
 void mat4_to_rot(float rot[3][3], const float wmat[4][4])
 {
   normalize_v3_v3(rot[0], wmat[0]);
   normalize_v3_v3(rot[1], wmat[1]);
   normalize_v3_v3(rot[2], wmat[2]);
-  if (UNLIKELY(is_negative_m3(rot))) {
-    negate_m3(rot);
-  }
-}
-
-/** Makes a rotation matrix, keeping an axis fixed.
- ** This is useful in case of having skewness in the original matrix
- **/
-void mat4_to_rot_skew_check(float rot[3][3], const float wmat[4][4], int primary_axis)
-{
-  if (primary_axis < 0 || primary_axis >= 3) {
-    return;
-  }
-  float proj[3];
-  normalize_v3_v3(rot[primary_axis], wmat[primary_axis]);
-  for (int i = 0; i < 3; i++) {
-    if (i != primary_axis) {
-      project_v3_v3v3(proj, wmat[i], rot[primary_axis]);
-      sub_v3_v3v3(rot[i], wmat[i], proj);
-      normalize_v3(rot[i]);
-    }
-  }
   if (UNLIKELY(is_negative_m3(rot))) {
     negate_m3(rot);
   }
@@ -2393,14 +2428,6 @@ void transform_pivot_set_m4(float mat[4][4], const float pivot[3])
   /* invert the matrix */
   negate_v3(tmat[3]);
   mul_m4_m4m4(mat, mat, tmat);
-}
-
-void rotate_m3_m4(float mat3[3][3], const float mat4[4][4])
-{
-  float rot_mat[3][3], res[3][3];
-  mat4_to_rot(rot_mat, mat4);
-  mul_m3_m3m3(res, rot_mat, mat3);
-  copy_m3_m3(mat3, res);
 }
 
 void blend_m3_m3m3(float out[3][3],

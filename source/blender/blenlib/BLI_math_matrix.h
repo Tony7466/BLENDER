@@ -27,6 +27,7 @@ void unit_m2(float m[2][2]);
 void unit_m3(float m[3][3]);
 void unit_m4(float m[4][4]);
 void unit_m4_db(double m[4][4]);
+void m3_from_single_axis(float mat3[3][3], const float axis[3], const int axis_index);
 
 void copy_m2_m2(float m1[2][2], const float m2[2][2]);
 void copy_m3_m3(float m1[3][3], const float m2[3][3]);
@@ -456,21 +457,15 @@ void rescale_m4(float mat[4][4], const float scale[3]);
 void transform_pivot_set_m4(float mat[4][4], const float pivot[3]);
 
 /**
- * Rotate(only) a 3x3 matrix by a 4x4 matrix,
- * Useful for setting the rotation of 3dcursor
+ * \param rot: A 3x3 rotation matrix, skewness considered,
+ * one primary axis is conserved, normalized never negative.
  */
-void rotate_m3_m4(float mat3[3][3], const float mat4[4][4]);
+void remove_skew_m3_m3(float mat3[3][3], const float wmat[3][3], const int fixed_axis);
 
 /**
  * \param rot: A 3x3 rotation matrix, normalized never negative.
  */
 void mat4_to_rot(float rot[3][3], const float wmat[4][4]);
-
-/**
- * \param rot: A 3x3 rotation matrix, skewness considered,
- * one primary axis is conserved, normalized never negative.
- */
-void mat4_to_rot_skew_check(float rot[3][3], const float wmat[4][4], int primary_axis);
 
 /**
  * \param rot: A 3x3 rotation matrix, normalized never negative.

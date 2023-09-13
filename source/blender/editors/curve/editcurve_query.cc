@@ -12,6 +12,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 
 #include "BKE_curve.h"
@@ -239,6 +240,25 @@ bool ED_curve_active_center(Curve *cu, float center[3])
     copy_v3_v3(center, bp->vec);
   }
 
+  return true;
+}
+
+bool ED_curve_active_rot(Curve *cu, float rot[3][3])
+{
+  float _axis[3];
+  Nurb *nu = nullptr;
+  void *vert = nullptr;
+  if (!BKE_curve_nurb_vert_active_get(cu, &nu, &vert)) {
+    return false;
+  }
+  if (nu->type == CU_BEZIER) {
+    BezTriple *bezt = (BezTriple *)vert;
+    sub_v3_v3v3(_axis, bezt->vec[2], bezt->vec[1]);
+    m3_from_single_axis(rot, _axis, 1);
+  }
+  else {
+    unit_m3(rot);
+  }
   return true;
 }
 

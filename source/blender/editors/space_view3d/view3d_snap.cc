@@ -885,12 +885,7 @@ static int snap_curs_to_sel_exec(bContext *C, wmOperator * /*op*/)
 {
   Scene *scene = CTX_data_scene(C);
   const int pivot_point = scene->toolsettings->transform_pivot_point;
-  bool is_align_rot_on = RNA_boolean_get(op->ptr, "is_align_rot_on");
-  bool is_align_loc_on = RNA_boolean_get(op->ptr, "is_align_loc_on");
-  if (!is_align_loc_on && !is_align_rot_on) {
-    is_align_loc_on = true;
-  }
-  if (is_align_loc_on && snap_curs_to_sel_ex(C, pivot_point, scene->cursor.location)) {
+  if (snap_curs_to_sel_ex(C, pivot_point, scene->cursor.location)) {
     WM_event_add_notifier(C, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
     DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
 
