@@ -422,8 +422,7 @@ static void run_node_group_ui(bContext *C, wmOperator *op)
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
   Main *bmain = CTX_data_main(C);
-  PointerRNA bmain_ptr;
-  RNA_main_pointer_create(bmain, &bmain_ptr);
+  PointerRNA bmain_ptr = RNA_main_pointer_create(bmain);
 
   const bNodeTree *node_tree = get_node_group(*C, *op->ptr, nullptr);
   if (!node_tree) {
@@ -439,6 +438,28 @@ static void run_node_group_ui(bContext *C, wmOperator *op)
   }
 }
 
+static bool run_node_ui_poll(wmOperatorType * /*ot*/, PointerRNA *ptr)
+{
+  RNA_STRUCT_BEGIN (ptr, prop) {
+    int flag = RNA_property_flag(prop);
+    if ((flag & PROP_HIDDEN) == 0) {
+      return true;
+    }
+  }
+  RNA_STRUCT_END;
+  return false;
+}
+
+static std::string run_node_group_get_name(wmOperatorType * /*ot*/, PointerRNA *ptr)
+{
+  int len;
+  char *name_c = RNA_string_get_alloc(ptr, "relative_asset_identifier", nullptr, 0, &len);
+  StringRef ref(name_c, len);
+  std::string name = ref.drop_prefix(ref.find_last_of('/') + 1);
+  MEM_freeN(name_c);
+  return name;
+}
+
 void GEOMETRY_OT_execute_node_group(wmOperatorType *ot)
 {
   ot->name = "Run Node Group";
@@ -450,6 +471,8 @@ void GEOMETRY_OT_execute_node_group(wmOperatorType *ot)
   ot->exec = run_node_group_exec;
   ot->get_description = run_node_group_get_description;
   ot->ui = run_node_group_ui;
+  ot->ui_poll = run_node_ui_poll;
+  ot->get_name = run_node_group_get_name;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
@@ -643,7 +666,7 @@ MenuType node_group_operator_assets_menu()
   type.poll = asset_menu_poll;
   type.draw = node_add_catalog_assets_draw;
   type.listener = asset::asset_reading_region_listen_fn;
-  type.context_dependent = true;
+  type.flag = MenuTypeFlag::ContextDependent;
   return type;
 }
 
