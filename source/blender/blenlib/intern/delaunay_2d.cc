@@ -2728,7 +2728,7 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
   int ne = std::count_if(cdt->edges.begin(), cdt->edges.end(), [](const CDTEdge<T> *e) -> bool {
     return !is_deleted_edge(e);
   });
-  result.edge = Array<int2>(ne);
+  result.edge = Array<std::pair<int, int>>(ne);
   if (cdt_state->need_ids) {
     result.edge_orig_offsets.reinitialize(ne + 1);
     int e_out = 0;
@@ -2746,7 +2746,7 @@ CDT_result<T> get_cdt_output(CDT_state<T> *cdt_state,
     if (!is_deleted_edge(e)) {
       int vo1 = vert_to_output_map[e->symedges[0].vert->index];
       int vo2 = vert_to_output_map[e->symedges[1].vert->index];
-      result.edge[e_out] = int2(vo1, vo2);
+      result.edge[e_out] = std::pair<int, int>(vo1, vo2);
       if (cdt_state->need_ids) {
         int orig_i = result.edge_orig_offsets[e_out];
         for (int edge : e->input_ids) {

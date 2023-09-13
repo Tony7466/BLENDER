@@ -126,7 +126,7 @@ namespace blender::meshintersect {
 template<typename T> class CDT_input {
  public:
   Span<VecBase<T, 2>> vert;
-  Span<int2> edge;
+  Span<std::pair<int, int>> edge;
   OffsetIndices<int> faces;
   Span<int> face_vert_indices;
   T epsilon{0};
@@ -158,7 +158,7 @@ template<typename T> class CDT_input {
 template<typename T> class CDT_result {
  public:
   Array<VecBase<T, 2>> vert;
-  Array<int2> edge;
+  Array<std::pair<int, int>> edge;
   Array<int> face_offsets;
   Array<int> face_vert_indices;
 

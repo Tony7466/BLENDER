@@ -70,7 +70,7 @@ CDT_input<T> fill_input_from_string(const char *spec, InputStorage<T> &r_storage
     std::istringstream ess(line);
     int e0, e1;
     ess >> e0 >> e1;
-    r_storage.edge[i] = int2(e0, e1);
+    r_storage.edge[i] = std::pair<int, int>(e0, e1);
     i++;
   }
   i = 0;
@@ -277,7 +277,7 @@ static bool draw_append = false; /* Will be set to true after first call. */
 template<typename T>
 void graph_draw(const std::string &label,
                 const Array<VecBase<T, 2>> &verts,
-                const Array<int2> &edges,
+                const Array<std::pair<int, int>> &edges,
                 const GroupedSpan<int> faces)
 {
   /* Would like to use BKE_tempdir_base() here, but that brings in dependence on kernel library.
@@ -359,7 +359,7 @@ void graph_draw(const std::string &label,
     f << "\"\n  />\n";
   }
 
-  for (const int2 &e : edges) {
+  for (const std::pair<int, int> &e : edges) {
     const VecBase<T, 2> &uco = verts[e[0]];
     const VecBase<T, 2> &vco = verts[e[1]];
     int strokew = thin_line;
@@ -1846,7 +1846,7 @@ void rand_delaunay_test(int test_kind,
       }
 
       Array<VecBase<T, 2>> verts(npts);
-      Array<int2> edges(nedges);
+      Array<std::pair<int, int>> edges(nedges);
       Vector<int> face_offsets;
       Vector<int> face_vert_indices;
 

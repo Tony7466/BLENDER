@@ -68,7 +68,7 @@ Vector<Vector<int>> fixup_invalid_polygon(Span<float3> vertex_coords,
     Vector<int> face_verts;
     face_verts.reserve(result_faces[i].size());
     for (const int idx : result_faces[i]) {
-      BLI_assert(idx >= 0 && idx < res.vert_orig.size());
+      BLI_assert(idx >= 0 && idx < res.orig_verts().size());
       if (res.orig_verts()[idx].is_empty()) {
         /* If we have a whole new vertex in the tessellated result,
          * we won't quite know what to do with it (how to create normal/UV

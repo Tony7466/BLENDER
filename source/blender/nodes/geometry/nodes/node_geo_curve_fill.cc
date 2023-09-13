@@ -81,7 +81,7 @@ static Mesh *cdt_to_mesh(const meshintersect::CDT_result<double> &result)
     }
   });
 
-  mesh->edges_for_write().copy_from(result.edge.as_span());
+  mesh->edges_for_write().copy_from(result.edge.as_span().cast<int2>());
   mesh->face_offsets_for_write().copy_from(result.face_offsets);
   mesh->corner_verts_for_write().copy_from(result.face_vert_indices);
 

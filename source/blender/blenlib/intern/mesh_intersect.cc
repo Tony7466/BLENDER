@@ -1579,7 +1579,7 @@ static ITT_value intersect_tri_tri(const IMesh &tm, int t1, int t2)
 struct CDT_data {
   const Plane *t_plane;
   Vector<mpq2> vert;
-  Vector<int2> edge;
+  Vector<std::pair<int, int>> edge;
   Vector<int> face_offsets;
   Vector<int> face_vert_indices;
   /** Parallels face, gives id from input #IMesh of input face. */
@@ -1591,7 +1591,7 @@ struct CDT_data {
   /**
    * To speed up get_cdt_edge_orig, sometimes populate this map from vertex pair to output edge.
    */
-  Map<int2, int> verts_to_edge;
+  Map<std::pair<int, int>, int> verts_to_edge;
   int proj_axis;
 };
 
@@ -1654,7 +1654,7 @@ static void prepare_need_edge(CDT_data &cd, const mpq3 &p1, const mpq3 &p2)
 {
   int v1 = prepare_need_vert(cd, p1);
   int v2 = prepare_need_vert(cd, p2);
-  cd.edge.append(int2(v1, v2));
+  cd.edge.append(std::pair<int, int>(v1, v2));
 }
 
 static void prepare_need_tri(CDT_data &cd, const IMesh &tm, int t)
@@ -1753,24 +1753,24 @@ static CDT_data prepare_cdt_input_for_cluster(const IMesh &tm,
 }
 
 /* Return a copy of the argument with the integers ordered in ascending order. */
-static inline int2 sorted_int_pair(int2 pair)
+static inline std::pair<int, int> sorted_int_pair(std::pair<int, int> pair)
 {
-  if (pair[0] <= pair[1]) {
+  if (pair.first <= pair.second) {
     return pair;
   }
-  return int2(pair[1], pair[0]);
+  return std::pair<int, int>(pair.second, pair.first);
 }
 
 /**
  * Build cd.verts_to_edge to map from a pair of cdt output indices to an index in cd.cdt_out.edge.
  * Order the vertex indices so that the smaller one is first in the pair.
  */
-static void populate_cdt_edge_map(Map<int2, int> &verts_to_edge,
+static void populate_cdt_edge_map(Map<std::pair<int, int>, int> &verts_to_edge,
                                   const CDT_result<mpq_class> &cdt_out)
 {
   verts_to_edge.reserve(cdt_out.edge.size());
   for (int e : cdt_out.edge.index_range()) {
-    int2 vpair = sorted_int_pair(cdt_out.edge[e]);
+    std::pair<int, int> vpair = sorted_int_pair(cdt_out.edge[e]);
     /* There should be only one edge for each vertex pair. */
     verts_to_edge.add(vpair, e);
   }
@@ -1794,7 +1794,8 @@ static void do_cdt(CDT_data &cd)
     }
     std::cout << "Edges:\n";
     for (int i : cdt_in.edge.index_range()) {
-      std::cout << "e" << i << ": (" << cdt_in.edge[i][0] << ", " << cdt_in.edge[i][1] << ")\n";
+      std::cout << "e" << i << ": (" << cdt_in.edge[i].first << ", " << cdt_in.edge[i].second
+                << ")\n";
     }
     std::cout << "Tris\n";
     for (int f : cdt_in.faces.index_range()) {
@@ -1831,8 +1832,8 @@ static void do_cdt(CDT_data &cd)
     }
     std::cout << "Edges\n";
     for (int e : cd.cdt_out.edge.index_range()) {
-      std::cout << "e" << e << ": (" << cd.cdt_out.edge[e][0] << ", " << cd.cdt_out.edge[e][1]
-                << ") ";
+      std::cout << "e" << e << ": (" << cd.cdt_out.edge[e].first << ", "
+                << cd.cdt_out.edge[e].second << ") ";
       std::cout << "orig: ";
       for (int j : cd.cdt_out.orig_edges()[e].index_range()) {
         std::cout << cd.cdt_out.orig_edges()[e][j] << " ";
@@ -1860,13 +1861,13 @@ static int get_cdt_edge_orig(
   int e = NO_INDEX;
   if (cd.verts_to_edge.size() > 0) {
     /* Use the populated map to find the edge, if any, between vertices i0 and i1. */
-    int2 vpair = sorted_int_pair(int2(i0, i1));
+    std::pair<int, int> vpair = sorted_int_pair(std::pair<int, int>(i0, i1));
     e = cd.verts_to_edge.lookup_default(vpair, NO_INDEX);
   }
   else {
     for (int ee : cd.cdt_out.edge.index_range()) {
-      int2 edge = cd.cdt_out.edge[ee];
-      if ((edge[0] == i0 && edge[1] == i1) || (edge[0] == i1 && edge[1] == i0)) {
+      std::pair<int, int> edge = cd.cdt_out.edge[ee];
+      if ((edge.first == i0 && edge.second == i1) || (edge.first == i1 && edge.second == i0)) {
         e = ee;
         break;
       }
@@ -1934,7 +1935,7 @@ static Face *cdt_tri_as_imesh_face(
 {
   const CDT_result<mpq_class> &cdt_out = cd.cdt_out;
   int t_orig = tm.face(cd.input_face[cdt_in_t])->orig;
-  BLI_assert(cdt_out.face[cdt_out_t].size() == 3);
+  BLI_assert(cdt_out.faces()[cdt_out_t].size() == 3);
   const Span<int> face_verts = cdt_out.faces()[cdt_out_t];
   int i0 = face_verts[0];
   int i1 = face_verts[1];
@@ -2146,12 +2147,12 @@ static Array<Face *> exact_triangulate_poly(Face *f, IMeshArena *arena)
       /* Fall back on the polyfill triangulator. */
       return polyfill_triangulate_poly(f, arena);
     }
-    Map<int2, int> verts_to_edge;
+    Map<std::pair<int, int>, int> verts_to_edge;
     populate_cdt_edge_map(verts_to_edge, cdt_out);
     int foff = cdt_out.face_edge_offset;
     for (int i = 0; i < 3; ++i) {
-      int2 vpair(i_v_out[i], i_v_out[(i + 1) % 3]);
-      int2 vpair_canon = sorted_int_pair(vpair);
+      std::pair<int, int> vpair(i_v_out[i], i_v_out[(i + 1) % 3]);
+      std::pair<int, int> vpair_canon = sorted_int_pair(vpair);
       int e_out = verts_to_edge.lookup_default(vpair_canon, NO_INDEX);
       BLI_assert(e_out != NO_INDEX);
       eo[i] = NO_INDEX;
@@ -2469,12 +2470,12 @@ class TriOverlaps {
  * Data needed for parallelization of #calc_overlap_itts.
  */
 struct OverlapIttsData {
-  Vector<int2> intersect_pairs;
-  Map<int2, ITT_value> &itt_map;
+  Vector<std::pair<int, int>> intersect_pairs;
+  Map<std::pair<int, int>, ITT_value> &itt_map;
   const IMesh &tm;
   IMeshArena *arena;
 
-  OverlapIttsData(Map<int2, ITT_value> &itt_map, const IMesh &tm, IMeshArena *arena)
+  OverlapIttsData(Map<std::pair<int, int>, ITT_value> &itt_map, const IMesh &tm, IMeshArena *arena)
       : itt_map(itt_map), tm(tm), arena(arena)
   {
   }
@@ -2484,12 +2485,12 @@ struct OverlapIttsData {
  * Return a std::pair containing a and b in canonical order:
  * With a <= b.
  */
-static int2 canon_int_pair(int a, int b)
+static std::pair<int, int> canon_int_pair(int a, int b)
 {
   if (a > b) {
     std::swap(a, b);
   }
-  return int2(a, b);
+  return std::pair<int, int>(a, b);
 }
 
 static void calc_overlap_itts_range_func(void *__restrict userdata,
@@ -2498,9 +2499,9 @@ static void calc_overlap_itts_range_func(void *__restrict userdata,
 {
   constexpr int dbg_level = 0;
   OverlapIttsData *data = static_cast<OverlapIttsData *>(userdata);
-  int2 tri_pair = data->intersect_pairs[iter];
-  int a = tri_pair[0];
-  int b = tri_pair[1];
+  std::pair<int, int> tri_pair = data->intersect_pairs[iter];
+  int a = tri_pair.first;
+  int b = tri_pair.second;
   if (dbg_level > 0) {
     std::cout << "calc_overlap_itts_range_func a=" << a << ", b=" << b << "\n";
   }
@@ -2516,7 +2517,7 @@ static void calc_overlap_itts_range_func(void *__restrict userdata,
  * Fill in itt_map with the vector of ITT_values that result from intersecting the triangles in
  * ov. Use a canonical order for triangles: (a,b) where  a < b.
  */
-static void calc_overlap_itts(Map<int2, ITT_value> &itt_map,
+static void calc_overlap_itts(Map<std::pair<int, int>, ITT_value> &itt_map,
                               const IMesh &tm,
                               const TriOverlaps &ov,
                               IMeshArena *arena)
@@ -2526,7 +2527,7 @@ static void calc_overlap_itts(Map<int2, ITT_value> &itt_map,
    * so map entries will exist when doing the range function.
    * This means we won't have to protect the `itt_map.add_overwrite` function with a lock. */
   for (const BVHTreeOverlap &olap : ov.overlap()) {
-    int2 key = canon_int_pair(olap.indexA, olap.indexB);
+    std::pair<int, int> key = canon_int_pair(olap.indexA, olap.indexB);
     if (!itt_map.contains(key)) {
       itt_map.add_new(key, ITT_value());
       data.intersect_pairs.append(key);
@@ -2548,7 +2549,7 @@ static void calc_overlap_itts(Map<int2, ITT_value> &itt_map,
  */
 static void calc_subdivided_non_cluster_tris(Array<IMesh> &r_tri_subdivided,
                                              const IMesh &tm,
-                                             const Map<int2, ITT_value> &itt_map,
+                                             const Map<std::pair<int, int>, ITT_value> &itt_map,
                                              const CoplanarClusterInfo &clinfo,
                                              const TriOverlaps &ov,
                                              IMeshArena *arena)
@@ -2603,7 +2604,7 @@ static void calc_subdivided_non_cluster_tris(Array<IMesh> &r_tri_subdivided,
       Vector<ITT_value, inline_capacity> itts(otr.len);
       for (int j = otr.overlap_start; j < otr.overlap_start + otr.len; ++j) {
         int t_other = overlap[j].indexB;
-        int2 key = canon_int_pair(t, t_other);
+        std::pair<int, int> key = canon_int_pair(t, t_other);
         ITT_value itt;
         if (itt_map.contains(key)) {
           itt = itt_map.lookup(key);
@@ -2690,7 +2691,7 @@ static CDT_data calc_cluster_subdivided(const CoplanarClusterInfo &clinfo,
                                         int c,
                                         const IMesh &tm,
                                         const TriOverlaps &ov,
-                                        const Map<int2, ITT_value> &itt_map,
+                                        const Map<std::pair<int, int>, ITT_value> &itt_map,
                                         IMeshArena * /*arena*/)
 {
   constexpr int dbg_level = 0;
@@ -2719,7 +2720,7 @@ static CDT_data calc_cluster_subdivided(const CoplanarClusterInfo &clinfo,
         if (dbg_level > 0) {
           std::cout << "use intersect(" << t << "," << t_other << "\n";
         }
-        int2 key = canon_int_pair(t, t_other);
+        std::pair<int, int> key = canon_int_pair(t, t_other);
         if (itt_map.contains(key)) {
           ITT_value itt = itt_map.lookup(key);
           if (!ELEM(itt.kind, INONE, ICOPLANAR)) {
@@ -2756,7 +2757,7 @@ static IMesh union_tri_subdivides(const blender::Array<IMesh> &tri_subdivided)
 
 static CoplanarClusterInfo find_clusters(const IMesh &tm,
                                          const Array<BoundingBox> &tri_bb,
-                                         const Map<int2, ITT_value> &itt_map)
+                                         const Map<std::pair<int, int>, ITT_value> &itt_map)
 {
   constexpr int dbg_level = 0;
   if (dbg_level > 0) {
@@ -2768,8 +2769,8 @@ static CoplanarClusterInfo find_clusters(const IMesh &tm,
   maybe_coplanar_tris.reserve(2 * itt_map.size());
   for (auto item : itt_map.items()) {
     if (item.value.kind == ICOPLANAR) {
-      int t1 = item.key[0];
-      int t2 = item.key[1];
+      int t1 = item.key.first;
+      int t2 = item.key.second;
       maybe_coplanar_tris.add_multiple({t1, t2});
     }
   }
@@ -3013,7 +3014,7 @@ IMesh trimesh_nary_intersect(const IMesh &tm_in,
 #  endif
   /* itt_map((a,b)) will hold the intersection value resulting from intersecting
    * triangles with indices a and b, where a < b. */
-  Map<int2, ITT_value> itt_map;
+  Map<std::pair<int, int>, ITT_value> itt_map;
   itt_map.reserve(tri_ov.overlap().size());
   calc_overlap_itts(itt_map, *tm_clean, tri_ov, arena);
 #  ifdef PERFDEBUG
