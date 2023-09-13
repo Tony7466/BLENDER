@@ -107,7 +107,7 @@ class Instance {
       case V3D_SHADING_TEXTURE_COLOR:
         ATTR_FALLTHROUGH;
       case V3D_SHADING_MATERIAL_COLOR:
-        if (::Material *_mat = BKE_object_material_get_eval(ob_ref.object, slot)) {
+        if (::Material *_mat = BKE_object_material_get_eval(ob_ref.object, slot + 1)) {
           return Material(*_mat);
         }
         ATTR_FALLTHROUGH;
@@ -271,8 +271,7 @@ class Instance {
             continue;
           }
 
-          /* Material slots start from 1. */
-          int material_slot = i + 1;
+          int material_slot = i;
           Material mat = get_material(ob_ref, object_state.color_type, material_slot);
           has_transparent_material = has_transparent_material || mat.is_transparent();
 
@@ -392,12 +391,12 @@ class Instance {
     /* Skip frustum culling. */
     ResourceHandle handle = manager.resource_handle(float4x4(ob_ref.object->object_to_world));
 
-    Material mat = get_material(ob_ref, object_state.color_type, psys->part->omat);
+    Material mat = get_material(ob_ref, object_state.color_type, psys->part->omat - 1);
     ::Image *image = nullptr;
     ImageUser *iuser = nullptr;
     GPUSamplerState sampler_state = GPUSamplerState::default_sampler();
     if (object_state.color_type == V3D_SHADING_TEXTURE_COLOR) {
-      get_material_image(ob_ref.object, psys->part->omat, image, iuser, sampler_state);
+      get_material_image(ob_ref.object, psys->part->omat - 1, image, iuser, sampler_state);
     }
     resources.material_buf.append(mat);
     int material_index = resources.material_buf.size() - 1;
