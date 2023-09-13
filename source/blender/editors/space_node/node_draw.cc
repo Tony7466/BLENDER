@@ -526,7 +526,12 @@ struct NodeInterfaceSocketData {
   }
 };
 
-/* Utility to ensure valid state while iterating over interface items and sockets. */
+/* Utility to ensure valid state while iterating over interface items and sockets.
+ * This iterates over all the item declarations in the same order as
+ * #bNodeTreeInterface::foreach_item, but also manages pointers to input/output socket of the node
+ * alongside declarations. Acquiring a socket or panel declaration makes sure the necessary
+ * pointers are valid and advances to the next item.
+ */
 struct NodeInterfaceIterator {
  private:
   const bNode &node_;
